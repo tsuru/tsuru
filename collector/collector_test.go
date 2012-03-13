@@ -18,6 +18,7 @@ var _ = Suite(&S{})
 
 func (s *S) TestCollectorUpdate(c *C) {
 	db, _ := sql.Open("sqlite3", "./tsuru.db")
+	defer db.Close()
 	insertApp, _ := db.Prepare("INSERT INTO apps (id, name, state) VALUES (?, ?, ?)")
 
 	tx, _ := db.Begin()
@@ -35,7 +36,7 @@ func (s *S) TestCollectorUpdate(c *C) {
 					"umaappqq/0":Unit{
 						State:"started"}}}}}
 
-	collector.Update(out)
+	collector.Update(db, out)
 
 	rows, _ := db.Query("SELECT state FROM apps WHERE id = 1")
 

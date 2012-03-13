@@ -34,10 +34,8 @@ func (c *Collector) Parse(data []byte) *output {
 	return raw
 }
 
-func (c *Collector) Update(out *output) {
+func (c *Collector) Update(db *sql.DB, out *output) {
 	fmt.Println("updating status")
-	db, _ := sql.Open("sqlite3", "./tsuru.db")
-	defer db.Close()
 
 	updateApp, _ := db.Prepare("UPDATE apps SET state=?")
 
