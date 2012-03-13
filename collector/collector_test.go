@@ -45,7 +45,7 @@ func (s *S) TestCollectorUpdate(c *C) {
 		rows.Scan(&state)
 	}
 
-	c.Assert("RUNNING", DeepEquals, state)
+	c.Assert("STARTED", DeepEquals, state)
 
 }
 

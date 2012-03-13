@@ -45,7 +45,7 @@ func (c *Collector) Update(db *sql.DB, out *output) {
 			stmt := tx.Stmt(updateApp)
 			defer stmt.Close()
 			if unit.State == "started" {
-				stmt.Exec("RUNNING")
+				stmt.Exec("STARTED")
 			} else {
 				stmt.Exec("STOPPED")
 			}
