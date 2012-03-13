@@ -37,18 +37,21 @@ func (c *Collector) Parse(data []byte) *output {
 func (c *Collector) Update(db *sql.DB, out *output) {
 	fmt.Println("updating status")
 
-	updateApp, _ := db.Prepare("UPDATE apps SET state=?")
+	var state string
 
-	for _, service := range out.Services {
+	updateApp, _ := db.Prepare("UPDATE apps SET state=? WHERE name=?")
+
+	for serviceName, service := range out.Services {
 		for _, unit := range service.Units {
 			tx, _ := db.Begin()
 			stmt := tx.Stmt(updateApp)
 			defer stmt.Close()
 			if unit.State == "started" {
-				stmt.Exec("STARTED")
+				state = "STARTED"
 			} else {
-				stmt.Exec("STOPPED")
+				state = "STOPPED"
 			}
+			stmt.Exec(state, serviceName)
 			tx.Commit()
 		}
 	}
