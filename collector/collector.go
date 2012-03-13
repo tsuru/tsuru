@@ -24,7 +24,7 @@ type output struct {
 
 func (c *Collector) Collect() ([]byte, error) {
 	fmt.Println("collecting status")
-	return exec.Command("juju status").Output()
+	return exec.Command("juju", "status").Output()
 }
 
 func (c *Collector) Parse(data []byte) *output {
