@@ -26,7 +26,7 @@ func (s *S) TestCollectorUpdate(c *C) {
 	stmt.Exec(1, "umaappqq", "STOPPED")
 	tx.Commit()
 
-	var collector collector
+	var collector Collector
 
 	out := &output{
 		Services:map[string]Service{
@@ -49,7 +49,7 @@ func (s *S) TestCollectorUpdate(c *C) {
 }
 
 func (s *S) TestCollectorParser(c *C) {
-	var collector collector
+	var collector Collector
 
 	file, _ := os.Open(filepath.Join("testdata", "output.yaml"))
 	jujuOutput, _ := ioutil.ReadAll(file)

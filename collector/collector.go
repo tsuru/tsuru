@@ -8,7 +8,7 @@ import (
 	"os/exec"
 )
 
-type collector struct{}
+type Collector struct{}
 
 type Unit struct {
 	State string
@@ -22,17 +22,17 @@ type output struct {
 	Services map[string]Service
 }
 
-func (c *collector) Collect() ([]byte, error) {
+func (c *Collector) Collect() ([]byte, error) {
 	return exec.Command("juju status").Output()
 }
 
-func (c *collector) Parse(data []byte) *output {
+func (c *Collector) Parse(data []byte) *output {
 	raw := new(output)
 	_ = goyaml.Unmarshal(data, raw)
 	return raw
 }
 
-func (c *collector) Update(out *output) {
+func (c *Collector) Update(out *output) {
 	db, _ := sql.Open("sqlite3", "./tsuru.db")
 	defer db.Close()
 
