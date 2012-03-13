@@ -8,7 +8,7 @@ import (
 func main() {
 	var xpto collector.Collector
 	c := time.Tick(1 * time.Minute)
-	for now := range c {
+	for _ = range c {
 		data, _ := xpto.Collect()
 		output := xpto.Parse(data)
 		xpto.Update(output)
