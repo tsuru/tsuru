@@ -23,16 +23,19 @@ type output struct {
 }
 
 func (c *Collector) Collect() ([]byte, error) {
+	fmt.Println("collecting status")
 	return exec.Command("juju status").Output()
 }
 
 func (c *Collector) Parse(data []byte) *output {
+	fmt.Println("parsing yaml")
 	raw := new(output)
 	_ = goyaml.Unmarshal(data, raw)
 	return raw
 }
 
 func (c *Collector) Update(out *output) {
+	fmt.Println("updating status")
 	db, _ := sql.Open("sqlite3", "./tsuru.db")
 	defer db.Close()
 
@@ -40,7 +43,6 @@ func (c *Collector) Update(out *output) {
 
 	for _, service := range out.Services {
 		for _, unit := range service.Units {
-			fmt.Println(unit.State)
 			tx, _ := db.Begin()
 			stmt := tx.Stmt(updateApp)
 			defer stmt.Close()
