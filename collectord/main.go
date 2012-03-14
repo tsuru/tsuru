@@ -1,10 +1,10 @@
 package main
 
 import (
-	"time"
-	"github.com/timeredbull/tsuru/collector"
 	"database/sql"
 	_ "github.com/mattn/go-sqlite3"
+	"github.com/timeredbull/tsuru/collector"
+	"time"
 )
 
 func main() {

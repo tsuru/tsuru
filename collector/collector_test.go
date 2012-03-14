@@ -1,13 +1,13 @@
 package collector
 
 import (
+	"database/sql"
+	_ "github.com/mattn/go-sqlite3"
 	"io/ioutil"
 	. "launchpad.net/gocheck"
 	"os"
 	"path/filepath"
 	"testing"
-	"database/sql"
-	_ "github.com/mattn/go-sqlite3"
 )
 
 func Test(t *testing.T) { TestingT(t) }
@@ -30,11 +30,11 @@ func (s *S) TestCollectorUpdate(c *C) {
 	var collector Collector
 
 	out := &output{
-		Services:map[string]Service{
-			"umaappqq":Service{
-				Units:map[string]Unit{
-					"umaappqq/0":Unit{
-						State:"started"}}}}}
+		Services: map[string]Service{
+			"umaappqq": Service{
+				Units: map[string]Unit{
+					"umaappqq/0": Unit{
+						State: "started"}}}}}
 
 	collector.Update(db, out)
 
@@ -57,11 +57,11 @@ func (s *S) TestCollectorParser(c *C) {
 	file.Close()
 
 	expected := &output{
-		Services:map[string]Service{
-			"umaappqq":Service{
-				Units:map[string]Unit{
-					"umaappqq/0":Unit{
-						State:"started"}}}}}
+		Services: map[string]Service{
+			"umaappqq": Service{
+				Units: map[string]Unit{
+					"umaappqq/0": Unit{
+						State: "started"}}}}}
 
 	c.Assert(collector.Parse(jujuOutput), DeepEquals, expected)
 }

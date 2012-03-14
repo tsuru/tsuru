@@ -1,10 +1,10 @@
 package collector
 
 import (
-	"launchpad.net/goyaml"
 	"database/sql"
-	_ "github.com/mattn/go-sqlite3"
 	"fmt"
+	_ "github.com/mattn/go-sqlite3"
+	"launchpad.net/goyaml"
 	"os/exec"
 )
 
