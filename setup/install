@@ -1,0 +1,25 @@
+#!/bin/bash
+set -e
+
+echo "Installing dependencies"
+sudo apt-get install python-setuptools python-dev build-essential mercurial git bzr libsqlite3-dev sqlite3 pkg-config -y
+
+echo "Cloning go"
+[ -d $HOME/go ] || hg clone -u weekly http://code.google.com/p/go/
+
+echo "Building go"
+cd $HOME/go/src
+[ $(which go) ] || ./all.bash
+cd $HOME 
+
+[ $GOPATH ] || echo 'export PATH=$HOME/go/bin:$HOME/.go/bin:${PATH}' >> $HOME/.bashrc
+[ $GOPATH ] || echo 'export GOPATH=$HOME/.go' >> $HOME/.bashrc
+
+export GOPATH=$HOME/.go
+export PATH=$HOME/go/bin:$HOME/.go/bin:${PATH}
+
+echo "Creating GOPATH"
+[ -d $HOME/.go ] || mkdir $HOME/.go
+
+echo "Building tsuru/collectord"
+go get -u github.com/timeredbull/tsuru/collectord

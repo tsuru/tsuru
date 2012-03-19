@@ -1,16 +1,22 @@
 package main
 
 import (
-	"time"
+	"database/sql"
+	_ "github.com/mattn/go-sqlite3"
 	"github.com/timeredbull/tsuru/collector"
+	"time"
 )
 
 func main() {
-	var col collector.Collector
+	var collector collector.Collector
+
+	db, _ := sql.Open("sqlite3", "/home/ubuntu/cloudfoundry/vcap/cloud_controller/db/cloudcontroller.sqlite3")
+	defer db.Close()
+
 	c := time.Tick(1 * time.Minute)
 	for _ = range c {
-		data, _ := col.Collect()
-		output := col.Parse(data)
-		col.Update(output)
+		data, _ := collector.Collect()
+		output := collector.Parse(data)
+		collector.Update(db, output)
 	}
 }

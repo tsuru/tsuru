@@ -1,10 +1,10 @@
 package collector
 
 import (
-	"launchpad.net/goyaml"
 	"database/sql"
-	_ "github.com/mattn/go-sqlite3"
 	"fmt"
+	_ "github.com/mattn/go-sqlite3"
+	"launchpad.net/goyaml"
 	"os/exec"
 )
 
@@ -23,32 +23,35 @@ type output struct {
 }
 
 func (c *Collector) Collect() ([]byte, error) {
-	return exec.Command("juju status").Output()
+	fmt.Println("collecting status")
+	return exec.Command("juju", "status").Output()
 }
 
 func (c *Collector) Parse(data []byte) *output {
+	fmt.Println("parsing yaml")
 	raw := new(output)
 	_ = goyaml.Unmarshal(data, raw)
 	return raw
 }
 
-func (c *Collector) Update(out *output) {
-	db, _ := sql.Open("sqlite3", "./tsuru.db")
-	defer db.Close()
+func (c *Collector) Update(db *sql.DB, out *output) {
+	fmt.Println("updating status")
 
-	updateApp, _ := db.Prepare("UPDATE apps SET state=?")
+	var state string
 
-	for _, service := range out.Services {
+	updateApp, _ := db.Prepare("UPDATE apps SET state=? WHERE name=?")
+
+	for serviceName, service := range out.Services {
 		for _, unit := range service.Units {
-			fmt.Println(unit.State)
 			tx, _ := db.Begin()
 			stmt := tx.Stmt(updateApp)
 			defer stmt.Close()
 			if unit.State == "started" {
-				stmt.Exec("RUNNING")
+				state = "STARTED"
 			} else {
-				stmt.Exec("STOPPED")
+				state = "STOPPED"
 			}
+			stmt.Exec(state, serviceName)
 			tx.Commit()
 		}
 	}
