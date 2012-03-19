@@ -6,9 +6,9 @@ import (
 	"github.com/timeredbull/tsuru/api"
 	. "launchpad.net/gocheck"
 	"testing"
-	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
+	"fmt"
 )
 
 func Test(t *testing.T) { TestingT(t)}
@@ -22,7 +22,8 @@ func (s *WebServerSuite) TestCreateApp(c *C) {
 
 	c.Check(err, IsNil)
 	api.CreateAppHandler(recorder, request)
+	fmt.Println(recorder.Code)
 
-	data, err := ioutil.ReadAll(recorder.Body)
-	c.Assert(string(data), Equals, "success")
+	c.Assert(recorder.Body.String(), Equals, "success")
+	c.Assert(recorder.Code, Equals, 200)
 }
