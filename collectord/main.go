@@ -6,11 +6,11 @@ import (
 )
 
 func main() {
-	var xpto collector.Collector
+	var col collector.Collector
 	c := time.Tick(1 * time.Minute)
 	for _ = range c {
-		data, _ := xpto.Collect()
-		output := xpto.Parse(data)
-		xpto.Update(output)
+		data, _ := col.Collect()
+		output := col.Parse(data)
+		col.Update(output)
 	}
 }
