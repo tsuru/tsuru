@@ -1,9 +1,9 @@
-package api_test
+package service_test
 
 import (
 	"bytes"
 	"encoding/json"
-	"github.com/timeredbull/tsuru/api"
+	"github.com/timeredbull/tsuru/api/service"
 	. "launchpad.net/gocheck"
 	"net/http"
 	"net/http/httptest"
@@ -21,14 +21,14 @@ func (s *ServicesSuite) TestShouldRequestCreateAndBeSuccess(c *C) {
 	recorder := httptest.NewRecorder()
 	c.Assert(err, IsNil)
 
-	api.CreateService(recorder, request)
+	service.CreateService(recorder, request)
 	status := recorder.Code
 
 	c.Assert(200, Equals, status)
 }
 
 func (s *ServicesSuite) TestShouldRequestCreateAndInsertInTheDatabase(c *C) {
-	service_binding := api.ServiceBindings{
+	service_binding := service.ServiceBindings{
 		ServiceConfigId: 1,
 		AppId:           1,
 		UserId:          1,
@@ -42,7 +42,7 @@ func (s *ServicesSuite) TestShouldRequestCreateAndInsertInTheDatabase(c *C) {
 	recorder := httptest.NewRecorder()
 	c.Assert(err, IsNil)
 
-	api.CreateService(recorder, request)
+	service.CreateService(recorder, request)
 	body := recorder.Body
 	c.Assert(body.String(), Equals, "success")
 }
