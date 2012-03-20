@@ -14,6 +14,34 @@ type S struct{}
 
 var _ = Suite(&S{})
 
+func (s *S) TestDestroy(c *C) {
+	app := app.App{}
+	app.Name = "appName"
+	app.Framework = "django"
+
+	err := app.Create()
+	c.Assert(err, IsNil)
+
+	err = app.Destroy()
+	c.Assert(err, IsNil)
+
+	db, _ := sql.Open("sqlite3", "./tsuru.db")
+	defer db.Close()
+	rows, err := db.Query("SELECT count(*) FROM apps WHERE name = 'appName'")
+
+	if err != nil {
+		panic(err)
+	}
+
+	var qtd int
+
+	for rows.Next() {
+		rows.Scan(&qtd)
+	}
+
+	c.Assert(qtd, Equals, 0)
+}
+
 func (s *S) TestCreate(c *C) {
 	app := app.App{}
 	app.Name = "appName"
@@ -38,12 +66,11 @@ func (s *S) TestCreate(c *C) {
 
 	for rows.Next() {
 		rows.Scan(&name, &framework, &state)
-		rows.Scan(&framework)
-		rows.Scan(&state)
 	}
 
 	c.Assert(name, Equals, app.Name)
 	c.Assert(framework, Equals, app.Framework)
 	c.Assert(state, Equals, app.State)
 
+	app.Destroy()
 }

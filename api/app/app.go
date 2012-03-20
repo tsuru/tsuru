@@ -33,3 +33,24 @@ func (app *App) Create() error {
 
 	return nil
 }
+
+func (app *App) Destroy() error {
+	db, _ := sql.Open("sqlite3", "./tsuru.db")
+	defer db.Close()
+
+	deleteApp, err := db.Prepare("DELETE FROM apps WHERE name = ?")
+	if err != nil {
+		panic(err)
+	}
+	tx, err := db.Begin()
+
+	if err != nil {
+		panic(err)
+	}
+
+	stmt := tx.Stmt(deleteApp)
+	stmt.Exec(app.Name)
+	tx.Commit()
+
+	return nil
+}
