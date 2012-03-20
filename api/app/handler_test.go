@@ -1,23 +1,45 @@
 package app_test
 
-//req {:method=>:post, :url=>"http://api.vcap.me/apps", :payload=>"{\"name\":\"app1\",\"staging\":{\"framework\":\"django\",\"runtime\":null},\"uris\":[\"app1.vcap.me\"],\"instances\":1,\"resources\":{\"memory\":128}}", :headers=>{"AUTHORIZATION"=>"04085b0849221c616e64726577736d6564696e6140676d61696c2e636f6d063a0645546c2b073b84704f2219c8524b951cd4b1e2574c826b6192cf911fa1a94f", "Content-Type"=>"application/json", "Accept"=>"application/json"}, :multipart=>true, :timeout=>86400000, :open_timeout=>86400000}
-
 import (
-	"fmt"
+	"database/sql"
+	_ "github.com/mattn/go-sqlite3"
 	"github.com/timeredbull/tsuru/api/app"
 	. "launchpad.net/gocheck"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 )
 
 func (s *S) TestCreateApp(c *C) {
 	request, err := http.NewRequest("POST", "/apps", nil)
+	request.Header.Set("Content-Type", "application/json")
+	request.Form = url.Values{"name": []string{"someApp"}, "framework": []string{"django"}}
+
 	recorder := httptest.NewRecorder()
 
-	c.Check(err, IsNil)
+	c.Assert(err, IsNil)
+
 	app.CreateAppHandler(recorder, request)
-	fmt.Println(recorder.Code)
 
 	c.Assert(recorder.Body.String(), Equals, "success")
 	c.Assert(recorder.Code, Equals, 200)
+
+	db, _ := sql.Open("sqlite3", "./tsuru.db")
+	defer db.Close()
+	rows, err := db.Query("SELECT count(*) FROM apps WHERE name = 'someApp'")
+
+	if err != nil {
+		panic(err)
+	}
+
+	var qtd int
+
+	for rows.Next() {
+		rows.Scan(&qtd)
+	}
+
+	c.Assert(qtd, Equals, 1)
+
+	app := app.App{Name: "someApp"}
+	app.Destroy()
 }
