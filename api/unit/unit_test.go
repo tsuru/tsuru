@@ -13,10 +13,10 @@ type S struct{}
 
 var _ = Suite(&S{})
 
-var lxcEnabled = flag.Bool("juju", false, "enable unit tests that require juju")
+var jujuEnabled = flag.Bool("juju", false, "enable unit tests that require juju")
 
 func (s *S) SetUpSuite(c *C) {
-	if !*lxcEnabled {
+	if !*jujuEnabled {
 		c.Skip("unit tests need juju installed (-juju to enable)")
 	}
 }
