@@ -8,5 +8,5 @@ import (
 
 func main() {
 	http.HandleFunc("/apps", app.CreateAppHandler)
-	log.Fatal(http.ListenAndServe("localhost:4000", nil))
+	log.Fatal(http.ListenAndServe(":4000", nil))
 }
