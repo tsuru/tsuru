@@ -1,24 +1,9 @@
-package api
+package apps
 
 import (
 	"fmt"
 	"net/http"
 )
-
-type App struct {
-	name string
-	framework string
-	runtime string
-	state string
-}
-
-func updateAppFromParams() {
-
-}
-
-func (app *App) Create() (error) {
-	return error
-}
 
 func CreateAppHandler(w http.ResponseWriter, r *http.Request) {
 	//app = App{}
@@ -28,4 +13,3 @@ func CreateAppHandler(w http.ResponseWriter, r *http.Request) {
 	//}
 	fmt.Fprint(w, "success")
 }
-
