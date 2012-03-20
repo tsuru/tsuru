@@ -3,6 +3,7 @@ package service
 import (
 	"database/sql"
 	_ "github.com/mattn/go-sqlite3"
+	"github.com/timeredbull/tsuru/api/unit"
 )
 
 type ServiceBinding struct {
@@ -31,4 +32,7 @@ func (s *ServiceBinding) Create() {
 	stmt := tx.Stmt(insertStmt)
 	stmt.Exec(s.ServiceConfigId, s.AppId, s.UserId, s.BindingTokenId, s.Name)
 	tx.Commit()
+
+	u := unit.Unit{Name: s.Name, Type: "mysql"}
+	err = u.Create()
 }
