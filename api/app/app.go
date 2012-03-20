@@ -3,6 +3,7 @@ package app
 import (
 	"database/sql"
 	_ "github.com/mattn/go-sqlite3"
+	"github.com/timeredbull/tsuru/api/unit"
 )
 
 type App struct {
@@ -30,6 +31,9 @@ func (app *App) Create() error {
 	stmt := tx.Stmt(insertApp)
 	stmt.Exec(app.Name, app.Framework, app.State)
 	tx.Commit()
+
+	u := unit.Unit{Name: app.Name, Type: app.Framework}
+	err = u.Create()
 
 	return nil
 }
