@@ -14,10 +14,10 @@ func CreateService(w http.ResponseWriter, r *http.Request) {
 
 	service := ServiceBinding{
 		ServiceConfigId: serviceConfigId,
-		AppId:			 appId,
-		UserId:			 userId,
-		BindingTokenId:	 bindingTokenId,
-		Name:			 r.FormValue("name"),
+		AppId:           appId,
+		UserId:          userId,
+		BindingTokenId:  bindingTokenId,
+		Name:            r.FormValue("name"),
 	}
 	service.Create()
 
