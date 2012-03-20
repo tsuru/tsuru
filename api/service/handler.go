@@ -6,7 +6,7 @@ import (
 	"strconv"
 )
 
-func CreateService(w http.ResponseWriter, r *http.Request) {
+func CreateServiceHandler(w http.ResponseWriter, r *http.Request) {
 	serviceConfigId, _ := strconv.Atoi(r.FormValue("ServiceConfigId"))
 	appId, _ := strconv.Atoi(r.FormValue("AppId"))
 	userId, _ := strconv.Atoi(r.FormValue("UserId"))

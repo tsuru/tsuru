@@ -38,7 +38,7 @@ func (s *ServiceSuite) TestShouldRequestCreateAndBeSuccess(c *C) {
 	recorder := httptest.NewRecorder()
 	c.Assert(err, IsNil)
 
-	service.CreateService(recorder, request)
+	service.CreateServiceHandler(recorder, request)
 	status := recorder.Code
 
 	c.Assert(200, Equals, status)
@@ -58,7 +58,7 @@ func (s *ServiceSuite) TestShouldRequestCreateAndInsertInTheDatabase(c *C) {
 	recorder := httptest.NewRecorder()
 	c.Assert(err, IsNil)
 
-	service.CreateService(recorder, request)
+	service.CreateServiceHandler(recorder, request)
 	body := recorder.Body
 	c.Assert(body.String(), Equals, "success")
 
