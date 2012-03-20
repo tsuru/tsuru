@@ -1,6 +1,8 @@
 package unit_test
 
 import (
+	"flag"
+	"github.com/timeredbull/tsuru/api/unit"
 	. "launchpad.net/gocheck"
 	"testing"
 )
@@ -11,8 +13,16 @@ type S struct{}
 
 var _ = Suite(&S{})
 
+var lxcEnabled = flag.Bool("juju", false, "enable unit tests that require juju")
+
+func (s *S) SetUpSuite(c *C) {
+	if !*lxcEnabled {
+		c.Skip("unit tests need juju installed (-juju to enable)")
+	}
+}
+
 func (s *S) TestCreateAndDestroy(c *C) {
-	u := Unit{Type: "django", Name: "myUnit"}
+	u := unit.Unit{Type: "django", Name: "myUnit"}
 
 	err := u.Create()
 	c.Assert(err, IsNil)
