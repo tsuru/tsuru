@@ -3,7 +3,7 @@ package service
 import (
 	"database/sql"
 	_ "github.com/mattn/go-sqlite3"
-//	"github.com/timeredbull/tsuru/api/unit"
+	"github.com/timeredbull/tsuru/api/unit"
 	. "github.com/timeredbull/tsuru/api/app"
 )
 
@@ -33,8 +33,10 @@ func (sa *ServiceApp) Create() error {
 	tx.Commit()
 
 
-	// u := unit.Unit{Name: s.AppId, Type: st.Type}
-	// err = u.Create()
+	s := sa.Service()
+	st := s.ServiceType()
+	u := unit.Unit{Name: s.Name, Type: st.Charm}
+	err = u.Create()
 
 	return err
 }
