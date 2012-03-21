@@ -16,6 +16,8 @@ func Test(t *testing.T) { TestingT(t) }
 
 type ServiceSuite struct {
 	db *sql.DB
+	service *service.Service
+	serviceType *service.ServiceType
 }
 
 var _ = Suite(&ServiceSuite{})
@@ -24,6 +26,9 @@ func (s *ServiceSuite) SetUpSuite(c *C) {
 	s.db, _ = sql.Open("sqlite3", "./tsuru.db")
 
 	_, err := s.db.Exec("CREATE TABLE 'service' ('id' INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, 'app_id' integer,'name' varchar(255))")
+	c.Check(err, IsNil)
+
+	_, err = s.db.Exec("CREATE TABLE 'service_type' ('id' INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, 'name' varchar(255), 'charm' varchar(255))")
 	c.Check(err, IsNil)
 }
 
@@ -34,6 +39,7 @@ func (s *ServiceSuite) TearDownSuite(c *C) {
 
 func (s *ServiceSuite) TearDownTest(c *C) {
 	s.db.Exec("DELETE FROM service")
+	s.db.Exec("DELETE FROM service_type")
 }
 
 func (s *ServiceSuite) TestShouldRequestCreateAndBeSuccess(c *C) {
