@@ -60,8 +60,9 @@ func (sa *ServiceApp) Delete() error {
 	stmt.Exec(sa.ServiceId, sa.AppId)
 	tx.Commit()
 
-	// u := unit.Unit{Name: s.Name}
-	// err = u.Destroy()
+	s := sa.Service()
+	u := unit.Unit{Name: s.Name}
+	err = u.Destroy()
 
 	return nil
 }
