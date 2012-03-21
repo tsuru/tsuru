@@ -7,14 +7,13 @@ import (
 	. "launchpad.net/gocheck"
 	"net/http"
 	"net/http/httptest"
-	"net/url"
+	"strings"
 )
 
 func (s *S) TestCreateApp(c *C) {
-	request, err := http.NewRequest("POST", "/apps", nil)
+	b := strings.NewReader(`{"name":"someApp", "framework":"django"}`)
+	request, err := http.NewRequest("POST", "/apps", b)
 	request.Header.Set("Content-Type", "application/json")
-	request.Form = url.Values{"name": []string{"someApp"}, "framework": []string{"django"}}
-
 	recorder := httptest.NewRecorder()
 
 	c.Assert(err, IsNil)
