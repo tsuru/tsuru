@@ -7,8 +7,8 @@ import (
 )
 
 type Service struct {
-	AppId           int
-	Name            string
+	AppId int
+	Name  string
 }
 
 func (s *Service) Create() error {
@@ -34,4 +34,29 @@ func (s *Service) Create() error {
 	err = u.Create()
 
 	return err
+}
+
+func (s *Service) Delete() error {
+	db, _ := sql.Open("sqlite3", "./tsuru.db")
+	defer db.Close()
+
+	query := "DELETE FROM service WHERE name = ? AND app_id = ?"
+	insertStmt, err := db.Prepare(query)
+	if err != nil {
+		panic(err)
+	}
+
+	tx, err := db.Begin()
+	if err != nil {
+		panic(err)
+	}
+
+	stmt := tx.Stmt(insertStmt)
+	stmt.Exec(s.Name, s.AppId)
+	tx.Commit()
+
+	u := unit.Unit{Name: s.Name}
+	err = u.Destroy()
+
+	return nil
 }
