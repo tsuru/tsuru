@@ -7,6 +7,7 @@ import (
 
 func (s *ServiceSuite) createService() {
 	s.service = &Service{
+		Id: 2,
 		ServiceTypeId: 2,
 		Name:  "my_service",
 	}
@@ -15,18 +16,20 @@ func (s *ServiceSuite) createService() {
 
 func (s *ServiceSuite) TestCreateService(c *C) {
 	s.createService()
-	rows, err := s.db.Query("SELECT service_type_id, name FROM service WHERE name = 'my_service'")
+	rows, err := s.db.Query("SELECT id, service_type_id, name FROM service WHERE name = 'my_service'")
 	c.Check(err, IsNil)
 
+	var id int
 	var serviceTypeId int
 	var name string
 
 	for rows.Next() {
-		rows.Scan(&serviceTypeId, &name)
+		rows.Scan(&id, &serviceTypeId, &name)
 	}
 
-	c.Assert(name, Equals, "my_service")
+	c.Assert(id, Equals, 2)
 	c.Assert(serviceTypeId, Equals, 2)
+	c.Assert(name, Equals, "my_service")
 }
 
 func (s *ServiceSuite) TestDeleteService(c *C) {
@@ -42,6 +45,17 @@ func (s *ServiceSuite) TestDeleteService(c *C) {
 	}
 
 	c.Assert(qtd, Equals, 0)
+}
+
+func (s *ServiceSuite) TestRetrieveAssociateServiceType(c *C) {
+	s.createService()
+	serviceType := ServiceType{Id: 2, Name: "Mysql", Charm: "mysql"}
+	serviceType.Create()
+	retrievedServiceType := s.service.ServiceType()
+
+	c.Assert(retrievedServiceType.Id, Equals, serviceType.Id)
+	c.Assert(retrievedServiceType.Name, Equals, serviceType.Name)
+	c.Assert(retrievedServiceType.Charm, Equals, serviceType.Charm)
 }
 
 // func (s *ServiceSuite) TestBindService(c *C) {
