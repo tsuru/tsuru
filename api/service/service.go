@@ -7,15 +7,16 @@ import (
 )
 
 type Service struct {
+	Id	          int
 	ServiceTypeId int
-	Name  string
+	Name          string
 }
 
 func (s *Service) Create() error {
 	db, _ := sql.Open("sqlite3", "./tsuru.db")
 	defer db.Close()
 
-	query := "INSERT INTO service (service_type_id, name) VALUES (?, ?)"
+	query := "INSERT INTO service (id, service_type_id, name) VALUES (?, ?, ?)"
 	insertStmt, err := db.Prepare(query)
 	if err != nil {
 		panic(err)
@@ -27,11 +28,8 @@ func (s *Service) Create() error {
 	}
 
 	stmt := tx.Stmt(insertStmt)
-	stmt.Exec(s.ServiceTypeId, s.Name)
+	stmt.Exec(s.Id, s.ServiceTypeId, s.Name)
 	tx.Commit()
-
-	u := unit.Unit{Name: s.Name, Type: "mysql"}
-	err = u.Create()
 
 	return err
 }
@@ -59,4 +57,30 @@ func (s *Service) Delete() error {
 	err = u.Destroy()
 
 	return nil
+}
+
+func (s *Service) ServiceType() (st *ServiceType) {
+	db, _ := sql.Open("sqlite3", "./tsuru.db")
+	defer db.Close()
+
+	query := "SELECT id, name, charm FROM service_type WHERE id = ?"
+	rows, err := db.Query(query, s.ServiceTypeId)
+	if err != nil {
+		panic(err)
+	}
+
+	var id    int
+	var name  string
+	var charm string
+	for rows.Next() {
+		rows.Scan(&id, &name, &charm)
+	}
+
+	st = &ServiceType{
+		Id:    id,
+		Name:  name,
+		Charm: charm,
+	}
+
+	return
 }

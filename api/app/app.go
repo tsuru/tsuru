@@ -7,6 +7,7 @@ import (
 )
 
 type App struct {
+	Id	      int
 	Name      string
 	Framework string
 	State     string
