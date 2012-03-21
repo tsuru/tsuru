@@ -18,6 +18,7 @@ type ServiceSuite struct {
 	db *sql.DB
 	service *service.Service
 	serviceType *service.ServiceType
+	serviceApp *service.ServiceApp
 }
 
 var _ = Suite(&ServiceSuite{})
@@ -30,6 +31,12 @@ func (s *ServiceSuite) SetUpSuite(c *C) {
 
 	_, err = s.db.Exec("CREATE TABLE 'service_type' ('id' INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, 'name' varchar(255), 'charm' varchar(255))")
 	c.Check(err, IsNil)
+
+	_, err = s.db.Exec("CREATE TABLE 'service_app' ('id' INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, 'service_id' integer, 'app_id' integer)")
+	c.Check(err, IsNil)
+
+	_, err = s.db.Exec("CREATE TABLE 'apps' ('id' INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, 'name' varchar(255), 'framework' varchar(255), 'state' varchar(255))")
+	c.Check(err, IsNil)
 }
 
 func (s *ServiceSuite) TearDownSuite(c *C) {
@@ -40,6 +47,8 @@ func (s *ServiceSuite) TearDownSuite(c *C) {
 func (s *ServiceSuite) TearDownTest(c *C) {
 	s.db.Exec("DELETE FROM service")
 	s.db.Exec("DELETE FROM service_type")
+	s.db.Exec("DELETE FROM service_app")
+	s.db.Exec("DELETE FROM apps")
 }
 
 func (s *ServiceSuite) TestShouldRequestCreateAndBeSuccess(c *C) {
