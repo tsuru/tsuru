@@ -14,7 +14,7 @@ type ServiceBinding struct {
 	Name            string
 }
 
-func (s *ServiceBinding) Create() {
+func (s *ServiceBinding) Create() error {
 	db, _ := sql.Open("sqlite3", "./tsuru.db")
 	defer db.Close()
 
@@ -35,4 +35,6 @@ func (s *ServiceBinding) Create() {
 
 	u := unit.Unit{Name: s.Name, Type: "mysql"}
 	err = u.Create()
+
+	return err
 }
