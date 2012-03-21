@@ -7,7 +7,7 @@ import (
 )
 
 type App struct {
-	Id	      int
+	Id	      int64
 	Name      string
 	Framework string
 	State     string
@@ -19,7 +19,7 @@ func (app *App) Create() error {
 
 	app.State = "Pending"
 
-	insertApp, err := db.Prepare("INSERT INTO apps (name, framework, state) VALUES (?, ?, ?)")
+	insertApp, err := db.Prepare("INSERT INTO apps (id, name, framework, state) VALUES (?, ?, ?, ?)")
 	if err != nil {
 		panic(err)
 	}
@@ -30,8 +30,10 @@ func (app *App) Create() error {
 	}
 
 	stmt := tx.Stmt(insertApp)
-	stmt.Exec(app.Name, app.Framework, app.State)
+	result, err := stmt.Exec(app.Id, app.Name, app.Framework, app.State)
 	tx.Commit()
+
+	app.Id, err = result.LastInsertId()
 
 	u := unit.Unit{Name: app.Name, Type: app.Framework}
 	err = u.Create()

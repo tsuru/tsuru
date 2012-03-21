@@ -26,6 +26,7 @@ func (s *ServiceSuite) TestCreateServiceApp(c *C) {
 		rows.Scan(&serviceId, &appId)
 	}
 
+	c.Assert(s.serviceApp.Id, Not(Equals), 0)
 	c.Assert(serviceId, Equals, 2)
 	c.Assert(appId, Equals, 1)
 }
@@ -46,9 +47,15 @@ func (s *ServiceSuite) TestDeleteServiceApp(c *C) {
 }
 
 func (s *ServiceSuite) TestRetrieveAssociatedService(c *C) {
-	s.createServiceApp()
-	service := Service{Id: 2, Name: "my_service", ServiceTypeId: 1}
+	service := Service{Name: "my_service", ServiceTypeId: 1}
 	service.Create()
+
+	s.serviceApp = &ServiceApp{
+		ServiceId: service.Id,
+		AppId:  1,
+	}
+	s.serviceApp.Create()
+
 	retrievedService := s.serviceApp.Service()
 
 	c.Assert(service.Name, Equals, retrievedService.Name)
@@ -57,9 +64,15 @@ func (s *ServiceSuite) TestRetrieveAssociatedService(c *C) {
 }
 
 func (s *ServiceSuite) TestRetrieveAssociatedApp(c *C) {
-	s.createServiceApp()
 	app := App{Name: "my_app", Framework: "django"}
 	app.Create()
+
+	s.serviceApp = &ServiceApp{
+		ServiceId: 2,
+		AppId:  app.Id,
+	}
+	s.serviceApp.Create()
+
 	retrievedApp := s.serviceApp.App()
 
 	c.Assert(app.Name, Equals, retrievedApp.Name)

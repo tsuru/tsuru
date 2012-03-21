@@ -2,12 +2,12 @@ package service_test
 
 import (
 	. "github.com/timeredbull/tsuru/api/service"
+	. "github.com/timeredbull/tsuru/api/app"
 	. "launchpad.net/gocheck"
 )
 
 func (s *ServiceSuite) createService() {
 	s.service = &Service{
-		Id: 2,
 		ServiceTypeId: 2,
 		Name:  "my_service",
 	}
@@ -48,17 +48,36 @@ func (s *ServiceSuite) TestDeleteService(c *C) {
 }
 
 func (s *ServiceSuite) TestRetrieveAssociateServiceType(c *C) {
-	s.createService()
-	serviceType := ServiceType{Id: 2, Name: "Mysql", Charm: "mysql"}
+	serviceType := ServiceType{Name: "Mysql", Charm: "mysql"}
 	serviceType.Create()
-	retrievedServiceType := s.service.ServiceType()
 
-	c.Assert(retrievedServiceType.Id, Equals, serviceType.Id)
-	c.Assert(retrievedServiceType.Name, Equals, serviceType.Name)
-	c.Assert(retrievedServiceType.Charm, Equals, serviceType.Charm)
+	service := &Service{
+		ServiceTypeId: serviceType.Id,
+		Name:  "my_service",
+	}
+	service.Create()
+	retrievedServiceType := service.ServiceType()
+
+	c.Assert(serviceType.Id, Equals, retrievedServiceType.Id)
+	c.Assert(serviceType.Name, Equals, retrievedServiceType.Name)
+	c.Assert(serviceType.Charm, Equals, retrievedServiceType.Charm)
 }
 
-// func (s *ServiceSuite) TestBindService(c *C) {
-// 	s.createService()
-// 	s.service.Bind()
-// }
+func (s *ServiceSuite) TestBindService(c *C) {
+	s.createService()
+	app := &App{Name: "my_app", Framework: "django"}
+	app.Create()
+	s.service.Bind(app)
+
+	rows, err := s.db.Query("SELECT service_id, app_id FROM service_app WHERE service_id = ? AND app_id = ?", s.service.Id, app.Id)
+	c.Assert(err, IsNil)
+
+	var serviceId int64
+	var appId     int64
+	for rows.Next() {
+		rows.Scan(&serviceId, &appId)
+	}
+
+	c.Assert(s.service.Id, Equals, serviceId)
+	c.Assert(app.Id, Equals, appId)
+}

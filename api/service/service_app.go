@@ -8,9 +8,9 @@ import (
 )
 
 type ServiceApp struct {
-	Id        int
-	ServiceId int
-	AppId     int
+	Id        int64
+	ServiceId int64
+	AppId     int64
 }
 
 func (sa *ServiceApp) Create() error {
@@ -77,9 +77,9 @@ func (sa *ServiceApp) Service() (s *Service) {
 		panic(err)
 	}
 
-	var id            int
+	var id            int64
 	var name          string
-	var serviceTypeId int
+	var serviceTypeId int64
 	for rows.Next() {
 		rows.Scan(&id, &name, &serviceTypeId)
 	}
@@ -103,7 +103,7 @@ func (sa *ServiceApp) App() (a *App) {
 		panic(err)
 	}
 
-	var id        int
+	var id        int64
 	var name      string
 	var framework string
 	for rows.Next() {

@@ -4,11 +4,12 @@ import (
 	"database/sql"
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/timeredbull/tsuru/api/unit"
+	. "github.com/timeredbull/tsuru/api/app"
 )
 
 type Service struct {
-	Id	          int
-	ServiceTypeId int
+	Id	          int64
+	ServiceTypeId int64
 	Name          string
 }
 
@@ -16,7 +17,7 @@ func (s *Service) Create() error {
 	db, _ := sql.Open("sqlite3", "./tsuru.db")
 	defer db.Close()
 
-	query := "INSERT INTO service (id, service_type_id, name) VALUES (?, ?, ?)"
+	query := "INSERT INTO service (service_type_id, name) VALUES (?, ?)"
 	insertStmt, err := db.Prepare(query)
 	if err != nil {
 		panic(err)
@@ -28,8 +29,13 @@ func (s *Service) Create() error {
 	}
 
 	stmt := tx.Stmt(insertStmt)
-	stmt.Exec(s.Id, s.ServiceTypeId, s.Name)
+	result, err := stmt.Exec(s.ServiceTypeId, s.Name)
+	if err != nil {
+		panic(err)
+	}
 	tx.Commit()
+
+	s.Id, err = result.LastInsertId()
 
 	return err
 }
@@ -59,6 +65,32 @@ func (s *Service) Delete() error {
 	return nil
 }
 
+func (s *Service) Bind(app *App) error {
+	db, _ := sql.Open("sqlite3", "./tsuru.db")
+	defer db.Close()
+
+	query := "INSERT INTO service_app (service_id, app_id) VALUES (?, ?)"
+	insertStmt, err := db.Prepare(query)
+	if err != nil {
+		panic(err)
+	}
+
+	tx, err := db.Begin()
+	if err != nil {
+		panic(err)
+	}
+
+	stmt := tx.Stmt(insertStmt)
+	stmt.Exec(s.Id, app.Id)
+	tx.Commit()
+
+	//appUnit := unit.Unit{Name: app.Name}
+	//serviceUnit := unit.Unit{Name: s.Name}
+	//serviceUnit.addRelation(appUnit)
+
+	return nil
+}
+
 func (s *Service) ServiceType() (st *ServiceType) {
 	db, _ := sql.Open("sqlite3", "./tsuru.db")
 	defer db.Close()
@@ -69,7 +101,7 @@ func (s *Service) ServiceType() (st *ServiceType) {
 		panic(err)
 	}
 
-	var id    int
+	var id    int64
 	var name  string
 	var charm string
 	for rows.Next() {

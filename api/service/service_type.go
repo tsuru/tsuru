@@ -6,7 +6,7 @@ import (
 )
 
 type ServiceType struct {
-	Id    int
+	Id    int64
 	Name  string
 	Charm string
 }
@@ -15,7 +15,7 @@ func (st *ServiceType) Create() error {
 	db, _ := sql.Open("sqlite3", "./tsuru.db")
 	defer db.Close()
 
-	query := "INSERT INTO service_type (id, name, charm) VALUES (?, ?, ?)"
+	query := "INSERT INTO service_type (name, charm) VALUES (?, ?)"
 	insertStmt, err := db.Prepare(query)
 	if err != nil {
 		panic(err)
@@ -27,10 +27,15 @@ func (st *ServiceType) Create() error {
 	}
 
 	stmt := tx.Stmt(insertStmt)
-	stmt.Exec(st.Id, st.Name, st.Charm)
+	result, err := stmt.Exec(st.Name, st.Charm)
+	if err != nil {
+		panic(err)
+	}
 	tx.Commit()
 
-	return nil
+	st.Id, err = result.LastInsertId()
+
+	return err
 }
 
 func (st *ServiceType) Delete() error {
