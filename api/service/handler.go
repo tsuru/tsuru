@@ -7,9 +7,9 @@ import (
 )
 
 func CreateServiceHandler(w http.ResponseWriter, r *http.Request) {
-	appId, _ := strconv.Atoi(r.FormValue("AppId"))
+	appId, _ := strconv.Atoi(r.FormValue("ServiceTypeId"))
 	service := Service{
-		AppId:           appId,
+		ServiceTypeId:   appId,
 		Name:            r.FormValue("name"),
 	}
 

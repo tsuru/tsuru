@@ -3,19 +3,19 @@ package service
 import (
 	"database/sql"
 	_ "github.com/mattn/go-sqlite3"
-	"github.com/timeredbull/tsuru/api/unit"
 )
 
-type Service struct {
-	ServiceTypeId int
+type ServiceType struct {
+	Id    string
 	Name  string
+	Charm string
 }
 
-func (s *Service) Create() error {
+func (st *ServiceType) Create() error {
 	db, _ := sql.Open("sqlite3", "./tsuru.db")
 	defer db.Close()
 
-	query := "INSERT INTO service (service_type_id, name) VALUES (?, ?)"
+	query := "INSERT INTO service_type (name, charm) VALUES (?, ?)"
 	insertStmt, err := db.Prepare(query)
 	if err != nil {
 		panic(err)
@@ -27,20 +27,17 @@ func (s *Service) Create() error {
 	}
 
 	stmt := tx.Stmt(insertStmt)
-	stmt.Exec(s.ServiceTypeId, s.Name)
+	stmt.Exec(st.Name, st.Charm)
 	tx.Commit()
 
-	u := unit.Unit{Name: s.Name, Type: "mysql"}
-	err = u.Create()
-
-	return err
+	return nil
 }
 
-func (s *Service) Delete() error {
+func (st *ServiceType) Delete() error {
 	db, _ := sql.Open("sqlite3", "./tsuru.db")
 	defer db.Close()
 
-	query := "DELETE FROM service WHERE name = ? AND service_type_id = ?"
+	query := "DELETE FROM service_type WHERE name = ? AND charm = ?"
 	insertStmt, err := db.Prepare(query)
 	if err != nil {
 		panic(err)
@@ -52,11 +49,8 @@ func (s *Service) Delete() error {
 	}
 
 	stmt := tx.Stmt(insertStmt)
-	stmt.Exec(s.Name, s.ServiceTypeId)
+	stmt.Exec(st.Name, st.Charm)
 	tx.Commit()
-
-	u := unit.Unit{Name: s.Name}
-	err = u.Destroy()
 
 	return nil
 }
