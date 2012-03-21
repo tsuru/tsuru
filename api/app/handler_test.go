@@ -2,13 +2,41 @@ package app_test
 
 import (
 	"database/sql"
+	"encoding/json"
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/timeredbull/tsuru/api/app"
+	"io/ioutil"
 	. "launchpad.net/gocheck"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 )
+
+func (s *S) TestAppInfo(c *C) {
+
+	exptectedApp := app.App{Name: "NewApp", Framework: "django"}
+	exptectedApp.Create()
+
+	var myApp app.App
+
+	request, err := http.NewRequest("GET", "/apps/"+exptectedApp.Name, nil)
+	request.Header.Set("Content-Type", "application/json")
+	recorder := httptest.NewRecorder()
+	c.Assert(err, IsNil)
+
+	app.AppInfo(recorder, request)
+	c.Assert(recorder.Code, Equals, 200)
+
+	body, err := ioutil.ReadAll(recorder.Body)
+	c.Assert(err, IsNil)
+
+	err = json.Unmarshal(body, &myApp)
+	c.Assert(err, IsNil)
+	c.Assert(myApp, Equals, exptectedApp)
+
+	exptectedApp.Destroy()
+
+}
 
 func (s *S) TestCreateApp(c *C) {
 	b := strings.NewReader(`{"name":"someApp", "framework":"django"}`)
