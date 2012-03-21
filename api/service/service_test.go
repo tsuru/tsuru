@@ -5,35 +5,33 @@ import (
 	. "launchpad.net/gocheck"
 )
 
-func (s *ServiceSuite) createService() (service *Service) {
-	service = &Service{
-		AppId: 2,
+func (s *ServiceSuite) createService() {
+	s.service = &Service{
+		ServiceTypeId: 2,
 		Name:  "my_service",
 	}
-	service.Create()
-
-	return
+	s.service.Create()
 }
 
-func (s *ServiceSuite) TestCreate(c *C) {
+func (s *ServiceSuite) TestCreateService(c *C) {
 	s.createService()
-	rows, err := s.db.Query("SELECT app_id, name FROM service WHERE name = 'my_service'")
+	rows, err := s.db.Query("SELECT service_type_id, name FROM service WHERE name = 'my_service'")
 	c.Check(err, IsNil)
 
-	var appId int
+	var serviceTypeId int
 	var name string
 
 	for rows.Next() {
-		rows.Scan(&appId, &name)
+		rows.Scan(&serviceTypeId, &name)
 	}
 
 	c.Assert(name, Equals, "my_service")
-	c.Assert(appId, Equals, 2)
+	c.Assert(serviceTypeId, Equals, 2)
 }
 
-func (s *ServiceSuite) TestDelete(c *C) {
-	service := s.createService()
-	service.Delete()
+func (s *ServiceSuite) TestDeleteService(c *C) {
+	s.createService()
+	s.service.Delete()
 
 	rows, err := s.db.Query("SELECT count(*) FROM service WHERE name = 'my_service'")
 	c.Assert(err, IsNil)
@@ -45,3 +43,8 @@ func (s *ServiceSuite) TestDelete(c *C) {
 
 	c.Assert(qtd, Equals, 0)
 }
+
+// func (s *ServiceSuite) TestBindService(c *C) {
+// 	s.createService()
+// 	s.service.Bind()
+// }

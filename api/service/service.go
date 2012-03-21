@@ -7,7 +7,7 @@ import (
 )
 
 type Service struct {
-	AppId int
+	ServiceTypeId int
 	Name  string
 }
 
@@ -15,7 +15,7 @@ func (s *Service) Create() error {
 	db, _ := sql.Open("sqlite3", "./tsuru.db")
 	defer db.Close()
 
-	query := "INSERT INTO service (app_id, name) VALUES (?, ?)"
+	query := "INSERT INTO service (service_type_id, name) VALUES (?, ?)"
 	insertStmt, err := db.Prepare(query)
 	if err != nil {
 		panic(err)
@@ -27,7 +27,7 @@ func (s *Service) Create() error {
 	}
 
 	stmt := tx.Stmt(insertStmt)
-	stmt.Exec(s.AppId, s.Name)
+	stmt.Exec(s.ServiceTypeId, s.Name)
 	tx.Commit()
 
 	u := unit.Unit{Name: s.Name, Type: "mysql"}
@@ -40,7 +40,7 @@ func (s *Service) Delete() error {
 	db, _ := sql.Open("sqlite3", "./tsuru.db")
 	defer db.Close()
 
-	query := "DELETE FROM service WHERE name = ? AND app_id = ?"
+	query := "DELETE FROM service WHERE name = ? AND service_type_id = ?"
 	insertStmt, err := db.Prepare(query)
 	if err != nil {
 		panic(err)
@@ -52,7 +52,7 @@ func (s *Service) Delete() error {
 	}
 
 	stmt := tx.Stmt(insertStmt)
-	stmt.Exec(s.Name, s.AppId)
+	stmt.Exec(s.Name, s.ServiceTypeId)
 	tx.Commit()
 
 	u := unit.Unit{Name: s.Name}

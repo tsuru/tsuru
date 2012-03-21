@@ -25,7 +25,7 @@ var _ = Suite(&ServiceSuite{})
 func (s *ServiceSuite) SetUpSuite(c *C) {
 	s.db, _ = sql.Open("sqlite3", "./tsuru.db")
 
-	_, err := s.db.Exec("CREATE TABLE 'service' ('id' INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, 'app_id' integer,'name' varchar(255))")
+	_, err := s.db.Exec("CREATE TABLE 'service' ('id' INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, 'service_type_id' integer,'name' varchar(255))")
 	c.Check(err, IsNil)
 
 	_, err = s.db.Exec("CREATE TABLE 'service_type' ('id' INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, 'name' varchar(255), 'charm' varchar(255))")
@@ -57,7 +57,7 @@ func (s *ServiceSuite) TestShouldRequestCreateAndInsertInTheDatabase(c *C) {
 	request, err := http.NewRequest("POST", "services/create", nil)
 	request.Header.Set("Content-Type", "application/json")
 	request.Form = url.Values{
-		"appId":            []string{"1"},
+		"serviceTypeId":            []string{"1"},
 		"name":             []string{"my_mysql"},
 	}
 
