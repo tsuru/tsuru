@@ -14,6 +14,20 @@ type S struct{}
 
 var _ = Suite(&S{})
 
+func (s *S) TestGet(c *C) {
+	newApp := app.App{Name: "myApp", Framework: "django"}
+	err := newApp.Create()
+	c.Assert(err, IsNil)
+
+	myApp := app.App{Name: "myApp"}
+	err = myApp.Get()
+	c.Assert(err, IsNil)
+	c.Assert(myApp, Equals, newApp)
+
+	err = myApp.Destroy()
+	c.Assert(err, IsNil)
+}
+
 func (s *S) TestDestroy(c *C) {
 	app := app.App{}
 	app.Name = "appName"

@@ -12,6 +12,23 @@ type App struct {
 	State     string
 }
 
+func (app *App) Get() error {
+	db, _ := sql.Open("sqlite3", "./tsuru.db")
+	defer db.Close()
+
+	query := "SELECT framework, state FROM apps WHERE name = ?"
+	rows, err := db.Query(query, app.Name)
+	if err != nil {
+		return err
+	}
+
+	for rows.Next() {
+		rows.Scan(&app.Framework, &app.State)
+	}
+
+	return nil
+}
+
 func (app *App) Create() error {
 	db, _ := sql.Open("sqlite3", "./tsuru.db")
 	defer db.Close()
