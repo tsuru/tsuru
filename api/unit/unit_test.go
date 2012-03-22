@@ -30,3 +30,19 @@ func (s *S) TestCreateAndDestroy(c *C) {
 	err = u.Destroy()
 	c.Assert(err, IsNil)
 }
+
+func (s *S) TestAddRelation(c *C) {
+	appUnit := unit.Unit{Type: "django", Name: "myUnit"}
+	serviceUnit := unit.Unit{Type: "mysql", Name: "MyService"}
+
+	err := appUnit.AddRelation(&serviceUnit)
+	c.Assert(err, IsNil)
+}
+
+func (s *S) TestRemoveRelation(c *C) {
+	appUnit := unit.Unit{Type: "django", Name: "myUnit"}
+	serviceUnit := unit.Unit{Type: "mysql", Name: "MyService"}
+
+	err := appUnit.RemoveRelation(&serviceUnit)
+	c.Assert(err, IsNil)
+}
