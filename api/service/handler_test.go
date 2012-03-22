@@ -1,9 +1,10 @@
 package service_test
 
 import (
+	"fmt"
 	"database/sql"
 	_ "github.com/mattn/go-sqlite3"
-	"github.com/timeredbull/tsuru/api/service"
+	. "github.com/timeredbull/tsuru/api/service"
 	. "launchpad.net/gocheck"
 	"net/http"
 	"net/http/httptest"
@@ -16,9 +17,9 @@ func Test(t *testing.T) { TestingT(t) }
 
 type ServiceSuite struct {
 	db          *sql.DB
-	service     *service.Service
-	serviceType *service.ServiceType
-	serviceApp  *service.ServiceApp
+	service     *Service
+	serviceType *ServiceType
+	serviceApp  *ServiceApp
 }
 
 var _ = Suite(&ServiceSuite{})
@@ -56,7 +57,7 @@ func (s *ServiceSuite) TestShouldRequestCreateAndBeSuccess(c *C) {
 	recorder := httptest.NewRecorder()
 	c.Assert(err, IsNil)
 
-	service.CreateServiceHandler(recorder, request)
+	Create(recorder, request)
 	status := recorder.Code
 
 	c.Assert(200, Equals, status)
@@ -64,6 +65,8 @@ func (s *ServiceSuite) TestShouldRequestCreateAndBeSuccess(c *C) {
 
 func (s *ServiceSuite) TestShouldRequestCreateAndInsertInTheDatabase(c *C) {
 	request, err := http.NewRequest("POST", "services/create", nil)
+	c.Assert(err, IsNil)
+
 	request.Header.Set("Content-Type", "application/json")
 	request.Form = url.Values{
 		"serviceTypeId": []string{"1"},
@@ -71,9 +74,7 @@ func (s *ServiceSuite) TestShouldRequestCreateAndInsertInTheDatabase(c *C) {
 	}
 
 	recorder := httptest.NewRecorder()
-	c.Assert(err, IsNil)
-
-	service.CreateServiceHandler(recorder, request)
+	Create(recorder, request)
 	body := recorder.Body
 	c.Assert(body.String(), Equals, "success")
 
@@ -88,3 +89,26 @@ func (s *ServiceSuite) TestShouldRequestCreateAndInsertInTheDatabase(c *C) {
 
 	c.Assert(1, Equals, qtd)
 }
+
+func (s *ServiceSuite) TestDeleteHandler(c *C) {
+	se := Service{ServiceTypeId: 2, Name: "Mysql"}
+	se.Create()
+	request, err := http.NewRequest("GET", fmt.Sprintf("services/%s?:name=%s", se.Name, se.Name), nil)
+	c.Assert(err, IsNil)
+
+	recorder := httptest.NewRecorder()
+	Delete(recorder, request)
+	c.Assert(recorder.Code, Equals, 200)
+
+	rows, err := s.db.Query("SELECT count(*) FROM service WHERE name = 'Mysql'")
+	c.Check(err, IsNil)
+
+	var qtd int
+	for rows.Next() {
+		rows.Scan(&qtd)
+	}
+
+	c.Assert(qtd, Equals, 0)
+}
+
+//func (s *ServiceSuite) TestListHandler(c *C) {}
