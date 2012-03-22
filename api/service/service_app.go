@@ -67,27 +67,8 @@ func (sa *ServiceApp) Delete() error {
 }
 
 func (sa *ServiceApp) Service() (s *Service) {
-	db, _ := sql.Open("sqlite3", "./tsuru.db")
-	defer db.Close()
-
-	query := "SELECT id, name, service_type_id FROM service WHERE id = ?"
-	rows, err := db.Query(query, sa.ServiceId)
-	if err != nil {
-		panic(err)
-	}
-
-	var id int64
-	var name string
-	var serviceTypeId int64
-	for rows.Next() {
-		rows.Scan(&id, &name, &serviceTypeId)
-	}
-
-	s = &Service{
-		Id:            id,
-		Name:          name,
-		ServiceTypeId: serviceTypeId,
-	}
+	s = &Service{Id: sa.ServiceId}
+	s.Get()
 
 	return
 }

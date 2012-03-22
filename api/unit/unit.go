@@ -21,3 +21,15 @@ func (u *Unit) Destroy() error {
 	log.Printf("destroying %s with name %s", u.Type, u.Name)
 	return cmd.Start()
 }
+
+func (u *Unit) AddRelation(su *Unit) error {
+	cmd := exec.Command("juju", "add-relation", u.Name, su.Name)
+	log.Printf("relating %s with service %s", u.Name, su.Name)
+	return cmd.Start()
+}
+
+func (u *Unit) RemoveRelation(su *Unit) error {
+	cmd := exec.Command("juju", "remove-relation", u.Name, su.Name)
+	log.Printf("unrelating %s with service %s", u.Name, su.Name)
+	return cmd.Start()
+}

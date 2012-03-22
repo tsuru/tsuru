@@ -10,6 +10,20 @@ func (s *ServiceSuite) createServiceType() {
 	s.serviceType.Create()
 }
 
+func (s *ServiceSuite) TestGetServiceType(c *C) {
+	s.createServiceType()
+	name := s.serviceType.Name
+	charm := s.serviceType.Charm
+
+	s.serviceType.Charm = ""
+	s.serviceType.Name = ""
+
+	s.serviceType.Get()
+
+	c.Assert(s.serviceType.Name, Equals, name)
+	c.Assert(s.serviceType.Charm, Equals, charm)
+}
+
 func (s *ServiceSuite) TestCreateServiceType(c *C) {
 	s.createServiceType()
 	rows, err := s.db.Query("SELECT name, charm FROM service_type WHERE name = 'Mysql' AND charm='mysql'")

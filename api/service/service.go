@@ -13,6 +13,32 @@ type Service struct {
 	Name          string
 }
 
+func (s *Service) Get() error {
+	db, _ := sql.Open("sqlite3", "./tsuru.db")
+	defer db.Close()
+
+	var query string
+	var rows *sql.Rows
+	var err error
+	switch {
+	case s.Id != 0:
+		query = "SELECT id, service_type_id, name FROM service WHERE id = ?"
+		rows, err = db.Query(query, s.Id)
+	case s.Name != "":
+		query = "SELECT id, service_type_id, name FROM service WHERE name = ?"
+		rows, err = db.Query(query, s.Name)
+	}
+
+	if err != nil {
+		panic(err)
+	}
+
+	for rows.Next() {
+		rows.Scan(&s.Id, &s.ServiceTypeId, &s.Name)
+	}
+	return nil
+}
+
 func (s *Service) Create() error {
 	db, _ := sql.Open("sqlite3", "./tsuru.db")
 	defer db.Close()
@@ -66,53 +92,29 @@ func (s *Service) Delete() error {
 }
 
 func (s *Service) Bind(app *App) error {
-	db, _ := sql.Open("sqlite3", "./tsuru.db")
-	defer db.Close()
+	sa := ServiceApp{ServiceId: s.Id, AppId: app.Id}
+	sa.Create()
 
-	query := "INSERT INTO service_app (service_id, app_id) VALUES (?, ?)"
-	insertStmt, err := db.Prepare(query)
-	if err != nil {
-		panic(err)
-	}
+	appUnit := unit.Unit{Name: app.Name}
+	serviceUnit := unit.Unit{Name: s.Name}
+	appUnit.AddRelation(&serviceUnit)
 
-	tx, err := db.Begin()
-	if err != nil {
-		panic(err)
-	}
+	return nil
+}
 
-	stmt := tx.Stmt(insertStmt)
-	stmt.Exec(s.Id, app.Id)
-	tx.Commit()
+func (s *Service) Unbind(app *App) error {
+	sa := ServiceApp{ServiceId: s.Id, AppId: app.Id}
+	sa.Delete()
 
-	//appUnit := unit.Unit{Name: app.Name}
-	//serviceUnit := unit.Unit{Name: s.Name}
-	//serviceUnit.addRelation(appUnit)
+	appUnit := unit.Unit{Name: app.Name}
+	serviceUnit := unit.Unit{Name: s.Name}
+	appUnit.RemoveRelation(&serviceUnit)
 
 	return nil
 }
 
 func (s *Service) ServiceType() (st *ServiceType) {
-	db, _ := sql.Open("sqlite3", "./tsuru.db")
-	defer db.Close()
-
-	query := "SELECT id, name, charm FROM service_type WHERE id = ?"
-	rows, err := db.Query(query, s.ServiceTypeId)
-	if err != nil {
-		panic(err)
-	}
-
-	var id int64
-	var name string
-	var charm string
-	for rows.Next() {
-		rows.Scan(&id, &name, &charm)
-	}
-
-	st = &ServiceType{
-		Id:    id,
-		Name:  name,
-		Charm: charm,
-	}
-
+	st = &ServiceType{Id: s.ServiceTypeId}
+	st.Get()
 	return
 }

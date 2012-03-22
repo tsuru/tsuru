@@ -14,6 +14,18 @@ func (s *ServiceSuite) createService() {
 	s.service.Create()
 }
 
+func (s *ServiceSuite) TestGetService(c *C) {
+	s.createService()
+	id := s.service.Id
+	sTypeId := s.service.ServiceTypeId
+	s.service.Id = 0
+	s.service.ServiceTypeId = 0
+	s.service.Get()
+
+	c.Assert(s.service.Id, Equals, id)
+	c.Assert(s.service.ServiceTypeId, Equals, sTypeId)
+}
+
 func (s *ServiceSuite) TestCreateService(c *C) {
 	s.createService()
 	rows, err := s.db.Query("SELECT id, service_type_id, name FROM service WHERE name = 'my_service'")
@@ -80,4 +92,22 @@ func (s *ServiceSuite) TestBindService(c *C) {
 
 	c.Assert(s.service.Id, Equals, serviceId)
 	c.Assert(app.Id, Equals, appId)
+}
+
+func (s *ServiceSuite) TestUnbindService(c *C) {
+	s.createService()
+	app := &App{Name: "my_app", Framework: "django"}
+	app.Create()
+	s.service.Bind(app)
+	s.service.Unbind(app)
+
+	rows, err := s.db.Query("SELECT count(*) FROM service_app WHERE service_id = ? AND app_id = ?", s.service.Id, app.Id)
+	c.Assert(err, IsNil)
+
+	var qtd int
+	for rows.Next() {
+		rows.Scan(&qtd)
+	}
+
+	c.Assert(qtd, Equals, 0)
 }

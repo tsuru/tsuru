@@ -11,6 +11,23 @@ type ServiceType struct {
 	Charm string
 }
 
+func (st *ServiceType) Get() error {
+	db, _ := sql.Open("sqlite3", "./tsuru.db")
+	defer db.Close()
+
+	query := "SELECT id, name, charm FROM service_type WHERE id = ?"
+	rows, err := db.Query(query, st.Id)
+	if err != nil {
+		panic(err)
+	}
+
+	for rows.Next() {
+		rows.Scan(&st.Id, &st.Name, &st.Charm)
+	}
+
+	return nil
+}
+
 func (st *ServiceType) Create() error {
 	db, _ := sql.Open("sqlite3", "./tsuru.db")
 	defer db.Close()
