@@ -13,5 +13,6 @@ func main() {
 	m.Post("/services/create", http.HandlerFunc(service.CreateServiceHandler))
 	m.Post("/apps", http.HandlerFunc(app.CreateAppHandler))
 	m.Get("/apps/:name", http.HandlerFunc(app.AppInfo))
+	m.Post("/apps/:name/application", http.HandlerFunc(app.Upload))
 	log.Fatal(http.ListenAndServe(":4000", m))
 }
