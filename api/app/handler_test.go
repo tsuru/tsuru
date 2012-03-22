@@ -1,6 +1,7 @@
 package app_test
 
 import (
+	"bytes"
 	"database/sql"
 	"encoding/json"
 	_ "github.com/mattn/go-sqlite3"
@@ -12,8 +13,39 @@ import (
 	"strings"
 )
 
-func (s *S) TestUploadReturns404WhenAppDoesNotExist(c *C) {
+func (s *S) TestUpload(c *C) {
+	fileApplicationContents := "This is a test file."
+	message := `
+--MyBoundary
+Content-Disposition: form-data; name="application"; filename="application.txt"
+Content-Type: text/plain
+
+` + fileApplicationContents + `
+--MyBoundary--
+`
+
 	myApp := app.App{Name: "myApp", Framework: "django"}
+	myApp.Create()
+
+	b := bytes.NewBufferString(strings.Replace(message, "\n", "\r\n", -1))
+	request, err := http.NewRequest("POST", "/apps"+myApp.Name+"/application?:name="+myApp.Name, b)
+	c.Assert(err, IsNil)
+
+	ctype := `multipart/form-data; boundary="MyBoundary"`
+	request.Header.Set("Content-type", ctype)
+	c.Assert(err, IsNil)
+
+	recorder := httptest.NewRecorder()
+	app.Upload(recorder, request)
+
+	c.Assert(recorder.Code, Equals, 200)
+	c.Assert(recorder.Body.String(), Equals, "success")
+
+	myApp.Destroy()
+}
+
+func (s *S) TestUploadReturns404WhenAppDoesNotExist(c *C) {
+	myApp := app.App{Name: "myAppThatDoestNotExists", Framework: "django"}
 	request, err := http.NewRequest("POST", "/apps"+myApp.Name+"/application?:name="+myApp.Name, nil)
 	c.Assert(err, IsNil)
 

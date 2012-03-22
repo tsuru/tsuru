@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net/http"
 )
@@ -14,6 +15,17 @@ func Upload(w http.ResponseWriter, r *http.Request) {
 
 	if app.Id == 0 {
 		http.NotFound(w, r)
+	} else {
+		f, _, err := r.FormFile("application")
+		if err != nil {
+			panic(err)
+		}
+		var b bytes.Buffer
+		_, err = io.Copy(&b, f)
+		if err != nil {
+			panic(err)
+		}
+		fmt.Fprint(w, "success")
 	}
 }
 

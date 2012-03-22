@@ -33,3 +33,15 @@ func (u *Unit) RemoveRelation(su *Unit) error {
 	log.Printf("unrelating %s with service %s", u.Name, su.Name)
 	return cmd.Start()
 }
+
+func (u *Unit) Command(command string) ([]byte, error) {
+	cmd := exec.Command("juju", "ssh", "-o", "'StrictHostKeyChecking no'", u.Name+"/0", command)
+	log.Printf("executing %s on %s", command, u.Name)
+	return cmd.Output()
+}
+
+func (u *Unit) SendFile(srcPath, dstPath string) error {
+	cmd := exec.Command("juju", "scp", "-r", "-o", "'StrictHostKeyChecking no'", srcPath, u.Name+"/0:"+dstPath)
+	log.Printf("sending %s to %s on %s", srcPath, dstPath, u.Name)
+	return cmd.Start()
+}

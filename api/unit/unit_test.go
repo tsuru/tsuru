@@ -3,7 +3,9 @@ package unit_test
 import (
 	"flag"
 	"github.com/timeredbull/tsuru/api/unit"
+	"io/ioutil"
 	. "launchpad.net/gocheck"
+	"os"
 	"testing"
 )
 
@@ -29,6 +31,40 @@ func (s *S) TestCreateAndDestroy(c *C) {
 
 	err = u.Destroy()
 	c.Assert(err, IsNil)
+}
+
+func (s *S) TestCommand(c *C) {
+	u := unit.Unit{Type: "django", Name: "myUnit"}
+
+	err := u.Create()
+	c.Assert(err, IsNil)
+
+	output, err := u.Command("uname")
+	c.Assert(err, IsNil)
+	c.Assert(string(output), Equals, "Linux")
+
+	err = u.Destroy()
+	c.Assert(err, IsNil)
+}
+
+func (s *S) TestSendFile(c *C) {
+	u := unit.Unit{Type: "django", Name: "myUnit"}
+
+	err := u.Create()
+	c.Assert(err, IsNil)
+
+	file, err := ioutil.TempFile("", "upload")
+	c.Assert(err, IsNil)
+
+	defer os.Remove(file.Name())
+	defer file.Close()
+
+	err = u.SendFile(file.Name(), "/home/ubuntu")
+	c.Assert(err, IsNil)
+
+	err = u.Destroy()
+	c.Assert(err, IsNil)
+
 }
 
 func (s *S) TestAddRelation(c *C) {
