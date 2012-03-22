@@ -12,12 +12,15 @@ func AppInfo(w http.ResponseWriter, r *http.Request) {
 	app := App{Name: r.URL.Query().Get(":name")}
 	app.Get()
 
-	b, err := json.Marshal(app)
-	if err != nil {
-		panic(err)
+	if app.Id == 0 {
+		http.NotFound(w, r)
+	} else {
+		b, err := json.Marshal(app)
+		if err != nil {
+			panic(err)
+		}
+		fmt.Fprint(w, bytes.NewBuffer(b).String())
 	}
-
-	fmt.Fprint(w, bytes.NewBuffer(b).String())
 }
 
 func CreateAppHandler(w http.ResponseWriter, r *http.Request) {
