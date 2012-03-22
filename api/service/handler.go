@@ -6,7 +6,7 @@ import (
 	"strconv"
 )
 
-func Create(w http.ResponseWriter, r *http.Request) {
+func CreateHandler(w http.ResponseWriter, r *http.Request) {
 	appId, _ := strconv.Atoi(r.FormValue("ServiceTypeId"))
 	service := Service{
 		ServiceTypeId: int64(appId),
@@ -17,7 +17,7 @@ func Create(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprint(w, "success")
 }
 
-func Delete(w http.ResponseWriter, r *http.Request) {
+func DeleteHandler(w http.ResponseWriter, r *http.Request) {
 	s := Service{Name: r.URL.Query().Get(":name")}
 	s.Get()
 	s.Delete()

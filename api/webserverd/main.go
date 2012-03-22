@@ -10,7 +10,8 @@ import (
 
 func main() {
 	m := pat.New()
-	m.Post("/services/create", http.HandlerFunc(service.CreateServiceHandler))
+	m.Get("/services/:name", http.HandlerFunc(service.DeleteHandler))
+	m.Post("/services", http.HandlerFunc(service.CreateHandler))
 	m.Post("/apps", http.HandlerFunc(app.CreateAppHandler))
 	m.Get("/apps/:name", http.HandlerFunc(app.AppInfo))
 	m.Post("/apps/:name/application", http.HandlerFunc(app.Upload))

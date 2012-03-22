@@ -11,6 +11,7 @@ import (
 	"net/url"
 	"os"
 	"testing"
+	"strings"
 )
 
 func Test(t *testing.T) { TestingT(t) }
@@ -57,14 +58,14 @@ func (s *ServiceSuite) TestShouldRequestCreateAndBeSuccess(c *C) {
 	recorder := httptest.NewRecorder()
 	c.Assert(err, IsNil)
 
-	Create(recorder, request)
+	CreateHandler(recorder, request)
 	status := recorder.Code
 
 	c.Assert(200, Equals, status)
 }
 
 func (s *ServiceSuite) TestShouldRequestCreateAndInsertInTheDatabase(c *C) {
-	request, err := http.NewRequest("POST", "services/create", nil)
+	request, err := http.NewRequest("POST", "/services", nil)
 	c.Assert(err, IsNil)
 
 	request.Header.Set("Content-Type", "application/json")
@@ -74,7 +75,7 @@ func (s *ServiceSuite) TestShouldRequestCreateAndInsertInTheDatabase(c *C) {
 	}
 
 	recorder := httptest.NewRecorder()
-	Create(recorder, request)
+	CreateHandler(recorder, request)
 	body := recorder.Body
 	c.Assert(body.String(), Equals, "success")
 
@@ -93,11 +94,11 @@ func (s *ServiceSuite) TestShouldRequestCreateAndInsertInTheDatabase(c *C) {
 func (s *ServiceSuite) TestDeleteHandler(c *C) {
 	se := Service{ServiceTypeId: 2, Name: "Mysql"}
 	se.Create()
-	request, err := http.NewRequest("GET", fmt.Sprintf("services/%s?:name=%s", se.Name, se.Name), nil)
+	request, err := http.NewRequest("GET", fmt.Sprintf("/services/%s?:name=%s", se.Name, se.Name), nil)
 	c.Assert(err, IsNil)
 
 	recorder := httptest.NewRecorder()
-	Delete(recorder, request)
+	DeleteHandler(recorder, request)
 	c.Assert(recorder.Code, Equals, 200)
 
 	rows, err := s.db.Query("SELECT count(*) FROM service WHERE name = 'Mysql'")
@@ -112,3 +113,26 @@ func (s *ServiceSuite) TestDeleteHandler(c *C) {
 }
 
 //func (s *ServiceSuite) TestListHandler(c *C) {}
+
+func (s *ServiceSuite) TestBindHandler(c *C) {
+	se := Service{ServiceTypeId: 2, Name: "Mysql"}
+	se.Create()
+	a := App{Name: "someApp", Framework: "django"}
+	b := strings.NewReader(`{"app":"someApp", "service":"mysql"}`)
+	request, err := http.NewRequest("POST", "/services/bind", b)
+	c.Assert(err, IsNil)
+
+	recorder := httptest.NewRecorder()
+	Bind(recorder, request)
+	c.Assert(recorder.Code, Equals, 200)
+
+	rows, err := s.db.Query("SELECT count(*) FROM service_app WHERE name = 'Mysql'")
+	c.Check(err, IsNil)
+
+	var qtd int
+	for rows.Next() {
+		rows.Scan(&qtd)
+	}
+
+	c.Assert(qtd, Equals, 0)
+}
