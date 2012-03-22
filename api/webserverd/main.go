@@ -1,7 +1,7 @@
 package main
 
 import (
-	"code.google.com/p/gorilla/mux"
+	"github.com/bmizerany/pat"
 	"github.com/timeredbull/tsuru/api/app"
 	"github.com/timeredbull/tsuru/api/service"
 	"log"
@@ -9,9 +9,9 @@ import (
 )
 
 func main() {
-	r := mux.NewRouter()
-	r.HandleFunc("/services/create", service.CreateServiceHandler)
-	r.HandleFunc("/apps", app.CreateAppHandler)
-	http.Handle("/", r)
-	log.Fatal(http.ListenAndServe(":4000", nil))
+	m := pat.New()
+	m.Post("/services/create", http.HandlerFunc(service.CreateServiceHandler))
+	m.Post("/apps", http.HandlerFunc(app.CreateAppHandler))
+	m.Get("/apps/:name", http.HandlerFunc(app.AppInfo))
+	log.Fatal(http.ListenAndServe(":4000", m))
 }

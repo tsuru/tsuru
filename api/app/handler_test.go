@@ -19,7 +19,7 @@ func (s *S) TestAppInfo(c *C) {
 
 	var myApp app.App
 
-	request, err := http.NewRequest("GET", "/apps/"+exptectedApp.Name, nil)
+	request, err := http.NewRequest("GET", "/apps/"+exptectedApp.Name+"?:name="+exptectedApp.Name, nil)
 	request.Header.Set("Content-Type", "application/json")
 	recorder := httptest.NewRecorder()
 	c.Assert(err, IsNil)
