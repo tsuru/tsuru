@@ -104,27 +104,7 @@ func (s *Service) Unbind(app *App) error {
 }
 
 func (s *Service) ServiceType() (st *ServiceType) {
-	db, _ := sql.Open("sqlite3", "./tsuru.db")
-	defer db.Close()
-
-	query := "SELECT id, name, charm FROM service_type WHERE id = ?"
-	rows, err := db.Query(query, s.ServiceTypeId)
-	if err != nil {
-		panic(err)
-	}
-
-	var id int64
-	var name string
-	var charm string
-	for rows.Next() {
-		rows.Scan(&id, &name, &charm)
-	}
-
-	st = &ServiceType{
-		Id:    id,
-		Name:  name,
-		Charm: charm,
-	}
-
+	st = &ServiceType{Id: s.ServiceTypeId}
+	st.Get()
 	return
 }
