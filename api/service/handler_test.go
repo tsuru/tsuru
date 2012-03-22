@@ -8,7 +8,6 @@ import (
 	. "launchpad.net/gocheck"
 	"net/http"
 	"net/http/httptest"
-	"net/url"
 	"os"
 	"testing"
 	"strings"
@@ -54,7 +53,8 @@ func (s *ServiceSuite) TearDownTest(c *C) {
 }
 
 func (s *ServiceSuite) TestShouldRequestCreateAndBeSuccess(c *C) {
-	request, err := http.NewRequest("POST", "services/create", nil)
+	b := strings.NewReader(`{"name":"some_service", "type":"mysql"}`)
+	request, err := http.NewRequest("POST", "services/create", b)
 	recorder := httptest.NewRecorder()
 	c.Assert(err, IsNil)
 
@@ -65,21 +65,20 @@ func (s *ServiceSuite) TestShouldRequestCreateAndBeSuccess(c *C) {
 }
 
 func (s *ServiceSuite) TestShouldRequestCreateAndInsertInTheDatabase(c *C) {
-	request, err := http.NewRequest("POST", "/services", nil)
-	c.Assert(err, IsNil)
+	b := strings.NewReader(`{"name":"some_service", "type":"mysql"}`)
+	request, err := http.NewRequest("POST", "/services", b)
 
 	request.Header.Set("Content-Type", "application/json")
-	request.Form = url.Values{
-		"serviceTypeId": []string{"1"},
-		"name":          []string{"my_mysql"},
-	}
-
 	recorder := httptest.NewRecorder()
-	CreateHandler(recorder, request)
-	body := recorder.Body
-	c.Assert(body.String(), Equals, "success")
 
-	rows, err := s.db.Query("SELECT count(*) FROM service WHERE name = 'my_mysql'")
+	c.Assert(err, IsNil)
+
+	CreateHandler(recorder, request)
+
+	c.Assert(recorder.Body.String(), Equals, "success")
+	c.Assert(recorder.Code, Equals, 200)
+
+	rows, err := s.db.Query("SELECT count(*) FROM service WHERE name = 'some_service'")
 
 	c.Check(err, IsNil)
 	var qtd int
@@ -114,25 +113,25 @@ func (s *ServiceSuite) TestDeleteHandler(c *C) {
 
 //func (s *ServiceSuite) TestListHandler(c *C) {}
 
-func (s *ServiceSuite) TestBindHandler(c *C) {
-	se := Service{ServiceTypeId: 2, Name: "Mysql"}
-	se.Create()
-	a := App{Name: "someApp", Framework: "django"}
-	b := strings.NewReader(`{"app":"someApp", "service":"mysql"}`)
-	request, err := http.NewRequest("POST", "/services/bind", b)
-	c.Assert(err, IsNil)
-
-	recorder := httptest.NewRecorder()
-	Bind(recorder, request)
-	c.Assert(recorder.Code, Equals, 200)
-
-	rows, err := s.db.Query("SELECT count(*) FROM service_app WHERE name = 'Mysql'")
-	c.Check(err, IsNil)
-
-	var qtd int
-	for rows.Next() {
-		rows.Scan(&qtd)
-	}
-
-	c.Assert(qtd, Equals, 0)
-}
+// func (s *ServiceSuite) TestBindHandler(c *C) {
+// 	se := Service{ServiceTypeId: 2, Name: "Mysql"}
+// 	se.Create()
+// 	a := App{Name: "someApp", Framework: "django"}
+// 	b := strings.NewReader(`{"app":"someApp", "service":"mysql"}`)
+// 	request, err := http.NewRequest("POST", "/services/bind", b)
+// 	c.Assert(err, IsNil)
+// 
+// 	recorder := httptest.NewRecorder()
+// 	Bind(recorder, request)
+// 	c.Assert(recorder.Code, Equals, 200)
+// 
+// 	rows, err := s.db.Query("SELECT count(*) FROM service_app WHERE name = 'Mysql'")
+// 	c.Check(err, IsNil)
+// 
+// 	var qtd int
+// 	for rows.Next() {
+// 		rows.Scan(&qtd)
+// 	}
+// 
+// 	c.Assert(qtd, Equals, 0)
+// }
