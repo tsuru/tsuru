@@ -31,16 +31,16 @@ func (s *ServiceSuite) TestCreateService(c *C) {
 	rows, err := s.db.Query("SELECT id, service_type_id, name FROM service WHERE name = 'my_service'")
 	c.Check(err, IsNil)
 
-	var id int
-	var serviceTypeId int
+	var id int64
+	var serviceTypeId int64
 	var name string
 
 	for rows.Next() {
 		rows.Scan(&id, &serviceTypeId, &name)
 	}
 
-	c.Assert(id, Equals, 2)
-	c.Assert(serviceTypeId, Equals, 2)
+	c.Assert(id, Equals, s.service.Id)
+	c.Assert(serviceTypeId, Equals, int64(2))
 	c.Assert(name, Equals, "my_service")
 }
 

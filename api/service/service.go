@@ -11,7 +11,6 @@ import (
 type Service struct {
 	Id            int64
 	ServiceTypeId int64
-	Type          string
 	Name          string
 }
 
