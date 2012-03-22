@@ -84,9 +84,35 @@ func (s *Service) Bind(app *App) error {
 	stmt.Exec(s.Id, app.Id)
 	tx.Commit()
 
-	//appUnit := unit.Unit{Name: app.Name}
-	//serviceUnit := unit.Unit{Name: s.Name}
-	//serviceUnit.addRelation(appUnit)
+	appUnit := unit.Unit{Name: app.Name}
+	serviceUnit := unit.Unit{Name: s.Name}
+	appUnit.AddRelation(&serviceUnit)
+
+	return nil
+}
+
+func (s *Service) Unbind(app *App) error {
+	db, _ := sql.Open("sqlite3", "./tsuru.db")
+	defer db.Close()
+
+	query := "DELETE FROM service_app WHERE service_id = ? AND app_id = ?"
+	insertStmt, err := db.Prepare(query)
+	if err != nil {
+		panic(err)
+	}
+
+	tx, err := db.Begin()
+	if err != nil {
+		panic(err)
+	}
+
+	stmt := tx.Stmt(insertStmt)
+	stmt.Exec(s.Id, app.Id)
+	tx.Commit()
+
+	appUnit := unit.Unit{Name: app.Name}
+	serviceUnit := unit.Unit{Name: s.Name}
+	appUnit.RemoveRelation(&serviceUnit)
 
 	return nil
 }
