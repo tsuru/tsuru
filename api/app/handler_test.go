@@ -12,6 +12,16 @@ import (
 	"strings"
 )
 
+func (s *S) TestUploadReturns404WhenAppDoesNotExist(c *C) {
+	myApp := app.App{Name: "myApp", Framework: "django"}
+	request, err := http.NewRequest("POST", "/apps"+myApp.Name+"/application?:name="+myApp.Name, nil)
+	c.Assert(err, IsNil)
+
+	recorder := httptest.NewRecorder()
+	app.Upload(recorder, request)
+	c.Assert(recorder.Code, Equals, 404)
+}
+
 func (s *S) TestAppInfo(c *C) {
 
 	exptectedApp := app.App{Name: "NewApp", Framework: "django"}

@@ -8,6 +8,15 @@ import (
 	"net/http"
 )
 
+func Upload(w http.ResponseWriter, r *http.Request) {
+	app := App{Name: r.URL.Query().Get(":name")}
+	app.Get()
+
+	if app.Id == 0 {
+		http.NotFound(w, r)
+	}
+}
+
 func AppInfo(w http.ResponseWriter, r *http.Request) {
 	app := App{Name: r.URL.Query().Get(":name")}
 	app.Get()
