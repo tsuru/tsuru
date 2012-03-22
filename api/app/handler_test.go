@@ -38,6 +38,17 @@ func (s *S) TestAppInfo(c *C) {
 
 }
 
+// func (s *S) TestAppInfoReturns404WhenAppDoesNotExist(c *C) {
+// 	myApp := app.App{Name:"SomeApp"}
+// 	request, err := http.NewRequest("GET", "/apps/"+myApp.Name+"?:name="+myApp.Name, nil)
+// 	c.Assert(err, IsNil)
+// 
+// 	request.Header.Set("Content-Type", "application/json")
+// 	recorder := httptest.NewRecorder()
+// 	app.AppInfo(recorder, request)
+// 	c.Assert(recorder.Code, Equals, 404)
+// }
+
 func (s *S) TestCreateApp(c *C) {
 	b := strings.NewReader(`{"name":"someApp", "framework":"django"}`)
 	request, err := http.NewRequest("POST", "/apps", b)

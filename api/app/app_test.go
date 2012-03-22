@@ -15,7 +15,7 @@ type S struct{}
 var _ = Suite(&S{})
 
 func (s *S) TestGet(c *C) {
-	newApp := app.App{Name: "myApp", Framework: "django"}
+	newApp := app.App{Name: "myApp", Framework: "django", State: "Pending"}
 	err := newApp.Create()
 	c.Assert(err, IsNil)
 
@@ -65,10 +65,11 @@ func (s *S) TestCreate(c *C) {
 	c.Assert(err, IsNil)
 
 	c.Assert(app.State, Equals, "Pending")
+	c.Assert(app.Id, Not(Equals), int64(0))
 
 	db, _ := sql.Open("sqlite3", "./tsuru.db")
 	defer db.Close()
-	rows, err := db.Query("SELECT name, framework, state FROM apps WHERE name = 'appName'")
+	rows, err := db.Query("SELECT id, name, framework, state FROM apps WHERE name = 'appName'")
 
 	if err != nil {
 		panic(err)
@@ -77,11 +78,13 @@ func (s *S) TestCreate(c *C) {
 	var state string
 	var name string
 	var framework string
+	var id int
 
 	for rows.Next() {
-		rows.Scan(&name, &framework, &state)
+		rows.Scan(&id, &name, &framework, &state)
 	}
 
+	c.Assert(id, Equals, int(app.Id))
 	c.Assert(name, Equals, app.Name)
 	c.Assert(framework, Equals, app.Framework)
 	c.Assert(state, Equals, app.State)

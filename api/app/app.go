@@ -17,14 +17,14 @@ func (app *App) Get() error {
 	db, _ := sql.Open("sqlite3", "./tsuru.db")
 	defer db.Close()
 
-	query := "SELECT framework, state FROM apps WHERE name = ?"
+	query := "SELECT id, framework, state FROM apps WHERE name = ?"
 	rows, err := db.Query(query, app.Name)
 	if err != nil {
 		return err
 	}
 
 	for rows.Next() {
-		rows.Scan(&app.Framework, &app.State)
+		rows.Scan(&app.Id, &app.Framework, &app.State)
 	}
 
 	return nil
@@ -36,7 +36,7 @@ func (app *App) Create() error {
 
 	app.State = "Pending"
 
-	insertApp, err := db.Prepare("INSERT INTO apps (id, name, framework, state) VALUES (?, ?, ?, ?)")
+	insertApp, err := db.Prepare("INSERT INTO apps (name, framework, state) VALUES (?, ?, ?)")
 	if err != nil {
 		panic(err)
 	}
@@ -47,10 +47,17 @@ func (app *App) Create() error {
 	}
 
 	stmt := tx.Stmt(insertApp)
-	result, err := stmt.Exec(app.Id, app.Name, app.Framework, app.State)
+	result, err := stmt.Exec(app.Name, app.Framework, app.State)
+	if err != nil {
+		panic(err)
+	}
+
 	tx.Commit()
 
 	app.Id, err = result.LastInsertId()
+	if err != nil {
+		panic(err)
+	}
 
 	u := unit.Unit{Name: app.Name, Type: app.Framework}
 	err = u.Create()
