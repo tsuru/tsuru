@@ -15,10 +15,10 @@ import (
 func Test(t *testing.T) { TestingT(t) }
 
 type ServiceSuite struct {
-	db *sql.DB
-	service *service.Service
+	db          *sql.DB
+	service     *service.Service
 	serviceType *service.ServiceType
-	serviceApp *service.ServiceApp
+	serviceApp  *service.ServiceApp
 }
 
 var _ = Suite(&ServiceSuite{})
@@ -66,8 +66,8 @@ func (s *ServiceSuite) TestShouldRequestCreateAndInsertInTheDatabase(c *C) {
 	request, err := http.NewRequest("POST", "services/create", nil)
 	request.Header.Set("Content-Type", "application/json")
 	request.Form = url.Values{
-		"serviceTypeId":            []string{"1"},
-		"name":             []string{"my_mysql"},
+		"serviceTypeId": []string{"1"},
+		"name":          []string{"my_mysql"},
 	}
 
 	recorder := httptest.NewRecorder()

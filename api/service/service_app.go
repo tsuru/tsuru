@@ -3,8 +3,8 @@ package service
 import (
 	"database/sql"
 	_ "github.com/mattn/go-sqlite3"
-	"github.com/timeredbull/tsuru/api/unit"
 	. "github.com/timeredbull/tsuru/api/app"
+	"github.com/timeredbull/tsuru/api/unit"
 )
 
 type ServiceApp struct {
@@ -31,7 +31,6 @@ func (sa *ServiceApp) Create() error {
 	stmt := tx.Stmt(insertStmt)
 	stmt.Exec(sa.ServiceId, sa.AppId)
 	tx.Commit()
-
 
 	s := sa.Service()
 	st := s.ServiceType()
@@ -77,8 +76,8 @@ func (sa *ServiceApp) Service() (s *Service) {
 		panic(err)
 	}
 
-	var id            int64
-	var name          string
+	var id int64
+	var name string
 	var serviceTypeId int64
 	for rows.Next() {
 		rows.Scan(&id, &name, &serviceTypeId)
@@ -103,16 +102,16 @@ func (sa *ServiceApp) App() (a *App) {
 		panic(err)
 	}
 
-	var id        int64
-	var name      string
+	var id int64
+	var name string
 	var framework string
 	for rows.Next() {
 		rows.Scan(&id, &name, &framework)
 	}
 
 	a = &App{
-		Id:            id,
-		Name:          name,
+		Id:        id,
+		Name:      name,
 		Framework: framework,
 	}
 

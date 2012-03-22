@@ -1,15 +1,15 @@
 package service_test
 
 import (
-	. "github.com/timeredbull/tsuru/api/service"
 	. "github.com/timeredbull/tsuru/api/app"
+	. "github.com/timeredbull/tsuru/api/service"
 	. "launchpad.net/gocheck"
 )
 
 func (s *ServiceSuite) createService() {
 	s.service = &Service{
 		ServiceTypeId: 2,
-		Name:  "my_service",
+		Name:          "my_service",
 	}
 	s.service.Create()
 }
@@ -53,7 +53,7 @@ func (s *ServiceSuite) TestRetrieveAssociateServiceType(c *C) {
 
 	service := &Service{
 		ServiceTypeId: serviceType.Id,
-		Name:  "my_service",
+		Name:          "my_service",
 	}
 	service.Create()
 	retrievedServiceType := service.ServiceType()
@@ -73,7 +73,7 @@ func (s *ServiceSuite) TestBindService(c *C) {
 	c.Assert(err, IsNil)
 
 	var serviceId int64
-	var appId     int64
+	var appId int64
 	for rows.Next() {
 		rows.Scan(&serviceId, &appId)
 	}

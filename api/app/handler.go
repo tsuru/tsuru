@@ -6,25 +6,30 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	"strings"
 )
 
-func AppInfo(w http.ResponseWriter, r *http.Request) {
-	var name string
-
-	for _, token := range strings.Split(r.URL.Path, "/") {
-		name = token
-	}
-
-	app := App{Name: name}
+func Upload(w http.ResponseWriter, r *http.Request) {
+	app := App{Name: r.URL.Query().Get(":name")}
 	app.Get()
 
-	b, err := json.Marshal(app)
-	if err != nil {
-		panic(err)
+	if app.Id == 0 {
+		http.NotFound(w, r)
 	}
+}
 
-	fmt.Fprint(w, bytes.NewBuffer(b).String())
+func AppInfo(w http.ResponseWriter, r *http.Request) {
+	app := App{Name: r.URL.Query().Get(":name")}
+	app.Get()
+
+	if app.Id == 0 {
+		http.NotFound(w, r)
+	} else {
+		b, err := json.Marshal(app)
+		if err != nil {
+			panic(err)
+		}
+		fmt.Fprint(w, bytes.NewBuffer(b).String())
+	}
 }
 
 func CreateAppHandler(w http.ResponseWriter, r *http.Request) {

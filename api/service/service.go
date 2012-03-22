@@ -3,12 +3,12 @@ package service
 import (
 	"database/sql"
 	_ "github.com/mattn/go-sqlite3"
-	"github.com/timeredbull/tsuru/api/unit"
 	. "github.com/timeredbull/tsuru/api/app"
+	"github.com/timeredbull/tsuru/api/unit"
 )
 
 type Service struct {
-	Id	          int64
+	Id            int64
 	ServiceTypeId int64
 	Name          string
 }
@@ -101,8 +101,8 @@ func (s *Service) ServiceType() (st *ServiceType) {
 		panic(err)
 	}
 
-	var id    int64
-	var name  string
+	var id int64
+	var name string
 	var charm string
 	for rows.Next() {
 		rows.Scan(&id, &name, &charm)

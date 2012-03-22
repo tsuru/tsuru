@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/bmizerany/pat"
 	"github.com/timeredbull/tsuru/api/app"
 	"github.com/timeredbull/tsuru/api/service"
 	"log"
@@ -8,7 +9,10 @@ import (
 )
 
 func main() {
-	http.HandleFunc("/services/create", service.CreateServiceHandler)
-	http.HandleFunc("/apps", app.CreateAppHandler)
-	log.Fatal(http.ListenAndServe(":4000", nil))
+	m := pat.New()
+	m.Post("/services/create", http.HandlerFunc(service.CreateServiceHandler))
+	m.Post("/apps", http.HandlerFunc(app.CreateAppHandler))
+	m.Get("/apps/:name", http.HandlerFunc(app.AppInfo))
+	m.Post("/apps/:name/application", http.HandlerFunc(app.Upload))
+	log.Fatal(http.ListenAndServe(":4000", m))
 }
