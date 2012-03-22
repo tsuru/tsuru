@@ -2,6 +2,7 @@ package service
 
 import (
 	"database/sql"
+	"errors"
 	_ "github.com/mattn/go-sqlite3"
 	. "github.com/timeredbull/tsuru/api/app"
 	"github.com/timeredbull/tsuru/api/unit"
@@ -10,6 +11,7 @@ import (
 type Service struct {
 	Id            int64
 	ServiceTypeId int64
+	Type          string
 	Name          string
 }
 
@@ -33,8 +35,12 @@ func (s *Service) Get() error {
 		panic(err)
 	}
 
-	for rows.Next() {
-		rows.Scan(&s.Id, &s.ServiceTypeId, &s.Name)
+	if rows != nil{
+		for rows.Next() {
+			rows.Scan(&s.Id, &s.ServiceTypeId, &s.Name)
+		}
+	} else {
+		return errors.New("Not found")
 	}
 	return nil
 }

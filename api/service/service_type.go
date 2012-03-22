@@ -1,6 +1,7 @@
 package service
 
 import (
+	"errors"
 	"database/sql"
 	_ "github.com/mattn/go-sqlite3"
 )
@@ -15,14 +16,25 @@ func (st *ServiceType) Get() error {
 	db, _ := sql.Open("sqlite3", "./tsuru.db")
 	defer db.Close()
 
-	query := "SELECT id, name, charm FROM service_type WHERE id = ?"
-	rows, err := db.Query(query, st.Id)
+	var query string
+	var rows *sql.Rows
+	var err error
+	switch {
+	case st.Id != 0:
+		query = "SELECT id, name, charm FROM service_type WHERE id = ?"
+		rows, err = db.Query(query, st.Id)
+	}
+
 	if err != nil {
 		panic(err)
 	}
 
-	for rows.Next() {
-		rows.Scan(&st.Id, &st.Name, &st.Charm)
+	if rows != nil{
+		for rows.Next() {
+			rows.Scan(&st.Id, &st.Name, &st.Charm)
+		}
+	} else {
+		return errors.New("No results found")
 	}
 
 	return nil

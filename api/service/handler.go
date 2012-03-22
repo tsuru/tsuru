@@ -3,17 +3,28 @@ package service
 import (
 	"fmt"
 	"net/http"
-	"strconv"
+	"encoding/json"
+	"io/ioutil"
 )
 
 func CreateHandler(w http.ResponseWriter, r *http.Request) {
-	appId, _ := strconv.Atoi(r.FormValue("ServiceTypeId"))
-	service := Service{
-		ServiceTypeId: int64(appId),
-		Name:          r.FormValue("name"),
+	var s Service
+
+	defer r.Body.Close()
+	body, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		panic(err)
 	}
 
-	service.Create()
+	err = json.Unmarshal(body, &s)
+	if err != nil {
+		panic(err)
+	}
+
+	st := ServiceType{Name: s.Type}
+	st.Get()
+	s.ServiceTypeId = st.Id
+	s.Create()
 	fmt.Fprint(w, "success")
 }
 
