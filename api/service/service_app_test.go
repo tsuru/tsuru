@@ -9,7 +9,7 @@ import (
 func (s *ServiceSuite) createServiceApp() {
 	s.serviceApp = &ServiceApp{
 		ServiceId: 2,
-		AppId:  1,
+		AppId:     1,
 	}
 	s.serviceApp.Create()
 }
@@ -52,7 +52,7 @@ func (s *ServiceSuite) TestRetrieveAssociatedService(c *C) {
 
 	s.serviceApp = &ServiceApp{
 		ServiceId: service.Id,
-		AppId:  1,
+		AppId:     1,
 	}
 	s.serviceApp.Create()
 
@@ -69,7 +69,7 @@ func (s *ServiceSuite) TestRetrieveAssociatedApp(c *C) {
 
 	s.serviceApp = &ServiceApp{
 		ServiceId: 2,
-		AppId:  app.Id,
+		AppId:     app.Id,
 	}
 	s.serviceApp.Create()
 

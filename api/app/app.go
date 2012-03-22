@@ -7,7 +7,7 @@ import (
 )
 
 type App struct {
-	Id	      int64
+	Id        int64
 	Name      string
 	Framework string
 	State     string
