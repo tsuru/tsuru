@@ -67,6 +67,12 @@ func (s *Service) Create() error {
 	tx.Commit()
 
 	s.Id, err = result.LastInsertId()
+	if err != nil {
+		panic(err)
+	}
+
+	u := unit.Unit{Name: s.Name, Type: "mysql"}
+	err = u.Create()
 
 	return err
 }
