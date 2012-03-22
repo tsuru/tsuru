@@ -31,6 +31,20 @@ func (s *S) TestCreateAndDestroy(c *C) {
 	c.Assert(err, IsNil)
 }
 
+func (s *S) TestCommand(c *C) {
+	u := unit.Unit{Type: "django", Name: "myUnit"}
+
+	err := u.Create()
+	c.Assert(err, IsNil)
+
+	output, err := u.Command("uname")
+	c.Assert(err, IsNil)
+	c.Assert(string(output), Equals, "Linux")
+
+	err = u.Destroy()
+	c.Assert(err, IsNil)
+}
+
 func (s *S) TestAddRelation(c *C) {
 	appUnit := unit.Unit{Type: "django", Name: "myUnit"}
 	serviceUnit := unit.Unit{Type: "mysql", Name: "MyService"}
