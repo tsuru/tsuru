@@ -17,8 +17,18 @@ func (s *Service) Get() error {
 	db, _ := sql.Open("sqlite3", "./tsuru.db")
 	defer db.Close()
 
-	query := "SELECT id, service_type_id, name FROM service WHERE name = ?"
-	rows, err := db.Query(query, s.Name)
+	var query string
+	var rows *sql.Rows
+	var err error
+	switch {
+	case s.Id != 0:
+		query = "SELECT id, service_type_id, name FROM service WHERE id = ?"
+		rows, err = db.Query(query, s.Id)
+	case s.Name != "":
+		query = "SELECT id, service_type_id, name FROM service WHERE name = ?"
+		rows, err = db.Query(query, s.Name)
+	}
+
 	if err != nil {
 		panic(err)
 	}
