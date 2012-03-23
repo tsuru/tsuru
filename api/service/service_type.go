@@ -1,8 +1,8 @@
 package service
 
 import (
-	"errors"
 	"database/sql"
+	"errors"
 	_ "github.com/mattn/go-sqlite3"
 )
 
@@ -29,7 +29,7 @@ func (st *ServiceType) Get() error {
 		panic(err)
 	}
 
-	if rows != nil{
+	if rows != nil {
 		for rows.Next() {
 			rows.Scan(&st.Id, &st.Name, &st.Charm)
 		}

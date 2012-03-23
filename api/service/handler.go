@@ -1,10 +1,10 @@
 package service
 
 import (
-	"fmt"
-	"net/http"
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
+	"net/http"
 )
 
 func CreateHandler(w http.ResponseWriter, r *http.Request) {

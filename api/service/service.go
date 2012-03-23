@@ -35,7 +35,7 @@ func (s *Service) Get() error {
 		panic(err)
 	}
 
-	if rows != nil{
+	if rows != nil {
 		for rows.Next() {
 			rows.Scan(&s.Id, &s.ServiceTypeId, &s.Name)
 		}
