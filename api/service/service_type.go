@@ -58,10 +58,10 @@ func (s *ServiceType) All() (result []ServiceType) {
 		panic(err)
 	}
 
-	var id    int64
+	var id int64
 	var charm string
-	var name  string
-	var se    ServiceType
+	var name string
+	var se ServiceType
 	for rows.Next() {
 		rows.Scan(&id, &charm, &name)
 		se = ServiceType{
