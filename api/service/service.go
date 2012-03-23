@@ -44,6 +44,43 @@ func (s *Service) Get() error {
 	return nil
 }
 
+func All() (result []Service) {
+	db, _ := sql.Open("sqlite3", "./tsuru.db")
+	defer db.Close()
+
+	query := "select id, service_type_id, name from service"
+	rows, err := db.Query(query)
+
+	var qtd int
+	for rows.Next() {
+		rows.Scan(&qtd)
+	}
+
+	result = make([]Service, qtd)
+
+	query = "select id, service_type_id, name from service"
+	rows, err = db.Query(query)
+	if err != nil {
+		panic(err)
+	}
+
+	var id            int64
+	var serviceTypeId int64
+	var name		  string
+	var se            Service
+	for rows.Next() {
+		rows.Scan(&id, &serviceTypeId, &name)
+		se = Service{
+			Id:            id,
+			ServiceTypeId: serviceTypeId,
+			Name:          name,
+		}
+		result = append(result, se)
+	}
+
+	return
+}
+
 func (s *Service) Create() error {
 	db, _ := sql.Open("sqlite3", "./tsuru.db")
 	defer db.Close()
@@ -96,7 +133,7 @@ func (s *Service) Delete() error {
 	stmt.Exec(s.Name, s.ServiceTypeId)
 	tx.Commit()
 
-	u := unit.Unit{Name: s.Name}
+	u := unit.Unit{Name: s.Name, Type: s.ServiceType().Name}
 	err = u.Destroy()
 
 	return nil

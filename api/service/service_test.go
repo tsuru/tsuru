@@ -26,6 +26,18 @@ func (s *ServiceSuite) TestGetService(c *C) {
 	c.Assert(s.service.ServiceTypeId, Equals, sTypeId)
 }
 
+func (s *ServiceSuite) TestAllServices(c *C) {
+	st := ServiceType{Name: "Mysql", Charm: "mysql"}
+	se := Service{ServiceTypeId: st.Id, Name: "myService"}
+	se2 := Service{ServiceTypeId: st.Id, Name: "myOtherService"}
+	st.Create()
+	se.Create()
+	se2.Create()
+
+	results := All()
+	c.Assert(len(results), Equals, 2)
+}
+
 func (s *ServiceSuite) TestCreateService(c *C) {
 	s.createService()
 	rows, err := s.db.Query("SELECT id, service_type_id, name FROM service WHERE name = 'my_service'")
