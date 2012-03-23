@@ -14,6 +14,27 @@ type S struct{}
 
 var _ = Suite(&S{})
 
+func (s *S) TestAll(c *C) {
+	expected := make([]app.App, 0)
+	app1 := app.App{Name: "app1"}
+	app1.Create()
+	expected = append(expected, app1)
+	app2 := app.App{Name: "app2"}
+	app2.Create()
+	expected = append(expected, app2)
+	app3 := app.App{Name: "app3"}
+	app3.Create()
+	expected = append(expected, app3)
+
+	appList, err := app.All()
+	c.Assert(err, IsNil)
+	c.Assert(expected, Equals, appList)
+
+	app1.Destroy()
+	app2.Destroy()
+	app3.Destroy()
+}
+
 func (s *S) TestGet(c *C) {
 	newApp := app.App{Name: "myApp", Framework: "django", State: "Pending"}
 	err := newApp.Create()
