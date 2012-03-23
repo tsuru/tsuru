@@ -99,10 +99,14 @@ func (s *ServiceSuite) TestServicesHandler(c *C) {
 	body, err := ioutil.ReadAll(recorder.Body)
 	c.Assert(err, IsNil)
 
-	var results []Service
+	var results []ServiceT
 	err = json.Unmarshal(body, &results)
 	c.Assert(err, IsNil)
 	c.Assert(len(results), Equals, 2)
+	c.Assert(results[0], FitsTypeOf, ServiceT{})
+	c.Assert(results[0].Id, Not(Equals), int64(0))
+	c.Assert(results[0].Type, Not(Equals), "")
+	c.Assert(results[0].Name, Not(Equals), "")
 }
 
 func (s *ServiceSuite) TestDeleteHandler(c *C) {
