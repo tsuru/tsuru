@@ -1,11 +1,11 @@
 package service
 
 import (
-	"encoding/json"
 	"bytes"
+	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	. "github.com/timeredbull/tsuru/api/app"
+	"io/ioutil"
 	"net/http"
 )
 

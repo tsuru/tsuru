@@ -13,6 +13,26 @@ type App struct {
 	State     string
 }
 
+func AllApps() ([]App, error) {
+	db, _ := sql.Open("sqlite3", "./tsuru.db")
+	defer db.Close()
+
+	query := "SELECT id, name, framework, state FROM apps"
+	rows, err := db.Query(query)
+	if err != nil {
+		return []App{}, err
+	}
+
+	apps := make([]App, 0)
+	var app App
+	for rows.Next() {
+		app = App{}
+		rows.Scan(&app.Id, &app.Name, &app.Framework, &app.State)
+		apps = append(apps, app)
+	}
+	return apps, err
+}
+
 func (app *App) Get() error {
 	db, _ := sql.Open("sqlite3", "./tsuru.db")
 	defer db.Close()

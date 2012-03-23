@@ -1,14 +1,14 @@
 package service_test
 
 import (
-	_ "github.com/mattn/go-sqlite3"
-	. "github.com/timeredbull/tsuru/api/service"
-	. "github.com/timeredbull/tsuru/api/app"
-	. "launchpad.net/gocheck"
-	"io/ioutil"
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	_ "github.com/mattn/go-sqlite3"
+	. "github.com/timeredbull/tsuru/api/app"
+	. "github.com/timeredbull/tsuru/api/service"
+	"io/ioutil"
+	. "launchpad.net/gocheck"
 	"net/http"
 	"net/http/httptest"
 	"os"

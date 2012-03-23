@@ -57,10 +57,10 @@ func (s *Service) All() (result []Service) {
 		panic(err)
 	}
 
-	var id            int64
+	var id int64
 	var serviceTypeId int64
-	var name		  string
-	var se            Service
+	var name string
+	var se Service
 	for rows.Next() {
 		rows.Scan(&id, &serviceTypeId, &name)
 		se = Service{
