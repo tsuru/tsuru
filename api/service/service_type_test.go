@@ -10,6 +10,16 @@ func (s *ServiceSuite) createServiceType() {
 	s.serviceType.Create()
 }
 
+func (s *ServiceSuite) TestAllServiceTypes(c *C) {
+	st := ServiceType{Name: "Mysql", Charm: "mysql"}
+	st2 := ServiceType{Name: "MongoDB", Charm: "mongodb"}
+	st.Create()
+	st2.Create()
+
+	results := st.All()
+	c.Assert(len(results), Equals, 2)
+}
+
 func (s *ServiceSuite) TestGetServiceType(c *C) {
 	s.createServiceType()
 	name := s.serviceType.Name

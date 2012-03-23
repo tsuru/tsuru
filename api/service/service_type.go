@@ -23,6 +23,12 @@ func (st *ServiceType) Get() error {
 	case st.Id != 0:
 		query = "SELECT id, name, charm FROM service_type WHERE id = ?"
 		rows, err = db.Query(query, st.Id)
+	case st.Name != "":
+		query = "SELECT id, name, charm FROM service_type WHERE name = ?"
+		rows, err = db.Query(query, st.Name)
+	case st.Charm != "":
+		query = "SELECT id, name, charm FROM service_type WHERE charm = ?"
+		rows, err = db.Query(query, st.Charm)
 	}
 
 	if err != nil {
@@ -38,6 +44,35 @@ func (st *ServiceType) Get() error {
 	}
 
 	return nil
+}
+
+func (s *ServiceType) All() (result []ServiceType) {
+	db, _ := sql.Open("sqlite3", "./tsuru.db")
+	defer db.Close()
+
+	result = make([]ServiceType, 0)
+
+	query := "select id, charm, name from service_type"
+	rows, err := db.Query(query)
+	if err != nil {
+		panic(err)
+	}
+
+	var id    int64
+	var charm string
+	var name  string
+	var se    ServiceType
+	for rows.Next() {
+		rows.Scan(&id, &charm, &name)
+		se = ServiceType{
+			Id:    id,
+			Charm: charm,
+			Name:  name,
+		}
+		result = append(result, se)
+	}
+
+	return
 }
 
 func (st *ServiceType) Create() error {

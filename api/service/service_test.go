@@ -34,7 +34,8 @@ func (s *ServiceSuite) TestAllServices(c *C) {
 	se.Create()
 	se2.Create()
 
-	results := All()
+	s_ := Service{}
+	results := s_.All()
 	c.Assert(len(results), Equals, 2)
 }
 

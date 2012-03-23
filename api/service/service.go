@@ -1,6 +1,7 @@
 package service
 
 import (
+	//"fmt"
 	"database/sql"
 	"errors"
 	_ "github.com/mattn/go-sqlite3"
@@ -44,22 +45,14 @@ func (s *Service) Get() error {
 	return nil
 }
 
-func All() (result []Service) {
+func (s *Service) All() (result []Service) {
 	db, _ := sql.Open("sqlite3", "./tsuru.db")
 	defer db.Close()
 
+	result = make([]Service, 0)
+
 	query := "select id, service_type_id, name from service"
 	rows, err := db.Query(query)
-
-	var qtd int
-	for rows.Next() {
-		rows.Scan(&qtd)
-	}
-
-	result = make([]Service, qtd)
-
-	query = "select id, service_type_id, name from service"
-	rows, err = db.Query(query)
 	if err != nil {
 		panic(err)
 	}
@@ -97,6 +90,7 @@ func (s *Service) Create() error {
 	}
 
 	stmt := tx.Stmt(insertStmt)
+	//fmt.Println(s.ServiceTypeId)
 	result, err := stmt.Exec(s.ServiceTypeId, s.Name)
 	if err != nil {
 		panic(err)
