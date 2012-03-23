@@ -1,11 +1,11 @@
 package service
 
 import (
-	"fmt"
-	"net/http"
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	. "github.com/timeredbull/tsuru/api/app"
+	"net/http"
 )
 
 type ServiceJson struct {

@@ -4,9 +4,14 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"io"
+	"github.com/timeredbull/tsuru/api/unit"
 	"io/ioutil"
 	"net/http"
+	"os"
+	"time"
+	//"io"
+	"log"
+	"os/exec"
 )
 
 func Upload(w http.ResponseWriter, r *http.Request) {
@@ -20,11 +25,38 @@ func Upload(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			panic(err)
 		}
-		var b bytes.Buffer
-		_, err = io.Copy(&b, f)
+
+		releaseName := time.Now().Format("20060102150405")
+		zipFile := fmt.Sprintf("/tmp/%s.zip", releaseName)
+		zipDir := fmt.Sprintf("/tmp/%s", releaseName)
+
+		newFile, err := os.Create(zipFile)
 		if err != nil {
 			panic(err)
 		}
+		out, _ := ioutil.ReadAll(f)
+		newFile.Write(out)
+
+		cmd := exec.Command("unzip", zipFile, "-d", zipDir)
+		output, err := cmd.Output()
+		if err != nil {
+			panic(err)
+		}
+		log.Printf(string(output))
+
+		appDir := "/home/application"
+		currentDir := appDir + "/releases/current"
+		gunicorn := appDir + "/env/bin/gunicorn_django"
+		releasesDir := appDir + "/releases"
+		releaseDir := releasesDir + "/" + releaseName
+
+		u := unit.Unit{Name: app.Name}
+		u.SendFile(zipDir, releaseDir)
+		//u.Command(fmt.Sprintf("'rm -rf %s'", currentDir))
+		u.Command(fmt.Sprintf("'cd %s && ln -nfs %s current'", releasesDir, releaseName))
+		u.Command("'sudo killall gunicorn_django'")
+		u.Command(fmt.Sprintf("'cd %s && sudo %s --daemon --workers=3 --bind=127.0.0.1:8888'", currentDir, gunicorn))
+
 		fmt.Fprint(w, "success")
 	}
 }
@@ -42,6 +74,7 @@ func AppInfo(w http.ResponseWriter, r *http.Request) {
 		}
 		fmt.Fprint(w, bytes.NewBuffer(b).String())
 	}
+
 }
 
 func CreateAppHandler(w http.ResponseWriter, r *http.Request) {
