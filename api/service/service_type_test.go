@@ -10,6 +10,16 @@ func (s *ServiceSuite) createServiceType() {
 	s.serviceType.Create()
 }
 
+func (s *ServiceSuite) TestAllServiceTypes(c *C) {
+	st := ServiceType{Name: "Mysql", Charm: "mysql"}
+	st2 := ServiceType{Name: "MongoDB", Charm: "mongodb"}
+	st.Create()
+	st2.Create()
+
+	results := st.All()
+	c.Assert(len(results), Equals, 2)
+}
+
 func (s *ServiceSuite) TestGetServiceType(c *C) {
 	s.createServiceType()
 	name := s.serviceType.Name
@@ -26,7 +36,7 @@ func (s *ServiceSuite) TestGetServiceType(c *C) {
 
 func (s *ServiceSuite) TestCreateServiceType(c *C) {
 	s.createServiceType()
-	rows, err := s.db.Query("SELECT name, charm FROM service_type WHERE name = 'Mysql' AND charm='mysql'")
+	rows, err := s.db.Query("SELECT name, charm FROM service_types WHERE name = 'Mysql' AND charm='mysql'")
 	c.Check(err, IsNil)
 
 	var name string
@@ -43,7 +53,7 @@ func (s *ServiceSuite) TestDeleteServiceType(c *C) {
 	s.createServiceType()
 	s.serviceType.Delete()
 
-	rows, err := s.db.Query("SELECT count(*) FROM service_type WHERE name = 'Mysql' AND charm = 'mysql'")
+	rows, err := s.db.Query("SELECT count(*) FROM service_types WHERE name = 'Mysql' AND charm = 'mysql'")
 	c.Assert(err, IsNil)
 
 	var qtd int

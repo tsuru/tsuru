@@ -1,6 +1,7 @@
 package service
 
 import (
+	//"fmt"
 	"database/sql"
 	"errors"
 	_ "github.com/mattn/go-sqlite3"
@@ -23,10 +24,10 @@ func (s *Service) Get() error {
 	var err error
 	switch {
 	case s.Id != 0:
-		query = "SELECT id, service_type_id, name FROM service WHERE id = ?"
+		query = "SELECT id, service_type_id, name FROM services WHERE id = ?"
 		rows, err = db.Query(query, s.Id)
 	case s.Name != "":
-		query = "SELECT id, service_type_id, name FROM service WHERE name = ?"
+		query = "SELECT id, service_type_id, name FROM services WHERE name = ?"
 		rows, err = db.Query(query, s.Name)
 	}
 
@@ -44,22 +45,14 @@ func (s *Service) Get() error {
 	return nil
 }
 
-func All() (result []Service) {
+func (s *Service) All() (result []Service) {
 	db, _ := sql.Open("sqlite3", "./tsuru.db")
 	defer db.Close()
 
-	query := "select id, service_type_id, name from service"
+	result = make([]Service, 0)
+
+	query := "select id, service_type_id, name from services"
 	rows, err := db.Query(query)
-
-	var qtd int
-	for rows.Next() {
-		rows.Scan(&qtd)
-	}
-
-	result = make([]Service, qtd)
-
-	query = "select id, service_type_id, name from service"
-	rows, err = db.Query(query)
 	if err != nil {
 		panic(err)
 	}
@@ -85,7 +78,7 @@ func (s *Service) Create() error {
 	db, _ := sql.Open("sqlite3", "./tsuru.db")
 	defer db.Close()
 
-	query := "INSERT INTO service (service_type_id, name) VALUES (?, ?)"
+	query := "INSERT INTO services (service_type_id, name) VALUES (?, ?)"
 	insertStmt, err := db.Prepare(query)
 	if err != nil {
 		panic(err)
@@ -97,6 +90,7 @@ func (s *Service) Create() error {
 	}
 
 	stmt := tx.Stmt(insertStmt)
+	//fmt.Println(s.ServiceTypeId)
 	result, err := stmt.Exec(s.ServiceTypeId, s.Name)
 	if err != nil {
 		panic(err)
@@ -118,7 +112,7 @@ func (s *Service) Delete() error {
 	db, _ := sql.Open("sqlite3", "./tsuru.db")
 	defer db.Close()
 
-	query := "DELETE FROM service WHERE name = ? AND service_type_id = ?"
+	query := "DELETE FROM services WHERE name = ? AND service_type_id = ?"
 	insertStmt, err := db.Prepare(query)
 	if err != nil {
 		panic(err)

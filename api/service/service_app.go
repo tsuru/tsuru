@@ -17,7 +17,7 @@ func (sa *ServiceApp) Create() error {
 	db, _ := sql.Open("sqlite3", "./tsuru.db")
 	defer db.Close()
 
-	query := "INSERT INTO service_app (service_id, app_id) VALUES (?, ?)"
+	query := "INSERT INTO service_apps (service_id, app_id) VALUES (?, ?)"
 	insertStmt, err := db.Prepare(query)
 	if err != nil {
 		panic(err)
@@ -44,7 +44,7 @@ func (sa *ServiceApp) Delete() error {
 	db, _ := sql.Open("sqlite3", "./tsuru.db")
 	defer db.Close()
 
-	query := "DELETE FROM service_app WHERE service_id = ? AND app_id = ?"
+	query := "DELETE FROM service_apps WHERE service_id = ? AND app_id = ?"
 	insertStmt, err := db.Prepare(query)
 	if err != nil {
 		panic(err)
