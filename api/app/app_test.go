@@ -15,6 +15,11 @@ type S struct{}
 var _ = Suite(&S{})
 
 func (s *S) TestAll(c *C) {
+	db, _ := sql.Open("sqlite3", "./tsuru.db")
+	defer db.Close()
+
+	db.Exec("DELETE FROM apps")
+
 	expected := make([]app.App, 0)
 	app1 := app.App{Name: "app1"}
 	app1.Create()
@@ -28,7 +33,7 @@ func (s *S) TestAll(c *C) {
 
 	appList, err := app.All()
 	c.Assert(err, IsNil)
-	c.Assert(expected, Equals, appList)
+	c.Assert(expected, DeepEquals, appList)
 
 	app1.Destroy()
 	app2.Destroy()

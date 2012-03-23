@@ -54,6 +54,44 @@ func (s *S) TestUploadReturns404WhenAppDoesNotExist(c *C) {
 	c.Assert(recorder.Code, Equals, 404)
 }
 
+func (s *S) TestAppList(c *C) {
+	db, _ := sql.Open("sqlite3", "./tsuru.db")
+	defer db.Close()
+
+	db.Exec("DELETE FROM apps")
+
+	apps := make([]app.App, 0)
+	expected := make([]app.App, 0)
+	app1 := app.App{Name: "app1"}
+	app1.Create()
+	expected = append(expected, app1)
+	app2 := app.App{Name: "app2"}
+	app2.Create()
+	expected = append(expected, app2)
+	app3 := app.App{Name: "app3"}
+	app3.Create()
+	expected = append(expected, app3)
+
+	request, err := http.NewRequest("GET", "/apps/", nil)
+	c.Assert(err, IsNil)
+
+	request.Header.Set("Content-Type", "application/json")
+	recorder := httptest.NewRecorder()
+	app.AppList(recorder, request)
+	c.Assert(recorder.Code, Equals, 200)
+
+	body, err := ioutil.ReadAll(recorder.Body)
+	c.Assert(err, IsNil)
+
+	err = json.Unmarshal(body, &apps)
+	c.Assert(err, IsNil)
+	c.Assert(apps, DeepEquals, expected)
+
+	app1.Destroy()
+	app2.Destroy()
+	app3.Destroy()
+}
+
 func (s *S) TestAppInfo(c *C) {
 
 	exptectedApp := app.App{Name: "NewApp", Framework: "django"}

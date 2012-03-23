@@ -61,6 +61,19 @@ func Upload(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func AppList(w http.ResponseWriter, r *http.Request) {
+	apps, err := All()
+	if err != nil {
+		panic(err)
+	}
+
+	b, err := json.Marshal(apps)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Fprint(w, bytes.NewBuffer(b).String())
+}
+
 func AppInfo(w http.ResponseWriter, r *http.Request) {
 	app := App{Name: r.URL.Query().Get(":name")}
 	app.Get()
