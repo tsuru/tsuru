@@ -16,7 +16,7 @@ func main() {
 	m.Get("/services/types", http.HandlerFunc(service.ServiceTypesHandler))
 	m.Get("/services/:name", http.HandlerFunc(service.DeleteHandler))
 	m.Post("/services/bind", http.HandlerFunc(service.BindHandler))
-	m.Post("/services/unbind", http.HandlerFunc(service.BindHandler))
+	m.Post("/services/unbind", http.HandlerFunc(service.UnbindHandler))
 
 	m.Get("/apps/:name/delete", http.HandlerFunc(app.AppDelete))
 	m.Get("/apps/:name", http.HandlerFunc(app.AppInfo))
