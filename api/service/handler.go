@@ -19,6 +19,13 @@ type BindJson struct {
 	Service string
 }
 
+// a service with a pointer to it's type
+type ServiceT struct {
+	Id   int64
+	Type *ServiceType
+	Name string
+}
+
 func CreateHandler(w http.ResponseWriter, r *http.Request) {
 	var sj ServiceJson
 
@@ -47,7 +54,11 @@ func CreateHandler(w http.ResponseWriter, r *http.Request) {
 func DeleteHandler(w http.ResponseWriter, r *http.Request) {
 	s := Service{Name: r.URL.Query().Get(":name")}
 	s.Get()
-	// http.NotFound(w, r)
+
+	if s.Id == 0 {
+		http.NotFound(w, r)
+	}
+
 	s.Delete()
 	fmt.Fprint(w, "success")
 }
@@ -70,7 +81,9 @@ func BindHandler(w http.ResponseWriter, r *http.Request) {
 	a := App{Name: b.App}
 	s.Get()
 	a.Get()
-	// http.NotFound(w, r)
+	if s.Id == 0 || a.Id == 0 {
+		http.NotFound(w, r)
+	}
 
 	s.Bind(&a)
 
@@ -95,7 +108,9 @@ func UnbindHandler(w http.ResponseWriter, r *http.Request) {
 	a := App{Name: b.App}
 	s.Get()
 	a.Get()
-	// http.NotFound(w, r)
+	if s.Id == 0 || a.Id == 0 {
+		http.NotFound(w, r)
+	}
 
 	s.Unbind(&a)
 
@@ -104,8 +119,19 @@ func UnbindHandler(w http.ResponseWriter, r *http.Request) {
 
 func ServicesHandler(w http.ResponseWriter, r *http.Request) {
 	services := All()
+	results := make([]ServiceT, 0)
 
-	b, err := json.Marshal(services)
+	var sT ServiceT
+	for _, s := range services {
+		sT = ServiceT{
+			Id:   s.Id,
+			Type: s.ServiceType(),
+			Name: s.Name,
+		}
+		results = append(results, sT)
+	}
+
+	b, err := json.Marshal(results)
 	if err != nil {
 		panic(err)
 	}

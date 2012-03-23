@@ -99,10 +99,14 @@ func (s *ServiceSuite) TestServicesHandler(c *C) {
 	body, err := ioutil.ReadAll(recorder.Body)
 	c.Assert(err, IsNil)
 
-	var results []Service
+	var results []ServiceT
 	err = json.Unmarshal(body, &results)
 	c.Assert(err, IsNil)
 	c.Assert(len(results), Equals, 2)
+	c.Assert(results[0], FitsTypeOf, ServiceT{})
+	c.Assert(results[0].Id, Not(Equals), int64(0))
+	c.Assert(results[0].Type, Not(Equals), "")
+	c.Assert(results[0].Name, Not(Equals), "")
 }
 
 func (s *ServiceSuite) TestDeleteHandler(c *C) {
@@ -127,6 +131,12 @@ func (s *ServiceSuite) TestDeleteHandler(c *C) {
 }
 
 func (s *ServiceSuite) TestDeleteHandlerReturns404(c *C) {
+	request, err := http.NewRequest("GET", fmt.Sprintf("/services/%s?:name=%s", "mongobd", "mongodb"), nil)
+	c.Assert(err, IsNil)
+
+	recorder := httptest.NewRecorder()
+	DeleteHandler(recorder, request)
+	c.Assert(recorder.Code, Equals, 404)
 }
 
 func (s *ServiceSuite) TestBindHandler(c *C) {
@@ -156,6 +166,16 @@ func (s *ServiceSuite) TestBindHandler(c *C) {
 	c.Assert(qtd, Equals, 1)
 }
 
+func (s *ServiceSuite) TestBindHandlerReturns404(c *C) {
+	b := strings.NewReader(`{"app":"someApp", "service":"my_service"}`)
+	request, err := http.NewRequest("POST", "/services/bind", b)
+	c.Assert(err, IsNil)
+
+	recorder := httptest.NewRecorder()
+	BindHandler(recorder, request)
+	c.Assert(recorder.Code, Equals, 404)
+}
+
 func (s *ServiceSuite) TestUnbindHandler(c *C) {
 	st := ServiceType{Name: "Mysql", Charm: "mysql"}
 	se := Service{ServiceTypeId: st.Id, Name: "my_service"}
@@ -182,4 +202,14 @@ func (s *ServiceSuite) TestUnbindHandler(c *C) {
 	}
 
 	c.Assert(qtd, Equals, 0)
+}
+
+func (s *ServiceSuite) TestUnbindReturns404(c *C) {
+	b := strings.NewReader(`{"app":"someApp", "service":"my_service"}`)
+	request, err := http.NewRequest("POST", "/services/bind", b)
+	c.Assert(err, IsNil)
+
+	recorder := httptest.NewRecorder()
+	UnbindHandler(recorder, request)
+	c.Assert(recorder.Code, Equals, 404)
 }
