@@ -12,6 +12,8 @@ func main() {
 	m := pat.New()
 
 	m.Post("/services", http.HandlerFunc(service.CreateHandler))
+	m.Get("/services", http.HandlerFunc(service.ServicesHandler))
+	m.Get("/services/types", http.HandlerFunc(service.ServiceTypesHandler))
 	m.Get("/services/:name", http.HandlerFunc(service.DeleteHandler))
 	m.Post("/services/bind", http.HandlerFunc(service.BindHandler))
 	m.Post("/services/unbind", http.HandlerFunc(service.BindHandler))

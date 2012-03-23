@@ -56,6 +56,9 @@ func (s *ServiceSuite) TearDownTest(c *C) {
 }
 
 func (s *ServiceSuite) TestCreateHandler(c *C) {
+	st := ServiceType{Name: "Mysql", Charm: "mysql"}
+	st.Create()
+
 	b := strings.NewReader(`{"name":"some_service", "type":"mysql"}`)
 	request, err := http.NewRequest("POST", "/services", b)
 
@@ -69,23 +72,25 @@ func (s *ServiceSuite) TestCreateHandler(c *C) {
 	c.Assert(recorder.Body.String(), Equals, "success")
 	c.Assert(recorder.Code, Equals, 200)
 
-	rows, err := s.db.Query("SELECT count(*) FROM service WHERE name = 'some_service'")
+	rows, err := s.db.Query("SELECT id, service_type_id, name FROM service WHERE name = 'some_service'")
 
 	c.Check(err, IsNil)
-	var qtd int
-
+	var id, serviceTypeId int64
+	var name string
 	for rows.Next() {
-		rows.Scan(&qtd)
+		rows.Scan(&id, &serviceTypeId, &name)
 	}
 
-	c.Assert(1, Equals, qtd)
+	c.Assert(id, Not(Equals), int64(0))
+	c.Assert(serviceTypeId, Not(Equals), int64(0))
+	c.Assert(name, Not(Equals), "")
 }
 
 func (s *ServiceSuite) TestServicesHandler(c *C) {
 	st := ServiceType{Name: "Mysql", Charm: "mysql"}
+	st.Create()
 	se := Service{ServiceTypeId: st.Id, Name: "myService"}
 	se2 := Service{ServiceTypeId: st.Id, Name: "myOtherService"}
-	st.Create()
 	se.Create()
 	se2.Create()
 
@@ -105,8 +110,30 @@ func (s *ServiceSuite) TestServicesHandler(c *C) {
 	c.Assert(len(results), Equals, 2)
 	c.Assert(results[0], FitsTypeOf, ServiceT{})
 	c.Assert(results[0].Id, Not(Equals), int64(0))
-	c.Assert(results[0].Type, Not(Equals), "")
 	c.Assert(results[0].Name, Not(Equals), "")
+
+	c.Assert(results[0].Type, FitsTypeOf, &ServiceType{})
+	c.Assert(results[0].Type.Id, Not(Equals), int64(0))
+}
+
+func (s *ServiceSuite) TestServiceTypesHandler(c *C) {
+	st := ServiceType{Name: "Mysql", Charm: "mysql"}
+	st.Create()
+
+	request, err := http.NewRequest("GET", "/services/types", nil)
+	c.Assert(err, IsNil)
+
+	recorder := httptest.NewRecorder()
+	ServiceTypesHandler(recorder, request)
+	c.Assert(recorder.Code, Equals, 200)
+
+	body, err := ioutil.ReadAll(recorder.Body)
+	c.Assert(err, IsNil)
+
+	var results []ServiceType
+	err = json.Unmarshal(body, &results)
+	c.Assert(err, IsNil)
+	c.Assert(results[0].Id, Not(Equals), int64(0))
 }
 
 func (s *ServiceSuite) TestDeleteHandler(c *C) {
