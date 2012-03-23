@@ -46,6 +46,7 @@ func CreateHandler(w http.ResponseWriter, r *http.Request) {
 func DeleteHandler(w http.ResponseWriter, r *http.Request) {
 	s := Service{Name: r.URL.Query().Get(":name")}
 	s.Get()
+	// http.NotFound(w, r)
 	s.Delete()
 	fmt.Fprint(w, "success")
 }
@@ -68,6 +69,38 @@ func BindHandler(w http.ResponseWriter, r *http.Request) {
 	a := App{Name: b.App}
 	s.Get()
 	a.Get()
+	// http.NotFound(w, r)
 
+	s.Bind(&a)
+
+	fmt.Fprint(w, "success")
+}
+
+func UnbindHandler(w http.ResponseWriter, r *http.Request) {
+	var b BindJson
+
+	defer r.Body.Close()
+	body, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		panic(err)
+	}
+
+	err = json.Unmarshal(body, &b)
+	if err != nil {
+		panic(err)
+	}
+
+	s := Service{Name: b.Service}
+	a := App{Name: b.App}
+	s.Get()
+	a.Get()
+	// http.NotFound(w, r)
+
+	s.Unbind(&a)
+
+	fmt.Fprint(w, "success")
+}
+
+func ServicesHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprint(w, "success")
 }

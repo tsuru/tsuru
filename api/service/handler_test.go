@@ -9,6 +9,7 @@ import (
 	. "launchpad.net/gocheck"
 	"net/http"
 	"net/http/httptest"
+	 "io/ioutil"
 	"os"
 	"testing"
 	"strings"
@@ -79,6 +80,25 @@ func (s *ServiceSuite) TestCreateHandler(c *C) {
 	c.Assert(1, Equals, qtd)
 }
 
+func (s *ServiceSuite) TestServicesHandler(c *C) {
+	st := ServiceType{Name: "Mysql", Charm: "mysql"}
+	se := Service{ServiceTypeId: st.Id, Name: "myService"}
+	se2 := Service{ServiceTypeId: st.Id, Name: "myOtherService"}
+	st.Create()
+	se.Create()
+	se2.Create()
+
+	request, err := http.NewRequest("GET", "/services", nil)
+	c.Assert(err, IsNil)
+
+	recorder := httptest.NewRecorder()
+	ServicesHandler(recorder, request)
+	c.Assert(recorder.Code, Equals, 200)
+
+	body, err := ioutil.ReadAll(request.Body)
+	fmt.Println(body)
+}
+
 func (s *ServiceSuite) TestDeleteHandler(c *C) {
 	se := Service{ServiceTypeId: 2, Name: "Mysql"}
 	se.Create()
@@ -100,7 +120,8 @@ func (s *ServiceSuite) TestDeleteHandler(c *C) {
 	c.Assert(qtd, Equals, 0)
 }
 
-//func (s *ServiceSuite) TestListHandler(c *C) {}
+func (s *ServiceSuite) TestDeleteHandlerReturns404(c *C) {
+}
 
 func (s *ServiceSuite) TestBindHandler(c *C) {
 	st := ServiceType{Name: "Mysql", Charm: "mysql"}
@@ -110,12 +131,40 @@ func (s *ServiceSuite) TestBindHandler(c *C) {
 	se.Create()
 	a.Create()
 
-	b := strings.NewReader(`{"app":"someApp", "service":"Mysql"}`)
+	b := strings.NewReader(`{"app":"someApp", "service":"my_service"}`)
 	request, err := http.NewRequest("POST", "/services/bind", b)
 	c.Assert(err, IsNil)
 
 	recorder := httptest.NewRecorder()
 	BindHandler(recorder, request)
+	c.Assert(recorder.Code, Equals, 200)
+
+	rows, err := s.db.Query("SELECT count(*) FROM service_app WHERE service_id = ? AND app_id = ?", se.Id, a.Id)
+	c.Check(err, IsNil)
+
+	var qtd int
+	for rows.Next() {
+		rows.Scan(&qtd)
+	}
+
+	c.Assert(qtd, Equals, 1)
+}
+
+func (s *ServiceSuite) TestUnbindHandler(c *C) {
+	st := ServiceType{Name: "Mysql", Charm: "mysql"}
+	se := Service{ServiceTypeId: st.Id, Name: "my_service"}
+	a := App{Name: "someApp", Framework: "django"}
+	st.Create()
+	se.Create()
+	a.Create()
+	se.Bind(&a)
+
+	b := strings.NewReader(`{"app":"someApp", "service":"my_service"}`)
+	request, err := http.NewRequest("POST", "/services/bind", b)
+	c.Assert(err, IsNil)
+
+	recorder := httptest.NewRecorder()
+	UnbindHandler(recorder, request)
 	c.Assert(recorder.Code, Equals, 200)
 
 	rows, err := s.db.Query("SELECT count(*) FROM service_app WHERE service_id = ? AND app_id = ?", se.Id, a.Id)
