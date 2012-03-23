@@ -92,6 +92,17 @@ func (s *S) TestAppList(c *C) {
 	app3.Destroy()
 }
 
+func (s *S) TestDelete(c *C) {
+	myApp := app.App{Name: "MyAppToDelete", Framework: "django"}
+	myApp.Create()
+	request, err := http.NewRequest("DELETE", "/apps/"+myApp.Name+"?:name="+myApp.Name, nil)
+	c.Assert(err, IsNil)
+
+	recorder := httptest.NewRecorder()
+	app.AppDelete(recorder, request)
+	c.Assert(recorder.Code, Equals, 200)
+}
+
 func (s *S) TestAppInfo(c *C) {
 
 	exptectedApp := app.App{Name: "NewApp", Framework: "django"}

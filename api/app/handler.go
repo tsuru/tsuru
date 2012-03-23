@@ -61,6 +61,12 @@ func Upload(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func AppDelete(w http.ResponseWriter, r *http.Request) {
+	app := App{Name: r.URL.Query().Get(":name")}
+	app.Destroy()
+	fmt.Fprint(w, "success")
+}
+
 func AppList(w http.ResponseWriter, r *http.Request) {
 	apps, err := AllApps()
 	if err != nil {

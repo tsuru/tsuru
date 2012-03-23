@@ -103,5 +103,8 @@ func (app *App) Destroy() error {
 	stmt.Exec(app.Name)
 	tx.Commit()
 
+	u := unit.Unit{Name: app.Name, Type: app.Framework}
+	u.Destroy()
+
 	return nil
 }
