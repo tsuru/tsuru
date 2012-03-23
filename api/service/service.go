@@ -127,7 +127,7 @@ func (s *Service) Delete() error {
 	stmt.Exec(s.Name, s.ServiceTypeId)
 	tx.Commit()
 
-	u := unit.Unit{Name: s.Name, Type: s.ServiceType().Name}
+	u := unit.Unit{Name: s.Name, Type: s.ServiceType().Charm}
 	err = u.Destroy()
 
 	return nil
