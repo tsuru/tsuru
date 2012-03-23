@@ -13,7 +13,7 @@ type App struct {
 	State     string
 }
 
-func All() ([]App, error) {
+func AllApps() ([]App, error) {
 	db, _ := sql.Open("sqlite3", "./tsuru.db")
 	defer db.Close()
 

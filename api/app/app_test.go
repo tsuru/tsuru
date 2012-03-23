@@ -31,7 +31,7 @@ func (s *S) TestAll(c *C) {
 	app3.Create()
 	expected = append(expected, app3)
 
-	appList, err := app.All()
+	appList, err := app.AllApps()
 	c.Assert(err, IsNil)
 	c.Assert(expected, DeepEquals, appList)
 

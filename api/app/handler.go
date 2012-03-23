@@ -62,7 +62,7 @@ func Upload(w http.ResponseWriter, r *http.Request) {
 }
 
 func AppList(w http.ResponseWriter, r *http.Request) {
-	apps, err := All()
+	apps, err := AllApps()
 	if err != nil {
 		panic(err)
 	}
