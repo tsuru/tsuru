@@ -39,7 +39,7 @@ func (s *ServiceSuite) SetUpSuite(c *C) {
 	_, err = s.db.Exec("CREATE TABLE 'service_apps' ('id' INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, 'service_id' integer, 'app_id' integer)")
 	c.Check(err, IsNil)
 
-	_, err = s.db.Exec("CREATE TABLE 'apps' ('id' INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, 'name' varchar(255), 'framework' varchar(255), 'state' varchar(255))")
+	_, err = s.db.Exec("CREATE TABLE 'apps' ('id' INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, 'name' varchar(255), 'framework' varchar(255), 'state' varchar(255), ip varchar(100))")
 	c.Check(err, IsNil)
 }
 
@@ -168,9 +168,9 @@ func (s *ServiceSuite) TestDeleteHandlerReturns404(c *C) {
 
 func (s *ServiceSuite) TestBindHandler(c *C) {
 	st := ServiceType{Name: "Mysql", Charm: "mysql"}
+	st.Create()
 	se := Service{ServiceTypeId: st.Id, Name: "my_service"}
 	a := App{Name: "someApp", Framework: "django"}
-	st.Create()
 	se.Create()
 	a.Create()
 
@@ -205,9 +205,9 @@ func (s *ServiceSuite) TestBindHandlerReturns404(c *C) {
 
 func (s *ServiceSuite) TestUnbindHandler(c *C) {
 	st := ServiceType{Name: "Mysql", Charm: "mysql"}
-	se := Service{ServiceTypeId: st.Id, Name: "my_service"}
-	a := App{Name: "someApp", Framework: "django"}
 	st.Create()
+	se := Service{ServiceTypeId: st.Id, Name: "my_service"}
+	a := App{Name: "someApp", Framework: "django", Ip: "192.168.30.10"}
 	se.Create()
 	a.Create()
 	se.Bind(&a)

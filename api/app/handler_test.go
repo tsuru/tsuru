@@ -68,7 +68,7 @@ func (s *S) TestAppList(c *C) {
 	app2 := app.App{Name: "app2"}
 	app2.Create()
 	expected = append(expected, app2)
-	app3 := app.App{Name: "app3"}
+	app3 := app.App{Name: "app3", Framework: "django", Ip: "122222"}
 	app3.Create()
 	expected = append(expected, app3)
 

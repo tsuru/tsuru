@@ -41,7 +41,7 @@ func (s *S) TestAll(c *C) {
 }
 
 func (s *S) TestGet(c *C) {
-	newApp := app.App{Name: "myApp", Framework: "django", State: "Pending"}
+	newApp := app.App{Name: "myApp", Framework: "django"}
 	err := newApp.Create()
 	c.Assert(err, IsNil)
 
