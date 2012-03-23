@@ -2,6 +2,7 @@ package service
 
 import (
 	"encoding/json"
+	"bytes"
 	"fmt"
 	"io/ioutil"
 	. "github.com/timeredbull/tsuru/api/app"
@@ -102,5 +103,12 @@ func UnbindHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func ServicesHandler(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprint(w, "success")
+	services := All()
+
+	b, err := json.Marshal(services)
+	if err != nil {
+		panic(err)
+	}
+
+	fmt.Fprint(w, bytes.NewBuffer(b).String())
 }

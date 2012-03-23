@@ -1,15 +1,16 @@
 package service_test
 
 import (
-	"database/sql"
-	"fmt"
 	_ "github.com/mattn/go-sqlite3"
 	. "github.com/timeredbull/tsuru/api/service"
 	. "github.com/timeredbull/tsuru/api/app"
 	. "launchpad.net/gocheck"
+	"io/ioutil"
+	"database/sql"
+	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
-	 "io/ioutil"
 	"os"
 	"strings"
 	"testing"
@@ -95,8 +96,13 @@ func (s *ServiceSuite) TestServicesHandler(c *C) {
 	ServicesHandler(recorder, request)
 	c.Assert(recorder.Code, Equals, 200)
 
-	body, err := ioutil.ReadAll(request.Body)
-	fmt.Println(body)
+	body, err := ioutil.ReadAll(recorder.Body)
+	c.Assert(err, IsNil)
+
+	var results []Service
+	err = json.Unmarshal(body, &results)
+	c.Assert(err, IsNil)
+	c.Assert(len(results), Equals, 2)
 }
 
 func (s *ServiceSuite) TestDeleteHandler(c *C) {
