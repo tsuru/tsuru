@@ -137,20 +137,12 @@ func (s *Service) Bind(app *App) error {
 	sa := ServiceApp{ServiceId: s.Id, AppId: app.Id}
 	sa.Create()
 
-	appUnit := unit.Unit{Name: app.Name}
-	serviceUnit := unit.Unit{Name: s.Name}
-	appUnit.AddRelation(&serviceUnit)
-
 	return nil
 }
 
 func (s *Service) Unbind(app *App) error {
 	sa := ServiceApp{ServiceId: s.Id, AppId: app.Id}
 	sa.Delete()
-
-	appUnit := unit.Unit{Name: app.Name}
-	serviceUnit := unit.Unit{Name: s.Name}
-	appUnit.RemoveRelation(&serviceUnit)
 
 	return nil
 }

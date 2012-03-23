@@ -33,9 +33,12 @@ func (sa *ServiceApp) Create() error {
 	tx.Commit()
 
 	s := sa.Service()
-	st := s.ServiceType()
-	u := unit.Unit{Name: s.Name, Type: st.Charm}
-	err = u.Create()
+	a := sa.App()
+
+	appUnit := unit.Unit{Name: a.Name}
+	serviceUnit := unit.Unit{Name: s.Name}
+	appUnit.AddRelation(&serviceUnit)
+
 
 	return err
 }
@@ -60,8 +63,11 @@ func (sa *ServiceApp) Delete() error {
 	tx.Commit()
 
 	s := sa.Service()
-	u := unit.Unit{Name: s.Name}
-	err = u.Destroy()
+	a := sa.App()
+
+	appUnit := unit.Unit{Name: a.Name}
+	serviceUnit := unit.Unit{Name: s.Name}
+	appUnit.RemoveRelation(&serviceUnit)
 
 	return nil
 }
