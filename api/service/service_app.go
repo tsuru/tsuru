@@ -39,7 +39,6 @@ func (sa *ServiceApp) Create() error {
 	serviceUnit := unit.Unit{Name: s.Name}
 	appUnit.AddRelation(&serviceUnit)
 
-
 	return err
 }
 

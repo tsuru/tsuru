@@ -1,10 +1,11 @@
 package service
 
 import (
-	//"fmt"
 	"database/sql"
 	"errors"
+	/* "github.com/cobrateam/gothic/sqlgen" */
 	_ "github.com/mattn/go-sqlite3"
+	//_ "github.com/ziutek/mymysql/godrv"
 	. "github.com/timeredbull/tsuru/api/app"
 	"github.com/timeredbull/tsuru/api/unit"
 )
@@ -52,6 +53,7 @@ func (s *Service) All() (result []Service) {
 	result = make([]Service, 0)
 
 	query := "select id, service_type_id, name from services"
+	/* query := sqlgen.Select(s) */
 	rows, err := db.Query(query)
 	if err != nil {
 		panic(err)
