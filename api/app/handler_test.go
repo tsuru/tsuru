@@ -2,9 +2,7 @@ package app_test
 
 import (
 	"bytes"
-	"database/sql"
 	"encoding/json"
-	_ "github.com/mattn/go-sqlite3"
 	"github.com/timeredbull/tsuru/api/app"
 	"io/ioutil"
 	. "launchpad.net/gocheck"
@@ -55,11 +53,6 @@ func (s *S) TestUploadReturns404WhenAppDoesNotExist(c *C) {
 }
 
 func (s *S) TestAppList(c *C) {
-	db, _ := sql.Open("sqlite3", "./tsuru.db")
-	defer db.Close()
-
-	db.Exec("DELETE FROM apps")
-
 	apps := make([]app.App, 0)
 	expected := make([]app.App, 0)
 	app1 := app.App{Name: "app1"}
@@ -153,9 +146,7 @@ func (s *S) TestCreateApp(c *C) {
 	c.Assert(recorder.Body.String(), Equals, "success")
 	c.Assert(recorder.Code, Equals, 200)
 
-	db, _ := sql.Open("sqlite3", "./tsuru.db")
-	defer db.Close()
-	rows, err := db.Query("SELECT count(*) FROM apps WHERE name = 'someApp'")
+	rows, err := s.db.Query("SELECT count(*) FROM apps WHERE name = 'someApp'")
 
 	if err != nil {
 		panic(err)
