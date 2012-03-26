@@ -5,14 +5,32 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/timeredbull/tsuru/api/app"
 	. "launchpad.net/gocheck"
+	"os"
 	"testing"
 )
 
 func Test(t *testing.T) { TestingT(t) }
 
-type S struct{}
+type S struct {
+	db *sql.DB
+}
 
 var _ = Suite(&S{})
+
+func (s *S) SetUpSuite(c *C) {
+	s.db, _ = sql.Open("sqlite3", "./tsuru.db")
+	_, err := s.db.Exec("CREATE TABLE 'apps' ('id' INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, 'name' varchar(255), 'framework' varchar(255), 'state' varchar(255), ip varchar(100))")
+	c.Check(err, IsNil)
+}
+
+func (s *S) TearDownSuite(c *C) {
+	os.Remove("./tsuru.db")
+	s.db.Close()
+}
+
+func (s *S) TearDownTest(c *C) {
+	s.db.Exec("DELETE FROM apps")
+}
 
 func (s *S) TestAll(c *C) {
 	db, _ := sql.Open("sqlite3", "./tsuru.db")
