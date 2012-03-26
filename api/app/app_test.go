@@ -33,11 +33,6 @@ func (s *S) TearDownTest(c *C) {
 }
 
 func (s *S) TestAll(c *C) {
-	db, _ := sql.Open("sqlite3", "./tsuru.db")
-	defer db.Close()
-
-	db.Exec("DELETE FROM apps")
-
 	expected := make([]app.App, 0)
 	app1 := app.App{Name: "app1"}
 	app1.Create()
@@ -83,9 +78,7 @@ func (s *S) TestDestroy(c *C) {
 	err = app.Destroy()
 	c.Assert(err, IsNil)
 
-	db, _ := sql.Open("sqlite3", "./tsuru.db")
-	defer db.Close()
-	rows, err := db.Query("SELECT count(*) FROM apps WHERE name = 'appName'")
+	rows, err := s.db.Query("SELECT count(*) FROM apps WHERE name = 'appName'")
 
 	if err != nil {
 		panic(err)
@@ -111,9 +104,7 @@ func (s *S) TestCreate(c *C) {
 	c.Assert(app.State, Equals, "Pending")
 	c.Assert(app.Id, Not(Equals), int64(0))
 
-	db, _ := sql.Open("sqlite3", "./tsuru.db")
-	defer db.Close()
-	rows, err := db.Query("SELECT id, name, framework, state FROM apps WHERE name = 'appName'")
+	rows, err := s.db.Query("SELECT id, name, framework, state FROM apps WHERE name = 'appName'")
 
 	if err != nil {
 		panic(err)
