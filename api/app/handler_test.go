@@ -34,8 +34,8 @@ Content-Type: text/plain
 	c.Assert(err, IsNil)
 
 	recorder := httptest.NewRecorder()
-	app.Upload(recorder, request)
-
+	err = app.Upload(recorder, request)
+	c.Assert(err, IsNil)
 	c.Assert(recorder.Code, Equals, 200)
 	c.Assert(recorder.Body.String(), Equals, "success")
 
@@ -48,7 +48,8 @@ func (s *S) TestUploadReturns404WhenAppDoesNotExist(c *C) {
 	c.Assert(err, IsNil)
 
 	recorder := httptest.NewRecorder()
-	app.Upload(recorder, request)
+	err = app.Upload(recorder, request)
+	c.Assert(err, IsNil)
 	c.Assert(recorder.Code, Equals, 404)
 }
 
@@ -70,7 +71,8 @@ func (s *S) TestAppList(c *C) {
 
 	request.Header.Set("Content-Type", "application/json")
 	recorder := httptest.NewRecorder()
-	app.AppList(recorder, request)
+	err = app.AppList(recorder, request)
+	c.Assert(err, IsNil)
 	c.Assert(recorder.Code, Equals, 200)
 
 	body, err := ioutil.ReadAll(recorder.Body)
@@ -92,7 +94,8 @@ func (s *S) TestDelete(c *C) {
 	c.Assert(err, IsNil)
 
 	recorder := httptest.NewRecorder()
-	app.AppDelete(recorder, request)
+	err = app.AppDelete(recorder, request)
+	c.Assert(err, IsNil)
 	c.Assert(recorder.Code, Equals, 200)
 }
 
@@ -108,7 +111,8 @@ func (s *S) TestAppInfo(c *C) {
 	recorder := httptest.NewRecorder()
 	c.Assert(err, IsNil)
 
-	app.AppInfo(recorder, request)
+	err = app.AppInfo(recorder, request)
+	c.Assert(err, IsNil)
 	c.Assert(recorder.Code, Equals, 200)
 
 	body, err := ioutil.ReadAll(recorder.Body)
@@ -129,7 +133,8 @@ func (s *S) TestAppInfoReturns404WhenAppDoesNotExist(c *C) {
 
 	request.Header.Set("Content-Type", "application/json")
 	recorder := httptest.NewRecorder()
-	app.AppInfo(recorder, request)
+	err = app.AppInfo(recorder, request)
+	c.Assert(err, IsNil)
 	c.Assert(recorder.Code, Equals, 404)
 }
 
@@ -141,8 +146,8 @@ func (s *S) TestCreateApp(c *C) {
 
 	c.Assert(err, IsNil)
 
-	app.CreateAppHandler(recorder, request)
-
+	err = app.CreateAppHandler(recorder, request)
+	c.Assert(err, IsNil)
 	c.Assert(recorder.Body.String(), Equals, "success")
 	c.Assert(recorder.Code, Equals, 200)
 

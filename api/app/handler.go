@@ -9,12 +9,11 @@ import (
 	"net/http"
 	"os"
 	"time"
-	//"io"
 	"log"
 	"os/exec"
 )
 
-func Upload(w http.ResponseWriter, r *http.Request) {
+func Upload(w http.ResponseWriter, r *http.Request) error {
 	app := App{Name: r.URL.Query().Get(":name")}
 	app.Get()
 
@@ -23,8 +22,7 @@ func Upload(w http.ResponseWriter, r *http.Request) {
 	} else {
 		f, _, err := r.FormFile("application")
 		if err != nil {
-			http.Error(w, err.Error(), 500)
-			return
+			return err
 		}
 
 		releaseName := time.Now().Format("20060102150405")
@@ -33,8 +31,7 @@ func Upload(w http.ResponseWriter, r *http.Request) {
 
 		newFile, err := os.Create(zipFile)
 		if err != nil {
-			http.Error(w, err.Error(), 500)
-			return
+			return err
 		}
 		out, _ := ioutil.ReadAll(f)
 		newFile.Write(out)
@@ -42,8 +39,7 @@ func Upload(w http.ResponseWriter, r *http.Request) {
 		cmd := exec.Command("unzip", zipFile, "-d", zipDir)
 		output, err := cmd.Output()
 		if err != nil {
-			http.Error(w, err.Error(), 500)
-			return
+			return err
 		}
 		log.Printf(string(output))
 
@@ -62,30 +58,31 @@ func Upload(w http.ResponseWriter, r *http.Request) {
 
 		fmt.Fprint(w, "success")
 	}
+	return nil
 }
 
-func AppDelete(w http.ResponseWriter, r *http.Request) {
+func AppDelete(w http.ResponseWriter, r *http.Request) error {
 	app := App{Name: r.URL.Query().Get(":name")}
 	app.Destroy()
 	fmt.Fprint(w, "success")
+	return nil
 }
 
-func AppList(w http.ResponseWriter, r *http.Request) {
+func AppList(w http.ResponseWriter, r *http.Request) error {
 	apps, err := AllApps()
 	if err != nil {
-		http.Error(w, err.Error(), 500)
-		return
+		return err
 	}
 
 	b, err := json.Marshal(apps)
 	if err != nil {
-		http.Error(w, err.Error(), 500)
-		return
+		return err
 	}
 	fmt.Fprint(w, bytes.NewBuffer(b).String())
+	return nil
 }
 
-func AppInfo(w http.ResponseWriter, r *http.Request) {
+func AppInfo(w http.ResponseWriter, r *http.Request) error {
 	app := App{Name: r.URL.Query().Get(":name")}
 	app.Get()
 
@@ -94,34 +91,31 @@ func AppInfo(w http.ResponseWriter, r *http.Request) {
 	} else {
 		b, err := json.Marshal(app)
 		if err != nil {
-			http.Error(w, err.Error(), 500)
-			return
+			return err
 		}
 		fmt.Fprint(w, bytes.NewBuffer(b).String())
 	}
-
+	return nil
 }
 
-func CreateAppHandler(w http.ResponseWriter, r *http.Request) {
+func CreateAppHandler(w http.ResponseWriter, r *http.Request) error {
 	var app App
 
 	defer r.Body.Close()
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
-		http.Error(w, err.Error(), 500)
-		return
+		return err
 	}
 
 	err = json.Unmarshal(body, &app)
 	if err != nil {
-		http.Error(w, err.Error(), 500)
-		return
+		return err
 	}
 
 	err = app.Create()
 	if err != nil {
-		http.Error(w, err.Error(), 500)
-		return
+		return err
 	}
 	fmt.Fprint(w, "success")
+	return nil
 }
