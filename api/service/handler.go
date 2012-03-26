@@ -26,7 +26,7 @@ type ServiceT struct {
 	Name string
 }
 
-func ServicesHandler(w http.ResponseWriter, r *http.Request) {
+func ServicesHandler(w http.ResponseWriter, r *http.Request) error {
 	s := Service{}
 	services := s.All()
 	results := make([]ServiceT, 0)
@@ -44,13 +44,14 @@ func ServicesHandler(w http.ResponseWriter, r *http.Request) {
 
 	b, err := json.Marshal(results)
 	if err != nil {
-		panic(err)
+		return err
 	}
 
 	fmt.Fprint(w, bytes.NewBuffer(b).String())
+	return nil
 }
 
-func ServiceTypesHandler(w http.ResponseWriter, r *http.Request) {
+func ServiceTypesHandler(w http.ResponseWriter, r *http.Request) error {
 	s := ServiceType{}
 	sTypes := s.All()
 	results := make([]ServiceType, 0)
@@ -68,24 +69,25 @@ func ServiceTypesHandler(w http.ResponseWriter, r *http.Request) {
 
 	b, err := json.Marshal(results)
 	if err != nil {
-		panic(err)
+		return err
 	}
 
 	fmt.Fprint(w, bytes.NewBuffer(b).String())
+	return nil
 }
 
-func CreateHandler(w http.ResponseWriter, r *http.Request) {
+func CreateHandler(w http.ResponseWriter, r *http.Request) error {
 	var sj ServiceJson
 
 	defer r.Body.Close()
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
-		panic(err)
+		return err
 	}
 
 	err = json.Unmarshal(body, &sj)
 	if err != nil {
-		panic(err)
+		return err
 	}
 
 	st := ServiceType{Charm: sj.Type}
@@ -97,9 +99,10 @@ func CreateHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	s.Create()
 	fmt.Fprint(w, "success")
+	return nil
 }
 
-func DeleteHandler(w http.ResponseWriter, r *http.Request) {
+func DeleteHandler(w http.ResponseWriter, r *http.Request) error {
 	s := Service{Name: r.URL.Query().Get(":name")}
 	s.Get()
 
@@ -109,21 +112,21 @@ func DeleteHandler(w http.ResponseWriter, r *http.Request) {
 		s.Delete()
 		fmt.Fprint(w, "success")
 	}
-
+	return nil
 }
 
-func BindHandler(w http.ResponseWriter, r *http.Request) {
+func BindHandler(w http.ResponseWriter, r *http.Request) error {
 	var b BindJson
 
 	defer r.Body.Close()
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
-		panic(err)
+		return err
 	}
 
 	err = json.Unmarshal(body, &b)
 	if err != nil {
-		panic(err)
+		return err
 	}
 
 	s := Service{Name: b.Service}
@@ -136,20 +139,21 @@ func BindHandler(w http.ResponseWriter, r *http.Request) {
 		s.Bind(&a)
 		fmt.Fprint(w, "success")
 	}
+	return nil
 }
 
-func UnbindHandler(w http.ResponseWriter, r *http.Request) {
+func UnbindHandler(w http.ResponseWriter, r *http.Request) error {
 	var b BindJson
 
 	defer r.Body.Close()
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
-		panic(err)
+		return err
 	}
 
 	err = json.Unmarshal(body, &b)
 	if err != nil {
-		panic(err)
+		return err
 	}
 
 	s := Service{Name: b.Service}
@@ -162,4 +166,5 @@ func UnbindHandler(w http.ResponseWriter, r *http.Request) {
 		s.Unbind(&a)
 		fmt.Fprint(w, "success")
 	}
+	return nil
 }

@@ -1,7 +1,10 @@
+// +build ignore
+
 package main
 
 import (
 	"database/sql"
+	"."
 	"github.com/bmizerany/pat"
 	"github.com/timeredbull/tsuru/api/app"
 	"github.com/timeredbull/tsuru/api/service"
@@ -15,18 +18,18 @@ func main() {
 	defer db.Close()
 	m := pat.New()
 
-	m.Post("/services", http.HandlerFunc(service.CreateHandler))
-	m.Get("/services", http.HandlerFunc(service.ServicesHandler))
-	m.Get("/services/types", http.HandlerFunc(service.ServiceTypesHandler))
-	m.Get("/services/:name", http.HandlerFunc(service.DeleteHandler))
-	m.Post("/services/bind", http.HandlerFunc(service.BindHandler))
-	m.Post("/services/unbind", http.HandlerFunc(service.UnbindHandler))
+	m.Post("/services", webserverd.Handler(service.CreateHandler))
+	m.Get("/services", webserverd.Handler(service.ServicesHandler))
+	m.Get("/services/types", webserverd.Handler(service.ServiceTypesHandler))
+	m.Get("/services/:name", webserverd.Handler(service.DeleteHandler))
+	m.Post("/services/bind", webserverd.Handler(service.BindHandler))
+	m.Post("/services/unbind", webserverd.Handler(service.UnbindHandler))
 
-	m.Get("/apps/:name/delete", http.HandlerFunc(app.AppDelete))
-	m.Get("/apps/:name", http.HandlerFunc(app.AppInfo))
-	m.Post("/apps/:name/application", http.HandlerFunc(app.Upload))
-	m.Get("/apps", http.HandlerFunc(app.AppList))
-	m.Post("/apps", http.HandlerFunc(app.CreateAppHandler))
+	m.Get("/apps/:name/delete", webserverd.Handler(app.AppDelete))
+	m.Get("/apps/:name", webserverd.Handler(app.AppInfo))
+	m.Post("/apps/:name/application", webserverd.Handler(app.Upload))
+	m.Get("/apps", webserverd.Handler(app.AppList))
+	m.Post("/apps", webserverd.Handler(app.CreateAppHandler))
 
 	log.Fatal(http.ListenAndServe(":4000", m))
 }

@@ -61,20 +61,18 @@ func (s *ServiceSuite) TestCreateHandler(c *C) {
 
 	b := strings.NewReader(`{"name":"some_service", "type":"mysql"}`)
 	request, err := http.NewRequest("POST", "/services", b)
+	c.Assert(err, IsNil)
 
 	request.Header.Set("Content-Type", "application/json")
 	recorder := httptest.NewRecorder()
-
+	err = CreateHandler(recorder, request)
 	c.Assert(err, IsNil)
-
-	CreateHandler(recorder, request)
-
 	c.Assert(recorder.Body.String(), Equals, "success")
 	c.Assert(recorder.Code, Equals, 200)
 
 	rows, err := s.db.Query("SELECT id, service_type_id, name FROM services WHERE name = 'some_service'")
-
 	c.Check(err, IsNil)
+
 	var id, serviceTypeId int64
 	var name string
 	for rows.Next() {
@@ -98,7 +96,8 @@ func (s *ServiceSuite) TestServicesHandler(c *C) {
 	c.Assert(err, IsNil)
 
 	recorder := httptest.NewRecorder()
-	ServicesHandler(recorder, request)
+	err = ServicesHandler(recorder, request)
+	c.Assert(err, IsNil)
 	c.Assert(recorder.Code, Equals, 200)
 
 	body, err := ioutil.ReadAll(recorder.Body)
@@ -124,7 +123,8 @@ func (s *ServiceSuite) TestServiceTypesHandler(c *C) {
 	c.Assert(err, IsNil)
 
 	recorder := httptest.NewRecorder()
-	ServiceTypesHandler(recorder, request)
+	err = ServiceTypesHandler(recorder, request)
+	c.Assert(err, IsNil)
 	c.Assert(recorder.Code, Equals, 200)
 
 	body, err := ioutil.ReadAll(recorder.Body)
@@ -143,7 +143,8 @@ func (s *ServiceSuite) TestDeleteHandler(c *C) {
 	c.Assert(err, IsNil)
 
 	recorder := httptest.NewRecorder()
-	DeleteHandler(recorder, request)
+	err = DeleteHandler(recorder, request)
+	c.Assert(err, IsNil)
 	c.Assert(recorder.Code, Equals, 200)
 
 	rows, err := s.db.Query("SELECT count(*) FROM services WHERE name = 'Mysql'")
@@ -162,7 +163,8 @@ func (s *ServiceSuite) TestDeleteHandlerReturns404(c *C) {
 	c.Assert(err, IsNil)
 
 	recorder := httptest.NewRecorder()
-	DeleteHandler(recorder, request)
+	err = DeleteHandler(recorder, request)
+	c.Assert(err, IsNil)
 	c.Assert(recorder.Code, Equals, 404)
 }
 
@@ -179,7 +181,8 @@ func (s *ServiceSuite) TestBindHandler(c *C) {
 	c.Assert(err, IsNil)
 
 	recorder := httptest.NewRecorder()
-	BindHandler(recorder, request)
+	err = BindHandler(recorder, request)
+	c.Assert(err, IsNil)
 	c.Assert(recorder.Code, Equals, 200)
 
 	rows, err := s.db.Query("SELECT count(*) FROM service_apps WHERE service_id = ? AND app_id = ?", se.Id, a.Id)
@@ -199,7 +202,8 @@ func (s *ServiceSuite) TestBindHandlerReturns404(c *C) {
 	c.Assert(err, IsNil)
 
 	recorder := httptest.NewRecorder()
-	BindHandler(recorder, request)
+	err = BindHandler(recorder, request)
+	c.Assert(err, IsNil)
 	c.Assert(recorder.Code, Equals, 404)
 }
 
@@ -217,7 +221,8 @@ func (s *ServiceSuite) TestUnbindHandler(c *C) {
 	c.Assert(err, IsNil)
 
 	recorder := httptest.NewRecorder()
-	UnbindHandler(recorder, request)
+	err = UnbindHandler(recorder, request)
+	c.Assert(err, IsNil)
 	c.Assert(recorder.Code, Equals, 200)
 
 	rows, err := s.db.Query("SELECT count(*) FROM service_apps WHERE service_id = ? AND app_id = ?", se.Id, a.Id)
@@ -237,6 +242,7 @@ func (s *ServiceSuite) TestUnbindReturns404(c *C) {
 	c.Assert(err, IsNil)
 
 	recorder := httptest.NewRecorder()
-	UnbindHandler(recorder, request)
+	err = UnbindHandler(recorder, request)
+	c.Assert(err, IsNil)
 	c.Assert(recorder.Code, Equals, 404)
 }
