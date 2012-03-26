@@ -6,11 +6,11 @@ import (
 	"fmt"
 	"github.com/timeredbull/tsuru/api/unit"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"os"
-	"time"
-	"log"
 	"os/exec"
+	"time"
 )
 
 func Upload(w http.ResponseWriter, r *http.Request) error {
