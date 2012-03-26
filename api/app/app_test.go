@@ -79,13 +79,9 @@ func (s *S) TestDestroy(c *C) {
 	c.Assert(err, IsNil)
 
 	rows, err := s.db.Query("SELECT count(*) FROM apps WHERE name = 'appName'")
-
-	if err != nil {
-		panic(err)
-	}
+	c.Assert(err, IsNil)
 
 	var qtd int
-
 	for rows.Next() {
 		rows.Scan(&qtd)
 	}
@@ -105,10 +101,7 @@ func (s *S) TestCreate(c *C) {
 	c.Assert(app.Id, Not(Equals), int64(0))
 
 	rows, err := s.db.Query("SELECT id, name, framework, state FROM apps WHERE name = 'appName'")
-
-	if err != nil {
-		panic(err)
-	}
+	c.Assert(err, IsNil)
 
 	var state string
 	var name string
