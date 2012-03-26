@@ -23,7 +23,8 @@ func Upload(w http.ResponseWriter, r *http.Request) {
 	} else {
 		f, _, err := r.FormFile("application")
 		if err != nil {
-			panic(err)
+			http.Error(w, err.Error(), 500)
+			return
 		}
 
 		releaseName := time.Now().Format("20060102150405")
@@ -32,7 +33,8 @@ func Upload(w http.ResponseWriter, r *http.Request) {
 
 		newFile, err := os.Create(zipFile)
 		if err != nil {
-			panic(err)
+			http.Error(w, err.Error(), 500)
+			return
 		}
 		out, _ := ioutil.ReadAll(f)
 		newFile.Write(out)
@@ -40,7 +42,8 @@ func Upload(w http.ResponseWriter, r *http.Request) {
 		cmd := exec.Command("unzip", zipFile, "-d", zipDir)
 		output, err := cmd.Output()
 		if err != nil {
-			panic(err)
+			http.Error(w, err.Error(), 500)
+			return
 		}
 		log.Printf(string(output))
 
@@ -70,12 +73,14 @@ func AppDelete(w http.ResponseWriter, r *http.Request) {
 func AppList(w http.ResponseWriter, r *http.Request) {
 	apps, err := AllApps()
 	if err != nil {
-		panic(err)
+		http.Error(w, err.Error(), 500)
+		return
 	}
 
 	b, err := json.Marshal(apps)
 	if err != nil {
-		panic(err)
+		http.Error(w, err.Error(), 500)
+		return
 	}
 	fmt.Fprint(w, bytes.NewBuffer(b).String())
 }
@@ -89,7 +94,8 @@ func AppInfo(w http.ResponseWriter, r *http.Request) {
 	} else {
 		b, err := json.Marshal(app)
 		if err != nil {
-			panic(err)
+			http.Error(w, err.Error(), 500)
+			return
 		}
 		fmt.Fprint(w, bytes.NewBuffer(b).String())
 	}
@@ -102,17 +108,20 @@ func CreateAppHandler(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
-		panic(err)
+		http.Error(w, err.Error(), 500)
+		return
 	}
 
 	err = json.Unmarshal(body, &app)
 	if err != nil {
-		panic(err)
+		http.Error(w, err.Error(), 500)
+		return
 	}
 
 	err = app.Create()
 	if err != nil {
-		panic(err)
+		http.Error(w, err.Error(), 500)
+		return
 	}
 	fmt.Fprint(w, "success")
 }
