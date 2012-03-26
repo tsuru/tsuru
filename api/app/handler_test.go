@@ -147,13 +147,9 @@ func (s *S) TestCreateApp(c *C) {
 	c.Assert(recorder.Code, Equals, 200)
 
 	rows, err := s.db.Query("SELECT count(*) FROM apps WHERE name = 'someApp'")
-
-	if err != nil {
-		panic(err)
-	}
+	c.Assert(err, IsNil)
 
 	var qtd int
-
 	for rows.Next() {
 		rows.Scan(&qtd)
 	}
