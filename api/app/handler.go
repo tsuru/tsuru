@@ -50,11 +50,26 @@ func Upload(w http.ResponseWriter, r *http.Request) error {
 		releaseDir := releasesDir + "/" + releaseName
 
 		u := unit.Unit{Name: app.Name}
-		u.SendFile(zipDir, releaseDir)
+		err = u.SendFile(zipDir, releaseDir)
+		if err != nil {
+			return err
+		}
 		//u.Command(fmt.Sprintf("'rm -rf %s'", currentDir))
-		u.Command(fmt.Sprintf("'cd %s && ln -nfs %s current'", releasesDir, releaseName))
-		u.Command("'sudo killall gunicorn_django'")
-		u.Command(fmt.Sprintf("'cd %s && sudo %s --daemon --workers=3 --bind=127.0.0.1:8888'", currentDir, gunicorn))
+		output, err = u.Command(fmt.Sprintf("'cd %s && ln -nfs %s current'", releasesDir, releaseName))
+		log.Printf(string(output))
+		if err != nil {
+			return err
+		}
+		output, err = u.Command("'sudo killall gunicorn_django'")
+		log.Printf(string(output))
+		if err != nil {
+			return err
+		}
+		output, err = u.Command(fmt.Sprintf("'cd %s && sudo %s --daemon --workers=3 --bind=127.0.0.1:8888'", currentDir, gunicorn))
+		log.Printf(string(output))
+		if err != nil {
+			return err
+		}
 
 		fmt.Fprint(w, "success")
 	}
