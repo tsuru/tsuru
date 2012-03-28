@@ -37,7 +37,7 @@ func Upload(w http.ResponseWriter, r *http.Request) error {
 		newFile.Write(out)
 
 		cmd := exec.Command("unzip", zipFile, "-d", zipDir)
-		output, err := cmd.Output()
+		output, err := cmd.CombinedOutput()
 		if err != nil {
 			return err
 		}
