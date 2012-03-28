@@ -1,10 +1,9 @@
 package service_test
 
 import (
-	"database/sql"
 	"encoding/json"
 	"fmt"
-	_ "github.com/mattn/go-sqlite3"
+	"launchpad.net/mgo"
 	. "github.com/timeredbull/tsuru/api/app"
 	. "github.com/timeredbull/tsuru/database"
 	. "github.com/timeredbull/tsuru/api/service"
@@ -23,37 +22,38 @@ type ServiceSuite struct {
 	service     *Service
 	serviceType *ServiceType
 	serviceApp  *ServiceApp
+	session  *mgo.Session
 }
 
 var _ = Suite(&ServiceSuite{})
 
 func (s *ServiceSuite) SetUpSuite(c *C) {
-	Db, _ = sql.Open("sqlite3", "./tsuru.db")
+	s.session, _ = mgo.Dial("localhost:27017")
 
-	_, err := Db.Exec("CREATE TABLE 'services' ('id' INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, 'service_type_id' integer,'name' varchar(255))")
-	c.Check(err, IsNil)
+	// _, err := session.Exec("CREATE TABLE 'services' ('id' INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, 'service_type_id' integer,'name' varchar(255))")
+	// c.Check(err, IsNil)
 
-	_, err = Db.Exec("CREATE TABLE 'service_types' ('id' INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, 'name' varchar(255), 'charm' varchar(255))")
-	c.Check(err, IsNil)
+	// _, err = session.Exec("CREATE TABLE 'service_types' ('id' INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, 'name' varchar(255), 'charm' varchar(255))")
+	// c.Check(err, IsNil)
 
-	_, err = Db.Exec("CREATE TABLE 'service_apps' ('id' INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, 'service_id' integer, 'app_id' integer)")
-	c.Check(err, IsNil)
+	// _, err = session.Exec("CREATE TABLE 'service_apps' ('id' INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, 'service_id' integer, 'app_id' integer)")
+	// c.Check(err, IsNil)
 
-	_, err = Db.Exec("CREATE TABLE 'apps' ('id' INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, 'name' varchar(255), 'framework' varchar(255), 'state' varchar(255), ip varchar(100))")
-	c.Check(err, IsNil)
+	// _, err = session.Exec("CREATE TABLE 'apps' ('id' INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, 'name' varchar(255), 'framework' varchar(255), 'state' varchar(255), ip varchar(100))")
+	// c.Check(err, IsNil)
 }
 
 func (s *ServiceSuite) TearDownSuite(c *C) {
-	os.Remove("./tsuru.db")
-	Db.Close()
+	/* os.Remove("./tsuru.db") */
+	s.session.Close()
 }
 
-func (s *ServiceSuite) TearDownTest(c *C) {
-	Db.Exec("DELETE FROM services")
-	Db.Exec("DELETE FROM service_types")
-	Db.Exec("DELETE FROM service_apps")
-	Db.Exec("DELETE FROM apps")
-}
+/* func (s *ServiceSuite) TearDownTest(c *C) { */
+	// session.Exec("DELETE FROM services")
+	// session.Exec("DELETE FROM service_types")
+	// session.Exec("DELETE FROM service_apps")
+	// session.Exec("DELETE FROM apps")
+/* } */
 
 func (s *ServiceSuite) TestCreateHandler(c *C) {
 	st := ServiceType{Name: "Mysql", Charm: "mysql"}
@@ -70,7 +70,12 @@ func (s *ServiceSuite) TestCreateHandler(c *C) {
 	c.Assert(recorder.Body.String(), Equals, "success")
 	c.Assert(recorder.Code, Equals, 200)
 
-	rows, err := Db.Query("SELECT id, service_type_id, name FROM services WHERE name = 'some_service'")
+	//"SELECT id, service_type_id, name FROM services WHERE name = 'some_service'"
+	query := map[string]string{
+		"name": "some_service",
+	}
+	collection := session.DB("tsuru_test").C("services")
+	rows, err := collection.find(query)
 	c.Check(err, IsNil)
 
 	var id, serviceTypeId int64
@@ -147,7 +152,12 @@ func (s *ServiceSuite) TestDeleteHandler(c *C) {
 	c.Assert(err, IsNil)
 	c.Assert(recorder.Code, Equals, 200)
 
-	rows, err := Db.Query("SELECT count(*) FROM services WHERE name = 'Mysql'")
+	/* rows, err := session.Query("SELECT count(*) FROM services WHERE name = 'Mysql'") */
+	query := map[string]string{
+		"name": "Mysql",
+	}
+	collection := session.DB("tsuru_test").C("services")
+	rows, err := collection.find(query)
 	c.Check(err, IsNil)
 
 	var qtd int
@@ -185,7 +195,12 @@ func (s *ServiceSuite) TestBindHandler(c *C) {
 	c.Assert(err, IsNil)
 	c.Assert(recorder.Code, Equals, 200)
 
-	rows, err := Db.Query("SELECT count(*) FROM service_apps WHERE service_id = ? AND app_id = ?", se.Id, a.Id)
+	rows, err := session.Query("SELECT count(*) FROM service_apps WHERE service_id = ? AND app_id = ?", se.Id, a.Id)
+	query := map[string]string{
+		"service_id": "Mysql",
+	}
+	collection := session.DB("tsuru_test").C("services")
+	rows, err := collection.find(query)
 	c.Check(err, IsNil)
 
 	var qtd int
@@ -225,7 +240,7 @@ func (s *ServiceSuite) TestUnbindHandler(c *C) {
 	c.Assert(err, IsNil)
 	c.Assert(recorder.Code, Equals, 200)
 
-	rows, err := Db.Query("SELECT count(*) FROM service_apps WHERE service_id = ? AND app_id = ?", se.Id, a.Id)
+	rows, err := session.Query("SELECT count(*) FROM service_apps WHERE service_id = ? AND app_id = ?", se.Id, a.Id)
 	c.Check(err, IsNil)
 
 	var qtd int

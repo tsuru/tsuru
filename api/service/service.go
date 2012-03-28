@@ -1,11 +1,7 @@
 package service
 
 import (
-	"database/sql"
-	"errors"
-	/* "github.com/cobrateam/gothic/sqlgen" */
-	_ "github.com/mattn/go-sqlite3"
-	//_ "github.com/ziutek/mymysql/godrv"
+	/* "errors" */
 	. "github.com/timeredbull/tsuru/api/app"
 	. "github.com/timeredbull/tsuru/database"
 	"github.com/timeredbull/tsuru/api/unit"
@@ -18,38 +14,47 @@ type Service struct {
 }
 
 func (s *Service) Get() error {
-	var query string
-	var rows *sql.Rows
+	/* var rows *sql.Rows */
+	var query interface{}
 	var err error
 	switch {
 	case s.Id != 0:
-		query = "SELECT id, service_type_id, name FROM services WHERE id = ?"
-		rows, err = Db.Query(query, s.Id)
+		// query = "SELECT id, service_type_id, name FROM services WHERE id = ?"
+		// rows, err = Db.Query(query, s.Id)
+		query = map[string]int64{
+			"id": s.Id,
+		}
 	case s.Name != "":
-		query = "SELECT id, service_type_id, name FROM services WHERE name = ?"
-		rows, err = Db.Query(query, s.Name)
+		// query = "SELECT id, service_type_id, name FROM services WHERE name = ?"
+		// rows, err = Db.Query(query, s.Name)
+		query = map[string]string{
+			"name": s.Name,
+		}
 	}
+
+	c := Session.DB("tsuru").C("services")
+	err = c.Find(query).One(&s)
 
 	if err != nil {
 		panic(err)
 	}
 
-	if rows != nil {
-		for rows.Next() {
-			rows.Scan(&s.Id, &s.ServiceTypeId, &s.Name)
-		}
-	} else {
-		return errors.New("Not found")
-	}
+	// if rows != nil {
+	// 	for rows.Next() {
+	// 		rows.Scan(&s.Id, &s.ServiceTypeId, &s.Name)
+	// 	}
+	// } else {
+	// 	return errors.New("Not found")
+	// }
 	return nil
 }
 
 func (s *Service) All() (result []Service) {
 	result = make([]Service, 0)
 
-	query := "select id, service_type_id, name from services"
-	/* query := sqlgen.Select(s) */
-	rows, err := Db.Query(query)
+	/* query := "select id, service_type_id, name from services" */
+	c := Session.DB("tsuru").C("services")
+	rows, err := c.All()
 	if err != nil {
 		panic(err)
 	}
