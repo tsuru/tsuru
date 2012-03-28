@@ -3,15 +3,20 @@
 package main
 
 import (
+	"database/sql"
 	"."
 	"github.com/bmizerany/pat"
 	"github.com/timeredbull/tsuru/api/app"
+	. "github.com/timeredbull/tsuru/database"
 	"github.com/timeredbull/tsuru/api/service"
+	_ "github.com/mattn/go-sqlite3"
 	"log"
 	"net/http"
 )
 
 func main() {
+	Db, _ = sql.Open("sqlite3", "./tsuru.db")
+	defer Db.Close()
 	m := pat.New()
 
 	m.Post("/services", webserverd.Handler(service.CreateHandler))

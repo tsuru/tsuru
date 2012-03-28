@@ -4,6 +4,7 @@ import (
 	. "github.com/timeredbull/tsuru/api/app"
 	. "github.com/timeredbull/tsuru/api/service"
 	. "launchpad.net/gocheck"
+	. "github.com/timeredbull/tsuru/database"
 )
 
 func (s *ServiceSuite) createService() {
@@ -41,7 +42,7 @@ func (s *ServiceSuite) TestAllServices(c *C) {
 
 func (s *ServiceSuite) TestCreateService(c *C) {
 	s.createService()
-	rows, err := s.db.Query("SELECT id, service_type_id, name FROM services WHERE name = 'my_service'")
+	rows, err := Db.Query("SELECT id, service_type_id, name FROM services WHERE name = 'my_service'")
 	c.Check(err, IsNil)
 
 	var id int64
@@ -61,7 +62,7 @@ func (s *ServiceSuite) TestDeleteService(c *C) {
 	s.createService()
 	s.service.Delete()
 
-	rows, err := s.db.Query("SELECT count(*) FROM services WHERE name = 'my_service'")
+	rows, err := Db.Query("SELECT count(*) FROM services WHERE name = 'my_service'")
 	c.Assert(err, IsNil)
 
 	var qtd int
@@ -94,7 +95,7 @@ func (s *ServiceSuite) TestBindService(c *C) {
 	app.Create()
 	s.service.Bind(app)
 
-	rows, err := s.db.Query("SELECT service_id, app_id FROM service_apps WHERE service_id = ? AND app_id = ?", s.service.Id, app.Id)
+	rows, err := Db.Query("SELECT service_id, app_id FROM service_apps WHERE service_id = ? AND app_id = ?", s.service.Id, app.Id)
 	c.Assert(err, IsNil)
 
 	var serviceId int64
@@ -114,7 +115,7 @@ func (s *ServiceSuite) TestUnbindService(c *C) {
 	s.service.Bind(app)
 	s.service.Unbind(app)
 
-	rows, err := s.db.Query("SELECT count(*) FROM service_apps WHERE service_id = ? AND app_id = ?", s.service.Id, app.Id)
+	rows, err := Db.Query("SELECT count(*) FROM service_apps WHERE service_id = ? AND app_id = ?", s.service.Id, app.Id)
 	c.Assert(err, IsNil)
 
 	var qtd int

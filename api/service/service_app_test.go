@@ -3,6 +3,7 @@ package service_test
 import (
 	. "github.com/timeredbull/tsuru/api/app"
 	. "github.com/timeredbull/tsuru/api/service"
+	. "github.com/timeredbull/tsuru/database"
 	. "launchpad.net/gocheck"
 )
 
@@ -16,7 +17,7 @@ func (s *ServiceSuite) createServiceApp() {
 
 func (s *ServiceSuite) TestCreateServiceApp(c *C) {
 	s.createServiceApp()
-	rows, err := s.db.Query("SELECT service_id, app_id FROM service_apps WHERE service_id = 2 AND app_id = 1")
+	rows, err := Db.Query("SELECT service_id, app_id FROM service_apps WHERE service_id = 2 AND app_id = 1")
 	c.Check(err, IsNil)
 
 	var serviceId int
@@ -35,7 +36,7 @@ func (s *ServiceSuite) TestDeleteServiceApp(c *C) {
 	s.createServiceApp()
 	s.serviceApp.Delete()
 
-	rows, err := s.db.Query("SELECT count(*) FROM service_apps WHERE service_id = 2 AND app_id = 1")
+	rows, err := Db.Query("SELECT count(*) FROM service_apps WHERE service_id = 2 AND app_id = 1")
 	c.Assert(err, IsNil)
 
 	var qtd int
