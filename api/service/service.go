@@ -7,6 +7,7 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 	//_ "github.com/ziutek/mymysql/godrv"
 	. "github.com/timeredbull/tsuru/api/app"
+	. "github.com/timeredbull/tsuru/database"
 	"github.com/timeredbull/tsuru/api/unit"
 )
 
@@ -17,19 +18,16 @@ type Service struct {
 }
 
 func (s *Service) Get() error {
-	db, _ := sql.Open("sqlite3", "./tsuru.db")
-	defer db.Close()
-
 	var query string
 	var rows *sql.Rows
 	var err error
 	switch {
 	case s.Id != 0:
 		query = "SELECT id, service_type_id, name FROM services WHERE id = ?"
-		rows, err = db.Query(query, s.Id)
+		rows, err = Db.Query(query, s.Id)
 	case s.Name != "":
 		query = "SELECT id, service_type_id, name FROM services WHERE name = ?"
-		rows, err = db.Query(query, s.Name)
+		rows, err = Db.Query(query, s.Name)
 	}
 
 	if err != nil {
@@ -47,14 +45,11 @@ func (s *Service) Get() error {
 }
 
 func (s *Service) All() (result []Service) {
-	db, _ := sql.Open("sqlite3", "./tsuru.db")
-	defer db.Close()
-
 	result = make([]Service, 0)
 
 	query := "select id, service_type_id, name from services"
 	/* query := sqlgen.Select(s) */
-	rows, err := db.Query(query)
+	rows, err := Db.Query(query)
 	if err != nil {
 		panic(err)
 	}
@@ -77,16 +72,13 @@ func (s *Service) All() (result []Service) {
 }
 
 func (s *Service) Create() error {
-	db, _ := sql.Open("sqlite3", "./tsuru.db")
-	defer db.Close()
-
 	query := "INSERT INTO services (service_type_id, name) VALUES (?, ?)"
-	insertStmt, err := db.Prepare(query)
+	insertStmt, err := Db.Prepare(query)
 	if err != nil {
 		panic(err)
 	}
 
-	tx, err := db.Begin()
+	tx, err := Db.Begin()
 	if err != nil {
 		panic(err)
 	}
@@ -111,16 +103,13 @@ func (s *Service) Create() error {
 }
 
 func (s *Service) Delete() error {
-	db, _ := sql.Open("sqlite3", "./tsuru.db")
-	defer db.Close()
-
 	query := "DELETE FROM services WHERE name = ? AND service_type_id = ?"
-	insertStmt, err := db.Prepare(query)
+	insertStmt, err := Db.Prepare(query)
 	if err != nil {
 		panic(err)
 	}
 
-	tx, err := db.Begin()
+	tx, err := Db.Begin()
 	if err != nil {
 		panic(err)
 	}

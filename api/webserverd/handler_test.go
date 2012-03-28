@@ -24,6 +24,11 @@ func simpleHandler(w http.ResponseWriter, r *http.Request) error {
 	return nil
 }
 
+// func anotherSimpleHandler(w http.ResponseWriter, r *http.Request, db *DB) error {
+// 	fmt.Fprint(w, "success")
+// 	return nil
+// }
+
 func (s *S) TestHandlerReturns500WhenInternalHandlerReturnsAnError(c *C) {
 	recorder := httptest.NewRecorder()
 	request, err := http.NewRequest("GET", "/apps", nil)
@@ -43,3 +48,7 @@ func (s *S) TestHandlerShouldPassAnHandlerWithoutError(c *C) {
 	c.Assert(recorder.Code, Equals, 200)
 	c.Assert(recorder.Body.String(), Equals, "success")
 }
+
+// func (s *S) TestHandlerRepassesDbSession(c *C) {
+
+// }

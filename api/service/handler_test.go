@@ -6,6 +6,7 @@ import (
 	"fmt"
 	_ "github.com/mattn/go-sqlite3"
 	. "github.com/timeredbull/tsuru/api/app"
+	. "github.com/timeredbull/tsuru/database"
 	. "github.com/timeredbull/tsuru/api/service"
 	"io/ioutil"
 	. "launchpad.net/gocheck"
@@ -19,7 +20,6 @@ import (
 func Test(t *testing.T) { TestingT(t) }
 
 type ServiceSuite struct {
-	db          *sql.DB
 	service     *Service
 	serviceType *ServiceType
 	serviceApp  *ServiceApp
@@ -28,31 +28,31 @@ type ServiceSuite struct {
 var _ = Suite(&ServiceSuite{})
 
 func (s *ServiceSuite) SetUpSuite(c *C) {
-	s.db, _ = sql.Open("sqlite3", "./tsuru.db")
+	Db, _ = sql.Open("sqlite3", "./tsuru.db")
 
-	_, err := s.db.Exec("CREATE TABLE 'services' ('id' INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, 'service_type_id' integer,'name' varchar(255))")
+	_, err := Db.Exec("CREATE TABLE 'services' ('id' INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, 'service_type_id' integer,'name' varchar(255))")
 	c.Check(err, IsNil)
 
-	_, err = s.db.Exec("CREATE TABLE 'service_types' ('id' INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, 'name' varchar(255), 'charm' varchar(255))")
+	_, err = Db.Exec("CREATE TABLE 'service_types' ('id' INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, 'name' varchar(255), 'charm' varchar(255))")
 	c.Check(err, IsNil)
 
-	_, err = s.db.Exec("CREATE TABLE 'service_apps' ('id' INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, 'service_id' integer, 'app_id' integer)")
+	_, err = Db.Exec("CREATE TABLE 'service_apps' ('id' INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, 'service_id' integer, 'app_id' integer)")
 	c.Check(err, IsNil)
 
-	_, err = s.db.Exec("CREATE TABLE 'apps' ('id' INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, 'name' varchar(255), 'framework' varchar(255), 'state' varchar(255), ip varchar(100))")
+	_, err = Db.Exec("CREATE TABLE 'apps' ('id' INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, 'name' varchar(255), 'framework' varchar(255), 'state' varchar(255), ip varchar(100))")
 	c.Check(err, IsNil)
 }
 
 func (s *ServiceSuite) TearDownSuite(c *C) {
 	os.Remove("./tsuru.db")
-	s.db.Close()
+	Db.Close()
 }
 
 func (s *ServiceSuite) TearDownTest(c *C) {
-	s.db.Exec("DELETE FROM services")
-	s.db.Exec("DELETE FROM service_types")
-	s.db.Exec("DELETE FROM service_apps")
-	s.db.Exec("DELETE FROM apps")
+	Db.Exec("DELETE FROM services")
+	Db.Exec("DELETE FROM service_types")
+	Db.Exec("DELETE FROM service_apps")
+	Db.Exec("DELETE FROM apps")
 }
 
 func (s *ServiceSuite) TestCreateHandler(c *C) {
@@ -70,7 +70,7 @@ func (s *ServiceSuite) TestCreateHandler(c *C) {
 	c.Assert(recorder.Body.String(), Equals, "success")
 	c.Assert(recorder.Code, Equals, 200)
 
-	rows, err := s.db.Query("SELECT id, service_type_id, name FROM services WHERE name = 'some_service'")
+	rows, err := Db.Query("SELECT id, service_type_id, name FROM services WHERE name = 'some_service'")
 	c.Check(err, IsNil)
 
 	var id, serviceTypeId int64
@@ -147,7 +147,7 @@ func (s *ServiceSuite) TestDeleteHandler(c *C) {
 	c.Assert(err, IsNil)
 	c.Assert(recorder.Code, Equals, 200)
 
-	rows, err := s.db.Query("SELECT count(*) FROM services WHERE name = 'Mysql'")
+	rows, err := Db.Query("SELECT count(*) FROM services WHERE name = 'Mysql'")
 	c.Check(err, IsNil)
 
 	var qtd int
@@ -185,7 +185,7 @@ func (s *ServiceSuite) TestBindHandler(c *C) {
 	c.Assert(err, IsNil)
 	c.Assert(recorder.Code, Equals, 200)
 
-	rows, err := s.db.Query("SELECT count(*) FROM service_apps WHERE service_id = ? AND app_id = ?", se.Id, a.Id)
+	rows, err := Db.Query("SELECT count(*) FROM service_apps WHERE service_id = ? AND app_id = ?", se.Id, a.Id)
 	c.Check(err, IsNil)
 
 	var qtd int
@@ -225,7 +225,7 @@ func (s *ServiceSuite) TestUnbindHandler(c *C) {
 	c.Assert(err, IsNil)
 	c.Assert(recorder.Code, Equals, 200)
 
-	rows, err := s.db.Query("SELECT count(*) FROM service_apps WHERE service_id = ? AND app_id = ?", se.Id, a.Id)
+	rows, err := Db.Query("SELECT count(*) FROM service_apps WHERE service_id = ? AND app_id = ?", se.Id, a.Id)
 	c.Check(err, IsNil)
 
 	var qtd int
