@@ -12,16 +12,27 @@ import (
 
 func Test(t *testing.T) { TestingT(t) }
 
-type S struct{}
+type S struct{
+	db *sql.DB
+}
 
 var _ = Suite(&S{})
 
-func (s *S) TestCollectorUpdate(c *C) {
-	db, _ := sql.Open("sqlite3", "./tsuru.db")
-	defer db.Close()
-	insertApp, _ := db.Prepare("INSERT INTO apps (id, name, state) VALUES (?, ?, ?)")
+func (s *S) SetUpSuite(c *C) {
+	s.db, _ = sql.Open("sqlite3", "./tsuru.db")
+	_, err := s.db.Exec("CREATE TABLE apps (id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, name varchar(255), framework varchar(255), state varchar(255), ip varchar(100))")
+	c.Check(err, IsNil)
+}
 
-	tx, _ := db.Begin()
+func (s *S) TearDownSuite(c *C) {
+	os.Remove("./tsuru.db")
+	s.db.Close()
+}
+
+func (s *S) TestCollectorUpdate(c *C) {
+	insertApp, _ := s.db.Prepare("INSERT INTO apps (id, name, state) VALUES (?, ?, ?)")
+
+	tx, _ := s.db.Begin()
 	stmt := tx.Stmt(insertApp)
 	defer stmt.Close()
 	stmt.Exec(1, "umaappqq", "STOPPED")
@@ -36,9 +47,9 @@ func (s *S) TestCollectorUpdate(c *C) {
 					"umaappqq/0": Unit{
 						State: "started"}}}}}
 
-	collector.Update(db, out)
+	collector.Update(s.db, out)
 
-	rows, _ := db.Query("SELECT state FROM apps WHERE id = 1")
+	rows, _ := s.db.Query("SELECT state FROM apps WHERE id = 1")
 
 	var state string
 	for rows.Next() {
