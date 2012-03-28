@@ -12,7 +12,7 @@ import (
 
 func Test(t *testing.T) { TestingT(t) }
 
-type S struct{
+type S struct {
 	db *sql.DB
 }
 
@@ -45,7 +45,7 @@ func (s *S) TestCollectorUpdate(c *C) {
 			"umaappqq": Service{
 				Units: map[string]Unit{
 					"umaappqq/0": Unit{
-						State: "started",
+						State:   "started",
 						Machine: 1,
 					},
 				},
@@ -53,16 +53,16 @@ func (s *S) TestCollectorUpdate(c *C) {
 		},
 		Machines: map[int]interface{}{
 			0: map[interface{}]interface{}{
-				"dns-name": "192.168.0.10",
-				"instance-id": "i-00000zz6",
+				"dns-name":       "192.168.0.10",
+				"instance-id":    "i-00000zz6",
 				"instance-state": "running",
-				"state": "running",
+				"state":          "running",
 			},
 			1: map[interface{}]interface{}{
-				"dns-name": "192.168.0.11",
-				"instance-id": "i-00000zz7",
+				"dns-name":       "192.168.0.11",
+				"instance-id":    "i-00000zz7",
 				"instance-state": "running",
-				"state": "running",
+				"state":          "running",
 			},
 		},
 	}
@@ -92,7 +92,7 @@ func (s *S) TestCollectorParser(c *C) {
 			"umaappqq": Service{
 				Units: map[string]Unit{
 					"umaappqq/0": Unit{
-						State: "started",
+						State:   "started",
 						Machine: 1,
 					},
 				},
@@ -100,16 +100,16 @@ func (s *S) TestCollectorParser(c *C) {
 		},
 		Machines: map[int]interface{}{
 			0: map[interface{}]interface{}{
-				"dns-name": "192.168.0.10",
-				"instance-id": "i-00000zz6",
+				"dns-name":       "192.168.0.10",
+				"instance-id":    "i-00000zz6",
 				"instance-state": "running",
-				"state": "running",
+				"state":          "running",
 			},
 			1: map[interface{}]interface{}{
-				"dns-name": "192.168.0.11",
-				"instance-id": "i-00000zz7",
+				"dns-name":       "192.168.0.11",
+				"instance-id":    "i-00000zz7",
 				"instance-state": "running",
-				"state": "running",
+				"state":          "running",
 			},
 		},
 	}
