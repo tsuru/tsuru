@@ -1,4 +1,4 @@
-package api
+package user
 
 import (
 	"database/sql"
