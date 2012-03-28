@@ -85,6 +85,20 @@ func (s *S) TestGetUserById(c *C) {
 	c.Assert(err, IsNil)
 }
 
+func (s *S) TestGetUserByEmail(c *C) {
+	u := User{Email: "wolverine@xmen.com", Password: "123456"}
+	err := u.Create()
+	c.Assert(err, IsNil)
+
+	u = User{Email: "wolverine@xmen.com"}
+	err = u.Get()
+	c.Assert(err, IsNil)
+	c.Assert(u.Email, Equals, "wolverine@xmen.com")
+	c.Assert(u.Password, Equals, "123456")
+	_, err = s.db.Exec(`DELETE FROM users WHERE email="wolverine@xmen.com"`)
+	c.Assert(err, IsNil)
+}
+
 func (s *S) TestGetUserReturnsErrorWhenNoUserIsFound(c *C) {
 	u := User{Id: 10}
 	err := u.Get()

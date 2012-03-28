@@ -1,6 +1,7 @@
 package user
 
 import (
+	"fmt"
 	"github.com/timeredbull/tsuru/database"
 )
 
@@ -16,7 +17,16 @@ func (u *User) Create() error {
 }
 
 func (u *User) Get() error {
-	row := database.Db.QueryRow("SELECT email, password FROM users WHERE id = ?", u.Id)
+	var field string
+	var args = make([]interface{}, 1)
+	if u.Id > 0 {
+		field = "id"
+		args[0] = u.Id
+	} else {
+		field = "email"
+		args[0] = u.Email
+	}
+	row := database.Db.QueryRow(fmt.Sprintf("SELECT email, password FROM users WHERE %s = ?", field), args...)
 	err := row.Scan(&u.Email, &u.Password)
 	return err
 }
