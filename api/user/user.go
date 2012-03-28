@@ -11,7 +11,12 @@ type User struct {
 }
 
 func (u *User) Create() error {
-	stmt, _ := database.Db.Prepare("INSERT INTO users (email, password) VALUES (?, ?)")
-	stmt.Exec(u.Email, u.Password)
-	return nil
+	_, err := database.Db.Exec("INSERT INTO users (email, password) VALUES (?, ?)", u.Email, u.Password)
+	return err
+}
+
+func (u *User) Get() error {
+	row := database.Db.QueryRow("SELECT email, password FROM users WHERE id = ?", u.Id)
+	err := row.Scan(&u.Email, &u.Password)
+	return err
 }
