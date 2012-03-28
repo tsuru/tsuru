@@ -39,10 +39,8 @@ func (c *Collector) Parse(data []byte) *output {
 func (c *Collector) Update(db *sql.DB, out *output) {
 	fmt.Println("updating status")
 
-	var state string
-
-	updateApp, _ := db.Prepare("UPDATE apps SET state=? WHERE name=?")
-
+	var state, ip string
+	updateApp, _ := db.Prepare("UPDATE apps SET state=?, ip=? WHERE name=?")
 	for serviceName, service := range out.Services {
 		for _, unit := range service.Units {
 			tx, _ := db.Begin()
@@ -53,9 +51,9 @@ func (c *Collector) Update(db *sql.DB, out *output) {
 			} else {
 				state = "STOPPED"
 			}
-			stmt.Exec(state, serviceName)
+			ip = out.Machines[unit.Machine].(map[interface{}]interface{})["dns-name"].(string)
+			stmt.Exec(state, ip, serviceName)
 			tx.Commit()
 		}
 	}
-
 }

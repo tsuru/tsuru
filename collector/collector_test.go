@@ -25,8 +25,8 @@ func (s *S) SetUpSuite(c *C) {
 }
 
 func (s *S) TearDownSuite(c *C) {
-	os.Remove("./tsuru.db")
 	s.db.Close()
+	os.Remove("./tsuru.db")
 }
 
 func (s *S) TestCollectorUpdate(c *C) {
@@ -45,18 +45,39 @@ func (s *S) TestCollectorUpdate(c *C) {
 			"umaappqq": Service{
 				Units: map[string]Unit{
 					"umaappqq/0": Unit{
-						State: "started"}}}}}
+						State: "started",
+						Machine: 1,
+					},
+				},
+			},
+		},
+		Machines: map[int]interface{}{
+			0: map[interface{}]interface{}{
+				"dns-name": "192.168.0.10",
+				"instance-id": "i-00000zz6",
+				"instance-state": "running",
+				"state": "running",
+			},
+			1: map[interface{}]interface{}{
+				"dns-name": "192.168.0.11",
+				"instance-id": "i-00000zz7",
+				"instance-state": "running",
+				"state": "running",
+			},
+		},
+	}
 
 	collector.Update(s.db, out)
 
-	rows, _ := s.db.Query("SELECT state FROM apps WHERE id = 1")
+	rows, _ := s.db.Query("SELECT state, ip FROM apps WHERE id = 1")
 
-	var state string
+	var state, ip string
 	for rows.Next() {
-		rows.Scan(&state)
+		rows.Scan(&state, &ip)
 	}
 
-	c.Assert("STARTED", DeepEquals, state)
+	c.Assert(state, DeepEquals, "STARTED")
+	c.Assert(ip, DeepEquals, "192.168.0.11")
 }
 
 func (s *S) TestCollectorParser(c *C) {
