@@ -11,7 +11,8 @@ import (
 type Collector struct{}
 
 type Unit struct {
-	State string
+	Machine int
+	State   string
 }
 
 type Service struct {
@@ -20,6 +21,7 @@ type Service struct {
 
 type output struct {
 	Services map[string]Service
+	Machines map[int]interface{}
 }
 
 func (c *Collector) Collect() ([]byte, error) {

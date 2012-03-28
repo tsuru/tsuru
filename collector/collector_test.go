@@ -46,7 +46,6 @@ func (s *S) TestCollectorUpdate(c *C) {
 	}
 
 	c.Assert("STARTED", DeepEquals, state)
-
 }
 
 func (s *S) TestCollectorParser(c *C) {
@@ -61,7 +60,27 @@ func (s *S) TestCollectorParser(c *C) {
 			"umaappqq": Service{
 				Units: map[string]Unit{
 					"umaappqq/0": Unit{
-						State: "started"}}}}}
+						State: "started",
+						Machine: 1,
+					},
+				},
+			},
+		},
+		Machines: map[int]interface{}{
+			0: map[interface{}]interface{}{
+				"dns-name": "192.168.0.10",
+				"instance-id": "i-00000zz6",
+				"instance-state": "running",
+				"state": "running",
+			},
+			1: map[interface{}]interface{}{
+				"dns-name": "192.168.0.11",
+				"instance-id": "i-00000zz7",
+				"instance-state": "running",
+				"state": "running",
+			},
+		},
+	}
 
 	c.Assert(collector.Parse(jujuOutput), DeepEquals, expected)
 }
