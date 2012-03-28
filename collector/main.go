@@ -12,7 +12,7 @@ import (
 func main() {
 	var collector collector.Collector
 
-	db, _ := sql.Open("sqlite3", "/home/ubuntu/cloudfoundry/vcap/cloud_controller/db/cloudcontroller.sqlite3")
+	db, _ := sql.Open("sqlite3", "../api/webserverd/tsuru.db")
 	defer db.Close()
 
 	c := time.Tick(1 * time.Minute)
