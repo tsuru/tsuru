@@ -13,20 +13,20 @@ import (
 )
 
 func (s *S) TestUpload(c *C) {
-	fileApplicationContents := "This is a test file."
+	fileApplicationContents, _ := ioutil.ReadFile("testdata/example.zip")
 	message := `
 --MyBoundary
-Content-Disposition: form-data; name="application"; filename="application.txt"
-Content-Type: text/plain
+Content-Disposition: form-data; name="application"; filename="application.zip"
+Content-Type: application/zip
 
-` + fileApplicationContents + `
+` + string(fileApplicationContents) + `
 --MyBoundary--
 `
 
 	myApp := app.App{Name: "myApp", Framework: "django"}
 	myApp.Create()
 
-	b := bytes.NewBufferString(strings.Replace(message, "\n", "\r\n", -1))
+	b := bytes.NewBufferString(message)
 	request, err := http.NewRequest("POST", "/apps"+myApp.Name+"/application?:name="+myApp.Name, b)
 	c.Assert(err, IsNil)
 
