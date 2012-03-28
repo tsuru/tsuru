@@ -37,7 +37,7 @@ func (u *Unit) RemoveRelation(su *Unit) error {
 func (u *Unit) Command(command string) ([]byte, error) {
 	cmd := exec.Command("juju", "ssh", "-o", "StrictHostKeyChecking no", u.Name+"/0", command)
 	log.Printf("executing %s on %s", command, u.Name)
-	return cmd.Output()
+	return cmd.CombinedOutput()
 }
 
 func (u *Unit) SendFile(srcPath, dstPath string) error {

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"github.com/timeredbull/tsuru/api/app"
+	. "github.com/timeredbull/tsuru/database"
 	"io/ioutil"
 	. "launchpad.net/gocheck"
 	"net/http"
@@ -12,20 +13,20 @@ import (
 )
 
 func (s *S) TestUpload(c *C) {
-	fileApplicationContents := "This is a test file."
+	fileApplicationContents, _ := ioutil.ReadFile("testdata/example.zip")
 	message := `
 --MyBoundary
-Content-Disposition: form-data; name="application"; filename="application.txt"
-Content-Type: text/plain
+Content-Disposition: form-data; name="application"; filename="application.zip"
+Content-Type: application/zip
 
-` + fileApplicationContents + `
+` + string(fileApplicationContents) + `
 --MyBoundary--
 `
 
 	myApp := app.App{Name: "myApp", Framework: "django"}
 	myApp.Create()
 
-	b := bytes.NewBufferString(strings.Replace(message, "\n", "\r\n", -1))
+	b := bytes.NewBufferString(message)
 	request, err := http.NewRequest("POST", "/apps"+myApp.Name+"/application?:name="+myApp.Name, b)
 	c.Assert(err, IsNil)
 
@@ -151,7 +152,7 @@ func (s *S) TestCreateApp(c *C) {
 	c.Assert(recorder.Body.String(), Equals, "success")
 	c.Assert(recorder.Code, Equals, 200)
 
-	rows, err := s.db.Query("SELECT count(*) FROM apps WHERE name = 'someApp'")
+	rows, err := Db.Query("SELECT count(*) FROM apps WHERE name = 'someApp'")
 	c.Assert(err, IsNil)
 
 	var qtd int
