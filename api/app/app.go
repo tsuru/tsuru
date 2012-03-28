@@ -1,9 +1,9 @@
 package app
 
 import (
-	"database/sql"
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/timeredbull/tsuru/api/unit"
+	. "github.com/timeredbull/tsuru/database"
 )
 
 type App struct {
@@ -15,11 +15,8 @@ type App struct {
 }
 
 func AllApps() ([]App, error) {
-	db, _ := sql.Open("sqlite3", "./tsuru.db")
-	defer db.Close()
-
 	query := "SELECT id, name, framework, ip, state FROM apps"
-	rows, err := db.Query(query)
+	rows, err := Db.Query(query)
 	if err != nil {
 		return []App{}, err
 	}
@@ -35,11 +32,8 @@ func AllApps() ([]App, error) {
 }
 
 func (app *App) Get() error {
-	db, _ := sql.Open("sqlite3", "./tsuru.db")
-	defer db.Close()
-
 	query := "SELECT id, framework, state, ip FROM apps WHERE name = ?"
-	rows, err := db.Query(query, app.Name)
+	rows, err := Db.Query(query, app.Name)
 	if err != nil {
 		return err
 	}
@@ -52,16 +46,13 @@ func (app *App) Get() error {
 }
 
 func (app *App) Create() error {
-	db, _ := sql.Open("sqlite3", "./tsuru.db")
-	defer db.Close()
-
 	app.State = "Pending"
 
-	insertApp, err := db.Prepare("INSERT INTO apps (name, framework, state, ip) VALUES (?, ?, ?, ?)")
+	insertApp, err := Db.Prepare("INSERT INTO apps (name, framework, state, ip) VALUES (?, ?, ?, ?)")
 	if err != nil {
 		panic(err)
 	}
-	tx, err := db.Begin()
+	tx, err := Db.Begin()
 
 	if err != nil {
 		panic(err)
@@ -87,14 +78,11 @@ func (app *App) Create() error {
 }
 
 func (app *App) Destroy() error {
-	db, _ := sql.Open("sqlite3", "./tsuru.db")
-	defer db.Close()
-
-	deleteApp, err := db.Prepare("DELETE FROM apps WHERE name = ?")
+	deleteApp, err := Db.Prepare("DELETE FROM apps WHERE name = ?")
 	if err != nil {
 		panic(err)
 	}
-	tx, err := db.Begin()
+	tx, err := Db.Begin()
 
 	if err != nil {
 		panic(err)

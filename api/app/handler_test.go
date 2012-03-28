@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"github.com/timeredbull/tsuru/api/app"
+	. "github.com/timeredbull/tsuru/database"
 	"io/ioutil"
 	. "launchpad.net/gocheck"
 	"net/http"
@@ -151,7 +152,7 @@ func (s *S) TestCreateApp(c *C) {
 	c.Assert(recorder.Body.String(), Equals, "success")
 	c.Assert(recorder.Code, Equals, 200)
 
-	rows, err := s.db.Query("SELECT count(*) FROM apps WHERE name = 'someApp'")
+	rows, err := Db.Query("SELECT count(*) FROM apps WHERE name = 'someApp'")
 	c.Assert(err, IsNil)
 
 	var qtd int
