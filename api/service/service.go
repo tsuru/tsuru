@@ -1,7 +1,6 @@
 package service
 
 import (
-	/* "errors" */
 	. "github.com/timeredbull/tsuru/api/app"
 	. "github.com/timeredbull/tsuru/database"
 	"github.com/timeredbull/tsuru/api/unit"
@@ -14,92 +13,45 @@ type Service struct {
 }
 
 func (s *Service) Get() error {
-	/* var rows *sql.Rows */
-	var query interface{}
+	query := make(map[string]interface{})
 	var err error
 	switch {
 	case s.Id != 0:
-		// query = "SELECT id, service_type_id, name FROM services WHERE id = ?"
-		// rows, err = Db.Query(query, s.Id)
-		query = map[string]int64{
-			"id": s.Id,
-		}
+		query["id"] = s.Id
 	case s.Name != "":
-		// query = "SELECT id, service_type_id, name FROM services WHERE name = ?"
-		// rows, err = Db.Query(query, s.Name)
-		query = map[string]string{
-			"name": s.Name,
-		}
+		query["name"] = s.Name
 	}
 
-	c := Session.DB("tsuru").C("services")
+	c := Mdb.C("services")
 	err = c.Find(query).One(&s)
 
 	if err != nil {
 		panic(err)
 	}
 
-	// if rows != nil {
-	// 	for rows.Next() {
-	// 		rows.Scan(&s.Id, &s.ServiceTypeId, &s.Name)
-	// 	}
-	// } else {
-	// 	return errors.New("Not found")
-	// }
 	return nil
 }
 
 func (s *Service) All() (result []Service) {
-	result = make([]Service, 0)
+	result = make([]Service, 100)
 
-	/* query := "select id, service_type_id, name from services" */
-	c := Session.DB("tsuru").C("services")
-	rows, err := c.All()
+	c := Mdb.C("services")
+	iter := c.Find(nil).Limit(100).Iter()
+	err := iter.All(&result)
 	if err != nil {
-		panic(err)
-	}
-
-	var id int64
-	var serviceTypeId int64
-	var name string
-	var se Service
-	for rows.Next() {
-		rows.Scan(&id, &serviceTypeId, &name)
-		se = Service{
-			Id:            id,
-			ServiceTypeId: serviceTypeId,
-			Name:          name,
-		}
-		result = append(result, se)
+		panic(iter.Err())
 	}
 
 	return
 }
 
 func (s *Service) Create() error {
-	query := "INSERT INTO services (service_type_id, name) VALUES (?, ?)"
-	insertStmt, err := Db.Prepare(query)
+	c := Mdb.C("services")
+	err := c.Insert(s)
 	if err != nil {
 		panic(err)
 	}
 
-	tx, err := Db.Begin()
-	if err != nil {
-		panic(err)
-	}
-
-	stmt := tx.Stmt(insertStmt)
-	//fmt.Println(s.ServiceTypeId)
-	result, err := stmt.Exec(s.ServiceTypeId, s.Name)
-	if err != nil {
-		panic(err)
-	}
-	tx.Commit()
-
-	s.Id, err = result.LastInsertId()
-	if err != nil {
-		panic(err)
-	}
 
 	u := unit.Unit{Name: s.Name, Type: "mysql"}
 	err = u.Create()
@@ -108,20 +60,12 @@ func (s *Service) Create() error {
 }
 
 func (s *Service) Delete() error {
-	query := "DELETE FROM services WHERE name = ? AND service_type_id = ?"
-	insertStmt, err := Db.Prepare(query)
+	c := Mdb.C("services")
+	err := c.Remove(s) // should pass specific fields instead using all them
+
 	if err != nil {
 		panic(err)
 	}
-
-	tx, err := Db.Begin()
-	if err != nil {
-		panic(err)
-	}
-
-	stmt := tx.Stmt(insertStmt)
-	stmt.Exec(s.Name, s.ServiceTypeId)
-	tx.Commit()
 
 	u := unit.Unit{Name: s.Name, Type: s.ServiceType().Charm}
 	err = u.Destroy()

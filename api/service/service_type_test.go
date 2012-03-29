@@ -37,30 +37,30 @@ func (s *ServiceSuite) TestGetServiceType(c *C) {
 
 func (s *ServiceSuite) TestCreateServiceType(c *C) {
 	s.createServiceType()
-	rows, err := Db.Query("SELECT name, charm FROM service_types WHERE name = 'Mysql' AND charm='mysql'")
-	c.Check(err, IsNil)
+	query := make(map[string]interface{})
+	result := ServiceType{}
+	query["name"] = "Mysql"
+	query["charm"] = "mysql"
 
-	var name string
-	var charm string
-	for rows.Next() {
-		rows.Scan(&name, &charm)
-	}
+	collection := Mdb.C("service_types")
+	err := collection.Find(query).One(&result)
 
-	c.Assert(name, Equals, "Mysql")
-	c.Assert(charm, Equals, "mysql")
+	c.Assert(err, IsNil)
+	c.Assert(result.Name, Equals, "Mysql")
+	c.Assert(result.Charm, Equals, "mysql")
 }
 
 func (s *ServiceSuite) TestDeleteServiceType(c *C) {
 	s.createServiceType()
 	s.serviceType.Delete()
 
-	rows, err := Db.Query("SELECT count(*) FROM service_types WHERE name = 'Mysql' AND charm = 'mysql'")
+	query := make(map[string]interface{})
+	query["name"] = "Mysql"
+	query["charm"] = "mysql"
+
+	collection := Mdb.C("service_types")
+	qtd, err := collection.Find(query).Count()
+
 	c.Assert(err, IsNil)
-
-	var qtd int
-	for rows.Next() {
-		rows.Scan(&qtd)
-	}
-
 	c.Assert(qtd, Equals, 0)
 }
