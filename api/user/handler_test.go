@@ -7,7 +7,7 @@ import (
 	"net/http/httptest"
 )
 
-func (s *S) TestCreateUserHandler(c *C) {
+func (s *S) TestCreateUserHandlerSavesTheUserInTheDatabase(c *C) {
 	b := bytes.NewBufferString(`{"email":"nobody@globo.com","password":"123"}`)
 	request, err := http.NewRequest("POST", "/users", b)
 	if err != nil {
@@ -23,6 +23,21 @@ func (s *S) TestCreateUserHandler(c *C) {
 	c.Assert(err, IsNil)
 
 	c.Assert(u.Id > 0, Equals, true)
+	s.db.Exec(`DELETE FROM users WHERE email = "nobody@globo.com"`)
+}
+
+func (s *S) TestCreateUserHandlerReturnsStatus204AfterCreateTheUser(c *C) {
+	b := bytes.NewBufferString(`{"email":"nobody@globo.com","password":"123"}`)
+	request, err := http.NewRequest("POST", "/users", b)
+	if err != nil {
+		panic(err)
+	}
+	request.Header.Set("Content-type", "application/json")
+	response := httptest.NewRecorder()
+	err = CreateUser(response, request)
+	c.Assert(err, IsNil)
+	c.Assert(response.Code, Equals, 201)
+
 	s.db.Exec(`DELETE FROM users WHERE email = "nobody@globo.com"`)
 }
 

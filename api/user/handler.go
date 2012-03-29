@@ -17,5 +17,8 @@ func CreateUser(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	err = u.Create()
+	if err == nil {
+		w.WriteHeader(http.StatusCreated)
+	}
 	return err
 }
