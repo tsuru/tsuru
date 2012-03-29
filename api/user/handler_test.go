@@ -21,9 +21,7 @@ func (s *S) TestCreateUserHandlerSavesTheUserInTheDatabase(c *C) {
 	u := User{Email: "nobody@globo.com"}
 	err = u.Get()
 	c.Assert(err, IsNil)
-
 	c.Assert(u.Id > 0, Equals, true)
-	s.db.Exec(`DELETE FROM users WHERE email = "nobody@globo.com"`)
 }
 
 func (s *S) TestCreateUserHandlerReturnsStatus204AfterCreateTheUser(c *C) {
@@ -37,8 +35,6 @@ func (s *S) TestCreateUserHandlerReturnsStatus204AfterCreateTheUser(c *C) {
 	err = CreateUser(response, request)
 	c.Assert(err, IsNil)
 	c.Assert(response.Code, Equals, 201)
-
-	s.db.Exec(`DELETE FROM users WHERE email = "nobody@globo.com"`)
 }
 
 func (s *S) TestCreateUserHandlerReturnErrorIfReadingBodyFails(c *C) {
@@ -81,7 +77,5 @@ func (s *S) TestCreateUserHandlerReturnErrorIfItFailsToCreateUser(c *C) {
 	response := httptest.NewRecorder()
 	err = CreateUser(response, request)
 	c.Assert(err, NotNil)
-	c.Assert(err, ErrorMatches, ".*unique$")
-
-	s.db.Exec(`DELETE FROM users WHERE email = "nobody@globo.com"`)
+	c.Assert(err, ErrorMatches, "This email is already registered")
 }

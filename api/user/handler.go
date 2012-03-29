@@ -2,6 +2,7 @@ package user
 
 import (
 	"encoding/json"
+	"errors"
 	"io/ioutil"
 	"net/http"
 )
@@ -19,6 +20,12 @@ func CreateUser(w http.ResponseWriter, r *http.Request) error {
 	err = u.Create()
 	if err == nil {
 		w.WriteHeader(http.StatusCreated)
+		return nil
 	}
+
+	if u.Get() == nil {
+		err = errors.New("This email is already registered")
+	}
+
 	return err
 }
