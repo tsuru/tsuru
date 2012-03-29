@@ -26,7 +26,7 @@ func (u *User) Get() error {
 		field = "email"
 		args[0] = u.Email
 	}
-	row := database.Db.QueryRow(fmt.Sprintf("SELECT email, password FROM users WHERE %s = ?", field), args...)
-	err := row.Scan(&u.Email, &u.Password)
+	row := database.Db.QueryRow(fmt.Sprintf("SELECT id, email, password FROM users WHERE %s = ?", field), args...)
+	err := row.Scan(&u.Id, &u.Email, &u.Password)
 	return err
 }

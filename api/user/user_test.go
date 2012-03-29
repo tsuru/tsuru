@@ -93,6 +93,7 @@ func (s *S) TestGetUserByEmail(c *C) {
 	u = User{Email: "wolverine@xmen.com"}
 	err = u.Get()
 	c.Assert(err, IsNil)
+	c.Assert(u.Id > 0, Equals, true)
 	c.Assert(u.Email, Equals, "wolverine@xmen.com")
 	c.Assert(u.Password, Equals, "123456")
 	_, err = s.db.Exec(`DELETE FROM users WHERE email="wolverine@xmen.com"`)
