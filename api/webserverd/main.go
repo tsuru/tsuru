@@ -9,6 +9,7 @@ import (
 	"github.com/timeredbull/tsuru/api/app"
 	. "github.com/timeredbull/tsuru/database"
 	"github.com/timeredbull/tsuru/api/service"
+	"github.com/timeredbull/tsuru/api/user"
 	_ "github.com/mattn/go-sqlite3"
 	"log"
 	"net/http"
@@ -31,6 +32,8 @@ func main() {
 	m.Post("/apps/:name/application", webserverd.Handler(app.Upload))
 	m.Get("/apps", webserverd.Handler(app.AppList))
 	m.Post("/apps", webserverd.Handler(app.CreateAppHandler))
+
+	m.Post("/users", webserverd.Handler(user.CreateUser))
 
 	log.Fatal(http.ListenAndServe(":4000", m))
 }
