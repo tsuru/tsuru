@@ -35,6 +35,10 @@ func (s *S) TearDownSuite(c *C) {
 	os.Remove("./data.db")
 }
 
+func (s *S) TearDownTest(c *C) {
+	s.db.Exec(`DELETE FROM users WHERE email IN ("wolverine@xmen.com", "nobody@globo.com")`)
+}
+
 func (s *S) getTestData(path ...string) io.ReadCloser {
 	path = append([]string{}, ".", "testdata")
 	p := filepath.Join(path...)
