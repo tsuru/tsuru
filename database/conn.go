@@ -6,4 +6,4 @@ import (
 )
 
 var Db *sql.DB
-var Session *mgo.Session
+var Mdb *mgo.Database

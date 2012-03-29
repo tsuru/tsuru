@@ -6,6 +6,7 @@ import (
 	"database/sql"
 	"."
 	"github.com/bmizerany/pat"
+	"launchpad.net/mgo"
 	"github.com/timeredbull/tsuru/api/app"
 	. "github.com/timeredbull/tsuru/database"
 	"github.com/timeredbull/tsuru/api/service"
@@ -17,6 +18,11 @@ import (
 func main() {
 	Db, _ = sql.Open("sqlite3", "./tsuru.db")
 	defer Db.Close()
+	session, err := mgo.Dial("localhost:27017")
+	if err != nil {
+		panic(err)
+	}
+	Mdb = session.DB("tsuru_test")
 	m := pat.New()
 
 	m.Post("/services", webserverd.Handler(service.CreateHandler))
