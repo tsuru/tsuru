@@ -8,8 +8,14 @@ import (
 
 func CreateUser(w http.ResponseWriter, r *http.Request) error {
 	var u User
-	b, _ := ioutil.ReadAll(r.Body)
-	json.Unmarshal(b, &u)
-	u.Create()
-	return nil
+	b, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		return err
+	}
+	err = json.Unmarshal(b, &u)
+	if err != nil {
+		return err
+	}
+	err = u.Create()
+	return err
 }
