@@ -4,8 +4,10 @@ import (
 	"database/sql"
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/timeredbull/tsuru/database"
+	"io"
 	. "launchpad.net/gocheck"
 	"os"
+	"path/filepath"
 	"testing"
 )
 
@@ -31,4 +33,11 @@ func (s *S) SetUpSuite(c *C) {
 func (s *S) TearDownSuite(c *C) {
 	s.db.Close()
 	os.Remove("./data.db")
+}
+
+func (s *S) getTestData(path ...string) io.ReadCloser {
+	path = append([]string{}, ".", "testdata")
+	p := filepath.Join(path...)
+	f, _ := os.OpenFile(p, os.O_RDONLY, 0)
+	return f
 }
