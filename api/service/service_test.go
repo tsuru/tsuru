@@ -28,10 +28,10 @@ func (s *ServiceSuite) TestGetService(c *C) {
 }
 
 func (s *ServiceSuite) TestAllServices(c *C) {
-	st := ServiceType{Name: "Mysql", Charm: "mysql"}
+	st := ServiceType{name: "mysql", charm: "mysql"}
+	st.create()
 	se := Service{ServiceTypeId: st.Id, Name: "myService"}
 	se2 := Service{ServiceTypeId: st.Id, Name: "myOtherService"}
-	st.Create()
 	se.Create()
 	se2.Create()
 
@@ -42,20 +42,12 @@ func (s *ServiceSuite) TestAllServices(c *C) {
 
 func (s *ServiceSuite) TestCreateService(c *C) {
 	s.createService()
-	rows, err := Db.Query("SELECT id, service_type_id, name FROM services WHERE name = 'my_service'")
-	c.Check(err, IsNil)
+	se := Service{Id: s.service.Id}
+	se.Get()
 
-	var id int64
-	var serviceTypeId int64
-	var name string
-
-	for rows.Next() {
-		rows.Scan(&id, &serviceTypeId, &name)
-	}
-
-	c.Assert(id, Equals, s.service.Id)
-	c.Assert(serviceTypeId, Equals, int64(2))
-	c.Assert(name, Equals, "my_service")
+	c.Assert(se.Id, Equals, s.service.Id)
+	c.Assert(se.ServiceTypeId, Equals, s.serviceType.Id)
+	c.Assert(se.Name, Equals, s.service.Name)
 }
 
 func (s *ServiceSuite) TestDeleteService(c *C) {
