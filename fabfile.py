@@ -1,9 +1,11 @@
 from fabric.api import run, env, cd
 
+
 env.user = 'ubuntu'
 env.tsuru_path = '/home/ubuntu/.go/src/github.com/timeredbull/tsuru'
 env.collector_path = '%s/collector' % env.tsuru_path
 env.webserverd_path = '%s/api/webserverd' % env.tsuru_path
+
 
 def stop():
     run('killall -9 webserverd')
