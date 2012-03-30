@@ -5,12 +5,13 @@ import (
 	. "github.com/timeredbull/tsuru/api/app"
 	. "github.com/timeredbull/tsuru/database"
 	"github.com/timeredbull/tsuru/api/unit"
+	"launchpad.net/mgo/bson"
 )
 
 type ServiceApp struct {
-	Id        int64
-	ServiceId int64
-	AppId     int64
+	Id        bson.ObjectId
+	ServiceId bson.ObjectId
+	AppId     int
 }
 
 func (sa *ServiceApp) Create() error {

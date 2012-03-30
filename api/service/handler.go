@@ -7,6 +7,7 @@ import (
 	. "github.com/timeredbull/tsuru/api/app"
 	"io/ioutil"
 	"net/http"
+	"launchpad.net/mgo/bson"
 )
 
 type ServiceJson struct {
@@ -21,7 +22,7 @@ type BindJson struct {
 
 // a service with a pointer to it's type
 type ServiceT struct {
-	Id   int64
+	Id   bson.ObjectId
 	Type *ServiceType
 	Name string
 }
@@ -106,7 +107,7 @@ func DeleteHandler(w http.ResponseWriter, r *http.Request) error {
 	s := Service{Name: r.URL.Query().Get(":name")}
 	s.Get()
 
-	if s.Id == 0 {
+	if s.Id == "" {
 		http.NotFound(w, r)
 	} else {
 		s.Delete()
@@ -133,7 +134,7 @@ func BindHandler(w http.ResponseWriter, r *http.Request) error {
 	a := App{Name: b.App}
 	s.Get()
 	a.Get()
-	if s.Id == 0 || a.Id == 0 {
+	if s.Id == "" || a.Id == 0 {
 		http.NotFound(w, r)
 	} else {
 		s.Bind(&a)
@@ -160,7 +161,7 @@ func UnbindHandler(w http.ResponseWriter, r *http.Request) error {
 	a := App{Name: b.App}
 	s.Get()
 	a.Get()
-	if s.Id == 0 || a.Id == 0 {
+	if s.Id == "" || a.Id == 0 {
 		http.NotFound(w, r)
 	} else {
 		s.Unbind(&a)

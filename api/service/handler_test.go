@@ -76,8 +76,8 @@ func (s *ServiceSuite) TestCreateHandler(c *C) {
 	err = collection.Find(query).One(&obtainedService)
 
 	c.Assert(err, IsNil)
-	c.Assert(obtainedService.Id, Not(Equals), int64(0))
-	c.Assert(obtainedService.ServiceTypeId, Not(Equals), int64(0))
+	c.Assert(obtainedService.Id, Not(Equals), 0)
+	c.Assert(obtainedService.ServiceTypeId, Not(Equals), 0)
 	c.Assert(obtainedService.Name, Not(Equals), "")
 }
 
@@ -105,11 +105,11 @@ func (s *ServiceSuite) TestServicesHandler(c *C) {
 	c.Assert(err, IsNil)
 	c.Assert(len(results), Equals, 2)
 	c.Assert(results[0], FitsTypeOf, ServiceT{})
-	c.Assert(results[0].Id, Not(Equals), int64(0))
+	c.Assert(results[0].Id, Not(Equals), 0)
 	c.Assert(results[0].Name, Not(Equals), "")
 
 	c.Assert(results[0].Type, FitsTypeOf, &ServiceType{})
-	c.Assert(results[0].Type.Id, Not(Equals), int64(0))
+	c.Assert(results[0].Type.Id, Not(Equals), 0)
 }
 
 func (s *ServiceSuite) TestServiceTypesHandler(c *C) {
@@ -130,11 +130,13 @@ func (s *ServiceSuite) TestServiceTypesHandler(c *C) {
 	var results []ServiceType
 	err = json.Unmarshal(body, &results)
 	c.Assert(err, IsNil)
-	c.Assert(results[0].Id, Not(Equals), int64(0))
+	c.Assert(results[0].Id, Not(Equals), 0)
 }
 
 func (s *ServiceSuite) TestDeleteHandler(c *C) {
-	se := Service{ServiceTypeId: 2, Name: "Mysql"}
+	st := ServiceType{Name: "Mysql", Charm: "mysql"}
+	st.Create()
+	se := Service{ServiceTypeId: st.Id, Name: "Mysql"}
 	se.Create()
 	request, err := http.NewRequest("GET", fmt.Sprintf("/services/%s?:name=%s", se.Name, se.Name), nil)
 	c.Assert(err, IsNil)

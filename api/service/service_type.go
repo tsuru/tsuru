@@ -3,24 +3,25 @@ package service
 import (
 	_ "github.com/mattn/go-sqlite3"
 	. "github.com/timeredbull/tsuru/database"
+	"launchpad.net/mgo/bson"
 )
 
 type ServiceType struct {
-	Id    int64
+	Id    bson.ObjectId "_id"
 	Name  string
 	Charm string
 }
 
 func (st *ServiceType) Get() error {
-	query := make(map[string]interface{})
+	var query interface{}
 
 	switch {
-	case st.Id != 0:
-		query["id"] = st.Id
+	case st.Id != "":
+		query = bson.M{"_id": st.Id}
 	case st.Name != "":
-		query["name"] = st.Name
+		query = bson.M{"name": st.Name}
 	case st.Charm != "":
-		query["charm"] = st.Charm
+		query = bson.M{"charm": st.Charm}
 	}
 
 	c := Mdb.C("service_types")
@@ -48,7 +49,8 @@ func (s *ServiceType) All() (result []ServiceType) {
 
 func (st *ServiceType) Create() error {
 	c := Mdb.C("service_types")
-	err := c.Insert(st)
+	doc := bson.M{"name": st.Name, "charm": st.Charm, "_id": bson.NewObjectId()}
+	err := c.Insert(doc)
 	if err != nil {
 		panic(err)
 	}

@@ -4,11 +4,12 @@ import (
 	. "github.com/timeredbull/tsuru/api/app"
 	. "github.com/timeredbull/tsuru/database"
 	"github.com/timeredbull/tsuru/api/unit"
+	"launchpad.net/mgo/bson"
 )
 
 type Service struct {
-	Id            int64
-	ServiceTypeId int64
+	Id            bson.ObjectId "_id"
+	ServiceTypeId bson.ObjectId
 	Name          string
 }
 
@@ -16,7 +17,7 @@ func (s *Service) Get() error {
 	query := make(map[string]interface{})
 	var err error
 	switch {
-	case s.Id != 0:
+	case s.Id != "":
 		query["id"] = s.Id
 	case s.Name != "":
 		query["name"] = s.Name
@@ -47,11 +48,12 @@ func (s *Service) All() (result []Service) {
 
 func (s *Service) Create() error {
 	c := Mdb.C("services")
-	err := c.Insert(s)
+	doc := bson.M{"name": s.Name, "service_type_id": s.ServiceTypeId, "_id": bson.NewObjectId()}
+	err := c.Insert(doc)
+
 	if err != nil {
 		panic(err)
 	}
-
 
 	u := unit.Unit{Name: s.Name, Type: "mysql"}
 	err = u.Create()
@@ -61,7 +63,8 @@ func (s *Service) Create() error {
 
 func (s *Service) Delete() error {
 	c := Mdb.C("services")
-	err := c.Remove(s) // should pass specific fields instead using all them
+	doc := bson.M{"name": s.Name, "service_type_id": s.ServiceTypeId}
+	err := c.Remove(doc) // should pass specific fields instead using all them
 
 	if err != nil {
 		panic(err)

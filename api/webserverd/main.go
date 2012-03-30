@@ -22,7 +22,8 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	Mdb = session.DB("tsuru_test")
+	Mdb = session.DB("tsuru")
+	defer session.Close()
 	m := pat.New()
 
 	m.Post("/services", webserverd.Handler(service.CreateHandler))

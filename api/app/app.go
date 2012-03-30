@@ -7,7 +7,7 @@ import (
 )
 
 type App struct {
-	Id        int64
+	Id        int
 	Ip        string
 	Name      string
 	Framework string
@@ -59,14 +59,14 @@ func (app *App) Create() error {
 	}
 
 	stmt := tx.Stmt(insertApp)
-	result, err := stmt.Exec(app.Name, app.Framework, app.State, app.Ip)
+	_, err = stmt.Exec(app.Name, app.Framework, app.State, app.Ip)
 	if err != nil {
 		panic(err)
 	}
 
 	tx.Commit()
 
-	app.Id, err = result.LastInsertId()
+	//app.Id, err = result.LastInsertId()
 	if err != nil {
 		panic(err)
 	}

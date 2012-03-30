@@ -5,11 +5,17 @@ import (
 	. "github.com/timeredbull/tsuru/api/service"
 	. "github.com/timeredbull/tsuru/database"
 	. "launchpad.net/gocheck"
+	"fmt"
 )
 
 func (s *ServiceSuite) createServiceApp() {
+	st := ServiceType{Name: "mysql", Charm: "mysql"}
+	st.Create()
+	fmt.Println()
+	fmt.Println(st.Id)
+	fmt.Println()
 	s.serviceApp = &ServiceApp{
-		ServiceId: 2,
+		ServiceId: st.Id,
 		AppId:     1,
 	}
 	s.serviceApp.Create()
@@ -48,7 +54,9 @@ func (s *ServiceSuite) TestDeleteServiceApp(c *C) {
 }
 
 func (s *ServiceSuite) TestRetrieveAssociatedService(c *C) {
-	service := Service{Name: "my_service", ServiceTypeId: 1}
+	st := ServiceType{Name: "mysql", Charm: "mysql"}
+	st.Create()
+	service := Service{Name: "my_service", ServiceTypeId: st.Id}
 	service.Create()
 
 	s.serviceApp = &ServiceApp{
@@ -68,8 +76,11 @@ func (s *ServiceSuite) TestRetrieveAssociatedApp(c *C) {
 	app := App{Name: "my_app", Framework: "django"}
 	app.Create()
 
+	st := ServiceType{Name: "mysql", Charm: "mysql"}
+	st.Create()
+
 	s.serviceApp = &ServiceApp{
-		ServiceId: 2,
+		ServiceId: st.Id,
 		AppId:     app.Id,
 	}
 	s.serviceApp.Create()

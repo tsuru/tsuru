@@ -8,10 +8,10 @@ import (
 )
 
 func (s *ServiceSuite) createService() {
-	s.service = &Service{
-		ServiceTypeId: 2,
-		Name:          "my_service",
-	}
+	s.serviceType = &ServiceType{Name: "Mysql", Charm: "mysql"}
+	s.serviceType.Create()
+
+	s.service = &Service{ServiceTypeId: s.serviceType.Id, Name: "my_service"}
 	s.service.Create()
 }
 
@@ -19,8 +19,8 @@ func (s *ServiceSuite) TestGetService(c *C) {
 	s.createService()
 	id := s.service.Id
 	sTypeId := s.service.ServiceTypeId
-	s.service.Id = 0
-	s.service.ServiceTypeId = 0
+	s.service.Id = ""
+	s.service.ServiceTypeId = ""
 	s.service.Get()
 
 	c.Assert(s.service.Id, Equals, id)
@@ -109,19 +109,29 @@ func (s *ServiceSuite) TestBindService(c *C) {
 }
 
 func (s *ServiceSuite) TestUnbindService(c *C) {
-	s.createService()
+	serviceType := &ServiceType{Name: "Mysql", Charm: "mysql"}
+	serviceType.Create()
+
+	service := &Service{ServiceTypeId: s.serviceType.Id, Name: "my_service"}
+	service.Create()
 	app := &App{Name: "my_app", Framework: "django"}
 	app.Create()
-	s.service.Bind(app)
-	s.service.Unbind(app)
+	service.Bind(app)
+	service.Unbind(app)
 
-	rows, err := Db.Query("SELECT count(*) FROM service_apps WHERE service_id = ? AND app_id = ?", s.service.Id, app.Id)
+	query := make(map[string]interface{})
+	query["service_id"] = service.Id
+	query["app_id"] = app.Id
+
+	collection := Mdb.C("service_apps")
+	qtd, err := collection.Find(query).Count()
+	// rows, err := Db.Query("SELECT count(*) FROM service_apps WHERE service_id = ? AND app_id = ?", s.service.Id, app.Id)
 	c.Assert(err, IsNil)
 
-	var qtd int
-	for rows.Next() {
-		rows.Scan(&qtd)
-	}
+	// var qtd int
+	// for rows.Next() {
+	// 	rows.Scan(&qtd)
+	// }
 
 	c.Assert(qtd, Equals, 0)
 }
