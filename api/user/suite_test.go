@@ -26,7 +26,7 @@ func (s *S) SetUpSuite(c *C) {
 		panic(err)
 	}
 	database.Db = s.db
-	_, err = s.db.Exec("create table users (id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, email VARCHAR(100) UNIQUE, password VARCHAR(100))")
+	_, err = s.db.Exec("create table users (id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, email VARCHAR(255) UNIQUE, password VARCHAR(255))")
 	c.Assert(err, IsNil)
 }
 
