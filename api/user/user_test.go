@@ -1,6 +1,8 @@
 package user
 
 import (
+	"crypto/sha512"
+	"fmt"
 	. "launchpad.net/gocheck"
 )
 
@@ -19,9 +21,22 @@ func (s *S) TestCreateUser(c *C) {
 	}
 
 	c.Assert(email, Equals, u.Email)
-	c.Assert(password, Equals, u.Password)
 	_, err = s.db.Exec(`DELETE FROM users WHERE email="wolverine@xmen.com"`)
 	c.Assert(err, IsNil)
+}
+
+func (s *S) TestCreateUserHashesThePasswordUsingSHA512AndSalt(c *C) {
+	h := sha512.New()
+	h.Write([]byte("123" + SALT + "456"))
+	expectedPassword := fmt.Sprintf("%x", h.Sum(nil))
+	u := User{Email: "wolverine@xmen.com", Password: "123456"}
+	err := u.Create()
+	c.Assert(err, IsNil)
+
+	var password string
+	row := s.db.QueryRow("SELECT password FROM users WHERE id = (SELECT max(id) FROM users)")
+	row.Scan(&password)
+	c.Assert(password, Equals, expectedPassword)
 }
 
 func (s *S) TestCreateUserReturnsErrorWhenAnyHappen(c *C) {
@@ -51,7 +66,6 @@ func (s *S) TestGetUserById(c *C) {
 	err = u.Get()
 	c.Assert(err, IsNil)
 	c.Assert(u.Email, Equals, "wolverine@xmen.com")
-	c.Assert(u.Password, Equals, "123456")
 	_, err = s.db.Exec(`DELETE FROM users WHERE email="wolverine@xmen.com"`)
 	c.Assert(err, IsNil)
 }
@@ -66,7 +80,6 @@ func (s *S) TestGetUserByEmail(c *C) {
 	c.Assert(err, IsNil)
 	c.Assert(u.Id > 0, Equals, true)
 	c.Assert(u.Email, Equals, "wolverine@xmen.com")
-	c.Assert(u.Password, Equals, "123456")
 	_, err = s.db.Exec(`DELETE FROM users WHERE email="wolverine@xmen.com"`)
 	c.Assert(err, IsNil)
 }
