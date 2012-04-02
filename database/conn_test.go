@@ -1,10 +1,10 @@
 package database_test
 
 import (
-	"testing"
 	"database/sql"
-	. "launchpad.net/gocheck"
 	. "github.com/timeredbull/tsuru/database"
+	. "launchpad.net/gocheck"
+	"testing"
 )
 
 func Test(t *testing.T) { TestingT(t) }

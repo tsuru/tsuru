@@ -3,8 +3,8 @@ package service
 import (
 	_ "github.com/mattn/go-sqlite3"
 	. "github.com/timeredbull/tsuru/api/app"
-	. "github.com/timeredbull/tsuru/database"
 	"github.com/timeredbull/tsuru/api/unit"
+	. "github.com/timeredbull/tsuru/database"
 )
 
 type ServiceApp struct {
