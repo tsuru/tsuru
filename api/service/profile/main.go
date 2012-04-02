@@ -35,7 +35,7 @@ func main() {
 	sType.Create()
 	var s Service
 	var name string
-	for i := 0; i < 500; i++ {
+	for i := 0; i < 700; i++ {
 		name = fmt.Sprintf("myService%d", i)
 		s = Service{ServiceTypeId: sType.Id, Name: name}
 		s.Create()
