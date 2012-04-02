@@ -1,4 +1,5 @@
-from fabric.api import run, env, cd
+# -*- coding: utf-8 -*-
+from fabric.api import cd, env, run, settings
 
 env.user = 'ubuntu'
 env.tsuru_path = '/home/ubuntu/.go/src/github.com/timeredbull/tsuru'
@@ -7,8 +8,8 @@ env.webserverd_path = '%s/api/webserverd' % env.tsuru_path
 
 
 def stop():
-    run('killall -9 webserverd')
-    run('killall -9 collector')
+    with settings(warn_only=True):
+        run('killall -KILL webserverd collector')
 
 
 def update():
