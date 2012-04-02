@@ -47,11 +47,12 @@ func main() {
 	if *memprofile != "" {
 		f, err := os.Create(*memprofile)
 		if err != nil {
-			panic(err)
-			/* log.Fatal(err) */
+			log.Fatal(err)
 		}
 		pprof.WriteHeapProfile(f)
 		f.Close()
-		return
 	}
+
+	c := Mdb.C("services")
+	defer c.DropCollection()
 }
