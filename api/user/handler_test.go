@@ -2,6 +2,8 @@ package user
 
 import (
 	"bytes"
+	"encoding/json"
+	"io/ioutil"
 	. "launchpad.net/gocheck"
 	"net/http"
 	"net/http/httptest"
@@ -78,4 +80,89 @@ func (s *S) TestCreateUserHandlerReturnErrorIfItFailsToCreateUser(c *C) {
 	err = CreateUser(response, request)
 	c.Assert(err, NotNil)
 	c.Assert(err, ErrorMatches, "This email is already registered")
+}
+
+func (s *S) TestLoginShouldCreateTokenInTheDatabaseAndReturnItWithinTheResponse(c *C) {
+	u := User{Email: "nobody@globo.com", Password: "123"}
+	u.Create()
+
+	b := bytes.NewBufferString(`{"password":"123"}`)
+	request, err := http.NewRequest("POST", "/users/nobody@globo.com/tokens?:email=nobody@globo.com", b)
+	if err != nil {
+		panic(err)
+	}
+	request.Header.Set("Content-type", "application/json")
+	response := httptest.NewRecorder()
+	err = Login(response, request)
+	c.Assert(err, IsNil)
+
+	var id int
+	var token string
+	row := s.db.QueryRow("SELECT t.id, t.token FROM usertokens t INNER JOIN users u ON t.user_id = u.id WHERE u.email = ?", u.Email)
+	row.Scan(&id, &token)
+	c.Assert(id > 0, Equals, true)
+
+	var responseJson map[string]string
+	r, _ := ioutil.ReadAll(response.Body)
+	json.Unmarshal(r, &responseJson)
+	c.Assert(responseJson["token"], Equals, token)
+}
+
+func (s *S) TestLoginShouldReturnErrorAndBadRequestIfItReceivesAnInvalidJson(c *C) {
+	b := bytes.NewBufferString(`"invalid":"json"]`)
+	request, err := http.NewRequest("POST", "/users/nobody@globo.com/tokens?:email=nobody@globo.com", b)
+	if err != nil {
+		panic(err)
+	}
+	request.Header.Set("Content-type", "application/json")
+	response := httptest.NewRecorder()
+	err = Login(response, request)
+	c.Assert(err, NotNil)
+	c.Assert(err, ErrorMatches, "^Invalid JSON$")
+	c.Assert(response.Code, Equals, http.StatusBadRequest)
+}
+
+func (s *S) TestLoginShouldReturnErrorAndBadRequestIfTheJSONDoesNotContainsAPassword(c *C) {
+	b := bytes.NewBufferString(`{}`)
+	request, err := http.NewRequest("POST", "/users/nobody@globo.com/tokens?:email=nobody@globo.com", b)
+	if err != nil {
+		panic(err)
+	}
+	request.Header.Set("Content-type", "application/json")
+	response := httptest.NewRecorder()
+	err = Login(response, request)
+	c.Assert(err, NotNil)
+	c.Assert(err, ErrorMatches, "^You must provide a password to login$")
+	c.Assert(response.Code, Equals, http.StatusBadRequest)
+}
+
+func (s *S) TestLoginShouldReturnErrorAndNotFoundIfTheUserDoesNotExist(c *C) {
+	b := bytes.NewBufferString(`{"password":"123"}`)
+	request, err := http.NewRequest("POST", "/users/nobody@globo.com/tokens?:email=nobody@globo.com", b)
+	if err != nil {
+		panic(err)
+	}
+	request.Header.Set("Content-type", "application/json")
+	response := httptest.NewRecorder()
+	err = Login(response, request)
+	c.Assert(err, NotNil)
+	c.Assert(err, ErrorMatches, "^User not found$")
+	c.Assert(response.Code, Equals, http.StatusNotFound)
+}
+
+func (s *S) TestLoginShouldreturnErrorIfThePasswordDoesNotMatch(c *C) {
+	u := User{Email: "nobody@globo.com", Password: "123"}
+	u.Create()
+
+	b := bytes.NewBufferString(`{"password":"1234"}`)
+	request, err := http.NewRequest("POST", "/users/nobody@globo.com/tokens?:email=nobody@globo.com", b)
+	if err != nil {
+		panic(err)
+	}
+	request.Header.Set("Content-type", "application/json")
+	response := httptest.NewRecorder()
+	err = Login(response, request)
+	c.Assert(err, NotNil)
+	c.Assert(err, ErrorMatches, "^Authentication failed, wrong password$")
+	c.Assert(response.Code, Equals, http.StatusUnauthorized)
 }
