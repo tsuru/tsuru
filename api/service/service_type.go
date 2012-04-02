@@ -1,6 +1,7 @@
 package service
 
 import (
+	"fmt"
 	_ "github.com/mattn/go-sqlite3"
 	. "github.com/timeredbull/tsuru/database"
 	"launchpad.net/mgo/bson"
@@ -49,8 +50,10 @@ func (s *ServiceType) All() (result []ServiceType) {
 
 func (st *ServiceType) Create() error {
 	c := Mdb.C("service_types")
-	doc := bson.M{"name": st.Name, "charm": st.Charm, "_id": bson.NewObjectId()}
+	st.Id = bson.NewObjectId()
+	doc := bson.M{"name": st.Name, "charm": st.Charm, "_id": st.Id}
 	err := c.Insert(doc)
+	fmt.Println(st.Id)
 	if err != nil {
 		panic(err)
 	}

@@ -28,8 +28,8 @@ func (s *ServiceSuite) TestGetService(c *C) {
 }
 
 func (s *ServiceSuite) TestAllServices(c *C) {
-	st := ServiceType{name: "mysql", charm: "mysql"}
-	st.create()
+	st := ServiceType{Name: "mysql", Charm: "mysql"}
+	st.Create()
 	se := Service{ServiceTypeId: st.Id, Name: "myService"}
 	se2 := Service{ServiceTypeId: st.Id, Name: "myOtherService"}
 	se.Create()

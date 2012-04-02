@@ -48,7 +48,8 @@ func (s *Service) All() (result []Service) {
 
 func (s *Service) Create() error {
 	c := Mdb.C("services")
-	doc := bson.M{"name": s.Name, "service_type_id": s.ServiceTypeId, "_id": bson.NewObjectId()}
+	s.Id = bson.NewObjectId()
+	doc := bson.M{"name": s.Name, "service_type_id": s.ServiceTypeId, "_id": s.Id}
 	err := c.Insert(doc)
 
 	if err != nil {
