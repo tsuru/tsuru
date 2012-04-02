@@ -47,7 +47,8 @@ func main() {
 	if *memprofile != "" {
 		f, err := os.Create(*memprofile)
 		if err != nil {
-			log.Fatal(err)
+			panic(err)
+			/* log.Fatal(err) */
 		}
 		pprof.WriteHeapProfile(f)
 		f.Close()
