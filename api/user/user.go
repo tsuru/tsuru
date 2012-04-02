@@ -15,6 +15,11 @@ const (
 	TOKENKEY    = "tsuru-key"
 )
 
+func hashPassword(password string) string {
+	salt := []byte(SALT)
+	return fmt.Sprintf("%x", pbkdf2.Key([]byte(password), salt, 4096, len(salt)*8, sha512.New))
+}
+
 type User struct {
 	Id       int
 	Email    string
@@ -28,8 +33,7 @@ func (u *User) Create() error {
 }
 
 func (u *User) hashPassword() {
-	salt := []byte(SALT)
-	u.Password = fmt.Sprintf("%x", pbkdf2.Key([]byte(u.Password), salt, 4096, len(salt)*8, sha512.New))
+	u.Password = hashPassword(u.Password)
 }
 
 func (u *User) Get() error {
@@ -45,6 +49,11 @@ func (u *User) Get() error {
 	row := database.Db.QueryRow(fmt.Sprintf("SELECT id, email, password FROM users WHERE %s = ?", field), args...)
 	err := row.Scan(&u.Id, &u.Email, &u.Password)
 	return err
+}
+
+func (u *User) Login(password string) bool {
+	hashedPassword := hashPassword(password)
+	return u.Password == hashedPassword
 }
 
 type Token struct {
@@ -63,6 +72,7 @@ func NewToken(u *User) (*Token, error) {
 	h := sha512.New()
 	h.Write([]byte(u.Email))
 	h.Write([]byte(TOKENKEY))
+	h.Write([]byte(time.Now().Format(time.UnixDate)))
 	t := Token{U: u}
 	t.ValidUntil = time.Now().Add(TOKENEXPIRE)
 	t.Token = h.Sum(nil)
