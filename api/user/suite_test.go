@@ -28,6 +28,9 @@ func (s *S) SetUpSuite(c *C) {
 	database.Db = s.db
 	_, err = s.db.Exec("create table users (id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, email VARCHAR(255) UNIQUE, password VARCHAR(255))")
 	c.Assert(err, IsNil)
+
+	_, err = s.db.Exec("CREATE TABLE usertokens (id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, user_id INTEGER NOT NULL, token VARCHAR(255) NOT NULL, valid_until TIMESTAMP NOT NULL, CONSTRAINT fk_tokens_users FOREIGN KEY(user_id) REFERENCES users(id))")
+	c.Assert(err, IsNil)
 }
 
 func (s *S) TearDownSuite(c *C) {
@@ -36,7 +39,8 @@ func (s *S) TearDownSuite(c *C) {
 }
 
 func (s *S) TearDownTest(c *C) {
-	s.db.Exec(`DELETE FROM users WHERE email IN ("wolverine@xmen.com", "nobody@globo.com")`)
+	s.db.Exec(`DELETE FROM users`)
+	s.db.Exec(`DELETE FROM usertokens`)
 }
 
 func (s *S) getTestData(path ...string) io.ReadCloser {
