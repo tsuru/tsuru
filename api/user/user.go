@@ -3,12 +3,16 @@ package user
 import (
 	"code.google.com/p/go.crypto/pbkdf2"
 	"crypto/sha512"
+	"errors"
 	"fmt"
 	"github.com/timeredbull/tsuru/database"
+	"time"
 )
 
 const (
-	SALT = "tsuru-salt"
+	SALT        = "tsuru-salt"
+	TOKENEXPIRE = 7 * 24 * time.Hour
+	TOKENKEY    = "tsuru-key"
 )
 
 type User struct {
@@ -40,5 +44,35 @@ func (u *User) Get() error {
 	}
 	row := database.Db.QueryRow(fmt.Sprintf("SELECT id, email, password FROM users WHERE %s = ?", field), args...)
 	err := row.Scan(&u.Id, &u.Email, &u.Password)
+	return err
+}
+
+type Token struct {
+	U          *User
+	Token      []byte
+	ValidUntil time.Time
+}
+
+func NewToken(u *User) (*Token, error) {
+	if u == nil {
+		return nil, errors.New("User is nil")
+	}
+	if u.Email == "" {
+		return nil, errors.New("Impossible to generate tokens for users without email")
+	}
+	h := sha512.New()
+	h.Write([]byte(u.Email))
+	h.Write([]byte(TOKENKEY))
+	t := Token{U: u}
+	t.ValidUntil = time.Now().Add(TOKENEXPIRE)
+	t.Token = h.Sum(nil)
+	return &t, nil
+}
+
+func (t *Token) Create() error {
+	if t.U.Id < 1 {
+		return errors.New("User does not have an id")
+	}
+	_, err := database.Db.Exec("INSERT INTO usertokens (user_id, token, valid_until) VALUES (?, ?, ?)", t.U.Id, fmt.Sprintf("%x", t.Token), t.ValidUntil.Format(time.Stamp))
 	return err
 }

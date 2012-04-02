@@ -85,3 +85,52 @@ func (s *S) TestGetUserReturnsErrorWhenNoUserIsFound(c *C) {
 	err := u.Get()
 	c.Assert(err, NotNil)
 }
+
+func (s *S) TestNewTokenStoresUserReference(c *C) {
+	u := User{Email: "wolverine@xmen.com", Password: "123456"}
+	t, err := NewToken(&u)
+	c.Assert(err, IsNil)
+	c.Assert(t.U.Email, Equals, "wolverine@xmen.com")
+}
+
+func (s *S) TestNewTokenReturnsErroWhenUserReferenceDoesNotContainsEmail(c *C) {
+	u := User{}
+	t, err := NewToken(&u)
+	c.Assert(t, IsNil)
+	c.Assert(err, NotNil)
+	c.Assert(err, ErrorMatches, "^Impossible to generate tokens for users without email$")
+}
+
+func (s *S) TestNewTokenReturnsErrorWhenUserIsNil(c *C) {
+	t, err := NewToken(nil)
+	c.Assert(t, IsNil)
+	c.Assert(err, NotNil)
+	c.Assert(err, ErrorMatches, "^User is nil$")
+}
+
+func (s *S) TestCreateTokenShouldSaveTheTokenInTheDatabase(c *C) {
+	var t *Token
+	var userId, tokenId int
+	u := User{Email: "wolverine@xmen.com", Password: "123"}
+	err := u.Create()
+	c.Assert(err, IsNil)
+	err = u.Get()
+	c.Assert(err, IsNil)
+	t, err = NewToken(&u)
+	c.Assert(err, IsNil)
+	err = t.Create()
+	c.Assert(err, IsNil)
+	row := s.db.QueryRow("SELECT id, user_id FROM usertokens ORDER BY id DESC LIMIT 1")
+	row.Scan(&tokenId, &userId)
+	c.Assert(tokenId > 0, Equals, true)
+	c.Assert(userId, Equals, u.Id)
+}
+
+func (s *S) TestCreateTokenShouldReturnErrorIfTheProvidedUserDoesNotHaveId(c *C) {
+	u := User{Email: "wolverine@xmen.com", Password: "123"}
+	t, err := NewToken(&u)
+	c.Assert(err, IsNil)
+	err = t.Create()
+	c.Assert(err, NotNil)
+	c.Assert(err, ErrorMatches, "^User does not have an id$")
+}
