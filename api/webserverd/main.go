@@ -34,6 +34,7 @@ func main() {
 	m.Post("/apps", webserverd.Handler(app.CreateAppHandler))
 
 	m.Post("/users", webserverd.Handler(user.CreateUser))
+	m.Post("/users/:email/tokens", webserverd.Handler(user.Login))
 
 	log.Fatal(http.ListenAndServe(":4000", m))
 }

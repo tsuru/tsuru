@@ -56,7 +56,6 @@ func Login(w http.ResponseWriter, r *http.Request) error {
 		fmt.Fprintf(w, `{"token":"%x"}`, t.Token)
 		return nil
 	}
-
 	w.WriteHeader(http.StatusUnauthorized)
 	return errors.New("Authentication failed, wrong password")
 }
