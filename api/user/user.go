@@ -1,6 +1,7 @@
 package user
 
 import (
+	"code.google.com/p/go.crypto/pbkdf2"
 	"crypto/sha512"
 	"fmt"
 	"github.com/timeredbull/tsuru/database"
@@ -23,13 +24,8 @@ func (u *User) Create() error {
 }
 
 func (u *User) hashPassword() {
-	half := len(u.Password)/2
-	b := []byte(u.Password[:half])
-	b = append(b, []byte(SALT)...)
-	b = append(b, []byte(u.Password[half:])...)
-	hash := sha512.New()
-	hash.Write(b)
-	u.Password = fmt.Sprintf("%x", hash.Sum(nil))
+	salt := []byte(SALT)
+	u.Password = fmt.Sprintf("%x", pbkdf2.Key([]byte(u.Password), salt, 4096, len(salt)*8, sha512.New))
 }
 
 func (u *User) Get() error {

@@ -1,6 +1,7 @@
 package user
 
 import (
+	"code.google.com/p/go.crypto/pbkdf2"
 	"crypto/sha512"
 	"fmt"
 	. "launchpad.net/gocheck"
@@ -14,21 +15,16 @@ func (s *S) TestCreateUser(c *C) {
 	var email, password string
 	rows, err := s.db.Query("SELECT email, password FROM users WHERE id = (SELECT max(id) FROM users)")
 	c.Assert(err, IsNil)
-
 	if rows.Next() {
 		rows.Scan(&email, &password)
 		rows.Close()
 	}
-
 	c.Assert(email, Equals, u.Email)
-	_, err = s.db.Exec(`DELETE FROM users WHERE email="wolverine@xmen.com"`)
-	c.Assert(err, IsNil)
 }
 
-func (s *S) TestCreateUserHashesThePasswordUsingSHA512AndSalt(c *C) {
-	h := sha512.New()
-	h.Write([]byte("123" + SALT + "456"))
-	expectedPassword := fmt.Sprintf("%x", h.Sum(nil))
+func (s *S) TestCreateUserHashesThePasswordUsingPBKDF2SHA512AndSalt(c *C) {
+	salt := []byte(SALT)
+	expectedPassword := fmt.Sprintf("%x", pbkdf2.Key([]byte("123456"), salt, 4096, len(salt)*8, sha512.New))
 	u := User{Email: "wolverine@xmen.com", Password: "123456"}
 	err := u.Create()
 	c.Assert(err, IsNil)
