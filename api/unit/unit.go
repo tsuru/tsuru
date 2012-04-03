@@ -48,7 +48,7 @@ func (u *Unit) SendFile(srcPath, dstPath string) error {
 }
 
 func (u *Unit) ExecuteHook(hook string) error {
-	cmd := fmt.Sprintf("/var/lib/tsuru/hooks/%d", hook)
+	cmd := fmt.Sprintf("/var/lib/tsuru/hooks/%s", hook)
 	output, err := u.Command(cmd)
 	log.Printf(string(output))
 	return err
