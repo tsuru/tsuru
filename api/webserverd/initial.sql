@@ -9,7 +9,8 @@ CREATE TABLE usertokens (
     token VARCHAR(255) NOT NULL,
     valid_until TIMESTAMP NOT NULL,
 
-    CONSTRAINT fk_tokens_users FOREIGN KEY(user_id) REFERENCES users(id)
+    CONSTRAINT fk_tokens_users FOREIGN KEY(user_id) REFERENCES users(id),
+    CONSTRAINT unique_token UNIQUE(token)
 );
 
 INSERT INTO service_types (name, charm) VALUES ("Mysql", "mysql");
