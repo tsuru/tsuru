@@ -5,6 +5,7 @@ import (
 	"crypto/sha512"
 	"fmt"
 	. "launchpad.net/gocheck"
+	"time"
 )
 
 func (s *S) TestCreateUser(c *C) {
@@ -145,4 +146,43 @@ func (s *S) TestCreateTokenShouldReturnErrorIfTheProvidedUserDoesNotHaveId(c *C)
 	err = t.Create()
 	c.Assert(err, NotNil)
 	c.Assert(err, ErrorMatches, "^User does not have an id$")
+}
+
+func (s *S) TestGetUserByToken(c *C) {
+	u := User{Email: "wolverine@xmen.com", Password: "123"}
+	err := u.Create()
+	c.Assert(err, IsNil)
+	err = u.Get()
+	c.Assert(err, IsNil)
+	t, err := NewToken(&u)
+	c.Assert(err, IsNil)
+	err = t.Create()
+	c.Assert(err, IsNil)
+	user, err := GetUserByToken(fmt.Sprintf("%x", t.Token))
+	c.Assert(err, IsNil)
+	c.Assert(user, DeepEquals, &u)
+}
+
+func (s *S) TestGetUserByTokenShouldReturnErrorWhenTheGivenTokenDoesNotExist(c *C) {
+	user, err := GetUserByToken("i don't exist")
+	c.Assert(user, IsNil)
+	c.Assert(err, NotNil)
+	c.Assert(err, ErrorMatches, "^Token not found$")
+}
+
+func (s *S) TestGetUserByTokenShouldReturnErrorWhenTheGivenTokenHasExpired(c *C) {
+	u := User{Email: "wolverine@xmen.com", Password: "123"}
+	err := u.Create()
+	c.Assert(err, IsNil)
+	err = u.Get()
+	c.Assert(err, IsNil)
+	t, err := NewToken(&u)
+	c.Assert(err, IsNil)
+	err = t.Create()
+	c.Assert(err, IsNil)
+	s.db.Exec("UPDATE usertokens SET valid_until = ?", time.Now().Add(-24*time.Hour).Format(time.UnixDate))
+	user, err := GetUserByToken(fmt.Sprintf("%x", t.Token))
+	c.Assert(user, IsNil)
+	c.Assert(err, NotNil)
+	c.Assert(err, ErrorMatches, "^Token has expired$")
 }

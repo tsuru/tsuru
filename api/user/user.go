@@ -83,6 +83,24 @@ func (t *Token) Create() error {
 	if t.U.Id < 1 {
 		return errors.New("User does not have an id")
 	}
-	_, err := database.Db.Exec("INSERT INTO usertokens (user_id, token, valid_until) VALUES (?, ?, ?)", t.U.Id, fmt.Sprintf("%x", t.Token), t.ValidUntil.Format(time.Stamp))
+	_, err := database.Db.Exec("INSERT INTO usertokens (user_id, token, valid_until) VALUES (?, ?, ?)", t.U.Id, fmt.Sprintf("%x", t.Token), t.ValidUntil.Format(time.UnixDate))
 	return err
+}
+
+func GetUserByToken(token string) (*User, error) {
+	var valid string
+	u := new(User)
+	row := database.Db.QueryRow("SELECT u.id, u.email, u.password, t.valid_until FROM users u INNER JOIN usertokens t ON t.user_id = u.id WHERE t.token = ?", token)
+	err := row.Scan(&u.Id, &u.Email, &u.Password, &valid)
+	if err != nil {
+		return nil, errors.New("Token not found")
+	}
+	t, err := time.Parse(time.UnixDate, valid)
+	if err != nil {
+		return nil, err
+	}
+	if t.Sub(time.Now()) < 1 {
+		return nil, errors.New("Token has expired")
+	}
+	return u, nil
 }
