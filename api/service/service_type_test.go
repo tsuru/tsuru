@@ -2,8 +2,8 @@ package service_test
 
 import (
 	. "github.com/timeredbull/tsuru/api/service"
-	. "launchpad.net/gocheck"
 	. "github.com/timeredbull/tsuru/database"
+	. "launchpad.net/gocheck"
 )
 
 func (s *ServiceSuite) createServiceType() {

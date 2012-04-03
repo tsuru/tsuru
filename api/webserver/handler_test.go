@@ -1,4 +1,4 @@
-package webserverd
+package webserver
 
 import (
 	"errors"

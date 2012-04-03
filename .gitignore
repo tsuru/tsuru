@@ -1,3 +1,4 @@
 *.sw[a-z]
 *.db
 main
+*.pyc

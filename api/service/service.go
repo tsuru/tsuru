@@ -2,9 +2,9 @@ package service
 
 import (
 	. "github.com/timeredbull/tsuru/api/app"
-	. "github.com/timeredbull/tsuru/database"
 	"github.com/timeredbull/tsuru/api/unit"
 	"launchpad.net/mgo/bson"
+	. "github.com/timeredbull/tsuru/database"
 )
 
 type Service struct {
