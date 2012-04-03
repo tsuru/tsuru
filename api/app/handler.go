@@ -61,6 +61,11 @@ func Upload(w http.ResponseWriter, r *http.Request) error {
 			return err
 		}
 
+		err = u.ExecuteHook("dependencies")
+		if err != nil {
+			return err
+		}
+
 		output, err = u.Command("sudo killall gunicorn_django")
 		log.Printf(string(output))
 		if err != nil {
