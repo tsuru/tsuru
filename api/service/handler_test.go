@@ -3,12 +3,12 @@ package service_test
 import (
 	"encoding/json"
 	"fmt"
-	"launchpad.net/mgo"
 	. "github.com/timeredbull/tsuru/api/app"
 	. "github.com/timeredbull/tsuru/api/service"
 	. "github.com/timeredbull/tsuru/database"
 	"io/ioutil"
 	. "launchpad.net/gocheck"
+	"launchpad.net/mgo"
 	"net/http"
 	"net/http/httptest"
 	"strings"

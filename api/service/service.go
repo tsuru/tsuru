@@ -37,7 +37,7 @@ func (s *Service) All() (result []Service) {
 	result = make([]Service, 100)
 
 	c := Mdb.C("services")
-	iter := c.Find(nil).Limit(100).Iter()
+	iter := c.Find(nil).Iter()
 	err := iter.All(&result)
 	if err != nil {
 		panic(iter.Err())
