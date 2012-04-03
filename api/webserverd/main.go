@@ -35,6 +35,7 @@ func main() {
 
 	m.Post("/users", webserverd.Handler(user.CreateUser))
 	m.Post("/users/:email/tokens", webserverd.Handler(user.Login))
+	m.Get("/users/check-authorization", webserverd.Handler(user.CheckAuthorization))
 
 	log.Fatal(http.ListenAndServe(":4000", m))
 }
