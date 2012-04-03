@@ -17,14 +17,12 @@ func (s *ServiceSuite) createService() {
 
 func (s *ServiceSuite) TestGetService(c *C) {
 	s.createService()
-	id := s.service.Id
-	sTypeId := s.service.ServiceTypeId
-	s.service.Id = ""
-	s.service.ServiceTypeId = ""
-	s.service.Get()
 
-	c.Assert(s.service.Id, Equals, id)
-	c.Assert(s.service.ServiceTypeId, Equals, sTypeId)
+	anotherService := Service{Id: s.service.Id}
+	anotherService.Get()
+
+	c.Assert(anotherService.Id, Equals, s.service.Id)
+	c.Assert(anotherService.ServiceTypeId, Equals, s.service.ServiceTypeId)
 }
 
 func (s *ServiceSuite) TestAllServices(c *C) {
@@ -54,13 +52,9 @@ func (s *ServiceSuite) TestDeleteService(c *C) {
 	s.createService()
 	s.service.Delete()
 
-	rows, err := Db.Query("SELECT count(*) FROM services WHERE name = 'my_service'")
+	collection := Mdb.C("services")
+	qtd, err := collection.Find(nil).Count()
 	c.Assert(err, IsNil)
-
-	var qtd int
-	for rows.Next() {
-		rows.Scan(&qtd)
-	}
 
 	c.Assert(qtd, Equals, 0)
 }
@@ -86,44 +80,36 @@ func (s *ServiceSuite) TestBindService(c *C) {
 	app := &App{Name: "my_app", Framework: "django"}
 	app.Create()
 	s.service.Bind(app)
+	var result ServiceApp
 
-	rows, err := Db.Query("SELECT service_id, app_id FROM service_apps WHERE service_id = ? AND app_id = ?", s.service.Id, app.Id)
-	c.Assert(err, IsNil)
-
-	var serviceId int64
-	var appId int64
-	for rows.Next() {
-		rows.Scan(&serviceId, &appId)
+	collection := Mdb.C("service_apps")
+	query := map[string]interface{}{
+		"service_id": s.service.Id,
+		"app_id":     app.Id,
+	}
+	err := collection.Find(query).One(&result)
+	if err != nil {
+		panic(err)
 	}
 
-	c.Assert(s.service.Id, Equals, serviceId)
-	c.Assert(app.Id, Equals, appId)
+	c.Assert(s.service.Id, Equals, result.ServiceId)
+	c.Assert(app.Id, Equals, result.AppId)
 }
 
 func (s *ServiceSuite) TestUnbindService(c *C) {
-	serviceType := &ServiceType{Name: "Mysql", Charm: "mysql"}
-	serviceType.Create()
-
-	service := &Service{ServiceTypeId: s.serviceType.Id, Name: "my_service"}
-	service.Create()
+	s.createService()
 	app := &App{Name: "my_app", Framework: "django"}
 	app.Create()
-	service.Bind(app)
-	service.Unbind(app)
+	s.service.Bind(app)
+	s.service.Unbind(app)
 
 	query := make(map[string]interface{})
-	query["service_id"] = service.Id
+	query["service_id"] = s.service.Id
 	query["app_id"] = app.Id
 
 	collection := Mdb.C("service_apps")
 	qtd, err := collection.Find(query).Count()
-	// rows, err := Db.Query("SELECT count(*) FROM service_apps WHERE service_id = ? AND app_id = ?", s.service.Id, app.Id)
 	c.Assert(err, IsNil)
-
-	// var qtd int
-	// for rows.Next() {
-	// 	rows.Scan(&qtd)
-	// }
 
 	c.Assert(qtd, Equals, 0)
 }

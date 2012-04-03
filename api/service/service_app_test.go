@@ -5,50 +5,50 @@ import (
 	. "github.com/timeredbull/tsuru/api/service"
 	. "github.com/timeredbull/tsuru/database"
 	. "launchpad.net/gocheck"
-	"fmt"
 )
 
 func (s *ServiceSuite) createServiceApp() {
-	st := ServiceType{Name: "mysql", Charm: "mysql"}
-	st.Create()
-	fmt.Println()
-	fmt.Println(st.Id)
-	fmt.Println()
+	s.serviceType = &ServiceType{Name: "mysql", Charm: "mysql"}
+	s.serviceType.Create()
+	s.service = &Service{Name: "MySQL", ServiceTypeId: s.serviceType.Id}
+	s.service.Create()
+	s.app = &App{Name: "someApp", Framework: "Django"}
+	s.app.Create()
+
 	s.serviceApp = &ServiceApp{
-		ServiceId: st.Id,
-		AppId:     1,
+		ServiceId: s.service.Id,
+		AppId:     s.app.Id,
 	}
 	s.serviceApp.Create()
 }
 
 func (s *ServiceSuite) TestCreateServiceApp(c *C) {
 	s.createServiceApp()
-	rows, err := Db.Query("SELECT service_id, app_id FROM service_apps WHERE service_id = 2 AND app_id = 1")
+	var result ServiceApp
+
+	collection := Mdb.C("service_apps")
+	query := make(map[string]interface{})
+	query["service_id"] = s.service.Id
+	query["app_id"] = s.app.Id
+	err := collection.Find(query).One(&result)
 	c.Check(err, IsNil)
 
-	var serviceId int
-	var appId int
-
-	for rows.Next() {
-		rows.Scan(&serviceId, &appId)
-	}
-
-	c.Assert(s.serviceApp.Id, Not(Equals), 0)
-	c.Assert(serviceId, Equals, 2)
-	c.Assert(appId, Equals, 1)
+	c.Assert(s.serviceApp.Id, Not(Equals), "")
+	c.Assert(result.ServiceId, Equals, s.service.Id)
+	c.Assert(result.AppId, Equals, s.app.Id)
 }
 
 func (s *ServiceSuite) TestDeleteServiceApp(c *C) {
 	s.createServiceApp()
 	s.serviceApp.Delete()
 
-	rows, err := Db.Query("SELECT count(*) FROM service_apps WHERE service_id = 2 AND app_id = 1")
-	c.Assert(err, IsNil)
+	collection := Mdb.C("service_apps")
+	query := make(map[string]interface{})
+	query["service_id"] = s.service.Id
+	query["app_id"] = s.app.Id
 
-	var qtd int
-	for rows.Next() {
-		rows.Scan(&qtd)
-	}
+	qtd, err := collection.Find(query).Count()
+	c.Assert(err, IsNil)
 
 	c.Assert(qtd, Equals, 0)
 }
@@ -56,16 +56,18 @@ func (s *ServiceSuite) TestDeleteServiceApp(c *C) {
 func (s *ServiceSuite) TestRetrieveAssociatedService(c *C) {
 	st := ServiceType{Name: "mysql", Charm: "mysql"}
 	st.Create()
+	a := App{Name: "MyApp", Framework: "Django"}
+	a.Create()
 	service := Service{Name: "my_service", ServiceTypeId: st.Id}
 	service.Create()
 
-	s.serviceApp = &ServiceApp{
+	serviceApp := &ServiceApp{
 		ServiceId: service.Id,
-		AppId:     1,
+		AppId:     a.Id,
 	}
-	s.serviceApp.Create()
+	serviceApp.Create()
 
-	retrievedService := s.serviceApp.Service()
+	retrievedService := serviceApp.Service()
 
 	c.Assert(service.Name, Equals, retrievedService.Name)
 	c.Assert(service.Id, Equals, retrievedService.Id)

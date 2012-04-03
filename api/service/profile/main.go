@@ -36,7 +36,7 @@ func main() {
 	sType.Create()
 	var s Service
 	var name string
-	for i := 0; i < 900; i++ {
+	for i := 0; i < 1000; i++ {
 		name = fmt.Sprintf("myService%d", i)
 		s = Service{ServiceTypeId: sType.Id, Name: name}
 		s.Create()
@@ -53,6 +53,6 @@ func main() {
 		f.Close()
 	}
 
-	c := Mdb.C("services")
-	defer c.DropCollection()
+	// c := Mdb.C("services")
+	// defer c.DropCollection()
 }

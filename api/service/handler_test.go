@@ -18,6 +18,7 @@ import (
 func Test(t *testing.T) { TestingT(t) }
 
 type ServiceSuite struct {
+	app         *App
 	service     *Service
 	serviceType *ServiceType
 	serviceApp  *ServiceApp
@@ -158,12 +159,12 @@ func (s *ServiceSuite) TestDeleteHandler(c *C) {
 }
 
 func (s *ServiceSuite) TestDeleteHandlerReturns404(c *C) {
-	request, err := http.NewRequest("GET", fmt.Sprintf("/services/%s?:name=%s", "mongobd", "mongodb"), nil)
+	request, err := http.NewRequest("GET", fmt.Sprintf("/services/%s?:name=%s", "mongodb", "mongodb"), nil)
 	c.Assert(err, IsNil)
 
 	recorder := httptest.NewRecorder()
 	err = DeleteHandler(recorder, request)
-	c.Assert(err, IsNil)
+	c.Assert(err, NotNil)
 	c.Assert(recorder.Code, Equals, 404)
 }
 
@@ -189,14 +190,9 @@ func (s *ServiceSuite) TestBindHandler(c *C) {
 		"service_id": se.Id,
 		"app_id": a.Id,
 	}
-	collection := Mdb.C("services")
+	collection := Mdb.C("service_apps")
 	qtd, err := collection.Find(query).Count()
 	c.Check(err, IsNil)
-
-	// var qtd int
-	// for rows.Next() {
-	// 	rows.Scan(&qtd)
-	// }
 
 	c.Assert(qtd, Equals, 1)
 }

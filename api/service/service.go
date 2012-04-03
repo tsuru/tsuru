@@ -9,28 +9,25 @@ import (
 
 type Service struct {
 	Id            bson.ObjectId "_id"
-	ServiceTypeId bson.ObjectId
+	ServiceTypeId bson.ObjectId "service_type_id"
 	Name          string
 }
 
 func (s *Service) Get() error {
-	query := make(map[string]interface{})
+	var query interface{}
 	var err error
+
 	switch {
 	case s.Id != "":
-		query["id"] = s.Id
+		query = bson.M{"_id": s.Id}
 	case s.Name != "":
-		query["name"] = s.Name
+		query = bson.M{"name": s.Name}
 	}
 
 	c := Mdb.C("services")
 	err = c.Find(query).One(&s)
 
-	if err != nil {
-		panic(err)
-	}
-
-	return nil
+	return err
 }
 
 func (s *Service) All() (result []Service) {
@@ -39,6 +36,7 @@ func (s *Service) All() (result []Service) {
 	c := Mdb.C("services")
 	iter := c.Find(nil).Iter()
 	err := iter.All(&result)
+
 	if err != nil {
 		panic(iter.Err())
 	}
@@ -94,5 +92,6 @@ func (s *Service) Unbind(app *App) error {
 func (s *Service) ServiceType() (st *ServiceType) {
 	st = &ServiceType{Id: s.ServiceTypeId}
 	st.Get()
+
 	return
 }

@@ -9,14 +9,17 @@ import (
 )
 
 type ServiceApp struct {
-	Id        bson.ObjectId
-	ServiceId bson.ObjectId
-	AppId     int
+	Id        bson.ObjectId "_id"
+	ServiceId bson.ObjectId "service_id"
+	AppId     bson.ObjectId "app_id"
 }
 
 func (sa *ServiceApp) Create() error {
 	c := Mdb.C("service_apps")
+	sa.Id = bson.NewObjectId()
+
 	err := c.Insert(sa)
+
 	if err != nil {
 		panic(err)
 	}
@@ -33,7 +36,8 @@ func (sa *ServiceApp) Create() error {
 
 func (sa *ServiceApp) Delete() error {
 	c := Mdb.C("service_apps")
-	err := c.Remove(sa) // should pass specific fields instead using all them
+	doc := bson.M{"service_id": sa.ServiceId, "app_id": sa.AppId}
+	err := c.Remove(doc)
 	if err != nil {
 		panic(err)
 	}
@@ -57,28 +61,13 @@ func (sa *ServiceApp) Service() (s *Service) {
 
 func (sa *ServiceApp) App() (a *App) {
 	query := make(map[string]interface{})
-	query["id"] = sa.AppId
+	query["_id"] = sa.AppId
 
 	c := Mdb.C("apps")
-	c.Find(query).One(&a)
-	// query := "SELECT id, name, framework FROM apps WHERE id = ?"
-	// rows, err := Db.Query(query, sa.AppId)
-	// if err != nil {
-	// 	panic(err)
-	// }
-
-	// var id int64
-	// var name string
-	// var framework string
-	// for rows.Next() {
-	// 	rows.Scan(&id, &name, &framework)
-	// }
-
-	// a = &App{
-	// 	Id:        id,
-	// 	Name:      name,
-	// 	Framework: framework,
-	// }
+	err := c.Find(query).One(&a)
+	if err != nil {
+		panic(err)
+	}
 
 	return
 }

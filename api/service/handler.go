@@ -32,7 +32,6 @@ func ServicesHandler(w http.ResponseWriter, r *http.Request) error {
 	services := s.All()
 	results := make([]ServiceT, 0)
 
-	//fmt.Println(services)
 	var sT ServiceT
 	for _, s := range services {
 		sT = ServiceT{
@@ -57,7 +56,6 @@ func ServiceTypesHandler(w http.ResponseWriter, r *http.Request) error {
 	sTypes := s.All()
 	results := make([]ServiceType, 0)
 
-	//fmt.Println(services)
 	var sT ServiceType
 	for _, s := range sTypes {
 		sT = ServiceType{
@@ -105,14 +103,15 @@ func CreateHandler(w http.ResponseWriter, r *http.Request) error {
 
 func DeleteHandler(w http.ResponseWriter, r *http.Request) error {
 	s := Service{Name: r.URL.Query().Get(":name")}
-	s.Get()
+	err := s.Get()
 
-	if s.Id == "" {
+	if err != nil {
 		http.NotFound(w, r)
-	} else {
-		s.Delete()
-		fmt.Fprint(w, "success")
+		return err
 	}
+	s.Delete()
+	fmt.Fprint(w, "success")
+
 	return nil
 }
 
@@ -134,7 +133,7 @@ func BindHandler(w http.ResponseWriter, r *http.Request) error {
 	a := App{Name: b.App}
 	s.Get()
 	a.Get()
-	if s.Id == "" || a.Id == 0 {
+	if s.Id == "" || a.Id == "" {
 		http.NotFound(w, r)
 	} else {
 		s.Bind(&a)
@@ -161,7 +160,7 @@ func UnbindHandler(w http.ResponseWriter, r *http.Request) error {
 	a := App{Name: b.App}
 	s.Get()
 	a.Get()
-	if s.Id == "" || a.Id == 0 {
+	if s.Id == "" || a.Id == "" {
 		http.NotFound(w, r)
 	} else {
 		s.Unbind(&a)
