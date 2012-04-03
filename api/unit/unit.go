@@ -1,6 +1,7 @@
 package unit
 
 import (
+	"fmt"
 	"log"
 	"os/exec"
 )
@@ -44,4 +45,11 @@ func (u *Unit) SendFile(srcPath, dstPath string) error {
 	cmd := exec.Command("juju", "scp", "-r", "-o", "StrictHostKeyChecking no", srcPath, u.Name+"/0:"+dstPath)
 	log.Printf("sending %s to %s on %s", srcPath, dstPath, u.Name)
 	return cmd.Start()
+}
+
+func (u *Unit) ExecuteHook(hook string) error {
+	cmd := fmt.Sprintf("/var/lib/tsuru/hooks/%d", hook)
+	output, err := u.Command(cmd)
+	log.Printf(string(output))
+	return err
 }
