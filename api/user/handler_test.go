@@ -3,6 +3,7 @@ package user
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	. "launchpad.net/gocheck"
 	"net/http"
@@ -165,4 +166,40 @@ func (s *S) TestLoginShouldreturnErrorIfThePasswordDoesNotMatch(c *C) {
 	c.Assert(err, NotNil)
 	c.Assert(err, ErrorMatches, "^Authentication failed, wrong password$")
 	c.Assert(response.Code, Equals, http.StatusUnauthorized)
+}
+
+func (s *S) TestValidateUserTokenReturnJsonRepresentingUser(c *C) {
+	var t *Token
+	u := User{Email: "nobody@globo.com", Password: "123"}
+	err := u.Create()
+	c.Assert(err, IsNil)
+	u.Get()
+	t, err = NewToken(&u)
+	c.Assert(err, IsNil)
+	err = t.Create()
+	c.Assert(err, IsNil)
+	request, err := http.NewRequest("GET", "/users/check-authorization", nil)
+	c.Assert(err, IsNil)
+	request.Header.Set("Authorization", fmt.Sprintf("%x", t.Token))
+	response := httptest.NewRecorder()
+	err = CheckAuthorization(response, request)
+	c.Assert(err, IsNil)
+
+	var expected, got map[string]string
+	expected = map[string]string{
+		"id":    fmt.Sprintf("%d", u.Id),
+		"email": "nobody@globo.com",
+	}
+	r, _ := ioutil.ReadAll(response.Body)
+	json.Unmarshal(r, &got)
+	c.Assert(got, DeepEquals, expected)
+}
+
+func (s *S) TestValidateUserTokenReturnErrorWhenGetUserByTokenReturnsAny(c *C) {
+	request, err := http.NewRequest("GET", "/users/check-authorization", nil)
+	c.Assert(err, IsNil)
+	request.Header.Set("Authorization", fmt.Sprintf("unexistent token"))
+	response := httptest.NewRecorder()
+	err = CheckAuthorization(response, request)
+	c.Assert(err, NotNil)
 }

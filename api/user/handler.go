@@ -59,3 +59,21 @@ func Login(w http.ResponseWriter, r *http.Request) error {
 	w.WriteHeader(http.StatusUnauthorized)
 	return errors.New("Authentication failed, wrong password")
 }
+
+func CheckAuthorization(w http.ResponseWriter, r *http.Request) error {
+	token := r.Header.Get("Authorization")
+	user, err := GetUserByToken(token)
+	if err != nil {
+		return err
+	}
+	output := map[string]string{
+		"id":    fmt.Sprintf("%d", user.Id),
+		"email": user.Email,
+	}
+	b, err := json.Marshal(output)
+	if err != nil {
+		return err
+	}
+	w.Write(b)
+	return nil
+}
