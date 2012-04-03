@@ -1,13 +1,13 @@
 package app
 
 import (
-	_ "github.com/mattn/go-sqlite3"
 	"github.com/timeredbull/tsuru/api/unit"
 	. "github.com/timeredbull/tsuru/database"
+	"launchpad.net/mgo/bson"
 )
 
 type App struct {
-	Id        int
+	Id        bson.ObjectId "_id"
 	Ip        string
 	Name      string
 	Framework string
@@ -15,31 +15,27 @@ type App struct {
 }
 
 func AllApps() ([]App, error) {
-	query := "SELECT id, name, framework, ip, state FROM apps"
-	rows, err := Db.Query(query)
+	apps := make([]App, 100)
+
+	c := Mdb.C("apps")
+	iter := c.Find(nil).Iter()
+	err := iter.All(&apps)
 	if err != nil {
-		return []App{}, err
+		panic(iter.Err())
 	}
 
-	apps := make([]App, 0)
-	var app App
-	for rows.Next() {
-		app = App{}
-		rows.Scan(&app.Id, &app.Name, &app.Framework, &app.Ip, &app.State)
-		apps = append(apps, app)
-	}
 	return apps, err
 }
 
 func (app *App) Get() error {
-	query := "SELECT id, framework, state, ip FROM apps WHERE name = ?"
-	rows, err := Db.Query(query, app.Name)
+	query := make(map[string]interface{})
+	query["name"] = app.Name
+
+	c := Mdb.C("apps")
+	err := c.Find(query).One(&app)
+
 	if err != nil {
 		return err
-	}
-
-	for rows.Next() {
-		rows.Scan(&app.Id, &app.Framework, &app.State, &app.Ip)
 	}
 
 	return nil
@@ -47,26 +43,11 @@ func (app *App) Get() error {
 
 func (app *App) Create() error {
 	app.State = "Pending"
+	app.Id = bson.NewObjectId()
 
-	insertApp, err := Db.Prepare("INSERT INTO apps (name, framework, state, ip) VALUES (?, ?, ?, ?)")
-	if err != nil {
-		panic(err)
-	}
-	tx, err := Db.Begin()
-
-	if err != nil {
-		panic(err)
-	}
-
-	stmt := tx.Stmt(insertApp)
-	_, err = stmt.Exec(app.Name, app.Framework, app.State, app.Ip)
-	if err != nil {
-		panic(err)
-	}
-
-	tx.Commit()
-
-	//app.Id, err = result.LastInsertId()
+	c := Mdb.C("apps")
+	doc := bson.M{"_id": app.Id, "name": app.Name, "framework": app.Framework, "state": app.State, "ip": app.Ip}
+	err := c.Insert(doc)
 	if err != nil {
 		panic(err)
 	}
@@ -78,19 +59,13 @@ func (app *App) Create() error {
 }
 
 func (app *App) Destroy() error {
-	deleteApp, err := Db.Prepare("DELETE FROM apps WHERE name = ?")
-	if err != nil {
-		panic(err)
-	}
-	tx, err := Db.Begin()
+	c := Mdb.C("apps")
+	doc := bson.M{"name": app.Name}
+	err := c.Remove(doc)
 
 	if err != nil {
 		panic(err)
 	}
-
-	stmt := tx.Stmt(deleteApp)
-	stmt.Exec(app.Name)
-	tx.Commit()
 
 	u := unit.Unit{Name: app.Name, Type: app.Framework}
 	u.Destroy()

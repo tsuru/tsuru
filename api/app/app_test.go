@@ -1,34 +1,38 @@
 package app_test
 
 import (
-	"database/sql"
-	_ "github.com/mattn/go-sqlite3"
 	"github.com/timeredbull/tsuru/api/app"
 	. "github.com/timeredbull/tsuru/database"
 	. "launchpad.net/gocheck"
-	"os"
+	"launchpad.net/mgo"
 	"testing"
 )
 
 func Test(t *testing.T) { TestingT(t) }
 
-type S struct{}
+type S struct{
+	session *mgo.Session
+}
 
 var _ = Suite(&S{})
 
 func (s *S) SetUpSuite(c *C) {
-	Db, _ = sql.Open("sqlite3", "./tsuru.db")
-	_, err := Db.Exec("CREATE TABLE 'apps' ('id' INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, 'name' varchar(255), 'framework' varchar(255), 'state' varchar(255), ip varchar(100))")
-	c.Check(err, IsNil)
+	var err error
+	s.session, err = mgo.Dial("localhost:27017")
+	c.Assert(err, IsNil)
+	Mdb = s.session.DB("tsuru_test")
+	c.Assert(err, IsNil)
 }
 
 func (s *S) TearDownSuite(c *C) {
-	os.Remove("./tsuru.db")
-	Db.Close()
+	err := Mdb.DropDatabase()
+	c.Assert(err, IsNil)
+	s.session.Close()
 }
 
 func (s *S) TearDownTest(c *C) {
-	Db.Exec("DELETE FROM apps")
+	err := Mdb.C("apps").DropCollection()
+	c.Assert(err, IsNil)
 }
 
 func (s *S) TestAll(c *C) {
@@ -73,48 +77,40 @@ func (s *S) TestDestroy(c *C) {
 
 	err := app.Create()
 	c.Assert(err, IsNil)
-
 	err = app.Destroy()
 	c.Assert(err, IsNil)
 
-	rows, err := Db.Query("SELECT count(*) FROM apps WHERE name = 'appName'")
+	collection := Mdb.C("apps")
+	qtd, err := collection.Find(nil).Count()
 	c.Assert(err, IsNil)
-
-	var qtd int
-	for rows.Next() {
-		rows.Scan(&qtd)
-	}
 
 	c.Assert(qtd, Equals, 0)
 }
 
 func (s *S) TestCreate(c *C) {
-	app := app.App{}
-	app.Name = "appName"
-	app.Framework = "django"
+	a := app.App{}
+	a.Name = "appName"
+	a.Framework = "django"
 
-	err := app.Create()
+	err := a.Create()
 	c.Assert(err, IsNil)
 
-	c.Assert(app.State, Equals, "Pending")
-	c.Assert(app.Id, Not(Equals), int64(0))
+	c.Assert(a.State, Equals, "Pending")
+	c.Assert(a.Id, Not(Equals), "")
 
-	rows, err := Db.Query("SELECT id, name, framework, state FROM apps WHERE name = 'appName'")
+	collection := Mdb.C("apps")
+	var retrievedApp app.App
+
+	query := make(map[string]interface{})
+	query["name"] = a.Name
+
+	err = collection.Find(query).One(&retrievedApp)
+
 	c.Assert(err, IsNil)
+	c.Assert(retrievedApp.Id, Equals, a.Id)
+	c.Assert(retrievedApp.Name, Equals, a.Name)
+	c.Assert(retrievedApp.Framework, Equals, a.Framework)
+	c.Assert(retrievedApp.State, Equals, a.State)
 
-	var state string
-	var name string
-	var framework string
-	var id int
-
-	for rows.Next() {
-		rows.Scan(&id, &name, &framework, &state)
-	}
-
-	c.Assert(id, Equals, int(app.Id))
-	c.Assert(name, Equals, app.Name)
-	c.Assert(framework, Equals, app.Framework)
-	c.Assert(state, Equals, app.State)
-
-	app.Destroy()
+	a.Destroy()
 }

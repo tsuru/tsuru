@@ -152,13 +152,11 @@ func (s *S) TestCreateApp(c *C) {
 	c.Assert(recorder.Body.String(), Equals, "success")
 	c.Assert(recorder.Code, Equals, 200)
 
-	rows, err := Db.Query("SELECT count(*) FROM apps WHERE name = 'someApp'")
+	collection := Mdb.C("apps")
+	query := make(map[string]interface{})
+	query["name"] = "someApp"
+	qtd, err := collection.Find(query).Count()
 	c.Assert(err, IsNil)
-
-	var qtd int
-	for rows.Next() {
-		rows.Scan(&qtd)
-	}
 
 	c.Assert(qtd, Equals, 1)
 

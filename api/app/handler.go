@@ -17,7 +17,7 @@ func Upload(w http.ResponseWriter, r *http.Request) error {
 	app := App{Name: r.URL.Query().Get(":name")}
 	app.Get()
 
-	if app.Id == 0 {
+	if app.Id == "" {
 		http.NotFound(w, r)
 	} else {
 		f, _, err := r.FormFile("application")
@@ -101,7 +101,7 @@ func AppInfo(w http.ResponseWriter, r *http.Request) error {
 	app := App{Name: r.URL.Query().Get(":name")}
 	app.Get()
 
-	if app.Id == 0 {
+	if app.Id == "" {
 		http.NotFound(w, r)
 	} else {
 		b, err := json.Marshal(app)
