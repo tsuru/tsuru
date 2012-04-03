@@ -62,6 +62,10 @@ func Login(w http.ResponseWriter, r *http.Request) error {
 
 func CheckAuthorization(w http.ResponseWriter, r *http.Request) error {
 	token := r.Header.Get("Authorization")
+	if token == "" {
+		w.WriteHeader(http.StatusBadRequest)
+		return errors.New("You must provide the Authorization header")
+	}
 	user, err := GetUserByToken(token)
 	if err != nil {
 		return err

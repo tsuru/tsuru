@@ -203,3 +203,13 @@ func (s *S) TestValidateUserTokenReturnErrorWhenGetUserByTokenReturnsAny(c *C) {
 	err = CheckAuthorization(response, request)
 	c.Assert(err, NotNil)
 }
+
+func (s *S) TestValidateUserTokenReturnErrorAndBadRequestWhenTheAuthorizationHeaderIsNotPresent(c *C) {
+	request, err := http.NewRequest("GET", "/users/check-authorization", nil)
+	c.Assert(err, IsNil)
+	response := httptest.NewRecorder()
+	err = CheckAuthorization(response, request)
+	c.Assert(response.Code, Equals, http.StatusBadRequest)
+	c.Assert(err, NotNil)
+	c.Assert(err, ErrorMatches, "^You must provide the Authorization header$")
+}
