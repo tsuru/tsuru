@@ -54,17 +54,24 @@ func Upload(w http.ResponseWriter, r *http.Request) error {
 		if err != nil {
 			return err
 		}
-		//u.Command(fmt.Sprintf("'rm -rf %s'", currentDir))
+
 		output, err = u.Command(fmt.Sprintf("cd %s && ln -nfs %s current", releasesDir, releaseName))
 		log.Printf(string(output))
 		if err != nil {
 			return err
 		}
+
+		err = u.ExecuteHook("dependencies")
+		if err != nil {
+			return err
+		}
+
 		output, err = u.Command("sudo killall gunicorn_django")
 		log.Printf(string(output))
 		if err != nil {
 			return err
 		}
+
 		output, err = u.Command(fmt.Sprintf("cd %s && sudo %s --daemon --workers=3 --bind=127.0.0.1:8888", currentDir, gunicorn))
 		log.Printf(string(output))
 		if err != nil {
