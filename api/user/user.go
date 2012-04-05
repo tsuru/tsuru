@@ -5,6 +5,7 @@ import (
 	"crypto/sha512"
 	"errors"
 	"fmt"
+	"launchpad.net/mgo/bson"
 	"github.com/timeredbull/tsuru/database"
 	"time"
 )
@@ -21,14 +22,24 @@ func hashPassword(password string) string {
 }
 
 type User struct {
-	Id       int
+	Id       bson.ObjectId "_id"
 	Email    string
 	Password string
+	Tokens   []Token
+}
+
+type Token struct {
+	Token      []byte
+	ValidUntil time.Time
 }
 
 func (u *User) Create() error {
 	u.hashPassword()
-	_, err := database.Db.Exec("INSERT INTO users (email, password) VALUES (?, ?)", u.Email, u.Password)
+	u.Id = bson.NewObjectId()
+
+	c := database.Mdb.C("users")
+	err := c.Insert(u)
+
 	return err
 }
 
@@ -37,17 +48,24 @@ func (u *User) hashPassword() {
 }
 
 func (u *User) Get() error {
-	var field string
-	var args = make([]interface{}, 1)
-	if u.Id > 0 {
-		field = "id"
-		args[0] = u.Id
+	var filter = bson.M{}
+
+	if u.Id.Valid() {
+		filter["_id"] = u.Id
+		// field = "id"
+		// args[0] = u.Id
 	} else {
-		field = "email"
-		args[0] = u.Email
+		filter["email"] = u.Email
+		// field = "email"
+		// args[0] = u.Email
 	}
-	row := database.Db.QueryRow(fmt.Sprintf("SELECT id, email, password FROM users WHERE %s = ?", field), args...)
-	err := row.Scan(&u.Id, &u.Email, &u.Password)
+
+	var result User
+	c := database.Mdb.C("users")
+	err := c.Find(filter).One(&result)
+	// row := database.Db.QueryRow(fmt.Sprintf("SELECT id, email, password FROM users WHERE %s = ?", field), args...)
+	// err := row.Scan(&u.Id, &u.Email, &u.Password)
+
 	return err
 }
 
@@ -56,16 +74,7 @@ func (u *User) Login(password string) bool {
 	return u.Password == hashedPassword
 }
 
-type Token struct {
-	U          *User
-	Token      []byte
-	ValidUntil time.Time
-}
-
 func NewToken(u *User) (*Token, error) {
-	if u == nil {
-		return nil, errors.New("User is nil")
-	}
 	if u.Email == "" {
 		return nil, errors.New("Impossible to generate tokens for users without email")
 	}
@@ -73,28 +82,42 @@ func NewToken(u *User) (*Token, error) {
 	h.Write([]byte(u.Email))
 	h.Write([]byte(TOKENKEY))
 	h.Write([]byte(time.Now().Format(time.UnixDate)))
-	t := Token{U: u}
+	t := Token{}
 	t.ValidUntil = time.Now().Add(TOKENEXPIRE)
 	t.Token = h.Sum(nil)
 	return &t, nil
 }
 
-func (t *Token) Create() error {
-	if t.U.Id < 1 {
-		return errors.New("User does not have an id")
+func (u *User) CreateToken() (*Token, error) {
+	if !u.Id.Valid() {
+		return nil, errors.New("User does not have an id")
 	}
-	_, err := database.Db.Exec("INSERT INTO usertokens (user_id, token, valid_until) VALUES (?, ?, ?)", t.U.Id, fmt.Sprintf("%x", t.Token), t.ValidUntil.Format(time.UnixDate))
-	return err
+
+	t, _ := NewToken(u)
+	u.Tokens = append(u.Tokens, *t)
+
+	selector := map[string]interface{}{ "_id": u.Id }
+	change := map[string]interface{}{ "tokens": u.Tokens } // should ensure that it maintains any old tokens
+
+	c := database.Mdb.C("users")
+	err := c.Update(selector, change)
+
+	return t, err
+	// _, err := database.Db.Exec("INSERT INTO usertokens (user_id, token, valid_until) VALUES (?, ?, ?)", t.U.Id, fmt.Sprintf("%x", t.Token), t.ValidUntil.Format(time.UnixDate))
 }
 
 func GetUserByToken(token string) (*User, error) {
 	var valid string
 	u := new(User)
-	row := database.Db.QueryRow("SELECT u.id, u.email, u.password, t.valid_until FROM users u INNER JOIN usertokens t ON t.user_id = u.id WHERE t.token = ?", token)
-	err := row.Scan(&u.Id, &u.Email, &u.Password, &valid)
-	if err != nil {
-		return nil, errors.New("Token not found")
-	}
+	query := map[string]interface{}{ "tokens.token": token }
+	c := database.Mdb.C("users")
+	err := c.Find(query).One(&u)
+	// row := database.Db.QueryRow("SELECT u.id, u.email, u.password, t.valid_until FROM users u INNER JOIN usertokens t ON t.user_id = u.id WHERE t.token = ?", token)
+	// err := row.Scan(&u.Id, &u.Email, &u.Password, &valid)
+	// if err != nil {
+	// 	return nil, errors.New("Token not found")
+	// }
+	fmt.Println("oooi", u.Tokens)
 	t, err := time.Parse(time.UnixDate, valid)
 	if err != nil {
 		return nil, err

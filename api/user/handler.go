@@ -39,23 +39,28 @@ func Login(w http.ResponseWriter, r *http.Request) error {
 		w.WriteHeader(http.StatusBadRequest)
 		return errors.New("Invalid JSON")
 	}
+
 	password, ok := pass["password"]
 	if !ok {
 		w.WriteHeader(http.StatusBadRequest)
 		return errors.New("You must provide a password to login")
 	}
+
 	u := User{Email: r.URL.Query().Get(":email")}
 	err = u.Get()
 	if err != nil {
 		w.WriteHeader(http.StatusNotFound)
 		return errors.New("User not found")
 	}
+
 	if u.Login(password) {
-		t, _ := NewToken(&u)
-		t.Create()
-		fmt.Fprintf(w, `{"token":"%x"}`, t.Token)
+		t, _ := u.CreateToken()
+		/* t, _ := NewToken(&u) */
+		// t.Create()
+		fmt.Fprintf(w, `{"token":"%x"}`, t)
 		return nil
 	}
+
 	w.WriteHeader(http.StatusUnauthorized)
 	return errors.New("Authentication failed, wrong password")
 }

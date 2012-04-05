@@ -4,7 +4,9 @@ import (
 	"code.google.com/p/go.crypto/pbkdf2"
 	"crypto/sha512"
 	"fmt"
+	. "github.com/timeredbull/tsuru/database"
 	. "launchpad.net/gocheck"
+	"launchpad.net/mgo/bson"
 	"time"
 )
 
@@ -13,14 +15,20 @@ func (s *S) TestCreateUser(c *C) {
 	err := u.Create()
 	c.Assert(err, IsNil)
 
-	var email, password string
-	rows, err := s.db.Query("SELECT email, password FROM users WHERE id = (SELECT max(id) FROM users)")
+	var result User
+	query := map[string]interface{}{ "_id": u.Id }
+	collection := Mdb.C("users")
+	err = collection.Find(query).One(&result)
 	c.Assert(err, IsNil)
-	if rows.Next() {
-		rows.Scan(&email, &password)
-		rows.Close()
-	}
-	c.Assert(email, Equals, u.Email)
+	c.Assert(result.Email, Equals, u.Email)
+	// var email, password string
+	// rows, err := s.db.Query("SELECT email, password FROM users WHERE id = (SELECT max(id) FROM users)")
+	// c.Assert(err, IsNil)
+	// if rows.Next() {
+	// 	rows.Scan(&email, &password)
+	// 	rows.Close()
+	// }
+	// c.Assert(email, Equals, u.Email)
 }
 
 func (s *S) TestCreateUserHashesThePasswordUsingPBKDF2SHA512AndSalt(c *C) {
@@ -30,21 +38,26 @@ func (s *S) TestCreateUserHashesThePasswordUsingPBKDF2SHA512AndSalt(c *C) {
 	err := u.Create()
 	c.Assert(err, IsNil)
 
-	var password string
-	row := s.db.QueryRow("SELECT password FROM users WHERE id = (SELECT max(id) FROM users)")
-	row.Scan(&password)
-	c.Assert(password, Equals, expectedPassword)
+	var result User
+	query := map[string]interface{}{ "_id": u.Id }
+	collection := Mdb.C("users")
+	err = collection.Find(query).One(&result)
+	c.Assert(err, IsNil)
+	c.Assert(result.Password, Equals, expectedPassword)
+
+	// var password string
+	// row := s.db.QueryRow("SELECT password FROM users WHERE id = (SELECT max(id) FROM users)")
+	// row.Scan(&password)
+	// c.Assert(password, Equals, expectedPassword)
 }
 
-func (s *S) TestCreateUserReturnsErrorWhenAnyHappen(c *C) {
+func (s *S) TestCreateUserReturnsErrorWhenAnyErrorHappens(c *C) {
 	u := User{Email: "wolverine@xmen.com", Password: "123"}
 	err := u.Create()
 	c.Assert(err, IsNil)
 
 	err = u.Create()
 	c.Assert(err, NotNil)
-	_, err = s.db.Exec(`DELETE FROM users WHERE email="wolverine@xmen.com"`)
-	c.Assert(err, IsNil)
 }
 
 func (s *S) TestGetUserById(c *C) {
@@ -52,19 +65,12 @@ func (s *S) TestGetUserById(c *C) {
 	err := u.Create()
 	c.Assert(err, IsNil)
 
-	var id int
-	rows, err := s.db.Query("SELECT max(id) FROM users")
+	var result User
+	query := map[string]interface{}{ "_id": u.Id }
+	collection := Mdb.C("users")
+	err = collection.Find(query).One(&result)
 	c.Assert(err, IsNil)
-	if rows.Next() {
-		rows.Scan(&id)
-		rows.Close()
-	}
-	u = User{Id: id}
-	err = u.Get()
-	c.Assert(err, IsNil)
-	c.Assert(u.Email, Equals, "wolverine@xmen.com")
-	_, err = s.db.Exec(`DELETE FROM users WHERE email="wolverine@xmen.com"`)
-	c.Assert(err, IsNil)
+	c.Assert(u.Email, Equals, result.Email)
 }
 
 func (s *S) TestGetUserByEmail(c *C) {
@@ -75,14 +81,12 @@ func (s *S) TestGetUserByEmail(c *C) {
 	u = User{Email: "wolverine@xmen.com"}
 	err = u.Get()
 	c.Assert(err, IsNil)
-	c.Assert(u.Id > 0, Equals, true)
+	c.Assert(u.Id.Valid(), Equals, true)
 	c.Assert(u.Email, Equals, "wolverine@xmen.com")
-	_, err = s.db.Exec(`DELETE FROM users WHERE email="wolverine@xmen.com"`)
-	c.Assert(err, IsNil)
 }
 
 func (s *S) TestGetUserReturnsErrorWhenNoUserIsFound(c *C) {
-	u := User{Id: 10}
+	u := User{Id: bson.NewObjectId()}
 	err := u.Get()
 	c.Assert(err, NotNil)
 }
@@ -99,11 +103,14 @@ func (s *S) TestUserLoginReturnsFalseIfThePasswordDoesNotMatch(c *C) {
 	c.Assert(u.Login("1234"), Equals, false)
 }
 
-func (s *S) TestNewTokenStoresUserReference(c *C) {
+func (s *S) TestNewTokenIsStoredInUser(c *C) {
 	u := User{Email: "wolverine@xmen.com", Password: "123456"}
-	t, err := NewToken(&u)
+
+	t, err := u.CreateToken()
 	c.Assert(err, IsNil)
-	c.Assert(t.U.Email, Equals, "wolverine@xmen.com")
+
+	c.Assert(u.Email, Equals, "wolverine@xmen.com")
+	c.Assert(u.Tokens[0].Token, Equals, t)
 }
 
 func (s *S) TestNewTokenReturnsErroWhenUserReferenceDoesNotContainsEmail(c *C) {
@@ -114,36 +121,34 @@ func (s *S) TestNewTokenReturnsErroWhenUserReferenceDoesNotContainsEmail(c *C) {
 	c.Assert(err, ErrorMatches, "^Impossible to generate tokens for users without email$")
 }
 
-func (s *S) TestNewTokenReturnsErrorWhenUserIsNil(c *C) {
-	t, err := NewToken(nil)
-	c.Assert(t, IsNil)
-	c.Assert(err, NotNil)
-	c.Assert(err, ErrorMatches, "^User is nil$")
-}
+// func (s *S) TestNewTokenReturnsErrorWhenUserIsNil(c *C) {
+// 	t, err := NewToken(nil)
+// 	c.Assert(t, IsNil)
+// 	c.Assert(err, NotNil)
+// 	c.Assert(err, ErrorMatches, "^User is nil$")
+// }
 
-func (s *S) TestCreateTokenShouldSaveTheTokenInTheDatabase(c *C) {
+func (s *S) TestCreateTokenShouldSaveTheTokenInUserInTheDatabase(c *C) {
 	var t *Token
-	var userId, tokenId int
 	u := User{Email: "wolverine@xmen.com", Password: "123"}
 	err := u.Create()
 	c.Assert(err, IsNil)
 	err = u.Get()
 	c.Assert(err, IsNil)
-	t, err = NewToken(&u)
+	_, err = u.CreateToken()
 	c.Assert(err, IsNil)
-	err = t.Create()
+
+	var result User
+	collection := Mdb.C("users")
+	err = collection.Find(nil).One(&result)
 	c.Assert(err, IsNil)
-	row := s.db.QueryRow("SELECT id, user_id FROM usertokens ORDER BY id DESC LIMIT 1")
-	row.Scan(&tokenId, &userId)
-	c.Assert(tokenId > 0, Equals, true)
-	c.Assert(userId, Equals, u.Id)
+	c.Assert(result.Tokens[0].Token, Equals, t.Token)
+	c.Assert(result.Id, Equals, u.Id)
 }
 
 func (s *S) TestCreateTokenShouldReturnErrorIfTheProvidedUserDoesNotHaveId(c *C) {
 	u := User{Email: "wolverine@xmen.com", Password: "123"}
-	t, err := NewToken(&u)
-	c.Assert(err, IsNil)
-	err = t.Create()
+	_, err := u.CreateToken()
 	c.Assert(err, NotNil)
 	c.Assert(err, ErrorMatches, "^User does not have an id$")
 }
@@ -154,9 +159,7 @@ func (s *S) TestGetUserByToken(c *C) {
 	c.Assert(err, IsNil)
 	err = u.Get()
 	c.Assert(err, IsNil)
-	t, err := NewToken(&u)
-	c.Assert(err, IsNil)
-	err = t.Create()
+	t, err := u.CreateToken()
 	c.Assert(err, IsNil)
 	user, err := GetUserByToken(fmt.Sprintf("%x", t.Token))
 	c.Assert(err, IsNil)
@@ -176,11 +179,12 @@ func (s *S) TestGetUserByTokenShouldReturnErrorWhenTheGivenTokenHasExpired(c *C)
 	c.Assert(err, IsNil)
 	err = u.Get()
 	c.Assert(err, IsNil)
-	t, err := NewToken(&u)
+	t, err := u.CreateToken()
 	c.Assert(err, IsNil)
-	err = t.Create()
-	c.Assert(err, IsNil)
-	s.db.Exec("UPDATE usertokens SET valid_until = ?", time.Now().Add(-24*time.Hour).Format(time.UnixDate))
+	/* s.db.Exec("UPDATE usertokens SET valid_until = ?", time.Now().Add(-24*time.Hour).Format(time.UnixDate)) */
+	collection := Mdb.C("users")
+	change := map[string]map[string]interface{}{ "token":{ "valid_until": time.Now().Add(-24*time.Hour).Format(time.UnixDate) } }
+	err = collection.Update(nil, change)
 	user, err := GetUserByToken(fmt.Sprintf("%x", t.Token))
 	c.Assert(user, IsNil)
 	c.Assert(err, NotNil)
