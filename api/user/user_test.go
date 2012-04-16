@@ -105,12 +105,13 @@ func (s *S) TestUserLoginReturnsFalseIfThePasswordDoesNotMatch(c *C) {
 
 func (s *S) TestNewTokenIsStoredInUser(c *C) {
 	u := User{Email: "wolverine@xmen.com", Password: "123456"}
+	u.Create()
 
 	t, err := u.CreateToken()
 	c.Assert(err, IsNil)
 
 	c.Assert(u.Email, Equals, "wolverine@xmen.com")
-	c.Assert(u.Tokens[0].Token, Equals, t)
+	c.Assert(string(u.Tokens[0].Token), Equals, string(t.Token))
 }
 
 func (s *S) TestNewTokenReturnsErroWhenUserReferenceDoesNotContainsEmail(c *C) {

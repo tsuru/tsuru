@@ -114,10 +114,10 @@ func GetUserByToken(token string) (*User, error) {
 	err := c.Find(query).One(&u)
 	// row := database.Db.QueryRow("SELECT u.id, u.email, u.password, t.valid_until FROM users u INNER JOIN usertokens t ON t.user_id = u.id WHERE t.token = ?", token)
 	// err := row.Scan(&u.Id, &u.Email, &u.Password, &valid)
-	// if err != nil {
-	// 	return nil, errors.New("Token not found")
-	// }
-	fmt.Println("oooi", u.Tokens)
+	if err != nil {
+		return nil, errors.New("Token not found")
+	}
+
 	t, err := time.Parse(time.UnixDate, valid)
 	if err != nil {
 		return nil, err
