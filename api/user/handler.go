@@ -55,9 +55,7 @@ func Login(w http.ResponseWriter, r *http.Request) error {
 
 	if u.Login(password) {
 		t, _ := u.CreateToken()
-		/* t, _ := NewToken(&u) */
-		// t.Create()
-		fmt.Fprintf(w, `{"token":"%x"}`, t)
+		fmt.Fprintf(w, `{"token":"%s"}`, t.Token)
 		return nil
 	}
 
@@ -76,7 +74,7 @@ func CheckAuthorization(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	output := map[string]string{
-		"id":    fmt.Sprintf("%d", user.Id),
+		"id":    user.Id.String(),
 		"email": user.Email,
 	}
 	b, err := json.Marshal(output)

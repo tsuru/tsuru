@@ -26,6 +26,8 @@ func (s *S) SetUpSuite(c *C) {
 }
 
 func (s *S) TearDownSuite(c *C) {
+	err := Mdb.DropDatabase()
+	c.Assert(err, IsNil)
 	s.session.Close()
 }
 
