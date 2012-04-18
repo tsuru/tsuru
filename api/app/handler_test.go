@@ -7,6 +7,7 @@ import (
 	. "github.com/timeredbull/tsuru/database"
 	"io/ioutil"
 	. "launchpad.net/gocheck"
+	"launchpad.net/mgo/bson"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -153,11 +154,8 @@ func (s *S) TestCreateApp(c *C) {
 	c.Assert(recorder.Code, Equals, 200)
 
 	collection := Mdb.C("apps")
-	query := make(map[string]interface{})
-	query["name"] = "someApp"
-	qtd, err := collection.Find(query).Count()
+	qtd, err := collection.Find(bson.M{"name": "someApp"}).Count()
 	c.Assert(err, IsNil)
-
 	c.Assert(qtd, Equals, 1)
 
 	app := app.App{Name: "someApp"}

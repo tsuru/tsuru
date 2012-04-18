@@ -15,30 +15,15 @@ type App struct {
 }
 
 func AllApps() ([]App, error) {
-	apps := make([]App, 100)
-
+	var apps []App
 	c := Mdb.C("apps")
-	iter := c.Find(nil).Iter()
-	err := iter.All(&apps)
-	if err != nil {
-		panic(iter.Err())
-	}
-
+	err := c.Find(nil).All(&apps)
 	return apps, err
 }
 
 func (app *App) Get() error {
-	query := make(map[string]interface{})
-	query["name"] = app.Name
-
 	c := Mdb.C("apps")
-	err := c.Find(query).One(&app)
-
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return c.Find(bson.M{"name": app.Name}).One(&app)
 }
 
 func (app *App) Create() error {
@@ -46,27 +31,27 @@ func (app *App) Create() error {
 	app.Id = bson.NewObjectId()
 
 	c := Mdb.C("apps")
-	doc := bson.M{"_id": app.Id, "name": app.Name, "framework": app.Framework, "state": app.State, "ip": app.Ip}
-	err := c.Insert(doc)
+	err := c.Insert(app)
 	if err != nil {
-		panic(err)
+		return err
 	}
 
 	u := unit.Unit{Name: app.Name, Type: app.Framework}
 	err = u.Create()
+	if err != nil {
+		return err
+	}
 
 	return nil
 }
 
 func (app *App) Destroy() error {
 	c := Mdb.C("apps")
-	doc := bson.M{"name": app.Name}
-	err := c.Remove(doc)
+	err := c.Remove(app)
 
 	if err != nil {
-		panic(err)
+		return err
 	}
-
 	u := unit.Unit{Name: app.Name, Type: app.Framework}
 	u.Destroy()
 

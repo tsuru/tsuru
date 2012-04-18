@@ -5,6 +5,7 @@ import (
 	. "github.com/timeredbull/tsuru/database"
 	. "launchpad.net/gocheck"
 	"launchpad.net/mgo"
+	"launchpad.net/mgo/bson"
 	"testing"
 )
 
@@ -82,7 +83,6 @@ func (s *S) TestDestroy(c *C) {
 	collection := Mdb.C("apps")
 	qtd, err := collection.Find(nil).Count()
 	c.Assert(err, IsNil)
-
 	c.Assert(qtd, Equals, 0)
 }
 
@@ -99,12 +99,7 @@ func (s *S) TestCreate(c *C) {
 
 	collection := Mdb.C("apps")
 	var retrievedApp app.App
-
-	query := make(map[string]interface{})
-	query["name"] = a.Name
-
-	err = collection.Find(query).One(&retrievedApp)
-
+	err = collection.Find(bson.M{"name": a.Name}).One(&retrievedApp)
 	c.Assert(err, IsNil)
 	c.Assert(retrievedApp.Id, Equals, a.Id)
 	c.Assert(retrievedApp.Name, Equals, a.Name)
