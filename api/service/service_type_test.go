@@ -4,6 +4,7 @@ import (
 	. "github.com/timeredbull/tsuru/api/service"
 	. "github.com/timeredbull/tsuru/database"
 	. "launchpad.net/gocheck"
+	"launchpad.net/mgo/bson"
 )
 
 func (s *ServiceSuite) createServiceType() {
@@ -25,10 +26,8 @@ func (s *ServiceSuite) TestGetServiceType(c *C) {
 	s.createServiceType()
 	name := s.serviceType.Name
 	charm := s.serviceType.Charm
-
 	s.serviceType.Charm = ""
 	s.serviceType.Name = ""
-
 	s.serviceType.Get()
 
 	c.Assert(s.serviceType.Name, Equals, name)
@@ -37,14 +36,13 @@ func (s *ServiceSuite) TestGetServiceType(c *C) {
 
 func (s *ServiceSuite) TestCreateServiceType(c *C) {
 	s.createServiceType()
-	query := make(map[string]interface{})
+	query := bson.M{}
 	result := ServiceType{}
 	query["name"] = "Mysql"
 	query["charm"] = "mysql"
 
 	collection := Mdb.C("service_types")
 	err := collection.Find(query).One(&result)
-
 	c.Assert(err, IsNil)
 	c.Assert(result.Name, Equals, "Mysql")
 	c.Assert(result.Charm, Equals, "mysql")
@@ -54,13 +52,12 @@ func (s *ServiceSuite) TestDeleteServiceType(c *C) {
 	s.createServiceType()
 	s.serviceType.Delete()
 
-	query := make(map[string]interface{})
+	query := bson.M{}
 	query["name"] = "Mysql"
 	query["charm"] = "mysql"
 
 	collection := Mdb.C("service_types")
 	qtd, err := collection.Find(query).Count()
-
 	c.Assert(err, IsNil)
 	c.Assert(qtd, Equals, 0)
 }

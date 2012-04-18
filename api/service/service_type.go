@@ -13,59 +13,34 @@ type ServiceType struct {
 }
 
 func (st *ServiceType) Get() error {
-	var query interface{}
+	query := bson.M{}
 
 	switch {
 	case st.Id != "":
-		query = bson.M{"_id": st.Id}
+		query["_id"] = st.Id
 	case st.Name != "":
-		query = bson.M{"name": st.Name}
+		query["name"] = st.Name
 	case st.Charm != "":
-		query = bson.M{"charm": st.Charm}
+		query["charm"] = st.Charm
 	}
 
 	c := Mdb.C("service_types")
-	err := c.Find(query).One(&st)
-	if err != nil {
-		panic(err)
-	}
-
-	return nil
+	return c.Find(query).One(&st)
 }
 
 func (s *ServiceType) All() (result []ServiceType) {
-	result = make([]ServiceType, 0)
-
 	c := Mdb.C("service_types")
-	iter := c.Find(nil).Limit(100).Iter()
-	err := iter.All(&result)
-
-	if err != nil {
-		panic(err)
-	}
-
+	c.Find(nil).All(&result)
 	return
 }
 
 func (st *ServiceType) Create() error {
 	c := Mdb.C("service_types")
 	st.Id = bson.NewObjectId()
-
-	doc := bson.M{"name": st.Name, "charm": st.Charm, "_id": st.Id}
-	err := c.Insert(doc)
-	if err != nil {
-		panic(err)
-	}
-
-	return err
+	return c.Insert(st)
 }
 
 func (st *ServiceType) Delete() error {
 	c := Mdb.C("service_types")
-	err := c.Remove(st) // should pass specific fields instead using all them
-	if err != nil {
-		panic(err)
-	}
-
-	return nil
+	return c.Remove(st) // should pass specific fields instead using all them
 }

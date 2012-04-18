@@ -9,6 +9,7 @@ import (
 	"io/ioutil"
 	. "launchpad.net/gocheck"
 	"launchpad.net/mgo"
+	"launchpad.net/mgo/bson"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -67,15 +68,11 @@ func (s *ServiceSuite) TestCreateHandler(c *C) {
 	c.Assert(recorder.Body.String(), Equals, "success")
 	c.Assert(recorder.Code, Equals, 200)
 
-	//"SELECT id, service_type_id, name FROM services WHERE name = 'some_service'"
-	query := map[string]string{
-		"name": "some_service",
-	}
+	query := bson.M{"name": "some_service"}
 	var obtainedService Service
 
 	collection := Mdb.C("services")
 	err = collection.Find(query).One(&obtainedService)
-
 	c.Assert(err, IsNil)
 	c.Assert(obtainedService.Id, Not(Equals), 0)
 	c.Assert(obtainedService.ServiceTypeId, Not(Equals), 0)
@@ -147,10 +144,7 @@ func (s *ServiceSuite) TestDeleteHandler(c *C) {
 	c.Assert(err, IsNil)
 	c.Assert(recorder.Code, Equals, 200)
 
-	/* rows, err := session.Query("SELECT count(*) FROM services WHERE name = 'Mysql'") */
-	query := map[string]string{
-		"name": "Mysql",
-	}
+	query := bson.M{"name": "Mysql"}
 
 	collection := Mdb.C("services")
 	qtd, err := collection.Find(query).Count()
@@ -185,10 +179,9 @@ func (s *ServiceSuite) TestBindHandler(c *C) {
 	c.Assert(err, IsNil)
 	c.Assert(recorder.Code, Equals, 200)
 
-	/* rows, err := session.Query("SELECT count(*) FROM service_apps WHERE service_id = ? AND app_id = ?", se.Id, a.Id) */
-	query := map[string]interface{}{
+	query := bson.M{
 		"service_id": se.Id,
-		"app_id": a.Id,
+		"app_id":     a.Id,
 	}
 	collection := Mdb.C("service_apps")
 	qtd, err := collection.Find(query).Count()
@@ -226,20 +219,13 @@ func (s *ServiceSuite) TestUnbindHandler(c *C) {
 	c.Assert(err, IsNil)
 	c.Assert(recorder.Code, Equals, 200)
 
-	/* rows, err := session.Query("SELECT count(*) FROM service_apps WHERE service_id = ? AND app_id = ?", se.Id, a.Id) */
-	query := map[string]interface{}{
+	query := bson.M{
 		"service_id": se.Id,
-		"app_id": a.Id,
+		"app_id":     a.Id,
 	}
 	collection := Mdb.C("services")
 	qtd, err := collection.Find(query).Count()
 	c.Check(err, IsNil)
-
-	// var qtd int
-	// for rows.Next() {
-	// 	rows.Scan(&qtd)
-	// }
-
 	c.Assert(qtd, Equals, 0)
 }
 

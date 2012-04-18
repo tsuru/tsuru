@@ -3,8 +3,8 @@ package service
 import (
 	. "github.com/timeredbull/tsuru/api/app"
 	"github.com/timeredbull/tsuru/api/unit"
-	"launchpad.net/mgo/bson"
 	. "github.com/timeredbull/tsuru/database"
+	"launchpad.net/mgo/bson"
 )
 
 type Service struct {
@@ -14,84 +14,58 @@ type Service struct {
 }
 
 func (s *Service) Get() error {
-	var query interface{}
-	var err error
-
+	query := bson.M{}
 	switch {
 	case s.Id != "":
-		query = bson.M{"_id": s.Id}
+		query["_id"] = s.Id
 	case s.Name != "":
-		query = bson.M{"name": s.Name}
+		query["name"] = s.Name
 	}
-
 	c := Mdb.C("services")
-	err = c.Find(query).One(&s)
-
-	return err
+	return c.Find(query).One(&s)
 }
 
 func (s *Service) All() (result []Service) {
-	result = make([]Service, 100)
-
 	c := Mdb.C("services")
-	iter := c.Find(nil).Iter()
-	err := iter.All(&result)
-
-	if err != nil {
-		panic(iter.Err())
-	}
-
+	c.Find(nil).All(&result)
 	return
 }
 
 func (s *Service) Create() error {
 	c := Mdb.C("services")
 	s.Id = bson.NewObjectId()
-	doc := bson.M{"name": s.Name, "service_type_id": s.ServiceTypeId, "_id": s.Id}
-	err := c.Insert(doc)
-
+	err := c.Insert(s)
 	if err != nil {
-		panic(err)
+		return err
 	}
 
 	u := unit.Unit{Name: s.Name, Type: "mysql"}
-	err = u.Create()
-
-	return err
+	return u.Create()
 }
 
 func (s *Service) Delete() error {
 	c := Mdb.C("services")
-	doc := bson.M{"name": s.Name, "service_type_id": s.ServiceTypeId}
-	err := c.Remove(doc) // should pass specific fields instead using all them
-
+	err := c.Remove(s)
 	if err != nil {
-		panic(err)
+		return err
 	}
 
 	u := unit.Unit{Name: s.Name, Type: s.ServiceType().Charm}
-	err = u.Destroy()
-
-	return nil
+	return u.Destroy()
 }
 
 func (s *Service) Bind(app *App) error {
 	sa := ServiceApp{ServiceId: s.Id, AppId: app.Id}
-	sa.Create()
-
-	return nil
+	return sa.Create()
 }
 
 func (s *Service) Unbind(app *App) error {
 	sa := ServiceApp{ServiceId: s.Id, AppId: app.Id}
-	sa.Delete()
-
-	return nil
+	return sa.Delete()
 }
 
 func (s *Service) ServiceType() (st *ServiceType) {
 	st = &ServiceType{Id: s.ServiceTypeId}
 	st.Get()
-
 	return
 }

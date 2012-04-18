@@ -6,8 +6,8 @@ import (
 	"fmt"
 	. "github.com/timeredbull/tsuru/api/app"
 	"io/ioutil"
-	"net/http"
 	"launchpad.net/mgo/bson"
+	"net/http"
 )
 
 type ServiceJson struct {

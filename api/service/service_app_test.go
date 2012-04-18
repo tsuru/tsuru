@@ -5,6 +5,7 @@ import (
 	. "github.com/timeredbull/tsuru/api/service"
 	. "github.com/timeredbull/tsuru/database"
 	. "launchpad.net/gocheck"
+	"launchpad.net/mgo/bson"
 )
 
 func (s *ServiceSuite) createServiceApp() {
@@ -27,12 +28,11 @@ func (s *ServiceSuite) TestCreateServiceApp(c *C) {
 	var result ServiceApp
 
 	collection := Mdb.C("service_apps")
-	query := make(map[string]interface{})
+	query := bson.M{}
 	query["service_id"] = s.service.Id
 	query["app_id"] = s.app.Id
 	err := collection.Find(query).One(&result)
 	c.Check(err, IsNil)
-
 	c.Assert(s.serviceApp.Id, Not(Equals), "")
 	c.Assert(result.ServiceId, Equals, s.service.Id)
 	c.Assert(result.AppId, Equals, s.app.Id)
@@ -43,13 +43,12 @@ func (s *ServiceSuite) TestDeleteServiceApp(c *C) {
 	s.serviceApp.Delete()
 
 	collection := Mdb.C("service_apps")
-	query := make(map[string]interface{})
+	query := bson.M{}
 	query["service_id"] = s.service.Id
 	query["app_id"] = s.app.Id
 
 	qtd, err := collection.Find(query).Count()
 	c.Assert(err, IsNil)
-
 	c.Assert(qtd, Equals, 0)
 }
 
