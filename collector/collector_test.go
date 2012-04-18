@@ -1,10 +1,11 @@
 package collector
 
 import (
-	"database/sql"
-	_ "github.com/mattn/go-sqlite3"
+	"github.com/timeredbull/tsuru/api/app"
+	. "github.com/timeredbull/tsuru/database"
 	"io/ioutil"
 	. "launchpad.net/gocheck"
+	"launchpad.net/mgo"
 	"os"
 	"path/filepath"
 	"testing"
@@ -13,30 +14,35 @@ import (
 func Test(t *testing.T) { TestingT(t) }
 
 type S struct {
-	db *sql.DB
+	session *mgo.Session
 }
 
 var _ = Suite(&S{})
 
 func (s *S) SetUpSuite(c *C) {
-	s.db, _ = sql.Open("sqlite3", "./tsuru.db")
-	_, err := s.db.Exec("CREATE TABLE apps (id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, name varchar(255), framework varchar(255), state varchar(255), ip varchar(100))")
-	c.Check(err, IsNil)
+	var err error
+	s.session, err = mgo.Dial("localhost:27017")
+	c.Assert(err, IsNil)
+	Mdb = s.session.DB("tsuru_collector_test")
 }
 
 func (s *S) TearDownSuite(c *C) {
-	s.db.Close()
-	os.Remove("./tsuru.db")
+	err := Mdb.DropDatabase()
+	c.Assert(err, IsNil)
+	s.session.Close()
+}
+
+func (s *S) TearDownTest(c *C) {
+	err := Mdb.C("apps").DropCollection()
+	c.Assert(err, IsNil)
 }
 
 func (s *S) TestCollectorUpdate(c *C) {
-	insertApp, _ := s.db.Prepare("INSERT INTO apps (id, name, state) VALUES (?, ?, ?)")
-
-	tx, _ := s.db.Begin()
-	stmt := tx.Stmt(insertApp)
-	defer stmt.Close()
-	stmt.Exec(1, "umaappqq", "STOPPED")
-	tx.Commit()
+	a := app.App{}
+	a.Name = "umaappqq"
+	a.State = "STOPPED"
+	err := a.Create()
+	c.Assert(err, IsNil)
 
 	var collector Collector
 
@@ -67,17 +73,12 @@ func (s *S) TestCollectorUpdate(c *C) {
 		},
 	}
 
-	collector.Update(s.db, out)
+	collector.Update(out)
 
-	rows, _ := s.db.Query("SELECT state, ip FROM apps WHERE id = 1")
-
-	var state, ip string
-	for rows.Next() {
-		rows.Scan(&state, &ip)
-	}
-
-	c.Assert(state, DeepEquals, "STARTED")
-	c.Assert(ip, DeepEquals, "192.168.0.11")
+	err = a.Get()
+	c.Assert(err, IsNil)
+	c.Assert(a.State, DeepEquals, "STARTED")
+	c.Assert(a.Ip, DeepEquals, "192.168.0.11")
 }
 
 func (s *S) TestCollectorParser(c *C) {

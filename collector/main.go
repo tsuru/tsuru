@@ -4,21 +4,25 @@ package main
 
 import (
 	"."
-	"database/sql"
-	_ "github.com/mattn/go-sqlite3"
+	. "github.com/timeredbull/tsuru/database"
+	"launchpad.net/mgo"
 	"time"
 )
 
 func main() {
 	var collector collector.Collector
 
-	db, _ := sql.Open("sqlite3", "../api/webserverd/tsuru.db")
-	defer db.Close()
+	session, err := mgo.Dial("localhost:27017")
+	if err != nil {
+		panic(err)
+	}
+	Mdb = session.DB("tsuru")
+	defer session.Close()
 
 	c := time.Tick(1 * time.Minute)
 	for _ = range c {
 		data, _ := collector.Collect()
 		output := collector.Parse(data)
-		collector.Update(db, output)
+		collector.Update(output)
 	}
 }

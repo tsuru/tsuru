@@ -1,10 +1,11 @@
 package collector
 
 import (
-	"database/sql"
 	"fmt"
-	_ "github.com/mattn/go-sqlite3"
+	"github.com/timeredbull/tsuru/api/app"
+	. "github.com/timeredbull/tsuru/database"
 	"launchpad.net/goyaml"
+	"launchpad.net/mgo/bson"
 	"os/exec"
 )
 
@@ -36,24 +37,21 @@ func (c *Collector) Parse(data []byte) *output {
 	return raw
 }
 
-func (c *Collector) Update(db *sql.DB, out *output) {
+func (c *Collector) Update(out *output) {
 	fmt.Println("updating status")
 
-	var state, ip string
-	updateApp, _ := db.Prepare("UPDATE apps SET state=?, ip=? WHERE name=?")
 	for serviceName, service := range out.Services {
 		for _, unit := range service.Units {
-			tx, _ := db.Begin()
-			stmt := tx.Stmt(updateApp)
-			defer stmt.Close()
+			appUnit := app.App{Name: serviceName}
+			appUnit.Get()
 			if unit.State == "started" {
-				state = "STARTED"
+				appUnit.State = "STARTED"
 			} else {
-				state = "STOPPED"
+				appUnit.State = "STOPPED"
 			}
-			ip = out.Machines[unit.Machine].(map[interface{}]interface{})["dns-name"].(string)
-			stmt.Exec(state, ip, serviceName)
-			tx.Commit()
+			appUnit.Ip = out.Machines[unit.Machine].(map[interface{}]interface{})["dns-name"].(string)
+			c := Mdb.C("apps")
+			c.Update(bson.M{"_id": appUnit.Id}, appUnit)
 		}
 	}
 }
