@@ -4,9 +4,7 @@ package main
 
 import (
 	"."
-	"database/sql"
 	"github.com/bmizerany/pat"
-	_ "github.com/mattn/go-sqlite3"
 	"github.com/timeredbull/tsuru/api/app"
 	"github.com/timeredbull/tsuru/api/service"
 	"github.com/timeredbull/tsuru/api/user"
