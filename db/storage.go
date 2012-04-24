@@ -54,6 +54,10 @@ func (s *Storage) Services() *mgo.Collection {
 	return s.getCollection("services")
 }
 
+func (s *Storage) ServiceApps() *mgo.Collection {
+	return s.getCollection("service_apps")
+}
+
 func (s *Storage) Units() *mgo.Collection {
 	return s.getCollection("units")
 }
