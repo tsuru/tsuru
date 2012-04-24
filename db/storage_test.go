@@ -90,6 +90,32 @@ func (s *S) TestMethodAppsShouldReturnAppsCollection(c *C) {
 	c.Assert(apps, DeepEquals, appsc)
 }
 
+func (s *S) TestMethodAppsShouldReturnAppsCollectionWithUniqueIndexForName(c *C) {
+	storage, _ := Open("127.0.0.1:27017", "tsuru_storage_test")
+	defer storage.Close()
+	apps := storage.Apps()
+	indexes, err := apps.Indexes()
+	c.Assert(err, IsNil)
+	found := false
+	for _, index := range indexes {
+		for _, key := range index.Key {
+			if key == "name" {
+				c.Assert(index.Unique, Equals, true)
+				found = true
+				break
+			}
+		}
+
+		if found {
+			break
+		}
+	}
+
+	if !found {
+		c.Errorf("Apps should declare a unique index for name")
+	}
+}
+
 func (s *S) TestMethodServicesShouldReturnServicesCollection(c *C) {
 	storage, _ := Open("127.0.0.1:27017", "tsuru_storage_test")
 	defer storage.Close()
