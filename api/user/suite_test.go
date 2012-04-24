@@ -19,7 +19,7 @@ type S struct {
 var _ = Suite(&S{})
 
 func (s *S) SetUpSuite(c *C) {
-	db.Session, _ = db.Open("localhost:27017")
+	db.Session, _ = db.Open("localhost:27017", "tsuru_user_test")
 }
 
 func (s *S) TearDownSuite(c *C) {
