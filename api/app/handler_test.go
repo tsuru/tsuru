@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"github.com/timeredbull/tsuru/api/app"
-	. "github.com/timeredbull/tsuru/database"
+	"github.com/timeredbull/tsuru/db"
 	"io/ioutil"
 	. "launchpad.net/gocheck"
 	"launchpad.net/mgo/bson"
@@ -153,8 +153,7 @@ func (s *S) TestCreateApp(c *C) {
 	c.Assert(recorder.Body.String(), Equals, "success")
 	c.Assert(recorder.Code, Equals, 200)
 
-	collection := Db.C("apps")
-	qtd, err := collection.Find(bson.M{"name": "someApp"}).Count()
+	qtd, err := db.Session.Apps().Find(bson.M{"name": "someApp"}).Count()
 	c.Assert(err, IsNil)
 	c.Assert(qtd, Equals, 1)
 

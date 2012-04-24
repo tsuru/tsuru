@@ -2,7 +2,7 @@ package app
 
 import (
 	"github.com/timeredbull/tsuru/api/unit"
-	. "github.com/timeredbull/tsuru/database"
+	"github.com/timeredbull/tsuru/db"
 	"launchpad.net/mgo/bson"
 )
 
@@ -16,22 +16,19 @@ type App struct {
 
 func AllApps() ([]App, error) {
 	var apps []App
-	c := Db.C("apps")
-	err := c.Find(nil).All(&apps)
+	err := db.Session.Apps().Find(nil).All(&apps)
 	return apps, err
 }
 
 func (app *App) Get() error {
-	c := Db.C("apps")
-	return c.Find(bson.M{"name": app.Name}).One(&app)
+	return db.Session.Apps().Find(bson.M{"name": app.Name}).One(&app)
 }
 
 func (app *App) Create() error {
 	app.State = "Pending"
 	app.Id = bson.NewObjectId()
 
-	c := Db.C("apps")
-	err := c.Insert(app)
+	err := db.Session.Apps().Insert(app)
 	if err != nil {
 		return err
 	}
@@ -46,8 +43,7 @@ func (app *App) Create() error {
 }
 
 func (app *App) Destroy() error {
-	c := Db.C("apps")
-	err := c.Remove(app)
+	err := db.Session.Apps().Remove(app)
 
 	if err != nil {
 		return err
