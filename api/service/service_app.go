@@ -15,7 +15,7 @@ type ServiceApp struct {
 }
 
 func (sa *ServiceApp) Create() error {
-	c := Mdb.C("service_apps")
+	c := Db.C("service_apps")
 	sa.Id = bson.NewObjectId()
 	err := c.Insert(sa)
 	if err != nil {
@@ -31,7 +31,7 @@ func (sa *ServiceApp) Create() error {
 }
 
 func (sa *ServiceApp) Delete() error {
-	c := Mdb.C("service_apps")
+	c := Db.C("service_apps")
 	doc := bson.M{"service_id": sa.ServiceId, "app_id": sa.AppId}
 	err := c.Remove(doc)
 	if err != nil {
@@ -53,7 +53,7 @@ func (sa *ServiceApp) Service() (s *Service) {
 }
 
 func (sa *ServiceApp) App() (a *App) {
-	c := Mdb.C("apps")
+	c := Db.C("apps")
 	c.Find(bson.M{"_id": sa.AppId}).One(&a)
 	return
 }

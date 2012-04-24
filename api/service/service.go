@@ -21,18 +21,18 @@ func (s *Service) Get() error {
 	case s.Name != "":
 		query["name"] = s.Name
 	}
-	c := Mdb.C("services")
+	c := Db.C("services")
 	return c.Find(query).One(&s)
 }
 
 func (s *Service) All() (result []Service) {
-	c := Mdb.C("services")
+	c := Db.C("services")
 	c.Find(nil).All(&result)
 	return
 }
 
 func (s *Service) Create() error {
-	c := Mdb.C("services")
+	c := Db.C("services")
 	s.Id = bson.NewObjectId()
 	err := c.Insert(s)
 	if err != nil {
@@ -44,7 +44,7 @@ func (s *Service) Create() error {
 }
 
 func (s *Service) Delete() error {
-	c := Mdb.C("services")
+	c := Db.C("services")
 	err := c.Remove(s)
 	if err != nil {
 		return err

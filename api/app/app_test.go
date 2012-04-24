@@ -21,17 +21,17 @@ func (s *S) SetUpSuite(c *C) {
 	var err error
 	s.session, err = mgo.Dial("localhost:27017")
 	c.Assert(err, IsNil)
-	Mdb = s.session.DB("tsuru_app_test")
+	Db = s.session.DB("tsuru_app_test")
 }
 
 func (s *S) TearDownSuite(c *C) {
-	err := Mdb.DropDatabase()
+	err := Db.DropDatabase()
 	c.Assert(err, IsNil)
 	s.session.Close()
 }
 
 func (s *S) TearDownTest(c *C) {
-	err := Mdb.C("apps").DropCollection()
+	err := Db.C("apps").DropCollection()
 	c.Assert(err, IsNil)
 }
 
@@ -80,7 +80,7 @@ func (s *S) TestDestroy(c *C) {
 	err = app.Destroy()
 	c.Assert(err, IsNil)
 
-	collection := Mdb.C("apps")
+	collection := Db.C("apps")
 	qtd, err := collection.Find(nil).Count()
 	c.Assert(err, IsNil)
 	c.Assert(qtd, Equals, 0)
@@ -97,7 +97,7 @@ func (s *S) TestCreate(c *C) {
 	c.Assert(a.State, Equals, "Pending")
 	c.Assert(a.Id, Not(Equals), "")
 
-	collection := Mdb.C("apps")
+	collection := Db.C("apps")
 	var retrievedApp app.App
 	err = collection.Find(bson.M{"name": a.Name}).One(&retrievedApp)
 	c.Assert(err, IsNil)

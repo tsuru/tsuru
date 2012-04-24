@@ -153,7 +153,7 @@ func (s *S) TestCreateApp(c *C) {
 	c.Assert(recorder.Body.String(), Equals, "success")
 	c.Assert(recorder.Code, Equals, 200)
 
-	collection := Mdb.C("apps")
+	collection := Db.C("apps")
 	qtd, err := collection.Find(bson.M{"name": "someApp"}).Count()
 	c.Assert(err, IsNil)
 	c.Assert(qtd, Equals, 1)

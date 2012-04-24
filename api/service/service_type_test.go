@@ -41,7 +41,7 @@ func (s *ServiceSuite) TestCreateServiceType(c *C) {
 	query["name"] = "Mysql"
 	query["charm"] = "mysql"
 
-	collection := Mdb.C("service_types")
+	collection := Db.C("service_types")
 	err := collection.Find(query).One(&result)
 	c.Assert(err, IsNil)
 	c.Assert(result.Name, Equals, "Mysql")
@@ -56,7 +56,7 @@ func (s *ServiceSuite) TestDeleteServiceType(c *C) {
 	query["name"] = "Mysql"
 	query["charm"] = "mysql"
 
-	collection := Mdb.C("service_types")
+	collection := Db.C("service_types")
 	qtd, err := collection.Find(query).Count()
 	c.Assert(err, IsNil)
 	c.Assert(qtd, Equals, 0)

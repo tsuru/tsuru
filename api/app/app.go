@@ -16,13 +16,13 @@ type App struct {
 
 func AllApps() ([]App, error) {
 	var apps []App
-	c := Mdb.C("apps")
+	c := Db.C("apps")
 	err := c.Find(nil).All(&apps)
 	return apps, err
 }
 
 func (app *App) Get() error {
-	c := Mdb.C("apps")
+	c := Db.C("apps")
 	return c.Find(bson.M{"name": app.Name}).One(&app)
 }
 
@@ -30,7 +30,7 @@ func (app *App) Create() error {
 	app.State = "Pending"
 	app.Id = bson.NewObjectId()
 
-	c := Mdb.C("apps")
+	c := Db.C("apps")
 	err := c.Insert(app)
 	if err != nil {
 		return err
@@ -46,7 +46,7 @@ func (app *App) Create() error {
 }
 
 func (app *App) Destroy() error {
-	c := Mdb.C("apps")
+	c := Db.C("apps")
 	err := c.Remove(app)
 
 	if err != nil {

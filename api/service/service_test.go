@@ -53,7 +53,7 @@ func (s *ServiceSuite) TestDeleteService(c *C) {
 	s.createService()
 	s.service.Delete()
 
-	collection := Mdb.C("services")
+	collection := Db.C("services")
 	qtd, err := collection.Find(nil).Count()
 	c.Assert(err, IsNil)
 	c.Assert(qtd, Equals, 0)
@@ -82,7 +82,7 @@ func (s *ServiceSuite) TestBindService(c *C) {
 	s.service.Bind(app)
 	var result ServiceApp
 
-	collection := Mdb.C("service_apps")
+	collection := Db.C("service_apps")
 	query := bson.M{
 		"service_id": s.service.Id,
 		"app_id":     app.Id,
@@ -104,7 +104,7 @@ func (s *ServiceSuite) TestUnbindService(c *C) {
 	query["service_id"] = s.service.Id
 	query["app_id"] = app.Id
 
-	collection := Mdb.C("service_apps")
+	collection := Db.C("service_apps")
 	qtd, err := collection.Find(query).Count()
 	c.Assert(err, IsNil)
 	c.Assert(qtd, Equals, 0)
