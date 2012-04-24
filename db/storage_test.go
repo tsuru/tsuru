@@ -132,6 +132,14 @@ func (s *S) TestMethodServiceAppsShouldReturnServiceAppsCollection(c *C) {
 	c.Assert(serviceApps, DeepEquals, serviceAppsc)
 }
 
+func (s *S) TestMethodServiceTypesReturnServiceTypesCollection(c *C) {
+	storage, _ := Open("127.0.0.1:27017", "tsuru_storage_test")
+	defer storage.Close()
+	serviceTypes := storage.ServiceTypes()
+	serviceTypesc := storage.getCollection("service_types")
+	c.Assert(serviceTypes, DeepEquals, serviceTypesc)
+}
+
 func (s *S) TestMethodUnitsShouldReturnUnitsCollection(c *C) {
 	storage, _ := Open("127.0.0.1:27017", "tsuru_storage_test")
 	defer storage.Close()
