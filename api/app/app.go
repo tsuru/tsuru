@@ -4,7 +4,11 @@ import (
 	"github.com/timeredbull/tsuru/api/unit"
 	. "github.com/timeredbull/tsuru/database"
 	"launchpad.net/mgo/bson"
+	"os"
+	"path"
 )
+
+const gitServer = "tsuru.plataformas.glb.com"
 
 type App struct {
 	Id        bson.ObjectId "_id"
@@ -12,6 +16,24 @@ type App struct {
 	Name      string
 	Framework string
 	State     string
+}
+
+type Repository struct {
+	Name   string
+	Server string
+}
+
+func NewRepository(name string) (r *Repository, err error) {
+	r = &Repository{
+		Name: name,
+		Server: gitServer,
+	}
+
+	home := os.Getenv("HOME")
+	repoPath := path.Join(home, "../git", name)
+	err = os.Mkdir(repoPath, 0644)
+
+	return
 }
 
 func AllApps() ([]App, error) {
