@@ -74,7 +74,6 @@ func CheckAuthorization(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	output := map[string]string{
-		"id":    user.Id.String(),
 		"email": user.Email,
 	}
 	b, err := json.Marshal(output)

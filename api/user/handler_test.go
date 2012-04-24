@@ -24,7 +24,6 @@ func (s *S) TestCreateUserHandlerSavesTheUserInTheDatabase(c *C) {
 	u := User{Email: "nobody@globo.com"}
 	err = u.Get()
 	c.Assert(err, IsNil)
-	c.Assert(u.Id.Valid(), Equals, true)
 }
 
 func (s *S) TestCreateUserHandlerReturnsStatus204AfterCreateTheUser(c *C) {
@@ -178,7 +177,6 @@ func (s *S) TestValidateUserTokenReturnJsonRepresentingUser(c *C) {
 
 	var expected, got map[string]string
 	expected = map[string]string{
-		"id":    u.Id.String(),
 		"email": "nobody@globo.com",
 	}
 	r, _ := ioutil.ReadAll(response.Body)

@@ -17,10 +17,9 @@ func (s *S) TestCreateUser(c *C) {
 
 	var result User
 	collection := Mdb.C("users")
-	err = collection.Find(bson.M{"_id": u.Id}).One(&result)
+	err = collection.Find(bson.M{"email": u.Email}).One(&result)
 	c.Assert(err, IsNil)
 	c.Assert(result.Email, Equals, u.Email)
-	c.Assert(result.Id.Valid(), Equals, true)
 }
 
 func (s *S) TestCreateUserHashesThePasswordUsingPBKDF2SHA512AndSalt(c *C) {
@@ -32,7 +31,7 @@ func (s *S) TestCreateUserHashesThePasswordUsingPBKDF2SHA512AndSalt(c *C) {
 
 	var result User
 	collection := Mdb.C("users")
-	err = collection.Find(bson.M{"_id": u.Id}).One(&result)
+	err = collection.Find(bson.M{"email": u.Email}).One(&result)
 	c.Assert(err, IsNil)
 	c.Assert(result.Password, Equals, expectedPassword)
 }
@@ -40,25 +39,13 @@ func (s *S) TestCreateUserHashesThePasswordUsingPBKDF2SHA512AndSalt(c *C) {
 // TODO: with mongodb, this test don't work, it need check that user
 // already exists
 // func (s *S) TestCreateUserReturnsErrorWhenAnyErrorHappens(c *C) {
-// 	u := User{Email: "wolverine@xmen.com", Password: "123"}
-// 	err := u.Create()
-// 	c.Assert(err, IsNil)
+// u := User{Email: "wolverine@xmen.com", Password: "123"}
+// err := u.Create()
+// c.Assert(err, IsNil)
 //
-// 	err = u.Create()
-// 	c.Assert(err, NotNil)
+// err = u.Create()
+// c.Assert(err, NotNil)
 // }
-
-func (s *S) TestGetUserById(c *C) {
-	u := User{Email: "wolverine@xmen.com", Password: "123456"}
-	err := u.Create()
-	c.Assert(err, IsNil)
-
-	var result User
-	collection := Mdb.C("users")
-	err = collection.Find(bson.M{"_id": u.Id}).One(&result)
-	c.Assert(err, IsNil)
-	c.Assert(u.Email, Equals, result.Email)
-}
 
 func (s *S) TestGetUserByEmail(c *C) {
 	u := User{Email: "wolverine@xmen.com", Password: "123456"}
@@ -68,12 +55,11 @@ func (s *S) TestGetUserByEmail(c *C) {
 	u = User{Email: "wolverine@xmen.com"}
 	err = u.Get()
 	c.Assert(err, IsNil)
-	c.Assert(u.Id.Valid(), Equals, true)
 	c.Assert(u.Email, Equals, "wolverine@xmen.com")
 }
 
 func (s *S) TestGetUserReturnsErrorWhenNoUserIsFound(c *C) {
-	u := User{Id: bson.NewObjectId()}
+	u := User{Email: "unknown@globo.com"}
 	err := u.Get()
 	c.Assert(err, NotNil)
 }
@@ -132,11 +118,11 @@ func (s *S) TestCreateTokenShouldSaveTheTokenInUserInTheDatabase(c *C) {
 	c.Assert(result.Tokens[0].Token, NotNil)
 }
 
-func (s *S) TestCreateTokenShouldReturnErrorIfTheProvidedUserDoesNotHaveId(c *C) {
-	u := User{Email: "wolverine@xmen.com", Password: "123"}
+func (s *S) TestCreateTokenShouldReturnErrorIfTheProvidedUserDoesNotHaveEmailDefined(c *C) {
+	u := User{Password: "123"}
 	_, err := u.CreateToken()
 	c.Assert(err, NotNil)
-	c.Assert(err, ErrorMatches, "^User does not have an id$")
+	c.Assert(err, ErrorMatches, "^User does not have an email$")
 }
 
 func (s *S) TestGetUserByToken(c *C) {
@@ -152,7 +138,7 @@ func (s *S) TestGetUserByToken(c *C) {
 
 	user, err := GetUserByToken(t.Token)
 	c.Assert(err, IsNil)
-	c.Assert(user.Id, DeepEquals, u.Id)
+	c.Assert(user.Email, Equals, u.Email)
 }
 
 func (s *S) TestGetUserByTokenShouldReturnErrorWhenTheGivenTokenDoesNotExist(c *C) {

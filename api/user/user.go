@@ -22,7 +22,6 @@ func hashPassword(password string) string {
 }
 
 type User struct {
-	Id       bson.ObjectId "_id"
 	Email    string
 	Password string
 	Tokens   []Token
@@ -35,7 +34,6 @@ type Token struct {
 
 func (u *User) Create() error {
 	u.hashPassword()
-	u.Id = bson.NewObjectId()
 	c := database.Mdb.C("users")
 	err := c.Insert(u)
 	return err
@@ -47,11 +45,7 @@ func (u *User) hashPassword() {
 
 func (u *User) Get() error {
 	var filter = bson.M{}
-	if u.Id.Valid() {
-		filter["_id"] = u.Id
-	} else {
-		filter["email"] = u.Email
-	}
+	filter["email"] = u.Email
 	c := database.Mdb.C("users")
 	return c.Find(filter).One(&u)
 }
@@ -79,13 +73,13 @@ func NewToken(u *User) (*Token, error) {
 }
 
 func (u *User) CreateToken() (*Token, error) {
-	if !u.Id.Valid() {
-		return nil, errors.New("User does not have an id")
+	if u.Email == "" {
+		return nil, errors.New("User does not have an email")
 	}
 	t, _ := NewToken(u)
 	u.Tokens = append(u.Tokens, *t)
 	c := database.Mdb.C("users")
-	err := c.Update(bson.M{"_id": u.Id}, u)
+	err := c.Update(bson.M{"email": u.Email}, u)
 	return t, err
 }
 
