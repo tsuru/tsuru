@@ -6,6 +6,8 @@ import (
 	. "launchpad.net/gocheck"
 	"launchpad.net/mgo"
 	"launchpad.net/mgo/bson"
+	"os"
+	"path"
 	"testing"
 )
 
@@ -31,6 +33,18 @@ func (s *S) TearDownSuite(c *C) {
 func (s *S) TearDownTest(c *C) {
 	err := db.Session.Apps().RemoveAll(nil)
 	c.Assert(err, IsNil)
+}
+
+func (s *S) TestNewRepository(c *C) {
+	r, err := app.NewRepository("foobar")
+	c.Assert(err, IsNil)
+	c.Assert(r.Server, Equals, "tsuru.plataformas.glb.com")
+
+	home := os.Getenv("HOME")
+	repoPath := path.Join(home, "../git", "foobar")
+	_, err = os.Open(repoPath)
+	c.Assert(err, IsNil)
+	os.Remove(repoPath)
 }
 
 func (s *S) TestAll(c *C) {
