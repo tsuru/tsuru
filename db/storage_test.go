@@ -12,13 +12,13 @@ type S struct{}
 var _ = Suite(&S{})
 
 func (s *S) TearDownSuite(c *C) {
-	storage, _ := Open("127.0.0.1:27017")
+	storage, _ := Open("127.0.0.1:27017", "tsuru_storage_test")
 	storage.session.DB("tsuru").DropDatabase()
 	storage.Close()
 }
 
 func (s *S) TestShouldProvideMethodToOpenAConnection(c *C) {
-	storage, _ := Open("127.0.0.1:27017")
+	storage, _ := Open("127.0.0.1:27017", "tsuru_storage_test")
 	c.Assert(storage.session.Ping(), IsNil)
 	storage.Close()
 }
@@ -29,27 +29,27 @@ func (s *S) TestMethodCloseSholdCloseTheConnectionWithMongoDB(c *C) {
 			c.Errorf("Should close the connection, but did not!")
 		}
 	}()
-	storage, _ := Open("127.0.0.1:27017")
+	storage, _ := Open("127.0.0.1:27017", "tsuru_storage_test")
 	storage.Close()
 	storage.session.Ping()
 }
 
 func (s *S) TestShouldProvidePrivateMethodToGetACollection(c *C) {
-	storage, _ := Open("127.0.0.1:27017")
+	storage, _ := Open("127.0.0.1:27017", "tsuru_storage_test")
 	defer storage.Close()
 	collection := storage.getCollection("users")
-	c.Assert(collection.FullName, Equals, "tsuru.users")
+	c.Assert(collection.FullName, Equals, storage.dbname + ".users")
 }
 
 func (s *S) TestShouldCacheCollection(c *C) {
-	storage, _ := Open("127.0.0.1:27017")
+	storage, _ := Open("127.0.0.1:27017", "tsuru_storage_test")
 	defer storage.Close()
 	collection := storage.getCollection("users")
 	c.Assert(collection, DeepEquals, storage.collections["users"])
 }
 
 func (s *S) TestMethodUsersShouldReturnUsersCollection(c *C) {
-	storage, _ := Open("127.0.0.1:27017")
+	storage, _ := Open("127.0.0.1:27017", "tsuru_storage_test")
 	defer storage.Close()
 	users := storage.Users()
 	usersc := storage.getCollection("users")
@@ -57,7 +57,7 @@ func (s *S) TestMethodUsersShouldReturnUsersCollection(c *C) {
 }
 
 func (s *S) TestMethodUserShouldReturnUsersCollectionWithUniqueIndexForEmail(c *C) {
-	storage, _ := Open("127.0.0.1:27017")
+	storage, _ := Open("127.0.0.1:27017", "tsuru_storage_test")
 	defer storage.Close()
 	users := storage.Users()
 	indexes, err := users.Indexes()
@@ -83,7 +83,7 @@ func (s *S) TestMethodUserShouldReturnUsersCollectionWithUniqueIndexForEmail(c *
 }
 
 func (s *S) TestMethodAppsShouldReturnAppsCollection(c *C) {
-	storage, _ := Open("127.0.0.1:27017")
+	storage, _ := Open("127.0.0.1:27017", "tsuru_storage_test")
 	defer storage.Close()
 	apps := storage.Apps()
 	appsc := storage.getCollection("apps")
@@ -91,7 +91,7 @@ func (s *S) TestMethodAppsShouldReturnAppsCollection(c *C) {
 }
 
 func (s *S) TestMethodServicesShouldReturnServicesCollection(c *C) {
-	storage, _ := Open("127.0.0.1:27017")
+	storage, _ := Open("127.0.0.1:27017", "tsuru_storage_test")
 	defer storage.Close()
 	services := storage.Services()
 	servicesc := storage.getCollection("services")
@@ -99,7 +99,7 @@ func (s *S) TestMethodServicesShouldReturnServicesCollection(c *C) {
 }
 
 func (s *S) TestMethodUnitsShouldReturnUnitsCollection(c *C) {
-	storage, _ := Open("127.0.0.1:27017")
+	storage, _ := Open("127.0.0.1:27017", "tsuru_storage_test")
 	defer storage.Close()
 	units := storage.Units()
 	unitsc := storage.getCollection("units")

@@ -8,10 +8,11 @@ import (
 type Storage struct {
 	collections map[string]*mgo.Collection
 	session     *mgo.Session
-	sync.Mutex
+	dbname      string
+	sync.RWMutex
 }
 
-func Open(addr string) (*Storage, error) {
+func Open(addr, dbname string) (*Storage, error) {
 	session, err := mgo.Dial(addr)
 	if err != nil {
 		return nil, err
@@ -19,6 +20,7 @@ func Open(addr string) (*Storage, error) {
 	s := &Storage{
 		session:     session,
 		collections: make(map[string]*mgo.Collection),
+		dbname:      dbname,
 	}
 	return s, nil
 }
@@ -28,10 +30,15 @@ func (s *Storage) Close() {
 }
 
 func (s *Storage) getCollection(name string) *mgo.Collection {
+	s.RLock()
 	collection, ok := s.collections[name]
+	s.RUnlock()
+
 	if !ok {
-		collection = s.session.DB("tsuru").C(name)
+		collection = s.session.DB(s.dbname).C(name)
+		s.Lock()
 		s.collections[name] = collection
+		s.Unlock()
 	}
 	return collection
 }
@@ -56,5 +63,5 @@ func (s *Storage) Users() *mgo.Collection {
 }
 
 func (s *Storage) DropDB() error {
-	return s.session.DB("tsuru").DropDatabase()
+	return s.session.DB(s.dbname).DropDatabase()
 }
