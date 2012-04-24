@@ -4,7 +4,7 @@ import (
 	"code.google.com/p/go.crypto/pbkdf2"
 	"crypto/sha512"
 	"fmt"
-	. "github.com/timeredbull/tsuru/database"
+	"github.com/timeredbull/tsuru/db"
 	. "launchpad.net/gocheck"
 	"launchpad.net/mgo/bson"
 	"time"
@@ -16,7 +16,7 @@ func (s *S) TestCreateUser(c *C) {
 	c.Assert(err, IsNil)
 
 	var result User
-	collection := Mdb.C("users")
+	collection := db.Session.Users()
 	err = collection.Find(bson.M{"email": u.Email}).One(&result)
 	c.Assert(err, IsNil)
 	c.Assert(result.Email, Equals, u.Email)
@@ -30,22 +30,20 @@ func (s *S) TestCreateUserHashesThePasswordUsingPBKDF2SHA512AndSalt(c *C) {
 	c.Assert(err, IsNil)
 
 	var result User
-	collection := Mdb.C("users")
+	collection := db.Session.Users()
 	err = collection.Find(bson.M{"email": u.Email}).One(&result)
 	c.Assert(err, IsNil)
 	c.Assert(result.Password, Equals, expectedPassword)
 }
 
-// TODO: with mongodb, this test don't work, it need check that user
-// already exists
-// func (s *S) TestCreateUserReturnsErrorWhenAnyErrorHappens(c *C) {
-// u := User{Email: "wolverine@xmen.com", Password: "123"}
-// err := u.Create()
-// c.Assert(err, IsNil)
-//
-// err = u.Create()
-// c.Assert(err, NotNil)
-// }
+func (s *S) TestCreateUserReturnsErrorWhenTryingToCreateAUserWithDuplicatedEmail(c *C) {
+	u := User{Email: "wolverine@xmen.com", Password: "123"}
+	err := u.Create()
+	c.Assert(err, IsNil)
+
+	err = u.Create()
+	c.Assert(err, NotNil)
+}
 
 func (s *S) TestGetUserByEmail(c *C) {
 	u := User{Email: "wolverine@xmen.com", Password: "123456"}
@@ -112,7 +110,7 @@ func (s *S) TestCreateTokenShouldSaveTheTokenInUserInTheDatabase(c *C) {
 	c.Assert(err, IsNil)
 
 	var result User
-	collection := Mdb.C("users")
+	collection := db.Session.Users()
 	err = collection.Find(nil).One(&result)
 	c.Assert(err, IsNil)
 	c.Assert(result.Tokens[0].Token, NotNil)
@@ -149,7 +147,7 @@ func (s *S) TestGetUserByTokenShouldReturnErrorWhenTheGivenTokenDoesNotExist(c *
 }
 
 func (s *S) TestGetUserByTokenShouldReturnErrorWhenTheGivenTokenHasExpired(c *C) {
-	collection := Mdb.C("users")
+	collection := db.Session.Users()
 	u := User{Email: "wolverine@xmen.com", Password: "123"}
 	err := u.Create()
 	c.Assert(err, IsNil)

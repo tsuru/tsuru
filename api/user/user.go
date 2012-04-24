@@ -5,7 +5,7 @@ import (
 	"crypto/sha512"
 	"errors"
 	"fmt"
-	"github.com/timeredbull/tsuru/database"
+	"github.com/timeredbull/tsuru/db"
 	"launchpad.net/mgo/bson"
 	"time"
 )
@@ -34,9 +34,7 @@ type Token struct {
 
 func (u *User) Create() error {
 	u.hashPassword()
-	c := database.Mdb.C("users")
-	err := c.Insert(u)
-	return err
+	return db.Session.Users().Insert(u)
 }
 
 func (u *User) hashPassword() {
@@ -46,8 +44,7 @@ func (u *User) hashPassword() {
 func (u *User) Get() error {
 	var filter = bson.M{}
 	filter["email"] = u.Email
-	c := database.Mdb.C("users")
-	return c.Find(filter).One(&u)
+	return db.Session.Users().Find(filter).One(&u)
 }
 
 func (u *User) Login(password string) bool {
@@ -78,13 +75,13 @@ func (u *User) CreateToken() (*Token, error) {
 	}
 	t, _ := NewToken(u)
 	u.Tokens = append(u.Tokens, *t)
-	c := database.Mdb.C("users")
+	c := db.Session.Users()
 	err := c.Update(bson.M{"email": u.Email}, u)
 	return t, err
 }
 
 func GetUserByToken(token string) (*User, error) {
-	c := database.Mdb.C("users")
+	c := db.Session.Users()
 	u := new(User)
 	query := bson.M{"tokens.token": token}
 	err := c.Find(query).One(&u)
