@@ -11,7 +11,6 @@ import (
 const gitServer = "tsuru.plataformas.glb.com"
 
 type App struct {
-	Id        bson.ObjectId "_id"
 	Ip        string
 	Name      string
 	Framework string
@@ -48,8 +47,6 @@ func (app *App) Get() error {
 
 func (app *App) Create() error {
 	app.State = "Pending"
-	app.Id = bson.NewObjectId()
-
 	err := db.Session.Apps().Insert(app)
 	if err != nil {
 		return err

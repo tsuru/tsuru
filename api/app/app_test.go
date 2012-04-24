@@ -106,15 +106,22 @@ func (s *S) TestCreate(c *C) {
 	c.Assert(err, IsNil)
 
 	c.Assert(a.State, Equals, "Pending")
-	c.Assert(a.Id, Not(Equals), "")
 
 	var retrievedApp app.App
 	err = db.Session.Apps().Find(bson.M{"name": a.Name}).One(&retrievedApp)
 	c.Assert(err, IsNil)
-	c.Assert(retrievedApp.Id, Equals, a.Id)
 	c.Assert(retrievedApp.Name, Equals, a.Name)
 	c.Assert(retrievedApp.Framework, Equals, a.Framework)
 	c.Assert(retrievedApp.State, Equals, a.State)
 
 	a.Destroy()
+}
+
+func (s *S) TestCantCreateTwoAppsWithTheSameName(c *C) {
+	a := app.App{Name: "appName", Framework: "django"}
+	err := a.Create()
+	c.Assert(err, IsNil)
+
+	err = a.Create()
+	c.Assert(err, NotNil)
 }
