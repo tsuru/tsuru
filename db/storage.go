@@ -54,3 +54,7 @@ func (s *Storage) Users() *mgo.Collection {
 	c.EnsureIndex(emailIndex)
 	return c
 }
+
+func (s *Storage) DropDB() error {
+	return s.session.DB("tsuru").DropDatabase()
+}
