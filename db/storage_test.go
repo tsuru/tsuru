@@ -11,6 +11,12 @@ type S struct{}
 
 var _ = Suite(&S{})
 
+func (s *S) TearDownSuite(c *C) {
+	storage, _ := Open("127.0.0.1:27017")
+	storage.session.DB("tsuru").DropDatabase()
+	storage.Close()
+}
+
 func (s *S) TestShouldProvideMethodToOpenAConnection(c *C) {
 	storage, _ := Open("127.0.0.1:27017")
 	c.Assert(storage.session.Ping(), IsNil)
