@@ -94,7 +94,7 @@ func (s *S) TestLoginShouldCreateTokenInTheDatabaseAndReturnItWithinTheResponse(
 	c.Assert(err, IsNil)
 
 	var user User
-	collection := Mdb.C("users")
+	collection := Db.C("users")
 	err = collection.Find(nil).One(&user)
 
 	var responseJson map[string]string

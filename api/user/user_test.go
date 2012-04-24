@@ -16,7 +16,7 @@ func (s *S) TestCreateUser(c *C) {
 	c.Assert(err, IsNil)
 
 	var result User
-	collection := Mdb.C("users")
+	collection := Db.C("users")
 	err = collection.Find(bson.M{"_id": u.Id}).One(&result)
 	c.Assert(err, IsNil)
 	c.Assert(result.Email, Equals, u.Email)
@@ -31,7 +31,7 @@ func (s *S) TestCreateUserHashesThePasswordUsingPBKDF2SHA512AndSalt(c *C) {
 	c.Assert(err, IsNil)
 
 	var result User
-	collection := Mdb.C("users")
+	collection := Db.C("users")
 	err = collection.Find(bson.M{"_id": u.Id}).One(&result)
 	c.Assert(err, IsNil)
 	c.Assert(result.Password, Equals, expectedPassword)
@@ -54,7 +54,7 @@ func (s *S) TestGetUserById(c *C) {
 	c.Assert(err, IsNil)
 
 	var result User
-	collection := Mdb.C("users")
+	collection := Db.C("users")
 	err = collection.Find(bson.M{"_id": u.Id}).One(&result)
 	c.Assert(err, IsNil)
 	c.Assert(u.Email, Equals, result.Email)
@@ -126,7 +126,7 @@ func (s *S) TestCreateTokenShouldSaveTheTokenInUserInTheDatabase(c *C) {
 	c.Assert(err, IsNil)
 
 	var result User
-	collection := Mdb.C("users")
+	collection := Db.C("users")
 	err = collection.Find(nil).One(&result)
 	c.Assert(err, IsNil)
 	c.Assert(result.Tokens[0].Token, NotNil)
@@ -163,7 +163,7 @@ func (s *S) TestGetUserByTokenShouldReturnErrorWhenTheGivenTokenDoesNotExist(c *
 }
 
 func (s *S) TestGetUserByTokenShouldReturnErrorWhenTheGivenTokenHasExpired(c *C) {
-	collection := Mdb.C("users")
+	collection := Db.C("users")
 	u := User{Email: "wolverine@xmen.com", Password: "123"}
 	err := u.Create()
 	c.Assert(err, IsNil)

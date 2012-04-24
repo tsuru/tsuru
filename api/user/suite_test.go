@@ -22,17 +22,17 @@ func (s *S) SetUpSuite(c *C) {
 	var err error
 	s.session, err = mgo.Dial("localhost:27017")
 	c.Assert(err, IsNil)
-	Mdb = s.session.DB("tsuru_user_test")
+	Db = s.session.DB("tsuru_user_test")
 }
 
 func (s *S) TearDownSuite(c *C) {
-	err := Mdb.DropDatabase()
+	err := Db.DropDatabase()
 	c.Assert(err, IsNil)
 	s.session.Close()
 }
 
 func (s *S) TearDownTest(c *C) {
-	err := Mdb.C("users").DropCollection()
+	err := Db.C("users").DropCollection()
 	c.Assert(err, IsNil)
 }
 

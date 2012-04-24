@@ -24,23 +24,23 @@ func (st *ServiceType) Get() error {
 		query["charm"] = st.Charm
 	}
 
-	c := Mdb.C("service_types")
+	c := Db.C("service_types")
 	return c.Find(query).One(&st)
 }
 
 func (s *ServiceType) All() (result []ServiceType) {
-	c := Mdb.C("service_types")
+	c := Db.C("service_types")
 	c.Find(nil).All(&result)
 	return
 }
 
 func (st *ServiceType) Create() error {
-	c := Mdb.C("service_types")
+	c := Db.C("service_types")
 	st.Id = bson.NewObjectId()
 	return c.Insert(st)
 }
 
 func (st *ServiceType) Delete() error {
-	c := Mdb.C("service_types")
+	c := Db.C("service_types")
 	return c.Remove(st) // should pass specific fields instead using all them
 }

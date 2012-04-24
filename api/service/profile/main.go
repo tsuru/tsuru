@@ -29,7 +29,7 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	Mdb = session.DB("tsuru")
+	Db = session.DB("tsuru")
 	defer session.Close()
 
 	sType := &ServiceType{Name: "Mysql", Charm: "mysql"}
@@ -53,6 +53,6 @@ func main() {
 		f.Close()
 	}
 
-	// c := Mdb.C("services")
+	// c := Db.C("services")
 	// defer c.DropCollection()
 }

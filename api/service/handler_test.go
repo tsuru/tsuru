@@ -32,24 +32,24 @@ func (s *ServiceSuite) SetUpSuite(c *C) {
 	var err error
 	s.session, err = mgo.Dial("localhost:27017")
 	c.Assert(err, IsNil)
-	Mdb = s.session.DB("tsuru_service_test")
+	Db = s.session.DB("tsuru_service_test")
 	c.Assert(err, IsNil)
 }
 
 func (s *ServiceSuite) TearDownSuite(c *C) {
-	err := Mdb.DropDatabase()
+	err := Db.DropDatabase()
 	c.Assert(err, IsNil)
 	s.session.Close()
 }
 
 func (s *ServiceSuite) TearDownTest(c *C) {
-	err := Mdb.C("services").DropCollection()
+	err := Db.C("services").DropCollection()
 	c.Assert(err, IsNil)
 
-	err = Mdb.C("service_apps").DropCollection()
+	err = Db.C("service_apps").DropCollection()
 	c.Assert(err, IsNil)
 
-	err = Mdb.C("service_types").DropCollection()
+	err = Db.C("service_types").DropCollection()
 	c.Assert(err, IsNil)
 }
 
@@ -71,7 +71,7 @@ func (s *ServiceSuite) TestCreateHandler(c *C) {
 	query := bson.M{"name": "some_service"}
 	var obtainedService Service
 
-	collection := Mdb.C("services")
+	collection := Db.C("services")
 	err = collection.Find(query).One(&obtainedService)
 	c.Assert(err, IsNil)
 	c.Assert(obtainedService.Id, Not(Equals), 0)
@@ -146,7 +146,7 @@ func (s *ServiceSuite) TestDeleteHandler(c *C) {
 
 	query := bson.M{"name": "Mysql"}
 
-	collection := Mdb.C("services")
+	collection := Db.C("services")
 	qtd, err := collection.Find(query).Count()
 	c.Assert(err, IsNil)
 	c.Assert(qtd, Equals, 0)
@@ -183,7 +183,7 @@ func (s *ServiceSuite) TestBindHandler(c *C) {
 		"service_id": se.Id,
 		"app_id":     a.Id,
 	}
-	collection := Mdb.C("service_apps")
+	collection := Db.C("service_apps")
 	qtd, err := collection.Find(query).Count()
 	c.Check(err, IsNil)
 
@@ -223,7 +223,7 @@ func (s *ServiceSuite) TestUnbindHandler(c *C) {
 		"service_id": se.Id,
 		"app_id":     a.Id,
 	}
-	collection := Mdb.C("services")
+	collection := Db.C("services")
 	qtd, err := collection.Find(query).Count()
 	c.Check(err, IsNil)
 	c.Assert(qtd, Equals, 0)

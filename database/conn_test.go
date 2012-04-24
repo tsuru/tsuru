@@ -1,9 +1,9 @@
 package database_test
 
 import (
-	"database/sql"
 	. "github.com/timeredbull/tsuru/database"
 	. "launchpad.net/gocheck"
+	"launchpad.net/mgo"
 	"testing"
 )
 
@@ -14,5 +14,5 @@ type S struct{}
 var _ = Suite(&S{})
 
 func (s *S) TestShouldExportDbSessionVariable(c *C) {
-	c.Assert(Db, FitsTypeOf, &sql.DB{})
+	c.Assert(Db, FitsTypeOf, &mgo.Database{})
 }

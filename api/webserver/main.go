@@ -19,7 +19,7 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	Mdb = session.DB("tsuru")
+	Db = session.DB("tsuru")
 	defer session.Close()
 	m := pat.New()
 

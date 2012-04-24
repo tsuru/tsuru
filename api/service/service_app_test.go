@@ -27,7 +27,7 @@ func (s *ServiceSuite) TestCreateServiceApp(c *C) {
 	s.createServiceApp()
 	var result ServiceApp
 
-	collection := Mdb.C("service_apps")
+	collection := Db.C("service_apps")
 	query := bson.M{}
 	query["service_id"] = s.service.Id
 	query["app_id"] = s.app.Id
@@ -42,7 +42,7 @@ func (s *ServiceSuite) TestDeleteServiceApp(c *C) {
 	s.createServiceApp()
 	s.serviceApp.Delete()
 
-	collection := Mdb.C("service_apps")
+	collection := Db.C("service_apps")
 	query := bson.M{}
 	query["service_id"] = s.service.Id
 	query["app_id"] = s.app.Id

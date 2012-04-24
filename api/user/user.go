@@ -36,7 +36,7 @@ type Token struct {
 func (u *User) Create() error {
 	u.hashPassword()
 	u.Id = bson.NewObjectId()
-	c := database.Mdb.C("users")
+	c := database.Db.C("users")
 	err := c.Insert(u)
 	return err
 }
@@ -52,7 +52,7 @@ func (u *User) Get() error {
 	} else {
 		filter["email"] = u.Email
 	}
-	c := database.Mdb.C("users")
+	c := database.Db.C("users")
 	return c.Find(filter).One(&u)
 }
 
@@ -84,13 +84,13 @@ func (u *User) CreateToken() (*Token, error) {
 	}
 	t, _ := NewToken(u)
 	u.Tokens = append(u.Tokens, *t)
-	c := database.Mdb.C("users")
+	c := database.Db.C("users")
 	err := c.Update(bson.M{"_id": u.Id}, u)
 	return t, err
 }
 
 func GetUserByToken(token string) (*User, error) {
-	c := database.Mdb.C("users")
+	c := database.Db.C("users")
 	u := new(User)
 	query := bson.M{"tokens.token": token}
 	err := c.Find(query).One(&u)

@@ -50,7 +50,7 @@ func (c *Collector) Update(out *output) {
 				appUnit.State = "STOPPED"
 			}
 			appUnit.Ip = out.Machines[unit.Machine].(map[interface{}]interface{})["dns-name"].(string)
-			c := Mdb.C("apps")
+			c := Db.C("apps")
 			c.Update(bson.M{"_id": appUnit.Id}, appUnit)
 		}
 	}
