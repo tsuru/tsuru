@@ -6,7 +6,7 @@ import (
 )
 
 type ServiceType struct {
-	Id    bson.ObjectId "_id"
+	Id    bson.ObjectId `bson:"_id"`
 	Name  string
 	Charm string
 }
