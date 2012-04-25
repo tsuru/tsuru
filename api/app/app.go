@@ -5,6 +5,7 @@ import (
 	. "github.com/timeredbull/tsuru/database"
 	"launchpad.net/mgo/bson"
 	"os"
+	"os/exec"
 	"path"
 )
 
@@ -31,7 +32,27 @@ func NewRepository(name string) (r *Repository, err error) {
 
 	home := os.Getenv("HOME")
 	repoPath := path.Join(home, "../git", name)
-	err = os.Mkdir(repoPath, 0644)
+	err = os.Mkdir(repoPath, 0700)
+	if err != nil {
+		return nil, err
+	}
+
+	oldPwd, err := os.Getwd()
+	if err != nil {
+		return nil, err
+	}
+
+	err = os.Chdir(repoPath)
+	if err != nil {
+		return nil, err
+	}
+
+	err = exec.Command("git", "init", "--bare").Run()
+	if err != nil {
+		return nil, err
+	}
+
+	err = os.Chdir(oldPwd)
 
 	return
 }

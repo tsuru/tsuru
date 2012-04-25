@@ -46,7 +46,11 @@ func (s *S) TestNewRepository(c *C) {
 	repoPath := path.Join(home, "../git", "foobar")
 	_, err = os.Open(repoPath)
 	c.Assert(err, IsNil)
-	os.Remove(repoPath)
+
+	_, err = os.Open(path.Join(repoPath, "config"))
+	c.Assert(err, IsNil)
+	err = os.RemoveAll(repoPath)
+	c.Assert(err, IsNil)
 }
 
 func (s *S) TestAll(c *C) {
