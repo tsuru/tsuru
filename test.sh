@@ -1,4 +1,9 @@
 #!/bin/sh
 
+set -e
+
 go test ./...
-find . -name main.go -exec go build {} \;
+for f in `find . -name main.go`
+do
+    go build $f
+done
