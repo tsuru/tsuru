@@ -3,12 +3,11 @@ package main
 import (
 	"flag"
 	"fmt"
-	"launchpad.net/mgo"
 	"log"
 	"os"
 	"runtime/pprof"
 	. "github.com/timeredbull/tsuru/api/service"
-	. "github.com/timeredbull/tsuru/database"
+	"github.com/timeredbull/tsuru/db"
 )
 
 var cpuprofile = flag.String("cpuprofile", "", "write cpu profile to file")
@@ -25,12 +24,12 @@ func main() {
 		defer pprof.StopCPUProfile()
 	}
 
-	session, err := mgo.Dial("localhost:27017")
+	var err error
+	db.Session, err = db.Open("127.0.0.1:27017", "tsuru")
 	if err != nil {
 		panic(err)
 	}
-	Db = session.DB("tsuru")
-	defer session.Close()
+	defer db.Session.Close()
 
 	sType := &ServiceType{Name: "Mysql", Charm: "mysql"}
 	sType.Create()
@@ -52,7 +51,4 @@ func main() {
 		pprof.WriteHeapProfile(f)
 		f.Close()
 	}
-
-	// c := Db.C("services")
-	// defer c.DropCollection()
 }
