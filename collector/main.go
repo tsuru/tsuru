@@ -4,20 +4,19 @@ package main
 
 import (
 	"."
-	. "github.com/timeredbull/tsuru/database"
-	"launchpad.net/mgo"
+	"github.com/timeredbull/tsuru/db"
 	"time"
 )
 
 func main() {
 	var collector collector.Collector
+	var err error
 
-	session, err := mgo.Dial("localhost:27017")
+	db.Session, err = db.Open("127.0.0.1:27017", "tsuru")
 	if err != nil {
 		panic(err)
 	}
-	Db = session.DB("tsuru")
-	defer session.Close()
+	defer db.Session.Close()
 
 	c := time.Tick(1 * time.Minute)
 	for _ = range c {
