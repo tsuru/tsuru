@@ -5,7 +5,7 @@ import (
 	"crypto/sha512"
 	"errors"
 	"fmt"
-	"github.com/timeredbull/tsuru/database"
+	"github.com/timeredbull/tsuru/db"
 	"launchpad.net/mgo/bson"
 	"time"
 )
@@ -22,7 +22,6 @@ func hashPassword(password string) string {
 }
 
 type User struct {
-	Id       bson.ObjectId "_id"
 	Email    string
 	Password string
 	Tokens   []Token
@@ -35,10 +34,7 @@ type Token struct {
 
 func (u *User) Create() error {
 	u.hashPassword()
-	u.Id = bson.NewObjectId()
-	c := database.Db.C("users")
-	err := c.Insert(u)
-	return err
+	return db.Session.Users().Insert(u)
 }
 
 func (u *User) hashPassword() {
@@ -47,13 +43,8 @@ func (u *User) hashPassword() {
 
 func (u *User) Get() error {
 	var filter = bson.M{}
-	if u.Id.Valid() {
-		filter["_id"] = u.Id
-	} else {
-		filter["email"] = u.Email
-	}
-	c := database.Db.C("users")
-	return c.Find(filter).One(&u)
+	filter["email"] = u.Email
+	return db.Session.Users().Find(filter).One(&u)
 }
 
 func (u *User) Login(password string) bool {
@@ -79,18 +70,18 @@ func NewToken(u *User) (*Token, error) {
 }
 
 func (u *User) CreateToken() (*Token, error) {
-	if !u.Id.Valid() {
-		return nil, errors.New("User does not have an id")
+	if u.Email == "" {
+		return nil, errors.New("User does not have an email")
 	}
 	t, _ := NewToken(u)
 	u.Tokens = append(u.Tokens, *t)
-	c := database.Db.C("users")
-	err := c.Update(bson.M{"_id": u.Id}, u)
+	c := db.Session.Users()
+	err := c.Update(bson.M{"email": u.Email}, u)
 	return t, err
 }
 
 func GetUserByToken(token string) (*User, error) {
-	c := database.Db.C("users")
+	c := db.Session.Users()
 	u := new(User)
 	query := bson.M{"tokens.token": token}
 	err := c.Find(query).One(&u)

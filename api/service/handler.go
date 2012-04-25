@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	. "github.com/timeredbull/tsuru/api/app"
+	"github.com/timeredbull/tsuru/api/app"
 	"io/ioutil"
 	"launchpad.net/mgo/bson"
 	"net/http"
@@ -130,10 +130,10 @@ func BindHandler(w http.ResponseWriter, r *http.Request) error {
 	}
 
 	s := Service{Name: b.Service}
-	a := App{Name: b.App}
-	s.Get()
-	a.Get()
-	if s.Id == "" || a.Id == "" {
+	a := app.App{Name: b.App}
+	sErr := s.Get()
+	aErr := a.Get()
+	if sErr != nil || aErr != nil {
 		http.NotFound(w, r)
 	} else {
 		s.Bind(&a)
@@ -157,10 +157,10 @@ func UnbindHandler(w http.ResponseWriter, r *http.Request) error {
 	}
 
 	s := Service{Name: b.Service}
-	a := App{Name: b.App}
-	s.Get()
-	a.Get()
-	if s.Id == "" || a.Id == "" {
+	a := app.App{Name: b.App}
+	sErr := s.Get()
+	aErr := a.Get()
+	if sErr != nil || aErr != nil {
 		http.NotFound(w, r)
 	} else {
 		s.Unbind(&a)

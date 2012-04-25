@@ -1,8 +1,7 @@
-package service_test
+package service
 
 import (
-	. "github.com/timeredbull/tsuru/api/service"
-	. "github.com/timeredbull/tsuru/database"
+	"github.com/timeredbull/tsuru/db"
 	. "launchpad.net/gocheck"
 	"launchpad.net/mgo/bson"
 )
@@ -41,8 +40,7 @@ func (s *ServiceSuite) TestCreateServiceType(c *C) {
 	query["name"] = "Mysql"
 	query["charm"] = "mysql"
 
-	collection := Db.C("service_types")
-	err := collection.Find(query).One(&result)
+	err := db.Session.ServiceTypes().Find(query).One(&result)
 	c.Assert(err, IsNil)
 	c.Assert(result.Name, Equals, "Mysql")
 	c.Assert(result.Charm, Equals, "mysql")
@@ -56,8 +54,7 @@ func (s *ServiceSuite) TestDeleteServiceType(c *C) {
 	query["name"] = "Mysql"
 	query["charm"] = "mysql"
 
-	collection := Db.C("service_types")
-	qtd, err := collection.Find(query).Count()
+	qtd, err := db.Session.ServiceTypes().Find(query).Count()
 	c.Assert(err, IsNil)
 	c.Assert(qtd, Equals, 0)
 }

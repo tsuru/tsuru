@@ -1,11 +1,10 @@
-package service_test
+package service
 
 import (
 	"encoding/json"
 	"fmt"
-	. "github.com/timeredbull/tsuru/api/app"
-	. "github.com/timeredbull/tsuru/api/service"
-	. "github.com/timeredbull/tsuru/database"
+	"github.com/timeredbull/tsuru/api/app"
+	"github.com/timeredbull/tsuru/db"
 	"io/ioutil"
 	. "launchpad.net/gocheck"
 	"launchpad.net/mgo"
@@ -19,7 +18,7 @@ import (
 func Test(t *testing.T) { TestingT(t) }
 
 type ServiceSuite struct {
-	app         *App
+	app         *app.App
 	service     *Service
 	serviceType *ServiceType
 	serviceApp  *ServiceApp
@@ -30,26 +29,23 @@ var _ = Suite(&ServiceSuite{})
 
 func (s *ServiceSuite) SetUpSuite(c *C) {
 	var err error
-	s.session, err = mgo.Dial("localhost:27017")
-	c.Assert(err, IsNil)
-	Db = s.session.DB("tsuru_service_test")
+	db.Session, err = db.Open("127.0.0.1:27017", "tsuru_service_test")
 	c.Assert(err, IsNil)
 }
 
 func (s *ServiceSuite) TearDownSuite(c *C) {
-	err := Db.DropDatabase()
-	c.Assert(err, IsNil)
-	s.session.Close()
+	defer db.Session.Close()
+	db.Session.DropDB()
 }
 
 func (s *ServiceSuite) TearDownTest(c *C) {
-	err := Db.C("services").DropCollection()
+	err := db.Session.Services().RemoveAll(nil)
 	c.Assert(err, IsNil)
 
-	err = Db.C("service_apps").DropCollection()
+	err = db.Session.ServiceApps().RemoveAll(nil)
 	c.Assert(err, IsNil)
 
-	err = Db.C("service_types").DropCollection()
+	err = db.Session.ServiceTypes().RemoveAll(nil)
 	c.Assert(err, IsNil)
 }
 
@@ -71,8 +67,7 @@ func (s *ServiceSuite) TestCreateHandler(c *C) {
 	query := bson.M{"name": "some_service"}
 	var obtainedService Service
 
-	collection := Db.C("services")
-	err = collection.Find(query).One(&obtainedService)
+	err = db.Session.Services().Find(query).One(&obtainedService)
 	c.Assert(err, IsNil)
 	c.Assert(obtainedService.Id, Not(Equals), 0)
 	c.Assert(obtainedService.ServiceTypeId, Not(Equals), 0)
@@ -146,8 +141,7 @@ func (s *ServiceSuite) TestDeleteHandler(c *C) {
 
 	query := bson.M{"name": "Mysql"}
 
-	collection := Db.C("services")
-	qtd, err := collection.Find(query).Count()
+	qtd, err := db.Session.Services().Find(query).Count()
 	c.Assert(err, IsNil)
 	c.Assert(qtd, Equals, 0)
 }
@@ -166,7 +160,7 @@ func (s *ServiceSuite) TestBindHandler(c *C) {
 	st := ServiceType{Name: "Mysql", Charm: "mysql"}
 	st.Create()
 	se := Service{ServiceTypeId: st.Id, Name: "my_service"}
-	a := App{Name: "someApp", Framework: "django"}
+	a := app.App{Name: "someApp", Framework: "django"}
 	se.Create()
 	a.Create()
 
@@ -181,10 +175,9 @@ func (s *ServiceSuite) TestBindHandler(c *C) {
 
 	query := bson.M{
 		"service_id": se.Id,
-		"app_id":     a.Id,
+		"app_name":   a.Name,
 	}
-	collection := Db.C("service_apps")
-	qtd, err := collection.Find(query).Count()
+	qtd, err := db.Session.ServiceApps().Find(query).Count()
 	c.Check(err, IsNil)
 
 	c.Assert(qtd, Equals, 1)
@@ -205,7 +198,7 @@ func (s *ServiceSuite) TestUnbindHandler(c *C) {
 	st := ServiceType{Name: "Mysql", Charm: "mysql"}
 	st.Create()
 	se := Service{ServiceTypeId: st.Id, Name: "my_service"}
-	a := App{Name: "someApp", Framework: "django", Ip: "192.168.30.10"}
+	a := app.App{Name: "someApp", Framework: "django", Ip: "192.168.30.10"}
 	se.Create()
 	a.Create()
 	se.Bind(&a)
@@ -221,10 +214,9 @@ func (s *ServiceSuite) TestUnbindHandler(c *C) {
 
 	query := bson.M{
 		"service_id": se.Id,
-		"app_id":     a.Id,
+		"app_name":   a.Name,
 	}
-	collection := Db.C("services")
-	qtd, err := collection.Find(query).Count()
+	qtd, err := db.Session.Services().Find(query).Count()
 	c.Check(err, IsNil)
 	c.Assert(qtd, Equals, 0)
 }

@@ -15,9 +15,9 @@ import (
 
 func Upload(w http.ResponseWriter, r *http.Request) error {
 	app := App{Name: r.URL.Query().Get(":name")}
-	app.Get()
+	err := app.Get()
 
-	if app.Id == "" {
+	if err != nil {
 		http.NotFound(w, r)
 	} else {
 		f, _, err := r.FormFile("application")
@@ -106,9 +106,9 @@ func AppList(w http.ResponseWriter, r *http.Request) error {
 
 func AppInfo(w http.ResponseWriter, r *http.Request) error {
 	app := App{Name: r.URL.Query().Get(":name")}
-	app.Get()
+	err := app.Get()
 
-	if app.Id == "" {
+	if err != nil {
 		http.NotFound(w, r)
 	} else {
 		b, err := json.Marshal(app)

@@ -2,7 +2,7 @@ package app_test
 
 import (
 	"github.com/timeredbull/tsuru/api/app"
-	. "github.com/timeredbull/tsuru/database"
+	"github.com/timeredbull/tsuru/db"
 	. "launchpad.net/gocheck"
 	"launchpad.net/mgo"
 	"launchpad.net/mgo/bson"
@@ -21,19 +21,17 @@ var _ = Suite(&S{})
 
 func (s *S) SetUpSuite(c *C) {
 	var err error
-	s.session, err = mgo.Dial("localhost:27017")
+	db.Session, err = db.Open("127.0.0.1:27017", "tsuru_app_test")
 	c.Assert(err, IsNil)
-	Db = s.session.DB("tsuru_app_test")
 }
 
 func (s *S) TearDownSuite(c *C) {
-	err := Db.DropDatabase()
-	c.Assert(err, IsNil)
-	s.session.Close()
+	defer db.Session.Close()
+	db.Session.DropDB()
 }
 
 func (s *S) TearDownTest(c *C) {
-	err := Db.C("apps").DropCollection()
+	err := db.Session.Apps().RemoveAll(nil)
 	c.Assert(err, IsNil)
 }
 
@@ -98,8 +96,7 @@ func (s *S) TestDestroy(c *C) {
 	err = app.Destroy()
 	c.Assert(err, IsNil)
 
-	collection := Db.C("apps")
-	qtd, err := collection.Find(nil).Count()
+	qtd, err := db.Session.Apps().Find(nil).Count()
 	c.Assert(err, IsNil)
 	c.Assert(qtd, Equals, 0)
 }
@@ -113,16 +110,22 @@ func (s *S) TestCreate(c *C) {
 	c.Assert(err, IsNil)
 
 	c.Assert(a.State, Equals, "Pending")
-	c.Assert(a.Id, Not(Equals), "")
 
-	collection := Db.C("apps")
 	var retrievedApp app.App
-	err = collection.Find(bson.M{"name": a.Name}).One(&retrievedApp)
+	err = db.Session.Apps().Find(bson.M{"name": a.Name}).One(&retrievedApp)
 	c.Assert(err, IsNil)
-	c.Assert(retrievedApp.Id, Equals, a.Id)
 	c.Assert(retrievedApp.Name, Equals, a.Name)
 	c.Assert(retrievedApp.Framework, Equals, a.Framework)
 	c.Assert(retrievedApp.State, Equals, a.State)
 
 	a.Destroy()
+}
+
+func (s *S) TestCantCreateTwoAppsWithTheSameName(c *C) {
+	a := app.App{Name: "appName", Framework: "django"}
+	err := a.Create()
+	c.Assert(err, IsNil)
+
+	err = a.Create()
+	c.Assert(err, NotNil)
 }

@@ -1,8 +1,7 @@
 package service
 
 import (
-	_ "github.com/mattn/go-sqlite3"
-	. "github.com/timeredbull/tsuru/database"
+	"github.com/timeredbull/tsuru/db"
 	"launchpad.net/mgo/bson"
 )
 
@@ -24,23 +23,20 @@ func (st *ServiceType) Get() error {
 		query["charm"] = st.Charm
 	}
 
-	c := Db.C("service_types")
-	return c.Find(query).One(&st)
+	return db.Session.ServiceTypes().Find(query).One(&st)
 }
 
-func (s *ServiceType) All() (result []ServiceType) {
-	c := Db.C("service_types")
-	c.Find(nil).All(&result)
-	return
+func (s *ServiceType) All() []ServiceType {
+	var result []ServiceType
+	db.Session.ServiceTypes().Find(nil).All(&result)
+	return result
 }
 
 func (st *ServiceType) Create() error {
-	c := Db.C("service_types")
 	st.Id = bson.NewObjectId()
-	return c.Insert(st)
+	return db.Session.ServiceTypes().Insert(st)
 }
 
 func (st *ServiceType) Delete() error {
-	c := Db.C("service_types")
-	return c.Remove(st) // should pass specific fields instead using all them
+	return db.Session.ServiceTypes().Remove(st)
 }

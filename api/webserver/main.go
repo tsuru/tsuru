@@ -8,19 +8,18 @@ import (
 	"github.com/timeredbull/tsuru/api/app"
 	"github.com/timeredbull/tsuru/api/service"
 	"github.com/timeredbull/tsuru/api/user"
-	. "github.com/timeredbull/tsuru/database"
-	"launchpad.net/mgo"
+	"github.com/timeredbull/tsuru/db"
 	"log"
 	"net/http"
 )
 
 func main() {
-	session, err := mgo.Dial("localhost:27017")
+	var err error
+	db.Session, err = db.Open("127.0.0.1:27017", "tsuru")
 	if err != nil {
 		panic(err)
 	}
-	Db = session.DB("tsuru")
-	defer session.Close()
+	defer db.Session.Close()
 	m := pat.New()
 
 	m.Post("/services", webserver.Handler(service.CreateHandler))

@@ -2,7 +2,7 @@ package collector
 
 import (
 	"github.com/timeredbull/tsuru/api/app"
-	. "github.com/timeredbull/tsuru/database"
+	"github.com/timeredbull/tsuru/db"
 	"io/ioutil"
 	. "launchpad.net/gocheck"
 	"launchpad.net/mgo"
@@ -20,20 +20,16 @@ type S struct {
 var _ = Suite(&S{})
 
 func (s *S) SetUpSuite(c *C) {
-	var err error
-	s.session, err = mgo.Dial("localhost:27017")
-	c.Assert(err, IsNil)
-	Db = s.session.DB("tsuru_collector_test")
+	db.Session, _ = db.Open("127.0.0.1:27017", "tsuru_collector_test")
 }
 
 func (s *S) TearDownSuite(c *C) {
-	err := Db.DropDatabase()
-	c.Assert(err, IsNil)
-	s.session.Close()
+	defer db.Session.Close()
+	db.Session.DropDB()
 }
 
 func (s *S) TearDownTest(c *C) {
-	err := Db.C("apps").DropCollection()
+	err := db.Session.Apps().RemoveAll(nil)
 	c.Assert(err, IsNil)
 }
 

@@ -3,7 +3,7 @@ package collector
 import (
 	"fmt"
 	"github.com/timeredbull/tsuru/api/app"
-	. "github.com/timeredbull/tsuru/database"
+	"github.com/timeredbull/tsuru/db"
 	"launchpad.net/goyaml"
 	"launchpad.net/mgo/bson"
 	"os/exec"
@@ -50,8 +50,7 @@ func (c *Collector) Update(out *output) {
 				appUnit.State = "STOPPED"
 			}
 			appUnit.Ip = out.Machines[unit.Machine].(map[interface{}]interface{})["dns-name"].(string)
-			c := Db.C("apps")
-			c.Update(bson.M{"_id": appUnit.Id}, appUnit)
+			db.Session.Apps().Update(bson.M{"name": appUnit.Name}, appUnit)
 		}
 	}
 }

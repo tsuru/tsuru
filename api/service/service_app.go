@@ -1,23 +1,21 @@
 package service
 
 import (
-	_ "github.com/mattn/go-sqlite3"
-	. "github.com/timeredbull/tsuru/api/app"
+	"github.com/timeredbull/tsuru/api/app"
 	"github.com/timeredbull/tsuru/api/unit"
-	. "github.com/timeredbull/tsuru/database"
+	"github.com/timeredbull/tsuru/db"
 	"launchpad.net/mgo/bson"
 )
 
 type ServiceApp struct {
 	Id        bson.ObjectId "_id"
 	ServiceId bson.ObjectId "service_id"
-	AppId     bson.ObjectId "app_id"
+	AppName   string "app_name"
 }
 
 func (sa *ServiceApp) Create() error {
-	c := Db.C("service_apps")
 	sa.Id = bson.NewObjectId()
-	err := c.Insert(sa)
+	err := db.Session.ServiceApps().Insert(sa)
 	if err != nil {
 		return err
 	}
@@ -31,9 +29,8 @@ func (sa *ServiceApp) Create() error {
 }
 
 func (sa *ServiceApp) Delete() error {
-	c := Db.C("service_apps")
-	doc := bson.M{"service_id": sa.ServiceId, "app_id": sa.AppId}
-	err := c.Remove(doc)
+	doc := bson.M{"service_id": sa.ServiceId, "app_name": sa.AppName}
+	err := db.Session.ServiceApps().Remove(doc)
 	if err != nil {
 		return err
 	}
@@ -52,8 +49,8 @@ func (sa *ServiceApp) Service() (s *Service) {
 	return
 }
 
-func (sa *ServiceApp) App() (a *App) {
-	c := Db.C("apps")
-	c.Find(bson.M{"_id": sa.AppId}).One(&a)
-	return
+func (sa *ServiceApp) App() *app.App {
+	var a *app.App
+	db.Session.Apps().Find(bson.M{"name": sa.AppName}).One(&a)
+	return a
 }

@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	. "github.com/timeredbull/tsuru/database"
+	"github.com/timeredbull/tsuru/db"
 	"io/ioutil"
 	. "launchpad.net/gocheck"
 	"net/http"
@@ -24,7 +24,6 @@ func (s *S) TestCreateUserHandlerSavesTheUserInTheDatabase(c *C) {
 	u := User{Email: "nobody@globo.com"}
 	err = u.Get()
 	c.Assert(err, IsNil)
-	c.Assert(u.Id.Valid(), Equals, true)
 }
 
 func (s *S) TestCreateUserHandlerReturnsStatus204AfterCreateTheUser(c *C) {
@@ -64,21 +63,21 @@ func (s *S) TestCreateUserHandlerReturnErrorIfInvalidJSONIsGiven(c *C) {
 	c.Assert(err, ErrorMatches, "^invalid character.*$")
 }
 
-// func (s *S) TestCreateUserHandlerReturnErrorIfItFailsToCreateUser(c *C) {
-// 	u := User{Email: "nobody@globo.com", Password: "123"}
-// 	u.Create()
-//
-// 	b := bytes.NewBufferString(`{"email":"nobody@globo.com","password":"123"}`)
-// 	request, err := http.NewRequest("POST", "/users", b)
-// 	if err != nil {
-// 		panic(err)
-// 	}
-// 	request.Header.Set("Content-type", "application/json")
-// 	response := httptest.NewRecorder()
-// 	err = CreateUser(response, request)
-// 	c.Assert(err, NotNil)
-// 	c.Assert(err, ErrorMatches, "This email is already registered")
-// }
+func (s *S) TestCreateUserHandlerReturnErrorIfItFailsToCreateUser(c *C) {
+	u := User{Email: "nobody@globo.com", Password: "123"}
+	u.Create()
+
+	b := bytes.NewBufferString(`{"email":"nobody@globo.com","password":"123"}`)
+	request, err := http.NewRequest("POST", "/users", b)
+	if err != nil {
+		panic(err)
+	}
+	request.Header.Set("Content-type", "application/json")
+	response := httptest.NewRecorder()
+	err = CreateUser(response, request)
+	c.Assert(err, NotNil)
+	c.Assert(err, ErrorMatches, "This email is already registered")
+}
 
 func (s *S) TestLoginShouldCreateTokenInTheDatabaseAndReturnItWithinTheResponse(c *C) {
 	u := User{Email: "nobody@globo.com", Password: "123"}
@@ -94,7 +93,7 @@ func (s *S) TestLoginShouldCreateTokenInTheDatabaseAndReturnItWithinTheResponse(
 	c.Assert(err, IsNil)
 
 	var user User
-	collection := Db.C("users")
+	collection := db.Session.Users()
 	err = collection.Find(nil).One(&user)
 
 	var responseJson map[string]string
@@ -178,7 +177,6 @@ func (s *S) TestValidateUserTokenReturnJsonRepresentingUser(c *C) {
 
 	var expected, got map[string]string
 	expected = map[string]string{
-		"id":    u.Id.String(),
 		"email": "nobody@globo.com",
 	}
 	r, _ := ioutil.ReadAll(response.Body)
