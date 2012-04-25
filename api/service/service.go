@@ -1,9 +1,9 @@
 package service
 
 import (
-	. "github.com/timeredbull/tsuru/api/app"
+	"github.com/timeredbull/tsuru/api/app"
 	"github.com/timeredbull/tsuru/api/unit"
-	. "github.com/timeredbull/tsuru/database"
+	"github.com/timeredbull/tsuru/db"
 	"launchpad.net/mgo/bson"
 )
 
@@ -21,20 +21,18 @@ func (s *Service) Get() error {
 	case s.Name != "":
 		query["name"] = s.Name
 	}
-	c := Db.C("services")
-	return c.Find(query).One(&s)
+	return db.Session.Services().Find(query).One(&s)
 }
 
-func (s *Service) All() (result []Service) {
-	c := Db.C("services")
-	c.Find(nil).All(&result)
-	return
+func (s *Service) All() []Service {
+	var result []Service
+	db.Session.Services().Find(nil).All(&result)
+	return result
 }
 
 func (s *Service) Create() error {
-	c := Db.C("services")
 	s.Id = bson.NewObjectId()
-	err := c.Insert(s)
+	err := db.Session.Services().Insert(s)
 	if err != nil {
 		return err
 	}
@@ -44,8 +42,7 @@ func (s *Service) Create() error {
 }
 
 func (s *Service) Delete() error {
-	c := Db.C("services")
-	err := c.Remove(s)
+	err := db.Session.Services().Remove(s)
 	if err != nil {
 		return err
 	}
@@ -54,13 +51,13 @@ func (s *Service) Delete() error {
 	return u.Destroy()
 }
 
-func (s *Service) Bind(app *App) error {
-	sa := ServiceApp{ServiceId: s.Id, AppId: app.Id}
+func (s *Service) Bind(a *app.App) error {
+	sa := ServiceApp{ServiceId: s.Id, AppName: a.Name}
 	return sa.Create()
 }
 
-func (s *Service) Unbind(app *App) error {
-	sa := ServiceApp{ServiceId: s.Id, AppId: app.Id}
+func (s *Service) Unbind(a *app.App) error {
+	sa := ServiceApp{ServiceId: s.Id, AppName: a.Name}
 	return sa.Delete()
 }
 

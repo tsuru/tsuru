@@ -1,9 +1,8 @@
-package service_test
+package service
 
 import (
-	. "github.com/timeredbull/tsuru/api/app"
-	. "github.com/timeredbull/tsuru/api/service"
-	. "github.com/timeredbull/tsuru/database"
+	"github.com/timeredbull/tsuru/api/app"
+	"github.com/timeredbull/tsuru/db"
 	. "launchpad.net/gocheck"
 	"launchpad.net/mgo/bson"
 )
@@ -53,8 +52,7 @@ func (s *ServiceSuite) TestDeleteService(c *C) {
 	s.createService()
 	s.service.Delete()
 
-	collection := Db.C("services")
-	qtd, err := collection.Find(nil).Count()
+	qtd, err := db.Session.Services().Find(nil).Count()
 	c.Assert(err, IsNil)
 	c.Assert(qtd, Equals, 0)
 }
@@ -77,35 +75,33 @@ func (s *ServiceSuite) TestRetrieveAssociateServiceType(c *C) {
 
 func (s *ServiceSuite) TestBindService(c *C) {
 	s.createService()
-	app := &App{Name: "my_app", Framework: "django"}
+	app := &app.App{Name: "my_app", Framework: "django"}
 	app.Create()
 	s.service.Bind(app)
 	var result ServiceApp
 
-	collection := Db.C("service_apps")
 	query := bson.M{
 		"service_id": s.service.Id,
-		"app_id":     app.Id,
+		"app_name":   app.Name,
 	}
-	err := collection.Find(query).One(&result)
+	err := db.Session.ServiceApps().Find(query).One(&result)
 	c.Assert(err, IsNil)
 	c.Assert(s.service.Id, Equals, result.ServiceId)
-	c.Assert(app.Id, Equals, result.AppId)
+	c.Assert(app.Name, Equals, result.AppName)
 }
 
 func (s *ServiceSuite) TestUnbindService(c *C) {
 	s.createService()
-	app := &App{Name: "my_app", Framework: "django"}
+	app := &app.App{Name: "my_app", Framework: "django"}
 	app.Create()
 	s.service.Bind(app)
 	s.service.Unbind(app)
 
 	query := bson.M{}
 	query["service_id"] = s.service.Id
-	query["app_id"] = app.Id
+	query["app_name"] = app.Name
 
-	collection := Db.C("service_apps")
-	qtd, err := collection.Find(query).Count()
+	qtd, err := db.Session.ServiceApps().Find(query).Count()
 	c.Assert(err, IsNil)
 	c.Assert(qtd, Equals, 0)
 }
