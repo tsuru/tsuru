@@ -24,6 +24,10 @@ func errorHandler(w http.ResponseWriter, r *http.Request) error {
 	return errors.New("some error")
 }
 
+func badRequestHandler(w http.ResponseWriter, r *http.Request) error {
+	return Error(http.StatusBadRequest, "some error")
+}
+
 func simpleHandler(w http.ResponseWriter, r *http.Request) error {
 	fmt.Fprint(w, "success")
 	return nil
@@ -31,6 +35,10 @@ func simpleHandler(w http.ResponseWriter, r *http.Request) error {
 
 func authorizedErrorHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	return errorHandler(w, r)
+}
+
+func authorizedBadRequestHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
+	return badRequestHandler(w, r)
 }
 
 func authorizedSimpleHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
@@ -106,8 +114,16 @@ func (s *S) TestAuthorizationRequiredHandlerShouldReturnTheHandlerErrorIfAnyHapp
 	request, err := http.NewRequest("GET", "/apps", nil)
 	c.Assert(err, IsNil)
 	request.Header.Set("Authorization", s.t.Token)
-
 	AuthorizationRequiredHandler(authorizedErrorHandler).ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, Equals, http.StatusInternalServerError)
 	c.Assert(recorder.Body.String(), Equals, "some error\n")
+}
+
+func (s *S) TestAuthorizationRequiredHandlerShouldRespectTheHandlerStatusCode(c *C) {
+	recorder := httptest.NewRecorder()
+	request, err := http.NewRequest("GET", "/apps", nil)
+	c.Assert(err, IsNil)
+	request.Header.Set("Authorization", s.t.Token)
+	AuthorizationRequiredHandler(authorizedBadRequestHandler).ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, Equals, http.StatusBadRequest)
 }

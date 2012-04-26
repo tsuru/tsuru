@@ -22,6 +22,10 @@ func (fn AuthorizationRequiredHandler) ServeHTTP(w http.ResponseWriter, r *http.
 	} else if user, err := auth.CheckToken(token); err != nil {
 		http.Error(w, "Invalid token", http.StatusUnauthorized)
 	} else if err = fn(w, r, user); err != nil {
-		http.Error(w, err.Error(), 500)
+		code := http.StatusInternalServerError
+		if e, ok := err.(*HttpError); ok {
+			code = e.code
+		}
+		http.Error(w, err.Error(), code)
 	}
 }
