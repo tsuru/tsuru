@@ -5,6 +5,7 @@ package main
 import (
 	"."
 	"github.com/timeredbull/tsuru/db"
+	"github.com/timeredbull/tsuru/log"
 	"time"
 )
 
@@ -14,7 +15,7 @@ func main() {
 
 	db.Session, err = db.Open("127.0.0.1:27017", "tsuru")
 	if err != nil {
-		panic(err)
+		log.Panic(err.Error())
 	}
 	defer db.Session.Close()
 
