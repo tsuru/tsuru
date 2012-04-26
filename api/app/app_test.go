@@ -1,6 +1,7 @@
 package app_test
 
 import (
+	"fmt"
 	"github.com/timeredbull/tsuru/api/app"
 	"github.com/timeredbull/tsuru/db"
 	. "launchpad.net/gocheck"
@@ -37,17 +38,41 @@ func (s *S) TearDownTest(c *C) {
 
 func (s *S) TestNewRepository(c *C) {
 	r, err := app.NewRepository("foobar")
+	url := fmt.Sprintf("git@tsuru.plataformas.glb.com:%s", r.Name)
+	home := os.Getenv("HOME")
+	repoPath := path.Join(home, "../git", r.Name)
+
 	c.Assert(err, IsNil)
 	c.Assert(r.Server, Equals, "tsuru.plataformas.glb.com")
-
-	home := os.Getenv("HOME")
-	repoPath := path.Join(home, "../git", "foobar")
-	_, err = os.Open(repoPath)
-	c.Assert(err, IsNil)
+	c.Assert(r.Name, Equals, "foobar.git")
+	c.Assert(r.Url, Equals, url)
+	c.Assert(r.Path, Equals, repoPath)
 
 	_, err = os.Open(path.Join(repoPath, "config"))
 	c.Assert(err, IsNil)
 	err = os.RemoveAll(repoPath)
+	c.Assert(err, IsNil)
+}
+
+func (s *S) TestCreateGitRepository(c *C) {
+	home := os.Getenv("HOME")
+	var r app.Repository
+	r = app.Repository{
+		Name:   "foo.git",
+		Url:    "git@tsuru.plataformas.glb.com:foo.git",
+		Path:   path.Join(home, "../git", "foo.git"),
+		Server: "tsuru.plataformas.glb.com",
+	}
+	err := r.CreateBareRepository()
+	c.Assert(err, IsNil)
+
+	_, err = os.Open(r.Path) // test if repository dir exists
+	c.Assert(err, IsNil)
+
+	_, err = os.Open(path.Join(r.Path, "config"))
+	c.Assert(err, IsNil)
+
+	err = os.RemoveAll(r.Path)
 	c.Assert(err, IsNil)
 }
 

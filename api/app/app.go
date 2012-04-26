@@ -1,6 +1,7 @@
 package app
 
 import (
+	"fmt"
 	"github.com/timeredbull/tsuru/api/unit"
 	"github.com/timeredbull/tsuru/db"
 	"launchpad.net/mgo/bson"
@@ -20,40 +21,49 @@ type App struct {
 
 type Repository struct {
 	Name   string
+	Url    string
+	Path   string
 	Server string
 }
 
 func NewRepository(name string) (r *Repository, err error) {
+	name = fmt.Sprintf("%s.git", name)
+	url := fmt.Sprintf("git@%s:%s", gitServer, name)
+	home := os.Getenv("HOME")
+	path := path.Join(home, "../git", name)
 	r = &Repository{
-		Name: name,
+		Name:   name,
+		Url:    url,
+		Path:   path,
 		Server: gitServer,
 	}
+	err = r.CreateBareRepository()
+	return
+}
 
-	home := os.Getenv("HOME")
-	repoPath := path.Join(home, "../git", name)
-	err = os.Mkdir(repoPath, 0700)
+func (r *Repository) CreateBareRepository() error {
+	err := os.Mkdir(r.Path, 0700)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	oldPwd, err := os.Getwd()
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	err = os.Chdir(repoPath)
+	err = os.Chdir(r.Path)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	err = exec.Command("git", "init", "--bare").Run()
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	err = os.Chdir(oldPwd)
-
-	return
+	return err
 }
 
 func AllApps() ([]App, error) {
