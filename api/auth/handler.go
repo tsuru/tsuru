@@ -8,6 +8,26 @@ import (
 	"net/http"
 )
 
+type AuthorizationError struct {
+	code    int
+	message string
+}
+
+func (a *AuthorizationError) Error() string {
+	return a.message
+}
+
+func CheckToken(token string) (*User, error) {
+	if token == "" {
+		return nil, &AuthorizationError{http.StatusBadRequest, "You must provide the Authorization header"}
+	}
+	u, err := GetUserByToken(token)
+	if err != nil {
+		return nil, &AuthorizationError{http.StatusUnauthorized, "Invalid token"}
+	}
+	return u, nil
+}
+
 func CreateUser(w http.ResponseWriter, r *http.Request) error {
 	var u User
 	b, err := ioutil.ReadAll(r.Body)
@@ -65,12 +85,11 @@ func Login(w http.ResponseWriter, r *http.Request) error {
 
 func CheckAuthorization(w http.ResponseWriter, r *http.Request) error {
 	token := r.Header.Get("Authorization")
-	if token == "" {
-		w.WriteHeader(http.StatusBadRequest)
-		return errors.New("You must provide the Authorization header")
-	}
-	user, err := GetUserByToken(token)
+	user, err := CheckToken(token)
 	if err != nil {
+		if e, ok := err.(*AuthorizationError); ok {
+			w.WriteHeader(e.code)
+		}
 		return err
 	}
 	output := map[string]string{

@@ -7,6 +7,7 @@ import (
 	"github.com/timeredbull/tsuru/db"
 	"io/ioutil"
 	. "launchpad.net/gocheck"
+	"launchpad.net/mgo/bson"
 	"net/http"
 	"net/http/httptest"
 )
@@ -94,7 +95,7 @@ func (s *S) TestLoginShouldCreateTokenInTheDatabaseAndReturnItWithinTheResponse(
 
 	var user User
 	collection := db.Session.Users()
-	err = collection.Find(nil).One(&user)
+	err = collection.Find(bson.M{"email": "nobody@globo.com"}).One(&user)
 
 	var responseJson map[string]string
 	r, _ := ioutil.ReadAll(response.Body)
@@ -201,4 +202,28 @@ func (s *S) TestValidateUserTokenReturnErrorAndBadRequestWhenTheAuthorizationHea
 	c.Assert(response.Code, Equals, http.StatusBadRequest)
 	c.Assert(err, NotNil)
 	c.Assert(err, ErrorMatches, "^You must provide the Authorization header$")
+}
+
+func (s *S) TestCheckTokenReturnBadRequestIfTheTokenIsOmited(c *C) {
+	u, e := CheckToken("")
+	c.Assert(u, IsNil)
+	err, ok := e.(*AuthorizationError)
+	c.Assert(ok, Equals, true)
+	c.Assert(err.code, Equals, http.StatusBadRequest)
+	c.Assert(err, ErrorMatches, "^You must provide the Authorization header$")
+}
+
+func (s *S) TestCheckTokenReturnUnauthorizedIfTheTokenIsInvalid(c *C) {
+	u, e := CheckToken("invalid")
+	c.Assert(u, IsNil)
+	err, ok := e.(*AuthorizationError)
+	c.Assert(ok, Equals, true)
+	c.Assert(err.code, Equals, http.StatusUnauthorized)
+	c.Assert(err, ErrorMatches, "^Invalid token$")
+}
+
+func (s *S) TestCheckTokenReturnTheUserIfTheTokenIsValid(c *C) {
+	u, e := CheckToken(s.token.Token)
+	c.Assert(e, IsNil)
+	c.Assert(u.Email, Equals, s.user.Email)
 }
