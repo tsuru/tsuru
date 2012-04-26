@@ -19,51 +19,48 @@ type App struct {
 	State     string
 }
 
-type Repository struct {
-	Name   string
-	Url    string
-	Path   string
-	Server string
-}
+func NewRepository(app *App) (err error) {
+	repoPath := GetRepositoryPath(app)
 
-func NewRepository(name string) (r *Repository, err error) {
-	name = fmt.Sprintf("%s.git", name)
-	url := fmt.Sprintf("git@%s:%s", gitServer, name)
-	home := os.Getenv("HOME")
-	path := path.Join(home, "../git", name)
-	r = &Repository{
-		Name:   name,
-		Url:    url,
-		Path:   path,
-		Server: gitServer,
-	}
-	err = r.CreateBareRepository()
-	return
-}
-
-func (r *Repository) CreateBareRepository() error {
-	err := os.Mkdir(r.Path, 0700)
+	err = os.Mkdir(repoPath, 0700)
 	if err != nil {
-		return err
+		return
 	}
 
 	oldPwd, err := os.Getwd()
 	if err != nil {
-		return err
+		return
 	}
 
-	err = os.Chdir(r.Path)
+	err = os.Chdir(repoPath)
 	if err != nil {
-		return err
+		return
 	}
 
 	err = exec.Command("git", "init", "--bare").Run()
 	if err != nil {
-		return err
+		return
 	}
 
 	err = os.Chdir(oldPwd)
-	return err
+	return
+}
+
+func DeleteRepository(app *App) error {
+	return os.RemoveAll(GetRepositoryPath(app))
+}
+
+func GetRepositoryPath(app *App) string {
+	home := os.Getenv("HOME")
+	return path.Join(home, "../git", GetRepositoryName(app))
+}
+
+func GetRepositoryUrl(app *App) string {
+	return fmt.Sprintf("git@%s:%s", gitServer, GetRepositoryName(app))
+}
+
+func GetRepositoryName(app *App) string {
+	return fmt.Sprintf("%s.git", app.Name)
 }
 
 func AllApps() ([]App, error) {
@@ -83,6 +80,11 @@ func (app *App) Create() error {
 		return err
 	}
 
+	err = NewRepository(app)
+	if err != nil {
+		return err
+	}
+
 	u := unit.Unit{Name: app.Name, Type: app.Framework}
 	err = u.Create()
 	if err != nil {
@@ -94,10 +96,12 @@ func (app *App) Create() error {
 
 func (app *App) Destroy() error {
 	err := db.Session.Apps().Remove(app)
-
 	if err != nil {
 		return err
 	}
+
+	DeleteRepository(app)
+
 	u := unit.Unit{Name: app.Name, Type: app.Framework}
 	u.Destroy()
 
