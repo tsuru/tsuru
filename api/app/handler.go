@@ -5,8 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/timeredbull/tsuru/api/unit"
+	"github.com/timeredbull/tsuru/log"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"os"
 	"os/exec"
@@ -41,7 +41,7 @@ func Upload(w http.ResponseWriter, r *http.Request) error {
 		if err != nil {
 			return err
 		}
-		log.Printf(string(output))
+		log.Print(string(output))
 
 		appDir := "/home/application"
 		currentDir := appDir + "/releases/current"
@@ -56,7 +56,7 @@ func Upload(w http.ResponseWriter, r *http.Request) error {
 		}
 
 		output, err = u.Command(fmt.Sprintf("cd %s && ln -nfs %s current", releasesDir, releaseName))
-		log.Printf(string(output))
+		log.Print(string(output))
 		if err != nil {
 			return err
 		}
@@ -67,13 +67,13 @@ func Upload(w http.ResponseWriter, r *http.Request) error {
 		}
 
 		output, err = u.Command("sudo killall gunicorn_django")
-		log.Printf(string(output))
+		log.Print(string(output))
 		if err != nil {
 			return err
 		}
 
 		output, err = u.Command(fmt.Sprintf("cd %s && sudo %s --daemon --workers=3 --bind=127.0.0.1:8888", currentDir, gunicorn))
-		log.Printf(string(output))
+		log.Print(string(output))
 		if err != nil {
 			return err
 		}

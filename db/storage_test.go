@@ -38,7 +38,7 @@ func (s *S) TestShouldProvidePrivateMethodToGetACollection(c *C) {
 	storage, _ := Open("127.0.0.1:27017", "tsuru_storage_test")
 	defer storage.Close()
 	collection := storage.getCollection("users")
-	c.Assert(collection.FullName, Equals, storage.dbname + ".users")
+	c.Assert(collection.FullName, Equals, storage.dbname+".users")
 }
 
 func (s *S) TestShouldCacheCollection(c *C) {
