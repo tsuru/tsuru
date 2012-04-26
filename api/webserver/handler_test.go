@@ -26,7 +26,7 @@ func errorHandler(w http.ResponseWriter, r *http.Request) error {
 }
 
 func badRequestHandler(w http.ResponseWriter, r *http.Request) error {
-	return &errors.Http{http.StatusBadRequest, "some error"}
+	return &errors.Http{Code: http.StatusBadRequest, Message: "some error"}
 }
 
 func simpleHandler(w http.ResponseWriter, r *http.Request) error {
