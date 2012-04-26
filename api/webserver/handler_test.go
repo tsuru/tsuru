@@ -29,6 +29,14 @@ func simpleHandler(w http.ResponseWriter, r *http.Request) error {
 	return nil
 }
 
+func authorizedErrorHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
+	return errorHandler(w, r)
+}
+
+func authorizedSimpleHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
+	return simpleHandler(w, r)
+}
+
 func (s *S) SetUpSuite(c *C) {
 	db.Session, _ = db.Open("127.0.0.1:27017", "tsuru_handler_test")
 	s.u = &auth.User{Email: "handler@tsuru.globo.com", Password: "123"}
@@ -66,7 +74,7 @@ func (s *S) TestAuthorizationRequiredHandlerShouldReturnBadRequestIfTheAuthoriza
 	request, err := http.NewRequest("GET", "/apps", nil)
 	c.Assert(err, IsNil)
 
-	AuthorizationRequiredHandler(simpleHandler).ServeHTTP(recorder, request)
+	AuthorizationRequiredHandler(authorizedSimpleHandler).ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, Equals, http.StatusBadRequest)
 	c.Assert(recorder.Body.String(), Equals, "You must provide the Authorization header\n")
 }
@@ -77,7 +85,7 @@ func (s *S) TestAuthorizationRequiredHandlerShouldReturnUnauthorizedIfTheTokenIs
 	c.Assert(err, IsNil)
 	request.Header.Set("Authorization", "what the token?!")
 
-	AuthorizationRequiredHandler(simpleHandler).ServeHTTP(recorder, request)
+	AuthorizationRequiredHandler(authorizedSimpleHandler).ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, Equals, http.StatusUnauthorized)
 	c.Assert(recorder.Body.String(), Equals, "Invalid token\n")
 }
@@ -88,7 +96,7 @@ func (s *S) TestAuthorizationRequiredHandlerShouldReturnTheHandlerResultIfTheTok
 	c.Assert(err, IsNil)
 	request.Header.Set("Authorization", s.t.Token)
 
-	AuthorizationRequiredHandler(simpleHandler).ServeHTTP(recorder, request)
+	AuthorizationRequiredHandler(authorizedSimpleHandler).ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, Equals, http.StatusOK)
 	c.Assert(recorder.Body.String(), Equals, "success")
 }
@@ -99,7 +107,7 @@ func (s *S) TestAuthorizationRequiredHandlerShouldReturnTheHandlerErrorIfAnyHapp
 	c.Assert(err, IsNil)
 	request.Header.Set("Authorization", s.t.Token)
 
-	AuthorizationRequiredHandler(errorHandler).ServeHTTP(recorder, request)
+	AuthorizationRequiredHandler(authorizedErrorHandler).ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, Equals, http.StatusInternalServerError)
 	c.Assert(recorder.Body.String(), Equals, "some error\n")
 }
