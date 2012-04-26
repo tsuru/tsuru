@@ -24,7 +24,7 @@ func main() {
 
 	db.Session, err = db.Open("127.0.0.1:27017", "tsuru")
 	if err != nil {
-		panic(err)
+		log.Panic(err.Error())
 	}
 	defer db.Session.Close()
 	m := pat.New()
@@ -46,5 +46,5 @@ func main() {
 	m.Post("/users/:email/tokens", webserver.Handler(user.Login))
 	m.Get("/users/check-authorization", webserver.Handler(user.CheckAuthorization))
 
-	log.Target.Fatal(http.ListenAndServe(":4000", m))
+	log.Fatal(http.ListenAndServe(":4000", m))
 }
