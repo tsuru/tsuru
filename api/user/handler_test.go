@@ -69,9 +69,8 @@ func (s *S) TestCreateUserHandlerReturnErrorIfItFailsToCreateUser(c *C) {
 
 	b := bytes.NewBufferString(`{"email":"nobody@globo.com","password":"123"}`)
 	request, err := http.NewRequest("POST", "/users", b)
-	if err != nil {
-		panic(err)
-	}
+	c.Assert(err, IsNil)
+
 	request.Header.Set("Content-type", "application/json")
 	response := httptest.NewRecorder()
 	err = CreateUser(response, request)
