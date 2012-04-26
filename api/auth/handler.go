@@ -11,11 +11,11 @@ import (
 
 func CheckToken(token string) (*User, error) {
 	if token == "" {
-		return nil, &errors.Http{http.StatusBadRequest, "You must provide the Authorization header"}
+		return nil, &errors.Http{Code: http.StatusBadRequest, Message: "You must provide the Authorization header"}
 	}
 	u, err := GetUserByToken(token)
 	if err != nil {
-		return nil, &errors.Http{http.StatusUnauthorized, "Invalid token"}
+		return nil, &errors.Http{Code: http.StatusUnauthorized, Message: "Invalid token"}
 	}
 	return u, nil
 }
@@ -28,7 +28,7 @@ func CreateUser(w http.ResponseWriter, r *http.Request) error {
 	}
 	err = json.Unmarshal(b, &u)
 	if err != nil {
-		return &errors.Http{http.StatusBadRequest, err.Error()}
+		return &errors.Http{Code: http.StatusBadRequest, Message: err.Error()}
 	}
 	err = u.Create()
 	if err == nil {
@@ -37,7 +37,7 @@ func CreateUser(w http.ResponseWriter, r *http.Request) error {
 	}
 
 	if u.Get() == nil {
-		err = &errors.Http{http.StatusConflict, "This email is already registered"}
+		err = &errors.Http{Code: http.StatusConflict, Message: "This email is already registered"}
 	}
 
 	return err
@@ -51,19 +51,19 @@ func Login(w http.ResponseWriter, r *http.Request) error {
 	}
 	err = json.Unmarshal(b, &pass)
 	if err != nil {
-		return &errors.Http{http.StatusBadRequest, "Invalid JSON"}
+		return &errors.Http{Code: http.StatusBadRequest, Message: "Invalid JSON"}
 	}
 
 	password, ok := pass["password"]
 	if !ok {
 		msg := "You must provide a password to login"
-		return &errors.Http{http.StatusBadRequest, msg}
+		return &errors.Http{Code: http.StatusBadRequest, Message: msg}
 	}
 
 	u := User{Email: r.URL.Query().Get(":email")}
 	err = u.Get()
 	if err != nil {
-		return &errors.Http{http.StatusNotFound, "User not found"}
+		return &errors.Http{Code: http.StatusNotFound, Message: "User not found"}
 	}
 
 	if u.Login(password) {
@@ -73,7 +73,7 @@ func Login(w http.ResponseWriter, r *http.Request) error {
 	}
 
 	msg := "Authentication failed, wrong password"
-	return &errors.Http{http.StatusUnauthorized, msg}
+	return &errors.Http{Code: http.StatusUnauthorized, Message: msg}
 }
 
 func CheckAuthorization(w http.ResponseWriter, r *http.Request) error {
@@ -101,12 +101,12 @@ func CreateTeam(w http.ResponseWriter, r *http.Request, u *User) error {
 	}
 	err = json.Unmarshal(b, &params)
 	if err != nil {
-		return &errors.Http{http.StatusBadRequest, err.Error()}
+		return &errors.Http{Code: http.StatusBadRequest, Message: err.Error()}
 	}
 	name, ok := params["name"]
 	if !ok {
 		msg := "You must provide the team name"
-		return &errors.Http{http.StatusBadRequest, msg}
+		return &errors.Http{Code: http.StatusBadRequest, Message: msg}
 	}
 	team := &Team{Name: name, Users: []*User{u}}
 	db.Session.Teams().Insert(team)

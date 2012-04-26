@@ -46,5 +46,7 @@ func main() {
 	m.Post("/users/:email/tokens", webserver.Handler(auth.Login))
 	m.Get("/users/check-authorization", webserver.Handler(auth.CheckAuthorization))
 
+	m.Post("/teams", webserver.AuthorizationRequiredHandler(auth.CreateTeam))
+
 	log.Fatal(http.ListenAndServe(":4000", m))
 }
