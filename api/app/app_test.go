@@ -1,6 +1,7 @@
 package app_test
 
 import (
+	"fmt"
 	"github.com/timeredbull/tsuru/api/app"
 	"github.com/timeredbull/tsuru/db"
 	. "launchpad.net/gocheck"
@@ -36,15 +37,56 @@ func (s *S) TearDownTest(c *C) {
 }
 
 func (s *S) TestNewRepository(c *C) {
-	r, err := app.NewRepository("foobar")
+	a := app.App{Name: "foobar"}
+	err := app.NewRepository(&a)
 	c.Assert(err, IsNil)
-	c.Assert(r.Server, Equals, "tsuru.plataformas.glb.com")
 
-	home := os.Getenv("HOME")
-	repoPath := path.Join(home, "../git", "foobar")
-	_, err = os.Open(repoPath)
+	repoPath := app.GetRepositoryPath(&a)
+	_, err = os.Open(repoPath) // test if repository dir exists
 	c.Assert(err, IsNil)
-	os.Remove(repoPath)
+
+	_, err = os.Open(path.Join(repoPath, "config"))
+	c.Assert(err, IsNil)
+
+	err = os.RemoveAll(repoPath)
+	c.Assert(err, IsNil)
+}
+
+func (s *S) TestDeleteGitRepository(c *C) {
+	a := &app.App{Name: "someApp"}
+	repoPath := app.GetRepositoryPath(a)
+
+	err := app.NewRepository(a)
+	c.Assert(err, IsNil)
+
+	_, err = os.Open(path.Join(repoPath, "config"))
+	c.Assert(err, IsNil)
+
+	app.DeleteRepository(a)
+	_, err = os.Open(repoPath)
+	c.Assert(err, NotNil)
+}
+
+func (s *S) TestGetRepositoryUrl(c *C) {
+	a := app.App{Name: "foobar"}
+	url := app.GetRepositoryUrl(&a)
+	expected := fmt.Sprintf("git@tsuru.plataformas.glb.com:%s.git", a.Name)
+	c.Assert(url, Equals, expected)
+}
+
+func (s *S) TestGetRepositoryName(c *C) {
+	a := app.App{Name: "someApp"}
+	obtained := app.GetRepositoryName(&a)
+	expected := fmt.Sprintf("%s.git", a.Name)
+	c.Assert(obtained, Equals, expected)
+}
+
+func (s *S) TestGetRepositoryPath(c *C) {
+	a := app.App{Name: "someApp"}
+	home := os.Getenv("HOME")
+	obtained := app.GetRepositoryPath(&a)
+	expected := path.Join(home, "../git", app.GetRepositoryName(&a))
+	c.Assert(obtained, Equals, expected)
 }
 
 func (s *S) TestAll(c *C) {
@@ -83,13 +125,14 @@ func (s *S) TestGet(c *C) {
 }
 
 func (s *S) TestDestroy(c *C) {
-	app := app.App{}
-	app.Name = "appName"
-	app.Framework = "django"
+	a := app.App{
+		Name: "aName",
+		Framework: "django",
+	}
 
-	err := app.Create()
+	err := a.Create()
 	c.Assert(err, IsNil)
-	err = app.Destroy()
+	err = a.Destroy()
 	c.Assert(err, IsNil)
 
 	qtd, err := db.Session.Apps().Find(nil).Count()
@@ -105,6 +148,10 @@ func (s *S) TestCreate(c *C) {
 	err := a.Create()
 	c.Assert(err, IsNil)
 
+	repoPath := app.GetRepositoryPath(&a)
+	_, err = os.Open(repoPath) // test if repository dir exists
+	c.Assert(err, IsNil)
+
 	c.Assert(a.State, Equals, "Pending")
 
 	var retrievedApp app.App
@@ -115,6 +162,9 @@ func (s *S) TestCreate(c *C) {
 	c.Assert(retrievedApp.State, Equals, a.State)
 
 	a.Destroy()
+
+	_, err = os.Open(repoPath)
+	c.Assert(err, NotNil) // ensures that repository dir has been deleted
 }
 
 func (s *S) TestCantCreateTwoAppsWithTheSameName(c *C) {
@@ -124,4 +174,6 @@ func (s *S) TestCantCreateTwoAppsWithTheSameName(c *C) {
 
 	err = a.Create()
 	c.Assert(err, NotNil)
+
+	a.Destroy()
 }

@@ -75,6 +75,8 @@ func (s *S) TestCollectorUpdate(c *C) {
 	c.Assert(err, IsNil)
 	c.Assert(a.State, DeepEquals, "STARTED")
 	c.Assert(a.Ip, DeepEquals, "192.168.0.11")
+
+	a.Destroy()
 }
 
 func (s *S) TestCollectorParser(c *C) {

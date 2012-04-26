@@ -138,6 +138,16 @@ func CreateAppHandler(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	fmt.Fprint(w, "success")
+
+	msg := map[string]string{
+		"status":         "success",
+		"repository_url": GetRepositoryUrl(&app),
+	}
+	jsonMsg, err := json.Marshal(msg)
+	if err != nil {
+		return err
+	}
+
+	fmt.Fprint(w, bytes.NewBuffer(jsonMsg).String())
 	return nil
 }
