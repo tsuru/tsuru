@@ -141,6 +141,9 @@ func (s *S) TestAppInfoReturns404WhenAppDoesNotExist(c *C) {
 }
 
 func (s *S) TestCreateApp(c *C) {
+	a := app.App{Name: "someApp"}
+	defer a.Destroy()
+
 	b := strings.NewReader(`{"name":"someApp", "framework":"django"}`)
 	request, err := http.NewRequest("POST", "/apps", b)
 	request.Header.Set("Content-Type", "application/json")
@@ -150,13 +153,23 @@ func (s *S) TestCreateApp(c *C) {
 
 	err = app.CreateAppHandler(recorder, request)
 	c.Assert(err, IsNil)
-	c.Assert(recorder.Body.String(), Equals, "success")
+
+	body, err := ioutil.ReadAll(recorder.Body)
+	c.Assert(err, IsNil)
+
+	repoUrl := app.GetRepositoryUrl(&a)
+	var obtained map[string]string
+	expected := map[string]string{
+		"status": "success",
+		"repository_url": repoUrl,
+	}
+	err = json.Unmarshal(body, &obtained)
+
+	c.Assert(obtained, DeepEquals, expected)
 	c.Assert(recorder.Code, Equals, 200)
 
 	qtd, err := db.Session.Apps().Find(bson.M{"name": "someApp"}).Count()
 	c.Assert(err, IsNil)
 	c.Assert(qtd, Equals, 1)
 
-	app := app.App{Name: "someApp"}
-	app.Destroy()
 }
