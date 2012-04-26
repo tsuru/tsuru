@@ -24,7 +24,7 @@ type Repository struct {
 
 func NewRepository(name string) (r *Repository, err error) {
 	r = &Repository{
-		Name: name,
+		Name:   name,
 		Server: gitServer,
 	}
 

@@ -10,7 +10,7 @@ import (
 type ServiceApp struct {
 	Id        bson.ObjectId `bson:"_id"`
 	ServiceId bson.ObjectId `bson:"service_id"`
-	AppName   string `bson:"app_name"`
+	AppName   string        `bson:"app_name"`
 }
 
 func (sa *ServiceApp) Create() error {

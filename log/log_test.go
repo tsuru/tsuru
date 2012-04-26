@@ -2,15 +2,15 @@ package log_test
 
 import (
 	"bytes"
-	. "launchpad.net/gocheck"
 	"github.com/timeredbull/tsuru/log"
+	. "launchpad.net/gocheck"
 	stdlog "log"
 	"testing"
 )
 
 func Test(t *testing.T) { TestingT(t) }
 
-type S struct {}
+type S struct{}
 
 var _ = Suite(&S{})
 
