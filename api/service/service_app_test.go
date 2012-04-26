@@ -24,6 +24,7 @@ func (s *ServiceSuite) createServiceApp() {
 
 func (s *ServiceSuite) TestCreateServiceApp(c *C) {
 	s.createServiceApp()
+	defer s.app.Destroy()
 	var result ServiceApp
 
 	query := bson.M{}
@@ -38,6 +39,7 @@ func (s *ServiceSuite) TestCreateServiceApp(c *C) {
 
 func (s *ServiceSuite) TestDeleteServiceApp(c *C) {
 	s.createServiceApp()
+	defer s.app.Destroy()
 	s.serviceApp.Delete()
 
 	query := bson.M{}
@@ -54,6 +56,7 @@ func (s *ServiceSuite) TestRetrieveAssociatedService(c *C) {
 	st.Create()
 	a := app.App{Name: "MyApp", Framework: "Django"}
 	a.Create()
+	defer a.Destroy()
 	service := Service{Name: "my_service", ServiceTypeId: st.Id}
 	service.Create()
 
@@ -71,20 +74,21 @@ func (s *ServiceSuite) TestRetrieveAssociatedService(c *C) {
 }
 
 func (s *ServiceSuite) TestRetrieveAssociatedApp(c *C) {
-	app := app.App{Name: "my_app", Framework: "django"}
-	app.Create()
+	a := app.App{Name: "my_app", Framework: "django"}
+	a.Create()
+	defer a.Destroy()
 
 	st := ServiceType{Name: "mysql", Charm: "mysql"}
 	st.Create()
 
 	s.serviceApp = &ServiceApp{
 		ServiceId: st.Id,
-		AppName:   app.Name,
+		AppName:   a.Name,
 	}
 	s.serviceApp.Create()
 
 	retrievedApp := s.serviceApp.App()
 
-	c.Assert(app.Name, Equals, retrievedApp.Name)
-	c.Assert(app.Framework, Equals, retrievedApp.Framework)
+	c.Assert(a.Name, Equals, retrievedApp.Name)
+	c.Assert(a.Framework, Equals, retrievedApp.Framework)
 }
