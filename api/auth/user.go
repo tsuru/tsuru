@@ -1,4 +1,4 @@
-package user
+package auth
 
 import (
 	"code.google.com/p/go.crypto/pbkdf2"

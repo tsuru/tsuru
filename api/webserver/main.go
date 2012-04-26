@@ -35,9 +35,9 @@ func main() {
 	m.Get("/apps", webserver.Handler(app.AppList))
 	m.Post("/apps", webserver.Handler(app.CreateAppHandler))
 
-	m.Post("/users", webserver.Handler(user.CreateUser))
-	m.Post("/users/:email/tokens", webserver.Handler(user.Login))
-	m.Get("/users/check-authorization", webserver.Handler(user.CheckAuthorization))
+	m.Post("/users", webserver.Handler(auth.CreateUser))
+	m.Post("/users/:email/tokens", webserver.Handler(auth.Login))
+	m.Get("/users/check-authorization", webserver.Handler(auth.CheckAuthorization))
 
 	log.Fatal(http.ListenAndServe(":4000", m))
 }
