@@ -8,8 +8,8 @@ import (
 )
 
 type Service struct {
-	Id            bson.ObjectId "_id"
-	ServiceTypeId bson.ObjectId "service_type_id"
+	Id            bson.ObjectId `bson:"_id"`
+	ServiceTypeId bson.ObjectId `bson:"service_type_id"`
 	Name          string
 }
 
