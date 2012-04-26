@@ -1,3 +1,5 @@
 package log
 
-var Target Logger
+import "log"
+
+var Target *log.Logger

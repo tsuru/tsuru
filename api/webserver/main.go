@@ -9,12 +9,19 @@ import (
 	"github.com/timeredbull/tsuru/api/service"
 	"github.com/timeredbull/tsuru/api/user"
 	"github.com/timeredbull/tsuru/db"
-	"log"
+	"github.com/timeredbull/tsuru/log"
+	"log/syslog"
+	stdlog "log"
 	"net/http"
 )
 
 func main() {
 	var err error
+	log.Target, err = syslog.NewLogger(syslog.LOG_INFO, stdlog.LstdFlags)
+	if err != nil {
+		panic(err)
+	}
+
 	db.Session, err = db.Open("127.0.0.1:27017", "tsuru")
 	if err != nil {
 		panic(err)
@@ -39,5 +46,5 @@ func main() {
 	m.Post("/users/:email/tokens", webserver.Handler(user.Login))
 	m.Get("/users/check-authorization", webserver.Handler(user.CheckAuthorization))
 
-	log.Fatal(http.ListenAndServe(":4000", m))
+	log.Target.Fatal(http.ListenAndServe(":4000", m))
 }
