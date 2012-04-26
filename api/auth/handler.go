@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/timeredbull/tsuru/db"
 	"io/ioutil"
 	"net/http"
 )
@@ -100,5 +101,27 @@ func CheckAuthorization(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	w.Write(b)
+	return nil
+}
+
+func CreateTeam(w http.ResponseWriter, r *http.Request, u *User) error {
+	var params map[string]string
+	b, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return err
+	}
+	err = json.Unmarshal(b, &params)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return err
+	}
+	name, ok := params["name"]
+	if !ok {
+		w.WriteHeader(http.StatusBadRequest)
+		return errors.New("You must provide the team name")
+	}
+	team := &Team{Name: name, Users: []*User{u}}
+	db.Session.Teams().Insert(team)
 	return nil
 }

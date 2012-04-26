@@ -227,3 +227,54 @@ func (s *S) TestCheckTokenReturnTheUserIfTheTokenIsValid(c *C) {
 	c.Assert(e, IsNil)
 	c.Assert(u.Email, Equals, s.user.Email)
 }
+
+func (s *S) TestCreateTeamHandlerSavesTheTeamInTheDatabaseWithTheAuthenticatedUser(c *C) {
+	b := bytes.NewBufferString(`{"name":"timeredbull"}`)
+	request, err := http.NewRequest("POST", "/teams", b)
+	c.Assert(err, IsNil)
+	request.Header.Set("Content-type", "application/json")
+	response := httptest.NewRecorder()
+	err = CreateTeam(response, request, s.user)
+	c.Assert(err, IsNil)
+
+	t := new(Team)
+	err = db.Session.Teams().Find(bson.M{"name": "timeredbull"}).One(t)
+	c.Assert(err, IsNil)
+	c.Assert(t, ContainsUser, s.user)
+}
+
+func (s *S) TestCreateTeamHandlerReturnsBadRequestIfTheRequestBodyIsAnInvalidJSON(c *C) {
+	b := bytes.NewBufferString(`{"name"["invalidjson"]}`)
+	request, err := http.NewRequest("POST", "/teams", b)
+	c.Assert(err, IsNil)
+	request.Header.Set("Content-type", "application/json")
+	response := httptest.NewRecorder()
+	err = CreateTeam(response, request, s.user)
+	c.Assert(response.Code, Equals, http.StatusBadRequest)
+	c.Assert(err, NotNil)
+}
+
+func (s *S) TestCreateTeamHandlerReturnsBadRequestIfTheNameIsNotGiven(c *C) {
+	b := bytes.NewBufferString(`{"genre":"male"}`)
+	request, err := http.NewRequest("POST", "/teams", b)
+	c.Assert(err, IsNil)
+	request.Header.Set("Content-type", "application/json")
+	response := httptest.NewRecorder()
+	err = CreateTeam(response, request, s.user)
+	c.Assert(response.Code, Equals, http.StatusBadRequest)
+	c.Assert(err, NotNil)
+	c.Assert(err, ErrorMatches, "^You must provide the team name$")
+}
+
+func (s *S) TestCreateTeamHandlerReturnsInternalServerErrorIfReadAllFails(c *C) {
+	b := s.getTestData("bodyToBeClosed.txt")
+	err := b.Close()
+	c.Assert(err, IsNil)
+	request, err := http.NewRequest("POST", "/teams", b)
+	c.Assert(err, IsNil)
+	request.Header.Set("Content-type", "application/json")
+	response := httptest.NewRecorder()
+	err = CreateTeam(response, request, s.user)
+	c.Assert(response.Code, Equals, http.StatusInternalServerError)
+	c.Assert(err, NotNil)
+}
