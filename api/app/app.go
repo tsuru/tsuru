@@ -100,7 +100,10 @@ func (app *App) Destroy() error {
 		return err
 	}
 
-	DeleteRepository(app)
+	err = DeleteRepository(app)
+	if err != nil {
+		return err
+	}
 
 	u := unit.Unit{Name: app.Name, Type: app.Framework}
 	u.Destroy()
