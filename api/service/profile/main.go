@@ -3,11 +3,11 @@ package main
 import (
 	"flag"
 	"fmt"
+	. "github.com/timeredbull/tsuru/api/service"
+	"github.com/timeredbull/tsuru/db"
 	"log"
 	"os"
 	"runtime/pprof"
-	. "github.com/timeredbull/tsuru/api/service"
-	"github.com/timeredbull/tsuru/db"
 )
 
 var cpuprofile = flag.String("cpuprofile", "", "write cpu profile to file")
