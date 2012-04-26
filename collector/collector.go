@@ -1,9 +1,9 @@
 package collector
 
 import (
-	"fmt"
 	"github.com/timeredbull/tsuru/api/app"
 	"github.com/timeredbull/tsuru/db"
+	"github.com/timeredbull/tsuru/log"
 	"launchpad.net/goyaml"
 	"launchpad.net/mgo/bson"
 	"os/exec"
@@ -26,20 +26,19 @@ type output struct {
 }
 
 func (c *Collector) Collect() ([]byte, error) {
-	fmt.Println("collecting status")
+	log.Print("collecting status")
 	return exec.Command("juju", "status").Output()
 }
 
 func (c *Collector) Parse(data []byte) *output {
-	fmt.Println("parsing yaml")
+	log.Print("parsing yaml")
 	raw := new(output)
 	_ = goyaml.Unmarshal(data, raw)
 	return raw
 }
 
 func (c *Collector) Update(out *output) {
-	fmt.Println("updating status")
-
+	log.Print("updating status")
 	for serviceName, service := range out.Services {
 		for _, unit := range service.Units {
 			appUnit := app.App{Name: serviceName}
