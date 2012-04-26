@@ -7,3 +7,4 @@ for f in `find . -name main.go`
 do
     go build $f
 done
+find . -name main -delete
