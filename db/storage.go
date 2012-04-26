@@ -73,6 +73,10 @@ func (s *Storage) Users() *mgo.Collection {
 	return c
 }
 
+func (s *Storage) Teams() *mgo.Collection {
+	return s.getCollection("teams")
+}
+
 func (s *Storage) DropDB() error {
 	return s.session.DB(s.dbname).DropDatabase()
 }
