@@ -21,15 +21,64 @@ func hashPassword(password string) string {
 	return fmt.Sprintf("%x", pbkdf2.Key([]byte(password), salt, 4096, len(salt)*8, sha512.New))
 }
 
+type Team struct {
+	Name  string
+	Users []*User
+}
+
+func (t *Team) containsUser(u *User) bool {
+	for _, user := range t.Users {
+		if u.Email == user.Email {
+			return true
+		}
+	}
+	return false
+}
+
+func (t *Team) AddUser(u *User) error {
+	if t.containsUser(u) {
+		return errors.New(fmt.Sprintf("User %s is alread in the team %s.", u.Email, t.Name))
+	}
+	t.Users = append(t.Users, u)
+	return nil
+}
+
+func (t *Team) RemoveUser(u *User) error {
+	index := -1
+	for i, user := range t.Users {
+		if u.Email == user.Email {
+			index = i
+			break
+		}
+	}
+	if index < 0 {
+		return errors.New(fmt.Sprintf("User %s is not in the team %s.", u.Email, t.Name))
+	}
+	last := len(t.Users) - 1
+	t.Users[index] = t.Users[last]
+	t.Users = t.Users[:last]
+	return nil
+}
+
 type User struct {
 	Email    string
 	Password string
 	Tokens   []Token
 }
 
-type Token struct {
-	Token      string
-	ValidUntil time.Time
+func GetUserByToken(token string) (*User, error) {
+	c := db.Session.Users()
+	u := new(User)
+	query := bson.M{"tokens.token": token}
+	err := c.Find(query).One(&u)
+
+	if err != nil {
+		return nil, errors.New("Token not found")
+	}
+	if u.Tokens[0].ValidUntil.Sub(time.Now()) < 1 {
+		return nil, errors.New("Token has expired")
+	}
+	return u, nil
 }
 
 func (u *User) Create() error {
@@ -52,6 +101,22 @@ func (u *User) Login(password string) bool {
 	return u.Password == hashedPassword
 }
 
+func (u *User) CreateToken() (*Token, error) {
+	if u.Email == "" {
+		return nil, errors.New("User does not have an email")
+	}
+	t, _ := NewToken(u)
+	u.Tokens = append(u.Tokens, *t)
+	c := db.Session.Users()
+	err := c.Update(bson.M{"email": u.Email}, u)
+	return t, err
+}
+
+type Token struct {
+	Token      string
+	ValidUntil time.Time
+}
+
 func NewToken(u *User) (*Token, error) {
 	if u == nil {
 		return nil, errors.New("User is nil")
@@ -67,30 +132,4 @@ func NewToken(u *User) (*Token, error) {
 	t.ValidUntil = time.Now().Add(TOKENEXPIRE)
 	t.Token = fmt.Sprintf("%x", h.Sum(nil))
 	return &t, nil
-}
-
-func (u *User) CreateToken() (*Token, error) {
-	if u.Email == "" {
-		return nil, errors.New("User does not have an email")
-	}
-	t, _ := NewToken(u)
-	u.Tokens = append(u.Tokens, *t)
-	c := db.Session.Users()
-	err := c.Update(bson.M{"email": u.Email}, u)
-	return t, err
-}
-
-func GetUserByToken(token string) (*User, error) {
-	c := db.Session.Users()
-	u := new(User)
-	query := bson.M{"tokens.token": token}
-	err := c.Find(query).One(&u)
-
-	if err != nil {
-		return nil, errors.New("Token not found")
-	}
-	if u.Tokens[0].ValidUntil.Sub(time.Now()) < 1 {
-		return nil, errors.New("Token has expired")
-	}
-	return u, nil
 }
