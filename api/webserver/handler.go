@@ -2,6 +2,7 @@ package webserver
 
 import (
 	"github.com/timeredbull/tsuru/api/auth"
+	"github.com/timeredbull/tsuru/errors"
 	"net/http"
 )
 
@@ -23,8 +24,8 @@ func (fn AuthorizationRequiredHandler) ServeHTTP(w http.ResponseWriter, r *http.
 		http.Error(w, "Invalid token", http.StatusUnauthorized)
 	} else if err = fn(w, r, user); err != nil {
 		code := http.StatusInternalServerError
-		if e, ok := err.(*HttpError); ok {
-			code = e.code
+		if e, ok := err.(*errors.Http); ok {
+			code = e.Code
 		}
 		http.Error(w, err.Error(), code)
 	}

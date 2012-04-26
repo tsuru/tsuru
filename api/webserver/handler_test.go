@@ -1,10 +1,11 @@
 package webserver
 
 import (
-	"errors"
+	stderrors "errors"
 	"fmt"
 	"github.com/timeredbull/tsuru/api/auth"
 	"github.com/timeredbull/tsuru/db"
+	"github.com/timeredbull/tsuru/errors"
 	. "launchpad.net/gocheck"
 	"net/http"
 	"net/http/httptest"
@@ -21,11 +22,11 @@ type S struct{
 var _ = Suite(&S{})
 
 func errorHandler(w http.ResponseWriter, r *http.Request) error {
-	return errors.New("some error")
+	return stderrors.New("some error")
 }
 
 func badRequestHandler(w http.ResponseWriter, r *http.Request) error {
-	return Error(http.StatusBadRequest, "some error")
+	return &errors.Http{http.StatusBadRequest, "some error"}
 }
 
 func simpleHandler(w http.ResponseWriter, r *http.Request) error {
