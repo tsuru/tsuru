@@ -2,29 +2,20 @@ package auth
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"github.com/timeredbull/tsuru/db"
+	"github.com/timeredbull/tsuru/errors"
 	"io/ioutil"
 	"net/http"
 )
 
-type AuthorizationError struct {
-	code    int
-	message string
-}
-
-func (a *AuthorizationError) Error() string {
-	return a.message
-}
-
 func CheckToken(token string) (*User, error) {
 	if token == "" {
-		return nil, &AuthorizationError{http.StatusBadRequest, "You must provide the Authorization header"}
+		return nil, &errors.Http{http.StatusBadRequest, "You must provide the Authorization header"}
 	}
 	u, err := GetUserByToken(token)
 	if err != nil {
-		return nil, &AuthorizationError{http.StatusUnauthorized, "Invalid token"}
+		return nil, &errors.Http{http.StatusUnauthorized, "Invalid token"}
 	}
 	return u, nil
 }
@@ -37,7 +28,7 @@ func CreateUser(w http.ResponseWriter, r *http.Request) error {
 	}
 	err = json.Unmarshal(b, &u)
 	if err != nil {
-		return err
+		return &errors.Http{http.StatusBadRequest, err.Error()}
 	}
 	err = u.Create()
 	if err == nil {
@@ -46,7 +37,7 @@ func CreateUser(w http.ResponseWriter, r *http.Request) error {
 	}
 
 	if u.Get() == nil {
-		err = errors.New("This email is already registered")
+		err = &errors.Http{http.StatusConflict, "This email is already registered"}
 	}
 
 	return err
@@ -56,26 +47,23 @@ func Login(w http.ResponseWriter, r *http.Request) error {
 	var pass map[string]string
 	b, err := ioutil.ReadAll(r.Body)
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
 		return err
 	}
 	err = json.Unmarshal(b, &pass)
 	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		return errors.New("Invalid JSON")
+		return &errors.Http{http.StatusBadRequest, "Invalid JSON"}
 	}
 
 	password, ok := pass["password"]
 	if !ok {
-		w.WriteHeader(http.StatusBadRequest)
-		return errors.New("You must provide a password to login")
+		msg := "You must provide a password to login"
+		return &errors.Http{http.StatusBadRequest, msg}
 	}
 
 	u := User{Email: r.URL.Query().Get(":email")}
 	err = u.Get()
 	if err != nil {
-		w.WriteHeader(http.StatusNotFound)
-		return errors.New("User not found")
+		return &errors.Http{http.StatusNotFound, "User not found"}
 	}
 
 	if u.Login(password) {
@@ -84,17 +72,14 @@ func Login(w http.ResponseWriter, r *http.Request) error {
 		return nil
 	}
 
-	w.WriteHeader(http.StatusUnauthorized)
-	return errors.New("Authentication failed, wrong password")
+	msg := "Authentication failed, wrong password"
+	return &errors.Http{http.StatusUnauthorized, msg}
 }
 
 func CheckAuthorization(w http.ResponseWriter, r *http.Request) error {
 	token := r.Header.Get("Authorization")
 	user, err := CheckToken(token)
 	if err != nil {
-		if e, ok := err.(*AuthorizationError); ok {
-			w.WriteHeader(e.code)
-		}
 		return err
 	}
 	output := map[string]string{
@@ -112,18 +97,16 @@ func CreateTeam(w http.ResponseWriter, r *http.Request, u *User) error {
 	var params map[string]string
 	b, err := ioutil.ReadAll(r.Body)
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
 		return err
 	}
 	err = json.Unmarshal(b, &params)
 	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		return err
+		return &errors.Http{http.StatusBadRequest, err.Error()}
 	}
 	name, ok := params["name"]
 	if !ok {
-		w.WriteHeader(http.StatusBadRequest)
-		return errors.New("You must provide the team name")
+		msg := "You must provide the team name"
+		return &errors.Http{http.StatusBadRequest, msg}
 	}
 	team := &Team{Name: name, Users: []*User{u}}
 	db.Session.Teams().Insert(team)

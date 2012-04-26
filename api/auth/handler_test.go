@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/timeredbull/tsuru/db"
+	"github.com/timeredbull/tsuru/errors"
 	"io/ioutil"
 	. "launchpad.net/gocheck"
 	"launchpad.net/mgo/bson"
@@ -27,7 +28,7 @@ func (s *S) TestCreateUserHandlerSavesTheUserInTheDatabase(c *C) {
 	c.Assert(err, IsNil)
 }
 
-func (s *S) TestCreateUserHandlerReturnsStatus204AfterCreateTheUser(c *C) {
+func (s *S) TestCreateUserHandlerReturnsStatus201AfterCreateTheUser(c *C) {
 	b := bytes.NewBufferString(`{"email":"nobody@globo.com","password":"123"}`)
 	request, err := http.NewRequest("POST", "/users", b)
 	c.Assert(err, IsNil)
@@ -52,7 +53,7 @@ func (s *S) TestCreateUserHandlerReturnErrorIfReadingBodyFails(c *C) {
 	c.Assert(err, ErrorMatches, "^.*bad file descriptor$")
 }
 
-func (s *S) TestCreateUserHandlerReturnErrorIfInvalidJSONIsGiven(c *C) {
+func (s *S) TestCreateUserHandlerReturnErrorAndBadRequestIfInvalidJSONIsGiven(c *C) {
 	b := bytes.NewBufferString(`["invalid json":"i'm invalid"]`)
 	request, err := http.NewRequest("POST", "/users", b)
 	c.Assert(err, IsNil)
@@ -62,9 +63,13 @@ func (s *S) TestCreateUserHandlerReturnErrorIfInvalidJSONIsGiven(c *C) {
 	err = CreateUser(response, request)
 	c.Assert(err, NotNil)
 	c.Assert(err, ErrorMatches, "^invalid character.*$")
+
+	e, ok := err.(*errors.Http)
+	c.Assert(ok, Equals, true)
+	c.Assert(e.Code, Equals, http.StatusBadRequest)
 }
 
-func (s *S) TestCreateUserHandlerReturnErrorIfItFailsToCreateUser(c *C) {
+func (s *S) TestCreateUserHandlerReturnErrorAndConflictIfItFailsToCreateUser(c *C) {
 	u := User{Email: "nobody@globo.com", Password: "123"}
 	u.Create()
 
@@ -78,6 +83,9 @@ func (s *S) TestCreateUserHandlerReturnErrorIfItFailsToCreateUser(c *C) {
 	err = CreateUser(response, request)
 	c.Assert(err, NotNil)
 	c.Assert(err, ErrorMatches, "This email is already registered")
+	e, ok := err.(*errors.Http)
+	c.Assert(ok, Equals, true)
+	c.Assert(e.Code, Equals, http.StatusConflict)
 }
 
 func (s *S) TestLoginShouldCreateTokenInTheDatabaseAndReturnItWithinTheResponse(c *C) {
@@ -113,7 +121,9 @@ func (s *S) TestLoginShouldReturnErrorAndBadRequestIfItReceivesAnInvalidJson(c *
 	err = Login(response, request)
 	c.Assert(err, NotNil)
 	c.Assert(err, ErrorMatches, "^Invalid JSON$")
-	c.Assert(response.Code, Equals, http.StatusBadRequest)
+	e, ok := err.(*errors.Http)
+	c.Assert(ok, Equals, true)
+	c.Assert(e.Code, Equals, http.StatusBadRequest)
 }
 
 func (s *S) TestLoginShouldReturnErrorAndBadRequestIfTheJSONDoesNotContainsAPassword(c *C) {
@@ -126,7 +136,9 @@ func (s *S) TestLoginShouldReturnErrorAndBadRequestIfTheJSONDoesNotContainsAPass
 	err = Login(response, request)
 	c.Assert(err, NotNil)
 	c.Assert(err, ErrorMatches, "^You must provide a password to login$")
-	c.Assert(response.Code, Equals, http.StatusBadRequest)
+	e, ok := err.(*errors.Http)
+	c.Assert(ok, Equals, true)
+	c.Assert(e.Code, Equals, http.StatusBadRequest)
 }
 
 func (s *S) TestLoginShouldReturnErrorAndNotFoundIfTheUserDoesNotExist(c *C) {
@@ -139,7 +151,9 @@ func (s *S) TestLoginShouldReturnErrorAndNotFoundIfTheUserDoesNotExist(c *C) {
 	err = Login(response, request)
 	c.Assert(err, NotNil)
 	c.Assert(err, ErrorMatches, "^User not found$")
-	c.Assert(response.Code, Equals, http.StatusNotFound)
+	e, ok := err.(*errors.Http)
+	c.Assert(ok, Equals, true)
+	c.Assert(e.Code, Equals, http.StatusNotFound)
 }
 
 func (s *S) TestLoginShouldreturnErrorIfThePasswordDoesNotMatch(c *C) {
@@ -155,7 +169,9 @@ func (s *S) TestLoginShouldreturnErrorIfThePasswordDoesNotMatch(c *C) {
 	err = Login(response, request)
 	c.Assert(err, NotNil)
 	c.Assert(err, ErrorMatches, "^Authentication failed, wrong password$")
-	c.Assert(response.Code, Equals, http.StatusUnauthorized)
+	e, ok := err.(*errors.Http)
+	c.Assert(ok, Equals, true)
+	c.Assert(e.Code, Equals, http.StatusUnauthorized)
 }
 
 func (s *S) TestLoginShouldReturnErrorAndInternalServerErrorIfReadAllFails(c *C) {
@@ -168,7 +184,6 @@ func (s *S) TestLoginShouldReturnErrorAndInternalServerErrorIfReadAllFails(c *C)
 	response := httptest.NewRecorder()
 	err = Login(response, request)
 	c.Assert(err, NotNil)
-	c.Assert(response.Code, Equals, http.StatusInternalServerError)
 }
 
 func (s *S) TestValidateUserTokenReturnJsonRepresentingUser(c *C) {
@@ -212,26 +227,28 @@ func (s *S) TestValidateUserTokenReturnErrorAndBadRequestWhenTheAuthorizationHea
 	c.Assert(err, IsNil)
 	response := httptest.NewRecorder()
 	err = CheckAuthorization(response, request)
-	c.Assert(response.Code, Equals, http.StatusBadRequest)
 	c.Assert(err, NotNil)
 	c.Assert(err, ErrorMatches, "^You must provide the Authorization header$")
+	e, ok := err.(*errors.Http)
+	c.Assert(ok, Equals, true)
+	c.Assert(e.Code, Equals, http.StatusBadRequest)
 }
 
 func (s *S) TestCheckTokenReturnBadRequestIfTheTokenIsOmited(c *C) {
 	u, e := CheckToken("")
 	c.Assert(u, IsNil)
-	err, ok := e.(*AuthorizationError)
+	err, ok := e.(*errors.Http)
 	c.Assert(ok, Equals, true)
-	c.Assert(err.code, Equals, http.StatusBadRequest)
+	c.Assert(err.Code, Equals, http.StatusBadRequest)
 	c.Assert(err, ErrorMatches, "^You must provide the Authorization header$")
 }
 
 func (s *S) TestCheckTokenReturnUnauthorizedIfTheTokenIsInvalid(c *C) {
 	u, e := CheckToken("invalid")
 	c.Assert(u, IsNil)
-	err, ok := e.(*AuthorizationError)
+	err, ok := e.(*errors.Http)
 	c.Assert(ok, Equals, true)
-	c.Assert(err.code, Equals, http.StatusUnauthorized)
+	c.Assert(err.Code, Equals, http.StatusUnauthorized)
 	c.Assert(err, ErrorMatches, "^Invalid token$")
 }
 
@@ -263,8 +280,10 @@ func (s *S) TestCreateTeamHandlerReturnsBadRequestIfTheRequestBodyIsAnInvalidJSO
 	request.Header.Set("Content-type", "application/json")
 	response := httptest.NewRecorder()
 	err = CreateTeam(response, request, s.user)
-	c.Assert(response.Code, Equals, http.StatusBadRequest)
 	c.Assert(err, NotNil)
+	e, ok := err.(*errors.Http)
+	c.Assert(ok, Equals, true)
+	c.Assert(e.Code, Equals, http.StatusBadRequest)
 }
 
 func (s *S) TestCreateTeamHandlerReturnsBadRequestIfTheNameIsNotGiven(c *C) {
@@ -274,9 +293,11 @@ func (s *S) TestCreateTeamHandlerReturnsBadRequestIfTheNameIsNotGiven(c *C) {
 	request.Header.Set("Content-type", "application/json")
 	response := httptest.NewRecorder()
 	err = CreateTeam(response, request, s.user)
-	c.Assert(response.Code, Equals, http.StatusBadRequest)
 	c.Assert(err, NotNil)
 	c.Assert(err, ErrorMatches, "^You must provide the team name$")
+	e, ok := err.(*errors.Http)
+	c.Assert(ok, Equals, true)
+	c.Assert(e.Code, Equals, http.StatusBadRequest)
 }
 
 func (s *S) TestCreateTeamHandlerReturnsInternalServerErrorIfReadAllFails(c *C) {
@@ -288,6 +309,5 @@ func (s *S) TestCreateTeamHandlerReturnsInternalServerErrorIfReadAllFails(c *C) 
 	request.Header.Set("Content-type", "application/json")
 	response := httptest.NewRecorder()
 	err = CreateTeam(response, request, s.user)
-	c.Assert(response.Code, Equals, http.StatusInternalServerError)
 	c.Assert(err, NotNil)
 }
