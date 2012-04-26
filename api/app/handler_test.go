@@ -160,7 +160,7 @@ func (s *S) TestCreateApp(c *C) {
 	repoUrl := app.GetRepositoryUrl(&a)
 	var obtained map[string]string
 	expected := map[string]string{
-		"status": "success",
+		"status":         "success",
 		"repository_url": repoUrl,
 	}
 	err = json.Unmarshal(body, &obtained)

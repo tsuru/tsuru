@@ -15,8 +15,8 @@ func Test(t *testing.T) { TestingT(t) }
 
 type S struct {
 	session *mgo.Session
-	user *User
-	token *Token
+	user    *User
+	token   *Token
 }
 
 var _ = Suite(&S{})

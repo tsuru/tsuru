@@ -126,7 +126,7 @@ func (s *S) TestGet(c *C) {
 
 func (s *S) TestDestroy(c *C) {
 	a := app.App{
-		Name: "aName",
+		Name:      "aName",
 		Framework: "django",
 	}
 

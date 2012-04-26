@@ -14,7 +14,7 @@ import (
 
 func Test(t *testing.T) { TestingT(t) }
 
-type S struct{
+type S struct {
 	u *auth.User
 	t *auth.Token
 }

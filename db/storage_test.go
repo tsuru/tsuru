@@ -7,7 +7,7 @@ import (
 
 func Test(t *testing.T) { TestingT(t) }
 
-type S struct{
+type S struct {
 	storage *Storage
 }
 
@@ -41,7 +41,7 @@ func (s *S) TestMethodCloseSholdCloseTheConnectionWithMongoDB(c *C) {
 
 func (s *S) TestShouldProvidePrivateMethodToGetACollection(c *C) {
 	collection := s.storage.getCollection("users")
-	c.Assert(collection.FullName, Equals, s.storage.dbname + ".users")
+	c.Assert(collection.FullName, Equals, s.storage.dbname+".users")
 }
 
 func (s *S) TestShouldCacheCollection(c *C) {
