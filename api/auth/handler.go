@@ -54,8 +54,12 @@ func CreateUser(w http.ResponseWriter, r *http.Request) error {
 
 func Login(w http.ResponseWriter, r *http.Request) error {
 	var pass map[string]string
-	b, _ := ioutil.ReadAll(r.Body)
-	err := json.Unmarshal(b, &pass)
+	b, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return err
+	}
+	err = json.Unmarshal(b, &pass)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		return errors.New("Invalid JSON")

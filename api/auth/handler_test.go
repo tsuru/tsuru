@@ -158,6 +158,19 @@ func (s *S) TestLoginShouldreturnErrorIfThePasswordDoesNotMatch(c *C) {
 	c.Assert(response.Code, Equals, http.StatusUnauthorized)
 }
 
+func (s *S) TestLoginShouldReturnErrorAndInternalServerErrorIfReadAllFails(c *C) {
+	b := s.getTestData("bodyToBeClosed.txt")
+	err := b.Close()
+	c.Assert(err, IsNil)
+	request, err := http.NewRequest("POST", "/teams", b)
+	c.Assert(err, IsNil)
+	request.Header.Set("Content-type", "application/json")
+	response := httptest.NewRecorder()
+	err = Login(response, request)
+	c.Assert(err, NotNil)
+	c.Assert(response.Code, Equals, http.StatusInternalServerError)
+}
+
 func (s *S) TestValidateUserTokenReturnJsonRepresentingUser(c *C) {
 	var t *Token
 	u := User{Email: "nobody@globo.com", Password: "123"}
