@@ -74,7 +74,10 @@ func (s *Storage) Users() *mgo.Collection {
 }
 
 func (s *Storage) Teams() *mgo.Collection {
-	return s.getCollection("teams")
+	nameIndex := mgo.Index{Key: []string{"name"}, Unique: true}
+	c := s.getCollection("teams")
+	c.EnsureIndex(nameIndex)
+	return c
 }
 
 func (s *Storage) DropDB() error {
