@@ -429,6 +429,19 @@ func (s *S) TestAddUserToTeamShouldReturnNotFoundIfTheEmailInTheBodyDoesNotExist
 	c.Assert(e, ErrorMatches, "^User not found$")
 }
 
+func (s *S) TestAddUserToTeamShouldReturnConflictIfTheUserIsAlreadyInTheGroup(c *C) {
+	b := bytes.NewBufferString(`{"email":"` + s.user.Email + `"}`)
+	request, err := http.NewRequest("POST", "/teams/cobrateam/adduser?:team=cobrateam", b)
+	c.Assert(err, IsNil)
+	request.Header.Set("Content-type", "application/json")
+	recorder := httptest.NewRecorder()
+	err = AddUserToTeam(recorder, request, s.user)
+	c.Assert(err, NotNil)
+	e, ok := err.(*errors.Http)
+	c.Assert(ok, Equals, true)
+	c.Assert(e.Code, Equals, http.StatusConflict)
+}
+
 func (s *S) TestRemoveUserFromTeamShouldRemoveAUserFromATeamIfTheTeamExistAndTheUserIsMemberOfTheTeam(c *C) {
 	u := User{Email: "none@me.me", Password: "none"}
 	u.Create()

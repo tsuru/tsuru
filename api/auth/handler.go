@@ -147,7 +147,10 @@ func AddUserToTeam(w http.ResponseWriter, r *http.Request, u *User) error {
 	if err != nil {
 		return &errors.Http{Code: http.StatusNotFound, Message: "User not found"}
 	}
-	team.AddUser(user)
+	err = team.AddUser(user)
+	if err != nil {
+		return &errors.Http{Code: http.StatusConflict, Message: err.Error()}
+	}
 	return db.Session.Teams().Update(selector, team)
 }
 
