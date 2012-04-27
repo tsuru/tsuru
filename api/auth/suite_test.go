@@ -36,6 +36,8 @@ func (s *S) TearDownSuite(c *C) {
 func (s *S) TearDownTest(c *C) {
 	err := db.Session.Users().RemoveAll(bson.M{"email": bson.M{"$ne": s.user.Email}})
 	c.Assert(err, IsNil)
+	err = db.Session.Teams().RemoveAll(nil)
+	c.Assert(err, IsNil)
 }
 
 func (s *S) getTestData(path ...string) io.ReadCloser {
