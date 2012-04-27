@@ -2,8 +2,39 @@ package db
 
 import (
 	. "launchpad.net/gocheck"
+	"launchpad.net/mgo"
+	"reflect"
 	"testing"
 )
+
+type hasUniqueIndexChecker struct{}
+
+func (c *hasUniqueIndexChecker) Info() *CheckerInfo {
+	return &CheckerInfo{Name: "HasUniqueField", Params: []string{"collection", "key"}}
+}
+
+func (c *hasUniqueIndexChecker) Check(params []interface{}, names []string) (bool, string) {
+	collection, ok := params[0].(*mgo.Collection)
+	if !ok {
+		return false, "first parameter should be a mgo collection"
+	}
+	key, ok := params[1].([]string)
+	if !ok {
+		return false, "second parameter should be the key, as used for mgo index declaration (slice of strings)"
+	}
+	indexes, err := collection.Indexes()
+	if err != nil {
+		return false, "failed to get collection indexes: " + err.Error()
+	}
+	for _, index := range indexes {
+		if reflect.DeepEqual(index.Key, key) {
+			return index.Unique, ""
+		}
+	}
+	return false, ""
+}
+
+var HasUniqueIndex Checker = &hasUniqueIndexChecker{}
 
 func Test(t *testing.T) { TestingT(t) }
 
@@ -57,26 +88,7 @@ func (s *S) TestMethodUsersShouldReturnUsersCollection(c *C) {
 
 func (s *S) TestMethodUserShouldReturnUsersCollectionWithUniqueIndexForEmail(c *C) {
 	users := s.storage.Users()
-	indexes, err := users.Indexes()
-	c.Assert(err, IsNil)
-	found := false
-	for _, index := range indexes {
-		for _, key := range index.Key {
-			if key == "email" {
-				c.Assert(index.Unique, Equals, true)
-				found = true
-				break
-			}
-		}
-
-		if found {
-			break
-		}
-	}
-
-	if !found {
-		c.Errorf("Users should declare a unique index for email")
-	}
+	c.Assert(users, HasUniqueIndex, []string{"email"})
 }
 
 func (s *S) TestMethodAppsShouldReturnAppsCollection(c *C) {
@@ -86,29 +98,8 @@ func (s *S) TestMethodAppsShouldReturnAppsCollection(c *C) {
 }
 
 func (s *S) TestMethodAppsShouldReturnAppsCollectionWithUniqueIndexForName(c *C) {
-	storage, _ := Open("127.0.0.1:27017", "tsuru_storage_test")
-	defer storage.Close()
-	apps := storage.Apps()
-	indexes, err := apps.Indexes()
-	c.Assert(err, IsNil)
-	found := false
-	for _, index := range indexes {
-		for _, key := range index.Key {
-			if key == "name" {
-				c.Assert(index.Unique, Equals, true)
-				found = true
-				break
-			}
-		}
-
-		if found {
-			break
-		}
-	}
-
-	if !found {
-		c.Errorf("Apps should declare a unique index for name")
-	}
+	apps := s.storage.Apps()
+	c.Assert(apps, HasUniqueIndex, []string{"name"})
 }
 
 func (s *S) TestMethodServicesShouldReturnServicesCollection(c *C) {
@@ -139,4 +130,9 @@ func (s *S) TestMethodTeamsShouldReturnTeamsCollection(c *C) {
 	teams := s.storage.Teams()
 	teamsc := s.storage.getCollection("teams")
 	c.Assert(teams, DeepEquals, teamsc)
+}
+
+func (s *S) TestMethodTeamsShouldReturnTeamsCollectionWithUniqueIndexForName(c *C) {
+	teams := s.storage.Teams()
+	c.Assert(teams, HasUniqueIndex, []string{"name"})
 }

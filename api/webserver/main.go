@@ -6,12 +6,12 @@ import (
 	"."
 	"github.com/bmizerany/pat"
 	"github.com/timeredbull/tsuru/api/app"
-	"github.com/timeredbull/tsuru/api/service"
 	"github.com/timeredbull/tsuru/api/auth"
+	"github.com/timeredbull/tsuru/api/service"
 	"github.com/timeredbull/tsuru/db"
 	"github.com/timeredbull/tsuru/log"
-	"log/syslog"
 	stdlog "log"
+	"log/syslog"
 	"net/http"
 )
 
@@ -47,6 +47,8 @@ func main() {
 	m.Get("/users/check-authorization", webserver.Handler(auth.CheckAuthorization))
 
 	m.Post("/teams", webserver.AuthorizationRequiredHandler(auth.CreateTeam))
+	m.Put("/teams/:team/:user", webserver.AuthorizationRequiredHandler(auth.AddUserToTeam))
+	m.Del("/teams/:team/:user", webserver.AuthorizationRequiredHandler(auth.RemoveUserFromTeam))
 
 	log.Fatal(http.ListenAndServe(":4000", m))
 }

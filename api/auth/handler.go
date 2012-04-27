@@ -6,7 +6,9 @@ import (
 	"github.com/timeredbull/tsuru/db"
 	"github.com/timeredbull/tsuru/errors"
 	"io/ioutil"
+	"launchpad.net/mgo/bson"
 	"net/http"
+	"strings"
 )
 
 func CheckToken(token string) (*User, error) {
@@ -109,6 +111,50 @@ func CreateTeam(w http.ResponseWriter, r *http.Request, u *User) error {
 		return &errors.Http{Code: http.StatusBadRequest, Message: msg}
 	}
 	team := &Team{Name: name, Users: []*User{u}}
-	db.Session.Teams().Insert(team)
+	err = db.Session.Teams().Insert(team)
+	if err != nil && strings.Contains(err.Error(), "duplicate key error") {
+		return &errors.Http{Code: http.StatusConflict, Message: "This team already exists"}
+	}
 	return nil
+}
+
+func AddUserToTeam(w http.ResponseWriter, r *http.Request, u *User) error {
+	team, user := new(Team), new(User)
+	selector := bson.M{"name": r.URL.Query().Get(":team")}
+	err := db.Session.Teams().Find(selector).One(team)
+	if err != nil {
+		return &errors.Http{Code: http.StatusNotFound, Message: "Team not found"}
+	}
+	if !team.containsUser(u) {
+		msg := fmt.Sprintf("You are not authorized to add new users to the team %s", team.Name)
+		return &errors.Http{Code: http.StatusUnauthorized, Message: msg}
+	}
+	err = db.Session.Users().Find(bson.M{"email": r.URL.Query().Get(":user")}).One(user)
+	if err != nil {
+		return &errors.Http{Code: http.StatusNotFound, Message: "User not found"}
+	}
+	err = team.AddUser(user)
+	if err != nil {
+		return &errors.Http{Code: http.StatusConflict, Message: err.Error()}
+	}
+	return db.Session.Teams().Update(selector, team)
+}
+
+func RemoveUserFromTeam(w http.ResponseWriter, r *http.Request, u *User) error {
+	team := new(Team)
+	selector := bson.M{"name": r.URL.Query().Get(":team")}
+	err := db.Session.Teams().Find(selector).One(team)
+	if err != nil {
+		return &errors.Http{Code: http.StatusNotFound, Message: "Team not found"}
+	}
+	if !team.containsUser(u) {
+		msg := fmt.Sprintf("You are not authorized to remove a member from the team %s", team.Name)
+		return &errors.Http{Code: http.StatusUnauthorized, Message: msg}
+	}
+	user := User{Email: r.URL.Query().Get(":user")}
+	err = team.RemoveUser(&user)
+	if err != nil {
+		return &errors.Http{Code: http.StatusNotFound, Message: err.Error()}
+	}
+	return db.Session.Teams().Update(selector, team)
 }
