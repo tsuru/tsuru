@@ -5,8 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/timeredbull/tsuru/api/unit"
-	"github.com/timeredbull/tsuru/log"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"os"
 	"os/exec"
@@ -41,7 +41,7 @@ func Upload(w http.ResponseWriter, r *http.Request) error {
 		if err != nil {
 			return err
 		}
-		log.Print(string(output))
+		log.Printf(string(output))
 
 		appDir := "/home/application"
 		currentDir := appDir + "/releases/current"
@@ -56,7 +56,7 @@ func Upload(w http.ResponseWriter, r *http.Request) error {
 		}
 
 		output, err = u.Command(fmt.Sprintf("cd %s && ln -nfs %s current", releasesDir, releaseName))
-		log.Print(string(output))
+		log.Printf(string(output))
 		if err != nil {
 			return err
 		}
@@ -67,19 +67,26 @@ func Upload(w http.ResponseWriter, r *http.Request) error {
 		}
 
 		output, err = u.Command("sudo killall gunicorn_django")
-		log.Print(string(output))
+		log.Printf(string(output))
 		if err != nil {
 			return err
 		}
 
 		output, err = u.Command(fmt.Sprintf("cd %s && sudo %s --daemon --workers=3 --bind=127.0.0.1:8888", currentDir, gunicorn))
-		log.Print(string(output))
+		log.Printf(string(output))
 		if err != nil {
 			return err
 		}
 
 		fmt.Fprint(w, "success")
 	}
+	return nil
+}
+
+func CloneRepositoryHandler(w http.ResponseWriter, r *http.Request) error {
+	app := App{Name: r.URL.Query().Get(":name")}
+	CloneRepository(&app)
+	fmt.Fprint(w, "success")
 	return nil
 }
 

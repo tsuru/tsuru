@@ -37,6 +37,7 @@ func main() {
 	m.Post("/services/unbind", webserver.Handler(service.UnbindHandler))
 
 	m.Get("/apps/:name/delete", webserver.Handler(app.AppDelete))
+	m.Get("/apps/:name/clone", webserver.Handler(app.CloneRepositoryHandler))
 	m.Get("/apps/:name", webserver.Handler(app.AppInfo))
 	m.Post("/apps/:name/application", webserver.Handler(app.Upload))
 	m.Get("/apps", webserver.Handler(app.AppList))

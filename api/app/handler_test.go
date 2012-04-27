@@ -3,6 +3,7 @@ package app_test
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"github.com/timeredbull/tsuru/api/app"
 	"github.com/timeredbull/tsuru/db"
 	"io/ioutil"
@@ -53,6 +54,18 @@ func (s *S) TestUploadReturns404WhenAppDoesNotExist(c *C) {
 	err = app.Upload(recorder, request)
 	c.Assert(err, IsNil)
 	c.Assert(recorder.Code, Equals, 404)
+}
+
+func (s *S) TestCloneRepositoryHandler(c *C) {
+	a := app.App{Name: "someApp", Framework: "django"}
+	url := fmt.Sprintf("/apps/%s/clone?:name=%s", a.Name, a.Name)
+	request, err := http.NewRequest("GET", url, nil)
+	c.Assert(err, IsNil)
+
+	recorder := httptest.NewRecorder()
+	err = app.CloneRepositoryHandler(recorder, request)
+	c.Assert(err, IsNil)
+	c.Assert(recorder.Code, Equals, 200)
 }
 
 func (s *S) TestAppList(c *C) {

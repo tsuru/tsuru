@@ -67,6 +67,12 @@ func (s *S) TestDeleteGitRepository(c *C) {
 	c.Assert(err, NotNil)
 }
 
+func (s *S) TestCloneRepository(c *C) {
+	a := app.App{Name: "barfoo"}
+	err := app.CloneRepository(&a)
+	c.Assert(err, IsNil)
+}
+
 func (s *S) TestGetRepositoryUrl(c *C) {
 	a := app.App{Name: "foobar"}
 	url := app.GetRepositoryUrl(&a)
