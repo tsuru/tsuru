@@ -48,6 +48,7 @@ func main() {
 
 	m.Post("/teams", webserver.AuthorizationRequiredHandler(auth.CreateTeam))
 	m.Post("/teams/:team/adduser", webserver.AuthorizationRequiredHandler(auth.AddUserToTeam))
+	m.Del("/teams/:team/:user", webserver.AuthorizationRequiredHandler(auth.RemoveUserFromTeam))
 
 	log.Fatal(http.ListenAndServe(":4000", m))
 }

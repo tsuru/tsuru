@@ -150,3 +150,22 @@ func AddUserToTeam(w http.ResponseWriter, r *http.Request, u *User) error {
 	team.AddUser(user)
 	return db.Session.Teams().Update(selector, team)
 }
+
+func RemoveUserFromTeam(w http.ResponseWriter, r *http.Request, u *User) error {
+	team := new(Team)
+	selector := bson.M{"name": r.URL.Query().Get(":team")}
+	err := db.Session.Teams().Find(selector).One(team)
+	if err != nil {
+		return &errors.Http{Code: http.StatusNotFound, Message: "Team not found"}
+	}
+	if !team.containsUser(u) {
+		msg := fmt.Sprintf("You are not authorized to remove a member from the team %s", team.Name)
+		return &errors.Http{Code: http.StatusUnauthorized, Message: msg}
+	}
+	user := User{Email: r.URL.Query().Get(":user")}
+	err = team.RemoveUser(&user)
+	if err != nil {
+		return &errors.Http{Code: http.StatusNotFound, Message: err.Error()}
+	}
+	return db.Session.Teams().Update(selector, team)
+}

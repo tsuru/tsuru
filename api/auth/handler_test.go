@@ -428,3 +428,58 @@ func (s *S) TestAddUserToTeamShouldReturnNotFoundIfTheEmailInTheBodyDoesNotExist
 	c.Assert(e.Code, Equals, http.StatusNotFound)
 	c.Assert(e, ErrorMatches, "^User not found$")
 }
+
+func (s *S) TestRemoveUserFromTeamShouldRemoveAUserFromATeamIfTheTeamExistAndTheUserIsMemberOfTheTeam(c *C) {
+	u := User{Email: "none@me.me", Password: "none"}
+	u.Create()
+	s.team.AddUser(&u)
+	db.Session.Teams().Update(bson.M{"name": s.team.Name}, s.team)
+	request, err := http.NewRequest("DELETE", "/teams/cobrateam/none@me.me?:team=cobrateam&:user=none@me.me", nil)
+	c.Assert(err, IsNil)
+	recorder := httptest.NewRecorder()
+	err = RemoveUserFromTeam(recorder, request, s.user)
+	c.Assert(err, IsNil)
+
+	team := new(Team)
+	err = db.Session.Teams().Find(bson.M{"name": s.team.Name}).One(team)
+	c.Assert(err, IsNil)
+	c.Assert(team, Not(ContainsUser), &u)
+}
+
+func (s *S) TestRemoveUserFromTeamShouldReturnNotFoundIfTheTeamDoesNotExist(c *C) {
+	request, err := http.NewRequest("DELETE", "/teams/cobrateam/none@me.me?:team=unknown&:user=none@me.me", nil)
+	c.Assert(err, IsNil)
+	request.Header.Set("Content-type", "application/json")
+	recorder := httptest.NewRecorder()
+	err = RemoveUserFromTeam(recorder, request, s.user)
+	c.Assert(err, NotNil)
+	e, ok := err.(*errors.Http)
+	c.Assert(ok, Equals, true)
+	c.Assert(e.Code, Equals, http.StatusNotFound)
+	c.Assert(e, ErrorMatches, "^Team not found$")
+}
+
+func (s *S) TestRemoveUserfromTeamShouldReturnUnauthorizedIfTheGivenUserIsNotMemberOfTheTeam(c *C) {
+	request, err := http.NewRequest("DELETE", "/teams/cobrateam/none@me.me?:team=cobrateam&:user=none@me.me", nil)
+	c.Assert(err, IsNil)
+	request.Header.Set("Content-type", "application/json")
+	recorder := httptest.NewRecorder()
+	err = RemoveUserFromTeam(recorder, request, &User{Email: "unknown@gmail.com"})
+	c.Assert(err, NotNil)
+	e, ok := err.(*errors.Http)
+	c.Assert(ok, Equals, true)
+	c.Assert(e.Code, Equals, http.StatusUnauthorized)
+	c.Assert(e, ErrorMatches, "^You are not authorized to remove a member from the team cobrateam")
+}
+
+func (s *S) TestRemoveUserFromTeamShouldReturnNotFoundWhenTheUserIsNotMemberOfTheTeam(c *C) {
+	request, err := http.NewRequest("DELETE", "/teams/cobrateam/none@me.me?:team=cobrateam&:user=none@me.me", nil)
+	c.Assert(err, IsNil)
+	request.Header.Set("Content-type", "application/json")
+	recorder := httptest.NewRecorder()
+	err = RemoveUserFromTeam(recorder, request, s.user)
+	c.Assert(err, NotNil)
+	e, ok := err.(*errors.Http)
+	c.Assert(ok, Equals, true)
+	c.Assert(e.Code, Equals, http.StatusNotFound)
+}
