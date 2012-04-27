@@ -7,7 +7,7 @@ import (
 	"testing"
 )
 
-type hasUniqueIndexChecker struct {}
+type hasUniqueIndexChecker struct{}
 
 func (c *hasUniqueIndexChecker) Info() *CheckerInfo {
 	return &CheckerInfo{Name: "HasUniqueField", Params: []string{"collection", "key"}}

@@ -6,12 +6,12 @@ import (
 	"."
 	"github.com/bmizerany/pat"
 	"github.com/timeredbull/tsuru/api/app"
-	"github.com/timeredbull/tsuru/api/service"
 	"github.com/timeredbull/tsuru/api/auth"
+	"github.com/timeredbull/tsuru/api/service"
 	"github.com/timeredbull/tsuru/db"
 	"github.com/timeredbull/tsuru/log"
-	"log/syslog"
 	stdlog "log"
+	"log/syslog"
 	"net/http"
 )
 
