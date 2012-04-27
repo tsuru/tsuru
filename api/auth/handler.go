@@ -7,6 +7,7 @@ import (
 	"github.com/timeredbull/tsuru/errors"
 	"io/ioutil"
 	"net/http"
+	"strings"
 )
 
 func CheckToken(token string) (*User, error) {
@@ -109,6 +110,9 @@ func CreateTeam(w http.ResponseWriter, r *http.Request, u *User) error {
 		return &errors.Http{Code: http.StatusBadRequest, Message: msg}
 	}
 	team := &Team{Name: name, Users: []*User{u}}
-	db.Session.Teams().Insert(team)
+	err = db.Session.Teams().Insert(team)
+	if err != nil && strings.Contains(err.Error(), "duplicate key error") {
+		return &errors.Http{Code: http.StatusConflict, Message: "This team already exists"}
+	}
 	return nil
 }

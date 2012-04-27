@@ -310,3 +310,19 @@ func (s *S) TestCreateTeamHandlerReturnsInternalServerErrorIfReadAllFails(c *C) 
 	err = CreateTeam(response, request, s.user)
 	c.Assert(err, NotNil)
 }
+
+func (s *S) TestCreateTeamHandlerReturnConflictIfTheTeamToBeCreatedAlreadyExists(c *C) {
+	err := db.Session.Teams().Insert(bson.M{"name": "timeredbull"})
+	c.Assert(err, IsNil)
+	b := bytes.NewBufferString(`{"name":"timeredbull"}`)
+	request, err := http.NewRequest("POST", "/teams", b)
+	c.Assert(err, IsNil)
+	request.Header.Set("Content-type", "application/json")
+	response := httptest.NewRecorder()
+	err = CreateTeam(response, request, s.user)
+	c.Assert(err, NotNil)
+	e, ok := err.(*errors.Http)
+	c.Assert(ok, Equals, true)
+	c.Assert(e.Code, Equals, http.StatusConflict)
+	c.Assert(e, ErrorMatches, "^This team already exists$")
+}
