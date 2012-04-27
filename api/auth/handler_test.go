@@ -331,10 +331,9 @@ func (s *S) TestAddUserToTeamShouldAddAUserToATeamIfTheUserAndTheTeamExistAndThe
 	u := &User{Email: "wolverine@xmen.com", Password: "123"}
 	err := u.Create()
 	c.Assert(err, IsNil)
-	b := bytes.NewBufferString(`{"email":"` + u.Email + `"}`)
-	request, err := http.NewRequest("POST", "/teams/cobrateam/adduser?:team=cobrateam", b)
+	url := "/teams/cobrateam/wolverine@xmen.com?:team=cobrateam&:user=wolverine@xmen.com"
+	request, err := http.NewRequest("PUT", url, nil)
 	c.Assert(err, IsNil)
-	request.Header.Set("Content-type", "application/json")
 	recorder := httptest.NewRecorder()
 	err = AddUserToTeam(recorder, request, s.user)
 	c.Assert(err, IsNil)
@@ -345,50 +344,9 @@ func (s *S) TestAddUserToTeamShouldAddAUserToATeamIfTheUserAndTheTeamExistAndThe
 	c.Assert(t, ContainsUser, u)
 }
 
-func (s *S) TestAddUserToTeamShouldReturnErrorIfReadAllFails(c *C) {
-	b := s.getTestData("bodyToBeClosed.txt")
-	b.Close()
-	request, err := http.NewRequest("POST", "/teams/cobrateam/adduser?:team=cobrateam", b)
-	c.Assert(err, IsNil)
-	request.Header.Set("Content-type", "application/json")
-	recorder := httptest.NewRecorder()
-	err = AddUserToTeam(recorder, request, s.user)
-	c.Assert(err, NotNil)
-}
-
-func (s *S) TestAddUserToTeamShouldReturnBadRequestIfTheJSONIsInvalid(c *C) {
-	b := bytes.NewBufferString(`"invalid":}"json"`)
-	request, err := http.NewRequest("POST", "/teams/cobrateam/adduser?:team=cobrateam", b)
-	c.Assert(err, IsNil)
-	request.Header.Set("Content-type", "application/json")
-	recorder := httptest.NewRecorder()
-	err = AddUserToTeam(recorder, request, s.user)
-	c.Assert(err, NotNil)
-	e, ok := err.(*errors.Http)
-	c.Assert(ok, Equals, true)
-	c.Assert(e.Code, Equals, http.StatusBadRequest)
-	c.Assert(e, ErrorMatches, "^Invalid JSON$")
-}
-
-func (s *S) TestAddUserToTeamShouldReturnBadRequestIfTheJSONDoesNotIncludeTheUserEmail(c *C) {
-	b := bytes.NewBufferString(`{"name":"me"}`)
-	request, err := http.NewRequest("POST", "/teams/cobrateam/adduser?:team=cobrateam", b)
-	c.Assert(err, IsNil)
-	request.Header.Set("Content-type", "application/json")
-	recorder := httptest.NewRecorder()
-	err = AddUserToTeam(recorder, request, s.user)
-	c.Assert(err, NotNil)
-	e, ok := err.(*errors.Http)
-	c.Assert(ok, Equals, true)
-	c.Assert(e.Code, Equals, http.StatusBadRequest)
-	c.Assert(e, ErrorMatches, "^You must provide the user email within the request body$")
-}
-
 func (s *S) TestAddUserToTeamShouldReturnNotFoundIfThereIsNoTeamWithTheGivenName(c *C) {
-	b := bytes.NewBufferString(`{"email":"me@me.me"}`)
-	request, err := http.NewRequest("POST", "/teams/abc/adduser?:team=abc", b)
+	request, err := http.NewRequest("PUT", "/teams/abc/me@me.me?:team=abc&:user=me@me.me", nil)
 	c.Assert(err, IsNil)
-	request.Header.Set("Content-type", "application/json")
 	recorder := httptest.NewRecorder()
 	err = AddUserToTeam(recorder, request, s.user)
 	c.Assert(err, NotNil)
@@ -402,10 +360,8 @@ func (s *S) TestAddUserToTeamShouldReturnUnauthorizedIfTheGivenUserIsNotInTheGiv
 	u := &User{Email: "hi@me.me", Password: "123"}
 	err := u.Create()
 	c.Assert(err, IsNil)
-	b := bytes.NewBufferString(`{"email":"hi@me.me"}`)
-	request, err := http.NewRequest("POST", "/teams/cobrateam/adduser?:team=cobrateam", b)
+	request, err := http.NewRequest("PUT", "/teams/cobrateam/hi@me.me?:team=cobrateam&:user=hi@me.me", nil)
 	c.Assert(err, IsNil)
-	request.Header.Set("Content-type", "application/json")
 	recorder := httptest.NewRecorder()
 	err = AddUserToTeam(recorder, request, u)
 	c.Assert(err, NotNil)
@@ -416,10 +372,8 @@ func (s *S) TestAddUserToTeamShouldReturnUnauthorizedIfTheGivenUserIsNotInTheGiv
 }
 
 func (s *S) TestAddUserToTeamShouldReturnNotFoundIfTheEmailInTheBodyDoesNotExistInTheDatabase(c *C) {
-	b := bytes.NewBufferString(`{"email":"hi2@me.me"}`)
-	request, err := http.NewRequest("POST", "/teams/cobrateam/adduser?:team=cobrateam", b)
+	request, err := http.NewRequest("PUT", "/teams/cobrateam/hi2@me.me?:team=cobrateam&:user=hi2@me.me", nil)
 	c.Assert(err, IsNil)
-	request.Header.Set("Content-type", "application/json")
 	recorder := httptest.NewRecorder()
 	err = AddUserToTeam(recorder, request, s.user)
 	c.Assert(err, NotNil)
@@ -430,10 +384,9 @@ func (s *S) TestAddUserToTeamShouldReturnNotFoundIfTheEmailInTheBodyDoesNotExist
 }
 
 func (s *S) TestAddUserToTeamShouldReturnConflictIfTheUserIsAlreadyInTheGroup(c *C) {
-	b := bytes.NewBufferString(`{"email":"` + s.user.Email + `"}`)
-	request, err := http.NewRequest("POST", "/teams/cobrateam/adduser?:team=cobrateam", b)
+	url := fmt.Sprintf("/teams/%s/%s?:team=%s&:user=%s", s.team.Name, s.user.Email, s.team.Name, s.user.Email)
+	request, err := http.NewRequest("PUT", url, nil)
 	c.Assert(err, IsNil)
-	request.Header.Set("Content-type", "application/json")
 	recorder := httptest.NewRecorder()
 	err = AddUserToTeam(recorder, request, s.user)
 	c.Assert(err, NotNil)
