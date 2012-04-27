@@ -47,6 +47,7 @@ func main() {
 	m.Get("/users/check-authorization", webserver.Handler(auth.CheckAuthorization))
 
 	m.Post("/teams", webserver.AuthorizationRequiredHandler(auth.CreateTeam))
+	m.Post("/teams/:team/adduser", webserver.AuthorizationRequiredHandler(auth.AddUserToTeam))
 
 	log.Fatal(http.ListenAndServe(":4000", m))
 }

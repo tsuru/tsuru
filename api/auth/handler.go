@@ -6,6 +6,7 @@ import (
 	"github.com/timeredbull/tsuru/db"
 	"github.com/timeredbull/tsuru/errors"
 	"io/ioutil"
+	"launchpad.net/mgo/bson"
 	"net/http"
 	"strings"
 )
@@ -115,4 +116,37 @@ func CreateTeam(w http.ResponseWriter, r *http.Request, u *User) error {
 		return &errors.Http{Code: http.StatusConflict, Message: "This team already exists"}
 	}
 	return nil
+}
+
+func AddUserToTeam(w http.ResponseWriter, r *http.Request, u *User) error {
+	var params map[string]string
+	b, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		return err
+	}
+	err = json.Unmarshal(b, &params)
+	if err != nil {
+		return &errors.Http{Code: http.StatusBadRequest, Message: "Invalid JSON"}
+	}
+	email, ok := params["email"]
+	if !ok {
+		msg := "You must provide the user email within the request body"
+		return &errors.Http{Code: http.StatusBadRequest, Message: msg}
+	}
+	team, user := new(Team), new(User)
+	selector := bson.M{"name": r.URL.Query().Get(":team")}
+	err = db.Session.Teams().Find(selector).One(team)
+	if err != nil {
+		return &errors.Http{Code: http.StatusNotFound, Message: "Team not found"}
+	}
+	if !team.containsUser(u) {
+		msg := fmt.Sprintf("You are not authorized to add new users to the team %s", team.Name)
+		return &errors.Http{Code: http.StatusUnauthorized, Message: msg}
+	}
+	err = db.Session.Users().Find(bson.M{"email": email}).One(user)
+	if err != nil {
+		return &errors.Http{Code: http.StatusNotFound, Message: "User not found"}
+	}
+	team.AddUser(user)
+	return db.Session.Teams().Update(selector, team)
 }

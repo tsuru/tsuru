@@ -19,8 +19,8 @@ func (s *S) TestCreateUserHandlerSavesTheUserInTheDatabase(c *C) {
 	c.Assert(err, IsNil)
 
 	request.Header.Set("Content-type", "application/json")
-	response := httptest.NewRecorder()
-	err = CreateUser(response, request)
+	recorder := httptest.NewRecorder()
+	err = CreateUser(recorder, request)
 	c.Assert(err, IsNil)
 
 	u := User{Email: "nobody@globo.com"}
@@ -34,10 +34,10 @@ func (s *S) TestCreateUserHandlerReturnsStatus201AfterCreateTheUser(c *C) {
 	c.Assert(err, IsNil)
 
 	request.Header.Set("Content-type", "application/json")
-	response := httptest.NewRecorder()
-	err = CreateUser(response, request)
+	recorder := httptest.NewRecorder()
+	err = CreateUser(recorder, request)
 	c.Assert(err, IsNil)
-	c.Assert(response.Code, Equals, 201)
+	c.Assert(recorder.Code, Equals, 201)
 }
 
 func (s *S) TestCreateUserHandlerReturnErrorIfReadingBodyFails(c *C) {
@@ -47,8 +47,8 @@ func (s *S) TestCreateUserHandlerReturnErrorIfReadingBodyFails(c *C) {
 
 	request.Header.Set("Content-type", "application/json")
 	request.Body.Close()
-	response := httptest.NewRecorder()
-	err = CreateUser(response, request)
+	recorder := httptest.NewRecorder()
+	err = CreateUser(recorder, request)
 	c.Assert(err, NotNil)
 	c.Assert(err, ErrorMatches, "^.*bad file descriptor$")
 }
@@ -59,8 +59,8 @@ func (s *S) TestCreateUserHandlerReturnErrorAndBadRequestIfInvalidJSONIsGiven(c 
 	c.Assert(err, IsNil)
 
 	request.Header.Set("Content-type", "application/json")
-	response := httptest.NewRecorder()
-	err = CreateUser(response, request)
+	recorder := httptest.NewRecorder()
+	err = CreateUser(recorder, request)
 	c.Assert(err, NotNil)
 	c.Assert(err, ErrorMatches, "^invalid character.*$")
 
@@ -78,8 +78,8 @@ func (s *S) TestCreateUserHandlerReturnErrorAndConflictIfItFailsToCreateUser(c *
 	c.Assert(err, IsNil)
 
 	request.Header.Set("Content-type", "application/json")
-	response := httptest.NewRecorder()
-	err = CreateUser(response, request)
+	recorder := httptest.NewRecorder()
+	err = CreateUser(recorder, request)
 	c.Assert(err, NotNil)
 	c.Assert(err, ErrorMatches, "This email is already registered")
 	e, ok := err.(*errors.Http)
@@ -96,18 +96,18 @@ func (s *S) TestLoginShouldCreateTokenInTheDatabaseAndReturnItWithinTheResponse(
 	c.Assert(err, IsNil)
 
 	request.Header.Set("Content-type", "application/json")
-	response := httptest.NewRecorder()
-	err = Login(response, request)
+	recorder := httptest.NewRecorder()
+	err = Login(recorder, request)
 	c.Assert(err, IsNil)
 
 	var user User
 	collection := db.Session.Users()
 	err = collection.Find(bson.M{"email": "nobody@globo.com"}).One(&user)
 
-	var responseJson map[string]string
-	r, _ := ioutil.ReadAll(response.Body)
-	json.Unmarshal(r, &responseJson)
-	c.Assert(responseJson["token"], Equals, user.Tokens[0].Token)
+	var recorderJson map[string]string
+	r, _ := ioutil.ReadAll(recorder.Body)
+	json.Unmarshal(r, &recorderJson)
+	c.Assert(recorderJson["token"], Equals, user.Tokens[0].Token)
 }
 
 func (s *S) TestLoginShouldReturnErrorAndBadRequestIfItReceivesAnInvalidJson(c *C) {
@@ -116,8 +116,8 @@ func (s *S) TestLoginShouldReturnErrorAndBadRequestIfItReceivesAnInvalidJson(c *
 	c.Assert(err, IsNil)
 
 	request.Header.Set("Content-type", "application/json")
-	response := httptest.NewRecorder()
-	err = Login(response, request)
+	recorder := httptest.NewRecorder()
+	err = Login(recorder, request)
 	c.Assert(err, NotNil)
 	c.Assert(err, ErrorMatches, "^Invalid JSON$")
 	e, ok := err.(*errors.Http)
@@ -131,8 +131,8 @@ func (s *S) TestLoginShouldReturnErrorAndBadRequestIfTheJSONDoesNotContainsAPass
 	c.Assert(err, IsNil)
 
 	request.Header.Set("Content-type", "application/json")
-	response := httptest.NewRecorder()
-	err = Login(response, request)
+	recorder := httptest.NewRecorder()
+	err = Login(recorder, request)
 	c.Assert(err, NotNil)
 	c.Assert(err, ErrorMatches, "^You must provide a password to login$")
 	e, ok := err.(*errors.Http)
@@ -146,8 +146,8 @@ func (s *S) TestLoginShouldReturnErrorAndNotFoundIfTheUserDoesNotExist(c *C) {
 	c.Assert(err, IsNil)
 
 	request.Header.Set("Content-type", "application/json")
-	response := httptest.NewRecorder()
-	err = Login(response, request)
+	recorder := httptest.NewRecorder()
+	err = Login(recorder, request)
 	c.Assert(err, NotNil)
 	c.Assert(err, ErrorMatches, "^User not found$")
 	e, ok := err.(*errors.Http)
@@ -164,8 +164,8 @@ func (s *S) TestLoginShouldreturnErrorIfThePasswordDoesNotMatch(c *C) {
 	c.Assert(err, IsNil)
 
 	request.Header.Set("Content-type", "application/json")
-	response := httptest.NewRecorder()
-	err = Login(response, request)
+	recorder := httptest.NewRecorder()
+	err = Login(recorder, request)
 	c.Assert(err, NotNil)
 	c.Assert(err, ErrorMatches, "^Authentication failed, wrong password$")
 	e, ok := err.(*errors.Http)
@@ -180,8 +180,8 @@ func (s *S) TestLoginShouldReturnErrorAndInternalServerErrorIfReadAllFails(c *C)
 	request, err := http.NewRequest("POST", "/teams", b)
 	c.Assert(err, IsNil)
 	request.Header.Set("Content-type", "application/json")
-	response := httptest.NewRecorder()
-	err = Login(response, request)
+	recorder := httptest.NewRecorder()
+	err = Login(recorder, request)
 	c.Assert(err, NotNil)
 }
 
@@ -199,15 +199,15 @@ func (s *S) TestValidateUserTokenReturnJsonRepresentingUser(c *C) {
 	c.Assert(err, IsNil)
 
 	request.Header.Set("Authorization", t.Token)
-	response := httptest.NewRecorder()
-	err = CheckAuthorization(response, request)
+	recorder := httptest.NewRecorder()
+	err = CheckAuthorization(recorder, request)
 	c.Assert(err, IsNil)
 
 	var expected, got map[string]string
 	expected = map[string]string{
 		"email": "nobody@globo.com",
 	}
-	r, _ := ioutil.ReadAll(response.Body)
+	r, _ := ioutil.ReadAll(recorder.Body)
 	json.Unmarshal(r, &got)
 	c.Assert(got, DeepEquals, expected)
 }
@@ -216,16 +216,16 @@ func (s *S) TestValidateUserTokenReturnErrorWhenGetUserByTokenReturnsAny(c *C) {
 	request, err := http.NewRequest("GET", "/users/check-authorization", nil)
 	c.Assert(err, IsNil)
 	request.Header.Set("Authorization", fmt.Sprintf("unexistent token"))
-	response := httptest.NewRecorder()
-	err = CheckAuthorization(response, request)
+	recorder := httptest.NewRecorder()
+	err = CheckAuthorization(recorder, request)
 	c.Assert(err, NotNil)
 }
 
 func (s *S) TestValidateUserTokenReturnErrorAndBadRequestWhenTheAuthorizationHeaderIsNotPresent(c *C) {
 	request, err := http.NewRequest("GET", "/users/check-authorization", nil)
 	c.Assert(err, IsNil)
-	response := httptest.NewRecorder()
-	err = CheckAuthorization(response, request)
+	recorder := httptest.NewRecorder()
+	err = CheckAuthorization(recorder, request)
 	c.Assert(err, NotNil)
 	c.Assert(err, ErrorMatches, "^You must provide the Authorization header$")
 	e, ok := err.(*errors.Http)
@@ -262,8 +262,8 @@ func (s *S) TestCreateTeamHandlerSavesTheTeamInTheDatabaseWithTheAuthenticatedUs
 	request, err := http.NewRequest("POST", "/teams", b)
 	c.Assert(err, IsNil)
 	request.Header.Set("Content-type", "application/json")
-	response := httptest.NewRecorder()
-	err = CreateTeam(response, request, s.user)
+	recorder := httptest.NewRecorder()
+	err = CreateTeam(recorder, request, s.user)
 	c.Assert(err, IsNil)
 
 	t := new(Team)
@@ -277,8 +277,8 @@ func (s *S) TestCreateTeamHandlerReturnsBadRequestIfTheRequestBodyIsAnInvalidJSO
 	request, err := http.NewRequest("POST", "/teams", b)
 	c.Assert(err, IsNil)
 	request.Header.Set("Content-type", "application/json")
-	response := httptest.NewRecorder()
-	err = CreateTeam(response, request, s.user)
+	recorder := httptest.NewRecorder()
+	err = CreateTeam(recorder, request, s.user)
 	c.Assert(err, NotNil)
 	e, ok := err.(*errors.Http)
 	c.Assert(ok, Equals, true)
@@ -290,8 +290,8 @@ func (s *S) TestCreateTeamHandlerReturnsBadRequestIfTheNameIsNotGiven(c *C) {
 	request, err := http.NewRequest("POST", "/teams", b)
 	c.Assert(err, IsNil)
 	request.Header.Set("Content-type", "application/json")
-	response := httptest.NewRecorder()
-	err = CreateTeam(response, request, s.user)
+	recorder := httptest.NewRecorder()
+	err = CreateTeam(recorder, request, s.user)
 	c.Assert(err, NotNil)
 	c.Assert(err, ErrorMatches, "^You must provide the team name$")
 	e, ok := err.(*errors.Http)
@@ -306,8 +306,8 @@ func (s *S) TestCreateTeamHandlerReturnsInternalServerErrorIfReadAllFails(c *C) 
 	request, err := http.NewRequest("POST", "/teams", b)
 	c.Assert(err, IsNil)
 	request.Header.Set("Content-type", "application/json")
-	response := httptest.NewRecorder()
-	err = CreateTeam(response, request, s.user)
+	recorder := httptest.NewRecorder()
+	err = CreateTeam(recorder, request, s.user)
 	c.Assert(err, NotNil)
 }
 
@@ -318,11 +318,113 @@ func (s *S) TestCreateTeamHandlerReturnConflictIfTheTeamToBeCreatedAlreadyExists
 	request, err := http.NewRequest("POST", "/teams", b)
 	c.Assert(err, IsNil)
 	request.Header.Set("Content-type", "application/json")
-	response := httptest.NewRecorder()
-	err = CreateTeam(response, request, s.user)
+	recorder := httptest.NewRecorder()
+	err = CreateTeam(recorder, request, s.user)
 	c.Assert(err, NotNil)
 	e, ok := err.(*errors.Http)
 	c.Assert(ok, Equals, true)
 	c.Assert(e.Code, Equals, http.StatusConflict)
 	c.Assert(e, ErrorMatches, "^This team already exists$")
+}
+
+func (s *S) TestAddUserToTeamShouldAddAUserToATeamIfTheUserAndTheTeamExistAndTheGivenUserIsMemberOfTheTeam(c *C) {
+	u := &User{Email: "wolverine@xmen.com", Password: "123"}
+	err := u.Create()
+	c.Assert(err, IsNil)
+	b := bytes.NewBufferString(`{"email":"` + u.Email + `"}`)
+	request, err := http.NewRequest("POST", "/teams/cobrateam/adduser?:team=cobrateam", b)
+	c.Assert(err, IsNil)
+	request.Header.Set("Content-type", "application/json")
+	recorder := httptest.NewRecorder()
+	err = AddUserToTeam(recorder, request, s.user)
+	c.Assert(err, IsNil)
+	t := new(Team)
+	err = db.Session.Teams().Find(bson.M{"name": "cobrateam"}).One(t)
+	c.Assert(err, IsNil)
+	c.Assert(t, ContainsUser, s.user)
+	c.Assert(t, ContainsUser, u)
+}
+
+func (s *S) TestAddUserToTeamShouldReturnErrorIfReadAllFails(c *C) {
+	b := s.getTestData("bodyToBeClosed.txt")
+	b.Close()
+	request, err := http.NewRequest("POST", "/teams/cobrateam/adduser?:team=cobrateam", b)
+	c.Assert(err, IsNil)
+	request.Header.Set("Content-type", "application/json")
+	recorder := httptest.NewRecorder()
+	err = AddUserToTeam(recorder, request, s.user)
+	c.Assert(err, NotNil)
+}
+
+func (s *S) TestAddUserToTeamShouldReturnBadRequestIfTheJSONIsInvalid(c *C) {
+	b := bytes.NewBufferString(`"invalid":}"json"`)
+	request, err := http.NewRequest("POST", "/teams/cobrateam/adduser?:team=cobrateam", b)
+	c.Assert(err, IsNil)
+	request.Header.Set("Content-type", "application/json")
+	recorder := httptest.NewRecorder()
+	err = AddUserToTeam(recorder, request, s.user)
+	c.Assert(err, NotNil)
+	e, ok := err.(*errors.Http)
+	c.Assert(ok, Equals, true)
+	c.Assert(e.Code, Equals, http.StatusBadRequest)
+	c.Assert(e, ErrorMatches, "^Invalid JSON$")
+}
+
+func (s *S) TestAddUserToTeamShouldReturnBadRequestIfTheJSONDoesNotIncludeTheUserEmail(c *C) {
+	b := bytes.NewBufferString(`{"name":"me"}`)
+	request, err := http.NewRequest("POST", "/teams/cobrateam/adduser?:team=cobrateam", b)
+	c.Assert(err, IsNil)
+	request.Header.Set("Content-type", "application/json")
+	recorder := httptest.NewRecorder()
+	err = AddUserToTeam(recorder, request, s.user)
+	c.Assert(err, NotNil)
+	e, ok := err.(*errors.Http)
+	c.Assert(ok, Equals, true)
+	c.Assert(e.Code, Equals, http.StatusBadRequest)
+	c.Assert(e, ErrorMatches, "^You must provide the user email within the request body$")
+}
+
+func (s *S) TestAddUserToTeamShouldReturnNotFoundIfThereIsNoTeamWithTheGivenName(c *C) {
+	b := bytes.NewBufferString(`{"email":"me@me.me"}`)
+	request, err := http.NewRequest("POST", "/teams/abc/adduser?:team=abc", b)
+	c.Assert(err, IsNil)
+	request.Header.Set("Content-type", "application/json")
+	recorder := httptest.NewRecorder()
+	err = AddUserToTeam(recorder, request, s.user)
+	c.Assert(err, NotNil)
+	e, ok := err.(*errors.Http)
+	c.Assert(ok, Equals, true)
+	c.Assert(e.Code, Equals, http.StatusNotFound)
+	c.Assert(e, ErrorMatches, "^Team not found$")
+}
+
+func (s *S) TestAddUserToTeamShouldReturnUnauthorizedIfTheGivenUserIsNotInTheGivenTeam(c *C) {
+	u := &User{Email: "hi@me.me", Password: "123"}
+	err := u.Create()
+	c.Assert(err, IsNil)
+	b := bytes.NewBufferString(`{"email":"hi@me.me"}`)
+	request, err := http.NewRequest("POST", "/teams/cobrateam/adduser?:team=cobrateam", b)
+	c.Assert(err, IsNil)
+	request.Header.Set("Content-type", "application/json")
+	recorder := httptest.NewRecorder()
+	err = AddUserToTeam(recorder, request, u)
+	c.Assert(err, NotNil)
+	e, ok := err.(*errors.Http)
+	c.Assert(ok, Equals, true)
+	c.Assert(e.Code, Equals, http.StatusUnauthorized)
+	c.Assert(e, ErrorMatches, "^You are not authorized to add new users to the team cobrateam$")
+}
+
+func (s *S) TestAddUserToTeamShouldReturnNotFoundIfTheEmailInTheBodyDoesNotExistInTheDatabase(c *C) {
+	b := bytes.NewBufferString(`{"email":"hi2@me.me"}`)
+	request, err := http.NewRequest("POST", "/teams/cobrateam/adduser?:team=cobrateam", b)
+	c.Assert(err, IsNil)
+	request.Header.Set("Content-type", "application/json")
+	recorder := httptest.NewRecorder()
+	err = AddUserToTeam(recorder, request, s.user)
+	c.Assert(err, NotNil)
+	e, ok := err.(*errors.Http)
+	c.Assert(ok, Equals, true)
+	c.Assert(e.Code, Equals, http.StatusNotFound)
+	c.Assert(e, ErrorMatches, "^User not found$")
 }
