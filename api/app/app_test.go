@@ -40,6 +40,7 @@ func Test(t *testing.T) { TestingT(t) }
 type S struct {
 	session *mgo.Session
 	team    auth.Team
+	user	*auth.User
 }
 
 var _ = Suite(&S{})
@@ -48,7 +49,9 @@ func (s *S) SetUpSuite(c *C) {
 	var err error
 	db.Session, err = db.Open("127.0.0.1:27017", "tsuru_app_test")
 	c.Assert(err, IsNil)
-	s.team = auth.Team{Name: "tsuruteam"}
+	s.user = &auth.User{Email: "whydidifall@thewho.com", Password: "123"}
+	s.user.Create()
+	s.team = auth.Team{Name: "tsuruteam", Users: []*auth.User{s.user}}
 	db.Session.Teams().Insert(s.team)
 }
 
