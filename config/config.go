@@ -28,3 +28,7 @@ func Get(key string) interface{} {
 	}
 	return conf
 }
+
+func GetString(key string) string {
+	return Get(key).(string)
+}
