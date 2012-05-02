@@ -114,13 +114,17 @@ func (app *App) Destroy() error {
 	return nil
 }
 
-func (app *App) hasTeam(team *auth.Team) bool {
-	for _, t := range app.Teams {
+func (app *App) findTeam(team *auth.Team) int {
+	for i, t := range app.Teams {
 		if t.Name == team.Name {
-			return true
+			return i
 		}
 	}
-	return false
+	return -1
+}
+
+func (app *App) hasTeam(team *auth.Team) bool {
+	return app.findTeam(team) > -1
 }
 
 func (app *App) GrantAccess(team *auth.Team) error {
@@ -132,12 +136,7 @@ func (app *App) GrantAccess(team *auth.Team) error {
 }
 
 func (app *App) RevokeAccess(team *auth.Team) error {
-	index := -1
-	for i, t := range app.Teams {
-		if t.Name == team.Name {
-			index = i
-		}
-	}
+	index := app.findTeam(team)
 	if index < 0 {
 		return errors.New("This team does not have access to this app")
 	}
