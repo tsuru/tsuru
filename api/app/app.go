@@ -145,3 +145,12 @@ func (app *App) RevokeAccess(team *auth.Team) error {
 	app.Teams = app.Teams[:last]
 	return nil
 }
+
+func (app *App) CheckUserAccess(user *auth.User) bool {
+	for _, team := range app.Teams {
+		if team.ContainsUser(user) {
+			return true
+		}
+	}
+	return false
+}
