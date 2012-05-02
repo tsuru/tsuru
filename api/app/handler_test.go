@@ -57,6 +57,18 @@ func (s *S) TestUploadReturns404WhenAppDoesNotExist(c *C) {
 	c.Assert(recorder.Code, Equals, 404)
 }
 
+func (s *S) TestCloneRepositoryHandler(c *C) {
+	a := App{Name: "someApp", Framework: "django"}
+	url := fmt.Sprintf("/apps/%s/clone?:name=%s", a.Name, a.Name)
+	request, err := http.NewRequest("GET", url, nil)
+	c.Assert(err, IsNil)
+
+	recorder := httptest.NewRecorder()
+	err = CloneRepositoryHandler(recorder, request)
+	c.Assert(err, IsNil)
+	c.Assert(recorder.Code, Equals, 200)
+}
+
 func (s *S) TestAppList(c *C) {
 	apps := make([]App, 0)
 	expected := make([]App, 0)
