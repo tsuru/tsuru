@@ -40,7 +40,7 @@ func Test(t *testing.T) { TestingT(t) }
 type S struct {
 	session *mgo.Session
 	team    auth.Team
-	user	*auth.User
+	user    *auth.User
 }
 
 var _ = Suite(&S{})
