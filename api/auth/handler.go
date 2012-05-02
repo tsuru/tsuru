@@ -125,7 +125,7 @@ func AddUserToTeam(w http.ResponseWriter, r *http.Request, u *User) error {
 	if err != nil {
 		return &errors.Http{Code: http.StatusNotFound, Message: "Team not found"}
 	}
-	if !team.containsUser(u) {
+	if !team.ContainsUser(u) {
 		msg := fmt.Sprintf("You are not authorized to add new users to the team %s", team.Name)
 		return &errors.Http{Code: http.StatusUnauthorized, Message: msg}
 	}
@@ -147,7 +147,7 @@ func RemoveUserFromTeam(w http.ResponseWriter, r *http.Request, u *User) error {
 	if err != nil {
 		return &errors.Http{Code: http.StatusNotFound, Message: "Team not found"}
 	}
-	if !team.containsUser(u) {
+	if !team.ContainsUser(u) {
 		msg := fmt.Sprintf("You are not authorized to remove a member from the team %s", team.Name)
 		return &errors.Http{Code: http.StatusUnauthorized, Message: msg}
 	}

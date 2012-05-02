@@ -20,13 +20,7 @@ func (c *userPresenceChecker) Check(params []interface{}, names []string) (bool,
 	if !ok {
 		return false, "second parameter should be a pointer to a user instance"
 	}
-
-	for _, u := range team.Users {
-		if u.Email == user.Email {
-			return true, ""
-		}
-	}
-	return false, ""
+	return team.ContainsUser(user), ""
 }
 
 var ContainsUser Checker = &userPresenceChecker{}
