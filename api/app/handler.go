@@ -176,3 +176,28 @@ func GrantAccessToTeamHandler(w http.ResponseWriter, r *http.Request, u *auth.Us
 	}
 	return db.Session.Apps().Update(bson.M{"name": app.Name}, app)
 }
+
+func RevokeAccessFromTeamHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
+	t := new(auth.Team)
+	app := &App{Name: r.URL.Query().Get(":app")}
+	err := app.Get()
+	if err != nil {
+		return &errors.Http{Code: http.StatusNotFound, Message: "App not found"}
+	}
+	if !app.CheckUserAccess(u) {
+		return &errors.Http{Code: http.StatusUnauthorized, Message: "User unauthorized"}
+	}
+	err = db.Session.Teams().Find(bson.M{"name": r.URL.Query().Get(":team")}).One(t)
+	if err != nil {
+		return &errors.Http{Code: http.StatusNotFound, Message: "Team not found"}
+	}
+	if len(app.Teams) == 1 {
+		msg := "You can not revoke the acces from this team, because it is the unique team with access to the app, and an app can not be orphaned"
+		return &errors.Http{Code: http.StatusForbidden, Message: msg}
+	}
+	err = app.RevokeAccess(t)
+	if err != nil {
+		return &errors.Http{Code: http.StatusNotFound, Message: err.Error()}
+	}
+	return db.Session.Apps().Update(bson.M{"name": app.Name}, app)
+}
