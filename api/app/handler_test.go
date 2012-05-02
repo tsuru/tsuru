@@ -3,8 +3,10 @@ package app
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"github.com/timeredbull/tsuru/api/auth"
 	"github.com/timeredbull/tsuru/db"
+	"github.com/timeredbull/tsuru/errors"
 	"io/ioutil"
 	. "launchpad.net/gocheck"
 	"launchpad.net/mgo/bson"
@@ -172,4 +174,83 @@ func (s *S) TestCreateApp(c *C) {
 	c.Assert(err, IsNil)
 	c.Assert(qtd, Equals, 1)
 
+}
+
+func (s *S) TestAddTeamToTheApp(c *C) {
+	t := auth.Team{Name: "itshardteam", Users: []*auth.User{s.user}}
+	a := App{Name: "itshard", Framework: "django", Teams: []auth.Team{t}}
+	err := a.Create()
+	c.Assert(err, IsNil)
+	defer a.Destroy()
+	url := fmt.Sprintf("/apps/%s/%s?:app=%s&:team=%s", a.Name, s.team.Name, a.Name, s.team.Name)
+	request, err := http.NewRequest("PUT", url, nil)
+	c.Assert(err, IsNil)
+	recorder := httptest.NewRecorder()
+	err = GrantAccessToTeamHandler(recorder, request, s.user)
+	c.Assert(err, IsNil)
+	err = a.Get()
+	c.Assert(err, IsNil)
+	c.Assert(s.team, HasAccessTo, a)
+}
+
+func (s *S) TestGrantAccessToTeamReturn404IfTheAppDoesNotExist(c *C) {
+	request, err := http.NewRequest("PUT", "/apps/a/b?:app=a&:team=b", nil)
+	c.Assert(err, IsNil)
+	recorder := httptest.NewRecorder()
+	err = GrantAccessToTeamHandler(recorder, request, s.user)
+	c.Assert(err, NotNil)
+	e, ok := err.(*errors.Http)
+	c.Assert(ok, Equals, true)
+	c.Assert(e.Code, Equals, http.StatusNotFound)
+	c.Assert(e, ErrorMatches, "^App not found$")
+}
+
+func (s *S) TestGrantAccessToTeamReturn401IfTheGivenUserDoesNotHasAccessToTheApp(c *C) {
+	a := App{Name: "itshard", Framework: "django"}
+	err := a.Create()
+	c.Assert(err, IsNil)
+	defer a.Destroy()
+	url := fmt.Sprintf("/apps/%s/%s?:app=%s&:team=%s", a.Name, s.team.Name, a.Name, s.team.Name)
+	request, err := http.NewRequest("PUT", url, nil)
+	c.Assert(err, IsNil)
+	recorder := httptest.NewRecorder()
+	err = GrantAccessToTeamHandler(recorder, request, s.user)
+	c.Assert(err, NotNil)
+	e, ok := err.(*errors.Http)
+	c.Assert(ok, Equals, true)
+	c.Assert(e.Code, Equals, http.StatusUnauthorized)
+	c.Assert(e, ErrorMatches, "^User unauthorized$")
+}
+
+func (s *S) TestGrantAccessToTeamReturn404IfTheTeamDoesNotExist(c *C) {
+	a := App{Name: "itshard", Framework: "django", Teams: []auth.Team{s.team}}
+	err := a.Create()
+	c.Assert(err, IsNil)
+	defer a.Destroy()
+	url := fmt.Sprintf("/apps/%s/a?:app=%s&:team=a", a.Name, a.Name)
+	request, err := http.NewRequest("PUT", url, nil)
+	c.Assert(err, IsNil)
+	recorder := httptest.NewRecorder()
+	err = GrantAccessToTeamHandler(recorder, request, s.user)
+	c.Assert(err, NotNil)
+	e, ok := err.(*errors.Http)
+	c.Assert(ok, Equals, true)
+	c.Assert(e.Code, Equals, http.StatusNotFound)
+	c.Assert(e, ErrorMatches, "^Team not found$")
+}
+
+func (s *S) TestGrantAccessToTeamReturn409IfTheTeamHasAlreadyAccessToTheApp(c *C) {
+	a := App{Name: "itshard", Framework: "django", Teams: []auth.Team{s.team}}
+	err := a.Create()
+	c.Assert(err, IsNil)
+	defer a.Destroy()
+	url := fmt.Sprintf("/apps/%s/%s?:app=%s&:team=%s", a.Name, s.team.Name, a.Name, s.team.Name)
+	request, err := http.NewRequest("PUT", url, nil)
+	c.Assert(err, IsNil)
+	recorder := httptest.NewRecorder()
+	err = GrantAccessToTeamHandler(recorder, request, s.user)
+	c.Assert(err, NotNil)
+	e, ok := err.(*errors.Http)
+	c.Assert(ok, Equals, true)
+	c.Assert(e.Code, Equals, http.StatusConflict)
 }

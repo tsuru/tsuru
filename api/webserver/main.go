@@ -41,6 +41,7 @@ func main() {
 	m.Post("/apps/:name/application", webserver.Handler(app.Upload))
 	m.Get("/apps", webserver.Handler(app.AppList))
 	m.Post("/apps", webserver.Handler(app.CreateAppHandler))
+	m.Put("/apps/:app/:team", webserver.AuthorizationRequiredHandler(app.GrantAccessToTeamHandler))
 
 	m.Post("/users", webserver.Handler(auth.CreateUser))
 	m.Post("/users/:email/tokens", webserver.Handler(auth.Login))
