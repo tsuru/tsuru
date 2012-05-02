@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/timeredbull/tsuru/api/auth"
 	"github.com/timeredbull/tsuru/api/unit"
+	"github.com/timeredbull/tsuru/log"
 	"github.com/timeredbull/tsuru/db"
 	"launchpad.net/mgo/bson"
 	"os"
@@ -51,6 +52,19 @@ func NewRepository(app *App) (err error) {
 
 func DeleteRepository(app *App) error {
 	return os.RemoveAll(GetRepositoryPath(app))
+}
+
+func CloneRepository(app *App) (err error) {
+	u := unit.Unit{Name: app.Name}
+	cmd := fmt.Sprintf("git clone %s /home/application/%s", GetRepositoryUrl(app), app.Name)
+	output, err := u.Command(cmd)
+	if err != nil {
+		log.Print(err)
+		return
+	}
+
+	log.Print(output)
+	return
 }
 
 func GetRepositoryPath(app *App) string {
