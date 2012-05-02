@@ -2,6 +2,7 @@ package app
 
 import (
 	"fmt"
+	"github.com/timeredbull/tsuru/api/auth"
 	"github.com/timeredbull/tsuru/db"
 	. "launchpad.net/gocheck"
 	"launchpad.net/mgo"
@@ -90,13 +91,13 @@ func (s *S) TestGetRepositoryPath(c *C) {
 
 func (s *S) TestAll(c *C) {
 	expected := make([]App, 0)
-	app1 := App{Name: "app1"}
+	app1 := App{Name: "app1", Teams: []auth.Team{}}
 	app1.Create()
 	expected = append(expected, app1)
-	app2 := App{Name: "app2"}
+	app2 := App{Name: "app2", Teams: []auth.Team{}}
 	app2.Create()
 	expected = append(expected, app2)
-	app3 := App{Name: "app3"}
+	app3 := App{Name: "app3", Teams: []auth.Team{}}
 	app3.Create()
 	expected = append(expected, app3)
 
@@ -110,14 +111,14 @@ func (s *S) TestAll(c *C) {
 }
 
 func (s *S) TestGet(c *C) {
-	newApp := App{Name: "myApp", Framework: "django"}
+	newApp := App{Name: "myApp", Framework: "django", Teams: []auth.Team{}}
 	err := newApp.Create()
 	c.Assert(err, IsNil)
 
 	myApp := App{Name: "myApp"}
 	err = myApp.Get()
 	c.Assert(err, IsNil)
-	c.Assert(myApp, Equals, newApp)
+	c.Assert(myApp, DeepEquals, newApp)
 
 	err = myApp.Destroy()
 	c.Assert(err, IsNil)

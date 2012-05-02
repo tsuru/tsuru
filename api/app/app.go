@@ -2,6 +2,7 @@ package app
 
 import (
 	"fmt"
+	"github.com/timeredbull/tsuru/api/auth"
 	"github.com/timeredbull/tsuru/api/unit"
 	"github.com/timeredbull/tsuru/db"
 	"launchpad.net/mgo/bson"
@@ -17,6 +18,7 @@ type App struct {
 	Name      string
 	Framework string
 	State     string
+	Teams     []auth.Team
 }
 
 func NewRepository(app *App) (err error) {

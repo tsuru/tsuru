@@ -3,6 +3,7 @@ package app
 import (
 	"bytes"
 	"encoding/json"
+	"github.com/timeredbull/tsuru/api/auth"
 	"github.com/timeredbull/tsuru/db"
 	"io/ioutil"
 	. "launchpad.net/gocheck"
@@ -57,13 +58,13 @@ func (s *S) TestUploadReturns404WhenAppDoesNotExist(c *C) {
 func (s *S) TestAppList(c *C) {
 	apps := make([]App, 0)
 	expected := make([]App, 0)
-	app1 := App{Name: "app1"}
+	app1 := App{Name: "app1", Teams: []auth.Team{}}
 	app1.Create()
 	expected = append(expected, app1)
-	app2 := App{Name: "app2"}
+	app2 := App{Name: "app2", Teams: []auth.Team{}}
 	app2.Create()
 	expected = append(expected, app2)
-	app3 := App{Name: "app3", Framework: "django", Ip: "122222"}
+	app3 := App{Name: "app3", Framework: "django", Ip: "122222", Teams: []auth.Team{}}
 	app3.Create()
 	expected = append(expected, app3)
 
@@ -102,7 +103,7 @@ func (s *S) TestDelete(c *C) {
 
 func (s *S) TestAppInfo(c *C) {
 
-	expectedApp := App{Name: "NewApp", Framework: "django"}
+	expectedApp := App{Name: "NewApp", Framework: "django", Teams: []auth.Team{}}
 	expectedApp.Create()
 
 	var myApp App
@@ -121,7 +122,7 @@ func (s *S) TestAppInfo(c *C) {
 
 	err = json.Unmarshal(body, &myApp)
 	c.Assert(err, IsNil)
-	c.Assert(myApp, Equals, expectedApp)
+	c.Assert(myApp, DeepEquals, expectedApp)
 
 	expectedApp.Destroy()
 
