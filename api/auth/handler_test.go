@@ -396,11 +396,10 @@ func (s *S) TestAddUserToTeamShouldReturnConflictIfTheUserIsAlreadyInTheGroup(c 
 }
 
 func (s *S) TestRemoveUserFromTeamShouldRemoveAUserFromATeamIfTheTeamExistAndTheUserIsMemberOfTheTeam(c *C) {
-	u := User{Email: "none@me.me", Password: "none"}
-	u.Create()
+	u := User{Email: "nonee@me.me", Password: "none"}
 	s.team.AddUser(&u)
 	db.Session.Teams().Update(bson.M{"name": s.team.Name}, s.team)
-	request, err := http.NewRequest("DELETE", "/teams/cobrateam/none@me.me?:team=cobrateam&:user=none@me.me", nil)
+	request, err := http.NewRequest("DELETE", "/teams/cobrateam/nonee@me.me?:team=cobrateam&:user=nonee@me.me", nil)
 	c.Assert(err, IsNil)
 	recorder := httptest.NewRecorder()
 	err = RemoveUserFromTeam(recorder, request, s.user)
@@ -415,7 +414,6 @@ func (s *S) TestRemoveUserFromTeamShouldRemoveAUserFromATeamIfTheTeamExistAndThe
 func (s *S) TestRemoveUserFromTeamShouldReturnNotFoundIfTheTeamDoesNotExist(c *C) {
 	request, err := http.NewRequest("DELETE", "/teams/cobrateam/none@me.me?:team=unknown&:user=none@me.me", nil)
 	c.Assert(err, IsNil)
-	request.Header.Set("Content-type", "application/json")
 	recorder := httptest.NewRecorder()
 	err = RemoveUserFromTeam(recorder, request, s.user)
 	c.Assert(err, NotNil)
@@ -428,7 +426,6 @@ func (s *S) TestRemoveUserFromTeamShouldReturnNotFoundIfTheTeamDoesNotExist(c *C
 func (s *S) TestRemoveUserfromTeamShouldReturnUnauthorizedIfTheGivenUserIsNotMemberOfTheTeam(c *C) {
 	request, err := http.NewRequest("DELETE", "/teams/cobrateam/none@me.me?:team=cobrateam&:user=none@me.me", nil)
 	c.Assert(err, IsNil)
-	request.Header.Set("Content-type", "application/json")
 	recorder := httptest.NewRecorder()
 	err = RemoveUserFromTeam(recorder, request, &User{Email: "unknown@gmail.com"})
 	c.Assert(err, NotNil)
@@ -439,13 +436,32 @@ func (s *S) TestRemoveUserfromTeamShouldReturnUnauthorizedIfTheGivenUserIsNotMem
 }
 
 func (s *S) TestRemoveUserFromTeamShouldReturnNotFoundWhenTheUserIsNotMemberOfTheTeam(c *C) {
+	u := &User{Email: "nobody@me.me", Password: "132"}
+	s.team.AddUser(u)
+	db.Session.Teams().Update(bson.M{"name": s.team.Name}, s.team)
+	defer func(t *Team, u *User) {
+		s.team.RemoveUser(u)
+		db.Session.Teams().Update(bson.M{"name": t.Name}, t)
+	}(s.team, u)
 	request, err := http.NewRequest("DELETE", "/teams/cobrateam/none@me.me?:team=cobrateam&:user=none@me.me", nil)
 	c.Assert(err, IsNil)
-	request.Header.Set("Content-type", "application/json")
 	recorder := httptest.NewRecorder()
 	err = RemoveUserFromTeam(recorder, request, s.user)
 	c.Assert(err, NotNil)
 	e, ok := err.(*errors.Http)
 	c.Assert(ok, Equals, true)
 	c.Assert(e.Code, Equals, http.StatusNotFound)
+}
+
+func (s *S) TestRemoveUserFromTeamShouldReturnForbiddenIfTheUserIsTheLastInTheTeam(c *C) {
+	url := "/teams/cobrateam/timeredbull@globo.com?:team=cobrateam&:user=timeredbull@globo.com"
+	request, err := http.NewRequest("DELETE", url, nil)
+	c.Assert(err, IsNil)
+	recorder := httptest.NewRecorder()
+	err = RemoveUserFromTeam(recorder, request, s.user)
+	c.Assert(err, NotNil)
+	e, ok := err.(*errors.Http)
+	c.Assert(ok, Equals, true)
+	c.Assert(e.Code, Equals, http.StatusForbidden)
+	c.Assert(e, ErrorMatches, "^You can not remove this user from this team, because it is the last user within the team, and a team can not be orphaned$")
 }
