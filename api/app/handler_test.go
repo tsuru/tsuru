@@ -102,12 +102,12 @@ func (s *S) TestDelete(c *C) {
 
 func (s *S) TestAppInfo(c *C) {
 
-	exptectedApp := App{Name: "NewApp", Framework: "django"}
-	exptectedApp.Create()
+	expectedApp := App{Name: "NewApp", Framework: "django"}
+	expectedApp.Create()
 
 	var myApp App
 
-	request, err := http.NewRequest("GET", "/apps/"+exptectedApp.Name+"?:name="+exptectedApp.Name, nil)
+	request, err := http.NewRequest("GET", "/apps/"+expectedApp.Name+"?:name="+expectedApp.Name, nil)
 	request.Header.Set("Content-Type", "application/json")
 	recorder := httptest.NewRecorder()
 	c.Assert(err, IsNil)
@@ -121,9 +121,9 @@ func (s *S) TestAppInfo(c *C) {
 
 	err = json.Unmarshal(body, &myApp)
 	c.Assert(err, IsNil)
-	c.Assert(myApp, Equals, exptectedApp)
+	c.Assert(myApp, Equals, expectedApp)
 
-	exptectedApp.Destroy()
+	expectedApp.Destroy()
 
 }
 
