@@ -1,6 +1,7 @@
 package app
 
 import (
+	"errors"
 	"fmt"
 	"github.com/timeredbull/tsuru/api/auth"
 	"github.com/timeredbull/tsuru/api/unit"
@@ -110,5 +111,38 @@ func (app *App) Destroy() error {
 	u := unit.Unit{Name: app.Name, Type: app.Framework}
 	u.Destroy()
 
+	return nil
+}
+
+func (app *App) hasTeam(team *auth.Team) bool {
+	for _, t := range app.Teams {
+		if t.Name == team.Name {
+			return true
+		}
+	}
+	return false
+}
+
+func (app *App) GrantAccess(team *auth.Team) error {
+	if app.hasTeam(team) {
+		return errors.New("This team has already access to this app")
+	}
+	app.Teams = append(app.Teams, *team)
+	return nil
+}
+
+func (app *App) RevokeAccess(team *auth.Team) error {
+	index := -1
+	for i, t := range app.Teams {
+		if t.Name == team.Name {
+			index = i
+		}
+	}
+	if index < 0 {
+		return errors.New("This team does not have access to this app")
+	}
+	last := len(app.Teams) - 1
+	app.Teams[index] = app.Teams[last]
+	app.Teams = app.Teams[:last]
 	return nil
 }

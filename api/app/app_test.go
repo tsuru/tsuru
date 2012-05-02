@@ -12,10 +12,34 @@ import (
 	"testing"
 )
 
+type hasAccessToChecker struct{}
+
+func (c *hasAccessToChecker) Info() *CheckerInfo {
+	return &CheckerInfo{Name: "HasAccessTo", Params: []string{"team", "app"}}
+}
+
+func (c *hasAccessToChecker) Check(params []interface{}, names []string) (bool, string) {
+	if len(params) != 2 {
+		return false, "you must provide two parameters"
+	}
+	team, ok := params[0].(auth.Team)
+	if !ok {
+		return false, "first parameter should be a team instance"
+	}
+	app, ok := params[1].(App)
+	if !ok {
+		return false, "second parameter should be an app instance"
+	}
+	return app.hasTeam(&team), ""
+}
+
+var HasAccessTo Checker = &hasAccessToChecker{}
+
 func Test(t *testing.T) { TestingT(t) }
 
 type S struct {
 	session *mgo.Session
+	team    auth.Team
 }
 
 var _ = Suite(&S{})
@@ -24,6 +48,8 @@ func (s *S) SetUpSuite(c *C) {
 	var err error
 	db.Session, err = db.Open("127.0.0.1:27017", "tsuru_app_test")
 	c.Assert(err, IsNil)
+	s.team = auth.Team{Name: "tsuruteam"}
+	db.Session.Teams().Insert(s.team)
 }
 
 func (s *S) TearDownSuite(c *C) {
@@ -32,8 +58,13 @@ func (s *S) TearDownSuite(c *C) {
 }
 
 func (s *S) TearDownTest(c *C) {
-	err := db.Session.Apps().RemoveAll(nil)
+	var apps []App
+	err := db.Session.Apps().Find(nil).All(&apps)
 	c.Assert(err, IsNil)
+	for _, app := range apps {
+		err = app.Destroy()
+		c.Assert(err, IsNil)
+	}
 }
 
 func (s *S) TestNewRepository(c *C) {
@@ -176,4 +207,32 @@ func (s *S) TestCantCreateTwoAppsWithTheSameName(c *C) {
 	c.Assert(err, NotNil)
 
 	a.Destroy()
+}
+
+func (s *S) TestGrantAccess(c *C) {
+	a := App{Name: "appName", Framework: "django", Teams: []auth.Team{}}
+	err := a.GrantAccess(&s.team)
+	c.Assert(err, IsNil)
+	c.Assert(s.team, HasAccessTo, a)
+}
+
+func (s *S) TestGrantAccessFailsIfTheTeamAlreadyHasAccessToTheApp(c *C) {
+	a := App{Name: "appName", Framework: "django", Teams: []auth.Team{s.team}}
+	err := a.GrantAccess(&s.team)
+	c.Assert(err, NotNil)
+	c.Assert(err, ErrorMatches, "^This team has already access to this app$")
+}
+
+func (s *S) TestRevokeAccess(c *C) {
+	a := App{Name: "appName", Framework: "django", Teams: []auth.Team{s.team}}
+	err := a.RevokeAccess(&s.team)
+	c.Assert(err, IsNil)
+	c.Assert(s.team, Not(HasAccessTo), a)
+}
+
+func (s *S) TestRevokeAccessFailsIfTheTeamsDoesNotHaveAccessToTheApp(c *C) {
+	a := App{Name: "appName", Framework: "django", Teams: []auth.Team{}}
+	err := a.RevokeAccess(&s.team)
+	c.Assert(err, NotNil)
+	c.Assert(err, ErrorMatches, "^This team does not have access to this app$")
 }
