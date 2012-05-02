@@ -1,8 +1,7 @@
-package unit_test
+package unit
 
 import (
 	"flag"
-	"github.com/timeredbull/tsuru/api/unit"
 	"io/ioutil"
 	. "launchpad.net/gocheck"
 	"os"
@@ -24,7 +23,7 @@ func (s *S) SetUpSuite(c *C) {
 }
 
 func (s *S) TestCreateAndDestroy(c *C) {
-	u := unit.Unit{Type: "django", Name: "myUnit"}
+	u := Unit{Type: "django", Name: "myUnit"}
 
 	err := u.Create()
 	c.Assert(err, IsNil)
@@ -34,7 +33,7 @@ func (s *S) TestCreateAndDestroy(c *C) {
 }
 
 func (s *S) TestCommand(c *C) {
-	u := unit.Unit{Type: "django", Name: "myUnit"}
+	u := Unit{Type: "django", Name: "myUnit"}
 
 	err := u.Create()
 	c.Assert(err, IsNil)
@@ -48,7 +47,7 @@ func (s *S) TestCommand(c *C) {
 }
 
 func (s *S) TestSendFile(c *C) {
-	u := unit.Unit{Type: "django", Name: "myUnit"}
+	u := Unit{Type: "django", Name: "myUnit"}
 
 	err := u.Create()
 	c.Assert(err, IsNil)
@@ -68,23 +67,23 @@ func (s *S) TestSendFile(c *C) {
 }
 
 func (s *S) TestAddRelation(c *C) {
-	appUnit := unit.Unit{Type: "django", Name: "myUnit"}
-	serviceUnit := unit.Unit{Type: "mysql", Name: "MyService"}
+	appUnit := Unit{Type: "django", Name: "myUnit"}
+	serviceUnit := Unit{Type: "mysql", Name: "MyService"}
 
 	err := appUnit.AddRelation(&serviceUnit)
 	c.Assert(err, IsNil)
 }
 
 func (s *S) TestRemoveRelation(c *C) {
-	appUnit := unit.Unit{Type: "django", Name: "myUnit"}
-	serviceUnit := unit.Unit{Type: "mysql", Name: "MyService"}
+	appUnit := Unit{Type: "django", Name: "myUnit"}
+	serviceUnit := Unit{Type: "mysql", Name: "MyService"}
 
 	err := appUnit.RemoveRelation(&serviceUnit)
 	c.Assert(err, IsNil)
 }
 
 func (s *S) TestExecuteHook(c *C) {
-	appUnit := unit.Unit{Type: "django", Name: "myUnit"}
+	appUnit := Unit{Type: "django", Name: "myUnit"}
 
 	err := appUnit.ExecuteHook("requirements")
 	c.Assert(err, IsNil)

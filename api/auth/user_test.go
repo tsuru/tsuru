@@ -1,4 +1,4 @@
-package user
+package auth
 
 import (
 	"code.google.com/p/go.crypto/pbkdf2"
@@ -159,7 +159,7 @@ func (s *S) TestGetUserByTokenShouldReturnErrorWhenTheGivenTokenHasExpired(c *C)
 	c.Assert(err, IsNil)
 
 	u.Tokens[0].ValidUntil = time.Now().Add(-24 * time.Hour)
-	err = collection.Update(nil, u)
+	err = collection.Update(bson.M{"email": "wolverine@xmen.com"}, u)
 	user, err := GetUserByToken(t.Token)
 
 	c.Assert(user, IsNil)

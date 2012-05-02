@@ -1,11 +1,12 @@
-package app_test
+package app
 
 import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/timeredbull/tsuru/api/app"
+	"github.com/timeredbull/tsuru/api/auth"
 	"github.com/timeredbull/tsuru/db"
+	"github.com/timeredbull/tsuru/errors"
 	"io/ioutil"
 	. "launchpad.net/gocheck"
 	"launchpad.net/mgo/bson"
@@ -25,7 +26,7 @@ Content-Type: application/zip
 --MyBoundary--
 `
 
-	myApp := app.App{Name: "myApp", Framework: "django"}
+	myApp := App{Name: "myApp", Framework: "django"}
 	myApp.Create()
 
 	b := bytes.NewBufferString(message)
@@ -37,7 +38,7 @@ Content-Type: application/zip
 	c.Assert(err, IsNil)
 
 	recorder := httptest.NewRecorder()
-	err = app.Upload(recorder, request)
+	err = Upload(recorder, request)
 	c.Assert(err, IsNil)
 	c.Assert(recorder.Code, Equals, 200)
 	c.Assert(recorder.Body.String(), Equals, "success")
@@ -46,38 +47,38 @@ Content-Type: application/zip
 }
 
 func (s *S) TestUploadReturns404WhenAppDoesNotExist(c *C) {
-	myApp := app.App{Name: "myAppThatDoestNotExists", Framework: "django"}
+	myApp := App{Name: "myAppThatDoestNotExists", Framework: "django"}
 	request, err := http.NewRequest("POST", "/apps"+myApp.Name+"/application?:name="+myApp.Name, nil)
 	c.Assert(err, IsNil)
 
 	recorder := httptest.NewRecorder()
-	err = app.Upload(recorder, request)
+	err = Upload(recorder, request)
 	c.Assert(err, IsNil)
 	c.Assert(recorder.Code, Equals, 404)
 }
 
 func (s *S) TestCloneRepositoryHandler(c *C) {
-	a := app.App{Name: "someApp", Framework: "django"}
+	a := App{Name: "someApp", Framework: "django"}
 	url := fmt.Sprintf("/apps/%s/clone?:name=%s", a.Name, a.Name)
 	request, err := http.NewRequest("GET", url, nil)
 	c.Assert(err, IsNil)
 
 	recorder := httptest.NewRecorder()
-	err = app.CloneRepositoryHandler(recorder, request)
+	err = CloneRepositoryHandler(recorder, request)
 	c.Assert(err, IsNil)
 	c.Assert(recorder.Code, Equals, 200)
 }
 
 func (s *S) TestAppList(c *C) {
-	apps := make([]app.App, 0)
-	expected := make([]app.App, 0)
-	app1 := app.App{Name: "app1"}
+	apps := make([]App, 0)
+	expected := make([]App, 0)
+	app1 := App{Name: "app1", Teams: []auth.Team{}}
 	app1.Create()
 	expected = append(expected, app1)
-	app2 := app.App{Name: "app2"}
+	app2 := App{Name: "app2", Teams: []auth.Team{}}
 	app2.Create()
 	expected = append(expected, app2)
-	app3 := app.App{Name: "app3", Framework: "django", Ip: "122222"}
+	app3 := App{Name: "app3", Framework: "django", Ip: "122222", Teams: []auth.Team{}}
 	app3.Create()
 	expected = append(expected, app3)
 
@@ -86,7 +87,7 @@ func (s *S) TestAppList(c *C) {
 
 	request.Header.Set("Content-Type", "application/json")
 	recorder := httptest.NewRecorder()
-	err = app.AppList(recorder, request)
+	err = AppList(recorder, request)
 	c.Assert(err, IsNil)
 	c.Assert(recorder.Code, Equals, 200)
 
@@ -103,30 +104,30 @@ func (s *S) TestAppList(c *C) {
 }
 
 func (s *S) TestDelete(c *C) {
-	myApp := app.App{Name: "MyAppToDelete", Framework: "django"}
+	myApp := App{Name: "MyAppToDelete", Framework: "django"}
 	myApp.Create()
 	request, err := http.NewRequest("DELETE", "/apps/"+myApp.Name+"?:name="+myApp.Name, nil)
 	c.Assert(err, IsNil)
 
 	recorder := httptest.NewRecorder()
-	err = app.AppDelete(recorder, request)
+	err = AppDelete(recorder, request)
 	c.Assert(err, IsNil)
 	c.Assert(recorder.Code, Equals, 200)
 }
 
 func (s *S) TestAppInfo(c *C) {
 
-	exptectedApp := app.App{Name: "NewApp", Framework: "django"}
-	exptectedApp.Create()
+	expectedApp := App{Name: "NewApp", Framework: "django", Teams: []auth.Team{}}
+	expectedApp.Create()
 
-	var myApp app.App
+	var myApp App
 
-	request, err := http.NewRequest("GET", "/apps/"+exptectedApp.Name+"?:name="+exptectedApp.Name, nil)
+	request, err := http.NewRequest("GET", "/apps/"+expectedApp.Name+"?:name="+expectedApp.Name, nil)
 	request.Header.Set("Content-Type", "application/json")
 	recorder := httptest.NewRecorder()
 	c.Assert(err, IsNil)
 
-	err = app.AppInfo(recorder, request)
+	err = AppInfo(recorder, request)
 	c.Assert(err, IsNil)
 	c.Assert(recorder.Code, Equals, 200)
 
@@ -135,26 +136,26 @@ func (s *S) TestAppInfo(c *C) {
 
 	err = json.Unmarshal(body, &myApp)
 	c.Assert(err, IsNil)
-	c.Assert(myApp, Equals, exptectedApp)
+	c.Assert(myApp, DeepEquals, expectedApp)
 
-	exptectedApp.Destroy()
+	expectedApp.Destroy()
 
 }
 
 func (s *S) TestAppInfoReturns404WhenAppDoesNotExist(c *C) {
-	myApp := app.App{Name: "SomeApp"}
+	myApp := App{Name: "SomeApp"}
 	request, err := http.NewRequest("GET", "/apps/"+myApp.Name+"?:name="+myApp.Name, nil)
 	c.Assert(err, IsNil)
 
 	request.Header.Set("Content-Type", "application/json")
 	recorder := httptest.NewRecorder()
-	err = app.AppInfo(recorder, request)
+	err = AppInfo(recorder, request)
 	c.Assert(err, IsNil)
 	c.Assert(recorder.Code, Equals, 404)
 }
 
 func (s *S) TestCreateApp(c *C) {
-	a := app.App{Name: "someApp"}
+	a := App{Name: "someApp"}
 	defer a.Destroy()
 
 	b := strings.NewReader(`{"name":"someApp", "framework":"django"}`)
@@ -164,16 +165,16 @@ func (s *S) TestCreateApp(c *C) {
 
 	c.Assert(err, IsNil)
 
-	err = app.CreateAppHandler(recorder, request)
+	err = CreateAppHandler(recorder, request)
 	c.Assert(err, IsNil)
 
 	body, err := ioutil.ReadAll(recorder.Body)
 	c.Assert(err, IsNil)
 
-	repoUrl := app.GetRepositoryUrl(&a)
+	repoUrl := GetRepositoryUrl(&a)
 	var obtained map[string]string
 	expected := map[string]string{
-		"status": "success",
+		"status":         "success",
 		"repository_url": repoUrl,
 	}
 	err = json.Unmarshal(body, &obtained)
@@ -185,4 +186,83 @@ func (s *S) TestCreateApp(c *C) {
 	c.Assert(err, IsNil)
 	c.Assert(qtd, Equals, 1)
 
+}
+
+func (s *S) TestAddTeamToTheApp(c *C) {
+	t := auth.Team{Name: "itshardteam", Users: []*auth.User{s.user}}
+	a := App{Name: "itshard", Framework: "django", Teams: []auth.Team{t}}
+	err := a.Create()
+	c.Assert(err, IsNil)
+	defer a.Destroy()
+	url := fmt.Sprintf("/apps/%s/%s?:app=%s&:team=%s", a.Name, s.team.Name, a.Name, s.team.Name)
+	request, err := http.NewRequest("PUT", url, nil)
+	c.Assert(err, IsNil)
+	recorder := httptest.NewRecorder()
+	err = GrantAccessToTeamHandler(recorder, request, s.user)
+	c.Assert(err, IsNil)
+	err = a.Get()
+	c.Assert(err, IsNil)
+	c.Assert(s.team, HasAccessTo, a)
+}
+
+func (s *S) TestGrantAccessToTeamReturn404IfTheAppDoesNotExist(c *C) {
+	request, err := http.NewRequest("PUT", "/apps/a/b?:app=a&:team=b", nil)
+	c.Assert(err, IsNil)
+	recorder := httptest.NewRecorder()
+	err = GrantAccessToTeamHandler(recorder, request, s.user)
+	c.Assert(err, NotNil)
+	e, ok := err.(*errors.Http)
+	c.Assert(ok, Equals, true)
+	c.Assert(e.Code, Equals, http.StatusNotFound)
+	c.Assert(e, ErrorMatches, "^App not found$")
+}
+
+func (s *S) TestGrantAccessToTeamReturn401IfTheGivenUserDoesNotHasAccessToTheApp(c *C) {
+	a := App{Name: "itshard", Framework: "django"}
+	err := a.Create()
+	c.Assert(err, IsNil)
+	defer a.Destroy()
+	url := fmt.Sprintf("/apps/%s/%s?:app=%s&:team=%s", a.Name, s.team.Name, a.Name, s.team.Name)
+	request, err := http.NewRequest("PUT", url, nil)
+	c.Assert(err, IsNil)
+	recorder := httptest.NewRecorder()
+	err = GrantAccessToTeamHandler(recorder, request, s.user)
+	c.Assert(err, NotNil)
+	e, ok := err.(*errors.Http)
+	c.Assert(ok, Equals, true)
+	c.Assert(e.Code, Equals, http.StatusUnauthorized)
+	c.Assert(e, ErrorMatches, "^User unauthorized$")
+}
+
+func (s *S) TestGrantAccessToTeamReturn404IfTheTeamDoesNotExist(c *C) {
+	a := App{Name: "itshard", Framework: "django", Teams: []auth.Team{s.team}}
+	err := a.Create()
+	c.Assert(err, IsNil)
+	defer a.Destroy()
+	url := fmt.Sprintf("/apps/%s/a?:app=%s&:team=a", a.Name, a.Name)
+	request, err := http.NewRequest("PUT", url, nil)
+	c.Assert(err, IsNil)
+	recorder := httptest.NewRecorder()
+	err = GrantAccessToTeamHandler(recorder, request, s.user)
+	c.Assert(err, NotNil)
+	e, ok := err.(*errors.Http)
+	c.Assert(ok, Equals, true)
+	c.Assert(e.Code, Equals, http.StatusNotFound)
+	c.Assert(e, ErrorMatches, "^Team not found$")
+}
+
+func (s *S) TestGrantAccessToTeamReturn409IfTheTeamHasAlreadyAccessToTheApp(c *C) {
+	a := App{Name: "itshard", Framework: "django", Teams: []auth.Team{s.team}}
+	err := a.Create()
+	c.Assert(err, IsNil)
+	defer a.Destroy()
+	url := fmt.Sprintf("/apps/%s/%s?:app=%s&:team=%s", a.Name, s.team.Name, a.Name, s.team.Name)
+	request, err := http.NewRequest("PUT", url, nil)
+	c.Assert(err, IsNil)
+	recorder := httptest.NewRecorder()
+	err = GrantAccessToTeamHandler(recorder, request, s.user)
+	c.Assert(err, NotNil)
+	e, ok := err.(*errors.Http)
+	c.Assert(ok, Equals, true)
+	c.Assert(e.Code, Equals, http.StatusConflict)
 }

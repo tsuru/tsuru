@@ -6,12 +6,12 @@ import (
 	"."
 	"github.com/bmizerany/pat"
 	"github.com/timeredbull/tsuru/api/app"
-	"github.com/timeredbull/tsuru/api/service"
 	"github.com/timeredbull/tsuru/api/auth"
+	"github.com/timeredbull/tsuru/api/service"
 	"github.com/timeredbull/tsuru/db"
 	"github.com/timeredbull/tsuru/log"
-	"log/syslog"
 	stdlog "log"
+	"log/syslog"
 	"net/http"
 )
 
@@ -42,10 +42,15 @@ func main() {
 	m.Post("/apps/:name/application", webserver.Handler(app.Upload))
 	m.Get("/apps", webserver.Handler(app.AppList))
 	m.Post("/apps", webserver.Handler(app.CreateAppHandler))
+	m.Put("/apps/:app/:team", webserver.AuthorizationRequiredHandler(app.GrantAccessToTeamHandler))
 
-	m.Post("/users", webserver.Handler(user.CreateUser))
-	m.Post("/users/:email/tokens", webserver.Handler(user.Login))
-	m.Get("/users/check-authorization", webserver.Handler(user.CheckAuthorization))
+	m.Post("/users", webserver.Handler(auth.CreateUser))
+	m.Post("/users/:email/tokens", webserver.Handler(auth.Login))
+	m.Get("/users/check-authorization", webserver.Handler(auth.CheckAuthorization))
+
+	m.Post("/teams", webserver.AuthorizationRequiredHandler(auth.CreateTeam))
+	m.Put("/teams/:team/:user", webserver.AuthorizationRequiredHandler(auth.AddUserToTeam))
+	m.Del("/teams/:team/:user", webserver.AuthorizationRequiredHandler(auth.RemoveUserFromTeam))
 
 	log.Fatal(http.ListenAndServe(":4000", m))
 }

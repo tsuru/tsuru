@@ -16,6 +16,12 @@ func Print(v ...interface{}) {
 	}
 }
 
+func Printf(format string, v ...interface{}) {
+	if Target != nil {
+		Target.Printf(format, v...)
+	}
+}
+
 func Panic(v ...interface{}) {
 	if Target != nil {
 		Target.Panic(v...)

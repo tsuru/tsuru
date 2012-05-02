@@ -1,8 +1,8 @@
-package app_test
+package app
 
 import (
 	"fmt"
-	"github.com/timeredbull/tsuru/api/app"
+	"github.com/timeredbull/tsuru/api/auth"
 	"github.com/timeredbull/tsuru/db"
 	. "launchpad.net/gocheck"
 	"launchpad.net/mgo"
@@ -12,10 +12,35 @@ import (
 	"testing"
 )
 
+type hasAccessToChecker struct{}
+
+func (c *hasAccessToChecker) Info() *CheckerInfo {
+	return &CheckerInfo{Name: "HasAccessTo", Params: []string{"team", "app"}}
+}
+
+func (c *hasAccessToChecker) Check(params []interface{}, names []string) (bool, string) {
+	if len(params) != 2 {
+		return false, "you must provide two parameters"
+	}
+	team, ok := params[0].(auth.Team)
+	if !ok {
+		return false, "first parameter should be a team instance"
+	}
+	app, ok := params[1].(App)
+	if !ok {
+		return false, "second parameter should be an app instance"
+	}
+	return app.hasTeam(&team), ""
+}
+
+var HasAccessTo Checker = &hasAccessToChecker{}
+
 func Test(t *testing.T) { TestingT(t) }
 
 type S struct {
 	session *mgo.Session
+	team    auth.Team
+	user    *auth.User
 }
 
 var _ = Suite(&S{})
@@ -24,6 +49,10 @@ func (s *S) SetUpSuite(c *C) {
 	var err error
 	db.Session, err = db.Open("127.0.0.1:27017", "tsuru_app_test")
 	c.Assert(err, IsNil)
+	s.user = &auth.User{Email: "whydidifall@thewho.com", Password: "123"}
+	s.user.Create()
+	s.team = auth.Team{Name: "tsuruteam", Users: []*auth.User{s.user}}
+	db.Session.Teams().Insert(s.team)
 }
 
 func (s *S) TearDownSuite(c *C) {
@@ -32,16 +61,21 @@ func (s *S) TearDownSuite(c *C) {
 }
 
 func (s *S) TearDownTest(c *C) {
-	err := db.Session.Apps().RemoveAll(nil)
+	var apps []App
+	err := db.Session.Apps().Find(nil).All(&apps)
 	c.Assert(err, IsNil)
+	for _, app := range apps {
+		err = app.Destroy()
+		c.Assert(err, IsNil)
+	}
 }
 
 func (s *S) TestNewRepository(c *C) {
-	a := app.App{Name: "foobar"}
-	err := app.NewRepository(&a)
+	a := App{Name: "foobar"}
+	err := NewRepository(&a)
 	c.Assert(err, IsNil)
 
-	repoPath := app.GetRepositoryPath(&a)
+	repoPath := GetRepositoryPath(&a)
 	_, err = os.Open(repoPath) // test if repository dir exists
 	c.Assert(err, IsNil)
 
@@ -53,61 +87,61 @@ func (s *S) TestNewRepository(c *C) {
 }
 
 func (s *S) TestDeleteGitRepository(c *C) {
-	a := &app.App{Name: "someApp"}
-	repoPath := app.GetRepositoryPath(a)
+	a := &App{Name: "someApp"}
+	repoPath := GetRepositoryPath(a)
 
-	err := app.NewRepository(a)
+	err := NewRepository(a)
 	c.Assert(err, IsNil)
 
 	_, err = os.Open(path.Join(repoPath, "config"))
 	c.Assert(err, IsNil)
 
-	app.DeleteRepository(a)
+	DeleteRepository(a)
 	_, err = os.Open(repoPath)
 	c.Assert(err, NotNil)
 }
 
 func (s *S) TestCloneRepository(c *C) {
-	a := app.App{Name: "barfoo"}
-	err := app.CloneRepository(&a)
+	a := App{Name: "barfoo"}
+	err := CloneRepository(&a)
 	c.Assert(err, IsNil)
 }
 
 func (s *S) TestGetRepositoryUrl(c *C) {
-	a := app.App{Name: "foobar"}
-	url := app.GetRepositoryUrl(&a)
+	a := App{Name: "foobar"}
+	url := GetRepositoryUrl(&a)
 	expected := fmt.Sprintf("git@tsuru.plataformas.glb.com:%s.git", a.Name)
 	c.Assert(url, Equals, expected)
 }
 
 func (s *S) TestGetRepositoryName(c *C) {
-	a := app.App{Name: "someApp"}
-	obtained := app.GetRepositoryName(&a)
+	a := App{Name: "someApp"}
+	obtained := GetRepositoryName(&a)
 	expected := fmt.Sprintf("%s.git", a.Name)
 	c.Assert(obtained, Equals, expected)
 }
 
 func (s *S) TestGetRepositoryPath(c *C) {
-	a := app.App{Name: "someApp"}
+	a := App{Name: "someApp"}
 	home := os.Getenv("HOME")
-	obtained := app.GetRepositoryPath(&a)
-	expected := path.Join(home, "../git", app.GetRepositoryName(&a))
+	obtained := GetRepositoryPath(&a)
+	expected := path.Join(home, "../git", GetRepositoryName(&a))
 	c.Assert(obtained, Equals, expected)
 }
 
 func (s *S) TestAll(c *C) {
-	expected := make([]app.App, 0)
-	app1 := app.App{Name: "app1"}
+	expected := make([]App, 0)
+	app1 := App{Name: "app1", Teams: []auth.Team{}}
 	app1.Create()
 	expected = append(expected, app1)
-	app2 := app.App{Name: "app2"}
+	app2 := App{Name: "app2", Teams: []auth.Team{}}
 	app2.Create()
 	expected = append(expected, app2)
-	app3 := app.App{Name: "app3"}
+	app3 := App{Name: "app3", Teams: []auth.Team{}}
 	app3.Create()
 	expected = append(expected, app3)
 
-	appList, err := app.AllApps()
+	appList, err := AllApps()
 	c.Assert(err, IsNil)
 	c.Assert(expected, DeepEquals, appList)
 
@@ -117,22 +151,22 @@ func (s *S) TestAll(c *C) {
 }
 
 func (s *S) TestGet(c *C) {
-	newApp := app.App{Name: "myApp", Framework: "django"}
+	newApp := App{Name: "myApp", Framework: "django", Teams: []auth.Team{}}
 	err := newApp.Create()
 	c.Assert(err, IsNil)
 
-	myApp := app.App{Name: "myApp"}
+	myApp := App{Name: "myApp"}
 	err = myApp.Get()
 	c.Assert(err, IsNil)
-	c.Assert(myApp, Equals, newApp)
+	c.Assert(myApp, DeepEquals, newApp)
 
 	err = myApp.Destroy()
 	c.Assert(err, IsNil)
 }
 
 func (s *S) TestDestroy(c *C) {
-	a := app.App{
-		Name: "aName",
+	a := App{
+		Name:      "aName",
 		Framework: "django",
 	}
 
@@ -147,20 +181,20 @@ func (s *S) TestDestroy(c *C) {
 }
 
 func (s *S) TestCreate(c *C) {
-	a := app.App{}
+	a := App{}
 	a.Name = "appName"
 	a.Framework = "django"
 
 	err := a.Create()
 	c.Assert(err, IsNil)
 
-	repoPath := app.GetRepositoryPath(&a)
+	repoPath := GetRepositoryPath(&a)
 	_, err = os.Open(repoPath) // test if repository dir exists
 	c.Assert(err, IsNil)
 
 	c.Assert(a.State, Equals, "Pending")
 
-	var retrievedApp app.App
+	var retrievedApp App
 	err = db.Session.Apps().Find(bson.M{"name": a.Name}).One(&retrievedApp)
 	c.Assert(err, IsNil)
 	c.Assert(retrievedApp.Name, Equals, a.Name)
@@ -174,7 +208,7 @@ func (s *S) TestCreate(c *C) {
 }
 
 func (s *S) TestCantCreateTwoAppsWithTheSameName(c *C) {
-	a := app.App{Name: "appName", Framework: "django"}
+	a := App{Name: "appName", Framework: "django"}
 	err := a.Create()
 	c.Assert(err, IsNil)
 
@@ -182,4 +216,54 @@ func (s *S) TestCantCreateTwoAppsWithTheSameName(c *C) {
 	c.Assert(err, NotNil)
 
 	a.Destroy()
+}
+
+func (s *S) TestGrantAccess(c *C) {
+	a := App{Name: "appName", Framework: "django", Teams: []auth.Team{}}
+	err := a.GrantAccess(&s.team)
+	c.Assert(err, IsNil)
+	c.Assert(s.team, HasAccessTo, a)
+}
+
+func (s *S) TestGrantAccessFailsIfTheTeamAlreadyHasAccessToTheApp(c *C) {
+	a := App{Name: "appName", Framework: "django", Teams: []auth.Team{s.team}}
+	err := a.GrantAccess(&s.team)
+	c.Assert(err, NotNil)
+	c.Assert(err, ErrorMatches, "^This team has already access to this app$")
+}
+
+func (s *S) TestRevokeAccess(c *C) {
+	a := App{Name: "appName", Framework: "django", Teams: []auth.Team{s.team}}
+	err := a.RevokeAccess(&s.team)
+	c.Assert(err, IsNil)
+	c.Assert(s.team, Not(HasAccessTo), a)
+}
+
+func (s *S) TestRevokeAccessFailsIfTheTeamsDoesNotHaveAccessToTheApp(c *C) {
+	a := App{Name: "appName", Framework: "django", Teams: []auth.Team{}}
+	err := a.RevokeAccess(&s.team)
+	c.Assert(err, NotNil)
+	c.Assert(err, ErrorMatches, "^This team does not have access to this app$")
+}
+
+func (s *S) TestCheckUserAccess(c *C) {
+	u := &auth.User{Email: "boy@thewho.com", Password: "123"}
+	u2 := &auth.User{Email: "boy2@thewho.com", Password: "123"}
+	t := auth.Team{Name: "hello", Users: []*auth.User{u}}
+	a := App{Name: "appName", Framework: "django", Teams: []auth.Team{t}}
+	c.Assert(a.CheckUserAccess(u), Equals, true)
+	c.Assert(a.CheckUserAccess(u2), Equals, false)
+}
+
+func (s *S) TestCheckUserAccessWithMultipleUsersOnMultipleGroupsOnApp(c *C) {
+	one := &auth.User{Email: "imone@thewho.com", Password: "123"}
+	punk := &auth.User{Email: "punk@thewho.com", Password: "123"}
+	cut := &auth.User{Email: "cutmyhair@thewho.com", Password: "123"}
+	who := auth.Team{Name: "TheWho", Users: []*auth.User{one, punk, cut}}
+	what := auth.Team{Name: "TheWhat", Users: []*auth.User{one, punk}}
+	where := auth.Team{Name: "TheWhere", Users: []*auth.User{one}}
+	a := App{Name: "appppppp", Teams: []auth.Team{who, what, where}}
+	c.Assert(a.CheckUserAccess(cut), Equals, true)
+	c.Assert(a.CheckUserAccess(punk), Equals, true)
+	c.Assert(a.CheckUserAccess(one), Equals, true)
 }

@@ -4,9 +4,13 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"github.com/timeredbull/tsuru/api/auth"
 	"github.com/timeredbull/tsuru/api/unit"
+	"github.com/timeredbull/tsuru/db"
+	"github.com/timeredbull/tsuru/errors"
+	"github.com/timeredbull/tsuru/log"
 	"io/ioutil"
-	"log"
+	"launchpad.net/mgo/bson"
 	"net/http"
 	"os"
 	"os/exec"
@@ -157,4 +161,25 @@ func CreateAppHandler(w http.ResponseWriter, r *http.Request) error {
 
 	fmt.Fprint(w, bytes.NewBuffer(jsonMsg).String())
 	return nil
+}
+
+func GrantAccessToTeamHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
+	t := new(auth.Team)
+	app := &App{Name: r.URL.Query().Get(":app")}
+	err := app.Get()
+	if err != nil {
+		return &errors.Http{Code: http.StatusNotFound, Message: "App not found"}
+	}
+	if !app.CheckUserAccess(u) {
+		return &errors.Http{Code: http.StatusUnauthorized, Message: "User unauthorized"}
+	}
+	err = db.Session.Teams().Find(bson.M{"name": r.URL.Query().Get(":team")}).One(t)
+	if err != nil {
+		return &errors.Http{Code: http.StatusNotFound, Message: "Team not found"}
+	}
+	err = app.GrantAccess(t)
+	if err != nil {
+		return &errors.Http{Code: http.StatusConflict, Message: err.Error()}
+	}
+	return db.Session.Apps().Update(bson.M{"name": app.Name}, app)
 }
