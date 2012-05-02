@@ -351,5 +351,5 @@ func (s *S) TestRevokeAccessFromTeamReturn403IfTheTeamIsTheLastWithAccessToTheAp
 	e, ok := err.(*errors.Http)
 	c.Assert(ok, Equals, true)
 	c.Assert(e.Code, Equals, http.StatusForbidden)
-	c.Assert(e, ErrorMatches, "^You can not revoke the acces from this team, because it is the unique team with access to the app, and an app can not be orphaned$")
+	c.Assert(e, ErrorMatches, "^You can not revoke the access from this team, because it is the unique team with access to the app, and an app can not be orphaned$")
 }

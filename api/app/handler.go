@@ -192,7 +192,7 @@ func RevokeAccessFromTeamHandler(w http.ResponseWriter, r *http.Request, u *auth
 		return &errors.Http{Code: http.StatusNotFound, Message: "Team not found"}
 	}
 	if len(app.Teams) == 1 {
-		msg := "You can not revoke the acces from this team, because it is the unique team with access to the app, and an app can not be orphaned"
+		msg := "You can not revoke the access from this team, because it is the unique team with access to the app, and an app can not be orphaned"
 		return &errors.Http{Code: http.StatusForbidden, Message: msg}
 	}
 	err = app.RevokeAccess(t)
