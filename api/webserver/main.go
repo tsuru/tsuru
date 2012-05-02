@@ -4,9 +4,11 @@ package main
 
 import (
 	"."
+	"flag"
 	"github.com/bmizerany/pat"
 	"github.com/timeredbull/tsuru/api/app"
 	"github.com/timeredbull/tsuru/api/auth"
+	"github.com/timeredbull/tsuru/config"
 	"github.com/timeredbull/tsuru/api/service"
 	"github.com/timeredbull/tsuru/db"
 	"github.com/timeredbull/tsuru/log"
@@ -21,8 +23,13 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-
-	db.Session, err = db.Open("127.0.0.1:27017", "tsuru")
+	var configFile = flag.String("config", "/etc/tsuru/tsuru.conf", "tsuru config file")
+	flag.Parse()
+	err = config.ReadConfigFile(*configFile)
+	if err != nil {
+		log.Panic(err.Error())
+	}
+	db.Session, err = db.Open(config.GetString("database:host"), config.GetString("database:name"))
 	if err != nil {
 		log.Panic(err.Error())
 	}
