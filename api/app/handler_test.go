@@ -266,3 +266,102 @@ func (s *S) TestGrantAccessToTeamReturn409IfTheTeamHasAlreadyAccessToTheApp(c *C
 	c.Assert(ok, Equals, true)
 	c.Assert(e.Code, Equals, http.StatusConflict)
 }
+
+func (s *S) TestRevokeAccessFromTeam(c *C) {
+	t := auth.Team{Name: "abcd"}
+	a := App{Name: "itshard", Framework: "django", Teams: []auth.Team{s.team, t}}
+	err := a.Create()
+	c.Assert(err, IsNil)
+	defer a.Destroy()
+	url := fmt.Sprintf("/apps/%s/%s?:app=%s&:team=%s", a.Name, s.team.Name, a.Name, s.team.Name)
+	request, err := http.NewRequest("DELETE", url, nil)
+	c.Assert(err, IsNil)
+	recorder := httptest.NewRecorder()
+	err = RevokeAccessFromTeamHandler(recorder, request, s.user)
+	c.Assert(err, IsNil)
+	a.Get()
+	c.Assert(s.team, Not(HasAccessTo), a)
+}
+
+func (s *S) TestRevokeAccessFromTeamReturn404IfTheAppDoesNotExist(c *C) {
+	request, err := http.NewRequest("DELETE", "/apps/a/b?:app=a&:team=b", nil)
+	c.Assert(err, IsNil)
+	recorder := httptest.NewRecorder()
+	err = RevokeAccessFromTeamHandler(recorder, request, s.user)
+	c.Assert(err, NotNil)
+	e, ok := err.(*errors.Http)
+	c.Assert(ok, Equals, true)
+	c.Assert(e.Code, Equals, http.StatusNotFound)
+	c.Assert(e, ErrorMatches, "^App not found$")
+}
+
+func (s *S) TestRevokeAccessFromTeamReturn401IfTheGivenUserDoesNotHavePermissionInTheApp(c *C) {
+	a := App{Name: "itshard", Framework: "django"}
+	err := a.Create()
+	c.Assert(err, IsNil)
+	defer a.Destroy()
+	url := fmt.Sprintf("/apps/%s/%s?:app=%s&:team=%s", a.Name, s.team.Name, a.Name, s.team.Name)
+	request, err := http.NewRequest("DELETE", url, nil)
+	c.Assert(err, IsNil)
+	recorder := httptest.NewRecorder()
+	err = RevokeAccessFromTeamHandler(recorder, request, s.user)
+	c.Assert(err, NotNil)
+	e, ok := err.(*errors.Http)
+	c.Assert(ok, Equals, true)
+	c.Assert(e.Code, Equals, http.StatusUnauthorized)
+	c.Assert(e, ErrorMatches, "^User unauthorized$")
+}
+
+func (s *S) TestRevokeAccessFromTeamReturn404IfTheTeamDoesNotExist(c *C) {
+	a := App{Name: "itshard", Framework: "django", Teams: []auth.Team{s.team}}
+	err := a.Create()
+	c.Assert(err, IsNil)
+	defer a.Destroy()
+	url := fmt.Sprintf("/apps/%s/x?:app=%s&:team=x", a.Name, a.Name)
+	request, err := http.NewRequest("DELETE", url, nil)
+	c.Assert(err, IsNil)
+	recorder := httptest.NewRecorder()
+	err = RevokeAccessFromTeamHandler(recorder, request, s.user)
+	c.Assert(err, NotNil)
+	e, ok := err.(*errors.Http)
+	c.Assert(ok, Equals, true)
+	c.Assert(e.Code, Equals, http.StatusNotFound)
+	c.Assert(e, ErrorMatches, "^Team not found$")
+}
+
+func (s *S) TestRevokeAccessFromTeamReturn404IfTheTeamDoesNotHaveAccessToTheApp(c *C) {
+	t := auth.Team{Name: "blaaa"}
+	db.Session.Teams().Insert(t)
+	t2 := auth.Team{Name: "team2"}
+	defer db.Session.Teams().Remove(bson.M{"name": "blaaa"})
+	a := App{Name: "itshard", Framework: "django", Teams: []auth.Team{s.team, t2}}
+	err := a.Create()
+	c.Assert(err, IsNil)
+	defer a.Destroy()
+	url := fmt.Sprintf("/apps/%s/%s?:app=%s&:team=%s", a.Name, t.Name, a.Name, t.Name)
+	request, err := http.NewRequest("DELETE", url, nil)
+	c.Assert(err, IsNil)
+	recorder := httptest.NewRecorder()
+	err = RevokeAccessFromTeamHandler(recorder, request, s.user)
+	c.Assert(err, NotNil)
+	e, ok := err.(*errors.Http)
+	c.Assert(ok, Equals, true)
+	c.Assert(e.Code, Equals, http.StatusNotFound)
+}
+
+func (s *S) TestRevokeAccessFromTeamReturn403IfTheTeamIsTheLastWithAccessToTheApp(c *C) {
+	a := App{Name: "itshard", Framework: "django", Teams: []auth.Team{s.team}}
+	err := a.Create()
+	c.Assert(err, IsNil)
+	defer a.Destroy()
+	url := fmt.Sprintf("/apps/%s/%s?:app=%s&:team=%s", a.Name, s.team.Name, a.Name, s.team.Name)
+	request, err := http.NewRequest("DELETE", url, nil)
+	c.Assert(err, IsNil)
+	recorder := httptest.NewRecorder()
+	err = RevokeAccessFromTeamHandler(recorder, request, s.user)
+	c.Assert(err, NotNil)
+	e, ok := err.(*errors.Http)
+	c.Assert(ok, Equals, true)
+	c.Assert(e.Code, Equals, http.StatusForbidden)
+	c.Assert(e, ErrorMatches, "^You can not revoke the access from this team, because it is the unique team with access to the app, and an app can not be orphaned$")
+}

@@ -61,3 +61,14 @@ func (s *S) TestGetConfig(c *C) {
 	c.Assert(Get("xpto"), DeepEquals, "ble")
 	c.Assert(Get("database:host"), DeepEquals, "127.0.0.1")
 }
+
+func (s *S) TestGetString(c *C) {
+	defer func() {
+		Configs = nil
+	}()
+	configFile := "testdata/config.yml"
+	err := ReadConfigFile(configFile)
+	c.Assert(err, IsNil)
+	c.Assert(GetString("xpto"), DeepEquals, "ble")
+	c.Assert(GetString("database:host"), DeepEquals, "127.0.0.1")
+}

@@ -151,6 +151,10 @@ func RemoveUserFromTeam(w http.ResponseWriter, r *http.Request, u *User) error {
 		msg := fmt.Sprintf("You are not authorized to remove a member from the team %s", team.Name)
 		return &errors.Http{Code: http.StatusUnauthorized, Message: msg}
 	}
+	if len(team.Users) == 1 {
+		msg := "You can not remove this user from this team, because it is the last user within the team, and a team can not be orphaned"
+		return &errors.Http{Code: http.StatusForbidden, Message: msg}
+	}
 	user := User{Email: r.URL.Query().Get(":user")}
 	err = team.RemoveUser(&user)
 	if err != nil {
