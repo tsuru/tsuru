@@ -4,5 +4,4 @@ main
 *.pyc
 collect
 websrv
-deploy.tar.gz
-dist
+dist*
