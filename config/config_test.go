@@ -79,6 +79,30 @@ func (s *S) TestGetString(c *C) {
 	configFile := "testdata/config.yml"
 	err := ReadConfigFile(configFile)
 	c.Assert(err, IsNil)
-	c.Assert(GetString("xpto"), DeepEquals, "ble")
-	c.Assert(GetString("database:host"), DeepEquals, "127.0.0.1")
+	value, err := GetString("xpto")
+	c.Assert(err, IsNil)
+	c.Assert(value, Equals, "ble")
+	value, err = GetString("database:host")
+	c.Assert(err, IsNil)
+	c.Assert(value, Equals, "127.0.0.1")
+}
+
+func (s *S) TestGetStringShouldReturnErrorIfTheKeyDoesNotRepresentAString(c *C) {
+	configFile := "testdata/config.yml"
+	err := ReadConfigFile(configFile)
+	c.Assert(err, IsNil)
+	value, err := GetString("database:port")
+	c.Assert(value, Equals, "")
+	c.Assert(err, NotNil)
+	c.Assert(err, ErrorMatches, "^key database:port has non-string value$")
+}
+
+func (s *S) TestGetStringShouldReturnErrorIfTheKeyDoesNotExist(c *C) {
+	configFile := "testdata/config.yml"
+	err := ReadConfigFile(configFile)
+	c.Assert(err, IsNil)
+	value, err := GetString("xpta")
+	c.Assert(value, Equals, "")
+	c.Assert(err, NotNil)
+	c.Assert(err, ErrorMatches, "^key xpta not found$")
 }

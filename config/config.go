@@ -37,7 +37,13 @@ func Get(key string) (interface{}, error) {
 	return conf, nil
 }
 
-func GetString(key string) string {
-	value, _ := Get(key)
-	return value.(string)
+func GetString(key string) (string, error) {
+	value, err := Get(key)
+	if err != nil {
+		return "", err
+	}
+	if v, ok := value.(string); ok {
+		return v, nil
+	}
+	return "", errors.New(fmt.Sprintf("key %s has non-string value", key))
 }
