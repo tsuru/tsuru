@@ -30,7 +30,7 @@ def clean():
 
 def send():
     local("tar -czvf dist.tar.gz dist")
-    run("[ -d %(tsuru_path)s ] | mkdir -p %(tsuru_path)s" % env)
+    run("mkdir -p %(tsuru_path)s" % env)
     put(os.path.join(current_dir, "deploy.tar.gz"), env.tsuru_path)
 
 
