@@ -3,8 +3,8 @@
 set -e
 
 go test ./...
-for f in `find . -name main.go`
-do
-    go build $f
-done
-find . -name main -delete
+go build -o websrv ./api/webserver/main.go
+./websrv -dry=true -config=${PWD}/etc/tsuru.conf
+go build -o collect ./collector/main.go
+./collect -dry=true
+rm -f collect websrv

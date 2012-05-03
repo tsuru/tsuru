@@ -2,3 +2,5 @@
 *.db
 main
 *.pyc
+collect
+websrv
