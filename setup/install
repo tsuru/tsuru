@@ -10,7 +10,7 @@ echo "Cloning go"
 echo "Building go"
 cd $HOME/go/src
 [ $(which go) ] || ./all.bash
-cd $HOME 
+cd $HOME
 
 [ $GOPATH ] || echo 'export PATH=$HOME/go/bin:$HOME/.go/bin:${PATH}' >> $HOME/.bashrc
 [ $GOPATH ] || echo 'export GOPATH=$HOME/.go' >> $HOME/.bashrc
