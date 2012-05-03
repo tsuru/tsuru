@@ -28,16 +28,16 @@ def clean():
 
 
 def send():
-    local("tar -czvf dist.tar.gz dist")
+    local("tar -czf dist.tar.gz dist")
     run("mkdir -p %(tsuru_path)s" % env)
     put(os.path.join(current_dir, "dist.tar.gz"), env.tsuru_path)
 
 
 def start():
     with cd(env.tsuru_path):
-        run("tar -xvzf dist.tar.gz")
-        run("nohup %s/dist/collector >& /dev/null < /dev/null &" % env.tsuru_path, pty=False)
-        run("nohup %s/dist/webserver >& /dev/null < /dev/null &" % env.tsuru_path, pty=False)
+        run("tar -xzf dist.tar.gz")
+    run("nohup %s/dist/collector >& /dev/null < /dev/null &" % env.tsuru_path, pty=False)
+    run("nohup %s/dist/webserver >& /dev/null < /dev/null &" % env.tsuru_path, pty=False)
 
 
 def deploy():
