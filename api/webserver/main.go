@@ -60,5 +60,6 @@ func main() {
 	m.Put("/teams/:team/:user", webserver.AuthorizationRequiredHandler(auth.AddUserToTeam))
 	m.Del("/teams/:team/:user", webserver.AuthorizationRequiredHandler(auth.RemoveUserFromTeam))
 
-	log.Fatal(http.ListenAndServe(":4000", m))
+	listen := config.GetString("listen")
+	log.Fatal(http.ListenAndServe(listen, m))
 }
