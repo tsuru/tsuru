@@ -53,8 +53,26 @@ func (s *S) TestGetConfig(c *C) {
 	configFile := "testdata/config.yml"
 	err := ReadConfigFile(configFile)
 	c.Assert(err, IsNil)
-	c.Assert(Get("xpto"), DeepEquals, "ble")
-	c.Assert(Get("database:host"), DeepEquals, "127.0.0.1")
+	value, err := Get("xpto")
+	c.Assert(err, IsNil)
+	c.Assert(value, Equals, "ble")
+	value, err = Get("database:host")
+	c.Assert(err, IsNil)
+	c.Assert(value, Equals, "127.0.0.1")
+}
+
+func (s *S) TestGetConfigReturnErrorsIfTheKeyIsNotFound(c *C) {
+	configFile := "testdata/config.yml"
+	err := ReadConfigFile(configFile)
+	c.Assert(err, IsNil)
+	value, err := Get("xpta")
+	c.Assert(value, IsNil)
+	c.Assert(err, NotNil)
+	c.Assert(err, ErrorMatches, "^key xpta not found$")
+	value, err = Get("database:hhh")
+	c.Assert(value, IsNil)
+	c.Assert(err, NotNil)
+	c.Assert(err, ErrorMatches, "^key database:hhh not found$")
 }
 
 func (s *S) TestGetString(c *C) {
