@@ -23,12 +23,11 @@ var expected = map[interface{}]interface{}{
 	"xpto": "ble",
 }
 
-func resetConfig() {
+func (s *S) TearDownTest(c *C) {
 	Configs = nil
 }
 
 func (s *S) TestConfig(c *C) {
-	defer resetConfig()
 	conf := `
 database:
   host: 127.0.0.1
@@ -44,7 +43,6 @@ xpto: ble
 }
 
 func (s *S) TestConfigFile(c *C) {
-	defer resetConfig()
 	configFile := "testdata/config.yml"
 	err := ReadConfigFile(configFile)
 	c.Assert(err, IsNil)
@@ -52,9 +50,6 @@ func (s *S) TestConfigFile(c *C) {
 }
 
 func (s *S) TestGetConfig(c *C) {
-	defer func() {
-		Configs = nil
-	}()
 	configFile := "testdata/config.yml"
 	err := ReadConfigFile(configFile)
 	c.Assert(err, IsNil)
@@ -63,9 +58,6 @@ func (s *S) TestGetConfig(c *C) {
 }
 
 func (s *S) TestGetString(c *C) {
-	defer func() {
-		Configs = nil
-	}()
 	configFile := "testdata/config.yml"
 	err := ReadConfigFile(configFile)
 	c.Assert(err, IsNil)
