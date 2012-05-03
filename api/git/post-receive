@@ -1,0 +1,9 @@
+#!/bin/bash
+pushd ../
+current_dir=${PWD##*/} #see http://www.gnu.org/software/bash/manual/html_node/Shell-Parameter-Expansion.html
+popd
+
+app_name=${current_dir/.git/}
+url="http://localhost:4000/apps/${app_name}/clone"
+result=$(curl $url)
+echo $result
