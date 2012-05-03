@@ -1,6 +1,8 @@
 package config
 
 import (
+	"errors"
+	"fmt"
 	"io/ioutil"
 	"launchpad.net/goyaml"
 	"strings"
@@ -20,15 +22,28 @@ func ReadConfigFile(filePath string) error {
 	return goyaml.Unmarshal(data, &Configs)
 }
 
-func Get(key string) interface{} {
+func Get(key string) (interface{}, error) {
 	keys := strings.Split(key, ":")
-	conf := Configs[keys[0]]
-	for _, k := range keys[1:] {
-		conf = conf.(map[interface{}]interface{})[k]
+	conf, ok := Configs[keys[0]]
+	if !ok {
+		return nil, errors.New(fmt.Sprintf("key %s not found", key))
 	}
-	return conf
+	for _, k := range keys[1:] {
+		conf, ok = conf.(map[interface{}]interface{})[k]
+		if !ok {
+			return nil, errors.New(fmt.Sprintf("key %s not found", key))
+		}
+	}
+	return conf, nil
 }
 
-func GetString(key string) string {
-	return Get(key).(string)
+func GetString(key string) (string, error) {
+	value, err := Get(key)
+	if err != nil {
+		return "", err
+	}
+	if v, ok := value.(string); ok {
+		return v, nil
+	}
+	return "", errors.New(fmt.Sprintf("key %s has non-string value", key))
 }

@@ -30,7 +30,15 @@ func main() {
 	if err != nil {
 		log.Panic(err.Error())
 	}
-	db.Session, err = db.Open(config.GetString("database:host"), config.GetString("database:name"))
+	connString, err := config.GetString("database:host")
+	if err != nil {
+		panic(err)
+	}
+	dbName, err := config.GetString("database:name")
+	if err != nil {
+		panic(err)
+	}
+	db.Session, err = db.Open(connString, dbName)
 	if err != nil {
 		log.Panic(err.Error())
 	}
@@ -61,7 +69,10 @@ func main() {
 	m.Put("/teams/:team/:user", webserver.AuthorizationRequiredHandler(auth.AddUserToTeam))
 	m.Del("/teams/:team/:user", webserver.AuthorizationRequiredHandler(auth.RemoveUserFromTeam))
 
-	listen := config.GetString("listen")
+	listen, err := config.GetString("listen")
+	if err != nil {
+		panic(err)
+	}
 	if !*dry {
 		log.Fatal(http.ListenAndServe(listen, m))
 	}

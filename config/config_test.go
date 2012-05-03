@@ -23,12 +23,11 @@ var expected = map[interface{}]interface{}{
 	"xpto": "ble",
 }
 
-func resetConfig() {
+func (s *S) TearDownTest(c *C) {
 	Configs = nil
 }
 
 func (s *S) TestConfig(c *C) {
-	defer resetConfig()
 	conf := `
 database:
   host: 127.0.0.1
@@ -44,7 +43,6 @@ xpto: ble
 }
 
 func (s *S) TestConfigFile(c *C) {
-	defer resetConfig()
 	configFile := "testdata/config.yml"
 	err := ReadConfigFile(configFile)
 	c.Assert(err, IsNil)
@@ -52,23 +50,59 @@ func (s *S) TestConfigFile(c *C) {
 }
 
 func (s *S) TestGetConfig(c *C) {
-	defer func() {
-		Configs = nil
-	}()
 	configFile := "testdata/config.yml"
 	err := ReadConfigFile(configFile)
 	c.Assert(err, IsNil)
-	c.Assert(Get("xpto"), DeepEquals, "ble")
-	c.Assert(Get("database:host"), DeepEquals, "127.0.0.1")
+	value, err := Get("xpto")
+	c.Assert(err, IsNil)
+	c.Assert(value, Equals, "ble")
+	value, err = Get("database:host")
+	c.Assert(err, IsNil)
+	c.Assert(value, Equals, "127.0.0.1")
+}
+
+func (s *S) TestGetConfigReturnErrorsIfTheKeyIsNotFound(c *C) {
+	configFile := "testdata/config.yml"
+	err := ReadConfigFile(configFile)
+	c.Assert(err, IsNil)
+	value, err := Get("xpta")
+	c.Assert(value, IsNil)
+	c.Assert(err, NotNil)
+	c.Assert(err, ErrorMatches, "^key xpta not found$")
+	value, err = Get("database:hhh")
+	c.Assert(value, IsNil)
+	c.Assert(err, NotNil)
+	c.Assert(err, ErrorMatches, "^key database:hhh not found$")
 }
 
 func (s *S) TestGetString(c *C) {
-	defer func() {
-		Configs = nil
-	}()
 	configFile := "testdata/config.yml"
 	err := ReadConfigFile(configFile)
 	c.Assert(err, IsNil)
-	c.Assert(GetString("xpto"), DeepEquals, "ble")
-	c.Assert(GetString("database:host"), DeepEquals, "127.0.0.1")
+	value, err := GetString("xpto")
+	c.Assert(err, IsNil)
+	c.Assert(value, Equals, "ble")
+	value, err = GetString("database:host")
+	c.Assert(err, IsNil)
+	c.Assert(value, Equals, "127.0.0.1")
+}
+
+func (s *S) TestGetStringShouldReturnErrorIfTheKeyDoesNotRepresentAString(c *C) {
+	configFile := "testdata/config.yml"
+	err := ReadConfigFile(configFile)
+	c.Assert(err, IsNil)
+	value, err := GetString("database:port")
+	c.Assert(value, Equals, "")
+	c.Assert(err, NotNil)
+	c.Assert(err, ErrorMatches, "^key database:port has non-string value$")
+}
+
+func (s *S) TestGetStringShouldReturnErrorIfTheKeyDoesNotExist(c *C) {
+	configFile := "testdata/config.yml"
+	err := ReadConfigFile(configFile)
+	c.Assert(err, IsNil)
+	value, err := GetString("xpta")
+	c.Assert(value, Equals, "")
+	c.Assert(err, NotNil)
+	c.Assert(err, ErrorMatches, "^key xpta not found$")
 }
