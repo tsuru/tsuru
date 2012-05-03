@@ -23,7 +23,8 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	var configFile = flag.String("config", "/etc/tsuru/tsuru.conf", "tsuru config file")
+	configFile := flag.String("config", "/etc/tsuru/tsuru.conf", "tsuru config file")
+	dry := flag.Bool("dry", false, "dry-run: does not start the server (for testing purpose)")
 	flag.Parse()
 	err = config.ReadConfigFile(*configFile)
 	if err != nil {
@@ -60,5 +61,8 @@ func main() {
 	m.Put("/teams/:team/:user", webserver.AuthorizationRequiredHandler(auth.AddUserToTeam))
 	m.Del("/teams/:team/:user", webserver.AuthorizationRequiredHandler(auth.RemoveUserFromTeam))
 
-	log.Fatal(http.ListenAndServe(":4000", m))
+	listen := config.GetString("listen")
+	if !*dry {
+		log.Fatal(http.ListenAndServe(listen, m))
+	}
 }
