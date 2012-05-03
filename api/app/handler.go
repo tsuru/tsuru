@@ -131,7 +131,7 @@ func AppInfo(w http.ResponseWriter, r *http.Request) error {
 	return nil
 }
 
-func CreateAppHandler(w http.ResponseWriter, r *http.Request) error {
+func CreateAppHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	var app App
 
 	defer r.Body.Close()
@@ -145,6 +145,10 @@ func CreateAppHandler(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 
+	err = db.Session.Teams().Find(bson.M{"users.email": u.Email}).All(&app.Teams)
+	if err != nil {
+		return err
+	}
 	err = app.Create()
 	if err != nil {
 		return err

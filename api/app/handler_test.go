@@ -165,7 +165,7 @@ func (s *S) TestCreateApp(c *C) {
 
 	c.Assert(err, IsNil)
 
-	err = CreateAppHandler(recorder, request)
+	err = CreateAppHandler(recorder, request, s.user)
 	c.Assert(err, IsNil)
 
 	body, err := ioutil.ReadAll(recorder.Body)
@@ -182,10 +182,10 @@ func (s *S) TestCreateApp(c *C) {
 	c.Assert(obtained, DeepEquals, expected)
 	c.Assert(recorder.Code, Equals, 200)
 
-	qtd, err := db.Session.Apps().Find(bson.M{"name": "someApp"}).Count()
+	var gotApp App
+	err = db.Session.Apps().Find(bson.M{"name": "someApp"}).One(&gotApp)
 	c.Assert(err, IsNil)
-	c.Assert(qtd, Equals, 1)
-
+	c.Assert(s.team, HasAccessTo, gotApp)
 }
 
 func (s *S) TestAddTeamToTheApp(c *C) {
