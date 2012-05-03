@@ -160,10 +160,9 @@ func (s *S) TestCreateApp(c *C) {
 
 	b := strings.NewReader(`{"name":"someApp", "framework":"django"}`)
 	request, err := http.NewRequest("POST", "/apps", b)
+	c.Assert(err, IsNil)
 	request.Header.Set("Content-Type", "application/json")
 	recorder := httptest.NewRecorder()
-
-	c.Assert(err, IsNil)
 
 	err = CreateAppHandler(recorder, request, s.user)
 	c.Assert(err, IsNil)
@@ -186,6 +185,21 @@ func (s *S) TestCreateApp(c *C) {
 	err = db.Session.Apps().Find(bson.M{"name": "someApp"}).One(&gotApp)
 	c.Assert(err, IsNil)
 	c.Assert(s.team, HasAccessTo, gotApp)
+}
+
+func (s *S) TestCreateAppReturns403IfTheUserIsNotMemberOfAnyTeam(c *C) {
+	u := &auth.User{Email: "thetrees@rush.com", Password: "123"}
+	b := strings.NewReader(`{"name":"someApp", "framework":"django"}`)
+	request, err := http.NewRequest("POST", "/apps", b)
+	c.Assert(err, IsNil)
+	request.Header.Set("Content-Type", "application/json")
+	recorder := httptest.NewRecorder()
+	err = CreateAppHandler(recorder, request, u)
+	c.Assert(err, NotNil)
+	e, ok := err.(*errors.Http)
+	c.Assert(ok, Equals, true)
+	c.Assert(e.Code, Equals, http.StatusForbidden)
+	c.Assert(e, ErrorMatches, "^In order to create an app, you should be member of at least one team$")
 }
 
 func (s *S) TestAddTeamToTheApp(c *C) {

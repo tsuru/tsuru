@@ -149,6 +149,10 @@ func CreateAppHandler(w http.ResponseWriter, r *http.Request, u *auth.User) erro
 	if err != nil {
 		return err
 	}
+	if len(app.Teams) < 1 {
+		msg := "In order to create an app, you should be member of at least one team"
+		return &errors.Http{Code: http.StatusForbidden, Message: msg}
+	}
 	err = app.Create()
 	if err != nil {
 		return err
