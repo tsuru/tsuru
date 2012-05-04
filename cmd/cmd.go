@@ -1,9 +1,14 @@
 package cmd
 
-import "fmt"
+import (
+	"fmt"
+	"io"
+)
 
 type Manager struct {
 	commands map[string]Command
+	Stdout   io.Writer
+	Stderr   io.Writer
 }
 
 func (m *Manager) Register(command Command) {
@@ -16,6 +21,19 @@ func (m *Manager) Register(command Command) {
 		panic(fmt.Sprintf("command already registered: %s", name))
 	}
 	m.commands[name] = command
+}
+
+func (m *Manager) Run(args []string) {
+	command, exist := m.commands[args[0]]
+	if !exist {
+		io.WriteString(m.Stderr, fmt.Sprintf("command %s does not exist", args[0]))
+		return
+	}
+	command.Run()
+}
+
+func newManager(stdout, stderr io.Writer) Manager {
+	return Manager{Stdout: stdout, Stderr: stderr}
 }
 
 type Command interface {
