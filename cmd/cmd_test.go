@@ -15,7 +15,7 @@ var stdout, stderr bytes.Buffer
 var manager Manager
 
 func (s *S) SetUpTest(c *C) {
-	manager = newManager(&stdout, &stderr)
+	manager = NewManager(&stdout, &stderr)
 }
 
 var xpto = 0

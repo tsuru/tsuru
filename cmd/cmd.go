@@ -32,7 +32,7 @@ func (m *Manager) Run(args []string) {
 	command.Run()
 }
 
-func newManager(stdout, stderr io.Writer) Manager {
+func NewManager(stdout, stderr io.Writer) Manager {
 	return Manager{Stdout: stdout, Stderr: stderr}
 }
 
