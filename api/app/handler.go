@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/timeredbull/tsuru/api/auth"
 	"github.com/timeredbull/tsuru/api/unit"
+	"github.com/timeredbull/tsuru/api/git"
 	"github.com/timeredbull/tsuru/db"
 	"github.com/timeredbull/tsuru/errors"
 	"github.com/timeredbull/tsuru/log"
@@ -89,7 +90,7 @@ func Upload(w http.ResponseWriter, r *http.Request) error {
 
 func CloneRepositoryHandler(w http.ResponseWriter, r *http.Request) error {
 	app := App{Name: r.URL.Query().Get(":name")}
-	CloneRepository(&app)
+	git.CloneRepository(&app)
 	fmt.Fprint(w, "success")
 	return nil
 }
@@ -152,7 +153,7 @@ func CreateAppHandler(w http.ResponseWriter, r *http.Request) error {
 
 	msg := map[string]string{
 		"status":         "success",
-		"repository_url": GetRepositoryUrl(&app),
+		"repository_url": git.GetRepositoryUrl(&app),
 	}
 	jsonMsg, err := json.Marshal(msg)
 	if err != nil {
