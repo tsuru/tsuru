@@ -58,15 +58,46 @@ func (s *S) TestUploadReturns404WhenAppDoesNotExist(c *C) {
 }
 
 func (s *S) TestCloneRepositoryHandler(c *C) {
-	a := App{Name: "someApp", Framework: "django"}
+	a := App{Name: "someApp", Framework: "django", Teams: []auth.Team{s.team}}
+	err := a.Create()
+	c.Assert(err, IsNil)
+	defer a.Destroy()
 	url := fmt.Sprintf("/apps/%s/clone?:name=%s", a.Name, a.Name)
 	request, err := http.NewRequest("GET", url, nil)
 	c.Assert(err, IsNil)
-
 	recorder := httptest.NewRecorder()
-	err = CloneRepositoryHandler(recorder, request)
+	err = CloneRepositoryHandler(recorder, request, s.user)
 	c.Assert(err, IsNil)
 	c.Assert(recorder.Code, Equals, 200)
+}
+
+func (s *S) TestCloneRepositoryReturnsForbiddenIfTheUserDoesNotHaveAccesToTheApp(c *C) {
+	a := App{Name: "someApp", Framework: "django"}
+	err := a.Create()
+	c.Assert(err, IsNil)
+	defer a.Destroy()
+	url := fmt.Sprintf("/apps/%s/clone?:name=%s", a.Name, a.Name)
+	request, err := http.NewRequest("GET", url, nil)
+	c.Assert(err, IsNil)
+	recorder := httptest.NewRecorder()
+	err = CloneRepositoryHandler(recorder, request, s.user)
+	c.Assert(err, NotNil)
+	e, ok := err.(*errors.Http)
+	c.Assert(ok, Equals, true)
+	c.Assert(e.Code, Equals, http.StatusForbidden)
+	c.Assert(e, ErrorMatches, "^User does not have access to this app$")
+}
+
+func (s *S) TestCloneRepositoryShouldReturnNotFoundIfTheAppDoesNotExist(c *C) {
+	request, err := http.NewRequest("GET", "/apps/abc/clone?:name=abc", nil)
+	c.Assert(err, IsNil)
+	recorder := httptest.NewRecorder()
+	err = CloneRepositoryHandler(recorder, request, s.user)
+	c.Assert(err, NotNil)
+	e, ok := err.(*errors.Http)
+	c.Assert(ok, Equals, true)
+	c.Assert(e.Code, Equals, http.StatusNotFound)
+	c.Assert(e, ErrorMatches, "^App not found$")
 }
 
 func (s *S) TestAppList(c *C) {
@@ -106,15 +137,41 @@ func (s *S) TestAppList(c *C) {
 }
 
 func (s *S) TestDelete(c *C) {
-	myApp := App{Name: "MyAppToDelete", Framework: "django"}
+	myApp := App{Name: "MyAppToDelete", Framework: "django", Teams: []auth.Team{s.team}}
 	myApp.Create()
 	request, err := http.NewRequest("DELETE", "/apps/"+myApp.Name+"?:name="+myApp.Name, nil)
 	c.Assert(err, IsNil)
-
 	recorder := httptest.NewRecorder()
-	err = AppDelete(recorder, request)
+	err = AppDelete(recorder, request, s.user)
 	c.Assert(err, IsNil)
 	c.Assert(recorder.Code, Equals, 200)
+}
+
+func (s *S) TestDeleteShouldReturnForbiddenIfTheGivenUserDoesNotHaveAccesToTheapp(c *C) {
+	myApp := App{Name: "MyAppToDelete", Framework: "django"}
+	myApp.Create()
+	defer myApp.Destroy()
+	request, err := http.NewRequest("DELETE", "/apps/"+myApp.Name+"?:name="+myApp.Name, nil)
+	c.Assert(err, IsNil)
+	recorder := httptest.NewRecorder()
+	err = AppDelete(recorder, request, s.user)
+	c.Assert(err, NotNil)
+	e, ok := err.(*errors.Http)
+	c.Assert(ok, Equals, true)
+	c.Assert(e.Code, Equals, http.StatusForbidden)
+	c.Assert(e, ErrorMatches, "^User does not have access to this app$")
+}
+
+func (s *S) TestDeleteShouldReturnNotFoundIfTheAppDoesNotExist(c *C) {
+	request, err := http.NewRequest("DELETE", "/apps/unkown?:name=unknown", nil)
+	c.Assert(err, IsNil)
+	recorder := httptest.NewRecorder()
+	err = AppDelete(recorder, request, s.user)
+	c.Assert(err, NotNil)
+	e, ok := err.(*errors.Http)
+	c.Assert(ok, Equals, true)
+	c.Assert(e.Code, Equals, http.StatusNotFound)
+	c.Assert(e, ErrorMatches, "^App not found$")
 }
 
 func (s *S) TestAppInfo(c *C) {
