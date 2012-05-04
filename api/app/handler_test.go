@@ -131,6 +131,18 @@ func (s *S) TestDeleteShouldReturnUnauthorizedIfTheGivenUserDoesNotHaveAccesToTh
 	c.Assert(e, ErrorMatches, "^User does not have access to this app$")
 }
 
+func (s *S) TestDeleteShouldReturnNotFoundIfTheAppDoesNotExist(c *C) {
+	request, err := http.NewRequest("DELETE", "/apps/unkown?:name=unknown", nil)
+	c.Assert(err, IsNil)
+	recorder := httptest.NewRecorder()
+	err = AppDelete(recorder, request, s.user)
+	c.Assert(err, NotNil)
+	e, ok := err.(*errors.Http)
+	c.Assert(ok, Equals, true)
+	c.Assert(e.Code, Equals, http.StatusNotFound)
+	c.Assert(e, ErrorMatches, "^App not found$")
+}
+
 func (s *S) TestAppInfo(c *C) {
 
 	expectedApp := App{Name: "NewApp", Framework: "django", Teams: []auth.Team{}}
