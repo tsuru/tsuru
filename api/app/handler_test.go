@@ -26,35 +26,48 @@ Content-Type: application/zip
 --MyBoundary--
 `
 
-	myApp := App{Name: "myApp", Framework: "django"}
+	myApp := App{Name: "myApp", Framework: "django", Teams: []auth.Team{s.team}}
 	myApp.Create()
+	defer myApp.Destroy()
 
 	b := bytes.NewBufferString(message)
-	request, err := http.NewRequest("POST", "/apps"+myApp.Name+"/application?:name="+myApp.Name, b)
+	request, err := http.NewRequest("POST", "/apps/"+myApp.Name+"/application?:name="+myApp.Name, b)
 	c.Assert(err, IsNil)
-
 	ctype := `multipart/form-data; boundary="MyBoundary"`
 	request.Header.Set("Content-type", ctype)
-	c.Assert(err, IsNil)
-
 	recorder := httptest.NewRecorder()
-	err = Upload(recorder, request)
+	err = Upload(recorder, request, s.user)
 	c.Assert(err, IsNil)
 	c.Assert(recorder.Code, Equals, 200)
 	c.Assert(recorder.Body.String(), Equals, "success")
-
-	myApp.Destroy()
 }
 
-func (s *S) TestUploadReturns404WhenAppDoesNotExist(c *C) {
+func (s *S) TestUploadReturnsForbiddenWhenUserDoesNotHaveAccessToTheApp(c *C) {
+	myApp := App{Name: "myApp", Framework: "django"}
+	myApp.Create()
+	defer myApp.Destroy()
+	request, err := http.NewRequest("POST", "/apps/"+myApp.Name+"/application?:name="+myApp.Name, nil)
+	c.Assert(err, IsNil)
+	request.Header.Set("Content-type", `multipart/form-data; boundary="MyBoundary"`)
+	recorder := httptest.NewRecorder()
+	err = Upload(recorder, request, s.user)
+	c.Assert(err, NotNil)
+	e, ok := err.(*errors.Http)
+	c.Assert(ok, Equals, true)
+	c.Assert(e.Code, Equals, http.StatusForbidden)
+}
+
+func (s *S) TestUploadReturnsNotFoundWhenAppDoesNotExist(c *C) {
 	myApp := App{Name: "myAppThatDoestNotExists", Framework: "django"}
 	request, err := http.NewRequest("POST", "/apps"+myApp.Name+"/application?:name="+myApp.Name, nil)
 	c.Assert(err, IsNil)
 
 	recorder := httptest.NewRecorder()
-	err = Upload(recorder, request)
-	c.Assert(err, IsNil)
-	c.Assert(recorder.Code, Equals, 404)
+	err = Upload(recorder, request, s.user)
+	c.Assert(err, NotNil)
+	e, ok := err.(*errors.Http)
+	c.Assert(ok, Equals, true)
+	c.Assert(e.Code, Equals, http.StatusNotFound)
 }
 
 func (s *S) TestCloneRepositoryHandler(c *C) {
