@@ -17,6 +17,18 @@ import (
 	"time"
 )
 
+func getAppOrError(name string, u *auth.User) (App, error) {
+	app := App{Name: name}
+	err := app.Get()
+	if err != nil {
+		return app, &errors.Http{Code: http.StatusNotFound, Message: "App not found"}
+	}
+	if !app.CheckUserAccess(u) {
+		return app, &errors.Http{Code: http.StatusForbidden, Message: "User does not have access to this app"}
+	}
+	return app, nil
+}
+
 func Upload(w http.ResponseWriter, r *http.Request) error {
 	app := App{Name: r.URL.Query().Get(":name")}
 	err := app.Get()
@@ -88,13 +100,9 @@ func Upload(w http.ResponseWriter, r *http.Request) error {
 }
 
 func CloneRepositoryHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
-	app := App{Name: r.URL.Query().Get(":name")}
-	err := app.Get()
+	app, err := getAppOrError(r.URL.Query().Get(":name"), u)
 	if err != nil {
-		return &errors.Http{Code: http.StatusNotFound, Message: "App not found"}
-	}
-	if !app.CheckUserAccess(u) {
-		return &errors.Http{Code: http.StatusForbidden, Message: "User does not have access to this app"}
+		return err
 	}
 	CloneRepository(&app)
 	fmt.Fprint(w, "success")
@@ -102,13 +110,9 @@ func CloneRepositoryHandler(w http.ResponseWriter, r *http.Request, u *auth.User
 }
 
 func AppDelete(w http.ResponseWriter, r *http.Request, u *auth.User) error {
-	app := App{Name: r.URL.Query().Get(":name")}
-	err := app.Get()
+	app, err := getAppOrError(r.URL.Query().Get(":name"), u)
 	if err != nil {
-		return &errors.Http{Code: http.StatusNotFound, Message: "App not found"}
-	}
-	if !app.CheckUserAccess(u) {
-		return &errors.Http{Code: http.StatusForbidden, Message: "User does not have access to this app"}
+		return err
 	}
 	app.Destroy()
 	fmt.Fprint(w, "success")
