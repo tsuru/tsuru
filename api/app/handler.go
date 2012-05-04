@@ -101,8 +101,9 @@ func AppDelete(w http.ResponseWriter, r *http.Request) error {
 	return nil
 }
 
-func AppList(w http.ResponseWriter, r *http.Request) error {
-	apps, err := AllApps()
+func AppList(w http.ResponseWriter, r *http.Request, u *auth.User) error {
+	var apps []App
+	err := db.Session.Apps().Find(bson.M{"teams.users.email": u.Email}).All(&apps)
 	if err != nil {
 		return err
 	}
