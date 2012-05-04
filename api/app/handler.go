@@ -5,16 +5,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/timeredbull/tsuru/api/auth"
-	"github.com/timeredbull/tsuru/api/unit"
 	"github.com/timeredbull/tsuru/db"
 	"github.com/timeredbull/tsuru/errors"
-	"github.com/timeredbull/tsuru/log"
 	"io/ioutil"
 	"launchpad.net/mgo/bson"
 	"net/http"
-	"os"
-	"os/exec"
-	"time"
 )
 
 func getAppOrError(name string, u *auth.User) (App, error) {
@@ -27,73 +22,6 @@ func getAppOrError(name string, u *auth.User) (App, error) {
 		return app, &errors.Http{Code: http.StatusForbidden, Message: "User does not have access to this app"}
 	}
 	return app, nil
-}
-
-func Upload(w http.ResponseWriter, r *http.Request, user *auth.User) error {
-	app, err := getAppOrError(r.URL.Query().Get(":name"), user)
-	if err != nil {
-		return err
-	}
-	f, _, err := r.FormFile("application")
-	if err != nil {
-		return err
-	}
-
-	releaseName := time.Now().Format("20060102150405")
-	zipFile := fmt.Sprintf("/tmp/%s.zip", releaseName)
-	zipDir := fmt.Sprintf("/tmp/%s", releaseName)
-
-	newFile, err := os.Create(zipFile)
-	if err != nil {
-		return err
-	}
-	out, _ := ioutil.ReadAll(f)
-	newFile.Write(out)
-
-	cmd := exec.Command("unzip", zipFile, "-d", zipDir)
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		return err
-	}
-	log.Printf(string(output))
-
-	appDir := "/home/application"
-	currentDir := appDir + "/releases/current"
-	gunicorn := appDir + "/env/bin/gunicorn_django"
-	releasesDir := appDir + "/releases"
-	releaseDir := releasesDir + "/" + releaseName
-
-	u := unit.Unit{Name: app.Name}
-	err = u.SendFile(zipDir, releaseDir)
-	if err != nil {
-		return err
-	}
-
-	output, err = u.Command(fmt.Sprintf("cd %s && ln -nfs %s current", releasesDir, releaseName))
-	log.Printf(string(output))
-	if err != nil {
-		return err
-	}
-
-	err = u.ExecuteHook("dependencies")
-	if err != nil {
-		return err
-	}
-
-	output, err = u.Command("sudo killall gunicorn_django")
-	log.Printf(string(output))
-	if err != nil {
-		return err
-	}
-
-	output, err = u.Command(fmt.Sprintf("cd %s && sudo %s --daemon --workers=3 --bind=127.0.0.1:8888", currentDir, gunicorn))
-	log.Printf(string(output))
-	if err != nil {
-		return err
-	}
-
-	fmt.Fprint(w, "success")
-	return nil
 }
 
 func CloneRepositoryHandler(w http.ResponseWriter, r *http.Request) error {

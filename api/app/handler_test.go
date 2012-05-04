@@ -1,7 +1,6 @@
 package app
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"github.com/timeredbull/tsuru/api/auth"
@@ -14,61 +13,6 @@ import (
 	"net/http/httptest"
 	"strings"
 )
-
-func (s *S) TestUpload(c *C) {
-	fileApplicationContents, _ := ioutil.ReadFile("testdata/example.zip")
-	message := `
---MyBoundary
-Content-Disposition: form-data; name="application"; filename="application.zip"
-Content-Type: application/zip
-
-` + string(fileApplicationContents) + `
---MyBoundary--
-`
-
-	myApp := App{Name: "myApp", Framework: "django", Teams: []auth.Team{s.team}}
-	myApp.Create()
-	defer myApp.Destroy()
-
-	b := bytes.NewBufferString(message)
-	request, err := http.NewRequest("POST", "/apps/"+myApp.Name+"/application?:name="+myApp.Name, b)
-	c.Assert(err, IsNil)
-	ctype := `multipart/form-data; boundary="MyBoundary"`
-	request.Header.Set("Content-type", ctype)
-	recorder := httptest.NewRecorder()
-	err = Upload(recorder, request, s.user)
-	c.Assert(err, IsNil)
-	c.Assert(recorder.Code, Equals, 200)
-	c.Assert(recorder.Body.String(), Equals, "success")
-}
-
-func (s *S) TestUploadReturnsForbiddenWhenUserDoesNotHaveAccessToTheApp(c *C) {
-	myApp := App{Name: "myApp", Framework: "django"}
-	myApp.Create()
-	defer myApp.Destroy()
-	request, err := http.NewRequest("POST", "/apps/"+myApp.Name+"/application?:name="+myApp.Name, nil)
-	c.Assert(err, IsNil)
-	request.Header.Set("Content-type", `multipart/form-data; boundary="MyBoundary"`)
-	recorder := httptest.NewRecorder()
-	err = Upload(recorder, request, s.user)
-	c.Assert(err, NotNil)
-	e, ok := err.(*errors.Http)
-	c.Assert(ok, Equals, true)
-	c.Assert(e.Code, Equals, http.StatusForbidden)
-}
-
-func (s *S) TestUploadReturnsNotFoundWhenAppDoesNotExist(c *C) {
-	myApp := App{Name: "myAppThatDoestNotExists", Framework: "django"}
-	request, err := http.NewRequest("POST", "/apps"+myApp.Name+"/application?:name="+myApp.Name, nil)
-	c.Assert(err, IsNil)
-
-	recorder := httptest.NewRecorder()
-	err = Upload(recorder, request, s.user)
-	c.Assert(err, NotNil)
-	e, ok := err.(*errors.Http)
-	c.Assert(ok, Equals, true)
-	c.Assert(e.Code, Equals, http.StatusNotFound)
-}
 
 func (s *S) TestCloneRepositoryHandler(c *C) {
 	a := App{Name: "someApp", Framework: "django", Teams: []auth.Team{s.team}}
