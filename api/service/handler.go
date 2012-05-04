@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/timeredbull/tsuru/api/app"
 	"io/ioutil"
-	"launchpad.net/mgo/bson"
 	"net/http"
 )
 
@@ -22,7 +21,6 @@ type BindJson struct {
 
 // a service with a pointer to it's type
 type ServiceT struct {
-	Id   bson.ObjectId
 	Type *ServiceType
 	Name string
 }
@@ -35,7 +33,6 @@ func ServicesHandler(w http.ResponseWriter, r *http.Request) error {
 	var sT ServiceT
 	for _, s := range services {
 		sT = ServiceT{
-			Id:   s.Id,
 			Type: s.ServiceType(),
 			Name: s.Name,
 		}
@@ -117,18 +114,15 @@ func DeleteHandler(w http.ResponseWriter, r *http.Request) error {
 
 func BindHandler(w http.ResponseWriter, r *http.Request) error {
 	var b BindJson
-
 	defer r.Body.Close()
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		return err
 	}
-
 	err = json.Unmarshal(body, &b)
 	if err != nil {
 		return err
 	}
-
 	s := Service{Name: b.Service}
 	a := app.App{Name: b.App}
 	sErr := s.Get()

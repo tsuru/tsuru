@@ -8,9 +8,9 @@ import (
 )
 
 type ServiceApp struct {
-	Id        bson.ObjectId `bson:"_id"`
-	ServiceId bson.ObjectId `bson:"service_id"`
-	AppName   string        `bson:"app_name"`
+	Id          bson.ObjectId `bson:"_id"`
+	ServiceName string        `bson:"service_name"`
+	AppName     string        `bson:"app_name"`
 }
 
 func (sa *ServiceApp) Create() error {
@@ -29,12 +29,11 @@ func (sa *ServiceApp) Create() error {
 }
 
 func (sa *ServiceApp) Delete() error {
-	doc := bson.M{"service_id": sa.ServiceId, "app_name": sa.AppName}
+	doc := bson.M{"service_name": sa.ServiceName, "app_name": sa.AppName}
 	err := db.Session.ServiceApps().Remove(doc)
 	if err != nil {
 		return err
 	}
-
 	s := sa.Service()
 	a := sa.App()
 	appUnit := unit.Unit{Name: a.Name}
@@ -43,10 +42,10 @@ func (sa *ServiceApp) Delete() error {
 	return nil
 }
 
-func (sa *ServiceApp) Service() (s *Service) {
-	s = &Service{Id: sa.ServiceId}
+func (sa *ServiceApp) Service() *Service {
+	s := &Service{Name: sa.ServiceName}
 	s.Get()
-	return
+	return s
 }
 
 func (sa *ServiceApp) App() *app.App {
