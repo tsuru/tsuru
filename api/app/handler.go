@@ -134,19 +134,16 @@ func AppList(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	return nil
 }
 
-func AppInfo(w http.ResponseWriter, r *http.Request) error {
-	app := App{Name: r.URL.Query().Get(":name")}
-	err := app.Get()
-
+func AppInfo(w http.ResponseWriter, r *http.Request, u *auth.User) error {
+	app, err := getAppOrError(r.URL.Query().Get(":name"), u)
 	if err != nil {
-		http.NotFound(w, r)
-	} else {
-		b, err := json.Marshal(app)
-		if err != nil {
-			return err
-		}
-		fmt.Fprint(w, bytes.NewBuffer(b).String())
+		return err
 	}
+	b, err := json.Marshal(app)
+	if err != nil {
+		return err
+	}
+	fmt.Fprint(w, bytes.NewBuffer(b).String())
 	return nil
 }
 

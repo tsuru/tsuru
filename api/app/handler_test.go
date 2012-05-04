@@ -175,18 +175,17 @@ func (s *S) TestDeleteShouldReturnNotFoundIfTheAppDoesNotExist(c *C) {
 }
 
 func (s *S) TestAppInfo(c *C) {
-
-	expectedApp := App{Name: "NewApp", Framework: "django", Teams: []auth.Team{}}
+	expectedApp := App{Name: "NewApp", Framework: "django", Teams: []auth.Team{s.team}}
 	expectedApp.Create()
+	defer expectedApp.Destroy()
 
 	var myApp App
-
 	request, err := http.NewRequest("GET", "/apps/"+expectedApp.Name+"?:name="+expectedApp.Name, nil)
 	request.Header.Set("Content-Type", "application/json")
 	recorder := httptest.NewRecorder()
 	c.Assert(err, IsNil)
 
-	err = AppInfo(recorder, request)
+	err = AppInfo(recorder, request, s.user)
 	c.Assert(err, IsNil)
 	c.Assert(recorder.Code, Equals, 200)
 
@@ -195,22 +194,36 @@ func (s *S) TestAppInfo(c *C) {
 
 	err = json.Unmarshal(body, &myApp)
 	c.Assert(err, IsNil)
-	c.Assert(myApp, DeepEquals, expectedApp)
-
-	expectedApp.Destroy()
-
+	c.Assert(myApp.Name, Equals, expectedApp.Name)
 }
 
-func (s *S) TestAppInfoReturns404WhenAppDoesNotExist(c *C) {
+func (s *S) TestAppInfoReturnsForbiddenWhenTheUserDoesNotHaveAccessToTheApp(c *C) {
+	expectedApp := App{Name: "NewApp", Framework: "django", Teams: []auth.Team{}}
+	expectedApp.Create()
+	defer expectedApp.Destroy()
+	request, err := http.NewRequest("GET", "/apps/"+expectedApp.Name+"?:name="+expectedApp.Name, nil)
+	c.Assert(err, IsNil)
+	recorder := httptest.NewRecorder()
+	err = AppInfo(recorder, request, s.user)
+	c.Assert(err, NotNil)
+	e, ok := err.(*errors.Http)
+	c.Assert(ok, Equals, true)
+	c.Assert(e.Code, Equals, http.StatusForbidden)
+	c.Assert(e, ErrorMatches, "^User does not have access to this app$")
+}
+
+func (s *S) TestAppInfoReturnsNotFoundWhenAppDoesNotExist(c *C) {
 	myApp := App{Name: "SomeApp"}
 	request, err := http.NewRequest("GET", "/apps/"+myApp.Name+"?:name="+myApp.Name, nil)
 	c.Assert(err, IsNil)
-
 	request.Header.Set("Content-Type", "application/json")
 	recorder := httptest.NewRecorder()
-	err = AppInfo(recorder, request)
-	c.Assert(err, IsNil)
-	c.Assert(recorder.Code, Equals, 404)
+	err = AppInfo(recorder, request, s.user)
+	c.Assert(err, NotNil)
+	e, ok := err.(*errors.Http)
+	c.Assert(ok, Equals, true)
+	c.Assert(e.Code, Equals, http.StatusNotFound)
+	c.Assert(e, ErrorMatches, "^App not found$")
 }
 
 func (s *S) TestCreateApp(c *C) {
