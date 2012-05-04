@@ -70,24 +70,27 @@ func (s *S) TestCloneRepositoryHandler(c *C) {
 }
 
 func (s *S) TestAppList(c *C) {
-	apps := make([]App, 0)
-	expected := make([]App, 0)
-	app1 := App{Name: "app1", Teams: []auth.Team{}}
+	apps := []App{}
+	expected := []App{}
+	app1 := App{Name: "app1", Teams: []auth.Team{s.team}}
 	app1.Create()
+	defer app1.Destroy()
 	expected = append(expected, app1)
-	app2 := App{Name: "app2", Teams: []auth.Team{}}
+	app2 := App{Name: "app2", Teams: []auth.Team{s.team}}
 	app2.Create()
+	defer app2.Destroy()
 	expected = append(expected, app2)
 	app3 := App{Name: "app3", Framework: "django", Ip: "122222", Teams: []auth.Team{}}
 	app3.Create()
-	expected = append(expected, app3)
+	defer app3.Destroy()
+	expected = append(expected)
 
 	request, err := http.NewRequest("GET", "/apps/", nil)
 	c.Assert(err, IsNil)
 
 	request.Header.Set("Content-Type", "application/json")
 	recorder := httptest.NewRecorder()
-	err = AppList(recorder, request)
+	err = AppList(recorder, request, s.user)
 	c.Assert(err, IsNil)
 	c.Assert(recorder.Code, Equals, 200)
 
@@ -96,11 +99,10 @@ func (s *S) TestAppList(c *C) {
 
 	err = json.Unmarshal(body, &apps)
 	c.Assert(err, IsNil)
-	c.Assert(apps, DeepEquals, expected)
-
-	app1.Destroy()
-	app2.Destroy()
-	app3.Destroy()
+	c.Assert(len(apps), Equals, len(expected))
+	for i, app := range apps {
+		c.Assert(app.Name, DeepEquals, expected[i].Name)
+	}
 }
 
 func (s *S) TestDelete(c *C) {
@@ -160,12 +162,11 @@ func (s *S) TestCreateApp(c *C) {
 
 	b := strings.NewReader(`{"name":"someApp", "framework":"django"}`)
 	request, err := http.NewRequest("POST", "/apps", b)
+	c.Assert(err, IsNil)
 	request.Header.Set("Content-Type", "application/json")
 	recorder := httptest.NewRecorder()
 
-	c.Assert(err, IsNil)
-
-	err = CreateAppHandler(recorder, request)
+	err = CreateAppHandler(recorder, request, s.user)
 	c.Assert(err, IsNil)
 
 	body, err := ioutil.ReadAll(recorder.Body)
@@ -182,10 +183,25 @@ func (s *S) TestCreateApp(c *C) {
 	c.Assert(obtained, DeepEquals, expected)
 	c.Assert(recorder.Code, Equals, 200)
 
-	qtd, err := db.Session.Apps().Find(bson.M{"name": "someApp"}).Count()
+	var gotApp App
+	err = db.Session.Apps().Find(bson.M{"name": "someApp"}).One(&gotApp)
 	c.Assert(err, IsNil)
-	c.Assert(qtd, Equals, 1)
+	c.Assert(s.team, HasAccessTo, gotApp)
+}
 
+func (s *S) TestCreateAppReturns403IfTheUserIsNotMemberOfAnyTeam(c *C) {
+	u := &auth.User{Email: "thetrees@rush.com", Password: "123"}
+	b := strings.NewReader(`{"name":"someApp", "framework":"django"}`)
+	request, err := http.NewRequest("POST", "/apps", b)
+	c.Assert(err, IsNil)
+	request.Header.Set("Content-Type", "application/json")
+	recorder := httptest.NewRecorder()
+	err = CreateAppHandler(recorder, request, u)
+	c.Assert(err, NotNil)
+	e, ok := err.(*errors.Http)
+	c.Assert(ok, Equals, true)
+	c.Assert(e.Code, Equals, http.StatusForbidden)
+	c.Assert(e, ErrorMatches, "^In order to create an app, you should be member of at least one team$")
 }
 
 func (s *S) TestAddTeamToTheApp(c *C) {

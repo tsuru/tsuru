@@ -101,8 +101,9 @@ func AppDelete(w http.ResponseWriter, r *http.Request) error {
 	return nil
 }
 
-func AppList(w http.ResponseWriter, r *http.Request) error {
-	apps, err := AllApps()
+func AppList(w http.ResponseWriter, r *http.Request, u *auth.User) error {
+	var apps []App
+	err := db.Session.Apps().Find(bson.M{"teams.users.email": u.Email}).All(&apps)
 	if err != nil {
 		return err
 	}
@@ -131,7 +132,7 @@ func AppInfo(w http.ResponseWriter, r *http.Request) error {
 	return nil
 }
 
-func CreateAppHandler(w http.ResponseWriter, r *http.Request) error {
+func CreateAppHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	var app App
 
 	defer r.Body.Close()
@@ -145,6 +146,14 @@ func CreateAppHandler(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 
+	err = db.Session.Teams().Find(bson.M{"users.email": u.Email}).All(&app.Teams)
+	if err != nil {
+		return err
+	}
+	if len(app.Teams) < 1 {
+		msg := "In order to create an app, you should be member of at least one team"
+		return &errors.Http{Code: http.StatusForbidden, Message: msg}
+	}
 	err = app.Create()
 	if err != nil {
 		return err
