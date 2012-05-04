@@ -106,15 +106,29 @@ func (s *S) TestAppList(c *C) {
 }
 
 func (s *S) TestDelete(c *C) {
-	myApp := App{Name: "MyAppToDelete", Framework: "django"}
+	myApp := App{Name: "MyAppToDelete", Framework: "django", Teams: []auth.Team{s.team}}
 	myApp.Create()
 	request, err := http.NewRequest("DELETE", "/apps/"+myApp.Name+"?:name="+myApp.Name, nil)
 	c.Assert(err, IsNil)
-
 	recorder := httptest.NewRecorder()
-	err = AppDelete(recorder, request)
+	err = AppDelete(recorder, request, s.user)
 	c.Assert(err, IsNil)
 	c.Assert(recorder.Code, Equals, 200)
+}
+
+func (s *S) TestDeleteShouldReturnUnauthorizedIfTheGivenUserDoesNotHaveAccesToTheapp(c *C) {
+	myApp := App{Name: "MyAppToDelete", Framework: "django"}
+	myApp.Create()
+	defer myApp.Destroy()
+	request, err := http.NewRequest("DELETE", "/apps/"+myApp.Name+"?:name="+myApp.Name, nil)
+	c.Assert(err, IsNil)
+	recorder := httptest.NewRecorder()
+	err = AppDelete(recorder, request, s.user)
+	c.Assert(err, NotNil)
+	e, ok := err.(*errors.Http)
+	c.Assert(ok, Equals, true)
+	c.Assert(e.Code, Equals, http.StatusUnauthorized)
+	c.Assert(e, ErrorMatches, "^User does not have access to this app$")
 }
 
 func (s *S) TestAppInfo(c *C) {
