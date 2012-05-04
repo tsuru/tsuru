@@ -1,17 +1,17 @@
 #!/bin/bash
 set -e
 
-echo "Checking git isntallation"
+echo "Checking git installation"
 if ! dpkg -l | grep git 2>&1 > /dev/null; then
     echo "Not found, installing..."
     sudo apt-get install git -y
 fi
 
-echo "Adding git user"
+echo "Adding \"git\" user"
 sudo useradd git -md /home/git -s /bin/bash
 
 # assumes that current user is the one who will run tsuru's server
-echo "Adding ${USER} to git group" # this has to be done, since tsuru's user will write in git's home
+echo "Adding ${USER} to group \"git\"" # this has to be done, since tsuru's user will write in git's home
 sudo usermod ${USER} -G git
 
 export TSURU_HOST="http://localhost:4000"
