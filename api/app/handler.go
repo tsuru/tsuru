@@ -87,22 +87,37 @@ func Upload(w http.ResponseWriter, r *http.Request) error {
 	return nil
 }
 
-func CloneRepositoryHandler(w http.ResponseWriter, r *http.Request) error {
+func CloneRepositoryHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	app := App{Name: r.URL.Query().Get(":name")}
+	err := app.Get()
+	if err != nil {
+		return &errors.Http{Code: http.StatusNotFound, Message: "App not found"}
+	}
+	if !app.CheckUserAccess(u) {
+		return &errors.Http{Code: http.StatusForbidden, Message: "User does not have access to this app"}
+	}
 	CloneRepository(&app)
 	fmt.Fprint(w, "success")
 	return nil
 }
 
-func AppDelete(w http.ResponseWriter, r *http.Request) error {
+func AppDelete(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	app := App{Name: r.URL.Query().Get(":name")}
+	err := app.Get()
+	if err != nil {
+		return &errors.Http{Code: http.StatusNotFound, Message: "App not found"}
+	}
+	if !app.CheckUserAccess(u) {
+		return &errors.Http{Code: http.StatusForbidden, Message: "User does not have access to this app"}
+	}
 	app.Destroy()
 	fmt.Fprint(w, "success")
 	return nil
 }
 
-func AppList(w http.ResponseWriter, r *http.Request) error {
-	apps, err := AllApps()
+func AppList(w http.ResponseWriter, r *http.Request, u *auth.User) error {
+	var apps []App
+	err := db.Session.Apps().Find(bson.M{"teams.users.email": u.Email}).All(&apps)
 	if err != nil {
 		return err
 	}
@@ -131,7 +146,7 @@ func AppInfo(w http.ResponseWriter, r *http.Request) error {
 	return nil
 }
 
-func CreateAppHandler(w http.ResponseWriter, r *http.Request) error {
+func CreateAppHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	var app App
 
 	defer r.Body.Close()
@@ -145,6 +160,14 @@ func CreateAppHandler(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 
+	err = db.Session.Teams().Find(bson.M{"users.email": u.Email}).All(&app.Teams)
+	if err != nil {
+		return err
+	}
+	if len(app.Teams) < 1 {
+		msg := "In order to create an app, you should be member of at least one team"
+		return &errors.Http{Code: http.StatusForbidden, Message: msg}
+	}
 	err = app.Create()
 	if err != nil {
 		return err

@@ -8,8 +8,8 @@ import (
 	"github.com/bmizerany/pat"
 	"github.com/timeredbull/tsuru/api/app"
 	"github.com/timeredbull/tsuru/api/auth"
-	"github.com/timeredbull/tsuru/config"
 	"github.com/timeredbull/tsuru/api/service"
+	"github.com/timeredbull/tsuru/config"
 	"github.com/timeredbull/tsuru/db"
 	"github.com/timeredbull/tsuru/log"
 	stdlog "log"
@@ -52,12 +52,12 @@ func main() {
 	m.Post("/services/bind", webserver.Handler(service.BindHandler))
 	m.Post("/services/unbind", webserver.Handler(service.UnbindHandler))
 
-	m.Get("/apps/:name/delete", webserver.Handler(app.AppDelete))
-	m.Get("/apps/:name/clone", webserver.Handler(app.CloneRepositoryHandler))
+	m.Del("/apps/:name", webserver.AuthorizationRequiredHandler(app.AppDelete))
+	m.Get("/apps/:name/clone", webserver.AuthorizationRequiredHandler(app.CloneRepositoryHandler))
 	m.Get("/apps/:name", webserver.Handler(app.AppInfo))
 	m.Post("/apps/:name/application", webserver.Handler(app.Upload))
-	m.Get("/apps", webserver.Handler(app.AppList))
-	m.Post("/apps", webserver.Handler(app.CreateAppHandler))
+	m.Get("/apps", webserver.AuthorizationRequiredHandler(app.AppList))
+	m.Post("/apps", webserver.AuthorizationRequiredHandler(app.CreateAppHandler))
 	m.Put("/apps/:app/:team", webserver.AuthorizationRequiredHandler(app.GrantAccessToTeamHandler))
 	m.Del("/apps/:app/:team", webserver.AuthorizationRequiredHandler(app.RevokeAccessFromTeamHandler))
 
