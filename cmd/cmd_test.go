@@ -52,5 +52,5 @@ func (s *S) TestRun(c *C) {
 
 func (s *S) TestRunCommandThatDoesNotExist(c *C) {
 	manager.Run([]string{"bar"})
-	c.Assert(stderr.String(), Equals, "command bar does not exist")
+	c.Assert(stderr.String(), Equals, "command bar does not exist\n")
 }

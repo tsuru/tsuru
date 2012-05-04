@@ -26,7 +26,7 @@ func (m *Manager) Register(command Command) {
 func (m *Manager) Run(args []string) {
 	command, exist := m.commands[args[0]]
 	if !exist {
-		io.WriteString(m.Stderr, fmt.Sprintf("command %s does not exist", args[0]))
+		io.WriteString(m.Stderr, fmt.Sprintf("command %s does not exist\n", args[0]))
 		return
 	}
 	command.Run()
