@@ -18,6 +18,11 @@ func (m *Manager) Register(command Command) {
 	m.commands[name] = command
 }
 
+func (m *Manager) Run(args []string) {
+	command := m.commands[args[0]]
+	command.Run()
+}
+
 type Command interface {
 	Run() error
 	Info() *Info
