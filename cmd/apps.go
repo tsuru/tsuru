@@ -1,7 +1,6 @@
 package cmd
 
 type AppCommand struct {
-	Name string
 }
 
 func (c *AppCommand) Run() error {
@@ -9,5 +8,5 @@ func (c *AppCommand) Run() error {
 }
 
 func (c *AppCommand) Info() *Info {
-	return &Info{Name: c.Name}
+	return &Info{Name: "apps"}
 }
