@@ -36,8 +36,8 @@ def send():
 def start():
     with cd(env.tsuru_path):
         run("tar -xzf dist.tar.gz")
-    run("nohup %s/dist/collector >& /dev/null < /dev/null &" % env.tsuru_path, pty=False)
-    run("nohup %s/dist/webserver >& /dev/null < /dev/null &" % env.tsuru_path, pty=False)
+    run("nohup %s/dist/collector 2>&1 > /tmp/collector.hup.out < /dev/null &" % env.tsuru_path, pty=False)
+    run("nohup %s/dist/webserver 2>&1 > /tmp/webserver.hup.out < /dev/null &" % env.tsuru_path, pty=False)
 
 
 def deploy():
