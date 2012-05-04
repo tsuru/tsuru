@@ -1,12 +1,14 @@
 package cmd
 
-type AppCommand struct {
-}
+import "fmt"
 
-func (c *AppCommand) Run() error {
+type AppsCommand struct{}
+
+func (c *AppsCommand) Run() error {
+	fmt.Println("app list")
 	return nil
 }
 
-func (c *AppCommand) Info() *Info {
+func (c *AppsCommand) Info() *Info {
 	return &Info{Name: "apps"}
 }
