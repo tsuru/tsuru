@@ -54,8 +54,7 @@ func main() {
 
 	m.Del("/apps/:name", webserver.AuthorizationRequiredHandler(app.AppDelete))
 	m.Get("/apps/:name/clone", webserver.Handler(app.CloneRepositoryHandler))
-	m.Get("/apps/:name", webserver.Handler(app.AppInfo))
-	m.Post("/apps/:name/application", webserver.Handler(app.Upload))
+	m.Get("/apps/:name", webserver.AuthorizationRequiredHandler(app.AppInfo))
 	m.Get("/apps", webserver.AuthorizationRequiredHandler(app.AppList))
 	m.Post("/apps", webserver.AuthorizationRequiredHandler(app.CreateAppHandler))
 	m.Put("/apps/:app/:team", webserver.AuthorizationRequiredHandler(app.GrantAccessToTeamHandler))

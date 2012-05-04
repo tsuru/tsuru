@@ -8,19 +8,12 @@ import (
 )
 
 type Service struct {
-	Id            bson.ObjectId `bson:"_id"`
 	ServiceTypeId bson.ObjectId `bson:"service_type_id"`
 	Name          string
 }
 
 func (s *Service) Get() error {
-	query := bson.M{}
-	switch {
-	case s.Id != "":
-		query["_id"] = s.Id
-	case s.Name != "":
-		query["name"] = s.Name
-	}
+	query := bson.M{"name": s.Name}
 	return db.Session.Services().Find(query).One(&s)
 }
 
@@ -31,12 +24,10 @@ func (s *Service) All() []Service {
 }
 
 func (s *Service) Create() error {
-	s.Id = bson.NewObjectId()
 	err := db.Session.Services().Insert(s)
 	if err != nil {
 		return err
 	}
-
 	u := unit.Unit{Name: s.Name, Type: "mysql"}
 	return u.Create()
 }
@@ -52,12 +43,12 @@ func (s *Service) Delete() error {
 }
 
 func (s *Service) Bind(a *app.App) error {
-	sa := ServiceApp{ServiceId: s.Id, AppName: a.Name}
+	sa := ServiceApp{ServiceName: s.Name, AppName: a.Name}
 	return sa.Create()
 }
 
 func (s *Service) Unbind(a *app.App) error {
-	sa := ServiceApp{ServiceId: s.Id, AppName: a.Name}
+	sa := ServiceApp{ServiceName: s.Name, AppName: a.Name}
 	return sa.Delete()
 }
 

@@ -1,7 +1,6 @@
 package app
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"github.com/timeredbull/tsuru/api/auth"
@@ -15,48 +14,6 @@ import (
 	"strings"
 )
 
-func (s *S) TestUpload(c *C) {
-	fileApplicationContents, _ := ioutil.ReadFile("testdata/example.zip")
-	message := `
---MyBoundary
-Content-Disposition: form-data; name="application"; filename="application.zip"
-Content-Type: application/zip
-
-` + string(fileApplicationContents) + `
---MyBoundary--
-`
-
-	myApp := App{Name: "myApp", Framework: "django"}
-	myApp.Create()
-
-	b := bytes.NewBufferString(message)
-	request, err := http.NewRequest("POST", "/apps"+myApp.Name+"/application?:name="+myApp.Name, b)
-	c.Assert(err, IsNil)
-
-	ctype := `multipart/form-data; boundary="MyBoundary"`
-	request.Header.Set("Content-type", ctype)
-	c.Assert(err, IsNil)
-
-	recorder := httptest.NewRecorder()
-	err = Upload(recorder, request)
-	c.Assert(err, IsNil)
-	c.Assert(recorder.Code, Equals, 200)
-	c.Assert(recorder.Body.String(), Equals, "success")
-
-	myApp.Destroy()
-}
-
-func (s *S) TestUploadReturns404WhenAppDoesNotExist(c *C) {
-	myApp := App{Name: "myAppThatDoestNotExists", Framework: "django"}
-	request, err := http.NewRequest("POST", "/apps"+myApp.Name+"/application?:name="+myApp.Name, nil)
-	c.Assert(err, IsNil)
-
-	recorder := httptest.NewRecorder()
-	err = Upload(recorder, request)
-	c.Assert(err, IsNil)
-	c.Assert(recorder.Code, Equals, 404)
-}
-
 func (s *S) TestCloneRepositoryHandler(c *C) {
 	a := App{Name: "someApp", Framework: "django", Teams: []auth.Team{s.team}}
 	err := a.Create()
@@ -66,33 +23,16 @@ func (s *S) TestCloneRepositoryHandler(c *C) {
 	request, err := http.NewRequest("GET", url, nil)
 	c.Assert(err, IsNil)
 	recorder := httptest.NewRecorder()
-	err = CloneRepositoryHandler(recorder, request, s.user)
+	err = CloneRepositoryHandler(recorder, request)
 	c.Assert(err, IsNil)
 	c.Assert(recorder.Code, Equals, 200)
-}
-
-func (s *S) TestCloneRepositoryReturnsForbiddenIfTheUserDoesNotHaveAccesToTheApp(c *C) {
-	a := App{Name: "someApp", Framework: "django"}
-	err := a.Create()
-	c.Assert(err, IsNil)
-	defer a.Destroy()
-	url := fmt.Sprintf("/apps/%s/clone?:name=%s", a.Name, a.Name)
-	request, err := http.NewRequest("GET", url, nil)
-	c.Assert(err, IsNil)
-	recorder := httptest.NewRecorder()
-	err = CloneRepositoryHandler(recorder, request, s.user)
-	c.Assert(err, NotNil)
-	e, ok := err.(*errors.Http)
-	c.Assert(ok, Equals, true)
-	c.Assert(e.Code, Equals, http.StatusForbidden)
-	c.Assert(e, ErrorMatches, "^User does not have access to this app$")
 }
 
 func (s *S) TestCloneRepositoryShouldReturnNotFoundIfTheAppDoesNotExist(c *C) {
 	request, err := http.NewRequest("GET", "/apps/abc/clone?:name=abc", nil)
 	c.Assert(err, IsNil)
 	recorder := httptest.NewRecorder()
-	err = CloneRepositoryHandler(recorder, request, s.user)
+	err = CloneRepositoryHandler(recorder, request)
 	c.Assert(err, NotNil)
 	e, ok := err.(*errors.Http)
 	c.Assert(ok, Equals, true)
@@ -175,18 +115,17 @@ func (s *S) TestDeleteShouldReturnNotFoundIfTheAppDoesNotExist(c *C) {
 }
 
 func (s *S) TestAppInfo(c *C) {
-
-	expectedApp := App{Name: "NewApp", Framework: "django", Teams: []auth.Team{}}
+	expectedApp := App{Name: "NewApp", Framework: "django", Teams: []auth.Team{s.team}}
 	expectedApp.Create()
+	defer expectedApp.Destroy()
 
 	var myApp App
-
 	request, err := http.NewRequest("GET", "/apps/"+expectedApp.Name+"?:name="+expectedApp.Name, nil)
 	request.Header.Set("Content-Type", "application/json")
 	recorder := httptest.NewRecorder()
 	c.Assert(err, IsNil)
 
-	err = AppInfo(recorder, request)
+	err = AppInfo(recorder, request, s.user)
 	c.Assert(err, IsNil)
 	c.Assert(recorder.Code, Equals, 200)
 
@@ -195,22 +134,36 @@ func (s *S) TestAppInfo(c *C) {
 
 	err = json.Unmarshal(body, &myApp)
 	c.Assert(err, IsNil)
-	c.Assert(myApp, DeepEquals, expectedApp)
-
-	expectedApp.Destroy()
-
+	c.Assert(myApp.Name, Equals, expectedApp.Name)
 }
 
-func (s *S) TestAppInfoReturns404WhenAppDoesNotExist(c *C) {
+func (s *S) TestAppInfoReturnsForbiddenWhenTheUserDoesNotHaveAccessToTheApp(c *C) {
+	expectedApp := App{Name: "NewApp", Framework: "django", Teams: []auth.Team{}}
+	expectedApp.Create()
+	defer expectedApp.Destroy()
+	request, err := http.NewRequest("GET", "/apps/"+expectedApp.Name+"?:name="+expectedApp.Name, nil)
+	c.Assert(err, IsNil)
+	recorder := httptest.NewRecorder()
+	err = AppInfo(recorder, request, s.user)
+	c.Assert(err, NotNil)
+	e, ok := err.(*errors.Http)
+	c.Assert(ok, Equals, true)
+	c.Assert(e.Code, Equals, http.StatusForbidden)
+	c.Assert(e, ErrorMatches, "^User does not have access to this app$")
+}
+
+func (s *S) TestAppInfoReturnsNotFoundWhenAppDoesNotExist(c *C) {
 	myApp := App{Name: "SomeApp"}
 	request, err := http.NewRequest("GET", "/apps/"+myApp.Name+"?:name="+myApp.Name, nil)
 	c.Assert(err, IsNil)
-
 	request.Header.Set("Content-Type", "application/json")
 	recorder := httptest.NewRecorder()
-	err = AppInfo(recorder, request)
-	c.Assert(err, IsNil)
-	c.Assert(recorder.Code, Equals, 404)
+	err = AppInfo(recorder, request, s.user)
+	c.Assert(err, NotNil)
+	e, ok := err.(*errors.Http)
+	c.Assert(ok, Equals, true)
+	c.Assert(e.Code, Equals, http.StatusNotFound)
+	c.Assert(e, ErrorMatches, "^App not found$")
 }
 
 func (s *S) TestCreateApp(c *C) {

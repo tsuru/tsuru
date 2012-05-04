@@ -16,8 +16,8 @@ func (s *ServiceSuite) createServiceApp() {
 	s.app.Create()
 
 	s.serviceApp = &ServiceApp{
-		ServiceId: s.service.Id,
-		AppName:   s.app.Name,
+		ServiceName: s.service.Name,
+		AppName:     s.app.Name,
 	}
 	s.serviceApp.Create()
 }
@@ -26,14 +26,14 @@ func (s *ServiceSuite) TestCreateServiceApp(c *C) {
 	s.createServiceApp()
 	defer s.app.Destroy()
 	var result ServiceApp
-
-	query := bson.M{}
-	query["service_id"] = s.service.Id
-	query["app_name"] = s.app.Name
+	query := bson.M{
+		"service_name": s.service.Name,
+		"app_name":     s.app.Name,
+	}
 	err := db.Session.ServiceApps().Find(query).One(&result)
 	c.Check(err, IsNil)
 	c.Assert(s.serviceApp.Id, Not(Equals), "")
-	c.Assert(result.ServiceId, Equals, s.service.Id)
+	c.Assert(result.ServiceName, Equals, s.service.Name)
 	c.Assert(result.AppName, Equals, s.app.Name)
 }
 
@@ -41,11 +41,10 @@ func (s *ServiceSuite) TestDeleteServiceApp(c *C) {
 	s.createServiceApp()
 	defer s.app.Destroy()
 	s.serviceApp.Delete()
-
-	query := bson.M{}
-	query["service_id"] = s.service.Id
-	query["app_name"] = s.app.Name
-
+	query := bson.M{
+		"service_name": s.service.Name,
+		"app_name":     s.app.Name,
+	}
 	qtd, err := db.Session.ServiceApps().Find(query).Count()
 	c.Assert(err, IsNil)
 	c.Assert(qtd, Equals, 0)
@@ -59,17 +58,13 @@ func (s *ServiceSuite) TestRetrieveAssociatedService(c *C) {
 	defer a.Destroy()
 	service := Service{Name: "my_service", ServiceTypeId: st.Id}
 	service.Create()
-
 	serviceApp := &ServiceApp{
-		ServiceId: service.Id,
-		AppName:   a.Name,
+		ServiceName: service.Name,
+		AppName:     a.Name,
 	}
 	serviceApp.Create()
-
 	retrievedService := serviceApp.Service()
-
 	c.Assert(service.Name, Equals, retrievedService.Name)
-	c.Assert(service.Id, Equals, retrievedService.Id)
 	c.Assert(service.ServiceTypeId, Equals, retrievedService.ServiceTypeId)
 }
 
@@ -82,13 +77,11 @@ func (s *ServiceSuite) TestRetrieveAssociatedApp(c *C) {
 	st.Create()
 
 	s.serviceApp = &ServiceApp{
-		ServiceId: st.Id,
-		AppName:   a.Name,
+		ServiceName: st.Name,
+		AppName:     a.Name,
 	}
 	s.serviceApp.Create()
-
 	retrievedApp := s.serviceApp.App()
-
 	c.Assert(a.Name, Equals, retrievedApp.Name)
 	c.Assert(a.Framework, Equals, retrievedApp.Framework)
 }

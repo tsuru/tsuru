@@ -7,47 +7,11 @@ import (
 	"github.com/timeredbull/tsuru/db"
 	"io/ioutil"
 	. "launchpad.net/gocheck"
-	"launchpad.net/mgo"
 	"launchpad.net/mgo/bson"
 	"net/http"
 	"net/http/httptest"
 	"strings"
-	"testing"
 )
-
-func Test(t *testing.T) { TestingT(t) }
-
-type ServiceSuite struct {
-	app         *app.App
-	service     *Service
-	serviceType *ServiceType
-	serviceApp  *ServiceApp
-	session     *mgo.Session
-}
-
-var _ = Suite(&ServiceSuite{})
-
-func (s *ServiceSuite) SetUpSuite(c *C) {
-	var err error
-	db.Session, err = db.Open("127.0.0.1:27017", "tsuru_service_test")
-	c.Assert(err, IsNil)
-}
-
-func (s *ServiceSuite) TearDownSuite(c *C) {
-	defer db.Session.Close()
-	db.Session.DropDB()
-}
-
-func (s *ServiceSuite) TearDownTest(c *C) {
-	err := db.Session.Services().RemoveAll(nil)
-	c.Assert(err, IsNil)
-
-	err = db.Session.ServiceApps().RemoveAll(nil)
-	c.Assert(err, IsNil)
-
-	err = db.Session.ServiceTypes().RemoveAll(nil)
-	c.Assert(err, IsNil)
-}
 
 func (s *ServiceSuite) TestCreateHandler(c *C) {
 	st := ServiceType{Name: "Mysql", Charm: "mysql"}
@@ -69,7 +33,7 @@ func (s *ServiceSuite) TestCreateHandler(c *C) {
 
 	err = db.Session.Services().Find(query).One(&obtainedService)
 	c.Assert(err, IsNil)
-	c.Assert(obtainedService.Id, Not(Equals), 0)
+	c.Assert(obtainedService.Name, Equals, "some_service")
 	c.Assert(obtainedService.ServiceTypeId, Not(Equals), 0)
 	c.Assert(obtainedService.Name, Not(Equals), "")
 }
@@ -98,7 +62,6 @@ func (s *ServiceSuite) TestServicesHandler(c *C) {
 	c.Assert(err, IsNil)
 	c.Assert(len(results), Equals, 2)
 	c.Assert(results[0], FitsTypeOf, ServiceT{})
-	c.Assert(results[0].Id, Not(Equals), 0)
 	c.Assert(results[0].Name, Not(Equals), "")
 
 	c.Assert(results[0].Type, FitsTypeOf, &ServiceType{})
@@ -158,28 +121,27 @@ func (s *ServiceSuite) TestDeleteHandlerReturns404(c *C) {
 
 func (s *ServiceSuite) TestBindHandler(c *C) {
 	st := ServiceType{Name: "Mysql", Charm: "mysql"}
-	st.Create()
+	err := st.Create()
+	c.Assert(err, IsNil)
 	se := Service{ServiceTypeId: st.Id, Name: "my_service"}
 	a := app.App{Name: "someApp", Framework: "django"}
-	se.Create()
-	a.Create()
-
+	err = se.Create()
+	c.Assert(err, IsNil)
+	err = a.Create()
+	c.Assert(err, IsNil)
 	b := strings.NewReader(`{"app":"someApp", "service":"my_service"}`)
 	request, err := http.NewRequest("POST", "/services/bind", b)
 	c.Assert(err, IsNil)
-
 	recorder := httptest.NewRecorder()
 	err = BindHandler(recorder, request)
 	c.Assert(err, IsNil)
 	c.Assert(recorder.Code, Equals, 200)
-
 	query := bson.M{
-		"service_id": se.Id,
-		"app_name":   a.Name,
+		"service_name": se.Name,
+		"app_name":     a.Name,
 	}
 	qtd, err := db.Session.ServiceApps().Find(query).Count()
 	c.Check(err, IsNil)
-
 	c.Assert(qtd, Equals, 1)
 }
 
@@ -213,8 +175,8 @@ func (s *ServiceSuite) TestUnbindHandler(c *C) {
 	c.Assert(recorder.Code, Equals, 200)
 
 	query := bson.M{
-		"service_id": se.Id,
-		"app_name":   a.Name,
+		"service_name": se.Name,
+		"app_name":     a.Name,
 	}
 	qtd, err := db.Session.Services().Find(query).Count()
 	c.Check(err, IsNil)

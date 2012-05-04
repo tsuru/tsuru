@@ -51,7 +51,10 @@ func (s *Storage) Apps() *mgo.Collection {
 }
 
 func (s *Storage) Services() *mgo.Collection {
-	return s.getCollection("services")
+	nameIndex := mgo.Index{Key: []string{"name"}, Unique: true}
+	c := s.getCollection("services")
+	c.EnsureIndex(nameIndex)
+	return c
 }
 
 func (s *Storage) ServiceApps() *mgo.Collection {
