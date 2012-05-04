@@ -96,10 +96,11 @@ func Upload(w http.ResponseWriter, r *http.Request, user *auth.User) error {
 	return nil
 }
 
-func CloneRepositoryHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
-	app, err := getAppOrError(r.URL.Query().Get(":name"), u)
+func CloneRepositoryHandler(w http.ResponseWriter, r *http.Request) error {
+	app := App{Name: r.URL.Query().Get(":name")}
+	err := app.Get()
 	if err != nil {
-		return err
+		return &errors.Http{Code: http.StatusNotFound, Message: "App not found"}
 	}
 	CloneRepository(&app)
 	fmt.Fprint(w, "success")

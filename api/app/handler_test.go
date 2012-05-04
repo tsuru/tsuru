@@ -79,33 +79,16 @@ func (s *S) TestCloneRepositoryHandler(c *C) {
 	request, err := http.NewRequest("GET", url, nil)
 	c.Assert(err, IsNil)
 	recorder := httptest.NewRecorder()
-	err = CloneRepositoryHandler(recorder, request, s.user)
+	err = CloneRepositoryHandler(recorder, request)
 	c.Assert(err, IsNil)
 	c.Assert(recorder.Code, Equals, 200)
-}
-
-func (s *S) TestCloneRepositoryReturnsForbiddenIfTheUserDoesNotHaveAccesToTheApp(c *C) {
-	a := App{Name: "someApp", Framework: "django"}
-	err := a.Create()
-	c.Assert(err, IsNil)
-	defer a.Destroy()
-	url := fmt.Sprintf("/apps/%s/clone?:name=%s", a.Name, a.Name)
-	request, err := http.NewRequest("GET", url, nil)
-	c.Assert(err, IsNil)
-	recorder := httptest.NewRecorder()
-	err = CloneRepositoryHandler(recorder, request, s.user)
-	c.Assert(err, NotNil)
-	e, ok := err.(*errors.Http)
-	c.Assert(ok, Equals, true)
-	c.Assert(e.Code, Equals, http.StatusForbidden)
-	c.Assert(e, ErrorMatches, "^User does not have access to this app$")
 }
 
 func (s *S) TestCloneRepositoryShouldReturnNotFoundIfTheAppDoesNotExist(c *C) {
 	request, err := http.NewRequest("GET", "/apps/abc/clone?:name=abc", nil)
 	c.Assert(err, IsNil)
 	recorder := httptest.NewRecorder()
-	err = CloneRepositoryHandler(recorder, request, s.user)
+	err = CloneRepositoryHandler(recorder, request)
 	c.Assert(err, NotNil)
 	e, ok := err.(*errors.Http)
 	c.Assert(ok, Equals, true)
