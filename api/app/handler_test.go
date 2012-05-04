@@ -116,7 +116,7 @@ func (s *S) TestDelete(c *C) {
 	c.Assert(recorder.Code, Equals, 200)
 }
 
-func (s *S) TestDeleteShouldReturnUnauthorizedIfTheGivenUserDoesNotHaveAccesToTheapp(c *C) {
+func (s *S) TestDeleteShouldReturnForbiddenIfTheGivenUserDoesNotHaveAccesToTheapp(c *C) {
 	myApp := App{Name: "MyAppToDelete", Framework: "django"}
 	myApp.Create()
 	defer myApp.Destroy()
@@ -127,7 +127,7 @@ func (s *S) TestDeleteShouldReturnUnauthorizedIfTheGivenUserDoesNotHaveAccesToTh
 	c.Assert(err, NotNil)
 	e, ok := err.(*errors.Http)
 	c.Assert(ok, Equals, true)
-	c.Assert(e.Code, Equals, http.StatusUnauthorized)
+	c.Assert(e.Code, Equals, http.StatusForbidden)
 	c.Assert(e, ErrorMatches, "^User does not have access to this app$")
 }
 

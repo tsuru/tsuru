@@ -101,7 +101,7 @@ func AppDelete(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 		return &errors.Http{Code: http.StatusNotFound, Message: "App not found"}
 	}
 	if !app.CheckUserAccess(u) {
-		return &errors.Http{Code: http.StatusUnauthorized, Message: "User does not have access to this app"}
+		return &errors.Http{Code: http.StatusForbidden, Message: "User does not have access to this app"}
 	}
 	app.Destroy()
 	fmt.Fprint(w, "success")
