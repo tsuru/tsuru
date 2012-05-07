@@ -97,3 +97,35 @@ func (s *ServiceSuite) TestUnbindService(c *C) {
 	c.Assert(err, IsNil)
 	c.Assert(qtd, Equals, 0)
 }
+
+func (s *ServiceSuite) TestGrantAccessShouldAddTeamToTheService(c *C) {
+	s.createService()
+	err := s.service.GrantAccess(s.team)
+	c.Assert(err, IsNil)
+	c.Assert(*s.team, HasAccessTo, *s.service)
+}
+
+func (s *ServiceSuite) TestGrantAccessShouldReturnErrorIfTheTeamAlreadyHasAcessToTheService(c *C) {
+	s.createService()
+	err := s.service.GrantAccess(s.team)
+	c.Assert(err, IsNil)
+	err = s.service.GrantAccess(s.team)
+	c.Assert(err, NotNil)
+	c.Assert(err, ErrorMatches, "^This team already has access to this service$")
+}
+
+func (s *ServiceSuite) TestRevokeAccessShouldRemoveTeamFromService(c *C) {
+	s.createService()
+	err := s.service.GrantAccess(s.team)
+	c.Assert(err, IsNil)
+	err = s.service.RevokeAccess(s.team)
+	c.Assert(err, IsNil)
+	c.Assert(*s.team, Not(HasAccessTo), *s.service)
+}
+
+func (s *ServiceSuite) TestRevokeAcessShouldReturnErrorIfTheTeamDoesNotHaveAccessToTheService(c *C) {
+	s.createService()
+	err := s.service.RevokeAccess(s.team)
+	c.Assert(err, NotNil)
+	c.Assert(err, ErrorMatches, "^This team does not have access to this service$")
+}

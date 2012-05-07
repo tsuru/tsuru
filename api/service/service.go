@@ -1,7 +1,9 @@
 package service
 
 import (
+	"errors"
 	"github.com/timeredbull/tsuru/api/app"
+	"github.com/timeredbull/tsuru/api/auth"
 	"github.com/timeredbull/tsuru/api/unit"
 	"github.com/timeredbull/tsuru/db"
 	"launchpad.net/mgo/bson"
@@ -10,6 +12,7 @@ import (
 type Service struct {
 	ServiceTypeId bson.ObjectId `bson:"service_type_id"`
 	Name          string
+	Teams         []auth.Team
 }
 
 func (s *Service) Get() error {
@@ -56,4 +59,36 @@ func (s *Service) ServiceType() (st *ServiceType) {
 	st = &ServiceType{Id: s.ServiceTypeId}
 	st.Get()
 	return
+}
+
+func (s *Service) findTeam(team *auth.Team) int {
+	for i, t := range s.Teams {
+		if team.Name == t.Name {
+			return i
+		}
+	}
+	return -1
+}
+
+func (s *Service) hasTeam(team *auth.Team) bool {
+	return s.findTeam(team) > -1
+}
+
+func (s *Service) GrantAccess(team *auth.Team) error {
+	if s.hasTeam(team) {
+		return errors.New("This team already has access to this service")
+	}
+	s.Teams = append(s.Teams, *team)
+	return nil
+}
+
+func (s *Service) RevokeAccess(team *auth.Team) error {
+	index := s.findTeam(team)
+	if index < 0 {
+		return errors.New("This team does not have access to this service")
+	}
+	last := len(s.Teams) - 1
+	s.Teams[index] = s.Teams[last]
+	s.Teams = s.Teams[:last]
+	return nil
 }
