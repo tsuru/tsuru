@@ -5,7 +5,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/timeredbull/tsuru/api/app"
+	"github.com/timeredbull/tsuru/api/auth"
+	"github.com/timeredbull/tsuru/db"
+	"github.com/timeredbull/tsuru/errors"
 	"io/ioutil"
+	"launchpad.net/mgo/bson"
 	"net/http"
 )
 
@@ -161,4 +165,25 @@ func UnbindHandler(w http.ResponseWriter, r *http.Request) error {
 		fmt.Fprint(w, "success")
 	}
 	return nil
+}
+
+func GrantAccessToTeamHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
+	service := &Service{Name: r.URL.Query().Get(":service")}
+	err := service.Get()
+	if err != nil {
+		return &errors.Http{Code: http.StatusNotFound, Message: "Service not found"}
+	}
+	if !service.CheckUserAccess(u) {
+		return &errors.Http{Code: http.StatusForbidden, Message: "This user does not have access to this service"}
+	}
+	t := new(auth.Team)
+	err = db.Session.Teams().Find(bson.M{"name": r.URL.Query().Get(":team")}).One(t)
+	if err != nil {
+		return &errors.Http{Code: http.StatusNotFound, Message: "Team not found"}
+	}
+	err = service.GrantAccess(t)
+	if err != nil {
+		return &errors.Http{Code: http.StatusConflict, Message: err.Error()}
+	}
+	return db.Session.Services().Update(bson.M{"name": service.Name}, service)
 }

@@ -51,6 +51,7 @@ func main() {
 	m.Get("/services/:name", webserver.Handler(service.DeleteHandler))
 	m.Post("/services/bind", webserver.Handler(service.BindHandler))
 	m.Post("/services/unbind", webserver.Handler(service.UnbindHandler))
+	m.Put("/services/:service/:team", webserver.AuthorizationRequiredHandler(service.GrantAccessToTeamHandler))
 
 	m.Del("/apps/:name", webserver.AuthorizationRequiredHandler(app.AppDelete))
 	m.Get("/apps/:name/clone", webserver.Handler(app.CloneRepositoryHandler))

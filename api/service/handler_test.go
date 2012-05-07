@@ -4,7 +4,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/timeredbull/tsuru/api/app"
+	"github.com/timeredbull/tsuru/api/auth"
 	"github.com/timeredbull/tsuru/db"
+	"github.com/timeredbull/tsuru/errors"
 	"io/ioutil"
 	. "launchpad.net/gocheck"
 	"launchpad.net/mgo/bson"
@@ -192,4 +194,94 @@ func (s *ServiceSuite) TestUnbindReturns404(c *C) {
 	err = UnbindHandler(recorder, request)
 	c.Assert(err, IsNil)
 	c.Assert(recorder.Code, Equals, 404)
+}
+
+func (s *ServiceSuite) TestGrantAccessToTeam(c *C) {
+	t := &auth.Team{Name: "blaaaa"}
+	db.Session.Teams().Insert(t)
+	defer db.Session.Teams().Remove(bson.M{"name": t.Name})
+	st := ServiceType{Name: "Mysql", Charm: "mysql"}
+	err := st.Create()
+	c.Assert(err, IsNil)
+	se := Service{ServiceTypeId: st.Id, Name: "my_service", Teams: []auth.Team{*s.team}}
+	err = se.Create()
+	c.Assert(err, IsNil)
+	url := fmt.Sprintf("/services/%s/%s?:service=%s&:team=%s", se.Name, t.Name, se.Name, t.Name)
+	request, err := http.NewRequest("PUT", url, nil)
+	c.Assert(err, IsNil)
+	recorder := httptest.NewRecorder()
+	err = GrantAccessToTeamHandler(recorder, request, s.user)
+	c.Assert(err, IsNil)
+	err = se.Get()
+	c.Assert(err, IsNil)
+	c.Assert(*s.team, HasAccessTo, se)
+}
+
+func (s *ServiceSuite) TestGrantAccesToTeamReturnNotFoundIfTheServiceDoesNotExist(c *C) {
+	url := fmt.Sprintf("/services/nononono/%s?:service=nononono&:team=%s", s.team.Name, s.team.Name)
+	request, err := http.NewRequest("PUT", url, nil)
+	c.Assert(err, IsNil)
+	recorder := httptest.NewRecorder()
+	err = GrantAccessToTeamHandler(recorder, request, s.user)
+	c.Assert(err, NotNil)
+	e, ok := err.(*errors.Http)
+	c.Assert(ok, Equals, true)
+	c.Assert(e.Code, Equals, http.StatusNotFound)
+	c.Assert(e, ErrorMatches, "^Service not found$")
+}
+
+func (s *ServiceSuite) TestGrantAccessToTeamReturnForbiddenIfTheGivenUserDoesNotHaveAccessToTheService(c *C) {
+	st := ServiceType{Name: "Mysql", Charm: "mysql"}
+	err := st.Create()
+	c.Assert(err, IsNil)
+	se := Service{ServiceTypeId: st.Id, Name: "my_service"}
+	err = se.Create()
+	c.Assert(err, IsNil)
+	url := fmt.Sprintf("/services/%s/%s?:service=%s&:team=%s", se.Name, s.team.Name, se.Name, s.team.Name)
+	request, err := http.NewRequest("PUT", url, nil)
+	c.Assert(err, IsNil)
+	recorder := httptest.NewRecorder()
+	err = GrantAccessToTeamHandler(recorder, request, s.user)
+	c.Assert(err, NotNil)
+	e, ok := err.(*errors.Http)
+	c.Assert(ok, Equals, true)
+	c.Assert(e.Code, Equals, http.StatusForbidden)
+	c.Assert(e, ErrorMatches, "^This user does not have access to this service$")
+}
+
+func (s *ServiceSuite) TestGrantAccessToTeamReturnNotFoundIfTheTeamDoesNotExist(c *C) {
+	st := ServiceType{Name: "Mysql", Charm: "mysql"}
+	err := st.Create()
+	c.Assert(err, IsNil)
+	se := Service{ServiceTypeId: st.Id, Name: "my_service", Teams: []auth.Team{*s.team}}
+	err = se.Create()
+	c.Assert(err, IsNil)
+	url := fmt.Sprintf("/services/%s/nonono?:service=%s&:team=nonono", se.Name, se.Name)
+	request, err := http.NewRequest("PUT", url, nil)
+	c.Assert(err, IsNil)
+	recorder := httptest.NewRecorder()
+	err = GrantAccessToTeamHandler(recorder, request, s.user)
+	c.Assert(err, NotNil)
+	e, ok := err.(*errors.Http)
+	c.Assert(ok, Equals, true)
+	c.Assert(e.Code, Equals, http.StatusNotFound)
+	c.Assert(e, ErrorMatches, "^Team not found$")
+}
+
+func (s *ServiceSuite) TestGrantAccessToTeamReturnConflictIfTheTeamAlreadyHasAccessToTheService(c *C) {
+	st := ServiceType{Name: "Mysql", Charm: "mysql"}
+	err := st.Create()
+	c.Assert(err, IsNil)
+	se := Service{ServiceTypeId: st.Id, Name: "my_service", Teams: []auth.Team{*s.team}}
+	err = se.Create()
+	c.Assert(err, IsNil)
+	url := fmt.Sprintf("/services/%s/%s?:service=%s&:team=%s", se.Name, s.team.Name, se.Name, s.team.Name)
+	request, err := http.NewRequest("PUT", url, nil)
+	c.Assert(err, IsNil)
+	recorder := httptest.NewRecorder()
+	err = GrantAccessToTeamHandler(recorder, request, s.user)
+	c.Assert(err, NotNil)
+	e, ok := err.(*errors.Http)
+	c.Assert(ok, Equals, true)
+	c.Assert(e.Code, Equals, http.StatusConflict)
 }
