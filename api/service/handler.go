@@ -76,7 +76,7 @@ func ServiceTypesHandler(w http.ResponseWriter, r *http.Request) error {
 	return nil
 }
 
-func CreateHandler(w http.ResponseWriter, r *http.Request) error {
+func CreateHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	var sj ServiceJson
 
 	defer r.Body.Close()
@@ -93,9 +93,16 @@ func CreateHandler(w http.ResponseWriter, r *http.Request) error {
 	st := ServiceType{Charm: sj.Type}
 	st.Get()
 
+	var teams []auth.Team
+	db.Session.Teams().Find(bson.M{"users.email": u.Email}).All(&teams)
+	if len(teams) == 0 {
+		msg := "In order to create a service, you should be member of at least one team"
+		return &errors.Http{Code: http.StatusForbidden, Message: msg}
+	}
 	s := Service{
 		Name:          sj.Name,
 		ServiceTypeId: st.Id,
+		Teams:         teams,
 	}
 	s.Create()
 	fmt.Fprint(w, "success")

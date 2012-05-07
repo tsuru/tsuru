@@ -19,5 +19,8 @@ func (s *S) TestShowApps(c *C) {
 	context := Context{[]string{}, manager.Stdout, manager.Stderr}
 	err = AppsCommand{}.Show(result, &context)
 	c.Assert(err, IsNil)
-	c.Assert(manager.Stdout.(*bytes.Buffer).String(), Equals, "Application - State - Ip\napp1 -  - \n")
+	table := NewTable()
+	table.Headers = Row{"Application", "State", "Ip"}
+	table.AddRow(Row{"app1", "", ""})
+	c.Assert(manager.Stdout.(*bytes.Buffer).String(), Equals, table.String())
 }

@@ -15,7 +15,7 @@ import (
 	"strings"
 )
 
-func (s *ServiceSuite) TestCreateHandler(c *C) {
+func (s *ServiceSuite) TestCreateHandlerGetAllTeamsFromTheUser(c *C) {
 	st := ServiceType{Name: "Mysql", Charm: "mysql"}
 	st.Create()
 
@@ -25,7 +25,7 @@ func (s *ServiceSuite) TestCreateHandler(c *C) {
 
 	request.Header.Set("Content-Type", "application/json")
 	recorder := httptest.NewRecorder()
-	err = CreateHandler(recorder, request)
+	err = CreateHandler(recorder, request, s.user)
 	c.Assert(err, IsNil)
 	c.Assert(recorder.Body.String(), Equals, "success")
 	c.Assert(recorder.Code, Equals, 200)
@@ -38,6 +38,28 @@ func (s *ServiceSuite) TestCreateHandler(c *C) {
 	c.Assert(obtainedService.Name, Equals, "some_service")
 	c.Assert(obtainedService.ServiceTypeId, Not(Equals), 0)
 	c.Assert(obtainedService.Name, Not(Equals), "")
+	c.Assert(*s.team, HasAccessTo, obtainedService)
+}
+
+func (s *ServiceSuite) TestCreateHandlerReturnsForbiddenIfTheUserIsNotMemberOfAnyTeam(c *C) {
+	u := &auth.User{Email: "enforce@queensryche.com", Password: "123"}
+	u.Create()
+	defer db.Session.Users().RemoveAll(bson.M{"email": u.Email})
+	st := ServiceType{Name: "Mysql", Charm: "mysql"}
+	st.Create()
+
+	b := strings.NewReader(`{"name":"some_service", "type":"mysql"}`)
+	request, err := http.NewRequest("POST", "/services", b)
+	c.Assert(err, IsNil)
+
+	request.Header.Set("Content-Type", "application/json")
+	recorder := httptest.NewRecorder()
+	err = CreateHandler(recorder, request, u)
+	c.Assert(err, NotNil)
+	e, ok := err.(*errors.Http)
+	c.Assert(ok, Equals, true)
+	c.Assert(e.Code, Equals, http.StatusForbidden)
+	c.Assert(e, ErrorMatches, "^In order to create a service, you should be member of at least one team$")
 }
 
 func (s *ServiceSuite) TestServicesHandler(c *C) {
@@ -126,12 +148,12 @@ func (s *ServiceSuite) TestBindHandler(c *C) {
 	err := st.Create()
 	c.Assert(err, IsNil)
 	se := Service{ServiceTypeId: st.Id, Name: "my_service"}
-	a := app.App{Name: "someApp", Framework: "django"}
+	a := app.App{Name: "serviceApp", Framework: "django"}
 	err = se.Create()
 	c.Assert(err, IsNil)
 	err = a.Create()
 	c.Assert(err, IsNil)
-	b := strings.NewReader(`{"app":"someApp", "service":"my_service"}`)
+	b := strings.NewReader(`{"app":"serviceApp", "service":"my_service"}`)
 	request, err := http.NewRequest("POST", "/services/bind", b)
 	c.Assert(err, IsNil)
 	recorder := httptest.NewRecorder()
@@ -148,7 +170,7 @@ func (s *ServiceSuite) TestBindHandler(c *C) {
 }
 
 func (s *ServiceSuite) TestBindHandlerReturns404(c *C) {
-	b := strings.NewReader(`{"app":"someApp", "service":"my_service"}`)
+	b := strings.NewReader(`{"app":"serviceApp", "service":"my_service"}`)
 	request, err := http.NewRequest("POST", "/services/bind", b)
 	c.Assert(err, IsNil)
 
@@ -162,12 +184,12 @@ func (s *ServiceSuite) TestUnbindHandler(c *C) {
 	st := ServiceType{Name: "Mysql", Charm: "mysql"}
 	st.Create()
 	se := Service{ServiceTypeId: st.Id, Name: "my_service"}
-	a := app.App{Name: "someApp", Framework: "django", Ip: "192.168.30.10"}
+	a := app.App{Name: "serviceApp", Framework: "django", Ip: "192.168.30.10"}
 	se.Create()
 	a.Create()
 	se.Bind(&a)
 
-	b := strings.NewReader(`{"app":"someApp", "service":"my_service"}`)
+	b := strings.NewReader(`{"app":"serviceApp", "service":"my_service"}`)
 	request, err := http.NewRequest("POST", "/services/bind", b)
 	c.Assert(err, IsNil)
 
@@ -186,7 +208,7 @@ func (s *ServiceSuite) TestUnbindHandler(c *C) {
 }
 
 func (s *ServiceSuite) TestUnbindReturns404(c *C) {
-	b := strings.NewReader(`{"app":"someApp", "service":"my_service"}`)
+	b := strings.NewReader(`{"app":"serviceApp", "service":"my_service"}`)
 	request, err := http.NewRequest("POST", "/services/bind", b)
 	c.Assert(err, IsNil)
 
