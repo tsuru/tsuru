@@ -55,3 +55,24 @@ func (s *S) TestHeadings(c *C) {
 +-------+--------+`
 	c.Assert(table.String(), Equals, expected)
 }
+
+func (s *S) TestString(c *C) {
+	table := NewTable()
+	table.AddRow(Row{"One", "1"})
+	table.AddRow(Row{"Two", "2"})
+	table.AddRow(Row{"Three", "3"})
+	expected := `+-------+---+
+| One   | 1 |
+| Two   | 2 |
+| Three | 3 |
++-------+---+`
+	c.Assert(table.String(), Equals, expected)
+}
+
+func (s *S) TestBytes(c *C) {
+	table := NewTable()
+	table.AddRow(Row{"One", "1"})
+	table.AddRow(Row{"Two", "2"})
+	table.AddRow(Row{"Three", "3"})
+	c.Assert(table.Bytes(), DeepEquals, []byte(table.String()))
+}

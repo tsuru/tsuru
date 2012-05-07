@@ -35,6 +35,10 @@ func (t *Table) String() string {
 	return result
 }
 
+func (t *Table) Bytes() []byte {
+	return []byte(t.String())
+}
+
 func (t *Table) AddRow(row Row) {
 	t.rows = append(t.rows, row)
 }
