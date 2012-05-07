@@ -3,6 +3,7 @@ package repository_test
 import (
 	"fmt"
 	. "github.com/timeredbull/tsuru/api/app"
+	. "github.com/timeredbull/tsuru/api/repository"
 	. "launchpad.net/gocheck"
 	"os"
 	"path"
