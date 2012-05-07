@@ -167,19 +167,27 @@ func UnbindHandler(w http.ResponseWriter, r *http.Request) error {
 	return nil
 }
 
-func GrantAccessToTeamHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
-	service := &Service{Name: r.URL.Query().Get(":service")}
+func getServiceAndTeamOrError(serviceName string, teamName string, u *auth.User) (*Service, *auth.Team, error) {
+	service := &Service{Name: serviceName}
 	err := service.Get()
 	if err != nil {
-		return &errors.Http{Code: http.StatusNotFound, Message: "Service not found"}
+		return nil, nil, &errors.Http{Code: http.StatusNotFound, Message: "Service not found"}
 	}
 	if !service.CheckUserAccess(u) {
-		return &errors.Http{Code: http.StatusForbidden, Message: "This user does not have access to this service"}
+		return nil, nil, &errors.Http{Code: http.StatusForbidden, Message: "This user does not have access to this service"}
 	}
 	t := new(auth.Team)
-	err = db.Session.Teams().Find(bson.M{"name": r.URL.Query().Get(":team")}).One(t)
+	err = db.Session.Teams().Find(bson.M{"name": teamName}).One(t)
 	if err != nil {
-		return &errors.Http{Code: http.StatusNotFound, Message: "Team not found"}
+		return nil, nil, &errors.Http{Code: http.StatusNotFound, Message: "Team not found"}
+	}
+	return service, t, nil
+}
+
+func GrantAccessToTeamHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
+	service, t, err := getServiceAndTeamOrError(r.URL.Query().Get(":service"), r.URL.Query().Get(":team"), u)
+	if err != nil {
+		return err
 	}
 	err = service.GrantAccess(t)
 	if err != nil {
@@ -189,18 +197,9 @@ func GrantAccessToTeamHandler(w http.ResponseWriter, r *http.Request, u *auth.Us
 }
 
 func RevokeAccessFromTeamHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
-	service := &Service{Name: r.URL.Query().Get(":service")}
-	err := service.Get()
+	service, t, err := getServiceAndTeamOrError(r.URL.Query().Get(":service"), r.URL.Query().Get(":team"), u)
 	if err != nil {
-		return &errors.Http{Code: http.StatusNotFound, Message: "Service not found"}
-	}
-	if !service.CheckUserAccess(u) {
-		return &errors.Http{Code: http.StatusForbidden, Message: "This user does not have access to this service"}
-	}
-	t := new(auth.Team)
-	err = db.Session.Teams().Find(bson.M{"name": r.URL.Query().Get(":team")}).One(t)
-	if err != nil {
-		return &errors.Http{Code: http.StatusNotFound, Message: "Team not found"}
+		return err
 	}
 	if len(service.Teams) < 2 {
 		msg := "You can not revoke the access from this team, because it is the unique team with access to this service, and a service can not be orphaned"
