@@ -187,3 +187,28 @@ func GrantAccessToTeamHandler(w http.ResponseWriter, r *http.Request, u *auth.Us
 	}
 	return db.Session.Services().Update(bson.M{"name": service.Name}, service)
 }
+
+func RevokeAccessFromTeamHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
+	service := &Service{Name: r.URL.Query().Get(":service")}
+	err := service.Get()
+	if err != nil {
+		return &errors.Http{Code: http.StatusNotFound, Message: "Service not found"}
+	}
+	if !service.CheckUserAccess(u) {
+		return &errors.Http{Code: http.StatusForbidden, Message: "This user does not have access to this service"}
+	}
+	t := new(auth.Team)
+	err = db.Session.Teams().Find(bson.M{"name": r.URL.Query().Get(":team")}).One(t)
+	if err != nil {
+		return &errors.Http{Code: http.StatusNotFound, Message: "Team not found"}
+	}
+	if len(service.Teams) < 2 {
+		msg := "You can not revoke the access from this team, because it is the unique team with access to this service, and a service can not be orphaned"
+		return &errors.Http{Code: http.StatusForbidden, Message: msg}
+	}
+	err = service.RevokeAccess(t)
+	if err != nil {
+		return &errors.Http{Code: http.StatusNotFound, Message: err.Error()}
+	}
+	return db.Session.Services().Update(bson.M{"name": service.Name}, service)
+}

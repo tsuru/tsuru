@@ -285,3 +285,114 @@ func (s *ServiceSuite) TestGrantAccessToTeamReturnConflictIfTheTeamAlreadyHasAcc
 	c.Assert(ok, Equals, true)
 	c.Assert(e.Code, Equals, http.StatusConflict)
 }
+
+func (s *ServiceSuite) TestRevokeAccessFromTeamRemovesTeamFromService(c *C) {
+	t := &auth.Team{Name: "alle-da"}
+	st := ServiceType{Name: "Mysql", Charm: "mysql"}
+	err := st.Create()
+	c.Assert(err, IsNil)
+	se := Service{ServiceTypeId: st.Id, Name: "my_service", Teams: []auth.Team{*s.team, *t}}
+	err = se.Create()
+	c.Assert(err, IsNil)
+	url := fmt.Sprintf("/services/%s/%s?:service=%s&:team=%s", se.Name, s.team.Name, se.Name, s.team.Name)
+	request, err := http.NewRequest("DELETE", url, nil)
+	c.Assert(err, IsNil)
+	recorder := httptest.NewRecorder()
+	err = RevokeAccessFromTeamHandler(recorder, request, s.user)
+	c.Assert(err, IsNil)
+	err = se.Get()
+	c.Assert(err, IsNil)
+	c.Assert(*s.team, Not(HasAccessTo), se)
+}
+
+func (s *ServiceSuite) TestRevokeAccessFromTeamReturnsNotFoundIfTheServiceDoesNotExist(c *C) {
+	url := fmt.Sprintf("/services/nonono/%s?:service=nonono&:team=%s", s.team.Name, s.team.Name)
+	request, err := http.NewRequest("DELETE", url, nil)
+	c.Assert(err, IsNil)
+	recorder := httptest.NewRecorder()
+	err = RevokeAccessFromTeamHandler(recorder, request, s.user)
+	c.Assert(err, NotNil)
+	e, ok := err.(*errors.Http)
+	c.Assert(ok, Equals, true)
+	c.Assert(e.Code, Equals, http.StatusNotFound)
+	c.Assert(e, ErrorMatches, "^Service not found$")
+}
+
+func (s *ServiceSuite) TestRevokeAccesFromTeamReturnsForbiddenIfTheGivenUserDoesNotHasAccessToTheService(c *C) {
+	t := &auth.Team{Name: "alle-da"}
+	st := ServiceType{Name: "Mysql", Charm: "mysql"}
+	err := st.Create()
+	c.Assert(err, IsNil)
+	se := Service{ServiceTypeId: st.Id, Name: "my_service", Teams: []auth.Team{*t}}
+	err = se.Create()
+	c.Assert(err, IsNil)
+	url := fmt.Sprintf("/services/%s/%s?:service=%s&:team=%s", se.Name, t.Name, se.Name, t.Name)
+	request, err := http.NewRequest("DELETE", url, nil)
+	c.Assert(err, IsNil)
+	recorder := httptest.NewRecorder()
+	err = RevokeAccessFromTeamHandler(recorder, request, s.user)
+	c.Assert(err, NotNil)
+	e, ok := err.(*errors.Http)
+	c.Assert(ok, Equals, true)
+	c.Assert(e.Code, Equals, http.StatusForbidden)
+	c.Assert(e, ErrorMatches, "^This user does not have access to this service$")
+}
+
+func (s *ServiceSuite) TestRevokeAccessFromTeamReturnsNotFoundIfTheTeamDoesNotExist(c *C) {
+	st := ServiceType{Name: "Mysql", Charm: "mysql"}
+	err := st.Create()
+	c.Assert(err, IsNil)
+	se := Service{ServiceTypeId: st.Id, Name: "my_service", Teams: []auth.Team{*s.team}}
+	err = se.Create()
+	c.Assert(err, IsNil)
+	url := fmt.Sprintf("/services/%s/nonono?:service=%s&:team=nonono", se.Name, se.Name)
+	request, err := http.NewRequest("DELETE", url, nil)
+	c.Assert(err, IsNil)
+	recorder := httptest.NewRecorder()
+	err = RevokeAccessFromTeamHandler(recorder, request, s.user)
+	c.Assert(err, NotNil)
+	e, ok := err.(*errors.Http)
+	c.Assert(ok, Equals, true)
+	c.Assert(e.Code, Equals, http.StatusNotFound)
+	c.Assert(e, ErrorMatches, "^Team not found$")
+}
+
+func (s *ServiceSuite) TestRevokeAccessFromTeamReturnsForbiddenIfTheTeamIsTheOnlyWithAccessToTheService(c *C) {
+	st := ServiceType{Name: "Mysql", Charm: "mysql"}
+	err := st.Create()
+	c.Assert(err, IsNil)
+	se := Service{ServiceTypeId: st.Id, Name: "my_service", Teams: []auth.Team{*s.team}}
+	err = se.Create()
+	c.Assert(err, IsNil)
+	url := fmt.Sprintf("/services/%s/%s?:service=%s&:team=%s", se.Name, s.team.Name, se.Name, s.team.Name)
+	request, err := http.NewRequest("DELETE", url, nil)
+	c.Assert(err, IsNil)
+	recorder := httptest.NewRecorder()
+	err = RevokeAccessFromTeamHandler(recorder, request, s.user)
+	c.Assert(err, NotNil)
+	e, ok := err.(*errors.Http)
+	c.Assert(ok, Equals, true)
+	c.Assert(e.Code, Equals, http.StatusForbidden)
+	c.Assert(e, ErrorMatches, "^You can not revoke the access from this team, because it is the unique team with access to this service, and a service can not be orphaned$")
+}
+
+func (s *ServiceSuite) TestRevokeAccessFromTeamReturnNotFoundIfTheTeamDoesNotHasAccessToTheService(c *C) {
+	t := &auth.Team{Name: "Rammlied"}
+	db.Session.Teams().Insert(t)
+	defer db.Session.Teams().RemoveAll(bson.M{"name": t.Name})
+	st := ServiceType{Name: "Mysql", Charm: "mysql"}
+	err := st.Create()
+	c.Assert(err, IsNil)
+	se := Service{ServiceTypeId: st.Id, Name: "my_service", Teams: []auth.Team{*s.team, *s.team}}
+	err = se.Create()
+	c.Assert(err, IsNil)
+	url := fmt.Sprintf("/services/%s/%s?:service=%s&:team=%s", se.Name, t.Name, se.Name, t.Name)
+	request, err := http.NewRequest("DELETE", url, nil)
+	c.Assert(err, IsNil)
+	recorder := httptest.NewRecorder()
+	err = RevokeAccessFromTeamHandler(recorder, request, s.user)
+	c.Assert(err, NotNil)
+	e, ok := err.(*errors.Http)
+	c.Assert(ok, Equals, true)
+	c.Assert(e.Code, Equals, http.StatusNotFound)
+}
