@@ -10,18 +10,15 @@ import (
 func (s *ServiceSuite) createService() {
 	s.serviceType = &ServiceType{Name: "Mysql", Charm: "mysql"}
 	s.serviceType.Create()
-
 	s.service = &Service{ServiceTypeId: s.serviceType.Id, Name: "my_service"}
 	s.service.Create()
 }
 
 func (s *ServiceSuite) TestGetService(c *C) {
 	s.createService()
-
-	anotherService := Service{Id: s.service.Id}
+	anotherService := Service{Name: s.service.Name}
 	anotherService.Get()
-
-	c.Assert(anotherService.Id, Equals, s.service.Id)
+	c.Assert(anotherService.Name, Equals, s.service.Name)
 	c.Assert(anotherService.ServiceTypeId, Equals, s.service.ServiceTypeId)
 }
 
@@ -40,10 +37,8 @@ func (s *ServiceSuite) TestAllServices(c *C) {
 
 func (s *ServiceSuite) TestCreateService(c *C) {
 	s.createService()
-	se := Service{Id: s.service.Id}
+	se := Service{Name: s.service.Name}
 	se.Get()
-
-	c.Assert(se.Id, Equals, s.service.Id)
 	c.Assert(se.ServiceTypeId, Equals, s.serviceType.Id)
 	c.Assert(se.Name, Equals, s.service.Name)
 }
@@ -51,7 +46,6 @@ func (s *ServiceSuite) TestCreateService(c *C) {
 func (s *ServiceSuite) TestDeleteService(c *C) {
 	s.createService()
 	s.service.Delete()
-
 	qtd, err := db.Session.Services().Find(nil).Count()
 	c.Assert(err, IsNil)
 	c.Assert(qtd, Equals, 0)
@@ -79,14 +73,13 @@ func (s *ServiceSuite) TestBindService(c *C) {
 	app.Create()
 	s.service.Bind(app)
 	var result ServiceApp
-
 	query := bson.M{
-		"service_id": s.service.Id,
-		"app_name":   app.Name,
+		"service_name": s.service.Name,
+		"app_name":     app.Name,
 	}
 	err := db.Session.ServiceApps().Find(query).One(&result)
 	c.Assert(err, IsNil)
-	c.Assert(s.service.Id, Equals, result.ServiceId)
+	c.Assert(s.service.Name, Equals, result.ServiceName)
 	c.Assert(app.Name, Equals, result.AppName)
 }
 
@@ -96,12 +89,54 @@ func (s *ServiceSuite) TestUnbindService(c *C) {
 	app.Create()
 	s.service.Bind(app)
 	s.service.Unbind(app)
-
-	query := bson.M{}
-	query["service_id"] = s.service.Id
-	query["app_name"] = app.Name
-
+	query := bson.M{
+		"service_name": s.service.Name,
+		"app_name":     app.Name,
+	}
 	qtd, err := db.Session.ServiceApps().Find(query).Count()
 	c.Assert(err, IsNil)
 	c.Assert(qtd, Equals, 0)
+}
+
+func (s *ServiceSuite) TestGrantAccessShouldAddTeamToTheService(c *C) {
+	s.createService()
+	err := s.service.GrantAccess(s.team)
+	c.Assert(err, IsNil)
+	c.Assert(*s.team, HasAccessTo, *s.service)
+}
+
+func (s *ServiceSuite) TestGrantAccessShouldReturnErrorIfTheTeamAlreadyHasAcessToTheService(c *C) {
+	s.createService()
+	err := s.service.GrantAccess(s.team)
+	c.Assert(err, IsNil)
+	err = s.service.GrantAccess(s.team)
+	c.Assert(err, NotNil)
+	c.Assert(err, ErrorMatches, "^This team already has access to this service$")
+}
+
+func (s *ServiceSuite) TestRevokeAccessShouldRemoveTeamFromService(c *C) {
+	s.createService()
+	err := s.service.GrantAccess(s.team)
+	c.Assert(err, IsNil)
+	err = s.service.RevokeAccess(s.team)
+	c.Assert(err, IsNil)
+	c.Assert(*s.team, Not(HasAccessTo), *s.service)
+}
+
+func (s *ServiceSuite) TestRevokeAcessShouldReturnErrorIfTheTeamDoesNotHaveAccessToTheService(c *C) {
+	s.createService()
+	err := s.service.RevokeAccess(s.team)
+	c.Assert(err, NotNil)
+	c.Assert(err, ErrorMatches, "^This team does not have access to this service$")
+}
+
+func (s *ServiceSuite) TestCheckUserPermissionShouldReturnTrueIfTheGivenUserIsMemberOfOneOfTheServicesTeam(c *C) {
+	s.createService()
+	s.service.GrantAccess(s.team)
+	c.Assert(s.service.CheckUserAccess(s.user), Equals, true)
+}
+
+func (s *ServiceSuite) TestCheckUserPermissionShouldReturnFalseIfTheGivenUserIsNotMemberOfAnyOfTheServicesTeam(c *C) {
+	s.createService()
+	c.Assert(s.service.CheckUserAccess(s.user), Equals, false)
 }

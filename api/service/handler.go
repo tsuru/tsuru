@@ -5,6 +5,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/timeredbull/tsuru/api/app"
+	"github.com/timeredbull/tsuru/api/auth"
+	"github.com/timeredbull/tsuru/db"
+	"github.com/timeredbull/tsuru/errors"
 	"io/ioutil"
 	"launchpad.net/mgo/bson"
 	"net/http"
@@ -22,7 +25,6 @@ type BindJson struct {
 
 // a service with a pointer to it's type
 type ServiceT struct {
-	Id   bson.ObjectId
 	Type *ServiceType
 	Name string
 }
@@ -35,7 +37,6 @@ func ServicesHandler(w http.ResponseWriter, r *http.Request) error {
 	var sT ServiceT
 	for _, s := range services {
 		sT = ServiceT{
-			Id:   s.Id,
 			Type: s.ServiceType(),
 			Name: s.Name,
 		}
@@ -117,18 +118,15 @@ func DeleteHandler(w http.ResponseWriter, r *http.Request) error {
 
 func BindHandler(w http.ResponseWriter, r *http.Request) error {
 	var b BindJson
-
 	defer r.Body.Close()
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		return err
 	}
-
 	err = json.Unmarshal(body, &b)
 	if err != nil {
 		return err
 	}
-
 	s := Service{Name: b.Service}
 	a := app.App{Name: b.App}
 	sErr := s.Get()
@@ -167,4 +165,49 @@ func UnbindHandler(w http.ResponseWriter, r *http.Request) error {
 		fmt.Fprint(w, "success")
 	}
 	return nil
+}
+
+func getServiceAndTeamOrError(serviceName string, teamName string, u *auth.User) (*Service, *auth.Team, error) {
+	service := &Service{Name: serviceName}
+	err := service.Get()
+	if err != nil {
+		return nil, nil, &errors.Http{Code: http.StatusNotFound, Message: "Service not found"}
+	}
+	if !service.CheckUserAccess(u) {
+		return nil, nil, &errors.Http{Code: http.StatusForbidden, Message: "This user does not have access to this service"}
+	}
+	t := new(auth.Team)
+	err = db.Session.Teams().Find(bson.M{"name": teamName}).One(t)
+	if err != nil {
+		return nil, nil, &errors.Http{Code: http.StatusNotFound, Message: "Team not found"}
+	}
+	return service, t, nil
+}
+
+func GrantAccessToTeamHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
+	service, t, err := getServiceAndTeamOrError(r.URL.Query().Get(":service"), r.URL.Query().Get(":team"), u)
+	if err != nil {
+		return err
+	}
+	err = service.GrantAccess(t)
+	if err != nil {
+		return &errors.Http{Code: http.StatusConflict, Message: err.Error()}
+	}
+	return db.Session.Services().Update(bson.M{"name": service.Name}, service)
+}
+
+func RevokeAccessFromTeamHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
+	service, t, err := getServiceAndTeamOrError(r.URL.Query().Get(":service"), r.URL.Query().Get(":team"), u)
+	if err != nil {
+		return err
+	}
+	if len(service.Teams) < 2 {
+		msg := "You can not revoke the access from this team, because it is the unique team with access to this service, and a service can not be orphaned"
+		return &errors.Http{Code: http.StatusForbidden, Message: msg}
+	}
+	err = service.RevokeAccess(t)
+	if err != nil {
+		return &errors.Http{Code: http.StatusNotFound, Message: err.Error()}
+	}
+	return db.Session.Services().Update(bson.M{"name": service.Name}, service)
 }

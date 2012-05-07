@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
-from fabric.api import cd, env, run, settings
+import os
+from fabric.api import abort, cd, env, local, put, run, settings
 
+current_dir = os.path.abspath(os.path.dirname(__file__))
 env.user = 'ubuntu'
-env.tsuru_path = '/home/ubuntu/.go/src/github.com/timeredbull/tsuru'
-env.collector_path = '%s/collector' % env.tsuru_path
-env.webserver_path = '%s/api/webserver' % env.tsuru_path
+env.tsuru_path = '/home/%s/tsuru' % env.user
 
 
 def stop():
@@ -12,26 +12,37 @@ def stop():
         run('killall -KILL webserver collector')
 
 
-def update():
-    run('go get -u github.com/timeredbull/tsuru/collector')
-    run('go get -u github.com/timeredbull/tsuru/api/webserver')
-
-
 def build():
-    with cd(env.collector_path):
-        run("go build -o collector main.go")
+    goos = local("go env GOOS", capture=True)
+    goarch = local("go env GOARCH", capture=True)
+    if goos != "linux" or goarch != "amd64":
+        abort("tsuru must be built on linux_amd64 for deployment, you're on %s_%s" % (goos, goarch))
+    local("mkdir -p dist")
+    local("go build -o dist/collector collector/main.go")
+    local("go build -o dist/webserver api/webserver/main.go")
 
-    with cd(env.webserver_path):
-        run("go build -o webserver main.go")
+
+def clean():
+    local("rm -rf dist")
+    local("rm -f dist.tar.gz")
+
+
+def send():
+    local("tar -czf dist.tar.gz dist")
+    run("mkdir -p %(tsuru_path)s" % env)
+    put(os.path.join(current_dir, "dist.tar.gz"), env.tsuru_path)
 
 
 def start():
-    run("nohup %s/collector >& /dev/null < /dev/null &" % env.collector_path, pty=False)
-    run("nohup %s/webserver >& /dev/null < /dev/null &" % env.webserver_path, pty=False)
+    with cd(env.tsuru_path):
+        run("tar -xzf dist.tar.gz")
+    run("nohup %s/dist/collector >& /tmp/collector.out < /tmp/collector.out &" % env.tsuru_path, pty=False)
+    run("nohup %s/dist/webserver >& /tmp/webserver.out < /tmp/webserver.out &" % env.tsuru_path, pty=False)
 
 
 def deploy():
-    stop()
-    update()
     build()
+    send()
+    stop()
     start()
+    clean()

@@ -6,6 +6,7 @@ import (
 	"github.com/timeredbull/tsuru/api/repository"
 	"github.com/timeredbull/tsuru/api/unit"
 	"github.com/timeredbull/tsuru/db"
+	"github.com/timeredbull/tsuru/log"
 	"launchpad.net/mgo/bson"
 )
 
