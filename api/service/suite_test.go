@@ -75,6 +75,7 @@ func (s *ServiceSuite) TearDownTest(c *C) {
 	err = db.Session.Apps().Find(nil).All(&apps)
 	c.Assert(err, IsNil)
 	for _, a := range apps {
-		a.Destroy()
+		err = a.Destroy()
+		c.Assert(err, IsNil)
 	}
 }
