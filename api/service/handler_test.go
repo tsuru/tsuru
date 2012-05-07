@@ -15,7 +15,7 @@ import (
 	"strings"
 )
 
-func (s *ServiceSuite) TestCreateHandler(c *C) {
+func (s *ServiceSuite) TestCreateHandlerGetAllTeamsFromTheUser(c *C) {
 	st := ServiceType{Name: "Mysql", Charm: "mysql"}
 	st.Create()
 
@@ -25,7 +25,7 @@ func (s *ServiceSuite) TestCreateHandler(c *C) {
 
 	request.Header.Set("Content-Type", "application/json")
 	recorder := httptest.NewRecorder()
-	err = CreateHandler(recorder, request)
+	err = CreateHandler(recorder, request, s.user)
 	c.Assert(err, IsNil)
 	c.Assert(recorder.Body.String(), Equals, "success")
 	c.Assert(recorder.Code, Equals, 200)
@@ -38,6 +38,28 @@ func (s *ServiceSuite) TestCreateHandler(c *C) {
 	c.Assert(obtainedService.Name, Equals, "some_service")
 	c.Assert(obtainedService.ServiceTypeId, Not(Equals), 0)
 	c.Assert(obtainedService.Name, Not(Equals), "")
+	c.Assert(*s.team, HasAccessTo, obtainedService)
+}
+
+func (s *ServiceSuite) TestCreateHandlerReturnsForbiddenIfTheUserIsNotMemberOfAnyTeam(c *C) {
+	u := &auth.User{Email: "enforce@queensryche.com", Password: "123"}
+	u.Create()
+	defer db.Session.Users().RemoveAll(bson.M{"email": u.Email})
+	st := ServiceType{Name: "Mysql", Charm: "mysql"}
+	st.Create()
+
+	b := strings.NewReader(`{"name":"some_service", "type":"mysql"}`)
+	request, err := http.NewRequest("POST", "/services", b)
+	c.Assert(err, IsNil)
+
+	request.Header.Set("Content-Type", "application/json")
+	recorder := httptest.NewRecorder()
+	err = CreateHandler(recorder, request, u)
+	c.Assert(err, NotNil)
+	e, ok := err.(*errors.Http)
+	c.Assert(ok, Equals, true)
+	c.Assert(e.Code, Equals, http.StatusForbidden)
+	c.Assert(e, ErrorMatches, "^In order to create a service, you should be member of at least one team$")
 }
 
 func (s *ServiceSuite) TestServicesHandler(c *C) {

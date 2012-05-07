@@ -45,7 +45,7 @@ func main() {
 	defer db.Session.Close()
 	m := pat.New()
 
-	m.Post("/services", webserver.Handler(service.CreateHandler))
+	m.Post("/services", webserver.AuthorizationRequiredHandler(service.CreateHandler))
 	m.Get("/services", webserver.Handler(service.ServicesHandler))
 	m.Get("/services/types", webserver.Handler(service.ServiceTypesHandler))
 	m.Get("/services/:name", webserver.Handler(service.DeleteHandler))
