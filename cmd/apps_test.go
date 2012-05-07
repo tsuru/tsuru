@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"bytes"
 	"encoding/json"
 	"github.com/timeredbull/tsuru/api/app"
 	"github.com/timeredbull/tsuru/api/auth"
@@ -15,7 +16,8 @@ func (s *S) TestShowApps(c *C) {
 	result, err := json.Marshal(appsList)
 	c.Assert(err, IsNil)
 
-	err = AppsCommand{}.Show(result)
+	context := Context{[]string{}, manager.Stdout, manager.Stderr}
+	err = AppsCommand{}.Show(result, &context)
 	c.Assert(err, IsNil)
-	c.Assert(stdout.String(), Equals, "")
+	c.Assert(manager.Stdout.(*bytes.Buffer).String(), Equals, "Application - State - Ip\napp1 -  - \n")
 }

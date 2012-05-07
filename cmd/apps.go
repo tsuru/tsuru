@@ -10,7 +10,7 @@ import (
 
 type AppsCommand struct{}
 
-func (c *AppsCommand) Run() error {
+func (c *AppsCommand) Run(context *Context) error {
 	response, err := http.Get("http://tsuru.plataformas.glb.com:4000/apps")
 	if err != nil {
 		return err
@@ -19,18 +19,20 @@ func (c *AppsCommand) Run() error {
 	if err != nil {
 		return err
 	}
-	fmt.Println("app list")
-	return c.Show(result)
+	return c.Show(result, context)
 }
 
-func (c AppsCommand) Show(result []byte) error {
+func (c AppsCommand) Show(result []byte, context *Context) error {
 	var apps []app.App
 	err := json.Unmarshal(result, &apps)
 	if err != nil {
-		fmt.Println(err, string(result))
+		/* fmt.Println(err, string(result)) */
+		context.Stderr.Write([]byte(err.Error()))
 		return err
 	}
+	context.Stdout.Write([]byte("Application - State - Ip\n"))
 	for _, app := range apps {
+		context.Stdout.Write([]byte(fmt.Sprintf("%s - %s - %s\n", app.Name, app.State, app.Ip)))
 		fmt.Println(app)
 	}
 	return nil
