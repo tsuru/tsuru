@@ -2,12 +2,11 @@ package repository_test
 
 import (
 	"fmt"
-	. "launchpad.net/gocheck"
 	. "github.com/timeredbull/tsuru/api/app"
+	. "launchpad.net/gocheck"
 	"os"
 	"path"
 )
-
 
 func (s *S) TestNewRepository(c *C) {
 	a := App{Name: "foobar"}
