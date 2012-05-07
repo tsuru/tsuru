@@ -45,13 +45,14 @@ func main() {
 	defer db.Session.Close()
 	m := pat.New()
 
-	m.Post("/services", webserver.Handler(service.CreateHandler))
+	m.Post("/services", webserver.AuthorizationRequiredHandler(service.CreateHandler))
 	m.Get("/services", webserver.Handler(service.ServicesHandler))
 	m.Get("/services/types", webserver.Handler(service.ServiceTypesHandler))
 	m.Get("/services/:name", webserver.Handler(service.DeleteHandler))
 	m.Post("/services/bind", webserver.Handler(service.BindHandler))
 	m.Post("/services/unbind", webserver.Handler(service.UnbindHandler))
 	m.Put("/services/:service/:team", webserver.AuthorizationRequiredHandler(service.GrantAccessToTeamHandler))
+	m.Del("/services/:service/:team", webserver.AuthorizationRequiredHandler(service.RevokeAccessFromTeamHandler))
 
 	m.Del("/apps/:name", webserver.AuthorizationRequiredHandler(app.AppDelete))
 	m.Get("/apps/:name/clone", webserver.Handler(app.CloneRepositoryHandler))
