@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"bytes"
+	"io"
 	. "launchpad.net/gocheck"
 	"testing"
 )
@@ -11,14 +12,12 @@ func Test(t *testing.T) { TestingT(t) }
 type S struct{}
 
 var _ = Suite(&S{})
-var stdout, stderr bytes.Buffer
 var manager Manager
 
 func (s *S) SetUpTest(c *C) {
-	manager = newManager(&stdout, &stderr)
+	var stdout, stderr bytes.Buffer
+	manager = NewManager(&stdout, &stderr)
 }
-
-var xpto = 0
 
 type TestCommand struct {
 	Name string
@@ -28,8 +27,8 @@ func (c *TestCommand) Info() *Info {
 	return &Info{Name: c.Name}
 }
 
-func (c *TestCommand) Run() error {
-	xpto = 1
+func (c *TestCommand) Run(context *Context) error {
+	io.WriteString(context.Stdout, "Running TestCommand")
 	return nil
 }
 
@@ -39,18 +38,13 @@ func (s *S) TestRegister(c *C) {
 	c.Assert(badCall, PanicMatches, "command already registered: foo")
 }
 
-func (s *S) TestNewManager(c *C) {
-	c.Assert(manager.Stdout, Equals, &stdout)
-	c.Assert(manager.Stderr, Equals, &stderr)
-}
-
 func (s *S) TestRun(c *C) {
 	manager.Register(&TestCommand{Name: "foo"})
 	manager.Run([]string{"foo"})
-	c.Assert(xpto, Equals, 1)
+	c.Assert(manager.Stdout.(*bytes.Buffer).String(), Equals, "Running TestCommand")
 }
 
 func (s *S) TestRunCommandThatDoesNotExist(c *C) {
 	manager.Run([]string{"bar"})
-	c.Assert(stderr.String(), Equals, "command bar does not exist")
+	c.Assert(manager.Stderr.(*bytes.Buffer).String(), Equals, "command bar does not exist\n")
 }
