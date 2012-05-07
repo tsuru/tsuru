@@ -29,7 +29,7 @@ func (m *Manager) Run(args []string) {
 		io.WriteString(m.Stderr, fmt.Sprintf("command %s does not exist\n", args[0]))
 		return
 	}
-	command.Run()
+	command.Run(&Context{args[1:], m.Stdout, m.Stderr})
 }
 
 func NewManager(stdout, stderr io.Writer) Manager {
@@ -37,8 +37,14 @@ func NewManager(stdout, stderr io.Writer) Manager {
 }
 
 type Command interface {
-	Run() error
+	Run(context *Context) error
 	Info() *Info
+}
+
+type Context struct {
+	Args   []string
+	Stdout io.Writer
+	Stderr io.Writer
 }
 
 type Info struct {
