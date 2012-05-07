@@ -1,8 +1,9 @@
-package repository
+package repository_test
 
 import (
 	"fmt"
 	. "launchpad.net/gocheck"
+	. "github.com/timeredbull/tsuru/api/app"
 	"os"
 	"path"
 )
@@ -10,10 +11,10 @@ import (
 
 func (s *S) TestNewRepository(c *C) {
 	a := App{Name: "foobar"}
-	err := NewRepository(&a)
+	err := NewRepository(a.Name)
 	c.Assert(err, IsNil)
 
-	repoPath := GetRepositoryPath(&a)
+	repoPath := GetRepositoryPath(a.Name)
 	_, err = os.Open(repoPath) // test if repository dir exists
 	c.Assert(err, IsNil)
 
@@ -26,35 +27,35 @@ func (s *S) TestNewRepository(c *C) {
 
 func (s *S) TestDeleteGitRepository(c *C) {
 	a := &App{Name: "someApp"}
-	repoPath := GetRepositoryPath(a)
+	repoPath := GetRepositoryPath(a.Name)
 
-	err := NewRepository(a)
+	err := NewRepository(a.Name)
 	c.Assert(err, IsNil)
 
 	_, err = os.Open(path.Join(repoPath, "config"))
 	c.Assert(err, IsNil)
 
-	DeleteRepository(a)
+	DeleteRepository(a.Name)
 	_, err = os.Open(repoPath)
 	c.Assert(err, NotNil)
 }
 
 func (s *S) TestCloneRepository(c *C) {
 	a := App{Name: "barfoo"}
-	err := CloneRepository(&a)
+	err := CloneRepository(a.Name)
 	c.Assert(err, IsNil)
 }
 
 func (s *S) TestGetRepositoryUrl(c *C) {
 	a := App{Name: "foobar"}
-	url := GetRepositoryUrl(&a)
+	url := GetRepositoryUrl(a.Name)
 	expected := fmt.Sprintf("git@tsuru.plataformas.glb.com:%s.git", a.Name)
 	c.Assert(url, Equals, expected)
 }
 
 func (s *S) TestGetRepositoryName(c *C) {
 	a := App{Name: "someApp"}
-	obtained := GetRepositoryName(&a)
+	obtained := GetRepositoryName(a.Name)
 	expected := fmt.Sprintf("%s.git", a.Name)
 	c.Assert(obtained, Equals, expected)
 }
@@ -62,7 +63,7 @@ func (s *S) TestGetRepositoryName(c *C) {
 func (s *S) TestGetRepositoryPath(c *C) {
 	a := App{Name: "someApp"}
 	home := os.Getenv("HOME")
-	obtained := GetRepositoryPath(&a)
-	expected := path.Join(home, "../git", GetRepositoryName(&a))
+	obtained := GetRepositoryPath(a.Name)
+	expected := path.Join(home, "../git", GetRepositoryName(a.Name))
 	c.Assert(obtained, Equals, expected)
 }

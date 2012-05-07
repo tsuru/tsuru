@@ -3,13 +3,11 @@ package app
 import (
 	"errors"
 	"github.com/timeredbull/tsuru/api/auth"
-	"github.com/timeredbull/tsuru/api/git"
+	"github.com/timeredbull/tsuru/api/repository"
 	"github.com/timeredbull/tsuru/api/unit"
 	"github.com/timeredbull/tsuru/db"
 	"launchpad.net/mgo/bson"
 )
-
-const gitServer = "tsuru.plataformas.glb.com"
 
 type App struct {
 	Ip        string
@@ -36,7 +34,7 @@ func (app *App) Create() error {
 		return err
 	}
 
-	err = git.NewRepository(app)
+	err = repository.NewRepository(app.Name)
 	if err != nil {
 		return err
 	}
@@ -56,7 +54,7 @@ func (app *App) Destroy() error {
 		return err
 	}
 
-	err = git.DeleteRepository(app)
+	err = repository.DeleteRepository(app.Name)
 	if err != nil {
 		return err
 	}

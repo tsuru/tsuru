@@ -1,14 +1,13 @@
 package app
 
 import (
-	"fmt"
 	"github.com/timeredbull/tsuru/api/auth"
+	"github.com/timeredbull/tsuru/api/repository"
 	"github.com/timeredbull/tsuru/db"
 	. "launchpad.net/gocheck"
 	"launchpad.net/mgo"
 	"launchpad.net/mgo/bson"
 	"os"
-	"path"
 	"testing"
 )
 
@@ -129,7 +128,7 @@ func (s *S) TestCreate(c *C) {
 	err := a.Create()
 	c.Assert(err, IsNil)
 
-	repoPath := GetRepositoryPath(&a)
+	repoPath := repository.GetRepositoryPath(a.Name)
 	_, err = os.Open(repoPath) // test if repository dir exists
 	c.Assert(err, IsNil)
 
