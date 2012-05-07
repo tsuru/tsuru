@@ -148,12 +148,12 @@ func (s *ServiceSuite) TestBindHandler(c *C) {
 	err := st.Create()
 	c.Assert(err, IsNil)
 	se := Service{ServiceTypeId: st.Id, Name: "my_service"}
-	a := app.App{Name: "someApp", Framework: "django"}
+	a := app.App{Name: "serviceApp", Framework: "django"}
 	err = se.Create()
 	c.Assert(err, IsNil)
 	err = a.Create()
 	c.Assert(err, IsNil)
-	b := strings.NewReader(`{"app":"someApp", "service":"my_service"}`)
+	b := strings.NewReader(`{"app":"serviceApp", "service":"my_service"}`)
 	request, err := http.NewRequest("POST", "/services/bind", b)
 	c.Assert(err, IsNil)
 	recorder := httptest.NewRecorder()
@@ -170,7 +170,7 @@ func (s *ServiceSuite) TestBindHandler(c *C) {
 }
 
 func (s *ServiceSuite) TestBindHandlerReturns404(c *C) {
-	b := strings.NewReader(`{"app":"someApp", "service":"my_service"}`)
+	b := strings.NewReader(`{"app":"serviceApp", "service":"my_service"}`)
 	request, err := http.NewRequest("POST", "/services/bind", b)
 	c.Assert(err, IsNil)
 
@@ -184,12 +184,12 @@ func (s *ServiceSuite) TestUnbindHandler(c *C) {
 	st := ServiceType{Name: "Mysql", Charm: "mysql"}
 	st.Create()
 	se := Service{ServiceTypeId: st.Id, Name: "my_service"}
-	a := app.App{Name: "someApp", Framework: "django", Ip: "192.168.30.10"}
+	a := app.App{Name: "serviceApp", Framework: "django", Ip: "192.168.30.10"}
 	se.Create()
 	a.Create()
 	se.Bind(&a)
 
-	b := strings.NewReader(`{"app":"someApp", "service":"my_service"}`)
+	b := strings.NewReader(`{"app":"serviceApp", "service":"my_service"}`)
 	request, err := http.NewRequest("POST", "/services/bind", b)
 	c.Assert(err, IsNil)
 
@@ -208,7 +208,7 @@ func (s *ServiceSuite) TestUnbindHandler(c *C) {
 }
 
 func (s *ServiceSuite) TestUnbindReturns404(c *C) {
-	b := strings.NewReader(`{"app":"someApp", "service":"my_service"}`)
+	b := strings.NewReader(`{"app":"serviceApp", "service":"my_service"}`)
 	request, err := http.NewRequest("POST", "/services/bind", b)
 	c.Assert(err, IsNil)
 

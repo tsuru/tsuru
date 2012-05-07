@@ -12,7 +12,7 @@ func (s *ServiceSuite) createServiceApp() {
 	s.serviceType.Create()
 	s.service = &Service{Name: "MySQL", ServiceTypeId: s.serviceType.Id}
 	s.service.Create()
-	s.app = &app.App{Name: "someApp", Framework: "Django"}
+	s.app = &app.App{Name: "serviceApp", Framework: "Django"}
 	s.app.Create()
 
 	s.serviceApp = &ServiceApp{
