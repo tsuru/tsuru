@@ -129,3 +129,14 @@ func (s *ServiceSuite) TestRevokeAcessShouldReturnErrorIfTheTeamDoesNotHaveAcces
 	c.Assert(err, NotNil)
 	c.Assert(err, ErrorMatches, "^This team does not have access to this service$")
 }
+
+func (s *ServiceSuite) TestCheckUserPermissionShouldReturnTrueIfTheGivenUserIsMemberOfOneOfTheServicesTeam(c *C) {
+	s.createService()
+	s.service.GrantAccess(s.team)
+	c.Assert(s.service.CheckUserAccess(s.user), Equals, true)
+}
+
+func (s *ServiceSuite) TestCheckUserPermissionShouldReturnFalseIfTheGivenUserIsNotMemberOfAnyOfTheServicesTeam(c *C) {
+	s.createService()
+	c.Assert(s.service.CheckUserAccess(s.user), Equals, false)
+}

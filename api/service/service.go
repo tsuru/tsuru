@@ -92,3 +92,12 @@ func (s *Service) RevokeAccess(team *auth.Team) error {
 	s.Teams = s.Teams[:last]
 	return nil
 }
+
+func (s *Service) CheckUserAccess(user *auth.User) bool {
+	for _, team := range s.Teams {
+		if team.ContainsUser(user) {
+			return true
+		}
+	}
+	return false
+}
