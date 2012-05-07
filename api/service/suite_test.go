@@ -70,4 +70,7 @@ func (s *ServiceSuite) TearDownTest(c *C) {
 
 	err = db.Session.ServiceTypes().RemoveAll(nil)
 	c.Assert(err, IsNil)
+
+	err = db.Session.Apps().RemoveAll(nil)
+	c.Assert(err, IsNil)
 }
