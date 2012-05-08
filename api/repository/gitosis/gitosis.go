@@ -6,6 +6,8 @@ import (
 	ini "github.com/kless/goconfig/config"
 	"github.com/timeredbull/tsuru/config"
 	"github.com/timeredbull/tsuru/log"
+	"os"
+	"os/exec"
 	"path"
 )
 
@@ -41,6 +43,32 @@ func AddProject(name string) error {
 		log.Panic(err)
 		return err
 	}
+
+	pwd := os.Getenv("PWD")
+	os.Chdir(repoPath)
+
+	commitMsg := fmt.Sprintf("Defining gitosis group for project %s", name)
+	output, err := exec.Command("git", "add", ".").CombinedOutput()
+	if err != nil {
+		fmt.Println(string(output))
+		log.Panic(output, err)
+		return err
+	}
+	output, err = exec.Command("git", "commit", "-m", commitMsg).CombinedOutput()
+	if err != nil {
+		fmt.Println(string(output))
+		log.Panic(output, err)
+		return err
+	}
+
+	output, err = exec.Command("git", "push", "origin", "master").CombinedOutput()
+	if err != nil {
+		fmt.Println(string(output))
+		log.Panic(output, err)
+		return err
+	}
+
+	os.Chdir(pwd)
 
 	return nil
 }

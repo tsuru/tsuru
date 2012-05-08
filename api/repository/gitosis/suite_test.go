@@ -12,7 +12,9 @@ import (
 func Test(t *testing.T) { TestingT(t) }
 
 type S struct {
-	gitRoot string
+	gitRoot     string
+	gitosisBare string
+	gitosisRepo string
 }
 
 var _ = Suite(&S{})
@@ -22,6 +24,10 @@ func (s *S) SetUpSuite(c *C) {
 	c.Assert(err, IsNil)
 	s.gitRoot, err = config.GetString("git:root")
 	c.Assert(err, IsNil)
+	s.gitosisBare, err = config.GetString("git:gitosis-bare")
+	c.Assert(err, IsNil)
+	s.gitosisRepo, err = config.GetString("git:gitosis-repo")
+
 	currentDir := os.Getenv("PWD")
 	err = os.Mkdir(s.gitRoot, 0777)
 	c.Assert(err, IsNil)
