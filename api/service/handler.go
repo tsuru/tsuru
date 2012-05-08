@@ -50,17 +50,17 @@ func ServicesHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error
 }
 
 func ServiceTypesHandler(w http.ResponseWriter, r *http.Request) error {
-	s := ServiceType{}
+	var s ServiceType
 	sTypes := s.All()
-	results := make([]ServiceType, 0)
+	results := make([]ServiceType, len(sTypes))
 	var sT ServiceType
-	for _, s := range sTypes {
+	for i, s := range sTypes {
 		sT = ServiceType{
 			Id:    s.Id,
 			Charm: s.Charm,
 			Name:  s.Name,
 		}
-		results = append(results, sT)
+		results[i] = sT
 	}
 	b, err := json.Marshal(results)
 	if err != nil {
