@@ -78,23 +78,6 @@ func Login(w http.ResponseWriter, r *http.Request) error {
 	return &errors.Http{Code: http.StatusUnauthorized, Message: msg}
 }
 
-func CheckAuthorization(w http.ResponseWriter, r *http.Request) error {
-	token := r.Header.Get("Authorization")
-	user, err := CheckToken(token)
-	if err != nil {
-		return err
-	}
-	output := map[string]string{
-		"email": user.Email,
-	}
-	b, err := json.Marshal(output)
-	if err != nil {
-		return err
-	}
-	w.Write(b)
-	return nil
-}
-
 func CreateTeam(w http.ResponseWriter, r *http.Request, u *User) error {
 	var params map[string]string
 	b, err := ioutil.ReadAll(r.Body)
