@@ -134,3 +134,24 @@ func RemoveUserFromTeam(w http.ResponseWriter, r *http.Request, u *User) error {
 	}
 	return db.Session.Teams().Update(selector, team)
 }
+
+func AddKeyToUser(w http.ResponseWriter, r *http.Request, u *User) error {
+	var body map[string]string
+	content, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		return err
+	}
+	err = json.Unmarshal(content, &body)
+	if err != nil {
+		return &errors.Http{Code: http.StatusBadRequest, Message: "Invalid JSON"}
+	}
+	key, ok := body["key"]
+	if !ok || key == "" {
+		return &errors.Http{Code: http.StatusBadRequest, Message: "Missing key"}
+	}
+	err = u.AddKey(key)
+	if err != nil {
+		return &errors.Http{Code: http.StatusConflict, Message: err.Error()}
+	}
+	return db.Session.Users().Update(bson.M{"email": u.Email}, u)
+}
