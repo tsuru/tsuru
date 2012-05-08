@@ -99,12 +99,16 @@ func CreateHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	return nil
 }
 
-func DeleteHandler(w http.ResponseWriter, r *http.Request) error {
+func DeleteHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	s := Service{Name: r.URL.Query().Get(":name")}
 	err := s.Get()
 	if err != nil {
 		http.NotFound(w, r)
 		return err
+	}
+	if !s.CheckUserAccess(u) {
+		msg := "This user does not have access to this service"
+		return &errors.Http{Code: http.StatusForbidden, Message: msg}
 	}
 	s.Delete()
 	fmt.Fprint(w, "success")

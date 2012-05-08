@@ -113,31 +113,43 @@ func (s *ServiceSuite) TestServiceTypesHandler(c *C) {
 func (s *ServiceSuite) TestDeleteHandler(c *C) {
 	st := ServiceType{Name: "Mysql", Charm: "mysql"}
 	st.Create()
-	se := Service{ServiceTypeId: st.Id, Name: "Mysql"}
+	se := Service{ServiceTypeId: st.Id, Name: "Mysql", Teams: []auth.Team{*s.team}}
 	se.Create()
-	request, err := http.NewRequest("GET", fmt.Sprintf("/services/%s?:name=%s", se.Name, se.Name), nil)
+	request, err := http.NewRequest("DELETE", fmt.Sprintf("/services/%s?:name=%s", se.Name, se.Name), nil)
 	c.Assert(err, IsNil)
-
 	recorder := httptest.NewRecorder()
-	err = DeleteHandler(recorder, request)
+	err = DeleteHandler(recorder, request, s.user)
 	c.Assert(err, IsNil)
 	c.Assert(recorder.Code, Equals, 200)
-
 	query := bson.M{"name": "Mysql"}
-
 	qtd, err := db.Session.Services().Find(query).Count()
 	c.Assert(err, IsNil)
 	c.Assert(qtd, Equals, 0)
 }
 
 func (s *ServiceSuite) TestDeleteHandlerReturns404(c *C) {
-	request, err := http.NewRequest("GET", fmt.Sprintf("/services/%s?:name=%s", "mongodb", "mongodb"), nil)
+	request, err := http.NewRequest("DELETE", fmt.Sprintf("/services/%s?:name=%s", "mongodb", "mongodb"), nil)
 	c.Assert(err, IsNil)
-
 	recorder := httptest.NewRecorder()
-	err = DeleteHandler(recorder, request)
+	err = DeleteHandler(recorder, request, s.user)
 	c.Assert(err, NotNil)
 	c.Assert(recorder.Code, Equals, 404)
+}
+
+func (s *ServiceSuite) TestDeleteHandlerReturns403IfTheUserDoesNotHaveAccessToTheService(c *C) {
+	st := ServiceType{Name: "Mysql", Charm: "mysql"}
+	st.Create()
+	se := Service{ServiceTypeId: st.Id, Name: "Mysql"}
+	se.Create()
+	request, err := http.NewRequest("DELETE", fmt.Sprintf("/services/%s?:name=%s", se.Name, se.Name), nil)
+	c.Assert(err, IsNil)
+	recorder := httptest.NewRecorder()
+	err = DeleteHandler(recorder, request, s.user)
+	c.Assert(err, NotNil)
+	e, ok := err.(*errors.Http)
+	c.Assert(ok, Equals, true)
+	c.Assert(e.Code, Equals, http.StatusForbidden)
+	c.Assert(e, ErrorMatches, "^This user does not have access to this service$")
 }
 
 func (s *ServiceSuite) TestBindHandler(c *C) {
