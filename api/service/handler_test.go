@@ -264,21 +264,18 @@ func (s *ServiceSuite) TestBindHandlerReturns404IfTheServiceDoesNotExist(c *C) {
 func (s *ServiceSuite) TestUnbindHandler(c *C) {
 	st := ServiceType{Name: "Mysql", Charm: "mysql"}
 	st.Create()
-	se := Service{ServiceTypeId: st.Id, Name: "my_service"}
-	a := app.App{Name: "serviceApp", Framework: "django", Ip: "192.168.30.10"}
+	se := Service{ServiceTypeId: st.Id, Name: "my_service", Teams: []auth.Team{*s.team}}
+	a := app.App{Name: "serviceApp", Framework: "django", Ip: "192.168.30.10", Teams: []auth.Team{*s.team}}
 	se.Create()
 	a.Create()
 	se.Bind(&a)
-
 	b := strings.NewReader(`{"app":"serviceApp", "service":"my_service"}`)
 	request, err := http.NewRequest("POST", "/services/bind", b)
 	c.Assert(err, IsNil)
-
 	recorder := httptest.NewRecorder()
 	err = UnbindHandler(recorder, request, s.user)
 	c.Assert(err, IsNil)
 	c.Assert(recorder.Code, Equals, 200)
-
 	query := bson.M{
 		"service_name": se.Name,
 		"app_name":     a.Name,
@@ -288,15 +285,78 @@ func (s *ServiceSuite) TestUnbindHandler(c *C) {
 	c.Assert(qtd, Equals, 0)
 }
 
-func (s *ServiceSuite) TestUnbindReturns404(c *C) {
+func (s *ServiceSuite) TestUnbindHandlerReturns403IfTheUserDoesNotHaveAccessToTheService(c *C) {
+	st := ServiceType{Name: "Mysql", Charm: "mysql"}
+	st.Create()
+	se := Service{ServiceTypeId: st.Id, Name: "my_service"}
+	a := app.App{Name: "serviceApp", Framework: "django", Ip: "192.168.30.10", Teams: []auth.Team{*s.team}}
+	se.Create()
+	a.Create()
+	se.Bind(&a)
 	b := strings.NewReader(`{"app":"serviceApp", "service":"my_service"}`)
 	request, err := http.NewRequest("POST", "/services/bind", b)
 	c.Assert(err, IsNil)
-
 	recorder := httptest.NewRecorder()
 	err = UnbindHandler(recorder, request, s.user)
+	c.Assert(err, NotNil)
+	e, ok := err.(*errors.Http)
+	c.Assert(ok, Equals, true)
+	c.Assert(e.Code, Equals, http.StatusForbidden)
+	c.Assert(e, ErrorMatches, "^This user does not have access to this service$")
+}
+
+func (s *ServiceSuite) TestUnbindHandlerReturns404IfTheServiceDoesNotExist(c *C) {
+	st := ServiceType{Name: "Mysql", Charm: "mysql"}
+	st.Create()
+	a := app.App{Name: "serviceApp", Framework: "django", Ip: "192.168.30.10", Teams: []auth.Team{*s.team}}
+	a.Create()
+	b := strings.NewReader(`{"app":"serviceApp", "service":"my_service"}`)
+	request, err := http.NewRequest("POST", "/services/bind", b)
 	c.Assert(err, IsNil)
-	c.Assert(recorder.Code, Equals, 404)
+	recorder := httptest.NewRecorder()
+	err = UnbindHandler(recorder, request, s.user)
+	c.Assert(err, NotNil)
+	e, ok := err.(*errors.Http)
+	c.Assert(ok, Equals, true)
+	c.Assert(e.Code, Equals, http.StatusNotFound)
+	c.Assert(e, ErrorMatches, "^Service not found$")
+}
+
+func (s *ServiceSuite) TestUnbindHandlerReturns403IfTheUserDoesNotHaveAccessToTheApp(c *C) {
+	st := ServiceType{Name: "Mysql", Charm: "mysql"}
+	st.Create()
+	se := Service{ServiceTypeId: st.Id, Name: "my_service", Teams: []auth.Team{*s.team}}
+	a := app.App{Name: "serviceApp", Framework: "django", Ip: "192.168.30.10"}
+	se.Create()
+	a.Create()
+	se.Bind(&a)
+	b := strings.NewReader(`{"app":"serviceApp", "service":"my_service"}`)
+	request, err := http.NewRequest("POST", "/services/bind", b)
+	c.Assert(err, IsNil)
+	recorder := httptest.NewRecorder()
+	err = UnbindHandler(recorder, request, s.user)
+	c.Assert(err, NotNil)
+	e, ok := err.(*errors.Http)
+	c.Assert(ok, Equals, true)
+	c.Assert(e.Code, Equals, http.StatusForbidden)
+	c.Assert(e, ErrorMatches, "^This user does not have access to this app$")
+}
+
+func (s *ServiceSuite) TestUnbindHandlerReturns404IfTheAppDoesNotExist(c *C) {
+	st := ServiceType{Name: "Mysql", Charm: "mysql"}
+	st.Create()
+	se := Service{ServiceTypeId: st.Id, Name: "my_service", Teams: []auth.Team{*s.team}}
+	se.Create()
+	b := strings.NewReader(`{"app":"serviceApp", "service":"my_service"}`)
+	request, err := http.NewRequest("POST", "/services/bind", b)
+	c.Assert(err, IsNil)
+	recorder := httptest.NewRecorder()
+	err = UnbindHandler(recorder, request, s.user)
+	c.Assert(err, NotNil)
+	e, ok := err.(*errors.Http)
+	c.Assert(ok, Equals, true)
+	c.Assert(e.Code, Equals, http.StatusNotFound)
+	c.Assert(e, ErrorMatches, "^App not found$")
 }
 
 func (s *ServiceSuite) TestGrantAccessToTeam(c *C) {

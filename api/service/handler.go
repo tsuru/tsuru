@@ -161,15 +161,26 @@ func UnbindHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 		return err
 	}
 	s := Service{Name: b.Service}
-	a := app.App{Name: b.App}
-	sErr := s.Get()
-	aErr := a.Get()
-	if sErr != nil || aErr != nil {
-		http.NotFound(w, r)
-	} else {
-		s.Unbind(&a)
-		fmt.Fprint(w, "success")
+	err = s.Get()
+	if err != nil {
+		return &errors.Http{Code: http.StatusNotFound, Message: "Service not found"}
 	}
+	if !s.CheckUserAccess(u) {
+		return &errors.Http{Code: http.StatusForbidden, Message: "This user does not have access to this service"}
+	}
+	a := app.App{Name: b.App}
+	err = a.Get()
+	if err != nil {
+		return &errors.Http{Code: http.StatusNotFound, Message: "App not found"}
+	}
+	if !a.CheckUserAccess(u) {
+		return &errors.Http{Code: http.StatusForbidden, Message: "This user does not have access to this app"}
+	}
+	err = s.Unbind(&a)
+	if err != nil {
+		return err
+	}
+	fmt.Fprint(w, "success")
 	return nil
 }
 
