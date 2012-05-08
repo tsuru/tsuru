@@ -62,10 +62,10 @@ func (s *ServiceSuite) TestCreateHandlerReturnsForbiddenIfTheUserIsNotMemberOfAn
 	c.Assert(e, ErrorMatches, "^In order to create a service, you should be member of at least one team$")
 }
 
-func (s *ServiceSuite) TestServicesHandler(c *C) {
+func (s *ServiceSuite) TestServicesHandlerListsOnlyServicesThatTheUserHasAccess(c *C) {
 	st := ServiceType{Name: "Mysql", Charm: "mysql"}
 	st.Create()
-	se := Service{ServiceTypeId: st.Id, Name: "myService"}
+	se := Service{ServiceTypeId: st.Id, Name: "myService", Teams: []auth.Team{*s.team}}
 	se2 := Service{ServiceTypeId: st.Id, Name: "myOtherService"}
 	se.Create()
 	se2.Create()
@@ -74,20 +74,17 @@ func (s *ServiceSuite) TestServicesHandler(c *C) {
 	c.Assert(err, IsNil)
 
 	recorder := httptest.NewRecorder()
-	err = ServicesHandler(recorder, request)
+	err = ServicesHandler(recorder, request, s.user)
 	c.Assert(err, IsNil)
 	c.Assert(recorder.Code, Equals, 200)
-
 	body, err := ioutil.ReadAll(recorder.Body)
 	c.Assert(err, IsNil)
-
 	var results []ServiceT
 	err = json.Unmarshal(body, &results)
 	c.Assert(err, IsNil)
-	c.Assert(len(results), Equals, 2)
+	c.Assert(len(results), Equals, 1)
 	c.Assert(results[0], FitsTypeOf, ServiceT{})
 	c.Assert(results[0].Name, Not(Equals), "")
-
 	c.Assert(results[0].Type, FitsTypeOf, &ServiceType{})
 	c.Assert(results[0].Type.Id, Not(Equals), 0)
 }

@@ -29,18 +29,18 @@ type ServiceT struct {
 	Name string
 }
 
-func ServicesHandler(w http.ResponseWriter, r *http.Request) error {
-	s := Service{}
-	services := s.All()
-	results := make([]ServiceT, 0)
+func ServicesHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
+	var services []Service
+	db.Session.Services().Find(bson.M{"teams.users.email": u.Email}).All(&services)
+	results := make([]ServiceT, len(services))
 
 	var sT ServiceT
-	for _, s := range services {
+	for i, s := range services {
 		sT = ServiceT{
 			Type: s.ServiceType(),
 			Name: s.Name,
 		}
-		results = append(results, sT)
+		results[i] = sT
 	}
 
 	b, err := json.Marshal(results)
