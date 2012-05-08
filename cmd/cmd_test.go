@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"bytes"
+	"errors"
 	"io"
 	. "launchpad.net/gocheck"
 	"testing"
@@ -32,10 +33,26 @@ func (c *TestCommand) Run(context *Context) error {
 	return nil
 }
 
+type ErrorCommand struct{}
+
+func (c *ErrorCommand) Info() *Info {
+	return &Info{Name: "error"}
+}
+
+func (c *ErrorCommand) Run(context *Context) error {
+	return errors.New("You are wrong")
+}
+
 func (s *S) TestRegister(c *C) {
 	manager.Register(&TestCommand{Name: "foo"})
 	badCall := func() { manager.Register(&TestCommand{Name: "foo"}) }
 	c.Assert(badCall, PanicMatches, "command already registered: foo")
+}
+
+func (s *S) TestManagerRunShouldWriteErrorsOnStderr(c *C) {
+	manager.Register(&ErrorCommand{})
+	manager.Run([]string{"error"})
+	c.Assert(manager.Stderr.(*bytes.Buffer).String(), Equals, "You are wrong")
 }
 
 func (s *S) TestRun(c *C) {

@@ -29,7 +29,10 @@ func (m *Manager) Run(args []string) {
 		io.WriteString(m.Stderr, fmt.Sprintf("command %s does not exist\n", args[0]))
 		return
 	}
-	command.Run(&Context{args[1:], m.Stdout, m.Stderr})
+	err := command.Run(&Context{args[1:], m.Stdout, m.Stderr})
+	if err != nil {
+		io.WriteString(m.Stderr, err.Error())
+	}
 }
 
 func NewManager(stdout, stderr io.Writer) Manager {
