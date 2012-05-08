@@ -5,6 +5,7 @@ import (
 	. "launchpad.net/gocheck"
 	"os"
 	"os/exec"
+	"path"
 	"testing"
 )
 
@@ -38,5 +39,10 @@ func (s *S) SetUpSuite(c *C) {
 
 func (s *S) TearDownSuite(c *C) {
 	err := os.RemoveAll(s.gitRoot)
+	c.Assert(err, IsNil)
+}
+
+func (s *S) TearDownTest(c *C) {
+	err := os.Remove(path.Join(s.gitRoot, "gitosis-admin/gitosis.conf"))
 	c.Assert(err, IsNil)
 }
