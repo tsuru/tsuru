@@ -79,11 +79,11 @@ func (s *ServiceSuite) TestServicesHandlerListsOnlyServicesThatTheUserHasAccess(
 	c.Assert(recorder.Code, Equals, 200)
 	body, err := ioutil.ReadAll(recorder.Body)
 	c.Assert(err, IsNil)
-	var results []ServiceT
+	var results []serviceT
 	err = json.Unmarshal(body, &results)
 	c.Assert(err, IsNil)
 	c.Assert(len(results), Equals, 1)
-	c.Assert(results[0], FitsTypeOf, ServiceT{})
+	c.Assert(results[0], FitsTypeOf, serviceT{})
 	c.Assert(results[0].Name, Not(Equals), "")
 	c.Assert(results[0].Type, FitsTypeOf, &ServiceType{})
 	c.Assert(results[0].Type.Id, Not(Equals), 0)

@@ -13,18 +13,18 @@ import (
 	"net/http"
 )
 
-type ServiceJson struct {
+type serviceJson struct {
 	Type string
 	Name string
 }
 
-type BindJson struct {
+type bindJson struct {
 	App     string
 	Service string
 }
 
 // a service with a pointer to it's type
-type ServiceT struct {
+type serviceT struct {
 	Type *ServiceType
 	Name string
 }
@@ -32,10 +32,10 @@ type ServiceT struct {
 func ServicesHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	var services []Service
 	db.Session.Services().Find(bson.M{"teams.users.email": u.Email}).All(&services)
-	results := make([]ServiceT, len(services))
-	var sT ServiceT
+	results := make([]serviceT, len(services))
+	var sT serviceT
 	for i, s := range services {
-		sT = ServiceT{
+		sT = serviceT{
 			Type: s.ServiceType(),
 			Name: s.Name,
 		}
@@ -71,7 +71,7 @@ func ServiceTypesHandler(w http.ResponseWriter, r *http.Request) error {
 }
 
 func CreateHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
-	var sj ServiceJson
+	var sj serviceJson
 	defer r.Body.Close()
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
@@ -115,7 +115,7 @@ func DeleteHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 }
 
 func BindHandler(w http.ResponseWriter, r *http.Request) error {
-	var b BindJson
+	var b bindJson
 	defer r.Body.Close()
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
@@ -139,7 +139,7 @@ func BindHandler(w http.ResponseWriter, r *http.Request) error {
 }
 
 func UnbindHandler(w http.ResponseWriter, r *http.Request) error {
-	var b BindJson
+	var b bindJson
 	defer r.Body.Close()
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
