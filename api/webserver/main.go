@@ -50,7 +50,7 @@ func main() {
 	m.Get("/services/types", webserver.Handler(service.ServiceTypesHandler))
 	m.Del("/services/:name", webserver.AuthorizationRequiredHandler(service.DeleteHandler))
 	m.Post("/services/bind", webserver.AuthorizationRequiredHandler(service.BindHandler))
-	m.Post("/services/unbind", webserver.Handler(service.UnbindHandler))
+	m.Post("/services/unbind", webserver.AuthorizationRequiredHandler(service.UnbindHandler))
 	m.Put("/services/:service/:team", webserver.AuthorizationRequiredHandler(service.GrantAccessToTeamHandler))
 	m.Del("/services/:service/:team", webserver.AuthorizationRequiredHandler(service.RevokeAccessFromTeamHandler))
 

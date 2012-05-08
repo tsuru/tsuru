@@ -149,7 +149,7 @@ func BindHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	return nil
 }
 
-func UnbindHandler(w http.ResponseWriter, r *http.Request) error {
+func UnbindHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	var b bindJson
 	defer r.Body.Close()
 	body, err := ioutil.ReadAll(r.Body)

@@ -275,7 +275,7 @@ func (s *ServiceSuite) TestUnbindHandler(c *C) {
 	c.Assert(err, IsNil)
 
 	recorder := httptest.NewRecorder()
-	err = UnbindHandler(recorder, request)
+	err = UnbindHandler(recorder, request, s.user)
 	c.Assert(err, IsNil)
 	c.Assert(recorder.Code, Equals, 200)
 
@@ -294,7 +294,7 @@ func (s *ServiceSuite) TestUnbindReturns404(c *C) {
 	c.Assert(err, IsNil)
 
 	recorder := httptest.NewRecorder()
-	err = UnbindHandler(recorder, request)
+	err = UnbindHandler(recorder, request, s.user)
 	c.Assert(err, IsNil)
 	c.Assert(recorder.Code, Equals, 404)
 }
