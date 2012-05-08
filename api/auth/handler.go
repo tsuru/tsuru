@@ -11,17 +11,6 @@ import (
 	"strings"
 )
 
-func CheckToken(token string) (*User, error) {
-	if token == "" {
-		return nil, &errors.Http{Code: http.StatusBadRequest, Message: "You must provide the Authorization header"}
-	}
-	u, err := GetUserByToken(token)
-	if err != nil {
-		return nil, &errors.Http{Code: http.StatusUnauthorized, Message: "Invalid token"}
-	}
-	return u, nil
-}
-
 func CreateUser(w http.ResponseWriter, r *http.Request) error {
 	var u User
 	b, err := ioutil.ReadAll(r.Body)
@@ -76,23 +65,6 @@ func Login(w http.ResponseWriter, r *http.Request) error {
 
 	msg := "Authentication failed, wrong password"
 	return &errors.Http{Code: http.StatusUnauthorized, Message: msg}
-}
-
-func CheckAuthorization(w http.ResponseWriter, r *http.Request) error {
-	token := r.Header.Get("Authorization")
-	user, err := CheckToken(token)
-	if err != nil {
-		return err
-	}
-	output := map[string]string{
-		"email": user.Email,
-	}
-	b, err := json.Marshal(output)
-	if err != nil {
-		return err
-	}
-	w.Write(b)
-	return nil
 }
 
 func CreateTeam(w http.ResponseWriter, r *http.Request, u *User) error {

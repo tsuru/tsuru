@@ -11,6 +11,29 @@ import (
 	"testing"
 )
 
+type hasKeyChecker struct{}
+
+func (c *hasKeyChecker) Info() *CheckerInfo {
+	return &CheckerInfo{Name: "HasKey", Params: []string{"user", "key"}}
+}
+
+func (c *hasKeyChecker) Check(params []interface{}, names []string) (bool, string) {
+	if len(params) != 2 {
+		return false, "you should provide two parameters"
+	}
+	user, ok := params[0].(*User)
+	if !ok {
+		return false, "first parameter should be a user pointer"
+	}
+	key, ok := params[1].(string)
+	if !ok {
+		return false, "second parameter should be a string"
+	}
+	return user.hasKey(key), ""
+}
+
+var HasKey Checker = &hasKeyChecker{}
+
 func Test(t *testing.T) { TestingT(t) }
 
 type S struct {
