@@ -46,11 +46,11 @@ func main() {
 	m := pat.New()
 
 	m.Post("/services", webserver.AuthorizationRequiredHandler(service.CreateHandler))
-	m.Get("/services", webserver.Handler(service.ServicesHandler))
+	m.Get("/services", webserver.AuthorizationRequiredHandler(service.ServicesHandler))
 	m.Get("/services/types", webserver.Handler(service.ServiceTypesHandler))
-	m.Get("/services/:name", webserver.Handler(service.DeleteHandler))
-	m.Post("/services/bind", webserver.Handler(service.BindHandler))
-	m.Post("/services/unbind", webserver.Handler(service.UnbindHandler))
+	m.Del("/services/:name", webserver.AuthorizationRequiredHandler(service.DeleteHandler))
+	m.Post("/services/bind", webserver.AuthorizationRequiredHandler(service.BindHandler))
+	m.Post("/services/unbind", webserver.AuthorizationRequiredHandler(service.UnbindHandler))
 	m.Put("/services/:service/:team", webserver.AuthorizationRequiredHandler(service.GrantAccessToTeamHandler))
 	m.Del("/services/:service/:team", webserver.AuthorizationRequiredHandler(service.RevokeAccessFromTeamHandler))
 

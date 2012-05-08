@@ -18,7 +18,7 @@ type S struct {
 var _ = Suite(&S{})
 
 func (s *S) SetUpSuite(c *C) {
-	err := config.ReadConfigFile("/etc/tsuru/tsuru.conf")
+	err := config.ReadConfigFile("../../../etc/tsuru.conf")
 	c.Assert(err, IsNil)
 	s.gitRoot, err = config.GetString("git:root")
 	c.Assert(err, IsNil)

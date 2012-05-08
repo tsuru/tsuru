@@ -21,7 +21,7 @@ type AuthorizationRequiredHandler func(http.ResponseWriter, *http.Request, *auth
 func (fn AuthorizationRequiredHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	token := r.Header.Get("Authorization")
 	if token == "" {
-		http.Error(w, "You must provide the Authorization header", http.StatusBadRequest)
+		http.Error(w, "You must provide the Authorization header", http.StatusUnauthorized)
 	} else if user, err := auth.CheckToken(token); err != nil {
 		http.Error(w, "Invalid token", http.StatusUnauthorized)
 	} else if err = fn(w, r, user); err != nil {

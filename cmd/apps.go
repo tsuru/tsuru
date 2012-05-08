@@ -28,11 +28,9 @@ func (c AppsCommand) Show(result []byte, context *Context) error {
 		context.Stderr.Write([]byte(err.Error()))
 		return err
 	}
-	/* context.Stdout.Write([]byte("Application - State - Ip\n")) */
 	table := NewTable()
 	table.Headers = Row{"Application", "State", "Ip"}
 	for _, app := range apps {
-		/* context.Stdout.Write([]byte(fmt.Sprintf("%s - %s - %s\n", app.Name, app.State, app.Ip))) */
 		table.AddRow(Row{app.Name, app.State, app.Ip})
 	}
 	context.Stdout.Write(table.Bytes())

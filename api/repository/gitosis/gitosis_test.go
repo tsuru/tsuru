@@ -32,16 +32,16 @@ func (s *S) TestAddProject(c *C) {
 	c.Assert(conf.HasSection("group someOtherProject"), Equals, true)
 }
 
-// func (s *S) TestAddProjectShouldReturnErrorWhenSectionAlreadyExists(c *C) {
-// 	pwd := os.Getenv("PWD")
-// 	err := os.Chdir(path.Join(s.gitRoot, "gitosis-admin"))
-// 	_, err = os.Create("gitosis.conf")
-// 	c.Assert(err, IsNil)
-// 	err = os.Chdir(pwd)
-// 
-// 	err = AddProject("aProject")
-// 	c.Assert(err, IsNil)
-// 
-// 	err = AddProject("aProject")
-// 	c.Assert(err, NotNil)
-// }
+func (s *S) TestAddProjectShouldReturnErrorWhenSectionAlreadyExists(c *C) {
+	pwd := os.Getenv("PWD")
+	err := os.Chdir(path.Join(s.gitRoot, "gitosis-admin"))
+	_, err = os.Create("gitosis.conf")
+	c.Assert(err, IsNil)
+	err = os.Chdir(pwd)
+
+	err = AddProject("aProject")
+	c.Assert(err, IsNil)
+
+	err = AddProject("aProject")
+	c.Assert(err, NotNil)
+}
