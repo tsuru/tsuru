@@ -114,7 +114,7 @@ func DeleteHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	return nil
 }
 
-func BindHandler(w http.ResponseWriter, r *http.Request) error {
+func BindHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	var b bindJson
 	defer r.Body.Close()
 	body, err := ioutil.ReadAll(r.Body)

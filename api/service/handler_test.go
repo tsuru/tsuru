@@ -169,7 +169,7 @@ func (s *ServiceSuite) TestBindHandler(c *C) {
 	request, err := http.NewRequest("POST", "/services/bind", b)
 	c.Assert(err, IsNil)
 	recorder := httptest.NewRecorder()
-	err = BindHandler(recorder, request)
+	err = BindHandler(recorder, request, s.user)
 	c.Assert(err, IsNil)
 	c.Assert(recorder.Code, Equals, 200)
 	query := bson.M{
@@ -187,7 +187,7 @@ func (s *ServiceSuite) TestBindHandlerReturns404(c *C) {
 	c.Assert(err, IsNil)
 
 	recorder := httptest.NewRecorder()
-	err = BindHandler(recorder, request)
+	err = BindHandler(recorder, request, s.user)
 	c.Assert(err, IsNil)
 	c.Assert(recorder.Code, Equals, 404)
 }
