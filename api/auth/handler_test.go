@@ -185,30 +185,6 @@ func (s *S) TestLoginShouldReturnErrorAndInternalServerErrorIfReadAllFails(c *C)
 	c.Assert(err, NotNil)
 }
 
-func (s *S) TestCheckTokenReturnBadRequestIfTheTokenIsOmited(c *C) {
-	u, e := CheckToken("")
-	c.Assert(u, IsNil)
-	err, ok := e.(*errors.Http)
-	c.Assert(ok, Equals, true)
-	c.Assert(err.Code, Equals, http.StatusBadRequest)
-	c.Assert(err, ErrorMatches, "^You must provide the Authorization header$")
-}
-
-func (s *S) TestCheckTokenReturnUnauthorizedIfTheTokenIsInvalid(c *C) {
-	u, e := CheckToken("invalid")
-	c.Assert(u, IsNil)
-	err, ok := e.(*errors.Http)
-	c.Assert(ok, Equals, true)
-	c.Assert(err.Code, Equals, http.StatusUnauthorized)
-	c.Assert(err, ErrorMatches, "^Invalid token$")
-}
-
-func (s *S) TestCheckTokenReturnTheUserIfTheTokenIsValid(c *C) {
-	u, e := CheckToken(s.token.Token)
-	c.Assert(e, IsNil)
-	c.Assert(u.Email, Equals, s.user.Email)
-}
-
 func (s *S) TestCreateTeamHandlerSavesTheTeamInTheDatabaseWithTheAuthenticatedUser(c *C) {
 	b := bytes.NewBufferString(`{"name":"timeredbull"}`)
 	request, err := http.NewRequest("POST", "/teams", b)

@@ -196,3 +196,23 @@ func (s *S) TestRemoveKeyReturnsErrorIfTheUserDoesNotHaveTheKey(c *C) {
 	c.Assert(err, NotNil)
 	c.Assert(err, ErrorMatches, "^User does not have this key$")
 }
+
+func (s *S) TestCheckTokenReturnErrorIfTheTokenIsOmited(c *C) {
+	u, err := CheckToken("")
+	c.Assert(u, IsNil)
+	c.Assert(err, NotNil)
+	c.Assert(err, ErrorMatches, "^You must provide the token$")
+}
+
+func (s *S) TestCheckTokenReturnErrorIfTheTokenIsInvalid(c *C) {
+	u, err := CheckToken("invalid")
+	c.Assert(u, IsNil)
+	c.Assert(err, NotNil)
+	c.Assert(err, ErrorMatches, "^Invalid token$")
+}
+
+func (s *S) TestCheckTokenReturnTheUserIfTheTokenIsValid(c *C) {
+	u, e := CheckToken(s.token.Token)
+	c.Assert(e, IsNil)
+	c.Assert(u.Email, Equals, s.user.Email)
+}

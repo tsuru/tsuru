@@ -166,3 +166,14 @@ func NewToken(u *User) (*Token, error) {
 	t.Token = fmt.Sprintf("%x", h.Sum(nil))
 	return &t, nil
 }
+
+func CheckToken(token string) (*User, error) {
+	if token == "" {
+		return nil, errors.New("You must provide the token")
+	}
+	u, err := GetUserByToken(token)
+	if err != nil {
+		return nil, errors.New("Invalid token")
+	}
+	return u, nil
+}

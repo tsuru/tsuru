@@ -11,17 +11,6 @@ import (
 	"strings"
 )
 
-func CheckToken(token string) (*User, error) {
-	if token == "" {
-		return nil, &errors.Http{Code: http.StatusBadRequest, Message: "You must provide the Authorization header"}
-	}
-	u, err := GetUserByToken(token)
-	if err != nil {
-		return nil, &errors.Http{Code: http.StatusUnauthorized, Message: "Invalid token"}
-	}
-	return u, nil
-}
-
 func CreateUser(w http.ResponseWriter, r *http.Request) error {
 	var u User
 	b, err := ioutil.ReadAll(r.Body)
