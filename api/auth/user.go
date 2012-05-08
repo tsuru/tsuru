@@ -64,6 +64,7 @@ type User struct {
 	Email    string
 	Password string
 	Tokens   []Token
+	Keys     []string
 }
 
 func GetUserByToken(token string) (*User, error) {
@@ -110,6 +111,38 @@ func (u *User) CreateToken() (*Token, error) {
 	c := db.Session.Users()
 	err := c.Update(bson.M{"email": u.Email}, u)
 	return t, err
+}
+
+func (u *User) findKey(key string) int {
+	for i, k := range u.Keys {
+		if k == key {
+			return i
+		}
+	}
+	return -1
+}
+
+func (u *User) hasKey(key string) bool {
+	return u.findKey(key) > -1
+}
+
+func (u *User) AddKey(key string) error {
+	if u.hasKey(key) {
+		return errors.New("User has this key already")
+	}
+	u.Keys = append(u.Keys, key)
+	return nil
+}
+
+func (u *User) RemoveKey(key string) error {
+	index := u.findKey(key)
+	if index < 0 {
+		return errors.New("User does not have this key")
+	}
+	last := len(u.Keys) - 1
+	u.Keys[index] = u.Keys[last]
+	u.Keys = u.Keys[:last]
+	return nil
 }
 
 type Token struct {
