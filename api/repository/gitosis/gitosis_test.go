@@ -3,18 +3,11 @@ package gitosis
 import (
 	"github.com/kless/goconfig/config"
 	. "launchpad.net/gocheck"
-	"os"
 	"path"
 )
 
 func (s *S) TestAddProject(c *C) {
-	pwd := os.Getenv("PWD")
-	err := os.Chdir(path.Join(s.gitRoot, "gitosis-admin"))
-	_, err = os.Create("gitosis.conf")
-	c.Assert(err, IsNil)
-	err = os.Chdir(pwd)
-
-	err = AddProject("someProject")
+	err := AddProject("someProject")
 	c.Assert(err, IsNil)
 
 	conf, err := config.ReadDefault(path.Join(s.gitRoot, "gitosis-admin/gitosis.conf"))
@@ -33,13 +26,7 @@ func (s *S) TestAddProject(c *C) {
 }
 
 func (s *S) TestAddProjectShouldReturnErrorWhenSectionAlreadyExists(c *C) {
-	pwd := os.Getenv("PWD")
-	err := os.Chdir(path.Join(s.gitRoot, "gitosis-admin"))
-	_, err = os.Create("gitosis.conf")
-	c.Assert(err, IsNil)
-	err = os.Chdir(pwd)
-
-	err = AddProject("aProject")
+	err := AddProject("aProject")
 	c.Assert(err, IsNil)
 
 	err = AddProject("aProject")

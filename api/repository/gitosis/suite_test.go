@@ -37,6 +37,14 @@ func (s *S) SetUpSuite(c *C) {
 	c.Assert(err, IsNil)
 }
 
+func (s *S) SetUpTest(c *C) {
+	pwd := os.Getenv("PWD")
+	err := os.Chdir(path.Join(s.gitRoot, "gitosis-admin"))
+	_, err = os.Create("gitosis.conf")
+	c.Assert(err, IsNil)
+	err = os.Chdir(pwd)
+}
+
 func (s *S) TearDownSuite(c *C) {
 	err := os.RemoveAll(s.gitRoot)
 	c.Assert(err, IsNil)
