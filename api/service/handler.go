@@ -33,7 +33,6 @@ func ServicesHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error
 	var services []Service
 	db.Session.Services().Find(bson.M{"teams.users.email": u.Email}).All(&services)
 	results := make([]ServiceT, len(services))
-
 	var sT ServiceT
 	for i, s := range services {
 		sT = ServiceT{
@@ -42,12 +41,10 @@ func ServicesHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error
 		}
 		results[i] = sT
 	}
-
 	b, err := json.Marshal(results)
 	if err != nil {
 		return err
 	}
-
 	fmt.Fprint(w, bytes.NewBuffer(b).String())
 	return nil
 }
@@ -56,7 +53,6 @@ func ServiceTypesHandler(w http.ResponseWriter, r *http.Request) error {
 	s := ServiceType{}
 	sTypes := s.All()
 	results := make([]ServiceType, 0)
-
 	var sT ServiceType
 	for _, s := range sTypes {
 		sT = ServiceType{
@@ -66,33 +62,27 @@ func ServiceTypesHandler(w http.ResponseWriter, r *http.Request) error {
 		}
 		results = append(results, sT)
 	}
-
 	b, err := json.Marshal(results)
 	if err != nil {
 		return err
 	}
-
 	fmt.Fprint(w, bytes.NewBuffer(b).String())
 	return nil
 }
 
 func CreateHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	var sj ServiceJson
-
 	defer r.Body.Close()
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		return err
 	}
-
 	err = json.Unmarshal(body, &sj)
 	if err != nil {
 		return err
 	}
-
 	st := ServiceType{Charm: sj.Type}
 	st.Get()
-
 	var teams []auth.Team
 	db.Session.Teams().Find(bson.M{"users.email": u.Email}).All(&teams)
 	if len(teams) == 0 {
@@ -112,14 +102,12 @@ func CreateHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 func DeleteHandler(w http.ResponseWriter, r *http.Request) error {
 	s := Service{Name: r.URL.Query().Get(":name")}
 	err := s.Get()
-
 	if err != nil {
 		http.NotFound(w, r)
 		return err
 	}
 	s.Delete()
 	fmt.Fprint(w, "success")
-
 	return nil
 }
 
@@ -149,18 +137,15 @@ func BindHandler(w http.ResponseWriter, r *http.Request) error {
 
 func UnbindHandler(w http.ResponseWriter, r *http.Request) error {
 	var b BindJson
-
 	defer r.Body.Close()
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		return err
 	}
-
 	err = json.Unmarshal(body, &b)
 	if err != nil {
 		return err
 	}
-
 	s := Service{Name: b.Service}
 	a := app.App{Name: b.App}
 	sErr := s.Get()
@@ -181,7 +166,8 @@ func getServiceAndTeamOrError(serviceName string, teamName string, u *auth.User)
 		return nil, nil, &errors.Http{Code: http.StatusNotFound, Message: "Service not found"}
 	}
 	if !service.CheckUserAccess(u) {
-		return nil, nil, &errors.Http{Code: http.StatusForbidden, Message: "This user does not have access to this service"}
+		msg := "This user does not have access to this service"
+		return nil, nil, &errors.Http{Code: http.StatusForbidden, Message: msg}
 	}
 	t := new(auth.Team)
 	err = db.Session.Teams().Find(bson.M{"name": teamName}).One(t)
