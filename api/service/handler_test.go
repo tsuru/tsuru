@@ -159,8 +159,8 @@ func (s *ServiceSuite) TestBindHandler(c *C) {
 	st := ServiceType{Name: "Mysql", Charm: "mysql"}
 	err := st.Create()
 	c.Assert(err, IsNil)
-	se := Service{ServiceTypeId: st.Id, Name: "my_service"}
-	a := app.App{Name: "serviceApp", Framework: "django"}
+	se := Service{ServiceTypeId: st.Id, Name: "my_service", Teams: []auth.Team{*s.team}}
+	a := app.App{Name: "serviceApp", Framework: "django", Teams: []auth.Team{*s.team}}
 	err = se.Create()
 	c.Assert(err, IsNil)
 	err = a.Create()
@@ -181,15 +181,84 @@ func (s *ServiceSuite) TestBindHandler(c *C) {
 	c.Assert(qtd, Equals, 1)
 }
 
-func (s *ServiceSuite) TestBindHandlerReturns404(c *C) {
+func (s *ServiceSuite) TestBindHandlerReturns403IfTheUserDoesNotHaveAccessToTheApp(c *C) {
+	st := ServiceType{Name: "Mysql", Charm: "mysql"}
+	err := st.Create()
+	c.Assert(err, IsNil)
+	se := Service{ServiceTypeId: st.Id, Name: "my_service", Teams: []auth.Team{*s.team}}
+	a := app.App{Name: "serviceApp", Framework: "django"}
+	err = se.Create()
+	c.Assert(err, IsNil)
+	err = a.Create()
+	c.Assert(err, IsNil)
 	b := strings.NewReader(`{"app":"serviceApp", "service":"my_service"}`)
 	request, err := http.NewRequest("POST", "/services/bind", b)
 	c.Assert(err, IsNil)
-
 	recorder := httptest.NewRecorder()
 	err = BindHandler(recorder, request, s.user)
+	c.Assert(err, NotNil)
+	e, ok := err.(*errors.Http)
+	c.Assert(ok, Equals, true)
+	c.Assert(e.Code, Equals, http.StatusForbidden)
+	c.Assert(e, ErrorMatches, "^This user does not have access to this app$")
+}
+
+func (s *ServiceSuite) TestBindHandlerReturns404IfTheAppDoesNotExist(c *C) {
+	st := ServiceType{Name: "Mysql", Charm: "mysql"}
+	err := st.Create()
 	c.Assert(err, IsNil)
-	c.Assert(recorder.Code, Equals, 404)
+	se := Service{ServiceTypeId: st.Id, Name: "my_service", Teams: []auth.Team{*s.team}}
+	err = se.Create()
+	c.Assert(err, IsNil)
+	b := strings.NewReader(`{"app":"serviceApp", "service":"my_service"}`)
+	request, err := http.NewRequest("POST", "/services/bind", b)
+	c.Assert(err, IsNil)
+	recorder := httptest.NewRecorder()
+	err = BindHandler(recorder, request, s.user)
+	c.Assert(err, NotNil)
+	e, ok := err.(*errors.Http)
+	c.Assert(ok, Equals, true)
+	c.Assert(e.Code, Equals, http.StatusNotFound)
+	c.Assert(e, ErrorMatches, "^App not found$")
+}
+
+func (s *ServiceSuite) TestBindHandlerReturns403IfTheUserDoesNotHaveAccessToTheService(c *C) {
+	st := ServiceType{Name: "Mysql", Charm: "mysql"}
+	err := st.Create()
+	c.Assert(err, IsNil)
+	se := Service{ServiceTypeId: st.Id, Name: "my_service"}
+	a := app.App{Name: "serviceApp", Framework: "django", Teams: []auth.Team{*s.team}}
+	err = se.Create()
+	c.Assert(err, IsNil)
+	err = a.Create()
+	c.Assert(err, IsNil)
+	b := strings.NewReader(`{"app":"serviceApp", "service":"my_service"}`)
+	request, err := http.NewRequest("POST", "/services/bind", b)
+	c.Assert(err, IsNil)
+	recorder := httptest.NewRecorder()
+	err = BindHandler(recorder, request, s.user)
+	c.Assert(err, NotNil)
+	e, ok := err.(*errors.Http)
+	c.Assert(ok, Equals, true)
+	c.Assert(e.Code, Equals, http.StatusForbidden)
+	c.Assert(e, ErrorMatches, "^This user does not have access to this service$")
+}
+
+func (s *ServiceSuite) TestBindHandlerReturns404IfTheServiceDoesNotExist(c *C) {
+	a := app.App{Name: "serviceApp", Framework: "django", Teams: []auth.Team{*s.team}}
+	err := a.Create()
+	c.Assert(err, IsNil)
+	b := strings.NewReader(`{"app":"serviceApp", "service":"my_service"}`)
+	request, err := http.NewRequest("POST", "/services/bind", b)
+	c.Assert(err, IsNil)
+	recorder := httptest.NewRecorder()
+	err = BindHandler(recorder, request, s.user)
+	c.Assert(err, NotNil)
+	e, ok := err.(*errors.Http)
+	c.Assert(ok, Equals, true)
+	c.Assert(e.Code, Equals, http.StatusNotFound)
+	c.Assert(e, ErrorMatches, "^Service not found$")
+
 }
 
 func (s *ServiceSuite) TestUnbindHandler(c *C) {
