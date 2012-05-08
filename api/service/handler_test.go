@@ -133,7 +133,10 @@ func (s *ServiceSuite) TestDeleteHandlerReturns404(c *C) {
 	recorder := httptest.NewRecorder()
 	err = DeleteHandler(recorder, request, s.user)
 	c.Assert(err, NotNil)
-	c.Assert(recorder.Code, Equals, 404)
+	e, ok := err.(*errors.Http)
+	c.Assert(ok, Equals, true)
+	c.Assert(e.Code, Equals, http.StatusNotFound)
+	c.Assert(e, ErrorMatches, "^Service not found$")
 }
 
 func (s *ServiceSuite) TestDeleteHandlerReturns403IfTheUserDoesNotHaveAccessToTheService(c *C) {

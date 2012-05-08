@@ -103,8 +103,7 @@ func DeleteHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	s := Service{Name: r.URL.Query().Get(":name")}
 	err := s.Get()
 	if err != nil {
-		http.NotFound(w, r)
-		return err
+		return &errors.Http{Code: http.StatusNotFound, Message: "Service not found"}
 	}
 	if !s.CheckUserAccess(u) {
 		msg := "This user does not have access to this service"
