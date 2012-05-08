@@ -78,13 +78,13 @@ func (s *S) TestHandlerShouldPassAnHandlerWithoutError(c *C) {
 	c.Assert(recorder.Body.String(), Equals, "success")
 }
 
-func (s *S) TestAuthorizationRequiredHandlerShouldReturnBadRequestIfTheAuthorizationHeadIsNotPresent(c *C) {
+func (s *S) TestAuthorizationRequiredHandlerShouldReturnUnauthorizedIfTheAuthorizationHeadIsNotPresent(c *C) {
 	recorder := httptest.NewRecorder()
 	request, err := http.NewRequest("GET", "/apps", nil)
 	c.Assert(err, IsNil)
 
 	AuthorizationRequiredHandler(authorizedSimpleHandler).ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, Equals, http.StatusBadRequest)
+	c.Assert(recorder.Code, Equals, http.StatusUnauthorized)
 	c.Assert(recorder.Body.String(), Equals, "You must provide the Authorization header\n")
 }
 
