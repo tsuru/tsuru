@@ -40,7 +40,6 @@ func (s *Service) Delete() error {
 	if err != nil {
 		return err
 	}
-
 	u := unit.Unit{Name: s.Name, Type: s.ServiceType().Charm}
 	return u.Destroy()
 }

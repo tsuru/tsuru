@@ -1,15 +1,41 @@
-Tsuru
-=====
+#Tsuru
 
-What is Tsuru?
---------------
+##What is Tsuru?
 
-Tsuru is an open platform-as-a-service (PaaS).
+Tsuru is an open Platform-as-a-Service (PaaS).
 
-Install Tsuru Collector on Ubuntu Server
-----------------------------------------
+##Dependencies
 
-Run the install script. Make sure your user is a sudoer.
+Tsuru depends on [Go](http://golang.org) and [libyaml](http://pyyaml.org/wiki/LibYAML).
 
-     sudo apt-get install curl
-     bash < <(curl -s -k -B https://raw.github.com/timeredbull/tsuru/master/setup/install)
+To install Go, follow the official instructions in the language website:
+http://golang.org/doc/install.
+
+To install libyaml, you can use one package manager, or download it and install
+from source. To install from source, follow the instructions on PyYAML wiki:
+http://pyyaml.org/wiki/LibYAML.
+
+The following instructions are system specific:
+
+###FreeBSD
+
+    % cd /usr/ports/textproc/libyaml
+    % make install clean
+
+###Mac OS X (homebrew)
+
+    % brew install libyaml
+
+###Ubuntu
+
+    % [sudo] apt-get install libyaml-dev
+
+###CentOS
+
+    % [sudo] yum install libyaml-devel
+
+##Installation
+
+After install and configure go, and install libyaml, just run in your terminal:
+
+    % go get github.com/timeredbull/tsuru/...
