@@ -58,7 +58,7 @@ func (s *ServiceSuite) SetUpSuite(c *C) {
 
 func (s *ServiceSuite) TearDownSuite(c *C) {
 	defer db.Session.Close()
-	db.Session.DropDB()
+	db.Session.Apps().Database.DropDatabase()
 }
 
 func (s *ServiceSuite) TearDownTest(c *C) {
