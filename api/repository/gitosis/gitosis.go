@@ -108,6 +108,9 @@ func AddMember(group, member string) error {
 		return err
 	}
 	section := fmt.Sprintf("group %s", group)
+	if !c.HasSection(section) {
+		return errors.New("Group not found")
+	}
 	var members []string
 	if strMembers, err := c.String(section, "members"); err == nil {
 		members = strings.Split(strMembers, " ")

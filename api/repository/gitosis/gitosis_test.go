@@ -144,6 +144,12 @@ func (s *S) TestAddMemberToGroupReturnsErrorIfTheMemberIsAlreadyInTheGroup(c *C)
 	c.Assert(err, ErrorMatches, "^This user is already member of this group$")
 }
 
+func (s *S) TestAddMemberToAGroupThatDoesNotExistReturnError(c *C) {
+	err := AddMember("pink-floyd", "one-of-these-days")
+	c.Assert(err, NotNil)
+	c.Assert(err, ErrorMatches, "^Group not found$")
+}
+
 func (s *S) TestAddAndCommit(c *C) {
 	confPath := path.Join(s.gitosisRepo, "gitosis.conf")
 	conf, err := ini.ReadDefault(confPath)
