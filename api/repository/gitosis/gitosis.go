@@ -12,7 +12,7 @@ import (
 )
 
 // Add a new project to gitosis.conf. Also commit and push changes.
-func AddProject(name string) error {
+func AddTeam(name string) error {
 	confPath, err := ConfPath()
 	if err != nil {
 		log.Panic(err)

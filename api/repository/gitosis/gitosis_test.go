@@ -9,8 +9,8 @@ import (
 	"path"
 )
 
-func (s *S) TestAddProject(c *C) {
-	err := AddProject("someProject")
+func (s *S) TestAddTeam(c *C) {
+	err := AddTeam("someProject")
 	c.Assert(err, IsNil)
 
 	conf, err := ini.ReadDefault(path.Join(s.gitosisRepo, "gitosis.conf"))
@@ -19,7 +19,7 @@ func (s *S) TestAddProject(c *C) {
 	c.Assert(conf.HasSection("group someProject"), Equals, true)
 
 	//ensures that file is not overriden when a new project is added
-	err = AddProject("someOtherProject")
+	err = AddTeam("someOtherProject")
 	c.Assert(err, IsNil)
 	// it should have both sections
 	conf, err = ini.ReadDefault(path.Join(s.gitRoot, "gitosis-admin/gitosis.conf"))
@@ -28,16 +28,16 @@ func (s *S) TestAddProject(c *C) {
 	c.Assert(conf.HasSection("group someOtherProject"), Equals, true)
 }
 
-func (s *S) TestAddProjectShouldReturnErrorWhenSectionAlreadyExists(c *C) {
-	err := AddProject("aProject")
+func (s *S) TestAddTeamShouldReturnErrorWhenSectionAlreadyExists(c *C) {
+	err := AddTeam("aProject")
 	c.Assert(err, IsNil)
 
-	err = AddProject("aProject")
+	err = AddTeam("aProject")
 	c.Assert(err, NotNil)
 }
 
-func (s *S) TestAddProjectShouldCommitAndPushChangesToGitosisBare(c *C) {
-	err := AddProject("gandalf")
+func (s *S) TestAddTeamShouldCommitAndPushChangesToGitosisBare(c *C) {
+	err := AddTeam("gandalf")
 	c.Assert(err, IsNil)
 	pwd := os.Getenv("PWD")
 	os.Chdir(s.gitosisBare)
@@ -54,7 +54,7 @@ func (s *S) TestAddProjectShouldCommitAndPushChangesToGitosisBare(c *C) {
 }
 
 func (s *S) TestAddMemberToProject(c *C) {
-	err := AddProject("take-over-the-world") // test also with a inexistent project
+	err := AddTeam("take-over-the-world") // test also with a inexistent project
 	c.Assert(err, IsNil)
 	err = AddMember("take-over-the-world", "brain")
 
