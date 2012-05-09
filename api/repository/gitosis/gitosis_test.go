@@ -92,7 +92,7 @@ func (s *S) TestRemoveGroupCommitAndPushesChanges(c *C) {
 }
 
 func (s *S) TestAddMemberToGroup(c *C) {
-	err := AddGroup("take-over-the-world") // test also with a inexistent project
+	err := AddGroup("take-over-the-world")
 	c.Assert(err, IsNil)
 	err = AddMember("take-over-the-world", "brain")
 	c.Assert(err, IsNil)
