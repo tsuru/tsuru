@@ -62,9 +62,20 @@ func RemoveGroup(group string) error {
 	}
 
 	gName := fmt.Sprintf("group %s", group)
-	c.RemoveSection(gName)
+	ok := c.RemoveSection(gName)
+	if !ok {
+		log.Panic("Section does not exists")
+		return errors.New("Section does not exists")
+	}
 
 	err = c.WriteFile(confPath, 0744, "gitosis configuration file")
+	if err != nil {
+		log.Panic(err)
+		return err
+	}
+
+	commitMsg := fmt.Sprintf("Removing group %s from gitosis.conf", group)
+	err = PushToGitosis(commitMsg)
 	if err != nil {
 		log.Panic(err)
 		return err
