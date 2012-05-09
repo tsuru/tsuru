@@ -6,14 +6,20 @@ import (
 	"net/http"
 )
 
-type Client struct{}
+type Doer interface {
+	Do(request *http.Request) ([]byte, error)
+}
 
-func NewClient() *Client {
-	return &Client{}
+type Client struct {
+	HttpClient *http.Client
+}
+
+func NewClient(client *http.Client) *Client {
+	return &Client{HttpClient: client}
 }
 
 func (c *Client) Do(request *http.Request) ([]byte, error) {
-	response, _ := http.DefaultClient.Do(request)
+	response, _ := c.HttpClient.Do(request)
 	defer response.Body.Close()
 	result, _ := ioutil.ReadAll(response.Body)
 	if response.StatusCode > 399 {

@@ -1,23 +1,30 @@
 package cmd
 
 import (
-	"io"
+	"bytes"
+	"io/ioutil"
 	. "launchpad.net/gocheck"
 	"net/http"
-	"net/http/httptest"
 )
 
-func (s *S) TestShouldReturnBodyMessageOnError(c *C) {
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusUnauthorized)
-		io.WriteString(w, "You must be authenticated to execute this command.")
-	}))
-	defer ts.Close()
+type transport struct {
+	msg    string
+	status int
+}
 
-	request, err := http.NewRequest("GET", ts.URL, nil)
+func (t *transport) RoundTrip(req *http.Request) (resp *http.Response, err error) {
+	resp = &http.Response{
+		Body:       ioutil.NopCloser(bytes.NewBufferString(t.msg)),
+		StatusCode: t.status,
+	}
+	return resp, nil
+}
+
+func (s *S) TestShouldReturnBodyMessageOnError(c *C) {
+	request, err := http.NewRequest("GET", "/", nil)
 	c.Assert(err, IsNil)
 
-	client := NewClient()
+	client := NewClient(&http.Client{Transport: &transport{msg: "You must be authenticated to execute this command.", status: http.StatusUnauthorized}})
 	response, err := client.Do(request)
 	c.Assert(response, IsNil)
 	c.Assert(err.Error(), Equals, "You must be authenticated to execute this command.")
