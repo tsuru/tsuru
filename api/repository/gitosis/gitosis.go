@@ -16,12 +16,12 @@ import (
 func AddGroup(name string) error {
 	confPath, err := ConfPath()
 	if err != nil {
-		log.Panic(err)
+		log.Print(err)
 		return err
 	}
 	c, err := ini.ReadDefault(confPath)
 	if err != nil {
-		log.Panic(err)
+		log.Print(err)
 		return err
 	}
 
@@ -29,20 +29,20 @@ func AddGroup(name string) error {
 	ok := c.AddSection(sName)
 	if !ok {
 		errStr := fmt.Sprintf(`Could not add section "group %s" in gitosis.conf, section already exists!`, name)
-		log.Panic(errStr)
+		log.Print(errStr)
 		return errors.New(errStr)
 	}
 
 	err = c.WriteFile(confPath, 0744, "gitosis configuration file")
 	if err != nil {
-		log.Panic(err)
+		log.Print(err)
 		return err
 	}
 
 	commitMsg := fmt.Sprintf("Defining gitosis group for group %s", name)
 	err = PushToGitosis(commitMsg)
 	if err != nil {
-		log.Panic(err)
+		log.Print(err)
 		return err
 	}
 
@@ -53,32 +53,32 @@ func AddGroup(name string) error {
 func RemoveGroup(group string) error {
 	confPath, err := ConfPath()
 	if err != nil {
-		log.Panic(err)
+		log.Print(err)
 		return err
 	}
 	c, err := ini.ReadDefault(confPath)
 	if err != nil {
-		log.Panic(err)
+		log.Print(err)
 		return err
 	}
 
 	gName := fmt.Sprintf("group %s", group)
 	ok := c.RemoveSection(gName)
 	if !ok {
-		log.Panic("Section does not exists")
+		log.Print("Section does not exists")
 		return errors.New("Section does not exists")
 	}
 
 	err = c.WriteFile(confPath, 0744, "gitosis configuration file")
 	if err != nil {
-		log.Panic(err)
+		log.Print(err)
 		return err
 	}
 
 	commitMsg := fmt.Sprintf("Removing group %s from gitosis.conf", group)
 	err = PushToGitosis(commitMsg)
 	if err != nil {
-		log.Panic(err)
+		log.Print(err)
 		return err
 	}
 
@@ -90,12 +90,12 @@ func RemoveGroup(group string) error {
 func AddMember(group, member string) error {
 	confPath, err := ConfPath()
 	if err != nil {
-		log.Panic(err)
+		log.Print(err)
 		return err
 	}
 	c, err := ini.ReadDefault(confPath)
 	if err != nil {
-		log.Panic(err)
+		log.Print(err)
 		return err
 	}
 	section := fmt.Sprintf("group %s", group)
@@ -113,13 +113,13 @@ func AddMember(group, member string) error {
 	c.AddOption(section, "members", strings.Join(members, " "))
 	err = c.WriteFile(confPath, 0744, "gitosis configuration file")
 	if err != nil {
-		log.Panic(err)
+		log.Print(err)
 		return err
 	}
 	commitMsg := fmt.Sprintf("Adding member %s to group %s", member, group)
 	err = PushToGitosis(commitMsg)
 	if err != nil {
-		log.Panic(err)
+		log.Print(err)
 		return err
 	}
 	return nil
@@ -174,7 +174,7 @@ func RemoveMember(group, member string) error {
 func PushToGitosis(cMsg string) error {
 	repoPath, err := config.GetString("git:gitosis-repo")
 	if err != nil {
-		log.Panic(err)
+		log.Print(err)
 		return err
 	}
 
@@ -184,20 +184,20 @@ func PushToGitosis(cMsg string) error {
 	output, err := exec.Command("git", "add", ".").CombinedOutput()
 	if err != nil {
 		fmt.Println(string(output))
-		log.Panic(output, err)
+		log.Print(output, err)
 		return err
 	}
 	output, err = exec.Command("git", "commit", "-m", cMsg).CombinedOutput()
 	if err != nil {
 		fmt.Println(string(output))
-		log.Panic(output, err)
+		log.Print(output, err)
 		return err
 	}
 
 	output, err = exec.Command("git", "push", "origin", "master").CombinedOutput()
 	if err != nil {
 		fmt.Println(string(output))
-		log.Panic(output, err)
+		log.Print(output, err)
 		return err
 	}
 
@@ -209,7 +209,7 @@ func ConfPath() (p string, err error) {
 	p = ""
 	repoPath, err := config.GetString("git:gitosis-repo")
 	if err != nil {
-		log.Panic(err)
+		log.Print(err)
 		return
 	}
 
