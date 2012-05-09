@@ -126,7 +126,7 @@ func AddMember(group, member string) error {
 		return err
 	}
 	c, err = ini.ReadDefault(confPath)
-	commitMsg := fmt.Sprintf("Adding member %s for group %s", member, group)
+	commitMsg := fmt.Sprintf("Adding member %s to group %s", member, group)
 	err = PushToGitosis(commitMsg)
 	if err != nil {
 		log.Panic(err)

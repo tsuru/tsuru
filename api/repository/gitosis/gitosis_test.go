@@ -116,7 +116,7 @@ func (s *S) TestAddMemberToGroupCommitsAndPush(c *C) {
 
 	os.Chdir(pwd)
 
-	commitMsg := "Adding member brain for group someTeam"
+	commitMsg := "Adding member brain to group someTeam"
 
 	c.Assert(string(bareOutput), Equals, commitMsg)
 }
