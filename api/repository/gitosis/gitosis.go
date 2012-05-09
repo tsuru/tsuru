@@ -12,13 +12,17 @@ import (
 	"strings"
 )
 
-func checkPresenceOfString(strs []string, str string) bool {
-	for _, s := range strs {
+func find(strs []string, str string) int {
+	for i, s := range strs {
 		if str == s {
-			return true
+			return i
 		}
 	}
-	return false
+	return -1
+}
+
+func checkPresenceOfString(strs []string, str string) bool {
+	return find(strs, str) > -1
 }
 
 // Add a new group to gitosis.conf. Also commit and push changes.
@@ -125,11 +129,54 @@ func AddMember(group, member string) error {
 		log.Panic(err)
 		return err
 	}
-	c, err = ini.ReadDefault(confPath)
 	commitMsg := fmt.Sprintf("Adding member %s to group %s", member, group)
 	err = PushToGitosis(commitMsg)
 	if err != nil {
 		log.Panic(err)
+		return err
+	}
+	return nil
+}
+
+// RemoveMember removes a member from the given group.
+func RemoveMember(group, member string) error {
+	confPath, err := ConfPath()
+	if err != nil {
+		log.Print(err)
+		return err
+	}
+	c, err := ini.ReadDefault(confPath)
+	if err != nil {
+		log.Print(err)
+		return err
+	}
+	section := fmt.Sprintf("group %s", group)
+	if !c.HasSection(section) {
+		return errors.New("Group not found")
+	}
+	strMembers, _ := c.String(section, "members")
+	members := strings.Split(strMembers, " ")
+	index := find(members, member)
+	if index < 0 {
+		return errors.New("This group does not have this member")
+	}
+	last := len(members) - 1
+	members[index] = members[last]
+	members = members[:last]
+	if len(members) > 0 {
+		c.AddOption(section, "members", strings.Join(members, " "))
+	} else {
+		c.RemoveOption(section, "members")
+	}
+	err = c.WriteFile(confPath, 0744, "gitosis configuration file")
+	if err != nil {
+		log.Print(err)
+		return err
+	}
+	commitMsg := fmt.Sprintf("Removing member %s from group %s", member, group)
+	err = PushToGitosis(commitMsg)
+	if err != nil {
+		log.Print(err)
 		return err
 	}
 	return nil
