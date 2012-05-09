@@ -11,7 +11,7 @@ import (
 	"path"
 )
 
-// Add a new project to gitosis.conf. Also commit and push changes.
+// Add a new group to gitosis.conf. Also commit and push changes.
 func AddTeam(name string) error {
 	confPath, err := ConfPath()
 	if err != nil {
@@ -48,9 +48,9 @@ func AddTeam(name string) error {
 	return nil
 }
 
-// Adds a member to the given project.
+// Adds a member to the given group.
 // member parameter should be the same as the key name in keypair/ dir.
-func AddMember(project, member string) error {
+func AddMember(group, member string) error {
 	confPath, err := ConfPath()
 	if err != nil {
 		log.Panic(err)
@@ -63,7 +63,7 @@ func AddMember(project, member string) error {
 	}
 
 	sName := fmt.Sprintf("group %s", project)
-	c.AddOption(sName, "member", member)
+	c.AddOption(sName, "members", member)
 
 	err = c.WriteFile(confPath, 0744, "gitosis configuration file")
 	if err != nil {
@@ -71,7 +71,7 @@ func AddMember(project, member string) error {
 		return err
 	}
 
-	commitMsg := fmt.Sprintf("Adding member %s for project %s", member, project)
+	commitMsg := fmt.Sprintf("Adding member %s for group %s", member, project)
 	err = PushToGitosis(commitMsg)
 	if err != nil {
 		log.Panic(err)
