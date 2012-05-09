@@ -81,7 +81,7 @@ func AddMember(group, member string) error {
 	}
 
 	sName := fmt.Sprintf("group %s", group)
-	c.AddOption(sName, "member", member)
+	c.AddOption(sName, "members", member)
 
 	err = c.WriteFile(confPath, 0744, "gitosis configuration file")
 	if err != nil {
