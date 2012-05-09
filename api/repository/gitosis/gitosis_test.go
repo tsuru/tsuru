@@ -54,6 +54,30 @@ func (s *S) TestAddGroupShouldCommitAndPushChangesToGitosisBare(c *C) {
 }
 
 func (s *S) TestRemoveGroup(c *C) {
+	err := AddGroup("someGroup")
+	c.Assert(err, IsNil)
+
+	conf, err := ini.ReadDefault(path.Join(s.gitosisRepo, "gitosis.conf"))
+	c.Assert(err, IsNil)
+	c.Assert(conf.HasSection("group someGroup"), Equals, true)
+
+	err = RemoveGroup("someGroup")
+	conf, err = ini.ReadDefault(path.Join(s.gitosisRepo, "gitosis.conf"))
+	c.Assert(err, IsNil)
+	c.Assert(conf.HasSection("group someGroup"), Equals, false)
+
+	pwd := os.Getenv("PWD")
+	os.Chdir(s.gitosisBare)
+	bareOutput, err := exec.Command("git", "log", "-1", "--pretty=format:%s").CombinedOutput()
+	c.Assert(err, IsNil)
+	os.Chdir(pwd)
+
+	expected := "Removing group someGroup from gitosis.conf"
+
+	c.Assert(string(bareOutput), Equals, expected)
+}
+
+func (s *S) TestRemoveGroupCommitAndPushesChanges(c *C) {
 	err := AddGroup("testGroup")
 	c.Assert(err, IsNil)
 
@@ -62,7 +86,6 @@ func (s *S) TestRemoveGroup(c *C) {
 	c.Assert(conf.HasSection("group testGroup"), Equals, true)
 
 	err = RemoveGroup("testGroup")
-	c.Assert(err, IsNil)
 	conf, err = ini.ReadDefault(path.Join(s.gitosisRepo, "gitosis.conf"))
 	c.Assert(err, IsNil)
 	c.Assert(conf.HasSection("group testGroup"), Equals, false)
