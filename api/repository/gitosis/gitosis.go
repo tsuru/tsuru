@@ -12,19 +12,6 @@ import (
 	"strings"
 )
 
-func find(strs []string, str string) int {
-	for i, s := range strs {
-		if str == s {
-			return i
-		}
-	}
-	return -1
-}
-
-func checkPresenceOfString(strs []string, str string) bool {
-	return find(strs, str) > -1
-}
-
 // Add a new group to gitosis.conf. Also commit and push changes.
 func AddGroup(name string) error {
 	confPath, err := ConfPath()
@@ -228,4 +215,17 @@ func ConfPath() (p string, err error) {
 
 	p = path.Join(repoPath, "gitosis.conf")
 	return
+}
+
+func find(strs []string, str string) int {
+	for i, s := range strs {
+		if str == s {
+			return i
+		}
+	}
+	return -1
+}
+
+func checkPresenceOfString(strs []string, str string) bool {
+	return find(strs, str) > -1
 }

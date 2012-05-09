@@ -3,6 +3,7 @@ package cmd
 import (
 	"fmt"
 	"io"
+	"net/http"
 )
 
 type Manager struct {
@@ -29,7 +30,9 @@ func (m *Manager) Run(args []string) {
 		io.WriteString(m.Stderr, fmt.Sprintf("command %s does not exist\n", args[0]))
 		return
 	}
-	err := command.Run(&Context{args[1:], m.Stdout, m.Stderr})
+	/* err := command.Run(&Context{args[1:], m.Stdout, m.Stderr}, &NewClient(http.DefaultClient)) */
+	client := NewClient(&http.Client{})
+	err := command.Run(&Context{args[1:], m.Stdout, m.Stderr}, client)
 	if err != nil {
 		io.WriteString(m.Stderr, err.Error())
 	}
@@ -40,7 +43,7 @@ func NewManager(stdout, stderr io.Writer) Manager {
 }
 
 type Command interface {
-	Run(context *Context) error
+	Run(context *Context, client Doer) error
 	Info() *Info
 }
 
