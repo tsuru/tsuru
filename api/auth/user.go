@@ -64,6 +64,7 @@ type User struct {
 	Email    string
 	Password string
 	Tokens   []Token
+	Keys     []string
 }
 
 func GetUserByToken(token string) (*User, error) {
@@ -112,6 +113,38 @@ func (u *User) CreateToken() (*Token, error) {
 	return t, err
 }
 
+func (u *User) findKey(key string) int {
+	for i, k := range u.Keys {
+		if k == key {
+			return i
+		}
+	}
+	return -1
+}
+
+func (u *User) hasKey(key string) bool {
+	return u.findKey(key) > -1
+}
+
+func (u *User) AddKey(key string) error {
+	if u.hasKey(key) {
+		return errors.New("User has this key already")
+	}
+	u.Keys = append(u.Keys, key)
+	return nil
+}
+
+func (u *User) RemoveKey(key string) error {
+	index := u.findKey(key)
+	if index < 0 {
+		return errors.New("User does not have this key")
+	}
+	last := len(u.Keys) - 1
+	u.Keys[index] = u.Keys[last]
+	u.Keys = u.Keys[:last]
+	return nil
+}
+
 type Token struct {
 	Token      string
 	ValidUntil time.Time
@@ -132,4 +165,15 @@ func NewToken(u *User) (*Token, error) {
 	t.ValidUntil = time.Now().Add(TOKENEXPIRE)
 	t.Token = fmt.Sprintf("%x", h.Sum(nil))
 	return &t, nil
+}
+
+func CheckToken(token string) (*User, error) {
+	if token == "" {
+		return nil, errors.New("You must provide the token")
+	}
+	u, err := GetUserByToken(token)
+	if err != nil {
+		return nil, errors.New("Invalid token")
+	}
+	return u, nil
 }

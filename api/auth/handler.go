@@ -5,22 +5,12 @@ import (
 	"fmt"
 	"github.com/timeredbull/tsuru/db"
 	"github.com/timeredbull/tsuru/errors"
+	"io"
 	"io/ioutil"
 	"launchpad.net/mgo/bson"
 	"net/http"
 	"strings"
 )
-
-func CheckToken(token string) (*User, error) {
-	if token == "" {
-		return nil, &errors.Http{Code: http.StatusBadRequest, Message: "You must provide the Authorization header"}
-	}
-	u, err := GetUserByToken(token)
-	if err != nil {
-		return nil, &errors.Http{Code: http.StatusUnauthorized, Message: "Invalid token"}
-	}
-	return u, nil
-}
 
 func CreateUser(w http.ResponseWriter, r *http.Request) error {
 	var u User
@@ -76,23 +66,6 @@ func Login(w http.ResponseWriter, r *http.Request) error {
 
 	msg := "Authentication failed, wrong password"
 	return &errors.Http{Code: http.StatusUnauthorized, Message: msg}
-}
-
-func CheckAuthorization(w http.ResponseWriter, r *http.Request) error {
-	token := r.Header.Get("Authorization")
-	user, err := CheckToken(token)
-	if err != nil {
-		return err
-	}
-	output := map[string]string{
-		"email": user.Email,
-	}
-	b, err := json.Marshal(output)
-	if err != nil {
-		return err
-	}
-	w.Write(b)
-	return nil
 }
 
 func CreateTeam(w http.ResponseWriter, r *http.Request, u *User) error {
@@ -161,4 +134,45 @@ func RemoveUserFromTeam(w http.ResponseWriter, r *http.Request, u *User) error {
 		return &errors.Http{Code: http.StatusNotFound, Message: err.Error()}
 	}
 	return db.Session.Teams().Update(selector, team)
+}
+
+func getKeyFromBody(b io.Reader) (string, error) {
+	var body map[string]string
+	content, err := ioutil.ReadAll(b)
+	if err != nil {
+		return "", err
+	}
+	err = json.Unmarshal(content, &body)
+	if err != nil {
+		return "", &errors.Http{Code: http.StatusBadRequest, Message: "Invalid JSON"}
+	}
+	key, ok := body["key"]
+	if !ok || key == "" {
+		return "", &errors.Http{Code: http.StatusBadRequest, Message: "Missing key"}
+	}
+	return key, nil
+}
+
+func AddKeyToUser(w http.ResponseWriter, r *http.Request, u *User) error {
+	key, err := getKeyFromBody(r.Body)
+	if err != nil {
+		return err
+	}
+	err = u.AddKey(key)
+	if err != nil {
+		return &errors.Http{Code: http.StatusConflict, Message: err.Error()}
+	}
+	return db.Session.Users().Update(bson.M{"email": u.Email}, u)
+}
+
+func RemoveKeyFromUser(w http.ResponseWriter, r *http.Request, u *User) error {
+	key, err := getKeyFromBody(r.Body)
+	if err != nil {
+		return err
+	}
+	err = u.RemoveKey(key)
+	if err != nil {
+		return &errors.Http{Code: http.StatusNotFound, Message: err.Error()}
+	}
+	return db.Session.Users().Update(bson.M{"email": u.Email}, u)
 }

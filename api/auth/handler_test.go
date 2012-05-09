@@ -185,78 +185,6 @@ func (s *S) TestLoginShouldReturnErrorAndInternalServerErrorIfReadAllFails(c *C)
 	c.Assert(err, NotNil)
 }
 
-func (s *S) TestValidateUserTokenReturnJsonRepresentingUser(c *C) {
-	var t *Token
-	u := User{Email: "nobody@globo.com", Password: "123"}
-	err := u.Create()
-	c.Assert(err, IsNil)
-
-	u.Get()
-	t, err = u.CreateToken()
-	c.Assert(err, IsNil)
-
-	request, err := http.NewRequest("GET", "/users/check-authorization", nil)
-	c.Assert(err, IsNil)
-
-	request.Header.Set("Authorization", t.Token)
-	recorder := httptest.NewRecorder()
-	err = CheckAuthorization(recorder, request)
-	c.Assert(err, IsNil)
-
-	var expected, got map[string]string
-	expected = map[string]string{
-		"email": "nobody@globo.com",
-	}
-	r, _ := ioutil.ReadAll(recorder.Body)
-	json.Unmarshal(r, &got)
-	c.Assert(got, DeepEquals, expected)
-}
-
-func (s *S) TestValidateUserTokenReturnErrorWhenGetUserByTokenReturnsAny(c *C) {
-	request, err := http.NewRequest("GET", "/users/check-authorization", nil)
-	c.Assert(err, IsNil)
-	request.Header.Set("Authorization", fmt.Sprintf("unexistent token"))
-	recorder := httptest.NewRecorder()
-	err = CheckAuthorization(recorder, request)
-	c.Assert(err, NotNil)
-}
-
-func (s *S) TestValidateUserTokenReturnErrorAndBadRequestWhenTheAuthorizationHeaderIsNotPresent(c *C) {
-	request, err := http.NewRequest("GET", "/users/check-authorization", nil)
-	c.Assert(err, IsNil)
-	recorder := httptest.NewRecorder()
-	err = CheckAuthorization(recorder, request)
-	c.Assert(err, NotNil)
-	c.Assert(err, ErrorMatches, "^You must provide the Authorization header$")
-	e, ok := err.(*errors.Http)
-	c.Assert(ok, Equals, true)
-	c.Assert(e.Code, Equals, http.StatusBadRequest)
-}
-
-func (s *S) TestCheckTokenReturnBadRequestIfTheTokenIsOmited(c *C) {
-	u, e := CheckToken("")
-	c.Assert(u, IsNil)
-	err, ok := e.(*errors.Http)
-	c.Assert(ok, Equals, true)
-	c.Assert(err.Code, Equals, http.StatusBadRequest)
-	c.Assert(err, ErrorMatches, "^You must provide the Authorization header$")
-}
-
-func (s *S) TestCheckTokenReturnUnauthorizedIfTheTokenIsInvalid(c *C) {
-	u, e := CheckToken("invalid")
-	c.Assert(u, IsNil)
-	err, ok := e.(*errors.Http)
-	c.Assert(ok, Equals, true)
-	c.Assert(err.Code, Equals, http.StatusUnauthorized)
-	c.Assert(err, ErrorMatches, "^Invalid token$")
-}
-
-func (s *S) TestCheckTokenReturnTheUserIfTheTokenIsValid(c *C) {
-	u, e := CheckToken(s.token.Token)
-	c.Assert(e, IsNil)
-	c.Assert(u.Email, Equals, s.user.Email)
-}
-
 func (s *S) TestCreateTeamHandlerSavesTheTeamInTheDatabaseWithTheAuthenticatedUser(c *C) {
 	b := bytes.NewBufferString(`{"name":"timeredbull"}`)
 	request, err := http.NewRequest("POST", "/teams", b)
@@ -464,4 +392,164 @@ func (s *S) TestRemoveUserFromTeamShouldReturnForbiddenIfTheUserIsTheLastInTheTe
 	c.Assert(ok, Equals, true)
 	c.Assert(e.Code, Equals, http.StatusForbidden)
 	c.Assert(e, ErrorMatches, "^You can not remove this user from this team, because it is the last user within the team, and a team can not be orphaned$")
+}
+
+func (s *S) TestAddKeyHandlerAddsAKeyToTheUser(c *C) {
+	defer func() {
+		s.user.RemoveKey("my-key")
+		db.Session.Users().Update(bson.M{"email": s.user.Email}, s.user)
+	}()
+	b := bytes.NewBufferString(`{"key":"my-key"}`)
+	request, err := http.NewRequest("POST", "/users/keys", b)
+	c.Assert(err, IsNil)
+	recorder := httptest.NewRecorder()
+	err = AddKeyToUser(recorder, request, s.user)
+	c.Assert(err, IsNil)
+	s.user.Get()
+	c.Assert(s.user, HasKey, "my-key")
+}
+
+func (s *S) TestAddKeyHandlerReturnsErrorIfTheReadingOfTheBodyFails(c *C) {
+	b := s.getTestData("bodyToBeClosed.txt")
+	b.Close()
+	request, err := http.NewRequest("POST", "/users/keys", b)
+	c.Assert(err, IsNil)
+	recorder := httptest.NewRecorder()
+	err = AddKeyToUser(recorder, request, s.user)
+	c.Assert(err, NotNil)
+}
+
+func (s *S) TestAddKeyHandlerReturnsBadRequestIfTheJsonIsInvalid(c *C) {
+	b := bytes.NewBufferString(`"aaaa}`)
+	request, err := http.NewRequest("POST", "/users/key", b)
+	c.Assert(err, IsNil)
+	recorder := httptest.NewRecorder()
+	err = AddKeyToUser(recorder, request, s.user)
+	c.Assert(err, NotNil)
+	e, ok := err.(*errors.Http)
+	c.Assert(ok, Equals, true)
+	c.Assert(e.Code, Equals, http.StatusBadRequest)
+	c.Assert(e, ErrorMatches, "^Invalid JSON$")
+}
+
+func (s *S) TestAddKeyHandlerReturnsBadRequestIfTheKeyIsNotPresent(c *C) {
+	b := bytes.NewBufferString(`{}`)
+	request, err := http.NewRequest("POST", "/users/key", b)
+	c.Assert(err, IsNil)
+	recorder := httptest.NewRecorder()
+	err = AddKeyToUser(recorder, request, s.user)
+	c.Assert(err, NotNil)
+	e, ok := err.(*errors.Http)
+	c.Assert(ok, Equals, true)
+	c.Assert(e.Code, Equals, http.StatusBadRequest)
+	c.Assert(e, ErrorMatches, "^Missing key$")
+}
+
+func (s *S) TestAddKeyHandlerReturnsBadRequestIfTheKeyIsEmpty(c *C) {
+	b := bytes.NewBufferString(`{"key":""}`)
+	request, err := http.NewRequest("POST", "/users/key", b)
+	c.Assert(err, IsNil)
+	recorder := httptest.NewRecorder()
+	err = AddKeyToUser(recorder, request, s.user)
+	c.Assert(err, NotNil)
+	e, ok := err.(*errors.Http)
+	c.Assert(ok, Equals, true)
+	c.Assert(e.Code, Equals, http.StatusBadRequest)
+	c.Assert(e, ErrorMatches, "^Missing key$")
+}
+
+func (s *S) TestAddKeyHandlerReturnsConflictIfTheKeyIsAlreadyPresent(c *C) {
+	s.user.AddKey("my-key")
+	db.Session.Users().Update(bson.M{"email": s.user.Email}, s.user)
+	defer func() {
+		s.user.RemoveKey("my-key")
+		db.Session.Users().Update(bson.M{"email": s.user.Email}, s.user)
+	}()
+	b := bytes.NewBufferString(`{"key":"my-key"}`)
+	request, err := http.NewRequest("POST", "/users/key", b)
+	c.Assert(err, IsNil)
+	recorder := httptest.NewRecorder()
+	err = AddKeyToUser(recorder, request, s.user)
+	c.Assert(err, NotNil)
+	e, ok := err.(*errors.Http)
+	c.Assert(ok, Equals, true)
+	c.Assert(e.Code, Equals, http.StatusConflict)
+}
+
+func (s *S) TestRemoveKeyHandlerRemovesTheKeyFromTheUser(c *C) {
+	s.user.AddKey("my-key")
+	db.Session.Users().Update(bson.M{"email": s.user.Email}, s.user)
+	defer func() {
+		s.user.RemoveKey("my-key")
+		db.Session.Users().Update(bson.M{"email": s.user.Email}, s.user)
+	}()
+	b := bytes.NewBufferString(`{"key":"my-key"}`)
+	request, err := http.NewRequest("DELETE", "/users/key", b)
+	c.Assert(err, IsNil)
+	recorder := httptest.NewRecorder()
+	err = RemoveKeyFromUser(recorder, request, s.user)
+	c.Assert(err, IsNil)
+	s.user.Get()
+	c.Assert(s.user, Not(HasKey), "my-key")
+}
+
+func (s *S) TestRemoveKeyHandlerReturnsErrorInCaseOfAnyIOFailure(c *C) {
+	b := s.getTestData("bodyToBeClosed.txt")
+	b.Close()
+	request, err := http.NewRequest("DELETE", "/users/key", b)
+	c.Assert(err, IsNil)
+	recorder := httptest.NewRecorder()
+	err = RemoveKeyFromUser(recorder, request, s.user)
+	c.Assert(err, NotNil)
+}
+
+func (s *S) TestRemoveKeyHandlerReturnsBadRequestIfTheJSONIsInvalid(c *C) {
+	b := bytes.NewBufferString(`invalid"json}`)
+	request, err := http.NewRequest("DELETE", "/users/key", b)
+	c.Assert(err, IsNil)
+	recorder := httptest.NewRecorder()
+	err = RemoveKeyFromUser(recorder, request, s.user)
+	c.Assert(err, NotNil)
+	e, ok := err.(*errors.Http)
+	c.Assert(ok, Equals, true)
+	c.Assert(e.Code, Equals, http.StatusBadRequest)
+	c.Assert(e, ErrorMatches, "^Invalid JSON$")
+}
+
+func (s *S) TestRemoveKeyHandlerReturnsBadRequestIfTheKeyIsNotPresent(c *C) {
+	b := bytes.NewBufferString(`{}`)
+	request, err := http.NewRequest("DELETE", "/users/key", b)
+	c.Assert(err, IsNil)
+	recorder := httptest.NewRecorder()
+	err = RemoveKeyFromUser(recorder, request, s.user)
+	c.Assert(err, NotNil)
+	e, ok := err.(*errors.Http)
+	c.Assert(ok, Equals, true)
+	c.Assert(e.Code, Equals, http.StatusBadRequest)
+	c.Assert(e, ErrorMatches, "^Missing key$")
+}
+
+func (s *S) TestRemoveKeyHandlerReturnsBadRequestIfTheKeyIsEmpty(c *C) {
+	b := bytes.NewBufferString(`{"key":""}`)
+	request, err := http.NewRequest("DELETE", "/users/key", b)
+	c.Assert(err, IsNil)
+	recorder := httptest.NewRecorder()
+	err = RemoveKeyFromUser(recorder, request, s.user)
+	c.Assert(err, NotNil)
+	e, ok := err.(*errors.Http)
+	c.Assert(ok, Equals, true)
+	c.Assert(e.Code, Equals, http.StatusBadRequest)
+	c.Assert(e, ErrorMatches, "^Missing key$")
+}
+
+func (s *S) TestRemoveKeyHandlerReturnsNotFoundIfTheUserDoesNotHaveTheKey(c *C) {
+	b := bytes.NewBufferString(`{"key":"my-key"}`)
+	request, err := http.NewRequest("DELETE", "/users/key", b)
+	c.Assert(err, IsNil)
+	recorder := httptest.NewRecorder()
+	err = RemoveKeyFromUser(recorder, request, s.user)
+	c.Assert(err, NotNil)
+	e, ok := err.(*errors.Http)
+	c.Assert(ok, Equals, true)
+	c.Assert(e.Code, Equals, http.StatusNotFound)
 }
