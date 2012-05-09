@@ -11,19 +11,13 @@ import (
 	"path"
 )
 
+// Add a new project to gitosis.conf. Also commit and push changes.
 func AddProject(name string) error {
-	err := config.ReadConfigFile("/etc/tsuru/tsuru.conf")
-	if err != nil {
-		log.Panic(err)
-	}
-
-	repoPath, err := config.GetString("git:gitosis-repo")
+	confPath, err := ConfPath()
 	if err != nil {
 		log.Panic(err)
 		return err
 	}
-
-	confPath := path.Join(repoPath, "gitosis.conf")
 	c, err := ini.ReadDefault(confPath)
 	if err != nil {
 		log.Panic(err)
@@ -44,17 +38,68 @@ func AddProject(name string) error {
 		return err
 	}
 
+	commitMsg := fmt.Sprintf("Defining gitosis group for project %s", name)
+	err = PushToGitosis(commitMsg)
+	if err != nil {
+		log.Panic(err)
+		return err
+	}
+
+	return nil
+}
+
+// Adds a member to the given project.
+// member parameter should be the same as the key name in keypair/ dir.
+func AddMember(project, member string) error {
+	confPath, err := ConfPath()
+	if err != nil {
+		log.Panic(err)
+		return err
+	}
+	c, err := ini.ReadDefault(confPath)
+	if err != nil {
+		log.Panic(err)
+		return err
+	}
+
+	sName := fmt.Sprintf("group %s", project)
+	c.AddOption(sName, "member", member)
+
+	err = c.WriteFile(confPath, 0744, "gitosis configuration file")
+	if err != nil {
+		log.Panic(err)
+		return err
+	}
+
+	commitMsg := fmt.Sprintf("Adding member %s for project %s", member, project)
+	err = PushToGitosis(commitMsg)
+	if err != nil {
+		log.Panic(err)
+		return err
+	}
+
+	return nil
+}
+
+// Add, commit and push all changes in gitosis repository to it's
+// bare.
+func PushToGitosis(cMsg string) error {
+	repoPath, err := config.GetString("git:gitosis-repo")
+	if err != nil {
+		log.Panic(err)
+		return err
+	}
+
 	pwd := os.Getenv("PWD")
 	os.Chdir(repoPath)
 
-	commitMsg := fmt.Sprintf("Defining gitosis group for project %s", name)
 	output, err := exec.Command("git", "add", ".").CombinedOutput()
 	if err != nil {
 		fmt.Println(string(output))
 		log.Panic(output, err)
 		return err
 	}
-	output, err = exec.Command("git", "commit", "-m", commitMsg).CombinedOutput()
+	output, err = exec.Command("git", "commit", "-m", cMsg).CombinedOutput()
 	if err != nil {
 		fmt.Println(string(output))
 		log.Panic(output, err)
@@ -69,6 +114,17 @@ func AddProject(name string) error {
 	}
 
 	os.Chdir(pwd)
-
 	return nil
+}
+
+func ConfPath() (p string, err error) {
+	p = ""
+	repoPath, err := config.GetString("git:gitosis-repo")
+	if err != nil {
+		log.Panic(err)
+		return
+	}
+
+	p = path.Join(repoPath, "gitosis.conf")
+	return
 }
