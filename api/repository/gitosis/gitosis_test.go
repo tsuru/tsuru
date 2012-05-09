@@ -18,12 +18,10 @@ func (s *S) TestAddProject(c *C) {
 func (s *S) TestAddGroup(c *C) {
 	err := AddGroup("someGroup")
 	c.Assert(err, IsNil)
-
 	conf, err := ini.ReadDefault(path.Join(s.gitosisRepo, "gitosis.conf"))
 	c.Assert(err, IsNil)
 	//ensures that project have been added to gitosis.conf
 	c.Assert(conf.HasSection("group someGroup"), Equals, true)
-
 	//ensures that file is not overriden when a new project is added
 	err = AddGroup("someOtherGroup")
 	c.Assert(err, IsNil)
@@ -37,7 +35,6 @@ func (s *S) TestAddGroup(c *C) {
 func (s *S) TestAddGroupShouldReturnErrorWhenSectionAlreadyExists(c *C) {
 	err := AddGroup("aGroup")
 	c.Assert(err, IsNil)
-
 	err = AddGroup("aGroup")
 	c.Assert(err, NotNil)
 }
@@ -45,52 +42,43 @@ func (s *S) TestAddGroupShouldReturnErrorWhenSectionAlreadyExists(c *C) {
 func (s *S) TestAddGroupShouldCommitAndPushChangesToGitosisBare(c *C) {
 	err := AddGroup("gandalf")
 	c.Assert(err, IsNil)
-	pwd := os.Getenv("PWD")
+	pwd, err := os.Getwd()
+	c.Assert(err, IsNil)
 	os.Chdir(s.gitosisBare)
 	bareOutput, err := exec.Command("git", "log", "-1", "--pretty=format:%H").CombinedOutput()
 	c.Assert(err, IsNil)
-
 	os.Chdir(s.gitosisRepo)
 	repoOutput, err := exec.Command("git", "log", "-1", "--pretty=format:%H").CombinedOutput()
 	c.Assert(err, IsNil)
-
 	os.Chdir(pwd)
-
 	c.Assert(string(repoOutput), Equals, string(bareOutput))
 }
 
 func (s *S) TestRemoveGroup(c *C) {
 	err := AddGroup("someGroup")
 	c.Assert(err, IsNil)
-
 	conf, err := ini.ReadDefault(path.Join(s.gitosisRepo, "gitosis.conf"))
 	c.Assert(err, IsNil)
 	c.Assert(conf.HasSection("group someGroup"), Equals, true)
-
 	err = RemoveGroup("someGroup")
 	conf, err = ini.ReadDefault(path.Join(s.gitosisRepo, "gitosis.conf"))
 	c.Assert(err, IsNil)
 	c.Assert(conf.HasSection("group someGroup"), Equals, false)
-
-	pwd := os.Getenv("PWD")
+	pwd, err := os.Getwd()
 	os.Chdir(s.gitosisBare)
 	bareOutput, err := exec.Command("git", "log", "-1", "--pretty=format:%s").CombinedOutput()
 	c.Assert(err, IsNil)
 	os.Chdir(pwd)
-
 	expected := "Removing group someGroup from gitosis.conf"
-
 	c.Assert(string(bareOutput), Equals, expected)
 }
 
 func (s *S) TestRemoveGroupCommitAndPushesChanges(c *C) {
 	err := AddGroup("testGroup")
 	c.Assert(err, IsNil)
-
 	conf, err := ini.ReadDefault(path.Join(s.gitosisRepo, "gitosis.conf"))
 	c.Assert(err, IsNil)
 	c.Assert(conf.HasSection("group testGroup"), Equals, true)
-
 	err = RemoveGroup("testGroup")
 	conf, err = ini.ReadDefault(path.Join(s.gitosisRepo, "gitosis.conf"))
 	c.Assert(err, IsNil)
@@ -98,7 +86,7 @@ func (s *S) TestRemoveGroupCommitAndPushesChanges(c *C) {
 }
 
 func (s *S) TestAddMemberToGroup(c *C) {
-	err := AddGroup("take-over-the-world") // test also with a inexistent project
+	err := AddGroup("take-over-the-world")
 	c.Assert(err, IsNil)
 	err = AddMember("take-over-the-world", "brain")
 	c.Assert(err, IsNil)
@@ -115,19 +103,17 @@ func (s *S) TestAddMemberToGroupCommitsAndPush(c *C) {
 	err := AddGroup("someTeam")
 	c.Assert(err, IsNil)
 	err = AddMember("someTeam", "brain")
-	pwd := os.Getenv("PWD")
+	pwd, err := os.Getwd()
+	c.Assert(err, IsNil)
 	os.Chdir(s.gitosisBare)
 	bareOutput, err := exec.Command("git", "log", "-1", "--pretty=format:%s").CombinedOutput()
 	c.Assert(err, IsNil)
-
 	os.Chdir(pwd)
-
-	commitMsg := "Adding member brain for group someTeam"
-
+	commitMsg := "Adding member brain to group someTeam"
 	c.Assert(string(bareOutput), Equals, commitMsg)
 }
 
-func (s *S) TestAddTwoMembersToProject(c *C) {
+func (s *S) TestAddTwoMembersToGroup(c *C) {
 	err := AddGroup("pink-floyd")
 	c.Assert(err, IsNil)
 	err = AddMember("pink-floyd", "one-of-these-days")
@@ -140,7 +126,7 @@ func (s *S) TestAddTwoMembersToProject(c *C) {
 	c.Assert(members, Equals, "one-of-these-days comfortably-numb")
 }
 
-func (s *S) TestAddMembertoProjectReturnsErrorIfTheMemberIsAlreadyInTheProject(c *C) {
+func (s *S) TestAddMemberToGroupReturnsErrorIfTheMemberIsAlreadyInTheGroup(c *C) {
 	err := AddGroup("pink-floyd")
 	c.Assert(err, IsNil)
 	err = AddMember("pink-floyd", "time")
@@ -150,19 +136,85 @@ func (s *S) TestAddMembertoProjectReturnsErrorIfTheMemberIsAlreadyInTheProject(c
 	c.Assert(err, ErrorMatches, "^This user is already member of this group$")
 }
 
+func (s *S) TestAddMemberToAGroupThatDoesNotExistReturnError(c *C) {
+	err := AddMember("pink-floyd", "one-of-these-days")
+	c.Assert(err, NotNil)
+	c.Assert(err, ErrorMatches, "^Group not found$")
+}
+
+func (s *S) TestRemoveMemberFromGroup(c *C) {
+	err := AddGroup("pink-floyd")
+	c.Assert(err, IsNil)
+	err = AddMember("pink-floyd", "fat-old-sun")
+	c.Assert(err, IsNil)
+	err = AddMember("pink-floyd", "summer-68")
+	c.Assert(err, IsNil)
+	err = RemoveMember("pink-floyd", "fat-old-sun")
+	c.Assert(err, IsNil)
+	conf, err := ini.ReadDefault(path.Join(s.gitosisRepo, "gitosis.conf"))
+	c.Assert(err, IsNil)
+	option, err := conf.String("group pink-floyd", "members")
+	c.Assert(err, IsNil)
+	c.Assert(option, Equals, "summer-68")
+}
+
+func (s *S) TestRemoveMemberFromGroupCommitsAndPush(c *C) {
+	err := AddGroup("pink-floyd")
+	c.Assert(err, IsNil)
+	err = AddMember("pink-floyd", "if")
+	c.Assert(err, IsNil)
+	err = AddMember("pink-floyd", "atom-heart-mother-suite")
+	c.Assert(err, IsNil)
+	err = RemoveMember("pink-floyd", "if")
+	c.Assert(err, IsNil)
+	os.Chdir(s.gitosisBare)
+	pwd, err := os.Getwd()
+	c.Assert(err, IsNil)
+	bareOutput, err := exec.Command("git", "log", "-1", "--pretty=format:%s").CombinedOutput()
+	c.Assert(err, IsNil)
+	os.Chdir(pwd)
+	commitMsg := "Removing member if from group pink-floyd"
+	c.Assert(string(bareOutput), Equals, commitMsg)
+}
+
+func (s *S) TestRemoveMemberFromGroupRemovesTheOptionFromTheSectionWhenTheMemberIsTheLast(c *C) {
+	err := AddGroup("pink-floyd")
+	c.Assert(err, IsNil)
+	err = AddMember("pink-floyd", "pigs-on-the-wing")
+	c.Assert(err, IsNil)
+	err = RemoveMember("pink-floyd", "pigs-on-the-wing")
+	c.Assert(err, IsNil)
+	conf, err := ini.ReadDefault(path.Join(s.gitosisRepo, "gitosis.conf"))
+	c.Assert(err, IsNil)
+	c.Assert(conf.HasOption("group pink-floyd", "members"), Equals, false)
+}
+
+func (s *S) TestRemoveMemberFromGroupReturnsErrorsIfTheGroupDoesNotContainTheGivenMember(c *C) {
+	err := AddGroup("pink-floyd")
+	c.Assert(err, IsNil)
+	err = RemoveMember("pink-floyd", "pigs-on-the-wing")
+	c.Assert(err, NotNil)
+	c.Assert(err, ErrorMatches, "^This group does not have this member$")
+}
+
+func (s *S) TestRemoveMemberFromGroupReturnsErrorIfTheGroupDoesNotExist(c *C) {
+	err := RemoveMember("pink-floyd", "pigs-on-the-wing")
+	c.Assert(err, NotNil)
+	c.Assert(err, ErrorMatches, "^Group not found$")
+}
+
 func (s *S) TestAddAndCommit(c *C) {
 	confPath := path.Join(s.gitosisRepo, "gitosis.conf")
 	conf, err := ini.ReadDefault(confPath)
 	c.Assert(err, IsNil)
 	conf.AddSection("foo bar")
-	PushToGitosis("Some commit message")
-
-	pwd := os.Getenv("PWD")
+	pushToGitosis("Some commit message")
+	pwd, err := os.Getwd()
+	c.Assert(err, IsNil)
 	os.Chdir(s.gitosisBare)
 	bareOutput, err := exec.Command("git", "log", "-1", "--pretty=format:%s").CombinedOutput()
 	c.Assert(err, IsNil)
 	os.Chdir(pwd)
-
 	c.Assert(string(bareOutput), Equals, "Some commit message")
 }
 
