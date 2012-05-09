@@ -61,13 +61,13 @@ func RemoveTeam(team string) error {
 		return err
 	}
 
-	c.RemoveSection()
+	c.RemoveSection(team)
 
 	return nil
 }
 
 // Adds a member to the given team.
-// member parameter should be the same as the key name in keypair/ dir.
+// member parameter should be the same as the key name in keydir dir.
 func AddMember(team, member string) error {
 	confPath, err := ConfPath()
 	if err != nil {
