@@ -113,11 +113,8 @@ func (s *S) TestAddMemberToGroupCommitsAndPush(c *C) {
 	os.Chdir(s.gitosisBare)
 	bareOutput, err := exec.Command("git", "log", "-1", "--pretty=format:%s").CombinedOutput()
 	c.Assert(err, IsNil)
-
 	os.Chdir(pwd)
-
 	commitMsg := "Adding member brain to group someTeam"
-
 	c.Assert(string(bareOutput), Equals, commitMsg)
 }
 
