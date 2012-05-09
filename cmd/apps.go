@@ -8,12 +8,11 @@ import (
 
 type AppsCommand struct{}
 
-func (c *AppsCommand) Run(context *Context) error {
-	request, err := http.NewRequest("GET", "http://tsuru.plataformas.glb.com:4000/apps", nil)
+func (c *AppsCommand) Run(context *Context, client Doer) error {
+	request, err := http.NewRequest("GET", "http://tsuru.plataformas.glb.com:8080/apps", nil)
 	if err != nil {
 		return err
 	}
-	client := NewClient()
 	result, err := client.Do(request)
 	if err != nil {
 		return err
