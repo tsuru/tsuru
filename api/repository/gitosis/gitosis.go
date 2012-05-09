@@ -11,8 +11,8 @@ import (
 	"path"
 )
 
-// Add a new team to gitosis.conf. Also commit and push changes.
-func AddTeam(name string) error {
+// Add a new group to gitosis.conf. Also commit and push changes.
+func AddGroup(name string) error {
 	confPath, err := ConfPath()
 	if err != nil {
 		log.Panic(err)
@@ -38,7 +38,7 @@ func AddTeam(name string) error {
 		return err
 	}
 
-	commitMsg := fmt.Sprintf("Defining gitosis group for team %s", name)
+	commitMsg := fmt.Sprintf("Defining gitosis group for group %s", name)
 	err = PushToGitosis(commitMsg)
 	if err != nil {
 		log.Panic(err)
@@ -48,8 +48,8 @@ func AddTeam(name string) error {
 	return nil
 }
 
-// Removes a team section and all it's options.
-func RemoveTeam(team string) error {
+// Removes a group section and all it's options.
+func RemoveGroup(group string) error {
 	confPath, err := ConfPath()
 	if err != nil {
 		log.Panic(err)
@@ -66,9 +66,9 @@ func RemoveTeam(team string) error {
 	return nil
 }
 
-// Adds a member to the given team.
+// Adds a member to the given group.
 // member parameter should be the same as the key name in keydir dir.
-func AddMember(team, member string) error {
+func AddMember(group, member string) error {
 	confPath, err := ConfPath()
 	if err != nil {
 		log.Panic(err)
@@ -80,8 +80,8 @@ func AddMember(team, member string) error {
 		return err
 	}
 
-	sName := fmt.Sprintf("group %s", team)
-	c.AddOption(sName, "member", member)
+	sName := fmt.Sprintf("group %s", group)
+	c.AddOption(sName, "members", member)
 
 	err = c.WriteFile(confPath, 0744, "gitosis configuration file")
 	if err != nil {
@@ -89,7 +89,7 @@ func AddMember(team, member string) error {
 		return err
 	}
 
-	commitMsg := fmt.Sprintf("Adding member %s for team %s", member, team)
+	commitMsg := fmt.Sprintf("Adding member %s for group %s", member, group)
 	err = PushToGitosis(commitMsg)
 	if err != nil {
 		log.Panic(err)
