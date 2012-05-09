@@ -12,7 +12,7 @@ import (
 )
 
 // Add a new group to gitosis.conf. Also commit and push changes.
-func AddTeam(name string) error {
+func AddGroup(name string) error {
 	confPath, err := ConfPath()
 	if err != nil {
 		log.Panic(err)
@@ -38,12 +38,30 @@ func AddTeam(name string) error {
 		return err
 	}
 
-	commitMsg := fmt.Sprintf("Defining gitosis group for project %s", name)
+	commitMsg := fmt.Sprintf("Defining gitosis group for group %s", name)
 	err = PushToGitosis(commitMsg)
 	if err != nil {
 		log.Panic(err)
 		return err
 	}
+
+	return nil
+}
+
+// Removes a group section and all it's options.
+func RemoveGroup(group string) error {
+	confPath, err := ConfPath()
+	if err != nil {
+		log.Panic(err)
+		return err
+	}
+	c, err := ini.ReadDefault(confPath)
+	if err != nil {
+		log.Panic(err)
+		return err
+	}
+
+	c.RemoveSection()
 
 	return nil
 }
@@ -62,8 +80,8 @@ func AddMember(group, member string) error {
 		return err
 	}
 
-	sName := fmt.Sprintf("group %s", project)
-	c.AddOption(sName, "members", member)
+	sName := fmt.Sprintf("group %s", group)
+	c.AddOption(sName, "member", member)
 
 	err = c.WriteFile(confPath, 0744, "gitosis configuration file")
 	if err != nil {
@@ -71,7 +89,7 @@ func AddMember(group, member string) error {
 		return err
 	}
 
-	commitMsg := fmt.Sprintf("Adding member %s for group %s", member, project)
+	commitMsg := fmt.Sprintf("Adding member %s for group %s", member, group)
 	err = PushToGitosis(commitMsg)
 	if err != nil {
 		log.Panic(err)

@@ -53,6 +53,19 @@ func (s *S) TestAddTeamShouldCommitAndPushChangesToGitosisBare(c *C) {
 	c.Assert(string(repoOutput), Equals, string(bareOutput))
 }
 
+func (s *S) TestRemoveTeam(c *C) {
+	err := AddTeam("testProject")
+	c.Assert(err, IsNil)
+
+	conf, err := ini.ReadDefault(path.Join(s.gitosisRepo, "gitosis.conf"))
+	c.Assert(err, IsNil)
+	c.Assert(conf.HasSection("group testProject"), Equals, true)
+
+	err = RemoveTeam("testProject")
+	c.Assert(err, IsNil)
+	c.Assert(conf.HasSection("group testProject"), Equals, false)
+}
+
 func (s *S) TestAddMemberToProject(c *C) {
 	err := AddTeam("take-over-the-world") // test also with a inexistent project
 	c.Assert(err, IsNil)
