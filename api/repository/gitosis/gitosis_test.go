@@ -12,7 +12,7 @@ func (s *S) TestAddProject(c *C) {
 	err := AddProject("someProject")
 	c.Assert(err, IsNil)
 
-	conf, err := config.ReadDefault(path.Join(s.gitRoot, "gitosis-admin/gitosis.conf"))
+	conf, err := config.ReadDefault(path.Join(s.gitosisRepo, "gitosis.conf"))
 	c.Assert(err, IsNil)
 	//ensures that project have been added to gitosis.conf
 	c.Assert(conf.HasSection("group someProject"), Equals, true)
@@ -50,4 +50,20 @@ func (s *S) TestAddProjectShouldCommitAndPushChangesToGitosisBare(c *C) {
 	os.Chdir(pwd)
 
 	c.Assert(string(repoOutput), Equals, string(bareOutput))
+}
+
+func (s *S) TestAddAndCommit(c *C) {
+	confPath := path.Join(s.gitosisRepo, "gitosis.conf")
+	conf, err := config.ReadDefault(confPath)
+	c.Assert(err, IsNil)
+	conf.AddSection("foo bar")
+	PushToGitosis("Some commit message")
+
+	pwd := os.Getenv("PWD")
+	os.Chdir(s.gitosisBare)
+	bareOutput, err := exec.Command("git", "log", "-1", "--pretty=format:%s").CombinedOutput()
+	c.Assert(err, IsNil)
+	os.Chdir(pwd)
+
+	c.Assert(string(bareOutput), Equals, "Some commit message")
 }
