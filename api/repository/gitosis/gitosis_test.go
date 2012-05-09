@@ -10,29 +10,29 @@ import (
 )
 
 func (s *S) TestAddGroup(c *C) {
-	err := AddGroup("someProject")
+	err := AddGroup("someGroup")
 	c.Assert(err, IsNil)
 
 	conf, err := ini.ReadDefault(path.Join(s.gitosisRepo, "gitosis.conf"))
 	c.Assert(err, IsNil)
 	//ensures that project have been added to gitosis.conf
-	c.Assert(conf.HasSection("group someProject"), Equals, true)
+	c.Assert(conf.HasSection("group someGroup"), Equals, true)
 
 	//ensures that file is not overriden when a new project is added
-	err = AddGroup("someOtherProject")
+	err = AddGroup("someOtherGroup")
 	c.Assert(err, IsNil)
 	// it should have both sections
 	conf, err = ini.ReadDefault(path.Join(s.gitRoot, "gitosis-admin/gitosis.conf"))
 	c.Assert(err, IsNil)
-	c.Assert(conf.HasSection("group someProject"), Equals, true)
-	c.Assert(conf.HasSection("group someOtherProject"), Equals, true)
+	c.Assert(conf.HasSection("group someGroup"), Equals, true)
+	c.Assert(conf.HasSection("group someOtherGroup"), Equals, true)
 }
 
 func (s *S) TestAddGroupShouldReturnErrorWhenSectionAlreadyExists(c *C) {
-	err := AddGroup("aProject")
+	err := AddGroup("aGroup")
 	c.Assert(err, IsNil)
 
-	err = AddGroup("aProject")
+	err = AddGroup("aGroup")
 	c.Assert(err, NotNil)
 }
 
@@ -54,19 +54,21 @@ func (s *S) TestAddGroupShouldCommitAndPushChangesToGitosisBare(c *C) {
 }
 
 func (s *S) TestRemoveGroup(c *C) {
-	err := AddGroup("testProject")
+	err := AddGroup("testGroup")
 	c.Assert(err, IsNil)
 
+	// conf, err := ini.ReadDefault(path.Join(s.gitosisRepo, "gitosis.conf"))
+	// c.Assert(err, IsNil)
+	// c.Assert(conf.HasSection("group testGroup"), Equals, true)
+
+	err = RemoveGroup("testGroup")
+	c.Assert(err, IsNil)
 	conf, err := ini.ReadDefault(path.Join(s.gitosisRepo, "gitosis.conf"))
 	c.Assert(err, IsNil)
-	c.Assert(conf.HasSection("group testProject"), Equals, true)
-
-	err = RemoveGroup("testProject")
-	c.Assert(err, IsNil)
-	c.Assert(conf.HasSection("group testProject"), Equals, false)
+	c.Assert(conf.HasSection("group testGroup"), Equals, false)
 }
 
-func (s *S) TestAddMemberToProject(c *C) {
+func (s *S) TestAddMemberToGroup(c *C) {
 	err := AddGroup("take-over-the-world") // test also with a inexistent project
 	c.Assert(err, IsNil)
 	err = AddMember("take-over-the-world", "brain")

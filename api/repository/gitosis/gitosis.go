@@ -61,7 +61,14 @@ func RemoveGroup(group string) error {
 		return err
 	}
 
-	c.RemoveSection(team)
+	gName := fmt.Sprintf("group %s", group)
+	c.RemoveSection(gName)
+
+	err = c.WriteFile(confPath, 0744, "gitosis configuration file")
+	if err != nil {
+		log.Panic(err)
+		return err
+	}
 
 	return nil
 }
