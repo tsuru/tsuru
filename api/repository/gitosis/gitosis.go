@@ -9,10 +9,20 @@ import (
 	"os"
 	"os/exec"
 	"path"
+	"strings"
 )
 
-// Add a new project to gitosis.conf. Also commit and push changes.
-func AddProject(name string) error {
+func checkPresenceOfString(strs []string, str string) bool {
+	for _, s := range strs {
+		if str == s {
+			return true
+		}
+	}
+	return false
+}
+
+// Add a new group to gitosis.conf. Also commit and push changes.
+func AddGroup(name string) error {
 	confPath, err := ConfPath()
 	if err != nil {
 		log.Panic(err)
@@ -38,7 +48,7 @@ func AddProject(name string) error {
 		return err
 	}
 
-	commitMsg := fmt.Sprintf("Defining gitosis group for project %s", name)
+	commitMsg := fmt.Sprintf("Defining gitosis group for group %s", name)
 	err = PushToGitosis(commitMsg)
 	if err != nil {
 		log.Panic(err)
@@ -48,9 +58,8 @@ func AddProject(name string) error {
 	return nil
 }
 
-// Adds a member to the given project.
-// member parameter should be the same as the key name in keypair/ dir.
-func AddMember(project, member string) error {
+// Removes a group section and all it's options.
+func RemoveGroup(group string) error {
 	confPath, err := ConfPath()
 	if err != nil {
 		log.Panic(err)
@@ -62,8 +71,12 @@ func AddMember(project, member string) error {
 		return err
 	}
 
-	sName := fmt.Sprintf("group %s", project)
-	c.AddOption(sName, "member", member)
+	gName := fmt.Sprintf("group %s", group)
+	ok := c.RemoveSection(gName)
+	if !ok {
+		log.Panic("Section does not exists")
+		return errors.New("Section does not exists")
+	}
 
 	err = c.WriteFile(confPath, 0744, "gitosis configuration file")
 	if err != nil {
@@ -71,13 +84,51 @@ func AddMember(project, member string) error {
 		return err
 	}
 
-	commitMsg := fmt.Sprintf("Adding member %s for project %s", member, project)
+	commitMsg := fmt.Sprintf("Removing group %s from gitosis.conf", group)
 	err = PushToGitosis(commitMsg)
 	if err != nil {
 		log.Panic(err)
 		return err
 	}
 
+	return nil
+}
+
+// Adds a member to the given group.
+// member parameter should be the same as the key name in keydir dir.
+func AddMember(group, member string) error {
+	confPath, err := ConfPath()
+	if err != nil {
+		log.Panic(err)
+		return err
+	}
+	c, err := ini.ReadDefault(confPath)
+	if err != nil {
+		log.Panic(err)
+		return err
+	}
+	section := fmt.Sprintf("group %s", group)
+	var members []string
+	if strMembers, err := c.String(section, "members"); err == nil {
+		members = strings.Split(strMembers, " ")
+	}
+	if checkPresenceOfString(members, member) {
+		return errors.New("This user is already member of this group")
+	}
+	members = append(members, member)
+	c.AddOption(section, "members", strings.Join(members, " "))
+	err = c.WriteFile(confPath, 0744, "gitosis configuration file")
+	if err != nil {
+		log.Panic(err)
+		return err
+	}
+	c, err = ini.ReadDefault(confPath)
+	commitMsg := fmt.Sprintf("Adding member %s for group %s", member, group)
+	err = PushToGitosis(commitMsg)
+	if err != nil {
+		log.Panic(err)
+		return err
+	}
 	return nil
 }
 

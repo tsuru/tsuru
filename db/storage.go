@@ -82,7 +82,3 @@ func (s *Storage) Teams() *mgo.Collection {
 	c.EnsureIndex(nameIndex)
 	return c
 }
-
-func (s *Storage) DropDB() error {
-	return s.session.DB(s.dbname).DropDatabase()
-}
