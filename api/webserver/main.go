@@ -65,6 +65,7 @@ func main() {
 	m.Post("/users", webserver.Handler(auth.CreateUser))
 	m.Post("/users/:email/tokens", webserver.Handler(auth.Login))
 	m.Post("/users/keys", webserver.AuthorizationRequiredHandler(auth.AddKeyToUser))
+	m.Del("/users/keys", webserver.AuthorizationRequiredHandler(auth.RemoveKeyFromUser))
 
 	m.Post("/teams", webserver.AuthorizationRequiredHandler(auth.CreateTeam))
 	m.Put("/teams/:team/:user", webserver.AuthorizationRequiredHandler(auth.AddUserToTeam))

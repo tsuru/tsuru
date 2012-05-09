@@ -475,3 +475,81 @@ func (s *S) TestAddKeyHandlerReturnsConflictIfTheKeyIsAlreadyPresent(c *C) {
 	c.Assert(ok, Equals, true)
 	c.Assert(e.Code, Equals, http.StatusConflict)
 }
+
+func (s *S) TestRemoveKeyHandlerRemovesTheKeyFromTheUser(c *C) {
+	s.user.AddKey("my-key")
+	db.Session.Users().Update(bson.M{"email": s.user.Email}, s.user)
+	defer func() {
+		s.user.RemoveKey("my-key")
+		db.Session.Users().Update(bson.M{"email": s.user.Email}, s.user)
+	}()
+	b := bytes.NewBufferString(`{"key":"my-key"}`)
+	request, err := http.NewRequest("DELETE", "/users/key", b)
+	c.Assert(err, IsNil)
+	recorder := httptest.NewRecorder()
+	err = RemoveKeyFromUser(recorder, request, s.user)
+	c.Assert(err, IsNil)
+	s.user.Get()
+	c.Assert(s.user, Not(HasKey), "my-key")
+}
+
+func (s *S) TestRemoveKeyHandlerReturnsErrorInCaseOfAnyIOFailure(c *C) {
+	b := s.getTestData("bodyToBeClosed.txt")
+	b.Close()
+	request, err := http.NewRequest("DELETE", "/users/key", b)
+	c.Assert(err, IsNil)
+	recorder := httptest.NewRecorder()
+	err = RemoveKeyFromUser(recorder, request, s.user)
+	c.Assert(err, NotNil)
+}
+
+func (s *S) TestRemoveKeyHandlerReturnsBadRequestIfTheJSONIsInvalid(c *C) {
+	b := bytes.NewBufferString(`invalid"json}`)
+	request, err := http.NewRequest("DELETE", "/users/key", b)
+	c.Assert(err, IsNil)
+	recorder := httptest.NewRecorder()
+	err = RemoveKeyFromUser(recorder, request, s.user)
+	c.Assert(err, NotNil)
+	e, ok := err.(*errors.Http)
+	c.Assert(ok, Equals, true)
+	c.Assert(e.Code, Equals, http.StatusBadRequest)
+	c.Assert(e, ErrorMatches, "^Invalid JSON$")
+}
+
+func (s *S) TestRemoveKeyHandlerReturnsBadRequestIfTheKeyIsNotPresent(c *C) {
+	b := bytes.NewBufferString(`{}`)
+	request, err := http.NewRequest("DELETE", "/users/key", b)
+	c.Assert(err, IsNil)
+	recorder := httptest.NewRecorder()
+	err = RemoveKeyFromUser(recorder, request, s.user)
+	c.Assert(err, NotNil)
+	e, ok := err.(*errors.Http)
+	c.Assert(ok, Equals, true)
+	c.Assert(e.Code, Equals, http.StatusBadRequest)
+	c.Assert(e, ErrorMatches, "^Missing key$")
+}
+
+func (s *S) TestRemoveKeyHandlerReturnsBadRequestIfTheKeyIsEmpty(c *C) {
+	b := bytes.NewBufferString(`{"key":""}`)
+	request, err := http.NewRequest("DELETE", "/users/key", b)
+	c.Assert(err, IsNil)
+	recorder := httptest.NewRecorder()
+	err = RemoveKeyFromUser(recorder, request, s.user)
+	c.Assert(err, NotNil)
+	e, ok := err.(*errors.Http)
+	c.Assert(ok, Equals, true)
+	c.Assert(e.Code, Equals, http.StatusBadRequest)
+	c.Assert(e, ErrorMatches, "^Missing key$")
+}
+
+func (s *S) TestRemoveKeyHandlerReturnsNotFoundIfTheUserDoesNotHaveTheKey(c *C) {
+	b := bytes.NewBufferString(`{"key":"my-key"}`)
+	request, err := http.NewRequest("DELETE", "/users/key", b)
+	c.Assert(err, IsNil)
+	recorder := httptest.NewRecorder()
+	err = RemoveKeyFromUser(recorder, request, s.user)
+	c.Assert(err, NotNil)
+	e, ok := err.(*errors.Http)
+	c.Assert(ok, Equals, true)
+	c.Assert(e.Code, Equals, http.StatusNotFound)
+}
