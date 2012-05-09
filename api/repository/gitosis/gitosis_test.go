@@ -9,6 +9,12 @@ import (
 	"path"
 )
 
+func (s *S) TestAddProject(c *C) {
+	err := AddGroup("someGroup")
+	err = AddProject("someGroup", "someProject")
+	c.Assert(err, IsNil)
+}
+
 func (s *S) TestAddGroup(c *C) {
 	err := AddGroup("someGroup")
 	c.Assert(err, IsNil)

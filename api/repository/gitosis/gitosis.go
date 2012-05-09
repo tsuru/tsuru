@@ -12,6 +12,23 @@ import (
 	"strings"
 )
 
+// Add a new project to gitosis.conf.
+func AddProject(group, project string) error {
+	confPath, err := ConfPath()
+	if err != nil {
+		log.Panic(err)
+		return err
+	}
+	c, err := ini.ReadDefault(confPath)
+	if err != nil {
+		log.Panic(err)
+		return err
+	}
+	section := fmt.Sprintf("group %s", group)
+	c.AddOption(section, "writable", project)
+	return nil
+}
+
 // Add a new group to gitosis.conf. Also commit and push changes.
 func AddGroup(name string) error {
 	confPath, err := ConfPath()
@@ -24,7 +41,6 @@ func AddGroup(name string) error {
 		log.Panic(err)
 		return err
 	}
-
 	sName := fmt.Sprintf("group %s", name)
 	ok := c.AddSection(sName)
 	if !ok {
@@ -32,20 +48,17 @@ func AddGroup(name string) error {
 		log.Panic(errStr)
 		return errors.New(errStr)
 	}
-
 	err = c.WriteFile(confPath, 0744, "gitosis configuration file")
 	if err != nil {
 		log.Panic(err)
 		return err
 	}
-
 	commitMsg := fmt.Sprintf("Defining gitosis group for group %s", name)
 	err = PushToGitosis(commitMsg)
 	if err != nil {
 		log.Panic(err)
 		return err
 	}
-
 	return nil
 }
 
@@ -61,27 +74,23 @@ func RemoveGroup(group string) error {
 		log.Panic(err)
 		return err
 	}
-
 	gName := fmt.Sprintf("group %s", group)
 	ok := c.RemoveSection(gName)
 	if !ok {
 		log.Panic("Section does not exists")
 		return errors.New("Section does not exists")
 	}
-
 	err = c.WriteFile(confPath, 0744, "gitosis configuration file")
 	if err != nil {
 		log.Panic(err)
 		return err
 	}
-
 	commitMsg := fmt.Sprintf("Removing group %s from gitosis.conf", group)
 	err = PushToGitosis(commitMsg)
 	if err != nil {
 		log.Panic(err)
 		return err
 	}
-
 	return nil
 }
 
