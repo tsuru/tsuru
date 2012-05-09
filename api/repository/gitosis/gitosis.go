@@ -9,7 +9,17 @@ import (
 	"os"
 	"os/exec"
 	"path"
+	"strings"
 )
+
+func checkPresenceOfString(strs []string, str string) bool {
+	for _, s := range strs {
+		if str == s {
+			return true
+		}
+	}
+	return false
+}
 
 // Add a new group to gitosis.conf. Also commit and push changes.
 func AddGroup(name string) error {
@@ -86,23 +96,28 @@ func AddMember(group, member string) error {
 		log.Panic(err)
 		return err
 	}
-
-	sName := fmt.Sprintf("group %s", group)
-	c.AddOption(sName, "members", member)
-
+	section := fmt.Sprintf("group %s", group)
+	var members []string
+	if strMembers, err := c.String(section, "members"); err == nil {
+		members = strings.Split(strMembers, " ")
+	}
+	if checkPresenceOfString(members, member) {
+		return errors.New("This user is already member of this group")
+	}
+	members = append(members, member)
+	c.AddOption(section, "members", strings.Join(members, " "))
 	err = c.WriteFile(confPath, 0744, "gitosis configuration file")
 	if err != nil {
 		log.Panic(err)
 		return err
 	}
-
+	c, err = ini.ReadDefault(confPath)
 	commitMsg := fmt.Sprintf("Adding member %s for group %s", member, group)
 	err = PushToGitosis(commitMsg)
 	if err != nil {
 		log.Panic(err)
 		return err
 	}
-
 	return nil
 }
 

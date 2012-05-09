@@ -72,7 +72,7 @@ func (s *S) TestAddMemberToGroup(c *C) {
 	err := AddGroup("take-over-the-world") // test also with a inexistent project
 	c.Assert(err, IsNil)
 	err = AddMember("take-over-the-world", "brain")
-
+	c.Assert(err, IsNil)
 	conf, err := ini.ReadDefault(path.Join(s.gitosisRepo, "gitosis.conf"))
 	c.Assert(err, IsNil)
 	c.Assert(conf.HasSection("group take-over-the-world"), Equals, true)
@@ -96,6 +96,29 @@ func (s *S) TestAddMemberToGroupCommitsAndPush(c *C) {
 	commitMsg := "Adding member brain for group someTeam"
 
 	c.Assert(string(bareOutput), Equals, commitMsg)
+}
+
+func (s *S) TestAddTwoMembersToProject(c *C) {
+	err := AddGroup("pink-floyd")
+	c.Assert(err, IsNil)
+	err = AddMember("pink-floyd", "one-of-these-days")
+	c.Assert(err, IsNil)
+	err = AddMember("pink-floyd", "comfortably-numb")
+	c.Assert(err, IsNil)
+	conf, err := ini.ReadDefault(path.Join(s.gitosisRepo, "gitosis.conf"))
+	members, err := conf.String("group pink-floyd", "members")
+	c.Assert(err, IsNil)
+	c.Assert(members, Equals, "one-of-these-days comfortably-numb")
+}
+
+func (s *S) TestAddMembertoProjectReturnsErrorIfTheMemberIsAlreadyInTheProject(c *C) {
+	err := AddGroup("pink-floyd")
+	c.Assert(err, IsNil)
+	err = AddMember("pink-floyd", "time")
+	c.Assert(err, IsNil)
+	err = AddMember("pink-floyd", "time")
+	c.Assert(err, NotNil)
+	c.Assert(err, ErrorMatches, "^This user is already member of this group$")
 }
 
 func (s *S) TestAddAndCommit(c *C) {
