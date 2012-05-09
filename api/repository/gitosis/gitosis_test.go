@@ -121,7 +121,7 @@ func (s *S) TestAddMemberToGroupCommitsAndPush(c *C) {
 	c.Assert(string(bareOutput), Equals, commitMsg)
 }
 
-func (s *S) TestAddTwoMembersToProject(c *C) {
+func (s *S) TestAddTwoMembersToGroup(c *C) {
 	err := AddGroup("pink-floyd")
 	c.Assert(err, IsNil)
 	err = AddMember("pink-floyd", "one-of-these-days")
@@ -134,7 +134,7 @@ func (s *S) TestAddTwoMembersToProject(c *C) {
 	c.Assert(members, Equals, "one-of-these-days comfortably-numb")
 }
 
-func (s *S) TestAddMembertoProjectReturnsErrorIfTheMemberIsAlreadyInTheProject(c *C) {
+func (s *S) TestAddMemberToGroupReturnsErrorIfTheMemberIsAlreadyInTheGroup(c *C) {
 	err := AddGroup("pink-floyd")
 	c.Assert(err, IsNil)
 	err = AddMember("pink-floyd", "time")
