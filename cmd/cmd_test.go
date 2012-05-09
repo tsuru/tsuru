@@ -28,7 +28,7 @@ func (c *TestCommand) Info() *Info {
 	return &Info{Name: c.Name}
 }
 
-func (c *TestCommand) Run(context *Context) error {
+func (c *TestCommand) Run(context *Context, client Doer) error {
 	io.WriteString(context.Stdout, "Running TestCommand")
 	return nil
 }
@@ -39,7 +39,7 @@ func (c *ErrorCommand) Info() *Info {
 	return &Info{Name: "error"}
 }
 
-func (c *ErrorCommand) Run(context *Context) error {
+func (c *ErrorCommand) Run(context *Context, client Doer) error {
 	return errors.New("You are wrong")
 }
 
