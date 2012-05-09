@@ -178,7 +178,11 @@ func pushToGitosis(cMsg string) error {
 		return err
 	}
 
-	pwd := os.Getenv("PWD")
+	pwd, err := os.Getwd()
+	if err != nil {
+		log.Print(err)
+		return err
+	}
 	os.Chdir(repoPath)
 
 	output, err := exec.Command("git", "add", ".").CombinedOutput()
