@@ -40,7 +40,7 @@ func AddGroup(name string) error {
 	}
 
 	commitMsg := fmt.Sprintf("Defining gitosis group for group %s", name)
-	err = PushToGitosis(commitMsg)
+	err = pushToGitosis(commitMsg)
 	if err != nil {
 		log.Print(err)
 		return err
@@ -76,7 +76,7 @@ func RemoveGroup(group string) error {
 	}
 
 	commitMsg := fmt.Sprintf("Removing group %s from gitosis.conf", group)
-	err = PushToGitosis(commitMsg)
+	err = pushToGitosis(commitMsg)
 	if err != nil {
 		log.Print(err)
 		return err
@@ -117,7 +117,7 @@ func AddMember(group, member string) error {
 		return err
 	}
 	commitMsg := fmt.Sprintf("Adding member %s to group %s", member, group)
-	err = PushToGitosis(commitMsg)
+	err = pushToGitosis(commitMsg)
 	if err != nil {
 		log.Print(err)
 		return err
@@ -161,7 +161,7 @@ func RemoveMember(group, member string) error {
 		return err
 	}
 	commitMsg := fmt.Sprintf("Removing member %s from group %s", member, group)
-	err = PushToGitosis(commitMsg)
+	err = pushToGitosis(commitMsg)
 	if err != nil {
 		log.Print(err)
 		return err
@@ -171,7 +171,7 @@ func RemoveMember(group, member string) error {
 
 // Add, commit and push all changes in gitosis repository to it's
 // bare.
-func PushToGitosis(cMsg string) error {
+func pushToGitosis(cMsg string) error {
 	repoPath, err := config.GetString("git:gitosis-repo")
 	if err != nil {
 		log.Print(err)

@@ -216,7 +216,7 @@ func (s *S) TestAddAndCommit(c *C) {
 	conf, err := ini.ReadDefault(confPath)
 	c.Assert(err, IsNil)
 	conf.AddSection("foo bar")
-	PushToGitosis("Some commit message")
+	pushToGitosis("Some commit message")
 
 	pwd := os.Getenv("PWD")
 	os.Chdir(s.gitosisBare)

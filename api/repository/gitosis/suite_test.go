@@ -61,7 +61,7 @@ func (s *S) TearDownTest(c *C) {
 	err := os.Chdir(path.Join(s.gitRoot, "gitosis-admin"))
 	err = exec.Command("git", "rm", "gitosis.conf").Run()
 	if err == nil {
-		err = PushToGitosis("removing test file")
+		err = pushToGitosis("removing test file")
 		c.Assert(err, IsNil)
 	}
 	err = os.Chdir(pwd)
