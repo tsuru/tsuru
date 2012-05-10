@@ -27,3 +27,9 @@ func Panic(v ...interface{}) {
 		Target.Panic(v...)
 	}
 }
+
+func Panicf(format string, v ...interface{}) {
+	if Target != nil {
+		Target.Panicf(format, v...)
+	}
+}
