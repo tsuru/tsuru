@@ -39,7 +39,7 @@ func pushToGitosis(cMsg string) error {
 		log.Print(output, err)
 		return err
 	}
-	output, err = exec.Command("git", "commit", "-m", cMsg).CombinedOutput()
+	output, err = exec.Command("git", "commit", "-am", cMsg).CombinedOutput()
 	if err != nil {
 		fmt.Println(string(output))
 		log.Print(output, err)
