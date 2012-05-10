@@ -45,14 +45,9 @@ func (s *S) TestAddProjectCommitAndPush(c *C) {
 	c.Assert(err, IsNil)
 	err = AddProject("myGroup", "myProject")
 	c.Assert(err, IsNil)
-	pwd, err := os.Getwd()
-	c.Assert(err, IsNil)
-	os.Chdir(s.gitosisBare)
-	bareOutput, err := exec.Command("git", "log", "-1", "--pretty=format:%s").CombinedOutput()
-	c.Assert(err, IsNil)
-	os.Chdir(pwd)
+	got := s.lastBareCommit(c)
 	expected := "Added project myProject to group myGroup"
-	c.Assert(string(bareOutput), Equals, expected)
+	c.Assert(got, Equals, expected)
 }
 
 func (s *S) TestAppendToOption(c *C) {
@@ -126,13 +121,9 @@ func (s *S) TestRemoveGroup(c *C) {
 	conf, err = ini.ReadDefault(path.Join(s.gitosisRepo, "gitosis.conf"))
 	c.Assert(err, IsNil)
 	c.Assert(conf.HasSection("group someGroup"), Equals, false)
-	pwd, err := os.Getwd()
-	os.Chdir(s.gitosisBare)
-	bareOutput, err := exec.Command("git", "log", "-1", "--pretty=format:%s").CombinedOutput()
-	c.Assert(err, IsNil)
-	os.Chdir(pwd)
+	got := s.lastBareCommit(c)
 	expected := "Removing group someGroup from gitosis.conf"
-	c.Assert(string(bareOutput), Equals, expected)
+	c.Assert(got, Equals, expected)
 }
 
 func (s *S) TestRemoveGroupCommitAndPushesChanges(c *C) {
@@ -165,14 +156,9 @@ func (s *S) TestAddMemberToGroupCommitsAndPush(c *C) {
 	err := AddGroup("someTeam")
 	c.Assert(err, IsNil)
 	err = addMember("someTeam", "brain")
-	pwd, err := os.Getwd()
-	c.Assert(err, IsNil)
-	os.Chdir(s.gitosisBare)
-	bareOutput, err := exec.Command("git", "log", "-1", "--pretty=format:%s").CombinedOutput()
-	c.Assert(err, IsNil)
-	os.Chdir(pwd)
-	commitMsg := "Adding member brain to group someTeam"
-	c.Assert(string(bareOutput), Equals, commitMsg)
+	got := s.lastBareCommit(c)
+	expected := "Adding member brain to group someTeam"
+	c.Assert(got, Equals, expected)
 }
 
 func (s *S) TestAddTwoMembersToGroup(c *C) {
@@ -229,14 +215,9 @@ func (s *S) TestRemoveMemberFromGroupCommitsAndPush(c *C) {
 	c.Assert(err, IsNil)
 	err = removeMember("pink-floyd", "if")
 	c.Assert(err, IsNil)
-	pwd, err := os.Getwd()
-	os.Chdir(s.gitosisBare)
-	c.Assert(err, IsNil)
-	bareOutput, err := exec.Command("git", "log", "-1", "--pretty=format:%s").CombinedOutput()
-	c.Assert(err, IsNil)
-	os.Chdir(pwd)
-	commitMsg := "Removing member if from group pink-floyd"
-	c.Assert(string(bareOutput), Equals, commitMsg)
+	got := s.lastBareCommit(c)
+	expected := "Removing member if from group pink-floyd"
+	c.Assert(got, Equals, expected)
 }
 
 func (s *S) TestRemoveMemberFromGroupRemovesTheOptionFromTheSectionWhenTheMemberIsTheLast(c *C) {
@@ -281,13 +262,8 @@ func (s *S) TestAddAndCommit(c *C) {
 	c.Assert(err, IsNil)
 	conf.AddSection("foo bar")
 	pushToGitosis("Some commit message")
-	pwd, err := os.Getwd()
-	c.Assert(err, IsNil)
-	os.Chdir(s.gitosisBare)
-	bareOutput, err := exec.Command("git", "log", "-1", "--pretty=format:%s").CombinedOutput()
-	c.Assert(err, IsNil)
-	os.Chdir(pwd)
-	c.Assert(string(bareOutput), Equals, "Some commit message")
+	got := s.lastBareCommit(c)
+	c.Assert(got, Equals, "Some commit message")
 }
 
 func (s *S) TestConfPathReturnsGitosisConfPath(c *C) {

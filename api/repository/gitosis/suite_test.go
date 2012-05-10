@@ -67,3 +67,13 @@ func (s *S) TearDownTest(c *C) {
 	}
 	err = os.Chdir(pwd)
 }
+
+func (s *S) lastBareCommit(c *C) string {
+	pwd, err := os.Getwd()
+	c.Assert(err, IsNil)
+	os.Chdir(s.gitosisBare)
+	bareOutput, err := exec.Command("git", "log", "-1", "--pretty=format:%s").CombinedOutput()
+	c.Assert(err, IsNil)
+	os.Chdir(pwd)
+	return string(bareOutput)
+}
