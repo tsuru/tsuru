@@ -169,32 +169,16 @@ func (s *S) TestGetUserByTokenShouldReturnErrorWhenTheGivenTokenHasExpired(c *C)
 
 func (s *S) TestAddKeyAddsAKeyToTheUser(c *C) {
 	u := &User{Email: "sacefulofsecrets@pinkfloyd.com"}
-	err := u.AddKey(Key{Content: "my-key"})
+	err := u.addKey(Key{Content: "my-key"})
 	c.Assert(err, IsNil)
 	c.Assert(u, HasKey, "my-key")
 }
 
-func (s *S) TestAddKeyReturnsErrorIfTheKeyIsAlreadyPresent(c *C) {
-	u := &User{Email: "corporalclegg@pinkfloyd.com"}
-	err := u.AddKey(Key{Content: "my-key"})
-	c.Assert(err, IsNil)
-	err = u.AddKey(Key{Content: "my-key"})
-	c.Assert(err, NotNil)
-	c.Assert(err, ErrorMatches, "^User has this key already$")
-}
-
 func (s *S) TestRemoveKeyRemovesAKeyFromTheUser(c *C) {
 	u := &User{Email: "shineon@pinkfloyd.com", Keys: []Key{Key{Content: "my-key"}}}
-	err := u.RemoveKey(Key{Content: "my-key"})
+	err := u.removeKey(Key{Content: "my-key"})
 	c.Assert(err, IsNil)
 	c.Assert(u, Not(HasKey), "my-key")
-}
-
-func (s *S) TestRemoveKeyReturnsErrorIfTheUserDoesNotHaveTheKey(c *C) {
-	u := &User{Email: "shineon@pinkfloyd.com"}
-	err := u.RemoveKey(Key{Content: "my-key"})
-	c.Assert(err, NotNil)
-	c.Assert(err, ErrorMatches, "^User does not have this key$")
 }
 
 func (s *S) TestCheckTokenReturnErrorIfTheTokenIsOmited(c *C) {

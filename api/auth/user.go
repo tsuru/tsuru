@@ -132,19 +132,13 @@ func (u *User) hasKey(key Key) bool {
 	return index > -1
 }
 
-func (u *User) AddKey(key Key) error {
-	if u.hasKey(key) {
-		return errors.New("User has this key already")
-	}
+func (u *User) addKey(key Key) error {
 	u.Keys = append(u.Keys, key)
 	return nil
 }
 
-func (u *User) RemoveKey(key Key) error {
+func (u *User) removeKey(key Key) error {
 	_, index := u.findKey(key)
-	if index < 0 {
-		return errors.New("User does not have this key")
-	}
 	last := len(u.Keys) - 1
 	u.Keys[index] = u.Keys[last]
 	u.Keys = u.Keys[:last]
