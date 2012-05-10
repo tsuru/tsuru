@@ -98,22 +98,12 @@ func removeMember(group, member string) error {
 	if !c.HasSection(section) {
 		return errors.New("Group not found")
 	}
-	strMembers, err := c.String(section, "members")
-	if err != nil {
+	if ok := c.HasOption(section, "members"); !ok {
 		return errors.New("This group does not have any members")
 	}
-	members := strings.Split(strMembers, " ")
-	index := find(members, member)
-	if index < 0 {
-		return errors.New("This group does not have this member")
-	}
-	last := len(members) - 1
-	members[index] = members[last]
-	members = members[:last]
-	if len(members) > 0 {
-		c.AddOption(section, "members", strings.Join(members, " "))
-	} else {
-		c.RemoveOption(section, "members")
+	err = removeOptionValue(c, section, "members", member)
+	if err != nil {
+		return err
 	}
 	commitMsg := fmt.Sprintf("Removing member %s from group %s", member, group)
 	return writeCommitPush(c, commitMsg)
@@ -134,8 +124,32 @@ func addOptionValue(c *ini.Config, section, option, value string) (err error) {
 		return errors.New(errStr)
 	}
 	values = append(values, value)
-	optValues := strings.Trim(strings.Join(values, " "), " ")
+	optValues := strings.TrimSpace(strings.Join(values, " "))
 	c.AddOption(section, option, optValues)
+	return nil
+}
+
+func removeOptionValue(c *ini.Config, section, option, value string) (err error) {
+	//check if section and option exists
+	strValues, err := c.String(section, option)
+	if err != nil {
+		log.Print(err)
+		return err
+	}
+	values := strings.Split(strValues, " ")
+	index := find(values, value)
+	if index < 0 {
+		return errors.New(fmt.Sprintf("Value %s not found in section %s", value, section))
+	}
+	last := len(values)-1
+	values[index] = values[last]
+	values = values[:last]
+	if len(values) > 0 {
+		c.AddOption(section, option, strings.Join(values, " "))
+	} else {
+		c.RemoveOption(section, option)
+	}
+
 	return nil
 }
 

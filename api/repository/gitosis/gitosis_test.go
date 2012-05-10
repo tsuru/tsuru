@@ -77,6 +77,27 @@ func (s *S) TestAppendToOption(c *C) {
 	c.Assert(obtained, Equals, "firstProject anotherProject")
 }
 
+func (s *S) TestRemoveOptionValue(c *C) {
+	err := AddGroup("myGroup")
+	c.Assert(err, IsNil)
+	err = AddProject("myGroup", "myProject")
+	c.Assert(err, IsNil)
+	err = AddProject("myGroup", "myOtherProject")
+	c.Assert(err, IsNil)
+	// remove one project
+	conf, err := ini.ReadDefault(path.Join(s.gitRoot, "gitosis-admin/gitosis.conf"))
+	err = removeOptionValue(conf, "group myGroup", "writable", "myOtherProject")
+	c.Assert(err, IsNil)
+	obtained, err := conf.String("group myGroup", "writable")
+	c.Assert(err, IsNil)
+	c.Assert(obtained, Equals, "myProject")
+	// remove the last project
+	err = removeOptionValue(conf, "group myGroup", "writable", "myProject")
+	c.Assert(err, IsNil)
+	c.Assert(conf.HasOption("group myGroup", "writable"), Equals, false)
+
+}
+
 func (s *S) TestAddGroup(c *C) {
 	err := AddGroup("someGroup")
 	c.Assert(err, IsNil)
@@ -258,7 +279,7 @@ func (s *S) TestRemoveMemberFromGroupReturnsErrorsIfTheGroupDoesNotContainTheGiv
 	c.Assert(err, IsNil)
 	err = removeMember("pink-floyd", "pigs-on-the-wing")
 	c.Assert(err, NotNil)
-	c.Assert(err, ErrorMatches, "^This group does not have this member$")
+	c.Assert(err, ErrorMatches, "^Value pigs-on-the-wing not found in section group pink-floyd$")
 }
 
 func (s *S) TestRemoveMemberFromGroupReturnsErrorIfTheGroupDoesNotExist(c *C) {
