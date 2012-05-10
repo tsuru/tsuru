@@ -195,7 +195,7 @@ func (s *S) TestAddMemberToGroupReturnsErrorIfTheMemberIsAlreadyInTheGroup(c *C)
 	c.Assert(err, IsNil)
 	err = addMember("pink-floyd", "time")
 	c.Assert(err, NotNil)
-	c.Assert(err, ErrorMatches, "^This user is already member of this group$")
+	c.Assert(err, ErrorMatches, "^Value time for option members in section group pink-floyd has already been added$")
 }
 
 func (s *S) TestAddMemberToAGroupThatDoesNotExistReturnError(c *C) {
