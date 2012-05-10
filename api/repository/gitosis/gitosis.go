@@ -23,6 +23,10 @@ func AddProject(group, project string) error {
 		return err
 	}
 	section := fmt.Sprintf("group %s", group) //check if session exists
+	if !c.HasSection(section) {
+		errMsg := fmt.Sprintf("Section %s doesn't exists", section)
+		return errors.New(errMsg)
+	}
 	err = addOption(c, section, "writable", project)
 	if err != nil {
 		return err
