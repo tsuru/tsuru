@@ -3,6 +3,7 @@ package auth
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/timeredbull/tsuru/api/repository/gitosis"
 	"github.com/timeredbull/tsuru/db"
 	"github.com/timeredbull/tsuru/errors"
 	"io"
@@ -153,11 +154,17 @@ func getKeyFromBody(b io.Reader) (string, error) {
 	return key, nil
 }
 
-func addKeyToUser(key string, u *User) error {
-	err := u.AddKey(key)
-	if err != nil {
-		return &errors.Http{Code: http.StatusConflict, Message: err.Error()}
+func addKeyToUser(content string, u *User) error {
+	key := Key{Content: content}
+	if u.hasKey(key) {
+		return &errors.Http{Code: http.StatusConflict, Message: "User has this key already"}
 	}
+	filename, err := gitosis.BuildAndStoreKeyFile(u.Email, content)
+	if err != nil {
+		return err
+	}
+	key.Name = strings.Replace(filename, ".pub", "", -1)
+	err = u.addKey(key)
 	return db.Session.Users().Update(bson.M{"email": u.Email}, u)
 }
 
@@ -174,12 +181,17 @@ func AddKeyToUser(w http.ResponseWriter, r *http.Request, u *User) error {
 	return addKeyToUser(key, u)
 }
 
-func removeKeyFromUser(key string, u *User) error {
-	err := u.RemoveKey(key)
-	if err != nil {
-		return &errors.Http{Code: http.StatusNotFound, Message: err.Error()}
+func removeKeyFromUser(content string, u *User) error {
+	key, index := u.findKey(Key{Content: content})
+	if index < 0 {
+		return &errors.Http{Code: http.StatusNotFound, Message: "User does not have this key"}
 	}
-	return db.Session.Users().Update(bson.M{"email": u.Email}, u)
+	u.removeKey(key)
+	err := db.Session.Users().Update(bson.M{"email": u.Email}, u)
+	if err != nil {
+		return err
+	}
+	return gitosis.DeleteKeyFile(key.Name + ".pub")
 }
 
 // RemoveKeyFromUser removes a key from a user.
