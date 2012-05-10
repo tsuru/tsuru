@@ -15,11 +15,12 @@ func (c *LoginCommand) Run(context *Context, client Doer) error {
 	if err != nil {
 		return err
 	}
-	_, err = client.Do(request)
+	response, err := client.Do(request)
 	if err != nil {
 		return err
 	}
 	io.WriteString(context.Stdout, "Successfully logged!")
+	WriteToken(string(response))
 	return nil
 }
 
