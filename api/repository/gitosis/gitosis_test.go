@@ -141,7 +141,7 @@ func (s *S) TestRemoveGroupCommitAndPushesChanges(c *C) {
 func (s *S) TestAddMemberToGroup(c *C) {
 	err := AddGroup("take-over-the-world")
 	c.Assert(err, IsNil)
-	err = addMember("take-over-the-world", "brain")
+	err = AddMember("take-over-the-world", "brain")
 	c.Assert(err, IsNil)
 	conf, err := ini.ReadDefault(path.Join(s.gitosisRepo, "gitosis.conf"))
 	c.Assert(err, IsNil)
@@ -155,7 +155,7 @@ func (s *S) TestAddMemberToGroup(c *C) {
 func (s *S) TestAddMemberToGroupCommitsAndPush(c *C) {
 	err := AddGroup("someTeam")
 	c.Assert(err, IsNil)
-	err = addMember("someTeam", "brain")
+	err = AddMember("someTeam", "brain")
 	got := s.lastBareCommit(c)
 	expected := "Adding member brain to group someTeam"
 	c.Assert(got, Equals, expected)
@@ -164,9 +164,9 @@ func (s *S) TestAddMemberToGroupCommitsAndPush(c *C) {
 func (s *S) TestAddTwoMembersToGroup(c *C) {
 	err := AddGroup("pink-floyd")
 	c.Assert(err, IsNil)
-	err = addMember("pink-floyd", "one-of-these-days")
+	err = AddMember("pink-floyd", "one-of-these-days")
 	c.Assert(err, IsNil)
-	err = addMember("pink-floyd", "comfortably-numb")
+	err = AddMember("pink-floyd", "comfortably-numb")
 	c.Assert(err, IsNil)
 	conf, err := ini.ReadDefault(path.Join(s.gitosisRepo, "gitosis.conf"))
 	members, err := conf.String("group pink-floyd", "members")
@@ -177,15 +177,15 @@ func (s *S) TestAddTwoMembersToGroup(c *C) {
 func (s *S) TestAddMemberToGroupReturnsErrorIfTheMemberIsAlreadyInTheGroup(c *C) {
 	err := AddGroup("pink-floyd")
 	c.Assert(err, IsNil)
-	err = addMember("pink-floyd", "time")
+	err = AddMember("pink-floyd", "time")
 	c.Assert(err, IsNil)
-	err = addMember("pink-floyd", "time")
+	err = AddMember("pink-floyd", "time")
 	c.Assert(err, NotNil)
 	c.Assert(err, ErrorMatches, "^Value time for option members in section group pink-floyd has already been added$")
 }
 
 func (s *S) TestAddMemberToAGroupThatDoesNotExistReturnError(c *C) {
-	err := addMember("pink-floyd", "one-of-these-days")
+	err := AddMember("pink-floyd", "one-of-these-days")
 	c.Assert(err, NotNil)
 	c.Assert(err, ErrorMatches, "^Group not found$")
 }
@@ -193,11 +193,11 @@ func (s *S) TestAddMemberToAGroupThatDoesNotExistReturnError(c *C) {
 func (s *S) TestRemoveMemberFromGroup(c *C) {
 	err := AddGroup("pink-floyd")
 	c.Assert(err, IsNil)
-	err = addMember("pink-floyd", "fat-old-sun")
+	err = AddMember("pink-floyd", "fat-old-sun")
 	c.Assert(err, IsNil)
-	err = addMember("pink-floyd", "summer-68")
+	err = AddMember("pink-floyd", "summer-68")
 	c.Assert(err, IsNil)
-	err = removeMember("pink-floyd", "fat-old-sun")
+	err = RemoveMember("pink-floyd", "fat-old-sun")
 	c.Assert(err, IsNil)
 	conf, err := ini.ReadDefault(path.Join(s.gitosisRepo, "gitosis.conf"))
 	c.Assert(err, IsNil)
@@ -209,11 +209,11 @@ func (s *S) TestRemoveMemberFromGroup(c *C) {
 func (s *S) TestRemoveMemberFromGroupCommitsAndPush(c *C) {
 	err := AddGroup("pink-floyd")
 	c.Assert(err, IsNil)
-	err = addMember("pink-floyd", "if")
+	err = AddMember("pink-floyd", "if")
 	c.Assert(err, IsNil)
-	err = addMember("pink-floyd", "atom-heart-mother-suite")
+	err = AddMember("pink-floyd", "atom-heart-mother-suite")
 	c.Assert(err, IsNil)
-	err = removeMember("pink-floyd", "if")
+	err = RemoveMember("pink-floyd", "if")
 	c.Assert(err, IsNil)
 	got := s.lastBareCommit(c)
 	expected := "Removing member if from group pink-floyd"
@@ -223,9 +223,9 @@ func (s *S) TestRemoveMemberFromGroupCommitsAndPush(c *C) {
 func (s *S) TestRemoveMemberFromGroupRemovesTheOptionFromTheSectionWhenTheMemberIsTheLast(c *C) {
 	err := AddGroup("pink-floyd")
 	c.Assert(err, IsNil)
-	err = addMember("pink-floyd", "pigs-on-the-wing")
+	err = AddMember("pink-floyd", "pigs-on-the-wing")
 	c.Assert(err, IsNil)
-	err = removeMember("pink-floyd", "pigs-on-the-wing")
+	err = RemoveMember("pink-floyd", "pigs-on-the-wing")
 	c.Assert(err, IsNil)
 	conf, err := ini.ReadDefault(path.Join(s.gitosisRepo, "gitosis.conf"))
 	c.Assert(err, IsNil)
@@ -235,15 +235,15 @@ func (s *S) TestRemoveMemberFromGroupRemovesTheOptionFromTheSectionWhenTheMember
 func (s *S) TestRemoveMemberFromGroupReturnsErrorsIfTheGroupDoesNotContainTheGivenMember(c *C) {
 	err := AddGroup("pink-floyd")
 	c.Assert(err, IsNil)
-	err = addMember("pink-floyd", "another-brick")
+	err = AddMember("pink-floyd", "another-brick")
 	c.Assert(err, IsNil)
-	err = removeMember("pink-floyd", "pigs-on-the-wing")
+	err = RemoveMember("pink-floyd", "pigs-on-the-wing")
 	c.Assert(err, NotNil)
 	c.Assert(err, ErrorMatches, "^This group does not have this member$")
 }
 
 func (s *S) TestRemoveMemberFromGroupReturnsErrorIfTheGroupDoesNotExist(c *C) {
-	err := removeMember("pink-floyd", "pigs-on-the-wing")
+	err := RemoveMember("pink-floyd", "pigs-on-the-wing")
 	c.Assert(err, NotNil)
 	c.Assert(err, ErrorMatches, "^Group not found$")
 }
@@ -251,7 +251,7 @@ func (s *S) TestRemoveMemberFromGroupReturnsErrorIfTheGroupDoesNotExist(c *C) {
 func (s *S) TestRemoveMemberFromGroupReturnsErrorsIfTheGroupDoesNotHaveAnyMember(c *C) {
 	err := AddGroup("pato-fu")
 	c.Assert(err, IsNil)
-	err = removeMember("pato-fu", "eu-sei")
+	err = RemoveMember("pato-fu", "eu-sei")
 	c.Assert(err, NotNil)
 	c.Assert(err, ErrorMatches, "^This group does not have any members$")
 }
