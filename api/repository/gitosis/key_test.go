@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	. "launchpad.net/gocheck"
 	"os"
+	"os/exec"
 	"path"
 	"syscall"
 )
@@ -82,4 +83,19 @@ func (s *S) TestAddKeyShouldRemoveTheKeyFileIfItFailsToAddTheMemberToGitosisFile
 	}
 	c.Assert(err, NotNil)
 	c.Assert(os.IsNotExist(err), Equals, true)
+}
+
+func (s *S) TestAddKeyShouldCommit(c *C) {
+	err := AddGroup("pain-of-salvation")
+	c.Assert(err, IsNil)
+	err = AddKey("pain-of-salvation", "diffidentia", "my-key")
+	c.Assert(err, IsNil)
+	pwd, err := os.Getwd()
+	c.Assert(err, IsNil)
+	os.Chdir(s.gitosisBare)
+	bareOutput, err := exec.Command("git", "log", "-1", "--pretty=format:%s").CombinedOutput()
+	c.Assert(err, IsNil)
+	os.Chdir(pwd)
+	commitMsg := "Adding member diffidentia_key1 to group pain-of-salvation"
+	c.Assert(string(bareOutput), Equals, commitMsg)
 }
