@@ -27,8 +27,7 @@ func AddProject(group, project string) error {
 		errMsg := fmt.Sprintf("Section %s doesn't exists", section)
 		return errors.New(errMsg)
 	}
-	err = addOptionValue(c, section, "writable", project)
-	if err != nil {
+	if err = addOptionValue(c, section, "writable", project); err != nil {
 		log.Print(err)
 		return err
 	}
@@ -44,8 +43,7 @@ func AddGroup(name string) error {
 		return err
 	}
 	sName := fmt.Sprintf("group %s", name)
-	ok := c.AddSection(sName)
-	if !ok {
+	if !c.AddSection(sName) {
 		errStr := fmt.Sprintf(`Could not add section "group %s" in gitosis.conf, section already exists!`, name)
 		return errors.New(errStr)
 	}
@@ -60,8 +58,7 @@ func RemoveGroup(group string) error {
 		return err
 	}
 	gName := fmt.Sprintf("group %s", group)
-	ok := c.RemoveSection(gName)
-	if !ok {
+	if !c.RemoveSection(gName) {
 		return errors.New("Section does not exists")
 	}
 	commitMsg := fmt.Sprintf("Removing group %s from gitosis.conf", group)
@@ -79,8 +76,7 @@ func addMember(group, member string) error {
 	if !c.HasSection(section) {
 		return errors.New("Group not found")
 	}
-	err = addOptionValue(c, section, "members", member)
-	if err != nil {
+	if err = addOptionValue(c, section, "members", member); err != nil {
 		log.Print(err)
 		return err
 	}
@@ -98,7 +94,7 @@ func removeMember(group, member string) error {
 	if !c.HasSection(section) {
 		return errors.New("Group not found")
 	}
-	if ok := c.HasOption(section, "members"); !ok {
+	if !c.HasOption(section, "members") {
 		return errors.New("This group does not have any members")
 	}
 	err = removeOptionValue(c, section, "members", member)
@@ -141,7 +137,7 @@ func removeOptionValue(c *ini.Config, section, option, value string) (err error)
 	if index < 0 {
 		return errors.New(fmt.Sprintf("Value %s not found in section %s", value, section))
 	}
-	last := len(values)-1
+	last := len(values) - 1
 	values[index] = values[last]
 	values = values[:last]
 	if len(values) > 0 {
