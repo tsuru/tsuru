@@ -52,7 +52,10 @@ func AppList(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	if err != nil {
 		return err
 	}
-
+	if len(apps) == 0 {
+		w.WriteHeader(http.StatusNoContent)
+		return nil
+	}
 	b, err := json.Marshal(apps)
 	if err != nil {
 		return err
