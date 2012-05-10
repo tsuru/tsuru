@@ -36,6 +36,15 @@ func BuildAndStoreKeyFile(member, key string) (string, error) {
 	return filename, nil
 }
 
+func DeleteKeyFile(keyfilename string) error {
+	p, err := getKeydirPath()
+	if err != nil {
+		return err
+	}
+	keypath := path.Join(p, keyfilename)
+	return os.Remove(keypath)
+}
+
 func nextAvailableKey(keydirname, member string) (string, error) {
 	keydir, err := os.Open(keydirname)
 	if err != nil {

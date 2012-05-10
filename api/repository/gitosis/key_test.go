@@ -48,3 +48,24 @@ func (s *S) TestBuildAndStoreKeyFileDoesNotReturnErrorIfTheDirectoryExists(c *C)
 	_, err = BuildAndStoreKeyFile("vida-imbecil", "my-key")
 	c.Assert(err, IsNil)
 }
+
+func (s *S) TestDeleteKeyFile(c *C) {
+	keyfile, err := BuildAndStoreKeyFile("blackwater-park", "my-key")
+	c.Assert(err, IsNil)
+	err = DeleteKeyFile(keyfile)
+	c.Assert(err, IsNil)
+	p, err := getKeydirPath()
+	c.Assert(err, IsNil)
+	keypath := path.Join(p, keyfile)
+	f, err := os.Open(keypath)
+	if err == nil {
+		f.Close()
+	}
+	c.Assert(err, NotNil)
+	c.Assert(os.IsNotExist(err), Equals, true)
+}
+
+func (s *S) TestDeleteKeyFileReturnsErrorIfTheFileDoesNotExist(c *C) {
+	err := DeleteKeyFile("dont_know.pub")
+	c.Assert(err, NotNil)
+}
