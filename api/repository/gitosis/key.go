@@ -41,6 +41,7 @@ func BuildAndStoreKeyFile(member, key string) (string, error) {
 	return filename, nil
 }
 
+// DeleteKeyFile deletes the keyfile in the keydir
 func DeleteKeyFile(keyfilename string) error {
 	p, err := getKeydirPath()
 	if err != nil {
