@@ -2,7 +2,9 @@ package cmd
 
 import (
 	"bytes"
+	"encoding/json"
 	"io"
+	"io/ioutil"
 	"net/http"
 )
 
@@ -15,11 +17,22 @@ func (c *LoginCommand) Run(context *Context, client Doer) error {
 	if err != nil {
 		return err
 	}
-	_, err = client.Do(request)
+	response, err := client.Do(request)
+	if err != nil {
+		return err
+	}
+	defer response.Body.Close()
+	result, err := ioutil.ReadAll(response.Body)
+	if err != nil {
+		return err
+	}
+	out := make(map[string]string)
+	err = json.Unmarshal(result, &out)
 	if err != nil {
 		return err
 	}
 	io.WriteString(context.Stdout, "Successfully logged!")
+	WriteToken(out["token"])
 	return nil
 }
 

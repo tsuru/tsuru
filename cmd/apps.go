@@ -3,6 +3,7 @@ package cmd
 import (
 	"encoding/json"
 	"github.com/timeredbull/tsuru/api/app"
+	"io/ioutil"
 	"net/http"
 )
 
@@ -13,7 +14,20 @@ func (c *AppsCommand) Run(context *Context, client Doer) error {
 	if err != nil {
 		return err
 	}
-	result, err := client.Do(request)
+	token, err := ReadToken()
+	if err != nil {
+		return err
+	}
+	request.Header.Set("Authorization", token)
+	response, err := client.Do(request)
+	if err != nil {
+		return err
+	}
+	if response.StatusCode == http.StatusNoContent {
+		return nil
+	}
+	defer response.Body.Close()
+	result, err := ioutil.ReadAll(response.Body)
 	if err != nil {
 		return err
 	}
