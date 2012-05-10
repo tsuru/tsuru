@@ -23,12 +23,17 @@ func AddProject(group, project string) error {
 		return err
 	}
 	section := fmt.Sprintf("group %s", group) //check if session exists
+	if !c.HasSection(section) {
+		errMsg := fmt.Sprintf("Section %s doesn't exists", section)
+		return errors.New(errMsg)
+	}
 	err = addOption(c, section, "writable", project)
 	if err != nil {
+		log.Print(err)
 		return err
 	}
 	commit := fmt.Sprintf("Added project %s to group %s", project, group)
-	writeCommitPush(c, commit)
+	err = writeCommitPush(c, commit)
 	return nil
 }
 
@@ -74,15 +79,11 @@ func addMember(group, member string) error {
 	if !c.HasSection(section) {
 		return errors.New("Group not found")
 	}
-	var members []string
-	if strMembers, err := c.String(section, "members"); err == nil {
-		members = strings.Split(strMembers, " ")
+	err = addOption(c, section, "members", member)
+	if err != nil {
+		log.Print(err)
+		return err
 	}
-	if checkPresenceOfString(members, member) {
-		return errors.New("This user is already member of this group")
-	}
-	members = append(members, member)
-	c.AddOption(section, "members", strings.Join(members, " "))
 	commitMsg := fmt.Sprintf("Adding member %s to group %s", member, group)
 	return writeCommitPush(c, commitMsg)
 }

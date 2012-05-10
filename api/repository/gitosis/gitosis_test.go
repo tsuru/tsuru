@@ -20,6 +20,10 @@ func (s *S) TestAddProject(c *C) {
 	obtained, err := conf.String("group someGroup", "writable")
 	c.Assert(err, IsNil)
 	c.Assert(obtained, Equals, "someProject")
+	// try to add to an inexistent group
+	err = AddProject("inexistentGroup", "someProject")
+	c.Assert(err, NotNil)
+	c.Assert(err, ErrorMatches, "^Section group inexistentGroup doesn't exists$")
 }
 
 func (s *S) TestAddMoreThenOneProject(c *C) {
@@ -191,7 +195,7 @@ func (s *S) TestAddMemberToGroupReturnsErrorIfTheMemberIsAlreadyInTheGroup(c *C)
 	c.Assert(err, IsNil)
 	err = addMember("pink-floyd", "time")
 	c.Assert(err, NotNil)
-	c.Assert(err, ErrorMatches, "^This user is already member of this group$")
+	c.Assert(err, ErrorMatches, "^Value time for option members in section group pink-floyd has already been added$")
 }
 
 func (s *S) TestAddMemberToAGroupThatDoesNotExistReturnError(c *C) {
