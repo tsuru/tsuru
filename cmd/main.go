@@ -12,6 +12,7 @@ func main() {
 	manager.Register(&cmd.AppsCommand{})
 	manager.Register(&cmd.LoginCommand{})
 	manager.Register(&cmd.AddUserCommand{})
+	manager.Register(&cmd.CreateAppCommand{})
 	//removing the command name from args
 	args := os.Args[1:]
 	manager.Run(args)
