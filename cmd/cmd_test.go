@@ -65,3 +65,19 @@ func (s *S) TestRunCommandThatDoesNotExist(c *C) {
 	manager.Run([]string{"bar"})
 	c.Assert(manager.Stderr.(*bytes.Buffer).String(), Equals, "command bar does not exist\n")
 }
+
+func (s *S) TestWriteToken(c *C) {
+	err := WriteToken("abc")
+	c.Assert(err, IsNil)
+	token, err := ReadToken()
+	c.Assert(err, IsNil)
+	c.Assert(token, Equals, "abc")
+}
+
+func (s *S) TestReadToken(c *C) {
+	err := WriteToken("123")
+	c.Assert(err, IsNil)
+	token, err := ReadToken()
+	c.Assert(err, IsNil)
+	c.Assert(token, Equals, "123")
+}
