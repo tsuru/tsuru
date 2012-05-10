@@ -153,26 +153,44 @@ func getKeyFromBody(b io.Reader) (string, error) {
 	return key, nil
 }
 
-func AddKeyToUser(w http.ResponseWriter, r *http.Request, u *User) error {
-	key, err := getKeyFromBody(r.Body)
-	if err != nil {
-		return err
-	}
-	err = u.AddKey(key)
+func addKeyToUser(key string, u *User) error {
+	err := u.AddKey(key)
 	if err != nil {
 		return &errors.Http{Code: http.StatusConflict, Message: err.Error()}
 	}
 	return db.Session.Users().Update(bson.M{"email": u.Email}, u)
 }
 
+// AddKeyToUser adds a key to a user.
+//
+// This function is just an http wrapper around addKeyToUser. The latter function
+// exists to be used in other places in the package without the http stuff (request and
+// response).
+func AddKeyToUser(w http.ResponseWriter, r *http.Request, u *User) error {
+	key, err := getKeyFromBody(r.Body)
+	if err != nil {
+		return err
+	}
+	return addKeyToUser(key, u)
+}
+
+func removeKeyFromUser(key string, u *User) error {
+	err := u.RemoveKey(key)
+	if err != nil {
+		return &errors.Http{Code: http.StatusNotFound, Message: err.Error()}
+	}
+	return db.Session.Users().Update(bson.M{"email": u.Email}, u)
+}
+
+// RemoveKeyFromUser removes a key from a user.
+//
+// This function is just an http wrapper around removeKeyFromUser. The latter function
+// exists to be used in other places in the package without the http stuff (request and
+// response).
 func RemoveKeyFromUser(w http.ResponseWriter, r *http.Request, u *User) error {
 	key, err := getKeyFromBody(r.Body)
 	if err != nil {
 		return err
 	}
-	err = u.RemoveKey(key)
-	if err != nil {
-		return &errors.Http{Code: http.StatusNotFound, Message: err.Error()}
-	}
-	return db.Session.Users().Update(bson.M{"email": u.Email}, u)
+	return removeKeyFromUser(key, u)
 }
