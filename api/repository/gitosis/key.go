@@ -33,6 +33,11 @@ func BuildAndStoreKeyFile(member, key string) (string, error) {
 	if err != nil || n != len(key) {
 		return "", err
 	}
+	commitMsg := fmt.Sprintf("Added %s keyfile.", filename)
+	err = pushToGitosis(commitMsg)
+	if err != nil {
+		return "", err
+	}
 	return filename, nil
 }
 

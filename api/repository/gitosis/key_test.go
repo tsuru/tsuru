@@ -50,6 +50,14 @@ func (s *S) TestBuildAndStoreKeyFileDoesNotReturnErrorIfTheDirectoryExists(c *C)
 	c.Assert(err, IsNil)
 }
 
+func (s *S) TestBuildAndStoreKeyFileCommits(c *C) {
+	keyfile, err := BuildAndStoreKeyFile("the-night-and-the-silent-water", "my-key")
+	c.Assert(err, IsNil)
+	got := s.lastBareCommit(c)
+	expected := fmt.Sprintf("Added %s keyfile.", keyfile)
+	c.Assert(got, Equals, expected)
+}
+
 func (s *S) TestDeleteKeyFile(c *C) {
 	keyfile, err := BuildAndStoreKeyFile("blackwater-park", "my-key")
 	c.Assert(err, IsNil)
