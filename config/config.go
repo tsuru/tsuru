@@ -19,7 +19,7 @@ func ReadConfigFile(filePath string) error {
 	if err != nil {
 		return err
 	}
-	return goyaml.Unmarshal(data, &Configs)
+	return ReadConfigBytes(data)
 }
 
 func Get(key string) (interface{}, error) {
