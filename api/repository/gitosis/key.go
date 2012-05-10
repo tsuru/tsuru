@@ -1,23 +1,16 @@
 package gitosis
 
 import (
-	"errors"
 	"fmt"
-	"github.com/timeredbull/tsuru/log"
 	"os"
 	"path"
 	"syscall"
 )
 
-// AddKeys adds a user's public key to the keydir
-func AddKey(group, member, key string) (string, error) {
-	c, err := getConfig()
-	if err != nil {
-		return "", err
-	}
-	if !c.HasSection("group " + group) {
-		return "", errors.New("Group not found")
-	}
+// BuildAndStoreKeyFile adds a key to key dir, returning the name
+// of the file containing the new public key. This name should
+// be stored for future remotion of the key.
+func BuildAndStoreKeyFile(member, key string) (string, error) {
 	p, err := getKeydirPath()
 	if err != nil {
 		return "", err
@@ -26,7 +19,7 @@ func AddKey(group, member, key string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	filename, actualMember, err := nextAvailableKey(p, member)
+	filename, err := nextAvailableKey(p, member)
 	if err != nil {
 		return "", err
 	}
@@ -40,38 +33,27 @@ func AddKey(group, member, key string) (string, error) {
 	if err != nil || n != len(key) {
 		return "", err
 	}
-	err = addMember(group, actualMember)
-	if err != nil {
-		err = os.Remove(keyfilename)
-		if err != nil {
-			log.Panicf("Fatal error: the key file %s was left in the keydir", keyfilename)
-			return "", err
-		}
-		return "", errors.New("Failed to add member to the group, the key file was not saved")
-	}
 	return filename, nil
 }
 
-func nextAvailableKey(keydirname, member string) (string, string, error) {
+func nextAvailableKey(keydirname, member string) (string, error) {
 	keydir, err := os.Open(keydirname)
 	if err != nil {
-		return "", "", err
+		return "", err
 	}
 	defer keydir.Close()
 	filenames, err := keydir.Readdirnames(0)
 	if err != nil {
-		return "", "", err
+		return "", err
 	}
-	pattern := member + "_key%d"
+	pattern := member + "_key%d.pub"
 	counter := 1
-	actualMember := fmt.Sprintf(pattern, counter)
-	filename := actualMember + ".pub"
+	filename := fmt.Sprintf(pattern, counter)
 	for _, f := range filenames {
 		if f == filename {
 			counter++
-			actualMember = fmt.Sprintf(pattern, counter)
-			filename = actualMember + ".pub"
+			filename = fmt.Sprintf(pattern, counter)
 		}
 	}
-	return filename, actualMember, nil
+	return filename, nil
 }
