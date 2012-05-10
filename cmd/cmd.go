@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
+	"os/user"
 )
 
 type Manager struct {
@@ -55,4 +57,18 @@ type Context struct {
 
 type Info struct {
 	Name string
+}
+
+func WriteToken(token string) error {
+	user, err := user.Current()
+	tokenPath := user.HomeDir + "/.tsuru_token"
+	file, err := os.Create(tokenPath)
+	if err != nil {
+		return err
+	}
+	_, err = file.WriteString(token)
+	if err != nil {
+		return err
+	}
+	return nil
 }

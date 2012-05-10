@@ -4,7 +4,9 @@ import (
 	"bytes"
 	"errors"
 	"io"
+	"io/ioutil"
 	. "launchpad.net/gocheck"
+	"os/user"
 	"testing"
 )
 
@@ -64,4 +66,14 @@ func (s *S) TestRun(c *C) {
 func (s *S) TestRunCommandThatDoesNotExist(c *C) {
 	manager.Run([]string{"bar"})
 	c.Assert(manager.Stderr.(*bytes.Buffer).String(), Equals, "command bar does not exist\n")
+}
+
+func (s *S) TestWriteToken(c *C) {
+	err := WriteToken("abc")
+	c.Assert(err, IsNil)
+	user, err := user.Current()
+	tokenPath := user.HomeDir + "/.tsuru_token"
+	c.Assert(err, IsNil)
+	token, err := ioutil.ReadFile(tokenPath)
+	c.Assert(string(token), Equals, "abc")
 }
