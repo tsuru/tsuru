@@ -23,6 +23,16 @@ func (s *S) TestLogPanic(c *C) {
 	Panic("log anything")
 }
 
+func (s *S) TestLogPanicf(c *C) {
+	buf := &bytes.Buffer{}
+	defer buf.Reset()
+	Target = stdlog.New(buf, "", 0)
+	defer func() {
+		c.Assert(recover(), Equals, "log anything formatted")
+	}()
+	Panicf("log anything %s", "formatted")
+}
+
 func (s *S) TestLogPrint(c *C) {
 	buf := &bytes.Buffer{}
 	defer buf.Reset()
