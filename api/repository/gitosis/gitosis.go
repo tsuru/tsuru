@@ -12,11 +12,23 @@ import (
 
 // Add a new project to gitosis.conf.
 func AddProject(group, project string) error {
+	confPath, err := ConfPath()
+	if err != nil {
+		log.Print(err)
+		return err
+	}
+	c, err := ini.ReadDefault(confPath)
+	if err != nil {
+		log.Print(err)
+		return err
+	}
 	section := fmt.Sprintf("group %s", group) //check if session exists
-	err := addOption(section, "writable", project)
+	err = addOption(c, section, "writable", project)
 	if err != nil {
 		return err
 	}
+	commit := fmt.Sprintf("Added project %s to group %s", project, group)
+	writeCommitPush(c, commit)
 	return nil
 }
 
@@ -106,17 +118,7 @@ func removeMember(group, member string) error {
 	return writeCommitPush(c, commitMsg)
 }
 
-func addOption(section, option, value string) (err error) {
-	confPath, err := ConfPath()
-	if err != nil {
-		log.Print(err)
-		return err
-	}
-	c, err := ini.ReadDefault(confPath)
-	if err != nil {
-		log.Print(err)
-		return err
-	}
+func addOption(c *ini.Config, section, option, value string) (err error) {
 	var strValues string
 	if c.HasOption(section, option) {
 		strValues, err = c.String(section, option)
@@ -131,13 +133,8 @@ func addOption(section, option, value string) (err error) {
 		return errors.New(errStr)
 	}
 	values = append(values, value)
-	optValues := strings.Join(values, " ")
+	optValues := strings.Trim(strings.Join(values, " "), " ")
 	c.AddOption(section, option, optValues)
-	err = c.WriteFile(confPath, 0744, "gitosis configuration file")
-	if err != nil {
-		log.Print(err)
-		return err
-	}
 	return nil
 }
 

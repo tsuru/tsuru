@@ -36,25 +36,38 @@ func (s *S) TestAddMoreThenOneProject(c *C) {
 	c.Assert(obtained, Equals, "take-over-the-world someProject")
 }
 
+func (s *S) TestAddProjectCommitAndPush(c *C) {
+	err := AddGroup("myGroup")
+	c.Assert(err, IsNil)
+	err = AddProject("myGroup", "myProject")
+	c.Assert(err, IsNil)
+	pwd, err := os.Getwd()
+	c.Assert(err, IsNil)
+	os.Chdir(s.gitosisBare)
+	bareOutput, err := exec.Command("git", "log", "-1", "--pretty=format:%s").CombinedOutput()
+	c.Assert(err, IsNil)
+	os.Chdir(pwd)
+	expected := "Added project myProject to group myGroup"
+	c.Assert(string(bareOutput), Equals, expected)
+}
+
 func (s *S) TestAppendToOption(c *C) {
 	group := "fooGroup"
 	section := fmt.Sprintf("group %s", group)
 	err := AddGroup(group)
 	c.Assert(err, IsNil)
-	err = addOption(section, "writable", "firstProject")
-	c.Assert(err, IsNil)
-	// Check if option were added
 	conf, err := ini.ReadDefault(path.Join(s.gitosisRepo, "gitosis.conf"))
 	c.Assert(err, IsNil)
+	err = addOption(conf, section, "writable", "firstProject")
+	c.Assert(err, IsNil)
+	// Check if option were added
 	obtained, err := conf.String(section, "writable")
 	c.Assert(err, IsNil)
 	c.Assert(obtained, Equals, "firstProject")
 	// Add one more value to same section/option
-	err = addOption(section, "writable", "anotherProject")
+	err = addOption(conf, section, "writable", "anotherProject")
 	c.Assert(err, IsNil)
 	// Check if the values were appended
-	conf, err = ini.ReadDefault(path.Join(s.gitosisRepo, "gitosis.conf"))
-	c.Assert(err, IsNil)
 	obtained, err = conf.String(section, "writable")
 	c.Assert(err, IsNil)
 	c.Assert(obtained, Equals, "firstProject anotherProject")
