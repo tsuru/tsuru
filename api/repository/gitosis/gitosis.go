@@ -118,7 +118,10 @@ func RemoveMember(group, member string) error {
 	if !c.HasSection(section) {
 		return errors.New("Group not found")
 	}
-	strMembers, _ := c.String(section, "members")
+	strMembers, err := c.String(section, "members")
+	if err != nil {
+		return errors.New("This group does not have any members")
+	}
 	members := strings.Split(strMembers, " ")
 	index := find(members, member)
 	if index < 0 {
