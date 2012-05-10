@@ -28,7 +28,7 @@ func (s *S) SetUpSuite(c *C) {
 	c.Assert(err, IsNil)
 	s.gitosisRepo, err = config.GetString("git:gitosis-repo")
 	currentDir := os.Getenv("PWD")
-	err = os.Mkdir(s.gitRoot, 0777)
+	err = os.MkdirAll(s.gitRoot, 0777)
 	c.Assert(err, IsNil)
 	err = os.Chdir(s.gitRoot)
 	c.Assert(err, IsNil)
