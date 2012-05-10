@@ -1,6 +1,7 @@
 package gitosis
 
 import (
+	"fmt"
 	ini "github.com/kless/goconfig/config"
 	"github.com/timeredbull/tsuru/config"
 	. "launchpad.net/gocheck"
@@ -11,8 +12,52 @@ import (
 
 func (s *S) TestAddProject(c *C) {
 	err := AddGroup("someGroup")
+	c.Assert(err, IsNil)
 	err = AddProject("someGroup", "someProject")
 	c.Assert(err, IsNil)
+	conf, err := ini.ReadDefault(path.Join(s.gitosisRepo, "gitosis.conf"))
+	c.Assert(conf.HasOption("group someGroup", "writable"), Equals, true)
+	obtained, err := conf.String("group someGroup", "writable")
+	c.Assert(err, IsNil)
+	c.Assert(obtained, Equals, "someProject")
+}
+
+func (s *S) TestAddMoreThenOneProject(c *C) {
+	err := AddGroup("fooGroup")
+	c.Assert(err, IsNil)
+	err = AddProject("fooGroup", "take-over-the-world")
+	c.Assert(err, IsNil)
+	err = AddProject("fooGroup", "someProject")
+	c.Assert(err, IsNil)
+	conf, err := ini.ReadDefault(path.Join(s.gitosisRepo, "gitosis.conf"))
+	c.Assert(err, IsNil)
+	obtained, err := conf.String("group fooGroup", "writable")
+	c.Assert(err, IsNil)
+	c.Assert(obtained, Equals, "take-over-the-world someProject")
+}
+
+func (s *S) TestAppendToOption(c *C) {
+	group := "fooGroup"
+	section := fmt.Sprintf("group %s", group)
+	err := AddGroup(group)
+	c.Assert(err, IsNil)
+	err = addOption(section, "writable", "firstProject")
+	c.Assert(err, IsNil)
+	// Check if option were added
+	conf, err := ini.ReadDefault(path.Join(s.gitosisRepo, "gitosis.conf"))
+	c.Assert(err, IsNil)
+	obtained, err := conf.String(section, "writable")
+	c.Assert(err, IsNil)
+	c.Assert(obtained, Equals, "firstProject")
+	// Add one more value to same section/option
+	err = addOption(section, "writable", "anotherProject")
+	c.Assert(err, IsNil)
+	// Check if the values were appended
+	conf, err = ini.ReadDefault(path.Join(s.gitosisRepo, "gitosis.conf"))
+	c.Assert(err, IsNil)
+	obtained, err = conf.String(section, "writable")
+	c.Assert(err, IsNil)
+	c.Assert(obtained, Equals, "firstProject anotherProject")
 }
 
 func (s *S) TestAddGroup(c *C) {

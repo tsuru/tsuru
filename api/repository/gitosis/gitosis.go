@@ -12,12 +12,11 @@ import (
 
 // Add a new project to gitosis.conf.
 func AddProject(group, project string) error {
-	c, err := getConfig()
+	section := fmt.Sprintf("group %s", group) //check if session exists
+	err := addOption(section, "writable", project)
 	if err != nil {
 		return err
 	}
-	section := fmt.Sprintf("group %s", group)
-	c.AddOption(section, "writable", project)
 	return nil
 }
 
@@ -105,6 +104,41 @@ func removeMember(group, member string) error {
 	}
 	commitMsg := fmt.Sprintf("Removing member %s from group %s", member, group)
 	return writeCommitPush(c, commitMsg)
+}
+
+func addOption(section, option, value string) (err error) {
+	confPath, err := ConfPath()
+	if err != nil {
+		log.Print(err)
+		return err
+	}
+	c, err := ini.ReadDefault(confPath)
+	if err != nil {
+		log.Print(err)
+		return err
+	}
+	var strValues string
+	if c.HasOption(section, option) {
+		strValues, err = c.String(section, option)
+		if err != nil {
+			log.Print(err)
+			return err
+		}
+	}
+	values := strings.Split(strValues, " ")
+	if checkPresenceOfString(values, value) {
+		errStr := fmt.Sprintf("Value %s for option %s in section %s has already been added", value, option, section)
+		return errors.New(errStr)
+	}
+	values = append(values, value)
+	optValues := strings.Join(values, " ")
+	c.AddOption(section, option, optValues)
+	err = c.WriteFile(confPath, 0744, "gitosis configuration file")
+	if err != nil {
+		log.Print(err)
+		return err
+	}
+	return nil
 }
 
 func ConfPath() (p string, err error) {
