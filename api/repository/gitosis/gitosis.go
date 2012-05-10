@@ -6,8 +6,6 @@ import (
 	ini "github.com/kless/goconfig/config"
 	"github.com/timeredbull/tsuru/config"
 	"github.com/timeredbull/tsuru/log"
-	"os"
-	"os/exec"
 	"path"
 	"strings"
 )
@@ -42,18 +40,8 @@ func AddGroup(name string) error {
 		log.Print(errStr)
 		return errors.New(errStr)
 	}
-	err = c.WriteFile(confPath, 0744, "gitosis configuration file")
-	if err != nil {
-		log.Print(err)
-		return err
-	}
 	commitMsg := fmt.Sprintf("Defining gitosis group for group %s", name)
-	err = pushToGitosis(commitMsg)
-	if err != nil {
-		log.Print(err)
-		return err
-	}
-	return nil
+	return writeCommitPush(c, confPath, commitMsg)
 }
 
 // Removes a group section and all it's options.
@@ -74,18 +62,8 @@ func RemoveGroup(group string) error {
 		log.Print("Section does not exists")
 		return errors.New("Section does not exists")
 	}
-	err = c.WriteFile(confPath, 0744, "gitosis configuration file")
-	if err != nil {
-		log.Print(err)
-		return err
-	}
 	commitMsg := fmt.Sprintf("Removing group %s from gitosis.conf", group)
-	err = pushToGitosis(commitMsg)
-	if err != nil {
-		log.Print(err)
-		return err
-	}
-	return nil
+	return writeCommitPush(c, confPath, commitMsg)
 }
 
 // Adds a member to the given group.
@@ -114,18 +92,8 @@ func AddMember(group, member string) error {
 	}
 	members = append(members, member)
 	c.AddOption(section, "members", strings.Join(members, " "))
-	err = c.WriteFile(confPath, 0744, "gitosis configuration file")
-	if err != nil {
-		log.Print(err)
-		return err
-	}
 	commitMsg := fmt.Sprintf("Adding member %s to group %s", member, group)
-	err = pushToGitosis(commitMsg)
-	if err != nil {
-		log.Print(err)
-		return err
-	}
-	return nil
+	return writeCommitPush(c, confPath, commitMsg)
 }
 
 // RemoveMember removes a member from the given group.
@@ -144,7 +112,10 @@ func RemoveMember(group, member string) error {
 	if !c.HasSection(section) {
 		return errors.New("Group not found")
 	}
-	strMembers, _ := c.String(section, "members")
+	strMembers, err := c.String(section, "members")
+	if err != nil {
+		return errors.New("This group does not have any members")
+	}
 	members := strings.Split(strMembers, " ")
 	index := find(members, member)
 	if index < 0 {
@@ -158,18 +129,8 @@ func RemoveMember(group, member string) error {
 	} else {
 		c.RemoveOption(section, "members")
 	}
-	err = c.WriteFile(confPath, 0744, "gitosis configuration file")
-	if err != nil {
-		log.Print(err)
-		return err
-	}
 	commitMsg := fmt.Sprintf("Removing member %s from group %s", member, group)
-	err = pushToGitosis(commitMsg)
-	if err != nil {
-		log.Print(err)
-		return err
-	}
-	return nil
+	return writeCommitPush(c, confPath, commitMsg)
 }
 
 func addOption(section, option, value string) (err error) {
@@ -204,46 +165,6 @@ func addOption(section, option, value string) (err error) {
 		log.Print(err)
 		return err
 	}
-	return nil
-}
-
-// Add, commit and push all changes in gitosis repository to it's
-// bare.
-func pushToGitosis(cMsg string) error {
-	repoPath, err := config.GetString("git:gitosis-repo")
-	if err != nil {
-		log.Print(err)
-		return err
-	}
-
-	pwd, err := os.Getwd()
-	if err != nil {
-		log.Print(err)
-		return err
-	}
-	os.Chdir(repoPath)
-
-	output, err := exec.Command("git", "add", ".").CombinedOutput()
-	if err != nil {
-		fmt.Println(string(output))
-		log.Print(output, err)
-		return err
-	}
-	output, err = exec.Command("git", "commit", "-m", cMsg).CombinedOutput()
-	if err != nil {
-		fmt.Println(string(output))
-		log.Print(output, err)
-		return err
-	}
-
-	output, err = exec.Command("git", "push", "origin", "master").CombinedOutput()
-	if err != nil {
-		fmt.Println(string(output))
-		log.Print(output, err)
-		return err
-	}
-
-	os.Chdir(pwd)
 	return nil
 }
 

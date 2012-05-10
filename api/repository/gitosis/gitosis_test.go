@@ -237,6 +237,8 @@ func (s *S) TestRemoveMemberFromGroupRemovesTheOptionFromTheSectionWhenTheMember
 func (s *S) TestRemoveMemberFromGroupReturnsErrorsIfTheGroupDoesNotContainTheGivenMember(c *C) {
 	err := AddGroup("pink-floyd")
 	c.Assert(err, IsNil)
+	err = AddMember("pink-floyd", "another-brick")
+	c.Assert(err, IsNil)
 	err = RemoveMember("pink-floyd", "pigs-on-the-wing")
 	c.Assert(err, NotNil)
 	c.Assert(err, ErrorMatches, "^This group does not have this member$")
@@ -246,6 +248,14 @@ func (s *S) TestRemoveMemberFromGroupReturnsErrorIfTheGroupDoesNotExist(c *C) {
 	err := RemoveMember("pink-floyd", "pigs-on-the-wing")
 	c.Assert(err, NotNil)
 	c.Assert(err, ErrorMatches, "^Group not found$")
+}
+
+func (s *S) TestRemovememberFromGroupReturnsErrorsIfTheGroupDoesNotHaveAnyMember(c *C) {
+	err := AddGroup("pato-fu")
+	c.Assert(err, IsNil)
+	err = RemoveMember("pato-fu", "eu-sei")
+	c.Assert(err, NotNil)
+	c.Assert(err, ErrorMatches, "^This group does not have any members$")
 }
 
 func (s *S) TestAddAndCommit(c *C) {

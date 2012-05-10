@@ -1,0 +1,60 @@
+package gitosis
+
+import (
+	"fmt"
+	ini "github.com/kless/goconfig/config"
+	"github.com/timeredbull/tsuru/config"
+	"github.com/timeredbull/tsuru/log"
+	"os"
+	"os/exec"
+)
+
+// Add, commit and push all changes in gitosis repository to it's
+// bare.
+func pushToGitosis(cMsg string) error {
+	repoPath, err := config.GetString("git:gitosis-repo")
+	if err != nil {
+		log.Print(err)
+		return err
+	}
+	pwd, err := os.Getwd()
+	if err != nil {
+		log.Print(err)
+		return err
+	}
+	os.Chdir(repoPath)
+	output, err := exec.Command("git", "add", ".").CombinedOutput()
+	if err != nil {
+		fmt.Println(string(output))
+		log.Print(output, err)
+		return err
+	}
+	output, err = exec.Command("git", "commit", "-m", cMsg).CombinedOutput()
+	if err != nil {
+		fmt.Println(string(output))
+		log.Print(output, err)
+		return err
+	}
+	output, err = exec.Command("git", "push", "origin", "master").CombinedOutput()
+	if err != nil {
+		fmt.Println(string(output))
+		log.Print(output, err)
+		return err
+	}
+	os.Chdir(pwd)
+	return nil
+}
+
+func writeCommitPush(c *ini.Config, confPath, commit string) error {
+	err := c.WriteFile(confPath, 0744, "gitosis configuration file")
+	if err != nil {
+		log.Print(err)
+		return err
+	}
+	err = pushToGitosis(commit)
+	if err != nil {
+		log.Print(err)
+		return err
+	}
+	return nil
+}

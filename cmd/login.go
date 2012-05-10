@@ -11,7 +11,7 @@ type LoginCommand struct{}
 func (c *LoginCommand) Run(context *Context, client Doer) error {
 	email, password := context.Args[0], context.Args[1]
 	b := bytes.NewBufferString(`{"password":"` + password + `"}`)
-	request, err := http.NewRequest("POST", "http://tsuru.plataformas.glb.com:8080/"+email+"/tokens/", b)
+	request, err := http.NewRequest("POST", "http://tsuru.plataformas.glb.com:8080/users/"+email+"/tokens", b)
 	if err != nil {
 		return err
 	}
