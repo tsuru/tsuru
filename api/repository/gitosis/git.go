@@ -55,10 +55,13 @@ func pushToGitosis(cMsg string) error {
 	return nil
 }
 
-func writeCommitPush(c *ini.Config, confPath, commit string) error {
-	err := c.WriteFile(confPath, 0744, "gitosis configuration file")
+func writeCommitPush(c *ini.Config, commit string) error {
+	confPath, err := ConfPath()
 	if err != nil {
-		log.Print(err)
+		return err
+	}
+	err = c.WriteFile(confPath, 0744, "gitosis configuration file")
+	if err != nil {
 		return err
 	}
 	err = pushToGitosis(commit)

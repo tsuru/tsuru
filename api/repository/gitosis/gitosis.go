@@ -14,14 +14,8 @@ import (
 
 // Add a new project to gitosis.conf.
 func AddProject(group, project string) error {
-	confPath, err := ConfPath()
+	c, err := getConfig()
 	if err != nil {
-		log.Panic(err)
-		return err
-	}
-	c, err := ini.ReadDefault(confPath)
-	if err != nil {
-		log.Panic(err)
 		return err
 	}
 	section := fmt.Sprintf("group %s", group)
@@ -31,60 +25,40 @@ func AddProject(group, project string) error {
 
 // Add a new group to gitosis.conf. Also commit and push changes.
 func AddGroup(name string) error {
-	confPath, err := ConfPath()
+	c, err := getConfig()
 	if err != nil {
-		log.Print(err)
-		return err
-	}
-	c, err := ini.ReadDefault(confPath)
-	if err != nil {
-		log.Print(err)
 		return err
 	}
 	sName := fmt.Sprintf("group %s", name)
 	ok := c.AddSection(sName)
 	if !ok {
 		errStr := fmt.Sprintf(`Could not add section "group %s" in gitosis.conf, section already exists!`, name)
-		log.Print(errStr)
 		return errors.New(errStr)
 	}
 	commitMsg := fmt.Sprintf("Defining gitosis group for group %s", name)
-	return writeCommitPush(c, confPath, commitMsg)
+	return writeCommitPush(c, commitMsg)
 }
 
 // Removes a group section and all it's options.
 func RemoveGroup(group string) error {
-	confPath, err := ConfPath()
+	c, err := getConfig()
 	if err != nil {
-		log.Print(err)
-		return err
-	}
-	c, err := ini.ReadDefault(confPath)
-	if err != nil {
-		log.Print(err)
 		return err
 	}
 	gName := fmt.Sprintf("group %s", group)
 	ok := c.RemoveSection(gName)
 	if !ok {
-		log.Print("Section does not exists")
 		return errors.New("Section does not exists")
 	}
 	commitMsg := fmt.Sprintf("Removing group %s from gitosis.conf", group)
-	return writeCommitPush(c, confPath, commitMsg)
+	return writeCommitPush(c, commitMsg)
 }
 
 // addMember adds a member to the given group.
 // member parameter should be the same as the key name in keydir dir.
 func addMember(group, member string) error {
-	confPath, err := ConfPath()
+	c, err := getConfig()
 	if err != nil {
-		log.Print(err)
-		return err
-	}
-	c, err := ini.ReadDefault(confPath)
-	if err != nil {
-		log.Print(err)
 		return err
 	}
 	section := fmt.Sprintf("group %s", group)
@@ -101,19 +75,13 @@ func addMember(group, member string) error {
 	members = append(members, member)
 	c.AddOption(section, "members", strings.Join(members, " "))
 	commitMsg := fmt.Sprintf("Adding member %s to group %s", member, group)
-	return writeCommitPush(c, confPath, commitMsg)
+	return writeCommitPush(c, commitMsg)
 }
 
 // removeMember removes a member from the given group.
 func removeMember(group, member string) error {
-	confPath, err := ConfPath()
+	c, err := getConfig()
 	if err != nil {
-		log.Print(err)
-		return err
-	}
-	c, err := ini.ReadDefault(confPath)
-	if err != nil {
-		log.Print(err)
 		return err
 	}
 	section := fmt.Sprintf("group %s", group)
@@ -138,19 +106,13 @@ func removeMember(group, member string) error {
 		c.RemoveOption(section, "members")
 	}
 	commitMsg := fmt.Sprintf("Removing member %s from group %s", member, group)
-	return writeCommitPush(c, confPath, commitMsg)
+	return writeCommitPush(c, commitMsg)
 }
 
 // AddKeys adds a user's public key to the keydir
 func AddKey(group, member, key string) error {
-	confPath, err := ConfPath()
+	c, err := getConfig()
 	if err != nil {
-		log.Print(err)
-		return err
-	}
-	c, err := ini.ReadDefault(confPath)
-	if err != nil {
-		log.Print(err)
 		return err
 	}
 	if !c.HasSection("group " + group) {
@@ -227,4 +189,12 @@ func find(strs []string, str string) int {
 
 func checkPresenceOfString(strs []string, str string) bool {
 	return find(strs, str) > -1
+}
+
+func getConfig() (*ini.Config, error) {
+	confPath, err := ConfPath()
+	if err != nil {
+		return nil, err
+	}
+	return ini.ReadDefault(confPath)
 }
