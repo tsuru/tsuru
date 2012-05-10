@@ -4,9 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"io"
-	"io/ioutil"
 	. "launchpad.net/gocheck"
-	"os/user"
 	"testing"
 )
 
@@ -71,9 +69,15 @@ func (s *S) TestRunCommandThatDoesNotExist(c *C) {
 func (s *S) TestWriteToken(c *C) {
 	err := WriteToken("abc")
 	c.Assert(err, IsNil)
-	user, err := user.Current()
-	tokenPath := user.HomeDir + "/.tsuru_token"
+	token, err := ReadToken()
 	c.Assert(err, IsNil)
-	token, err := ioutil.ReadFile(tokenPath)
-	c.Assert(string(token), Equals, "abc")
+	c.Assert(token, Equals, "abc")
+}
+
+func (s *S) TestReadToken(c *C) {
+	err := WriteToken("123")
+	c.Assert(err, IsNil)
+	token, err := ReadToken()
+	c.Assert(err, IsNil)
+	c.Assert(token, Equals, "123")
 }
