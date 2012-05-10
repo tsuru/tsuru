@@ -25,10 +25,11 @@ func (c *hasKeyChecker) Check(params []interface{}, names []string) (bool, strin
 	if !ok {
 		return false, "first parameter should be a user pointer"
 	}
-	key, ok := params[1].(string)
+	content, ok := params[1].(string)
 	if !ok {
 		return false, "second parameter should be a string"
 	}
+	key := Key{Content: content}
 	return user.hasKey(key), ""
 }
 

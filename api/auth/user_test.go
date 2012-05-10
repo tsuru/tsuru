@@ -184,7 +184,7 @@ func (s *S) TestAddKeyReturnsErrorIfTheKeyIsAlreadyPresent(c *C) {
 }
 
 func (s *S) TestRemoveKeyRemovesAKeyFromTheUser(c *C) {
-	u := &User{Email: "shineon@pinkfloyd.com", Keys: []string{"my-key"}}
+	u := &User{Email: "shineon@pinkfloyd.com", Keys: []Key{Key{Content: "my-key"}}}
 	err := u.RemoveKey("my-key")
 	c.Assert(err, IsNil)
 	c.Assert(u, Not(HasKey), "my-key")

@@ -60,11 +60,16 @@ func (t *Team) RemoveUser(u *User) error {
 	return nil
 }
 
+type Key struct {
+	Name    string
+	Content string
+}
+
 type User struct {
 	Email    string
 	Password string
 	Tokens   []Token
-	Keys     []string
+	Keys     []Key
 }
 
 func GetUserByToken(token string) (*User, error) {
@@ -113,20 +118,22 @@ func (u *User) CreateToken() (*Token, error) {
 	return t, err
 }
 
-func (u *User) findKey(key string) int {
+func (u *User) findKey(key Key) (Key, int) {
 	for i, k := range u.Keys {
-		if k == key {
-			return i
+		if k.Content == key.Content {
+			return k, i
 		}
 	}
-	return -1
+	return Key{}, -1
 }
 
-func (u *User) hasKey(key string) bool {
-	return u.findKey(key) > -1
+func (u *User) hasKey(key Key) bool {
+	_, index := u.findKey(key)
+	return index > -1
 }
 
-func (u *User) AddKey(key string) error {
+func (u *User) AddKey(keyContent string) error {
+	key := Key{Content: keyContent}
 	if u.hasKey(key) {
 		return errors.New("User has this key already")
 	}
@@ -134,8 +141,9 @@ func (u *User) AddKey(key string) error {
 	return nil
 }
 
-func (u *User) RemoveKey(key string) error {
-	index := u.findKey(key)
+func (u *User) RemoveKey(keyContent string) error {
+	key := Key{Content: keyContent}
+	_, index := u.findKey(key)
 	if index < 0 {
 		return errors.New("User does not have this key")
 	}
