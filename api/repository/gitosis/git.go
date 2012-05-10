@@ -7,7 +7,17 @@ import (
 	"github.com/timeredbull/tsuru/log"
 	"os"
 	"os/exec"
+	"path"
 )
+
+func getKeydirPath() (string, error) {
+	repoPath, err := config.GetString("git:gitosis-repo")
+	if err != nil {
+		log.Print(err)
+		return "", err
+	}
+	return path.Join(repoPath, "keydir"), nil
+}
 
 // Add, commit and push all changes in gitosis repository to it's
 // bare.

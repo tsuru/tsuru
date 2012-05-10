@@ -6,8 +6,10 @@ import (
 	ini "github.com/kless/goconfig/config"
 	"github.com/timeredbull/tsuru/config"
 	"github.com/timeredbull/tsuru/log"
+	"os"
 	"path"
 	"strings"
+	"syscall"
 )
 
 // Add a new project to gitosis.conf.
@@ -72,9 +74,9 @@ func RemoveGroup(group string) error {
 	return writeCommitPush(c, confPath, commitMsg)
 }
 
-// Adds a member to the given group.
+// addMember adds a member to the given group.
 // member parameter should be the same as the key name in keydir dir.
-func AddMember(group, member string) error {
+func addMember(group, member string) error {
 	confPath, err := ConfPath()
 	if err != nil {
 		log.Print(err)
@@ -102,8 +104,8 @@ func AddMember(group, member string) error {
 	return writeCommitPush(c, confPath, commitMsg)
 }
 
-// RemoveMember removes a member from the given group.
-func RemoveMember(group, member string) error {
+// removeMember removes a member from the given group.
+func removeMember(group, member string) error {
 	confPath, err := ConfPath()
 	if err != nil {
 		log.Print(err)
@@ -139,6 +141,70 @@ func RemoveMember(group, member string) error {
 	return writeCommitPush(c, confPath, commitMsg)
 }
 
+// AddKeys adds a user's public key to the keydir
+func AddKey(group, member, key string) error {
+	confPath, err := ConfPath()
+	if err != nil {
+		log.Print(err)
+		return err
+	}
+	c, err := ini.ReadDefault(confPath)
+	if err != nil {
+		log.Print(err)
+		return err
+	}
+	if !c.HasSection("group " + group) {
+		return errors.New("Group not found")
+	}
+	p, err := getKeydirPath()
+	if err != nil {
+		return err
+	}
+	err = os.MkdirAll(p, 0755)
+	if err != nil {
+		return err
+	}
+	dir, err := os.Open(p)
+	if err != nil {
+		return err
+	}
+	filenames, err := dir.Readdirnames(0)
+	if err != nil {
+		return err
+	}
+	pattern := member + "_key%d"
+	counter := 1
+	actualMember := fmt.Sprintf(pattern, counter)
+	filename := actualMember + ".pub"
+	for _, f := range filenames {
+		if f == filename {
+			counter++
+			actualMember = fmt.Sprintf(pattern, counter)
+			filename = actualMember + ".pub"
+		}
+	}
+	keyfilename := path.Join(p, filename)
+	keyfile, err := os.OpenFile(keyfilename, syscall.O_WRONLY|syscall.O_CREAT, 0644)
+	if err != nil {
+		return err
+	}
+	defer keyfile.Close()
+	n, err := keyfile.WriteString(key)
+	if err != nil || n != len(key) {
+		return err
+	}
+	err = addMember(group, actualMember)
+	if err != nil {
+		err = os.Remove(keyfilename)
+		if err != nil {
+			log.Panicf("Fatal error: the key file %s was left in the keydir", keyfilename)
+			return err
+		}
+		return errors.New("Failed to add member to the group, the key file was not saved")
+	}
+	return nil
+}
+
 func ConfPath() (p string, err error) {
 	p = ""
 	repoPath, err := config.GetString("git:gitosis-repo")
@@ -146,7 +212,6 @@ func ConfPath() (p string, err error) {
 		log.Print(err)
 		return
 	}
-
 	p = path.Join(repoPath, "gitosis.conf")
 	return
 }

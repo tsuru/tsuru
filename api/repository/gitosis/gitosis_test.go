@@ -3,10 +3,12 @@ package gitosis
 import (
 	ini "github.com/kless/goconfig/config"
 	"github.com/timeredbull/tsuru/config"
+	"io/ioutil"
 	. "launchpad.net/gocheck"
 	"os"
 	"os/exec"
 	"path"
+	"syscall"
 )
 
 func (s *S) TestAddProject(c *C) {
@@ -88,7 +90,7 @@ func (s *S) TestRemoveGroupCommitAndPushesChanges(c *C) {
 func (s *S) TestAddMemberToGroup(c *C) {
 	err := AddGroup("take-over-the-world")
 	c.Assert(err, IsNil)
-	err = AddMember("take-over-the-world", "brain")
+	err = addMember("take-over-the-world", "brain")
 	c.Assert(err, IsNil)
 	conf, err := ini.ReadDefault(path.Join(s.gitosisRepo, "gitosis.conf"))
 	c.Assert(err, IsNil)
@@ -102,7 +104,7 @@ func (s *S) TestAddMemberToGroup(c *C) {
 func (s *S) TestAddMemberToGroupCommitsAndPush(c *C) {
 	err := AddGroup("someTeam")
 	c.Assert(err, IsNil)
-	err = AddMember("someTeam", "brain")
+	err = addMember("someTeam", "brain")
 	pwd, err := os.Getwd()
 	c.Assert(err, IsNil)
 	os.Chdir(s.gitosisBare)
@@ -116,9 +118,9 @@ func (s *S) TestAddMemberToGroupCommitsAndPush(c *C) {
 func (s *S) TestAddTwoMembersToGroup(c *C) {
 	err := AddGroup("pink-floyd")
 	c.Assert(err, IsNil)
-	err = AddMember("pink-floyd", "one-of-these-days")
+	err = addMember("pink-floyd", "one-of-these-days")
 	c.Assert(err, IsNil)
-	err = AddMember("pink-floyd", "comfortably-numb")
+	err = addMember("pink-floyd", "comfortably-numb")
 	c.Assert(err, IsNil)
 	conf, err := ini.ReadDefault(path.Join(s.gitosisRepo, "gitosis.conf"))
 	members, err := conf.String("group pink-floyd", "members")
@@ -129,15 +131,15 @@ func (s *S) TestAddTwoMembersToGroup(c *C) {
 func (s *S) TestAddMemberToGroupReturnsErrorIfTheMemberIsAlreadyInTheGroup(c *C) {
 	err := AddGroup("pink-floyd")
 	c.Assert(err, IsNil)
-	err = AddMember("pink-floyd", "time")
+	err = addMember("pink-floyd", "time")
 	c.Assert(err, IsNil)
-	err = AddMember("pink-floyd", "time")
+	err = addMember("pink-floyd", "time")
 	c.Assert(err, NotNil)
 	c.Assert(err, ErrorMatches, "^This user is already member of this group$")
 }
 
 func (s *S) TestAddMemberToAGroupThatDoesNotExistReturnError(c *C) {
-	err := AddMember("pink-floyd", "one-of-these-days")
+	err := addMember("pink-floyd", "one-of-these-days")
 	c.Assert(err, NotNil)
 	c.Assert(err, ErrorMatches, "^Group not found$")
 }
@@ -145,11 +147,11 @@ func (s *S) TestAddMemberToAGroupThatDoesNotExistReturnError(c *C) {
 func (s *S) TestRemoveMemberFromGroup(c *C) {
 	err := AddGroup("pink-floyd")
 	c.Assert(err, IsNil)
-	err = AddMember("pink-floyd", "fat-old-sun")
+	err = addMember("pink-floyd", "fat-old-sun")
 	c.Assert(err, IsNil)
-	err = AddMember("pink-floyd", "summer-68")
+	err = addMember("pink-floyd", "summer-68")
 	c.Assert(err, IsNil)
-	err = RemoveMember("pink-floyd", "fat-old-sun")
+	err = removeMember("pink-floyd", "fat-old-sun")
 	c.Assert(err, IsNil)
 	conf, err := ini.ReadDefault(path.Join(s.gitosisRepo, "gitosis.conf"))
 	c.Assert(err, IsNil)
@@ -161,11 +163,11 @@ func (s *S) TestRemoveMemberFromGroup(c *C) {
 func (s *S) TestRemoveMemberFromGroupCommitsAndPush(c *C) {
 	err := AddGroup("pink-floyd")
 	c.Assert(err, IsNil)
-	err = AddMember("pink-floyd", "if")
+	err = addMember("pink-floyd", "if")
 	c.Assert(err, IsNil)
-	err = AddMember("pink-floyd", "atom-heart-mother-suite")
+	err = addMember("pink-floyd", "atom-heart-mother-suite")
 	c.Assert(err, IsNil)
-	err = RemoveMember("pink-floyd", "if")
+	err = removeMember("pink-floyd", "if")
 	c.Assert(err, IsNil)
 	os.Chdir(s.gitosisBare)
 	pwd, err := os.Getwd()
@@ -180,9 +182,9 @@ func (s *S) TestRemoveMemberFromGroupCommitsAndPush(c *C) {
 func (s *S) TestRemoveMemberFromGroupRemovesTheOptionFromTheSectionWhenTheMemberIsTheLast(c *C) {
 	err := AddGroup("pink-floyd")
 	c.Assert(err, IsNil)
-	err = AddMember("pink-floyd", "pigs-on-the-wing")
+	err = addMember("pink-floyd", "pigs-on-the-wing")
 	c.Assert(err, IsNil)
-	err = RemoveMember("pink-floyd", "pigs-on-the-wing")
+	err = removeMember("pink-floyd", "pigs-on-the-wing")
 	c.Assert(err, IsNil)
 	conf, err := ini.ReadDefault(path.Join(s.gitosisRepo, "gitosis.conf"))
 	c.Assert(err, IsNil)
@@ -192,25 +194,100 @@ func (s *S) TestRemoveMemberFromGroupRemovesTheOptionFromTheSectionWhenTheMember
 func (s *S) TestRemoveMemberFromGroupReturnsErrorsIfTheGroupDoesNotContainTheGivenMember(c *C) {
 	err := AddGroup("pink-floyd")
 	c.Assert(err, IsNil)
-	err = AddMember("pink-floyd", "another-brick")
+	err = addMember("pink-floyd", "another-brick")
 	c.Assert(err, IsNil)
-	err = RemoveMember("pink-floyd", "pigs-on-the-wing")
+	err = removeMember("pink-floyd", "pigs-on-the-wing")
 	c.Assert(err, NotNil)
 	c.Assert(err, ErrorMatches, "^This group does not have this member$")
 }
 
 func (s *S) TestRemoveMemberFromGroupReturnsErrorIfTheGroupDoesNotExist(c *C) {
-	err := RemoveMember("pink-floyd", "pigs-on-the-wing")
+	err := removeMember("pink-floyd", "pigs-on-the-wing")
 	c.Assert(err, NotNil)
 	c.Assert(err, ErrorMatches, "^Group not found$")
 }
 
-func (s *S) TestRemovememberFromGroupReturnsErrorsIfTheGroupDoesNotHaveAnyMember(c *C) {
+func (s *S) TestRemoveMemberFromGroupReturnsErrorsIfTheGroupDoesNotHaveAnyMember(c *C) {
 	err := AddGroup("pato-fu")
 	c.Assert(err, IsNil)
-	err = RemoveMember("pato-fu", "eu-sei")
+	err = removeMember("pato-fu", "eu-sei")
 	c.Assert(err, NotNil)
 	c.Assert(err, ErrorMatches, "^This group does not have any members$")
+}
+
+func (s *S) TestAddKeyAddsAKeyFileToTheKeydirDirectoryAndTheMemberToTheGroup(c *C) {
+	err := AddGroup("pato-fu")
+	c.Assert(err, IsNil)
+	err = AddKey("pato-fu", "tolices", "my-key")
+	c.Assert(err, IsNil)
+	p, err := getKeydirPath()
+	c.Assert(err, IsNil)
+	filePath := path.Join(p, "tolices_key1.pub")
+	file, err := os.Open(filePath)
+	c.Assert(err, IsNil)
+	defer file.Close()
+	content, err := ioutil.ReadAll(file)
+	c.Assert(err, IsNil)
+	c.Assert(string(content), Equals, "my-key")
+	conf, err := ini.ReadDefault(path.Join(s.gitosisRepo, "gitosis.conf"))
+	c.Assert(err, IsNil)
+	members, err := conf.String("group pato-fu", "members")
+	c.Assert(err, IsNil)
+	c.Assert(members, Equals, "tolices_key1")
+}
+
+func (s *S) TestAddKeyUseKey2IfThereIsAlreadyAKeyForTheMember(c *C) {
+	err := AddGroup("pato-fu")
+	c.Assert(err, IsNil)
+	p, err := getKeydirPath()
+	c.Assert(err, IsNil)
+	key1Path := path.Join(p, "gol-de-quem_key1.pub")
+	f, err := os.OpenFile(key1Path, syscall.O_CREAT, 0644)
+	c.Assert(err, IsNil)
+	f.Close()
+	err = AddKey("pato-fu", "gol-de-quem", "my-key")
+	c.Assert(err, IsNil)
+	file, err := os.Open(path.Join(p, "gol-de-quem_key2.pub"))
+	c.Assert(err, IsNil)
+	defer file.Close()
+	content, err := ioutil.ReadAll(file)
+	c.Assert(err, IsNil)
+	c.Assert(string(content), Equals, "my-key")
+}
+
+func (s *S) TestAddKeyReturnsErrorIfTheGroupDoesNotExist(c *C) {
+	err := AddKey("pato-fu", "sertoes", "my-key")
+	c.Assert(err, NotNil)
+	c.Assert(err, ErrorMatches, "^Group not found$")
+}
+
+func (s *S) TestAddKeyDoesNotReturnErrorIfTheDirectoryExists(c *C) {
+	err := AddGroup("pato-fu")
+	c.Assert(err, IsNil)
+	p, err := getKeydirPath()
+	c.Assert(err, IsNil)
+	os.MkdirAll(p, 0755)
+	err = AddKey("pato-fu", "vida-imbecil", "my-key")
+	c.Assert(err, IsNil)
+}
+
+func (s *S) TestAddKeyShouldRemoveTheKeyFileIfItFailsToAddTheMemberToGitosisFile(c *C) {
+	err := AddGroup("pain-of-salvation")
+	c.Assert(err, IsNil)
+	err = addMember("pain-of-salvation", "used_key1")
+	c.Assert(err, IsNil)
+	err = AddKey("pain-of-salvation", "used", "my-key")
+	c.Assert(err, NotNil)
+	c.Assert(err, ErrorMatches, "^Failed to add member to the group, the key file was not saved$")
+	p, err := getKeydirPath()
+	c.Assert(err, IsNil)
+	filepath := path.Join(p, "used_key1.pub")
+	f, err := os.Open(filepath)
+	if f != nil {
+		defer f.Close()
+	}
+	c.Assert(err, NotNil)
+	c.Assert(os.IsNotExist(err), Equals, true)
 }
 
 func (s *S) TestAddAndCommit(c *C) {
