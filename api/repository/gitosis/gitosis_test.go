@@ -62,14 +62,14 @@ func (s *S) TestAppendToOption(c *C) {
 	c.Assert(err, IsNil)
 	conf, err := ini.ReadDefault(path.Join(s.gitosisRepo, "gitosis.conf"))
 	c.Assert(err, IsNil)
-	err = addOption(conf, section, "writable", "firstProject")
+	err = addOptionValue(conf, section, "writable", "firstProject")
 	c.Assert(err, IsNil)
 	// Check if option were added
 	obtained, err := conf.String(section, "writable")
 	c.Assert(err, IsNil)
 	c.Assert(obtained, Equals, "firstProject")
 	// Add one more value to same section/option
-	err = addOption(conf, section, "writable", "anotherProject")
+	err = addOptionValue(conf, section, "writable", "anotherProject")
 	c.Assert(err, IsNil)
 	// Check if the values were appended
 	obtained, err = conf.String(section, "writable")

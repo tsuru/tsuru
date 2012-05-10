@@ -27,7 +27,7 @@ func AddProject(group, project string) error {
 		errMsg := fmt.Sprintf("Section %s doesn't exists", section)
 		return errors.New(errMsg)
 	}
-	err = addOption(c, section, "writable", project)
+	err = addOptionValue(c, section, "writable", project)
 	if err != nil {
 		log.Print(err)
 		return err
@@ -79,7 +79,7 @@ func addMember(group, member string) error {
 	if !c.HasSection(section) {
 		return errors.New("Group not found")
 	}
-	err = addOption(c, section, "members", member)
+	err = addOptionValue(c, section, "members", member)
 	if err != nil {
 		log.Print(err)
 		return err
@@ -119,7 +119,7 @@ func removeMember(group, member string) error {
 	return writeCommitPush(c, commitMsg)
 }
 
-func addOption(c *ini.Config, section, option, value string) (err error) {
+func addOptionValue(c *ini.Config, section, option, value string) (err error) {
 	var strValues string
 	if c.HasOption(section, option) {
 		strValues, err = c.String(section, option)
