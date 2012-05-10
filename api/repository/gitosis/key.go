@@ -42,7 +42,12 @@ func DeleteKeyFile(keyfilename string) error {
 		return err
 	}
 	keypath := path.Join(p, keyfilename)
-	return os.Remove(keypath)
+	err = os.Remove(keypath)
+	if err != nil {
+		return err
+	}
+	commitMsg := fmt.Sprintf("Deleted %s keyfile.", keyfilename)
+	return pushToGitosis(commitMsg)
 }
 
 func nextAvailableKey(keydirname, member string) (string, error) {

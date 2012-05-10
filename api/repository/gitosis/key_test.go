@@ -1,6 +1,7 @@
 package gitosis
 
 import (
+	"fmt"
 	"io/ioutil"
 	. "launchpad.net/gocheck"
 	"os"
@@ -68,4 +69,14 @@ func (s *S) TestDeleteKeyFile(c *C) {
 func (s *S) TestDeleteKeyFileReturnsErrorIfTheFileDoesNotExist(c *C) {
 	err := DeleteKeyFile("dont_know.pub")
 	c.Assert(err, NotNil)
+}
+
+func (s *S) TestDeleteKeyFileCommits(c *C) {
+	keyfile, err := BuildAndStoreKeyFile("windowpane", "my-key")
+	c.Assert(err, IsNil)
+	err = DeleteKeyFile(keyfile)
+	c.Assert(err, IsNil)
+	expected := fmt.Sprintf("Deleted %s keyfile.", keyfile)
+	got := s.lastBareCommit(c)
+	c.Assert(got, Equals, expected)
 }
