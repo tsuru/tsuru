@@ -132,8 +132,7 @@ func (u *User) hasKey(key Key) bool {
 	return index > -1
 }
 
-func (u *User) AddKey(keyContent string) error {
-	key := Key{Content: keyContent}
+func (u *User) AddKey(key Key) error {
 	if u.hasKey(key) {
 		return errors.New("User has this key already")
 	}
@@ -141,8 +140,7 @@ func (u *User) AddKey(keyContent string) error {
 	return nil
 }
 
-func (u *User) RemoveKey(keyContent string) error {
-	key := Key{Content: keyContent}
+func (u *User) RemoveKey(key Key) error {
 	_, index := u.findKey(key)
 	if index < 0 {
 		return errors.New("User does not have this key")
