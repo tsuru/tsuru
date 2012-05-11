@@ -17,11 +17,6 @@ func (c *AppsCommand) Run(context *Context, client Doer) error {
 	if err != nil {
 		return err
 	}
-	token, err := ReadToken()
-	if err != nil {
-		return err
-	}
-	request.Header.Set("Authorization", token)
 	response, err := client.Do(request)
 	if err != nil {
 		return err
@@ -66,11 +61,6 @@ func (c *CreateAppCommand) Run(context *Context, client Doer) error {
 	if err != nil {
 		return err
 	}
-	token, err := ReadToken()
-	if err != nil {
-		return err
-	}
-	request.Header.Set("Authorization", token)
 	io.WriteString(context.Stdout, fmt.Sprintf("Creating application: %s\n", appName))
 	response, err := client.Do(request)
 	if err != nil {
