@@ -32,6 +32,7 @@ func pushToGitosis(cMsg string) error {
 		log.Print(err)
 		return err
 	}
+	defer os.Chdir(pwd)
 	os.Chdir(repoPath)
 	output, err := exec.Command("git", "add", ".").CombinedOutput()
 	if err != nil {
@@ -51,7 +52,6 @@ func pushToGitosis(cMsg string) error {
 		log.Print(output, err)
 		return err
 	}
-	os.Chdir(pwd)
 	return nil
 }
 

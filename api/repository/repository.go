@@ -13,28 +13,23 @@ const gitServer = "tsuru.plataformas.glb.com"
 
 func NewRepository(appName string) (err error) {
 	repoPath := GetRepositoryPath(appName)
-
 	err = os.Mkdir(repoPath, 0700)
 	if err != nil {
 		return
 	}
-
 	oldPwd, err := os.Getwd()
 	if err != nil {
 		return
 	}
-
+	defer os.Chdir(oldPwd)
 	err = os.Chdir(repoPath)
 	if err != nil {
 		return
 	}
-
 	err = exec.Command("git", "init", "--bare").Run()
 	if err != nil {
 		return
 	}
-
-	err = os.Chdir(oldPwd)
 	return
 }
 

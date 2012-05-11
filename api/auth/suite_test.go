@@ -1,9 +1,11 @@
 package auth
 
 import (
+	"bytes"
 	"github.com/timeredbull/tsuru/config"
 	"github.com/timeredbull/tsuru/db"
 	"io"
+	"io/ioutil"
 	. "launchpad.net/gocheck"
 	"launchpad.net/mgo"
 	"launchpad.net/mgo/bson"
@@ -52,7 +54,10 @@ type S struct {
 var _ = Suite(&S{})
 
 func (s *S) setupGitosis(c *C) {
-	err := config.ReadConfigFile("../../etc/tsuru.conf")
+	data, err := ioutil.ReadFile("../../etc/tsuru.conf")
+	c.Assert(err, IsNil)
+	data = bytes.Replace(data, []byte("/tmp/git"), []byte("/tmp/gitosis"), -1)
+	err = config.ReadConfigBytes(data)
 	c.Assert(err, IsNil)
 	s.gitRoot, err = config.GetString("git:root")
 	c.Assert(err, IsNil)
@@ -61,6 +66,9 @@ func (s *S) setupGitosis(c *C) {
 	s.gitosisRepo, err = config.GetString("git:gitosis-repo")
 	currentDir, err := os.Getwd()
 	c.Assert(err, IsNil)
+	defer os.Chdir(currentDir)
+	err = os.RemoveAll(s.gitRoot)
+	c.Assert(err, IsNil)
 	err = os.MkdirAll(s.gitRoot, 0777)
 	c.Assert(err, IsNil)
 	err = os.Chdir(s.gitRoot)
@@ -68,8 +76,6 @@ func (s *S) setupGitosis(c *C) {
 	err = exec.Command("git", "init", "--bare", "gitosis-admin.git").Run()
 	c.Assert(err, IsNil)
 	err = exec.Command("git", "clone", "gitosis-admin.git").Run()
-	c.Assert(err, IsNil)
-	err = os.Chdir(currentDir)
 	c.Assert(err, IsNil)
 }
 

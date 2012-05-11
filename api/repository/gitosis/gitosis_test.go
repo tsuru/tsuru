@@ -101,13 +101,13 @@ func (s *S) TestAddGroupShouldCommitAndPushChangesToGitosisBare(c *C) {
 	c.Assert(err, IsNil)
 	pwd, err := os.Getwd()
 	c.Assert(err, IsNil)
+	defer os.Chdir(pwd)
 	os.Chdir(s.gitosisBare)
 	bareOutput, err := exec.Command("git", "log", "-1", "--pretty=format:%H").CombinedOutput()
 	c.Assert(err, IsNil)
 	os.Chdir(s.gitosisRepo)
 	repoOutput, err := exec.Command("git", "log", "-1", "--pretty=format:%H").CombinedOutput()
 	c.Assert(err, IsNil)
-	os.Chdir(pwd)
 	c.Assert(string(repoOutput), Equals, string(bareOutput))
 }
 
