@@ -516,7 +516,7 @@ func (s *S) TestAddKeyFunctionAddTheMemberWithTheKeyNameInTheGitosisConfiguratio
 	defer f.Close()
 	content, err := ioutil.ReadAll(f)
 	c.Assert(err, IsNil)
-	c.Assert(strings.Contains(string(content), "members: " + keyname), Equals, true)
+	c.Assert(strings.Contains(string(content), "members: "+keyname), Equals, true)
 }
 
 func (s *S) TestRemoveKeyHandlerRemovesTheKeyFromTheUser(c *C) {
@@ -625,5 +625,5 @@ func (s *S) TestRemoveKeyHandlerRemovesTheMemberEntryFromGitosis(c *C) {
 	defer f.Close()
 	content, err := ioutil.ReadAll(f)
 	c.Assert(err, IsNil)
-	c.Assert(strings.Contains(string(content), "members: " + keyname), Equals, false)
+	c.Assert(strings.Contains(string(content), "members: "+keyname), Equals, false)
 }
