@@ -19,6 +19,11 @@ func NewClient(client *http.Client) *Client {
 }
 
 func (c *Client) Do(request *http.Request) (*http.Response, error) {
+	token, err := ReadToken()
+	if err != nil {
+		return nil, err
+	}
+	request.Header.Set("Authorization", token)
 	response, _ := c.HttpClient.Do(request)
 	if response.StatusCode > 399 {
 		defer response.Body.Close()
