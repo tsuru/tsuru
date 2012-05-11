@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"github.com/timeredbull/tsuru/api/repository/gitosis"
 	"github.com/timeredbull/tsuru/db"
 	"github.com/timeredbull/tsuru/errors"
 	"io/ioutil"
@@ -255,6 +256,12 @@ func (s *S) TestCreateTeamHandlerReturnConflictIfTheTeamToBeCreatedAlreadyExists
 	c.Assert(ok, Equals, true)
 	c.Assert(e.Code, Equals, http.StatusConflict)
 	c.Assert(e, ErrorMatches, "^This team already exists$")
+}
+
+func (s *S) TestCreateTeamCreatesTheGroupWithinGitosis(c *C) {
+	err := createTeam("timeredbull", s.user)
+	c.Assert(err, IsNil)
+	c.Assert(gitosis.HasGroup("timeredbull"), Equals, true)
 }
 
 func (s *S) TestAddUserToTeamShouldAddAUserToATeamIfTheUserAndTheTeamExistAndTheGivenUserIsMemberOfTheTeam(c *C) {
