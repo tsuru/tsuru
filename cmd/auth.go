@@ -28,7 +28,7 @@ func (c *AddUserCommand) Run(context *Context, client Doer) error {
 }
 
 func (c *AddUserCommand) Info() *Info {
-	return &Info{Name: "add-user"}
+	return &Info{Name: "create-user"}
 }
 
 type CreateTeamCommand struct{}
