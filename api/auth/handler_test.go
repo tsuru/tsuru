@@ -498,9 +498,8 @@ func (s *S) TestAddKeyFunctionCreatesTheKeyFileInTheGitosisRepository(c *C) {
 	}()
 	c.Assert(u.Keys[0].Name, Not(Matches), "\\.pub$")
 	keypath := path.Join(s.gitosisRepo, "keydir", u.Keys[0].Name+".pub")
-	keyfile, err := os.Open(keypath)
+	_, err = os.Stat(keypath)
 	c.Assert(err, IsNil)
-	defer keyfile.Close()
 }
 
 func (s *S) TestAddKeyFunctionAddTheMemberWithTheKeyNameInTheGitosisConfigurationFileInAllTeamsThatTheUserIsMember(c *C) {
@@ -607,10 +606,7 @@ func (s *S) TestRemoveKeyHandlerDeletesTheKeyFileFromTheKeydir(c *C) {
 	keypath := path.Join(s.gitosisRepo, "keydir", u.Keys[0].Name+".pub")
 	err = removeKeyFromUser("my-key", u)
 	c.Assert(err, IsNil)
-	keyfile, err := os.Open(keypath)
-	if err == nil {
-		keyfile.Close()
-	}
+	_, err = os.Stat(keypath)
 	c.Assert(err, NotNil)
 	c.Assert(os.IsNotExist(err), Equals, true)
 }
