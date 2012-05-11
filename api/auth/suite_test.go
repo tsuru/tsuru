@@ -11,6 +11,7 @@ import (
 	"launchpad.net/mgo/bson"
 	"os"
 	"os/exec"
+	"path"
 	"path/filepath"
 	"testing"
 )
@@ -84,6 +85,29 @@ func (s *S) tearDownGitosis(c *C) {
 	c.Assert(err, IsNil)
 }
 
+func (s *S) commit(c *C, msg string) {
+	pwd, err := os.Getwd()
+	c.Assert(err, IsNil)
+	defer os.Chdir(pwd)
+	os.Chdir(s.gitosisRepo)
+	err = exec.Command("git", "add", ".").Run()
+	c.Assert(err, IsNil)
+	err = exec.Command("git", "commit", "-am", msg).Run()
+	c.Assert(err, IsNil)
+}
+
+func (s *S) createGitosisConf(c *C) {
+	f, err := os.Create(path.Join(s.gitosisRepo, "gitosis.conf"))
+	c.Assert(err, IsNil)
+	defer f.Close()
+	s.commit(c, "Added gitosis.conf")
+}
+
+func (s *S) deleteGitosisConf(c *C) {
+	os.Remove(path.Join(s.gitosisRepo, "gitosis.conf"))
+	s.commit(c, "Removed gitosis.conf")
+}
+
 func (s *S) SetUpSuite(c *C) {
 	db.Session, _ = db.Open("localhost:27017", "tsuru_user_test")
 	s.user = &User{Email: "timeredbull@globo.com", Password: "123"}
@@ -100,7 +124,12 @@ func (s *S) TearDownSuite(c *C) {
 	db.Session.Apps().Database.DropDatabase()
 }
 
+func (s *S) SetUpTest(c *C) {
+	s.createGitosisConf(c)
+}
+
 func (s *S) TearDownTest(c *C) {
+	defer s.deleteGitosisConf(c)
 	err := db.Session.Users().RemoveAll(bson.M{"email": bson.M{"$ne": s.user.Email}})
 	c.Assert(err, IsNil)
 	err = db.Session.Teams().RemoveAll(bson.M{"name": bson.M{"$ne": s.team.Name}})
