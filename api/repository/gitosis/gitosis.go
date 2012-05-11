@@ -68,6 +68,15 @@ func RemoveGroup(group string) error {
 	return writeCommitPush(c, commitMsg)
 }
 
+// HasGroup checks if gitosis has the given group.
+func HasGroup(group string) bool {
+	c, err := getConfig()
+	if err != nil {
+		return false
+	}
+	return c.HasSection("group " + group)
+}
+
 // AddMember adds a member to the given group.
 //
 // It is up to the caller make sure that the member does

@@ -72,6 +72,13 @@ func (s *S) TestAppendToOption(c *C) {
 	c.Assert(obtained, Equals, "firstProject anotherProject")
 }
 
+func (s *S) TestHasGroup(c *C) {
+	err := AddGroup("someGroup")
+	c.Assert(err, IsNil)
+	c.Assert(HasGroup("someGroup"), Equals, true)
+	c.Assert(HasGroup("otherGroup"), Equals, false)
+}
+
 func (s *S) TestAddGroup(c *C) {
 	err := AddGroup("someGroup")
 	c.Assert(err, IsNil)
