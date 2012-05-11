@@ -168,6 +168,11 @@ func addKeyToUser(content string, u *User) error {
 		return err
 	}
 	key.Name = strings.Replace(filename, ".pub", "", -1)
+	var teams []Team
+	db.Session.Teams().Find(bson.M{"users.email": u.Email}).All(&teams)
+	for _, team := range teams {
+		gitosis.AddMember(team.Name, key.Name)
+	}
 	err = u.addKey(key)
 	return db.Session.Users().Update(bson.M{"email": u.Email}, u)
 }
@@ -195,7 +200,16 @@ func removeKeyFromUser(content string, u *User) error {
 	if err != nil {
 		return err
 	}
-	return gitosis.DeleteKeyFile(key.Name + ".pub")
+	err = gitosis.DeleteKeyFile(key.Name + ".pub")
+	if err != nil {
+		return err
+	}
+	var teams []Team
+	db.Session.Teams().Find(bson.M{"users.email": u.Email}).All(&teams)
+	for _, team := range teams {
+		gitosis.RemoveMember(team.Name, key.Name)
+	}
+	return nil
 }
 
 // RemoveKeyFromUser removes a key from a user.

@@ -14,6 +14,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path"
+	"strings"
 )
 
 func (s *S) TestCreateUserHandlerSavesTheUserInTheDatabase(c *C) {
@@ -502,6 +503,23 @@ func (s *S) TestAddKeyFunctionCreatesTheKeyFileInTheGitosisRepository(c *C) {
 	defer keyfile.Close()
 }
 
+func (s *S) TestAddKeyFunctionAddTheMemberWithTheKeyNameInTheGitosisConfigurationFileInAllTeamsThatTheUserIsMember(c *C) {
+	err := gitosis.AddGroup(s.team.Name)
+	c.Assert(err, IsNil)
+	defer gitosis.RemoveGroup(s.team.Name)
+	err = addKeyToUser("my-key", s.user)
+	c.Assert(err, IsNil)
+	defer removeKeyFromUser("my-key", s.user)
+	keyname := s.user.Keys[0].Name
+	path := path.Join(s.gitosisRepo, "gitosis.conf")
+	f, err := os.Open(path)
+	c.Assert(err, IsNil)
+	defer f.Close()
+	content, err := ioutil.ReadAll(f)
+	c.Assert(err, IsNil)
+	c.Assert(strings.Contains(string(content), "members: " + keyname), Equals, true)
+}
+
 func (s *S) TestRemoveKeyHandlerRemovesTheKeyFromTheUser(c *C) {
 	addKeyToUser("my-key", s.user)
 	defer func() {
@@ -595,4 +613,21 @@ func (s *S) TestRemoveKeyHandlerDeletesTheKeyFileFromTheKeydir(c *C) {
 	}
 	c.Assert(err, NotNil)
 	c.Assert(os.IsNotExist(err), Equals, true)
+}
+
+func (s *S) TestRemoveKeyHandlerRemovesTheMemberEntryFromGitosis(c *C) {
+	gitosis.AddGroup(s.team.Name)
+	defer gitosis.RemoveGroup(s.team.Name)
+	err := addKeyToUser("my-key", s.user)
+	c.Assert(err, IsNil)
+	keyname := s.user.Keys[0].Name
+	err = removeKeyFromUser("my-key", s.user)
+	c.Assert(err, IsNil)
+	path := path.Join(s.gitosisRepo, "gitosis.conf")
+	f, err := os.Open(path)
+	c.Assert(err, IsNil)
+	defer f.Close()
+	content, err := ioutil.ReadAll(f)
+	c.Assert(err, IsNil)
+	c.Assert(strings.Contains(string(content), "members: " + keyname), Equals, false)
 }
