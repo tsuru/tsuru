@@ -16,3 +16,14 @@ OK`
 	c.Assert(err, IsNil)
 	c.Assert(manager.Stdout.(*bytes.Buffer).String(), Equals, expected)
 }
+
+func (s *S) TestCreateTeam(c *C) {
+	expected := `Creating new team: core
+OK`
+	context := Context{[]string{"core"}, manager.Stdout, manager.Stderr}
+	client := NewClient(&http.Client{Transport: &transport{msg: "", status: http.StatusCreated}})
+	command := CreateTeamCommand{}
+	err := command.Run(&context, client)
+	c.Assert(err, IsNil)
+	c.Assert(manager.Stdout.(*bytes.Buffer).String(), Equals, expected)
+}
