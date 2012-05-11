@@ -66,10 +66,7 @@ func (s *S) TestDeleteKeyFile(c *C) {
 	p, err := getKeydirPath()
 	c.Assert(err, IsNil)
 	keypath := path.Join(p, keyfile)
-	f, err := os.Open(keypath)
-	if err == nil {
-		f.Close()
-	}
+	_, err = os.Stat(keypath)
 	c.Assert(err, NotNil)
 	c.Assert(os.IsNotExist(err), Equals, true)
 }
