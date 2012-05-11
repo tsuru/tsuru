@@ -1,77 +1,91 @@
 package gitosis
 
 import (
-	"errors"
 	"fmt"
-	"github.com/timeredbull/tsuru/log"
 	"os"
 	"path"
 	"syscall"
 )
 
-// AddKeys adds a user's public key to the keydir
-func AddKey(group, member, key string) error {
-	c, err := getConfig()
-	if err != nil {
-		return err
-	}
-	if !c.HasSection("group " + group) {
-		return errors.New("Group not found")
-	}
+// BuildAndStoreKeyFile adds a key to key dir, returning the name
+// of the file containing the new public key. This name should
+// be stored for future remotion of the key.
+//
+// It is up to the caller to add the keyfile name to the gitosis
+// configuration file. One possible use to this function is together
+// with AddMember function:
+//
+//     keyfile, _ := BuildAndStoreKeyFile("opeth", "face-of-melinda")
+//     AddMember("bands", keyfile) // adds keyfile to group bands
+//     AddMember("sweden", keyfile) // adds keyfile to group sweden
+func BuildAndStoreKeyFile(member, key string) (string, error) {
 	p, err := getKeydirPath()
 	if err != nil {
-		return err
+		return "", err
 	}
 	err = os.MkdirAll(p, 0755)
 	if err != nil {
-		return err
+		return "", err
 	}
-	filename, actualMember, err := nextAvailableKey(p, member)
+	filename, err := nextAvailableKey(p, member)
 	if err != nil {
-		return err
+		return "", err
 	}
 	keyfilename := path.Join(p, filename)
 	keyfile, err := os.OpenFile(keyfilename, syscall.O_WRONLY|syscall.O_CREAT, 0644)
 	if err != nil {
-		return err
+		return "", err
 	}
 	defer keyfile.Close()
 	n, err := keyfile.WriteString(key)
 	if err != nil || n != len(key) {
-		return err
+		return "", err
 	}
-	err = addMember(group, actualMember)
+	commitMsg := fmt.Sprintf("Added %s keyfile.", filename)
+	err = pushToGitosis(commitMsg)
 	if err != nil {
-		err = os.Remove(keyfilename)
-		if err != nil {
-			log.Panicf("Fatal error: the key file %s was left in the keydir", keyfilename)
-			return err
-		}
-		return errors.New("Failed to add member to the group, the key file was not saved")
+		return "", err
 	}
-	return nil
+	return filename, nil
 }
 
-func nextAvailableKey(keydirname, member string) (string, string, error) {
+// DeleteKeyFile deletes the keyfile in the keydir
+//
+// After deleting the keyfile, the user will not be able
+// to push to the repository, even if the keyfile name still
+// is in the gitosis configuration file.
+func DeleteKeyFile(keyfilename string) error {
+	p, err := getKeydirPath()
+	if err != nil {
+		return err
+	}
+	keypath := path.Join(p, keyfilename)
+	err = os.Remove(keypath)
+	if err != nil {
+		return err
+	}
+	commitMsg := fmt.Sprintf("Deleted %s keyfile.", keyfilename)
+	return pushToGitosis(commitMsg)
+}
+
+func nextAvailableKey(keydirname, member string) (string, error) {
 	keydir, err := os.Open(keydirname)
 	if err != nil {
-		return "", "", err
+		return "", err
 	}
 	defer keydir.Close()
 	filenames, err := keydir.Readdirnames(0)
 	if err != nil {
-		return "", "", err
+		return "", err
 	}
-	pattern := member + "_key%d"
+	pattern := member + "_key%d.pub"
 	counter := 1
-	actualMember := fmt.Sprintf(pattern, counter)
-	filename := actualMember + ".pub"
+	filename := fmt.Sprintf(pattern, counter)
 	for _, f := range filenames {
 		if f == filename {
 			counter++
-			actualMember = fmt.Sprintf(pattern, counter)
-			filename = actualMember + ".pub"
+			filename = fmt.Sprintf(pattern, counter)
 		}
 	}
-	return filename, actualMember, nil
+	return filename, nil
 }

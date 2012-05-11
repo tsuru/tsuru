@@ -68,9 +68,12 @@ func RemoveGroup(group string) error {
 	return writeCommitPush(c, commitMsg)
 }
 
-// addMember adds a member to the given group.
-// member parameter should be the same as the key name in keydir dir.
-func addMember(group, member string) error {
+// AddMember adds a member to the given group.
+//
+// It is up to the caller make sure that the member does
+// have a key in the keydir, otherwise the member will not
+// be able to push to the repository.
+func AddMember(group, member string) error {
 	c, err := getConfig()
 	if err != nil {
 		return err
@@ -88,8 +91,11 @@ func addMember(group, member string) error {
 	return writeCommitPush(c, commitMsg)
 }
 
-// removeMember removes a member from the given group.
-func removeMember(group, member string) error {
+// RemoveMember removes a member from the given group.
+//
+// It is up to the caller to delete the keyfile from the keydir
+// using the DeleteKeyFile function.
+func RemoveMember(group, member string) error {
 	c, err := getConfig()
 	if err != nil {
 		return err

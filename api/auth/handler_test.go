@@ -11,6 +11,8 @@ import (
 	"launchpad.net/mgo/bson"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path"
 )
 
 func (s *S) TestCreateUserHandlerSavesTheUserInTheDatabase(c *C) {
@@ -396,7 +398,7 @@ func (s *S) TestRemoveUserFromTeamShouldReturnForbiddenIfTheUserIsTheLastInTheTe
 
 func (s *S) TestAddKeyHandlerAddsAKeyToTheUser(c *C) {
 	defer func() {
-		s.user.RemoveKey("my-key")
+		s.user.removeKey(Key{Content: "my-key"})
 		db.Session.Users().Update(bson.M{"email": s.user.Email}, s.user)
 	}()
 	b := bytes.NewBufferString(`{"key":"my-key"}`)
@@ -459,10 +461,10 @@ func (s *S) TestAddKeyHandlerReturnsBadRequestIfTheKeyIsEmpty(c *C) {
 }
 
 func (s *S) TestAddKeyHandlerReturnsConflictIfTheKeyIsAlreadyPresent(c *C) {
-	s.user.AddKey("my-key")
+	s.user.addKey(Key{Content: "my-key"})
 	db.Session.Users().Update(bson.M{"email": s.user.Email}, s.user)
 	defer func() {
-		s.user.RemoveKey("my-key")
+		s.user.removeKey(Key{Content: "my-key"})
 		db.Session.Users().Update(bson.M{"email": s.user.Email}, s.user)
 	}()
 	b := bytes.NewBufferString(`{"key":"my-key"}`)
@@ -476,12 +478,29 @@ func (s *S) TestAddKeyHandlerReturnsConflictIfTheKeyIsAlreadyPresent(c *C) {
 	c.Assert(e.Code, Equals, http.StatusConflict)
 }
 
-func (s *S) TestRemoveKeyHandlerRemovesTheKeyFromTheUser(c *C) {
-	s.user.AddKey("my-key")
-	db.Session.Users().Update(bson.M{"email": s.user.Email}, s.user)
+func (s *S) TestAddKeyFunctionCreatesTheKeyFileInTheGitosisRepository(c *C) {
+	u := &User{Email: "francisco@franciscosouza.net", Password: "123"}
+	err := u.Create()
+	c.Assert(err, IsNil)
+	err = addKeyToUser("my-key", u)
+	c.Assert(err, IsNil)
 	defer func() {
-		s.user.RemoveKey("my-key")
-		db.Session.Users().Update(bson.M{"email": s.user.Email}, s.user)
+		removeKeyFromUser("my-key", u)
+		db.Session.Users().RemoveAll(bson.M{"email": u.Email})
+	}()
+	c.Assert(u.Keys[0].Name, Not(Matches), "\\.pub$")
+	keypath := path.Join(s.gitosisRepo, "keydir", u.Keys[0].Name+".pub")
+	keyfile, err := os.Open(keypath)
+	c.Assert(err, IsNil)
+	defer keyfile.Close()
+}
+
+func (s *S) TestRemoveKeyHandlerRemovesTheKeyFromTheUser(c *C) {
+	addKeyToUser("my-key", s.user)
+	defer func() {
+		if s.user.hasKey(Key{Content: "my-key"}) {
+			removeKeyFromUser("my-key", s.user)
+		}
 	}()
 	b := bytes.NewBufferString(`{"key":"my-key"}`)
 	request, err := http.NewRequest("DELETE", "/users/key", b)
@@ -552,4 +571,21 @@ func (s *S) TestRemoveKeyHandlerReturnsNotFoundIfTheUserDoesNotHaveTheKey(c *C) 
 	e, ok := err.(*errors.Http)
 	c.Assert(ok, Equals, true)
 	c.Assert(e.Code, Equals, http.StatusNotFound)
+}
+
+func (s *S) TestRemoveKeyHandlerDeletesTheKeyFileFromTheKeydir(c *C) {
+	u := &User{Email: "francisco@franciscosouza.net", Password: "123"}
+	err := u.Create()
+	c.Assert(err, IsNil)
+	err = addKeyToUser("my-key", u)
+	c.Assert(err, IsNil)
+	keypath := path.Join(s.gitosisRepo, "keydir", u.Keys[0].Name+".pub")
+	err = removeKeyFromUser("my-key", u)
+	c.Assert(err, IsNil)
+	keyfile, err := os.Open(keypath)
+	if err == nil {
+		keyfile.Close()
+	}
+	c.Assert(err, NotNil)
+	c.Assert(os.IsNotExist(err), Equals, true)
 }
