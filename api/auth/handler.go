@@ -69,6 +69,15 @@ func Login(w http.ResponseWriter, r *http.Request) error {
 	return &errors.Http{Code: http.StatusUnauthorized, Message: msg}
 }
 
+func createTeam(name string, u *User) error {
+	team := &Team{Name: name, Users: []*User{u}}
+	err := db.Session.Teams().Insert(team)
+	if err != nil && strings.Contains(err.Error(), "duplicate key error") {
+		return &errors.Http{Code: http.StatusConflict, Message: "This team already exists"}
+	}
+	return nil
+}
+
 func CreateTeam(w http.ResponseWriter, r *http.Request, u *User) error {
 	var params map[string]string
 	b, err := ioutil.ReadAll(r.Body)
@@ -84,12 +93,7 @@ func CreateTeam(w http.ResponseWriter, r *http.Request, u *User) error {
 		msg := "You must provide the team name"
 		return &errors.Http{Code: http.StatusBadRequest, Message: msg}
 	}
-	team := &Team{Name: name, Users: []*User{u}}
-	err = db.Session.Teams().Insert(team)
-	if err != nil && strings.Contains(err.Error(), "duplicate key error") {
-		return &errors.Http{Code: http.StatusConflict, Message: "This team already exists"}
-	}
-	return nil
+	return createTeam(name, u)
 }
 
 func AddUserToTeam(w http.ResponseWriter, r *http.Request, u *User) error {
