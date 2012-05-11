@@ -17,7 +17,7 @@ func AddProject(group, project string) error {
 		log.Print(err)
 		return err
 	}
-	c, err := ini.ReadDefault(confPath)
+	c, err := ini.Read(confPath, ini.DEFAULT_COMMENT, ini.ALTERNATIVE_SEPARATOR, true, true)
 	if err != nil {
 		log.Print(err)
 		return err
@@ -183,5 +183,5 @@ func getConfig() (*ini.Config, error) {
 	if err != nil {
 		return nil, err
 	}
-	return ini.ReadDefault(confPath)
+	return ini.Read(confPath, ini.DEFAULT_COMMENT, ini.ALTERNATIVE_SEPARATOR, true, true)
 }
