@@ -5,8 +5,6 @@ import (
 	ini "github.com/kless/goconfig/config"
 	"github.com/timeredbull/tsuru/config"
 	. "launchpad.net/gocheck"
-	"os"
-	"os/exec"
 	"path"
 )
 
@@ -106,16 +104,9 @@ func (s *S) TestAddGroupShouldReturnErrorWhenSectionAlreadyExists(c *C) {
 func (s *S) TestAddGroupShouldCommitAndPushChangesToGitosisBare(c *C) {
 	err := AddGroup("gandalf")
 	c.Assert(err, IsNil)
-	pwd, err := os.Getwd()
+	repoOutput, err := runGit("log", "-1", "--pretty=format:%s")
 	c.Assert(err, IsNil)
-	defer os.Chdir(pwd)
-	os.Chdir(s.gitosisBare)
-	bareOutput, err := exec.Command("git", "log", "-1", "--pretty=format:%H").CombinedOutput()
-	c.Assert(err, IsNil)
-	os.Chdir(s.gitosisRepo)
-	repoOutput, err := exec.Command("git", "log", "-1", "--pretty=format:%H").CombinedOutput()
-	c.Assert(err, IsNil)
-	c.Assert(string(repoOutput), Equals, string(bareOutput))
+	c.Assert(repoOutput, Equals, "Defining gitosis group for group gandalf")
 }
 
 func (s *S) TestRemoveGroup(c *C) {

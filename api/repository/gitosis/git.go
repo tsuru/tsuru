@@ -1,11 +1,9 @@
 package gitosis
 
 import (
-	"fmt"
 	ini "github.com/kless/goconfig/config"
 	"github.com/timeredbull/tsuru/config"
 	"github.com/timeredbull/tsuru/log"
-	"os"
 	"os/exec"
 	"path"
 	"sync"
@@ -22,42 +20,34 @@ func getKeydirPath() (string, error) {
 	return path.Join(repoPath, "keydir"), nil
 }
 
+func runGit(args ...string) (string, error) {
+	repoPath, err := config.GetString("git:gitosis-repo")
+	if err != nil {
+		return "", err
+	}
+	workTree := "--work-tree=" + repoPath
+	gitDir := "--git-dir=" + path.Join(repoPath, ".git")
+	gitArgs := []string{workTree, gitDir}
+	gitArgs = append(gitArgs, args...)
+	output, err := exec.Command("git", gitArgs...).CombinedOutput()
+	return string(output), err
+}
+
 // Add, commit and push all changes in gitosis repository to it's
 // bare.
 func pushToGitosis(cMsg string) error {
-	repoPath, err := config.GetString("git:gitosis-repo")
-	if err != nil {
-		log.Print(err)
-		return err
-	}
-	pwd, err := os.Getwd()
-	if err != nil {
-		log.Print(err)
-		return err
-	}
-	defer os.Chdir(pwd)
 	Lock()
 	defer Unlock()
-	os.Chdir(repoPath)
-	output, err := exec.Command("git", "add", ".").CombinedOutput()
+	_, err := runGit("add", ".")
 	if err != nil {
-		fmt.Println(string(output))
-		log.Print(output, err)
 		return err
 	}
-	output, err = exec.Command("git", "commit", "-am", cMsg).CombinedOutput()
+	_, err = runGit("commit", "-am", cMsg)
 	if err != nil {
-		fmt.Println(string(output))
-		log.Print(output, err)
 		return err
 	}
-	output, err = exec.Command("git", "push", "origin", "master").CombinedOutput()
-	if err != nil {
-		fmt.Println(string(output))
-		log.Print(output, err)
-		return err
-	}
-	return nil
+	_, err = runGit("push", "origin", "master")
+	return err
 }
 
 func writeCommitPush(c *ini.Config, commit string) error {
