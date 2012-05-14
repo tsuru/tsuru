@@ -46,3 +46,13 @@ Ok!`
 	c.Assert(err, IsNil)
 	c.Assert(manager.Stdout.(*bytes.Buffer).String(), Equals, expected)
 }
+
+func (s *S) TestDeleteApp(c *C) {
+	expected := "App ble delete with success!"
+	context := Context{[]string{"ble"}, manager.Stdout, manager.Stderr}
+	client := NewClient(&http.Client{Transport: &transport{msg: "", status: http.StatusOK}})
+	command := DeleteAppCommand{}
+	err := command.Run(&context, client)
+	c.Assert(err, IsNil)
+	c.Assert(manager.Stdout.(*bytes.Buffer).String(), Equals, expected)
+}
