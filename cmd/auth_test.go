@@ -40,3 +40,13 @@ func (s *S) TestLoginRun(c *C) {
 	token, err := ReadToken()
 	c.Assert(token, Equals, "sometoken")
 }
+
+func (s *S) TestAddKey(c *C) {
+	expected := "Key added with success!"
+	context := Context{[]string{}, manager.Stdout, manager.Stderr}
+	client := NewClient(&http.Client{Transport: &transport{msg: "", status: http.StatusOK}})
+	command := AddKeyCommand{}
+	err := command.Run(&context, client)
+	c.Assert(err, IsNil)
+	c.Assert(manager.Stdout.(*bytes.Buffer).String(), Equals, expected)
+}
