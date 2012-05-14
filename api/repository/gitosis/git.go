@@ -8,7 +8,10 @@ import (
 	"os"
 	"os/exec"
 	"path"
+	"sync"
 )
+
+var mut sync.Mutex
 
 func getKeydirPath() (string, error) {
 	repoPath, err := config.GetString("git:gitosis-repo")
@@ -33,6 +36,8 @@ func pushToGitosis(cMsg string) error {
 		return err
 	}
 	defer os.Chdir(pwd)
+	Lock()
+	defer Unlock()
 	os.Chdir(repoPath)
 	output, err := exec.Command("git", "add", ".").CombinedOutput()
 	if err != nil {
@@ -70,4 +75,12 @@ func writeCommitPush(c *ini.Config, commit string) error {
 		return err
 	}
 	return nil
+}
+
+func Lock() {
+	mut.Lock()
+}
+
+func Unlock() {
+	mut.Unlock()
 }
