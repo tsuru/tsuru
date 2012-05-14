@@ -506,7 +506,6 @@ func (s *S) TestAddKeyFunctionCreatesTheKeyFileInTheGitosisRepository(c *C) {
 
 func (s *S) TestAddKeyFunctionAddTheMemberWithTheKeyNameInTheGitosisConfigurationFileInAllTeamsThatTheUserIsMember(c *C) {
 	s.addGroup()
-	time.Sleep(1e9)
 	err := addKeyToUser("my-key", s.user)
 	c.Assert(err, IsNil)
 	defer removeKeyFromUser("my-key", s.user)
@@ -522,7 +521,6 @@ func (s *S) TestAddKeyFunctionAddTheMemberWithTheKeyNameInTheGitosisConfiguratio
 
 func (s *S) TestRemoveKeyHandlerRemovesTheKeyFromTheUser(c *C) {
 	s.addGroup()
-	time.Sleep(1e9)
 	addKeyToUser("my-key", s.user)
 	defer func() {
 		if s.user.hasKey(Key{Content: "my-key"}) {

@@ -105,10 +105,12 @@ func (s *S) createGitosisConf(c *C) {
 
 func (s *S) addGroup() {
 	ch := gitosis.Change{
-		Kind: gitosis.AddGroup,
-		Args: map[string]string{"group": s.team.Name},
+		Kind:     gitosis.AddGroup,
+		Args:     map[string]string{"group": s.team.Name},
+		Response: make(chan string),
 	}
 	gitosis.Changes <- ch
+	<-ch.Response
 }
 
 func (s *S) deleteGitosisConf(c *C) {
