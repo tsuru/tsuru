@@ -262,6 +262,7 @@ func (s *S) TestCreateTeamHandlerReturnConflictIfTheTeamToBeCreatedAlreadyExists
 
 func (s *S) TestCreateTeamCreatesTheGroupWithinGitosis(c *C) {
 	err := createTeam("timeredbull", s.user)
+	time.Sleep(1e9)
 	c.Assert(err, IsNil)
 	c.Assert(gitosis.HasGroup("timeredbull"), Equals, true)
 }
@@ -504,10 +505,9 @@ func (s *S) TestAddKeyFunctionCreatesTheKeyFileInTheGitosisRepository(c *C) {
 }
 
 func (s *S) TestAddKeyFunctionAddTheMemberWithTheKeyNameInTheGitosisConfigurationFileInAllTeamsThatTheUserIsMember(c *C) {
-	err := gitosis.AddGroup(s.team.Name)
-	c.Assert(err, IsNil)
-	defer gitosis.RemoveGroup(s.team.Name)
-	err = addKeyToUser("my-key", s.user)
+	s.addGroup()
+	time.Sleep(1e9)
+	err := addKeyToUser("my-key", s.user)
 	c.Assert(err, IsNil)
 	defer removeKeyFromUser("my-key", s.user)
 	keyname := s.user.Keys[0].Name
@@ -521,6 +521,8 @@ func (s *S) TestAddKeyFunctionAddTheMemberWithTheKeyNameInTheGitosisConfiguratio
 }
 
 func (s *S) TestRemoveKeyHandlerRemovesTheKeyFromTheUser(c *C) {
+	s.addGroup()
+	time.Sleep(1e9)
 	addKeyToUser("my-key", s.user)
 	defer func() {
 		if s.user.hasKey(Key{Content: "my-key"}) {
@@ -613,8 +615,6 @@ func (s *S) TestRemoveKeyHandlerDeletesTheKeyFileFromTheKeydir(c *C) {
 }
 
 func (s *S) TestRemoveKeyHandlerRemovesTheMemberEntryFromGitosis(c *C) {
-	gitosis.AddGroup(s.team.Name)
-	defer gitosis.RemoveGroup(s.team.Name)
 	err := addKeyToUser("my-key", s.user)
 	c.Assert(err, IsNil)
 	keyname := s.user.Keys[0].Name

@@ -75,7 +75,12 @@ func createTeam(name string, u *User) error {
 	if err != nil && strings.Contains(err.Error(), "duplicate key error") {
 		return &errors.Http{Code: http.StatusConflict, Message: "This team already exists"}
 	}
-	return gitosis.AddGroup(name)
+	ch := gitosis.Change{
+		Kind: gitosis.AddGroup,
+		Args: map[string]string{"group": name},
+	}
+	gitosis.Changes <- ch
+	return nil
 }
 
 func CreateTeam(w http.ResponseWriter, r *http.Request, u *User) error {
