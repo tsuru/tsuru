@@ -67,18 +67,13 @@ func (s *S) setupGitosis(c *C) {
 	s.gitosisBare, err = config.GetString("git:gitosis-bare")
 	c.Assert(err, IsNil)
 	s.gitosisRepo, err = config.GetString("git:gitosis-repo")
-	currentDir, err := os.Getwd()
-	c.Assert(err, IsNil)
-	defer os.Chdir(currentDir)
 	err = os.RemoveAll(s.gitRoot)
 	c.Assert(err, IsNil)
 	err = os.MkdirAll(s.gitRoot, 0777)
 	c.Assert(err, IsNil)
-	err = os.Chdir(s.gitRoot)
+	err = exec.Command("git", "init", "--bare", s.gitosisBare).Run()
 	c.Assert(err, IsNil)
-	err = exec.Command("git", "init", "--bare", "gitosis-admin.git").Run()
-	c.Assert(err, IsNil)
-	err = exec.Command("git", "clone", "gitosis-admin.git").Run()
+	err = exec.Command("git", "clone", s.gitosisBare, s.gitosisRepo).Run()
 	c.Assert(err, IsNil)
 }
 
@@ -88,16 +83,16 @@ func (s *S) tearDownGitosis(c *C) {
 }
 
 func (s *S) commit(c *C, msg string) {
-	pwd, err := os.Getwd()
-	c.Assert(err, IsNil)
-	defer os.Chdir(pwd)
+	gitDir := "--git-dir=" + path.Join(s.gitosisRepo, ".git")
+	workTree := "--work-tree=" + s.gitosisRepo
 	gitosis.Lock()
 	defer gitosis.Unlock()
-	os.Chdir(s.gitosisRepo)
-	err = exec.Command("git", "add", ".").Run()
+	err := exec.Command("git", gitDir, workTree, "add", ".").Run()
 	c.Assert(err, IsNil)
-	out, err := exec.Command("git", "commit", "-am", msg).CombinedOutput()
-	c.Assert(err, IsNil)
+	out, err := exec.Command("git", gitDir, workTree, "commit", "-am", msg).CombinedOutput()
+	if err != nil {
+		c.Assert(strings.Contains(string(out), "nothing to commit"), Equals, true)
+	}
 }
 
 func (s *S) createGitosisConf(c *C) {
