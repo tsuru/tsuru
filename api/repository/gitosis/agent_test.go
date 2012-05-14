@@ -65,11 +65,12 @@ func (s *S) TestAddMemberChangeAddsTheMemberToTheFile(c *C) {
 	err := addGroup("dream-theater")
 	c.Assert(err, IsNil)
 	change := Change{
-		Kind: AddMember,
-		Args: map[string]string{"group": "dream-theater", "member": "octavarium"},
+		Kind:     AddMember,
+		Args:     map[string]string{"group": "dream-theater", "member": "octavarium"},
+		Response: make(chan string),
 	}
 	Changes <- change
-	time.Sleep(1e9)
+	<-change.Response
 	gitosis, err := os.Open(path.Join(s.gitosisRepo, "gitosis.conf"))
 	c.Assert(err, IsNil)
 	defer gitosis.Close()
@@ -84,11 +85,12 @@ func (s *S) TestRemoveMemberChangeRemovesTheMemberFromTheFile(c *C) {
 	err = addMember("dream-theater", "the-glass-prision")
 	c.Assert(err, IsNil)
 	change := Change{
-		Kind: RemoveMember,
-		Args: map[string]string{"group": "dream-theater", "member": "the-glass-prision"},
+		Kind:     RemoveMember,
+		Args:     map[string]string{"group": "dream-theater", "member": "the-glass-prision"},
+		Response: make(chan string),
 	}
 	Changes <- change
-	time.Sleep(1e9)
+	<-change.Response
 	gitosis, err := os.Open(path.Join(s.gitosisRepo, "gitosis.conf"))
 	c.Assert(err, IsNil)
 	defer gitosis.Close()
@@ -103,11 +105,12 @@ func (s *S) TestShouldHaveConstantForAddGroup(c *C) {
 
 func (s *S) TestAddGroupChangeAddsAGroupToGitosisConf(c *C) {
 	change := Change{
-		Kind: AddGroup,
-		Args: map[string]string{"group": "dream-theater"},
+		Kind:     AddGroup,
+		Args:     map[string]string{"group": "dream-theater"},
+		Response: make(chan string),
 	}
 	Changes <- change
-	time.Sleep(1e9)
+	<-change.Response
 	gitosis, err := os.Open(path.Join(s.gitosisRepo, "gitosis.conf"))
 	c.Assert(err, IsNil)
 	defer gitosis.Close()
@@ -124,11 +127,12 @@ func (s *S) TestRemoveGroupChangeRemovesTheGroupFromGitosisConf(c *C) {
 	err := addGroup("steve-lee")
 	c.Assert(err, IsNil)
 	change := Change{
-		Kind: RemoveGroup,
-		Args: map[string]string{"group": "steve-lee"},
+		Kind:     RemoveGroup,
+		Args:     map[string]string{"group": "steve-lee"},
+		Response: make(chan string),
 	}
 	Changes <- change
-	time.Sleep(1e9)
+	<-change.Response
 	gitosis, err := os.Open(path.Join(s.gitosisRepo, "gitosis.conf"))
 	c.Assert(err, IsNil)
 	defer gitosis.Close()
