@@ -77,42 +77,41 @@ func AppInfo(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	return nil
 }
 
+func createApp(app App, u *auth.User) ([]byte, error) {
+	err := db.Session.Teams().Find(bson.M{"users.email": u.Email}).All(&app.Teams)
+	if err != nil {
+		return nil, err
+	}
+	if len(app.Teams) < 1 {
+		msg := "In order to create an app, you should be member of at least one team"
+		return nil, &errors.Http{Code: http.StatusForbidden, Message: msg}
+	}
+	err = app.Create()
+	if err != nil {
+		return nil, err
+	}
+	msg := map[string]string{
+		"status":         "success",
+		"repository_url": repository.GetRepositoryUrl(app.Name),
+	}
+	return json.Marshal(msg)
+}
+
 func CreateAppHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	var app App
-
 	defer r.Body.Close()
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		return err
 	}
-
 	err = json.Unmarshal(body, &app)
 	if err != nil {
 		return err
 	}
-
-	err = db.Session.Teams().Find(bson.M{"users.email": u.Email}).All(&app.Teams)
+	jsonMsg, err := createApp(app, u)
 	if err != nil {
 		return err
 	}
-	if len(app.Teams) < 1 {
-		msg := "In order to create an app, you should be member of at least one team"
-		return &errors.Http{Code: http.StatusForbidden, Message: msg}
-	}
-	err = app.Create()
-	if err != nil {
-		return err
-	}
-
-	msg := map[string]string{
-		"status":         "success",
-		"repository_url": repository.GetRepositoryUrl(app.Name),
-	}
-	jsonMsg, err := json.Marshal(msg)
-	if err != nil {
-		return err
-	}
-
 	fmt.Fprint(w, bytes.NewBuffer(jsonMsg).String())
 	return nil
 }
