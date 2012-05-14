@@ -62,7 +62,7 @@ func (s *S) TestShouldHaveConstantForRemoveMember(c *C) {
 }
 
 func (s *S) TestAddMemberChangeAddsTheMemberToTheFile(c *C) {
-	err := AddGroup("dream-theater")
+	err := addGroup("dream-theater")
 	c.Assert(err, IsNil)
 	change := Change{
 		Kind: AddMember,
@@ -79,7 +79,7 @@ func (s *S) TestAddMemberChangeAddsTheMemberToTheFile(c *C) {
 }
 
 func (s *S) TestRemoveMemberChangeRemovesTheMemberFromTheFile(c *C) {
-	err := AddGroup("dream-theater")
+	err := addGroup("dream-theater")
 	c.Assert(err, IsNil)
 	err = addMember("dream-theater", "the-glass-prision")
 	c.Assert(err, IsNil)

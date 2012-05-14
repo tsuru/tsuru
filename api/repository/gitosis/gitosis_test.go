@@ -9,7 +9,7 @@ import (
 )
 
 func (s *S) TestAddProject(c *C) {
-	err := AddGroup("someGroup")
+	err := addGroup("someGroup")
 	c.Assert(err, IsNil)
 	err = AddProject("someGroup", "someProject")
 	c.Assert(err, IsNil)
@@ -25,7 +25,7 @@ func (s *S) TestAddProject(c *C) {
 }
 
 func (s *S) TestAddMoreThenOneProject(c *C) {
-	err := AddGroup("fooGroup")
+	err := addGroup("fooGroup")
 	c.Assert(err, IsNil)
 	err = AddProject("fooGroup", "take-over-the-world")
 	c.Assert(err, IsNil)
@@ -39,7 +39,7 @@ func (s *S) TestAddMoreThenOneProject(c *C) {
 }
 
 func (s *S) TestAddProjectCommitAndPush(c *C) {
-	err := AddGroup("myGroup")
+	err := addGroup("myGroup")
 	c.Assert(err, IsNil)
 	err = AddProject("myGroup", "myProject")
 	c.Assert(err, IsNil)
@@ -51,7 +51,7 @@ func (s *S) TestAddProjectCommitAndPush(c *C) {
 func (s *S) TestAppendToOption(c *C) {
 	group := "fooGroup"
 	section := fmt.Sprintf("group %s", group)
-	err := AddGroup(group)
+	err := addGroup(group)
 	c.Assert(err, IsNil)
 	conf, err := ini.Read(path.Join(s.gitosisRepo, "gitosis.conf"), ini.DEFAULT_COMMENT, ini.ALTERNATIVE_SEPARATOR, true, true)
 	c.Assert(err, IsNil)
@@ -71,21 +71,21 @@ func (s *S) TestAppendToOption(c *C) {
 }
 
 func (s *S) TestHasGroup(c *C) {
-	err := AddGroup("someGroup")
+	err := addGroup("someGroup")
 	c.Assert(err, IsNil)
 	c.Assert(HasGroup("someGroup"), Equals, true)
 	c.Assert(HasGroup("otherGroup"), Equals, false)
 }
 
 func (s *S) TestAddGroup(c *C) {
-	err := AddGroup("someGroup")
+	err := addGroup("someGroup")
 	c.Assert(err, IsNil)
 	conf, err := ini.Read(path.Join(s.gitosisRepo, "gitosis.conf"), ini.DEFAULT_COMMENT, ini.ALTERNATIVE_SEPARATOR, true, true)
 	c.Assert(err, IsNil)
 	//ensures that project have been added to gitosis.conf
 	c.Assert(conf.HasSection("group someGroup"), Equals, true)
 	//ensures that file is not overriden when a new project is added
-	err = AddGroup("someOtherGroup")
+	err = addGroup("someOtherGroup")
 	c.Assert(err, IsNil)
 	// it should have both sections
 	conf, err = ini.Read(path.Join(s.gitRoot, "gitosis-admin/gitosis.conf"), ini.DEFAULT_COMMENT, ini.ALTERNATIVE_SEPARATOR, true, true)
@@ -95,14 +95,14 @@ func (s *S) TestAddGroup(c *C) {
 }
 
 func (s *S) TestAddGroupShouldReturnErrorWhenSectionAlreadyExists(c *C) {
-	err := AddGroup("aGroup")
+	err := addGroup("aGroup")
 	c.Assert(err, IsNil)
-	err = AddGroup("aGroup")
+	err = addGroup("aGroup")
 	c.Assert(err, NotNil)
 }
 
 func (s *S) TestAddGroupShouldCommitAndPushChangesToGitosisBare(c *C) {
-	err := AddGroup("gandalf")
+	err := addGroup("gandalf")
 	c.Assert(err, IsNil)
 	repoOutput, err := runGit("log", "-1", "--pretty=format:%s")
 	c.Assert(err, IsNil)
@@ -110,12 +110,12 @@ func (s *S) TestAddGroupShouldCommitAndPushChangesToGitosisBare(c *C) {
 }
 
 func (s *S) TestRemoveGroup(c *C) {
-	err := AddGroup("someGroup")
+	err := addGroup("someGroup")
 	c.Assert(err, IsNil)
 	conf, err := ini.Read(path.Join(s.gitosisRepo, "gitosis.conf"), ini.DEFAULT_COMMENT, ini.ALTERNATIVE_SEPARATOR, true, true)
 	c.Assert(err, IsNil)
 	c.Assert(conf.HasSection("group someGroup"), Equals, true)
-	err = RemoveGroup("someGroup")
+	err = removeGroup("someGroup")
 	conf, err = ini.Read(path.Join(s.gitosisRepo, "gitosis.conf"), ini.DEFAULT_COMMENT, ini.ALTERNATIVE_SEPARATOR, true, true)
 	c.Assert(err, IsNil)
 	c.Assert(conf.HasSection("group someGroup"), Equals, false)
@@ -125,19 +125,19 @@ func (s *S) TestRemoveGroup(c *C) {
 }
 
 func (s *S) TestRemoveGroupCommitAndPushesChanges(c *C) {
-	err := AddGroup("testGroup")
+	err := addGroup("testGroup")
 	c.Assert(err, IsNil)
 	conf, err := ini.Read(path.Join(s.gitosisRepo, "gitosis.conf"), ini.DEFAULT_COMMENT, ini.ALTERNATIVE_SEPARATOR, true, true)
 	c.Assert(err, IsNil)
 	c.Assert(conf.HasSection("group testGroup"), Equals, true)
-	err = RemoveGroup("testGroup")
+	err = removeGroup("testGroup")
 	conf, err = ini.Read(path.Join(s.gitosisRepo, "gitosis.conf"), ini.DEFAULT_COMMENT, ini.ALTERNATIVE_SEPARATOR, true, true)
 	c.Assert(err, IsNil)
 	c.Assert(conf.HasSection("group testGroup"), Equals, false)
 }
 
 func (s *S) TestAddMemberToGroup(c *C) {
-	err := AddGroup("take-over-the-world")
+	err := addGroup("take-over-the-world")
 	c.Assert(err, IsNil)
 	err = addMember("take-over-the-world", "brain")
 	c.Assert(err, IsNil)
@@ -151,7 +151,7 @@ func (s *S) TestAddMemberToGroup(c *C) {
 }
 
 func (s *S) TestAddMemberToGroupCommitsAndPush(c *C) {
-	err := AddGroup("someTeam")
+	err := addGroup("someTeam")
 	c.Assert(err, IsNil)
 	err = addMember("someTeam", "brain")
 	got := s.lastBareCommit(c)
@@ -160,7 +160,7 @@ func (s *S) TestAddMemberToGroupCommitsAndPush(c *C) {
 }
 
 func (s *S) TestAddTwoMembersToGroup(c *C) {
-	err := AddGroup("pink-floyd")
+	err := addGroup("pink-floyd")
 	c.Assert(err, IsNil)
 	err = addMember("pink-floyd", "one-of-these-days")
 	c.Assert(err, IsNil)
@@ -173,7 +173,7 @@ func (s *S) TestAddTwoMembersToGroup(c *C) {
 }
 
 func (s *S) TestAddMemberToGroupReturnsErrorIfTheMemberIsAlreadyInTheGroup(c *C) {
-	err := AddGroup("pink-floyd")
+	err := addGroup("pink-floyd")
 	c.Assert(err, IsNil)
 	err = addMember("pink-floyd", "time")
 	c.Assert(err, IsNil)
@@ -189,7 +189,7 @@ func (s *S) TestAddMemberToAGroupThatDoesNotExistReturnError(c *C) {
 }
 
 func (s *S) TestRemoveMemberFromGroup(c *C) {
-	err := AddGroup("pink-floyd")
+	err := addGroup("pink-floyd")
 	c.Assert(err, IsNil)
 	err = addMember("pink-floyd", "fat-old-sun")
 	c.Assert(err, IsNil)
@@ -205,7 +205,7 @@ func (s *S) TestRemoveMemberFromGroup(c *C) {
 }
 
 func (s *S) TestRemoveMemberFromGroupCommitsAndPush(c *C) {
-	err := AddGroup("pink-floyd")
+	err := addGroup("pink-floyd")
 	c.Assert(err, IsNil)
 	err = addMember("pink-floyd", "if")
 	c.Assert(err, IsNil)
@@ -219,7 +219,7 @@ func (s *S) TestRemoveMemberFromGroupCommitsAndPush(c *C) {
 }
 
 func (s *S) TestRemoveMemberFromGroupRemovesTheOptionFromTheSectionWhenTheMemberIsTheLast(c *C) {
-	err := AddGroup("pink-floyd")
+	err := addGroup("pink-floyd")
 	c.Assert(err, IsNil)
 	err = addMember("pink-floyd", "pigs-on-the-wing")
 	c.Assert(err, IsNil)
@@ -231,7 +231,7 @@ func (s *S) TestRemoveMemberFromGroupRemovesTheOptionFromTheSectionWhenTheMember
 }
 
 func (s *S) TestRemoveMemberFromGroupReturnsErrorsIfTheGroupDoesNotContainTheGivenMember(c *C) {
-	err := AddGroup("pink-floyd")
+	err := addGroup("pink-floyd")
 	c.Assert(err, IsNil)
 	err = addMember("pink-floyd", "another-brick")
 	c.Assert(err, IsNil)
@@ -247,7 +247,7 @@ func (s *S) TestRemoveMemberFromGroupReturnsErrorIfTheGroupDoesNotExist(c *C) {
 }
 
 func (s *S) TestRemoveMemberFromGroupReturnsErrorsIfTheGroupDoesNotHaveAnyMember(c *C) {
-	err := AddGroup("pato-fu")
+	err := addGroup("pato-fu")
 	c.Assert(err, IsNil)
 	err = removeMember("pato-fu", "eu-sei")
 	c.Assert(err, NotNil)

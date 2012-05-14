@@ -38,7 +38,7 @@ func AddProject(group, project string) error {
 }
 
 // Add a new group to gitosis.conf. Also commit and push changes.
-func AddGroup(name string) error {
+func addGroup(name string) error {
 	c, err := getConfig()
 	if err != nil {
 		return err
@@ -54,7 +54,7 @@ func AddGroup(name string) error {
 }
 
 // Removes a group section and all it's options.
-func RemoveGroup(group string) error {
+func removeGroup(group string) error {
 	c, err := getConfig()
 	if err != nil {
 		return err
