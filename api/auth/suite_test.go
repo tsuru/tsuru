@@ -2,6 +2,7 @@ package auth
 
 import (
 	"bytes"
+	"github.com/timeredbull/tsuru/api/repository/gitosis"
 	"github.com/timeredbull/tsuru/config"
 	"github.com/timeredbull/tsuru/db"
 	"io"
@@ -13,6 +14,7 @@ import (
 	"os/exec"
 	"path"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -89,11 +91,15 @@ func (s *S) commit(c *C, msg string) {
 	pwd, err := os.Getwd()
 	c.Assert(err, IsNil)
 	defer os.Chdir(pwd)
+	gitosis.Lock()
+	defer gitosis.Unlock()
 	os.Chdir(s.gitosisRepo)
 	err = exec.Command("git", "add", ".").Run()
 	c.Assert(err, IsNil)
-	err = exec.Command("git", "commit", "-am", msg).Run()
-	c.Assert(err, IsNil)
+	out, err := exec.Command("git", "commit", "-am", msg).CombinedOutput()
+	if err != nil {
+		c.Assert(strings.Contains(string(out), "nothing to commit"), Equals, true)
+	}
 }
 
 func (s *S) createGitosisConf(c *C) {
