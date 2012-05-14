@@ -27,28 +27,21 @@ func (s *S) SetUpSuite(c *C) {
 	s.gitosisBare, err = config.GetString("git:gitosis-bare")
 	c.Assert(err, IsNil)
 	s.gitosisRepo, err = config.GetString("git:gitosis-repo")
-	currentDir := os.Getenv("PWD")
-	err = os.Mkdir(s.gitRoot, 0777)
+	err = os.RemoveAll(s.gitRoot)
 	c.Assert(err, IsNil)
-	err = os.Chdir(s.gitRoot)
+	err = os.MkdirAll(s.gitRoot, 0777)
 	c.Assert(err, IsNil)
-	err = exec.Command("ls").Run()
+	err = exec.Command("git", "init", "--bare", s.gitosisBare).Run()
 	c.Assert(err, IsNil)
-	err = exec.Command("git", "init", "--bare", "gitosis-admin.git").Run()
-	c.Assert(err, IsNil)
-	err = exec.Command("git", "clone", "gitosis-admin.git").Run()
-	c.Assert(err, IsNil)
-	err = os.Chdir(currentDir)
+	err = exec.Command("git", "clone", s.gitosisBare, s.gitosisRepo).Run()
 	c.Assert(err, IsNil)
 }
 
 func (s *S) SetUpTest(c *C) {
-	pwd, err := os.Getwd()
+	fpath := path.Join(s.gitosisRepo, "gitosis.conf")
+	f, err := os.Create(fpath)
 	c.Assert(err, IsNil)
-	err = os.Chdir(path.Join(s.gitRoot, "gitosis-admin"))
-	_, err = os.Create("gitosis.conf")
-	c.Assert(err, IsNil)
-	err = os.Chdir(pwd)
+	f.Close()
 }
 
 func (s *S) TearDownSuite(c *C) {
@@ -57,13 +50,15 @@ func (s *S) TearDownSuite(c *C) {
 }
 
 func (s *S) TearDownTest(c *C) {
-	pwd, err := os.Getwd()
-	c.Assert(err, IsNil)
-	err = os.Chdir(path.Join(s.gitRoot, "gitosis-admin"))
-	err = exec.Command("git", "rm", "gitosis.conf").Run()
+	_, err := runGit("rm", "gitosis.conf")
 	if err == nil {
 		err = pushToGitosis("removing test file")
 		c.Assert(err, IsNil)
 	}
-	err = os.Chdir(pwd)
+}
+
+func (s *S) lastBareCommit(c *C) string {
+	bareOutput, err := exec.Command("git", "--git-dir="+s.gitosisBare, "log", "-1", "--pretty=format:%s").CombinedOutput()
+	c.Assert(err, IsNil)
+	return string(bareOutput)
 }

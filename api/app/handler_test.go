@@ -77,6 +77,17 @@ func (s *S) TestAppList(c *C) {
 	}
 }
 
+func (s *S) TestListShouldReturnStatusNoContentWhenAppListIsNil(c *C) {
+	request, err := http.NewRequest("GET", "/apps/", nil)
+	c.Assert(err, IsNil)
+
+	request.Header.Set("Content-Type", "application/json")
+	recorder := httptest.NewRecorder()
+	err = AppList(recorder, request, s.user)
+	c.Assert(err, IsNil)
+	c.Assert(recorder.Code, Equals, http.StatusNoContent)
+}
+
 func (s *S) TestDelete(c *C) {
 	myApp := App{Name: "MyAppToDelete", Framework: "django", Teams: []auth.Team{s.team}}
 	myApp.Create()

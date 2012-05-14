@@ -1,8 +1,12 @@
 package cmd
 
 import (
+	"bytes"
 	"encoding/json"
+	"fmt"
 	"github.com/timeredbull/tsuru/api/app"
+	"io"
+	"io/ioutil"
 	"net/http"
 )
 
@@ -13,7 +17,15 @@ func (c *AppsCommand) Run(context *Context, client Doer) error {
 	if err != nil {
 		return err
 	}
-	result, err := client.Do(request)
+	response, err := client.Do(request)
+	if err != nil {
+		return err
+	}
+	if response.StatusCode == http.StatusNoContent {
+		return nil
+	}
+	defer response.Body.Close()
+	result, err := ioutil.ReadAll(response.Body)
 	if err != nil {
 		return err
 	}
@@ -37,4 +49,38 @@ func (c AppsCommand) Show(result []byte, context *Context) error {
 
 func (c *AppsCommand) Info() *Info {
 	return &Info{Name: "apps"}
+}
+
+type CreateAppCommand struct{}
+
+func (c *CreateAppCommand) Run(context *Context, client Doer) error {
+	appName := context.Args[0]
+	b := bytes.NewBufferString(fmt.Sprintf(`{"name":"%s", "framework":"django"}`, appName))
+	request, err := http.NewRequest("POST", "http://tsuru.plataformas.glb.com:8080/apps", b)
+	request.Header.Set("Content-Type", "application/json")
+	if err != nil {
+		return err
+	}
+	io.WriteString(context.Stdout, fmt.Sprintf("Creating application: %s\n", appName))
+	response, err := client.Do(request)
+	if err != nil {
+		return err
+	}
+	defer response.Body.Close()
+	result, err := ioutil.ReadAll(response.Body)
+	if err != nil {
+		return err
+	}
+	out := make(map[string]string)
+	err = json.Unmarshal(result, &out)
+	if err != nil {
+		return err
+	}
+	io.WriteString(context.Stdout, fmt.Sprintf(`Your repository for "%s" project is "%s"`, appName, out["repository_url"])+"\n")
+	io.WriteString(context.Stdout, "Ok!")
+	return nil
+}
+
+func (c *CreateAppCommand) Info() *Info {
+	return &Info{Name: "create-app"}
 }

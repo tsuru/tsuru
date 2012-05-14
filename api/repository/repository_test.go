@@ -15,10 +15,10 @@ func (s *S) TestNewRepository(c *C) {
 	c.Assert(err, IsNil)
 
 	repoPath := GetRepositoryPath(a.Name)
-	_, err = os.Open(repoPath) // test if repository dir exists
+	_, err = os.Stat(repoPath)
 	c.Assert(err, IsNil)
 
-	_, err = os.Open(path.Join(repoPath, "config"))
+	_, err = os.Stat(path.Join(repoPath, "config"))
 	c.Assert(err, IsNil)
 
 	err = os.RemoveAll(repoPath)
@@ -32,12 +32,12 @@ func (s *S) TestDeleteGitRepository(c *C) {
 	err := NewRepository(a.Name)
 	c.Assert(err, IsNil)
 
-	_, err = os.Open(path.Join(repoPath, "config"))
+	_, err = os.Stat(path.Join(repoPath, "config"))
 	c.Assert(err, IsNil)
 
 	DeleteRepository(a.Name)
-	_, err = os.Open(repoPath)
-	c.Assert(err, NotNil)
+	_, err = os.Stat(repoPath)
+	c.Assert(os.IsNotExist(err), Equals, true)
 }
 
 func (s *S) TestCloneRepository(c *C) {

@@ -129,7 +129,7 @@ func (s *S) TestCreate(c *C) {
 	c.Assert(err, IsNil)
 
 	repoPath := repository.GetRepositoryPath(a.Name)
-	_, err = os.Open(repoPath) // test if repository dir exists
+	_, err = os.Stat(repoPath) // test if repository dir exists
 	c.Assert(err, IsNil)
 
 	c.Assert(a.State, Equals, "Pending")
@@ -143,8 +143,9 @@ func (s *S) TestCreate(c *C) {
 
 	a.Destroy()
 
-	_, err = os.Open(repoPath)
-	c.Assert(err, NotNil) // ensures that repository dir has been deleted
+	_, err = os.Stat(repoPath)
+	c.Assert(err, NotNil)
+	c.Assert(os.IsNotExist(err), Equals, true)
 }
 
 func (s *S) TestCantCreateTwoAppsWithTheSameName(c *C) {
