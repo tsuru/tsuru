@@ -13,10 +13,6 @@ func (s *S) TestShouldHaveConstantForAddKey(c *C) {
 	c.Assert(AddKey, Equals, 0)
 }
 
-func (s *S) TestShouldHaveConstantForRemoveKey(c *C) {
-	c.Assert(RemoveKey, Equals, 1)
-}
-
 func (s *S) TestAddKeyReturnsTheKeyFileNameInTheResponseChannel(c *C) {
 	response := make(chan string)
 	change := Change{
@@ -30,6 +26,10 @@ func (s *S) TestAddKeyReturnsTheKeyFileNameInTheResponseChannel(c *C) {
 	Changes <- change
 	k := <-response
 	c.Assert(k, Equals, "alanis-morissette_key1.pub")
+}
+
+func (s *S) TestShouldHaveConstantForRemoveKey(c *C) {
+	c.Assert(RemoveKey, Equals, 1)
 }
 
 func (s *S) TestRemoveKeyChangeRemovesTheKey(c *C) {
@@ -53,10 +53,6 @@ func (s *S) TestShouldHaveConstantForAddMember(c *C) {
 	c.Assert(AddMember, Equals, 2)
 }
 
-func (s *S) TestShouldHaveConstantForRemoveMember(c *C) {
-	c.Assert(RemoveMember, Equals, 3)
-}
-
 func (s *S) TestAddMemberChangeAddsTheMemberToTheFile(c *C) {
 	err := addGroup("dream-theater")
 	c.Assert(err, IsNil)
@@ -73,6 +69,10 @@ func (s *S) TestAddMemberChangeAddsTheMemberToTheFile(c *C) {
 	content, err := ioutil.ReadAll(gitosis)
 	c.Assert(err, IsNil)
 	c.Assert(strings.Contains(string(content), "members = octavarium"), Equals, true)
+}
+
+func (s *S) TestShouldHaveConstantForRemoveMember(c *C) {
+	c.Assert(RemoveMember, Equals, 3)
 }
 
 func (s *S) TestRemoveMemberChangeRemovesTheMemberFromTheFile(c *C) {
