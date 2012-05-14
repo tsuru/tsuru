@@ -174,7 +174,11 @@ func addKeyToUser(content string, u *User) error {
 	db.Session.Teams().Find(bson.M{"users.email": u.Email}).All(&teams)
 	key.Name = strings.Replace(<-r, ".pub", "", -1)
 	for _, team := range teams {
-		gitosis.AddMember(team.Name, key.Name)
+		mch := gitosis.Change{
+			Kind: gitosis.AddMember,
+			Args: map[string]string{"group": team.Name, "member": key.Name},
+		}
+		gitosis.Changes <- mch
 	}
 	u.addKey(key)
 	return db.Session.Users().Update(bson.M{"email": u.Email}, u)
@@ -211,7 +215,11 @@ func removeKeyFromUser(content string, u *User) error {
 	var teams []Team
 	db.Session.Teams().Find(bson.M{"users.email": u.Email}).All(&teams)
 	for _, team := range teams {
-		gitosis.RemoveMember(team.Name, key.Name)
+		mch := gitosis.Change{
+			Kind: gitosis.RemoveMember,
+			Args: map[string]string{"group": team.Name, "member": key.Name},
+		}
+		gitosis.Changes <- mch
 	}
 	return nil
 }

@@ -15,6 +15,7 @@ import (
 	"os"
 	"path"
 	"strings"
+	"time"
 )
 
 func (s *S) TestCreateUserHandlerSavesTheUserInTheDatabase(c *C) {
@@ -619,6 +620,7 @@ func (s *S) TestRemoveKeyHandlerRemovesTheMemberEntryFromGitosis(c *C) {
 	keyname := s.user.Keys[0].Name
 	err = removeKeyFromUser("my-key", s.user)
 	c.Assert(err, IsNil)
+	time.Sleep(1e9)
 	path := path.Join(s.gitosisRepo, "gitosis.conf")
 	f, err := os.Open(path)
 	c.Assert(err, IsNil)
