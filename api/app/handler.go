@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/timeredbull/tsuru/api/auth"
 	"github.com/timeredbull/tsuru/api/repository"
+	"github.com/timeredbull/tsuru/api/repository/gitosis"
 	"github.com/timeredbull/tsuru/db"
 	"github.com/timeredbull/tsuru/errors"
 	"io/ioutil"
@@ -134,7 +135,16 @@ func grantAccessToTeam(appName, teamName string, u *auth.User) error {
 	if err != nil {
 		return &errors.Http{Code: http.StatusConflict, Message: err.Error()}
 	}
-	return db.Session.Apps().Update(bson.M{"name": app.Name}, app)
+	err = db.Session.Apps().Update(bson.M{"name": app.Name}, app)
+	if err != nil {
+		return err
+	}
+	ch := gitosis.Change{
+		Kind: gitosis.AddProject,
+		Args: map[string]string{"group": t.Name, "project": app.Name},
+	}
+	gitosis.Changes <- ch
+	return nil
 }
 
 func GrantAccessToTeamHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
