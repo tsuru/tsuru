@@ -29,11 +29,8 @@ func (s *S) TestAddKeyReturnsTheKeyFileNameInTheResponseChannel(c *C) {
 	}
 	Changes <- change
 	select {
-	case k := <-response:
-		c.Assert(k, Equals, "alanis-morissette_key1.pub")
-	case <-time.After(1e9):
-		c.Error("The AddKey change did not returned the key file name.")
-	}
+	k := <-response
+	c.Assert(k, Equals, "alanis-morissette_key1.pub")
 }
 
 func (s *S) TestRemoveKeyChangeRemovesTheKey(c *C) {
