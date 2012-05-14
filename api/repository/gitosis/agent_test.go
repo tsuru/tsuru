@@ -28,7 +28,6 @@ func (s *S) TestAddKeyReturnsTheKeyFileNameInTheResponseChannel(c *C) {
 		Response: response,
 	}
 	Changes <- change
-	select {
 	k := <-response
 	c.Assert(k, Equals, "alanis-morissette_key1.pub")
 }
