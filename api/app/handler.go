@@ -116,9 +116,9 @@ func CreateAppHandler(w http.ResponseWriter, r *http.Request, u *auth.User) erro
 	return nil
 }
 
-func GrantAccessToTeamHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
+func grantAccessToTeam(appName, teamName string, u *auth.User) error {
 	t := new(auth.Team)
-	app := &App{Name: r.URL.Query().Get(":app")}
+	app := &App{Name: appName}
 	err := app.Get()
 	if err != nil {
 		return &errors.Http{Code: http.StatusNotFound, Message: "App not found"}
@@ -126,7 +126,7 @@ func GrantAccessToTeamHandler(w http.ResponseWriter, r *http.Request, u *auth.Us
 	if !app.CheckUserAccess(u) {
 		return &errors.Http{Code: http.StatusUnauthorized, Message: "User unauthorized"}
 	}
-	err = db.Session.Teams().Find(bson.M{"name": r.URL.Query().Get(":team")}).One(t)
+	err = db.Session.Teams().Find(bson.M{"name": teamName}).One(t)
 	if err != nil {
 		return &errors.Http{Code: http.StatusNotFound, Message: "Team not found"}
 	}
@@ -137,9 +137,15 @@ func GrantAccessToTeamHandler(w http.ResponseWriter, r *http.Request, u *auth.Us
 	return db.Session.Apps().Update(bson.M{"name": app.Name}, app)
 }
 
-func RevokeAccessFromTeamHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
+func GrantAccessToTeamHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
+	appName := r.URL.Query().Get(":app")
+	teamName := r.URL.Query().Get(":team")
+	return grantAccessToTeam(appName, teamName, u)
+}
+
+func revokeAccessFromTeam(appName, teamName string, u *auth.User) error {
 	t := new(auth.Team)
-	app := &App{Name: r.URL.Query().Get(":app")}
+	app := &App{Name: appName}
 	err := app.Get()
 	if err != nil {
 		return &errors.Http{Code: http.StatusNotFound, Message: "App not found"}
@@ -147,7 +153,7 @@ func RevokeAccessFromTeamHandler(w http.ResponseWriter, r *http.Request, u *auth
 	if !app.CheckUserAccess(u) {
 		return &errors.Http{Code: http.StatusUnauthorized, Message: "User unauthorized"}
 	}
-	err = db.Session.Teams().Find(bson.M{"name": r.URL.Query().Get(":team")}).One(t)
+	err = db.Session.Teams().Find(bson.M{"name": teamName}).One(t)
 	if err != nil {
 		return &errors.Http{Code: http.StatusNotFound, Message: "Team not found"}
 	}
@@ -160,4 +166,10 @@ func RevokeAccessFromTeamHandler(w http.ResponseWriter, r *http.Request, u *auth
 		return &errors.Http{Code: http.StatusNotFound, Message: err.Error()}
 	}
 	return db.Session.Apps().Update(bson.M{"name": app.Name}, app)
+}
+
+func RevokeAccessFromTeamHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
+	appName := r.URL.Query().Get(":app")
+	teamName := r.URL.Query().Get(":team")
+	return revokeAccessFromTeam(appName, teamName, u)
 }
