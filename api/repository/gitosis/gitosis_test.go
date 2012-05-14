@@ -5,8 +5,6 @@ import (
 	ini "github.com/kless/goconfig/config"
 	"github.com/timeredbull/tsuru/config"
 	. "launchpad.net/gocheck"
-	"os"
-	"os/exec"
 	"path"
 )
 
@@ -15,7 +13,7 @@ func (s *S) TestAddProject(c *C) {
 	c.Assert(err, IsNil)
 	err = AddProject("someGroup", "someProject")
 	c.Assert(err, IsNil)
-	conf, err := ini.ReadDefault(path.Join(s.gitosisRepo, "gitosis.conf"))
+	conf, err := ini.Read(path.Join(s.gitosisRepo, "gitosis.conf"), ini.DEFAULT_COMMENT, ini.ALTERNATIVE_SEPARATOR, true, true)
 	c.Assert(conf.HasOption("group someGroup", "writable"), Equals, true)
 	obtained, err := conf.String("group someGroup", "writable")
 	c.Assert(err, IsNil)
@@ -33,7 +31,7 @@ func (s *S) TestAddMoreThenOneProject(c *C) {
 	c.Assert(err, IsNil)
 	err = AddProject("fooGroup", "someProject")
 	c.Assert(err, IsNil)
-	conf, err := ini.ReadDefault(path.Join(s.gitosisRepo, "gitosis.conf"))
+	conf, err := ini.Read(path.Join(s.gitosisRepo, "gitosis.conf"), ini.DEFAULT_COMMENT, ini.ALTERNATIVE_SEPARATOR, true, true)
 	c.Assert(err, IsNil)
 	obtained, err := conf.String("group fooGroup", "writable")
 	c.Assert(err, IsNil)
@@ -55,7 +53,7 @@ func (s *S) TestAppendToOption(c *C) {
 	section := fmt.Sprintf("group %s", group)
 	err := AddGroup(group)
 	c.Assert(err, IsNil)
-	conf, err := ini.ReadDefault(path.Join(s.gitosisRepo, "gitosis.conf"))
+	conf, err := ini.Read(path.Join(s.gitosisRepo, "gitosis.conf"), ini.DEFAULT_COMMENT, ini.ALTERNATIVE_SEPARATOR, true, true)
 	c.Assert(err, IsNil)
 	err = addOption(conf, section, "writable", "firstProject")
 	c.Assert(err, IsNil)
@@ -72,10 +70,17 @@ func (s *S) TestAppendToOption(c *C) {
 	c.Assert(obtained, Equals, "firstProject anotherProject")
 }
 
+func (s *S) TestHasGroup(c *C) {
+	err := AddGroup("someGroup")
+	c.Assert(err, IsNil)
+	c.Assert(HasGroup("someGroup"), Equals, true)
+	c.Assert(HasGroup("otherGroup"), Equals, false)
+}
+
 func (s *S) TestAddGroup(c *C) {
 	err := AddGroup("someGroup")
 	c.Assert(err, IsNil)
-	conf, err := ini.ReadDefault(path.Join(s.gitosisRepo, "gitosis.conf"))
+	conf, err := ini.Read(path.Join(s.gitosisRepo, "gitosis.conf"), ini.DEFAULT_COMMENT, ini.ALTERNATIVE_SEPARATOR, true, true)
 	c.Assert(err, IsNil)
 	//ensures that project have been added to gitosis.conf
 	c.Assert(conf.HasSection("group someGroup"), Equals, true)
@@ -83,7 +88,7 @@ func (s *S) TestAddGroup(c *C) {
 	err = AddGroup("someOtherGroup")
 	c.Assert(err, IsNil)
 	// it should have both sections
-	conf, err = ini.ReadDefault(path.Join(s.gitRoot, "gitosis-admin/gitosis.conf"))
+	conf, err = ini.Read(path.Join(s.gitRoot, "gitosis-admin/gitosis.conf"), ini.DEFAULT_COMMENT, ini.ALTERNATIVE_SEPARATOR, true, true)
 	c.Assert(err, IsNil)
 	c.Assert(conf.HasSection("group someGroup"), Equals, true)
 	c.Assert(conf.HasSection("group someOtherGroup"), Equals, true)
@@ -99,26 +104,19 @@ func (s *S) TestAddGroupShouldReturnErrorWhenSectionAlreadyExists(c *C) {
 func (s *S) TestAddGroupShouldCommitAndPushChangesToGitosisBare(c *C) {
 	err := AddGroup("gandalf")
 	c.Assert(err, IsNil)
-	pwd, err := os.Getwd()
+	repoOutput, err := runGit("log", "-1", "--pretty=format:%s")
 	c.Assert(err, IsNil)
-	defer os.Chdir(pwd)
-	os.Chdir(s.gitosisBare)
-	bareOutput, err := exec.Command("git", "log", "-1", "--pretty=format:%H").CombinedOutput()
-	c.Assert(err, IsNil)
-	os.Chdir(s.gitosisRepo)
-	repoOutput, err := exec.Command("git", "log", "-1", "--pretty=format:%H").CombinedOutput()
-	c.Assert(err, IsNil)
-	c.Assert(string(repoOutput), Equals, string(bareOutput))
+	c.Assert(repoOutput, Equals, "Defining gitosis group for group gandalf")
 }
 
 func (s *S) TestRemoveGroup(c *C) {
 	err := AddGroup("someGroup")
 	c.Assert(err, IsNil)
-	conf, err := ini.ReadDefault(path.Join(s.gitosisRepo, "gitosis.conf"))
+	conf, err := ini.Read(path.Join(s.gitosisRepo, "gitosis.conf"), ini.DEFAULT_COMMENT, ini.ALTERNATIVE_SEPARATOR, true, true)
 	c.Assert(err, IsNil)
 	c.Assert(conf.HasSection("group someGroup"), Equals, true)
 	err = RemoveGroup("someGroup")
-	conf, err = ini.ReadDefault(path.Join(s.gitosisRepo, "gitosis.conf"))
+	conf, err = ini.Read(path.Join(s.gitosisRepo, "gitosis.conf"), ini.DEFAULT_COMMENT, ini.ALTERNATIVE_SEPARATOR, true, true)
 	c.Assert(err, IsNil)
 	c.Assert(conf.HasSection("group someGroup"), Equals, false)
 	got := s.lastBareCommit(c)
@@ -129,11 +127,11 @@ func (s *S) TestRemoveGroup(c *C) {
 func (s *S) TestRemoveGroupCommitAndPushesChanges(c *C) {
 	err := AddGroup("testGroup")
 	c.Assert(err, IsNil)
-	conf, err := ini.ReadDefault(path.Join(s.gitosisRepo, "gitosis.conf"))
+	conf, err := ini.Read(path.Join(s.gitosisRepo, "gitosis.conf"), ini.DEFAULT_COMMENT, ini.ALTERNATIVE_SEPARATOR, true, true)
 	c.Assert(err, IsNil)
 	c.Assert(conf.HasSection("group testGroup"), Equals, true)
 	err = RemoveGroup("testGroup")
-	conf, err = ini.ReadDefault(path.Join(s.gitosisRepo, "gitosis.conf"))
+	conf, err = ini.Read(path.Join(s.gitosisRepo, "gitosis.conf"), ini.DEFAULT_COMMENT, ini.ALTERNATIVE_SEPARATOR, true, true)
 	c.Assert(err, IsNil)
 	c.Assert(conf.HasSection("group testGroup"), Equals, false)
 }
@@ -143,7 +141,7 @@ func (s *S) TestAddMemberToGroup(c *C) {
 	c.Assert(err, IsNil)
 	err = AddMember("take-over-the-world", "brain")
 	c.Assert(err, IsNil)
-	conf, err := ini.ReadDefault(path.Join(s.gitosisRepo, "gitosis.conf"))
+	conf, err := ini.Read(path.Join(s.gitosisRepo, "gitosis.conf"), ini.DEFAULT_COMMENT, ini.ALTERNATIVE_SEPARATOR, true, true)
 	c.Assert(err, IsNil)
 	c.Assert(conf.HasSection("group take-over-the-world"), Equals, true)
 	c.Assert(conf.HasOption("group take-over-the-world", "members"), Equals, true)
@@ -168,7 +166,7 @@ func (s *S) TestAddTwoMembersToGroup(c *C) {
 	c.Assert(err, IsNil)
 	err = AddMember("pink-floyd", "comfortably-numb")
 	c.Assert(err, IsNil)
-	conf, err := ini.ReadDefault(path.Join(s.gitosisRepo, "gitosis.conf"))
+	conf, err := ini.Read(path.Join(s.gitosisRepo, "gitosis.conf"), ini.DEFAULT_COMMENT, ini.ALTERNATIVE_SEPARATOR, true, true)
 	members, err := conf.String("group pink-floyd", "members")
 	c.Assert(err, IsNil)
 	c.Assert(members, Equals, "one-of-these-days comfortably-numb")
@@ -199,7 +197,7 @@ func (s *S) TestRemoveMemberFromGroup(c *C) {
 	c.Assert(err, IsNil)
 	err = RemoveMember("pink-floyd", "fat-old-sun")
 	c.Assert(err, IsNil)
-	conf, err := ini.ReadDefault(path.Join(s.gitosisRepo, "gitosis.conf"))
+	conf, err := ini.Read(path.Join(s.gitosisRepo, "gitosis.conf"), ini.DEFAULT_COMMENT, ini.ALTERNATIVE_SEPARATOR, true, true)
 	c.Assert(err, IsNil)
 	option, err := conf.String("group pink-floyd", "members")
 	c.Assert(err, IsNil)
@@ -227,7 +225,7 @@ func (s *S) TestRemoveMemberFromGroupRemovesTheOptionFromTheSectionWhenTheMember
 	c.Assert(err, IsNil)
 	err = RemoveMember("pink-floyd", "pigs-on-the-wing")
 	c.Assert(err, IsNil)
-	conf, err := ini.ReadDefault(path.Join(s.gitosisRepo, "gitosis.conf"))
+	conf, err := ini.Read(path.Join(s.gitosisRepo, "gitosis.conf"), ini.DEFAULT_COMMENT, ini.ALTERNATIVE_SEPARATOR, true, true)
 	c.Assert(err, IsNil)
 	c.Assert(conf.HasOption("group pink-floyd", "members"), Equals, false)
 }
@@ -258,7 +256,7 @@ func (s *S) TestRemoveMemberFromGroupReturnsErrorsIfTheGroupDoesNotHaveAnyMember
 
 func (s *S) TestAddAndCommit(c *C) {
 	confPath := path.Join(s.gitosisRepo, "gitosis.conf")
-	conf, err := ini.ReadDefault(confPath)
+	conf, err := ini.Read(confPath, ini.DEFAULT_COMMENT, ini.ALTERNATIVE_SEPARATOR, true, true)
 	c.Assert(err, IsNil)
 	conf.AddSection("foo bar")
 	pushToGitosis("Some commit message")

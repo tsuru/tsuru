@@ -69,6 +69,15 @@ func Login(w http.ResponseWriter, r *http.Request) error {
 	return &errors.Http{Code: http.StatusUnauthorized, Message: msg}
 }
 
+func createTeam(name string, u *User) error {
+	team := &Team{Name: name, Users: []*User{u}}
+	err := db.Session.Teams().Insert(team)
+	if err != nil && strings.Contains(err.Error(), "duplicate key error") {
+		return &errors.Http{Code: http.StatusConflict, Message: "This team already exists"}
+	}
+	return gitosis.AddGroup(name)
+}
+
 func CreateTeam(w http.ResponseWriter, r *http.Request, u *User) error {
 	var params map[string]string
 	b, err := ioutil.ReadAll(r.Body)
@@ -84,12 +93,7 @@ func CreateTeam(w http.ResponseWriter, r *http.Request, u *User) error {
 		msg := "You must provide the team name"
 		return &errors.Http{Code: http.StatusBadRequest, Message: msg}
 	}
-	team := &Team{Name: name, Users: []*User{u}}
-	err = db.Session.Teams().Insert(team)
-	if err != nil && strings.Contains(err.Error(), "duplicate key error") {
-		return &errors.Http{Code: http.StatusConflict, Message: "This team already exists"}
-	}
-	return nil
+	return createTeam(name, u)
 }
 
 func AddUserToTeam(w http.ResponseWriter, r *http.Request, u *User) error {
@@ -159,12 +163,20 @@ func addKeyToUser(content string, u *User) error {
 	if u.hasKey(key) {
 		return &errors.Http{Code: http.StatusConflict, Message: "User has this key already"}
 	}
-	filename, err := gitosis.BuildAndStoreKeyFile(u.Email, content)
-	if err != nil {
-		return err
+	r := make(chan string)
+	ch := gitosis.Change{
+		Kind:     gitosis.AddKey,
+		Args:     map[string]string{"member": u.Email, "key": content},
+		Response: r,
 	}
-	key.Name = strings.Replace(filename, ".pub", "", -1)
-	err = u.addKey(key)
+	gitosis.Changes <- ch
+	var teams []Team
+	db.Session.Teams().Find(bson.M{"users.email": u.Email}).All(&teams)
+	key.Name = strings.Replace(<-r, ".pub", "", -1)
+	for _, team := range teams {
+		gitosis.AddMember(team.Name, key.Name)
+	}
+	u.addKey(key)
 	return db.Session.Users().Update(bson.M{"email": u.Email}, u)
 }
 
@@ -191,7 +203,17 @@ func removeKeyFromUser(content string, u *User) error {
 	if err != nil {
 		return err
 	}
-	return gitosis.DeleteKeyFile(key.Name + ".pub")
+	ch := gitosis.Change{
+		Kind: gitosis.RemoveKey,
+		Args: map[string]string{"key": key.Name + ".pub"},
+	}
+	gitosis.Changes <- ch
+	var teams []Team
+	db.Session.Teams().Find(bson.M{"users.email": u.Email}).All(&teams)
+	for _, team := range teams {
+		gitosis.RemoveMember(team.Name, key.Name)
+	}
+	return nil
 }
 
 // RemoveKeyFromUser removes a key from a user.

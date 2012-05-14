@@ -2,6 +2,7 @@ package auth
 
 import (
 	"bytes"
+	"github.com/timeredbull/tsuru/api/repository/gitosis"
 	"github.com/timeredbull/tsuru/config"
 	"github.com/timeredbull/tsuru/db"
 	"io"
@@ -11,7 +12,9 @@ import (
 	"launchpad.net/mgo/bson"
 	"os"
 	"os/exec"
+	"path"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -64,24 +67,44 @@ func (s *S) setupGitosis(c *C) {
 	s.gitosisBare, err = config.GetString("git:gitosis-bare")
 	c.Assert(err, IsNil)
 	s.gitosisRepo, err = config.GetString("git:gitosis-repo")
-	currentDir, err := os.Getwd()
-	c.Assert(err, IsNil)
-	defer os.Chdir(currentDir)
 	err = os.RemoveAll(s.gitRoot)
 	c.Assert(err, IsNil)
 	err = os.MkdirAll(s.gitRoot, 0777)
 	c.Assert(err, IsNil)
-	err = os.Chdir(s.gitRoot)
+	err = exec.Command("git", "init", "--bare", s.gitosisBare).Run()
 	c.Assert(err, IsNil)
-	err = exec.Command("git", "init", "--bare", "gitosis-admin.git").Run()
-	c.Assert(err, IsNil)
-	err = exec.Command("git", "clone", "gitosis-admin.git").Run()
+	err = exec.Command("git", "clone", s.gitosisBare, s.gitosisRepo).Run()
 	c.Assert(err, IsNil)
 }
 
 func (s *S) tearDownGitosis(c *C) {
 	err := os.RemoveAll(s.gitRoot)
 	c.Assert(err, IsNil)
+}
+
+func (s *S) commit(c *C, msg string) {
+	gitDir := "--git-dir=" + path.Join(s.gitosisRepo, ".git")
+	workTree := "--work-tree=" + s.gitosisRepo
+	gitosis.Lock()
+	defer gitosis.Unlock()
+	err := exec.Command("git", gitDir, workTree, "add", ".").Run()
+	c.Assert(err, IsNil)
+	out, err := exec.Command("git", gitDir, workTree, "commit", "-am", msg).CombinedOutput()
+	if err != nil {
+		c.Assert(strings.Contains(string(out), "nothing to commit"), Equals, true)
+	}
+}
+
+func (s *S) createGitosisConf(c *C) {
+	f, err := os.Create(path.Join(s.gitosisRepo, "gitosis.conf"))
+	c.Assert(err, IsNil)
+	defer f.Close()
+	s.commit(c, "Added gitosis.conf")
+}
+
+func (s *S) deleteGitosisConf(c *C) {
+	os.Remove(path.Join(s.gitosisRepo, "gitosis.conf"))
+	s.commit(c, "Removed gitosis.conf")
 }
 
 func (s *S) SetUpSuite(c *C) {
@@ -100,7 +123,12 @@ func (s *S) TearDownSuite(c *C) {
 	db.Session.Apps().Database.DropDatabase()
 }
 
+func (s *S) SetUpTest(c *C) {
+	s.createGitosisConf(c)
+}
+
 func (s *S) TearDownTest(c *C) {
+	defer s.deleteGitosisConf(c)
 	err := db.Session.Users().RemoveAll(bson.M{"email": bson.M{"$ne": s.user.Email}})
 	c.Assert(err, IsNil)
 	err = db.Session.Teams().RemoveAll(bson.M{"name": bson.M{"$ne": s.team.Name}})

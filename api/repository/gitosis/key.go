@@ -7,7 +7,7 @@ import (
 	"syscall"
 )
 
-// BuildAndStoreKeyFile adds a key to key dir, returning the name
+// buildAndStoreKeyFile adds a key to key dir, returning the name
 // of the file containing the new public key. This name should
 // be stored for future remotion of the key.
 //
@@ -15,10 +15,10 @@ import (
 // configuration file. One possible use to this function is together
 // with AddMember function:
 //
-//     keyfile, _ := BuildAndStoreKeyFile("opeth", "face-of-melinda")
+//     keyfile, _ := buildAndStoreKeyFile("opeth", "face-of-melinda")
 //     AddMember("bands", keyfile) // adds keyfile to group bands
 //     AddMember("sweden", keyfile) // adds keyfile to group sweden
-func BuildAndStoreKeyFile(member, key string) (string, error) {
+func buildAndStoreKeyFile(member, key string) (string, error) {
 	p, err := getKeydirPath()
 	if err != nil {
 		return "", err
@@ -49,12 +49,12 @@ func BuildAndStoreKeyFile(member, key string) (string, error) {
 	return filename, nil
 }
 
-// DeleteKeyFile deletes the keyfile in the keydir
+// deleteKeyFile deletes the keyfile in the keydir
 //
 // After deleting the keyfile, the user will not be able
 // to push to the repository, even if the keyfile name still
 // is in the gitosis configuration file.
-func DeleteKeyFile(keyfilename string) error {
+func deleteKeyFile(keyfilename string) error {
 	p, err := getKeydirPath()
 	if err != nil {
 		return err

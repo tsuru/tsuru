@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"github.com/timeredbull/tsuru/api/repository/gitosis"
 	"github.com/timeredbull/tsuru/db"
 	"github.com/timeredbull/tsuru/errors"
 	"io/ioutil"
@@ -13,6 +14,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path"
+	"strings"
 )
 
 func (s *S) TestCreateUserHandlerSavesTheUserInTheDatabase(c *C) {
@@ -257,6 +259,12 @@ func (s *S) TestCreateTeamHandlerReturnConflictIfTheTeamToBeCreatedAlreadyExists
 	c.Assert(e, ErrorMatches, "^This team already exists$")
 }
 
+func (s *S) TestCreateTeamCreatesTheGroupWithinGitosis(c *C) {
+	err := createTeam("timeredbull", s.user)
+	c.Assert(err, IsNil)
+	c.Assert(gitosis.HasGroup("timeredbull"), Equals, true)
+}
+
 func (s *S) TestAddUserToTeamShouldAddAUserToATeamIfTheUserAndTheTeamExistAndTheGivenUserIsMemberOfTheTeam(c *C) {
 	u := &User{Email: "wolverine@xmen.com", Password: "123"}
 	err := u.Create()
@@ -490,9 +498,25 @@ func (s *S) TestAddKeyFunctionCreatesTheKeyFileInTheGitosisRepository(c *C) {
 	}()
 	c.Assert(u.Keys[0].Name, Not(Matches), "\\.pub$")
 	keypath := path.Join(s.gitosisRepo, "keydir", u.Keys[0].Name+".pub")
-	keyfile, err := os.Open(keypath)
+	_, err = os.Stat(keypath)
 	c.Assert(err, IsNil)
-	defer keyfile.Close()
+}
+
+func (s *S) TestAddKeyFunctionAddTheMemberWithTheKeyNameInTheGitosisConfigurationFileInAllTeamsThatTheUserIsMember(c *C) {
+	err := gitosis.AddGroup(s.team.Name)
+	c.Assert(err, IsNil)
+	defer gitosis.RemoveGroup(s.team.Name)
+	err = addKeyToUser("my-key", s.user)
+	c.Assert(err, IsNil)
+	defer removeKeyFromUser("my-key", s.user)
+	keyname := s.user.Keys[0].Name
+	path := path.Join(s.gitosisRepo, "gitosis.conf")
+	f, err := os.Open(path)
+	c.Assert(err, IsNil)
+	defer f.Close()
+	content, err := ioutil.ReadAll(f)
+	c.Assert(err, IsNil)
+	c.Assert(strings.Contains(string(content), "members = "+keyname), Equals, true)
 }
 
 func (s *S) TestRemoveKeyHandlerRemovesTheKeyFromTheUser(c *C) {
@@ -582,10 +606,24 @@ func (s *S) TestRemoveKeyHandlerDeletesTheKeyFileFromTheKeydir(c *C) {
 	keypath := path.Join(s.gitosisRepo, "keydir", u.Keys[0].Name+".pub")
 	err = removeKeyFromUser("my-key", u)
 	c.Assert(err, IsNil)
-	keyfile, err := os.Open(keypath)
-	if err == nil {
-		keyfile.Close()
-	}
+	_, err = os.Stat(keypath)
 	c.Assert(err, NotNil)
 	c.Assert(os.IsNotExist(err), Equals, true)
+}
+
+func (s *S) TestRemoveKeyHandlerRemovesTheMemberEntryFromGitosis(c *C) {
+	gitosis.AddGroup(s.team.Name)
+	defer gitosis.RemoveGroup(s.team.Name)
+	err := addKeyToUser("my-key", s.user)
+	c.Assert(err, IsNil)
+	keyname := s.user.Keys[0].Name
+	err = removeKeyFromUser("my-key", s.user)
+	c.Assert(err, IsNil)
+	path := path.Join(s.gitosisRepo, "gitosis.conf")
+	f, err := os.Open(path)
+	c.Assert(err, IsNil)
+	defer f.Close()
+	content, err := ioutil.ReadAll(f)
+	c.Assert(err, IsNil)
+	c.Assert(strings.Contains(string(content), "members = "+keyname), Equals, false)
 }

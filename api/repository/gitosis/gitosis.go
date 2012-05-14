@@ -17,7 +17,7 @@ func AddProject(group, project string) error {
 		log.Print(err)
 		return err
 	}
-	c, err := ini.ReadDefault(confPath)
+	c, err := ini.Read(confPath, ini.DEFAULT_COMMENT, ini.ALTERNATIVE_SEPARATOR, true, true)
 	if err != nil {
 		log.Print(err)
 		return err
@@ -66,6 +66,15 @@ func RemoveGroup(group string) error {
 	}
 	commitMsg := fmt.Sprintf("Removing group %s from gitosis.conf", group)
 	return writeCommitPush(c, commitMsg)
+}
+
+// HasGroup checks if gitosis has the given group.
+func HasGroup(group string) bool {
+	c, err := getConfig()
+	if err != nil {
+		return false
+	}
+	return c.HasSection("group " + group)
 }
 
 // AddMember adds a member to the given group.
@@ -174,5 +183,5 @@ func getConfig() (*ini.Config, error) {
 	if err != nil {
 		return nil, err
 	}
-	return ini.ReadDefault(confPath)
+	return ini.Read(confPath, ini.DEFAULT_COMMENT, ini.ALTERNATIVE_SEPARATOR, true, true)
 }
