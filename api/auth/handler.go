@@ -163,17 +163,20 @@ func addKeyToUser(content string, u *User) error {
 	if u.hasKey(key) {
 		return &errors.Http{Code: http.StatusConflict, Message: "User has this key already"}
 	}
-	filename, err := gitosis.BuildAndStoreKeyFile(u.Email, content)
-	if err != nil {
-		return err
+	r := make(chan string)
+	ch := gitosis.Change{
+		Kind:     gitosis.AddKey,
+		Args:     map[string]string{"member": u.Email, "key": content},
+		Response: r,
 	}
-	key.Name = strings.Replace(filename, ".pub", "", -1)
+	gitosis.Changes <- ch
 	var teams []Team
 	db.Session.Teams().Find(bson.M{"users.email": u.Email}).All(&teams)
+	key.Name = strings.Replace(<-r, ".pub", "", -1)
 	for _, team := range teams {
 		gitosis.AddMember(team.Name, key.Name)
 	}
-	err = u.addKey(key)
+	u.addKey(key)
 	return db.Session.Users().Update(bson.M{"email": u.Email}, u)
 }
 
@@ -200,10 +203,11 @@ func removeKeyFromUser(content string, u *User) error {
 	if err != nil {
 		return err
 	}
-	err = gitosis.DeleteKeyFile(key.Name + ".pub")
-	if err != nil {
-		return err
+	ch := gitosis.Change{
+		Kind: gitosis.RemoveKey,
+		Args: map[string]string{"key": key.Name + ".pub"},
 	}
+	gitosis.Changes <- ch
 	var teams []Team
 	db.Session.Teams().Find(bson.M{"users.email": u.Email}).All(&teams)
 	for _, team := range teams {
