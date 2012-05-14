@@ -96,15 +96,25 @@ func (s *S) commit(c *C, msg string) {
 }
 
 func (s *S) createGitosisConf(c *C) {
-	f, err := os.Create(path.Join(s.gitosisRepo, "gitosis.conf"))
+	p := path.Join(s.gitosisRepo, "gitosis.conf")
+	f, err := os.Create(p)
 	c.Assert(err, IsNil)
 	defer f.Close()
 	s.commit(c, "Added gitosis.conf")
 }
 
+func (s *S) addGroup() {
+	ch := gitosis.Change{
+		Kind: gitosis.AddGroup,
+		Args: map[string]string{"group": s.team.Name},
+	}
+	gitosis.Changes <- ch
+}
+
 func (s *S) deleteGitosisConf(c *C) {
-	os.Remove(path.Join(s.gitosisRepo, "gitosis.conf"))
-	s.commit(c, "Removed gitosis.conf")
+	err := os.Remove(path.Join(s.gitosisRepo, "gitosis.conf"))
+	c.Assert(err, IsNil)
+	s.commit(c, "Removing gitosis.conf")
 }
 
 func (s *S) SetUpSuite(c *C) {
@@ -112,8 +122,11 @@ func (s *S) SetUpSuite(c *C) {
 	s.user = &User{Email: "timeredbull@globo.com", Password: "123"}
 	s.user.Create()
 	s.token, _ = s.user.CreateToken()
-	s.team = &Team{Name: "cobrateam", Users: []*User{s.user}}
-	db.Session.Teams().Insert(s.team)
+	err := createTeam("cobrateam", s.user)
+	c.Assert(err, IsNil)
+	s.team = new(Team)
+	err = db.Session.Teams().Find(bson.M{"name": "cobrateam"}).One(s.team)
+	c.Assert(err, IsNil)
 	s.setupGitosis(c)
 }
 
