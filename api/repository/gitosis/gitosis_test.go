@@ -40,6 +40,20 @@ func (s *S) TestAddMoreThenOneProject(c *C) {
 	c.Assert(obtained, Equals, "take-over-the-world someProject")
 }
 
+func (s *S) TestRemoveProject(c *C) {
+	err := AddGroup("fooGroup")
+	c.Assert(err, IsNil)
+	err = AddProject("fooGroup", "fooProject")
+	conf, err := ini.ReadDefault(path.Join(s.gitosisRepo, "gitosis.conf"))
+	c.Assert(err, IsNil)
+	obtained, err := conf.String("group fooGroup", "writable")
+	c.Assert(err, IsNil)
+	c.Assert(obtained, Equals, "fooProject")
+	err = RemoveProject("fooGroup", "fooProject")
+	c.Assert(err, IsNil)
+	c.Assert(conf.HasOption("group fooGroup", "writable"), Equals, false)
+}
+
 func (s *S) TestAddProjectCommitAndPush(c *C) {
 	err := AddGroup("myGroup")
 	c.Assert(err, IsNil)
