@@ -84,3 +84,23 @@ func (c *CreateAppCommand) Run(context *Context, client Doer) error {
 func (c *CreateAppCommand) Info() *Info {
 	return &Info{Name: "create-app"}
 }
+
+type DeleteAppCommand struct{}
+
+func (c *DeleteAppCommand) Info() *Info {
+	return &Info{Name: "delete-app"}
+}
+
+func (c *DeleteAppCommand) Run(context *Context, client Doer) error {
+	appName := context.Args[0]
+	request, err := http.NewRequest("DELETE", fmt.Sprintf("http://tsuru.plataformas.glb.com:8080/apps/%s", appName), nil)
+	if err != nil {
+		return err
+	}
+	_, err = client.Do(request)
+	if err != nil {
+		return err
+	}
+	io.WriteString(context.Stdout, fmt.Sprintf("App %s delete with success!", appName))
+	return nil
+}
