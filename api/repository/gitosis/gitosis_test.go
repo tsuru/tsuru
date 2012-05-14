@@ -11,7 +11,7 @@ import (
 func (s *S) TestAddProject(c *C) {
 	err := addGroup("someGroup")
 	c.Assert(err, IsNil)
-	err = AddProject("someGroup", "someProject")
+	err = addProject("someGroup", "someProject")
 	c.Assert(err, IsNil)
 	conf, err := ini.Read(path.Join(s.gitosisRepo, "gitosis.conf"), ini.DEFAULT_COMMENT, ini.ALTERNATIVE_SEPARATOR, true, true)
 	c.Assert(conf.HasOption("group someGroup", "writable"), Equals, true)
@@ -19,7 +19,7 @@ func (s *S) TestAddProject(c *C) {
 	c.Assert(err, IsNil)
 	c.Assert(obtained, Equals, "someProject")
 	// try to add to an inexistent group
-	err = AddProject("inexistentGroup", "someProject")
+	err = addProject("inexistentGroup", "someProject")
 	c.Assert(err, NotNil)
 	c.Assert(err, ErrorMatches, "^Section group inexistentGroup doesn't exists$")
 }
@@ -27,9 +27,9 @@ func (s *S) TestAddProject(c *C) {
 func (s *S) TestAddMoreThenOneProject(c *C) {
 	err := addGroup("fooGroup")
 	c.Assert(err, IsNil)
-	err = AddProject("fooGroup", "take-over-the-world")
+	err = addProject("fooGroup", "take-over-the-world")
 	c.Assert(err, IsNil)
-	err = AddProject("fooGroup", "someProject")
+	err = addProject("fooGroup", "someProject")
 	c.Assert(err, IsNil)
 	conf, err := ini.Read(path.Join(s.gitosisRepo, "gitosis.conf"), ini.DEFAULT_COMMENT, ini.ALTERNATIVE_SEPARATOR, true, true)
 	c.Assert(err, IsNil)
@@ -41,7 +41,7 @@ func (s *S) TestAddMoreThenOneProject(c *C) {
 func (s *S) TestAddProjectCommitAndPush(c *C) {
 	err := addGroup("myGroup")
 	c.Assert(err, IsNil)
-	err = AddProject("myGroup", "myProject")
+	err = addProject("myGroup", "myProject")
 	c.Assert(err, IsNil)
 	got := s.lastBareCommit(c)
 	expected := "Added project myProject to group myGroup"

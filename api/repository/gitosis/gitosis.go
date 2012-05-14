@@ -11,7 +11,7 @@ import (
 )
 
 // Add a new project to gitosis.conf.
-func AddProject(group, project string) error {
+func addProject(group, project string) error {
 	confPath, err := ConfPath()
 	if err != nil {
 		log.Print(err)
