@@ -96,3 +96,22 @@ func (s *S) TestRemoveMemberChangeRemovesTheMemberFromTheFile(c *C) {
 	c.Assert(err, IsNil)
 	c.Assert(strings.Contains(string(content), "members = the-glass-prision"), Equals, false)
 }
+
+func (s *S) TestShouldHaveConstantForAddGroup(c *C) {
+	c.Assert(AddGroup, Equals, 4)
+}
+
+func (s *S) TestAddGroupChangeAddsAGroupToGitosisConf(c *C) {
+	change := Change{
+		Kind: AddGroup,
+		Args: map[string]string{"group": "dream-theater"},
+	}
+	Changes <- change
+	time.Sleep(1e9)
+	gitosis, err := os.Open(path.Join(s.gitosisRepo, "gitosis.conf"))
+	c.Assert(err, IsNil)
+	defer gitosis.Close()
+	content, err := ioutil.ReadAll(gitosis)
+	c.Assert(err, IsNil)
+	c.Assert(strings.Contains(string(content), "[group dream-theater]"), Equals, true)
+}
