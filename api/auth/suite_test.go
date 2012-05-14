@@ -97,9 +97,7 @@ func (s *S) commit(c *C, msg string) {
 	err = exec.Command("git", "add", ".").Run()
 	c.Assert(err, IsNil)
 	out, err := exec.Command("git", "commit", "-am", msg).CombinedOutput()
-	if err != nil {
-		c.Assert(strings.Contains(string(out), "nothing to commit"), Equals, true)
-	}
+	c.Assert(err, IsNil)
 }
 
 func (s *S) createGitosisConf(c *C) {
