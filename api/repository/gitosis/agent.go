@@ -4,6 +4,7 @@ const (
 	AddKey = iota
 	RemoveKey
 	AddMember
+	RemoveMember
 )
 
 // Change encapsulates a change that will be requested to the gitosis file.
@@ -49,6 +50,8 @@ func processChanges() {
 			go deleteKeyFile(change.Args["key"])
 		case AddMember:
 			go addMember(change.Args["group"], change.Args["member"])
+		case RemoveMember:
+			go removeMember(change.Args["group"], change.Args["member"])
 		}
 	}
 }
