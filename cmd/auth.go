@@ -7,6 +7,9 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
+	"os"
+	"os/user"
+	"strings"
 )
 
 type AddUserCommand struct{}
@@ -83,4 +86,37 @@ func (c *LoginCommand) Run(context *Context, client Doer) error {
 
 func (c *LoginCommand) Info() *Info {
 	return &Info{Name: "login"}
+}
+
+func readKey() (string, error) {
+	user, err := user.Current()
+	keyPath := user.HomeDir + "/.ssh/id_rsa.pub"
+	output, err := ioutil.ReadFile(keyPath)
+	return string(output), err
+}
+
+type AddKeyCommand struct{}
+
+func (c *AddKeyCommand) Info() *Info {
+	return &Info{Name: "add-key"}
+}
+
+func (c *AddKeyCommand) Run(context *Context, client Doer) error {
+	key, err := readKey()
+	if os.IsNotExist(err) {
+		io.WriteString(context.Stderr, "You don't have a public key\n")
+		io.WriteString(context.Stderr, "To generate a key use 'ssh-keygen' command\n")
+		return nil
+	}
+	b := bytes.NewBufferString(fmt.Sprintf(`{"key":"%s"}`, strings.Replace(key, "\n", "", -1)))
+	request, err := http.NewRequest("POST", "http://tsuru.plataformas.glb.com:8080/users/keys", b)
+	if err != nil {
+		return err
+	}
+	_, err = client.Do(request)
+	if err != nil {
+		return err
+	}
+	io.WriteString(context.Stdout, "Key added with success!")
+	return nil
 }
