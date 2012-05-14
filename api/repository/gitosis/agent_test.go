@@ -115,3 +115,24 @@ func (s *S) TestAddGroupChangeAddsAGroupToGitosisConf(c *C) {
 	c.Assert(err, IsNil)
 	c.Assert(strings.Contains(string(content), "[group dream-theater]"), Equals, true)
 }
+
+func (s *S) TestShouldHaveConstantForRemoveGroup(c *C) {
+	c.Assert(RemoveGroup, Equals, 5)
+}
+
+func (s *S) TestRemoveGroupChangeRemovesTheGroupFromGitosisConf(c *C) {
+	err := addGroup("steve-lee")
+	c.Assert(err, IsNil)
+	change := Change{
+		Kind: RemoveGroup,
+		Args: map[string]string{"group": "steve-lee"},
+	}
+	Changes <- change
+	time.Sleep(1e9)
+	gitosis, err := os.Open(path.Join(s.gitosisRepo, "gitosis.conf"))
+	c.Assert(err, IsNil)
+	defer gitosis.Close()
+	content, err := ioutil.ReadAll(gitosis)
+	c.Assert(err, IsNil)
+	c.Assert(strings.Contains(string(content), "[group steve-lee]"), Equals, false)
+}

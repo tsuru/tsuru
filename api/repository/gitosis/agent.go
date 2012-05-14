@@ -6,6 +6,7 @@ const (
 	AddMember
 	RemoveMember
 	AddGroup
+	RemoveGroup
 )
 
 // Change encapsulates a change that will be requested to the gitosis file.
@@ -55,6 +56,8 @@ func processChanges() {
 			go removeMember(change.Args["group"], change.Args["member"])
 		case AddGroup:
 			go addGroup(change.Args["group"])
+		case RemoveGroup:
+			go removeGroup(change.Args["group"])
 		}
 	}
 }
