@@ -1,9 +1,11 @@
 package gitosis
 
 import (
+	"io/ioutil"
 	. "launchpad.net/gocheck"
 	"os"
 	"path"
+	"strings"
 	"time"
 )
 
@@ -13,6 +15,10 @@ func (s *S) TestShouldHaveConstantForAddKey(c *C) {
 
 func (s *S) TestShouldHaveConstantForRemoveKey(c *C) {
 	c.Assert(RemoveKey, Equals, 1)
+}
+
+func (s *S) TestShouldHaveConstantForAddMember(c *C) {
+	c.Assert(AddMember, Equals, 2)
 }
 
 func (s *S) TestAddKeyReturnsTheKeyFileNameInTheResponseChannel(c *C) {
@@ -49,4 +55,21 @@ func (s *S) TestRemoveKeyChangeRemovesTheKey(c *C) {
 	_, err = os.Stat(keypath)
 	c.Assert(err, NotNil)
 	c.Assert(os.IsNotExist(err), Equals, true)
+}
+
+func (s *S) TestAddMemberChangeAddsTheMemberToTheFile(c *C) {
+	err := AddGroup("dream-theater")
+	c.Assert(err, IsNil)
+	change := Change{
+		Kind: AddMember,
+		Args: map[string]string{"group": "dream-theater", "member": "octavarium"},
+	}
+	Changes <- change
+	time.Sleep(1e9)
+	gitosis, err := os.Open(path.Join(s.gitosisRepo, "gitosis.conf"))
+	c.Assert(err, IsNil)
+	defer gitosis.Close()
+	content, err := ioutil.ReadAll(gitosis)
+	c.Assert(err, IsNil)
+	c.Assert(strings.Contains(string(content), "members = octavarium"), Equals, true)
 }
