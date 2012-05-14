@@ -5,10 +5,8 @@ import (
 	"github.com/timeredbull/tsuru/api/repository"
 	"github.com/timeredbull/tsuru/db"
 	. "launchpad.net/gocheck"
-	"launchpad.net/mgo"
 	"launchpad.net/mgo/bson"
 	"os"
-	"testing"
 )
 
 type hasAccessToChecker struct{}
@@ -33,41 +31,6 @@ func (c *hasAccessToChecker) Check(params []interface{}, names []string) (bool, 
 }
 
 var HasAccessTo Checker = &hasAccessToChecker{}
-
-func Test(t *testing.T) { TestingT(t) }
-
-type S struct {
-	session *mgo.Session
-	team    auth.Team
-	user    *auth.User
-}
-
-var _ = Suite(&S{})
-
-func (s *S) SetUpSuite(c *C) {
-	var err error
-	db.Session, err = db.Open("127.0.0.1:27017", "tsuru_app_test")
-	c.Assert(err, IsNil)
-	s.user = &auth.User{Email: "whydidifall@thewho.com", Password: "123"}
-	s.user.Create()
-	s.team = auth.Team{Name: "tsuruteam", Users: []*auth.User{s.user}}
-	db.Session.Teams().Insert(s.team)
-}
-
-func (s *S) TearDownSuite(c *C) {
-	defer db.Session.Close()
-	db.Session.Apps().Database.DropDatabase()
-}
-
-func (s *S) TearDownTest(c *C) {
-	var apps []App
-	err := db.Session.Apps().Find(nil).All(&apps)
-	c.Assert(err, IsNil)
-	for _, app := range apps {
-		err = app.Destroy()
-		c.Assert(err, IsNil)
-	}
-}
 
 func (s *S) TestAll(c *C) {
 	expected := make([]App, 0)
