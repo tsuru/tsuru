@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/timeredbull/tsuru/api/repository/gitosis"
 	"github.com/timeredbull/tsuru/config"
 	"github.com/timeredbull/tsuru/db"
 	"github.com/timeredbull/tsuru/errors"
@@ -298,7 +297,7 @@ func (s *S) TestCreateTeamCreatesTheGroupWithinGitosis(c *C) {
 	err := createTeam("timeredbull", s.user)
 	time.Sleep(1e9)
 	c.Assert(err, IsNil)
-	c.Assert(gitosis.HasGroup("timeredbull"), Equals, true)
+	c.Assert("[group timeredbull]", IsInGitosis)
 }
 
 func (s *S) TestAddUserToTeamShouldAddAUserToATeamIfTheUserAndTheTeamExistAndTheGivenUserIsMemberOfTheTeam(c *C) {
