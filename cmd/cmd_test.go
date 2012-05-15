@@ -84,8 +84,8 @@ func (c *TicCmd) Run(context *Context, client Doer) error {
 	return nil
 }
 
-func (c *TicCmd) Subcommands() map[string]Command {
-	return map[string]Command{"tac": &TacCmd{}}
+func (c *TicCmd) Subcommands() map[string]interface{} {
+	return map[string]interface{}{"tac": &TacCmd{}}
 }
 
 type TacCmd struct{}
@@ -96,10 +96,6 @@ func (c *TacCmd) Info() *Info {
 
 func (c *TacCmd) Run(context *Context, client Doer) error {
 	io.WriteString(context.Stdout, "Running tac subcommand")
-	return nil
-}
-
-func (c *TacCmd) Subcommands() map[string]Command {
 	return nil
 }
 

@@ -135,3 +135,37 @@ func (c *LogoutCommand) Run(context *Context, client Doer) error {
 	io.WriteString(context.Stdout, "Successfully logout!\n")
 	return nil
 }
+
+type TeamCommand struct{}
+
+func (c *TeamCommand) Subcommands() map[string]interface{} {
+	return map[string]interface{}{"add-user": &TeamAddUser{}}
+}
+
+func (c *TeamCommand) Info() *Info {
+	return &Info{Name: "team"}
+}
+
+func (c *TeamCommand) Run(context *Context, client Doer) error {
+	return nil
+}
+
+type TeamAddUser struct{}
+
+func (c *TeamAddUser) Info() *Info {
+	return &Info{Name: "add-user"}
+}
+
+func (c *TeamAddUser) Run(context *Context, client Doer) error {
+	teamName, userName := context.Args[0], context.Args[1]
+	request, err := http.NewRequest("PUT", fmt.Sprintf("http://tsuru.plataformas.glb.com:8080/teams/%s/%s", teamName, userName), nil)
+	if err != nil {
+		return err
+	}
+	_, err = client.Do(request)
+	if err != nil {
+		return err
+	}
+	io.WriteString(context.Stdout, fmt.Sprintf(`User "%s" was added to the team "%s"\n`, userName, teamName))
+	return nil
+}
