@@ -140,9 +140,9 @@ func AddUserToTeam(w http.ResponseWriter, r *http.Request, u *User) error {
 	return addUserToTeam(email, team, u)
 }
 
-func RemoveUserFromTeam(w http.ResponseWriter, r *http.Request, u *User) error {
+func removeUserFromTeam(email, teamName string, u *User) error {
 	team := new(Team)
-	selector := bson.M{"name": r.URL.Query().Get(":team")}
+	selector := bson.M{"name": teamName}
 	err := db.Session.Teams().Find(selector).One(team)
 	if err != nil {
 		return &errors.Http{Code: http.StatusNotFound, Message: "Team not found"}
@@ -155,12 +155,18 @@ func RemoveUserFromTeam(w http.ResponseWriter, r *http.Request, u *User) error {
 		msg := "You can not remove this user from this team, because it is the last user within the team, and a team can not be orphaned"
 		return &errors.Http{Code: http.StatusForbidden, Message: msg}
 	}
-	user := User{Email: r.URL.Query().Get(":user")}
+	user := User{Email: email}
 	err = team.RemoveUser(&user)
 	if err != nil {
 		return &errors.Http{Code: http.StatusNotFound, Message: err.Error()}
 	}
 	return db.Session.Teams().Update(selector, team)
+}
+
+func RemoveUserFromTeam(w http.ResponseWriter, r *http.Request, u *User) error {
+	email := r.URL.Query().Get(":user")
+	team := r.URL.Query().Get(":team")
+	return removeUserFromTeam(email, team, u)
 }
 
 func getKeyFromBody(b io.Reader) (string, error) {
