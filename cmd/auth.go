@@ -120,3 +120,18 @@ func (c *AddKeyCommand) Run(context *Context, client Doer) error {
 	io.WriteString(context.Stdout, "Key added with success!")
 	return nil
 }
+
+type LogoutCommand struct{}
+
+func (c *LogoutCommand) Info() *Info {
+	return &Info{Name: "logout"}
+}
+
+func (c *LogoutCommand) Run(context *Context, client Doer) error {
+	err := WriteToken("")
+	if err != nil {
+		return err
+	}
+	io.WriteString(context.Stdout, "Successfully logout!\n")
+	return nil
+}
