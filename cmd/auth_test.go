@@ -64,15 +64,28 @@ func (s *S) TestLogout(c *C) {
 }
 
 func (s *S) TestTeam(c *C) {
-	expect := map[string]interface{}{"add-user": &TeamAddUser{}}
+	expect := map[string]interface{}{
+		"add-user":    &TeamAddUser{},
+		"remove-user": &TeamRemoveUser{},
+	}
 	command := TeamCommand{}
 	c.Assert(command.Subcommands(), DeepEquals, expect)
 }
 
 func (s *S) TestTeamAddUser(c *C) {
-	expected := `User "andorito" was added to the team "cobrateam"\n`
+	expected := `User "andorito" was added to the "cobrateam" team\n`
 	context := Context{[]string{"cobrateam", "andorito"}, manager.Stdout, manager.Stderr}
 	command := TeamAddUser{}
+	client := NewClient(&http.Client{Transport: &transport{msg: "", status: http.StatusOK}})
+	err := command.Run(&context, client)
+	c.Assert(err, IsNil)
+	c.Assert(manager.Stdout.(*bytes.Buffer).String(), Equals, expected)
+}
+
+func (s *S) TestTeamRemoveUser(c *C) {
+	expected := `User "andorito" was removed from the "cobrateam" team\n`
+	context := Context{[]string{"cobrateam", "andorito"}, manager.Stdout, manager.Stderr}
+	command := TeamRemoveUser{}
 	client := NewClient(&http.Client{Transport: &transport{msg: "", status: http.StatusOK}})
 	err := command.Run(&context, client)
 	c.Assert(err, IsNil)

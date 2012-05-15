@@ -139,7 +139,7 @@ func (c *LogoutCommand) Run(context *Context, client Doer) error {
 type TeamCommand struct{}
 
 func (c *TeamCommand) Subcommands() map[string]interface{} {
-	return map[string]interface{}{"add-user": &TeamAddUser{}}
+	return map[string]interface{}{"add-user": &TeamAddUser{}, "remove-user": &TeamRemoveUser{}}
 }
 
 func (c *TeamCommand) Info() *Info {
@@ -166,6 +166,26 @@ func (c *TeamAddUser) Run(context *Context, client Doer) error {
 	if err != nil {
 		return err
 	}
-	io.WriteString(context.Stdout, fmt.Sprintf(`User "%s" was added to the team "%s"\n`, userName, teamName))
+	io.WriteString(context.Stdout, fmt.Sprintf(`User "%s" was added to the "%s" team`+"\n", userName, teamName))
+	return nil
+}
+
+type TeamRemoveUser struct{}
+
+func (c *TeamRemoveUser) Info() *Info {
+	return &Info{Name: "remove-user"}
+}
+
+func (c *TeamRemoveUser) Run(context *Context, client Doer) error {
+	teamName, userName := context.Args[0], context.Args[1]
+	request, err := http.NewRequest("DELETE", fmt.Sprintf("http://tsuru.plataformas.glb.com:8080/teams/%s/%s", teamName, userName), nil)
+	if err != nil {
+		return err
+	}
+	_, err = client.Do(request)
+	if err != nil {
+		return err
+	}
+	io.WriteString(context.Stdout, fmt.Sprintf(`User "%s" was removed from the "%s" team`+"\n", userName, teamName))
 	return nil
 }
