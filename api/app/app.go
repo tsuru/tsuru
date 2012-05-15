@@ -3,7 +3,6 @@ package app
 import (
 	"errors"
 	"github.com/timeredbull/tsuru/api/auth"
-	"github.com/timeredbull/tsuru/api/repository"
 	"github.com/timeredbull/tsuru/api/unit"
 	"github.com/timeredbull/tsuru/db"
 	"launchpad.net/mgo/bson"
@@ -33,18 +32,14 @@ func (app *App) Create() error {
 	if err != nil {
 		return err
 	}
-
-	err = repository.NewRepository(app.Name)
 	if err != nil {
 		return err
 	}
-
 	u := unit.Unit{Name: app.Name, Type: app.Framework}
 	err = u.Create()
 	if err != nil {
 		return err
 	}
-
 	return nil
 }
 
@@ -53,15 +48,8 @@ func (app *App) Destroy() error {
 	if err != nil {
 		return err
 	}
-
-	err = repository.DeleteRepository(app.Name)
-	if err != nil {
-		return err
-	}
-
 	u := unit.Unit{Name: app.Name, Type: app.Framework}
 	u.Destroy()
-
 	return nil
 }
 

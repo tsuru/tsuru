@@ -42,25 +42,29 @@ func init() {
 	go processChanges()
 }
 
-func done(ch chan string) {
+func done(ch chan string, err error) {
 	if ch != nil {
-		ch <- "done"
+		if err != nil {
+			ch <- "fail: " + err.Error()
+		} else {
+			ch <- "success"
+		}
 	}
 }
 
 func member(ch Change, fn func(string, string) error) {
-	fn(ch.Args["group"], ch.Args["member"])
-	done(ch.Response)
+	err := fn(ch.Args["group"], ch.Args["member"])
+	done(ch.Response, err)
 }
 
 func group(ch Change, fn func(string) error) {
-	fn(ch.Args["group"])
-	done(ch.Response)
+	err := fn(ch.Args["group"])
+	done(ch.Response, err)
 }
 
 func project(ch Change, fn func(string, string) error) {
-	fn(ch.Args["group"], ch.Args["project"])
-	done(ch.Response)
+	err := fn(ch.Args["group"], ch.Args["project"])
+	done(ch.Response, err)
 }
 
 func processChanges() {

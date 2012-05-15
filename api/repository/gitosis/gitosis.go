@@ -75,8 +75,8 @@ func removeGroup(group string) error {
 	return writeCommitPush(c, commitMsg)
 }
 
-// HasGroup checks if gitosis has the given group.
-func HasGroup(group string) bool {
+// hasGroup checks if gitosis has the given group.
+func hasGroup(group string) bool {
 	c, err := getConfig()
 	if err != nil {
 		return false

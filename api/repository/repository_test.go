@@ -9,37 +9,6 @@ import (
 	"path"
 )
 
-func (s *S) TestNewRepository(c *C) {
-	a := App{Name: "foobar"}
-	err := NewRepository(a.Name)
-	c.Assert(err, IsNil)
-
-	repoPath := GetRepositoryPath(a.Name)
-	_, err = os.Stat(repoPath)
-	c.Assert(err, IsNil)
-
-	_, err = os.Stat(path.Join(repoPath, "config"))
-	c.Assert(err, IsNil)
-
-	err = os.RemoveAll(repoPath)
-	c.Assert(err, IsNil)
-}
-
-func (s *S) TestDeleteGitRepository(c *C) {
-	a := &App{Name: "someApp"}
-	repoPath := GetRepositoryPath(a.Name)
-
-	err := NewRepository(a.Name)
-	c.Assert(err, IsNil)
-
-	_, err = os.Stat(path.Join(repoPath, "config"))
-	c.Assert(err, IsNil)
-
-	DeleteRepository(a.Name)
-	_, err = os.Stat(repoPath)
-	c.Assert(os.IsNotExist(err), Equals, true)
-}
-
 func (s *S) TestCloneRepository(c *C) {
 	a := App{Name: "barfoo"}
 	err := CloneRepository(a.Name)

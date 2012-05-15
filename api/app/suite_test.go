@@ -29,6 +29,39 @@ type S struct {
 
 var _ = Suite(&S{})
 
+type isInGitosisChecker struct{}
+
+func (c *isInGitosisChecker) Info() *CheckerInfo {
+	return &CheckerInfo{Name: "IsInGitosis", Params: []string{"str"}}
+}
+
+func (c *isInGitosisChecker) Check(params []interface{}, names []string) (bool, string) {
+	if len(params) != 1 {
+		return false, "you should provide one string parameter"
+	}
+	str, ok := params[0].(string)
+	if !ok {
+		return false, "the parameter should be a string"
+	}
+	gitosisRepo, err := config.GetString("git:gitosis-repo")
+	if err != nil {
+		return false, "failed to get config"
+	}
+	path := path.Join(gitosisRepo, "gitosis.conf")
+	f, err := os.Open(path)
+	if err != nil {
+		return false, err.Error()
+	}
+	defer f.Close()
+	content, err := ioutil.ReadAll(f)
+	if err != nil {
+		return false, err.Error()
+	}
+	return strings.Contains(string(content), str), ""
+}
+
+var IsInGitosis, NotInGitosis Checker = &isInGitosisChecker{}, Not(IsInGitosis)
+
 func (s *S) setupGitosis(c *C) {
 	data, err := ioutil.ReadFile("../../etc/tsuru.conf")
 	c.Assert(err, IsNil)

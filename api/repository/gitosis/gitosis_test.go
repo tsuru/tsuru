@@ -133,8 +133,8 @@ func (s *S) TestRemoveOptionValue(c *C) {
 func (s *S) TestHasGroup(c *C) {
 	err := addGroup("someGroup")
 	c.Assert(err, IsNil)
-	c.Assert(HasGroup("someGroup"), Equals, true)
-	c.Assert(HasGroup("otherGroup"), Equals, false)
+	c.Assert(hasGroup("someGroup"), Equals, true)
+	c.Assert(hasGroup("otherGroup"), Equals, false)
 }
 
 func (s *S) TestAddGroup(c *C) {

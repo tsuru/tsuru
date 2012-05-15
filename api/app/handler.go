@@ -14,6 +14,14 @@ import (
 	"net/http"
 )
 
+func sendProjectChangeToGitosis(kind int, team *auth.Team, app *App) {
+	ch := gitosis.Change{
+		Kind: kind,
+		Args: map[string]string{"group": team.Name, "project": app.Name},
+	}
+	gitosis.Changes <- ch
+}
+
 func getAppOrError(name string, u *auth.User) (App, error) {
 	app := App{Name: name}
 	err := app.Get()
@@ -43,6 +51,9 @@ func AppDelete(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 		return err
 	}
 	app.Destroy()
+	for _, t := range app.Teams {
+		sendProjectChangeToGitosis(gitosis.RemoveProject, &t, &app)
+	}
 	fmt.Fprint(w, "success")
 	return nil
 }
@@ -78,7 +89,7 @@ func AppInfo(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	return nil
 }
 
-func createApp(app App, u *auth.User) ([]byte, error) {
+func createApp(app *App, u *auth.User) ([]byte, error) {
 	err := db.Session.Teams().Find(bson.M{"users.email": u.Email}).All(&app.Teams)
 	if err != nil {
 		return nil, err
@@ -90,6 +101,9 @@ func createApp(app App, u *auth.User) ([]byte, error) {
 	err = app.Create()
 	if err != nil {
 		return nil, err
+	}
+	for _, t := range app.Teams {
+		sendProjectChangeToGitosis(gitosis.AddProject, &t, app)
 	}
 	msg := map[string]string{
 		"status":         "success",
@@ -109,7 +123,7 @@ func CreateAppHandler(w http.ResponseWriter, r *http.Request, u *auth.User) erro
 	if err != nil {
 		return err
 	}
-	jsonMsg, err := createApp(app, u)
+	jsonMsg, err := createApp(&app, u)
 	if err != nil {
 		return err
 	}
@@ -139,11 +153,7 @@ func grantAccessToTeam(appName, teamName string, u *auth.User) error {
 	if err != nil {
 		return err
 	}
-	ch := gitosis.Change{
-		Kind: gitosis.AddProject,
-		Args: map[string]string{"group": t.Name, "project": app.Name},
-	}
-	gitosis.Changes <- ch
+	sendProjectChangeToGitosis(gitosis.AddProject, t, app)
 	return nil
 }
 
@@ -179,11 +189,7 @@ func revokeAccessFromTeam(appName, teamName string, u *auth.User) error {
 	if err != nil {
 		return err
 	}
-	ch := gitosis.Change{
-		Kind: gitosis.RemoveProject,
-		Args: map[string]string{"group": t.Name, "project": app.Name},
-	}
-	gitosis.Changes <- ch
+	sendProjectChangeToGitosis(gitosis.RemoveProject, t, app)
 	return nil
 }
 

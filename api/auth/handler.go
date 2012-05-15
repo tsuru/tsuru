@@ -69,6 +69,16 @@ func Login(w http.ResponseWriter, r *http.Request) error {
 	return &errors.Http{Code: http.StatusUnauthorized, Message: msg}
 }
 
+func applyChangesToKeys(kind int, team *Team, user *User) {
+	for _, key := range user.Keys {
+		ch := gitosis.Change{
+			Kind: kind,
+			Args: map[string]string{"group": team.Name, "member": key.Name},
+		}
+		gitosis.Changes <- ch
+	}
+}
+
 func createTeam(name string, u *User) error {
 	team := &Team{Name: name, Users: []*User{u}}
 	err := db.Session.Teams().Insert(team)
@@ -76,10 +86,13 @@ func createTeam(name string, u *User) error {
 		return &errors.Http{Code: http.StatusConflict, Message: "This team already exists"}
 	}
 	ch := gitosis.Change{
-		Kind: gitosis.AddGroup,
-		Args: map[string]string{"group": name},
+		Kind:     gitosis.AddGroup,
+		Args:     map[string]string{"group": name},
+		Response: make(chan string),
 	}
 	gitosis.Changes <- ch
+	<-ch.Response
+	applyChangesToKeys(gitosis.AddMember, team, u)
 	return nil
 }
 
@@ -99,16 +112,6 @@ func CreateTeam(w http.ResponseWriter, r *http.Request, u *User) error {
 		return &errors.Http{Code: http.StatusBadRequest, Message: msg}
 	}
 	return createTeam(name, u)
-}
-
-func applyChangesToKeys(kind int, team *Team, user *User) {
-	for _, key := range user.Keys {
-		ch := gitosis.Change{
-			Kind: kind,
-			Args: map[string]string{"group": team.Name, "member": key.Name},
-		}
-		gitosis.Changes <- ch
-	}
 }
 
 func addUserToTeam(email, teamName string, u *User) error {
