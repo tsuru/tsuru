@@ -1,11 +1,9 @@
 package gitosis
 
 import (
-	"io/ioutil"
 	. "launchpad.net/gocheck"
 	"os"
 	"path"
-	"strings"
 	"time"
 )
 
@@ -63,12 +61,7 @@ func (s *S) TestAddMemberChangeAddsTheMemberToTheFile(c *C) {
 	}
 	Changes <- change
 	<-change.Response
-	gitosis, err := os.Open(path.Join(s.gitosisRepo, "gitosis.conf"))
-	c.Assert(err, IsNil)
-	defer gitosis.Close()
-	content, err := ioutil.ReadAll(gitosis)
-	c.Assert(err, IsNil)
-	c.Assert(strings.Contains(string(content), "members = octavarium"), Equals, true)
+	c.Assert("members = octavarium", IsInGitosis)
 }
 
 func (s *S) TestShouldHaveConstantForRemoveMember(c *C) {
@@ -87,12 +80,7 @@ func (s *S) TestRemoveMemberChangeRemovesTheMemberFromTheFile(c *C) {
 	}
 	Changes <- change
 	<-change.Response
-	gitosis, err := os.Open(path.Join(s.gitosisRepo, "gitosis.conf"))
-	c.Assert(err, IsNil)
-	defer gitosis.Close()
-	content, err := ioutil.ReadAll(gitosis)
-	c.Assert(err, IsNil)
-	c.Assert(strings.Contains(string(content), "members = the-glass-prision"), Equals, false)
+	c.Assert("members = the-glass-prision", NotInGitosis)
 }
 
 func (s *S) TestShouldHaveConstantForAddGroup(c *C) {
@@ -107,12 +95,7 @@ func (s *S) TestAddGroupChangeAddsAGroupToGitosisConf(c *C) {
 	}
 	Changes <- change
 	<-change.Response
-	gitosis, err := os.Open(path.Join(s.gitosisRepo, "gitosis.conf"))
-	c.Assert(err, IsNil)
-	defer gitosis.Close()
-	content, err := ioutil.ReadAll(gitosis)
-	c.Assert(err, IsNil)
-	c.Assert(strings.Contains(string(content), "[group dream-theater]"), Equals, true)
+	c.Assert("[group dream-theater]", IsInGitosis)
 }
 
 func (s *S) TestShouldHaveConstantForRemoveGroup(c *C) {
@@ -129,12 +112,7 @@ func (s *S) TestRemoveGroupChangeRemovesTheGroupFromGitosisConf(c *C) {
 	}
 	Changes <- change
 	<-change.Response
-	gitosis, err := os.Open(path.Join(s.gitosisRepo, "gitosis.conf"))
-	c.Assert(err, IsNil)
-	defer gitosis.Close()
-	content, err := ioutil.ReadAll(gitosis)
-	c.Assert(err, IsNil)
-	c.Assert(strings.Contains(string(content), "[group steve-lee]"), Equals, false)
+	c.Assert("[group steve-lee]", NotInGitosis)
 }
 
 func (s *S) TestShouldHaveConstantForAddProject(c *C) {
@@ -151,12 +129,7 @@ func (s *S) TestAddProjectChangeAddsAProjectToTheGroup(c *C) {
 	}
 	Changes <- change
 	<-change.Response
-	gitosis, err := os.Open(path.Join(s.gitosisRepo, "gitosis.conf"))
-	c.Assert(err, IsNil)
-	defer gitosis.Close()
-	content, err := ioutil.ReadAll(gitosis)
-	c.Assert(err, IsNil)
-	c.Assert(strings.Contains(string(content), "writable = grace-under-pressure"), Equals, true)
+	c.Assert("writable = grace-under-pressure", IsInGitosis)
 }
 
 func (s *S) TestShouldHaveContantForRemoveProject(c *C) {
@@ -175,10 +148,5 @@ func (s *S) TestRemoveProjectChangeRemovesAProjectFromTheGroup(c *C) {
 	}
 	Changes <- change
 	<-change.Response
-	gitosis, err := os.Open(path.Join(s.gitosisRepo, "gitosis.conf"))
-	c.Assert(err, IsNil)
-	defer gitosis.Close()
-	content, err := ioutil.ReadAll(gitosis)
-	c.Assert(err, IsNil)
-	c.Assert(strings.Contains(string(content), "writable = ao-vivo"), Equals, false)
+	c.Assert("writable = ao-vivo", NotInGitosis)
 }
