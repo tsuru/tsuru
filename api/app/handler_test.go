@@ -127,6 +127,20 @@ func (s *S) TestDeleteShouldReturnNotFoundIfTheAppDoesNotExist(c *C) {
 	c.Assert(e, ErrorMatches, "^App not found$")
 }
 
+func (s *S) TestDeleteAppRemovesProjectFromAllTeamsInGitosis(c *C) {
+	s.addGroup()
+	myApp := &App{Name: "MyAppToDelete", Framework: "django"}
+	_, err := createApp(myApp, s.user)
+	c.Assert(err, IsNil)
+	request, err := http.NewRequest("DELETE", "/apps/"+myApp.Name+"?:name="+myApp.Name, nil)
+	c.Assert(err, IsNil)
+	recorder := httptest.NewRecorder()
+	err = AppDelete(recorder, request, s.user)
+	c.Assert(err, IsNil)
+	time.Sleep(1e9)
+	c.Assert("writable = "+myApp.Name, NotInGitosis)
+}
+
 func (s *S) TestAppInfo(c *C) {
 	expectedApp := App{Name: "NewApp", Framework: "django", Teams: []auth.Team{s.team}}
 	expectedApp.Create()

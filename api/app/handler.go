@@ -51,6 +51,9 @@ func AppDelete(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 		return err
 	}
 	app.Destroy()
+	for _, t := range app.Teams {
+		sendProjectChangeToGitosis(gitosis.RemoveProject, &t, &app)
+	}
 	fmt.Fprint(w, "success")
 	return nil
 }
