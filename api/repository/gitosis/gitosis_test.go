@@ -38,7 +38,7 @@ func (s *S) TestAddMoreThenOneProject(c *C) {
 	c.Assert(obtained, Equals, "take-over-the-world someProject")
 }
 
-func (s *S) TestremoveProject(c *C) {
+func (s *S) TestRemoveProject(c *C) {
 	err := addGroup("fooGroup")
 	c.Assert(err, IsNil)
 	err = addProject("fooGroup", "fooProject")
