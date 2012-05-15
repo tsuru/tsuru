@@ -50,7 +50,7 @@ func (c *isInGitosisChecker) Check(params []interface{}, names []string) (bool, 
 	return strings.Contains(string(content), str), ""
 }
 
-var IsInGitosis Checker = &isInGitosisChecker{}
+var IsInGitosis, NotInGitosis Checker = &isInGitosisChecker{}, Not(IsInGitosis)
 
 func (s *S) TestCreateUserHandlerSavesTheUserInTheDatabase(c *C) {
 	b := bytes.NewBufferString(`{"email":"nobody@globo.com","password":"123"}`)
@@ -663,5 +663,5 @@ func (s *S) TestRemoveKeyHandlerRemovesTheMemberEntryFromGitosis(c *C) {
 	err = removeKeyFromUser("my-key", s.user)
 	c.Assert(err, IsNil)
 	time.Sleep(1e9)
-	c.Assert("members = "+keyname, Not(IsInGitosis))
+	c.Assert("members = "+keyname, NotInGitosis)
 }
