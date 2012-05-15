@@ -101,9 +101,9 @@ func CreateTeam(w http.ResponseWriter, r *http.Request, u *User) error {
 	return createTeam(name, u)
 }
 
-func AddUserToTeam(w http.ResponseWriter, r *http.Request, u *User) error {
+func addUserToTeam(email, teamName string, u *User) error {
 	team, user := new(Team), new(User)
-	selector := bson.M{"name": r.URL.Query().Get(":team")}
+	selector := bson.M{"name": teamName}
 	err := db.Session.Teams().Find(selector).One(team)
 	if err != nil {
 		return &errors.Http{Code: http.StatusNotFound, Message: "Team not found"}
@@ -112,7 +112,7 @@ func AddUserToTeam(w http.ResponseWriter, r *http.Request, u *User) error {
 		msg := fmt.Sprintf("You are not authorized to add new users to the team %s", team.Name)
 		return &errors.Http{Code: http.StatusUnauthorized, Message: msg}
 	}
-	err = db.Session.Users().Find(bson.M{"email": r.URL.Query().Get(":user")}).One(user)
+	err = db.Session.Users().Find(bson.M{"email": email}).One(user)
 	if err != nil {
 		return &errors.Http{Code: http.StatusNotFound, Message: "User not found"}
 	}
@@ -121,6 +121,12 @@ func AddUserToTeam(w http.ResponseWriter, r *http.Request, u *User) error {
 		return &errors.Http{Code: http.StatusConflict, Message: err.Error()}
 	}
 	return db.Session.Teams().Update(selector, team)
+}
+
+func AddUserToTeam(w http.ResponseWriter, r *http.Request, u *User) error {
+	team := r.URL.Query().Get(":team")
+	email := r.URL.Query().Get(":user")
+	return addUserToTeam(email, team, u)
 }
 
 func RemoveUserFromTeam(w http.ResponseWriter, r *http.Request, u *User) error {
