@@ -300,6 +300,17 @@ func (s *S) TestCreateTeamCreatesTheGroupWithinGitosis(c *C) {
 	c.Assert("[group timeredbull]", IsInGitosis)
 }
 
+func (s *S) TestCreateTeamAddsTheLoggedInUserKeysAsMemberInGitosis(c *C) {
+	err := addKeyToUser("my-key", s.user)
+	c.Assert(err, IsNil)
+	keyname := s.user.Keys[0].Name
+	err = createTeam("timeredbull", s.user)
+	c.Assert(err, IsNil)
+	time.Sleep(1e9)
+	c.Assert("[group timeredbull]", IsInGitosis)
+	c.Assert("members = "+keyname, IsInGitosis)
+}
+
 func (s *S) TestAddUserToTeamShouldAddAUserToATeamIfTheUserAndTheTeamExistAndTheGivenUserIsMemberOfTheTeam(c *C) {
 	u := &User{Email: "wolverine@xmen.com", Password: "123"}
 	err := u.Create()
