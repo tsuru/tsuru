@@ -227,6 +227,15 @@ func (s *S) TestCreateAppReturns403IfTheUserIsNotMemberOfAnyTeam(c *C) {
 	c.Assert(e, ErrorMatches, "^In order to create an app, you should be member of at least one team$")
 }
 
+func (s *S) TestCreateAppAddsProjectToGroupsInGitosis(c *C) {
+	s.addGroup()
+	app := &App{Name: "devincachu", Framework: "django"}
+	_, err := createApp(app, s.user)
+	c.Assert(err, IsNil)
+	time.Sleep(1e9)
+	c.Assert("writable = "+app.Name, IsInGitosis)
+}
+
 func (s *S) TestAddTeamToTheApp(c *C) {
 	t := auth.Team{Name: "itshardteam", Users: []*auth.User{s.user}}
 	a := App{Name: "itshard", Framework: "django", Teams: []auth.Team{t}}
