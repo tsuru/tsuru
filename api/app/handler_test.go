@@ -424,3 +424,23 @@ func (s *S) TestRevokeAccessFromTeamReturn403IfTheTeamIsTheLastWithAccessToTheAp
 	c.Assert(e.Code, Equals, http.StatusForbidden)
 	c.Assert(e, ErrorMatches, "^You can not revoke the access from this team, because it is the unique team with access to the app, and an app can not be orphaned$")
 }
+
+func (s *S) TestRevokeAccessFromTeamRemovesTheProjectFromGitosisConf(c *C) {
+	t := auth.Team{Name: "anything", Users: []*auth.User{s.user}}
+	s.addGroup()
+	a := &App{Name: "tsuru", Framework: "golang", Teams: []auth.Team{t}}
+	err := a.Create()
+	c.Assert(err, IsNil)
+	err = grantAccessToTeam(a.Name, s.team.Name, s.user)
+	c.Assert(err, IsNil)
+	time.Sleep(1e9)
+	err = revokeAccessFromTeam(a.Name, s.team.Name, s.user)
+	time.Sleep(1e9)
+	path := path.Join(s.gitosisRepo, "gitosis.conf")
+	f, err := os.Open(path)
+	c.Assert(err, IsNil)
+	defer f.Close()
+	content, err := ioutil.ReadAll(f)
+	c.Assert(err, IsNil)
+	c.Assert(strings.Contains(string(content), "writable = "+a.Name), Equals, false)
+}
