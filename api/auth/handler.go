@@ -101,9 +101,19 @@ func CreateTeam(w http.ResponseWriter, r *http.Request, u *User) error {
 	return createTeam(name, u)
 }
 
-func AddUserToTeam(w http.ResponseWriter, r *http.Request, u *User) error {
+func applyChangesToKeys(kind int, team *Team, user *User) {
+	for _, key := range user.Keys {
+		ch := gitosis.Change{
+			Kind: kind,
+			Args: map[string]string{"group": team.Name, "member": key.Name},
+		}
+		gitosis.Changes <- ch
+	}
+}
+
+func addUserToTeam(email, teamName string, u *User) error {
 	team, user := new(Team), new(User)
-	selector := bson.M{"name": r.URL.Query().Get(":team")}
+	selector := bson.M{"name": teamName}
 	err := db.Session.Teams().Find(selector).One(team)
 	if err != nil {
 		return &errors.Http{Code: http.StatusNotFound, Message: "Team not found"}
@@ -112,7 +122,7 @@ func AddUserToTeam(w http.ResponseWriter, r *http.Request, u *User) error {
 		msg := fmt.Sprintf("You are not authorized to add new users to the team %s", team.Name)
 		return &errors.Http{Code: http.StatusUnauthorized, Message: msg}
 	}
-	err = db.Session.Users().Find(bson.M{"email": r.URL.Query().Get(":user")}).One(user)
+	err = db.Session.Users().Find(bson.M{"email": email}).One(user)
 	if err != nil {
 		return &errors.Http{Code: http.StatusNotFound, Message: "User not found"}
 	}
@@ -120,12 +130,23 @@ func AddUserToTeam(w http.ResponseWriter, r *http.Request, u *User) error {
 	if err != nil {
 		return &errors.Http{Code: http.StatusConflict, Message: err.Error()}
 	}
-	return db.Session.Teams().Update(selector, team)
+	err = db.Session.Teams().Update(selector, team)
+	if err != nil {
+		return err
+	}
+	applyChangesToKeys(gitosis.AddMember, team, user)
+	return nil
 }
 
-func RemoveUserFromTeam(w http.ResponseWriter, r *http.Request, u *User) error {
+func AddUserToTeam(w http.ResponseWriter, r *http.Request, u *User) error {
+	team := r.URL.Query().Get(":team")
+	email := r.URL.Query().Get(":user")
+	return addUserToTeam(email, team, u)
+}
+
+func removeUserFromTeam(email, teamName string, u *User) error {
 	team := new(Team)
-	selector := bson.M{"name": r.URL.Query().Get(":team")}
+	selector := bson.M{"name": teamName}
 	err := db.Session.Teams().Find(selector).One(team)
 	if err != nil {
 		return &errors.Http{Code: http.StatusNotFound, Message: "Team not found"}
@@ -138,12 +159,27 @@ func RemoveUserFromTeam(w http.ResponseWriter, r *http.Request, u *User) error {
 		msg := "You can not remove this user from this team, because it is the last user within the team, and a team can not be orphaned"
 		return &errors.Http{Code: http.StatusForbidden, Message: msg}
 	}
-	user := User{Email: r.URL.Query().Get(":user")}
+	user := User{Email: email}
+	err = user.Get()
+	if err != nil {
+		return &errors.Http{Code: http.StatusNotFound, Message: err.Error()}
+	}
 	err = team.RemoveUser(&user)
 	if err != nil {
 		return &errors.Http{Code: http.StatusNotFound, Message: err.Error()}
 	}
-	return db.Session.Teams().Update(selector, team)
+	err = db.Session.Teams().Update(selector, team)
+	if err != nil {
+		return err
+	}
+	applyChangesToKeys(gitosis.RemoveMember, team, &user)
+	return nil
+}
+
+func RemoveUserFromTeam(w http.ResponseWriter, r *http.Request, u *User) error {
+	email := r.URL.Query().Get(":user")
+	team := r.URL.Query().Get(":team")
+	return removeUserFromTeam(email, team, u)
 }
 
 func getKeyFromBody(b io.Reader) (string, error) {

@@ -11,13 +11,8 @@ import (
 )
 
 // Add a new project to gitosis.conf.
-func AddProject(group, project string) error {
-	confPath, err := ConfPath()
-	if err != nil {
-		log.Print(err)
-		return err
-	}
-	c, err := ini.Read(confPath, ini.DEFAULT_COMMENT, ini.ALTERNATIVE_SEPARATOR, true, true)
+func addProject(group, project string) error {
+	c, err := getConfig()
 	if err != nil {
 		log.Print(err)
 		return err
@@ -27,14 +22,28 @@ func AddProject(group, project string) error {
 		errMsg := fmt.Sprintf("Section %s doesn't exists", section)
 		return errors.New(errMsg)
 	}
-	err = addOption(c, section, "writable", project)
-	if err != nil {
+	if err = addOptionValue(c, section, "writable", project); err != nil {
 		log.Print(err)
 		return err
 	}
 	commit := fmt.Sprintf("Added project %s to group %s", project, group)
 	err = writeCommitPush(c, commit)
 	return nil
+}
+
+// Remove a project from gitosis.conf
+func removeProject(group, project string) error {
+	c, err := getConfig()
+	if err != nil {
+		return err
+	}
+	section := fmt.Sprintf("group %s", group)
+	err = removeOptionValue(c, section, "writable", project)
+	if err != nil {
+		return err
+	}
+	commitMsg := fmt.Sprintf("Removing project %s from group %s", project, group)
+	return writeCommitPush(c, commitMsg)
 }
 
 // Add a new group to gitosis.conf. Also commit and push changes.
@@ -44,8 +53,7 @@ func addGroup(name string) error {
 		return err
 	}
 	sName := fmt.Sprintf("group %s", name)
-	ok := c.AddSection(sName)
-	if !ok {
+	if !c.AddSection(sName) {
 		errStr := fmt.Sprintf(`Could not add section "group %s" in gitosis.conf, section already exists!`, name)
 		return errors.New(errStr)
 	}
@@ -60,8 +68,7 @@ func removeGroup(group string) error {
 		return err
 	}
 	gName := fmt.Sprintf("group %s", group)
-	ok := c.RemoveSection(gName)
-	if !ok {
+	if !c.RemoveSection(gName) {
 		return errors.New("Section does not exists")
 	}
 	commitMsg := fmt.Sprintf("Removing group %s from gitosis.conf", group)
@@ -91,8 +98,7 @@ func addMember(group, member string) error {
 	if !c.HasSection(section) {
 		return errors.New("Group not found")
 	}
-	err = addOption(c, section, "members", member)
-	if err != nil {
+	if err = addOptionValue(c, section, "members", member); err != nil {
 		log.Print(err)
 		return err
 	}
@@ -113,28 +119,18 @@ func removeMember(group, member string) error {
 	if !c.HasSection(section) {
 		return errors.New("Group not found")
 	}
-	strMembers, err := c.String(section, "members")
-	if err != nil {
+	if !c.HasOption(section, "members") {
 		return errors.New("This group does not have any members")
 	}
-	members := strings.Split(strMembers, " ")
-	index := find(members, member)
-	if index < 0 {
-		return errors.New("This group does not have this member")
-	}
-	last := len(members) - 1
-	members[index] = members[last]
-	members = members[:last]
-	if len(members) > 0 {
-		c.AddOption(section, "members", strings.Join(members, " "))
-	} else {
-		c.RemoveOption(section, "members")
+	err = removeOptionValue(c, section, "members", member)
+	if err != nil {
+		return err
 	}
 	commitMsg := fmt.Sprintf("Removing member %s from group %s", member, group)
 	return writeCommitPush(c, commitMsg)
 }
 
-func addOption(c *ini.Config, section, option, value string) (err error) {
+func addOptionValue(c *ini.Config, section, option, value string) (err error) {
 	var strValues string
 	if c.HasOption(section, option) {
 		strValues, err = c.String(section, option)
@@ -149,8 +145,32 @@ func addOption(c *ini.Config, section, option, value string) (err error) {
 		return errors.New(errStr)
 	}
 	values = append(values, value)
-	optValues := strings.Trim(strings.Join(values, " "), " ")
+	optValues := strings.TrimSpace(strings.Join(values, " "))
 	c.AddOption(section, option, optValues)
+	return nil
+}
+
+func removeOptionValue(c *ini.Config, section, option, value string) (err error) {
+	//check if section and option exists
+	strValues, err := c.String(section, option)
+	if err != nil {
+		log.Print(err)
+		return err
+	}
+	values := strings.Split(strValues, " ")
+	index := find(values, value)
+	if index < 0 {
+		return errors.New(fmt.Sprintf("Value %s not found in section %s", value, section))
+	}
+	last := len(values) - 1
+	values[index] = values[last]
+	values = values[:last]
+	if len(values) > 0 {
+		c.AddOption(section, option, strings.Join(values, " "))
+	} else {
+		c.RemoveOption(section, option)
+	}
+
 	return nil
 }
 
