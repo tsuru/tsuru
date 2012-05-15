@@ -101,6 +101,16 @@ func CreateTeam(w http.ResponseWriter, r *http.Request, u *User) error {
 	return createTeam(name, u)
 }
 
+func applyChangesToKeys(kind int, team *Team, user *User) {
+	for _, key := range user.Keys {
+		ch := gitosis.Change{
+			Kind: kind,
+			Args: map[string]string{"group": team.Name, "member": key.Name},
+		}
+		gitosis.Changes <- ch
+	}
+}
+
 func addUserToTeam(email, teamName string, u *User) error {
 	team, user := new(Team), new(User)
 	selector := bson.M{"name": teamName}
@@ -124,13 +134,7 @@ func addUserToTeam(email, teamName string, u *User) error {
 	if err != nil {
 		return err
 	}
-	for _, key := range user.Keys {
-		ch := gitosis.Change{
-			Kind: gitosis.AddMember,
-			Args: map[string]string{"group": team.Name, "member": key.Name},
-		}
-		gitosis.Changes <- ch
-	}
+	applyChangesToKeys(gitosis.AddMember, team, user)
 	return nil
 }
 
@@ -156,11 +160,20 @@ func removeUserFromTeam(email, teamName string, u *User) error {
 		return &errors.Http{Code: http.StatusForbidden, Message: msg}
 	}
 	user := User{Email: email}
+	err = user.Get()
+	if err != nil {
+		return &errors.Http{Code: http.StatusNotFound, Message: err.Error()}
+	}
 	err = team.RemoveUser(&user)
 	if err != nil {
 		return &errors.Http{Code: http.StatusNotFound, Message: err.Error()}
 	}
-	return db.Session.Teams().Update(selector, team)
+	err = db.Session.Teams().Update(selector, team)
+	if err != nil {
+		return err
+	}
+	applyChangesToKeys(gitosis.RemoveMember, team, &user)
+	return nil
 }
 
 func RemoveUserFromTeam(w http.ResponseWriter, r *http.Request, u *User) error {

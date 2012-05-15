@@ -387,6 +387,8 @@ func (s *S) TestAddUserToTeamShoulAddAllUsersKeyToGitosisConf(c *C) {
 
 func (s *S) TestRemoveUserFromTeamShouldRemoveAUserFromATeamIfTheTeamExistAndTheUserIsMemberOfTheTeam(c *C) {
 	u := User{Email: "nonee@me.me", Password: "none"}
+	err := u.Create()
+	c.Assert(err, IsNil)
 	s.team.AddUser(&u)
 	db.Session.Teams().Update(bson.M{"name": s.team.Name}, s.team)
 	request, err := http.NewRequest("DELETE", "/teams/cobrateam/nonee@me.me?:team=cobrateam&:user=nonee@me.me", nil)
@@ -454,6 +456,26 @@ func (s *S) TestRemoveUserFromTeamShouldReturnForbiddenIfTheUserIsTheLastInTheTe
 	c.Assert(ok, Equals, true)
 	c.Assert(e.Code, Equals, http.StatusForbidden)
 	c.Assert(e, ErrorMatches, "^You can not remove this user from this team, because it is the last user within the team, and a team can not be orphaned$")
+}
+
+func (s *S) TestRemoveUserFromTeamRemovesTheMemberFromGroupInGitosis(c *C) {
+	u := &User{Email: "pomar@nando-reis.com", Password: "123"}
+	err := u.Create()
+	c.Assert(err, IsNil)
+	defer db.Session.Users().Remove(bson.M{"email": u.Email})
+	s.addGroup()
+	err = addKeyToUser("my-key", u)
+	c.Assert(err, IsNil)
+	err = u.Get()
+	c.Assert(err, IsNil)
+	err = addUserToTeam("pomar@nando-reis.com", s.team.Name, s.user)
+	c.Assert(err, IsNil)
+	time.Sleep(1e9)
+	keyname := u.Keys[0].Name
+	err = removeUserFromTeam("pomar@nando-reis.com", s.team.Name, s.user)
+	c.Assert(err, IsNil)
+	time.Sleep(1e9)
+	c.Assert("members = "+keyname, NotInGitosis)
 }
 
 func (s *S) TestAddKeyHandlerAddsAKeyToTheUser(c *C) {
