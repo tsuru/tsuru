@@ -12,8 +12,6 @@ import (
 	"launchpad.net/mgo/bson"
 	"net/http"
 	"net/http/httptest"
-	"os"
-	"path"
 	"strings"
 	"time"
 )
@@ -317,13 +315,7 @@ func (s *S) TestGrantAccessToAppAddsTheProjectInGitosis(c *C) {
 	err = grantAccessToTeam(a.Name, s.team.Name, s.user)
 	c.Assert(err, IsNil)
 	time.Sleep(1e9)
-	path := path.Join(s.gitosisRepo, "gitosis.conf")
-	f, err := os.Open(path)
-	c.Assert(err, IsNil)
-	defer f.Close()
-	content, err := ioutil.ReadAll(f)
-	c.Assert(err, IsNil)
-	c.Assert(strings.Contains(string(content), "writable = "+a.Name), Equals, true)
+	c.Assert("writable = "+a.Name, IsInGitosis)
 }
 
 func (s *S) TestRevokeAccessFromTeam(c *C) {
@@ -436,11 +428,5 @@ func (s *S) TestRevokeAccessFromTeamRemovesTheProjectFromGitosisConf(c *C) {
 	time.Sleep(1e9)
 	err = revokeAccessFromTeam(a.Name, s.team.Name, s.user)
 	time.Sleep(1e9)
-	path := path.Join(s.gitosisRepo, "gitosis.conf")
-	f, err := os.Open(path)
-	c.Assert(err, IsNil)
-	defer f.Close()
-	content, err := ioutil.ReadAll(f)
-	c.Assert(err, IsNil)
-	c.Assert(strings.Contains(string(content), "writable = "+a.Name), Equals, false)
+	c.Assert("writable = "+a.Name, NotInGitosis)
 }
