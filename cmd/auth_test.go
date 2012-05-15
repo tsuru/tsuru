@@ -73,7 +73,7 @@ func (s *S) TestTeam(c *C) {
 }
 
 func (s *S) TestTeamAddUser(c *C) {
-	expected := `User "andorito" was added to the "cobrateam" team\n`
+	expected := `User "andorito" was added to the "cobrateam" team`+"\n"
 	context := Context{[]string{"cobrateam", "andorito"}, manager.Stdout, manager.Stderr}
 	command := TeamAddUser{}
 	client := NewClient(&http.Client{Transport: &transport{msg: "", status: http.StatusOK}})
@@ -83,7 +83,7 @@ func (s *S) TestTeamAddUser(c *C) {
 }
 
 func (s *S) TestTeamRemoveUser(c *C) {
-	expected := `User "andorito" was removed from the "cobrateam" team\n`
+	expected := `User "andorito" was removed from the "cobrateam" team`+"\n"
 	context := Context{[]string{"cobrateam", "andorito"}, manager.Stdout, manager.Stderr}
 	command := TeamRemoveUser{}
 	client := NewClient(&http.Client{Transport: &transport{msg: "", status: http.StatusOK}})
