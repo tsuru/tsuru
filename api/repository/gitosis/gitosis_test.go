@@ -8,7 +8,7 @@ import (
 	"path"
 )
 
-func (s *S) TestAddProject(c *C) {
+func (s *S) TestaddProject(c *C) {
 	err := addGroup("someGroup")
 	c.Assert(err, IsNil)
 	err = addProject("someGroup", "someProject")
@@ -38,22 +38,22 @@ func (s *S) TestAddMoreThenOneProject(c *C) {
 	c.Assert(obtained, Equals, "take-over-the-world someProject")
 }
 
-func (s *S) TestRemoveProject(c *C) {
-	err := AddGroup("fooGroup")
+func (s *S) TestremoveProject(c *C) {
+	err := addGroup("fooGroup")
 	c.Assert(err, IsNil)
-	err = AddProject("fooGroup", "fooProject")
+	err = addProject("fooGroup", "fooProject")
 	conf, err := getConfig()
 	c.Assert(err, IsNil)
 	obtained, err := conf.String("group fooGroup", "writable")
 	c.Assert(err, IsNil)
 	c.Assert(obtained, Equals, "fooProject")
-	err = RemoveProject("fooGroup", "fooProject")
+	err = removeProject("fooGroup", "fooProject")
 	c.Assert(err, IsNil)
 	conf, err = getConfig()
 	c.Assert(conf.HasOption("group fooGroup", "writable"), Equals, false)
 }
 
-func (s *S) TestAddProjectCommitAndPush(c *C) {
+func (s *S) TestaddProjectCommitAndPush(c *C) {
 	err := addGroup("myGroup")
 	c.Assert(err, IsNil)
 	err = addProject("myGroup", "myProject")
@@ -86,11 +86,11 @@ func (s *S) TestAppendToOption(c *C) {
 }
 
 func (s *S) TestRemoveOptionValue(c *C) {
-	err := AddGroup("myGroup")
+	err := addGroup("myGroup")
 	c.Assert(err, IsNil)
-	err = AddProject("myGroup", "myProject")
+	err = addProject("myGroup", "myProject")
 	c.Assert(err, IsNil)
-	err = AddProject("myGroup", "myOtherProject")
+	err = addProject("myGroup", "myOtherProject")
 	c.Assert(err, IsNil)
 	// remove one project
 	conf, err := ini.Read(path.Join(s.gitRoot, "gitosis-admin/gitosis.conf"), ini.DEFAULT_COMMENT, ini.ALTERNATIVE_SEPARATOR, true, true)
