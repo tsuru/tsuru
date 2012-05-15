@@ -2,12 +2,10 @@ package app
 
 import (
 	"github.com/timeredbull/tsuru/api/auth"
-	"github.com/timeredbull/tsuru/api/repository"
 	"github.com/timeredbull/tsuru/db"
 	. "launchpad.net/gocheck"
 	"launchpad.net/mgo"
 	"launchpad.net/mgo/bson"
-	"os"
 	"testing"
 )
 
@@ -124,14 +122,8 @@ func (s *S) TestCreate(c *C) {
 	a := App{}
 	a.Name = "appName"
 	a.Framework = "django"
-
 	err := a.Create()
 	c.Assert(err, IsNil)
-
-	repoPath := repository.GetRepositoryPath(a.Name)
-	_, err = os.Stat(repoPath) // test if repository dir exists
-	c.Assert(err, IsNil)
-
 	c.Assert(a.State, Equals, "Pending")
 
 	var retrievedApp App
@@ -140,12 +132,7 @@ func (s *S) TestCreate(c *C) {
 	c.Assert(retrievedApp.Name, Equals, a.Name)
 	c.Assert(retrievedApp.Framework, Equals, a.Framework)
 	c.Assert(retrievedApp.State, Equals, a.State)
-
 	a.Destroy()
-
-	_, err = os.Stat(repoPath)
-	c.Assert(err, NotNil)
-	c.Assert(os.IsNotExist(err), Equals, true)
 }
 
 func (s *S) TestCantCreateTwoAppsWithTheSameName(c *C) {
