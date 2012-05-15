@@ -8,10 +8,10 @@ import (
 	"path"
 )
 
-func (s *S) TestAddProject(c *C) {
+func (s *S) TestaddProject(c *C) {
 	err := addGroup("someGroup")
 	c.Assert(err, IsNil)
-	err = AddProject("someGroup", "someProject")
+	err = addProject("someGroup", "someProject")
 	c.Assert(err, IsNil)
 	conf, err := ini.Read(path.Join(s.gitosisRepo, "gitosis.conf"), ini.DEFAULT_COMMENT, ini.ALTERNATIVE_SEPARATOR, true, true)
 	c.Assert(conf.HasOption("group someGroup", "writable"), Equals, true)
@@ -19,7 +19,7 @@ func (s *S) TestAddProject(c *C) {
 	c.Assert(err, IsNil)
 	c.Assert(obtained, Equals, "someProject")
 	// try to add to an inexistent group
-	err = AddProject("inexistentGroup", "someProject")
+	err = addProject("inexistentGroup", "someProject")
 	c.Assert(err, NotNil)
 	c.Assert(err, ErrorMatches, "^Section group inexistentGroup doesn't exists$")
 }
@@ -27,9 +27,9 @@ func (s *S) TestAddProject(c *C) {
 func (s *S) TestAddMoreThenOneProject(c *C) {
 	err := addGroup("fooGroup")
 	c.Assert(err, IsNil)
-	err = AddProject("fooGroup", "take-over-the-world")
+	err = addProject("fooGroup", "take-over-the-world")
 	c.Assert(err, IsNil)
-	err = AddProject("fooGroup", "someProject")
+	err = addProject("fooGroup", "someProject")
 	c.Assert(err, IsNil)
 	conf, err := ini.Read(path.Join(s.gitosisRepo, "gitosis.conf"), ini.DEFAULT_COMMENT, ini.ALTERNATIVE_SEPARATOR, true, true)
 	c.Assert(err, IsNil)
@@ -38,25 +38,25 @@ func (s *S) TestAddMoreThenOneProject(c *C) {
 	c.Assert(obtained, Equals, "take-over-the-world someProject")
 }
 
-func (s *S) TestRemoveProject(c *C) {
-	err := AddGroup("fooGroup")
+func (s *S) TestremoveProject(c *C) {
+	err := addGroup("fooGroup")
 	c.Assert(err, IsNil)
-	err = AddProject("fooGroup", "fooProject")
+	err = addProject("fooGroup", "fooProject")
 	conf, err := getConfig()
 	c.Assert(err, IsNil)
 	obtained, err := conf.String("group fooGroup", "writable")
 	c.Assert(err, IsNil)
 	c.Assert(obtained, Equals, "fooProject")
-	err = RemoveProject("fooGroup", "fooProject")
+	err = removeProject("fooGroup", "fooProject")
 	c.Assert(err, IsNil)
 	conf, err = getConfig()
 	c.Assert(conf.HasOption("group fooGroup", "writable"), Equals, false)
 }
 
-func (s *S) TestAddProjectCommitAndPush(c *C) {
+func (s *S) TestaddProjectCommitAndPush(c *C) {
 	err := addGroup("myGroup")
 	c.Assert(err, IsNil)
-	err = AddProject("myGroup", "myProject")
+	err = addProject("myGroup", "myProject")
 	c.Assert(err, IsNil)
 	got := s.lastBareCommit(c)
 	expected := "Added project myProject to group myGroup"
@@ -86,11 +86,11 @@ func (s *S) TestAppendToOption(c *C) {
 }
 
 func (s *S) TestRemoveOptionValue(c *C) {
-	err := AddGroup("myGroup")
+	err := addGroup("myGroup")
 	c.Assert(err, IsNil)
-	err = AddProject("myGroup", "myProject")
+	err = addProject("myGroup", "myProject")
 	c.Assert(err, IsNil)
-	err = AddProject("myGroup", "myOtherProject")
+	err = addProject("myGroup", "myOtherProject")
 	c.Assert(err, IsNil)
 	// remove one project
 	conf, err := ini.Read(path.Join(s.gitRoot, "gitosis-admin/gitosis.conf"), ini.DEFAULT_COMMENT, ini.ALTERNATIVE_SEPARATOR, true, true)
