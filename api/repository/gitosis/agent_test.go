@@ -158,3 +158,27 @@ func (s *S) TestAddProjectChangeAddsAProjectToTheGroup(c *C) {
 	c.Assert(err, IsNil)
 	c.Assert(strings.Contains(string(content), "writable = grace-under-pressure"), Equals, true)
 }
+
+func (s *S) TestShouldHaveContantForRemoveProject(c *C) {
+	c.Assert(RemoveProject, Equals, 7)
+}
+
+func (s *S) TestRemoveProjectChangeRemovesAProjectFromTheGroup(c *C) {
+	err := addGroup("nando-reis")
+	c.Assert(err, IsNil)
+	err = addProject("nando-reis", "ao-vivo")
+	c.Assert(err, IsNil)
+	change := Change{
+		Kind:     RemoveProject,
+		Args:     map[string]string{"group": "nando-reis", "project": "ao-vivo"},
+		Response: make(chan string),
+	}
+	Changes <- change
+	<-change.Response
+	gitosis, err := os.Open(path.Join(s.gitosisRepo, "gitosis.conf"))
+	c.Assert(err, IsNil)
+	defer gitosis.Close()
+	content, err := ioutil.ReadAll(gitosis)
+	c.Assert(err, IsNil)
+	c.Assert(strings.Contains(string(content), "writable = ao-vivo"), Equals, false)
+}

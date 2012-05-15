@@ -8,6 +8,7 @@ const (
 	AddGroup
 	RemoveGroup
 	AddProject
+	RemoveProject
 )
 
 // Change encapsulates a change that will be requested to the gitosis file.
@@ -83,6 +84,8 @@ func processChanges() {
 			go group(change, removeGroup)
 		case AddProject:
 			go project(change, addProject)
+		case RemoveProject:
+			go project(change, removeProject)
 		}
 	}
 }
