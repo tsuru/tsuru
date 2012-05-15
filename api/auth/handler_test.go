@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/timeredbull/tsuru/api/repository/gitosis"
+	"github.com/timeredbull/tsuru/config"
 	"github.com/timeredbull/tsuru/db"
 	"github.com/timeredbull/tsuru/errors"
 	"io/ioutil"
@@ -17,6 +18,39 @@ import (
 	"strings"
 	"time"
 )
+
+type isInGitosisChecker struct{}
+
+func (c *isInGitosisChecker) Info() *CheckerInfo {
+	return &CheckerInfo{Name: "IsInGitosis", Params: []string{"str"}}
+}
+
+func (c *isInGitosisChecker) Check(params []interface{}, names []string) (bool, string) {
+	if len(params) != 1 {
+		return false, "you should provide one string parameter"
+	}
+	str, ok := params[0].(string)
+	if !ok {
+		return false, "the parameter should be a string"
+	}
+	gitosisRepo, err := config.GetString("git:gitosis-repo")
+	if err != nil {
+		return false, "failed to get config"
+	}
+	path := path.Join(gitosisRepo, "gitosis.conf")
+	f, err := os.Open(path)
+	if err != nil {
+		return false, err.Error()
+	}
+	defer f.Close()
+	content, err := ioutil.ReadAll(f)
+	if err != nil {
+		return false, err.Error()
+	}
+	return strings.Contains(string(content), str), ""
+}
+
+var IsInGitosis Checker = &isInGitosisChecker{}
 
 func (s *S) TestCreateUserHandlerSavesTheUserInTheDatabase(c *C) {
 	b := bytes.NewBufferString(`{"email":"nobody@globo.com","password":"123"}`)
@@ -335,6 +369,22 @@ func (s *S) TestAddUserToTeamShouldReturnConflictIfTheUserIsAlreadyInTheGroup(c 
 	c.Assert(e.Code, Equals, http.StatusConflict)
 }
 
+func (s *S) TestAddUserToTeamShoulAddAllUsersKeyToGitosisConf(c *C) {
+	u := &User{Email: "marathon@rush.com", Password: "123"}
+	err := u.Create()
+	c.Assert(err, IsNil)
+	s.addGroup()
+	err = addKeyToUser("my-key", u)
+	c.Assert(err, IsNil)
+	err = u.Get()
+	c.Assert(err, IsNil)
+	err = addUserToTeam("marathon@rush.com", s.team.Name, s.user)
+	c.Assert(err, IsNil)
+	keyname := u.Keys[0].Name
+	time.Sleep(1e9)
+	c.Assert("members = "+keyname, IsInGitosis)
+}
+
 func (s *S) TestRemoveUserFromTeamShouldRemoveAUserFromATeamIfTheTeamExistAndTheUserIsMemberOfTheTeam(c *C) {
 	u := User{Email: "nonee@me.me", Password: "none"}
 	s.team.AddUser(&u)
@@ -510,13 +560,7 @@ func (s *S) TestAddKeyFunctionAddTheMemberWithTheKeyNameInTheGitosisConfiguratio
 	c.Assert(err, IsNil)
 	defer removeKeyFromUser("my-key", s.user)
 	keyname := s.user.Keys[0].Name
-	path := path.Join(s.gitosisRepo, "gitosis.conf")
-	f, err := os.Open(path)
-	c.Assert(err, IsNil)
-	defer f.Close()
-	content, err := ioutil.ReadAll(f)
-	c.Assert(err, IsNil)
-	c.Assert(strings.Contains(string(content), "members = "+keyname), Equals, true)
+	c.Assert("members = "+keyname, IsInGitosis)
 }
 
 func (s *S) TestRemoveKeyHandlerRemovesTheKeyFromTheUser(c *C) {
@@ -619,11 +663,5 @@ func (s *S) TestRemoveKeyHandlerRemovesTheMemberEntryFromGitosis(c *C) {
 	err = removeKeyFromUser("my-key", s.user)
 	c.Assert(err, IsNil)
 	time.Sleep(1e9)
-	path := path.Join(s.gitosisRepo, "gitosis.conf")
-	f, err := os.Open(path)
-	c.Assert(err, IsNil)
-	defer f.Close()
-	content, err := ioutil.ReadAll(f)
-	c.Assert(err, IsNil)
-	c.Assert(strings.Contains(string(content), "members = "+keyname), Equals, false)
+	c.Assert("members = "+keyname, Not(IsInGitosis))
 }

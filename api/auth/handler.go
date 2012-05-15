@@ -120,7 +120,18 @@ func addUserToTeam(email, teamName string, u *User) error {
 	if err != nil {
 		return &errors.Http{Code: http.StatusConflict, Message: err.Error()}
 	}
-	return db.Session.Teams().Update(selector, team)
+	err = db.Session.Teams().Update(selector, team)
+	if err != nil {
+		return err
+	}
+	for _, key := range user.Keys {
+		ch := gitosis.Change{
+			Kind: gitosis.AddMember,
+			Args: map[string]string{"group": team.Name, "member": key.Name},
+		}
+		gitosis.Changes <- ch
+	}
+	return nil
 }
 
 func AddUserToTeam(w http.ResponseWriter, r *http.Request, u *User) error {
