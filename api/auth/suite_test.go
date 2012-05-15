@@ -120,6 +120,8 @@ func (s *S) deleteGitosisConf(c *C) {
 }
 
 func (s *S) SetUpSuite(c *C) {
+	s.setupGitosis(c)
+	s.createGitosisConf(c)
 	db.Session, _ = db.Open("localhost:27017", "tsuru_user_test")
 	s.user = &User{Email: "timeredbull@globo.com", Password: "123"}
 	s.user.Create()
@@ -129,7 +131,6 @@ func (s *S) SetUpSuite(c *C) {
 	s.team = new(Team)
 	err = db.Session.Teams().Find(bson.M{"name": "cobrateam"}).One(s.team)
 	c.Assert(err, IsNil)
-	s.setupGitosis(c)
 }
 
 func (s *S) TearDownSuite(c *C) {
