@@ -10,16 +10,16 @@ import (
 )
 
 type Manager struct {
-	commands map[string]Command
+	commands map[string]interface{}
 	Stdout   io.Writer
 	Stderr   io.Writer
 }
 
-func (m *Manager) Register(command Command) {
+func (m *Manager) Register(command interface{}) {
 	if m.commands == nil {
-		m.commands = make(map[string]Command)
+		m.commands = make(map[string]interface{})
 	}
-	name := command.Info().Name
+	name := command.(SimpleCommand).Info().Name
 	_, found := m.commands[name]
 	if found {
 		panic(fmt.Sprintf("command already registered: %s", name))
@@ -33,9 +33,17 @@ func (m *Manager) Run(args []string) {
 		io.WriteString(m.Stderr, fmt.Sprintf("command %s does not exist\n", args[0]))
 		return
 	}
-	/* err := command.Run(&Context{args[1:], m.Stdout, m.Stderr}, &NewClient(http.DefaultClient)) */
-	client := NewClient(&http.Client{})
-	err := command.Run(&Context{args[1:], m.Stdout, m.Stderr}, client)
+	switch command.(type) {
+	case Command:
+		if len(args) > 1 {
+			args = args[1:]
+		}
+		subcommand, exist := command.(Command).Subcommands()[args[0]]
+		if exist {
+			command = subcommand
+		}
+	}
+	err := command.(SimpleCommand).Run(&Context{args[1:], m.Stdout, m.Stderr}, NewClient(&http.Client{}))
 	if err != nil {
 		io.WriteString(m.Stderr, err.Error())
 	}
@@ -46,6 +54,12 @@ func NewManager(stdout, stderr io.Writer) Manager {
 }
 
 type Command interface {
+	Run(context *Context, client Doer) error
+	Info() *Info
+	Subcommands() map[string]Command
+}
+
+type SimpleCommand interface {
 	Run(context *Context, client Doer) error
 	Info() *Info
 }
