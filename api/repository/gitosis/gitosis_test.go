@@ -38,6 +38,21 @@ func (s *S) TestAddMoreThenOneProject(c *C) {
 	c.Assert(obtained, Equals, "take-over-the-world someProject")
 }
 
+func (s *S) TestRemoveProject(c *C) {
+	err := AddGroup("fooGroup")
+	c.Assert(err, IsNil)
+	err = AddProject("fooGroup", "fooProject")
+	conf, err := getConfig()
+	c.Assert(err, IsNil)
+	obtained, err := conf.String("group fooGroup", "writable")
+	c.Assert(err, IsNil)
+	c.Assert(obtained, Equals, "fooProject")
+	err = RemoveProject("fooGroup", "fooProject")
+	c.Assert(err, IsNil)
+	conf, err = getConfig()
+	c.Assert(conf.HasOption("group fooGroup", "writable"), Equals, false)
+}
+
 func (s *S) TestAddProjectCommitAndPush(c *C) {
 	err := addGroup("myGroup")
 	c.Assert(err, IsNil)
@@ -55,19 +70,40 @@ func (s *S) TestAppendToOption(c *C) {
 	c.Assert(err, IsNil)
 	conf, err := ini.Read(path.Join(s.gitosisRepo, "gitosis.conf"), ini.DEFAULT_COMMENT, ini.ALTERNATIVE_SEPARATOR, true, true)
 	c.Assert(err, IsNil)
-	err = addOption(conf, section, "writable", "firstProject")
+	err = addOptionValue(conf, section, "writable", "firstProject")
 	c.Assert(err, IsNil)
 	// Check if option were added
 	obtained, err := conf.String(section, "writable")
 	c.Assert(err, IsNil)
 	c.Assert(obtained, Equals, "firstProject")
 	// Add one more value to same section/option
-	err = addOption(conf, section, "writable", "anotherProject")
+	err = addOptionValue(conf, section, "writable", "anotherProject")
 	c.Assert(err, IsNil)
 	// Check if the values were appended
 	obtained, err = conf.String(section, "writable")
 	c.Assert(err, IsNil)
 	c.Assert(obtained, Equals, "firstProject anotherProject")
+}
+
+func (s *S) TestRemoveOptionValue(c *C) {
+	err := AddGroup("myGroup")
+	c.Assert(err, IsNil)
+	err = AddProject("myGroup", "myProject")
+	c.Assert(err, IsNil)
+	err = AddProject("myGroup", "myOtherProject")
+	c.Assert(err, IsNil)
+	// remove one project
+	conf, err := ini.Read(path.Join(s.gitRoot, "gitosis-admin/gitosis.conf"), ini.DEFAULT_COMMENT, ini.ALTERNATIVE_SEPARATOR, true, true)
+	c.Assert(err, IsNil)
+	err = removeOptionValue(conf, "group myGroup", "writable", "myOtherProject")
+	c.Assert(err, IsNil)
+	obtained, err := conf.String("group myGroup", "writable")
+	c.Assert(err, IsNil)
+	c.Assert(obtained, Equals, "myProject")
+	// remove the last project
+	err = removeOptionValue(conf, "group myGroup", "writable", "myProject")
+	c.Assert(err, IsNil)
+	c.Assert(conf.HasOption("group myGroup", "writable"), Equals, false)
 }
 
 func (s *S) TestHasGroup(c *C) {
@@ -237,7 +273,7 @@ func (s *S) TestRemoveMemberFromGroupReturnsErrorsIfTheGroupDoesNotContainTheGiv
 	c.Assert(err, IsNil)
 	err = removeMember("pink-floyd", "pigs-on-the-wing")
 	c.Assert(err, NotNil)
-	c.Assert(err, ErrorMatches, "^This group does not have this member$")
+	c.Assert(err, ErrorMatches, "^Value pigs-on-the-wing not found in section group pink-floyd$")
 }
 
 func (s *S) TestRemoveMemberFromGroupReturnsErrorIfTheGroupDoesNotExist(c *C) {
