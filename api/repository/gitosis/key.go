@@ -13,11 +13,11 @@ import (
 //
 // It is up to the caller to add the keyfile name to the gitosis
 // configuration file. One possible use to this function is together
-// with AddMember function:
+// with addMember function:
 //
 //     keyfile, _ := buildAndStoreKeyFile("opeth", "face-of-melinda")
-//     AddMember("bands", keyfile) // adds keyfile to group bands
-//     AddMember("sweden", keyfile) // adds keyfile to group sweden
+//     addMember("bands", keyfile) // adds keyfile to group bands
+//     addMember("sweden", keyfile) // adds keyfile to group sweden
 func buildAndStoreKeyFile(member, key string) (string, error) {
 	p, err := getKeydirPath()
 	if err != nil {

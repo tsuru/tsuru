@@ -3,6 +3,10 @@ package gitosis
 const (
 	AddKey = iota
 	RemoveKey
+	AddMember
+	RemoveMember
+	AddGroup
+	RemoveGroup
 )
 
 // Change encapsulates a change that will be requested to the gitosis file.
@@ -36,6 +40,22 @@ func init() {
 	go processChanges()
 }
 
+func done(ch chan string) {
+	if ch != nil {
+		ch <- "done"
+	}
+}
+
+func member(ch Change, fn func(string, string) error) {
+	fn(ch.Args["group"], ch.Args["member"])
+	done(ch.Response)
+}
+
+func group(ch Change, fn func(string) error) {
+	fn(ch.Args["group"])
+	done(ch.Response)
+}
+
 func processChanges() {
 	for change := range Changes {
 		switch change.Kind {
@@ -46,6 +66,15 @@ func processChanges() {
 			}(change.Response)
 		case RemoveKey:
 			go deleteKeyFile(change.Args["key"])
+		case AddMember:
+			go member(change, addMember)
+		case RemoveMember:
+			go removeMember(change.Args["group"], change.Args["member"])
+			go member(change, removeMember)
+		case AddGroup:
+			go group(change, addGroup)
+		case RemoveGroup:
+			go group(change, removeGroup)
 		}
 	}
 }

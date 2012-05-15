@@ -47,7 +47,7 @@ func RemoveProject(group, project string) error {
 }
 
 // Add a new group to gitosis.conf. Also commit and push changes.
-func AddGroup(name string) error {
+func addGroup(name string) error {
 	c, err := getConfig()
 	if err != nil {
 		return err
@@ -62,7 +62,7 @@ func AddGroup(name string) error {
 }
 
 // Removes a group section and all it's options.
-func RemoveGroup(group string) error {
+func removeGroup(group string) error {
 	c, err := getConfig()
 	if err != nil {
 		return err
@@ -84,12 +84,12 @@ func HasGroup(group string) bool {
 	return c.HasSection("group " + group)
 }
 
-// AddMember adds a member to the given group.
+// addMember adds a member to the given group.
 //
 // It is up to the caller make sure that the member does
 // have a key in the keydir, otherwise the member will not
 // be able to push to the repository.
-func AddMember(group, member string) error {
+func addMember(group, member string) error {
 	c, err := getConfig()
 	if err != nil {
 		return err
@@ -106,11 +106,11 @@ func AddMember(group, member string) error {
 	return writeCommitPush(c, commitMsg)
 }
 
-// RemoveMember removes a member from the given group.
+// removeMember removes a member from the given group.
 //
 // It is up to the caller to delete the keyfile from the keydir
 // using the DeleteKeyFile function.
-func RemoveMember(group, member string) error {
+func removeMember(group, member string) error {
 	c, err := getConfig()
 	if err != nil {
 		return err
