@@ -38,7 +38,7 @@ func (s *S) TestAddMoreThenOneProject(c *C) {
 	c.Assert(obtained, Equals, "take-over-the-world someProject")
 }
 
-func (s *S) TestremoveProject(c *C) {
+func (s *S) TestRemoveProject(c *C) {
 	err := addGroup("fooGroup")
 	c.Assert(err, IsNil)
 	err = addProject("fooGroup", "fooProject")
@@ -51,6 +51,30 @@ func (s *S) TestremoveProject(c *C) {
 	c.Assert(err, IsNil)
 	conf, err = getConfig()
 	c.Assert(conf.HasOption("group fooGroup", "writable"), Equals, false)
+}
+
+func (s *S) TestRemoveProjectReturnsErrorIfTheGroupDoesNotExist(c *C) {
+	err := removeProject("nando-reis", "ao-vivo")
+	c.Assert(err, NotNil)
+}
+
+func (s *S) TestRemoveProjectReturnsErrorIfTheProjectDoesNotExist(c *C) {
+	err := addGroup("nando-reis")
+	c.Assert(err, IsNil)
+	err = removeProject("nando-reis", "ao-vivo")
+	c.Assert(err, NotNil)
+}
+
+func (s *S) TestRemoveProjectCommitsWithProperMessage(c *C) {
+	err := addGroup("nando-reis")
+	c.Assert(err, IsNil)
+	err = addProject("nando-reis", "ao-vivo")
+	c.Assert(err, IsNil)
+	err = removeProject("nando-reis", "ao-vivo")
+	c.Assert(err, IsNil)
+	got := s.lastBareCommit(c)
+	expected := "Removing project ao-vivo from group nando-reis"
+	c.Assert(got, Equals, expected)
 }
 
 func (s *S) TestaddProjectCommitAndPush(c *C) {

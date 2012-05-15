@@ -6,12 +6,21 @@ import (
 	"fmt"
 	"github.com/timeredbull/tsuru/api/auth"
 	"github.com/timeredbull/tsuru/api/repository"
+	"github.com/timeredbull/tsuru/api/repository/gitosis"
 	"github.com/timeredbull/tsuru/db"
 	"github.com/timeredbull/tsuru/errors"
 	"io/ioutil"
 	"launchpad.net/mgo/bson"
 	"net/http"
 )
+
+func sendProjectChangeToGitosis(kind int, team *auth.Team, app *App) {
+	ch := gitosis.Change{
+		Kind: kind,
+		Args: map[string]string{"group": team.Name, "project": app.Name},
+	}
+	gitosis.Changes <- ch
+}
 
 func getAppOrError(name string, u *auth.User) (App, error) {
 	app := App{Name: name}
@@ -42,6 +51,9 @@ func AppDelete(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 		return err
 	}
 	app.Destroy()
+	for _, t := range app.Teams {
+		sendProjectChangeToGitosis(gitosis.RemoveProject, &t, &app)
+	}
 	fmt.Fprint(w, "success")
 	return nil
 }
@@ -77,49 +89,51 @@ func AppInfo(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	return nil
 }
 
+func createApp(app *App, u *auth.User) ([]byte, error) {
+	err := db.Session.Teams().Find(bson.M{"users.email": u.Email}).All(&app.Teams)
+	if err != nil {
+		return nil, err
+	}
+	if len(app.Teams) < 1 {
+		msg := "In order to create an app, you should be member of at least one team"
+		return nil, &errors.Http{Code: http.StatusForbidden, Message: msg}
+	}
+	err = app.Create()
+	if err != nil {
+		return nil, err
+	}
+	for _, t := range app.Teams {
+		sendProjectChangeToGitosis(gitosis.AddProject, &t, app)
+	}
+	msg := map[string]string{
+		"status":         "success",
+		"repository_url": repository.GetRepositoryUrl(app.Name),
+	}
+	return json.Marshal(msg)
+}
+
 func CreateAppHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	var app App
-
 	defer r.Body.Close()
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		return err
 	}
-
 	err = json.Unmarshal(body, &app)
 	if err != nil {
 		return err
 	}
-
-	err = db.Session.Teams().Find(bson.M{"users.email": u.Email}).All(&app.Teams)
+	jsonMsg, err := createApp(&app, u)
 	if err != nil {
 		return err
 	}
-	if len(app.Teams) < 1 {
-		msg := "In order to create an app, you should be member of at least one team"
-		return &errors.Http{Code: http.StatusForbidden, Message: msg}
-	}
-	err = app.Create()
-	if err != nil {
-		return err
-	}
-
-	msg := map[string]string{
-		"status":         "success",
-		"repository_url": repository.GetRepositoryUrl(app.Name),
-	}
-	jsonMsg, err := json.Marshal(msg)
-	if err != nil {
-		return err
-	}
-
 	fmt.Fprint(w, bytes.NewBuffer(jsonMsg).String())
 	return nil
 }
 
-func GrantAccessToTeamHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
+func grantAccessToTeam(appName, teamName string, u *auth.User) error {
 	t := new(auth.Team)
-	app := &App{Name: r.URL.Query().Get(":app")}
+	app := &App{Name: appName}
 	err := app.Get()
 	if err != nil {
 		return &errors.Http{Code: http.StatusNotFound, Message: "App not found"}
@@ -127,7 +141,7 @@ func GrantAccessToTeamHandler(w http.ResponseWriter, r *http.Request, u *auth.Us
 	if !app.CheckUserAccess(u) {
 		return &errors.Http{Code: http.StatusUnauthorized, Message: "User unauthorized"}
 	}
-	err = db.Session.Teams().Find(bson.M{"name": r.URL.Query().Get(":team")}).One(t)
+	err = db.Session.Teams().Find(bson.M{"name": teamName}).One(t)
 	if err != nil {
 		return &errors.Http{Code: http.StatusNotFound, Message: "Team not found"}
 	}
@@ -135,12 +149,23 @@ func GrantAccessToTeamHandler(w http.ResponseWriter, r *http.Request, u *auth.Us
 	if err != nil {
 		return &errors.Http{Code: http.StatusConflict, Message: err.Error()}
 	}
-	return db.Session.Apps().Update(bson.M{"name": app.Name}, app)
+	err = db.Session.Apps().Update(bson.M{"name": app.Name}, app)
+	if err != nil {
+		return err
+	}
+	sendProjectChangeToGitosis(gitosis.AddProject, t, app)
+	return nil
 }
 
-func RevokeAccessFromTeamHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
+func GrantAccessToTeamHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
+	appName := r.URL.Query().Get(":app")
+	teamName := r.URL.Query().Get(":team")
+	return grantAccessToTeam(appName, teamName, u)
+}
+
+func revokeAccessFromTeam(appName, teamName string, u *auth.User) error {
 	t := new(auth.Team)
-	app := &App{Name: r.URL.Query().Get(":app")}
+	app := &App{Name: appName}
 	err := app.Get()
 	if err != nil {
 		return &errors.Http{Code: http.StatusNotFound, Message: "App not found"}
@@ -148,7 +173,7 @@ func RevokeAccessFromTeamHandler(w http.ResponseWriter, r *http.Request, u *auth
 	if !app.CheckUserAccess(u) {
 		return &errors.Http{Code: http.StatusUnauthorized, Message: "User unauthorized"}
 	}
-	err = db.Session.Teams().Find(bson.M{"name": r.URL.Query().Get(":team")}).One(t)
+	err = db.Session.Teams().Find(bson.M{"name": teamName}).One(t)
 	if err != nil {
 		return &errors.Http{Code: http.StatusNotFound, Message: "Team not found"}
 	}
@@ -160,5 +185,16 @@ func RevokeAccessFromTeamHandler(w http.ResponseWriter, r *http.Request, u *auth
 	if err != nil {
 		return &errors.Http{Code: http.StatusNotFound, Message: err.Error()}
 	}
-	return db.Session.Apps().Update(bson.M{"name": app.Name}, app)
+	err = db.Session.Apps().Update(bson.M{"name": app.Name}, app)
+	if err != nil {
+		return err
+	}
+	sendProjectChangeToGitosis(gitosis.RemoveProject, t, app)
+	return nil
+}
+
+func RevokeAccessFromTeamHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
+	appName := r.URL.Query().Get(":app")
+	teamName := r.URL.Query().Get(":team")
+	return revokeAccessFromTeam(appName, teamName, u)
 }

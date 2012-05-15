@@ -33,6 +33,10 @@ func (c *TestCommand) Run(context *Context, client Doer) error {
 	return nil
 }
 
+func (c *TestCommand) Subcommands() map[string]Command {
+	return nil
+}
+
 type ErrorCommand struct{}
 
 func (c *ErrorCommand) Info() *Info {
@@ -41,6 +45,10 @@ func (c *ErrorCommand) Info() *Info {
 
 func (c *ErrorCommand) Run(context *Context, client Doer) error {
 	return errors.New("You are wrong")
+}
+
+func (c *ErrorCommand) Subcommands() map[string]Command {
+	return nil
 }
 
 func (s *S) TestRegister(c *C) {
@@ -64,6 +72,41 @@ func (s *S) TestRun(c *C) {
 func (s *S) TestRunCommandThatDoesNotExist(c *C) {
 	manager.Run([]string{"bar"})
 	c.Assert(manager.Stderr.(*bytes.Buffer).String(), Equals, "command bar does not exist\n")
+}
+
+type TicCmd struct{}
+
+func (c *TicCmd) Info() *Info {
+	return &Info{Name: "tic"}
+}
+
+func (c *TicCmd) Run(context *Context, client Doer) error {
+	return nil
+}
+
+func (c *TicCmd) Subcommands() map[string]Command {
+	return map[string]Command{"tac": &TacCmd{}}
+}
+
+type TacCmd struct{}
+
+func (c *TacCmd) Info() *Info {
+	return &Info{Name: "tac"}
+}
+
+func (c *TacCmd) Run(context *Context, client Doer) error {
+	io.WriteString(context.Stdout, "Running tac subcommand")
+	return nil
+}
+
+func (c *TacCmd) Subcommands() map[string]Command {
+	return nil
+}
+
+func (s *S) TestSubcommand(c *C) {
+	manager.Register(&TicCmd{})
+	manager.Run([]string{"tic", "tac"})
+	c.Assert(manager.Stdout.(*bytes.Buffer).String(), Equals, "Running tac subcommand")
 }
 
 func (s *S) TestWriteToken(c *C) {

@@ -13,6 +13,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"time"
 )
 
 func (s *S) TestCloneRepositoryHandler(c *C) {
@@ -126,6 +127,20 @@ func (s *S) TestDeleteShouldReturnNotFoundIfTheAppDoesNotExist(c *C) {
 	c.Assert(e, ErrorMatches, "^App not found$")
 }
 
+func (s *S) TestDeleteAppRemovesProjectFromAllTeamsInGitosis(c *C) {
+	s.addGroup()
+	myApp := &App{Name: "MyAppToDelete", Framework: "django"}
+	_, err := createApp(myApp, s.user)
+	c.Assert(err, IsNil)
+	request, err := http.NewRequest("DELETE", "/apps/"+myApp.Name+"?:name="+myApp.Name, nil)
+	c.Assert(err, IsNil)
+	recorder := httptest.NewRecorder()
+	err = AppDelete(recorder, request, s.user)
+	c.Assert(err, IsNil)
+	time.Sleep(1e9)
+	c.Assert("writable = "+myApp.Name, NotInGitosis)
+}
+
 func (s *S) TestAppInfo(c *C) {
 	expectedApp := App{Name: "NewApp", Framework: "django", Teams: []auth.Team{s.team}}
 	expectedApp.Create()
@@ -226,6 +241,15 @@ func (s *S) TestCreateAppReturns403IfTheUserIsNotMemberOfAnyTeam(c *C) {
 	c.Assert(e, ErrorMatches, "^In order to create an app, you should be member of at least one team$")
 }
 
+func (s *S) TestCreateAppAddsProjectToGroupsInGitosis(c *C) {
+	s.addGroup()
+	app := &App{Name: "devincachu", Framework: "django"}
+	_, err := createApp(app, s.user)
+	c.Assert(err, IsNil)
+	time.Sleep(1e9)
+	c.Assert("writable = "+app.Name, IsInGitosis)
+}
+
 func (s *S) TestAddTeamToTheApp(c *C) {
 	t := auth.Team{Name: "itshardteam", Users: []*auth.User{s.user}}
 	a := App{Name: "itshard", Framework: "django", Teams: []auth.Team{t}}
@@ -303,6 +327,18 @@ func (s *S) TestGrantAccessToTeamReturn409IfTheTeamHasAlreadyAccessToTheApp(c *C
 	e, ok := err.(*errors.Http)
 	c.Assert(ok, Equals, true)
 	c.Assert(e.Code, Equals, http.StatusConflict)
+}
+
+func (s *S) TestGrantAccessToAppAddsTheProjectInGitosis(c *C) {
+	t := &auth.Team{Name: "anything", Users: []*auth.User{s.user}}
+	s.addGroup()
+	a := &App{Name: "tsuru", Framework: "golang", Teams: []auth.Team{*t}}
+	err := a.Create()
+	c.Assert(err, IsNil)
+	err = grantAccessToTeam(a.Name, s.team.Name, s.user)
+	c.Assert(err, IsNil)
+	time.Sleep(1e9)
+	c.Assert("writable = "+a.Name, IsInGitosis)
 }
 
 func (s *S) TestRevokeAccessFromTeam(c *C) {
@@ -402,4 +438,18 @@ func (s *S) TestRevokeAccessFromTeamReturn403IfTheTeamIsTheLastWithAccessToTheAp
 	c.Assert(ok, Equals, true)
 	c.Assert(e.Code, Equals, http.StatusForbidden)
 	c.Assert(e, ErrorMatches, "^You can not revoke the access from this team, because it is the unique team with access to the app, and an app can not be orphaned$")
+}
+
+func (s *S) TestRevokeAccessFromTeamRemovesTheProjectFromGitosisConf(c *C) {
+	t := auth.Team{Name: "anything", Users: []*auth.User{s.user}}
+	s.addGroup()
+	a := &App{Name: "tsuru", Framework: "golang", Teams: []auth.Team{t}}
+	err := a.Create()
+	c.Assert(err, IsNil)
+	err = grantAccessToTeam(a.Name, s.team.Name, s.user)
+	c.Assert(err, IsNil)
+	time.Sleep(1e9)
+	err = revokeAccessFromTeam(a.Name, s.team.Name, s.user)
+	time.Sleep(1e9)
+	c.Assert("writable = "+a.Name, NotInGitosis)
 }
