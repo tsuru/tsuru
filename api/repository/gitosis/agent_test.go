@@ -1,11 +1,35 @@
 package gitosis
 
 import (
+	"errors"
 	. "launchpad.net/gocheck"
 	"os"
 	"path"
 	"time"
 )
+
+func (s *S) TestDoneDoesNothingIfTheChannelIsNil(c *C) {
+	defer func() {
+		if r := recover(); r != nil {
+			c.Errorf("should not fail")
+		}
+	}()
+	done(nil, nil)
+}
+
+func (s *S) TestDoneReturnsSuccessIfTheChannelIsNotNilButErrorIs(c *C) {
+	ch := make(chan string)
+	go done(ch, nil)
+	result := <-ch
+	c.Assert(result, Equals, "success")
+}
+
+func (s *S) TestDoneReturnFailAndTheErrorMessageIfNeitherTheChannelNorTheErrorIsNil(c *C) {
+	ch := make(chan string)
+	go done(ch, errors.New("I have failed"))
+	result := <-ch
+	c.Assert(result, Equals, "fail: I have failed")
+}
 
 func (s *S) TestShouldHaveConstantForAddKey(c *C) {
 	c.Assert(AddKey, Equals, 0)
