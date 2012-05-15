@@ -12,12 +12,7 @@ import (
 
 // Add a new project to gitosis.conf.
 func AddProject(group, project string) error {
-	confPath, err := ConfPath()
-	if err != nil {
-		log.Print(err)
-		return err
-	}
-	c, err := ini.Read(confPath, ini.DEFAULT_COMMENT, ini.ALTERNATIVE_SEPARATOR, true, true)
+	c, err := getConfig()
 	if err != nil {
 		log.Print(err)
 		return err
@@ -38,7 +33,17 @@ func AddProject(group, project string) error {
 
 // Remove a project from gitosis.conf
 func RemoveProject(group, project string) error {
-	return nil
+	c, err := getConfig()
+	if err != nil {
+		return err
+	}
+	section := fmt.Sprintf("group %s", group)
+	err = removeOptionValue(c, section, "writable", project)
+	if err != nil {
+		return err
+	}
+	commitMsg := fmt.Sprintf("Removing group %s from gitosis.conf", group)
+	return writeCommitPush(c, commitMsg)
 }
 
 // Add a new group to gitosis.conf. Also commit and push changes.
@@ -163,7 +168,9 @@ func removeOptionValue(c *ini.Config, section, option, value string) (err error)
 	if len(values) > 0 {
 		c.AddOption(section, option, strings.Join(values, " "))
 	} else {
-		c.RemoveOption(section, option)
+		fmt.Println("foooooooo")
+		removed := c.RemoveOption(section, option)
+		fmt.Println(removed, "error")
 	}
 
 	return nil

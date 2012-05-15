@@ -42,13 +42,14 @@ func (s *S) TestRemoveProject(c *C) {
 	err := AddGroup("fooGroup")
 	c.Assert(err, IsNil)
 	err = AddProject("fooGroup", "fooProject")
-	conf, err := ini.ReadDefault(path.Join(s.gitosisRepo, "gitosis.conf"))
+	conf, err := getConfig()
 	c.Assert(err, IsNil)
 	obtained, err := conf.String("group fooGroup", "writable")
 	c.Assert(err, IsNil)
 	c.Assert(obtained, Equals, "fooProject")
 	err = RemoveProject("fooGroup", "fooProject")
 	c.Assert(err, IsNil)
+	conf, err = getConfig()
 	c.Assert(conf.HasOption("group fooGroup", "writable"), Equals, false)
 }
 
@@ -92,7 +93,8 @@ func (s *S) TestRemoveOptionValue(c *C) {
 	err = AddProject("myGroup", "myOtherProject")
 	c.Assert(err, IsNil)
 	// remove one project
-	conf, err := ini.ReadDefault(path.Join(s.gitRoot, "gitosis-admin/gitosis.conf"))
+	conf, err := ini.Read(path.Join(s.gitRoot, "gitosis-admin/gitosis.conf"), ini.DEFAULT_COMMENT, ini.ALTERNATIVE_SEPARATOR, true, true)
+	c.Assert(err, IsNil)
 	err = removeOptionValue(conf, "group myGroup", "writable", "myOtherProject")
 	c.Assert(err, IsNil)
 	obtained, err := conf.String("group myGroup", "writable")
