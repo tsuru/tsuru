@@ -42,7 +42,7 @@ func removeProject(group, project string) error {
 	if err != nil {
 		return err
 	}
-	commitMsg := fmt.Sprintf("Removing group %s from gitosis.conf", group)
+	commitMsg := fmt.Sprintf("Removing project %s from group %s", project, group)
 	return writeCommitPush(c, commitMsg)
 }
 

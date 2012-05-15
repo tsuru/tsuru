@@ -53,6 +53,30 @@ func (s *S) TestRemoveProject(c *C) {
 	c.Assert(conf.HasOption("group fooGroup", "writable"), Equals, false)
 }
 
+func (s *S) TestRemoveProjectReturnsErrorIfTheGroupDoesNotExist(c *C) {
+	err := removeProject("nando-reis", "ao-vivo")
+	c.Assert(err, NotNil)
+}
+
+func (s *S) TestRemoveProjectReturnsErrorIfTheProjectDoesNotExist(c *C) {
+	err := addGroup("nando-reis")
+	c.Assert(err, IsNil)
+	err = removeProject("nando-reis", "ao-vivo")
+	c.Assert(err, NotNil)
+}
+
+func (s *S) TestRemoveProjectCommitsWithProperMessage(c *C) {
+	err := addGroup("nando-reis")
+	c.Assert(err, IsNil)
+	err = addProject("nando-reis", "ao-vivo")
+	c.Assert(err, IsNil)
+	err = removeProject("nando-reis", "ao-vivo")
+	c.Assert(err, IsNil)
+	got := s.lastBareCommit(c)
+	expected := "Removing project ao-vivo from group nando-reis"
+	c.Assert(got, Equals, expected)
+}
+
 func (s *S) TestaddProjectCommitAndPush(c *C) {
 	err := addGroup("myGroup")
 	c.Assert(err, IsNil)
