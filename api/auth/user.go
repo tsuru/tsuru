@@ -5,19 +5,43 @@ import (
 	"crypto/sha512"
 	"errors"
 	"fmt"
+	"github.com/timeredbull/tsuru/config"
 	"github.com/timeredbull/tsuru/db"
 	"launchpad.net/mgo/bson"
 	"time"
 )
 
 const (
-	SALT        = "tsuru-salt"
-	TOKENEXPIRE = 7 * 24 * time.Hour
-	TOKENKEY    = "tsuru-key"
+	defaultSalt       = "tsuru-salt"
+	defaultExpiration = 7 * 24 * time.Hour
+	defaultKey        = "tsuru-key"
 )
 
+var salt, tokenKey string
+var tokenExpire time.Duration
+
+func init() {
+	loadConfig()
+}
+
+func loadConfig() {
+	var err error
+	if salt, err = config.GetString("auth:salt"); err != nil {
+		salt = defaultSalt
+	}
+	if iface, err := config.Get("auth:token-expire-days"); err == nil {
+		day := int64(iface.(int))
+		tokenExpire = time.Duration(day * 24 * int64(time.Hour))
+	} else {
+		tokenExpire = defaultExpiration
+	}
+	if tokenKey, err = config.GetString("auth:token-key"); err != nil {
+		tokenKey = defaultKey
+	}
+}
+
 func hashPassword(password string) string {
-	salt := []byte(SALT)
+	salt := []byte(salt)
 	return fmt.Sprintf("%x", pbkdf2.Key([]byte(password), salt, 4096, len(salt)*8, sha512.New))
 }
 
@@ -159,10 +183,10 @@ func NewToken(u *User) (*Token, error) {
 	}
 	h := sha512.New()
 	h.Write([]byte(u.Email))
-	h.Write([]byte(TOKENKEY))
+	h.Write([]byte(tokenKey))
 	h.Write([]byte(time.Now().Format(time.UnixDate)))
 	t := Token{}
-	t.ValidUntil = time.Now().Add(TOKENEXPIRE)
+	t.ValidUntil = time.Now().Add(tokenExpire)
 	t.Token = fmt.Sprintf("%x", h.Sum(nil))
 	return &t, nil
 }
