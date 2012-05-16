@@ -20,12 +20,10 @@ func (s *S) SetUpTest(c *C) {
 	manager = NewManager(&stdout, &stderr)
 }
 
-type TestCommand struct {
-	Name string
-}
+type TestCommand struct{}
 
 func (c *TestCommand) Info() *Info {
-	return &Info{Name: c.Name}
+	return &Info{Name: "foo"}
 }
 
 func (c *TestCommand) Run(context *Context, client Doer) error {
@@ -44,8 +42,8 @@ func (c *ErrorCommand) Run(context *Context, client Doer) error {
 }
 
 func (s *S) TestRegister(c *C) {
-	manager.Register(&TestCommand{Name: "foo"})
-	badCall := func() { manager.Register(&TestCommand{Name: "foo"}) }
+	manager.Register(&TestCommand{})
+	badCall := func() { manager.Register(&TestCommand{}) }
 	c.Assert(badCall, PanicMatches, "command already registered: foo")
 }
 
@@ -56,7 +54,7 @@ func (s *S) TestManagerRunShouldWriteErrorsOnStderr(c *C) {
 }
 
 func (s *S) TestRun(c *C) {
-	manager.Register(&TestCommand{Name: "foo"})
+	manager.Register(&TestCommand{})
 	manager.Run([]string{"foo"})
 	c.Assert(manager.Stdout.(*bytes.Buffer).String(), Equals, "Running TestCommand")
 }
