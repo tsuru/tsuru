@@ -67,6 +67,16 @@ func (s *S) TestAppAddTeam(c *C) {
 	c.Assert(manager.Stdout.(*bytes.Buffer).String(), Equals, expected)
 }
 
+func (s *S) TestAppRemoveTeam(c *C) {
+	expected := `Team "cobrateam" was removed from the "games" app` + "\n"
+	context := Context{[]string{"games", "cobrateam"}, manager.Stdout, manager.Stderr}
+	command := AppRemoveTeam{}
+	client := NewClient(&http.Client{Transport: &transport{msg: "", status: http.StatusOK}})
+	err := command.Run(&context, client)
+	c.Assert(err, IsNil)
+	c.Assert(manager.Stdout.(*bytes.Buffer).String(), Equals, expected)
+}
+
 // func (s *S) TestApp(c *C) {
 // 	expect := map[string]interface{}{
 // 		"add":    &AddKeyCommand{},
