@@ -12,10 +12,9 @@ func main() {
 	manager.Register(&cmd.LoginCommand{})
 	manager.Register(&cmd.LogoutCommand{})
 	manager.Register(&cmd.AddUserCommand{})
-	manager.Register(&cmd.CreateTeamCommand{})
 	manager.Register(&cmd.App{})
 	manager.Register(&cmd.Key{})
-	manager.Register(&cmd.TeamCommand{})
+	manager.Register(&cmd.Team{})
 	//removing the command name from args
 	args := os.Args[1:]
 	manager.Run(args)

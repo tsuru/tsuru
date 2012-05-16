@@ -34,28 +34,6 @@ func (c *AddUserCommand) Info() *Info {
 	return &Info{Name: "create-user"}
 }
 
-type CreateTeamCommand struct{}
-
-func (c *CreateTeamCommand) Info() *Info {
-	return &Info{Name: "create-team"}
-}
-
-func (c *CreateTeamCommand) Run(context *Context, client Doer) error {
-	team := context.Args[0]
-	b := bytes.NewBufferString(fmt.Sprintf(`{"name":"%s"}`, team))
-	request, err := http.NewRequest("POST", "http://tsuru.plataformas.glb.com:8080/teams", b)
-	if err != nil {
-		return err
-	}
-	io.WriteString(context.Stdout, fmt.Sprintf("Creating new team: %s\n", team))
-	_, err = client.Do(request)
-	if err != nil {
-		return err
-	}
-	io.WriteString(context.Stdout, "OK")
-	return nil
-}
-
 type LoginCommand struct{}
 
 func (c *LoginCommand) Run(context *Context, client Doer) error {
@@ -175,20 +153,43 @@ func (c *LogoutCommand) Run(context *Context, client Doer) error {
 	return nil
 }
 
-type TeamCommand struct{}
+type Team struct{}
 
-func (c *TeamCommand) Subcommands() map[string]interface{} {
+func (c *Team) Subcommands() map[string]interface{} {
 	return map[string]interface{}{
 		"add-user":    &TeamAddUser{},
 		"remove-user": &TeamRemoveUser{},
+		"create":      &TeamCreate{},
 	}
 }
 
-func (c *TeamCommand) Info() *Info {
+func (c *Team) Info() *Info {
 	return &Info{Name: "team"}
 }
 
-func (c *TeamCommand) Run(context *Context, client Doer) error {
+func (c *Team) Run(context *Context, client Doer) error {
+	return nil
+}
+
+type TeamCreate struct{}
+
+func (c *TeamCreate) Info() *Info {
+	return &Info{Name: "create"}
+}
+
+func (c *TeamCreate) Run(context *Context, client Doer) error {
+	team := context.Args[0]
+	b := bytes.NewBufferString(fmt.Sprintf(`{"name":"%s"}`, team))
+	request, err := http.NewRequest("POST", "http://tsuru.plataformas.glb.com:8080/teams", b)
+	if err != nil {
+		return err
+	}
+	io.WriteString(context.Stdout, fmt.Sprintf("Creating new team: %s\n", team))
+	_, err = client.Do(request)
+	if err != nil {
+		return err
+	}
+	io.WriteString(context.Stdout, "OK")
 	return nil
 }
 
