@@ -95,10 +95,49 @@ func readKey() (string, error) {
 	return string(output), err
 }
 
+type Key struct{}
+
+func (c *Key) Info() *Info {
+	return &Info{Name: "key"}
+}
+
+func (c *Key) Subcommands() map[string]interface{} {
+	return map[string]interface{}{
+		"add":    &AddKeyCommand{},
+		"remove": &RemoveKey{},
+	}
+}
+
+type RemoveKey struct{}
+
+func (c *RemoveKey) Info() *Info {
+	return &Info{Name: "remove"}
+}
+
+func (c *RemoveKey) Run(context *Context, client Doer) error {
+	key, err := readKey()
+	if os.IsNotExist(err) {
+		io.WriteString(context.Stderr, "You don't have a public key\n")
+		io.WriteString(context.Stderr, "To generate a key use 'ssh-keygen' command\n")
+		return nil
+	}
+	b := bytes.NewBufferString(fmt.Sprintf(`{"key":"%s"}`, strings.Replace(key, "\n", "", -1)))
+	request, err := http.NewRequest("DELETE", "http://tsuru.plataformas.glb.com:8080/users/keys", b)
+	if err != nil {
+		return err
+	}
+	_, err = client.Do(request)
+	if err != nil {
+		return err
+	}
+	io.WriteString(context.Stdout, "Key removed with success!\n")
+	return nil
+}
+
 type AddKeyCommand struct{}
 
 func (c *AddKeyCommand) Info() *Info {
-	return &Info{Name: "add-key"}
+	return &Info{Name: "add"}
 }
 
 func (c *AddKeyCommand) Run(context *Context, client Doer) error {
@@ -139,7 +178,10 @@ func (c *LogoutCommand) Run(context *Context, client Doer) error {
 type TeamCommand struct{}
 
 func (c *TeamCommand) Subcommands() map[string]interface{} {
-	return map[string]interface{}{"add-user": &TeamAddUser{}, "remove-user": &TeamRemoveUser{}}
+	return map[string]interface{}{
+		"add-user":    &TeamAddUser{},
+		"remove-user": &TeamRemoveUser{},
+	}
 }
 
 func (c *TeamCommand) Info() *Info {
