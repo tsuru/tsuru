@@ -319,7 +319,7 @@ func (s *S) TestAddAndCommit(c *C) {
 	conf, err := ini.Read(confPath, ini.DEFAULT_COMMENT, ini.ALTERNATIVE_SEPARATOR, true, true)
 	c.Assert(err, IsNil)
 	conf.AddSection("foo bar")
-	pushToGitosis("Some commit message")
+	writeCommitPush(conf, "Some commit message")
 	got := s.lastBareCommit(c)
 	c.Assert(got, Equals, "Some commit message")
 }
