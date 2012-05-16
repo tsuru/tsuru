@@ -7,7 +7,7 @@ import (
 )
 
 func (s *S) TestLogin(c *C) {
-	expected := "Successfully logged!"
+	expected := "Successfully logged!\n"
 	context := Context{[]string{"foo@foo.com", "bar123"}, manager.Stdout, manager.Stderr}
 	client := NewClient(&http.Client{Transport: &transport{msg: `{"token": "sometoken"}`, status: http.StatusOK}})
 	command := Login{}
@@ -91,8 +91,7 @@ func (s *S) TestTeamRemoveUser(c *C) {
 }
 
 func (s *S) TestTeamCreate(c *C) {
-	expected := `Creating new team: core
-OK`
+	expected := `Team "core" created with success!` + "\n"
 	context := Context{[]string{"core"}, manager.Stdout, manager.Stderr}
 	client := NewClient(&http.Client{Transport: &transport{msg: "", status: http.StatusCreated}})
 	command := TeamCreate{}
@@ -110,8 +109,7 @@ func (s *S) TestUser(c *C) {
 }
 
 func (s *S) TestUserCreate(c *C) {
-	expected := `Creating new user: foo@foo.com
-OK`
+	expected := `User "foo@foo.com" created with success!` + "\n"
 	context := Context{[]string{"foo@foo.com", "bar123"}, manager.Stdout, manager.Stderr}
 	client := NewClient(&http.Client{Transport: &transport{msg: "", status: http.StatusCreated}})
 	command := UserCreate{}
