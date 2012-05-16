@@ -12,53 +12,42 @@ import (
 	"strings"
 )
 
-type AddUserCommand struct{}
+type User struct{}
 
-func (c *AddUserCommand) Run(context *Context, client Doer) error {
+func (c *User) Info() *Info {
+	return &Info{Name: "user"}
+}
+
+func (c *User) Subcommands() map[string]interface{} {
+	return map[string]interface{}{
+		"create": &UserCreate{},
+	}
+}
+
+type UserCreate struct{}
+
+func (c *UserCreate) Info() *Info {
+	return &Info{Name: "create"}
+}
+
+func (c *UserCreate) Run(context *Context, client Doer) error {
 	email, password := context.Args[0], context.Args[1]
 	b := bytes.NewBufferString(`{"email":"` + email + `", "password":"` + password + `"}`)
 	request, err := http.NewRequest("POST", "http://tsuru.plataformas.glb.com:8080/users", b)
 	if err != nil {
 		return err
 	}
-	io.WriteString(context.Stdout, "Creating new user: "+email+"\n")
 	_, err = client.Do(request)
 	if err != nil {
 		return err
 	}
-	io.WriteString(context.Stdout, "OK")
+	io.WriteString(context.Stdout, fmt.Sprintf(`User "%s" created with success!`+"\n", email))
 	return nil
 }
 
-func (c *AddUserCommand) Info() *Info {
-	return &Info{Name: "create-user"}
-}
+type Login struct{}
 
-type CreateTeamCommand struct{}
-
-func (c *CreateTeamCommand) Info() *Info {
-	return &Info{Name: "create-team"}
-}
-
-func (c *CreateTeamCommand) Run(context *Context, client Doer) error {
-	team := context.Args[0]
-	b := bytes.NewBufferString(fmt.Sprintf(`{"name":"%s"}`, team))
-	request, err := http.NewRequest("POST", "http://tsuru.plataformas.glb.com:8080/teams", b)
-	if err != nil {
-		return err
-	}
-	io.WriteString(context.Stdout, fmt.Sprintf("Creating new team: %s\n", team))
-	_, err = client.Do(request)
-	if err != nil {
-		return err
-	}
-	io.WriteString(context.Stdout, "OK")
-	return nil
-}
-
-type LoginCommand struct{}
-
-func (c *LoginCommand) Run(context *Context, client Doer) error {
+func (c *Login) Run(context *Context, client Doer) error {
 	email, password := context.Args[0], context.Args[1]
 	b := bytes.NewBufferString(`{"password":"` + password + `"}`)
 	request, err := http.NewRequest("POST", "http://tsuru.plataformas.glb.com:8080/users/"+email+"/tokens", b)
@@ -79,12 +68,12 @@ func (c *LoginCommand) Run(context *Context, client Doer) error {
 	if err != nil {
 		return err
 	}
-	io.WriteString(context.Stdout, "Successfully logged!")
+	io.WriteString(context.Stdout, "Successfully logged!\n")
 	WriteToken(out["token"])
 	return nil
 }
 
-func (c *LoginCommand) Info() *Info {
+func (c *Login) Info() *Info {
 	return &Info{Name: "login"}
 }
 
@@ -160,13 +149,13 @@ func (c *AddKeyCommand) Run(context *Context, client Doer) error {
 	return nil
 }
 
-type LogoutCommand struct{}
+type Logout struct{}
 
-func (c *LogoutCommand) Info() *Info {
+func (c *Logout) Info() *Info {
 	return &Info{Name: "logout"}
 }
 
-func (c *LogoutCommand) Run(context *Context, client Doer) error {
+func (c *Logout) Run(context *Context, client Doer) error {
 	err := WriteToken("")
 	if err != nil {
 		return err
@@ -175,20 +164,42 @@ func (c *LogoutCommand) Run(context *Context, client Doer) error {
 	return nil
 }
 
-type TeamCommand struct{}
+type Team struct{}
 
-func (c *TeamCommand) Subcommands() map[string]interface{} {
+func (c *Team) Subcommands() map[string]interface{} {
 	return map[string]interface{}{
 		"add-user":    &TeamAddUser{},
 		"remove-user": &TeamRemoveUser{},
+		"create":      &TeamCreate{},
 	}
 }
 
-func (c *TeamCommand) Info() *Info {
+func (c *Team) Info() *Info {
 	return &Info{Name: "team"}
 }
 
-func (c *TeamCommand) Run(context *Context, client Doer) error {
+func (c *Team) Run(context *Context, client Doer) error {
+	return nil
+}
+
+type TeamCreate struct{}
+
+func (c *TeamCreate) Info() *Info {
+	return &Info{Name: "create"}
+}
+
+func (c *TeamCreate) Run(context *Context, client Doer) error {
+	team := context.Args[0]
+	b := bytes.NewBufferString(fmt.Sprintf(`{"name":"%s"}`, team))
+	request, err := http.NewRequest("POST", "http://tsuru.plataformas.glb.com:8080/teams", b)
+	if err != nil {
+		return err
+	}
+	_, err = client.Do(request)
+	if err != nil {
+		return err
+	}
+	io.WriteString(context.Stdout, fmt.Sprintf(`Team "%s" created with success!`+"\n", team))
 	return nil
 }
 
