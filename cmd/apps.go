@@ -10,6 +10,26 @@ import (
 	"net/http"
 )
 
+type AppAddTeam struct{}
+
+func (c *AppAddTeam) Info() *Info {
+	return &Info{Name: "add-team"}
+}
+
+func (c *AppAddTeam) Run(context *Context, client Doer) error {
+	appName, teamName := context.Args[0], context.Args[1]
+	request, err := http.NewRequest("POST", fmt.Sprintf("http://tsuru.plataformas.glb.com:8080/apps/%s/%s", appName, teamName), nil)
+	if err != nil {
+		return err
+	}
+	_, err = client.Do(request)
+	if err != nil {
+		return err
+	}
+	io.WriteString(context.Stdout, fmt.Sprintf(`Team "%s" was added to the "%s" app`+"\n", teamName, appName))
+	return nil
+}
+
 type AppsCommand struct{}
 
 func (c *AppsCommand) Run(context *Context, client Doer) error {
