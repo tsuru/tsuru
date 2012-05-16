@@ -19,7 +19,7 @@ func (m *Manager) Register(command interface{}) {
 	if m.commands == nil {
 		m.commands = make(map[string]interface{})
 	}
-	name := command.(SimpleCommand).Info().Name
+	name := command.(Infoer).Info().Name
 	_, found := m.commands[name]
 	if found {
 		panic(fmt.Sprintf("command already registered: %s", name))
@@ -34,16 +34,16 @@ func (m *Manager) Run(args []string) {
 		return
 	}
 	switch command.(type) {
-	case Command:
+	case CommandContainer:
 		if len(args) > 1 {
 			args = args[1:]
 		}
-		subcommand, exist := command.(Command).Subcommands()[args[0]]
+		subcommand, exist := command.(CommandContainer).Subcommands()[args[0]]
 		if exist {
 			command = subcommand
 		}
 	}
-	err := command.(SimpleCommand).Run(&Context{args[1:], m.Stdout, m.Stderr}, NewClient(&http.Client{}))
+	err := command.(Command).Run(&Context{args[1:], m.Stdout, m.Stderr}, NewClient(&http.Client{}))
 	if err != nil {
 		io.WriteString(m.Stderr, err.Error())
 	}
@@ -53,15 +53,16 @@ func NewManager(stdout, stderr io.Writer) Manager {
 	return Manager{Stdout: stdout, Stderr: stderr}
 }
 
-type Command interface {
-	Run(context *Context, client Doer) error
-	Info() *Info
+type CommandContainer interface {
 	Subcommands() map[string]interface{}
 }
 
-type SimpleCommand interface {
-	Run(context *Context, client Doer) error
+type Infoer interface {
 	Info() *Info
+}
+
+type Command interface {
+	Run(context *Context, client Doer) error
 }
 
 type Context struct {
