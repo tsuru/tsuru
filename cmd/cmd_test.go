@@ -33,10 +33,6 @@ func (c *TestCommand) Run(context *Context, client Doer) error {
 	return nil
 }
 
-func (c *TestCommand) Subcommands() map[string]Command {
-	return nil
-}
-
 type ErrorCommand struct{}
 
 func (c *ErrorCommand) Info() *Info {
@@ -45,10 +41,6 @@ func (c *ErrorCommand) Info() *Info {
 
 func (c *ErrorCommand) Run(context *Context, client Doer) error {
 	return errors.New("You are wrong")
-}
-
-func (c *ErrorCommand) Subcommands() map[string]Command {
-	return nil
 }
 
 func (s *S) TestRegister(c *C) {
@@ -78,10 +70,6 @@ type TicCmd struct{}
 
 func (c *TicCmd) Info() *Info {
 	return &Info{Name: "tic"}
-}
-
-func (c *TicCmd) Run(context *Context, client Doer) error {
-	return nil
 }
 
 func (c *TicCmd) Subcommands() map[string]interface{} {
