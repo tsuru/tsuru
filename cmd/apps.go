@@ -10,6 +10,19 @@ import (
 	"net/http"
 )
 
+type App struct{}
+
+func (c *App) Info() *Info {
+	return &Info{Name: "app"}
+}
+
+func (c *App) Subcommands() map[string]interface{} {
+	return map[string]interface{}{
+		"add-team":    &AppAddTeam{},
+		"remove-team": &AppRemoveTeam{},
+	}
+}
+
 type AppAddTeam struct{}
 
 func (c *AppAddTeam) Info() *Info {
@@ -18,7 +31,7 @@ func (c *AppAddTeam) Info() *Info {
 
 func (c *AppAddTeam) Run(context *Context, client Doer) error {
 	appName, teamName := context.Args[0], context.Args[1]
-	request, err := http.NewRequest("POST", fmt.Sprintf("http://tsuru.plataformas.glb.com:8080/apps/%s/%s", appName, teamName), nil)
+	request, err := http.NewRequest("PUT", fmt.Sprintf("http://tsuru.plataformas.glb.com:8080/apps/%s/%s", appName, teamName), nil)
 	if err != nil {
 		return err
 	}

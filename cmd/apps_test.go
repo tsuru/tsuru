@@ -77,11 +77,11 @@ func (s *S) TestAppRemoveTeam(c *C) {
 	c.Assert(manager.Stdout.(*bytes.Buffer).String(), Equals, expected)
 }
 
-// func (s *S) TestApp(c *C) {
-// 	expect := map[string]interface{}{
-// 		"add":    &AddKeyCommand{},
-// 		"remove": &RemoveKey{},
-// 	}
-// 	command := Key{}
-// 	c.Assert(command.Subcommands(), DeepEquals, expect)
-// }
+func (s *S) TestApp(c *C) {
+	expect := map[string]interface{}{
+		"add-team":    &AppAddTeam{},
+		"remove-team": &AppRemoveTeam{},
+	}
+	command := App{}
+	c.Assert(command.Subcommands(), DeepEquals, expect)
+}
