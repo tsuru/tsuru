@@ -15,14 +15,14 @@ func NewTable() *Table {
 
 func (t *Table) String() string {
 	sizes := t.columnsSize()
-	result := t.separator() + "\n"
+	result := t.separator()
 	if t.Headers != nil {
 		for column, header := range t.Headers {
 			result = result + "| " + header
 			result = result + strings.Repeat(" ", sizes[column]+1-len(header))
 		}
 		result = result + "|\n"
-		result = result + t.separator() + "\n"
+		result = result + t.separator()
 	}
 	for _, row := range t.rows {
 		for column, field := range row {
@@ -69,6 +69,6 @@ func (t *Table) separator() string {
 	for i := 0; i < len(sizes); i++ {
 		result = result + "+" + strings.Repeat("-", sizes[i]+2)
 	}
-	result = result + "+"
+	result = result + "+" + "\n"
 	return result
 }
