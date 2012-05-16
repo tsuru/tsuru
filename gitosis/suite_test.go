@@ -83,6 +83,7 @@ func (s *S) SetUpTest(c *C) {
 	f, err := os.Create(fpath)
 	c.Assert(err, IsNil)
 	f.Close()
+	pushToGitosis("added gitosis test file")
 }
 
 func (s *S) TearDownSuite(c *C) {
@@ -93,10 +94,9 @@ func (s *S) TearDownSuite(c *C) {
 
 func (s *S) TearDownTest(c *C) {
 	_, err := runGit("rm", "gitosis.conf")
-	if err == nil {
-		err = pushToGitosis("removing test file")
-		c.Assert(err, IsNil)
-	}
+	c.Assert(err, IsNil)
+	err = pushToGitosis("removing test file")
+	c.Assert(err, IsNil)
 }
 
 func (s *S) lastBareCommit(c *C) string {
