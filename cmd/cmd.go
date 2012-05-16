@@ -56,7 +56,7 @@ func NewManager(stdout, stderr io.Writer) Manager {
 type Command interface {
 	Run(context *Context, client Doer) error
 	Info() *Info
-	Subcommands() map[string]Command
+	Subcommands() map[string]interface{}
 }
 
 type SimpleCommand interface {
