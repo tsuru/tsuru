@@ -90,3 +90,19 @@ func (s *S) TestSubcommand(c *C) {
 	manager.Run([]string{"tic", "tac"})
 	c.Assert(manager.Stdout.(*bytes.Buffer).String(), Equals, "Running tac subcommand")
 }
+
+func (s *S) TestHelp(c *C) {
+	expected := `help` + "\n"
+	context := Context{[]string{}, manager.Stdout, manager.Stderr}
+	command := Help{}
+	err := command.Run(&context, nil)
+	c.Assert(err, IsNil)
+	c.Assert(manager.Stdout.(*bytes.Buffer).String(), Equals, expected)
+}
+
+func (s *S) TestHelpCommandShouldBeRegisteredByDefault(c *C) {
+	var stdout, stderr bytes.Buffer
+	m := NewManager(&stdout, &stderr)
+	_, exists := m.commands["help"]
+	c.Assert(exists, Equals, true)
+}

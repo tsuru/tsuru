@@ -47,7 +47,9 @@ func (m *Manager) Run(args []string) {
 }
 
 func NewManager(stdout, stderr io.Writer) Manager {
-	return Manager{Stdout: stdout, Stderr: stderr}
+	m := Manager{Stdout: stdout, Stderr: stderr}
+	m.Register(&Help{})
+	return m
 }
 
 type CommandContainer interface {
@@ -73,4 +75,15 @@ type Info struct {
 	MinArgs int
 	Usage   string
 	Doc     string
+}
+
+type Help struct{}
+
+func (c *Help) Info() *Info {
+	return &Info{Name: "help"}
+}
+
+func (c *Help) Run(context *Context, client Doer) error {
+	io.WriteString(context.Stdout, "help\n")
+	return nil
 }
