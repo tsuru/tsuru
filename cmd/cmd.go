@@ -3,10 +3,7 @@ package cmd
 import (
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
-	"os"
-	"os/user"
 )
 
 type Manager struct {
@@ -50,7 +47,9 @@ func (m *Manager) Run(args []string) {
 }
 
 func NewManager(stdout, stderr io.Writer) Manager {
-	return Manager{Stdout: stdout, Stderr: stderr}
+	m := Manager{Stdout: stdout, Stderr: stderr}
+	m.Register(&Help{})
+	return m
 }
 
 type CommandContainer interface {
@@ -72,32 +71,19 @@ type Context struct {
 }
 
 type Info struct {
-	Name string
+	Name    string
+	MinArgs int
+	Usage   string
+	Doc     string
 }
 
-func WriteToken(token string) error {
-	user, err := user.Current()
-	tokenPath := user.HomeDir + "/.tsuru_token"
-	file, err := os.Create(tokenPath)
-	if err != nil {
-		return err
-	}
-	_, err = file.WriteString(token)
-	if err != nil {
-		return err
-	}
+type Help struct{}
+
+func (c *Help) Info() *Info {
+	return &Info{Name: "help"}
+}
+
+func (c *Help) Run(context *Context, client Doer) error {
+	io.WriteString(context.Stdout, "help\n")
 	return nil
-}
-
-func ReadToken() (string, error) {
-	user, err := user.Current()
-	if err != nil {
-		return "", err
-	}
-	tokenPath := user.HomeDir + "/.tsuru_token"
-	token, err := ioutil.ReadFile(tokenPath)
-	if err != nil {
-		return "", err
-	}
-	return string(token), nil
 }
