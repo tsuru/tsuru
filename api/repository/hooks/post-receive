@@ -1,9 +1,0 @@
-#!/bin/bash
-pushd ../
-app_dir=${PWD##*/} #see http://www.gnu.org/software/bash/manual/html_node/Shell-Parameter-Expansion.html
-popd
-
-app_name=${app_dir/.git/}
-url="${TSURU_HOST}/apps/${app_name}/clone"
-result=$(curl $url)
-echo $result
