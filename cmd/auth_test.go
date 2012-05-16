@@ -42,7 +42,7 @@ func (s *S) TestLoginRun(c *C) {
 }
 
 func (s *S) TestAddKey(c *C) {
-	expected := "Key added with success!"
+	expected := "Key added with success!\n"
 	context := Context{[]string{}, manager.Stdout, manager.Stderr}
 	client := NewClient(&http.Client{Transport: &transport{msg: "", status: http.StatusOK}})
 	command := AddKeyCommand{}

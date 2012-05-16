@@ -156,7 +156,7 @@ func (c *AddKeyCommand) Run(context *Context, client Doer) error {
 	if err != nil {
 		return err
 	}
-	io.WriteString(context.Stdout, "Key added with success!")
+	io.WriteString(context.Stdout, "Key added with success!\n")
 	return nil
 }
 
