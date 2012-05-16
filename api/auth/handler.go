@@ -74,12 +74,10 @@ func applyChangesToKeys(kind int, team *Team, user *User) {
 	for _, key := range user.Keys {
 		log.Print("adding user ", key.Name, " to ", team.Name)
 		ch := gitosis.Change{
-			Kind:     kind,
-			Args:     map[string]string{"group": team.Name, "member": key.Name},
-			Response: make(chan string),
+			Kind: kind,
+			Args: map[string]string{"group": team.Name, "member": key.Name},
 		}
 		gitosis.Changes <- ch
-		fmt.Println(<-ch.Response)
 	}
 }
 
