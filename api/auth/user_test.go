@@ -4,6 +4,7 @@ import (
 	"code.google.com/p/go.crypto/pbkdf2"
 	"crypto/sha512"
 	"fmt"
+	"github.com/timeredbull/tsuru/config"
 	"github.com/timeredbull/tsuru/db"
 	. "launchpad.net/gocheck"
 	"launchpad.net/mgo/bson"
@@ -23,7 +24,7 @@ func (s *S) TestCreateUser(c *C) {
 }
 
 func (s *S) TestCreateUserHashesThePasswordUsingPBKDF2SHA512AndSalt(c *C) {
-	salt := []byte(SALT)
+	salt := []byte(salt)
 	expectedPassword := fmt.Sprintf("%x", pbkdf2.Key([]byte("123456"), salt, 4096, len(salt)*8, sha512.New))
 	u := User{Email: "wolverine@xmen.com", Password: "123456"}
 	err := u.Create()
@@ -199,4 +200,67 @@ func (s *S) TestCheckTokenReturnTheUserIfTheTokenIsValid(c *C) {
 	u, e := CheckToken(s.token.Token)
 	c.Assert(e, IsNil)
 	c.Assert(u.Email, Equals, s.user.Email)
+}
+
+func (s *S) TestLoadConfigSetsTheSaltThatIsInTheConfigFile(c *C) {
+	configuredSalt, err := config.GetString("auth:salt")
+	c.Assert(err, IsNil)
+	loadConfig()
+	c.Assert(salt, Equals, configuredSalt)
+}
+
+func (s *S) TestLoadConfigSetsTheSaltToDefaultIfItIsNotPresentInConfig(c *C) {
+	oldConfig := config.Configs["auth"]
+	delete(config.Configs, "auth")
+	defer func() {
+		config.Configs["auth"] = oldConfig
+	}()
+	loadConfig()
+	c.Assert(salt, Equals, defaultSalt)
+}
+
+func (s *S) TestLoadConfigSetsTheTokenExpireToTheValueInTheConfig(c *C) {
+	configuredToken, err := config.Get("auth:token-expire-days")
+	c.Assert(err, IsNil)
+	expected := time.Duration(int64(configuredToken.(int)) * 24 * int64(time.Hour))
+	loadConfig()
+	c.Assert(tokenExpire, Equals, expected)
+}
+
+func (s *S) TestLoadConfigSetTheTokenExpireToTheDefaultValueIfTheConfigIsNotPresent(c *C) {
+	oldConfig := config.Configs["auth"]
+	delete(config.Configs, "auth")
+	defer func() {
+		config.Configs["auth"] = oldConfig
+	}()
+	loadConfig()
+	c.Assert(tokenExpire, Equals, defaultExpiration)
+}
+
+func (s *S) TestLoadConfigShouldPanicIfTheTokenExpireDaysIsNotInteger(c *C) {
+	oldValue := config.Configs["auth"].(map[interface{}]interface{})["token-expire-days"]
+	config.Configs["auth"].(map[interface{}]interface{})["token-expire-days"] = "abacaxi"
+	defer func() {
+		config.Configs["auth"].(map[interface{}]interface{})["token-expire-days"] = oldValue
+		r := recover()
+		c.Assert(r, NotNil)
+	}()
+	loadConfig()
+}
+
+func (s *S) TestLoadConfigShouldSetTheTokenKeyToTheValueInTheConfig(c *C) {
+	configuredKey, err := config.Get("auth:token-key")
+	c.Assert(err, IsNil)
+	loadConfig()
+	c.Assert(tokenKey, Equals, configuredKey)
+}
+
+func (s *S) TestLoadConfigShouldSetTheTokenKeyToTheDefaultValueIfItsIsNotInTheConfig(c *C) {
+	oldConfig := config.Configs["auth"]
+	delete(config.Configs, "auth")
+	defer func() {
+		config.Configs["auth"] = oldConfig
+	}()
+	loadConfig()
+	c.Assert(tokenKey, Equals, defaultKey)
 }
