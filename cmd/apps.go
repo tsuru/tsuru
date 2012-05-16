@@ -20,6 +20,9 @@ func (c *App) Subcommands() map[string]interface{} {
 	return map[string]interface{}{
 		"add-team":    &AppAddTeam{},
 		"remove-team": &AppRemoveTeam{},
+		"create":      &AppCreate{},
+		"remove":      &AppRemove{},
+		"list":        &AppList{},
 	}
 }
 
@@ -63,9 +66,9 @@ func (c *AppRemoveTeam) Run(context *Context, client Doer) error {
 	return nil
 }
 
-type AppsCommand struct{}
+type AppList struct{}
 
-func (c *AppsCommand) Run(context *Context, client Doer) error {
+func (c *AppList) Run(context *Context, client Doer) error {
 	request, err := http.NewRequest("GET", "http://tsuru.plataformas.glb.com:8080/apps", nil)
 	if err != nil {
 		return err
@@ -85,7 +88,7 @@ func (c *AppsCommand) Run(context *Context, client Doer) error {
 	return c.Show([]byte(result), context)
 }
 
-func (c AppsCommand) Show(result []byte, context *Context) error {
+func (c *AppList) Show(result []byte, context *Context) error {
 	var apps []app.App
 	err := json.Unmarshal(result, &apps)
 	if err != nil {
@@ -100,13 +103,13 @@ func (c AppsCommand) Show(result []byte, context *Context) error {
 	return nil
 }
 
-func (c *AppsCommand) Info() *Info {
-	return &Info{Name: "apps"}
+func (c *AppList) Info() *Info {
+	return &Info{Name: "list"}
 }
 
-type CreateAppCommand struct{}
+type AppCreate struct{}
 
-func (c *CreateAppCommand) Run(context *Context, client Doer) error {
+func (c *AppCreate) Run(context *Context, client Doer) error {
 	appName := context.Args[0]
 	b := bytes.NewBufferString(fmt.Sprintf(`{"name":"%s", "framework":"django"}`, appName))
 	request, err := http.NewRequest("POST", "http://tsuru.plataformas.glb.com:8080/apps", b)
@@ -134,17 +137,17 @@ func (c *CreateAppCommand) Run(context *Context, client Doer) error {
 	return nil
 }
 
-func (c *CreateAppCommand) Info() *Info {
+func (c *AppCreate) Info() *Info {
 	return &Info{Name: "create-app"}
 }
 
-type DeleteAppCommand struct{}
+type AppRemove struct{}
 
-func (c *DeleteAppCommand) Info() *Info {
+func (c *AppRemove) Info() *Info {
 	return &Info{Name: "delete-app"}
 }
 
-func (c *DeleteAppCommand) Run(context *Context, client Doer) error {
+func (c *AppRemove) Run(context *Context, client Doer) error {
 	appName := context.Args[0]
 	request, err := http.NewRequest("DELETE", fmt.Sprintf("http://tsuru.plataformas.glb.com:8080/apps/%s", appName), nil)
 	if err != nil {
