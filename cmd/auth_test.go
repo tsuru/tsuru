@@ -42,13 +42,32 @@ func (s *S) TestLoginRun(c *C) {
 }
 
 func (s *S) TestAddKey(c *C) {
-	expected := "Key added with success!"
+	expected := "Key added with success!\n"
 	context := Context{[]string{}, manager.Stdout, manager.Stderr}
 	client := NewClient(&http.Client{Transport: &transport{msg: "", status: http.StatusOK}})
 	command := AddKeyCommand{}
 	err := command.Run(&context, client)
 	c.Assert(err, IsNil)
 	c.Assert(manager.Stdout.(*bytes.Buffer).String(), Equals, expected)
+}
+
+func (s *S) TestRemoveKey(c *C) {
+	expected := "Key removed with success!\n"
+	context := Context{[]string{}, manager.Stdout, manager.Stderr}
+	client := NewClient(&http.Client{Transport: &transport{msg: "", status: http.StatusOK}})
+	command := RemoveKey{}
+	err := command.Run(&context, client)
+	c.Assert(err, IsNil)
+	c.Assert(manager.Stdout.(*bytes.Buffer).String(), Equals, expected)
+}
+
+func (s *S) TestKey(c *C) {
+	expect := map[string]interface{}{
+		"add":    &AddKeyCommand{},
+		"remove": &RemoveKey{},
+	}
+	command := Key{}
+	c.Assert(command.Subcommands(), DeepEquals, expect)
 }
 
 func (s *S) TestLogout(c *C) {
@@ -73,7 +92,7 @@ func (s *S) TestTeam(c *C) {
 }
 
 func (s *S) TestTeamAddUser(c *C) {
-	expected := `User "andorito" was added to the "cobrateam" team`+"\n"
+	expected := `User "andorito" was added to the "cobrateam" team` + "\n"
 	context := Context{[]string{"cobrateam", "andorito"}, manager.Stdout, manager.Stderr}
 	command := TeamAddUser{}
 	client := NewClient(&http.Client{Transport: &transport{msg: "", status: http.StatusOK}})
@@ -83,7 +102,7 @@ func (s *S) TestTeamAddUser(c *C) {
 }
 
 func (s *S) TestTeamRemoveUser(c *C) {
-	expected := `User "andorito" was removed from the "cobrateam" team`+"\n"
+	expected := `User "andorito" was removed from the "cobrateam" team` + "\n"
 	context := Context{[]string{"cobrateam", "andorito"}, manager.Stdout, manager.Stderr}
 	command := TeamRemoveUser{}
 	client := NewClient(&http.Client{Transport: &transport{msg: "", status: http.StatusOK}})

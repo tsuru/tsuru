@@ -15,7 +15,7 @@ func main() {
 	manager.Register(&cmd.AddUserCommand{})
 	manager.Register(&cmd.CreateAppCommand{})
 	manager.Register(&cmd.CreateTeamCommand{})
-	manager.Register(&cmd.AddKeyCommand{})
+	manager.Register(&cmd.Key{})
 	manager.Register(&cmd.DeleteAppCommand{})
 	manager.Register(&cmd.TeamCommand{})
 	//removing the command name from args
