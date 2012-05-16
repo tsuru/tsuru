@@ -16,7 +16,6 @@ func CloneRepository(appName string) (err error) {
 		log.Print(err)
 		return
 	}
-
 	log.Print(output)
 	return
 }
