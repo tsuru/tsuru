@@ -12,9 +12,25 @@ import (
 	"strings"
 )
 
-type AddUserCommand struct{}
+type User struct{}
 
-func (c *AddUserCommand) Run(context *Context, client Doer) error {
+func (c *User) Info() *Info {
+	return &Info{Name: "user"}
+}
+
+func (c *User) Subcommands() map[string]interface{} {
+	return map[string]interface{}{
+		"create": &UserCreate{},
+	}
+}
+
+type UserCreate struct{}
+
+func (c *UserCreate) Info() *Info {
+	return &Info{Name: "create"}
+}
+
+func (c *UserCreate) Run(context *Context, client Doer) error {
 	email, password := context.Args[0], context.Args[1]
 	b := bytes.NewBufferString(`{"email":"` + email + `", "password":"` + password + `"}`)
 	request, err := http.NewRequest("POST", "http://tsuru.plataformas.glb.com:8080/users", b)
@@ -28,10 +44,6 @@ func (c *AddUserCommand) Run(context *Context, client Doer) error {
 	}
 	io.WriteString(context.Stdout, "OK")
 	return nil
-}
-
-func (c *AddUserCommand) Info() *Info {
-	return &Info{Name: "create-user"}
 }
 
 type Login struct{}
