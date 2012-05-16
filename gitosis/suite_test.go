@@ -2,8 +2,10 @@ package gitosis
 
 import (
 	"github.com/timeredbull/tsuru/config"
+	"github.com/timeredbull/tsuru/log"
 	"io/ioutil"
 	. "launchpad.net/gocheck"
+	stdlog "log"
 	"os"
 	"os/exec"
 	"path"
@@ -17,6 +19,7 @@ type S struct {
 	gitRoot     string
 	gitosisBare string
 	gitosisRepo string
+	logFile     *os.File
 }
 
 var _ = Suite(&S{})
@@ -70,6 +73,9 @@ func (s *S) SetUpSuite(c *C) {
 	c.Assert(err, IsNil)
 	err = exec.Command("git", "clone", s.gitosisBare, s.gitosisRepo).Run()
 	c.Assert(err, IsNil)
+	s.logFile, err = os.Create("/tmp/tsuru-tests.log")
+	c.Assert(err, IsNil)
+	log.Target = stdlog.New(s.logFile, "[tsuru-tests]", stdlog.LstdFlags|stdlog.Llongfile)
 }
 
 func (s *S) SetUpTest(c *C) {
@@ -80,6 +86,7 @@ func (s *S) SetUpTest(c *C) {
 }
 
 func (s *S) TearDownSuite(c *C) {
+	defer s.logFile.Close()
 	err := os.RemoveAll(s.gitRoot)
 	c.Assert(err, IsNil)
 }
