@@ -92,7 +92,8 @@ func (s *S) TestSubcommand(c *C) {
 }
 
 func (s *S) TestHelp(c *C) {
-	expected := `help` + "\n"
+	expected := `Usage: glb command [args]
+`
 	context := Context{[]string{}, manager.Stdout, manager.Stderr}
 	command := Help{}
 	err := command.Run(&context, nil)

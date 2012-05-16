@@ -80,10 +80,13 @@ type Info struct {
 type Help struct{}
 
 func (c *Help) Info() *Info {
-	return &Info{Name: "help"}
+	return &Info{
+		Name: "help",
+		Usage: "glb command [args]\n",
+	}
 }
 
 func (c *Help) Run(context *Context, client Doer) error {
-	io.WriteString(context.Stdout, "help\n")
+	io.WriteString(context.Stdout, fmt.Sprintf("Usage: %s", c.Info().Usage))
 	return nil
 }
