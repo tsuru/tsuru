@@ -66,7 +66,6 @@ func writeCommitPush(c *ini.Config, commit string) error {
 	}
 	err = pushToGitosis(commit)
 	if err != nil {
-		log.Print(err)
 		return err
 	}
 	return nil

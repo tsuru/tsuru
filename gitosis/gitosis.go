@@ -5,7 +5,6 @@ import (
 	"fmt"
 	ini "github.com/kless/goconfig/config"
 	"github.com/timeredbull/tsuru/config"
-	"github.com/timeredbull/tsuru/log"
 	"path"
 	"strings"
 )
@@ -14,7 +13,6 @@ import (
 func addProject(group, project string) error {
 	c, err := getConfig()
 	if err != nil {
-		log.Print(err)
 		return err
 	}
 	section := fmt.Sprintf("group %s", group) //check if session exists
@@ -23,7 +21,6 @@ func addProject(group, project string) error {
 		return errors.New(errMsg)
 	}
 	if err = addOptionValue(c, section, "writable", project); err != nil {
-		log.Print(err)
 		return err
 	}
 	commit := fmt.Sprintf("Added project %s to group %s", project, group)
@@ -99,7 +96,6 @@ func addMember(group, member string) error {
 		return errors.New("Group not found")
 	}
 	if err = addOptionValue(c, section, "members", member); err != nil {
-		log.Print(err)
 		return err
 	}
 	commitMsg := fmt.Sprintf("Adding member %s to group %s", member, group)
@@ -135,7 +131,6 @@ func addOptionValue(c *ini.Config, section, option, value string) (err error) {
 	if c.HasOption(section, option) {
 		strValues, err = c.String(section, option)
 		if err != nil {
-			log.Print(err)
 			return err
 		}
 	}
@@ -154,7 +149,6 @@ func removeOptionValue(c *ini.Config, section, option, value string) (err error)
 	//check if section and option exists
 	strValues, err := c.String(section, option)
 	if err != nil {
-		log.Print(err)
 		return err
 	}
 	values := strings.Split(strValues, " ")
@@ -178,7 +172,6 @@ func ConfPath() (p string, err error) {
 	p = ""
 	repoPath, err := config.GetString("git:gitosis-repo")
 	if err != nil {
-		log.Print(err)
 		return
 	}
 	p = path.Join(repoPath, "gitosis.conf")
