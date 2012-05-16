@@ -138,13 +138,13 @@ func (c *AddKeyCommand) Run(context *Context, client Doer) error {
 	return nil
 }
 
-type LogoutCommand struct{}
+type Logout struct{}
 
-func (c *LogoutCommand) Info() *Info {
+func (c *Logout) Info() *Info {
 	return &Info{Name: "logout"}
 }
 
-func (c *LogoutCommand) Run(context *Context, client Doer) error {
+func (c *Logout) Run(context *Context, client Doer) error {
 	err := WriteToken("")
 	if err != nil {
 		return err

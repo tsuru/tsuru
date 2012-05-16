@@ -62,7 +62,7 @@ func (s *S) TestKey(c *C) {
 func (s *S) TestLogout(c *C) {
 	expected := "Successfully logout!\n"
 	context := Context{[]string{}, manager.Stdout, manager.Stderr}
-	command := LogoutCommand{}
+	command := Logout{}
 	err := command.Run(&context, nil)
 	c.Assert(err, IsNil)
 	c.Assert(manager.Stdout.(*bytes.Buffer).String(), Equals, expected)
