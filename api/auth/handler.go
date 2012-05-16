@@ -6,6 +6,7 @@ import (
 	"github.com/timeredbull/tsuru/db"
 	"github.com/timeredbull/tsuru/errors"
 	"github.com/timeredbull/tsuru/gitosis"
+	"github.com/timeredbull/tsuru/log"
 	"io"
 	"io/ioutil"
 	"launchpad.net/mgo/bson"
@@ -71,11 +72,14 @@ func Login(w http.ResponseWriter, r *http.Request) error {
 
 func applyChangesToKeys(kind int, team *Team, user *User) {
 	for _, key := range user.Keys {
+		log.Print("adding user ", key.Name, " to ", team.Name)
 		ch := gitosis.Change{
-			Kind: kind,
-			Args: map[string]string{"group": team.Name, "member": key.Name},
+			Kind:     kind,
+			Args:     map[string]string{"group": team.Name, "member": key.Name},
+			Response: make(chan string),
 		}
 		gitosis.Changes <- ch
+		fmt.Println(<-ch.Response)
 	}
 }
 
