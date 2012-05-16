@@ -72,7 +72,10 @@ type Context struct {
 }
 
 type Info struct {
-	Name string
+	Name    string
+	MinArgs int
+	Usage   string
+	Doc     string
 }
 
 func WriteToken(token string) error {
