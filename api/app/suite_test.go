@@ -3,9 +3,9 @@ package app
 import (
 	"bytes"
 	"github.com/timeredbull/tsuru/api/auth"
-	"github.com/timeredbull/tsuru/api/repository/gitosis"
 	"github.com/timeredbull/tsuru/config"
 	"github.com/timeredbull/tsuru/db"
+	"github.com/timeredbull/tsuru/gitosis"
 	"io/ioutil"
 	. "launchpad.net/gocheck"
 	"launchpad.net/mgo"

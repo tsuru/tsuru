@@ -2,9 +2,9 @@ package auth
 
 import (
 	"bytes"
-	"github.com/timeredbull/tsuru/api/repository/gitosis"
 	"github.com/timeredbull/tsuru/config"
 	"github.com/timeredbull/tsuru/db"
+	"github.com/timeredbull/tsuru/gitosis"
 	"io"
 	"io/ioutil"
 	. "launchpad.net/gocheck"

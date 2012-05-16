@@ -55,7 +55,7 @@ func (c *isInGitosisChecker) Check(params []interface{}, names []string) (bool, 
 var IsInGitosis, NotInGitosis Checker = &isInGitosisChecker{}, Not(IsInGitosis)
 
 func (s *S) SetUpSuite(c *C) {
-	err := config.ReadConfigFile("../../../etc/tsuru.conf")
+	err := config.ReadConfigFile("../etc/tsuru.conf")
 	c.Assert(err, IsNil)
 	s.gitRoot, err = config.GetString("git:root")
 	c.Assert(err, IsNil)
