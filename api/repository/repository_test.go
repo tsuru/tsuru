@@ -1,9 +1,6 @@
-package repository_test
+package repository
 
 import (
-	"fmt"
-	"github.com/timeredbull/tsuru/api/app"
-	"github.com/timeredbull/tsuru/api/repository"
 	. "launchpad.net/gocheck"
 	"testing"
 )
@@ -15,14 +12,12 @@ type S struct{}
 var _ = Suite(&S{})
 
 func (s *S) TestCloneRepository(c *C) {
-	a := app.App{Name: "barfoo"}
-	err := repository.CloneRepository(a.Name)
+	err := CloneRepository("barfoo")
 	c.Assert(err, IsNil)
 }
 
 func (s *S) TestGetRepositoryUrl(c *C) {
-	a := app.App{Name: "foobar"}
-	url := repository.GetRepositoryUrl(a.Name)
-	expected := fmt.Sprintf("git@tsuru.plataformas.glb.com:%s.git", a.Name)
+	url := GetRepositoryUrl("foobar")
+	expected := "git@tsuru.plataformas.glb.com:foobar.git"
 	c.Assert(url, Equals, expected)
 }
