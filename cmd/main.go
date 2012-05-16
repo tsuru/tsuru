@@ -9,7 +9,7 @@ import (
 
 func main() {
 	manager := cmd.NewManager(os.Stdout, os.Stderr)
-	manager.Register(&cmd.LoginCommand{})
+	manager.Register(&cmd.Login{})
 	manager.Register(&cmd.LogoutCommand{})
 	manager.Register(&cmd.AddUserCommand{})
 	manager.Register(&cmd.App{})

@@ -34,9 +34,9 @@ func (c *AddUserCommand) Info() *Info {
 	return &Info{Name: "create-user"}
 }
 
-type LoginCommand struct{}
+type Login struct{}
 
-func (c *LoginCommand) Run(context *Context, client Doer) error {
+func (c *Login) Run(context *Context, client Doer) error {
 	email, password := context.Args[0], context.Args[1]
 	b := bytes.NewBufferString(`{"password":"` + password + `"}`)
 	request, err := http.NewRequest("POST", "http://tsuru.plataformas.glb.com:8080/users/"+email+"/tokens", b)
@@ -62,7 +62,7 @@ func (c *LoginCommand) Run(context *Context, client Doer) error {
 	return nil
 }
 
-func (c *LoginCommand) Info() *Info {
+func (c *Login) Info() *Info {
 	return &Info{Name: "login"}
 }
 
