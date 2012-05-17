@@ -14,7 +14,6 @@ import (
 	"os/exec"
 	"path"
 	"path/filepath"
-	"strings"
 	"testing"
 )
 
@@ -83,16 +82,13 @@ func (s *S) tearDownGitosis(c *C) {
 }
 
 func (s *S) commit(c *C, msg string) {
-	gitDir := "--git-dir=" + path.Join(s.gitosisRepo, ".git")
-	workTree := "--work-tree=" + s.gitosisRepo
-	gitosis.Lock()
-	defer gitosis.Unlock()
-	err := exec.Command("git", gitDir, workTree, "add", ".").Run()
-	c.Assert(err, IsNil)
-	out, err := exec.Command("git", gitDir, workTree, "commit", "-am", msg).CombinedOutput()
-	if err != nil {
-		c.Assert(strings.Contains(string(out), "nothing to commit"), Equals, true)
+	ch := gitosis.Change{
+		Kind: gitosis.Commit,
+		Args: map[string]string{"message": msg},
+		Response: make(chan string),
 	}
+	gitosis.Ag.Process(ch)
+	<-ch.Response
 }
 
 func (s *S) createGitosisConf(c *C) {
@@ -109,7 +105,7 @@ func (s *S) addGroup() {
 		Args:     map[string]string{"group": s.team.Name},
 		Response: make(chan string),
 	}
-	gitosis.Changes <- ch
+	gitosis.Ag.Process(ch)
 	<-ch.Response
 }
 
@@ -121,6 +117,7 @@ func (s *S) deleteGitosisConf(c *C) {
 
 func (s *S) SetUpSuite(c *C) {
 	s.setupGitosis(c)
+	gitosis.RunAgent()
 	s.createGitosisConf(c)
 	db.Session, _ = db.Open("localhost:27017", "tsuru_user_test")
 	s.user = &User{Email: "timeredbull@globo.com", Password: "123"}

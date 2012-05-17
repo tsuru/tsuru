@@ -77,7 +77,7 @@ func applyChangesToKeys(kind int, team *Team, user *User) {
 			Kind: kind,
 			Args: map[string]string{"group": team.Name, "member": key.Name},
 		}
-		gitosis.Changes <- ch
+		gitosis.Ag.Process(ch)
 	}
 }
 
@@ -92,7 +92,7 @@ func createTeam(name string, u *User) error {
 		Args:     map[string]string{"group": name},
 		Response: make(chan string),
 	}
-	gitosis.Changes <- ch
+	gitosis.Ag.Process(ch)
 	<-ch.Response
 	applyChangesToKeys(gitosis.AddMember, team, u)
 	return nil
@@ -215,7 +215,7 @@ func addKeyToUser(content string, u *User) error {
 		Args:     map[string]string{"member": u.Email, "key": content},
 		Response: r,
 	}
-	gitosis.Changes <- ch
+	gitosis.Ag.Process(ch)
 	var teams []Team
 	db.Session.Teams().Find(bson.M{"users.email": u.Email}).All(&teams)
 	key.Name = strings.Replace(<-r, ".pub", "", -1)
@@ -224,7 +224,7 @@ func addKeyToUser(content string, u *User) error {
 			Kind: gitosis.AddMember,
 			Args: map[string]string{"group": team.Name, "member": key.Name},
 		}
-		gitosis.Changes <- mch
+		gitosis.Ag.Process(mch)
 	}
 	u.addKey(key)
 	return db.Session.Users().Update(bson.M{"email": u.Email}, u)
@@ -257,7 +257,7 @@ func removeKeyFromUser(content string, u *User) error {
 		Kind: gitosis.RemoveKey,
 		Args: map[string]string{"key": key.Name + ".pub"},
 	}
-	gitosis.Changes <- ch
+	gitosis.Ag.Process(ch)
 	var teams []Team
 	db.Session.Teams().Find(bson.M{"users.email": u.Email}).All(&teams)
 	for _, team := range teams {
@@ -265,7 +265,7 @@ func removeKeyFromUser(content string, u *User) error {
 			Kind: gitosis.RemoveMember,
 			Args: map[string]string{"group": team.Name, "member": key.Name},
 		}
-		gitosis.Changes <- mch
+		gitosis.Ag.Process(mch)
 	}
 	return nil
 }
