@@ -55,33 +55,39 @@ type S struct {
 
 var _ = Suite(&S{})
 
-func (s *S) setupGitosis(c *C) {
+var panicIfErr = func(err error) {
+	if err != nil {
+		panic(err)
+	}
+}
+
+func (s *S) setupGitosis() {
 	data, err := ioutil.ReadFile("../../etc/tsuru.conf")
-	c.Assert(err, IsNil)
+	panicIfErr(err)
 	data = bytes.Replace(data, []byte("/tmp/git"), []byte("/tmp/gitosis"), -1)
 	err = config.ReadConfigBytes(data)
-	c.Assert(err, IsNil)
+	panicIfErr(err)
 	s.gitRoot, err = config.GetString("git:root")
-	c.Assert(err, IsNil)
+	panicIfErr(err)
 	s.gitosisBare, err = config.GetString("git:gitosis-bare")
-	c.Assert(err, IsNil)
+	panicIfErr(err)
 	s.gitosisRepo, err = config.GetString("git:gitosis-repo")
 	err = os.RemoveAll(s.gitRoot)
-	c.Assert(err, IsNil)
+	panicIfErr(err)
 	err = os.MkdirAll(s.gitRoot, 0777)
-	c.Assert(err, IsNil)
+	panicIfErr(err)
 	err = exec.Command("git", "init", "--bare", s.gitosisBare).Run()
-	c.Assert(err, IsNil)
+	panicIfErr(err)
 	err = exec.Command("git", "clone", s.gitosisBare, s.gitosisRepo).Run()
-	c.Assert(err, IsNil)
+	panicIfErr(err)
 }
 
-func (s *S) tearDownGitosis(c *C) {
+func (s *S) tearDownGitosis() {
 	err := os.RemoveAll(s.gitRoot)
-	c.Assert(err, IsNil)
+	panicIfErr(err)
 }
 
-func (s *S) commit(c *C, msg string) {
+func (s *S) commit(msg string) {
 	ch := repository.Change{
 		Kind: repository.Commit,
 		Args: map[string]string{"message": msg},
@@ -91,12 +97,12 @@ func (s *S) commit(c *C, msg string) {
 	<-ch.Response
 }
 
-func (s *S) createGitosisConf(c *C) {
+func (s *S) createGitosisConf() {
 	p := path.Join(s.gitosisRepo, "gitosis.conf")
 	f, err := os.Create(p)
-	c.Assert(err, IsNil)
+	panicIfErr(err)
 	defer f.Close()
-	s.commit(c, "Added gitosis.conf")
+	s.commit("Added gitosis.conf")
 }
 
 func (s *S) addGroup() {
@@ -109,43 +115,43 @@ func (s *S) addGroup() {
 	<-ch.Response
 }
 
-func (s *S) deleteGitosisConf(c *C) {
+func (s *S) deleteGitosisConf() {
 	err := os.Remove(path.Join(s.gitosisRepo, "gitosis.conf"))
-	c.Assert(err, IsNil)
-	s.commit(c, "Removing gitosis.conf")
+	panicIfErr(err)
+	s.commit("Removing gitosis.conf")
 }
 
 func (s *S) SetUpSuite(c *C) {
-	s.setupGitosis(c)
+	s.setupGitosis()
 	repository.RunAgent()
-	s.createGitosisConf(c)
+	s.createGitosisConf()
 	db.Session, _ = db.Open("localhost:27017", "tsuru_user_test")
 	s.user = &User{Email: "timeredbull@globo.com", Password: "123"}
 	s.user.Create()
 	s.token, _ = s.user.CreateToken()
 	err := createTeam("cobrateam", s.user)
-	c.Assert(err, IsNil)
+	panicIfErr(err)
 	s.team = new(Team)
 	err = db.Session.Teams().Find(bson.M{"name": "cobrateam"}).One(s.team)
-	c.Assert(err, IsNil)
+	panicIfErr(err)
 }
 
 func (s *S) TearDownSuite(c *C) {
-	defer s.tearDownGitosis(c)
+	defer s.tearDownGitosis()
 	defer db.Session.Close()
 	db.Session.Apps().Database.DropDatabase()
 }
 
 func (s *S) SetUpTest(c *C) {
-	s.createGitosisConf(c)
+	s.createGitosisConf()
 }
 
 func (s *S) TearDownTest(c *C) {
-	defer s.deleteGitosisConf(c)
+	defer s.deleteGitosisConf()
 	err := db.Session.Users().RemoveAll(bson.M{"email": bson.M{"$ne": s.user.Email}})
-	c.Assert(err, IsNil)
+	panicIfErr(err)
 	err = db.Session.Teams().RemoveAll(bson.M{"name": bson.M{"$ne": s.team.Name}})
-	c.Assert(err, IsNil)
+	panicIfErr(err)
 }
 
 func (s *S) getTestData(path ...string) io.ReadCloser {
