@@ -39,7 +39,7 @@ func CloneRepositoryHandler(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return &errors.Http{Code: http.StatusNotFound, Message: "App not found"}
 	}
-	gitosis.CloneRepository(app.Name)
+	gitosis.CloneRepository(app.Name, app.Machine)
 	fmt.Fprint(w, "success")
 	return nil
 }
