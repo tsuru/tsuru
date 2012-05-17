@@ -37,12 +37,11 @@ func (c *UserCreate) Run(context *Context, client Doer) error {
 	if err != nil {
 		return err
 	}
-	io.WriteString(context.Stdout, "Creating new user: "+email+"\n")
 	_, err = client.Do(request)
 	if err != nil {
 		return err
 	}
-	io.WriteString(context.Stdout, "OK")
+	io.WriteString(context.Stdout, fmt.Sprintf(`User "%s" created with success!`+"\n", email))
 	return nil
 }
 
@@ -69,13 +68,16 @@ func (c *Login) Run(context *Context, client Doer) error {
 	if err != nil {
 		return err
 	}
-	io.WriteString(context.Stdout, "Successfully logged!")
+	io.WriteString(context.Stdout, "Successfully logged!\n")
 	WriteToken(out["token"])
 	return nil
 }
 
 func (c *Login) Info() *Info {
-	return &Info{Name: "login"}
+	return &Info{
+		Name:  "login",
+		Usage: "glb login email password",
+	}
 }
 
 func readKey() (string, error) {
@@ -153,7 +155,10 @@ func (c *AddKeyCommand) Run(context *Context, client Doer) error {
 type Logout struct{}
 
 func (c *Logout) Info() *Info {
-	return &Info{Name: "logout"}
+	return &Info{
+		Name:  "logout",
+		Usage: "glb logout",
+	}
 }
 
 func (c *Logout) Run(context *Context, client Doer) error {
@@ -196,12 +201,11 @@ func (c *TeamCreate) Run(context *Context, client Doer) error {
 	if err != nil {
 		return err
 	}
-	io.WriteString(context.Stdout, fmt.Sprintf("Creating new team: %s\n", team))
 	_, err = client.Do(request)
 	if err != nil {
 		return err
 	}
-	io.WriteString(context.Stdout, "OK")
+	io.WriteString(context.Stdout, fmt.Sprintf(`Team "%s" created with success!`+"\n", team))
 	return nil
 }
 

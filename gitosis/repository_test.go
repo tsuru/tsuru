@@ -1,15 +1,8 @@
-package repository
+package gitosis
 
 import (
 	. "launchpad.net/gocheck"
-	"testing"
 )
-
-func Test(t *testing.T) { TestingT(t) }
-
-type S struct{}
-
-var _ = Suite(&S{})
 
 func (s *S) TestCloneRepository(c *C) {
 	err := CloneRepository("barfoo")

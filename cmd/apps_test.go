@@ -12,7 +12,8 @@ func (s *S) TestAppList(c *C) {
 | Application | State | Ip |
 +-------------+-------+----+
 | app1        |       |    |
-+-------------+-------+----+`
++-------------+-------+----+
+`
 	context := Context{[]string{}, manager.Stdout, manager.Stderr}
 	client := NewClient(&http.Client{Transport: &transport{msg: result, status: http.StatusOK}})
 	command := AppList{}
@@ -23,9 +24,8 @@ func (s *S) TestAppList(c *C) {
 
 func (s *S) TestAppCreate(c *C) {
 	result := `{"status":"success", "repository_url":"git@tsuru.plataformas.glb.com:ble.git"}`
-	expected := `Creating application: ble
-Your repository for "ble" project is "git@tsuru.plataformas.glb.com:ble.git"
-Ok!`
+	expected := `App "ble" created with success!
+Your repository for "ble" project is "git@tsuru.plataformas.glb.com:ble.git"` + "\n"
 	context := Context{[]string{"ble", "django"}, manager.Stdout, manager.Stderr}
 	client := NewClient(&http.Client{Transport: &transport{msg: result, status: http.StatusOK}})
 	command := AppCreate{}
@@ -35,7 +35,7 @@ Ok!`
 }
 
 func (s *S) TestAppRemove(c *C) {
-	expected := "App ble delete with success!"
+	expected := `App "ble" removed with success!` + "\n"
 	context := Context{[]string{"ble"}, manager.Stdout, manager.Stderr}
 	client := NewClient(&http.Client{Transport: &transport{msg: "", status: http.StatusOK}})
 	command := AppRemove{}

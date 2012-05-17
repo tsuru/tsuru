@@ -20,12 +20,14 @@ func (s *S) SetUpTest(c *C) {
 	manager = NewManager(&stdout, &stderr)
 }
 
-type TestCommand struct {
-	Name string
-}
+type TestCommand struct{}
 
 func (c *TestCommand) Info() *Info {
-	return &Info{Name: c.Name}
+	return &Info{
+		Name:  "foo",
+		Doc:   "Foo do anything or nothing.",
+		Usage: "glb foo",
+	}
 }
 
 func (c *TestCommand) Run(context *Context, client Doer) error {
@@ -44,8 +46,8 @@ func (c *ErrorCommand) Run(context *Context, client Doer) error {
 }
 
 func (s *S) TestRegister(c *C) {
-	manager.Register(&TestCommand{Name: "foo"})
-	badCall := func() { manager.Register(&TestCommand{Name: "foo"}) }
+	manager.Register(&TestCommand{})
+	badCall := func() { manager.Register(&TestCommand{}) }
 	c.Assert(badCall, PanicMatches, "command already registered: foo")
 }
 
@@ -56,7 +58,7 @@ func (s *S) TestManagerRunShouldWriteErrorsOnStderr(c *C) {
 }
 
 func (s *S) TestRun(c *C) {
-	manager.Register(&TestCommand{Name: "foo"})
+	manager.Register(&TestCommand{})
 	manager.Run([]string{"foo"})
 	c.Assert(manager.Stdout.(*bytes.Buffer).String(), Equals, "Running TestCommand")
 }
@@ -93,18 +95,41 @@ func (s *S) TestSubcommand(c *C) {
 	c.Assert(manager.Stdout.(*bytes.Buffer).String(), Equals, "Running tac subcommand")
 }
 
-func (s *S) TestWriteToken(c *C) {
-	err := WriteToken("abc")
+func (s *S) TestHelp(c *C) {
+	expected := `Usage: glb command [args]
+`
+	context := Context{[]string{}, manager.Stdout, manager.Stderr}
+	command := Help{}
+	err := command.Run(&context, nil)
 	c.Assert(err, IsNil)
-	token, err := ReadToken()
-	c.Assert(err, IsNil)
-	c.Assert(token, Equals, "abc")
+	c.Assert(manager.Stdout.(*bytes.Buffer).String(), Equals, expected)
 }
 
-func (s *S) TestReadToken(c *C) {
-	err := WriteToken("123")
+func (s *S) TestHelpCommandShouldBeRegisteredByDefault(c *C) {
+	var stdout, stderr bytes.Buffer
+	m := NewManager(&stdout, &stderr)
+	_, exists := m.commands["help"]
+	c.Assert(exists, Equals, true)
+}
+
+func (s *S) TestRunWithoutArgsShouldRunsHelp(c *C) {
+	expected := `Usage: glb command [args]
+`
+	manager.Run([]string{})
+	c.Assert(manager.Stdout.(*bytes.Buffer).String(), Equals, expected)
+}
+
+func (s *S) TestHelpShouldReturnsHelpForACmd(c *C) {
+
+	expected := `Usage: glb foo
+
+Foo do anything or nothing.
+`
+	manager.Register(&TestCommand{})
+
+	context := Context{[]string{"foo"}, manager.Stdout, manager.Stderr}
+	command := Help{manager: &manager}
+	err := command.Run(&context, nil)
 	c.Assert(err, IsNil)
-	token, err := ReadToken()
-	c.Assert(err, IsNil)
-	c.Assert(token, Equals, "123")
+	c.Assert(manager.Stdout.(*bytes.Buffer).String(), Equals, expected)
 }
