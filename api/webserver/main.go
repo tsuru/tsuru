@@ -12,6 +12,7 @@ import (
 	"github.com/timeredbull/tsuru/config"
 	"github.com/timeredbull/tsuru/db"
 	"github.com/timeredbull/tsuru/log"
+	"github.com/timeredbull/tsuru/repository"
 	stdlog "log"
 	"log/syslog"
 	"net/http"
@@ -43,6 +44,8 @@ func main() {
 		log.Panic(err.Error())
 	}
 	defer db.Session.Close()
+
+	repository.RunAgent()
 	m := pat.New()
 
 	m.Post("/services", webserver.AuthorizationRequiredHandler(service.CreateHandler))

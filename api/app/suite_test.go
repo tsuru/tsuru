@@ -5,7 +5,7 @@ import (
 	"github.com/timeredbull/tsuru/api/auth"
 	"github.com/timeredbull/tsuru/config"
 	"github.com/timeredbull/tsuru/db"
-	"github.com/timeredbull/tsuru/gitosis"
+	"github.com/timeredbull/tsuru/repository"
 	"io/ioutil"
 	. "launchpad.net/gocheck"
 	"launchpad.net/mgo"
@@ -89,16 +89,13 @@ func (s *S) tearDownGitosis(c *C) {
 }
 
 func (s *S) commit(c *C, msg string) {
-	gitDir := "--git-dir=" + path.Join(s.gitosisRepo, ".git")
-	workTree := "--work-tree=" + s.gitosisRepo
-	gitosis.Lock()
-	defer gitosis.Unlock()
-	err := exec.Command("git", gitDir, workTree, "add", ".").Run()
-	c.Assert(err, IsNil)
-	out, err := exec.Command("git", gitDir, workTree, "commit", "-am", msg).CombinedOutput()
-	if err != nil {
-		c.Assert(strings.Contains(string(out), "nothing to commit"), Equals, true)
+	ch := repository.Change{
+		Kind: repository.Commit,
+		Args: map[string]string{"message": msg},
+		Response: make(chan string),
 	}
+	repository.Ag.Process(ch)
+	<-ch.Response
 }
 
 func (s *S) createGitosisConf(c *C) {
@@ -110,12 +107,12 @@ func (s *S) createGitosisConf(c *C) {
 }
 
 func (s *S) addGroup() {
-	ch := gitosis.Change{
-		Kind:     gitosis.AddGroup,
+	ch := repository.Change{
+		Kind:     repository.AddGroup,
 		Args:     map[string]string{"group": s.team.Name},
 		Response: make(chan string),
 	}
-	gitosis.Changes <- ch
+	repository.Ag.Process(ch)
 	<-ch.Response
 }
 
@@ -134,6 +131,7 @@ func (s *S) SetUpSuite(c *C) {
 	s.team = auth.Team{Name: "tsuruteam", Users: []*auth.User{s.user}}
 	db.Session.Teams().Insert(s.team)
 	s.setupGitosis(c)
+	repository.RunAgent()
 }
 
 func (s *S) TearDownSuite(c *C) {
