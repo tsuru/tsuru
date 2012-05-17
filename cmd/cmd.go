@@ -51,7 +51,7 @@ func (m *Manager) Run(args []string) {
 
 func NewManager(stdout, stderr io.Writer) Manager {
 	m := Manager{Stdout: stdout, Stderr: stderr}
-	m.Register(&Help{manager: m})
+	m.Register(&Help{manager: &m})
 	return m
 }
 
@@ -81,7 +81,7 @@ type Info struct {
 }
 
 type Help struct {
-	manager Manager
+	manager *Manager
 }
 
 func (c *Help) Info() *Info {
