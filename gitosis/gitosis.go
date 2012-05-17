@@ -15,7 +15,7 @@ import (
 type gitosisManager struct {
 	confPath string
 	git      *repository
-	sync.Mutex
+	sync.RWMutex
 }
 
 func newGitosisManager() (*gitosisManager, error) {
@@ -217,11 +217,19 @@ func nextAvailableKey(keydirname, member string) (string, error) {
 }
 
 func (m *gitosisManager) getConfig() (*ini.Config, error) {
+	m.RLock()
+	defer m.RUnlock()
 	return ini.Read(m.confPath, ini.DEFAULT_COMMENT, ini.ALTERNATIVE_SEPARATOR, true, true)
 }
 
+func (m *gitosisManager) writeConfig(c *ini.Config) error {
+	m.Lock()
+	defer m.Unlock()
+	return c.WriteFile(m.confPath, 0644, "gitosis config file")
+}
+
 func (m *gitosisManager) writeCommitPush(c *ini.Config, commitMsg string) error {
-	err := c.WriteFile(m.confPath, 0644, "gitosis config file")
+	err := m.writeConfig(c)
 	if err != nil {
 		return err
 	}
