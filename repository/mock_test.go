@@ -47,7 +47,7 @@ func (r *recordingManager) removeMember(group, member string) error {
 
 func (r *recordingManager) buildAndStoreKeyFile(member, key string) (string, error) {
 	r.actions["build"] = []string{member, key}
-	return member + "_key1.pub", nil
+	return member + ".key1.pub", nil
 }
 
 func (r *recordingManager) deleteKeyFile(filename string) error {

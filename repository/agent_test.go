@@ -49,7 +49,7 @@ func (s *S) TestAddKeyReturnsTheKeyFileNameInTheResponseChannel(c *C) {
 	}
 	a.Process(change)
 	k := <-response
-	c.Assert(k, Equals, "alanis-morissette_key1.pub")
+	c.Assert(k, Equals, "alanis-morissette.key1.pub")
 }
 
 func (s *S) TestShouldHaveConstantForRemoveKey(c *C) {

@@ -2,17 +2,43 @@
 set -e
 
 echo "Checking git installation"
-if ! dpkg -l | grep git 2>&1 > /dev/null; then
+if ! dpkg -l | grep "git-core" 2>&1 > /dev/null; then
     echo "Not found, installing..."
     sudo apt-get install git -y
+fi
+
+echo "Checking python-setuptools installation"
+if ! dpkg -l | grep "python-setuptools" 2>&1 > /dev/null; then
+    echo "Not found, installing..."
+    sudo apt-get install python-setuptools -y
 fi
 
 echo "Adding \"git\" user"
 sudo useradd git -s /bin/bash
 
+echo "Creating home for git user"
+sudo mkdir /home/git
+sudo chown git:git -R /home/git
+
 # assumes that current user is the one who will run tsuru's server
 echo "Adding ${USER} to group \"git\"" # this has to be done, since tsuru's user will write in git's home
 sudo usermod ${USER} -G git
+
+echo "Creating git repository dir"
+sudo mkdir /mnt/repositories
+sudo chown git:git /mnt/repositories
+sudo chmod g+rw /mnt/repositories -R
+sudo mkdir /mnt/gitosis
+sudo chown git:git /mnt/gitosis
+sudo chmod g+rw /mnt/gitosis
+
+echo "Clonning gitosis"
+git clone http://github.com/timeredbull/gitosis.git ${HOME}/gitosis
+
+echo "Installing gitosis"
+pushd ${HOME}/gitosis
+sudo python setup.py install
+popd
 
 echo "Creating git repository dir"
 sudo mkdir /mnt/git-repos
