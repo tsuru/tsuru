@@ -1,4 +1,4 @@
-package gitosis
+package repository
 
 const (
 	AddKey = iota

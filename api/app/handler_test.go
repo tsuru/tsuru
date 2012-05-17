@@ -6,7 +6,7 @@ import (
 	"github.com/timeredbull/tsuru/api/auth"
 	"github.com/timeredbull/tsuru/db"
 	"github.com/timeredbull/tsuru/errors"
-	"github.com/timeredbull/tsuru/gitosis"
+	"github.com/timeredbull/tsuru/repository"
 	"io/ioutil"
 	. "launchpad.net/gocheck"
 	"launchpad.net/mgo/bson"
@@ -209,7 +209,7 @@ func (s *S) TestCreateApp(c *C) {
 	body, err := ioutil.ReadAll(recorder.Body)
 	c.Assert(err, IsNil)
 
-	repoUrl := gitosis.GetRepositoryUrl(a.Name)
+	repoUrl := repository.GetRepositoryUrl(a.Name)
 	var obtained map[string]string
 	expected := map[string]string{
 		"status":         "success",

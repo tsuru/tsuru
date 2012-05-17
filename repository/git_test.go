@@ -1,4 +1,4 @@
-package gitosis
+package repository
 
 import (
 	. "launchpad.net/gocheck"

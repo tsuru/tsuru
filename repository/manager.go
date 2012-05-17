@@ -1,4 +1,4 @@
-package gitosis
+package repository
 
 // manager interface contains methods that a git manager should
 // provide to be used within the agent.

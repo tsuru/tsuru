@@ -1,4 +1,4 @@
-package gitosis
+package repository
 
 type recordingManager struct {
 	actions        map[string][]string

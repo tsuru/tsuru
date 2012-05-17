@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"github.com/timeredbull/tsuru/config"
 	"github.com/timeredbull/tsuru/db"
-	"github.com/timeredbull/tsuru/gitosis"
+	"github.com/timeredbull/tsuru/repository"
 	"io"
 	"io/ioutil"
 	. "launchpad.net/gocheck"
@@ -82,12 +82,12 @@ func (s *S) tearDownGitosis(c *C) {
 }
 
 func (s *S) commit(c *C, msg string) {
-	ch := gitosis.Change{
-		Kind: gitosis.Commit,
+	ch := repository.Change{
+		Kind: repository.Commit,
 		Args: map[string]string{"message": msg},
 		Response: make(chan string),
 	}
-	gitosis.Ag.Process(ch)
+	repository.Ag.Process(ch)
 	<-ch.Response
 }
 
@@ -100,12 +100,12 @@ func (s *S) createGitosisConf(c *C) {
 }
 
 func (s *S) addGroup() {
-	ch := gitosis.Change{
-		Kind:     gitosis.AddGroup,
+	ch := repository.Change{
+		Kind:     repository.AddGroup,
 		Args:     map[string]string{"group": s.team.Name},
 		Response: make(chan string),
 	}
-	gitosis.Ag.Process(ch)
+	repository.Ag.Process(ch)
 	<-ch.Response
 }
 
@@ -117,7 +117,7 @@ func (s *S) deleteGitosisConf(c *C) {
 
 func (s *S) SetUpSuite(c *C) {
 	s.setupGitosis(c)
-	gitosis.RunAgent()
+	repository.RunAgent()
 	s.createGitosisConf(c)
 	db.Session, _ = db.Open("localhost:27017", "tsuru_user_test")
 	s.user = &User{Email: "timeredbull@globo.com", Password: "123"}
