@@ -240,6 +240,10 @@ func (m *gitosisManager) writeCommitPush(c *ini.Config, commitMsg string) error 
 	return m.git.push("origin", "master")
 }
 
+func (m *gitosisManager) commit(message string) error {
+	return nil
+}
+
 func addOptionValue(c *ini.Config, section, option, value string) (err error) {
 	var strValues string
 	if c.HasOption(section, option) {

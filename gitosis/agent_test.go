@@ -172,7 +172,7 @@ func (s *S) TestAddProjectChangeAddsAProjectToTheGroup(c *C) {
 	c.Assert(action, DeepEquals, []string{"rush", "grace-under-pressure"})
 }
 
-func (s *S) TestShouldHaveContantForRemoveProject(c *C) {
+func (s *S) TestShouldHaveConstantForRemoveProject(c *C) {
 	c.Assert(RemoveProject, Equals, 7)
 }
 
@@ -190,4 +190,24 @@ func (s *S) TestRemoveProjectChangeRemovesAProjectFromTheGroup(c *C) {
 	action, ok := r.actions["removeProject"]
 	c.Assert(ok, Equals, true)
 	c.Assert(action, DeepEquals, []string{"nando-reis", "ao-vivo"})
+}
+
+func (s *S) TestShouldHaveConstantForCommit(c *C) {
+	c.Assert(Commit, Equals, 8)
+}
+
+func (s *S) TestCommitShouldInvokeCommitChange(c *C) {
+	r := newRecordingManager()
+	a := newAgent(r)
+	go a.loop()
+	change := Change{
+		Kind:     Commit,
+		Args:     map[string]string{"message": "changed the world!"},
+		Response: make(chan string),
+	}
+	a.Process(change)
+	<-change.Response
+	action, ok := r.actions["commit"]
+	c.Assert(ok, Equals, true)
+	c.Assert(action, DeepEquals, []string{"changed the world!"})
 }

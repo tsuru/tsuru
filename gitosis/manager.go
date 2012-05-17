@@ -12,4 +12,5 @@ type manager interface {
 	removeMember(group, member string) error
 	buildAndStoreKeyFile(member, key string) (string, error)
 	deleteKeyFile(filename string) error
+	commit(message string) error
 }

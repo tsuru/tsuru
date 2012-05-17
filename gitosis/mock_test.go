@@ -54,3 +54,8 @@ func (r *recordingManager) deleteKeyFile(filename string) error {
 	r.actions["removeKey"] = []string{filename}
 	return nil
 }
+
+func (r *recordingManager) commit(message string) error {
+	r.actions["commit"] = []string{message}
+	return nil
+}

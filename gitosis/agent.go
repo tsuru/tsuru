@@ -9,6 +9,7 @@ const (
 	RemoveGroup
 	AddProject
 	RemoveProject
+	Commit
 )
 
 // Change encapsulates a change that will be requested to the gitosis file.
@@ -104,6 +105,11 @@ func (a *Agent) loop() {
 		case RemoveProject:
 			go func(ch Change) {
 				err := a.mngr.removeProject(ch.Args["group"], ch.Args["project"])
+				a.done(ch.Response, err)
+			}(change)
+		case Commit:
+			go func(ch Change) {
+				err := a.mngr.commit(ch.Args["message"])
 				a.done(ch.Response, err)
 			}(change)
 		}
