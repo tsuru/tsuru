@@ -38,15 +38,20 @@ func runGit(args ...string) (string, error) {
 func pushToGitosis(cMsg string) error {
 	Lock()
 	defer Unlock()
-	_, err := runGit("add", ".")
+	out, err := runGit("add", ".")
 	if err != nil {
+		log.Print(out)
 		return err
 	}
-	_, err = runGit("commit", "-am", cMsg)
+	out, err = runGit("commit", "-am", cMsg)
 	if err != nil {
+		log.Print(out)
 		return err
 	}
-	_, err = runGit("push", "origin", "master")
+	out, err = runGit("push", "origin", "master")
+	if err != nil {
+		log.Print(out)
+	}
 	return err
 }
 
@@ -61,7 +66,6 @@ func writeCommitPush(c *ini.Config, commit string) error {
 	}
 	err = pushToGitosis(commit)
 	if err != nil {
-		log.Print(err)
 		return err
 	}
 	return nil
