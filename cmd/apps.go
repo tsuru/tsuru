@@ -33,7 +33,11 @@ func (c *App) Subcommands() map[string]interface{} {
 type AppAddTeam struct{}
 
 func (c *AppAddTeam) Info() *Info {
-	return &Info{Name: "add-team"}
+	return &Info{
+		Name:  "add-team",
+		Usage: "glb app add-team appname teamname",
+		Desc:  "adds team to app.",
+	}
 }
 
 func (c *AppAddTeam) Run(context *Context, client Doer) error {
@@ -53,7 +57,11 @@ func (c *AppAddTeam) Run(context *Context, client Doer) error {
 type AppRemoveTeam struct{}
 
 func (c *AppRemoveTeam) Info() *Info {
-	return &Info{Name: "remove-team"}
+	return &Info{
+		Name:  "remove-team",
+		Usage: "glb app remove-team appname teamname",
+		Desc:  "removes team from app.",
+	}
 }
 
 func (c *AppRemoveTeam) Run(context *Context, client Doer) error {
@@ -108,7 +116,11 @@ func (c *AppList) Show(result []byte, context *Context) error {
 }
 
 func (c *AppList) Info() *Info {
-	return &Info{Name: "list"}
+	return &Info{
+		Name:  "list",
+		Usage: "glb app list",
+		Desc:  "list your apps.",
+	}
 }
 
 type AppCreate struct{}
@@ -151,7 +163,11 @@ func (c *AppCreate) Info() *Info {
 type AppRemove struct{}
 
 func (c *AppRemove) Info() *Info {
-	return &Info{Name: "delete-app"}
+	return &Info{
+		Name:  "remove",
+		Usage: "glb app remove appname",
+		Desc:  "remove your app.",
+	}
 }
 
 func (c *AppRemove) Run(context *Context, client Doer) error {
