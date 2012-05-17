@@ -25,7 +25,7 @@ type TestCommand struct{}
 func (c *TestCommand) Info() *Info {
 	return &Info{
 		Name:  "foo",
-		Doc:   "Foo do anything or nothing.",
+		Desc:  "Foo do anything or nothing.",
 		Usage: "glb foo",
 	}
 }
