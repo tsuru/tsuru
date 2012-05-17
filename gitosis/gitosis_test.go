@@ -4,34 +4,57 @@ import (
 	"fmt"
 	ini "github.com/kless/goconfig/config"
 	"github.com/timeredbull/tsuru/config"
+	"io/ioutil"
 	. "launchpad.net/gocheck"
+	"os"
 	"path"
+	"syscall"
 )
 
-func (s *S) TestaddProject(c *C) {
-	err := addGroup("someGroup")
+func (s *S) TestNewGitosisManager(c *C) {
+	p, err := config.GetString("git:gitosis-repo")
 	c.Assert(err, IsNil)
-	err = addProject("someGroup", "someProject")
+	expectedPath := path.Join(p, "gitosis.conf")
+	m, err := newGitosisManager()
 	c.Assert(err, IsNil)
-	conf, err := ini.Read(path.Join(s.gitosisRepo, "gitosis.conf"), ini.DEFAULT_COMMENT, ini.ALTERNATIVE_SEPARATOR, true, true)
+	c.Assert(m.confPath, Equals, expectedPath)
+}
+
+func (s *S) TestGitosisManagerShoulImplementManager(c *C) {
+	var iManager manager
+	gitosisManager, _ := newGitosisManager()
+	c.Assert(gitosisManager, Implements, &iManager)
+}
+
+func (s *S) TestAddProject(c *C) {
+	m, err := newGitosisManager()
+	c.Assert(err, IsNil)
+	err = m.addGroup("someGroup")
+	c.Assert(err, IsNil)
+	err = m.addProject("someGroup", "someProject")
+	c.Assert(err, IsNil)
+	conf, err := m.getConfig()
+	c.Assert(err, IsNil)
 	c.Assert(conf.HasOption("group someGroup", "writable"), Equals, true)
 	obtained, err := conf.String("group someGroup", "writable")
 	c.Assert(err, IsNil)
 	c.Assert(obtained, Equals, "someProject")
 	// try to add to an inexistent group
-	err = addProject("inexistentGroup", "someProject")
+	err = m.addProject("inexistentGroup", "someProject")
 	c.Assert(err, NotNil)
 	c.Assert(err, ErrorMatches, "^Section group inexistentGroup doesn't exists$")
 }
 
 func (s *S) TestAddMoreThenOneProject(c *C) {
-	err := addGroup("fooGroup")
+	m, err := newGitosisManager()
 	c.Assert(err, IsNil)
-	err = addProject("fooGroup", "take-over-the-world")
+	err = m.addGroup("fooGroup")
 	c.Assert(err, IsNil)
-	err = addProject("fooGroup", "someProject")
+	err = m.addProject("fooGroup", "take-over-the-world")
 	c.Assert(err, IsNil)
-	conf, err := ini.Read(path.Join(s.gitosisRepo, "gitosis.conf"), ini.DEFAULT_COMMENT, ini.ALTERNATIVE_SEPARATOR, true, true)
+	err = m.addProject("fooGroup", "someProject")
+	c.Assert(err, IsNil)
+	conf, err := m.getConfig()
 	c.Assert(err, IsNil)
 	obtained, err := conf.String("group fooGroup", "writable")
 	c.Assert(err, IsNil)
@@ -39,48 +62,58 @@ func (s *S) TestAddMoreThenOneProject(c *C) {
 }
 
 func (s *S) TestRemoveProject(c *C) {
-	err := addGroup("fooGroup")
+	m, err := newGitosisManager()
 	c.Assert(err, IsNil)
-	err = addProject("fooGroup", "fooProject")
-	conf, err := getConfig()
+	err = m.addGroup("fooGroup")
+	c.Assert(err, IsNil)
+	err = m.addProject("fooGroup", "fooProject")
+	conf, err := m.getConfig()
 	c.Assert(err, IsNil)
 	obtained, err := conf.String("group fooGroup", "writable")
 	c.Assert(err, IsNil)
 	c.Assert(obtained, Equals, "fooProject")
-	err = removeProject("fooGroup", "fooProject")
+	err = m.removeProject("fooGroup", "fooProject")
 	c.Assert(err, IsNil)
-	conf, err = getConfig()
+	conf, err = m.getConfig()
 	c.Assert(conf.HasOption("group fooGroup", "writable"), Equals, false)
 }
 
 func (s *S) TestRemoveProjectReturnsErrorIfTheGroupDoesNotExist(c *C) {
-	err := removeProject("nando-reis", "ao-vivo")
+	m, err := newGitosisManager()
+	c.Assert(err, IsNil)
+	err = m.removeProject("nando-reis", "ao-vivo")
 	c.Assert(err, NotNil)
 }
 
 func (s *S) TestRemoveProjectReturnsErrorIfTheProjectDoesNotExist(c *C) {
-	err := addGroup("nando-reis")
+	m, err := newGitosisManager()
 	c.Assert(err, IsNil)
-	err = removeProject("nando-reis", "ao-vivo")
+	err = m.addGroup("nando-reis")
+	c.Assert(err, IsNil)
+	err = m.removeProject("nando-reis", "ao-vivo")
 	c.Assert(err, NotNil)
 }
 
 func (s *S) TestRemoveProjectCommitsWithProperMessage(c *C) {
-	err := addGroup("nando-reis")
+	m, err := newGitosisManager()
 	c.Assert(err, IsNil)
-	err = addProject("nando-reis", "ao-vivo")
+	err = m.addGroup("nando-reis")
 	c.Assert(err, IsNil)
-	err = removeProject("nando-reis", "ao-vivo")
+	err = m.addProject("nando-reis", "ao-vivo")
+	c.Assert(err, IsNil)
+	err = m.removeProject("nando-reis", "ao-vivo")
 	c.Assert(err, IsNil)
 	got := s.lastBareCommit(c)
 	expected := "Removing project ao-vivo from group nando-reis"
 	c.Assert(got, Equals, expected)
 }
 
-func (s *S) TestaddProjectCommitAndPush(c *C) {
-	err := addGroup("myGroup")
+func (s *S) TestAddProjectCommitAndPush(c *C) {
+	m, err := newGitosisManager()
 	c.Assert(err, IsNil)
-	err = addProject("myGroup", "myProject")
+	err = m.addGroup("myGroup")
+	c.Assert(err, IsNil)
+	err = m.addProject("myGroup", "myProject")
 	c.Assert(err, IsNil)
 	got := s.lastBareCommit(c)
 	expected := "Added project myProject to group myGroup"
@@ -88,11 +121,13 @@ func (s *S) TestaddProjectCommitAndPush(c *C) {
 }
 
 func (s *S) TestAppendToOption(c *C) {
+	m, err := newGitosisManager()
+	c.Assert(err, IsNil)
 	group := "fooGroup"
 	section := fmt.Sprintf("group %s", group)
-	err := addGroup(group)
+	err = m.addGroup(group)
 	c.Assert(err, IsNil)
-	conf, err := ini.Read(path.Join(s.gitosisRepo, "gitosis.conf"), ini.DEFAULT_COMMENT, ini.ALTERNATIVE_SEPARATOR, true, true)
+	conf, err := m.getConfig()
 	c.Assert(err, IsNil)
 	err = addOptionValue(conf, section, "writable", "firstProject")
 	c.Assert(err, IsNil)
@@ -110,14 +145,16 @@ func (s *S) TestAppendToOption(c *C) {
 }
 
 func (s *S) TestRemoveOptionValue(c *C) {
-	err := addGroup("myGroup")
+	m, err := newGitosisManager()
 	c.Assert(err, IsNil)
-	err = addProject("myGroup", "myProject")
+	err = m.addGroup("myGroup")
 	c.Assert(err, IsNil)
-	err = addProject("myGroup", "myOtherProject")
+	err = m.addProject("myGroup", "myProject")
+	c.Assert(err, IsNil)
+	err = m.addProject("myGroup", "myOtherProject")
 	c.Assert(err, IsNil)
 	// remove one project
-	conf, err := ini.Read(path.Join(s.gitRoot, "gitosis-admin/gitosis.conf"), ini.DEFAULT_COMMENT, ini.ALTERNATIVE_SEPARATOR, true, true)
+	conf, err := m.getConfig()
 	c.Assert(err, IsNil)
 	err = removeOptionValue(conf, "group myGroup", "writable", "myOtherProject")
 	c.Assert(err, IsNil)
@@ -131,38 +168,46 @@ func (s *S) TestRemoveOptionValue(c *C) {
 }
 
 func (s *S) TestHasGroup(c *C) {
-	err := addGroup("someGroup")
+	m, err := newGitosisManager()
 	c.Assert(err, IsNil)
-	c.Assert(hasGroup("someGroup"), Equals, true)
-	c.Assert(hasGroup("otherGroup"), Equals, false)
+	err = m.addGroup("someGroup")
+	c.Assert(err, IsNil)
+	c.Assert(m.hasGroup("someGroup"), Equals, true)
+	c.Assert(m.hasGroup("otherGroup"), Equals, false)
 }
 
 func (s *S) TestAddGroup(c *C) {
-	err := addGroup("someGroup")
+	m, err := newGitosisManager()
 	c.Assert(err, IsNil)
-	conf, err := ini.Read(path.Join(s.gitosisRepo, "gitosis.conf"), ini.DEFAULT_COMMENT, ini.ALTERNATIVE_SEPARATOR, true, true)
+	err = m.addGroup("someGroup")
+	c.Assert(err, IsNil)
+	conf, err := m.getConfig()
 	c.Assert(err, IsNil)
 	//ensures that project have been added to gitosis.conf
 	c.Assert(conf.HasSection("group someGroup"), Equals, true)
 	//ensures that file is not overriden when a new project is added
-	err = addGroup("someOtherGroup")
+	err = m.addGroup("someOtherGroup")
 	c.Assert(err, IsNil)
 	// it should have both sections
-	conf, err = ini.Read(path.Join(s.gitRoot, "gitosis-admin/gitosis.conf"), ini.DEFAULT_COMMENT, ini.ALTERNATIVE_SEPARATOR, true, true)
+	conf, err = m.getConfig()
 	c.Assert(err, IsNil)
 	c.Assert(conf.HasSection("group someGroup"), Equals, true)
 	c.Assert(conf.HasSection("group someOtherGroup"), Equals, true)
 }
 
 func (s *S) TestAddGroupShouldReturnErrorWhenSectionAlreadyExists(c *C) {
-	err := addGroup("aGroup")
+	m, err := newGitosisManager()
 	c.Assert(err, IsNil)
-	err = addGroup("aGroup")
+	err = m.addGroup("aGroup")
+	c.Assert(err, IsNil)
+	err = m.addGroup("aGroup")
 	c.Assert(err, NotNil)
 }
 
 func (s *S) TestAddGroupShouldCommitAndPushChangesToGitosisBare(c *C) {
-	err := addGroup("gandalf")
+	m, err := newGitosisManager()
+	c.Assert(err, IsNil)
+	err = m.addGroup("gandalf")
 	c.Assert(err, IsNil)
 	repoOutput, err := runGit("log", "-1", "--pretty=format:%s")
 	c.Assert(err, IsNil)
@@ -170,13 +215,12 @@ func (s *S) TestAddGroupShouldCommitAndPushChangesToGitosisBare(c *C) {
 }
 
 func (s *S) TestRemoveGroup(c *C) {
-	err := addGroup("someGroup")
+	m, err := newGitosisManager()
 	c.Assert(err, IsNil)
-	conf, err := ini.Read(path.Join(s.gitosisRepo, "gitosis.conf"), ini.DEFAULT_COMMENT, ini.ALTERNATIVE_SEPARATOR, true, true)
+	err = m.addGroup("someGroup")
 	c.Assert(err, IsNil)
-	c.Assert(conf.HasSection("group someGroup"), Equals, true)
-	err = removeGroup("someGroup")
-	conf, err = ini.Read(path.Join(s.gitosisRepo, "gitosis.conf"), ini.DEFAULT_COMMENT, ini.ALTERNATIVE_SEPARATOR, true, true)
+	err = m.removeGroup("someGroup")
+	conf, err := m.getConfig()
 	c.Assert(err, IsNil)
 	c.Assert(conf.HasSection("group someGroup"), Equals, false)
 	got := s.lastBareCommit(c)
@@ -185,25 +229,25 @@ func (s *S) TestRemoveGroup(c *C) {
 }
 
 func (s *S) TestRemoveGroupCommitAndPushesChanges(c *C) {
-	err := addGroup("testGroup")
+	m, err := newGitosisManager()
 	c.Assert(err, IsNil)
-	conf, err := ini.Read(path.Join(s.gitosisRepo, "gitosis.conf"), ini.DEFAULT_COMMENT, ini.ALTERNATIVE_SEPARATOR, true, true)
+	err = m.addGroup("testGroup")
 	c.Assert(err, IsNil)
-	c.Assert(conf.HasSection("group testGroup"), Equals, true)
-	err = removeGroup("testGroup")
-	conf, err = ini.Read(path.Join(s.gitosisRepo, "gitosis.conf"), ini.DEFAULT_COMMENT, ini.ALTERNATIVE_SEPARATOR, true, true)
+	err = m.removeGroup("testGroup")
+	conf, err := m.getConfig()
 	c.Assert(err, IsNil)
 	c.Assert(conf.HasSection("group testGroup"), Equals, false)
 }
 
 func (s *S) TestAddMemberToGroup(c *C) {
-	err := addGroup("take-over-the-world")
+	m, err := newGitosisManager()
 	c.Assert(err, IsNil)
-	err = addMember("take-over-the-world", "brain")
+	err = m.addGroup("take-over-the-world")
 	c.Assert(err, IsNil)
-	conf, err := ini.Read(path.Join(s.gitosisRepo, "gitosis.conf"), ini.DEFAULT_COMMENT, ini.ALTERNATIVE_SEPARATOR, true, true)
+	err = m.addMember("take-over-the-world", "brain")
 	c.Assert(err, IsNil)
-	c.Assert(conf.HasSection("group take-over-the-world"), Equals, true)
+	conf, err := m.getConfig()
+	c.Assert(err, IsNil)
 	c.Assert(conf.HasOption("group take-over-the-world", "members"), Equals, true)
 	members, err := conf.String("group take-over-the-world", "members")
 	c.Assert(err, IsNil)
@@ -211,53 +255,63 @@ func (s *S) TestAddMemberToGroup(c *C) {
 }
 
 func (s *S) TestAddMemberToGroupCommitsAndPush(c *C) {
-	err := addGroup("someTeam")
+	m, err := newGitosisManager()
 	c.Assert(err, IsNil)
-	err = addMember("someTeam", "brain")
+	err = m.addGroup("someTeam")
+	c.Assert(err, IsNil)
+	err = m.addMember("someTeam", "brain")
 	got := s.lastBareCommit(c)
 	expected := "Adding member brain to group someTeam"
 	c.Assert(got, Equals, expected)
 }
 
 func (s *S) TestAddTwoMembersToGroup(c *C) {
-	err := addGroup("pink-floyd")
+	m, err := newGitosisManager()
 	c.Assert(err, IsNil)
-	err = addMember("pink-floyd", "one-of-these-days")
+	err = m.addGroup("pink-floyd")
 	c.Assert(err, IsNil)
-	err = addMember("pink-floyd", "comfortably-numb")
+	err = m.addMember("pink-floyd", "one-of-these-days")
 	c.Assert(err, IsNil)
-	conf, err := ini.Read(path.Join(s.gitosisRepo, "gitosis.conf"), ini.DEFAULT_COMMENT, ini.ALTERNATIVE_SEPARATOR, true, true)
+	err = m.addMember("pink-floyd", "comfortably-numb")
+	c.Assert(err, IsNil)
+	conf, err := m.getConfig()
 	members, err := conf.String("group pink-floyd", "members")
 	c.Assert(err, IsNil)
 	c.Assert(members, Equals, "one-of-these-days comfortably-numb")
 }
 
 func (s *S) TestAddMemberToGroupReturnsErrorIfTheMemberIsAlreadyInTheGroup(c *C) {
-	err := addGroup("pink-floyd")
+	m, err := newGitosisManager()
 	c.Assert(err, IsNil)
-	err = addMember("pink-floyd", "time")
+	err = m.addGroup("pink-floyd")
 	c.Assert(err, IsNil)
-	err = addMember("pink-floyd", "time")
+	err = m.addMember("pink-floyd", "time")
+	c.Assert(err, IsNil)
+	err = m.addMember("pink-floyd", "time")
 	c.Assert(err, NotNil)
 	c.Assert(err, ErrorMatches, "^Value time for option members in section group pink-floyd has already been added$")
 }
 
 func (s *S) TestAddMemberToAGroupThatDoesNotExistReturnError(c *C) {
-	err := addMember("pink-floyd", "one-of-these-days")
+	m, err := newGitosisManager()
+	c.Assert(err, IsNil)
+	err = m.addMember("pink-floyd", "one-of-these-days")
 	c.Assert(err, NotNil)
 	c.Assert(err, ErrorMatches, "^Group not found$")
 }
 
 func (s *S) TestRemoveMemberFromGroup(c *C) {
-	err := addGroup("pink-floyd")
+	m, err := newGitosisManager()
 	c.Assert(err, IsNil)
-	err = addMember("pink-floyd", "fat-old-sun")
+	err = m.addGroup("pink-floyd")
 	c.Assert(err, IsNil)
-	err = addMember("pink-floyd", "summer-68")
+	err = m.addMember("pink-floyd", "fat-old-sun")
 	c.Assert(err, IsNil)
-	err = removeMember("pink-floyd", "fat-old-sun")
+	err = m.addMember("pink-floyd", "summer-68")
 	c.Assert(err, IsNil)
-	conf, err := ini.Read(path.Join(s.gitosisRepo, "gitosis.conf"), ini.DEFAULT_COMMENT, ini.ALTERNATIVE_SEPARATOR, true, true)
+	err = m.removeMember("pink-floyd", "fat-old-sun")
+	c.Assert(err, IsNil)
+	conf, err := m.getConfig()
 	c.Assert(err, IsNil)
 	option, err := conf.String("group pink-floyd", "members")
 	c.Assert(err, IsNil)
@@ -265,13 +319,15 @@ func (s *S) TestRemoveMemberFromGroup(c *C) {
 }
 
 func (s *S) TestRemoveMemberFromGroupCommitsAndPush(c *C) {
-	err := addGroup("pink-floyd")
+	m, err := newGitosisManager()
 	c.Assert(err, IsNil)
-	err = addMember("pink-floyd", "if")
+	err = m.addGroup("pink-floyd")
 	c.Assert(err, IsNil)
-	err = addMember("pink-floyd", "atom-heart-mother-suite")
+	err = m.addMember("pink-floyd", "if")
 	c.Assert(err, IsNil)
-	err = removeMember("pink-floyd", "if")
+	err = m.addMember("pink-floyd", "atom-heart-mother-suite")
+	c.Assert(err, IsNil)
+	err = m.removeMember("pink-floyd", "if")
 	c.Assert(err, IsNil)
 	got := s.lastBareCommit(c)
 	expected := "Removing member if from group pink-floyd"
@@ -279,11 +335,13 @@ func (s *S) TestRemoveMemberFromGroupCommitsAndPush(c *C) {
 }
 
 func (s *S) TestRemoveMemberFromGroupRemovesTheOptionFromTheSectionWhenTheMemberIsTheLast(c *C) {
-	err := addGroup("pink-floyd")
+	m, err := newGitosisManager()
 	c.Assert(err, IsNil)
-	err = addMember("pink-floyd", "pigs-on-the-wing")
+	err = m.addGroup("pink-floyd")
 	c.Assert(err, IsNil)
-	err = removeMember("pink-floyd", "pigs-on-the-wing")
+	err = m.addMember("pink-floyd", "pigs-on-the-wing")
+	c.Assert(err, IsNil)
+	err = m.removeMember("pink-floyd", "pigs-on-the-wing")
 	c.Assert(err, IsNil)
 	conf, err := ini.Read(path.Join(s.gitosisRepo, "gitosis.conf"), ini.DEFAULT_COMMENT, ini.ALTERNATIVE_SEPARATOR, true, true)
 	c.Assert(err, IsNil)
@@ -291,25 +349,31 @@ func (s *S) TestRemoveMemberFromGroupRemovesTheOptionFromTheSectionWhenTheMember
 }
 
 func (s *S) TestRemoveMemberFromGroupReturnsErrorsIfTheGroupDoesNotContainTheGivenMember(c *C) {
-	err := addGroup("pink-floyd")
+	m, err := newGitosisManager()
 	c.Assert(err, IsNil)
-	err = addMember("pink-floyd", "another-brick")
+	err = m.addGroup("pink-floyd")
 	c.Assert(err, IsNil)
-	err = removeMember("pink-floyd", "pigs-on-the-wing")
+	err = m.addMember("pink-floyd", "another-brick")
+	c.Assert(err, IsNil)
+	err = m.removeMember("pink-floyd", "pigs-on-the-wing")
 	c.Assert(err, NotNil)
 	c.Assert(err, ErrorMatches, "^Value pigs-on-the-wing not found in section group pink-floyd$")
 }
 
 func (s *S) TestRemoveMemberFromGroupReturnsErrorIfTheGroupDoesNotExist(c *C) {
-	err := removeMember("pink-floyd", "pigs-on-the-wing")
+	m, err := newGitosisManager()
+	c.Assert(err, IsNil)
+	err = m.removeMember("pink-floyd", "pigs-on-the-wing")
 	c.Assert(err, NotNil)
 	c.Assert(err, ErrorMatches, "^Group not found$")
 }
 
 func (s *S) TestRemoveMemberFromGroupReturnsErrorsIfTheGroupDoesNotHaveAnyMember(c *C) {
-	err := addGroup("pato-fu")
+	m, err := newGitosisManager()
 	c.Assert(err, IsNil)
-	err = removeMember("pato-fu", "eu-sei")
+	err = m.addGroup("pato-fu")
+	c.Assert(err, IsNil)
+	err = m.removeMember("pato-fu", "eu-sei")
 	c.Assert(err, NotNil)
 	c.Assert(err, ErrorMatches, "^This group does not have any members$")
 }
@@ -324,10 +388,93 @@ func (s *S) TestAddAndCommit(c *C) {
 	c.Assert(got, Equals, "Some commit message")
 }
 
-func (s *S) TestConfPathReturnsGitosisConfPath(c *C) {
-	repoPath, err := config.GetString("git:gitosis-repo")
-	expected := path.Join(repoPath, "gitosis.conf")
-	obtained, err := ConfPath()
+func (s *S) TestBuildAndStoreKeyFileAddsAKeyFileToTheKeydirDirectoryAndTheMemberToTheGroupAndReturnTheKeyFileName(c *C) {
+	m, err := newGitosisManager()
 	c.Assert(err, IsNil)
-	c.Assert(obtained, Equals, expected)
+	keyFileName, err := m.buildAndStoreKeyFile("tolices", "my-key")
+	c.Assert(err, IsNil)
+	c.Assert(keyFileName, Equals, "tolices_key1.pub")
+	p, err := getKeydirPath()
+	c.Assert(err, IsNil)
+	filePath := path.Join(p, keyFileName)
+	file, err := os.Open(filePath)
+	c.Assert(err, IsNil)
+	defer file.Close()
+	content, err := ioutil.ReadAll(file)
+	c.Assert(err, IsNil)
+	c.Assert(string(content), Equals, "my-key")
+}
+
+func (s *S) TestBuildAndStoreKeyFileUseKey2IfThereIsAlreadyAKeyForTheMember(c *C) {
+	m, err := newGitosisManager()
+	c.Assert(err, IsNil)
+	p, err := getKeydirPath()
+	c.Assert(err, IsNil)
+	key1Path := path.Join(p, "gol-de-quem_key1.pub")
+	f, err := os.OpenFile(key1Path, syscall.O_CREAT, 0644)
+	c.Assert(err, IsNil)
+	f.Close()
+	keyFileName, err := m.buildAndStoreKeyFile("gol-de-quem", "my-key")
+	c.Assert(err, IsNil)
+	c.Assert(keyFileName, Equals, "gol-de-quem_key2.pub")
+	file, err := os.Open(path.Join(p, keyFileName))
+	c.Assert(err, IsNil)
+	defer file.Close()
+	content, err := ioutil.ReadAll(file)
+	c.Assert(err, IsNil)
+	c.Assert(string(content), Equals, "my-key")
+}
+
+func (s *S) TestBuildAndStoreKeyFileDoesNotReturnErrorIfTheDirectoryExists(c *C) {
+	m, err := newGitosisManager()
+	c.Assert(err, IsNil)
+	p, err := getKeydirPath()
+	c.Assert(err, IsNil)
+	os.MkdirAll(p, 0755)
+	_, err = m.buildAndStoreKeyFile("vida-imbecil", "my-key")
+	c.Assert(err, IsNil)
+}
+
+func (s *S) TestBuildAndStoreKeyFileCommits(c *C) {
+	m, err := newGitosisManager()
+	c.Assert(err, IsNil)
+	keyfile, err := m.buildAndStoreKeyFile("the-night-and-the-silent-water", "my-key")
+	c.Assert(err, IsNil)
+	got := s.lastBareCommit(c)
+	expected := fmt.Sprintf("Added %s keyfile.", keyfile)
+	c.Assert(got, Equals, expected)
+}
+
+func (s *S) TesteDeleteKeyFile(c *C) {
+	m, err := newGitosisManager()
+	c.Assert(err, IsNil)
+	keyfile, err := m.buildAndStoreKeyFile("blackwater-park", "my-key")
+	c.Assert(err, IsNil)
+	err = m.deleteKeyFile(keyfile)
+	c.Assert(err, IsNil)
+	p, err := getKeydirPath()
+	c.Assert(err, IsNil)
+	keypath := path.Join(p, keyfile)
+	_, err = os.Stat(keypath)
+	c.Assert(err, NotNil)
+	c.Assert(os.IsNotExist(err), Equals, true)
+}
+
+func (s *S) TesteDeleteKeyFileReturnsErrorIfTheFileDoesNotExist(c *C) {
+	m, err := newGitosisManager()
+	c.Assert(err, IsNil)
+	err = m.deleteKeyFile("dont_know.pub")
+	c.Assert(err, NotNil)
+}
+
+func (s *S) TesteDeleteKeyFileCommits(c *C) {
+	m, err := newGitosisManager()
+	c.Assert(err, IsNil)
+	keyfile, err := m.buildAndStoreKeyFile("windowpane", "my-key")
+	c.Assert(err, IsNil)
+	err = m.deleteKeyFile(keyfile)
+	c.Assert(err, IsNil)
+	expected := fmt.Sprintf("Deleted %s keyfile.", keyfile)
+	got := s.lastBareCommit(c)
+	c.Assert(got, Equals, expected)
 }

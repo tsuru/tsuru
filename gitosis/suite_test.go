@@ -75,6 +75,7 @@ func (s *S) SetUpSuite(c *C) {
 	c.Assert(err, IsNil)
 	s.logFile, err = os.Create("/tmp/tsuru-tests.log")
 	c.Assert(err, IsNil)
+	RunAgent()
 	log.Target = stdlog.New(s.logFile, "[tsuru-tests]", stdlog.LstdFlags|stdlog.Llongfile)
 }
 
@@ -87,6 +88,9 @@ func (s *S) SetUpTest(c *C) {
 }
 
 func (s *S) TearDownSuite(c *C) {
+	defer func(ch chan Change){
+		close(ch)
+	}(Ag.changes)
 	defer s.logFile.Close()
 	err := os.RemoveAll(s.gitRoot)
 	c.Assert(err, IsNil)

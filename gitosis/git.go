@@ -6,10 +6,12 @@ import (
 	"github.com/timeredbull/tsuru/log"
 	"os/exec"
 	"path"
-	"sync"
 )
 
-var mut sync.Mutex
+// represents a git repository
+type repository struct {
+	path string
+}
 
 func getKeydirPath() (string, error) {
 	repoPath, err := config.GetString("git:gitosis-repo")
@@ -36,8 +38,6 @@ func runGit(args ...string) (string, error) {
 // Add, commit and push all changes in gitosis repository to it's
 // bare.
 func pushToGitosis(cMsg string) error {
-	Lock()
-	defer Unlock()
 	out, err := runGit("add", ".")
 	if err != nil {
 		log.Print(out)
@@ -56,11 +56,11 @@ func pushToGitosis(cMsg string) error {
 }
 
 func writeCommitPush(c *ini.Config, commit string) error {
-	confPath, err := ConfPath()
+	m, err := newGitosisManager()
 	if err != nil {
 		return err
 	}
-	err = c.WriteFile(confPath, 0744, "gitosis configuration file")
+	err = c.WriteFile(m.confPath, 0744, "gitosis configuration file")
 	if err != nil {
 		return err
 	}
@@ -69,12 +69,4 @@ func writeCommitPush(c *ini.Config, commit string) error {
 		return err
 	}
 	return nil
-}
-
-func Lock() {
-	mut.Lock()
-}
-
-func Unlock() {
-	mut.Unlock()
 }

@@ -36,60 +36,86 @@ type Change struct {
 	Response chan string
 }
 
-var Changes = make(chan Change)
+var Ag *Agent
 
-func init() {
-	go processChanges()
+func RunAgent() {
+	gitosisManager, err := newGitosisManager()
+	if err != nil {
+		panic(err)
+	}
+	Ag = newAgent(gitosisManager)
+	go Ag.loop()
 }
 
-func done(ch chan string, err error) {
+type Agent struct {
+	changes chan Change
+	mngr    manager
+}
+
+func newAgent(m manager) *Agent {
+	return &Agent{
+		changes: make(chan Change),
+		mngr:    m,
+	}
+}
+
+func (a *Agent) Process(change Change) {
+	a.changes <- change
+}
+
+func (a *Agent) loop() {
+	for change := range a.changes {
+		switch change.Kind {
+		case AddKey:
+			go func(ch Change) {
+				keyfile, _ := a.mngr.buildAndStoreKeyFile(change.Args["member"], change.Args["key"])
+				ch.Response <- keyfile
+			}(change)
+		case RemoveKey:
+			go func(ch Change) {
+				err := a.mngr.deleteKeyFile(change.Args["key"])
+				a.done(ch.Response, err)
+			}(change)
+		case AddMember:
+			go func(ch Change) {
+				err := a.mngr.addMember(ch.Args["group"], ch.Args["member"])
+				a.done(ch.Response, err)
+			}(change)
+		case RemoveMember:
+			go func(ch Change) {
+				err := a.mngr.removeMember(ch.Args["group"], ch.Args["member"])
+				a.done(ch.Response, err)
+			}(change)
+		case AddGroup:
+			go func(ch Change) {
+				err := a.mngr.addGroup(ch.Args["group"])
+				a.done(ch.Response, err)
+			}(change)
+		case RemoveGroup:
+			go func(ch Change) {
+				err := a.mngr.removeGroup(ch.Args["group"])
+				a.done(ch.Response, err)
+			}(change)
+		case AddProject:
+			go func(ch Change) {
+				err := a.mngr.addProject(ch.Args["group"], ch.Args["project"])
+				a.done(ch.Response, err)
+			}(change)
+		case RemoveProject:
+			go func(ch Change) {
+				err := a.mngr.removeProject(ch.Args["group"], ch.Args["project"])
+				a.done(ch.Response, err)
+			}(change)
+		}
+	}
+}
+
+func (a *Agent) done(ch chan string, err error) {
 	if ch != nil {
 		if err != nil {
 			ch <- "fail: " + err.Error()
 		} else {
 			ch <- "success"
-		}
-	}
-}
-
-func member(ch Change, fn func(string, string) error) {
-	err := fn(ch.Args["group"], ch.Args["member"])
-	done(ch.Response, err)
-}
-
-func group(ch Change, fn func(string) error) {
-	err := fn(ch.Args["group"])
-	done(ch.Response, err)
-}
-
-func project(ch Change, fn func(string, string) error) {
-	err := fn(ch.Args["group"], ch.Args["project"])
-	done(ch.Response, err)
-}
-
-func processChanges() {
-	for change := range Changes {
-		switch change.Kind {
-		case AddKey:
-			go func(ch chan string) {
-				keyfile, _ := buildAndStoreKeyFile(change.Args["member"], change.Args["key"])
-				ch <- keyfile
-			}(change.Response)
-		case RemoveKey:
-			go deleteKeyFile(change.Args["key"])
-		case AddMember:
-			go member(change, addMember)
-		case RemoveMember:
-			go removeMember(change.Args["group"], change.Args["member"])
-			go member(change, removeMember)
-		case AddGroup:
-			go group(change, addGroup)
-		case RemoveGroup:
-			go group(change, removeGroup)
-		case AddProject:
-			go project(change, addProject)
-		case RemoveProject:
-			go project(change, removeProject)
 		}
 	}
 }
