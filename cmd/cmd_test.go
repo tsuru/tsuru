@@ -23,7 +23,11 @@ func (s *S) SetUpTest(c *C) {
 type TestCommand struct{}
 
 func (c *TestCommand) Info() *Info {
-	return &Info{Name: "foo"}
+	return &Info{
+		Name:  "foo",
+		Doc:   "Foo do anything or nothing.",
+		Usage: "glb foo",
+	}
 }
 
 func (c *TestCommand) Run(context *Context, client Doer) error {
@@ -92,7 +96,8 @@ func (s *S) TestSubcommand(c *C) {
 }
 
 func (s *S) TestHelp(c *C) {
-	expected := `help` + "\n"
+	expected := `Usage: glb command [args]
+`
 	context := Context{[]string{}, manager.Stdout, manager.Stderr}
 	command := Help{}
 	err := command.Run(&context, nil)
@@ -105,4 +110,26 @@ func (s *S) TestHelpCommandShouldBeRegisteredByDefault(c *C) {
 	m := NewManager(&stdout, &stderr)
 	_, exists := m.commands["help"]
 	c.Assert(exists, Equals, true)
+}
+
+func (s *S) TestRunWithoutArgsShouldRunsHelp(c *C) {
+	expected := `Usage: glb command [args]
+`
+	manager.Run([]string{})
+	c.Assert(manager.Stdout.(*bytes.Buffer).String(), Equals, expected)
+}
+
+func (s *S) TestHelpShouldReturnsHelpForACmd(c *C) {
+
+	expected := `Usage: glb foo
+
+Foo do anything or nothing.
+`
+	manager.Register(&TestCommand{})
+
+	context := Context{[]string{"foo"}, manager.Stdout, manager.Stderr}
+	command := Help{manager: &manager}
+	err := command.Run(&context, nil)
+	c.Assert(err, IsNil)
+	c.Assert(manager.Stdout.(*bytes.Buffer).String(), Equals, expected)
 }
