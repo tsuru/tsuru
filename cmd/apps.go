@@ -13,7 +13,11 @@ import (
 type App struct{}
 
 func (c *App) Info() *Info {
-	return &Info{Name: "app"}
+	return &Info{
+		Name:  "app",
+		Usage: "glb app (create|delete|list|add-team|remove-team)",
+		Desc:  "manage your apps.",
+	}
 }
 
 func (c *App) Subcommands() map[string]interface{} {
@@ -137,7 +141,11 @@ func (c *AppCreate) Run(context *Context, client Doer) error {
 }
 
 func (c *AppCreate) Info() *Info {
-	return &Info{Name: "create-app"}
+	return &Info{
+		Name:  "create",
+		Usage: "glb app create appname",
+		Desc:  "create a new app.",
+	}
 }
 
 type AppRemove struct{}
