@@ -5,7 +5,7 @@ import (
 )
 
 func (s *S) TestCloneRepository(c *C) {
-	err := CloneRepository("barfoo", 1)
+	err := Clone("barfoo", 1)
 	c.Assert(err, IsNil)
 }
 
