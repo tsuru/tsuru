@@ -155,7 +155,10 @@ func (c *AddKeyCommand) Run(context *Context, client Doer) error {
 type Logout struct{}
 
 func (c *Logout) Info() *Info {
-	return &Info{Name: "logout"}
+	return &Info{
+		Name:  "logout",
+		Usage: "glb logout",
+	}
 }
 
 func (c *Logout) Run(context *Context, client Doer) error {
