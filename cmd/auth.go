@@ -74,7 +74,10 @@ func (c *Login) Run(context *Context, client Doer) error {
 }
 
 func (c *Login) Info() *Info {
-	return &Info{Name: "login"}
+	return &Info{
+		Name:  "login",
+		Usage: "glb login email password",
+	}
 }
 
 func readKey() (string, error) {
