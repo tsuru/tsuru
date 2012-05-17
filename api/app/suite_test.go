@@ -90,8 +90,8 @@ func (s *S) tearDownGitosis(c *C) {
 
 func (s *S) commit(c *C, msg string) {
 	ch := repository.Change{
-		Kind: repository.Commit,
-		Args: map[string]string{"message": msg},
+		Kind:     repository.Commit,
+		Args:     map[string]string{"message": msg},
 		Response: make(chan string),
 	}
 	repository.Ag.Process(ch)

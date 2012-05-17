@@ -33,20 +33,24 @@ func (m *Manager) Run(args []string) {
 		io.WriteString(m.Stderr, fmt.Sprintf("command %s does not exist\n", args[0]))
 		return
 	}
-	switch command.(type) {
-	case CommandContainer:
-		if len(args) > 1 {
-			args = args[1:]
-		}
-		subcommand, exist := command.(CommandContainer).Subcommands()[args[0]]
-		if exist {
-			command = subcommand
-		}
-	}
+	command = getSubcommand(command, args).(Command)
 	err := command.(Command).Run(&Context{args[1:], m.Stdout, m.Stderr}, NewClient(&http.Client{}))
 	if err != nil {
 		io.WriteString(m.Stderr, err.Error())
 	}
+}
+
+func getSubcommand(cmd interface{}, args []string) interface{} {
+	if c, ok := cmd.(CommandContainer); ok {
+		if len(args) > 1 {
+			args = args[1:]
+		}
+		subcommand, exist := c.Subcommands()[args[0]]
+		if exist {
+			cmd = subcommand
+		}
+	}
+	return cmd
 }
 
 func NewManager(stdout, stderr io.Writer) Manager {
@@ -94,7 +98,9 @@ func (c *Help) Info() *Info {
 func (c *Help) Run(context *Context, client Doer) error {
 	output := ""
 	if len(context.Args) > 0 {
-		info := c.manager.commands[context.Args[0]].(Infoer).Info()
+		cmd := c.manager.commands[context.Args[0]]
+		cmd = getSubcommand(cmd, context.Args)
+		info := cmd.(Infoer).Info()
 		output = output + fmt.Sprintf("Usage: %s\n", info.Usage)
 		output = output + fmt.Sprintf("\n%s\n", info.Desc)
 	} else {
