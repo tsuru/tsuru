@@ -78,7 +78,7 @@ func nextAvailableKey(keydirname, member string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	pattern := member + "_key%d.pub"
+	pattern := member + ".key%d.pub"
 	counter := 1
 	filename := fmt.Sprintf(pattern, counter)
 	for _, f := range filenames {
