@@ -5,15 +5,16 @@ import (
 	"fmt"
 	ini "github.com/kless/goconfig/config"
 	"github.com/timeredbull/tsuru/config"
+	"os"
 	"path"
 	"strings"
 	"sync"
 	"syscall"
-	"os"
 )
 
 type gitosisManager struct {
 	confPath string
+	git      *repository
 	sync.Mutex
 }
 
@@ -22,7 +23,10 @@ func newGitosisManager() (*gitosisManager, error) {
 	if err != nil {
 		return nil, err
 	}
-	manager := &gitosisManager{confPath: path.Join(repoPath, "gitosis.conf")}
+	manager := &gitosisManager{
+		confPath: path.Join(repoPath, "gitosis.conf"),
+		git:      &repository{path: repoPath},
+	}
 	return manager, nil
 }
 
@@ -41,7 +45,7 @@ func (m *gitosisManager) addProject(group, project string) error {
 		return err
 	}
 	commit := fmt.Sprintf("Added project %s to group %s", project, group)
-	err = writeCommitPush(c, commit)
+	err = m.writeCommitPush(c, commit)
 	return nil
 }
 
@@ -57,7 +61,7 @@ func (m *gitosisManager) removeProject(group, project string) error {
 		return err
 	}
 	commitMsg := fmt.Sprintf("Removing project %s from group %s", project, group)
-	return writeCommitPush(c, commitMsg)
+	return m.writeCommitPush(c, commitMsg)
 }
 
 // Add a new group to gitosis.conf. Also commit and push changes.
@@ -72,7 +76,7 @@ func (m *gitosisManager) addGroup(name string) error {
 		return errors.New(errStr)
 	}
 	commitMsg := fmt.Sprintf("Defining gitosis group for group %s", name)
-	return writeCommitPush(c, commitMsg)
+	return m.writeCommitPush(c, commitMsg)
 }
 
 // Removes a group section and all it's options.
@@ -86,7 +90,7 @@ func (m *gitosisManager) removeGroup(group string) error {
 		return errors.New("Section does not exists")
 	}
 	commitMsg := fmt.Sprintf("Removing group %s from gitosis.conf", group)
-	return writeCommitPush(c, commitMsg)
+	return m.writeCommitPush(c, commitMsg)
 }
 
 // hasGroup checks if gitosis has the given group.
@@ -116,7 +120,7 @@ func (m *gitosisManager) addMember(group, member string) error {
 		return err
 	}
 	commitMsg := fmt.Sprintf("Adding member %s to group %s", member, group)
-	return writeCommitPush(c, commitMsg)
+	return m.writeCommitPush(c, commitMsg)
 }
 
 // removeMember removes a member from the given group.
@@ -140,15 +144,12 @@ func (m *gitosisManager) removeMember(group, member string) error {
 		return err
 	}
 	commitMsg := fmt.Sprintf("Removing member %s from group %s", member, group)
-	return writeCommitPush(c, commitMsg)
+	return m.writeCommitPush(c, commitMsg)
 }
 
 func (m *gitosisManager) buildAndStoreKeyFile(member, key string) (string, error) {
-	p, err := getKeydirPath()
-	if err != nil {
-		return "", err
-	}
-	err = os.MkdirAll(p, 0755)
+	p := m.git.getPath("keydir")
+	err := os.MkdirAll(p, 0755)
 	if err != nil {
 		return "", err
 	}
@@ -167,7 +168,11 @@ func (m *gitosisManager) buildAndStoreKeyFile(member, key string) (string, error
 		return "", err
 	}
 	commitMsg := fmt.Sprintf("Added %s keyfile.", filename)
-	err = pushToGitosis(commitMsg)
+	err = m.git.commit(commitMsg)
+	if err != nil {
+		return "", err
+	}
+	err = m.git.push("origin", "master")
 	if err != nil {
 		return "", err
 	}
@@ -175,17 +180,18 @@ func (m *gitosisManager) buildAndStoreKeyFile(member, key string) (string, error
 }
 
 func (m *gitosisManager) deleteKeyFile(keyfilename string) error {
-	p, err := getKeydirPath()
-	if err != nil {
-		return err
-	}
+	p := m.git.getPath("keydir")
 	keypath := path.Join(p, keyfilename)
-	err = os.Remove(keypath)
+	err := os.Remove(keypath)
 	if err != nil {
 		return err
 	}
 	commitMsg := fmt.Sprintf("Deleted %s keyfile.", keyfilename)
-	return pushToGitosis(commitMsg)
+	err = m.git.commit(commitMsg)
+	if err != nil {
+		return err
+	}
+	return m.git.push("origin", "master")
 }
 
 func nextAvailableKey(keydirname, member string) (string, error) {
@@ -212,6 +218,18 @@ func nextAvailableKey(keydirname, member string) (string, error) {
 
 func (m *gitosisManager) getConfig() (*ini.Config, error) {
 	return ini.Read(m.confPath, ini.DEFAULT_COMMENT, ini.ALTERNATIVE_SEPARATOR, true, true)
+}
+
+func (m *gitosisManager) writeCommitPush(c *ini.Config, commitMsg string) error {
+	err := c.WriteFile(m.confPath, 0644, "gitosis config file")
+	if err != nil {
+		return err
+	}
+	err = m.git.commit(commitMsg)
+	if err != nil {
+		return err
+	}
+	return m.git.push("origin", "master")
 }
 
 func addOptionValue(c *ini.Config, section, option, value string) (err error) {

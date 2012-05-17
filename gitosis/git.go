@@ -1,72 +1,46 @@
 package gitosis
 
 import (
-	ini "github.com/kless/goconfig/config"
-	"github.com/timeredbull/tsuru/config"
-	"github.com/timeredbull/tsuru/log"
 	"os/exec"
 	"path"
 )
 
-// represents a git repository
+// repository represents a git repository.
 type repository struct {
+	bare bool
 	path string
 }
 
-func getKeydirPath() (string, error) {
-	repoPath, err := config.GetString("git:gitosis-repo")
-	if err != nil {
-		log.Print(err)
-		return "", err
+func (r *repository) run(args ...string) (string, error) {
+	var gitDir, workTree string
+	workTree = "--work-tree=" + r.path
+	if r.bare {
+		gitDir = "--git-dir=" + r.path
+	} else {
+		gitDir = "--git-dir=" + path.Join(r.path, ".git")
 	}
-	return path.Join(repoPath, "keydir"), nil
-}
-
-func runGit(args ...string) (string, error) {
-	repoPath, err := config.GetString("git:gitosis-repo")
-	if err != nil {
-		return "", err
-	}
-	workTree := "--work-tree=" + repoPath
-	gitDir := "--git-dir=" + path.Join(repoPath, ".git")
 	gitArgs := []string{workTree, gitDir}
 	gitArgs = append(gitArgs, args...)
 	output, err := exec.Command("git", gitArgs...).CombinedOutput()
 	return string(output), err
 }
 
-// Add, commit and push all changes in gitosis repository to it's
-// bare.
-func pushToGitosis(cMsg string) error {
-	out, err := runGit("add", ".")
+func (r *repository) commit(message string) error {
+	_, err := r.run("add", ".")
 	if err != nil {
-		log.Print(out)
 		return err
 	}
-	out, err = runGit("commit", "-am", cMsg)
-	if err != nil {
-		log.Print(out)
-		return err
-	}
-	out, err = runGit("push", "origin", "master")
-	if err != nil {
-		log.Print(out)
-	}
+	_, err = r.run("commit", "-am", message)
 	return err
 }
 
-func writeCommitPush(c *ini.Config, commit string) error {
-	m, err := newGitosisManager()
-	if err != nil {
-		return err
-	}
-	err = c.WriteFile(m.confPath, 0744, "gitosis configuration file")
-	if err != nil {
-		return err
-	}
-	err = pushToGitosis(commit)
-	if err != nil {
-		return err
-	}
-	return nil
+func (r *repository) push(remote, branch string) error {
+	_, err := r.run("push", remote, branch)
+	return err
+}
+
+func (r *repository) getPath(p ...string) string {
+	args := []string{r.path}
+	args = append(args, p...)
+	return path.Join(args...)
 }
