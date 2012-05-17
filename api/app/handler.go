@@ -7,18 +7,18 @@ import (
 	"github.com/timeredbull/tsuru/api/auth"
 	"github.com/timeredbull/tsuru/db"
 	"github.com/timeredbull/tsuru/errors"
-	"github.com/timeredbull/tsuru/gitosis"
+	"github.com/timeredbull/tsuru/repository"
 	"io/ioutil"
 	"launchpad.net/mgo/bson"
 	"net/http"
 )
 
 func sendProjectChangeToGitosis(kind int, team *auth.Team, app *App) {
-	ch := gitosis.Change{
+	ch := repository.Change{
 		Kind: kind,
 		Args: map[string]string{"group": team.Name, "project": app.Name},
 	}
-	gitosis.Changes <- ch
+	repository.Ag.Process(ch)
 }
 
 func getAppOrError(name string, u *auth.User) (App, error) {
@@ -51,7 +51,7 @@ func AppDelete(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	}
 	app.Destroy()
 	for _, t := range app.Teams {
-		sendProjectChangeToGitosis(gitosis.RemoveProject, &t, &app)
+		sendProjectChangeToGitosis(repository.RemoveProject, &t, &app)
 	}
 	fmt.Fprint(w, "success")
 	return nil
@@ -102,11 +102,11 @@ func createApp(app *App, u *auth.User) ([]byte, error) {
 		return nil, err
 	}
 	for _, t := range app.Teams {
-		sendProjectChangeToGitosis(gitosis.AddProject, &t, app)
+		sendProjectChangeToGitosis(repository.AddProject, &t, app)
 	}
 	msg := map[string]string{
 		"status":         "success",
-		"repository_url": gitosis.GetRepositoryUrl(app.Name),
+		"repository_url": repository.GetUrl(app.Name),
 	}
 	return json.Marshal(msg)
 }
@@ -152,7 +152,7 @@ func grantAccessToTeam(appName, teamName string, u *auth.User) error {
 	if err != nil {
 		return err
 	}
-	sendProjectChangeToGitosis(gitosis.AddProject, t, app)
+	sendProjectChangeToGitosis(repository.AddProject, t, app)
 	return nil
 }
 
@@ -188,7 +188,7 @@ func revokeAccessFromTeam(appName, teamName string, u *auth.User) error {
 	if err != nil {
 		return err
 	}
-	sendProjectChangeToGitosis(gitosis.RemoveProject, t, app)
+	sendProjectChangeToGitosis(repository.RemoveProject, t, app)
 	return nil
 }
 

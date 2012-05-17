@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"github.com/timeredbull/tsuru/db"
 	"github.com/timeredbull/tsuru/errors"
-	"github.com/timeredbull/tsuru/gitosis"
+	"github.com/timeredbull/tsuru/repository"
 	"github.com/timeredbull/tsuru/log"
 	"io"
 	"io/ioutil"
@@ -73,11 +73,11 @@ func Login(w http.ResponseWriter, r *http.Request) error {
 func applyChangesToKeys(kind int, team *Team, user *User) {
 	for _, key := range user.Keys {
 		log.Print("adding user ", key.Name, " to ", team.Name)
-		ch := gitosis.Change{
+		ch := repository.Change{
 			Kind: kind,
 			Args: map[string]string{"group": team.Name, "member": key.Name},
 		}
-		gitosis.Changes <- ch
+		repository.Ag.Process(ch)
 	}
 }
 
@@ -87,14 +87,14 @@ func createTeam(name string, u *User) error {
 	if err != nil && strings.Contains(err.Error(), "duplicate key error") {
 		return &errors.Http{Code: http.StatusConflict, Message: "This team already exists"}
 	}
-	ch := gitosis.Change{
-		Kind:     gitosis.AddGroup,
+	ch := repository.Change{
+		Kind:     repository.AddGroup,
 		Args:     map[string]string{"group": name},
 		Response: make(chan string),
 	}
-	gitosis.Changes <- ch
+	repository.Ag.Process(ch)
 	<-ch.Response
-	applyChangesToKeys(gitosis.AddMember, team, u)
+	applyChangesToKeys(repository.AddMember, team, u)
 	return nil
 }
 
@@ -139,7 +139,7 @@ func addUserToTeam(email, teamName string, u *User) error {
 	if err != nil {
 		return err
 	}
-	applyChangesToKeys(gitosis.AddMember, team, user)
+	applyChangesToKeys(repository.AddMember, team, user)
 	return nil
 }
 
@@ -177,7 +177,7 @@ func removeUserFromTeam(email, teamName string, u *User) error {
 	if err != nil {
 		return err
 	}
-	applyChangesToKeys(gitosis.RemoveMember, team, &user)
+	applyChangesToKeys(repository.RemoveMember, team, &user)
 	return nil
 }
 
@@ -210,21 +210,21 @@ func addKeyToUser(content string, u *User) error {
 		return &errors.Http{Code: http.StatusConflict, Message: "User has this key already"}
 	}
 	r := make(chan string)
-	ch := gitosis.Change{
-		Kind:     gitosis.AddKey,
+	ch := repository.Change{
+		Kind:     repository.AddKey,
 		Args:     map[string]string{"member": u.Email, "key": content},
 		Response: r,
 	}
-	gitosis.Changes <- ch
+	repository.Ag.Process(ch)
 	var teams []Team
 	db.Session.Teams().Find(bson.M{"users.email": u.Email}).All(&teams)
 	key.Name = strings.Replace(<-r, ".pub", "", -1)
 	for _, team := range teams {
-		mch := gitosis.Change{
-			Kind: gitosis.AddMember,
+		mch := repository.Change{
+			Kind: repository.AddMember,
 			Args: map[string]string{"group": team.Name, "member": key.Name},
 		}
-		gitosis.Changes <- mch
+		repository.Ag.Process(mch)
 	}
 	u.addKey(key)
 	return db.Session.Users().Update(bson.M{"email": u.Email}, u)
@@ -253,19 +253,19 @@ func removeKeyFromUser(content string, u *User) error {
 	if err != nil {
 		return err
 	}
-	ch := gitosis.Change{
-		Kind: gitosis.RemoveKey,
+	ch := repository.Change{
+		Kind: repository.RemoveKey,
 		Args: map[string]string{"key": key.Name + ".pub"},
 	}
-	gitosis.Changes <- ch
+	repository.Ag.Process(ch)
 	var teams []Team
 	db.Session.Teams().Find(bson.M{"users.email": u.Email}).All(&teams)
 	for _, team := range teams {
-		mch := gitosis.Change{
-			Kind: gitosis.RemoveMember,
+		mch := repository.Change{
+			Kind: repository.RemoveMember,
 			Args: map[string]string{"group": team.Name, "member": key.Name},
 		}
-		gitosis.Changes <- mch
+		repository.Ag.Process(mch)
 	}
 	return nil
 }

@@ -1,11 +1,8 @@
-package gitosis
+package repository
 
 import (
 	"errors"
 	. "launchpad.net/gocheck"
-	"os"
-	"path"
-	"time"
 )
 
 func (s *S) TestDoneDoesNothingIfTheChannelIsNil(c *C) {
@@ -14,19 +11,22 @@ func (s *S) TestDoneDoesNothingIfTheChannelIsNil(c *C) {
 			c.Errorf("should not fail")
 		}
 	}()
-	done(nil, nil)
+	a := newAgent(nil)
+	a.done(nil, nil)
 }
 
 func (s *S) TestDoneReturnsSuccessIfTheChannelIsNotNilButErrorIs(c *C) {
+	a := newAgent(nil)
 	ch := make(chan string)
-	go done(ch, nil)
+	go a.done(ch, nil)
 	result := <-ch
 	c.Assert(result, Equals, "success")
 }
 
 func (s *S) TestDoneReturnFailAndTheErrorMessageIfNeitherTheChannelNorTheErrorIsNil(c *C) {
+	a := newAgent(nil)
 	ch := make(chan string)
-	go done(ch, errors.New("I have failed"))
+	go a.done(ch, errors.New("I have failed"))
 	result := <-ch
 	c.Assert(result, Equals, "fail: I have failed")
 }
@@ -36,6 +36,8 @@ func (s *S) TestShouldHaveConstantForAddKey(c *C) {
 }
 
 func (s *S) TestAddKeyReturnsTheKeyFileNameInTheResponseChannel(c *C) {
+	a := newAgent(newRecordingManager())
+	go a.loop()
 	response := make(chan string)
 	change := Change{
 		Kind: AddKey,
@@ -45,7 +47,7 @@ func (s *S) TestAddKeyReturnsTheKeyFileNameInTheResponseChannel(c *C) {
 		},
 		Response: response,
 	}
-	Changes <- change
+	a.Process(change)
 	k := <-response
 	c.Assert(k, Equals, "alanis-morissette.key1.pub")
 }
@@ -55,20 +57,19 @@ func (s *S) TestShouldHaveConstantForRemoveKey(c *C) {
 }
 
 func (s *S) TestRemoveKeyChangeRemovesTheKey(c *C) {
-	keyfile, err := buildAndStoreKeyFile("alanis-morissette", "your-house")
-	c.Assert(err, IsNil)
+	r := newRecordingManager()
+	a := newAgent(r)
+	go a.loop()
 	change := Change{
-		Kind: RemoveKey,
-		Args: map[string]string{"key": keyfile},
+		Kind:     RemoveKey,
+		Args:     map[string]string{"key": "mykey.pub"},
+		Response: make(chan string),
 	}
-	Changes <- change
-	time.Sleep(1e9)
-	p, err := getKeydirPath()
-	c.Assert(err, IsNil)
-	keypath := path.Join(p, keyfile)
-	_, err = os.Stat(keypath)
-	c.Assert(err, NotNil)
-	c.Assert(os.IsNotExist(err), Equals, true)
+	a.Process(change)
+	<-change.Response
+	action, ok := r.actions["removeKey"]
+	c.Assert(ok, Equals, true)
+	c.Assert(action, DeepEquals, []string{"mykey.pub"})
 }
 
 func (s *S) TestShouldHaveConstantForAddMember(c *C) {
@@ -76,16 +77,19 @@ func (s *S) TestShouldHaveConstantForAddMember(c *C) {
 }
 
 func (s *S) TestAddMemberChangeAddsTheMemberToTheFile(c *C) {
-	err := addGroup("dream-theater")
-	c.Assert(err, IsNil)
+	r := newRecordingManager()
+	a := newAgent(r)
+	go a.loop()
 	change := Change{
 		Kind:     AddMember,
 		Args:     map[string]string{"group": "dream-theater", "member": "octavarium"},
 		Response: make(chan string),
 	}
-	Changes <- change
+	a.Process(change)
 	<-change.Response
-	c.Assert("members = octavarium", IsInGitosis)
+	action, ok := r.actions["addMember"]
+	c.Assert(ok, Equals, true)
+	c.Assert(action, DeepEquals, []string{"dream-theater", "octavarium"})
 }
 
 func (s *S) TestShouldHaveConstantForRemoveMember(c *C) {
@@ -93,18 +97,19 @@ func (s *S) TestShouldHaveConstantForRemoveMember(c *C) {
 }
 
 func (s *S) TestRemoveMemberChangeRemovesTheMemberFromTheFile(c *C) {
-	err := addGroup("dream-theater")
-	c.Assert(err, IsNil)
-	err = addMember("dream-theater", "the-glass-prision")
-	c.Assert(err, IsNil)
+	r := newRecordingManager()
+	a := newAgent(r)
+	go a.loop()
 	change := Change{
 		Kind:     RemoveMember,
 		Args:     map[string]string{"group": "dream-theater", "member": "the-glass-prision"},
 		Response: make(chan string),
 	}
-	Changes <- change
+	a.Process(change)
 	<-change.Response
-	c.Assert("members = the-glass-prision", NotInGitosis)
+	action, ok := r.actions["removeMember"]
+	c.Assert(ok, Equals, true)
+	c.Assert(action, DeepEquals, []string{"dream-theater", "the-glass-prision"})
 }
 
 func (s *S) TestShouldHaveConstantForAddGroup(c *C) {
@@ -112,14 +117,19 @@ func (s *S) TestShouldHaveConstantForAddGroup(c *C) {
 }
 
 func (s *S) TestAddGroupChangeAddsAGroupToGitosisConf(c *C) {
+	r := newRecordingManager()
+	a := newAgent(r)
+	go a.loop()
 	change := Change{
 		Kind:     AddGroup,
 		Args:     map[string]string{"group": "dream-theater"},
 		Response: make(chan string),
 	}
-	Changes <- change
+	a.Process(change)
 	<-change.Response
-	c.Assert("[group dream-theater]", IsInGitosis)
+	action, ok := r.actions["addGroup"]
+	c.Assert(ok, Equals, true)
+	c.Assert(action, DeepEquals, []string{"dream-theater"})
 }
 
 func (s *S) TestShouldHaveConstantForRemoveGroup(c *C) {
@@ -127,16 +137,19 @@ func (s *S) TestShouldHaveConstantForRemoveGroup(c *C) {
 }
 
 func (s *S) TestRemoveGroupChangeRemovesTheGroupFromGitosisConf(c *C) {
-	err := addGroup("steve-lee")
-	c.Assert(err, IsNil)
+	r := newRecordingManager()
+	a := newAgent(r)
+	go a.loop()
 	change := Change{
 		Kind:     RemoveGroup,
 		Args:     map[string]string{"group": "steve-lee"},
 		Response: make(chan string),
 	}
-	Changes <- change
+	a.Process(change)
 	<-change.Response
-	c.Assert("[group steve-lee]", NotInGitosis)
+	action, ok := r.actions["removeGroup"]
+	c.Assert(ok, Equals, true)
+	c.Assert(action, DeepEquals, []string{"steve-lee"})
 }
 
 func (s *S) TestShouldHaveConstantForAddProject(c *C) {
@@ -144,33 +157,57 @@ func (s *S) TestShouldHaveConstantForAddProject(c *C) {
 }
 
 func (s *S) TestAddProjectChangeAddsAProjectToTheGroup(c *C) {
-	err := addGroup("rush")
-	c.Assert(err, IsNil)
+	r := newRecordingManager()
+	a := newAgent(r)
+	go a.loop()
 	change := Change{
 		Kind:     AddProject,
 		Args:     map[string]string{"group": "rush", "project": "grace-under-pressure"},
 		Response: make(chan string),
 	}
-	Changes <- change
+	a.Process(change)
 	<-change.Response
-	c.Assert("writable = grace-under-pressure", IsInGitosis)
+	action, ok := r.actions["addProject"]
+	c.Assert(ok, Equals, true)
+	c.Assert(action, DeepEquals, []string{"rush", "grace-under-pressure"})
 }
 
-func (s *S) TestShouldHaveContantForRemoveProject(c *C) {
+func (s *S) TestShouldHaveConstantForRemoveProject(c *C) {
 	c.Assert(RemoveProject, Equals, 7)
 }
 
 func (s *S) TestRemoveProjectChangeRemovesAProjectFromTheGroup(c *C) {
-	err := addGroup("nando-reis")
-	c.Assert(err, IsNil)
-	err = addProject("nando-reis", "ao-vivo")
-	c.Assert(err, IsNil)
+	r := newRecordingManager()
+	a := newAgent(r)
+	go a.loop()
 	change := Change{
 		Kind:     RemoveProject,
 		Args:     map[string]string{"group": "nando-reis", "project": "ao-vivo"},
 		Response: make(chan string),
 	}
-	Changes <- change
+	a.Process(change)
 	<-change.Response
-	c.Assert("writable = ao-vivo", NotInGitosis)
+	action, ok := r.actions["removeProject"]
+	c.Assert(ok, Equals, true)
+	c.Assert(action, DeepEquals, []string{"nando-reis", "ao-vivo"})
+}
+
+func (s *S) TestShouldHaveConstantForCommit(c *C) {
+	c.Assert(Commit, Equals, 8)
+}
+
+func (s *S) TestCommitShouldInvokeCommitChange(c *C) {
+	r := newRecordingManager()
+	a := newAgent(r)
+	go a.loop()
+	change := Change{
+		Kind:     Commit,
+		Args:     map[string]string{"message": "changed the world!"},
+		Response: make(chan string),
+	}
+	a.Process(change)
+	<-change.Response
+	action, ok := r.actions["commit"]
+	c.Assert(ok, Equals, true)
+	c.Assert(action, DeepEquals, []string{"changed the world!"})
 }

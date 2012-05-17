@@ -1,17 +1,38 @@
-package gitosis
+package repository
 
 import (
 	"errors"
 	"fmt"
 	ini "github.com/kless/goconfig/config"
 	"github.com/timeredbull/tsuru/config"
+	"os"
 	"path"
 	"strings"
+	"sync"
+	"syscall"
 )
 
+type gitosisManager struct {
+	confPath string
+	git      *repository
+	sync.RWMutex
+}
+
+func newGitosisManager() (*gitosisManager, error) {
+	repoPath, err := config.GetString("git:gitosis-repo")
+	if err != nil {
+		return nil, err
+	}
+	manager := &gitosisManager{
+		confPath: path.Join(repoPath, "gitosis.conf"),
+		git:      &repository{path: repoPath},
+	}
+	return manager, nil
+}
+
 // Add a new project to gitosis.conf.
-func addProject(group, project string) error {
-	c, err := getConfig()
+func (m *gitosisManager) addProject(group, project string) error {
+	c, err := m.getConfig()
 	if err != nil {
 		return err
 	}
@@ -24,13 +45,13 @@ func addProject(group, project string) error {
 		return err
 	}
 	commit := fmt.Sprintf("Added project %s to group %s", project, group)
-	err = writeCommitPush(c, commit)
+	err = m.writeCommitPush(c, commit)
 	return nil
 }
 
 // Remove a project from gitosis.conf
-func removeProject(group, project string) error {
-	c, err := getConfig()
+func (m *gitosisManager) removeProject(group, project string) error {
+	c, err := m.getConfig()
 	if err != nil {
 		return err
 	}
@@ -40,12 +61,12 @@ func removeProject(group, project string) error {
 		return err
 	}
 	commitMsg := fmt.Sprintf("Removing project %s from group %s", project, group)
-	return writeCommitPush(c, commitMsg)
+	return m.writeCommitPush(c, commitMsg)
 }
 
 // Add a new group to gitosis.conf. Also commit and push changes.
-func addGroup(name string) error {
-	c, err := getConfig()
+func (m *gitosisManager) addGroup(name string) error {
+	c, err := m.getConfig()
 	if err != nil {
 		return err
 	}
@@ -55,12 +76,12 @@ func addGroup(name string) error {
 		return errors.New(errStr)
 	}
 	commitMsg := fmt.Sprintf("Defining gitosis group for group %s", name)
-	return writeCommitPush(c, commitMsg)
+	return m.writeCommitPush(c, commitMsg)
 }
 
 // Removes a group section and all it's options.
-func removeGroup(group string) error {
-	c, err := getConfig()
+func (m *gitosisManager) removeGroup(group string) error {
+	c, err := m.getConfig()
 	if err != nil {
 		return err
 	}
@@ -69,12 +90,12 @@ func removeGroup(group string) error {
 		return errors.New("Section does not exists")
 	}
 	commitMsg := fmt.Sprintf("Removing group %s from gitosis.conf", group)
-	return writeCommitPush(c, commitMsg)
+	return m.writeCommitPush(c, commitMsg)
 }
 
 // hasGroup checks if gitosis has the given group.
-func hasGroup(group string) bool {
-	c, err := getConfig()
+func (m *gitosisManager) hasGroup(group string) bool {
+	c, err := m.getConfig()
 	if err != nil {
 		return false
 	}
@@ -86,8 +107,8 @@ func hasGroup(group string) bool {
 // It is up to the caller make sure that the member does
 // have a key in the keydir, otherwise the member will not
 // be able to push to the repository.
-func addMember(group, member string) error {
-	c, err := getConfig()
+func (m *gitosisManager) addMember(group, member string) error {
+	c, err := m.getConfig()
 	if err != nil {
 		return err
 	}
@@ -99,15 +120,15 @@ func addMember(group, member string) error {
 		return err
 	}
 	commitMsg := fmt.Sprintf("Adding member %s to group %s", member, group)
-	return writeCommitPush(c, commitMsg)
+	return m.writeCommitPush(c, commitMsg)
 }
 
 // removeMember removes a member from the given group.
 //
 // It is up to the caller to delete the keyfile from the keydir
 // using the DeleteKeyFile function.
-func removeMember(group, member string) error {
-	c, err := getConfig()
+func (m *gitosisManager) removeMember(group, member string) error {
+	c, err := m.getConfig()
 	if err != nil {
 		return err
 	}
@@ -123,7 +144,93 @@ func removeMember(group, member string) error {
 		return err
 	}
 	commitMsg := fmt.Sprintf("Removing member %s from group %s", member, group)
-	return writeCommitPush(c, commitMsg)
+	return m.writeCommitPush(c, commitMsg)
+}
+
+func (m *gitosisManager) buildAndStoreKeyFile(member, key string) (string, error) {
+	p := m.git.getPath("keydir")
+	err := os.MkdirAll(p, 0755)
+	if err != nil {
+		return "", err
+	}
+	filename, err := nextAvailableKey(p, member)
+	if err != nil {
+		return "", err
+	}
+	keyfilename := path.Join(p, filename)
+	keyfile, err := os.OpenFile(keyfilename, syscall.O_WRONLY|syscall.O_CREAT, 0644)
+	if err != nil {
+		return "", err
+	}
+	defer keyfile.Close()
+	n, err := keyfile.WriteString(key)
+	if err != nil || n != len(key) {
+		return "", err
+	}
+	commitMsg := fmt.Sprintf("Added %s keyfile.", filename)
+	err = m.commit(commitMsg)
+	return filename, nil
+}
+
+func (m *gitosisManager) deleteKeyFile(keyfilename string) error {
+	p := m.git.getPath("keydir")
+	keypath := path.Join(p, keyfilename)
+	err := os.Remove(keypath)
+	if err != nil {
+		return err
+	}
+	commitMsg := fmt.Sprintf("Deleted %s keyfile.", keyfilename)
+	return m.commit(commitMsg)
+}
+
+func nextAvailableKey(keydirname, member string) (string, error) {
+	keydir, err := os.Open(keydirname)
+	if err != nil {
+		return "", err
+	}
+	defer keydir.Close()
+	filenames, err := keydir.Readdirnames(0)
+	if err != nil {
+		return "", err
+	}
+	pattern := member + ".key%d.pub"
+	counter := 1
+	filename := fmt.Sprintf(pattern, counter)
+	for _, f := range filenames {
+		if f == filename {
+			counter++
+			filename = fmt.Sprintf(pattern, counter)
+		}
+	}
+	return filename, nil
+}
+
+func (m *gitosisManager) getConfig() (*ini.Config, error) {
+	m.RLock()
+	defer m.RUnlock()
+	return ini.Read(m.confPath, ini.DEFAULT_COMMENT, ini.ALTERNATIVE_SEPARATOR, true, true)
+}
+
+func (m *gitosisManager) writeConfig(c *ini.Config) error {
+	m.Lock()
+	defer m.Unlock()
+	return c.WriteFile(m.confPath, 0644, "gitosis config file")
+}
+
+func (m *gitosisManager) writeCommitPush(c *ini.Config, commitMsg string) error {
+	err := m.writeConfig(c)
+	if err != nil {
+		return err
+	}
+	return m.commit(commitMsg)
+}
+
+func (m *gitosisManager) commit(message string) error {
+	err := m.git.commit(message)
+	if err != nil {
+		return err
+	}
+	return m.git.push("origin", "master")
 }
 
 func addOptionValue(c *ini.Config, section, option, value string) (err error) {
@@ -168,16 +275,6 @@ func removeOptionValue(c *ini.Config, section, option, value string) (err error)
 	return nil
 }
 
-func ConfPath() (p string, err error) {
-	p = ""
-	repoPath, err := config.GetString("git:gitosis-repo")
-	if err != nil {
-		return
-	}
-	p = path.Join(repoPath, "gitosis.conf")
-	return
-}
-
 func find(strs []string, str string) int {
 	for i, s := range strs {
 		if str == s {
@@ -189,12 +286,4 @@ func find(strs []string, str string) int {
 
 func checkPresenceOfString(strs []string, str string) bool {
 	return find(strs, str) > -1
-}
-
-func getConfig() (*ini.Config, error) {
-	confPath, err := ConfPath()
-	if err != nil {
-		return nil, err
-	}
-	return ini.Read(confPath, ini.DEFAULT_COMMENT, ini.ALTERNATIVE_SEPARATOR, true, true)
 }

@@ -1,4 +1,4 @@
-package gitosis
+package repository
 
 import (
 	. "launchpad.net/gocheck"
@@ -10,7 +10,7 @@ func (s *S) TestCloneRepository(c *C) {
 }
 
 func (s *S) TestGetRepositoryUrl(c *C) {
-	url := GetRepositoryUrl("foobar")
+	url := GetUrl("foobar")
 	expected := "git@tsuru.plataformas.glb.com:foobar.git"
 	c.Assert(url, Equals, expected)
 }

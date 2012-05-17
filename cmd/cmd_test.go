@@ -35,6 +35,22 @@ func (c *TestCommand) Run(context *Context, client Doer) error {
 	return nil
 }
 
+func (c *TestCommand) Subcommands() map[string]interface{} {
+	return map[string]interface{}{
+		"ble": &TestSubCommand{},
+	}
+}
+
+type TestSubCommand struct{}
+
+func (c *TestSubCommand) Info() *Info {
+	return &Info{
+		Name:  "ble",
+		Desc:  "Ble do anything or nothing.",
+		Usage: "glb foo ble",
+	}
+}
+
 type ErrorCommand struct{}
 
 func (c *ErrorCommand) Info() *Info {
@@ -120,7 +136,6 @@ func (s *S) TestRunWithoutArgsShouldRunsHelp(c *C) {
 }
 
 func (s *S) TestHelpShouldReturnsHelpForACmd(c *C) {
-
 	expected := `Usage: glb foo
 
 Foo do anything or nothing.
@@ -128,6 +143,20 @@ Foo do anything or nothing.
 	manager.Register(&TestCommand{})
 
 	context := Context{[]string{"foo"}, manager.Stdout, manager.Stderr}
+	command := Help{manager: &manager}
+	err := command.Run(&context, nil)
+	c.Assert(err, IsNil)
+	c.Assert(manager.Stdout.(*bytes.Buffer).String(), Equals, expected)
+}
+
+func (s *S) TestHelpShouldReturnsHelpForASubCmd(c *C) {
+	expected := `Usage: glb foo ble
+
+Ble do anything or nothing.
+`
+	manager.Register(&TestCommand{})
+
+	context := Context{[]string{"foo", "ble"}, manager.Stdout, manager.Stderr}
 	command := Help{manager: &manager}
 	err := command.Run(&context, nil)
 	c.Assert(err, IsNil)

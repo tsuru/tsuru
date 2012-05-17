@@ -590,7 +590,10 @@ func (s *S) TestAddKeyFunctionAddTheMemberWithTheKeyNameInTheGitosisConfiguratio
 	s.addGroup()
 	err := addKeyToUser("my-key", s.user)
 	c.Assert(err, IsNil)
-	defer removeKeyFromUser("my-key", s.user)
+	defer func() {
+		removeKeyFromUser("my-key", s.user)
+		time.Sleep(1e9)
+	}()
 	keyname := s.user.Keys[0].Name
 	c.Assert("members = "+keyname, IsInGitosis)
 }
