@@ -25,6 +25,9 @@ func (m *Manager) Register(command interface{}) {
 }
 
 func (m *Manager) Run(args []string) {
+	if len(args) == 0 {
+		args = []string{"help"}
+	}
 	command, exist := m.commands[args[0]]
 	if !exist {
 		io.WriteString(m.Stderr, fmt.Sprintf("command %s does not exist\n", args[0]))
@@ -48,7 +51,7 @@ func (m *Manager) Run(args []string) {
 
 func NewManager(stdout, stderr io.Writer) Manager {
 	m := Manager{Stdout: stdout, Stderr: stderr}
-	m.Register(&Help{})
+	m.Register(&Help{manager: m})
 	return m
 }
 
@@ -77,16 +80,26 @@ type Info struct {
 	Doc     string
 }
 
-type Help struct{}
+type Help struct {
+	manager Manager
+}
 
 func (c *Help) Info() *Info {
 	return &Info{
-		Name: "help",
-		Usage: "glb command [args]\n",
+		Name:  "help",
+		Usage: "glb command [args]",
 	}
 }
 
 func (c *Help) Run(context *Context, client Doer) error {
-	io.WriteString(context.Stdout, fmt.Sprintf("Usage: %s", c.Info().Usage))
+	output := ""
+	if len(context.Args) > 0 {
+		info := c.manager.commands[context.Args[0]].(Infoer).Info()
+		output = output + fmt.Sprintf("Usage: %s\n", info.Usage)
+		output = output + fmt.Sprintf("\n%s\n", info.Doc)
+	} else {
+		output = output + fmt.Sprintf("Usage: %s\n", c.Info().Usage)
+	}
+	io.WriteString(context.Stdout, output)
 	return nil
 }
