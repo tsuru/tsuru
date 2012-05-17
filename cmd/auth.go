@@ -77,6 +77,7 @@ func (c *Login) Info() *Info {
 	return &Info{
 		Name:  "login",
 		Usage: "glb login email password",
+		Desc:  "log in with your credentials.",
 	}
 }
 
@@ -158,6 +159,7 @@ func (c *Logout) Info() *Info {
 	return &Info{
 		Name:  "logout",
 		Usage: "glb logout",
+		Desc:  "clear local authentication credentials.",
 	}
 }
 
