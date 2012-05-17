@@ -128,7 +128,7 @@ Foo do anything or nothing.
 	manager.Register(&TestCommand{})
 
 	context := Context{[]string{"foo"}, manager.Stdout, manager.Stderr}
-	command := Help{manager: manager}
+	command := Help{manager: &manager}
 	err := command.Run(&context, nil)
 	c.Assert(err, IsNil)
 	c.Assert(manager.Stdout.(*bytes.Buffer).String(), Equals, expected)
