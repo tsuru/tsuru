@@ -39,7 +39,7 @@ func CloneRepositoryHandler(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return &errors.Http{Code: http.StatusNotFound, Message: "App not found"}
 	}
-	repository.CloneRepository(app.Name)
+	repository.Clone(app.Name)
 	fmt.Fprint(w, "success")
 	return nil
 }
@@ -106,7 +106,7 @@ func createApp(app *App, u *auth.User) ([]byte, error) {
 	}
 	msg := map[string]string{
 		"status":         "success",
-		"repository_url": repository.GetRepositoryUrl(app.Name),
+		"repository_url": repository.GetUrl(app.Name),
 	}
 	return json.Marshal(msg)
 }

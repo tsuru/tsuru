@@ -209,7 +209,7 @@ func (s *S) TestCreateApp(c *C) {
 	body, err := ioutil.ReadAll(recorder.Body)
 	c.Assert(err, IsNil)
 
-	repoUrl := repository.GetRepositoryUrl(a.Name)
+	repoUrl := repository.GetUrl(a.Name)
 	var obtained map[string]string
 	expected := map[string]string{
 		"status":         "success",

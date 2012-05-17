@@ -7,9 +7,9 @@ import (
 
 const gitServer = "tsuru.plataformas.glb.com"
 
-func CloneRepository(appName string) (err error) {
+func Clone(appName string) (err error) {
 	u := unit.Unit{Name: appName}
-	cmd := fmt.Sprintf("git clone %s /home/application/%s", GetRepositoryUrl(appName), appName)
+	cmd := fmt.Sprintf("git clone %s /home/application/%s", GetUrl(appName), appName)
 	_, err = u.Command(cmd)
 	if err != nil {
 		return
@@ -17,6 +17,6 @@ func CloneRepository(appName string) (err error) {
 	return
 }
 
-func GetRepositoryUrl(appName string) string {
+func GetUrl(appName string) string {
 	return fmt.Sprintf("git@%s:%s.git", gitServer, appName)
 }

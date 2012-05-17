@@ -5,12 +5,12 @@ import (
 )
 
 func (s *S) TestCloneRepository(c *C) {
-	err := CloneRepository("barfoo")
+	err := Clone("barfoo")
 	c.Assert(err, IsNil)
 }
 
 func (s *S) TestGetRepositoryUrl(c *C) {
-	url := GetRepositoryUrl("foobar")
+	url := GetUrl("foobar")
 	expected := "git@tsuru.plataformas.glb.com:foobar.git"
 	c.Assert(url, Equals, expected)
 }
