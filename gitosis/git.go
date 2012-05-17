@@ -3,15 +3,19 @@ package gitosis
 import (
 	"os/exec"
 	"path"
+	"sync"
 )
 
 // repository represents a git repository.
 type repository struct {
 	bare bool
 	path string
+	sync.Mutex
 }
 
 func (r *repository) run(args ...string) (string, error) {
+	r.Lock()
+	defer r.Unlock()
 	var gitDir, workTree string
 	workTree = "--work-tree=" + r.path
 	if r.bare {
