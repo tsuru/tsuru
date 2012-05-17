@@ -18,7 +18,7 @@ func sendProjectChangeToGitosis(kind int, team *auth.Team, app *App) {
 		Kind: kind,
 		Args: map[string]string{"group": team.Name, "project": app.Name},
 	}
-	gitosis.Changes <- ch
+	gitosis.Ag.Process(ch)
 }
 
 func getAppOrError(name string, u *auth.User) (App, error) {
