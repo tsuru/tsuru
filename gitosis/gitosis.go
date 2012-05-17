@@ -168,14 +168,7 @@ func (m *gitosisManager) buildAndStoreKeyFile(member, key string) (string, error
 		return "", err
 	}
 	commitMsg := fmt.Sprintf("Added %s keyfile.", filename)
-	err = m.git.commit(commitMsg)
-	if err != nil {
-		return "", err
-	}
-	err = m.git.push("origin", "master")
-	if err != nil {
-		return "", err
-	}
+	err = m.commit(commitMsg)
 	return filename, nil
 }
 
@@ -187,11 +180,7 @@ func (m *gitosisManager) deleteKeyFile(keyfilename string) error {
 		return err
 	}
 	commitMsg := fmt.Sprintf("Deleted %s keyfile.", keyfilename)
-	err = m.git.commit(commitMsg)
-	if err != nil {
-		return err
-	}
-	return m.git.push("origin", "master")
+	return m.commit(commitMsg)
 }
 
 func nextAvailableKey(keydirname, member string) (string, error) {
@@ -233,11 +222,7 @@ func (m *gitosisManager) writeCommitPush(c *ini.Config, commitMsg string) error 
 	if err != nil {
 		return err
 	}
-	err = m.git.commit(commitMsg)
-	if err != nil {
-		return err
-	}
-	return m.git.push("origin", "master")
+	return m.commit(commitMsg)
 }
 
 func (m *gitosisManager) commit(message string) error {
