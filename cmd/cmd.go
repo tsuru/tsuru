@@ -77,7 +77,7 @@ type Info struct {
 	Name    string
 	MinArgs int
 	Usage   string
-	Doc     string
+	Desc    string
 }
 
 type Help struct {
@@ -96,7 +96,7 @@ func (c *Help) Run(context *Context, client Doer) error {
 	if len(context.Args) > 0 {
 		info := c.manager.commands[context.Args[0]].(Infoer).Info()
 		output = output + fmt.Sprintf("Usage: %s\n", info.Usage)
-		output = output + fmt.Sprintf("\n%s\n", info.Doc)
+		output = output + fmt.Sprintf("\n%s\n", info.Desc)
 	} else {
 		output = output + fmt.Sprintf("Usage: %s\n", c.Info().Usage)
 	}
