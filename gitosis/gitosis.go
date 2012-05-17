@@ -241,7 +241,11 @@ func (m *gitosisManager) writeCommitPush(c *ini.Config, commitMsg string) error 
 }
 
 func (m *gitosisManager) commit(message string) error {
-	return nil
+	err := m.git.commit(message)
+	if err != nil {
+		return err
+	}
+	return m.git.push("origin", "master")
 }
 
 func addOptionValue(c *ini.Config, section, option, value string) (err error) {

@@ -474,3 +474,21 @@ func (s *S) TesteDeleteKeyFileCommits(c *C) {
 	got := s.lastBareCommit(c)
 	c.Assert(got, Equals, expected)
 }
+
+func (s *S) TestCommitShouldCommitChangeInGit(c *C) {
+	m, err := newGitosisManager()
+	c.Assert(err, IsNil)
+	f, err := os.Create(m.git.getPath("tmpfile.txt"))
+	c.Assert(err, IsNil)
+	f.Close()
+	defer func(git *repository) {
+		git.run("rm", "tmpfile.txt")
+		git.commit("removed tmpfile.txt")
+		git.push("origin", "master")
+	}(m.git)
+	err = m.commit("added tmpfile.txt")
+	c.Assert(err, IsNil)
+	out, err := m.git.run("log", "-1", "--format=%s")
+	c.Assert(err, IsNil)
+	c.Assert(out, Equals, "added tmpfile.txt\n")
+}
