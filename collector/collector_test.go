@@ -58,13 +58,13 @@ func (s *S) TestCollectorUpdate(c *C) {
 				"dns-name":       "192.168.0.10",
 				"instance-id":    "i-00000zz6",
 				"instance-state": "running",
-				"state":          "running",
+				"agent-state":    "running",
 			},
 			1: map[interface{}]interface{}{
 				"dns-name":       "192.168.0.11",
 				"instance-id":    "i-00000zz7",
 				"instance-state": "running",
-				"state":          "running",
+				"agent-state":    "running",
 			},
 		},
 	}
@@ -103,13 +103,13 @@ func (s *S) TestCollectorParser(c *C) {
 				"dns-name":       "192.168.0.10",
 				"instance-id":    "i-00000zz6",
 				"instance-state": "running",
-				"state":          "running",
+				"agent-state":    "running",
 			},
 			1: map[interface{}]interface{}{
 				"dns-name":       "192.168.0.11",
 				"instance-id":    "i-00000zz7",
 				"instance-state": "running",
-				"state":          "running",
+				"agent-state":    "running",
 			},
 		},
 	}

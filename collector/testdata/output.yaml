@@ -3,12 +3,12 @@ machines:
     dns-name: 192.168.0.10
     instance-id: i-00000zz6
     instance-state: running
-    state: running
+    agent-state: running
   1:
     dns-name: 192.168.0.11
     instance-id: i-00000zz7
     instance-state: running
-    state: running
+    agent-state: running
 services:
   umaappqq:
     charm: local:oneiric/django-1
@@ -18,4 +18,4 @@ services:
         machine: 1
         public-address: server-199.novalocal
         relations: {}
-        state: started
+        agent-state: started

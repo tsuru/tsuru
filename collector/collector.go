@@ -13,7 +13,7 @@ type Collector struct{}
 
 type Unit struct {
 	Machine int
-	State   string
+	State   string `yaml:"agent-state"`
 }
 
 type Service struct {
