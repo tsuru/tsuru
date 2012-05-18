@@ -20,3 +20,7 @@ func Clone(app string, machine int) (err error) {
 func GetUrl(app string) string {
 	return fmt.Sprintf("git@%s:%s.git", gitServer, app)
 }
+
+func GetReadOnlyUrl(app string) string {
+	return fmt.Sprintf("git://%s/%s.git", gitServer, app)
+}
