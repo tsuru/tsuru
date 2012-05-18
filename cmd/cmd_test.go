@@ -84,14 +84,17 @@ func (s *S) TestRunCommandThatDoesNotExist(c *C) {
 	c.Assert(manager.Stderr.(*bytes.Buffer).String(), Equals, "command bar does not exist\n")
 }
 
-type TicCmd struct{}
+type TicCmd struct {
+	record *RecordCmd
+}
 
 func (c *TicCmd) Info() *Info {
 	return &Info{Name: "tic"}
 }
 
 func (c *TicCmd) Subcommands() map[string]interface{} {
-	return map[string]interface{}{"tac": &TacCmd{}}
+	c.record = &RecordCmd{}
+	return map[string]interface{}{"tac": &TacCmd{}, "record": c.record}
 }
 
 type TacCmd struct{}
@@ -105,10 +108,31 @@ func (c *TacCmd) Run(context *Context, client Doer) error {
 	return nil
 }
 
+type RecordCmd struct {
+	args []string
+}
+
+func (c *RecordCmd) Info() *Info {
+	return &Info{Name: "record"}
+}
+
+func (c *RecordCmd) Run(context *Context, client Doer) error {
+	c.args = context.Args
+	return nil
+}
+
 func (s *S) TestSubcommand(c *C) {
 	manager.Register(&TicCmd{})
 	manager.Run([]string{"tic", "tac"})
 	c.Assert(manager.Stdout.(*bytes.Buffer).String(), Equals, "Running tac subcommand")
+}
+
+func (s *S) TestSubcommandWithArgs(c *C) {
+	expected := []string{"arg1", "arg2"}
+	cmd := &TicCmd{}
+	manager.Register(cmd)
+	manager.Run([]string{"tic", "record", "arg1", "arg2"})
+	c.Assert(cmd.record.args, DeepEquals, expected)
 }
 
 func (s *S) TestHelp(c *C) {
