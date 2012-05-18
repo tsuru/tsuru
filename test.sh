@@ -1,6 +1,4 @@
-#!/bin/sh
-
-set -e
+#!/bin/sh -e
 
 go test ./...
 go build -o websrv ./api/webserver/main.go
