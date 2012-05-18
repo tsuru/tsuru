@@ -33,7 +33,7 @@ func (s *S) TestCreateAndDestroy(c *C) {
 }
 
 func (s *S) TestCommand(c *C) {
-	u := Unit{Type: "django", Name: "myUnit"}
+	u := Unit{Type: "django", Name: "myUnit", Machine: 1}
 
 	err := u.Create()
 	c.Assert(err, IsNil)

@@ -39,7 +39,7 @@ func CloneRepositoryHandler(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return &errors.Http{Code: http.StatusNotFound, Message: "App not found"}
 	}
-	repository.Clone(app.Name)
+	repository.Clone(app.Name, app.Machine)
 	fmt.Fprint(w, "success")
 	return nil
 }

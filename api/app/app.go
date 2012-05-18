@@ -10,6 +10,7 @@ import (
 
 type App struct {
 	Ip        string
+	Machine   int
 	Name      string
 	Framework string
 	State     string
