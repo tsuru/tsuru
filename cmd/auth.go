@@ -15,7 +15,11 @@ import (
 type User struct{}
 
 func (c *User) Info() *Info {
-	return &Info{Name: "user"}
+	return &Info{
+		Name: "user",
+		Usage: "glb user command",
+		Desc: "manage users."
+	}
 }
 
 func (c *User) Subcommands() map[string]interface{} {
@@ -27,7 +31,11 @@ func (c *User) Subcommands() map[string]interface{} {
 type UserCreate struct{}
 
 func (c *UserCreate) Info() *Info {
-	return &Info{Name: "create"}
+	return &Info{
+		Name: "create",
+		Usage: "glb user create username password"
+		Desc: "creates user."
+	}
 }
 
 func (c *UserCreate) Run(context *Context, client Doer) error {
@@ -91,7 +99,11 @@ func readKey() (string, error) {
 type Key struct{}
 
 func (c *Key) Info() *Info {
-	return &Info{Name: "key"}
+	return &Info{
+		Name: "key",
+		Usage: "glb key command args",
+		Desc: "manage keys."
+	}
 }
 
 func (c *Key) Subcommands() map[string]interface{} {
@@ -104,7 +116,11 @@ func (c *Key) Subcommands() map[string]interface{} {
 type RemoveKey struct{}
 
 func (c *RemoveKey) Info() *Info {
-	return &Info{Name: "remove"}
+	return &Info{
+		Name: "remove",
+		Usage: "glb key remove",
+		Desc: "remove your public key ($HOME/.id_rsa.pub)."
+	}
 }
 
 func (c *RemoveKey) Run(context *Context, client Doer) error {
@@ -130,7 +146,11 @@ func (c *RemoveKey) Run(context *Context, client Doer) error {
 type AddKeyCommand struct{}
 
 func (c *AddKeyCommand) Info() *Info {
-	return &Info{Name: "add"}
+	return &Info{
+		Name: "add",
+		Usage: "glb key add",
+		Desc: "add your public key ($HOME/.id_rsa.pub)."
+	}
 }
 
 func (c *AddKeyCommand) Run(context *Context, client Doer) error {
@@ -183,7 +203,11 @@ func (c *Team) Subcommands() map[string]interface{} {
 }
 
 func (c *Team) Info() *Info {
-	return &Info{Name: "team"}
+	return &Info{
+		Name: "team",
+		Usage: "glb team command args",
+		Desc: "manage teams.",
+	}
 }
 
 func (c *Team) Run(context *Context, client Doer) error {
@@ -193,7 +217,11 @@ func (c *Team) Run(context *Context, client Doer) error {
 type TeamCreate struct{}
 
 func (c *TeamCreate) Info() *Info {
-	return &Info{Name: "create"}
+	return &Info{
+		Name: "create",
+		Usage: "glb team create teamname",
+		Desc: "creates teams.",
+	}
 }
 
 func (c *TeamCreate) Run(context *Context, client Doer) error {
