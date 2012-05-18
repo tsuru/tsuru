@@ -8,7 +8,8 @@ import (
 )
 
 func main() {
-	manager := cmd.NewManager(os.Stdout, os.Stderr)
+	name := cmd.ExtractProgramName(os.Args[0])
+	manager := cmd.NewManager(name, os.Stdout, os.Stderr)
 	manager.Register(&cmd.Login{})
 	manager.Register(&cmd.Logout{})
 	manager.Register(&cmd.User{})

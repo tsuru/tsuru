@@ -17,7 +17,7 @@ var manager Manager
 
 func (s *S) SetUpTest(c *C) {
 	var stdout, stderr bytes.Buffer
-	manager = NewManager(&stdout, &stderr)
+	manager = NewManager("glb", &stdout, &stderr)
 }
 
 type TestCommand struct{}
@@ -26,7 +26,7 @@ func (c *TestCommand) Info() *Info {
 	return &Info{
 		Name:  "foo",
 		Desc:  "Foo do anything or nothing.",
-		Usage: "glb foo",
+		Usage: "foo",
 	}
 }
 
@@ -47,7 +47,7 @@ func (c *TestSubCommand) Info() *Info {
 	return &Info{
 		Name:  "ble",
 		Desc:  "Ble do anything or nothing.",
-		Usage: "glb foo ble",
+		Usage: "foo ble",
 	}
 }
 
@@ -139,7 +139,7 @@ func (s *S) TestHelp(c *C) {
 	expected := `Usage: glb command [args]
 `
 	context := Context{[]string{}, manager.Stdout, manager.Stderr}
-	command := Help{}
+	command := Help{manager: &manager}
 	err := command.Run(&context, nil)
 	c.Assert(err, IsNil)
 	c.Assert(manager.Stdout.(*bytes.Buffer).String(), Equals, expected)
@@ -147,7 +147,7 @@ func (s *S) TestHelp(c *C) {
 
 func (s *S) TestHelpCommandShouldBeRegisteredByDefault(c *C) {
 	var stdout, stderr bytes.Buffer
-	m := NewManager(&stdout, &stderr)
+	m := NewManager("tsuru", &stdout, &stderr)
 	_, exists := m.commands["help"]
 	c.Assert(exists, Equals, true)
 }
@@ -185,4 +185,34 @@ Ble do anything or nothing.
 	err := command.Run(&context, nil)
 	c.Assert(err, IsNil)
 	c.Assert(manager.Stdout.(*bytes.Buffer).String(), Equals, expected)
+}
+
+func (s *S) TestHelpShouldReturnUsageWithTheCommandName(c *C) {
+	expected := `Usage: tsuru foo ble
+
+Ble do anything or nothing.
+`
+	var stdout, stderr bytes.Buffer
+	manager := NewManager("tsuru", &stdout, &stderr)
+	manager.Register(&TestCommand{})
+	context := Context{[]string{"foo", "ble"}, manager.Stdout, manager.Stderr}
+	command := Help{manager: &manager}
+	err := command.Run(&context, nil)
+	c.Assert(err, IsNil)
+	c.Assert(manager.Stdout.(*bytes.Buffer).String(), Equals, expected)
+}
+
+func (s *S) TestExtractProgramNameWithAbsolutePath(c *C) {
+	got := ExtractProgramName("/usr/bin/tsuru")
+	c.Assert(got, Equals, "tsuru")
+}
+
+func (s *S) TestExtractProgramNameWithRelativePath(c *C) {
+	got := ExtractProgramName("./tsuru")
+	c.Assert(got, Equals, "tsuru")
+}
+
+func (s *S) TestExtractProgramNameWithinThePATH(c *C) {
+	got := ExtractProgramName("tsuru")
+	c.Assert(got, Equals, "tsuru")
 }
