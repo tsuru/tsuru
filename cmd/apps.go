@@ -15,7 +15,7 @@ type App struct{}
 func (c *App) Info() *Info {
 	return &Info{
 		Name:  "app",
-		Usage: "glb app (create|delete|list|add-team|remove-team) [args]",
+		Usage: "app (create|delete|list|add-team|remove-team) [args]",
 		Desc:  "manage your apps.",
 	}
 }
@@ -35,7 +35,7 @@ type AppAddTeam struct{}
 func (c *AppAddTeam) Info() *Info {
 	return &Info{
 		Name:  "add-team",
-		Usage: "glb app add-team appname teamname",
+		Usage: "app add-team appname teamname",
 		Desc:  "adds team to app.",
 	}
 }
@@ -59,7 +59,7 @@ type AppRemoveTeam struct{}
 func (c *AppRemoveTeam) Info() *Info {
 	return &Info{
 		Name:  "remove-team",
-		Usage: "glb app remove-team appname teamname",
+		Usage: "app remove-team appname teamname",
 		Desc:  "removes team from app.",
 	}
 }
@@ -118,7 +118,7 @@ func (c *AppList) Show(result []byte, context *Context) error {
 func (c *AppList) Info() *Info {
 	return &Info{
 		Name:  "list",
-		Usage: "glb app list",
+		Usage: "app list",
 		Desc:  "list your apps.",
 	}
 }
@@ -155,7 +155,7 @@ func (c *AppCreate) Run(context *Context, client Doer) error {
 func (c *AppCreate) Info() *Info {
 	return &Info{
 		Name:  "create",
-		Usage: "glb app create appname",
+		Usage: "app create appname",
 		Desc:  "create a new app.",
 	}
 }
@@ -165,7 +165,7 @@ type AppRemove struct{}
 func (c *AppRemove) Info() *Info {
 	return &Info{
 		Name:  "remove",
-		Usage: "glb app remove appname",
+		Usage: "app remove appname",
 		Desc:  "remove your app.",
 	}
 }

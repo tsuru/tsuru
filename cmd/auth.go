@@ -17,7 +17,7 @@ type User struct{}
 func (c *User) Info() *Info {
 	return &Info{
 		Name:  "user",
-		Usage: "glb user (create) [args]",
+		Usage: "user (create) [args]",
 		Desc:  "manage users.",
 	}
 }
@@ -33,7 +33,7 @@ type UserCreate struct{}
 func (c *UserCreate) Info() *Info {
 	return &Info{
 		Name:  "create",
-		Usage: "glb user create username password",
+		Usage: "user create username password",
 		Desc:  "creates user.",
 	}
 }
@@ -84,7 +84,7 @@ func (c *Login) Run(context *Context, client Doer) error {
 func (c *Login) Info() *Info {
 	return &Info{
 		Name:  "login",
-		Usage: "glb login email password",
+		Usage: "login email password",
 		Desc:  "log in with your credentials.",
 	}
 }
@@ -101,7 +101,7 @@ type Key struct{}
 func (c *Key) Info() *Info {
 	return &Info{
 		Name:  "key",
-		Usage: "glb key (add|remove)",
+		Usage: "key (add|remove)",
 		Desc:  "manage keys.",
 	}
 }
@@ -118,7 +118,7 @@ type RemoveKey struct{}
 func (c *RemoveKey) Info() *Info {
 	return &Info{
 		Name:  "remove",
-		Usage: "glb key remove",
+		Usage: "key remove",
 		Desc:  "remove your public key ($HOME/.id_rsa.pub).",
 	}
 }
@@ -148,7 +148,7 @@ type AddKeyCommand struct{}
 func (c *AddKeyCommand) Info() *Info {
 	return &Info{
 		Name:  "add",
-		Usage: "glb key add",
+		Usage: "key add",
 		Desc:  "add your public key ($HOME/.id_rsa.pub).",
 	}
 }
@@ -178,7 +178,7 @@ type Logout struct{}
 func (c *Logout) Info() *Info {
 	return &Info{
 		Name:  "logout",
-		Usage: "glb logout",
+		Usage: "logout",
 		Desc:  "clear local authentication credentials.",
 	}
 }
@@ -205,7 +205,7 @@ func (c *Team) Subcommands() map[string]interface{} {
 func (c *Team) Info() *Info {
 	return &Info{
 		Name:  "team",
-		Usage: "glb team (create|add-user|remove-user) [args]",
+		Usage: "team (create|add-user|remove-user) [args]",
 		Desc:  "manage teams.",
 	}
 }
@@ -219,7 +219,7 @@ type TeamCreate struct{}
 func (c *TeamCreate) Info() *Info {
 	return &Info{
 		Name:  "create",
-		Usage: "glb team create teamname",
+		Usage: "team create teamname",
 		Desc:  "creates teams.",
 	}
 }
