@@ -15,7 +15,7 @@ type App struct{}
 func (c *App) Info() *Info {
 	return &Info{
 		Name:  "app",
-		Usage: "glb app (create|delete|list|add-team|remove-team)",
+		Usage: "glb app (create|delete|list|add-team|remove-team) [args]",
 		Desc:  "manage your apps.",
 	}
 }

@@ -16,9 +16,9 @@ type User struct{}
 
 func (c *User) Info() *Info {
 	return &Info{
-		Name: "user",
-		Usage: "glb user command",
-		Desc: "manage users."
+		Name:  "user",
+		Usage: "glb user (create) [args]",
+		Desc:  "manage users.",
 	}
 }
 
@@ -32,9 +32,9 @@ type UserCreate struct{}
 
 func (c *UserCreate) Info() *Info {
 	return &Info{
-		Name: "create",
-		Usage: "glb user create username password"
-		Desc: "creates user."
+		Name:  "create",
+		Usage: "glb user create username password",
+		Desc:  "creates user.",
 	}
 }
 
@@ -100,9 +100,9 @@ type Key struct{}
 
 func (c *Key) Info() *Info {
 	return &Info{
-		Name: "key",
-		Usage: "glb key command args",
-		Desc: "manage keys."
+		Name:  "key",
+		Usage: "glb key (add|remove)",
+		Desc:  "manage keys.",
 	}
 }
 
@@ -117,9 +117,9 @@ type RemoveKey struct{}
 
 func (c *RemoveKey) Info() *Info {
 	return &Info{
-		Name: "remove",
+		Name:  "remove",
 		Usage: "glb key remove",
-		Desc: "remove your public key ($HOME/.id_rsa.pub)."
+		Desc:  "remove your public key ($HOME/.id_rsa.pub).",
 	}
 }
 
@@ -147,9 +147,9 @@ type AddKeyCommand struct{}
 
 func (c *AddKeyCommand) Info() *Info {
 	return &Info{
-		Name: "add",
+		Name:  "add",
 		Usage: "glb key add",
-		Desc: "add your public key ($HOME/.id_rsa.pub)."
+		Desc:  "add your public key ($HOME/.id_rsa.pub).",
 	}
 }
 
@@ -204,9 +204,9 @@ func (c *Team) Subcommands() map[string]interface{} {
 
 func (c *Team) Info() *Info {
 	return &Info{
-		Name: "team",
-		Usage: "glb team command args",
-		Desc: "manage teams.",
+		Name:  "team",
+		Usage: "glb team (create|add-user|remove-user) [args]",
+		Desc:  "manage teams.",
 	}
 }
 
@@ -218,9 +218,9 @@ type TeamCreate struct{}
 
 func (c *TeamCreate) Info() *Info {
 	return &Info{
-		Name: "create",
+		Name:  "create",
 		Usage: "glb team create teamname",
-		Desc: "creates teams.",
+		Desc:  "creates teams.",
 	}
 }
 
