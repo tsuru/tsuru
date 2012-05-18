@@ -7,5 +7,5 @@ go build -o collect ./collector/main.go
 ./collect -dry=true
 go build -o /tmp/tsuru ./cmd/main.go
 out=$(/tmp/tsuru)
-echo ${out} | grep -q '^Usage: tsuru' || exit 1
+echo ${out} | grep -q '^Usage: tsuru'
 rm -f collect websrv /tmp/tsuru
