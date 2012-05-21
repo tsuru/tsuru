@@ -13,8 +13,9 @@ func ReadTarget() string {
 	targetPath, _ := joinWithUserDir(".tsuru_target")
 	if f, err := os.Open(targetPath); err == nil {
 		defer f.Close()
-		b, _ := ioutil.ReadAll(f)
-		return string(b)
+		if b, err := ioutil.ReadAll(f); err == nil {
+			return string(b)
+		}
 	}
 	return DefaultTarget
 }
