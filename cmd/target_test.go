@@ -13,7 +13,7 @@ func deleteTsuruTarget() {
 }
 
 func (s *S) TestDefaultTarget(c *C) {
-	c.Assert(DefaultTarget, Equals, "tsuru.plataformas.glb.com")
+	c.Assert(DefaultTarget, Equals, "http://tsuru.plataformas.glb.com:8080")
 }
 
 func (s *S) TestWriteAndReadTarget(c *C) {

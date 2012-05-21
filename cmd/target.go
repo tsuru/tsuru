@@ -28,7 +28,7 @@ func (t *Target) Run(ctx *Context, client Doer) error {
 	return nil
 }
 
-const DefaultTarget = "tsuru.plataformas.glb.com"
+const DefaultTarget = "http://tsuru.plataformas.glb.com:8080"
 
 func ReadTarget() string {
 	targetPath, _ := joinWithUserDir(".tsuru_target")
