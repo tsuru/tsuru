@@ -32,9 +32,9 @@ func (s *S) TestReadTargetReturnsDefaultTargetIfTheFileDoesNotExist(c *C) {
 
 func (s *S) TestTargetInfo(c *C) {
 	expected := &Info{
-		Name: "target",
+		Name:  "target",
 		Usage: "target <target>",
-		Desc: "Defines the target (tsuru server)",
+		Desc:  "Defines the target (tsuru server)",
 	}
 	target := &Target{}
 	c.Assert(target.Info(), DeepEquals, expected)
@@ -48,4 +48,11 @@ func (s *S) TestTargetRun(c *C) {
 	c.Assert(err, IsNil)
 	c.Assert(context.Stdout.(*bytes.Buffer).String(), Equals, "New target is tsuru.globo.com\n")
 	c.Assert(ReadTarget(), Equals, "tsuru.globo.com")
+}
+
+func (s *S) TestGetUrl(c *C) {
+	deleteTsuruTarget()
+	expected := DefaultTarget + "/apps"
+	got := GetUrl("/apps")
+	c.Assert(expected, Equals, got)
 }

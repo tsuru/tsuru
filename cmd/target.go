@@ -41,6 +41,10 @@ func ReadTarget() string {
 	return DefaultTarget
 }
 
+func GetUrl(path string) string {
+	return ReadTarget() + path
+}
+
 func WriteTarget(t string) error {
 	targetPath, err := joinWithUserDir(".tsuru_target")
 	if err != nil {
