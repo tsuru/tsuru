@@ -42,7 +42,8 @@ func (c *AppAddTeam) Info() *Info {
 
 func (c *AppAddTeam) Run(context *Context, client Doer) error {
 	appName, teamName := context.Args[0], context.Args[1]
-	request, err := http.NewRequest("PUT", fmt.Sprintf("http://tsuru.plataformas.glb.com:8080/apps/%s/%s", appName, teamName), nil)
+	url := GetUrl(fmt.Sprintf("/apps/%s/%s", appName, teamName))
+	request, err := http.NewRequest("PUT", url, nil)
 	if err != nil {
 		return err
 	}
@@ -66,7 +67,8 @@ func (c *AppRemoveTeam) Info() *Info {
 
 func (c *AppRemoveTeam) Run(context *Context, client Doer) error {
 	appName, teamName := context.Args[0], context.Args[1]
-	request, err := http.NewRequest("DELETE", fmt.Sprintf("http://tsuru.plataformas.glb.com:8080/apps/%s/%s", appName, teamName), nil)
+	url := fmt.Sprintf("/apps/%s/%s", appName, teamName)
+	request, err := http.NewRequest("DELETE", url, nil)
 	if err != nil {
 		return err
 	}
@@ -81,7 +83,7 @@ func (c *AppRemoveTeam) Run(context *Context, client Doer) error {
 type AppList struct{}
 
 func (c *AppList) Run(context *Context, client Doer) error {
-	request, err := http.NewRequest("GET", "http://tsuru.plataformas.glb.com:8080/apps", nil)
+	request, err := http.NewRequest("GET", GetUrl("/apps"), nil)
 	if err != nil {
 		return err
 	}
@@ -128,7 +130,7 @@ type AppCreate struct{}
 func (c *AppCreate) Run(context *Context, client Doer) error {
 	appName := context.Args[0]
 	b := bytes.NewBufferString(fmt.Sprintf(`{"name":"%s", "framework":"django"}`, appName))
-	request, err := http.NewRequest("POST", "http://tsuru.plataformas.glb.com:8080/apps", b)
+	request, err := http.NewRequest("POST", GetUrl("/apps"), b)
 	request.Header.Set("Content-Type", "application/json")
 	if err != nil {
 		return err
@@ -172,7 +174,8 @@ func (c *AppRemove) Info() *Info {
 
 func (c *AppRemove) Run(context *Context, client Doer) error {
 	appName := context.Args[0]
-	request, err := http.NewRequest("DELETE", fmt.Sprintf("http://tsuru.plataformas.glb.com:8080/apps/%s", appName), nil)
+	url := GetUrl(fmt.Sprintf("/apps/%s", appName))
+	request, err := http.NewRequest("DELETE", url, nil)
 	if err != nil {
 		return err
 	}

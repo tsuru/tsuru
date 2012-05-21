@@ -41,7 +41,7 @@ func (c *UserCreate) Info() *Info {
 func (c *UserCreate) Run(context *Context, client Doer) error {
 	email, password := context.Args[0], context.Args[1]
 	b := bytes.NewBufferString(`{"email":"` + email + `", "password":"` + password + `"}`)
-	request, err := http.NewRequest("POST", "http://tsuru.plataformas.glb.com:8080/users", b)
+	request, err := http.NewRequest("POST", GetUrl("/users"), b)
 	if err != nil {
 		return err
 	}
@@ -58,7 +58,7 @@ type Login struct{}
 func (c *Login) Run(context *Context, client Doer) error {
 	email, password := context.Args[0], context.Args[1]
 	b := bytes.NewBufferString(`{"password":"` + password + `"}`)
-	request, err := http.NewRequest("POST", "http://tsuru.plataformas.glb.com:8080/users/"+email+"/tokens", b)
+	request, err := http.NewRequest("POST", GetUrl("/users/"+email+"/tokens"), b)
 	if err != nil {
 		return err
 	}
@@ -131,7 +131,7 @@ func (c *RemoveKey) Run(context *Context, client Doer) error {
 		return nil
 	}
 	b := bytes.NewBufferString(fmt.Sprintf(`{"key":"%s"}`, strings.Replace(key, "\n", "", -1)))
-	request, err := http.NewRequest("DELETE", "http://tsuru.plataformas.glb.com:8080/users/keys", b)
+	request, err := http.NewRequest("DELETE", GetUrl("/users/keys"), b)
 	if err != nil {
 		return err
 	}
@@ -161,7 +161,7 @@ func (c *AddKeyCommand) Run(context *Context, client Doer) error {
 		return nil
 	}
 	b := bytes.NewBufferString(fmt.Sprintf(`{"key":"%s"}`, strings.Replace(key, "\n", "", -1)))
-	request, err := http.NewRequest("POST", "http://tsuru.plataformas.glb.com:8080/users/keys", b)
+	request, err := http.NewRequest("POST", GetUrl("/users/keys"), b)
 	if err != nil {
 		return err
 	}
@@ -227,7 +227,7 @@ func (c *TeamCreate) Info() *Info {
 func (c *TeamCreate) Run(context *Context, client Doer) error {
 	team := context.Args[0]
 	b := bytes.NewBufferString(fmt.Sprintf(`{"name":"%s"}`, team))
-	request, err := http.NewRequest("POST", "http://tsuru.plataformas.glb.com:8080/teams", b)
+	request, err := http.NewRequest("POST", GetUrl("/teams"), b)
 	if err != nil {
 		return err
 	}
@@ -247,7 +247,8 @@ func (c *TeamAddUser) Info() *Info {
 
 func (c *TeamAddUser) Run(context *Context, client Doer) error {
 	teamName, userName := context.Args[0], context.Args[1]
-	request, err := http.NewRequest("PUT", fmt.Sprintf("http://tsuru.plataformas.glb.com:8080/teams/%s/%s", teamName, userName), nil)
+	url := fmt.Sprintf("/teams/%s/%s", teamName, userName)
+	request, err := http.NewRequest("PUT", url, nil)
 	if err != nil {
 		return err
 	}
@@ -267,7 +268,8 @@ func (c *TeamRemoveUser) Info() *Info {
 
 func (c *TeamRemoveUser) Run(context *Context, client Doer) error {
 	teamName, userName := context.Args[0], context.Args[1]
-	request, err := http.NewRequest("DELETE", fmt.Sprintf("http://tsuru.plataformas.glb.com:8080/teams/%s/%s", teamName, userName), nil)
+	url := fmt.Sprintf("/teams/%s/%s", teamName, userName)
+	request, err := http.NewRequest("DELETE", url, nil)
 	if err != nil {
 		return err
 	}
