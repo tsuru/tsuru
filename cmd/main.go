@@ -16,6 +16,7 @@ func main() {
 	manager.Register(&cmd.App{})
 	manager.Register(&cmd.Key{})
 	manager.Register(&cmd.Team{})
+	manager.Register(&cmd.Target{})
 	//removing the command name from args
 	args := os.Args[1:]
 	manager.Run(args)

@@ -2,10 +2,31 @@ package cmd
 
 import (
 	"errors"
+	"io"
 	"io/ioutil"
 	"os"
 	"syscall"
 )
+
+type Target struct{}
+
+func (t *Target) Info() *Info {
+	return &Info{
+		Name:  "target",
+		Usage: "target <target>",
+		Desc:  "Defines the target (tsuru server)",
+	}
+}
+
+func (t *Target) Run(ctx *Context, client Doer) error {
+	target := ctx.Args[0]
+	err := WriteTarget(target)
+	if err != nil {
+		return err
+	}
+	io.WriteString(ctx.Stdout, "New target is "+target+"\n")
+	return nil
+}
 
 const DefaultTarget = "tsuru.plataformas.glb.com"
 
