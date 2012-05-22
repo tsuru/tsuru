@@ -15,7 +15,7 @@ type App struct{}
 func (c *App) Info() *Info {
 	return &Info{
 		Name:  "app",
-		Usage: "app (create|delete|list|add-team|remove-team) [args]",
+		Usage: "app (create|remove|list|add-team|remove-team) [args]",
 		Desc:  "manage your apps.",
 		Args:  1,
 	}
