@@ -69,8 +69,11 @@ func (c *UserCreate) Run(context *Context, client Doer) error {
 type Login struct{}
 
 func (c *Login) Run(context *Context, client Doer) error {
-	email, password := context.Args[0], context.Args[1]
+	email := context.Args[0]
+	io.WriteString(context.Stdout, "Password: ")
+	password := getPassword(os.Stdin.Fd())
 	b := bytes.NewBufferString(`{"password":"` + password + `"}`)
+	io.WriteString(context.Stdout, "\n")
 	request, err := http.NewRequest("POST", GetUrl("/users/"+email+"/tokens"), b)
 	if err != nil {
 		return err

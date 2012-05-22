@@ -29,8 +29,10 @@ func unpathStdin() {
 }
 
 func (s *S) TestLogin(c *C) {
-	expected := "Successfully logged!\n"
-	context := Context{[]string{"foo@foo.com", "bar123"}, manager.Stdout, manager.Stderr}
+	patchStdin(c, []byte("chico\n"))
+	defer unpathStdin()
+	expected := "Password: \nSuccessfully logged!\n"
+	context := Context{[]string{"foo@foo.com"}, manager.Stdout, manager.Stderr}
 	client := NewClient(&http.Client{Transport: &transport{msg: `{"token": "sometoken"}`, status: http.StatusOK}})
 	command := Login{}
 	err := command.Run(&context, client)
