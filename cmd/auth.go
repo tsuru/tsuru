@@ -9,6 +9,7 @@ import "C"
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -72,8 +73,13 @@ func (c *Login) Run(context *Context, client Doer) error {
 	email := context.Args[0]
 	io.WriteString(context.Stdout, "Password: ")
 	password := getPassword(os.Stdin.Fd())
-	b := bytes.NewBufferString(`{"password":"` + password + `"}`)
 	io.WriteString(context.Stdout, "\n")
+	if password == "" {
+		msg := "You must provide the password!\n"
+		io.WriteString(context.Stdout, msg)
+		return errors.New(msg)
+	}
+	b := bytes.NewBufferString(`{"password":"` + password + `"}`)
 	request, err := http.NewRequest("POST", GetUrl("/users/"+email+"/tokens"), b)
 	if err != nil {
 		return err

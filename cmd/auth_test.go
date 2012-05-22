@@ -43,6 +43,17 @@ func (s *S) TestLogin(c *C) {
 	c.Assert(token, Equals, "sometoken")
 }
 
+func (s *S) TestLoginShouldReturnErrorIfThePasswordIsNotGiven(c *C) {
+	patchStdin(c, []byte("\n"))
+	defer unpathStdin()
+	expected := "Password: \nYou must provide the password!\n"
+	context := Context{[]string{"foo@foo.com"}, manager.Stdout, manager.Stderr}
+	command := Login{}
+	err := command.Run(&context, nil)
+	c.Assert(err, NotNil)
+	c.Assert(manager.Stdout.(*bytes.Buffer).String(), Equals, expected)
+}
+
 func (s *S) TestAddKey(c *C) {
 	expected := "Key added with success!\n"
 	context := Context{[]string{}, manager.Stdout, manager.Stderr}
