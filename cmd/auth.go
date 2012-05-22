@@ -28,6 +28,18 @@ func getPassword(fd uintptr) string {
 	return C.GoString(cPasswd)
 }
 
+func readPassword(out io.Writer, password *string, ) error {
+	io.WriteString(out, "Password: ")
+	*password = getPassword(os.Stdin.Fd())
+	io.WriteString(out, "\n")
+	if *password == "" {
+		msg := "You must provide the password!\n"
+		io.WriteString(out, msg)
+		return errors.New(msg)
+	}
+	return nil
+}
+
 func (c *User) Info() *Info {
 	return &Info{
 		Name:  "user",
@@ -53,14 +65,11 @@ func (c *UserCreate) Info() *Info {
 }
 
 func (c *UserCreate) Run(context *Context, client Doer) error {
+	var password string
 	email := context.Args[0]
-	io.WriteString(context.Stdout, "Password: ")
-	password := getPassword(os.Stdin.Fd())
-	io.WriteString(context.Stdout, "\n")
-	if password == "" {
-		msg := "You must provide the password!\n"
-		io.WriteString(context.Stdout, msg)
-		return errors.New(msg)
+	err := readPassword(context.Stdout, &password)
+	if err != nil {
+		return err
 	}
 	b := bytes.NewBufferString(`{"email":"` + email + `", "password":"` + password + `"}`)
 	request, err := http.NewRequest("POST", GetUrl("/users"), b)
@@ -78,14 +87,11 @@ func (c *UserCreate) Run(context *Context, client Doer) error {
 type Login struct{}
 
 func (c *Login) Run(context *Context, client Doer) error {
+	var password string
 	email := context.Args[0]
-	io.WriteString(context.Stdout, "Password: ")
-	password := getPassword(os.Stdin.Fd())
-	io.WriteString(context.Stdout, "\n")
-	if password == "" {
-		msg := "You must provide the password!\n"
-		io.WriteString(context.Stdout, msg)
-		return errors.New(msg)
+	err := readPassword(context.Stdout, &password)
+	if err != nil {
+		return err
 	}
 	b := bytes.NewBufferString(`{"password":"` + password + `"}`)
 	request, err := http.NewRequest("POST", GetUrl("/users/"+email+"/tokens"), b)
