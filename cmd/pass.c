@@ -17,7 +17,9 @@ GetPassword(int fildes)
 	tmp.c_lflag &= ~ECHO;
 	tcsetattr(fildes, TCSANOW, &tmp);
 	n = read(fildes, passwd, LENPASSWD - 1);
-	write(fildes, "\n", 1);
+	if (write(fildes, "\n", 1) != 1) {
+		n = 0;
+	}
 	for (c = passwd[n - 1]; n > 0 && (c == '\n' || c == '\r'); n--, c = passwd[n - 1]);
 	passwd[n] = '\0';
 	tcsetattr(fildes, TCSANOW, &original);
