@@ -1,8 +1,13 @@
 package cmd
 
+//#include <stdlib.h>
+//#include "pass.h"
+import "C"
+
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -10,14 +15,33 @@ import (
 	"os"
 	"os/user"
 	"strings"
+	"unsafe"
 )
 
 type User struct{}
 
+func getPassword(fd uintptr) string {
+	cPasswd := C.GetPassword(C.int(fd))
+	defer C.free(unsafe.Pointer(cPasswd))
+	return C.GoString(cPasswd)
+}
+
+func readPassword(out io.Writer, password *string) error {
+	io.WriteString(out, "Password: ")
+	*password = getPassword(os.Stdin.Fd())
+	io.WriteString(out, "\n")
+	if *password == "" {
+		msg := "You must provide the password!\n"
+		io.WriteString(out, msg)
+		return errors.New(msg)
+	}
+	return nil
+}
+
 func (c *User) Info() *Info {
 	return &Info{
 		Name:  "user",
-		Usage: "glb user (create) [args]",
+		Usage: "user (create) [args]",
 		Desc:  "manage users.",
 		Args:  1,
 	}
@@ -34,16 +58,21 @@ type UserCreate struct{}
 func (c *UserCreate) Info() *Info {
 	return &Info{
 		Name:  "create",
-		Usage: "glb user create username password",
+		Usage: "user create username password",
 		Desc:  "creates user.",
-		Args:  2,
+		Args:  1,
 	}
 }
 
 func (c *UserCreate) Run(context *Context, client Doer) error {
-	email, password := context.Args[0], context.Args[1]
+	var password string
+	email := context.Args[0]
+	err := readPassword(context.Stdout, &password)
+	if err != nil {
+		return err
+	}
 	b := bytes.NewBufferString(`{"email":"` + email + `", "password":"` + password + `"}`)
-	request, err := http.NewRequest("POST", "http://tsuru.plataformas.glb.com:8080/users", b)
+	request, err := http.NewRequest("POST", GetUrl("/users"), b)
 	if err != nil {
 		return err
 	}
@@ -58,9 +87,14 @@ func (c *UserCreate) Run(context *Context, client Doer) error {
 type Login struct{}
 
 func (c *Login) Run(context *Context, client Doer) error {
-	email, password := context.Args[0], context.Args[1]
+	var password string
+	email := context.Args[0]
+	err := readPassword(context.Stdout, &password)
+	if err != nil {
+		return err
+	}
 	b := bytes.NewBufferString(`{"password":"` + password + `"}`)
-	request, err := http.NewRequest("POST", "http://tsuru.plataformas.glb.com:8080/users/"+email+"/tokens", b)
+	request, err := http.NewRequest("POST", GetUrl("/users/"+email+"/tokens"), b)
 	if err != nil {
 		return err
 	}
@@ -86,9 +120,9 @@ func (c *Login) Run(context *Context, client Doer) error {
 func (c *Login) Info() *Info {
 	return &Info{
 		Name:  "login",
-		Usage: "glb login email password",
+		Usage: "login email password",
 		Desc:  "log in with your credentials.",
-		Args:  2,
+		Args:  1,
 	}
 }
 
@@ -104,7 +138,7 @@ type Key struct{}
 func (c *Key) Info() *Info {
 	return &Info{
 		Name:  "key",
-		Usage: "glb key (add|remove)",
+		Usage: "key (add|remove)",
 		Desc:  "manage keys.",
 		Args:  1,
 	}
@@ -122,7 +156,7 @@ type RemoveKey struct{}
 func (c *RemoveKey) Info() *Info {
 	return &Info{
 		Name:  "remove",
-		Usage: "glb key remove",
+		Usage: "key remove",
 		Desc:  "remove your public key ($HOME/.id_rsa.pub).",
 	}
 }
@@ -135,7 +169,7 @@ func (c *RemoveKey) Run(context *Context, client Doer) error {
 		return nil
 	}
 	b := bytes.NewBufferString(fmt.Sprintf(`{"key":"%s"}`, strings.Replace(key, "\n", "", -1)))
-	request, err := http.NewRequest("DELETE", "http://tsuru.plataformas.glb.com:8080/users/keys", b)
+	request, err := http.NewRequest("DELETE", GetUrl("/users/keys"), b)
 	if err != nil {
 		return err
 	}
@@ -152,7 +186,7 @@ type AddKeyCommand struct{}
 func (c *AddKeyCommand) Info() *Info {
 	return &Info{
 		Name:  "add",
-		Usage: "glb key add",
+		Usage: "key add",
 		Desc:  "add your public key ($HOME/.id_rsa.pub).",
 	}
 }
@@ -165,7 +199,7 @@ func (c *AddKeyCommand) Run(context *Context, client Doer) error {
 		return nil
 	}
 	b := bytes.NewBufferString(fmt.Sprintf(`{"key":"%s"}`, strings.Replace(key, "\n", "", -1)))
-	request, err := http.NewRequest("POST", "http://tsuru.plataformas.glb.com:8080/users/keys", b)
+	request, err := http.NewRequest("POST", GetUrl("/users/keys"), b)
 	if err != nil {
 		return err
 	}
@@ -182,7 +216,7 @@ type Logout struct{}
 func (c *Logout) Info() *Info {
 	return &Info{
 		Name:  "logout",
-		Usage: "glb logout",
+		Usage: "logout",
 		Desc:  "clear local authentication credentials.",
 	}
 }
@@ -209,7 +243,7 @@ func (c *Team) Subcommands() map[string]interface{} {
 func (c *Team) Info() *Info {
 	return &Info{
 		Name:  "team",
-		Usage: "glb team (create|add-user|remove-user) [args]",
+		Usage: "team (create|add-user|remove-user) [args]",
 		Desc:  "manage teams.",
 		Args:  1,
 	}
@@ -224,7 +258,7 @@ type TeamCreate struct{}
 func (c *TeamCreate) Info() *Info {
 	return &Info{
 		Name:  "create",
-		Usage: "glb team create teamname",
+		Usage: "team create teamname",
 		Desc:  "creates teams.",
 		Args:  1,
 	}
@@ -233,7 +267,7 @@ func (c *TeamCreate) Info() *Info {
 func (c *TeamCreate) Run(context *Context, client Doer) error {
 	team := context.Args[0]
 	b := bytes.NewBufferString(fmt.Sprintf(`{"name":"%s"}`, team))
-	request, err := http.NewRequest("POST", "http://tsuru.plataformas.glb.com:8080/teams", b)
+	request, err := http.NewRequest("POST", GetUrl("/teams"), b)
 	if err != nil {
 		return err
 	}
@@ -258,7 +292,8 @@ func (c *TeamAddUser) Info() *Info {
 
 func (c *TeamAddUser) Run(context *Context, client Doer) error {
 	teamName, userName := context.Args[0], context.Args[1]
-	request, err := http.NewRequest("PUT", fmt.Sprintf("http://tsuru.plataformas.glb.com:8080/teams/%s/%s", teamName, userName), nil)
+	url := fmt.Sprintf("/teams/%s/%s", teamName, userName)
+	request, err := http.NewRequest("PUT", url, nil)
 	if err != nil {
 		return err
 	}
@@ -283,7 +318,8 @@ func (c *TeamRemoveUser) Info() *Info {
 
 func (c *TeamRemoveUser) Run(context *Context, client Doer) error {
 	teamName, userName := context.Args[0], context.Args[1]
-	request, err := http.NewRequest("DELETE", fmt.Sprintf("http://tsuru.plataformas.glb.com:8080/teams/%s/%s", teamName, userName), nil)
+	url := fmt.Sprintf("/teams/%s/%s", teamName, userName)
+	request, err := http.NewRequest("DELETE", url, nil)
 	if err != nil {
 		return err
 	}

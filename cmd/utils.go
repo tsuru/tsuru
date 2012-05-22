@@ -4,11 +4,24 @@ import (
 	"io/ioutil"
 	"os"
 	"os/user"
+	"path"
 )
 
-func WriteToken(token string) error {
+func joinWithUserDir(p ...string) (string, error) {
 	user, err := user.Current()
-	tokenPath := user.HomeDir + "/.tsuru_token"
+	if err != nil {
+		return "", err
+	}
+	paths := []string{user.HomeDir}
+	paths = append(paths, p...)
+	return path.Join(paths...), nil
+}
+
+func WriteToken(token string) error {
+	tokenPath, err := joinWithUserDir(".tsuru_token")
+	if err != nil {
+		return err
+	}
 	file, err := os.Create(tokenPath)
 	if err != nil {
 		return err
@@ -21,11 +34,10 @@ func WriteToken(token string) error {
 }
 
 func ReadToken() (string, error) {
-	user, err := user.Current()
+	tokenPath, err := joinWithUserDir(".tsuru_token")
 	if err != nil {
 		return "", err
 	}
-	tokenPath := user.HomeDir + "/.tsuru_token"
 	token, err := ioutil.ReadFile(tokenPath)
 	if err != nil {
 		return "", err

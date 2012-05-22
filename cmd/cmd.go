@@ -4,9 +4,11 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 )
 
 type Manager struct {
+	name     string
 	commands map[string]interface{}
 	Stdout   io.Writer
 	Stderr   io.Writer
@@ -72,8 +74,8 @@ func getSubcommand(cmd interface{}, cmds []string) interface{} {
 	return cmd
 }
 
-func NewManager(stdout, stderr io.Writer) Manager {
-	m := Manager{Stdout: stdout, Stderr: stderr}
+func NewManager(name string, stdout, stderr io.Writer) Manager {
+	m := Manager{name: name, Stdout: stdout, Stderr: stderr}
 	m.Register(&Help{manager: &m})
 	return m
 }
@@ -111,7 +113,7 @@ type Help struct {
 func (c *Help) Info() *Info {
 	return &Info{
 		Name:  "help",
-		Usage: "glb command [args]",
+		Usage: "command [args]",
 	}
 }
 
@@ -121,11 +123,16 @@ func (c *Help) Run(context *Context, client Doer) error {
 		cmd := c.manager.commands[context.Args[0]]
 		cmd = getSubcommand(cmd, context.Args)
 		info := cmd.(Infoer).Info()
-		output = output + fmt.Sprintf("Usage: %s\n", info.Usage)
+		output = output + fmt.Sprintf("Usage: %s %s\n", c.manager.name, info.Usage)
 		output = output + fmt.Sprintf("\n%s\n", info.Desc)
 	} else {
-		output = output + fmt.Sprintf("Usage: %s\n", c.Info().Usage)
+		output = output + fmt.Sprintf("Usage: %s %s\n", c.manager.name, c.Info().Usage)
 	}
 	io.WriteString(context.Stdout, output)
 	return nil
+}
+
+func ExtractProgramName(path string) string {
+	parts := strings.Split(path, "/")
+	return parts[len(parts)-1]
 }

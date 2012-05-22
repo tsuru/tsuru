@@ -15,7 +15,7 @@ type App struct{}
 func (c *App) Info() *Info {
 	return &Info{
 		Name:  "app",
-		Usage: "glb app (create|delete|list|add-team|remove-team) [args]",
+		Usage: "app (create|delete|list|add-team|remove-team) [args]",
 		Desc:  "manage your apps.",
 		Args:  1,
 	}
@@ -36,7 +36,7 @@ type AppAddTeam struct{}
 func (c *AppAddTeam) Info() *Info {
 	return &Info{
 		Name:  "add-team",
-		Usage: "glb app add-team appname teamname",
+		Usage: "app add-team appname teamname",
 		Desc:  "adds team to app.",
 		Args:  2,
 	}
@@ -44,7 +44,8 @@ func (c *AppAddTeam) Info() *Info {
 
 func (c *AppAddTeam) Run(context *Context, client Doer) error {
 	appName, teamName := context.Args[0], context.Args[1]
-	request, err := http.NewRequest("PUT", fmt.Sprintf("http://tsuru.plataformas.glb.com:8080/apps/%s/%s", appName, teamName), nil)
+	url := GetUrl(fmt.Sprintf("/apps/%s/%s", appName, teamName))
+	request, err := http.NewRequest("PUT", url, nil)
 	if err != nil {
 		return err
 	}
@@ -61,7 +62,7 @@ type AppRemoveTeam struct{}
 func (c *AppRemoveTeam) Info() *Info {
 	return &Info{
 		Name:  "remove-team",
-		Usage: "glb app remove-team appname teamname",
+		Usage: "app remove-team appname teamname",
 		Desc:  "removes team from app.",
 		Args:  2,
 	}
@@ -69,7 +70,8 @@ func (c *AppRemoveTeam) Info() *Info {
 
 func (c *AppRemoveTeam) Run(context *Context, client Doer) error {
 	appName, teamName := context.Args[0], context.Args[1]
-	request, err := http.NewRequest("DELETE", fmt.Sprintf("http://tsuru.plataformas.glb.com:8080/apps/%s/%s", appName, teamName), nil)
+	url := fmt.Sprintf("/apps/%s/%s", appName, teamName)
+	request, err := http.NewRequest("DELETE", url, nil)
 	if err != nil {
 		return err
 	}
@@ -84,7 +86,7 @@ func (c *AppRemoveTeam) Run(context *Context, client Doer) error {
 type AppList struct{}
 
 func (c *AppList) Run(context *Context, client Doer) error {
-	request, err := http.NewRequest("GET", "http://tsuru.plataformas.glb.com:8080/apps", nil)
+	request, err := http.NewRequest("GET", GetUrl("/apps"), nil)
 	if err != nil {
 		return err
 	}
@@ -121,7 +123,7 @@ func (c *AppList) Show(result []byte, context *Context) error {
 func (c *AppList) Info() *Info {
 	return &Info{
 		Name:  "list",
-		Usage: "glb app list",
+		Usage: "app list",
 		Desc:  "list your apps.",
 	}
 }
@@ -131,7 +133,7 @@ type AppCreate struct{}
 func (c *AppCreate) Run(context *Context, client Doer) error {
 	appName := context.Args[0]
 	b := bytes.NewBufferString(fmt.Sprintf(`{"name":"%s", "framework":"django"}`, appName))
-	request, err := http.NewRequest("POST", "http://tsuru.plataformas.glb.com:8080/apps", b)
+	request, err := http.NewRequest("POST", GetUrl("/apps"), b)
 	request.Header.Set("Content-Type", "application/json")
 	if err != nil {
 		return err
@@ -158,7 +160,7 @@ func (c *AppCreate) Run(context *Context, client Doer) error {
 func (c *AppCreate) Info() *Info {
 	return &Info{
 		Name:  "create",
-		Usage: "glb app create appname",
+		Usage: "app create appname",
 		Desc:  "create a new app.",
 		Args:  1,
 	}
@@ -169,7 +171,7 @@ type AppRemove struct{}
 func (c *AppRemove) Info() *Info {
 	return &Info{
 		Name:  "remove",
-		Usage: "glb app remove appname",
+		Usage: "app remove appname",
 		Desc:  "remove your app.",
 		Args:  1,
 	}
@@ -177,7 +179,8 @@ func (c *AppRemove) Info() *Info {
 
 func (c *AppRemove) Run(context *Context, client Doer) error {
 	appName := context.Args[0]
-	request, err := http.NewRequest("DELETE", fmt.Sprintf("http://tsuru.plataformas.glb.com:8080/apps/%s", appName), nil)
+	url := GetUrl(fmt.Sprintf("/apps/%s", appName))
+	request, err := http.NewRequest("DELETE", url, nil)
 	if err != nil {
 		return err
 	}

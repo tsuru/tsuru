@@ -14,3 +14,9 @@ func (s *S) TestGetRepositoryUrl(c *C) {
 	expected := "git@tsuru.plataformas.glb.com:foobar.git"
 	c.Assert(url, Equals, expected)
 }
+
+func (s *S) TestGetReadOnlyUrl(c *C) {
+	url := GetReadOnlyUrl("foobar")
+	expected := "git://tsuru.plataformas.glb.com/foobar.git"
+	c.Assert(url, Equals, expected)
+}
