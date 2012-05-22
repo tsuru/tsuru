@@ -1,8 +1,6 @@
 package cmd
 
-//#include <stdio.h>
 //#include <stdlib.h>
-//#include <unistd.h>
 //#include "pass.h"
 import "C"
 
