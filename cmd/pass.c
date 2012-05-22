@@ -1,6 +1,6 @@
-#include <stdio.h>
 #include <stdlib.h>
 #include <termios.h>
+#include <unistd.h>
 #define LENPASSWD 30
 
 static struct termios original;
