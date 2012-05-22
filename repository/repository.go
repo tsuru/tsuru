@@ -10,7 +10,7 @@ const gitServer = "tsuru.plataformas.glb.com"
 
 func Clone(app string, machine int) (err error) {
 	u := unit.Unit{Name: app, Machine: machine}
-	cmd := fmt.Sprintf(`"git clone %s /home/application/%s"`, GetReadOnlyUrl(app), app)
+	cmd := fmt.Sprintf("git clone %s /home/application/%s", GetReadOnlyUrl(app), app)
 	output, err := u.Command(cmd)
 	log.Printf("Command output: " + string(output))
 	if err != nil {
