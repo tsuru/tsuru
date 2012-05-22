@@ -3,6 +3,7 @@ package repository
 import (
 	"fmt"
 	"github.com/timeredbull/tsuru/api/unit"
+	"github.com/timeredbull/tsuru/log"
 )
 
 const gitServer = "tsuru.plataformas.glb.com"
@@ -10,7 +11,8 @@ const gitServer = "tsuru.plataformas.glb.com"
 func Clone(app string, machine int) (err error) {
 	u := unit.Unit{Name: app, Machine: machine}
 	cmd := fmt.Sprintf(`"git clone %s /home/application/%s"`, GetReadOnlyUrl(app), app)
-	_, err = u.Command(cmd)
+	output, err := u.Command(cmd)
+	log.Printf("Command output: " + string(output))
 	if err != nil {
 		return
 	}
