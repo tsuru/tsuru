@@ -14,7 +14,7 @@ func (s *S) TestAppList(c *C) {
 | app1        |       |    |
 +-------------+-------+----+
 `
-	context := Context{[]string{}, manager.Stdout, manager.Stderr}
+	context := Context{[]string{}, []string{}, manager.Stdout, manager.Stderr}
 	client := NewClient(&http.Client{Transport: &transport{msg: result, status: http.StatusOK}})
 	command := AppList{}
 	err := command.Run(&context, client)
@@ -26,7 +26,7 @@ func (s *S) TestAppCreate(c *C) {
 	result := `{"status":"success", "repository_url":"git@tsuru.plataformas.glb.com:ble.git"}`
 	expected := `App "ble" created with success!
 Your repository for "ble" project is "git@tsuru.plataformas.glb.com:ble.git"` + "\n"
-	context := Context{[]string{"ble", "django"}, manager.Stdout, manager.Stderr}
+	context := Context{[]string{}, []string{"ble", "django"}, manager.Stdout, manager.Stderr}
 	client := NewClient(&http.Client{Transport: &transport{msg: result, status: http.StatusOK}})
 	command := AppCreate{}
 	err := command.Run(&context, client)
@@ -36,7 +36,7 @@ Your repository for "ble" project is "git@tsuru.plataformas.glb.com:ble.git"` + 
 
 func (s *S) TestAppRemove(c *C) {
 	expected := `App "ble" removed with success!` + "\n"
-	context := Context{[]string{"ble"}, manager.Stdout, manager.Stderr}
+	context := Context{[]string{}, []string{"ble"}, manager.Stdout, manager.Stderr}
 	client := NewClient(&http.Client{Transport: &transport{msg: "", status: http.StatusOK}})
 	command := AppRemove{}
 	err := command.Run(&context, client)
@@ -46,7 +46,7 @@ func (s *S) TestAppRemove(c *C) {
 
 func (s *S) TestAppAddTeam(c *C) {
 	expected := `Team "cobrateam" was added to the "games" app` + "\n"
-	context := Context{[]string{"games", "cobrateam"}, manager.Stdout, manager.Stderr}
+	context := Context{[]string{}, []string{"games", "cobrateam"}, manager.Stdout, manager.Stderr}
 	command := AppAddTeam{}
 	client := NewClient(&http.Client{Transport: &transport{msg: "", status: http.StatusOK}})
 	err := command.Run(&context, client)
@@ -56,7 +56,7 @@ func (s *S) TestAppAddTeam(c *C) {
 
 func (s *S) TestAppRemoveTeam(c *C) {
 	expected := `Team "cobrateam" was removed from the "games" app` + "\n"
-	context := Context{[]string{"games", "cobrateam"}, manager.Stdout, manager.Stderr}
+	context := Context{[]string{}, []string{"games", "cobrateam"}, manager.Stdout, manager.Stderr}
 	command := AppRemoveTeam{}
 	client := NewClient(&http.Client{Transport: &transport{msg: "", status: http.StatusOK}})
 	err := command.Run(&context, client)

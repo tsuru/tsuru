@@ -89,7 +89,7 @@ type TicCmd struct {
 }
 
 func (c *TicCmd) Info() *Info {
-	return &Info{Name: "tic"}
+	return &Info{Name: "tic", Args: 1}
 }
 
 func (c *TicCmd) Subcommands() map[string]interface{} {
@@ -113,7 +113,7 @@ type RecordCmd struct {
 }
 
 func (c *RecordCmd) Info() *Info {
-	return &Info{Name: "record"}
+	return &Info{Name: "record", Args: 2}
 }
 
 func (c *RecordCmd) Run(context *Context, client Doer) error {
@@ -138,7 +138,7 @@ func (s *S) TestSubcommandWithArgs(c *C) {
 func (s *S) TestHelp(c *C) {
 	expected := `Usage: glb command [args]
 `
-	context := Context{[]string{}, manager.Stdout, manager.Stderr}
+	context := Context{[]string{}, []string{}, manager.Stdout, manager.Stderr}
 	command := Help{}
 	err := command.Run(&context, nil)
 	c.Assert(err, IsNil)
@@ -165,11 +165,7 @@ func (s *S) TestHelpShouldReturnsHelpForACmd(c *C) {
 Foo do anything or nothing.
 `
 	manager.Register(&TestCommand{})
-
-	context := Context{[]string{"foo"}, manager.Stdout, manager.Stderr}
-	command := Help{manager: &manager}
-	err := command.Run(&context, nil)
-	c.Assert(err, IsNil)
+	manager.Run([]string{"help", "foo"})
 	c.Assert(manager.Stdout.(*bytes.Buffer).String(), Equals, expected)
 }
 
@@ -179,10 +175,69 @@ func (s *S) TestHelpShouldReturnsHelpForASubCmd(c *C) {
 Ble do anything or nothing.
 `
 	manager.Register(&TestCommand{})
-
-	context := Context{[]string{"foo", "ble"}, manager.Stdout, manager.Stderr}
-	command := Help{manager: &manager}
-	err := command.Run(&context, nil)
-	c.Assert(err, IsNil)
+	manager.Run([]string{"help", "foo", "ble"})
 	c.Assert(manager.Stdout.(*bytes.Buffer).String(), Equals, expected)
+}
+
+type ArgCmd struct{}
+
+func (c *ArgCmd) Info() *Info {
+	return &Info{
+		Name:  "arg",
+		Args:  1,
+		Usage: "glb arg [args]",
+		Desc:  "some desc",
+	}
+}
+
+func (c *ArgCmd) Subcommands() map[string]interface{} {
+	return map[string]interface{}{
+		"subargs": &ArgSubCmd{},
+	}
+}
+
+type ArgSubCmd struct{}
+
+func (c *ArgSubCmd) Info() *Info {
+	return &Info{
+		Name:  "subargs",
+		Args:  2,
+		Usage: "glb arg subargs [args]",
+		Desc:  "some subarg desc",
+	}
+}
+
+func (s *S) TestRunWrongArgsNumberShouldRunsHelp(c *C) {
+	expected := `Usage: glb arg [args]
+
+some desc
+`
+	manager.Register(&ArgCmd{})
+	manager.Run([]string{"arg"})
+	c.Assert(manager.Stdout.(*bytes.Buffer).String(), Equals, expected)
+}
+
+func (s *S) TestRunWrongArgsNumberShouldRunsHelpForSubCmd(c *C) {
+	expected := `Usage: glb arg subargs [args]
+
+some subarg desc
+`
+	manager.Register(&ArgCmd{})
+	manager.Run([]string{"arg", "subargs"})
+	c.Assert(manager.Stdout.(*bytes.Buffer).String(), Equals, expected)
+}
+
+func (s *S) TestExtractCommandFromArgs(c *C) {
+	manager.Register(&ArgCmd{})
+	c.Assert(manager.extractCommandFromArgs([]string{"arg", "ble"}), DeepEquals, []string{"arg"})
+}
+
+func (s *S) TestExtractCommandFromArgsForSubCmd(c *C) {
+	manager.Register(&ArgCmd{})
+	c.Assert(manager.extractCommandFromArgs([]string{"arg", "subargs", "xpto", "ble"}), DeepEquals, []string{"arg", "subargs"})
+}
+
+func (s *S) TestExtractCommandFromArgsWithoutArgs(c *C) {
+	manager.Register(&ArgCmd{})
+	c.Assert(manager.extractCommandFromArgs([]string{}), DeepEquals, []string{})
 }

@@ -17,6 +17,7 @@ func (c *App) Info() *Info {
 		Name:  "app",
 		Usage: "glb app (create|delete|list|add-team|remove-team) [args]",
 		Desc:  "manage your apps.",
+		Args:  1,
 	}
 }
 
@@ -37,6 +38,7 @@ func (c *AppAddTeam) Info() *Info {
 		Name:  "add-team",
 		Usage: "glb app add-team appname teamname",
 		Desc:  "adds team to app.",
+		Args:  2,
 	}
 }
 
@@ -61,6 +63,7 @@ func (c *AppRemoveTeam) Info() *Info {
 		Name:  "remove-team",
 		Usage: "glb app remove-team appname teamname",
 		Desc:  "removes team from app.",
+		Args:  2,
 	}
 }
 
@@ -157,6 +160,7 @@ func (c *AppCreate) Info() *Info {
 		Name:  "create",
 		Usage: "glb app create appname",
 		Desc:  "create a new app.",
+		Args:  1,
 	}
 }
 
@@ -167,6 +171,7 @@ func (c *AppRemove) Info() *Info {
 		Name:  "remove",
 		Usage: "glb app remove appname",
 		Desc:  "remove your app.",
+		Args:  1,
 	}
 }
 

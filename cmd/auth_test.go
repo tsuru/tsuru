@@ -8,7 +8,7 @@ import (
 
 func (s *S) TestLogin(c *C) {
 	expected := "Successfully logged!\n"
-	context := Context{[]string{"foo@foo.com", "bar123"}, manager.Stdout, manager.Stderr}
+	context := Context{[]string{}, []string{"foo@foo.com", "bar123"}, manager.Stdout, manager.Stderr}
 	client := NewClient(&http.Client{Transport: &transport{msg: `{"token": "sometoken"}`, status: http.StatusOK}})
 	command := Login{}
 	err := command.Run(&context, client)
@@ -21,7 +21,7 @@ func (s *S) TestLogin(c *C) {
 
 func (s *S) TestAddKey(c *C) {
 	expected := "Key added with success!\n"
-	context := Context{[]string{}, manager.Stdout, manager.Stderr}
+	context := Context{[]string{}, []string{}, manager.Stdout, manager.Stderr}
 	client := NewClient(&http.Client{Transport: &transport{msg: "", status: http.StatusOK}})
 	command := AddKeyCommand{}
 	err := command.Run(&context, client)
@@ -31,7 +31,7 @@ func (s *S) TestAddKey(c *C) {
 
 func (s *S) TestRemoveKey(c *C) {
 	expected := "Key removed with success!\n"
-	context := Context{[]string{}, manager.Stdout, manager.Stderr}
+	context := Context{[]string{}, []string{}, manager.Stdout, manager.Stderr}
 	client := NewClient(&http.Client{Transport: &transport{msg: "", status: http.StatusOK}})
 	command := RemoveKey{}
 	err := command.Run(&context, client)
@@ -50,7 +50,7 @@ func (s *S) TestKey(c *C) {
 
 func (s *S) TestLogout(c *C) {
 	expected := "Successfully logout!\n"
-	context := Context{[]string{}, manager.Stdout, manager.Stderr}
+	context := Context{[]string{}, []string{}, manager.Stdout, manager.Stderr}
 	command := Logout{}
 	err := command.Run(&context, nil)
 	c.Assert(err, IsNil)
@@ -72,7 +72,7 @@ func (s *S) TestTeam(c *C) {
 
 func (s *S) TestTeamAddUser(c *C) {
 	expected := `User "andorito" was added to the "cobrateam" team` + "\n"
-	context := Context{[]string{"cobrateam", "andorito"}, manager.Stdout, manager.Stderr}
+	context := Context{[]string{}, []string{"cobrateam", "andorito"}, manager.Stdout, manager.Stderr}
 	command := TeamAddUser{}
 	client := NewClient(&http.Client{Transport: &transport{msg: "", status: http.StatusOK}})
 	err := command.Run(&context, client)
@@ -82,7 +82,7 @@ func (s *S) TestTeamAddUser(c *C) {
 
 func (s *S) TestTeamRemoveUser(c *C) {
 	expected := `User "andorito" was removed from the "cobrateam" team` + "\n"
-	context := Context{[]string{"cobrateam", "andorito"}, manager.Stdout, manager.Stderr}
+	context := Context{[]string{}, []string{"cobrateam", "andorito"}, manager.Stdout, manager.Stderr}
 	command := TeamRemoveUser{}
 	client := NewClient(&http.Client{Transport: &transport{msg: "", status: http.StatusOK}})
 	err := command.Run(&context, client)
@@ -92,7 +92,7 @@ func (s *S) TestTeamRemoveUser(c *C) {
 
 func (s *S) TestTeamCreate(c *C) {
 	expected := `Team "core" created with success!` + "\n"
-	context := Context{[]string{"core"}, manager.Stdout, manager.Stderr}
+	context := Context{[]string{}, []string{"core"}, manager.Stdout, manager.Stderr}
 	client := NewClient(&http.Client{Transport: &transport{msg: "", status: http.StatusCreated}})
 	command := TeamCreate{}
 	err := command.Run(&context, client)
@@ -110,7 +110,7 @@ func (s *S) TestUser(c *C) {
 
 func (s *S) TestUserCreate(c *C) {
 	expected := `User "foo@foo.com" created with success!` + "\n"
-	context := Context{[]string{"foo@foo.com", "bar123"}, manager.Stdout, manager.Stderr}
+	context := Context{[]string{}, []string{"foo@foo.com", "bar123"}, manager.Stdout, manager.Stderr}
 	client := NewClient(&http.Client{Transport: &transport{msg: "", status: http.StatusCreated}})
 	command := UserCreate{}
 	err := command.Run(&context, client)

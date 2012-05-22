@@ -19,6 +19,7 @@ func (c *User) Info() *Info {
 		Name:  "user",
 		Usage: "glb user (create) [args]",
 		Desc:  "manage users.",
+		Args:  1,
 	}
 }
 
@@ -35,6 +36,7 @@ func (c *UserCreate) Info() *Info {
 		Name:  "create",
 		Usage: "glb user create username password",
 		Desc:  "creates user.",
+		Args:  2,
 	}
 }
 
@@ -86,6 +88,7 @@ func (c *Login) Info() *Info {
 		Name:  "login",
 		Usage: "glb login email password",
 		Desc:  "log in with your credentials.",
+		Args:  2,
 	}
 }
 
@@ -103,6 +106,7 @@ func (c *Key) Info() *Info {
 		Name:  "key",
 		Usage: "glb key (add|remove)",
 		Desc:  "manage keys.",
+		Args:  1,
 	}
 }
 
@@ -207,6 +211,7 @@ func (c *Team) Info() *Info {
 		Name:  "team",
 		Usage: "glb team (create|add-user|remove-user) [args]",
 		Desc:  "manage teams.",
+		Args:  1,
 	}
 }
 
@@ -221,6 +226,7 @@ func (c *TeamCreate) Info() *Info {
 		Name:  "create",
 		Usage: "glb team create teamname",
 		Desc:  "creates teams.",
+		Args:  1,
 	}
 }
 
@@ -242,7 +248,12 @@ func (c *TeamCreate) Run(context *Context, client Doer) error {
 type TeamAddUser struct{}
 
 func (c *TeamAddUser) Info() *Info {
-	return &Info{Name: "add-user"}
+	return &Info{
+		Name:  "add-user",
+		Usage: "glb team add-user teamname username",
+		Desc:  "adds user to a team",
+		Args:  2,
+	}
 }
 
 func (c *TeamAddUser) Run(context *Context, client Doer) error {
@@ -262,7 +273,12 @@ func (c *TeamAddUser) Run(context *Context, client Doer) error {
 type TeamRemoveUser struct{}
 
 func (c *TeamRemoveUser) Info() *Info {
-	return &Info{Name: "remove-user"}
+	return &Info{
+		Name:  "remove-user",
+		Usage: "glb team remove-user teamname username",
+		Desc:  "removes user from a team",
+		Args:  2,
+	}
 }
 
 func (c *TeamRemoveUser) Run(context *Context, client Doer) error {

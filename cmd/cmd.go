@@ -28,25 +28,44 @@ func (m *Manager) Run(args []string) {
 	if len(args) == 0 {
 		args = []string{"help"}
 	}
-	command, exist := m.commands[args[0]]
-	if !exist {
+	cmds := m.extractCommandFromArgs(args)
+	if len(cmds) <= 0 {
 		io.WriteString(m.Stderr, fmt.Sprintf("command %s does not exist\n", args[0]))
 		return
 	}
-	command = getSubcommand(command, &args).(Command)
-	err := command.(Command).Run(&Context{args[1:], m.Stdout, m.Stderr}, NewClient(&http.Client{}))
+	args = args[len(cmds):]
+	command := m.commands[cmds[0]]
+	command = getSubcommand(command, cmds)
+	if len(args) != command.(Infoer).Info().Args && cmds[0] != "help" {
+		command = m.commands["help"]
+		args = cmds
+		cmds = []string{"help"}
+	}
+	err := command.(Command).Run(&Context{cmds, args, m.Stdout, m.Stderr}, NewClient(&http.Client{}))
 	if err != nil {
 		io.WriteString(m.Stderr, err.Error())
 	}
 }
 
-func getSubcommand(cmd interface{}, args *[]string) interface{} {
-	if c, ok := cmd.(CommandContainer); ok {
-		if len(*args) > 1 {
-			*args = (*args)[1:]
+func (m *Manager) extractCommandFromArgs(args []string) []string {
+	cmds := []string{}
+	if len(args) <= 0 {
+		return cmds
+	}
+	if cmd, exists := m.commands[args[0]]; exists {
+		cmds = append(cmds, args[0])
+		if container, ok := cmd.(CommandContainer); ok && len(args) >= 2 {
+			if _, exists = container.Subcommands()[args[1]]; exists {
+				cmds = append(cmds, args[1])
+			}
 		}
-		subcommand, exist := c.Subcommands()[(*args)[0]]
-		if exist {
+	}
+	return cmds
+}
+
+func getSubcommand(cmd interface{}, cmds []string) interface{} {
+	if c, ok := cmd.(CommandContainer); ok && len(cmds) == 2 {
+		if subcommand, exist := c.Subcommands()[cmds[1]]; exist {
 			cmd = subcommand
 		}
 	}
@@ -72,16 +91,17 @@ type Command interface {
 }
 
 type Context struct {
+	Cmds   []string
 	Args   []string
 	Stdout io.Writer
 	Stderr io.Writer
 }
 
 type Info struct {
-	Name    string
-	MinArgs int
-	Usage   string
-	Desc    string
+	Name  string
+	Args  int
+	Usage string
+	Desc  string
 }
 
 type Help struct {
@@ -99,7 +119,7 @@ func (c *Help) Run(context *Context, client Doer) error {
 	output := ""
 	if len(context.Args) > 0 {
 		cmd := c.manager.commands[context.Args[0]]
-		cmd = getSubcommand(cmd, &context.Args)
+		cmd = getSubcommand(cmd, context.Args)
 		info := cmd.(Infoer).Info()
 		output = output + fmt.Sprintf("Usage: %s\n", info.Usage)
 		output = output + fmt.Sprintf("\n%s\n", info.Desc)
