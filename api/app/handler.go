@@ -44,6 +44,11 @@ func CloneRepositoryHandler(w http.ResponseWriter, r *http.Request) error {
 	return nil
 }
 
+func UpdateRepositoryHandler(w http.ResponseWriter, r *http.Request) error {
+	fmt.Fprint(w, "success")
+	return nil
+}
+
 func AppDelete(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	app, err := getAppOrError(r.URL.Query().Get(":name"), u)
 	if err != nil {

@@ -42,6 +42,15 @@ func (s *S) TestCloneRepositoryShouldReturnNotFoundIfTheAppDoesNotExist(c *C) {
 	c.Assert(e, ErrorMatches, "^App not found$")
 }
 
+func (s *S) TestUpdateRepositoryHandler(c *C) {
+	request, err := http.NewRequest("GET", "/apps/someapp/clone?:name=someapp", nil)
+	c.Assert(err, IsNil)
+	recorder := httptest.NewRecorder()
+	err = UpdateRepositoryHandler(recorder, request)
+	c.Assert(err, IsNil)
+	c.Assert(recorder.Code, Equals, 200)
+}
+
 func (s *S) TestAppList(c *C) {
 	apps := []App{}
 	expected := []App{}
