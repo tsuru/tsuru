@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/timeredbull/tsuru/log"
 	"os/exec"
+	"strconv"
 )
 
 type Unit struct {
@@ -37,7 +38,7 @@ func (u *Unit) RemoveRelation(su *Unit) error {
 }
 
 func (u *Unit) Command(command string) ([]byte, error) {
-	cmd := exec.Command("juju", "ssh", "-o", "StrictHostKeyChecking no", string(u.Machine), command)
+	cmd := exec.Command("juju", "ssh", "-o", "StrictHostKeyChecking no", strconv.Itoa(u.Machine), command)
 	log.Printf("executing %s on %s", command, u.Name)
 	return cmd.CombinedOutput()
 }
