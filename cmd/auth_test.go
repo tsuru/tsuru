@@ -144,12 +144,25 @@ func (s *S) TestUser(c *C) {
 }
 
 func (s *S) TestUserCreate(c *C) {
-	expected := `User "foo@foo.com" created with success!` + "\n"
-	context := Context{[]string{"foo@foo.com", "bar123"}, manager.Stdout, manager.Stderr}
+	patchStdin(c, []byte("bar123\n"))
+	defer unpathStdin()
+	expected := "Password: \n" + `User "foo@foo.com" created with success!` + "\n"
+	context := Context{[]string{"foo@foo.com"}, manager.Stdout, manager.Stderr}
 	client := NewClient(&http.Client{Transport: &transport{msg: "", status: http.StatusCreated}})
 	command := UserCreate{}
 	err := command.Run(&context, client)
 	c.Assert(err, IsNil)
+	c.Assert(manager.Stdout.(*bytes.Buffer).String(), Equals, expected)
+}
+
+func (s *S) TestUserCreateShouldReturnErrorIfThePasswordIsNotGiven(c *C) {
+	patchStdin(c, []byte("\n"))
+	defer unpathStdin()
+	expected := "Password: \nYou must provide the password!\n"
+	context := Context{[]string{"foo@foo.com"}, manager.Stdout, manager.Stderr}
+	command := UserCreate{}
+	err := command.Run(&context, nil)
+	c.Assert(err, NotNil)
 	c.Assert(manager.Stdout.(*bytes.Buffer).String(), Equals, expected)
 }
 

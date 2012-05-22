@@ -53,7 +53,15 @@ func (c *UserCreate) Info() *Info {
 }
 
 func (c *UserCreate) Run(context *Context, client Doer) error {
-	email, password := context.Args[0], context.Args[1]
+	email := context.Args[0]
+	io.WriteString(context.Stdout, "Password: ")
+	password := getPassword(os.Stdin.Fd())
+	io.WriteString(context.Stdout, "\n")
+	if password == "" {
+		msg := "You must provide the password!\n"
+		io.WriteString(context.Stdout, msg)
+		return errors.New(msg)
+	}
 	b := bytes.NewBufferString(`{"email":"` + email + `", "password":"` + password + `"}`)
 	request, err := http.NewRequest("POST", GetUrl("/users"), b)
 	if err != nil {
