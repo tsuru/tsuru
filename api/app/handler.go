@@ -50,6 +50,7 @@ func UpdateRepositoryHandler(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return &errors.Http{Code: http.StatusNotFound, Message: "App not found"}
 	}
+	repository.Update(app.Name, app.Machine)
 	fmt.Fprint(w, "success")
 	return nil
 }
