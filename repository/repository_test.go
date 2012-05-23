@@ -9,8 +9,8 @@ func (s *S) TestCloneRepository(c *C) {
 	c.Assert(err, IsNil)
 }
 
-func (s *S) TestUpdateRepository(c *C) {
-	err := Update("barfoo", 1)
+func (s *S) TestPullRepository(c *C) {
+	err := Pull("barfoo", 1)
 	c.Assert(err, IsNil)
 }
 
