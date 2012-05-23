@@ -249,10 +249,6 @@ func (c *Team) Info() *Info {
 	}
 }
 
-func (c *Team) Run(context *Context, client Doer) error {
-	return nil
-}
-
 type TeamCreate struct{}
 
 func (c *TeamCreate) Info() *Info {
