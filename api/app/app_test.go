@@ -2,6 +2,7 @@ package app
 
 import (
 	"github.com/timeredbull/tsuru/api/auth"
+	"github.com/timeredbull/tsuru/api/unit"
 	"github.com/timeredbull/tsuru/db"
 	. "launchpad.net/gocheck"
 	"launchpad.net/mgo/bson"
@@ -175,4 +176,11 @@ func (s *S) TestRestartApp(c *C) {
 	a := App{Name: "myApp"}
 	err := a.restart()
 	c.Assert(err, IsNil)
+}
+
+func (s *S) TestUnit(c *C) {
+	a := App{Name: "appName", Framework: "django"}
+	u, err := a.unit()
+	c.Assert(err, IsNil)
+	c.Assert(u, DeepEquals, unit.Unit{Name: a.Name, Type: a.Framework})
 }

@@ -37,7 +37,10 @@ func (app *App) Create() error {
 	if err != nil {
 		return err
 	}
-	u := unit.Unit{Name: app.Name, Type: app.Framework}
+	u, err := app.unit()
+	if err != nil {
+		return err
+	}
 	err = u.Create()
 	if err != nil {
 		return err
@@ -50,7 +53,10 @@ func (app *App) Destroy() error {
 	if err != nil {
 		return err
 	}
-	u := unit.Unit{Name: app.Name, Type: app.Framework}
+	u, err := app.unit()
+	if err != nil {
+		return err
+	}
 	u.Destroy()
 	return nil
 }
@@ -97,13 +103,19 @@ func (app *App) CheckUserAccess(user *auth.User) bool {
 }
 
 func (app *App) stop() error {
-	u := unit.Unit{Name: app.Name, Type: app.Framework}
+	u, err := app.unit()
+	if err != nil {
+		return err
+	}
 	log.Printf("stopping %s app", app.Name)
 	return u.ExecuteHook("stop")
 }
 
 func (app *App) start() error {
-	u := unit.Unit{Name: app.Name, Type: app.Framework}
+	u, err := app.unit()
+	if err != nil {
+		return err
+	}
 	log.Printf("starting %s app", app.Name)
 	return u.ExecuteHook("start")
 }
@@ -114,4 +126,8 @@ func (app *App) restart() error {
 		return err
 	}
 	return app.start()
+}
+
+func (app *App) unit() (unit.Unit, error) {
+	return unit.Unit{Name: app.Name, Type: app.Framework}, nil
 }
