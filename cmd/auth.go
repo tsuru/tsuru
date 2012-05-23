@@ -58,7 +58,7 @@ type UserCreate struct{}
 func (c *UserCreate) Info() *Info {
 	return &Info{
 		Name:  "create",
-		Usage: "user create username password",
+		Usage: "user create username",
 		Desc:  "creates user.",
 		Args:  1,
 	}
