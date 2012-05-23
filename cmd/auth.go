@@ -292,7 +292,7 @@ func (c *TeamAddUser) Info() *Info {
 
 func (c *TeamAddUser) Run(context *Context, client Doer) error {
 	teamName, userName := context.Args[0], context.Args[1]
-	url := fmt.Sprintf("/teams/%s/%s", teamName, userName)
+	url := GetUrl(fmt.Sprintf("/teams/%s/%s", teamName, userName))
 	request, err := http.NewRequest("PUT", url, nil)
 	if err != nil {
 		return err
@@ -318,7 +318,7 @@ func (c *TeamRemoveUser) Info() *Info {
 
 func (c *TeamRemoveUser) Run(context *Context, client Doer) error {
 	teamName, userName := context.Args[0], context.Args[1]
-	url := fmt.Sprintf("/teams/%s/%s", teamName, userName)
+	url := GetUrl(fmt.Sprintf("/teams/%s/%s", teamName, userName))
 	request, err := http.NewRequest("DELETE", url, nil)
 	if err != nil {
 		return err
