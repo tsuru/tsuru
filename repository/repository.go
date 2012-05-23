@@ -16,7 +16,7 @@ func Clone(app string, machine int) (err error) {
 	if err != nil {
 		return
 	}
-	return
+	return u.ExecuteHook("restart")
 }
 
 func Update(app string, machine int) (err error) {
@@ -27,7 +27,7 @@ func Update(app string, machine int) (err error) {
 	if err != nil {
 		return
 	}
-	return
+	return u.ExecuteHook("restart")
 }
 
 func GetUrl(app string) string {

@@ -5,7 +5,6 @@ import (
 	"github.com/timeredbull/tsuru/api/auth"
 	"github.com/timeredbull/tsuru/api/unit"
 	"github.com/timeredbull/tsuru/db"
-	"github.com/timeredbull/tsuru/log"
 	"launchpad.net/mgo/bson"
 )
 
@@ -100,32 +99,6 @@ func (app *App) CheckUserAccess(user *auth.User) bool {
 		}
 	}
 	return false
-}
-
-func (app *App) stop() error {
-	u, err := app.unit()
-	if err != nil {
-		return err
-	}
-	log.Printf("stopping %s app", app.Name)
-	return u.ExecuteHook("stop")
-}
-
-func (app *App) start() error {
-	u, err := app.unit()
-	if err != nil {
-		return err
-	}
-	log.Printf("starting %s app", app.Name)
-	return u.ExecuteHook("start")
-}
-
-func (app *App) restart() error {
-	err := app.stop()
-	if err != nil {
-		return err
-	}
-	return app.start()
 }
 
 func (app *App) unit() (unit.Unit, error) {

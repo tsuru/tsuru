@@ -160,24 +160,6 @@ func (s *S) TestCheckUserAccessWithMultipleUsersOnMultipleGroupsOnApp(c *C) {
 	c.Assert(a.CheckUserAccess(one), Equals, true)
 }
 
-func (s *S) TestStopApp(c *C) {
-	a := App{Name: "myApp"}
-	err := a.stop()
-	c.Assert(err, IsNil)
-}
-
-func (s *S) TestStartApp(c *C) {
-	a := App{Name: "myApp"}
-	err := a.start()
-	c.Assert(err, IsNil)
-}
-
-func (s *S) TestRestartApp(c *C) {
-	a := App{Name: "myApp"}
-	err := a.restart()
-	c.Assert(err, IsNil)
-}
-
 func (s *S) TestUnit(c *C) {
 	a := App{Name: "appName", Framework: "django"}
 	u, err := a.unit()
