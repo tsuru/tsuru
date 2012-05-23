@@ -39,18 +39,13 @@ func CloneRepositoryHandler(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return &errors.Http{Code: http.StatusNotFound, Message: "App not found"}
 	}
-	repository.Clone(app.Name, app.Machine)
-	fmt.Fprint(w, "success")
-	return nil
-}
-
-func UpdateRepositoryHandler(w http.ResponseWriter, r *http.Request) error {
-	app := App{Name: r.URL.Query().Get(":name")}
-	err := app.Get()
+	err = repository.Clone(app.Name, app.Machine)
 	if err != nil {
-		return &errors.Http{Code: http.StatusNotFound, Message: "App not found"}
+		err = repository.Pull(app.Name, app.Machine)
+		if err != nil {
+			return err
+		}
 	}
-	repository.Update(app.Name, app.Machine)
 	fmt.Fprint(w, "success")
 	return nil
 }

@@ -42,30 +42,6 @@ func (s *S) TestCloneRepositoryShouldReturnNotFoundWhenAppDoesNotExist(c *C) {
 	c.Assert(e, ErrorMatches, "^App not found$")
 }
 
-func (s *S) TestUpdateRepositoryHandler(c *C) {
-	a := App{Name: "someapp", Framework: "django", Teams: []auth.Team{s.team}}
-	err := a.Create()
-	c.Assert(err, IsNil)
-	defer a.Destroy()
-	request, err := http.NewRequest("GET", "/apps/someapp/repository/update?:name=someapp", nil)
-	c.Assert(err, IsNil)
-	recorder := httptest.NewRecorder()
-	err = UpdateRepositoryHandler(recorder, request)
-	c.Assert(err, IsNil)
-	c.Assert(recorder.Code, Equals, 200)
-}
-
-func (s *S) TestUpdateHandlerShouldReturnNotFoundWhenAppDoesNotExists(c *C) {
-	request, err := http.NewRequest("GET", "/apps/someapp/repository/update?:name=someapp", nil)
-	c.Assert(err, IsNil)
-	recorder := httptest.NewRecorder()
-	err = UpdateRepositoryHandler(recorder, request)
-	c.Assert(err, NotNil)
-	e, ok := err.(*errors.Http)
-	c.Assert(ok, Equals, true)
-	c.Assert(e, ErrorMatches, "^App not found$")
-}
-
 func (s *S) TestAppList(c *C) {
 	apps := []App{}
 	expected := []App{}

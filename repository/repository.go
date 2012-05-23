@@ -10,7 +10,7 @@ const gitServer = "tsuru.plataformas.glb.com"
 
 func Clone(app string, machine int) (err error) {
 	u := unit.Unit{Name: app, Machine: machine}
-	cmd := fmt.Sprintf("git clone %s /home/application/current", GetReadOnlyUrl(app))
+	cmd := fmt.Sprintf("git clone %s /home/application/current --depth 1", GetReadOnlyUrl(app))
 	output, err := u.Command(cmd)
 	log.Printf("Command output: " + string(output))
 	if err != nil {
@@ -19,7 +19,7 @@ func Clone(app string, machine int) (err error) {
 	return
 }
 
-func Update(app string, machine int) (err error) {
+func Pull(app string, machine int) (err error) {
 	u := unit.Unit{Name: app, Machine: machine}
 	cmd := fmt.Sprintf("git --git-dir=/home/application/current/.git pull origin master")
 	output, err := u.Command(cmd)
