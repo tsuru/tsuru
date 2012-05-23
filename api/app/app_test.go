@@ -164,3 +164,9 @@ func (s *S) TestStopApp(c *C) {
 	err := a.stop()
 	c.Assert(err, IsNil)
 }
+
+func (s *S) TestStartApp(c *C) {
+	a := App{Name: "myApp"}
+	err := a.start()
+	c.Assert(err, IsNil)
+}
