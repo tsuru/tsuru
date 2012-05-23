@@ -21,7 +21,7 @@ func (s *S) TestCloneRepositoryHandler(c *C) {
 	err := a.Create()
 	c.Assert(err, IsNil)
 	defer a.Destroy()
-	url := fmt.Sprintf("/apps/%s/clone?:name=%s", a.Name, a.Name)
+	url := fmt.Sprintf("/apps/%s/repository/clone?:name=%s", a.Name, a.Name)
 	request, err := http.NewRequest("GET", url, nil)
 	c.Assert(err, IsNil)
 	recorder := httptest.NewRecorder()
@@ -31,7 +31,7 @@ func (s *S) TestCloneRepositoryHandler(c *C) {
 }
 
 func (s *S) TestCloneRepositoryShouldReturnNotFoundWhenAppDoesNotExist(c *C) {
-	request, err := http.NewRequest("GET", "/apps/abc/clone?:name=abc", nil)
+	request, err := http.NewRequest("GET", "/apps/abc/repository/clone?:name=abc", nil)
 	c.Assert(err, IsNil)
 	recorder := httptest.NewRecorder()
 	err = CloneRepositoryHandler(recorder, request)
