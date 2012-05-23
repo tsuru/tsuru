@@ -45,6 +45,12 @@ func CloneRepositoryHandler(w http.ResponseWriter, r *http.Request) error {
 }
 
 func UpdateRepositoryHandler(w http.ResponseWriter, r *http.Request) error {
+	app := App{Name: r.URL.Query().Get(":name")}
+	err := app.Get()
+	if err != nil {
+		return &errors.Http{Code: http.StatusNotFound, Message: "App not found"}
+	}
+	repository.Update(app.Name, app.Machine)
 	fmt.Fprint(w, "success")
 	return nil
 }

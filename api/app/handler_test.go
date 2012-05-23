@@ -21,7 +21,7 @@ func (s *S) TestCloneRepositoryHandler(c *C) {
 	err := a.Create()
 	c.Assert(err, IsNil)
 	defer a.Destroy()
-	url := fmt.Sprintf("/apps/%s/clone?:name=%s", a.Name, a.Name)
+	url := fmt.Sprintf("/apps/%s/repository/clone?:name=%s", a.Name, a.Name)
 	request, err := http.NewRequest("GET", url, nil)
 	c.Assert(err, IsNil)
 	recorder := httptest.NewRecorder()
@@ -30,8 +30,8 @@ func (s *S) TestCloneRepositoryHandler(c *C) {
 	c.Assert(recorder.Code, Equals, 200)
 }
 
-func (s *S) TestCloneRepositoryShouldReturnNotFoundIfTheAppDoesNotExist(c *C) {
-	request, err := http.NewRequest("GET", "/apps/abc/clone?:name=abc", nil)
+func (s *S) TestCloneRepositoryShouldReturnNotFoundWhenAppDoesNotExist(c *C) {
+	request, err := http.NewRequest("GET", "/apps/abc/repository/clone?:name=abc", nil)
 	c.Assert(err, IsNil)
 	recorder := httptest.NewRecorder()
 	err = CloneRepositoryHandler(recorder, request)
@@ -43,12 +43,27 @@ func (s *S) TestCloneRepositoryShouldReturnNotFoundIfTheAppDoesNotExist(c *C) {
 }
 
 func (s *S) TestUpdateRepositoryHandler(c *C) {
-	request, err := http.NewRequest("GET", "/apps/someapp/clone?:name=someapp", nil)
+	a := App{Name: "someapp", Framework: "django", Teams: []auth.Team{s.team}}
+	err := a.Create()
+	c.Assert(err, IsNil)
+	defer a.Destroy()
+	request, err := http.NewRequest("GET", "/apps/someapp/repository/update?:name=someapp", nil)
 	c.Assert(err, IsNil)
 	recorder := httptest.NewRecorder()
 	err = UpdateRepositoryHandler(recorder, request)
 	c.Assert(err, IsNil)
 	c.Assert(recorder.Code, Equals, 200)
+}
+
+func (s *S) TestUpdateHandlerShouldReturnNotFoundWhenAppDoesNotExists(c *C) {
+	request, err := http.NewRequest("GET", "/apps/someapp/repository/update?:name=someapp", nil)
+	c.Assert(err, IsNil)
+	recorder := httptest.NewRecorder()
+	err = UpdateRepositoryHandler(recorder, request)
+	c.Assert(err, NotNil)
+	e, ok := err.(*errors.Http)
+	c.Assert(ok, Equals, true)
+	c.Assert(e, ErrorMatches, "^App not found$")
 }
 
 func (s *S) TestAppList(c *C) {

@@ -8,8 +8,6 @@ import (
 	"syscall"
 )
 
-var bkp *os.File
-
 func patchStdin(c *C, content []byte) {
 	f, err := os.OpenFile("/tmp/passwdfile.txt", syscall.O_RDWR|syscall.O_NDELAY|syscall.O_CREAT|syscall.O_TRUNC, 0600)
 	c.Assert(err, IsNil)
@@ -19,13 +17,11 @@ func patchStdin(c *C, content []byte) {
 	ret, err := f.Seek(0, 0)
 	c.Assert(err, IsNil)
 	c.Assert(ret, Equals, int64(0))
-	bkp = os.Stdin
 	os.Stdin = f
 }
 
 func unpathStdin() {
-	os.Stdin.Close()
-	os.Stdin = bkp
+	os.Stdin = os.NewFile(uintptr(syscall.Stdin), "/dev/stdin")
 }
 
 func (s *S) TestLogin(c *C) {

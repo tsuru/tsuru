@@ -9,6 +9,11 @@ func (s *S) TestCloneRepository(c *C) {
 	c.Assert(err, IsNil)
 }
 
+func (s *S) TestUpdateRepository(c *C) {
+	err := Update("barfoo", 1)
+	c.Assert(err, IsNil)
+}
+
 func (s *S) TestGetRepositoryUrl(c *C) {
 	url := GetUrl("foobar")
 	expected := "git@tsuru.plataformas.glb.com:foobar.git"
