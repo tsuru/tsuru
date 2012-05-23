@@ -104,3 +104,11 @@ func (app *App) start() error {
 	u := unit.Unit{Name: app.Name, Type: app.Framework}
 	return u.ExecuteHook("start")
 }
+
+func (app *App) restart() error {
+	err := app.stop()
+	if err != nil {
+		return err
+	}
+	return app.start()
+}

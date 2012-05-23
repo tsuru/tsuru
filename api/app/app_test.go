@@ -170,3 +170,9 @@ func (s *S) TestStartApp(c *C) {
 	err := a.start()
 	c.Assert(err, IsNil)
 }
+
+func (s *S) TestRestartApp(c *C) {
+	a := App{Name: "myApp"}
+	err := a.restart()
+	c.Assert(err, IsNil)
+}
