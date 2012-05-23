@@ -58,7 +58,7 @@ type UserCreate struct{}
 func (c *UserCreate) Info() *Info {
 	return &Info{
 		Name:  "create",
-		Usage: "user create username password",
+		Usage: "user create username",
 		Desc:  "creates user.",
 		Args:  1,
 	}
@@ -120,7 +120,7 @@ func (c *Login) Run(context *Context, client Doer) error {
 func (c *Login) Info() *Info {
 	return &Info{
 		Name:  "login",
-		Usage: "login email password",
+		Usage: "login email",
 		Desc:  "log in with your credentials.",
 		Args:  1,
 	}
@@ -249,10 +249,6 @@ func (c *Team) Info() *Info {
 	}
 }
 
-func (c *Team) Run(context *Context, client Doer) error {
-	return nil
-}
-
 type TeamCreate struct{}
 
 func (c *TeamCreate) Info() *Info {
@@ -292,7 +288,7 @@ func (c *TeamAddUser) Info() *Info {
 
 func (c *TeamAddUser) Run(context *Context, client Doer) error {
 	teamName, userName := context.Args[0], context.Args[1]
-	url := fmt.Sprintf("/teams/%s/%s", teamName, userName)
+	url := GetUrl(fmt.Sprintf("/teams/%s/%s", teamName, userName))
 	request, err := http.NewRequest("PUT", url, nil)
 	if err != nil {
 		return err
@@ -318,7 +314,7 @@ func (c *TeamRemoveUser) Info() *Info {
 
 func (c *TeamRemoveUser) Run(context *Context, client Doer) error {
 	teamName, userName := context.Args[0], context.Args[1]
-	url := fmt.Sprintf("/teams/%s/%s", teamName, userName)
+	url := GetUrl(fmt.Sprintf("/teams/%s/%s", teamName, userName))
 	request, err := http.NewRequest("DELETE", url, nil)
 	if err != nil {
 		return err

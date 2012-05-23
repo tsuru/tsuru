@@ -70,7 +70,7 @@ func (c *AppRemoveTeam) Info() *Info {
 
 func (c *AppRemoveTeam) Run(context *Context, client Doer) error {
 	appName, teamName := context.Args[0], context.Args[1]
-	url := fmt.Sprintf("/apps/%s/%s", appName, teamName)
+	url := GetUrl(fmt.Sprintf("/apps/%s/%s", appName, teamName))
 	request, err := http.NewRequest("DELETE", url, nil)
 	if err != nil {
 		return err
