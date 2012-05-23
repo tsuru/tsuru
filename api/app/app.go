@@ -94,3 +94,8 @@ func (app *App) CheckUserAccess(user *auth.User) bool {
 	}
 	return false
 }
+
+func (app *App) stop() error {
+	u := unit.Unit{Name: app.Name, Type: app.Framework}
+	return u.ExecuteHook("stop")
+}

@@ -158,3 +158,9 @@ func (s *S) TestCheckUserAccessWithMultipleUsersOnMultipleGroupsOnApp(c *C) {
 	c.Assert(a.CheckUserAccess(punk), Equals, true)
 	c.Assert(a.CheckUserAccess(one), Equals, true)
 }
+
+func (s *S) TestStopApp(c *C) {
+	a := App{Name: "myApp"}
+	err := a.stop()
+	c.Assert(err, IsNil)
+}
