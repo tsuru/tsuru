@@ -36,6 +36,7 @@ func (s *S) TestLogin(c *C) {
 	c.Assert(manager.Stdout.(*bytes.Buffer).String(), Equals, expected)
 
 	token, err := ReadToken()
+	c.Assert(err, IsNil)
 	c.Assert(token, Equals, "sometoken")
 }
 

@@ -5,6 +5,7 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
+	"strings"
 	"syscall"
 )
 
@@ -15,6 +16,7 @@ func (t *Target) Info() *Info {
 		Name:  "target",
 		Usage: "target <target>",
 		Desc:  "Defines the target (tsuru server)",
+		Args:  1,
 	}
 }
 
@@ -55,6 +57,7 @@ func WriteTarget(t string) error {
 		return err
 	}
 	defer targetFile.Close()
+	t = strings.TrimRight(t, "/")
 	content := []byte(t)
 	n, err := targetFile.Write(content)
 	if n != len(content) || err != nil {
