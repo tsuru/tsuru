@@ -35,7 +35,7 @@ echo "Creating gitosis.conf in /etc/gitosis/..."
 sudo mkdir /etc/gitosis
 sudo chown git:git /etc/gitosis -R
 sudo -u git /bin/bash -c "echo \"${CONF_CONTENT}\" >> ${GITOSIS_CONF}"
-ln -s ${GITOSIS_CONF} /home/ubuntu/.gitosis.conf
+ln -s ${GITOSIS_CONF} ${BARE_PATH}/gitosis-admin.git/gitosis.conf
 
 echo "Initializing gitosis..."
 sudo -u git /bin/bash -c "gitosis-init --config=${GITOSIS_CONF} < ${KEY_PATH}"
