@@ -5,6 +5,7 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
+	"strings"
 	"syscall"
 )
 
@@ -55,6 +56,7 @@ func WriteTarget(t string) error {
 		return err
 	}
 	defer targetFile.Close()
+	t = strings.TrimRight(t, "/")
 	content := []byte(t)
 	n, err := targetFile.Write(content)
 	if n != len(content) || err != nil {

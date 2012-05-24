@@ -18,10 +18,26 @@ func (s *S) TestDefaultTarget(c *C) {
 
 func (s *S) TestWriteAndReadTarget(c *C) {
 	defer deleteTsuruTarget()
-	err := WriteTarget("tsuru.globo.com")
+	err := WriteTarget("http://tsuru.globo.com")
 	c.Assert(err, IsNil)
 	target := ReadTarget()
-	c.Assert(target, Equals, "tsuru.globo.com")
+	c.Assert(target, Equals, "http://tsuru.globo.com")
+}
+
+func (s *S) TestWriteTargetShouldStripLeadingSlashs(c *C) {
+	defer deleteTsuruTarget()
+	err := WriteTarget("http://tsuru.globo.com/")
+	c.Assert(err, IsNil)
+	target := ReadTarget()
+	c.Assert(target, Equals, "http://tsuru.globo.com")
+}
+
+func (s *S) TestWriteTargetShouldStringAllLeadingSlashs(c *C) {
+	defer deleteTsuruTarget()
+	err := WriteTarget("http://tsuru.globo.com////")
+	c.Assert(err, IsNil)
+	target := ReadTarget()
+	c.Assert(target, Equals, "http://tsuru.globo.com")
 }
 
 func (s *S) TestReadTargetReturnsDefaultTargetIfTheFileDoesNotExist(c *C) {
@@ -42,12 +58,12 @@ func (s *S) TestTargetInfo(c *C) {
 
 func (s *S) TestTargetRun(c *C) {
 	deleteTsuruTarget()
-	context := &Context{[]string{}, []string{"tsuru.globo.com"}, manager.Stdout, manager.Stderr}
+	context := &Context{[]string{}, []string{"http://tsuru.globo.com"}, manager.Stdout, manager.Stderr}
 	target := &Target{}
 	err := target.Run(context, nil)
 	c.Assert(err, IsNil)
 	c.Assert(context.Stdout.(*bytes.Buffer).String(), Equals, "New target is tsuru.globo.com\n")
-	c.Assert(ReadTarget(), Equals, "tsuru.globo.com")
+	c.Assert(ReadTarget(), Equals, "http://tsuru.globo.com")
 }
 
 func (s *S) TestGetUrl(c *C) {
