@@ -16,6 +16,7 @@ func (t *Target) Info() *Info {
 		Name:  "target",
 		Usage: "target <target>",
 		Desc:  "Defines the target (tsuru server)",
+		Args:  1,
 	}
 }
 

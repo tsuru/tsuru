@@ -51,6 +51,7 @@ func (s *S) TestTargetInfo(c *C) {
 		Name:  "target",
 		Usage: "target <target>",
 		Desc:  "Defines the target (tsuru server)",
+		Args:  1,
 	}
 	target := &Target{}
 	c.Assert(target.Info(), DeepEquals, expected)
@@ -62,7 +63,7 @@ func (s *S) TestTargetRun(c *C) {
 	target := &Target{}
 	err := target.Run(context, nil)
 	c.Assert(err, IsNil)
-	c.Assert(context.Stdout.(*bytes.Buffer).String(), Equals, "New target is tsuru.globo.com\n")
+	c.Assert(context.Stdout.(*bytes.Buffer).String(), Equals, "New target is http://tsuru.globo.com\n")
 	c.Assert(ReadTarget(), Equals, "http://tsuru.globo.com")
 }
 
