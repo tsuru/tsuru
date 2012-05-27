@@ -16,7 +16,7 @@ func Clone(app string, machine int) (err error) {
 	if err != nil {
 		return
 	}
-	return u.ExecuteHook("restart")
+	return u.ExecuteHook("reload-gunicorn")
 }
 
 func Pull(app string, machine int) (err error) {
@@ -27,7 +27,7 @@ func Pull(app string, machine int) (err error) {
 	if err != nil {
 		return
 	}
-	return u.ExecuteHook("restart")
+	return u.ExecuteHook("reload-gunicorn")
 }
 
 func GetUrl(app string) string {
