@@ -140,6 +140,19 @@ func (s *S) TestUser(c *C) {
 	c.Assert(command.Subcommands(), DeepEquals, expect)
 }
 
+func (s *S) TestUserCreateShouldNotDependOnTsuruTokenFile(c *C) {
+	os.Remove(os.ExpandEnv("${HOME}/.tsuru_token"))
+	patchStdin(c, []byte("bar123\n"))
+	defer unpathStdin()
+	expected := "Password: \n" + `User "foo@foo.com" created with success!` + "\n"
+	context := Context{[]string{}, []string{"foo@foo.com"}, manager.Stdout, manager.Stderr}
+	client := NewClient(&http.Client{Transport: &transport{msg: "", status: http.StatusCreated}})
+	command := UserCreate{}
+	err := command.Run(&context, client)
+	c.Assert(err, IsNil)
+	c.Assert(manager.Stdout.(*bytes.Buffer).String(), Equals, expected)
+}
+
 func (s *S) TestUserCreate(c *C) {
 	patchStdin(c, []byte("bar123\n"))
 	defer unpathStdin()

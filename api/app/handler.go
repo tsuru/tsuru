@@ -34,19 +34,20 @@ func getAppOrError(name string, u *auth.User) (App, error) {
 }
 
 func CloneRepositoryHandler(w http.ResponseWriter, r *http.Request) error {
+	var output []byte
 	app := App{Name: r.URL.Query().Get(":name")}
 	err := app.Get()
 	if err != nil {
 		return &errors.Http{Code: http.StatusNotFound, Message: "App not found"}
 	}
-	err = repository.Clone(app.Name, app.Machine)
+	output, err = repository.Clone(app.Name, app.Machine)
 	if err != nil {
-		err = repository.Pull(app.Name, app.Machine)
+		output, err = repository.Pull(app.Name, app.Machine)
 		if err != nil {
-			return err
+			return &errors.Http{Code: http.StatusInternalServerError, Message: string(output)}
 		}
 	}
-	fmt.Fprint(w, "success")
+	fmt.Fprint(w, output)
 	return nil
 }
 

@@ -60,6 +60,8 @@ func (m *gitosisManager) removeProject(group, project string) error {
 	if err != nil {
 		return err
 	}
+	p, err := config.GetString("git:gitosis-bare")
+	_ = os.RemoveAll(path.Join(p, "../", project+".git"))
 	commitMsg := fmt.Sprintf("Removing project %s from group %s", project, group)
 	return m.writeCommitPush(c, commitMsg)
 }

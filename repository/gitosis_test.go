@@ -108,6 +108,24 @@ func (s *S) TestRemoveProjectCommitsWithProperMessage(c *C) {
 	c.Assert(got, Equals, expected)
 }
 
+func (s *S) TestRemoveProjectDeletesProjectRepositoryDir(c *C) {
+	m, err := newGitosisManager()
+	c.Assert(err, IsNil)
+	err = m.addGroup("testgroup")
+	c.Assert(err, IsNil)
+	err = m.addProject("testgroup", "testproject")
+	c.Assert(err, IsNil)
+	p, err := config.GetString("git:gitosis-bare")
+	c.Assert(err, IsNil)
+	err = os.Mkdir(path.Join(p, "../testproject.git"), 0777)
+	c.Assert(err, IsNil)
+	err = m.removeProject("testgroup", "testproject")
+	c.Assert(err, IsNil)
+	c.Assert(err, IsNil)
+	_, err = os.Open(path.Join(p, "../testproject.git"))
+	c.Assert(err, NotNil)
+}
+
 func (s *S) TestAddProjectCommitAndPush(c *C) {
 	m, err := newGitosisManager()
 	c.Assert(err, IsNil)
