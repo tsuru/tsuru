@@ -38,9 +38,6 @@ func ReadToken() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	token, err := ioutil.ReadFile(tokenPath)
-	if err != nil {
-		return "", err
-	}
+	token, _ := ioutil.ReadFile(tokenPath)
 	return string(token), nil
 }
