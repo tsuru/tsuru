@@ -28,6 +28,7 @@ func (s *S) TestCloneRepositoryHandler(c *C) {
 	err = CloneRepositoryHandler(recorder, request)
 	c.Assert(err, IsNil)
 	c.Assert(recorder.Code, Equals, 200)
+	c.Assert(recorder.Body.String(), Not(Equals), "success")
 }
 
 func (s *S) TestCloneRepositoryShouldReturnNotFoundWhenAppDoesNotExist(c *C) {

@@ -8,26 +8,26 @@ import (
 
 const gitServer = "tsuru.plataformas.glb.com"
 
-func Clone(app string, machine int) (err error) {
+func Clone(app string, machine int) ([]byte, error) {
 	u := unit.Unit{Name: app, Machine: machine}
 	cmd := fmt.Sprintf("git clone %s /home/application/current --depth 1", GetReadOnlyUrl(app))
 	output, err := u.Command(cmd)
 	log.Printf("Command output: " + string(output))
 	if err != nil {
-		return
+		return output, err
 	}
-	return u.ExecuteHook("reload-gunicorn")
+	return output, u.ExecuteHook("reload-gunicorn")
 }
 
-func Pull(app string, machine int) (err error) {
+func Pull(app string, machine int) ([]byte, error) {
 	u := unit.Unit{Name: app, Machine: machine}
 	cmd := fmt.Sprintf("git --git-dir=/home/application/current/.git --work-tree=/home/application/current pull origin master")
 	output, err := u.Command(cmd)
 	log.Printf("Command output: " + string(output))
 	if err != nil {
-		return
+		return output, err
 	}
-	return u.ExecuteHook("reload-gunicorn")
+	return output, u.ExecuteHook("reload-gunicorn")
 }
 
 func GetUrl(app string) string {
