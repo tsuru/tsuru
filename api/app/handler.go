@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/timeredbull/tsuru/api/auth"
+	"github.com/timeredbull/tsuru/api/unit"
 	"github.com/timeredbull/tsuru/db"
 	"github.com/timeredbull/tsuru/errors"
 	"github.com/timeredbull/tsuru/repository"
@@ -47,6 +48,8 @@ func CloneRepositoryHandler(w http.ResponseWriter, r *http.Request) error {
 			return &errors.Http{Code: http.StatusInternalServerError, Message: string(output)}
 		}
 	}
+	u := unit.Unit{Name: app.Name, Machine: app.Machine}
+	u.ExecuteHook("dependencies")
 	fmt.Fprint(w, string(output))
 	return nil
 }
