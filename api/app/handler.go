@@ -8,6 +8,7 @@ import (
 	"github.com/timeredbull/tsuru/api/unit"
 	"github.com/timeredbull/tsuru/db"
 	"github.com/timeredbull/tsuru/errors"
+	"github.com/timeredbull/tsuru/log"
 	"github.com/timeredbull/tsuru/repository"
 	"io/ioutil"
 	"launchpad.net/mgo/bson"
@@ -49,7 +50,11 @@ func CloneRepositoryHandler(w http.ResponseWriter, r *http.Request) error {
 		}
 	}
 	u := unit.Unit{Name: app.Name, Machine: app.Machine}
-	u.ExecuteHook("dependencies")
+	err = u.ExecuteHook("dependencies")
+	if err != nil {
+		log.Printf(err.Error())
+		return &errors.Http{Code: http.StatusInternalServerError, Message: err.Error()}
+	}
 	fmt.Fprint(w, string(output))
 	return nil
 }
