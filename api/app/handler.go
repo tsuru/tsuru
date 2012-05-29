@@ -47,7 +47,7 @@ func CloneRepositoryHandler(w http.ResponseWriter, r *http.Request) error {
 			return &errors.Http{Code: http.StatusInternalServerError, Message: string(output)}
 		}
 	}
-	fmt.Fprint(w, output)
+	fmt.Fprint(w, string(output))
 	return nil
 }
 
