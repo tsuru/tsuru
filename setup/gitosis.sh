@@ -41,7 +41,7 @@ sudo -u git /bin/bash -c "gitosis-init --config=${GITOSIS_CONF} < ${KEY_PATH}"
 sudo chown git:git ${BARE_PATH} -R
 sudo chmod g+rw ${BARE_PATH} -R
 rm -rf ${BARE_PATH}/gitosis-admin.git/hooks/post-receive # this hook is only for tsuru's apps repositories
-ln -fs ${GITOSIS_CONF} ${BARE_PATH}/gitosis-admin.git/gitosis.conf
+ln -fs ${BARE_PATH}/gitosis-admin.git/gitosis.conf /home/ubuntu/.gitosis.conf
 
 echo "Cloning gitosis-admin.git to ${REPO_PATH}..."
 sudo mkdir ${REPO_PATH}
