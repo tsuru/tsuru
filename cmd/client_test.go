@@ -29,3 +29,12 @@ func (s *S) TestShouldReturnBodyMessageOnError(c *C) {
 	c.Assert(response, IsNil)
 	c.Assert(err.Error(), Equals, "You must be authenticated to execute this command.")
 }
+
+func (s *S) TestShouldReturnErrorWhenServerIsDown(c *C) {
+	request, err := http.NewRequest("GET", "/", nil)
+	c.Assert(err, IsNil)
+	client := NewClient(&http.Client{})
+	_, err = client.Do(request)
+	c.Assert(err, NotNil)
+	c.Assert(err, ErrorMatches, "^Server is down$")
+}
