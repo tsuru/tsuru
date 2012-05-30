@@ -46,6 +46,7 @@ func CloneRepositoryHandler(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		output, err = repository.Pull(app.Name, app.Machine)
 		if err != nil {
+			log.Printf(string(output))
 			return &errors.Http{Code: http.StatusInternalServerError, Message: string(output)}
 		}
 	}
