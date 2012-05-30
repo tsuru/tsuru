@@ -8,7 +8,6 @@ import (
 	"github.com/timeredbull/tsuru/api/unit"
 	"github.com/timeredbull/tsuru/db"
 	"github.com/timeredbull/tsuru/errors"
-	"github.com/timeredbull/tsuru/log"
 	"github.com/timeredbull/tsuru/repository"
 	"io/ioutil"
 	"launchpad.net/mgo/bson"
@@ -36,27 +35,34 @@ func getAppOrError(name string, u *auth.User) (App, error) {
 }
 
 func CloneRepositoryHandler(w http.ResponseWriter, r *http.Request) error {
-	var output []byte
+	var output string
 	app := App{Name: r.URL.Query().Get(":name")}
 	err := app.Get()
 	if err != nil {
 		return &errors.Http{Code: http.StatusNotFound, Message: "App not found"}
 	}
-	output, err = repository.Clone(app.Name, app.Machine)
+	output, err = repository.CloneOrPull(app.Name, app.Machine)
 	if err != nil {
-		output, err = repository.Pull(app.Name, app.Machine)
-		if err != nil {
-			log.Printf(string(output))
-			return &errors.Http{Code: http.StatusInternalServerError, Message: string(output)}
-		}
+		return &errors.Http{Code: http.StatusInternalServerError, Message: output}
 	}
-	u := unit.Unit{Name: app.Name, Machine: app.Machine}
-	err = u.ExecuteHook("dependencies")
+	err = updateHooks(&app)
 	if err != nil {
-		log.Printf(err.Error())
 		return &errors.Http{Code: http.StatusInternalServerError, Message: err.Error()}
 	}
-	fmt.Fprint(w, string(output))
+	fmt.Fprint(w, output)
+	return nil
+}
+
+func updateHooks(a *App) error {
+	u := unit.Unit{Name: a.Name, Machine: a.Machine}
+	err := u.ExecuteHook("reload-gunicorn")
+	if err != nil {
+		return err
+	}
+	err = u.ExecuteHook("dependencies")
+	if err != nil {
+		return err
+	}
 	return nil
 }
 

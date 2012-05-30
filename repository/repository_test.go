@@ -5,15 +5,18 @@ import (
 )
 
 func (s *S) TestCloneRepository(c *C) {
-	output, err := Clone("barfoo", 1)
+	_, err := Clone("barfoo", 1)
 	c.Assert(err, IsNil)
-	c.Assert(output, Not(Equals), "")
 }
 
 func (s *S) TestPullRepository(c *C) {
-	output, err := Pull("barfoo", 1)
+	_, err := Pull("barfoo", 1)
 	c.Assert(err, IsNil)
-	c.Assert(output, Not(Equals), "")
+}
+
+func (s *S) TestCloneOrPullRepository(c *C) {
+	_, err := CloneOrPull("someapp", 2)
+	c.Assert(err, IsNil)
 }
 
 func (s *S) TestGetRepositoryUrl(c *C) {

@@ -16,7 +16,7 @@ func Clone(app string, machine int) ([]byte, error) {
 	if err != nil {
 		return output, err
 	}
-	return output, u.ExecuteHook("reload-gunicorn")
+	return output, nil
 }
 
 func Pull(app string, machine int) ([]byte, error) {
@@ -28,6 +28,22 @@ func Pull(app string, machine int) ([]byte, error) {
 		return output, err
 	}
 	return output, u.ExecuteHook("reload-gunicorn")
+}
+
+func CloneOrPull(app string, machine int) (string, error) {
+	var output []byte
+	output, err := Clone(app, machine)
+	fmt.Println(string(output))
+	if err != nil {
+		output, err = Pull(app, machine)
+		fmt.Println(string(output))
+		if err != nil {
+			return string(output), err
+		}
+	}
+	u := unit.Unit{Name: app, Machine: machine}
+	err = u.ExecuteHook("dependencies")
+	return string(output), err
 }
 
 func GetUrl(app string) string {

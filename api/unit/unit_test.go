@@ -63,7 +63,6 @@ func (s *S) TestSendFile(c *C) {
 
 	err = u.Destroy()
 	c.Assert(err, IsNil)
-
 }
 
 func (s *S) TestAddRelation(c *C) {
