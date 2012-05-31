@@ -55,11 +55,11 @@ func CloneRepositoryHandler(w http.ResponseWriter, r *http.Request) error {
 
 func updateHooks(a *App) error {
 	u := unit.Unit{Name: a.Name, Machine: a.Machine}
-	err = u.ExecuteHook("dependencies")
+	err := u.ExecuteHook("dependencies")
 	if err != nil {
 		return err
 	}
-	err := u.ExecuteHook("reload-gunicorn")
+	err = u.ExecuteHook("reload-gunicorn")
 	if err != nil {
 		return err
 	}
