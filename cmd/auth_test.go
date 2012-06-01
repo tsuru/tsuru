@@ -123,7 +123,7 @@ func (s *S) TestTeamRemoveUser(c *C) {
 }
 
 func (s *S) TestTeamCreate(c *C) {
-	expected := `Team "core" created with success!` + "\n"
+	expected := `Team "core" successfully created!` + "\n"
 	context := Context{[]string{}, []string{"core"}, manager.Stdout, manager.Stderr}
 	client := NewClient(&http.Client{Transport: &transport{msg: "", status: http.StatusCreated}})
 	command := TeamCreate{}
@@ -144,7 +144,7 @@ func (s *S) TestUserCreateShouldNotDependOnTsuruTokenFile(c *C) {
 	os.Remove(os.ExpandEnv("${HOME}/.tsuru_token"))
 	patchStdin(c, []byte("bar123\n"))
 	defer unpathStdin()
-	expected := "Password: \n" + `User "foo@foo.com" created with success!` + "\n"
+	expected := "Password: \n" + `User "foo@foo.com" successfully created!` + "\n"
 	context := Context{[]string{}, []string{"foo@foo.com"}, manager.Stdout, manager.Stderr}
 	client := NewClient(&http.Client{Transport: &transport{msg: "", status: http.StatusCreated}})
 	command := UserCreate{}
@@ -156,7 +156,7 @@ func (s *S) TestUserCreateShouldNotDependOnTsuruTokenFile(c *C) {
 func (s *S) TestUserCreate(c *C) {
 	patchStdin(c, []byte("bar123\n"))
 	defer unpathStdin()
-	expected := "Password: \n" + `User "foo@foo.com" created with success!` + "\n"
+	expected := "Password: \n" + `User "foo@foo.com" successfully created!` + "\n"
 	context := Context{[]string{}, []string{"foo@foo.com"}, manager.Stdout, manager.Stderr}
 	client := NewClient(&http.Client{Transport: &transport{msg: "", status: http.StatusCreated}})
 	command := UserCreate{}
