@@ -31,7 +31,7 @@ func main() {
 	if err != nil {
 		log.Panic(err.Error())
 	}
-	connString, err := config.GetString("database:host")
+	connString, err := config.GetString("database:url")
 	if err != nil {
 		panic(err)
 	}
