@@ -52,7 +52,7 @@ func (s *S) TestLoginShouldReturnErrorIfThePasswordIsNotGiven(c *C) {
 }
 
 func (s *S) TestAddKey(c *C) {
-	expected := "Key added with success!\n"
+	expected := "Key successfully added!\n"
 	context := Context{[]string{}, []string{}, manager.Stdout, manager.Stderr}
 	client := NewClient(&http.Client{Transport: &transport{msg: "", status: http.StatusOK}})
 	command := AddKeyCommand{}
@@ -62,7 +62,7 @@ func (s *S) TestAddKey(c *C) {
 }
 
 func (s *S) TestRemoveKey(c *C) {
-	expected := "Key removed with success!\n"
+	expected := "Key successfully removed!\n"
 	context := Context{[]string{}, []string{}, manager.Stdout, manager.Stderr}
 	client := NewClient(&http.Client{Transport: &transport{msg: "", status: http.StatusOK}})
 	command := RemoveKey{}

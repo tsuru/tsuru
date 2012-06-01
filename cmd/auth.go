@@ -80,7 +80,7 @@ func (c *UserCreate) Run(context *Context, client Doer) error {
 	if err != nil {
 		return err
 	}
-	io.WriteString(context.Stdout, fmt.Sprintf(`User "%s" created with success!`+"\n", email))
+	io.WriteString(context.Stdout, fmt.Sprintf(`User "%s" successfully created!`+"\n", email))
 	return nil
 }
 
@@ -177,7 +177,7 @@ func (c *RemoveKey) Run(context *Context, client Doer) error {
 	if err != nil {
 		return err
 	}
-	io.WriteString(context.Stdout, "Key removed with success!\n")
+	io.WriteString(context.Stdout, "Key successfully removed!\n")
 	return nil
 }
 
@@ -207,7 +207,7 @@ func (c *AddKeyCommand) Run(context *Context, client Doer) error {
 	if err != nil {
 		return err
 	}
-	io.WriteString(context.Stdout, "Key added with success!\n")
+	io.WriteString(context.Stdout, "Key successfully added!\n")
 	return nil
 }
 
@@ -271,7 +271,7 @@ func (c *TeamCreate) Run(context *Context, client Doer) error {
 	if err != nil {
 		return err
 	}
-	io.WriteString(context.Stdout, fmt.Sprintf(`Team "%s" created with success!`+"\n", team))
+	io.WriteString(context.Stdout, fmt.Sprintf(`Team "%s" successfully created!`+"\n", team))
 	return nil
 }
 
