@@ -1,13 +1,10 @@
 package unit
 
 import (
-	"flag"
 	"io/ioutil"
 	. "launchpad.net/gocheck"
 	"os"
 )
-
-var jujuEnabled = flag.Bool("juju", false, "enable unit tests that require juju")
 
 func (s *S) TestCreateAndDestroy(c *C) {
 	u := Unit{Type: "django", Name: "myUnit"}
