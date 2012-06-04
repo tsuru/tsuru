@@ -2,10 +2,13 @@ package app
 
 import (
 	"errors"
+	"fmt"
 	"github.com/timeredbull/tsuru/api/auth"
 	"github.com/timeredbull/tsuru/api/unit"
 	"github.com/timeredbull/tsuru/db"
+	"github.com/timeredbull/tsuru/repository"
 	"launchpad.net/mgo/bson"
+	"path"
 )
 
 type App struct {
@@ -101,6 +104,48 @@ func (app *App) CheckUserAccess(user *auth.User) bool {
 	return false
 }
 
+/*
+* Returns app.conf located at app's git repository
+ */
+func (a *App) conf() (string, error) {
+	u, err := a.unit()
+	if err != nil {
+		return "", err
+	}
+	uRepo, err := repository.GetPath()
+	if err != nil {
+		return "", err
+	}
+	cPath := path.Join(uRepo, "app.info")
+	cmd := fmt.Sprintf("cat %s", cPath)
+	output, err := u.Command(cmd)
+	return string(output), err
+}
+
+/*
+* This function is responsible for running user's pre-restart scripts.
+* Those scripts can be found at the app.conf file, at the root of user's app repository.
+ */
+// func (a *App) preRestart() error {
+// 	return nil
+// }
+
+func (a *App) updateHooks() error {
+	u, err := a.unit()
+	if err != nil {
+		return err
+	}
+	err = u.ExecuteHook("dependencies")
+	if err != nil {
+		return err
+	}
+	err = u.ExecuteHook("reload-gunicorn")
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 func (app *App) unit() (unit.Unit, error) {
-	return unit.Unit{Name: app.Name, Type: app.Framework}, nil
+	return unit.Unit{Name: app.Name, Type: app.Framework, Machine: app.Machine}, nil
 }
