@@ -43,14 +43,6 @@ func (s *S) TestCloneRepositoryShouldReturnNotFoundWhenAppDoesNotExist(c *C) {
 	c.Assert(e, ErrorMatches, "^App not found$")
 }
 
-func (s *S) TestUpdateHooks(c *C) {
-	a := &App{Name: "someApp", Framework: "django", Teams: []auth.Team{s.team}}
-	err := a.Create()
-	c.Assert(err, IsNil)
-	err = updateHooks(a)
-	c.Assert(err, IsNil)
-}
-
 func (s *S) TestAppList(c *C) {
 	apps := []App{}
 	expected := []App{}

@@ -1,6 +1,7 @@
 package app
 
 import (
+	"github.com/timeredbull/commandmocker"
 	"github.com/timeredbull/tsuru/api/auth"
 	"github.com/timeredbull/tsuru/api/unit"
 	"github.com/timeredbull/tsuru/db"
@@ -161,8 +162,35 @@ func (s *S) TestCheckUserAccessWithMultipleUsersOnMultipleGroupsOnApp(c *C) {
 }
 
 func (s *S) TestUnit(c *C) {
-	a := App{Name: "appName", Framework: "django"}
+	a := App{Name: "appName", Framework: "django", Machine: 8}
 	u, err := a.unit()
 	c.Assert(err, IsNil)
-	c.Assert(u, DeepEquals, unit.Unit{Name: a.Name, Type: a.Framework})
+	c.Assert(u, DeepEquals, unit.Unit{Name: a.Name, Type: a.Framework, Machine: a.Machine})
+}
+
+func (s *S) TestAppConf(c *C) {
+	output := `
+	pre-restart:
+	    testdata/pre.sh
+	pos-restart:
+	    testdata/pos.sh
+	`
+	dir, err := commandmocker.Add("juju", output)
+	c.Assert(err, IsNil)
+	defer commandmocker.Remove(dir)
+	a := App{Name: "something", Framework: "django", Machine: 2}
+	conf, err := a.conf()
+	c.Assert(err, IsNil)
+	c.Assert(conf, Equals, output)
+}
+
+// func (s *S) TestPreRestart(c *C) {
+// }
+
+func (s *S) TestUpdateHooks(c *C) {
+	a := &App{Name: "someApp", Framework: "django", Teams: []auth.Team{s.team}}
+	err := a.Create()
+	c.Assert(err, IsNil)
+	err = a.updateHooks()
+	c.Assert(err, IsNil)
 }

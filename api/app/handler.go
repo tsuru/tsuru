@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/timeredbull/tsuru/api/auth"
-	"github.com/timeredbull/tsuru/api/unit"
 	"github.com/timeredbull/tsuru/db"
 	"github.com/timeredbull/tsuru/errors"
 	"github.com/timeredbull/tsuru/repository"
@@ -45,24 +44,11 @@ func CloneRepositoryHandler(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return &errors.Http{Code: http.StatusInternalServerError, Message: output}
 	}
-	err = updateHooks(&app)
+	err = app.updateHooks()
 	if err != nil {
 		return &errors.Http{Code: http.StatusInternalServerError, Message: err.Error()}
 	}
 	fmt.Fprint(w, output)
-	return nil
-}
-
-func updateHooks(a *App) error {
-	u := unit.Unit{Name: a.Name, Machine: a.Machine}
-	err := u.ExecuteHook("dependencies")
-	if err != nil {
-		return err
-	}
-	err = u.ExecuteHook("reload-gunicorn")
-	if err != nil {
-		return err
-	}
 	return nil
 }
 
