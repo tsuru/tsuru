@@ -1,6 +1,7 @@
 package service
 
 import (
+	"github.com/timeredbull/commandmocker"
 	"github.com/timeredbull/tsuru/api/app"
 	"github.com/timeredbull/tsuru/api/auth"
 	"github.com/timeredbull/tsuru/db"
@@ -40,12 +41,14 @@ type ServiceSuite struct {
 	serviceApp  *ServiceApp
 	team        *auth.Team
 	user        *auth.User
+	tmpdir      string
 }
 
 var _ = Suite(&ServiceSuite{})
 
 func (s *ServiceSuite) SetUpSuite(c *C) {
 	var err error
+	s.tmpdir, err = commandmocker.Add("juju", "")
 	db.Session, err = db.Open("127.0.0.1:27017", "tsuru_service_test")
 	c.Assert(err, IsNil)
 	s.user = &auth.User{Email: "cidade@raul.com", Password: "123"}
@@ -57,6 +60,7 @@ func (s *ServiceSuite) SetUpSuite(c *C) {
 }
 
 func (s *ServiceSuite) TearDownSuite(c *C) {
+	defer commandmocker.Remove(s.tmpdir)
 	defer db.Session.Close()
 	db.Session.Apps().Database.DropDatabase()
 }

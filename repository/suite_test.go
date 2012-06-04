@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"github.com/timeredbull/commandmocker"
 	"github.com/timeredbull/tsuru/config"
 	"github.com/timeredbull/tsuru/log"
 	. "launchpad.net/gocheck"
@@ -22,6 +23,7 @@ type S struct {
 	mngr        *gitosisManager
 	logFile     *os.File
 	repoPath    string
+	tmpdir      string
 }
 
 var _ = Suite(&S{})
@@ -41,7 +43,10 @@ func (s *S) tearDownGit(c *C) {
 }
 
 func (s *S) SetUpSuite(c *C) {
-	err := config.ReadConfigFile("../etc/tsuru.conf")
+	var err error
+	s.tmpdir, err = commandmocker.Add("juju", "")
+	c.Assert(err, IsNil)
+	err = config.ReadConfigFile("../etc/tsuru.conf")
 	c.Assert(err, IsNil)
 	s.gitRoot, err = config.GetString("git:root")
 	c.Assert(err, IsNil)
@@ -77,6 +82,7 @@ func (s *S) SetUpTest(c *C) {
 }
 
 func (s *S) TearDownSuite(c *C) {
+	defer commandmocker.Remove(s.tmpdir)
 	defer s.logFile.Close()
 	defer s.tearDownGit(c)
 	err := os.RemoveAll(s.gitRoot)

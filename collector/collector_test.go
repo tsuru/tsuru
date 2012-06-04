@@ -1,6 +1,7 @@
 package collector
 
 import (
+	"github.com/timeredbull/commandmocker"
 	"github.com/timeredbull/tsuru/api/app"
 	"github.com/timeredbull/tsuru/db"
 	"io/ioutil"
@@ -15,15 +16,21 @@ func Test(t *testing.T) { TestingT(t) }
 
 type S struct {
 	session *mgo.Session
+	tmpdir  string
 }
 
 var _ = Suite(&S{})
 
 func (s *S) SetUpSuite(c *C) {
-	db.Session, _ = db.Open("127.0.0.1:27017", "tsuru_collector_test")
+	var err error
+	s.tmpdir, err = commandmocker.Add("juju", "")
+	c.Assert(err, IsNil)
+	db.Session, err = db.Open("127.0.0.1:27017", "tsuru_collector_test")
+	c.Assert(err, IsNil)
 }
 
 func (s *S) TearDownSuite(c *C) {
+	defer commandmocker.Remove(s.tmpdir)
 	defer db.Session.Close()
 	db.Session.Apps().Database.DropDatabase()
 }
