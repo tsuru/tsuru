@@ -5,22 +5,9 @@ import (
 	"io/ioutil"
 	. "launchpad.net/gocheck"
 	"os"
-	"testing"
 )
 
-func Test(t *testing.T) { TestingT(t) }
-
-type S struct{}
-
-var _ = Suite(&S{})
-
 var jujuEnabled = flag.Bool("juju", false, "enable unit tests that require juju")
-
-func (s *S) SetUpSuite(c *C) {
-	if !*jujuEnabled {
-		c.Skip("unit tests need juju installed (-juju to enable)")
-	}
-}
 
 func (s *S) TestCreateAndDestroy(c *C) {
 	u := Unit{Type: "django", Name: "myUnit"}
