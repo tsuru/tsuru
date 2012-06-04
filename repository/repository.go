@@ -3,6 +3,7 @@ package repository
 import (
 	"fmt"
 	"github.com/timeredbull/tsuru/api/unit"
+	"github.com/timeredbull/tsuru/config"
 	"github.com/timeredbull/tsuru/log"
 )
 
@@ -50,4 +51,9 @@ func GetUrl(app string) string {
 
 func GetReadOnlyUrl(app string) string {
 	return fmt.Sprintf("git://%s/%s.git", gitServer, app)
+}
+
+func GetPath() (string, error) {
+	unitRepo, err := config.GetString("git:unit-repo")
+	return unitRepo, err
 }

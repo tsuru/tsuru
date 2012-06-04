@@ -30,3 +30,10 @@ func (s *S) TestGetReadOnlyUrl(c *C) {
 	expected := "git://tsuru.plataformas.glb.com/foobar.git"
 	c.Assert(url, Equals, expected)
 }
+
+func (s *S) TestGetPath(c *C) {
+	path, err := GetPath()
+	c.Assert(err, IsNil)
+	expected := "/home/application/current"
+	c.Assert(path, Equals, expected)
+}
