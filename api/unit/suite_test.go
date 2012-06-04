@@ -26,7 +26,7 @@ func (s *S) TearDownSuite(c *C) {
 	c.Assert(err, IsNil)
 }
 
-var dirname = path.Join(os.TempDir(), "juju-tsuru-dir-test")
+var dirname = path.Join(os.TempDir(), "juju-tsuru-unit-dir-test")
 
 // putJujuInPath creates a juju executable in a temporary directory and adds
 // this directory to the user's path. This action should be undone using
@@ -41,7 +41,7 @@ func putJujuInPath(output string) (err error) {
 		return
 	}
 	defer f.Close()
-	t, err := template.ParseFiles("testdata/jujutemplate")
+	t, err := template.ParseFiles("../../testdata/jujutemplate")
 	if err != nil {
 		return
 	}
