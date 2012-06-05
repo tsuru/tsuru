@@ -1,4 +1,0 @@
-#!/bin/sh -e
-
-output="{{.}}"
-echo -n "${output}"
