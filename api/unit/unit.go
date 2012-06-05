@@ -5,6 +5,7 @@ import (
 	"github.com/timeredbull/tsuru/log"
 	"os/exec"
 	"strconv"
+	"strings"
 )
 
 type Unit struct {
@@ -37,10 +38,13 @@ func (u *Unit) RemoveRelation(su *Unit) error {
 	return cmd.Start()
 }
 
-func (u *Unit) Command(command string) ([]byte, error) {
-	cmd := exec.Command("juju", "ssh", "-o", "StrictHostKeyChecking no", strconv.Itoa(u.Machine), command)
-	log.Printf("executing %s on %s", command, u.Name)
-	return cmd.CombinedOutput()
+func (u *Unit) Command(cmds ...string) ([]byte, error) {
+	c := exec.Command("juju", "ssh", "-o", "StrictHostKeyChecking no", strconv.Itoa(u.Machine))
+	for _, cmd := range cmds {
+		c.Args = append(c.Args, cmd)
+	}
+	log.Printf("executing %s on %s", strings.Join(cmds, " "), u.Name)
+	return c.CombinedOutput()
 }
 
 func (u *Unit) SendFile(srcPath, dstPath string) error {
