@@ -170,6 +170,16 @@ func (s *S) TestUnit(c *C) {
 
 func (s *S) TestAppConf(c *C) {
 	output := `
+	something that must be discarded
+	another thing that must also be discarded
+	one more
+	========
+	pre-restart:
+	    testdata/pre.sh
+	pos-restart:
+	    testdata/pos.sh
+	`
+	expected := `
 	pre-restart:
 	    testdata/pre.sh
 	pos-restart:
@@ -181,7 +191,7 @@ func (s *S) TestAppConf(c *C) {
 	a := App{Name: "something", Framework: "django", Machine: 2}
 	conf, err := a.conf()
 	c.Assert(err, IsNil)
-	c.Assert(conf, Equals, output)
+	c.Assert(conf, Equals, expected)
 }
 
 // func (s *S) TestPreRestart(c *C) {

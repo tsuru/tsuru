@@ -9,7 +9,10 @@ import (
 	"github.com/timeredbull/tsuru/repository"
 	"launchpad.net/mgo/bson"
 	"path"
+	"strings"
 )
+
+const confSep = "========"
 
 type App struct {
 	Ip        string
@@ -118,8 +121,9 @@ func (a *App) conf() (string, error) {
 	}
 	cPath := path.Join(uRepo, "app.info")
 	cmd := fmt.Sprintf("cat %s", cPath)
-	output, err := u.Command(cmd)
-	return string(output), err
+	o, err := u.Command(cmd)
+	out := strings.Split(string(o), confSep)[1]
+	return out, err
 }
 
 /*
