@@ -205,15 +205,42 @@ pos-restart:
 	c.Assert(err, IsNil)
 	a := App{Name: "something", Framework: "django", Machine: 2}
 	conf, err := a.conf()
+	c.Assert(err, IsNil)
 	commandmocker.Remove(dir)
-	w := bytes.NewBuffer([]byte{})
 	output = "$*"
 	dir, err = commandmocker.Add("juju", output)
+	c.Assert(err, IsNil)
+	w := bytes.NewBuffer([]byte{})
 	err = a.preRestart(conf, w)
+	c.Assert(err, IsNil)
 	commandmocker.Remove(dir)
 	c.Assert(err, IsNil)
 	st := strings.Split(w.String(), "\n")
 	c.Assert(st[len(st)-2], Matches, ".*/bin/bash pre.sh$")
+}
+
+func (s *S) TestPosRestart(c *C) {
+	output := `
+sooooome
+========
+pos-restart:
+    pos.sh
+`
+	dir, err := commandmocker.Add("juju", output)
+	c.Assert(err, IsNil)
+	a := App{Name: "something", Framework: "django", Machine: 2}
+	conf, err := a.conf()
+	c.Assert(err, IsNil)
+	commandmocker.Remove(dir)
+	output = "$*"
+	dir, err = commandmocker.Add("juju", output)
+	c.Assert(err, IsNil)
+	w := bytes.NewBuffer([]byte{})
+	err = a.posRestart(conf, w)
+	c.Assert(err, IsNil)
+	commandmocker.Remove(dir)
+	st := strings.Split(w.String(), "\n")
+	c.Assert(st[len(st)-2], Matches, ".*/bin/bash pos.sh$")
 }
 
 func (s *S) TestUpdateHooks(c *C) {

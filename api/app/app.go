@@ -47,9 +47,6 @@ func (app *App) Create() error {
 	if err != nil {
 		return err
 	}
-	if err != nil {
-		return err
-	}
 	u := app.unit()
 	err = u.Create()
 	if err != nil {
@@ -139,6 +136,15 @@ func (a *App) preRestart(c conf, w io.Writer) error {
 	u := a.unit()
 	out, err := u.Command("/bin/bash", c.PreRestart)
 	log.Printf("Executing pre-restart hook...")
+	log.Printf(string(out))
+	return err
+}
+
+func (a *App) posRestart(c conf, w io.Writer) error {
+	log.SetOutput(w)
+	u := a.unit()
+	out, err := u.Command("/bin/bash", c.PosRestart)
+	log.Printf("Executing pos-restart hook...")
 	log.Printf(string(out))
 	return err
 }
