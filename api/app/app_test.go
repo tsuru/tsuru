@@ -6,8 +6,10 @@ import (
 	"github.com/timeredbull/tsuru/api/auth"
 	"github.com/timeredbull/tsuru/api/unit"
 	"github.com/timeredbull/tsuru/db"
+	"github.com/timeredbull/tsuru/log"
 	. "launchpad.net/gocheck"
 	"launchpad.net/mgo/bson"
+	syslog "log"
 	"strings"
 )
 
@@ -225,11 +227,12 @@ pos-restart:
 	conf, err := a.conf()
 	c.Assert(err, IsNil)
 	commandmocker.Remove(dir)
-	output = "$*"
-	dir, err = commandmocker.Add("juju", output)
+	dir, err = commandmocker.Add("juju", "$*")
 	c.Assert(err, IsNil)
 	w := bytes.NewBuffer([]byte{})
-	err = a.preRestart(conf, w)
+	l := syslog.New(w, "", syslog.LstdFlags)
+	log.Target = l
+	err = a.preRestart(conf)
 	c.Assert(err, IsNil)
 	commandmocker.Remove(dir)
 	c.Assert(err, IsNil)
@@ -252,7 +255,9 @@ File or directory does not exists
 	conf, err := a.conf()
 	c.Assert(err, IsNil)
 	w := bytes.NewBuffer([]byte{})
-	err = a.preRestart(conf, w)
+	l := syslog.New(w, "", syslog.LstdFlags)
+	log.Target = l
+	err = a.preRestart(conf)
 	c.Assert(err, ErrorMatches, "^app.conf file does not exists or is in the right place.$")
 }
 
@@ -272,7 +277,9 @@ pos-restart:
 	conf, err := a.conf()
 	c.Assert(err, IsNil)
 	w := bytes.NewBuffer([]byte{})
-	err = a.preRestart(conf, w)
+	l := syslog.New(w, "", syslog.LstdFlags)
+	log.Target = l
+	err = a.preRestart(conf)
 	c.Assert(err, IsNil)
 	st := strings.Split(w.String(), "\n")
 	c.Assert(st[len(st)-2], Matches, ".*pre-restart hook section in app conf does not exists... Skipping...")
@@ -291,11 +298,12 @@ pos-restart:
 	conf, err := a.conf()
 	c.Assert(err, IsNil)
 	commandmocker.Remove(dir)
-	output = "$*"
-	dir, err = commandmocker.Add("juju", output)
+	dir, err = commandmocker.Add("juju", "$*")
 	c.Assert(err, IsNil)
 	w := bytes.NewBuffer([]byte{})
-	err = a.posRestart(conf, w)
+	l := syslog.New(w, "", syslog.LstdFlags)
+	log.Target = l
+	err = a.posRestart(conf)
 	c.Assert(err, IsNil)
 	commandmocker.Remove(dir)
 	st := strings.Split(w.String(), "\n")
@@ -317,7 +325,9 @@ File or directory does not exists
 	conf, err := a.conf()
 	c.Assert(err, IsNil)
 	w := bytes.NewBuffer([]byte{})
-	err = a.posRestart(conf, w)
+	l := syslog.New(w, "", syslog.LstdFlags)
+	log.Target = l
+	err = a.posRestart(conf)
 	c.Assert(err, ErrorMatches, "^app.conf file does not exists or is in the right place.$")
 }
 
@@ -337,7 +347,9 @@ pre-restart:
 	conf, err := a.conf()
 	c.Assert(err, IsNil)
 	w := bytes.NewBuffer([]byte{})
-	err = a.posRestart(conf, w)
+	l := syslog.New(w, "", syslog.LstdFlags)
+	log.Target = l
+	err = a.posRestart(conf)
 	c.Assert(err, IsNil)
 	st := strings.Split(w.String(), "\n")
 	c.Assert(st[len(st)-2], Matches, ".*pos-restart hook section in app conf does not exists... Skipping...")
