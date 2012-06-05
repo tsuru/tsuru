@@ -238,6 +238,7 @@ func RunCommand(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	if err != nil {
 		return err
 	}
+	out = filterOutput(out)
 	n, err := w.Write(out)
 	if err != nil {
 		return err

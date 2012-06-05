@@ -21,6 +21,16 @@ import (
 	"time"
 )
 
+var output = `2012-06-05 17:03:36,887 WARNING ssl-hostname-verification is disabled for this environment
+2012-06-05 17:03:36,887 WARNING EC2 API calls not using secure transport
+2012-06-05 17:03:36,887 WARNING S3 API calls not using secure transport
+2012-06-05 17:03:36,887 WARNING Ubuntu Cloud Image lookups encrypted but not authenticated
+2012-06-05 17:03:36,896 INFO Connecting to environment...
+2012-06-05 17:03:37,599 INFO Connected to environment.
+2012-06-05 17:03:37,727 INFO Connecting to machine 0 at 10.170.0.191
+export DATABASE_HOST=localhost
+export DATABASE_USER=root`
+
 func (s *S) TestCloneRepositoryHandler(c *C) {
 	w := bytes.NewBuffer([]byte{})
 	l := stdlog.New(w, "", stdlog.LstdFlags)
@@ -525,6 +535,24 @@ func (s *S) TestRunHandlerShouldExecuteTheGivenCommandInTheGivenApp(c *C) {
 	c.Assert(recorder.Body.String(), Equals, "ssh -o StrictHostKeyChecking no 10 ls")
 }
 
+func (s *S) TestRunHandlerShouldFilterOutputFromJuju(c *C) {
+	dir, err := commandmocker.Add("juju", output)
+	c.Assert(err, IsNil)
+	defer commandmocker.Remove(dir)
+	a := &App{Name: "unspeakable", Framework: "vougan", Teams: []auth.Team{s.team}, Machine: 10}
+	err = a.Create()
+	c.Assert(err, IsNil)
+	url := fmt.Sprintf("/apps/%s/run/?:app=%s", a.Name, a.Name)
+	request, err := http.NewRequest("POST", url, strings.NewReader("ls"))
+	c.Assert(err, IsNil)
+	recorder := httptest.NewRecorder()
+	err = RunCommand(recorder, request, s.user)
+	expected := `export DATABASE_HOST=localhost
+export DATABASE_USER=root`
+	c.Assert(err, IsNil)
+	c.Assert(recorder.Body.String(), Equals, expected)
+}
+
 func (s *S) TestRunHandlerReturnsBadRequestIfTheCommandIsMissing(c *C) {
 	bodies := []io.Reader{nil, strings.NewReader("")}
 	for _, body := range bodies {
@@ -576,16 +604,6 @@ func (s *S) TestRunHandlerReturnsForbiddenIfTheGivenUserDoesNotHaveAccessToTheAp
 	c.Assert(ok, Equals, true)
 	c.Assert(e.Code, Equals, http.StatusForbidden)
 }
-
-var output = `2012-06-05 17:03:36,887 WARNING ssl-hostname-verification is disabled for this environment
-2012-06-05 17:03:36,887 WARNING EC2 API calls not using secure transport
-2012-06-05 17:03:36,887 WARNING S3 API calls not using secure transport
-2012-06-05 17:03:36,887 WARNING Ubuntu Cloud Image lookups encrypted but not authenticated
-2012-06-05 17:03:36,896 INFO Connecting to environment...
-2012-06-05 17:03:37,599 INFO Connected to environment.
-2012-06-05 17:03:37,727 INFO Connecting to machine 0 at 10.170.0.191
-export DATABASE_HOST=localhost
-export DATABASE_USER=root`
 
 func (s *S) TestGetEnvHandlerShouldParseTheOutputOfAnEnvFile(c *C) {
 	dir, err := commandmocker.Add("juju", output)
