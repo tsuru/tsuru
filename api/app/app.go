@@ -6,11 +6,10 @@ import (
 	"github.com/timeredbull/tsuru/api/auth"
 	"github.com/timeredbull/tsuru/api/unit"
 	"github.com/timeredbull/tsuru/db"
+	"github.com/timeredbull/tsuru/log"
 	"github.com/timeredbull/tsuru/repository"
-	"io"
 	"launchpad.net/goyaml"
 	"launchpad.net/mgo/bson"
-	"log"
 	"path"
 	"strings"
 )
@@ -131,8 +130,7 @@ func (a *App) conf() (conf, error) {
 * preRestart is responsible for running user's pre-restart script.
 * The path to this script can be found at the app.conf file, at the root of user's app repository.
  */
-func (a *App) preRestart(c conf, w io.Writer) error {
-	log.SetOutput(w)
+func (a *App) preRestart(c conf) error {
 	if !a.hasRestartHooks(c) {
 		return errors.New("app.conf file does not exists or is in the right place.")
 	}
@@ -151,8 +149,7 @@ func (a *App) preRestart(c conf, w io.Writer) error {
 * posRestart is responsible for running user's pos-restart script.
 * The path to this script can be found at the app.conf file, at the root of user's app repository.
  */
-func (a *App) posRestart(c conf, w io.Writer) error {
-	log.SetOutput(w)
+func (a *App) posRestart(c conf) error {
 	if !a.hasRestartHooks(c) {
 		return errors.New("app.conf file does not exists or is in the right place.")
 	}

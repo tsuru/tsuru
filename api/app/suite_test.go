@@ -2,6 +2,7 @@ package app
 
 import (
 	"bytes"
+	"fmt"
 	"github.com/timeredbull/commandmocker"
 	"github.com/timeredbull/tsuru/api/auth"
 	"github.com/timeredbull/tsuru/config"
@@ -31,6 +32,31 @@ type S struct {
 }
 
 var _ = Suite(&S{})
+
+type greaterChecker struct{}
+
+func (c *greaterChecker) Info() *CheckerInfo {
+	return &CheckerInfo{Name: "Greater", Params: []string{"expected", "obtained"}}
+}
+
+func (c *greaterChecker) Check(params []interface{}, names []string) (bool, string) {
+	if len(params) != 2 {
+		return false, "you should pass two values to compare"
+	}
+	n1, ok := params[0].(int)
+	if !ok {
+		return false, "first parameter should be int"
+	}
+	n2, ok := params[1].(int)
+	if !ok {
+		return false, "second parameter should be int"
+	}
+	if n1 > n2 {
+		return true, ""
+	}
+	err := fmt.Sprintf("%s is not greater than %s", params[0], params[1])
+	return false, err
+}
 
 type isInGitosisChecker struct{}
 
@@ -63,7 +89,7 @@ func (c *isInGitosisChecker) Check(params []interface{}, names []string) (bool, 
 	return strings.Contains(string(content), str), ""
 }
 
-var IsInGitosis, NotInGitosis Checker = &isInGitosisChecker{}, Not(IsInGitosis)
+var IsInGitosis, NotInGitosis, Greater Checker = &isInGitosisChecker{}, Not(IsInGitosis), &greaterChecker{}
 
 func (s *S) setupGitosis(c *C) {
 	data, err := ioutil.ReadFile("../../etc/tsuru.conf")

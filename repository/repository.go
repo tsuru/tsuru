@@ -13,7 +13,7 @@ func Clone(app string, machine int) ([]byte, error) {
 	u := unit.Unit{Name: app, Machine: machine}
 	cmd := fmt.Sprintf("git clone %s /home/application/current --depth 1", GetReadOnlyUrl(app))
 	output, err := u.Command(cmd)
-	log.Printf(`"git clone" output: ` + string(output))
+	log.Printf(`"git clone" output: %s`, string(output))
 	if err != nil {
 		return output, err
 	}
@@ -24,7 +24,7 @@ func Pull(app string, machine int) ([]byte, error) {
 	u := unit.Unit{Name: app, Machine: machine}
 	cmd := fmt.Sprintf("git --git-dir=/home/application/current/.git --work-tree=/home/application/current pull origin master")
 	output, err := u.Command(cmd)
-	log.Printf(`"git pull" output: ` + string(output))
+	log.Printf(`"git pull" output: %s`, string(output))
 	if err != nil {
 		return output, err
 	}
@@ -34,10 +34,8 @@ func Pull(app string, machine int) ([]byte, error) {
 func CloneOrPull(app string, machine int) (string, error) {
 	var output []byte
 	output, err := Clone(app, machine)
-	fmt.Println(string(output))
 	if err != nil {
 		output, err = Pull(app, machine)
-		fmt.Println(string(output))
 		if err != nil {
 			return string(output), err
 		}
