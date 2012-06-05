@@ -9,7 +9,7 @@ import (
 	"github.com/timeredbull/tsuru/log"
 	. "launchpad.net/gocheck"
 	"launchpad.net/mgo/bson"
-	syslog "log"
+	stdlog "log"
 	"strings"
 )
 
@@ -230,7 +230,7 @@ pos-restart:
 	dir, err = commandmocker.Add("juju", "$*")
 	c.Assert(err, IsNil)
 	w := bytes.NewBuffer([]byte{})
-	l := syslog.New(w, "", syslog.LstdFlags)
+	l := stdlog.New(w, "", stdlog.LstdFlags)
 	log.Target = l
 	err = a.preRestart(conf)
 	c.Assert(err, IsNil)
@@ -255,7 +255,7 @@ File or directory does not exists
 	conf, err := a.conf()
 	c.Assert(err, IsNil)
 	w := bytes.NewBuffer([]byte{})
-	l := syslog.New(w, "", syslog.LstdFlags)
+	l := stdlog.New(w, "", stdlog.LstdFlags)
 	log.Target = l
 	err = a.preRestart(conf)
 	c.Assert(err, ErrorMatches, "^app.conf file does not exists or is in the right place.$")
@@ -277,7 +277,7 @@ pos-restart:
 	conf, err := a.conf()
 	c.Assert(err, IsNil)
 	w := bytes.NewBuffer([]byte{})
-	l := syslog.New(w, "", syslog.LstdFlags)
+	l := stdlog.New(w, "", stdlog.LstdFlags)
 	log.Target = l
 	err = a.preRestart(conf)
 	c.Assert(err, IsNil)
@@ -301,7 +301,7 @@ pos-restart:
 	dir, err = commandmocker.Add("juju", "$*")
 	c.Assert(err, IsNil)
 	w := bytes.NewBuffer([]byte{})
-	l := syslog.New(w, "", syslog.LstdFlags)
+	l := stdlog.New(w, "", stdlog.LstdFlags)
 	log.Target = l
 	err = a.posRestart(conf)
 	c.Assert(err, IsNil)
@@ -325,7 +325,7 @@ File or directory does not exists
 	conf, err := a.conf()
 	c.Assert(err, IsNil)
 	w := bytes.NewBuffer([]byte{})
-	l := syslog.New(w, "", syslog.LstdFlags)
+	l := stdlog.New(w, "", stdlog.LstdFlags)
 	log.Target = l
 	err = a.posRestart(conf)
 	c.Assert(err, ErrorMatches, "^app.conf file does not exists or is in the right place.$")
@@ -347,7 +347,7 @@ pre-restart:
 	conf, err := a.conf()
 	c.Assert(err, IsNil)
 	w := bytes.NewBuffer([]byte{})
-	l := syslog.New(w, "", syslog.LstdFlags)
+	l := stdlog.New(w, "", stdlog.LstdFlags)
 	log.Target = l
 	err = a.posRestart(conf)
 	c.Assert(err, IsNil)
