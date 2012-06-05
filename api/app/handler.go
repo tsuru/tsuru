@@ -12,6 +12,7 @@ import (
 	"io/ioutil"
 	"launchpad.net/mgo/bson"
 	"net/http"
+	"regexp"
 )
 
 func sendProjectChangeToGitosis(kind int, team *auth.Team, app *App) {
@@ -235,6 +236,52 @@ func RunCommand(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	}
 	if n != len(out) {
 		return stderrors.New("Unexpected error writing the output")
+	}
+	return nil
+}
+
+func GetEnv(w http.ResponseWriter, r *http.Request, u *auth.User) error {
+	msg := "You must provide the environment variable(s)"
+	if r.Body == nil {
+		return &errors.Http{Code: http.StatusBadRequest, Message: msg}
+	}
+	variable, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		return err
+	}
+	if len(variable) < 1 {
+		return &errors.Http{Code: http.StatusBadRequest, Message: msg}
+	}
+	variables := bytes.Fields(variable)
+	variable = bytes.Join(variables, []byte{'|'})
+	regex, err := regexp.Compile("^export (" + string(variable) + ")")
+	if err != nil {
+		return err
+	}
+	appName := r.URL.Query().Get(":app")
+	app, err := getAppOrError(appName, u)
+	if err != nil {
+		return err
+	}
+	command := fmt.Sprintf("cat $HOME/%s.env", app.Name)
+	unit := app.unit()
+	out, err := unit.Command(command)
+	if err != nil {
+		return err
+	}
+	out = filterOutput(out)
+	buf := bytes.NewBuffer(out)
+	for line, err := buf.ReadBytes('\n'); err == nil || len(line) > 0; line, err = buf.ReadBytes('\n') {
+		if regex.Match(line) {
+			line = line[len("export "):]
+			n, err := w.Write(line)
+			if err != nil {
+				return err
+			}
+			if n != len(line) {
+				return stderrors.New("An unkown error occurred while processing the request")
+			}
+		}
 	}
 	return nil
 }

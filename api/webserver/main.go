@@ -61,6 +61,7 @@ func main() {
 	m.Get("/apps/:name/repository/clone", webserver.Handler(app.CloneRepositoryHandler))
 	m.Get("/apps/:name", webserver.AuthorizationRequiredHandler(app.AppInfo))
 	m.Post("/apps/:name/run", webserver.AuthorizationRequiredHandler(app.RunCommand))
+	m.Get("/apps/:name/get-env", webserver.AuthorizationRequiredHandler(app.GetEnv))
 	m.Get("/apps", webserver.AuthorizationRequiredHandler(app.AppList))
 	m.Post("/apps", webserver.AuthorizationRequiredHandler(app.CreateAppHandler))
 	m.Put("/apps/:app/:team", webserver.AuthorizationRequiredHandler(app.GrantAccessToTeamHandler))
