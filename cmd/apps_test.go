@@ -44,6 +44,37 @@ func (s *S) TestAppRemove(c *C) {
 	c.Assert(manager.Stdout.(*bytes.Buffer).String(), Equals, expected)
 }
 
+func (s *S) TestAppRun(c *C) {
+	expected := "http.go		http_test.go"
+	context := Context{[]string{}, []string{"ble", "ls"}, manager.Stdout, manager.Stderr}
+	trans := &conditionalTransport{
+		transport{
+			msg: "http.go		http_test.go",
+			status: http.StatusOK,
+		},
+		func(req *http.Request) bool {
+			b := make([]byte, 2)
+			req.Body.Read(b)
+			return req.URL.Path == "/apps/run/ble" && string(b) == "ls"
+		},
+	}
+	client := NewClient(&http.Client{Transport: trans})
+	err := (&AppRun{}).Run(&context, client)
+	c.Assert(err, IsNil)
+	c.Assert(manager.Stdout.(*bytes.Buffer).String(), Equals, expected)
+}
+
+func (s *S) TestInfoAppRun(c *C) {
+	expected := &Info{
+		Name:  "run",
+		Usage: `app run appname "command commandarg1 commandarg2 ... commandargn"`,
+		Desc:  "run a command in all instances of the app, and prints the output. The command musted be quoted.",
+		Args:  1,
+	}
+	command := AppRun{}
+	c.Assert(command.Info(), DeepEquals, expected)
+}
+
 func (s *S) TestAppAddTeam(c *C) {
 	expected := `Team "cobrateam" was added to the "games" app` + "\n"
 	context := Context{[]string{}, []string{"games", "cobrateam"}, manager.Stdout, manager.Stderr}
@@ -71,6 +102,7 @@ func (s *S) TestApp(c *C) {
 		"create":      &AppCreate{},
 		"remove":      &AppRemove{},
 		"list":        &AppList{},
+		"run":         &AppRun{},
 	}
 	command := App{}
 	c.Assert(command.Subcommands(), DeepEquals, expect)

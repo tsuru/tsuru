@@ -8,6 +8,7 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
+	"strings"
 )
 
 type App struct{}
@@ -28,6 +29,7 @@ func (c *App) Subcommands() map[string]interface{} {
 		"create":      &AppCreate{},
 		"remove":      &AppRemove{},
 		"list":        &AppList{},
+		"run":         &AppRun{},
 	}
 }
 
@@ -190,4 +192,32 @@ func (c *AppRemove) Run(context *Context, client Doer) error {
 	}
 	io.WriteString(context.Stdout, fmt.Sprintf(`App "%s" successfully removed!`+"\n", appName))
 	return nil
+}
+
+type AppRun struct{}
+
+func (c *AppRun) Info() *Info {
+	return &Info{
+		Name:  "run",
+		Usage: `app run appname "command commandarg1 commandarg2 ... commandargn"`,
+		Desc:  "run a command in all instances of the app, and prints the output. The command musted be quoted.",
+		Args:  1,
+	}
+}
+
+func (c *AppRun) Run(context *Context, client Doer) error {
+	appName := context.Args[0]
+	url := GetUrl(fmt.Sprintf("/apps/run/%s", appName))
+	b := strings.NewReader(context.Args[1])
+	request, err := http.NewRequest("POST", url, b)
+	if err != nil {
+		return err
+	}
+	r, err := client.Do(request)
+	if err != nil {
+		return err
+	}
+	defer r.Body.Close()
+	_, err = io.Copy(context.Stdout, r.Body)
+	return err
 }
