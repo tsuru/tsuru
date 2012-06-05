@@ -7,6 +7,7 @@ import (
 	"github.com/timeredbull/tsuru/config"
 	"github.com/timeredbull/tsuru/db"
 	"github.com/timeredbull/tsuru/repository"
+	"io"
 	"io/ioutil"
 	. "launchpad.net/gocheck"
 	"launchpad.net/mgo"
@@ -126,7 +127,7 @@ func (s *S) deleteGitosisConf(c *C) {
 
 func (s *S) SetUpSuite(c *C) {
 	var err error
-	s.tmpdir, err = commandmocker.Add("juju", "Linux")
+	s.tmpdir, err = commandmocker.Add("juju", "")
 	c.Assert(err, IsNil)
 	db.Session, err = db.Open("127.0.0.1:27017", "tsuru_app_test")
 	c.Assert(err, IsNil)
@@ -158,4 +159,11 @@ func (s *S) TearDownTest(c *C) {
 		err = app.Destroy()
 		c.Assert(err, IsNil)
 	}
+}
+
+func (s *S) getTestData(p ...string) io.ReadCloser {
+	p = append([]string{}, ".", "testdata")
+	fp := path.Join(p...)
+	f, _ := os.OpenFile(fp, os.O_RDONLY, 0)
+	return f
 }

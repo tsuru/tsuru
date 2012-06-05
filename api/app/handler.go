@@ -3,6 +3,7 @@ package app
 import (
 	"bytes"
 	"encoding/json"
+	stderrors "errors"
 	"fmt"
 	"github.com/timeredbull/tsuru/api/auth"
 	"github.com/timeredbull/tsuru/db"
@@ -204,4 +205,36 @@ func RevokeAccessFromTeamHandler(w http.ResponseWriter, r *http.Request, u *auth
 	appName := r.URL.Query().Get(":app")
 	teamName := r.URL.Query().Get(":team")
 	return revokeAccessFromTeam(appName, teamName, u)
+}
+
+func RunCommand(w http.ResponseWriter, r *http.Request, u *auth.User) error {
+	msg := "You must provide the command to run"
+	if r.Body == nil {
+		return &errors.Http{Code: http.StatusBadRequest, Message: msg}
+	}
+	c, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		return err
+	}
+	if len(c) < 1 {
+		return &errors.Http{Code: http.StatusBadRequest, Message: msg}
+	}
+	appName := r.URL.Query().Get(":app")
+	app, err := getAppOrError(appName, u)
+	if err != nil {
+		return err
+	}
+	unit := app.unit()
+	out, err := unit.Command(string(c))
+	if err != nil {
+		return err
+	}
+	n, err := w.Write(out)
+	if err != nil {
+		return err
+	}
+	if n != len(out) {
+		return stderrors.New("Unexpected error writing the output")
+	}
+	return nil
 }
