@@ -48,10 +48,10 @@ func (s *S) TestReadTargetReturnsDefaultTargetIfTheFileDoesNotExist(c *C) {
 
 func (s *S) TestTargetInfo(c *C) {
 	expected := &Info{
-		Name:  "target",
-		Usage: "target <target>",
-		Desc:  "Defines the target (tsuru server)",
-		Args:  1,
+		Name:    "target",
+		Usage:   "target <target>",
+		Desc:    "Defines the target (tsuru server)",
+		MinArgs: 1,
 	}
 	target := &Target{}
 	c.Assert(target.Info(), DeepEquals, expected)

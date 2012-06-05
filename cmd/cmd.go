@@ -38,7 +38,8 @@ func (m *Manager) Run(args []string) {
 	args = args[len(cmds):]
 	command := m.commands[cmds[0]]
 	command = getSubcommand(command, cmds)
-	if len(args) != command.(Infoer).Info().Args && cmds[0] != "help" {
+	if len(args) < command.(Infoer).Info().MinArgs && cmds[0] != "help" {
+		io.WriteString(m.Stdout, fmt.Sprintf("Not enough arguments to call %s.\n\n", command.(Infoer).Info().Name))
 		command = m.commands["help"]
 		args = cmds
 		cmds = []string{"help"}
@@ -100,10 +101,10 @@ type Context struct {
 }
 
 type Info struct {
-	Name  string
-	Args  int
-	Usage string
-	Desc  string
+	Name    string
+	MinArgs int
+	Usage   string
+	Desc    string
 }
 
 type Help struct {
@@ -125,6 +126,9 @@ func (c *Help) Run(context *Context, client Doer) error {
 		info := cmd.(Infoer).Info()
 		output = output + fmt.Sprintf("Usage: %s %s\n", c.manager.name, info.Usage)
 		output = output + fmt.Sprintf("\n%s\n", info.Desc)
+		if info.MinArgs > 0 {
+			output = output + fmt.Sprintf("\nMinimum arguments: %d\n", info.MinArgs)
+		}
 	} else {
 		output = output + fmt.Sprintf("Usage: %s %s\n", c.manager.name, c.Info().Usage)
 	}

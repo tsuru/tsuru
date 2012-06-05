@@ -66,10 +66,10 @@ func (s *S) TestAppRun(c *C) {
 
 func (s *S) TestInfoAppRun(c *C) {
 	expected := &Info{
-		Name:  "run",
-		Usage: `app run appname "command commandarg1 commandarg2 ... commandargn"`,
-		Desc:  "run a command in all instances of the app, and prints the output. The command musted be quoted.",
-		Args:  1,
+		Name:    "run",
+		Usage:   `app run appname "command commandarg1 commandarg2 ... commandargn"`,
+		Desc:    "run a command in all instances of the app, and prints the output. The command musted be quoted.",
+		MinArgs: 1,
 	}
 	command := AppRun{}
 	c.Assert(command.Info(), DeepEquals, expected)

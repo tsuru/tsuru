@@ -15,10 +15,10 @@ type App struct{}
 
 func (c *App) Info() *Info {
 	return &Info{
-		Name:  "app",
-		Usage: "app (create|remove|list|add-team|remove-team) [args]",
-		Desc:  "manage your apps.",
-		Args:  1,
+		Name:    "app",
+		Usage:   "app (create|remove|list|add-team|remove-team) [args]",
+		Desc:    "manage your apps.",
+		MinArgs: 1,
 	}
 }
 
@@ -37,10 +37,10 @@ type AppAddTeam struct{}
 
 func (c *AppAddTeam) Info() *Info {
 	return &Info{
-		Name:  "add-team",
-		Usage: "app add-team appname teamname",
-		Desc:  "adds team to app.",
-		Args:  2,
+		Name:    "add-team",
+		Usage:   "app add-team appname teamname",
+		Desc:    "adds team to app.",
+		MinArgs: 2,
 	}
 }
 
@@ -63,10 +63,10 @@ type AppRemoveTeam struct{}
 
 func (c *AppRemoveTeam) Info() *Info {
 	return &Info{
-		Name:  "remove-team",
-		Usage: "app remove-team appname teamname",
-		Desc:  "removes team from app.",
-		Args:  2,
+		Name:    "remove-team",
+		Usage:   "app remove-team appname teamname",
+		Desc:    "removes team from app.",
+		MinArgs: 2,
 	}
 }
 
@@ -161,10 +161,10 @@ func (c *AppCreate) Run(context *Context, client Doer) error {
 
 func (c *AppCreate) Info() *Info {
 	return &Info{
-		Name:  "create",
-		Usage: "app create appname",
-		Desc:  "create a new app.",
-		Args:  1,
+		Name:    "create",
+		Usage:   "app create appname",
+		Desc:    "create a new app.",
+		MinArgs: 1,
 	}
 }
 
@@ -172,10 +172,10 @@ type AppRemove struct{}
 
 func (c *AppRemove) Info() *Info {
 	return &Info{
-		Name:  "remove",
-		Usage: "app remove appname",
-		Desc:  "remove your app.",
-		Args:  1,
+		Name:    "remove",
+		Usage:   "app remove appname",
+		Desc:    "remove your app.",
+		MinArgs: 1,
 	}
 }
 
@@ -198,10 +198,10 @@ type AppRun struct{}
 
 func (c *AppRun) Info() *Info {
 	return &Info{
-		Name:  "run",
-		Usage: `app run appname "command commandarg1 commandarg2 ... commandargn"`,
-		Desc:  "run a command in all instances of the app, and prints the output. The command musted be quoted.",
-		Args:  1,
+		Name:    "run",
+		Usage:   `app run appname "command commandarg1 commandarg2 ... commandargn"`,
+		Desc:    "run a command in all instances of the app, and prints the output. The command musted be quoted.",
+		MinArgs: 1,
 	}
 }
 
