@@ -40,9 +40,7 @@ func (u *Unit) RemoveRelation(su *Unit) error {
 
 func (u *Unit) Command(cmds ...string) ([]byte, error) {
 	c := exec.Command("juju", "ssh", "-o", "StrictHostKeyChecking no", strconv.Itoa(u.Machine))
-	for _, cmd := range cmds {
-		c.Args = append(c.Args, cmd)
-	}
+	c.Args = append(c.Args, cmds...)
 	log.Printf("executing %s on %s", strings.Join(cmds, " "), u.Name)
 	return c.CombinedOutput()
 }
