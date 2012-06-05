@@ -1,12 +1,14 @@
 package app
 
 import (
+	"bytes"
 	"github.com/timeredbull/commandmocker"
 	"github.com/timeredbull/tsuru/api/auth"
 	"github.com/timeredbull/tsuru/api/unit"
 	"github.com/timeredbull/tsuru/db"
 	. "launchpad.net/gocheck"
 	"launchpad.net/mgo/bson"
+	"strings"
 )
 
 type hasAccessToChecker struct{}
@@ -169,32 +171,50 @@ func (s *S) TestUnit(c *C) {
 
 func (s *S) TestAppConf(c *C) {
 	output := `
-	something that must be discarded
-	another thing that must also be discarded
-	one more
-	========
-	pre-restart:
-	    testdata/pre.sh
-	pos-restart:
-	    testdata/pos.sh
-	`
-	expected := `
-	pre-restart:
-	    testdata/pre.sh
-	pos-restart:
-	    testdata/pos.sh
-	`
+something that must be discarded
+another thing that must also be discarded
+one more
+========
+pre-restart:
+    testdata/pre.sh
+pos-restart:
+    testdata/pos.sh
+`
 	dir, err := commandmocker.Add("juju", output)
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(dir)
 	a := App{Name: "something", Framework: "django", Machine: 2}
 	conf, err := a.conf()
 	c.Assert(err, IsNil)
-	c.Assert(conf, Equals, expected)
+	c.Assert(conf.PreRestart, Equals, "testdata/pre.sh")
+	c.Assert(conf.PosRestart, Equals, "testdata/pos.sh")
 }
 
-// func (s *S) TestPreRestart(c *C) {
-// }
+func (s *S) TestPreRestart(c *C) {
+	output := `
+something that must be discarded
+another thing that must also be discarded
+one more
+========
+pre-restart:
+    pre.sh
+pos-restart:
+    pos.sh
+`
+	dir, err := commandmocker.Add("juju", output)
+	c.Assert(err, IsNil)
+	a := App{Name: "something", Framework: "django", Machine: 2}
+	conf, err := a.conf()
+	commandmocker.Remove(dir)
+	w := bytes.NewBuffer([]byte{})
+	output = "$*"
+	dir, err = commandmocker.Add("juju", output)
+	err = a.preRestart(conf, w)
+	commandmocker.Remove(dir)
+	c.Assert(err, IsNil)
+	st := strings.Split(w.String(), "\n")
+	c.Assert(st[len(st)-2], Matches, ".*/bin/bash pre.sh$")
+}
 
 func (s *S) TestUpdateHooks(c *C) {
 	a := &App{Name: "someApp", Framework: "django", Teams: []auth.Team{s.team}}

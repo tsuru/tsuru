@@ -7,7 +7,10 @@ import (
 	"github.com/timeredbull/tsuru/api/unit"
 	"github.com/timeredbull/tsuru/db"
 	"github.com/timeredbull/tsuru/repository"
+	"io"
+	"launchpad.net/goyaml"
 	"launchpad.net/mgo/bson"
+	"log"
 	"path"
 	"strings"
 )
@@ -21,6 +24,11 @@ type App struct {
 	Framework string
 	State     string
 	Teams     []auth.Team
+}
+
+type conf struct {
+	PreRestart string "pre-restart"
+	PosRestart string "pos-restart"
 }
 
 func AllApps() ([]App, error) {
@@ -104,26 +112,36 @@ func (app *App) CheckUserAccess(user *auth.User) bool {
 /*
 * Returns app.conf located at app's git repository
  */
-func (a *App) conf() (string, error) {
+func (a *App) conf() (conf, error) {
+	var c conf
 	u := a.unit()
 	uRepo, err := repository.GetPath()
 	if err != nil {
-		return "", err
+		return c, err
 	}
 	cPath := path.Join(uRepo, "app.info")
-	cmd := fmt.Sprintf("cat %s", cPath)
+	cmd := fmt.Sprintf(`echo "%s";cat %s`, confSep, cPath)
 	o, err := u.Command(cmd)
-	out := strings.Split(string(o), confSep)[1]
-	return out, err
+	data := strings.Split(string(o), confSep)[1]
+	err = goyaml.Unmarshal([]byte(data), &c)
+	if err != nil {
+		return c, err
+	}
+	return c, nil
 }
 
 /*
-* This function is responsible for running user's pre-restart scripts.
+* preRestart is responsible for running user's pre-restart scripts.
 * Those scripts can be found at the app.conf file, at the root of user's app repository.
  */
-// func (a *App) preRestart() error {
-// 	return nil
-// }
+func (a *App) preRestart(c conf, w io.Writer) error {
+	log.SetOutput(w)
+	u := a.unit()
+	out, err := u.Command("/bin/bash", c.PreRestart)
+	log.Printf("Executing pre-restart hook...")
+	log.Printf(string(out))
+	return err
+}
 
 func (a *App) updateHooks() error {
 	u := a.unit()
