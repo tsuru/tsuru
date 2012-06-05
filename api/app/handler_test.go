@@ -3,10 +3,12 @@ package app
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/timeredbull/commandmocker"
 	"github.com/timeredbull/tsuru/api/auth"
 	"github.com/timeredbull/tsuru/db"
 	"github.com/timeredbull/tsuru/errors"
 	"github.com/timeredbull/tsuru/repository"
+	"io"
 	"io/ioutil"
 	. "launchpad.net/gocheck"
 	"launchpad.net/mgo/bson"
@@ -453,4 +455,72 @@ func (s *S) TestRevokeAccessFromTeamRemovesTheProjectFromGitosisConf(c *C) {
 	err = revokeAccessFromTeam(a.Name, s.team.Name, s.user)
 	time.Sleep(1e9)
 	c.Assert("writable = "+a.Name, NotInGitosis)
+}
+
+func (s *S) TestRunHandlerShouldExecuteTheGivenCommandInTheGivenApp(c *C) {
+	dir, err := commandmocker.Add("juju", "$*")
+	c.Assert(err, IsNil)
+	defer commandmocker.Remove(dir)
+	a := &App{Name: "secrets", Framework: "arch enemy", Teams: []auth.Team{s.team}, Machine: 10}
+	err = a.Create()
+	c.Assert(err, IsNil)
+	url := fmt.Sprintf("/apps/%s/run/?:app=%s", a.Name, a.Name)
+	request, err := http.NewRequest("POST", url, strings.NewReader("ls"))
+	c.Assert(err, IsNil)
+	recorder := httptest.NewRecorder()
+	err = RunCommand(recorder, request, s.user)
+	c.Assert(err, IsNil)
+	c.Assert(recorder.Body.String(), Equals, "ssh -o StrictHostKeyChecking no 10 ls")
+}
+
+func (s *S) TestRunHandlerReturnsBadRequestIfTheCommandIsMissing(c *C) {
+	bodies := []io.Reader{nil, strings.NewReader("")}
+	for _, body := range bodies {
+		request, err := http.NewRequest("POST", "/apps/unknown/run/?:app=unkown", body)
+		c.Assert(err, IsNil)
+		recorder := httptest.NewRecorder()
+		err = RunCommand(recorder, request, s.user)
+		c.Assert(err, NotNil)
+		e, ok := err.(*errors.Http)
+		c.Assert(ok, Equals, true)
+		c.Assert(e.Code, Equals, http.StatusBadRequest)
+		c.Assert(e, ErrorMatches, "^You must provide the command to run$")
+	}
+}
+
+func (s *S) TestRunHandlerReturnsInternalErrorIfReadAllFails(c *C) {
+	b := s.getTestData("bodyToBeClosed.txt")
+	request, err := http.NewRequest("POST", "/users", b)
+	c.Assert(err, IsNil)
+	request.Body.Close()
+	recorder := httptest.NewRecorder()
+	err = RunCommand(recorder, request, s.user)
+	c.Assert(err, NotNil)
+}
+
+func (s *S) TestRunHandlerReturnsNotFoundIfTheAppDoesNotExist(c *C) {
+	request, err := http.NewRequest("POST", "/apps/unknown/run/?:app=unknown", strings.NewReader("ls"))
+	c.Assert(err, IsNil)
+	recorder := httptest.NewRecorder()
+	err = RunCommand(recorder, request, s.user)
+	c.Assert(err, NotNil)
+	e, ok := err.(*errors.Http)
+	c.Assert(ok, Equals, true)
+	c.Assert(e.Code, Equals, http.StatusNotFound)
+	c.Assert(e, ErrorMatches, "^App not found$")
+}
+
+func (s *S) TestRunHandlerReturnsForbiddenIfTheGivenUserDoesNotHaveAccessToTheApp(c *C) {
+	a := &App{Name: "secrets", Framework: "arch enemy", Machine: 10}
+	err := a.Create()
+	c.Assert(err, IsNil)
+	url := fmt.Sprintf("/apps/%s/run/?:app=%s", a.Name, a.Name)
+	request, err := http.NewRequest("POST", url, strings.NewReader("ls"))
+	c.Assert(err, IsNil)
+	recorder := httptest.NewRecorder()
+	err = RunCommand(recorder, request, s.user)
+	c.Assert(err, NotNil)
+	e, ok := err.(*errors.Http)
+	c.Assert(ok, Equals, true)
+	c.Assert(e.Code, Equals, http.StatusForbidden)
 }
