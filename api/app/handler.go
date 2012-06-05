@@ -45,6 +45,14 @@ func CloneRepositoryHandler(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return &errors.Http{Code: http.StatusInternalServerError, Message: output}
 	}
+	c, err := app.conf()
+	if err != nil {
+		return &errors.Http{Code: http.StatusInternalServerError, Message: err.Error()}
+	}
+	err = app.preRestart(c)
+	if err != nil {
+		return &errors.Http{Code: http.StatusInternalServerError, Message: err.Error()}
+	}
 	err = app.updateHooks()
 	if err != nil {
 		return &errors.Http{Code: http.StatusInternalServerError, Message: err.Error()}

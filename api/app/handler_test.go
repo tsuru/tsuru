@@ -1,17 +1,20 @@
 package app
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"github.com/timeredbull/commandmocker"
 	"github.com/timeredbull/tsuru/api/auth"
 	"github.com/timeredbull/tsuru/db"
 	"github.com/timeredbull/tsuru/errors"
+	"github.com/timeredbull/tsuru/log"
 	"github.com/timeredbull/tsuru/repository"
 	"io"
 	"io/ioutil"
 	. "launchpad.net/gocheck"
 	"launchpad.net/mgo/bson"
+	stdlog "log"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -19,8 +22,21 @@ import (
 )
 
 func (s *S) TestCloneRepositoryHandler(c *C) {
+	w := bytes.NewBuffer([]byte{})
+	l := stdlog.New(w, "", stdlog.LstdFlags)
+	log.Target = l
+	output := `
+========
+pre-restart:
+    pre.sh
+pos-restart:
+    pos.sh
+`
+	dir, err := commandmocker.Add("juju", output)
+	c.Assert(err, IsNil)
+	defer commandmocker.Remove(dir)
 	a := App{Name: "someApp", Framework: "django", Teams: []auth.Team{s.team}}
-	err := a.Create()
+	err = a.Create()
 	c.Assert(err, IsNil)
 	defer a.Destroy()
 	url := fmt.Sprintf("/apps/%s/repository/clone?:name=%s", a.Name, a.Name)
@@ -31,6 +47,42 @@ func (s *S) TestCloneRepositoryHandler(c *C) {
 	c.Assert(err, IsNil)
 	c.Assert(recorder.Code, Equals, 200)
 	c.Assert(recorder.Body.String(), Not(Equals), "success")
+}
+
+func (s *S) TestCloneRepositoryRunsCloneOrPullThenPreRestartThenRestartThenPosRestartHooksInOrder(c *C) {
+	w := bytes.NewBuffer([]byte{})
+	l := stdlog.New(w, "", stdlog.LstdFlags)
+	log.Target = l
+	output := `
+========
+pre-restart:
+    pre.sh
+pos-restart:
+    pos.sh
+`
+	dir, err := commandmocker.Add("juju", output)
+	c.Assert(err, IsNil)
+	defer commandmocker.Remove(dir)
+	a := App{Name: "someApp", Framework: "django", Teams: []auth.Team{s.team}}
+	err = a.Create()
+	c.Assert(err, IsNil)
+	defer a.Destroy()
+	url := fmt.Sprintf("/apps/%s/repository/clone?:name=%s", a.Name, a.Name)
+	request, err := http.NewRequest("GET", url, nil)
+	c.Assert(err, IsNil)
+	recorder := httptest.NewRecorder()
+	err = CloneRepositoryHandler(recorder, request)
+	c.Assert(err, IsNil)
+	c.Assert(recorder.Code, Equals, 200)
+	//str := strings.Split(w.String(), "\n")
+	str := w.String()
+	cloneIndex := strings.Index(str, "git clone")
+	c.Assert(cloneIndex, Not(Equals), -1)
+	reloadIndex := strings.Index(str, "reload-gunicorn")
+	c.Assert(reloadIndex, Not(Equals), -1)
+	preRstIndex := strings.Index(str, "pre-restart hook")
+	c.Assert(preRstIndex, Not(Equals), -1)
+	c.Assert(reloadIndex, Greater, preRstIndex)
 }
 
 func (s *S) TestCloneRepositoryShouldReturnNotFoundWhenAppDoesNotExist(c *C) {
