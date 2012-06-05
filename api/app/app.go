@@ -42,10 +42,7 @@ func (app *App) Create() error {
 	if err != nil {
 		return err
 	}
-	u, err := app.unit()
-	if err != nil {
-		return err
-	}
+	u := app.unit()
 	err = u.Create()
 	if err != nil {
 		return err
@@ -58,10 +55,7 @@ func (app *App) Destroy() error {
 	if err != nil {
 		return err
 	}
-	u, err := app.unit()
-	if err != nil {
-		return err
-	}
+	u := app.unit()
 	u.Destroy()
 	return nil
 }
@@ -111,10 +105,7 @@ func (app *App) CheckUserAccess(user *auth.User) bool {
 * Returns app.conf located at app's git repository
  */
 func (a *App) conf() (string, error) {
-	u, err := a.unit()
-	if err != nil {
-		return "", err
-	}
+	u := a.unit()
 	uRepo, err := repository.GetPath()
 	if err != nil {
 		return "", err
@@ -135,11 +126,8 @@ func (a *App) conf() (string, error) {
 // }
 
 func (a *App) updateHooks() error {
-	u, err := a.unit()
-	if err != nil {
-		return err
-	}
-	err = u.ExecuteHook("dependencies")
+	u := a.unit()
+	err := u.ExecuteHook("dependencies")
 	if err != nil {
 		return err
 	}
@@ -150,6 +138,6 @@ func (a *App) updateHooks() error {
 	return nil
 }
 
-func (app *App) unit() (unit.Unit, error) {
-	return unit.Unit{Name: app.Name, Type: app.Framework, Machine: app.Machine}, nil
+func (app *App) unit() unit.Unit {
+	return unit.Unit{Name: app.Name, Type: app.Framework, Machine: app.Machine}
 }

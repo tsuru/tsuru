@@ -163,8 +163,7 @@ func (s *S) TestCheckUserAccessWithMultipleUsersOnMultipleGroupsOnApp(c *C) {
 
 func (s *S) TestUnit(c *C) {
 	a := App{Name: "appName", Framework: "django", Machine: 8}
-	u, err := a.unit()
-	c.Assert(err, IsNil)
+	u := a.unit()
 	c.Assert(u, DeepEquals, unit.Unit{Name: a.Name, Type: a.Framework, Machine: a.Machine})
 }
 
