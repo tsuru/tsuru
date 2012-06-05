@@ -40,10 +40,10 @@ func readPassword(out io.Writer, password *string) error {
 
 func (c *User) Info() *Info {
 	return &Info{
-		Name:  "user",
-		Usage: "user (create) [args]",
-		Desc:  "manage users.",
-		Args:  1,
+		Name:    "user",
+		Usage:   "user (create) [args]",
+		Desc:    "manage users.",
+		MinArgs: 1,
 	}
 }
 
@@ -57,10 +57,10 @@ type UserCreate struct{}
 
 func (c *UserCreate) Info() *Info {
 	return &Info{
-		Name:  "create",
-		Usage: "user create username",
-		Desc:  "creates user.",
-		Args:  1,
+		Name:    "create",
+		Usage:   "user create username",
+		Desc:    "creates user.",
+		MinArgs: 1,
 	}
 }
 
@@ -119,10 +119,10 @@ func (c *Login) Run(context *Context, client Doer) error {
 
 func (c *Login) Info() *Info {
 	return &Info{
-		Name:  "login",
-		Usage: "login email",
-		Desc:  "log in with your credentials.",
-		Args:  1,
+		Name:    "login",
+		Usage:   "login email",
+		Desc:    "log in with your credentials.",
+		MinArgs: 1,
 	}
 }
 
@@ -137,10 +137,10 @@ type Key struct{}
 
 func (c *Key) Info() *Info {
 	return &Info{
-		Name:  "key",
-		Usage: "key (add|remove)",
-		Desc:  "manage keys.",
-		Args:  1,
+		Name:    "key",
+		Usage:   "key (add|remove)",
+		Desc:    "manage keys.",
+		MinArgs: 1,
 	}
 }
 
@@ -242,10 +242,10 @@ func (c *Team) Subcommands() map[string]interface{} {
 
 func (c *Team) Info() *Info {
 	return &Info{
-		Name:  "team",
-		Usage: "team (create|add-user|remove-user) [args]",
-		Desc:  "manage teams.",
-		Args:  1,
+		Name:    "team",
+		Usage:   "team (create|add-user|remove-user) [args]",
+		Desc:    "manage teams.",
+		MinArgs: 1,
 	}
 }
 
@@ -253,10 +253,10 @@ type TeamCreate struct{}
 
 func (c *TeamCreate) Info() *Info {
 	return &Info{
-		Name:  "create",
-		Usage: "team create teamname",
-		Desc:  "creates teams.",
-		Args:  1,
+		Name:    "create",
+		Usage:   "team create teamname",
+		Desc:    "creates teams.",
+		MinArgs: 1,
 	}
 }
 
@@ -279,10 +279,10 @@ type TeamAddUser struct{}
 
 func (c *TeamAddUser) Info() *Info {
 	return &Info{
-		Name:  "add-user",
-		Usage: "glb team add-user teamname username",
-		Desc:  "adds user to a team",
-		Args:  2,
+		Name:    "add-user",
+		Usage:   "glb team add-user teamname username",
+		Desc:    "adds user to a team",
+		MinArgs: 2,
 	}
 }
 
@@ -305,10 +305,10 @@ type TeamRemoveUser struct{}
 
 func (c *TeamRemoveUser) Info() *Info {
 	return &Info{
-		Name:  "remove-user",
-		Usage: "glb team remove-user teamname username",
-		Desc:  "removes user from a team",
-		Args:  2,
+		Name:    "remove-user",
+		Usage:   "glb team remove-user teamname username",
+		Desc:    "removes user from a team",
+		MinArgs: 2,
 	}
 }
 

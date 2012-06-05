@@ -13,10 +13,10 @@ type Target struct{}
 
 func (t *Target) Info() *Info {
 	return &Info{
-		Name:  "target",
-		Usage: "target <target>",
-		Desc:  "Defines the target (tsuru server)",
-		Args:  1,
+		Name:    "target",
+		Usage:   "target <target>",
+		Desc:    "Defines the target (tsuru server)",
+		MinArgs: 1,
 	}
 }
 

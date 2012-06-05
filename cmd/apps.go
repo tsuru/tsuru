@@ -8,16 +8,17 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
+	"strings"
 )
 
 type App struct{}
 
 func (c *App) Info() *Info {
 	return &Info{
-		Name:  "app",
-		Usage: "app (create|remove|list|add-team|remove-team) [args]",
-		Desc:  "manage your apps.",
-		Args:  1,
+		Name:    "app",
+		Usage:   "app (create|remove|list|add-team|remove-team) [args]",
+		Desc:    "manage your apps.",
+		MinArgs: 1,
 	}
 }
 
@@ -28,6 +29,7 @@ func (c *App) Subcommands() map[string]interface{} {
 		"create":      &AppCreate{},
 		"remove":      &AppRemove{},
 		"list":        &AppList{},
+		"run":         &AppRun{},
 	}
 }
 
@@ -35,10 +37,10 @@ type AppAddTeam struct{}
 
 func (c *AppAddTeam) Info() *Info {
 	return &Info{
-		Name:  "add-team",
-		Usage: "app add-team appname teamname",
-		Desc:  "adds team to app.",
-		Args:  2,
+		Name:    "add-team",
+		Usage:   "app add-team appname teamname",
+		Desc:    "adds team to app.",
+		MinArgs: 2,
 	}
 }
 
@@ -61,10 +63,10 @@ type AppRemoveTeam struct{}
 
 func (c *AppRemoveTeam) Info() *Info {
 	return &Info{
-		Name:  "remove-team",
-		Usage: "app remove-team appname teamname",
-		Desc:  "removes team from app.",
-		Args:  2,
+		Name:    "remove-team",
+		Usage:   "app remove-team appname teamname",
+		Desc:    "removes team from app.",
+		MinArgs: 2,
 	}
 }
 
@@ -159,10 +161,10 @@ func (c *AppCreate) Run(context *Context, client Doer) error {
 
 func (c *AppCreate) Info() *Info {
 	return &Info{
-		Name:  "create",
-		Usage: "app create appname",
-		Desc:  "create a new app.",
-		Args:  1,
+		Name:    "create",
+		Usage:   "app create appname",
+		Desc:    "create a new app.",
+		MinArgs: 1,
 	}
 }
 
@@ -170,10 +172,10 @@ type AppRemove struct{}
 
 func (c *AppRemove) Info() *Info {
 	return &Info{
-		Name:  "remove",
-		Usage: "app remove appname",
-		Desc:  "remove your app.",
-		Args:  1,
+		Name:    "remove",
+		Usage:   "app remove appname",
+		Desc:    "remove your app.",
+		MinArgs: 1,
 	}
 }
 
@@ -190,4 +192,36 @@ func (c *AppRemove) Run(context *Context, client Doer) error {
 	}
 	io.WriteString(context.Stdout, fmt.Sprintf(`App "%s" successfully removed!`+"\n", appName))
 	return nil
+}
+
+type AppRun struct{}
+
+func (c *AppRun) Info() *Info {
+	desc := `run a command in all instances of the app, and prints the output.
+Notice that you may need quotes to run your command if you want to deal with
+input and outputs redirects, and pipes.
+`
+	return &Info{
+		Name:    "run",
+		Usage:   `app run appname command commandarg1 commandarg2 ... commandargn`,
+		Desc:    desc,
+		MinArgs: 1,
+	}
+}
+
+func (c *AppRun) Run(context *Context, client Doer) error {
+	appName := context.Args[0]
+	url := GetUrl(fmt.Sprintf("/apps/run/%s", appName))
+	b := strings.NewReader(strings.Join(context.Args[1:], " "))
+	request, err := http.NewRequest("POST", url, b)
+	if err != nil {
+		return err
+	}
+	r, err := client.Do(request)
+	if err != nil {
+		return err
+	}
+	defer r.Body.Close()
+	_, err = io.Copy(context.Stdout, r.Body)
+	return err
 }

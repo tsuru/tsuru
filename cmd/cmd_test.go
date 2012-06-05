@@ -89,7 +89,7 @@ type TicCmd struct {
 }
 
 func (c *TicCmd) Info() *Info {
-	return &Info{Name: "tic", Args: 1}
+	return &Info{Name: "tic", MinArgs: 1}
 }
 
 func (c *TicCmd) Subcommands() map[string]interface{} {
@@ -113,7 +113,7 @@ type RecordCmd struct {
 }
 
 func (c *RecordCmd) Info() *Info {
-	return &Info{Name: "record", Args: 2}
+	return &Info{Name: "record", MinArgs: 2}
 }
 
 func (c *RecordCmd) Run(context *Context, client Doer) error {
@@ -183,10 +183,10 @@ type ArgCmd struct{}
 
 func (c *ArgCmd) Info() *Info {
 	return &Info{
-		Name:  "arg",
-		Args:  1,
-		Usage: "arg [args]",
-		Desc:  "some desc",
+		Name:    "arg",
+		MinArgs: 1,
+		Usage:   "arg [args]",
+		Desc:    "some desc",
 	}
 }
 
@@ -200,17 +200,21 @@ type ArgSubCmd struct{}
 
 func (c *ArgSubCmd) Info() *Info {
 	return &Info{
-		Name:  "subargs",
-		Args:  2,
-		Usage: "arg subargs [args]",
-		Desc:  "some subarg desc",
+		Name:    "subargs",
+		MinArgs: 2,
+		Usage:   "arg subargs [args]",
+		Desc:    "some subarg desc",
 	}
 }
 
 func (s *S) TestRunWrongArgsNumberShouldRunsHelp(c *C) {
-	expected := `Usage: glb arg [args]
+	expected := `Not enough arguments to call arg.
+
+Usage: glb arg [args]
 
 some desc
+
+Minimum arguments: 1
 `
 	manager.Register(&ArgCmd{})
 	manager.Run([]string{"arg"})
@@ -218,9 +222,13 @@ some desc
 }
 
 func (s *S) TestRunWrongArgsNumberShouldRunsHelpForSubCmd(c *C) {
-	expected := `Usage: glb arg subargs [args]
+	expected := `Not enough arguments to call subargs.
+
+Usage: glb arg subargs [args]
 
 some subarg desc
+
+Minimum arguments: 2
 `
 	manager.Register(&ArgCmd{})
 	manager.Run([]string{"arg", "subargs"})

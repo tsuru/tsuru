@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"bytes"
+	"errors"
 	"io/ioutil"
 	. "launchpad.net/gocheck"
 	"net/http"
@@ -28,6 +29,18 @@ func (s *S) TestShouldReturnBodyMessageOnError(c *C) {
 	response, err := client.Do(request)
 	c.Assert(response, IsNil)
 	c.Assert(err.Error(), Equals, "You must be authenticated to execute this command.")
+}
+
+type conditionalTransport struct {
+	transport
+	condFunc func(*http.Request) bool
+}
+
+func (t *conditionalTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	if !t.condFunc(req) {
+		return &http.Response{Body: nil, StatusCode: 500}, errors.New("condition failed")
+	}
+	return t.transport.RoundTrip(req)
 }
 
 func (s *S) TestShouldReturnErrorWhenServerIsDown(c *C) {
