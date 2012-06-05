@@ -343,6 +343,39 @@ pre-restart:
 	c.Assert(st[len(st)-2], Matches, ".*pos-restart hook section in app conf does not exists... Skipping...")
 }
 
+func (s *S) TestHasRestartHooksWithNoHooks(c *C) {
+	output := `
+something that must be discarded
+========
+nothing here
+`
+	a := App{Name: "something", Framework: "django", Machine: 2}
+	dir, err := commandmocker.Add("juju", output)
+	c.Assert(err, IsNil)
+	conf, err := a.conf()
+	commandmocker.Remove(dir)
+	c.Assert(err, IsNil)
+	b := a.hasRestartHooks(conf)
+	c.Assert(b, Equals, false)
+}
+
+func (s *S) TestHasRestartHooksWithOneHooks(c *C) {
+	output := `
+something that must be discarded
+========
+pos-restart:
+    somefile.sh
+`
+	a := App{Name: "something", Framework: "django", Machine: 2}
+	dir, err := commandmocker.Add("juju", output)
+	c.Assert(err, IsNil)
+	conf, err := a.conf()
+	commandmocker.Remove(dir)
+	c.Assert(err, IsNil)
+	b := a.hasRestartHooks(conf)
+	c.Assert(b, Equals, true)
+}
+
 func (s *S) TestUpdateHooks(c *C) {
 	a := &App{Name: "someApp", Framework: "django", Teams: []auth.Team{s.team}}
 	err := a.Create()

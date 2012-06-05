@@ -133,7 +133,7 @@ func (a *App) conf() (conf, error) {
  */
 func (a *App) preRestart(c conf, w io.Writer) error {
 	log.SetOutput(w)
-	if c.PreRestart == "" && c.PosRestart == "" {
+	if !a.hasRestartHooks(c) {
 		return errors.New("app.conf file does not exists or is in the right place.")
 	}
 	if c.PreRestart == "" {
@@ -153,7 +153,7 @@ func (a *App) preRestart(c conf, w io.Writer) error {
  */
 func (a *App) posRestart(c conf, w io.Writer) error {
 	log.SetOutput(w)
-	if c.PreRestart == "" && c.PosRestart == "" {
+	if !a.hasRestartHooks(c) {
 		return errors.New("app.conf file does not exists or is in the right place.")
 	}
 	if c.PosRestart == "" {
@@ -165,6 +165,10 @@ func (a *App) posRestart(c conf, w io.Writer) error {
 	log.Printf("Executing pos-restart hook...")
 	log.Printf(string(out))
 	return err
+}
+
+func (a *App) hasRestartHooks(c conf) bool {
+	return !(c.PreRestart == "" && c.PosRestart == "")
 }
 
 func (a *App) updateHooks() error {
