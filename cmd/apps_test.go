@@ -69,7 +69,7 @@ func (s *S) TestAppRunShouldUseAllSubsequentArgumentsAsArgumentsToTheGivenComman
 	context := Context{[]string{}, []string{"ble", "ls", "-l"}, manager.Stdout, manager.Stderr}
 	trans := &conditionalTransport{
 		transport{
-			msg: "-rw-r--r--  1 f  staff  119 Apr 26 18:23 http.go",
+			msg:    "-rw-r--r--  1 f  staff  119 Apr 26 18:23 http.go",
 			status: http.StatusOK,
 		},
 		func(req *http.Request) bool {
