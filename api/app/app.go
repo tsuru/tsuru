@@ -128,11 +128,18 @@ func (a *App) conf() (conf, error) {
 }
 
 /*
-* preRestart is responsible for running user's pre-restart scripts.
-* Those scripts can be found at the app.conf file, at the root of user's app repository.
+* preRestart is responsible for running user's pre-restart script.
+* The path to this script can be found at the app.conf file, at the root of user's app repository.
  */
 func (a *App) preRestart(c conf, w io.Writer) error {
 	log.SetOutput(w)
+	if c.PreRestart == "" && c.PosRestart == "" {
+		return errors.New("app.conf file does not exists or is in the right place.")
+	}
+	if c.PreRestart == "" {
+		log.Printf("pre-restart hook section in app conf does not exists... Skipping...")
+		return nil
+	}
 	u := a.unit()
 	out, err := u.Command("/bin/bash", c.PreRestart)
 	log.Printf("Executing pre-restart hook...")
@@ -140,8 +147,19 @@ func (a *App) preRestart(c conf, w io.Writer) error {
 	return err
 }
 
+/*
+* posRestart is responsible for running user's pos-restart script.
+* The path to this script can be found at the app.conf file, at the root of user's app repository.
+ */
 func (a *App) posRestart(c conf, w io.Writer) error {
 	log.SetOutput(w)
+	if c.PreRestart == "" && c.PosRestart == "" {
+		return errors.New("app.conf file does not exists or is in the right place.")
+	}
+	if c.PosRestart == "" {
+		log.Printf("pos-restart hook section in app conf does not exists... Skipping...")
+		return nil
+	}
 	u := a.unit()
 	out, err := u.Command("/bin/bash", c.PosRestart)
 	log.Printf("Executing pos-restart hook...")
