@@ -29,7 +29,8 @@ var output = `2012-06-05 17:03:36,887 WARNING ssl-hostname-verification is disab
 2012-06-05 17:03:37,599 INFO Connected to environment.
 2012-06-05 17:03:37,727 INFO Connecting to machine 0 at 10.170.0.191
 export DATABASE_HOST=localhost
-export DATABASE_USER=root`
+export DATABASE_USER=root
+export DATABASE_PASSWORD=secret`
 
 func (s *S) TestCloneRepositoryHandler(c *C) {
 	w := bytes.NewBuffer([]byte{})
@@ -548,7 +549,8 @@ func (s *S) TestRunHandlerShouldFilterOutputFromJuju(c *C) {
 	recorder := httptest.NewRecorder()
 	err = RunCommand(recorder, request, s.user)
 	expected := `export DATABASE_HOST=localhost
-export DATABASE_USER=root`
+export DATABASE_USER=root
+export DATABASE_PASSWORD=secret`
 	c.Assert(err, IsNil)
 	c.Assert(recorder.Body.String(), Equals, expected)
 }
@@ -612,7 +614,7 @@ func (s *S) TestGetEnvHandlerShouldParseTheOutputOfAnEnvFile(c *C) {
 	a := &App{Name: "everything-i-want", Framework: "gotthard", Machine: 10, Teams: []auth.Team{s.team}}
 	err = a.Create()
 	c.Assert(err, IsNil)
-	url := fmt.Sprintf("/apps/%s/get-env/?:app=%s", a.Name, a.Name)
+	url := fmt.Sprintf("/apps/%s/env/?:app=%s", a.Name, a.Name)
 	request, err := http.NewRequest("GET", url, strings.NewReader("DATABASE_HOST"))
 	c.Assert(err, IsNil)
 	recorder := httptest.NewRecorder()
@@ -628,33 +630,37 @@ func (s *S) TestGetEnvHandlerShouldAcceptMultipleVariables(c *C) {
 	a := &App{Name: "everything-i-want", Framework: "gotthard", Machine: 10, Teams: []auth.Team{s.team}}
 	err = a.Create()
 	c.Assert(err, IsNil)
-	url := fmt.Sprintf("/apps/%s/get-env/?:app=%s", a.Name, a.Name)
+	url := fmt.Sprintf("/apps/%s/env/?:app=%s", a.Name, a.Name)
 	request, err := http.NewRequest("GET", url, strings.NewReader("DATABASE_HOST DATABASE_USER"))
 	c.Assert(err, IsNil)
 	recorder := httptest.NewRecorder()
 	err = GetEnv(recorder, request, s.user)
 	c.Assert(err, IsNil)
-	c.Assert(recorder.Body.String(), Equals, "DATABASE_HOST=localhost\nDATABASE_USER=root")
+	c.Assert(recorder.Body.String(), Equals, "DATABASE_HOST=localhost\nDATABASE_USER=root\n")
 }
 
-func (s *S) TestGetEnvHandlerReturnsBadRequestIfEnvironmentVariablesAreMissing(c *C) {
+func (s *S) TestGetEnvHandlerReturnsAllVariablesIfEnvironmentVariablesAreMissing(c *C) {
+	dir, err := commandmocker.Add("juju", output)
+	c.Assert(err, IsNil)
+	defer commandmocker.Remove(dir)
+	a := &App{Name: "time", Framework: "pink-floyd", Machine: 10, Teams: []auth.Team{s.team}}
+	err = a.Create()
+	c.Assert(err, IsNil)
+	expected := "DATABASE_HOST=localhost\nDATABASE_USER=root\nDATABASE_PASSWORD=secret"
 	bodies := []io.Reader{nil, strings.NewReader("")}
 	for _, body := range bodies {
-		request, err := http.NewRequest("GET", "/apps/unknown/get-env/?:app=unkown", body)
+		request, err := http.NewRequest("GET", "/apps/time/env/?:app=time", body)
 		c.Assert(err, IsNil)
 		recorder := httptest.NewRecorder()
 		err = GetEnv(recorder, request, s.user)
-		c.Assert(err, NotNil)
-		e, ok := err.(*errors.Http)
-		c.Assert(ok, Equals, true)
-		c.Assert(e.Code, Equals, http.StatusBadRequest)
-		c.Assert(e, ErrorMatches, `^You must provide the environment variable\(s\)$`)
+		c.Assert(err, IsNil)
+		c.Assert(recorder.Body.String(), Equals, expected)
 	}
 }
 
 func (s *S) TestGetEnvHandlerReturnsInternalErrorIfReadAllFails(c *C) {
 	b := s.getTestData("bodyToBeClosed.txt")
-	request, err := http.NewRequest("GET", "/apps/unkown/get-env/?:app=unknown", b)
+	request, err := http.NewRequest("GET", "/apps/unkown/env/?:app=unknown", b)
 	c.Assert(err, IsNil)
 	request.Body.Close()
 	recorder := httptest.NewRecorder()
@@ -663,7 +669,7 @@ func (s *S) TestGetEnvHandlerReturnsInternalErrorIfReadAllFails(c *C) {
 }
 
 func (s *S) TestGetEnvHandlerReturnsNotFoundIfTheAppDoesNotExist(c *C) {
-	request, err := http.NewRequest("GET", "/apps/unknown/get-env/?:app=unknown", strings.NewReader("DATABASE_HOST"))
+	request, err := http.NewRequest("GET", "/apps/unknown/env/?:app=unknown", strings.NewReader("DATABASE_HOST"))
 	c.Assert(err, IsNil)
 	recorder := httptest.NewRecorder()
 	err = GetEnv(recorder, request, s.user)
@@ -678,7 +684,7 @@ func (s *S) TestGetEnvHandlerReturnsForbiddenIfTheGivenUserDoesNotHaveAccessToTh
 	a := &App{Name: "lost", Framework: "vougen", Machine: 2}
 	err := a.Create()
 	c.Assert(err, IsNil)
-	url := fmt.Sprintf("/apps/%s/get-env/?:app=%s", a.Name, a.Name)
+	url := fmt.Sprintf("/apps/%s/env/?:app=%s", a.Name, a.Name)
 	request, err := http.NewRequest("GET", url, strings.NewReader("DATABASE_HOST"))
 	c.Assert(err, IsNil)
 	recorder := httptest.NewRecorder()

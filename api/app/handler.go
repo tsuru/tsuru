@@ -249,17 +249,13 @@ func RunCommand(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	return nil
 }
 
-func GetEnv(w http.ResponseWriter, r *http.Request, u *auth.User) error {
-	msg := "You must provide the environment variable(s)"
-	if r.Body == nil {
-		return &errors.Http{Code: http.StatusBadRequest, Message: msg}
-	}
-	variable, err := ioutil.ReadAll(r.Body)
-	if err != nil {
-		return err
-	}
-	if len(variable) < 1 {
-		return &errors.Http{Code: http.StatusBadRequest, Message: msg}
+func GetEnv(w http.ResponseWriter, r *http.Request, u *auth.User) (err error) {
+	var variable []byte
+	if r.Body != nil {
+		variable, err = ioutil.ReadAll(r.Body)
+		if err != nil {
+			return
+		}
 	}
 	variables := bytes.Fields(variable)
 	variable = bytes.Join(variables, []byte{'|'})
