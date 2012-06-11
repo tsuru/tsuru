@@ -36,17 +36,17 @@ func AllApps() ([]App, error) {
 	return apps, err
 }
 
-func (app *App) Get() error {
-	return db.Session.Apps().Find(bson.M{"name": app.Name}).One(&app)
+func (a *App) Get() error {
+	return db.Session.Apps().Find(bson.M{"name": a.Name}).One(&a)
 }
 
-func (app *App) Create() error {
-	app.State = "Pending"
-	err := db.Session.Apps().Insert(app)
+func (a *App) Create() error {
+	a.State = "Pending"
+	err := db.Session.Apps().Insert(a)
 	if err != nil {
 		return err
 	}
-	u := app.unit()
+	u := a.unit()
 	err = u.Create()
 	if err != nil {
 		return err
@@ -54,18 +54,18 @@ func (app *App) Create() error {
 	return nil
 }
 
-func (app *App) Destroy() error {
-	err := db.Session.Apps().Remove(app)
+func (a *App) Destroy() error {
+	err := db.Session.Apps().Remove(a)
 	if err != nil {
 		return err
 	}
-	u := app.unit()
+	u := a.unit()
 	u.Destroy()
 	return nil
 }
 
-func (app *App) findTeam(team *auth.Team) int {
-	for i, t := range app.Teams {
+func (a *App) findTeam(team *auth.Team) int {
+	for i, t := range a.Teams {
 		if t.Name == team.Name {
 			return i
 		}
@@ -73,31 +73,31 @@ func (app *App) findTeam(team *auth.Team) int {
 	return -1
 }
 
-func (app *App) hasTeam(team *auth.Team) bool {
-	return app.findTeam(team) > -1
+func (a *App) hasTeam(team *auth.Team) bool {
+	return a.findTeam(team) > -1
 }
 
-func (app *App) GrantAccess(team *auth.Team) error {
-	if app.hasTeam(team) {
-		return errors.New("This team has already access to this app")
+func (a *App) GrantAccess(team *auth.Team) error {
+	if a.hasTeam(team) {
+		return errors.New("This team has already access to this a")
 	}
-	app.Teams = append(app.Teams, *team)
+	a.Teams = append(a.Teams, *team)
 	return nil
 }
 
-func (app *App) RevokeAccess(team *auth.Team) error {
-	index := app.findTeam(team)
+func (a *App) RevokeAccess(team *auth.Team) error {
+	index := a.findTeam(team)
 	if index < 0 {
-		return errors.New("This team does not have access to this app")
+		return errors.New("This team does not have access to this a")
 	}
-	last := len(app.Teams) - 1
-	app.Teams[index] = app.Teams[last]
-	app.Teams = app.Teams[:last]
+	last := len(a.Teams) - 1
+	a.Teams[index] = a.Teams[last]
+	a.Teams = a.Teams[:last]
 	return nil
 }
 
-func (app *App) CheckUserAccess(user *auth.User) bool {
-	for _, team := range app.Teams {
+func (a *App) CheckUserAccess(user *auth.User) bool {
+	for _, team := range a.Teams {
 		if team.ContainsUser(user) {
 			return true
 		}
@@ -181,6 +181,6 @@ func (a *App) updateHooks() error {
 	return nil
 }
 
-func (app *App) unit() unit.Unit {
-	return unit.Unit{Name: app.Name, Type: app.Framework, Machine: app.Machine}
+func (a *App) unit() unit.Unit {
+	return unit.Unit{Name: a.Name, Type: a.Framework, Machine: a.Machine}
 }
