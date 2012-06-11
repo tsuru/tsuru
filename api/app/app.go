@@ -17,10 +17,11 @@ import (
 const confSep = "========"
 
 type App struct {
+	Env       map[string]string
+	Framework string
 	Ip        string
 	Machine   int
 	Name      string
-	Framework string
 	State     string
 	Teams     []auth.Team
 }
@@ -79,7 +80,7 @@ func (a *App) hasTeam(team *auth.Team) bool {
 
 func (a *App) GrantAccess(team *auth.Team) error {
 	if a.hasTeam(team) {
-		return errors.New("This team has already access to this a")
+		return errors.New("This team has already access to this app")
 	}
 	a.Teams = append(a.Teams, *team)
 	return nil
@@ -88,7 +89,7 @@ func (a *App) GrantAccess(team *auth.Team) error {
 func (a *App) RevokeAccess(team *auth.Team) error {
 	index := a.findTeam(team)
 	if index < 0 {
-		return errors.New("This team does not have access to this a")
+		return errors.New("This team does not have access to this app")
 	}
 	last := len(a.Teams) - 1
 	a.Teams[index] = a.Teams[last]
@@ -103,6 +104,21 @@ func (a *App) CheckUserAccess(user *auth.User) bool {
 		}
 	}
 	return false
+}
+
+func (a *App) SetEnv(name, value string) {
+	if a.Env == nil {
+		a.Env = make(map[string]string)
+	}
+	a.Env[name] = value
+}
+
+func (a *App) GetEnv(name string) (value string, err error) {
+	var ok bool
+	if value, ok = a.Env[name]; !ok {
+		err = errors.New("Environment variable not declared for this app.")
+	}
+	return
 }
 
 /*

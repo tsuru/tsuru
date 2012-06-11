@@ -38,13 +38,13 @@ var HasAccessTo Checker = &hasAccessToChecker{}
 
 func (s *S) TestAll(c *C) {
 	expected := make([]App, 0)
-	app1 := App{Name: "app1", Teams: []auth.Team{}}
+	app1 := App{Env: make(map[string]string), Name: "app1", Teams: []auth.Team{}}
 	app1.Create()
 	expected = append(expected, app1)
-	app2 := App{Name: "app2", Teams: []auth.Team{}}
+	app2 := App{Env: make(map[string]string), Name: "app2", Teams: []auth.Team{}}
 	app2.Create()
 	expected = append(expected, app2)
-	app3 := App{Name: "app3", Teams: []auth.Team{}}
+	app3 := App{Env: make(map[string]string), Name: "app3", Teams: []auth.Team{}}
 	app3.Create()
 	expected = append(expected, app3)
 
@@ -58,7 +58,7 @@ func (s *S) TestAll(c *C) {
 }
 
 func (s *S) TestGet(c *C) {
-	newApp := App{Name: "myApp", Framework: "django", Teams: []auth.Team{}}
+	newApp := App{Env: map[string]string{}, Name: "myApp", Framework: "django", Teams: []auth.Team{}}
 	err := newApp.Create()
 	c.Assert(err, IsNil)
 
@@ -163,6 +163,40 @@ func (s *S) TestCheckUserAccessWithMultipleUsersOnMultipleGroupsOnApp(c *C) {
 	c.Assert(a.CheckUserAccess(cut), Equals, true)
 	c.Assert(a.CheckUserAccess(punk), Equals, true)
 	c.Assert(a.CheckUserAccess(one), Equals, true)
+}
+
+func (s *S) TestSetEnvCreatesTheMapIfItIsNil(c *C) {
+	a := App{Name: "how-many-more-times"}
+	c.Assert(a.Env, IsNil)
+	a.SetEnv("PATH", "/")
+	c.Assert(a.Env, NotNil)
+}
+
+func (s *S) TestSetEnvironmentVariableToApp(c *C) {
+	a := App{Name: "appName", Framework: "django"}
+	a.SetEnv("PATH", "/")
+	c.Assert(a.Env["PATH"], Equals, "/")
+}
+
+func (s *S) TestGetEnvironmentVariableFromApp(c *C) {
+	a := App{Name: "whole-lotta-love"}
+	a.SetEnv("PATH", "/")
+	v, err := a.GetEnv("PATH")
+	c.Assert(err, IsNil)
+	c.Assert(v, Equals, "/")
+}
+
+func (s *S) TestGetEnvReturnsErrorIfTheVariableIsNotDeclared(c *C) {
+	a := App{Name: "what-is-and-what-should-never"}
+	a.Env = make(map[string]string)
+	_, err := a.GetEnv("PATH")
+	c.Assert(err, NotNil)
+}
+
+func (s *S) TestGetEnvReturnsErrorIfTheEnvironmentMapIsNil(c *C) {
+	a := App{Name: "what-is-and-what-should-never"}
+	_, err := a.GetEnv("PATH")
+	c.Assert(err, NotNil)
 }
 
 func (s *S) TestUnit(c *C) {
