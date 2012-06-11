@@ -12,6 +12,7 @@ import (
 	"io/ioutil"
 	"launchpad.net/mgo/bson"
 	"net/http"
+	"regexp"
 	"strings"
 )
 
@@ -284,4 +285,33 @@ func GetEnv(w http.ResponseWriter, r *http.Request, u *auth.User) (err error) {
 		}
 	}
 	return nil
+}
+
+func SetEnv(w http.ResponseWriter, r *http.Request, u *auth.User) error {
+	msg := "You must provide the environment variables"
+	if r.Body == nil {
+		return &errors.Http{Code: http.StatusBadRequest, Message: msg}
+	}
+	body, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		return err
+	}
+	if len(body) == 0 {
+		return &errors.Http{Code: http.StatusBadRequest, Message: msg}
+	}
+	appName := r.URL.Query().Get(":app")
+	app, err := getAppOrError(appName, u)
+	if err != nil {
+		return err
+	}
+	regex, err := regexp.Compile(`([A-Z_]+=[^=.]+)(\s|$)`)
+	if err != nil {
+		return err
+	}
+	variables := regex.FindAllStringSubmatch(string(body), -1)
+	for _, v := range variables {
+		parts := strings.Split(v[1], "=")
+		app.SetEnv(parts[0], parts[1])
+	}
+	return db.Session.Apps().Update(bson.M{"name": app.Name}, app)
 }

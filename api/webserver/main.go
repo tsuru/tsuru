@@ -62,6 +62,7 @@ func main() {
 	m.Get("/apps/:name", webserver.AuthorizationRequiredHandler(app.AppInfo))
 	m.Post("/apps/:name/run", webserver.AuthorizationRequiredHandler(app.RunCommand))
 	m.Get("/apps/:name/env", webserver.AuthorizationRequiredHandler(app.GetEnv))
+	m.Post("/apps/:name/env", webserver.AuthorizationRequiredHandler(app.SetEnv))
 	m.Get("/apps", webserver.AuthorizationRequiredHandler(app.AppList))
 	m.Post("/apps", webserver.AuthorizationRequiredHandler(app.CreateAppHandler))
 	m.Put("/apps/:app/:team", webserver.AuthorizationRequiredHandler(app.GrantAccessToTeamHandler))
