@@ -17,6 +17,7 @@ import (
 	stdlog "log"
 	"net/http"
 	"net/http/httptest"
+	"sort"
 	"strings"
 	"time"
 )
@@ -610,12 +611,14 @@ func (s *S) TestRunHandlerReturnsForbiddenIfTheGivenUserDoesNotHaveAccessToTheAp
 	c.Assert(e.Code, Equals, http.StatusForbidden)
 }
 
-func (s *S) TestGetEnvHandlerShouldParseTheOutputOfAnEnvFile(c *C) {
-	dir, err := commandmocker.Add("juju", output)
-	c.Assert(err, IsNil)
-	defer commandmocker.Remove(dir)
+func (s *S) TestGetEnvHandlerGetsEnvironmentVariableFromApp(c *C) {
 	a := &App{Name: "everything-i-want", Framework: "gotthard", Machine: 10, Teams: []auth.Team{s.team}}
-	err = a.Create()
+	a.Env = map[string]string{
+		"DATABASE_HOST": "localhost",
+		"DATABASE_USER": "root",
+		"DATABASE_PASSWORD": "secret",
+	}
+	err := a.Create()
 	c.Assert(err, IsNil)
 	url := fmt.Sprintf("/apps/%s/env/?:app=%s", a.Name, a.Name)
 	request, err := http.NewRequest("GET", url, strings.NewReader("DATABASE_HOST"))
@@ -627,11 +630,13 @@ func (s *S) TestGetEnvHandlerShouldParseTheOutputOfAnEnvFile(c *C) {
 }
 
 func (s *S) TestGetEnvHandlerShouldAcceptMultipleVariables(c *C) {
-	dir, err := commandmocker.Add("juju", output)
-	c.Assert(err, IsNil)
-	defer commandmocker.Remove(dir)
 	a := &App{Name: "everything-i-want", Framework: "gotthard", Machine: 10, Teams: []auth.Team{s.team}}
-	err = a.Create()
+	a.Env = map[string]string{
+		"DATABASE_HOST": "localhost",
+		"DATABASE_USER": "root",
+		"DATABASE_PASSWORD": "secret",
+	}
+	err := a.Create()
 	c.Assert(err, IsNil)
 	url := fmt.Sprintf("/apps/%s/env/?:app=%s", a.Name, a.Name)
 	request, err := http.NewRequest("GET", url, strings.NewReader("DATABASE_HOST DATABASE_USER"))
@@ -643,13 +648,15 @@ func (s *S) TestGetEnvHandlerShouldAcceptMultipleVariables(c *C) {
 }
 
 func (s *S) TestGetEnvHandlerReturnsAllVariablesIfEnvironmentVariablesAreMissing(c *C) {
-	dir, err := commandmocker.Add("juju", output)
-	c.Assert(err, IsNil)
-	defer commandmocker.Remove(dir)
 	a := &App{Name: "time", Framework: "pink-floyd", Machine: 10, Teams: []auth.Team{s.team}}
-	err = a.Create()
+	a.Env = map[string]string{
+		"DATABASE_HOST": "localhost",
+		"DATABASE_USER": "root",
+		"DATABASE_PASSWORD": "secret",
+	}
+	err := a.Create()
 	c.Assert(err, IsNil)
-	expected := "DATABASE_HOST=localhost\nDATABASE_USER=root\nDATABASE_PASSWORD=secret"
+	expected := []string{"", "DATABASE_HOST=localhost", "DATABASE_PASSWORD=secret", "DATABASE_USER=root"}
 	bodies := []io.Reader{nil, strings.NewReader("")}
 	for _, body := range bodies {
 		request, err := http.NewRequest("GET", "/apps/time/env/?:app=time", body)
@@ -657,7 +664,9 @@ func (s *S) TestGetEnvHandlerReturnsAllVariablesIfEnvironmentVariablesAreMissing
 		recorder := httptest.NewRecorder()
 		err = GetEnv(recorder, request, s.user)
 		c.Assert(err, IsNil)
-		c.Assert(recorder.Body.String(), Equals, expected)
+		got := strings.Split(recorder.Body.String(), "\n")
+		sort.Strings(got)
+		c.Assert(got, DeepEquals, expected)
 	}
 }
 
@@ -684,7 +693,7 @@ func (s *S) TestGetEnvHandlerReturnsNotFoundIfTheAppDoesNotExist(c *C) {
 }
 
 func (s *S) TestGetEnvHandlerReturnsForbiddenIfTheGivenUserDoesNotHaveAccessToTheApp(c *C) {
-	a := &App{Name: "lost", Framework: "vougen", Machine: 2}
+	a := &App{Name: "lost", Framework: "vougan", Machine: 2}
 	err := a.Create()
 	c.Assert(err, IsNil)
 	url := fmt.Sprintf("/apps/%s/env/?:app=%s", a.Name, a.Name)

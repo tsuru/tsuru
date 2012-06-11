@@ -12,7 +12,7 @@ import (
 	"io/ioutil"
 	"launchpad.net/mgo/bson"
 	"net/http"
-	"regexp"
+	"strings"
 )
 
 func sendProjectChangeToGitosis(kind int, team *auth.Team, app *App) {
@@ -261,34 +261,25 @@ func GetEnv(w http.ResponseWriter, r *http.Request, u *auth.User) (err error) {
 			return
 		}
 	}
-	variables := bytes.Fields(variable)
-	variable = bytes.Join(variables, []byte{'|'})
-	regex, err := regexp.Compile("^export (" + string(variable) + ")")
-	if err != nil {
-		return err
-	}
 	appName := r.URL.Query().Get(":app")
 	app, err := getAppOrError(appName, u)
 	if err != nil {
 		return err
 	}
-	command := fmt.Sprintf("cat $HOME/%s.env", app.Name)
-	unit := app.unit()
-	out, err := unit.Command(command)
-	if err != nil {
-		return err
-	}
-	out = filterOutput(out)
-	buf := bytes.NewBuffer(out)
-	for line, err := buf.ReadBytes('\n'); err == nil || len(line) > 0; line, err = buf.ReadBytes('\n') {
-		if regex.Match(line) {
-			line = line[len("export "):]
-			n, err := w.Write(line)
-			if err != nil {
-				return err
+	if variables := strings.Fields(string(variable)); len(variables) > 0 {
+		for _, variable := range variables {
+			if value, ok := app.Env[variable]; ok {
+				_, err = fmt.Fprintf(w, "%s=%s\n", variable, value)
+				if err != nil {
+					return
+				}
 			}
-			if n != len(line) {
-				return stderrors.New("An unkown error occurred while processing the request")
+		}
+	} else {
+		for k, v := range app.Env {
+			_, err = fmt.Fprintf(w, "%s=%s\n", k, v)
+			if err != nil {
+				return
 			}
 		}
 	}
