@@ -85,7 +85,6 @@ pos-restart:
 	err = CloneRepositoryHandler(recorder, request)
 	c.Assert(err, IsNil)
 	c.Assert(recorder.Code, Equals, 200)
-	//str := strings.Split(w.String(), "\n")
 	str := w.String()
 	cloneIndex := strings.Index(str, "git clone")
 	c.Assert(cloneIndex, Not(Equals), -1)
@@ -93,7 +92,11 @@ pos-restart:
 	c.Assert(reloadIndex, Not(Equals), -1)
 	preRstIndex := strings.Index(str, "pre-restart hook")
 	c.Assert(preRstIndex, Not(Equals), -1)
-	c.Assert(reloadIndex, Greater, preRstIndex)
+	posRstIndex := strings.Index(str, "pos-restart hook")
+	c.Assert(posRstIndex, Not(Equals), -1)
+	c.Assert(preRstIndex, Greater, cloneIndex)  // clone/pull runs before pre-restart
+	c.Assert(reloadIndex, Greater, preRstIndex) // pre-restart runs before reload
+	c.Assert(posRstIndex, Greater, reloadIndex) // pos-restart runs after reload
 }
 
 func (s *S) TestCloneRepositoryShouldReturnNotFoundWhenAppDoesNotExist(c *C) {
