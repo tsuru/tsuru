@@ -614,8 +614,8 @@ func (s *S) TestRunHandlerReturnsForbiddenIfTheGivenUserDoesNotHaveAccessToTheAp
 func (s *S) TestGetEnvHandlerGetsEnvironmentVariableFromApp(c *C) {
 	a := &App{Name: "everything-i-want", Framework: "gotthard", Machine: 10, Teams: []auth.Team{s.team}}
 	a.Env = map[string]string{
-		"DATABASE_HOST": "localhost",
-		"DATABASE_USER": "root",
+		"DATABASE_HOST":     "localhost",
+		"DATABASE_USER":     "root",
 		"DATABASE_PASSWORD": "secret",
 	}
 	err := a.Create()
@@ -633,8 +633,8 @@ func (s *S) TestGetEnvHandlerGetsEnvironmentVariableFromApp(c *C) {
 func (s *S) TestGetEnvHandlerShouldAcceptMultipleVariables(c *C) {
 	a := &App{Name: "four-sticks", Teams: []auth.Team{s.team}}
 	a.Env = map[string]string{
-		"DATABASE_HOST": "localhost",
-		"DATABASE_USER": "root",
+		"DATABASE_HOST":     "localhost",
+		"DATABASE_USER":     "root",
 		"DATABASE_PASSWORD": "secret",
 	}
 	err := a.Create()
@@ -652,8 +652,8 @@ func (s *S) TestGetEnvHandlerShouldAcceptMultipleVariables(c *C) {
 func (s *S) TestGetEnvHandlerReturnsAllVariablesIfEnvironmentVariablesAreMissing(c *C) {
 	a := &App{Name: "time", Framework: "pink-floyd", Machine: 10, Teams: []auth.Team{s.team}}
 	a.Env = map[string]string{
-		"DATABASE_HOST": "localhost",
-		"DATABASE_USER": "root",
+		"DATABASE_HOST":     "localhost",
+		"DATABASE_USER":     "root",
 		"DATABASE_PASSWORD": "secret",
 	}
 	err := a.Create()

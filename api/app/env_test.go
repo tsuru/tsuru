@@ -25,7 +25,7 @@ func (s *S) TestSetEnvMessage(c *C) {
 }
 
 func (s *S) TestDoesNotSendInTheSuccessChannelIfItIsNil(c *C) {
-	defer func(){
+	defer func() {
 		r := recover()
 		c.Assert(r, IsNil)
 	}()
@@ -36,9 +36,9 @@ func (s *S) TestDoesNotSendInTheSuccessChannelIfItIsNil(c *C) {
 	err = app.Create()
 	c.Assert(err, IsNil)
 	msg := Message{
-		app:     &app,
-		env:     map[string]string{"PATH": "/"},
-		kind:    "set",
+		app:  &app,
+		env:  map[string]string{"PATH": "/"},
+		kind: "set",
 	}
 	env <- msg
 }
