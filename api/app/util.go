@@ -9,16 +9,16 @@ import (
 //
 // It removes all lines that does not represent useful output, like juju's
 // logging and Python's deprecation warnings.
-func filterOutput(output []byte) []byte {
-	var result []byte
+func filterOutput(output []byte, filterFunc func([]byte) bool) []byte {
+	var result [][]byte
 	var ignore bool
 	deprecation := []byte("DeprecationWarning")
 	regexLog, err := regexp.Compile(`^\d{4}-\d{2}-\d{2}\s\d{2}:\d{2}:\d{2}`)
 	if err != nil {
 		return output
 	}
-	buf := bytes.NewBuffer(output)
-	for line, err := buf.ReadBytes('\n'); err == nil || len(line) > 0; line, err = buf.ReadBytes('\n') {
+	lines := bytes.Split(output, []byte{'\n'})
+	for _, line := range lines {
 		if ignore {
 			ignore = false
 			continue
@@ -27,9 +27,9 @@ func filterOutput(output []byte) []byte {
 			ignore = true
 			continue
 		}
-		if !regexLog.Match(line) {
-			result = append(result, line...)
+		if !regexLog.Match(line) && (filterFunc == nil || filterFunc(line)) {
+			result = append(result, line)
 		}
 	}
-	return result
+	return bytes.Join(result, []byte{'\n'})
 }
