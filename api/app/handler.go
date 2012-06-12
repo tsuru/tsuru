@@ -308,10 +308,21 @@ func SetEnv(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	if err != nil {
 		return err
 	}
+	e := map[string]string{}
 	variables := regex.FindAllStringSubmatch(string(body), -1)
 	for _, v := range variables {
 		parts := strings.Split(v[1], "=")
 		app.SetEnv(parts[0], parts[1])
+		e[parts[0]] = parts[1]
 	}
-	return db.Session.Apps().Update(bson.M{"name": app.Name}, app)
+	if err = db.Session.Apps().Update(bson.M{"name": app.Name}, app); err != nil {
+		return err
+	}
+	mess := Message{
+		app:  &app,
+		env:  e,
+		kind: "set",
+	}
+	env <- mess
+	return nil
 }
