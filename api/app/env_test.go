@@ -11,8 +11,6 @@ func (s *S) TestSetEnvMessage(c *C) {
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(dir)
 	app := App{Name: "the-wicker-man", Teams: []auth.Team{s.team}}
-	err = app.Create()
-	c.Assert(err, IsNil)
 	msg := Message{
 		app:     &app,
 		env:     map[string]string{"PATH": "/"},
