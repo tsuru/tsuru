@@ -820,3 +820,96 @@ func (s *S) TestSetEnvHandlerReturnsForbiddenIfTheGivenUserDoesNotHaveAccessToTh
 	c.Assert(ok, Equals, true)
 	c.Assert(e.Code, Equals, http.StatusForbidden)
 }
+
+func (s *S) TestUnsetEnvHandlerRemovesTheEnvironmentVariablesFromTheApp(c *C) {
+	a := &App{
+		Name:  "swift",
+		Env:   map[string]string{"DATABASE_HOST": "localhost", "DATABASE_PASSWORD": "123"},
+		Teams: []auth.Team{s.team},
+	}
+	err := a.Create()
+	c.Assert(err, IsNil)
+	url := fmt.Sprintf("/apps/%s/env/?:app=%s", a.Name, a.Name)
+	request, err := http.NewRequest("DELETE", url, strings.NewReader("DATABASE_HOST"))
+	c.Assert(err, IsNil)
+	recorder := httptest.NewRecorder()
+	err = UnsetEnv(recorder, request, s.user)
+	c.Assert(err, IsNil)
+	app := App{Name: "swift"}
+	err = app.Get()
+	c.Assert(err, IsNil)
+	c.Assert(app.Env, DeepEquals, map[string]string{"DATABASE_PASSWORD": "123"})
+}
+
+func (s *S) TestUnsetEnvHandlerRemovesAllGivenEnvironmentVariables(c *C) {
+	a := &App{
+		Name:  "let-it-be",
+		Env:   map[string]string{"DATABASE_HOST": "localhost", "DATABASE_USER": "root", "DATABASE_PASSWORD": "123"},
+		Teams: []auth.Team{s.team},
+	}
+	err := a.Create()
+	c.Assert(err, IsNil)
+	url := fmt.Sprintf("/apps/%s/env/?:app=%s", a.Name, a.Name)
+	request, err := http.NewRequest("DELETE", url, strings.NewReader("DATABASE_HOST DATABASE_USER"))
+	c.Assert(err, IsNil)
+	recorder := httptest.NewRecorder()
+	err = UnsetEnv(recorder, request, s.user)
+	c.Assert(err, IsNil)
+	app := App{Name: "let-it-be"}
+	err = app.Get()
+	c.Assert(err, IsNil)
+	c.Assert(app.Env, DeepEquals, map[string]string{"DATABASE_PASSWORD": "123"})
+}
+
+func (s *S) TestUnsetEnvHandlerReturnsInternalErrorIfReadAllFails(c *C) {
+	b := s.getTestData("bodyToBeClosed.txt")
+	request, err := http.NewRequest("POST", "/apps/unkown/env/?:app=unknown", b)
+	c.Assert(err, IsNil)
+	request.Body.Close()
+	recorder := httptest.NewRecorder()
+	err = UnsetEnv(recorder, request, s.user)
+	c.Assert(err, NotNil)
+}
+
+func (s *S) TestUnsetEnvHandlerReturnsBadRequestIfVariablesAreMissing(c *C) {
+	bodies := []io.Reader{nil, strings.NewReader("")}
+	for _, body := range bodies {
+		request, err := http.NewRequest("POST", "/apps/unknown/env/?:app=unkown", body)
+		c.Assert(err, IsNil)
+		recorder := httptest.NewRecorder()
+		err = UnsetEnv(recorder, request, s.user)
+		c.Assert(err, NotNil)
+		e, ok := err.(*errors.Http)
+		c.Assert(ok, Equals, true)
+		c.Assert(e.Code, Equals, http.StatusBadRequest)
+		c.Assert(e, ErrorMatches, "^You must provide the environment variables$")
+	}
+}
+
+func (s *S) TestUnsetEnvHandlerReturnsNotFoundIfTheAppDoesNotExist(c *C) {
+	b := strings.NewReader("DATABASE_HOST")
+	request, err := http.NewRequest("POST", "/apps/unknown/env/?:app=unknown", b)
+	c.Assert(err, IsNil)
+	recorder := httptest.NewRecorder()
+	err = UnsetEnv(recorder, request, s.user)
+	c.Assert(err, NotNil)
+	e, ok := err.(*errors.Http)
+	c.Assert(ok, Equals, true)
+	c.Assert(e.Code, Equals, http.StatusNotFound)
+	c.Assert(e, ErrorMatches, "^App not found$")
+}
+
+func (s *S) TestUnsetEnvHandlerReturnsForbiddenIfTheGivenUserDoesNotHaveAccessToTheApp(c *C) {
+	a := &App{Name: "mountain-mama"}
+	err := a.Create()
+	c.Assert(err, IsNil)
+	url := fmt.Sprintf("/apps/%s/env/?:app=%s", a.Name, a.Name)
+	request, err := http.NewRequest("POST", url, strings.NewReader("DATABASE_HOST=localhost"))
+	c.Assert(err, IsNil)
+	recorder := httptest.NewRecorder()
+	err = UnsetEnv(recorder, request, s.user)
+	c.Assert(err, NotNil)
+	e, ok := err.(*errors.Http)
+	c.Assert(ok, Equals, true)
+	c.Assert(e.Code, Equals, http.StatusForbidden)
+}

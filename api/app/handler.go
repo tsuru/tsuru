@@ -326,3 +326,38 @@ func SetEnv(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	env <- mess
 	return nil
 }
+
+func UnsetEnv(w http.ResponseWriter, r *http.Request, u *auth.User) error {
+	msg := "You must provide the environment variables"
+	if r.Body == nil {
+		return &errors.Http{Code: http.StatusBadRequest, Message: msg}
+	}
+	body, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		return err
+	}
+	if len(body) == 0 {
+		return &errors.Http{Code: http.StatusBadRequest, Message: msg}
+	}
+	appName := r.URL.Query().Get(":app")
+	app, err := getAppOrError(appName, u)
+	if err != nil {
+		return err
+	}
+	e := map[string]string{}
+	variables := strings.Fields(string(body))
+	for _, variable := range variables {
+		delete(app.Env, variable)
+		e[variable] = ""
+	}
+	if err = db.Session.Apps().Update(bson.M{"name": app.Name}, app); err != nil {
+		return err
+	}
+	mess := Message{
+		app:  &app,
+		env:  e,
+		kind: "unset",
+	}
+	env <- mess
+	return nil
+}
