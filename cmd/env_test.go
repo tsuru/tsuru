@@ -19,6 +19,7 @@ func (s *S) TestEnvGetSubCommands(c *C) {
 	sc := e.Subcommands()
 	c.Assert(sc["get"], FitsTypeOf, &EnvGet{})
 	c.Assert(sc["set"], FitsTypeOf, &EnvSet{})
+	c.Assert(sc["unset"], FitsTypeOf, &EnvUnset{})
 }
 
 func (s *S) TestEnvGetInfo(c *C) {

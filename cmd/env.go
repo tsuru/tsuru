@@ -20,8 +20,9 @@ func (c *Env) Info() *Info {
 
 func (c *Env) Subcommands() map[string]interface{} {
 	return map[string]interface{}{
-		"get": &EnvGet{},
-		"set": &EnvSet{},
+		"get":   &EnvGet{},
+		"set":   &EnvSet{},
+		"unset": &EnvUnset{},
 	}
 }
 
