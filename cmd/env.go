@@ -21,6 +21,7 @@ func (c *Env) Info() *Info {
 func (c *Env) Subcommands() map[string]interface{} {
 	return map[string]interface{}{
 		"get": &EnvGet{},
+		"set": &EnvSet{},
 	}
 }
 
@@ -35,10 +36,10 @@ func (c *EnvGet) Info() *Info {
 }
 
 func (c *EnvGet) Run(context *Context, client Doer) error {
-	appName, env := context.Args[0], context.Args[1:]
-	envStr := strings.Join(env, " ")
+	appName, vars := context.Args[0], context.Args[1:]
+	varsStr := strings.Join(vars, " ")
 	url := GetUrl(fmt.Sprintf("/apps/%s/env", appName))
-	body := strings.NewReader(envStr)
+	body := strings.NewReader(varsStr)
 	request, err := http.NewRequest("GET", url, body)
 	if err != nil {
 		return err
@@ -52,5 +53,32 @@ func (c *EnvGet) Run(context *Context, client Doer) error {
 		return err
 	}
 	io.WriteString(context.Stdout, string(b))
+	return nil
+}
+
+type EnvSet struct{}
+
+func (c *EnvSet) Info() *Info {
+	return &Info{
+		Name:  "set",
+		Usage: "env set appname envname",
+		Desc:  "set environment variables for an app.",
+	}
+}
+
+func (c *EnvSet) Run(context *Context, client Doer) error {
+	appName, vars := context.Args[0], context.Args[1:]
+	varsStr := strings.Join(vars, " ")
+	url := GetUrl(fmt.Sprintf("/apps/%s/env", appName))
+	body := strings.NewReader(varsStr)
+	request, err := http.NewRequest("POST", url, body)
+	if err != nil {
+		return err
+	}
+	_, err = client.Do(request)
+	if err != nil {
+		return err
+	}
+	io.WriteString(context.Stdout, "variable(s) successfuly exported")
 	return nil
 }
