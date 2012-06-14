@@ -53,8 +53,8 @@ Then you must set the target with your server url, like:
 
 After that, all you need is create a user and authenticate to start creating apps and pushing code to them::
 
-  `% tsuru user create youremail@gmail.com
-   % tsuru login youremail@gmail.com`
+    % tsuru user create youremail@gmail.com
+    % tsuru login youremail@gmail.com
 
 To create an app:
 
@@ -70,11 +70,11 @@ When your app is ready, you can push to it. To check whether it is ready or not,
 
 This will return something like:
 
-  `+-------------+---------+--------------+
-  | Application | State   | Ip           |
-  +-------------+---------+--------------+
-  | myblog      | STARTED | 10.10.10.10  |
-  +-------------+---------+--------------+`
+    +-------------+---------+--------------+
+    | Application | State   | Ip           |
+    +-------------+---------+--------------+
+    | myblog      | STARTED | 10.10.10.10  |
+    +-------------+---------+--------------+
 
 You can try to push now, but you'll get a permission error, because you haven't pushed your key yet.
 
