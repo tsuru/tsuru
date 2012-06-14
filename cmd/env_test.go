@@ -19,6 +19,7 @@ func (s *S) TestEnvGetSubCommands(c *C) {
 	sc := e.Subcommands()
 	c.Assert(sc["get"], FitsTypeOf, &EnvGet{})
 	c.Assert(sc["set"], FitsTypeOf, &EnvSet{})
+	c.Assert(sc["unset"], FitsTypeOf, &EnvUnset{})
 }
 
 func (s *S) TestEnvGetInfo(c *C) {
@@ -73,4 +74,30 @@ func (s *S) TestEnvSetRunWithMultipleParams(c *C) {
 	err := (&EnvSet{}).Run(&context, client)
 	c.Assert(err, IsNil)
 	c.Assert(manager.Stdout.(*bytes.Buffer).String(), Equals, result)
+}
+
+func (s *S) TestEnvUnsetInfo(c *C) {
+	e := EnvUnset{}
+	i := e.Info()
+	c.Assert(i.Name, Equals, "unset")
+	c.Assert(i.Usage, Equals, "env unset appname envname")
+	c.Assert(i.Desc, Equals, "unset environment variables for an app.")
+}
+
+func (s *S) TestEnvUnsetRun(c *C) {
+	result := "variable(s) successfuly unset"
+	context := Context{[]string{}, []string{"someapp", "DATABASE_HOST"}, manager.Stdout, manager.Stderr}
+	client := NewClient(&http.Client{Transport: &transport{msg: result, status: http.StatusOK}})
+	err := (&EnvUnset{}).Run(&context, client)
+	c.Assert(err, IsNil)
+	c.Assert(manager.Stdout.(*bytes.Buffer).String(), Equals, result)
+}
+
+func (s *S) TestRequestEnvUrl(c *C) {
+	result := "DATABASE_HOST=somehost"
+	client := NewClient(&http.Client{Transport: &transport{msg: result, status: http.StatusOK}})
+	args := []string{"someapp", "DATABASE_HOST"}
+	b, err := requestEnvUrl("GET", args, client)
+	c.Assert(err, IsNil)
+	c.Assert(b, Equals, result)
 }
