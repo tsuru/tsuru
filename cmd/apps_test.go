@@ -55,7 +55,7 @@ func (s *S) TestAppRun(c *C) {
 		func(req *http.Request) bool {
 			b := make([]byte, 2)
 			req.Body.Read(b)
-			return req.URL.Path == "/apps/run/ble" && string(b) == "ls"
+			return req.URL.Path == "/apps/ble/run" && string(b) == "ls"
 		},
 	}
 	client := NewClient(&http.Client{Transport: trans})
@@ -75,7 +75,7 @@ func (s *S) TestAppRunShouldUseAllSubsequentArgumentsAsArgumentsToTheGivenComman
 		func(req *http.Request) bool {
 			b := make([]byte, 5)
 			req.Body.Read(b)
-			return req.URL.Path == "/apps/run/ble" && string(b) == "ls -l"
+			return req.URL.Path == "/apps/ble/run" && string(b) == "ls -l"
 		},
 	}
 	client := NewClient(&http.Client{Transport: trans})
