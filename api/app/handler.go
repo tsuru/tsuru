@@ -233,7 +233,7 @@ func RunCommand(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	if len(c) < 1 {
 		return &errors.Http{Code: http.StatusBadRequest, Message: msg}
 	}
-	appName := r.URL.Query().Get(":app")
+	appName := r.URL.Query().Get(":name")
 	app, err := getAppOrError(appName, u)
 	if err != nil {
 		return err
@@ -262,7 +262,7 @@ func GetEnv(w http.ResponseWriter, r *http.Request, u *auth.User) (err error) {
 			return
 		}
 	}
-	appName := r.URL.Query().Get(":app")
+	appName := r.URL.Query().Get(":name")
 	app, err := getAppOrError(appName, u)
 	if err != nil {
 		return err
@@ -299,7 +299,7 @@ func SetEnv(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	if len(body) == 0 {
 		return &errors.Http{Code: http.StatusBadRequest, Message: msg}
 	}
-	appName := r.URL.Query().Get(":app")
+	appName := r.URL.Query().Get(":name")
 	app, err := getAppOrError(appName, u)
 	if err != nil {
 		return err
@@ -339,7 +339,7 @@ func UnsetEnv(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	if len(body) == 0 {
 		return &errors.Http{Code: http.StatusBadRequest, Message: msg}
 	}
-	appName := r.URL.Query().Get(":app")
+	appName := r.URL.Query().Get(":name")
 	app, err := getAppOrError(appName, u)
 	if err != nil {
 		return err

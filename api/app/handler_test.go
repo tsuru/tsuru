@@ -149,9 +149,10 @@ func (s *S) TestAppList(c *C) {
 }
 
 func (s *S) TestListShouldReturnStatusNoContentWhenAppListIsNil(c *C) {
+	err := db.Session.Apps().RemoveAll(nil)
+	c.Assert(err, IsNil)
 	request, err := http.NewRequest("GET", "/apps/", nil)
 	c.Assert(err, IsNil)
-
 	request.Header.Set("Content-Type", "application/json")
 	recorder := httptest.NewRecorder()
 	err = AppList(recorder, request, s.user)
@@ -531,7 +532,7 @@ func (s *S) TestRunHandlerShouldExecuteTheGivenCommandInTheGivenApp(c *C) {
 	a := &App{Name: "secrets", Framework: "arch enemy", Teams: []auth.Team{s.team}, Machine: 10}
 	err = a.Create()
 	c.Assert(err, IsNil)
-	url := fmt.Sprintf("/apps/%s/run/?:app=%s", a.Name, a.Name)
+	url := fmt.Sprintf("/apps/%s/run/?:name=%s", a.Name, a.Name)
 	request, err := http.NewRequest("POST", url, strings.NewReader("ls"))
 	c.Assert(err, IsNil)
 	recorder := httptest.NewRecorder()
@@ -547,7 +548,7 @@ func (s *S) TestRunHandlerShouldFilterOutputFromJuju(c *C) {
 	a := &App{Name: "unspeakable", Framework: "vougan", Teams: []auth.Team{s.team}, Machine: 10}
 	err = a.Create()
 	c.Assert(err, IsNil)
-	url := fmt.Sprintf("/apps/%s/run/?:app=%s", a.Name, a.Name)
+	url := fmt.Sprintf("/apps/%s/run/?:name=%s", a.Name, a.Name)
 	request, err := http.NewRequest("POST", url, strings.NewReader("ls"))
 	c.Assert(err, IsNil)
 	recorder := httptest.NewRecorder()
@@ -562,7 +563,7 @@ export DATABASE_PASSWORD=secret`
 func (s *S) TestRunHandlerReturnsBadRequestIfTheCommandIsMissing(c *C) {
 	bodies := []io.Reader{nil, strings.NewReader("")}
 	for _, body := range bodies {
-		request, err := http.NewRequest("POST", "/apps/unknown/run/?:app=unkown", body)
+		request, err := http.NewRequest("POST", "/apps/unknown/run/?:name=unkown", body)
 		c.Assert(err, IsNil)
 		recorder := httptest.NewRecorder()
 		err = RunCommand(recorder, request, s.user)
@@ -585,7 +586,7 @@ func (s *S) TestRunHandlerReturnsInternalErrorIfReadAllFails(c *C) {
 }
 
 func (s *S) TestRunHandlerReturnsNotFoundIfTheAppDoesNotExist(c *C) {
-	request, err := http.NewRequest("POST", "/apps/unknown/run/?:app=unknown", strings.NewReader("ls"))
+	request, err := http.NewRequest("POST", "/apps/unknown/run/?:name=unknown", strings.NewReader("ls"))
 	c.Assert(err, IsNil)
 	recorder := httptest.NewRecorder()
 	err = RunCommand(recorder, request, s.user)
@@ -600,7 +601,7 @@ func (s *S) TestRunHandlerReturnsForbiddenIfTheGivenUserDoesNotHaveAccessToTheAp
 	a := &App{Name: "secrets", Framework: "arch enemy", Machine: 10}
 	err := a.Create()
 	c.Assert(err, IsNil)
-	url := fmt.Sprintf("/apps/%s/run/?:app=%s", a.Name, a.Name)
+	url := fmt.Sprintf("/apps/%s/run/?:name=%s", a.Name, a.Name)
 	request, err := http.NewRequest("POST", url, strings.NewReader("ls"))
 	c.Assert(err, IsNil)
 	recorder := httptest.NewRecorder()
@@ -621,7 +622,7 @@ func (s *S) TestGetEnvHandlerGetsEnvironmentVariableFromApp(c *C) {
 	err := a.Create()
 	c.Assert(err, IsNil)
 	defer a.Destroy()
-	url := fmt.Sprintf("/apps/%s/env/?:app=%s", a.Name, a.Name)
+	url := fmt.Sprintf("/apps/%s/env/?:name=%s", a.Name, a.Name)
 	request, err := http.NewRequest("GET", url, strings.NewReader("DATABASE_HOST"))
 	c.Assert(err, IsNil)
 	recorder := httptest.NewRecorder()
@@ -640,7 +641,7 @@ func (s *S) TestGetEnvHandlerShouldAcceptMultipleVariables(c *C) {
 	err := a.Create()
 	c.Assert(err, IsNil)
 	defer a.Destroy()
-	url := fmt.Sprintf("/apps/%s/env/?:app=%s", a.Name, a.Name)
+	url := fmt.Sprintf("/apps/%s/env/?:name=%s", a.Name, a.Name)
 	request, err := http.NewRequest("GET", url, strings.NewReader("DATABASE_HOST DATABASE_USER"))
 	c.Assert(err, IsNil)
 	recorder := httptest.NewRecorder()
@@ -661,7 +662,7 @@ func (s *S) TestGetEnvHandlerReturnsAllVariablesIfEnvironmentVariablesAreMissing
 	expected := []string{"", "DATABASE_HOST=localhost", "DATABASE_PASSWORD=secret", "DATABASE_USER=root"}
 	bodies := []io.Reader{nil, strings.NewReader("")}
 	for _, body := range bodies {
-		request, err := http.NewRequest("GET", "/apps/time/env/?:app=time", body)
+		request, err := http.NewRequest("GET", "/apps/time/env/?:name=time", body)
 		c.Assert(err, IsNil)
 		recorder := httptest.NewRecorder()
 		err = GetEnv(recorder, request, s.user)
@@ -674,7 +675,7 @@ func (s *S) TestGetEnvHandlerReturnsAllVariablesIfEnvironmentVariablesAreMissing
 
 func (s *S) TestGetEnvHandlerReturnsInternalErrorIfReadAllFails(c *C) {
 	b := s.getTestData("bodyToBeClosed.txt")
-	request, err := http.NewRequest("GET", "/apps/unkown/env/?:app=unknown", b)
+	request, err := http.NewRequest("GET", "/apps/unkown/env/?:name=unknown", b)
 	c.Assert(err, IsNil)
 	request.Body.Close()
 	recorder := httptest.NewRecorder()
@@ -683,7 +684,7 @@ func (s *S) TestGetEnvHandlerReturnsInternalErrorIfReadAllFails(c *C) {
 }
 
 func (s *S) TestGetEnvHandlerReturnsNotFoundIfTheAppDoesNotExist(c *C) {
-	request, err := http.NewRequest("GET", "/apps/unknown/env/?:app=unknown", strings.NewReader("DATABASE_HOST"))
+	request, err := http.NewRequest("GET", "/apps/unknown/env/?:name=unknown", strings.NewReader("DATABASE_HOST"))
 	c.Assert(err, IsNil)
 	recorder := httptest.NewRecorder()
 	err = GetEnv(recorder, request, s.user)
@@ -698,7 +699,7 @@ func (s *S) TestGetEnvHandlerReturnsForbiddenIfTheGivenUserDoesNotHaveAccessToTh
 	a := &App{Name: "lost", Framework: "vougan", Machine: 2}
 	err := a.Create()
 	c.Assert(err, IsNil)
-	url := fmt.Sprintf("/apps/%s/env/?:app=%s", a.Name, a.Name)
+	url := fmt.Sprintf("/apps/%s/env/?:name=%s", a.Name, a.Name)
 	request, err := http.NewRequest("GET", url, strings.NewReader("DATABASE_HOST"))
 	c.Assert(err, IsNil)
 	recorder := httptest.NewRecorder()
@@ -713,7 +714,7 @@ func (s *S) TestSetEnvHandlerShouldSetAnEnvironmentVariableInTheApp(c *C) {
 	a := &App{Name: "black-dog", Teams: []auth.Team{s.team}}
 	err := a.Create()
 	c.Assert(err, IsNil)
-	url := fmt.Sprintf("/apps/%s/env?:app=%s", a.Name, a.Name)
+	url := fmt.Sprintf("/apps/%s/env?:name=%s", a.Name, a.Name)
 	request, err := http.NewRequest("POST", url, strings.NewReader("DATABASE_HOST=localhost"))
 	c.Assert(err, IsNil)
 	recorder := httptest.NewRecorder()
@@ -732,7 +733,7 @@ func (s *S) TestSetEnvHandlerShouldSetMultipleEnvironmentVariablesInTheApp(c *C)
 	a := &App{Name: "vigil", Teams: []auth.Team{s.team}}
 	err := a.Create()
 	c.Assert(err, IsNil)
-	url := fmt.Sprintf("/apps/%s/env?:app=%s", a.Name, a.Name)
+	url := fmt.Sprintf("/apps/%s/env?:name=%s", a.Name, a.Name)
 	request, err := http.NewRequest("POST", url, strings.NewReader("DATABASE_HOST=localhost DATABASE_USER=root"))
 	c.Assert(err, IsNil)
 	recorder := httptest.NewRecorder()
@@ -752,7 +753,7 @@ func (s *S) TestSetEnvHandlerShouldSupportSpacesInTheEnvironmentVariableValue(c 
 	a := &App{Name: "loser", Teams: []auth.Team{s.team}}
 	err := a.Create()
 	c.Assert(err, IsNil)
-	url := fmt.Sprintf("/apps/%s/env?:app=%s", a.Name, a.Name)
+	url := fmt.Sprintf("/apps/%s/env?:name=%s", a.Name, a.Name)
 	request, err := http.NewRequest("POST", url, strings.NewReader("DATABASE_HOST=local host DATABASE_USER=root"))
 	c.Assert(err, IsNil)
 	recorder := httptest.NewRecorder()
@@ -770,7 +771,7 @@ func (s *S) TestSetEnvHandlerShouldSupportSpacesInTheEnvironmentVariableValue(c 
 
 func (s *S) TestSetEnvHandlerReturnsInternalErrorIfReadAllFails(c *C) {
 	b := s.getTestData("bodyToBeClosed.txt")
-	request, err := http.NewRequest("POST", "/apps/unkown/env/?:app=unknown", b)
+	request, err := http.NewRequest("POST", "/apps/unkown/env/?:name=unknown", b)
 	c.Assert(err, IsNil)
 	request.Body.Close()
 	recorder := httptest.NewRecorder()
@@ -781,7 +782,7 @@ func (s *S) TestSetEnvHandlerReturnsInternalErrorIfReadAllFails(c *C) {
 func (s *S) TestSetEnvHandlerReturnsBadRequestIfVariablesAreMissing(c *C) {
 	bodies := []io.Reader{nil, strings.NewReader("")}
 	for _, body := range bodies {
-		request, err := http.NewRequest("POST", "/apps/unknown/env/?:app=unkown", body)
+		request, err := http.NewRequest("POST", "/apps/unknown/env/?:name=unkown", body)
 		c.Assert(err, IsNil)
 		recorder := httptest.NewRecorder()
 		err = SetEnv(recorder, request, s.user)
@@ -795,7 +796,7 @@ func (s *S) TestSetEnvHandlerReturnsBadRequestIfVariablesAreMissing(c *C) {
 
 func (s *S) TestSetEnvHandlerReturnsNotFoundIfTheAppDoesNotExist(c *C) {
 	b := strings.NewReader("DATABASE_HOST=localhost")
-	request, err := http.NewRequest("POST", "/apps/unknown/env/?:app=unknown", b)
+	request, err := http.NewRequest("POST", "/apps/unknown/env/?:name=unknown", b)
 	c.Assert(err, IsNil)
 	recorder := httptest.NewRecorder()
 	err = SetEnv(recorder, request, s.user)
@@ -810,7 +811,7 @@ func (s *S) TestSetEnvHandlerReturnsForbiddenIfTheGivenUserDoesNotHaveAccessToTh
 	a := &App{Name: "rock-and-roll"}
 	err := a.Create()
 	c.Assert(err, IsNil)
-	url := fmt.Sprintf("/apps/%s/env/?:app=%s", a.Name, a.Name)
+	url := fmt.Sprintf("/apps/%s/env/?:name=%s", a.Name, a.Name)
 	request, err := http.NewRequest("POST", url, strings.NewReader("DATABASE_HOST=localhost"))
 	c.Assert(err, IsNil)
 	recorder := httptest.NewRecorder()
@@ -829,7 +830,7 @@ func (s *S) TestUnsetEnvHandlerRemovesTheEnvironmentVariablesFromTheApp(c *C) {
 	}
 	err := a.Create()
 	c.Assert(err, IsNil)
-	url := fmt.Sprintf("/apps/%s/env/?:app=%s", a.Name, a.Name)
+	url := fmt.Sprintf("/apps/%s/env/?:name=%s", a.Name, a.Name)
 	request, err := http.NewRequest("DELETE", url, strings.NewReader("DATABASE_HOST"))
 	c.Assert(err, IsNil)
 	recorder := httptest.NewRecorder()
@@ -849,7 +850,7 @@ func (s *S) TestUnsetEnvHandlerRemovesAllGivenEnvironmentVariables(c *C) {
 	}
 	err := a.Create()
 	c.Assert(err, IsNil)
-	url := fmt.Sprintf("/apps/%s/env/?:app=%s", a.Name, a.Name)
+	url := fmt.Sprintf("/apps/%s/env/?:name=%s", a.Name, a.Name)
 	request, err := http.NewRequest("DELETE", url, strings.NewReader("DATABASE_HOST DATABASE_USER"))
 	c.Assert(err, IsNil)
 	recorder := httptest.NewRecorder()
@@ -863,7 +864,7 @@ func (s *S) TestUnsetEnvHandlerRemovesAllGivenEnvironmentVariables(c *C) {
 
 func (s *S) TestUnsetEnvHandlerReturnsInternalErrorIfReadAllFails(c *C) {
 	b := s.getTestData("bodyToBeClosed.txt")
-	request, err := http.NewRequest("POST", "/apps/unkown/env/?:app=unknown", b)
+	request, err := http.NewRequest("POST", "/apps/unkown/env/?:name=unknown", b)
 	c.Assert(err, IsNil)
 	request.Body.Close()
 	recorder := httptest.NewRecorder()
@@ -874,7 +875,7 @@ func (s *S) TestUnsetEnvHandlerReturnsInternalErrorIfReadAllFails(c *C) {
 func (s *S) TestUnsetEnvHandlerReturnsBadRequestIfVariablesAreMissing(c *C) {
 	bodies := []io.Reader{nil, strings.NewReader("")}
 	for _, body := range bodies {
-		request, err := http.NewRequest("POST", "/apps/unknown/env/?:app=unkown", body)
+		request, err := http.NewRequest("POST", "/apps/unknown/env/?:name=unkown", body)
 		c.Assert(err, IsNil)
 		recorder := httptest.NewRecorder()
 		err = UnsetEnv(recorder, request, s.user)
@@ -888,7 +889,7 @@ func (s *S) TestUnsetEnvHandlerReturnsBadRequestIfVariablesAreMissing(c *C) {
 
 func (s *S) TestUnsetEnvHandlerReturnsNotFoundIfTheAppDoesNotExist(c *C) {
 	b := strings.NewReader("DATABASE_HOST")
-	request, err := http.NewRequest("POST", "/apps/unknown/env/?:app=unknown", b)
+	request, err := http.NewRequest("POST", "/apps/unknown/env/?:name=unknown", b)
 	c.Assert(err, IsNil)
 	recorder := httptest.NewRecorder()
 	err = UnsetEnv(recorder, request, s.user)
@@ -903,7 +904,7 @@ func (s *S) TestUnsetEnvHandlerReturnsForbiddenIfTheGivenUserDoesNotHaveAccessTo
 	a := &App{Name: "mountain-mama"}
 	err := a.Create()
 	c.Assert(err, IsNil)
-	url := fmt.Sprintf("/apps/%s/env/?:app=%s", a.Name, a.Name)
+	url := fmt.Sprintf("/apps/%s/env/?:name=%s", a.Name, a.Name)
 	request, err := http.NewRequest("POST", url, strings.NewReader("DATABASE_HOST=localhost"))
 	c.Assert(err, IsNil)
 	recorder := httptest.NewRecorder()

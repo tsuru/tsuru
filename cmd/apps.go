@@ -211,7 +211,7 @@ input and outputs redirects, and pipes.
 
 func (c *AppRun) Run(context *Context, client Doer) error {
 	appName := context.Args[0]
-	url := GetUrl(fmt.Sprintf("/apps/run/%s", appName))
+	url := GetUrl(fmt.Sprintf("/apps/%s/run", appName))
 	b := strings.NewReader(strings.Join(context.Args[1:], " "))
 	request, err := http.NewRequest("POST", url, b)
 	if err != nil {
