@@ -5,6 +5,7 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
+	"regexp"
 	"strings"
 	"syscall"
 )
@@ -46,7 +47,7 @@ func ReadTarget() string {
 func GetUrl(path string) string {
 	var prefix string
 	target := ReadTarget()
-	if !strings.HasPrefix(target, "http://") {
+	if m, _ := regexp.MatchString("^https?://", target); !m {
 		prefix = "http://"
 	}
 	return prefix + target + path
