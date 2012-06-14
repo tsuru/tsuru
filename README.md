@@ -70,11 +70,11 @@ When your app is ready, you can push to it. To check whether it is ready or not,
 
 This will return something like:
 
-  `+-------------+---------+--------------+
-  | Application | State   | Ip           |
-  +-------------+---------+--------------+
-  | myblog      | STARTED | 10.10.10.10  |
-  +-------------+---------+--------------+`
+    +-------------+---------+--------------+
+    | Application | State   | Ip           |
+    +-------------+---------+--------------+
+    | myblog      | STARTED | 10.10.10.10  |
+    +-------------+---------+--------------+
 
 You can try to push now, but you'll get a permission error, because you haven't pushed your key yet.
 
