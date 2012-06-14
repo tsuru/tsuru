@@ -53,8 +53,8 @@ Then you must set the target with your server url, like:
 
 After that, all you need is create an user and authenticate to start creating apps and pushing code to them::
 
-  `% tsuru user create youremail@gmail.com`
-  `% tsuru login youremail@gmail.com`
+  `% tsuru user create youremail@gmail.com
+   % tsuru login youremail@gmail.com`
 
 To create an app:
 
