@@ -17,6 +17,10 @@ func filterOutput(output []byte, filterFunc func([]byte) bool) []byte {
 	if err != nil {
 		return output
 	}
+	regexSshWarning, err := regexp.Compile(`^Warning: Permanently .* to the list of known hosts.$`)
+	if err != nil {
+		return output
+	}
 	lines := bytes.Split(output, []byte{'\n'})
 	for _, line := range lines {
 		if ignore {
@@ -27,7 +31,9 @@ func filterOutput(output []byte, filterFunc func([]byte) bool) []byte {
 			ignore = true
 			continue
 		}
-		if !regexLog.Match(line) && (filterFunc == nil || filterFunc(line)) {
+		if !regexSshWarning.Match(line) &&
+			!regexLog.Match(line) &&
+			(filterFunc == nil || filterFunc(line)) {
 			result = append(result, line)
 		}
 	}
