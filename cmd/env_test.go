@@ -30,8 +30,17 @@ func (s *S) TestEnvGetInfo(c *C) {
 
 func (s *S) TestEnvGetRun(c *C) {
 	result := "DATABASE_HOST=somehost"
-	//expected := "DATABASE_HOST=somehost" //\nDATABASE_USER=someuser\nDATABASE_PASS=secret
-	context := Context{[]string{}, []string{"someapp", "PATH"}, manager.Stdout, manager.Stderr}
+	context := Context{[]string{}, []string{"someapp", "DATABASE_HOST"}, manager.Stdout, manager.Stderr}
+	client := NewClient(&http.Client{Transport: &transport{msg: result, status: http.StatusOK}})
+	err := (&EnvGet{}).Run(&context, client)
+	c.Assert(err, IsNil)
+	c.Assert(manager.Stdout.(*bytes.Buffer).String(), Equals, result)
+}
+
+func (s *S) TestEnvGetRunWithMultipleParams(c *C) {
+	result := "DATABASE_HOST=somehost\nDATABASE_USER=someuser"
+	params := []string{"someapp", "DATABASE_HOST", "DATABASE_USER"}
+	context := Context{[]string{}, params, manager.Stdout, manager.Stderr}
 	client := NewClient(&http.Client{Transport: &transport{msg: result, status: http.StatusOK}})
 	err := (&EnvGet{}).Run(&context, client)
 	c.Assert(err, IsNil)

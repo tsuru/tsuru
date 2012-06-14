@@ -35,9 +35,10 @@ func (c *EnvGet) Info() *Info {
 }
 
 func (c *EnvGet) Run(context *Context, client Doer) error {
-	appName, env := context.Args[0], context.Args[1]
+	appName, env := context.Args[0], context.Args[1:]
+	envStr := strings.Join(env, " ")
 	url := GetUrl(fmt.Sprintf("/apps/%s/env", appName))
-	body := strings.NewReader(env)
+	body := strings.NewReader(envStr)
 	request, err := http.NewRequest("GET", url, body)
 	if err != nil {
 		return err
