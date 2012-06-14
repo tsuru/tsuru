@@ -149,9 +149,10 @@ func (s *S) TestAppList(c *C) {
 }
 
 func (s *S) TestListShouldReturnStatusNoContentWhenAppListIsNil(c *C) {
+	err := db.Session.Apps().RemoveAll(nil)
+	c.Assert(err, IsNil)
 	request, err := http.NewRequest("GET", "/apps/", nil)
 	c.Assert(err, IsNil)
-
 	request.Header.Set("Content-Type", "application/json")
 	recorder := httptest.NewRecorder()
 	err = AppList(recorder, request, s.user)
