@@ -44,7 +44,12 @@ func ReadTarget() string {
 }
 
 func GetUrl(path string) string {
-	return ReadTarget() + path
+	var prefix string
+	target := ReadTarget()
+	if !strings.HasPrefix(target, "http://") {
+		prefix = "http://"
+	}
+	return prefix + target + path
 }
 
 func WriteTarget(t string) error {

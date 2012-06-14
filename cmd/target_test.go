@@ -71,5 +71,13 @@ func (s *S) TestGetUrl(c *C) {
 	deleteTsuruTarget()
 	expected := DefaultTarget + "/apps"
 	got := GetUrl("/apps")
-	c.Assert(expected, Equals, got)
+	c.Assert(got, Equals, expected)
+}
+
+func (s *S) TestGetUrlPutsHttpIfItIsNotPresent(c *C) {
+	err := WriteTarget("localhost")
+	c.Assert(err, IsNil)
+	expected := "http://localhost/apps"
+	got := GetUrl("/apps")
+	c.Assert(got, Equals, expected)
 }
