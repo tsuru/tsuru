@@ -73,7 +73,7 @@ func runCmd(cmd string, msg Message) {
 func setEnvVar(msg Message) {
 	envLocker.Lock()
 	defer envLocker.Unlock()
-	cmd := "cat >> /home/application/env <<END\n"
+	cmd := "cat >> /home/application/apprc <<END\n"
 	for k, v := range msg.env {
 		cmd += fmt.Sprintf(`export %s="%s"`+"\n", k, v)
 	}
@@ -101,14 +101,14 @@ func unsetEnvVar(msg Message) {
 		variables = append(variables, k)
 	}
 	c := Cmd{
-		cmd:    "cat /home/application/env",
+		cmd:    "cat /home/application/apprc",
 		result: make(chan CmdResult),
 		u:      msg.app.unit(),
 	}
 	cmds <- c
 	r := <-c.result
 	output := excludeLines(r.output, fmt.Sprintf(`^export (%s)=`, strings.Join(variables, "|")))
-	cmd := "cat > /home/application/env <<END\n"
+	cmd := "cat > /home/application/apprc <<END\n"
 	cmd += string(output)
 	cmd += "\nEND"
 	runCmd(cmd, msg)
