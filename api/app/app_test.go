@@ -231,6 +231,7 @@ another thing that must also be discarded
 one more
 ========
 File or directory does not exists
+$(exit 1)
 `
 	dir, err := commandmocker.Add("juju", output)
 	c.Assert(err, IsNil)
@@ -288,7 +289,9 @@ File or directory does not exists
 	l := stdlog.New(w, "", stdlog.LstdFlags)
 	log.Target = l
 	err = a.preRestart(conf)
-	c.Assert(err, ErrorMatches, "^app.conf file does not exists or is in the right place.$")
+	c.Assert(err, IsNil)
+	st := strings.Split(w.String(), "\n")
+	c.Assert(st[len(st)-2], Matches, ".*app.conf file does not exists or is in the right place. Skipping...")
 }
 
 func (s *S) TestSkipsPreRestartWhenPreRestartSectionDoesNotExists(c *C) {
@@ -358,7 +361,9 @@ File or directory does not exists
 	l := stdlog.New(w, "", stdlog.LstdFlags)
 	log.Target = l
 	err = a.posRestart(conf)
-	c.Assert(err, ErrorMatches, "^app.conf file does not exists or is in the right place.$")
+	c.Assert(err, IsNil)
+	st := strings.Split(w.String(), "\n")
+	c.Assert(st[len(st)-2], Matches, ".*app.conf file does not exists or is in the right place. Skipping...")
 }
 
 func (s *S) TestSkipsPosRestartWhenPosRestartSectionDoesNotExists(c *C) {
