@@ -19,8 +19,12 @@ generate-files-in = /mnt/gitosis\
 gitweb = no\
 daemon = no'
 
-echo "Adding TSURU_HOST to /etc/profile..."
-sudo /bin/bash -c 'echo "export TSURU_HOST=http://tsuru.plataformas.glb.com:8080" >> /etc/profile'
+grep -qFx "export TSURU_HOST=http://tsuru.plataformas.glb.com:8080" /etc/profile
+if  [ $? -ne 0 ]
+then
+    echo "Adding TSURU_HOST to /etc/profile..."
+    sudo /bin/bash -c 'echo "export TSURU_HOST=http://tsuru.plataformas.glb.com:8080" >> /etc/profile'
+fi
 source /etc/profile
 
 echo "Copying ubuntu's public key to git home. Will generate one it doesn't exists..."
