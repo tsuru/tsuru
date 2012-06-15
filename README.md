@@ -56,6 +56,20 @@ After that, all you need is create a user and authenticate to start creating app
     % tsuru user create youremail@gmail.com
     % tsuru login youremail@gmail.com
 
+Every command has a help, to access it, try:
+
+    % tsuru help command
+
+Sometimes you also need help with a subcommand:
+
+    % tsuru help command subcommand
+
+Then, create a team:
+
+    % tsuru team create myteam
+
+Your user is automatically added to this team.
+
 To create an app:
 
     % tsuru app create myblog
