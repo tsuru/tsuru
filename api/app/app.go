@@ -173,11 +173,12 @@ func (a *App) preRestart(c conf) error {
 	u := a.unit()
 	p, err := deployHookAbsPath(c.PreRestart)
 	if err != nil {
-		log.Printf("Error obtaining absolute path to hook: %s", err)
+		log.Printf("Error obtaining absolute path to hook: %s. Skipping...", err)
 		return nil
 	}
 	out, err := u.Command("/bin/bash", p)
 	log.Printf("Executing pre-restart hook...")
+	log.Printf("Output of pre-restart hook:", string(out))
 	log.Printf(string(out))
 	return err
 }
@@ -198,12 +199,12 @@ func (a *App) posRestart(c conf) error {
 	u := a.unit()
 	p, err := deployHookAbsPath(c.PosRestart)
 	if err != nil {
-		log.Printf("Error obtaining absolute path to hook: %s", err)
+		log.Printf("Error obtaining absolute path to hook: %s. Skipping...", err)
 		return nil
 	}
 	out, err := u.Command("/bin/bash", p)
 	log.Printf("Executing pos-restart hook...")
-	log.Printf(string(out))
+	log.Printf("Output of pos-restart hook: %s", string(out))
 	return err
 }
 
