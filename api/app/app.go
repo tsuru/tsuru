@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/timeredbull/tsuru/api/auth"
 	"github.com/timeredbull/tsuru/api/unit"
+	"github.com/timeredbull/tsuru/config"
 	"github.com/timeredbull/tsuru/db"
 	"github.com/timeredbull/tsuru/log"
 	"github.com/timeredbull/tsuru/repository"
@@ -121,6 +122,14 @@ func (a *App) GetEnv(name string) (value string, err error) {
 	return
 }
 
+func deployHookAbsPath(p string) (string, error) {
+	repoPath, err := config.GetString("git:unit-repo")
+	if err != nil {
+		return "", nil
+	}
+	return path.Join(repoPath, p), nil
+}
+
 /*
 * Returns app.conf located at app's git repository
  */
@@ -162,7 +171,12 @@ func (a *App) preRestart(c conf) error {
 		return nil
 	}
 	u := a.unit()
-	out, err := u.Command("/bin/bash", c.PreRestart)
+	p, err := deployHookAbsPath(c.PreRestart)
+	if err != nil {
+		log.Printf("Error obtaining absolute path to hook: %s", err)
+		return nil
+	}
+	out, err := u.Command("/bin/bash", p)
 	log.Printf("Executing pre-restart hook...")
 	log.Printf(string(out))
 	return err
@@ -182,7 +196,12 @@ func (a *App) posRestart(c conf) error {
 		return nil
 	}
 	u := a.unit()
-	out, err := u.Command("/bin/bash", c.PosRestart)
+	p, err := deployHookAbsPath(c.PosRestart)
+	if err != nil {
+		log.Printf("Error obtaining absolute path to hook: %s", err)
+		return nil
+	}
+	out, err := u.Command("/bin/bash", p)
 	log.Printf("Executing pos-restart hook...")
 	log.Printf(string(out))
 	return err

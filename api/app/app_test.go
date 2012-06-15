@@ -205,6 +205,14 @@ func (s *S) TestUnit(c *C) {
 	c.Assert(u, DeepEquals, unit.Unit{Name: a.Name, Type: a.Framework, Machine: a.Machine})
 }
 
+func (s *S) TestDeployHookAbsPath(c *C) {
+	path := "deploy/pre.sh"
+	expected := "/home/application/current/deploy/pre.sh"
+	got, err := deployHookAbsPath(path)
+	c.Assert(err, IsNil)
+	c.Assert(got, Equals, expected)
+}
+
 func (s *S) TestAppConf(c *C) {
 	output := `
 something that must be discarded
@@ -268,7 +276,7 @@ pos-restart: pos.sh
 	commandmocker.Remove(dir)
 	c.Assert(err, IsNil)
 	st := strings.Split(w.String(), "\n")
-	c.Assert(st[len(st)-2], Matches, ".*/bin/bash pre.sh$")
+	c.Assert(st[len(st)-2], Matches, ".*/bin/bash /home/application/current/pre.sh$")
 }
 
 func (s *S) TestPreRestartWhenAppConfDoesNotExists(c *C) {
@@ -340,7 +348,7 @@ pos-restart:
 	c.Assert(err, IsNil)
 	commandmocker.Remove(dir)
 	st := strings.Split(w.String(), "\n")
-	c.Assert(st[len(st)-2], Matches, ".*/bin/bash pos.sh$")
+	c.Assert(st[len(st)-2], Matches, ".*/bin/bash /home/application/current/pos.sh$")
 }
 
 func (s *S) TestPosRestartWhenAppConfDoesNotExists(c *C) {
