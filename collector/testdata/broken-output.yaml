@@ -1,0 +1,31 @@
+machines:
+  0:
+    dns-name: 192.168.0.10
+    instance-id: i-00000zz6
+    instance-state: running
+    agent-state: running
+  1:
+    dns-name: 192.168.0.11
+    instance-id: i-00000zz7
+    instance-state: running
+    agent-state: running
+  2:
+    instance-id: i-00000001
+services:
+  umaappqq:
+    charm: local:oneiric/django-1
+    relations: {}
+    units:
+      umaappqq/0:
+        machine: 1
+        public-address: server-199.novalocal
+        relations: {}
+        agent-state: started
+  barduscoapp:
+    charm: local:precise/django-1
+    relations: {}
+    units:
+      barduscoapp/0:
+        agent-state: pending
+        machine: 2
+        public-address: null

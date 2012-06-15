@@ -80,11 +80,26 @@ func (s *S) TestCollectorUpdate(c *C) {
 
 	err = a.Get()
 	c.Assert(err, IsNil)
-	c.Assert(a.State, DeepEquals, "STARTED")
-	c.Assert(a.Ip, DeepEquals, "192.168.0.11")
-	c.Assert(a.Machine, DeepEquals, 1)
+	c.Assert(a.State, Equals, "STARTED")
+	c.Assert(a.Ip, Equals, "192.168.0.11")
+	c.Assert(a.Machine, Equals, 1)
 
 	a.Destroy()
+}
+
+func (s *S) TestCollectorUpdateWithDownMachine(c *C) {
+	a := app.App{Name: "barduscoapp", State: "STOPPED"}
+	err := a.Create()
+	c.Assert(err, IsNil)
+	file, _ := os.Open(filepath.Join("testdata", "broken-output.yaml"))
+	jujuOutput, _ := ioutil.ReadAll(file)
+	file.Close()
+	var collector Collector
+	out := collector.Parse(jujuOutput)
+	collector.Update(out)
+	err = a.Get()
+	c.Assert(err, IsNil)
+	c.Assert(a.State, Equals, "STOPPED")
 }
 
 func (s *S) TestCollectorParser(c *C) {
