@@ -131,7 +131,7 @@ func (a *App) conf() (conf, error) {
 	if err != nil {
 		return c, err
 	}
-	cPath := path.Join(uRepo, "app.info")
+	cPath := path.Join(uRepo, "app.conf")
 	cmd := fmt.Sprintf(`echo "%s";cat %s`, confSep, cPath)
 	o, err := u.Command(cmd)
 	data := strings.Split(string(o), confSep)[1]
