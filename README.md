@@ -95,10 +95,8 @@ you should use the app.conf pre-restart and pos-restart scripts, those are run b
 Below is a app.conf sample::
 
 ```yaml
-pre-restart:
-  deploy/pre.sh
-pos-restart:
-  deploy/pos.sh
+pre-restart: deploy/pre.sh
+pos-restart: deploy/pos.sh
 ```
 
 The app.conf file is located in your app's root directory, and the scripts path in the yaml are relative to it.
