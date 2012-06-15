@@ -205,16 +205,22 @@ func (s *S) TestUnit(c *C) {
 	c.Assert(u, DeepEquals, unit.Unit{Name: a.Name, Type: a.Framework, Machine: a.Machine})
 }
 
+func (s *S) TestDeployHookAbsPath(c *C) {
+	path := "deploy/pre.sh"
+	expected := "/home/application/current/deploy/pre.sh"
+	got, err := deployHookAbsPath(path)
+	c.Assert(err, IsNil)
+	c.Assert(got, Equals, expected)
+}
+
 func (s *S) TestAppConf(c *C) {
 	output := `
 something that must be discarded
 another thing that must also be discarded
 one more
 ========
-pre-restart:
-    testdata/pre.sh
-pos-restart:
-    testdata/pos.sh
+pre-restart: testdata/pre.sh
+pos-restart: testdata/pos.sh
 `
 	dir, err := commandmocker.Add("juju", output)
 	c.Assert(err, IsNil)
@@ -233,6 +239,7 @@ another thing that must also be discarded
 one more
 ========
 File or directory does not exists
+$(exit 1)
 `
 	dir, err := commandmocker.Add("juju", output)
 	c.Assert(err, IsNil)
@@ -250,10 +257,8 @@ something that must be discarded
 another thing that must also be discarded
 one more
 ========
-pre-restart:
-    pre.sh
-pos-restart:
-    pos.sh
+pre-restart: pre.sh
+pos-restart: pos.sh
 `
 	dir, err := commandmocker.Add("juju", output)
 	c.Assert(err, IsNil)
@@ -271,7 +276,7 @@ pos-restart:
 	commandmocker.Remove(dir)
 	c.Assert(err, IsNil)
 	st := strings.Split(w.String(), "\n")
-	c.Assert(st[len(st)-2], Matches, ".*/bin/bash pre.sh$")
+	c.Assert(st[len(st)-2], Matches, ".*/bin/bash /home/application/current/pre.sh$")
 }
 
 func (s *S) TestPreRestartWhenAppConfDoesNotExists(c *C) {
@@ -292,7 +297,9 @@ File or directory does not exists
 	l := stdlog.New(w, "", stdlog.LstdFlags)
 	log.Target = l
 	err = a.preRestart(conf)
-	c.Assert(err, ErrorMatches, "^app.conf file does not exists or is in the right place.$")
+	c.Assert(err, IsNil)
+	st := strings.Split(w.String(), "\n")
+	c.Assert(st[len(st)-2], Matches, ".*app.conf file does not exists or is in the right place. Skipping...")
 }
 
 func (s *S) TestSkipsPreRestartWhenPreRestartSectionDoesNotExists(c *C) {
@@ -341,7 +348,7 @@ pos-restart:
 	c.Assert(err, IsNil)
 	commandmocker.Remove(dir)
 	st := strings.Split(w.String(), "\n")
-	c.Assert(st[len(st)-2], Matches, ".*/bin/bash pos.sh$")
+	c.Assert(st[len(st)-2], Matches, ".*/bin/bash /home/application/current/pos.sh$")
 }
 
 func (s *S) TestPosRestartWhenAppConfDoesNotExists(c *C) {
@@ -362,7 +369,9 @@ File or directory does not exists
 	l := stdlog.New(w, "", stdlog.LstdFlags)
 	log.Target = l
 	err = a.posRestart(conf)
-	c.Assert(err, ErrorMatches, "^app.conf file does not exists or is in the right place.$")
+	c.Assert(err, IsNil)
+	st := strings.Split(w.String(), "\n")
+	c.Assert(st[len(st)-2], Matches, ".*app.conf file does not exists or is in the right place. Skipping...")
 }
 
 func (s *S) TestSkipsPosRestartWhenPosRestartSectionDoesNotExists(c *C) {
@@ -371,8 +380,7 @@ something that must be discarded
 another thing that must also be discarded
 one more
 ========
-pre-restart:
-    somescript.sh
+pre-restart: somescript.sh
 `
 	dir, err := commandmocker.Add("juju", output)
 	c.Assert(err, IsNil)
