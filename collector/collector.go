@@ -48,7 +48,10 @@ func (c *Collector) Update(out *output) {
 			} else {
 				appUnit.State = "STOPPED"
 			}
-			appUnit.Ip = out.Machines[unit.Machine].(map[interface{}]interface{})["dns-name"].(string)
+			machine := out.Machines[unit.Machine].(map[interface{}]interface{})["dns-name"]
+			if machine != nil {
+				appUnit.Ip = machine.(string)
+			}
 			appUnit.Machine = unit.Machine
 			db.Session.Apps().Update(bson.M{"name": appUnit.Name}, appUnit)
 		}
