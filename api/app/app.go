@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/timeredbull/tsuru/api/auth"
 	"github.com/timeredbull/tsuru/api/unit"
+	"github.com/timeredbull/tsuru/config"
 	"github.com/timeredbull/tsuru/db"
 	"github.com/timeredbull/tsuru/log"
 	"github.com/timeredbull/tsuru/repository"
@@ -121,6 +122,14 @@ func (a *App) GetEnv(name string) (value string, err error) {
 	return
 }
 
+func deployHookAbsPath(p string) (string, error) {
+	repoPath, err := config.GetString("git:unit-repo")
+	if err != nil {
+		return "", nil
+	}
+	return path.Join(repoPath, p), nil
+}
+
 /*
 * Returns app.conf located at app's git repository
  */
@@ -135,6 +144,10 @@ func (a *App) conf() (conf, error) {
 	cPath := path.Join(uRepo, "app.conf")
 	cmd := fmt.Sprintf(`echo "%s";cat %s`, confSep, cPath)
 	o, err := u.Command(cmd)
+	if err != nil {
+		log.Printf("Got error while executing command: %s... Skipping hooks execution", err.Error())
+		return c, nil
+	}
 	data := strings.Split(string(o), confSep)[1]
 	err = goyaml.Unmarshal([]byte(data), &c)
 	if err != nil {
@@ -150,15 +163,22 @@ func (a *App) conf() (conf, error) {
  */
 func (a *App) preRestart(c conf) error {
 	if !a.hasRestartHooks(c) {
-		return errors.New("app.conf file does not exists or is in the right place.")
+		log.Printf("app.conf file does not exists or is in the right place. Skipping...")
+		return nil
 	}
 	if c.PreRestart == "" {
 		log.Printf("pre-restart hook section in app conf does not exists... Skipping...")
 		return nil
 	}
 	u := a.unit()
-	out, err := u.Command("/bin/bash", c.PreRestart)
+	p, err := deployHookAbsPath(c.PreRestart)
+	if err != nil {
+		log.Printf("Error obtaining absolute path to hook: %s. Skipping...", err)
+		return nil
+	}
+	out, err := u.Command("/bin/bash", p)
 	log.Printf("Executing pre-restart hook...")
+	log.Printf("Output of pre-restart hook:", string(out))
 	log.Printf(string(out))
 	return err
 }
@@ -169,16 +189,22 @@ func (a *App) preRestart(c conf) error {
  */
 func (a *App) posRestart(c conf) error {
 	if !a.hasRestartHooks(c) {
-		return errors.New("app.conf file does not exists or is in the right place.")
+		log.Printf("app.conf file does not exists or is in the right place. Skipping...")
+		return nil
 	}
 	if c.PosRestart == "" {
 		log.Printf("pos-restart hook section in app conf does not exists... Skipping...")
 		return nil
 	}
 	u := a.unit()
-	out, err := u.Command("/bin/bash", c.PosRestart)
+	p, err := deployHookAbsPath(c.PosRestart)
+	if err != nil {
+		log.Printf("Error obtaining absolute path to hook: %s. Skipping...", err)
+		return nil
+	}
+	out, err := u.Command("/bin/bash", p)
 	log.Printf("Executing pos-restart hook...")
-	log.Printf(string(out))
+	log.Printf("Output of pos-restart hook: %s", string(out))
 	return err
 }
 
