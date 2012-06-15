@@ -28,8 +28,8 @@ type App struct {
 }
 
 type conf struct {
-	PreRestart string "pre-restart"
-	PosRestart string "pos-restart"
+	PreRestart string `yaml:"pre-restart"`
+	PosRestart string `yaml:"pos-restart"`
 }
 
 func AllApps() ([]App, error) {
@@ -178,7 +178,7 @@ func (a *App) preRestart(c conf) error {
 	}
 	out, err := u.Command("/bin/bash", p)
 	log.Printf("Executing pre-restart hook...")
-	log.Printf("Output of pre-restart hook:", string(out))
+	log.Printf("Output of pre-restart hook: %s", string(out))
 	log.Printf(string(out))
 	return err
 }
