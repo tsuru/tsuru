@@ -239,7 +239,8 @@ func RunCommand(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 		return err
 	}
 	unit := app.unit()
-	out, err := unit.Command(string(c))
+	cmd := fmt.Sprintf("cd /home/application/current; %s", c)
+	out, err := unit.Command(cmd)
 	if err != nil {
 		return err
 	}
