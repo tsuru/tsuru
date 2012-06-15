@@ -129,6 +129,7 @@ func (a *App) conf() (conf, error) {
 	u := a.unit()
 	uRepo, err := repository.GetPath()
 	if err != nil {
+		log.Printf("Got error while getting repository path: %s", err.Error())
 		return c, err
 	}
 	cPath := path.Join(uRepo, "app.conf")
@@ -137,6 +138,7 @@ func (a *App) conf() (conf, error) {
 	data := strings.Split(string(o), confSep)[1]
 	err = goyaml.Unmarshal([]byte(data), &c)
 	if err != nil {
+		log.Printf("Got error while parsing yaml: %s", err.Error())
 		return c, err
 	}
 	return c, nil

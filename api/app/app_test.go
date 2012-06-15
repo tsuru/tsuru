@@ -211,10 +211,8 @@ something that must be discarded
 another thing that must also be discarded
 one more
 ========
-pre-restart:
-    testdata/pre.sh
-pos-restart:
-    testdata/pos.sh
+pre-restart: testdata/pre.sh
+pos-restart: testdata/pos.sh
 `
 	dir, err := commandmocker.Add("juju", output)
 	c.Assert(err, IsNil)
@@ -250,10 +248,8 @@ something that must be discarded
 another thing that must also be discarded
 one more
 ========
-pre-restart:
-    pre.sh
-pos-restart:
-    pos.sh
+pre-restart: pre.sh
+pos-restart: pos.sh
 `
 	dir, err := commandmocker.Add("juju", output)
 	c.Assert(err, IsNil)
@@ -371,8 +367,7 @@ something that must be discarded
 another thing that must also be discarded
 one more
 ========
-pre-restart:
-    somescript.sh
+pre-restart: somescript.sh
 `
 	dir, err := commandmocker.Add("juju", output)
 	c.Assert(err, IsNil)
