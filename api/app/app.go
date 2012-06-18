@@ -13,6 +13,7 @@ import (
 	"launchpad.net/mgo/bson"
 	"path"
 	"strings"
+	"time"
 )
 
 const confSep = "========"
@@ -25,6 +26,12 @@ type App struct {
 	Name      string
 	State     string
 	Teams     []auth.Team
+	Logs	  []Log
+}
+
+type Log struct {
+	Date time.Time
+	Message string
 }
 
 type conf struct {
