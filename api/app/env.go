@@ -112,7 +112,7 @@ func unsetEnvVar(msg Message) {
 	output := excludeLines(r.output, fmt.Sprintf(`^export (%s)=`, strings.Join(variables, "|")))
 	cmd := "cat > /home/application/apprc <<END\n"
 	cmd += string(output)
-	cmd += "\nEND"
+	cmd += "END"
 	runCmd(cmd, msg)
 }
 
