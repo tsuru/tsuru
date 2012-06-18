@@ -38,13 +38,13 @@ var HasAccessTo Checker = &hasAccessToChecker{}
 
 func (s *S) TestAll(c *C) {
 	expected := make([]App, 0)
-	app1 := App{Env: make(map[string]string), Name: "app1", Teams: []auth.Team{}}
+	app1 := App{Env: make(map[string]string), Name: "app1", Teams: []auth.Team{}, Logs: []Log{}}
 	app1.Create()
 	expected = append(expected, app1)
-	app2 := App{Env: make(map[string]string), Name: "app2", Teams: []auth.Team{}}
+	app2 := App{Env: make(map[string]string), Name: "app2", Teams: []auth.Team{}, Logs: []Log{}}
 	app2.Create()
 	expected = append(expected, app2)
-	app3 := App{Env: make(map[string]string), Name: "app3", Teams: []auth.Team{}}
+	app3 := App{Env: make(map[string]string), Name: "app3", Teams: []auth.Team{}, Logs: []Log{}}
 	app3.Create()
 	expected = append(expected, app3)
 
@@ -58,7 +58,7 @@ func (s *S) TestAll(c *C) {
 }
 
 func (s *S) TestGet(c *C) {
-	newApp := App{Env: map[string]string{}, Name: "myApp", Framework: "django", Teams: []auth.Team{}}
+	newApp := App{Env: map[string]string{}, Name: "myApp", Framework: "django", Teams: []auth.Team{}, Logs: []Log{}}
 	err := newApp.Create()
 	c.Assert(err, IsNil)
 

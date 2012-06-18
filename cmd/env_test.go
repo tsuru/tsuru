@@ -31,7 +31,7 @@ func (s *S) TestEnvGetInfo(c *C) {
 }
 
 func (s *S) TestEnvGetRun(c *C) {
-	result := "DATABASE_HOST=somehost"
+	result := "DATABASE_HOST=somehost\n"
 	context := Context{[]string{}, []string{"someapp", "DATABASE_HOST"}, manager.Stdout, manager.Stderr}
 	client := NewClient(&http.Client{Transport: &transport{msg: result, status: http.StatusOK}})
 	err := (&EnvGet{}).Run(&context, client)
@@ -58,7 +58,7 @@ func (s *S) TestEnvSetInfo(c *C) {
 }
 
 func (s *S) TestEnvSetRun(c *C) {
-	result := "variable(s) successfuly exported"
+	result := "variable(s) successfuly exported\n"
 	context := Context{[]string{}, []string{"someapp", "DATABASE_HOST=somehost"}, manager.Stdout, manager.Stderr}
 	client := NewClient(&http.Client{Transport: &transport{msg: result, status: http.StatusOK}})
 	err := (&EnvSet{}).Run(&context, client)
@@ -67,7 +67,7 @@ func (s *S) TestEnvSetRun(c *C) {
 }
 
 func (s *S) TestEnvSetRunWithMultipleParams(c *C) {
-	result := "variable(s) successfuly exported"
+	result := "variable(s) successfuly exported\n"
 	params := []string{"someapp", "DATABASE_HOST=somehost", "DATABASE_USER=user"}
 	context := Context{[]string{}, params, manager.Stdout, manager.Stderr}
 	client := NewClient(&http.Client{Transport: &transport{msg: result, status: http.StatusOK}})
@@ -85,7 +85,7 @@ func (s *S) TestEnvUnsetInfo(c *C) {
 }
 
 func (s *S) TestEnvUnsetRun(c *C) {
-	result := "variable(s) successfuly unset"
+	result := "variable(s) successfuly unset\n"
 	context := Context{[]string{}, []string{"someapp", "DATABASE_HOST"}, manager.Stdout, manager.Stderr}
 	client := NewClient(&http.Client{Transport: &transport{msg: result, status: http.StatusOK}})
 	err := (&EnvUnset{}).Run(&context, client)
