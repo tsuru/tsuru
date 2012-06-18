@@ -26,7 +26,7 @@ func (c *Client) Do(request *http.Request) (*http.Response, error) {
 	request.Header.Set("Authorization", token)
 	response, err := c.HttpClient.Do(request)
 	if err != nil {
-		return nil, errors.New("Server is down")
+		return nil, errors.New("Server is down\n")
 	}
 	if response.StatusCode > 399 {
 		defer response.Body.Close()
