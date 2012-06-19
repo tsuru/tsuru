@@ -9,9 +9,12 @@ import (
 )
 
 type Unit struct {
-	Type    string
-	Name    string
-	Machine int
+	Type         string
+	Name         string
+	Machine      int
+	Ip           string
+	AgentState   string
+	MachineState string
 }
 
 func (u *Unit) Create() error {
