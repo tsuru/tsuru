@@ -3,6 +3,7 @@ package app
 import (
 	"fmt"
 	"github.com/timeredbull/tsuru/api/unit"
+	"github.com/timeredbull/tsuru/log"
 	"regexp"
 	"strings"
 	"sync"
@@ -65,6 +66,7 @@ func runCmd(cmd string, msg Message) {
 		cmds <- c
 		r = <-c.result
 	}
+	log.Printf("running %s on %s, output:\n %s", cmd, msg.app.Name, string(r.output))
 	if msg.success != nil {
 		msg.success <- r.err == nil
 	}
@@ -110,7 +112,7 @@ func unsetEnvVar(msg Message) {
 	output := excludeLines(r.output, fmt.Sprintf(`^export (%s)=`, strings.Join(variables, "|")))
 	cmd := "cat > /home/application/apprc <<END\n"
 	cmd += string(output)
-	cmd += "\nEND"
+	cmd += "END"
 	runCmd(cmd, msg)
 }
 
