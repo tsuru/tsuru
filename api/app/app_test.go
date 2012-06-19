@@ -38,34 +38,35 @@ var HasAccessTo Checker = &hasAccessToChecker{}
 
 func (s *S) TestAll(c *C) {
 	expected := make([]App, 0)
-	app1 := App{Env: make(map[string]string), Name: "app1", Teams: []auth.Team{}}
+	app1 := App{Env: make(map[string]string), Name: "app1", Teams: []auth.Team{}, Logs: []Log{}}
 	app1.Create()
 	expected = append(expected, app1)
-	app2 := App{Env: make(map[string]string), Name: "app2", Teams: []auth.Team{}}
+	app2 := App{Env: make(map[string]string), Name: "app2", Teams: []auth.Team{}, Logs: []Log{}}
 	app2.Create()
 	expected = append(expected, app2)
-	app3 := App{Env: make(map[string]string), Name: "app3", Teams: []auth.Team{}}
+	app3 := App{Env: make(map[string]string), Name: "app3", Teams: []auth.Team{}, Logs: []Log{}}
 	app3.Create()
 	expected = append(expected, app3)
 
 	appList, err := AllApps()
 	c.Assert(err, IsNil)
-	c.Assert(expected, DeepEquals, appList)
-
-	app1.Destroy()
-	app2.Destroy()
-	app3.Destroy()
+	for i := 0; i <= 2; i++ {
+		c.Assert(expected[i].Name, DeepEquals, appList[i].Name)
+		c.Assert(expected[i].State, DeepEquals, appList[i].State)
+		expected[i].Destroy()
+	}
 }
 
 func (s *S) TestGet(c *C) {
-	newApp := App{Env: map[string]string{}, Name: "myApp", Framework: "django", Teams: []auth.Team{}}
+	newApp := App{Env: map[string]string{}, Name: "myApp", Framework: "django", Teams: []auth.Team{}, Logs: []Log{}}
 	err := newApp.Create()
 	c.Assert(err, IsNil)
 
 	myApp := App{Name: "myApp"}
 	err = myApp.Get()
 	c.Assert(err, IsNil)
-	c.Assert(myApp, DeepEquals, newApp)
+	c.Assert(myApp.Name, Equals, newApp.Name)
+	c.Assert(myApp.State, Equals, newApp.State)
 
 	err = myApp.Destroy()
 	c.Assert(err, IsNil)
@@ -73,17 +74,14 @@ func (s *S) TestGet(c *C) {
 
 func (s *S) TestDestroy(c *C) {
 	a := App{
-		Name:      "aName",
+		Name:      "duvido",
 		Framework: "django",
 	}
-
 	err := a.Create()
 	c.Assert(err, IsNil)
 	err = a.Destroy()
 	c.Assert(err, IsNil)
-
-	qtd, err := db.Session.Apps().Find(nil).Count()
-	c.Assert(err, IsNil)
+	qtd, err := db.Session.Apps().Find(bson.M{"name": a.Name}).Count()
 	c.Assert(qtd, Equals, 0)
 }
 
@@ -436,4 +434,16 @@ func (s *S) TestUpdateHooks(c *C) {
 	c.Assert(err, IsNil)
 	err = a.updateHooks()
 	c.Assert(err, IsNil)
+}
+
+func (s *S) TestLogShouldStoreLog(c *C) {
+	a := App{Name: "newApp"}
+	err := a.Create()
+	c.Assert(err, IsNil)
+	err = a.Log("last log msg")
+	c.Assert(err, IsNil)
+	instance := App{}
+	err = db.Session.Apps().Find(bson.M{"name": a.Name}).One(&instance)
+	logLen := len(instance.Logs)
+	c.Assert(instance.Logs[logLen-1].Message, Equals, "last log msg")
 }

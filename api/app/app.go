@@ -13,6 +13,7 @@ import (
 	"launchpad.net/mgo/bson"
 	"path"
 	"strings"
+	"time"
 )
 
 const confSep = "========"
@@ -25,6 +26,12 @@ type App struct {
 	Name      string
 	State     string
 	Teams     []auth.Team
+	Logs      []Log
+}
+
+type Log struct {
+	Date    time.Time
+	Message string
 }
 
 type conf struct {
@@ -48,11 +55,13 @@ func (a *App) Create() error {
 	if err != nil {
 		return err
 	}
+	a.Log(fmt.Sprintf("creating app %s", a.Name))
 	u := a.unit()
 	err = u.Create()
 	if err != nil {
 		return err
 	}
+	a.Log(fmt.Sprintf("app %s successfully created", a.Name))
 	return nil
 }
 
@@ -138,20 +147,20 @@ func (a *App) conf() (conf, error) {
 	u := a.unit()
 	uRepo, err := repository.GetPath()
 	if err != nil {
-		log.Printf("Got error while getting repository path: %s", err.Error())
+		a.Log(fmt.Sprint("Got error while getting repository path: %s", err.Error()))
 		return c, err
 	}
 	cPath := path.Join(uRepo, "app.conf")
 	cmd := fmt.Sprintf(`echo "%s";cat %s`, confSep, cPath)
 	o, err := u.Command(cmd)
 	if err != nil {
-		log.Printf("Got error while executing command: %s... Skipping hooks execution", err.Error())
+		a.Log(fmt.Sprintf("Got error while executing command: %s... Skipping hooks execution", err.Error()))
 		return c, nil
 	}
 	data := strings.Split(string(o), confSep)[1]
 	err = goyaml.Unmarshal([]byte(data), &c)
 	if err != nil {
-		log.Printf("Got error while parsing yaml: %s", err.Error())
+		a.Log(fmt.Sprintf("Got error while parsing yaml: %s", err.Error()))
 		return c, err
 	}
 	return c, nil
@@ -163,23 +172,22 @@ func (a *App) conf() (conf, error) {
  */
 func (a *App) preRestart(c conf) error {
 	if !a.hasRestartHooks(c) {
-		log.Printf("app.conf file does not exists or is in the right place. Skipping...")
+		a.Log("app.conf file does not exists or is in the right place. Skipping...")
 		return nil
 	}
 	if c.PreRestart == "" {
-		log.Printf("pre-restart hook section in app conf does not exists... Skipping...")
+		a.Log("pre-restart hook section in app conf does not exists... Skipping...")
 		return nil
 	}
 	u := a.unit()
 	p, err := deployHookAbsPath(c.PreRestart)
 	if err != nil {
-		log.Printf("Error obtaining absolute path to hook: %s. Skipping...", err)
+		a.Log(fmt.Sprintf("Error obtaining absolute path to hook: %s. Skipping...", err))
 		return nil
 	}
 	out, err := u.Command("/bin/bash", p)
-	log.Printf("Executing pre-restart hook...")
-	log.Printf("Output of pre-restart hook: %s", string(out))
-	log.Printf(string(out))
+	a.Log("Executing pre-restart hook...")
+	a.Log(fmt.Sprintf("Output of pre-restart hook: %s", string(out)))
 	return err
 }
 
@@ -189,22 +197,22 @@ func (a *App) preRestart(c conf) error {
  */
 func (a *App) posRestart(c conf) error {
 	if !a.hasRestartHooks(c) {
-		log.Printf("app.conf file does not exists or is in the right place. Skipping...")
+		a.Log("app.conf file does not exists or is in the right place. Skipping...")
 		return nil
 	}
 	if c.PosRestart == "" {
-		log.Printf("pos-restart hook section in app conf does not exists... Skipping...")
+		a.Log("pos-restart hook section in app conf does not exists... Skipping...")
 		return nil
 	}
 	u := a.unit()
 	p, err := deployHookAbsPath(c.PosRestart)
 	if err != nil {
-		log.Printf("Error obtaining absolute path to hook: %s. Skipping...", err)
+		a.Log(fmt.Sprintf("Error obtaining absolute path to hook: %s. Skipping...", err))
 		return nil
 	}
 	out, err := u.Command("/bin/bash", p)
-	log.Printf("Executing pos-restart hook...")
-	log.Printf("Output of pos-restart hook: %s", string(out))
+	a.Log("Executing pos-restart hook...")
+	a.Log(fmt.Sprintf("Output of pos-restart hook: %s", string(out)))
 	return err
 }
 
@@ -227,4 +235,11 @@ func (a *App) updateHooks() error {
 
 func (a *App) unit() unit.Unit {
 	return unit.Unit{Name: a.Name, Type: a.Framework, Machine: a.Machine}
+}
+
+func (a *App) Log(message string) error {
+	log.Printf(message)
+	l := Log{Date: time.Now(), Message: message}
+	a.Logs = append(a.Logs, l)
+	return db.Session.Apps().Update(bson.M{"name": a.Name}, a)
 }

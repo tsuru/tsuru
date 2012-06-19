@@ -49,5 +49,5 @@ func (s *S) TestShouldReturnErrorWhenServerIsDown(c *C) {
 	client := NewClient(&http.Client{})
 	_, err = client.Do(request)
 	c.Assert(err, NotNil)
-	c.Assert(err, ErrorMatches, "^Server is down$")
+	c.Assert(err, ErrorMatches, "^Server is down\n$")
 }
