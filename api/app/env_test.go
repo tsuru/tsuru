@@ -32,7 +32,7 @@ func (s *S) TestDoesNotSendInTheSuccessChannelIfItIsNil(c *C) {
 	err = app.Create()
 	c.Assert(err, IsNil)
 	msg := Message{
-		app:  &app,
+		app: &app,
 	}
 	env <- msg
 }
