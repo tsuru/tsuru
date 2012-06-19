@@ -1,0 +1,1 @@
+char *GetPassword(int fd);

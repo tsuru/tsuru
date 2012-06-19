@@ -1,5 +1,9 @@
 package cmd
 
+//#include <stdlib.h>
+//#include "pass.h"
+import "C"
+
 import (
 	"bytes"
 	"encoding/json"
@@ -11,9 +15,16 @@ import (
 	"os"
 	"os/user"
 	"strings"
+	"unsafe"
 )
 
 type User struct{}
+
+func getPassword(fd uintptr) string {
+	cPasswd := C.GetPassword(C.int(fd))
+	defer C.free(unsafe.Pointer(cPasswd))
+	return C.GoString(cPasswd)
+}
 
 func readPassword(out io.Writer, password *string) error {
 	io.WriteString(out, "Password: ")
