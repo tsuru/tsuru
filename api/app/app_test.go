@@ -440,10 +440,10 @@ func (s *S) TestLogShouldStoreLog(c *C) {
 	a := App{Name: "newApp"}
 	err := a.Create()
 	c.Assert(err, IsNil)
-	err = a.Log("creating app")
+	err = a.Log("last log msg")
 	c.Assert(err, IsNil)
 	instance := App{}
 	err = db.Session.Apps().Find(bson.M{"name": a.Name}).One(&instance)
 	logLen := len(instance.Logs)
-	c.Assert(instance.Logs[logLen-1].Message, Equals, "creating app")
+	c.Assert(instance.Logs[logLen-1].Message, Equals, "last log msg")
 }
