@@ -147,7 +147,7 @@ func (a *App) conf() (conf, error) {
 	u := a.unit()
 	uRepo, err := repository.GetPath()
 	if err != nil {
-		a.Log(fmt.Sprint("Got error while getting repository path: %s", err.Error()))
+		a.Log(fmt.Sprintf("Got error while getting repository path: %s", err.Error()))
 		return c, err
 	}
 	cPath := path.Join(uRepo, "app.conf")
