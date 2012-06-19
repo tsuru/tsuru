@@ -2,7 +2,6 @@ package app
 
 import (
 	"bytes"
-	"fmt"
 	"github.com/timeredbull/commandmocker"
 	"github.com/timeredbull/tsuru/api/auth"
 	"github.com/timeredbull/tsuru/api/unit"
@@ -444,5 +443,4 @@ func (s *S) TestLogShouldStoreLog(c *C) {
 	err := a.Log("creating app")
 	c.Assert(err, IsNil)
 	c.Assert(a.Logs[0].Message, Equals, "creating app")
-	fmt.Println(a.Logs)
 }
