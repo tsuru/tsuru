@@ -321,8 +321,6 @@ func SetEnv(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	}
 	mess := Message{
 		app:  &app,
-		env:  e,
-		kind: "set",
 	}
 	env <- mess
 	return nil
@@ -356,8 +354,6 @@ func UnsetEnv(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	}
 	mess := Message{
 		app:  &app,
-		env:  e,
-		kind: "unset",
 	}
 	env <- mess
 	return nil

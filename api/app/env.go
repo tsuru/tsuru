@@ -4,9 +4,6 @@ import (
 	"fmt"
 	"github.com/timeredbull/tsuru/api/unit"
 	"github.com/timeredbull/tsuru/log"
-	"regexp"
-	"strings"
-	"sync"
 )
 
 const (
@@ -14,12 +11,8 @@ const (
 	runAttempts = 5
 )
 
-var envLocker sync.Mutex
-
 type Message struct {
 	app     *App
-	env     map[string]string
-	kind    string
 	success chan bool
 }
 
@@ -72,57 +65,13 @@ func runCmd(cmd string, msg Message) {
 	}
 }
 
-func setEnvVar(msg Message) {
-	envLocker.Lock()
-	defer envLocker.Unlock()
-	cmd := "cat >> /home/application/apprc <<END\n"
-	for k, v := range msg.env {
-		cmd += fmt.Sprintf(`export %s="%s"`+"\n", k, v)
-	}
-	cmd += "END\n"
-	runCmd(cmd, msg)
-}
-
-// excludeLines filters the input excluding all lines that matches the given
-// pattern.
-//
-// The pattern must be a valid regular expression. If the given regular
-// expression is invalid, excludeLines will panic.
-func excludeLines(input []byte, pattern string) []byte {
-	regex := regexp.MustCompile(pattern)
-	return filterOutput(input, func(line []byte) bool {
-		return !regex.Match(line)
-	})
-}
-
-func unsetEnvVar(msg Message) {
-	envLocker.Lock()
-	defer envLocker.Unlock()
-	var variables []string
-	for k, _ := range msg.env {
-		variables = append(variables, k)
-	}
-	c := Cmd{
-		cmd:    "cat /home/application/apprc",
-		result: make(chan CmdResult),
-		u:      msg.app.unit(),
-	}
-	cmds <- c
-	r := <-c.result
-	output := excludeLines(r.output, fmt.Sprintf(`^export (%s)=`, strings.Join(variables, "|")))
-	cmd := "cat > /home/application/apprc <<END\n"
-	cmd += string(output)
-	cmd += "END"
-	runCmd(cmd, msg)
-}
-
 func collectEnvVars() {
 	for e := range env {
-		switch e.kind {
-		case "set":
-			setEnvVar(e)
-		case "unset":
-			unsetEnvVar(e)
+		cmd := "cat > /home/application/apprc <<END\n"
+		for k, v := range e.app.Env {
+			cmd += fmt.Sprintf(`export %s="%s"`+"\n", k, v)
 		}
+		cmd += "END\n"
+		runCmd(cmd, e)
 	}
 }
