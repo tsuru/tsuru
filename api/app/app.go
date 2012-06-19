@@ -26,11 +26,11 @@ type App struct {
 	Name      string
 	State     string
 	Teams     []auth.Team
-	Logs	  []Log
+	Logs      []Log
 }
 
 type Log struct {
-	Date time.Time
+	Date    time.Time
 	Message string
 }
 
@@ -234,4 +234,10 @@ func (a *App) updateHooks() error {
 
 func (a *App) unit() unit.Unit {
 	return unit.Unit{Name: a.Name, Type: a.Framework, Machine: a.Machine}
+}
+
+func (a *App) Log(message string) error {
+	log := Log{Date: time.Now(), Message: message}
+	a.Logs = append(a.Logs, log)
+	return nil
 }

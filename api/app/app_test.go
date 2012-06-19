@@ -2,6 +2,7 @@ package app
 
 import (
 	"bytes"
+	"fmt"
 	"github.com/timeredbull/commandmocker"
 	"github.com/timeredbull/tsuru/api/auth"
 	"github.com/timeredbull/tsuru/api/unit"
@@ -436,4 +437,12 @@ func (s *S) TestUpdateHooks(c *C) {
 	c.Assert(err, IsNil)
 	err = a.updateHooks()
 	c.Assert(err, IsNil)
+}
+
+func (s *S) TestLogShouldStoreLog(c *C) {
+	a := App{Name: "newApp"}
+	err := a.Log("creating app")
+	c.Assert(err, IsNil)
+	c.Assert(a.Logs[0].Message, Equals, "creating app")
+	fmt.Println(a.Logs)
 }
