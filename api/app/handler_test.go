@@ -914,3 +914,15 @@ func (s *S) TestUnsetEnvHandlerReturnsForbiddenIfTheGivenUserDoesNotHaveAccessTo
 	c.Assert(ok, Equals, true)
 	c.Assert(e.Code, Equals, http.StatusForbidden)
 }
+
+func (s *S) TestLogShouldReturnNotFoundWhenAppDoesNotExist(c *C) {
+	request, err := http.NewRequest("GET", "/apps/unknown/log/", nil)
+	c.Assert(err, IsNil)
+	recorder := httptest.NewRecorder()
+	err = AppLog(recorder, request, s.user)
+	c.Assert(err, NotNil)
+	e, ok := err.(*errors.Http)
+	c.Assert(ok, Equals, true)
+	c.Assert(e.Code, Equals, http.StatusNotFound)
+	c.Assert(e, ErrorMatches, "^App not found$")
+}

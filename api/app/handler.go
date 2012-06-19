@@ -362,3 +362,12 @@ func UnsetEnv(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	env <- mess
 	return nil
 }
+
+func AppLog(w http.ResponseWriter, r *http.Request, u *auth.User) error {
+	appName := r.URL.Query().Get(":name")
+	_, err := getAppOrError(appName, u)
+	if err != nil {
+		return err
+	}
+	return nil
+}
