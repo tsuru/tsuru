@@ -20,7 +20,7 @@ def build():
     local("mkdir -p dist")
     local("go clean ./...")
     local("go build -a -o dist/collector collector/main.go")
-    local("go build -a -o dist/webserver api/webserver/main.go")
+    local("go build -a -o dist/webserver ./api/webserver")
 
 
 def clean():
