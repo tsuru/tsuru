@@ -5,3 +5,4 @@ main
 collect
 websrv
 dist*
+cmd/cmd

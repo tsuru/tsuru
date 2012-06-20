@@ -1,24 +1,26 @@
-// +build ignore
-
 package main
 
 import (
-	"github.com/timeredbull/tsuru/cmd"
 	"os"
 )
 
+func buildManager(name string) Manager {
+	m := NewManager(name, os.Stdout, os.Stderr)
+	m.Register(&Login{})
+	m.Register(&Logout{})
+	m.Register(&User{})
+	m.Register(&App{})
+	m.Register(&AppRun{})
+	m.Register(&Env{})
+	m.Register(&Key{})
+	m.Register(&Team{})
+	m.Register(&Target{})
+	return m
+}
+
 func main() {
-	name := cmd.ExtractProgramName(os.Args[0])
-	manager := cmd.NewManager(name, os.Stdout, os.Stderr)
-	manager.Register(&cmd.Login{})
-	manager.Register(&cmd.Logout{})
-	manager.Register(&cmd.User{})
-	manager.Register(&cmd.App{})
-	manager.Register(&cmd.Key{})
-	manager.Register(&cmd.Team{})
-	manager.Register(&cmd.Target{})
-	manager.Register(&cmd.Env{})
-	//removing the command name from args
+	name := ExtractProgramName(os.Args[0])
+	manager := buildManager(name)
 	args := os.Args[1:]
 	manager.Run(args)
 }

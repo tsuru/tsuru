@@ -1,19 +1,40 @@
-package cmd
+package main
 
 import (
 	"bytes"
 	"errors"
 	"io"
 	. "launchpad.net/gocheck"
+	"os"
+	"syscall"
 	"testing"
 )
 
 func Test(t *testing.T) { TestingT(t) }
 
-type S struct{}
+type S struct {
+	stdin *os.File
+}
 
 var _ = Suite(&S{})
 var manager Manager
+
+func (s *S) patchStdin(c *C, content []byte) {
+	f, err := os.OpenFile("/tmp/passwdfile.txt", syscall.O_RDWR|syscall.O_NDELAY|syscall.O_CREAT|syscall.O_TRUNC, 0600)
+	c.Assert(err, IsNil)
+	n, err := f.Write(content)
+	c.Assert(err, IsNil)
+	c.Assert(n, Equals, len(content))
+	ret, err := f.Seek(0, 0)
+	c.Assert(err, IsNil)
+	c.Assert(ret, Equals, int64(0))
+	s.stdin = os.Stdin
+	os.Stdin = f
+}
+
+func (s *S) unpatchStdin() {
+	os.Stdin = s.stdin
+}
 
 func (s *S) SetUpTest(c *C) {
 	var stdout, stderr bytes.Buffer

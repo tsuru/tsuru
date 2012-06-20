@@ -32,7 +32,8 @@ func (s *Service) Create() error {
 		return err
 	}
 	u := unit.Unit{Name: s.Name, Type: "mysql"}
-	return u.Create()
+	_, err = u.Create()
+	return err
 }
 
 func (s *Service) Delete() error {
@@ -41,7 +42,8 @@ func (s *Service) Delete() error {
 		return err
 	}
 	u := unit.Unit{Name: s.Name, Type: s.ServiceType().Charm}
-	return u.Destroy()
+	_, err = u.Destroy()
+	return err
 }
 
 func (s *Service) Bind(a *app.App) error {

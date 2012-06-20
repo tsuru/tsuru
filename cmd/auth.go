@@ -1,34 +1,24 @@
-package cmd
-
-//#include <stdlib.h>
-//#include "pass.h"
-import "C"
+package main
 
 import (
 	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/timeredbull/tsuru/cmd/term"
 	"io"
 	"io/ioutil"
 	"net/http"
 	"os"
 	"os/user"
 	"strings"
-	"unsafe"
 )
 
 type User struct{}
 
-func getPassword(fd uintptr) string {
-	cPasswd := C.GetPassword(C.int(fd))
-	defer C.free(unsafe.Pointer(cPasswd))
-	return C.GoString(cPasswd)
-}
-
 func readPassword(out io.Writer, password *string) error {
 	io.WriteString(out, "Password: ")
-	*password = getPassword(os.Stdin.Fd())
+	*password = term.GetPassword(os.Stdin.Fd())
 	io.WriteString(out, "\n")
 	if *password == "" {
 		msg := "You must provide the password!\n"

@@ -1,4 +1,4 @@
-package cmd
+package main
 
 import (
 	"fmt"
@@ -12,6 +12,12 @@ type Manager struct {
 	commands map[string]interface{}
 	Stdout   io.Writer
 	Stderr   io.Writer
+}
+
+func NewManager(name string, stdout, stderr io.Writer) Manager {
+	m := Manager{name: name, Stdout: stdout, Stderr: stderr}
+	m.Register(&Help{manager: &m})
+	return m
 }
 
 func (m *Manager) Register(command interface{}) {
@@ -73,12 +79,6 @@ func getSubcommand(cmd interface{}, cmds []string) interface{} {
 		}
 	}
 	return cmd
-}
-
-func NewManager(name string, stdout, stderr io.Writer) Manager {
-	m := Manager{name: name, Stdout: stdout, Stderr: stderr}
-	m.Register(&Help{manager: &m})
-	return m
 }
 
 type CommandContainer interface {

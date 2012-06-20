@@ -9,20 +9,20 @@ import (
 
 func (s *S) TestCreateAndDestroy(c *C) {
 	u := Unit{Type: "django", Name: "myUnit"}
-	err := u.Create()
+	_, err := u.Create()
 	c.Assert(err, IsNil)
-	err = u.Destroy()
+	_, err = u.Destroy()
 	c.Assert(err, IsNil)
 }
 
 func (s *S) TestCommand(c *C) {
 	u := Unit{Type: "django", Name: "myUnit", Machine: 1}
-	err := u.Create()
+	_, err := u.Create()
 	c.Assert(err, IsNil)
 	output, err := u.Command("uname")
 	c.Assert(err, IsNil)
 	c.Assert(string(output), Equals, "Linux")
-	err = u.Destroy()
+	_, err = u.Destroy()
 	c.Assert(err, IsNil)
 }
 
@@ -32,34 +32,28 @@ func (s *S) TestCommandShouldAcceptMultipleParams(c *C) {
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(dir)
 	u := Unit{Type: "django", Name: "myUnit", Machine: 1}
-	err = u.Create()
+	_, err = u.Create()
 	out, err := u.Command("uname", "-a")
 	c.Assert(string(out), Matches, ".* uname -a")
 }
 
 func (s *S) TestSendFile(c *C) {
 	u := Unit{Type: "django", Name: "myUnit"}
-
-	err := u.Create()
+	_, err := u.Create()
 	c.Assert(err, IsNil)
-
 	file, err := ioutil.TempFile("", "upload")
 	c.Assert(err, IsNil)
-
 	defer os.Remove(file.Name())
 	defer file.Close()
-
 	err = u.SendFile(file.Name(), "/home/ubuntu")
 	c.Assert(err, IsNil)
-
-	err = u.Destroy()
+	_, err = u.Destroy()
 	c.Assert(err, IsNil)
 }
 
 func (s *S) TestAddRelation(c *C) {
 	appUnit := Unit{Type: "django", Name: "myUnit"}
 	serviceUnit := Unit{Type: "mysql", Name: "MyService"}
-
 	err := appUnit.AddRelation(&serviceUnit)
 	c.Assert(err, IsNil)
 }
@@ -67,14 +61,12 @@ func (s *S) TestAddRelation(c *C) {
 func (s *S) TestRemoveRelation(c *C) {
 	appUnit := Unit{Type: "django", Name: "myUnit"}
 	serviceUnit := Unit{Type: "mysql", Name: "MyService"}
-
 	err := appUnit.RemoveRelation(&serviceUnit)
 	c.Assert(err, IsNil)
 }
 
 func (s *S) TestExecuteHook(c *C) {
 	appUnit := Unit{Type: "django", Name: "myUnit"}
-
-	err := appUnit.ExecuteHook("requirements")
+	_, err := appUnit.ExecuteHook("requirements")
 	c.Assert(err, IsNil)
 }

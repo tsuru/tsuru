@@ -1,14 +1,13 @@
-package cmd
+package main
 
 import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/timeredbull/tsuru/api/app"
 	"io"
 	"io/ioutil"
 	"net/http"
-	"strings"
+	"time"
 )
 
 type App struct{}
@@ -30,6 +29,7 @@ func (c *App) Subcommands() map[string]interface{} {
 		"remove":      &AppRemove{},
 		"list":        &AppList{},
 		"run":         &AppRun{},
+		"log":         &AppLog{},
 	}
 }
 
@@ -85,6 +85,12 @@ func (c *AppRemoveTeam) Run(context *Context, client Doer) error {
 	return nil
 }
 
+type AppModel struct {
+	Name  string
+	State string
+	Ip    string
+}
+
 type AppList struct{}
 
 func (c *AppList) Run(context *Context, client Doer) error {
@@ -108,7 +114,7 @@ func (c *AppList) Run(context *Context, client Doer) error {
 }
 
 func (c *AppList) Show(result []byte, context *Context) error {
-	var apps []app.App
+	var apps []AppModel
 	err := json.Unmarshal(result, &apps)
 	if err != nil {
 		return err
@@ -116,11 +122,7 @@ func (c *AppList) Show(result []byte, context *Context) error {
 	table := NewTable()
 	table.Headers = Row{"Application", "State", "Ip"}
 	for _, app := range apps {
-		ip := ""
-		if len(app.Units) > 0 {
-			ip = app.Units[0].Ip
-		}
-		table.AddRow(Row{app.Name, app.State, ip})
+		table.AddRow(Row{app.Name, app.State, app.Ip})
 	}
 	context.Stdout.Write(table.Bytes())
 	return nil
@@ -198,34 +200,45 @@ func (c *AppRemove) Run(context *Context, client Doer) error {
 	return nil
 }
 
-type AppRun struct{}
+type AppLog struct{}
 
-func (c *AppRun) Info() *Info {
-	desc := `run a command in all instances of the app, and prints the output.
-Notice that you may need quotes to run your command if you want to deal with
-input and outputs redirects, and pipes.
-`
+func (c *AppLog) Info() *Info {
 	return &Info{
-		Name:    "run",
-		Usage:   `app run appname command commandarg1 commandarg2 ... commandargn`,
-		Desc:    desc,
+		Name:    "log",
+		Usage:   "app log appname",
+		Desc:    "shows app log",
 		MinArgs: 1,
 	}
 }
 
-func (c *AppRun) Run(context *Context, client Doer) error {
+type Log struct {
+	Date    time.Time
+	Message string
+}
+
+func (c *AppLog) Run(context *Context, client Doer) error {
 	appName := context.Args[0]
-	url := GetUrl(fmt.Sprintf("/apps/%s/run", appName))
-	b := strings.NewReader(strings.Join(context.Args[1:], " "))
-	request, err := http.NewRequest("POST", url, b)
+	url := GetUrl(fmt.Sprintf("/apps/%s/log", appName))
+	request, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return err
 	}
-	r, err := client.Do(request)
+	response, err := client.Do(request)
 	if err != nil {
 		return err
 	}
-	defer r.Body.Close()
-	_, err = io.Copy(context.Stdout, r.Body)
+	if response.StatusCode == http.StatusNoContent {
+		return nil
+	}
+	defer response.Body.Close()
+	result, err := ioutil.ReadAll(response.Body)
+	logs := []Log{}
+	err = json.Unmarshal(result, &logs)
+	if err != nil {
+		return err
+	}
+	for _, log := range logs {
+		context.Stdout.Write([]byte(log.Date.String() + " - " + log.Message + "\n"))
+	}
 	return err
 }

@@ -240,11 +240,13 @@ func RunCommand(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	}
 	unit := app.unit()
 	cmd := fmt.Sprintf("cd /home/application/current; %s", c)
+	app.Log(fmt.Sprintf("running '%s'", c))
 	out, err := unit.Command(cmd)
 	if err != nil {
 		return err
 	}
 	out = filterOutput(out, nil)
+	app.Log(string(out))
 	n, err := w.Write(out)
 	if err != nil {
 		return err
@@ -347,6 +349,7 @@ func UnsetEnv(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	variables := strings.Fields(string(body))
 	for _, variable := range variables {
 		delete(app.Env, variable)
+		app.Log(fmt.Sprintf("unsetting env %s", variable))
 		e[variable] = ""
 	}
 	if err = db.Session.Apps().Update(bson.M{"name": app.Name}, app); err != nil {
@@ -356,5 +359,19 @@ func UnsetEnv(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 		app: &app,
 	}
 	env <- mess
+	return nil
+}
+
+func AppLog(w http.ResponseWriter, r *http.Request, u *auth.User) error {
+	appName := r.URL.Query().Get(":name")
+	app, err := getAppOrError(appName, u)
+	if err != nil {
+		return err
+	}
+	b, err := json.Marshal(app.Logs)
+	if err != nil {
+		return err
+	}
+	fmt.Fprint(w, bytes.NewBuffer(b).String())
 	return nil
 }

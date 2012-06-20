@@ -56,7 +56,8 @@ func (a *App) Create() error {
 	}
 	a.Log(fmt.Sprintf("creating app %s", a.Name))
 	u := a.unit()
-	err = u.Create()
+	out, err := u.Create()
+	a.Log(string(out))
 	if err != nil {
 		return err
 	}
@@ -70,7 +71,11 @@ func (a *App) Destroy() error {
 		return err
 	}
 	u := a.unit()
-	u.Destroy()
+	out, err := u.Destroy()
+	log.Printf(string(out))
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -120,6 +125,7 @@ func (a *App) SetEnv(name, value string) {
 		a.Env = make(map[string]string)
 	}
 	a.Env[name] = value
+	a.Log(fmt.Sprintf("setting env %s with value %s", name, value))
 }
 
 func (a *App) GetEnv(name string) (value string, err error) {
@@ -146,7 +152,7 @@ func (a *App) conf() (conf, error) {
 	u := a.unit()
 	uRepo, err := repository.GetPath()
 	if err != nil {
-		a.Log(fmt.Sprint("Got error while getting repository path: %s", err.Error()))
+		a.Log(fmt.Sprintf("Got error while getting repository path: %s", err.Error()))
 		return c, err
 	}
 	cPath := path.Join(uRepo, "app.conf")
@@ -221,11 +227,15 @@ func (a *App) hasRestartHooks(c conf) bool {
 
 func (a *App) updateHooks() error {
 	u := a.unit()
-	err := u.ExecuteHook("dependencies")
+	a.Log("executting hook dependencies")
+	out, err := u.ExecuteHook("dependencies")
+	a.Log(string(out))
 	if err != nil {
 		return err
 	}
-	err = u.ExecuteHook("reload-gunicorn")
+	a.Log("executting hook reload-gunicorn")
+	out, err = u.ExecuteHook("reload-gunicorn")
+	a.Log(string(out))
 	if err != nil {
 		return err
 	}
