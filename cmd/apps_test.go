@@ -132,6 +132,15 @@ func (s *S) TestAppLog(c *C) {
 	c.Assert(manager.Stdout.(*bytes.Buffer).String(), Equals, expected)
 }
 
+func (s *S) TestAppLogShouldReturnNilIfHasNoContent(c *C) {
+	context := Context{[]string{}, []string{"appName"}, manager.Stdout, manager.Stderr}
+	command := AppLog{}
+	client := NewClient(&http.Client{Transport: &transport{msg: "", status: http.StatusNoContent}})
+	err := command.Run(&context, client)
+	c.Assert(err, IsNil)
+	c.Assert(manager.Stdout.(*bytes.Buffer).String(), Equals, "")
+}
+
 func (s *S) TestApp(c *C) {
 	expect := map[string]interface{}{
 		"add-team":    &AppAddTeam{},

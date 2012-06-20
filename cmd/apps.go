@@ -256,12 +256,15 @@ func (c *AppLog) Run(context *Context, client Doer) error {
 	if err != nil {
 		return err
 	}
-	r, err := client.Do(request)
+	response, err := client.Do(request)
 	if err != nil {
 		return err
 	}
-	defer r.Body.Close()
-	result, err := ioutil.ReadAll(r.Body)
+	if response.StatusCode == http.StatusNoContent {
+		return nil
+	}
+	defer response.Body.Close()
+	result, err := ioutil.ReadAll(response.Body)
 	logs := []Log{}
 	err = json.Unmarshal(result, &logs)
 	if err != nil {
