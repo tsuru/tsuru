@@ -35,7 +35,7 @@ func GetPassword(fd uintptr) string {
 		if n == 0 {
 			break
 		}
-		if buf[n-1] == '\n' {
+		for n > 0 && (buf[n-1] == '\n' || buf[n-1] == '\r') {
 			n--
 		}
 		pass = append(pass, buf[:n]...)
@@ -43,12 +43,5 @@ func GetPassword(fd uintptr) string {
 			break
 		}
 	}
-	password := string(pass)
-	var last uint8
-	if password != "" {
-		for last = password[len(password)-1]; last == '\r' || last == '\n'; last = password[len(password)-1] {
-			password = password[:len(password)-1]
-		}
-	}
-	return password
+	return string(pass)
 }

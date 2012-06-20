@@ -56,8 +56,11 @@ func (s *S) TestGetPasswordShouldRemoveCarriageReturnCharacterFromTheEndOfThePas
 }
 
 func (s *S) TestGetPasswordWithEmptyPassword(c *C) {
-	s.patchStdin(c, []byte("\n"))
-	defer s.unpatchStdin()
-	pass := GetPassword(os.Stdin.Fd())
-	c.Assert(pass, Equals, "")
+	values := []string{"\n", "\r", "\r\n", ""}
+	for _, value := range values {
+		s.patchStdin(c, []byte(value))
+		defer s.unpatchStdin()
+		pass := GetPassword(os.Stdin.Fd())
+		c.Assert(pass, Equals, "")
+	}
 }
