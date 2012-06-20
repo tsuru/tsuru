@@ -198,9 +198,10 @@ func (s *S) TestGetEnvReturnsErrorIfTheEnvironmentMapIsNil(c *C) {
 }
 
 func (s *S) TestUnit(c *C) {
-	a := App{Name: "appName", Framework: "django", Machine: 8}
-	u := a.unit()
-	c.Assert(u, DeepEquals, unit.Unit{Name: a.Name, Type: a.Framework, Machine: a.Machine})
+	u := unit.Unit{Name: "someapp/0", Type: "django", Machine: 10}
+	a := App{Name: "appName", Framework: "django", Units: []unit.Unit{u}}
+	u2 := a.unit()
+	c.Assert(u2, DeepEquals, u)
 }
 
 func (s *S) TestDeployHookAbsPath(c *C) {
@@ -223,7 +224,7 @@ pos-restart: testdata/pos.sh
 	dir, err := commandmocker.Add("juju", output)
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(dir)
-	a := App{Name: "something", Framework: "django", Machine: 2}
+	a := App{Name: "something", Framework: "django"}
 	conf, err := a.conf()
 	c.Assert(err, IsNil)
 	c.Assert(conf.PreRestart, Equals, "testdata/pre.sh")
@@ -242,7 +243,7 @@ $(exit 1)
 	dir, err := commandmocker.Add("juju", output)
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(dir)
-	a := App{Name: "something", Framework: "django", Machine: 2}
+	a := App{Name: "something", Framework: "django"}
 	conf, err := a.conf()
 	c.Assert(err, IsNil)
 	c.Assert(conf.PreRestart, Equals, "")
@@ -260,7 +261,7 @@ pos-restart: pos.sh
 `
 	dir, err := commandmocker.Add("juju", output)
 	c.Assert(err, IsNil)
-	a := App{Name: "something", Framework: "django", Machine: 2}
+	a := App{Name: "something", Framework: "django"}
 	conf, err := a.conf()
 	c.Assert(err, IsNil)
 	commandmocker.Remove(dir)
@@ -288,7 +289,7 @@ File or directory does not exists
 	dir, err := commandmocker.Add("juju", output)
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(dir)
-	a := App{Name: "something", Framework: "django", Machine: 2}
+	a := App{Name: "something", Framework: "django"}
 	conf, err := a.conf()
 	c.Assert(err, IsNil)
 	w := bytes.NewBuffer([]byte{})
@@ -312,7 +313,7 @@ pos-restart:
 	dir, err := commandmocker.Add("juju", output)
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(dir)
-	a := App{Name: "something", Framework: "django", Machine: 2}
+	a := App{Name: "something", Framework: "django"}
 	conf, err := a.conf()
 	c.Assert(err, IsNil)
 	w := bytes.NewBuffer([]byte{})
@@ -333,7 +334,7 @@ pos-restart:
 `
 	dir, err := commandmocker.Add("juju", output)
 	c.Assert(err, IsNil)
-	a := App{Name: "something", Framework: "django", Machine: 2}
+	a := App{Name: "something", Framework: "django"}
 	conf, err := a.conf()
 	c.Assert(err, IsNil)
 	commandmocker.Remove(dir)
@@ -360,7 +361,7 @@ File or directory does not exists
 	dir, err := commandmocker.Add("juju", output)
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(dir)
-	a := App{Name: "something", Framework: "django", Machine: 2}
+	a := App{Name: "something", Framework: "django"}
 	conf, err := a.conf()
 	c.Assert(err, IsNil)
 	w := bytes.NewBuffer([]byte{})
@@ -383,7 +384,7 @@ pre-restart: somescript.sh
 	dir, err := commandmocker.Add("juju", output)
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(dir)
-	a := App{Name: "something", Framework: "django", Machine: 2}
+	a := App{Name: "something", Framework: "django"}
 	conf, err := a.conf()
 	c.Assert(err, IsNil)
 	w := bytes.NewBuffer([]byte{})
@@ -401,7 +402,7 @@ something that must be discarded
 ========
 nothing here
 `
-	a := App{Name: "something", Framework: "django", Machine: 2}
+	a := App{Name: "something", Framework: "django"}
 	dir, err := commandmocker.Add("juju", output)
 	c.Assert(err, IsNil)
 	conf, err := a.conf()
@@ -418,7 +419,7 @@ something that must be discarded
 pos-restart:
     somefile.sh
 `
-	a := App{Name: "something", Framework: "django", Machine: 2}
+	a := App{Name: "something", Framework: "django"}
 	dir, err := commandmocker.Add("juju", output)
 	c.Assert(err, IsNil)
 	conf, err := a.conf()
@@ -446,4 +447,16 @@ func (s *S) TestLogShouldStoreLog(c *C) {
 	err = db.Session.Apps().Find(bson.M{"name": a.Name}).One(&instance)
 	logLen := len(instance.Logs)
 	c.Assert(instance.Logs[logLen-1].Message, Equals, "last log msg")
+}
+
+func (s *S) TestAppShouldStoreUnits(c *C) {
+	u := unit.Unit{Name: "someapp/0", Type: "django"}
+	units := []unit.Unit{u}
+	var instance App
+	a := App{Name: "someApp", Units: units}
+	err := a.Create()
+	c.Assert(err, IsNil)
+	err = db.Session.Apps().Find(bson.M{"name": a.Name}).One(&instance)
+	c.Assert(err, IsNil)
+	c.Assert(len(instance.Units), Equals, 1)
 }

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/timeredbull/commandmocker"
 	"github.com/timeredbull/tsuru/api/auth"
+	"github.com/timeredbull/tsuru/api/unit"
 	"github.com/timeredbull/tsuru/db"
 	"github.com/timeredbull/tsuru/errors"
 	"github.com/timeredbull/tsuru/log"
@@ -47,7 +48,8 @@ pos-restart:
 	dir, err := commandmocker.Add("juju", output)
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(dir)
-	a := App{Name: "someApp", Framework: "django", Teams: []auth.Team{s.team}}
+	u := unit.Unit{Name: "someapp/0", Type: "django"}
+	a := App{Name: "someApp", Framework: "django", Teams: []auth.Team{s.team}, Units: []unit.Unit{u}}
 	err = a.Create()
 	c.Assert(err, IsNil)
 	defer a.Destroy()
@@ -75,7 +77,8 @@ pos-restart:
 	dir, err := commandmocker.Add("juju", output)
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(dir)
-	a := App{Name: "someApp", Framework: "django", Teams: []auth.Team{s.team}}
+	u := unit.Unit{Name: "someapp/0", Type: "django"}
+	a := App{Name: "someApp", Framework: "django", Teams: []auth.Team{s.team}, Units: []unit.Unit{u}}
 	err = a.Create()
 	c.Assert(err, IsNil)
 	defer a.Destroy()
@@ -123,7 +126,7 @@ func (s *S) TestAppList(c *C) {
 	app2.Create()
 	defer app2.Destroy()
 	expected = append(expected, app2)
-	app3 := App{Name: "app3", Framework: "django", Ip: "122222", Teams: []auth.Team{}}
+	app3 := App{Name: "app3", Framework: "django", Teams: []auth.Team{}}
 	app3.Create()
 	defer app3.Destroy()
 	expected = append(expected)
@@ -529,7 +532,8 @@ func (s *S) TestRunHandlerShouldExecuteTheGivenCommandInTheGivenApp(c *C) {
 	dir, err := commandmocker.Add("juju", "$*")
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(dir)
-	a := &App{Name: "secrets", Framework: "arch enemy", Teams: []auth.Team{s.team}, Machine: 10}
+	u := unit.Unit{Name: "someapp/0", Type: "django", Machine: 10}
+	a := &App{Name: "secrets", Framework: "arch enemy", Teams: []auth.Team{s.team}, Units: []unit.Unit{u}}
 	err = a.Create()
 	c.Assert(err, IsNil)
 	url := fmt.Sprintf("/apps/%s/run/?:name=%s", a.Name, a.Name)
@@ -545,7 +549,8 @@ func (s *S) TestRunHandlerShouldFilterOutputFromJuju(c *C) {
 	dir, err := commandmocker.Add("juju", output)
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(dir)
-	a := &App{Name: "unspeakable", Framework: "vougan", Teams: []auth.Team{s.team}, Machine: 10}
+	u := unit.Unit{Name: "someapp/0", Type: "django", Machine: 10}
+	a := &App{Name: "unspeakable", Framework: "vougan", Teams: []auth.Team{s.team}, Units: []unit.Unit{u}}
 	err = a.Create()
 	c.Assert(err, IsNil)
 	url := fmt.Sprintf("/apps/%s/run/?:name=%s", a.Name, a.Name)
@@ -598,7 +603,7 @@ func (s *S) TestRunHandlerReturnsNotFoundIfTheAppDoesNotExist(c *C) {
 }
 
 func (s *S) TestRunHandlerReturnsForbiddenIfTheGivenUserDoesNotHaveAccessToTheApp(c *C) {
-	a := &App{Name: "secrets", Framework: "arch enemy", Machine: 10}
+	a := &App{Name: "secrets", Framework: "arch enemy"}
 	err := a.Create()
 	c.Assert(err, IsNil)
 	url := fmt.Sprintf("/apps/%s/run/?:name=%s", a.Name, a.Name)
@@ -613,7 +618,7 @@ func (s *S) TestRunHandlerReturnsForbiddenIfTheGivenUserDoesNotHaveAccessToTheAp
 }
 
 func (s *S) TestGetEnvHandlerGetsEnvironmentVariableFromApp(c *C) {
-	a := &App{Name: "everything-i-want", Framework: "gotthard", Machine: 10, Teams: []auth.Team{s.team}}
+	a := &App{Name: "everything-i-want", Framework: "gotthard", Teams: []auth.Team{s.team}}
 	a.Env = map[string]string{
 		"DATABASE_HOST":     "localhost",
 		"DATABASE_USER":     "root",
@@ -651,7 +656,7 @@ func (s *S) TestGetEnvHandlerShouldAcceptMultipleVariables(c *C) {
 }
 
 func (s *S) TestGetEnvHandlerReturnsAllVariablesIfEnvironmentVariablesAreMissing(c *C) {
-	a := &App{Name: "time", Framework: "pink-floyd", Machine: 10, Teams: []auth.Team{s.team}}
+	a := &App{Name: "time", Framework: "pink-floyd", Teams: []auth.Team{s.team}}
 	a.Env = map[string]string{
 		"DATABASE_HOST":     "localhost",
 		"DATABASE_USER":     "root",
@@ -696,7 +701,7 @@ func (s *S) TestGetEnvHandlerReturnsNotFoundIfTheAppDoesNotExist(c *C) {
 }
 
 func (s *S) TestGetEnvHandlerReturnsForbiddenIfTheGivenUserDoesNotHaveAccessToTheApp(c *C) {
-	a := &App{Name: "lost", Framework: "vougan", Machine: 2}
+	a := &App{Name: "lost", Framework: "vougan"}
 	err := a.Create()
 	c.Assert(err, IsNil)
 	url := fmt.Sprintf("/apps/%s/env/?:name=%s", a.Name, a.Name)

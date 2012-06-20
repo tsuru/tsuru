@@ -21,10 +21,9 @@ const confSep = "========"
 type App struct {
 	Env       map[string]string
 	Framework string
-	Ip        string
-	Machine   int
 	Name      string
 	State     string
+	Units     []unit.Unit
 	Teams     []auth.Team
 	Logs      []Log
 }
@@ -234,7 +233,10 @@ func (a *App) updateHooks() error {
 }
 
 func (a *App) unit() unit.Unit {
-	return unit.Unit{Name: a.Name, Type: a.Framework, Machine: a.Machine}
+	if len(a.Units) > 0 {
+		return a.Units[0]
+	}
+	return unit.Unit{}
 }
 
 func (a *App) Log(message string) error {
