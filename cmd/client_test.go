@@ -10,8 +10,8 @@ import (
 )
 
 type transport struct {
-	msg     string
-	status  int
+	msg    string
+	status int
 }
 
 func (t *transport) RoundTrip(req *http.Request) (resp *http.Response, err error) {
