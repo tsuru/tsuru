@@ -19,11 +19,9 @@ func NewClient(client *http.Client) *Client {
 }
 
 func (c *Client) Do(request *http.Request) (*http.Response, error) {
-	token, err := ReadToken()
-	if err != nil {
-		return nil, err
+	if token, err := ReadToken(); err == nil {
+		request.Header.Set("Authorization", token)
 	}
-	request.Header.Set("Authorization", token)
 	response, err := c.HttpClient.Do(request)
 	if err != nil {
 		return nil, errors.New("Server is down\n")
