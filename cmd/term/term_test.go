@@ -1,12 +1,23 @@
-package cmd
+package term
 
 import (
 	. "launchpad.net/gocheck"
 	"os"
 	"syscall"
+	"testing"
 )
 
-func patchStdin(c *C, content []byte) {
+func Test(t *testing.T) {
+	TestingT(t)
+}
+
+type S struct {
+	stdin *os.File
+}
+
+var _ = Suite(&S{})
+
+func (s *S) patchStdin(c *C, content []byte) {
 	f, err := os.OpenFile("/tmp/passwdfile.txt", syscall.O_RDWR|syscall.O_NDELAY|syscall.O_CREAT|syscall.O_TRUNC, 0600)
 	c.Assert(err, IsNil)
 	n, err := f.Write(content)
@@ -15,37 +26,38 @@ func patchStdin(c *C, content []byte) {
 	ret, err := f.Seek(0, 0)
 	c.Assert(err, IsNil)
 	c.Assert(ret, Equals, int64(0))
+	s.stdin = os.Stdin
 	os.Stdin = f
 }
 
-func unpathStdin() {
-	os.Stdin = os.NewFile(uintptr(syscall.Stdin), "/dev/stdin")
+func (s *S) unpatchStdin() {
+	os.Stdin = s.stdin
 }
 
 func (s *S) TestGetPassword(c *C) {
-	patchStdin(c, []byte("chico\n"))
-	defer unpathStdin()
-	pass := getPassword(os.Stdin.Fd())
+	s.patchStdin(c, []byte("chico\n"))
+	defer s.unpatchStdin()
+	pass := GetPassword(os.Stdin.Fd())
 	c.Assert(pass, Equals, "chico")
 }
 
 func (s *S) TestGetPasswordShouldRemoveAllNewLineCharactersFromTheEndOfThePassword(c *C) {
-	patchStdin(c, []byte("chico\n\n\n"))
-	defer unpathStdin()
-	pass := getPassword(os.Stdin.Fd())
+	s.patchStdin(c, []byte("chico\n\n\n"))
+	defer s.unpatchStdin()
+	pass := GetPassword(os.Stdin.Fd())
 	c.Assert(pass, Equals, "chico")
 }
 
 func (s *S) TestGetPasswordShouldRemoveCarriageReturnCharacterFromTheEndOfThePassword(c *C) {
-	patchStdin(c, []byte("opeth\r\n"))
-	defer unpathStdin()
-	pass := getPassword(os.Stdin.Fd())
+	s.patchStdin(c, []byte("opeth\r\n"))
+	defer s.unpatchStdin()
+	pass := GetPassword(os.Stdin.Fd())
 	c.Assert(pass, Equals, "opeth")
 }
 
 func (s *S) TestGetPasswordWithEmptyPassword(c *C) {
-	patchStdin(c, []byte("\n"))
-	defer unpathStdin()
-	pass := getPassword(os.Stdin.Fd())
+	s.patchStdin(c, []byte("\n"))
+	defer s.unpatchStdin()
+	pass := GetPassword(os.Stdin.Fd())
 	c.Assert(pass, Equals, "")
 }

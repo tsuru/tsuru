@@ -1,13 +1,13 @@
-package cmd
-
-//#include <termios.h>
-import "C"
+package term
 
 import (
 	"syscall"
 )
 
-func tcsetattr(fd uintptr, when int, termios *syscall.Termios) {
+//#include <termios.h>
+import "C"
+
+func tcsetattr(fd uintptr, when int, termios *Termios) {
 	var cterm C.struct_termios
 	var cc_t [C.NCCS]C.cc_t
 	for i, c := range termios.Cc {
@@ -23,26 +23,8 @@ func tcsetattr(fd uintptr, when int, termios *syscall.Termios) {
 	C.tcsetattr(C.int(fd), C.int(when), &cterm)
 }
 
-func tcgetattr(fd uintptr, termios *syscall.Termios) {
-	var cterm C.struct_termios
-	C.tcgetattr(C.int(fd), &cterm)
-	var cc [C.NCCS]uint8
-	for i, c := range cterm.c_cc {
-		cc[i] = uint8(c)
-	}
-	*termios = syscall.Termios{
-		Iflag:  uint64(cterm.c_iflag),
-		Oflag:  uint64(cterm.c_oflag),
-		Cflag:  uint64(cterm.c_cflag),
-		Lflag:  uint64(cterm.c_lflag),
-		Cc:     cc,
-		Ispeed: uint64(cterm.c_ispeed),
-		Ospeed: uint64(cterm.c_ospeed),
-	}
-}
-
-func getPassword(fd uintptr) string {
-	var termios syscall.Termios
+func GetPassword(fd uintptr) string {
+	var termios Termios
 	tcgetattr(fd, &termios)
 	termios.Lflag &^= syscall.ECHO
 	tcsetattr(fd, 0, &termios)

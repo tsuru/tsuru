@@ -8,8 +8,8 @@ import (
 )
 
 func (s *S) TestLogin(c *C) {
-	patchStdin(c, []byte("chico\n"))
-	defer unpathStdin()
+	s.patchStdin(c, []byte("chico\n"))
+	defer s.unpatchStdin()
 	expected := "Password: \nSuccessfully logged!\n"
 	context := Context{[]string{}, []string{"foo@foo.com"}, manager.Stdout, manager.Stderr}
 	client := NewClient(&http.Client{Transport: &transport{msg: `{"token": "sometoken"}`, status: http.StatusOK}})
@@ -24,8 +24,8 @@ func (s *S) TestLogin(c *C) {
 }
 
 func (s *S) TestLoginShouldReturnErrorIfThePasswordIsNotGiven(c *C) {
-	patchStdin(c, []byte("\n"))
-	defer unpathStdin()
+	s.patchStdin(c, []byte("\n"))
+	defer s.unpatchStdin()
 	expected := "Password: \nYou must provide the password!\n"
 	context := Context{[]string{}, []string{"foo@foo.com"}, manager.Stdout, manager.Stderr}
 	command := Login{}
@@ -125,8 +125,8 @@ func (s *S) TestUser(c *C) {
 
 func (s *S) TestUserCreateShouldNotDependOnTsuruTokenFile(c *C) {
 	os.Remove(os.ExpandEnv("${HOME}/.tsuru_token"))
-	patchStdin(c, []byte("bar123\n"))
-	defer unpathStdin()
+	s.patchStdin(c, []byte("bar123\n"))
+	defer s.unpatchStdin()
 	expected := "Password: \n" + `User "foo@foo.com" successfully created!` + "\n"
 	context := Context{[]string{}, []string{"foo@foo.com"}, manager.Stdout, manager.Stderr}
 	client := NewClient(&http.Client{Transport: &transport{msg: "", status: http.StatusCreated}})
@@ -137,8 +137,8 @@ func (s *S) TestUserCreateShouldNotDependOnTsuruTokenFile(c *C) {
 }
 
 func (s *S) TestUserCreate(c *C) {
-	patchStdin(c, []byte("bar123\n"))
-	defer unpathStdin()
+	s.patchStdin(c, []byte("bar123\n"))
+	defer s.unpatchStdin()
 	expected := "Password: \n" + `User "foo@foo.com" successfully created!` + "\n"
 	context := Context{[]string{}, []string{"foo@foo.com"}, manager.Stdout, manager.Stderr}
 	client := NewClient(&http.Client{Transport: &transport{msg: "", status: http.StatusCreated}})
@@ -149,8 +149,8 @@ func (s *S) TestUserCreate(c *C) {
 }
 
 func (s *S) TestUserCreateShouldReturnErrorIfThePasswordIsNotGiven(c *C) {
-	patchStdin(c, []byte("\n"))
-	defer unpathStdin()
+	s.patchStdin(c, []byte("\n"))
+	defer s.unpatchStdin()
 	expected := "Password: \nYou must provide the password!\n"
 	context := Context{[]string{}, []string{"foo@foo.com"}, manager.Stdout, manager.Stderr}
 	command := UserCreate{}

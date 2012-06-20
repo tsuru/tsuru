@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/timeredbull/tsuru/cmd/term"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -17,7 +18,7 @@ type User struct{}
 
 func readPassword(out io.Writer, password *string) error {
 	io.WriteString(out, "Password: ")
-	*password = getPassword(os.Stdin.Fd())
+	*password = term.GetPassword(os.Stdin.Fd())
 	io.WriteString(out, "\n")
 	if *password == "" {
 		msg := "You must provide the password!\n"
