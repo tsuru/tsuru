@@ -7,6 +7,7 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
+	"time"
 )
 
 type App struct{}
@@ -28,6 +29,7 @@ func (c *App) Subcommands() map[string]interface{} {
 		"remove":      &AppRemove{},
 		"list":        &AppList{},
 		"run":         &AppRun{},
+		"log":         &AppLog{},
 	}
 }
 
@@ -196,4 +198,47 @@ func (c *AppRemove) Run(context *Context, client Doer) error {
 	}
 	io.WriteString(context.Stdout, fmt.Sprintf(`App "%s" successfully removed!`+"\n", appName))
 	return nil
+}
+
+type AppLog struct{}
+
+func (c *AppLog) Info() *Info {
+	return &Info{
+		Name:    "log",
+		Usage:   "app log appname",
+		Desc:    "shows app log",
+		MinArgs: 1,
+	}
+}
+
+type Log struct {
+	Date    time.Time
+	Message string
+}
+
+func (c *AppLog) Run(context *Context, client Doer) error {
+	appName := context.Args[0]
+	url := GetUrl(fmt.Sprintf("/apps/%s/log", appName))
+	request, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return err
+	}
+	response, err := client.Do(request)
+	if err != nil {
+		return err
+	}
+	if response.StatusCode == http.StatusNoContent {
+		return nil
+	}
+	defer response.Body.Close()
+	result, err := ioutil.ReadAll(response.Body)
+	logs := []Log{}
+	err = json.Unmarshal(result, &logs)
+	if err != nil {
+		return err
+	}
+	for _, log := range logs {
+		context.Stdout.Write([]byte(log.Date.String() + " - " + log.Message + "\n"))
+	}
+	return err
 }

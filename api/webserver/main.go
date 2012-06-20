@@ -68,6 +68,7 @@ func main() {
 	m.Post("/apps", webserver.AuthorizationRequiredHandler(app.CreateAppHandler))
 	m.Put("/apps/:app/:team", webserver.AuthorizationRequiredHandler(app.GrantAccessToTeamHandler))
 	m.Del("/apps/:app/:team", webserver.AuthorizationRequiredHandler(app.RevokeAccessFromTeamHandler))
+	m.Del("/apps/:app/log", webserver.AuthorizationRequiredHandler(app.AppLog))
 
 	m.Post("/users", webserver.Handler(auth.CreateUser))
 	m.Post("/users/:email/tokens", webserver.Handler(auth.Login))
