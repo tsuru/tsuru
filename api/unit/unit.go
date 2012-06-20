@@ -17,16 +17,16 @@ type Unit struct {
 	MachineState string
 }
 
-func (u *Unit) Create() error {
+func (u *Unit) Create() ([]byte, error) {
 	cmd := exec.Command("juju", "deploy", "--repository=/home/charms", "local:"+u.Type, u.Name)
 	log.Printf("deploying %s with name %s", u.Type, u.Name)
-	return cmd.Start()
+	return cmd.CombinedOutput()
 }
 
-func (u *Unit) Destroy() error {
+func (u *Unit) Destroy() ([]byte, error) {
 	cmd := exec.Command("juju", "destroy-service", u.Name)
 	log.Printf("destroying %s with name %s", u.Type, u.Name)
-	return cmd.Start()
+	return cmd.CombinedOutput()
 }
 
 func (u *Unit) AddRelation(su *Unit) error {
@@ -54,9 +54,9 @@ func (u *Unit) SendFile(srcPath, dstPath string) error {
 	return cmd.Start()
 }
 
-func (u *Unit) ExecuteHook(hook string) error {
+func (u *Unit) ExecuteHook(hook string) ([]byte, error) {
 	cmd := fmt.Sprintf("/var/lib/tsuru/hooks/%s", hook)
 	output, err := u.Command(cmd)
 	log.Print(string(output))
-	return err
+	return output, err
 }
