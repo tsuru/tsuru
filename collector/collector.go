@@ -65,5 +65,8 @@ func appState(u *unit.Unit) string {
 	if u.AgentState == "not-started" && u.InstanceState == "error" {
 		return "ERROR"
 	}
+	if u.InstanceState == "pending" {
+		return "PENDING"
+	}
 	return "STOPPED"
 }
