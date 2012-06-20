@@ -4,41 +4,9 @@
 
 Tsuru is an open Platform-as-a-Service (PaaS).
 
-##Dependencies
-
-Tsuru depends on [Go](http://golang.org) and [libyaml](http://pyyaml.org/wiki/LibYAML).
-
-To install Go, follow the official instructions in the language website:
-http://golang.org/doc/install.
-
-To install libyaml, you can use one package manager, or download it and install
-from source. To install from source, follow the instructions on PyYAML wiki:
-http://pyyaml.org/wiki/LibYAML.
-
-The following instructions are system specific:
-
-###FreeBSD
-
-    % cd /usr/ports/textproc/libyaml
-    % make install clean
-
-###Mac OS X (homebrew)
-
-    % brew install libyaml
-
-###Ubuntu
-
-    % [sudo] apt-get install libyaml-dev
-
-###CentOS
-
-    % [sudo] yum install libyaml-devel
-
 ##Installation
 
-After install and configure go, and install libyaml, just run in your terminal:
-
-    % go get github.com/timeredbull/tsuru/...
+Please check the [INSTALL](INSTALL.md) file for installation instructions.
 
 ##Server configuration
 
@@ -50,6 +18,7 @@ After installing the server, build the cmd/main.go file with the name you wish, 
 Then you must set the target with your server url, like:
 
     % tsuru target tsuru.myhost.com
+    % tsuru target localhost:8080
 
 After that, all you need is create a user and authenticate to start creating apps and pushing code to them::
 
@@ -68,7 +37,7 @@ Then, create a team:
 
     % tsuru team create myteam
 
-Your user is automatically added to this team.
+Your user will be automatically added to this team.
 
 To create an app:
 
