@@ -240,11 +240,13 @@ func RunCommand(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	}
 	unit := app.unit()
 	cmd := fmt.Sprintf("cd /home/application/current; %s", c)
+	app.Log(fmt.Sprintf("running '%s'", c))
 	out, err := unit.Command(cmd)
 	if err != nil {
 		return err
 	}
 	out = filterOutput(out, nil)
+	app.Log(string(out))
 	n, err := w.Write(out)
 	if err != nil {
 		return err
