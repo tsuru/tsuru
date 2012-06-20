@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"strings"
+	"time"
 )
 
 type App struct{}
@@ -29,6 +30,7 @@ func (c *App) Subcommands() map[string]interface{} {
 		"remove":      &AppRemove{},
 		"list":        &AppList{},
 		"run":         &AppRun{},
+		"log":         &AppLog{},
 	}
 }
 
@@ -228,5 +230,45 @@ func (c *AppRun) Run(context *Context, client Doer) error {
 	}
 	defer r.Body.Close()
 	_, err = io.Copy(context.Stdout, r.Body)
+	return err
+}
+
+type AppLog struct{}
+
+func (c *AppLog) Info() *Info {
+	return &Info{
+		Name:    "log",
+		Usage:   "app log appname",
+		Desc:    "shows app log",
+		MinArgs: 1,
+	}
+}
+
+type Log struct {
+	Date    time.Time
+	Message string
+}
+
+func (c *AppLog) Run(context *Context, client Doer) error {
+	appName := context.Args[0]
+	url := GetUrl(fmt.Sprintf("/apps/%s/log", appName))
+	request, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return err
+	}
+	r, err := client.Do(request)
+	if err != nil {
+		return err
+	}
+	defer r.Body.Close()
+	result, err := ioutil.ReadAll(r.Body)
+	logs := []Log{}
+	err = json.Unmarshal(result, &logs)
+	if err != nil {
+		return err
+	}
+	for _, log := range logs {
+		context.Stdout.Write([]byte(log.Date.String() + " - " + log.Message + "\n"))
+	}
 	return err
 }

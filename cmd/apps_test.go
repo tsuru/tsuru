@@ -119,6 +119,19 @@ func (s *S) TestAppRemoveTeam(c *C) {
 	c.Assert(manager.Stdout.(*bytes.Buffer).String(), Equals, expected)
 }
 
+func (s *S) TestAppLog(c *C) {
+	result := `[{"Date":"2012-06-20T11:17:22.75-03:00","Message":"creating app lost"},{"Date":"2012-06-20T11:17:22.753-03:00","Message":"app lost successfully created"}]`
+	expected := `2012-06-20 11:17:22.75 -0300 BRT - creating app lost
+2012-06-20 11:17:22.753 -0300 BRT - app lost successfully created
+`
+	context := Context{[]string{}, []string{"appName"}, manager.Stdout, manager.Stderr}
+	command := AppLog{}
+	client := NewClient(&http.Client{Transport: &transport{msg: result, status: http.StatusOK}})
+	err := command.Run(&context, client)
+	c.Assert(err, IsNil)
+	c.Assert(manager.Stdout.(*bytes.Buffer).String(), Equals, expected)
+}
+
 func (s *S) TestApp(c *C) {
 	expect := map[string]interface{}{
 		"add-team":    &AppAddTeam{},
@@ -127,6 +140,7 @@ func (s *S) TestApp(c *C) {
 		"remove":      &AppRemove{},
 		"list":        &AppList{},
 		"run":         &AppRun{},
+		"log":         &AppLog{},
 	}
 	command := App{}
 	c.Assert(command.Subcommands(), DeepEquals, expect)
