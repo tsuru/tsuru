@@ -2,6 +2,7 @@ package collector
 
 import (
 	"github.com/timeredbull/tsuru/api/app"
+	"github.com/timeredbull/tsuru/api/unit"
 	"github.com/timeredbull/tsuru/db"
 	"github.com/timeredbull/tsuru/log"
 	"launchpad.net/goyaml"
@@ -11,13 +12,8 @@ import (
 
 type Collector struct{}
 
-type Unit struct {
-	Machine int
-	State   string `yaml:"agent-state"`
-}
-
 type Service struct {
-	Units map[string]Unit
+	Units map[string]unit.Unit
 }
 
 type output struct {
@@ -40,20 +36,34 @@ func (c *Collector) Parse(data []byte) *output {
 func (c *Collector) Update(out *output) {
 	log.Print("updating status")
 	for serviceName, service := range out.Services {
-		for _, unit := range service.Units {
-			appUnit := app.App{Name: serviceName}
-			appUnit.Get()
-			if unit.State == "started" {
-				appUnit.State = "STARTED"
-			} else {
-				appUnit.State = "STOPPED"
+		for _, yUnit := range service.Units {
+			u := unit.Unit{}
+			a := app.App{Name: serviceName}
+			a.Get()
+			uMachine := out.Machines[yUnit.Machine].(map[interface{}]interface{})
+			if uMachine["dns-name"] != nil {
+				u.Ip = uMachine["dns-name"].(string)
 			}
-			machine := out.Machines[unit.Machine].(map[interface{}]interface{})["dns-name"]
-			if machine != nil {
-				appUnit.Ip = machine.(string)
+			u.Machine = yUnit.Machine
+			if uMachine["instance-state"] != nil {
+				u.InstanceState = uMachine["instance-state"].(string)
 			}
-			appUnit.Machine = unit.Machine
-			db.Session.Apps().Update(bson.M{"name": appUnit.Name}, appUnit)
+			if uMachine["agent-state"] != nil {
+				u.AgentState = uMachine["agent-state"].(string)
+			}
+			a.State = appState(&u)
+			a.Units = append(a.Units, u)
+			db.Session.Apps().Update(bson.M{"name": a.Name}, a)
 		}
 	}
+}
+
+func appState(u *unit.Unit) string {
+	if u.AgentState == "running" && u.InstanceState == "running" {
+		return "STARTED"
+	}
+	if u.AgentState == "not-started" && u.InstanceState == "error" {
+		return "ERROR"
+	}
+	return "STOPPED"
 }
