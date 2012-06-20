@@ -86,12 +86,19 @@ func (s *S) TestDestroy(c *C) {
 }
 
 func (s *S) TestCreate(c *C) {
+	dir, err := commandmocker.Add("juju", "$*")
+	c.Assert(err, IsNil)
+	defer commandmocker.Remove(dir)
+	w := bytes.NewBuffer([]byte{})
+	l := stdlog.New(w, "", stdlog.LstdFlags)
+	log.Target = l
 	a := App{}
 	a.Name = "appName"
 	a.Framework = "django"
-	err := a.Create()
+	err = a.Create()
 	c.Assert(err, IsNil)
-	c.Assert(a.State, Equals, "Pending")
+	c.Assert(a.State, Equals, "PENDING")
+	defer a.Destroy()
 
 	var retrievedApp App
 	err = db.Session.Apps().Find(bson.M{"name": a.Name}).One(&retrievedApp)
@@ -99,7 +106,8 @@ func (s *S) TestCreate(c *C) {
 	c.Assert(retrievedApp.Name, Equals, a.Name)
 	c.Assert(retrievedApp.Framework, Equals, a.Framework)
 	c.Assert(retrievedApp.State, Equals, a.State)
-	a.Destroy()
+	str := strings.Replace(w.String(), "\n", "", -1)
+	c.Assert(str, Matches, ".*deploy --repository=/home/charms local:django appName.*")
 }
 
 func (s *S) TestCantCreateTwoAppsWithTheSameName(c *C) {

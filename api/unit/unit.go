@@ -17,13 +17,6 @@ type Unit struct {
 	InstanceState string `yaml:"instance-state"`
 }
 
-// should be in app code
-func (u *Unit) Create() ([]byte, error) {
-	cmd := exec.Command("juju", "deploy", "--repository=/home/charms", "local:"+u.Type, u.Name)
-	log.Printf("deploying %s with name %s", u.Type, u.Name)
-	return cmd.CombinedOutput()
-}
-
 func (u *Unit) Destroy() ([]byte, error) {
 	cmd := exec.Command("juju", "destroy-service", u.Name)
 	log.Printf("destroying %s with name %s", u.Type, u.Name)
@@ -47,12 +40,6 @@ func (u *Unit) Command(cmds ...string) ([]byte, error) {
 	c.Args = append(c.Args, cmds...)
 	log.Printf("executing %s on %s", strings.Join(cmds, " "), u.Name)
 	return c.CombinedOutput()
-}
-
-func (u *Unit) SendFile(srcPath, dstPath string) error {
-	cmd := exec.Command("juju", "scp", "-r", "-o", "StrictHostKeyChecking no", srcPath, u.Name+"/0:"+dstPath)
-	log.Printf("sending %s to %s on %s", srcPath, dstPath, u.Name)
-	return cmd.Start()
 }
 
 func (u *Unit) ExecuteHook(hook string) ([]byte, error) {

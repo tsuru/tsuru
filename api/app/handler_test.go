@@ -116,24 +116,18 @@ func (s *S) TestCloneRepositoryShouldReturnNotFoundWhenAppDoesNotExist(c *C) {
 }
 
 func (s *S) TestAppList(c *C) {
-	apps := []App{}
-	expected := []App{}
-	app1 := App{Name: "app1", Teams: []auth.Team{s.team}}
+	u := unit.Unit{Name: "app1/0", Ip: "10.10.10.10"}
+	app1 := App{Name: "app1", Teams: []auth.Team{s.team}, Units: []unit.Unit{u}}
 	app1.Create()
 	defer app1.Destroy()
-	expected = append(expected, app1)
-	app2 := App{Name: "app2", Teams: []auth.Team{s.team}}
+	u2 := unit.Unit{Name: "app2/0"}
+	app2 := App{Name: "app2", Teams: []auth.Team{s.team}, Units: []unit.Unit{u2}}
 	app2.Create()
 	defer app2.Destroy()
-	expected = append(expected, app2)
-	app3 := App{Name: "app3", Framework: "django", Teams: []auth.Team{}}
-	app3.Create()
-	defer app3.Destroy()
-	expected = append(expected)
+	expected := []App{app1, app2}
 
 	request, err := http.NewRequest("GET", "/apps/", nil)
 	c.Assert(err, IsNil)
-
 	request.Header.Set("Content-Type", "application/json")
 	recorder := httptest.NewRecorder()
 	err = AppList(recorder, request, s.user)
@@ -143,11 +137,15 @@ func (s *S) TestAppList(c *C) {
 	body, err := ioutil.ReadAll(recorder.Body)
 	c.Assert(err, IsNil)
 
+	apps := []App{}
 	err = json.Unmarshal(body, &apps)
 	c.Assert(err, IsNil)
 	c.Assert(len(apps), Equals, len(expected))
 	for i, app := range apps {
 		c.Assert(app.Name, DeepEquals, expected[i].Name)
+		if app.Units[0].Ip != "" {
+			c.Assert(app.Units[0].Ip, Equals, u.Ip)
+		}
 	}
 }
 
