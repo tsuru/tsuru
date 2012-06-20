@@ -4,19 +4,23 @@ import (
 	"os"
 )
 
+func buildManager(name string) Manager {
+	m := NewManager(name, os.Stdout, os.Stderr)
+	m.Register(&Login{})
+	m.Register(&Logout{})
+	m.Register(&User{})
+	m.Register(&App{})
+	m.Register(&AppRun{})
+	m.Register(&Env{})
+	m.Register(&Key{})
+	m.Register(&Team{})
+	m.Register(&Target{})
+	return m
+}
+
 func main() {
 	name := ExtractProgramName(os.Args[0])
-	manager := NewManager(name, os.Stdout, os.Stderr)
-	manager.Register(&Login{})
-	manager.Register(&Logout{})
-	manager.Register(&User{})
-	manager.Register(&App{})
-	manager.Register(&Key{})
-	manager.Register(&Team{})
-	manager.Register(&Target{})
-	manager.Register(&Env{})
-	manager.Register(&AppRun{})
-	//removing the command name from args
+	manager := buildManager(name)
 	args := os.Args[1:]
 	manager.Run(args)
 }
