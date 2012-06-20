@@ -121,6 +121,7 @@ func (a *App) SetEnv(name, value string) {
 		a.Env = make(map[string]string)
 	}
 	a.Env[name] = value
+	a.Log(fmt.Sprintf("setting env %s with value %s", name, value))
 }
 
 func (a *App) GetEnv(name string) (value string, err error) {

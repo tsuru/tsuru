@@ -347,6 +347,7 @@ func UnsetEnv(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	variables := strings.Fields(string(body))
 	for _, variable := range variables {
 		delete(app.Env, variable)
+		app.Log(fmt.Sprintf("unsetting env %s", variable))
 		e[variable] = ""
 	}
 	if err = db.Session.Apps().Update(bson.M{"name": app.Name}, app); err != nil {
