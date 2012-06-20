@@ -88,7 +88,11 @@ func (c *AppRemoveTeam) Run(context *Context, client Doer) error {
 type AppModel struct {
 	Name  string
 	State string
-	Ip    string
+	Units []Units
+}
+
+type Units struct {
+	Ip string
 }
 
 type AppList struct{}
@@ -122,7 +126,11 @@ func (c *AppList) Show(result []byte, context *Context) error {
 	table := NewTable()
 	table.Headers = Row{"Application", "State", "Ip"}
 	for _, app := range apps {
-		table.AddRow(Row{app.Name, app.State, app.Ip})
+		ip := ""
+		if len(app.Units) > 0 {
+			ip = app.Units[0].Ip
+		}
+		table.AddRow(Row{app.Name, app.State, ip})
 	}
 	context.Stdout.Write(table.Bytes())
 	return nil

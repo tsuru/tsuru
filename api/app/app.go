@@ -11,6 +11,7 @@ import (
 	"github.com/timeredbull/tsuru/repository"
 	"launchpad.net/goyaml"
 	"launchpad.net/mgo/bson"
+	"os/exec"
 	"path"
 	"strings"
 	"time"
@@ -49,14 +50,15 @@ func (a *App) Get() error {
 }
 
 func (a *App) Create() error {
-	a.State = "Pending"
+	a.State = "PENDING"
 	err := db.Session.Apps().Insert(a)
 	if err != nil {
 		return err
 	}
 	a.Log(fmt.Sprintf("creating app %s", a.Name))
-	u := a.unit()
-	out, err := u.Create()
+	cmd := exec.Command("juju", "deploy", "--repository=/home/charms", "local:"+a.Framework, a.Name)
+	log.Printf("deploying %s with name %s", a.Framework, a.Name)
+	out, err := cmd.CombinedOutput()
 	a.Log(string(out))
 	if err != nil {
 		return err

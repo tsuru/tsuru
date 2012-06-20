@@ -2,28 +2,14 @@ package unit
 
 import (
 	"github.com/timeredbull/commandmocker"
-	"io/ioutil"
 	. "launchpad.net/gocheck"
-	"os"
 )
-
-func (s *S) TestCreateAndDestroy(c *C) {
-	u := Unit{Type: "django", Name: "myUnit"}
-	_, err := u.Create()
-	c.Assert(err, IsNil)
-	_, err = u.Destroy()
-	c.Assert(err, IsNil)
-}
 
 func (s *S) TestCommand(c *C) {
 	u := Unit{Type: "django", Name: "myUnit", Machine: 1}
-	_, err := u.Create()
-	c.Assert(err, IsNil)
 	output, err := u.Command("uname")
 	c.Assert(err, IsNil)
 	c.Assert(string(output), Equals, "Linux")
-	_, err = u.Destroy()
-	c.Assert(err, IsNil)
 }
 
 func (s *S) TestCommandShouldAcceptMultipleParams(c *C) {
@@ -32,23 +18,8 @@ func (s *S) TestCommandShouldAcceptMultipleParams(c *C) {
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(dir)
 	u := Unit{Type: "django", Name: "myUnit", Machine: 1}
-	_, err = u.Create()
 	out, err := u.Command("uname", "-a")
 	c.Assert(string(out), Matches, ".* uname -a")
-}
-
-func (s *S) TestSendFile(c *C) {
-	u := Unit{Type: "django", Name: "myUnit"}
-	_, err := u.Create()
-	c.Assert(err, IsNil)
-	file, err := ioutil.TempFile("", "upload")
-	c.Assert(err, IsNil)
-	defer os.Remove(file.Name())
-	defer file.Close()
-	err = u.SendFile(file.Name(), "/home/ubuntu")
-	c.Assert(err, IsNil)
-	_, err = u.Destroy()
-	c.Assert(err, IsNil)
 }
 
 func (s *S) TestAddRelation(c *C) {

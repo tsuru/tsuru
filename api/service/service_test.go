@@ -1,10 +1,15 @@
 package service
 
 import (
+	"bytes"
+	"github.com/timeredbull/commandmocker"
 	"github.com/timeredbull/tsuru/api/app"
 	"github.com/timeredbull/tsuru/db"
+	"github.com/timeredbull/tsuru/log"
 	. "launchpad.net/gocheck"
 	"launchpad.net/mgo/bson"
+	stdlog "log"
+	"strings"
 )
 
 func (s *ServiceSuite) createService() {
@@ -36,11 +41,19 @@ func (s *ServiceSuite) TestAllServices(c *C) {
 }
 
 func (s *ServiceSuite) TestCreateService(c *C) {
+	w := bytes.NewBuffer([]byte{})
+	l := stdlog.New(w, "", stdlog.LstdFlags)
+	log.Target = l
+	dir, err := commandmocker.Add("juju", "$*")
+	c.Assert(err, IsNil)
+	defer commandmocker.Remove(dir)
 	s.createService()
 	se := Service{Name: s.service.Name}
 	se.Get()
 	c.Assert(se.ServiceTypeId, Equals, s.serviceType.Id)
 	c.Assert(se.Name, Equals, s.service.Name)
+	strOut := strings.Replace(w.String(), "\n", "", -1)
+	c.Assert(strOut, Matches, ".*deploy --repository=/home/charms mysql my_service")
 }
 
 func (s *ServiceSuite) TestDeleteService(c *C) {
