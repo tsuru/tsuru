@@ -24,10 +24,12 @@ func tcsetattr(fd uintptr, when int, termios *Termios) {
 }
 
 func GetPassword(fd uintptr) string {
-	var termios Termios
+	var termios, oldState Termios
 	tcgetattr(fd, &termios)
+	oldState = termios
 	termios.Lflag &^= syscall.ECHO
 	tcsetattr(fd, 0, &termios)
+	defer tcsetattr(fd, 0, &oldState)
 	var buf [16]byte
 	var pass []byte
 	for {
