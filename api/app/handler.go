@@ -361,9 +361,14 @@ func UnsetEnv(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 
 func AppLog(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	appName := r.URL.Query().Get(":name")
-	_, err := getAppOrError(appName, u)
+	app, err := getAppOrError(appName, u)
 	if err != nil {
 		return err
 	}
+	b, err := json.Marshal(app.Logs)
+	if err != nil {
+		return err
+	}
+	fmt.Fprint(w, bytes.NewBuffer(b).String())
 	return nil
 }

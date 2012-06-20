@@ -941,3 +941,23 @@ func (s *S) TestLogReturnsForbiddenIfTheGivenUserDoesNotHaveAccessToTheApp(c *C)
 	c.Assert(ok, Equals, true)
 	c.Assert(e.Code, Equals, http.StatusForbidden)
 }
+
+func (s *S) TestLogShouldAppLog(c *C) {
+	a := &App{Name: "lost", Framework: "vougan", Machine: 2, Teams: []auth.Team{s.team}}
+	err := a.Create()
+	c.Assert(err, IsNil)
+	url := fmt.Sprintf("/apps/%s/log/?:name=%s", a.Name, a.Name)
+	request, err := http.NewRequest("GET", url, nil)
+	c.Assert(err, IsNil)
+	recorder := httptest.NewRecorder()
+	request.Header.Set("Content-Type", "application/json")
+	err = AppLog(recorder, request, s.user)
+	c.Assert(err, IsNil)
+	c.Assert(recorder.Code, Equals, 200)
+	body, err := ioutil.ReadAll(recorder.Body)
+	c.Assert(err, IsNil)
+	logs := []Log{}
+	err = json.Unmarshal(body, &logs)
+	c.Assert(err, IsNil)
+	c.Assert(logs, DeepEquals, logs)
+}
