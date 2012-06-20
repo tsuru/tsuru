@@ -6,7 +6,8 @@ Tsuru is an open Platform-as-a-Service (PaaS).
 
 ##Installation
 
-Please check the [INSTALL](INSTALL.md) file for installation instructions.
+Please check the [INSTALL](/timeredbull/tsuru/blob/master/INSTALL.md) file for
+installation instructions.
 
 ##Server configuration
 
