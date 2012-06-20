@@ -10,8 +10,8 @@ import (
 )
 
 type transport struct {
-	msg     string
-	status  int
+	msg    string
+	status int
 }
 
 func (t *transport) RoundTrip(req *http.Request) (resp *http.Response, err error) {
@@ -61,7 +61,9 @@ func (s *S) TestShouldNotIncludeTheHeaderAuthorizationWhenTheTsuruTokenFileIsMis
 	client := NewClient(&http.Client{Transport: trans})
 	_, err = client.Do(request)
 	c.Assert(err, IsNil)
-	c.Assert(request.Header.Get("Authorization"), Equals, "")
+	header := map[string][]string(request.Header)
+	_, ok := header["Authorization"]
+	c.Assert(ok, Equals, false)
 }
 
 func (s *S) TestShouldIncludeTheHeaderAuthorizationWhenTsuruTokenFileExists(c *C) {
