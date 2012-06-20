@@ -9,14 +9,15 @@ import (
 )
 
 type Unit struct {
-	Type         string
-	Name         string
-	Machine      int
-	Ip           string
-	AgentState   string
-	MachineState string
+	Type          string
+	Name          string
+	Machine       int
+	Ip            string
+	AgentState    string `yaml:"agent-state"`
+	InstanceState string `yaml:"instance-state"`
 }
 
+// should be in app code
 func (u *Unit) Create() error {
 	cmd := exec.Command("juju", "deploy", "--repository=/home/charms", "local:"+u.Type, u.Name)
 	log.Printf("deploying %s with name %s", u.Type, u.Name)
