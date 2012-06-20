@@ -41,11 +41,11 @@ Your user will be automatically added to this team.
 
 To create an app:
 
-    % tsuru app create myblog
+    % tsuru app create myapp
 
 This will return your app's remote url, you should add it to your git repository:
 
-    % git remote add tsuru git@tsuru.myhost.com:myblog.git
+    % git remote add tsuru git@tsuru.myhost.com:myapp.git
 
 When your app is ready, you can push to it. To check whether it is ready or not, you can use:
 
@@ -56,7 +56,7 @@ This will return something like:
     +-------------+---------+--------------+
     | Application | State   | Ip           |
     +-------------+---------+--------------+
-    | myblog      | STARTED | 10.10.10.10  |
+    | myapp       | STARTED | 10.10.10.10  |
     +-------------+---------+--------------+
 
 You can try to push now, but you'll get a permission error, because you haven't pushed your key yet.
@@ -69,9 +69,10 @@ Now you can push you application to your cloud:
     % git push tsuru master
 
 After that, you can check your app's url in the browser and see your app there. You'll probably need run migrations or other deploy related commands.
+
 To run a single command, you should use the command line:
 
-    % tsuru app run myblog env/bin/python manage.py syncdb && env/bin/python manage.py migrate
+    % tsuru app run myapp env/bin/python manage.py syncdb && env/bin/python manage.py migrate
 
 By default, the commands are run from inside the app root directory, which is /home/application. If you have more complicated deploy related commands,
 you should use the app.conf pre-restart and pos-restart scripts, those are run before and after the restart of your app, which is triggered everytime you push code.
