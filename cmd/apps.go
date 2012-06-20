@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/timeredbull/tsuru/api/app"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -85,6 +84,12 @@ func (c *AppRemoveTeam) Run(context *Context, client Doer) error {
 	return nil
 }
 
+type AppModel struct {
+	Name  string
+	State string
+	Ip    string
+}
+
 type AppList struct{}
 
 func (c *AppList) Run(context *Context, client Doer) error {
@@ -108,7 +113,7 @@ func (c *AppList) Run(context *Context, client Doer) error {
 }
 
 func (c *AppList) Show(result []byte, context *Context) error {
-	var apps []app.App
+	var apps []AppModel
 	err := json.Unmarshal(result, &apps)
 	if err != nil {
 		return err
