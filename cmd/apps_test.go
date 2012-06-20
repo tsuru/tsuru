@@ -7,12 +7,12 @@ import (
 )
 
 func (s *S) TestAppList(c *C) {
-	result := `[{"Ip":"","Name":"app1","Framework":"","State":"","Teams":[{"Name":"tsuruteam","Users":[{"Email":"whydidifall@thewho.com","Password":"123","Tokens":null,"Keys":null}]}]}]`
-	expected := `+-------------+-------+----+
-| Application | State | Ip |
-+-------------+-------+----+
-| app1        |       |    |
-+-------------+-------+----+
+	result := `[{"Name":"app1","Framework":"","State":"", "Units":[{"Ip":"10.10.10.10"}],"Teams":[{"Name":"tsuruteam","Users":[{"Email":"whydidifall@thewho.com","Password":"123","Tokens":null,"Keys":null}]}]}]`
+	expected := `+-------------+-------+-------------+
+| Application | State | Ip          |
++-------------+-------+-------------+
+| app1        |       | 10.10.10.10 |
++-------------+-------+-------------+
 `
 	context := Context{[]string{}, []string{}, manager.Stdout, manager.Stderr}
 	client := NewClient(&http.Client{Transport: &transport{msg: result, status: http.StatusOK}})
