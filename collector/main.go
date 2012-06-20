@@ -1,9 +1,6 @@
-// +build ignore
-
 package main
 
 import (
-	"."
 	"flag"
 	"github.com/timeredbull/tsuru/db"
 	"github.com/timeredbull/tsuru/log"
@@ -11,7 +8,7 @@ import (
 )
 
 func main() {
-	var collector collector.Collector
+	var collector Collector
 	var err error
 
 	dry := flag.Bool("dry", false, "dry-run: does not start the agent (for testing purposes)")

@@ -19,7 +19,7 @@ def build():
         abort("tsuru must be built on linux_amd64 for deployment, you're on %s_%s" % (goos, goarch))
     local("mkdir -p dist")
     local("go clean ./...")
-    local("go build -a -o dist/collector collector/main.go")
+    local("go build -a -o dist/collector ./collector")
     local("go build -a -o dist/webserver ./api/webserver")
 
 
