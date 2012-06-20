@@ -6,13 +6,19 @@ import (
 	"github.com/timeredbull/tsuru/api/auth"
 	"github.com/timeredbull/tsuru/api/unit"
 	"github.com/timeredbull/tsuru/db"
+	"github.com/timeredbull/tsuru/log"
 	"launchpad.net/mgo/bson"
+	"os/exec"
 )
 
 type Service struct {
 	ServiceTypeId bson.ObjectId `bson:"service_type_id"`
 	Name          string
 	Teams         []auth.Team
+}
+
+func (s *Service) Log(out []byte) {
+	log.Printf(string(out))
 }
 
 func (s *Service) Get() error {
@@ -31,8 +37,13 @@ func (s *Service) Create() error {
 	if err != nil {
 		return err
 	}
-	u := unit.Unit{Name: s.Name, Type: "mysql"}
-	_, err = u.Create()
+	cmd := exec.Command("juju", "deploy", "--repository=/home/charms", "mysql", s.Name)
+	log.Printf("deploying service mysql with name %s", s.Name)
+	out, err := cmd.CombinedOutput()
+	s.Log(out)
+	if err != nil {
+		return err
+	}
 	return err
 }
 
