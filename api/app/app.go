@@ -121,7 +121,7 @@ func (a *App) SetEnv(name, value string) {
 		a.Env = make(map[string]string)
 	}
 	a.Env[name] = value
-	a.Log(fmt.Sprintf("setting env %s with value %s", name, value))
+	a.Log(fmt.Sprintf("netting env %s with value %s", name, value))
 }
 
 func (a *App) GetEnv(name string) (value string, err error) {
@@ -223,11 +223,15 @@ func (a *App) hasRestartHooks(c conf) bool {
 
 func (a *App) updateHooks() error {
 	u := a.unit()
-	err := u.ExecuteHook("dependencies")
+	a.Log("executting hook dependencies")
+	out, err := u.ExecuteHook("dependencies")
+	a.Log(string(out))
 	if err != nil {
 		return err
 	}
-	err = u.ExecuteHook("reload-gunicorn")
+	a.Log("executting hook reload-gunicorn")
+	out, err = u.ExecuteHook("reload-gunicorn")
+	a.Log(string(out))
 	if err != nil {
 		return err
 	}

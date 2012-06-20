@@ -75,6 +75,6 @@ func (s *S) TestRemoveRelation(c *C) {
 func (s *S) TestExecuteHook(c *C) {
 	appUnit := Unit{Type: "django", Name: "myUnit"}
 
-	err := appUnit.ExecuteHook("requirements")
+	_, err := appUnit.ExecuteHook("requirements")
 	c.Assert(err, IsNil)
 }

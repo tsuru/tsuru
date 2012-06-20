@@ -54,9 +54,9 @@ func (u *Unit) SendFile(srcPath, dstPath string) error {
 	return cmd.Start()
 }
 
-func (u *Unit) ExecuteHook(hook string) error {
+func (u *Unit) ExecuteHook(hook string) ([]byte, error) {
 	cmd := fmt.Sprintf("/var/lib/tsuru/hooks/%s", hook)
 	output, err := u.Command(cmd)
 	log.Print(string(output))
-	return err
+	return output, err
 }
