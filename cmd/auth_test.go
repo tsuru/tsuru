@@ -1,4 +1,4 @@
-package cmd
+package main
 
 import (
 	"bytes"
@@ -21,6 +21,19 @@ func (s *S) TestLogin(c *C) {
 	token, err := ReadToken()
 	c.Assert(err, IsNil)
 	c.Assert(token, Equals, "sometoken")
+}
+
+func (s *S) TestLoginShouldNotDependOnTsuruTokenFile(c *C) {
+	os.Remove(os.ExpandEnv("${HOME}/.tsuru_token"))
+	s.patchStdin(c, []byte("bar123\n"))
+	defer s.unpatchStdin()
+	expected := "Password: \n" + `Successfully logged!` + "\n"
+	context := Context{[]string{}, []string{"foo@foo.com"}, manager.Stdout, manager.Stderr}
+	client := NewClient(&http.Client{Transport: &transport{msg: `{"token":"sometoken"}`, status: http.StatusOK}})
+	command := Login{}
+	err := command.Run(&context, client)
+	c.Assert(err, IsNil)
+	c.Assert(manager.Stdout.(*bytes.Buffer).String(), Equals, expected)
 }
 
 func (s *S) TestLoginShouldReturnErrorIfThePasswordIsNotGiven(c *C) {

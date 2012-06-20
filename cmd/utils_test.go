@@ -1,9 +1,6 @@
-package cmd
+package main
 
-import (
-	. "launchpad.net/gocheck"
-	"os"
-)
+import . "launchpad.net/gocheck"
 
 func (s *S) TestWriteToken(c *C) {
 	err := WriteToken("abc")
@@ -19,12 +16,4 @@ func (s *S) TestReadToken(c *C) {
 	token, err := ReadToken()
 	c.Assert(err, IsNil)
 	c.Assert(token, Equals, "123")
-}
-
-func (s *S) TestReadTokenNotReturnErrorWhenTokenDoesNotExists(c *C) {
-	err := os.Remove(os.ExpandEnv("${HOME}/.tsuru_token"))
-	c.Assert(err, IsNil)
-	token, err := ReadToken()
-	c.Assert(err, IsNil)
-	c.Assert(token, Equals, "")
 }
