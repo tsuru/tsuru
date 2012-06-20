@@ -265,7 +265,7 @@ func (s *ServiceSuite) TestUnbindHandler(c *C) {
 	st := ServiceType{Name: "Mysql", Charm: "mysql"}
 	st.Create()
 	se := Service{ServiceTypeId: st.Id, Name: "my_service", Teams: []auth.Team{*s.team}}
-	a := app.App{Name: "serviceApp", Framework: "django", Ip: "192.168.30.10", Teams: []auth.Team{*s.team}}
+	a := app.App{Name: "serviceApp", Framework: "django", Teams: []auth.Team{*s.team}}
 	se.Create()
 	a.Create()
 	se.Bind(&a)
@@ -289,7 +289,7 @@ func (s *ServiceSuite) TestUnbindHandlerReturns403IfTheUserDoesNotHaveAccessToTh
 	st := ServiceType{Name: "Mysql", Charm: "mysql"}
 	st.Create()
 	se := Service{ServiceTypeId: st.Id, Name: "my_service"}
-	a := app.App{Name: "serviceApp", Framework: "django", Ip: "192.168.30.10", Teams: []auth.Team{*s.team}}
+	a := app.App{Name: "serviceApp", Framework: "django", Teams: []auth.Team{*s.team}}
 	se.Create()
 	a.Create()
 	se.Bind(&a)
@@ -308,7 +308,7 @@ func (s *ServiceSuite) TestUnbindHandlerReturns403IfTheUserDoesNotHaveAccessToTh
 func (s *ServiceSuite) TestUnbindHandlerReturns404IfTheServiceDoesNotExist(c *C) {
 	st := ServiceType{Name: "Mysql", Charm: "mysql"}
 	st.Create()
-	a := app.App{Name: "serviceApp", Framework: "django", Ip: "192.168.30.10", Teams: []auth.Team{*s.team}}
+	a := app.App{Name: "serviceApp", Framework: "django", Teams: []auth.Team{*s.team}}
 	a.Create()
 	b := strings.NewReader(`{"app":"serviceApp", "service":"my_service"}`)
 	request, err := http.NewRequest("POST", "/services/bind", b)
@@ -326,7 +326,7 @@ func (s *ServiceSuite) TestUnbindHandlerReturns403IfTheUserDoesNotHaveAccessToTh
 	st := ServiceType{Name: "Mysql", Charm: "mysql"}
 	st.Create()
 	se := Service{ServiceTypeId: st.Id, Name: "my_service", Teams: []auth.Team{*s.team}}
-	a := app.App{Name: "serviceApp", Framework: "django", Ip: "192.168.30.10"}
+	a := app.App{Name: "serviceApp", Framework: "django"}
 	se.Create()
 	a.Create()
 	se.Bind(&a)
