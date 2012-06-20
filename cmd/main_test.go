@@ -66,3 +66,18 @@ func (s *S) TestTargetIsRegistered(c *C) {
 	c.Assert(ok, Equals, true)
 	c.Assert(target, FitsTypeOf, &Target{})
 }
+
+func (s *S) TestExtractProgramNameWithAbsolutePath(c *C) {
+	got := extractProgramName("/usr/bin/tsuru")
+	c.Assert(got, Equals, "tsuru")
+}
+
+func (s *S) TestExtractProgramNameWithRelativePath(c *C) {
+	got := extractProgramName("./tsuru")
+	c.Assert(got, Equals, "tsuru")
+}
+
+func (s *S) TestExtractProgramNameWithinThePATH(c *C) {
+	got := extractProgramName("tsuru")
+	c.Assert(got, Equals, "tsuru")
+}

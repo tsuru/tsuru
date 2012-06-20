@@ -2,7 +2,13 @@ package main
 
 import (
 	"os"
+	"strings"
 )
+
+func extractProgramName(path string) string {
+	parts := strings.Split(path, "/")
+	return parts[len(parts)-1]
+}
 
 func buildManager(name string) Manager {
 	m := NewManager(name, os.Stdout, os.Stderr)
@@ -19,7 +25,7 @@ func buildManager(name string) Manager {
 }
 
 func main() {
-	name := ExtractProgramName(os.Args[0])
+	name := extractProgramName(os.Args[0])
 	manager := buildManager(name)
 	args := os.Args[1:]
 	manager.Run(args)
