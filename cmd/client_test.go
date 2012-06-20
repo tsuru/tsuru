@@ -61,7 +61,9 @@ func (s *S) TestShouldNotIncludeTheHeaderAuthorizationWhenTheTsuruTokenFileIsMis
 	client := NewClient(&http.Client{Transport: trans})
 	_, err = client.Do(request)
 	c.Assert(err, IsNil)
-	c.Assert(request.Header.Get("Authorization"), Equals, "")
+	header := map[string][]string(request.Header)
+	_, ok := header["Authorization"]
+	c.Assert(ok, Equals, false)
 }
 
 func (s *S) TestShouldIncludeTheHeaderAuthorizationWhenTsuruTokenFileExists(c *C) {
