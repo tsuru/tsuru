@@ -57,7 +57,8 @@ func (a *App) Create() error {
 	}
 	a.Log(fmt.Sprintf("creating app %s", a.Name))
 	u := a.unit()
-	err = u.Create()
+	out, err := u.Create()
+	a.Log(string(out))
 	if err != nil {
 		return err
 	}
@@ -71,7 +72,11 @@ func (a *App) Destroy() error {
 		return err
 	}
 	u := a.unit()
-	u.Destroy()
+	out, err := u.Destroy()
+	log.Printf(string(out))
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
