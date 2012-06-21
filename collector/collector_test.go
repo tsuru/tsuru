@@ -129,7 +129,7 @@ func (s *S) TestCollectorUpdateWithDownMachine(c *C) {
 	collector.Update(out)
 	err = a.Get()
 	c.Assert(err, IsNil)
-	c.Assert(a.State, Equals, "STOPPED")
+	c.Assert(a.State, Equals, "PENDING")
 }
 
 func (s *S) TestCollectorUpdateTwice(c *C) {
@@ -169,6 +169,12 @@ func (s *S) TestAppStatusInstanceStateError(c *C) {
 	u := unit.Unit{AgentState: "not-started", InstanceState: "error"}
 	st := appState(&u)
 	c.Assert(st, Equals, "ERROR")
+}
+
+func (s *S) TestAppStatusInstanceStatePending(c *C) {
+	u := unit.Unit{AgentState: "pending", InstanceState: ""}
+	st := appState(&u)
+	c.Assert(st, Equals, "PENDING")
 }
 
 func (s *S) TestAppStatusAgentAndInstanceRunning(c *C) {
