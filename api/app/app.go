@@ -74,8 +74,8 @@ func (a *App) Destroy() error {
 		return err
 	}
 	u := a.unit()
-	cmd := exec.Command("juju", "destroy-service", u.Name)
-	log.Printf("destroying %s with name %s", a.Framework, u.Name)
+	cmd := exec.Command("juju", "destroy-service", a.Name)
+	log.Printf("destroying %s with name %s", a.Framework, a.Name)
 	out, err := cmd.CombinedOutput()
 	log.Printf(string(out))
 	if err != nil {

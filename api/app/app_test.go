@@ -86,6 +86,7 @@ func (s *S) TestDestroy(c *C) {
 	err = a.Destroy()
 	c.Assert(err, IsNil)
 	logStr := strings.Replace(w.String(), "\n", "", -1)
+	c.Assert(logStr, Matches, ".*destroy-service duvido.*")
 	c.Assert(logStr, Matches, ".*terminate-machine 3.*")
 	qtd, err := db.Session.Apps().Find(bson.M{"name": a.Name}).Count()
 	c.Assert(qtd, Equals, 0)
