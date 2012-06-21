@@ -41,6 +41,9 @@ func (c *Collector) Update(out *output) {
 			a := app.App{Name: serviceName}
 			a.Get()
 			uMachine := out.Machines[yUnit.Machine].(map[interface{}]interface{})
+			if uMachine["instance-id"] != nil {
+				u.InstanceId = uMachine["instance-id"].(string)
+			}
 			if uMachine["dns-name"] != nil {
 				u.Ip = uMachine["dns-name"].(string)
 			}
@@ -52,7 +55,7 @@ func (c *Collector) Update(out *output) {
 				u.AgentState = uMachine["agent-state"].(string)
 			}
 			a.State = appState(&u)
-			a.Units = append(a.Units, u)
+			a.AddOrUpdateUnit(&u)
 			db.Session.Apps().Update(bson.M{"name": a.Name}, a)
 		}
 	}
