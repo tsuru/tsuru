@@ -73,14 +73,20 @@ func (s *S) TestGet(c *C) {
 }
 
 func (s *S) TestDestroy(c *C) {
-	a := App{
-		Name:      "duvido",
-		Framework: "django",
-	}
-	err := a.Create()
+	dir, err := commandmocker.Add("juju", "$*")
+	c.Assert(err, IsNil)
+	defer commandmocker.Remove(dir)
+	w := bytes.NewBuffer([]byte{})
+	l := stdlog.New(w, "", stdlog.LstdFlags)
+	log.Target = l
+	u := unit.Unit{Name: "duvido", Machine: 3}
+	a := App{Name: "duvido", Framework: "django", Units: []unit.Unit{u}}
+	err = a.Create()
 	c.Assert(err, IsNil)
 	err = a.Destroy()
 	c.Assert(err, IsNil)
+	logStr := strings.Replace(w.String(), "\n", "", -1)
+	c.Assert(logStr, Matches, ".*terminate-machine 3.*")
 	qtd, err := db.Session.Apps().Find(bson.M{"name": a.Name}).Count()
 	c.Assert(qtd, Equals, 0)
 }
@@ -92,9 +98,7 @@ func (s *S) TestCreate(c *C) {
 	w := bytes.NewBuffer([]byte{})
 	l := stdlog.New(w, "", stdlog.LstdFlags)
 	log.Target = l
-	a := App{}
-	a.Name = "appName"
-	a.Framework = "django"
+	a := App{Name: "appName", Framework: "django"}
 	err = a.Create()
 	c.Assert(err, IsNil)
 	c.Assert(a.State, Equals, "PENDING")

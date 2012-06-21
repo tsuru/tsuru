@@ -13,6 +13,7 @@ import (
 	"launchpad.net/mgo/bson"
 	"os/exec"
 	"path"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -73,7 +74,16 @@ func (a *App) Destroy() error {
 		return err
 	}
 	u := a.unit()
-	out, err := u.Destroy()
+	cmd := exec.Command("juju", "destroy-service", u.Name)
+	log.Printf("destroying %s with name %s", a.Framework, u.Name)
+	out, err := cmd.CombinedOutput()
+	log.Printf(string(out))
+	if err != nil {
+		return err
+	}
+	cmd = exec.Command("juju", "terminate-machine", strconv.Itoa(u.Machine))
+	log.Printf("terminating machine %d", u.Machine)
+	out, err = cmd.CombinedOutput()
 	log.Printf(string(out))
 	if err != nil {
 		return err
