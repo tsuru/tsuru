@@ -37,7 +37,7 @@ func GetPassword(fd uintptr) string {
 
 	// Restoring on SIGINT
 	sigChan := make(chan os.Signal)
-	go func(c chan os.Signal, t Termios, fd uintptr){
+	go func(c chan os.Signal, t Termios, fd uintptr) {
 		<-c
 		tcsetattr(fd, 0, &t)
 		os.Exit(1)
