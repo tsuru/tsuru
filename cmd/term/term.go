@@ -1,6 +1,8 @@
 package term
 
 import (
+	"os"
+	"os/signal"
 	"syscall"
 )
 
@@ -29,7 +31,19 @@ func GetPassword(fd uintptr) string {
 	oldState = termios
 	termios.Lflag &^= syscall.ECHO
 	tcsetattr(fd, 0, &termios)
+
+	// Restoring after reading the password
 	defer tcsetattr(fd, 0, &oldState)
+
+	// Restoring on SIGINT
+	sigChan := make(chan os.Signal)
+	go func(c chan os.Signal, t Termios, fd uintptr){
+		<-c
+		tcsetattr(fd, 0, &t)
+		os.Exit(1)
+	}(sigChan, oldState, fd)
+	signal.Notify(sigChan, syscall.SIGINT)
+
 	var buf [16]byte
 	var pass []byte
 	for {
