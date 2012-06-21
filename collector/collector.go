@@ -1,4 +1,4 @@
-package collector
+package main
 
 import (
 	"github.com/timeredbull/tsuru/api/app"

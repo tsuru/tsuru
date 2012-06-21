@@ -1,4 +1,4 @@
-package webserver
+package main
 
 import (
 	"github.com/timeredbull/tsuru/api/auth"

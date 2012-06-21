@@ -76,13 +76,9 @@ http://golang.org/cmd/go/#GOPATH_environment_variable
 
 ##Installing tsuru dependencies
 
-You can use `go get` to install almost all tsuru's dependencies:
+You can use `go get` to install all production dependencies of tsuru:
 
     % go get github.com/timeredbull/tsuru/...
-
-You will also need to install pat (https://github.com/bmizerany/pat):
-
-    % go get github.com/bmizerany/pat
 
 ##Running tests
 

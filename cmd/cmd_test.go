@@ -285,18 +285,3 @@ Ble do anything or nothing.
 	c.Assert(err, IsNil)
 	c.Assert(manager.Stdout.(*bytes.Buffer).String(), Equals, expected)
 }
-
-func (s *S) TestExtractProgramNameWithAbsolutePath(c *C) {
-	got := ExtractProgramName("/usr/bin/tsuru")
-	c.Assert(got, Equals, "tsuru")
-}
-
-func (s *S) TestExtractProgramNameWithRelativePath(c *C) {
-	got := ExtractProgramName("./tsuru")
-	c.Assert(got, Equals, "tsuru")
-}
-
-func (s *S) TestExtractProgramNameWithinThePATH(c *C) {
-	got := ExtractProgramName("tsuru")
-	c.Assert(got, Equals, "tsuru")
-}
