@@ -81,6 +81,18 @@ func (a *App) Destroy() error {
 	return nil
 }
 
+func (a *App) AddOrUpdateUnit(u *unit.Unit) {
+	for i, unt := range a.Units {
+		if unt.InstanceId == u.InstanceId {
+			a.Units[i].Ip = u.Ip
+			a.Units[i].AgentState = u.AgentState
+			a.Units[i].InstanceState = u.InstanceState
+			return
+		}
+	}
+	a.Units = append(a.Units, *u)
+}
+
 func (a *App) findTeam(team *auth.Team) int {
 	for i, t := range a.Teams {
 		if t.Name == team.Name {

@@ -121,6 +121,19 @@ func (s *S) TestCantCreateTwoAppsWithTheSameName(c *C) {
 	a.Destroy()
 }
 
+func (s *S) TestAppendOrUpdate(c *C) {
+	a := App{Name: "appName", Framework: "django", Teams: []auth.Team{}}
+	a.Create()
+	defer a.Destroy()
+	u := unit.Unit{Name: "someapp", Ip: "", Machine: 3, InstanceId: "i-00000zz8"}
+	a.AddOrUpdateUnit(&u)
+	c.Assert(len(a.Units), Equals, 1)
+	u = unit.Unit{Name: "someapp", Ip: "192.168.0.12", Machine: 3, InstanceId: "i-00000zz8"}
+	a.AddOrUpdateUnit(&u)
+	c.Assert(len(a.Units), Equals, 1)
+	c.Assert(a.Units[0].Ip, Equals, "192.168.0.12")
+}
+
 func (s *S) TestGrantAccess(c *C) {
 	a := App{Name: "appName", Framework: "django", Teams: []auth.Team{}}
 	err := a.GrantAccess(&s.team)
