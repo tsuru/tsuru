@@ -785,8 +785,8 @@ func (s *S) TestSetEnvHandlerShouldSupportValuesWithDot(c *C) {
 	app := &App{Name: "losers"}
 	err = app.Get()
 	c.Assert(err, IsNil)
-	expected := map[string]string{
-		"DATABASE_HOST": "http://foo.com:8080",
+	expected := map[string]EnvVar{
+		"DATABASE_HOST": EnvVar{Name: "DATABASE_HOST", Value: "http://foo.com:8080", Public: true},
 	}
 	c.Assert(app.Env, DeepEquals, expected)
 }
