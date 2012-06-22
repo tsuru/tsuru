@@ -772,6 +772,25 @@ func (s *S) TestSetEnvHandlerShouldSupportSpacesInTheEnvironmentVariableValue(c 
 	c.Assert(app.Env, DeepEquals, expected)
 }
 
+func (s *S) TestSetEnvHandlerShouldSupportValuesWithDot(c *C) {
+	a := &App{Name: "losers", Teams: []auth.Team{s.team}}
+	err := a.Create()
+	c.Assert(err, IsNil)
+	url := fmt.Sprintf("/apps/%s/env?:name=%s", a.Name, a.Name)
+	request, err := http.NewRequest("POST", url, strings.NewReader("DATABASE_HOST=http://foo.com:8080"))
+	c.Assert(err, IsNil)
+	recorder := httptest.NewRecorder()
+	err = SetEnv(recorder, request, s.user)
+	c.Assert(err, IsNil)
+	app := &App{Name: "losers"}
+	err = app.Get()
+	c.Assert(err, IsNil)
+	expected := map[string]string{
+		"DATABASE_HOST": "http://foo.com:8080",
+	}
+	c.Assert(app.Env, DeepEquals, expected)
+}
+
 func (s *S) TestSetEnvHandlerReturnsInternalErrorIfReadAllFails(c *C) {
 	b := s.getTestData("bodyToBeClosed.txt")
 	request, err := http.NewRequest("POST", "/apps/unkown/env/?:name=unknown", b)

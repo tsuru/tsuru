@@ -307,7 +307,7 @@ func SetEnv(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	if err != nil {
 		return err
 	}
-	regex, err := regexp.Compile(`([A-Z_]+=[^=.]+)(\s|$)`)
+	regex, err := regexp.Compile(`([A-Z_]+=[^=]+)(\s|$)`)
 	if err != nil {
 		return err
 	}
