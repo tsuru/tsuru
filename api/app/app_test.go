@@ -38,13 +38,13 @@ var HasAccessTo Checker = &hasAccessToChecker{}
 
 func (s *S) TestAll(c *C) {
 	expected := make([]App, 0)
-	app1 := App{Env: make(map[string]string), Name: "app1", Teams: []auth.Team{}, Logs: []Log{}}
+	app1 := App{Env: make(map[string]EnvVar), Name: "app1", Teams: []auth.Team{}, Logs: []Log{}}
 	app1.Create()
 	expected = append(expected, app1)
-	app2 := App{Env: make(map[string]string), Name: "app2", Teams: []auth.Team{}, Logs: []Log{}}
+	app2 := App{Env: make(map[string]EnvVar), Name: "app2", Teams: []auth.Team{}, Logs: []Log{}}
 	app2.Create()
 	expected = append(expected, app2)
-	app3 := App{Env: make(map[string]string), Name: "app3", Teams: []auth.Team{}, Logs: []Log{}}
+	app3 := App{Env: make(map[string]EnvVar), Name: "app3", Teams: []auth.Team{}, Logs: []Log{}}
 	app3.Create()
 	expected = append(expected, app3)
 
@@ -58,7 +58,7 @@ func (s *S) TestAll(c *C) {
 }
 
 func (s *S) TestGet(c *C) {
-	newApp := App{Env: map[string]string{}, Name: "myApp", Framework: "django", Teams: []auth.Team{}, Logs: []Log{}}
+	newApp := App{Env: map[string]EnvVar{}, Name: "myApp", Framework: "django", Teams: []auth.Team{}, Logs: []Log{}}
 	err := newApp.Create()
 	c.Assert(err, IsNil)
 
@@ -199,7 +199,10 @@ func (s *S) TestSetEnvCreatesTheMapIfItIsNil(c *C) {
 func (s *S) TestSetEnvironmentVariableToApp(c *C) {
 	a := App{Name: "appName", Framework: "django"}
 	a.SetEnv("PATH", "/")
-	c.Assert(a.Env["PATH"], Equals, "/")
+	env := a.Env["PATH"]
+	c.Assert(env.Name, Equals, "PATH")
+	c.Assert(env.Value, Equals, "/")
+	c.Assert(env.Public, Equals, true)
 }
 
 func (s *S) TestGetEnvironmentVariableFromApp(c *C) {
@@ -207,12 +210,12 @@ func (s *S) TestGetEnvironmentVariableFromApp(c *C) {
 	a.SetEnv("PATH", "/")
 	v, err := a.GetEnv("PATH")
 	c.Assert(err, IsNil)
-	c.Assert(v, Equals, "/")
+	c.Assert(v.Value, Equals, "/")
 }
 
 func (s *S) TestGetEnvReturnsErrorIfTheVariableIsNotDeclared(c *C) {
 	a := App{Name: "what-is-and-what-should-never"}
-	a.Env = make(map[string]string)
+	a.Env = make(map[string]EnvVar)
 	_, err := a.GetEnv("PATH")
 	c.Assert(err, NotNil)
 }
@@ -485,4 +488,14 @@ func (s *S) TestAppShouldStoreUnits(c *C) {
 	err = db.Session.Apps().Find(bson.M{"name": a.Name}).One(&instance)
 	c.Assert(err, IsNil)
 	c.Assert(len(instance.Units), Equals, 1)
+}
+
+func (s *S) TestEnvVarStringPrintPublicValue(c *C) {
+	env := EnvVar{Name: "PATH", Value: "/", Public: true}
+	c.Assert(env.String(), Equals, "PATH=/")
+}
+
+func (s *S) TestEnvVarStringMaskPrivateValue(c *C) {
+	env := EnvVar{Name: "PATH", Value: "/", Public: false}
+	c.Assert(env.String(), Equals, "PATH=*** (private variable)")
 }

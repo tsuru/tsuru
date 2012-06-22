@@ -617,10 +617,10 @@ func (s *S) TestRunHandlerReturnsForbiddenIfTheGivenUserDoesNotHaveAccessToTheAp
 
 func (s *S) TestGetEnvHandlerGetsEnvironmentVariableFromApp(c *C) {
 	a := &App{Name: "everything-i-want", Framework: "gotthard", Teams: []auth.Team{s.team}}
-	a.Env = map[string]string{
-		"DATABASE_HOST":     "localhost",
-		"DATABASE_USER":     "root",
-		"DATABASE_PASSWORD": "secret",
+	a.Env = map[string]EnvVar{
+		"DATABASE_HOST":     EnvVar{Name: "DATABASE_HOST", Value: "localhost", Public: true},
+		"DATABASE_USER":     EnvVar{Name: "DATABASE_USER", Value: "root", Public: true},
+		"DATABASE_PASSWORD": EnvVar{Name: "DATABASE_PASSWORD", Value: "secret", Public: false},
 	}
 	err := a.Create()
 	c.Assert(err, IsNil)
@@ -636,10 +636,10 @@ func (s *S) TestGetEnvHandlerGetsEnvironmentVariableFromApp(c *C) {
 
 func (s *S) TestGetEnvHandlerShouldAcceptMultipleVariables(c *C) {
 	a := &App{Name: "four-sticks", Teams: []auth.Team{s.team}}
-	a.Env = map[string]string{
-		"DATABASE_HOST":     "localhost",
-		"DATABASE_USER":     "root",
-		"DATABASE_PASSWORD": "secret",
+	a.Env = map[string]EnvVar{
+		"DATABASE_HOST":     EnvVar{Name: "DATABASE_HOST", Value: "localhost", Public: true},
+		"DATABASE_USER":     EnvVar{Name: "DATABASE_USER", Value: "root", Public: true},
+		"DATABASE_PASSWORD": EnvVar{Name: "DATABASE_PASSWORD", Value: "secret", Public: false},
 	}
 	err := a.Create()
 	c.Assert(err, IsNil)
@@ -653,16 +653,16 @@ func (s *S) TestGetEnvHandlerShouldAcceptMultipleVariables(c *C) {
 	c.Assert(recorder.Body.String(), Equals, "DATABASE_HOST=localhost\nDATABASE_USER=root\n")
 }
 
-func (s *S) TestGetEnvHandlerReturnsAllVariablesIfEnvironmentVariablesAreMissing(c *C) {
+func (s *S) TestGetEnvHandlerReturnsAllVariablesIfEnvironmentVariablesAreMissingWithMaskOnPrivateVars(c *C) {
 	a := &App{Name: "time", Framework: "pink-floyd", Teams: []auth.Team{s.team}}
-	a.Env = map[string]string{
-		"DATABASE_HOST":     "localhost",
-		"DATABASE_USER":     "root",
-		"DATABASE_PASSWORD": "secret",
+	a.Env = map[string]EnvVar{
+		"DATABASE_HOST":     EnvVar{Name: "DATABASE_HOST", Value: "localhost", Public: true},
+		"DATABASE_USER":     EnvVar{Name: "DATABASE_USER", Value: "root", Public: true},
+		"DATABASE_PASSWORD": EnvVar{Name: "DATABASE_PASSWORD", Value: "secret", Public: false},
 	}
 	err := a.Create()
 	c.Assert(err, IsNil)
-	expected := []string{"", "DATABASE_HOST=localhost", "DATABASE_PASSWORD=secret", "DATABASE_USER=root"}
+	expected := []string{"", "DATABASE_HOST=localhost", "DATABASE_PASSWORD=*** (private variable)", "DATABASE_USER=root"}
 	bodies := []io.Reader{nil, strings.NewReader("")}
 	for _, body := range bodies {
 		request, err := http.NewRequest("GET", "/apps/time/env/?:name=time", body)
@@ -713,7 +713,7 @@ func (s *S) TestGetEnvHandlerReturnsForbiddenIfTheGivenUserDoesNotHaveAccessToTh
 	c.Assert(e.Code, Equals, http.StatusForbidden)
 }
 
-func (s *S) TestSetEnvHandlerShouldSetAnEnvironmentVariableInTheApp(c *C) {
+func (s *S) TestSetEnvHandlerShouldSetAPublicEnvironmentVariableInTheApp(c *C) {
 	a := &App{Name: "black-dog", Teams: []auth.Team{s.team}}
 	err := a.Create()
 	c.Assert(err, IsNil)
@@ -726,8 +726,8 @@ func (s *S) TestSetEnvHandlerShouldSetAnEnvironmentVariableInTheApp(c *C) {
 	app := &App{Name: "black-dog"}
 	err = app.Get()
 	c.Assert(err, IsNil)
-	expected := map[string]string{
-		"DATABASE_HOST": "localhost",
+	expected := map[string]EnvVar{
+		"DATABASE_HOST": EnvVar{Name: "DATABASE_HOST", Value: "localhost", Public: true},
 	}
 	c.Assert(app.Env, DeepEquals, expected)
 }
@@ -745,9 +745,9 @@ func (s *S) TestSetEnvHandlerShouldSetMultipleEnvironmentVariablesInTheApp(c *C)
 	app := &App{Name: "vigil"}
 	err = app.Get()
 	c.Assert(err, IsNil)
-	expected := map[string]string{
-		"DATABASE_HOST": "localhost",
-		"DATABASE_USER": "root",
+	expected := map[string]EnvVar{
+		"DATABASE_HOST": EnvVar{Name: "DATABASE_HOST", Value: "localhost", Public: true},
+		"DATABASE_USER": EnvVar{Name: "DATABASE_USER", Value: "root", Public: true},
 	}
 	c.Assert(app.Env, DeepEquals, expected)
 }
@@ -765,9 +765,9 @@ func (s *S) TestSetEnvHandlerShouldSupportSpacesInTheEnvironmentVariableValue(c 
 	app := &App{Name: "loser"}
 	err = app.Get()
 	c.Assert(err, IsNil)
-	expected := map[string]string{
-		"DATABASE_HOST": "local host",
-		"DATABASE_USER": "root",
+	expected := map[string]EnvVar{
+		"DATABASE_HOST": EnvVar{Name: "DATABASE_HOST", Value: "local host", Public: true},
+		"DATABASE_USER": EnvVar{Name: "DATABASE_USER", Value: "root", Public: true},
 	}
 	c.Assert(app.Env, DeepEquals, expected)
 }
@@ -828,11 +828,17 @@ func (s *S) TestSetEnvHandlerReturnsForbiddenIfTheGivenUserDoesNotHaveAccessToTh
 func (s *S) TestUnsetEnvHandlerRemovesTheEnvironmentVariablesFromTheApp(c *C) {
 	a := &App{
 		Name:  "swift",
-		Env:   map[string]string{"DATABASE_HOST": "localhost", "DATABASE_PASSWORD": "123"},
 		Teams: []auth.Team{s.team},
+	}
+	a.Env = map[string]EnvVar{
+		"DATABASE_HOST":     EnvVar{Name: "DATABASE_HOST", Value: "localhost", Public: true},
+		"DATABASE_USER":     EnvVar{Name: "DATABASE_USER", Value: "root", Public: true},
+		"DATABASE_PASSWORD": EnvVar{Name: "DATABASE_PASSWORD", Value: "secret", Public: false},
 	}
 	err := a.Create()
 	c.Assert(err, IsNil)
+	expected := a.Env
+	delete(expected, "DATABASE_HOST")
 	url := fmt.Sprintf("/apps/%s/env/?:name=%s", a.Name, a.Name)
 	request, err := http.NewRequest("DELETE", url, strings.NewReader("DATABASE_HOST"))
 	c.Assert(err, IsNil)
@@ -842,14 +848,18 @@ func (s *S) TestUnsetEnvHandlerRemovesTheEnvironmentVariablesFromTheApp(c *C) {
 	app := App{Name: "swift"}
 	err = app.Get()
 	c.Assert(err, IsNil)
-	c.Assert(app.Env, DeepEquals, map[string]string{"DATABASE_PASSWORD": "123"})
+	c.Assert(app.Env, DeepEquals, expected)
 }
 
 func (s *S) TestUnsetEnvHandlerRemovesAllGivenEnvironmentVariables(c *C) {
 	a := &App{
 		Name:  "let-it-be",
-		Env:   map[string]string{"DATABASE_HOST": "localhost", "DATABASE_USER": "root", "DATABASE_PASSWORD": "123"},
 		Teams: []auth.Team{s.team},
+	}
+	a.Env = map[string]EnvVar{
+		"DATABASE_HOST":     EnvVar{Name: "DATABASE_HOST", Value: "localhost", Public: true},
+		"DATABASE_USER":     EnvVar{Name: "DATABASE_USER", Value: "root", Public: true},
+		"DATABASE_PASSWORD": EnvVar{Name: "DATABASE_PASSWORD", Value: "secret", Public: false},
 	}
 	err := a.Create()
 	c.Assert(err, IsNil)
@@ -861,8 +871,15 @@ func (s *S) TestUnsetEnvHandlerRemovesAllGivenEnvironmentVariables(c *C) {
 	c.Assert(err, IsNil)
 	app := App{Name: "let-it-be"}
 	err = app.Get()
+	expected := map[string]EnvVar{
+		"DATABASE_PASSWORD": EnvVar{
+			Name: "DATABASE_PASSWORD",
+			Value: "secret",
+			Public: false,
+		},
+	}
 	c.Assert(err, IsNil)
-	c.Assert(app.Env, DeepEquals, map[string]string{"DATABASE_PASSWORD": "123"})
+	c.Assert(app.Env, DeepEquals, expected)
 }
 
 func (s *S) TestUnsetEnvHandlerReturnsInternalErrorIfReadAllFails(c *C) {

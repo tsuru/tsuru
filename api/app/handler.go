@@ -270,18 +270,22 @@ func GetEnv(w http.ResponseWriter, r *http.Request, u *auth.User) (err error) {
 	if err != nil {
 		return err
 	}
+	var write = func(v EnvVar) error {
+		_, err := fmt.Fprintf(w, "%s\n", &v)
+		return err
+	}
 	if variables := strings.Fields(string(variable)); len(variables) > 0 {
 		for _, variable := range variables {
-			if value, ok := app.Env[variable]; ok {
-				_, err = fmt.Fprintf(w, "%s=%s\n", variable, value)
+			if v, ok := app.Env[variable]; ok {
+				err = write(v)
 				if err != nil {
 					return
 				}
 			}
 		}
 	} else {
-		for k, v := range app.Env {
-			_, err = fmt.Fprintf(w, "%s=%s\n", k, v)
+		for _, v := range app.Env {
+			err = write(v)
 			if err != nil {
 				return
 			}

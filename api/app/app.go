@@ -20,8 +20,25 @@ import (
 
 const confSep = "========"
 
+type EnvVar struct {
+	Name   string
+	Value  string
+	Public bool
+}
+
+func (e *EnvVar) String() string {
+	var value, suffix string
+	if e.Public {
+		value = e.Value
+	} else {
+		value = "***"
+		suffix = " (private variable)"
+	}
+	return fmt.Sprintf("%s=%s%s", e.Name, value, suffix)
+}
+
 type App struct {
-	Env       map[string]string
+	Env       map[string]EnvVar
 	Framework string
 	Name      string
 	State     string
@@ -146,15 +163,20 @@ func (a *App) CheckUserAccess(user *auth.User) bool {
 
 func (a *App) SetEnv(name, value string) {
 	if a.Env == nil {
-		a.Env = make(map[string]string)
+		a.Env = make(map[string]EnvVar)
 	}
-	a.Env[name] = value
+	env := EnvVar{
+		Name:   name,
+		Value:  value,
+		Public: true,
+	}
+	a.Env[name] = env
 	a.Log(fmt.Sprintf("setting env %s with value %s", name, value))
 }
 
-func (a *App) GetEnv(name string) (value string, err error) {
+func (a *App) GetEnv(name string) (env EnvVar, err error) {
 	var ok bool
-	if value, ok = a.Env[name]; !ok {
+	if env, ok = a.Env[name]; !ok {
 		err = errors.New("Environment variable not declared for this app.")
 	}
 	return
