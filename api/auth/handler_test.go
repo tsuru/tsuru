@@ -686,9 +686,21 @@ func (s *S) TestRemoveKeyHandlerDeletesTheKeyFileFromTheKeydir(c *C) {
 	keypath := path.Join(s.gitosisRepo, "keydir", u.Keys[0].Name+".pub")
 	err = removeKeyFromUser("my-key", u)
 	c.Assert(err, IsNil)
-	_, err = os.Stat(keypath)
-	c.Assert(err, NotNil)
-	c.Assert(os.IsNotExist(err), Equals, true)
+
+	// Failing the test if the file is not deleted after 10 seconds
+	ch := make(chan error)
+	go func(c chan error, kp string) {
+		var e error
+		for _, e = os.Stat(kp); e == nil; _, e = os.Stat(kp) {
+		}
+		c <- e
+	}(ch, keypath)
+	select {
+	case err = <-ch:
+		c.Assert(os.IsNotExist(err), Equals, true)
+	case <-time.After(10 * time.Second):
+		c.Error("Did not delete the key file in a suitable time.")
+	}
 }
 
 func (s *S) TestRemoveKeyHandlerRemovesTheMemberEntryFromGitosis(c *C) {

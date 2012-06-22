@@ -39,6 +39,8 @@ func (s *S) TearDownSuite(c *C) {
 func (s *S) TearDownTest(c *C) {
 	err := db.Session.Apps().RemoveAll(nil)
 	c.Assert(err, IsNil)
+	err = db.Session.Units().RemoveAll(nil)
+	c.Assert(err, IsNil)
 }
 
 func getOutput() *output {
@@ -111,10 +113,14 @@ func (s *S) TestCollectorUpdateWithMultipleUnits(c *C) {
 	err := a.Get()
 	c.Assert(err, IsNil)
 	c.Assert(len(a.Units), Equals, 2)
-	c.Assert(a.Units[1].Ip, Equals, "192.168.0.12")
-	c.Assert(a.Units[1].Machine, Equals, 2)
-	c.Assert(a.Units[1].InstanceState, Equals, "running")
-	c.Assert(a.Units[1].AgentState, Equals, "running")
+	for _, u = range a.Units {
+		if u.Machine == 2 {
+			break
+		}
+	}
+	c.Assert(u.Ip, Equals, "192.168.0.12")
+	c.Assert(u.InstanceState, Equals, "running")
+	c.Assert(u.AgentState, Equals, "running")
 }
 
 func (s *S) TestCollectorUpdateWithDownMachine(c *C) {
