@@ -873,8 +873,8 @@ func (s *S) TestUnsetEnvHandlerRemovesAllGivenEnvironmentVariables(c *C) {
 	err = app.Get()
 	expected := map[string]EnvVar{
 		"DATABASE_PASSWORD": EnvVar{
-			Name: "DATABASE_PASSWORD",
-			Value: "secret",
+			Name:   "DATABASE_PASSWORD",
+			Value:  "secret",
 			Public: false,
 		},
 	}
