@@ -9,7 +9,7 @@ import (
 	"github.com/timeredbull/tsuru/errors"
 	"io/ioutil"
 	. "launchpad.net/gocheck"
-	"launchpad.net/mgo/bson"
+	"labix.org/v2/mgo/bson"
 	"net/http"
 	"net/http/httptest"
 	"os"

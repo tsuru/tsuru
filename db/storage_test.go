@@ -2,7 +2,7 @@ package db
 
 import (
 	. "launchpad.net/gocheck"
-	"launchpad.net/mgo"
+	"labix.org/v2/mgo"
 	"reflect"
 	"testing"
 )

@@ -10,7 +10,7 @@ import (
 	"github.com/timeredbull/tsuru/log"
 	"github.com/timeredbull/tsuru/repository"
 	"launchpad.net/goyaml"
-	"launchpad.net/mgo/bson"
+	"labix.org/v2/mgo/bson"
 	"os/exec"
 	"path"
 	"strconv"
@@ -86,7 +86,7 @@ func (a *App) Create() error {
 }
 
 func (a *App) Destroy() error {
-	err := db.Session.Apps().Remove(a)
+	err := db.Session.Apps().Remove(bson.M{"name": a.Name})
 	if err != nil {
 		return err
 	}

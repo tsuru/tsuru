@@ -9,7 +9,7 @@ import (
 	"github.com/timeredbull/tsuru/repository"
 	"io"
 	"io/ioutil"
-	"launchpad.net/mgo/bson"
+	"labix.org/v2/mgo/bson"
 	"net/http"
 	"strings"
 )

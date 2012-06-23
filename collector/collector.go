@@ -6,7 +6,7 @@ import (
 	"github.com/timeredbull/tsuru/db"
 	"github.com/timeredbull/tsuru/log"
 	"launchpad.net/goyaml"
-	"launchpad.net/mgo/bson"
+	"labix.org/v2/mgo/bson"
 	"os/exec"
 )
 

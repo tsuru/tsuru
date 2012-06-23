@@ -7,7 +7,7 @@ import (
 	"github.com/timeredbull/tsuru/db"
 	"github.com/timeredbull/tsuru/log"
 	. "launchpad.net/gocheck"
-	"launchpad.net/mgo/bson"
+	"labix.org/v2/mgo/bson"
 	stdlog "log"
 	"strings"
 )

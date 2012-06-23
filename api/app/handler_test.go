@@ -14,7 +14,7 @@ import (
 	"io"
 	"io/ioutil"
 	. "launchpad.net/gocheck"
-	"launchpad.net/mgo/bson"
+	"labix.org/v2/mgo/bson"
 	stdlog "log"
 	"net/http"
 	"net/http/httptest"
@@ -150,8 +150,6 @@ func (s *S) TestAppList(c *C) {
 }
 
 func (s *S) TestListShouldReturnStatusNoContentWhenAppListIsNil(c *C) {
-	err := db.Session.Apps().RemoveAll(nil)
-	c.Assert(err, IsNil)
 	request, err := http.NewRequest("GET", "/apps/", nil)
 	c.Assert(err, IsNil)
 	request.Header.Set("Content-Type", "application/json")

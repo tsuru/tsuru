@@ -11,7 +11,7 @@ import (
 	"io"
 	"io/ioutil"
 	. "launchpad.net/gocheck"
-	"launchpad.net/mgo"
+	"labix.org/v2/mgo"
 	"os"
 	"os/exec"
 	"path"

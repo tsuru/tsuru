@@ -7,7 +7,7 @@ import (
 	"github.com/timeredbull/tsuru/db"
 	"io/ioutil"
 	. "launchpad.net/gocheck"
-	"launchpad.net/mgo"
+	"labix.org/v2/mgo"
 	"os"
 	"path/filepath"
 	"testing"
@@ -37,9 +37,9 @@ func (s *S) TearDownSuite(c *C) {
 }
 
 func (s *S) TearDownTest(c *C) {
-	err := db.Session.Apps().RemoveAll(nil)
+	_, err := db.Session.Apps().RemoveAll(nil)
 	c.Assert(err, IsNil)
-	err = db.Session.Units().RemoveAll(nil)
+	_, err = db.Session.Units().RemoveAll(nil)
 	c.Assert(err, IsNil)
 }
 
