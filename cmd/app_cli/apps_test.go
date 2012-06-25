@@ -1,4 +1,4 @@
-package main
+package app_cli
 
 import (
 	"bytes"
