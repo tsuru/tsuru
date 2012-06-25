@@ -7,17 +7,7 @@ import (
 	. "launchpad.net/gocheck"
 	"os"
 	"syscall"
-	"testing"
 )
-
-func Test(t *testing.T) { TestingT(t) }
-
-type S struct {
-	stdin *os.File
-}
-
-var _ = Suite(&S{})
-var manager Manager
 
 func (s *S) patchStdin(c *C, content []byte) {
 	f, err := os.OpenFile("/tmp/passwdfile.txt", syscall.O_RDWR|syscall.O_NDELAY|syscall.O_CREAT|syscall.O_TRUNC, 0600)
@@ -34,11 +24,6 @@ func (s *S) patchStdin(c *C, content []byte) {
 
 func (s *S) unpatchStdin() {
 	os.Stdin = s.stdin
-}
-
-func (s *S) SetUpTest(c *C) {
-	var stdout, stderr bytes.Buffer
-	manager = NewManager("glb", &stdout, &stderr)
 }
 
 type TestCommand struct{}
@@ -169,7 +154,7 @@ func (s *S) TestHelp(c *C) {
 func (s *S) TestHelpCommandShouldBeRegisteredByDefault(c *C) {
 	var stdout, stderr bytes.Buffer
 	m := NewManager("tsuru", &stdout, &stderr)
-	_, exists := m.commands["help"]
+	_, exists := m.Commands["help"]
 	c.Assert(exists, Equals, true)
 }
 

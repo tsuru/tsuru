@@ -1,7 +1,8 @@
-package cmd
+package app_cli
 
 import (
 	"fmt"
+	"github.com/timeredbull/tsuru/cmd"
 	"io"
 	"net/http"
 	"strings"
@@ -9,12 +10,12 @@ import (
 
 type AppRun struct{}
 
-func (c *AppRun) Info() *Info {
+func (c *AppRun) Info() *cmd.Info {
 	desc := `run a command in all instances of the app, and prints the output.
 Notice that you may need quotes to run your command if you want to deal with
 input and outputs redirects, and pipes.
 `
-	return &Info{
+	return &cmd.Info{
 		Name:    "run",
 		Usage:   `run appname command commandarg1 commandarg2 ... commandargn`,
 		Desc:    desc,
@@ -22,9 +23,9 @@ input and outputs redirects, and pipes.
 	}
 }
 
-func (c *AppRun) Run(context *Context, client Doer) error {
+func (c *AppRun) Run(context *cmd.Context, client cmd.Doer) error {
 	appName := context.Args[0]
-	url := GetUrl(fmt.Sprintf("/apps/%s/run", appName))
+	url := cmd.GetUrl(fmt.Sprintf("/apps/%s/run", appName))
 	b := strings.NewReader(strings.Join(context.Args[1:], " "))
 	request, err := http.NewRequest("POST", url, b)
 	if err != nil {

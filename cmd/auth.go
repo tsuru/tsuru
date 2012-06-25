@@ -10,8 +10,6 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
-	"os/user"
-	"strings"
 )
 
 type User struct{}

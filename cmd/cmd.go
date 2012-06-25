@@ -7,28 +7,28 @@ import (
 )
 
 type Manager struct {
-	name     string
-	commands map[string]interface{}
+	Name     string
+	Commands map[string]interface{}
 	Stdout   io.Writer
 	Stderr   io.Writer
 }
 
 func NewManager(name string, stdout, stderr io.Writer) Manager {
-	m := Manager{name: name, Stdout: stdout, Stderr: stderr}
+	m := Manager{Name: name, Stdout: stdout, Stderr: stderr}
 	m.Register(&Help{manager: &m})
 	return m
 }
 
 func (m *Manager) Register(command interface{}) {
-	if m.commands == nil {
-		m.commands = make(map[string]interface{})
+	if m.Commands == nil {
+		m.Commands = make(map[string]interface{})
 	}
 	name := command.(Infoer).Info().Name
-	_, found := m.commands[name]
+	_, found := m.Commands[name]
 	if found {
 		panic(fmt.Sprintf("command already registered: %s", name))
 	}
-	m.commands[name] = command
+	m.Commands[name] = command
 }
 
 func (m *Manager) Run(args []string) {
@@ -41,11 +41,11 @@ func (m *Manager) Run(args []string) {
 		return
 	}
 	args = args[len(cmds):]
-	command := m.commands[cmds[0]]
+	command := m.Commands[cmds[0]]
 	command = getSubcommand(command, cmds)
 	if len(args) < command.(Infoer).Info().MinArgs && cmds[0] != "help" {
 		io.WriteString(m.Stdout, fmt.Sprintf("Not enough arguments to call %s.\n\n", command.(Infoer).Info().Name))
-		command = m.commands["help"]
+		command = m.Commands["help"]
 		args = cmds
 		cmds = []string{"help"}
 	}
@@ -60,7 +60,7 @@ func (m *Manager) extractCommandFromArgs(args []string) []string {
 	if len(args) <= 0 {
 		return cmds
 	}
-	if cmd, exists := m.commands[args[0]]; exists {
+	if cmd, exists := m.Commands[args[0]]; exists {
 		cmds = append(cmds, args[0])
 		if container, ok := cmd.(CommandContainer); ok && len(args) >= 2 {
 			if _, exists = container.Subcommands()[args[1]]; exists {
@@ -120,16 +120,16 @@ func (c *Help) Info() *Info {
 func (c *Help) Run(context *Context, client Doer) error {
 	output := ""
 	if len(context.Args) > 0 {
-		cmd := c.manager.commands[context.Args[0]]
+		cmd := c.manager.Commands[context.Args[0]]
 		cmd = getSubcommand(cmd, context.Args)
 		info := cmd.(Infoer).Info()
-		output = output + fmt.Sprintf("Usage: %s %s\n", c.manager.name, info.Usage)
+		output = output + fmt.Sprintf("Usage: %s %s\n", c.manager.Name, info.Usage)
 		output = output + fmt.Sprintf("\n%s\n", info.Desc)
 		if info.MinArgs > 0 {
 			output = output + fmt.Sprintf("\nMinimum arguments: %d\n", info.MinArgs)
 		}
 	} else {
-		output = output + fmt.Sprintf("Usage: %s %s\n", c.manager.name, c.Info().Usage)
+		output = output + fmt.Sprintf("Usage: %s %s\n", c.manager.Name, c.Info().Usage)
 	}
 	io.WriteString(context.Stdout, output)
 	return nil

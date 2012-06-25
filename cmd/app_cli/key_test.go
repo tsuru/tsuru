@@ -1,13 +1,16 @@
 package app_cli
 
 import (
+	"bytes"
 	"github.com/timeredbull/tsuru/cmd"
+	. "launchpad.net/gocheck"
+	"net/http"
 )
 
 func (s *S) TestAddKey(c *C) {
 	expected := "Key successfully added!\n"
 	context := cmd.Context{[]string{}, []string{}, manager.Stdout, manager.Stderr}
-	client := NewClient(&http.Client{Transport: &transport{msg: "", status: http.StatusOK}})
+	client := cmd.NewClient(&http.Client{Transport: &transport{msg: "", status: http.StatusOK}})
 	command := AddKeyCommand{}
 	err := command.Run(&context, client)
 	c.Assert(err, IsNil)
@@ -17,7 +20,7 @@ func (s *S) TestAddKey(c *C) {
 func (s *S) TestRemoveKey(c *C) {
 	expected := "Key successfully removed!\n"
 	context := cmd.Context{[]string{}, []string{}, manager.Stdout, manager.Stderr}
-	client := NewClient(&http.Client{Transport: &transport{msg: "", status: http.StatusOK}})
+	client := cmd.NewClient(&http.Client{Transport: &transport{msg: "", status: http.StatusOK}})
 	command := RemoveKey{}
 	err := command.Run(&context, client)
 	c.Assert(err, IsNil)

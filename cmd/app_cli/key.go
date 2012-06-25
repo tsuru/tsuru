@@ -1,12 +1,14 @@
-package main
+package app_cli
 
 import (
 	"bytes"
 	"fmt"
+	"github.com/timeredbull/tsuru/cmd"
 	"io"
 	"io/ioutil"
 	"net/http"
 	"os"
+	"os/user"
 	"strings"
 )
 
@@ -19,8 +21,8 @@ func readKey() (string, error) {
 
 type Key struct{}
 
-func (c *Key) Info() *Info {
-	return &Info{
+func (c *Key) Info() *cmd.Info {
+	return &cmd.Info{
 		Name:    "key",
 		Usage:   "key (add|remove)",
 		Desc:    "manage keys.",
@@ -37,15 +39,15 @@ func (c *Key) Subcommands() map[string]interface{} {
 
 type RemoveKey struct{}
 
-func (c *RemoveKey) Info() *Info {
-	return &Info{
+func (c *RemoveKey) Info() *cmd.Info {
+	return &cmd.Info{
 		Name:  "remove",
 		Usage: "key remove",
 		Desc:  "remove your public key ($HOME/.id_rsa.pub).",
 	}
 }
 
-func (c *RemoveKey) Run(context *cmd.Context, client Doer) error {
+func (c *RemoveKey) Run(context *cmd.Context, client cmd.Doer) error {
 	key, err := readKey()
 	if os.IsNotExist(err) {
 		io.WriteString(context.Stderr, "You don't have a public key\n")
@@ -53,7 +55,7 @@ func (c *RemoveKey) Run(context *cmd.Context, client Doer) error {
 		return nil
 	}
 	b := bytes.NewBufferString(fmt.Sprintf(`{"key":"%s"}`, strings.Replace(key, "\n", "", -1)))
-	request, err := http.NewRequest("DELETE", GetUrl("/users/keys"), b)
+	request, err := http.NewRequest("DELETE", cmd.GetUrl("/users/keys"), b)
 	if err != nil {
 		return err
 	}
@@ -67,15 +69,15 @@ func (c *RemoveKey) Run(context *cmd.Context, client Doer) error {
 
 type AddKeyCommand struct{}
 
-func (c *AddKeyCommand) Info() *Info {
-	return &Info{
+func (c *AddKeyCommand) Info() *cmd.Info {
+	return &cmd.Info{
 		Name:  "add",
 		Usage: "key add",
 		Desc:  "add your public key ($HOME/.id_rsa.pub).",
 	}
 }
 
-func (c *AddKeyCommand) Run(context *cmd.Context, client Doer) error {
+func (c *AddKeyCommand) Run(context *cmd.Context, client cmd.Doer) error {
 	key, err := readKey()
 	if os.IsNotExist(err) {
 		io.WriteString(context.Stderr, "You don't have a public key\n")
@@ -83,7 +85,7 @@ func (c *AddKeyCommand) Run(context *cmd.Context, client Doer) error {
 		return nil
 	}
 	b := bytes.NewBufferString(fmt.Sprintf(`{"key":"%s"}`, strings.Replace(key, "\n", "", -1)))
-	request, err := http.NewRequest("POST", GetUrl("/users/keys"), b)
+	request, err := http.NewRequest("POST", cmd.GetUrl("/users/keys"), b)
 	if err != nil {
 		return err
 	}
