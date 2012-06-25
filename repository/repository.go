@@ -7,8 +7,6 @@ import (
 	"github.com/timeredbull/tsuru/log"
 )
 
-const gitServer = "tsuru.plataformas.glb.com"
-
 func Clone(app string, machine int) ([]byte, error) {
 	u := unit.Unit{Name: app, Machine: machine}
 	cmd := fmt.Sprintf("git clone %s /home/application/current --depth 1", GetReadOnlyUrl(app))
@@ -43,12 +41,20 @@ func CloneOrPull(app string, machine int) (string, error) {
 	return string(output), nil
 }
 
+func getGitServer() string {
+	gitServer, err := config.GetString("git:server")
+	if err != nil {
+		panic(err)
+	}
+	return gitServer
+}
+
 func GetUrl(app string) string {
-	return fmt.Sprintf("git@%s:%s.git", gitServer, app)
+	return fmt.Sprintf("git@%s:%s.git", getGitServer(), app)
 }
 
 func GetReadOnlyUrl(app string) string {
-	return fmt.Sprintf("git://%s/%s.git", gitServer, app)
+	return fmt.Sprintf("git://%s/%s.git", getGitServer(), app)
 }
 
 func GetPath() (string, error) {
