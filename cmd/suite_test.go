@@ -1,8 +1,12 @@
 package cmd
 
 import (
-	"http"
+	"bytes"
+	"errors"
+	"io/ioutil"
 	. "launchpad.net/gocheck"
+	"net/http"
+	"os"
 	"testing"
 )
 
