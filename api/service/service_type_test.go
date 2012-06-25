@@ -2,8 +2,8 @@ package service
 
 import (
 	"github.com/timeredbull/tsuru/db"
-	. "launchpad.net/gocheck"
 	"labix.org/v2/mgo/bson"
+	. "launchpad.net/gocheck"
 )
 
 func (s *ServiceSuite) createServiceType() {

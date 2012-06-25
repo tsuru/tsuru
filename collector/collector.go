@@ -5,8 +5,8 @@ import (
 	"github.com/timeredbull/tsuru/api/unit"
 	"github.com/timeredbull/tsuru/db"
 	"github.com/timeredbull/tsuru/log"
-	"launchpad.net/goyaml"
 	"labix.org/v2/mgo/bson"
+	"launchpad.net/goyaml"
 	"os/exec"
 )
 
