@@ -66,13 +66,13 @@ func (s *ServiceSuite) TearDownSuite(c *C) {
 }
 
 func (s *ServiceSuite) TearDownTest(c *C) {
-	err := db.Session.Services().RemoveAll(nil)
+	_, err := db.Session.Services().RemoveAll(nil)
 	c.Assert(err, IsNil)
 
-	err = db.Session.ServiceApps().RemoveAll(nil)
+	_, err = db.Session.ServiceApps().RemoveAll(nil)
 	c.Assert(err, IsNil)
 
-	err = db.Session.ServiceTypes().RemoveAll(nil)
+	_, err = db.Session.ServiceTypes().RemoveAll(nil)
 	c.Assert(err, IsNil)
 
 	var apps []app.App

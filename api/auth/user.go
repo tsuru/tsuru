@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"github.com/timeredbull/tsuru/config"
 	"github.com/timeredbull/tsuru/db"
-	"launchpad.net/mgo/bson"
+	"labix.org/v2/mgo/bson"
 	"time"
 )
 

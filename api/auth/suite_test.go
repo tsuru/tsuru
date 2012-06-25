@@ -7,9 +7,9 @@ import (
 	"github.com/timeredbull/tsuru/repository"
 	"io"
 	"io/ioutil"
+	"labix.org/v2/mgo"
+	"labix.org/v2/mgo/bson"
 	. "launchpad.net/gocheck"
-	"launchpad.net/mgo"
-	"launchpad.net/mgo/bson"
 	"os"
 	"os/exec"
 	"path"
@@ -148,9 +148,9 @@ func (s *S) SetUpTest(c *C) {
 
 func (s *S) TearDownTest(c *C) {
 	defer s.deleteGitosisConf()
-	err := db.Session.Users().RemoveAll(bson.M{"email": bson.M{"$ne": s.user.Email}})
+	_, err := db.Session.Users().RemoveAll(bson.M{"email": bson.M{"$ne": s.user.Email}})
 	panicIfErr(err)
-	err = db.Session.Teams().RemoveAll(bson.M{"name": bson.M{"$ne": s.team.Name}})
+	_, err = db.Session.Teams().RemoveAll(bson.M{"name": bson.M{"$ne": s.team.Name}})
 	panicIfErr(err)
 }
 

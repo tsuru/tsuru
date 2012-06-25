@@ -10,7 +10,7 @@ import (
 	"github.com/timeredbull/tsuru/errors"
 	"github.com/timeredbull/tsuru/repository"
 	"io/ioutil"
-	"launchpad.net/mgo/bson"
+	"labix.org/v2/mgo/bson"
 	"net/http"
 	"regexp"
 	"strings"

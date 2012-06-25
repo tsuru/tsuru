@@ -13,8 +13,8 @@ import (
 	"github.com/timeredbull/tsuru/repository"
 	"io"
 	"io/ioutil"
+	"labix.org/v2/mgo/bson"
 	. "launchpad.net/gocheck"
-	"launchpad.net/mgo/bson"
 	stdlog "log"
 	"net/http"
 	"net/http/httptest"
@@ -150,8 +150,6 @@ func (s *S) TestAppList(c *C) {
 }
 
 func (s *S) TestListShouldReturnStatusNoContentWhenAppListIsNil(c *C) {
-	err := db.Session.Apps().RemoveAll(nil)
-	c.Assert(err, IsNil)
 	request, err := http.NewRequest("GET", "/apps/", nil)
 	c.Assert(err, IsNil)
 	request.Header.Set("Content-Type", "application/json")
@@ -785,8 +783,8 @@ func (s *S) TestSetEnvHandlerShouldSupportValuesWithDot(c *C) {
 	app := &App{Name: "losers"}
 	err = app.Get()
 	c.Assert(err, IsNil)
-	expected := map[string]string{
-		"DATABASE_HOST": "http://foo.com:8080",
+	expected := map[string]EnvVar{
+		"DATABASE_HOST": EnvVar{Name: "DATABASE_HOST", Value: "http://foo.com:8080", Public: true},
 	}
 	c.Assert(app.Env, DeepEquals, expected)
 }

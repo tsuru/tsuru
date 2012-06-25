@@ -6,8 +6,8 @@ import (
 	"github.com/timeredbull/tsuru/api/app"
 	"github.com/timeredbull/tsuru/db"
 	"github.com/timeredbull/tsuru/log"
+	"labix.org/v2/mgo/bson"
 	. "launchpad.net/gocheck"
-	"launchpad.net/mgo/bson"
 	stdlog "log"
 	"strings"
 )

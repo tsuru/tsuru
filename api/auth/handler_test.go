@@ -8,8 +8,8 @@ import (
 	"github.com/timeredbull/tsuru/db"
 	"github.com/timeredbull/tsuru/errors"
 	"io/ioutil"
+	"labix.org/v2/mgo/bson"
 	. "launchpad.net/gocheck"
-	"launchpad.net/mgo/bson"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -595,7 +595,19 @@ func (s *S) TestAddKeyFunctionAddTheMemberWithTheKeyNameInTheGitosisConfiguratio
 		time.Sleep(1e9)
 	}()
 	keyname := s.user.Keys[0].Name
-	c.Assert("members = "+keyname, IsInGitosis)
+
+	ch := make(chan int8)
+	go func(ch chan int8, k string) {
+		for !c.Check("members = "+keyname, IsInGitosis) {
+		}
+		ch <- 1
+	}(ch, keyname)
+	select {
+	case <-ch:
+		c.SucceedNow()
+	case <-time.After(10 * time.Second):
+		c.Error("Did not add the key in gitosis file in a suitable time.")
+	}
 }
 
 func (s *S) TestRemoveKeyHandlerRemovesTheKeyFromTheUser(c *C) {

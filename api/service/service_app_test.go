@@ -3,8 +3,8 @@ package service
 import (
 	"github.com/timeredbull/tsuru/api/app"
 	"github.com/timeredbull/tsuru/db"
+	"labix.org/v2/mgo/bson"
 	. "launchpad.net/gocheck"
-	"launchpad.net/mgo/bson"
 )
 
 func (s *ServiceSuite) createServiceApp() {

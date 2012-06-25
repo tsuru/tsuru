@@ -1,7 +1,7 @@
 package db
 
 import (
-	"launchpad.net/mgo"
+	"labix.org/v2/mgo"
 	"sync"
 )
 

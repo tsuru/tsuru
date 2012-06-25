@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"github.com/timeredbull/tsuru/config"
 	"github.com/timeredbull/tsuru/db"
+	"labix.org/v2/mgo/bson"
 	. "launchpad.net/gocheck"
-	"launchpad.net/mgo/bson"
 	"time"
 )
 
