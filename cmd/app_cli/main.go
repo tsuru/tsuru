@@ -1,4 +1,4 @@
-package app_cli
+package main
 
 import (
 	"github.com/timeredbull/tsuru/cmd"
@@ -16,12 +16,12 @@ func buildManager(name string) cmd.Manager {
 	m.Register(&cmd.Login{})
 	m.Register(&cmd.Logout{})
 	m.Register(&cmd.User{})
+	m.Register(&cmd.Team{})
+	m.Register(&cmd.Target{})
 	m.Register(&App{})
 	m.Register(&AppRun{})
 	m.Register(&Env{})
 	m.Register(&Key{})
-	m.Register(&cmd.Team{})
-	m.Register(&cmd.Target{})
 	return m
 }
 
