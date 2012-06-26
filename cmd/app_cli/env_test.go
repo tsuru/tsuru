@@ -11,7 +11,7 @@ func (s *S) TestEnvInfo(c *C) {
 	e := Env{}
 	i := e.Info()
 	c.Assert(i.Name, Equals, "env")
-	c.Assert(i.Usage, Equals, "env (get|set|unset)")
+	c.Assert(i.Usage, Equals, "env (get|set|unset) [args]")
 	c.Assert(i.Desc, Equals, "manage instance's environment variables.")
 	c.Assert(i.MinArgs, Equals, 1)
 }

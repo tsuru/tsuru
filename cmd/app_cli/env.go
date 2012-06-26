@@ -14,7 +14,7 @@ type Env struct{}
 func (c *Env) Info() *cmd.Info {
 	return &cmd.Info{
 		Name:    "env",
-		Usage:   "env (get|set|unset)",
+		Usage:   "env (get|set|unset) [args]",
 		Desc:    "manage instance's environment variables.",
 		MinArgs: 1,
 	}
