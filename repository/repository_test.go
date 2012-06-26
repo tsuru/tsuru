@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"github.com/timeredbull/commandmocker"
 	. "launchpad.net/gocheck"
 )
 
@@ -10,8 +11,12 @@ func (s *S) TestCloneRepository(c *C) {
 }
 
 func (s *S) TestPullRepository(c *C) {
-	_, err := Pull("barfoo", 1)
+	dir, err := commandmocker.Add("juju", "$*")
 	c.Assert(err, IsNil)
+	defer commandmocker.Remove(dir)
+	out, err := Pull("barfoo", 1)
+	c.Assert(err, IsNil)
+	c.Assert(string(out), Matches, ".*cd /home/application/current && git pull origin master$")
 }
 
 func (s *S) TestCloneOrPullRepository(c *C) {

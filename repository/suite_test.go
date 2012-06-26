@@ -98,6 +98,15 @@ func (s *S) TearDownTest(c *C) {
 	c.Assert(err, IsNil)
 }
 
+func (s *S) TestGetGitServerPanicsIfTheConfigFileHasNoServer(c *C) {
+	oldConfig := config.Configs
+	config.Configs = map[interface{}]interface{}{}
+	defer func() {
+		config.Configs = oldConfig
+	}()
+	c.Assert(getGitServer, PanicMatches, "key git:server not found")
+}
+
 func (s *S) lastBareCommit(c *C) string {
 	bareOutput, err := exec.Command("git", "--git-dir="+s.gitosisBare, "log", "-1", "--pretty=format:%s").CombinedOutput()
 	c.Assert(err, IsNil)
