@@ -20,7 +20,7 @@ func Clone(app string, machine int) ([]byte, error) {
 
 func Pull(app string, machine int) ([]byte, error) {
 	u := unit.Unit{Name: app, Machine: machine}
-	cmd := fmt.Sprintf("cd /home/application/current && pull origin master")
+	cmd := fmt.Sprintf("cd /home/application/current && git pull origin master")
 	output, err := u.Command(cmd)
 	log.Printf(`"git pull" output: %s`, string(output))
 	if err != nil {
