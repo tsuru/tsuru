@@ -9,7 +9,12 @@ import (
 
 func (s *S) TestAppRun(c *C) {
 	expected := "http.go		http_test.go"
-	context := cmd.Context{[]string{}, []string{"ble", "ls"}, manager.Stdout, manager.Stderr}
+	context := cmd.Context{
+		Cmds:   []string{},
+		Args:   []string{"ble", "ls"},
+		Stdout: manager.Stdout,
+		Stderr: manager.Stderr,
+	}
 	trans := &conditionalTransport{
 		transport{
 			msg: "http.go		http_test.go",
@@ -29,7 +34,12 @@ func (s *S) TestAppRun(c *C) {
 
 func (s *S) TestAppRunShouldUseAllSubsequentArgumentsAsArgumentsToTheGivenCommand(c *C) {
 	expected := "-rw-r--r--  1 f  staff  119 Apr 26 18:23 http.go"
-	context := cmd.Context{[]string{}, []string{"ble", "ls", "-l"}, manager.Stdout, manager.Stderr}
+	context := cmd.Context{
+		Cmds:   []string{},
+		Args:   []string{"ble", "ls", "-l"},
+		Stdout: manager.Stdout,
+		Stderr: manager.Stderr,
+	}
 	trans := &conditionalTransport{
 		transport{
 			msg:    "-rw-r--r--  1 f  staff  119 Apr 26 18:23 http.go",
