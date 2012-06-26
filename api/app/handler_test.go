@@ -49,7 +49,7 @@ pos-restart:
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(dir)
 	u := unit.Unit{Name: "someapp/0", Type: "django"}
-	a := App{Name: "someApp", Framework: "django", Teams: []auth.Team{s.team}, Units: []unit.Unit{u}}
+	a := App{Name: "someApp", Framework: "django", Teams: []string{s.team.Name}, Units: []unit.Unit{u}}
 	err = a.Create()
 	c.Assert(err, IsNil)
 	defer a.Destroy()
@@ -78,7 +78,7 @@ pos-restart:
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(dir)
 	u := unit.Unit{Name: "someapp/0", Type: "django"}
-	a := App{Name: "someApp", Framework: "django", Teams: []auth.Team{s.team}, Units: []unit.Unit{u}}
+	a := App{Name: "someApp", Framework: "django", Teams: []string{s.team.Name}, Units: []unit.Unit{u}}
 	err = a.Create()
 	c.Assert(err, IsNil)
 	defer a.Destroy()
@@ -117,11 +117,11 @@ func (s *S) TestCloneRepositoryShouldReturnNotFoundWhenAppDoesNotExist(c *C) {
 
 func (s *S) TestAppList(c *C) {
 	u := unit.Unit{Name: "app1/0", Ip: "10.10.10.10"}
-	app1 := App{Name: "app1", Teams: []auth.Team{s.team}, Units: []unit.Unit{u}}
+	app1 := App{Name: "app1", Teams: []string{s.team.Name}, Units: []unit.Unit{u}}
 	app1.Create()
 	defer app1.Destroy()
 	u2 := unit.Unit{Name: "app2/0"}
-	app2 := App{Name: "app2", Teams: []auth.Team{s.team}, Units: []unit.Unit{u2}}
+	app2 := App{Name: "app2", Teams: []string{s.team.Name}, Units: []unit.Unit{u2}}
 	app2.Create()
 	defer app2.Destroy()
 	expected := []App{app1, app2}
@@ -160,7 +160,7 @@ func (s *S) TestListShouldReturnStatusNoContentWhenAppListIsNil(c *C) {
 }
 
 func (s *S) TestDelete(c *C) {
-	myApp := App{Name: "MyAppToDelete", Framework: "django", Teams: []auth.Team{s.team}}
+	myApp := App{Name: "MyAppToDelete", Framework: "django", Teams: []string{s.team.Name}}
 	myApp.Create()
 	request, err := http.NewRequest("DELETE", "/apps/"+myApp.Name+"?:name="+myApp.Name, nil)
 	c.Assert(err, IsNil)
@@ -212,7 +212,7 @@ func (s *S) TestDeleteAppRemovesProjectFromAllTeamsInGitosis(c *C) {
 }
 
 func (s *S) TestAppInfo(c *C) {
-	expectedApp := App{Name: "NewApp", Framework: "django", Teams: []auth.Team{s.team}}
+	expectedApp := App{Name: "NewApp", Framework: "django", Teams: []string{s.team.Name}}
 	expectedApp.Create()
 	defer expectedApp.Destroy()
 
@@ -235,7 +235,7 @@ func (s *S) TestAppInfo(c *C) {
 }
 
 func (s *S) TestAppInfoReturnsForbiddenWhenTheUserDoesNotHaveAccessToTheApp(c *C) {
-	expectedApp := App{Name: "NewApp", Framework: "django", Teams: []auth.Team{}}
+	expectedApp := App{Name: "NewApp", Framework: "django", Teams: []string{}}
 	expectedApp.Create()
 	defer expectedApp.Destroy()
 	request, err := http.NewRequest("GET", "/apps/"+expectedApp.Name+"?:name="+expectedApp.Name, nil)
@@ -322,8 +322,11 @@ func (s *S) TestCreateAppAddsProjectToGroupsInGitosis(c *C) {
 
 func (s *S) TestAddTeamToTheApp(c *C) {
 	t := auth.Team{Name: "itshardteam", Users: []*auth.User{s.user}}
-	a := App{Name: "itshard", Framework: "django", Teams: []auth.Team{t}}
-	err := a.Create()
+	err := db.Session.Teams().Insert(t)
+	c.Assert(err, IsNil)
+	defer db.Session.Teams().RemoveAll(bson.M{"name": t.Name})
+	a := App{Name: "itshard", Framework: "django", Teams: []string{t.Name}}
+	err = a.Create()
 	c.Assert(err, IsNil)
 	defer a.Destroy()
 	url := fmt.Sprintf("/apps/%s/%s?:app=%s&:team=%s", a.Name, s.team.Name, a.Name, s.team.Name)
@@ -367,7 +370,7 @@ func (s *S) TestGrantAccessToTeamReturn401IfTheGivenUserDoesNotHasAccessToTheApp
 }
 
 func (s *S) TestGrantAccessToTeamReturn404IfTheTeamDoesNotExist(c *C) {
-	a := App{Name: "itshard", Framework: "django", Teams: []auth.Team{s.team}}
+	a := App{Name: "itshard", Framework: "django", Teams: []string{s.team.Name}}
 	err := a.Create()
 	c.Assert(err, IsNil)
 	defer a.Destroy()
@@ -384,7 +387,7 @@ func (s *S) TestGrantAccessToTeamReturn404IfTheTeamDoesNotExist(c *C) {
 }
 
 func (s *S) TestGrantAccessToTeamReturn409IfTheTeamHasAlreadyAccessToTheApp(c *C) {
-	a := App{Name: "itshard", Framework: "django", Teams: []auth.Team{s.team}}
+	a := App{Name: "itshard", Framework: "django", Teams: []string{s.team.Name}}
 	err := a.Create()
 	c.Assert(err, IsNil)
 	defer a.Destroy()
@@ -401,9 +404,12 @@ func (s *S) TestGrantAccessToTeamReturn409IfTheTeamHasAlreadyAccessToTheApp(c *C
 
 func (s *S) TestGrantAccessToAppAddsTheProjectInGitosis(c *C) {
 	t := &auth.Team{Name: "anything", Users: []*auth.User{s.user}}
+	err := db.Session.Teams().Insert(t)
+	c.Assert(err, IsNil)
+	defer db.Session.Teams().Remove(bson.M{"name": t.Name})
 	s.addGroup()
-	a := &App{Name: "tsuru", Framework: "golang", Teams: []auth.Team{*t}}
-	err := a.Create()
+	a := &App{Name: "tsuru", Framework: "golang", Teams: []string{t.Name}}
+	err = a.Create()
 	c.Assert(err, IsNil)
 	err = grantAccessToTeam(a.Name, s.team.Name, s.user)
 	c.Assert(err, IsNil)
@@ -413,8 +419,11 @@ func (s *S) TestGrantAccessToAppAddsTheProjectInGitosis(c *C) {
 
 func (s *S) TestRevokeAccessFromTeam(c *C) {
 	t := auth.Team{Name: "abcd"}
-	a := App{Name: "itshard", Framework: "django", Teams: []auth.Team{s.team, t}}
-	err := a.Create()
+	err := db.Session.Teams().Insert(t)
+	c.Assert(err, IsNil)
+	defer db.Session.Teams().Remove(bson.M{"name": t.Name})
+	a := App{Name: "itshard", Framework: "django", Teams: []string{s.team.Name, t.Name}}
+	err = a.Create()
 	c.Assert(err, IsNil)
 	defer a.Destroy()
 	url := fmt.Sprintf("/apps/%s/%s?:app=%s&:team=%s", a.Name, s.team.Name, a.Name, s.team.Name)
@@ -457,7 +466,7 @@ func (s *S) TestRevokeAccessFromTeamReturn401IfTheGivenUserDoesNotHavePermission
 }
 
 func (s *S) TestRevokeAccessFromTeamReturn404IfTheTeamDoesNotExist(c *C) {
-	a := App{Name: "itshard", Framework: "django", Teams: []auth.Team{s.team}}
+	a := App{Name: "itshard", Framework: "django", Teams: []string{s.team.Name}}
 	err := a.Create()
 	c.Assert(err, IsNil)
 	defer a.Destroy()
@@ -477,8 +486,9 @@ func (s *S) TestRevokeAccessFromTeamReturn404IfTheTeamDoesNotHaveAccessToTheApp(
 	t := auth.Team{Name: "blaaa"}
 	db.Session.Teams().Insert(t)
 	t2 := auth.Team{Name: "team2"}
-	defer db.Session.Teams().Remove(bson.M{"name": "blaaa"})
-	a := App{Name: "itshard", Framework: "django", Teams: []auth.Team{s.team, t2}}
+	db.Session.Teams().Insert(t2)
+	defer db.Session.Teams().Remove(bson.M{"name": bson.M{"$in": []string{"blaaa", "team2"}}})
+	a := App{Name: "itshard", Framework: "django", Teams: []string{s.team.Name, t2.Name}}
 	err := a.Create()
 	c.Assert(err, IsNil)
 	defer a.Destroy()
@@ -494,7 +504,7 @@ func (s *S) TestRevokeAccessFromTeamReturn404IfTheTeamDoesNotHaveAccessToTheApp(
 }
 
 func (s *S) TestRevokeAccessFromTeamReturn403IfTheTeamIsTheLastWithAccessToTheApp(c *C) {
-	a := App{Name: "itshard", Framework: "django", Teams: []auth.Team{s.team}}
+	a := App{Name: "itshard", Framework: "django", Teams: []string{s.team.Name}}
 	err := a.Create()
 	c.Assert(err, IsNil)
 	defer a.Destroy()
@@ -512,9 +522,12 @@ func (s *S) TestRevokeAccessFromTeamReturn403IfTheTeamIsTheLastWithAccessToTheAp
 
 func (s *S) TestRevokeAccessFromTeamRemovesTheProjectFromGitosisConf(c *C) {
 	t := auth.Team{Name: "anything", Users: []*auth.User{s.user}}
+	err := db.Session.Teams().Insert(t)
+	c.Assert(err, IsNil)
+	defer db.Session.Teams().Remove(bson.M{"name": t.Name})
 	s.addGroup()
-	a := &App{Name: "tsuru", Framework: "golang", Teams: []auth.Team{t}}
-	err := a.Create()
+	a := &App{Name: "tsuru", Framework: "golang", Teams: []string{t.Name}}
+	err = a.Create()
 	c.Assert(err, IsNil)
 	err = grantAccessToTeam(a.Name, s.team.Name, s.user)
 	c.Assert(err, IsNil)
@@ -529,7 +542,7 @@ func (s *S) TestRunHandlerShouldExecuteTheGivenCommandInTheGivenApp(c *C) {
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(dir)
 	u := unit.Unit{Name: "someapp/0", Type: "django", Machine: 10}
-	a := &App{Name: "secrets", Framework: "arch enemy", Teams: []auth.Team{s.team}, Units: []unit.Unit{u}}
+	a := &App{Name: "secrets", Framework: "arch enemy", Teams: []string{s.team.Name}, Units: []unit.Unit{u}}
 	err = a.Create()
 	c.Assert(err, IsNil)
 	url := fmt.Sprintf("/apps/%s/run/?:name=%s", a.Name, a.Name)
@@ -546,7 +559,7 @@ func (s *S) TestRunHandlerShouldFilterOutputFromJuju(c *C) {
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(dir)
 	u := unit.Unit{Name: "someapp/0", Type: "django", Machine: 10}
-	a := &App{Name: "unspeakable", Framework: "vougan", Teams: []auth.Team{s.team}, Units: []unit.Unit{u}}
+	a := &App{Name: "unspeakable", Framework: "vougan", Teams: []string{s.team.Name}, Units: []unit.Unit{u}}
 	err = a.Create()
 	c.Assert(err, IsNil)
 	url := fmt.Sprintf("/apps/%s/run/?:name=%s", a.Name, a.Name)
@@ -614,7 +627,7 @@ func (s *S) TestRunHandlerReturnsForbiddenIfTheGivenUserDoesNotHaveAccessToTheAp
 }
 
 func (s *S) TestGetEnvHandlerGetsEnvironmentVariableFromApp(c *C) {
-	a := &App{Name: "everything-i-want", Framework: "gotthard", Teams: []auth.Team{s.team}}
+	a := &App{Name: "everything-i-want", Framework: "gotthard", Teams: []string{s.team.Name}}
 	a.Env = map[string]EnvVar{
 		"DATABASE_HOST":     EnvVar{Name: "DATABASE_HOST", Value: "localhost", Public: true},
 		"DATABASE_USER":     EnvVar{Name: "DATABASE_USER", Value: "root", Public: true},
@@ -633,7 +646,7 @@ func (s *S) TestGetEnvHandlerGetsEnvironmentVariableFromApp(c *C) {
 }
 
 func (s *S) TestGetEnvHandlerShouldAcceptMultipleVariables(c *C) {
-	a := &App{Name: "four-sticks", Teams: []auth.Team{s.team}}
+	a := &App{Name: "four-sticks", Teams: []string{s.team.Name}}
 	a.Env = map[string]EnvVar{
 		"DATABASE_HOST":     EnvVar{Name: "DATABASE_HOST", Value: "localhost", Public: true},
 		"DATABASE_USER":     EnvVar{Name: "DATABASE_USER", Value: "root", Public: true},
@@ -652,7 +665,7 @@ func (s *S) TestGetEnvHandlerShouldAcceptMultipleVariables(c *C) {
 }
 
 func (s *S) TestGetEnvHandlerReturnsAllVariablesIfEnvironmentVariablesAreMissingWithMaskOnPrivateVars(c *C) {
-	a := &App{Name: "time", Framework: "pink-floyd", Teams: []auth.Team{s.team}}
+	a := &App{Name: "time", Framework: "pink-floyd", Teams: []string{s.team.Name}}
 	a.Env = map[string]EnvVar{
 		"DATABASE_HOST":     EnvVar{Name: "DATABASE_HOST", Value: "localhost", Public: true},
 		"DATABASE_USER":     EnvVar{Name: "DATABASE_USER", Value: "root", Public: true},
@@ -712,7 +725,7 @@ func (s *S) TestGetEnvHandlerReturnsForbiddenIfTheGivenUserDoesNotHaveAccessToTh
 }
 
 func (s *S) TestSetEnvHandlerShouldSetAPublicEnvironmentVariableInTheApp(c *C) {
-	a := &App{Name: "black-dog", Teams: []auth.Team{s.team}}
+	a := &App{Name: "black-dog", Teams: []string{s.team.Name}}
 	err := a.Create()
 	c.Assert(err, IsNil)
 	url := fmt.Sprintf("/apps/%s/env?:name=%s", a.Name, a.Name)
@@ -731,7 +744,7 @@ func (s *S) TestSetEnvHandlerShouldSetAPublicEnvironmentVariableInTheApp(c *C) {
 }
 
 func (s *S) TestSetEnvHandlerShouldSetMultipleEnvironmentVariablesInTheApp(c *C) {
-	a := &App{Name: "vigil", Teams: []auth.Team{s.team}}
+	a := &App{Name: "vigil", Teams: []string{s.team.Name}}
 	err := a.Create()
 	c.Assert(err, IsNil)
 	url := fmt.Sprintf("/apps/%s/env?:name=%s", a.Name, a.Name)
@@ -751,7 +764,7 @@ func (s *S) TestSetEnvHandlerShouldSetMultipleEnvironmentVariablesInTheApp(c *C)
 }
 
 func (s *S) TestSetEnvHandlerShouldSupportSpacesInTheEnvironmentVariableValue(c *C) {
-	a := &App{Name: "loser", Teams: []auth.Team{s.team}}
+	a := &App{Name: "loser", Teams: []string{s.team.Name}}
 	err := a.Create()
 	c.Assert(err, IsNil)
 	url := fmt.Sprintf("/apps/%s/env?:name=%s", a.Name, a.Name)
@@ -771,7 +784,7 @@ func (s *S) TestSetEnvHandlerShouldSupportSpacesInTheEnvironmentVariableValue(c 
 }
 
 func (s *S) TestSetEnvHandlerShouldSupportValuesWithDot(c *C) {
-	a := &App{Name: "losers", Teams: []auth.Team{s.team}}
+	a := &App{Name: "losers", Teams: []string{s.team.Name}}
 	err := a.Create()
 	c.Assert(err, IsNil)
 	url := fmt.Sprintf("/apps/%s/env?:name=%s", a.Name, a.Name)
@@ -845,7 +858,7 @@ func (s *S) TestSetEnvHandlerReturnsForbiddenIfTheGivenUserDoesNotHaveAccessToTh
 func (s *S) TestUnsetEnvHandlerRemovesTheEnvironmentVariablesFromTheApp(c *C) {
 	a := &App{
 		Name:  "swift",
-		Teams: []auth.Team{s.team},
+		Teams: []string{s.team.Name},
 	}
 	a.Env = map[string]EnvVar{
 		"DATABASE_HOST":     EnvVar{Name: "DATABASE_HOST", Value: "localhost", Public: true},
@@ -871,7 +884,7 @@ func (s *S) TestUnsetEnvHandlerRemovesTheEnvironmentVariablesFromTheApp(c *C) {
 func (s *S) TestUnsetEnvHandlerRemovesAllGivenEnvironmentVariables(c *C) {
 	a := &App{
 		Name:  "let-it-be",
-		Teams: []auth.Team{s.team},
+		Teams: []string{s.team.Name},
 	}
 	a.Env = map[string]EnvVar{
 		"DATABASE_HOST":     EnvVar{Name: "DATABASE_HOST", Value: "localhost", Public: true},
@@ -980,7 +993,7 @@ func (s *S) TestLogReturnsForbiddenIfTheGivenUserDoesNotHaveAccessToTheApp(c *C)
 }
 
 func (s *S) TestLogShouldAppLog(c *C) {
-	a := &App{Name: "lost", Framework: "vougan", Teams: []auth.Team{s.team}}
+	a := &App{Name: "lost", Framework: "vougan", Teams: []string{s.team.Name}}
 	err := a.Create()
 	c.Assert(err, IsNil)
 	url := fmt.Sprintf("/apps/%s/log/?:name=%s", a.Name, a.Name)
@@ -997,4 +1010,21 @@ func (s *S) TestLogShouldAppLog(c *C) {
 	err = json.Unmarshal(body, &logs)
 	c.Assert(err, IsNil)
 	c.Assert(logs, DeepEquals, logs)
+}
+
+func (s *S) TestGetTeamNamesReturnTheNameOfTeamsThatTheUserIsMember(c *C) {
+	one := &auth.User{Email: "imone@thewho.com", Password: "123"}
+	who := auth.Team{Name: "TheWho", Users: []*auth.User{one}}
+	err := db.Session.Teams().Insert(who)
+	what := auth.Team{Name: "TheWhat", Users: []*auth.User{one}}
+	err = db.Session.Teams().Insert(what)
+	c.Assert(err, IsNil)
+	where := auth.Team{Name: "TheWhere", Users: []*auth.User{one}}
+	err = db.Session.Teams().Insert(where)
+	c.Assert(err, IsNil)
+	teams := []string{who.Name, what.Name, where.Name}
+	defer db.Session.Teams().RemoveAll(bson.M{"name": bson.M{"$in": teams}})
+	names, err := getTeamNames(one)
+	c.Assert(err, IsNil)
+	c.Assert(names, DeepEquals, teams)
 }

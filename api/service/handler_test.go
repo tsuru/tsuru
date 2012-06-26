@@ -160,7 +160,7 @@ func (s *ServiceSuite) TestBindHandler(c *C) {
 	err := st.Create()
 	c.Assert(err, IsNil)
 	se := Service{ServiceTypeId: st.Id, Name: "my_service", Teams: []auth.Team{*s.team}}
-	a := app.App{Name: "serviceApp", Framework: "django", Teams: []auth.Team{*s.team}}
+	a := app.App{Name: "serviceApp", Framework: "django", Teams: []string{s.team.Name}}
 	err = se.Create()
 	c.Assert(err, IsNil)
 	err = a.Create()
@@ -227,7 +227,7 @@ func (s *ServiceSuite) TestBindHandlerReturns403IfTheUserDoesNotHaveAccessToTheS
 	err := st.Create()
 	c.Assert(err, IsNil)
 	se := Service{ServiceTypeId: st.Id, Name: "my_service"}
-	a := app.App{Name: "serviceApp", Framework: "django", Teams: []auth.Team{*s.team}}
+	a := app.App{Name: "serviceApp", Framework: "django", Teams: []string{s.team.Name}}
 	err = se.Create()
 	c.Assert(err, IsNil)
 	err = a.Create()
@@ -245,7 +245,7 @@ func (s *ServiceSuite) TestBindHandlerReturns403IfTheUserDoesNotHaveAccessToTheS
 }
 
 func (s *ServiceSuite) TestBindHandlerReturns404IfTheServiceDoesNotExist(c *C) {
-	a := app.App{Name: "serviceApp", Framework: "django", Teams: []auth.Team{*s.team}}
+	a := app.App{Name: "serviceApp", Framework: "django", Teams: []string{s.team.Name}}
 	err := a.Create()
 	c.Assert(err, IsNil)
 	b := strings.NewReader(`{"app":"serviceApp", "service":"my_service"}`)
@@ -265,7 +265,7 @@ func (s *ServiceSuite) TestUnbindHandler(c *C) {
 	st := ServiceType{Name: "Mysql", Charm: "mysql"}
 	st.Create()
 	se := Service{ServiceTypeId: st.Id, Name: "my_service", Teams: []auth.Team{*s.team}}
-	a := app.App{Name: "serviceApp", Framework: "django", Teams: []auth.Team{*s.team}}
+	a := app.App{Name: "serviceApp", Framework: "django", Teams: []string{s.team.Name}}
 	se.Create()
 	a.Create()
 	se.Bind(&a)
@@ -289,7 +289,7 @@ func (s *ServiceSuite) TestUnbindHandlerReturns403IfTheUserDoesNotHaveAccessToTh
 	st := ServiceType{Name: "Mysql", Charm: "mysql"}
 	st.Create()
 	se := Service{ServiceTypeId: st.Id, Name: "my_service"}
-	a := app.App{Name: "serviceApp", Framework: "django", Teams: []auth.Team{*s.team}}
+	a := app.App{Name: "serviceApp", Framework: "django", Teams: []string{s.team.Name}}
 	se.Create()
 	a.Create()
 	se.Bind(&a)
@@ -308,7 +308,7 @@ func (s *ServiceSuite) TestUnbindHandlerReturns403IfTheUserDoesNotHaveAccessToTh
 func (s *ServiceSuite) TestUnbindHandlerReturns404IfTheServiceDoesNotExist(c *C) {
 	st := ServiceType{Name: "Mysql", Charm: "mysql"}
 	st.Create()
-	a := app.App{Name: "serviceApp", Framework: "django", Teams: []auth.Team{*s.team}}
+	a := app.App{Name: "serviceApp", Framework: "django", Teams: []string{s.team.Name}}
 	a.Create()
 	b := strings.NewReader(`{"app":"serviceApp", "service":"my_service"}`)
 	request, err := http.NewRequest("POST", "/services/bind", b)
