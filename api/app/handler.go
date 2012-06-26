@@ -143,7 +143,7 @@ func createApp(app *App, u *auth.User) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	for _, t := range app.GetTeams() {
+	for _, t := range teams {
 		sendProjectChangeToGitosis(repository.AddProject, &t, app)
 	}
 	msg := map[string]string{
