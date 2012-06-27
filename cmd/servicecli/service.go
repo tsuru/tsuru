@@ -10,6 +10,7 @@ import (
 )
 
 type Service struct{}
+type ServiceCreate struct{}
 
 func (c *Service) Info() *cmd.Info {
 	return &cmd.Info{
@@ -25,8 +26,6 @@ func (c *Service) Subcommands() map[string]interface{} {
 		"create": &ServiceCreate{},
 	}
 }
-
-type ServiceCreate struct{}
 
 func (c *ServiceCreate) Info() *cmd.Info {
 	desc := "Creates a service based on a passed manifest. The manifest format should be a yaml and follow the standard described in the documentation (should link to it here)"
