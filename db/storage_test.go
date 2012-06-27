@@ -113,8 +113,8 @@ func (s *S) TestMethodServicesShouldReturnServicesCollectionWithUniqueIndexForNa
 	c.Assert(services, HasUniqueIndex, []string{"name"})
 }
 
-func (s *S) TestMethodServiceAppsShouldReturnServiceAppsCollection(c *C) {
-	serviceApps := s.storage.ServiceApps()
+func (s *S) TestMethodServiceInstancesShouldReturnServiceInstancesCollection(c *C) {
+	serviceApps := s.storage.ServiceInstances()
 	serviceAppsc := s.storage.getCollection("service_apps")
 	c.Assert(serviceApps, DeepEquals, serviceAppsc)
 }

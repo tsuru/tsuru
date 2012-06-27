@@ -2,7 +2,6 @@ package service
 
 import (
 	"errors"
-	"github.com/timeredbull/tsuru/api/app"
 	"github.com/timeredbull/tsuru/api/auth"
 	"github.com/timeredbull/tsuru/api/unit"
 	"github.com/timeredbull/tsuru/db"
@@ -12,9 +11,9 @@ import (
 )
 
 type Service struct {
-	ServiceTypeId bson.ObjectId `bson:"service_type_id"`
-	Name          string
-	Teams         []auth.Team
+	ServiceTypeName string `bson:"service_type_name"`
+	Name            string `bson:"_id"`
+	Teams           []auth.Team
 }
 
 func (s *Service) Log(out []byte) {
@@ -22,7 +21,7 @@ func (s *Service) Log(out []byte) {
 }
 
 func (s *Service) Get() error {
-	query := bson.M{"name": s.Name}
+	query := bson.M{"_id": s.Name}
 	return db.Session.Services().Find(query).One(&s)
 }
 
@@ -57,18 +56,18 @@ func (s *Service) Delete() error {
 	return err
 }
 
-func (s *Service) Bind(a *app.App) error {
-	sa := ServiceApp{ServiceName: s.Name, AppName: a.Name}
-	return sa.Create()
-}
+// func (s *Service) Bind(a *app.App) error {
+// 	sa := ServiceInstance{Name: s.Name, Apps: a.Name}
+// 	return sa.Create()
+// }
 
-func (s *Service) Unbind(a *app.App) error {
-	sa := ServiceApp{ServiceName: s.Name, AppName: a.Name}
-	return sa.Delete()
-}
+// func (s *Service) Unbind(a *app.App) error {
+// 	sa := ServiceInstance{Name: s.Name, Apps: a.Name}
+// 	return sa.Delete()
+// }
 
 func (s *Service) ServiceType() (st *ServiceType) {
-	st = &ServiceType{Id: s.ServiceTypeId}
+	st = &ServiceType{Name: s.ServiceTypeName}
 	st.Get()
 	return
 }

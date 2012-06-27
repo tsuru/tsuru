@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/timeredbull/tsuru/api/app"
 	"github.com/timeredbull/tsuru/api/auth"
 	"github.com/timeredbull/tsuru/db"
 	"github.com/timeredbull/tsuru/errors"
@@ -56,7 +55,6 @@ func ServiceTypesHandler(w http.ResponseWriter, r *http.Request) error {
 	var sT ServiceType
 	for i, s := range sTypes {
 		sT = ServiceType{
-			Id:    s.Id,
 			Charm: s.Charm,
 			Name:  s.Name,
 		}
@@ -90,9 +88,9 @@ func CreateHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 		return &errors.Http{Code: http.StatusForbidden, Message: msg}
 	}
 	s := Service{
-		Name:          sj.Name,
-		ServiceTypeId: st.Id,
-		Teams:         teams,
+		Name:            sj.Name,
+		ServiceTypeName: st.Name,
+		Teams:           teams,
 	}
 	s.Create()
 	fmt.Fprint(w, "success")
@@ -114,75 +112,75 @@ func DeleteHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	return nil
 }
 
-func BindHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
-	var b bindJson
-	defer r.Body.Close()
-	body, err := ioutil.ReadAll(r.Body)
-	if err != nil {
-		return err
-	}
-	err = json.Unmarshal(body, &b)
-	if err != nil {
-		return err
-	}
-	s := Service{Name: b.Service}
-	err = s.Get()
-	if err != nil {
-		return &errors.Http{Code: http.StatusNotFound, Message: "Service not found"}
-	}
-	if !s.CheckUserAccess(u) {
-		return &errors.Http{Code: http.StatusForbidden, Message: "This user does not have access to this service"}
-	}
-	a := app.App{Name: b.App}
-	err = a.Get()
-	if err != nil {
-		return &errors.Http{Code: http.StatusNotFound, Message: "App not found"}
-	}
-	if !a.CheckUserAccess(u) {
-		return &errors.Http{Code: http.StatusForbidden, Message: "This user does not have access to this app"}
-	}
-	err = s.Bind(&a)
-	if err != nil {
-		return err
-	}
-	fmt.Fprint(w, "success")
-	return nil
-}
-
-func UnbindHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
-	var b bindJson
-	defer r.Body.Close()
-	body, err := ioutil.ReadAll(r.Body)
-	if err != nil {
-		return err
-	}
-	err = json.Unmarshal(body, &b)
-	if err != nil {
-		return err
-	}
-	s := Service{Name: b.Service}
-	err = s.Get()
-	if err != nil {
-		return &errors.Http{Code: http.StatusNotFound, Message: "Service not found"}
-	}
-	if !s.CheckUserAccess(u) {
-		return &errors.Http{Code: http.StatusForbidden, Message: "This user does not have access to this service"}
-	}
-	a := app.App{Name: b.App}
-	err = a.Get()
-	if err != nil {
-		return &errors.Http{Code: http.StatusNotFound, Message: "App not found"}
-	}
-	if !a.CheckUserAccess(u) {
-		return &errors.Http{Code: http.StatusForbidden, Message: "This user does not have access to this app"}
-	}
-	err = s.Unbind(&a)
-	if err != nil {
-		return err
-	}
-	fmt.Fprint(w, "success")
-	return nil
-}
+// func BindHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
+// 	var b bindJson
+// 	defer r.Body.Close()
+// 	body, err := ioutil.ReadAll(r.Body)
+// 	if err != nil {
+// 		return err
+// 	}
+// 	err = json.Unmarshal(body, &b)
+// 	if err != nil {
+// 		return err
+// 	}
+// 	s := Service{Name: b.Service}
+// 	err = s.Get()
+// 	if err != nil {
+// 		return &errors.Http{Code: http.StatusNotFound, Message: "Service not found"}
+// 	}
+// 	if !s.CheckUserAccess(u) {
+// 		return &errors.Http{Code: http.StatusForbidden, Message: "This user does not have access to this service"}
+// 	}
+// 	a := app.App{Name: b.App}
+// 	err = a.Get()
+// 	if err != nil {
+// 		return &errors.Http{Code: http.StatusNotFound, Message: "App not found"}
+// 	}
+// 	if !a.CheckUserAccess(u) {
+// 		return &errors.Http{Code: http.StatusForbidden, Message: "This user does not have access to this app"}
+// 	}
+// 	err = s.Bind(&a)
+// 	if err != nil {
+// 		return err
+// 	}
+// 	fmt.Fprint(w, "success")
+// 	return nil
+// }
+// 
+// func UnbindHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
+// 	var b bindJson
+// 	defer r.Body.Close()
+// 	body, err := ioutil.ReadAll(r.Body)
+// 	if err != nil {
+// 		return err
+// 	}
+// 	err = json.Unmarshal(body, &b)
+// 	if err != nil {
+// 		return err
+// 	}
+// 	s := Service{Name: b.Service}
+// 	err = s.Get()
+// 	if err != nil {
+// 		return &errors.Http{Code: http.StatusNotFound, Message: "Service not found"}
+// 	}
+// 	if !s.CheckUserAccess(u) {
+// 		return &errors.Http{Code: http.StatusForbidden, Message: "This user does not have access to this service"}
+// 	}
+// 	a := app.App{Name: b.App}
+// 	err = a.Get()
+// 	if err != nil {
+// 		return &errors.Http{Code: http.StatusNotFound, Message: "App not found"}
+// 	}
+// 	if !a.CheckUserAccess(u) {
+// 		return &errors.Http{Code: http.StatusForbidden, Message: "This user does not have access to this app"}
+// 	}
+// 	err = s.Unbind(&a)
+// 	if err != nil {
+// 		return err
+// 	}
+// 	fmt.Fprint(w, "success")
+// 	return nil
+// }
 
 func getServiceAndTeamOrError(serviceName string, teamName string, u *auth.User) (*Service, *auth.Team, error) {
 	service := &Service{Name: serviceName}
@@ -211,7 +209,7 @@ func GrantAccessToTeamHandler(w http.ResponseWriter, r *http.Request, u *auth.Us
 	if err != nil {
 		return &errors.Http{Code: http.StatusConflict, Message: err.Error()}
 	}
-	return db.Session.Services().Update(bson.M{"name": service.Name}, service)
+	return db.Session.Services().Update(bson.M{"_id": service.Name}, service)
 }
 
 func RevokeAccessFromTeamHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
@@ -227,5 +225,5 @@ func RevokeAccessFromTeamHandler(w http.ResponseWriter, r *http.Request, u *auth
 	if err != nil {
 		return &errors.Http{Code: http.StatusNotFound, Message: err.Error()}
 	}
-	return db.Session.Services().Update(bson.M{"name": service.Name}, service)
+	return db.Session.Services().Update(bson.M{"_id": service.Name}, service)
 }

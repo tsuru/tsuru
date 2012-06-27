@@ -35,11 +35,8 @@ func (s *ServiceSuite) TestGetServiceType(c *C) {
 
 func (s *ServiceSuite) TestCreateServiceType(c *C) {
 	s.createServiceType()
-	query := bson.M{}
+	query := bson.M{"_id": "Mysql", "charm": "mysql"}
 	result := ServiceType{}
-	query["name"] = "Mysql"
-	query["charm"] = "mysql"
-
 	err := db.Session.ServiceTypes().Find(query).One(&result)
 	c.Assert(err, IsNil)
 	c.Assert(result.Name, Equals, "Mysql")
@@ -49,11 +46,7 @@ func (s *ServiceSuite) TestCreateServiceType(c *C) {
 func (s *ServiceSuite) TestDeleteServiceType(c *C) {
 	s.createServiceType()
 	s.serviceType.Delete()
-
-	query := bson.M{}
-	query["name"] = "Mysql"
-	query["charm"] = "mysql"
-
+	query := bson.M{"_id": "Mysql", "charm": "mysql"}
 	qtd, err := db.Session.ServiceTypes().Find(query).Count()
 	c.Assert(err, IsNil)
 	c.Assert(qtd, Equals, 0)

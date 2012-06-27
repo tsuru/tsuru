@@ -35,13 +35,13 @@ var HasAccessTo Checker = &hasAccessToChecker{}
 func Test(t *testing.T) { TestingT(t) }
 
 type ServiceSuite struct {
-	app         *app.App
-	service     *Service
-	serviceType *ServiceType
-	serviceApp  *ServiceApp
-	team        *auth.Team
-	user        *auth.User
-	tmpdir      string
+	app             *app.App
+	service         *Service
+	serviceType     *ServiceType
+	serviceInstance *ServiceInstance
+	team            *auth.Team
+	user            *auth.User
+	tmpdir          string
 }
 
 var _ = Suite(&ServiceSuite{})
@@ -69,7 +69,7 @@ func (s *ServiceSuite) TearDownTest(c *C) {
 	_, err := db.Session.Services().RemoveAll(nil)
 	c.Assert(err, IsNil)
 
-	_, err = db.Session.ServiceApps().RemoveAll(nil)
+	_, err = db.Session.ServiceInstances().RemoveAll(nil)
 	c.Assert(err, IsNil)
 
 	_, err = db.Session.ServiceTypes().RemoveAll(nil)

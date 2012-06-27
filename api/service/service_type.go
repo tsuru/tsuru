@@ -6,8 +6,7 @@ import (
 )
 
 type ServiceType struct {
-	Id    bson.ObjectId `bson:"_id"`
-	Name  string
+	Name  string `bson:"_id"`
 	Charm string
 }
 
@@ -15,10 +14,8 @@ func (st *ServiceType) Get() error {
 	query := bson.M{}
 
 	switch {
-	case st.Id != "":
-		query["_id"] = st.Id
 	case st.Name != "":
-		query["name"] = st.Name
+		query["_id"] = st.Name
 	case st.Charm != "":
 		query["charm"] = st.Charm
 	}
@@ -33,7 +30,6 @@ func (s *ServiceType) All() []ServiceType {
 }
 
 func (st *ServiceType) Create() error {
-	st.Id = bson.NewObjectId()
 	return db.Session.ServiceTypes().Insert(st)
 }
 
