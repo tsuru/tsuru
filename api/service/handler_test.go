@@ -14,14 +14,21 @@ import (
 	"strings"
 )
 
-func (s *ServiceSuite) TestCreateHandlerGetAllTeamsFromTheUser(c *C) {
+func makeRequest(c *C) (*httptest.ResponseRecorder, *http.Request) {
 	b := strings.NewReader(`{"name":"some_service", "type":"mysql"}`)
 	request, err := http.NewRequest("POST", "/services", b)
 	c.Assert(err, IsNil)
-
 	request.Header.Set("Content-Type", "application/json")
 	recorder := httptest.NewRecorder()
-	err = CreateHandler(recorder, request, s.user)
+	return recorder, request
+}
+
+func (s *ServiceSuite) TestCreateHandlerSavesEndpointServiceProperty(c *C) {
+}
+
+func (s *ServiceSuite) TestCreateHandlerGetAllTeamsFromTheUser(c *C) {
+	recorder, request := makeRequest(c)
+	err := CreateHandler(recorder, request, s.user)
 	c.Assert(err, IsNil)
 	c.Assert(recorder.Body.String(), Equals, "success")
 	c.Assert(recorder.Code, Equals, 200)
@@ -32,7 +39,6 @@ func (s *ServiceSuite) TestCreateHandlerGetAllTeamsFromTheUser(c *C) {
 	err = db.Session.Services().Find(query).One(&obtainedService)
 	c.Assert(err, IsNil)
 	c.Assert(obtainedService.Name, Equals, "some_service")
-	c.Assert(obtainedService.Name, Not(Equals), "")
 	c.Assert(*s.team, HasAccessTo, obtainedService)
 }
 
