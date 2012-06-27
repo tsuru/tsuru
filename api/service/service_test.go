@@ -53,7 +53,7 @@ func (s *ServiceSuite) TestCreateService(c *C) {
 	c.Assert(se.ServiceTypeId, Equals, s.serviceType.Id)
 	c.Assert(se.Name, Equals, s.service.Name)
 	strOut := strings.Replace(w.String(), "\n", "", -1)
-	c.Assert(strOut, Matches, ".*deploy --repository=/home/charms mysql my_service")
+	c.Assert(strOut, Matches, ".*deploy --repository=/home/charms mysql my_service.*")
 }
 
 func (s *ServiceSuite) TestDeleteService(c *C) {
