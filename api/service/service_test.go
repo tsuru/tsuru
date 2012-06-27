@@ -33,15 +33,17 @@ func (s *ServiceSuite) TestAllServices(c *C) {
 }
 
 func (s *ServiceSuite) TestCreateService(c *C) {
-	s.createService()
 	endpt := map[string]string{
 		"production": "somehost.com",
 		"test":       "test.somehost.com",
 	}
-	se := Service{Name: s.service.Name, Endpoint: endpt}
+	service := &Service{Name: "my_service", Endpoint: endpt}
+	service.Create()
+	se := Service{Name: service.Name}
 	se.Get()
 	c.Assert(se.Name, Equals, s.service.Name)
-	c.Assert(endpt, Equals, se.Endpoint)
+	c.Assert(endpt["production"], Equals, se.Endpoint["production"])
+	c.Assert(endpt["test"], Equals, se.Endpoint["test"])
 }
 
 func (s *ServiceSuite) TestDeleteService(c *C) {
