@@ -1,4 +1,4 @@
 id: mysqlapi
 endpoint:
-  production: mysqlapi.com
+    production: mysqlapi.com
     test: localhost:8000

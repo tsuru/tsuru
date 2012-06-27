@@ -5,7 +5,6 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
-	"os"
 	"strings"
 )
 
@@ -38,13 +37,11 @@ func (c *ServiceCreate) Info() *cmd.Info {
 
 func (c *ServiceCreate) Run(context *cmd.Context, client cmd.Doer) error {
 	manifest := context.Args[0]
-	f, err := os.Open(manifest)
+	url := cmd.GetUrl("/services")
+	b, err := ioutil.ReadFile(manifest)
 	if err != nil {
 		return err
 	}
-	url := cmd.GetUrl("/service")
-	var b []byte
-	f.Read(b)
 	body := strings.NewReader(string(b))
 	request, err := http.NewRequest("POST", url, body)
 	if err != nil {
