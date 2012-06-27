@@ -1,6 +1,7 @@
 package service
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"github.com/timeredbull/tsuru/api/auth"
@@ -11,11 +12,15 @@ import (
 	. "launchpad.net/gocheck"
 	"net/http"
 	"net/http/httptest"
-	"strings"
 )
 
 func makeRequest(c *C) (*httptest.ResponseRecorder, *http.Request) {
-	b := strings.NewReader(`{"name":"some_service", "type":"mysql"}`)
+	manifest := `id: some_service
+endpoint:
+    production: someservice.com
+    test: test.someservice.com
+`
+	b := bytes.NewBufferString(manifest)
 	request, err := http.NewRequest("POST", "/services", b)
 	c.Assert(err, IsNil)
 	request.Header.Set("Content-Type", "application/json")
@@ -23,8 +28,21 @@ func makeRequest(c *C) (*httptest.ResponseRecorder, *http.Request) {
 	return recorder, request
 }
 
-func (s *ServiceSuite) TestCreateHandlerSavesEndpointServiceProperty(c *C) {
+func (s *ServiceSuite) TestCreateHandlerSavesNameFromManifestId(c *C) {
+	recorder, request := makeRequest(c)
+	err := CreateHandler(recorder, request, s.user)
+	c.Assert(err, IsNil)
+	query := bson.M{"_id": "some_service"}
+	var rService Service
+	err = db.Session.Services().Find(query).One(&rService)
+	c.Assert(err, IsNil)
+	c.Assert(rService.Name, Equals, "some_service")
+}
 
+func (s *ServiceSuite) TestCreateHandlerSavesEndpointServiceProperty(c *C) {
+	recorder, request := makeRequest(c)
+	err := CreateHandler(recorder, request, s.user)
+	c.Assert(err, IsNil)
 }
 
 func (s *ServiceSuite) TestCreateHandlerGetAllTeamsFromTheUser(c *C) {
@@ -33,14 +51,12 @@ func (s *ServiceSuite) TestCreateHandlerGetAllTeamsFromTheUser(c *C) {
 	c.Assert(err, IsNil)
 	c.Assert(recorder.Body.String(), Equals, "success")
 	c.Assert(recorder.Code, Equals, 200)
-
 	query := bson.M{"_id": "some_service"}
-	var obtainedService Service
-
-	err = db.Session.Services().Find(query).One(&obtainedService)
+	var rService Service
+	err = db.Session.Services().Find(query).One(&rService)
 	c.Assert(err, IsNil)
-	c.Assert(obtainedService.Name, Equals, "some_service")
-	c.Assert(*s.team, HasAccessTo, obtainedService)
+	c.Assert(rService.Name, Equals, "some_service")
+	c.Assert(*s.team, HasAccessTo, rService)
 }
 
 func (s *ServiceSuite) TestCreateHandlerReturnsForbiddenIfTheUserIsNotMemberOfAnyTeam(c *C) {

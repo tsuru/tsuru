@@ -9,12 +9,13 @@ import (
 	"github.com/timeredbull/tsuru/errors"
 	"io/ioutil"
 	"labix.org/v2/mgo/bson"
+	"launchpad.net/goyaml"
 	"net/http"
 )
 
-type serviceJson struct {
-	Type string
-	Name string
+type serviceYaml struct {
+	Id       string
+	Endpoint map[string]string
 }
 
 type bindJson struct {
@@ -47,13 +48,13 @@ func ServicesHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error
 }
 
 func CreateHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
-	var sj serviceJson
 	defer r.Body.Close()
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		return err
 	}
-	err = json.Unmarshal(body, &sj)
+	var sy serviceYaml
+	err = goyaml.Unmarshal(body, &sy)
 	if err != nil {
 		return err
 	}
@@ -64,8 +65,9 @@ func CreateHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 		return &errors.Http{Code: http.StatusForbidden, Message: msg}
 	}
 	s := Service{
-		Name:  sj.Name,
-		Teams: teams,
+		Name:     sy.Id,
+		Endpoint: sy.Endpoint,
+		Teams:    teams,
 	}
 	s.Create()
 	fmt.Fprint(w, "success")
