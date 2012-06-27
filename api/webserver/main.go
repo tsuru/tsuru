@@ -47,7 +47,6 @@ func main() {
 
 	m.Post("/services", AuthorizationRequiredHandler(service.CreateHandler))
 	m.Get("/services", AuthorizationRequiredHandler(service.ServicesHandler))
-	m.Get("/services/types", Handler(service.ServiceTypesHandler))
 	m.Del("/services/:name", AuthorizationRequiredHandler(service.DeleteHandler))
 	// m.Post("/services/bind", AuthorizationRequiredHandler(service.BindHandler))
 	// m.Post("/services/unbind", AuthorizationRequiredHandler(service.UnbindHandler))

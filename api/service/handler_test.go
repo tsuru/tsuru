@@ -15,10 +15,6 @@ import (
 )
 
 func (s *ServiceSuite) TestCreateHandlerGetAllTeamsFromTheUser(c *C) {
-	st := ServiceType{Name: "Mysql", Charm: "mysql"}
-	st.Create()
-	defer st.Delete()
-
 	b := strings.NewReader(`{"name":"some_service", "type":"mysql"}`)
 	request, err := http.NewRequest("POST", "/services", b)
 	c.Assert(err, IsNil)
@@ -36,7 +32,6 @@ func (s *ServiceSuite) TestCreateHandlerGetAllTeamsFromTheUser(c *C) {
 	err = db.Session.Services().Find(query).One(&obtainedService)
 	c.Assert(err, IsNil)
 	c.Assert(obtainedService.Name, Equals, "some_service")
-	c.Assert(obtainedService.ServiceTypeName, Not(Equals), 0)
 	c.Assert(obtainedService.Name, Not(Equals), "")
 	c.Assert(*s.team, HasAccessTo, obtainedService)
 }
@@ -45,10 +40,6 @@ func (s *ServiceSuite) TestCreateHandlerReturnsForbiddenIfTheUserIsNotMemberOfAn
 	u := &auth.User{Email: "enforce@queensryche.com", Password: "123"}
 	u.Create()
 	defer db.Session.Users().RemoveAll(bson.M{"email": u.Email})
-	st := ServiceType{Name: "Mysql", Charm: "mysql"}
-	st.Create()
-	defer st.Delete()
-
 	b := strings.NewReader(`{"name":"some_service", "type":"mysql"}`)
 	request, err := http.NewRequest("POST", "/services", b)
 	c.Assert(err, IsNil)
@@ -64,11 +55,8 @@ func (s *ServiceSuite) TestCreateHandlerReturnsForbiddenIfTheUserIsNotMemberOfAn
 }
 
 func (s *ServiceSuite) TestServicesHandlerListsOnlyServicesThatTheUserHasAccess(c *C) {
-	st := ServiceType{Name: "Mysql", Charm: "mysql"}
-	st.Create()
-	defer st.Delete()
-	se := Service{ServiceTypeName: st.Name, Name: "myService", Teams: []auth.Team{*s.team}}
-	se2 := Service{ServiceTypeName: st.Name, Name: "myOtherService"}
+	se := Service{Name: "myService", Teams: []auth.Team{*s.team}}
+	se2 := Service{Name: "myOtherService"}
 	err := se.Create()
 	c.Assert(err, IsNil)
 	defer se.Delete()
@@ -93,37 +81,10 @@ func (s *ServiceSuite) TestServicesHandlerListsOnlyServicesThatTheUserHasAccess(
 	c.Assert(len(results), Equals, 1)
 	c.Assert(results[0], FitsTypeOf, serviceT{})
 	c.Assert(results[0].Name, Not(Equals), "")
-	c.Assert(results[0].Type, FitsTypeOf, &ServiceType{})
-	c.Assert(results[0].Type.Name, Not(Equals), 0)
-}
-
-func (s *ServiceSuite) TestServiceTypesHandler(c *C) {
-	st := ServiceType{Name: "Mysql", Charm: "mysql"}
-	st.Create()
-	defer st.Delete()
-
-	request, err := http.NewRequest("GET", "/services/types", nil)
-	c.Assert(err, IsNil)
-
-	recorder := httptest.NewRecorder()
-	err = ServiceTypesHandler(recorder, request)
-	c.Assert(err, IsNil)
-	c.Assert(recorder.Code, Equals, 200)
-
-	body, err := ioutil.ReadAll(recorder.Body)
-	c.Assert(err, IsNil)
-
-	var results []ServiceType
-	err = json.Unmarshal(body, &results)
-	c.Assert(err, IsNil)
-	c.Assert(results[0].Name, Not(Equals), 0)
 }
 
 func (s *ServiceSuite) TestDeleteHandler(c *C) {
-	st := ServiceType{Name: "Mysql", Charm: "mysql"}
-	st.Create()
-	defer st.Delete()
-	se := Service{ServiceTypeName: st.Name, Name: "Mysql", Teams: []auth.Team{*s.team}}
+	se := Service{Name: "Mysql", Teams: []auth.Team{*s.team}}
 	se.Create()
 	defer se.Delete()
 	request, err := http.NewRequest("DELETE", fmt.Sprintf("/services/%s?:name=%s", se.Name, se.Name), nil)
@@ -151,10 +112,7 @@ func (s *ServiceSuite) TestDeleteHandlerReturns404(c *C) {
 }
 
 func (s *ServiceSuite) TestDeleteHandlerReturns403IfTheUserDoesNotHaveAccessToTheService(c *C) {
-	st := ServiceType{Name: "Mysql", Charm: "mysql"}
-	st.Create()
-	defer st.Delete()
-	se := Service{ServiceTypeName: st.Name, Name: "Mysql"}
+	se := Service{Name: "Mysql"}
 	se.Create()
 	defer se.Delete()
 	request, err := http.NewRequest("DELETE", fmt.Sprintf("/services/%s?:name=%s", se.Name, se.Name), nil)
@@ -376,12 +334,8 @@ func (s *ServiceSuite) TestGrantAccessToTeam(c *C) {
 	t := &auth.Team{Name: "blaaaa"}
 	db.Session.Teams().Insert(t)
 	defer db.Session.Teams().Remove(bson.M{"name": t.Name})
-	st := ServiceType{Name: "Mysql", Charm: "mysql"}
-	err := st.Create()
-	c.Assert(err, IsNil)
-	defer st.Delete()
-	se := Service{ServiceTypeName: st.Name, Name: "my_service", Teams: []auth.Team{*s.team}}
-	err = se.Create()
+	se := Service{Name: "my_service", Teams: []auth.Team{*s.team}}
+	err := se.Create()
 	defer se.Delete()
 	c.Assert(err, IsNil)
 	url := fmt.Sprintf("/services/%s/%s?:service=%s&:team=%s", se.Name, t.Name, se.Name, t.Name)
@@ -409,12 +363,8 @@ func (s *ServiceSuite) TestGrantAccesToTeamReturnNotFoundIfTheServiceDoesNotExis
 }
 
 func (s *ServiceSuite) TestGrantAccessToTeamReturnForbiddenIfTheGivenUserDoesNotHaveAccessToTheService(c *C) {
-	st := ServiceType{Name: "Mysql", Charm: "mysql"}
-	err := st.Create()
-	c.Assert(err, IsNil)
-	defer st.Delete()
-	se := Service{ServiceTypeName: st.Name, Name: "my_service"}
-	err = se.Create()
+	se := Service{Name: "my_service"}
+	err := se.Create()
 	c.Assert(err, IsNil)
 	defer se.Delete()
 	url := fmt.Sprintf("/services/%s/%s?:service=%s&:team=%s", se.Name, s.team.Name, se.Name, s.team.Name)
@@ -430,12 +380,8 @@ func (s *ServiceSuite) TestGrantAccessToTeamReturnForbiddenIfTheGivenUserDoesNot
 }
 
 func (s *ServiceSuite) TestGrantAccessToTeamReturnNotFoundIfTheTeamDoesNotExist(c *C) {
-	st := ServiceType{Name: "Mysql", Charm: "mysql"}
-	err := st.Create()
-	c.Assert(err, IsNil)
-	defer st.Delete()
-	se := Service{ServiceTypeName: st.Name, Name: "my_service", Teams: []auth.Team{*s.team}}
-	err = se.Create()
+	se := Service{Name: "my_service", Teams: []auth.Team{*s.team}}
+	err := se.Create()
 	c.Assert(err, IsNil)
 	defer se.Delete()
 	url := fmt.Sprintf("/services/%s/nonono?:service=%s&:team=nonono", se.Name, se.Name)
@@ -451,12 +397,8 @@ func (s *ServiceSuite) TestGrantAccessToTeamReturnNotFoundIfTheTeamDoesNotExist(
 }
 
 func (s *ServiceSuite) TestGrantAccessToTeamReturnConflictIfTheTeamAlreadyHasAccessToTheService(c *C) {
-	st := ServiceType{Name: "Mysql", Charm: "mysql"}
-	err := st.Create()
-	c.Assert(err, IsNil)
-	defer st.Delete()
-	se := Service{ServiceTypeName: st.Name, Name: "my_service", Teams: []auth.Team{*s.team}}
-	err = se.Create()
+	se := Service{Name: "my_service", Teams: []auth.Team{*s.team}}
+	err := se.Create()
 	defer se.Delete()
 	c.Assert(err, IsNil)
 	url := fmt.Sprintf("/services/%s/%s?:service=%s&:team=%s", se.Name, s.team.Name, se.Name, s.team.Name)
@@ -472,12 +414,8 @@ func (s *ServiceSuite) TestGrantAccessToTeamReturnConflictIfTheTeamAlreadyHasAcc
 
 func (s *ServiceSuite) TestRevokeAccessFromTeamRemovesTeamFromService(c *C) {
 	t := &auth.Team{Name: "alle-da"}
-	st := ServiceType{Name: "Mysql", Charm: "mysql"}
-	err := st.Create()
-	c.Assert(err, IsNil)
-	defer st.Delete()
-	se := Service{ServiceTypeName: st.Name, Name: "my_service", Teams: []auth.Team{*s.team, *t}}
-	err = se.Create()
+	se := Service{Name: "my_service", Teams: []auth.Team{*s.team, *t}}
+	err := se.Create()
 	c.Assert(err, IsNil)
 	defer se.Delete()
 	url := fmt.Sprintf("/services/%s/%s?:service=%s&:team=%s", se.Name, s.team.Name, se.Name, s.team.Name)
@@ -506,12 +444,8 @@ func (s *ServiceSuite) TestRevokeAccessFromTeamReturnsNotFoundIfTheServiceDoesNo
 
 func (s *ServiceSuite) TestRevokeAccesFromTeamReturnsForbiddenIfTheGivenUserDoesNotHasAccessToTheService(c *C) {
 	t := &auth.Team{Name: "alle-da"}
-	st := ServiceType{Name: "Mysql", Charm: "mysql"}
-	err := st.Create()
-	c.Assert(err, IsNil)
-	defer st.Delete()
-	se := Service{ServiceTypeName: st.Name, Name: "my_service", Teams: []auth.Team{*t}}
-	err = se.Create()
+	se := Service{Name: "my_service", Teams: []auth.Team{*t}}
+	err := se.Create()
 	c.Assert(err, IsNil)
 	defer se.Delete()
 	url := fmt.Sprintf("/services/%s/%s?:service=%s&:team=%s", se.Name, t.Name, se.Name, t.Name)
@@ -527,12 +461,8 @@ func (s *ServiceSuite) TestRevokeAccesFromTeamReturnsForbiddenIfTheGivenUserDoes
 }
 
 func (s *ServiceSuite) TestRevokeAccessFromTeamReturnsNotFoundIfTheTeamDoesNotExist(c *C) {
-	st := ServiceType{Name: "Mysql", Charm: "mysql"}
-	err := st.Create()
-	c.Assert(err, IsNil)
-	defer st.Delete()
-	se := Service{ServiceTypeName: st.Name, Name: "my_service", Teams: []auth.Team{*s.team}}
-	err = se.Create()
+	se := Service{Name: "my_service", Teams: []auth.Team{*s.team}}
+	err := se.Create()
 	c.Assert(err, IsNil)
 	defer se.Delete()
 	url := fmt.Sprintf("/services/%s/nonono?:service=%s&:team=nonono", se.Name, se.Name)
@@ -548,12 +478,8 @@ func (s *ServiceSuite) TestRevokeAccessFromTeamReturnsNotFoundIfTheTeamDoesNotEx
 }
 
 func (s *ServiceSuite) TestRevokeAccessFromTeamReturnsForbiddenIfTheTeamIsTheOnlyWithAccessToTheService(c *C) {
-	st := ServiceType{Name: "Mysql", Charm: "mysql"}
-	err := st.Create()
-	c.Assert(err, IsNil)
-	defer st.Delete()
-	se := Service{ServiceTypeName: st.Name, Name: "my_service", Teams: []auth.Team{*s.team}}
-	err = se.Create()
+	se := Service{Name: "my_service", Teams: []auth.Team{*s.team}}
+	err := se.Create()
 	c.Assert(err, IsNil)
 	defer se.Delete()
 	url := fmt.Sprintf("/services/%s/%s?:service=%s&:team=%s", se.Name, s.team.Name, se.Name, s.team.Name)
@@ -572,12 +498,8 @@ func (s *ServiceSuite) TestRevokeAccessFromTeamReturnNotFoundIfTheTeamDoesNotHas
 	t := &auth.Team{Name: "Rammlied"}
 	db.Session.Teams().Insert(t)
 	defer db.Session.Teams().RemoveAll(bson.M{"name": t.Name})
-	st := ServiceType{Name: "Mysql", Charm: "mysql"}
-	err := st.Create()
-	c.Assert(err, IsNil)
-	defer st.Delete()
-	se := Service{ServiceTypeName: st.Name, Name: "my_service", Teams: []auth.Team{*s.team, *s.team}}
-	err = se.Create()
+	se := Service{Name: "my_service", Teams: []auth.Team{*s.team, *s.team}}
+	err := se.Create()
 	c.Assert(err, IsNil)
 	defer se.Delete()
 	url := fmt.Sprintf("/services/%s/%s?:service=%s&:team=%s", se.Name, t.Name, se.Name, t.Name)

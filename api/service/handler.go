@@ -24,7 +24,6 @@ type bindJson struct {
 
 // a service with a pointer to it's type
 type serviceT struct {
-	Type *ServiceType
 	Name string
 }
 
@@ -35,28 +34,7 @@ func ServicesHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error
 	var sT serviceT
 	for i, s := range services {
 		sT = serviceT{
-			Type: s.ServiceType(),
 			Name: s.Name,
-		}
-		results[i] = sT
-	}
-	b, err := json.Marshal(results)
-	if err != nil {
-		return err
-	}
-	fmt.Fprint(w, bytes.NewBuffer(b).String())
-	return nil
-}
-
-func ServiceTypesHandler(w http.ResponseWriter, r *http.Request) error {
-	var s ServiceType
-	sTypes := s.All()
-	results := make([]ServiceType, len(sTypes))
-	var sT ServiceType
-	for i, s := range sTypes {
-		sT = ServiceType{
-			Charm: s.Charm,
-			Name:  s.Name,
 		}
 		results[i] = sT
 	}
@@ -79,8 +57,6 @@ func CreateHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	if err != nil {
 		return err
 	}
-	st := ServiceType{Charm: sj.Type}
-	st.Get()
 	var teams []auth.Team
 	db.Session.Teams().Find(bson.M{"users.email": u.Email}).All(&teams)
 	if len(teams) == 0 {
@@ -88,9 +64,8 @@ func CreateHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 		return &errors.Http{Code: http.StatusForbidden, Message: msg}
 	}
 	s := Service{
-		Name:            sj.Name,
-		ServiceTypeName: st.Name,
-		Teams:           teams,
+		Name:  sj.Name,
+		Teams: teams,
 	}
 	s.Create()
 	fmt.Fprint(w, "success")

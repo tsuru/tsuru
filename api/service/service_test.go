@@ -1,19 +1,12 @@
 package service
 
 import (
-	"bytes"
-	"github.com/timeredbull/commandmocker"
 	"github.com/timeredbull/tsuru/db"
-	"github.com/timeredbull/tsuru/log"
 	. "launchpad.net/gocheck"
-	stdlog "log"
-	"strings"
 )
 
 func (s *ServiceSuite) createService() {
-	s.serviceType = &ServiceType{Name: "Mysql", Charm: "mysql"}
-	s.serviceType.Create()
-	s.service = &Service{ServiceTypeName: s.serviceType.Name, Name: "my_service"}
+	s.service = &Service{Name: "my_service"}
 	s.service.Create()
 }
 
@@ -22,15 +15,11 @@ func (s *ServiceSuite) TestGetService(c *C) {
 	anotherService := Service{Name: s.service.Name}
 	anotherService.Get()
 	c.Assert(anotherService.Name, Equals, s.service.Name)
-	c.Assert(anotherService.ServiceTypeName, Equals, s.service.ServiceTypeName)
 }
 
 func (s *ServiceSuite) TestAllServices(c *C) {
-	st := ServiceType{Name: "mysql", Charm: "mysql"}
-	st.Create()
-	defer st.Delete()
-	se := Service{ServiceTypeName: st.Name, Name: "myService"}
-	se2 := Service{ServiceTypeName: st.Name, Name: "myOtherService"}
+	se := Service{Name: "myService"}
+	se2 := Service{Name: "myOtherService"}
 	err := se.Create()
 	c.Assert(err, IsNil)
 	err = se2.Create()
@@ -44,19 +33,10 @@ func (s *ServiceSuite) TestAllServices(c *C) {
 }
 
 func (s *ServiceSuite) TestCreateService(c *C) {
-	w := bytes.NewBuffer([]byte{})
-	l := stdlog.New(w, "", stdlog.LstdFlags)
-	log.Target = l
-	dir, err := commandmocker.Add("juju", "$*")
-	c.Assert(err, IsNil)
-	defer commandmocker.Remove(dir)
 	s.createService()
 	se := Service{Name: s.service.Name}
 	se.Get()
-	c.Assert(se.ServiceTypeName, Equals, s.serviceType.Name)
 	c.Assert(se.Name, Equals, s.service.Name)
-	strOut := strings.Replace(w.String(), "\n", "", -1)
-	c.Assert(strOut, Matches, ".*deploy --repository=/home/charms mysql my_service.*")
 }
 
 func (s *ServiceSuite) TestDeleteService(c *C) {
@@ -65,24 +45,6 @@ func (s *ServiceSuite) TestDeleteService(c *C) {
 	qtd, err := db.Session.Services().Find(nil).Count()
 	c.Assert(err, IsNil)
 	c.Assert(qtd, Equals, 0)
-}
-
-func (s *ServiceSuite) TestRetrieveAssociateServiceType(c *C) {
-	serviceType := ServiceType{Name: "Mysql", Charm: "mysql"}
-	serviceType.Create()
-	defer serviceType.Delete()
-
-	service := &Service{
-		ServiceTypeName: serviceType.Name,
-		Name:            "my_service",
-	}
-	service.Create()
-	defer service.Delete()
-	retrievedServiceType := service.ServiceType()
-
-	c.Assert(serviceType.Name, Equals, retrievedServiceType.Name)
-	c.Assert(serviceType.Name, Equals, retrievedServiceType.Name)
-	c.Assert(serviceType.Charm, Equals, retrievedServiceType.Charm)
 }
 
 // func (s *ServiceSuite) TestBindService(c *C) {

@@ -37,7 +37,6 @@ func Test(t *testing.T) { TestingT(t) }
 type ServiceSuite struct {
 	app             *app.App
 	service         *Service
-	serviceType     *ServiceType
 	serviceInstance *ServiceInstance
 	team            *auth.Team
 	user            *auth.User
@@ -70,9 +69,6 @@ func (s *ServiceSuite) TearDownTest(c *C) {
 	c.Assert(err, IsNil)
 
 	_, err = db.Session.ServiceInstances().RemoveAll(nil)
-	c.Assert(err, IsNil)
-
-	_, err = db.Session.ServiceTypes().RemoveAll(nil)
 	c.Assert(err, IsNil)
 
 	var apps []app.App
