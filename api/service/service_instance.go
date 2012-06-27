@@ -15,28 +15,15 @@ type ServiceInstance struct {
 func (si *ServiceInstance) Create() error {
 	err := db.Session.ServiceInstances().Insert(si)
 	return err
-	// s := si.Service()
-	// apps := si.AllApps()
-	// appUnit := unit.Unit{Name: apps[0].Name}
-	// serviceUnit := unit.Unit{Name: s.Name}
-	// appUnit.AddRelation(&serviceUnit)
-	/* return nil */
 }
 
 func (si *ServiceInstance) Delete() error {
 	doc := bson.M{"_id": si.Name, "apps": si.Apps}
 	err := db.Session.ServiceInstances().Remove(doc)
 	return err
-	// s := si.Service()
-	// a := si.AllApps()
-	// appUnit := unit.Unit{Name: a.Name}
-	// serviceUnit := unit.Unit{Name: s.Name}
-	// appUnit.RemoveRelation(&serviceUnit)
-	/* return nil */
 }
 
 func (si *ServiceInstance) Service() *Service {
-	//s := &Service{"_id": si.ServiceName}
 	s := &Service{}
 	db.Session.Services().Find(bson.M{"_id": si.ServiceName}).One(&s)
 	return s
