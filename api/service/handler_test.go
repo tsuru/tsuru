@@ -12,6 +12,7 @@ import (
 	. "launchpad.net/gocheck"
 	"net/http"
 	"net/http/httptest"
+	"path/filepath"
 )
 
 func makeRequest(c *C) (*httptest.ResponseRecorder, *http.Request) {
@@ -43,6 +44,31 @@ func (s *ServiceSuite) TestCreateHandlerSavesEndpointServiceProperty(c *C) {
 	recorder, request := makeRequest(c)
 	err := CreateHandler(recorder, request, s.user)
 	c.Assert(err, IsNil)
+	query := bson.M{"_id": "some_service"}
+	var rService Service
+	err = db.Session.Services().Find(query).One(&rService)
+	c.Assert(err, IsNil)
+	c.Assert(rService.Endpoint["production"], Equals, "someservice.com")
+	c.Assert(rService.Endpoint["test"], Equals, "test.someservice.com")
+}
+
+func (s *ServiceSuite) TestCreateHandlerWithContentOfRealYaml(c *C) {
+	p, err := filepath.Abs("testdata/manifest.yml")
+	manifest, err := ioutil.ReadFile(p)
+	c.Assert(err, IsNil)
+	b := bytes.NewBuffer(manifest)
+	request, err := http.NewRequest("POST", "/services", b)
+	c.Assert(err, IsNil)
+	request.Header.Set("Content-Type", "application/json")
+	recorder := httptest.NewRecorder()
+	err = CreateHandler(recorder, request, s.user)
+	c.Assert(err, IsNil)
+	query := bson.M{"_id": "mysqlapi"}
+	var rService Service
+	err = db.Session.Services().Find(query).One(&rService)
+	c.Assert(err, IsNil)
+	c.Assert(rService.Endpoint["production"], Equals, "mysqlapi.com")
+	c.Assert(rService.Endpoint["test"], Equals, "localhost:8000")
 }
 
 func (s *ServiceSuite) TestCreateHandlerGetAllTeamsFromTheUser(c *C) {
