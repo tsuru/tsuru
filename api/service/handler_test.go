@@ -71,6 +71,16 @@ func (s *ServiceSuite) TestCreateHandlerWithContentOfRealYaml(c *C) {
 	c.Assert(rService.Endpoint["test"], Equals, "localhost:8000")
 }
 
+func (s *ServiceSuite) TestCreateHandlerShouldReturnErrorWhenNameExists(c *C) {
+	recorder, request := makeRequest(c)
+	err := CreateHandler(recorder, request, s.user)
+	c.Assert(err, IsNil)
+	recorder, request = makeRequest(c)
+	err = CreateHandler(recorder, request, s.user)
+	c.Assert(err, Not(IsNil))
+	c.Assert(err, ErrorMatches, "^Service with name some_service already exists.$")
+}
+
 func (s *ServiceSuite) TestCreateHandlerGetAllTeamsFromTheUser(c *C) {
 	recorder, request := makeRequest(c)
 	err := CreateHandler(recorder, request, s.user)

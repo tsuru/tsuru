@@ -64,6 +64,14 @@ func CreateHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 		msg := "In order to create a service, you should be member of at least one team"
 		return &errors.Http{Code: http.StatusForbidden, Message: msg}
 	}
+	n, err := db.Session.Services().Find(bson.M{"_id": sy.Id}).Count()
+	if err != nil {
+		return &errors.Http{Code: http.StatusInternalServerError, Message: err.Error()}
+	}
+	if n != 0 {
+		msg := fmt.Sprintf("Service with name %s already exists.", sy.Id)
+		return &errors.Http{Code: http.StatusInternalServerError, Message: msg}
+	}
 	s := Service{
 		Name:     sy.Id,
 		Endpoint: sy.Endpoint,
