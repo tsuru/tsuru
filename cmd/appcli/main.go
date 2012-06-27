@@ -3,13 +3,7 @@ package main
 import (
 	"github.com/timeredbull/tsuru/cmd"
 	"os"
-	"strings"
 )
-
-func extractProgramName(path string) string {
-	parts := strings.Split(path, "/")
-	return parts[len(parts)-1]
-}
 
 func buildManager(name string) cmd.Manager {
 	m := cmd.NewManager(name, os.Stdout, os.Stderr)
@@ -26,7 +20,7 @@ func buildManager(name string) cmd.Manager {
 }
 
 func main() {
-	name := extractProgramName(os.Args[0])
+	name := cmd.ExtractProgramName(os.Args[0])
 	manager := buildManager(name)
 	args := os.Args[1:]
 	manager.Run(args)

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 )
 
 type Manager struct {
@@ -133,4 +134,9 @@ func (c *Help) Run(context *Context, client Doer) error {
 	}
 	io.WriteString(context.Stdout, output)
 	return nil
+}
+
+func ExtractProgramName(path string) string {
+	parts := strings.Split(path, "/")
+	return parts[len(parts)-1]
 }
