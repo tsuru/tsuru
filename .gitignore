@@ -5,4 +5,5 @@ main
 collect
 websrv
 dist*
-cmd/cmd
+cmd/servicecli/servicecli
+cmd/appcli/appcli
