@@ -24,6 +24,7 @@ func makeRequest(c *C) (*httptest.ResponseRecorder, *http.Request) {
 }
 
 func (s *ServiceSuite) TestCreateHandlerSavesEndpointServiceProperty(c *C) {
+
 }
 
 func (s *ServiceSuite) TestCreateHandlerGetAllTeamsFromTheUser(c *C) {
@@ -46,13 +47,8 @@ func (s *ServiceSuite) TestCreateHandlerReturnsForbiddenIfTheUserIsNotMemberOfAn
 	u := &auth.User{Email: "enforce@queensryche.com", Password: "123"}
 	u.Create()
 	defer db.Session.Users().RemoveAll(bson.M{"email": u.Email})
-	b := strings.NewReader(`{"name":"some_service", "type":"mysql"}`)
-	request, err := http.NewRequest("POST", "/services", b)
-	c.Assert(err, IsNil)
-
-	request.Header.Set("Content-Type", "application/json")
-	recorder := httptest.NewRecorder()
-	err = CreateHandler(recorder, request, u)
+	recorder, request := makeRequest(c)
+	err := CreateHandler(recorder, request, u)
 	c.Assert(err, NotNil)
 	e, ok := err.(*errors.Http)
 	c.Assert(ok, Equals, true)
