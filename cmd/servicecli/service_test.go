@@ -33,7 +33,12 @@ func (s *S) TestServiceCreateInfo(c *C) {
 func (s *S) TestServiceCreateRun(c *C) {
 	result := "service someservice successfuly created"
 	args := []string{"testdata/manifest.yml"}
-	context := cmd.Context{[]string{}, args, manager.Stdout, manager.Stderr}
+	context := cmd.Context{
+		Cmds:   []string{},
+		Args:   args,
+		Stdout: manager.Stdout,
+		Stderr: manager.Stderr,
+	}
 	client := cmd.NewClient(&http.Client{Transport: &transport{msg: result, status: http.StatusOK}})
 	err := (&ServiceCreate{}).Run(&context, client)
 	c.Assert(err, IsNil)

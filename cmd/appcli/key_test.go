@@ -9,7 +9,12 @@ import (
 
 func (s *S) TestAddKey(c *C) {
 	expected := "Key successfully added!\n"
-	context := cmd.Context{[]string{}, []string{}, manager.Stdout, manager.Stderr}
+	context := cmd.Context{
+		Cmds:   []string{},
+		Args:   []string{},
+		Stdout: manager.Stdout,
+		Stderr: manager.Stderr,
+	}
 	client := cmd.NewClient(&http.Client{Transport: &transport{msg: "", status: http.StatusOK}})
 	command := AddKeyCommand{}
 	err := command.Run(&context, client)
@@ -19,7 +24,12 @@ func (s *S) TestAddKey(c *C) {
 
 func (s *S) TestRemoveKey(c *C) {
 	expected := "Key successfully removed!\n"
-	context := cmd.Context{[]string{}, []string{}, manager.Stdout, manager.Stderr}
+	context := cmd.Context{
+		Cmds:   []string{},
+		Args:   []string{},
+		Stdout: manager.Stdout,
+		Stderr: manager.Stderr,
+	}
 	client := cmd.NewClient(&http.Client{Transport: &transport{msg: "", status: http.StatusOK}})
 	command := RemoveKey{}
 	err := command.Run(&context, client)

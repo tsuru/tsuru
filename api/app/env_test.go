@@ -2,7 +2,6 @@ package app
 
 import (
 	"github.com/timeredbull/commandmocker"
-	"github.com/timeredbull/tsuru/api/auth"
 	. "launchpad.net/gocheck"
 )
 
@@ -10,7 +9,7 @@ func (s *S) TestRewriteEnvMessage(c *C) {
 	dir, err := commandmocker.Add("juju", output)
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(dir)
-	app := App{Name: "time", Teams: []auth.Team{s.team}}
+	app := App{Name: "time", Teams: []string{s.team.Name}}
 	msg := Message{
 		app:     &app,
 		success: make(chan bool),
@@ -28,7 +27,7 @@ func (s *S) TestDoesNotSendInTheSuccessChannelIfItIsNil(c *C) {
 	dir, err := commandmocker.Add("juju", output)
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(dir)
-	app := App{Name: "rainmaker", Teams: []auth.Team{s.team}}
+	app := App{Name: "rainmaker", Teams: []string{s.team.Name}}
 	err = app.Create()
 	c.Assert(err, IsNil)
 	msg := Message{

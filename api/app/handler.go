@@ -73,16 +73,33 @@ func AppDelete(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 		return err
 	}
 	app.Destroy()
-	for _, t := range app.Teams {
+	for _, t := range app.GetTeams() {
 		sendProjectChangeToGitosis(repository.RemoveProject, &t, &app)
 	}
 	fmt.Fprint(w, "success")
 	return nil
 }
 
+func getTeamNames(u *auth.User) (names []string, err error) {
+	var teams []auth.Team
+	err = db.Session.Teams().Find(bson.M{"users.email": u.Email}).All(&teams)
+	if err != nil {
+		return
+	}
+	names = make([]string, len(teams))
+	for i, team := range teams {
+		names[i] = team.Name
+	}
+	return
+}
+
 func AppList(w http.ResponseWriter, r *http.Request, u *auth.User) error {
+	teams, err := getTeamNames(u)
+	if err != nil {
+		return err
+	}
 	var apps []App
-	err := db.Session.Apps().Find(bson.M{"teams.users.email": u.Email}).All(&apps)
+	err = db.Session.Apps().Find(bson.M{"teams": teams}).All(&apps)
 	if err != nil {
 		return err
 	}
@@ -112,19 +129,21 @@ func AppInfo(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 }
 
 func createApp(app *App, u *auth.User) ([]byte, error) {
-	err := db.Session.Teams().Find(bson.M{"users.email": u.Email}).All(&app.Teams)
+	var teams []auth.Team
+	err := db.Session.Teams().Find(bson.M{"users.email": u.Email}).All(&teams)
 	if err != nil {
 		return nil, err
 	}
-	if len(app.Teams) < 1 {
+	if len(teams) < 1 {
 		msg := "In order to create an app, you should be member of at least one team"
 		return nil, &errors.Http{Code: http.StatusForbidden, Message: msg}
 	}
+	app.setTeams(teams)
 	err = app.Create()
 	if err != nil {
 		return nil, err
 	}
-	for _, t := range app.Teams {
+	for _, t := range teams {
 		sendProjectChangeToGitosis(repository.AddProject, &t, app)
 	}
 	msg := map[string]string{

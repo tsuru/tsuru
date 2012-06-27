@@ -43,7 +43,7 @@ type App struct {
 	Name      string
 	State     string
 	Units     []unit.Unit
-	Teams     []auth.Team
+	Teams     []string
 	Logs      []Log
 }
 
@@ -122,7 +122,7 @@ func (a *App) AddOrUpdateUnit(u *unit.Unit) {
 
 func (a *App) findTeam(team *auth.Team) int {
 	for i, t := range a.Teams {
-		if t.Name == team.Name {
+		if t == team.Name {
 			return i
 		}
 	}
@@ -137,7 +137,7 @@ func (a *App) GrantAccess(team *auth.Team) error {
 	if a.hasTeam(team) {
 		return errors.New("This team has already access to this app")
 	}
-	a.Teams = append(a.Teams, *team)
+	a.Teams = append(a.Teams, team.Name)
 	return nil
 }
 
@@ -152,8 +152,20 @@ func (a *App) RevokeAccess(team *auth.Team) error {
 	return nil
 }
 
+func (a *App) GetTeams() (teams []auth.Team) {
+	db.Session.Teams().Find(bson.M{"name": bson.M{"$in": a.Teams}}).All(&teams)
+	return
+}
+
+func (a *App) setTeams(teams []auth.Team) {
+	a.Teams = make([]string, len(teams))
+	for i, team := range teams {
+		a.Teams[i] = team.Name
+	}
+}
+
 func (a *App) CheckUserAccess(user *auth.User) bool {
-	for _, team := range a.Teams {
+	for _, team := range a.GetTeams() {
 		if team.ContainsUser(user) {
 			return true
 		}

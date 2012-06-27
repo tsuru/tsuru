@@ -15,7 +15,7 @@ type Unit struct {
 	Ip            string
 	AgentState    string `yaml:"agent-state"`
 	InstanceState string `yaml:"instance-state"`
-	InstanceId    string `yaml: "instance-id"`
+	InstanceId    string `yaml:"instance-id"`
 }
 
 func (u *Unit) Destroy() ([]byte, error) {

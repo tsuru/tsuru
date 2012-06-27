@@ -38,13 +38,13 @@ var HasAccessTo Checker = &hasAccessToChecker{}
 
 func (s *S) TestAll(c *C) {
 	expected := make([]App, 0)
-	app1 := App{Env: make(map[string]EnvVar), Name: "app1", Teams: []auth.Team{}, Logs: []Log{}}
+	app1 := App{Env: make(map[string]EnvVar), Name: "app1", Teams: []string{}, Logs: []Log{}}
 	app1.Create()
 	expected = append(expected, app1)
-	app2 := App{Env: make(map[string]EnvVar), Name: "app2", Teams: []auth.Team{}, Logs: []Log{}}
+	app2 := App{Env: make(map[string]EnvVar), Name: "app2", Teams: []string{}, Logs: []Log{}}
 	app2.Create()
 	expected = append(expected, app2)
-	app3 := App{Env: make(map[string]EnvVar), Name: "app3", Teams: []auth.Team{}, Logs: []Log{}}
+	app3 := App{Env: make(map[string]EnvVar), Name: "app3", Teams: []string{}, Logs: []Log{}}
 	app3.Create()
 	expected = append(expected, app3)
 
@@ -58,7 +58,7 @@ func (s *S) TestAll(c *C) {
 }
 
 func (s *S) TestGet(c *C) {
-	newApp := App{Env: map[string]EnvVar{}, Name: "myApp", Framework: "django", Teams: []auth.Team{}, Logs: []Log{}}
+	newApp := App{Env: map[string]EnvVar{}, Name: "myApp", Framework: "django", Teams: []string{}, Logs: []Log{}}
 	err := newApp.Create()
 	c.Assert(err, IsNil)
 
@@ -127,7 +127,7 @@ func (s *S) TestCantCreateTwoAppsWithTheSameName(c *C) {
 }
 
 func (s *S) TestAppendOrUpdate(c *C) {
-	a := App{Name: "appName", Framework: "django", Teams: []auth.Team{}}
+	a := App{Name: "appName", Framework: "django", Teams: []string{}}
 	a.Create()
 	defer a.Destroy()
 	u := unit.Unit{Name: "someapp", Ip: "", Machine: 3, InstanceId: "i-00000zz8"}
@@ -140,28 +140,28 @@ func (s *S) TestAppendOrUpdate(c *C) {
 }
 
 func (s *S) TestGrantAccess(c *C) {
-	a := App{Name: "appName", Framework: "django", Teams: []auth.Team{}}
+	a := App{Name: "appName", Framework: "django", Teams: []string{}}
 	err := a.GrantAccess(&s.team)
 	c.Assert(err, IsNil)
 	c.Assert(s.team, HasAccessTo, a)
 }
 
 func (s *S) TestGrantAccessFailsIfTheTeamAlreadyHasAccessToTheApp(c *C) {
-	a := App{Name: "appName", Framework: "django", Teams: []auth.Team{s.team}}
+	a := App{Name: "appName", Framework: "django", Teams: []string{s.team.Name}}
 	err := a.GrantAccess(&s.team)
 	c.Assert(err, NotNil)
 	c.Assert(err, ErrorMatches, "^This team has already access to this app$")
 }
 
 func (s *S) TestRevokeAccess(c *C) {
-	a := App{Name: "appName", Framework: "django", Teams: []auth.Team{s.team}}
+	a := App{Name: "appName", Framework: "django", Teams: []string{s.team.Name}}
 	err := a.RevokeAccess(&s.team)
 	c.Assert(err, IsNil)
 	c.Assert(s.team, Not(HasAccessTo), a)
 }
 
 func (s *S) TestRevokeAccessFailsIfTheTeamsDoesNotHaveAccessToTheApp(c *C) {
-	a := App{Name: "appName", Framework: "django", Teams: []auth.Team{}}
+	a := App{Name: "appName", Framework: "django", Teams: []string{}}
 	err := a.RevokeAccess(&s.team)
 	c.Assert(err, NotNil)
 	c.Assert(err, ErrorMatches, "^This team does not have access to this app$")
@@ -171,7 +171,10 @@ func (s *S) TestCheckUserAccess(c *C) {
 	u := &auth.User{Email: "boy@thewho.com", Password: "123"}
 	u2 := &auth.User{Email: "boy2@thewho.com", Password: "123"}
 	t := auth.Team{Name: "hello", Users: []*auth.User{u}}
-	a := App{Name: "appName", Framework: "django", Teams: []auth.Team{t}}
+	err := db.Session.Teams().Insert(t)
+	c.Assert(err, IsNil)
+	defer db.Session.Teams().Remove(bson.M{"name": t.Name})
+	a := App{Name: "appName", Framework: "django", Teams: []string{t.Name}}
 	c.Assert(a.CheckUserAccess(u), Equals, true)
 	c.Assert(a.CheckUserAccess(u2), Equals, false)
 }
@@ -181,9 +184,17 @@ func (s *S) TestCheckUserAccessWithMultipleUsersOnMultipleGroupsOnApp(c *C) {
 	punk := &auth.User{Email: "punk@thewho.com", Password: "123"}
 	cut := &auth.User{Email: "cutmyhair@thewho.com", Password: "123"}
 	who := auth.Team{Name: "TheWho", Users: []*auth.User{one, punk, cut}}
+	err := db.Session.Teams().Insert(who)
+	c.Assert(err, IsNil)
 	what := auth.Team{Name: "TheWhat", Users: []*auth.User{one, punk}}
+	err = db.Session.Teams().Insert(what)
+	c.Assert(err, IsNil)
 	where := auth.Team{Name: "TheWhere", Users: []*auth.User{one}}
-	a := App{Name: "appppppp", Teams: []auth.Team{who, what, where}}
+	err = db.Session.Teams().Insert(where)
+	c.Assert(err, IsNil)
+	teams := []string{who.Name, what.Name, where.Name}
+	defer db.Session.Teams().RemoveAll(bson.M{"name": bson.M{"$in": teams}})
+	a := App{Name: "appppppp", Teams: teams}
 	c.Assert(a.CheckUserAccess(cut), Equals, true)
 	c.Assert(a.CheckUserAccess(punk), Equals, true)
 	c.Assert(a.CheckUserAccess(one), Equals, true)
@@ -459,7 +470,7 @@ pos-restart:
 }
 
 func (s *S) TestUpdateHooks(c *C) {
-	a := &App{Name: "someApp", Framework: "django", Teams: []auth.Team{s.team}}
+	a := &App{Name: "someApp", Framework: "django", Teams: []string{s.team.Name}}
 	err := a.Create()
 	c.Assert(err, IsNil)
 	err = a.updateHooks()
@@ -498,4 +509,17 @@ func (s *S) TestEnvVarStringPrintPublicValue(c *C) {
 func (s *S) TestEnvVarStringMaskPrivateValue(c *C) {
 	env := EnvVar{Name: "PATH", Value: "/", Public: false}
 	c.Assert(env.String(), Equals, "PATH=*** (private variable)")
+}
+
+func (s *S) TestGetTeams(c *C) {
+	app := App{Name: "app", Teams: []string{s.team.Name}}
+	teams := app.GetTeams()
+	c.Assert(teams, HasLen, 1)
+	c.Assert(teams[0].Name, Equals, s.team.Name)
+}
+
+func (s *S) TestSetTeams(c *C) {
+	app := App{Name: "app"}
+	app.setTeams([]auth.Team{s.team})
+	c.Assert(app.Teams, DeepEquals, []string{s.team.Name})
 }
