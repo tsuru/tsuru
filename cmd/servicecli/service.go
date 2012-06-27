@@ -29,9 +29,10 @@ func (c *Service) Subcommands() map[string]interface{} {
 func (c *ServiceCreate) Info() *cmd.Info {
 	desc := "Creates a service based on a passed manifest. The manifest format should be a yaml and follow the standard described in the documentation (should link to it here)"
 	return &cmd.Info{
-		Name:  "create",
-		Usage: "service create path/to/manifesto",
-		Desc:  desc,
+		Name:    "create",
+		Usage:   "create path/to/manifesto",
+		Desc:    desc,
+		MinArgs: 1,
 	}
 }
 
