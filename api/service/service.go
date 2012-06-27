@@ -9,8 +9,9 @@ import (
 )
 
 type Service struct {
-	Name  string `bson:"_id"`
-	Teams []auth.Team
+	Name     string `bson:"_id"`
+	Endpoint map[string]string
+	Teams    []auth.Team
 }
 
 func (s *Service) Log(out []byte) {
