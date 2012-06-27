@@ -25,7 +25,7 @@ func (si *ServiceInstance) Delete() error {
 
 func (si *ServiceInstance) Service() *Service {
 	s := &Service{}
-	db.Session.Services().Find(bson.M{"_id": si.ServiceName}).One(&s)
+	db.Session.Services().Find(bson.M{"_id": si.ServiceName}).One(s)
 	return s
 }
 
