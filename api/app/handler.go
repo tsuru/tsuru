@@ -63,7 +63,14 @@ func CloneRepositoryHandler(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return &errors.Http{Code: http.StatusInternalServerError, Message: err.Error()}
 	}
-	fmt.Fprint(w, output)
+	out := filterOutput([]byte(output), nil)
+	n, err := w.Write(out)
+	if err != nil {
+		return err
+	}
+	if n != len(out) {
+		return &errors.Http{Code: http.StatusInternalServerError, Message: "Failed to write output."}
+	}
 	return nil
 }
 
