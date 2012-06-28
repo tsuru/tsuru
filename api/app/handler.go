@@ -3,7 +3,6 @@ package app
 import (
 	"bytes"
 	"encoding/json"
-	stderrors "errors"
 	"fmt"
 	"github.com/timeredbull/tsuru/api/auth"
 	"github.com/timeredbull/tsuru/db"
@@ -278,7 +277,7 @@ func RunCommand(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 		return err
 	}
 	if n != len(out) {
-		return stderrors.New("Unexpected error writing the output")
+		return &errors.Http{Code: http.StatusInternalServerError, Message: "Unexpected error writing the output"}
 	}
 	return nil
 }
