@@ -50,7 +50,7 @@ func (s *S) SetUpSuite(c *C) {
 
 func (s *S) TearDownSuite(c *C) {
 	defer s.storage.Close()
-	s.storage.session.DB("tsuru").DropDatabase()
+	s.storage.session.DB("tsuru_storage_test").DropDatabase()
 }
 
 func (s *S) TestShouldProvideMethodToOpenAConnection(c *C) {
@@ -106,11 +106,6 @@ func (s *S) TestMethodServicesShouldReturnServicesCollection(c *C) {
 	services := s.storage.Services()
 	servicesc := s.storage.getCollection("services")
 	c.Assert(services, DeepEquals, servicesc)
-}
-
-func (s *S) TestMethodServicesShouldReturnServicesCollectionWithUniqueIndexForName(c *C) {
-	services := s.storage.Services()
-	c.Assert(services, HasUniqueIndex, []string{"name"})
 }
 
 func (s *S) TestMethodServiceInstancesShouldReturnServiceInstancesCollection(c *C) {
