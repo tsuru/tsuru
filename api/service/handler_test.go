@@ -154,8 +154,6 @@ func (s *S) TestServicesHandlerListsOnlyServicesThatTheUserHasAccess(c *C) {
 func (suite *S) TestCreateInstanceHandlerSavesServiceInstanceInDb(c *C) {
 	s := Service{Name: "mysql", Teams: []string{suite.team.Name}}
 	s.Create()
-	var teams []auth.Team
-	db.Session.Teams().Find(nil).All(&teams)
 	recorder, request := makeRequestToCreateInstanceHandler(c)
 	err := CreateInstanceHandler(recorder, request, suite.user)
 	c.Assert(err, IsNil)
@@ -177,6 +175,15 @@ func (s *S) TestCreateInstanceHandlerReturnsErrorWhenServiceDoesntExists(c *C) {
 	recorder, request := makeRequestToCreateInstanceHandler(c)
 	err := CreateInstanceHandler(recorder, request, s.user)
 	c.Assert(err, ErrorMatches, "^Service mysql does not exists.$")
+}
+
+func (s *S) TestCreateInstanceHandlerCreatesVMInstanceWhenServicesManifestIsConfiguredToDoSo(c *C) {
+	service := Service{Name: "mysql", Teams: []string{s.team.Name}}
+	service.Create()
+	recorder, request := makeRequestToCreateInstanceHandler(c)
+	err := CreateInstanceHandler(recorder, request, s.user)
+	c.Assert(err, IsNil)
+	// #TODO finish me!!
 }
 
 func (s *S) TestDeleteHandler(c *C) {
