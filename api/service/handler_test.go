@@ -15,7 +15,7 @@ import (
 	"path/filepath"
 )
 
-func makeRequest(c *C) (*httptest.ResponseRecorder, *http.Request) {
+func makeRequestToCreateHandler(c *C) (*httptest.ResponseRecorder, *http.Request) {
 	manifest := `id: some_service
 endpoint:
     production: someservice.com
@@ -29,8 +29,17 @@ endpoint:
 	return recorder, request
 }
 
+func makeRequestToCreateInstanceHandler(c *C) (*httptest.ResponseRecorder, *http.Request) {
+	b := bytes.NewBufferString(`{"name": "brainSQL", "service_name": "mysql"}`)
+	request, err := http.NewRequest("POST", "/services/instances", b)
+	c.Assert(err, IsNil)
+	request.Header.Set("Content-Type", "application/json")
+	recorder := httptest.NewRecorder()
+	return recorder, request
+}
+
 func (s *S) TestCreateHandlerSavesNameFromManifestId(c *C) {
-	recorder, request := makeRequest(c)
+	recorder, request := makeRequestToCreateHandler(c)
 	err := CreateHandler(recorder, request, s.user)
 	c.Assert(err, IsNil)
 	query := bson.M{"_id": "some_service"}
@@ -41,7 +50,7 @@ func (s *S) TestCreateHandlerSavesNameFromManifestId(c *C) {
 }
 
 func (s *S) TestCreateHandlerSavesEndpointServiceProperty(c *C) {
-	recorder, request := makeRequest(c)
+	recorder, request := makeRequestToCreateHandler(c)
 	err := CreateHandler(recorder, request, s.user)
 	c.Assert(err, IsNil)
 	query := bson.M{"_id": "some_service"}
@@ -72,17 +81,17 @@ func (s *S) TestCreateHandlerWithContentOfRealYaml(c *C) {
 }
 
 func (s *S) TestCreateHandlerShouldReturnErrorWhenNameExists(c *C) {
-	recorder, request := makeRequest(c)
+	recorder, request := makeRequestToCreateHandler(c)
 	err := CreateHandler(recorder, request, s.user)
 	c.Assert(err, IsNil)
-	recorder, request = makeRequest(c)
+	recorder, request = makeRequestToCreateHandler(c)
 	err = CreateHandler(recorder, request, s.user)
 	c.Assert(err, Not(IsNil))
 	c.Assert(err, ErrorMatches, "^Service with name some_service already exists.$")
 }
 
 func (s *S) TestCreateHandlerGetAllTeamsFromTheUser(c *C) {
-	recorder, request := makeRequest(c)
+	recorder, request := makeRequestToCreateHandler(c)
 	err := CreateHandler(recorder, request, s.user)
 	c.Assert(err, IsNil)
 	c.Assert(recorder.Body.String(), Equals, "success")
@@ -99,7 +108,7 @@ func (s *S) TestCreateHandlerReturnsForbiddenIfTheUserIsNotMemberOfAnyTeam(c *C)
 	u := &auth.User{Email: "enforce@queensryche.com", Password: "123"}
 	u.Create()
 	defer db.Session.Users().RemoveAll(bson.M{"email": u.Email})
-	recorder, request := makeRequest(c)
+	recorder, request := makeRequestToCreateHandler(c)
 	err := CreateHandler(recorder, request, u)
 	c.Assert(err, NotNil)
 	e, ok := err.(*errors.Http)
@@ -143,16 +152,31 @@ func (s *S) TestServicesHandlerListsOnlyServicesThatTheUserHasAccess(c *C) {
 }
 
 func (suite *S) TestCreateInstanceHandlerSavesServiceInstanceInDb(c *C) {
-	b := bytes.NewBufferString(`{"name": "brainSQL", "service_name": "mysql"}`)
-	request, err := http.NewRequest("POST", "/services/instances", b)
+	s := Service{Name: "mysql", Teams: []string{suite.team.Name}}
+	s.Create()
+	var teams []auth.Team
+	db.Session.Teams().Find(nil).All(&teams)
+	recorder, request := makeRequestToCreateInstanceHandler(c)
+	err := CreateInstanceHandler(recorder, request, suite.user)
 	c.Assert(err, IsNil)
-	recorder := httptest.NewRecorder()
-	err = CreateInstanceHandler(recorder, request, suite.user)
-	c.Assert(err, IsNil)
-	var s ServiceInstance
-	db.Session.ServiceInstances().Find(bson.M{"_id": "brainSQL", "service_name": "mysql"}).One(&s)
-	c.Assert(s.Name, Equals, "brainSQL")
-	c.Assert(s.ServiceName, Equals, "mysql")
+	var si ServiceInstance
+	db.Session.ServiceInstances().Find(bson.M{"_id": "brainSQL", "service_name": "mysql"}).One(&si)
+	c.Assert(si.Name, Equals, "brainSQL")
+	c.Assert(si.ServiceName, Equals, "mysql")
+}
+
+func (s *S) TestCreateInstanceHandlerReturnsErrorWhenUserCannotUseService(c *C) {
+	service := Service{Name: "mysql"}
+	service.Create()
+	recorder, request := makeRequestToCreateInstanceHandler(c)
+	err := CreateInstanceHandler(recorder, request, s.user)
+	c.Assert(err, ErrorMatches, "^You don't have access to service mysql$")
+}
+
+func (s *S) TestCreateInstanceHandlerReturnsErrorWhenServiceDoesntExists(c *C) {
+	recorder, request := makeRequestToCreateInstanceHandler(c)
+	err := CreateInstanceHandler(recorder, request, s.user)
+	c.Assert(err, ErrorMatches, "^Service mysql does not exists.$")
 }
 
 func (s *S) TestDeleteHandler(c *C) {
