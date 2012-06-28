@@ -85,6 +85,24 @@ func CreateHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	return nil
 }
 
+func CreateInstanceHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
+	b, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		return &errors.Http{Code: http.StatusInternalServerError, Message: err.Error()}
+	}
+	var jService map[string]string
+	err = json.Unmarshal(b, &jService)
+	if err != nil {
+		return &errors.Http{Code: http.StatusInternalServerError, Message: err.Error()}
+	}
+	si := ServiceInstance{
+		Name:        jService["name"],
+		ServiceName: jService["service_name"],
+	}
+	si.Create()
+	return nil
+}
+
 func DeleteHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	s := Service{Name: r.URL.Query().Get(":name")}
 	err := s.Get()

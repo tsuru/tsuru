@@ -29,7 +29,7 @@ endpoint:
 	return recorder, request
 }
 
-func (s *ServiceSuite) TestCreateHandlerSavesNameFromManifestId(c *C) {
+func (s *S) TestCreateHandlerSavesNameFromManifestId(c *C) {
 	recorder, request := makeRequest(c)
 	err := CreateHandler(recorder, request, s.user)
 	c.Assert(err, IsNil)
@@ -40,7 +40,7 @@ func (s *ServiceSuite) TestCreateHandlerSavesNameFromManifestId(c *C) {
 	c.Assert(rService.Name, Equals, "some_service")
 }
 
-func (s *ServiceSuite) TestCreateHandlerSavesEndpointServiceProperty(c *C) {
+func (s *S) TestCreateHandlerSavesEndpointServiceProperty(c *C) {
 	recorder, request := makeRequest(c)
 	err := CreateHandler(recorder, request, s.user)
 	c.Assert(err, IsNil)
@@ -52,7 +52,7 @@ func (s *ServiceSuite) TestCreateHandlerSavesEndpointServiceProperty(c *C) {
 	c.Assert(rService.Endpoint["test"], Equals, "test.someservice.com")
 }
 
-func (s *ServiceSuite) TestCreateHandlerWithContentOfRealYaml(c *C) {
+func (s *S) TestCreateHandlerWithContentOfRealYaml(c *C) {
 	p, err := filepath.Abs("testdata/manifest.yml")
 	manifest, err := ioutil.ReadFile(p)
 	c.Assert(err, IsNil)
@@ -71,7 +71,7 @@ func (s *ServiceSuite) TestCreateHandlerWithContentOfRealYaml(c *C) {
 	c.Assert(rService.Endpoint["test"], Equals, "localhost:8000")
 }
 
-func (s *ServiceSuite) TestCreateHandlerShouldReturnErrorWhenNameExists(c *C) {
+func (s *S) TestCreateHandlerShouldReturnErrorWhenNameExists(c *C) {
 	recorder, request := makeRequest(c)
 	err := CreateHandler(recorder, request, s.user)
 	c.Assert(err, IsNil)
@@ -81,7 +81,7 @@ func (s *ServiceSuite) TestCreateHandlerShouldReturnErrorWhenNameExists(c *C) {
 	c.Assert(err, ErrorMatches, "^Service with name some_service already exists.$")
 }
 
-func (s *ServiceSuite) TestCreateHandlerGetAllTeamsFromTheUser(c *C) {
+func (s *S) TestCreateHandlerGetAllTeamsFromTheUser(c *C) {
 	recorder, request := makeRequest(c)
 	err := CreateHandler(recorder, request, s.user)
 	c.Assert(err, IsNil)
@@ -95,7 +95,7 @@ func (s *ServiceSuite) TestCreateHandlerGetAllTeamsFromTheUser(c *C) {
 	c.Assert(*s.team, HasAccessTo, rService)
 }
 
-func (s *ServiceSuite) TestCreateHandlerReturnsForbiddenIfTheUserIsNotMemberOfAnyTeam(c *C) {
+func (s *S) TestCreateHandlerReturnsForbiddenIfTheUserIsNotMemberOfAnyTeam(c *C) {
 	u := &auth.User{Email: "enforce@queensryche.com", Password: "123"}
 	u.Create()
 	defer db.Session.Users().RemoveAll(bson.M{"email": u.Email})
@@ -108,7 +108,7 @@ func (s *ServiceSuite) TestCreateHandlerReturnsForbiddenIfTheUserIsNotMemberOfAn
 	c.Assert(e, ErrorMatches, "^In order to create a service, you should be member of at least one team$")
 }
 
-func (s *ServiceSuite) TestServicesHandlerListsOnlyServicesThatTheUserHasAccess(c *C) {
+func (s *S) TestServicesHandlerListsOnlyServicesThatTheUserHasAccess(c *C) {
 	t := auth.Team{Name: "cheddar"}
 	t.AddUser(s.user)
 	err := db.Session.Teams().Insert(t)
@@ -142,7 +142,20 @@ func (s *ServiceSuite) TestServicesHandlerListsOnlyServicesThatTheUserHasAccess(
 	c.Assert(results[0].Name, Equals, "myService")
 }
 
-func (s *ServiceSuite) TestDeleteHandler(c *C) {
+func (suite *S) TestCreateInstanceHandlerSavesServiceInstanceInDb(c *C) {
+	b := bytes.NewBufferString(`{"name": "brainSQL", "service_name": "mysql"}`)
+	request, err := http.NewRequest("POST", "/services/instances", b)
+	c.Assert(err, IsNil)
+	recorder := httptest.NewRecorder()
+	err = CreateInstanceHandler(recorder, request, suite.user)
+	c.Assert(err, IsNil)
+	var s ServiceInstance
+	db.Session.ServiceInstances().Find(bson.M{"_id": "brainSQL", "service_name": "mysql"}).One(&s)
+	c.Assert(s.Name, Equals, "brainSQL")
+	c.Assert(s.ServiceName, Equals, "mysql")
+}
+
+func (s *S) TestDeleteHandler(c *C) {
 	se := Service{Name: "Mysql", Teams: []string{s.team.Name}}
 	se.Create()
 	defer se.Delete()
@@ -158,7 +171,7 @@ func (s *ServiceSuite) TestDeleteHandler(c *C) {
 	c.Assert(qtd, Equals, 0)
 }
 
-func (s *ServiceSuite) TestDeleteHandlerReturns404(c *C) {
+func (s *S) TestDeleteHandlerReturns404(c *C) {
 	request, err := http.NewRequest("DELETE", fmt.Sprintf("/services/%s?:name=%s", "mongodb", "mongodb"), nil)
 	c.Assert(err, IsNil)
 	recorder := httptest.NewRecorder()
@@ -170,7 +183,7 @@ func (s *ServiceSuite) TestDeleteHandlerReturns404(c *C) {
 	c.Assert(e, ErrorMatches, "^Service not found$")
 }
 
-func (s *ServiceSuite) TestDeleteHandlerReturns403IfTheUserDoesNotHaveAccessToTheService(c *C) {
+func (s *S) TestDeleteHandlerReturns403IfTheUserDoesNotHaveAccessToTheService(c *C) {
 	se := Service{Name: "Mysql"}
 	se.Create()
 	defer se.Delete()
@@ -185,7 +198,7 @@ func (s *ServiceSuite) TestDeleteHandlerReturns403IfTheUserDoesNotHaveAccessToTh
 	c.Assert(e, ErrorMatches, "^This user does not have access to this service$")
 }
 
-// func (s *ServiceSuite) TestBindHandler(c *C) {
+// func (s *S) TestBindHandler(c *C) {
 // 	st := ServiceType{Name: "Mysql", Charm: "mysql"}
 // 	err := st.Create()
 // 	c.Assert(err, IsNil)
@@ -211,7 +224,7 @@ func (s *ServiceSuite) TestDeleteHandlerReturns403IfTheUserDoesNotHaveAccessToTh
 // 	c.Assert(qtd, Equals, 1)
 // }
 // 
-// func (s *ServiceSuite) TestBindHandlerReturns403IfTheUserDoesNotHaveAccessToTheApp(c *C) {
+// func (s *S) TestBindHandlerReturns403IfTheUserDoesNotHaveAccessToTheApp(c *C) {
 // 	st := ServiceType{Name: "Mysql", Charm: "mysql"}
 // 	err := st.Create()
 // 	c.Assert(err, IsNil)
@@ -233,7 +246,7 @@ func (s *ServiceSuite) TestDeleteHandlerReturns403IfTheUserDoesNotHaveAccessToTh
 // 	c.Assert(e, ErrorMatches, "^This user does not have access to this app$")
 // }
 
-// func (s *ServiceSuite) TestBindHandlerReturns404IfTheAppDoesNotExist(c *C) {
+// func (s *S) TestBindHandlerReturns404IfTheAppDoesNotExist(c *C) {
 // 	st := ServiceType{Name: "Mysql", Charm: "mysql"}
 // 	err := st.Create()
 // 	c.Assert(err, IsNil)
@@ -252,7 +265,7 @@ func (s *ServiceSuite) TestDeleteHandlerReturns403IfTheUserDoesNotHaveAccessToTh
 // 	c.Assert(e, ErrorMatches, "^App not found$")
 // }
 // 
-// func (s *ServiceSuite) TestBindHandlerReturns403IfTheUserDoesNotHaveAccessToTheService(c *C) {
+// func (s *S) TestBindHandlerReturns403IfTheUserDoesNotHaveAccessToTheService(c *C) {
 // 	st := ServiceType{Name: "Mysql", Charm: "mysql"}
 // 	err := st.Create()
 // 	c.Assert(err, IsNil)
@@ -274,7 +287,7 @@ func (s *ServiceSuite) TestDeleteHandlerReturns403IfTheUserDoesNotHaveAccessToTh
 // 	c.Assert(e, ErrorMatches, "^This user does not have access to this service$")
 // }
 
-// func (s *ServiceSuite) TestBindHandlerReturns404IfTheServiceDoesNotExist(c *C) {
+// func (s *S) TestBindHandlerReturns404IfTheServiceDoesNotExist(c *C) {
 // 	a := app.App{Name: "serviceApp", Framework: "django", Teams: []string{s.team.Name}}
 // 	err := a.Create()
 // 	c.Assert(err, IsNil)
@@ -291,7 +304,7 @@ func (s *ServiceSuite) TestDeleteHandlerReturns403IfTheUserDoesNotHaveAccessToTh
 // 
 // }
 
-// func (s *ServiceSuite) TestUnbindHandler(c *C) {
+// func (s *S) TestUnbindHandler(c *C) {
 // 	st := ServiceType{Name: "Mysql", Charm: "mysql"}
 // 	st.Create()
 // 	se := Service{ServiceTypeName: st.Name, Name: "my_service", Teams: []string{s.team.Name}}
@@ -315,7 +328,7 @@ func (s *ServiceSuite) TestDeleteHandlerReturns403IfTheUserDoesNotHaveAccessToTh
 // 	c.Assert(qtd, Equals, 0)
 // }
 
-// func (s *ServiceSuite) TestUnbindHandlerReturns403IfTheUserDoesNotHaveAccessToTheService(c *C) {
+// func (s *S) TestUnbindHandlerReturns403IfTheUserDoesNotHaveAccessToTheService(c *C) {
 // 	st := ServiceType{Name: "Mysql", Charm: "mysql"}
 // 	st.Create()
 // 	se := Service{ServiceTypeName: st.Name, Name: "my_service"}
@@ -335,7 +348,7 @@ func (s *ServiceSuite) TestDeleteHandlerReturns403IfTheUserDoesNotHaveAccessToTh
 // 	c.Assert(e, ErrorMatches, "^This user does not have access to this service$")
 // }
 
-// func (s *ServiceSuite) TestUnbindHandlerReturns404IfTheServiceDoesNotExist(c *C) {
+// func (s *S) TestUnbindHandlerReturns404IfTheServiceDoesNotExist(c *C) {
 // 	st := ServiceType{Name: "Mysql", Charm: "mysql"}
 // 	st.Create()
 // 	a := app.App{Name: "serviceApp", Framework: "django", Teams: []string{*s.team.Name}}
@@ -352,7 +365,7 @@ func (s *ServiceSuite) TestDeleteHandlerReturns403IfTheUserDoesNotHaveAccessToTh
 // 	c.Assert(e, ErrorMatches, "^Service not found$")
 // }
 
-// func (s *ServiceSuite) TestUnbindHandlerReturns403IfTheUserDoesNotHaveAccessToTheApp(c *C) {
+// func (s *S) TestUnbindHandlerReturns403IfTheUserDoesNotHaveAccessToTheApp(c *C) {
 // 	st := ServiceType{Name: "Mysql", Charm: "mysql"}
 // 	st.Create()
 // 	se := Service{ServiceTypeName: st.Name, Name: "my_service", Teams: []string{s.team.Name}}
@@ -372,7 +385,7 @@ func (s *ServiceSuite) TestDeleteHandlerReturns403IfTheUserDoesNotHaveAccessToTh
 // 	c.Assert(e, ErrorMatches, "^This user does not have access to this app$")
 // }
 
-// func (s *ServiceSuite) TestUnbindHandlerReturns404IfTheAppDoesNotExist(c *C) {
+// func (s *S) TestUnbindHandlerReturns404IfTheAppDoesNotExist(c *C) {
 // 	st := ServiceType{Name: "Mysql", Charm: "mysql"}
 // 	st.Create()
 // 	se := Service{ServiceTypeName: st.Name, Name: "my_service", Teams: []string{s.team.Name}}
@@ -389,7 +402,7 @@ func (s *ServiceSuite) TestDeleteHandlerReturns403IfTheUserDoesNotHaveAccessToTh
 // 	c.Assert(e, ErrorMatches, "^App not found$")
 // }
 
-func (s *ServiceSuite) TestGrantAccessToTeam(c *C) {
+func (s *S) TestGrantAccessToTeam(c *C) {
 	t := &auth.Team{Name: "blaaaa"}
 	db.Session.Teams().Insert(t)
 	defer db.Session.Teams().Remove(bson.M{"name": t.Name})
@@ -408,7 +421,7 @@ func (s *ServiceSuite) TestGrantAccessToTeam(c *C) {
 	c.Assert(*s.team, HasAccessTo, se)
 }
 
-func (s *ServiceSuite) TestGrantAccesToTeamReturnNotFoundIfTheServiceDoesNotExist(c *C) {
+func (s *S) TestGrantAccesToTeamReturnNotFoundIfTheServiceDoesNotExist(c *C) {
 	url := fmt.Sprintf("/services/nononono/%s?:service=nononono&:team=%s", s.team.Name, s.team.Name)
 	request, err := http.NewRequest("PUT", url, nil)
 	c.Assert(err, IsNil)
@@ -421,7 +434,7 @@ func (s *ServiceSuite) TestGrantAccesToTeamReturnNotFoundIfTheServiceDoesNotExis
 	c.Assert(e, ErrorMatches, "^Service not found$")
 }
 
-func (s *ServiceSuite) TestGrantAccessToTeamReturnForbiddenIfTheGivenUserDoesNotHaveAccessToTheService(c *C) {
+func (s *S) TestGrantAccessToTeamReturnForbiddenIfTheGivenUserDoesNotHaveAccessToTheService(c *C) {
 	se := Service{Name: "my_service"}
 	err := se.Create()
 	c.Assert(err, IsNil)
@@ -438,7 +451,7 @@ func (s *ServiceSuite) TestGrantAccessToTeamReturnForbiddenIfTheGivenUserDoesNot
 	c.Assert(e, ErrorMatches, "^This user does not have access to this service$")
 }
 
-func (s *ServiceSuite) TestGrantAccessToTeamReturnNotFoundIfTheTeamDoesNotExist(c *C) {
+func (s *S) TestGrantAccessToTeamReturnNotFoundIfTheTeamDoesNotExist(c *C) {
 	se := Service{Name: "my_service", Teams: []string{s.team.Name}}
 	err := se.Create()
 	c.Assert(err, IsNil)
@@ -455,7 +468,7 @@ func (s *ServiceSuite) TestGrantAccessToTeamReturnNotFoundIfTheTeamDoesNotExist(
 	c.Assert(e, ErrorMatches, "^Team not found$")
 }
 
-func (s *ServiceSuite) TestGrantAccessToTeamReturnConflictIfTheTeamAlreadyHasAccessToTheService(c *C) {
+func (s *S) TestGrantAccessToTeamReturnConflictIfTheTeamAlreadyHasAccessToTheService(c *C) {
 	se := Service{Name: "my_service", Teams: []string{s.team.Name}}
 	err := se.Create()
 	defer se.Delete()
@@ -471,7 +484,7 @@ func (s *ServiceSuite) TestGrantAccessToTeamReturnConflictIfTheTeamAlreadyHasAcc
 	c.Assert(e.Code, Equals, http.StatusConflict)
 }
 
-func (s *ServiceSuite) TestRevokeAccessFromTeamRemovesTeamFromService(c *C) {
+func (s *S) TestRevokeAccessFromTeamRemovesTeamFromService(c *C) {
 	t := &auth.Team{Name: "alle-da"}
 	se := Service{Name: "my_service", Teams: []string{s.team.Name, t.Name}}
 	err := se.Create()
@@ -488,7 +501,7 @@ func (s *ServiceSuite) TestRevokeAccessFromTeamRemovesTeamFromService(c *C) {
 	c.Assert(*s.team, Not(HasAccessTo), se)
 }
 
-func (s *ServiceSuite) TestRevokeAccessFromTeamReturnsNotFoundIfTheServiceDoesNotExist(c *C) {
+func (s *S) TestRevokeAccessFromTeamReturnsNotFoundIfTheServiceDoesNotExist(c *C) {
 	url := fmt.Sprintf("/services/nonono/%s?:service=nonono&:team=%s", s.team.Name, s.team.Name)
 	request, err := http.NewRequest("DELETE", url, nil)
 	c.Assert(err, IsNil)
@@ -501,7 +514,7 @@ func (s *ServiceSuite) TestRevokeAccessFromTeamReturnsNotFoundIfTheServiceDoesNo
 	c.Assert(e, ErrorMatches, "^Service not found$")
 }
 
-func (s *ServiceSuite) TestRevokeAccesFromTeamReturnsForbiddenIfTheGivenUserDoesNotHasAccessToTheService(c *C) {
+func (s *S) TestRevokeAccesFromTeamReturnsForbiddenIfTheGivenUserDoesNotHasAccessToTheService(c *C) {
 	t := &auth.Team{Name: "alle-da"}
 	se := Service{Name: "my_service", Teams: []string{t.Name}}
 	err := se.Create()
@@ -519,7 +532,7 @@ func (s *ServiceSuite) TestRevokeAccesFromTeamReturnsForbiddenIfTheGivenUserDoes
 	c.Assert(e, ErrorMatches, "^This user does not have access to this service$")
 }
 
-func (s *ServiceSuite) TestRevokeAccessFromTeamReturnsNotFoundIfTheTeamDoesNotExist(c *C) {
+func (s *S) TestRevokeAccessFromTeamReturnsNotFoundIfTheTeamDoesNotExist(c *C) {
 	se := Service{Name: "my_service", Teams: []string{s.team.Name}}
 	err := se.Create()
 	c.Assert(err, IsNil)
@@ -536,7 +549,7 @@ func (s *ServiceSuite) TestRevokeAccessFromTeamReturnsNotFoundIfTheTeamDoesNotEx
 	c.Assert(e, ErrorMatches, "^Team not found$")
 }
 
-func (s *ServiceSuite) TestRevokeAccessFromTeamReturnsForbiddenIfTheTeamIsTheOnlyWithAccessToTheService(c *C) {
+func (s *S) TestRevokeAccessFromTeamReturnsForbiddenIfTheTeamIsTheOnlyWithAccessToTheService(c *C) {
 	se := Service{Name: "my_service", Teams: []string{s.team.Name}}
 	err := se.Create()
 	c.Assert(err, IsNil)
@@ -553,7 +566,7 @@ func (s *ServiceSuite) TestRevokeAccessFromTeamReturnsForbiddenIfTheTeamIsTheOnl
 	c.Assert(e, ErrorMatches, "^You can not revoke the access from this team, because it is the unique team with access to this service, and a service can not be orphaned$")
 }
 
-func (s *ServiceSuite) TestRevokeAccessFromTeamReturnNotFoundIfTheTeamDoesNotHasAccessToTheService(c *C) {
+func (s *S) TestRevokeAccessFromTeamReturnNotFoundIfTheTeamDoesNotHasAccessToTheService(c *C) {
 	t := &auth.Team{Name: "Rammlied"}
 	db.Session.Teams().Insert(t)
 	defer db.Session.Teams().RemoveAll(bson.M{"name": t.Name})
