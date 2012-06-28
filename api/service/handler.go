@@ -30,7 +30,10 @@ type serviceT struct {
 
 func ServicesHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	var services []Service
-	db.Session.Services().Find(bson.M{"teams.users.email": u.Email}).All(&services)
+	var teams []auth.Team
+	db.Session.Teams().Find(bson.M{"users.email": u.Email}).All(&teams)
+	q := bson.M{"teams": bson.M{"$in": auth.GetTeamsNames(teams)}}
+	db.Session.Services().Find(q).All(&services)
 	results := make([]serviceT, len(services))
 	var sT serviceT
 	for i, s := range services {
@@ -75,7 +78,7 @@ func CreateHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	s := Service{
 		Name:     sy.Id,
 		Endpoint: sy.Endpoint,
-		Teams:    teams,
+		Teams:    auth.GetTeamsNames(teams),
 	}
 	s.Create()
 	fmt.Fprint(w, "success")

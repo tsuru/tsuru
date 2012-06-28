@@ -11,7 +11,7 @@ import (
 type Service struct {
 	Name     string `bson:"_id"`
 	Endpoint map[string]string
-	Teams    []auth.Team
+	Teams    []string
 }
 
 func (s *Service) Log(out []byte) {
@@ -51,7 +51,7 @@ func (s *Service) Delete() error {
 
 func (s *Service) findTeam(team *auth.Team) int {
 	for i, t := range s.Teams {
-		if team.Name == t.Name {
+		if team.Name == t {
 			return i
 		}
 	}
@@ -66,7 +66,7 @@ func (s *Service) GrantAccess(team *auth.Team) error {
 	if s.hasTeam(team) {
 		return errors.New("This team already has access to this service")
 	}
-	s.Teams = append(s.Teams, *team)
+	s.Teams = append(s.Teams, team.Name)
 	return nil
 }
 
@@ -82,7 +82,10 @@ func (s *Service) RevokeAccess(team *auth.Team) error {
 }
 
 func (s *Service) CheckUserAccess(user *auth.User) bool {
-	for _, team := range s.Teams {
+	q := bson.M{"name": bson.M{"$in": s.Teams}}
+	var teams []auth.Team
+	db.Session.Teams().Find(q).All(&teams)
+	for _, team := range teams {
 		if team.ContainsUser(user) {
 			return true
 		}
