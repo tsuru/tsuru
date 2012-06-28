@@ -313,3 +313,13 @@ func (a *App) Log(message string) error {
 	a.Logs = append(a.Logs, l)
 	return db.Session.Apps().Update(bson.M{"name": a.Name}, a)
 }
+
+// GetApps returns all apps that the given team has access to
+func GetApps(team *auth.Team) (apps []App, err error) {
+	if team == nil {
+		err = errors.New("You must provide the team.")
+		return
+	}
+	err = db.Session.Apps().Find(bson.M{"teams": team.Name}).All(&apps)
+	return
+}
