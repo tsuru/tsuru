@@ -264,3 +264,26 @@ func (s *S) TestLoadConfigShouldSetTheTokenKeyToTheDefaultValueIfItsIsNotInTheCo
 	loadConfig()
 	c.Assert(tokenKey, Equals, defaultKey)
 }
+
+func (s *S) TestTeams(c *C) {
+	u := User{Email: "me@tsuru.com", Password: "123"}
+	err := u.Create()
+	c.Assert(err, IsNil)
+	defer db.Session.Users().Remove(bson.M{"email": u.Email})
+	s.team.AddUser(&u)
+	err = db.Session.Teams().Update(bson.M{"name": s.team.Name}, s.team)
+	c.Assert(err, IsNil)
+	defer func(u *User, t *Team) {
+		t.RemoveUser(u)
+		db.Session.Teams().Update(bson.M{"name": t.Name}, t)
+	}(&u, s.team)
+	t := Team{Name: "abc", Users: []*User{&u}}
+	err = db.Session.Teams().Insert(t)
+	c.Assert(err, IsNil)
+	defer db.Session.Teams().Remove(bson.M{"name": t.Name})
+	teams, err := u.Teams()
+	c.Assert(err, IsNil)
+	c.Assert(teams, HasLen, 2)
+	c.Assert(teams[0].Name, Equals, s.team.Name)
+	c.Assert(teams[1].Name, Equals, t.Name)
+}

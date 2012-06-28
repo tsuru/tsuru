@@ -103,6 +103,12 @@ func (u *User) CreateToken() (*Token, error) {
 	return t, err
 }
 
+// Teams returns a slice containing all teams that the user is member
+func (u *User) Teams() (teams []Team, err error) {
+	err = db.Session.Teams().Find(bson.M{"users.email": u.Email}).All(&teams)
+	return
+}
+
 func (u *User) findKey(key Key) (Key, int) {
 	for i, k := range u.Keys {
 		if k.Content == key.Content {

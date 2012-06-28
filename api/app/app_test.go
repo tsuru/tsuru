@@ -523,3 +523,23 @@ func (s *S) TestSetTeams(c *C) {
 	app.setTeams([]auth.Team{s.team})
 	c.Assert(app.Teams, DeepEquals, []string{s.team.Name})
 }
+
+func (s *S) TestGetAppsToWhichTheTeamHasAccess(c *C) {
+	app1 := App{Name: "globo", Teams: []string{s.team.Name}}
+	err := app1.Create()
+	c.Assert(err, IsNil)
+	defer app1.Destroy()
+	app2 := App{Name: "google", Teams: []string{s.team.Name}}
+	err = app2.Create()
+	c.Assert(err, IsNil)
+	apps, err := GetApps(&s.team)
+	c.Assert(err, IsNil)
+	c.Assert(apps, HasLen, 2)
+	c.Assert(apps[0].Name, Equals, app1.Name)
+	c.Assert(apps[1].Name, Equals, app2.Name)
+}
+
+func (s *S) TestGetAppsReturnErrorIfTeamIsNil(c *C) {
+	_, err := GetApps(nil)
+	c.Assert(err, NotNil)
+}
