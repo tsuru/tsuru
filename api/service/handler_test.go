@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"github.com/timeredbull/tsuru/api/app"
 	"github.com/timeredbull/tsuru/api/auth"
 	"github.com/timeredbull/tsuru/db"
 	"github.com/timeredbull/tsuru/errors"
@@ -570,4 +571,62 @@ func (s *ServiceSuite) TestRevokeAccessFromTeamReturnNotFoundIfTheTeamDoesNotHas
 	e, ok := err.(*errors.Http)
 	c.Assert(ok, Equals, true)
 	c.Assert(e.Code, Equals, http.StatusNotFound)
+}
+
+func (s *ServiceSuite) TestListServiceInstances(c *C) {
+	app := app.App{Name: "globo", Teams: []string{s.team.Name}}
+	err := app.Create()
+	c.Assert(err, IsNil)
+	service := Service{Name: "redis"}
+	err = service.Create()
+	c.Assert(err, IsNil)
+	instance := ServiceInstance{
+		Name:        "redis-globo",
+		ServiceName: "redis",
+		Apps:        []string{"globo"},
+	}
+	err = instance.Create()
+	c.Assert(err, IsNil)
+	request, err := http.NewRequest("GET", "/services/instances", nil)
+	c.Assert(err, IsNil)
+	recorder := httptest.NewRecorder()
+	err = ListServiceInstances(recorder, request, s.user)
+	c.Assert(err, IsNil)
+	body, err := ioutil.ReadAll(recorder.Body)
+	c.Assert(err, IsNil)
+	var instances []ServiceInstance
+	err = json.Unmarshal(body, &instances)
+	c.Assert(err, IsNil)
+	c.Assert(instances, DeepEquals, []ServiceInstance{instance})
+}
+
+func (s *ServiceSuite) TestListServiceInstancesReturnsOnlyTheInstancesThatTheUserHasAccess(c *C) {
+	u := &auth.User{Email: "me@globo.com", Password: "123"}
+	err := u.Create()
+	c.Assert(err, IsNil)
+	defer db.Session.Users().Remove(bson.M{"email": u.Email})
+	app := app.App{Name: "globo", Teams: []string{s.team.Name}}
+	err = app.Create()
+	c.Assert(err, IsNil)
+	service := Service{Name: "redis"}
+	err = service.Create()
+	c.Assert(err, IsNil)
+	instance := ServiceInstance{
+		Name:        "redis-globo",
+		ServiceName: "redis",
+		Apps:        []string{"globo"},
+	}
+	err = instance.Create()
+	c.Assert(err, IsNil)
+	request, err := http.NewRequest("GET", "/services/instances", nil)
+	c.Assert(err, IsNil)
+	recorder := httptest.NewRecorder()
+	err = ListServiceInstances(recorder, request, u)
+	c.Assert(err, IsNil)
+	body, err := ioutil.ReadAll(recorder.Body)
+	c.Assert(err, IsNil)
+	var instances []ServiceInstance
+	err = json.Unmarshal(body, &instances)
+	c.Assert(err, IsNil)
+	c.Assert(instances, DeepEquals, []ServiceInstance(nil))
 }

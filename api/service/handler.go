@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"github.com/timeredbull/tsuru/api/app"
 	"github.com/timeredbull/tsuru/api/auth"
 	"github.com/timeredbull/tsuru/db"
 	"github.com/timeredbull/tsuru/errors"
@@ -214,4 +215,35 @@ func RevokeAccessFromTeamHandler(w http.ResponseWriter, r *http.Request, u *auth
 		return &errors.Http{Code: http.StatusNotFound, Message: err.Error()}
 	}
 	return db.Session.Services().Update(bson.M{"_id": service.Name}, service)
+}
+
+func ListServiceInstances(w http.ResponseWriter, r *http.Request, u *auth.User) error {
+	teams, err := u.Teams()
+	if err != nil {
+		return err
+	}
+	set := NewSet()
+	for _, team := range teams {
+		teamApps, err := app.GetApps(&team)
+		if err != nil {
+			continue
+		}
+		for _, a := range teamApps {
+			set.Add(a.Name)
+		}
+	}
+	var instances []ServiceInstance
+	err = db.Session.ServiceInstances().Find(bson.M{"apps": bson.M{"$in": set.Items()}}).All(&instances)
+	if err != nil {
+		return err
+	}
+	body, err := json.Marshal(instances)
+	if err != nil {
+		return err
+	}
+	n, err := w.Write(body)
+	if n != len(body) {
+		return &errors.Http{Code: http.StatusInternalServerError, Message: "Failed to write the response body."}
+	}
+	return err
 }
