@@ -3,7 +3,6 @@ package app
 import (
 	"bytes"
 	"encoding/json"
-	stderrors "errors"
 	"fmt"
 	"github.com/timeredbull/tsuru/api/auth"
 	"github.com/timeredbull/tsuru/db"
@@ -63,7 +62,14 @@ func CloneRepositoryHandler(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return &errors.Http{Code: http.StatusInternalServerError, Message: err.Error()}
 	}
-	fmt.Fprint(w, output)
+	out := filterOutput([]byte(output), nil)
+	n, err := w.Write(out)
+	if err != nil {
+		return err
+	}
+	if n != len(out) {
+		return &errors.Http{Code: http.StatusInternalServerError, Message: "Failed to write output."}
+	}
 	return nil
 }
 
@@ -271,7 +277,7 @@ func RunCommand(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 		return err
 	}
 	if n != len(out) {
-		return stderrors.New("Unexpected error writing the output")
+		return &errors.Http{Code: http.StatusInternalServerError, Message: "Unexpected error writing the output"}
 	}
 	return nil
 }
