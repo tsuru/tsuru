@@ -7,7 +7,7 @@ import (
 	. "launchpad.net/gocheck"
 )
 
-func (s *ServiceSuite) createServiceInstance() {
+func (s *S) createServiceInstance() {
 	s.service = &Service{Name: "MySQL"}
 	s.service.Create()
 	s.app = &app.App{Name: "serviceInstance", Framework: "Django"}
@@ -19,7 +19,7 @@ func (s *ServiceSuite) createServiceInstance() {
 	s.serviceInstance.Create()
 }
 
-func (s *ServiceSuite) TestCreateServiceInstance(c *C) {
+func (s *S) TestCreateServiceInstance(c *C) {
 	s.createServiceInstance()
 	defer s.app.Destroy()
 	defer s.service.Delete()
@@ -34,7 +34,7 @@ func (s *ServiceSuite) TestCreateServiceInstance(c *C) {
 	c.Assert(result.Apps[0], Equals, s.app.Name)
 }
 
-func (s *ServiceSuite) TestDeleteServiceInstance(c *C) {
+func (s *S) TestDeleteServiceInstance(c *C) {
 	s.createServiceInstance()
 	defer s.app.Destroy()
 	defer s.service.Delete()
@@ -48,7 +48,7 @@ func (s *ServiceSuite) TestDeleteServiceInstance(c *C) {
 	c.Assert(qtd, Equals, 0)
 }
 
-func (s *ServiceSuite) TestRetrieveAssociatedService(c *C) {
+func (s *S) TestRetrieveAssociatedService(c *C) {
 	a := app.App{Name: "MyApp", Framework: "Django"}
 	a.Create()
 	defer a.Destroy()
@@ -64,7 +64,7 @@ func (s *ServiceSuite) TestRetrieveAssociatedService(c *C) {
 	c.Assert(service.Name, Equals, rService.Name)
 }
 
-func (s *ServiceSuite) TestRetrieveAssociatedApp(c *C) {
+func (s *S) TestRetrieveAssociatedApp(c *C) {
 	a := app.App{Name: "my_app", Framework: "django"}
 	a.Create()
 	defer a.Destroy()

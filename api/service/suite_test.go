@@ -34,7 +34,7 @@ var HasAccessTo Checker = &hasAccessToChecker{}
 
 func Test(t *testing.T) { TestingT(t) }
 
-type ServiceSuite struct {
+type S struct {
 	app             *app.App
 	service         *Service
 	serviceInstance *ServiceInstance
@@ -43,9 +43,9 @@ type ServiceSuite struct {
 	tmpdir          string
 }
 
-var _ = Suite(&ServiceSuite{})
+var _ = Suite(&S{})
 
-func (s *ServiceSuite) SetUpSuite(c *C) {
+func (s *S) SetUpSuite(c *C) {
 	var err error
 	s.tmpdir, err = commandmocker.Add("juju", "")
 	db.Session, err = db.Open("127.0.0.1:27017", "tsuru_service_test")
@@ -58,13 +58,13 @@ func (s *ServiceSuite) SetUpSuite(c *C) {
 	c.Assert(err, IsNil)
 }
 
-func (s *ServiceSuite) TearDownSuite(c *C) {
+func (s *S) TearDownSuite(c *C) {
 	defer commandmocker.Remove(s.tmpdir)
 	defer db.Session.Close()
 	db.Session.Apps().Database.DropDatabase()
 }
 
-func (s *ServiceSuite) TearDownTest(c *C) {
+func (s *S) TearDownTest(c *C) {
 	_, err := db.Session.Services().RemoveAll(nil)
 	c.Assert(err, IsNil)
 

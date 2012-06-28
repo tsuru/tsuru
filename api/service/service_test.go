@@ -5,19 +5,19 @@ import (
 	. "launchpad.net/gocheck"
 )
 
-func (s *ServiceSuite) createService() {
+func (s *S) createService() {
 	s.service = &Service{Name: "my_service"}
 	s.service.Create()
 }
 
-func (s *ServiceSuite) TestGetService(c *C) {
+func (s *S) TestGetService(c *C) {
 	s.createService()
 	anotherService := Service{Name: s.service.Name}
 	anotherService.Get()
 	c.Assert(anotherService.Name, Equals, s.service.Name)
 }
 
-func (s *ServiceSuite) TestAllServices(c *C) {
+func (s *S) TestAllServices(c *C) {
 	se := Service{Name: "myService"}
 	se2 := Service{Name: "myOtherService"}
 	err := se.Create()
@@ -32,7 +32,7 @@ func (s *ServiceSuite) TestAllServices(c *C) {
 	c.Assert(len(results), Equals, 2)
 }
 
-func (s *ServiceSuite) TestCreateService(c *C) {
+func (s *S) TestCreateService(c *C) {
 	endpt := map[string]string{
 		"production": "somehost.com",
 		"test":       "test.somehost.com",
@@ -46,7 +46,7 @@ func (s *ServiceSuite) TestCreateService(c *C) {
 	c.Assert(endpt["test"], Equals, se.Endpoint["test"])
 }
 
-func (s *ServiceSuite) TestDeleteService(c *C) {
+func (s *S) TestDeleteService(c *C) {
 	s.createService()
 	s.service.Delete()
 	qtd, err := db.Session.Services().Find(nil).Count()
@@ -54,7 +54,7 @@ func (s *ServiceSuite) TestDeleteService(c *C) {
 	c.Assert(qtd, Equals, 0)
 }
 
-// func (s *ServiceSuite) TestBindService(c *C) {
+// func (s *S) TestBindService(c *C) {
 // 	s.createService()
 // 	app := &app.App{Name: "my_app", Framework: "django"}
 // 	app.Create()
@@ -70,7 +70,7 @@ func (s *ServiceSuite) TestDeleteService(c *C) {
 // 	c.Assert(app.Name, Equals, result.Apps[0].Name)
 // }
 // 
-// func (s *ServiceSuite) TestUnbindService(c *C) {
+// func (s *S) TestUnbindService(c *C) {
 // 	s.createService()
 // 	app := &app.App{Name: "my_app", Framework: "django"}
 // 	app.Create()
@@ -85,14 +85,14 @@ func (s *ServiceSuite) TestDeleteService(c *C) {
 // 	c.Assert(qtd, Equals, 0)
 // }
 
-func (s *ServiceSuite) TestGrantAccessShouldAddTeamToTheService(c *C) {
+func (s *S) TestGrantAccessShouldAddTeamToTheService(c *C) {
 	s.createService()
 	err := s.service.GrantAccess(s.team)
 	c.Assert(err, IsNil)
 	c.Assert(*s.team, HasAccessTo, *s.service)
 }
 
-func (s *ServiceSuite) TestGrantAccessShouldReturnErrorIfTheTeamAlreadyHasAcessToTheService(c *C) {
+func (s *S) TestGrantAccessShouldReturnErrorIfTheTeamAlreadyHasAcessToTheService(c *C) {
 	s.createService()
 	err := s.service.GrantAccess(s.team)
 	c.Assert(err, IsNil)
@@ -101,7 +101,7 @@ func (s *ServiceSuite) TestGrantAccessShouldReturnErrorIfTheTeamAlreadyHasAcessT
 	c.Assert(err, ErrorMatches, "^This team already has access to this service$")
 }
 
-func (s *ServiceSuite) TestRevokeAccessShouldRemoveTeamFromService(c *C) {
+func (s *S) TestRevokeAccessShouldRemoveTeamFromService(c *C) {
 	s.createService()
 	err := s.service.GrantAccess(s.team)
 	c.Assert(err, IsNil)
@@ -110,20 +110,20 @@ func (s *ServiceSuite) TestRevokeAccessShouldRemoveTeamFromService(c *C) {
 	c.Assert(*s.team, Not(HasAccessTo), *s.service)
 }
 
-func (s *ServiceSuite) TestRevokeAcessShouldReturnErrorIfTheTeamDoesNotHaveAccessToTheService(c *C) {
+func (s *S) TestRevokeAcessShouldReturnErrorIfTheTeamDoesNotHaveAccessToTheService(c *C) {
 	s.createService()
 	err := s.service.RevokeAccess(s.team)
 	c.Assert(err, NotNil)
 	c.Assert(err, ErrorMatches, "^This team does not have access to this service$")
 }
 
-func (s *ServiceSuite) TestCheckUserPermissionShouldReturnTrueIfTheGivenUserIsMemberOfOneOfTheServicesTeam(c *C) {
+func (s *S) TestCheckUserPermissionShouldReturnTrueIfTheGivenUserIsMemberOfOneOfTheServicesTeam(c *C) {
 	s.createService()
 	s.service.GrantAccess(s.team)
 	c.Assert(s.service.CheckUserAccess(s.user), Equals, true)
 }
 
-func (s *ServiceSuite) TestCheckUserPermissionShouldReturnFalseIfTheGivenUserIsNotMemberOfAnyOfTheServicesTeam(c *C) {
+func (s *S) TestCheckUserPermissionShouldReturnFalseIfTheGivenUserIsNotMemberOfAnyOfTheServicesTeam(c *C) {
 	s.createService()
 	c.Assert(s.service.CheckUserAccess(s.user), Equals, false)
 }
