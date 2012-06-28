@@ -21,24 +21,24 @@ type Fs interface {
 	Stat(name string) (os.FileInfo, error)
 }
 
-type OsFS struct{}
+type OsFs struct{}
 
-func (fs OsFS) Create(name string) (File, error) {
+func (fs OsFs) Create(name string) (File, error) {
 	return os.Create(name)
 }
 
-func (fs OsFS) Open(name string) (File, error) {
+func (fs OsFs) Open(name string) (File, error) {
 	return os.Open(name)
 }
 
-func (fs OsFS) Remove(name string) error {
+func (fs OsFs) Remove(name string) error {
 	return os.Remove(name)
 }
 
-func (fs OsFS) RemoveAll(path string) error {
+func (fs OsFs) RemoveAll(path string) error {
 	return os.RemoveAll(path)
 }
 
-func (fs OsFS) Stat(name string) (os.FileInfo, error) {
+func (fs OsFs) Stat(name string) (os.FileInfo, error) {
 	return os.Stat(name)
 }
