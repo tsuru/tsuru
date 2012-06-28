@@ -43,3 +43,11 @@ func (t *Team) RemoveUser(u *User) error {
 	t.Users = t.Users[:last]
 	return nil
 }
+
+func GetTeamsNames(teams []Team) []string {
+	tn := make([]string, len(teams))
+	for i, t := range teams {
+		tn[i] = t.Name
+	}
+	return tn
+}

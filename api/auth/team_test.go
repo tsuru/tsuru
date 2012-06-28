@@ -25,6 +25,13 @@ func (c *userPresenceChecker) Check(params []interface{}, names []string) (bool,
 
 var ContainsUser Checker = &userPresenceChecker{}
 
+func (s *S) TestGetTeamsNames(c *C) {
+	team := Team{Name: "cheese"}
+	team2 := Team{Name: "eggs"}
+	teamNames := GetTeamsNames([]Team{team, team2})
+	c.Assert(teamNames, DeepEquals, []string{"cheese", "eggs"})
+}
+
 func (s *S) TestShouldBeAbleToAddAUserToATeamReturningNoErrors(c *C) {
 	u := &User{Email: "nobody@globo.com"}
 	t := new(Team)
