@@ -688,11 +688,11 @@ func (s *S) TestServicesHandlerFilterInstancesPerServiceIncludingServicesThatDoe
 	err = json.Unmarshal(body, &instances)
 	c.Assert(err, IsNil)
 	expected := map[string][]string{
-		"redis": []string{"redisglobo1", "redisglobo2"},
-		"mysql": []string{"mysqlglobo1", "mysqlglobo2"},
-		"pgsql": []string{"pgsqlglobo1", "pgsqlglobo2"},
+		"redis":     []string{"redisglobo1", "redisglobo2"},
+		"mysql":     []string{"mysqlglobo1", "mysqlglobo2"},
+		"pgsql":     []string{"pgsqlglobo1", "pgsqlglobo2"},
 		"memcached": []string{"memcachedglobo1", "memcachedglobo2"},
-		"oracle": []string{},
+		"oracle":    []string{},
 	}
 	c.Assert(instances, DeepEquals, expected)
 }
