@@ -16,6 +16,7 @@ func buildManager(name string) cmd.Manager {
 	m.Register(&AppRun{})
 	m.Register(&Env{})
 	m.Register(&Key{})
+	m.Register(&Service{})
 	return m
 }
 
