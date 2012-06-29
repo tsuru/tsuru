@@ -246,9 +246,13 @@ func ServicesHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error
 			set.Add(a.Name)
 		}
 	}
+	var teamNames []string
+	for _, team := range teams {
+		teamNames = append(teamNames, team.Name)
+	}
 	response := make(map[string][]string)
 	var services []Service
-	err = db.Session.Services().Find(nil).All(&services)
+	err = db.Session.Services().Find(bson.M{"teams": bson.M{"$in": teamNames}}).All(&services)
 	if err != nil {
 		return err
 	}

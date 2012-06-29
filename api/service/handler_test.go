@@ -641,7 +641,7 @@ func (s *S) TestServicesHandlerReturnsOnlyServicesThatTheUserHasAccess(c *C) {
 	var instances map[string][]string
 	err = json.Unmarshal(body, &instances)
 	c.Assert(err, IsNil)
-	c.Assert(instances, DeepEquals, map[string][]string{"redis": []string{}})
+	c.Assert(instances, DeepEquals, map[string][]string{})
 }
 
 func (s *S) TestServicesHandlerFilterInstancesPerServiceIncludingServicesThatDoesNotHaveInstances(c *C) {
@@ -656,7 +656,7 @@ func (s *S) TestServicesHandlerFilterInstancesPerServiceIncludingServicesThatDoe
 	defer db.Session.Services().RemoveAll(bson.M{"name": bson.M{"$in": serviceNames}})
 	defer db.Session.ServiceInstances().RemoveAll(bson.M{"service_name": bson.M{"$in": serviceNames}})
 	for _, name := range serviceNames {
-		service := Service{Name: name}
+		service := Service{Name: name, Teams: []string{s.team.Name}}
 		err = service.Create()
 		c.Assert(err, IsNil)
 		instance := ServiceInstance{
@@ -673,7 +673,7 @@ func (s *S) TestServicesHandlerFilterInstancesPerServiceIncludingServicesThatDoe
 		}
 		err = instance.Create()
 	}
-	service := Service{Name: "oracle"}
+	service := Service{Name: "oracle", Teams: []string{s.team.Name}}
 	err = service.Create()
 	c.Assert(err, IsNil)
 	defer db.Session.Services().Remove(bson.M{"name": "oracle"})
