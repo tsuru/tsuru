@@ -1,7 +1,6 @@
 package service
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"github.com/timeredbull/tsuru/api/app"
@@ -27,28 +26,6 @@ type bindJson struct {
 // a service with a pointer to it's type
 type serviceT struct {
 	Name string
-}
-
-func ServicesHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
-	var services []Service
-	var teams []auth.Team
-	db.Session.Teams().Find(bson.M{"users.email": u.Email}).All(&teams)
-	q := bson.M{"teams": bson.M{"$in": auth.GetTeamsNames(teams)}}
-	db.Session.Services().Find(q).All(&services)
-	results := make([]serviceT, len(services))
-	var sT serviceT
-	for i, s := range services {
-		sT = serviceT{
-			Name: s.Name,
-		}
-		results[i] = sT
-	}
-	b, err := json.Marshal(results)
-	if err != nil {
-		return err
-	}
-	fmt.Fprint(w, bytes.NewBuffer(b).String())
-	return nil
 }
 
 func CreateHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
@@ -254,7 +231,7 @@ func RevokeAccessFromTeamHandler(w http.ResponseWriter, r *http.Request, u *auth
 	return db.Session.Services().Update(bson.M{"_id": service.Name}, service)
 }
 
-func ListServiceInstances(w http.ResponseWriter, r *http.Request, u *auth.User) error {
+func ServicesHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	teams, err := u.Teams()
 	if err != nil {
 		return err
@@ -269,12 +246,21 @@ func ListServiceInstances(w http.ResponseWriter, r *http.Request, u *auth.User) 
 			set.Add(a.Name)
 		}
 	}
-	var instances []ServiceInstance
-	err = db.Session.ServiceInstances().Find(bson.M{"apps": bson.M{"$in": set.Items()}}).All(&instances)
+	iter := db.Session.ServiceInstances().Find(bson.M{"apps": bson.M{"$in": set.Items()}}).Iter()
+	var instance ServiceInstance
+	response := make(map[string][]string)
+	for iter.Next(&instance) {
+		if service, ok := response[instance.ServiceName]; ok {
+			response[instance.ServiceName] = append(service, instance.Name)
+		} else {
+			response[instance.ServiceName] = []string{instance.Name}
+		}
+	}
+	err = iter.Err()
 	if err != nil {
 		return err
 	}
-	body, err := json.Marshal(instances)
+	body, err := json.Marshal(response)
 	if err != nil {
 		return err
 	}
