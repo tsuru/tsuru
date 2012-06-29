@@ -5,13 +5,13 @@ import (
 	"sort"
 )
 
-func (s *ServiceSuite) TestAddItem(c *C) {
+func (s *S) TestAddItem(c *C) {
 	set := NewSet()
 	set.Add("abc")
 	c.Assert(set.m["abc"], Equals, int8(1))
 }
 
-func (s *ServiceSuite) TestRemoveItem(c *C) {
+func (s *S) TestRemoveItem(c *C) {
 	set := NewSet()
 	set.Add("abc")
 	set.Add("def")
@@ -20,7 +20,7 @@ func (s *ServiceSuite) TestRemoveItem(c *C) {
 	c.Assert(ok, Equals, false)
 }
 
-func (s *ServiceSuite) TestGetItems(c *C) {
+func (s *S) TestGetItems(c *C) {
 	set := NewSet()
 	set.Add("abc")
 	set.Add("def")

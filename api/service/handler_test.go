@@ -617,7 +617,7 @@ func (s *S) TestRevokeAccessFromTeamReturnNotFoundIfTheTeamDoesNotHasAccessToThe
 	c.Assert(e.Code, Equals, http.StatusNotFound)
 }
 
-func (s *ServiceSuite) TestListServiceInstances(c *C) {
+func (s *S) TestListServiceInstances(c *C) {
 	app := app.App{Name: "globo", Teams: []string{s.team.Name}}
 	err := app.Create()
 	c.Assert(err, IsNil)
@@ -644,7 +644,7 @@ func (s *ServiceSuite) TestListServiceInstances(c *C) {
 	c.Assert(instances, DeepEquals, []ServiceInstance{instance})
 }
 
-func (s *ServiceSuite) TestListServiceInstancesReturnsOnlyTheInstancesThatTheUserHasAccess(c *C) {
+func (s *S) TestListServiceInstancesReturnsOnlyTheInstancesThatTheUserHasAccess(c *C) {
 	u := &auth.User{Email: "me@globo.com", Password: "123"}
 	err := u.Create()
 	c.Assert(err, IsNil)
