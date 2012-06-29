@@ -5,6 +5,7 @@ import (
 	"github.com/timeredbull/tsuru/api/unit"
 	"github.com/timeredbull/tsuru/config"
 	"github.com/timeredbull/tsuru/log"
+	"path"
 )
 
 func Clone(app string, machine int) ([]byte, error) {
@@ -58,6 +59,12 @@ func GetReadOnlyUrl(app string) string {
 }
 
 func GetPath() (string, error) {
-	unitRepo, err := config.GetString("git:unit-repo")
-	return unitRepo, err
+	return config.GetString("git:unit-repo")
+}
+
+func GetBarePath(app string) (p string, err error) {
+	if p, err = config.GetString("git:bare-base"); err == nil {
+		p = path.Join(p, app+".git")
+	}
+	return
 }
