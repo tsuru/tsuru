@@ -32,6 +32,36 @@ func (s *S) TestOsFsCreatesTheFileInTheDisc(c *C) {
 	c.Assert(err, IsNil)
 }
 
+func (s *S) TestOsFsMkdirWritesTheDirectoryInTheDisc(c *C) {
+	path := "/tmp/test-fs-tsuru"
+	os.RemoveAll(path)
+	defer os.RemoveAll(path)
+	fs := OsFs{}
+	err := fs.Mkdir(path, 0755)
+	c.Assert(err, IsNil)
+	fi, err := os.Stat(path)
+	c.Assert(err, IsNil)
+	c.Assert(fi.IsDir(), Equals, true)
+}
+
+func (s *S) TestOsFsMkdirAllWritesAllDirectoriesInTheDisc(c *C) {
+	root := "/tmp/test-fs-tsuru"
+	path := root + "/path"
+	paths := []string{root, path}
+	for _, path := range paths {
+		os.RemoveAll(path)
+		defer os.RemoveAll(path)
+	}
+	fs := OsFs{}
+	err := fs.MkdirAll(path, 0755)
+	c.Assert(err, IsNil)
+	for _, path := range paths {
+		fi, err := os.Stat(path)
+		c.Assert(err, IsNil)
+		c.Assert(fi.IsDir(), Equals, true)
+	}
+}
+
 func (s *S) TestOsFsOpenOpensTheFileFromDisc(c *C) {
 	path := "/tmp/test-fs-tsuru"
 	unknownPath := "/tmp/test-fs-tsuru-unknown"

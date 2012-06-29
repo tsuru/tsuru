@@ -15,6 +15,8 @@ type File interface {
 
 type Fs interface {
 	Create(name string) (File, error)
+	Mkdir(name string, perm os.FileMode) error
+	MkdirAll(path string, perm os.FileMode) error
 	Open(name string) (File, error)
 	Remove(name string) error
 	RemoveAll(path string) error
@@ -25,6 +27,14 @@ type OsFs struct{}
 
 func (fs OsFs) Create(name string) (File, error) {
 	return os.Create(name)
+}
+
+func (fs OsFs) Mkdir(name string, perm os.FileMode) error {
+	return os.Mkdir(name, perm)
+}
+
+func (fs OsFs) MkdirAll(path string, perm os.FileMode) error {
+	return os.MkdirAll(path, perm)
 }
 
 func (fs OsFs) Open(name string) (File, error) {
