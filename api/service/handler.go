@@ -256,6 +256,10 @@ func ServicesHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error
 	if err != nil {
 		return err
 	}
+	if len(services) == 0 {
+		w.Write([]byte("null"))
+		return nil
+	}
 	for _, service := range services {
 		response[service.Name] = []string{}
 	}

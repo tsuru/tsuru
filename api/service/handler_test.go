@@ -587,7 +587,7 @@ func (s *S) TestServicesHandler(c *C) {
 	app := app.App{Name: "globo", Teams: []string{s.team.Name}}
 	err := app.Create()
 	c.Assert(err, IsNil)
-	service := Service{Name: "redis"}
+	service := Service{Name: "redis", Teams: []string{s.team.Name}}
 	err = service.Create()
 	c.Assert(err, IsNil)
 	instance := ServiceInstance{
@@ -641,7 +641,7 @@ func (s *S) TestServicesHandlerReturnsOnlyServicesThatTheUserHasAccess(c *C) {
 	var instances map[string][]string
 	err = json.Unmarshal(body, &instances)
 	c.Assert(err, IsNil)
-	c.Assert(instances, DeepEquals, map[string][]string{})
+	c.Assert(instances, DeepEquals, map[string][]string(nil))
 }
 
 func (s *S) TestServicesHandlerFilterInstancesPerServiceIncludingServicesThatDoesNotHaveInstances(c *C) {
