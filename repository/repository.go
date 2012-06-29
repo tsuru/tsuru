@@ -59,8 +59,7 @@ func GetReadOnlyUrl(app string) string {
 }
 
 func GetPath() (string, error) {
-	unitRepo, err := config.GetString("git:unit-repo")
-	return unitRepo, err
+	return config.GetString("git:unit-repo")
 }
 
 func GetBarePath(app string) (p string, err error) {
