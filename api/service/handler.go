@@ -246,15 +246,20 @@ func ServicesHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error
 			set.Add(a.Name)
 		}
 	}
+	response := make(map[string][]string)
+	var services []Service
+	err = db.Session.Services().Find(nil).All(&services)
+	if err != nil {
+		return err
+	}
+	for _, service := range services {
+		response[service.Name] = []string{}
+	}
 	iter := db.Session.ServiceInstances().Find(bson.M{"apps": bson.M{"$in": set.Items()}}).Iter()
 	var instance ServiceInstance
-	response := make(map[string][]string)
 	for iter.Next(&instance) {
-		if service, ok := response[instance.ServiceName]; ok {
-			response[instance.ServiceName] = append(service, instance.Name)
-		} else {
-			response[instance.ServiceName] = []string{instance.Name}
-		}
+		service := response[instance.ServiceName]
+		response[instance.ServiceName] = append(service, instance.Name)
 	}
 	err = iter.Err()
 	if err != nil {

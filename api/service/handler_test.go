@@ -641,10 +641,10 @@ func (s *S) TestServicesHandlerReturnsOnlyServicesThatTheUserHasAccess(c *C) {
 	var instances map[string][]string
 	err = json.Unmarshal(body, &instances)
 	c.Assert(err, IsNil)
-	c.Assert(instances, DeepEquals, map[string][]string{})
+	c.Assert(instances, DeepEquals, map[string][]string{"redis": []string{}})
 }
 
-func (s *S) TestServicesHandlerFilterInstancesPerService(c *C) {
+func (s *S) TestServicesHandlerFilterInstancesPerServiceIncludingServicesThatDoesNotHaveInstances(c *C) {
 	u := &auth.User{Email: "me@globo.com", Password: "123"}
 	err := u.Create()
 	c.Assert(err, IsNil)
@@ -673,6 +673,10 @@ func (s *S) TestServicesHandlerFilterInstancesPerService(c *C) {
 		}
 		err = instance.Create()
 	}
+	service := Service{Name: "oracle"}
+	err = service.Create()
+	c.Assert(err, IsNil)
+	defer db.Session.Services().Remove(bson.M{"name": "oracle"})
 	request, err := http.NewRequest("GET", "/services/instances", nil)
 	c.Assert(err, IsNil)
 	recorder := httptest.NewRecorder()
@@ -688,6 +692,7 @@ func (s *S) TestServicesHandlerFilterInstancesPerService(c *C) {
 		"mysql": []string{"mysqlglobo1", "mysqlglobo2"},
 		"pgsql": []string{"pgsqlglobo1", "pgsqlglobo2"},
 		"memcached": []string{"memcachedglobo1", "memcachedglobo2"},
+		"oracle": []string{},
 	}
 	c.Assert(instances, DeepEquals, expected)
 }
