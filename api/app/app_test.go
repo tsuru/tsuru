@@ -6,11 +6,14 @@ import (
 	"github.com/timeredbull/tsuru/api/auth"
 	"github.com/timeredbull/tsuru/api/unit"
 	"github.com/timeredbull/tsuru/db"
+	"github.com/timeredbull/tsuru/fs"
 	"github.com/timeredbull/tsuru/log"
+	"github.com/timeredbull/tsuru/repository"
 	"labix.org/v2/mgo/bson"
 	. "launchpad.net/gocheck"
 	stdlog "log"
 	"strings"
+	"time"
 )
 
 type hasAccessToChecker struct{}
@@ -90,6 +93,28 @@ func (s *S) TestDestroy(c *C) {
 	c.Assert(logStr, Matches, ".*terminate-machine 3.*")
 	qtd, err := db.Session.Apps().Find(bson.M{"name": a.Name}).Count()
 	c.Assert(qtd, Equals, 0)
+}
+
+func (s *S) TestDestroyShouldRemoveTheDirectory(c *C) {
+	rfs := RecordingFs{}
+	app := App{Name: "your-darkest-hour", fsystem: &rfs}
+	err := app.Create()
+	c.Assert(err, IsNil)
+	path, err := repository.GetBarePath(app.Name)
+	c.Assert(err, IsNil)
+	err = app.Destroy()
+	ch := make(chan int8)
+	go func(rfs *RecordingFs, path string, c chan int8) {
+		for !rfs.HasAction("removeall "+path) {
+		}
+		c <- 1
+	}(&rfs, path, ch)
+	select {
+	case <-ch:
+		c.SucceedNow()
+	case <-time.After(1e9):
+		c.Error("Did not called fs.RemoveAll after 1 second.")
+	}
 }
 
 func (s *S) TestCreate(c *C) {
@@ -542,4 +567,16 @@ func (s *S) TestGetAppsToWhichTheTeamHasAccess(c *C) {
 func (s *S) TestGetAppsReturnErrorIfTeamIsNil(c *C) {
 	_, err := GetApps(nil)
 	c.Assert(err, NotNil)
+}
+
+func (s *S) TestFsReturnsTheFieldValue(c *C) {
+	rfs := &RecordingFs{}
+	app := App{fsystem: rfs}
+	c.Assert(app.fs(), FitsTypeOf, rfs)
+}
+
+func (s *S) TestFsReturnsOsFsIfFieldIsNil(c *C) {
+	ofs := fs.OsFs{}
+	app := App{}
+	c.Assert(app.fs(), FitsTypeOf, ofs)
 }
