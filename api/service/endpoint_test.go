@@ -7,6 +7,10 @@ import (
 	"net/http/httptest"
 )
 
+func failHandler(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusInternalServerError)
+}
+
 type TestHandler struct {
 	body   []byte
 	method string
@@ -51,4 +55,26 @@ func (s *S) TestCreateShouldReturnTheMapWithTheEnvironmentVariables(c *C) {
 	env, err := client.Create(&instance)
 	c.Assert(err, IsNil)
 	c.Assert(env, DeepEquals, expected)
+}
+
+func (s *S) TestDestroyShouldSendADELETERequestToTheResourceURL(c *C) {
+	h := TestHandler{}
+	ts := httptest.NewServer(&h)
+	defer ts.Close()
+	instance := ServiceInstance{Name: "his-redis", ServiceName: "redis"}
+	client := &Client{endpoint: ts.URL}
+	err := client.Destroy(&instance)
+	c.Assert(err, IsNil)
+	c.Assert(h.url, Equals, "/resources/"+instance.Name)
+	c.Assert(h.method, Equals, "DELETE")
+}
+
+func (s *S) TestDestroyShouldReturnErrorIfTheRequestFails(c *C) {
+	ts := httptest.NewServer(http.HandlerFunc(failHandler))
+	defer ts.Close()
+	instance := ServiceInstance{Name: "his-redis", ServiceName: "redis"}
+	client := &Client{endpoint: ts.URL}
+	err := client.Destroy(&instance)
+	c.Assert(err, NotNil)
+	c.Assert(err, ErrorMatches, "^Failed to destroy the instance: "+instance.Name+"$")
 }

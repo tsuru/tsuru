@@ -2,6 +2,7 @@ package service
 
 import (
 	"encoding/json"
+	"errors"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -40,4 +41,12 @@ func (c *Client) Create(instance *ServiceInstance) (envVars map[string]string, e
 	}
 	err = json.Unmarshal(body, &envVars)
 	return
+}
+
+func (c *Client) Destroy(instance *ServiceInstance) (err error) {
+	var resp *http.Response
+	if resp, err = c.issue("/resources/"+instance.Name, "DELETE", nil); err == nil && resp.StatusCode > 299 {
+		err = errors.New("Failed to destroy the instance: " + instance.Name)
+	}
+	return err
 }
