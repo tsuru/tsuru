@@ -67,3 +67,10 @@ func (s *S) TestTargetIsRegistered(c *C) {
 	c.Assert(ok, Equals, true)
 	c.Assert(target, FitsTypeOf, &cmd.Target{})
 }
+
+func (s *S) TestServiceIsRegistered(c *C) {
+	manager := buildManager("tsuru")
+	service, ok := manager.Commands["service"]
+	c.Assert(ok, Equals, true)
+	c.Assert(service, FitsTypeOf, &Service{})
+}

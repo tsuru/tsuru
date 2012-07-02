@@ -118,40 +118,6 @@ func (s *S) TestCreateHandlerReturnsForbiddenIfTheUserIsNotMemberOfAnyTeam(c *C)
 	c.Assert(e, ErrorMatches, "^In order to create a service, you should be member of at least one team$")
 }
 
-func (s *S) TestServicesHandlerListsOnlyServicesThatTheUserHasAccess(c *C) {
-	t := auth.Team{Name: "cheddar"}
-	t.AddUser(s.user)
-	err := db.Session.Teams().Insert(t)
-	c.Assert(err, IsNil)
-	defer db.Session.Teams().Remove(t)
-	se := Service{Name: "myService", Teams: []string{t.Name}}
-	se2 := Service{Name: "myOtherService"}
-	err = se.Create()
-	c.Assert(err, IsNil)
-	defer se.Delete()
-	var services []Service
-	db.Session.Services().Find(nil).All(&services)
-	err = se2.Create()
-	c.Assert(err, IsNil)
-	defer se2.Delete()
-
-	request, err := http.NewRequest("GET", "/services", nil)
-	c.Assert(err, IsNil)
-
-	recorder := httptest.NewRecorder()
-	err = ServicesHandler(recorder, request, s.user)
-	c.Assert(err, IsNil)
-	c.Assert(recorder.Code, Equals, 200)
-	body, err := ioutil.ReadAll(recorder.Body)
-	c.Assert(err, IsNil)
-	var results []serviceT
-	err = json.Unmarshal(body, &results)
-	c.Assert(err, IsNil)
-	c.Assert(len(results), Equals, 1)
-	c.Assert(results[0], FitsTypeOf, serviceT{})
-	c.Assert(results[0].Name, Equals, "myService")
-}
-
 func (suite *S) TestCreateInstanceHandlerSavesServiceInstanceInDb(c *C) {
 	s := Service{Name: "mysql", Teams: []string{suite.team.Name}}
 	s.Create()
@@ -617,11 +583,11 @@ func (s *S) TestRevokeAccessFromTeamReturnNotFoundIfTheTeamDoesNotHasAccessToThe
 	c.Assert(e.Code, Equals, http.StatusNotFound)
 }
 
-func (s *S) TestListServiceInstances(c *C) {
+func (s *S) TestServicesHandler(c *C) {
 	app := app.App{Name: "globo", Teams: []string{s.team.Name}}
 	err := app.Create()
 	c.Assert(err, IsNil)
-	service := Service{Name: "redis"}
+	service := Service{Name: "redis", Teams: []string{s.team.Name}}
 	err = service.Create()
 	c.Assert(err, IsNil)
 	instance := ServiceInstance{
@@ -634,17 +600,20 @@ func (s *S) TestListServiceInstances(c *C) {
 	request, err := http.NewRequest("GET", "/services/instances", nil)
 	c.Assert(err, IsNil)
 	recorder := httptest.NewRecorder()
-	err = ListServiceInstances(recorder, request, s.user)
+	err = ServicesHandler(recorder, request, s.user)
 	c.Assert(err, IsNil)
 	body, err := ioutil.ReadAll(recorder.Body)
 	c.Assert(err, IsNil)
-	var instances []ServiceInstance
+	var instances map[string][]string
 	err = json.Unmarshal(body, &instances)
 	c.Assert(err, IsNil)
-	c.Assert(instances, DeepEquals, []ServiceInstance{instance})
+	expected := map[string][]string{
+		"redis": []string{"redis-globo"},
+	}
+	c.Assert(instances, DeepEquals, expected)
 }
 
-func (s *S) TestListServiceInstancesReturnsOnlyTheInstancesThatTheUserHasAccess(c *C) {
+func (s *S) TestServicesHandlerReturnsOnlyServicesThatTheUserHasAccess(c *C) {
 	u := &auth.User{Email: "me@globo.com", Password: "123"}
 	err := u.Create()
 	c.Assert(err, IsNil)
@@ -665,12 +634,65 @@ func (s *S) TestListServiceInstancesReturnsOnlyTheInstancesThatTheUserHasAccess(
 	request, err := http.NewRequest("GET", "/services/instances", nil)
 	c.Assert(err, IsNil)
 	recorder := httptest.NewRecorder()
-	err = ListServiceInstances(recorder, request, u)
+	err = ServicesHandler(recorder, request, u)
 	c.Assert(err, IsNil)
 	body, err := ioutil.ReadAll(recorder.Body)
 	c.Assert(err, IsNil)
-	var instances []ServiceInstance
+	var instances map[string][]string
 	err = json.Unmarshal(body, &instances)
 	c.Assert(err, IsNil)
-	c.Assert(instances, DeepEquals, []ServiceInstance(nil))
+	c.Assert(instances, DeepEquals, map[string][]string(nil))
+}
+
+func (s *S) TestServicesHandlerFilterInstancesPerServiceIncludingServicesThatDoesNotHaveInstances(c *C) {
+	u := &auth.User{Email: "me@globo.com", Password: "123"}
+	err := u.Create()
+	c.Assert(err, IsNil)
+	defer db.Session.Users().Remove(bson.M{"email": u.Email})
+	app := app.App{Name: "globo", Teams: []string{s.team.Name}}
+	err = app.Create()
+	c.Assert(err, IsNil)
+	serviceNames := []string{"redis", "mysql", "pgsql", "memcached"}
+	defer db.Session.Services().RemoveAll(bson.M{"name": bson.M{"$in": serviceNames}})
+	defer db.Session.ServiceInstances().RemoveAll(bson.M{"service_name": bson.M{"$in": serviceNames}})
+	for _, name := range serviceNames {
+		service := Service{Name: name, Teams: []string{s.team.Name}}
+		err = service.Create()
+		c.Assert(err, IsNil)
+		instance := ServiceInstance{
+			Name:        service.Name + app.Name + "1",
+			ServiceName: service.Name,
+			Apps:        []string{app.Name},
+		}
+		err = instance.Create()
+		c.Assert(err, IsNil)
+		instance = ServiceInstance{
+			Name:        service.Name + app.Name + "2",
+			ServiceName: service.Name,
+			Apps:        []string{app.Name},
+		}
+		err = instance.Create()
+	}
+	service := Service{Name: "oracle", Teams: []string{s.team.Name}}
+	err = service.Create()
+	c.Assert(err, IsNil)
+	defer db.Session.Services().Remove(bson.M{"name": "oracle"})
+	request, err := http.NewRequest("GET", "/services/instances", nil)
+	c.Assert(err, IsNil)
+	recorder := httptest.NewRecorder()
+	err = ServicesHandler(recorder, request, s.user)
+	c.Assert(err, IsNil)
+	body, err := ioutil.ReadAll(recorder.Body)
+	c.Assert(err, IsNil)
+	var instances map[string][]string
+	err = json.Unmarshal(body, &instances)
+	c.Assert(err, IsNil)
+	expected := map[string][]string{
+		"redis":     []string{"redisglobo1", "redisglobo2"},
+		"mysql":     []string{"mysqlglobo1", "mysqlglobo2"},
+		"pgsql":     []string{"pgsqlglobo1", "pgsqlglobo2"},
+		"memcached": []string{"memcachedglobo1", "memcachedglobo2"},
+		"oracle":    []string{},
+	}
+	c.Assert(instances, DeepEquals, expected)
 }

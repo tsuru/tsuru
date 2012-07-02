@@ -1,7 +1,6 @@
 package service
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"github.com/timeredbull/tsuru/api/app"
@@ -27,28 +26,6 @@ type bindJson struct {
 // a service with a pointer to it's type
 type serviceT struct {
 	Name string
-}
-
-func ServicesHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
-	var services []Service
-	var teams []auth.Team
-	db.Session.Teams().Find(bson.M{"users.email": u.Email}).All(&teams)
-	q := bson.M{"teams": bson.M{"$in": auth.GetTeamsNames(teams)}}
-	db.Session.Services().Find(q).All(&services)
-	results := make([]serviceT, len(services))
-	var sT serviceT
-	for i, s := range services {
-		sT = serviceT{
-			Name: s.Name,
-		}
-		results[i] = sT
-	}
-	b, err := json.Marshal(results)
-	if err != nil {
-		return err
-	}
-	fmt.Fprint(w, bytes.NewBuffer(b).String())
-	return nil
 }
 
 func CreateHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
@@ -254,7 +231,7 @@ func RevokeAccessFromTeamHandler(w http.ResponseWriter, r *http.Request, u *auth
 	return db.Session.Services().Update(bson.M{"_id": service.Name}, service)
 }
 
-func ListServiceInstances(w http.ResponseWriter, r *http.Request, u *auth.User) error {
+func ServicesHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	teams, err := u.Teams()
 	if err != nil {
 		return err
@@ -269,12 +246,34 @@ func ListServiceInstances(w http.ResponseWriter, r *http.Request, u *auth.User) 
 			set.Add(a.Name)
 		}
 	}
-	var instances []ServiceInstance
-	err = db.Session.ServiceInstances().Find(bson.M{"apps": bson.M{"$in": set.Items()}}).All(&instances)
+	var teamNames []string
+	for _, team := range teams {
+		teamNames = append(teamNames, team.Name)
+	}
+	response := make(map[string][]string)
+	var services []Service
+	err = db.Session.Services().Find(bson.M{"teams": bson.M{"$in": teamNames}}).All(&services)
 	if err != nil {
 		return err
 	}
-	body, err := json.Marshal(instances)
+	if len(services) == 0 {
+		w.Write([]byte("null"))
+		return nil
+	}
+	for _, service := range services {
+		response[service.Name] = []string{}
+	}
+	iter := db.Session.ServiceInstances().Find(bson.M{"apps": bson.M{"$in": set.Items()}}).Iter()
+	var instance ServiceInstance
+	for iter.Next(&instance) {
+		service := response[instance.ServiceName]
+		response[instance.ServiceName] = append(service, instance.Name)
+	}
+	err = iter.Err()
+	if err != nil {
+		return err
+	}
+	body, err := json.Marshal(response)
 	if err != nil {
 		return err
 	}
