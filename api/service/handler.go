@@ -97,8 +97,7 @@ func CreateInstanceHandler(w http.ResponseWriter, r *http.Request, u *auth.User)
 		Name:        jService["name"],
 		ServiceName: jService["service_name"],
 	}
-	si.Create()
-	return nil
+	return si.Create()
 }
 
 func DeleteHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
