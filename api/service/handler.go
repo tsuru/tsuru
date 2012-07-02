@@ -73,12 +73,13 @@ func CreateInstanceHandler(w http.ResponseWriter, r *http.Request, u *auth.User)
 	if err != nil {
 		return &errors.Http{Code: http.StatusInternalServerError, Message: err.Error()}
 	}
-	n, err := db.Session.Services().Find(bson.M{"_id": jService["service_name"]}).Count()
+	var s Service
+	err = db.Session.Services().Find(bson.M{"_id": jService["service_name"]}).One(&s)
 	if err != nil {
-		return &errors.Http{Code: http.StatusInternalServerError, Message: err.Error()}
-	}
-	if n == 0 {
-		msg := fmt.Sprintf("Service %s does not exists.", jService["service_name"])
+		msg := err.Error()
+		if msg == "not found" {
+			msg = fmt.Sprintf("Service %s does not exists.", jService["service_name"])
+		}
 		return &errors.Http{Code: http.StatusNotFound, Message: msg}
 	}
 	var teams []auth.Team
@@ -87,7 +88,7 @@ func CreateInstanceHandler(w http.ResponseWriter, r *http.Request, u *auth.User)
 		return &errors.Http{Code: http.StatusInternalServerError, Message: err.Error()}
 	}
 	q := bson.M{"_id": jService["service_name"], "teams": bson.M{"$in": auth.GetTeamsNames(teams)}}
-	n, err = db.Session.Services().Find(q).Count()
+	n, err := db.Session.Services().Find(q).Count()
 	if n == 0 {
 		msg := fmt.Sprintf("You don't have access to service %s", jService["service_name"])
 		return &errors.Http{Code: http.StatusForbidden, Message: msg}
