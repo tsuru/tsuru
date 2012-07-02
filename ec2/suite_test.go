@@ -35,6 +35,10 @@ func (s *S) reconfServer(c *C) {
 	EC2 = ec2.New(*auth, region)
 }
 
+func (s *S) reconfKey(c *C) {
+	pubKey = []byte("ssh-rsa BBBIA8ZnaC1yc2EAAAABIwAAAQEAs8nQiUnSLFHy8Mx5179FmO/n/HpbGnPtuUx20/S75AszlFSZaFxwYwlvY3P5lNvTiWzGL0JMgj2NGxFPzs4gh9IkRRUnzsNNj2z4cOzyE/6uflivlEsNjYq2lF4LeicZkQ12Ybrg1aCZVTeH38YZZJQQPxLEiXHUwhwi7uvRBiriypl13dc9wVlVhEUOEkyhRjrRh3ONG0euf0+E5YRHIoP7CGZlSZ21hgSyxXjLRmhP3vq62+ql8wGWp4LS2MN47eKt5iUFgE1fLU6rR+VBZWM+zYMx7nz7mIbGdxfYdI6hImStvXov9kOEgbVjkud0m06w2VQ26z85Rlg5ewqdFw== user@host")
+}
+
 func (s *S) TearDownSuite(c *C) {
 	s.srv.Quit()
 }

@@ -1,15 +1,22 @@
 package ec2
 
 import (
+	"fmt"
 	"github.com/timeredbull/tsuru/config"
+	"io/ioutil"
 	"launchpad.net/goamz/aws"
 	"launchpad.net/goamz/ec2"
+	"os"
+	"os/user"
+	"path"
 )
 
 var EC2 *ec2.EC2
+var pubKey []byte
 
 func init() {
 	Conn()
+	getPubKey()
 }
 
 func getAuth() (*aws.Auth, error) {
@@ -35,6 +42,26 @@ func getRegion() (*aws.Region, error) {
 	return region, nil
 }
 
+func getPubKey() ([]byte, error) {
+	u, err := user.Current()
+	if err != nil {
+		return []byte{}, err
+	}
+	files := []string{"id_dsa.pub", "id_rsa.pub", "identity.pub"}
+	for i, f := range files {
+		p := path.Join(u.HomeDir, ".ssh", f)
+		pubKey, err = ioutil.ReadFile(p)
+		if err != nil {
+			if os.IsNotExist(err) && i != len(files)-1 {
+				continue
+			}
+			return []byte{}, err
+		}
+		break
+	}
+	return pubKey, err
+}
+
 func Conn() (*ec2.EC2, error) {
 	auth, err := getAuth()
 	if err != nil {
@@ -50,6 +77,8 @@ func Conn() (*ec2.EC2, error) {
 
 func RunInstance(imageId string, userData string) (string, error) {
 	ud := []byte(userData)
+	cmd := fmt.Sprintf("\necho \"%s\" >> /root/.ssh/authorized_keys", pubKey)
+	ud = append(ud, cmd...)
 	rInst := &ec2.RunInstances{
 		ImageId:  imageId,
 		UserData: ud,
