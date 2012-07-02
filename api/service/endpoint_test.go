@@ -1,6 +1,8 @@
 package service
 
 import (
+	"github.com/timeredbull/tsuru/api/app"
+	"github.com/timeredbull/tsuru/api/unit"
 	"io/ioutil"
 	. "launchpad.net/gocheck"
 	"net/http"
@@ -77,4 +79,49 @@ func (s *S) TestDestroyShouldReturnErrorIfTheRequestFails(c *C) {
 	err := client.Destroy(&instance)
 	c.Assert(err, NotNil)
 	c.Assert(err, ErrorMatches, "^Failed to destroy the instance: "+instance.Name+"$")
+}
+
+func (s *S) TestBindShouldSendAPOSTToTheResourceURL(c *C) {
+	h := TestHandler{}
+	ts := httptest.NewServer(&h)
+	defer ts.Close()
+	instance := ServiceInstance{Name: "her-redis", ServiceName: "redis"}
+	a := app.App{
+		Name: "her-app",
+		Units: []unit.Unit{
+			unit.Unit{
+				Ip: "10.0.10.1",
+			},
+		},
+	}
+	client := &Client{endpoint: ts.URL}
+	_, err := client.Bind(&instance, &a, "127.0.0.1")
+	c.Assert(err, IsNil)
+	c.Assert(h.url, Equals, "/resources/"+instance.Name)
+	c.Assert(h.method, Equals, "POST")
+	c.Assert(string(h.body), Equals, "hostname=10.0.10.1&service_host=127.0.0.1")
+}
+
+func (s *S) TestBindShouldReturnMapWithTheEnvironmentVariable(c *C) {
+	expected := map[string]string{
+		"MYSQL_DATABASE_NAME": "CHICO",
+		"MYSQL_HOST":          "localhost",
+		"MYSQL_PORT":          "3306",
+	}
+	h := TestHandler{}
+	ts := httptest.NewServer(&h)
+	defer ts.Close()
+	instance := ServiceInstance{Name: "her-redis", ServiceName: "redis"}
+	a := app.App{
+		Name: "her-app",
+		Units: []unit.Unit{
+			unit.Unit{
+				Ip: "10.0.10.1",
+			},
+		},
+	}
+	client := &Client{endpoint: ts.URL}
+	env, err := client.Bind(&instance, &a, "127.0.0.1")
+	c.Assert(err, IsNil)
+	c.Assert(env, DeepEquals, expected)
 }
