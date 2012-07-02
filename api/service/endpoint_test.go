@@ -7,6 +7,7 @@ import (
 	. "launchpad.net/gocheck"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 )
 
 func failHandler(w http.ResponseWriter, r *http.Request) {
@@ -99,7 +100,9 @@ func (s *S) TestBindShouldSendAPOSTToTheResourceURL(c *C) {
 	c.Assert(err, IsNil)
 	c.Assert(h.url, Equals, "/resources/"+instance.Name)
 	c.Assert(h.method, Equals, "POST")
-	c.Assert(string(h.body), Equals, "hostname=10.0.10.1&service_host=127.0.0.1")
+	v, err := url.ParseQuery(string(h.body))
+	c.Assert(err, IsNil)
+	c.Assert(map[string][]string(v), DeepEquals, map[string][]string{"hostname": []string{"10.0.10.1"}, "service_host": []string{"127.0.0.1"}})
 }
 
 func (s *S) TestBindShouldReturnMapWithTheEnvironmentVariable(c *C) {
