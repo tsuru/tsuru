@@ -40,8 +40,8 @@ func (s *S) TestCreateShouldSendTheNameOfTheResourceToTheEndpoint(c *C) {
 func (s *S) TestCreateShouldReturnTheMapWithTheEnvironmentVariables(c *C) {
 	expected := map[string]string{
 		"MYSQL_DATABASE_NAME": "CHICO",
-		"MYSQL_HOST": "localhost",
-		"MYSQL_PORT": "3306",
+		"MYSQL_HOST":          "localhost",
+		"MYSQL_PORT":          "3306",
 	}
 	h := TestHandler{}
 	ts := httptest.NewServer(&h)
