@@ -37,7 +37,11 @@ func (s *S) TestCreateService(c *C) {
 		"production": "somehost.com",
 		"test":       "test.somehost.com",
 	}
-	service := &Service{Name: "my_service", Endpoint: endpt}
+	bootstrap := map[string]string{
+		"ami":  "ami-0000007",
+		"when": "on-new-instance",
+	}
+	service := &Service{Name: "my_service", Endpoint: endpt, Bootstrap: bootstrap}
 	service.Create()
 	se := Service{Name: service.Name}
 	se.Get()
