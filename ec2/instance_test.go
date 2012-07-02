@@ -1,8 +1,8 @@
 package ec2
 
 import (
-	. "launchpad.net/gocheck"
 	"launchpad.net/goamz/ec2"
+	. "launchpad.net/gocheck"
 )
 
 func (s *S) TestShouldInstanciateAuthWithConfigValues(c *C) {

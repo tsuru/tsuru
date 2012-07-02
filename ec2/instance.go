@@ -51,7 +51,7 @@ func Conn() (*ec2.EC2, error) {
 func RunInstance(imageId string, userData string) (string, error) {
 	ud := []byte(userData)
 	rInst := &ec2.RunInstances{
-		ImageId: imageId,
+		ImageId:  imageId,
 		UserData: ud,
 		MinCount: 0,
 		MaxCount: 0,

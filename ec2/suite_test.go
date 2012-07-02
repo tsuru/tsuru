@@ -11,7 +11,7 @@ import (
 )
 
 type S struct {
-	srv *ec2test.Server
+	srv  *ec2test.Server
 	conn *ec2.EC2
 }
 
