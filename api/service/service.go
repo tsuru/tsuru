@@ -39,6 +39,15 @@ func (s *Service) Delete() error {
 	return err
 }
 
+func (s *Service) GetClient(endpoint string) (cli *Client, err error) {
+	if e, ok := s.Endpoint[endpoint]; ok {
+		cli = &Client{endpoint: e}
+	} else {
+		err = errors.New("Unknown endpoint: " + endpoint)
+	}
+	return
+}
+
 // func (s *Service) Bind(a *app.App) error {
 // 	sa := ServiceInstance{Name: s.Name, Apps: a.Name}
 // 	return sa.Create()
