@@ -79,6 +79,8 @@ func (s *S) TestCreateHandlerWithContentOfRealYaml(c *C) {
 	c.Assert(err, IsNil)
 	c.Assert(rService.Endpoint["production"], Equals, "mysqlapi.com")
 	c.Assert(rService.Endpoint["test"], Equals, "localhost:8000")
+	c.Assert(rService.Bootstrap["ami"], Equals, "ami-00000007")
+	c.Assert(rService.Bootstrap["when"], Equals, "on-new-instance")
 }
 
 func (s *S) TestCreateHandlerShouldReturnErrorWhenNameExists(c *C) {

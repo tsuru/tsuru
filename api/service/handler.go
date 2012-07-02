@@ -14,8 +14,9 @@ import (
 )
 
 type serviceYaml struct {
-	Id       string
-	Endpoint map[string]string
+	Id        string
+	Endpoint  map[string]string
+	Bootstrap map[string]string
 }
 
 type bindJson struct {
@@ -54,9 +55,10 @@ func CreateHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 		return &errors.Http{Code: http.StatusInternalServerError, Message: msg}
 	}
 	s := Service{
-		Name:     sy.Id,
-		Endpoint: sy.Endpoint,
-		Teams:    auth.GetTeamsNames(teams),
+		Name:      sy.Id,
+		Endpoint:  sy.Endpoint,
+		Bootstrap: sy.Bootstrap,
+		Teams:     auth.GetTeamsNames(teams),
 	}
 	s.Create()
 	fmt.Fprint(w, "success")
