@@ -25,7 +25,6 @@ endpoint:
 	b := bytes.NewBufferString(manifest)
 	request, err := http.NewRequest("POST", "/services", b)
 	c.Assert(err, IsNil)
-	request.Header.Set("Content-Type", "application/json")
 	recorder := httptest.NewRecorder()
 	return recorder, request
 }
@@ -118,6 +117,29 @@ func (s *S) TestCreateHandlerReturnsForbiddenIfTheUserIsNotMemberOfAnyTeam(c *C)
 	c.Assert(ok, Equals, true)
 	c.Assert(e.Code, Equals, http.StatusForbidden)
 	c.Assert(e, ErrorMatches, "^In order to create a service, you should be member of at least one team$")
+}
+
+func (s *S) TestCreateVMOnNewInstanceWhenManifestSaysSo(c *C) {
+	service := Service{
+		Name: "mysql",
+		Bootstrap: map[string]string{
+			"ami":  "ami-0000007",
+			"when": ON_NEW_INSTANCE,
+		},
+		Teams: []string{s.team.Name},
+	}
+	err := service.Create()
+	c.Assert(err, IsNil)
+	recorder, request := makeRequestToCreateInstanceHandler(c)
+	s.reconfEc2Srv(c)
+	err = CreateInstanceHandler(recorder, request, s.user)
+	c.Assert(err, IsNil)
+	q := bson.M{"_id": "brainSQL", "instances": bson.M{"$size": 1}}
+	var si ServiceInstance
+	err = db.Session.ServiceInstances().Find(q).One(&si)
+	c.Assert(err, IsNil)
+	instance := s.ec2Srv.Instance(si.Instances[0])
+	c.Assert(instance, Not(IsNil))
 }
 
 func (suite *S) TestCreateInstanceHandlerSavesServiceInstanceInDb(c *C) {

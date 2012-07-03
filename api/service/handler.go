@@ -6,6 +6,7 @@ import (
 	"github.com/timeredbull/tsuru/api/app"
 	"github.com/timeredbull/tsuru/api/auth"
 	"github.com/timeredbull/tsuru/db"
+	"github.com/timeredbull/tsuru/ec2"
 	"github.com/timeredbull/tsuru/errors"
 	"io/ioutil"
 	"labix.org/v2/mgo/bson"
@@ -73,6 +74,7 @@ func CreateInstanceHandler(w http.ResponseWriter, r *http.Request, u *auth.User)
 	var jService map[string]string
 	err = json.Unmarshal(b, &jService)
 	if err != nil {
+		panic(err)
 		return &errors.Http{Code: http.StatusInternalServerError, Message: err.Error()}
 	}
 	var s Service
@@ -95,9 +97,18 @@ func CreateInstanceHandler(w http.ResponseWriter, r *http.Request, u *auth.User)
 		msg := fmt.Sprintf("You don't have access to service %s", jService["service_name"])
 		return &errors.Http{Code: http.StatusForbidden, Message: msg}
 	}
+	instance := ""
+	if s.Bootstrap["when"] == ON_NEW_INSTANCE {
+		instance, err = ec2.RunInstance(s.Bootstrap["ami"], "") //missing user data
+		if err != nil {
+			msg := fmt.Sprintf("Instance for service could not be created. \nError: %s", err.Error())
+			return &errors.Http{Code: http.StatusInternalServerError, Message: msg}
+		}
+	}
 	si := ServiceInstance{
 		Name:        jService["name"],
 		ServiceName: jService["service_name"],
+		Instances:   []string{instance},
 	}
 	si.Create()
 	return nil
