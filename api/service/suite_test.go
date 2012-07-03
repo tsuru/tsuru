@@ -4,7 +4,13 @@ import (
 	"github.com/timeredbull/commandmocker"
 	"github.com/timeredbull/tsuru/api/app"
 	"github.com/timeredbull/tsuru/api/auth"
+	"github.com/timeredbull/tsuru/config"
 	"github.com/timeredbull/tsuru/db"
+	tsuruEC2 "github.com/timeredbull/tsuru/ec2"
+	"io/ioutil"
+	"launchpad.net/goamz/aws"
+	"launchpad.net/goamz/ec2"
+	"launchpad.net/goamz/ec2/ec2test"
 	. "launchpad.net/gocheck"
 	"testing"
 )
@@ -41,12 +47,18 @@ type S struct {
 	team            *auth.Team
 	user            *auth.User
 	tmpdir          string
+	ec2Srv          *ec2test.Server
 }
 
 var _ = Suite(&S{})
 
 func (s *S) SetUpSuite(c *C) {
 	var err error
+	s.ec2Srv, err = ec2test.NewServer()
+	if err != nil {
+		c.Fatal(err)
+	}
+	s.setupConfig(c)
 	s.tmpdir, err = commandmocker.Add("juju", "")
 	db.Session, err = db.Open("127.0.0.1:27017", "tsuru_service_test")
 	c.Assert(err, IsNil)
@@ -61,6 +73,7 @@ func (s *S) SetUpSuite(c *C) {
 func (s *S) TearDownSuite(c *C) {
 	defer commandmocker.Remove(s.tmpdir)
 	defer db.Session.Close()
+	s.ec2Srv.Quit()
 	db.Session.Apps().Database.DropDatabase()
 }
 
@@ -78,4 +91,21 @@ func (s *S) TearDownTest(c *C) {
 		err = a.Destroy()
 		c.Assert(err, IsNil)
 	}
+}
+
+func (s *S) setupConfig(c *C) {
+	data, err := ioutil.ReadFile("../../etc/tsuru.conf")
+	if err != nil {
+		c.Fatal(err)
+	}
+	err = config.ReadConfigBytes(data)
+	if err != nil {
+		c.Fatal(err)
+	}
+}
+
+func (s *S) reconfEc2Srv(c *C) {
+	region := aws.Region{EC2Endpoint: s.ec2Srv.URL()}
+	auth := aws.Auth{AccessKey: "blaa", SecretKey: "blee"}
+	tsuruEC2.EC2 = ec2.New(auth, region)
 }
