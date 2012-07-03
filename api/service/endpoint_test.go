@@ -60,6 +60,16 @@ func (s *S) TestCreateShouldReturnTheMapWithTheEnvironmentVariables(c *C) {
 	c.Assert(env, DeepEquals, expected)
 }
 
+func (s *S) TestCreateShouldReturnErrorIfTheRequestFail(c *C) {
+	ts := httptest.NewServer(http.HandlerFunc(failHandler))
+	defer ts.Close()
+	instance := ServiceInstance{Name: "his-redis", ServiceName: "redis", Host: "127.0.0.1"}
+	client := &Client{endpoint: ts.URL}
+	_, err := client.Create(&instance)
+	c.Assert(err, NotNil)
+	c.Assert(err, ErrorMatches, "^Failed to create the instance: "+instance.Name+"$")
+}
+
 func (s *S) TestDestroyShouldSendADELETERequestToTheResourceURLWithGetParameters(c *C) {
 	h := TestHandler{}
 	ts := httptest.NewServer(&h)
@@ -127,4 +137,22 @@ func (s *S) TestBindShouldReturnMapWithTheEnvironmentVariable(c *C) {
 	env, err := client.Bind(&instance, &a)
 	c.Assert(err, IsNil)
 	c.Assert(env, DeepEquals, expected)
+}
+
+func (s *S) TestBindShouldreturnErrorIfTheRequestFail(c *C) {
+	ts := httptest.NewServer(http.HandlerFunc(failHandler))
+	defer ts.Close()
+	instance := ServiceInstance{Name: "her-redis", ServiceName: "redis", Host: "127.0.0.1"}
+	a := app.App{
+		Name: "her-app",
+		Units: []unit.Unit{
+			unit.Unit{
+				Ip: "10.0.10.1",
+			},
+		},
+	}
+	client := &Client{endpoint: ts.URL}
+	_, err := client.Bind(&instance, &a)
+	c.Assert(err, NotNil)
+	c.Assert(err, ErrorMatches, "^Failed to bind instance her-redis to the app her-app.$")
 }

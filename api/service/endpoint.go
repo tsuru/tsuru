@@ -49,8 +49,10 @@ func (c *Client) Create(instance *ServiceInstance) (envVars map[string]string, e
 		"name":         []string{instance.Name},
 		"service_host": []string{instance.Host},
 	}
-	if resp, err = c.issue("/resources", "POST", params); err == nil {
+	if resp, err = c.issue("/resources", "POST", params); err == nil && resp.StatusCode < 300 {
 		return c.jsonFromResponse(resp)
+	} else {
+		err = errors.New("Failed to create the instance: " + instance.Name)
 	}
 	return
 }
@@ -72,8 +74,10 @@ func (c *Client) Bind(instance *ServiceInstance, app *app.App) (envVars map[stri
 		"hostname":     []string{app.Units[0].Ip},
 		"service_host": []string{instance.Host},
 	}
-	if resp, err = c.issue("/resources/"+instance.Name, "POST", params); err == nil {
+	if resp, err = c.issue("/resources/"+instance.Name, "POST", params); err == nil && resp.StatusCode < 300 {
 		return c.jsonFromResponse(resp)
+	} else {
+		err = errors.New("Failed to bind instance " + instance.Name + " to the app " + app.Name + ".")
 	}
 	return
 }
