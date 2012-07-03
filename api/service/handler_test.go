@@ -134,11 +134,11 @@ func (s *S) TestCreateVMOnNewInstanceWhenManifestSaysSo(c *C) {
 	s.reconfEc2Srv(c)
 	err = CreateInstanceHandler(recorder, request, s.user)
 	c.Assert(err, IsNil)
-	q := bson.M{"_id": "brainSQL", "instances": bson.M{"$size": 1}}
+	q := bson.M{"_id": "brainSQL", "instances": bson.M{"$ne": ""}}
 	var si ServiceInstance
 	err = db.Session.ServiceInstances().Find(q).One(&si)
 	c.Assert(err, IsNil)
-	instance := s.ec2Srv.Instance(si.Instances[0])
+	instance := s.ec2Srv.Instance(si.Instance)
 	c.Assert(instance, Not(IsNil))
 }
 
