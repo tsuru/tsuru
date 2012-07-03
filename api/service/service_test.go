@@ -58,6 +58,40 @@ func (s *S) TestDeleteService(c *C) {
 	c.Assert(qtd, Equals, 0)
 }
 
+func (s *S) TestGetClient(c *C) {
+	endpoints := map[string]string{
+		"production": "http://mysql.api.com",
+		"test":       "http://localhost:9090",
+	}
+	service := Service{Name: "redis", Endpoint: endpoints}
+	cli, err := service.GetClient("production")
+	c.Assert(err, IsNil)
+	c.Assert(cli, DeepEquals, &Client{endpoint: endpoints["production"]})
+}
+
+func (s *S) TestGetClientWithouHttp(c *C) {
+	endpoints := map[string]string{
+		"production": "mysql.api.com",
+		"test":       "localhost:9090",
+	}
+	service := Service{Name: "redis", Endpoint: endpoints}
+	cli, err := service.GetClient("production")
+	c.Assert(err, IsNil)
+	c.Assert(cli.endpoint, Equals, "http://mysql.api.com")
+}
+
+func (s *S) TestGetClientWithUnknownEndpoint(c *C) {
+	endpoints := map[string]string{
+		"production": "http://mysql.api.com",
+		"test":       "http://localhost:9090",
+	}
+	service := Service{Name: "redis", Endpoint: endpoints}
+	cli, err := service.GetClient("staging")
+	c.Assert(err, NotNil)
+	c.Assert(err, ErrorMatches, "^Unknown endpoint: staging$")
+	c.Assert(cli, IsNil)
+}
+
 // func (s *S) TestBindService(c *C) {
 // 	s.createService()
 // 	app := &app.App{Name: "my_app", Framework: "django"}

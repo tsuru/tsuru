@@ -6,6 +6,7 @@ import (
 	"github.com/timeredbull/tsuru/db"
 	"github.com/timeredbull/tsuru/log"
 	"labix.org/v2/mgo/bson"
+	"strings"
 )
 
 const ON_NEW_INSTANCE = "on-new-instance"
@@ -40,6 +41,18 @@ func (s *Service) Create() error {
 func (s *Service) Delete() error {
 	err := db.Session.Services().Remove(s)
 	return err
+}
+
+func (s *Service) GetClient(endpoint string) (cli *Client, err error) {
+	if e, ok := s.Endpoint[endpoint]; ok {
+		if !strings.HasPrefix(e, "http://") {
+			e = "http://" + e
+		}
+		cli = &Client{endpoint: e}
+	} else {
+		err = errors.New("Unknown endpoint: " + endpoint)
+	}
+	return
 }
 
 // func (s *Service) Bind(a *app.App) error {

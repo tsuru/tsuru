@@ -11,6 +11,7 @@ type ServiceInstance struct {
 	ServiceName string   `bson:"service_name"`
 	Apps        []string `bson:"apps"`
 	Instances   []string
+	Host        string
 }
 
 func (si *ServiceInstance) Create() error {
