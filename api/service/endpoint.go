@@ -81,3 +81,15 @@ func (c *Client) Bind(instance *ServiceInstance, app *app.App) (envVars map[stri
 	}
 	return
 }
+
+func (c *Client) Unbind(instance *ServiceInstance, app *app.App) (err error) {
+	var resp *http.Response
+	params := map[string][]string{
+		"service_host": []string{instance.Host},
+	}
+	url := "/resources/"+instance.Name+"/hostname/"+app.Name+"/"
+	if resp, err = c.issue(url, "DELETE", params); err == nil && resp.StatusCode > 299 {
+		err = errors.New("Failed to unbind instance " + instance.Name + " from the app " + app.Name + ".")
+	}
+	return
+}

@@ -156,3 +156,41 @@ func (s *S) TestBindShouldreturnErrorIfTheRequestFail(c *C) {
 	c.Assert(err, NotNil)
 	c.Assert(err, ErrorMatches, "^Failed to bind instance her-redis to the app her-app.$")
 }
+
+func (s *S) TestUnbindSendADELETERequestToTheResourceURL(c *C) {
+	h := TestHandler{}
+	ts := httptest.NewServer(&h)
+	defer ts.Close()
+	instance := ServiceInstance{Name: "heaven-can-wait", ServiceName: "heaven", Host: "192.168.1.10"}
+	a := app.App{
+		Name: "arch-enemy",
+		Units: []unit.Unit{
+			unit.Unit{
+				Ip: "2.2.2.2",
+			},
+		},
+	}
+	client := &Client{endpoint: ts.URL}
+	err := client.Unbind(&instance, &a)
+	c.Assert(err, IsNil)
+	c.Assert(h.url, Equals, "/resources/heaven-can-wait/hostname/arch-enemy/?service_host=192.168.1.10")
+	c.Assert(h.method, Equals, "DELETE")
+}
+
+func (s *S) TestUnbindReturnsErrorIfTheRequestFails(c *C) {
+	ts := httptest.NewServer(http.HandlerFunc(failHandler))
+	defer ts.Close()
+	instance := ServiceInstance{Name: "heaven-can-wait", ServiceName: "heaven", Host: "192.168.1.10"}
+	a := app.App{
+		Name: "arch-enemy",
+		Units: []unit.Unit{
+			unit.Unit{
+				Ip: "2.2.2.2",
+			},
+		},
+	}
+	client := &Client{endpoint: ts.URL}
+	err := client.Unbind(&instance, &a)
+	c.Assert(err, NotNil)
+	c.Assert(err, ErrorMatches, "^Failed to unbind instance heaven-can-wait from the app arch-enemy.")
+}
