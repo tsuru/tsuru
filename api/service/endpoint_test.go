@@ -36,7 +36,7 @@ func (s *S) TestCreateShouldSendTheNameOfTheResourceToTheEndpoint(c *C) {
 	client := &Client{endpoint: ts.URL}
 	_, err := client.Create(&instance)
 	c.Assert(err, IsNil)
-	expectedUrl := "/resources"
+	expectedUrl := "/resources/"
 	c.Assert(h.url, Equals, expectedUrl)
 	c.Assert(h.method, Equals, "POST")
 	v, err := url.ParseQuery(string(h.body))
@@ -78,7 +78,7 @@ func (s *S) TestDestroyShouldSendADELETERequestToTheResourceURLWithGetParameters
 	client := &Client{endpoint: ts.URL}
 	err := client.Destroy(&instance)
 	c.Assert(err, IsNil)
-	c.Assert(h.url, Equals, "/resources/"+instance.Name+"?service_host=127.0.0.1")
+	c.Assert(h.url, Equals, "/resources/"+instance.Name+"/?service_host=127.0.0.1")
 	c.Assert(h.method, Equals, "DELETE")
 }
 
@@ -108,7 +108,7 @@ func (s *S) TestBindShouldSendAPOSTToTheResourceURL(c *C) {
 	client := &Client{endpoint: ts.URL}
 	_, err := client.Bind(&instance, &a)
 	c.Assert(err, IsNil)
-	c.Assert(h.url, Equals, "/resources/"+instance.Name)
+	c.Assert(h.url, Equals, "/resources/"+instance.Name+"/")
 	c.Assert(h.method, Equals, "POST")
 	v, err := url.ParseQuery(string(h.body))
 	c.Assert(err, IsNil)

@@ -49,7 +49,7 @@ func (c *Client) Create(instance *ServiceInstance) (envVars map[string]string, e
 		"name":         []string{instance.Name},
 		"service_host": []string{instance.Host},
 	}
-	if resp, err = c.issue("/resources", "POST", params); err == nil && resp.StatusCode < 300 {
+	if resp, err = c.issue("/resources/", "POST", params); err == nil && resp.StatusCode < 300 {
 		return c.jsonFromResponse(resp)
 	} else {
 		err = errors.New("Failed to create the instance: " + instance.Name)
@@ -62,7 +62,7 @@ func (c *Client) Destroy(instance *ServiceInstance) (err error) {
 	params := map[string][]string{
 		"service_host": []string{instance.Host},
 	}
-	if resp, err = c.issue("/resources/"+instance.Name, "DELETE", params); err == nil && resp.StatusCode > 299 {
+	if resp, err = c.issue("/resources/"+instance.Name+"/", "DELETE", params); err == nil && resp.StatusCode > 299 {
 		err = errors.New("Failed to destroy the instance: " + instance.Name)
 	}
 	return err
@@ -74,7 +74,7 @@ func (c *Client) Bind(instance *ServiceInstance, app *app.App) (envVars map[stri
 		"hostname":     []string{app.Units[0].Ip},
 		"service_host": []string{instance.Host},
 	}
-	if resp, err = c.issue("/resources/"+instance.Name, "POST", params); err == nil && resp.StatusCode < 300 {
+	if resp, err = c.issue("/resources/"+instance.Name+"/", "POST", params); err == nil && resp.StatusCode < 300 {
 		return c.jsonFromResponse(resp)
 	} else {
 		err = errors.New("Failed to bind instance " + instance.Name + " to the app " + app.Name + ".")
@@ -87,7 +87,7 @@ func (c *Client) Unbind(instance *ServiceInstance, app *app.App) (err error) {
 	params := map[string][]string{
 		"service_host": []string{instance.Host},
 	}
-	url := "/resources/"+instance.Name+"/hostname/"+app.Name+"/"
+	url := "/resources/" + instance.Name + "/hostname/" + app.Name + "/"
 	if resp, err = c.issue(url, "DELETE", params); err == nil && resp.StatusCode > 299 {
 		err = errors.New("Failed to unbind instance " + instance.Name + " from the app " + app.Name + ".")
 	}
