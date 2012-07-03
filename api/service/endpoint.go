@@ -39,7 +39,8 @@ func (c *Client) jsonFromResponse(resp *http.Response) (env map[string]string, e
 func (c *Client) Create(instance *ServiceInstance) (envVars map[string]string, err error) {
 	var resp *http.Response
 	params := map[string][]string{
-		"name": []string{instance.Name},
+		"name":         []string{instance.Name},
+		"service_host": []string{instance.Host},
 	}
 	if resp, err = c.issue("/resources", "POST", params); err == nil {
 		return c.jsonFromResponse(resp)
@@ -49,17 +50,20 @@ func (c *Client) Create(instance *ServiceInstance) (envVars map[string]string, e
 
 func (c *Client) Destroy(instance *ServiceInstance) (err error) {
 	var resp *http.Response
-	if resp, err = c.issue("/resources/"+instance.Name, "DELETE", nil); err == nil && resp.StatusCode > 299 {
+	params := map[string][]string{
+		"service_host": []string{instance.Host},
+	}
+	if resp, err = c.issue("/resources/"+instance.Name, "DELETE", params); err == nil && resp.StatusCode > 299 {
 		err = errors.New("Failed to destroy the instance: " + instance.Name)
 	}
 	return err
 }
 
-func (c *Client) Bind(instance *ServiceInstance, app *app.App, serviceHost string) (envVars map[string]string, err error) {
+func (c *Client) Bind(instance *ServiceInstance, app *app.App) (envVars map[string]string, err error) {
 	var resp *http.Response
 	params := map[string][]string{
 		"hostname":     []string{app.Units[0].Ip},
-		"service_host": []string{serviceHost},
+		"service_host": []string{instance.Host},
 	}
 	if resp, err = c.issue("/resources/"+instance.Name, "POST", params); err == nil {
 		return c.jsonFromResponse(resp)
