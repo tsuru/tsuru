@@ -61,7 +61,10 @@ func CreateHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 		Bootstrap: sy.Bootstrap,
 		Teams:     auth.GetTeamsNames(teams),
 	}
-	s.Create()
+	err = s.Create()
+	if err != nil {
+		return err
+	}
 	fmt.Fprint(w, "success")
 	return nil
 }
