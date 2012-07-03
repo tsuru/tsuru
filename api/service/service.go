@@ -6,6 +6,7 @@ import (
 	"github.com/timeredbull/tsuru/db"
 	"github.com/timeredbull/tsuru/log"
 	"labix.org/v2/mgo/bson"
+	"strings"
 )
 
 type Service struct {
@@ -41,6 +42,9 @@ func (s *Service) Delete() error {
 
 func (s *Service) GetClient(endpoint string) (cli *Client, err error) {
 	if e, ok := s.Endpoint[endpoint]; ok {
+		if !strings.HasPrefix(e, "http://") {
+			e = "http://" + e
+		}
 		cli = &Client{endpoint: e}
 	} else {
 		err = errors.New("Unknown endpoint: " + endpoint)
