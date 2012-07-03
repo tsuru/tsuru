@@ -60,7 +60,7 @@ func (s *S) TestCreateShouldReturnTheMapWithTheEnvironmentVariables(c *C) {
 	c.Assert(env, DeepEquals, expected)
 }
 
-func (s *S) TestDestroyShouldSendADELETERequestToTheResourceURL(c *C) {
+func (s *S) TestDestroyShouldSendADELETERequestToTheResourceURLWithGetParameters(c *C) {
 	h := TestHandler{}
 	ts := httptest.NewServer(&h)
 	defer ts.Close()
@@ -68,9 +68,8 @@ func (s *S) TestDestroyShouldSendADELETERequestToTheResourceURL(c *C) {
 	client := &Client{endpoint: ts.URL}
 	err := client.Destroy(&instance)
 	c.Assert(err, IsNil)
-	c.Assert(h.url, Equals, "/resources/"+instance.Name)
+	c.Assert(h.url, Equals, "/resources/"+instance.Name+"?service_host=127.0.0.1")
 	c.Assert(h.method, Equals, "DELETE")
-	c.Assert(string(h.body), Equals, "service_host=127.0.0.1")
 }
 
 func (s *S) TestDestroyShouldReturnErrorIfTheRequestFails(c *C) {

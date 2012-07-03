@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"github.com/timeredbull/tsuru/api/app"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -16,8 +17,14 @@ type Client struct {
 
 func (c *Client) issue(path, method string, params map[string][]string) (*http.Response, error) {
 	v := url.Values(params)
-	body := strings.NewReader(v.Encode())
-	url := strings.TrimRight(c.endpoint, "/") + "/" + strings.TrimLeft(path, "/")
+	var suffix string
+	var body io.Reader
+	if method == "DELETE" {
+		suffix = "?" + v.Encode()
+	} else {
+		body = strings.NewReader(v.Encode())
+	}
+	url := strings.TrimRight(c.endpoint, "/") + "/" + strings.TrimLeft(path, "/") + suffix
 	req, err := http.NewRequest(method, url, body)
 	if err != nil {
 		return nil, err
