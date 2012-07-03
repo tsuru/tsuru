@@ -11,6 +11,22 @@ import (
 	"strings"
 )
 
+type Creator interface {
+	Create(*ServiceInstance) (map[string]string, error)
+}
+
+type Destroyer interface {
+	Destroy(*ServiceInstance) error
+}
+
+type Binder interface {
+	Bind(*ServiceInstance, *app.App) (map[string]string, error)
+}
+
+type Unbinder interface {
+	Unbind(*ServiceInstance, *app.App) error
+}
+
 type Client struct {
 	endpoint string
 }
