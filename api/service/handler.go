@@ -110,14 +110,14 @@ func CreateInstanceHandler(w http.ResponseWriter, r *http.Request, u *auth.User)
 		ServiceName: jService["service_name"],
 		Instance:    instance,
 	}
-	cli, err := s.GetClient("production")
-	if err != nil {
-		return err
+	var cli *Client
+	if cli, err = s.GetClient("production"); err == nil {
+		si.Env, err = cli.Create(&si)
+		if err != nil {
+			return err
+		}
 	}
-	if si.Env, err = cli.Create(&si); err == nil {
-		err = si.Create()
-	}
-	return err
+	return si.Create()
 }
 
 func DeleteHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {

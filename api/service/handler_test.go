@@ -180,6 +180,14 @@ func (s *S) TestCreateInstanceHandlerCallsTheServiceAPIAndSaveEnvironmentVariabl
 	c.Assert(si.Env, DeepEquals, map[string]string{"DATABASE_HOST": "localhost"})
 }
 
+func (s *S) TestCreateInstanceHandlerDoesNotFailIfTheServiceDoesNotDeclareEndpoint(c *C) {
+	service := Service{Name: "mysql", Teams: []string{s.team.Name}}
+	service.Create()
+	recorder, request := makeRequestToCreateInstanceHandler(c)
+	err := CreateInstanceHandler(recorder, request, s.user)
+	c.Assert(err, IsNil)
+}
+
 func (s *S) TestCreateInstanceHandlerReturnsErrorWhenUserCannotUseService(c *C) {
 	service := Service{Name: "mysql"}
 	service.Create()
