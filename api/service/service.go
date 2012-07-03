@@ -8,6 +8,8 @@ import (
 	"labix.org/v2/mgo/bson"
 )
 
+const ON_NEW_INSTANCE = "on-new-instance"
+
 type Service struct {
 	Name      string `bson:"_id"`
 	Endpoint  map[string]string
