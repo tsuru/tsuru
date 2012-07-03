@@ -13,8 +13,9 @@ func (s *S) createServiceInstance() {
 	s.app = &app.App{Name: "serviceInstance", Framework: "Django"}
 	s.app.Create()
 	s.serviceInstance = &ServiceInstance{
-		Name: s.service.Name,
-		Apps: []string{s.app.Name},
+		Name:      s.service.Name,
+		Apps:      []string{s.app.Name},
+		Instances: []string{"i-000000a"},
 	}
 	s.serviceInstance.Create()
 }
@@ -32,6 +33,7 @@ func (s *S) TestCreateServiceInstance(c *C) {
 	c.Check(err, IsNil)
 	c.Assert(result.Name, Equals, s.service.Name)
 	c.Assert(result.Apps[0], Equals, s.app.Name)
+	c.Assert(result.Instances[0], Equals, "i-000000a")
 }
 
 func (s *S) TestDeleteServiceInstance(c *C) {

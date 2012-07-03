@@ -10,6 +10,7 @@ type ServiceInstance struct {
 	Name        string   `bson:"_id"`
 	ServiceName string   `bson:"service_name"`
 	Apps        []string `bson:"apps"`
+	Instances   []string
 }
 
 func (si *ServiceInstance) Create() error {
