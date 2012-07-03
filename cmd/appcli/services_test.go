@@ -106,14 +106,14 @@ func (s *S) TestServiceListIsASubcommandOfService(c *C) {
 }
 
 func (s *S) TestServiceAddInfo(c *C) {
-    usage := `service add appname serviceinstancename servicename
+	usage := `service add appname serviceinstancename servicename
     e.g.:
     $ service add tsuru tsuru_db mongodb`
 	expected := &cmd.Info{
 		Name:    "add",
 		Usage:   usage,
 		Desc:    "Create a service instance to one or more apps make use of.",
-        MinArgs: 3,
+		MinArgs: 3,
 	}
 	command := &ServiceAdd{}
 	c.Assert(command.Info(), DeepEquals, expected)

@@ -75,13 +75,13 @@ func (s *ServiceList) Run(ctx *cmd.Context, client cmd.Doer) error {
 type ServiceAdd struct{}
 
 func (sa *ServiceAdd) Info() *cmd.Info {
-    usage := `service add appname serviceinstancename servicename
+	usage := `service add appname serviceinstancename servicename
     e.g.:
     $ service add tsuru tsuru_db mongodb`
 	return &cmd.Info{
-        Name:    "add",
-        Usage:   usage,
-        Desc:    "Create a service instance to one or more apps make use of.",
-        MinArgs: 3,
-    }
+		Name:    "add",
+		Usage:   usage,
+		Desc:    "Create a service instance to one or more apps make use of.",
+		MinArgs: 3,
+	}
 }
