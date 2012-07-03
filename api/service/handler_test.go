@@ -128,7 +128,7 @@ func (s *S) TestCreateVMOnNewInstanceWhenManifestSaysSo(c *C) {
 		Name: "mysql",
 		Bootstrap: map[string]string{
 			"ami":  "ami-0000007",
-			"when": ON_NEW_INSTANCE,
+			"when": OnNewInstance,
 		},
 		Teams: []string{s.team.Name},
 		Endpoint: map[string]string{

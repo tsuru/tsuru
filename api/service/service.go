@@ -9,7 +9,7 @@ import (
 	"strings"
 )
 
-const ON_NEW_INSTANCE = "on-new-instance"
+const OnNewInstance = "on-new-instance"
 
 type Service struct {
 	Name      string `bson:"_id"`
