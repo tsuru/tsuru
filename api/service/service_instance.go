@@ -12,6 +12,7 @@ type ServiceInstance struct {
 	Apps        []string `bson:"apps"`
 	Instance    string
 	Host        string
+	Env         map[string]string
 }
 
 func (si *ServiceInstance) Create() error {
