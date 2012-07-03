@@ -61,7 +61,10 @@ func CreateHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 		Bootstrap: sy.Bootstrap,
 		Teams:     auth.GetTeamsNames(teams),
 	}
-	s.Create()
+	err = s.Create()
+	if err != nil {
+		return err
+	}
 	fmt.Fprint(w, "success")
 	return nil
 }
@@ -98,7 +101,7 @@ func CreateInstanceHandler(w http.ResponseWriter, r *http.Request, u *auth.User)
 		return &errors.Http{Code: http.StatusForbidden, Message: msg}
 	}
 	instance := ""
-	if s.Bootstrap["when"] == ON_NEW_INSTANCE {
+	if s.Bootstrap["when"] == OnNewInstance {
 		instance, err = ec2.RunInstance(s.Bootstrap["ami"], "") //missing user data
 		if err != nil {
 			msg := fmt.Sprintf("Instance for service could not be created. \nError: %s", err.Error())
@@ -109,6 +112,13 @@ func CreateInstanceHandler(w http.ResponseWriter, r *http.Request, u *auth.User)
 		Name:        jService["name"],
 		ServiceName: jService["service_name"],
 		Instance:    instance,
+	}
+	var cli *Client
+	if cli, err = s.GetClient("production"); err == nil {
+		si.Env, err = cli.Create(&si)
+		if err != nil {
+			return err
+		}
 	}
 	return si.Create()
 }

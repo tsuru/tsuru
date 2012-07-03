@@ -194,23 +194,3 @@ func (s *S) TestUnbindReturnsErrorIfTheRequestFails(c *C) {
 	c.Assert(err, NotNil)
 	c.Assert(err, ErrorMatches, "^Failed to unbind instance heaven-can-wait from the app arch-enemy.")
 }
-
-func (s *S) TestClientShouldBeABinder(c *C) {
-	var binder Binder
-	c.Assert(&Client{}, Implements, &binder)
-}
-
-func (s *S) TestClientShouldBeACreator(c *C) {
-	var creator Creator
-	c.Assert(&Client{}, Implements, &creator)
-}
-
-func (s *S) TestClientShouldBeADestroyer(c *C) {
-	var destroyer Destroyer
-	c.Assert(&Client{}, Implements, &destroyer)
-}
-
-func (s *S) TestClientShouldBeAnUnbinder(c *C) {
-	var unbinder Unbinder
-	c.Assert(&Client{}, Implements, &unbinder)
-}
