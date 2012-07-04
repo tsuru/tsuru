@@ -156,8 +156,14 @@ func DeleteHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 func BindHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	instanceQuery := bson.M{"_id": r.URL.Query().Get(":instance")}
 	var instance ServiceInstance
+	err := db.Session.ServiceInstances().Find(instanceQuery).One(&instance)
+	if err != nil {
+		return &errors.Http{Code: http.StatusNotFound, Message: "Instance not found"}
+	}
+	if !auth.CheckUserAccess(instance.Teams, u) {
+		return &errors.Http{Code: http.StatusForbidden, Message: "This user does not have access to this instance"}
+	}
 	var app app.App
-	_ = db.Session.ServiceInstances().Find(instanceQuery).One(&instance)
 	_ = db.Session.Apps().Find(bson.M{"name": r.URL.Query().Get(":app")}).One(&app)
 	instance.Apps = append(instance.Apps, app.Name)
 	return db.Session.ServiceInstances().Update(instanceQuery, instance)
