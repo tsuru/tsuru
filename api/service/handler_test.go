@@ -156,6 +156,7 @@ func (suite *S) TestCreateInstanceHandlerSavesServiceInstanceInDb(c *C) {
 	defer ts.Close()
 	s := Service{Name: "mysql", Teams: []string{suite.team.Name}, Endpoint: map[string]string{"production": ts.URL}}
 	s.Create()
+	defer s.Delete()
 	recorder, request := makeRequestToCreateInstanceHandler(c)
 	err := CreateInstanceHandler(recorder, request, suite.user)
 	c.Assert(err, IsNil)
@@ -164,9 +165,6 @@ func (suite *S) TestCreateInstanceHandlerSavesServiceInstanceInDb(c *C) {
 	c.Assert(si.Name, Equals, "brainSQL")
 	c.Assert(si.ServiceName, Equals, "mysql")
 	c.Assert(si.Apps[0], Equals, "my_app")
-}
-
-func (s *S) TestCreateInstanceHandlerReturnErrorWhenServiceInstaceAlreadyExists(c *C) {
 }
 
 func (s *S) TestCreateInstanceHandlerCallsTheServiceAPIAndSaveEnvironmentVariablesInTheInstance(c *C) {
