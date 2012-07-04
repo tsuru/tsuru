@@ -1,9 +1,12 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"github.com/timeredbull/tsuru/cmd"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"strings"
@@ -23,6 +26,7 @@ func (s *Service) Info() *cmd.Info {
 func (s *Service) Subcommands() map[string]interface{} {
 	return map[string]interface{}{
 		"list": &ServiceList{},
+		"add":  &ServiceAdd{},
 	}
 }
 
@@ -84,4 +88,27 @@ func (sa *ServiceAdd) Info() *cmd.Info {
 		Desc:    "Create a service instance to one or more apps make use of.",
 		MinArgs: 3,
 	}
+}
+
+func (sa *ServiceAdd) Run(ctx *cmd.Context, client cmd.Doer) error {
+	appName, instName, srvName := ctx.Args[0], ctx.Args[1], ctx.Args[2]
+	fmtBody := fmt.Sprintf(`{"app": %s, "name": %s, "service_name": %s}`, appName, instName, srvName)
+	b := bytes.NewBufferString(fmtBody)
+	url := cmd.GetUrl("/service-instances")
+	request, err := http.NewRequest("POST", url, b)
+	if err != nil {
+		return err
+	}
+	request.Header.Set("Content-Type", "application/json")
+	response, err := client.Do(request)
+	if err != nil {
+		return err
+	}
+	defer response.Body.Close()
+	result, err := ioutil.ReadAll(response.Body)
+	if err != nil {
+		return err
+	}
+	io.WriteString(ctx.Stdout, string(result))
+	return nil
 }

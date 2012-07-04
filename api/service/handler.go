@@ -69,31 +69,16 @@ func CreateInstanceHandler(w http.ResponseWriter, r *http.Request, u *auth.User)
 	if err != nil {
 		return &errors.Http{Code: http.StatusInternalServerError, Message: err.Error()}
 	}
-	var jService map[string]string
-	err = json.Unmarshal(b, &jService)
+	var sJson map[string]string
+	err = json.Unmarshal(b, &sJson)
 	if err != nil {
 		panic(err)
 		return &errors.Http{Code: http.StatusInternalServerError, Message: err.Error()}
 	}
 	var s Service
-	err = db.Session.Services().Find(bson.M{"_id": jService["service_name"]}).One(&s)
+	err = validateForInstanceCreation(&s, sJson, u)
 	if err != nil {
-		msg := err.Error()
-		if msg == "not found" {
-			msg = fmt.Sprintf("Service %s does not exists.", jService["service_name"])
-		}
-		return &errors.Http{Code: http.StatusNotFound, Message: msg}
-	}
-	var teams []auth.Team
-	err = db.Session.Teams().Find(bson.M{"users.email": u.Email}).All(&teams)
-	if err != nil {
-		return &errors.Http{Code: http.StatusInternalServerError, Message: err.Error()}
-	}
-	q := bson.M{"_id": jService["service_name"], "teams": bson.M{"$in": auth.GetTeamsNames(teams)}}
-	n, err := db.Session.Services().Find(q).Count()
-	if n == 0 {
-		msg := fmt.Sprintf("You don't have access to service %s", jService["service_name"])
-		return &errors.Http{Code: http.StatusForbidden, Message: msg}
+		return err
 	}
 	instance := ""
 	if s.Bootstrap["when"] == OnNewInstance {
@@ -104,8 +89,8 @@ func CreateInstanceHandler(w http.ResponseWriter, r *http.Request, u *auth.User)
 		}
 	}
 	si := ServiceInstance{
-		Name:        jService["name"],
-		ServiceName: jService["service_name"],
+		Name:        sJson["name"],
+		ServiceName: sJson["service_name"],
 		Instance:    instance,
 	}
 	var cli *Client
@@ -115,7 +100,31 @@ func CreateInstanceHandler(w http.ResponseWriter, r *http.Request, u *auth.User)
 			return err
 		}
 	}
+	si.Apps = append(si.Apps, sJson["app"])
 	return si.Create()
+}
+
+func validateForInstanceCreation(s *Service, sJson map[string]string, u *auth.User) error {
+	err := db.Session.Services().Find(bson.M{"_id": sJson["service_name"]}).One(&s)
+	if err != nil {
+		msg := err.Error()
+		if msg == "not found" {
+			msg = fmt.Sprintf("Service %s does not exists.", sJson["service_name"])
+		}
+		return &errors.Http{Code: http.StatusNotFound, Message: msg}
+	}
+	var teams []auth.Team
+	err = db.Session.Teams().Find(bson.M{"users.email": u.Email}).All(&teams)
+	if err != nil {
+		return &errors.Http{Code: http.StatusInternalServerError, Message: err.Error()}
+	}
+	q := bson.M{"_id": sJson["service_name"], "teams": bson.M{"$in": auth.GetTeamsNames(teams)}}
+	n, err := db.Session.Services().Find(q).Count()
+	if n == 0 {
+		msg := fmt.Sprintf("You don't have access to service %s", sJson["service_name"])
+		return &errors.Http{Code: http.StatusForbidden, Message: msg}
+	}
+	return nil
 }
 
 func DeleteHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {

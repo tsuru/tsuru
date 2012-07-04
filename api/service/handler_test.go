@@ -30,7 +30,7 @@ endpoint:
 }
 
 func makeRequestToCreateInstanceHandler(c *C) (*httptest.ResponseRecorder, *http.Request) {
-	b := bytes.NewBufferString(`{"name": "brainSQL", "service_name": "mysql"}`)
+	b := bytes.NewBufferString(`{"name": "brainSQL", "service_name": "mysql", "app": "my_app"}`)
 	request, err := http.NewRequest("POST", "/services/instances", b)
 	c.Assert(err, IsNil)
 	request.Header.Set("Content-Type", "application/json")
@@ -119,7 +119,7 @@ func (s *S) TestCreateHandlerReturnsForbiddenIfTheUserIsNotMemberOfAnyTeam(c *C)
 	c.Assert(e, ErrorMatches, "^In order to create a service, you should be member of at least one team$")
 }
 
-func (s *S) TestCreateVMOnNewInstanceWhenManifestSaysSo(c *C) {
+func (s *S) TestCreateInstanceHandlerVMOnNewInstanceWhenManifestSaysSo(c *C) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(`{"DATABASE_HOST":"localhost"}`))
 	}))
@@ -156,6 +156,7 @@ func (suite *S) TestCreateInstanceHandlerSavesServiceInstanceInDb(c *C) {
 	defer ts.Close()
 	s := Service{Name: "mysql", Teams: []string{suite.team.Name}, Endpoint: map[string]string{"production": ts.URL}}
 	s.Create()
+	defer s.Delete()
 	recorder, request := makeRequestToCreateInstanceHandler(c)
 	err := CreateInstanceHandler(recorder, request, suite.user)
 	c.Assert(err, IsNil)
@@ -163,6 +164,7 @@ func (suite *S) TestCreateInstanceHandlerSavesServiceInstanceInDb(c *C) {
 	db.Session.ServiceInstances().Find(bson.M{"_id": "brainSQL", "service_name": "mysql"}).One(&si)
 	c.Assert(si.Name, Equals, "brainSQL")
 	c.Assert(si.ServiceName, Equals, "mysql")
+	c.Assert(si.Apps[0], Equals, "my_app")
 }
 
 func (s *S) TestCreateInstanceHandlerCallsTheServiceAPIAndSaveEnvironmentVariablesInTheInstance(c *C) {
@@ -200,19 +202,6 @@ func (s *S) TestCreateInstanceHandlerReturnsErrorWhenServiceDoesntExists(c *C) {
 	recorder, request := makeRequestToCreateInstanceHandler(c)
 	err := CreateInstanceHandler(recorder, request, s.user)
 	c.Assert(err, ErrorMatches, "^Service mysql does not exists.$")
-}
-
-func (s *S) TestCreateInstanceHandlerCreatesVMInstanceWhenServicesManifestIsConfiguredToDoSo(c *C) {
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte(`{"DATABASE_HOST":"localhost"}`))
-	}))
-	defer ts.Close()
-	service := Service{Name: "mysql", Teams: []string{s.team.Name}, Endpoint: map[string]string{"production": ts.URL}}
-	service.Create()
-	recorder, request := makeRequestToCreateInstanceHandler(c)
-	err := CreateInstanceHandler(recorder, request, s.user)
-	c.Assert(err, IsNil)
-	// #TODO finish me!!
 }
 
 func (s *S) TestDeleteHandler(c *C) {
