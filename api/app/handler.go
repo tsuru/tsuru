@@ -320,16 +320,18 @@ func GetEnv(w http.ResponseWriter, r *http.Request, u *auth.User) (err error) {
 }
 
 func SetEnvsToApp(app *App, envs []EnvVar) error {
-	for _, env := range envs {
-		app.SetEnv(env)
+	if len(envs) > 0 {
+		for _, env := range envs {
+			app.SetEnv(env)
+		}
+		if err := db.Session.Apps().Update(bson.M{"name": app.Name}, app); err != nil {
+			return err
+		}
+		mess := Message{
+			app: app,
+		}
+		env <- mess
 	}
-	if err := db.Session.Apps().Update(bson.M{"name": app.Name}, app); err != nil {
-		return err
-	}
-	mess := Message{
-		app: app,
-	}
-	env <- mess
 	return nil
 }
 
