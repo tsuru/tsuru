@@ -10,6 +10,7 @@ type ServiceInstance struct {
 	Name        string   `bson:"_id"`
 	ServiceName string   `bson:"service_name"`
 	Apps        []string `bson:"apps"`
+	Teams       []string
 	Instance    string
 	Host        string
 	Env         map[string]string
