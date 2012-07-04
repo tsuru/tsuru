@@ -177,15 +177,18 @@ func BindHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	if err != nil {
 		return err
 	}
-	updateApp := len(instance.Env) > 0
-	for k, v := range instance.Env {
-		a.Env[k] = app.EnvVar{
-			Name:         k,
-			Value:        v,
-			Public:       false,
-			InstanceName: instance.Name,
+	var envVars []app.EnvVar
+	var setEnv = func(a app.App, env map[string]string) {
+		for k, v := range env {
+			envVars = append(envVars, app.EnvVar{
+				Name:         k,
+				Value:        v,
+				Public:       false,
+				InstanceName: instance.Name,
+			})
 		}
 	}
+	setEnv(a, instance.Env)
 	err = db.Session.Apps().Update(appQuery, a)
 	if err != nil {
 		return err
@@ -196,22 +199,9 @@ func BindHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 		if err != nil {
 			return err
 		}
-		if len(env) > 0 {
-			updateApp = true
-			for k, v := range env {
-				a.Env[k] = app.EnvVar{
-					Name:         k,
-					Value:        v,
-					Public:       false,
-					InstanceName: instance.Name,
-				}
-			}
-		}
+		setEnv(a, env)
 	}
-	if updateApp {
-		return db.Session.Apps().Update(appQuery, &a)
-	}
-	return nil
+	return app.SetEnvsToApp(&a, envVars)
 }
 
 // func UnbindHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
