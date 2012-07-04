@@ -192,39 +192,6 @@ func (s *S) TestRevokeAccessFailsIfTheTeamsDoesNotHaveAccessToTheApp(c *C) {
 	c.Assert(err, ErrorMatches, "^This team does not have access to this app$")
 }
 
-func (s *S) TestCheckUserAccess(c *C) {
-	u := auth.User{Email: "boy@thewho.com", Password: "123"}
-	u2 := auth.User{Email: "boy2@thewho.com", Password: "123"}
-	t := auth.Team{Name: "hello", Users: []auth.User{u}}
-	err := db.Session.Teams().Insert(t)
-	c.Assert(err, IsNil)
-	defer db.Session.Teams().Remove(bson.M{"name": t.Name})
-	a := App{Name: "appName", Framework: "django", Teams: []string{t.Name}}
-	c.Assert(a.CheckUserAccess(&u), Equals, true)
-	c.Assert(a.CheckUserAccess(&u2), Equals, false)
-}
-
-func (s *S) TestCheckUserAccessWithMultipleUsersOnMultipleGroupsOnApp(c *C) {
-	one := auth.User{Email: "imone@thewho.com", Password: "123"}
-	punk := auth.User{Email: "punk@thewho.com", Password: "123"}
-	cut := auth.User{Email: "cutmyhair@thewho.com", Password: "123"}
-	who := auth.Team{Name: "TheWho", Users: []auth.User{one, punk, cut}}
-	err := db.Session.Teams().Insert(who)
-	c.Assert(err, IsNil)
-	what := auth.Team{Name: "TheWhat", Users: []auth.User{one, punk}}
-	err = db.Session.Teams().Insert(what)
-	c.Assert(err, IsNil)
-	where := auth.Team{Name: "TheWhere", Users: []auth.User{one}}
-	err = db.Session.Teams().Insert(where)
-	c.Assert(err, IsNil)
-	teams := []string{who.Name, what.Name, where.Name}
-	defer db.Session.Teams().RemoveAll(bson.M{"name": bson.M{"$in": teams}})
-	a := App{Name: "appppppp", Teams: teams}
-	c.Assert(a.CheckUserAccess(&cut), Equals, true)
-	c.Assert(a.CheckUserAccess(&punk), Equals, true)
-	c.Assert(a.CheckUserAccess(&one), Equals, true)
-}
-
 func (s *S) TestSetEnvCreatesTheMapIfItIsNil(c *C) {
 	a := App{Name: "how-many-more-times"}
 	c.Assert(a.Env, IsNil)

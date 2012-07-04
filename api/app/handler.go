@@ -29,7 +29,7 @@ func getAppOrError(name string, u *auth.User) (App, error) {
 	if err != nil {
 		return app, &errors.Http{Code: http.StatusNotFound, Message: "App not found"}
 	}
-	if !app.CheckUserAccess(u) {
+	if !auth.CheckUserAccess(app.Teams, u) {
 		return app, &errors.Http{Code: http.StatusForbidden, Message: "User does not have access to this app"}
 	}
 	return app, nil
@@ -185,7 +185,7 @@ func grantAccessToTeam(appName, teamName string, u *auth.User) error {
 	if err != nil {
 		return &errors.Http{Code: http.StatusNotFound, Message: "App not found"}
 	}
-	if !app.CheckUserAccess(u) {
+	if !auth.CheckUserAccess(app.Teams, u) {
 		return &errors.Http{Code: http.StatusUnauthorized, Message: "User unauthorized"}
 	}
 	err = db.Session.Teams().Find(bson.M{"name": teamName}).One(t)
@@ -217,7 +217,7 @@ func revokeAccessFromTeam(appName, teamName string, u *auth.User) error {
 	if err != nil {
 		return &errors.Http{Code: http.StatusNotFound, Message: "App not found"}
 	}
-	if !app.CheckUserAccess(u) {
+	if !auth.CheckUserAccess(app.Teams, u) {
 		return &errors.Http{Code: http.StatusUnauthorized, Message: "User unauthorized"}
 	}
 	err = db.Session.Teams().Find(bson.M{"name": teamName}).One(t)

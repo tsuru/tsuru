@@ -178,15 +178,6 @@ func (a *App) setTeams(teams []auth.Team) {
 	}
 }
 
-func (a *App) CheckUserAccess(user *auth.User) bool {
-	for _, team := range a.GetTeams() {
-		if team.ContainsUser(user) {
-			return true
-		}
-	}
-	return false
-}
-
 func (a *App) SetEnv(env EnvVar) {
 	if a.Env == nil {
 		a.Env = make(map[string]EnvVar)
