@@ -46,6 +46,7 @@ func main() {
 	m := pat.New()
 
 	m.Post("/services", AuthorizationRequiredHandler(service.CreateHandler))
+	m.Post("/services/instances", AuthorizationRequiredHandler(service.CreateInstanceHandler))
 	m.Get("/services", AuthorizationRequiredHandler(service.ServicesHandler))
 	m.Del("/services/:name", AuthorizationRequiredHandler(service.DeleteHandler))
 	// m.Post("/services/bind", AuthorizationRequiredHandler(service.BindHandler))
