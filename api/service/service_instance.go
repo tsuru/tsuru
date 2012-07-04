@@ -12,10 +12,12 @@ type ServiceInstance struct {
 	Apps        []string `bson:"apps"`
 	Instance    string
 	Host        string
+	State       string
 	Env         map[string]string
 }
 
 func (si *ServiceInstance) Create() error {
+	si.State = "CREATING"
 	err := db.Session.ServiceInstances().Insert(si)
 	return err
 }
