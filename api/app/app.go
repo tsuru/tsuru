@@ -187,17 +187,12 @@ func (a *App) CheckUserAccess(user *auth.User) bool {
 	return false
 }
 
-func (a *App) SetEnv(name, value string, public bool) {
+func (a *App) SetEnv(env EnvVar) {
 	if a.Env == nil {
 		a.Env = make(map[string]EnvVar)
 	}
-	env := EnvVar{
-		Name:   name,
-		Value:  value,
-		Public: public,
-	}
-	a.Env[name] = env
-	a.Log(fmt.Sprintf("setting env %s with value %s", name, value))
+	a.Env[env.Name] = env
+	a.Log(fmt.Sprintf("setting env %s with value %s", env.Name, env.Value))
 }
 
 func (a *App) GetEnv(name string) (env EnvVar, err error) {

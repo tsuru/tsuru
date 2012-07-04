@@ -344,7 +344,7 @@ func SetEnv(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	variables := regex.FindAllStringSubmatch(string(body), -1)
 	for _, v := range variables {
 		parts := strings.Split(v[1], "=")
-		app.SetEnv(parts[0], parts[1], true)
+		app.SetEnv(EnvVar{Name: parts[0], Value: parts[1], Public: true})
 		e[parts[0]] = parts[1]
 	}
 	if err = db.Session.Apps().Update(bson.M{"name": app.Name}, app); err != nil {

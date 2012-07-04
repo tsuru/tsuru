@@ -228,13 +228,14 @@ func (s *S) TestCheckUserAccessWithMultipleUsersOnMultipleGroupsOnApp(c *C) {
 func (s *S) TestSetEnvCreatesTheMapIfItIsNil(c *C) {
 	a := App{Name: "how-many-more-times"}
 	c.Assert(a.Env, IsNil)
-	a.SetEnv("PATH", "/", false)
+	env := EnvVar{Name: "PATH", Value: "/"}
+	a.SetEnv(env)
 	c.Assert(a.Env, NotNil)
 }
 
 func (s *S) TestSetEnvironmentVariableToApp(c *C) {
 	a := App{Name: "appName", Framework: "django"}
-	a.SetEnv("PATH", "/", true)
+	a.SetEnv(EnvVar{Name: "PATH", Value: "/", Public: true})
 	env := a.Env["PATH"]
 	c.Assert(env.Name, Equals, "PATH")
 	c.Assert(env.Value, Equals, "/")
@@ -243,7 +244,7 @@ func (s *S) TestSetEnvironmentVariableToApp(c *C) {
 
 func (s *S) TestGetEnvironmentVariableFromApp(c *C) {
 	a := App{Name: "whole-lotta-love"}
-	a.SetEnv("PATH", "/", false)
+	a.SetEnv(EnvVar{Name: "PATH", Value: "/"})
 	v, err := a.GetEnv("PATH")
 	c.Assert(err, IsNil)
 	c.Assert(v.Value, Equals, "/")
