@@ -19,14 +19,12 @@ type ServiceInstance struct {
 
 func (si *ServiceInstance) Create() error {
 	si.State = "CREATING"
-	err := db.Session.ServiceInstances().Insert(si)
-	return err
+	return db.Session.ServiceInstances().Insert(si)
 }
 
 func (si *ServiceInstance) Delete() error {
 	doc := bson.M{"_id": si.Name, "apps": si.Apps}
-	err := db.Session.ServiceInstances().Remove(doc)
-	return err
+	return db.Session.ServiceInstances().Remove(doc)
 }
 
 func (si *ServiceInstance) Service() *Service {
