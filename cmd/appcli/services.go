@@ -94,7 +94,7 @@ func (sa *ServiceAdd) Run(ctx *cmd.Context, client cmd.Doer) error {
 	appName, instName, srvName := ctx.Args[0], ctx.Args[1], ctx.Args[2]
 	fmtBody := fmt.Sprintf(`{"app": %s, "name": %s, "service_name": %s}`, appName, instName, srvName)
 	b := bytes.NewBufferString(fmtBody)
-	url := cmd.GetUrl("/service-instances")
+	url := cmd.GetUrl("/services/instances")
 	request, err := http.NewRequest("POST", url, b)
 	if err != nil {
 		return err
