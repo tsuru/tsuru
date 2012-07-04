@@ -81,24 +81,9 @@ func CreateInstanceHandler(w http.ResponseWriter, r *http.Request, u *auth.User)
 		return &errors.Http{Code: http.StatusInternalServerError, Message: err.Error()}
 	}
 	var s Service
-	err = db.Session.Services().Find(bson.M{"_id": sJson["service_name"]}).One(&s)
+	err = validateForInstanceCreation(&s, sJson, u)
 	if err != nil {
-		msg := err.Error()
-		if msg == "not found" {
-			msg = fmt.Sprintf("Service %s does not exists.", sJson["service_name"])
-		}
-		return &errors.Http{Code: http.StatusNotFound, Message: msg}
-	}
-	var teams []auth.Team
-	err = db.Session.Teams().Find(bson.M{"users.email": u.Email}).All(&teams)
-	if err != nil {
-		return &errors.Http{Code: http.StatusInternalServerError, Message: err.Error()}
-	}
-	q := bson.M{"_id": sJson["service_name"], "teams": bson.M{"$in": auth.GetTeamsNames(teams)}}
-	n, err := db.Session.Services().Find(q).Count()
-	if n == 0 {
-		msg := fmt.Sprintf("You don't have access to service %s", sJson["service_name"])
-		return &errors.Http{Code: http.StatusForbidden, Message: msg}
+		return err
 	}
 	instance := ""
 	if s.Bootstrap["when"] == OnNewInstance {
@@ -122,6 +107,29 @@ func CreateInstanceHandler(w http.ResponseWriter, r *http.Request, u *auth.User)
 	}
 	si.Apps = append(si.Apps, sJson["app"])
 	return si.Create()
+}
+
+func validateForInstanceCreation(s *Service, sJson map[string]string, u *auth.User) error {
+	err := db.Session.Services().Find(bson.M{"_id": sJson["service_name"]}).One(&s)
+	if err != nil {
+		msg := err.Error()
+		if msg == "not found" {
+			msg = fmt.Sprintf("Service %s does not exists.", sJson["service_name"])
+		}
+		return &errors.Http{Code: http.StatusNotFound, Message: msg}
+	}
+	var teams []auth.Team
+	err = db.Session.Teams().Find(bson.M{"users.email": u.Email}).All(&teams)
+	if err != nil {
+		return &errors.Http{Code: http.StatusInternalServerError, Message: err.Error()}
+	}
+	q := bson.M{"_id": sJson["service_name"], "teams": bson.M{"$in": auth.GetTeamsNames(teams)}}
+	n, err := db.Session.Services().Find(q).Count()
+	if n == 0 {
+		msg := fmt.Sprintf("You don't have access to service %s", sJson["service_name"])
+		return &errors.Http{Code: http.StatusForbidden, Message: msg}
+	}
+	return nil
 }
 
 func DeleteHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
