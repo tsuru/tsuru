@@ -228,13 +228,14 @@ func (s *S) TestCheckUserAccessWithMultipleUsersOnMultipleGroupsOnApp(c *C) {
 func (s *S) TestSetEnvCreatesTheMapIfItIsNil(c *C) {
 	a := App{Name: "how-many-more-times"}
 	c.Assert(a.Env, IsNil)
-	a.SetEnv("PATH", "/")
+	env := EnvVar{Name: "PATH", Value: "/"}
+	a.SetEnv(env)
 	c.Assert(a.Env, NotNil)
 }
 
 func (s *S) TestSetEnvironmentVariableToApp(c *C) {
 	a := App{Name: "appName", Framework: "django"}
-	a.SetEnv("PATH", "/")
+	a.SetEnv(EnvVar{Name: "PATH", Value: "/", Public: true})
 	env := a.Env["PATH"]
 	c.Assert(env.Name, Equals, "PATH")
 	c.Assert(env.Value, Equals, "/")
@@ -243,7 +244,7 @@ func (s *S) TestSetEnvironmentVariableToApp(c *C) {
 
 func (s *S) TestGetEnvironmentVariableFromApp(c *C) {
 	a := App{Name: "whole-lotta-love"}
-	a.SetEnv("PATH", "/")
+	a.SetEnv(EnvVar{Name: "PATH", Value: "/"})
 	v, err := a.GetEnv("PATH")
 	c.Assert(err, IsNil)
 	c.Assert(v.Value, Equals, "/")
@@ -260,6 +261,23 @@ func (s *S) TestGetEnvReturnsErrorIfTheEnvironmentMapIsNil(c *C) {
 	a := App{Name: "what-is-and-what-should-never"}
 	_, err := a.GetEnv("PATH")
 	c.Assert(err, NotNil)
+}
+
+func (s *S) TestServiceEnvironmentReturnEnvironmentVariablesForTheServer(c *C) {
+	envs := map[string]EnvVar{
+		"DATABASE_HOST": EnvVar{Name: "DATABASE_HOST", Value: "localhost", Public: false, ServiceName: "mysql"},
+		"DATABASE_USER": EnvVar{Name: "DATABASE_USER", Value: "root", Public: true, ServiceName: "mysql"},
+		"HOST":          EnvVar{Name: "HOST", Value: "10.0.2.1", Public: false, ServiceName: "redis"},
+	}
+	expected := envs
+	delete(expected, "HOST")
+	a := App{Name: "hi-there", Env: envs}
+	c.Assert(a.ServiceEnv("mysql"), DeepEquals, expected)
+}
+
+func (s *S) TestServiceEnvironmentDoesNotPanicIfTheEnvMapIsNil(c *C) {
+	a := App{Name: "hi-there"}
+	c.Assert(a.ServiceEnv("mysql"), DeepEquals, map[string]EnvVar{})
 }
 
 func (s *S) TestUnit(c *C) {

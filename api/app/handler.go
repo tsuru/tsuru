@@ -319,6 +319,20 @@ func GetEnv(w http.ResponseWriter, r *http.Request, u *auth.User) (err error) {
 	return nil
 }
 
+func SetEnvsToApp(app *App, envs []EnvVar) error {
+	for _, env := range envs {
+		app.SetEnv(env)
+	}
+	if err := db.Session.Apps().Update(bson.M{"name": app.Name}, app); err != nil {
+		return err
+	}
+	mess := Message{
+		app: app,
+	}
+	env <- mess
+	return nil
+}
+
 func SetEnv(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	msg := "You must provide the environment variables"
 	if r.Body == nil {
@@ -340,21 +354,13 @@ func SetEnv(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	if err != nil {
 		return err
 	}
-	e := map[string]string{}
 	variables := regex.FindAllStringSubmatch(string(body), -1)
-	for _, v := range variables {
+	envs := make([]EnvVar, len(variables))
+	for i, v := range variables {
 		parts := strings.Split(v[1], "=")
-		app.SetEnv(parts[0], parts[1])
-		e[parts[0]] = parts[1]
+		envs[i] = EnvVar{Name: parts[0], Value: parts[1], Public: true}
 	}
-	if err = db.Session.Apps().Update(bson.M{"name": app.Name}, app); err != nil {
-		return err
-	}
-	mess := Message{
-		app: &app,
-	}
-	env <- mess
-	return nil
+	return SetEnvsToApp(&app, envs)
 }
 
 func UnsetEnv(w http.ResponseWriter, r *http.Request, u *auth.User) error {

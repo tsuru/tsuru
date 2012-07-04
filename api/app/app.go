@@ -187,17 +187,12 @@ func (a *App) CheckUserAccess(user *auth.User) bool {
 	return false
 }
 
-func (a *App) SetEnv(name, value string) {
+func (a *App) SetEnv(env EnvVar) {
 	if a.Env == nil {
 		a.Env = make(map[string]EnvVar)
 	}
-	env := EnvVar{
-		Name:   name,
-		Value:  value,
-		Public: true,
-	}
-	a.Env[name] = env
-	a.Log(fmt.Sprintf("setting env %s with value %s", name, value))
+	a.Env[env.Name] = env
+	a.Log(fmt.Sprintf("setting env %s with value %s", env.Name, env.Value))
 }
 
 func (a *App) GetEnv(name string) (env EnvVar, err error) {
@@ -206,6 +201,16 @@ func (a *App) GetEnv(name string) (env EnvVar, err error) {
 		err = errors.New("Environment variable not declared for this app.")
 	}
 	return
+}
+
+func (a *App) ServiceEnv(serviceName string) map[string]EnvVar {
+	envs := make(map[string]EnvVar)
+	for k, env := range a.Env {
+		if env.ServiceName == serviceName {
+			envs[k] = env
+		}
+	}
+	return envs
 }
 
 func deployHookAbsPath(p string) (string, error) {
