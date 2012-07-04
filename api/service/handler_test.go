@@ -659,6 +659,7 @@ func (s *S) TestServicesHandler(c *C) {
 		Name:        "redis-globo",
 		ServiceName: "redis",
 		Apps:        []string{"globo"},
+		Teams:       []string{s.team.Name},
 	}
 	err = instance.Create()
 	c.Assert(err, IsNil)
@@ -728,6 +729,7 @@ func (s *S) TestServicesHandlerFilterInstancesPerServiceIncludingServicesThatDoe
 			Name:        service.Name + app.Name + "1",
 			ServiceName: service.Name,
 			Apps:        []string{app.Name},
+			Teams:       []string{s.team.Name},
 		}
 		err = instance.Create()
 		c.Assert(err, IsNil)
@@ -735,6 +737,7 @@ func (s *S) TestServicesHandlerFilterInstancesPerServiceIncludingServicesThatDoe
 			Name:        service.Name + app.Name + "2",
 			ServiceName: service.Name,
 			Apps:        []string{app.Name},
+			Teams:       []string{s.team.Name},
 		}
 		err = instance.Create()
 	}

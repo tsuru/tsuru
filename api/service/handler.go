@@ -249,16 +249,6 @@ func ServicesHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error
 	if err != nil {
 		return err
 	}
-	set := NewSet()
-	for _, team := range teams {
-		teamApps, err := app.GetApps(&team)
-		if err != nil {
-			continue
-		}
-		for _, a := range teamApps {
-			set.Add(a.Name)
-		}
-	}
 	var teamNames []string
 	for _, team := range teams {
 		teamNames = append(teamNames, team.Name)
@@ -276,7 +266,7 @@ func ServicesHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error
 	for _, service := range services {
 		response[service.Name] = []string{}
 	}
-	iter := db.Session.ServiceInstances().Find(bson.M{"apps": bson.M{"$in": set.Items()}}).Iter()
+	iter := db.Session.ServiceInstances().Find(bson.M{"teams": bson.M{"$in": teamNames}}).Iter()
 	var instance ServiceInstance
 	for iter.Next(&instance) {
 		service := response[instance.ServiceName]
