@@ -85,3 +85,23 @@ func (s *S) TestCheckUserAccess(c *C) {
 	c.Assert(CheckUserAccess([]string{t.Name}, &u1), Equals, true)
 	c.Assert(CheckUserAccess([]string{t.Name}, &u2), Equals, false)
 }
+
+func (s *S) TestCheckUserAccessWithMultipleUsersOnMultipleTeams(c *C) {
+	one := User{Email: "imone@thewho.com", Password: "123"}
+	punk := User{Email: "punk@thewho.com", Password: "123"}
+	cut := User{Email: "cutmyhair@thewho.com", Password: "123"}
+	who := Team{Name: "TheWho", Users: []User{one, punk, cut}}
+	err := db.Session.Teams().Insert(who)
+	c.Assert(err, IsNil)
+	what := Team{Name: "TheWhat", Users: []User{one, punk}}
+	err = db.Session.Teams().Insert(what)
+	c.Assert(err, IsNil)
+	where := Team{Name: "TheWhere", Users: []User{one}}
+	err = db.Session.Teams().Insert(where)
+	c.Assert(err, IsNil)
+	teams := []string{who.Name, what.Name, where.Name}
+	defer db.Session.Teams().RemoveAll(bson.M{"name": bson.M{"$in": teams}})
+	c.Assert(CheckUserAccess(teams, &cut), Equals, true)
+	c.Assert(CheckUserAccess(teams, &punk), Equals, true)
+	c.Assert(CheckUserAccess(teams, &one), Equals, true)
+}

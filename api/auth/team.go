@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/timeredbull/tsuru/db"
 	"labix.org/v2/mgo/bson"
+	"sync"
 )
 
 type Team struct {
@@ -58,10 +59,20 @@ func CheckUserAccess(teamNames []string, u *User) bool {
 	q := bson.M{"name": bson.M{"$in": teamNames}}
 	var teams []Team
 	db.Session.Teams().Find(q).All(&teams)
+	var wg sync.WaitGroup
+	found := make(chan bool)
 	for _, team := range teams {
-		if team.ContainsUser(u) {
-			return true
-		}
+		wg.Add(1)
+		go func(t Team) {
+			if t.ContainsUser(u) {
+				found <- true
+			}
+			wg.Done()
+		}(team)
 	}
-	return false
+	go func() {
+		wg.Wait()
+		found <- false
+	}()
+	return <-found
 }
