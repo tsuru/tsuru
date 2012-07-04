@@ -7,7 +7,7 @@ import (
 
 type Team struct {
 	Name  string
-	Users []*User
+	Users []User
 }
 
 func (t *Team) ContainsUser(u *User) bool {
@@ -23,7 +23,7 @@ func (t *Team) AddUser(u *User) error {
 	if t.ContainsUser(u) {
 		return errors.New(fmt.Sprintf("User %s is alread in the team %s.", u.Email, t.Name))
 	}
-	t.Users = append(t.Users, u)
+	t.Users = append(t.Users, *u)
 	return nil
 }
 

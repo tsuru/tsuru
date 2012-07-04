@@ -7,8 +7,8 @@ import (
 )
 
 type ServiceInstance struct {
-	Name        string   `bson:"_id"`
-	ServiceName string   `bson:"service_name"`
+	Name        string `bson:"_id"`
+	ServiceName string `bson:"service_name"`
 	Apps        []string
 	Teams       []string
 	Instance    string
