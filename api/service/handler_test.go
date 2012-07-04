@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/timeredbull/tsuru/api/app"
 	"github.com/timeredbull/tsuru/api/auth"
+	"github.com/timeredbull/tsuru/api/unit"
 	"github.com/timeredbull/tsuru/db"
 	"github.com/timeredbull/tsuru/errors"
 	"io/ioutil"
@@ -264,8 +265,12 @@ func (s *S) TestDeleteHandlerReturns403IfTheUserDoesNotHaveAccessToTheService(c 
 }
 
 func (s *S) TestBindHandlerAddsTheAppToTheInstance(c *C) {
+	service := Service{Name: "mysql"}
+	err := service.Create()
+	c.Assert(err, IsNil)
+	defer db.Session.Services().Remove(bson.M{"_id": "mysql"})
 	instance := ServiceInstance{Name: "my-mysql", ServiceName: "mysql", Teams: []string{s.team.Name}}
-	err := instance.Create()
+	err = instance.Create()
 	c.Assert(err, IsNil)
 	defer db.Session.ServiceInstances().Remove(bson.M{"_id": "my-mysql"})
 	a := app.App{Name: "painkiller", Teams: []string{s.team.Name}}
@@ -281,6 +286,112 @@ func (s *S) TestBindHandlerAddsTheAppToTheInstance(c *C) {
 	err = db.Session.ServiceInstances().Find(bson.M{"_id": instance.Name}).One(&instance)
 	c.Assert(err, IsNil)
 	c.Assert(instance.Apps, DeepEquals, []string{a.Name})
+}
+
+func (s *S) TestBindHandlerAddsAllEnvironmentVariableFromInstanceInTheAppAsPrivateVariables(c *C) {
+	service := Service{Name: "mysql"}
+	err := service.Create()
+	c.Assert(err, IsNil)
+	defer db.Session.Services().Remove(bson.M{"_id": "mysql"})
+	instance := ServiceInstance{
+		Name:        "my-mysql",
+		ServiceName: "mysql",
+		Teams:       []string{s.team.Name},
+		Env:         map[string]string{"DATABASE_NAME": "mymysql", "DATABASE_HOST": "localhost"},
+	}
+	err = instance.Create()
+	c.Assert(err, IsNil)
+	defer db.Session.ServiceInstances().Remove(bson.M{"_id": "my-mysql"})
+	a := app.App{Name: "painkiller", Teams: []string{s.team.Name}}
+	err = a.Create()
+	c.Assert(err, IsNil)
+	defer a.Destroy()
+	url := fmt.Sprintf("/services/instances/%s/%s?:instance=%s&:app=%s", instance.Name, a.Name, instance.Name, a.Name)
+	request, err := http.NewRequest("PUT", url, nil)
+	c.Assert(err, IsNil)
+	recorder := httptest.NewRecorder()
+	err = BindHandler(recorder, request, s.user)
+	c.Assert(err, IsNil)
+	err = db.Session.Apps().Find(bson.M{"name": a.Name}).One(&a)
+	c.Assert(err, IsNil)
+	expectedEnv := map[string]app.EnvVar{
+		"DATABASE_NAME": app.EnvVar{
+			Name:         "DATABASE_NAME",
+			Value:        "mymysql",
+			Public:       false,
+			InstanceName: instance.Name,
+		},
+		"DATABASE_HOST": app.EnvVar{
+			Name:         "DATABASE_HOST",
+			Value:        "localhost",
+			Public:       false,
+			InstanceName: instance.Name,
+		},
+	}
+	c.Assert(a.Env, DeepEquals, expectedEnv)
+}
+
+func (s *S) TestBindHandlerCallTheServiceAPIAndSetsEnvironmentVariablesReturnedInTheCallToTheApp(c *C) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(`{"DATABASE_USER":"root","DATABASE_PASSWORD":"s3cr3t"}`))
+	}))
+	defer ts.Close()
+	service := Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}}
+	err := service.Create()
+	c.Assert(err, IsNil)
+	defer db.Session.Services().Remove(bson.M{"_id": "mysql"})
+	instance := ServiceInstance{
+		Name:        "my-mysql",
+		ServiceName: "mysql",
+		Teams:       []string{s.team.Name},
+		Env:         map[string]string{"DATABASE_NAME": "mymysql", "DATABASE_HOST": "localhost"},
+	}
+	err = instance.Create()
+	c.Assert(err, IsNil)
+	defer db.Session.ServiceInstances().Remove(bson.M{"_id": "my-mysql"})
+	a := app.App{
+		Name:  "painkiller",
+		Teams: []string{s.team.Name},
+		Units: []unit.Unit{unit.Unit{Ip: "127.0.0.1"}},
+	}
+	err = a.Create()
+	c.Assert(err, IsNil)
+	defer a.Destroy()
+	url := fmt.Sprintf("/services/instances/%s/%s?:instance=%s&:app=%s", instance.Name, a.Name, instance.Name, a.Name)
+	request, err := http.NewRequest("PUT", url, nil)
+	c.Assert(err, IsNil)
+	recorder := httptest.NewRecorder()
+	err = BindHandler(recorder, request, s.user)
+	c.Assert(err, IsNil)
+	err = db.Session.Apps().Find(bson.M{"name": a.Name}).One(&a)
+	c.Assert(err, IsNil)
+	expectedEnv := map[string]app.EnvVar{
+		"DATABASE_NAME": app.EnvVar{
+			Name:         "DATABASE_NAME",
+			Value:        "mymysql",
+			Public:       false,
+			InstanceName: instance.Name,
+		},
+		"DATABASE_HOST": app.EnvVar{
+			Name:         "DATABASE_HOST",
+			Value:        "localhost",
+			Public:       false,
+			InstanceName: instance.Name,
+		},
+		"DATABASE_USER": app.EnvVar{
+			Name:         "DATABASE_USER",
+			Value:        "root",
+			Public:       false,
+			InstanceName: instance.Name,
+		},
+		"DATABASE_PASSWORD": app.EnvVar{
+			Name:         "DATABASE_PASSWORD",
+			Value:        "s3cr3t",
+			Public:       false,
+			InstanceName: instance.Name,
+		},
+	}
+	c.Assert(a.Env, DeepEquals, expectedEnv)
 }
 
 func (s *S) TestBindHandlerReturns404IfTheInstanceDoesNotExist(c *C) {

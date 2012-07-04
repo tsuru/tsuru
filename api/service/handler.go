@@ -163,16 +163,55 @@ func BindHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	if !auth.CheckUserAccess(instance.Teams, u) {
 		return &errors.Http{Code: http.StatusForbidden, Message: "This user does not have access to this instance"}
 	}
-	var app app.App
-	err = db.Session.Apps().Find(bson.M{"name": r.URL.Query().Get(":app")}).One(&app)
+	appQuery := bson.M{"name": r.URL.Query().Get(":app")}
+	var a app.App
+	err = db.Session.Apps().Find(appQuery).One(&a)
 	if err != nil {
 		return &errors.Http{Code: http.StatusNotFound, Message: "App not found"}
 	}
-	if !auth.CheckUserAccess(app.Teams, u) {
+	if !auth.CheckUserAccess(a.Teams, u) {
 		return &errors.Http{Code: http.StatusForbidden, Message: "This user does not have access to this app"}
 	}
-	instance.Apps = append(instance.Apps, app.Name)
-	return db.Session.ServiceInstances().Update(instanceQuery, instance)
+	instance.Apps = append(instance.Apps, a.Name)
+	err = db.Session.ServiceInstances().Update(instanceQuery, instance)
+	if err != nil {
+		return err
+	}
+	updateApp := len(instance.Env) > 0
+	for k, v := range instance.Env {
+		a.Env[k] = app.EnvVar{
+			Name:         k,
+			Value:        v,
+			Public:       false,
+			InstanceName: instance.Name,
+		}
+	}
+	err = db.Session.Apps().Update(appQuery, a)
+	if err != nil {
+		return err
+	}
+	var cli *Client
+	if cli, err = instance.Service().GetClient("production"); err == nil {
+		env, err := cli.Bind(&instance, &a)
+		if err != nil {
+			return err
+		}
+		if len(env) > 0 {
+			updateApp = true
+			for k, v := range env {
+				a.Env[k] = app.EnvVar{
+					Name:         k,
+					Value:        v,
+					Public:       false,
+					InstanceName: instance.Name,
+				}
+			}
+		}
+	}
+	if updateApp {
+		return db.Session.Apps().Update(appQuery, &a)
+	}
+	return nil
 }
 
 // func UnbindHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
