@@ -208,6 +208,16 @@ func (a *App) GetEnv(name string) (env EnvVar, err error) {
 	return
 }
 
+func (a *App) ServiceEnv(serviceName string) map[string]EnvVar {
+	envs := make(map[string]EnvVar)
+	for k, env := range a.Env {
+		if env.ServiceName == serviceName {
+			envs[k] = env
+		}
+	}
+	return envs
+}
+
 func deployHookAbsPath(p string) (string, error) {
 	repoPath, err := config.GetString("git:unit-repo")
 	if err != nil {

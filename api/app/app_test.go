@@ -262,6 +262,23 @@ func (s *S) TestGetEnvReturnsErrorIfTheEnvironmentMapIsNil(c *C) {
 	c.Assert(err, NotNil)
 }
 
+func (s *S) TestServiceEnvironmentReturnEnvironmentVariablesForTheServer(c *C) {
+	envs := map[string]EnvVar{
+		"DATABASE_HOST": EnvVar{Name: "DATABASE_HOST", Value: "localhost", Public: false, ServiceName: "mysql"},
+		"DATABASE_USER": EnvVar{Name: "DATABASE_USER", Value: "root", Public: true, ServiceName: "mysql"},
+		"HOST":          EnvVar{Name: "HOST", Value: "10.0.2.1", Public: false, ServiceName: "redis"},
+	}
+	expected := envs
+	delete(expected, "HOST")
+	a := App{Name: "hi-there", Env: envs}
+	c.Assert(a.ServiceEnv("mysql"), DeepEquals, expected)
+}
+
+func (s *S) TestServiceEnvironmentDoesNotPanicIfTheEnvMapIsNil(c *C) {
+	a := App{Name: "hi-there"}
+	c.Assert(a.ServiceEnv("mysql"), DeepEquals, map[string]EnvVar{})
+}
+
 func (s *S) TestUnit(c *C) {
 	u := unit.Unit{Name: "someapp/0", Type: "django", Machine: 10}
 	a := App{Name: "appName", Framework: "django", Units: []unit.Unit{u}}
