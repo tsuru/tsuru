@@ -3,6 +3,8 @@ package auth
 import (
 	"errors"
 	"fmt"
+	"github.com/timeredbull/tsuru/db"
+	"labix.org/v2/mgo/bson"
 )
 
 type Team struct {
@@ -50,4 +52,16 @@ func GetTeamsNames(teams []Team) []string {
 		tn[i] = t.Name
 	}
 	return tn
+}
+
+func CheckUserAccess(teamNames []string, u *User) bool {
+	q := bson.M{"name": bson.M{"$in": teamNames}}
+	var teams []Team
+	db.Session.Teams().Find(q).All(&teams)
+	for _, team := range teams {
+		if team.ContainsUser(u) {
+			return true
+		}
+	}
+	return false
 }
