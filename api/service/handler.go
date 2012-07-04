@@ -88,10 +88,21 @@ func CreateInstanceHandler(w http.ResponseWriter, r *http.Request, u *auth.User)
 			return &errors.Http{Code: http.StatusInternalServerError, Message: msg}
 		}
 	}
+	var teamNames []string
+	teams, err := u.Teams()
+	if err != nil {
+		return err
+	}
+	for _, t := range teams {
+		if s.hasTeam(&t) {
+			teamNames = append(teamNames, t.Name)
+		}
+	}
 	si := ServiceInstance{
 		Name:        sJson["name"],
 		ServiceName: sJson["service_name"],
 		Instance:    instance,
+		Teams:       teamNames,
 	}
 	var cli *Client
 	if cli, err = s.GetClient("production"); err == nil {

@@ -182,6 +182,22 @@ func (s *S) TestCreateInstanceHandlerCallsTheServiceAPIAndSaveEnvironmentVariabl
 	c.Assert(si.Env, DeepEquals, map[string]string{"DATABASE_HOST": "localhost"})
 }
 
+func (s *S) TestCreateInstanceHandlerSavesAllTeamsThatTheGivenUserIsMemberAndHasAccessToTheServiceInTheInstance(c *C) {
+	t := auth.Team{Name: "judaspriest", Users: []*auth.User{s.user}}
+	err := db.Session.Teams().Insert(t)
+	defer db.Session.Teams().Remove(bson.M{"name": t.Name})
+	service := Service{Name: "mysql", Teams: []string{s.team.Name}}
+	err = service.Create()
+	c.Assert(err, IsNil)
+	recorder, request := makeRequestToCreateInstanceHandler(c)
+	err = CreateInstanceHandler(recorder, request, s.user)
+	c.Assert(err, IsNil)
+	var si ServiceInstance
+	err = db.Session.ServiceInstances().Find(bson.M{"_id": "brainSQL"}).One(&si)
+	c.Assert(err, IsNil)
+	c.Assert(si.Teams, DeepEquals, []string{s.team.Name})
+}
+
 func (s *S) TestCreateInstanceHandlerDoesNotFailIfTheServiceDoesNotDeclareEndpoint(c *C) {
 	service := Service{Name: "mysql", Teams: []string{s.team.Name}}
 	service.Create()
