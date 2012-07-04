@@ -22,10 +22,10 @@ import (
 const confSep = "========"
 
 type EnvVar struct {
-	Name        string
-	Value       string
-	Public      bool
-	ServiceName string
+	Name         string
+	Value        string
+	Public       bool
+	InstanceName string
 }
 
 func (e *EnvVar) String() string {
@@ -194,10 +194,10 @@ func (a *App) GetEnv(name string) (env EnvVar, err error) {
 	return
 }
 
-func (a *App) ServiceEnv(serviceName string) map[string]EnvVar {
+func (a *App) InstanceEnv(name string) map[string]EnvVar {
 	envs := make(map[string]EnvVar)
 	for k, env := range a.Env {
-		if env.ServiceName == serviceName {
+		if env.InstanceName == name {
 			envs[k] = env
 		}
 	}
