@@ -9,7 +9,7 @@ import (
 type ServiceInstance struct {
 	Name        string   `bson:"_id"`
 	ServiceName string   `bson:"service_name"`
-	Apps        []string `bson:"apps"`
+	Apps        []string
 	Teams       []string
 	Instance    string
 	Host        string
