@@ -1,12 +1,12 @@
 package main
 
 import (
-    "bytes"
+	"bytes"
 	"encoding/json"
 	"errors"
-    "fmt"
+	"fmt"
 	"github.com/timeredbull/tsuru/cmd"
-    "io"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"strings"
@@ -26,7 +26,7 @@ func (s *Service) Info() *cmd.Info {
 func (s *Service) Subcommands() map[string]interface{} {
 	return map[string]interface{}{
 		"list": &ServiceList{},
-        "add":  &ServiceAdd{},
+		"add":  &ServiceAdd{},
 	}
 }
 
@@ -91,9 +91,9 @@ func (sa *ServiceAdd) Info() *cmd.Info {
 }
 
 func (sa *ServiceAdd) Run(ctx *cmd.Context, client cmd.Doer) error {
-    appName, instName, srvName := ctx.Args[0], ctx.Args[1], ctx.Args[2]
-    fmtBody := fmt.Sprintf(`{"app": %s, "name": %s, "service_name": %s}`, appName, instName, srvName)
-    b := bytes.NewBufferString(fmtBody)
+	appName, instName, srvName := ctx.Args[0], ctx.Args[1], ctx.Args[2]
+	fmtBody := fmt.Sprintf(`{"app": %s, "name": %s, "service_name": %s}`, appName, instName, srvName)
+	b := bytes.NewBufferString(fmtBody)
 	url := cmd.GetUrl("/service-instances")
 	request, err := http.NewRequest("POST", url, b)
 	if err != nil {
@@ -110,5 +110,5 @@ func (sa *ServiceAdd) Run(ctx *cmd.Context, client cmd.Doer) error {
 		return err
 	}
 	io.WriteString(ctx.Stdout, string(result))
-    return nil
+	return nil
 }
