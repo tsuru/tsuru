@@ -92,14 +92,14 @@ func (sa *ServiceAdd) Info() *cmd.Info {
 
 func (sa *ServiceAdd) Run(ctx *cmd.Context, client cmd.Doer) error {
 	appName, instName, srvName := ctx.Args[0], ctx.Args[1], ctx.Args[2]
-	fmtBody := fmt.Sprintf(`{"app": %s, "name": %s, "service_name": %s}`, appName, instName, srvName)
+	fmtBody := fmt.Sprintf(`{"app": "%s", "name": "%s", "service_name": "%s"}`, appName, instName, srvName)
 	b := bytes.NewBufferString(fmtBody)
 	url := cmd.GetUrl("/services/instances")
 	request, err := http.NewRequest("POST", url, b)
+	request.Header.Set("Content-Type", "application/json")
 	if err != nil {
 		return err
 	}
-	request.Header.Set("Content-Type", "application/json")
 	response, err := client.Do(request)
 	if err != nil {
 		return err
