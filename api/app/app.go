@@ -22,9 +22,10 @@ import (
 const confSep = "========"
 
 type EnvVar struct {
-	Name   string
-	Value  string
-	Public bool
+	Name        string
+	Value       string
+	Public      bool
+	ServiceName string
 }
 
 func (e *EnvVar) String() string {
