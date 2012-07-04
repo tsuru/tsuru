@@ -144,7 +144,7 @@ func DeleteHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	if err != nil {
 		return &errors.Http{Code: http.StatusNotFound, Message: "Service not found"}
 	}
-	if !s.CheckUserAccess(u) {
+	if !auth.CheckUserAccess(s.Teams, u) {
 		msg := "This user does not have access to this service"
 		return &errors.Http{Code: http.StatusForbidden, Message: msg}
 	}
@@ -210,7 +210,7 @@ func getServiceAndTeamOrError(serviceName string, teamName string, u *auth.User)
 	if err != nil {
 		return nil, nil, &errors.Http{Code: http.StatusNotFound, Message: "Service not found"}
 	}
-	if !service.CheckUserAccess(u) {
+	if !auth.CheckUserAccess(service.Teams, u) {
 		msg := "This user does not have access to this service"
 		return nil, nil, &errors.Http{Code: http.StatusForbidden, Message: msg}
 	}

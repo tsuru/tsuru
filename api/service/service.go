@@ -96,15 +96,3 @@ func (s *Service) RevokeAccess(team *auth.Team) error {
 	s.Teams = s.Teams[:last]
 	return nil
 }
-
-func (s *Service) CheckUserAccess(user *auth.User) bool {
-	q := bson.M{"name": bson.M{"$in": s.Teams}}
-	var teams []auth.Team
-	db.Session.Teams().Find(q).All(&teams)
-	for _, team := range teams {
-		if team.ContainsUser(user) {
-			return true
-		}
-	}
-	return false
-}
