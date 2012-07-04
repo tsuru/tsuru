@@ -258,32 +258,30 @@ func (s *S) TestDeleteHandlerReturns403IfTheUserDoesNotHaveAccessToTheService(c 
 	c.Assert(e, ErrorMatches, "^This user does not have access to this service$")
 }
 
-// func (s *S) TestBindHandler(c *C) {
-// 	st := ServiceType{Name: "Mysql", Charm: "mysql"}
-// 	err := st.Create()
-// 	c.Assert(err, IsNil)
-// 	se := Service{ServiceTypeName: st.Name, Name: "my_service", Teams: []string{s.team.Name}}
-// 	a := app.App{Name: "serviceApp", Framework: "django", Teams: []string{s.team.Name}}
-// 	err = se.Create()
-// 	c.Assert(err, IsNil)
-// 	err = a.Create()
-// 	c.Assert(err, IsNil)
-// 	b := strings.NewReader(`{"app":"serviceApp", "service":"my_service"}`)
-// 	request, err := http.NewRequest("POST", "/services/bind", b)
-// 	c.Assert(err, IsNil)
-// 	recorder := httptest.NewRecorder()
-// 	err = BindHandler(recorder, request, s.user)
-// 	c.Assert(err, IsNil)
-// 	c.Assert(recorder.Code, Equals, 200)
-// 	query := bson.M{
-// 		"service_name": se.Name,
-// 		"app_name":     a.Name,
-// 	}
-// 	qtd, err := db.Session.ServiceInstances().Find(query).Count()
-// 	c.Check(err, IsNil)
-// 	c.Assert(qtd, Equals, 1)
-// }
-// 
+func (s *S) TestBindHandlerAddsTheAppToTheInstance(c *C) {
+	service := Service{Name: "mysql", Teams: []string{s.team.Name}}
+	err := service.Create()
+	c.Assert(err, IsNil)
+	defer db.Session.Services().Remove(bson.M{"_id": "mysql"})
+	instance := ServiceInstance{Name: "my-mysql", ServiceName: "mysql"}
+	err = instance.Create()
+	c.Assert(err, IsNil)
+	defer db.Session.ServiceInstances().Remove(bson.M{"_id": "my-mysql"})
+	a := app.App{Name: "painkiller", Teams: []string{s.team.Name}}
+	err = a.Create()
+	c.Assert(err, IsNil)
+	defer a.Destroy()
+	url := fmt.Sprintf("/services/instances/%s/%s?:instance=%s&:app=%s", instance.Name, a.Name, instance.Name, a.Name)
+	request, err := http.NewRequest("PUT", url, nil)
+	c.Assert(err, IsNil)
+	recorder := httptest.NewRecorder()
+	err = BindHandler(recorder, request, s.user)
+	c.Assert(err, IsNil)
+	err = db.Session.ServiceInstances().Find(bson.M{"_id": instance.Name}).One(&instance)
+	c.Assert(err, IsNil)
+	c.Assert(instance.Apps, DeepEquals, []string{a.Name})
+}
+
 // func (s *S) TestBindHandlerReturns403IfTheUserDoesNotHaveAccessToTheApp(c *C) {
 // 	st := ServiceType{Name: "Mysql", Charm: "mysql"}
 // 	err := st.Create()
@@ -324,7 +322,7 @@ func (s *S) TestDeleteHandlerReturns403IfTheUserDoesNotHaveAccessToTheService(c 
 // 	c.Assert(e.Code, Equals, http.StatusNotFound)
 // 	c.Assert(e, ErrorMatches, "^App not found$")
 // }
-// 
+//
 // func (s *S) TestBindHandlerReturns403IfTheUserDoesNotHaveAccessToTheService(c *C) {
 // 	st := ServiceType{Name: "Mysql", Charm: "mysql"}
 // 	err := st.Create()
@@ -361,7 +359,7 @@ func (s *S) TestDeleteHandlerReturns403IfTheUserDoesNotHaveAccessToTheService(c 
 // 	c.Assert(ok, Equals, true)
 // 	c.Assert(e.Code, Equals, http.StatusNotFound)
 // 	c.Assert(e, ErrorMatches, "^Service not found$")
-// 
+//
 // }
 
 // func (s *S) TestUnbindHandler(c *C) {

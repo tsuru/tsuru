@@ -20,11 +20,6 @@ type serviceYaml struct {
 	Bootstrap map[string]string
 }
 
-type bindJson struct {
-	App     string
-	Service string
-}
-
 // a service with a pointer to it's type
 type serviceT struct {
 	Name string
@@ -138,41 +133,16 @@ func DeleteHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	return nil
 }
 
-// func BindHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
-// 	var b bindJson
-// 	defer r.Body.Close()
-// 	body, err := ioutil.ReadAll(r.Body)
-// 	if err != nil {
-// 		return err
-// 	}
-// 	err = json.Unmarshal(body, &b)
-// 	if err != nil {
-// 		return err
-// 	}
-// 	s := Service{Name: b.Service}
-// 	err = s.Get()
-// 	if err != nil {
-// 		return &errors.Http{Code: http.StatusNotFound, Message: "Service not found"}
-// 	}
-// 	if !s.CheckUserAccess(u) {
-// 		return &errors.Http{Code: http.StatusForbidden, Message: "This user does not have access to this service"}
-// 	}
-// 	a := app.App{Name: b.App}
-// 	err = a.Get()
-// 	if err != nil {
-// 		return &errors.Http{Code: http.StatusNotFound, Message: "App not found"}
-// 	}
-// 	if !a.CheckUserAccess(u) {
-// 		return &errors.Http{Code: http.StatusForbidden, Message: "This user does not have access to this app"}
-// 	}
-// 	err = s.Bind(&a)
-// 	if err != nil {
-// 		return err
-// 	}
-// 	fmt.Fprint(w, "success")
-// 	return nil
-// }
-// 
+func BindHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
+	instanceQuery := bson.M{"_id": r.URL.Query().Get(":instance")}
+	var instance ServiceInstance
+	var app app.App
+	_ = db.Session.ServiceInstances().Find(instanceQuery).One(&instance)
+	_ = db.Session.Apps().Find(bson.M{"name": r.URL.Query().Get(":app")}).One(&app)
+	instance.Apps = append(instance.Apps, app.Name)
+	return db.Session.ServiceInstances().Update(instanceQuery, instance)
+}
+
 // func UnbindHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 // 	var b bindJson
 // 	defer r.Body.Close()
