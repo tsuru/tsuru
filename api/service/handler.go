@@ -164,7 +164,13 @@ func BindHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 		return &errors.Http{Code: http.StatusForbidden, Message: "This user does not have access to this instance"}
 	}
 	var app app.App
-	_ = db.Session.Apps().Find(bson.M{"name": r.URL.Query().Get(":app")}).One(&app)
+	err = db.Session.Apps().Find(bson.M{"name": r.URL.Query().Get(":app")}).One(&app)
+	if err != nil {
+		return &errors.Http{Code: http.StatusNotFound, Message: "App not found"}
+	}
+	if !auth.CheckUserAccess(app.Teams, u) {
+		return &errors.Http{Code: http.StatusForbidden, Message: "This user does not have access to this app"}
+	}
 	instance.Apps = append(instance.Apps, app.Name)
 	return db.Session.ServiceInstances().Update(instanceQuery, instance)
 }

@@ -321,46 +321,43 @@ func (s *S) TestBindHandlerReturns403IfTheUserDoesNotHaveAccessToTheInstance(c *
 	c.Assert(e, ErrorMatches, "^This user does not have access to this instance$")
 }
 
-// func (s *S) TestBindHandlerReturns403IfTheUserDoesNotHaveAccessToTheApp(c *C) {
-// 	st := ServiceType{Name: "Mysql", Charm: "mysql"}
-// 	err := st.Create()
-// 	c.Assert(err, IsNil)
-// 	se := Service{ServiceTypeName: st.Name, Name: "my_service", Teams: []string{s.team.Name}}
-// 	a := app.App{Name: "serviceApp", Framework: "django"}
-// 	err = se.Create()
-// 	c.Assert(err, IsNil)
-// 	err = a.Create()
-// 	c.Assert(err, IsNil)
-// 	b := strings.NewReader(`{"app":"serviceApp", "service":"my_service"}`)
-// 	request, err := http.NewRequest("POST", "/services/bind", b)
-// 	c.Assert(err, IsNil)
-// 	recorder := httptest.NewRecorder()
-// 	err = BindHandler(recorder, request, s.user)
-// 	c.Assert(err, NotNil)
-// 	e, ok := err.(*errors.Http)
-// 	c.Assert(ok, Equals, true)
-// 	c.Assert(e.Code, Equals, http.StatusForbidden)
-// 	c.Assert(e, ErrorMatches, "^This user does not have access to this app$")
-// }
+func (s *S) TestBindHandlerReturns404IfTheAppDoesNotExist(c *C) {
+	instance := ServiceInstance{Name: "my-mysql", ServiceName: "mysql", Teams: []string{s.team.Name}}
+	err := instance.Create()
+	c.Assert(err, IsNil)
+	defer db.Session.ServiceInstances().Remove(bson.M{"_id": "my-mysql"})
+	url := fmt.Sprintf("/services/instances/%s/unknown?:instance=%s&app=unknown", instance.Name, instance.Name)
+	request, err := http.NewRequest("PUT", url, nil)
+	c.Assert(err, IsNil)
+	recorder := httptest.NewRecorder()
+	err = BindHandler(recorder, request, s.user)
+	c.Assert(err, NotNil)
+	e, ok := err.(*errors.Http)
+	c.Assert(ok, Equals, true)
+	c.Assert(e.Code, Equals, http.StatusNotFound)
+	c.Assert(e, ErrorMatches, "^App not found$")
+}
 
-// func (s *S) TestBindHandlerReturns404IfTheAppDoesNotExist(c *C) {
-// 	st := ServiceType{Name: "Mysql", Charm: "mysql"}
-// 	err := st.Create()
-// 	c.Assert(err, IsNil)
-// 	se := Service{ServiceTypeName: st.Name, Name: "my_service", Teams: []string{s.team.Name}}
-// 	err = se.Create()
-// 	c.Assert(err, IsNil)
-// 	b := strings.NewReader(`{"app":"serviceApp", "service":"my_service"}`)
-// 	request, err := http.NewRequest("POST", "/services/bind", b)
-// 	c.Assert(err, IsNil)
-// 	recorder := httptest.NewRecorder()
-// 	err = BindHandler(recorder, request, s.user)
-// 	c.Assert(err, NotNil)
-// 	e, ok := err.(*errors.Http)
-// 	c.Assert(ok, Equals, true)
-// 	c.Assert(e.Code, Equals, http.StatusNotFound)
-// 	c.Assert(e, ErrorMatches, "^App not found$")
-// }
+func (s *S) TestBindHandlerReturns403IfTheUserDoesNotHaveAccessToTheApp(c *C) {
+	instance := ServiceInstance{Name: "my-mysql", ServiceName: "mysql", Teams: []string{s.team.Name}}
+	err := instance.Create()
+	c.Assert(err, IsNil)
+	defer db.Session.ServiceInstances().Remove(bson.M{"_id": "my-mysql"})
+	a := app.App{Name: "serviceApp", Framework: "django"}
+	err = a.Create()
+	c.Assert(err, IsNil)
+	defer a.Destroy()
+	url := fmt.Sprintf("/services/instances/%s/%s?:instance=%s&:app=%s", instance.Name, a.Name, instance.Name, a.Name)
+	request, err := http.NewRequest("PUT", url, nil)
+	c.Assert(err, IsNil)
+	recorder := httptest.NewRecorder()
+	err = BindHandler(recorder, request, s.user)
+	c.Assert(err, NotNil)
+	e, ok := err.(*errors.Http)
+	c.Assert(ok, Equals, true)
+	c.Assert(e.Code, Equals, http.StatusForbidden)
+	c.Assert(e, ErrorMatches, "^This user does not have access to this app$")
+}
 
 // func (s *S) TestUnbindHandler(c *C) {
 // 	st := ServiceType{Name: "Mysql", Charm: "mysql"}
