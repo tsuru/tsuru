@@ -105,16 +105,44 @@ func (s *S) TestServiceListIsASubcommandOfService(c *C) {
 	c.Assert(list, FitsTypeOf, &ServiceList{})
 }
 
+func (s *S) TestServiceAddShouldBeASubcommandOfService(c *C) {
+    command := &Service{}
+    subcmds := command.Subcommands()
+    add, ok := subcmds["add"]
+    c.Assert(ok, Equals, true)
+    c.Assert(add, FitsTypeOf, &ServiceAdd{})
+}
+
 func (s *S) TestServiceAddInfo(c *C) {
-    usage := `service add appname serviceinstancename servicename
+	usage := `service add appname serviceinstancename servicename
     e.g.:
     $ service add tsuru tsuru_db mongodb`
 	expected := &cmd.Info{
 		Name:    "add",
 		Usage:   usage,
 		Desc:    "Create a service instance to one or more apps make use of.",
-        MinArgs: 3,
+		MinArgs: 3,
 	}
 	command := &ServiceAdd{}
 	c.Assert(command.Info(), DeepEquals, expected)
+}
+
+func (s *S) TestServiceAddRun(c *C) {
+	result := "service instance my_app_db successfuly created"
+    args := []string{
+        "my_app",
+        "my_app_db",
+        "mysql",
+    }
+	context := cmd.Context{
+		Cmds:   []string{},
+		Args:   args,
+		Stdout: manager.Stdout,
+		Stderr: manager.Stderr,
+	}
+	client := cmd.NewClient(&http.Client{Transport: &transport{msg: result, status: http.StatusOK}})
+	err := (&ServiceAdd{}).Run(&context, client)
+	c.Assert(err, IsNil)
+    obtained := manager.Stdout.(*bytes.Buffer).String()
+    c.Assert(obtained, Equals, result)
 }
