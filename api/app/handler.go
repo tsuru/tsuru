@@ -29,7 +29,7 @@ func getAppOrError(name string, u *auth.User) (App, error) {
 	if err != nil {
 		return app, &errors.Http{Code: http.StatusNotFound, Message: "App not found"}
 	}
-	if !app.CheckUserAccess(u) {
+	if !auth.CheckUserAccess(app.Teams, u) {
 		return app, &errors.Http{Code: http.StatusForbidden, Message: "User does not have access to this app"}
 	}
 	return app, nil
@@ -185,7 +185,7 @@ func grantAccessToTeam(appName, teamName string, u *auth.User) error {
 	if err != nil {
 		return &errors.Http{Code: http.StatusNotFound, Message: "App not found"}
 	}
-	if !app.CheckUserAccess(u) {
+	if !auth.CheckUserAccess(app.Teams, u) {
 		return &errors.Http{Code: http.StatusUnauthorized, Message: "User unauthorized"}
 	}
 	err = db.Session.Teams().Find(bson.M{"name": teamName}).One(t)
@@ -217,7 +217,7 @@ func revokeAccessFromTeam(appName, teamName string, u *auth.User) error {
 	if err != nil {
 		return &errors.Http{Code: http.StatusNotFound, Message: "App not found"}
 	}
-	if !app.CheckUserAccess(u) {
+	if !auth.CheckUserAccess(app.Teams, u) {
 		return &errors.Http{Code: http.StatusUnauthorized, Message: "User unauthorized"}
 	}
 	err = db.Session.Teams().Find(bson.M{"name": teamName}).One(t)
@@ -319,17 +319,28 @@ func GetEnv(w http.ResponseWriter, r *http.Request, u *auth.User) (err error) {
 	return nil
 }
 
-func SetEnvsToApp(app *App, envs []EnvVar) error {
-	for _, env := range envs {
-		app.SetEnv(env)
+func SetEnvsToApp(app *App, envs []EnvVar, publicOnly bool) error {
+	if len(envs) > 0 {
+		for _, env := range envs {
+			set := true
+			if publicOnly {
+				e, err := app.GetEnv(env.Name)
+				if err == nil && !e.Public {
+					set = false
+				}
+			}
+			if set {
+				app.SetEnv(env)
+			}
+		}
+		if err := db.Session.Apps().Update(bson.M{"name": app.Name}, app); err != nil {
+			return err
+		}
+		mess := Message{
+			app: app,
+		}
+		env <- mess
 	}
-	if err := db.Session.Apps().Update(bson.M{"name": app.Name}, app); err != nil {
-		return err
-	}
-	mess := Message{
-		app: app,
-	}
-	env <- mess
 	return nil
 }
 
@@ -360,7 +371,7 @@ func SetEnv(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 		parts := strings.Split(v[1], "=")
 		envs[i] = EnvVar{Name: parts[0], Value: parts[1], Public: true}
 	}
-	return SetEnvsToApp(&app, envs)
+	return SetEnvsToApp(&app, envs, false)
 }
 
 func UnsetEnv(w http.ResponseWriter, r *http.Request, u *auth.User) error {

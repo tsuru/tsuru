@@ -42,10 +42,12 @@ func (s *S) TestCreateService(c *C) {
 		"when": "on-new-instance",
 	}
 	service := &Service{Name: "my_service", Endpoint: endpt, Bootstrap: bootstrap}
-	service.Create()
+	err := service.Create()
+	c.Assert(err, IsNil)
 	se := Service{Name: service.Name}
-	se.Get()
-	c.Assert(se.Name, Equals, s.service.Name)
+	err = se.Get()
+	c.Assert(err, IsNil)
+	c.Assert(se.Name, Equals, service.Name)
 	c.Assert(endpt["production"], Equals, se.Endpoint["production"])
 	c.Assert(endpt["test"], Equals, se.Endpoint["test"])
 }
@@ -153,15 +155,4 @@ func (s *S) TestRevokeAcessShouldReturnErrorIfTheTeamDoesNotHaveAccessToTheServi
 	err := s.service.RevokeAccess(s.team)
 	c.Assert(err, NotNil)
 	c.Assert(err, ErrorMatches, "^This team does not have access to this service$")
-}
-
-func (s *S) TestCheckUserPermissionShouldReturnTrueIfTheGivenUserIsMemberOfOneOfTheServicesTeam(c *C) {
-	s.createService()
-	s.service.GrantAccess(s.team)
-	c.Assert(s.service.CheckUserAccess(s.user), Equals, true)
-}
-
-func (s *S) TestCheckUserPermissionShouldReturnFalseIfTheGivenUserIsNotMemberOfAnyOfTheServicesTeam(c *C) {
-	s.createService()
-	c.Assert(s.service.CheckUserAccess(s.user), Equals, false)
 }

@@ -7,9 +7,10 @@ import (
 )
 
 type ServiceInstance struct {
-	Name        string   `bson:"_id"`
-	ServiceName string   `bson:"service_name"`
-	Apps        []string `bson:"apps"`
+	Name        string `bson:"_id"`
+	ServiceName string `bson:"service_name"`
+	Apps        []string
+	Teams       []string
 	Instance    string
 	Host        string
 	State       string
@@ -17,15 +18,15 @@ type ServiceInstance struct {
 }
 
 func (si *ServiceInstance) Create() error {
-	si.State = "CREATING"
-	err := db.Session.ServiceInstances().Insert(si)
-	return err
+	if si.State == "" {
+		si.State = "CREATING"
+	}
+	return db.Session.ServiceInstances().Insert(si)
 }
 
 func (si *ServiceInstance) Delete() error {
 	doc := bson.M{"_id": si.Name, "apps": si.Apps}
-	err := db.Session.ServiceInstances().Remove(doc)
-	return err
+	return db.Session.ServiceInstances().Remove(doc)
 }
 
 func (si *ServiceInstance) Service() *Service {

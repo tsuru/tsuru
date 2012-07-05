@@ -3,11 +3,14 @@ package auth
 import (
 	"errors"
 	"fmt"
+	"github.com/timeredbull/tsuru/db"
+	"labix.org/v2/mgo/bson"
+	"sync"
 )
 
 type Team struct {
 	Name  string
-	Users []*User
+	Users []User
 }
 
 func (t *Team) ContainsUser(u *User) bool {
@@ -23,7 +26,7 @@ func (t *Team) AddUser(u *User) error {
 	if t.ContainsUser(u) {
 		return errors.New(fmt.Sprintf("User %s is alread in the team %s.", u.Email, t.Name))
 	}
-	t.Users = append(t.Users, u)
+	t.Users = append(t.Users, *u)
 	return nil
 }
 
@@ -50,4 +53,26 @@ func GetTeamsNames(teams []Team) []string {
 		tn[i] = t.Name
 	}
 	return tn
+}
+
+func CheckUserAccess(teamNames []string, u *User) bool {
+	q := bson.M{"name": bson.M{"$in": teamNames}}
+	var teams []Team
+	db.Session.Teams().Find(q).All(&teams)
+	var wg sync.WaitGroup
+	found := make(chan bool)
+	for _, team := range teams {
+		wg.Add(1)
+		go func(t Team) {
+			if t.ContainsUser(u) {
+				found <- true
+			}
+			wg.Done()
+		}(team)
+	}
+	go func() {
+		wg.Wait()
+		found <- false
+	}()
+	return <-found
 }

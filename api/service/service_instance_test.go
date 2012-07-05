@@ -38,6 +38,19 @@ func (s *S) TestCreateServiceInstance(c *C) {
 	c.Assert(result.State, Equals, "CREATING")
 }
 
+func (s *S) TestCreateServiceInstanceShouldSetTheStateToCreatingOnlyIfTheStateIsNotDefined(c *C) {
+	instance1 := ServiceInstance{Name: "instance1", State: "CREATED"}
+	err := instance1.Create()
+	c.Assert(err, IsNil)
+	defer instance1.Delete()
+	instance2 := ServiceInstance{Name: "instance2"}
+	err = instance2.Create()
+	c.Assert(err, IsNil)
+	defer instance1.Delete()
+	c.Assert(instance1.State, Equals, "CREATED")
+	c.Assert(instance2.State, Equals, "CREATING")
+}
+
 func (s *S) TestDeleteServiceInstance(c *C) {
 	s.createServiceInstance()
 	defer s.app.Destroy()

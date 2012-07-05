@@ -321,7 +321,7 @@ func (s *S) TestCreateAppAddsProjectToGroupsInGitosis(c *C) {
 }
 
 func (s *S) TestAddTeamToTheApp(c *C) {
-	t := auth.Team{Name: "itshardteam", Users: []*auth.User{s.user}}
+	t := auth.Team{Name: "itshardteam", Users: []auth.User{*s.user}}
 	err := db.Session.Teams().Insert(t)
 	c.Assert(err, IsNil)
 	defer db.Session.Teams().RemoveAll(bson.M{"name": t.Name})
@@ -403,7 +403,7 @@ func (s *S) TestGrantAccessToTeamReturn409IfTheTeamHasAlreadyAccessToTheApp(c *C
 }
 
 func (s *S) TestGrantAccessToAppAddsTheProjectInGitosis(c *C) {
-	t := &auth.Team{Name: "anything", Users: []*auth.User{s.user}}
+	t := &auth.Team{Name: "anything", Users: []auth.User{*s.user}}
 	err := db.Session.Teams().Insert(t)
 	c.Assert(err, IsNil)
 	defer db.Session.Teams().Remove(bson.M{"name": t.Name})
@@ -521,7 +521,7 @@ func (s *S) TestRevokeAccessFromTeamReturn403IfTheTeamIsTheLastWithAccessToTheAp
 }
 
 func (s *S) TestRevokeAccessFromTeamRemovesTheProjectFromGitosisConf(c *C) {
-	t := auth.Team{Name: "anything", Users: []*auth.User{s.user}}
+	t := auth.Team{Name: "anything", Users: []auth.User{*s.user}}
 	err := db.Session.Teams().Insert(t)
 	c.Assert(err, IsNil)
 	defer db.Session.Teams().Remove(bson.M{"name": t.Name})
@@ -722,6 +722,94 @@ func (s *S) TestGetEnvHandlerReturnsForbiddenIfTheGivenUserDoesNotHaveAccessToTh
 	e, ok := err.(*errors.Http)
 	c.Assert(ok, Equals, true)
 	c.Assert(e.Code, Equals, http.StatusForbidden)
+}
+
+func (s *S) TestSetEnvRespectsThePublicOnlyFlagKeepPrivateVariablesWhenItsTrue(c *C) {
+	a := &App{
+		Name: "myapp",
+		Env: map[string]EnvVar{
+			"DATABASE_HOST": EnvVar{
+				Name:   "DATABASE_HOST",
+				Value:  "localhost",
+				Public: false,
+			},
+		},
+	}
+	err := a.Create()
+	c.Assert(err, IsNil)
+	envs := []EnvVar{
+		EnvVar{
+			Name:   "DATABASE_HOST",
+			Value:  "remotehost",
+			Public: false,
+		},
+		EnvVar{
+			Name:   "DATABASE_PASSWORD",
+			Value:  "123",
+			Public: true,
+		},
+	}
+	err = SetEnvsToApp(a, envs, true)
+	c.Assert(err, IsNil)
+	err = a.Get()
+	c.Assert(err, IsNil)
+	expected := map[string]EnvVar{
+		"DATABASE_HOST": EnvVar{
+			Name:   "DATABASE_HOST",
+			Value:  "localhost",
+			Public: false,
+		},
+		"DATABASE_PASSWORD": EnvVar{
+			Name:   "DATABASE_PASSWORD",
+			Value:  "123",
+			Public: true,
+		},
+	}
+	c.Assert(a.Env, DeepEquals, expected)
+}
+
+func (s *S) TestSetEnvRespectsThePublicOnlyFlagOverwrittenAllVariablesWhenItsFalse(c *C) {
+	a := &App{
+		Name: "myapp",
+		Env: map[string]EnvVar{
+			"DATABASE_HOST": EnvVar{
+				Name:   "DATABASE_HOST",
+				Value:  "localhost",
+				Public: false,
+			},
+		},
+	}
+	err := a.Create()
+	c.Assert(err, IsNil)
+	envs := []EnvVar{
+		EnvVar{
+			Name:   "DATABASE_HOST",
+			Value:  "remotehost",
+			Public: true,
+		},
+		EnvVar{
+			Name:   "DATABASE_PASSWORD",
+			Value:  "123",
+			Public: true,
+		},
+	}
+	err = SetEnvsToApp(a, envs, false)
+	c.Assert(err, IsNil)
+	err = a.Get()
+	c.Assert(err, IsNil)
+	expected := map[string]EnvVar{
+		"DATABASE_HOST": EnvVar{
+			Name:   "DATABASE_HOST",
+			Value:  "remotehost",
+			Public: true,
+		},
+		"DATABASE_PASSWORD": EnvVar{
+			Name:   "DATABASE_PASSWORD",
+			Value:  "123",
+			Public: true,
+		},
+	}
+	c.Assert(a.Env, DeepEquals, expected)
 }
 
 func (s *S) TestSetEnvHandlerShouldSetAPublicEnvironmentVariableInTheApp(c *C) {
@@ -1014,12 +1102,12 @@ func (s *S) TestLogShouldAppLog(c *C) {
 
 func (s *S) TestGetTeamNamesReturnTheNameOfTeamsThatTheUserIsMember(c *C) {
 	one := &auth.User{Email: "imone@thewho.com", Password: "123"}
-	who := auth.Team{Name: "TheWho", Users: []*auth.User{one}}
+	who := auth.Team{Name: "TheWho", Users: []auth.User{*one}}
 	err := db.Session.Teams().Insert(who)
-	what := auth.Team{Name: "TheWhat", Users: []*auth.User{one}}
+	what := auth.Team{Name: "TheWhat", Users: []auth.User{*one}}
 	err = db.Session.Teams().Insert(what)
 	c.Assert(err, IsNil)
-	where := auth.Team{Name: "TheWhere", Users: []*auth.User{one}}
+	where := auth.Team{Name: "TheWhere", Users: []auth.User{*one}}
 	err = db.Session.Teams().Insert(where)
 	c.Assert(err, IsNil)
 	teams := []string{who.Name, what.Name, where.Name}

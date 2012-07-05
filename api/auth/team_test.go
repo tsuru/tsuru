@@ -1,6 +1,8 @@
 package auth
 
 import (
+	"github.com/timeredbull/tsuru/db"
+	"labix.org/v2/mgo/bson"
 	. "launchpad.net/gocheck"
 )
 
@@ -66,4 +68,40 @@ func (s *S) TestShouldReturnErrorWhenTryingToRemoveAUserThatIsNotInTheTeam(c *C)
 	err := t.RemoveUser(u)
 	c.Assert(err, NotNil)
 	c.Assert(err, ErrorMatches, "^User nobody@globo.com is not in the team timeredbull.$")
+}
+
+func (s *S) TestCheckUserAccess(c *C) {
+	u1 := User{Email: "how-many-more-times@ledzeppelin.com"}
+	err := u1.Create()
+	c.Assert(err, IsNil)
+	u2 := User{Email: "whola-lotta-love@ledzeppelin.com"}
+	err = u2.Create()
+	c.Assert(err, IsNil)
+	defer db.Session.Users().Remove(bson.M{"email": bson.M{"$in": []string{u1.Email, u2.Email}}})
+	t := Team{Name: "ledzeppelin", Users: []User{u1}}
+	err = db.Session.Teams().Insert(t)
+	c.Assert(err, IsNil)
+	defer db.Session.Teams().Remove(bson.M{"name": t.Name})
+	c.Assert(CheckUserAccess([]string{t.Name}, &u1), Equals, true)
+	c.Assert(CheckUserAccess([]string{t.Name}, &u2), Equals, false)
+}
+
+func (s *S) TestCheckUserAccessWithMultipleUsersOnMultipleTeams(c *C) {
+	one := User{Email: "imone@thewho.com", Password: "123"}
+	punk := User{Email: "punk@thewho.com", Password: "123"}
+	cut := User{Email: "cutmyhair@thewho.com", Password: "123"}
+	who := Team{Name: "TheWho", Users: []User{one, punk, cut}}
+	err := db.Session.Teams().Insert(who)
+	c.Assert(err, IsNil)
+	what := Team{Name: "TheWhat", Users: []User{one, punk}}
+	err = db.Session.Teams().Insert(what)
+	c.Assert(err, IsNil)
+	where := Team{Name: "TheWhere", Users: []User{one}}
+	err = db.Session.Teams().Insert(where)
+	c.Assert(err, IsNil)
+	teams := []string{who.Name, what.Name, where.Name}
+	defer db.Session.Teams().RemoveAll(bson.M{"name": bson.M{"$in": teams}})
+	c.Assert(CheckUserAccess(teams, &cut), Equals, true)
+	c.Assert(CheckUserAccess(teams, &punk), Equals, true)
+	c.Assert(CheckUserAccess(teams, &one), Equals, true)
 }

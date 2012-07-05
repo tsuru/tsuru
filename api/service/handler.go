@@ -20,11 +20,6 @@ type serviceYaml struct {
 	Bootstrap map[string]string
 }
 
-type bindJson struct {
-	App     string
-	Service string
-}
-
 // a service with a pointer to it's type
 type serviceT struct {
 	Name string
@@ -93,10 +88,21 @@ func CreateInstanceHandler(w http.ResponseWriter, r *http.Request, u *auth.User)
 			return &errors.Http{Code: http.StatusInternalServerError, Message: msg}
 		}
 	}
+	var teamNames []string
+	teams, err := u.Teams()
+	if err != nil {
+		return err
+	}
+	for _, t := range teams {
+		if s.hasTeam(&t) {
+			teamNames = append(teamNames, t.Name)
+		}
+	}
 	si := ServiceInstance{
 		Name:        sJson["name"],
 		ServiceName: sJson["service_name"],
 		Instance:    instance,
+		Teams:       teamNames,
 	}
 	var cli *Client
 	if cli, err = s.GetClient("production"); err == nil {
@@ -138,7 +144,7 @@ func DeleteHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	if err != nil {
 		return &errors.Http{Code: http.StatusNotFound, Message: "Service not found"}
 	}
-	if !s.CheckUserAccess(u) {
+	if !auth.CheckUserAccess(s.Teams, u) {
 		msg := "This user does not have access to this service"
 		return &errors.Http{Code: http.StatusForbidden, Message: msg}
 	}
@@ -147,41 +153,63 @@ func DeleteHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	return nil
 }
 
-// func BindHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
-// 	var b bindJson
-// 	defer r.Body.Close()
-// 	body, err := ioutil.ReadAll(r.Body)
-// 	if err != nil {
-// 		return err
-// 	}
-// 	err = json.Unmarshal(body, &b)
-// 	if err != nil {
-// 		return err
-// 	}
-// 	s := Service{Name: b.Service}
-// 	err = s.Get()
-// 	if err != nil {
-// 		return &errors.Http{Code: http.StatusNotFound, Message: "Service not found"}
-// 	}
-// 	if !s.CheckUserAccess(u) {
-// 		return &errors.Http{Code: http.StatusForbidden, Message: "This user does not have access to this service"}
-// 	}
-// 	a := app.App{Name: b.App}
-// 	err = a.Get()
-// 	if err != nil {
-// 		return &errors.Http{Code: http.StatusNotFound, Message: "App not found"}
-// 	}
-// 	if !a.CheckUserAccess(u) {
-// 		return &errors.Http{Code: http.StatusForbidden, Message: "This user does not have access to this app"}
-// 	}
-// 	err = s.Bind(&a)
-// 	if err != nil {
-// 		return err
-// 	}
-// 	fmt.Fprint(w, "success")
-// 	return nil
-// }
-// 
+func BindHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
+	instanceQuery := bson.M{"_id": r.URL.Query().Get(":instance")}
+	var instance ServiceInstance
+	err := db.Session.ServiceInstances().Find(instanceQuery).One(&instance)
+	if err != nil {
+		return &errors.Http{Code: http.StatusNotFound, Message: "Instance not found"}
+	}
+	if !auth.CheckUserAccess(instance.Teams, u) {
+		return &errors.Http{Code: http.StatusForbidden, Message: "This user does not have access to this instance"}
+	}
+	if instance.State != "CREATED" {
+		return &errors.Http{Code: http.StatusPreconditionFailed, Message: "This service instance is not ready yet."}
+	}
+	appQuery := bson.M{"name": r.URL.Query().Get(":app")}
+	var a app.App
+	err = db.Session.Apps().Find(appQuery).One(&a)
+	if err != nil {
+		return &errors.Http{Code: http.StatusNotFound, Message: "App not found"}
+	}
+	if !auth.CheckUserAccess(a.Teams, u) {
+		return &errors.Http{Code: http.StatusForbidden, Message: "This user does not have access to this app"}
+	}
+	instance.Apps = append(instance.Apps, a.Name)
+	err = db.Session.ServiceInstances().Update(instanceQuery, instance)
+	if err != nil {
+		return err
+	}
+	var envVars []app.EnvVar
+	var setEnv = func(a app.App, env map[string]string) {
+		for k, v := range env {
+			envVars = append(envVars, app.EnvVar{
+				Name:         k,
+				Value:        v,
+				Public:       false,
+				InstanceName: instance.Name,
+			})
+		}
+	}
+	setEnv(a, instance.Env)
+	err = db.Session.Apps().Update(appQuery, a)
+	if err != nil {
+		return err
+	}
+	var cli *Client
+	if cli, err = instance.Service().GetClient("production"); err == nil {
+		if len(a.Units) == 0 {
+			return &errors.Http{Code: http.StatusPreconditionFailed, Message: "This app does not have an IP yet."}
+		}
+		env, err := cli.Bind(&instance, &a)
+		if err != nil {
+			return err
+		}
+		setEnv(a, env)
+	}
+	return app.SetEnvsToApp(&a, envVars, false)
+}
+
 // func UnbindHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 // 	var b bindJson
 // 	defer r.Body.Close()
@@ -223,7 +251,7 @@ func getServiceAndTeamOrError(serviceName string, teamName string, u *auth.User)
 	if err != nil {
 		return nil, nil, &errors.Http{Code: http.StatusNotFound, Message: "Service not found"}
 	}
-	if !service.CheckUserAccess(u) {
+	if !auth.CheckUserAccess(service.Teams, u) {
 		msg := "This user does not have access to this service"
 		return nil, nil, &errors.Http{Code: http.StatusForbidden, Message: msg}
 	}
@@ -268,16 +296,6 @@ func ServicesHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error
 	if err != nil {
 		return err
 	}
-	set := NewSet()
-	for _, team := range teams {
-		teamApps, err := app.GetApps(&team)
-		if err != nil {
-			continue
-		}
-		for _, a := range teamApps {
-			set.Add(a.Name)
-		}
-	}
 	var teamNames []string
 	for _, team := range teams {
 		teamNames = append(teamNames, team.Name)
@@ -295,7 +313,7 @@ func ServicesHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error
 	for _, service := range services {
 		response[service.Name] = []string{}
 	}
-	iter := db.Session.ServiceInstances().Find(bson.M{"apps": bson.M{"$in": set.Items()}}).Iter()
+	iter := db.Session.ServiceInstances().Find(bson.M{"teams": bson.M{"$in": teamNames}}).Iter()
 	var instance ServiceInstance
 	for iter.Next(&instance) {
 		service := response[instance.ServiceName]

@@ -82,7 +82,7 @@ func applyChangesToKeys(kind int, team *Team, user *User) {
 }
 
 func createTeam(name string, u *User) error {
-	team := &Team{Name: name, Users: []*User{u}}
+	team := &Team{Name: name, Users: []User{*u}}
 	err := db.Session.Teams().Insert(team)
 	if err != nil && strings.Contains(err.Error(), "duplicate key error") {
 		return &errors.Http{Code: http.StatusConflict, Message: "This team already exists"}

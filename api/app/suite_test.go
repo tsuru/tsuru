@@ -159,7 +159,7 @@ func (s *S) SetUpSuite(c *C) {
 	c.Assert(err, IsNil)
 	s.user = &auth.User{Email: "whydidifall@thewho.com", Password: "123"}
 	s.user.Create()
-	s.team = auth.Team{Name: "tsuruteam", Users: []*auth.User{s.user}}
+	s.team = auth.Team{Name: "tsuruteam", Users: []auth.User{*s.user}}
 	db.Session.Teams().Insert(s.team)
 	s.setupGitosis(c)
 	repository.RunAgent()
