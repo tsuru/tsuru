@@ -3,7 +3,11 @@ package main
 import (
 	"github.com/timeredbull/commandmocker"
 	"github.com/timeredbull/tsuru/db"
+	tEC2 "github.com/timeredbull/tsuru/ec2"
 	"labix.org/v2/mgo"
+	"launchpad.net/goamz/aws"
+	"launchpad.net/goamz/ec2"
+	"launchpad.net/goamz/ec2/ec2test"
 	. "launchpad.net/gocheck"
 	"testing"
 )
@@ -11,9 +15,10 @@ import (
 func Test(t *testing.T) { TestingT(t) }
 
 type S struct {
-	session *mgo.Session
-	tmpdir  string
-	ec2Srv  *ec2test.Server
+	session   *mgo.Session
+	tmpdir    string
+	ec2Srv    *ec2test.Server
+	instances []string
 }
 
 var _ = Suite(&S{})
@@ -21,6 +26,7 @@ var _ = Suite(&S{})
 func (s *S) SetUpSuite(c *C) {
 	var err error
 	s.ec2Srv, err = ec2test.NewServer()
+	s.reconfEc2Srv(c)
 	c.Assert(err, IsNil)
 	s.tmpdir, err = commandmocker.Add("juju", "")
 	c.Assert(err, IsNil)
@@ -45,5 +51,13 @@ func (s *S) TearDownTest(c *C) {
 func (s *S) reconfEc2Srv(c *C) {
 	region := aws.Region{EC2Endpoint: s.ec2Srv.URL()}
 	auth := aws.Auth{AccessKey: "blaa", SecretKey: "blee"}
-	tsuruEC2.EC2 = ec2.New(auth, region)
+	tEC2.EC2 = ec2.New(auth, region)
+}
+
+func (s *S) createTestInstances(c *C) {
+	state := ec2test.Running
+	secGroupResp, err := tEC2.EC2.CreateSecurityGroup("default", "default security group")
+	c.Assert(err, IsNil)
+	groups := []ec2.SecurityGroup{secGroupResp.SecurityGroup}
+	s.instances = s.ec2Srv.NewInstances(2, "m1.tiny", "ami-0000007", state, groups)
 }
