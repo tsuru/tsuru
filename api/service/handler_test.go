@@ -396,27 +396,6 @@ func (s *S) TestBindHandlerCallTheServiceAPIAndSetsEnvironmentVariablesReturnedI
 	c.Assert(a.Env, DeepEquals, expectedEnv)
 }
 
-func (s *S) TestBindHandlerReturns412IfTheInstanceIsNotCreatedYet(c *C) {
-	instance := ServiceInstance{Name: "my-mysql", ServiceName: "mysql", Teams: []string{s.team.Name}}
-	err := instance.Create()
-	c.Assert(err, IsNil)
-	defer db.Session.ServiceInstances().Remove(bson.M{"_id": "my-mysql"})
-	a := app.App{Name: "painkiller", Teams: []string{s.team.Name}}
-	err = a.Create()
-	c.Assert(err, IsNil)
-	defer a.Destroy()
-	url := fmt.Sprintf("/services/instances/%s/%s?:instance=%s&:app=%s", instance.Name, a.Name, instance.Name, a.Name)
-	request, err := http.NewRequest("PUT", url, nil)
-	c.Assert(err, IsNil)
-	recorder := httptest.NewRecorder()
-	err = BindHandler(recorder, request, s.user)
-	c.Assert(err, NotNil)
-	e, ok := err.(*errors.Http)
-	c.Assert(ok, Equals, true)
-	c.Assert(e.Code, Equals, http.StatusPreconditionFailed)
-	c.Assert(e, ErrorMatches, "^This service instance is not ready yet.$")
-}
-
 func (s *S) TestBindHandlerReturns404IfTheInstanceDoesNotExist(c *C) {
 	a := app.App{Name: "serviceApp", Framework: "django", Teams: []string{s.team.Name}}
 	err := a.Create()
@@ -455,6 +434,27 @@ func (s *S) TestBindHandlerReturns403IfTheUserDoesNotHaveAccessToTheInstance(c *
 	c.Assert(e, ErrorMatches, "^This user does not have access to this instance$")
 }
 
+func (s *S) TestBindHandlerReturns412IfTheInstanceIsNotCreatedYet(c *C) {
+	instance := ServiceInstance{Name: "my-mysql", ServiceName: "mysql", Teams: []string{s.team.Name}}
+	err := instance.Create()
+	c.Assert(err, IsNil)
+	defer db.Session.ServiceInstances().Remove(bson.M{"_id": "my-mysql"})
+	a := app.App{Name: "painkiller", Teams: []string{s.team.Name}}
+	err = a.Create()
+	c.Assert(err, IsNil)
+	defer a.Destroy()
+	url := fmt.Sprintf("/services/instances/%s/%s?:instance=%s&:app=%s", instance.Name, a.Name, instance.Name, a.Name)
+	request, err := http.NewRequest("PUT", url, nil)
+	c.Assert(err, IsNil)
+	recorder := httptest.NewRecorder()
+	err = BindHandler(recorder, request, s.user)
+	c.Assert(err, NotNil)
+	e, ok := err.(*errors.Http)
+	c.Assert(ok, Equals, true)
+	c.Assert(e.Code, Equals, http.StatusPreconditionFailed)
+	c.Assert(e, ErrorMatches, "^This service instance is not ready yet.$")
+}
+
 func (s *S) TestBindHandlerReturns404IfTheAppDoesNotExist(c *C) {
 	instance := ServiceInstance{Name: "my-mysql", ServiceName: "mysql", Teams: []string{s.team.Name}, State: "CREATED"}
 	err := instance.Create()
@@ -491,6 +491,35 @@ func (s *S) TestBindHandlerReturns403IfTheUserDoesNotHaveAccessToTheApp(c *C) {
 	c.Assert(ok, Equals, true)
 	c.Assert(e.Code, Equals, http.StatusForbidden)
 	c.Assert(e, ErrorMatches, "^This user does not have access to this app$")
+}
+
+func (s *S) TestBindHandlerReturns412IfTheAppDoesNotHaveAnUnitAndServiceHasEndpoint(c *C) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(`{"DATABASE_USER":"root","DATABASE_PASSWORD":"s3cr3t"}`))
+	}))
+	defer ts.Close()
+	service := Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}}
+	err := service.Create()
+	c.Assert(err, IsNil)
+	defer db.Session.Services().Remove(bson.M{"_id": "mysql"})
+	instance := ServiceInstance{Name: "my-mysql", ServiceName: "mysql", Teams: []string{s.team.Name}, State: "CREATED"}
+	err = instance.Create()
+	c.Assert(err, IsNil)
+	defer db.Session.ServiceInstances().Remove(bson.M{"_id": "my-mysql"})
+	a := app.App{Name: "painkiller", Teams: []string{s.team.Name}}
+	err = a.Create()
+	c.Assert(err, IsNil)
+	defer a.Destroy()
+	url := fmt.Sprintf("/services/instances/%s/%s?:instance=%s&:app=%s", instance.Name, a.Name, instance.Name, a.Name)
+	request, err := http.NewRequest("PUT", url, nil)
+	c.Assert(err, IsNil)
+	recorder := httptest.NewRecorder()
+	err = BindHandler(recorder, request, s.user)
+	c.Assert(err, NotNil)
+	e, ok := err.(*errors.Http)
+	c.Assert(ok, Equals, true)
+	c.Assert(e.Code, Equals, http.StatusPreconditionFailed)
+	c.Assert(e.Message, Equals, "This app does not have an IP yet.")
 }
 
 // func (s *S) TestUnbindHandler(c *C) {

@@ -198,6 +198,9 @@ func BindHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	}
 	var cli *Client
 	if cli, err = instance.Service().GetClient("production"); err == nil {
+		if len(a.Units) == 0 {
+			return &errors.Http{Code: http.StatusPreconditionFailed, Message: "This app does not have an IP yet."}
+		}
 		env, err := cli.Bind(&instance, &a)
 		if err != nil {
 			return err
