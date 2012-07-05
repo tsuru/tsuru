@@ -207,7 +207,7 @@ func BindHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 		}
 		setEnv(a, env)
 	}
-	return app.SetEnvsToApp(&a, envVars, true)
+	return app.SetEnvsToApp(&a, envVars, false)
 }
 
 // func UnbindHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
