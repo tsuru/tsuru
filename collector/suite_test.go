@@ -19,6 +19,7 @@ type S struct {
 	tmpdir    string
 	ec2Srv    *ec2test.Server
 	instances []string
+	secGroup  ec2.SecurityGroup
 }
 
 var _ = Suite(&S{})
@@ -26,6 +27,7 @@ var _ = Suite(&S{})
 func (s *S) SetUpSuite(c *C) {
 	var err error
 	s.ec2Srv, err = ec2test.NewServer()
+	s.ec2Srv.SetInitialInstanceState(ec2test.Running)
 	s.reconfEc2Srv(c)
 	c.Assert(err, IsNil)
 	s.tmpdir, err = commandmocker.Add("juju", "")
@@ -55,9 +57,18 @@ func (s *S) reconfEc2Srv(c *C) {
 }
 
 func (s *S) createTestInstances(c *C) {
-	state := ec2test.Running
 	secGroupResp, err := tEC2.EC2.CreateSecurityGroup("default", "default security group")
+	s.secGroup = secGroupResp.SecurityGroup
 	c.Assert(err, IsNil)
-	groups := []ec2.SecurityGroup{secGroupResp.SecurityGroup}
-	s.instances = s.ec2Srv.NewInstances(2, "m1.tiny", "ami-0000007", state, groups)
+	opts := ec2.RunInstances{
+		ImageId:        "ami-0000007",
+		SecurityGroups: []ec2.SecurityGroup{s.secGroup},
+		MaxCount:       2,
+		MinCount:       2,
+	}
+	instResp, err := tEC2.EC2.RunInstances(&opts)
+	if err != nil {
+		c.Fail()
+	}
+	s.instances = instancesIds(instResp.Instances)
 }
