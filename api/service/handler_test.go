@@ -269,7 +269,7 @@ func (s *S) TestBindHandlerAddsTheAppToTheInstance(c *C) {
 	err := service.Create()
 	c.Assert(err, IsNil)
 	defer db.Session.Services().Remove(bson.M{"_id": "mysql"})
-	instance := ServiceInstance{Name: "my-mysql", ServiceName: "mysql", Teams: []string{s.team.Name}}
+	instance := ServiceInstance{Name: "my-mysql", ServiceName: "mysql", Teams: []string{s.team.Name}, State: "CREATED"}
 	err = instance.Create()
 	c.Assert(err, IsNil)
 	defer db.Session.ServiceInstances().Remove(bson.M{"_id": "my-mysql"})
@@ -298,6 +298,7 @@ func (s *S) TestBindHandlerAddsAllEnvironmentVariableFromInstanceInTheAppAsPriva
 		ServiceName: "mysql",
 		Teams:       []string{s.team.Name},
 		Env:         map[string]string{"DATABASE_NAME": "mymysql", "DATABASE_HOST": "localhost"},
+		State:       "CREATED",
 	}
 	err = instance.Create()
 	c.Assert(err, IsNil)
@@ -345,6 +346,7 @@ func (s *S) TestBindHandlerCallTheServiceAPIAndSetsEnvironmentVariablesReturnedI
 		ServiceName: "mysql",
 		Teams:       []string{s.team.Name},
 		Env:         map[string]string{"DATABASE_NAME": "mymysql", "DATABASE_HOST": "localhost"},
+		State:       "CREATED",
 	}
 	err = instance.Create()
 	c.Assert(err, IsNil)
@@ -394,6 +396,27 @@ func (s *S) TestBindHandlerCallTheServiceAPIAndSetsEnvironmentVariablesReturnedI
 	c.Assert(a.Env, DeepEquals, expectedEnv)
 }
 
+func (s *S) TestBindHandlerReturns412IfTheInstanceIsNotCreatedYet(c *C) {
+	instance := ServiceInstance{Name: "my-mysql", ServiceName: "mysql", Teams: []string{s.team.Name}}
+	err := instance.Create()
+	c.Assert(err, IsNil)
+	defer db.Session.ServiceInstances().Remove(bson.M{"_id": "my-mysql"})
+	a := app.App{Name: "painkiller", Teams: []string{s.team.Name}}
+	err = a.Create()
+	c.Assert(err, IsNil)
+	defer a.Destroy()
+	url := fmt.Sprintf("/services/instances/%s/%s?:instance=%s&:app=%s", instance.Name, a.Name, instance.Name, a.Name)
+	request, err := http.NewRequest("PUT", url, nil)
+	c.Assert(err, IsNil)
+	recorder := httptest.NewRecorder()
+	err = BindHandler(recorder, request, s.user)
+	c.Assert(err, NotNil)
+	e, ok := err.(*errors.Http)
+	c.Assert(ok, Equals, true)
+	c.Assert(e.Code, Equals, http.StatusPreconditionFailed)
+	c.Assert(e, ErrorMatches, "^This service instance is not ready yet.$")
+}
+
 func (s *S) TestBindHandlerReturns404IfTheInstanceDoesNotExist(c *C) {
 	a := app.App{Name: "serviceApp", Framework: "django", Teams: []string{s.team.Name}}
 	err := a.Create()
@@ -412,7 +435,7 @@ func (s *S) TestBindHandlerReturns404IfTheInstanceDoesNotExist(c *C) {
 }
 
 func (s *S) TestBindHandlerReturns403IfTheUserDoesNotHaveAccessToTheInstance(c *C) {
-	instance := ServiceInstance{Name: "my-mysql", ServiceName: "mysql"}
+	instance := ServiceInstance{Name: "my-mysql", ServiceName: "mysql", State: "CREATED"}
 	err := instance.Create()
 	c.Assert(err, IsNil)
 	defer db.Session.ServiceInstances().Remove(bson.M{"_id": "my-mysql"})
@@ -433,7 +456,7 @@ func (s *S) TestBindHandlerReturns403IfTheUserDoesNotHaveAccessToTheInstance(c *
 }
 
 func (s *S) TestBindHandlerReturns404IfTheAppDoesNotExist(c *C) {
-	instance := ServiceInstance{Name: "my-mysql", ServiceName: "mysql", Teams: []string{s.team.Name}}
+	instance := ServiceInstance{Name: "my-mysql", ServiceName: "mysql", Teams: []string{s.team.Name}, State: "CREATED"}
 	err := instance.Create()
 	c.Assert(err, IsNil)
 	defer db.Session.ServiceInstances().Remove(bson.M{"_id": "my-mysql"})
@@ -450,7 +473,7 @@ func (s *S) TestBindHandlerReturns404IfTheAppDoesNotExist(c *C) {
 }
 
 func (s *S) TestBindHandlerReturns403IfTheUserDoesNotHaveAccessToTheApp(c *C) {
-	instance := ServiceInstance{Name: "my-mysql", ServiceName: "mysql", Teams: []string{s.team.Name}}
+	instance := ServiceInstance{Name: "my-mysql", ServiceName: "mysql", Teams: []string{s.team.Name}, State: "CREATED"}
 	err := instance.Create()
 	c.Assert(err, IsNil)
 	defer db.Session.ServiceInstances().Remove(bson.M{"_id": "my-mysql"})
