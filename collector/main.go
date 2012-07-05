@@ -8,8 +8,11 @@ import (
 )
 
 func main() {
-	var collector Collector
-	var err error
+	var (
+		collector    Collector
+		ec2Collector Ec2Collector
+		err          error
+	)
 
 	dry := flag.Bool("dry", false, "dry-run: does not start the agent (for testing purposes)")
 	flag.Parse()
@@ -25,6 +28,14 @@ func main() {
 			data, _ := collector.Collect()
 			output := collector.Parse(data)
 			collector.Update(output)
+			instances, err := ec2Collector.Collect()
+			if err != nil {
+				log.Print("Error while collecting ec2 instances. Will try again soon...")
+			}
+			err = ec2Collector.Update(instances)
+			if err != nil {
+				log.Print("Error while updating database with collected data. Will try again soon...")
+			}
 		}
 	}
 }
