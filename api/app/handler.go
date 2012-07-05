@@ -319,10 +319,19 @@ func GetEnv(w http.ResponseWriter, r *http.Request, u *auth.User) (err error) {
 	return nil
 }
 
-func SetEnvsToApp(app *App, envs []EnvVar) error {
+func SetEnvsToApp(app *App, envs []EnvVar, publicOnly bool) error {
 	if len(envs) > 0 {
 		for _, env := range envs {
-			app.SetEnv(env)
+			set := true
+			if publicOnly {
+				e, err := app.GetEnv(env.Name)
+				if err == nil && !e.Public {
+					set = false
+				}
+			}
+			if set {
+				app.SetEnv(env)
+			}
 		}
 		if err := db.Session.Apps().Update(bson.M{"name": app.Name}, app); err != nil {
 			return err
@@ -362,7 +371,7 @@ func SetEnv(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 		parts := strings.Split(v[1], "=")
 		envs[i] = EnvVar{Name: parts[0], Value: parts[1], Public: true}
 	}
-	return SetEnvsToApp(&app, envs)
+	return SetEnvsToApp(&app, envs, false)
 }
 
 func UnsetEnv(w http.ResponseWriter, r *http.Request, u *auth.User) error {

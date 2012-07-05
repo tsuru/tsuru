@@ -724,6 +724,94 @@ func (s *S) TestGetEnvHandlerReturnsForbiddenIfTheGivenUserDoesNotHaveAccessToTh
 	c.Assert(e.Code, Equals, http.StatusForbidden)
 }
 
+func (s *S) TestSetEnvRespectsThePublicOnlyFlagKeepPrivateVariablesWhenItsTrue(c *C) {
+	a := &App{
+		Name: "myapp",
+		Env: map[string]EnvVar{
+			"DATABASE_HOST": EnvVar{
+				Name:   "DATABASE_HOST",
+				Value:  "localhost",
+				Public: false,
+			},
+		},
+	}
+	err := a.Create()
+	c.Assert(err, IsNil)
+	envs := []EnvVar{
+		EnvVar{
+			Name:   "DATABASE_HOST",
+			Value:  "remotehost",
+			Public: false,
+		},
+		EnvVar{
+			Name:   "DATABASE_PASSWORD",
+			Value:  "123",
+			Public: true,
+		},
+	}
+	err = SetEnvsToApp(a, envs, true)
+	c.Assert(err, IsNil)
+	err = a.Get()
+	c.Assert(err, IsNil)
+	expected := map[string]EnvVar{
+		"DATABASE_HOST": EnvVar{
+			Name:   "DATABASE_HOST",
+			Value:  "localhost",
+			Public: false,
+		},
+		"DATABASE_PASSWORD": EnvVar{
+			Name:   "DATABASE_PASSWORD",
+			Value:  "123",
+			Public: true,
+		},
+	}
+	c.Assert(a.Env, DeepEquals, expected)
+}
+
+func (s *S) TestSetEnvRespectsThePublicOnlyFlagOverwrittenAllVariablesWhenItsFalse(c *C) {
+	a := &App{
+		Name: "myapp",
+		Env: map[string]EnvVar{
+			"DATABASE_HOST": EnvVar{
+				Name:   "DATABASE_HOST",
+				Value:  "localhost",
+				Public: false,
+			},
+		},
+	}
+	err := a.Create()
+	c.Assert(err, IsNil)
+	envs := []EnvVar{
+		EnvVar{
+			Name:   "DATABASE_HOST",
+			Value:  "remotehost",
+			Public: true,
+		},
+		EnvVar{
+			Name:   "DATABASE_PASSWORD",
+			Value:  "123",
+			Public: true,
+		},
+	}
+	err = SetEnvsToApp(a, envs, false)
+	c.Assert(err, IsNil)
+	err = a.Get()
+	c.Assert(err, IsNil)
+	expected := map[string]EnvVar{
+		"DATABASE_HOST": EnvVar{
+			Name:   "DATABASE_HOST",
+			Value:  "remotehost",
+			Public: true,
+		},
+		"DATABASE_PASSWORD": EnvVar{
+			Name:   "DATABASE_PASSWORD",
+			Value:  "123",
+			Public: true,
+		},
+	}
+	c.Assert(a.Env, DeepEquals, expected)
+}
+
 func (s *S) TestSetEnvHandlerShouldSetAPublicEnvironmentVariableInTheApp(c *C) {
 	a := &App{Name: "black-dog", Teams: []string{s.team.Name}}
 	err := a.Create()
