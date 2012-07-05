@@ -22,19 +22,19 @@ type output struct {
 }
 
 func (c *Collector) Collect() ([]byte, error) {
-	log.Print("collecting status")
+	log.Print("collecting status from juju")
 	return exec.Command("juju", "status").Output()
 }
 
 func (c *Collector) Parse(data []byte) *output {
-	log.Print("parsing yaml")
+	log.Print("parsing juju yaml")
 	raw := new(output)
 	_ = goyaml.Unmarshal(data, raw)
 	return raw
 }
 
 func (c *Collector) Update(out *output) {
-	log.Print("updating status")
+	log.Print("updating status from juju")
 	for serviceName, service := range out.Services {
 		for _, yUnit := range service.Units {
 			u := unit.Unit{}
