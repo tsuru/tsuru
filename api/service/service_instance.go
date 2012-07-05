@@ -19,7 +19,7 @@ type ServiceInstance struct {
 
 func (si *ServiceInstance) Create() error {
 	if si.State == "" {
-		si.State = "CREATING"
+		si.State = "creating"
 	}
 	return db.Session.ServiceInstances().Insert(si)
 }
