@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"github.com/timeredbull/tsuru/api/app"
+	"github.com/timeredbull/tsuru/log"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -16,6 +17,7 @@ type Client struct {
 }
 
 func (c *Client) issueRequest(path, method string, params map[string][]string) (*http.Response, error) {
+	log.Print("Issuing request...")
 	v := url.Values(params)
 	var suffix string
 	var body io.Reader
@@ -27,16 +29,19 @@ func (c *Client) issueRequest(path, method string, params map[string][]string) (
 	url := strings.TrimRight(c.endpoint, "/") + "/" + strings.TrimLeft(path, "/") + suffix
 	req, err := http.NewRequest(method, url, body)
 	if err != nil {
+		log.Print("Got error while creating request: " + err.Error())
 		return nil, err
 	}
 	return http.DefaultClient.Do(req)
 }
 
 func (c *Client) jsonFromResponse(resp *http.Response) (env map[string]string, err error) {
+	log.Print("Parsing response json...")
 	defer resp.Body.Close()
 	var body []byte
 	body, err = ioutil.ReadAll(resp.Body)
 	if err != nil {
+		log.Print("Got error while parsing json: " + err.Error())
 		return
 	}
 	err = json.Unmarshal(body, &env)
@@ -44,6 +49,7 @@ func (c *Client) jsonFromResponse(resp *http.Response) (env map[string]string, e
 }
 
 func (c *Client) Create(instance *ServiceInstance) (envVars map[string]string, err error) {
+	log.Print("Attempting to call creation of service instance " + instance.Name + " at " + instance.ServiceName + " api")
 	var resp *http.Response
 	params := map[string][]string{
 		"name":         []string{instance.Name},
@@ -52,23 +58,29 @@ func (c *Client) Create(instance *ServiceInstance) (envVars map[string]string, e
 	if resp, err = c.issueRequest("/resources/", "POST", params); err == nil && resp.StatusCode < 300 {
 		return c.jsonFromResponse(resp)
 	} else {
-		err = errors.New("Failed to create the instance: " + instance.Name)
+		msg := "Failed to create the instance: " + instance.Name
+		log.Print(msg)
+		err = errors.New(msg)
 	}
 	return
 }
 
 func (c *Client) Destroy(instance *ServiceInstance) (err error) {
+	log.Print("Attempting to call destroy of service instance " + instance.Name + " at " + instance.ServiceName + " api")
 	var resp *http.Response
 	params := map[string][]string{
 		"service_host": []string{instance.Host},
 	}
 	if resp, err = c.issueRequest("/resources/"+instance.Name+"/", "DELETE", params); err == nil && resp.StatusCode > 299 {
-		err = errors.New("Failed to destroy the instance: " + instance.Name)
+		msg := "Failed to destroy the instance: " + instance.Name
+		log.Print(msg)
+		err = errors.New(msg)
 	}
 	return err
 }
 
 func (c *Client) Bind(instance *ServiceInstance, app *app.App) (envVars map[string]string, err error) {
+	log.Print("Attempting to call bind of service instance " + instance.Name + " and app " + app.Name + " at " + instance.ServiceName + " api")
 	var resp *http.Response
 	params := map[string][]string{
 		"hostname":     []string{app.Units[0].Ip},
@@ -77,19 +89,24 @@ func (c *Client) Bind(instance *ServiceInstance, app *app.App) (envVars map[stri
 	if resp, err = c.issueRequest("/resources/"+instance.Name+"/", "POST", params); err == nil && resp.StatusCode < 300 {
 		return c.jsonFromResponse(resp)
 	} else {
-		err = errors.New("Failed to bind instance " + instance.Name + " to the app " + app.Name + ".")
+		msg := "Failed to bind instance " + instance.Name + " to the app " + app.Name + "."
+		log.Print(msg)
+		err = errors.New(msg)
 	}
 	return
 }
 
 func (c *Client) Unbind(instance *ServiceInstance, app *app.App) (err error) {
+	log.Print("Attempting to call unbind of service instance " + instance.Name + " and app " + app.Name + " at " + instance.ServiceName + " api")
 	var resp *http.Response
 	params := map[string][]string{
 		"service_host": []string{instance.Host},
 	}
 	url := "/resources/" + instance.Name + "/hostname/" + app.Name + "/"
 	if resp, err = c.issueRequest(url, "DELETE", params); err == nil && resp.StatusCode > 299 {
-		err = errors.New("Failed to unbind instance " + instance.Name + " from the app " + app.Name + ".")
+		msg := "Failed to unbind instance " + instance.Name + " from the app " + app.Name + "."
+		log.Print(msg)
+		err = errors.New(msg)
 	}
 	return
 }
