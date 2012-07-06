@@ -124,3 +124,29 @@ func (s *S) TestSetChildren(c *C) {
 	c.Assert(err, IsNil)
 	c.Assert(value, Equals, "database.com")
 }
+
+func (s *S) TestUnset(c *C) {
+	err := ReadConfigFile("testdata/config.yml")
+	c.Assert(err, IsNil)
+	err = Unset("xpto")
+	c.Assert(err, IsNil)
+	_, err = Get("xpto")
+	c.Assert(err, NotNil)
+}
+
+func (s *S) TestUnsetChildren(c *C) {
+	err := ReadConfigFile("testdata/config.yml")
+	c.Assert(err, IsNil)
+	err = Unset("database:host")
+	c.Assert(err, IsNil)
+	_, err = Get("database:host")
+	c.Assert(err, NotNil)
+}
+
+func (s *S) TestUnsetWithUndefinedKey(c *C) {
+	err := ReadConfigFile("testdata/config.yml")
+	c.Assert(err, IsNil)
+	err = Unset("database:hoster")
+	c.Assert(err, NotNil)
+	c.Assert(err, ErrorMatches, "^Key database:hoster not found$")
+}

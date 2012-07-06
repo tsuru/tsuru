@@ -13,7 +13,7 @@ import (
 var Configs map[interface{}]interface{}
 
 // ReadConfigBytes receives a slice of bytes and builds the internal
-// configuration map.
+// configuration object.
 //
 // If the given slice is not a valid yaml file, ReadConfigBytes returns a
 // non-nil error.
@@ -22,7 +22,7 @@ func ReadConfigBytes(data []byte) error {
 }
 
 // ReadConfigFile reads the content of a file and calls ReadConfigBytes to
-// build the internal configuration map.
+// build the internal configuration object.
 //
 // It returns error if it can not read the given file or if the file contents
 // is not valid yaml.
@@ -94,4 +94,28 @@ func Set(key string, value interface{}) {
 	for k, v := range last {
 		Configs[k] = v
 	}
+}
+
+// Unset removes a key from the configuration map. It returns error if the key
+// is not defined.
+//
+// Calling this function does not remove a key from a configuration file, only
+// from the in-memory configuration object.
+func Unset(key string) error {
+	var part string
+	m := Configs
+	parts := strings.Split(key, ":")
+	for _, part = range parts {
+		if item, ok := m[part]; ok {
+			if nm, ok := item.(map[interface{}]interface{}); ok {
+				m = nm
+			} else {
+				break
+			}
+		} else {
+			return errors.New("Key " + key + " not found")
+		}
+	}
+	delete(m, part)
+	return nil
 }
