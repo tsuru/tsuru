@@ -6,10 +6,7 @@ import (
 	"github.com/timeredbull/tsuru/api/auth"
 	"github.com/timeredbull/tsuru/config"
 	"github.com/timeredbull/tsuru/db"
-	tsuruEC2 "github.com/timeredbull/tsuru/ec2"
 	"io/ioutil"
-	"launchpad.net/goamz/aws"
-	"launchpad.net/goamz/ec2"
 	"launchpad.net/goamz/ec2/ec2test"
 	. "launchpad.net/gocheck"
 	"testing"
@@ -105,9 +102,7 @@ func (s *S) setupConfig(c *C) {
 }
 
 func (s *S) reconfEc2Srv(c *C) {
-	region := aws.Region{EC2Endpoint: s.ec2Srv.URL()}
-	auth := aws.Auth{AccessKey: "blaa", SecretKey: "blee"}
-	tsuruEC2.EC2 = ec2.New(auth, region)
-	tsuruEC2.Auth = &auth
-	tsuruEC2.Region = &region
+	config.Set("aws:ec2-endpoint", s.ec2Srv.URL())
+	config.Set("aws:secret-key", "blee")
+	config.Set("aws:access-key", "blaa")
 }
