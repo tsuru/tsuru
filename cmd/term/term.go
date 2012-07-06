@@ -32,15 +32,22 @@ func GetPassword(fd uintptr) string {
 	termios.Lflag &^= syscall.ECHO
 	tcsetattr(fd, 0, &termios)
 
+	finish := make(chan bool)
 	// Restoring after reading the password
-	defer tcsetattr(fd, 0, &oldState)
+	defer func(){
+		tcsetattr(fd, 0, &oldState)
+		finish <- true
+	}()
 
 	// Restoring on SIGINT
 	sigChan := make(chan os.Signal)
 	go func(c chan os.Signal, t Termios, fd uintptr) {
-		<-c
-		tcsetattr(fd, 0, &t)
-		os.Exit(1)
+		select {
+		case <-c:
+			tcsetattr(fd, 0, &t)
+			os.Exit(1)
+		case <-finish:
+		}
 	}(sigChan, oldState, fd)
 	signal.Notify(sigChan, syscall.SIGINT)
 

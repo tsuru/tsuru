@@ -12,12 +12,17 @@ import (
 	"syscall"
 )
 
+// gitosisManager is the gitosis implementation of the manager interface.
 type gitosisManager struct {
 	confPath string
 	git      *repository
 	sync.RWMutex
 }
 
+// newGitosisManager returns a new instance of gitosis manager.
+//
+// It uses some information from config file, make sure configuration is loaded
+// before call this function.
 func newGitosisManager() (*gitosisManager, error) {
 	repoPath, err := config.GetString("git:gitosis-repo")
 	if err != nil {
@@ -30,7 +35,7 @@ func newGitosisManager() (*gitosisManager, error) {
 	return manager, nil
 }
 
-// Add a new project to gitosis.conf.
+// addProject adds a new project to gitosis.conf.
 func (m *gitosisManager) addProject(group, project string) error {
 	c, err := m.getConfig()
 	if err != nil {
@@ -49,7 +54,7 @@ func (m *gitosisManager) addProject(group, project string) error {
 	return nil
 }
 
-// Remove a project from gitosis.conf
+// removeProject removes a project from gitosis.conf
 func (m *gitosisManager) removeProject(group, project string) error {
 	c, err := m.getConfig()
 	if err != nil {
@@ -66,7 +71,7 @@ func (m *gitosisManager) removeProject(group, project string) error {
 	return m.writeCommitPush(c, commitMsg)
 }
 
-// Add a new group to gitosis.conf. Also commit and push changes.
+// addGroup adds a new group to gitosis.conf. Also commit and push changes.
 func (m *gitosisManager) addGroup(name string) error {
 	c, err := m.getConfig()
 	if err != nil {
@@ -81,7 +86,7 @@ func (m *gitosisManager) addGroup(name string) error {
 	return m.writeCommitPush(c, commitMsg)
 }
 
-// Removes a group section and all it's options.
+// removeGroup removes a group section and all it's options.
 func (m *gitosisManager) removeGroup(group string) error {
 	c, err := m.getConfig()
 	if err != nil {
@@ -149,6 +154,8 @@ func (m *gitosisManager) removeMember(group, member string) error {
 	return m.writeCommitPush(c, commitMsg)
 }
 
+// buildAndStoreKeyFile receives the key and writes it to disk, returning the
+// name of the file written to disk and an error, if any happens.
 func (m *gitosisManager) buildAndStoreKeyFile(member, key string) (string, error) {
 	p := m.git.getPath("keydir")
 	err := os.MkdirAll(p, 0755)
@@ -174,6 +181,10 @@ func (m *gitosisManager) buildAndStoreKeyFile(member, key string) (string, error
 	return filename, nil
 }
 
+// deleteKeyFile deletes the given key filename from the disk.
+//
+// It returns an error if the file does not exist or it is not possible to
+// delete it.
 func (m *gitosisManager) deleteKeyFile(keyfilename string) error {
 	p := m.git.getPath("keydir")
 	keypath := path.Join(p, keyfilename)
@@ -185,6 +196,16 @@ func (m *gitosisManager) deleteKeyFile(keyfilename string) error {
 	return m.commit(commitMsg)
 }
 
+// nextAvailableKey returns the next available key file for the given member.
+//
+// If the member is gopher@golang.org and there were three files (keys) for
+// this member in the keydirname:
+//
+//   1. gopher@golang.org.key1.pub
+//   2. gopher@golang.org.key2.pub
+//   3. gopher@golang.org.key3.pub
+//
+// This function would return gopher@golang.org.key4.pub.
 func nextAvailableKey(keydirname, member string) (string, error) {
 	keydir, err := os.Open(keydirname)
 	if err != nil {
@@ -207,18 +228,22 @@ func nextAvailableKey(keydirname, member string) (string, error) {
 	return filename, nil
 }
 
+// getConfig reads config from gitosis.conf file.
 func (m *gitosisManager) getConfig() (*ini.Config, error) {
 	m.RLock()
 	defer m.RUnlock()
 	return ini.Read(m.confPath, ini.DEFAULT_COMMENT, ini.ALTERNATIVE_SEPARATOR, true, true)
 }
 
+// writeConfig writes the given config object to the gitosis.conf file.
 func (m *gitosisManager) writeConfig(c *ini.Config) error {
 	m.Lock()
 	defer m.Unlock()
 	return c.WriteFile(m.confPath, 0644, "gitosis config file")
 }
 
+// writeCommitPush write the given config object to the gitosis.conf file,
+// commit and pushes.
 func (m *gitosisManager) writeCommitPush(c *ini.Config, commitMsg string) error {
 	err := m.writeConfig(c)
 	if err != nil {
@@ -227,6 +252,7 @@ func (m *gitosisManager) writeCommitPush(c *ini.Config, commitMsg string) error 
 	return m.commit(commitMsg)
 }
 
+// commit commits a change to the repository.
 func (m *gitosisManager) commit(message string) error {
 	err := m.git.commit(message)
 	if err != nil {
@@ -235,6 +261,13 @@ func (m *gitosisManager) commit(message string) error {
 	return m.git.push("origin", "master")
 }
 
+// addOptionValue adds a value to an option.
+//
+// For example, if there is an option "favorite_maskots" in the ini file with
+// the value "gopher", and we want to add "glenda" to this same option, the
+// function will merge them and set "favorite_maskots=gopher glenda".
+//
+// If the option is not present in the file, it will be added.
 func addOptionValue(c *ini.Config, section, option, value string) (err error) {
 	var strValues string
 	if c.HasOption(section, option) {
@@ -254,6 +287,13 @@ func addOptionValue(c *ini.Config, section, option, value string) (err error) {
 	return nil
 }
 
+// removeOptionValue removes a value from an option.
+//
+// For example, if there is an option "good_os" in the ini file with the value
+// "windows linux", and we want to remove "windows" from this option, the
+// function will remove and keep "linux".
+//
+// If the option has only one value, it will be removed from the file.
 func removeOptionValue(c *ini.Config, section, option, value string) (err error) {
 	//check if section and option exists
 	strValues, err := c.String(section, option)
@@ -277,6 +317,8 @@ func removeOptionValue(c *ini.Config, section, option, value string) (err error)
 	return nil
 }
 
+// find looks for a string in a slice of strings, returning the index of the
+// string, or -1 if the string is not present.
 func find(strs []string, str string) int {
 	for i, s := range strs {
 		if str == s {
@@ -286,6 +328,8 @@ func find(strs []string, str string) int {
 	return -1
 }
 
+// checkPresenceOfString checks if a given string is in a given slice of
+// strings.
 func checkPresenceOfString(strs []string, str string) bool {
 	return find(strs, str) > -1
 }

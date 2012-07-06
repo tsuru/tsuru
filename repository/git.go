@@ -13,6 +13,8 @@ type repository struct {
 	sync.Mutex
 }
 
+// run executes a command in the git repository, and returns the output of the
+// command or an error, if any happens.
 func (r *repository) run(args ...string) (string, error) {
 	r.Lock()
 	defer r.Unlock()
@@ -29,6 +31,9 @@ func (r *repository) run(args ...string) (string, error) {
 	return string(output), err
 }
 
+// commit commits a change in the repository
+//
+// It commits *everything* (git add . + git commit -am).
 func (r *repository) commit(message string) error {
 	_, err := r.run("add", ".")
 	if err != nil {
@@ -38,6 +43,7 @@ func (r *repository) commit(message string) error {
 	return err
 }
 
+// push pushes commits to a remote.
 func (r *repository) push(remote, branch string) error {
 	_, err := r.run("push", remote, branch)
 	return err
