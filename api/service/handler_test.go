@@ -15,7 +15,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
-    "time"
+	"time"
 )
 
 func makeRequestToCreateHandler(c *C) (*httptest.ResponseRecorder, *http.Request) {
@@ -147,6 +147,9 @@ func (s *S) TestCreateInstanceHandlerVMOnNewInstanceWhenManifestSaysSo(c *C) {
 	var si ServiceInstance
 	err = db.Session.ServiceInstances().Find(q).One(&si)
 	c.Assert(err, IsNil)
+    si.Host = "192.168.0.110"
+    si.State = "running"
+    db.Session.ServiceInstances().Update(bson.M{"_id": si.Name}, si)
 	instance := s.ec2Srv.Instance(si.Instance)
 	c.Assert(instance, Not(IsNil))
 }
@@ -163,7 +166,11 @@ func (suite *S) TestCreateInstanceHandlerSavesServiceInstanceInDb(c *C) {
 	err := CreateInstanceHandler(recorder, request, suite.user)
 	c.Assert(err, IsNil)
 	var si ServiceInstance
-	db.Session.ServiceInstances().Find(bson.M{"_id": "brainSQL", "service_name": "mysql"}).One(&si)
+    err = db.Session.ServiceInstances().Find(bson.M{"_id": "brainSQL", "service_name": "mysql"}).One(&si)
+    c.Assert(err, IsNil)
+    si.Host = "192.168.0.110"
+    si.State = "running"
+    db.Session.ServiceInstances().Update(bson.M{"_id": si.Name}, si)
 	c.Assert(si.Name, Equals, "brainSQL")
 	c.Assert(si.ServiceName, Equals, "mysql")
 	c.Assert(si.Apps[0], Equals, "my_app")
@@ -180,7 +187,12 @@ func (s *S) TestCreateInstanceHandlerCallsTheServiceAPIAndSaveEnvironmentVariabl
 	err := CreateInstanceHandler(recorder, request, s.user)
 	c.Assert(err, IsNil)
 	var si ServiceInstance
-	db.Session.ServiceInstances().Find(bson.M{"_id": "brainSQL", "service_name": service.Name}).One(&si)
+	db.Session.ServiceInstances().Find(bson.M{"_id": "brainSQL"}).One(&si)
+    si.Host = "192.168.0.110"
+    si.State = "running"
+    db.Session.ServiceInstances().Update(bson.M{"_id": si.Name}, si)
+    time.Sleep(2e9)
+	db.Session.ServiceInstances().Find(bson.M{"_id": "brainSQL"}).One(&si)
 	c.Assert(si.Env, DeepEquals, map[string]string{"DATABASE_HOST": "localhost"})
 }
 
@@ -197,6 +209,9 @@ func (s *S) TestCreateInstanceHandlerSavesAllTeamsThatTheGivenUserIsMemberAndHas
 	var si ServiceInstance
 	err = db.Session.ServiceInstances().Find(bson.M{"_id": "brainSQL"}).One(&si)
 	c.Assert(err, IsNil)
+    si.Host = "192.168.0.110"
+    si.State = "running"
+    db.Session.ServiceInstances().Update(bson.M{"_id": si.Name}, si)
 	c.Assert(si.Teams, DeepEquals, []string{s.team.Name})
 }
 
@@ -206,6 +221,14 @@ func (s *S) TestCreateInstanceHandlerDoesNotFailIfTheServiceDoesNotDeclareEndpoi
 	recorder, request := makeRequestToCreateInstanceHandler(c)
 	err := CreateInstanceHandler(recorder, request, s.user)
 	c.Assert(err, IsNil)
+	var si ServiceInstance
+	err = db.Session.ServiceInstances().Find(bson.M{"_id": "brainSQL"}).One(&si)
+	c.Assert(err, IsNil)
+	err = db.Session.ServiceInstances().Find(bson.M{"_id": "brainSQL"}).One(&si)
+	c.Assert(err, IsNil)
+    si.Host = "192.168.0.110"
+    si.State = "running"
+    db.Session.ServiceInstances().Update(bson.M{"_id": si.Name}, si)
 }
 
 func (s *S) TestCreateInstanceHandlerReturnsErrorWhenUserCannotUseService(c *C) {
@@ -229,14 +252,14 @@ func (s *S) TestCallServiceApi(c *C) {
 	defer ts.Close()
 	service := Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}}
 	err := service.Create()
-    si := ServiceInstance{Name: "brainSQL", Host: "192.168.0.110", State: "running"}
-    si.Create()
-    defer si.Delete()
+	si := ServiceInstance{Name: "brainSQL", Host: "192.168.0.110", State: "running"}
+	si.Create()
+	defer si.Delete()
 	c.Assert(err, IsNil)
 	defer db.Session.Services().Remove(bson.M{"_id": "mysql"})
-    callServiceApi(service, si)
-    db.Session.ServiceInstances().Find(bson.M{"_id": si.Name}).One(&si)
-    c.Assert(si.Env, DeepEquals, map[string]string{"DATABASE_USER": "root", "DATABASE_PASSWORD": "s3cr3t"})
+	callServiceApi(service, si)
+	db.Session.ServiceInstances().Find(bson.M{"_id": si.Name}).One(&si)
+	c.Assert(si.Env, DeepEquals, map[string]string{"DATABASE_USER": "root", "DATABASE_PASSWORD": "s3cr3t"})
 
 }
 
@@ -247,19 +270,19 @@ func (s *S) TestAsyncCAllServiceApi(c *C) {
 	defer ts.Close()
 	service := Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}}
 	err := service.Create()
-    si := ServiceInstance{Name: "brainSQL"}
-    si.Create()
-    defer si.Delete()
-    go callServiceApi(service, si)
+	si := ServiceInstance{Name: "brainSQL"}
+	si.Create()
+	defer si.Delete()
+	go callServiceApi(service, si)
 	c.Assert(err, IsNil)
 	defer db.Session.Services().Remove(bson.M{"_id": "mysql"})
-    si.State = "running"
-    si.Host = "192.168.0.110"
-    err = db.Session.ServiceInstances().Update(bson.M{"_id": si.Name}, si)
-    c.Assert(err, IsNil)
-    time.Sleep(2e9)
-    db.Session.ServiceInstances().Find(bson.M{"_id": si.Name}).One(&si)
-    c.Assert(si.Env, DeepEquals, map[string]string{"DATABASE_USER": "root", "DATABASE_PASSWORD": "s3cr3t"})
+	si.State = "running"
+	si.Host = "192.168.0.110"
+	err = db.Session.ServiceInstances().Update(bson.M{"_id": si.Name}, si)
+	c.Assert(err, IsNil)
+	time.Sleep(2e9)
+	db.Session.ServiceInstances().Find(bson.M{"_id": si.Name}).One(&si)
+	c.Assert(si.Env, DeepEquals, map[string]string{"DATABASE_USER": "root", "DATABASE_PASSWORD": "s3cr3t"})
 }
 
 func (s *S) TestDeleteHandler(c *C) {
