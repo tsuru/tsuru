@@ -108,4 +108,6 @@ func (s *S) reconfEc2Srv(c *C) {
 	region := aws.Region{EC2Endpoint: s.ec2Srv.URL()}
 	auth := aws.Auth{AccessKey: "blaa", SecretKey: "blee"}
 	tsuruEC2.EC2 = ec2.New(auth, region)
+	tsuruEC2.Auth = &auth
+	tsuruEC2.Region = &region
 }

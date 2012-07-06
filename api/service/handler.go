@@ -90,6 +90,11 @@ func CreateInstanceHandler(w http.ResponseWriter, r *http.Request, u *auth.User)
 	}
 	instance := ""
 	if s.Bootstrap["when"] == OnNewInstance {
+		_, err := ec2.Conn()
+		if err != nil {
+			log.Print("Got error while connecting with ec2:")
+			log.Print(err.Error())
+		}
 		instance, err = ec2.RunInstance(s.Bootstrap["ami"], "") //missing user data
 		if err != nil {
 			msg := fmt.Sprintf("Instance for service could not be created. \nError: %s", err.Error())
