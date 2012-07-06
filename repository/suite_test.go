@@ -99,11 +99,11 @@ func (s *S) TearDownTest(c *C) {
 }
 
 func (s *S) TestGetGitServerPanicsIfTheConfigFileHasNoServer(c *C) {
-	oldConfig := config.Configs
-	config.Configs = map[interface{}]interface{}{}
-	defer func() {
-		config.Configs = oldConfig
-	}()
+	oldConfig, err := config.Get("git")
+	c.Assert(err, IsNil)
+	err = config.Unset("git")
+	c.Assert(err, IsNil)
+	defer config.Set("git", oldConfig)
 	c.Assert(getGitServer, PanicMatches, "key git:server not found")
 }
 
