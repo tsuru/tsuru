@@ -150,3 +150,14 @@ func (s *S) TestUnsetWithUndefinedKey(c *C) {
 	c.Assert(err, NotNil)
 	c.Assert(err, ErrorMatches, "^Key database:hoster not found$")
 }
+
+func (s *S) TestUnsetMap(c *C) {
+	err := ReadConfigFile("testdata/config.yml")
+	c.Assert(err, IsNil)
+	err = Unset("database")
+	c.Assert(err, IsNil)
+	_, err = Get("database:host")
+	c.Assert(err, NotNil)
+	_, err = Get("database:port")
+	c.Assert(err, NotNil)
+}

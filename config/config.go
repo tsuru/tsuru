@@ -102,12 +102,13 @@ func Set(key string, value interface{}) {
 // Calling this function does not remove a key from a configuration file, only
 // from the in-memory configuration object.
 func Unset(key string) error {
+	var i int
 	var part string
 	m := configs
 	parts := strings.Split(key, ":")
-	for _, part = range parts {
+	for i, part = range parts {
 		if item, ok := m[part]; ok {
-			if nm, ok := item.(map[interface{}]interface{}); ok {
+			if nm, ok := item.(map[interface{}]interface{}); ok && i < len(parts)-1 {
 				m = nm
 			} else {
 				break
