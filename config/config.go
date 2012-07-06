@@ -83,18 +83,15 @@ func GetString(key string) (string, error) {
 // defined by Set is persisted in the filesystem or any database.
 func Set(key string, value interface{}) {
 	parts := strings.Split(key, ":")
-	if len(parts) == 1 {
-		Configs[parts[0]] = value
-	} else {
-		final := map[interface{}]interface{}{
-			parts[len(parts)-1]: value,
+	last := map[interface{}]interface{}{
+		parts[len(parts)-1]: value,
+	}
+	for i := len(parts) - 2; i >= 0; i-- {
+		last = map[interface{}]interface{}{
+			parts[i]: last,
 		}
-		last := final
-		for i := len(parts) - 2; i >= 1; i-- {
-			last = map[interface{}]interface{}{
-				parts[i]: last,
-			}
-		}
-		Configs[parts[0]] = last
+	}
+	for k, v := range last {
+		Configs[k] = v
 	}
 }
