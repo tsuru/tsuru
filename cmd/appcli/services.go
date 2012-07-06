@@ -27,6 +27,7 @@ func (s *Service) Subcommands() map[string]interface{} {
 	return map[string]interface{}{
 		"list": &ServiceList{},
 		"add":  &ServiceAdd{},
+		"bind": &ServiceBind{},
 	}
 }
 
@@ -111,4 +112,37 @@ func (sa *ServiceAdd) Run(ctx *cmd.Context, client cmd.Doer) error {
 	}
 	io.WriteString(ctx.Stdout, string(result))
 	return nil
+}
+
+type ServiceBind struct{}
+
+func (sb *ServiceBind) Run(ctx *cmd.Context, client cmd.Doer) error {
+	instanceName, appName := ctx.Args[0], ctx.Args[1]
+	url := cmd.GetUrl("/services/instances/" + instanceName + "/" + appName)
+	request, err := http.NewRequest("PUT", url, nil)
+	if err != nil {
+		return err
+	}
+	_, err = client.Do(request)
+	if err != nil {
+		return err
+	}
+	msg := fmt.Sprintf("Instance %s successfully binded to the app %s.\n", instanceName, appName)
+	n, err := io.WriteString(ctx.Stdout, msg)
+	if err != nil {
+		return err
+	}
+	if n != len(msg) {
+		return errors.New("Failed to write to standard output.\n")
+	}
+	return nil
+}
+
+func (sb *ServiceBind) Info() *cmd.Info {
+	return &cmd.Info{
+		Name:    "bind",
+		Usage:   "service bind <instancename> <appname>",
+		Desc:    "bind a service instance to an app",
+		MinArgs: 2,
+	}
 }
