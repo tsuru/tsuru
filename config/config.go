@@ -76,9 +76,11 @@ func GetString(key string) (string, error) {
 	return "", errors.New(fmt.Sprintf("key %s has non-string value", key))
 }
 
-// Set redefines or defines a value for a key.
+// Set redefines or defines a value for a key. The key has the same format that
+// it has in Get and GetString.
 //
-// It accepts keys in the same format that Get and GetString does.
+// Values defined by this function affects only runtime informatin, nothing
+// defined by Set is persisted in the filesystem or any database.
 func Set(key string, value interface{}) {
 	parts := strings.Split(key, ":")
 	if len(parts) == 1 {
