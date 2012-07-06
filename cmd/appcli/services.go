@@ -101,16 +101,11 @@ func (sa *ServiceAdd) Run(ctx *cmd.Context, client cmd.Doer) error {
 	if err != nil {
 		return err
 	}
-	response, err := client.Do(request)
+	_, err = client.Do(request)
 	if err != nil {
 		return err
 	}
-	defer response.Body.Close()
-	result, err := ioutil.ReadAll(response.Body)
-	if err != nil {
-		return err
-	}
-	io.WriteString(ctx.Stdout, string(result))
+	io.WriteString(ctx.Stdout, "service successfuly added.\n")
 	return nil
 }
 
