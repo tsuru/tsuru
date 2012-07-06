@@ -125,6 +125,18 @@ func (s *S) TestSetChildren(c *C) {
 	c.Assert(value, Equals, "database.com")
 }
 
+func (s *S) TestSetMap(c *C) {
+	err := ReadConfigFile("testdata/config.yml")
+	c.Assert(err, IsNil)
+	Set("database", map[interface{}]interface{}{"host": "database.com", "port": 3306})
+	host, err := GetString("database:host")
+	c.Assert(err, IsNil)
+	c.Assert(host, Equals, "database.com")
+	port, err := Get("database:port")
+	c.Assert(err, IsNil)
+	c.Assert(port, Equals, 3306)
+}
+
 func (s *S) TestUnset(c *C) {
 	err := ReadConfigFile("testdata/config.yml")
 	c.Assert(err, IsNil)
