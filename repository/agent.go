@@ -21,13 +21,13 @@ const (
 //
 //     args := map[string]string{
 //         "key":    "my-key",
-//         "member": "chico",
+//         "member": "gopher",
 //     }
 //     change := Change{Kind: AddKey, Args: args}
 //
 // The change in the code above says:
 //
-//     "add the key my-key to the member chico"
+//     "add the key my-key to the member gopher"
 //
 // For this kind of change, the key file name will be sent in the channel
 // Response.
@@ -37,8 +37,26 @@ type Change struct {
 	Response chan string
 }
 
+// Ag is the Agent instance that should be used to send changes to gitosis repository.
+//
+// Sample of code:
+//
+//     import "github.com/timeredbull/tsuru/repository"
+//
+//     func sendChange() {
+//         change := repository.Change{
+//             Kind:     repository.AddKey,
+//             Args:     map[string]string{"key": "the-key", "member": "gopher"},
+//             Response: make(chan string),
+//         }
+//         repository.Ag.Process(change)
+//         resp := <-change.Response
+//         // do something with the response
+//     }
 var Ag *Agent
 
+// RunAgent starts the agent loop, so it keep looking for changes to be
+// processed.
 func RunAgent() {
 	gitosisManager, err := newGitosisManager()
 	if err != nil {
@@ -48,11 +66,13 @@ func RunAgent() {
 	go Ag.loop()
 }
 
+// Agent listens for changes and process them.
 type Agent struct {
 	changes chan Change
 	mngr    manager
 }
 
+// newAgent returns an instance of a new Agent.
 func newAgent(m manager) *Agent {
 	return &Agent{
 		changes: make(chan Change),
@@ -60,10 +80,12 @@ func newAgent(m manager) *Agent {
 	}
 }
 
+// Process sends a change to the agent queue.
 func (a *Agent) Process(change Change) {
 	a.changes <- change
 }
 
+// loop loops "forever" processing changes that come in the agent queue.
 func (a *Agent) loop() {
 	for change := range a.changes {
 		switch change.Kind {
