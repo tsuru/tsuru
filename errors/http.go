@@ -6,7 +6,7 @@ package errors
 // Each HTTP error has a Code and a message explaining what went wrong.
 type Http struct {
 	// Status code.
-	Code    int
+	Code int
 
 	// Message explaining what went wrong.
 	Message string
