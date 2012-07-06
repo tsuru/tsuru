@@ -82,7 +82,7 @@ func (s *Storage) Services() *mgo.Collection {
 
 // ServiceInstances returns the services_instances collection from MongoDB.
 func (s *Storage) ServiceInstances() *mgo.Collection {
-	return s.getCollection("service_apps")
+	return s.getCollection("service_instances")
 }
 
 // Units returns the units collection from MongoDB.
