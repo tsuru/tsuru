@@ -1,8 +1,10 @@
 package ec2
 
 import (
+	"errors"
 	"fmt"
 	"github.com/timeredbull/tsuru/config"
+	"github.com/timeredbull/tsuru/log"
 	"io/ioutil"
 	"launchpad.net/goamz/aws"
 	"launchpad.net/goamz/ec2"
@@ -24,11 +26,15 @@ func getAuth() (*aws.Auth, error) {
 	var err error
 	auth.AccessKey, err = config.GetString("aws:access-key")
 	if err != nil {
-		return nil, err
+		msg := "Got error while reaading aws:access-key config options, have you set it?\nError is: " + err.Error()
+		log.Print(msg)
+		return nil, errors.New(msg)
 	}
 	auth.SecretKey, err = config.GetString("aws:secret-key")
 	if err != nil {
-		return nil, err
+		msg := "Got error while reaading aws:secret-key config options, have you set it?\nError is: " + err.Error()
+		log.Print(msg)
+		return nil, errors.New(msg)
 	}
 	return auth, nil
 }
