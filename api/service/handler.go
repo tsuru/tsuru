@@ -108,7 +108,12 @@ func CreateInstanceHandler(w http.ResponseWriter, r *http.Request, u *auth.User)
 	}
 	go callServiceApi(s, si)
 	si.Apps = append(si.Apps, sJson["app"])
-	return si.Create()
+	err = si.Create()
+	if err != nil {
+		return err
+	}
+	fmt.Fprint(w, "success")
+	return nil
 }
 
 func callServiceApi(s Service, si ServiceInstance) {
