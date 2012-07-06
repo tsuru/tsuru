@@ -52,7 +52,11 @@ func (m *Manager) Run(args []string) {
 	}
 	err := command.(Command).Run(&Context{cmds, args, m.Stdout, m.Stderr}, NewClient(&http.Client{}))
 	if err != nil {
-		io.WriteString(m.Stderr, err.Error())
+		errorMsg := err.Error()
+		if !strings.HasSuffix(errorMsg, "\n") {
+			errorMsg += "\n"
+		}
+		io.WriteString(m.Stderr, errorMsg)
 	}
 }
 
