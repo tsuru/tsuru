@@ -42,7 +42,9 @@ func getAuth() (*aws.Auth, error) {
 func getRegion() (*aws.Region, error) {
 	endpnt, err := config.GetString("aws:ec2-endpoint")
 	if err != nil {
-		return nil, err
+		msg := "Got error while reaading aws:ec2-endpoint config options, have you set it?\nError is: " + err.Error()
+		log.Print(msg)
+		return nil, errors.New(msg)
 	}
 	region := &aws.Region{EC2Endpoint: endpnt}
 	return region, nil
