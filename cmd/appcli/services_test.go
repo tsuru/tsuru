@@ -198,7 +198,7 @@ func (s *S) TestServiceAddInfo(c *C) {
 }
 
 func (s *S) TestServiceAddRun(c *C) {
-	result := "service instance my_app_db successfuly created"
+	result := "service successfuly added.\n"
 	args := []string{
 		"my_app",
 		"my_app_db",
