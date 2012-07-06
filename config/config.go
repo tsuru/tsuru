@@ -76,6 +76,38 @@ func GetString(key string) (string, error) {
 	return "", errors.New(fmt.Sprintf("key %s has non-string value", key))
 }
 
+// mergeMaps takes two maps and merge its keys and values.
+//
+// In case of conflicts, the function picks value from map2.
+func mergeMaps(map1, map2 map[interface{}]interface{}) map[interface{}]interface{} {
+	result := make(map[interface{}]interface{})
+	for k, v2 := range map2 {
+		if v1, ok := map1[k]; !ok {
+			result[k] = v2
+		} else {
+			map1, ok1 := v1.(map[interface{}]interface{})
+			map2, ok2 := v2.(map[interface{}]interface{})
+			if ok1 && ok2 {
+				result[k] = mergeMaps(map1, map2)
+			} else {
+				result[k] = v2
+			}
+		}
+	}
+	for k, v := range map1 {
+		if v2, ok := map2[k]; !ok {
+			result[k] = v
+		} else {
+			map1, ok1 := v.(map[interface{}]interface{})
+			map2, ok2 := v2.(map[interface{}]interface{})
+			if ok1 && ok2 {
+				result[k] = mergeMaps(map1, map2)
+			}
+		}
+	}
+	return result
+}
+
 // Set redefines or defines a value for a key. The key has the same format that
 // it has in Get and GetString.
 //
@@ -91,9 +123,7 @@ func Set(key string, value interface{}) {
 			parts[i]: last,
 		}
 	}
-	for k, v := range last {
-		configs[k] = v
-	}
+	configs = mergeMaps(configs, last)
 }
 
 // Unset removes a key from the configuration map. It returns error if the key

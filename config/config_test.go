@@ -125,6 +125,15 @@ func (s *S) TestSetChildren(c *C) {
 	c.Assert(value, Equals, "database.com")
 }
 
+func (s *S) TestSetChildrenDoesNotImpactOtherChild(c *C) {
+	err := ReadConfigFile("testdata/config.yml")
+	c.Assert(err, IsNil)
+	Set("database:host", "database.com")
+	value, err := Get("database:port")
+	c.Assert(err, IsNil)
+	c.Assert(value, Equals, 8080)
+}
+
 func (s *S) TestSetMap(c *C) {
 	err := ReadConfigFile("testdata/config.yml")
 	c.Assert(err, IsNil)
@@ -172,4 +181,53 @@ func (s *S) TestUnsetMap(c *C) {
 	c.Assert(err, NotNil)
 	_, err = Get("database:port")
 	c.Assert(err, NotNil)
+}
+
+func (s *S) TestMergeMaps(c *C) {
+	m1 := map[interface{}]interface{}{
+		"database": map[interface{}]interface{}{
+			"host": "localhost",
+			"port": 3306,
+		},
+	}
+	m2 := map[interface{}]interface{}{
+		"database": map[interface{}]interface{}{
+			"host": "remotehost",
+		},
+		"memcached": []string{"mymemcached"},
+	}
+	expected := map[interface{}]interface{}{
+		"database": map[interface{}]interface{}{
+			"host": "remotehost",
+			"port": 3306,
+		},
+		"memcached": []string{"mymemcached"},
+	}
+	c.Assert(mergeMaps(m1, m2), DeepEquals, expected)
+}
+
+func (s *S) TestMergeMapsWithDiffingMaps(c *C) {
+	m1 := map[interface{}]interface{}{
+		"database": map[interface{}]interface{}{
+			"host": "localhost",
+			"port": 3306,
+		},
+	}
+	m2 := map[interface{}]interface{}{
+		"auth": map[interface{}]interface{}{
+			"user":     "root",
+			"password": "123",
+		},
+	}
+	expected := map[interface{}]interface{}{
+		"auth": map[interface{}]interface{}{
+			"user":     "root",
+			"password": "123",
+		},
+		"database": map[interface{}]interface{}{
+			"host": "localhost",
+			"port": 3306,
+		},
+	}
+	c.Assert(mergeMaps(m1, m2), DeepEquals, expected)
 }
