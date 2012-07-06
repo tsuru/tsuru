@@ -20,7 +20,6 @@ var Region *aws.Region
 
 func init() {
 	getPubKey()
-	loadData()
 }
 
 func loadData() {
@@ -85,6 +84,7 @@ func getPubKey() ([]byte, error) {
 }
 
 func Conn() (*ec2.EC2, error) {
+	loadData()
 	EC2 = ec2.New(*Auth, *Region)
 	return EC2, nil
 }
