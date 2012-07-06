@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"errors"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 )
@@ -24,7 +25,7 @@ func (c *Client) Do(request *http.Request) (*http.Response, error) {
 	}
 	response, err := c.HttpClient.Do(request)
 	if err != nil {
-		msg := "Server is down\nOriginal error message is: \n" + err.Error() + "\n"
+		msg := fmt.Sprintln("A problem occurred while trying to do the request.", "Original error message is:", err.Error(), "")
 		return nil, errors.New(msg)
 	}
 	if response.StatusCode > 399 {
