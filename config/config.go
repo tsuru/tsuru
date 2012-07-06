@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"launchpad.net/goyaml"
 	"strings"
+	"sync"
 )
 
 var configs map[interface{}]interface{}
@@ -80,31 +81,40 @@ func GetString(key string) (string, error) {
 //
 // In case of conflicts, the function picks value from map2.
 func mergeMaps(map1, map2 map[interface{}]interface{}) map[interface{}]interface{} {
+	var wg sync.WaitGroup
+	wg.Add(2)
 	result := make(map[interface{}]interface{})
-	for k, v2 := range map2 {
-		if v1, ok := map1[k]; !ok {
-			result[k] = v2
-		} else {
-			map1, ok1 := v1.(map[interface{}]interface{})
-			map2, ok2 := v2.(map[interface{}]interface{})
-			if ok1 && ok2 {
-				result[k] = mergeMaps(map1, map2)
-			} else {
+	go func() {
+		for k, v2 := range map2 {
+			if v1, ok := map1[k]; !ok {
 				result[k] = v2
+			} else {
+				map1, ok1 := v1.(map[interface{}]interface{})
+				map2, ok2 := v2.(map[interface{}]interface{})
+				if ok1 && ok2 {
+					result[k] = mergeMaps(map1, map2)
+				} else {
+					result[k] = v2
+				}
 			}
 		}
-	}
-	for k, v := range map1 {
-		if v2, ok := map2[k]; !ok {
-			result[k] = v
-		} else {
-			map1, ok1 := v.(map[interface{}]interface{})
-			map2, ok2 := v2.(map[interface{}]interface{})
-			if ok1 && ok2 {
-				result[k] = mergeMaps(map1, map2)
+		wg.Done()
+	}()
+	go func() {
+		for k, v := range map1 {
+			if v2, ok := map2[k]; !ok {
+				result[k] = v
+			} else {
+				map1, ok1 := v.(map[interface{}]interface{})
+				map2, ok2 := v2.(map[interface{}]interface{})
+				if ok1 && ok2 {
+					result[k] = mergeMaps(map1, map2)
+				}
 			}
 		}
-	}
+		wg.Done()
+	}()
+	wg.Wait()
 	return result
 }
 

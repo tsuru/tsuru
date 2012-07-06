@@ -2,6 +2,7 @@ package config
 
 import (
 	. "launchpad.net/gocheck"
+	"runtime"
 	"testing"
 )
 
@@ -184,6 +185,31 @@ func (s *S) TestUnsetMap(c *C) {
 }
 
 func (s *S) TestMergeMaps(c *C) {
+	m1 := map[interface{}]interface{}{
+		"database": map[interface{}]interface{}{
+			"host": "localhost",
+			"port": 3306,
+		},
+	}
+	m2 := map[interface{}]interface{}{
+		"database": map[interface{}]interface{}{
+			"host": "remotehost",
+		},
+		"memcached": []string{"mymemcached"},
+	}
+	expected := map[interface{}]interface{}{
+		"database": map[interface{}]interface{}{
+			"host": "remotehost",
+			"port": 3306,
+		},
+		"memcached": []string{"mymemcached"},
+	}
+	c.Assert(mergeMaps(m1, m2), DeepEquals, expected)
+}
+
+func (s *S) TestMergeMapsMultipleProcs(c *C) {
+	old := runtime.GOMAXPROCS(16)
+	defer runtime.GOMAXPROCS(old)
 	m1 := map[interface{}]interface{}{
 		"database": map[interface{}]interface{}{
 			"host": "localhost",
