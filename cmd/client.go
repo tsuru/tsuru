@@ -24,7 +24,8 @@ func (c *Client) Do(request *http.Request) (*http.Response, error) {
 	}
 	response, err := c.HttpClient.Do(request)
 	if err != nil {
-		return nil, errors.New("Server is down\n")
+		msg := "Server is down\nOriginal error message is: \n" + err.Error() + "\n"
+		return nil, errors.New(msg)
 	}
 	if response.StatusCode > 399 {
 		defer response.Body.Close()
