@@ -67,14 +67,16 @@ func CreateHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 }
 
 func CreateInstanceHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
+	log.Print("Receiving request to create a service instance")
 	b, err := ioutil.ReadAll(r.Body)
 	if err != nil {
+		log.Print("Got error while reading request body:")
+		log.Print(err.Error())
 		return &errors.Http{Code: http.StatusInternalServerError, Message: err.Error()}
 	}
 	var sJson map[string]string
 	err = json.Unmarshal(b, &sJson)
 	if err != nil {
-		panic(err)
 		return &errors.Http{Code: http.StatusInternalServerError, Message: err.Error()}
 	}
 	var s Service
@@ -108,7 +110,12 @@ func CreateInstanceHandler(w http.ResponseWriter, r *http.Request, u *auth.User)
 	}
 	go callServiceApi(s, si)
 	si.Apps = append(si.Apps, sJson["app"])
-	return si.Create()
+	err = si.Create()
+	if err != nil {
+		return err
+	}
+	fmt.Fprint(w, "success")
+	return nil
 }
 
 func callServiceApi(s Service, si ServiceInstance) {

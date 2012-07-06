@@ -22,7 +22,7 @@ func (s *S) TestShouldReturnErrorWhenServerIsDown(c *C) {
 	client := NewClient(&http.Client{})
 	_, err = client.Do(request)
 	c.Assert(err, NotNil)
-	c.Assert(err, ErrorMatches, "^Server is down\n$")
+	c.Assert(err, ErrorMatches, "^A problem occurred while trying to do the request. Original error message is: Get /: unsupported protocol scheme \"\" \n$")
 }
 
 func (s *S) TestShouldNotIncludeTheHeaderAuthorizationWhenTheTsuruTokenFileIsMissing(c *C) {
