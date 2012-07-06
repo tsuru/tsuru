@@ -15,10 +15,24 @@ import (
 
 var EC2 *ec2.EC2
 var pubKey []byte
+var Auth *aws.Auth
+var Region *aws.Region
 
 func init() {
-	Conn()
 	getPubKey()
+	loadData()
+}
+
+func loadData() {
+	var err error
+	Auth, err = getAuth()
+	if err != nil {
+		log.Print(err.Error())
+	}
+	Region, err = getRegion()
+	if err != nil {
+		log.Print(err.Error())
+	}
 }
 
 func getAuth() (*aws.Auth, error) {
@@ -71,15 +85,7 @@ func getPubKey() ([]byte, error) {
 }
 
 func Conn() (*ec2.EC2, error) {
-	auth, err := getAuth()
-	if err != nil {
-		return nil, err
-	}
-	region, err := getRegion()
-	if err != nil {
-		return nil, err
-	}
-	EC2 = ec2.New(*auth, *region)
+	EC2 = ec2.New(*Auth, *Region)
 	return EC2, nil
 }
 

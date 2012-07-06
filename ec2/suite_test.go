@@ -33,6 +33,8 @@ func (s *S) reconfServer(c *C) {
 	auth, err := getAuth()
 	c.Assert(err, IsNil)
 	EC2 = ec2.New(*auth, region)
+	Auth = auth
+	Region = &region
 }
 
 func (s *S) reconfKey(c *C) {
