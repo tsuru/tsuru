@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/timeredbull/tsuru/api/app"
+	"github.com/timeredbull/tsuru/log"
 	"github.com/timeredbull/tsuru/api/auth"
 	"github.com/timeredbull/tsuru/db"
 	"github.com/timeredbull/tsuru/ec2"
@@ -12,6 +13,7 @@ import (
 	"labix.org/v2/mgo/bson"
 	"launchpad.net/goyaml"
 	"net/http"
+    "time"
 )
 
 type serviceYaml struct {
@@ -113,6 +115,27 @@ func CreateInstanceHandler(w http.ResponseWriter, r *http.Request, u *auth.User)
 	}
 	si.Apps = append(si.Apps, sJson["app"])
 	return si.Create()
+}
+
+func callServiceApi(s Service, si ServiceInstance) {
+    checkInstanceState := func() bool {
+        db.Session.ServiceInstances().Find(bson.M{"_id": si.Name}).One(&si)
+        return si.Host != "" && si.State == "running"
+    }
+    ch := time.Tick(1e9)
+    for _ = range ch {
+        if checkInstanceState() {
+            if cli, err := s.GetClient("production"); err == nil {
+                si.Env, err = cli.Create(&si)
+                if err != nil {
+                    log.Print("Error while calling create action from service api.")
+                    log.Print(err.Error())
+                }
+                db.Session.ServiceInstances().Update(bson.M{"_id": si.Name}, si)
+            }
+            break
+        }
+    }
 }
 
 func validateForInstanceCreation(s *Service, sJson map[string]string, u *auth.User) error {

@@ -15,6 +15,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
+    "time"
 )
 
 func makeRequestToCreateHandler(c *C) (*httptest.ResponseRecorder, *http.Request) {
@@ -219,6 +220,46 @@ func (s *S) TestCreateInstanceHandlerReturnsErrorWhenServiceDoesntExists(c *C) {
 	recorder, request := makeRequestToCreateInstanceHandler(c)
 	err := CreateInstanceHandler(recorder, request, s.user)
 	c.Assert(err, ErrorMatches, "^Service mysql does not exists.$")
+}
+
+func (s *S) TestCallServiceApi(c *C) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(`{"DATABASE_USER":"root","DATABASE_PASSWORD":"s3cr3t"}`))
+	}))
+	defer ts.Close()
+	service := Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}}
+	err := service.Create()
+    si := ServiceInstance{Name: "brainSQL", Host: "192.168.0.110", State: "running"}
+    si.Create()
+    defer si.Delete()
+	c.Assert(err, IsNil)
+	defer db.Session.Services().Remove(bson.M{"_id": "mysql"})
+    callServiceApi(service, si)
+    db.Session.ServiceInstances().Find(bson.M{"_id": si.Name}).One(&si)
+    c.Assert(si.Env, DeepEquals, map[string]string{"DATABASE_USER": "root", "DATABASE_PASSWORD": "s3cr3t"})
+
+}
+
+func (s *S) TestAsyncCAllServiceApi(c *C) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(`{"DATABASE_USER":"root","DATABASE_PASSWORD":"s3cr3t"}`))
+	}))
+	defer ts.Close()
+	service := Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}}
+	err := service.Create()
+    si := ServiceInstance{Name: "brainSQL"}
+    si.Create()
+    defer si.Delete()
+    go callServiceApi(service, si)
+	c.Assert(err, IsNil)
+	defer db.Session.Services().Remove(bson.M{"_id": "mysql"})
+    si.State = "running"
+    si.Host = "192.168.0.110"
+    err = db.Session.ServiceInstances().Update(bson.M{"_id": si.Name}, si)
+    c.Assert(err, IsNil)
+    time.Sleep(2e9)
+    db.Session.ServiceInstances().Find(bson.M{"_id": si.Name}).One(&si)
+    c.Assert(si.Env, DeepEquals, map[string]string{"DATABASE_USER": "root", "DATABASE_PASSWORD": "s3cr3t"})
 }
 
 func (s *S) TestDeleteHandler(c *C) {
