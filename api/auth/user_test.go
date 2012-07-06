@@ -210,11 +210,12 @@ func (s *S) TestLoadConfigSetsTheSaltThatIsInTheConfigFile(c *C) {
 }
 
 func (s *S) TestLoadConfigSetsTheSaltToDefaultIfItIsNotPresentInConfig(c *C) {
-	oldConfig := config.Configs["auth"]
-	delete(config.Configs, "auth")
-	defer func() {
-		config.Configs["auth"] = oldConfig
-	}()
+	key := "auth"
+	oldValue, err := config.Get(key)
+	c.Assert(err, IsNil)
+	err = config.Unset(key)
+	c.Assert(err, IsNil)
+	defer config.Set(key, oldValue)
 	loadConfig()
 	c.Assert(salt, Equals, defaultSalt)
 }
@@ -228,20 +229,22 @@ func (s *S) TestLoadConfigSetsTheTokenExpireToTheValueInTheConfig(c *C) {
 }
 
 func (s *S) TestLoadConfigSetTheTokenExpireToTheDefaultValueIfTheConfigIsNotPresent(c *C) {
-	oldConfig := config.Configs["auth"]
-	delete(config.Configs, "auth")
-	defer func() {
-		config.Configs["auth"] = oldConfig
-	}()
+	key := "auth"
+	oldConfig, err := config.Get(key)
+	c.Assert(err, IsNil)
+	err = config.Unset(key)
+	c.Assert(err, IsNil)
+	defer config.Set(key, oldConfig)
 	loadConfig()
 	c.Assert(tokenExpire, Equals, defaultExpiration)
 }
 
 func (s *S) TestLoadConfigShouldPanicIfTheTokenExpireDaysIsNotInteger(c *C) {
-	oldValue := config.Configs["auth"].(map[interface{}]interface{})["token-expire-days"]
-	config.Configs["auth"].(map[interface{}]interface{})["token-expire-days"] = "abacaxi"
+	oldValue, err := config.Get("auth:token-expire-days")
+	c.Assert(err, IsNil)
+	config.Set("auth:token-expire-days", "abacaxi")
 	defer func() {
-		config.Configs["auth"].(map[interface{}]interface{})["token-expire-days"] = oldValue
+		config.Set("auth:token-expire-days", oldValue)
 		r := recover()
 		c.Assert(r, NotNil)
 	}()
@@ -256,11 +259,12 @@ func (s *S) TestLoadConfigShouldSetTheTokenKeyToTheValueInTheConfig(c *C) {
 }
 
 func (s *S) TestLoadConfigShouldSetTheTokenKeyToTheDefaultValueIfItsIsNotInTheConfig(c *C) {
-	oldConfig := config.Configs["auth"]
-	delete(config.Configs, "auth")
-	defer func() {
-		config.Configs["auth"] = oldConfig
-	}()
+	key := "auth"
+	oldConfig, err := config.Get(key)
+	c.Assert(err, IsNil)
+	err = config.Unset(key)
+	c.Assert(err, IsNil)
+	defer config.Set(key, oldConfig)
 	loadConfig()
 	c.Assert(tokenKey, Equals, defaultKey)
 }

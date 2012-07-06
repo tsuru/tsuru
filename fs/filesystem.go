@@ -1,3 +1,9 @@
+// Package fs provides types and methods for interacting with the filesystem,
+// as an abstraction layer.
+//
+// It provides an implementation that uses the operating system filesystem, and
+// an interface that should be implemented if you want to provide your own
+// filesystem.
 package fs
 
 import (
@@ -5,6 +11,7 @@ import (
 	"os"
 )
 
+// File represents a file in the filesystem.
 type File interface {
 	io.Closer
 	io.Reader
@@ -13,16 +20,42 @@ type File interface {
 	Stat() (os.FileInfo, error)
 }
 
+// Fs is the filesystem interface.
+//
+// Any simulated or real filesystem should implement this interface.
 type Fs interface {
+	// Create creates a file in the filesystem, returning the file and an
+	// error, if any happens.
 	Create(name string) (File, error)
+
+	// Mkdir creates a directory in the filesystem, return an error if any
+	// happens.
 	Mkdir(name string, perm os.FileMode) error
+
+	// MkdirAll creates a directory path and all parents that does not exist
+	// yet.
 	MkdirAll(path string, perm os.FileMode) error
+
+	// Open opens a file, returning it or an error, if any happens.
 	Open(name string) (File, error)
+
+	// Remove removes a file identified by name, returning an error, if any
+	// happens.
 	Remove(name string) error
+
+	// RemoveAll removes a directory path and all any children it contains. It
+	// does not fail if the path does not exist (return nil).
 	RemoveAll(path string) error
+
+	// Stat returns a FileInfo describing the named file, or an error, if any
+	// happens.
 	Stat(name string) (os.FileInfo, error)
 }
 
+// OsFs is a Fs implementation that uses functions provided by the os package.
+//
+// For details in any method, check the documentation of the os package
+// (http://golang.org/pkg/os/).
 type OsFs struct{}
 
 func (fs OsFs) Create(name string) (File, error) {
