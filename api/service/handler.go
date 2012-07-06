@@ -77,11 +77,15 @@ func CreateInstanceHandler(w http.ResponseWriter, r *http.Request, u *auth.User)
 	var sJson map[string]string
 	err = json.Unmarshal(b, &sJson)
 	if err != nil {
+		log.Print("Got a problem while unmarshalling request's json:")
+		log.Print(err.Error())
 		return &errors.Http{Code: http.StatusInternalServerError, Message: err.Error()}
 	}
 	var s Service
 	err = validateForInstanceCreation(&s, sJson, u)
 	if err != nil {
+		log.Print("Got error while validation:")
+		log.Print(err.Error())
 		return err
 	}
 	instance := ""
