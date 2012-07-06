@@ -34,7 +34,7 @@ func GetPassword(fd uintptr) string {
 
 	finish := make(chan bool)
 	// Restoring after reading the password
-	defer func(){
+	defer func() {
 		tcsetattr(fd, 0, &oldState)
 		finish <- true
 	}()
