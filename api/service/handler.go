@@ -106,7 +106,7 @@ func CreateInstanceHandler(w http.ResponseWriter, r *http.Request, u *auth.User)
 		Instance:    instance,
 		Teams:       teamNames,
 	}
-    go callServiceApi(s, si)
+	go callServiceApi(s, si)
 	si.Apps = append(si.Apps, sJson["app"])
 	return si.Create()
 }

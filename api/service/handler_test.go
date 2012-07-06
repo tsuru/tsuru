@@ -147,9 +147,9 @@ func (s *S) TestCreateInstanceHandlerVMOnNewInstanceWhenManifestSaysSo(c *C) {
 	var si ServiceInstance
 	err = db.Session.ServiceInstances().Find(q).One(&si)
 	c.Assert(err, IsNil)
-    si.Host = "192.168.0.110"
-    si.State = "running"
-    db.Session.ServiceInstances().Update(bson.M{"_id": si.Name}, si)
+	si.Host = "192.168.0.110"
+	si.State = "running"
+	db.Session.ServiceInstances().Update(bson.M{"_id": si.Name}, si)
 	instance := s.ec2Srv.Instance(si.Instance)
 	c.Assert(instance, Not(IsNil))
 }
@@ -166,11 +166,11 @@ func (suite *S) TestCreateInstanceHandlerSavesServiceInstanceInDb(c *C) {
 	err := CreateInstanceHandler(recorder, request, suite.user)
 	c.Assert(err, IsNil)
 	var si ServiceInstance
-    err = db.Session.ServiceInstances().Find(bson.M{"_id": "brainSQL", "service_name": "mysql"}).One(&si)
-    c.Assert(err, IsNil)
-    si.Host = "192.168.0.110"
-    si.State = "running"
-    db.Session.ServiceInstances().Update(bson.M{"_id": si.Name}, si)
+	err = db.Session.ServiceInstances().Find(bson.M{"_id": "brainSQL", "service_name": "mysql"}).One(&si)
+	c.Assert(err, IsNil)
+	si.Host = "192.168.0.110"
+	si.State = "running"
+	db.Session.ServiceInstances().Update(bson.M{"_id": si.Name}, si)
 	c.Assert(si.Name, Equals, "brainSQL")
 	c.Assert(si.ServiceName, Equals, "mysql")
 	c.Assert(si.Apps[0], Equals, "my_app")
@@ -188,10 +188,10 @@ func (s *S) TestCreateInstanceHandlerCallsTheServiceAPIAndSaveEnvironmentVariabl
 	c.Assert(err, IsNil)
 	var si ServiceInstance
 	db.Session.ServiceInstances().Find(bson.M{"_id": "brainSQL"}).One(&si)
-    si.Host = "192.168.0.110"
-    si.State = "running"
-    db.Session.ServiceInstances().Update(bson.M{"_id": si.Name}, si)
-    time.Sleep(2e9)
+	si.Host = "192.168.0.110"
+	si.State = "running"
+	db.Session.ServiceInstances().Update(bson.M{"_id": si.Name}, si)
+	time.Sleep(2e9)
 	db.Session.ServiceInstances().Find(bson.M{"_id": "brainSQL"}).One(&si)
 	c.Assert(si.Env, DeepEquals, map[string]string{"DATABASE_HOST": "localhost"})
 }
@@ -209,9 +209,9 @@ func (s *S) TestCreateInstanceHandlerSavesAllTeamsThatTheGivenUserIsMemberAndHas
 	var si ServiceInstance
 	err = db.Session.ServiceInstances().Find(bson.M{"_id": "brainSQL"}).One(&si)
 	c.Assert(err, IsNil)
-    si.Host = "192.168.0.110"
-    si.State = "running"
-    db.Session.ServiceInstances().Update(bson.M{"_id": si.Name}, si)
+	si.Host = "192.168.0.110"
+	si.State = "running"
+	db.Session.ServiceInstances().Update(bson.M{"_id": si.Name}, si)
 	c.Assert(si.Teams, DeepEquals, []string{s.team.Name})
 }
 
@@ -226,9 +226,9 @@ func (s *S) TestCreateInstanceHandlerDoesNotFailIfTheServiceDoesNotDeclareEndpoi
 	c.Assert(err, IsNil)
 	err = db.Session.ServiceInstances().Find(bson.M{"_id": "brainSQL"}).One(&si)
 	c.Assert(err, IsNil)
-    si.Host = "192.168.0.110"
-    si.State = "running"
-    db.Session.ServiceInstances().Update(bson.M{"_id": si.Name}, si)
+	si.Host = "192.168.0.110"
+	si.State = "running"
+	db.Session.ServiceInstances().Update(bson.M{"_id": si.Name}, si)
 }
 
 func (s *S) TestCreateInstanceHandlerReturnsErrorWhenUserCannotUseService(c *C) {
