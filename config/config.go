@@ -10,7 +10,7 @@ import (
 	"strings"
 )
 
-var Configs map[interface{}]interface{}
+var configs map[interface{}]interface{}
 
 // ReadConfigBytes receives a slice of bytes and builds the internal
 // configuration object.
@@ -18,7 +18,7 @@ var Configs map[interface{}]interface{}
 // If the given slice is not a valid yaml file, ReadConfigBytes returns a
 // non-nil error.
 func ReadConfigBytes(data []byte) error {
-	return goyaml.Unmarshal(data, &Configs)
+	return goyaml.Unmarshal(data, &configs)
 }
 
 // ReadConfigFile reads the content of a file and calls ReadConfigBytes to
@@ -48,7 +48,7 @@ func ReadConfigFile(filePath string) error {
 // "port" would return an error.
 func Get(key string) (interface{}, error) {
 	keys := strings.Split(key, ":")
-	conf, ok := Configs[keys[0]]
+	conf, ok := configs[keys[0]]
 	if !ok {
 		return nil, errors.New(fmt.Sprintf("key %s not found", key))
 	}
@@ -92,7 +92,7 @@ func Set(key string, value interface{}) {
 		}
 	}
 	for k, v := range last {
-		Configs[k] = v
+		configs[k] = v
 	}
 }
 
@@ -103,7 +103,7 @@ func Set(key string, value interface{}) {
 // from the in-memory configuration object.
 func Unset(key string) error {
 	var part string
-	m := Configs
+	m := configs
 	parts := strings.Split(key, ":")
 	for _, part = range parts {
 		if item, ok := m[part]; ok {

@@ -24,7 +24,7 @@ var expected = map[interface{}]interface{}{
 }
 
 func (s *S) TearDownTest(c *C) {
-	Configs = nil
+	configs = nil
 }
 
 func (s *S) TestConfig(c *C) {
@@ -39,14 +39,14 @@ xpto: ble
 `
 	err := ReadConfigBytes([]byte(conf))
 	c.Assert(err, IsNil)
-	c.Assert(Configs, DeepEquals, expected)
+	c.Assert(configs, DeepEquals, expected)
 }
 
 func (s *S) TestConfigFile(c *C) {
 	configFile := "testdata/config.yml"
 	err := ReadConfigFile(configFile)
 	c.Assert(err, IsNil)
-	c.Assert(Configs, DeepEquals, expected)
+	c.Assert(configs, DeepEquals, expected)
 }
 
 func (s *S) TestGetConfig(c *C) {
