@@ -75,3 +75,24 @@ func GetString(key string) (string, error) {
 	}
 	return "", errors.New(fmt.Sprintf("key %s has non-string value", key))
 }
+
+// Set redefines or defines a value for a key.
+//
+// It accepts keys in the same format that Get and GetString does.
+func Set(key string, value interface{}) {
+	parts := strings.Split(key, ":")
+	if len(parts) == 1 {
+		Configs[parts[0]] = value
+	} else {
+		final := map[interface{}]interface{}{
+			parts[len(parts)-1]: value,
+		}
+		last := final
+		for i := len(parts) - 2; i >= 1; i-- {
+			last = map[interface{}]interface{}{
+				parts[i]: last,
+			}
+		}
+		Configs[parts[0]] = last
+	}
+}

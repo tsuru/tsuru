@@ -106,3 +106,21 @@ func (s *S) TestGetStringShouldReturnErrorIfTheKeyDoesNotExist(c *C) {
 	c.Assert(err, NotNil)
 	c.Assert(err, ErrorMatches, "^key xpta not found$")
 }
+
+func (s *S) TestSet(c *C) {
+	err := ReadConfigFile("testdata/config.yml")
+	c.Assert(err, IsNil)
+	Set("xpto", "bla")
+	value, err := GetString("xpto")
+	c.Assert(err, IsNil)
+	c.Assert(value, Equals, "bla")
+}
+
+func (s *S) TestSetChildren(c *C) {
+	err := ReadConfigFile("testdata/config.yml")
+	c.Assert(err, IsNil)
+	Set("database:host", "database.com")
+	value, err := GetString("database:host")
+	c.Assert(err, IsNil)
+	c.Assert(value, Equals, "database.com")
+}
