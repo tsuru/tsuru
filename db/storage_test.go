@@ -110,7 +110,7 @@ func (s *S) TestMethodServicesShouldReturnServicesCollection(c *C) {
 
 func (s *S) TestMethodServiceInstancesShouldReturnServiceInstancesCollection(c *C) {
 	serviceApps := s.storage.ServiceInstances()
-	serviceAppsc := s.storage.getCollection("service_apps")
+	serviceAppsc := s.storage.getCollection("service_instances")
 	c.Assert(serviceApps, DeepEquals, serviceAppsc)
 }
 
