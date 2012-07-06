@@ -105,6 +105,76 @@ func (s *S) TestServiceListIsASubcommandOfService(c *C) {
 	c.Assert(list, FitsTypeOf, &ServiceList{})
 }
 
+func (s *S) TestServiceBind(c *C) {
+	var called bool
+	ctx := cmd.Context{
+		Cmds:   []string{},
+		Args:   []string{"my-mysql", "g1"},
+		Stdout: manager.Stdout,
+		Stderr: manager.Stderr,
+	}
+	trans := &conditionalTransport{
+		transport{
+			msg:    "",
+			status: http.StatusOK,
+		},
+		func(req *http.Request) bool {
+			called = true
+			return req.Method == "PUT" && req.URL.Path == "/services/instances/my-mysql/g1"
+		},
+	}
+	client := cmd.NewClient(&http.Client{Transport: trans})
+	err := (&ServiceBind{}).Run(&ctx, client)
+	c.Assert(err, IsNil)
+	c.Assert(called, Equals, true)
+	c.Assert(manager.Stdout.(*bytes.Buffer).String(), Equals, "Instance my-mysql successfully binded to the app g1.\n")
+}
+
+func (s *S) TestServiceBindWithRequestFailure(c *C) {
+	ctx := cmd.Context{
+		Cmds:   []string{},
+		Args:   []string{"my-mysql", "g1"},
+		Stdout: manager.Stdout,
+		Stderr: manager.Stderr,
+	}
+	trans := &transport{
+		msg:    "This user does not have access to this app.",
+		status: http.StatusForbidden,
+	}
+	client := cmd.NewClient(&http.Client{Transport: trans})
+	err := (&ServiceBind{}).Run(&ctx, client)
+	c.Assert(err, NotNil)
+	c.Assert(err.Error(), Equals, trans.msg)
+}
+
+func (s *S) TestServiceBindInfo(c *C) {
+	expected := &cmd.Info{
+		Name:    "bind",
+		Usage:   "service bind <instancename> <appname>",
+		Desc:    "bind a service instance to an app",
+		MinArgs: 2,
+	}
+	c.Assert((&ServiceBind{}).Info(), DeepEquals, expected)
+}
+
+func (s *S) TestServiceBindIsAnInfoer(c *C) {
+	var infoer cmd.Infoer
+	c.Assert(&ServiceBind{}, Implements, &infoer)
+}
+
+func (s *S) TestServiceBindIsACommand(c *C) {
+	var command cmd.Command
+	c.Assert(&ServiceBind{}, Implements, &command)
+}
+
+func (s *S) TestServiceBindIsASubcommandOfService(c *C) {
+	command := &Service{}
+	subc := command.Subcommands()
+	bind, ok := subc["bind"]
+	c.Assert(ok, Equals, true)
+	c.Assert(bind, FitsTypeOf, &ServiceBind{})
+}
+
 func (s *S) TestServiceAddShouldBeASubcommandOfService(c *C) {
 	command := &Service{}
 	subcmds := command.Subcommands()

@@ -57,14 +57,16 @@ func (c *TestSubCommand) Info() *Info {
 	}
 }
 
-type ErrorCommand struct{}
+type ErrorCommand struct {
+	msg string
+}
 
 func (c *ErrorCommand) Info() *Info {
 	return &Info{Name: "error"}
 }
 
 func (c *ErrorCommand) Run(context *Context, client Doer) error {
-	return errors.New("You are wrong")
+	return errors.New(c.msg)
 }
 
 func (s *S) TestRegister(c *C) {
@@ -74,9 +76,15 @@ func (s *S) TestRegister(c *C) {
 }
 
 func (s *S) TestManagerRunShouldWriteErrorsOnStderr(c *C) {
-	manager.Register(&ErrorCommand{})
+	manager.Register(&ErrorCommand{msg: "You are wrong\n"})
 	manager.Run([]string{"error"})
-	c.Assert(manager.Stderr.(*bytes.Buffer).String(), Equals, "You are wrong")
+	c.Assert(manager.Stderr.(*bytes.Buffer).String(), Equals, "You are wrong\n")
+}
+
+func (s *S) TestManagerRunShouldAppendNewLineOnErrorWhenItsNotPresent(c *C) {
+	manager.Register(&ErrorCommand{msg: "You are wrong"})
+	manager.Run([]string{"error"})
+	c.Assert(manager.Stderr.(*bytes.Buffer).String(), Equals, "You are wrong\n")
 }
 
 func (s *S) TestRun(c *C) {
