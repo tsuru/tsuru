@@ -42,7 +42,7 @@ func main() {
 		log.Panic(err.Error())
 	}
 	defer db.Session.Close()
-	_, err := ec2.Conn()
+	_, err = ec2.Conn()
 	if err != nil {
 		log.Print("Got error while connecting with ec2:")
 		log.Print(err.Error())

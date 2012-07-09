@@ -66,10 +66,10 @@ func (s *S) SetUpSuite(c *C) {
 	s.team = &auth.Team{Name: "Raul", Users: []auth.User{*s.user}}
 	err = db.Session.Teams().Insert(s.team)
 	c.Assert(err, IsNil)
-	_, err := ec2.Conn()
+	s.reconfEc2Srv(c)
+	_, err = ec2.Conn()
 	if err != nil {
-		log.Print("Got error while connecting with ec2:")
-		log.Print(err.Error())
+		c.Fail()
 	}
 }
 
