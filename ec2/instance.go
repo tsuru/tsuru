@@ -37,13 +37,13 @@ func loadData() {
 func getAuth() (*aws.Auth, error) {
 	auth := new(aws.Auth)
 	var err error
-	auth.AccessKey, err = config.GetString("aws:access-key")
+	auth.AccessKey = "d8b08deb299e4cef8e11c9bce1317792"
 	if err != nil {
 		msg := "Got error while reaading aws:access-key config options, have you set it?\nError is: " + err.Error()
 		log.Print(msg)
 		return nil, errors.New(msg)
 	}
-	auth.SecretKey, err = config.GetString("aws:secret-key")
+	auth.SecretKey = "8f6417f7b09c4265af784d22fbc51702"
 	if err != nil {
 		msg := "Got error while reaading aws:secret-key config options, have you set it?\nError is: " + err.Error()
 		log.Print(msg)
