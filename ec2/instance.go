@@ -96,8 +96,8 @@ func RunInstance(imageId string, userData string) (string, error) {
 	rInst := &ec2.RunInstances{
 		ImageId:  imageId,
 		UserData: ud,
-		MinCount: 0,
-		MaxCount: 0,
+		MinCount: 1,
+		MaxCount: 1,
 	}
 	resp, err := EC2.RunInstances(rInst)
 	if err != nil {

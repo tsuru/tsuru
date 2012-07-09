@@ -4,6 +4,8 @@ import (
 	"flag"
 	"github.com/timeredbull/tsuru/db"
 	"github.com/timeredbull/tsuru/log"
+	stdlog "log"
+	"log/syslog"
 	"time"
 )
 
@@ -13,7 +15,10 @@ func main() {
 		ec2Collector Ec2Collector
 		err          error
 	)
-
+	log.Target, err = syslog.NewLogger(syslog.LOG_INFO, stdlog.LstdFlags)
+	if err != nil {
+		panic(err)
+	}
 	dry := flag.Bool("dry", false, "dry-run: does not start the agent (for testing purposes)")
 	flag.Parse()
 	db.Session, err = db.Open("127.0.0.1:27017", "tsuru")
