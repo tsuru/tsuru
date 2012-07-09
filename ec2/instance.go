@@ -37,13 +37,13 @@ func loadData() {
 func getAuth() (*aws.Auth, error) {
 	auth := new(aws.Auth)
 	var err error
-	auth.AccessKey = "d8b08deb299e4cef8e11c9bce1317792"
+	auth.AccessKey, err = config.GetString("aws:access-key")
 	if err != nil {
 		msg := "Got error while reaading aws:access-key config options, have you set it?\nError is: " + err.Error()
 		log.Print(msg)
 		return nil, errors.New(msg)
 	}
-	auth.SecretKey = "8f6417f7b09c4265af784d22fbc51702"
+	auth.SecretKey, err = config.GetString("aws:secret-key")
 	if err != nil {
 		msg := "Got error while reaading aws:secret-key config options, have you set it?\nError is: " + err.Error()
 		log.Print(msg)
@@ -53,7 +53,7 @@ func getAuth() (*aws.Auth, error) {
 }
 
 func getRegion() (*aws.Region, error) {
-	endpnt := "cittamp03lx04.globoi.com:8773"
+	endpnt, err := config.GetString("aws:ec2-endpoint")
 	if err != nil {
 		msg := "Got error while reaading aws:ec2-endpoint config options, have you set it?\nError is: " + err.Error()
 		log.Print(msg)
