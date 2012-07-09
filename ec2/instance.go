@@ -20,7 +20,6 @@ var Region *aws.Region
 
 func init() {
 	getPubKey()
-    Conn()
 }
 
 func loadData() {

@@ -6,6 +6,7 @@ import (
 	"github.com/timeredbull/tsuru/api/auth"
 	"github.com/timeredbull/tsuru/config"
 	"github.com/timeredbull/tsuru/db"
+	"github.com/timeredbull/tsuru/ec2"
 	"io/ioutil"
 	"launchpad.net/goamz/ec2/ec2test"
 	. "launchpad.net/gocheck"
@@ -65,6 +66,11 @@ func (s *S) SetUpSuite(c *C) {
 	s.team = &auth.Team{Name: "Raul", Users: []auth.User{*s.user}}
 	err = db.Session.Teams().Insert(s.team)
 	c.Assert(err, IsNil)
+	_, err := ec2.Conn()
+	if err != nil {
+		log.Print("Got error while connecting with ec2:")
+		log.Print(err.Error())
+	}
 }
 
 func (s *S) TearDownSuite(c *C) {

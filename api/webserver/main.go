@@ -8,6 +8,7 @@ import (
 	"github.com/timeredbull/tsuru/api/service"
 	"github.com/timeredbull/tsuru/config"
 	"github.com/timeredbull/tsuru/db"
+	"github.com/timeredbull/tsuru/ec2"
 	"github.com/timeredbull/tsuru/log"
 	"github.com/timeredbull/tsuru/repository"
 	stdlog "log"
@@ -41,6 +42,11 @@ func main() {
 		log.Panic(err.Error())
 	}
 	defer db.Session.Close()
+	_, err := ec2.Conn()
+	if err != nil {
+		log.Print("Got error while connecting with ec2:")
+		log.Print(err.Error())
+	}
 
 	repository.RunAgent()
 	m := pat.New()
