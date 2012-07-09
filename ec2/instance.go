@@ -28,10 +28,12 @@ func loadData() {
 	if err != nil {
 		log.Print(err.Error())
 	}
+	log.Print("Found auth: " + Auth.SecretKey + "  " + Auth.AccessKey)
 	Region, err = getRegion()
 	if err != nil {
 		log.Print(err.Error())
 	}
+	log.Print("Found region: " + Region.EC2Endpoint)
 }
 
 func getAuth() (*aws.Auth, error) {
