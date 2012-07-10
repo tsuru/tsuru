@@ -9,6 +9,7 @@ import (
 	"launchpad.net/goamz/aws"
 	"launchpad.net/goamz/ec2"
 	"os"
+    "os/exec"
 	"os/user"
 	"path"
 )
@@ -112,4 +113,20 @@ func runInstance(imageId string, userData string) (string, error) {
 		return "", err
 	}
 	return resp.Instances[0].InstanceId, nil
+}
+
+// Run an instance using euca2ools command line
+// We have both options because of a problem with goamz ec2 generated signature
+// It is not working with nova, so we work arounding it with euca2ools
+func RunInstance(imageId, userData string) (*Instance, error) {
+    log.Print("Attempting to run instance with image "+imageId+"...")
+	userData = fmt.Sprintf(`echo %s >> /root/.ssh/authorized_keys\n%s`, pubKey, userData)
+    cmd := exec.Command("euca-run-instances", imageId, "--user-data", userData)
+    log.Print(fmt.Sprintf(`executing euca-run-instances %s --user-data="%s"`, imageId,userData))
+    _, err := cmd.CombinedOutput()
+    if err != nil {
+        return nil, err
+    }
+    //instance := parseOutput(out)
+    return &Instance{}, nil
 }
