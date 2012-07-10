@@ -13,6 +13,11 @@ import (
 	"path"
 )
 
+type Instance struct {
+	Id    string
+	State string
+}
+
 var EC2 *ec2.EC2
 var pubKey []byte
 var Auth *aws.Auth
@@ -91,7 +96,8 @@ func Conn() (*ec2.EC2, error) {
 	return EC2, nil
 }
 
-func RunInstance(imageId string, userData string) (string, error) {
+// Run an instance using the ec2 api
+func runInstance(imageId string, userData string) (string, error) {
 	ud := []byte(userData)
 	cmd := fmt.Sprintf("\necho \"%s\" >> /root/.ssh/authorized_keys", pubKey)
 	ud = append(ud, cmd...)
