@@ -9,9 +9,10 @@ import (
 	"launchpad.net/goamz/aws"
 	"launchpad.net/goamz/ec2"
 	"os"
-    "os/exec"
+	"os/exec"
 	"os/user"
 	"path"
+	"strings"
 )
 
 type Instance struct {
@@ -119,14 +120,31 @@ func runInstance(imageId string, userData string) (string, error) {
 // We have both options because of a problem with goamz ec2 generated signature
 // It is not working with nova, so we work arounding it with euca2ools
 func RunInstance(imageId, userData string) (*Instance, error) {
-    log.Print("Attempting to run instance with image "+imageId+"...")
-	userData = fmt.Sprintf(`echo %s >> /root/.ssh/authorized_keys\n%s`, pubKey, userData)
-    cmd := exec.Command("euca-run-instances", imageId, "--user-data", userData)
-    log.Print(fmt.Sprintf(`executing euca-run-instances %s --user-data="%s"`, imageId,userData))
-    _, err := cmd.CombinedOutput()
-    if err != nil {
-        return nil, err
-    }
-    //instance := parseOutput(out)
-    return &Instance{}, nil
+	log.Print("Attempting to run instance with image " + imageId + "...")
+	// should replace user data's new lines by a ;
+	userData = fmt.Sprintf(`echo %s >> /root/.ssh/authorized_keys;%s`, pubKey, userData)
+	cmd := exec.Command("euca-run-instances", imageId, "--user-data", userData)
+	log.Print(fmt.Sprintf(`executing euca-run-instances %s --user-data="%s"`, imageId, userData))
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		return nil, err
+	}
+	instance := parseOutput(out)
+	return instance, nil
+}
+
+func parseOutput(out []byte) *Instance {
+	//splitBySpace(string(out))
+	return &Instance{Id: "i-000000ea", State: "pending"}
+}
+
+func splitBySpace(s string) []string {
+	str := strings.Split(s, " ")
+	var filtered []string
+	for _, v := range str {
+		if !strings.Contains(v, " ") && v != "" {
+			filtered = append(filtered, v)
+		}
+	}
+	return filtered
 }
