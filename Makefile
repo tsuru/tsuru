@@ -47,15 +47,15 @@ bzr:
 get-test:
 	@/bin/echo -n "Installing test dependencies... "
 	@go list -f '{{range .TestImports}}{{.}}\
-		{{end}}' ./... | grep '^.*\..*/.*$$' | grep -v 'github.com/timeredbull/tsuru' | sort | uniq | xargs go get\
-		>/dev/null 2>&1
+		{{end}}' ./... | grep '^.*\..*/.*$$' | grep -v 'github.com/timeredbull/tsuru' | sort | uniq | sed -e 's/\\s//g' |\
+		sed -e 's/\\//g' | xargs go get >/dev/null 2>&1
 	@/bin/echo "ok"
 
 get-prod:
 	@/bin/echo -n "Installing production dependencies... "
 	@go list -f '{{range .Imports}}{{.}}\
-		{{end}}' ./... | grep '^.*\..*/.*$$' | grep -v 'github.com/timeredbull/tsuru' | sort | uniq | xargs go get\
-		>/dev/null 2>&1
+		{{end}}' ./... | grep '^.*\..*/.*$$' | grep -v 'github.com/timeredbull/tsuru' | sort | uniq | sed -e 's/\\s//g' |\
+		sed -e 's/\\//g' | xargs go get >/dev/null 2>&1
 	@/bin/echo "ok"
 
 test:
