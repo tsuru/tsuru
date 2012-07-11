@@ -80,20 +80,20 @@ func (s *ServiceList) Run(ctx *cmd.Context, client cmd.Doer) error {
 type ServiceAdd struct{}
 
 func (sa *ServiceAdd) Info() *cmd.Info {
-	usage := `service add appname serviceinstancename servicename
+	usage := `service add serviceinstancename servicename
     e.g.:
     $ service add tsuru tsuru_db mongodb`
 	return &cmd.Info{
 		Name:    "add",
 		Usage:   usage,
 		Desc:    "Create a service instance to one or more apps make use of.",
-		MinArgs: 3,
+		MinArgs: 2,
 	}
 }
 
 func (sa *ServiceAdd) Run(ctx *cmd.Context, client cmd.Doer) error {
-	appName, instName, srvName := ctx.Args[0], ctx.Args[1], ctx.Args[2]
-	fmtBody := fmt.Sprintf(`{"app": "%s", "name": "%s", "service_name": "%s"}`, appName, instName, srvName)
+	instName, srvName := ctx.Args[0], ctx.Args[1]
+	fmtBody := fmt.Sprintf(`{"name": "%s", "service_name": "%s"}`, instName, srvName)
 	b := bytes.NewBufferString(fmtBody)
 	url := cmd.GetUrl("/services/instances")
 	request, err := http.NewRequest("POST", url, b)
