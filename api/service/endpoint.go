@@ -16,6 +16,16 @@ type Client struct {
 	endpoint string
 }
 
+func (c *Client) buildErrorMessage(err error, resp *http.Response) (msg string) {
+	if err != nil {
+		msg = err.Error()
+	} else if resp != nil {
+		b, _ := ioutil.ReadAll(resp.Body)
+		msg = string(b)
+	}
+	return
+}
+
 func (c *Client) issueRequest(path, method string, params map[string][]string) (*http.Response, error) {
 	log.Print("Issuing request...")
 	v := url.Values(params)
@@ -58,7 +68,7 @@ func (c *Client) Create(instance *ServiceInstance) (envVars map[string]string, e
 	if resp, err = c.issueRequest("/resources/", "POST", params); err == nil && resp.StatusCode < 300 {
 		return c.jsonFromResponse(resp)
 	} else {
-		msg := "Failed to create the instance: " + instance.Name
+		msg := "Failed to create the instance " + instance.Name + ": " + c.buildErrorMessage(err, resp)
 		log.Print(msg)
 		err = errors.New(msg)
 	}
@@ -72,7 +82,7 @@ func (c *Client) Destroy(instance *ServiceInstance) (err error) {
 		"service_host": []string{instance.Host},
 	}
 	if resp, err = c.issueRequest("/resources/"+instance.Name+"/", "DELETE", params); err == nil && resp.StatusCode > 299 {
-		msg := "Failed to destroy the instance: " + instance.Name
+		msg := "Failed to destroy the instance " + instance.Name + ": " + c.buildErrorMessage(err, resp)
 		log.Print(msg)
 		err = errors.New(msg)
 	}
@@ -89,7 +99,7 @@ func (c *Client) Bind(instance *ServiceInstance, app *app.App) (envVars map[stri
 	if resp, err = c.issueRequest("/resources/"+instance.Name+"/", "POST", params); err == nil && resp.StatusCode < 300 {
 		return c.jsonFromResponse(resp)
 	} else {
-		msg := "Failed to bind instance " + instance.Name + " to the app " + app.Name + "."
+		msg := "Failed to bind instance " + instance.Name + " to the app " + app.Name + ": " + c.buildErrorMessage(err, resp)
 		log.Print(msg)
 		err = errors.New(msg)
 	}
@@ -104,7 +114,7 @@ func (c *Client) Unbind(instance *ServiceInstance, app *app.App) (err error) {
 	}
 	url := "/resources/" + instance.Name + "/hostname/" + app.Name + "/"
 	if resp, err = c.issueRequest(url, "DELETE", params); err == nil && resp.StatusCode > 299 {
-		msg := "Failed to unbind instance " + instance.Name + " from the app " + app.Name + "."
+		msg := "Failed to unbind instance " + instance.Name + " from the app " + app.Name + ": " + c.buildErrorMessage(err, resp)
 		log.Print(msg)
 		err = errors.New(msg)
 	}
