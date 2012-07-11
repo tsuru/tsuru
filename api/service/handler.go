@@ -194,7 +194,7 @@ func BindHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	if !auth.CheckUserAccess(instance.Teams, u) {
 		return &errors.Http{Code: http.StatusForbidden, Message: "This user does not have access to this instance"}
 	}
-	if instance.State != "CREATED" {
+	if instance.State != "running" {
 		return &errors.Http{Code: http.StatusPreconditionFailed, Message: "This service instance is not ready yet."}
 	}
 	appQuery := bson.M{"name": r.URL.Query().Get(":app")}
