@@ -70,7 +70,7 @@ func (s *S) TestEnvSetInfo(c *C) {
 }
 
 func (s *S) TestEnvSetRun(c *C) {
-	result := "variable(s) successfuly exported\n"
+	result := "variable(s) successfully exported\n"
 	context := cmd.Context{
 		Cmds:   []string{},
 		Args:   []string{"someapp", "DATABASE_HOST=somehost"},
@@ -84,7 +84,7 @@ func (s *S) TestEnvSetRun(c *C) {
 }
 
 func (s *S) TestEnvSetRunWithMultipleParams(c *C) {
-	result := "variable(s) successfuly exported\n"
+	result := "variable(s) successfully exported\n"
 	params := []string{"someapp", "DATABASE_HOST=somehost", "DATABASE_USER=user"}
 	context := cmd.Context{
 		Cmds:   []string{},
@@ -107,7 +107,7 @@ func (s *S) TestEnvUnsetInfo(c *C) {
 }
 
 func (s *S) TestEnvUnsetRun(c *C) {
-	result := "variable(s) successfuly unset\n"
+	result := "variable(s) successfully unset\n"
 	context := cmd.Context{
 		Cmds:   []string{},
 		Args:   []string{"someapp", "DATABASE_HOST"},

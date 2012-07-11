@@ -105,7 +105,7 @@ func (sa *ServiceAdd) Run(ctx *cmd.Context, client cmd.Doer) error {
 	if err != nil {
 		return err
 	}
-	io.WriteString(ctx.Stdout, "service successfuly added.\n")
+	io.WriteString(ctx.Stdout, "service successfully added.\n")
 	return nil
 }
 
