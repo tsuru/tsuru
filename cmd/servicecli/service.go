@@ -56,6 +56,6 @@ func (c *ServiceCreate) Run(context *cmd.Context, client cmd.Doer) error {
 	if err != nil {
 		return err
 	}
-	io.WriteString(context.Stdout, string(b))
+	io.WriteString(context.Stdout, string(b)+"\n")
 	return nil
 }
