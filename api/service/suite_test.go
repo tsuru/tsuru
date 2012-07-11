@@ -6,9 +6,7 @@ import (
 	"github.com/timeredbull/tsuru/api/auth"
 	"github.com/timeredbull/tsuru/config"
 	"github.com/timeredbull/tsuru/db"
-	"github.com/timeredbull/tsuru/ec2"
 	"io/ioutil"
-	"launchpad.net/goamz/ec2/ec2test"
 	. "launchpad.net/gocheck"
 	"testing"
 )
@@ -45,19 +43,18 @@ type S struct {
 	team            *auth.Team
 	user            *auth.User
 	tmpdir          string
-	ec2Srv          *ec2test.Server
+	tmpdir2         string
 }
 
 var _ = Suite(&S{})
 
 func (s *S) SetUpSuite(c *C) {
 	var err error
-	s.ec2Srv, err = ec2test.NewServer()
-	if err != nil {
-		c.Fatal(err)
-	}
 	s.setupConfig(c)
 	s.tmpdir, err = commandmocker.Add("juju", "")
+	c.Assert(err, IsNil)
+	s.tmpdir2, err = commandmocker.Add("euca-run-instances", "")
+	c.Assert(err, IsNil)
 	db.Session, err = db.Open("127.0.0.1:27017", "tsuru_service_test")
 	c.Assert(err, IsNil)
 	s.user = &auth.User{Email: "cidade@raul.com", Password: "123"}
@@ -66,8 +63,6 @@ func (s *S) SetUpSuite(c *C) {
 	s.team = &auth.Team{Name: "Raul", Users: []auth.User{*s.user}}
 	err = db.Session.Teams().Insert(s.team)
 	c.Assert(err, IsNil)
-	s.reconfEc2Srv(c)
-	_, err = ec2.Conn()
 	if err != nil {
 		c.Fail()
 	}
@@ -75,8 +70,8 @@ func (s *S) SetUpSuite(c *C) {
 
 func (s *S) TearDownSuite(c *C) {
 	defer commandmocker.Remove(s.tmpdir)
+	defer commandmocker.Remove(s.tmpdir2)
 	defer db.Session.Close()
-	s.ec2Srv.Quit()
 	db.Session.Apps().Database.DropDatabase()
 }
 
@@ -105,10 +100,4 @@ func (s *S) setupConfig(c *C) {
 	if err != nil {
 		c.Fatal(err)
 	}
-}
-
-func (s *S) reconfEc2Srv(c *C) {
-	config.Set("aws:ec2-endpoint", s.ec2Srv.URL())
-	config.Set("aws:secret-key", "blee")
-	config.Set("aws:access-key", "blaa")
 }
