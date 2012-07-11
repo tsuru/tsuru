@@ -32,7 +32,7 @@ func (s *S) TestServiceCreateInfo(c *C) {
 }
 
 func (s *S) TestServiceCreateRun(c *C) {
-	result := "service someservice successfuly created"
+	result := "service someservice successfully created"
 	args := []string{"testdata/manifest.yml"}
 	context := cmd.Context{
 		Cmds:   []string{},

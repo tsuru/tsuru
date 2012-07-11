@@ -198,7 +198,7 @@ func (s *S) TestServiceAddInfo(c *C) {
 }
 
 func (s *S) TestServiceAddRun(c *C) {
-	result := "service successfuly added.\n"
+	result := "service successfully added.\n"
 	args := []string{
 		"my_app_db",
 		"mysql",

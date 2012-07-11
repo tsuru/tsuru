@@ -62,7 +62,7 @@ func (c *EnvSet) Run(context *cmd.Context, client cmd.Doer) error {
 	if err != nil {
 		return err
 	}
-	io.WriteString(context.Stdout, "variable(s) successfuly exported\n")
+	io.WriteString(context.Stdout, "variable(s) successfully exported\n")
 	return nil
 }
 
@@ -81,7 +81,7 @@ func (c *EnvUnset) Run(context *cmd.Context, client cmd.Doer) error {
 	if err != nil {
 		return err
 	}
-	io.WriteString(context.Stdout, "variable(s) successfuly unset\n")
+	io.WriteString(context.Stdout, "variable(s) successfully unset\n")
 	return nil
 }
 
