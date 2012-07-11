@@ -27,6 +27,7 @@ var Region *aws.Region
 
 func init() {
 	getPubKey()
+	configureEc2Env()
 }
 
 func loadData() {
@@ -121,7 +122,6 @@ func runInstance(imageId string, userData string) (string, error) {
 // It is not working with nova, so we work arounding it with euca2ools
 func RunInstance(imageId, userData string) (*Instance, error) {
 	log.Print("Attempting to run instance with image " + imageId + "...")
-	// should replace user data's new lines by a ;
 	userData = fmt.Sprintf(`echo %s >> /root/.ssh/authorized_keys;%s`, pubKey, userData)
 	cmd := exec.Command("euca-run-instances", imageId, "--user-data", userData)
 	log.Print(fmt.Sprintf(`executing euca-run-instances %s --user-data="%s"`, imageId, userData))
@@ -157,4 +157,25 @@ func splitBySpace(s string) []string {
 		}
 	}
 	return filtered
+}
+
+func configureEc2Env() error {
+	auth, err := getAuth()
+	if err != nil {
+		return err
+	}
+	region, err := getRegion()
+	if err != nil {
+		return err
+	}
+	err = os.Setenv("EC2_SECRET_KEY", auth.SecretKey)
+	if err != nil {
+		return err
+	}
+	err = os.Setenv("EC2_ACCESS_KEY", auth.AccessKey)
+	if err != nil {
+		return err
+	}
+	err = os.Setenv("EC2_URL", region.EC2Endpoint)
+	return err
 }

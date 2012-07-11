@@ -4,11 +4,38 @@ import (
 	"bytes"
 	"fmt"
 	cMocker "github.com/timeredbull/commandmocker"
+	"github.com/timeredbull/tsuru/config"
 	"github.com/timeredbull/tsuru/log"
 	. "launchpad.net/gocheck"
 	stdlog "log"
+	"os"
 	"strings"
 )
+
+func (s *S) TestShouldExportEc2EnvVarsFromTsuruConf(c *C) {
+	oldsKey, err := config.GetString("aws:secret-key")
+	c.Assert(err, IsNil)
+	oldaKey, err := config.GetString("aws:access-key")
+	c.Assert(err, IsNil)
+	oldEndpnt, err := config.GetString("aws:ec2-endpoint")
+	c.Assert(err, IsNil)
+	defer func() {
+		config.Set("aws:secret-key", oldsKey)
+		config.Set("aws:access-key", oldaKey)
+		config.Set("aws:ec2-endpoint", oldEndpnt)
+	}()
+	config.Set("aws:secret-key", "super-ultra-power-secret")
+	config.Set("aws:access-key", "not-that-secret")
+	config.Set("aws:ec2-endpoint", "http://some-cool-endpoint.com/services/Cloud")
+	err = configureEc2Env()
+	c.Assert(err, IsNil)
+	sKey := os.Getenv("EC2_SECRET_KEY")
+	aKey := os.Getenv("EC2_ACCESS_KEY")
+	endpnt := os.Getenv("EC2_URL")
+	c.Assert(sKey, Equals, "super-ultra-power-secret")
+	c.Assert(aKey, Equals, "not-that-secret")
+	c.Assert(endpnt, Equals, "http://some-cool-endpoint.com/services/Cloud")
+}
 
 func (s *S) TestRunInstanceShouldCallEucaToolsRunCommand(c *C) {
 	out := "$*"
@@ -28,7 +55,7 @@ func (s *S) TestRunInstanceShouldCallEucaToolsRunCommand(c *C) {
 	c.Assert(fLog, Matches, expectedCmd)
 }
 
-func (s *S) TestParseEucaToolsReplyShouldReturnInstanceFilledWithInfo(c *C) {
+func (s *S) TestParseEucaToolsReplyShouldReturnInstanceFilledWithIdAndState(c *C) {
 	out := `RESERVATION     r-puei67hu      778bc1b2683540c5a61bb889a06e2022        default
 INSTANCE        i-000000ea      ami-00000007                    pending         0               m1.small        2012-07-10T18:32:22.000Z        unknown zone    aki-00000002    ari-00000003`
 	p, err := cMocker.Add("euca-run-instances", out)
