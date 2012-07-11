@@ -10,7 +10,7 @@ import (
 func (s *S) TestServiceInfo(c *C) {
 	expected := &cmd.Info{
 		Name:    "service",
-		Usage:   "service (list)",
+		Usage:   "service (add|list|bind)",
 		Desc:    "manage your services",
 		MinArgs: 1,
 	}
