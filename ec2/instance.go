@@ -134,11 +134,21 @@ func RunInstance(imageId, userData string) (*Instance, error) {
 }
 
 func parseOutput(out []byte) *Instance {
-	//splitBySpace(string(out))
-	return &Instance{Id: "i-000000ea", State: "pending"}
+	sout := splitBySpace(string(out))
+	inst := &Instance{}
+	for i, v := range sout {
+		if v == "INSTANCE" {
+			inst.Id = sout[i+1]
+			inst.State = sout[i+3]
+			break
+		}
+	}
+	return inst
 }
 
+// Filter euca2ools output by removing line breaks and spliting the result string in a slice
 func splitBySpace(s string) []string {
+	s = strings.Replace(s, "\n", " ", -1)
 	str := strings.Split(s, " ")
 	var filtered []string
 	for _, v := range str {

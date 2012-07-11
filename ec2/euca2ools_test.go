@@ -44,3 +44,9 @@ func (s *S) TestSplitBySpace(c *C) {
 	slc := splitBySpace(str)
 	c.Assert(slc, DeepEquals, []string{"FOOO", "BAR", "FOOBAR"})
 }
+
+func (s *S) TestSplitBySpaceWithLineBreak(c *C) {
+	str := "FOOO      BAR  FOOBAR \n BARFOO"
+	slc := splitBySpace(str)
+	c.Assert(slc, DeepEquals, []string{"FOOO", "BAR", "FOOBAR", "BARFOO"})
+}
