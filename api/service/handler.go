@@ -123,6 +123,9 @@ func CreateInstanceHandler(w http.ResponseWriter, r *http.Request, u *auth.User)
 
 func callServiceApi(s Service, si ServiceInstance) {
 	checkInstanceState := func() bool {
+		if when, ok := s.Bootstrap["when"]; !ok || when != OnNewInstance {
+			return true
+		}
 		db.Session.ServiceInstances().Find(bson.M{"_id": si.Name}).One(&si)
 		return si.Host != "" && si.State == "running"
 	}
@@ -135,6 +138,7 @@ func callServiceApi(s Service, si ServiceInstance) {
 					log.Print("Error while calling create action from service api.")
 					log.Print(err.Error())
 				}
+				si.State = "running"
 				db.Session.ServiceInstances().Update(bson.M{"_id": si.Name}, si)
 			}
 			break
