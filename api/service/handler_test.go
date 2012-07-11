@@ -179,7 +179,6 @@ func (suite *S) TestCreateInstanceHandlerSavesServiceInstanceInDb(c *C) {
 	db.Session.ServiceInstances().Update(bson.M{"_id": si.Name}, si)
 	c.Assert(si.Name, Equals, "brainSQL")
 	c.Assert(si.ServiceName, Equals, "mysql")
-	c.Assert(si.Apps[0], Equals, "my_app")
 }
 
 func (s *S) TestCreateInstanceHandlerCallsTheServiceAPIAndSaveEnvironmentVariablesInTheInstance(c *C) {
