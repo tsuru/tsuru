@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"github.com/timeredbull/commandmocker"
 	"github.com/timeredbull/tsuru/api/app"
 	"github.com/timeredbull/tsuru/api/auth"
 	"github.com/timeredbull/tsuru/api/unit"
@@ -139,8 +140,12 @@ func (s *S) TestCreateInstanceHandlerVMOnNewInstanceWhenManifestSaysSo(c *C) {
 	}
 	err := service.Create()
 	c.Assert(err, IsNil)
+	out := `RESERVATION     r-puei67hu      778bc1b2683540c5a61bb889a06e2022        default
+INSTANCE        i-000000ea      ami-00000007                    running         0               m1.small        2012-07-10T18:32:22.000Z        unknown zone    aki-00000002    ari-00000003`
+	p, err := commandmocker.Add("euca-run-instances", out)
+	c.Assert(err, IsNil)
+	defer commandmocker.Remove(p)
 	recorder, request := makeRequestToCreateInstanceHandler(c)
-	s.reconfEc2Srv(c)
 	err = CreateInstanceHandler(recorder, request, s.user)
 	c.Assert(err, IsNil)
 	q := bson.M{"_id": "brainSQL", "instances": bson.M{"$ne": ""}}
@@ -150,8 +155,9 @@ func (s *S) TestCreateInstanceHandlerVMOnNewInstanceWhenManifestSaysSo(c *C) {
 	si.Host = "192.168.0.110"
 	si.State = "running"
 	db.Session.ServiceInstances().Update(bson.M{"_id": si.Name}, si)
-	instance := s.ec2Srv.Instance(si.Instance)
-	c.Assert(instance, Not(IsNil))
+	err = db.Session.ServiceInstances().Find(q).One(&si)
+	c.Assert(err, IsNil)
+	c.Assert(si.Instance, Equals, "i-000000ea")
 }
 
 func (suite *S) TestCreateInstanceHandlerSavesServiceInstanceInDb(c *C) {

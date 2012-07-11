@@ -88,7 +88,7 @@ func CreateInstanceHandler(w http.ResponseWriter, r *http.Request, u *auth.User)
 		log.Print(err.Error())
 		return err
 	}
-	instance := ""
+	instance := &ec2.Instance{}
 	if s.Bootstrap["when"] == OnNewInstance {
 		instance, err = ec2.RunInstance(s.Bootstrap["ami"], "") //missing user data
 		if err != nil {
@@ -109,7 +109,7 @@ func CreateInstanceHandler(w http.ResponseWriter, r *http.Request, u *auth.User)
 	si := ServiceInstance{
 		Name:        sJson["name"],
 		ServiceName: sJson["service_name"],
-		Instance:    instance,
+		Instance:    instance.Id,
 		Teams:       teamNames,
 	}
 	go callServiceApi(s, si)
