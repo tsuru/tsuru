@@ -88,7 +88,7 @@ func CreateInstanceHandler(w http.ResponseWriter, r *http.Request, u *auth.User)
 		log.Print(err.Error())
 		return err
 	}
-	var instance *ec2.Instance
+	instance := &ec2.Instance{}
 	if s.Bootstrap["when"] == OnNewInstance {
 		instance, err = ec2.RunInstance(s.Bootstrap["ami"], "") //missing user data
 		if err != nil {
