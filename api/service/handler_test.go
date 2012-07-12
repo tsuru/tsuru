@@ -665,6 +665,53 @@ func (s *S) TestUnbindHandlerRemovesEnvironmentVariableFromApp(c *C) {
 	c.Assert(a.Env, DeepEquals, expected)
 }
 
+func (s *S) TestUnbindHandlerCallsTheUnbindMethodFromAPI(c *C) {
+	var called bool
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		called = r.Method == "DELETE" && r.URL.Path == "/resources/my-mysql/hostname/painkiller/"
+	}))
+	defer ts.Close()
+	service := Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}}
+	err := service.Create()
+	c.Assert(err, IsNil)
+	instance := ServiceInstance{
+		Name:        "my-mysql",
+		ServiceName: "mysql",
+		Teams:       []string{s.team.Name},
+		Apps:        []string{"painkiller"},
+		State:       "running",
+	}
+	err = instance.Create()
+	c.Assert(err, IsNil)
+	defer db.Session.ServiceInstances().Remove(bson.M{"_id": "my-mysql"})
+	a := app.App{
+		Name:  "painkiller",
+		Teams: []string{s.team.Name},
+	}
+	err = a.Create()
+	c.Assert(err, IsNil)
+	defer a.Destroy()
+	url := fmt.Sprintf("/services/instances/%s/%s?:instance=%s&:app=%s", instance.Name, a.Name, instance.Name, a.Name)
+	req, err := http.NewRequest("DELETE", url, nil)
+	c.Assert(err, IsNil)
+	recorder := httptest.NewRecorder()
+	err = UnbindHandler(recorder, req, s.user)
+	c.Assert(err, IsNil)
+	ch := make(chan bool)
+	go func() {
+		t := time.Tick(1)
+		for _ = <-t; !called; _ = <-t {
+		}
+		ch <- true
+	}()
+	select {
+	case <-ch:
+		c.SucceedNow()
+	case <-time.After(1e9):
+		c.Errorf("Failed to call API after 1 second.")
+	}
+}
+
 func (s *S) TestGrantAccessToTeam(c *C) {
 	t := &auth.Team{Name: "blaaaa"}
 	db.Session.Teams().Insert(t)
