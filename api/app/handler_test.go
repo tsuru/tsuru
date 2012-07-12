@@ -1023,6 +1023,37 @@ func (s *S) TestUnsetEnvHandlerRemovesAllGivenEnvironmentVariables(c *C) {
 	c.Assert(app.Env, DeepEquals, expected)
 }
 
+func (s *S) TestUnsetHandlerDoesNotRemovePrivateVariables(c *C) {
+	a := &App{
+		Name:  "let-it-be",
+		Teams: []string{s.team.Name},
+	}
+	a.Env = map[string]EnvVar{
+		"DATABASE_HOST":     EnvVar{Name: "DATABASE_HOST", Value: "localhost", Public: true},
+		"DATABASE_USER":     EnvVar{Name: "DATABASE_USER", Value: "root", Public: true},
+		"DATABASE_PASSWORD": EnvVar{Name: "DATABASE_PASSWORD", Value: "secret", Public: false},
+	}
+	err := a.Create()
+	c.Assert(err, IsNil)
+	url := fmt.Sprintf("/apps/%s/env/?:name=%s", a.Name, a.Name)
+	request, err := http.NewRequest("DELETE", url, strings.NewReader("DATABASE_HOST DATABASE_USER DATABASE_PASSWORD"))
+	c.Assert(err, IsNil)
+	recorder := httptest.NewRecorder()
+	err = UnsetEnv(recorder, request, s.user)
+	c.Assert(err, IsNil)
+	app := App{Name: "let-it-be"}
+	err = app.Get()
+	expected := map[string]EnvVar{
+		"DATABASE_PASSWORD": EnvVar{
+			Name:   "DATABASE_PASSWORD",
+			Value:  "secret",
+			Public: false,
+		},
+	}
+	c.Assert(err, IsNil)
+	c.Assert(app.Env, DeepEquals, expected)
+}
+
 func (s *S) TestUnsetEnvRespectsThePublicOnlyFlagKeepPrivateVariablesWhenItsTrue(c *C) {
 	a := &App{
 		Name: "myapp",
