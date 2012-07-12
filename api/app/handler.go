@@ -371,7 +371,7 @@ func SetEnv(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 		parts := strings.Split(v[1], "=")
 		envs[i] = EnvVar{Name: parts[0], Value: parts[1], Public: true}
 	}
-	return SetEnvsToApp(&app, envs, false)
+	return SetEnvsToApp(&app, envs, true)
 }
 
 func UnsetEnvFromApp(app *App, variableNames []string, publicOnly bool) error {
