@@ -41,3 +41,18 @@ func (si *ServiceInstance) AllApps() []app.App {
 	db.Session.Apps().Find(q).All(&apps)
 	return apps
 }
+
+func (si *ServiceInstance) RemoveApp(appName string) {
+	var i int
+	var name string
+	for i, name = range si.Apps {
+		if name == appName {
+			break
+		}
+	}
+	last := len(si.Apps)-1
+	if i != last {
+		si.Apps[i] = si.Apps[last]
+	}
+	si.Apps = si.Apps[:last]
+}

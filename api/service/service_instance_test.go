@@ -94,3 +94,14 @@ func (s *S) TestRetrieveAssociatedApp(c *C) {
 	c.Assert(a.Name, Equals, rApp.Name)
 	c.Assert(a.Framework, Equals, rApp.Framework)
 }
+
+func (s *S) TestRemoveApp(c *C) {
+	instance := ServiceInstance{
+		Name: "myinstance",
+		Apps: []string{"app1", "app2", "app3"},
+	}
+	instance.RemoveApp("app2")
+	c.Assert(instance.Apps, DeepEquals, []string{"app1", "app3"})
+	instance.RemoveApp("app4")
+	c.Assert(instance.Apps, DeepEquals, []string{"app1"})
+}
