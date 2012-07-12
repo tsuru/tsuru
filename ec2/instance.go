@@ -105,10 +105,11 @@ func RunInstance(imageId string, userData string) (*Instance, error) {
 	cmd := fmt.Sprintf("\necho \"%s\" >> /root/.ssh/authorized_keys", pubKey)
 	ud = append(ud, cmd...)
 	rInst := &ec2.RunInstances{
-		ImageId:  imageId,
-		UserData: ud,
-		MinCount: 1,
-		MaxCount: 1,
+		ImageId:      imageId,
+		UserData:     ud,
+		MinCount:     1,
+		MaxCount:     1,
+		InstanceType: "m1.small",
 	}
 	resp, err := EC2.RunInstances(rInst)
 	if err != nil {
