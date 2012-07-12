@@ -222,7 +222,7 @@ func BindHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 		return err
 	}
 	var envVars []app.EnvVar
-	var setEnv = func(a app.App, env map[string]string) {
+	var setEnv = func(env map[string]string) {
 		for k, v := range env {
 			envVars = append(envVars, app.EnvVar{
 				Name:         k,
@@ -232,11 +232,7 @@ func BindHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 			})
 		}
 	}
-	setEnv(a, instance.Env)
-	err = db.Session.Apps().Update(bson.M{"name": appName}, a)
-	if err != nil {
-		return err
-	}
+	setEnv(instance.Env)
 	var cli *Client
 	if cli, err = instance.Service().GetClient("production"); err == nil {
 		if len(a.Units) == 0 {
@@ -246,7 +242,7 @@ func BindHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 		if err != nil {
 			return err
 		}
-		setEnv(a, env)
+		setEnv(env)
 	}
 	return app.SetEnvsToApp(&a, envVars, false)
 }
