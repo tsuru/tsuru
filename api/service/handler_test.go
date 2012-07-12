@@ -332,7 +332,7 @@ func (s *S) TestBindHandlerAddsTheAppToTheInstance(c *C) {
 	err := service.Create()
 	c.Assert(err, IsNil)
 	defer db.Session.Services().Remove(bson.M{"_id": "mysql"})
-	instance := ServiceInstance{Name: "my-mysql", ServiceName: "mysql", Teams: []string{s.team.Name}, State: "CREATED"}
+	instance := ServiceInstance{Name: "my-mysql", ServiceName: "mysql", Teams: []string{s.team.Name}, State: "running"}
 	err = instance.Create()
 	c.Assert(err, IsNil)
 	defer db.Session.ServiceInstances().Remove(bson.M{"_id": "my-mysql"})
@@ -361,7 +361,7 @@ func (s *S) TestBindHandlerAddsAllEnvironmentVariableFromInstanceInTheAppAsPriva
 		ServiceName: "mysql",
 		Teams:       []string{s.team.Name},
 		Env:         map[string]string{"DATABASE_NAME": "mymysql", "DATABASE_HOST": "localhost"},
-		State:       "CREATED",
+		State:       "running",
 	}
 	err = instance.Create()
 	c.Assert(err, IsNil)
@@ -409,7 +409,7 @@ func (s *S) TestBindHandlerCallTheServiceAPIAndSetsEnvironmentVariablesReturnedI
 		ServiceName: "mysql",
 		Teams:       []string{s.team.Name},
 		Env:         map[string]string{"DATABASE_NAME": "mymysql", "DATABASE_HOST": "localhost"},
-		State:       "CREATED",
+		State:       "running",
 	}
 	err = instance.Create()
 	c.Assert(err, IsNil)
@@ -477,7 +477,7 @@ func (s *S) TestBindHandlerReturns404IfTheInstanceDoesNotExist(c *C) {
 }
 
 func (s *S) TestBindHandlerReturns403IfTheUserDoesNotHaveAccessToTheInstance(c *C) {
-	instance := ServiceInstance{Name: "my-mysql", ServiceName: "mysql", State: "CREATED"}
+	instance := ServiceInstance{Name: "my-mysql", ServiceName: "mysql", State: "running"}
 	err := instance.Create()
 	c.Assert(err, IsNil)
 	defer db.Session.ServiceInstances().Remove(bson.M{"_id": "my-mysql"})
@@ -519,7 +519,7 @@ func (s *S) TestBindHandlerReturns412IfTheInstanceIsNotCreatedYet(c *C) {
 }
 
 func (s *S) TestBindHandlerReturns404IfTheAppDoesNotExist(c *C) {
-	instance := ServiceInstance{Name: "my-mysql", ServiceName: "mysql", Teams: []string{s.team.Name}, State: "CREATED"}
+	instance := ServiceInstance{Name: "my-mysql", ServiceName: "mysql", Teams: []string{s.team.Name}, State: "running"}
 	err := instance.Create()
 	c.Assert(err, IsNil)
 	defer db.Session.ServiceInstances().Remove(bson.M{"_id": "my-mysql"})
@@ -536,7 +536,7 @@ func (s *S) TestBindHandlerReturns404IfTheAppDoesNotExist(c *C) {
 }
 
 func (s *S) TestBindHandlerReturns403IfTheUserDoesNotHaveAccessToTheApp(c *C) {
-	instance := ServiceInstance{Name: "my-mysql", ServiceName: "mysql", Teams: []string{s.team.Name}, State: "CREATED"}
+	instance := ServiceInstance{Name: "my-mysql", ServiceName: "mysql", Teams: []string{s.team.Name}, State: "running"}
 	err := instance.Create()
 	c.Assert(err, IsNil)
 	defer db.Session.ServiceInstances().Remove(bson.M{"_id": "my-mysql"})
@@ -565,7 +565,7 @@ func (s *S) TestBindHandlerReturns412IfTheAppDoesNotHaveAnUnitAndServiceHasEndpo
 	err := service.Create()
 	c.Assert(err, IsNil)
 	defer db.Session.Services().Remove(bson.M{"_id": "mysql"})
-	instance := ServiceInstance{Name: "my-mysql", ServiceName: "mysql", Teams: []string{s.team.Name}, State: "CREATED"}
+	instance := ServiceInstance{Name: "my-mysql", ServiceName: "mysql", Teams: []string{s.team.Name}, State: "running"}
 	err = instance.Create()
 	c.Assert(err, IsNil)
 	defer db.Session.ServiceInstances().Remove(bson.M{"_id": "my-mysql"})

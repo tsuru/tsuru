@@ -1,6 +1,7 @@
 package service
 
 import (
+	"errors"
 	"github.com/timeredbull/tsuru/api/app"
 	"github.com/timeredbull/tsuru/api/unit"
 	"io/ioutil"
@@ -8,10 +9,12 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"strings"
 )
 
 func failHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusInternalServerError)
+	w.Write([]byte("Server failed to do its job."))
 }
 
 type TestHandler struct {
@@ -67,7 +70,7 @@ func (s *S) TestCreateShouldReturnErrorIfTheRequestFail(c *C) {
 	client := &Client{endpoint: ts.URL}
 	_, err := client.Create(&instance)
 	c.Assert(err, NotNil)
-	c.Assert(err, ErrorMatches, "^Failed to create the instance: "+instance.Name+"$")
+	c.Assert(err, ErrorMatches, "^Failed to create the instance "+instance.Name+": Server failed to do its job.$")
 }
 
 func (s *S) TestDestroyShouldSendADELETERequestToTheResourceURLWithGetParameters(c *C) {
@@ -89,7 +92,7 @@ func (s *S) TestDestroyShouldReturnErrorIfTheRequestFails(c *C) {
 	client := &Client{endpoint: ts.URL}
 	err := client.Destroy(&instance)
 	c.Assert(err, NotNil)
-	c.Assert(err, ErrorMatches, "^Failed to destroy the instance: "+instance.Name+"$")
+	c.Assert(err, ErrorMatches, "^Failed to destroy the instance "+instance.Name+": Server failed to do its job.$")
 }
 
 func (s *S) TestBindShouldSendAPOSTToTheResourceURL(c *C) {
@@ -154,7 +157,7 @@ func (s *S) TestBindShouldreturnErrorIfTheRequestFail(c *C) {
 	client := &Client{endpoint: ts.URL}
 	_, err := client.Bind(&instance, &a)
 	c.Assert(err, NotNil)
-	c.Assert(err, ErrorMatches, "^Failed to bind instance her-redis to the app her-app.$")
+	c.Assert(err, ErrorMatches, "^Failed to bind instance her-redis to the app her-app: Server failed to do its job.$")
 }
 
 func (s *S) TestUnbindSendADELETERequestToTheResourceURL(c *C) {
@@ -192,5 +195,31 @@ func (s *S) TestUnbindReturnsErrorIfTheRequestFails(c *C) {
 	client := &Client{endpoint: ts.URL}
 	err := client.Unbind(&instance, &a)
 	c.Assert(err, NotNil)
-	c.Assert(err, ErrorMatches, "^Failed to unbind instance heaven-can-wait from the app arch-enemy.")
+	c.Assert(err, ErrorMatches, "^Failed to unbind instance heaven-can-wait from the app arch-enemy: Server failed to do its job.$")
+}
+
+func (s *S) TestBuildErrorMessageWithNilResponse(c *C) {
+	cli := Client{}
+	err := errors.New("epic fail")
+	c.Assert(cli.buildErrorMessage(err, nil), Equals, "epic fail")
+}
+
+func (s *S) TestBuildErrorMessageWithNilErrorAndNilResponse(c *C) {
+	cli := Client{}
+	c.Assert(cli.buildErrorMessage(nil, nil), Equals, "")
+}
+
+func (s *S) TestBuildErrorMessageWithNonNilResponseAndNilError(c *C) {
+	cli := Client{}
+	body := strings.NewReader("something went wrong")
+	resp := &http.Response{Body: ioutil.NopCloser(body)}
+	c.Assert(cli.buildErrorMessage(nil, resp), Equals, "something went wrong")
+}
+
+func (s *S) TestBuildErrorMessageWithNonNilResponseAndNonNilError(c *C) {
+	cli := Client{}
+	err := errors.New("epic fail")
+	body := strings.NewReader("something went wrong")
+	resp := &http.Response{Body: ioutil.NopCloser(body)}
+	c.Assert(cli.buildErrorMessage(err, resp), Equals, "epic fail")
 }
