@@ -100,8 +100,20 @@ func (s *S) TestRemoveApp(c *C) {
 		Name: "myinstance",
 		Apps: []string{"app1", "app2", "app3"},
 	}
-	instance.RemoveApp("app2")
+	err := instance.RemoveApp("app2")
+	c.Assert(err, IsNil)
 	c.Assert(instance.Apps, DeepEquals, []string{"app1", "app3"})
-	instance.RemoveApp("app4")
+	err = instance.RemoveApp("app3")
+	c.Assert(err, IsNil)
 	c.Assert(instance.Apps, DeepEquals, []string{"app1"})
+}
+
+func (s *S) TestRemoveAppReturnsErrorWhenTheAppIsNotBindedToTheInstance(c *C) {
+	instance := ServiceInstance{
+		Name: "myinstance",
+		Apps: []string{"app1", "app2", "app3"},
+	}
+	err := instance.RemoveApp("app4")
+	c.Assert(err, NotNil)
+	c.Assert(err, ErrorMatches, "^This app is not binded to this service instance.$")
 }

@@ -712,6 +712,103 @@ func (s *S) TestUnbindHandlerCallsTheUnbindMethodFromAPI(c *C) {
 	}
 }
 
+func (s *S) TestUnbindHandlerReturns404IfTheInstanceDoesNotExist(c *C) {
+	a := app.App{Name: "serviceApp", Framework: "django", Teams: []string{s.team.Name}}
+	err := a.Create()
+	c.Assert(err, IsNil)
+	defer a.Destroy()
+	url := fmt.Sprintf("/services/instances/unknown/%s?:instance=unknown&:app=%s", a.Name, a.Name)
+	request, err := http.NewRequest("PUT", url, nil)
+	c.Assert(err, IsNil)
+	recorder := httptest.NewRecorder()
+	err = UnbindHandler(recorder, request, s.user)
+	c.Assert(err, NotNil)
+	e, ok := err.(*errors.Http)
+	c.Assert(ok, Equals, true)
+	c.Assert(e.Code, Equals, http.StatusNotFound)
+	c.Assert(e, ErrorMatches, "^Instance not found$")
+}
+
+func (s *S) TestUnbindHandlerReturns403IfTheUserDoesNotHaveAccessToTheInstance(c *C) {
+	instance := ServiceInstance{Name: "my-mysql", ServiceName: "mysql", State: "running"}
+	err := instance.Create()
+	c.Assert(err, IsNil)
+	defer db.Session.ServiceInstances().Remove(bson.M{"_id": "my-mysql"})
+	a := app.App{Name: "serviceApp", Framework: "django", Teams: []string{s.team.Name}}
+	err = a.Create()
+	c.Assert(err, IsNil)
+	defer a.Destroy()
+	url := fmt.Sprintf("/services/instances/%s/%s?:instance=%s&:app=%s", instance.Name, a.Name, instance.Name, a.Name)
+	request, err := http.NewRequest("PUT", url, nil)
+	c.Assert(err, IsNil)
+	recorder := httptest.NewRecorder()
+	err = UnbindHandler(recorder, request, s.user)
+	c.Assert(err, NotNil)
+	e, ok := err.(*errors.Http)
+	c.Assert(ok, Equals, true)
+	c.Assert(e.Code, Equals, http.StatusForbidden)
+	c.Assert(e, ErrorMatches, "^This user does not have access to this instance$")
+}
+
+func (s *S) TestUnbindHandlerReturns404IfTheAppDoesNotExist(c *C) {
+	instance := ServiceInstance{Name: "my-mysql", ServiceName: "mysql", Teams: []string{s.team.Name}, State: "running"}
+	err := instance.Create()
+	c.Assert(err, IsNil)
+	defer db.Session.ServiceInstances().Remove(bson.M{"_id": "my-mysql"})
+	url := fmt.Sprintf("/services/instances/%s/unknown?:instance=%s&app=unknown", instance.Name, instance.Name)
+	request, err := http.NewRequest("PUT", url, nil)
+	c.Assert(err, IsNil)
+	recorder := httptest.NewRecorder()
+	err = UnbindHandler(recorder, request, s.user)
+	c.Assert(err, NotNil)
+	e, ok := err.(*errors.Http)
+	c.Assert(ok, Equals, true)
+	c.Assert(e.Code, Equals, http.StatusNotFound)
+	c.Assert(e, ErrorMatches, "^App not found$")
+}
+
+func (s *S) TestUnbindHandlerReturns403IfTheUserDoesNotHaveAccessToTheApp(c *C) {
+	instance := ServiceInstance{Name: "my-mysql", ServiceName: "mysql", Teams: []string{s.team.Name}, State: "running"}
+	err := instance.Create()
+	c.Assert(err, IsNil)
+	defer db.Session.ServiceInstances().Remove(bson.M{"_id": "my-mysql"})
+	a := app.App{Name: "serviceApp", Framework: "django"}
+	err = a.Create()
+	c.Assert(err, IsNil)
+	defer a.Destroy()
+	url := fmt.Sprintf("/services/instances/%s/%s?:instance=%s&:app=%s", instance.Name, a.Name, instance.Name, a.Name)
+	request, err := http.NewRequest("PUT", url, nil)
+	c.Assert(err, IsNil)
+	recorder := httptest.NewRecorder()
+	err = UnbindHandler(recorder, request, s.user)
+	c.Assert(err, NotNil)
+	e, ok := err.(*errors.Http)
+	c.Assert(ok, Equals, true)
+	c.Assert(e.Code, Equals, http.StatusForbidden)
+	c.Assert(e, ErrorMatches, "^This user does not have access to this app$")
+}
+
+func (s *S) TestUnbindHandlerReturns412IfTheAppIsNotBindedToTheInstance(c *C) {
+	instance := ServiceInstance{Name: "my-mysql", ServiceName: "mysql", Teams: []string{s.team.Name}, State: "running"}
+	err := instance.Create()
+	c.Assert(err, IsNil)
+	defer db.Session.ServiceInstances().Remove(bson.M{"_id": "my-mysql"})
+	a := app.App{Name: "serviceApp", Framework: "django", Teams: []string{s.team.Name}}
+	err = a.Create()
+	c.Assert(err, IsNil)
+	defer a.Destroy()
+	url := fmt.Sprintf("/services/instances/%s/%s?:instance=%s&:app=%s", instance.Name, a.Name, instance.Name, a.Name)
+	request, err := http.NewRequest("PUT", url, nil)
+	c.Assert(err, IsNil)
+	recorder := httptest.NewRecorder()
+	err = UnbindHandler(recorder, request, s.user)
+	c.Assert(err, NotNil)
+	e, ok := err.(*errors.Http)
+	c.Assert(ok, Equals, true)
+	c.Assert(e.Code, Equals, http.StatusPreconditionFailed)
+	c.Assert(e, ErrorMatches, "^This app is not binded to this service instance.$")
+}
+
 func (s *S) TestGrantAccessToTeam(c *C) {
 	t := &auth.Team{Name: "blaaaa"}
 	db.Session.Teams().Insert(t)

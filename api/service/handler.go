@@ -253,7 +253,10 @@ func UnbindHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	if err != nil {
 		return err
 	}
-	instance.RemoveApp(a.Name)
+	err = instance.RemoveApp(a.Name)
+	if err != nil {
+		return &errors.Http{Code: http.StatusPreconditionFailed, Message: err.Error()}
+	}
 	err = db.Session.ServiceInstances().Update(bson.M{"_id": instanceName}, instance)
 	if err != nil {
 		return err

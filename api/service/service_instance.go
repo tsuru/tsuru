@@ -1,6 +1,7 @@
 package service
 
 import (
+	"errors"
 	"github.com/timeredbull/tsuru/api/app"
 	"github.com/timeredbull/tsuru/db"
 	"labix.org/v2/mgo/bson"
@@ -42,17 +43,21 @@ func (si *ServiceInstance) AllApps() []app.App {
 	return apps
 }
 
-func (si *ServiceInstance) RemoveApp(appName string) {
-	var i int
-	var name string
-	for i, name = range si.Apps {
+func (si *ServiceInstance) RemoveApp(appName string) error {
+	index := -1
+	for i, name := range si.Apps {
 		if name == appName {
+			index = i
 			break
 		}
 	}
+	if index < 0 {
+		return errors.New("This app is not binded to this service instance.")
+	}
 	last := len(si.Apps) - 1
-	if i != last {
-		si.Apps[i] = si.Apps[last]
+	if index != last {
+		si.Apps[index] = si.Apps[last]
 	}
 	si.Apps = si.Apps[:last]
+	return nil
 }
