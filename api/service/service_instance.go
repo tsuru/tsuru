@@ -50,7 +50,7 @@ func (si *ServiceInstance) RemoveApp(appName string) {
 			break
 		}
 	}
-	last := len(si.Apps)-1
+	last := len(si.Apps) - 1
 	if i != last {
 		si.Apps[i] = si.Apps[last]
 	}
