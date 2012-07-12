@@ -184,30 +184,40 @@ func DeleteHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	return nil
 }
 
-func BindHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
-	instanceQuery := bson.M{"_id": r.URL.Query().Get(":instance")}
-	var instance ServiceInstance
-	err := db.Session.ServiceInstances().Find(instanceQuery).One(&instance)
+func serviceInstanceAndAppOrError(instanceName, appName string, u *auth.User) (instance ServiceInstance, a app.App, err error) {
+	err = db.Session.ServiceInstances().Find(bson.M{"_id": instanceName}).One(&instance)
 	if err != nil {
-		return &errors.Http{Code: http.StatusNotFound, Message: "Instance not found"}
+		err = &errors.Http{Code: http.StatusNotFound, Message: "Instance not found"}
+		return
 	}
 	if !auth.CheckUserAccess(instance.Teams, u) {
-		return &errors.Http{Code: http.StatusForbidden, Message: "This user does not have access to this instance"}
+		err = &errors.Http{Code: http.StatusForbidden, Message: "This user does not have access to this instance"}
+		return
 	}
 	if instance.State != "running" {
-		return &errors.Http{Code: http.StatusPreconditionFailed, Message: "This service instance is not ready yet."}
+		err = &errors.Http{Code: http.StatusPreconditionFailed, Message: "This service instance is not ready yet."}
+		return
 	}
-	appQuery := bson.M{"name": r.URL.Query().Get(":app")}
-	var a app.App
-	err = db.Session.Apps().Find(appQuery).One(&a)
+	err = db.Session.Apps().Find(bson.M{"name": appName}).One(&a)
 	if err != nil {
-		return &errors.Http{Code: http.StatusNotFound, Message: "App not found"}
+		err = &errors.Http{Code: http.StatusNotFound, Message: "App not found"}
+		return
 	}
 	if !auth.CheckUserAccess(a.Teams, u) {
-		return &errors.Http{Code: http.StatusForbidden, Message: "This user does not have access to this app"}
+		err = &errors.Http{Code: http.StatusForbidden, Message: "This user does not have access to this app"}
+		return
+	}
+	return
+}
+
+func BindHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
+	instanceName, appName := r.URL.Query().Get(":instance"), r.URL.Query().Get(":app")
+	instance, a, err := serviceInstanceAndAppOrError(instanceName, appName, u)
+	if err != nil {
+		return err
 	}
 	instance.Apps = append(instance.Apps, a.Name)
-	err = db.Session.ServiceInstances().Update(instanceQuery, instance)
+	err = db.Session.ServiceInstances().Update(bson.M{"_id": instanceName}, instance)
 	if err != nil {
 		return err
 	}
@@ -223,7 +233,7 @@ func BindHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 		}
 	}
 	setEnv(a, instance.Env)
-	err = db.Session.Apps().Update(appQuery, a)
+	err = db.Session.Apps().Update(bson.M{"name": appName}, a)
 	if err != nil {
 		return err
 	}
@@ -241,40 +251,23 @@ func BindHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	return app.SetEnvsToApp(&a, envVars, false)
 }
 
-// func UnbindHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
-// 	var b bindJson
-// 	defer r.Body.Close()
-// 	body, err := ioutil.ReadAll(r.Body)
-// 	if err != nil {
-// 		return err
-// 	}
-// 	err = json.Unmarshal(body, &b)
-// 	if err != nil {
-// 		return err
-// 	}
-// 	s := Service{Name: b.Service}
-// 	err = s.Get()
-// 	if err != nil {
-// 		return &errors.Http{Code: http.StatusNotFound, Message: "Service not found"}
-// 	}
-// 	if !s.CheckUserAccess(u) {
-// 		return &errors.Http{Code: http.StatusForbidden, Message: "This user does not have access to this service"}
-// 	}
-// 	a := app.App{Name: b.App}
-// 	err = a.Get()
-// 	if err != nil {
-// 		return &errors.Http{Code: http.StatusNotFound, Message: "App not found"}
-// 	}
-// 	if !a.CheckUserAccess(u) {
-// 		return &errors.Http{Code: http.StatusForbidden, Message: "This user does not have access to this app"}
-// 	}
-// 	err = s.Unbind(&a)
-// 	if err != nil {
-// 		return err
-// 	}
-// 	fmt.Fprint(w, "success")
-// 	return nil
-// }
+func UnbindHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
+	instanceName, appName := r.URL.Query().Get(":instance"), r.URL.Query().Get(":app")
+	instance, a, err := serviceInstanceAndAppOrError(instanceName, appName, u)
+	if err != nil {
+		return err
+	}
+	instance.RemoveApp(a.Name)
+	err = db.Session.ServiceInstances().Update(bson.M{"_id": instanceName}, instance)
+	if err != nil {
+		return err
+	}
+	var envVars []string
+	for k, _ := range a.InstanceEnv(instance.Name) {
+		envVars = append(envVars, k)
+	}
+	return app.UnsetEnvFromApp(&a, envVars, false)
+}
 
 func getServiceAndTeamOrError(serviceName string, teamName string, u *auth.User) (*Service, *auth.Team, error) {
 	service := &Service{Name: serviceName}
