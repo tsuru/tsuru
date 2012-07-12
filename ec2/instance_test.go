@@ -20,9 +20,9 @@ func (s *S) TestShouldInstanciateRegionWithConfigValues(c *C) {
 
 func (s *S) TestShouldRunAnInstance(c *C) {
 	s.reconfServer(c)
-	instId, err := runInstance("ami-00000001", "")
+	inst, err := RunInstance("ami-00000001", "")
 	c.Assert(err, IsNil)
-	i := s.srv.Instance(instId)
+	i := s.srv.Instance(inst.Id)
 	c.Assert(i, Not(IsNil))
 }
 
@@ -35,9 +35,9 @@ func (s *S) TestCreateEC2Conn(c *C) {
 func (s *S) TestAddsUserPublicKeyInUserData(c *C) {
 	s.reconfServer(c)
 	s.reconfKey(c)
-	instId, err := runInstance("ami-00000001", "")
+	inst, err := RunInstance("ami-00000001", "")
 	c.Assert(err, IsNil)
-	i := s.srv.Instance(instId)
+	i := s.srv.Instance(inst.Id)
 	c.Assert(i, Not(IsNil))
 	ud := "\necho \"ssh-rsa BBBIA8ZnaC1yc2EAAAABIwAAAQEAs8nQiUnSLFHy8Mx5179FmO/n/HpbGnPtuUx20/S75AszlFSZaFxwYwlvY3P5lNvTiWzGL0JMgj2NGxFPzs4gh9IkRRUnzsNNj2z4cOzyE/6uflivlEsNjYq2lF4LeicZkQ12Ybrg1aCZVTeH38YZZJQQPxLEiXHUwhwi7uvRBiriypl13dc9wVlVhEUOEkyhRjrRh3ONG0euf0+E5YRHIoP7CGZlSZ21hgSyxXjLRmhP3vq62+ql8wGWp4LS2MN47eKt5iUFgE1fLU6rR+VBZWM+zYMx7nz7mIbGdxfYdI6hImStvXov9kOEgbVjkud0m06w2VQ26z85Rlg5ewqdFw== user@host\" >> /root/.ssh/authorized_keys"
 	c.Assert(string(i.UserData), Equals, ud)
@@ -46,9 +46,9 @@ func (s *S) TestAddsUserPublicKeyInUserData(c *C) {
 func (s *S) TestAppendUserPublicKeyWithExistingUserData(c *C) {
 	s.reconfServer(c)
 	s.reconfKey(c)
-	instId, err := runInstance("ami-00000001", "echo something")
+	inst, err := RunInstance("ami-00000001", "echo something")
 	c.Assert(err, IsNil)
-	i := s.srv.Instance(instId)
+	i := s.srv.Instance(inst.Id)
 	c.Assert(i, Not(IsNil))
 	ud := `echo something
 echo "ssh-rsa BBBIA8ZnaC1yc2EAAAABIwAAAQEAs8nQiUnSLFHy8Mx5179FmO/n/HpbGnPtuUx20/S75AszlFSZaFxwYwlvY3P5lNvTiWzGL0JMgj2NGxFPzs4gh9IkRRUnzsNNj2z4cOzyE/6uflivlEsNjYq2lF4LeicZkQ12Ybrg1aCZVTeH38YZZJQQPxLEiXHUwhwi7uvRBiriypl13dc9wVlVhEUOEkyhRjrRh3ONG0euf0+E5YRHIoP7CGZlSZ21hgSyxXjLRmhP3vq62+ql8wGWp4LS2MN47eKt5iUFgE1fLU6rR+VBZWM+zYMx7nz7mIbGdxfYdI6hImStvXov9kOEgbVjkud0m06w2VQ26z85Rlg5ewqdFw== user@host" >> /root/.ssh/authorized_keys`
