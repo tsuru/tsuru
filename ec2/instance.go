@@ -100,7 +100,7 @@ func Conn() (*ec2.EC2, error) {
 }
 
 // Run an instance using the ec2 api
-func RunInstance(imageId string, userData string) (string, error) {
+func RunInstance(imageId string, userData string) (*Instance, error) {
 	ud := []byte(userData)
 	cmd := fmt.Sprintf("\necho \"%s\" >> /root/.ssh/authorized_keys", pubKey)
 	ud = append(ud, cmd...)
@@ -112,9 +112,13 @@ func RunInstance(imageId string, userData string) (string, error) {
 	}
 	resp, err := EC2.RunInstances(rInst)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
-	return resp.Instances[0].InstanceId, nil
+	instance := &Instance{
+		Id:    resp.Instances[0].InstanceId,
+		State: resp.Instances[0].State.Name,
+	}
+	return instance, nil
 }
 
 // Run an instance using euca2ools command line

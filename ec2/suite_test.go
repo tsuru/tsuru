@@ -11,8 +11,7 @@ import (
 )
 
 type S struct {
-	srv  *ec2test.Server
-	conn *ec2.EC2
+	srv *ec2test.Server
 }
 
 var _ = Suite(&S{})
