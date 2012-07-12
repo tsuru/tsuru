@@ -1000,6 +1000,63 @@ func (s *S) TestUnsetEnvHandlerRemovesAllGivenEnvironmentVariables(c *C) {
 	c.Assert(app.Env, DeepEquals, expected)
 }
 
+func (s *S) TestUnsetEnvRespectsThePublicOnlyFlagKeepPrivateVariablesWhenItsTrue(c *C) {
+	a := &App{
+		Name: "myapp",
+		Env: map[string]EnvVar{
+			"DATABASE_HOST": EnvVar{
+				Name:   "DATABASE_HOST",
+				Value:  "localhost",
+				Public: false,
+			},
+			"DATABASE_PASSWORD": EnvVar{
+				Name:   "DATABASE_PASSWORD",
+				Value:  "123",
+				Public: true,
+			},
+		},
+	}
+	err := a.Create()
+	c.Assert(err, IsNil)
+	err = UnsetEnvFromApp(a, []string{"DATABASE_HOST", "DATABASE_PASSWORD"}, true)
+	c.Assert(err, IsNil)
+	err = a.Get()
+	c.Assert(err, IsNil)
+	expected := map[string]EnvVar{
+		"DATABASE_HOST": EnvVar{
+			Name:   "DATABASE_HOST",
+			Value:  "localhost",
+			Public: false,
+		},
+	}
+	c.Assert(a.Env, DeepEquals, expected)
+}
+
+func (s *S) TestUnsetEnvRespectsThePublicOnlyFlagUnsettingAllVariablesWhenItsFalse(c *C) {
+	a := &App{
+		Name: "myapp",
+		Env: map[string]EnvVar{
+			"DATABASE_HOST": EnvVar{
+				Name:   "DATABASE_HOST",
+				Value:  "localhost",
+				Public: false,
+			},
+			"DATABASE_PASSWORD": EnvVar{
+				Name:   "DATABASE_PASSWORD",
+				Value:  "123",
+				Public: true,
+			},
+		},
+	}
+	err := a.Create()
+	c.Assert(err, IsNil)
+	err = UnsetEnvFromApp(a, []string{"DATABASE_HOST", "DATABASE_PASSWORD"}, false)
+	c.Assert(err, IsNil)
+	err = a.Get()
+	c.Assert(err, IsNil)
+	c.Assert(a.Env, DeepEquals, map[string]EnvVar{})
+}
+
 func (s *S) TestUnsetEnvHandlerReturnsInternalErrorIfReadAllFails(c *C) {
 	b := s.getTestData("bodyToBeClosed.txt")
 	request, err := http.NewRequest("POST", "/apps/unkown/env/?:name=unknown", b)

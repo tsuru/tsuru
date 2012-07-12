@@ -374,6 +374,29 @@ func SetEnv(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	return SetEnvsToApp(&app, envs, false)
 }
 
+func UnsetEnvFromApp(app *App, variableNames []string, publicOnly bool) error {
+	if len(variableNames) > 0 {
+		for _, name := range variableNames {
+			var unset bool
+			e, err := app.GetEnv(name)
+			if !publicOnly || (err == nil && e.Public) {
+				unset = true
+			}
+			if unset {
+				delete(app.Env, name)
+			}
+		}
+		if err := db.Session.Apps().Update(bson.M{"name": app.Name}, app); err != nil {
+			return err
+		}
+		mess := Message{
+			app: app,
+		}
+		env <- mess
+	}
+	return nil
+}
+
 func UnsetEnv(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	msg := "You must provide the environment variables"
 	if r.Body == nil {
@@ -391,21 +414,7 @@ func UnsetEnv(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	if err != nil {
 		return err
 	}
-	e := map[string]string{}
-	variables := strings.Fields(string(body))
-	for _, variable := range variables {
-		delete(app.Env, variable)
-		app.Log(fmt.Sprintf("unsetting env %s", variable))
-		e[variable] = ""
-	}
-	if err = db.Session.Apps().Update(bson.M{"name": app.Name}, app); err != nil {
-		return err
-	}
-	mess := Message{
-		app: &app,
-	}
-	env <- mess
-	return nil
+	return UnsetEnvFromApp(&app, strings.Fields(string(body)), true)
 }
 
 func AppLog(w http.ResponseWriter, r *http.Request, u *auth.User) error {
