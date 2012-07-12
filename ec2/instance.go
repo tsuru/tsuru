@@ -100,7 +100,7 @@ func Conn() (*ec2.EC2, error) {
 }
 
 // Run an instance using the ec2 api
-func runInstance(imageId string, userData string) (string, error) {
+func RunInstance(imageId string, userData string) (string, error) {
 	ud := []byte(userData)
 	cmd := fmt.Sprintf("\necho \"%s\" >> /root/.ssh/authorized_keys", pubKey)
 	ud = append(ud, cmd...)
@@ -120,7 +120,7 @@ func runInstance(imageId string, userData string) (string, error) {
 // Run an instance using euca2ools command line
 // We have both options because of a problem with goamz ec2 generated signature
 // It is not working with nova, so we work arounding it with euca2ools
-func RunInstance(imageId, userData string) (*Instance, error) {
+func runInstance(imageId, userData string) (*Instance, error) {
 	log.Print("Attempting to run instance with image " + imageId + "...")
 	userData = fmt.Sprintf(`echo %s >> /root/.ssh/authorized_keys;%s`, pubKey, userData)
 	cmd := exec.Command("euca-run-instances", imageId, "--user-data", userData)

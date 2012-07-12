@@ -20,7 +20,7 @@ func (s *S) TestShouldInstanciateRegionWithConfigValues(c *C) {
 
 func (s *S) TestShouldRunAnInstance(c *C) {
 	s.reconfServer(c)
-	instId, err := runInstance("ami-00000001", "")
+	instId, err := RunInstance("ami-00000001", "")
 	c.Assert(err, IsNil)
 	i := s.srv.Instance(instId)
 	c.Assert(i, Not(IsNil))
@@ -35,7 +35,7 @@ func (s *S) TestCreateEC2Conn(c *C) {
 func (s *S) TestAddsUserPublicKeyInUserData(c *C) {
 	s.reconfServer(c)
 	s.reconfKey(c)
-	instId, err := runInstance("ami-00000001", "")
+	instId, err := RunInstance("ami-00000001", "")
 	c.Assert(err, IsNil)
 	i := s.srv.Instance(instId)
 	c.Assert(i, Not(IsNil))
@@ -46,7 +46,7 @@ func (s *S) TestAddsUserPublicKeyInUserData(c *C) {
 func (s *S) TestAppendUserPublicKeyWithExistingUserData(c *C) {
 	s.reconfServer(c)
 	s.reconfKey(c)
-	instId, err := runInstance("ami-00000001", "echo something")
+	instId, err := RunInstance("ami-00000001", "echo something")
 	c.Assert(err, IsNil)
 	i := s.srv.Instance(instId)
 	c.Assert(i, Not(IsNil))
