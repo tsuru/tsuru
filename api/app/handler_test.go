@@ -893,8 +893,8 @@ func (s *S) TestSetEnvHandlerShouldSupportValuesWithDot(c *C) {
 func (s *S) TestSetEnvHandlerShouldNotChangeValueOfPrivateVariables(c *C) {
 	original := map[string]EnvVar{
 		"DATABASE_HOST": EnvVar{
-			Name: "DATABASE_HOST",
-			Value: "privatehost.com",
+			Name:   "DATABASE_HOST",
+			Value:  "privatehost.com",
 			Public: false,
 		},
 	}
