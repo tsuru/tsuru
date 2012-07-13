@@ -263,10 +263,7 @@ func UnbindHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	}
 	go func(i ServiceInstance, a app.App) {
 		if cli, err := i.Service().GetClient("production"); err == nil {
-			err = cli.Unbind(&i, &a)
-			if err != nil {
-				panic(err)
-			}
+			cli.Unbind(&i, &a)
 		}
 	}(instance, a)
 	var envVars []string
