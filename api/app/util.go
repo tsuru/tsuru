@@ -2,6 +2,7 @@ package app
 
 import (
 	"bytes"
+	"github.com/timeredbull/tsuru/api/unit"
 	"regexp"
 )
 
@@ -38,4 +39,17 @@ func filterOutput(output []byte, filterFunc func([]byte) bool) []byte {
 		}
 	}
 	return bytes.Join(result, []byte{'\n'})
+}
+
+var createRunFileCommand = `cat > /home/application/run-command <<END
+#!/bin/bash
+[-f /home/application/apprc ] && source /home/application/apprc
+[-d /home/application/current] && cd /home/application/current
+eval $*
+END
+`
+
+func createRunFileIfNeed(unit unit.Unit) {
+	cmd := "[-f /home/application/run-command] || " + createRunFileCommand + "; chmod +x /home/application/run-command"
+	unit.Command(cmd)
 }
