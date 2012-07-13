@@ -149,6 +149,32 @@ func (s *S) TestAppList(c *C) {
 	}
 }
 
+// Issue #52.
+func (s *S) TestAppListShouldListAllAppsOfAllTeamsThatTheUserIsAMember(c *C) {
+	u := auth.User{Email: "passing-by@angra.com"}
+	team := auth.Team{Name: "angra", Users: []auth.User{*s.user, u}}
+	err := db.Session.Teams().Insert(team)
+	c.Assert(err, IsNil)
+	defer db.Session.Teams().Remove(bson.M{"name": team.Name})
+	app1 := App{Name: "app1", Teams: []string{s.team.Name, team.Name}}
+	err = app1.Create()
+	c.Assert(err, IsNil)
+	defer app1.Destroy()
+	request, err := http.NewRequest("GET", "/apps/", nil)
+	c.Assert(err, IsNil)
+	request.Header.Set("Content-Type", "application/json")
+	recorder := httptest.NewRecorder()
+	err = AppList(recorder, request, &u)
+	c.Assert(err, IsNil)
+	c.Assert(recorder.Code, Equals, http.StatusOK)
+	body, err := ioutil.ReadAll(recorder.Body)
+	c.Assert(err, IsNil)
+	var apps []App
+	err = json.Unmarshal(body, &apps)
+	c.Assert(err, IsNil)
+	c.Assert(apps[0].Name, Equals, app1.Name)
+}
+
 func (s *S) TestListShouldReturnStatusNoContentWhenAppListIsNil(c *C) {
 	request, err := http.NewRequest("GET", "/apps/", nil)
 	c.Assert(err, IsNil)

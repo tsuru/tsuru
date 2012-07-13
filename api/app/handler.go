@@ -105,7 +105,7 @@ func AppList(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 		return err
 	}
 	var apps []App
-	err = db.Session.Apps().Find(bson.M{"teams": teams}).All(&apps)
+	err = db.Session.Apps().Find(bson.M{"teams": bson.M{"$in": teams}}).All(&apps)
 	if err != nil {
 		return err
 	}
