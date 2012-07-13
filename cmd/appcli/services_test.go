@@ -253,9 +253,12 @@ func (s *S) TestServiceAddShouldBeASubcommandOfService(c *C) {
 }
 
 func (s *S) TestServiceAddInfo(c *C) {
-	usage := `service add serviceinstancename servicename
-    e.g.:
-    $ service add tsuru tsuru_db mongodb`
+	usage := `service add <servicename> <serviceinstancename>
+e.g.:
+
+    $ service add mongodb tsuru_mongodb
+
+Will add a new instance of the "mongodb" service, named "tsuru_mongodb".`
 	expected := &cmd.Info{
 		Name:    "add",
 		Usage:   usage,
