@@ -668,7 +668,7 @@ func (s *S) TestUnbindHandlerRemovesEnvironmentVariableFromApp(c *C) {
 func (s *S) TestUnbindHandlerCallsTheUnbindMethodFromAPI(c *C) {
 	var called bool
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		called = r.Method == "DELETE" && r.URL.Path == "/resources/my-mysql/hostname/painkiller/"
+		called = r.Method == "DELETE" && r.URL.Path == "/resources/my-mysql/hostname/127.0.0.1/"
 	}))
 	defer ts.Close()
 	service := Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}}
@@ -687,6 +687,7 @@ func (s *S) TestUnbindHandlerCallsTheUnbindMethodFromAPI(c *C) {
 	a := app.App{
 		Name:  "painkiller",
 		Teams: []string{s.team.Name},
+		Units: []unit.Unit{unit.Unit{Ip: "127.0.0.1"}},
 	}
 	err = a.Create()
 	c.Assert(err, IsNil)
