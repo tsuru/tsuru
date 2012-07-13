@@ -216,6 +216,11 @@ func BindHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	if err != nil {
 		return err
 	}
+	for _, name := range instance.Apps {
+		if name == a.Name {
+			return &errors.Http{Code: http.StatusConflict, Message: "This app is already binded to this service instance."}
+		}
+	}
 	instance.Apps = append(instance.Apps, a.Name)
 	err = db.Session.ServiceInstances().Update(bson.M{"_id": instanceName}, instance)
 	if err != nil {

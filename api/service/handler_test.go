@@ -585,6 +585,37 @@ func (s *S) TestBindHandlerReturns412IfTheAppDoesNotHaveAnUnitAndServiceHasEndpo
 	c.Assert(e.Message, Equals, "This app does not have an IP yet.")
 }
 
+func (s *S) TestBindHandlerReturns409IfTheAppIsAlreadyBindedToTheService(c *C) {
+	service := Service{Name: "mysql"}
+	err := service.Create()
+	c.Assert(err, IsNil)
+	defer db.Session.Services().Remove(bson.M{"_id": "mysql"})
+	instance := ServiceInstance{
+		Name:        "my-mysql",
+		ServiceName: "mysql",
+		Teams:       []string{s.team.Name},
+		Apps:        []string{"painkiller"},
+		State:       "running",
+	}
+	err = instance.Create()
+	c.Assert(err, IsNil)
+	defer db.Session.ServiceInstances().Remove(bson.M{"_id": "my-mysql"})
+	a := app.App{Name: "painkiller", Teams: []string{s.team.Name}}
+	err = a.Create()
+	c.Assert(err, IsNil)
+	defer a.Destroy()
+	url := fmt.Sprintf("/services/instances/%s/%s?:instance=%s&:app=%s", instance.Name, a.Name, instance.Name, a.Name)
+	req, err := http.NewRequest("PUT", url, nil)
+	c.Assert(err, IsNil)
+	recorder := httptest.NewRecorder()
+	err = BindHandler(recorder, req, s.user)
+	c.Assert(err, NotNil)
+	e, ok := err.(*errors.Http)
+	c.Assert(ok, Equals, true)
+	c.Assert(e.Code, Equals, http.StatusConflict)
+	c.Assert(e, ErrorMatches, "^This app is already binded to this service instance.$")
+}
+
 func (s *S) TestUnbindHandlerRemovesAppFromServiceInstance(c *C) {
 	service := Service{Name: "mysql"}
 	err := service.Create()
