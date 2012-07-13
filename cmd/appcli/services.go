@@ -17,7 +17,7 @@ type Service struct{}
 func (s *Service) Info() *cmd.Info {
 	return &cmd.Info{
 		Name:    "service",
-		Usage:   "service (add|list|bind)",
+		Usage:   "service (add|list|bind|unbind)",
 		Desc:    "manage your services",
 		MinArgs: 1,
 	}
@@ -25,9 +25,10 @@ func (s *Service) Info() *cmd.Info {
 
 func (s *Service) Subcommands() map[string]interface{} {
 	return map[string]interface{}{
-		"list": &ServiceList{},
-		"add":  &ServiceAdd{},
-		"bind": &ServiceBind{},
+		"list":   &ServiceList{},
+		"add":    &ServiceAdd{},
+		"bind":   &ServiceBind{},
+		"unbind": &ServiceUnbind{},
 	}
 }
 
@@ -138,6 +139,39 @@ func (sb *ServiceBind) Info() *cmd.Info {
 		Name:    "bind",
 		Usage:   "service bind <instancename> <appname>",
 		Desc:    "bind a service instance to an app",
+		MinArgs: 2,
+	}
+}
+
+type ServiceUnbind struct{}
+
+func (su *ServiceUnbind) Run(ctx *cmd.Context, client cmd.Doer) error {
+	instanceName, appName := ctx.Args[0], ctx.Args[1]
+	url := cmd.GetUrl("/services/instances/" + instanceName + "/" + appName)
+	request, err := http.NewRequest("DELETE", url, nil)
+	if err != nil {
+		return err
+	}
+	_, err = client.Do(request)
+	if err != nil {
+		return err
+	}
+	msg := fmt.Sprintf("Instance %s successfully unbinded from the app %s.\n", instanceName, appName)
+	n, err := io.WriteString(ctx.Stdout, msg)
+	if err != nil {
+		return err
+	}
+	if n != len(msg) {
+		return errors.New("Failed to write to standard output.\n")
+	}
+	return nil
+}
+
+func (su *ServiceUnbind) Info() *cmd.Info {
+	return &cmd.Info{
+		Name:    "unbind",
+		Usage:   "service unbind <instancename> <appname>",
+		Desc:    "unbind a service instance from an app",
 		MinArgs: 2,
 	}
 }

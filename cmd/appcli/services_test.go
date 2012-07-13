@@ -10,7 +10,7 @@ import (
 func (s *S) TestServiceInfo(c *C) {
 	expected := &cmd.Info{
 		Name:    "service",
-		Usage:   "service (add|list|bind)",
+		Usage:   "service (add|list|bind|unbind)",
 		Desc:    "manage your services",
 		MinArgs: 1,
 	}
@@ -173,6 +173,75 @@ func (s *S) TestServiceBindIsASubcommandOfService(c *C) {
 	bind, ok := subc["bind"]
 	c.Assert(ok, Equals, true)
 	c.Assert(bind, FitsTypeOf, &ServiceBind{})
+}
+
+func (s *S) TestServiceUnbind(c *C) {
+	var called bool
+	ctx := cmd.Context{
+		Cmds:   []string{},
+		Args:   []string{"hand", "pocket"},
+		Stdout: manager.Stdout,
+		Stderr: manager.Stderr,
+	}
+	trans := &conditionalTransport{
+		transport{
+			msg:    "",
+			status: http.StatusOK,
+		},
+		func(req *http.Request) bool {
+			called = true
+			return req.Method == "DELETE" && req.URL.Path == "/services/instances/hand/pocket"
+		},
+	}
+	client := cmd.NewClient(&http.Client{Transport: trans})
+	err := (&ServiceUnbind{}).Run(&ctx, client)
+	c.Assert(err, IsNil)
+	c.Assert(called, Equals, true)
+	c.Assert(manager.Stdout.(*bytes.Buffer).String(), Equals, "Instance hand successfully unbinded from the app pocket.\n")
+}
+
+func (s *S) TestServiceUnbindWithRequestFailure(c *C) {
+	ctx := cmd.Context{
+		Cmds:   []string{},
+		Args:   []string{"hand", "pocket"},
+		Stdout: manager.Stdout,
+		Stderr: manager.Stderr,
+	}
+	trans := &transport{
+		msg:    "This app is not binded to this service.",
+		status: http.StatusPreconditionFailed,
+	}
+	client := cmd.NewClient(&http.Client{Transport: trans})
+	err := (&ServiceUnbind{}).Run(&ctx, client)
+	c.Assert(err, NotNil)
+	c.Assert(err.Error(), Equals, trans.msg)
+}
+
+func (s *S) TestServiceUnbindInfo(c *C) {
+	expected := &cmd.Info{
+		Name:    "unbind",
+		Usage:   "service unbind <instancename> <appname>",
+		Desc:    "unbind a service instance from an app",
+		MinArgs: 2,
+	}
+	c.Assert((&ServiceUnbind{}).Info(), DeepEquals, expected)
+}
+
+func (s *S) TestServiceUnbindIsAnInfoer(c *C) {
+	var infoer cmd.Infoer
+	c.Assert(&ServiceUnbind{}, Implements, &infoer)
+}
+
+func (s *S) TestServiceUnbindIsAComand(c *C) {
+	var command cmd.Command
+	c.Assert(&ServiceUnbind{}, Implements, &command)
+}
+
+func (s *S) TestServiceUnbindIsASubcommandOfService(c *C) {
+	subc := (&Service{}).Subcommands()
+	unbind, ok := subc["unbind"]
+	c.Assert(ok, Equals, true)
+	c.Assert(unbind, FitsTypeOf, &ServiceUnbind{})
 }
 
 func (s *S) TestServiceAddShouldBeASubcommandOfService(c *C) {
