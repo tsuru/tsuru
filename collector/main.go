@@ -49,6 +49,8 @@ func main() {
 	}
 	configFile := flag.String("config", "/etc/tsuru/tsuru.conf", "tsuru config file")
 	dry := flag.Bool("dry", false, "dry-run: does not start the agent (for testing purposes)")
+	juju := flag.Bool("juju", true, "run juju collector")
+	ec2 := flag.Bool("ec2", true, "run ec2 collector")
 	flag.Parse()
 	err = config.ReadConfigFile(*configFile)
 	if err != nil {
@@ -69,7 +71,11 @@ func main() {
 	defer db.Session.Close()
 
 	if !*dry {
-		go ec2Collect()
-		jujuCollect()
+		if *ec2 {
+			go ec2Collect()
+		}
+		if *juju {
+			jujuCollect()
+		}
 	}
 }
