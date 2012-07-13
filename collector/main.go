@@ -8,16 +8,41 @@ import (
 	"github.com/timeredbull/tsuru/log"
 	stdlog "log"
 	"log/syslog"
-	"sync"
 	"time"
 )
 
+func ec2Collect() {
+	var ec2Collector Ec2Collector
+	ticker := time.Tick(time.Minute)
+	_, err := ec2.Conn()
+	if err != nil {
+		log.Panicf("Got error while connecting with ec2: %s", err.Error())
+	}
+	for _ = range ticker {
+		instances, err := ec2Collector.Collect()
+		if err != nil {
+			log.Printf("Error while collecting ec2 instances: %s.\nWill try again soon...", err.Error())
+		} else {
+			err = ec2Collector.Update(instances)
+			if err != nil {
+				log.Print("Error while updating database with collected data. Will try again soon...")
+			}
+		}
+	}
+}
+
+func jujuCollect() {
+	var collector Collector
+	ticker := time.Tick(time.Minute)
+	for _ = range ticker {
+		data, _ := collector.Collect()
+		output := collector.Parse(data)
+		collector.Update(output)
+	}
+}
+
 func main() {
-	var (
-		collector    Collector
-		ec2Collector Ec2Collector
-		err          error
-	)
+	var err error
 	log.Target, err = syslog.NewLogger(syslog.LOG_INFO, stdlog.LstdFlags)
 	if err != nil {
 		panic(err)
@@ -44,34 +69,7 @@ func main() {
 	defer db.Session.Close()
 
 	if !*dry {
-		_, err = ec2.Conn()
-		if err != nil {
-			log.Print("Got error while connecting with ec2:")
-			log.Print(err.Error())
-		}
-		c := time.Tick(time.Minute)
-		var wg sync.WaitGroup
-		for _ = range c {
-			wg.Add(2)
-			go func() {
-				data, _ := collector.Collect()
-				output := collector.Parse(data)
-				collector.Update(output)
-				wg.Done()
-			}()
-			go func() {
-				instances, err := ec2Collector.Collect()
-				if err != nil {
-					log.Printf("Error while collecting ec2 instances: %s.\nWill try again soon...", err.Error())
-				} else {
-					err = ec2Collector.Update(instances)
-					if err != nil {
-						log.Print("Error while updating database with collected data. Will try again soon...")
-					}
-				}
-				wg.Done()
-			}()
-			wg.Wait()
-		}
+		go ec2Collect()
+		jujuCollect()
 	}
 }
