@@ -264,7 +264,7 @@ func RunCommand(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 		return err
 	}
 	unit := app.unit()
-	cmd := fmt.Sprintf("[ -d /home/application/current ] && cd /home/application/current; %s", c)
+	cmd := fmt.Sprintf("[ -f /home/application/apprc ] && source /home/application/apprc; [ -d /home/application/current ] && cd /home/application/current; %s", c)
 	app.Log(fmt.Sprintf("running '%s'", c))
 	out, err := unit.Command(cmd)
 	if err != nil {

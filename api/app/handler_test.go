@@ -551,7 +551,7 @@ func (s *S) TestRunHandlerShouldExecuteTheGivenCommandInTheGivenApp(c *C) {
 	recorder := httptest.NewRecorder()
 	err = RunCommand(recorder, request, s.user)
 	c.Assert(err, IsNil)
-	c.Assert(recorder.Body.String(), Equals, "ssh -o StrictHostKeyChecking no 10 [ -d /home/application/current ] && cd /home/application/current; ls")
+	c.Assert(recorder.Body.String(), Equals, "ssh -o StrictHostKeyChecking no 10 [ -f /home/application/apprc ] && source /home/application/apprc; [ -d /home/application/current ] && cd /home/application/current; ls")
 }
 
 func (s *S) TestRunHandlerShouldFilterOutputFromJuju(c *C) {
