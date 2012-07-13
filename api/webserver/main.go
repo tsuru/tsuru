@@ -53,6 +53,7 @@ func main() {
 
 	m.Post("/services/instances", AuthorizationRequiredHandler(service.CreateInstanceHandler))
 	m.Put("/services/instances/:instance/:app", AuthorizationRequiredHandler(service.BindHandler))
+	m.Del("/services/instances/:instance/:app", AuthorizationRequiredHandler(service.UnbindHandler))
 
 	m.Post("/services", AuthorizationRequiredHandler(service.CreateHandler))
 	m.Get("/services", AuthorizationRequiredHandler(service.ServicesHandler))
