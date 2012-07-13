@@ -8,6 +8,7 @@ import (
 	"github.com/timeredbull/tsuru/log"
 	stdlog "log"
 	"log/syslog"
+	"sync"
 	"time"
 )
 
@@ -71,11 +72,21 @@ func main() {
 	defer db.Session.Close()
 
 	if !*dry {
+		var wg sync.WaitGroup
 		if *ec2 {
-			go ec2Collect()
+			wg.Add(1)
+			go func() {
+				ec2Collect()
+				wg.Done()
+			}()
 		}
 		if *juju {
-			jujuCollect()
+			wg.Add(1)
+			go func() {
+				jujuCollect()
+				wg.Done()
+			}()
 		}
+		wg.Wait()
 	}
 }
