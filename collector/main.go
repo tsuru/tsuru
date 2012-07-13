@@ -8,6 +8,7 @@ import (
 	"github.com/timeredbull/tsuru/log"
 	stdlog "log"
 	"log/syslog"
+	"sync"
 	"time"
 )
 
@@ -49,18 +50,28 @@ func main() {
 			log.Print(err.Error())
 		}
 		c := time.Tick(time.Minute)
+		var wg sync.WaitGroup
 		for _ = range c {
-			data, _ := collector.Collect()
-			output := collector.Parse(data)
-			collector.Update(output)
-			instances, err := ec2Collector.Collect()
-			if err != nil {
-				log.Print("Error while collecting ec2 instances. Will try again soon...")
-			}
-			err = ec2Collector.Update(instances)
-			if err != nil {
-				log.Print("Error while updating database with collected data. Will try again soon...")
-			}
+			wg.Add(2)
+			go func() {
+				data, _ := collector.Collect()
+				output := collector.Parse(data)
+				collector.Update(output)
+				wg.Done()
+			}()
+			go func() {
+				instances, err := ec2Collector.Collect()
+				if err != nil {
+					log.Printf("Error while collecting ec2 instances: %s.\nWill try again soon...", err.Error())
+				} else {
+					err = ec2Collector.Update(instances)
+					if err != nil {
+						log.Print("Error while updating database with collected data. Will try again soon...")
+					}
+				}
+				wg.Done()
+			}()
+			wg.Wait()
 		}
 	}
 }
