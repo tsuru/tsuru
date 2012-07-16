@@ -252,17 +252,12 @@ func BindHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	return app.SetEnvsToApp(&a, envVars, false)
 }
 
-func UnbindHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
-	instanceName, appName := r.URL.Query().Get(":instance"), r.URL.Query().Get(":app")
-	instance, a, err := serviceInstanceAndAppOrError(instanceName, appName, u)
-	if err != nil {
-		return err
-	}
-	err = instance.RemoveApp(a.Name)
+func Unbind(instance ServiceInstance, a app.App) error {
+	err := instance.RemoveApp(a.Name)
 	if err != nil {
 		return &errors.Http{Code: http.StatusPreconditionFailed, Message: err.Error()}
 	}
-	err = db.Session.ServiceInstances().Update(bson.M{"_id": instanceName}, instance)
+	err = db.Session.ServiceInstances().Update(bson.M{"_id": instance.Name}, instance)
 	if err != nil {
 		return err
 	}
@@ -276,6 +271,15 @@ func UnbindHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 		envVars = append(envVars, k)
 	}
 	return app.UnsetEnvFromApp(&a, envVars, false)
+}
+
+func UnbindHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
+	instanceName, appName := r.URL.Query().Get(":instance"), r.URL.Query().Get(":app")
+	instance, a, err := serviceInstanceAndAppOrError(instanceName, appName, u)
+	if err != nil {
+		return err
+	}
+	return unbind(instance, a)
 }
 
 func getServiceAndTeamOrError(serviceName string, teamName string, u *auth.User) (*Service, *auth.Team, error) {
