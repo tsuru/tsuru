@@ -81,20 +81,6 @@ func (s *S) TestRetrieveAssociatedService(c *C) {
 	c.Assert(service.Name, Equals, rService.Name)
 }
 
-func (s *S) TestRetrieveAssociatedApp(c *C) {
-	a := app.App{Name: "my_app", Framework: "django"}
-	a.Create()
-	defer a.Destroy()
-	s.serviceInstance = &ServiceInstance{
-		Name: "my_mysql",
-		Apps: []string{a.Name},
-	}
-	s.serviceInstance.Create()
-	rApp := s.serviceInstance.AllApps()[0]
-	c.Assert(a.Name, Equals, rApp.Name)
-	c.Assert(a.Framework, Equals, rApp.Framework)
-}
-
 func (s *S) TestRemoveApp(c *C) {
 	instance := ServiceInstance{
 		Name: "myinstance",

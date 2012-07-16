@@ -2,7 +2,6 @@ package service
 
 import (
 	"errors"
-	"github.com/timeredbull/tsuru/api/app"
 	"github.com/timeredbull/tsuru/db"
 	"labix.org/v2/mgo/bson"
 )
@@ -34,13 +33,6 @@ func (si *ServiceInstance) Service() *Service {
 	s := &Service{}
 	db.Session.Services().Find(bson.M{"_id": si.ServiceName}).One(s)
 	return s
-}
-
-func (si *ServiceInstance) AllApps() []app.App {
-	var apps []app.App
-	q := bson.M{"name": bson.M{"$in": si.Apps}}
-	db.Session.Apps().Find(q).All(&apps)
-	return apps
 }
 
 func (si *ServiceInstance) RemoveApp(appName string) error {
