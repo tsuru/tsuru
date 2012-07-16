@@ -1,7 +1,7 @@
 package app_test
 
 import (
-	"."
+	"github.com/timeredbull/tsuru/api/app"
 	"github.com/timeredbull/tsuru/api/bind"
 	"reflect"
 	"testing"
