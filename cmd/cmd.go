@@ -50,6 +50,12 @@ func (m *Manager) Run(args []string) {
 		args = cmds
 		cmds = []string{"help"}
 	}
+	if _, ok := command.(Command); !ok {
+		io.WriteString(m.Stdout, fmt.Sprintf("subcommand %s does not exist\n", args[0]))
+		command = m.Commands["help"]
+		args = cmds
+		cmds = []string{"help"}
+	}
 	err := command.(Command).Run(&Context{cmds, args, m.Stdout, m.Stderr}, NewClient(&http.Client{}))
 	if err != nil {
 		errorMsg := err.Error()

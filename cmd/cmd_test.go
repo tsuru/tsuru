@@ -6,6 +6,7 @@ import (
 	"io"
 	. "launchpad.net/gocheck"
 	"os"
+	"strings"
 	"syscall"
 )
 
@@ -103,7 +104,12 @@ type TicCmd struct {
 }
 
 func (c *TicCmd) Info() *Info {
-	return &Info{Name: "tic", MinArgs: 1}
+	return &Info{
+		Name:    "tic",
+		MinArgs: 1,
+		Usage:   "tic tac|record",
+		Desc:    "some tic command",
+	}
 }
 
 func (c *TicCmd) Subcommands() map[string]interface{} {
@@ -139,6 +145,15 @@ func (s *S) TestSubcommand(c *C) {
 	manager.Register(&TicCmd{})
 	manager.Run([]string{"tic", "tac"})
 	c.Assert(manager.Stdout.(*bytes.Buffer).String(), Equals, "Running tac subcommand")
+}
+
+func (s *S) TestErrorWhenSubcommandDoesntExists(c *C) {
+	manager.Register(&TicCmd{})
+	manager.Run([]string{"tic", "toe"})
+	obtained := strings.Replace(manager.Stdout.(*bytes.Buffer).String(), "\n", " ", -1)
+	c.Assert(obtained, Matches, ".*subcommand toe does not exist.*")
+	c.Assert(obtained, Matches, ".*tic tac|record.*")
+	c.Assert(obtained, Matches, ".*some tic command.*")
 }
 
 func (s *S) TestSubcommandWithArgs(c *C) {
