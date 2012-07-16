@@ -36,6 +36,7 @@ func (ec *Ec2Collector) Collect() ([]ec2.Instance, error) {
 }
 
 func (ec *Ec2Collector) Update(insts []ec2.Instance) error {
+	log.Print("Updating service instance's state and attributes")
 	var srvInsts []service.ServiceInstance
 	q := bson.M{"instance": bson.M{"$in": instancesIds(insts)}}
 	db.Session.ServiceInstances().Find(q).All(&srvInsts)
