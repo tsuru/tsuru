@@ -15,7 +15,7 @@ type ServiceInstance struct {
 	Teams       []string
 	Instance    string
 	Host        string
-	PrivateHost string
+	PrivateHost string `bson:"private_host"`
 	State       string
 	Env         map[string]string
 }
