@@ -1,9 +1,10 @@
 package main
 
 import (
+	"fmt"
 	"github.com/timeredbull/tsuru/api/service"
 	"github.com/timeredbull/tsuru/db"
-	tEC2 "github.com/timeredbull/tsuru/ec2"
+	tec2 "github.com/timeredbull/tsuru/ec2"
 	"github.com/timeredbull/tsuru/log"
 	"labix.org/v2/mgo/bson"
 	"launchpad.net/goamz/ec2"
@@ -23,7 +24,7 @@ func (ec *Ec2Collector) Collect() ([]ec2.Instance, error) {
 		log.Print("no service instances found for collect. Skipping...")
 		return []ec2.Instance{}, nil
 	}
-	instResp, err := tEC2.EC2.Instances(instIds, nil)
+	instResp, err := tec2.EC2.Instances(instIds, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -42,7 +43,10 @@ func (ec *Ec2Collector) Update(insts []ec2.Instance) error {
 		for _, srvInst := range srvInsts {
 			if srvInst.Instance == inst.InstanceId {
 				srvInst.State = inst.State.Name
+				fmt.Println(inst.DNSName)
+				fmt.Println(inst.PrivateDNSName)
 				srvInst.Host = inst.DNSName
+				srvInst.PrivateHost = inst.PrivateDNSName
 				q = bson.M{"_id": srvInst.Name, "service_name": srvInst.ServiceName}
 				db.Session.ServiceInstances().Update(q, srvInst)
 			}
