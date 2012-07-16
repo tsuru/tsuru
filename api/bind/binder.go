@@ -19,11 +19,11 @@ type AppContainer interface {
 	RemoveApp(name string) error
 }
 
-type EnvVar interface {
-	Name() string
-	Value() string
-	Public() bool
-	InstanceName() string
+type EnvVar struct {
+	Name         string
+	Value        string
+	Public       bool
+	InstanceName string
 }
 
 type App interface {
