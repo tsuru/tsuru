@@ -33,6 +33,7 @@ type App interface {
 }
 
 type Binder interface {
-	Bind(AppContainer, App) error
-	Unbind(AppContainer, App) error
+	AppContainer
+	Bind(App) error
+	Unbind(App) error
 }
