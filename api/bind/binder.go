@@ -1,6 +1,7 @@
 package bind
 
 import (
+	"github.com/timeredbull/tsuru/api/auth"
 	"github.com/timeredbull/tsuru/api/unit"
 )
 
@@ -27,6 +28,8 @@ type EnvVar struct {
 }
 
 type App interface {
+	CheckUserAccess(*auth.User) bool
+	GetName() string
 	GetUnits() []unit.Unit
 	SetEnvs([]EnvVar, bool) error
 	UnsetEnvs([]string, bool) error
