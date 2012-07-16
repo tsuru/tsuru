@@ -27,9 +27,9 @@ type EnvVar struct {
 }
 
 type App interface {
-	Units() []unit.Unit
-	SetEnvs([]EnvVar) error
-	UnsetEnvs([]string) error
+	GetUnits() []unit.Unit
+	SetEnvs([]EnvVar, bool) error
+	UnsetEnvs([]string, bool) error
 }
 
 type Binder interface {
