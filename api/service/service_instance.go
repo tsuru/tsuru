@@ -7,8 +7,6 @@ import (
 	"labix.org/v2/mgo/bson"
 )
 
-type App app.App
-
 type ServiceInstance struct {
 	Name        string `bson:"_id"`
 	ServiceName string `bson:"service_name"`
