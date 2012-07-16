@@ -37,6 +37,6 @@ type App interface {
 
 type Binder interface {
 	AppContainer
-	Bind(App) error
-	Unbind(App) error
+	Bind(App, *auth.User) error
+	Unbind(App, *auth.User) error
 }
