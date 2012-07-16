@@ -2,6 +2,7 @@ package service
 
 import (
 	"github.com/timeredbull/tsuru/api/app"
+	"github.com/timeredbull/tsuru/api/bind"
 	"github.com/timeredbull/tsuru/db"
 	"labix.org/v2/mgo/bson"
 	. "launchpad.net/gocheck"
@@ -81,6 +82,36 @@ func (s *S) TestRetrieveAssociatedService(c *C) {
 	c.Assert(service.Name, Equals, rService.Name)
 }
 
+func (s *S) TestAddApp(c *C) {
+	instance := ServiceInstance{
+		Name: "myinstance",
+		Apps: []string{},
+	}
+	err := instance.AddApp("app1")
+	c.Assert(err, IsNil)
+	c.Assert(instance.Apps, DeepEquals, []string{"app1"})
+}
+
+func (s *S) TestAddAppReturnErrorIfTheAppIsAlreadyPresent(c *C) {
+	instance := ServiceInstance{
+		Name: "myinstance",
+		Apps: []string{"app1"},
+	}
+	err := instance.AddApp("app1")
+	c.Assert(err, NotNil)
+	c.Assert(err, ErrorMatches, "^This instance already has this app.$")
+}
+
+func (s *S) TestFindApp(c *C) {
+	instance := ServiceInstance{
+		Name: "myinstance",
+		Apps: []string{"app1", "app2"},
+	}
+	c.Assert(instance.FindApp("app1"), Equals, 0)
+	c.Assert(instance.FindApp("app2"), Equals, 1)
+	c.Assert(instance.FindApp("what"), Equals, -1)
+}
+
 func (s *S) TestRemoveApp(c *C) {
 	instance := ServiceInstance{
 		Name: "myinstance",
@@ -102,4 +133,9 @@ func (s *S) TestRemoveAppReturnsErrorWhenTheAppIsNotBindedToTheInstance(c *C) {
 	err := instance.RemoveApp("app4")
 	c.Assert(err, NotNil)
 	c.Assert(err, ErrorMatches, "^This app is not binded to this service instance.$")
+}
+
+func (s *S) TestServiceInstanceIsAnAppContainer(c *C) {
+	var container bind.AppContainer
+	c.Assert(&ServiceInstance{}, Implements, &container)
 }

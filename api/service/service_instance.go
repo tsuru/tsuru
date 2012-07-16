@@ -35,7 +35,16 @@ func (si *ServiceInstance) Service() *Service {
 	return s
 }
 
-func (si *ServiceInstance) RemoveApp(appName string) error {
+func (si *ServiceInstance) AddApp(appName string) error {
+	index := si.FindApp(appName)
+	if index > -1 {
+		return errors.New("This instance already has this app.")
+	}
+	si.Apps = append(si.Apps, appName)
+	return nil
+}
+
+func (si *ServiceInstance) FindApp(appName string) int {
 	index := -1
 	for i, name := range si.Apps {
 		if name == appName {
@@ -43,6 +52,11 @@ func (si *ServiceInstance) RemoveApp(appName string) error {
 			break
 		}
 	}
+	return index
+}
+
+func (si *ServiceInstance) RemoveApp(appName string) error {
+	index := si.FindApp(appName)
 	if index < 0 {
 		return errors.New("This app is not binded to this service instance.")
 	}
