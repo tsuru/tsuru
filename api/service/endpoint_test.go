@@ -2,7 +2,6 @@ package service
 
 import (
 	"errors"
-	"github.com/timeredbull/tsuru/api/app"
 	"github.com/timeredbull/tsuru/api/unit"
 	"io/ioutil"
 	. "launchpad.net/gocheck"
@@ -100,7 +99,7 @@ func (s *S) TestBindShouldSendAPOSTToTheResourceURL(c *C) {
 	ts := httptest.NewServer(&h)
 	defer ts.Close()
 	instance := ServiceInstance{Name: "her-redis", ServiceName: "redis", Host: "127.0.0.1"}
-	a := app.App{
+	a := App{
 		Name: "her-app",
 		Units: []unit.Unit{
 			unit.Unit{
@@ -128,7 +127,7 @@ func (s *S) TestBindShouldReturnMapWithTheEnvironmentVariable(c *C) {
 	ts := httptest.NewServer(&h)
 	defer ts.Close()
 	instance := ServiceInstance{Name: "her-redis", ServiceName: "redis", Host: "127.0.0.1"}
-	a := app.App{
+	a := App{
 		Name: "her-app",
 		Units: []unit.Unit{
 			unit.Unit{
@@ -146,7 +145,7 @@ func (s *S) TestBindShouldreturnErrorIfTheRequestFail(c *C) {
 	ts := httptest.NewServer(http.HandlerFunc(failHandler))
 	defer ts.Close()
 	instance := ServiceInstance{Name: "her-redis", ServiceName: "redis", Host: "127.0.0.1"}
-	a := app.App{
+	a := App{
 		Name: "her-app",
 		Units: []unit.Unit{
 			unit.Unit{
@@ -165,7 +164,7 @@ func (s *S) TestUnbindSendADELETERequestToTheResourceURL(c *C) {
 	ts := httptest.NewServer(&h)
 	defer ts.Close()
 	instance := ServiceInstance{Name: "heaven-can-wait", ServiceName: "heaven", Host: "192.168.1.10"}
-	a := app.App{
+	a := App{
 		Name: "arch-enemy",
 		Units: []unit.Unit{
 			unit.Unit{
@@ -184,7 +183,7 @@ func (s *S) TestUnbindReturnsErrorIfTheRequestFails(c *C) {
 	ts := httptest.NewServer(http.HandlerFunc(failHandler))
 	defer ts.Close()
 	instance := ServiceInstance{Name: "heaven-can-wait", ServiceName: "heaven", Host: "192.168.1.10"}
-	a := app.App{
+	a := App{
 		Name: "arch-enemy",
 		Units: []unit.Unit{
 			unit.Unit{

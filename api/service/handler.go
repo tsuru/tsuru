@@ -184,7 +184,7 @@ func DeleteHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	return nil
 }
 
-func serviceInstanceAndAppOrError(instanceName, appName string, u *auth.User) (instance ServiceInstance, a app.App, err error) {
+func serviceInstanceAndAppOrError(instanceName, appName string, u *auth.User) (instance ServiceInstance, a App, err error) {
 	err = db.Session.ServiceInstances().Find(bson.M{"_id": instanceName}).One(&instance)
 	if err != nil {
 		err = &errors.Http{Code: http.StatusNotFound, Message: "Instance not found"}
@@ -249,10 +249,11 @@ func BindHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 		}
 		setEnv(env)
 	}
-	return app.SetEnvsToApp(&a, envVars, false)
+	tApp := app.App(a)
+	return app.SetEnvsToApp(&tApp, envVars, false)
 }
 
-func Unbind(instance ServiceInstance, a app.App) error {
+func Unbind(instance ServiceInstance, a App) error {
 	err := instance.RemoveApp(a.Name)
 	if err != nil {
 		return &errors.Http{Code: http.StatusPreconditionFailed, Message: err.Error()}
@@ -261,16 +262,17 @@ func Unbind(instance ServiceInstance, a app.App) error {
 	if err != nil {
 		return err
 	}
-	go func(i ServiceInstance, a app.App) {
+	go func(i ServiceInstance, a App) {
 		if cli, err := i.Service().GetClient("production"); err == nil {
 			cli.Unbind(&i, &a)
 		}
 	}(instance, a)
 	var envVars []string
-	for k, _ := range a.InstanceEnv(instance.Name) {
+	tApp := app.App(a)
+	for k, _ := range tApp.InstanceEnv(instance.Name) {
 		envVars = append(envVars, k)
 	}
-	return app.UnsetEnvFromApp(&a, envVars, false)
+	return app.UnsetEnvFromApp(&tApp, envVars, false)
 }
 
 func UnbindHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
@@ -279,7 +281,7 @@ func UnbindHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	if err != nil {
 		return err
 	}
-	return unbind(instance, a)
+	return Unbind(instance, App(a))
 }
 
 func getServiceAndTeamOrError(serviceName string, teamName string, u *auth.User) (*Service, *auth.Team, error) {

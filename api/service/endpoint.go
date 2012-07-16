@@ -3,7 +3,6 @@ package service
 import (
 	"encoding/json"
 	"errors"
-	"github.com/timeredbull/tsuru/api/app"
 	"github.com/timeredbull/tsuru/log"
 	"io"
 	"io/ioutil"
@@ -89,7 +88,7 @@ func (c *Client) Destroy(instance *ServiceInstance) (err error) {
 	return err
 }
 
-func (c *Client) Bind(instance *ServiceInstance, app *app.App) (envVars map[string]string, err error) {
+func (c *Client) Bind(instance *ServiceInstance, app *App) (envVars map[string]string, err error) {
 	log.Print("Attempting to call bind of service instance " + instance.Name + " and app " + app.Name + " at " + instance.ServiceName + " api")
 	var resp *http.Response
 	params := map[string][]string{
@@ -106,7 +105,7 @@ func (c *Client) Bind(instance *ServiceInstance, app *app.App) (envVars map[stri
 	return
 }
 
-func (c *Client) Unbind(instance *ServiceInstance, app *app.App) (err error) {
+func (c *Client) Unbind(instance *ServiceInstance, app *App) (err error) {
 	log.Print("Attempting to call unbind of service instance " + instance.Name + " and app " + app.Name + " at " + instance.ServiceName + " api")
 	var resp *http.Response
 	params := map[string][]string{
