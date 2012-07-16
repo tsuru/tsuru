@@ -3,6 +3,7 @@ package service
 import (
 	"bytes"
 	"encoding/json"
+	stderrors "errors"
 	"fmt"
 	"github.com/timeredbull/tsuru/api/app"
 	"github.com/timeredbull/tsuru/api/auth"
@@ -839,6 +840,60 @@ func (s *S) TestUnbindHandlerReturns412IfTheAppIsNotBindedToTheInstance(c *C) {
 	c.Assert(ok, Equals, true)
 	c.Assert(e.Code, Equals, http.StatusPreconditionFailed)
 	c.Assert(e, ErrorMatches, "^This app is not binded to this service instance.$")
+}
+
+func (s *S) TestUnbindServiceInstanceFromAppReturnsErrorIfTheGivenArgumentIsNotAnApp(c *C) {
+	inputList := []interface{}{
+		"something",
+		app.App{},
+	}
+	expectedList := []error{
+		stderrors.New("app must have type app.App"),
+		nil,
+	}
+	for i, input := range inputList {
+		expected := expectedList[i]
+		c.Assert(UnbindServiceInstancesFromApp(input), DeepEquals, expected)
+	}
+}
+
+func (s *S) TestUnbindServiceInstancesFromAppUnbindsAppByItsInstance(c *C) {
+	service := Service{Name: "mysql"}
+	err := service.Create()
+	c.Assert(err, IsNil)
+	instance := ServiceInstance{
+		Name:        "my-mysql",
+		ServiceName: "mysql",
+		Teams:       []string{s.team.Name},
+		Apps:        []string{"painkiller"},
+		State:       "running",
+	}
+	err = instance.Create()
+	c.Assert(err, IsNil)
+	defer db.Session.ServiceInstances().Remove(bson.M{"_id": "my-mysql"})
+	instance2 := ServiceInstance{
+		Name:        "other-mysql",
+		ServiceName: "mysql",
+		Teams:       []string{s.team.Name},
+		Apps:        []string{"painkiller"},
+		State:       "running",
+	}
+	err = instance2.Create()
+	c.Assert(err, IsNil)
+	defer db.Session.ServiceInstances().Remove(bson.M{"_id": "other-mysql"})
+	a := app.App{
+		Name:  "painkiller",
+		Teams: []string{s.team.Name},
+		Units: []unit.Unit{unit.Unit{Ip: "127.0.0.1"}},
+	}
+	err = a.Create()
+	c.Assert(err, IsNil)
+	defer a.Destroy()
+	err = UnbindServiceInstancesFromApp(a)
+	c.Assert(err, IsNil)
+	n, err := db.Session.ServiceInstances().Find(bson.M{"apps": bson.M{"$in": []string{a.Name}}}).Count()
+	c.Assert(err, IsNil)
+	c.Assert(n, Equals, 0)
 }
 
 func (s *S) TestGrantAccessToTeam(c *C) {

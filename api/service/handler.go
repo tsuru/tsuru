@@ -2,6 +2,7 @@ package service
 
 import (
 	"encoding/json"
+	stderrors "errors"
 	"fmt"
 	"github.com/timeredbull/tsuru/api/app"
 	"github.com/timeredbull/tsuru/api/auth"
@@ -280,6 +281,35 @@ func UnbindHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 		return err
 	}
 	return unbind(instance, a)
+}
+
+func UnbindServiceInstancesFromApp(unbindingApp interface{}) error {
+	a, ok := unbindingApp.(app.App)
+	if !ok {
+		return stderrors.New("app must have type app.App")
+	}
+	var instances []ServiceInstance
+	err := db.Session.ServiceInstances().Find(bson.M{"apps": bson.M{"$in": []string{a.Name}}}).All(&instances)
+	if err != nil {
+		return err
+	}
+	var msg string
+	var addToMsg = func(instanceName string, reason error) {
+		if msg == "" {
+			msg = "The following instances failed to unbind:\n"
+		}
+		msg += "\n  - " + instanceName + ":" + reason.Error()
+	}
+	for _, instance := range instances {
+		err = unbind(instance, a)
+		if err != nil {
+			addToMsg(instance.Name, err)
+		}
+	}
+	if msg != "" {
+		return stderrors.New(msg)
+	}
+	return nil
 }
 
 func getServiceAndTeamOrError(serviceName string, teamName string, u *auth.User) (*Service, *auth.Team, error) {
