@@ -51,7 +51,7 @@ func (m *Manager) Run(args []string) {
 		cmds = []string{"help"}
 	}
 	if _, ok := command.(Command); !ok {
-		io.WriteString(m.Stdout, fmt.Sprintf("subcommand %s does not exist\n", args[0]))
+		io.WriteString(m.Stdout, fmt.Sprintf("subcommand %s does not exist\n\n", args[0]))
 		command = m.Commands["help"]
 		args = cmds
 		cmds = []string{"help"}
