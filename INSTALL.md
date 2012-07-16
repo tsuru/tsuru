@@ -74,19 +74,9 @@ If you already cloned the repository, just move the cloned directory to
 For more details on GOPATH, please check this url:
 http://golang.org/cmd/go/#GOPATH_environment_variable
 
-##Installing tsuru dependencies
+##Installing tsuru dependencies and running tests
 
-You can use `go get` to install all production dependencies of tsuru:
+You can use `make` to install all tsuru dependencies and run tests. It will
+also check if is everything ok with your GOPATH setup:
 
-    % go get github.com/timeredbull/tsuru/...
-
-##Running tests
-
-tsuru has two test dependencies, you can install then using `go get`:
-
-    % go get github.com/timeredbull/commandmocker
-    % go get launchpad.net/gocheck
-
-Then you will be able to run tsuru's tests using the test.sh script:
-
-    % ./test.sh
+    % make
