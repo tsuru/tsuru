@@ -297,8 +297,8 @@ func (a *App) updateHooks() error {
 	if err != nil {
 		return err
 	}
-	a.Log("executting hook reload-gunicorn")
-	out, err = u.ExecuteHook("reload-gunicorn")
+	a.Log("executting restart hook")
+	out, err = u.ExecuteHook("restart")
 	a.Log(string(out))
 	if err != nil {
 		return err

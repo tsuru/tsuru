@@ -92,7 +92,7 @@ pos-restart:
 	str := w.String()
 	cloneIndex := strings.Index(str, "git clone")
 	c.Assert(cloneIndex, Not(Equals), -1)
-	reloadIndex := strings.Index(str, "reload-gunicorn")
+	reloadIndex := strings.Index(str, "restart")
 	c.Assert(reloadIndex, Not(Equals), -1)
 	preRstIndex := strings.Index(str, "pre-restart hook")
 	c.Assert(preRstIndex, Not(Equals), -1)
