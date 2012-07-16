@@ -252,7 +252,7 @@ func BindHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	return app.SetEnvsToApp(&a, envVars, false)
 }
 
-func Unbind(instance ServiceInstance, a app.App) error {
+func unbind(instance ServiceInstance, a app.App) error {
 	err := instance.RemoveApp(a.Name)
 	if err != nil {
 		return &errors.Http{Code: http.StatusPreconditionFailed, Message: err.Error()}
