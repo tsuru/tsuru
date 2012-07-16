@@ -139,3 +139,8 @@ func (s *S) TestServiceInstanceIsAnAppContainer(c *C) {
 	var container bind.AppContainer
 	c.Assert(&ServiceInstance{}, Implements, &container)
 }
+
+func (s *S) TestServiceInstanceIsABinder(c *C) {
+	var binder bind.Binder
+	c.Assert(&ServiceInstance{}, Implements, &binder)
+}

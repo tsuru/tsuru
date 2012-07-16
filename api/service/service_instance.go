@@ -2,6 +2,8 @@ package service
 
 import (
 	"errors"
+	"github.com/timeredbull/tsuru/api/auth"
+	"github.com/timeredbull/tsuru/api/bind"
 	"github.com/timeredbull/tsuru/db"
 	"labix.org/v2/mgo/bson"
 )
@@ -65,5 +67,18 @@ func (si *ServiceInstance) RemoveApp(appName string) error {
 		si.Apps[index] = si.Apps[last]
 	}
 	si.Apps = si.Apps[:last]
+	return nil
+}
+
+func (si *ServiceInstance) update() error {
+	return db.Session.ServiceInstances().Update(bson.M{"_id": si.Name}, si)
+}
+
+func (si *ServiceInstance) Bind(app bind.App, user *auth.User) error {
+	si.AddApp(app.GetName())
+	return si.update()
+}
+
+func (si *ServiceInstance) Unbind(app bind.App, user *auth.User) error {
 	return nil
 }
