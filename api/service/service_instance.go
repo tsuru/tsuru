@@ -15,6 +15,7 @@ type ServiceInstance struct {
 	Teams       []string
 	Instance    string
 	Host        string
+	PrivateHost string
 	State       string
 	Env         map[string]string
 }
