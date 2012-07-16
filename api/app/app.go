@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/timeredbull/tsuru/api/auth"
+	"github.com/timeredbull/tsuru/api/bind"
 	"github.com/timeredbull/tsuru/api/unit"
 	"github.com/timeredbull/tsuru/config"
 	"github.com/timeredbull/tsuru/db"
@@ -21,12 +22,7 @@ import (
 
 const confSep = "========"
 
-type EnvVar struct {
-	Name         string
-	Value        string
-	Public       bool
-	InstanceName string
-}
+type EnvVar bind.EnvVar
 
 func (e *EnvVar) String() string {
 	var value, suffix string
@@ -315,6 +311,22 @@ func (a *App) unit() unit.Unit {
 		return a.Units[0]
 	}
 	return unit.Unit{}
+}
+
+func (a *App) GetUnits() []unit.Unit {
+	return a.Units
+}
+
+func (a *App) SetEnvs(envs []bind.EnvVar, publicOnly bool) error {
+	e := make([]EnvVar, len(envs))
+	for i, env := range envs {
+		e[i] = EnvVar(env)
+	}
+	return SetEnvsToApp(a, e, publicOnly)
+}
+
+func (a *App) UnsetEnvs(envs []string, publicOnly bool) error {
+	return UnsetEnvFromApp(a, envs, publicOnly)
 }
 
 func (a *App) Log(message string) error {

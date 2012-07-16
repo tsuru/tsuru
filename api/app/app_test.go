@@ -565,3 +565,8 @@ func (s *S) TestFsReturnsOsFsIfFieldIsNil(c *C) {
 	app := App{}
 	c.Assert(app.fs(), FitsTypeOf, ofs)
 }
+
+func (s *S) TestGetUnits(c *C) {
+	app := App{Units: []unit.Unit{unit.Unit{Ip: "1.1.1.1"}}}
+	c.Assert(app.GetUnits(), DeepEquals, []unit.Unit{unit.Unit{Ip: "1.1.1.1"}})
+}
