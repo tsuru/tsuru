@@ -15,7 +15,7 @@ type Ec2Collector struct{}
 func (ec *Ec2Collector) Collect() ([]ec2.Instance, error) {
 	log.Print("Collecting ec2 instances state...")
 	var srvInsts []service.ServiceInstance
-	db.Session.ServiceInstances().Find(bson.M{"state": "creating"}).All(&srvInsts)
+	db.Session.ServiceInstances().Find(nil).All(&srvInsts)
 	instIds := make([]string, len(srvInsts))
 	for i, inst := range srvInsts {
 		instIds[i] = inst.Instance
