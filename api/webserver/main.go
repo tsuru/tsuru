@@ -51,12 +51,12 @@ func main() {
 	repository.RunAgent()
 	m := pat.New()
 
+	m.Get("/services/instances", AuthorizationRequiredHandler(service.ServicesHandler))
 	m.Post("/services/instances", AuthorizationRequiredHandler(service.CreateInstanceHandler))
 	m.Put("/services/instances/:instance/:app", AuthorizationRequiredHandler(service.BindHandler))
 	m.Del("/services/instances/:instance/:app", AuthorizationRequiredHandler(service.UnbindHandler))
 
 	m.Post("/services", AuthorizationRequiredHandler(service.CreateHandler))
-	m.Get("/services", AuthorizationRequiredHandler(service.ServicesHandler))
 	m.Del("/services/:name", AuthorizationRequiredHandler(service.DeleteHandler))
 	m.Put("/services/:service/:team", AuthorizationRequiredHandler(service.GrantAccessToTeamHandler))
 	m.Del("/services/:service/:team", AuthorizationRequiredHandler(service.RevokeAccessFromTeamHandler))

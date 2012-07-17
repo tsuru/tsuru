@@ -43,7 +43,7 @@ func (s *ServiceList) Info() *cmd.Info {
 }
 
 func (s *ServiceList) Run(ctx *cmd.Context, client cmd.Doer) error {
-	req, err := http.NewRequest("GET", cmd.GetUrl("/services"), nil)
+	req, err := http.NewRequest("GET", cmd.GetUrl("/services/instances"), nil)
 	if err != nil {
 		return err
 	}
