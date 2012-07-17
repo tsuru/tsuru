@@ -107,3 +107,45 @@ func (s *S) TestServiceRemoveIsAnInfor(c *C) {
 	var infoer cmd.Infoer
 	c.Assert(&ServiceRemove{}, Implements, &infoer)
 }
+
+func (s *S) TestServiceListInfo(c *C) {
+	cmd := ServiceList{}
+	i := cmd.Info()
+	c.Assert(i.Name, Equals, "list")
+	c.Assert(i.Usage, Equals, "list")
+	c.Assert(i.Desc, Equals, "list services that belongs to user's team and it's service instances.")
+}
+
+func (s *S) TestServiceListRun(c *C) {
+	response := `[{"service": "mysql", "instances": ["my_db"]}]`
+	expected := `+----------+-----------+
+| Services | Instances |
++----------+-----------+
+| mysql    | my_db     |
++----------+-----------+
+`
+	trans := transport{msg: response, status: http.StatusOK}
+	client := cmd.NewClient(&http.Client{Transport: &trans})
+	context := cmd.Context{
+		Cmds:   []string{},
+		Args:   []string{},
+		Stdout: manager.Stdout,
+		Stderr: manager.Stderr,
+	}
+	err := (&ServiceList{}).Run(&context, client)
+	c.Assert(err, IsNil)
+	c.Assert(manager.Stdout.(*bytes.Buffer).String(), Equals, expected)
+}
+
+func (s *S) TestServiceListShow(c *C) {
+	expected := `+----------+-----------+
+| Services | Instances |
++----------+-----------+
+| mongodb  | my_nosql  |
++----------+-----------+
+`
+	b := `[{"service": "mongodb", "instances": ["my_nosql"]}]`
+	result, err := (&ServiceList{}).show([]byte(b))
+	c.Assert(err, IsNil)
+	c.Assert(string(result), Equals, expected)
+}
