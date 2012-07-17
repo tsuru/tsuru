@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/timeredbull/tsuru/api/auth"
 	"github.com/timeredbull/tsuru/api/bind"
+	"github.com/timeredbull/tsuru/api/service"
 	"github.com/timeredbull/tsuru/api/unit"
 	"github.com/timeredbull/tsuru/config"
 	"github.com/timeredbull/tsuru/db"
@@ -84,8 +85,42 @@ func (a *App) Create() error {
 	return nil
 }
 
+func (a *App) unbind() error {
+	var instances []service.ServiceInstance
+	err := db.Session.ServiceInstances().Find(bson.M{"apps": bson.M{"$in": []string{a.Name}}}).All(&instances)
+	if err != nil {
+		return err
+	}
+	var msg string
+	var addMsg = func(instanceName string, reason error) {
+		if msg == "" {
+			msg = "Failed to unbind the following instances:\n"
+		}
+		msg += fmt.Sprintf("- %s (%s)", instanceName, reason.Error())
+	}
+	for _, instance := range instances {
+		err = instance.Unbind(a)
+		if err != nil {
+			addMsg(instance.Name, err)
+		}
+	}
+	if msg != "" {
+		return errors.New(msg)
+	}
+	return nil
+}
+
 func (a *App) Destroy() error {
-	err := db.Session.Apps().Remove(bson.M{"name": a.Name})
+	unbindingApp := App{Name: a.Name}
+	err := unbindingApp.Get()
+	if err != nil {
+		return err
+	}
+	unbindCh := make(chan error)
+	go func() {
+		unbindCh <- unbindingApp.unbind()
+	}()
+	err = db.Session.Apps().Remove(bson.M{"name": a.Name})
 	if err != nil {
 		return err
 	}
@@ -108,7 +143,7 @@ func (a *App) Destroy() error {
 	if err != nil {
 		return err
 	}
-	return nil
+	return <-unbindCh
 }
 
 func (a *App) AddOrUpdateUnit(u *unit.Unit) {
