@@ -22,20 +22,6 @@ func (s *S) TestCommandShouldAcceptMultipleParams(c *C) {
 	c.Assert(string(out), Matches, ".* uname -a")
 }
 
-func (s *S) TestAddRelation(c *C) {
-	appUnit := Unit{Type: "django", Name: "myUnit"}
-	serviceUnit := Unit{Type: "mysql", Name: "MyService"}
-	err := appUnit.AddRelation(&serviceUnit)
-	c.Assert(err, IsNil)
-}
-
-func (s *S) TestRemoveRelation(c *C) {
-	appUnit := Unit{Type: "django", Name: "myUnit"}
-	serviceUnit := Unit{Type: "mysql", Name: "MyService"}
-	err := appUnit.RemoveRelation(&serviceUnit)
-	c.Assert(err, IsNil)
-}
-
 func (s *S) TestExecuteHook(c *C) {
 	appUnit := Unit{Type: "django", Name: "myUnit"}
 	_, err := appUnit.ExecuteHook("requirements")
