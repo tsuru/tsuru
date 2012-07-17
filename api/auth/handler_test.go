@@ -399,7 +399,7 @@ func (s *S) TestRemoveUserFromTeamShouldRemoveAUserFromATeamIfTheTeamExistAndThe
 	u := User{Email: "nonee@me.me", Password: "none"}
 	err := u.Create()
 	c.Assert(err, IsNil)
-	s.team.AddUser(&u)
+	s.team.addUser(&u)
 	db.Session.Teams().Update(bson.M{"name": s.team.Name}, s.team)
 	request, err := http.NewRequest("DELETE", "/teams/cobrateam/nonee@me.me?:team=cobrateam&:user=nonee@me.me", nil)
 	c.Assert(err, IsNil)
@@ -439,10 +439,10 @@ func (s *S) TestRemoveUserfromTeamShouldReturnUnauthorizedIfTheGivenUserIsNotMem
 
 func (s *S) TestRemoveUserFromTeamShouldReturnNotFoundWhenTheUserIsNotMemberOfTheTeam(c *C) {
 	u := &User{Email: "nobody@me.me", Password: "132"}
-	s.team.AddUser(u)
+	s.team.addUser(u)
 	db.Session.Teams().Update(bson.M{"name": s.team.Name}, s.team)
 	defer func(t *Team, u *User) {
-		s.team.RemoveUser(u)
+		s.team.removeUser(u)
 		db.Session.Teams().Update(bson.M{"name": t.Name}, t)
 	}(s.team, u)
 	request, err := http.NewRequest("DELETE", "/teams/cobrateam/none@me.me?:team=cobrateam&:user=none@me.me", nil)
