@@ -2,7 +2,6 @@ package service
 
 import (
 	stderrors "errors"
-	"github.com/timeredbull/tsuru/api/auth"
 	"github.com/timeredbull/tsuru/api/bind"
 	"github.com/timeredbull/tsuru/db"
 	"github.com/timeredbull/tsuru/errors"
@@ -77,7 +76,7 @@ func (si *ServiceInstance) update() error {
 	return db.Session.ServiceInstances().Update(bson.M{"_id": si.Name}, si)
 }
 
-func (si *ServiceInstance) Bind(app bind.App, user *auth.User) error {
+func (si *ServiceInstance) Bind(app bind.App) error {
 	si.AddApp(app.GetName())
 	err := si.update()
 	if err != nil {
@@ -109,6 +108,6 @@ func (si *ServiceInstance) Bind(app bind.App, user *auth.User) error {
 	return app.SetEnvs(envVars, false)
 }
 
-func (si *ServiceInstance) Unbind(app bind.App, user *auth.User) error {
+func (si *ServiceInstance) Unbind(app bind.App) error {
 	return nil
 }

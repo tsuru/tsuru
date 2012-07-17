@@ -2,7 +2,6 @@ package service
 
 import (
 	"errors"
-	"github.com/timeredbull/tsuru/api/auth"
 	"github.com/timeredbull/tsuru/api/bind"
 	"github.com/timeredbull/tsuru/api/unit"
 	"io/ioutil"
@@ -16,10 +15,6 @@ import (
 type FakeApp struct {
 	ip   string
 	name string
-}
-
-func (a *FakeApp) CheckUserAccess(u *auth.User) bool {
-	return true
 }
 
 func (a *FakeApp) GetName() string {
