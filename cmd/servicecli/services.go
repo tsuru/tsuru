@@ -59,3 +59,29 @@ func (c *ServiceCreate) Run(context *cmd.Context, client cmd.Doer) error {
 	io.WriteString(context.Stdout, string(b)+"\n")
 	return nil
 }
+
+type ServiceRemove struct{}
+
+func (c *ServiceRemove) Run(context *cmd.Context, client cmd.Doer) error {
+	serviceName := context.Args[0]
+	url := cmd.GetUrl("/services/" + serviceName)
+	request, err := http.NewRequest("DELETE", url, nil)
+	if err != nil {
+		return err
+	}
+	_, err = client.Do(request)
+	if err != nil {
+		return err
+	}
+	io.WriteString(context.Stdout, "Service successfully removed.\n")
+	return nil
+}
+
+func (c *ServiceRemove) Info() *cmd.Info {
+	return &cmd.Info{
+		Name:    "remove",
+		Usage:   "remove <servicename>",
+		Desc:    "removes a service from catalog",
+		MinArgs: 1,
+	}
+}

@@ -294,14 +294,14 @@ func (s *S) TestDeleteHandler(c *C) {
 	recorder := httptest.NewRecorder()
 	err = DeleteHandler(recorder, request, s.user)
 	c.Assert(err, IsNil)
-	c.Assert(recorder.Code, Equals, 200)
+	c.Assert(recorder.Code, Equals, http.StatusNoContent)
 	query := bson.M{"_id": "Mysql"}
 	qtd, err := db.Session.Services().Find(query).Count()
 	c.Assert(err, IsNil)
 	c.Assert(qtd, Equals, 0)
 }
 
-func (s *S) TestDeleteHandlerReturns404(c *C) {
+func (s *S) TestDeleteHandlerReturns404WhenTheServiceDoesNotExist(c *C) {
 	request, err := http.NewRequest("DELETE", fmt.Sprintf("/services/%s?:name=%s", "mongodb", "mongodb"), nil)
 	c.Assert(err, IsNil)
 	recorder := httptest.NewRecorder()
@@ -313,7 +313,7 @@ func (s *S) TestDeleteHandlerReturns404(c *C) {
 	c.Assert(e, ErrorMatches, "^Service not found$")
 }
 
-func (s *S) TestDeleteHandlerReturns403IfTheUserDoesNotHaveAccessToTheService(c *C) {
+func (s *S) TestDeleteHandlerReturns403WhenTheUserDoesNotHaveAccessToTheService(c *C) {
 	se := Service{Name: "Mysql"}
 	se.Create()
 	defer se.Delete()
@@ -326,6 +326,26 @@ func (s *S) TestDeleteHandlerReturns403IfTheUserDoesNotHaveAccessToTheService(c 
 	c.Assert(ok, Equals, true)
 	c.Assert(e.Code, Equals, http.StatusForbidden)
 	c.Assert(e, ErrorMatches, "^This user does not have access to this service$")
+}
+
+func (s *S) TestDeleteHandlerReturns403WhenTheServiceHasInstance(c *C) {
+	se := Service{Name: "mysql", Teams: []string{s.team.Name}}
+	err := se.Create()
+	c.Assert(err, IsNil)
+	defer se.Delete()
+	instance := ServiceInstance{Name: "my-mysql", ServiceName: se.Name}
+	err = instance.Create()
+	c.Assert(err, IsNil)
+	defer instance.Delete()
+	request, err := http.NewRequest("DELETE", fmt.Sprintf("/services/%s?:name=%s", se.Name, se.Name), nil)
+	c.Assert(err, IsNil)
+	recorder := httptest.NewRecorder()
+	err = DeleteHandler(recorder, request, s.user)
+	c.Assert(err, NotNil)
+	e, ok := err.(*errors.Http)
+	c.Assert(ok, Equals, true)
+	c.Assert(e.Code, Equals, http.StatusForbidden)
+	c.Assert(e, ErrorMatches, "^This service cannot be removed because it has instances.\nPlease remove these instances before removing the service.$")
 }
 
 func (s *S) TestBindHandlerAddsTheAppToTheInstance(c *C) {

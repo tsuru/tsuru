@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"github.com/timeredbull/tsuru/cmd"
 	. "launchpad.net/gocheck"
 	"net/http"
@@ -43,4 +44,66 @@ func (s *S) TestServiceCreateRun(c *C) {
 	client := cmd.NewClient(&http.Client{Transport: &transport{msg: result, status: http.StatusOK}})
 	err := (&ServiceCreate{}).Run(&context, client)
 	c.Assert(err, IsNil)
+}
+
+func (s *S) TestServiceRemoveRun(c *C) {
+	var called bool
+	context := cmd.Context{
+		Cmds:   []string{},
+		Args:   []string{"my-service"},
+		Stdout: manager.Stdout,
+		Stderr: manager.Stderr,
+	}
+	trans := &conditionalTransport{
+		transport{
+			msg:    "",
+			status: http.StatusNoContent,
+		},
+		func(req *http.Request) bool {
+			called = true
+			return req.Method == "DELETE" && req.URL.Path == "/services/my-service"
+		},
+	}
+	client := cmd.NewClient(&http.Client{Transport: trans})
+	err := (&ServiceRemove{}).Run(&context, client)
+	c.Assert(err, IsNil)
+	c.Assert(called, Equals, true)
+	c.Assert(manager.Stdout.(*bytes.Buffer).String(), Equals, "Service successfully removed.\n")
+}
+
+func (s *S) TestServiceRemoveRunWithRequestFailure(c *C) {
+	context := cmd.Context{
+		Cmds:   []string{},
+		Args:   []string{"my-service"},
+		Stdout: manager.Stdout,
+		Stderr: manager.Stderr,
+	}
+	trans := transport{
+		msg:    "This service cannot be removed because it has instances.\nPlease remove these instances before removing the service.",
+		status: http.StatusForbidden,
+	}
+	client := cmd.NewClient(&http.Client{Transport: &trans})
+	err := (&ServiceRemove{}).Run(&context, client)
+	c.Assert(err, NotNil)
+	c.Assert(err.Error(), Equals, trans.msg)
+}
+
+func (s *S) TestServiceRemoveIsACommand(c *C) {
+	var command cmd.Command
+	c.Assert(&ServiceRemove{}, Implements, &command)
+}
+
+func (s *S) TestServiceRemoveInfo(c *C) {
+	expected := &cmd.Info{
+		Name:    "remove",
+		Usage:   "remove <servicename>",
+		Desc:    "removes a service from catalog",
+		MinArgs: 1,
+	}
+	c.Assert((&ServiceRemove{}).Info(), DeepEquals, expected)
+}
+
+func (s *S) TestServiceRemoveIsAnInfor(c *C) {
+	var infoer cmd.Infoer
+	c.Assert(&ServiceRemove{}, Implements, &infoer)
 }
