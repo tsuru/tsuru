@@ -13,6 +13,7 @@ func buildManager(name string) cmd.Manager {
 	m.Register(&cmd.Team{})
 	m.Register(&cmd.Target{})
 	m.Register(&ServiceCreate{})
+	m.Register(&ServiceRemove{})
 	return m
 }
 
