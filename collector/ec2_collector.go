@@ -34,7 +34,8 @@ func (ec *Ec2Collector) Update(insts []ec2.Instance) error {
 	var srvInsts []service.ServiceInstance
 	q := bson.M{"instance": bson.M{"$in": instancesIds(insts)}}
 	db.Session.ServiceInstances().Find(q).All(&srvInsts)
-	log.Print("Found instances for update: " + srvInsts)
+	log.Print("Found instances for update: ")
+	log.Print(srvInsts)
 	for _, inst := range insts {
 		for _, srvInst := range srvInsts {
 			if srvInst.Instance == inst.InstanceId {
@@ -67,7 +68,8 @@ func instancesIds(insts []ec2.Instance) []string {
 // and the number of instances found
 func filterInstances() ([]string, int) {
 	var srvInsts []service.ServiceInstance
-	db.Session.ServiceInstances().Find(bson.M{"instance": bson.M{"$ne": ""}}).All(&srvInsts)
+	//db.Session.ServiceInstances().Find(bson.M{"instance": bson.M{"$ne": ""}}).All(&srvInsts)
+	db.Session.ServiceInstances().Find(bson.M{"state": "creating"}).All(&srvInsts)
 	n := len(srvInsts)
 	instIds := make([]string, n)
 	for i, inst := range srvInsts {
