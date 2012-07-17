@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/timeredbull/tsuru/api/auth"
+	"github.com/timeredbull/tsuru/api/service"
 	"github.com/timeredbull/tsuru/db"
 	"github.com/timeredbull/tsuru/errors"
 	"github.com/timeredbull/tsuru/repository"
@@ -429,4 +430,48 @@ func AppLog(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	}
 	fmt.Fprint(w, bytes.NewBuffer(b).String())
 	return nil
+}
+
+func serviceInstanceAndAppOrError(instanceName, appName string, u *auth.User) (instance service.ServiceInstance, a App, err error) {
+	err = db.Session.ServiceInstances().Find(bson.M{"_id": instanceName}).One(&instance)
+	if err != nil {
+		err = &errors.Http{Code: http.StatusNotFound, Message: "Instance not found"}
+		return
+	}
+	if !auth.CheckUserAccess(instance.Teams, u) {
+		err = &errors.Http{Code: http.StatusForbidden, Message: "This user does not have access to this instance"}
+		return
+	}
+	if instance.State != "running" {
+		err = &errors.Http{Code: http.StatusPreconditionFailed, Message: "This service instance is not ready yet."}
+		return
+	}
+	err = db.Session.Apps().Find(bson.M{"name": appName}).One(&a)
+	if err != nil {
+		err = &errors.Http{Code: http.StatusNotFound, Message: "App not found"}
+		return
+	}
+	if !auth.CheckUserAccess(a.Teams, u) {
+		err = &errors.Http{Code: http.StatusForbidden, Message: "This user does not have access to this app"}
+		return
+	}
+	return
+}
+
+func BindHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
+	instanceName, appName := r.URL.Query().Get(":instance"), r.URL.Query().Get(":app")
+	instance, a, err := serviceInstanceAndAppOrError(instanceName, appName, u)
+	if err != nil {
+		return err
+	}
+	return instance.Bind(&a)
+}
+
+func UnbindHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
+	instanceName, appName := r.URL.Query().Get(":instance"), r.URL.Query().Get(":app")
+	instance, a, err := serviceInstanceAndAppOrError(instanceName, appName, u)
+	if err != nil {
+		return err
+	}
+	return instance.Unbind(&a)
 }

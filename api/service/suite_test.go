@@ -2,7 +2,6 @@ package service
 
 import (
 	"github.com/timeredbull/commandmocker"
-	"github.com/timeredbull/tsuru/api/app"
 	"github.com/timeredbull/tsuru/api/auth"
 	"github.com/timeredbull/tsuru/config"
 	"github.com/timeredbull/tsuru/db"
@@ -88,14 +87,6 @@ func (s *S) TearDownTest(c *C) {
 
 	_, err = db.Session.ServiceInstances().RemoveAll(nil)
 	c.Assert(err, IsNil)
-
-	var apps []app.App
-	err = db.Session.Apps().Find(nil).All(&apps)
-	c.Assert(err, IsNil)
-	for _, a := range apps {
-		err = a.Destroy()
-		c.Assert(err, IsNil)
-	}
 }
 
 func (s *S) setupConfig(c *C) {
