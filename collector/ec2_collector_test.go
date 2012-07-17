@@ -72,30 +72,3 @@ func (s *S) TestInstanceIdsReturnsInstancesIdsOnly(c *C) {
 	instIds := instancesIds([]ec2.Instance{inst})
 	c.Assert(instIds, DeepEquals, []string{"i-0"})
 }
-
-func (s *S) TestFilterInstancesShouldNotRetrieveEmptyStringsAsIds(c *C) {
-	si := service.ServiceInstance{Name: "instance 1", ServiceName: "mysql", Instance: s.instances[0]}
-	si.Create()
-	defer si.Delete()
-	si2 := service.ServiceInstance{Name: "outsider instance", ServiceName: "Alien Service"}
-	si2.Create()
-	defer si2.Delete()
-	insts, n := filterInstances()
-	expected := []string{s.instances[0]}
-	c.Assert(insts, DeepEquals, expected)
-	c.Assert(n, Equals, 1)
-}
-
-func (s *S) TestFilterInstancesShouldReturnEmptyStringSliceAndLogMsgWhenNoInstancesAreFound(c *C) {
-	si := service.ServiceInstance{Name: "outsider instance", ServiceName: "Alien Service"}
-	si.Create()
-	defer si.Delete()
-	w := bytes.NewBuffer([]byte{})
-	l := stdlog.New(w, "", stdlog.LstdFlags)
-	log.Target = l
-	instIds, n := filterInstances()
-	c.Assert(instIds, DeepEquals, []string{})
-	logStr := strings.Replace(w.String(), "\n", "", -1)
-	c.Assert(logStr, Matches, ".*no service instances found for collect. Skipping....*")
-	c.Assert(n, Equals, 0)
-}

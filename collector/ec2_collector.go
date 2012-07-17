@@ -14,11 +14,15 @@ type Ec2Collector struct{}
 
 func (ec *Ec2Collector) Collect() ([]ec2.Instance, error) {
 	log.Print("Collecting ec2 instances state...")
-	instIds, n := filterInstances()
-	if n == 0 {
+	n, err := db.Session.ServiceInstances().Find(bson.M{"instances": bson.M{"$ne": ""}}).Count()
+	if err != nil {
+		return nil, err
+	}
+	if n <= 0 {
+		log.Print("no service instances found for collect. Skipping...")
 		return []ec2.Instance{}, nil
 	}
-	instResp, err := tec2.EC2.Instances(instIds, nil)
+	instResp, err := tec2.EC2.Instances(nil, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -58,26 +62,4 @@ func instancesIds(insts []ec2.Instance) []string {
 		instIds[i] = inst.InstanceId
 	}
 	return instIds
-}
-
-// Filter instances that have an non empty
-// Instance field. This avoid ec2's error
-// when trying to describe an instance that
-// has an empty id
-// Returns an string slice with all instance's ids found
-// and the number of instances found
-func filterInstances() ([]string, int) {
-	var srvInsts []service.ServiceInstance
-	//db.Session.ServiceInstances().Find(bson.M{"instance": bson.M{"$ne": ""}}).All(&srvInsts)
-	db.Session.ServiceInstances().Find(bson.M{"state": "creating"}).All(&srvInsts)
-	n := len(srvInsts)
-	instIds := make([]string, n)
-	for i, inst := range srvInsts {
-		instIds[i] = inst.Instance
-	}
-	if n == 0 {
-		log.Print("no service instances found for collect. Skipping...")
-		return []string{}, n
-	}
-	return instIds, n
 }
