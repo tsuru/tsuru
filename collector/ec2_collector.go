@@ -43,9 +43,9 @@ func (ec *Ec2Collector) Update(insts []ec2.Instance) error {
 	for _, inst := range insts {
 		for _, srvInst := range srvInsts {
 			if srvInst.Instance == inst.InstanceId {
+				msg := fmt.Sprintf("Updating instance %s with host %s, state %s and private host %s", inst.DNSName, inst.State.Name, inst.PrivateDNSName)
+				log.Print(msg)
 				srvInst.State = inst.State.Name
-				fmt.Println(inst.DNSName)
-				fmt.Println(inst.PrivateDNSName)
 				srvInst.Host = inst.DNSName
 				srvInst.PrivateHost = inst.PrivateDNSName
 				q = bson.M{"_id": srvInst.Name, "service_name": srvInst.ServiceName}
