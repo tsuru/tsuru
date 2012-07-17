@@ -39,7 +39,6 @@ var HasAccessTo Checker = &hasAccessToChecker{}
 func Test(t *testing.T) { TestingT(t) }
 
 type S struct {
-	app             *app.App
 	service         *Service
 	serviceInstance *ServiceInstance
 	team            *auth.Team
