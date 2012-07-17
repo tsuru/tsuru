@@ -112,5 +112,22 @@ func (si *ServiceInstance) Bind(app bind.App) error {
 }
 
 func (si *ServiceInstance) Unbind(app bind.App) error {
-	return nil
+	err := si.RemoveApp(app.GetName())
+	if err != nil {
+		return &errors.Http{Code: http.StatusPreconditionFailed, Message: "This app is not binded to this service instance."}
+	}
+	err = si.update()
+	if err != nil {
+		return err
+	}
+	go func() {
+		if cli, err := si.Service().GetClient("production"); err == nil {
+			cli.Unbind(si, app)
+		}
+	}()
+	var envVars []string
+	for k, _ := range app.InstanceEnv(si.Name) {
+		envVars = append(envVars, k)
+	}
+	return app.UnsetEnvs(envVars, false)
 }
