@@ -53,3 +53,10 @@ func (s *S) TestRemoveIsRegistered(c *C) {
 	c.Assert(ok, Equals, true)
 	c.Assert(remove, FitsTypeOf, &ServiceRemove{})
 }
+
+func (s *S) TestListIsRegistered(c *C) {
+	manager := buildManager("tsuru")
+	remove, ok := manager.Commands["list"]
+	c.Assert(ok, Equals, true)
+	c.Assert(remove, FitsTypeOf, &ServiceList{})
+}
