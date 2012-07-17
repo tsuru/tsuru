@@ -41,7 +41,7 @@ func (s *S) TestServiceList(c *C) {
 			status: http.StatusOK,
 		},
 		func(req *http.Request) bool {
-			return req.URL.Path == "/services"
+			return req.URL.Path == "/services/instances"
 		},
 	}
 	client := cmd.NewClient(&http.Client{Transport: trans})
@@ -68,7 +68,7 @@ func (s *S) TestServiceListWithEmptyResponse(c *C) {
 			status: http.StatusOK,
 		},
 		func(req *http.Request) bool {
-			return req.URL.Path == "/services"
+			return req.URL.Path == "/services/instances"
 		},
 	}
 	client := cmd.NewClient(&http.Client{Transport: trans})
