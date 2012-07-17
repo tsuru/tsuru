@@ -34,6 +34,7 @@ func (ec *Ec2Collector) Update(insts []ec2.Instance) error {
 	var srvInsts []service.ServiceInstance
 	q := bson.M{"instance": bson.M{"$in": instancesIds(insts)}}
 	db.Session.ServiceInstances().Find(q).All(&srvInsts)
+	log.Print("Found instances for update: " + srvInsts)
 	for _, inst := range insts {
 		for _, srvInst := range srvInsts {
 			if srvInst.Instance == inst.InstanceId {
