@@ -2,7 +2,7 @@ package service
 
 import (
 	"errors"
-	"github.com/timeredbull/tsuru/api/app"
+	"github.com/timeredbull/tsuru/api/bind"
 	"github.com/timeredbull/tsuru/api/unit"
 	"io/ioutil"
 	. "launchpad.net/gocheck"
@@ -11,6 +11,33 @@ import (
 	"net/url"
 	"strings"
 )
+
+type FakeApp struct {
+	ip   string
+	name string
+}
+
+func (a *FakeApp) GetName() string {
+	return a.name
+}
+
+func (a *FakeApp) GetUnits() []unit.Unit {
+	return []unit.Unit{
+		unit.Unit{Ip: a.ip},
+	}
+}
+
+func (a *FakeApp) InstanceEnv(name string) map[string]bind.EnvVar {
+	return nil
+}
+
+func (a *FakeApp) SetEnvs(vars []bind.EnvVar, public bool) error {
+	return nil
+}
+
+func (a *FakeApp) UnsetEnvs(vars []string, public bool) error {
+	return nil
+}
 
 func failHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusInternalServerError)
@@ -100,13 +127,9 @@ func (s *S) TestBindShouldSendAPOSTToTheResourceURL(c *C) {
 	ts := httptest.NewServer(&h)
 	defer ts.Close()
 	instance := ServiceInstance{Name: "her-redis", ServiceName: "redis", Host: "127.0.0.1"}
-	a := app.App{
-		Name: "her-app",
-		Units: []unit.Unit{
-			unit.Unit{
-				Ip: "10.0.10.1",
-			},
-		},
+	a := FakeApp{
+		name: "her-app",
+		ip:   "10.0.10.1",
 	}
 	client := &Client{endpoint: ts.URL}
 	_, err := client.Bind(&instance, &a)
@@ -128,13 +151,9 @@ func (s *S) TestBindShouldReturnMapWithTheEnvironmentVariable(c *C) {
 	ts := httptest.NewServer(&h)
 	defer ts.Close()
 	instance := ServiceInstance{Name: "her-redis", ServiceName: "redis", Host: "127.0.0.1"}
-	a := app.App{
-		Name: "her-app",
-		Units: []unit.Unit{
-			unit.Unit{
-				Ip: "10.0.10.1",
-			},
-		},
+	a := FakeApp{
+		name: "her-app",
+		ip:   "10.0.10.1",
 	}
 	client := &Client{endpoint: ts.URL}
 	env, err := client.Bind(&instance, &a)
@@ -146,13 +165,9 @@ func (s *S) TestBindShouldreturnErrorIfTheRequestFail(c *C) {
 	ts := httptest.NewServer(http.HandlerFunc(failHandler))
 	defer ts.Close()
 	instance := ServiceInstance{Name: "her-redis", ServiceName: "redis", Host: "127.0.0.1"}
-	a := app.App{
-		Name: "her-app",
-		Units: []unit.Unit{
-			unit.Unit{
-				Ip: "10.0.10.1",
-			},
-		},
+	a := FakeApp{
+		name: "her-app",
+		ip:   "10.0.10.1",
 	}
 	client := &Client{endpoint: ts.URL}
 	_, err := client.Bind(&instance, &a)
@@ -165,13 +180,9 @@ func (s *S) TestUnbindSendADELETERequestToTheResourceURL(c *C) {
 	ts := httptest.NewServer(&h)
 	defer ts.Close()
 	instance := ServiceInstance{Name: "heaven-can-wait", ServiceName: "heaven", Host: "192.168.1.10"}
-	a := app.App{
-		Name: "arch-enemy",
-		Units: []unit.Unit{
-			unit.Unit{
-				Ip: "2.2.2.2",
-			},
-		},
+	a := FakeApp{
+		name: "arch-enemy",
+		ip:   "2.2.2.2",
 	}
 	client := &Client{endpoint: ts.URL}
 	err := client.Unbind(&instance, &a)
@@ -184,13 +195,9 @@ func (s *S) TestUnbindReturnsErrorIfTheRequestFails(c *C) {
 	ts := httptest.NewServer(http.HandlerFunc(failHandler))
 	defer ts.Close()
 	instance := ServiceInstance{Name: "heaven-can-wait", ServiceName: "heaven", Host: "192.168.1.10"}
-	a := app.App{
-		Name: "arch-enemy",
-		Units: []unit.Unit{
-			unit.Unit{
-				Ip: "2.2.2.2",
-			},
-		},
+	a := FakeApp{
+		name: "arch-enemy",
+		ip:   "2.2.2.2",
 	}
 	client := &Client{endpoint: ts.URL}
 	err := client.Unbind(&instance, &a)

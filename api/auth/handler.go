@@ -60,7 +60,7 @@ func Login(w http.ResponseWriter, r *http.Request) error {
 		return &errors.Http{Code: http.StatusNotFound, Message: "User not found"}
 	}
 
-	if u.Login(password) {
+	if u.login(password) {
 		t, _ := u.CreateToken()
 		fmt.Fprintf(w, `{"token":"%s"}`, t.Token)
 		return nil
@@ -123,7 +123,7 @@ func addUserToTeam(email, teamName string, u *User) error {
 	if err != nil {
 		return &errors.Http{Code: http.StatusNotFound, Message: "Team not found"}
 	}
-	if !team.ContainsUser(u) {
+	if !team.containsUser(u) {
 		msg := fmt.Sprintf("You are not authorized to add new users to the team %s", team.Name)
 		return &errors.Http{Code: http.StatusUnauthorized, Message: msg}
 	}
@@ -131,7 +131,7 @@ func addUserToTeam(email, teamName string, u *User) error {
 	if err != nil {
 		return &errors.Http{Code: http.StatusNotFound, Message: "User not found"}
 	}
-	err = team.AddUser(user)
+	err = team.addUser(user)
 	if err != nil {
 		return &errors.Http{Code: http.StatusConflict, Message: err.Error()}
 	}
@@ -156,7 +156,7 @@ func removeUserFromTeam(email, teamName string, u *User) error {
 	if err != nil {
 		return &errors.Http{Code: http.StatusNotFound, Message: "Team not found"}
 	}
-	if !team.ContainsUser(u) {
+	if !team.containsUser(u) {
 		msg := fmt.Sprintf("You are not authorized to remove a member from the team %s", team.Name)
 		return &errors.Http{Code: http.StatusUnauthorized, Message: msg}
 	}
@@ -169,7 +169,7 @@ func removeUserFromTeam(email, teamName string, u *User) error {
 	if err != nil {
 		return &errors.Http{Code: http.StatusNotFound, Message: err.Error()}
 	}
-	err = team.RemoveUser(&user)
+	err = team.removeUser(&user)
 	if err != nil {
 		return &errors.Http{Code: http.StatusNotFound, Message: err.Error()}
 	}

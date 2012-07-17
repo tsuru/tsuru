@@ -2,9 +2,7 @@ package service
 
 import (
 	"encoding/json"
-	stderrors "errors"
 	"fmt"
-	"github.com/timeredbull/tsuru/api/app"
 	"github.com/timeredbull/tsuru/api/auth"
 	"github.com/timeredbull/tsuru/db"
 	"github.com/timeredbull/tsuru/ec2"
@@ -193,133 +191,6 @@ func DeleteHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 		return err
 	}
 	w.WriteHeader(http.StatusNoContent)
-	return nil
-}
-
-func serviceInstanceAndAppOrError(instanceName, appName string, u *auth.User) (instance ServiceInstance, a app.App, err error) {
-	err = db.Session.ServiceInstances().Find(bson.M{"_id": instanceName}).One(&instance)
-	if err != nil {
-		err = &errors.Http{Code: http.StatusNotFound, Message: "Instance not found"}
-		return
-	}
-	if !auth.CheckUserAccess(instance.Teams, u) {
-		err = &errors.Http{Code: http.StatusForbidden, Message: "This user does not have access to this instance"}
-		return
-	}
-	if instance.State != "running" {
-		err = &errors.Http{Code: http.StatusPreconditionFailed, Message: "This service instance is not ready yet."}
-		return
-	}
-	err = db.Session.Apps().Find(bson.M{"name": appName}).One(&a)
-	if err != nil {
-		err = &errors.Http{Code: http.StatusNotFound, Message: "App not found"}
-		return
-	}
-	if !auth.CheckUserAccess(a.Teams, u) {
-		err = &errors.Http{Code: http.StatusForbidden, Message: "This user does not have access to this app"}
-		return
-	}
-	return
-}
-
-func BindHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
-	instanceName, appName := r.URL.Query().Get(":instance"), r.URL.Query().Get(":app")
-	instance, a, err := serviceInstanceAndAppOrError(instanceName, appName, u)
-	if err != nil {
-		return err
-	}
-	for _, name := range instance.Apps {
-		if name == a.Name {
-			return &errors.Http{Code: http.StatusConflict, Message: "This app is already binded to this service instance."}
-		}
-	}
-	instance.Apps = append(instance.Apps, a.Name)
-	err = db.Session.ServiceInstances().Update(bson.M{"_id": instanceName}, instance)
-	if err != nil {
-		return err
-	}
-	var envVars []app.EnvVar
-	var setEnv = func(env map[string]string) {
-		for k, v := range env {
-			envVars = append(envVars, app.EnvVar{
-				Name:         k,
-				Value:        v,
-				Public:       false,
-				InstanceName: instance.Name,
-			})
-		}
-	}
-	setEnv(instance.Env)
-	var cli *Client
-	if cli, err = instance.Service().GetClient("production"); err == nil {
-		if len(a.Units) == 0 {
-			return &errors.Http{Code: http.StatusPreconditionFailed, Message: "This app does not have an IP yet."}
-		}
-		env, err := cli.Bind(&instance, &a)
-		if err != nil {
-			return err
-		}
-		setEnv(env)
-	}
-	return app.SetEnvsToApp(&a, envVars, false)
-}
-
-func unbind(instance ServiceInstance, a app.App) error {
-	err := instance.RemoveApp(a.Name)
-	if err != nil {
-		return &errors.Http{Code: http.StatusPreconditionFailed, Message: err.Error()}
-	}
-	err = db.Session.ServiceInstances().Update(bson.M{"_id": instance.Name}, instance)
-	if err != nil {
-		return err
-	}
-	go func(i ServiceInstance, a app.App) {
-		if cli, err := i.Service().GetClient("production"); err == nil {
-			cli.Unbind(&i, &a)
-		}
-	}(instance, a)
-	var envVars []string
-	for k, _ := range a.InstanceEnv(instance.Name) {
-		envVars = append(envVars, k)
-	}
-	return app.UnsetEnvFromApp(&a, envVars, false)
-}
-
-func UnbindHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
-	instanceName, appName := r.URL.Query().Get(":instance"), r.URL.Query().Get(":app")
-	instance, a, err := serviceInstanceAndAppOrError(instanceName, appName, u)
-	if err != nil {
-		return err
-	}
-	return unbind(instance, a)
-}
-
-func UnbindServiceInstancesFromApp(unbindingApp interface{}) error {
-	a, ok := unbindingApp.(app.App)
-	if !ok {
-		return stderrors.New("app must have type app.App")
-	}
-	var instances []ServiceInstance
-	err := db.Session.ServiceInstances().Find(bson.M{"apps": bson.M{"$in": []string{a.Name}}}).All(&instances)
-	if err != nil {
-		return err
-	}
-	var msg string
-	var addToMsg = func(instanceName string, reason error) {
-		if msg == "" {
-			msg = "The following instances failed to unbind:\n"
-		}
-		msg += "\n  - " + instanceName + ":" + reason.Error()
-	}
-	for _, instance := range instances {
-		err = unbind(instance, a)
-		if err != nil {
-			addToMsg(instance.Name, err)
-		}
-	}
-	if msg != "" {
-		return stderrors.New(msg)
-	}
 	return nil
 }
 

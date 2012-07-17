@@ -87,7 +87,7 @@ func (u *User) Get() error {
 	return db.Session.Users().Find(filter).One(&u)
 }
 
-func (u *User) Login(password string) bool {
+func (u *User) login(password string) bool {
 	hashedPassword := hashPassword(password)
 	return u.Password == hashedPassword
 }
@@ -96,7 +96,7 @@ func (u *User) CreateToken() (*Token, error) {
 	if u.Email == "" {
 		return nil, errors.New("User does not have an email")
 	}
-	t, _ := NewToken(u)
+	t, _ := newToken(u)
 	u.Tokens = append(u.Tokens, *t)
 	c := db.Session.Users()
 	err := c.Update(bson.M{"email": u.Email}, u)
@@ -141,7 +141,7 @@ type Token struct {
 	ValidUntil time.Time
 }
 
-func NewToken(u *User) (*Token, error) {
+func newToken(u *User) (*Token, error) {
 	if u == nil {
 		return nil, errors.New("User is nil")
 	}

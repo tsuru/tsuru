@@ -1,7 +1,6 @@
 package bind
 
 import (
-	"github.com/timeredbull/tsuru/api/auth"
 	"github.com/timeredbull/tsuru/api/unit"
 )
 
@@ -28,15 +27,15 @@ type EnvVar struct {
 }
 
 type App interface {
-	CheckUserAccess(*auth.User) bool
 	GetName() string
 	GetUnits() []unit.Unit
+	InstanceEnv(string) map[string]EnvVar
 	SetEnvs([]EnvVar, bool) error
 	UnsetEnvs([]string, bool) error
 }
 
 type Binder interface {
 	AppContainer
-	Bind(App, *auth.User) error
-	Unbind(App, *auth.User) error
+	Bind(App) error
+	Unbind(App) error
 }

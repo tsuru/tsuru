@@ -3,7 +3,7 @@ package service
 import (
 	"encoding/json"
 	"errors"
-	"github.com/timeredbull/tsuru/api/app"
+	"github.com/timeredbull/tsuru/api/bind"
 	"github.com/timeredbull/tsuru/log"
 	"io"
 	"io/ioutil"
@@ -89,32 +89,32 @@ func (c *Client) Destroy(instance *ServiceInstance) (err error) {
 	return err
 }
 
-func (c *Client) Bind(instance *ServiceInstance, app *app.App) (envVars map[string]string, err error) {
-	log.Print("Attempting to call bind of service instance " + instance.Name + " and app " + app.Name + " at " + instance.ServiceName + " api")
+func (c *Client) Bind(instance *ServiceInstance, app bind.App) (envVars map[string]string, err error) {
+	log.Print("Attempting to call bind of service instance " + instance.Name + " and app " + app.GetName() + " at " + instance.ServiceName + " api")
 	var resp *http.Response
 	params := map[string][]string{
-		"hostname":     []string{app.Units[0].Ip},
+		"hostname":     []string{app.GetUnits()[0].Ip},
 		"service_host": []string{instance.Host},
 	}
 	if resp, err = c.issueRequest("/resources/"+instance.Name+"/", "POST", params); err == nil && resp.StatusCode < 300 {
 		return c.jsonFromResponse(resp)
 	} else {
-		msg := "Failed to bind instance " + instance.Name + " to the app " + app.Name + ": " + c.buildErrorMessage(err, resp)
+		msg := "Failed to bind instance " + instance.Name + " to the app " + app.GetName() + ": " + c.buildErrorMessage(err, resp)
 		log.Print(msg)
 		err = errors.New(msg)
 	}
 	return
 }
 
-func (c *Client) Unbind(instance *ServiceInstance, app *app.App) (err error) {
-	log.Print("Attempting to call unbind of service instance " + instance.Name + " and app " + app.Name + " at " + instance.ServiceName + " api")
+func (c *Client) Unbind(instance *ServiceInstance, app bind.App) (err error) {
+	log.Print("Attempting to call unbind of service instance " + instance.Name + " and app " + app.GetName() + " at " + instance.ServiceName + " api")
 	var resp *http.Response
 	params := map[string][]string{
 		"service_host": []string{instance.Host},
 	}
-	url := "/resources/" + instance.Name + "/hostname/" + app.Units[0].Ip + "/"
+	url := "/resources/" + instance.Name + "/hostname/" + app.GetUnits()[0].Ip + "/"
 	if resp, err = c.issueRequest(url, "DELETE", params); err == nil && resp.StatusCode > 299 {
-		msg := "Failed to unbind instance " + instance.Name + " from the app " + app.Name + ": " + c.buildErrorMessage(err, resp)
+		msg := "Failed to unbind instance " + instance.Name + " from the app " + app.GetName() + ": " + c.buildErrorMessage(err, resp)
 		log.Print(msg)
 		err = errors.New(msg)
 	}

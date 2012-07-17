@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/timeredbull/tsuru/api/auth"
 	"github.com/timeredbull/tsuru/api/bind"
+	"github.com/timeredbull/tsuru/api/service"
 	"github.com/timeredbull/tsuru/api/unit"
 	"github.com/timeredbull/tsuru/config"
 	"github.com/timeredbull/tsuru/db"
@@ -56,12 +57,6 @@ type conf struct {
 	PosRestart string `yaml:"pos-restart"`
 }
 
-func AllApps() ([]App, error) {
-	var apps []App
-	err := db.Session.Apps().Find(nil).All(&apps)
-	return apps, err
-}
-
 func (a *App) Get() error {
 	return db.Session.Apps().Find(bson.M{"name": a.Name}).One(&a)
 }
@@ -84,8 +79,42 @@ func (a *App) Create() error {
 	return nil
 }
 
+func (a *App) unbind() error {
+	var instances []service.ServiceInstance
+	err := db.Session.ServiceInstances().Find(bson.M{"apps": bson.M{"$in": []string{a.Name}}}).All(&instances)
+	if err != nil {
+		return err
+	}
+	var msg string
+	var addMsg = func(instanceName string, reason error) {
+		if msg == "" {
+			msg = "Failed to unbind the following instances:\n"
+		}
+		msg += fmt.Sprintf("- %s (%s)", instanceName, reason.Error())
+	}
+	for _, instance := range instances {
+		err = instance.Unbind(a)
+		if err != nil {
+			addMsg(instance.Name, err)
+		}
+	}
+	if msg != "" {
+		return errors.New(msg)
+	}
+	return nil
+}
+
 func (a *App) Destroy() error {
-	err := db.Session.Apps().Remove(bson.M{"name": a.Name})
+	unbindingApp := App{Name: a.Name}
+	err := unbindingApp.Get()
+	if err != nil {
+		return err
+	}
+	unbindCh := make(chan error)
+	go func() {
+		unbindCh <- unbindingApp.unbind()
+	}()
+	err = db.Session.Apps().Remove(bson.M{"name": a.Name})
 	if err != nil {
 		return err
 	}
@@ -108,7 +137,7 @@ func (a *App) Destroy() error {
 	if err != nil {
 		return err
 	}
-	return nil
+	return <-unbindCh
 }
 
 func (a *App) AddOrUpdateUnit(u *unit.Unit) {
@@ -190,11 +219,11 @@ func (a *App) GetEnv(name string) (env EnvVar, err error) {
 	return
 }
 
-func (a *App) InstanceEnv(name string) map[string]EnvVar {
-	envs := make(map[string]EnvVar)
+func (a *App) InstanceEnv(name string) map[string]bind.EnvVar {
+	envs := make(map[string]bind.EnvVar)
 	for k, env := range a.Env {
 		if env.InstanceName == name {
-			envs[k] = env
+			envs[k] = bind.EnvVar(env)
 		}
 	}
 	return envs
@@ -321,10 +350,6 @@ func (a *App) GetName() string {
 	return a.Name
 }
 
-func (a *App) CheckUserAccess(u *auth.User) bool {
-	return auth.CheckUserAccess(a.Teams, u)
-}
-
 func (a *App) SetEnvs(envs []bind.EnvVar, publicOnly bool) error {
 	e := make([]EnvVar, len(envs))
 	for i, env := range envs {
@@ -342,14 +367,4 @@ func (a *App) Log(message string) error {
 	l := Log{Date: time.Now(), Message: message}
 	a.Logs = append(a.Logs, l)
 	return db.Session.Apps().Update(bson.M{"name": a.Name}, a)
-}
-
-// GetApps returns all apps that the given team has access to
-func GetApps(team *auth.Team) (apps []App, err error) {
-	if team == nil {
-		err = errors.New("You must provide the team.")
-		return
-	}
-	err = db.Session.Apps().Find(bson.M{"teams": team.Name}).All(&apps)
-	return
 }

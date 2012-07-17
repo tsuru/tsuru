@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"github.com/timeredbull/commandmocker"
 	"github.com/timeredbull/tsuru/api/auth"
+	"github.com/timeredbull/tsuru/api/bind"
 	"github.com/timeredbull/tsuru/api/unit"
 	"github.com/timeredbull/tsuru/db"
 	"github.com/timeredbull/tsuru/fs"
@@ -38,27 +39,6 @@ func (c *hasAccessToChecker) Check(params []interface{}, names []string) (bool, 
 }
 
 var HasAccessTo Checker = &hasAccessToChecker{}
-
-func (s *S) TestAll(c *C) {
-	expected := make([]App, 0)
-	app1 := App{Env: make(map[string]EnvVar), Name: "app1", Teams: []string{}, Logs: []Log{}}
-	app1.Create()
-	expected = append(expected, app1)
-	app2 := App{Env: make(map[string]EnvVar), Name: "app2", Teams: []string{}, Logs: []Log{}}
-	app2.Create()
-	expected = append(expected, app2)
-	app3 := App{Env: make(map[string]EnvVar), Name: "app3", Teams: []string{}, Logs: []Log{}}
-	app3.Create()
-	expected = append(expected, app3)
-
-	appList, err := AllApps()
-	c.Assert(err, IsNil)
-	for i := 0; i <= 2; i++ {
-		c.Assert(expected[i].Name, DeepEquals, appList[i].Name)
-		c.Assert(expected[i].State, DeepEquals, appList[i].State)
-		expected[i].Destroy()
-	}
-}
 
 func (s *S) TestGet(c *C) {
 	newApp := App{Env: map[string]EnvVar{}, Name: "myApp", Framework: "django", Teams: []string{}, Logs: []Log{}}
@@ -105,7 +85,11 @@ func (s *S) TestDestroyShouldRemoveTheDirectory(c *C) {
 	err = app.Destroy()
 	ch := make(chan int8)
 	go func(rfs *RecordingFs, path string, c chan int8) {
-		for !rfs.HasAction("removeall " + path) {
+		ticker := time.Tick(1)
+		for _ = range ticker {
+			if rfs.HasAction("removeall " + path) {
+				break
+			}
 		}
 		c <- 1
 	}(&rfs, path, ch)
@@ -113,7 +97,7 @@ func (s *S) TestDestroyShouldRemoveTheDirectory(c *C) {
 	case <-ch:
 		c.SucceedNow()
 	case <-time.After(1e9):
-		c.Error("Did not called fs.RemoveAll after 1 second.")
+		c.Error("Did not call fs.RemoveAll after 1 second.")
 	}
 }
 
@@ -236,15 +220,17 @@ func (s *S) TestInstanceEnvironmentReturnEnvironmentVariablesForTheServer(c *C) 
 		"DATABASE_USER": EnvVar{Name: "DATABASE_USER", Value: "root", Public: true, InstanceName: "mysql"},
 		"HOST":          EnvVar{Name: "HOST", Value: "10.0.2.1", Public: false, InstanceName: "redis"},
 	}
-	expected := envs
-	delete(expected, "HOST")
+	expected := map[string]bind.EnvVar{
+		"DATABASE_HOST": bind.EnvVar{Name: "DATABASE_HOST", Value: "localhost", Public: false, InstanceName: "mysql"},
+		"DATABASE_USER": bind.EnvVar{Name: "DATABASE_USER", Value: "root", Public: true, InstanceName: "mysql"},
+	}
 	a := App{Name: "hi-there", Env: envs}
 	c.Assert(a.InstanceEnv("mysql"), DeepEquals, expected)
 }
 
 func (s *S) TestInstanceEnvironmentDoesNotPanicIfTheEnvMapIsNil(c *C) {
 	a := App{Name: "hi-there"}
-	c.Assert(a.InstanceEnv("mysql"), DeepEquals, map[string]EnvVar{})
+	c.Assert(a.InstanceEnv("mysql"), DeepEquals, map[string]bind.EnvVar{})
 }
 
 func (s *S) TestUnit(c *C) {
@@ -532,26 +518,6 @@ func (s *S) TestSetTeams(c *C) {
 	app := App{Name: "app"}
 	app.setTeams([]auth.Team{s.team})
 	c.Assert(app.Teams, DeepEquals, []string{s.team.Name})
-}
-
-func (s *S) TestGetAppsToWhichTheTeamHasAccess(c *C) {
-	app1 := App{Name: "globo", Teams: []string{s.team.Name}}
-	err := app1.Create()
-	c.Assert(err, IsNil)
-	defer app1.Destroy()
-	app2 := App{Name: "google", Teams: []string{s.team.Name}}
-	err = app2.Create()
-	c.Assert(err, IsNil)
-	apps, err := GetApps(&s.team)
-	c.Assert(err, IsNil)
-	c.Assert(apps, HasLen, 2)
-	c.Assert(apps[0].Name, Equals, app1.Name)
-	c.Assert(apps[1].Name, Equals, app2.Name)
-}
-
-func (s *S) TestGetAppsReturnErrorIfTeamIsNil(c *C) {
-	_, err := GetApps(nil)
-	c.Assert(err, NotNil)
 }
 
 func (s *S) TestFsReturnsTheFieldValue(c *C) {

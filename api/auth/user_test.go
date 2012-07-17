@@ -66,13 +66,13 @@ func (s *S) TestGetUserReturnsErrorWhenNoUserIsFound(c *C) {
 func (s *S) TestUserLoginReturnsTrueIfThePasswordMatches(c *C) {
 	u := User{Email: "wolverine@xmen.com", Password: "123"}
 	u.hashPassword()
-	c.Assert(u.Login("123"), Equals, true)
+	c.Assert(u.login("123"), Equals, true)
 }
 
 func (s *S) TestUserLoginReturnsFalseIfThePasswordDoesNotMatch(c *C) {
 	u := User{Email: "wolverine@xmen.com", Password: "123"}
 	u.hashPassword()
-	c.Assert(u.Login("1234"), Equals, false)
+	c.Assert(u.login("1234"), Equals, false)
 }
 
 func (s *S) TestNewTokenIsStoredInUser(c *C) {
@@ -88,14 +88,14 @@ func (s *S) TestNewTokenIsStoredInUser(c *C) {
 
 func (s *S) TestNewTokenReturnsErroWhenUserReferenceDoesNotContainsEmail(c *C) {
 	u := User{}
-	t, err := NewToken(&u)
+	t, err := newToken(&u)
 	c.Assert(t, IsNil)
 	c.Assert(err, NotNil)
 	c.Assert(err, ErrorMatches, "^Impossible to generate tokens for users without email$")
 }
 
 func (s *S) TestNewTokenReturnsErrorWhenUserIsNil(c *C) {
-	t, err := NewToken(nil)
+	t, err := newToken(nil)
 	c.Assert(t, IsNil)
 	c.Assert(err, NotNil)
 	c.Assert(err, ErrorMatches, "^User is nil$")
@@ -274,11 +274,11 @@ func (s *S) TestTeams(c *C) {
 	err := u.Create()
 	c.Assert(err, IsNil)
 	defer db.Session.Users().Remove(bson.M{"email": u.Email})
-	s.team.AddUser(&u)
+	s.team.addUser(&u)
 	err = db.Session.Teams().Update(bson.M{"name": s.team.Name}, s.team)
 	c.Assert(err, IsNil)
 	defer func(u *User, t *Team) {
-		t.RemoveUser(u)
+		t.removeUser(u)
 		db.Session.Teams().Update(bson.M{"name": t.Name}, t)
 	}(&u, s.team)
 	t := Team{Name: "abc", Users: []User{u}}

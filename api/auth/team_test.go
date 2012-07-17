@@ -22,7 +22,7 @@ func (c *userPresenceChecker) Check(params []interface{}, names []string) (bool,
 	if !ok {
 		return false, "second parameter should be a pointer to a user instance"
 	}
-	return team.ContainsUser(user), ""
+	return team.containsUser(user), ""
 }
 
 var ContainsUser Checker = &userPresenceChecker{}
@@ -37,7 +37,7 @@ func (s *S) TestGetTeamsNames(c *C) {
 func (s *S) TestShouldBeAbleToAddAUserToATeamReturningNoErrors(c *C) {
 	u := &User{Email: "nobody@globo.com"}
 	t := new(Team)
-	err := t.AddUser(u)
+	err := t.addUser(u)
 	c.Assert(err, IsNil)
 	c.Assert(t, ContainsUser, u)
 }
@@ -45,9 +45,9 @@ func (s *S) TestShouldBeAbleToAddAUserToATeamReturningNoErrors(c *C) {
 func (s *S) TestShouldReturnErrorWhenTryingToAddAUserThatIsAlreadyInTheList(c *C) {
 	u := &User{Email: "nobody@globo.com"}
 	t := &Team{Name: "timeredbull"}
-	err := t.AddUser(u)
+	err := t.addUser(u)
 	c.Assert(err, IsNil)
-	err = t.AddUser(u)
+	err = t.addUser(u)
 	c.Assert(err, NotNil)
 	c.Assert(err, ErrorMatches, "^User nobody@globo.com is alread in the team timeredbull.$")
 }
@@ -55,9 +55,9 @@ func (s *S) TestShouldReturnErrorWhenTryingToAddAUserThatIsAlreadyInTheList(c *C
 func (s *S) TestShouldBeAbleToRemoveAUserFromATeamReturningNoErrors(c *C) {
 	u := &User{Email: "nobody@globo.com"}
 	t := &Team{Name: "timeredbull"}
-	err := t.AddUser(u)
+	err := t.addUser(u)
 	c.Assert(err, IsNil)
-	err = t.RemoveUser(u)
+	err = t.removeUser(u)
 	c.Assert(err, IsNil)
 	c.Assert(t, Not(ContainsUser), u)
 }
@@ -65,7 +65,7 @@ func (s *S) TestShouldBeAbleToRemoveAUserFromATeamReturningNoErrors(c *C) {
 func (s *S) TestShouldReturnErrorWhenTryingToRemoveAUserThatIsNotInTheTeam(c *C) {
 	u := &User{Email: "nobody@globo.com"}
 	t := &Team{Name: "timeredbull"}
-	err := t.RemoveUser(u)
+	err := t.removeUser(u)
 	c.Assert(err, NotNil)
 	c.Assert(err, ErrorMatches, "^User nobody@globo.com is not in the team timeredbull.$")
 }
