@@ -55,16 +55,6 @@ func (s *Service) GetClient(endpoint string) (cli *Client, err error) {
 	return
 }
 
-// func (s *Service) Bind(a *app.App) error {
-// 	sa := ServiceInstance{Name: s.Name, Apps: a.Name}
-// 	return sa.Create()
-// }
-
-// func (s *Service) Unbind(a *app.App) error {
-// 	sa := ServiceInstance{Name: s.Name, Apps: a.Name}
-// 	return sa.Delete()
-// }
-
 func (s *Service) findTeam(team *auth.Team) int {
 	for i, t := range s.Teams {
 		if team.Name == t {

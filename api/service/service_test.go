@@ -94,37 +94,6 @@ func (s *S) TestGetClientWithUnknownEndpoint(c *C) {
 	c.Assert(cli, IsNil)
 }
 
-// func (s *S) TestBindService(c *C) {
-// 	s.createService()
-// 	app := &app.App{Name: "my_app", Framework: "django"}
-// 	app.Create()
-// 	s.service.Bind(app)
-// 	var result ServiceInstance
-// 	query := bson.M{
-// 		"_id": s.service.Name,
-// 		"apps":     []app.App{app.Name},
-// 	}
-// 	err := db.Session.ServiceInstances().Find(query).One(&result)
-// 	c.Assert(err, IsNil)
-// 	c.Assert(s.service.Name, Equals, result.Name)
-// 	c.Assert(app.Name, Equals, result.Apps[0].Name)
-// }
-// 
-// func (s *S) TestUnbindService(c *C) {
-// 	s.createService()
-// 	app := &app.App{Name: "my_app", Framework: "django"}
-// 	app.Create()
-// 	s.service.Bind(app)
-// 	s.service.Unbind(app)
-// 	query := bson.M{
-// 		"_id": s.service.Name,
-// 		"apps":     []app.App{app.Name},
-// 	}
-// 	qtd, err := db.Session.ServiceInstances().Find(query).Count()
-// 	c.Assert(err, IsNil)
-// 	c.Assert(qtd, Equals, 0)
-// }
-
 func (s *S) TestGrantAccessShouldAddTeamToTheService(c *C) {
 	s.createService()
 	err := s.service.GrantAccess(s.team)
