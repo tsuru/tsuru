@@ -63,7 +63,7 @@ func (c *Client) Create(instance *ServiceInstance) (envVars map[string]string, e
 	var resp *http.Response
 	params := map[string][]string{
 		"name":         []string{instance.Name},
-		"service_host": []string{instance.Host},
+		"service_host": []string{instance.PrivateHost},
 	}
 	if resp, err = c.issueRequest("/resources/", "POST", params); err == nil && resp.StatusCode < 300 {
 		return c.jsonFromResponse(resp)
@@ -79,7 +79,7 @@ func (c *Client) Destroy(instance *ServiceInstance) (err error) {
 	log.Print("Attempting to call destroy of service instance " + instance.Name + " at " + instance.ServiceName + " api")
 	var resp *http.Response
 	params := map[string][]string{
-		"service_host": []string{instance.Host},
+		"service_host": []string{instance.PrivateHost},
 	}
 	if resp, err = c.issueRequest("/resources/"+instance.Name+"/", "DELETE", params); err == nil && resp.StatusCode > 299 {
 		msg := "Failed to destroy the instance " + instance.Name + ": " + c.buildErrorMessage(err, resp)
@@ -94,7 +94,7 @@ func (c *Client) Bind(instance *ServiceInstance, app bind.App) (envVars map[stri
 	var resp *http.Response
 	params := map[string][]string{
 		"hostname":     []string{app.GetUnits()[0].Ip},
-		"service_host": []string{instance.Host},
+		"service_host": []string{instance.PrivateHost},
 	}
 	if resp, err = c.issueRequest("/resources/"+instance.Name+"/", "POST", params); err == nil && resp.StatusCode < 300 {
 		return c.jsonFromResponse(resp)
@@ -110,7 +110,7 @@ func (c *Client) Unbind(instance *ServiceInstance, app bind.App) (err error) {
 	log.Print("Attempting to call unbind of service instance " + instance.Name + " and app " + app.GetName() + " at " + instance.ServiceName + " api")
 	var resp *http.Response
 	params := map[string][]string{
-		"service_host": []string{instance.Host},
+		"service_host": []string{instance.PrivateHost},
 	}
 	url := "/resources/" + instance.Name + "/hostname/" + app.GetUnits()[0].Ip + "/"
 	if resp, err = c.issueRequest(url, "DELETE", params); err == nil && resp.StatusCode > 299 {

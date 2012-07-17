@@ -62,7 +62,7 @@ func (s *S) TestCreateShouldSendTheNameOfTheResourceToTheEndpoint(c *C) {
 	h := TestHandler{}
 	ts := httptest.NewServer(&h)
 	defer ts.Close()
-	instance := ServiceInstance{Name: "my-redis", ServiceName: "redis", Host: "127.0.0.1"}
+	instance := ServiceInstance{Name: "my-redis", ServiceName: "redis", Host: "127.0.0.1", PrivateHost: "127.0.0.1"}
 	client := &Client{endpoint: ts.URL}
 	_, err := client.Create(&instance)
 	c.Assert(err, IsNil)
@@ -83,7 +83,7 @@ func (s *S) TestCreateShouldReturnTheMapWithTheEnvironmentVariables(c *C) {
 	h := TestHandler{}
 	ts := httptest.NewServer(&h)
 	defer ts.Close()
-	instance := ServiceInstance{Name: "your-redis", ServiceName: "redis", Host: "127.0.0.1"}
+	instance := ServiceInstance{Name: "your-redis", ServiceName: "redis", Host: "127.0.0.1", PrivateHost: "127.0.0.1"}
 	client := &Client{endpoint: ts.URL}
 	env, err := client.Create(&instance)
 	c.Assert(err, IsNil)
@@ -93,7 +93,7 @@ func (s *S) TestCreateShouldReturnTheMapWithTheEnvironmentVariables(c *C) {
 func (s *S) TestCreateShouldReturnErrorIfTheRequestFail(c *C) {
 	ts := httptest.NewServer(http.HandlerFunc(failHandler))
 	defer ts.Close()
-	instance := ServiceInstance{Name: "his-redis", ServiceName: "redis", Host: "127.0.0.1"}
+	instance := ServiceInstance{Name: "his-redis", ServiceName: "redis", Host: "127.0.0.1", PrivateHost: "127.0.0.1"}
 	client := &Client{endpoint: ts.URL}
 	_, err := client.Create(&instance)
 	c.Assert(err, NotNil)
@@ -104,7 +104,7 @@ func (s *S) TestDestroyShouldSendADELETERequestToTheResourceURLWithGetParameters
 	h := TestHandler{}
 	ts := httptest.NewServer(&h)
 	defer ts.Close()
-	instance := ServiceInstance{Name: "his-redis", ServiceName: "redis", Host: "127.0.0.1"}
+	instance := ServiceInstance{Name: "his-redis", ServiceName: "redis", Host: "127.0.0.1", PrivateHost: "127.0.0.1"}
 	client := &Client{endpoint: ts.URL}
 	err := client.Destroy(&instance)
 	c.Assert(err, IsNil)
@@ -115,7 +115,7 @@ func (s *S) TestDestroyShouldSendADELETERequestToTheResourceURLWithGetParameters
 func (s *S) TestDestroyShouldReturnErrorIfTheRequestFails(c *C) {
 	ts := httptest.NewServer(http.HandlerFunc(failHandler))
 	defer ts.Close()
-	instance := ServiceInstance{Name: "his-redis", ServiceName: "redis", Host: "127.0.0.1"}
+	instance := ServiceInstance{Name: "his-redis", ServiceName: "redis", Host: "127.0.0.1", PrivateHost: "127.0.0.1"}
 	client := &Client{endpoint: ts.URL}
 	err := client.Destroy(&instance)
 	c.Assert(err, NotNil)
@@ -126,7 +126,7 @@ func (s *S) TestBindShouldSendAPOSTToTheResourceURL(c *C) {
 	h := TestHandler{}
 	ts := httptest.NewServer(&h)
 	defer ts.Close()
-	instance := ServiceInstance{Name: "her-redis", ServiceName: "redis", Host: "127.0.0.1"}
+	instance := ServiceInstance{Name: "her-redis", ServiceName: "redis", Host: "127.0.0.1", PrivateHost: "127.0.0.1"}
 	a := FakeApp{
 		name: "her-app",
 		ip:   "10.0.10.1",
@@ -150,7 +150,7 @@ func (s *S) TestBindShouldReturnMapWithTheEnvironmentVariable(c *C) {
 	h := TestHandler{}
 	ts := httptest.NewServer(&h)
 	defer ts.Close()
-	instance := ServiceInstance{Name: "her-redis", ServiceName: "redis", Host: "127.0.0.1"}
+	instance := ServiceInstance{Name: "her-redis", ServiceName: "redis", Host: "127.0.0.1", PrivateHost: "127.0.0.1"}
 	a := FakeApp{
 		name: "her-app",
 		ip:   "10.0.10.1",
@@ -164,7 +164,7 @@ func (s *S) TestBindShouldReturnMapWithTheEnvironmentVariable(c *C) {
 func (s *S) TestBindShouldreturnErrorIfTheRequestFail(c *C) {
 	ts := httptest.NewServer(http.HandlerFunc(failHandler))
 	defer ts.Close()
-	instance := ServiceInstance{Name: "her-redis", ServiceName: "redis", Host: "127.0.0.1"}
+	instance := ServiceInstance{Name: "her-redis", ServiceName: "redis", Host: "127.0.0.1", PrivateHost: "127.0.0.1"}
 	a := FakeApp{
 		name: "her-app",
 		ip:   "10.0.10.1",
@@ -179,7 +179,7 @@ func (s *S) TestUnbindSendADELETERequestToTheResourceURL(c *C) {
 	h := TestHandler{}
 	ts := httptest.NewServer(&h)
 	defer ts.Close()
-	instance := ServiceInstance{Name: "heaven-can-wait", ServiceName: "heaven", Host: "192.168.1.10"}
+	instance := ServiceInstance{Name: "heaven-can-wait", ServiceName: "heaven", Host: "192.168.1.10", PrivateHost: "192.168.1.10"}
 	a := FakeApp{
 		name: "arch-enemy",
 		ip:   "2.2.2.2",
@@ -194,7 +194,7 @@ func (s *S) TestUnbindSendADELETERequestToTheResourceURL(c *C) {
 func (s *S) TestUnbindReturnsErrorIfTheRequestFails(c *C) {
 	ts := httptest.NewServer(http.HandlerFunc(failHandler))
 	defer ts.Close()
-	instance := ServiceInstance{Name: "heaven-can-wait", ServiceName: "heaven", Host: "192.168.1.10"}
+	instance := ServiceInstance{Name: "heaven-can-wait", ServiceName: "heaven", Host: "192.168.1.10", PrivateHost: "192.168.1.10"}
 	a := FakeApp{
 		name: "arch-enemy",
 		ip:   "2.2.2.2",
