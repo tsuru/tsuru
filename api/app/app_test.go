@@ -106,7 +106,11 @@ func (s *S) TestDestroyShouldRemoveTheDirectory(c *C) {
 	err = app.Destroy()
 	ch := make(chan int8)
 	go func(rfs *RecordingFs, path string, c chan int8) {
-		for !rfs.HasAction("removeall " + path) {
+		ticker := time.Tick(1)
+		for _ = range ticker {
+			if rfs.HasAction("removeall " + path) {
+				break
+			}
 		}
 		c <- 1
 	}(&rfs, path, ch)
