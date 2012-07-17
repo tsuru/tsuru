@@ -7,6 +7,7 @@ import (
 	"github.com/timeredbull/tsuru/api/service"
 	"github.com/timeredbull/tsuru/api/unit"
 	"github.com/timeredbull/tsuru/db"
+	"github.com/timeredbull/tsuru/errors"
 	"labix.org/v2/mgo/bson"
 	. "launchpad.net/gocheck"
 	"net/http"
@@ -52,7 +53,7 @@ func (s *S) TestBindAddsAppToTheServiceInstance(c *C) {
 	a := app.App{Name: "painkiller", Teams: []string{s.team.Name}}
 	a.Create()
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
-	err := instance.Bind(&a, &s.user)
+	err := instance.Bind(&a)
 	c.Assert(err, IsNil)
 	db.Session.ServiceInstances().Find(bson.M{"_id": instance.Name}).One(&instance)
 	c.Assert(instance.Apps, DeepEquals, []string{a.Name})
@@ -77,7 +78,7 @@ func (s *S) TestBindAddsAllEnvironmentVariablesFromServiceInstanceToTheApp(c *C)
 	err = a.Create()
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
-	err = instance.Bind(&a, &s.user)
+	err = instance.Bind(&a)
 	c.Assert(err, IsNil)
 	err = db.Session.Apps().Find(bson.M{"name": a.Name}).One(&a)
 	c.Assert(err, IsNil)
@@ -125,7 +126,7 @@ func (s *S) TestBindCallTheServiceAPIAndSetsEnvironmentVariableReturnedFromTheCa
 	err = a.Create()
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
-	err = instance.Bind(&a, &s.user)
+	err = instance.Bind(&a)
 	c.Assert(err, IsNil)
 	err = db.Session.Apps().Find(bson.M{"name": a.Name}).One(&a)
 	c.Assert(err, IsNil)
@@ -156,4 +157,35 @@ func (s *S) TestBindCallTheServiceAPIAndSetsEnvironmentVariableReturnedFromTheCa
 		},
 	}
 	c.Assert(a.Env, DeepEquals, expectedEnv)
+}
+
+func (s *S) TestBindReturnConflictIfTheAppIsAlreadyBinded(c *C) {
+	srvc := service.Service{Name: "mysql"}
+	err := srvc.Create()
+	c.Assert(err, IsNil)
+	defer db.Session.Services().Remove(bson.M{"_id": "mysql"})
+	instance := service.ServiceInstance{
+		Name:        "my-mysql",
+		ServiceName: "mysql",
+		Teams:       []string{s.team.Name},
+		State:       "running",
+		Apps:        []string{"painkiller"},
+	}
+	err = instance.Create()
+	c.Assert(err, IsNil)
+	defer db.Session.ServiceInstances().Remove(bson.M{"_id": "my-mysql"})
+	a := app.App{
+		Name:  "painkiller",
+		Teams: []string{s.team.Name},
+		Units: []unit.Unit{unit.Unit{Ip: "127.0.0.1"}},
+	}
+	err = a.Create()
+	c.Assert(err, IsNil)
+	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
+	err = instance.Bind(&a)
+	c.Assert(err, NotNil)
+	e, ok := err.(*errors.Http)
+	c.Assert(ok, Equals, true)
+	c.Assert(e.Code, Equals, http.StatusConflict)
+	c.Assert(e, ErrorMatches, "^This app is already binded to this service instance.$")
 }

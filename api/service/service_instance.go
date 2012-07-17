@@ -77,8 +77,11 @@ func (si *ServiceInstance) update() error {
 }
 
 func (si *ServiceInstance) Bind(app bind.App) error {
-	si.AddApp(app.GetName())
-	err := si.update()
+	err := si.AddApp(app.GetName())
+	if err != nil {
+		return &errors.Http{Code: http.StatusConflict, Message: "This app is already binded to this service instance."}
+	}
+	err = si.update()
 	if err != nil {
 		return err
 	}
