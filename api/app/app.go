@@ -356,10 +356,6 @@ func (a *App) GetName() string {
 	return a.Name
 }
 
-func (a *App) CheckUserAccess(u *auth.User) bool {
-	return auth.CheckUserAccess(a.Teams, u)
-}
-
 func (a *App) SetEnvs(envs []bind.EnvVar, publicOnly bool) error {
 	e := make([]EnvVar, len(envs))
 	for i, env := range envs {
