@@ -192,7 +192,7 @@ func DeleteHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	if err != nil {
 		return err
 	}
-	fmt.Fprint(w, "success")
+	w.WriteHeader(http.StatusNoContent)
 	return nil
 }
 

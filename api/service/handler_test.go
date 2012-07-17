@@ -294,7 +294,7 @@ func (s *S) TestDeleteHandler(c *C) {
 	recorder := httptest.NewRecorder()
 	err = DeleteHandler(recorder, request, s.user)
 	c.Assert(err, IsNil)
-	c.Assert(recorder.Code, Equals, 200)
+	c.Assert(recorder.Code, Equals, http.StatusNoContent)
 	query := bson.M{"_id": "Mysql"}
 	qtd, err := db.Session.Services().Find(query).Count()
 	c.Assert(err, IsNil)
