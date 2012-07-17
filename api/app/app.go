@@ -190,11 +190,11 @@ func (a *App) GetEnv(name string) (env EnvVar, err error) {
 	return
 }
 
-func (a *App) InstanceEnv(name string) map[string]EnvVar {
-	envs := make(map[string]EnvVar)
+func (a *App) InstanceEnv(name string) map[string]bind.EnvVar {
+	envs := make(map[string]bind.EnvVar)
 	for k, env := range a.Env {
 		if env.InstanceName == name {
-			envs[k] = env
+			envs[k] = bind.EnvVar(env)
 		}
 	}
 	return envs

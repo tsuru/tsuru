@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"github.com/timeredbull/commandmocker"
 	"github.com/timeredbull/tsuru/api/auth"
+	"github.com/timeredbull/tsuru/api/bind"
 	"github.com/timeredbull/tsuru/api/unit"
 	"github.com/timeredbull/tsuru/db"
 	"github.com/timeredbull/tsuru/fs"
@@ -236,15 +237,17 @@ func (s *S) TestInstanceEnvironmentReturnEnvironmentVariablesForTheServer(c *C) 
 		"DATABASE_USER": EnvVar{Name: "DATABASE_USER", Value: "root", Public: true, InstanceName: "mysql"},
 		"HOST":          EnvVar{Name: "HOST", Value: "10.0.2.1", Public: false, InstanceName: "redis"},
 	}
-	expected := envs
-	delete(expected, "HOST")
+	expected := map[string]bind.EnvVar{
+		"DATABASE_HOST": bind.EnvVar{Name: "DATABASE_HOST", Value: "localhost", Public: false, InstanceName: "mysql"},
+		"DATABASE_USER": bind.EnvVar{Name: "DATABASE_USER", Value: "root", Public: true, InstanceName: "mysql"},
+	}
 	a := App{Name: "hi-there", Env: envs}
 	c.Assert(a.InstanceEnv("mysql"), DeepEquals, expected)
 }
 
 func (s *S) TestInstanceEnvironmentDoesNotPanicIfTheEnvMapIsNil(c *C) {
 	a := App{Name: "hi-there"}
-	c.Assert(a.InstanceEnv("mysql"), DeepEquals, map[string]EnvVar{})
+	c.Assert(a.InstanceEnv("mysql"), DeepEquals, map[string]bind.EnvVar{})
 }
 
 func (s *S) TestUnit(c *C) {

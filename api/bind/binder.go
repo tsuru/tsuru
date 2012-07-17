@@ -29,6 +29,7 @@ type EnvVar struct {
 type App interface {
 	GetName() string
 	GetUnits() []unit.Unit
+	InstanceEnv(string) map[string]EnvVar
 	SetEnvs([]EnvVar, bool) error
 	UnsetEnvs([]string, bool) error
 }

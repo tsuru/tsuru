@@ -27,6 +27,10 @@ func (a *FakeApp) GetUnits() []unit.Unit {
 	}
 }
 
+func (a *FakeApp) InstanceEnv(name string) map[string]bind.EnvVar {
+	return nil
+}
+
 func (a *FakeApp) SetEnvs(vars []bind.EnvVar, public bool) error {
 	return nil
 }
