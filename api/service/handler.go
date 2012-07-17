@@ -180,7 +180,18 @@ func DeleteHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 		msg := "This user does not have access to this service"
 		return &errors.Http{Code: http.StatusForbidden, Message: msg}
 	}
-	s.Delete()
+	n, err := db.Session.ServiceInstances().Find(bson.M{"service_name": s.Name}).Count()
+	if err != nil {
+		return err
+	}
+	if n > 0 {
+		msg := "This service cannot be removed because it has instances.\nPlease remove these instances before removing the service."
+		return &errors.Http{Code: http.StatusForbidden, Message: msg}
+	}
+	err = s.Delete()
+	if err != nil {
+		return err
+	}
 	fmt.Fprint(w, "success")
 	return nil
 }
