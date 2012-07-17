@@ -43,7 +43,7 @@ func (ec *Ec2Collector) Update(insts []ec2.Instance) error {
 	for _, inst := range insts {
 		for _, srvInst := range srvInsts {
 			if srvInst.Instance == inst.InstanceId {
-				msg := fmt.Sprintf("Updating instance %s with host %s, state %s and private host %s", inst.DNSName, inst.State.Name, inst.PrivateDNSName)
+				msg := fmt.Sprintf("Updating instance %s with host %s, state %s and private host %s", inst.InstanceId, inst.DNSName, inst.State.Name, inst.PrivateDNSName)
 				log.Print(msg)
 				srvInst.State = inst.State.Name
 				srvInst.Host = inst.DNSName
