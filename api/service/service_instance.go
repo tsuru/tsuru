@@ -1,11 +1,13 @@
 package service
 
 import (
-	"errors"
+	stderrors "errors"
 	"github.com/timeredbull/tsuru/api/auth"
 	"github.com/timeredbull/tsuru/api/bind"
 	"github.com/timeredbull/tsuru/db"
+	"github.com/timeredbull/tsuru/errors"
 	"labix.org/v2/mgo/bson"
+	"net/http"
 )
 
 type ServiceInstance struct {
@@ -41,7 +43,7 @@ func (si *ServiceInstance) Service() *Service {
 func (si *ServiceInstance) AddApp(appName string) error {
 	index := si.FindApp(appName)
 	if index > -1 {
-		return errors.New("This instance already has this app.")
+		return stderrors.New("This instance already has this app.")
 	}
 	si.Apps = append(si.Apps, appName)
 	return nil
@@ -61,7 +63,7 @@ func (si *ServiceInstance) FindApp(appName string) int {
 func (si *ServiceInstance) RemoveApp(appName string) error {
 	index := si.FindApp(appName)
 	if index < 0 {
-		return errors.New("This app is not binded to this service instance.")
+		return stderrors.New("This app is not binded to this service instance.")
 	}
 	last := len(si.Apps) - 1
 	if index != last {
@@ -77,7 +79,34 @@ func (si *ServiceInstance) update() error {
 
 func (si *ServiceInstance) Bind(app bind.App, user *auth.User) error {
 	si.AddApp(app.GetName())
-	return si.update()
+	err := si.update()
+	if err != nil {
+		return err
+	}
+	var envVars []bind.EnvVar
+	var setEnv = func(env map[string]string) {
+		for k, v := range env {
+			envVars = append(envVars, bind.EnvVar{
+				Name:         k,
+				Value:        v,
+				Public:       false,
+				InstanceName: si.Name,
+			})
+		}
+	}
+	setEnv(si.Env)
+	var cli *Client
+	if cli, err = si.Service().GetClient("production"); err == nil {
+		if len(app.GetUnits()) == 0 {
+			return &errors.Http{Code: http.StatusPreconditionFailed, Message: "This app does not have an IP yet."}
+		}
+		env, err := cli.Bind(si, app)
+		if err != nil {
+			return err
+		}
+		setEnv(env)
+	}
+	return app.SetEnvs(envVars, false)
 }
 
 func (si *ServiceInstance) Unbind(app bind.App, user *auth.User) error {
