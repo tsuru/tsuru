@@ -1099,7 +1099,7 @@ func (s *S) TestRevokeAccessFromTeamReturnNotFoundIfTheTeamDoesNotHasAccessToThe
 	c.Assert(e.Code, Equals, http.StatusNotFound)
 }
 
-func (s *S) TestServicesHandler(c *C) {
+func (s *S) TestServicesInstancesHandler(c *C) {
 	app := app.App{Name: "globo", Teams: []string{s.team.Name}}
 	err := app.Create()
 	c.Assert(err, IsNil)
@@ -1117,7 +1117,7 @@ func (s *S) TestServicesHandler(c *C) {
 	request, err := http.NewRequest("GET", "/services/instances", nil)
 	c.Assert(err, IsNil)
 	recorder := httptest.NewRecorder()
-	err = ServicesHandler(recorder, request, s.user)
+	err = ServicesInstancesHandler(recorder, request, s.user)
 	c.Assert(err, IsNil)
 	body, err := ioutil.ReadAll(recorder.Body)
 	c.Assert(err, IsNil)
@@ -1130,7 +1130,7 @@ func (s *S) TestServicesHandler(c *C) {
 	c.Assert(instances, DeepEquals, expected)
 }
 
-func (s *S) TestServicesHandlerReturnsOnlyServicesThatTheUserHasAccess(c *C) {
+func (s *S) TestServicesInstancesHandlerReturnsOnlyServicesThatTheUserHasAccess(c *C) {
 	u := &auth.User{Email: "me@globo.com", Password: "123"}
 	err := u.Create()
 	c.Assert(err, IsNil)
@@ -1151,7 +1151,7 @@ func (s *S) TestServicesHandlerReturnsOnlyServicesThatTheUserHasAccess(c *C) {
 	request, err := http.NewRequest("GET", "/services/instances", nil)
 	c.Assert(err, IsNil)
 	recorder := httptest.NewRecorder()
-	err = ServicesHandler(recorder, request, u)
+	err = ServicesInstancesHandler(recorder, request, u)
 	c.Assert(err, IsNil)
 	body, err := ioutil.ReadAll(recorder.Body)
 	c.Assert(err, IsNil)
@@ -1161,7 +1161,7 @@ func (s *S) TestServicesHandlerReturnsOnlyServicesThatTheUserHasAccess(c *C) {
 	c.Assert(instances, DeepEquals, map[string][]string(nil))
 }
 
-func (s *S) TestServicesHandlerFilterInstancesPerServiceIncludingServicesThatDoesNotHaveInstances(c *C) {
+func (s *S) TestServicesInstancesHandlerFilterInstancesPerServiceIncludingServicesThatDoesNotHaveInstances(c *C) {
 	u := &auth.User{Email: "me@globo.com", Password: "123"}
 	err := u.Create()
 	c.Assert(err, IsNil)
@@ -1199,7 +1199,7 @@ func (s *S) TestServicesHandlerFilterInstancesPerServiceIncludingServicesThatDoe
 	request, err := http.NewRequest("GET", "/services/instances", nil)
 	c.Assert(err, IsNil)
 	recorder := httptest.NewRecorder()
-	err = ServicesHandler(recorder, request, s.user)
+	err = ServicesInstancesHandler(recorder, request, s.user)
 	c.Assert(err, IsNil)
 	body, err := ioutil.ReadAll(recorder.Body)
 	c.Assert(err, IsNil)
@@ -1214,4 +1214,46 @@ func (s *S) TestServicesHandlerFilterInstancesPerServiceIncludingServicesThatDoe
 		"oracle":    []string{},
 	}
 	c.Assert(instances, DeepEquals, expected)
+}
+
+func (s *S) makeRequestToServicesHandler(c *C) (*httptest.ResponseRecorder, *http.Request) {
+	request, err := http.NewRequest("GET", "/services", nil)
+	c.Assert(err, IsNil)
+	request.Header.Set("Content-Type", "application/json")
+	recorder := httptest.NewRecorder()
+	return recorder, request
+}
+
+func (s *S) TestServicesHandlerShoudGetAllServicesFromUsersTeam(c *C) {
+	srv := Service{Name: "mongodb", Teams: []string{s.team.Name}}
+	srv.Create()
+	defer srv.Delete()
+	si := ServiceInstance{Name: "my_nosql", ServiceName: srv.Name}
+	si.Create()
+	defer si.Delete()
+	recorder, request := s.makeRequestToServicesHandler(c)
+	err := ServicesHandler(recorder, request, s.user)
+	c.Assert(err, IsNil)
+	b, err := ioutil.ReadAll(recorder.Body)
+	c.Assert(err, IsNil)
+	services := make([]ServiceModel, 1)
+	err = json.Unmarshal(b, &services)
+	expected := []ServiceModel{
+		ServiceModel{Service: "mongodb", Instances: []string{"my_nosql"}},
+	}
+	c.Assert(services, DeepEquals, expected)
+}
+
+func (s *S) TestServiceAndServiceInstancesByTeams(c *C) {
+	srv := Service{Name: "mongodb", Teams: []string{s.team.Name}}
+	srv.Create()
+	defer srv.Delete()
+	si := ServiceInstance{Name: "my_nosql", ServiceName: srv.Name}
+	si.Create()
+	defer si.Delete()
+	obtained := serviceAndServiceInstancesByTeams(s.user)
+	expected := []ServiceModel{
+		ServiceModel{Service: "mongodb", Instances: []string{"my_nosql"}},
+	}
+	c.Assert(obtained, DeepEquals, expected)
 }

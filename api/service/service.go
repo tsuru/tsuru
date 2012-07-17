@@ -86,3 +86,11 @@ func (s *Service) RevokeAccess(team *auth.Team) error {
 	s.Teams = s.Teams[:last]
 	return nil
 }
+
+func GetServicesNames(services []Service) []string {
+	sNames := make([]string, len(services))
+	for i, s := range services {
+		sNames[i] = s.Name
+	}
+	return sNames
+}

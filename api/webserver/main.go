@@ -51,7 +51,7 @@ func main() {
 	repository.RunAgent()
 	m := pat.New()
 
-	m.Get("/services/instances", AuthorizationRequiredHandler(service.ServicesHandler))
+	m.Get("/services/instances", AuthorizationRequiredHandler(service.ServicesInstancesHandler))
 	m.Post("/services/instances", AuthorizationRequiredHandler(service.CreateInstanceHandler))
 	m.Put("/services/instances/:instance/:app", AuthorizationRequiredHandler(service.BindHandler))
 	m.Del("/services/instances/:instance/:app", AuthorizationRequiredHandler(service.UnbindHandler))

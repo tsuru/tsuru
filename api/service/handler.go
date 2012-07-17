@@ -369,7 +369,7 @@ func RevokeAccessFromTeamHandler(w http.ResponseWriter, r *http.Request, u *auth
 	return db.Session.Services().Update(bson.M{"_id": service.Name}, service)
 }
 
-func ServicesHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
+func ServicesInstancesHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	teams, err := u.Teams()
 	if err != nil {
 		return err
@@ -410,4 +410,44 @@ func ServicesHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error
 		return &errors.Http{Code: http.StatusInternalServerError, Message: "Failed to write the response body."}
 	}
 	return err
+}
+
+type ServiceModel struct {
+	Service   string
+	Instances []string
+}
+
+func ServicesHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
+	results := serviceAndServiceInstancesByTeams(u)
+	b, err := json.Marshal(results)
+	if err != nil {
+		return &errors.Http{Code: http.StatusInternalServerError, Message: err.Error()}
+	}
+	n, err := w.Write(b)
+	if n != len(b) {
+		return &errors.Http{Code: http.StatusInternalServerError, Message: "Failed to write response body"}
+	}
+	return err
+}
+
+func serviceAndServiceInstancesByTeams(u *auth.User) []ServiceModel {
+	var teams []auth.Team
+	q := bson.M{"users.email": u.Email}
+	db.Session.Teams().Find(q).Select(bson.M{"name": 1}).All(&teams)
+	var services []Service
+	q = bson.M{"teams": bson.M{"$in": auth.GetTeamsNames(teams)}}
+	db.Session.Services().Find(q).Select(bson.M{"name": 1}).All(&services)
+	var sInsts []ServiceInstance
+	q = bson.M{"service_name": bson.M{"$in": GetServicesNames(services)}}
+	db.Session.ServiceInstances().Find(q).Select(bson.M{"name": 1, "service_name": 1}).All(&sInsts)
+	results := make([]ServiceModel, len(services))
+	for i, s := range services {
+		results[i].Service = s.Name
+		for _, si := range sInsts {
+			if si.ServiceName == s.Name {
+				results[i].Instances = append(results[i].Instances, si.Name)
+			}
+		}
+	}
+	return results
 }

@@ -125,3 +125,11 @@ func (s *S) TestRevokeAcessShouldReturnErrorIfTheTeamDoesNotHaveAccessToTheServi
 	c.Assert(err, NotNil)
 	c.Assert(err, ErrorMatches, "^This team does not have access to this service$")
 }
+
+func (s *S) TestGetServicesNames(c *C) {
+	s1 := Service{Name: "Foo"}
+	s2 := Service{Name: "Bar"}
+	s3 := Service{Name: "FooBar"}
+	sNames := GetServicesNames([]Service{s1, s2, s3})
+	c.Assert(sNames, DeepEquals, []string{"Foo", "Bar", "FooBar"})
+}
