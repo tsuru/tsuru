@@ -118,7 +118,7 @@ func (s *S) TestDestroyShouldRemoveTheDirectory(c *C) {
 	case <-ch:
 		c.SucceedNow()
 	case <-time.After(1e9):
-		c.Error("Did not called fs.RemoveAll after 1 second.")
+		c.Error("Did not call fs.RemoveAll after 1 second.")
 	}
 }
 
