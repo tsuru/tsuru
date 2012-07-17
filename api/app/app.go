@@ -57,12 +57,6 @@ type conf struct {
 	PosRestart string `yaml:"pos-restart"`
 }
 
-func AllApps() ([]App, error) {
-	var apps []App
-	err := db.Session.Apps().Find(nil).All(&apps)
-	return apps, err
-}
-
 func (a *App) Get() error {
 	return db.Session.Apps().Find(bson.M{"name": a.Name}).One(&a)
 }
@@ -373,14 +367,4 @@ func (a *App) Log(message string) error {
 	l := Log{Date: time.Now(), Message: message}
 	a.Logs = append(a.Logs, l)
 	return db.Session.Apps().Update(bson.M{"name": a.Name}, a)
-}
-
-// GetApps returns all apps that the given team has access to
-func GetApps(team *auth.Team) (apps []App, err error) {
-	if team == nil {
-		err = errors.New("You must provide the team.")
-		return
-	}
-	err = db.Session.Apps().Find(bson.M{"teams": team.Name}).All(&apps)
-	return
 }
