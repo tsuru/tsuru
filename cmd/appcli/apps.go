@@ -39,7 +39,7 @@ type AppAddTeam struct{}
 func (c *AppAddTeam) Info() *cmd.Info {
 	return &cmd.Info{
 		Name:    "add-team",
-		Usage:   "app add-team appname teamname",
+		Usage:   "app add-team <appname> <teamname>",
 		Desc:    "adds team to app.",
 		MinArgs: 2,
 	}
@@ -65,7 +65,7 @@ type AppRemoveTeam struct{}
 func (c *AppRemoveTeam) Info() *cmd.Info {
 	return &cmd.Info{
 		Name:    "remove-team",
-		Usage:   "app remove-team appname teamname",
+		Usage:   "app remove-team <appname> <teamname>",
 		Desc:    "removes team from app.",
 		MinArgs: 2,
 	}
@@ -177,7 +177,7 @@ func (c *AppCreate) Run(context *cmd.Context, client cmd.Doer) error {
 func (c *AppCreate) Info() *cmd.Info {
 	return &cmd.Info{
 		Name:    "create",
-		Usage:   "app create appname",
+		Usage:   "app create <appname>",
 		Desc:    "create a new app.",
 		MinArgs: 1,
 	}
@@ -188,7 +188,7 @@ type AppRemove struct{}
 func (c *AppRemove) Info() *cmd.Info {
 	return &cmd.Info{
 		Name:    "remove",
-		Usage:   "app remove appname",
+		Usage:   "app remove <appname>",
 		Desc:    "remove your app.",
 		MinArgs: 1,
 	}
@@ -214,7 +214,7 @@ type AppLog struct{}
 func (c *AppLog) Info() *cmd.Info {
 	return &cmd.Info{
 		Name:    "log",
-		Usage:   "app log appname",
+		Usage:   "app log <appname>",
 		Desc:    "shows app log",
 		MinArgs: 1,
 	}
