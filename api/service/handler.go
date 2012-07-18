@@ -241,37 +241,7 @@ func RevokeAccessFromTeamHandler(w http.ResponseWriter, r *http.Request, u *auth
 }
 
 func ServicesInstancesHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
-	teams, err := u.Teams()
-	if err != nil {
-		return err
-	}
-	var teamNames []string
-	for _, team := range teams {
-		teamNames = append(teamNames, team.Name)
-	}
-	response := make(map[string][]string)
-	var services []Service
-	err = db.Session.Services().Find(bson.M{"teams": bson.M{"$in": teamNames}}).All(&services)
-	if err != nil {
-		return err
-	}
-	if len(services) == 0 {
-		w.Write([]byte("null"))
-		return nil
-	}
-	for _, service := range services {
-		response[service.Name] = []string{}
-	}
-	iter := db.Session.ServiceInstances().Find(bson.M{"teams": bson.M{"$in": teamNames}}).Iter()
-	var instance ServiceInstance
-	for iter.Next(&instance) {
-		service := response[instance.ServiceName]
-		response[instance.ServiceName] = append(service, instance.Name)
-	}
-	err = iter.Err()
-	if err != nil {
-		return err
-	}
+	response := serviceAndServiceInstancesByTeams("teams", u)
 	body, err := json.Marshal(response)
 	if err != nil {
 		return err
