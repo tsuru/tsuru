@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/json"
 	"github.com/timeredbull/tsuru/cmd"
 	"io"
 	"io/ioutil"
