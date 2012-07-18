@@ -2,14 +2,12 @@ package main
 
 import (
 	"bytes"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/timeredbull/tsuru/cmd"
 	"io"
 	"io/ioutil"
 	"net/http"
-	"strings"
 )
 
 type Service struct{}
@@ -56,26 +54,35 @@ func (s *ServiceList) Run(ctx *cmd.Context, client cmd.Doer) error {
 	if err != nil {
 		return err
 	}
-	var body map[string][]string
-	err = json.Unmarshal(b, &body)
+	//var body []cmd.ServiceModel
+	//err = json.Unmarshal(b, &body)
+	rslt, err := cmd.ShowServicesInstancesList(b)
 	if err != nil {
 		return err
 	}
-	if len(body) == 0 {
-		return nil
-	}
-	table := cmd.NewTable()
-	table.Headers = cmd.Row([]string{"Service", "Instances"})
-	for s, i := range body {
-		instances := strings.Join(i, ", ")
-		table.AddRow(cmd.Row([]string{s, instances}))
-	}
-	content := table.Bytes()
-	n, err := ctx.Stdout.Write(content)
-	if n != len(content) {
+	n, err := ctx.Stdout.Write(rslt)
+	if n != len(rslt) {
 		return errors.New("Failed to write the output of the command")
 	}
-	return err
+	// if err != nil {
+	// 	return err
+	// }
+	// if len(body) == 0 {
+	// 	return nil
+	// }
+	// table := cmd.NewTable()
+	// table.Headers = cmd.Row([]string{"Service", "Instances"})
+	// for s, i := range body {
+	// 	instances := strings.Join(i, ", ")
+	// 	table.AddRow(cmd.Row([]string{s, instances}))
+	// }
+	// content := table.Bytes()
+	//n, err := ctx.Stdout.Write(content)
+	//n, err := ctx.Stdout.Write(body)
+	//if n != len(body) {
+	//return errors.New("Failed to write the output of the command")
+	//}
+	return nil
 }
 
 type ServiceAdd struct{}

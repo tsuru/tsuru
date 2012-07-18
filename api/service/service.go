@@ -15,7 +15,7 @@ type Service struct {
 	Name       string `bson:"_id"`
 	Endpoint   map[string]string
 	Bootstrap  map[string]string
-	OwnerTeams []string
+	OwnerTeams []string `bson:"owner_teams"`
 	Teams      []string
 	Status     string
 }

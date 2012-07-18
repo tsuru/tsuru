@@ -24,7 +24,7 @@ func (s *S) TestServiceShouldBeInfoer(c *C) {
 }
 
 func (s *S) TestServiceList(c *C) {
-	output := `{"mysql": ["mysql01", "mysql02"], "oracle": []}`
+	output := `[{"service": "mysql", "instances": ["mysql01", "mysql02"]}, {"service": "oracle", "instances": []}]`
 	expectedPrefix := `+---------+------------------+
 | Service | Instances        |`
 	lineMysql := "| mysql   | mysql01, mysql02 |"
@@ -54,7 +54,7 @@ func (s *S) TestServiceList(c *C) {
 }
 
 func (s *S) TestServiceListWithEmptyResponse(c *C) {
-	output := "{}"
+	output := "[]"
 	expected := ""
 	ctx := cmd.Context{
 		Cmds:   []string{},

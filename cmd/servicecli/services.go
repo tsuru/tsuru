@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/json"
 	"github.com/timeredbull/tsuru/cmd"
 	"io"
 	"io/ioutil"
@@ -97,11 +96,6 @@ func (c *ServiceList) Info() *cmd.Info {
 	}
 }
 
-type ServiceModel struct {
-	Service   string
-	Instances []string
-}
-
 func (c *ServiceList) Run(ctxt *cmd.Context, client cmd.Doer) error {
 	url := cmd.GetUrl("/services")
 	request, err := http.NewRequest("GET", url, nil)
@@ -117,29 +111,10 @@ func (c *ServiceList) Run(ctxt *cmd.Context, client cmd.Doer) error {
 	if err != nil {
 		return err
 	}
-	rslt, err := c.show(b)
+	rslt, err := cmd.ShowServicesInstancesList(b)
 	if err != nil {
 		return err
 	}
 	ctxt.Stdout.Write(rslt)
 	return nil
-}
-
-func (c *ServiceList) show(b []byte) ([]byte, error) {
-	var services []ServiceModel
-	err := json.Unmarshal(b, &services)
-	if err != nil {
-		return []byte{}, err
-	}
-	if len(services) == 0 {
-		return []byte{}, nil
-	}
-	table := cmd.NewTable()
-	table.Headers = cmd.Row([]string{"Services", "Instances"})
-	for _, s := range services {
-		insts := strings.Join(s.Instances, ", ")
-		r := cmd.Row([]string{s.Service, insts})
-		table.AddRow(r)
-	}
-	return table.Bytes(), nil
 }

@@ -241,37 +241,7 @@ func RevokeAccessFromTeamHandler(w http.ResponseWriter, r *http.Request, u *auth
 }
 
 func ServicesInstancesHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
-	teams, err := u.Teams()
-	if err != nil {
-		return err
-	}
-	var teamNames []string
-	for _, team := range teams {
-		teamNames = append(teamNames, team.Name)
-	}
-	response := make(map[string][]string)
-	var services []Service
-	err = db.Session.Services().Find(bson.M{"teams": bson.M{"$in": teamNames}}).All(&services)
-	if err != nil {
-		return err
-	}
-	if len(services) == 0 {
-		w.Write([]byte("null"))
-		return nil
-	}
-	for _, service := range services {
-		response[service.Name] = []string{}
-	}
-	iter := db.Session.ServiceInstances().Find(bson.M{"teams": bson.M{"$in": teamNames}}).Iter()
-	var instance ServiceInstance
-	for iter.Next(&instance) {
-		service := response[instance.ServiceName]
-		response[instance.ServiceName] = append(service, instance.Name)
-	}
-	err = iter.Err()
-	if err != nil {
-		return err
-	}
+	response := serviceAndServiceInstancesByTeams("teams", u)
 	body, err := json.Marshal(response)
 	if err != nil {
 		return err
@@ -289,7 +259,7 @@ type ServiceModel struct {
 }
 
 func ServicesHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
-	results := serviceAndServiceInstancesByTeams(u)
+	results := serviceAndServiceInstancesByTeams("owner_teams", u)
 	b, err := json.Marshal(results)
 	if err != nil {
 		return &errors.Http{Code: http.StatusInternalServerError, Message: err.Error()}
@@ -301,12 +271,12 @@ func ServicesHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error
 	return err
 }
 
-func serviceAndServiceInstancesByTeams(u *auth.User) []ServiceModel {
+func serviceAndServiceInstancesByTeams(teamKind string, u *auth.User) []ServiceModel {
 	var teams []auth.Team
 	q := bson.M{"users.email": u.Email}
 	db.Session.Teams().Find(q).Select(bson.M{"name": 1}).All(&teams)
 	var services []Service
-	q = bson.M{"teams": bson.M{"$in": auth.GetTeamsNames(teams)}}
+	q = bson.M{teamKind: bson.M{"$in": auth.GetTeamsNames(teams)}}
 	db.Session.Services().Find(q).Select(bson.M{"name": 1}).All(&services)
 	var sInsts []ServiceInstance
 	q = bson.M{"service_name": bson.M{"$in": GetServicesNames(services)}}

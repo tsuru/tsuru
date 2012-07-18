@@ -137,19 +137,6 @@ func (s *S) TestServiceListRun(c *C) {
 	c.Assert(manager.Stdout.(*bytes.Buffer).String(), Equals, expected)
 }
 
-func (s *S) TestServiceListShow(c *C) {
-	expected := `+----------+-----------+
-| Services | Instances |
-+----------+-----------+
-| mongodb  | my_nosql  |
-+----------+-----------+
-`
-	b := `[{"service": "mongodb", "instances": ["my_nosql"]}]`
-	result, err := (&ServiceList{}).show([]byte(b))
-	c.Assert(err, IsNil)
-	c.Assert(string(result), Equals, expected)
-}
-
 func (s *S) TestServiceListRunWithNoServicesReturned(c *C) {
 	response := `[]`
 	expected := ""

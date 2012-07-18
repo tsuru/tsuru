@@ -1,10 +1,12 @@
 package cmd
 
 import (
+	"encoding/json"
 	"io/ioutil"
 	"os"
 	"os/user"
 	"path"
+	"strings"
 )
 
 func joinWithUserDir(p ...string) (string, error) {
@@ -43,4 +45,28 @@ func ReadToken() (string, error) {
 		return "", err
 	}
 	return string(token), nil
+}
+
+type ServiceModel struct {
+	Service   string
+	Instances []string
+}
+
+func ShowServicesInstancesList(b []byte) ([]byte, error) {
+	var services []ServiceModel
+	err := json.Unmarshal(b, &services)
+	if err != nil {
+		return []byte{}, err
+	}
+	if len(services) == 0 {
+		return []byte{}, nil
+	}
+	table := NewTable()
+	table.Headers = Row([]string{"Services", "Instances"})
+	for _, s := range services {
+		insts := strings.Join(s.Instances, ", ")
+		r := Row([]string{s.Service, insts})
+		table.AddRow(r)
+	}
+	return table.Bytes(), nil
 }
