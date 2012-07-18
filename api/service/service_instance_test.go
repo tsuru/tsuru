@@ -20,7 +20,7 @@ func (s *S) createServiceInstance() {
 
 func (s *S) TestCreateServiceInstance(c *C) {
 	s.createServiceInstance()
-	defer s.service.Delete()
+	defer db.Session.Services().Remove(bson.M{"_id": s.service.Name})
 	var result ServiceInstance
 	query := bson.M{
 		"_id": s.service.Name,
@@ -47,7 +47,7 @@ func (s *S) TestCreateServiceInstanceShouldSetTheStateToCreatingOnlyIfTheStateIs
 
 func (s *S) TestDeleteServiceInstance(c *C) {
 	s.createServiceInstance()
-	defer s.service.Delete()
+	defer db.Session.Services().Remove(bson.M{"_id": s.service.Name})
 	s.serviceInstance.Delete()
 	query := bson.M{
 		"_id": s.service.Name,

@@ -42,8 +42,8 @@ func (s *Service) Create() error {
 }
 
 func (s *Service) Delete() error {
-	err := db.Session.Services().Remove(s)
-	return err
+	s.Status = "deleted"
+	return db.Session.Services().Update(bson.M{"_id": s.Name}, s)
 }
 
 func (s *Service) GetClient(endpoint string) (cli *Client, err error) {
