@@ -27,20 +27,6 @@ func (s *S) TestGetServiceReturnsErrorIfTheServiceIsDeleted(c *C) {
 	c.Assert(err, NotNil)
 }
 
-func (s *S) TestAllServices(c *C) {
-	se := Service{Name: "myService"}
-	se2 := Service{Name: "myOtherService"}
-	err := se.Create()
-	c.Assert(err, IsNil)
-	err = se2.Create()
-	c.Assert(err, IsNil)
-	defer db.Session.Services().Remove(bson.M{"_id": bson.M{"$in": []string{se.Name, se2.Name}}})
-
-	s_ := Service{}
-	results := s_.All()
-	c.Assert(len(results), Equals, 2)
-}
-
 func (s *S) TestCreateService(c *C) {
 	endpt := map[string]string{
 		"production": "somehost.com",

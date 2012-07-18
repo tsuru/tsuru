@@ -29,12 +29,6 @@ func (s *Service) Get() error {
 	return db.Session.Services().Find(query).One(&s)
 }
 
-func (s *Service) All() []Service {
-	var result []Service
-	db.Session.Services().Find(nil).All(&result)
-	return result
-}
-
 func (s *Service) Create() error {
 	s.Status = "created"
 	err := db.Session.Services().Insert(s)
