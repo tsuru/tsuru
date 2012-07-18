@@ -44,3 +44,27 @@ func ReadToken() (string, error) {
 	}
 	return string(token), nil
 }
+
+type ServiceModel struct {
+	Service   string
+	Instances []string
+}
+
+func ShowServicesInstancesList(b []byte) ([]byte, error) {
+	var services []cmd.ServiceModel
+	err := json.Unmarshal(b, &services)
+	if err != nil {
+		return []byte{}, err
+	}
+	if len(services) == 0 {
+		return []byte{}, nil
+	}
+	table := cmd.NewTable()
+	table.Headers = cmd.Row([]string{"Services", "Instances"})
+	for _, s := range services {
+		insts := strings.Join(s.Instances, ", ")
+		r := cmd.Row([]string{s.Service, insts})
+		table.AddRow(r)
+	}
+	return table.Bytes(), nil
+}

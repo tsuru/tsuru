@@ -97,11 +97,6 @@ func (c *ServiceList) Info() *cmd.Info {
 	}
 }
 
-type ServiceModel struct {
-	Service   string
-	Instances []string
-}
-
 func (c *ServiceList) Run(ctxt *cmd.Context, client cmd.Doer) error {
 	url := cmd.GetUrl("/services")
 	request, err := http.NewRequest("GET", url, nil)
@@ -126,7 +121,7 @@ func (c *ServiceList) Run(ctxt *cmd.Context, client cmd.Doer) error {
 }
 
 func (c *ServiceList) show(b []byte) ([]byte, error) {
-	var services []ServiceModel
+	var services []cmd.ServiceModel
 	err := json.Unmarshal(b, &services)
 	if err != nil {
 		return []byte{}, err
