@@ -56,6 +56,7 @@ func (s *S) TestCreateService(c *C) {
 	c.Assert(se.Endpoint["production"], Equals, endpt["production"])
 	c.Assert(se.Endpoint["test"], Equals, endpt["test"])
 	c.Assert(se.OwnerTeams, DeepEquals, []string{s.team.Name})
+	c.Assert(se.Status, Equals, "created")
 }
 
 func (s *S) TestDeleteService(c *C) {
