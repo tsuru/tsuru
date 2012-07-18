@@ -92,7 +92,7 @@ func (s *S) TestCreateHandlerShouldReturnErrorWhenNameExists(c *C) {
 	c.Assert(err, ErrorMatches, "^Service with name some_service already exists.$")
 }
 
-func (s *S) TestCreateHandlerGetAllTeamsFromTheUser(c *C) {
+func (s *S) TestCreateHandlerSavesOwnerTeamsFromUserWhoCreated(c *C) {
 	recorder, request := makeRequestToCreateHandler(c)
 	err := CreateHandler(recorder, request, s.user)
 	c.Assert(err, IsNil)
@@ -102,8 +102,8 @@ func (s *S) TestCreateHandlerGetAllTeamsFromTheUser(c *C) {
 	var rService Service
 	err = db.Session.Services().Find(query).One(&rService)
 	c.Assert(err, IsNil)
-	c.Assert(rService.Name, Equals, "some_service")
-	c.Assert(*s.team, HasAccessTo, rService)
+	c.Assert("some_service", Equals, rService.Name)
+	c.Assert(rService.OwnerTeams, DeepEquals, []string{s.team.Name})
 }
 
 func (s *S) TestCreateHandlerReturnsForbiddenIfTheUserIsNotMemberOfAnyTeam(c *C) {
@@ -528,7 +528,7 @@ func (s *S) TestRevokeAccessFromTeamReturnNotFoundIfTheTeamDoesNotHasAccessToThe
 	c.Assert(e.Code, Equals, http.StatusNotFound)
 }
 
-func (s *S) TestServicesHandler(c *C) {
+func (s *S) TestServicesInstancesHandler(c *C) {
 	service := Service{Name: "redis", Teams: []string{s.team.Name}}
 	err := service.Create()
 	c.Assert(err, IsNil)

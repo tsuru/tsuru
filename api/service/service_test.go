@@ -41,15 +41,21 @@ func (s *S) TestCreateService(c *C) {
 		"ami":  "ami-0000007",
 		"when": "on-new-instance",
 	}
-	service := &Service{Name: "my_service", Endpoint: endpt, Bootstrap: bootstrap}
+	service := &Service{
+		Name:       "my_service",
+		Endpoint:   endpt,
+		Bootstrap:  bootstrap,
+		OwnerTeams: []string{s.team.Name},
+	}
 	err := service.Create()
 	c.Assert(err, IsNil)
 	se := Service{Name: service.Name}
 	err = se.Get()
 	c.Assert(err, IsNil)
 	c.Assert(se.Name, Equals, service.Name)
-	c.Assert(endpt["production"], Equals, se.Endpoint["production"])
-	c.Assert(endpt["test"], Equals, se.Endpoint["test"])
+	c.Assert(se.Endpoint["production"], Equals, endpt["production"])
+	c.Assert(se.Endpoint["test"], Equals, endpt["test"])
+	c.Assert(se.OwnerTeams, DeepEquals, []string{s.team.Name})
 }
 
 func (s *S) TestDeleteService(c *C) {

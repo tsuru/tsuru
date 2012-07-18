@@ -12,10 +12,11 @@ import (
 const OnNewInstance = "on-new-instance"
 
 type Service struct {
-	Name      string `bson:"_id"`
-	Endpoint  map[string]string
-	Bootstrap map[string]string
-	Teams     []string
+	Name       string `bson:"_id"`
+	Endpoint   map[string]string
+	Bootstrap  map[string]string
+	OwnerTeams []string
+	Teams      []string
 }
 
 func (s *Service) Log(out []byte) {

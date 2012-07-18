@@ -52,10 +52,10 @@ func CreateHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 		return &errors.Http{Code: http.StatusInternalServerError, Message: msg}
 	}
 	s := Service{
-		Name:      sy.Id,
-		Endpoint:  sy.Endpoint,
-		Bootstrap: sy.Bootstrap,
-		Teams:     auth.GetTeamsNames(teams),
+		Name:       sy.Id,
+		Endpoint:   sy.Endpoint,
+		Bootstrap:  sy.Bootstrap,
+		OwnerTeams: auth.GetTeamsNames(teams),
 	}
 	err = s.Create()
 	if err != nil {
