@@ -10,6 +10,16 @@ import (
 	"syscall"
 )
 
+type RecordingExiter int
+
+func (e *RecordingExiter) Exit(code int) {
+	*e = RecordingExiter(code)
+}
+
+func (e RecordingExiter) value() int {
+	return int(e)
+}
+
 func (s *S) patchStdin(c *C, content []byte) {
 	f, err := os.OpenFile("/tmp/passwdfile.txt", syscall.O_RDWR|syscall.O_NDELAY|syscall.O_CREAT|syscall.O_TRUNC, 0600)
 	c.Assert(err, IsNil)
@@ -82,6 +92,12 @@ func (s *S) TestManagerRunShouldWriteErrorsOnStderr(c *C) {
 	c.Assert(manager.Stderr.(*bytes.Buffer).String(), Equals, "You are wrong\n")
 }
 
+func (s *S) TestManagerRunShouldReturnStatus1WhenCommandFail(c *C) {
+	manager.Register(&ErrorCommand{msg: "You are wrong\n"})
+	manager.Run([]string{"error"})
+	c.Assert(manager.e.(*RecordingExiter).value(), Equals, 1)
+}
+
 func (s *S) TestManagerRunShouldAppendNewLineOnErrorWhenItsNotPresent(c *C) {
 	manager.Register(&ErrorCommand{msg: "You are wrong"})
 	manager.Run([]string{"error"})
@@ -97,6 +113,7 @@ func (s *S) TestRun(c *C) {
 func (s *S) TestRunCommandThatDoesNotExist(c *C) {
 	manager.Run([]string{"bar"})
 	c.Assert(manager.Stderr.(*bytes.Buffer).String(), Equals, "command bar does not exist\n")
+	c.Assert(manager.e.(*RecordingExiter).value(), Equals, 1)
 }
 
 type TicCmd struct {
@@ -236,7 +253,7 @@ func (c *ArgSubCmd) Info() *Info {
 	}
 }
 
-func (s *S) TestRunWrongArgsNumberShouldRunsHelp(c *C) {
+func (s *S) TestRunWrongArgsNumberShouldRunsHelpAndReturnStatus1(c *C) {
 	expected := `Not enough arguments to call arg.
 
 Usage: glb arg [args]
@@ -248,9 +265,10 @@ Minimum arguments: 1
 	manager.Register(&ArgCmd{})
 	manager.Run([]string{"arg"})
 	c.Assert(manager.Stdout.(*bytes.Buffer).String(), Equals, expected)
+	c.Assert(manager.e.(*RecordingExiter).value(), Equals, 1)
 }
 
-func (s *S) TestRunWrongArgsNumberShouldRunsHelpForSubCmd(c *C) {
+func (s *S) TestRunWrongArgsNumberShouldRunsHelpForSubCmdAndReturnsStatus1(c *C) {
 	expected := `Not enough arguments to call subargs.
 
 Usage: glb arg subargs [args]
@@ -262,6 +280,7 @@ Minimum arguments: 2
 	manager.Register(&ArgCmd{})
 	manager.Run([]string{"arg", "subargs"})
 	c.Assert(manager.Stdout.(*bytes.Buffer).String(), Equals, expected)
+	c.Assert(manager.e.(*RecordingExiter).value(), Equals, 1)
 }
 
 func (s *S) TestExtractCommandFromArgs(c *C) {
@@ -307,4 +326,15 @@ func (s *S) TestExtractProgramNameWithRelativePath(c *C) {
 func (s *S) TestExtractProgramNameWithinThePATH(c *C) {
 	got := ExtractProgramName("tsuru")
 	c.Assert(got, Equals, "tsuru")
+}
+
+func (s *S) TestFinisherReturnsOsExiterIfNotDefined(c *C) {
+	m := Manager{}
+	c.Assert(m.finisher(), FitsTypeOf, OsExiter{})
+}
+
+func (s *S) TestFinisherReturnTheDefinedE(c *C) {
+	var exiter RecordingExiter
+	m := Manager{e: &exiter}
+	c.Assert(m.finisher(), FitsTypeOf, &exiter)
 }
