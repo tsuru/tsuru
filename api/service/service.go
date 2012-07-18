@@ -17,6 +17,7 @@ type Service struct {
 	Bootstrap  map[string]string
 	OwnerTeams []string
 	Teams      []string
+	Status     string
 }
 
 func (s *Service) Log(out []byte) {
@@ -35,6 +36,7 @@ func (s *Service) All() []Service {
 }
 
 func (s *Service) Create() error {
+	s.Status = "created"
 	err := db.Session.Services().Insert(s)
 	return err
 }
