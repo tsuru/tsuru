@@ -289,7 +289,7 @@ type ServiceModel struct {
 }
 
 func ServicesHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
-	results := serviceAndServiceInstancesByTeams(u)
+	results := serviceAndServiceInstancesByTeams("owner_teams", u)
 	b, err := json.Marshal(results)
 	if err != nil {
 		return &errors.Http{Code: http.StatusInternalServerError, Message: err.Error()}
@@ -301,12 +301,12 @@ func ServicesHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error
 	return err
 }
 
-func serviceAndServiceInstancesByTeams(u *auth.User) []ServiceModel {
+func serviceAndServiceInstancesByTeams(teamKind string, u *auth.User) []ServiceModel {
 	var teams []auth.Team
 	q := bson.M{"users.email": u.Email}
 	db.Session.Teams().Find(q).Select(bson.M{"name": 1}).All(&teams)
 	var services []Service
-	q = bson.M{"teams": bson.M{"$in": auth.GetTeamsNames(teams)}}
+	q = bson.M{teamKind: bson.M{"$in": auth.GetTeamsNames(teams)}}
 	db.Session.Services().Find(q).Select(bson.M{"name": 1}).All(&services)
 	var sInsts []ServiceInstance
 	q = bson.M{"service_name": bson.M{"$in": GetServicesNames(services)}}

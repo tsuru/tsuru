@@ -669,7 +669,21 @@ func (s *S) TestServiceAndServiceInstancesByTeams(c *C) {
 	si := ServiceInstance{Name: "my_nosql", ServiceName: srv.Name}
 	si.Create()
 	defer si.Delete()
-	obtained := serviceAndServiceInstancesByTeams(s.user)
+	obtained := serviceAndServiceInstancesByTeams("teams", s.user)
+	expected := []ServiceModel{
+		ServiceModel{Service: "mongodb", Instances: []string{"my_nosql"}},
+	}
+	c.Assert(obtained, DeepEquals, expected)
+}
+
+func (s *S) TestServiceAndServiceInstancesByOwnerTeams(c *C) {
+	srv := Service{Name: "mongodb", OwnerTeams: []string{s.team.Name}}
+	srv.Create()
+	defer srv.Delete()
+	si := ServiceInstance{Name: "my_nosql", ServiceName: srv.Name}
+	si.Create()
+	defer si.Delete()
+	obtained := serviceAndServiceInstancesByTeams("owner_teams", s.user)
 	expected := []ServiceModel{
 		ServiceModel{Service: "mongodb", Instances: []string{"my_nosql"}},
 	}
