@@ -154,6 +154,27 @@ func (s *S) TestGetUserByTokenShouldReturnErrorWhenTheGivenTokenHasExpired(c *C)
 	c.Assert(err, ErrorMatches, "^Token has expired$")
 }
 
+func (s *S) TestGetUserByTokenDoesNotFailWhenTheTokenIsValid(c *C) {
+	u := User{
+		Email:    "masterof@puppets.com",
+		Password: "123",
+		Tokens: []Token{
+			Token{
+				Token:      "abcd",
+				ValidUntil: time.Now().Add(-24 * time.Hour),
+			},
+		},
+	}
+	err := u.Create()
+	c.Assert(err, IsNil)
+	defer db.Session.Users().Remove(bson.M{"email": u.Email})
+	t, err := u.CreateToken()
+	c.Assert(err, IsNil)
+	user, err := GetUserByToken(t.Token)
+	c.Assert(err, IsNil)
+	c.Assert(user.Email, Equals, "masterof@puppets.com")
+}
+
 func (s *S) TestAddKeyAddsAKeyToTheUser(c *C) {
 	u := &User{Email: "sacefulofsecrets@pinkfloyd.com"}
 	err := u.addKey(Key{Content: "my-key"})
