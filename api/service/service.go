@@ -25,7 +25,7 @@ func (s *Service) Log(out []byte) {
 }
 
 func (s *Service) Get() error {
-	query := bson.M{"_id": s.Name}
+	query := bson.M{"_id": s.Name, "status": bson.M{"$ne": "deleted"}}
 	return db.Session.Services().Find(query).One(&s)
 }
 

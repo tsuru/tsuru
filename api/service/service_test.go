@@ -18,6 +18,15 @@ func (s *S) TestGetService(c *C) {
 	c.Assert(anotherService.Name, Equals, s.service.Name)
 }
 
+func (s *S) TestGetServiceReturnsErrorIfTheServiceIsDeleted(c *C) {
+	se := Service{Name: "anything", Status: "deleted"}
+	err := db.Session.Services().Insert(se)
+	c.Assert(err, IsNil)
+	defer db.Session.Services().Remove(bson.M{"_id": se.Name})
+	err = se.Get()
+	c.Assert(err, NotNil)
+}
+
 func (s *S) TestAllServices(c *C) {
 	se := Service{Name: "myService"}
 	se2 := Service{Name: "myOtherService"}
