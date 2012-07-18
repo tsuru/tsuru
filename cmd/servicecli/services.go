@@ -131,6 +131,9 @@ func (c *ServiceList) show(b []byte) ([]byte, error) {
 	if err != nil {
 		return []byte{}, err
 	}
+	if len(services) == 0 {
+		return []byte{}, nil
+	}
 	table := cmd.NewTable()
 	table.Headers = cmd.Row([]string{"Services", "Instances"})
 	for _, s := range services {
