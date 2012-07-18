@@ -239,7 +239,17 @@ func (s *S) TestCreateInstanceHandlerReturnsErrorWhenUserCannotUseService(c *C) 
 func (s *S) TestCreateInstanceHandlerReturnsErrorWhenServiceDoesntExists(c *C) {
 	recorder, request := makeRequestToCreateInstanceHandler(c)
 	err := CreateInstanceHandler(recorder, request, s.user)
-	c.Assert(err, ErrorMatches, "^Service mysql does not exists.$")
+	c.Assert(err, ErrorMatches, "^Service mysql does not exist.$")
+}
+
+func (s *S) TestCreateInstanceHandlerReturnsErrorWhenServiceIsDeleted(c *C) {
+	service := Service{Name: "mysql", Status: "deleted", Teams: []string{s.team.Name}}
+	err := db.Session.Services().Insert(service)
+	c.Assert(err, IsNil)
+	defer db.Session.Services().Remove(bson.M{"_id": service.Name})
+	recorder, request := makeRequestToCreateInstanceHandler(c)
+	err = CreateInstanceHandler(recorder, request, s.user)
+	c.Assert(err, ErrorMatches, "^Service mysql does not exist.$")
 }
 
 func (s *S) TestCallServiceApi(c *C) {

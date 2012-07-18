@@ -146,11 +146,11 @@ func callServiceApi(s Service, si ServiceInstance) {
 }
 
 func validateForInstanceCreation(s *Service, sJson map[string]string, u *auth.User) error {
-	err := db.Session.Services().Find(bson.M{"_id": sJson["service_name"]}).One(&s)
+	err := db.Session.Services().Find(bson.M{"_id": sJson["service_name"], "status": bson.M{"$ne": "deleted"}}).One(&s)
 	if err != nil {
 		msg := err.Error()
 		if msg == "not found" {
-			msg = fmt.Sprintf("Service %s does not exists.", sJson["service_name"])
+			msg = fmt.Sprintf("Service %s does not exist.", sJson["service_name"])
 		}
 		return &errors.Http{Code: http.StatusNotFound, Message: msg}
 	}
