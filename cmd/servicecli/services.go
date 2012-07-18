@@ -109,8 +109,11 @@ func (c *ServiceList) Run(ctxt *cmd.Context, client cmd.Doer) error {
 		return err
 	}
 	resp, err := client.Do(request)
-	defer resp.Body.Close()
+	if err != nil {
+		return err
+	}
 	b, err := ioutil.ReadAll(resp.Body)
+	defer resp.Body.Close()
 	if err != nil {
 		return err
 	}
