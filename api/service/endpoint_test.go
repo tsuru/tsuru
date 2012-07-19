@@ -230,3 +230,27 @@ func (s *S) TestBuildErrorMessageWithNonNilResponseAndNonNilError(c *C) {
 	resp := &http.Response{Body: ioutil.NopCloser(body)}
 	c.Assert(cli.buildErrorMessage(err, resp), Equals, "epic fail")
 }
+
+func (s *S) TestStatusShouldSendTheNameAndHostOfTheService(c *C) {
+	h := TestHandler{}
+	ts := httptest.NewServer(&h)
+	defer ts.Close()
+	instance := ServiceInstance{Name: "my-redis", ServiceName: "redis", Host: "127.0.0.1", PrivateHost: "127.0.0.1"}
+	client := &Client{endpoint: ts.URL}
+	state, err := client.Status(&instance)
+	c.Assert(err, IsNil)
+	c.Assert(state, Equals, "up")
+	expectedUrl := "/resources/my-redis/status/?service_host=127.0.0.1"
+	c.Assert(h.url, Equals, expectedUrl)
+	c.Assert(h.method, Equals, "GET")
+}
+
+func (s *S) TestStatusShouldReturnDownWhenApiReturns500(c *C) {
+	ts := httptest.NewServer(http.HandlerFunc(failHandler))
+	defer ts.Close()
+	instance := ServiceInstance{Name: "my-redis", ServiceName: "redis", Host: "127.0.0.1", PrivateHost: "127.0.0.1"}
+	client := &Client{endpoint: ts.URL}
+	state, err := client.Status(&instance)
+	c.Assert(err, IsNil)
+	c.Assert(state, Equals, "down")
+}

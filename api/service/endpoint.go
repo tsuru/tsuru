@@ -31,7 +31,7 @@ func (c *Client) issueRequest(path, method string, params map[string][]string) (
 	v := url.Values(params)
 	var suffix string
 	var body io.Reader
-	if method == "DELETE" {
+	if method == "DELETE" || method == "GET" {
 		suffix = "?" + v.Encode()
 	} else {
 		body = strings.NewReader(v.Encode())
@@ -119,4 +119,30 @@ func (c *Client) Unbind(instance *ServiceInstance, app bind.App) (err error) {
 		err = errors.New(msg)
 	}
 	return
+}
+
+// Connects into service's api
+// The api should be prepared to receive the request,
+// like below:
+// GET /resources/<name>/status/?service_host=1.1.1.1
+func (c *Client) Status(instance *ServiceInstance) (string, error) {
+	log.Print("Attempting to call status of service instance " + instance.Name + " at " + instance.ServiceName + " api")
+	var (
+		resp *http.Response
+		err  error
+	)
+	url := "/resources/" + instance.Name + "/status/"
+	params := map[string][]string{
+		"service_host": []string{instance.PrivateHost},
+	}
+	if resp, err = c.issueRequest(url, "GET", params); err == nil && resp.StatusCode == 200 {
+		return "up", nil
+	} else if err == nil && resp.StatusCode == 500 {
+		return "down", nil
+	} else {
+		msg := "Failed to get status of instance " + instance.Name + ": " + c.buildErrorMessage(err, resp)
+		log.Print(msg)
+		err = errors.New(msg)
+	}
+	return "", err
 }
