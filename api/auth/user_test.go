@@ -15,7 +15,6 @@ func (s *S) TestCreateUser(c *C) {
 	u := User{Email: "wolverine@xmen.com", Password: "123456"}
 	err := u.Create()
 	c.Assert(err, IsNil)
-
 	var result User
 	collection := db.Session.Users()
 	err = collection.Find(bson.M{"email": u.Email}).One(&result)
@@ -29,7 +28,6 @@ func (s *S) TestCreateUserHashesThePasswordUsingPBKDF2SHA512AndSalt(c *C) {
 	u := User{Email: "wolverine@xmen.com", Password: "123456"}
 	err := u.Create()
 	c.Assert(err, IsNil)
-
 	var result User
 	collection := db.Session.Users()
 	err = collection.Find(bson.M{"email": u.Email}).One(&result)
@@ -41,7 +39,6 @@ func (s *S) TestCreateUserReturnsErrorWhenTryingToCreateAUserWithDuplicatedEmail
 	u := User{Email: "wolverine@xmen.com", Password: "123"}
 	err := u.Create()
 	c.Assert(err, IsNil)
-
 	err = u.Create()
 	c.Assert(err, NotNil)
 }
@@ -50,7 +47,6 @@ func (s *S) TestGetUserByEmail(c *C) {
 	u := User{Email: "wolverine@xmen.com", Password: "123456"}
 	err := u.Create()
 	c.Assert(err, IsNil)
-
 	u = User{Email: "wolverine@xmen.com"}
 	err = u.Get()
 	c.Assert(err, IsNil)
@@ -78,10 +74,8 @@ func (s *S) TestUserLoginReturnsFalseIfThePasswordDoesNotMatch(c *C) {
 func (s *S) TestNewTokenIsStoredInUser(c *C) {
 	u := User{Email: "wolverine@xmen.com", Password: "123456"}
 	u.Create()
-
 	t, err := u.CreateToken()
 	c.Assert(err, IsNil)
-
 	c.Assert(u.Email, Equals, "wolverine@xmen.com")
 	c.Assert(u.Tokens[0].Token, Equals, t.Token)
 }
@@ -109,7 +103,6 @@ func (s *S) TestCreateTokenShouldSaveTheTokenInUserInTheDatabase(c *C) {
 	c.Assert(err, IsNil)
 	_, err = u.CreateToken()
 	c.Assert(err, IsNil)
-
 	var result User
 	collection := db.Session.Users()
 	err = collection.Find(nil).One(&result)
@@ -128,13 +121,10 @@ func (s *S) TestGetUserByToken(c *C) {
 	u := User{Email: "wolverine@xmen.com", Password: "123"}
 	err := u.Create()
 	c.Assert(err, IsNil)
-
 	err = u.Get()
 	c.Assert(err, IsNil)
-
 	t, err := u.CreateToken()
 	c.Assert(err, IsNil)
-
 	user, err := GetUserByToken(t.Token)
 	c.Assert(err, IsNil)
 	c.Assert(user.Email, Equals, u.Email)
@@ -152,20 +142,37 @@ func (s *S) TestGetUserByTokenShouldReturnErrorWhenTheGivenTokenHasExpired(c *C)
 	u := User{Email: "wolverine@xmen.com", Password: "123"}
 	err := u.Create()
 	c.Assert(err, IsNil)
-
 	err = u.Get()
 	c.Assert(err, IsNil)
-
 	t, err := u.CreateToken()
 	c.Assert(err, IsNil)
-
 	u.Tokens[0].ValidUntil = time.Now().Add(-24 * time.Hour)
 	err = collection.Update(bson.M{"email": "wolverine@xmen.com"}, u)
 	user, err := GetUserByToken(t.Token)
-
 	c.Assert(user, IsNil)
 	c.Assert(err, NotNil)
 	c.Assert(err, ErrorMatches, "^Token has expired$")
+}
+
+func (s *S) TestGetUserByTokenDoesNotFailWhenTheTokenIsValid(c *C) {
+	u := User{
+		Email:    "masterof@puppets.com",
+		Password: "123",
+		Tokens: []Token{
+			Token{
+				Token:      "abcd",
+				ValidUntil: time.Now().Add(-24 * time.Hour),
+			},
+		},
+	}
+	err := u.Create()
+	c.Assert(err, IsNil)
+	defer db.Session.Users().Remove(bson.M{"email": u.Email})
+	t, err := u.CreateToken()
+	c.Assert(err, IsNil)
+	user, err := GetUserByToken(t.Token)
+	c.Assert(err, IsNil)
+	c.Assert(user.Email, Equals, "masterof@puppets.com")
 }
 
 func (s *S) TestAddKeyAddsAKeyToTheUser(c *C) {

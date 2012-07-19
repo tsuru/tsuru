@@ -4,14 +4,26 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
 	"strings"
 )
+
+type Exiter interface {
+	Exit(int)
+}
+
+type OsExiter struct{}
+
+func (e OsExiter) Exit(code int) {
+	os.Exit(code)
+}
 
 type Manager struct {
 	Name     string
 	Commands map[string]interface{}
 	Stdout   io.Writer
 	Stderr   io.Writer
+	e        Exiter
 }
 
 func NewManager(name string, stdout, stderr io.Writer) Manager {
@@ -33,12 +45,14 @@ func (m *Manager) Register(command interface{}) {
 }
 
 func (m *Manager) Run(args []string) {
+	var status int
 	if len(args) == 0 {
 		args = []string{"help"}
 	}
 	cmds := m.extractCommandFromArgs(args)
 	if len(cmds) <= 0 {
 		io.WriteString(m.Stderr, fmt.Sprintf("command %s does not exist\n", args[0]))
+		m.finisher().Exit(1)
 		return
 	}
 	args = args[len(cmds):]
@@ -49,12 +63,14 @@ func (m *Manager) Run(args []string) {
 		command = m.Commands["help"]
 		args = cmds
 		cmds = []string{"help"}
+		status = 1
 	}
 	if _, ok := command.(Command); !ok {
 		io.WriteString(m.Stdout, fmt.Sprintf("subcommand %s does not exist\n\n", args[0]))
 		command = m.Commands["help"]
 		args = cmds
 		cmds = []string{"help"}
+		status = 1
 	}
 	err := command.(Command).Run(&Context{cmds, args, m.Stdout, m.Stderr}, NewClient(&http.Client{}))
 	if err != nil {
@@ -63,7 +79,9 @@ func (m *Manager) Run(args []string) {
 			errorMsg += "\n"
 		}
 		io.WriteString(m.Stderr, errorMsg)
+		status = 1
 	}
+	m.finisher().Exit(status)
 }
 
 func (m *Manager) extractCommandFromArgs(args []string) []string {
@@ -80,6 +98,13 @@ func (m *Manager) extractCommandFromArgs(args []string) []string {
 		}
 	}
 	return cmds
+}
+
+func (m *Manager) finisher() Exiter {
+	if m.e == nil {
+		m.e = OsExiter{}
+	}
+	return m.e
 }
 
 func getSubcommand(cmd interface{}, cmds []string) interface{} {

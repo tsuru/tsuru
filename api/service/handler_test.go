@@ -157,9 +157,9 @@ func (suite *S) TestCreateInstanceHandlerSavesServiceInstanceInDb(c *C) {
 		w.Write([]byte(`{"DATABASE_HOST":"localhost"}`))
 	}))
 	defer ts.Close()
-	s := Service{Name: "mysql", Teams: []string{suite.team.Name}, Endpoint: map[string]string{"production": ts.URL}}
-	s.Create()
-	defer s.Delete()
+	se := Service{Name: "mysql", Teams: []string{suite.team.Name}, Endpoint: map[string]string{"production": ts.URL}}
+	se.Create()
+	defer db.Session.Services().Remove(bson.M{"_id": se.Name})
 	recorder, request := makeRequestToCreateInstanceHandler(c)
 	err := CreateInstanceHandler(recorder, request, suite.user)
 	c.Assert(err, IsNil)
@@ -239,7 +239,17 @@ func (s *S) TestCreateInstanceHandlerReturnsErrorWhenUserCannotUseService(c *C) 
 func (s *S) TestCreateInstanceHandlerReturnsErrorWhenServiceDoesntExists(c *C) {
 	recorder, request := makeRequestToCreateInstanceHandler(c)
 	err := CreateInstanceHandler(recorder, request, s.user)
-	c.Assert(err, ErrorMatches, "^Service mysql does not exists.$")
+	c.Assert(err, ErrorMatches, "^Service mysql does not exist.$")
+}
+
+func (s *S) TestCreateInstanceHandlerReturnsErrorWhenServiceIsDeleted(c *C) {
+	service := Service{Name: "mysql", Status: "deleted", Teams: []string{s.team.Name}}
+	err := db.Session.Services().Insert(service)
+	c.Assert(err, IsNil)
+	defer db.Session.Services().Remove(bson.M{"_id": service.Name})
+	recorder, request := makeRequestToCreateInstanceHandler(c)
+	err = CreateInstanceHandler(recorder, request, s.user)
+	c.Assert(err, ErrorMatches, "^Service mysql does not exist.$")
 }
 
 func (s *S) TestCallServiceApi(c *C) {
@@ -285,7 +295,7 @@ func (s *S) TestAsyncCAllServiceApi(c *C) {
 func (s *S) TestDeleteHandler(c *C) {
 	se := Service{Name: "Mysql", Teams: []string{s.team.Name}}
 	se.Create()
-	defer se.Delete()
+	defer db.Session.Services().Remove(bson.M{"_id": se.Name})
 	request, err := http.NewRequest("DELETE", fmt.Sprintf("/services/%s?:name=%s", se.Name, se.Name), nil)
 	c.Assert(err, IsNil)
 	recorder := httptest.NewRecorder()
@@ -293,9 +303,9 @@ func (s *S) TestDeleteHandler(c *C) {
 	c.Assert(err, IsNil)
 	c.Assert(recorder.Code, Equals, http.StatusNoContent)
 	query := bson.M{"_id": "Mysql"}
-	qtd, err := db.Session.Services().Find(query).Count()
+	err = db.Session.Services().Find(query).One(&se)
 	c.Assert(err, IsNil)
-	c.Assert(qtd, Equals, 0)
+	c.Assert(se.Status, Equals, "deleted")
 }
 
 func (s *S) TestDeleteHandlerReturns404WhenTheServiceDoesNotExist(c *C) {
@@ -310,10 +320,26 @@ func (s *S) TestDeleteHandlerReturns404WhenTheServiceDoesNotExist(c *C) {
 	c.Assert(e, ErrorMatches, "^Service not found$")
 }
 
+func (s *S) TestDeleteHandlerReturns404WhenTheServicesIsDeleted(c *C) {
+	se := Service{Name: "mysql", Teams: []string{s.team.Name}, Status: "deleted"}
+	err := db.Session.Services().Insert(se)
+	c.Assert(err, IsNil)
+	defer db.Session.Services().Remove(bson.M{"_id": se.Name})
+	request, err := http.NewRequest("DELETE", fmt.Sprintf("/services/%s?:name=%s", se.Name, se.Name), nil)
+	c.Assert(err, IsNil)
+	recorder := httptest.NewRecorder()
+	err = DeleteHandler(recorder, request, s.user)
+	c.Assert(err, NotNil)
+	e, ok := err.(*errors.Http)
+	c.Assert(ok, Equals, true)
+	c.Assert(e.Code, Equals, http.StatusNotFound)
+	c.Assert(e, ErrorMatches, "^Service not found$")
+}
+
 func (s *S) TestDeleteHandlerReturns403WhenTheUserDoesNotHaveAccessToTheService(c *C) {
 	se := Service{Name: "Mysql"}
 	se.Create()
-	defer se.Delete()
+	defer db.Session.Services().Remove(bson.M{"_id": se.Name})
 	request, err := http.NewRequest("DELETE", fmt.Sprintf("/services/%s?:name=%s", se.Name, se.Name), nil)
 	c.Assert(err, IsNil)
 	recorder := httptest.NewRecorder()
@@ -329,7 +355,7 @@ func (s *S) TestDeleteHandlerReturns403WhenTheServiceHasInstance(c *C) {
 	se := Service{Name: "mysql", Teams: []string{s.team.Name}}
 	err := se.Create()
 	c.Assert(err, IsNil)
-	defer se.Delete()
+	defer db.Session.Services().Remove(bson.M{"_id": se.Name})
 	instance := ServiceInstance{Name: "my-mysql", ServiceName: se.Name}
 	err = instance.Create()
 	c.Assert(err, IsNil)
@@ -351,8 +377,8 @@ func (s *S) TestGrantAccessToTeam(c *C) {
 	defer db.Session.Teams().Remove(bson.M{"name": t.Name})
 	se := Service{Name: "my_service", Teams: []string{s.team.Name}}
 	err := se.Create()
-	defer se.Delete()
 	c.Assert(err, IsNil)
+	defer db.Session.Services().Remove(bson.M{"_id": se.Name})
 	url := fmt.Sprintf("/services/%s/%s?:service=%s&:team=%s", se.Name, t.Name, se.Name, t.Name)
 	request, err := http.NewRequest("PUT", url, nil)
 	c.Assert(err, IsNil)
@@ -381,7 +407,7 @@ func (s *S) TestGrantAccessToTeamReturnForbiddenIfTheGivenUserDoesNotHaveAccessT
 	se := Service{Name: "my_service"}
 	err := se.Create()
 	c.Assert(err, IsNil)
-	defer se.Delete()
+	defer db.Session.Services().Remove(bson.M{"_id": se.Name})
 	url := fmt.Sprintf("/services/%s/%s?:service=%s&:team=%s", se.Name, s.team.Name, se.Name, s.team.Name)
 	request, err := http.NewRequest("PUT", url, nil)
 	c.Assert(err, IsNil)
@@ -398,7 +424,7 @@ func (s *S) TestGrantAccessToTeamReturnNotFoundIfTheTeamDoesNotExist(c *C) {
 	se := Service{Name: "my_service", Teams: []string{s.team.Name}}
 	err := se.Create()
 	c.Assert(err, IsNil)
-	defer se.Delete()
+	defer db.Session.Services().Remove(bson.M{"_id": se.Name})
 	url := fmt.Sprintf("/services/%s/nonono?:service=%s&:team=nonono", se.Name, se.Name)
 	request, err := http.NewRequest("PUT", url, nil)
 	c.Assert(err, IsNil)
@@ -414,7 +440,7 @@ func (s *S) TestGrantAccessToTeamReturnNotFoundIfTheTeamDoesNotExist(c *C) {
 func (s *S) TestGrantAccessToTeamReturnConflictIfTheTeamAlreadyHasAccessToTheService(c *C) {
 	se := Service{Name: "my_service", Teams: []string{s.team.Name}}
 	err := se.Create()
-	defer se.Delete()
+	defer db.Session.Services().Remove(bson.M{"_id": se.Name})
 	c.Assert(err, IsNil)
 	url := fmt.Sprintf("/services/%s/%s?:service=%s&:team=%s", se.Name, s.team.Name, se.Name, s.team.Name)
 	request, err := http.NewRequest("PUT", url, nil)
@@ -432,7 +458,7 @@ func (s *S) TestRevokeAccessFromTeamRemovesTeamFromService(c *C) {
 	se := Service{Name: "my_service", Teams: []string{s.team.Name, t.Name}}
 	err := se.Create()
 	c.Assert(err, IsNil)
-	defer se.Delete()
+	defer db.Session.Services().Remove(bson.M{"_id": se.Name})
 	url := fmt.Sprintf("/services/%s/%s?:service=%s&:team=%s", se.Name, s.team.Name, se.Name, s.team.Name)
 	request, err := http.NewRequest("DELETE", url, nil)
 	c.Assert(err, IsNil)
@@ -462,7 +488,7 @@ func (s *S) TestRevokeAccesFromTeamReturnsForbiddenIfTheGivenUserDoesNotHasAcces
 	se := Service{Name: "my_service", Teams: []string{t.Name}}
 	err := se.Create()
 	c.Assert(err, IsNil)
-	defer se.Delete()
+	defer db.Session.Services().Remove(bson.M{"_id": se.Name})
 	url := fmt.Sprintf("/services/%s/%s?:service=%s&:team=%s", se.Name, t.Name, se.Name, t.Name)
 	request, err := http.NewRequest("DELETE", url, nil)
 	c.Assert(err, IsNil)
@@ -479,7 +505,7 @@ func (s *S) TestRevokeAccessFromTeamReturnsNotFoundIfTheTeamDoesNotExist(c *C) {
 	se := Service{Name: "my_service", Teams: []string{s.team.Name}}
 	err := se.Create()
 	c.Assert(err, IsNil)
-	defer se.Delete()
+	defer db.Session.Services().Remove(bson.M{"_id": se.Name})
 	url := fmt.Sprintf("/services/%s/nonono?:service=%s&:team=nonono", se.Name, se.Name)
 	request, err := http.NewRequest("DELETE", url, nil)
 	c.Assert(err, IsNil)
@@ -496,7 +522,7 @@ func (s *S) TestRevokeAccessFromTeamReturnsForbiddenIfTheTeamIsTheOnlyWithAccess
 	se := Service{Name: "my_service", Teams: []string{s.team.Name}}
 	err := se.Create()
 	c.Assert(err, IsNil)
-	defer se.Delete()
+	defer db.Session.Services().Remove(bson.M{"_id": se.Name})
 	url := fmt.Sprintf("/services/%s/%s?:service=%s&:team=%s", se.Name, s.team.Name, se.Name, s.team.Name)
 	request, err := http.NewRequest("DELETE", url, nil)
 	c.Assert(err, IsNil)
@@ -516,7 +542,7 @@ func (s *S) TestRevokeAccessFromTeamReturnNotFoundIfTheTeamDoesNotHasAccessToThe
 	se := Service{Name: "my_service", Teams: []string{s.team.Name, s.team.Name}}
 	err := se.Create()
 	c.Assert(err, IsNil)
-	defer se.Delete()
+	defer db.Session.Services().Remove(bson.M{"_id": se.Name})
 	url := fmt.Sprintf("/services/%s/%s?:service=%s&:team=%s", se.Name, t.Name, se.Name, t.Name)
 	request, err := http.NewRequest("DELETE", url, nil)
 	c.Assert(err, IsNil)
@@ -645,7 +671,7 @@ func (s *S) makeRequestToServicesHandler(c *C) (*httptest.ResponseRecorder, *htt
 func (s *S) TestServicesHandlerShoudGetAllServicesFromUsersTeam(c *C) {
 	srv := Service{Name: "mongodb", OwnerTeams: []string{s.team.Name}}
 	srv.Create()
-	defer srv.Delete()
+	defer db.Session.Services().Remove(bson.M{"_id": srv.Name})
 	si := ServiceInstance{Name: "my_nosql", ServiceName: srv.Name}
 	si.Create()
 	defer si.Delete()
@@ -665,7 +691,7 @@ func (s *S) TestServicesHandlerShoudGetAllServicesFromUsersTeam(c *C) {
 func (s *S) TestServiceAndServiceInstancesByTeams(c *C) {
 	srv := Service{Name: "mongodb", Teams: []string{s.team.Name}}
 	srv.Create()
-	defer srv.Delete()
+	defer db.Session.Services().Remove(bson.M{"_id": srv.Name})
 	si := ServiceInstance{Name: "my_nosql", ServiceName: srv.Name}
 	si.Create()
 	defer si.Delete()

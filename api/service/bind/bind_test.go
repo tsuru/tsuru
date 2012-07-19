@@ -30,6 +30,8 @@ func TestT(t *testing.T) {
 
 func (s *S) SetUpSuite(c *C) {
 	var err error
+	s.tmpdir, err = commandmocker.Add("juju", "$*")
+	c.Assert(err, IsNil)
 	db.Session, err = db.Open("127.0.0.1:27017", "tsuru_service_bind_test")
 	c.Assert(err, IsNil)
 	s.user = auth.User{Email: "sad-but-true@metallica.com"}

@@ -45,6 +45,37 @@ Your repository for "ble" project is "git@tsuru.plataformas.glb.com:ble.git"` + 
 	c.Assert(manager.Stdout.(*bytes.Buffer).String(), Equals, expected)
 }
 
+func (s *S) TestAppCreateUsingDefaultFramework(c *C) {
+	result := `{"status":"success", "repository_url":"git@tsuru.plataformas.glb.com:ble.git"}`
+	expected := `App "ble" successfully created!
+Your repository for "ble" project is "git@tsuru.plataformas.glb.com:ble.git"` + "\n"
+	context := cmd.Context{
+		Cmds:   []string{},
+		Args:   []string{"ble"},
+		Stdout: manager.Stdout,
+		Stderr: manager.Stderr,
+	}
+	client := cmd.NewClient(&http.Client{Transport: &transport{msg: result, status: http.StatusOK}})
+	command := AppCreate{}
+	err := command.Run(&context, client)
+	c.Assert(err, IsNil)
+	c.Assert(manager.Stdout.(*bytes.Buffer).String(), Equals, expected)
+}
+
+func (s *S) TestAppCreateWithInvalidFramework(c *C) {
+	context := cmd.Context{
+		Cmds:   []string{},
+		Args:   []string{"invalidapp", "lombra"},
+		Stdout: manager.Stdout,
+		Stderr: manager.Stderr,
+	}
+	client := cmd.NewClient(&http.Client{Transport: &transport{msg: "", status: http.StatusInternalServerError}})
+	command := AppCreate{}
+	err := command.Run(&context, client)
+	c.Assert(err, NotNil)
+	c.Assert(manager.Stdout.(*bytes.Buffer).String(), Equals, "")
+}
+
 func (s *S) TestAppRemove(c *C) {
 	expected := `App "ble" successfully removed!` + "\n"
 	context := cmd.Context{

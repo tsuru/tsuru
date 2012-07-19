@@ -149,7 +149,12 @@ type AppCreate struct{}
 
 func (c *AppCreate) Run(context *cmd.Context, client cmd.Doer) error {
 	appName := context.Args[0]
-	b := bytes.NewBufferString(fmt.Sprintf(`{"name":"%s", "framework":"django"}`, appName))
+	framework := "django"
+	if len(context.Args) > 1 {
+		framework = context.Args[1]
+	}
+
+	b := bytes.NewBufferString(fmt.Sprintf(`{"name":"%s", "framework":"%s"}`, appName, framework))
 	request, err := http.NewRequest("POST", cmd.GetUrl("/apps"), b)
 	request.Header.Set("Content-Type", "application/json")
 	if err != nil {

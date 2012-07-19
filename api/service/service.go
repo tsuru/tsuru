@@ -25,14 +25,8 @@ func (s *Service) Log(out []byte) {
 }
 
 func (s *Service) Get() error {
-	query := bson.M{"_id": s.Name}
+	query := bson.M{"_id": s.Name, "status": bson.M{"$ne": "deleted"}}
 	return db.Session.Services().Find(query).One(&s)
-}
-
-func (s *Service) All() []Service {
-	var result []Service
-	db.Session.Services().Find(nil).All(&result)
-	return result
 }
 
 func (s *Service) Create() error {
@@ -42,8 +36,8 @@ func (s *Service) Create() error {
 }
 
 func (s *Service) Delete() error {
-	err := db.Session.Services().Remove(s)
-	return err
+	s.Status = "deleted"
+	return db.Session.Services().Update(bson.M{"_id": s.Name}, s)
 }
 
 func (s *Service) GetClient(endpoint string) (cli *Client, err error) {

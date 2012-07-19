@@ -62,11 +62,17 @@ func GetUserByToken(token string) (*User, error) {
 	u := new(User)
 	query := bson.M{"tokens.token": token}
 	err := c.Find(query).One(&u)
-
 	if err != nil {
 		return nil, errors.New("Token not found")
 	}
-	if u.Tokens[0].ValidUntil.Sub(time.Now()) < 1 {
+	var t Token
+	for _, tk := range u.Tokens {
+		if tk.Token == token {
+			t = tk
+			break
+		}
+	}
+	if t.Token == "" || t.ValidUntil.Sub(time.Now()) < 1 {
 		return nil, errors.New("Token has expired")
 	}
 	return u, nil
