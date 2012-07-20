@@ -229,12 +229,43 @@ func (s *S) TestLoginShouldReturnErrorAndInternalServerErrorIfReadAllFails(c *C)
 	b := s.getTestData("bodyToBeClosed.txt")
 	err := b.Close()
 	c.Assert(err, IsNil)
-	request, err := http.NewRequest("POST", "/teams", b)
+	request, err := http.NewRequest("POST", "/users/nobody@globo.com/tokens?:email=nobody@globo.com", b)
 	c.Assert(err, IsNil)
 	request.Header.Set("Content-type", "application/json")
 	recorder := httptest.NewRecorder()
 	err = Login(recorder, request)
 	c.Assert(err, NotNil)
+}
+
+func (s *S) TestLoginShouldReturnPreconditionFailedIfEmailIsNotValid(c *C) {
+	b := bytes.NewBufferString(`{"password":"123456"}`)
+	request, err := http.NewRequest("POST", "/users/nobody/token?:email=nobody", b)
+	c.Assert(err, IsNil)
+	request.Header.Set("Content-type", "application/json")
+	recorder := httptest.NewRecorder()
+	err = Login(recorder, request)
+	c.Assert(err, NotNil)
+	e, ok := err.(*errors.Http)
+	c.Assert(ok, Equals, true)
+	c.Assert(e.Code, Equals, http.StatusPreconditionFailed)
+	c.Assert(e.Message, Equals, emailError)
+}
+
+func (s *S) TestLoginShouldReturnPreconditionFailedIfPasswordIsLessesThan6CharactersOrGreaterThan50Characters(c *C) {
+	passwords := []string{"123", strings.Join(make([]string, 52), "-")}
+	for _, password := range passwords {
+		b := bytes.NewBufferString(`{"password":"` + password + `"}`)
+		request, err := http.NewRequest("POST", "/users/nobody@globo.com/token?:email=nobody@globo.com", b)
+		c.Assert(err, IsNil)
+		request.Header.Set("Content-type", "application/json")
+		recorder := httptest.NewRecorder()
+		err = Login(recorder, request)
+		c.Assert(err, NotNil)
+		e, ok := err.(*errors.Http)
+		c.Assert(ok, Equals, true)
+		c.Assert(e.Code, Equals, http.StatusPreconditionFailed)
+		c.Assert(e.Message, Equals, passwordError)
+	}
 }
 
 func (s *S) TestCreateTeamHandlerSavesTheTeamInTheDatabaseWithTheAuthenticatedUser(c *C) {

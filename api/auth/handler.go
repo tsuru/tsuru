@@ -15,6 +15,13 @@ import (
 	"strings"
 )
 
+const (
+	emailError     = "Invalid email."
+	passwordError  = "Password length shoul be least 6 characters and at most 50 characters."
+	passwordMinLen = 6
+	passwordMaxLen = 50
+)
+
 func CreateUser(w http.ResponseWriter, r *http.Request) error {
 	var u User
 	b, err := ioutil.ReadAll(r.Body)
@@ -26,11 +33,10 @@ func CreateUser(w http.ResponseWriter, r *http.Request) error {
 		return &errors.Http{Code: http.StatusBadRequest, Message: err.Error()}
 	}
 	if !validation.ValidateEmail(u.Email) {
-		return &errors.Http{Code: http.StatusPreconditionFailed, Message: "Invalid email."}
+		return &errors.Http{Code: http.StatusPreconditionFailed, Message: emailError}
 	}
-	if !validation.ValidateLength(u.Password, 6, 50) {
-		msg := "Password length shoul be least 6 characters and at most 50 characters."
-		return &errors.Http{Code: http.StatusPreconditionFailed, Message: msg}
+	if !validation.ValidateLength(u.Password, passwordMinLen, passwordMaxLen) {
+		return &errors.Http{Code: http.StatusPreconditionFailed, Message: passwordError}
 	}
 	err = u.Create()
 	if err == nil {
@@ -58,7 +64,13 @@ func Login(w http.ResponseWriter, r *http.Request) error {
 		msg := "You must provide a password to login"
 		return &errors.Http{Code: http.StatusBadRequest, Message: msg}
 	}
+	if !validation.ValidateLength(password, passwordMinLen, passwordMaxLen) {
+		return &errors.Http{Code: http.StatusPreconditionFailed, Message: passwordError}
+	}
 	u := User{Email: r.URL.Query().Get(":email")}
+	if !validation.ValidateEmail(u.Email) {
+		return &errors.Http{Code: http.StatusPreconditionFailed, Message: emailError}
+	}
 	err = u.Get()
 	if err != nil {
 		return &errors.Http{Code: http.StatusNotFound, Message: "User not found"}
