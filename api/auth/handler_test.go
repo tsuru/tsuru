@@ -55,12 +55,10 @@ func (s *S) TestCreateUserHandlerSavesTheUserInTheDatabase(c *C) {
 	b := bytes.NewBufferString(`{"email":"nobody@globo.com","password":"123"}`)
 	request, err := http.NewRequest("POST", "/users", b)
 	c.Assert(err, IsNil)
-
 	request.Header.Set("Content-type", "application/json")
 	recorder := httptest.NewRecorder()
 	err = CreateUser(recorder, request)
 	c.Assert(err, IsNil)
-
 	u := User{Email: "nobody@globo.com"}
 	err = u.Get()
 	c.Assert(err, IsNil)
@@ -70,7 +68,6 @@ func (s *S) TestCreateUserHandlerReturnsStatus201AfterCreateTheUser(c *C) {
 	b := bytes.NewBufferString(`{"email":"nobody@globo.com","password":"123"}`)
 	request, err := http.NewRequest("POST", "/users", b)
 	c.Assert(err, IsNil)
-
 	request.Header.Set("Content-type", "application/json")
 	recorder := httptest.NewRecorder()
 	err = CreateUser(recorder, request)
@@ -82,7 +79,6 @@ func (s *S) TestCreateUserHandlerReturnErrorIfReadingBodyFails(c *C) {
 	b := s.getTestData("bodyToBeClosed.txt")
 	request, err := http.NewRequest("POST", "/users", b)
 	c.Assert(err, IsNil)
-
 	request.Header.Set("Content-type", "application/json")
 	request.Body.Close()
 	recorder := httptest.NewRecorder()
@@ -95,13 +91,11 @@ func (s *S) TestCreateUserHandlerReturnErrorAndBadRequestIfInvalidJSONIsGiven(c 
 	b := bytes.NewBufferString(`["invalid json":"i'm invalid"]`)
 	request, err := http.NewRequest("POST", "/users", b)
 	c.Assert(err, IsNil)
-
 	request.Header.Set("Content-type", "application/json")
 	recorder := httptest.NewRecorder()
 	err = CreateUser(recorder, request)
 	c.Assert(err, NotNil)
 	c.Assert(err, ErrorMatches, "^invalid character.*$")
-
 	e, ok := err.(*errors.Http)
 	c.Assert(ok, Equals, true)
 	c.Assert(e.Code, Equals, http.StatusBadRequest)
@@ -110,11 +104,9 @@ func (s *S) TestCreateUserHandlerReturnErrorAndBadRequestIfInvalidJSONIsGiven(c 
 func (s *S) TestCreateUserHandlerReturnErrorAndConflictIfItFailsToCreateUser(c *C) {
 	u := User{Email: "nobody@globo.com", Password: "123"}
 	u.Create()
-
 	b := bytes.NewBufferString(`{"email":"nobody@globo.com","password":"123"}`)
 	request, err := http.NewRequest("POST", "/users", b)
 	c.Assert(err, IsNil)
-
 	request.Header.Set("Content-type", "application/json")
 	recorder := httptest.NewRecorder()
 	err = CreateUser(recorder, request)
@@ -128,20 +120,16 @@ func (s *S) TestCreateUserHandlerReturnErrorAndConflictIfItFailsToCreateUser(c *
 func (s *S) TestLoginShouldCreateTokenInTheDatabaseAndReturnItWithinTheResponse(c *C) {
 	u := User{Email: "nobody@globo.com", Password: "123"}
 	u.Create()
-
 	b := bytes.NewBufferString(`{"password":"123"}`)
 	request, err := http.NewRequest("POST", "/users/nobody@globo.com/tokens?:email=nobody@globo.com", b)
 	c.Assert(err, IsNil)
-
 	request.Header.Set("Content-type", "application/json")
 	recorder := httptest.NewRecorder()
 	err = Login(recorder, request)
 	c.Assert(err, IsNil)
-
 	var user User
 	collection := db.Session.Users()
 	err = collection.Find(bson.M{"email": "nobody@globo.com"}).One(&user)
-
 	var recorderJson map[string]string
 	r, _ := ioutil.ReadAll(recorder.Body)
 	json.Unmarshal(r, &recorderJson)
@@ -152,7 +140,6 @@ func (s *S) TestLoginShouldReturnErrorAndBadRequestIfItReceivesAnInvalidJson(c *
 	b := bytes.NewBufferString(`"invalid":"json"]`)
 	request, err := http.NewRequest("POST", "/users/nobody@globo.com/tokens?:email=nobody@globo.com", b)
 	c.Assert(err, IsNil)
-
 	request.Header.Set("Content-type", "application/json")
 	recorder := httptest.NewRecorder()
 	err = Login(recorder, request)
@@ -167,7 +154,6 @@ func (s *S) TestLoginShouldReturnErrorAndBadRequestIfTheJSONDoesNotContainsAPass
 	b := bytes.NewBufferString(`{}`)
 	request, err := http.NewRequest("POST", "/users/nobody@globo.com/tokens?:email=nobody@globo.com", b)
 	c.Assert(err, IsNil)
-
 	request.Header.Set("Content-type", "application/json")
 	recorder := httptest.NewRecorder()
 	err = Login(recorder, request)
@@ -182,7 +168,6 @@ func (s *S) TestLoginShouldReturnErrorAndNotFoundIfTheUserDoesNotExist(c *C) {
 	b := bytes.NewBufferString(`{"password":"123"}`)
 	request, err := http.NewRequest("POST", "/users/nobody@globo.com/tokens?:email=nobody@globo.com", b)
 	c.Assert(err, IsNil)
-
 	request.Header.Set("Content-type", "application/json")
 	recorder := httptest.NewRecorder()
 	err = Login(recorder, request)
@@ -196,11 +181,9 @@ func (s *S) TestLoginShouldReturnErrorAndNotFoundIfTheUserDoesNotExist(c *C) {
 func (s *S) TestLoginShouldreturnErrorIfThePasswordDoesNotMatch(c *C) {
 	u := User{Email: "nobody@globo.com", Password: "123"}
 	u.Create()
-
 	b := bytes.NewBufferString(`{"password":"1234"}`)
 	request, err := http.NewRequest("POST", "/users/nobody@globo.com/tokens?:email=nobody@globo.com", b)
 	c.Assert(err, IsNil)
-
 	request.Header.Set("Content-type", "application/json")
 	recorder := httptest.NewRecorder()
 	err = Login(recorder, request)
@@ -231,7 +214,6 @@ func (s *S) TestCreateTeamHandlerSavesTheTeamInTheDatabaseWithTheAuthenticatedUs
 	recorder := httptest.NewRecorder()
 	err = CreateTeam(recorder, request, s.user)
 	c.Assert(err, IsNil)
-
 	t := new(Team)
 	err = db.Session.Teams().Find(bson.M{"name": "timeredbull"}).One(t)
 	c.Assert(err, IsNil)
@@ -406,7 +388,6 @@ func (s *S) TestRemoveUserFromTeamShouldRemoveAUserFromATeamIfTheTeamExistAndThe
 	recorder := httptest.NewRecorder()
 	err = RemoveUserFromTeam(recorder, request, s.user)
 	c.Assert(err, IsNil)
-
 	team := new(Team)
 	err = db.Session.Teams().Find(bson.M{"name": s.team.Name}).One(team)
 	c.Assert(err, IsNil)
@@ -595,7 +576,6 @@ func (s *S) TestAddKeyFunctionAddTheMemberWithTheKeyNameInTheGitosisConfiguratio
 		time.Sleep(1e9)
 	}()
 	keyname := s.user.Keys[0].Name
-
 	ch := make(chan int8)
 	go func(ch chan int8, k string) {
 		for !c.Check("members = "+keyname, IsInGitosis) {
@@ -698,7 +678,6 @@ func (s *S) TestRemoveKeyHandlerDeletesTheKeyFileFromTheKeydir(c *C) {
 	keypath := path.Join(s.gitosisRepo, "keydir", u.Keys[0].Name+".pub")
 	err = removeKeyFromUser("my-key", u)
 	c.Assert(err, IsNil)
-
 	// Failing the test if the file is not deleted after 10 seconds
 	ch := make(chan error)
 	go func(c chan error, kp string) {
