@@ -52,7 +52,7 @@ func (c *isInGitosisChecker) Check(params []interface{}, names []string) (bool, 
 var IsInGitosis, NotInGitosis Checker = &isInGitosisChecker{}, Not(IsInGitosis)
 
 func (s *S) TestCreateUserHandlerSavesTheUserInTheDatabase(c *C) {
-	b := bytes.NewBufferString(`{"email":"nobody@globo.com","password":"123"}`)
+	b := bytes.NewBufferString(`{"email":"nobody@globo.com","password":"123456"}`)
 	request, err := http.NewRequest("POST", "/users", b)
 	c.Assert(err, IsNil)
 	request.Header.Set("Content-type", "application/json")
@@ -65,7 +65,7 @@ func (s *S) TestCreateUserHandlerSavesTheUserInTheDatabase(c *C) {
 }
 
 func (s *S) TestCreateUserHandlerReturnsStatus201AfterCreateTheUser(c *C) {
-	b := bytes.NewBufferString(`{"email":"nobody@globo.com","password":"123"}`)
+	b := bytes.NewBufferString(`{"email":"nobody@globo.com","password":"123456"}`)
 	request, err := http.NewRequest("POST", "/users", b)
 	c.Assert(err, IsNil)
 	request.Header.Set("Content-type", "application/json")
@@ -102,9 +102,9 @@ func (s *S) TestCreateUserHandlerReturnErrorAndBadRequestIfInvalidJSONIsGiven(c 
 }
 
 func (s *S) TestCreateUserHandlerReturnErrorAndConflictIfItFailsToCreateUser(c *C) {
-	u := User{Email: "nobody@globo.com", Password: "123"}
+	u := User{Email: "nobody@globo.com", Password: "123456"}
 	u.Create()
-	b := bytes.NewBufferString(`{"email":"nobody@globo.com","password":"123"}`)
+	b := bytes.NewBufferString(`{"email":"nobody@globo.com","password":"123456"}`)
 	request, err := http.NewRequest("POST", "/users", b)
 	c.Assert(err, IsNil)
 	request.Header.Set("Content-type", "application/json")
@@ -117,10 +117,41 @@ func (s *S) TestCreateUserHandlerReturnErrorAndConflictIfItFailsToCreateUser(c *
 	c.Assert(e.Code, Equals, http.StatusConflict)
 }
 
+func (s *S) TestCreateUserHandlerReturnsPreconditionFailedIfEmailIsNotValid(c *C) {
+	b := bytes.NewBufferString(`{"email":"nobody","password":"123456"}`)
+	request, err := http.NewRequest("POST", "/users", b)
+	c.Assert(err, IsNil)
+	request.Header.Set("Content-type", "application/json")
+	recorder := httptest.NewRecorder()
+	err = CreateUser(recorder, request)
+	c.Assert(err, NotNil)
+	e, ok := err.(*errors.Http)
+	c.Assert(ok, Equals, true)
+	c.Assert(e.Code, Equals, http.StatusPreconditionFailed)
+	c.Assert(e.Message, Equals, "Invalid email.")
+}
+
+func (s *S) TestCreateUserHandlerReturnsPreconditionFailedIfPasswordHasLessThan6CharactersOrMoreThan50Characters(c *C) {
+	passwords := []string{"123", strings.Join(make([]string, 52), "-")}
+	for _, password := range passwords {
+		b := bytes.NewBufferString(`{"email":"nobody@globo.com","password":"` + password + `"}`)
+		request, err := http.NewRequest("POST", "/users", b)
+		c.Assert(err, IsNil)
+		request.Header.Set("Content-type", "application/json")
+		recorder := httptest.NewRecorder()
+		err = CreateUser(recorder, request)
+		c.Assert(err, NotNil)
+		e, ok := err.(*errors.Http)
+		c.Assert(ok, Equals, true)
+		c.Assert(e.Code, Equals, http.StatusPreconditionFailed)
+		c.Assert(e.Message, Equals, "Password length shoul be least 6 characters and at most 50 characters.")
+	}
+}
+
 func (s *S) TestLoginShouldCreateTokenInTheDatabaseAndReturnItWithinTheResponse(c *C) {
-	u := User{Email: "nobody@globo.com", Password: "123"}
+	u := User{Email: "nobody@globo.com", Password: "123456"}
 	u.Create()
-	b := bytes.NewBufferString(`{"password":"123"}`)
+	b := bytes.NewBufferString(`{"password":"123456"}`)
 	request, err := http.NewRequest("POST", "/users/nobody@globo.com/tokens?:email=nobody@globo.com", b)
 	c.Assert(err, IsNil)
 	request.Header.Set("Content-type", "application/json")
@@ -165,7 +196,7 @@ func (s *S) TestLoginShouldReturnErrorAndBadRequestIfTheJSONDoesNotContainsAPass
 }
 
 func (s *S) TestLoginShouldReturnErrorAndNotFoundIfTheUserDoesNotExist(c *C) {
-	b := bytes.NewBufferString(`{"password":"123"}`)
+	b := bytes.NewBufferString(`{"password":"123456"}`)
 	request, err := http.NewRequest("POST", "/users/nobody@globo.com/tokens?:email=nobody@globo.com", b)
 	c.Assert(err, IsNil)
 	request.Header.Set("Content-type", "application/json")
@@ -179,9 +210,9 @@ func (s *S) TestLoginShouldReturnErrorAndNotFoundIfTheUserDoesNotExist(c *C) {
 }
 
 func (s *S) TestLoginShouldreturnErrorIfThePasswordDoesNotMatch(c *C) {
-	u := User{Email: "nobody@globo.com", Password: "123"}
+	u := User{Email: "nobody@globo.com", Password: "123456"}
 	u.Create()
-	b := bytes.NewBufferString(`{"password":"1234"}`)
+	b := bytes.NewBufferString(`{"password":"1234567"}`)
 	request, err := http.NewRequest("POST", "/users/nobody@globo.com/tokens?:email=nobody@globo.com", b)
 	c.Assert(err, IsNil)
 	request.Header.Set("Content-type", "application/json")
@@ -294,7 +325,7 @@ func (s *S) TestCreateTeamAddsTheLoggedInUserKeysAsMemberInGitosis(c *C) {
 }
 
 func (s *S) TestAddUserToTeamShouldAddAUserToATeamIfTheUserAndTheTeamExistAndTheGivenUserIsMemberOfTheTeam(c *C) {
-	u := &User{Email: "wolverine@xmen.com", Password: "123"}
+	u := &User{Email: "wolverine@xmen.com", Password: "123456"}
 	err := u.Create()
 	c.Assert(err, IsNil)
 	url := "/teams/cobrateam/wolverine@xmen.com?:team=cobrateam&:user=wolverine@xmen.com"
@@ -323,7 +354,7 @@ func (s *S) TestAddUserToTeamShouldReturnNotFoundIfThereIsNoTeamWithTheGivenName
 }
 
 func (s *S) TestAddUserToTeamShouldReturnUnauthorizedIfTheGivenUserIsNotInTheGivenTeam(c *C) {
-	u := &User{Email: "hi@me.me", Password: "123"}
+	u := &User{Email: "hi@me.me", Password: "123456"}
 	err := u.Create()
 	c.Assert(err, IsNil)
 	request, err := http.NewRequest("PUT", "/teams/cobrateam/hi@me.me?:team=cobrateam&:user=hi@me.me", nil)
@@ -362,7 +393,7 @@ func (s *S) TestAddUserToTeamShouldReturnConflictIfTheUserIsAlreadyInTheGroup(c 
 }
 
 func (s *S) TestAddUserToTeamShoulAddAllUsersKeyToGitosisConf(c *C) {
-	u := &User{Email: "marathon@rush.com", Password: "123"}
+	u := &User{Email: "marathon@rush.com", Password: "123456"}
 	err := u.Create()
 	c.Assert(err, IsNil)
 	s.addGroup()
@@ -450,7 +481,7 @@ func (s *S) TestRemoveUserFromTeamShouldReturnForbiddenIfTheUserIsTheLastInTheTe
 }
 
 func (s *S) TestRemoveUserFromTeamRemovesTheMemberFromGroupInGitosis(c *C) {
-	u := &User{Email: "pomar@nando-reis.com", Password: "123"}
+	u := &User{Email: "pomar@nando-reis.com", Password: "123456"}
 	err := u.Create()
 	c.Assert(err, IsNil)
 	defer db.Session.Users().Remove(bson.M{"email": u.Email})
@@ -552,7 +583,7 @@ func (s *S) TestAddKeyHandlerReturnsConflictIfTheKeyIsAlreadyPresent(c *C) {
 }
 
 func (s *S) TestAddKeyFunctionCreatesTheKeyFileInTheGitosisRepository(c *C) {
-	u := &User{Email: "francisco@franciscosouza.net", Password: "123"}
+	u := &User{Email: "francisco@franciscosouza.net", Password: "123456"}
 	err := u.Create()
 	c.Assert(err, IsNil)
 	err = addKeyToUser("my-key", u)
@@ -670,7 +701,7 @@ func (s *S) TestRemoveKeyHandlerReturnsNotFoundIfTheUserDoesNotHaveTheKey(c *C) 
 }
 
 func (s *S) TestRemoveKeyHandlerDeletesTheKeyFileFromTheKeydir(c *C) {
-	u := &User{Email: "francisco@franciscosouza.net", Password: "123"}
+	u := &User{Email: "francisco@franciscosouza.net", Password: "123456"}
 	err := u.Create()
 	c.Assert(err, IsNil)
 	err = addKeyToUser("my-key", u)

@@ -7,6 +7,7 @@ import (
 	"github.com/timeredbull/tsuru/errors"
 	"github.com/timeredbull/tsuru/log"
 	"github.com/timeredbull/tsuru/repository"
+	"github.com/timeredbull/tsuru/validation"
 	"io"
 	"io/ioutil"
 	"labix.org/v2/mgo/bson"
@@ -24,16 +25,21 @@ func CreateUser(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return &errors.Http{Code: http.StatusBadRequest, Message: err.Error()}
 	}
+	if !validation.ValidateEmail(u.Email) {
+		return &errors.Http{Code: http.StatusPreconditionFailed, Message: "Invalid email."}
+	}
+	if !validation.ValidateLength(u.Password, 6, 50) {
+		msg := "Password length shoul be least 6 characters and at most 50 characters."
+		return &errors.Http{Code: http.StatusPreconditionFailed, Message: msg}
+	}
 	err = u.Create()
 	if err == nil {
 		w.WriteHeader(http.StatusCreated)
 		return nil
 	}
-
 	if u.Get() == nil {
 		err = &errors.Http{Code: http.StatusConflict, Message: "This email is already registered"}
 	}
-
 	return err
 }
 
@@ -47,25 +53,21 @@ func Login(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return &errors.Http{Code: http.StatusBadRequest, Message: "Invalid JSON"}
 	}
-
 	password, ok := pass["password"]
 	if !ok {
 		msg := "You must provide a password to login"
 		return &errors.Http{Code: http.StatusBadRequest, Message: msg}
 	}
-
 	u := User{Email: r.URL.Query().Get(":email")}
 	err = u.Get()
 	if err != nil {
 		return &errors.Http{Code: http.StatusNotFound, Message: "User not found"}
 	}
-
 	if u.login(password) {
 		t, _ := u.CreateToken()
 		fmt.Fprintf(w, `{"token":"%s"}`, t.Token)
 		return nil
 	}
-
 	msg := "Authentication failed, wrong password"
 	return &errors.Http{Code: http.StatusUnauthorized, Message: msg}
 }
