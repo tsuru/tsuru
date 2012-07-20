@@ -72,8 +72,8 @@ func (a *App) Create() error {
 	log.Printf("deploying %s with name %s", a.Framework, a.Name)
 	out, err := cmd.CombinedOutput()
 	a.Log(string(out))
-	if cmd.Error() != nil {
-		return errors.New(out)
+	if err != nil {
+		return errors.New(string(out))
 	}
 	a.Log(fmt.Sprintf("app %s successfully created", a.Name))
 	return nil
