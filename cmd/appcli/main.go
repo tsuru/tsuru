@@ -6,12 +6,7 @@ import (
 )
 
 func buildManager(name string) cmd.Manager {
-	m := cmd.NewManager(name, os.Stdout, os.Stderr)
-	m.Register(&cmd.Login{})
-	m.Register(&cmd.Logout{})
-	m.Register(&cmd.User{})
-	m.Register(&cmd.Team{})
-	m.Register(&cmd.Target{})
+	m := cmd.BuildBaseManager(name)
 	m.Register(&App{})
 	m.Register(&AppRun{})
 	m.Register(&Env{})
