@@ -355,6 +355,33 @@ func (s *S) TestCreateTeamAddsTheLoggedInUserKeysAsMemberInGitosis(c *C) {
 	c.Assert("members = "+keyname, IsInGitosis)
 }
 
+func (s *S) TestListTeamsListsAllTeamsThatTheUserIsMember(c *C) {
+	request, err := http.NewRequest("GET", "/teams", nil)
+	c.Assert(err, IsNil)
+	recorder := httptest.NewRecorder()
+	err = ListTeams(recorder, request, s.user)
+	c.Assert(err, IsNil)
+	b, err := ioutil.ReadAll(recorder.Body)
+	c.Assert(err, IsNil)
+	var m []map[string]string
+	err = json.Unmarshal(b, &m)
+	c.Assert(err, IsNil)
+	c.Assert(m, DeepEquals, []map[string]string{map[string]string{"name": s.team.Name}})
+}
+
+func (s *S) TestListTeamsReturns204IfTheUserHasNoTeam(c *C) {
+	u := User{Email: "cruiser@gotthard.com", Password: "123"}
+	err := u.Create()
+	c.Assert(err, IsNil)
+	defer db.Session.Users().Remove(bson.M{"email": u.Email})
+	request, err := http.NewRequest("GET", "/teams", nil)
+	c.Assert(err, IsNil)
+	recorder := httptest.NewRecorder()
+	err = ListTeams(recorder, request, &u)
+	c.Assert(err, IsNil)
+	c.Assert(recorder.Code, Equals, http.StatusNoContent)
+}
+
 func (s *S) TestAddUserToTeamShouldAddAUserToATeamIfTheUserAndTheTeamExistAndTheGivenUserIsMemberOfTheTeam(c *C) {
 	u := &User{Email: "wolverine@xmen.com", Password: "123456"}
 	err := u.Create()

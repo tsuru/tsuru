@@ -130,6 +130,33 @@ func CreateTeam(w http.ResponseWriter, r *http.Request, u *User) error {
 	return createTeam(name, u)
 }
 
+func ListTeams(w http.ResponseWriter, r *http.Request, u *User) error {
+	teams, err := u.Teams()
+	if err != nil {
+		return err
+	}
+	if len(teams) > 0 {
+		var result []map[string]string
+		for _, team := range teams {
+			result = append(result, map[string]string{"name": team.Name})
+		}
+		b, err := json.Marshal(result)
+		if err != nil {
+			return err
+		}
+		n, err := w.Write(b)
+		if err != nil {
+			return err
+		}
+		if n != len(b) {
+			return &errors.Http{Code: http.StatusInternalServerError, Message: "Failed to write response body."}
+		}
+	} else {
+		w.WriteHeader(http.StatusNoContent)
+	}
+	return nil
+}
+
 func addUserToTeam(email, teamName string, u *User) error {
 	team, user := new(Team), new(User)
 	selector := bson.M{"name": teamName}
