@@ -46,12 +46,12 @@ To create an app:
 
     % tsuru app create myapp [framework]
 
-This will return your the git remote url for your app, you should add it to
+The 'framework' parameter is optional, and defaults to 'django'. The available frameworks are listed at https://github.com/timeredbull/charms.
+
+The command output will return your the git remote url for your app, you should add it to
 your git repository:
 
     % git remote add tsuru git@tsuru.myhost.com:myapp.git
-
-The 'framework' parameter is optional, and defaults to 'django'. The available frameworks are listed at https://github.com/timeredbull/charms.
 
 When your app is ready, you can push to it. To check whether it is ready or
 not, you can use:
