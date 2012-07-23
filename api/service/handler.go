@@ -296,9 +296,9 @@ func serviceAndServiceInstancesByTeams(teamKind string, u *auth.User) []ServiceM
 func ServiceInstanceStatusHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	siName := r.URL.Query().Get(":name")
 	var si ServiceInstance
-    if siName == "" {
-        return &errors.Http{Code: http.StatusBadRequest, Message: "Service instance name not provided."}
-    }
+	if siName == "" {
+		return &errors.Http{Code: http.StatusBadRequest, Message: "Service instance name not provided."}
+	}
 	err := db.Session.ServiceInstances().Find(bson.M{"_id": siName}).One(&si)
 	if err != nil {
 		msg := fmt.Sprintf("Service instance does not exists, error: %s", err.Error())
@@ -312,12 +312,46 @@ func ServiceInstanceStatusHandler(w http.ResponseWriter, r *http.Request, u *aut
 			return &errors.Http{Code: http.StatusInternalServerError, Message: msg}
 		}
 	} else {
-        return &errors.Http{Code: http.StatusInternalServerError, Message: err.Error()}
-    }
-    b = fmt.Sprintf(`Service instance "%s" is %s`, siName, b)
+		return &errors.Http{Code: http.StatusInternalServerError, Message: err.Error()}
+	}
+	b = fmt.Sprintf(`Service instance "%s" is %s`, siName, b)
 	n, err := w.Write([]byte(b))
 	if n != len(b) {
 		return &errors.Http{Code: http.StatusInternalServerError, Message: "Failed to write response body"}
 	}
 	return nil
 }
+
+func ServiceInfoHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
+	serviceName := r.URL.Query().Get(":name")
+	instances := []ServiceInstance{}
+	err := db.Session.ServiceInstances().Find(bson.M{"service_name": serviceName}).All(&instances)
+	b, err := json.Marshal(instances)
+	if err != nil {
+		return nil
+	}
+	w.Write(b)
+	return nil
+}
+
+// func AppList(w http.ResponseWriter, r *http.Request, u *auth.User) error {
+// 	teams, err := getTeamNames(u)
+// 	if err != nil {
+// 		return err
+// 	}
+// 	var apps []App
+// 	err = db.Session.Apps().Find(bson.M{"teams": bson.M{"$in": teams}}).All(&apps)
+// 	if err != nil {
+// 		return err
+// 	}
+// 	if len(apps) == 0 {
+// 		w.WriteHeader(http.StatusNoContent)
+// 		return nil
+// 	}
+// 	b, err := json.Marshal(apps)
+// 	if err != nil {
+// 		return err
+// 	}
+// 	fmt.Fprint(w, bytes.NewBuffer(b).String())
+// 	return nil
+// }
