@@ -208,3 +208,19 @@ func (c *ServiceInstanceStatus) Run(ctx *cmd.Context, client cmd.Doer) error {
 	}
 	return nil
 }
+
+type ServiceInfo struct{}
+
+func (c *ServiceInfo) Info() *cmd.Info {
+	usg := `service info <service>
+e.g.:
+
+    $ service info mongodb
+`
+	return &cmd.Info{
+		Name:    "info",
+		Usage:   usg,
+		Desc:    "List all instances for a service",
+		MinArgs: 1,
+	}
+}

@@ -319,3 +319,19 @@ func (s *S) TestServiceInstanceStatusRun(c *C) {
 	obtained := manager.Stdout.(*bytes.Buffer).String()
 	c.Assert(obtained, Equals, result)
 }
+
+func (s *S) TestServiceInfoInfo(c *C) {
+	usg := `service info <service>
+e.g.:
+
+    $ service info mongodb
+`
+	expected := &cmd.Info{
+		Name:    "info",
+		Usage:   usg,
+		Desc:    "List all instances for a service",
+		MinArgs: 1,
+	}
+	got := (&ServiceInfo{}).Info()
+	c.Assert(got, DeepEquals, expected)
+}
