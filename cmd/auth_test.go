@@ -59,14 +59,25 @@ func (s *S) TestLogout(c *C) {
 	c.Assert(token, Equals, "")
 }
 
-func (s *S) TestTeam(c *C) {
-	expect := map[string]interface{}{
-		"add-user":    &TeamAddUser{},
-		"remove-user": &TeamRemoveUser{},
-		"create":      &TeamCreate{},
-	}
-	command := Team{}
-	c.Assert(command.Subcommands(), DeepEquals, expect)
+func (s *S) TestAddUserIsSubcommandOfTeam(c *C) {
+	t := Team{}
+	subc, ok := t.Subcommands()["add-user"]
+	c.Assert(ok, Equals, true)
+	c.Assert(subc, FitsTypeOf, &TeamAddUser{})
+}
+
+func (s *S) TestRemoveUserIsASubcommandOfTeam(c *C) {
+	t := Team{}
+	subc, ok := t.Subcommands()["remove-user"]
+	c.Assert(ok, Equals, true)
+	c.Assert(subc, FitsTypeOf, &TeamRemoveUser{})
+}
+
+func (s *S) TestCreateUsASubcommandOfTeam(c *C) {
+	t := Team{}
+	subc, ok := t.Subcommands()["create"]
+	c.Assert(ok, Equals, true)
+	c.Assert(subc, FitsTypeOf, &TeamCreate{})
 }
 
 func (s *S) TestTeamAddUser(c *C) {
@@ -97,6 +108,64 @@ func (s *S) TestTeamCreate(c *C) {
 	err := command.Run(&context, client)
 	c.Assert(err, IsNil)
 	c.Assert(manager.Stdout.(*bytes.Buffer).String(), Equals, expected)
+}
+
+func (s *S) TestTeamListRun(c *C) {
+	var called bool
+	trans := &conditionalTransport{
+		transport{
+			msg:    `[{"name":"timeredbull"},{"name":"cobrateam"}]`,
+			status: http.StatusOK,
+		},
+		func(req *http.Request) bool {
+			called = true
+			return req.Method == "GET" && req.URL.Path == "/teams"
+		},
+	}
+	expected := `Teams:
+
+  - timeredbull
+  - cobrateam
+`
+	client := NewClient(&http.Client{Transport: trans})
+	err := (&TeamList{}).Run(&Context{[]string{}, []string{}, manager.Stdout, manager.Stderr}, client)
+	c.Assert(err, IsNil)
+	c.Assert(called, Equals, true)
+	c.Assert(manager.Stdout.(*bytes.Buffer).String(), Equals, expected)
+}
+
+func (s *S) TestTeamListRunWithNoContent(c *C) {
+	client := NewClient(&http.Client{Transport: &transport{msg: "", status: http.StatusNoContent}})
+	err := (&TeamList{}).Run(&Context{[]string{}, []string{}, manager.Stdout, manager.Stderr}, client)
+	c.Assert(err, IsNil)
+	c.Assert(manager.Stdout.(*bytes.Buffer).String(), Equals, "")
+}
+
+func (s *S) TeatTeamListInfo(c *C) {
+	expected := &Info{
+		Name:    "list",
+		Usage:   "team list",
+		Desc:    "List all teams that you are member.",
+		MinArgs: 0,
+	}
+	c.Assert((&TeamList{}).Info(), DeepEquals, expected)
+}
+
+func (s *S) TestTeamListIsACommand(c *C) {
+	var command Command
+	c.Assert(&TeamList{}, Implements, &command)
+}
+
+func (s *S) TeamTeamListIsAnInfoer(c *C) {
+	var infoer Infoer
+	c.Assert(&TeamList{}, Implements, &infoer)
+}
+
+func (s *S) TestTeamListIsASubCommandOfTeam(c *C) {
+	t := Team{}
+	subc, ok := t.Subcommands()["list"]
+	c.Assert(ok, Equals, true)
+	c.Assert(subc, FitsTypeOf, &TeamList{})
 }
 
 func (s *S) TestUser(c *C) {

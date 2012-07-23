@@ -5,25 +5,14 @@ import (
 	. "launchpad.net/gocheck"
 )
 
-func (s *S) TestLoginIsRegistered(c *C) {
+func (s *S) TestCommandsFromBaseManagerAreRegistered(c *C) {
+	baseManager := cmd.BuildBaseManager("tsuru")
 	manager := buildManager("tsuru")
-	login, ok := manager.Commands["login"]
-	c.Assert(ok, Equals, true)
-	c.Assert(login, FitsTypeOf, &cmd.Login{})
-}
-
-func (s *S) TestLogoutIsRegistered(c *C) {
-	manager := buildManager("tsuru")
-	logout, ok := manager.Commands["logout"]
-	c.Assert(ok, Equals, true)
-	c.Assert(logout, FitsTypeOf, &cmd.Logout{})
-}
-
-func (s *S) TestUserIsRegistered(c *C) {
-	manager := buildManager("tsuru")
-	user, ok := manager.Commands["user"]
-	c.Assert(ok, Equals, true)
-	c.Assert(user, FitsTypeOf, &cmd.User{})
+	for name, instance := range baseManager.Commands {
+		command, ok := manager.Commands[name]
+		c.Assert(ok, Equals, true)
+		c.Assert(command, FitsTypeOf, instance)
+	}
 }
 
 func (s *S) TestAppIsRegistered(c *C) {
@@ -52,20 +41,6 @@ func (s *S) TestKeyIsRegistered(c *C) {
 	key, ok := manager.Commands["key"]
 	c.Assert(ok, Equals, true)
 	c.Assert(key, FitsTypeOf, &Key{})
-}
-
-func (s *S) TestTeamIsRegistered(c *C) {
-	manager := buildManager("tsuru")
-	team, ok := manager.Commands["team"]
-	c.Assert(ok, Equals, true)
-	c.Assert(team, FitsTypeOf, &cmd.Team{})
-}
-
-func (s *S) TestTargetIsRegistered(c *C) {
-	manager := buildManager("tsuru")
-	target, ok := manager.Commands["target"]
-	c.Assert(ok, Equals, true)
-	c.Assert(target, FitsTypeOf, &cmd.Target{})
 }
 
 func (s *S) TestServiceIsRegistered(c *C) {

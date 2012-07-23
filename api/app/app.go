@@ -73,7 +73,8 @@ func (a *App) Create() error {
 	out, err := cmd.CombinedOutput()
 	a.Log(string(out))
 	if err != nil {
-		return err
+		a.Log(fmt.Sprintf("juju finished with exit status: %s", err.Error()))
+		return errors.New(string(out))
 	}
 	a.Log(fmt.Sprintf("app %s successfully created", a.Name))
 	return nil

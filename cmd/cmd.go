@@ -32,6 +32,16 @@ func NewManager(name string, stdout, stderr io.Writer) Manager {
 	return m
 }
 
+func BuildBaseManager(name string) Manager {
+	m := NewManager(name, os.Stdout, os.Stderr)
+	m.Register(&Login{})
+	m.Register(&Logout{})
+	m.Register(&User{})
+	m.Register(&Team{})
+	m.Register(&Target{})
+	return m
+}
+
 func (m *Manager) Register(command interface{}) {
 	if m.Commands == nil {
 		m.Commands = make(map[string]interface{})

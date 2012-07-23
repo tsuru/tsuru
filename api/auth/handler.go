@@ -7,11 +7,19 @@ import (
 	"github.com/timeredbull/tsuru/errors"
 	"github.com/timeredbull/tsuru/log"
 	"github.com/timeredbull/tsuru/repository"
+	"github.com/timeredbull/tsuru/validation"
 	"io"
 	"io/ioutil"
 	"labix.org/v2/mgo/bson"
 	"net/http"
 	"strings"
+)
+
+const (
+	emailError     = "Invalid email."
+	passwordError  = "Password length shoul be least 6 characters and at most 50 characters."
+	passwordMinLen = 6
+	passwordMaxLen = 50
 )
 
 func CreateUser(w http.ResponseWriter, r *http.Request) error {
@@ -24,16 +32,20 @@ func CreateUser(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return &errors.Http{Code: http.StatusBadRequest, Message: err.Error()}
 	}
+	if !validation.ValidateEmail(u.Email) {
+		return &errors.Http{Code: http.StatusPreconditionFailed, Message: emailError}
+	}
+	if !validation.ValidateLength(u.Password, passwordMinLen, passwordMaxLen) {
+		return &errors.Http{Code: http.StatusPreconditionFailed, Message: passwordError}
+	}
 	err = u.Create()
 	if err == nil {
 		w.WriteHeader(http.StatusCreated)
 		return nil
 	}
-
 	if u.Get() == nil {
 		err = &errors.Http{Code: http.StatusConflict, Message: "This email is already registered"}
 	}
-
 	return err
 }
 
@@ -47,25 +59,27 @@ func Login(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return &errors.Http{Code: http.StatusBadRequest, Message: "Invalid JSON"}
 	}
-
 	password, ok := pass["password"]
 	if !ok {
 		msg := "You must provide a password to login"
 		return &errors.Http{Code: http.StatusBadRequest, Message: msg}
 	}
-
+	if !validation.ValidateLength(password, passwordMinLen, passwordMaxLen) {
+		return &errors.Http{Code: http.StatusPreconditionFailed, Message: passwordError}
+	}
 	u := User{Email: r.URL.Query().Get(":email")}
+	if !validation.ValidateEmail(u.Email) {
+		return &errors.Http{Code: http.StatusPreconditionFailed, Message: emailError}
+	}
 	err = u.Get()
 	if err != nil {
 		return &errors.Http{Code: http.StatusNotFound, Message: "User not found"}
 	}
-
 	if u.login(password) {
 		t, _ := u.CreateToken()
 		fmt.Fprintf(w, `{"token":"%s"}`, t.Token)
 		return nil
 	}
-
 	msg := "Authentication failed, wrong password"
 	return &errors.Http{Code: http.StatusUnauthorized, Message: msg}
 }
@@ -114,6 +128,33 @@ func CreateTeam(w http.ResponseWriter, r *http.Request, u *User) error {
 		return &errors.Http{Code: http.StatusBadRequest, Message: msg}
 	}
 	return createTeam(name, u)
+}
+
+func ListTeams(w http.ResponseWriter, r *http.Request, u *User) error {
+	teams, err := u.Teams()
+	if err != nil {
+		return err
+	}
+	if len(teams) > 0 {
+		var result []map[string]string
+		for _, team := range teams {
+			result = append(result, map[string]string{"name": team.Name})
+		}
+		b, err := json.Marshal(result)
+		if err != nil {
+			return err
+		}
+		n, err := w.Write(b)
+		if err != nil {
+			return err
+		}
+		if n != len(b) {
+			return &errors.Http{Code: http.StatusInternalServerError, Message: "Failed to write response body."}
+		}
+	} else {
+		w.WriteHeader(http.StatusNoContent)
+	}
+	return nil
 }
 
 func addUserToTeam(email, teamName string, u *User) error {

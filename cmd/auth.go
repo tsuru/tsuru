@@ -140,13 +140,14 @@ func (c *Team) Subcommands() map[string]interface{} {
 		"add-user":    &TeamAddUser{},
 		"remove-user": &TeamRemoveUser{},
 		"create":      &TeamCreate{},
+		"list":        &TeamList{},
 	}
 }
 
 func (c *Team) Info() *Info {
 	return &Info{
 		Name:    "team",
-		Usage:   "team (create|add-user|remove-user) [args]",
+		Usage:   "team (create|list|add-user|remove-user) [args]",
 		Desc:    "manage teams.",
 		MinArgs: 1,
 	}
@@ -227,5 +228,44 @@ func (c *TeamRemoveUser) Run(context *Context, client Doer) error {
 		return err
 	}
 	io.WriteString(context.Stdout, fmt.Sprintf(`User "%s" was removed from the "%s" team`+"\n", userName, teamName))
+	return nil
+}
+
+type TeamList struct{}
+
+func (c *TeamList) Info() *Info {
+	return &Info{
+		Name:    "list",
+		Usage:   "team list",
+		Desc:    "List all teams that you are member.",
+		MinArgs: 0,
+	}
+}
+
+func (c *TeamList) Run(context *Context, client Doer) error {
+	request, err := http.NewRequest("GET", GetUrl("/teams"), nil)
+	if err != nil {
+		return err
+	}
+	resp, err := client.Do(request)
+	if err != nil {
+		return err
+	}
+	if resp.StatusCode == 200 {
+		defer resp.Body.Close()
+		b, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			return err
+		}
+		var teams []map[string]string
+		err = json.Unmarshal(b, &teams)
+		if err != nil {
+			return err
+		}
+		io.WriteString(context.Stdout, "Teams:\n\n")
+		for _, team := range teams {
+			fmt.Fprintf(context.Stdout, "  - %s\n", team["name"])
+		}
+	}
 	return nil
 }

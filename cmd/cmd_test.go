@@ -338,3 +338,38 @@ func (s *S) TestFinisherReturnTheDefinedE(c *C) {
 	m := Manager{e: &exiter}
 	c.Assert(m.finisher(), FitsTypeOf, &exiter)
 }
+
+func (s *S) TestLoginIsRegistered(c *C) {
+	manager := BuildBaseManager("tsuru")
+	login, ok := manager.Commands["login"]
+	c.Assert(ok, Equals, true)
+	c.Assert(login, FitsTypeOf, &Login{})
+}
+
+func (s *S) TestLogoutIsRegistered(c *C) {
+	manager := BuildBaseManager("tsuru")
+	logout, ok := manager.Commands["logout"]
+	c.Assert(ok, Equals, true)
+	c.Assert(logout, FitsTypeOf, &Logout{})
+}
+
+func (s *S) TestUserIsRegistered(c *C) {
+	manager := BuildBaseManager("tsuru")
+	user, ok := manager.Commands["user"]
+	c.Assert(ok, Equals, true)
+	c.Assert(user, FitsTypeOf, &User{})
+}
+
+func (s *S) TestTeamIsRegistered(c *C) {
+	manager := BuildBaseManager("tsuru")
+	team, ok := manager.Commands["team"]
+	c.Assert(ok, Equals, true)
+	c.Assert(team, FitsTypeOf, &Team{})
+}
+
+func (s *S) TestTargetIsRegistered(c *C) {
+	manager := BuildBaseManager("tsuru")
+	target, ok := manager.Commands["target"]
+	c.Assert(ok, Equals, true)
+	c.Assert(target, FitsTypeOf, &Target{})
+}
