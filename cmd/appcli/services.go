@@ -54,8 +54,6 @@ func (s *ServiceList) Run(ctx *cmd.Context, client cmd.Doer) error {
 	if err != nil {
 		return err
 	}
-	//var body []cmd.ServiceModel
-	//err = json.Unmarshal(b, &body)
 	rslt, err := cmd.ShowServicesInstancesList(b)
 	if err != nil {
 		return err
@@ -64,24 +62,6 @@ func (s *ServiceList) Run(ctx *cmd.Context, client cmd.Doer) error {
 	if n != len(rslt) {
 		return errors.New("Failed to write the output of the command")
 	}
-	// if err != nil {
-	// 	return err
-	// }
-	// if len(body) == 0 {
-	// 	return nil
-	// }
-	// table := cmd.NewTable()
-	// table.Headers = cmd.Row([]string{"Service", "Instances"})
-	// for s, i := range body {
-	// 	instances := strings.Join(i, ", ")
-	// 	table.AddRow(cmd.Row([]string{s, instances}))
-	// }
-	// content := table.Bytes()
-	//n, err := ctx.Stdout.Write(content)
-	//n, err := ctx.Stdout.Write(body)
-	//if n != len(body) {
-	//return errors.New("Failed to write the output of the command")
-	//}
 	return nil
 }
 
