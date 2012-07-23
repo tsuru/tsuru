@@ -324,8 +324,20 @@ func ServiceInstanceStatusHandler(w http.ResponseWriter, r *http.Request, u *aut
 
 func ServiceInfoHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	serviceName := r.URL.Query().Get(":name")
+	s := Service{Name: serviceName}
+	err := s.Get()
+	if err != nil {
+		return &errors.Http{Code: http.StatusNotFound, Message: "Service not found"}
+	}
+	if !auth.CheckUserAccess(s.Teams, u) {
+		msg := "This user does not have access to this service"
+		return &errors.Http{Code: http.StatusForbidden, Message: msg}
+	}
 	instances := []ServiceInstance{}
-	err := db.Session.ServiceInstances().Find(bson.M{"service_name": serviceName}).All(&instances)
+	err = db.Session.ServiceInstances().Find(bson.M{"service_name": serviceName}).All(&instances)
+	if err != nil {
+		return err
+	}
 	b, err := json.Marshal(instances)
 	if err != nil {
 		return nil
@@ -333,25 +345,3 @@ func ServiceInfoHandler(w http.ResponseWriter, r *http.Request, u *auth.User) er
 	w.Write(b)
 	return nil
 }
-
-// func AppList(w http.ResponseWriter, r *http.Request, u *auth.User) error {
-// 	teams, err := getTeamNames(u)
-// 	if err != nil {
-// 		return err
-// 	}
-// 	var apps []App
-// 	err = db.Session.Apps().Find(bson.M{"teams": bson.M{"$in": teams}}).All(&apps)
-// 	if err != nil {
-// 		return err
-// 	}
-// 	if len(apps) == 0 {
-// 		w.WriteHeader(http.StatusNoContent)
-// 		return nil
-// 	}
-// 	b, err := json.Marshal(apps)
-// 	if err != nil {
-// 		return err
-// 	}
-// 	fmt.Fprint(w, bytes.NewBuffer(b).String())
-// 	return nil
-// }
