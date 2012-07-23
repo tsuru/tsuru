@@ -7,3 +7,4 @@ websrv
 dist*
 cmd/servicecli/servicecli
 cmd/appcli/appcli
+api/webserver/webserver
