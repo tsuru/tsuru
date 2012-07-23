@@ -329,6 +329,10 @@ func ServiceInfoHandler(w http.ResponseWriter, r *http.Request, u *auth.User) er
 	if err != nil {
 		return &errors.Http{Code: http.StatusNotFound, Message: "Service not found"}
 	}
+	if !auth.CheckUserAccess(s.Teams, u) {
+		msg := "This user does not have access to this service"
+		return &errors.Http{Code: http.StatusForbidden, Message: msg}
+	}
 	instances := []ServiceInstance{}
 	err = db.Session.ServiceInstances().Find(bson.M{"service_name": serviceName}).All(&instances)
 	if err != nil {

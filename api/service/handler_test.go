@@ -776,7 +776,7 @@ func (s *S) TestServiceInstanceStatusHandlerShouldReturnErrorWhenServiceHasNoPro
 }
 
 func (s *S) TestServiceInfoHandler(c *C) {
-	srv := Service{Name: "mongodb"}
+	srv := Service{Name: "mongodb", Teams: []string{s.team.Name}}
 	err := srv.Create()
 	c.Assert(err, IsNil)
 	defer srv.Delete()
@@ -832,4 +832,19 @@ func (s *S) TestServiceInfoHandlerReturns404WhenTheServiceDoesNotExist(c *C) {
 	c.Assert(ok, Equals, true)
 	c.Assert(e.Code, Equals, http.StatusNotFound)
 	c.Assert(e, ErrorMatches, "^Service not found$")
+}
+
+func (s *S) TestServiceInfoHandlerReturns403WhenTheUserDoesNotHaveAccessToTheService(c *C) {
+	se := Service{Name: "Mysql"}
+	se.Create()
+	defer db.Session.Services().Remove(bson.M{"_id": se.Name})
+	request, err := http.NewRequest("DELETE", fmt.Sprintf("/services/%s?:name=%s", se.Name, se.Name), nil)
+	c.Assert(err, IsNil)
+	recorder := httptest.NewRecorder()
+	err = ServiceInfoHandler(recorder, request, s.user)
+	c.Assert(err, NotNil)
+	e, ok := err.(*errors.Http)
+	c.Assert(ok, Equals, true)
+	c.Assert(e.Code, Equals, http.StatusForbidden)
+	c.Assert(e, ErrorMatches, "^This user does not have access to this service$")
 }
