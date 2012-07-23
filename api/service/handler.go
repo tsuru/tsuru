@@ -292,3 +292,27 @@ func serviceAndServiceInstancesByTeams(teamKind string, u *auth.User) []ServiceM
 	}
 	return results
 }
+
+func ServiceInstanceStatusHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
+    siName := r.URL.Query().Get(":name")
+    var si ServiceInstance
+    err := db.Session.ServiceInstances().Find(bson.M{"_id": siName}).One(&si)
+    if err != nil {
+        msg := fmt.Sprintf("Service instance does not exists, error: %s", err.Error())
+        return &errors.Http{Code: http.StatusInternalServerError, Message: msg}
+    }
+    s := si.Service()
+    var b string
+    if cli, err := s.GetClient("production"); err == nil {
+        if b, err = cli.Status(&si); err != nil {
+            msg := fmt.Sprintf("Could not retrieve status of service instance, error: %s", err.Error())
+            return &errors.Http{Code: http.StatusInternalServerError, Message: msg}
+        }
+    }
+	n, err := w.Write([]byte(b))
+	if n != len(b) {
+		return &errors.Http{Code: http.StatusInternalServerError, Message: "Failed to write response body"}
+	}
+	return err
+    return nil
+}

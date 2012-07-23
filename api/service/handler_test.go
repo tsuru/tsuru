@@ -715,3 +715,30 @@ func (s *S) TestServiceAndServiceInstancesByOwnerTeams(c *C) {
 	}
 	c.Assert(obtained, DeepEquals, expected)
 }
+
+func makeRequestToStatusHandler(name string, c *C) (*httptest.ResponseRecorder, *http.Request) {
+    url := fmt.Sprintf("/services/instances/%s/status?name=%s", name, name)
+	request, err := http.NewRequest("GET", url, nil)
+	c.Assert(err, IsNil)
+	request.Header.Set("Content-Type", "application/json")
+	recorder := httptest.NewRecorder()
+	return recorder, request
+}
+
+func (s *S) TestServiceInstanceStatusHandler(c *C) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(`Service instance "my_nosql" is up`))
+	}))
+	defer ts.Close()
+	srv := Service{Name: "mongodb", OwnerTeams: []string{s.team.Name}}
+	srv.Create()
+	defer srv.Delete()
+	si := ServiceInstance{Name: "my_nosql", ServiceName: srv.Name}
+	si.Create()
+	defer si.Delete()
+    recorder, request := makeRequestToStatusHandler("my_nosql", c)
+    err := ServiceInstanceStatusHandler(recorder, request, s.user)
+    c.Assert(err, IsNil)
+    b, err := ioutil.ReadAll(recorder.Body)
+    c.Assert(string(b), Equals, "Service instance \"my_nosql\" is up")
+}
