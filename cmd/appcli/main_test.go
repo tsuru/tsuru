@@ -49,3 +49,10 @@ func (s *S) TestServiceIsRegistered(c *C) {
 	c.Assert(ok, Equals, true)
 	c.Assert(service, FitsTypeOf, &Service{})
 }
+
+func (s *S) TestServiceInstanceStatusIsRegistered(c *C) {
+	manager := buildManager("tsuru")
+	service, ok := manager.Commands["status"]
+	c.Assert(ok, Equals, true)
+	c.Assert(service, FitsTypeOf, &ServiceInstanceStatus{})
+}

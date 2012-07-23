@@ -165,3 +165,46 @@ func (su *ServiceUnbind) Info() *cmd.Info {
 		MinArgs: 2,
 	}
 }
+
+type ServiceInstanceStatus struct{}
+
+func (c *ServiceInstanceStatus) Info() *cmd.Info {
+	usg := `service instance status <serviceinstancename>
+e.g.:
+
+    $ service instance status my_mongodb
+`
+	return &cmd.Info{
+		Name:    "status",
+		Usage:   usg,
+		Desc:    "Check status of a given service instance.",
+		MinArgs: 1,
+	}
+}
+
+func (c *ServiceInstanceStatus) Run(ctx *cmd.Context, client cmd.Doer) error {
+	instName := ctx.Args[0]
+	url := cmd.GetUrl("/services/instances/" + instName + "/status")
+	request, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return err
+	}
+	resp, err := client.Do(request)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	bMsg, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return err
+	}
+	msg := string(bMsg)
+	n, err := io.WriteString(ctx.Stdout, msg)
+	if err != nil {
+		return err
+	}
+	if n != len(msg) {
+		return errors.New("Failed to write to standard output.\n")
+	}
+	return nil
+}
