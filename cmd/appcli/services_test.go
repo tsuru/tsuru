@@ -287,3 +287,35 @@ func (s *S) TestServiceAddRun(c *C) {
 	obtained := manager.Stdout.(*bytes.Buffer).String()
 	c.Assert(obtained, Equals, result)
 }
+
+func (s *S) TestServiceInstanceStatusInfo(c *C) {
+	usg := `service instance status <serviceinstancename>
+e.g.:
+
+    $ service instance status my_mongodb
+`
+	expected := &cmd.Info{
+		Name:    "status",
+		Usage:   usg,
+		Desc:    "Check status of a given service instance.",
+		MinArgs: 1,
+	}
+	got := (&ServiceInstanceStatus{}).Info()
+	c.Assert(got, DeepEquals, expected)
+}
+
+func (s *S) TestServiceInstanceStatusRun(c *C) {
+	result := `Service instance "foo" is up`
+	args := []string{"fooBar"}
+	context := cmd.Context{
+		Cmds:   []string{},
+		Args:   args,
+		Stdout: manager.Stdout,
+		Stderr: manager.Stderr,
+	}
+	client := cmd.NewClient(&http.Client{Transport: &transport{msg: result, status: http.StatusOK}})
+	err := (&ServiceInstanceStatus{}).Run(&context, client)
+	c.Assert(err, IsNil)
+	obtained := manager.Stdout.(*bytes.Buffer).String()
+	c.Assert(obtained, Equals, result)
+}
