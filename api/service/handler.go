@@ -321,3 +321,37 @@ func ServiceInstanceStatusHandler(w http.ResponseWriter, r *http.Request, u *aut
 	}
 	return nil
 }
+
+func ServiceInfoHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
+	serviceName := r.URL.Query().Get(":name")
+	instances := []ServiceInstance{}
+	err := db.Session.ServiceInstances().Find(bson.M{"service_name": serviceName}).All(&instances)
+	b, err := json.Marshal(instances)
+	if err != nil {
+		return nil
+	}
+	w.Write(b)
+	return nil
+}
+
+// func AppList(w http.ResponseWriter, r *http.Request, u *auth.User) error {
+// 	teams, err := getTeamNames(u)
+// 	if err != nil {
+// 		return err
+// 	}
+// 	var apps []App
+// 	err = db.Session.Apps().Find(bson.M{"teams": bson.M{"$in": teams}}).All(&apps)
+// 	if err != nil {
+// 		return err
+// 	}
+// 	if len(apps) == 0 {
+// 		w.WriteHeader(http.StatusNoContent)
+// 		return nil
+// 	}
+// 	b, err := json.Marshal(apps)
+// 	if err != nil {
+// 		return err
+// 	}
+// 	fmt.Fprint(w, bytes.NewBuffer(b).String())
+// 	return nil
+// }

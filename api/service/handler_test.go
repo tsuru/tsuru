@@ -774,3 +774,50 @@ func (s *S) TestServiceInstanceStatusHandlerShouldReturnErrorWhenServiceHasNoPro
 	err = ServiceInstanceStatusHandler(recorder, request, s.user)
 	c.Assert(err, ErrorMatches, "^Unknown endpoint: production$")
 }
+
+func (s *S) TestServiceInfoHandler(c *C) {
+	srv := Service{Name: "mongodb"}
+	err := srv.Create()
+	c.Assert(err, IsNil)
+	defer srv.Delete()
+	si1 := ServiceInstance{
+		Name:        "my_nosql",
+		ServiceName: srv.Name,
+		Apps:        []string{},
+		Teams:       []string{},
+		Instance:    "",
+		Host:        "",
+		PrivateHost: "",
+		State:       "creating",
+		Env:         map[string]string{},
+	}
+	err = si1.Create()
+	c.Assert(err, IsNil)
+	defer si1.Delete()
+	si2 := ServiceInstance{
+		Name:        "your_nosql",
+		ServiceName: srv.Name,
+		Apps:        []string{"wordpress"},
+		Teams:       []string{},
+		Instance:    "",
+		Host:        "",
+		PrivateHost: "",
+		State:       "creating",
+		Env:         map[string]string{},
+	}
+	err = si2.Create()
+	c.Assert(err, IsNil)
+	defer si2.Delete()
+	request, err := http.NewRequest("GET", fmt.Sprintf("/services/%s?:name=%s", "mongodb", "mongodb"), nil)
+	c.Assert(err, IsNil)
+	recorder := httptest.NewRecorder()
+	err = ServiceInfoHandler(recorder, request, s.user)
+	c.Assert(err, IsNil)
+	body, err := ioutil.ReadAll(recorder.Body)
+	c.Assert(err, IsNil)
+	var instances []ServiceInstance
+	err = json.Unmarshal(body, &instances)
+	c.Assert(err, IsNil)
+	expected := []ServiceInstance{si1, si2}
+	c.Assert(instances, DeepEquals, expected)
+}
