@@ -294,7 +294,7 @@ func serviceAndServiceInstancesByTeams(teamKind string, u *auth.User) []ServiceM
 }
 
 func ServiceInstanceStatusHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
-	siName := r.URL.Query().Get(":name")
+	siName := r.URL.Query().Get(":instance")
 	var si ServiceInstance
 	if siName == "" {
 		return &errors.Http{Code: http.StatusBadRequest, Message: "Service instance name not provided."}
