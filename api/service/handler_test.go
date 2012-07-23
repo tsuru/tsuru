@@ -821,3 +821,15 @@ func (s *S) TestServiceInfoHandler(c *C) {
 	expected := []ServiceInstance{si1, si2}
 	c.Assert(instances, DeepEquals, expected)
 }
+
+func (s *S) TestServiceInfoHandlerReturns404WhenTheServiceDoesNotExist(c *C) {
+	request, err := http.NewRequest("GET", fmt.Sprintf("/services/%s?:name=%s", "mongodb", "mongodb"), nil)
+	c.Assert(err, IsNil)
+	recorder := httptest.NewRecorder()
+	err = ServiceInfoHandler(recorder, request, s.user)
+	c.Assert(err, NotNil)
+	e, ok := err.(*errors.Http)
+	c.Assert(ok, Equals, true)
+	c.Assert(e.Code, Equals, http.StatusNotFound)
+	c.Assert(e, ErrorMatches, "^Service not found$")
+}
