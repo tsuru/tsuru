@@ -717,7 +717,7 @@ func (s *S) TestServiceAndServiceInstancesByOwnerTeams(c *C) {
 }
 
 func makeRequestToStatusHandler(name string, c *C) (*httptest.ResponseRecorder, *http.Request) {
-	url := fmt.Sprintf("/services/instances/%s/status/?:name=%s", name, name)
+	url := fmt.Sprintf("/services/instances/%s/status/?:instance=%s", name, name)
 	request, err := http.NewRequest("GET", url, nil)
 	c.Assert(err, IsNil)
 	request.Header.Set("Content-Type", "application/json")
