@@ -294,25 +294,30 @@ func serviceAndServiceInstancesByTeams(teamKind string, u *auth.User) []ServiceM
 }
 
 func ServiceInstanceStatusHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
-    siName := r.URL.Query().Get(":name")
-    var si ServiceInstance
-    err := db.Session.ServiceInstances().Find(bson.M{"_id": siName}).One(&si)
-    if err != nil {
-        msg := fmt.Sprintf("Service instance does not exists, error: %s", err.Error())
-        return &errors.Http{Code: http.StatusInternalServerError, Message: msg}
+	siName := r.URL.Query().Get(":name")
+	var si ServiceInstance
+    if siName == "" {
+        return &errors.Http{Code: http.StatusBadRequest, Message: "Service instance name not provided."}
     }
-    s := si.Service()
-    var b string
-    if cli, err := s.GetClient("production"); err == nil {
-        if b, err = cli.Status(&si); err != nil {
-            msg := fmt.Sprintf("Could not retrieve status of service instance, error: %s", err.Error())
-            return &errors.Http{Code: http.StatusInternalServerError, Message: msg}
-        }
+	err := db.Session.ServiceInstances().Find(bson.M{"_id": siName}).One(&si)
+	if err != nil {
+		msg := fmt.Sprintf("Service instance does not exists, error: %s", err.Error())
+		return &errors.Http{Code: http.StatusInternalServerError, Message: msg}
+	}
+	s := si.Service()
+	var b string
+	if cli, err := s.GetClient("production"); err == nil {
+		if b, err = cli.Status(&si); err != nil {
+			msg := fmt.Sprintf("Could not retrieve status of service instance, error: %s", err.Error())
+			return &errors.Http{Code: http.StatusInternalServerError, Message: msg}
+		}
+	} else {
+        return &errors.Http{Code: http.StatusInternalServerError, Message: err.Error()}
     }
+    b = fmt.Sprintf(`Service instance "%s" is %s`, siName, b)
 	n, err := w.Write([]byte(b))
 	if n != len(b) {
 		return &errors.Http{Code: http.StatusInternalServerError, Message: "Failed to write response body"}
 	}
-	return err
-    return nil
+	return nil
 }

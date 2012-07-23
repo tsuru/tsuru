@@ -717,7 +717,7 @@ func (s *S) TestServiceAndServiceInstancesByOwnerTeams(c *C) {
 }
 
 func makeRequestToStatusHandler(name string, c *C) (*httptest.ResponseRecorder, *http.Request) {
-    url := fmt.Sprintf("/services/instances/%s/status?name=%s", name, name)
+    url := fmt.Sprintf("/services/instances/%s/status/?:name=%s", name, name)
 	request, err := http.NewRequest("GET", url, nil)
 	c.Assert(err, IsNil)
 	request.Header.Set("Content-Type", "application/json")
@@ -730,15 +730,47 @@ func (s *S) TestServiceInstanceStatusHandler(c *C) {
 		w.Write([]byte(`Service instance "my_nosql" is up`))
 	}))
 	defer ts.Close()
-	srv := Service{Name: "mongodb", OwnerTeams: []string{s.team.Name}}
-	srv.Create()
+    srv := Service{Name: "mongodb", OwnerTeams: []string{s.team.Name}, Endpoint: map[string]string{"production": ts.URL}}
+    err := srv.Create()
+    c.Assert(err, IsNil)
 	defer srv.Delete()
 	si := ServiceInstance{Name: "my_nosql", ServiceName: srv.Name}
-	si.Create()
-	defer si.Delete()
-    recorder, request := makeRequestToStatusHandler("my_nosql", c)
-    err := ServiceInstanceStatusHandler(recorder, request, s.user)
+    err = si.Create()
     c.Assert(err, IsNil)
-    b, err := ioutil.ReadAll(recorder.Body)
-    c.Assert(string(b), Equals, "Service instance \"my_nosql\" is up")
+	defer si.Delete()
+	recorder, request := makeRequestToStatusHandler("my_nosql", c)
+	err = ServiceInstanceStatusHandler(recorder, request, s.user)
+	c.Assert(err, IsNil)
+	b, err := ioutil.ReadAll(recorder.Body)
+	c.Assert(string(b), Equals, "Service instance \"my_nosql\" is up")
+}
+
+func (s *S) TestServiceInstanceStatusHandlerShouldReturnErrorWHenNameIsNotProvided(c *C) {
+	recorder, request := makeRequestToStatusHandler("", c)
+    err := ServiceInstanceStatusHandler(recorder, request, s.user)
+    c.Assert(err, ErrorMatches, "^Service instance name not provided.$")
+}
+
+func (s *S) TestServiceInstanceStatusHandlerShouldReturnErrorWhenServiceInstanceNotExists(c *C) {
+	recorder, request := makeRequestToStatusHandler("inexistent-instance", c)
+    err := ServiceInstanceStatusHandler(recorder, request, s.user)
+    c.Assert(err, ErrorMatches, "^Service instance does not exists, error: not found$")
+}
+
+func (s *S) TestServiceInstanceStatusHandlerShouldReturnErrorWhenServiceHasNoProductionEndpoint(c *C) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(`Service instance "my_nosql" is up`))
+	}))
+	defer ts.Close()
+    srv := Service{Name: "mongodb", OwnerTeams: []string{s.team.Name}}
+    err := srv.Create()
+    c.Assert(err, IsNil)
+	defer srv.Delete()
+	si := ServiceInstance{Name: "my_nosql", ServiceName: srv.Name}
+    err = si.Create()
+    c.Assert(err, IsNil)
+	defer si.Delete()
+	recorder, request := makeRequestToStatusHandler("my_nosql", c)
+	err = ServiceInstanceStatusHandler(recorder, request, s.user)
+    c.Assert(err, ErrorMatches, "^Unknown endpoint: production$")
 }
