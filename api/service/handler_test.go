@@ -132,6 +132,7 @@ func (s *S) TestUpdateHandlerShouldUpdateTheServiceWithDataFromManifest(c *C) {
 	recorder := httptest.NewRecorder()
 	err = UpdateHandler(recorder, request, s.user)
 	c.Assert(err, IsNil)
+	c.Assert(recorder.Code, Equals, http.StatusNoContent)
 	err = db.Session.Services().Find(bson.M{"_id": service.Name}).One(&service)
 	c.Assert(err, IsNil)
 	c.Assert(service.Endpoint["production"], Equals, "mysqlapi.com")

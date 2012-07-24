@@ -79,7 +79,11 @@ func UpdateHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	}
 	s.Endpoint = yaml.Endpoint
 	s.Bootstrap = yaml.Bootstrap
-	return s.update()
+	if err = s.update(); err != nil {
+		return err
+	}
+	w.WriteHeader(http.StatusNoContent)
+	return nil
 }
 
 func CreateInstanceHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
