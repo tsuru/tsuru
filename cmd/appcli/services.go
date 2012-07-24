@@ -15,7 +15,7 @@ type Service struct{}
 func (s *Service) Info() *cmd.Info {
 	return &cmd.Info{
 		Name:    "service",
-		Usage:   "service (add|list|bind|unbind)",
+		Usage:   "service (add|list|bind|unbind|instance)",
 		Desc:    "manage your services",
 		MinArgs: 1,
 	}
@@ -27,6 +27,7 @@ func (s *Service) Subcommands() map[string]interface{} {
 		"add":    &ServiceAdd{},
 		"bind":   &ServiceBind{},
 		"unbind": &ServiceUnbind{},
+        "instance": &ServiceInstance{},
 	}
 }
 
@@ -163,6 +164,23 @@ func (su *ServiceUnbind) Info() *cmd.Info {
 		Usage:   "service unbind <instancename> <appname>",
 		Desc:    "unbind a service instance from an app",
 		MinArgs: 2,
+	}
+}
+
+type ServiceInstance struct{}
+
+func (c *ServiceInstance) Info() *cmd.Info {
+	return &cmd.Info{
+		Name:    "instance",
+		Usage:   "service instance (status)",
+		Desc:    "Retrieve information about services instances",
+		MinArgs: 1,
+	}
+}
+
+func (s *ServiceInstance) Subcommands() map[string]interface{} {
+	return map[string]interface{}{
+        "status": &ServiceInstanceStatus{},
 	}
 }
 

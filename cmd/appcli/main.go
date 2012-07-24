@@ -12,7 +12,6 @@ func buildManager(name string) cmd.Manager {
 	m.Register(&Env{})
 	m.Register(&Key{})
 	m.Register(&Service{})
-	m.Register(&ServiceInstanceStatus{})
 	return m
 }
 

@@ -10,7 +10,7 @@ import (
 func (s *S) TestServiceInfo(c *C) {
 	expected := &cmd.Info{
 		Name:    "service",
-		Usage:   "service (add|list|bind|unbind)",
+		Usage:   "service (add|list|bind|unbind|instance)",
 		Desc:    "manage your services",
 		MinArgs: 1,
 	}
@@ -288,6 +288,23 @@ func (s *S) TestServiceAddRun(c *C) {
 	c.Assert(obtained, Equals, result)
 }
 
+func (s *S) TestServiceInstanceInfo(c *C) {
+	usg := "service instance (status)"
+	expected := &cmd.Info{
+		Name:    "instance",
+		Usage:   usg,
+		Desc:    "Retrieve information about services instances",
+		MinArgs: 1,
+	}
+	got := (&ServiceInstance{}).Info()
+	c.Assert(got, DeepEquals, expected)
+}
+
+func (s *S) TestServiceInstanceSubcommands(c *C) {
+    subcmds := (&ServiceInstance{}).Subcommands()
+    c.Assert(subcmds["status"], FitsTypeOf, &ServiceInstanceStatus{})
+}
+
 func (s *S) TestServiceInstanceStatusInfo(c *C) {
 	usg := `service instance status <serviceinstancename>
 e.g.:
@@ -318,4 +335,12 @@ func (s *S) TestServiceInstanceStatusRun(c *C) {
 	c.Assert(err, IsNil)
 	obtained := manager.Stdout.(*bytes.Buffer).String()
 	c.Assert(obtained, Equals, result)
+}
+
+func (s *S) TestServiceInstanceIsASubcommandOfService(c *C) {
+	command := &Service{}
+	subc := command.Subcommands()
+	list, ok := subc["instance"]
+	c.Assert(ok, Equals, true)
+	c.Assert(list, FitsTypeOf, &ServiceInstance{})
 }
