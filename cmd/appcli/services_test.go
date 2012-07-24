@@ -358,3 +358,11 @@ func (s *S) TestServiceInfoRun(c *C) {
 	obtained := manager.Stdout.(*bytes.Buffer).String()
 	c.Assert(obtained, Equals, expected)
 }
+
+func (s *S) TestServiceInfoIsASubcommandOfService(c *C) {
+	command := &Service{}
+	subc := command.Subcommands()
+	info, ok := subc["info"]
+	c.Assert(ok, Equals, true)
+	c.Assert(info, FitsTypeOf, &ServiceInfo{})
+}

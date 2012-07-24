@@ -25,9 +25,10 @@ func (s *Service) Info() *cmd.Info {
 
 func (s *Service) Subcommands() map[string]interface{} {
 	return map[string]interface{}{
-		"list":   &ServiceList{},
 		"add":    &ServiceAdd{},
 		"bind":   &ServiceBind{},
+		"info":   &ServiceInfo{},
+		"list":   &ServiceList{},
 		"unbind": &ServiceUnbind{},
 	}
 }
