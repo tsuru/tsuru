@@ -94,20 +94,34 @@ func (m *Manager) Run(args []string) {
 	m.finisher().Exit(status)
 }
 
-func (m *Manager) extractCommandFromArgs(args []string) []string {
+func (mngr *Manager) extractCommandFromArgs(args []string) []string {
 	cmds := []string{}
 	if len(args) <= 0 {
 		return cmds
 	}
-	if cmd, exists := m.Commands[args[0]]; exists {
+	if cmd, exists := mngr.Commands[args[0]]; exists {
 		cmds = append(cmds, args[0])
 		if container, ok := cmd.(CommandContainer); ok && len(args) >= 2 {
-			if _, exists = container.Subcommands()[args[1]]; exists {
-				cmds = append(cmds, args[1])
-			}
+			cmds = append([]string{}, appendSubcmds(cmds, container, args, 1)...)
 		}
 	}
 	return cmds
+}
+
+func appendSubcmds(cmds []string, container CommandContainer, args []string, i int) []string {
+	var ok bool
+	var inter interface{}
+	if len(args) <= i {
+		return cmds
+	}
+	if inter, ok = container.Subcommands()[args[i]]; !ok {
+		return cmds
+	}
+	cmds = append(cmds, args[i])
+	if container, ok = inter.(CommandContainer); !ok {
+		return cmds
+	}
+	return appendSubcmds(cmds, container, args, i+1)
 }
 
 func (m *Manager) finisher() Exiter {
@@ -118,7 +132,7 @@ func (m *Manager) finisher() Exiter {
 }
 
 func getSubcommand(cmd interface{}, cmds []string) interface{} {
-	if c, ok := cmd.(CommandContainer); ok && len(cmds) == 2 {
+	if c, ok := cmd.(CommandContainer); ok && len(cmds) >= 2 {
 		if subcommand, exist := c.Subcommands()[cmds[1]]; exist {
 			cmd = subcommand
 		}

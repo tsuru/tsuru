@@ -253,6 +253,26 @@ func (c *ArgSubCmd) Info() *Info {
 	}
 }
 
+func (cmd *ArgSubCmd) Subcommands() map[string]interface{} {
+	return map[string]interface{}{
+		"subsubcmd": &ArgSubSubcmd{},
+	}
+}
+
+type ArgSubSubcmd struct{}
+
+func (cmd *ArgSubSubcmd) Info() *Info {
+	return &Info{
+		Name:  "subsubcmd",
+		Desc:  "just some sub sub cmd",
+		Usage: "tsuru arg subargs subsubcmd <arg>",
+	}
+}
+
+func (cmd *ArgSubSubcmd) Run(ctx *Context, client Doer) error {
+	return nil
+}
+
 func (s *S) TestRunWrongArgsNumberShouldRunsHelpAndReturnStatus1(c *C) {
 	expected := `Not enough arguments to call arg.
 
@@ -286,6 +306,13 @@ Minimum arguments: 2
 func (s *S) TestExtractCommandFromArgs(c *C) {
 	manager.Register(&ArgCmd{})
 	c.Assert(manager.extractCommandFromArgs([]string{"arg", "ble"}), DeepEquals, []string{"arg"})
+}
+
+func (s *S) TestExtractCommandFromArgsWithThreeSubcmds(c *C) {
+	manager := BuildBaseManager("tsuru")
+	manager.Register(&ArgCmd{})
+	args := manager.extractCommandFromArgs([]string{"arg", "subargs", "subsubcmd", "args"})
+	c.Assert(args, DeepEquals, []string{"arg", "subargs", "subsubcmd"})
 }
 
 func (s *S) TestExtractCommandFromArgsForSubCmd(c *C) {
