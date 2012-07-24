@@ -119,6 +119,79 @@ func (s *S) TestCreateHandlerReturnsForbiddenIfTheUserIsNotMemberOfAnyTeam(c *C)
 	c.Assert(e, ErrorMatches, "^In order to create a service, you should be member of at least one team$")
 }
 
+func (s *S) TestUpdateHandlerShouldUpdateTheServiceWithDataFromManifest(c *C) {
+	service := Service{Name: "mysqlapi", Endpoint: map[string]string{"production": "sqlapi.com"}, Teams: []string{s.team.Name}}
+	err := service.Create()
+	c.Assert(err, IsNil)
+	defer db.Session.Services().Remove(bson.M{"_id": service.Name})
+	p, err := filepath.Abs("testdata/manifest.yml")
+	manifest, err := ioutil.ReadFile(p)
+	c.Assert(err, IsNil)
+	request, err := http.NewRequest("PUT", "/services", bytes.NewBuffer(manifest))
+	c.Assert(err, IsNil)
+	recorder := httptest.NewRecorder()
+	err = UpdateHandler(recorder, request, s.user)
+	c.Assert(err, IsNil)
+	err = db.Session.Services().Find(bson.M{"_id": service.Name}).One(&service)
+	c.Assert(err, IsNil)
+	c.Assert(service.Endpoint["production"], Equals, "mysqlapi.com")
+}
+
+func (s *S) TestUpdateHandlerReturns404WhenTheServiceDoesNotExist(c *C) {
+	p, err := filepath.Abs("testdata/manifest.yml")
+	c.Assert(err, IsNil)
+	manifest, err := ioutil.ReadFile(p)
+	c.Assert(err, IsNil)
+	request, err := http.NewRequest("PUT", "/services", bytes.NewBuffer(manifest))
+	c.Assert(err, IsNil)
+	recorder := httptest.NewRecorder()
+	err = UpdateHandler(recorder, request, s.user)
+	c.Assert(err, NotNil)
+	e, ok := err.(*errors.Http)
+	c.Assert(ok, Equals, true)
+	c.Assert(e.Code, Equals, http.StatusNotFound)
+	c.Assert(e, ErrorMatches, "^Service not found$")
+}
+
+func (s *S) TestUpdateHandlerReturns404WhenTheServicesIsDeleted(c *C) {
+	se := Service{Name: "mysqlapi", Teams: []string{s.team.Name}, Status: "deleted"}
+	err := db.Session.Services().Insert(se)
+	c.Assert(err, IsNil)
+	defer db.Session.Services().Remove(bson.M{"_id": se.Name})
+	p, err := filepath.Abs("testdata/manifest.yml")
+	c.Assert(err, IsNil)
+	manifest, err := ioutil.ReadFile(p)
+	c.Assert(err, IsNil)
+	request, err := http.NewRequest("PUT", "/services", bytes.NewBuffer(manifest))
+	c.Assert(err, IsNil)
+	recorder := httptest.NewRecorder()
+	err = UpdateHandler(recorder, request, s.user)
+	c.Assert(err, NotNil)
+	e, ok := err.(*errors.Http)
+	c.Assert(ok, Equals, true)
+	c.Assert(e.Code, Equals, http.StatusNotFound)
+	c.Assert(e, ErrorMatches, "^Service not found$")
+}
+
+func (s *S) TestUpdateHandlerReturns403WhenTheUserDoesNotHaveAccessToTheService(c *C) {
+	se := Service{Name: "mysqlapi"}
+	se.Create()
+	defer db.Session.Services().Remove(bson.M{"_id": se.Name})
+	p, err := filepath.Abs("testdata/manifest.yml")
+	c.Assert(err, IsNil)
+	manifest, err := ioutil.ReadFile(p)
+	c.Assert(err, IsNil)
+	request, err := http.NewRequest("PUT", "/services", bytes.NewBuffer(manifest))
+	c.Assert(err, IsNil)
+	recorder := httptest.NewRecorder()
+	err = UpdateHandler(recorder, request, s.user)
+	c.Assert(err, NotNil)
+	e, ok := err.(*errors.Http)
+	c.Assert(ok, Equals, true)
+	c.Assert(e.Code, Equals, http.StatusForbidden)
+	c.Assert(e, ErrorMatches, "^This user does not have access to this service$")
+}
+
 func (s *S) TestCreateInstanceHandlerVMOnNewInstanceWhenManifestSaysSo(c *C) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(`{"DATABASE_HOST":"localhost"}`))

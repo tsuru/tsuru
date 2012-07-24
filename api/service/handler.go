@@ -65,6 +65,23 @@ func CreateHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	return nil
 }
 
+func UpdateHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
+	defer r.Body.Close()
+	body, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		return err
+	}
+	var yaml serviceYaml
+	goyaml.Unmarshal(body, &yaml)
+	s, err := getServiceOrError(yaml.Id, u)
+	if err != nil {
+		return err
+	}
+	s.Endpoint = yaml.Endpoint
+	s.Bootstrap = yaml.Bootstrap
+	return s.update()
+}
+
 func CreateInstanceHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	log.Print("Receiving request to create a service instance")
 	b, err := ioutil.ReadAll(r.Body)
@@ -168,15 +185,23 @@ func validateForInstanceCreation(s *Service, sJson map[string]string, u *auth.Us
 	return nil
 }
 
-func DeleteHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
-	s := Service{Name: r.URL.Query().Get(":name")}
+func getServiceOrError(name string, u *auth.User) (Service, error) {
+	s := Service{Name: name}
 	err := s.Get()
 	if err != nil {
-		return &errors.Http{Code: http.StatusNotFound, Message: "Service not found"}
+		return s, &errors.Http{Code: http.StatusNotFound, Message: "Service not found"}
 	}
 	if !auth.CheckUserAccess(s.Teams, u) {
 		msg := "This user does not have access to this service"
-		return &errors.Http{Code: http.StatusForbidden, Message: msg}
+		return s, &errors.Http{Code: http.StatusForbidden, Message: msg}
+	}
+	return s, err
+}
+
+func DeleteHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
+	s, err := getServiceOrError(r.URL.Query().Get(":name"), u)
+	if err != nil {
+		return err
 	}
 	n, err := db.Session.ServiceInstances().Find(bson.M{"service_name": s.Name}).Count()
 	if err != nil {
