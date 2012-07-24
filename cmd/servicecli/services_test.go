@@ -7,21 +7,6 @@ import (
 	"net/http"
 )
 
-func (s *S) TestServiceInfo(c *C) {
-	cmd := Service{}
-	i := cmd.Info()
-	c.Assert(i.Name, Equals, "service")
-	c.Assert(i.Usage, Equals, "service (init|list|create|remove|update) [args]")
-	c.Assert(i.Desc, Equals, "manage services.")
-	c.Assert(i.MinArgs, Equals, 1)
-}
-
-func (s *S) TestServiceSubcommand(c *C) {
-	cmd := Service{}
-	sc := cmd.Subcommands()
-	c.Assert(sc["create"], FitsTypeOf, &ServiceCreate{})
-}
-
 func (s *S) TestServiceCreateInfo(c *C) {
 	desc := "Creates a service based on a passed manifest. The manifest format should be a yaml and follow the standard described in the documentation (should link to it here)"
 	cmd := ServiceCreate{}
@@ -196,11 +181,4 @@ func (s *S) TestServiceUpdateInfo(c *C) {
 func (s *S) TestServiceUpdateIsAnInfoer(c *C) {
 	var infoer cmd.Infoer
 	c.Assert(&ServiceUpdate{}, Implements, &infoer)
-}
-
-func (s *S) TestServiceUpdateIsSubcommandOfService(c *C) {
-	cmd := Service{}
-	subc, ok := cmd.Subcommands()["update"]
-	c.Assert(ok, Equals, true)
-	c.Assert(subc, FitsTypeOf, &ServiceUpdate{})
 }

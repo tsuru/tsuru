@@ -8,24 +8,7 @@ import (
 	"net/http"
 )
 
-type Service struct{}
 type ServiceCreate struct{}
-
-func (c *Service) Info() *cmd.Info {
-	return &cmd.Info{
-		Name:    "service",
-		Usage:   "service (init|list|create|remove|update) [args]",
-		Desc:    "manage services.",
-		MinArgs: 1,
-	}
-}
-
-func (c *Service) Subcommands() map[string]interface{} {
-	return map[string]interface{}{
-		"create": &ServiceCreate{},
-		"update": &ServiceUpdate{},
-	}
-}
 
 func (c *ServiceCreate) Info() *cmd.Info {
 	desc := "Creates a service based on a passed manifest. The manifest format should be a yaml and follow the standard described in the documentation (should link to it here)"
