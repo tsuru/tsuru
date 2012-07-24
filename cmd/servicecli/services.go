@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"github.com/timeredbull/tsuru/cmd"
 	"io"
 	"io/ioutil"
@@ -23,6 +24,7 @@ func (c *Service) Info() *cmd.Info {
 func (c *Service) Subcommands() map[string]interface{} {
 	return map[string]interface{}{
 		"create": &ServiceCreate{},
+		"update": &ServiceUpdate{},
 	}
 }
 
@@ -96,7 +98,7 @@ func (c *ServiceList) Info() *cmd.Info {
 	}
 }
 
-func (c *ServiceList) Run(ctxt *cmd.Context, client cmd.Doer) error {
+func (c *ServiceList) Run(ctx *cmd.Context, client cmd.Doer) error {
 	url := cmd.GetUrl("/services")
 	request, err := http.NewRequest("GET", url, nil)
 	if err != nil {
@@ -115,6 +117,37 @@ func (c *ServiceList) Run(ctxt *cmd.Context, client cmd.Doer) error {
 	if err != nil {
 		return err
 	}
-	ctxt.Stdout.Write(rslt)
+	ctx.Stdout.Write(rslt)
+	return nil
+}
+
+type ServiceUpdate struct{}
+
+func (c *ServiceUpdate) Info() *cmd.Info {
+	return &cmd.Info{
+		Name:    "update",
+		Usage:   "service update <path/to/manifesto>",
+		Desc:    "Update service data, extracting it from the given manifesto file.",
+		MinArgs: 1,
+	}
+}
+
+func (c *ServiceUpdate) Run(ctx *cmd.Context, client cmd.Doer) error {
+	manifest := ctx.Args[0]
+	b, err := ioutil.ReadFile(manifest)
+	if err != nil {
+		return err
+	}
+	request, err := http.NewRequest("PUT", cmd.GetUrl("/services"), bytes.NewReader(b))
+	if err != nil {
+		return err
+	}
+	resp, err := client.Do(request)
+	if err != nil {
+		return err
+	}
+	if resp.StatusCode == http.StatusNoContent {
+		io.WriteString(ctx.Stdout, "Service successfully updated.\n")
+	}
 	return nil
 }

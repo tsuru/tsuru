@@ -152,3 +152,55 @@ func (s *S) TestServiceListRunWithNoServicesReturned(c *C) {
 	c.Assert(err, IsNil)
 	c.Assert(manager.Stdout.(*bytes.Buffer).String(), Equals, expected)
 }
+
+func (s *S) TestServiceUpdate(c *C) {
+	var called bool
+	trans := conditionalTransport{
+		transport{
+			msg:    "",
+			status: http.StatusNoContent,
+		},
+		func(req *http.Request) bool {
+			called = true
+			return req.Method == "PUT" && req.URL.Path == "/services"
+		},
+	}
+	client := cmd.NewClient(&http.Client{Transport: &trans})
+	context := cmd.Context{
+		Cmds:   []string{},
+		Args:   []string{"testdata/manifest.yml"},
+		Stdout: manager.Stdout,
+		Stderr: manager.Stderr,
+	}
+	err := (&ServiceUpdate{}).Run(&context, client)
+	c.Assert(err, IsNil)
+	c.Assert(called, Equals, true)
+	c.Assert(context.Stdout.(*bytes.Buffer).String(), Equals, "Service successfully updated.\n")
+}
+
+func (s *S) TestServiceUpdateIsACommand(c *C) {
+	var cmd cmd.Command
+	c.Assert(&ServiceUpdate{}, Implements, &cmd)
+}
+
+func (s *S) TestServiceUpdateInfo(c *C) {
+	expected := &cmd.Info{
+		Name:    "update",
+		Usage:   "service update <path/to/manifesto>",
+		Desc:    "Update service data, extracting it from the given manifesto file.",
+		MinArgs: 1,
+	}
+	c.Assert((&ServiceUpdate{}).Info(), DeepEquals, expected)
+}
+
+func (s *S) TestServiceUpdateIsAnInfoer(c *C) {
+	var infoer cmd.Infoer
+	c.Assert(&ServiceUpdate{}, Implements, &infoer)
+}
+
+func (s *S) TestServiceUpdateIsSubcommandOfService(c *C) {
+	cmd := Service{}
+	subc, ok := cmd.Subcommands()["update"]
+	c.Assert(ok, Equals, true)
+	c.Assert(subc, FitsTypeOf, &ServiceUpdate{})
+}
