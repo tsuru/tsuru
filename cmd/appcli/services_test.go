@@ -301,8 +301,8 @@ func (s *S) TestServiceInstanceInfo(c *C) {
 }
 
 func (s *S) TestServiceInstanceSubcommands(c *C) {
-    subcmds := (&ServiceInstance{}).Subcommands()
-    c.Assert(subcmds["status"], FitsTypeOf, &ServiceInstanceStatus{})
+	subcmds := (&ServiceInstance{}).Subcommands()
+	c.Assert(subcmds["status"], FitsTypeOf, &ServiceInstanceStatus{})
 }
 
 func (s *S) TestServiceInstanceStatusInfo(c *C) {
