@@ -35,6 +35,10 @@ func (s *Service) Create() error {
 	return err
 }
 
+func (s *Service) update() error {
+	return db.Session.Services().Update(bson.M{"_id": s.Name}, s)
+}
+
 func (s *Service) Delete() error {
 	s.Status = "deleted"
 	return db.Session.Services().Update(bson.M{"_id": s.Name}, s)
