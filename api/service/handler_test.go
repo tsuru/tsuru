@@ -120,7 +120,7 @@ func (s *S) TestCreateHandlerReturnsForbiddenIfTheUserIsNotMemberOfAnyTeam(c *C)
 }
 
 func (s *S) TestUpdateHandlerShouldUpdateTheServiceWithDataFromManifest(c *C) {
-	service := Service{Name: "mysqlapi", Endpoint: map[string]string{"production": "sqlapi.com"}, Teams: []string{s.team.Name}}
+	service := Service{Name: "mysqlapi", Endpoint: map[string]string{"production": "sqlapi.com"}, OwnerTeams: []string{s.team.Name}}
 	err := service.Create()
 	c.Assert(err, IsNil)
 	defer db.Session.Services().Remove(bson.M{"_id": service.Name})
@@ -155,7 +155,7 @@ func (s *S) TestUpdateHandlerReturns404WhenTheServiceDoesNotExist(c *C) {
 }
 
 func (s *S) TestUpdateHandlerReturns404WhenTheServicesIsDeleted(c *C) {
-	se := Service{Name: "mysqlapi", Teams: []string{s.team.Name}, Status: "deleted"}
+	se := Service{Name: "mysqlapi", OwnerTeams: []string{s.team.Name}, Status: "deleted"}
 	err := db.Session.Services().Insert(se)
 	c.Assert(err, IsNil)
 	defer db.Session.Services().Remove(bson.M{"_id": se.Name})
@@ -174,8 +174,8 @@ func (s *S) TestUpdateHandlerReturns404WhenTheServicesIsDeleted(c *C) {
 	c.Assert(e, ErrorMatches, "^Service not found$")
 }
 
-func (s *S) TestUpdateHandlerReturns403WhenTheUserDoesNotHaveAccessToTheService(c *C) {
-	se := Service{Name: "mysqlapi"}
+func (s *S) TestUpdateHandlerReturns403WhenTheUserIsNotOwnerOfTheTeam(c *C) {
+	se := Service{Name: "mysqlapi", Teams: []string{s.team.Name}}
 	se.Create()
 	defer db.Session.Services().Remove(bson.M{"_id": se.Name})
 	p, err := filepath.Abs("testdata/manifest.yml")
@@ -367,7 +367,7 @@ func (s *S) TestAsyncCAllServiceApi(c *C) {
 }
 
 func (s *S) TestDeleteHandler(c *C) {
-	se := Service{Name: "Mysql", Teams: []string{s.team.Name}}
+	se := Service{Name: "Mysql", OwnerTeams: []string{s.team.Name}}
 	se.Create()
 	defer db.Session.Services().Remove(bson.M{"_id": se.Name})
 	request, err := http.NewRequest("DELETE", fmt.Sprintf("/services/%s?:name=%s", se.Name, se.Name), nil)
@@ -395,7 +395,7 @@ func (s *S) TestDeleteHandlerReturns404WhenTheServiceDoesNotExist(c *C) {
 }
 
 func (s *S) TestDeleteHandlerReturns404WhenTheServicesIsDeleted(c *C) {
-	se := Service{Name: "mysql", Teams: []string{s.team.Name}, Status: "deleted"}
+	se := Service{Name: "mysql", OwnerTeams: []string{s.team.Name}, Status: "deleted"}
 	err := db.Session.Services().Insert(se)
 	c.Assert(err, IsNil)
 	defer db.Session.Services().Remove(bson.M{"_id": se.Name})
@@ -410,8 +410,8 @@ func (s *S) TestDeleteHandlerReturns404WhenTheServicesIsDeleted(c *C) {
 	c.Assert(e, ErrorMatches, "^Service not found$")
 }
 
-func (s *S) TestDeleteHandlerReturns403WhenTheUserDoesNotHaveAccessToTheService(c *C) {
-	se := Service{Name: "Mysql"}
+func (s *S) TestDeleteHandlerReturns403WhenTheUserIsNotOwnerOfTheTeam(c *C) {
+	se := Service{Name: "Mysql", Teams: []string{s.team.Name}}
 	se.Create()
 	defer db.Session.Services().Remove(bson.M{"_id": se.Name})
 	request, err := http.NewRequest("DELETE", fmt.Sprintf("/services/%s?:name=%s", se.Name, se.Name), nil)
@@ -426,7 +426,7 @@ func (s *S) TestDeleteHandlerReturns403WhenTheUserDoesNotHaveAccessToTheService(
 }
 
 func (s *S) TestDeleteHandlerReturns403WhenTheServiceHasInstance(c *C) {
-	se := Service{Name: "mysql", Teams: []string{s.team.Name}}
+	se := Service{Name: "mysql", OwnerTeams: []string{s.team.Name}}
 	err := se.Create()
 	c.Assert(err, IsNil)
 	defer db.Session.Services().Remove(bson.M{"_id": se.Name})

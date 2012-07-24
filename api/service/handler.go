@@ -195,7 +195,7 @@ func getServiceOrError(name string, u *auth.User) (Service, error) {
 	if err != nil {
 		return s, &errors.Http{Code: http.StatusNotFound, Message: "Service not found"}
 	}
-	if !auth.CheckUserAccess(s.Teams, u) {
+	if !auth.CheckUserAccess(s.OwnerTeams, u) {
 		msg := "This user does not have access to this service"
 		return s, &errors.Http{Code: http.StatusForbidden, Message: msg}
 	}
