@@ -10,6 +10,7 @@ func buildManager(name string) cmd.Manager {
 	m.Register(&ServiceCreate{})
 	m.Register(&ServiceRemove{})
 	m.Register(&ServiceList{})
+	m.Register(&ServiceUpdate{})
 	return m
 }
 

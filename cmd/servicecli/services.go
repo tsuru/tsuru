@@ -1,30 +1,14 @@
 package main
 
 import (
+	"bytes"
 	"github.com/timeredbull/tsuru/cmd"
 	"io"
 	"io/ioutil"
 	"net/http"
-	"strings"
 )
 
-type Service struct{}
 type ServiceCreate struct{}
-
-func (c *Service) Info() *cmd.Info {
-	return &cmd.Info{
-		Name:    "service",
-		Usage:   "service (init|list|create|remove|update) [args]",
-		Desc:    "manage services.",
-		MinArgs: 1,
-	}
-}
-
-func (c *Service) Subcommands() map[string]interface{} {
-	return map[string]interface{}{
-		"create": &ServiceCreate{},
-	}
-}
 
 func (c *ServiceCreate) Info() *cmd.Info {
 	desc := "Creates a service based on a passed manifest. The manifest format should be a yaml and follow the standard described in the documentation (should link to it here)"
@@ -43,8 +27,7 @@ func (c *ServiceCreate) Run(context *cmd.Context, client cmd.Doer) error {
 	if err != nil {
 		return err
 	}
-	body := strings.NewReader(string(b))
-	request, err := http.NewRequest("POST", url, body)
+	request, err := http.NewRequest("POST", url, bytes.NewReader(b))
 	if err != nil {
 		return err
 	}
@@ -96,7 +79,7 @@ func (c *ServiceList) Info() *cmd.Info {
 	}
 }
 
-func (c *ServiceList) Run(ctxt *cmd.Context, client cmd.Doer) error {
+func (c *ServiceList) Run(ctx *cmd.Context, client cmd.Doer) error {
 	url := cmd.GetUrl("/services")
 	request, err := http.NewRequest("GET", url, nil)
 	if err != nil {
@@ -115,6 +98,37 @@ func (c *ServiceList) Run(ctxt *cmd.Context, client cmd.Doer) error {
 	if err != nil {
 		return err
 	}
-	ctxt.Stdout.Write(rslt)
+	ctx.Stdout.Write(rslt)
+	return nil
+}
+
+type ServiceUpdate struct{}
+
+func (c *ServiceUpdate) Info() *cmd.Info {
+	return &cmd.Info{
+		Name:    "update",
+		Usage:   "service update <path/to/manifesto>",
+		Desc:    "Update service data, extracting it from the given manifesto file.",
+		MinArgs: 1,
+	}
+}
+
+func (c *ServiceUpdate) Run(ctx *cmd.Context, client cmd.Doer) error {
+	manifest := ctx.Args[0]
+	b, err := ioutil.ReadFile(manifest)
+	if err != nil {
+		return err
+	}
+	request, err := http.NewRequest("PUT", cmd.GetUrl("/services"), bytes.NewReader(b))
+	if err != nil {
+		return err
+	}
+	resp, err := client.Do(request)
+	if err != nil {
+		return err
+	}
+	if resp.StatusCode == http.StatusNoContent {
+		io.WriteString(ctx.Stdout, "Service successfully updated.\n")
+	}
 	return nil
 }
