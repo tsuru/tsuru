@@ -260,7 +260,7 @@ func (c *ServiceInfo) Run(ctx *cmd.Context, client cmd.Doer) error {
 		apps := strings.Join(instance.Apps, ", ")
 		table.AddRow(cmd.Row([]string{instance.Name, apps}))
 	}
-	ctx.Stdout.Write([]byte("Info for \"mongodb\"\n"))
+	ctx.Stdout.Write([]byte(fmt.Sprintf("Info for \"%s\"\n", serviceName)))
 	ctx.Stdout.Write(table.Bytes())
 	return nil
 }
