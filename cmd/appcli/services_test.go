@@ -335,3 +335,26 @@ e.g.:
 	got := (&ServiceInfo{}).Info()
 	c.Assert(got, DeepEquals, expected)
 }
+
+func (s *S) TestServiceInfoRun(c *C) {
+	result := `[{"Name":"mymongo", "Apps":["myapp"]}]`
+	expected := `Info for "mongodb"
++-----------+-------+
+| Instances | Apps  |
++-----------+-------+
+| mymongo   | myapp |
++-----------+-------+
+`
+	args := []string{"mongodb"}
+	context := cmd.Context{
+		Cmds:   []string{},
+		Args:   args,
+		Stdout: manager.Stdout,
+		Stderr: manager.Stderr,
+	}
+	client := cmd.NewClient(&http.Client{Transport: &transport{msg: result, status: http.StatusOK}})
+	err := (&ServiceInfo{}).Run(&context, client)
+	c.Assert(err, IsNil)
+	obtained := manager.Stdout.(*bytes.Buffer).String()
+	c.Assert(obtained, Equals, expected)
+}
