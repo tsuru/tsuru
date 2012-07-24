@@ -222,7 +222,7 @@ e.g.:
 	return &cmd.Info{
 		Name:    "info",
 		Usage:   usg,
-		Desc:    "List all instances for a service",
+		Desc:    "List all instances of a service",
 		MinArgs: 1,
 	}
 }
