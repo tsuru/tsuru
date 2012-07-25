@@ -374,3 +374,11 @@ func ServiceInfoHandler(w http.ResponseWriter, r *http.Request, u *auth.User) er
 	w.Write(b)
 	return nil
 }
+
+func AddDocHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
+	_, err := getServiceOrError(r.URL.Query().Get(":name"), u)
+	if err != nil {
+		return err
+	}
+	return nil
+}

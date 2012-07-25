@@ -922,3 +922,15 @@ func (s *S) TestServiceInfoHandlerReturns403WhenTheUserDoesNotHaveAccessToTheSer
 	c.Assert(e.Code, Equals, http.StatusForbidden)
 	c.Assert(e, ErrorMatches, "^This user does not have access to this service$")
 }
+
+func (s *S) TestAddDocHandlerReturns404WhenTheServiceDoesNotExist(c *C) {
+	request, err := http.NewRequest("PUT", fmt.Sprintf("/services/%s?:name=%s", "mongodb", "mongodb"), nil)
+	c.Assert(err, IsNil)
+	recorder := httptest.NewRecorder()
+	err = AddDocHandler(recorder, request, s.user)
+	c.Assert(err, NotNil)
+	e, ok := err.(*errors.Http)
+	c.Assert(ok, Equals, true)
+	c.Assert(e.Code, Equals, http.StatusNotFound)
+	c.Assert(e, ErrorMatches, "^Service not found$")
+}
