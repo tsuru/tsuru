@@ -325,6 +325,17 @@ func (s *S) TestExtractCommandFromArgsWithoutArgs(c *C) {
 	c.Assert(manager.extractCommandFromArgs([]string{}), DeepEquals, []string{})
 }
 
+func (s *S) TestGetSubcommand(c *C) {
+	manager.Register(&ArgCmd{})
+	var cmd interface{}
+	cmd = &ArgCmd{}
+	_, ok := cmd.(CommandContainer)
+	c.Assert(ok, Equals, true)
+	cmds := []string{"arg", "subargs", "subsubcmd", "argument"}
+	got := getSubcommand(cmd, cmds)
+	c.Assert(got, FitsTypeOf, &ArgSubSubcmd{})
+}
+
 func (s *S) TestHelpShouldReturnUsageWithTheCommandName(c *C) {
 	expected := `Usage: tsuru foo ble
 

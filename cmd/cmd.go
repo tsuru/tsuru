@@ -132,9 +132,16 @@ func (m *Manager) finisher() Exiter {
 }
 
 func getSubcommand(cmd interface{}, cmds []string) interface{} {
+	i := 1
+	return getSubcommandRecursive(cmd, cmds, i)
+}
+
+func getSubcommandRecursive(cmd interface{}, cmds []string, i int) interface{} {
 	if c, ok := cmd.(CommandContainer); ok && len(cmds) >= 2 {
-		if subcommand, exist := c.Subcommands()[cmds[1]]; exist {
-			cmd = subcommand
+		if len(cmds) > i {
+			if subcommand, exist := c.Subcommands()[cmds[i]]; exist {
+				cmd = getSubcommandRecursive(subcommand, cmds, i+1)
+			}
 		}
 	}
 	return cmd
