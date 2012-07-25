@@ -254,13 +254,15 @@ func (c *ServiceInfo) Run(ctx *cmd.Context, client cmd.Doer) error {
 	if err != nil {
 		return err
 	}
-	table := cmd.NewTable()
-	table.Headers = cmd.Row([]string{"Instances", "Apps"})
-	for _, instance := range instances {
-		apps := strings.Join(instance.Apps, ", ")
-		table.AddRow(cmd.Row([]string{instance.Name, apps}))
-	}
 	ctx.Stdout.Write([]byte(fmt.Sprintf("Info for \"%s\"\n", serviceName)))
-	ctx.Stdout.Write(table.Bytes())
+	if len(instances) > 0 {
+		table := cmd.NewTable()
+		table.Headers = cmd.Row([]string{"Instances", "Apps"})
+		for _, instance := range instances {
+			apps := strings.Join(instance.Apps, ", ")
+			table.AddRow(cmd.Row([]string{instance.Name, apps}))
+		}
+		ctx.Stdout.Write(table.Bytes())
+	}
 	return nil
 }
