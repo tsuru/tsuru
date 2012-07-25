@@ -137,3 +137,21 @@ func (s *S) TestGetServicesNames(c *C) {
 	sNames := GetServicesNames([]Service{s1, s2, s3})
 	c.Assert(sNames, DeepEquals, []string{"Foo", "Bar", "FooBar"})
 }
+
+func (s *S) TestUpdateService(c *C) {
+	service := Service{Name: "something", Status: "created"}
+	err := service.Create()
+	c.Assert(err, IsNil)
+	defer db.Session.Services().Remove(bson.M{"_id": service.Name})
+	service.Status = "destroyed"
+	err = service.update()
+	c.Assert(err, IsNil)
+	err = db.Session.Services().Find(bson.M{"_id": service.Name}).One(&service)
+	c.Assert(service.Status, Equals, "destroyed")
+}
+
+func (s *S) TestUpdateServiceReturnErrorIfServiceDoesNotExist(c *C) {
+	service := Service{Name: "something"}
+	err := service.update()
+	c.Assert(err, NotNil)
+}

@@ -2,12 +2,14 @@ package main
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/timeredbull/tsuru/cmd"
 	"io"
 	"io/ioutil"
 	"net/http"
+	"strings"
 )
 
 type Service struct{}
@@ -26,6 +28,7 @@ func (s *Service) Subcommands() map[string]interface{} {
 		"list":     &ServiceList{},
 		"add":      &ServiceAdd{},
 		"bind":     &ServiceBind{},
+		"info":     &ServiceInfo{},
 		"unbind":   &ServiceUnbind{},
 		"instance": &ServiceInstance{},
 	}
@@ -224,5 +227,58 @@ func (c *ServiceInstanceStatus) Run(ctx *cmd.Context, client cmd.Doer) error {
 	if n != len(msg) {
 		return errors.New("Failed to write to standard output.\n")
 	}
+	return nil
+}
+
+type ServiceInfo struct{}
+
+func (c *ServiceInfo) Info() *cmd.Info {
+	usg := `service info <service>
+e.g.:
+
+    $ service info mongodb
+`
+	return &cmd.Info{
+		Name:    "info",
+		Usage:   usg,
+		Desc:    "List all instances of a service",
+		MinArgs: 1,
+	}
+}
+
+type ServiceInstanceModel struct {
+	Name string
+	Apps []string
+}
+
+func (c *ServiceInfo) Run(ctx *cmd.Context, client cmd.Doer) error {
+	serviceName := ctx.Args[0]
+	url := cmd.GetUrl("/services/" + serviceName)
+	request, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return err
+	}
+	resp, err := client.Do(request)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	result, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return err
+	}
+	var instances []ServiceInstanceModel
+	err = json.Unmarshal(result, &instances)
+	if err != nil {
+		return err
+	}
+	table := cmd.NewTable()
+	table.Headers = cmd.Row([]string{"Instances", "Apps"})
+	for _, instance := range instances {
+		apps := strings.Join(instance.Apps, ", ")
+		table.AddRow(cmd.Row([]string{instance.Name, apps}))
+	}
+	ctx.Stdout.Write([]byte("Info for \"mongodb\"\n"))
+	ctx.Stdout.Write(table.Bytes())
 	return nil
 }
