@@ -5,6 +5,7 @@ import (
 	"github.com/timeredbull/tsuru/cmd"
 	. "launchpad.net/gocheck"
 	"net/http"
+	"strings"
 )
 
 func (s *S) TestServiceInfo(c *C) {
@@ -334,6 +335,7 @@ func (s *S) TestServiceInstanceStatusRun(c *C) {
 	err := (&ServiceInstanceStatus{}).Run(&context, client)
 	c.Assert(err, IsNil)
 	obtained := manager.Stdout.(*bytes.Buffer).String()
+	obtained = strings.Replace(obtained, "\n", "", -1)
 	c.Assert(obtained, Equals, result)
 }
 
