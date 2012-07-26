@@ -73,13 +73,13 @@ func UpdateHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	}
 	var yaml serviceYaml
 	goyaml.Unmarshal(body, &yaml)
-	s, err := getServiceOrError(yaml.Id, u)
+	s, err := GetServiceOrError(yaml.Id, u)
 	if err != nil {
 		return err
 	}
 	s.Endpoint = yaml.Endpoint
 	s.Bootstrap = yaml.Bootstrap
-	if err = s.update(); err != nil {
+	if err = s.Update(); err != nil {
 		return err
 	}
 	w.WriteHeader(http.StatusNoContent)
@@ -189,7 +189,7 @@ func validateForInstanceCreation(s *Service, sJson map[string]string, u *auth.Us
 	return nil
 }
 
-func getServiceOrError(name string, u *auth.User) (Service, error) {
+func GetServiceOrError(name string, u *auth.User) (Service, error) {
 	s := Service{Name: name}
 	err := s.Get()
 	if err != nil {
@@ -203,7 +203,7 @@ func getServiceOrError(name string, u *auth.User) (Service, error) {
 }
 
 func DeleteHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
-	s, err := getServiceOrError(r.URL.Query().Get(":name"), u)
+	s, err := GetServiceOrError(r.URL.Query().Get(":name"), u)
 	if err != nil {
 		return err
 	}
@@ -372,31 +372,5 @@ func ServiceInfoHandler(w http.ResponseWriter, r *http.Request, u *auth.User) er
 		return nil
 	}
 	w.Write(b)
-	return nil
-}
-
-func AddDocHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
-	s, err := getServiceOrError(r.URL.Query().Get(":name"), u)
-	if err != nil {
-		return err
-	}
-	defer r.Body.Close()
-	body, err := ioutil.ReadAll(r.Body)
-	if err != nil {
-		return err
-	}
-	s.Doc = string(body)
-	if err = s.update(); err != nil {
-		return err
-	}
-	return nil
-}
-
-func GetDocHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
-	s, err := getServiceOrError(r.URL.Query().Get(":name"), u)
-	if err != nil {
-		return err
-	}
-	w.Write([]byte(s.Doc))
 	return nil
 }
