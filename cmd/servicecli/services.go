@@ -132,3 +132,15 @@ func (c *ServiceUpdate) Run(ctx *cmd.Context, client cmd.Doer) error {
 	}
 	return nil
 }
+
+type ServiceTemplate struct{}
+
+func (c *ServiceTemplate) Info() *cmd.Info {
+	usg := `template
+e.g.: $ crane template`
+	return &cmd.Info{
+		Name:  "template",
+		Usage: usg,
+		Desc:  "Generates a manifest template file and places it in current path",
+	}
+}

@@ -182,3 +182,15 @@ func (s *S) TestServiceUpdateIsAnInfoer(c *C) {
 	var infoer cmd.Infoer
 	c.Assert(&ServiceUpdate{}, Implements, &infoer)
 }
+
+func (s *S) TestServiceTemplateInfo(c *C) {
+	got := (&ServiceTemplate{}).Info()
+	usg := `template
+e.g.: $ crane template`
+	expected := &cmd.Info{
+		Name:  "template",
+		Usage: usg,
+		Desc:  "Generates a manifest template file and places it in current path",
+	}
+	c.Assert(got, DeepEquals, expected)
+}
