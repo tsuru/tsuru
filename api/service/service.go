@@ -18,6 +18,7 @@ type Service struct {
 	OwnerTeams []string `bson:"owner_teams"`
 	Teams      []string
 	Status     string
+	Doc        string
 }
 
 func (s *Service) Log(out []byte) {
