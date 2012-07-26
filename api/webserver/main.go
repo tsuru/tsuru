@@ -62,6 +62,8 @@ func main() {
 	m.Put("/services", AuthorizationRequiredHandler(service.UpdateHandler))
 	m.Del("/services/:name", AuthorizationRequiredHandler(service.DeleteHandler))
 	m.Get("/services/:name", AuthorizationRequiredHandler(service.ServiceInfoHandler))
+	m.Get("/services/:name/doc", AuthorizationRequiredHandler(service.GetDocHandler))
+	m.Put("/services/:name/doc", AuthorizationRequiredHandler(service.AddDocHandler))
 	m.Put("/services/:service/:team", AuthorizationRequiredHandler(service.GrantAccessToTeamHandler))
 	m.Del("/services/:service/:team", AuthorizationRequiredHandler(service.RevokeAccessFromTeamHandler))
 
