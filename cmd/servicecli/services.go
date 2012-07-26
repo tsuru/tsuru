@@ -2,10 +2,12 @@ package main
 
 import (
 	"bytes"
+	"errors"
 	"github.com/timeredbull/tsuru/cmd"
 	"io"
 	"io/ioutil"
 	"net/http"
+	"os"
 )
 
 type ServiceCreate struct{}
@@ -143,4 +145,19 @@ e.g.: $ crane template`
 		Usage: usg,
 		Desc:  "Generates a manifest template file and places it in current path",
 	}
+}
+
+func (c *ServiceTemplate) Run(ctx *cmd.Context, client cmd.Doer) error {
+	template := `id: servicename
+endpoint:
+  production: production-endpoint.com
+  test: test-endpoint.com:8080`
+	f, err := os.Create("manifest.yaml")
+	defer f.Close()
+	if err != nil {
+		return errors.New("Error while creating manifest template.\nOriginal error message is: " + err.Error())
+	}
+	f.Write([]byte(template))
+	io.WriteString(ctx.Stdout, `Generated file "manifest.yaml" in current path\n`)
+	return nil
 }

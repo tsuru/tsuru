@@ -3,8 +3,10 @@ package main
 import (
 	"bytes"
 	"github.com/timeredbull/tsuru/cmd"
+	"io/ioutil"
 	. "launchpad.net/gocheck"
 	"net/http"
+	"os"
 )
 
 func (s *S) TestServiceCreateInfo(c *C) {
@@ -193,4 +195,28 @@ e.g.: $ crane template`
 		Desc:  "Generates a manifest template file and places it in current path",
 	}
 	c.Assert(got, DeepEquals, expected)
+}
+
+func (s *S) TestServiceTemplateRun(c *C) {
+	trans := transport{msg: "", status: http.StatusOK}
+	client := cmd.NewClient(&http.Client{Transport: &trans})
+	ctx := cmd.Context{
+		Cmds:   []string{},
+		Args:   []string{},
+		Stdout: manager.Stdout,
+		Stderr: manager.Stderr,
+	}
+	err := (&ServiceTemplate{}).Run(&ctx, client)
+	defer os.Remove("./manifest.yaml")
+	c.Assert(err, IsNil)
+	expected := `Generated file "manifest.yaml" in current path\n`
+	c.Assert(ctx.Stdout.(*bytes.Buffer).String(), Equals, expected)
+	f, err := os.Open("./manifest.yaml")
+	c.Assert(err, IsNil)
+	fc, err := ioutil.ReadAll(f)
+	manifest := `id: servicename
+endpoint:
+  production: production-endpoint.com
+  test: test-endpoint.com:8080`
+	c.Assert(string(fc), Equals, manifest)
 }
