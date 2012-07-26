@@ -217,3 +217,28 @@ func (s *S) TestServiceAddDocInfo(c *C) {
 	}
 	c.Assert((&ServiceAddDoc{}).Info(), DeepEquals, expected)
 }
+
+func (s *S) TestServiceGetDoc(c *C) {
+	var called bool
+	trans := conditionalTransport{
+		transport{
+			msg:    "some doc",
+			status: http.StatusNoContent,
+		},
+		func(req *http.Request) bool {
+			called = true
+			return req.Method == "GET" && req.URL.Path == "/services/serv/doc"
+		},
+	}
+	client := cmd.NewClient(&http.Client{Transport: &trans})
+	context := cmd.Context{
+		Cmds:   []string{},
+		Args:   []string{"serv"},
+		Stdout: manager.Stdout,
+		Stderr: manager.Stderr,
+	}
+	err := (&ServiceGetDoc{}).Run(&context, client)
+	c.Assert(err, IsNil)
+	c.Assert(called, Equals, true)
+	c.Assert(context.Stdout.(*bytes.Buffer).String(), Equals, "some doc\n")
+}

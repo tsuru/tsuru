@@ -160,3 +160,25 @@ func (c *ServiceAddDoc) Run(ctx *cmd.Context, client cmd.Doer) error {
 	io.WriteString(ctx.Stdout, fmt.Sprintf("Documentation for '%s' successfully updated.\n", serviceName))
 	return nil
 }
+
+type ServiceGetDoc struct{}
+
+func (c *ServiceGetDoc) Run(ctx *cmd.Context, client cmd.Doer) error {
+	serviceName := ctx.Args[0]
+	request, err := http.NewRequest("GET", cmd.GetUrl("/services/"+serviceName+"/doc"), nil)
+	if err != nil {
+		return err
+	}
+	resp, err := client.Do(request)
+	if err != nil {
+		return err
+	}
+
+	b, err := ioutil.ReadAll(resp.Body)
+	defer resp.Body.Close()
+	if err != nil {
+		return err
+	}
+	io.WriteString(ctx.Stdout, string(b)+"\n")
+	return nil
+}
