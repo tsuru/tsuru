@@ -36,7 +36,7 @@ func (s *Service) Create() error {
 	return err
 }
 
-func (s *Service) update() error {
+func (s *Service) Update() error {
 	return db.Session.Services().Update(bson.M{"_id": s.Name}, s)
 }
 

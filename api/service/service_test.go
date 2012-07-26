@@ -144,7 +144,7 @@ func (s *S) TestUpdateService(c *C) {
 	c.Assert(err, IsNil)
 	defer db.Session.Services().Remove(bson.M{"_id": service.Name})
 	service.Status = "destroyed"
-	err = service.update()
+	err = service.Update()
 	c.Assert(err, IsNil)
 	err = db.Session.Services().Find(bson.M{"_id": service.Name}).One(&service)
 	c.Assert(service.Status, Equals, "destroyed")
@@ -152,6 +152,6 @@ func (s *S) TestUpdateService(c *C) {
 
 func (s *S) TestUpdateServiceReturnErrorIfServiceDoesNotExist(c *C) {
 	service := Service{Name: "something"}
-	err := service.update()
+	err := service.Update()
 	c.Assert(err, NotNil)
 }
