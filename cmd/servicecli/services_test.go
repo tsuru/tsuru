@@ -252,3 +252,35 @@ func (s *S) TestServiceGetDocInfo(c *C) {
 	}
 	c.Assert((&ServiceGetDoc{}).Info(), DeepEquals, expected)
 }
+
+func (s *S) TestServiceDocInfo(c *C) {
+	expected := &cmd.Info{
+		Name:    "doc",
+		Usage:   "service doc (add|get)",
+		Desc:    "Service documentation.",
+		MinArgs: 1,
+	}
+	command := &ServiceDoc{}
+	c.Assert(command.Info(), DeepEquals, expected)
+}
+
+func (s *S) TestServiceShouldBeInfoer(c *C) {
+	var infoer cmd.Infoer
+	c.Assert(&ServiceDoc{}, Implements, &infoer)
+}
+
+func (s *S) TestServiceAddDocIsASubcommandOfServiceDoc(c *C) {
+	command := &ServiceDoc{}
+	subc := command.Subcommands()
+	list, ok := subc["add"]
+	c.Assert(ok, Equals, true)
+	c.Assert(list, FitsTypeOf, &ServiceAddDoc{})
+}
+
+func (s *S) TestServiceGetDocIsASubcommandOfServiceDoc(c *C) {
+	command := &ServiceDoc{}
+	subc := command.Subcommands()
+	list, ok := subc["get"]
+	c.Assert(ok, Equals, true)
+	c.Assert(list, FitsTypeOf, &ServiceGetDoc{})
+}

@@ -191,3 +191,21 @@ func (c *ServiceGetDoc) Info() *cmd.Info {
 		MinArgs: 1,
 	}
 }
+
+type ServiceDoc struct{}
+
+func (c *ServiceDoc) Info() *cmd.Info {
+	return &cmd.Info{
+		Name:    "doc",
+		Usage:   "service doc (add|get)",
+		Desc:    "Service documentation.",
+		MinArgs: 1,
+	}
+}
+
+func (s *ServiceDoc) Subcommands() map[string]interface{} {
+	return map[string]interface{}{
+		"add": &ServiceAddDoc{},
+		"get": &ServiceGetDoc{},
+	}
+}

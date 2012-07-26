@@ -42,3 +42,10 @@ func (s *S) TestUpdateIsRegistered(c *C) {
 	c.Assert(ok, Equals, true)
 	c.Assert(update, FitsTypeOf, &ServiceUpdate{})
 }
+
+func (s *S) TestDocIsRegistered(c *C) {
+	manager := buildManager("tsuru")
+	update, ok := manager.Commands["doc"]
+	c.Assert(ok, Equals, true)
+	c.Assert(update, FitsTypeOf, &ServiceDoc{})
+}
