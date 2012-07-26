@@ -209,7 +209,7 @@ func (s *S) TestServiceTemplateRun(c *C) {
 	err := (&ServiceTemplate{}).Run(&ctx, client)
 	defer os.Remove("./manifest.yaml")
 	c.Assert(err, IsNil)
-	expected := `Generated file "manifest.yaml" in current path\n`
+	expected := "Generated file \"manifest.yaml\" in current path\n"
 	c.Assert(ctx.Stdout.(*bytes.Buffer).String(), Equals, expected)
 	f, err := os.Open("./manifest.yaml")
 	c.Assert(err, IsNil)

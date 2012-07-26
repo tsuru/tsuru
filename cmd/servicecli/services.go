@@ -158,6 +158,6 @@ endpoint:
 		return errors.New("Error while creating manifest template.\nOriginal error message is: " + err.Error())
 	}
 	f.Write([]byte(template))
-	io.WriteString(ctx.Stdout, `Generated file "manifest.yaml" in current path\n`)
+	io.WriteString(ctx.Stdout, "Generated file \"manifest.yaml\" in current path\n")
 	return nil
 }
