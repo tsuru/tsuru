@@ -2,11 +2,13 @@ package main
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"github.com/timeredbull/tsuru/cmd"
 	"io"
 	"io/ioutil"
 	"net/http"
+	"os"
 )
 
 type ServiceCreate struct{}
@@ -108,7 +110,7 @@ type ServiceUpdate struct{}
 func (c *ServiceUpdate) Info() *cmd.Info {
 	return &cmd.Info{
 		Name:    "update",
-		Usage:   "service update <path/to/manifesto>",
+		Usage:   "update <path/to/manifesto>",
 		Desc:    "Update service data, extracting it from the given manifesto file.",
 		MinArgs: 1,
 	}
@@ -208,4 +210,31 @@ func (s *ServiceDoc) Subcommands() map[string]interface{} {
 		"add": &ServiceAddDoc{},
 		"get": &ServiceGetDoc{},
 	}
+}
+
+type ServiceTemplate struct{}
+
+func (c *ServiceTemplate) Info() *cmd.Info {
+	usg := `template
+e.g.: $ crane template`
+	return &cmd.Info{
+		Name:  "template",
+		Usage: usg,
+		Desc:  "Generates a manifest template file and places it in current path",
+	}
+}
+
+func (c *ServiceTemplate) Run(ctx *cmd.Context, client cmd.Doer) error {
+	template := `id: servicename
+endpoint:
+  production: production-endpoint.com
+  test: test-endpoint.com:8080`
+	f, err := os.Create("manifest.yaml")
+	defer f.Close()
+	if err != nil {
+		return errors.New("Error while creating manifest template.\nOriginal error message is: " + err.Error())
+	}
+	f.Write([]byte(template))
+	io.WriteString(ctx.Stdout, "Generated file \"manifest.yaml\" in current path\n")
+	return nil
 }
