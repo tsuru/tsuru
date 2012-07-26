@@ -3,14 +3,185 @@ package provision
 import (
 	"bytes"
 	"fmt"
+	"github.com/timeredbull/tsuru/api/auth"
 	"github.com/timeredbull/tsuru/api/service"
 	"github.com/timeredbull/tsuru/db"
 	"github.com/timeredbull/tsuru/errors"
+	"io/ioutil"
 	"labix.org/v2/mgo/bson"
 	. "launchpad.net/gocheck"
 	"net/http"
 	"net/http/httptest"
+	"path/filepath"
 )
+
+func makeRequestToCreateHandler(c *C) (*httptest.ResponseRecorder, *http.Request) {
+	manifest := `id: some_service
+endpoint:
+    production: someservice.com
+    test: test.someservice.com
+`
+	b := bytes.NewBufferString(manifest)
+	request, err := http.NewRequest("POST", "/services", b)
+	c.Assert(err, IsNil)
+	recorder := httptest.NewRecorder()
+	return recorder, request
+}
+
+func (s *S) TestCreateHandlerSavesNameFromManifestId(c *C) {
+	recorder, request := makeRequestToCreateHandler(c)
+	err := CreateHandler(recorder, request, s.user)
+	c.Assert(err, IsNil)
+	query := bson.M{"_id": "some_service"}
+	var rService service.Service
+	err = db.Session.Services().Find(query).One(&rService)
+	c.Assert(err, IsNil)
+	c.Assert(rService.Name, Equals, "some_service")
+}
+
+func (s *S) TestCreateHandlerSavesEndpointServiceProperty(c *C) {
+	recorder, request := makeRequestToCreateHandler(c)
+	err := CreateHandler(recorder, request, s.user)
+	c.Assert(err, IsNil)
+	query := bson.M{"_id": "some_service"}
+	var rService service.Service
+	err = db.Session.Services().Find(query).One(&rService)
+	c.Assert(err, IsNil)
+	c.Assert(rService.Endpoint["production"], Equals, "someservice.com")
+	c.Assert(rService.Endpoint["test"], Equals, "test.someservice.com")
+}
+
+func (s *S) TestCreateHandlerWithContentOfRealYaml(c *C) {
+	p, err := filepath.Abs("testdata/manifest.yml")
+	manifest, err := ioutil.ReadFile(p)
+	c.Assert(err, IsNil)
+	b := bytes.NewBuffer(manifest)
+	request, err := http.NewRequest("POST", "/services", b)
+	c.Assert(err, IsNil)
+	request.Header.Set("Content-Type", "application/json")
+	recorder := httptest.NewRecorder()
+	err = CreateHandler(recorder, request, s.user)
+	c.Assert(err, IsNil)
+	query := bson.M{"_id": "mysqlapi"}
+	var rService service.Service
+	err = db.Session.Services().Find(query).One(&rService)
+	c.Assert(err, IsNil)
+	c.Assert(rService.Endpoint["production"], Equals, "mysqlapi.com")
+	c.Assert(rService.Endpoint["test"], Equals, "localhost:8000")
+	c.Assert(rService.Bootstrap["ami"], Equals, "ami-00000007")
+	c.Assert(rService.Bootstrap["when"], Equals, "on-new-instance")
+}
+
+func (s *S) TestCreateHandlerShouldReturnErrorWhenNameExists(c *C) {
+	recorder, request := makeRequestToCreateHandler(c)
+	err := CreateHandler(recorder, request, s.user)
+	c.Assert(err, IsNil)
+	recorder, request = makeRequestToCreateHandler(c)
+	err = CreateHandler(recorder, request, s.user)
+	c.Assert(err, Not(IsNil))
+	c.Assert(err, ErrorMatches, "^Service with name some_service already exists.$")
+}
+
+func (s *S) TestCreateHandlerSavesOwnerTeamsFromUserWhoCreated(c *C) {
+	recorder, request := makeRequestToCreateHandler(c)
+	err := CreateHandler(recorder, request, s.user)
+	c.Assert(err, IsNil)
+	c.Assert(recorder.Body.String(), Equals, "success")
+	c.Assert(recorder.Code, Equals, 200)
+	query := bson.M{"_id": "some_service"}
+	var rService service.Service
+	err = db.Session.Services().Find(query).One(&rService)
+	c.Assert(err, IsNil)
+	c.Assert("some_service", Equals, rService.Name)
+	c.Assert(rService.OwnerTeams, DeepEquals, []string{s.team.Name})
+}
+
+func (s *S) TestCreateHandlerReturnsForbiddenIfTheUserIsNotMemberOfAnyTeam(c *C) {
+	u := &auth.User{Email: "enforce@queensryche.com", Password: "123"}
+	u.Create()
+	defer db.Session.Users().RemoveAll(bson.M{"email": u.Email})
+	recorder, request := makeRequestToCreateHandler(c)
+	err := CreateHandler(recorder, request, u)
+	c.Assert(err, NotNil)
+	e, ok := err.(*errors.Http)
+	c.Assert(ok, Equals, true)
+	c.Assert(e.Code, Equals, http.StatusForbidden)
+	c.Assert(e, ErrorMatches, "^In order to create a service, you should be member of at least one team$")
+}
+
+func (s *S) TestUpdateHandlerShouldUpdateTheServiceWithDataFromManifest(c *C) {
+	service := service.Service{Name: "mysqlapi", Endpoint: map[string]string{"production": "sqlapi.com"}, OwnerTeams: []string{s.team.Name}}
+	err := service.Create()
+	c.Assert(err, IsNil)
+	defer db.Session.Services().Remove(bson.M{"_id": service.Name})
+	p, err := filepath.Abs("testdata/manifest.yml")
+	manifest, err := ioutil.ReadFile(p)
+	c.Assert(err, IsNil)
+	request, err := http.NewRequest("PUT", "/services", bytes.NewBuffer(manifest))
+	c.Assert(err, IsNil)
+	recorder := httptest.NewRecorder()
+	err = UpdateHandler(recorder, request, s.user)
+	c.Assert(err, IsNil)
+	c.Assert(recorder.Code, Equals, http.StatusNoContent)
+	err = db.Session.Services().Find(bson.M{"_id": service.Name}).One(&service)
+	c.Assert(err, IsNil)
+	c.Assert(service.Endpoint["production"], Equals, "mysqlapi.com")
+}
+
+func (s *S) TestUpdateHandlerReturns404WhenTheServiceDoesNotExist(c *C) {
+	p, err := filepath.Abs("testdata/manifest.yml")
+	c.Assert(err, IsNil)
+	manifest, err := ioutil.ReadFile(p)
+	c.Assert(err, IsNil)
+	request, err := http.NewRequest("PUT", "/services", bytes.NewBuffer(manifest))
+	c.Assert(err, IsNil)
+	recorder := httptest.NewRecorder()
+	err = UpdateHandler(recorder, request, s.user)
+	c.Assert(err, NotNil)
+	e, ok := err.(*errors.Http)
+	c.Assert(ok, Equals, true)
+	c.Assert(e.Code, Equals, http.StatusNotFound)
+	c.Assert(e, ErrorMatches, "^Service not found$")
+}
+
+func (s *S) TestUpdateHandlerReturns404WhenTheServicesIsDeleted(c *C) {
+	se := service.Service{Name: "mysqlapi", OwnerTeams: []string{s.team.Name}, Status: "deleted"}
+	err := db.Session.Services().Insert(se)
+	c.Assert(err, IsNil)
+	defer db.Session.Services().Remove(bson.M{"_id": se.Name})
+	p, err := filepath.Abs("testdata/manifest.yml")
+	c.Assert(err, IsNil)
+	manifest, err := ioutil.ReadFile(p)
+	c.Assert(err, IsNil)
+	request, err := http.NewRequest("PUT", "/services", bytes.NewBuffer(manifest))
+	c.Assert(err, IsNil)
+	recorder := httptest.NewRecorder()
+	err = UpdateHandler(recorder, request, s.user)
+	c.Assert(err, NotNil)
+	e, ok := err.(*errors.Http)
+	c.Assert(ok, Equals, true)
+	c.Assert(e.Code, Equals, http.StatusNotFound)
+	c.Assert(e, ErrorMatches, "^Service not found$")
+}
+
+func (s *S) TestUpdateHandlerReturns403WhenTheUserIsNotOwnerOfTheTeam(c *C) {
+	se := service.Service{Name: "mysqlapi", Teams: []string{s.team.Name}}
+	se.Create()
+	defer db.Session.Services().Remove(bson.M{"_id": se.Name})
+	p, err := filepath.Abs("testdata/manifest.yml")
+	c.Assert(err, IsNil)
+	manifest, err := ioutil.ReadFile(p)
+	c.Assert(err, IsNil)
+	request, err := http.NewRequest("PUT", "/services", bytes.NewBuffer(manifest))
+	c.Assert(err, IsNil)
+	recorder := httptest.NewRecorder()
+	err = UpdateHandler(recorder, request, s.user)
+	c.Assert(err, NotNil)
+	e, ok := err.(*errors.Http)
+	c.Assert(ok, Equals, true)
+	c.Assert(e.Code, Equals, http.StatusForbidden)
+	c.Assert(e, ErrorMatches, "^This user does not have access to this service$")
+}
 
 func (s *S) TestAddDocHandlerReturns404WhenTheServiceDoesNotExist(c *C) {
 	b := bytes.NewBufferString("doc")
