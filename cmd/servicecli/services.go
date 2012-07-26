@@ -136,6 +136,15 @@ func (c *ServiceUpdate) Run(ctx *cmd.Context, client cmd.Doer) error {
 
 type ServiceAddDoc struct{}
 
+func (c *ServiceAddDoc) Info() *cmd.Info {
+	return &cmd.Info{
+		Name:    "add",
+		Usage:   "service doc add <service> <path/to/docfile>",
+		Desc:    "Update service documentation, extracting it from the given file.",
+		MinArgs: 2,
+	}
+}
+
 func (c *ServiceAddDoc) Run(ctx *cmd.Context, client cmd.Doer) error {
 	serviceName := ctx.Args[0]
 	docPath := ctx.Args[1]

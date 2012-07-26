@@ -207,3 +207,13 @@ func (s *S) TestServiceAddDoc(c *C) {
 	c.Assert(called, Equals, true)
 	c.Assert(context.Stdout.(*bytes.Buffer).String(), Equals, "Documentation for 'serv' successfully updated.\n")
 }
+
+func (s *S) TestServiceAddDocInfo(c *C) {
+	expected := &cmd.Info{
+		Name:    "add",
+		Usage:   "service doc add <service> <path/to/docfile>",
+		Desc:    "Update service documentation, extracting it from the given file.",
+		MinArgs: 2,
+	}
+	c.Assert((&ServiceAddDoc{}).Info(), DeepEquals, expected)
+}
