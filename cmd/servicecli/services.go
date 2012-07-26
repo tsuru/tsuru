@@ -182,3 +182,12 @@ func (c *ServiceGetDoc) Run(ctx *cmd.Context, client cmd.Doer) error {
 	io.WriteString(ctx.Stdout, string(b)+"\n")
 	return nil
 }
+
+func (c *ServiceGetDoc) Info() *cmd.Info {
+	return &cmd.Info{
+		Name:    "get",
+		Usage:   "service doc get <service>",
+		Desc:    "Shows service documentation.",
+		MinArgs: 1,
+	}
+}

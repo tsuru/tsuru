@@ -242,3 +242,13 @@ func (s *S) TestServiceGetDoc(c *C) {
 	c.Assert(called, Equals, true)
 	c.Assert(context.Stdout.(*bytes.Buffer).String(), Equals, "some doc\n")
 }
+
+func (s *S) TestServiceGetDocInfo(c *C) {
+	expected := &cmd.Info{
+		Name:    "get",
+		Usage:   "service doc get <service>",
+		Desc:    "Shows service documentation.",
+		MinArgs: 1,
+	}
+	c.Assert((&ServiceGetDoc{}).Info(), DeepEquals, expected)
+}
