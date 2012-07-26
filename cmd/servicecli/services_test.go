@@ -182,3 +182,28 @@ func (s *S) TestServiceUpdateIsAnInfoer(c *C) {
 	var infoer cmd.Infoer
 	c.Assert(&ServiceUpdate{}, Implements, &infoer)
 }
+
+func (s *S) TestServiceAddDoc(c *C) {
+	var called bool
+	trans := conditionalTransport{
+		transport{
+			msg:    "",
+			status: http.StatusNoContent,
+		},
+		func(req *http.Request) bool {
+			called = true
+			return req.Method == "PUT" && req.URL.Path == "/services/serv/doc"
+		},
+	}
+	client := cmd.NewClient(&http.Client{Transport: &trans})
+	context := cmd.Context{
+		Cmds:   []string{},
+		Args:   []string{"serv", "testdata/doc.md"},
+		Stdout: manager.Stdout,
+		Stderr: manager.Stderr,
+	}
+	err := (&ServiceAddDoc{}).Run(&context, client)
+	c.Assert(err, IsNil)
+	c.Assert(called, Equals, true)
+	c.Assert(context.Stdout.(*bytes.Buffer).String(), Equals, "Documentation for 'serv' successfully updated.\n")
+}

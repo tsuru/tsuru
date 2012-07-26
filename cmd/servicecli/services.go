@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"fmt"
 	"github.com/timeredbull/tsuru/cmd"
 	"io"
 	"io/ioutil"
@@ -130,5 +131,23 @@ func (c *ServiceUpdate) Run(ctx *cmd.Context, client cmd.Doer) error {
 	if resp.StatusCode == http.StatusNoContent {
 		io.WriteString(ctx.Stdout, "Service successfully updated.\n")
 	}
+	return nil
+}
+
+type ServiceAddDoc struct{}
+
+func (c *ServiceAddDoc) Run(ctx *cmd.Context, client cmd.Doer) error {
+	serviceName := ctx.Args[0]
+	docPath := ctx.Args[1]
+	b, err := ioutil.ReadFile(docPath)
+	request, err := http.NewRequest("PUT", cmd.GetUrl("/services/"+serviceName+"/doc"), bytes.NewReader(b))
+	if err != nil {
+		return err
+	}
+	_, err = client.Do(request)
+	if err != nil {
+		return err
+	}
+	io.WriteString(ctx.Stdout, fmt.Sprintf("Documentation for '%s' successfully updated.\n", serviceName))
 	return nil
 }
