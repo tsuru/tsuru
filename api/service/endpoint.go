@@ -125,6 +125,8 @@ func (c *Client) Unbind(instance *ServiceInstance, app bind.App) (err error) {
 // The api should be prepared to receive the request,
 // like below:
 // GET /resources/<name>/status/?service_host=1.1.1.1
+// The service host here is the private ip of the service instance
+// 204 means the service is up, 500 means the service is down
 func (c *Client) Status(instance *ServiceInstance) (string, error) {
 	log.Print("Attempting to call status of service instance " + instance.Name + " at " + instance.ServiceName + " api")
 	var (
@@ -135,7 +137,7 @@ func (c *Client) Status(instance *ServiceInstance) (string, error) {
 	params := map[string][]string{
 		"service_host": []string{instance.PrivateHost},
 	}
-	if resp, err = c.issueRequest(url, "GET", params); err == nil && resp.StatusCode == 200 {
+	if resp, err = c.issueRequest(url, "GET", params); err == nil && resp.StatusCode == 204 {
 		return "up", nil
 	} else if err == nil && resp.StatusCode == 500 {
 		return "down", nil

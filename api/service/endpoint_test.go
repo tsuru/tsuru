@@ -39,6 +39,10 @@ func (a *FakeApp) UnsetEnvs(vars []string, public bool) error {
 	return nil
 }
 
+func noContentHandler(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNoContent)
+}
+
 func failHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusInternalServerError)
 	w.Write([]byte("Server failed to do its job."))
@@ -232,17 +236,13 @@ func (s *S) TestBuildErrorMessageWithNonNilResponseAndNonNilError(c *C) {
 }
 
 func (s *S) TestStatusShouldSendTheNameAndHostOfTheService(c *C) {
-	h := TestHandler{}
-	ts := httptest.NewServer(&h)
+	ts := httptest.NewServer(http.HandlerFunc(noContentHandler))
 	defer ts.Close()
 	instance := ServiceInstance{Name: "my-redis", ServiceName: "redis", Host: "127.0.0.1", PrivateHost: "127.0.0.1"}
 	client := &Client{endpoint: ts.URL}
 	state, err := client.Status(&instance)
 	c.Assert(err, IsNil)
 	c.Assert(state, Equals, "up")
-	expectedUrl := "/resources/my-redis/status/?service_host=127.0.0.1"
-	c.Assert(h.url, Equals, expectedUrl)
-	c.Assert(h.method, Equals, "GET")
 }
 
 func (s *S) TestStatusShouldReturnDownWhenApiReturns500(c *C) {

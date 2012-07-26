@@ -219,7 +219,7 @@ func (c *ServiceInstanceStatus) Run(ctx *cmd.Context, client cmd.Doer) error {
 	if err != nil {
 		return err
 	}
-	msg := string(bMsg)
+	msg := string(bMsg) + "\n"
 	n, err := io.WriteString(ctx.Stdout, msg)
 	if err != nil {
 		return err
