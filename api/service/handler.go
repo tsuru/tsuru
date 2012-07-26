@@ -376,8 +376,17 @@ func ServiceInfoHandler(w http.ResponseWriter, r *http.Request, u *auth.User) er
 }
 
 func AddDocHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
-	_, err := getServiceOrError(r.URL.Query().Get(":name"), u)
+	s, err := getServiceOrError(r.URL.Query().Get(":name"), u)
 	if err != nil {
+		return err
+	}
+	defer r.Body.Close()
+	body, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		return err
+	}
+	s.Doc = string(body)
+	if err = s.update(); err != nil {
 		return err
 	}
 	return nil

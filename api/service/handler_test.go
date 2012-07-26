@@ -924,7 +924,8 @@ func (s *S) TestServiceInfoHandlerReturns403WhenTheUserDoesNotHaveAccessToTheSer
 }
 
 func (s *S) TestAddDocHandlerReturns404WhenTheServiceDoesNotExist(c *C) {
-	request, err := http.NewRequest("PUT", fmt.Sprintf("/services/%s?:name=%s", "mongodb", "mongodb"), nil)
+	b := bytes.NewBufferString("doc")
+	request, err := http.NewRequest("PUT", fmt.Sprintf("/services/%s?:name=%s", "mongodb", "mongodb"), b)
 	c.Assert(err, IsNil)
 	recorder := httptest.NewRecorder()
 	err = AddDocHandler(recorder, request, s.user)
@@ -933,4 +934,37 @@ func (s *S) TestAddDocHandlerReturns404WhenTheServiceDoesNotExist(c *C) {
 	c.Assert(ok, Equals, true)
 	c.Assert(e.Code, Equals, http.StatusNotFound)
 	c.Assert(e, ErrorMatches, "^Service not found$")
+}
+
+func (s *S) TestAddDocHandler(c *C) {
+	se := Service{Name: "some_service", OwnerTeams: []string{s.team.Name}}
+	se.Create()
+	defer db.Session.Services().Remove(bson.M{"_id": se.Name})
+	b := bytes.NewBufferString("doc")
+	request, err := http.NewRequest("PUT", fmt.Sprintf("/services/%s?:name=%s", se.Name, se.Name), b)
+	c.Assert(err, IsNil)
+	recorder := httptest.NewRecorder()
+	err = AddDocHandler(recorder, request, s.user)
+	c.Assert(err, IsNil)
+	query := bson.M{"_id": "some_service"}
+	var serv Service
+	err = db.Session.Services().Find(query).One(&serv)
+	c.Assert(err, IsNil)
+	c.Assert(serv.Doc, Equals, "doc")
+}
+
+func (s *S) TestAddDocHandlerReturns403WhenTheUserDoesNotHaveAccessToTheService(c *C) {
+	se := Service{Name: "Mysql"}
+	se.Create()
+	defer db.Session.Services().Remove(bson.M{"_id": se.Name})
+	b := bytes.NewBufferString("doc")
+	request, err := http.NewRequest("PUT", fmt.Sprintf("/services/%s?:name=%s", se.Name, se.Name), b)
+	c.Assert(err, IsNil)
+	recorder := httptest.NewRecorder()
+	err = AddDocHandler(recorder, request, s.user)
+	c.Assert(err, NotNil)
+	e, ok := err.(*errors.Http)
+	c.Assert(ok, Equals, true)
+	c.Assert(e.Code, Equals, http.StatusForbidden)
+	c.Assert(e, ErrorMatches, "^This user does not have access to this service$")
 }
