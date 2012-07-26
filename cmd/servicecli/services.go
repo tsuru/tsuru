@@ -107,7 +107,7 @@ type ServiceUpdate struct{}
 func (c *ServiceUpdate) Info() *cmd.Info {
 	return &cmd.Info{
 		Name:    "update",
-		Usage:   "service update <path/to/manifesto>",
+		Usage:   "update <path/to/manifesto>",
 		Desc:    "Update service data, extracting it from the given manifesto file.",
 		MinArgs: 1,
 	}

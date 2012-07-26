@@ -171,7 +171,7 @@ func (s *S) TestServiceUpdateIsACommand(c *C) {
 func (s *S) TestServiceUpdateInfo(c *C) {
 	expected := &cmd.Info{
 		Name:    "update",
-		Usage:   "service update <path/to/manifesto>",
+		Usage:   "update <path/to/manifesto>",
 		Desc:    "Update service data, extracting it from the given manifesto file.",
 		MinArgs: 1,
 	}
