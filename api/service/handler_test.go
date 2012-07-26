@@ -926,7 +926,7 @@ func (s *S) TestServiceInfoHandlerReturns403WhenTheUserDoesNotHaveAccessToTheSer
 
 func (s *S) TestAddDocHandlerReturns404WhenTheServiceDoesNotExist(c *C) {
 	b := bytes.NewBufferString("doc")
-	request, err := http.NewRequest("PUT", fmt.Sprintf("/services/%s?:name=%s", "mongodb", "mongodb"), b)
+	request, err := http.NewRequest("PUT", fmt.Sprintf("/services/%s/doc?:name=%s", "mongodb", "mongodb"), b)
 	c.Assert(err, IsNil)
 	recorder := httptest.NewRecorder()
 	err = AddDocHandler(recorder, request, s.user)
@@ -942,7 +942,7 @@ func (s *S) TestAddDocHandler(c *C) {
 	se.Create()
 	defer db.Session.Services().Remove(bson.M{"_id": se.Name})
 	b := bytes.NewBufferString("doc")
-	request, err := http.NewRequest("PUT", fmt.Sprintf("/services/%s?:name=%s", se.Name, se.Name), b)
+	request, err := http.NewRequest("PUT", fmt.Sprintf("/services/%s/doc?:name=%s", se.Name, se.Name), b)
 	c.Assert(err, IsNil)
 	recorder := httptest.NewRecorder()
 	err = AddDocHandler(recorder, request, s.user)
@@ -959,7 +959,7 @@ func (s *S) TestAddDocHandlerReturns403WhenTheUserDoesNotHaveAccessToTheService(
 	se.Create()
 	defer db.Session.Services().Remove(bson.M{"_id": se.Name})
 	b := bytes.NewBufferString("doc")
-	request, err := http.NewRequest("PUT", fmt.Sprintf("/services/%s?:name=%s", se.Name, se.Name), b)
+	request, err := http.NewRequest("PUT", fmt.Sprintf("/services/%s/doc?:name=%s", se.Name, se.Name), b)
 	c.Assert(err, IsNil)
 	recorder := httptest.NewRecorder()
 	err = AddDocHandler(recorder, request, s.user)
@@ -968,4 +968,16 @@ func (s *S) TestAddDocHandlerReturns403WhenTheUserDoesNotHaveAccessToTheService(
 	c.Assert(ok, Equals, true)
 	c.Assert(e.Code, Equals, http.StatusForbidden)
 	c.Assert(e, ErrorMatches, "^This user does not have access to this service$")
+}
+
+func (s *S) TestGetDocHandler(c *C) {
+	se := Service{Name: "some_service", Doc: "some doc", OwnerTeams: []string{s.team.Name}}
+	se.Create()
+	defer db.Session.Services().Remove(bson.M{"_id": se.Name})
+	request, err := http.NewRequest("GET", fmt.Sprintf("/services/%s/doc?:name=%s", se.Name, se.Name), nil)
+	c.Assert(err, IsNil)
+	recorder := httptest.NewRecorder()
+	err = GetDocHandler(recorder, request, s.user)
+	c.Assert(err, IsNil)
+	c.Assert(recorder.Body.String(), Equals, "some doc")
 }

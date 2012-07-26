@@ -391,3 +391,12 @@ func AddDocHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	}
 	return nil
 }
+
+func GetDocHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
+	s, err := getServiceOrError(r.URL.Query().Get(":name"), u)
+	if err != nil {
+		return err
+	}
+	w.Write([]byte(s.Doc))
+	return nil
+}
