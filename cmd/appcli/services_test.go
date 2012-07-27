@@ -406,15 +406,18 @@ func (s *S) TestServiceDocInfo(c *C) {
 }
 
 func (s *S) TestServiceDocRun(c *C) {
-	expected := `This is a test doc for a test service.
+	result := `This is a test doc for a test service.
 Service test is foo bar.`
+	expected := `This is a test doc for a test service.
+Service test is foo bar.
+`
 	ctx := cmd.Context{
 		Cmds:   []string{},
 		Args:   []string{"foo"},
 		Stdout: manager.Stdout,
 		Stderr: manager.Stderr,
 	}
-	client := cmd.NewClient(&http.Client{Transport: &transport{msg: expected, status: http.StatusOK}})
+	client := cmd.NewClient(&http.Client{Transport: &transport{msg: result, status: http.StatusOK}})
 	err := (&ServiceDoc{}).Run(&ctx, client)
 	c.Assert(err, IsNil)
 	obtained := manager.Stdout.(*bytes.Buffer).String()
