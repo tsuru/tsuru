@@ -17,7 +17,7 @@ type Service struct{}
 func (s *Service) Info() *cmd.Info {
 	return &cmd.Info{
 		Name:    "service",
-		Usage:   "service (add|list|bind|unbind|instance)",
+		Usage:   "service (add|list|bind|unbind|instance|doc)",
 		Desc:    "manage your services",
 		MinArgs: 1,
 	}
@@ -31,6 +31,7 @@ func (s *Service) Subcommands() map[string]interface{} {
 		"info":     &ServiceInfo{},
 		"unbind":   &ServiceUnbind{},
 		"instance": &ServiceInstance{},
+		"doc":      &ServiceDoc{},
 	}
 }
 
@@ -282,5 +283,37 @@ func (c *ServiceInfo) Run(ctx *cmd.Context, client cmd.Doer) error {
 		}
 		ctx.Stdout.Write(table.Bytes())
 	}
+	return nil
+}
+
+type ServiceDoc struct{}
+
+func (c *ServiceDoc) Info() *cmd.Info {
+	return &cmd.Info{
+		Name:    "doc",
+		Usage:   "service doc <servicename>",
+		Desc:    "Show documentation of a service",
+		MinArgs: 1,
+	}
+}
+
+func (c *ServiceDoc) Run(ctx *cmd.Context, client cmd.Doer) error {
+	sName := ctx.Args[0]
+	url := fmt.Sprintf("/services/c/%s/doc", sName)
+	url = cmd.GetUrl(url)
+	request, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return err
+	}
+	resp, err := client.Do(request)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	result, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return err
+	}
+	ctx.Stdout.Write(result)
 	return nil
 }

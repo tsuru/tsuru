@@ -11,7 +11,7 @@ import (
 func (s *S) TestServiceInfo(c *C) {
 	expected := &cmd.Info{
 		Name:    "service",
-		Usage:   "service (add|list|bind|unbind|instance)",
+		Usage:   "service (add|list|bind|unbind|instance|doc)",
 		Desc:    "manage your services",
 		MinArgs: 1,
 	}
@@ -392,4 +392,39 @@ func (s *S) TestServiceInfoIsASubcommandOfService(c *C) {
 	info, ok := subc["info"]
 	c.Assert(ok, Equals, true)
 	c.Assert(info, FitsTypeOf, &ServiceInfo{})
+}
+
+func (s *S) TestServiceDocInfo(c *C) {
+	i := (&ServiceDoc{}).Info()
+	expected := &cmd.Info{
+		Name:    "doc",
+		Usage:   "service doc <servicename>",
+		Desc:    "Show documentation of a service",
+		MinArgs: 1,
+	}
+	c.Assert(i, DeepEquals, expected)
+}
+
+func (s *S) TestServiceDocRun(c *C) {
+	expected := `This is a test doc for a test service.
+Service test is foo bar.`
+	ctx := cmd.Context{
+		Cmds:   []string{},
+		Args:   []string{"foo"},
+		Stdout: manager.Stdout,
+		Stderr: manager.Stderr,
+	}
+	client := cmd.NewClient(&http.Client{Transport: &transport{msg: expected, status: http.StatusOK}})
+	err := (&ServiceDoc{}).Run(&ctx, client)
+	c.Assert(err, IsNil)
+	obtained := manager.Stdout.(*bytes.Buffer).String()
+	c.Assert(obtained, Equals, expected)
+}
+
+func (s *S) TestServiceDocIsASubcommandOfService(c *C) {
+	command := &Service{}
+	subc := command.Subcommands()
+	info, ok := subc["doc"]
+	c.Assert(ok, Equals, true)
+	c.Assert(info, FitsTypeOf, &ServiceDoc{})
 }
