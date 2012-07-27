@@ -4,7 +4,7 @@ import (
 	"github.com/timeredbull/tsuru/api/auth"
 	"github.com/timeredbull/tsuru/api/service"
 	"github.com/timeredbull/tsuru/errors"
-    "net/http"
+	"net/http"
 )
 
 func GetServiceOrError(name string, u *auth.User) (service.Service, error) {
