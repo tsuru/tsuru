@@ -66,12 +66,12 @@ func (s *Service) findTeam(team *auth.Team) int {
 	return -1
 }
 
-func (s *Service) hasTeam(team *auth.Team) bool {
+func (s *Service) HasTeam(team *auth.Team) bool {
 	return s.findTeam(team) > -1
 }
 
 func (s *Service) GrantAccess(team *auth.Team) error {
-	if s.hasTeam(team) {
+	if s.HasTeam(team) {
 		return errors.New("This team already has access to this service")
 	}
 	s.Teams = append(s.Teams, team.Name)
