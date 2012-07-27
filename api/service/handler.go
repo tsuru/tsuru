@@ -3,27 +3,12 @@ package service
 import (
 	"github.com/timeredbull/tsuru/api/auth"
 	"github.com/timeredbull/tsuru/db"
-	"github.com/timeredbull/tsuru/errors"
 	"labix.org/v2/mgo/bson"
-	"net/http"
 )
 
 type ServiceModel struct {
 	Service   string
 	Instances []string
-}
-
-func GetServiceOrError(name string, u *auth.User) (Service, error) {
-	s := Service{Name: name}
-	err := s.Get()
-	if err != nil {
-		return s, &errors.Http{Code: http.StatusNotFound, Message: "Service not found"}
-	}
-	if !auth.CheckUserAccess(s.OwnerTeams, u) {
-		msg := "This user does not have access to this service"
-		return s, &errors.Http{Code: http.StatusForbidden, Message: msg}
-	}
-	return s, err
 }
 
 func ServiceAndServiceInstancesByTeams(teamKind string, u *auth.User) []ServiceModel {

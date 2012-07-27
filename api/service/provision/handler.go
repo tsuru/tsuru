@@ -65,7 +65,7 @@ func UpdateHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	}
 	var yaml serviceYaml
 	goyaml.Unmarshal(body, &yaml)
-	s, err := service.GetServiceOrError(yaml.Id, u)
+	s, err := GetServiceOrError(yaml.Id, u)
 	if err != nil {
 		return err
 	}
@@ -79,7 +79,7 @@ func UpdateHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 }
 
 func DeleteHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
-	s, err := service.GetServiceOrError(r.URL.Query().Get(":name"), u)
+	s, err := GetServiceOrError(r.URL.Query().Get(":name"), u)
 	if err != nil {
 		return err
 	}
@@ -146,7 +146,7 @@ func RevokeAccessFromTeamHandler(w http.ResponseWriter, r *http.Request, u *auth
 }
 
 func AddDocHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
-	s, err := service.GetServiceOrError(r.URL.Query().Get(":name"), u)
+	s, err := GetServiceOrError(r.URL.Query().Get(":name"), u)
 	if err != nil {
 		return err
 	}
@@ -163,7 +163,7 @@ func AddDocHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 }
 
 func GetDocHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
-	s, err := service.GetServiceOrError(r.URL.Query().Get(":name"), u)
+	s, err := GetServiceOrError(r.URL.Query().Get(":name"), u)
 	if err != nil {
 		return err
 	}
