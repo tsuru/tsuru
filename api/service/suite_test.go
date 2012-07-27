@@ -12,6 +12,19 @@ import (
 	"testing"
 )
 
+func Test(t *testing.T) { TestingT(t) }
+
+type S struct {
+	service         *Service
+	serviceInstance *ServiceInstance
+	team            *auth.Team
+	user            *auth.User
+	srv             *ec2test.Server
+	tmpdir          string
+}
+
+var _ = Suite(&S{})
+
 type hasAccessToChecker struct{}
 
 func (c *hasAccessToChecker) Info() *CheckerInfo {
@@ -30,23 +43,10 @@ func (c *hasAccessToChecker) Check(params []interface{}, names []string) (bool, 
 	if !ok {
 		return false, "second parameter should be service instance"
 	}
-	return service.hasTeam(&team), ""
+	return service.HasTeam(&team), ""
 }
 
 var HasAccessTo Checker = &hasAccessToChecker{}
-
-func Test(t *testing.T) { TestingT(t) }
-
-type S struct {
-	service         *Service
-	serviceInstance *ServiceInstance
-	team            *auth.Team
-	user            *auth.User
-	srv             *ec2test.Server
-	tmpdir          string
-}
-
-var _ = Suite(&S{})
 
 func (s *S) SetUpSuite(c *C) {
 	var err error
