@@ -196,3 +196,13 @@ func ServiceInfoHandler(w http.ResponseWriter, r *http.Request, u *auth.User) er
 	w.Write(b)
 	return nil
 }
+
+func Doc(w http.ResponseWriter, r *http.Request, u *auth.User) error {
+	sName := r.URL.Query().Get(":name")
+	s, err := GetServiceOrError(sName, u)
+	if err != nil {
+		return err
+	}
+	w.Write([]byte(s.Doc))
+	return nil
+}

@@ -465,3 +465,42 @@ func (s *S) TestServiceInfoHandlerReturns403WhenTheUserDoesNotHaveAccessToTheSer
 	c.Assert(e.Code, Equals, http.StatusForbidden)
 	c.Assert(e, ErrorMatches, "^This user does not have access to this service$")
 }
+
+func (s *S) makeRequestToGetDocHandler(name string, c *C) (*httptest.ResponseRecorder, *http.Request) {
+	url := fmt.Sprintf("/services/%s/doc/?:name=%s", name, name)
+	request, err := http.NewRequest("GET", url, nil)
+	c.Assert(err, IsNil)
+	request.Header.Set("Content-Type", "application/json")
+	recorder := httptest.NewRecorder()
+	return recorder, request
+}
+
+func (s *S) TestDocHandler(c *C) {
+	doc := `Doc for coolnosql
+Collnosql is a really really cool nosql`
+	srv := service.Service{
+		Name:  "coolnosql",
+		Doc:   doc,
+		Teams: []string{s.team.Name},
+	}
+	err := srv.Create()
+	c.Assert(err, IsNil)
+	recorder, request := s.makeRequestToGetDocHandler("coolnosql", c)
+	err = Doc(recorder, request, s.user)
+	c.Assert(err, IsNil)
+	b, err := ioutil.ReadAll(recorder.Body)
+	c.Assert(err, IsNil)
+	c.Assert(string(b), Equals, doc)
+}
+
+func (s *S) TestDocHandlerReturns401WhenUserHasNoAccessToService(c *C) {
+	srv := service.Service{
+		Name: "coolnosql",
+		Doc:  "some doc...",
+	}
+	err := srv.Create()
+	c.Assert(err, IsNil)
+	recorder, request := s.makeRequestToGetDocHandler("coolnosql", c)
+	err = Doc(recorder, request, s.user)
+	c.Assert(err, ErrorMatches, "^This user does not have access to this service$")
+}
