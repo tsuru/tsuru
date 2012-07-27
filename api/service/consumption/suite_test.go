@@ -81,4 +81,3 @@ func (s *S) setupConfig(c *C) {
 func (s *S) reconfServer(c *C) {
 	config.Set("aws:ec2-endpoint", s.srv.URL())
 }
-

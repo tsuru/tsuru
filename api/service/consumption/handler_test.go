@@ -148,7 +148,7 @@ func (s *S) TestCreateInstanceHandlerSavesAllTeamsThatTheGivenUserIsMemberAndHas
 
 func (s *S) TestCreateInstanceHandlerDoesNotFailIfTheServiceDoesNotDeclareEndpoint(c *C) {
 	srv := service.Service{Name: "mysql", Teams: []string{s.team.Name}}
-    srv.Create()
+	srv.Create()
 	recorder, request := makeRequestToCreateInstanceHandler(c)
 	err := CreateInstanceHandler(recorder, request, s.user)
 	c.Assert(err, IsNil)

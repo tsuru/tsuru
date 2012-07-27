@@ -9,10 +9,10 @@ import (
 	"github.com/timeredbull/tsuru/ec2"
 	"github.com/timeredbull/tsuru/errors"
 	"github.com/timeredbull/tsuru/log"
+	"io/ioutil"
 	"labix.org/v2/mgo/bson"
 	"net/http"
-	"io/ioutil"
-    "time"
+	"time"
 )
 
 func ServicesHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
