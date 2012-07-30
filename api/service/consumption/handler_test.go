@@ -504,3 +504,9 @@ func (s *S) TestDocHandlerReturns401WhenUserHasNoAccessToService(c *C) {
 	err = Doc(recorder, request, s.user)
 	c.Assert(err, ErrorMatches, "^This user does not have access to this service$")
 }
+
+func (s *S) TestDocHandlerReturns404WhenServiceDoesNotExists(c *C) {
+	recorder, request := s.makeRequestToGetDocHandler("inexistentsql", c)
+	err := Doc(recorder, request, s.user)
+	c.Assert(err, ErrorMatches, "^Service not found$")
+}

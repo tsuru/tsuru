@@ -19,7 +19,7 @@ func GetServiceOr404(name string) (service.Service, error) {
 func GetServiceOrError(name string, u *auth.User) (service.Service, error) {
 	s, err := GetServiceOr404(name)
 	if err != nil {
-		return s, nil
+		return s, err
 	}
 	if !auth.CheckUserAccess(s.Teams, u) {
 		msg := "This user does not have access to this service"
