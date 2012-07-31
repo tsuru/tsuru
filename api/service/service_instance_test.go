@@ -11,9 +11,8 @@ func (s *S) createServiceInstance() {
 	s.service = &Service{Name: "MySQL"}
 	s.service.Create()
 	s.serviceInstance = &ServiceInstance{
-		Name:     s.service.Name,
-		Instance: "i-000000a",
-		State:    "creating",
+		Name:  s.service.Name,
+		State: "creating",
 	}
 	s.serviceInstance.Create()
 }
@@ -28,7 +27,6 @@ func (s *S) TestCreateServiceInstance(c *C) {
 	err := db.Session.ServiceInstances().Find(query).One(&result)
 	c.Check(err, IsNil)
 	c.Assert(result.Name, Equals, s.service.Name)
-	c.Assert(result.Instance, Equals, "i-000000a")
 	c.Assert(result.State, Equals, "creating")
 }
 
