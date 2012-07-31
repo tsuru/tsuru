@@ -6,7 +6,6 @@ import (
 	"github.com/timeredbull/tsuru/api/auth"
 	"github.com/timeredbull/tsuru/api/service"
 	"github.com/timeredbull/tsuru/db"
-	"github.com/timeredbull/tsuru/ec2"
 	"github.com/timeredbull/tsuru/errors"
 	"github.com/timeredbull/tsuru/log"
 	"io/ioutil"
@@ -50,14 +49,6 @@ func CreateInstanceHandler(w http.ResponseWriter, r *http.Request, u *auth.User)
 		log.Print(err.Error())
 		return err
 	}
-	instance := &ec2.Instance{}
-	if s.Bootstrap["when"] == service.OnNewInstance {
-		instance, err = ec2.RunInstance(s.Bootstrap["ami"], "") //missing user data
-		if err != nil {
-			msg := fmt.Sprintf("Instance for service could not be created. \nError: %s", err.Error())
-			return &errors.Http{Code: http.StatusInternalServerError, Message: msg}
-		}
-	}
 	var teamNames []string
 	teams, err := u.Teams()
 	if err != nil {
@@ -71,7 +62,6 @@ func CreateInstanceHandler(w http.ResponseWriter, r *http.Request, u *auth.User)
 	si := service.ServiceInstance{
 		Name:        sJson["name"],
 		ServiceName: sJson["service_name"],
-		Instance:    instance.Id,
 		Teams:       teamNames,
 	}
 	go callServiceApi(s, si)

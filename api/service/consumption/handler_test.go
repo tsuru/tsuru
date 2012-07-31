@@ -53,39 +53,6 @@ func makeRequestToCreateInstanceHandler(c *C) (*httptest.ResponseRecorder, *http
 	return recorder, request
 }
 
-func (s *S) TestCreateInstanceHandlerVMOnNewInstanceWhenManifestSaysSo(c *C) {
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte(`{"DATABASE_HOST":"localhost"}`))
-	}))
-	defer ts.Close()
-	srv := service.Service{
-		Name: "mysql",
-		Bootstrap: map[string]string{
-			"ami":  "ami-0000007",
-			"when": service.OnNewInstance,
-		},
-		Teams: []string{s.team.Name},
-		Endpoint: map[string]string{
-			"production": ts.URL,
-		},
-	}
-	err := srv.Create()
-	c.Assert(err, IsNil)
-	recorder, request := makeRequestToCreateInstanceHandler(c)
-	err = CreateInstanceHandler(recorder, request, s.user)
-	c.Assert(err, IsNil)
-	q := bson.M{"_id": "brainSQL", "instances": bson.M{"$ne": ""}}
-	var si service.ServiceInstance
-	err = db.Session.ServiceInstances().Find(q).One(&si)
-	c.Assert(err, IsNil)
-	si.Host = "192.168.0.110"
-	si.State = "running"
-	db.Session.ServiceInstances().Update(bson.M{"_id": si.Name}, si)
-	err = db.Session.ServiceInstances().Find(q).One(&si)
-	c.Assert(err, IsNil)
-	c.Assert(si.Instance, Equals, "i-0")
-}
-
 func (suite *S) TestCreateInstanceHandlerSavesServiceInstanceInDb(c *C) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(`{"DATABASE_HOST":"localhost"}`))
