@@ -6,9 +6,7 @@ import (
 	"github.com/timeredbull/tsuru/api/service"
 	"github.com/timeredbull/tsuru/config"
 	"github.com/timeredbull/tsuru/db"
-	tec2 "github.com/timeredbull/tsuru/ec2"
 	"io/ioutil"
-	"launchpad.net/goamz/ec2/ec2test"
 	. "launchpad.net/gocheck"
 	"testing"
 )
@@ -20,7 +18,6 @@ type S struct {
 	serviceInstance *service.ServiceInstance
 	team            *auth.Team
 	user            *auth.User
-	srv             *ec2test.Server
 	tmpdir          string
 }
 
@@ -29,15 +26,6 @@ var _ = Suite(&S{})
 func (s *S) SetUpSuite(c *C) {
 	var err error
 	s.setupConfig(c)
-	s.srv, err = ec2test.NewServer()
-	if err != nil {
-		c.Fatal(err)
-	}
-	s.reconfServer(c)
-	_, err = tec2.Conn()
-	if err != nil {
-		c.Fatal(err)
-	}
 	s.tmpdir, err = commandmocker.Add("juju", "")
 	c.Assert(err, IsNil)
 	db.Session, err = db.Open("127.0.0.1:27017", "tsuru_service_consumption_test")
@@ -76,8 +64,4 @@ func (s *S) setupConfig(c *C) {
 	if err != nil {
 		c.Fatal(err)
 	}
-}
-
-func (s *S) reconfServer(c *C) {
-	config.Set("aws:ec2-endpoint", s.srv.URL())
 }
