@@ -26,7 +26,7 @@ ifndef GOPATH
 	@echo "       http://golang.org/cmd/go/#GOPATH_environment_variable"
 	@exit 1
 endif
-ifneq ($(GOPATH)/src/github.com/timeredbull/tsuru, $(PWD))
+ifneq ($(subst ~,$(HOME),$(GOPATH))/src/github.com/timeredbull/tsuru, $(PWD))
 	@echo "FATAL: you must clone tsuru inside your GOPATH To do so,"
 	@echo "       you can run go get github.com/timeredbull/tsuru/..."
 	@echo "       or clone it manually to the dir $(GOPATH)/src/github.com/timeredbull/tsuru"
