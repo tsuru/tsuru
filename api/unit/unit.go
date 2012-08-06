@@ -9,13 +9,14 @@ import (
 )
 
 type Unit struct {
-	Type          string
-	Name          string
-	Machine       int
-	Ip            string
-	AgentState    string
-	InstanceState string
-	InstanceId    string
+	Type              string
+	Name              string
+	Machine           int
+	Ip                string
+	AgentState        string `yaml:"agent-state"`
+	MachineAgentState string
+	InstanceState     string
+	InstanceId        string
 }
 
 func (u *Unit) Destroy() ([]byte, error) {
