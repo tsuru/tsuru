@@ -189,7 +189,7 @@ func grantAccessToTeam(appName, teamName string, u *auth.User) error {
 	if !auth.CheckUserAccess(app.Teams, u) {
 		return &errors.Http{Code: http.StatusUnauthorized, Message: "User unauthorized"}
 	}
-	err = db.Session.Teams().Find(bson.M{"name": teamName}).One(t)
+	err = db.Session.Teams().Find(bson.M{"_id": teamName}).One(t)
 	if err != nil {
 		return &errors.Http{Code: http.StatusNotFound, Message: "Team not found"}
 	}
@@ -221,7 +221,7 @@ func revokeAccessFromTeam(appName, teamName string, u *auth.User) error {
 	if !auth.CheckUserAccess(app.Teams, u) {
 		return &errors.Http{Code: http.StatusUnauthorized, Message: "User unauthorized"}
 	}
-	err = db.Session.Teams().Find(bson.M{"name": teamName}).One(t)
+	err = db.Session.Teams().Find(bson.M{"_id": teamName}).One(t)
 	if err != nil {
 		return &errors.Http{Code: http.StatusNotFound, Message: "Team not found"}
 	}

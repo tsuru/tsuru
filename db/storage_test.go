@@ -125,8 +125,3 @@ func (s *S) TestMethodTeamsShouldReturnTeamsCollection(c *C) {
 	teamsc := s.storage.getCollection("teams")
 	c.Assert(teams, DeepEquals, teamsc)
 }
-
-func (s *S) TestMethodTeamsShouldReturnTeamsCollectionWithUniqueIndexForName(c *C) {
-	teams := s.storage.Teams()
-	c.Assert(teams, HasUniqueIndex, []string{"name"})
-}

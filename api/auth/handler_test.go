@@ -277,7 +277,8 @@ func (s *S) TestCreateTeamHandlerSavesTheTeamInTheDatabaseWithTheAuthenticatedUs
 	err = CreateTeam(recorder, request, s.user)
 	c.Assert(err, IsNil)
 	t := new(Team)
-	err = db.Session.Teams().Find(bson.M{"name": "timeredbull"}).One(t)
+	err = db.Session.Teams().Find(bson.M{"_id": "timeredbull"}).One(t)
+	defer db.Session.Teams().Remove(bson.M{"_id": "timeredbull"})
 	c.Assert(err, IsNil)
 	c.Assert(t, ContainsUser, s.user)
 }
@@ -322,7 +323,8 @@ func (s *S) TestCreateTeamHandlerReturnsInternalServerErrorIfReadAllFails(c *C) 
 }
 
 func (s *S) TestCreateTeamHandlerReturnConflictIfTheTeamToBeCreatedAlreadyExists(c *C) {
-	err := db.Session.Teams().Insert(bson.M{"name": "timeredbull"})
+	err := db.Session.Teams().Insert(bson.M{"_id": "timeredbull"})
+	defer db.Session.Teams().Remove(bson.M{"_id": "timeredbull"})
 	c.Assert(err, IsNil)
 	b := bytes.NewBufferString(`{"name":"timeredbull"}`)
 	request, err := http.NewRequest("POST", "/teams", b)
@@ -339,6 +341,7 @@ func (s *S) TestCreateTeamHandlerReturnConflictIfTheTeamToBeCreatedAlreadyExists
 
 func (s *S) TestCreateTeamCreatesTheGroupWithinGitosis(c *C) {
 	err := createTeam("timeredbull", s.user)
+	defer db.Session.Teams().Remove(bson.M{"_id": "timeredbull"})
 	time.Sleep(1e9)
 	c.Assert(err, IsNil)
 	c.Assert("[group timeredbull]", IsInGitosis)
@@ -349,6 +352,7 @@ func (s *S) TestCreateTeamAddsTheLoggedInUserKeysAsMemberInGitosis(c *C) {
 	c.Assert(err, IsNil)
 	keyname := s.user.Keys[0].Name
 	err = createTeam("timeredbull", s.user)
+	defer db.Session.Teams().Remove(bson.M{"_id": "timeredbull"})
 	c.Assert(err, IsNil)
 	time.Sleep(1e9)
 	c.Assert("[group timeredbull]", IsInGitosis)
@@ -393,7 +397,7 @@ func (s *S) TestAddUserToTeamShouldAddAUserToATeamIfTheUserAndTheTeamExistAndThe
 	err = AddUserToTeam(recorder, request, s.user)
 	c.Assert(err, IsNil)
 	t := new(Team)
-	err = db.Session.Teams().Find(bson.M{"name": "cobrateam"}).One(t)
+	err = db.Session.Teams().Find(bson.M{"_id": "cobrateam"}).One(t)
 	c.Assert(err, IsNil)
 	c.Assert(t, ContainsUser, s.user)
 	c.Assert(t, ContainsUser, u)
@@ -471,14 +475,14 @@ func (s *S) TestRemoveUserFromTeamShouldRemoveAUserFromATeamIfTheTeamExistAndThe
 	err := u.Create()
 	c.Assert(err, IsNil)
 	s.team.addUser(&u)
-	db.Session.Teams().Update(bson.M{"name": s.team.Name}, s.team)
+	db.Session.Teams().Update(bson.M{"_id": s.team.Name}, s.team)
 	request, err := http.NewRequest("DELETE", "/teams/cobrateam/nonee@me.me?:team=cobrateam&:user=nonee@me.me", nil)
 	c.Assert(err, IsNil)
 	recorder := httptest.NewRecorder()
 	err = RemoveUserFromTeam(recorder, request, s.user)
 	c.Assert(err, IsNil)
 	team := new(Team)
-	err = db.Session.Teams().Find(bson.M{"name": s.team.Name}).One(team)
+	err = db.Session.Teams().Find(bson.M{"_id": s.team.Name}).One(team)
 	c.Assert(err, IsNil)
 	c.Assert(team, Not(ContainsUser), &u)
 }
@@ -510,10 +514,10 @@ func (s *S) TestRemoveUserfromTeamShouldReturnUnauthorizedIfTheGivenUserIsNotMem
 func (s *S) TestRemoveUserFromTeamShouldReturnNotFoundWhenTheUserIsNotMemberOfTheTeam(c *C) {
 	u := &User{Email: "nobody@me.me", Password: "132"}
 	s.team.addUser(u)
-	db.Session.Teams().Update(bson.M{"name": s.team.Name}, s.team)
+	db.Session.Teams().Update(bson.M{"_id": s.team.Name}, s.team)
 	defer func(t *Team, u *User) {
 		s.team.removeUser(u)
-		db.Session.Teams().Update(bson.M{"name": t.Name}, t)
+		db.Session.Teams().Update(bson.M{"_id": t.Name}, t)
 	}(s.team, u)
 	request, err := http.NewRequest("DELETE", "/teams/cobrateam/none@me.me?:team=cobrateam&:user=none@me.me", nil)
 	c.Assert(err, IsNil)

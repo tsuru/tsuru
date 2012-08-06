@@ -100,8 +100,5 @@ func (s *Storage) Users() *mgo.Collection {
 
 // Teams returns the teams collection from MongoDB.
 func (s *Storage) Teams() *mgo.Collection {
-	nameIndex := mgo.Index{Key: []string{"name"}, Unique: true}
-	c := s.getCollection("teams")
-	c.EnsureIndex(nameIndex)
-	return c
+	return s.getCollection("teams")
 }

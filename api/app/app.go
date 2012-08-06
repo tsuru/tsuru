@@ -193,7 +193,7 @@ func (a *App) RevokeAccess(team *auth.Team) error {
 }
 
 func (a *App) GetTeams() (teams []auth.Team) {
-	db.Session.Teams().Find(bson.M{"name": bson.M{"$in": a.Teams}}).All(&teams)
+	db.Session.Teams().Find(bson.M{"_id": bson.M{"$in": a.Teams}}).All(&teams)
 	return
 }
 

@@ -156,7 +156,7 @@ func (s *S) TestAppListShouldListAllAppsOfAllTeamsThatTheUserIsAMember(c *C) {
 	team := auth.Team{Name: "angra", Users: []auth.User{*s.user, u}}
 	err := db.Session.Teams().Insert(team)
 	c.Assert(err, IsNil)
-	defer db.Session.Teams().Remove(bson.M{"name": team.Name})
+	defer db.Session.Teams().Remove(bson.M{"_id": team.Name})
 	app1 := App{Name: "app1", Teams: []string{s.team.Name, team.Name}}
 	err = app1.Create()
 	c.Assert(err, IsNil)
@@ -351,7 +351,7 @@ func (s *S) TestAddTeamToTheApp(c *C) {
 	t := auth.Team{Name: "itshardteam", Users: []auth.User{*s.user}}
 	err := db.Session.Teams().Insert(t)
 	c.Assert(err, IsNil)
-	defer db.Session.Teams().RemoveAll(bson.M{"name": t.Name})
+	defer db.Session.Teams().RemoveAll(bson.M{"_id": t.Name})
 	a := App{Name: "itshard", Framework: "django", Teams: []string{t.Name}}
 	err = a.Create()
 	c.Assert(err, IsNil)
@@ -433,7 +433,7 @@ func (s *S) TestGrantAccessToAppAddsTheProjectInGitosis(c *C) {
 	t := &auth.Team{Name: "anything", Users: []auth.User{*s.user}}
 	err := db.Session.Teams().Insert(t)
 	c.Assert(err, IsNil)
-	defer db.Session.Teams().Remove(bson.M{"name": t.Name})
+	defer db.Session.Teams().Remove(bson.M{"_id": t.Name})
 	s.addGroup()
 	a := &App{Name: "tsuru", Framework: "golang", Teams: []string{t.Name}}
 	err = a.Create()
@@ -448,7 +448,7 @@ func (s *S) TestRevokeAccessFromTeam(c *C) {
 	t := auth.Team{Name: "abcd"}
 	err := db.Session.Teams().Insert(t)
 	c.Assert(err, IsNil)
-	defer db.Session.Teams().Remove(bson.M{"name": t.Name})
+	defer db.Session.Teams().Remove(bson.M{"_id": t.Name})
 	a := App{Name: "itshard", Framework: "django", Teams: []string{s.team.Name, t.Name}}
 	err = a.Create()
 	c.Assert(err, IsNil)
@@ -514,7 +514,7 @@ func (s *S) TestRevokeAccessFromTeamReturn404IfTheTeamDoesNotHaveAccessToTheApp(
 	db.Session.Teams().Insert(t)
 	t2 := auth.Team{Name: "team2"}
 	db.Session.Teams().Insert(t2)
-	defer db.Session.Teams().Remove(bson.M{"name": bson.M{"$in": []string{"blaaa", "team2"}}})
+	defer db.Session.Teams().Remove(bson.M{"_id": bson.M{"$in": []string{"blaaa", "team2"}}})
 	a := App{Name: "itshard", Framework: "django", Teams: []string{s.team.Name, t2.Name}}
 	err := a.Create()
 	c.Assert(err, IsNil)
@@ -551,7 +551,7 @@ func (s *S) TestRevokeAccessFromTeamRemovesTheProjectFromGitosisConf(c *C) {
 	t := auth.Team{Name: "anything", Users: []auth.User{*s.user}}
 	err := db.Session.Teams().Insert(t)
 	c.Assert(err, IsNil)
-	defer db.Session.Teams().Remove(bson.M{"name": t.Name})
+	defer db.Session.Teams().Remove(bson.M{"_id": t.Name})
 	s.addGroup()
 	a := &App{Name: "tsuru", Framework: "golang", Teams: []string{t.Name}}
 	err = a.Create()
@@ -1249,7 +1249,7 @@ func (s *S) TestGetTeamNamesReturnTheNameOfTeamsThatTheUserIsMember(c *C) {
 	err = db.Session.Teams().Insert(where)
 	c.Assert(err, IsNil)
 	teams := []string{who.Name, what.Name, where.Name}
-	defer db.Session.Teams().RemoveAll(bson.M{"name": bson.M{"$in": teams}})
+	defer db.Session.Teams().RemoveAll(bson.M{"_id": bson.M{"$in": teams}})
 	names, err := getTeamNames(one)
 	c.Assert(err, IsNil)
 	c.Assert(names, DeepEquals, teams)

@@ -110,7 +110,7 @@ func getServiceAndTeamOrError(serviceName string, teamName string, u *auth.User)
 		return nil, nil, &errors.Http{Code: http.StatusForbidden, Message: msg}
 	}
 	t := new(auth.Team)
-	err = db.Session.Teams().Find(bson.M{"name": teamName}).One(t)
+	err = db.Session.Teams().Find(bson.M{"_id": teamName}).One(t)
 	if err != nil {
 		return nil, nil, &errors.Http{Code: http.StatusNotFound, Message: "Team not found"}
 	}

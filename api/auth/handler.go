@@ -159,7 +159,7 @@ func ListTeams(w http.ResponseWriter, r *http.Request, u *User) error {
 
 func addUserToTeam(email, teamName string, u *User) error {
 	team, user := new(Team), new(User)
-	selector := bson.M{"name": teamName}
+	selector := bson.M{"_id": teamName}
 	err := db.Session.Teams().Find(selector).One(team)
 	if err != nil {
 		return &errors.Http{Code: http.StatusNotFound, Message: "Team not found"}
@@ -192,7 +192,7 @@ func AddUserToTeam(w http.ResponseWriter, r *http.Request, u *User) error {
 
 func removeUserFromTeam(email, teamName string, u *User) error {
 	team := new(Team)
-	selector := bson.M{"name": teamName}
+	selector := bson.M{"_id": teamName}
 	err := db.Session.Teams().Find(selector).One(team)
 	if err != nil {
 		return &errors.Http{Code: http.StatusNotFound, Message: "Team not found"}

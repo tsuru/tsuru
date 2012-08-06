@@ -132,7 +132,7 @@ func (s *S) SetUpSuite(c *C) {
 	err := createTeam("cobrateam", s.user)
 	panicIfErr(err)
 	s.team = new(Team)
-	err = db.Session.Teams().Find(bson.M{"name": "cobrateam"}).One(s.team)
+	err = db.Session.Teams().Find(bson.M{"_id": "cobrateam"}).One(s.team)
 	panicIfErr(err)
 }
 
@@ -150,7 +150,7 @@ func (s *S) TearDownTest(c *C) {
 	defer s.deleteGitosisConf()
 	_, err := db.Session.Users().RemoveAll(bson.M{"email": bson.M{"$ne": s.user.Email}})
 	panicIfErr(err)
-	_, err = db.Session.Teams().RemoveAll(bson.M{"name": bson.M{"$ne": s.team.Name}})
+	_, err = db.Session.Teams().RemoveAll(bson.M{"_id": bson.M{"$ne": s.team.Name}})
 	panicIfErr(err)
 }
 

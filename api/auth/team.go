@@ -9,7 +9,7 @@ import (
 )
 
 type Team struct {
-	Name  string
+	Name  string `bson:"_id"`
 	Users []User
 }
 
@@ -56,7 +56,7 @@ func GetTeamsNames(teams []Team) []string {
 }
 
 func CheckUserAccess(teamNames []string, u *User) bool {
-	q := bson.M{"name": bson.M{"$in": teamNames}}
+	q := bson.M{"_id": bson.M{"$in": teamNames}}
 	var teams []Team
 	db.Session.Teams().Find(q).All(&teams)
 	var wg sync.WaitGroup
