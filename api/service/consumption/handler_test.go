@@ -95,7 +95,7 @@ func (s *S) TestCreateInstanceHandlerCallsTheServiceAPIAndSaveEnvironmentVariabl
 }
 
 func (s *S) TestCreateInstanceHandlerSavesAllTeamsThatTheGivenUserIsMemberAndHasAccessToTheServiceInTheInstance(c *C) {
-	t := auth.Team{Name: "judaspriest", Users: []auth.User{*s.user}}
+	t := auth.Team{Name: "judaspriest", Users: []string{s.user.Email}}
 	err := db.Session.Teams().Insert(t)
 	defer db.Session.Teams().Remove(bson.M{"name": t.Name})
 	srv := service.Service{Name: "mysql", Teams: []string{s.team.Name}}

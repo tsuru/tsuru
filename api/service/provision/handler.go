@@ -30,7 +30,7 @@ func CreateHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 		return err
 	}
 	var teams []auth.Team
-	db.Session.Teams().Find(bson.M{"users.email": u.Email}).All(&teams)
+	db.Session.Teams().Find(bson.M{"users": u.Email}).All(&teams)
 	if len(teams) == 0 {
 		msg := "In order to create a service, you should be member of at least one team"
 		return &errors.Http{Code: http.StatusForbidden, Message: msg}

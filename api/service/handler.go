@@ -13,8 +13,8 @@ type ServiceModel struct {
 
 func ServiceAndServiceInstancesByTeams(teamKind string, u *auth.User) []ServiceModel {
 	var teams []auth.Team
-	q := bson.M{"users.email": u.Email}
-	db.Session.Teams().Find(q).Select(bson.M{"name": 1}).All(&teams)
+	q := bson.M{"users": u.Email}
+	db.Session.Teams().Find(q).Select(bson.M{"_id": 1}).All(&teams)
 	var services []Service
 	q = bson.M{teamKind: bson.M{"$in": auth.GetTeamsNames(teams)}}
 	db.Session.Services().Find(q).Select(bson.M{"name": 1}).All(&services)

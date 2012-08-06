@@ -108,7 +108,7 @@ func validateForInstanceCreation(s *service.Service, sJson map[string]string, u 
 		return &errors.Http{Code: http.StatusNotFound, Message: msg}
 	}
 	var teams []auth.Team
-	err = db.Session.Teams().Find(bson.M{"users.email": u.Email}).All(&teams)
+	err = db.Session.Teams().Find(bson.M{"users": u.Email}).All(&teams)
 	if err != nil {
 		return &errors.Http{Code: http.StatusInternalServerError, Message: err.Error()}
 	}

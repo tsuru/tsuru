@@ -153,7 +153,7 @@ func (s *S) TestAppList(c *C) {
 // Issue #52.
 func (s *S) TestAppListShouldListAllAppsOfAllTeamsThatTheUserIsAMember(c *C) {
 	u := auth.User{Email: "passing-by@angra.com"}
-	team := auth.Team{Name: "angra", Users: []auth.User{*s.user, u}}
+	team := auth.Team{Name: "angra", Users: []string{s.user.Email, u.Email}}
 	err := db.Session.Teams().Insert(team)
 	c.Assert(err, IsNil)
 	defer db.Session.Teams().Remove(bson.M{"_id": team.Name})
@@ -348,7 +348,7 @@ func (s *S) TestCreateAppAddsProjectToGroupsInGitosis(c *C) {
 }
 
 func (s *S) TestAddTeamToTheApp(c *C) {
-	t := auth.Team{Name: "itshardteam", Users: []auth.User{*s.user}}
+	t := auth.Team{Name: "itshardteam", Users: []string{s.user.Email}}
 	err := db.Session.Teams().Insert(t)
 	c.Assert(err, IsNil)
 	defer db.Session.Teams().RemoveAll(bson.M{"_id": t.Name})
@@ -430,7 +430,7 @@ func (s *S) TestGrantAccessToTeamReturn409IfTheTeamHasAlreadyAccessToTheApp(c *C
 }
 
 func (s *S) TestGrantAccessToAppAddsTheProjectInGitosis(c *C) {
-	t := &auth.Team{Name: "anything", Users: []auth.User{*s.user}}
+	t := &auth.Team{Name: "anything", Users: []string{s.user.Email}}
 	err := db.Session.Teams().Insert(t)
 	c.Assert(err, IsNil)
 	defer db.Session.Teams().Remove(bson.M{"_id": t.Name})
@@ -548,7 +548,7 @@ func (s *S) TestRevokeAccessFromTeamReturn403IfTheTeamIsTheLastWithAccessToTheAp
 }
 
 func (s *S) TestRevokeAccessFromTeamRemovesTheProjectFromGitosisConf(c *C) {
-	t := auth.Team{Name: "anything", Users: []auth.User{*s.user}}
+	t := auth.Team{Name: "anything", Users: []string{s.user.Email}}
 	err := db.Session.Teams().Insert(t)
 	c.Assert(err, IsNil)
 	defer db.Session.Teams().Remove(bson.M{"_id": t.Name})
@@ -1240,12 +1240,12 @@ func (s *S) TestLogShouldAppLog(c *C) {
 
 func (s *S) TestGetTeamNamesReturnTheNameOfTeamsThatTheUserIsMember(c *C) {
 	one := &auth.User{Email: "imone@thewho.com", Password: "123"}
-	who := auth.Team{Name: "TheWho", Users: []auth.User{*one}}
+	who := auth.Team{Name: "TheWho", Users: []string{one.Email}}
 	err := db.Session.Teams().Insert(who)
-	what := auth.Team{Name: "TheWhat", Users: []auth.User{*one}}
+	what := auth.Team{Name: "TheWhat", Users: []string{one.Email}}
 	err = db.Session.Teams().Insert(what)
 	c.Assert(err, IsNil)
-	where := auth.Team{Name: "TheWhere", Users: []auth.User{*one}}
+	where := auth.Team{Name: "TheWhere", Users: []string{one.Email}}
 	err = db.Session.Teams().Insert(where)
 	c.Assert(err, IsNil)
 	teams := []string{who.Name, what.Name, where.Name}

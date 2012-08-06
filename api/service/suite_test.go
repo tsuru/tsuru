@@ -55,7 +55,7 @@ func (s *S) SetUpSuite(c *C) {
 	s.user = &auth.User{Email: "cidade@raul.com", Password: "123"}
 	err = s.user.Create()
 	c.Assert(err, IsNil)
-	s.team = &auth.Team{Name: "Raul", Users: []auth.User{*s.user}}
+	s.team = &auth.Team{Name: "Raul", Users: []string{s.user.Email}}
 	err = db.Session.Teams().Insert(s.team)
 	c.Assert(err, IsNil)
 	if err != nil {

@@ -89,7 +89,7 @@ func AppDelete(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 
 func getTeamNames(u *auth.User) (names []string, err error) {
 	var teams []auth.Team
-	err = db.Session.Teams().Find(bson.M{"users.email": u.Email}).All(&teams)
+	err = db.Session.Teams().Find(bson.M{"users": u.Email}).All(&teams)
 	if err != nil {
 		return
 	}
@@ -137,7 +137,7 @@ func AppInfo(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 
 func createApp(app *App, u *auth.User) ([]byte, error) {
 	var teams []auth.Team
-	err := db.Session.Teams().Find(bson.M{"users.email": u.Email}).All(&teams)
+	err := db.Session.Teams().Find(bson.M{"users": u.Email}).All(&teams)
 	if err != nil {
 		return nil, err
 	}
