@@ -182,7 +182,7 @@ func (c *AppCreate) Run(context *cmd.Context, client cmd.Doer) error {
 func (c *AppCreate) Info() *cmd.Info {
 	return &cmd.Info{
 		Name:    "create",
-		Usage:   "app create <appname>",
+		Usage:   "app create <appname> [framework]",
 		Desc:    "create a new app.",
 		MinArgs: 1,
 	}

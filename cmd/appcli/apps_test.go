@@ -28,6 +28,16 @@ func (s *S) TestAppList(c *C) {
 	c.Assert(manager.Stdout.(*bytes.Buffer).String(), Equals, expected)
 }
 
+func (s *S) TestAppCreateInfo(c *C) {
+	expected := &cmd.Info{
+		Name:    "create",
+		Usage:   "app create <appname> [framework]",
+		Desc:    "create a new app.",
+		MinArgs: 1,
+	}
+	c.Assert((&AppCreate{}).Info(), DeepEquals, expected)
+}
+
 func (s *S) TestAppCreate(c *C) {
 	result := `{"status":"success", "repository_url":"git@tsuru.plataformas.glb.com:ble.git"}`
 	expected := `App "ble" successfully created!
