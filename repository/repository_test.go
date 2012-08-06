@@ -46,5 +46,5 @@ func (s *S) TestGetPath(c *C) {
 func (s *S) TestGetBarePath(c *C) {
 	path, err := GetBarePath("foobar")
 	c.Assert(err, IsNil)
-	c.Assert(path, Equals, "/mnt/repositories/foobar.git")
+	c.Assert(path, Equals, "/tmp/git/foobar.git")
 }

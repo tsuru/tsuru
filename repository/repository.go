@@ -83,7 +83,7 @@ func GetPath() (string, error) {
 
 // GetBarePath returns the bare path for the app in the tsuru server.
 func GetBarePath(app string) (p string, err error) {
-	if p, err = config.GetString("git:bare-base"); err == nil {
+	if p, err = config.GetString("git:root"); err == nil {
 		p = path.Join(p, app+".git")
 	}
 	return
