@@ -124,7 +124,6 @@ func (s *S) deleteGitosisConf() {
 func (s *S) SetUpSuite(c *C) {
 	s.setupGitosis()
 	repository.RunAgent()
-	s.createGitosisConf()
 	db.Session, _ = db.Open("localhost:27017", "tsuru_user_test")
 	s.user = &User{Email: "timeredbull@globo.com", Password: "123"}
 	s.user.Create()

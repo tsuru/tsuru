@@ -78,7 +78,7 @@ func (s *S) TestCheckUserAccess(c *C) {
 	err = u2.Create()
 	c.Assert(err, IsNil)
 	defer db.Session.Users().Remove(bson.M{"email": bson.M{"$in": []string{u1.Email, u2.Email}}})
-	t := Team{Name: "ledzeppelin", Users: []User{u1}}
+	t := Team{Name: "ledzeppelin", Users: []string{u1.Email}}
 	err = db.Session.Teams().Insert(t)
 	c.Assert(err, IsNil)
 	defer db.Session.Teams().Remove(bson.M{"_id": t.Name})
@@ -90,15 +90,15 @@ func (s *S) TestCheckUserAccessWithMultipleUsersOnMultipleTeams(c *C) {
 	one := User{Email: "imone@thewho.com", Password: "123"}
 	punk := User{Email: "punk@thewho.com", Password: "123"}
 	cut := User{Email: "cutmyhair@thewho.com", Password: "123"}
-	who := Team{Name: "TheWho", Users: []User{one, punk, cut}}
+	who := Team{Name: "TheWho", Users: []string{one.Email, punk.Email, cut.Email}}
 	err := db.Session.Teams().Insert(who)
 	defer db.Session.Teams().Remove(bson.M{"_id": who.Name})
 	c.Assert(err, IsNil)
-	what := Team{Name: "TheWhat", Users: []User{one, punk}}
+	what := Team{Name: "TheWhat", Users: []string{one.Email, punk.Email}}
 	err = db.Session.Teams().Insert(what)
 	defer db.Session.Teams().Remove(bson.M{"_id": what.Name})
 	c.Assert(err, IsNil)
-	where := Team{Name: "TheWhere", Users: []User{one}}
+	where := Team{Name: "TheWhere", Users: []string{one.Email}}
 	err = db.Session.Teams().Insert(where)
 	defer db.Session.Teams().Remove(bson.M{"_id": where.Name})
 	c.Assert(err, IsNil)

@@ -288,7 +288,7 @@ func (s *S) TestTeams(c *C) {
 		t.removeUser(u)
 		db.Session.Teams().Update(bson.M{"_id": t.Name}, t)
 	}(&u, s.team)
-	t := Team{Name: "abc", Users: []User{u}}
+	t := Team{Name: "abc", Users: []string{u.Email}}
 	err = db.Session.Teams().Insert(t)
 	c.Assert(err, IsNil)
 	defer db.Session.Teams().Remove(bson.M{"_id": t.Name})

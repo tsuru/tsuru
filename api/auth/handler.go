@@ -96,7 +96,7 @@ func applyChangesToKeys(kind int, team *Team, user *User) {
 }
 
 func createTeam(name string, u *User) error {
-	team := &Team{Name: name, Users: []User{*u}}
+	team := &Team{Name: name, Users: []string{u.Email}}
 	err := db.Session.Teams().Insert(team)
 	if err != nil && strings.Contains(err.Error(), "duplicate key error") {
 		return &errors.Http{Code: http.StatusConflict, Message: "This team already exists"}
@@ -258,7 +258,7 @@ func addKeyToUser(content string, u *User) error {
 	}
 	repository.Ag.Process(ch)
 	var teams []Team
-	db.Session.Teams().Find(bson.M{"users.email": u.Email}).All(&teams)
+	db.Session.Teams().Find(bson.M{"users": u.Email}).All(&teams)
 	key.Name = strings.Replace(<-r, ".pub", "", -1)
 	for _, team := range teams {
 		mch := repository.Change{
@@ -300,7 +300,7 @@ func removeKeyFromUser(content string, u *User) error {
 	}
 	repository.Ag.Process(ch)
 	var teams []Team
-	db.Session.Teams().Find(bson.M{"users.email": u.Email}).All(&teams)
+	db.Session.Teams().Find(bson.M{"users": u.Email}).All(&teams)
 	for _, team := range teams {
 		mch := repository.Change{
 			Kind: repository.RemoveMember,

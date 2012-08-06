@@ -10,12 +10,12 @@ import (
 
 type Team struct {
 	Name  string `bson:"_id"`
-	Users []User
+	Users []string
 }
 
 func (t *Team) containsUser(u *User) bool {
 	for _, user := range t.Users {
-		if u.Email == user.Email {
+		if u.Email == user {
 			return true
 		}
 	}
@@ -26,14 +26,14 @@ func (t *Team) addUser(u *User) error {
 	if t.containsUser(u) {
 		return errors.New(fmt.Sprintf("User %s is alread in the team %s.", u.Email, t.Name))
 	}
-	t.Users = append(t.Users, *u)
+	t.Users = append(t.Users, u.Email)
 	return nil
 }
 
 func (t *Team) removeUser(u *User) error {
 	index := -1
 	for i, user := range t.Users {
-		if u.Email == user.Email {
+		if u.Email == user {
 			index = i
 			break
 		}
