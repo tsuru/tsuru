@@ -52,8 +52,9 @@ func (c *Collector) Update(out *output) {
 				u.InstanceState = uMachine["instance-state"].(string)
 			}
 			if uMachine["agent-state"] != nil {
-				u.AgentState = uMachine["agent-state"].(string)
+				u.MachineAgentState = uMachine["agent-state"].(string)
 			}
+			u.AgentState = yUnit.AgentState
 			a.State = appState(&u)
 			a.AddOrUpdateUnit(&u)
 			db.Session.Apps().Update(bson.M{"name": a.Name}, a)
@@ -62,14 +63,17 @@ func (c *Collector) Update(out *output) {
 }
 
 func appState(u *unit.Unit) string {
-	if u.AgentState == "running" && u.InstanceState == "running" {
-		return "STARTED"
+	if u.InstanceState == "error" || u.AgentState == "install_error" {
+		return "error"
 	}
-	if u.AgentState == "not-started" && u.InstanceState == "error" {
-		return "ERROR"
+	if u.MachineAgentState == "pending" || u.InstanceState == "pending" || u.MachineAgentState == "" || u.InstanceState == "" {
+		return "creating"
 	}
-	if u.InstanceState == "pending" || u.InstanceState == "" {
-		return "PENDING"
+	if u.MachineAgentState == "running" && u.InstanceState == "running" && u.AgentState == "pending" {
+		return "installing"
 	}
-	return "STOPPED"
+	if u.MachineAgentState == "running" && u.AgentState == "started" && u.InstanceState == "running" {
+		return "started"
+	}
+	return "unknown"
 }

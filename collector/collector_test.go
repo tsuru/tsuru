@@ -53,11 +53,12 @@ func (s *S) TestCollectorUpdate(c *C) {
 
 	err := a.Get()
 	c.Assert(err, IsNil)
-	c.Assert(a.State, Equals, "STARTED")
+	c.Assert(a.State, Equals, "started")
 	c.Assert(a.Units[0].Ip, Equals, "192.168.0.11")
 	c.Assert(a.Units[0].Machine, Equals, 1)
 	c.Assert(a.Units[0].InstanceState, Equals, "running")
-	c.Assert(a.Units[0].AgentState, Equals, "running")
+	c.Assert(a.Units[0].MachineAgentState, Equals, "running")
+	c.Assert(a.Units[0].AgentState, Equals, "started")
 	c.Assert(a.Units[0].InstanceId, Equals, "i-00000zz7")
 
 	a.Destroy()
@@ -86,7 +87,8 @@ func (s *S) TestCollectorUpdateWithMultipleUnits(c *C) {
 	}
 	c.Assert(u.Ip, Equals, "192.168.0.12")
 	c.Assert(u.InstanceState, Equals, "running")
-	c.Assert(u.AgentState, Equals, "running")
+	c.Assert(u.AgentState, Equals, "started")
+	c.Assert(u.MachineAgentState, Equals, "running")
 }
 
 func (s *S) TestCollectorUpdateWithDownMachine(c *C) {
@@ -101,7 +103,7 @@ func (s *S) TestCollectorUpdateWithDownMachine(c *C) {
 	collector.Update(out)
 	err = a.Get()
 	c.Assert(err, IsNil)
-	c.Assert(a.State, Equals, "PENDING")
+	c.Assert(a.State, Equals, "creating")
 }
 
 func (s *S) TestCollectorUpdateTwice(c *C) {
@@ -112,11 +114,12 @@ func (s *S) TestCollectorUpdateTwice(c *C) {
 	collector.Update(out)
 	err := a.Get()
 	c.Assert(err, IsNil)
-	c.Assert(a.State, Equals, "STARTED")
+	c.Assert(a.State, Equals, "started")
 	c.Assert(a.Units[0].Ip, Equals, "192.168.0.11")
 	c.Assert(a.Units[0].Machine, Equals, 1)
 	c.Assert(a.Units[0].InstanceState, Equals, "running")
-	c.Assert(a.Units[0].AgentState, Equals, "running")
+	c.Assert(a.Units[0].MachineAgentState, Equals, "running")
+	c.Assert(a.Units[0].AgentState, Equals, "started")
 	collector.Update(out)
 	err = a.Get()
 	c.Assert(len(a.Units), Equals, 1)
@@ -131,32 +134,44 @@ func (s *S) TestCollectorParser(c *C) {
 	c.Assert(collector.Parse(jujuOutput), DeepEquals, expected)
 }
 
-func (s *S) TestAppStatusAgentPending(c *C) {
-	u := unit.Unit{AgentState: "not-started", InstanceState: "running"}
+func (s *S) TestAppStatusMachineAgentPending(c *C) {
+	u := unit.Unit{MachineAgentState: "pending"}
 	st := appState(&u)
-	c.Assert(st, Equals, "STOPPED")
+	c.Assert(st, Equals, "creating")
+}
+
+func (s *S) testAppStatusInstanceStatePending(c *C) {
+	u := unit.Unit{InstanceState: "pending"}
+	st := appState(&u)
+	c.Assert(st, Equals, "creating")
 }
 
 func (s *S) TestAppStatusInstanceStateError(c *C) {
-	u := unit.Unit{AgentState: "not-started", InstanceState: "error"}
+	u := unit.Unit{InstanceState: "error"}
 	st := appState(&u)
-	c.Assert(st, Equals, "ERROR")
+	c.Assert(st, Equals, "error")
 }
 
 func (s *S) TestAppStatusInstanceStatePending(c *C) {
 	u := unit.Unit{AgentState: "pending", InstanceState: ""}
 	st := appState(&u)
-	c.Assert(st, Equals, "PENDING")
+	c.Assert(st, Equals, "creating")
 }
 
 func (s *S) TestAppStatusAgentAndInstanceRunning(c *C) {
-	u := unit.Unit{AgentState: "running", InstanceState: "running"}
+	u := unit.Unit{AgentState: "started", InstanceState: "running", MachineAgentState: "running"}
 	st := appState(&u)
-	c.Assert(st, Equals, "STARTED")
+	c.Assert(st, Equals, "started")
+}
+
+func (s *S) TestAppStatusMachineAgentRunningAndInstanceAndAgentPending(c *C) {
+	u := unit.Unit{AgentState: "pending", InstanceState: "running", MachineAgentState: "running"}
+	st := appState(&u)
+	c.Assert(st, Equals, "installing")
 }
 
 func (s *S) TestAppStatusInstancePending(c *C) {
 	u := unit.Unit{AgentState: "not-started", InstanceState: "pending"}
 	st := appState(&u)
-	c.Assert(st, Equals, "PENDING")
+	c.Assert(st, Equals, "creating")
 }
