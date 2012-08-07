@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"github.com/timeredbull/tsuru/cmd"
 	"io"
@@ -52,7 +53,7 @@ func (c *RemoveKey) Run(context *cmd.Context, client cmd.Doer) error {
 	if os.IsNotExist(err) {
 		io.WriteString(context.Stderr, "You don't have a public key\n")
 		io.WriteString(context.Stderr, "To generate a key use 'ssh-keygen' command\n")
-		return nil
+		return errors.New("You need to have a public rsa key")
 	}
 	b := bytes.NewBufferString(fmt.Sprintf(`{"key":"%s"}`, strings.Replace(key, "\n", "", -1)))
 	request, err := http.NewRequest("DELETE", cmd.GetUrl("/users/keys"), b)
@@ -82,7 +83,7 @@ func (c *AddKeyCommand) Run(context *cmd.Context, client cmd.Doer) error {
 	if os.IsNotExist(err) {
 		io.WriteString(context.Stderr, "You don't have a public key\n")
 		io.WriteString(context.Stderr, "To generate a key use 'ssh-keygen' command\n")
-		return nil
+		return errors.New("You need to have a public rsa key")
 	}
 	b := bytes.NewBufferString(fmt.Sprintf(`{"key":"%s"}`, strings.Replace(key, "\n", "", -1)))
 	request, err := http.NewRequest("POST", cmd.GetUrl("/users/keys"), b)

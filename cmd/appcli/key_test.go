@@ -15,7 +15,7 @@ func (s *S) TestAddKey(c *C) {
 		Stdout: manager.Stdout,
 		Stderr: manager.Stderr,
 	}
-	client := cmd.NewClient(&http.Client{Transport: &transport{msg: "", status: http.StatusOK}})
+	client := cmd.NewClient(&http.Client{Transport: &transport{msg: "success", status: http.StatusOK}})
 	command := AddKeyCommand{}
 	err := command.Run(&context, client)
 	c.Assert(err, IsNil)
@@ -30,7 +30,7 @@ func (s *S) TestRemoveKey(c *C) {
 		Stdout: manager.Stdout,
 		Stderr: manager.Stderr,
 	}
-	client := cmd.NewClient(&http.Client{Transport: &transport{msg: "", status: http.StatusOK}})
+	client := cmd.NewClient(&http.Client{Transport: &transport{msg: "success", status: http.StatusOK}})
 	command := RemoveKey{}
 	err := command.Run(&context, client)
 	c.Assert(err, IsNil)
