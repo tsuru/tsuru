@@ -30,6 +30,7 @@ func (s *S) TestEnvGetInfo(c *C) {
 	c.Assert(i.Name, Equals, "get")
 	c.Assert(i.Usage, Equals, "env get <appname> <ENVIRONMENT_VARIABLE1> [ENVIRONMENT_VARIABLE2] ...")
 	c.Assert(i.Desc, Equals, "retrieve environment variables for an app.")
+	c.Assert(i.MinArgs, Equals, 2)
 }
 
 func (s *S) TestEnvGetRun(c *C) {
@@ -67,6 +68,7 @@ func (s *S) TestEnvSetInfo(c *C) {
 	c.Assert(i.Name, Equals, "set")
 	c.Assert(i.Usage, Equals, "env set <appname> <NAME=value> [NAME=value] ...")
 	c.Assert(i.Desc, Equals, "set environment variables for an app.")
+	c.Assert(i.MinArgs, Equals, 2)
 }
 
 func (s *S) TestEnvSetRun(c *C) {
@@ -104,6 +106,7 @@ func (s *S) TestEnvUnsetInfo(c *C) {
 	c.Assert(i.Name, Equals, "unset")
 	c.Assert(i.Usage, Equals, "env unset <appname> <ENVIRONMENT_VARIABLE1> [ENVIRONMENT_VARIABLE2]")
 	c.Assert(i.Desc, Equals, "unset environment variables for an app.")
+	c.Assert(i.MinArgs, Equals, 2)
 }
 
 func (s *S) TestEnvUnsetRun(c *C) {
