@@ -5,6 +5,7 @@ import (
 	"github.com/timeredbull/tsuru/cmd"
 	. "launchpad.net/gocheck"
 	"net/http"
+	"strings"
 )
 
 func (s *S) TestAppList(c *C) {
@@ -146,7 +147,9 @@ func (s *S) TestAppLog(c *C) {
 	client := cmd.NewClient(&http.Client{Transport: &transport{msg: result, status: http.StatusOK}})
 	err := command.Run(&context, client)
 	c.Assert(err, IsNil)
-	c.Assert(manager.Stdout.(*bytes.Buffer).String(), Equals, expected)
+	got := manager.Stdout.(*bytes.Buffer).String()
+	got = strings.Replace(got, "-0300 -0300", "-0300 BRT", -1)
+	c.Assert(got, Equals, expected)
 }
 
 func (s *S) TestAppLogShouldReturnNilIfHasNoContent(c *C) {
