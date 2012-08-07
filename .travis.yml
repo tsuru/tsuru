@@ -2,8 +2,12 @@ language: go
 before_install:
   - sudo apt-get update -qq
   - sudo apt-get install bzr mercurial git libyaml-dev -qq
-install: make get
-before_script: ./check-fmt.sh
+install:
+  - make hg
+  - make git
+  - make bzr
+  - make get-test
+before_script: ./check-fmt.sh && make get-prod
 script: make test
 branches:
   only: master
