@@ -1,5 +1,7 @@
 #Tsuru
 
+[![Build Status](https://secure.travis-ci.org/timeredbull/tsuru.png?branch=master)](http://travis-ci.org/timeredbull/tsuru)
+
 ##What is Tsuru?
 
 Tsuru is an open Platform-as-a-Service (PaaS).
