@@ -63,7 +63,7 @@ func (c *Collector) Update(out *output) {
 }
 
 func appState(u *unit.Unit) string {
-	if u.InstanceState == "error" || u.AgentState == "install_error" {
+	if u.InstanceState == "error" || u.AgentState == "install-error" {
 		return "error"
 	}
 	if u.MachineAgentState == "pending" || u.InstanceState == "pending" || u.MachineAgentState == "" || u.InstanceState == "" {
