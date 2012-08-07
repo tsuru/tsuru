@@ -242,7 +242,7 @@ func (s *S) TestServiceGetDoc(c *C) {
 	err := (&ServiceGetDoc{}).Run(&context, client)
 	c.Assert(err, IsNil)
 	c.Assert(called, Equals, true)
-	c.Assert(context.Stdout.(*bytes.Buffer).String(), Equals, "some doc\n")
+	c.Assert(context.Stdout.(*bytes.Buffer).String(), Equals, "some doc")
 }
 
 func (s *S) TestServiceGetDocInfo(c *C) {

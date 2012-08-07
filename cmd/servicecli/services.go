@@ -181,7 +181,7 @@ func (c *ServiceGetDoc) Run(ctx *cmd.Context, client cmd.Doer) error {
 	if err != nil {
 		return err
 	}
-	io.WriteString(ctx.Stdout, string(b)+"\n")
+	io.WriteString(ctx.Stdout, string(b))
 	return nil
 }
 

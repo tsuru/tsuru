@@ -314,7 +314,6 @@ func (c *ServiceDoc) Run(ctx *cmd.Context, client cmd.Doer) error {
 	if err != nil {
 		return err
 	}
-	result = append(result, []byte("\n")...)
 	ctx.Stdout.Write(result)
 	return nil
 }

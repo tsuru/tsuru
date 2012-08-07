@@ -407,7 +407,8 @@ func (s *S) TestServiceDocInfo(c *C) {
 
 func (s *S) TestServiceDocRun(c *C) {
 	result := `This is a test doc for a test service.
-Service test is foo bar.`
+Service test is foo bar.
+`
 	expected := `This is a test doc for a test service.
 Service test is foo bar.
 `
