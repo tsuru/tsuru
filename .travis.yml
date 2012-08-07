@@ -20,3 +20,4 @@ notifications:
       - "irc.freenode.net#tsuru"
     on_success: change
     on_failure: always
+  email: false
