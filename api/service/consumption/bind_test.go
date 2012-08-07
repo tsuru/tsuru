@@ -1,9 +1,7 @@
-package service_test
+package consumption
 
 import (
-	"github.com/timeredbull/commandmocker"
 	"github.com/timeredbull/tsuru/api/app"
-	"github.com/timeredbull/tsuru/api/auth"
 	"github.com/timeredbull/tsuru/api/service"
 	"github.com/timeredbull/tsuru/api/unit"
 	"github.com/timeredbull/tsuru/db"
@@ -12,39 +10,8 @@ import (
 	. "launchpad.net/gocheck"
 	"net/http"
 	"net/http/httptest"
-	"testing"
 	"time"
 )
-
-type S struct {
-	user   auth.User
-	team   auth.Team
-	tmpdir string
-}
-
-var _ = Suite(&S{})
-
-func TestT(t *testing.T) {
-	TestingT(t)
-}
-
-func (s *S) SetUpSuite(c *C) {
-	var err error
-	s.tmpdir, err = commandmocker.Add("juju", "$*")
-	c.Assert(err, IsNil)
-	db.Session, err = db.Open("127.0.0.1:27017", "tsuru_service_bind_test")
-	c.Assert(err, IsNil)
-	s.user = auth.User{Email: "sad-but-true@metallica.com"}
-	s.user.Create()
-	s.team = auth.Team{Name: "metallica", Users: []string{s.user.Email}}
-	db.Session.Teams().Insert(s.team)
-}
-
-func (s *S) TearDownSuite(c *C) {
-	defer commandmocker.Remove(s.tmpdir)
-	defer db.Session.Close()
-	db.Session.Apps().Database.DropDatabase()
-}
 
 func (s *S) TestBindAddsAppToTheServiceInstance(c *C) {
 	srvc := service.Service{Name: "mysql"}
