@@ -7,3 +7,8 @@ before_script: ./check-fmt.sh
 script: make test
 branches:
   only: master
+notifications:
+  irc:
+    - "irc.freenode.net#tsuru"
+    on_success: change
+    on_failure: always
