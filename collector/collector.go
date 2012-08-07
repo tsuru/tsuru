@@ -75,5 +75,5 @@ func appState(u *unit.Unit) string {
 	if u.MachineAgentState == "running" && u.AgentState == "started" && u.InstanceState == "running" {
 		return "started"
 	}
-	return "unknown"
+	return "pending"
 }
