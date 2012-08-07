@@ -9,6 +9,7 @@ branches:
   only: master
 notifications:
   irc:
-    - "irc.freenode.net#tsuru"
+    channels:
+      - "irc.freenode.net#tsuru"
     on_success: change
     on_failure: always
