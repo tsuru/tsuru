@@ -17,7 +17,7 @@ type Service struct{}
 func (s *Service) Info() *cmd.Info {
 	return &cmd.Info{
 		Name:    "service",
-		Usage:   "service (add|list|bind|unbind|instance|doc)",
+		Usage:   "service (add|list|bind|unbind|instance|doc|info)",
 		Desc:    "manage your services",
 		MinArgs: 1,
 	}
