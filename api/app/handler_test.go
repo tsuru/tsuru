@@ -917,6 +917,44 @@ func (s *S) TestSetEnvHandlerShouldSupportValuesWithDot(c *C) {
 	c.Assert(app.Env, DeepEquals, expected)
 }
 
+func (s *S) TestSetEnvHandlerShouldSupportNumbersOnVariableName(c *C) {
+	a := &App{Name: "blinded", Teams: []string{s.team.Name}}
+	err := a.Create()
+	c.Assert(err, IsNil)
+	url := fmt.Sprintf("/apps/%s/env?:name=%s", a.Name, a.Name)
+	request, err := http.NewRequest("POST", url, strings.NewReader("EC2_HOST=http://foo.com:8080"))
+	c.Assert(err, IsNil)
+	recorder := httptest.NewRecorder()
+	err = SetEnv(recorder, request, s.user)
+	c.Assert(err, IsNil)
+	app := &App{Name: "blinded"}
+	err = app.Get()
+	c.Assert(err, IsNil)
+	expected := map[string]EnvVar{
+		"EC2_HOST": EnvVar{Name: "EC2_HOST", Value: "http://foo.com:8080", Public: true},
+	}
+	c.Assert(app.Env, DeepEquals, expected)
+}
+
+func (s *S) TestSetEnvHandlerShouldSupportLowerCasedVariableName(c *C) {
+	a := &App{Name: "fragments", Teams: []string{s.team.Name}}
+	err := a.Create()
+	c.Assert(err, IsNil)
+	url := fmt.Sprintf("/apps/%s/env?:name=%s", a.Name, a.Name)
+	request, err := http.NewRequest("POST", url, strings.NewReader("http_proxy=http://my_proxy.com:3128"))
+	c.Assert(err, IsNil)
+	recorder := httptest.NewRecorder()
+	err = SetEnv(recorder, request, s.user)
+	c.Assert(err, IsNil)
+	app := &App{Name: "fragments"}
+	err = app.Get()
+	c.Assert(err, IsNil)
+	expected := map[string]EnvVar{
+		"http_proxy": EnvVar{Name: "http_proxy", Value: "http://my_proxy.com:3128", Public: true},
+	}
+	c.Assert(app.Env, DeepEquals, expected)
+}
+
 func (s *S) TestSetEnvHandlerShouldNotChangeValueOfPrivateVariables(c *C) {
 	original := map[string]EnvVar{
 		"DATABASE_HOST": EnvVar{

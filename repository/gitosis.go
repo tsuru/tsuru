@@ -35,7 +35,7 @@ func newGitosisManager() (*gitosisManager, error) {
 	return manager, nil
 }
 
-// addProject adds a new project to gitosis.conf.
+// addProject adds a new project to a group in gitosis.conf.
 func (m *gitosisManager) addProject(group, project string) error {
 	c, err := m.getConfig()
 	if err != nil {
@@ -54,7 +54,7 @@ func (m *gitosisManager) addProject(group, project string) error {
 	return nil
 }
 
-// removeProject removes a project from gitosis.conf
+// removeProject removes a project from a group in gitosis.conf
 func (m *gitosisManager) removeProject(group, project string) error {
 	c, err := m.getConfig()
 	if err != nil {
@@ -65,8 +65,6 @@ func (m *gitosisManager) removeProject(group, project string) error {
 	if err != nil {
 		return err
 	}
-	p, err := config.GetString("git:gitosis-bare")
-	_ = os.RemoveAll(path.Join(p, "../", project+".git"))
 	commitMsg := fmt.Sprintf("Removing project %s from group %s", project, group)
 	return m.writeCommitPush(c, commitMsg)
 }
