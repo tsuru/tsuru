@@ -1,0 +1,4 @@
+language: go
+install: make get
+before_script: ./check-fmt.sh
+script: make test
