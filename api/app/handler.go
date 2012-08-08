@@ -148,6 +148,10 @@ func createApp(app *App, u *auth.User) ([]byte, error) {
 	app.setTeams(teams)
 	err = app.Create()
 	if err != nil {
+		if strings.Contains(err.Error(), "key error") {
+			msg := fmt.Sprintf(`There is already an app named "%s".`, app.Name)
+			return nil, &errors.Http{Code: http.StatusConflict, Message: msg}
+		}
 		return nil, err
 	}
 	for _, t := range teams {

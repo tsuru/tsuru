@@ -32,9 +32,9 @@ func (s *S) TestAppList(c *C) {
 func (s *S) TestAppCreateInfo(c *C) {
 	expected := &cmd.Info{
 		Name:    "create",
-		Usage:   "app create <appname> [framework]",
+		Usage:   "app create <appname> <framework>",
 		Desc:    "create a new app.",
-		MinArgs: 1,
+		MinArgs: 2,
 	}
 	c.Assert((&AppCreate{}).Info(), DeepEquals, expected)
 }
@@ -46,23 +46,6 @@ Your repository for "ble" project is "git@tsuru.plataformas.glb.com:ble.git"` + 
 	context := cmd.Context{
 		Cmds:   []string{},
 		Args:   []string{"ble", "django"},
-		Stdout: manager.Stdout,
-		Stderr: manager.Stderr,
-	}
-	client := cmd.NewClient(&http.Client{Transport: &transport{msg: result, status: http.StatusOK}})
-	command := AppCreate{}
-	err := command.Run(&context, client)
-	c.Assert(err, IsNil)
-	c.Assert(manager.Stdout.(*bytes.Buffer).String(), Equals, expected)
-}
-
-func (s *S) TestAppCreateUsingDefaultFramework(c *C) {
-	result := `{"status":"success", "repository_url":"git@tsuru.plataformas.glb.com:ble.git"}`
-	expected := `App "ble" successfully created!
-Your repository for "ble" project is "git@tsuru.plataformas.glb.com:ble.git"` + "\n"
-	context := cmd.Context{
-		Cmds:   []string{},
-		Args:   []string{"ble"},
 		Stdout: manager.Stdout,
 		Stderr: manager.Stderr,
 	}

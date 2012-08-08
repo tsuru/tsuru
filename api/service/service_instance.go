@@ -106,6 +106,7 @@ func (si *ServiceInstance) Bind(app bind.App) error {
 	}
 	err = si.update()
 	if err != nil {
+		cli.Unbind(si, app)
 		return err
 	}
 	return app.SetEnvs(envVars, false)

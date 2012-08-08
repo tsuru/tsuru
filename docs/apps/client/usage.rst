@@ -63,6 +63,7 @@ Now you can push you application to your cloud:
 
 ::
 
+    $ git remote add tsuru git@<tsuru-server>:myblog.git
     $ git push tsuru master
 
 After that, you can check your app's url in the browser and see your app there. You'll probably need run migrations or other deploy related commands.
