@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/timeredbull/tsuru/cmd"
+	"github.com/timeredbull/tsuru/fs"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -13,10 +14,26 @@ import (
 	"strings"
 )
 
-func readKey() (string, error) {
+type keyReader struct {
+	fsystem fs.Fs
+}
+
+func (r *keyReader) fs() fs.Fs {
+	if r.fsystem == nil {
+		r.fsystem = fs.OsFs{}
+	}
+	return r.fsystem
+}
+
+func (r *keyReader) readKey() (string, error) {
 	user, err := user.Current()
 	keyPath := user.HomeDir + "/.ssh/id_rsa.pub"
-	output, err := ioutil.ReadFile(keyPath)
+	f, err := r.fs().Open(keyPath)
+	if err != nil {
+		return "", err
+	}
+	defer f.Close()
+	output, err := ioutil.ReadAll(f)
 	return string(output), err
 }
 
@@ -38,7 +55,9 @@ func (c *Key) Subcommands() map[string]interface{} {
 	}
 }
 
-type RemoveKey struct{}
+type RemoveKey struct {
+	keyReader
+}
 
 func (c *RemoveKey) Info() *cmd.Info {
 	return &cmd.Info{
@@ -49,7 +68,7 @@ func (c *RemoveKey) Info() *cmd.Info {
 }
 
 func (c *RemoveKey) Run(context *cmd.Context, client cmd.Doer) error {
-	key, err := readKey()
+	key, err := c.readKey()
 	if os.IsNotExist(err) {
 		io.WriteString(context.Stderr, "You don't have a public key\n")
 		io.WriteString(context.Stderr, "To generate a key use 'ssh-keygen' command\n")
@@ -68,7 +87,9 @@ func (c *RemoveKey) Run(context *cmd.Context, client cmd.Doer) error {
 	return nil
 }
 
-type AddKeyCommand struct{}
+type AddKeyCommand struct {
+	keyReader
+}
 
 func (c *AddKeyCommand) Info() *cmd.Info {
 	return &cmd.Info{
@@ -79,7 +100,7 @@ func (c *AddKeyCommand) Info() *cmd.Info {
 }
 
 func (c *AddKeyCommand) Run(context *cmd.Context, client cmd.Doer) error {
-	key, err := readKey()
+	key, err := c.readKey()
 	if os.IsNotExist(err) {
 		io.WriteString(context.Stderr, "You don't have a public key\n")
 		io.WriteString(context.Stderr, "To generate a key use 'ssh-keygen' command\n")
