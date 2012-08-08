@@ -3,20 +3,22 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Welcome to tsuru's documentation!
-=================================
++++++
+Tsuru
++++++
 
-Contents:
+What is Tsuru?
+==============
 
-.. toctree::
-   :maxdepth: 2
+Tsuru is an open Platform-as-a-Service (PaaS).
 
+Installation
+============
 
+* :doc:`Tsuru client install guide </apps/client/install>`
+* :doc:`Tsuru server install guide </server/install>`
 
-Indices and tables
-==================
+Usage
+=====
 
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`
-
+* :doc:`Tsuru client usage guide </apps/client/usage>`

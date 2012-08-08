@@ -347,6 +347,24 @@ func (s *S) TestCreateAppAddsProjectToGroupsInGitosis(c *C) {
 	c.Assert("writable = "+app.Name, IsInGitosis)
 }
 
+func (s *S) TestCreateAppReturnsConflictWithProperMessageWhenTheAppAlreadyExist(c *C) {
+	a := App{Name: "plainsofdawn"}
+	err := a.Create()
+	c.Assert(err, IsNil)
+	defer a.Destroy()
+	b := strings.NewReader(`{"name":"plainsofdawn", "framework":"django"}`)
+	request, err := http.NewRequest("POST", "/apps", b)
+	c.Assert(err, IsNil)
+	request.Header.Set("Content-Type", "application/json")
+	recorder := httptest.NewRecorder()
+	err = CreateAppHandler(recorder, request, s.user)
+	c.Assert(err, NotNil)
+	e, ok := err.(*errors.Http)
+	c.Assert(ok, Equals, true)
+	c.Assert(e.Code, Equals, http.StatusConflict)
+	c.Assert(e.Message, Equals, `There is already an app named "plainsofdawn".`)
+}
+
 func (s *S) TestAddTeamToTheApp(c *C) {
 	t := auth.Team{Name: "itshardteam", Users: []string{s.user.Email}}
 	err := db.Session.Teams().Insert(t)

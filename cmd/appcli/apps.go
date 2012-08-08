@@ -149,10 +149,7 @@ type AppCreate struct{}
 
 func (c *AppCreate) Run(context *cmd.Context, client cmd.Doer) error {
 	appName := context.Args[0]
-	framework := "django"
-	if len(context.Args) > 1 {
-		framework = context.Args[1]
-	}
+	framework := context.Args[1]
 
 	b := bytes.NewBufferString(fmt.Sprintf(`{"name":"%s", "framework":"%s"}`, appName, framework))
 	request, err := http.NewRequest("POST", cmd.GetUrl("/apps"), b)
@@ -182,9 +179,9 @@ func (c *AppCreate) Run(context *cmd.Context, client cmd.Doer) error {
 func (c *AppCreate) Info() *cmd.Info {
 	return &cmd.Info{
 		Name:    "create",
-		Usage:   "app create <appname> [framework]",
+		Usage:   "app create <appname> <framework>",
 		Desc:    "create a new app.",
-		MinArgs: 1,
+		MinArgs: 2,
 	}
 }
 
