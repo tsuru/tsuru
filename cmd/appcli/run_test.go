@@ -64,7 +64,7 @@ input and outputs redirects, and pipes.
 `
 	expected := &cmd.Info{
 		Name:    "run",
-		Usage:   `run appname command commandarg1 commandarg2 ... commandargn`,
+		Usage:   `run <appname> <command> [commandarg1] [commandarg2] ... [commandargn]`,
 		Desc:    desc,
 		MinArgs: 1,
 	}
