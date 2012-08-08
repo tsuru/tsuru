@@ -1,0 +1,70 @@
++++++++++++++++++++++++++
+Server installation guide
++++++++++++++++++++++++++
+
+Dependencies
+============
+
+Tsuru depends on `Go <http://golang.org>`_ and `libyaml <http://pyyaml.org/wiki/LibYAML>`_.
+
+To install Go, follow the official instructions in the language website:
+http://golang.org/doc/install.
+
+To install libyaml, you can use one package manager, or download it and install
+from source. To install from source, follow the instructions on PyYAML wiki:
+http://pyyaml.org/wiki/LibYAML.
+
+The following instructions are system specific:
+
+FreeBSD
+-------
+
+.. highlight:: bash
+
+::
+
+    $ cd /usr/ports/textproc/libyaml
+    $ make install clean
+
+Mac OS X (homebrew)
+-------------------
+
+.. highlight:: bash
+
+::
+
+    $ brew install libyaml
+
+Ubuntu
+------
+
+.. highlight:: bash
+
+::
+
+    $ [sudo] apt-get install libyaml-dev
+
+CentOS
+------
+
+.. highlight:: bash
+
+::
+
+    $ [sudo] yum install libyaml-devel
+
+Installation
+============
+
+After install and configure go, and install libyaml, just run in your terminal:
+
+.. highlight:: bash
+
+::
+
+    $ go get github.com/timeredbull/tsuru/...
+
+Server configuration
+====================
+
+TODO!
