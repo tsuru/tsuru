@@ -63,6 +63,31 @@ func (s *S) TestBindAddsAppToTheServiceInstance(c *C) {
 	c.Assert(instance.Apps, DeepEquals, []string{a.Name})
 }
 
+func (s *S) TestBindDoNotAddsAppToServiceInstanceIfCommunicationWithEndpointGoesWrong(c *C) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	defer ts.Close()
+	srvc := service.Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}}
+	err := srvc.Create()
+	c.Assert(err, IsNil)
+	defer db.Session.Services().Remove(bson.M{"_id": "mysql"})
+	instance := service.ServiceInstance{Name: "my-mysql", ServiceName: "mysql", Teams: []string{s.team.Name}, State: "running"}
+	instance.Create()
+	defer instance.Delete()
+	a := app.App{
+		Name:  "somecoolapp",
+		Teams: []string{s.team.Name},
+		Units: []unit.Unit{unit.Unit{Ip: "127.0.0.1"}},
+	}
+	a.Create()
+	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
+	err = instance.Bind(&a)
+	c.Assert(err, Not(IsNil))
+	n, err := db.Session.ServiceInstances().Find(bson.M{"app": []string{}}).Count()
+	c.Assert(n, Equals, 0)
+}
+
 func (s *S) TestBindAddsAllEnvironmentVariablesFromServiceInstanceToTheApp(c *C) {
 	srvc := service.Service{Name: "mysql"}
 	err := srvc.Create()

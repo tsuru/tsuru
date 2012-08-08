@@ -76,14 +76,7 @@ func (si *ServiceInstance) update() error {
 }
 
 func (si *ServiceInstance) Bind(app bind.App) error {
-	err := si.AddApp(app.GetName())
-	if err != nil {
-		return &errors.Http{Code: http.StatusConflict, Message: "This app is already binded to this service instance."}
-	}
-	err = si.update()
-	if err != nil {
-		return err
-	}
+	var err error
 	var envVars []bind.EnvVar
 	var setEnv = func(env map[string]string) {
 		for k, v := range env {
@@ -106,6 +99,14 @@ func (si *ServiceInstance) Bind(app bind.App) error {
 			return err
 		}
 		setEnv(env)
+	}
+	err = si.AddApp(app.GetName())
+	if err != nil {
+		return &errors.Http{Code: http.StatusConflict, Message: "This app is already binded to this service instance."}
+	}
+	err = si.update()
+	if err != nil {
+		return err
 	}
 	return app.SetEnvs(envVars, false)
 }
