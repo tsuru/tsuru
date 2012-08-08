@@ -10,7 +10,6 @@ install:
 before_script:
   - ./check-fmt.sh
   - make get-prod
-  - ssh-keygen -t rsa -f $HOME/.ssh/ida_rsa -N ""
 script: make test
 branches:
   only: master
