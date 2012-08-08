@@ -88,6 +88,32 @@ func (s *S) TestBindDoNotAddsAppToServiceInstanceIfCommunicationWithEndpointGoes
 	c.Assert(n, Equals, 0)
 }
 
+func (s *S) TestBindUnbindsWhenDatabaseUpdateGoesWrong(c *C) {
+	called := false
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		called = r.Method == "DELETE" && r.URL.Path == "/resources/my-mysql/hostname/127.0.0.1/"
+		if r.URL.String() == "/resources/my-mysql/" {
+			w.Write([]byte(`{"DATABASE_USER":"root","DATABASE_PASSWORD":"s3cr3t"}`))
+		}
+	}))
+	defer ts.Close()
+	srvc := service.Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}}
+	err := srvc.Create()
+	c.Assert(err, IsNil)
+	defer db.Session.Services().Remove(bson.M{"_id": "mysql"})
+	instance := service.ServiceInstance{Name: "my-mysql", ServiceName: "mysql", Teams: []string{s.team.Name}, State: "running"}
+	a := app.App{
+		Name:  "somecoolapp",
+		Teams: []string{s.team.Name},
+		Units: []unit.Unit{unit.Unit{Ip: "127.0.0.1"}},
+	}
+	a.Create()
+	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
+	err = instance.Bind(&a)
+	c.Assert(err, ErrorMatches, "^not found$")
+	c.Assert(called, Equals, true)
+}
+
 func (s *S) TestBindAddsAllEnvironmentVariablesFromServiceInstanceToTheApp(c *C) {
 	srvc := service.Service{Name: "mysql"}
 	err := srvc.Create()
