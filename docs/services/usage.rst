@@ -10,7 +10,7 @@ First, you must set the target with your server url, like:
 
     $ crane target tsuru.myhost.com
 
-After that, all you need is create a user and authenticate to start creating apps and pushing code to them:
+After that, all you need is create a user and authenticate:
 
 .. highlight:: bash
 
