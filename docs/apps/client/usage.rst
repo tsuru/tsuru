@@ -34,6 +34,14 @@ This will return your app's remote url, you should add it to your git repository
 
 ::
 
+    $ git remote add tsuru git@tsuru.myhost.com:myblog.git
+
+When your app is ready, you can push to it. To check whether it is ready or not, you can use:
+
+.. highlight:: bash
+
+::
+
     $ tsuru app list
 
 This will return something like:
