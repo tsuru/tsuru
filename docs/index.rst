@@ -18,18 +18,19 @@ Using tsuru
 Apps
 ----
 
-* :doc:`Tsuru client install guide </apps/client/install>`
-* :doc:`Tsuru client usage guide </apps/client/usage>`
+* :doc:`tsuru client install guide </apps/client/install>`
+* :doc:`tsuru client usage guide </apps/client/usage>`
+* :doc:`using services </apps/client/services>`
 
 Services
 --------
 
 * :doc:`building your service tutorial </services/build>`
 * :doc:`crane install guide </services/install>`
+* :doc:`crane usage guide </services/usage>`
 * :doc:`tsuru services api workflow </services/api>`
-* :doc:`crane client usage guide </services/usage>`
 
 Building your own PaaS server
 =============================
 
-* :doc:`Tsuru server install guide </server/install>`
+* :doc:`server install guide </server/install>`
