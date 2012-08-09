@@ -70,7 +70,7 @@ For run this app you can do:
 
 If you open your web browser and access the url "http://127.0.0.1:5000/" you will see the "Hello World!".
 
-In our api it's need to implement the resources expecteds by the :doc: `Tsuru api workflow`_.
+In our api it's need to implement the resources expecteds by the :doc:`Tsuru api workflow </services/api>`.
 
 Provisioning the resource for new instances
 -------------------------------------------
