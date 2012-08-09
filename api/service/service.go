@@ -12,13 +12,14 @@ import (
 const OnNewInstance = "on-new-instance"
 
 type Service struct {
-	Name       string `bson:"_id"`
-	Endpoint   map[string]string
-	Bootstrap  map[string]string
-	OwnerTeams []string `bson:"owner_teams"`
-	Teams      []string
-	Status     string
-	Doc        string
+	Name         string `bson:"_id"`
+	Endpoint     map[string]string
+	Bootstrap    map[string]string
+	OwnerTeams   []string `bson:"owner_teams"`
+	Teams        []string
+	Status       string
+	Doc          string
+	IsRestricted bool `bson:"is_restricted"`
 }
 
 func (s *Service) Log(out []byte) {
@@ -32,6 +33,7 @@ func (s *Service) Get() error {
 
 func (s *Service) Create() error {
 	s.Status = "created"
+	s.IsRestricted = false
 	err := db.Session.Services().Insert(s)
 	return err
 }
