@@ -130,7 +130,7 @@ func (s *S) TestCreateInstanceHandlerDoesNotFailIfTheServiceDoesNotDeclareEndpoi
 }
 
 func (s *S) TestCreateInstanceHandlerReturnsErrorWhenUserCannotUseService(c *C) {
-	service := service.Service{Name: "mysql"}
+	service := service.Service{Name: "mysql", IsRestricted: true}
 	service.Create()
 	recorder, request := makeRequestToCreateInstanceHandler(c)
 	err := CreateInstanceHandler(recorder, request, s.user)
@@ -473,7 +473,7 @@ func (s *S) TestServiceInfoHandlerReturns404WhenTheServiceDoesNotExist(c *C) {
 }
 
 func (s *S) TestServiceInfoHandlerReturns403WhenTheUserDoesNotHaveAccessToTheService(c *C) {
-	se := service.Service{Name: "Mysql"}
+	se := service.Service{Name: "Mysql", IsRestricted: true}
 	se.Create()
 	defer db.Session.Services().Remove(bson.M{"_id": se.Name})
 	request, err := http.NewRequest("DELETE", fmt.Sprintf("/services/%s?:name=%s", se.Name, se.Name), nil)
@@ -516,8 +516,9 @@ Collnosql is a really really cool nosql`
 
 func (s *S) TestDocHandlerReturns401WhenUserHasNoAccessToService(c *C) {
 	srv := service.Service{
-		Name: "coolnosql",
-		Doc:  "some doc...",
+		Name:         "coolnosql",
+		Doc:          "some doc...",
+		IsRestricted: true,
 	}
 	err := srv.Create()
 	c.Assert(err, IsNil)

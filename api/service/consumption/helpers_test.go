@@ -6,7 +6,7 @@ import (
 )
 
 func (s *S) TestGetServiceOrError(c *C) {
-	srv := Service{Name: "foo", Teams: []string{s.team.Name}}
+	srv := Service{Name: "foo", Teams: []string{s.team.Name}, IsRestricted: true}
 	err := srv.Create()
 	c.Assert(err, IsNil)
 	rSrv, err := GetServiceOrError("foo", s.user)
@@ -15,11 +15,19 @@ func (s *S) TestGetServiceOrError(c *C) {
 }
 
 func (s *S) TestGetServiceOrErrorShouldReturnErrorWhenUserHaveNoAccessToService(c *C) {
-	srv := Service{Name: "foo"}
+	srv := Service{Name: "foo", IsRestricted: true}
 	err := srv.Create()
 	c.Assert(err, IsNil)
 	_, err = GetServiceOrError("foo", s.user)
 	c.Assert(err, ErrorMatches, "^This user does not have access to this service$")
+}
+
+func (s *S) TestGetServiceOrErrorShoudNotReturnErrorWhenServiceIsNotRestricted(c *C) {
+	srv := Service{Name: "foo"}
+	err := srv.Create()
+	c.Assert(err, IsNil)
+	_, err = GetServiceOrError("foo", s.user)
+	c.Assert(err, IsNil)
 }
 
 func (s *S) TestGetServiceOr404(c *C) {
