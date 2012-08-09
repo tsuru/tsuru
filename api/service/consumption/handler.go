@@ -124,9 +124,13 @@ func validateForInstanceCreation(s *service.Service, sJson map[string]string, u 
 
 func RemoveServiceInstanceHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	name := r.URL.Query().Get(":name")
-	_, err := GetServiceInstanceOrError(name, u)
+	si, err := GetServiceInstanceOrError(name, u)
 	if err != nil {
 		return err
+	}
+	if len(si.Apps) > 0 {
+		msg := "This service instance has binded apps. Unbind them before removing it"
+		return &errors.Http{Code: http.StatusInternalServerError, Message: msg}
 	}
 	err = db.Session.ServiceInstances().Remove(bson.M{"_id": name})
 	if err != nil {
