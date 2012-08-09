@@ -11,8 +11,6 @@ The way to create a service is you implement a provisioning API for your service
 
 You will also create a YAML document that will serve as the service manifest. We provide you with a command-line tool to help you to create this manifest and manage your service.
 
-
-
 Creating your service api
 =========================
 
@@ -185,6 +183,42 @@ The final code for our "fake api" developed in flask is:
 
     if __name__ == "__main__":
         app.run()
+
+
+Creating a service manifest
+===========================
+
+
+Using crane you can create a manifest template:
+
+.. highlight:: bash
+
+::
+
+    $ crane template
+
+This will create a manifest.yaml in your current path with this content:
+
+.. highlight:: yaml
+
+::
+
+    id: servicename
+    endpoint:
+        production: production-endpoint.com
+        test: test-endpoint.com:8080
+
+The manifest.yaml it's used by crane to defined an id and an endpoint of your service.
+
+Change the id and the endpoint data with the data of your service:
+
+.. highlight:: yaml
+
+::
+
+    id: fakeserviceid1 
+    endpoint:
+        production: fakeserviceid1.com
 
 Submiting your service
 ======================
