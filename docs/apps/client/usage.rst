@@ -5,11 +5,17 @@ Client usage
 After installing the server, build the cmd/main.go file with the name you wish, and add it to your $PATH. Here we'll call it `tsuru`.
 Then you must set the target with your server url, like:
 
+Setting a target
+================
+
 .. highlight:: bash
 
 ::
 
     $ tsuru target tsuru.myhost.com
+
+Authentication
+==============
 
 After that, all you need is create a user and authenticate to start creating apps and pushing code to them:
 
@@ -19,6 +25,12 @@ After that, all you need is create a user and authenticate to start creating app
 
     $ tsuru user create youremail@gmail.com
     $ tsuru login youremail@gmail.com
+
+Apps
+====
+
+Creating an app
+---------------
 
 To create an app:
 
@@ -35,6 +47,9 @@ This will return your app's remote url, you should add it to your git repository
 ::
 
     $ git remote add tsuru git@tsuru.myhost.com:myblog.git
+
+Listing your apps
+-----------------
 
 When your app is ready, you can push to it. To check whether it is ready or not, you can use:
 
@@ -56,6 +71,9 @@ This will return something like:
     | myblog      | STARTED | 10.10.10.10  |
     +-------------+---------+--------------+
 
+Public Keys
+===========
+
 You can try to push now, but you'll get a permission error, because you haven't pushed your key yet.
 
 .. highlight:: bash
@@ -74,6 +92,9 @@ Now you can push you application to your cloud:
     $ git remote add tsuru git@<tsuru-server>:myblog.git
     $ git push tsuru master
 
+Running commands
+================
+
 After that, you can check your app's url in the browser and see your app there. You'll probably need run migrations or other deploy related commands.
 To run a single command, you should use the command line:
 
@@ -81,7 +102,10 @@ To run a single command, you should use the command line:
 
 ::
 
-    $ tsuru app run myblog env/bin/python manage.py syncdb && env/bin/python manage.py migrate
+    $ tsuru run myblog env/bin/python manage.py syncdb && env/bin/python manage.py migrate
+
+Adding hooks
+============
 
 By default, the commands are run from inside the app root directory, which is /home/application. If you have more complicated deploy related commands,
 you should use the app.conf pre-restart and pos-restart scripts, those are run before and after the restart of your app, which is triggered everytime you push code.

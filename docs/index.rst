@@ -12,13 +12,25 @@ What is Tsuru?
 
 Tsuru is an open Platform-as-a-Service (PaaS).
 
-Installation
-============
+Using tsuru
+===========
 
-* :doc:`Tsuru client install guide </apps/client/install>`
-* :doc:`Tsuru server install guide </server/install>`
+Apps
+----
 
-Usage
-=====
+* :doc:`tsuru client install guide </apps/client/install>`
+* :doc:`tsuru client usage guide </apps/client/usage>`
+* :doc:`using services </apps/client/services>`
 
-* :doc:`Tsuru client usage guide </apps/client/usage>`
+Services
+--------
+
+* :doc:`building your service tutorial </services/build>`
+* :doc:`crane install guide </services/install>`
+* :doc:`crane usage guide </services/usage>`
+* :doc:`tsuru services api workflow </services/api>`
+
+Building your own PaaS server
+=============================
+
+* :doc:`server install guide </server/install>`
