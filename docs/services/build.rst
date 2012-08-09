@@ -87,7 +87,7 @@ Let's create a method for this action:
     def add_instance():
         return "", 201
 
-Implementing the bing
+Implementing the bind
 ---------------------
 
 In the bind action, tsuru calls your service via POST on /resources/<service_name>/ with the "hostname" that represents the app hostname on body.
