@@ -98,6 +98,7 @@ func callServiceApi(s service.Service, si service.ServiceInstance) {
 	}
 }
 
+// change my name for validateInstanceForCreation
 func validateForInstanceCreation(s *service.Service, sJson map[string]string, u *auth.User) error {
 	err := db.Session.Services().Find(bson.M{"_id": sJson["service_name"], "status": bson.M{"$ne": "deleted"}}).One(&s)
 	if err != nil {
@@ -118,6 +119,20 @@ func validateForInstanceCreation(s *service.Service, sJson map[string]string, u 
 		msg := fmt.Sprintf("You don't have access to service %s", sJson["service_name"])
 		return &errors.Http{Code: http.StatusForbidden, Message: msg}
 	}
+	return nil
+}
+
+func RemoveServiceInstanceHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
+	name := r.URL.Query().Get(":name")
+	_, err := GetServiceInstanceOrError(name, u)
+	if err != nil {
+		return err
+	}
+	err = db.Session.ServiceInstances().Remove(bson.M{"_id": name})
+	if err != nil {
+		return err
+	}
+	w.Write([]byte("service instance successfuly removed"))
 	return nil
 }
 
