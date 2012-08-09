@@ -70,12 +70,14 @@ For run this app you can do:
 
 If you open your web browser and access the url "http://127.0.0.1:5000/" you will see the "Hello World!".
 
-In our api it's need implements the resources expecteds by the :doc: `Tsuru api workflow`_.
+In our api it's need to implement the resources expecteds by the :doc: `Tsuru api workflow`_.
 
 Provisioning the resource for new instances
 -------------------------------------------
 
-Tsuru expects that 
+For new instances tsuru send's a POST to /resources with the "name" that represents the app name in request body. If the service instance is successfully created, your API should return 201 in status code.
+
+Let's create a method for this action:
 
 .. highlight:: python
 
@@ -87,6 +89,20 @@ Tsuru expects that
 
 Implementing the bing
 ---------------------
+
+In the bind action, tsuru calls your service via POST on /resources/<service_name>/ with the "hostname" that represents the app hostname on body.
+
+If the app is successfully binded to the instance you should return 201 for status code with the variables to be exported in app environ on body with the json format.
+
+For this actions we will be returns a json with a fake variable called "SOMEVAR" to be injected in app environment. To do it in flask it's need import the jsonify method.
+
+.. highlight:: python
+
+::
+
+    from flask import jsonify
+
+Let's create a method for this action:
 
 .. highlight:: python
 
@@ -100,6 +116,12 @@ Implementing the bing
 Implementing the unbinding
 --------------------------
 
+For unbind tsuru calls your service via DELETE on /resources/<service_name>/hostname/<app_hostname>/.
+
+If the app is successfully unbinded from the instance you should use 200 as status code.
+
+Let's create a method for this action:
+
 .. highlight:: python
 
 ::
@@ -111,6 +133,12 @@ Implementing the unbinding
 Implementing the destroy service instance
 -----------------------------------------
 
+For destroy action, tsuru calls your service via DELETE on /resources/<service_name>/.
+
+If the service instance is successfully removed you should use 200 as status code.
+
+Let's create a method for this action:
+
 .. highlight:: python
 
 ::
@@ -118,6 +146,43 @@ Implementing the destroy service instance
     @app.route("/resources/:name/host/:host", methods=["DELETE"])
     def remove_instance(name):
         return "", 200
+
+The final code for our "fake api" developed in flask is:
+
+.. highlight:: python
+
+::
+
+    from flask import Flask
+    from flask import jsonify
+
+
+    app = Flask(__name__)
+
+
+    @app.route("/resources/:name", methods=["POST"])
+    def bind(name):
+    out = jsonify(SOMEVAR="somevalue")
+        return out, 201
+
+
+    @app.route("/resources/:name", methods=["DELETE"])
+    def unbind(name, host):
+        return "", 200
+
+
+    @app.route("/resources", methods=["POST"])
+    def add_instance():
+        return "", 201
+
+
+    @app.route("/resources/:name/host/:host", methods=["DELETE"])
+    def remove_instance(name):
+        return "", 200
+
+
+    if __name__ == "__main__":
+        app.run()
 
 Submiting your service
 ======================
