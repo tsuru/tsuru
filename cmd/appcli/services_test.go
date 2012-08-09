@@ -11,7 +11,7 @@ import (
 func (s *S) TestServiceInfo(c *C) {
 	expected := &cmd.Info{
 		Name:    "service",
-		Usage:   "service (add|list|bind|unbind|instance|doc|info)",
+		Usage:   "service (add|remove|list|bind|unbind|instance|doc|info)",
 		Desc:    "manage your services",
 		MinArgs: 1,
 	}
@@ -409,9 +409,7 @@ func (s *S) TestServiceDocRun(c *C) {
 	result := `This is a test doc for a test service.
 Service test is foo bar.
 `
-	expected := `This is a test doc for a test service.
-Service test is foo bar.
-`
+	expected := result
 	ctx := cmd.Context{
 		Cmds:   []string{},
 		Args:   []string{"foo"},
@@ -431,4 +429,38 @@ func (s *S) TestServiceDocIsASubcommandOfService(c *C) {
 	info, ok := subc["doc"]
 	c.Assert(ok, Equals, true)
 	c.Assert(info, FitsTypeOf, &ServiceDoc{})
+}
+
+func (s *S) TestServiceRemoveInfo(c *C) {
+	i := (&ServiceRemove{}).Info()
+	expected := &cmd.Info{
+		Name:    "remove",
+		Usage:   "service remove <serviceinstancename>",
+		Desc:    "Removes a service instance",
+		MinArgs: 1,
+	}
+	c.Assert(i, DeepEquals, expected)
+}
+
+func (s *S) TestServiceRemoveRun(c *C) {
+	ctx := cmd.Context{
+		Cmds:   []string{},
+		Args:   []string{"some-service-instance"},
+		Stdout: manager.Stdout,
+		Stderr: manager.Stderr,
+	}
+	result := "service instance successfuly removed"
+	client := cmd.NewClient(&http.Client{Transport: &transport{msg: result, status: http.StatusOK}})
+	err := (&ServiceRemove{}).Run(&ctx, client)
+	c.Assert(err, IsNil)
+	obtained := manager.Stdout.(*bytes.Buffer).String()
+	c.Assert(obtained, Equals, result+"\n")
+}
+
+func (s *S) TestServiceRemoveIsASubcommandOfService(c *C) {
+	command := &Service{}
+	subc := command.Subcommands()
+	info, ok := subc["remove"]
+	c.Assert(ok, Equals, true)
+	c.Assert(info, FitsTypeOf, &ServiceRemove{})
 }
