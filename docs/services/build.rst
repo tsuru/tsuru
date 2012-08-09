@@ -49,6 +49,8 @@ With flask installed let's create an file called api.py and added the code to cr
 
 .. highlight:: python
 
+::
+
     from flask import Flask
     app = Flask(__name__)
 
