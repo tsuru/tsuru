@@ -134,7 +134,7 @@ func (s *S) TestCreateInstanceHandlerReturnsErrorWhenUserCannotUseService(c *C) 
 	service.Create()
 	recorder, request := makeRequestToCreateInstanceHandler(c)
 	err := CreateInstanceHandler(recorder, request, s.user)
-	c.Assert(err, ErrorMatches, "^You don't have access to service mysql$")
+	c.Assert(err, ErrorMatches, "^This user does not have access to this service$")
 }
 
 func (s *S) TestCreateInstanceHandlerReturnsErrorWhenServiceDoesntExists(c *C) {

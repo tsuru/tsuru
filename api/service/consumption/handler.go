@@ -108,16 +108,9 @@ func validateForInstanceCreation(s *service.Service, sJson map[string]string, u 
 		}
 		return &errors.Http{Code: http.StatusNotFound, Message: msg}
 	}
-	var teams []auth.Team
-	err = db.Session.Teams().Find(bson.M{"users": u.Email}).All(&teams)
+	_, err = GetServiceOrError(sJson["service_name"], u)
 	if err != nil {
-		return &errors.Http{Code: http.StatusInternalServerError, Message: err.Error()}
-	}
-	q := bson.M{"_id": sJson["service_name"], "teams": bson.M{"$in": auth.GetTeamsNames(teams)}}
-	n, err := db.Session.Services().Find(q).Count()
-	if n == 0 {
-		msg := fmt.Sprintf("You don't have access to service %s", sJson["service_name"])
-		return &errors.Http{Code: http.StatusForbidden, Message: msg}
+		return err
 	}
 	return nil
 }
@@ -154,6 +147,8 @@ func ServicesInstancesHandler(w http.ResponseWriter, r *http.Request, u *auth.Us
 }
 
 func ServiceInstanceStatusHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
+	// #TODO (flaviamissi) should check if user has access to service
+	// just call GetServiceInstanceOrError should be enough
 	siName := r.URL.Query().Get(":instance")
 	var si service.ServiceInstance
 	if siName == "" {
@@ -184,14 +179,9 @@ func ServiceInstanceStatusHandler(w http.ResponseWriter, r *http.Request, u *aut
 
 func ServiceInfoHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	serviceName := r.URL.Query().Get(":name")
-	s := service.Service{Name: serviceName}
-	err := s.Get()
+	_, err := GetServiceOrError(serviceName, u)
 	if err != nil {
-		return &errors.Http{Code: http.StatusNotFound, Message: "Service not found"}
-	}
-	if !auth.CheckUserAccess(s.Teams, u) {
-		msg := "This user does not have access to this service"
-		return &errors.Http{Code: http.StatusForbidden, Message: msg}
+		return err
 	}
 	instances := []service.ServiceInstance{}
 	err = db.Session.ServiceInstances().Find(bson.M{"service_name": serviceName}).All(&instances)
