@@ -9,7 +9,6 @@ import (
 	"github.com/timeredbull/tsuru/api/unit"
 	"github.com/timeredbull/tsuru/config"
 	"github.com/timeredbull/tsuru/db"
-	"github.com/timeredbull/tsuru/fs"
 	"github.com/timeredbull/tsuru/log"
 	"github.com/timeredbull/tsuru/repository"
 	"labix.org/v2/mgo/bson"
@@ -44,7 +43,6 @@ type App struct {
 	Units     []unit.Unit
 	Teams     []string
 	Logs      []Log
-	fsystem   fs.Fs
 }
 
 type Log struct {
@@ -119,10 +117,6 @@ func (a *App) Destroy() error {
 	if err != nil {
 		return err
 	}
-	go func(a *App) {
-		p, _ := repository.GetBarePath(a.Name)
-		a.fs().RemoveAll(p)
-	}(a)
 	u := a.unit()
 	cmd := exec.Command("juju", "destroy-service", a.Name)
 	log.Printf("destroying %s with name %s", a.Framework, a.Name)
@@ -151,13 +145,6 @@ func (a *App) AddOrUpdateUnit(u *unit.Unit) {
 		}
 	}
 	a.Units = append(a.Units, *u)
-}
-
-func (a *App) fs() fs.Fs {
-	if a.fsystem == nil {
-		a.fsystem = fs.OsFs{}
-	}
-	return a.fsystem
 }
 
 func (a *App) findTeam(team *auth.Team) int {
