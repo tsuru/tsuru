@@ -50,7 +50,7 @@ func main() {
 	m.Post("/services/instances", AuthorizationRequiredHandler(consumption.CreateInstanceHandler))
 	m.Put("/services/instances/:instance/:app", AuthorizationRequiredHandler(app.BindHandler))
 	m.Del("/services/instances/:instance/:app", AuthorizationRequiredHandler(app.UnbindHandler))
-	m.Del("/services/c/instances/:instance", AuthorizationRequiredHandler(consumption.RemoveServiceInstanceHandler))
+	m.Del("/services/c/instances/:name", AuthorizationRequiredHandler(consumption.RemoveServiceInstanceHandler))
 	m.Get("/services/instances/:instance/status", AuthorizationRequiredHandler(consumption.ServiceInstanceStatusHandler))
 
 	m.Get("/services", AuthorizationRequiredHandler(consumption.ServicesHandler))
