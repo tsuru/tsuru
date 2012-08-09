@@ -21,7 +21,7 @@ To create your api you can use any programming language or framework. In this tu
 Prerequisites
 -------------
 
-First, let's be shure that Python and pip is already installed:
+First, let's be sure that Python and pip is already installed:
 
 .. highlight:: bash
 
