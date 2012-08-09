@@ -235,6 +235,20 @@ func (s *S) TestRemoveServiceHandlerWithoutPermissionShouldReturn401(c *C) {
 	c.Assert(err, ErrorMatches, "^This user does not have access to this service instance$")
 }
 
+func (s *S) TestRemoveServiceHandlerWIthAssociatedAppsShouldFailAndReturnError(c *C) {
+	se := service.Service{Name: "foo"}
+	err := se.Create()
+	defer db.Session.Services().Remove(bson.M{"_id": se.Name})
+	c.Assert(err, IsNil)
+	si := service.ServiceInstance{Name: "foo-instance", ServiceName: "foo", Apps: []string{"foo-bar"}, Teams: []string{s.team.Name}}
+	err = si.Create()
+	defer db.Session.ServiceInstances().Remove(bson.M{"_id": si.Name})
+	c.Assert(err, IsNil)
+	recorder, request := makeRequestToRemoveInstanceHandler("foo-instance", c)
+	err = RemoveServiceInstanceHandler(recorder, request, s.user)
+	c.Assert(err, ErrorMatches, "^This service instance has binded apps. Unbind them before removing it$")
+}
+
 func (s *S) TestServicesInstancesHandler(c *C) {
 	srv := service.Service{Name: "redis", Teams: []string{s.team.Name}}
 	err := srv.Create()
