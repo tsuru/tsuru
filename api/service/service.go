@@ -33,7 +33,6 @@ func (s *Service) Get() error {
 
 func (s *Service) Create() error {
 	s.Status = "created"
-	s.IsRestricted = false
 	err := db.Session.Services().Insert(s)
 	return err
 }
