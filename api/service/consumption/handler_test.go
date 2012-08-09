@@ -194,7 +194,7 @@ func (s *S) TestAsyncCAllServiceApi(c *C) {
 }
 
 func makeRequestToRemoveInstanceHandler(name string, c *C) (*httptest.ResponseRecorder, *http.Request) {
-	url := fmt.Sprintf("/services/instances/%s?:name=%s", name, name)
+	url := fmt.Sprintf("/services/c/instances/%s?:name=%s", name, name)
 	request, err := http.NewRequest("DELETE", url, nil)
 	c.Assert(err, IsNil)
 	request.Header.Set("Content-Type", "application/json")

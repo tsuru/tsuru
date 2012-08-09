@@ -17,7 +17,7 @@ type Service struct{}
 func (s *Service) Info() *cmd.Info {
 	return &cmd.Info{
 		Name:    "service",
-		Usage:   "service (add|list|bind|unbind|instance|doc|info)",
+		Usage:   "service (add|remove|list|bind|unbind|instance|doc|info)",
 		Desc:    "manage your services",
 		MinArgs: 1,
 	}
@@ -27,6 +27,7 @@ func (s *Service) Subcommands() map[string]interface{} {
 	return map[string]interface{}{
 		"list":     &ServiceList{},
 		"add":      &ServiceAdd{},
+		"remove":   &ServiceRemove{},
 		"bind":     &ServiceBind{},
 		"info":     &ServiceInfo{},
 		"unbind":   &ServiceUnbind{},
@@ -314,6 +315,36 @@ func (c *ServiceDoc) Run(ctx *cmd.Context, client cmd.Doer) error {
 	if err != nil {
 		return err
 	}
+	ctx.Stdout.Write(result)
+	return nil
+}
+
+type ServiceRemove struct{}
+
+func (c *ServiceRemove) Info() *cmd.Info {
+	return &cmd.Info{
+		Name:    "remove",
+		Usage:   "service remove <serviceinstancename>",
+		Desc:    "Removes a service instance",
+		MinArgs: 1,
+	}
+}
+
+func (c *ServiceRemove) Run(ctx *cmd.Context, client cmd.Doer) error {
+	name := ctx.Args[0]
+	url := fmt.Sprintf("/services/c/instances/%s", name)
+	url = cmd.GetUrl(url)
+	request, err := http.NewRequest("DELETE", url, nil)
+	if err != nil {
+		return err
+	}
+	resp, err := client.Do(request)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	result, _ := ioutil.ReadAll(resp.Body)
+	result = append(result, []byte("\n")...)
 	ctx.Stdout.Write(result)
 	return nil
 }

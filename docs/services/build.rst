@@ -162,7 +162,7 @@ The final code for our "fake api" developed in flask is:
 
     @app.route("/resources/:name", methods=["POST"])
     def bind(name):
-    out = jsonify(SOMEVAR="somevalue")
+        out = jsonify(SOMEVAR="somevalue")
         return out, 201
 
 
