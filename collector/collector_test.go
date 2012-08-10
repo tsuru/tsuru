@@ -176,6 +176,12 @@ func (s *S) TestAppStatusInstancePending(c *C) {
 	c.Assert(st, Equals, "creating")
 }
 
+func (s *S) TestAppStatusInstancePendingWhenMachineStateIsRunning(c *C) {
+	u := unit.Unit{AgentState: "not-started", MachineAgentState: "running"}
+	st := appState(&u)
+	c.Assert(st, Equals, "creating")
+}
+
 func (s *S) TestAppStatePending(c *C) {
 	u := unit.Unit{MachineAgentState: "some-state", AgentState: "some-state", InstanceState: "some-other-state"}
 	st := appState(&u)
