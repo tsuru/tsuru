@@ -82,7 +82,7 @@ func (s *S) TestCreate(c *C) {
 	a := App{Name: "appName", Framework: "django"}
 	err = a.Create()
 	c.Assert(err, IsNil)
-	c.Assert(a.State, Equals, "PENDING")
+	c.Assert(a.State, Equals, "pending")
 	defer a.Destroy()
 
 	var retrievedApp App

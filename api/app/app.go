@@ -60,7 +60,7 @@ func (a *App) Get() error {
 }
 
 func (a *App) Create() error {
-	a.State = "PENDING"
+	a.State = "pending"
 	err := db.Session.Apps().Insert(a)
 	if err != nil {
 		return err
