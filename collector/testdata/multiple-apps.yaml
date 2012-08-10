@@ -1,0 +1,76 @@
+machines:
+  0:
+    agent-state: running
+    dns-name: 10.10.10.96
+    instance-id: i-00000376
+    instance-state: running
+  97:
+    agent-state: running
+    dns-name: 10.10.10.189
+    instance-id: i-0000040b
+    instance-state: running
+  100:
+    agent-state: running
+    dns-name: 10.10.10.208
+    instance-id: i-00000422
+    instance-state: running
+  102:
+    agent-state: running
+    dns-name: 10.10.10.131
+    instance-id: i-00000424
+    instance-state: running
+  105:
+    agent-state: running
+    dns-name: 10.10.10.163
+    instance-id: i-00000439
+    instance-state: running
+  107:
+    agent-state: running
+    dns-name: 10.10.10.168
+    instance-id: i-0000043e
+    instance-state: running
+services:
+  andrewzito3:
+    charm: local:centos/django-13
+    exposed: false
+    relations: {}
+    units:
+      andrewzito3/0:
+        agent-state: started
+        machine: 105
+        public-address: server-1081.novalocal
+  flaviapp:
+    charm: local:centos/django-13
+    relations: {}
+    units:
+      flaviapp/0:
+        agent-state: install-error
+        machine: 100
+        public-address: server-1058.novalocal
+  mysqlapi:
+    charm: local:centos/gunicorn-14
+    exposed: false
+    relations: {}
+    units:
+      mysqlapi/1:
+        agent-state: started
+        machine: 102
+        public-address: server-1060.novalocal
+  teste_api_semantica:
+    charm: local:centos/gunicorn-10
+    exposed: false
+    relations: {}
+    units:
+      teste_api_semantica/11:
+        agent-state: started
+        machine: 97
+        public-address: server-1035.novalocal
+  xikin:
+    charm: local:centos/gunicorn-14
+    exposed: false
+    relations: {}
+    units:
+      xikin/1:
+        agent-state: started
+        machine: 107
+        public-address: server-1086.novalocal

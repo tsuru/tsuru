@@ -125,6 +125,49 @@ func (s *S) TestCollectorUpdateTwice(c *C) {
 	c.Assert(len(a.Units), Equals, 1)
 }
 
+func (s *S) TestCollectorUpdateWithMultipleApps(c *C) {
+	appDicts := []map[string]string{
+		map[string]string{
+			"name": "andrewzito3",
+			"ip":   "10.10.10.163",
+		},
+		map[string]string{
+			"name": "flaviapp",
+			"ip":   "10.10.10.208",
+		},
+		map[string]string{
+			"name": "mysqlapi",
+			"ip":   "10.10.10.131",
+		},
+		map[string]string{
+			"name": "teste_api_semantica",
+			"ip":   "10.10.10.189",
+		},
+		map[string]string{
+			"name": "xikin",
+			"ip":   "10.10.10.168",
+		},
+	}
+	apps := make([]app.App, len(appDicts))
+	for i, appDict := range appDicts {
+		a := app.App{Name: appDict["name"]}
+		err := a.Create()
+		c.Assert(err, IsNil)
+		apps[i] = a
+	}
+	var collector Collector
+	jujuOutput, err := ioutil.ReadFile(filepath.Join("testdata", "multiple-apps.yaml"))
+	c.Assert(err, IsNil)
+	data := collector.Parse(jujuOutput)
+	collector.Update(data)
+	for _, appDict := range appDicts {
+		a := app.App{Name: appDict["name"]}
+		err := a.Get()
+		c.Assert(err, IsNil)
+		c.Assert(a.Units[0].Ip, Equals, appDict["ip"])
+	}
+}
+
 func (s *S) TestCollectorParser(c *C) {
 	var collector Collector
 	file, _ := os.Open(filepath.Join("testdata", "output.yaml"))
