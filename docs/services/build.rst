@@ -147,6 +147,21 @@ Let's create a method for this action:
     def remove_instance(name):
         return "", 200
 
+Implementing the url for status checking
+----------------------------------------
+
+To check the status of an instance, tsuru uses the url ``/resources/<service_name>/status``. If the instance is ok, this URL should return 204.
+
+Let's create a function for this action:
+
+.. highlight:: python
+
+::
+
+    @app.route("/resources/:name/status", methods=["GET"])
+    def status(name):
+        return "", 204
+
 The final code for our "fake api" developed in flask is:
 
 .. highlight:: python
@@ -155,7 +170,6 @@ The final code for our "fake api" developed in flask is:
 
     from flask import Flask
     from flask import jsonify
-
 
     app = Flask(__name__)
 
@@ -179,6 +193,11 @@ The final code for our "fake api" developed in flask is:
     @app.route("/resources/:name/host/:host", methods=["DELETE"])
     def remove_instance(name):
         return "", 200
+
+
+    @app.route("/resources/:name/status", methods=["GET"])
+    def status(name):
+        return "", 204
 
 
     if __name__ == "__main__":
@@ -216,7 +235,7 @@ Change the id and the endpoint data with the data of your service:
 
 ::
 
-    id: fakeserviceid1 
+    id: fakeserviceid1
     endpoint:
         production: fakeserviceid1.com
 
