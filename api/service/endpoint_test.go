@@ -1,9 +1,10 @@
 package service
 
 import (
-	"errors"
+	stderrors "errors"
 	"github.com/timeredbull/tsuru/api/bind"
 	"github.com/timeredbull/tsuru/api/unit"
+	"github.com/timeredbull/tsuru/errors"
 	"io/ioutil"
 	. "launchpad.net/gocheck"
 	"net/http"
@@ -163,6 +164,25 @@ func (s *S) TestBindShouldReturnErrorIfTheRequestFail(c *C) {
 	c.Assert(err, ErrorMatches, "^Failed to bind instance her-redis to the app her-app: Server failed to do its job.$")
 }
 
+func (s *S) TestBindShouldReturnPreconditionFailedIfServiceAPIReturnPreconditionFailed(c *C) {
+	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(412)
+	})
+	ts := httptest.NewServer(handler)
+	defer ts.Close()
+	instance := ServiceInstance{Name: "her-redis", ServiceName: "redis"}
+	a := FakeApp{
+		name: "her-app",
+		ip:   "10.0.10.1",
+	}
+	client := &Client{endpoint: ts.URL}
+	_, err := client.Bind(&instance, &a)
+	c.Assert(err, NotNil)
+	e, ok := err.(*errors.Http)
+	c.Assert(ok, Equals, true)
+	c.Assert(e.Message, Equals, "You cannot bind any app to this service instance because it is not ready yet.")
+}
+
 func (s *S) TestUnbindSendADELETERequestToTheResourceURL(c *C) {
 	h := TestHandler{}
 	ts := httptest.NewServer(&h)
@@ -195,7 +215,7 @@ func (s *S) TestUnbindReturnsErrorIfTheRequestFails(c *C) {
 
 func (s *S) TestBuildErrorMessageWithNilResponse(c *C) {
 	cli := Client{}
-	err := errors.New("epic fail")
+	err := stderrors.New("epic fail")
 	c.Assert(cli.buildErrorMessage(err, nil), Equals, "epic fail")
 }
 
@@ -213,7 +233,7 @@ func (s *S) TestBuildErrorMessageWithNonNilResponseAndNilError(c *C) {
 
 func (s *S) TestBuildErrorMessageWithNonNilResponseAndNonNilError(c *C) {
 	cli := Client{}
-	err := errors.New("epic fail")
+	err := stderrors.New("epic fail")
 	body := strings.NewReader("something went wrong")
 	resp := &http.Response{Body: ioutil.NopCloser(body)}
 	c.Assert(cli.buildErrorMessage(err, resp), Equals, "epic fail")
