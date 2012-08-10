@@ -85,7 +85,7 @@ func callServiceApi(s service.Service, si service.ServiceInstance) {
 	for _ = range ch {
 		if checkInstanceState() {
 			if cli, err := s.GetClient("production"); err == nil {
-				si.Env, err = cli.Create(&si)
+				err = cli.Create(&si)
 				if err != nil {
 					log.Print("Error while calling create action from service api.")
 					log.Print(err.Error())

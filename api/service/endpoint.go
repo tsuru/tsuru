@@ -58,30 +58,27 @@ func (c *Client) jsonFromResponse(resp *http.Response) (env map[string]string, e
 	return
 }
 
-func (c *Client) Create(instance *ServiceInstance) (envVars map[string]string, err error) {
+func (c *Client) Create(instance *ServiceInstance) error {
+	var err error
 	log.Print("Attempting to call creation of service instance " + instance.Name + " at " + instance.ServiceName + " api")
 	var resp *http.Response
 	params := map[string][]string{
-		"name":         []string{instance.Name},
-		"service_host": []string{instance.PrivateHost},
+		"name": []string{instance.Name},
 	}
 	if resp, err = c.issueRequest("/resources/", "POST", params); err == nil && resp.StatusCode < 300 {
-		return c.jsonFromResponse(resp)
+		return nil
 	} else {
 		msg := "Failed to create the instance " + instance.Name + ": " + c.buildErrorMessage(err, resp)
 		log.Print(msg)
 		err = errors.New(msg)
 	}
-	return
+	return err
 }
 
 func (c *Client) Destroy(instance *ServiceInstance) (err error) {
 	log.Print("Attempting to call destroy of service instance " + instance.Name + " at " + instance.ServiceName + " api")
 	var resp *http.Response
-	params := map[string][]string{
-		"service_host": []string{instance.PrivateHost},
-	}
-	if resp, err = c.issueRequest("/resources/"+instance.Name+"/", "DELETE", params); err == nil && resp.StatusCode > 299 {
+	if resp, err = c.issueRequest("/resources/"+instance.Name+"/", "DELETE", nil); err == nil && resp.StatusCode > 299 {
 		msg := "Failed to destroy the instance " + instance.Name + ": " + c.buildErrorMessage(err, resp)
 		log.Print(msg)
 		err = errors.New(msg)
@@ -93,8 +90,7 @@ func (c *Client) Bind(instance *ServiceInstance, app bind.App) (envVars map[stri
 	log.Print("Attempting to call bind of service instance " + instance.Name + " and app " + app.GetName() + " at " + instance.ServiceName + " api")
 	var resp *http.Response
 	params := map[string][]string{
-		"hostname":     []string{app.GetUnits()[0].Ip},
-		"service_host": []string{instance.PrivateHost},
+		"hostname": []string{app.GetUnits()[0].Ip},
 	}
 	if resp, err = c.issueRequest("/resources/"+instance.Name+"/", "POST", params); err == nil && resp.StatusCode < 300 {
 		return c.jsonFromResponse(resp)
@@ -109,11 +105,8 @@ func (c *Client) Bind(instance *ServiceInstance, app bind.App) (envVars map[stri
 func (c *Client) Unbind(instance *ServiceInstance, app bind.App) (err error) {
 	log.Print("Attempting to call unbind of service instance " + instance.Name + " and app " + app.GetName() + " at " + instance.ServiceName + " api")
 	var resp *http.Response
-	params := map[string][]string{
-		"service_host": []string{instance.PrivateHost},
-	}
 	url := "/resources/" + instance.Name + "/hostname/" + app.GetUnits()[0].Ip + "/"
-	if resp, err = c.issueRequest(url, "DELETE", params); err == nil && resp.StatusCode > 299 {
+	if resp, err = c.issueRequest(url, "DELETE", nil); err == nil && resp.StatusCode > 299 {
 		msg := "Failed to unbind instance " + instance.Name + " from the app " + app.GetName() + ": " + c.buildErrorMessage(err, resp)
 		log.Print(msg)
 		err = errors.New(msg)
@@ -124,7 +117,7 @@ func (c *Client) Unbind(instance *ServiceInstance, app bind.App) (err error) {
 // Connects into service's api
 // The api should be prepared to receive the request,
 // like below:
-// GET /resources/<name>/status/?service_host=1.1.1.1
+// GET /resources/<name>/status/
 // The service host here is the private ip of the service instance
 // 204 means the service is up, 500 means the service is down
 func (c *Client) Status(instance *ServiceInstance) (string, error) {
@@ -134,10 +127,7 @@ func (c *Client) Status(instance *ServiceInstance) (string, error) {
 		err  error
 	)
 	url := "/resources/" + instance.Name + "/status/"
-	params := map[string][]string{
-		"service_host": []string{instance.PrivateHost},
-	}
-	if resp, err = c.issueRequest(url, "GET", params); err == nil && resp.StatusCode == 204 {
+	if resp, err = c.issueRequest(url, "GET", nil); err == nil && resp.StatusCode == 204 {
 		return "up", nil
 	} else if err == nil && resp.StatusCode == 500 {
 		return "down", nil

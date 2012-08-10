@@ -74,26 +74,6 @@ func (suite *S) TestCreateInstanceHandlerSavesServiceInstanceInDb(c *C) {
 	c.Assert(si.ServiceName, Equals, "mysql")
 }
 
-func (s *S) TestCreateInstanceHandlerCallsTheServiceAPIAndSaveEnvironmentVariablesInTheInstance(c *C) {
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte(`{"DATABASE_HOST":"localhost"}`))
-	}))
-	defer ts.Close()
-	srv := service.Service{Name: "mysql", Teams: []string{s.team.Name}, Endpoint: map[string]string{"production": ts.URL}}
-	srv.Create()
-	recorder, request := makeRequestToCreateInstanceHandler(c)
-	err := CreateInstanceHandler(recorder, request, s.user)
-	c.Assert(err, IsNil)
-	var si service.ServiceInstance
-	db.Session.ServiceInstances().Find(bson.M{"_id": "brainSQL"}).One(&si)
-	si.Host = "192.168.0.110"
-	si.State = "running"
-	db.Session.ServiceInstances().Update(bson.M{"_id": si.Name}, si)
-	time.Sleep(2e9)
-	db.Session.ServiceInstances().Find(bson.M{"_id": "brainSQL"}).One(&si)
-	c.Assert(si.Env, DeepEquals, map[string]string{"DATABASE_HOST": "localhost"})
-}
-
 func (s *S) TestCreateInstanceHandlerSavesAllTeamsThatTheGivenUserIsMemberAndHasAccessToTheServiceInTheInstance(c *C) {
 	t := auth.Team{Name: "judaspriest", Users: []string{s.user.Email}}
 	err := db.Session.Teams().Insert(t)
@@ -155,7 +135,7 @@ func (s *S) TestCreateInstanceHandlerReturnsErrorWhenServiceIsDeleted(c *C) {
 
 func (s *S) TestCallServiceApi(c *C) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte(`{"DATABASE_USER":"root","DATABASE_PASSWORD":"s3cr3t"}`))
+		w.WriteHeader(http.StatusCreated)
 	}))
 	defer ts.Close()
 	srv := service.Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}}
@@ -167,13 +147,12 @@ func (s *S) TestCallServiceApi(c *C) {
 	defer db.Session.Services().Remove(bson.M{"_id": "mysql"})
 	callServiceApi(srv, si)
 	db.Session.ServiceInstances().Find(bson.M{"_id": si.Name}).One(&si)
-	c.Assert(si.Env, DeepEquals, map[string]string{"DATABASE_USER": "root", "DATABASE_PASSWORD": "s3cr3t"})
 
 }
 
-func (s *S) TestAsyncCAllServiceApi(c *C) {
+func (s *S) TestAsyncCallServiceApi(c *C) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte(`{"DATABASE_USER":"root","DATABASE_PASSWORD":"s3cr3t"}`))
+		w.WriteHeader(http.StatusCreated)
 	}))
 	defer ts.Close()
 	srv := service.Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}}
@@ -190,7 +169,6 @@ func (s *S) TestAsyncCAllServiceApi(c *C) {
 	c.Assert(err, IsNil)
 	time.Sleep(2e9)
 	db.Session.ServiceInstances().Find(bson.M{"_id": si.Name}).One(&si)
-	c.Assert(si.Env, DeepEquals, map[string]string{"DATABASE_USER": "root", "DATABASE_PASSWORD": "s3cr3t"})
 }
 
 func makeRequestToRemoveInstanceHandler(name string, c *C) (*httptest.ResponseRecorder, *http.Request) {
