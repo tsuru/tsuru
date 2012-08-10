@@ -13,7 +13,6 @@ import (
 	. "launchpad.net/gocheck"
 	"net/http"
 	"net/http/httptest"
-	"time"
 )
 
 func (s *S) makeRequestToServicesHandler(c *C) (*httptest.ResponseRecorder, *http.Request) {
@@ -67,8 +66,6 @@ func (suite *S) TestCreateInstanceHandlerSavesServiceInstanceInDb(c *C) {
 	var si service.ServiceInstance
 	err = db.Session.ServiceInstances().Find(bson.M{"_id": "brainSQL", "service_name": "mysql"}).One(&si)
 	c.Assert(err, IsNil)
-	si.Host = "192.168.0.110"
-	si.State = "running"
 	db.Session.ServiceInstances().Update(bson.M{"_id": si.Name}, si)
 	c.Assert(si.Name, Equals, "brainSQL")
 	c.Assert(si.ServiceName, Equals, "mysql")
@@ -87,12 +84,11 @@ func (s *S) TestCreateInstanceHandlerSavesAllTeamsThatTheGivenUserIsMemberAndHas
 	var si service.ServiceInstance
 	err = db.Session.ServiceInstances().Find(bson.M{"_id": "brainSQL"}).One(&si)
 	c.Assert(err, IsNil)
-	si.Host = "192.168.0.110"
-	si.State = "running"
 	db.Session.ServiceInstances().Update(bson.M{"_id": si.Name}, si)
 	c.Assert(si.Teams, DeepEquals, []string{s.team.Name})
 }
 
+// FIXME (#98): remove this test and this guarantee.
 func (s *S) TestCreateInstanceHandlerDoesNotFailIfTheServiceDoesNotDeclareEndpoint(c *C) {
 	srv := service.Service{Name: "mysql", Teams: []string{s.team.Name}}
 	srv.Create()
@@ -104,8 +100,6 @@ func (s *S) TestCreateInstanceHandlerDoesNotFailIfTheServiceDoesNotDeclareEndpoi
 	c.Assert(err, IsNil)
 	err = db.Session.ServiceInstances().Find(bson.M{"_id": "brainSQL"}).One(&si)
 	c.Assert(err, IsNil)
-	si.Host = "192.168.0.110"
-	si.State = "running"
 	db.Session.ServiceInstances().Update(bson.M{"_id": si.Name}, si)
 }
 
@@ -121,54 +115,6 @@ func (s *S) TestCreateInstanceHandlerReturnsErrorWhenServiceDoesntExists(c *C) {
 	recorder, request := makeRequestToCreateInstanceHandler(c)
 	err := CreateInstanceHandler(recorder, request, s.user)
 	c.Assert(err, ErrorMatches, "^Service mysql does not exist.$")
-}
-
-func (s *S) TestCreateInstanceHandlerReturnsErrorWhenServiceIsDeleted(c *C) {
-	service := service.Service{Name: "mysql", Status: "deleted", Teams: []string{s.team.Name}}
-	err := db.Session.Services().Insert(service)
-	c.Assert(err, IsNil)
-	defer db.Session.Services().Remove(bson.M{"_id": service.Name})
-	recorder, request := makeRequestToCreateInstanceHandler(c)
-	err = CreateInstanceHandler(recorder, request, s.user)
-	c.Assert(err, ErrorMatches, "^Service mysql does not exist.$")
-}
-
-func (s *S) TestCallServiceApi(c *C) {
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusCreated)
-	}))
-	defer ts.Close()
-	srv := service.Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}}
-	err := srv.Create()
-	si := service.ServiceInstance{Name: "brainSQL", Host: "192.168.0.110", State: "running"}
-	si.Create()
-	defer si.Delete()
-	c.Assert(err, IsNil)
-	defer db.Session.Services().Remove(bson.M{"_id": "mysql"})
-	callServiceApi(srv, si)
-	db.Session.ServiceInstances().Find(bson.M{"_id": si.Name}).One(&si)
-
-}
-
-func (s *S) TestAsyncCallServiceApi(c *C) {
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusCreated)
-	}))
-	defer ts.Close()
-	srv := service.Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}}
-	err := srv.Create()
-	si := service.ServiceInstance{Name: "brainSQL"}
-	si.Create()
-	defer si.Delete()
-	go callServiceApi(srv, si)
-	c.Assert(err, IsNil)
-	defer db.Session.Services().Remove(bson.M{"_id": "mysql"})
-	si.State = "running"
-	si.Host = "192.168.0.110"
-	err = db.Session.ServiceInstances().Update(bson.M{"_id": si.Name}, si)
-	c.Assert(err, IsNil)
-	time.Sleep(2e9)
-	db.Session.ServiceInstances().Find(bson.M{"_id": si.Name}).One(&si)
 }
 
 func makeRequestToRemoveInstanceHandler(name string, c *C) (*httptest.ResponseRecorder, *http.Request) {
@@ -404,8 +350,6 @@ func (s *S) TestServiceInfoHandler(c *C) {
 		ServiceName: srv.Name,
 		Apps:        []string{},
 		Teams:       []string{},
-		Host:        "",
-		PrivateHost: "",
 		State:       "creating",
 	}
 	err = si1.Create()
@@ -416,8 +360,6 @@ func (s *S) TestServiceInfoHandler(c *C) {
 		ServiceName: srv.Name,
 		Apps:        []string{"wordpress"},
 		Teams:       []string{},
-		Host:        "",
-		PrivateHost: "",
 		State:       "creating",
 	}
 	err = si2.Create()

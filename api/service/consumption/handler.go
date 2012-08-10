@@ -11,7 +11,6 @@ import (
 	"io/ioutil"
 	"labix.org/v2/mgo/bson"
 	"net/http"
-	"time"
 )
 
 func ServicesHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
@@ -64,38 +63,20 @@ func CreateInstanceHandler(w http.ResponseWriter, r *http.Request, u *auth.User)
 		ServiceName: sJson["service_name"],
 		Teams:       teamNames,
 	}
-	go callServiceApi(s, si)
+	go func() {
+		if cli, err := s.GetClient("production"); err == nil {
+			if cli.Create(&si) != nil {
+				log.Print("Error while calling create action from service api.")
+				log.Print(err.Error())
+			}
+		}
+	}()
 	err = si.Create()
 	if err != nil {
 		return err
 	}
 	fmt.Fprint(w, "success")
 	return nil
-}
-
-func callServiceApi(s service.Service, si service.ServiceInstance) {
-	checkInstanceState := func() bool {
-		if when, ok := s.Bootstrap["when"]; !ok || when != service.OnNewInstance {
-			return true
-		}
-		db.Session.ServiceInstances().Find(bson.M{"_id": si.Name}).One(&si)
-		return si.Host != "" && si.State == "running"
-	}
-	ch := time.Tick(1e9)
-	for _ = range ch {
-		if checkInstanceState() {
-			if cli, err := s.GetClient("production"); err == nil {
-				err = cli.Create(&si)
-				if err != nil {
-					log.Print("Error while calling create action from service api.")
-					log.Print(err.Error())
-				}
-				si.State = "running"
-				db.Session.ServiceInstances().Update(bson.M{"_id": si.Name}, si)
-			}
-			break
-		}
-	}
 }
 
 // change my name for validateInstanceForCreation

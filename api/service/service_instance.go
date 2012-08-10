@@ -14,8 +14,6 @@ type ServiceInstance struct {
 	ServiceName string `bson:"service_name"`
 	Apps        []string
 	Teams       []string
-	Host        string
-	PrivateHost string `bson:"private_host"`
 	State       string
 }
 
