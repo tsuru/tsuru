@@ -114,46 +114,6 @@ func (s *S) TestBindUnbindsWhenDatabaseUpdateGoesWrong(c *C) {
 	c.Assert(called, Equals, true)
 }
 
-func (s *S) TestBindAddsAllEnvironmentVariablesFromServiceInstanceToTheApp(c *C) {
-	srvc := service.Service{Name: "mysql"}
-	err := srvc.Create()
-	c.Assert(err, IsNil)
-	defer db.Session.Services().Remove(bson.M{"_id": "mysql"})
-	instance := service.ServiceInstance{
-		Name:        "my-mysql",
-		ServiceName: "mysql",
-		Teams:       []string{s.team.Name},
-		Env:         map[string]string{"DATABASE_NAME": "mymysql", "DATABASE_HOST": "localhost"},
-		State:       "running",
-	}
-	err = instance.Create()
-	c.Assert(err, IsNil)
-	defer db.Session.ServiceInstances().Remove(bson.M{"_id": "my-mysql"})
-	a := app.App{Name: "painkiller", Teams: []string{s.team.Name}}
-	err = a.Create()
-	c.Assert(err, IsNil)
-	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
-	err = instance.Bind(&a)
-	c.Assert(err, IsNil)
-	err = db.Session.Apps().Find(bson.M{"name": a.Name}).One(&a)
-	c.Assert(err, IsNil)
-	expectedEnv := map[string]app.EnvVar{
-		"DATABASE_NAME": app.EnvVar{
-			Name:         "DATABASE_NAME",
-			Value:        "mymysql",
-			Public:       false,
-			InstanceName: instance.Name,
-		},
-		"DATABASE_HOST": app.EnvVar{
-			Name:         "DATABASE_HOST",
-			Value:        "localhost",
-			Public:       false,
-			InstanceName: instance.Name,
-		},
-	}
-	c.Assert(a.Env, DeepEquals, expectedEnv)
-}
-
 func (s *S) TestBindCallTheServiceAPIAndSetsEnvironmentVariableReturnedFromTheCall(c *C) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(`{"DATABASE_USER":"root","DATABASE_PASSWORD":"s3cr3t"}`))
@@ -167,7 +127,6 @@ func (s *S) TestBindCallTheServiceAPIAndSetsEnvironmentVariableReturnedFromTheCa
 		Name:        "my-mysql",
 		ServiceName: "mysql",
 		Teams:       []string{s.team.Name},
-		Env:         map[string]string{"DATABASE_NAME": "mymysql", "DATABASE_HOST": "localhost"},
 		State:       "running",
 	}
 	err = instance.Create()
@@ -186,18 +145,6 @@ func (s *S) TestBindCallTheServiceAPIAndSetsEnvironmentVariableReturnedFromTheCa
 	err = db.Session.Apps().Find(bson.M{"name": a.Name}).One(&a)
 	c.Assert(err, IsNil)
 	expectedEnv := map[string]app.EnvVar{
-		"DATABASE_NAME": app.EnvVar{
-			Name:         "DATABASE_NAME",
-			Value:        "mymysql",
-			Public:       false,
-			InstanceName: instance.Name,
-		},
-		"DATABASE_HOST": app.EnvVar{
-			Name:         "DATABASE_HOST",
-			Value:        "localhost",
-			Public:       false,
-			InstanceName: instance.Name,
-		},
 		"DATABASE_USER": app.EnvVar{
 			Name:         "DATABASE_USER",
 			Value:        "root",

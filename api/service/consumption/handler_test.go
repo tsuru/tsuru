@@ -407,7 +407,6 @@ func (s *S) TestServiceInfoHandler(c *C) {
 		Host:        "",
 		PrivateHost: "",
 		State:       "creating",
-		Env:         map[string]string{},
 	}
 	err = si1.Create()
 	c.Assert(err, IsNil)
@@ -420,7 +419,6 @@ func (s *S) TestServiceInfoHandler(c *C) {
 		Host:        "",
 		PrivateHost: "",
 		State:       "creating",
-		Env:         map[string]string{},
 	}
 	err = si2.Create()
 	c.Assert(err, IsNil)

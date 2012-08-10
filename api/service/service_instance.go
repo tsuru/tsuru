@@ -17,7 +17,6 @@ type ServiceInstance struct {
 	Host        string
 	PrivateHost string `bson:"private_host"`
 	State       string
-	Env         map[string]string
 }
 
 func (si *ServiceInstance) Create() error {
@@ -91,7 +90,6 @@ func (si *ServiceInstance) Bind(app bind.App) error {
 			})
 		}
 	}
-	setEnv(si.Env)
 	var cli *Client
 	if cli, err = si.Service().GetClient("production"); err == nil {
 		if len(app.GetUnits()) == 0 {

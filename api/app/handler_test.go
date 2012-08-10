@@ -1324,7 +1324,6 @@ func (s *S) TestBindHandler(c *C) {
 		Name:        "my-mysql",
 		ServiceName: "mysql",
 		Teams:       []string{s.team.Name},
-		Env:         map[string]string{"DATABASE_NAME": "mymysql", "DATABASE_HOST": "localhost"},
 		State:       "running",
 	}
 	err = instance.Create()
@@ -1350,18 +1349,6 @@ func (s *S) TestBindHandler(c *C) {
 	err = db.Session.Apps().Find(bson.M{"name": a.Name}).One(&a)
 	c.Assert(err, IsNil)
 	expectedEnv := map[string]EnvVar{
-		"DATABASE_NAME": EnvVar{
-			Name:         "DATABASE_NAME",
-			Value:        "mymysql",
-			Public:       false,
-			InstanceName: instance.Name,
-		},
-		"DATABASE_HOST": EnvVar{
-			Name:         "DATABASE_HOST",
-			Value:        "localhost",
-			Public:       false,
-			InstanceName: instance.Name,
-		},
 		"DATABASE_USER": EnvVar{
 			Name:         "DATABASE_USER",
 			Value:        "root",
