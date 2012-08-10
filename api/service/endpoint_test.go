@@ -175,7 +175,7 @@ func (s *S) TestUnbindSendADELETERequestToTheResourceURL(c *C) {
 	client := &Client{endpoint: ts.URL}
 	err := client.Unbind(&instance, &a)
 	c.Assert(err, IsNil)
-	c.Assert(h.url, Equals, "/resources/heaven-can-wait/hostname/2.2.2.2/?service_host=192.168.1.10")
+	c.Assert(h.url, Equals, "/resources/heaven-can-wait/hostname/2.2.2.2/")
 	c.Assert(h.method, Equals, "DELETE")
 }
 
