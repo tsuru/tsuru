@@ -68,30 +68,14 @@ func (s *S) TestCreateShouldSendTheNameOfTheResourceToTheEndpoint(c *C) {
 	defer ts.Close()
 	instance := ServiceInstance{Name: "my-redis", ServiceName: "redis", Host: "127.0.0.1", PrivateHost: "127.0.0.1"}
 	client := &Client{endpoint: ts.URL}
-	_, err := client.Create(&instance)
+	err := client.Create(&instance)
 	c.Assert(err, IsNil)
 	expectedUrl := "/resources/"
 	c.Assert(h.url, Equals, expectedUrl)
 	c.Assert(h.method, Equals, "POST")
 	v, err := url.ParseQuery(string(h.body))
 	c.Assert(err, IsNil)
-	c.Assert(map[string][]string(v), DeepEquals, map[string][]string{"name": []string{"my-redis"}, "service_host": []string{"127.0.0.1"}})
-}
-
-func (s *S) TestCreateShouldReturnTheMapWithTheEnvironmentVariables(c *C) {
-	expected := map[string]string{
-		"MYSQL_DATABASE_NAME": "CHICO",
-		"MYSQL_HOST":          "localhost",
-		"MYSQL_PORT":          "3306",
-	}
-	h := TestHandler{}
-	ts := httptest.NewServer(&h)
-	defer ts.Close()
-	instance := ServiceInstance{Name: "your-redis", ServiceName: "redis", Host: "127.0.0.1", PrivateHost: "127.0.0.1"}
-	client := &Client{endpoint: ts.URL}
-	env, err := client.Create(&instance)
-	c.Assert(err, IsNil)
-	c.Assert(env, DeepEquals, expected)
+	c.Assert(map[string][]string(v), DeepEquals, map[string][]string{"name": []string{"my-redis"}})
 }
 
 func (s *S) TestCreateShouldReturnErrorIfTheRequestFail(c *C) {
@@ -99,7 +83,7 @@ func (s *S) TestCreateShouldReturnErrorIfTheRequestFail(c *C) {
 	defer ts.Close()
 	instance := ServiceInstance{Name: "his-redis", ServiceName: "redis", Host: "127.0.0.1", PrivateHost: "127.0.0.1"}
 	client := &Client{endpoint: ts.URL}
-	_, err := client.Create(&instance)
+	err := client.Create(&instance)
 	c.Assert(err, NotNil)
 	c.Assert(err, ErrorMatches, "^Failed to create the instance "+instance.Name+": Server failed to do its job.$")
 }

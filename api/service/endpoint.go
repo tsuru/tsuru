@@ -58,21 +58,21 @@ func (c *Client) jsonFromResponse(resp *http.Response) (env map[string]string, e
 	return
 }
 
-func (c *Client) Create(instance *ServiceInstance) (envVars map[string]string, err error) {
+func (c *Client) Create(instance *ServiceInstance) error {
+	var err error
 	log.Print("Attempting to call creation of service instance " + instance.Name + " at " + instance.ServiceName + " api")
 	var resp *http.Response
 	params := map[string][]string{
-		"name":         []string{instance.Name},
-		"service_host": []string{instance.PrivateHost},
+		"name": []string{instance.Name},
 	}
 	if resp, err = c.issueRequest("/resources/", "POST", params); err == nil && resp.StatusCode < 300 {
-		return c.jsonFromResponse(resp)
+		return nil
 	} else {
 		msg := "Failed to create the instance " + instance.Name + ": " + c.buildErrorMessage(err, resp)
 		log.Print(msg)
 		err = errors.New(msg)
 	}
-	return
+	return err
 }
 
 func (c *Client) Destroy(instance *ServiceInstance) (err error) {
