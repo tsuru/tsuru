@@ -28,7 +28,7 @@ func (si *ServiceInstance) Create() error {
 }
 
 func (si *ServiceInstance) Delete() error {
-	doc := bson.M{"_id": si.Name, "apps": si.Apps}
+	doc := bson.M{"_id": si.Name}
 	return db.Session.ServiceInstances().Remove(doc)
 }
 
@@ -76,7 +76,10 @@ func (si *ServiceInstance) update() error {
 }
 
 func (si *ServiceInstance) Bind(app bind.App) error {
-	var err error
+	err := si.AddApp(app.GetName())
+	if err != nil {
+		return &errors.Http{Code: http.StatusConflict, Message: "This app is already binded to this service instance."}
+	}
 	var envVars []bind.EnvVar
 	var setEnv = func(env map[string]string) {
 		for k, v := range env {
@@ -99,10 +102,6 @@ func (si *ServiceInstance) Bind(app bind.App) error {
 			return err
 		}
 		setEnv(env)
-	}
-	err = si.AddApp(app.GetName())
-	if err != nil {
-		return &errors.Http{Code: http.StatusConflict, Message: "This app is already binded to this service instance."}
 	}
 	err = si.update()
 	if err != nil {
