@@ -91,8 +91,8 @@ func (s *S) TestBindDoNotAddsAppToServiceInstanceIfCommunicationWithEndpointGoes
 func (s *S) TestBindUnbindsWhenDatabaseUpdateGoesWrong(c *C) {
 	called := false
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		called = r.Method == "DELETE" && r.URL.Path == "/resources/their-mysql/hostname/127.0.0.1/"
-		if r.URL.String() == "/resources/their-mysql/" {
+		called = r.Method == "DELETE" && r.URL.Path == "/resources/their-mysql/hostname/127.0.0.1"
+		if r.URL.String() == "/resources/their-mysql" {
 			w.Write([]byte(`{"DATABASE_USER":"root","DATABASE_PASSWORD":"s3cr3t"}`))
 		}
 	}))
@@ -285,7 +285,7 @@ func (s *S) TestUnbindRemovesEnvironmentVariableFromApp(c *C) {
 func (s *S) TestUnbindCallsTheUnbindMethodFromAPI(c *C) {
 	var called bool
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		called = r.Method == "DELETE" && r.URL.Path == "/resources/my-mysql/hostname/127.0.0.1/"
+		called = r.Method == "DELETE" && r.URL.Path == "/resources/my-mysql/hostname/127.0.0.1"
 	}))
 	defer ts.Close()
 	srvc := service.Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}}
