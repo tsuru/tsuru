@@ -15,15 +15,14 @@ func ServiceAndServiceInstancesByTeams(teamKind string, u *auth.User) []ServiceM
 	var teams []auth.Team
 	q := bson.M{"users": u.Email}
 	db.Session.Teams().Find(q).Select(bson.M{"_id": 1}).All(&teams)
-    var services []Service
-    q = bson.M{"$or":
-        []bson.M{
-            bson.M{
-                teamKind: bson.M{"$in": auth.GetTeamsNames(teams)},
-            },
-            bson.M{"is_restricted": false},
-        },
-    }
+	var services []Service
+	q = bson.M{"$or": []bson.M{
+		bson.M{
+			teamKind: bson.M{"$in": auth.GetTeamsNames(teams)},
+		},
+		bson.M{"is_restricted": false},
+	},
+	}
 	db.Session.Services().Find(q).Select(bson.M{"name": 1}).All(&services)
 	var sInsts []ServiceInstance
 	q = bson.M{"service_name": bson.M{"$in": GetServicesNames(services)}}

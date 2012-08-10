@@ -282,9 +282,10 @@ func (s *S) TestServicesInstancesHandlerReturnsOnlyServicesThatTheUserHasAccess(
 	err := u.Create()
 	c.Assert(err, IsNil)
 	defer db.Session.Users().Remove(bson.M{"email": u.Email})
-	srv := service.Service{Name: "redis"}
-	err = srv.Create()
+	srv := service.Service{Name: "redis", IsRestricted: true}
+	err = db.Session.Services().Insert(srv)
 	c.Assert(err, IsNil)
+	defer db.Session.Services().Remove(bson.M{"_id": "redis"})
 	instance := service.ServiceInstance{
 		Name:        "redis-globo",
 		ServiceName: "redis",

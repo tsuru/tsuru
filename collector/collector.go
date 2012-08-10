@@ -69,6 +69,9 @@ func appState(u *unit.Unit) string {
 	if u.MachineAgentState == "pending" || u.InstanceState == "pending" || u.MachineAgentState == "" || u.InstanceState == "" {
 		return "creating"
 	}
+	if u.MachineAgentState == "running" && u.AgentState == "not-started" {
+		return "creating"
+	}
 	if u.MachineAgentState == "running" && u.InstanceState == "running" && u.AgentState == "pending" {
 		return "installing"
 	}

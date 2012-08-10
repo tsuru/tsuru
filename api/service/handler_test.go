@@ -38,9 +38,9 @@ func (s *S) TestServiceAndServiceInstancesByTeamsShouldAlsoReturnServicesWithIsR
 	srv := Service{Name: "mongodb", OwnerTeams: []string{s.team.Name}}
 	srv.Create()
 	defer srv.Delete()
-    srv2 := Service{Name: "mysql"}
-    srv2.Create()
-    defer srv2.Delete()
+	srv2 := Service{Name: "mysql"}
+	srv2.Create()
+	defer srv2.Delete()
 	si := ServiceInstance{Name: "my_nosql", ServiceName: srv.Name}
 	si.Create()
 	defer si.Delete()
