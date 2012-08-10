@@ -78,10 +78,7 @@ func (c *Client) Create(instance *ServiceInstance) error {
 func (c *Client) Destroy(instance *ServiceInstance) (err error) {
 	log.Print("Attempting to call destroy of service instance " + instance.Name + " at " + instance.ServiceName + " api")
 	var resp *http.Response
-	params := map[string][]string{
-		"service_host": []string{instance.PrivateHost},
-	}
-	if resp, err = c.issueRequest("/resources/"+instance.Name+"/", "DELETE", params); err == nil && resp.StatusCode > 299 {
+	if resp, err = c.issueRequest("/resources/"+instance.Name+"/", "DELETE", nil); err == nil && resp.StatusCode > 299 {
 		msg := "Failed to destroy the instance " + instance.Name + ": " + c.buildErrorMessage(err, resp)
 		log.Print(msg)
 		err = errors.New(msg)

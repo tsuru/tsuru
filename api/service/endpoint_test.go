@@ -88,7 +88,7 @@ func (s *S) TestCreateShouldReturnErrorIfTheRequestFail(c *C) {
 	c.Assert(err, ErrorMatches, "^Failed to create the instance "+instance.Name+": Server failed to do its job.$")
 }
 
-func (s *S) TestDestroyShouldSendADELETERequestToTheResourceURLWithGetParameters(c *C) {
+func (s *S) TestDestroyShouldSendADELETERequestToTheResourceURL(c *C) {
 	h := TestHandler{}
 	ts := httptest.NewServer(&h)
 	defer ts.Close()
@@ -96,7 +96,7 @@ func (s *S) TestDestroyShouldSendADELETERequestToTheResourceURLWithGetParameters
 	client := &Client{endpoint: ts.URL}
 	err := client.Destroy(&instance)
 	c.Assert(err, IsNil)
-	c.Assert(h.url, Equals, "/resources/"+instance.Name+"/?service_host=127.0.0.1")
+	c.Assert(h.url, Equals, "/resources/"+instance.Name+"/")
 	c.Assert(h.method, Equals, "DELETE")
 }
 
