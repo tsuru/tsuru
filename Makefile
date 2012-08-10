@@ -69,3 +69,6 @@ test:
 	@go build -o collect ./collector/
 	@./collect -dry=true -config=$(PWD)/etc/tsuru.conf
 	@rm -f collect websrv
+
+doc:
+	@cd docs && make html
