@@ -283,7 +283,7 @@ func (s *S) TestUnbindRemovesAppFromServiceInstance(c *C) {
 		Apps:        []string{"painkiller"},
 	}
 	instance.Create()
-	defer instance.Delete()
+	defer db.Session.ServiceInstances().Remove(bson.M{"_id": "my-mysql"})
 	a := app.App{Name: "painkiller", Teams: []string{s.team.Name}}
 	a.Create()
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
