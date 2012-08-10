@@ -28,7 +28,7 @@ func (si *ServiceInstance) Create() error {
 }
 
 func (si *ServiceInstance) Delete() error {
-	doc := bson.M{"_id": si.Name, "apps": si.Apps}
+	doc := bson.M{"_id": si.Name}
 	return db.Session.ServiceInstances().Remove(doc)
 }
 
