@@ -8,6 +8,11 @@ contribute
 Pull requests are very welcome! Make sure your patches are well tested and documented :)
 
 
+development environment
+=======================
+
+See this guide to `setting up you tsuru development environment </community/setting-up-your-tsuru-development-environment>`
+
 running the tests
 =================
 

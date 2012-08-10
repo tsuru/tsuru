@@ -34,3 +34,10 @@ Building your own PaaS server
 =============================
 
 * :doc:`server install guide </server/install>`
+
+Contribute
+==========
+
+* :doc:`setting up your tsuru development environment </community/setting-up-your-tsuru-development-environment>`
+* :doc:`how to contribute </contribute>`
+* :doc:`community </community>`
