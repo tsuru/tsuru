@@ -36,7 +36,7 @@ func (c *Client) issueRequest(path, method string, params map[string][]string) (
 	} else {
 		body = strings.NewReader(v.Encode())
 	}
-	url := strings.TrimRight(c.endpoint, "/") + "/" + strings.TrimLeft(path, "/") + suffix
+	url := strings.TrimRight(c.endpoint, "/") + "/" + strings.Trim(path, "/") + suffix
 	req, err := http.NewRequest(method, url, body)
 	if err != nil {
 		log.Print("Got error while creating request: " + err.Error())
