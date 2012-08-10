@@ -90,8 +90,7 @@ func (c *Client) Bind(instance *ServiceInstance, app bind.App) (envVars map[stri
 	log.Print("Attempting to call bind of service instance " + instance.Name + " and app " + app.GetName() + " at " + instance.ServiceName + " api")
 	var resp *http.Response
 	params := map[string][]string{
-		"hostname":     []string{app.GetUnits()[0].Ip},
-		"service_host": []string{instance.PrivateHost},
+		"hostname": []string{app.GetUnits()[0].Ip},
 	}
 	if resp, err = c.issueRequest("/resources/"+instance.Name+"/", "POST", params); err == nil && resp.StatusCode < 300 {
 		return c.jsonFromResponse(resp)

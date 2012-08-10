@@ -126,7 +126,7 @@ func (s *S) TestBindShouldSendAPOSTToTheResourceURL(c *C) {
 	c.Assert(h.method, Equals, "POST")
 	v, err := url.ParseQuery(string(h.body))
 	c.Assert(err, IsNil)
-	c.Assert(map[string][]string(v), DeepEquals, map[string][]string{"hostname": []string{"10.0.10.1"}, "service_host": []string{"127.0.0.1"}})
+	c.Assert(map[string][]string(v), DeepEquals, map[string][]string{"hostname": []string{"10.0.10.1"}})
 }
 
 func (s *S) TestBindShouldReturnMapWithTheEnvironmentVariable(c *C) {
