@@ -149,7 +149,7 @@ func (s *S) TestBindShouldReturnMapWithTheEnvironmentVariable(c *C) {
 	c.Assert(env, DeepEquals, expected)
 }
 
-func (s *S) TestBindShouldreturnErrorIfTheRequestFail(c *C) {
+func (s *S) TestBindShouldReturnErrorIfTheRequestFail(c *C) {
 	ts := httptest.NewServer(http.HandlerFunc(failHandler))
 	defer ts.Close()
 	instance := ServiceInstance{Name: "her-redis", ServiceName: "redis"}
