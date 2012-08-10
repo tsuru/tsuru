@@ -446,10 +446,6 @@ func serviceInstanceAndAppOrError(instanceName, appName string, u *auth.User) (i
 		err = &errors.Http{Code: http.StatusForbidden, Message: "This user does not have access to this instance"}
 		return
 	}
-	if instance.State != "running" {
-		err = &errors.Http{Code: http.StatusPreconditionFailed, Message: "This service instance is not ready yet."}
-		return
-	}
 	err = db.Session.Apps().Find(bson.M{"name": appName}).One(&a)
 	if err != nil {
 		err = &errors.Http{Code: http.StatusNotFound, Message: "App not found"}

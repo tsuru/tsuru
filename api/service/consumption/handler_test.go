@@ -350,7 +350,6 @@ func (s *S) TestServiceInfoHandler(c *C) {
 		ServiceName: srv.Name,
 		Apps:        []string{},
 		Teams:       []string{},
-		State:       "creating",
 	}
 	err = si1.Create()
 	c.Assert(err, IsNil)
@@ -360,7 +359,6 @@ func (s *S) TestServiceInfoHandler(c *C) {
 		ServiceName: srv.Name,
 		Apps:        []string{"wordpress"},
 		Teams:       []string{},
-		State:       "creating",
 	}
 	err = si2.Create()
 	c.Assert(err, IsNil)

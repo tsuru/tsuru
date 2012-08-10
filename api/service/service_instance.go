@@ -14,13 +14,9 @@ type ServiceInstance struct {
 	ServiceName string `bson:"service_name"`
 	Apps        []string
 	Teams       []string
-	State       string
 }
 
 func (si *ServiceInstance) Create() error {
-	if si.State == "" {
-		si.State = "creating"
-	}
 	return db.Session.ServiceInstances().Insert(si)
 }
 

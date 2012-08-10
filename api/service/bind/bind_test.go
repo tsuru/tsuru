@@ -51,7 +51,7 @@ func (s *S) TestBindAddsAppToTheServiceInstance(c *C) {
 	err := srvc.Create()
 	c.Assert(err, IsNil)
 	defer db.Session.Services().Remove(bson.M{"_id": "mysql"})
-	instance := service.ServiceInstance{Name: "my-mysql", ServiceName: "mysql", Teams: []string{s.team.Name}, State: "running"}
+	instance := service.ServiceInstance{Name: "my-mysql", ServiceName: "mysql", Teams: []string{s.team.Name}}
 	instance.Create()
 	defer db.Session.ServiceInstances().Remove(bson.M{"_id": "my-mysql"})
 	a := app.App{Name: "painkiller", Teams: []string{s.team.Name}}
@@ -72,7 +72,7 @@ func (s *S) TestBindDoNotAddsAppToServiceInstanceIfCommunicationWithEndpointGoes
 	err := srvc.Create()
 	c.Assert(err, IsNil)
 	defer db.Session.Services().Remove(bson.M{"_id": "mysql"})
-	instance := service.ServiceInstance{Name: "my-mysql", ServiceName: "mysql", Teams: []string{s.team.Name}, State: "running"}
+	instance := service.ServiceInstance{Name: "my-mysql", ServiceName: "mysql", Teams: []string{s.team.Name}}
 	instance.Create()
 	defer db.Session.ServiceInstances().Remove(bson.M{"_id": "my-mysql"})
 	a := app.App{
@@ -101,7 +101,7 @@ func (s *S) TestBindUnbindsWhenDatabaseUpdateGoesWrong(c *C) {
 	err := srvc.Create()
 	c.Assert(err, IsNil)
 	defer db.Session.Services().Remove(bson.M{"_id": "mysql"})
-	instance := service.ServiceInstance{Name: "their-mysql", ServiceName: "mysql", Teams: []string{s.team.Name}, State: "running"}
+	instance := service.ServiceInstance{Name: "their-mysql", ServiceName: "mysql", Teams: []string{s.team.Name}}
 	a := app.App{
 		Name:  "somecoolapp",
 		Teams: []string{s.team.Name},
@@ -127,7 +127,6 @@ func (s *S) TestBindCallTheServiceAPIAndSetsEnvironmentVariableReturnedFromTheCa
 		Name:        "my-mysql",
 		ServiceName: "mysql",
 		Teams:       []string{s.team.Name},
-		State:       "running",
 	}
 	err = instance.Create()
 	c.Assert(err, IsNil)
@@ -170,7 +169,6 @@ func (s *S) TestBindReturnConflictIfTheAppIsAlreadyBinded(c *C) {
 		Name:        "my-mysql",
 		ServiceName: "mysql",
 		Teams:       []string{s.team.Name},
-		State:       "running",
 		Apps:        []string{"painkiller"},
 	}
 	err = instance.Create()
@@ -201,7 +199,7 @@ func (s *S) TestBindReturnsPreconditionFailedIfTheAppDoesNotHaveAnUnitAndService
 	err := srvc.Create()
 	c.Assert(err, IsNil)
 	defer db.Session.Services().Remove(bson.M{"_id": "mysql"})
-	instance := service.ServiceInstance{Name: "my-mysql", ServiceName: "mysql", Teams: []string{s.team.Name}, State: "running"}
+	instance := service.ServiceInstance{Name: "my-mysql", ServiceName: "mysql", Teams: []string{s.team.Name}}
 	err = instance.Create()
 	c.Assert(err, IsNil)
 	defer db.Session.ServiceInstances().Remove(bson.M{"_id": "my-mysql"})
@@ -226,7 +224,6 @@ func (s *S) TestUnbindRemovesAppFromServiceInstance(c *C) {
 		Name:        "my-mysql",
 		ServiceName: "mysql",
 		Teams:       []string{s.team.Name},
-		State:       "running",
 		Apps:        []string{"painkiller"},
 	}
 	instance.Create()
@@ -249,7 +246,6 @@ func (s *S) TestUnbindRemovesEnvironmentVariableFromApp(c *C) {
 		Name:        "my-mysql",
 		ServiceName: "mysql",
 		Teams:       []string{s.team.Name},
-		State:       "running",
 		Apps:        []string{"painkiller"},
 	}
 	err = instance.Create()
@@ -301,7 +297,6 @@ func (s *S) TestUnbindCallsTheUnbindMethodFromAPI(c *C) {
 		ServiceName: "mysql",
 		Teams:       []string{s.team.Name},
 		Apps:        []string{"painkiller"},
-		State:       "running",
 	}
 	err = instance.Create()
 	c.Assert(err, IsNil)
@@ -336,7 +331,7 @@ func (s *S) TestUnbindReturnsPreconditionFailedIfTheAppIsNotBindedToTheInstance(
 	err := srvc.Create()
 	c.Assert(err, IsNil)
 	defer db.Session.Services().Remove(bson.M{"_id": "mysql"})
-	instance := service.ServiceInstance{Name: "my-mysql", ServiceName: "mysql", Teams: []string{s.team.Name}, State: "running"}
+	instance := service.ServiceInstance{Name: "my-mysql", ServiceName: "mysql", Teams: []string{s.team.Name}}
 	instance.Create()
 	defer db.Session.ServiceInstances().Remove(bson.M{"_id": "my-mysql"})
 	a := app.App{Name: "painkiller", Teams: []string{s.team.Name}}
