@@ -109,6 +109,23 @@ func (s *S) TestCreateHandlerReturnsForbiddenIfTheUserIsNotMemberOfAnyTeam(c *C)
 	c.Assert(e, ErrorMatches, "^In order to create a service, you should be member of at least one team$")
 }
 
+func (s *S) TestCreateHandlerReturnsBadRequestIfTheServiceDoesNotHaveAProductionEndpoint(c *C) {
+	p, err := filepath.Abs("testdata/manifest-without-endpoint.yml")
+	manifest, err := ioutil.ReadFile(p)
+	c.Assert(err, IsNil)
+	b := bytes.NewBuffer(manifest)
+	request, err := http.NewRequest("POST", "/services", b)
+	c.Assert(err, IsNil)
+	request.Header.Set("Content-Type", "application/json")
+	recorder := httptest.NewRecorder()
+	err = CreateHandler(recorder, request, s.user)
+	c.Assert(err, NotNil)
+	e, ok := err.(*errors.Http)
+	c.Assert(ok, Equals, true)
+	c.Assert(e.Code, Equals, http.StatusBadRequest)
+	c.Assert(e.Message, Equals, "You must provide a production endpoint in the manifest file.")
+}
+
 func (s *S) TestUpdateHandlerShouldUpdateTheServiceWithDataFromManifest(c *C) {
 	service := service.Service{Name: "mysqlapi", Endpoint: map[string]string{"production": "sqlapi.com"}, OwnerTeams: []string{s.team.Name}}
 	err := service.Create()
