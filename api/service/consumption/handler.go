@@ -105,6 +105,11 @@ func RemoveServiceInstanceHandler(w http.ResponseWriter, r *http.Request, u *aut
 		msg := "This service instance has binded apps. Unbind them before removing it"
 		return &errors.Http{Code: http.StatusInternalServerError, Message: msg}
 	}
+	if cli, err := si.Service().GetClient("production"); err == nil {
+		if err = cli.Destroy(&si); err != nil {
+			return &errors.Http{Code: http.StatusInternalServerError, Message: err.Error()}
+		}
+	}
 	err = db.Session.ServiceInstances().Remove(bson.M{"_id": name})
 	if err != nil {
 		return err

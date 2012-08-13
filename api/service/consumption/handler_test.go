@@ -188,6 +188,51 @@ func (s *S) TestRemoveServiceHandlerWIthAssociatedAppsShouldFailAndReturnError(c
 	c.Assert(err, ErrorMatches, "^This service instance has binded apps. Unbind them before removing it$")
 }
 
+func (s *S) TestRemoveServiceShouldCallTheServiceAPI(c *C) {
+	var called bool
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		called = r.Method == "DELETE" && r.URL.Path == "/resources/purity-instance"
+	}))
+	defer ts.Close()
+	se := service.Service{Name: "purity", Endpoint: map[string]string{"production": ts.URL}}
+	err := se.Create()
+	defer db.Session.Services().Remove(bson.M{"_id": se.Name})
+	c.Assert(err, IsNil)
+	si := service.ServiceInstance{Name: "purity-instance", ServiceName: "purity", Teams: []string{s.team.Name}}
+	err = si.Create()
+	c.Assert(err, IsNil)
+	defer db.Session.ServiceInstances().Remove(bson.M{"_id": si.Name})
+	recorder, request := makeRequestToRemoveInstanceHandler("purity-instance", c)
+	err = RemoveServiceInstanceHandler(recorder, request, s.user)
+	c.Assert(err, IsNil)
+	c.Assert(called, Equals, true)
+}
+
+func (s *S) TestremoveServiceShouldNotRemoveTheServiceIfTheServiceAPICallFail(c *C) {
+	var called bool
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		called = r.Method == "DELETE" && r.URL.Path == "/resources/purity-instance"
+		w.WriteHeader(500)
+		fmt.Fprint(w, "it's a test!")
+	}))
+	defer ts.Close()
+	se := service.Service{Name: "deepercut", Endpoint: map[string]string{"production": ts.URL}}
+	err := se.Create()
+	defer db.Session.Services().Remove(bson.M{"_id": se.Name})
+	c.Assert(err, IsNil)
+	si := service.ServiceInstance{Name: "deepercut-instance", ServiceName: "deepercut", Teams: []string{s.team.Name}}
+	err = si.Create()
+	c.Assert(err, IsNil)
+	defer db.Session.ServiceInstances().Remove(bson.M{"_id": si.Name})
+	recorder, request := makeRequestToRemoveInstanceHandler("deepercut-instance", c)
+	err = RemoveServiceInstanceHandler(recorder, request, s.user)
+	c.Assert(err, NotNil)
+	e, ok := err.(*errors.Http)
+	c.Assert(ok, Equals, true)
+	c.Assert(e.Code, Equals, http.StatusInternalServerError)
+	c.Assert(e.Message, Equals, "Failed to destroy the instance deepercut-instance: it's a test!")
+}
+
 func (s *S) TestServicesInstancesHandler(c *C) {
 	srv := service.Service{Name: "redis", Teams: []string{s.team.Name}}
 	err := srv.Create()
