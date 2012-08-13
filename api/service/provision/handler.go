@@ -13,9 +13,8 @@ import (
 )
 
 type serviceYaml struct {
-	Id        string
-	Endpoint  map[string]string
-	Bootstrap map[string]string
+	Id       string
+	Endpoint map[string]string
 }
 
 func CreateHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
@@ -49,7 +48,6 @@ func CreateHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	s := service.Service{
 		Name:       sy.Id,
 		Endpoint:   sy.Endpoint,
-		Bootstrap:  sy.Bootstrap,
 		OwnerTeams: auth.GetTeamsNames(teams),
 	}
 	err = s.Create()
@@ -73,7 +71,6 @@ func UpdateHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 		return err
 	}
 	s.Endpoint = yaml.Endpoint
-	s.Bootstrap = yaml.Bootstrap
 	if err = s.Update(); err != nil {
 		return err
 	}
