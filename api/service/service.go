@@ -55,6 +55,11 @@ func (s *Service) GetClient(endpoint string) (cli *Client, err error) {
 	return
 }
 
+func (s *Service) ProductionEndpoint() *Client {
+	cli, _ := s.GetClient("production")
+	return cli
+}
+
 func (s *Service) findTeam(team *auth.Team) int {
 	for i, t := range s.Teams {
 		if team.Name == t {
