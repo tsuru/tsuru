@@ -38,6 +38,6 @@ Building your own PaaS server
 Contribute
 ==========
 
-* :doc:`setting up your tsuru development environment </community/setting-up-your-tsuru-development-environment>`
+* :doc:`setting up your tsuru development environment </contribute/setting-up-your-tsuru-development-environment>`
 * :doc:`how to contribute </contribute>`
 * :doc:`community </community>`
