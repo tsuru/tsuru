@@ -388,7 +388,44 @@ func (s *S) TestServiceInfoHandler(c *C) {
 		Name:        "my_nosql",
 		ServiceName: srv.Name,
 		Apps:        []string{},
-		Teams:       []string{},
+		Teams:       []string{s.team.Name},
+	}
+	err = si1.Create()
+	c.Assert(err, IsNil)
+	defer si1.Delete()
+	si2 := service.ServiceInstance{
+		Name:        "your_nosql",
+		ServiceName: srv.Name,
+		Apps:        []string{"wordpress"},
+		Teams:       []string{s.team.Name},
+	}
+	err = si2.Create()
+	c.Assert(err, IsNil)
+	defer si2.Delete()
+	request, err := http.NewRequest("GET", fmt.Sprintf("/services/%s?:name=%s", "mongodb", "mongodb"), nil)
+	c.Assert(err, IsNil)
+	recorder := httptest.NewRecorder()
+	err = ServiceInfoHandler(recorder, request, s.user)
+	c.Assert(err, IsNil)
+	body, err := ioutil.ReadAll(recorder.Body)
+	c.Assert(err, IsNil)
+	var instances []service.ServiceInstance
+	err = json.Unmarshal(body, &instances)
+	c.Assert(err, IsNil)
+	expected := []service.ServiceInstance{si1, si2}
+	c.Assert(instances, DeepEquals, expected)
+}
+
+func (s *S) TestServiceInfoHandlerShouldReturnsOnlyInstancesOfTheSameTeamOfTheUser(c *C) {
+	srv := service.Service{Name: "mongodb", Teams: []string{s.team.Name}}
+	err := srv.Create()
+	c.Assert(err, IsNil)
+	defer srv.Delete()
+	si1 := service.ServiceInstance{
+		Name:        "my_nosql",
+		ServiceName: srv.Name,
+		Apps:        []string{},
+		Teams:       []string{s.team.Name},
 	}
 	err = si1.Create()
 	c.Assert(err, IsNil)
@@ -412,7 +449,7 @@ func (s *S) TestServiceInfoHandler(c *C) {
 	var instances []service.ServiceInstance
 	err = json.Unmarshal(body, &instances)
 	c.Assert(err, IsNil)
-	expected := []service.ServiceInstance{si1, si2}
+	expected := []service.ServiceInstance{si1}
 	c.Assert(instances, DeepEquals, expected)
 }
 
