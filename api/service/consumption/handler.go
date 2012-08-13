@@ -161,9 +161,10 @@ func ServiceInfoHandler(w http.ResponseWriter, r *http.Request, u *auth.User) er
 		return err
 	}
 	instances := []service.ServiceInstance{}
-	var teams []auth.Team
-	q := bson.M{"users": u.Email}
-	db.Session.Teams().Find(q).Select(bson.M{"_id": 1}).All(&teams)
+	teams, err := u.Teams()
+	if err != nil {
+		return err
+	}
 	teamsNames := auth.GetTeamsNames(teams)
 	err = db.Session.ServiceInstances().Find(bson.M{"service_name": serviceName, "teams": bson.M{"$in": teamsNames}}).All(&instances)
 	if err != nil {
