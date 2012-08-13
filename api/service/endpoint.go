@@ -128,7 +128,7 @@ func (c *Client) Status(instance *ServiceInstance) (string, error) {
 		resp *http.Response
 		err  error
 	)
-	url := "/resources/" + instance.Name + "/status/"
+	url := "/resources/" + instance.Name + "/status"
 	if resp, err = c.issueRequest(url, "GET", nil); err == nil {
 		switch resp.StatusCode {
 		case 202:
