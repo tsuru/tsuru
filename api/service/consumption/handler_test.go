@@ -27,7 +27,7 @@ func (s *S) TestServicesHandlerShoudGetAllServicesFromUsersTeam(c *C) {
 	srv := service.Service{Name: "mongodb", OwnerTeams: []string{s.team.Name}}
 	srv.Create()
 	defer db.Session.Services().Remove(bson.M{"_id": srv.Name})
-	si := service.ServiceInstance{Name: "my_nosql", ServiceName: srv.Name}
+	si := service.ServiceInstance{Name: "my_nosql", ServiceName: srv.Name, Teams: []string{s.team.Name}}
 	si.Create()
 	defer si.Delete()
 	recorder, request := s.makeRequestToServicesHandler(c)
@@ -35,10 +35,10 @@ func (s *S) TestServicesHandlerShoudGetAllServicesFromUsersTeam(c *C) {
 	c.Assert(err, IsNil)
 	b, err := ioutil.ReadAll(recorder.Body)
 	c.Assert(err, IsNil)
-	services := make([]service.ServiceModel, 1)
+	services := make([]ServiceModel, 1)
 	err = json.Unmarshal(b, &services)
-	expected := []service.ServiceModel{
-		service.ServiceModel{Service: "mongodb", Instances: []string{"my_nosql"}},
+	expected := []ServiceModel{
+		ServiceModel{Service: "mongodb", Instances: []string{"my_nosql"}},
 	}
 	c.Assert(services, DeepEquals, expected)
 }
@@ -75,7 +75,7 @@ func (s *S) TestCreateInstanceHandlerSavesAllTeamsThatTheGivenUserIsMemberAndHas
 	t := auth.Team{Name: "judaspriest", Users: []string{s.user.Email}}
 	err := db.Session.Teams().Insert(t)
 	defer db.Session.Teams().Remove(bson.M{"name": t.Name})
-	srv := service.Service{Name: "mysql", Teams: []string{s.team.Name}}
+	srv := service.Service{Name: "mysql", Teams: []string{s.team.Name}, IsRestricted: true}
 	err = srv.Create()
 	c.Assert(err, IsNil)
 	recorder, request := makeRequestToCreateInstanceHandler(c)
@@ -109,6 +109,21 @@ func (s *S) TestCreateInstanceHandlerReturnsErrorWhenUserCannotUseService(c *C) 
 	recorder, request := makeRequestToCreateInstanceHandler(c)
 	err := CreateInstanceHandler(recorder, request, s.user)
 	c.Assert(err, ErrorMatches, "^This user does not have access to this service$")
+}
+
+func (s *S) TestCreateInstanceHandlerIgnoresTeamAuthIfServiceIsNotRestricted(c *C) {
+	srvc := service.Service{Name: "mysql"}
+	err := srvc.Create()
+	c.Assert(err, IsNil)
+	defer db.Session.Services().Remove(bson.M{"_id": "mysql"})
+	recorder, request := makeRequestToCreateInstanceHandler(c)
+	err = CreateInstanceHandler(recorder, request, s.user)
+	c.Assert(err, IsNil)
+	var si service.ServiceInstance
+	err = db.Session.ServiceInstances().Find(bson.M{"_id": "brainSQL"}).One(&si)
+	c.Assert(err, IsNil)
+	c.Assert(si.Name, Equals, "brainSQL")
+	c.Assert(si.Teams, DeepEquals, []string{s.team.Name})
 }
 
 func (s *S) TestCreateInstanceHandlerReturnsErrorWhenServiceDoesntExists(c *C) {
@@ -173,6 +188,51 @@ func (s *S) TestRemoveServiceHandlerWIthAssociatedAppsShouldFailAndReturnError(c
 	c.Assert(err, ErrorMatches, "^This service instance has binded apps. Unbind them before removing it$")
 }
 
+func (s *S) TestRemoveServiceShouldCallTheServiceAPI(c *C) {
+	var called bool
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		called = r.Method == "DELETE" && r.URL.Path == "/resources/purity-instance"
+	}))
+	defer ts.Close()
+	se := service.Service{Name: "purity", Endpoint: map[string]string{"production": ts.URL}}
+	err := se.Create()
+	defer db.Session.Services().Remove(bson.M{"_id": se.Name})
+	c.Assert(err, IsNil)
+	si := service.ServiceInstance{Name: "purity-instance", ServiceName: "purity", Teams: []string{s.team.Name}}
+	err = si.Create()
+	c.Assert(err, IsNil)
+	defer db.Session.ServiceInstances().Remove(bson.M{"_id": si.Name})
+	recorder, request := makeRequestToRemoveInstanceHandler("purity-instance", c)
+	err = RemoveServiceInstanceHandler(recorder, request, s.user)
+	c.Assert(err, IsNil)
+	c.Assert(called, Equals, true)
+}
+
+func (s *S) TestremoveServiceShouldNotRemoveTheServiceIfTheServiceAPICallFail(c *C) {
+	var called bool
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		called = r.Method == "DELETE" && r.URL.Path == "/resources/purity-instance"
+		w.WriteHeader(500)
+		fmt.Fprint(w, "it's a test!")
+	}))
+	defer ts.Close()
+	se := service.Service{Name: "deepercut", Endpoint: map[string]string{"production": ts.URL}}
+	err := se.Create()
+	defer db.Session.Services().Remove(bson.M{"_id": se.Name})
+	c.Assert(err, IsNil)
+	si := service.ServiceInstance{Name: "deepercut-instance", ServiceName: "deepercut", Teams: []string{s.team.Name}}
+	err = si.Create()
+	c.Assert(err, IsNil)
+	defer db.Session.ServiceInstances().Remove(bson.M{"_id": si.Name})
+	recorder, request := makeRequestToRemoveInstanceHandler("deepercut-instance", c)
+	err = RemoveServiceInstanceHandler(recorder, request, s.user)
+	c.Assert(err, NotNil)
+	e, ok := err.(*errors.Http)
+	c.Assert(ok, Equals, true)
+	c.Assert(e.Code, Equals, http.StatusInternalServerError)
+	c.Assert(e.Message, Equals, "Failed to destroy the instance deepercut-instance: it's a test!")
+}
+
 func (s *S) TestServicesInstancesHandler(c *C) {
 	srv := service.Service{Name: "redis", Teams: []string{s.team.Name}}
 	err := srv.Create()
@@ -192,11 +252,11 @@ func (s *S) TestServicesInstancesHandler(c *C) {
 	c.Assert(err, IsNil)
 	body, err := ioutil.ReadAll(recorder.Body)
 	c.Assert(err, IsNil)
-	var instances []service.ServiceModel
+	var instances []ServiceModel
 	err = json.Unmarshal(body, &instances)
 	c.Assert(err, IsNil)
-	expected := []service.ServiceModel{
-		service.ServiceModel{Service: "redis", Instances: []string{"redis-globo"}},
+	expected := []ServiceModel{
+		ServiceModel{Service: "redis", Instances: []string{"redis-globo"}},
 	}
 	c.Assert(instances, DeepEquals, expected)
 }
@@ -224,10 +284,10 @@ func (s *S) TestServicesInstancesHandlerReturnsOnlyServicesThatTheUserHasAccess(
 	c.Assert(err, IsNil)
 	body, err := ioutil.ReadAll(recorder.Body)
 	c.Assert(err, IsNil)
-	var instances []service.ServiceModel
+	var instances []ServiceModel
 	err = json.Unmarshal(body, &instances)
 	c.Assert(err, IsNil)
-	c.Assert(instances, DeepEquals, []service.ServiceModel{})
+	c.Assert(instances, DeepEquals, []ServiceModel{})
 }
 
 func (s *S) TestServicesInstancesHandlerFilterInstancesPerServiceIncludingServicesThatDoesNotHaveInstances(c *C) {
@@ -267,15 +327,15 @@ func (s *S) TestServicesInstancesHandlerFilterInstancesPerServiceIncludingServic
 	c.Assert(err, IsNil)
 	body, err := ioutil.ReadAll(recorder.Body)
 	c.Assert(err, IsNil)
-	var instances []service.ServiceModel
+	var instances []ServiceModel
 	err = json.Unmarshal(body, &instances)
 	c.Assert(err, IsNil)
-	expected := []service.ServiceModel{
-		service.ServiceModel{Service: "redis", Instances: []string{"redis1", "redis2"}},
-		service.ServiceModel{Service: "mysql", Instances: []string{"mysql1", "mysql2"}},
-		service.ServiceModel{Service: "pgsql", Instances: []string{"pgsql1", "pgsql2"}},
-		service.ServiceModel{Service: "memcached", Instances: []string{"memcached1", "memcached2"}},
-		service.ServiceModel{Service: "oracle", Instances: []string(nil)},
+	expected := []ServiceModel{
+		ServiceModel{Service: "redis", Instances: []string{"redis1", "redis2"}},
+		ServiceModel{Service: "mysql", Instances: []string{"mysql1", "mysql2"}},
+		ServiceModel{Service: "pgsql", Instances: []string{"pgsql1", "pgsql2"}},
+		ServiceModel{Service: "memcached", Instances: []string{"memcached1", "memcached2"}},
+		ServiceModel{Service: "oracle", Instances: []string(nil)},
 	}
 	c.Assert(instances, DeepEquals, expected)
 }
@@ -448,4 +508,67 @@ func (s *S) TestDocHandlerReturns404WhenServiceDoesNotExists(c *C) {
 	recorder, request := s.makeRequestToGetDocHandler("inexistentsql", c)
 	err := Doc(recorder, request, s.user)
 	c.Assert(err, ErrorMatches, "^Service not found$")
+}
+
+func (s *S) TestServiceAndServiceInstancesByTeams(c *C) {
+	srv := service.Service{Name: "mongodb", Teams: []string{s.team.Name}}
+	srv.Create()
+	defer db.Session.Services().Remove(bson.M{"_id": srv.Name})
+	si := service.ServiceInstance{Name: "my_nosql", ServiceName: srv.Name, Teams: []string{s.team.Name}}
+	si.Create()
+	defer si.Delete()
+	obtained := ServiceAndServiceInstancesByTeams("teams", s.user)
+	expected := []ServiceModel{
+		ServiceModel{Service: "mongodb", Instances: []string{"my_nosql"}},
+	}
+	c.Assert(obtained, DeepEquals, expected)
+}
+
+func (s *S) TestServiceAndServiceInstancesByOwnerTeams(c *C) {
+	srv := service.Service{Name: "mongodb", OwnerTeams: []string{s.team.Name}}
+	srv.Create()
+	defer srv.Delete()
+	si := service.ServiceInstance{Name: "my_nosql", ServiceName: srv.Name, Teams: []string{s.team.Name}}
+	si.Create()
+	defer si.Delete()
+	obtained := ServiceAndServiceInstancesByTeams("owner_teams", s.user)
+	expected := []ServiceModel{
+		ServiceModel{Service: "mongodb", Instances: []string{"my_nosql"}},
+	}
+	c.Assert(obtained, DeepEquals, expected)
+}
+
+func (s *S) TestServiceAndServiceInstancesByTeamsShouldAlsoReturnServicesWithIsRestrictedFalse(c *C) {
+	srv := service.Service{Name: "mongodb", OwnerTeams: []string{s.team.Name}}
+	srv.Create()
+	defer srv.Delete()
+	srv2 := service.Service{Name: "mysql"}
+	srv2.Create()
+	defer srv2.Delete()
+	si := service.ServiceInstance{Name: "my_nosql", ServiceName: srv.Name, Teams: []string{s.team.Name}}
+	si.Create()
+	defer si.Delete()
+	obtained := ServiceAndServiceInstancesByTeams("owner_teams", s.user)
+	expected := []ServiceModel{
+		ServiceModel{Service: "mongodb", Instances: []string{"my_nosql"}},
+		ServiceModel{Service: "mysql"},
+	}
+	c.Assert(obtained, DeepEquals, expected)
+}
+
+func (s *S) TestServiceAndServiceInstancesByTeamsShouldReturnServiceInstancesByTeam(c *C) {
+	srv := service.Service{Name: "mongodb"}
+	srv.Create()
+	defer srv.Delete()
+	si := service.ServiceInstance{Name: "my_nosql", ServiceName: srv.Name, Teams: []string{s.team.Name}}
+	si.Create()
+	defer si.Delete()
+	si2 := service.ServiceInstance{Name: "some_nosql", ServiceName: srv.Name}
+	si2.Create()
+	defer si2.Delete()
+	obtained := ServiceAndServiceInstancesByTeams("teams", s.user)
+	expected := []ServiceModel{
+		ServiceModel{Service: "mongodb", Instances: []string{"my_nosql"}},
+	}
+	c.Assert(obtained, DeepEquals, expected)
 }

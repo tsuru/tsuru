@@ -14,7 +14,7 @@ import (
 )
 
 func ServicesHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
-	results := service.ServiceAndServiceInstancesByTeams("owner_teams", u)
+	results := ServiceAndServiceInstancesByTeams("owner_teams", u)
 	b, err := json.Marshal(results)
 	if err != nil {
 		return &errors.Http{Code: http.StatusInternalServerError, Message: err.Error()}
@@ -42,7 +42,7 @@ func CreateInstanceHandler(w http.ResponseWriter, r *http.Request, u *auth.User)
 		return &errors.Http{Code: http.StatusInternalServerError, Message: err.Error()}
 	}
 	var s service.Service
-	err = validateForInstanceCreation(&s, sJson, u)
+	err = validateInstanceForCreation(&s, sJson, u)
 	if err != nil {
 		log.Print("Got error while validation:")
 		log.Print(err.Error())
@@ -54,7 +54,7 @@ func CreateInstanceHandler(w http.ResponseWriter, r *http.Request, u *auth.User)
 		return err
 	}
 	for _, t := range teams {
-		if s.HasTeam(&t) {
+		if s.HasTeam(&t) || !s.IsRestricted {
 			teamNames = append(teamNames, t.Name)
 		}
 	}
@@ -79,8 +79,7 @@ func CreateInstanceHandler(w http.ResponseWriter, r *http.Request, u *auth.User)
 	return nil
 }
 
-// change my name for validateInstanceForCreation
-func validateForInstanceCreation(s *service.Service, sJson map[string]string, u *auth.User) error {
+func validateInstanceForCreation(s *service.Service, sJson map[string]string, u *auth.User) error {
 	err := db.Session.Services().Find(bson.M{"_id": sJson["service_name"], "status": bson.M{"$ne": "deleted"}}).One(&s)
 	if err != nil {
 		msg := err.Error()
@@ -106,6 +105,11 @@ func RemoveServiceInstanceHandler(w http.ResponseWriter, r *http.Request, u *aut
 		msg := "This service instance has binded apps. Unbind them before removing it"
 		return &errors.Http{Code: http.StatusInternalServerError, Message: msg}
 	}
+	if cli, err := si.Service().GetClient("production"); err == nil {
+		if err = cli.Destroy(&si); err != nil {
+			return &errors.Http{Code: http.StatusInternalServerError, Message: err.Error()}
+		}
+	}
 	err = db.Session.ServiceInstances().Remove(bson.M{"_id": name})
 	if err != nil {
 		return err
@@ -115,7 +119,7 @@ func RemoveServiceInstanceHandler(w http.ResponseWriter, r *http.Request, u *aut
 }
 
 func ServicesInstancesHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
-	response := service.ServiceAndServiceInstancesByTeams("teams", u)
+	response := ServiceAndServiceInstancesByTeams("teams", u)
 	body, err := json.Marshal(response)
 	if err != nil {
 		return err
@@ -185,4 +189,38 @@ func Doc(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	}
 	w.Write([]byte(s.Doc))
 	return nil
+}
+
+type ServiceModel struct {
+	Service   string
+	Instances []string
+}
+
+func ServiceAndServiceInstancesByTeams(teamKind string, u *auth.User) []ServiceModel {
+	var teams []auth.Team
+	q := bson.M{"users": u.Email}
+	db.Session.Teams().Find(q).Select(bson.M{"_id": 1}).All(&teams)
+	teamsNames := auth.GetTeamsNames(teams)
+	var services []service.Service
+	q = bson.M{"$or": []bson.M{
+		bson.M{
+			teamKind: bson.M{"$in": teamsNames},
+		},
+		bson.M{"is_restricted": false},
+	},
+	}
+	db.Session.Services().Find(q).Select(bson.M{"name": 1}).All(&services)
+	var sInsts []service.ServiceInstance
+	q = bson.M{"service_name": bson.M{"$in": service.GetServicesNames(services)}, "teams": bson.M{"$in": teamsNames}}
+	db.Session.ServiceInstances().Find(q).Select(bson.M{"name": 1, "service_name": 1}).All(&sInsts)
+	results := make([]ServiceModel, len(services))
+	for i, s := range services {
+		results[i].Service = s.Name
+		for _, si := range sInsts {
+			if si.ServiceName == s.Name {
+				results[i].Instances = append(results[i].Instances, si.Name)
+			}
+		}
+	}
+	return results
 }
