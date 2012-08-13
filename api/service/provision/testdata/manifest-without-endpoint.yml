@@ -1,4 +1,1 @@
 id: mysqlapi
-bootstrap:
-    ami: ami-00000007
-    when: on-new-instance #on-service-creation
