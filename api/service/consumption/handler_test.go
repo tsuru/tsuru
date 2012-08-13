@@ -27,7 +27,7 @@ func (s *S) TestServicesHandlerShoudGetAllServicesFromUsersTeam(c *C) {
 	srv := service.Service{Name: "mongodb", OwnerTeams: []string{s.team.Name}}
 	srv.Create()
 	defer db.Session.Services().Remove(bson.M{"_id": srv.Name})
-	si := service.ServiceInstance{Name: "my_nosql", ServiceName: srv.Name}
+	si := service.ServiceInstance{Name: "my_nosql", ServiceName: srv.Name, Teams: []string{s.team.Name}}
 	si.Create()
 	defer si.Delete()
 	recorder, request := s.makeRequestToServicesHandler(c)
@@ -469,7 +469,7 @@ func (s *S) TestServiceAndServiceInstancesByTeams(c *C) {
 	srv := service.Service{Name: "mongodb", Teams: []string{s.team.Name}}
 	srv.Create()
 	defer db.Session.Services().Remove(bson.M{"_id": srv.Name})
-	si := service.ServiceInstance{Name: "my_nosql", ServiceName: srv.Name}
+	si := service.ServiceInstance{Name: "my_nosql", ServiceName: srv.Name, Teams: []string{s.team.Name}}
 	si.Create()
 	defer si.Delete()
 	obtained := ServiceAndServiceInstancesByTeams("teams", s.user)
@@ -483,7 +483,7 @@ func (s *S) TestServiceAndServiceInstancesByOwnerTeams(c *C) {
 	srv := service.Service{Name: "mongodb", OwnerTeams: []string{s.team.Name}}
 	srv.Create()
 	defer srv.Delete()
-	si := service.ServiceInstance{Name: "my_nosql", ServiceName: srv.Name}
+	si := service.ServiceInstance{Name: "my_nosql", ServiceName: srv.Name, Teams: []string{s.team.Name}}
 	si.Create()
 	defer si.Delete()
 	obtained := ServiceAndServiceInstancesByTeams("owner_teams", s.user)
@@ -500,13 +500,30 @@ func (s *S) TestServiceAndServiceInstancesByTeamsShouldAlsoReturnServicesWithIsR
 	srv2 := service.Service{Name: "mysql"}
 	srv2.Create()
 	defer srv2.Delete()
-	si := service.ServiceInstance{Name: "my_nosql", ServiceName: srv.Name}
+	si := service.ServiceInstance{Name: "my_nosql", ServiceName: srv.Name, Teams: []string{s.team.Name}}
 	si.Create()
 	defer si.Delete()
 	obtained := ServiceAndServiceInstancesByTeams("owner_teams", s.user)
 	expected := []ServiceModel{
 		ServiceModel{Service: "mongodb", Instances: []string{"my_nosql"}},
 		ServiceModel{Service: "mysql"},
+	}
+	c.Assert(obtained, DeepEquals, expected)
+}
+
+func (s *S) TestServiceAndServiceInstancesByTeamsShouldReturnServiceInstancesByTeam(c *C) {
+	srv := service.Service{Name: "mongodb"}
+	srv.Create()
+	defer srv.Delete()
+	si := service.ServiceInstance{Name: "my_nosql", ServiceName: srv.Name, Teams: []string{s.team.Name}}
+	si.Create()
+	defer si.Delete()
+	si2 := service.ServiceInstance{Name: "some_nosql", ServiceName: srv.Name}
+	si2.Create()
+	defer si2.Delete()
+	obtained := ServiceAndServiceInstancesByTeams("teams", s.user)
+	expected := []ServiceModel{
+		ServiceModel{Service: "mongodb", Instances: []string{"my_nosql"}},
 	}
 	c.Assert(obtained, DeepEquals, expected)
 }
