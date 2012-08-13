@@ -63,14 +63,16 @@ func CreateInstanceHandler(w http.ResponseWriter, r *http.Request, u *auth.User)
 		ServiceName: sJson["service_name"],
 		Teams:       teamNames,
 	}
-	go func() {
-		if cli, err := s.GetClient("production"); err == nil {
-			if cli.Create(&si) != nil {
-				log.Print("Error while calling create action from service api.")
-				log.Print(err.Error())
-			}
+	cli, err := s.GetClient("production")
+	if err != nil {
+		return err
+	}
+	go func(cli *service.Client) {
+		if cli.Create(&si) != nil {
+			log.Print("Error while calling create action from service api.")
+			log.Print(err.Error())
 		}
-	}()
+	}(cli)
 	err = si.Create()
 	if err != nil {
 		return err

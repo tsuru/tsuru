@@ -72,10 +72,14 @@ func (suite *S) TestCreateInstanceHandlerSavesServiceInstanceInDb(c *C) {
 }
 
 func (s *S) TestCreateInstanceHandlerSavesAllTeamsThatTheGivenUserIsMemberAndHasAccessToTheServiceInTheInstance(c *C) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(`{"DATABASE_HOST":"localhost"}`))
+	}))
+	defer ts.Close()
 	t := auth.Team{Name: "judaspriest", Users: []string{s.user.Email}}
 	err := db.Session.Teams().Insert(t)
 	defer db.Session.Teams().Remove(bson.M{"name": t.Name})
-	srv := service.Service{Name: "mysql", Teams: []string{s.team.Name}, IsRestricted: true}
+	srv := service.Service{Name: "mysql", Teams: []string{s.team.Name}, IsRestricted: true, Endpoint: map[string]string{"production": ts.URL}}
 	err = srv.Create()
 	c.Assert(err, IsNil)
 	recorder, request := makeRequestToCreateInstanceHandler(c)
@@ -88,21 +92,6 @@ func (s *S) TestCreateInstanceHandlerSavesAllTeamsThatTheGivenUserIsMemberAndHas
 	c.Assert(si.Teams, DeepEquals, []string{s.team.Name})
 }
 
-// FIXME (#98): remove this test and this guarantee.
-func (s *S) TestCreateInstanceHandlerDoesNotFailIfTheServiceDoesNotDeclareEndpoint(c *C) {
-	srv := service.Service{Name: "mysql", Teams: []string{s.team.Name}}
-	srv.Create()
-	recorder, request := makeRequestToCreateInstanceHandler(c)
-	err := CreateInstanceHandler(recorder, request, s.user)
-	c.Assert(err, IsNil)
-	var si service.ServiceInstance
-	err = db.Session.ServiceInstances().Find(bson.M{"_id": "brainSQL"}).One(&si)
-	c.Assert(err, IsNil)
-	err = db.Session.ServiceInstances().Find(bson.M{"_id": "brainSQL"}).One(&si)
-	c.Assert(err, IsNil)
-	db.Session.ServiceInstances().Update(bson.M{"_id": si.Name}, si)
-}
-
 func (s *S) TestCreateInstanceHandlerReturnsErrorWhenUserCannotUseService(c *C) {
 	service := service.Service{Name: "mysql", IsRestricted: true}
 	service.Create()
@@ -112,7 +101,11 @@ func (s *S) TestCreateInstanceHandlerReturnsErrorWhenUserCannotUseService(c *C) 
 }
 
 func (s *S) TestCreateInstanceHandlerIgnoresTeamAuthIfServiceIsNotRestricted(c *C) {
-	srvc := service.Service{Name: "mysql"}
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(`{"DATABASE_HOST":"localhost"}`))
+	}))
+	defer ts.Close()
+	srvc := service.Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}}
 	err := srvc.Create()
 	c.Assert(err, IsNil)
 	defer db.Session.Services().Remove(bson.M{"_id": "mysql"})
