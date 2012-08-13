@@ -65,7 +65,7 @@ func (c *Client) Create(instance *ServiceInstance) error {
 	params := map[string][]string{
 		"name": []string{instance.Name},
 	}
-	if resp, err = c.issueRequest("/resources/", "POST", params); err == nil && resp.StatusCode < 300 {
+	if resp, err = c.issueRequest("/resources", "POST", params); err == nil && resp.StatusCode < 300 {
 		return nil
 	} else {
 		msg := "Failed to create the instance " + instance.Name + ": " + c.buildErrorMessage(err, resp)
@@ -78,7 +78,7 @@ func (c *Client) Create(instance *ServiceInstance) error {
 func (c *Client) Destroy(instance *ServiceInstance) (err error) {
 	log.Print("Attempting to call destroy of service instance " + instance.Name + " at " + instance.ServiceName + " api")
 	var resp *http.Response
-	if resp, err = c.issueRequest("/resources/"+instance.Name+"/", "DELETE", nil); err == nil && resp.StatusCode > 299 {
+	if resp, err = c.issueRequest("/resources/"+instance.Name, "DELETE", nil); err == nil && resp.StatusCode > 299 {
 		msg := "Failed to destroy the instance " + instance.Name + ": " + c.buildErrorMessage(err, resp)
 		log.Print(msg)
 		err = &errors.Http{Code: http.StatusInternalServerError, Message: msg}
@@ -92,7 +92,7 @@ func (c *Client) Bind(instance *ServiceInstance, app bind.App) (envVars map[stri
 	params := map[string][]string{
 		"hostname": []string{app.GetUnits()[0].Ip},
 	}
-	if resp, err = c.issueRequest("/resources/"+instance.Name+"/", "POST", params); err == nil && resp.StatusCode < 300 {
+	if resp, err = c.issueRequest("/resources/"+instance.Name, "POST", params); err == nil && resp.StatusCode < 300 {
 		return c.jsonFromResponse(resp)
 	} else if resp.StatusCode == http.StatusPreconditionFailed {
 		err = &errors.Http{Code: resp.StatusCode, Message: "You cannot bind any app to this service instance because it is not ready yet."}
@@ -107,7 +107,7 @@ func (c *Client) Bind(instance *ServiceInstance, app bind.App) (envVars map[stri
 func (c *Client) Unbind(instance *ServiceInstance, app bind.App) (err error) {
 	log.Print("Attempting to call unbind of service instance " + instance.Name + " and app " + app.GetName() + " at " + instance.ServiceName + " api")
 	var resp *http.Response
-	url := "/resources/" + instance.Name + "/hostname/" + app.GetUnits()[0].Ip + "/"
+	url := "/resources/" + instance.Name + "/hostname/" + app.GetUnits()[0].Ip
 	if resp, err = c.issueRequest(url, "DELETE", nil); err == nil && resp.StatusCode > 299 {
 		msg := "Failed to unbind instance " + instance.Name + " from the app " + app.GetName() + ": " + c.buildErrorMessage(err, resp)
 		log.Print(msg)
