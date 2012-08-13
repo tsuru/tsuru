@@ -47,14 +47,18 @@ func (s *S) TearDownSuite(c *C) {
 }
 
 func (s *S) TestBindAddsAppToTheServiceInstance(c *C) {
-	srvc := service.Service{Name: "mysql"}
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(`{"DATABASE_USER":"root","DATABASE_PASSWORD":"s3cr3t"}`))
+	}))
+	defer ts.Close()
+	srvc := service.Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}}
 	err := srvc.Create()
 	c.Assert(err, IsNil)
 	defer db.Session.Services().Remove(bson.M{"_id": "mysql"})
 	instance := service.ServiceInstance{Name: "my-mysql", ServiceName: "mysql", Teams: []string{s.team.Name}}
 	instance.Create()
 	defer db.Session.ServiceInstances().Remove(bson.M{"_id": "my-mysql"})
-	a := app.App{Name: "painkiller", Teams: []string{s.team.Name}}
+	a := app.App{Name: "painkiller", Teams: []string{s.team.Name}, Units: []unit.Unit{unit.Unit{Ip: "10.10.10.10"}}}
 	a.Create()
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
 	err = instance.Bind(&a)

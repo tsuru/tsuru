@@ -84,17 +84,15 @@ func (si *ServiceInstance) Bind(app bind.App) error {
 			})
 		}
 	}
-	var cli *Client
-	if cli, err = si.Service().GetClient("production"); err == nil {
-		if len(app.GetUnits()) == 0 {
-			return &errors.Http{Code: http.StatusPreconditionFailed, Message: "This app does not have an IP yet."}
-		}
-		env, err := cli.Bind(si, app)
-		if err != nil {
-			return err
-		}
-		setEnv(env)
+	cli := si.Service().ProductionEndpoint()
+	if len(app.GetUnits()) == 0 {
+		return &errors.Http{Code: http.StatusPreconditionFailed, Message: "This app does not have an IP yet."}
 	}
+	env, err := cli.Bind(si, app)
+	if err != nil {
+		return err
+	}
+	setEnv(env)
 	err = si.update()
 	if err != nil {
 		cli.Unbind(si, app)
@@ -113,9 +111,7 @@ func (si *ServiceInstance) Unbind(app bind.App) error {
 		return err
 	}
 	go func() {
-		if cli, err := si.Service().GetClient("production"); err == nil {
-			cli.Unbind(si, app)
-		}
+		si.Service().ProductionEndpoint().Unbind(si, app)
 	}()
 	var envVars []string
 	for k, _ := range app.InstanceEnv(si.Name) {
