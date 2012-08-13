@@ -42,7 +42,7 @@ func CreateInstanceHandler(w http.ResponseWriter, r *http.Request, u *auth.User)
 		return &errors.Http{Code: http.StatusInternalServerError, Message: err.Error()}
 	}
 	var s service.Service
-	err = validateForInstanceCreation(&s, sJson, u)
+	err = validateInstanceForCreation(&s, sJson, u)
 	if err != nil {
 		log.Print("Got error while validation:")
 		log.Print(err.Error())
@@ -80,7 +80,7 @@ func CreateInstanceHandler(w http.ResponseWriter, r *http.Request, u *auth.User)
 }
 
 // change my name for validateInstanceForCreation
-func validateForInstanceCreation(s *service.Service, sJson map[string]string, u *auth.User) error {
+func validateInstanceForCreation(s *service.Service, sJson map[string]string, u *auth.User) error {
 	err := db.Session.Services().Find(bson.M{"_id": sJson["service_name"], "status": bson.M{"$ne": "deleted"}}).One(&s)
 	if err != nil {
 		msg := err.Error()
