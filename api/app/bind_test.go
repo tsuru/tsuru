@@ -3,9 +3,12 @@ package app
 import (
 	"github.com/timeredbull/tsuru/api/bind"
 	"github.com/timeredbull/tsuru/api/service"
+	"github.com/timeredbull/tsuru/api/unit"
 	"github.com/timeredbull/tsuru/db"
 	"labix.org/v2/mgo/bson"
 	. "launchpad.net/gocheck"
+	"net/http"
+	"net/http/httptest"
 )
 
 func (s *S) TestAppIsABinderApp(c *C) {
@@ -14,11 +17,19 @@ func (s *S) TestAppIsABinderApp(c *C) {
 }
 
 func (s *S) TestDestroyShouldUnbindAppFromInstance(c *C) {
-	instance := service.ServiceInstance{Name: "MyInstance", Apps: []string{"myApp"}}
-	err := instance.Create()
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	defer ts.Close()
+	srvc := service.Service{Name: "my", Endpoint: map[string]string{"production": ts.URL}}
+	err := srvc.Create()
+	c.Assert(err, IsNil)
+	defer db.Session.Services().Remove(bson.M{"_id": srvc.Name})
+	instance := service.ServiceInstance{Name: "MyInstance", Apps: []string{"myApp"}, ServiceName: srvc.Name}
+	err = instance.Create()
 	c.Assert(err, IsNil)
 	defer db.Session.ServiceInstances().Remove(bson.M{"_id": instance.Name})
-	a := App{Name: "myApp"}
+	a := App{Name: "myApp", Units: []unit.Unit{unit.Unit{Ip: "10.10.10.10"}}}
 	err = a.Create()
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
