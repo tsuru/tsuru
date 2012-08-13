@@ -28,9 +28,9 @@ func (s *S) TestEnvGetInfo(c *C) {
 	e := EnvGet{}
 	i := e.Info()
 	c.Assert(i.Name, Equals, "get")
-	c.Assert(i.Usage, Equals, "env get <appname> <ENVIRONMENT_VARIABLE1> [ENVIRONMENT_VARIABLE2] ...")
+	c.Assert(i.Usage, Equals, "env get <appname> [ENVIRONMENT_VARIABLE1] [ENVIRONMENT_VARIABLE2] ...")
 	c.Assert(i.Desc, Equals, "retrieve environment variables for an app.")
-	c.Assert(i.MinArgs, Equals, 2)
+	c.Assert(i.MinArgs, Equals, 1)
 }
 
 func (s *S) TestEnvGetRun(c *C) {

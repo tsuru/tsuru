@@ -33,9 +33,9 @@ type EnvGet struct{}
 func (c *EnvGet) Info() *cmd.Info {
 	return &cmd.Info{
 		Name:    "get",
-		Usage:   "env get <appname> <ENVIRONMENT_VARIABLE1> [ENVIRONMENT_VARIABLE2] ...",
+		Usage:   "env get <appname> [ENVIRONMENT_VARIABLE1] [ENVIRONMENT_VARIABLE2] ...",
 		Desc:    "retrieve environment variables for an app.",
-		MinArgs: 2,
+		MinArgs: 1,
 	}
 }
 
