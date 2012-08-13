@@ -63,16 +63,12 @@ func CreateInstanceHandler(w http.ResponseWriter, r *http.Request, u *auth.User)
 		ServiceName: sJson["service_name"],
 		Teams:       teamNames,
 	}
-	cli, err := s.GetClient("production")
-	if err != nil {
-		return err
-	}
-	go func(cli *service.Client) {
-		if cli.Create(&si) != nil {
+	go func() {
+		if s.ProductionEndpoint().Create(&si) != nil {
 			log.Print("Error while calling create action from service api.")
 			log.Print(err.Error())
 		}
-	}(cli)
+	}()
 	err = si.Create()
 	if err != nil {
 		return err
@@ -107,10 +103,8 @@ func RemoveServiceInstanceHandler(w http.ResponseWriter, r *http.Request, u *aut
 		msg := "This service instance has binded apps. Unbind them before removing it"
 		return &errors.Http{Code: http.StatusInternalServerError, Message: msg}
 	}
-	if cli, err := si.Service().GetClient("production"); err == nil {
-		if err = cli.Destroy(&si); err != nil {
-			return &errors.Http{Code: http.StatusInternalServerError, Message: err.Error()}
-		}
+	if err = si.Service().ProductionEndpoint().Destroy(&si); err != nil {
+		return &errors.Http{Code: http.StatusInternalServerError, Message: err.Error()}
 	}
 	err = db.Session.ServiceInstances().Remove(bson.M{"_id": name})
 	if err != nil {
@@ -148,13 +142,9 @@ func ServiceInstanceStatusHandler(w http.ResponseWriter, r *http.Request, u *aut
 	}
 	s := si.Service()
 	var b string
-	if cli, err := s.GetClient("production"); err == nil {
-		if b, err = cli.Status(&si); err != nil {
-			msg := fmt.Sprintf("Could not retrieve status of service instance, error: %s", err.Error())
-			return &errors.Http{Code: http.StatusInternalServerError, Message: msg}
-		}
-	} else {
-		return &errors.Http{Code: http.StatusInternalServerError, Message: err.Error()}
+	if b, err = s.ProductionEndpoint().Status(&si); err != nil {
+		msg := fmt.Sprintf("Could not retrieve status of service instance, error: %s", err.Error())
+		return &errors.Http{Code: http.StatusInternalServerError, Message: msg}
 	}
 	b = fmt.Sprintf(`Service instance "%s" is %s`, siName, b)
 	n, err := w.Write([]byte(b))

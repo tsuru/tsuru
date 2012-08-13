@@ -135,7 +135,11 @@ func makeRequestToRemoveInstanceHandler(name string, c *C) (*httptest.ResponseRe
 }
 
 func (s *S) TestRemoveServiceInstanceHandler(c *C) {
-	se := service.Service{Name: "foo"}
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer ts.Close()
+	se := service.Service{Name: "foo", Endpoint: map[string]string{"production": ts.URL}}
 	err := se.Create()
 	defer db.Session.Services().Remove(bson.M{"_id": se.Name})
 	c.Assert(err, IsNil)
@@ -373,24 +377,6 @@ func (s *S) TestServiceInstanceStatusHandlerShouldReturnErrorWhenServiceInstance
 	recorder, request := makeRequestToStatusHandler("inexistent-instance", c)
 	err := ServiceInstanceStatusHandler(recorder, request, s.user)
 	c.Assert(err, ErrorMatches, "^Service instance does not exists, error: not found$")
-}
-
-func (s *S) TestServiceInstanceStatusHandlerShouldReturnErrorWhenServiceHasNoProductionEndpoint(c *C) {
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte(`Service instance "my_nosql" is up`))
-	}))
-	defer ts.Close()
-	srv := service.Service{Name: "mongodb", OwnerTeams: []string{s.team.Name}}
-	err := srv.Create()
-	c.Assert(err, IsNil)
-	defer srv.Delete()
-	si := service.ServiceInstance{Name: "my_nosql", ServiceName: srv.Name}
-	err = si.Create()
-	c.Assert(err, IsNil)
-	defer si.Delete()
-	recorder, request := makeRequestToStatusHandler("my_nosql", c)
-	err = ServiceInstanceStatusHandler(recorder, request, s.user)
-	c.Assert(err, ErrorMatches, "^Unknown endpoint: production$")
 }
 
 func (s *S) TestServiceInfoHandler(c *C) {
