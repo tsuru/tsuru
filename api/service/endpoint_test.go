@@ -258,3 +258,16 @@ func (s *S) TestStatusShouldReturnDownWhenApiReturns500(c *C) {
 	c.Assert(err, IsNil)
 	c.Assert(state, Equals, "down")
 }
+
+func (s *S) TestStatusShouldReturnPendingWhenApiReturns202(c *C) {
+	h := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusAccepted)
+	})
+	ts := httptest.NewServer(h)
+	defer ts.Close()
+	instance := ServiceInstance{Name: "hi_there", ServiceName: "redis"}
+	client := Client{endpoint: ts.URL}
+	state, err := client.Status(&instance)
+	c.Assert(err, IsNil)
+	c.Assert(state, Equals, "pending")
+}

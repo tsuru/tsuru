@@ -129,14 +129,18 @@ func (c *Client) Status(instance *ServiceInstance) (string, error) {
 		err  error
 	)
 	url := "/resources/" + instance.Name + "/status/"
-	if resp, err = c.issueRequest(url, "GET", nil); err == nil && resp.StatusCode == 204 {
-		return "up", nil
-	} else if err == nil && resp.StatusCode == 500 {
-		return "down", nil
-	} else {
-		msg := "Failed to get status of instance " + instance.Name + ": " + c.buildErrorMessage(err, resp)
-		log.Print(msg)
-		err = &errors.Http{Code: http.StatusInternalServerError, Message: msg}
+	if resp, err = c.issueRequest(url, "GET", nil); err == nil {
+		switch resp.StatusCode {
+		case 202:
+			return "pending", nil
+		case 204:
+			return "up", nil
+		case 500:
+			return "down", nil
+		}
 	}
+	msg := "Failed to get status of instance " + instance.Name + ": " + c.buildErrorMessage(err, resp)
+	log.Print(msg)
+	err = &errors.Http{Code: http.StatusInternalServerError, Message: msg}
 	return "", err
 }

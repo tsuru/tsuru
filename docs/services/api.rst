@@ -128,3 +128,28 @@ Your API should return the following HTTP response code with the respective resp
     * 200: if the service is successfully destroyed. You don’t need to include any content in the response body.
     * 404: if the service instance does not exist. You don’t need to include any content in the response body.
     * 500: in case of any failure in the destroy process. Make sure you include an explanation for the failure in the response body.
+
+Checking the status of an instance
+==================================
+
+This process begins when a Tsuru customer wants to check the status of an instance via command line tool:
+
+.. highlight:: bash
+
+::
+
+    $ tsuru service instance status mysql_instance
+
+Tsuru calls your service to check the status of the instance via GET on ``/resources/mysql_instance/status`` (please notice that tsuru does not include a trailing slash). Example of request:
+
+.. highlight:: text
+
+::
+
+    GET /resources/mysql_instance/status HTTP/1.0
+
+Your API should returning the following HTTP response code, with the respective response body:
+
+    * 202: the instance is still being provisioned (pending). You don't need to include any content in the response body.
+    * 204: the instance is running and ready for connections (running). You don't need to include any content in the response body.
+    * 500: the instance is not running, nor ready for connections. Make sure you include the reason why the instance is not running.
