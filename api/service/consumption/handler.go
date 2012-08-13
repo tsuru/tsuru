@@ -54,7 +54,7 @@ func CreateInstanceHandler(w http.ResponseWriter, r *http.Request, u *auth.User)
 		return err
 	}
 	for _, t := range teams {
-		if s.HasTeam(&t) {
+		if s.HasTeam(&t) || !s.IsRestricted {
 			teamNames = append(teamNames, t.Name)
 		}
 	}

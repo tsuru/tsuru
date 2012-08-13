@@ -75,7 +75,7 @@ func (s *S) TestCreateInstanceHandlerSavesAllTeamsThatTheGivenUserIsMemberAndHas
 	t := auth.Team{Name: "judaspriest", Users: []string{s.user.Email}}
 	err := db.Session.Teams().Insert(t)
 	defer db.Session.Teams().Remove(bson.M{"name": t.Name})
-	srv := service.Service{Name: "mysql", Teams: []string{s.team.Name}}
+	srv := service.Service{Name: "mysql", Teams: []string{s.team.Name}, IsRestricted: true}
 	err = srv.Create()
 	c.Assert(err, IsNil)
 	recorder, request := makeRequestToCreateInstanceHandler(c)
@@ -109,6 +109,21 @@ func (s *S) TestCreateInstanceHandlerReturnsErrorWhenUserCannotUseService(c *C) 
 	recorder, request := makeRequestToCreateInstanceHandler(c)
 	err := CreateInstanceHandler(recorder, request, s.user)
 	c.Assert(err, ErrorMatches, "^This user does not have access to this service$")
+}
+
+func (s *S) TestCreateInstanceHandlerIgnoresTeamAuthIfServiceIsNotRestricted(c *C) {
+	srvc := service.Service{Name: "mysql"}
+	err := srvc.Create()
+	c.Assert(err, IsNil)
+	defer db.Session.Services().Remove(bson.M{"_id": "mysql"})
+	recorder, request := makeRequestToCreateInstanceHandler(c)
+	err = CreateInstanceHandler(recorder, request, s.user)
+	c.Assert(err, IsNil)
+	var si service.ServiceInstance
+	err = db.Session.ServiceInstances().Find(bson.M{"_id": "brainSQL"}).One(&si)
+	c.Assert(err, IsNil)
+	c.Assert(si.Name, Equals, "brainSQL")
+	c.Assert(si.Teams, DeepEquals, []string{s.team.Name})
 }
 
 func (s *S) TestCreateInstanceHandlerReturnsErrorWhenServiceDoesntExists(c *C) {
