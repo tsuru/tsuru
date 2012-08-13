@@ -220,7 +220,11 @@ func (s *S) TestBindReturnsPreconditionFailedIfTheAppDoesNotHaveAnUnitAndService
 }
 
 func (s *S) TestUnbindRemovesAppFromServiceInstance(c *C) {
-	srvc := service.Service{Name: "mysql"}
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	defer ts.Close()
+	srvc := service.Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}}
 	err := srvc.Create()
 	c.Assert(err, IsNil)
 	defer db.Session.Services().Remove(bson.M{"_id": "mysql"})
@@ -232,7 +236,7 @@ func (s *S) TestUnbindRemovesAppFromServiceInstance(c *C) {
 	}
 	instance.Create()
 	defer db.Session.ServiceInstances().Remove(bson.M{"_id": "my-mysql"})
-	a := app.App{Name: "painkiller", Teams: []string{s.team.Name}}
+	a := app.App{Name: "painkiller", Teams: []string{s.team.Name}, Units: []unit.Unit{unit.Unit{Ip: "10.10.10.10"}}}
 	a.Create()
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
 	err = instance.Unbind(&a)
@@ -242,7 +246,11 @@ func (s *S) TestUnbindRemovesAppFromServiceInstance(c *C) {
 }
 
 func (s *S) TestUnbindRemovesEnvironmentVariableFromApp(c *C) {
-	srvc := service.Service{Name: "mysql"}
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	defer ts.Close()
+	srvc := service.Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}}
 	err := srvc.Create()
 	c.Assert(err, IsNil)
 	defer db.Session.Services().Remove(bson.M{"_id": "mysql"})
@@ -268,6 +276,11 @@ func (s *S) TestUnbindRemovesEnvironmentVariableFromApp(c *C) {
 			"MY_VAR": app.EnvVar{
 				Name:  "MY_VAR",
 				Value: "123",
+			},
+		},
+		Units: []unit.Unit{
+			unit.Unit{
+				Ip: "10.10.10.10",
 			},
 		},
 	}
@@ -331,14 +344,18 @@ func (s *S) TestUnbindCallsTheUnbindMethodFromAPI(c *C) {
 }
 
 func (s *S) TestUnbindReturnsPreconditionFailedIfTheAppIsNotBindedToTheInstance(c *C) {
-	srvc := service.Service{Name: "mysql"}
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	defer ts.Close()
+	srvc := service.Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}}
 	err := srvc.Create()
 	c.Assert(err, IsNil)
 	defer db.Session.Services().Remove(bson.M{"_id": "mysql"})
 	instance := service.ServiceInstance{Name: "my-mysql", ServiceName: "mysql", Teams: []string{s.team.Name}}
 	instance.Create()
 	defer db.Session.ServiceInstances().Remove(bson.M{"_id": "my-mysql"})
-	a := app.App{Name: "painkiller", Teams: []string{s.team.Name}}
+	a := app.App{Name: "painkiller", Teams: []string{s.team.Name}, Units: []unit.Unit{unit.Unit{Ip: "10.10.10.10"}}}
 	a.Create()
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
 	err = instance.Unbind(&a)
