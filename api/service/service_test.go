@@ -75,7 +75,7 @@ func (s *S) TestGetClient(c *C) {
 		"test":       "http://localhost:9090",
 	}
 	service := Service{Name: "redis", Endpoint: endpoints}
-	cli, err := service.GetClient("production")
+	cli, err := service.getClient("production")
 	c.Assert(err, IsNil)
 	c.Assert(cli, DeepEquals, &Client{endpoint: endpoints["production"]})
 }
@@ -86,7 +86,7 @@ func (s *S) TestGetClientWithouHttp(c *C) {
 		"test":       "localhost:9090",
 	}
 	service := Service{Name: "redis", Endpoint: endpoints}
-	cli, err := service.GetClient("production")
+	cli, err := service.getClient("production")
 	c.Assert(err, IsNil)
 	c.Assert(cli.endpoint, Equals, "http://mysql.api.com")
 }
@@ -97,7 +97,7 @@ func (s *S) TestGetClientWithUnknownEndpoint(c *C) {
 		"test":       "http://localhost:9090",
 	}
 	service := Service{Name: "redis", Endpoint: endpoints}
-	cli, err := service.GetClient("staging")
+	cli, err := service.getClient("staging")
 	c.Assert(err, NotNil)
 	c.Assert(err, ErrorMatches, "^Unknown endpoint: staging$")
 	c.Assert(cli, IsNil)
