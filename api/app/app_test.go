@@ -212,6 +212,13 @@ func (s *S) TestUnit(c *C) {
 	c.Assert(u2, DeepEquals, u)
 }
 
+func (s *S) TestEmptyUnit(c *C) {
+	a := App{Name: "myApp"}
+	expected := Unit{app: &a}
+	unit := a.unit()
+	c.Assert(unit, DeepEquals, expected)
+}
+
 func (s *S) TestDeployHookAbsPath(c *C) {
 	path := "deploy/pre.sh"
 	expected := "/home/application/current/deploy/pre.sh"

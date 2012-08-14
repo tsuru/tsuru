@@ -331,7 +331,7 @@ func (a *App) unit() Unit {
 		unit.app = a
 		return unit
 	}
-	return Unit{}
+	return Unit{app: a}
 }
 
 func (a *App) GetUnits() []bind.Unit {
