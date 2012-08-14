@@ -27,7 +27,7 @@ func (u *Unit) Destroy() ([]byte, error) {
 }
 
 func (u *Unit) Command(cmds ...string) ([]byte, error) {
-	c := exec.Command("juju", "ssh", "-o", "StrictHostKeyChecking no", strconv.Itoa(u.Machine))
+	c := exec.Command("juju", "ssh", "-o", "StrictHostKeyChecking no", "-e", u.app.JujuEnv, strconv.Itoa(u.Machine))
 	c.Args = append(c.Args, cmds...)
 	log.Printf("executing %s on %s", strings.Join(cmds, " "), u.Name)
 	return c.CombinedOutput()

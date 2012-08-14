@@ -9,26 +9,26 @@ import (
 
 func (s *S) TestCommand(c *C) {
 	var err error
-	s.tmpdir, err = commandmocker.Add("juju", "Linux")
+	s.tmpdir, err = commandmocker.Add("juju", "$*")
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(s.tmpdir)
-	u := Unit{Type: "django", Name: "myUnit", Machine: 1}
+	u := Unit{Type: "django", Name: "myUnit", Machine: 1, app: &App{JujuEnv: "alpha"}}
 	output, err := u.Command("uname")
 	c.Assert(err, IsNil)
-	c.Assert(string(output), Equals, "Linux")
+	c.Assert(string(output), Matches, `.* -e alpha \d uname`)
 }
 
 func (s *S) TestCommandShouldAcceptMultipleParams(c *C) {
 	dir, err := commandmocker.Add("juju", "$*")
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(dir)
-	u := Unit{Type: "django", Name: "myUnit", Machine: 1}
+	u := Unit{Type: "django", Name: "myUnit", Machine: 1, app: &App{JujuEnv: "alpha"}}
 	out, err := u.Command("uname", "-a")
-	c.Assert(string(out), Matches, ".* uname -a")
+	c.Assert(string(out), Matches, `.* -e alpha \d uname -a`)
 }
 
 func (s *S) TestExecuteHook(c *C) {
-	appUnit := Unit{Type: "django", Name: "myUnit"}
+	appUnit := Unit{Type: "django", Name: "myUnit", app: &App{JujuEnv: "beta"}}
 	_, err := appUnit.ExecuteHook("requirements")
 	c.Assert(err, IsNil)
 }
