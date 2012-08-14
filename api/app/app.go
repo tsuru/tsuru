@@ -38,11 +38,12 @@ func (e *EnvVar) String() string {
 type App struct {
 	Env       map[string]EnvVar
 	Framework string
+	JujuEnv   string
+	Logs      []Log
 	Name      string
 	State     string
 	Units     []unit.Unit
 	Teams     []string
-	Logs      []Log
 }
 
 type Log struct {
@@ -61,6 +62,7 @@ func (a *App) Get() error {
 
 func (a *App) Create() error {
 	a.State = "pending"
+	a.JujuEnv = "delta"
 	err := db.Session.Apps().Insert(a)
 	if err != nil {
 		return err

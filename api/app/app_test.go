@@ -91,6 +91,7 @@ func (s *S) TestCreate(c *C) {
 	c.Assert(retrievedApp.Name, Equals, a.Name)
 	c.Assert(retrievedApp.Framework, Equals, a.Framework)
 	c.Assert(retrievedApp.State, Equals, a.State)
+	c.Assert(retrievedApp.JujuEnv, Equals, "delta")
 	str := strings.Replace(w.String(), "\n", "", -1)
 	c.Assert(str, Matches, ".*deploy --repository=/home/charms local:django appName.*")
 }
