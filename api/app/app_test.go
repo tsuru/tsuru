@@ -208,6 +208,7 @@ func (s *S) TestUnit(c *C) {
 	u := Unit{Name: "someapp/0", Type: "django", Machine: 10}
 	a := App{Name: "appName", Framework: "django", Units: []Unit{u}}
 	u2 := a.unit()
+	u.app = &a
 	c.Assert(u2, DeepEquals, u)
 }
 
@@ -493,6 +494,6 @@ func (s *S) TestSetTeams(c *C) {
 
 func (s *S) TestGetUnits(c *C) {
 	app := App{Units: []Unit{Unit{Ip: "1.1.1.1"}}}
-	expected := []bind.Unit{bind.Unit(&Unit{Ip: "1.1.1.1"})}
+	expected := []bind.Unit{bind.Unit(&Unit{Ip: "1.1.1.1", app: &app})}
 	c.Assert(app.GetUnits(), DeepEquals, expected)
 }

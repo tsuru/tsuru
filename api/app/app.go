@@ -327,7 +327,9 @@ func (a *App) updateHooks() error {
 
 func (a *App) unit() Unit {
 	if len(a.Units) > 0 {
-		return a.Units[0]
+		unit := a.Units[0]
+		unit.app = a
+		return unit
 	}
 	return Unit{}
 }
@@ -335,6 +337,7 @@ func (a *App) unit() Unit {
 func (a *App) GetUnits() []bind.Unit {
 	var units []bind.Unit
 	for _, u := range a.Units {
+		u.app = a
 		units = append(units, bind.Unit(&u))
 	}
 	return units
