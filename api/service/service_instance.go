@@ -2,6 +2,7 @@ package service
 
 import (
 	stderrors "errors"
+	"github.com/timeredbull/tsuru/api/auth"
 	"github.com/timeredbull/tsuru/api/bind"
 	"github.com/timeredbull/tsuru/db"
 	"github.com/timeredbull/tsuru/errors"
@@ -122,4 +123,21 @@ func (si *ServiceInstance) Unbind(app bind.App) error {
 		envVars = append(envVars, k)
 	}
 	return app.UnsetEnvs(envVars, false)
+}
+
+func GetServiceInstancesByService(s Service) (sInstances []ServiceInstance, err error) {
+	q := bson.M{"service_name": s.Name}
+	err = db.Session.ServiceInstances().Find(q).Select(bson.M{"name": 1, "service_name": 1}).All(&sInstances)
+	return
+}
+
+func GetServiceInstancesByServiceAndTeams(s Service, u *auth.User) (sInstances []ServiceInstance, err error) {
+	teams, err := u.Teams()
+	if err != nil {
+		return
+	}
+	q := bson.M{"service_name": s.Name, "teams": bson.M{"$in": auth.GetTeamsNames(teams)}}
+	f := bson.M{"name": 1, "service_name": 1, "apps": 1}
+	err = db.Session.ServiceInstances().Find(q).Select(f).All(&sInstances)
+	return
 }
