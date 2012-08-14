@@ -38,10 +38,10 @@ func (s *S) TestDestroyUnit(c *C) {
 	s.tmpdir, err = commandmocker.Add("juju", "$*")
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(s.tmpdir)
-	unit := Unit{Type: "django", Name: "myunit", app: &App{JujuEnv: "zeta"}}
+	unit := Unit{Type: "django", Name: "myunit", Machine: 10, app: &App{JujuEnv: "zeta"}}
 	out, err := unit.Destroy()
 	c.Assert(err, IsNil)
-	c.Assert(string(out), Equals, "destroy-service -e zeta myunit")
+	c.Assert(string(out), Equals, "terminate-machine -e zeta 10")
 }
 
 func (s *S) TestUnitShouldBeARepositoryUnit(c *C) {
