@@ -19,8 +19,7 @@ func (s *S) TestCommand(c *C) {
 }
 
 func (s *S) TestCommandShouldAcceptMultipleParams(c *C) {
-	output := "$*"
-	dir, err := commandmocker.Add("juju", output)
+	dir, err := commandmocker.Add("juju", "$*")
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(dir)
 	u := Unit{Type: "django", Name: "myUnit", Machine: 1}
