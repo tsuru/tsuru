@@ -15,6 +15,34 @@ import (
 	"path/filepath"
 )
 
+func (s *S) makeRequestToServicesHandler(c *C) (*httptest.ResponseRecorder, *http.Request) {
+	request, err := http.NewRequest("GET", "/services", nil)
+	c.Assert(err, IsNil)
+	request.Header.Set("Content-Type", "application/json")
+	recorder := httptest.NewRecorder()
+	return recorder, request
+}
+
+func (s *S) TestServicesHandlerShoudGetAllServicesFromUsersTeam(c *C) {
+	srv := service.Service{Name: "mongodb", OwnerTeams: []string{s.team.Name}}
+	srv.Create()
+	defer db.Session.Services().Remove(bson.M{"_id": srv.Name})
+	si := service.ServiceInstance{Name: "my_nosql", ServiceName: srv.Name, Teams: []string{s.team.Name}}
+	si.Create()
+	defer si.Delete()
+	recorder, request := s.makeRequestToServicesHandler(c)
+	err := ServicesHandler(recorder, request, s.user)
+	c.Assert(err, IsNil)
+	b, err := ioutil.ReadAll(recorder.Body)
+	c.Assert(err, IsNil)
+	services := make([]service.ServiceModel, 1)
+	err = json.Unmarshal(b, &services)
+	expected := []service.ServiceModel{
+		service.ServiceModel{Service: "mongodb", Instances: []string{"my_nosql"}},
+	}
+	c.Assert(services, DeepEquals, expected)
+}
+
 func makeRequestToCreateHandler(c *C) (*httptest.ResponseRecorder, *http.Request) {
 	manifest := `id: some_service
 endpoint:

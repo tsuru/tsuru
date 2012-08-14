@@ -18,6 +18,19 @@ type serviceYaml struct {
 	Bootstrap map[string]string
 }
 
+func ServicesHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
+	results := ServiceAndServiceInstancesByTeams("owner_teams", u)
+	b, err := json.Marshal(results)
+	if err != nil {
+		return &errors.Http{Code: http.StatusInternalServerError, Message: err.Error()}
+	}
+	n, err := w.Write(b)
+	if n != len(b) {
+		return &errors.Http{Code: http.StatusInternalServerError, Message: "Failed to write response body"}
+	}
+	return err
+}
+
 func CreateHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	defer r.Body.Close()
 	body, err := ioutil.ReadAll(r.Body)
