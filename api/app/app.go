@@ -232,7 +232,6 @@ func deployHookAbsPath(p string) (string, error) {
  */
 func (a *App) conf() (conf, error) {
 	var c conf
-	u := a.unit()
 	uRepo, err := repository.GetPath()
 	if err != nil {
 		a.Log(fmt.Sprintf("Got error while getting repository path: %s", err.Error()))
@@ -240,7 +239,7 @@ func (a *App) conf() (conf, error) {
 	}
 	cPath := path.Join(uRepo, "app.conf")
 	cmd := fmt.Sprintf(`echo "%s";cat %s`, confSep, cPath)
-	o, err := u.Command(cmd)
+	o, err := a.unit().Command(cmd)
 	if err != nil {
 		a.Log(fmt.Sprintf("Got error while executing command: %s... Skipping hooks execution", err.Error()))
 		return c, nil
@@ -267,13 +266,12 @@ func (a *App) preRestart(c conf) error {
 		a.Log("pre-restart hook section in app conf does not exists... Skipping...")
 		return nil
 	}
-	u := a.unit()
 	p, err := deployHookAbsPath(c.PreRestart)
 	if err != nil {
 		a.Log(fmt.Sprintf("Error obtaining absolute path to hook: %s. Skipping...", err))
 		return nil
 	}
-	out, err := u.Command("/bin/bash", p)
+	out, err := a.unit().Command("/bin/bash", p)
 	a.Log("Executing pre-restart hook...")
 	a.Log(fmt.Sprintf("Output of pre-restart hook: %s", string(out)))
 	return err
@@ -292,13 +290,12 @@ func (a *App) posRestart(c conf) error {
 		a.Log("pos-restart hook section in app conf does not exists... Skipping...")
 		return nil
 	}
-	u := a.unit()
 	p, err := deployHookAbsPath(c.PosRestart)
 	if err != nil {
 		a.Log(fmt.Sprintf("Error obtaining absolute path to hook: %s. Skipping...", err))
 		return nil
 	}
-	out, err := u.Command("/bin/bash", p)
+	out, err := a.unit().Command("/bin/bash", p)
 	a.Log("Executing pos-restart hook...")
 	a.Log(fmt.Sprintf("Output of pos-restart hook: %s", string(out)))
 	return err
