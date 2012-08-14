@@ -22,6 +22,11 @@ type Service struct {
 	IsRestricted bool `bson:"is_restricted"`
 }
 
+type ServiceModel struct {
+	Service   string
+	Instances []string
+}
+
 func (s *Service) Log(out []byte) {
 	log.Printf(string(out))
 }
@@ -96,4 +101,18 @@ func GetServicesNames(services []Service) []string {
 		sNames[i] = s.Name
 	}
 	return sNames
+}
+
+func GetServicesByTeamKind(teamKind string, u *auth.User) (services []Service, err error) {
+	teams, err := u.Teams()
+	teamsNames := auth.GetTeamsNames(teams)
+	q := bson.M{"$or": []bson.M{
+		bson.M{
+			teamKind: bson.M{"$in": teamsNames},
+		},
+		bson.M{"is_restricted": false},
+	},
+	}
+	err = db.Session.Services().Find(q).Select(bson.M{"name": 1}).All(&services)
+	return
 }
