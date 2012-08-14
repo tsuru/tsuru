@@ -2,7 +2,6 @@ package main
 
 import (
 	"github.com/timeredbull/tsuru/api/app"
-	"github.com/timeredbull/tsuru/api/unit"
 	"github.com/timeredbull/tsuru/db"
 	"github.com/timeredbull/tsuru/log"
 	"labix.org/v2/mgo/bson"
@@ -13,7 +12,7 @@ import (
 type Collector struct{}
 
 type Service struct {
-	Units map[string]unit.Unit
+	Units map[string]app.Unit
 }
 
 type output struct {
@@ -37,7 +36,7 @@ func (c *Collector) Update(out *output) {
 	log.Print("updating status from juju")
 	for serviceName, service := range out.Services {
 		for _, yUnit := range service.Units {
-			u := unit.Unit{}
+			u := app.Unit{}
 			a := app.App{Name: serviceName}
 			a.Get()
 			uMachine := out.Machines[yUnit.Machine].(map[interface{}]interface{})
@@ -62,7 +61,7 @@ func (c *Collector) Update(out *output) {
 	}
 }
 
-func appState(u *unit.Unit) string {
+func appState(u *app.Unit) string {
 	if u.InstanceState == "error" || u.AgentState == "install-error" {
 		return "error"
 	}

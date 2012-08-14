@@ -6,7 +6,6 @@ import (
 	"github.com/timeredbull/tsuru/api/auth"
 	"github.com/timeredbull/tsuru/api/bind"
 	"github.com/timeredbull/tsuru/api/service"
-	"github.com/timeredbull/tsuru/api/unit"
 	"github.com/timeredbull/tsuru/config"
 	"github.com/timeredbull/tsuru/db"
 	"github.com/timeredbull/tsuru/log"
@@ -42,7 +41,7 @@ type App struct {
 	Logs      []Log
 	Name      string
 	State     string
-	Units     []unit.Unit
+	Units     []Unit
 	Teams     []string
 }
 
@@ -137,7 +136,7 @@ func (a *App) Destroy() error {
 	return <-unbindCh
 }
 
-func (a *App) AddOrUpdateUnit(u *unit.Unit) {
+func (a *App) AddOrUpdateUnit(u *Unit) {
 	for i, unt := range a.Units {
 		if unt.Machine == u.Machine {
 			a.Units[i].Ip = u.Ip
@@ -326,15 +325,19 @@ func (a *App) updateHooks() error {
 	return nil
 }
 
-func (a *App) unit() unit.Unit {
+func (a *App) unit() Unit {
 	if len(a.Units) > 0 {
 		return a.Units[0]
 	}
-	return unit.Unit{}
+	return Unit{}
 }
 
-func (a *App) GetUnits() []unit.Unit {
-	return a.Units
+func (a *App) GetUnits() []bind.Unit {
+	var units []bind.Unit
+	for _, u := range a.Units {
+		units = append(units, bind.Unit(&u))
+	}
+	return units
 }
 
 func (a *App) GetName() string {

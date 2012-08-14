@@ -5,7 +5,6 @@ import (
 	"github.com/timeredbull/tsuru/api/app"
 	"github.com/timeredbull/tsuru/api/auth"
 	"github.com/timeredbull/tsuru/api/service"
-	"github.com/timeredbull/tsuru/api/unit"
 	"github.com/timeredbull/tsuru/db"
 	"github.com/timeredbull/tsuru/errors"
 	"labix.org/v2/mgo/bson"
@@ -58,7 +57,7 @@ func (s *S) TestBindAddsAppToTheServiceInstance(c *C) {
 	instance := service.ServiceInstance{Name: "my-mysql", ServiceName: "mysql", Teams: []string{s.team.Name}}
 	instance.Create()
 	defer db.Session.ServiceInstances().Remove(bson.M{"_id": "my-mysql"})
-	a := app.App{Name: "painkiller", Teams: []string{s.team.Name}, Units: []unit.Unit{unit.Unit{Ip: "10.10.10.10"}}}
+	a := app.App{Name: "painkiller", Teams: []string{s.team.Name}, Units: []app.Unit{app.Unit{Ip: "10.10.10.10"}}}
 	a.Create()
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
 	err = instance.Bind(&a)
@@ -82,7 +81,7 @@ func (s *S) TestBindDoNotAddsAppToServiceInstanceIfCommunicationWithEndpointGoes
 	a := app.App{
 		Name:  "somecoolapp",
 		Teams: []string{s.team.Name},
-		Units: []unit.Unit{unit.Unit{Ip: "127.0.0.1"}},
+		Units: []app.Unit{app.Unit{Ip: "127.0.0.1"}},
 	}
 	a.Create()
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
@@ -109,7 +108,7 @@ func (s *S) TestBindUnbindsWhenDatabaseUpdateGoesWrong(c *C) {
 	a := app.App{
 		Name:  "somecoolapp",
 		Teams: []string{s.team.Name},
-		Units: []unit.Unit{unit.Unit{Ip: "127.0.0.1"}},
+		Units: []app.Unit{app.Unit{Ip: "127.0.0.1"}},
 	}
 	a.Create()
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
@@ -138,7 +137,7 @@ func (s *S) TestBindCallTheServiceAPIAndSetsEnvironmentVariableReturnedFromTheCa
 	a := app.App{
 		Name:  "painkiller",
 		Teams: []string{s.team.Name},
-		Units: []unit.Unit{unit.Unit{Ip: "127.0.0.1"}},
+		Units: []app.Unit{app.Unit{Ip: "127.0.0.1"}},
 	}
 	err = a.Create()
 	c.Assert(err, IsNil)
@@ -181,7 +180,7 @@ func (s *S) TestBindReturnConflictIfTheAppIsAlreadyBinded(c *C) {
 	a := app.App{
 		Name:  "painkiller",
 		Teams: []string{s.team.Name},
-		Units: []unit.Unit{unit.Unit{Ip: "127.0.0.1"}},
+		Units: []app.Unit{app.Unit{Ip: "127.0.0.1"}},
 	}
 	err = a.Create()
 	c.Assert(err, IsNil)
@@ -236,7 +235,7 @@ func (s *S) TestUnbindRemovesAppFromServiceInstance(c *C) {
 	}
 	instance.Create()
 	defer db.Session.ServiceInstances().Remove(bson.M{"_id": "my-mysql"})
-	a := app.App{Name: "painkiller", Teams: []string{s.team.Name}, Units: []unit.Unit{unit.Unit{Ip: "10.10.10.10"}}}
+	a := app.App{Name: "painkiller", Teams: []string{s.team.Name}, Units: []app.Unit{app.Unit{Ip: "10.10.10.10"}}}
 	a.Create()
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
 	err = instance.Unbind(&a)
@@ -278,8 +277,8 @@ func (s *S) TestUnbindRemovesEnvironmentVariableFromApp(c *C) {
 				Value: "123",
 			},
 		},
-		Units: []unit.Unit{
-			unit.Unit{
+		Units: []app.Unit{
+			app.Unit{
 				Ip: "10.10.10.10",
 			},
 		},
@@ -321,7 +320,7 @@ func (s *S) TestUnbindCallsTheUnbindMethodFromAPI(c *C) {
 	a := app.App{
 		Name:  "painkiller",
 		Teams: []string{s.team.Name},
-		Units: []unit.Unit{unit.Unit{Ip: "127.0.0.1"}},
+		Units: []app.Unit{app.Unit{Ip: "127.0.0.1"}},
 	}
 	err = a.Create()
 	c.Assert(err, IsNil)
@@ -355,7 +354,7 @@ func (s *S) TestUnbindReturnsPreconditionFailedIfTheAppIsNotBindedToTheInstance(
 	instance := service.ServiceInstance{Name: "my-mysql", ServiceName: "mysql", Teams: []string{s.team.Name}}
 	instance.Create()
 	defer db.Session.ServiceInstances().Remove(bson.M{"_id": "my-mysql"})
-	a := app.App{Name: "painkiller", Teams: []string{s.team.Name}, Units: []unit.Unit{unit.Unit{Ip: "10.10.10.10"}}}
+	a := app.App{Name: "painkiller", Teams: []string{s.team.Name}, Units: []app.Unit{app.Unit{Ip: "10.10.10.10"}}}
 	a.Create()
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
 	err = instance.Unbind(&a)

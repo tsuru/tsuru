@@ -1,4 +1,4 @@
-package unit
+package app
 
 import (
 	"fmt"
@@ -34,6 +34,10 @@ func (u *Unit) Command(cmds ...string) ([]byte, error) {
 
 func (u *Unit) GetName() string {
 	return u.Name
+}
+
+func (u *Unit) GetIp() string {
+	return u.Ip
 }
 
 func (u *Unit) ExecuteHook(hook string) ([]byte, error) {

@@ -5,7 +5,6 @@ import (
 	"github.com/timeredbull/commandmocker"
 	"github.com/timeredbull/tsuru/api/auth"
 	"github.com/timeredbull/tsuru/api/bind"
-	"github.com/timeredbull/tsuru/api/unit"
 	"github.com/timeredbull/tsuru/db"
 	"github.com/timeredbull/tsuru/log"
 	"labix.org/v2/mgo/bson"
@@ -59,8 +58,8 @@ func (s *S) TestDestroy(c *C) {
 	w := bytes.NewBuffer([]byte{})
 	l := stdlog.New(w, "", stdlog.LstdFlags)
 	log.Target = l
-	u := unit.Unit{Name: "duvido", Machine: 3}
-	a := App{Name: "duvido", Framework: "django", Units: []unit.Unit{u}}
+	u := Unit{Name: "duvido", Machine: 3}
+	a := App{Name: "duvido", Framework: "django", Units: []Unit{u}}
 	err = a.Create()
 	c.Assert(err, IsNil)
 	err = a.Destroy()
@@ -111,10 +110,10 @@ func (s *S) TestAppendOrUpdate(c *C) {
 	a := App{Name: "appName", Framework: "django", Teams: []string{}}
 	a.Create()
 	defer a.Destroy()
-	u := unit.Unit{Name: "someapp", Ip: "", Machine: 3, InstanceId: "i-00000zz8"}
+	u := Unit{Name: "someapp", Ip: "", Machine: 3, InstanceId: "i-00000zz8"}
 	a.AddOrUpdateUnit(&u)
 	c.Assert(len(a.Units), Equals, 1)
-	u = unit.Unit{Name: "someapp", Ip: "192.168.0.12", Machine: 3, InstanceId: "i-00000zz8"}
+	u = Unit{Name: "someapp", Ip: "192.168.0.12", Machine: 3, InstanceId: "i-00000zz8"}
 	a.AddOrUpdateUnit(&u)
 	c.Assert(len(a.Units), Equals, 1)
 	c.Assert(a.Units[0].Ip, Equals, "192.168.0.12")
@@ -206,8 +205,8 @@ func (s *S) TestInstanceEnvironmentDoesNotPanicIfTheEnvMapIsNil(c *C) {
 }
 
 func (s *S) TestUnit(c *C) {
-	u := unit.Unit{Name: "someapp/0", Type: "django", Machine: 10}
-	a := App{Name: "appName", Framework: "django", Units: []unit.Unit{u}}
+	u := Unit{Name: "someapp/0", Type: "django", Machine: 10}
+	a := App{Name: "appName", Framework: "django", Units: []Unit{u}}
 	u2 := a.unit()
 	c.Assert(u2, DeepEquals, u)
 }
@@ -458,8 +457,8 @@ func (s *S) TestLogShouldStoreLog(c *C) {
 }
 
 func (s *S) TestAppShouldStoreUnits(c *C) {
-	u := unit.Unit{Name: "someapp/0", Type: "django"}
-	units := []unit.Unit{u}
+	u := Unit{Name: "someapp/0", Type: "django"}
+	units := []Unit{u}
 	var instance App
 	a := App{Name: "someApp", Units: units}
 	err := a.Create()
@@ -493,6 +492,7 @@ func (s *S) TestSetTeams(c *C) {
 }
 
 func (s *S) TestGetUnits(c *C) {
-	app := App{Units: []unit.Unit{unit.Unit{Ip: "1.1.1.1"}}}
-	c.Assert(app.GetUnits(), DeepEquals, []unit.Unit{unit.Unit{Ip: "1.1.1.1"}})
+	app := App{Units: []Unit{Unit{Ip: "1.1.1.1"}}}
+	expected := []bind.Unit{bind.Unit(&Unit{Ip: "1.1.1.1"})}
+	c.Assert(app.GetUnits(), DeepEquals, expected)
 }

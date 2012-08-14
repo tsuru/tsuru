@@ -3,7 +3,6 @@ package app
 import (
 	"github.com/timeredbull/tsuru/api/bind"
 	"github.com/timeredbull/tsuru/api/service"
-	"github.com/timeredbull/tsuru/api/unit"
 	"github.com/timeredbull/tsuru/db"
 	"labix.org/v2/mgo/bson"
 	. "launchpad.net/gocheck"
@@ -29,7 +28,7 @@ func (s *S) TestDestroyShouldUnbindAppFromInstance(c *C) {
 	err = instance.Create()
 	c.Assert(err, IsNil)
 	defer db.Session.ServiceInstances().Remove(bson.M{"_id": instance.Name})
-	a := App{Name: "myApp", Units: []unit.Unit{unit.Unit{Ip: "10.10.10.10"}}}
+	a := App{Name: "myApp", Units: []Unit{Unit{Ip: "10.10.10.10"}}}
 	err = a.Create()
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})

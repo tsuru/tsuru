@@ -2,7 +2,6 @@ package main
 
 import (
 	"github.com/timeredbull/tsuru/api/app"
-	"github.com/timeredbull/tsuru/api/unit"
 	"io/ioutil"
 	. "launchpad.net/gocheck"
 	"os"
@@ -13,8 +12,8 @@ func getOutput() *output {
 	return &output{
 		Services: map[string]Service{
 			"umaappqq": Service{
-				Units: map[string]unit.Unit{
-					"umaappqq/0": unit.Unit{
+				Units: map[string]app.Unit{
+					"umaappqq/0": app.Unit{
 						AgentState: "started",
 						Machine:    1,
 					},
@@ -67,7 +66,7 @@ func (s *S) TestCollectorUpdate(c *C) {
 func (s *S) TestCollectorUpdateWithMultipleUnits(c *C) {
 	a := getApp(c)
 	out := getOutput()
-	u := unit.Unit{AgentState: "started", Machine: 2}
+	u := app.Unit{AgentState: "started", Machine: 2}
 	out.Services["umaappqq"].Units["umaappqq/1"] = u
 	out.Machines[2] = map[interface{}]interface{}{
 		"dns-name":       "192.168.0.12",
@@ -178,55 +177,55 @@ func (s *S) TestCollectorParser(c *C) {
 }
 
 func (s *S) TestAppStatusMachineAgentPending(c *C) {
-	u := unit.Unit{MachineAgentState: "pending"}
+	u := app.Unit{MachineAgentState: "pending"}
 	st := appState(&u)
 	c.Assert(st, Equals, "creating")
 }
 
 func (s *S) testAppStatusInstanceStatePending(c *C) {
-	u := unit.Unit{InstanceState: "pending"}
+	u := app.Unit{InstanceState: "pending"}
 	st := appState(&u)
 	c.Assert(st, Equals, "creating")
 }
 
 func (s *S) TestAppStatusInstanceStateError(c *C) {
-	u := unit.Unit{InstanceState: "error"}
+	u := app.Unit{InstanceState: "error"}
 	st := appState(&u)
 	c.Assert(st, Equals, "error")
 }
 
 func (s *S) TestAppStatusInstanceStatePending(c *C) {
-	u := unit.Unit{AgentState: "pending", InstanceState: ""}
+	u := app.Unit{AgentState: "pending", InstanceState: ""}
 	st := appState(&u)
 	c.Assert(st, Equals, "creating")
 }
 
 func (s *S) TestAppStatusAgentAndInstanceRunning(c *C) {
-	u := unit.Unit{AgentState: "started", InstanceState: "running", MachineAgentState: "running"}
+	u := app.Unit{AgentState: "started", InstanceState: "running", MachineAgentState: "running"}
 	st := appState(&u)
 	c.Assert(st, Equals, "started")
 }
 
 func (s *S) TestAppStatusMachineAgentRunningAndInstanceAndAgentPending(c *C) {
-	u := unit.Unit{AgentState: "pending", InstanceState: "running", MachineAgentState: "running"}
+	u := app.Unit{AgentState: "pending", InstanceState: "running", MachineAgentState: "running"}
 	st := appState(&u)
 	c.Assert(st, Equals, "installing")
 }
 
 func (s *S) TestAppStatusInstancePending(c *C) {
-	u := unit.Unit{AgentState: "not-started", InstanceState: "pending"}
+	u := app.Unit{AgentState: "not-started", InstanceState: "pending"}
 	st := appState(&u)
 	c.Assert(st, Equals, "creating")
 }
 
 func (s *S) TestAppStatusInstancePendingWhenMachineStateIsRunning(c *C) {
-	u := unit.Unit{AgentState: "not-started", MachineAgentState: "running"}
+	u := app.Unit{AgentState: "not-started", MachineAgentState: "running"}
 	st := appState(&u)
 	c.Assert(st, Equals, "creating")
 }
 
 func (s *S) TestAppStatePending(c *C) {
-	u := unit.Unit{MachineAgentState: "some-state", AgentState: "some-state", InstanceState: "some-other-state"}
+	u := app.Unit{MachineAgentState: "some-state", AgentState: "some-state", InstanceState: "some-other-state"}
 	st := appState(&u)
 	c.Assert(st, Equals, "pending")
 }
