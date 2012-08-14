@@ -7,6 +7,14 @@ import (
 	"path"
 )
 
+// Unit interface represents a unit of execution.
+//
+// It must provide two methods:
+//
+//   * GetName: returns the name of the unit.
+//   * Command: runs a command in the unit.
+//
+// Whatever that has a name and is able to run commands, is a unit.
 type Unit interface {
 	GetName() string
 	Command(cmd string) ([]byte, error)
