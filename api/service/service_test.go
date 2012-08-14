@@ -156,3 +156,29 @@ func (s *S) TestUpdateServiceReturnErrorIfServiceDoesNotExist(c *C) {
 	err := service.Update()
 	c.Assert(err, NotNil)
 }
+
+func (s *S) TestServiceByTeamKindFilteringByOwnerTeamsAndRetrievingNotRestrictedServices(c *C) {
+	srvc := Service{Name: "mysql", OwnerTeams: []string{s.team.Name}, Status: "created"}
+	err := srvc.Create()
+	c.Assert(err, IsNil)
+	srvc2 := Service{Name: "mongodb", IsRestricted: false}
+	err = srvc2.Create()
+	c.Assert(err, IsNil)
+	rSrvc, err := GetServicesByTeamKind("owner_teams", s.user)
+	c.Assert(err, IsNil)
+	expected := []Service{Service{Name: srvc.Name}, Service{Name: srvc2.Name}}
+	c.Assert(expected, DeepEquals, rSrvc)
+}
+
+func (s *S) TestServiceByTeamKindFilteringByTeamsAndNotRetrieveRestrictedServices(c *C) {
+	srvc := Service{Name: "mysql", Teams: []string{s.team.Name}, Status: "created"}
+	err := srvc.Create()
+	c.Assert(err, IsNil)
+	srvc2 := Service{Name: "mongodb", IsRestricted: true}
+	err = srvc2.Create()
+	c.Assert(err, IsNil)
+	rSrvc, err := GetServicesByTeamKind("teams", s.user)
+	c.Assert(err, IsNil)
+	expected := []Service{Service{Name: srvc.Name}}
+	c.Assert(expected, DeepEquals, rSrvc)
+}
