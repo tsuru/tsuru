@@ -1,9 +1,5 @@
 package bind
 
-import (
-	"github.com/timeredbull/tsuru/api/unit"
-)
-
 // AppContainer provides methdos for a container of apps.
 //
 // The container stores only the names of the apps.
@@ -26,9 +22,13 @@ type EnvVar struct {
 	InstanceName string
 }
 
+type Unit interface {
+	GetIp() string
+}
+
 type App interface {
 	GetName() string
-	GetUnits() []unit.Unit
+	GetUnits() []Unit
 	InstanceEnv(string) map[string]EnvVar
 	SetEnvs([]EnvVar, bool) error
 	UnsetEnvs([]string, bool) error
