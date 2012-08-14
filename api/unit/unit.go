@@ -32,6 +32,10 @@ func (u *Unit) Command(cmds ...string) ([]byte, error) {
 	return c.CombinedOutput()
 }
 
+func (u *Unit) GetName() string {
+	return u.Name
+}
+
 func (u *Unit) ExecuteHook(hook string) ([]byte, error) {
 	cmd := fmt.Sprintf("/var/lib/tsuru/hooks/%s", hook)
 	output, err := u.Command(cmd)

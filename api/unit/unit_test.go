@@ -2,6 +2,7 @@ package unit
 
 import (
 	"github.com/timeredbull/commandmocker"
+	"github.com/timeredbull/tsuru/repository"
 	. "launchpad.net/gocheck"
 )
 
@@ -26,4 +27,9 @@ func (s *S) TestExecuteHook(c *C) {
 	appUnit := Unit{Type: "django", Name: "myUnit"}
 	_, err := appUnit.ExecuteHook("requirements")
 	c.Assert(err, IsNil)
+}
+
+func (s *S) TestUnitShouldBeARepositoryUnit(c *C) {
+	var unit repository.Unit
+	c.Assert(&Unit{}, Implements, &unit)
 }
