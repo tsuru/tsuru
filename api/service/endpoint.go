@@ -90,7 +90,7 @@ func (c *Client) Bind(instance *ServiceInstance, app bind.App) (envVars map[stri
 	log.Print("Attempting to call bind of service instance " + instance.Name + " and app " + app.GetName() + " at " + instance.ServiceName + " api")
 	var resp *http.Response
 	params := map[string][]string{
-		"hostname": []string{app.GetUnits()[0].Ip},
+		"hostname": []string{app.GetUnits()[0].GetIp()},
 	}
 	if resp, err = c.issueRequest("/resources/"+instance.Name, "POST", params); err == nil && resp.StatusCode < 300 {
 		return c.jsonFromResponse(resp)
@@ -107,7 +107,7 @@ func (c *Client) Bind(instance *ServiceInstance, app bind.App) (envVars map[stri
 func (c *Client) Unbind(instance *ServiceInstance, app bind.App) (err error) {
 	log.Print("Attempting to call unbind of service instance " + instance.Name + " and app " + app.GetName() + " at " + instance.ServiceName + " api")
 	var resp *http.Response
-	url := "/resources/" + instance.Name + "/hostname/" + app.GetUnits()[0].Ip
+	url := "/resources/" + instance.Name + "/hostname/" + app.GetUnits()[0].GetIp()
 	if resp, err = c.issueRequest(url, "DELETE", nil); err == nil && resp.StatusCode > 299 {
 		msg := "Failed to unbind instance " + instance.Name + " from the app " + app.GetName() + ": " + c.buildErrorMessage(err, resp)
 		log.Print(msg)
