@@ -33,6 +33,17 @@ func (s *S) TestExecuteHook(c *C) {
 	c.Assert(err, IsNil)
 }
 
+func (s *S) TestDestroyUnit(c *C) {
+	var err error
+	s.tmpdir, err = commandmocker.Add("juju", "$*")
+	c.Assert(err, IsNil)
+	defer commandmocker.Remove(s.tmpdir)
+	unit := Unit{Type: "django", Name: "myunit", app: &App{JujuEnv: "zeta"}}
+	out, err := unit.Destroy()
+	c.Assert(err, IsNil)
+	c.Assert(string(out), Equals, "destroy-service -e zeta myunit")
+}
+
 func (s *S) TestUnitShouldBeARepositoryUnit(c *C) {
 	var unit repository.Unit
 	c.Assert(&Unit{}, Implements, &unit)

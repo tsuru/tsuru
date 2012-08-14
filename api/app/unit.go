@@ -21,7 +21,7 @@ type Unit struct {
 }
 
 func (u *Unit) Destroy() ([]byte, error) {
-	cmd := exec.Command("juju", "destroy-service", u.Name)
+	cmd := exec.Command("juju", "destroy-service", "-e", u.app.JujuEnv, u.Name)
 	log.Printf("destroying %s with name %s", u.Type, u.Name)
 	return cmd.CombinedOutput()
 }
