@@ -25,8 +25,8 @@ func (u *FakeUnit) GetName() string {
 	return u.name
 }
 
-func (u *FakeUnit) Command(cmd string) ([]byte, error) {
-	u.commands = append(u.commands, cmd)
+func (u *FakeUnit) Command(cmd ...string) ([]byte, error) {
+	u.commands = append(u.commands, cmd[0])
 	return []byte("success"), nil
 }
 
@@ -34,12 +34,12 @@ type FailingCloneUnit struct {
 	FakeUnit
 }
 
-func (u *FailingCloneUnit) Command(cmd string) ([]byte, error) {
-	if strings.HasPrefix(cmd, "git clone") {
-		u.commands = append(u.commands, cmd)
+func (u *FailingCloneUnit) Command(cmd ...string) ([]byte, error) {
+	if strings.HasPrefix(cmd[0], "git clone") {
+		u.commands = append(u.commands, cmd[0])
 		return nil, errors.New("Failed to clone repository, it already exists!")
 	}
-	return u.FakeUnit.Command(cmd)
+	return u.FakeUnit.Command(cmd...)
 }
 
 func (s *S) TestCloneRepository(c *C) {

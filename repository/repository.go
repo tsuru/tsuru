@@ -17,7 +17,7 @@ import (
 // Whatever that has a name and is able to run commands, is a unit.
 type Unit interface {
 	GetName() string
-	Command(cmd string) ([]byte, error)
+	Command(cmd ...string) ([]byte, error)
 }
 
 // Clone runs a git clone to clone the app repository in a unit.
