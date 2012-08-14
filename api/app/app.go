@@ -14,7 +14,6 @@ import (
 	"launchpad.net/goyaml"
 	"os/exec"
 	"path"
-	"strconv"
 	"strings"
 	"time"
 )
@@ -118,17 +117,7 @@ func (a *App) Destroy() error {
 	if err != nil {
 		return err
 	}
-	u := a.unit()
-	cmd := exec.Command("juju", "destroy-service", a.Name)
-	log.Printf("destroying %s with name %s", a.Framework, a.Name)
-	out, err := cmd.CombinedOutput()
-	log.Printf(string(out))
-	if err != nil {
-		return err
-	}
-	cmd = exec.Command("juju", "terminate-machine", strconv.Itoa(u.Machine))
-	log.Printf("terminating machine %d", u.Machine)
-	out, err = cmd.CombinedOutput()
+	out, err := a.unit().Destroy()
 	log.Printf(string(out))
 	if err != nil {
 		return err
