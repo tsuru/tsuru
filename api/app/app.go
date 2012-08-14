@@ -325,13 +325,13 @@ func (a *App) updateHooks() error {
 	return nil
 }
 
-func (a *App) unit() Unit {
+func (a *App) unit() *Unit {
 	if len(a.Units) > 0 {
 		unit := a.Units[0]
 		unit.app = a
-		return unit
+		return &unit
 	}
-	return Unit{app: a}
+	return &Unit{app: a}
 }
 
 func (a *App) GetUnits() []bind.Unit {

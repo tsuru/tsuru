@@ -209,14 +209,14 @@ func (s *S) TestUnit(c *C) {
 	a := App{Name: "appName", Framework: "django", Units: []Unit{u}}
 	u2 := a.unit()
 	u.app = &a
-	c.Assert(u2, DeepEquals, u)
+	c.Assert(*u2, DeepEquals, u)
 }
 
 func (s *S) TestEmptyUnit(c *C) {
 	a := App{Name: "myApp"}
 	expected := Unit{app: &a}
 	unit := a.unit()
-	c.Assert(unit, DeepEquals, expected)
+	c.Assert(*unit, DeepEquals, expected)
 }
 
 func (s *S) TestDeployHookAbsPath(c *C) {

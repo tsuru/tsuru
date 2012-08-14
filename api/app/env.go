@@ -48,7 +48,7 @@ func runCommands() {
 
 func runCmd(cmd string, msg Message) {
 	c := Cmd{
-		u:      msg.app.unit(),
+		u:      *msg.app.unit(),
 		cmd:    cmd,
 		result: make(chan CmdResult),
 	}
