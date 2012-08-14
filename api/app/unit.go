@@ -17,6 +17,7 @@ type Unit struct {
 	MachineAgentState string
 	InstanceState     string
 	InstanceId        string
+	app               *App
 }
 
 func (u *Unit) Destroy() ([]byte, error) {
