@@ -140,6 +140,26 @@ func (s *S) TestGetServiceInstancesByServiceWithoutAnyExistingServiceInstances(c
 	c.Assert(sInstances, DeepEquals, []ServiceInstance(nil))
 }
 
+func (s *S) TestGenericServiceInstancesFilter(c *C) {
+	srvc := Service{Name: "mysql"}
+	teams := []string{s.team.Name}
+	q, f := genericServiceInstancesFilter(srvc, teams)
+	c.Assert(q, DeepEquals, bson.M{"service_name": srvc.Name, "teams": bson.M{"$in": teams}})
+	c.Assert(f, DeepEquals, bson.M{"name": 1, "service_name": 1, "apps": 1})
+}
+
+func (s *S) TestGenericServiceInstancesFilterWithServiceSlice(c *C) {
+	services := []Service{
+		Service{Name: "mysql"},
+		Service{Name: "mongodb"},
+	}
+	names := []string{"mysql", "mongodb"}
+	teams := []string{s.team.Name}
+	q, f := genericServiceInstancesFilter(services, teams)
+	c.Assert(q, DeepEquals, bson.M{"service_name": bson.M{"$in": names}, "teams": bson.M{"$in": teams}})
+	c.Assert(f, DeepEquals, bson.M{"name": 1, "service_name": 1, "apps": 1})
+}
+
 func (s *S) TestGetServiceInstancesByServiceAndTeams(c *C) {
 	srvc := Service{Name: "mysql", Teams: []string{s.team.Name}}
 	srvc.Create()
@@ -185,5 +205,51 @@ func (s *S) TestGetServiceInstancesByServiceAndTeamsIgnoresIsRestrictedFlagFromS
 			Apps:        []string{},
 		},
 	}
+	c.Assert(sInstances, DeepEquals, expected)
+}
+
+func (s *S) TestGetServiceInstancesByServicesAndTeams(c *C) {
+	srvc := Service{Name: "mysql", Teams: []string{s.team.Name}, IsRestricted: true}
+	srvc.Create()
+	defer srvc.Delete()
+	srvc2 := Service{Name: "mongodb", Teams: []string{s.team.Name}, IsRestricted: false}
+	srvc2.Create()
+	defer srvc2.Delete()
+	sInstance := ServiceInstance{
+		Name:        "j4sql",
+		ServiceName: srvc.Name,
+		Teams:       []string{s.team.Name},
+	}
+	sInstance.Create()
+	defer sInstance.Delete()
+	sInstance2 := ServiceInstance{
+		Name:        "j4nosql",
+		ServiceName: srvc2.Name,
+		Teams:       []string{s.team.Name},
+	}
+	sInstance2.Create()
+	defer sInstance2.Delete()
+	sInstance3 := ServiceInstance{
+		Name:        "f9nosql",
+		ServiceName: srvc2.Name,
+	}
+	sInstance3.Create()
+	defer sInstance3.Delete()
+	expected := []ServiceInstance{
+		ServiceInstance{
+			Name:        sInstance.Name,
+			ServiceName: sInstance.ServiceName,
+			Teams:       []string(nil),
+			Apps:        []string{},
+		},
+		ServiceInstance{
+			Name:        sInstance2.Name,
+			ServiceName: sInstance2.ServiceName,
+			Teams:       []string(nil),
+			Apps:        []string{},
+		},
+	}
+	sInstances, err := GetServiceInstancesByServicesAndTeams([]Service{srvc, srvc2}, s.user)
+	c.Assert(err, IsNil)
 	c.Assert(sInstances, DeepEquals, expected)
 }

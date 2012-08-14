@@ -131,13 +131,43 @@ func GetServiceInstancesByService(s Service) (sInstances []ServiceInstance, err 
 	return
 }
 
+func GetServiceNames(services []Service) []string {
+	names := make([]string, len(services))
+	for i, s := range services {
+		names[i] = s.Name
+	}
+	return names
+}
+
+func genericServiceInstancesFilter(services interface{}, teams []string) (q, f bson.M) {
+	f = bson.M{"name": 1, "service_name": 1, "apps": 1}
+	q = bson.M{"teams": bson.M{"$in": teams}}
+	if v, ok := services.([]Service); ok {
+		names := GetServiceNames(v)
+		q["service_name"] = bson.M{"$in": names}
+	}
+	if v, ok := services.(Service); ok {
+		q["service_name"] = v.Name
+	}
+	return
+}
+
 func GetServiceInstancesByServiceAndTeams(s Service, u *auth.User) (sInstances []ServiceInstance, err error) {
 	teams, err := u.Teams()
 	if err != nil {
 		return
 	}
-	q := bson.M{"service_name": s.Name, "teams": bson.M{"$in": auth.GetTeamsNames(teams)}}
-	f := bson.M{"name": 1, "service_name": 1, "apps": 1}
+	q, f := genericServiceInstancesFilter(s, auth.GetTeamsNames(teams))
+	err = db.Session.ServiceInstances().Find(q).Select(f).All(&sInstances)
+	return
+}
+
+func GetServiceInstancesByServicesAndTeams(services []Service, u *auth.User) (sInstances []ServiceInstance, err error) {
+	teams, err := u.Teams()
+	if err != nil {
+		return
+	}
+	q, f := genericServiceInstancesFilter(services, auth.GetTeamsNames(teams))
 	err = db.Session.ServiceInstances().Find(q).Select(f).All(&sInstances)
 	return
 }
