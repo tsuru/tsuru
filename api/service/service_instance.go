@@ -125,30 +125,25 @@ func (si *ServiceInstance) Unbind(app bind.App) error {
 	return app.UnsetEnvs(envVars, false)
 }
 
-func GetServiceInstancesByService(s Service) (sInstances []ServiceInstance, err error) {
-	q := bson.M{"service_name": s.Name}
-	err = db.Session.ServiceInstances().Find(q).Select(bson.M{"name": 1, "service_name": 1}).All(&sInstances)
-	return
-}
-
-func GetServiceNames(services []Service) []string {
-	names := make([]string, len(services))
-	for i, s := range services {
-		names[i] = s.Name
-	}
-	return names
-}
-
 func genericServiceInstancesFilter(services interface{}, teams []string) (q, f bson.M) {
 	f = bson.M{"name": 1, "service_name": 1, "apps": 1}
-	q = bson.M{"teams": bson.M{"$in": teams}}
+	q = bson.M{}
+	if len(teams) != 0 {
+		q["teams"] = bson.M{"$in": teams}
+	}
 	if v, ok := services.([]Service); ok {
-		names := GetServiceNames(v)
+		names := GetServicesNames(v)
 		q["service_name"] = bson.M{"$in": names}
 	}
 	if v, ok := services.(Service); ok {
 		q["service_name"] = v.Name
 	}
+	return
+}
+
+func GetServiceInstancesByServices(services []Service) (sInstances []ServiceInstance, err error) {
+	q, _ := genericServiceInstancesFilter(services, []string{})
+	err = db.Session.ServiceInstances().Find(q).Select(bson.M{"name": 1, "service_name": 1}).All(&sInstances)
 	return
 }
 
