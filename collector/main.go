@@ -7,7 +7,6 @@ import (
 	"github.com/timeredbull/tsuru/log"
 	stdlog "log"
 	"log/syslog"
-	"sync"
 	"time"
 )
 
@@ -29,7 +28,6 @@ func main() {
 	}
 	configFile := flag.String("config", "/etc/tsuru/tsuru.conf", "tsuru config file")
 	dry := flag.Bool("dry", false, "dry-run: does not start the agent (for testing purposes)")
-	juju := flag.Bool("juju", true, "run juju collector")
 	flag.Parse()
 	err = config.ReadConfigFile(*configFile)
 	if err != nil {
@@ -50,14 +48,6 @@ func main() {
 	defer db.Session.Close()
 
 	if !*dry {
-		var wg sync.WaitGroup
-		if *juju {
-			wg.Add(1)
-			go func() {
-				jujuCollect()
-				wg.Done()
-			}()
-		}
-		wg.Wait()
+		jujuCollect()
 	}
 }
