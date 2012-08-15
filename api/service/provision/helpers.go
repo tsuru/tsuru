@@ -19,3 +19,18 @@ func GetServiceOrError(name string, u *auth.User) (service.Service, error) {
 	}
 	return s, err
 }
+
+func ServicesAndInstancesByOwner(u *auth.User) []service.ServiceModel {
+	services, _ := service.GetServicesByOwnerTeams("owner_teams", u)
+	sInstances, _ := service.GetServiceInstancesByServices(services)
+	results := make([]service.ServiceModel, len(services))
+	for i, s := range services {
+		results[i].Service = s.Name
+		for _, si := range sInstances {
+			if si.ServiceName == s.Name {
+				results[i].Instances = append(results[i].Instances, si.Name)
+			}
+		}
+	}
+	return results
+}
