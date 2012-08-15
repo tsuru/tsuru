@@ -9,8 +9,6 @@ import (
 	"os/exec"
 )
 
-type Collector struct{}
-
 type Service struct {
 	Units map[string]app.Unit
 }
@@ -20,19 +18,19 @@ type output struct {
 	Machines map[int]interface{}
 }
 
-func (c *Collector) Collect() ([]byte, error) {
+func collect() ([]byte, error) {
 	log.Print("collecting status from juju")
 	return exec.Command("juju", "status").Output()
 }
 
-func (c *Collector) Parse(data []byte) *output {
+func parse(data []byte) *output {
 	log.Print("parsing juju yaml")
 	raw := new(output)
 	_ = goyaml.Unmarshal(data, raw)
 	return raw
 }
 
-func (c *Collector) Update(out *output) {
+func update(out *output) {
 	log.Print("updating status from juju")
 	for serviceName, service := range out.Services {
 		for _, yUnit := range service.Units {

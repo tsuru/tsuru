@@ -45,11 +45,10 @@ func getApp(c *C) *app.App {
 	return a
 }
 
-func (s *S) TestCollectorUpdate(c *C) {
+func (s *S) TestUpdate(c *C) {
 	a := getApp(c)
-	var collector Collector
 	out := getOutput()
-	collector.Update(out)
+	update(out)
 
 	err := a.Get()
 	c.Assert(err, IsNil)
@@ -64,7 +63,7 @@ func (s *S) TestCollectorUpdate(c *C) {
 	a.Destroy()
 }
 
-func (s *S) TestCollectorUpdateWithMultipleUnits(c *C) {
+func (s *S) TestUpdateWithMultipleUnits(c *C) {
 	a := getApp(c)
 	out := getOutput()
 	u := app.Unit{AgentState: "started", Machine: 2}
@@ -75,8 +74,7 @@ func (s *S) TestCollectorUpdateWithMultipleUnits(c *C) {
 		"instance-state": "running",
 		"agent-state":    "running",
 	}
-	var collector Collector
-	collector.Update(out)
+	update(out)
 	err := a.Get()
 	c.Assert(err, IsNil)
 	c.Assert(len(a.Units), Equals, 2)
@@ -91,27 +89,25 @@ func (s *S) TestCollectorUpdateWithMultipleUnits(c *C) {
 	c.Assert(u.MachineAgentState, Equals, "running")
 }
 
-func (s *S) TestCollectorUpdateWithDownMachine(c *C) {
+func (s *S) TestUpdateWithDownMachine(c *C) {
 	a := app.App{Name: "barduscoapp", State: "STOPPED"}
 	err := a.Create()
 	c.Assert(err, IsNil)
 	file, _ := os.Open(filepath.Join("testdata", "broken-output.yaml"))
 	jujuOutput, _ := ioutil.ReadAll(file)
 	file.Close()
-	var collector Collector
-	out := collector.Parse(jujuOutput)
-	collector.Update(out)
+	out := parse(jujuOutput)
+	update(out)
 	err = a.Get()
 	c.Assert(err, IsNil)
 	c.Assert(a.State, Equals, "creating")
 }
 
-func (s *S) TestCollectorUpdateTwice(c *C) {
+func (s *S) TestUpdateTwice(c *C) {
 	a := getApp(c)
-	var collector Collector
 	defer a.Destroy()
 	out := getOutput()
-	collector.Update(out)
+	update(out)
 	err := a.Get()
 	c.Assert(err, IsNil)
 	c.Assert(a.State, Equals, "started")
@@ -120,12 +116,12 @@ func (s *S) TestCollectorUpdateTwice(c *C) {
 	c.Assert(a.Units[0].InstanceState, Equals, "running")
 	c.Assert(a.Units[0].MachineAgentState, Equals, "running")
 	c.Assert(a.Units[0].AgentState, Equals, "started")
-	collector.Update(out)
+	update(out)
 	err = a.Get()
 	c.Assert(len(a.Units), Equals, 1)
 }
 
-func (s *S) TestCollectorUpdateWithMultipleApps(c *C) {
+func (s *S) TestUpdateWithMultipleApps(c *C) {
 	appDicts := []map[string]string{
 		map[string]string{
 			"name": "andrewzito3",
@@ -155,11 +151,10 @@ func (s *S) TestCollectorUpdateWithMultipleApps(c *C) {
 		c.Assert(err, IsNil)
 		apps[i] = a
 	}
-	var collector Collector
 	jujuOutput, err := ioutil.ReadFile(filepath.Join("testdata", "multiple-apps.yaml"))
 	c.Assert(err, IsNil)
-	data := collector.Parse(jujuOutput)
-	collector.Update(data)
+	data := parse(jujuOutput)
+	update(data)
 	for _, appDict := range appDicts {
 		a := app.App{Name: appDict["name"]}
 		err := a.Get()
@@ -168,21 +163,19 @@ func (s *S) TestCollectorUpdateWithMultipleApps(c *C) {
 	}
 }
 
-func (s *S) TestCollectorParser(c *C) {
-	var collector Collector
+func (s *S) TestParser(c *C) {
 	file, _ := os.Open(filepath.Join("testdata", "output.yaml"))
 	jujuOutput, _ := ioutil.ReadAll(file)
 	file.Close()
 	expected := getOutput()
-	c.Assert(collector.Parse(jujuOutput), DeepEquals, expected)
+	c.Assert(parse(jujuOutput), DeepEquals, expected)
 }
 
 func (s *S) TestCollect(c *C) {
 	tmpdir, err := commandmocker.Add("juju", "$*")
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(tmpdir)
-	var collector Collector
-	out, err := collector.Collect()
+	out, err := collect()
 	c.Assert(err, IsNil)
 	c.Assert(string(out), Equals, "status")
 }

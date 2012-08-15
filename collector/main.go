@@ -11,12 +11,11 @@ import (
 )
 
 func jujuCollect() {
-	var collector Collector
 	ticker := time.Tick(time.Minute)
 	for _ = range ticker {
-		data, _ := collector.Collect()
-		output := collector.Parse(data)
-		collector.Update(output)
+		data, _ := collect()
+		output := parse(data)
+		update(output)
 	}
 }
 
