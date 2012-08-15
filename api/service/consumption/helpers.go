@@ -54,17 +54,13 @@ func GetServiceInstanceOrError(name string, u *auth.User) (service.ServiceInstan
 	return si, nil
 }
 
-func ServiceAndServiceInstancesByTeams(teamKind string, u *auth.User) []service.ServiceModel {
-	teams, _ := u.Teams()
-	teamsNames := auth.GetTeamsNames(teams)
+func ServiceAndServiceInstancesByTeams(u *auth.User) []service.ServiceModel {
 	services, _ := service.GetServicesByTeamKind("teams", u)
-	var sInsts []service.ServiceInstance
-	q := bson.M{"service_name": bson.M{"$in": service.GetServicesNames(services)}, "teams": bson.M{"$in": teamsNames}}
-	db.Session.ServiceInstances().Find(q).Select(bson.M{"name": 1, "service_name": 1}).All(&sInsts)
+	sInstances, _ := service.GetServiceInstancesByServicesAndTeams(services, u)
 	results := make([]service.ServiceModel, len(services))
 	for i, s := range services {
 		results[i].Service = s.Name
-		for _, si := range sInsts {
+		for _, si := range sInstances {
 			if si.ServiceName == s.Name {
 				results[i].Instances = append(results[i].Instances, si.Name)
 			}

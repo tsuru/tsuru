@@ -101,7 +101,7 @@ func RemoveServiceInstanceHandler(w http.ResponseWriter, r *http.Request, u *aut
 }
 
 func ServicesInstancesHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
-	response := ServiceAndServiceInstancesByTeams("teams", u)
+	response := ServiceAndServiceInstancesByTeams(u)
 	body, err := json.Marshal(response)
 	if err != nil {
 		return err
