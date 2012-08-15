@@ -183,7 +183,14 @@ func (s *S) TestSubcommandWithArgs(c *C) {
 
 func (s *S) TestHelp(c *C) {
 	expected := `Usage: glb command [args]
+
+Available commands:
+  help
+  user
+
+Run glb help <commandname> to get more information about a specific command.
 `
+	manager.Register(&User{})
 	context := Context{[]string{}, []string{}, manager.Stdout, manager.Stderr}
 	command := Help{manager: &manager}
 	err := command.Run(&context, nil)
@@ -200,6 +207,11 @@ func (s *S) TestHelpCommandShouldBeRegisteredByDefault(c *C) {
 
 func (s *S) TestRunWithoutArgsShouldRunsHelp(c *C) {
 	expected := `Usage: glb command [args]
+
+Available commands:
+  help
+
+Run glb help <commandname> to get more information about a specific command.
 `
 	manager.Run([]string{})
 	c.Assert(manager.Stdout.(*bytes.Buffer).String(), Equals, expected)
