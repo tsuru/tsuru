@@ -70,7 +70,7 @@ func (c *Key) Info() *cmd.Info {
 
 func (c *Key) Subcommands() map[string]interface{} {
 	return map[string]interface{}{
-		"add":    &AddKeyCommand{},
+		"add":    &AddKey{},
 		"remove": &RemoveKey{},
 	}
 }
@@ -109,11 +109,11 @@ func (c *RemoveKey) Run(context *cmd.Context, client cmd.Doer) error {
 	return nil
 }
 
-type AddKeyCommand struct {
+type AddKey struct {
 	keyReader
 }
 
-func (c *AddKeyCommand) Info() *cmd.Info {
+func (c *AddKey) Info() *cmd.Info {
 	return &cmd.Info{
 		Name:  "add",
 		Usage: "key add [path/to/key/file.pub]",
@@ -121,7 +121,7 @@ func (c *AddKeyCommand) Info() *cmd.Info {
 	}
 }
 
-func (c *AddKeyCommand) Run(context *cmd.Context, client cmd.Doer) error {
+func (c *AddKey) Run(context *cmd.Context, client cmd.Doer) error {
 	keyPath, err := getKeyPath(context.Args)
 	if err != nil {
 		return err

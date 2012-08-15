@@ -22,7 +22,7 @@ func (s *S) TestAddKey(c *C) {
 	}
 	client := cmd.NewClient(&http.Client{Transport: &transport{msg: "success", status: http.StatusOK}})
 	fs := RecordingFs{fileContent: "user-key"}
-	command := AddKeyCommand{keyReader{fsystem: &fs}}
+	command := AddKey{keyReader{fsystem: &fs}}
 	err = command.Run(&context, client)
 	c.Assert(err, IsNil)
 	c.Assert(manager.Stdout.(*bytes.Buffer).String(), Equals, expected)
@@ -42,7 +42,7 @@ func (s *S) TestAddKeySpecifyingKeyFile(c *C) {
 	}
 	client := cmd.NewClient(&http.Client{Transport: &transport{msg: "success", status: http.StatusOK}})
 	fs := RecordingFs{fileContent: "user-key"}
-	command := AddKeyCommand{keyReader{fsystem: &fs}}
+	command := AddKey{keyReader{fsystem: &fs}}
 	err = command.Run(&context, client)
 	c.Assert(err, IsNil)
 	c.Assert(manager.Stdout.(*bytes.Buffer).String(), Equals, expected)
@@ -57,7 +57,7 @@ func (s *S) TestAddKeyReturnErrorIfTheKeyDoesNotExist(c *C) {
 		Stderr: manager.Stderr,
 	}
 	fs := FailureFs{RecordingFs{}}
-	command := AddKeyCommand{keyReader{fsystem: &fs}}
+	command := AddKey{keyReader{fsystem: &fs}}
 	err := command.Run(&context, nil)
 	c.Assert(err, NotNil)
 	c.Assert(err.Error(), Equals, "You need to have a public rsa key")
@@ -71,7 +71,7 @@ func (s *S) TestAddKeyReturnsProperErrorIfTheGivenKeyFileDoesNotExist(c *C) {
 		Stderr: manager.Stderr,
 	}
 	fs := FailureFs{RecordingFs{}}
-	command := AddKeyCommand{keyReader{fsystem: &fs}}
+	command := AddKey{keyReader{fsystem: &fs}}
 	err := command.Run(&context, nil)
 	c.Assert(err, NotNil)
 	c.Assert(err.Error(), Equals, "File /unknown/key.pub does not exist!")
@@ -84,7 +84,7 @@ func (s *S) TestInfoAddKey(c *C) {
 		Usage: "key add [path/to/key/file.pub]",
 		Desc:  "add your public key ($HOME/.ssh/id_rsa.pub by default).",
 	}
-	c.Assert((&AddKeyCommand{}).Info(), DeepEquals, expected)
+	c.Assert((&AddKey{}).Info(), DeepEquals, expected)
 }
 
 func (s *S) TestRemoveKey(c *C) {
@@ -167,7 +167,7 @@ func (s *S) TestInfoRemoveKey(c *C) {
 
 func (s *S) TestKey(c *C) {
 	expect := map[string]interface{}{
-		"add":    &AddKeyCommand{},
+		"add":    &AddKey{},
 		"remove": &RemoveKey{},
 	}
 	command := Key{}
