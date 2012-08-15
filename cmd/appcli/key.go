@@ -95,7 +95,7 @@ func (c *AddKeyCommand) Info() *cmd.Info {
 	return &cmd.Info{
 		Name:  "add",
 		Usage: "key add",
-		Desc:  "add your public key ($HOME/.id_rsa.pub).",
+		Desc:  "add your public key ($HOME/.ssh/id_rsa.pub).",
 	}
 }
 
