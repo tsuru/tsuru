@@ -38,7 +38,7 @@ To create an app:
 
 ::
 
-    $ tsuru app create myblog
+    $ tsuru app create myblog <platform>
 
 This will return your app's remote url, you should add it to your git repository:
 
