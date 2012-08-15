@@ -92,7 +92,7 @@ func (s *S) TestCreate(c *C) {
 	c.Assert(retrievedApp.State, Equals, a.State)
 	c.Assert(retrievedApp.JujuEnv, Equals, "delta")
 	str := strings.Replace(w.String(), "\n", "", -1)
-	c.Assert(str, Matches, ".*deploy --repository=/home/charms local:django appName.*")
+	c.Assert(str, Matches, ".*deploy -e delta --repository=/home/charms local:django appName.*")
 }
 
 func (s *S) TestCantCreateTwoAppsWithTheSameName(c *C) {
