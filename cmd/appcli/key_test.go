@@ -75,6 +75,7 @@ func (s *S) TestAddKeyReturnsProperErrorIfTheGivenKeyFileDoesNotExist(c *C) {
 	err := command.Run(&context, nil)
 	c.Assert(err, NotNil)
 	c.Assert(err.Error(), Equals, "File /unknown/key.pub does not exist!")
+	c.Assert(context.Stderr.(*bytes.Buffer).String(), Equals, "File /unknown/key.pub does not exist!\n")
 }
 
 func (s *S) TestInfoAddKey(c *C) {
@@ -138,6 +139,21 @@ func (s *S) TestRemoveKeyReturnErrorIfTheKeyDoesNotExist(c *C) {
 	err := command.Run(&context, nil)
 	c.Assert(err, NotNil)
 	c.Assert(err.Error(), Equals, "You need to have a public rsa key")
+}
+
+func (s *S) TestRemoveKeyReturnProperErrorIfTheGivenKeyFileDoesNotExist(c *C) {
+	context := cmd.Context{
+		Cmds:   []string{},
+		Args:   []string{"/unknown/key.pub"},
+		Stdout: manager.Stdout,
+		Stderr: manager.Stderr,
+	}
+	fs := FailureFs{RecordingFs{}}
+	command := RemoveKey{keyReader{fsystem: &fs}}
+	err := command.Run(&context, nil)
+	c.Assert(err, NotNil)
+	c.Assert(err.Error(), Equals, "File /unknown/key.pub does not exist!")
+	c.Assert(context.Stderr.(*bytes.Buffer).String(), Equals, err.Error()+"\n")
 }
 
 func (s *S) TestInfoRemoveKey(c *C) {
