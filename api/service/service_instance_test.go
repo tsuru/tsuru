@@ -160,54 +160,6 @@ func (s *S) TestGenericServiceInstancesFilterWithServiceSlice(c *C) {
 	c.Assert(f, DeepEquals, bson.M{"name": 1, "service_name": 1, "apps": 1})
 }
 
-func (s *S) TestGetServiceInstancesByServiceAndTeams(c *C) {
-	srvc := Service{Name: "mysql", Teams: []string{s.team.Name}}
-	srvc.Create()
-	defer srvc.Delete()
-	sInstance := ServiceInstance{
-		Name:        "j4sql",
-		ServiceName: srvc.Name,
-		Teams:       []string{s.team.Name},
-	}
-	sInstance.Create()
-	defer sInstance.Delete()
-	sInstances, err := GetServiceInstancesByServiceAndTeams(srvc, s.user)
-	c.Assert(err, IsNil)
-	expected := []ServiceInstance{
-		ServiceInstance{
-			Name:        sInstance.Name,
-			ServiceName: sInstance.ServiceName,
-			Teams:       []string(nil),
-			Apps:        []string{},
-		},
-	}
-	c.Assert(sInstances, DeepEquals, expected)
-}
-
-func (s *S) TestGetServiceInstancesByServiceAndTeamsIgnoresIsRestrictedFlagFromService(c *C) {
-	srvc := Service{Name: "mysql", Teams: []string{s.team.Name}, IsRestricted: true}
-	srvc.Create()
-	defer srvc.Delete()
-	sInstance := ServiceInstance{
-		Name:        "j4sql",
-		ServiceName: srvc.Name,
-		Teams:       []string{s.team.Name},
-	}
-	sInstance.Create()
-	defer sInstance.Delete()
-	sInstances, err := GetServiceInstancesByServiceAndTeams(srvc, s.user)
-	c.Assert(err, IsNil)
-	expected := []ServiceInstance{
-		ServiceInstance{
-			Name:        sInstance.Name,
-			ServiceName: sInstance.ServiceName,
-			Teams:       []string(nil),
-			Apps:        []string{},
-		},
-	}
-	c.Assert(sInstances, DeepEquals, expected)
-}
-
 func (s *S) TestGetServiceInstancesByServicesAndTeams(c *C) {
 	srvc := Service{Name: "mysql", Teams: []string{s.team.Name}, IsRestricted: true}
 	srvc.Create()

@@ -152,16 +152,6 @@ func genericServiceInstancesFilter(services interface{}, teams []string) (q, f b
 	return
 }
 
-func GetServiceInstancesByServiceAndTeams(s Service, u *auth.User) (sInstances []ServiceInstance, err error) {
-	teams, err := u.Teams()
-	if err != nil {
-		return
-	}
-	q, f := genericServiceInstancesFilter(s, auth.GetTeamsNames(teams))
-	err = db.Session.ServiceInstances().Find(q).Select(f).All(&sInstances)
-	return
-}
-
 func GetServiceInstancesByServicesAndTeams(services []Service, u *auth.User) (sInstances []ServiceInstance, err error) {
 	teams, err := u.Teams()
 	if err != nil {
