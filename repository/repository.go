@@ -2,20 +2,31 @@ package repository
 
 import (
 	"fmt"
-	"github.com/timeredbull/tsuru/api/unit"
 	"github.com/timeredbull/tsuru/config"
 	"github.com/timeredbull/tsuru/log"
 	"path"
 )
+
+// Unit interface represents a unit of execution.
+//
+// It must provide two methods:
+//
+//   * GetName: returns the name of the unit.
+//   * Command: runs a command in the unit.
+//
+// Whatever that has a name and is able to run commands, is a unit.
+type Unit interface {
+	GetName() string
+	Command(cmd ...string) ([]byte, error)
+}
 
 // Clone runs a git clone to clone the app repository in a unit.
 //
 // Given a machine id (from juju), it runs a git clone into this machine,
 // cloning from the bare repository that is being served by git-daemon in the
 // tsuru server.
-func Clone(app string, machine int) ([]byte, error) {
-	u := unit.Unit{Name: app, Machine: machine}
-	cmd := fmt.Sprintf("git clone %s /home/application/current --depth 1", GetReadOnlyUrl(app))
+func Clone(u Unit) ([]byte, error) {
+	cmd := fmt.Sprintf("git clone %s /home/application/current --depth 1", GetReadOnlyUrl(u.GetName()))
 	output, err := u.Command(cmd)
 	log.Printf(`"git clone" output: %s`, string(output))
 	if err != nil {
@@ -27,8 +38,7 @@ func Clone(app string, machine int) ([]byte, error) {
 // Pull runs a git pull to update the code in a unit.
 //
 // It works like Clone, pulling from the app bare repository.
-func Pull(app string, machine int) ([]byte, error) {
-	u := unit.Unit{Name: app, Machine: machine}
+func Pull(u Unit) ([]byte, error) {
 	cmd := fmt.Sprintf("cd /home/application/current && git pull origin master")
 	output, err := u.Command(cmd)
 	log.Printf(`"git pull" output: %s`, string(output))
@@ -42,11 +52,11 @@ func Pull(app string, machine int) ([]byte, error) {
 //
 // First it tries to clone, and if the clone fail (meaning that the repository
 // is already cloned), it pulls changes from the bare repository.
-func CloneOrPull(app string, machine int) (string, error) {
+func CloneOrPull(u Unit) (string, error) {
 	var output []byte
-	output, err := Clone(app, machine)
+	output, err := Clone(u)
 	if err != nil {
-		output, err = Pull(app, machine)
+		output, err = Pull(u)
 		if err != nil {
 			return string(output), err
 		}

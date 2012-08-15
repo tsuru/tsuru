@@ -6,7 +6,6 @@ import (
 	"github.com/timeredbull/tsuru/api/auth"
 	"github.com/timeredbull/tsuru/api/bind"
 	"github.com/timeredbull/tsuru/api/service"
-	"github.com/timeredbull/tsuru/api/unit"
 	"github.com/timeredbull/tsuru/config"
 	"github.com/timeredbull/tsuru/db"
 	"github.com/timeredbull/tsuru/log"
@@ -15,7 +14,6 @@ import (
 	"launchpad.net/goyaml"
 	"os/exec"
 	"path"
-	"strconv"
 	"strings"
 	"time"
 )
@@ -38,11 +36,12 @@ func (e *EnvVar) String() string {
 type App struct {
 	Env       map[string]EnvVar
 	Framework string
+	JujuEnv   string
+	Logs      []Log
 	Name      string
 	State     string
-	Units     []unit.Unit
+	Units     []Unit
 	Teams     []string
-	Logs      []Log
 }
 
 type Log struct {
@@ -61,6 +60,7 @@ func (a *App) Get() error {
 
 func (a *App) Create() error {
 	a.State = "pending"
+	a.JujuEnv = "delta"
 	err := db.Session.Apps().Insert(a)
 	if err != nil {
 		return err
@@ -117,17 +117,7 @@ func (a *App) Destroy() error {
 	if err != nil {
 		return err
 	}
-	u := a.unit()
-	cmd := exec.Command("juju", "destroy-service", a.Name)
-	log.Printf("destroying %s with name %s", a.Framework, a.Name)
-	out, err := cmd.CombinedOutput()
-	log.Printf(string(out))
-	if err != nil {
-		return err
-	}
-	cmd = exec.Command("juju", "terminate-machine", strconv.Itoa(u.Machine))
-	log.Printf("terminating machine %d", u.Machine)
-	out, err = cmd.CombinedOutput()
+	out, err := a.unit().Destroy()
 	log.Printf(string(out))
 	if err != nil {
 		return err
@@ -135,7 +125,7 @@ func (a *App) Destroy() error {
 	return <-unbindCh
 }
 
-func (a *App) AddOrUpdateUnit(u *unit.Unit) {
+func (a *App) AddOrUpdateUnit(u *Unit) {
 	for i, unt := range a.Units {
 		if unt.Machine == u.Machine {
 			a.Units[i].Ip = u.Ip
@@ -231,7 +221,6 @@ func deployHookAbsPath(p string) (string, error) {
  */
 func (a *App) conf() (conf, error) {
 	var c conf
-	u := a.unit()
 	uRepo, err := repository.GetPath()
 	if err != nil {
 		a.Log(fmt.Sprintf("Got error while getting repository path: %s", err.Error()))
@@ -239,7 +228,7 @@ func (a *App) conf() (conf, error) {
 	}
 	cPath := path.Join(uRepo, "app.conf")
 	cmd := fmt.Sprintf(`echo "%s";cat %s`, confSep, cPath)
-	o, err := u.Command(cmd)
+	o, err := a.unit().Command(cmd)
 	if err != nil {
 		a.Log(fmt.Sprintf("Got error while executing command: %s... Skipping hooks execution", err.Error()))
 		return c, nil
@@ -266,13 +255,12 @@ func (a *App) preRestart(c conf) error {
 		a.Log("pre-restart hook section in app conf does not exists... Skipping...")
 		return nil
 	}
-	u := a.unit()
 	p, err := deployHookAbsPath(c.PreRestart)
 	if err != nil {
 		a.Log(fmt.Sprintf("Error obtaining absolute path to hook: %s. Skipping...", err))
 		return nil
 	}
-	out, err := u.Command("/bin/bash", p)
+	out, err := a.unit().Command("/bin/bash", p)
 	a.Log("Executing pre-restart hook...")
 	a.Log(fmt.Sprintf("Output of pre-restart hook: %s", string(out)))
 	return err
@@ -291,13 +279,12 @@ func (a *App) posRestart(c conf) error {
 		a.Log("pos-restart hook section in app conf does not exists... Skipping...")
 		return nil
 	}
-	u := a.unit()
 	p, err := deployHookAbsPath(c.PosRestart)
 	if err != nil {
 		a.Log(fmt.Sprintf("Error obtaining absolute path to hook: %s. Skipping...", err))
 		return nil
 	}
-	out, err := u.Command("/bin/bash", p)
+	out, err := a.unit().Command("/bin/bash", p)
 	a.Log("Executing pos-restart hook...")
 	a.Log(fmt.Sprintf("Output of pos-restart hook: %s", string(out)))
 	return err
@@ -324,15 +311,22 @@ func (a *App) updateHooks() error {
 	return nil
 }
 
-func (a *App) unit() unit.Unit {
+func (a *App) unit() *Unit {
 	if len(a.Units) > 0 {
-		return a.Units[0]
+		unit := a.Units[0]
+		unit.app = a
+		return &unit
 	}
-	return unit.Unit{}
+	return &Unit{app: a}
 }
 
-func (a *App) GetUnits() []unit.Unit {
-	return a.Units
+func (a *App) GetUnits() []bind.Unit {
+	var units []bind.Unit
+	for _, u := range a.Units {
+		u.app = a
+		units = append(units, bind.Unit(&u))
+	}
+	return units
 }
 
 func (a *App) GetName() string {

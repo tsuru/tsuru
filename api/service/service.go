@@ -9,12 +9,9 @@ import (
 	"strings"
 )
 
-const OnNewInstance = "on-new-instance"
-
 type Service struct {
 	Name         string `bson:"_id"`
 	Endpoint     map[string]string
-	Bootstrap    map[string]string
 	OwnerTeams   []string `bson:"owner_teams"`
 	Teams        []string
 	Status       string
@@ -51,7 +48,7 @@ func (s *Service) Delete() error {
 	return db.Session.Services().Update(bson.M{"_id": s.Name}, s)
 }
 
-func (s *Service) GetClient(endpoint string) (cli *Client, err error) {
+func (s *Service) getClient(endpoint string) (cli *Client, err error) {
 	if e, ok := s.Endpoint[endpoint]; ok {
 		if !strings.HasPrefix(e, "http://") {
 			e = "http://" + e
@@ -61,6 +58,11 @@ func (s *Service) GetClient(endpoint string) (cli *Client, err error) {
 		err = errors.New("Unknown endpoint: " + endpoint)
 	}
 	return
+}
+
+func (s *Service) ProductionEndpoint() *Client {
+	cli, _ := s.getClient("production")
+	return cli
 }
 
 func (s *Service) findTeam(team *auth.Team) int {

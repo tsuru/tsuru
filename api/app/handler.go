@@ -43,7 +43,7 @@ func CloneRepositoryHandler(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return &errors.Http{Code: http.StatusNotFound, Message: "App not found"}
 	}
-	output, err = repository.CloneOrPull(app.Name, app.Units[0].Machine) // should iterate over the machines
+	output, err = repository.CloneOrPull(app.unit()) // should iterate over the machines
 	if err != nil {
 		return &errors.Http{Code: http.StatusInternalServerError, Message: output}
 	}
@@ -268,10 +268,9 @@ func RunCommand(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	if err != nil {
 		return err
 	}
-	unit := app.unit()
 	cmd := fmt.Sprintf("[ -f /home/application/apprc ] && source /home/application/apprc; [ -d /home/application/current ] && cd /home/application/current; %s", c)
 	app.Log(fmt.Sprintf("running '%s'", c))
-	out, err := unit.Command(cmd)
+	out, err := app.unit().Command(cmd)
 	if err != nil {
 		return err
 	}

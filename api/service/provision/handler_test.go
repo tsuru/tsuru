@@ -97,8 +97,6 @@ func (s *S) TestCreateHandlerWithContentOfRealYaml(c *C) {
 	c.Assert(err, IsNil)
 	c.Assert(rService.Endpoint["production"], Equals, "mysqlapi.com")
 	c.Assert(rService.Endpoint["test"], Equals, "localhost:8000")
-	c.Assert(rService.Bootstrap["ami"], Equals, "ami-00000007")
-	c.Assert(rService.Bootstrap["when"], Equals, "on-new-instance")
 }
 
 func (s *S) TestCreateHandlerShouldReturnErrorWhenNameExists(c *C) {
@@ -136,6 +134,23 @@ func (s *S) TestCreateHandlerReturnsForbiddenIfTheUserIsNotMemberOfAnyTeam(c *C)
 	c.Assert(ok, Equals, true)
 	c.Assert(e.Code, Equals, http.StatusForbidden)
 	c.Assert(e, ErrorMatches, "^In order to create a service, you should be member of at least one team$")
+}
+
+func (s *S) TestCreateHandlerReturnsBadRequestIfTheServiceDoesNotHaveAProductionEndpoint(c *C) {
+	p, err := filepath.Abs("testdata/manifest-without-endpoint.yml")
+	manifest, err := ioutil.ReadFile(p)
+	c.Assert(err, IsNil)
+	b := bytes.NewBuffer(manifest)
+	request, err := http.NewRequest("POST", "/services", b)
+	c.Assert(err, IsNil)
+	request.Header.Set("Content-Type", "application/json")
+	recorder := httptest.NewRecorder()
+	err = CreateHandler(recorder, request, s.user)
+	c.Assert(err, NotNil)
+	e, ok := err.(*errors.Http)
+	c.Assert(ok, Equals, true)
+	c.Assert(e.Code, Equals, http.StatusBadRequest)
+	c.Assert(e.Message, Equals, "You must provide a production endpoint in the manifest file.")
 }
 
 func (s *S) TestUpdateHandlerShouldUpdateTheServiceWithDataFromManifest(c *C) {

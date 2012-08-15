@@ -3,7 +3,6 @@ package service
 import (
 	stderrors "errors"
 	"github.com/timeredbull/tsuru/api/bind"
-	"github.com/timeredbull/tsuru/api/unit"
 	"github.com/timeredbull/tsuru/errors"
 	"io/ioutil"
 	. "launchpad.net/gocheck"
@@ -12,6 +11,14 @@ import (
 	"net/url"
 	"strings"
 )
+
+type FakeUnit struct {
+	ip string
+}
+
+func (a *FakeUnit) GetIp() string {
+	return a.ip
+}
 
 type FakeApp struct {
 	ip   string
@@ -22,9 +29,9 @@ func (a *FakeApp) GetName() string {
 	return a.name
 }
 
-func (a *FakeApp) GetUnits() []unit.Unit {
-	return []unit.Unit{
-		unit.Unit{Ip: a.ip},
+func (a *FakeApp) GetUnits() []bind.Unit {
+	return []bind.Unit{
+		&FakeUnit{ip: a.ip},
 	}
 }
 

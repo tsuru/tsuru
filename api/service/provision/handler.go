@@ -14,9 +14,8 @@ import (
 )
 
 type serviceYaml struct {
-	Id        string
-	Endpoint  map[string]string
-	Bootstrap map[string]string
+	Id       string
+	Endpoint map[string]string
 }
 
 func ServicesHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
@@ -43,6 +42,9 @@ func CreateHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	if err != nil {
 		return err
 	}
+	if _, ok := sy.Endpoint["production"]; !ok {
+		return &errors.Http{Code: http.StatusBadRequest, Message: "You must provide a production endpoint in the manifest file."}
+	}
 	var teams []auth.Team
 	db.Session.Teams().Find(bson.M{"users": u.Email}).All(&teams)
 	if len(teams) == 0 {
@@ -60,7 +62,6 @@ func CreateHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	s := service.Service{
 		Name:       sy.Id,
 		Endpoint:   sy.Endpoint,
-		Bootstrap:  sy.Bootstrap,
 		OwnerTeams: auth.GetTeamsNames(teams),
 	}
 	err = s.Create()
@@ -84,7 +85,6 @@ func UpdateHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 		return err
 	}
 	s.Endpoint = yaml.Endpoint
-	s.Bootstrap = yaml.Bootstrap
 	if err = s.Update(); err != nil {
 		return err
 	}

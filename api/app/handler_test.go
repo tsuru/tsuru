@@ -7,7 +7,6 @@ import (
 	"github.com/timeredbull/commandmocker"
 	"github.com/timeredbull/tsuru/api/auth"
 	"github.com/timeredbull/tsuru/api/service"
-	"github.com/timeredbull/tsuru/api/unit"
 	"github.com/timeredbull/tsuru/db"
 	"github.com/timeredbull/tsuru/errors"
 	"github.com/timeredbull/tsuru/log"
@@ -49,8 +48,8 @@ pos-restart:
 	dir, err := commandmocker.Add("juju", output)
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(dir)
-	u := unit.Unit{Name: "someapp/0", Type: "django"}
-	a := App{Name: "someApp", Framework: "django", Teams: []string{s.team.Name}, Units: []unit.Unit{u}}
+	u := Unit{Name: "someapp/0", Type: "django"}
+	a := App{Name: "someApp", Framework: "django", Teams: []string{s.team.Name}, Units: []Unit{u}}
 	err = a.Create()
 	c.Assert(err, IsNil)
 	defer a.Destroy()
@@ -78,8 +77,8 @@ pos-restart:
 	dir, err := commandmocker.Add("juju", output)
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(dir)
-	u := unit.Unit{Name: "someapp/0", Type: "django"}
-	a := App{Name: "someApp", Framework: "django", Teams: []string{s.team.Name}, Units: []unit.Unit{u}}
+	u := Unit{Name: "someapp/0", Type: "django"}
+	a := App{Name: "someApp", Framework: "django", Teams: []string{s.team.Name}, Units: []Unit{u}}
 	err = a.Create()
 	c.Assert(err, IsNil)
 	defer a.Destroy()
@@ -117,12 +116,12 @@ func (s *S) TestCloneRepositoryShouldReturnNotFoundWhenAppDoesNotExist(c *C) {
 }
 
 func (s *S) TestAppList(c *C) {
-	u := unit.Unit{Name: "app1/0", Ip: "10.10.10.10"}
-	app1 := App{Name: "app1", Teams: []string{s.team.Name}, Units: []unit.Unit{u}}
+	u := Unit{Name: "app1/0", Ip: "10.10.10.10"}
+	app1 := App{Name: "app1", Teams: []string{s.team.Name}, Units: []Unit{u}}
 	app1.Create()
 	defer app1.Destroy()
-	u2 := unit.Unit{Name: "app2/0"}
-	app2 := App{Name: "app2", Teams: []string{s.team.Name}, Units: []unit.Unit{u2}}
+	u2 := Unit{Name: "app2/0"}
+	app2 := App{Name: "app2", Teams: []string{s.team.Name}, Units: []Unit{u2}}
 	app2.Create()
 	defer app2.Destroy()
 	expected := []App{app1, app2}
@@ -586,8 +585,8 @@ func (s *S) TestRunHandlerShouldExecuteTheGivenCommandInTheGivenApp(c *C) {
 	dir, err := commandmocker.Add("juju", "$*")
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(dir)
-	u := unit.Unit{Name: "someapp/0", Type: "django", Machine: 10}
-	a := &App{Name: "secrets", Framework: "arch enemy", Teams: []string{s.team.Name}, Units: []unit.Unit{u}}
+	u := Unit{Name: "someapp/0", Type: "django", Machine: 10}
+	a := &App{Name: "secrets", Framework: "arch enemy", Teams: []string{s.team.Name}, Units: []Unit{u}}
 	err = a.Create()
 	c.Assert(err, IsNil)
 	url := fmt.Sprintf("/apps/%s/run/?:name=%s", a.Name, a.Name)
@@ -596,15 +595,15 @@ func (s *S) TestRunHandlerShouldExecuteTheGivenCommandInTheGivenApp(c *C) {
 	recorder := httptest.NewRecorder()
 	err = RunCommand(recorder, request, s.user)
 	c.Assert(err, IsNil)
-	c.Assert(recorder.Body.String(), Equals, "ssh -o StrictHostKeyChecking no 10 [ -f /home/application/apprc ] && source /home/application/apprc; [ -d /home/application/current ] && cd /home/application/current; ls")
+	c.Assert(recorder.Body.String(), Equals, "ssh -o StrictHostKeyChecking no -e delta 10 [ -f /home/application/apprc ] && source /home/application/apprc; [ -d /home/application/current ] && cd /home/application/current; ls")
 }
 
 func (s *S) TestRunHandlerShouldFilterOutputFromJuju(c *C) {
 	dir, err := commandmocker.Add("juju", output)
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(dir)
-	u := unit.Unit{Name: "someapp/0", Type: "django", Machine: 10}
-	a := &App{Name: "unspeakable", Framework: "vougan", Teams: []string{s.team.Name}, Units: []unit.Unit{u}}
+	u := Unit{Name: "someapp/0", Type: "django", Machine: 10}
+	a := &App{Name: "unspeakable", Framework: "vougan", Teams: []string{s.team.Name}, Units: []Unit{u}}
 	err = a.Create()
 	c.Assert(err, IsNil)
 	url := fmt.Sprintf("/apps/%s/run/?:name=%s", a.Name, a.Name)
@@ -1331,7 +1330,7 @@ func (s *S) TestBindHandler(c *C) {
 	a := App{
 		Name:  "painkiller",
 		Teams: []string{s.team.Name},
-		Units: []unit.Unit{unit.Unit{Ip: "127.0.0.1"}},
+		Units: []Unit{Unit{Ip: "127.0.0.1"}},
 	}
 	err = a.Create()
 	c.Assert(err, IsNil)
@@ -1474,7 +1473,7 @@ func (s *S) TestUnbindHandler(c *C) {
 				Value: "123",
 			},
 		},
-		Units: []unit.Unit{unit.Unit{Ip: "127.0.0.1"}},
+		Units: []Unit{Unit{Ip: "127.0.0.1"}},
 	}
 	err = a.Create()
 	c.Assert(err, IsNil)

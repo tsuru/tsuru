@@ -32,14 +32,9 @@ func (s *S) TestCreateService(c *C) {
 		"production": "somehost.com",
 		"test":       "test.somehost.com",
 	}
-	bootstrap := map[string]string{
-		"ami":  "ami-0000007",
-		"when": "on-new-instance",
-	}
 	service := &Service{
 		Name:       "my_service",
 		Endpoint:   endpt,
-		Bootstrap:  bootstrap,
 		OwnerTeams: []string{s.team.Name},
 	}
 	err := service.Create()
@@ -65,13 +60,22 @@ func (s *S) TestDeleteService(c *C) {
 	c.Assert(se.Status, Equals, "deleted")
 }
 
+func (s *S) TestProductionEndpoint(c *C) {
+	endpoints := map[string]string{
+		"production": "http://mysql.api.com",
+		"test":       "http://localhost:9090",
+	}
+	service := Service{Name: "redis", Endpoint: endpoints}
+	c.Assert(service.ProductionEndpoint(), DeepEquals, &Client{endpoint: endpoints["production"]})
+}
+
 func (s *S) TestGetClient(c *C) {
 	endpoints := map[string]string{
 		"production": "http://mysql.api.com",
 		"test":       "http://localhost:9090",
 	}
 	service := Service{Name: "redis", Endpoint: endpoints}
-	cli, err := service.GetClient("production")
+	cli, err := service.getClient("production")
 	c.Assert(err, IsNil)
 	c.Assert(cli, DeepEquals, &Client{endpoint: endpoints["production"]})
 }
@@ -82,7 +86,7 @@ func (s *S) TestGetClientWithouHttp(c *C) {
 		"test":       "localhost:9090",
 	}
 	service := Service{Name: "redis", Endpoint: endpoints}
-	cli, err := service.GetClient("production")
+	cli, err := service.getClient("production")
 	c.Assert(err, IsNil)
 	c.Assert(cli.endpoint, Equals, "http://mysql.api.com")
 }
@@ -93,7 +97,7 @@ func (s *S) TestGetClientWithUnknownEndpoint(c *C) {
 		"test":       "http://localhost:9090",
 	}
 	service := Service{Name: "redis", Endpoint: endpoints}
-	cli, err := service.GetClient("staging")
+	cli, err := service.getClient("staging")
 	c.Assert(err, NotNil)
 	c.Assert(err, ErrorMatches, "^Unknown endpoint: staging$")
 	c.Assert(cli, IsNil)

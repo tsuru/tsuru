@@ -51,11 +51,9 @@ func CreateInstanceHandler(w http.ResponseWriter, r *http.Request, u *auth.User)
 		Teams:       teamNames,
 	}
 	go func() {
-		if cli, err := s.GetClient("production"); err == nil {
-			if cli.Create(&si) != nil {
-				log.Print("Error while calling create action from service api.")
-				log.Print(err.Error())
-			}
+		if s.ProductionEndpoint().Create(&si) != nil {
+			log.Print("Error while calling create action from service api.")
+			log.Print(err.Error())
 		}
 	}()
 	err = si.Create()
@@ -91,6 +89,9 @@ func RemoveServiceInstanceHandler(w http.ResponseWriter, r *http.Request, u *aut
 	if len(si.Apps) > 0 {
 		msg := "This service instance has binded apps. Unbind them before removing it"
 		return &errors.Http{Code: http.StatusInternalServerError, Message: msg}
+	}
+	if err = si.Service().ProductionEndpoint().Destroy(&si); err != nil {
+		return &errors.Http{Code: http.StatusInternalServerError, Message: err.Error()}
 	}
 	err = db.Session.ServiceInstances().Remove(bson.M{"_id": name})
 	if err != nil {
@@ -128,13 +129,9 @@ func ServiceInstanceStatusHandler(w http.ResponseWriter, r *http.Request, u *aut
 	}
 	s := si.Service()
 	var b string
-	if cli, err := s.GetClient("production"); err == nil {
-		if b, err = cli.Status(&si); err != nil {
-			msg := fmt.Sprintf("Could not retrieve status of service instance, error: %s", err.Error())
-			return &errors.Http{Code: http.StatusInternalServerError, Message: msg}
-		}
-	} else {
-		return &errors.Http{Code: http.StatusInternalServerError, Message: err.Error()}
+	if b, err = s.ProductionEndpoint().Status(&si); err != nil {
+		msg := fmt.Sprintf("Could not retrieve status of service instance, error: %s", err.Error())
+		return &errors.Http{Code: http.StatusInternalServerError, Message: msg}
 	}
 	b = fmt.Sprintf(`Service instance "%s" is %s`, siName, b)
 	n, err := w.Write([]byte(b))
@@ -151,7 +148,12 @@ func ServiceInfoHandler(w http.ResponseWriter, r *http.Request, u *auth.User) er
 		return err
 	}
 	instances := []service.ServiceInstance{}
-	err = db.Session.ServiceInstances().Find(bson.M{"service_name": serviceName}).All(&instances)
+	teams, err := u.Teams()
+	if err != nil {
+		return err
+	}
+	teamsNames := auth.GetTeamsNames(teams)
+	err = db.Session.ServiceInstances().Find(bson.M{"service_name": serviceName, "teams": bson.M{"$in": teamsNames}}).All(&instances)
 	if err != nil {
 		return err
 	}

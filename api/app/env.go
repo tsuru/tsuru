@@ -2,7 +2,6 @@ package app
 
 import (
 	"fmt"
-	"github.com/timeredbull/tsuru/api/unit"
 	"github.com/timeredbull/tsuru/log"
 	"time"
 )
@@ -22,7 +21,7 @@ var env chan Message = make(chan Message, ChanSize)
 type Cmd struct {
 	cmd    string
 	result chan CmdResult
-	u      unit.Unit
+	u      Unit
 }
 
 type CmdResult struct {
@@ -49,7 +48,7 @@ func runCommands() {
 
 func runCmd(cmd string, msg Message) {
 	c := Cmd{
-		u:      msg.app.unit(),
+		u:      *msg.app.unit(),
 		cmd:    cmd,
 		result: make(chan CmdResult),
 	}
