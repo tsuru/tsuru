@@ -52,28 +52,9 @@ func update(out *output) {
 				u.MachineAgentState = uMachine["agent-state"].(string)
 			}
 			u.AgentState = yUnit.AgentState
-			a.State = appState(&u)
+			a.State = u.State()
 			a.AddOrUpdateUnit(&u)
 			db.Session.Apps().Update(bson.M{"name": a.Name}, a)
 		}
 	}
-}
-
-func appState(u *app.Unit) string {
-	if u.InstanceState == "error" || u.AgentState == "install-error" {
-		return "error"
-	}
-	if u.MachineAgentState == "pending" || u.InstanceState == "pending" || u.MachineAgentState == "" || u.InstanceState == "" {
-		return "creating"
-	}
-	if u.MachineAgentState == "running" && u.AgentState == "not-started" {
-		return "creating"
-	}
-	if u.MachineAgentState == "running" && u.InstanceState == "running" && u.AgentState == "pending" {
-		return "installing"
-	}
-	if u.MachineAgentState == "running" && u.AgentState == "started" && u.InstanceState == "running" {
-		return "started"
-	}
-	return "pending"
 }

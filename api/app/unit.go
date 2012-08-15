@@ -53,3 +53,22 @@ func (u *Unit) ExecuteHook(hook string) ([]byte, error) {
 	log.Print(string(output))
 	return output, err
 }
+
+func (u *Unit) State() string {
+	if u.InstanceState == "error" || u.AgentState == "install-error" {
+		return "error"
+	}
+	if u.MachineAgentState == "pending" || u.InstanceState == "pending" || u.MachineAgentState == "" || u.InstanceState == "" {
+		return "creating"
+	}
+	if u.MachineAgentState == "running" && u.AgentState == "not-started" {
+		return "creating"
+	}
+	if u.MachineAgentState == "running" && u.InstanceState == "running" && u.AgentState == "pending" {
+		return "installing"
+	}
+	if u.MachineAgentState == "running" && u.AgentState == "started" && u.InstanceState == "running" {
+		return "started"
+	}
+	return "pending"
+}
