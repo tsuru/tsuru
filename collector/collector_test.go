@@ -182,7 +182,7 @@ func (s *S) TestAppStatusMachineAgentPending(c *C) {
 	c.Assert(st, Equals, "creating")
 }
 
-func (s *S) testAppStatusInstanceStatePending(c *C) {
+func (s *S) TestAppStatusInstanceStatePending(c *C) {
 	u := app.Unit{InstanceState: "pending"}
 	st := appState(&u)
 	c.Assert(st, Equals, "creating")
@@ -194,7 +194,7 @@ func (s *S) TestAppStatusInstanceStateError(c *C) {
 	c.Assert(st, Equals, "error")
 }
 
-func (s *S) TestAppStatusInstanceStatePending(c *C) {
+func (s *S) TestAppStatusAgentStatePending(c *C) {
 	u := app.Unit{AgentState: "pending", InstanceState: ""}
 	st := appState(&u)
 	c.Assert(st, Equals, "creating")
