@@ -63,6 +63,20 @@ func (s *S) TestAddKeyReturnErrorIfTheKeyDoesNotExist(c *C) {
 	c.Assert(err.Error(), Equals, "You need to have a public rsa key")
 }
 
+func (s *S) TestAddKeyReturnsProperErrorIfTheGivenKeyFileDoesNotExist(c *C) {
+	context := cmd.Context{
+		Cmds:   []string{},
+		Args:   []string{"/unknown/key.pub"},
+		Stdout: manager.Stdout,
+		Stderr: manager.Stderr,
+	}
+	fs := FailureFs{RecordingFs{}}
+	command := AddKeyCommand{keyReader{fsystem: &fs}}
+	err := command.Run(&context, nil)
+	c.Assert(err, NotNil)
+	c.Assert(err.Error(), Equals, "File /unknown/key.pub does not exist!")
+}
+
 func (s *S) TestInfoAddKey(c *C) {
 	expected := &cmd.Info{
 		Name:  "add",

@@ -119,9 +119,15 @@ func (c *AddKeyCommand) Run(context *cmd.Context, client cmd.Doer) error {
 	}
 	key, err := c.readKey(keyPath)
 	if os.IsNotExist(err) {
-		io.WriteString(context.Stderr, "You don't have a public key\n")
-		io.WriteString(context.Stderr, "To generate a key use 'ssh-keygen' command\n")
-		return errors.New("You need to have a public rsa key")
+		if len(context.Args) > 0 {
+			msg := fmt.Sprintf("File %s does not exist!", keyPath)
+			io.WriteString(context.Stderr, msg)
+			return errors.New(msg)
+		} else {
+			io.WriteString(context.Stderr, "You don't have a public key\n")
+			io.WriteString(context.Stderr, "To generate a key use 'ssh-keygen' command\n")
+			return errors.New("You need to have a public rsa key")
+		}
 	}
 	b := bytes.NewBufferString(fmt.Sprintf(`{"key":"%s"}`, strings.Replace(key, "\n", "", -1)))
 	request, err := http.NewRequest("POST", cmd.GetUrl("/users/keys"), b)
