@@ -55,7 +55,7 @@ func (u *Unit) ExecuteHook(hook string) ([]byte, error) {
 }
 
 func (u *Unit) State() string {
-	if u.InstanceState == "error" || u.AgentState == "install-error" {
+	if u.InstanceState == "error" || u.AgentState == "install-error" || u.MachineAgentState == "start-error" {
 		return "error"
 	}
 	if u.MachineAgentState == "pending" || u.InstanceState == "pending" || u.MachineAgentState == "" || u.InstanceState == "" {

@@ -98,3 +98,8 @@ func (s *S) TestStatePending(c *C) {
 	u := Unit{MachineAgentState: "some-state", AgentState: "some-state", InstanceState: "some-other-state"}
 	c.Assert(u.State(), Equals, "pending")
 }
+
+func (s *S) TestStateError(c *C) {
+	u := Unit{MachineAgentState: "start-error", AgentState: "pending", InstanceState: "running"}
+	c.Assert(u.State(), Equals, "error")
+}
