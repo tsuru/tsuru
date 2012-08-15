@@ -1,6 +1,7 @@
 package provision
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/timeredbull/tsuru/api/auth"
 	"github.com/timeredbull/tsuru/api/service"
@@ -19,7 +20,7 @@ type serviceYaml struct {
 }
 
 func ServicesHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
-	results := ServiceAndServiceInstancesByTeams("owner_teams", u)
+	results := ServicesAndInstancesByOwner(u)
 	b, err := json.Marshal(results)
 	if err != nil {
 		return &errors.Http{Code: http.StatusInternalServerError, Message: err.Error()}

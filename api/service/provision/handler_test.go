@@ -2,6 +2,7 @@ package provision
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"github.com/timeredbull/tsuru/api/auth"
 	"github.com/timeredbull/tsuru/api/service"
