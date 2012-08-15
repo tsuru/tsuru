@@ -13,7 +13,8 @@ import (
 func jujuCollect() {
 	ticker := time.Tick(time.Minute)
 	for _ = range ticker {
-		data, _ := collect()
+		// FIXME (fsouza): query for apps
+		data, _ := collect(nil)
 		output := parse(data)
 		update(output)
 	}

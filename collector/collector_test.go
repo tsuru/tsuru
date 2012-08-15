@@ -172,12 +172,13 @@ func (s *S) TestParser(c *C) {
 }
 
 func (s *S) TestCollect(c *C) {
+	a := app.App{JujuEnv: "zeta"}
 	tmpdir, err := commandmocker.Add("juju", "$*")
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(tmpdir)
-	out, err := collect()
+	out, err := collect(&a)
 	c.Assert(err, IsNil)
-	c.Assert(string(out), Equals, "status")
+	c.Assert(string(out), Equals, "status -e zeta")
 }
 
 func (s *S) TestAppStatusMachineAgentPending(c *C) {
