@@ -40,7 +40,7 @@ func (u *Unit) Command(cmds ...string) ([]byte, error) {
 }
 
 func (u *Unit) GetName() string {
-	return u.Name
+	return u.app.Name
 }
 
 func (u *Unit) GetIp() string {

@@ -44,6 +44,11 @@ func (s *S) TestDestroyUnit(c *C) {
 	c.Assert(string(out), Equals, "terminate-machine -e zeta 10")
 }
 
+func (s *S) TestGetName(c *C) {
+	u := Unit{app: &App{Name: "2112"}}
+	c.Assert(u.GetName(), Equals, "2112")
+}
+
 func (s *S) TestUnitShouldBeARepositoryUnit(c *C) {
 	var unit repository.Unit
 	c.Assert(&Unit{}, Implements, &unit)
