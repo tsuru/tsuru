@@ -55,7 +55,7 @@ func GetServiceInstanceOrError(name string, u *auth.User) (service.ServiceInstan
 }
 
 func ServiceAndServiceInstancesByTeams(u *auth.User) []service.ServiceModel {
-	services, _ := service.GetServicesByTeamKind("teams", u)
+	services, _ := service.GetServicesByTeamKindAndNoRestriction("teams", u)
 	sInstances, _ := service.GetServiceInstancesByServicesAndTeams(services, u)
 	results := make([]service.ServiceModel, len(services))
 	for i, s := range services {
