@@ -164,7 +164,7 @@ func (s *S) TestServiceByTeamKindFilteringByOwnerTeamsAndRetrievingNotRestricted
 	srvc2 := Service{Name: "mongodb", IsRestricted: false}
 	err = srvc2.Create()
 	c.Assert(err, IsNil)
-	rSrvc, err := GetServicesByTeamKind("owner_teams", s.user)
+	rSrvc, err := GetServicesByTeamKindAndNoRestriction("owner_teams", s.user)
 	c.Assert(err, IsNil)
 	expected := []Service{Service{Name: srvc.Name}, Service{Name: srvc2.Name}}
 	c.Assert(expected, DeepEquals, rSrvc)
@@ -177,8 +177,18 @@ func (s *S) TestServiceByTeamKindFilteringByTeamsAndNotRetrieveRestrictedService
 	srvc2 := Service{Name: "mongodb", IsRestricted: true}
 	err = srvc2.Create()
 	c.Assert(err, IsNil)
-	rSrvc, err := GetServicesByTeamKind("teams", s.user)
+	rSrvc, err := GetServicesByTeamKindAndNoRestriction("teams", s.user)
 	c.Assert(err, IsNil)
 	expected := []Service{Service{Name: srvc.Name}}
 	c.Assert(expected, DeepEquals, rSrvc)
+}
+
+func (s *S) TestGetServicesByOwnerTeams(c *C) {
+	srvc := Service{Name: "mongodb", Teams: []string{s.team.Name}}
+	err := srvc.Create()
+	c.Assert(err, IsNil)
+	defer srvc.Delete()
+	services, err := GetServicesByOwnerTeams("owner_teams", s.user)
+	expected := []Service(nil)
+	c.Assert(services, DeepEquals, expected)
 }

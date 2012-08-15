@@ -103,7 +103,7 @@ func GetServicesNames(services []Service) []string {
 	return sNames
 }
 
-func GetServicesByTeamKind(teamKind string, u *auth.User) (services []Service, err error) {
+func GetServicesByTeamKindAndNoRestriction(teamKind string, u *auth.User) (services []Service, err error) {
 	teams, err := u.Teams()
 	teamsNames := auth.GetTeamsNames(teams)
 	q := bson.M{"$or": []bson.M{
@@ -113,6 +113,14 @@ func GetServicesByTeamKind(teamKind string, u *auth.User) (services []Service, e
 		bson.M{"is_restricted": false},
 	},
 	}
+	err = db.Session.Services().Find(q).Select(bson.M{"name": 1}).All(&services)
+	return
+}
+
+func GetServicesByOwnerTeams(teamKind string, u *auth.User) (services []Service, err error) {
+	teams, err := u.Teams()
+	teamsNames := auth.GetTeamsNames(teams)
+	q := bson.M{teamKind: bson.M{"$in": teamsNames}}
 	err = db.Session.Services().Find(q).Select(bson.M{"name": 1}).All(&services)
 	return
 }
