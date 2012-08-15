@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/timeredbull/commandmocker"
 	"github.com/timeredbull/tsuru/api/app"
 	"io/ioutil"
 	. "launchpad.net/gocheck"
@@ -174,6 +175,16 @@ func (s *S) TestCollectorParser(c *C) {
 	file.Close()
 	expected := getOutput()
 	c.Assert(collector.Parse(jujuOutput), DeepEquals, expected)
+}
+
+func (s *S) TestCollect(c *C) {
+	tmpdir, err := commandmocker.Add("juju", "$*")
+	c.Assert(err, IsNil)
+	defer commandmocker.Remove(tmpdir)
+	var collector Collector
+	out, err := collector.Collect()
+	c.Assert(err, IsNil)
+	c.Assert(string(out), Equals, "status")
 }
 
 func (s *S) TestAppStatusMachineAgentPending(c *C) {
