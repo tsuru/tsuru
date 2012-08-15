@@ -34,9 +34,8 @@ func getApps() []app.App {
 	return apps
 }
 
-func jujuCollect() {
+func jujuCollect(ticker <-chan time.Time) {
 	var apps []app.App
-	ticker := time.Tick(time.Minute)
 	for _ = range ticker {
 		apps = getApps()
 		for _, app := range apps {
@@ -75,6 +74,7 @@ func main() {
 	defer db.Session.Close()
 
 	if !*dry {
-		jujuCollect()
+		ticker := time.Tick(time.Minute)
+		jujuCollect(ticker)
 	}
 }
