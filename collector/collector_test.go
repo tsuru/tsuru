@@ -5,7 +5,6 @@ import (
 	"github.com/timeredbull/tsuru/api/app"
 	"io/ioutil"
 	. "launchpad.net/gocheck"
-	"os"
 	"path/filepath"
 )
 
@@ -93,9 +92,8 @@ func (s *S) TestUpdateWithDownMachine(c *C) {
 	a := app.App{Name: "barduscoapp", State: "STOPPED"}
 	err := a.Create()
 	c.Assert(err, IsNil)
-	file, _ := os.Open(filepath.Join("testdata", "broken-output.yaml"))
-	jujuOutput, _ := ioutil.ReadAll(file)
-	file.Close()
+	jujuOutput, err := ioutil.ReadFile(filepath.Join("testdata", "broken-output.yaml"))
+	c.Assert(err, IsNil)
 	out := parse(jujuOutput)
 	update(out)
 	err = a.Get()
@@ -164,9 +162,8 @@ func (s *S) TestUpdateWithMultipleApps(c *C) {
 }
 
 func (s *S) TestParser(c *C) {
-	file, _ := os.Open(filepath.Join("testdata", "output.yaml"))
-	jujuOutput, _ := ioutil.ReadAll(file)
-	file.Close()
+	jujuOutput, err := ioutil.ReadFile(filepath.Join("testdata", "output.yaml"))
+	c.Assert(err, IsNil)
 	expected := getOutput()
 	c.Assert(parse(jujuOutput), DeepEquals, expected)
 }
