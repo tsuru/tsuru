@@ -5,6 +5,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"sort"
 	"strings"
 )
 
@@ -190,13 +191,22 @@ func (c *Help) Run(context *Context, client Doer) error {
 		cmd := c.manager.Commands[context.Args[0]]
 		cmd = getSubcommand(cmd, context.Args)
 		info := cmd.(Infoer).Info()
-		output = output + fmt.Sprintf("Usage: %s %s\n", c.manager.Name, info.Usage)
-		output = output + fmt.Sprintf("\n%s\n", info.Desc)
+		output += fmt.Sprintf("Usage: %s %s\n", c.manager.Name, info.Usage)
+		output += fmt.Sprintf("\n%s\n", info.Desc)
 		if info.MinArgs > 0 {
-			output = output + fmt.Sprintf("\nMinimum arguments: %d\n", info.MinArgs)
+			output += fmt.Sprintf("\nMinimum arguments: %d\n", info.MinArgs)
 		}
 	} else {
-		output = output + fmt.Sprintf("Usage: %s %s\n", c.manager.Name, c.Info().Usage)
+		output += fmt.Sprintf("Usage: %s %s\n\nAvailable commands:\n", c.manager.Name, c.Info().Usage)
+		var commands []string
+		for k, _ := range c.manager.Commands {
+			commands = append(commands, k)
+		}
+		sort.Strings(commands)
+		for _, command := range commands {
+			output += fmt.Sprintf("  %s\n", command)
+		}
+		output += fmt.Sprintf("\nRun %s help <commandname> to get more information about a specific command.\n", c.manager.Name)
 	}
 	io.WriteString(context.Stdout, output)
 	return nil

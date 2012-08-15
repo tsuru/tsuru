@@ -60,14 +60,16 @@ func (a *App) Get() error {
 
 func (a *App) Create() error {
 	a.State = "pending"
+	// TODO (#110): make JujuEnv match the app name, and bootstrap it before
+	// deploy the app.
 	a.JujuEnv = "delta"
 	err := db.Session.Apps().Insert(a)
 	if err != nil {
 		return err
 	}
 	a.Log(fmt.Sprintf("creating app %s", a.Name))
-	cmd := exec.Command("juju", "deploy", "--repository=/home/charms", "local:"+a.Framework, a.Name)
-	log.Printf("deploying %s with name %s", a.Framework, a.Name)
+	cmd := exec.Command("juju", "deploy", "-e", a.JujuEnv, "--repository=/home/charms", "local:"+a.Framework, a.Name)
+	log.Printf("deploying %s with name %s on environment %s", a.Framework, a.Name, a.JujuEnv)
 	out, err := cmd.CombinedOutput()
 	a.Log(string(out))
 	if err != nil {

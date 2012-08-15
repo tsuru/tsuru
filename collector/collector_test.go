@@ -1,10 +1,10 @@
 package main
 
 import (
+	"github.com/timeredbull/commandmocker"
 	"github.com/timeredbull/tsuru/api/app"
 	"io/ioutil"
 	. "launchpad.net/gocheck"
-	"os"
 	"path/filepath"
 )
 
@@ -44,11 +44,10 @@ func getApp(c *C) *app.App {
 	return a
 }
 
-func (s *S) TestCollectorUpdate(c *C) {
+func (s *S) TestUpdate(c *C) {
 	a := getApp(c)
-	var collector Collector
 	out := getOutput()
-	collector.Update(out)
+	update(out)
 
 	err := a.Get()
 	c.Assert(err, IsNil)
@@ -63,7 +62,7 @@ func (s *S) TestCollectorUpdate(c *C) {
 	a.Destroy()
 }
 
-func (s *S) TestCollectorUpdateWithMultipleUnits(c *C) {
+func (s *S) TestUpdateWithMultipleUnits(c *C) {
 	a := getApp(c)
 	out := getOutput()
 	u := app.Unit{AgentState: "started", Machine: 2}
@@ -74,8 +73,7 @@ func (s *S) TestCollectorUpdateWithMultipleUnits(c *C) {
 		"instance-state": "running",
 		"agent-state":    "running",
 	}
-	var collector Collector
-	collector.Update(out)
+	update(out)
 	err := a.Get()
 	c.Assert(err, IsNil)
 	c.Assert(len(a.Units), Equals, 2)
@@ -90,27 +88,24 @@ func (s *S) TestCollectorUpdateWithMultipleUnits(c *C) {
 	c.Assert(u.MachineAgentState, Equals, "running")
 }
 
-func (s *S) TestCollectorUpdateWithDownMachine(c *C) {
+func (s *S) TestUpdateWithDownMachine(c *C) {
 	a := app.App{Name: "barduscoapp", State: "STOPPED"}
 	err := a.Create()
 	c.Assert(err, IsNil)
-	file, _ := os.Open(filepath.Join("testdata", "broken-output.yaml"))
-	jujuOutput, _ := ioutil.ReadAll(file)
-	file.Close()
-	var collector Collector
-	out := collector.Parse(jujuOutput)
-	collector.Update(out)
+	jujuOutput, err := ioutil.ReadFile(filepath.Join("testdata", "broken-output.yaml"))
+	c.Assert(err, IsNil)
+	out := parse(jujuOutput)
+	update(out)
 	err = a.Get()
 	c.Assert(err, IsNil)
 	c.Assert(a.State, Equals, "creating")
 }
 
-func (s *S) TestCollectorUpdateTwice(c *C) {
+func (s *S) TestUpdateTwice(c *C) {
 	a := getApp(c)
-	var collector Collector
 	defer a.Destroy()
 	out := getOutput()
-	collector.Update(out)
+	update(out)
 	err := a.Get()
 	c.Assert(err, IsNil)
 	c.Assert(a.State, Equals, "started")
@@ -119,12 +114,12 @@ func (s *S) TestCollectorUpdateTwice(c *C) {
 	c.Assert(a.Units[0].InstanceState, Equals, "running")
 	c.Assert(a.Units[0].MachineAgentState, Equals, "running")
 	c.Assert(a.Units[0].AgentState, Equals, "started")
-	collector.Update(out)
+	update(out)
 	err = a.Get()
 	c.Assert(len(a.Units), Equals, 1)
 }
 
-func (s *S) TestCollectorUpdateWithMultipleApps(c *C) {
+func (s *S) TestUpdateWithMultipleApps(c *C) {
 	appDicts := []map[string]string{
 		map[string]string{
 			"name": "andrewzito3",
@@ -154,11 +149,10 @@ func (s *S) TestCollectorUpdateWithMultipleApps(c *C) {
 		c.Assert(err, IsNil)
 		apps[i] = a
 	}
-	var collector Collector
 	jujuOutput, err := ioutil.ReadFile(filepath.Join("testdata", "multiple-apps.yaml"))
 	c.Assert(err, IsNil)
-	data := collector.Parse(jujuOutput)
-	collector.Update(data)
+	data := parse(jujuOutput)
+	update(data)
 	for _, appDict := range appDicts {
 		a := app.App{Name: appDict["name"]}
 		err := a.Get()
@@ -167,65 +161,19 @@ func (s *S) TestCollectorUpdateWithMultipleApps(c *C) {
 	}
 }
 
-func (s *S) TestCollectorParser(c *C) {
-	var collector Collector
-	file, _ := os.Open(filepath.Join("testdata", "output.yaml"))
-	jujuOutput, _ := ioutil.ReadAll(file)
-	file.Close()
+func (s *S) TestParser(c *C) {
+	jujuOutput, err := ioutil.ReadFile(filepath.Join("testdata", "output.yaml"))
+	c.Assert(err, IsNil)
 	expected := getOutput()
-	c.Assert(collector.Parse(jujuOutput), DeepEquals, expected)
+	c.Assert(parse(jujuOutput), DeepEquals, expected)
 }
 
-func (s *S) TestAppStatusMachineAgentPending(c *C) {
-	u := app.Unit{MachineAgentState: "pending"}
-	st := appState(&u)
-	c.Assert(st, Equals, "creating")
-}
-
-func (s *S) testAppStatusInstanceStatePending(c *C) {
-	u := app.Unit{InstanceState: "pending"}
-	st := appState(&u)
-	c.Assert(st, Equals, "creating")
-}
-
-func (s *S) TestAppStatusInstanceStateError(c *C) {
-	u := app.Unit{InstanceState: "error"}
-	st := appState(&u)
-	c.Assert(st, Equals, "error")
-}
-
-func (s *S) TestAppStatusInstanceStatePending(c *C) {
-	u := app.Unit{AgentState: "pending", InstanceState: ""}
-	st := appState(&u)
-	c.Assert(st, Equals, "creating")
-}
-
-func (s *S) TestAppStatusAgentAndInstanceRunning(c *C) {
-	u := app.Unit{AgentState: "started", InstanceState: "running", MachineAgentState: "running"}
-	st := appState(&u)
-	c.Assert(st, Equals, "started")
-}
-
-func (s *S) TestAppStatusMachineAgentRunningAndInstanceAndAgentPending(c *C) {
-	u := app.Unit{AgentState: "pending", InstanceState: "running", MachineAgentState: "running"}
-	st := appState(&u)
-	c.Assert(st, Equals, "installing")
-}
-
-func (s *S) TestAppStatusInstancePending(c *C) {
-	u := app.Unit{AgentState: "not-started", InstanceState: "pending"}
-	st := appState(&u)
-	c.Assert(st, Equals, "creating")
-}
-
-func (s *S) TestAppStatusInstancePendingWhenMachineStateIsRunning(c *C) {
-	u := app.Unit{AgentState: "not-started", MachineAgentState: "running"}
-	st := appState(&u)
-	c.Assert(st, Equals, "creating")
-}
-
-func (s *S) TestAppStatePending(c *C) {
-	u := app.Unit{MachineAgentState: "some-state", AgentState: "some-state", InstanceState: "some-other-state"}
-	st := appState(&u)
-	c.Assert(st, Equals, "pending")
+func (s *S) TestCollect(c *C) {
+	a := app.App{JujuEnv: "zeta"}
+	tmpdir, err := commandmocker.Add("juju", "$*")
+	c.Assert(err, IsNil)
+	defer commandmocker.Remove(tmpdir)
+	out, err := collect(&a)
+	c.Assert(err, IsNil)
+	c.Assert(string(out), Equals, "status -e zeta")
 }

@@ -40,7 +40,7 @@ func (u *Unit) Command(cmds ...string) ([]byte, error) {
 }
 
 func (u *Unit) GetName() string {
-	return u.Name
+	return u.app.Name
 }
 
 func (u *Unit) GetIp() string {
@@ -52,4 +52,23 @@ func (u *Unit) ExecuteHook(hook string) ([]byte, error) {
 	output, err := u.Command(cmd)
 	log.Print(string(output))
 	return output, err
+}
+
+func (u *Unit) State() string {
+	if u.InstanceState == "error" || u.AgentState == "install-error" || u.MachineAgentState == "start-error" {
+		return "error"
+	}
+	if u.MachineAgentState == "pending" || u.InstanceState == "pending" || u.MachineAgentState == "" || u.InstanceState == "" {
+		return "creating"
+	}
+	if u.MachineAgentState == "running" && u.AgentState == "not-started" {
+		return "creating"
+	}
+	if u.MachineAgentState == "running" && u.InstanceState == "running" && u.AgentState == "pending" {
+		return "installing"
+	}
+	if u.MachineAgentState == "running" && u.AgentState == "started" && u.InstanceState == "running" {
+		return "started"
+	}
+	return "pending"
 }

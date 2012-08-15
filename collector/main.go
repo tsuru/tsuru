@@ -2,22 +2,47 @@ package main
 
 import (
 	"flag"
+	"github.com/timeredbull/tsuru/api/app"
 	"github.com/timeredbull/tsuru/config"
 	"github.com/timeredbull/tsuru/db"
 	"github.com/timeredbull/tsuru/log"
+	"labix.org/v2/mgo/bson"
 	stdlog "log"
 	"log/syslog"
-	"sync"
 	"time"
 )
 
-func jujuCollect() {
-	var collector Collector
-	ticker := time.Tick(time.Minute)
+func getApps() []app.App {
+	query := bson.M{
+		"$or": []bson.M{
+			bson.M{
+				"units.agentstate": bson.M{"$ne": "started"},
+			},
+			bson.M{
+				"units.machineagentstate": bson.M{"$ne": "running"},
+			},
+			bson.M{
+				"units.instancestate": bson.M{"$ne": "running"},
+			},
+		},
+	}
+	var apps []app.App
+	err := db.Session.Apps().Find(query).All(&apps)
+	if err != nil {
+		log.Panicf("Failed to get apps in the database: %s.", err.Error())
+	}
+	return apps
+}
+
+func jujuCollect(ticker <-chan time.Time) {
+	var apps []app.App
 	for _ = range ticker {
-		data, _ := collector.Collect()
-		output := collector.Parse(data)
-		collector.Update(output)
+		apps = getApps()
+		for _, app := range apps {
+			data, _ := collect(&app)
+			output := parse(data)
+			update(output)
+		}
 	}
 }
 
@@ -29,7 +54,6 @@ func main() {
 	}
 	configFile := flag.String("config", "/etc/tsuru/tsuru.conf", "tsuru config file")
 	dry := flag.Bool("dry", false, "dry-run: does not start the agent (for testing purposes)")
-	juju := flag.Bool("juju", true, "run juju collector")
 	flag.Parse()
 	err = config.ReadConfigFile(*configFile)
 	if err != nil {
@@ -50,14 +74,7 @@ func main() {
 	defer db.Session.Close()
 
 	if !*dry {
-		var wg sync.WaitGroup
-		if *juju {
-			wg.Add(1)
-			go func() {
-				jujuCollect()
-				wg.Done()
-			}()
-		}
-		wg.Wait()
+		ticker := time.Tick(time.Minute)
+		jujuCollect(ticker)
 	}
 }
