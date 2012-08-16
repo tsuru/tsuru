@@ -70,6 +70,18 @@ func (s *S) TestLogout(c *C) {
 	c.Assert(rfs.HasAction("remove "+tokenPath), Equals, true)
 }
 
+func (s *S) TestLogoutWhenNotLoggedIn(c *C) {
+	fsystem = &testing.FailureFs{}
+	defer func() {
+		fsystem = nil
+	}()
+	context := Context{[]string{}, []string{}, manager.Stdout, manager.Stderr}
+	command := Logout{}
+	err := command.Run(&context, nil)
+	c.Assert(err, NotNil)
+	c.Assert(err.Error(), Equals, "You're not logged in!")
+}
+
 func (s *S) TestAddUserIsSubcommandOfTeam(c *C) {
 	t := Team{}
 	subc, ok := t.Subcommands()["add-user"]

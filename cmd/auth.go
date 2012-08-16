@@ -128,7 +128,10 @@ func (c *Logout) Run(context *Context, client Doer) error {
 	if err != nil {
 		return err
 	}
-	filesystem().Remove(tokenPath)
+	err = filesystem().Remove(tokenPath)
+	if err != nil && os.IsNotExist(err) {
+		return errors.New("You're not logged in!")
+	}
 	io.WriteString(context.Stdout, "Successfully logout!\n")
 	return nil
 }
