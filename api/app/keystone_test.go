@@ -11,7 +11,11 @@ import (
 	"net/http/httptest"
 )
 
-var requestJson []byte
+var (
+	requestJson []byte
+	// flags to detect when tenant url and user url are called
+	tCalled, uCalled bool
+)
 
 func (s *S) mockServer(b string) *httptest.Server {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -23,7 +27,11 @@ func (s *S) mockServer(b string) *httptest.Server {
 			}
 			requestJson = body
 			w.Write([]byte(`{"access": {"token": {"id": "token-id-987"}}}`))
+		} else if r.Method == "POST" && r.URL.Path == "/tenants" {
+			tCalled = true
+			w.Write([]byte(b))
 		} else {
+			uCalled = true
 			w.Write([]byte(b))
 		}
 	}))
@@ -132,6 +140,29 @@ func (s *S) TestGetAuthShouldReturnErrorWhenAuthPassConfigDoesntExists(c *C) {
 	config.Unset("nova:password")
 	err := getAuth()
 	c.Assert(err, Not(IsNil))
+}
+
+func (s *S) TestGetClientShouldReturnClientWithAuthConfs(c *C) {
+	ts := s.mockServer("")
+	defer ts.Close()
+	err := getClient()
+	c.Assert(err, IsNil)
+	req := string(requestJson)
+	c.Assert(req, Not(Equals), "")
+	expected := fmt.Sprintf(`{"auth": {"passwordCredentials": {"username": "%s", "password":"%s"}, "tenantName": "%s"}}`, authUser, authPass, authTenant)
+	c.Assert(req, Equals, expected)
+}
+
+func (s *S) TestNewTenantCallsKeystoneApi(c *C) {
+	ts := s.mockServer(`{"tenant": {"id": "uuid123", "name": "tenant name", "description": "tenant desc"}}`)
+	defer ts.Close()
+	a := App{Name: "myapp"}
+	err := db.Session.Apps().Insert(a)
+	c.Assert(err, IsNil)
+	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
+	_, err = NewTenant(&a)
+	c.Assert(err, IsNil)
+	c.Assert(tCalled, Equals, true)
 }
 
 func (s *S) TestNewTenantSavesInDb(c *C) {
