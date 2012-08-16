@@ -55,6 +55,11 @@ func getAuth() (err error) {
 	return
 }
 
+// Creates a tenant using keystone api
+// and stores it in database embedded in
+// the app document
+// Returns the id of the created tenant in
+// case of success and error in case of failure
 func NewTenant(a *App) (tId string, err error) {
 	err = getAuth()
 	Client, err = keystone.NewClient(authUser, authPass, authTenant, authUrl)
