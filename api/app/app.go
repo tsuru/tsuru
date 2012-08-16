@@ -34,14 +34,15 @@ func (e *EnvVar) String() string {
 }
 
 type App struct {
-	Env       map[string]EnvVar
-	Framework string
-	JujuEnv   string
-	Logs      []Log
-	Name      string
-	State     string
-	Units     []Unit
-	Teams     []string
+	Env         map[string]EnvVar
+	Framework   string
+	JujuEnv     string
+	KeystoneEnv KeystoneEnv
+	Logs        []Log
+	Name        string
+	State       string
+	Units       []Unit
+	Teams       []string
 }
 
 type Log struct {
