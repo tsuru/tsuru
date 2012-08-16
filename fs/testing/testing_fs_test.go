@@ -1,13 +1,23 @@
-package fs
+package testing
 
 import (
+	"github.com/timeredbull/tsuru/fs"
 	. "launchpad.net/gocheck"
 	"os"
 	"syscall"
+	"testing"
 )
 
+type S struct{}
+
+var _ = Suite(&S{})
+
+func Test(t *testing.T) {
+	TestingT(t)
+}
+
 func (s *S) TestFakeFilePointerShouldImplementFileInterface(c *C) {
-	var file File
+	var file fs.File
 	c.Assert(&FakeFile{}, Implements, &file)
 }
 
@@ -59,7 +69,7 @@ func (s *S) TestFakeFileStat(c *C) {
 }
 
 func (s *S) TestRecordingFsPointerShouldImplementFsInterface(c *C) {
-	var fs Fs
+	var fs fs.Fs
 	c.Assert(&RecordingFs{}, Implements, &fs)
 }
 
@@ -124,7 +134,7 @@ func (s *S) TestRecordingFsStat(c *C) {
 }
 
 func (s *S) TestFailureFsPointerImplementsFsInterface(c *C) {
-	var fs Fs
+	var fs fs.Fs
 	c.Assert(&FailureFs{}, Implements, &fs)
 }
 

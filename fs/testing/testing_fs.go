@@ -1,7 +1,8 @@
-package fs
+package testing
 
 import (
 	"fmt"
+	"github.com/timeredbull/tsuru/fs"
 	"os"
 	"strings"
 	"syscall"
@@ -76,7 +77,7 @@ func (r *RecordingFs) HasAction(action string) bool {
 	return false
 }
 
-func (r *RecordingFs) Create(name string) (File, error) {
+func (r *RecordingFs) Create(name string) (fs.File, error) {
 	r.actions = append(r.actions, "create "+name)
 	fil := FakeFile{content: r.FileContent}
 	return &fil, nil
@@ -94,7 +95,7 @@ func (r *RecordingFs) MkdirAll(path string, perm os.FileMode) error {
 
 // Open returns a FakeFile. The content of the file is provided by the
 // FileContent field.
-func (r *RecordingFs) Open(name string) (File, error) {
+func (r *RecordingFs) Open(name string) (fs.File, error) {
 	r.actions = append(r.actions, "open "+name)
 	fil := FakeFile{content: r.FileContent}
 	return &fil, nil
@@ -121,7 +122,7 @@ type FailureFs struct {
 }
 
 // Open is used to simulate ENOENT.
-func (r *FailureFs) Open(name string) (File, error) {
+func (r *FailureFs) Open(name string) (fs.File, error) {
 	r.RecordingFs.Open(name)
 	err := os.PathError{
 		Err: syscall.ENOENT,
