@@ -1,7 +1,6 @@
 package auth
 
 import (
-	"errors"
 	"fmt"
 	"github.com/timeredbull/tsuru/db"
 	"labix.org/v2/mgo/bson"
@@ -24,7 +23,7 @@ func (t *Team) containsUser(u *User) bool {
 
 func (t *Team) addUser(u *User) error {
 	if t.containsUser(u) {
-		return errors.New(fmt.Sprintf("User %s is alread in the team %s.", u.Email, t.Name))
+		return fmt.Errorf("User %s is alread in the team %s.", u.Email, t.Name)
 	}
 	t.Users = append(t.Users, u.Email)
 	return nil
@@ -39,7 +38,7 @@ func (t *Team) removeUser(u *User) error {
 		}
 	}
 	if index < 0 {
-		return errors.New(fmt.Sprintf("User %s is not in the team %s.", u.Email, t.Name))
+		return fmt.Errorf("User %s is not in the team %s.", u.Email, t.Name)
 	}
 	last := len(t.Users) - 1
 	t.Users[index] = t.Users[last]

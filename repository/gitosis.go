@@ -301,7 +301,7 @@ func removeOptionValue(c *ini.Config, section, option, value string) (err error)
 	values := strings.Split(strValues, " ")
 	index := find(values, value)
 	if index < 0 {
-		return errors.New(fmt.Sprintf("Value %s not found in section %s", value, section))
+		return fmt.Errorf("Value %s not found in section %s", value, section)
 	}
 	last := len(values) - 1
 	values[index] = values[last]
