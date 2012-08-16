@@ -51,12 +51,12 @@ func Get(key string) (interface{}, error) {
 	keys := strings.Split(key, ":")
 	conf, ok := configs[keys[0]]
 	if !ok {
-		return nil, errors.New(fmt.Sprintf("key %s not found", key))
+		return nil, fmt.Errorf("key %s not found", key)
 	}
 	for _, k := range keys[1:] {
 		conf, ok = conf.(map[interface{}]interface{})[k]
 		if !ok {
-			return nil, errors.New(fmt.Sprintf("key %s not found", key))
+			return nil, fmt.Errorf("key %s not found", key)
 		}
 	}
 	return conf, nil
@@ -74,7 +74,7 @@ func GetString(key string) (string, error) {
 	if v, ok := value.(string); ok {
 		return v, nil
 	}
-	return "", errors.New(fmt.Sprintf("key %s has non-string value", key))
+	return "", fmt.Errorf("key %s has non-string value", key)
 }
 
 // mergeMaps takes two maps and merge its keys and values.
