@@ -1,20 +1,38 @@
 package cmd
 
-import . "launchpad.net/gocheck"
+import (
+	"github.com/timeredbull/tsuru/fs/testing"
+	"io/ioutil"
+	. "launchpad.net/gocheck"
+)
 
 func (s *S) TestWriteToken(c *C) {
+	rfs := &testing.RecordingFs{}
+	fsystem = rfs
+	defer func() {
+		fsystem = nil
+	}()
 	err := WriteToken("abc")
 	c.Assert(err, IsNil)
-	token, err := ReadToken()
+	tokenPath, err := joinWithUserDir(".tsuru_token")
 	c.Assert(err, IsNil)
-	c.Assert(token, Equals, "abc")
+	c.Assert(rfs.HasAction("create "+tokenPath), Equals, true)
+	fil, _ := fsystem.Open(tokenPath)
+	b, _ := ioutil.ReadAll(fil)
+	c.Assert(string(b), Equals, "abc")
 }
 
 func (s *S) TestReadToken(c *C) {
-	err := WriteToken("123")
-	c.Assert(err, IsNil)
+	rfs := &testing.RecordingFs{FileContent: "123"}
+	fsystem = rfs
+	defer func() {
+		fsystem = nil
+	}()
 	token, err := ReadToken()
 	c.Assert(err, IsNil)
+	tokenPath, err := joinWithUserDir(".tsuru_token")
+	c.Assert(err, IsNil)
+	c.Assert(rfs.HasAction("open "+tokenPath), Equals, true)
 	c.Assert(token, Equals, "123")
 }
 

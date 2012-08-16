@@ -17,7 +17,9 @@ type File interface {
 	io.Reader
 	io.ReaderAt
 	io.Seeker
+	io.Writer
 	Stat() (os.FileInfo, error)
+	WriteString(s string) (ret int, err error)
 }
 
 // Fs is the filesystem interface.
@@ -38,6 +40,9 @@ type Fs interface {
 
 	// Open opens a file, returning it or an error, if any happens.
 	Open(name string) (File, error)
+
+	// OpenFile opens a file using the given flags and the given mode.
+	OpenFile(name string, flag int, perm os.FileMode) (File, error)
 
 	// Remove removes a file identified by name, returning an error, if any
 	// happens.
@@ -72,6 +77,10 @@ func (fs OsFs) MkdirAll(path string, perm os.FileMode) error {
 
 func (fs OsFs) Open(name string) (File, error) {
 	return os.Open(name)
+}
+
+func (fs OsFs) OpenFile(name string, flag int, perm os.FileMode) (File, error) {
+	return os.OpenFile(name, flag, perm)
 }
 
 func (fs OsFs) Remove(name string) error {

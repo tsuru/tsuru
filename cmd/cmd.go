@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"github.com/timeredbull/tsuru/fs"
 	"io"
 	"net/http"
 	"os"
@@ -215,4 +216,13 @@ func (c *Help) Run(context *Context, client Doer) error {
 func ExtractProgramName(path string) string {
 	parts := strings.Split(path, "/")
 	return parts[len(parts)-1]
+}
+
+var fsystem fs.Fs
+
+func filesystem() fs.Fs {
+	if fsystem == nil {
+		fsystem = fs.OsFs{}
+	}
+	return fsystem
 }

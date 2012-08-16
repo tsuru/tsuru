@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"github.com/timeredbull/tsuru/cmd"
+	fs_test "github.com/timeredbull/tsuru/fs/testing"
 	. "launchpad.net/gocheck"
 	"net/http"
 	"os/user"
@@ -21,7 +22,7 @@ func (s *S) TestAddKey(c *C) {
 		Stderr: manager.Stderr,
 	}
 	client := cmd.NewClient(&http.Client{Transport: &transport{msg: "success", status: http.StatusOK}})
-	fs := RecordingFs{fileContent: "user-key"}
+	fs := fs_test.RecordingFs{FileContent: "user-key"}
 	command := AddKey{keyReader{fsystem: &fs}}
 	err = command.Run(&context, client)
 	c.Assert(err, IsNil)
@@ -41,7 +42,7 @@ func (s *S) TestAddKeySpecifyingKeyFile(c *C) {
 		Stderr: manager.Stderr,
 	}
 	client := cmd.NewClient(&http.Client{Transport: &transport{msg: "success", status: http.StatusOK}})
-	fs := RecordingFs{fileContent: "user-key"}
+	fs := fs_test.RecordingFs{FileContent: "user-key"}
 	command := AddKey{keyReader{fsystem: &fs}}
 	err = command.Run(&context, client)
 	c.Assert(err, IsNil)
@@ -56,7 +57,7 @@ func (s *S) TestAddKeyReturnErrorIfTheKeyDoesNotExist(c *C) {
 		Stdout: manager.Stdout,
 		Stderr: manager.Stderr,
 	}
-	fs := FailureFs{RecordingFs{}}
+	fs := fs_test.FailureFs{RecordingFs: fs_test.RecordingFs{}}
 	command := AddKey{keyReader{fsystem: &fs}}
 	err := command.Run(&context, nil)
 	c.Assert(err, NotNil)
@@ -70,7 +71,7 @@ func (s *S) TestAddKeyReturnsProperErrorIfTheGivenKeyFileDoesNotExist(c *C) {
 		Stdout: manager.Stdout,
 		Stderr: manager.Stderr,
 	}
-	fs := FailureFs{RecordingFs{}}
+	fs := fs_test.FailureFs{RecordingFs: fs_test.RecordingFs{}}
 	command := AddKey{keyReader{fsystem: &fs}}
 	err := command.Run(&context, nil)
 	c.Assert(err, NotNil)
@@ -99,7 +100,7 @@ func (s *S) TestRemoveKey(c *C) {
 		Stderr: manager.Stderr,
 	}
 	client := cmd.NewClient(&http.Client{Transport: &transport{msg: "success", status: http.StatusOK}})
-	fs := RecordingFs{fileContent: "user-key"}
+	fs := fs_test.RecordingFs{FileContent: "user-key"}
 	command := RemoveKey{keyReader{fsystem: &fs}}
 	err = command.Run(&context, client)
 	c.Assert(err, IsNil)
@@ -119,7 +120,7 @@ func (s *S) TestRemoveKeySpecifyingKeyFile(c *C) {
 		Stderr: manager.Stderr,
 	}
 	client := cmd.NewClient(&http.Client{Transport: &transport{msg: "success", status: http.StatusOK}})
-	fs := RecordingFs{fileContent: "user-key"}
+	fs := fs_test.RecordingFs{FileContent: "user-key"}
 	command := RemoveKey{keyReader{fsystem: &fs}}
 	err = command.Run(&context, client)
 	c.Assert(err, IsNil)
@@ -134,7 +135,7 @@ func (s *S) TestRemoveKeyReturnErrorIfTheKeyDoesNotExist(c *C) {
 		Stdout: manager.Stdout,
 		Stderr: manager.Stderr,
 	}
-	fs := FailureFs{RecordingFs{}}
+	fs := fs_test.FailureFs{RecordingFs: fs_test.RecordingFs{}}
 	command := RemoveKey{keyReader{fsystem: &fs}}
 	err := command.Run(&context, nil)
 	c.Assert(err, NotNil)
@@ -148,7 +149,7 @@ func (s *S) TestRemoveKeyReturnProperErrorIfTheGivenKeyFileDoesNotExist(c *C) {
 		Stdout: manager.Stdout,
 		Stderr: manager.Stderr,
 	}
-	fs := FailureFs{RecordingFs{}}
+	fs := fs_test.FailureFs{RecordingFs: fs_test.RecordingFs{}}
 	command := RemoveKey{keyReader{fsystem: &fs}}
 	err := command.Run(&context, nil)
 	c.Assert(err, NotNil)
