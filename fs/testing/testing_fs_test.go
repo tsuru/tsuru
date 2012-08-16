@@ -68,6 +68,27 @@ func (s *S) TestFakeFileStat(c *C) {
 	c.Assert(fi, DeepEquals, empty)
 }
 
+func (s *S) TestFakeFileWrite(c *C) {
+	content := "Guardian"
+	f := &FakeFile{content: content}
+	n, err := f.Write([]byte("break"))
+	c.Assert(err, IsNil)
+	c.Assert(n, Equals, len("break"))
+	c.Assert(f.content, Equals, "break")
+}
+
+func (s *S) TestFakeFileWriteFromPosition(c *C) {
+	content := "Guardian"
+	f := &FakeFile{content: content}
+	n, err := f.Seek(5, 0)
+	c.Assert(err, IsNil)
+	c.Assert(n, Equals, int64(5))
+	written, err := f.Write([]byte("break"))
+	c.Assert(err, IsNil)
+	c.Assert(written, Equals, len("break"))
+	c.Assert(f.content, Equals, "Guardbreak")
+}
+
 func (s *S) TestRecordingFsPointerShouldImplementFsInterface(c *C) {
 	var fs fs.Fs
 	c.Assert(&RecordingFs{}, Implements, &fs)

@@ -19,6 +19,7 @@ import (
 // An instance of FakeFile is returned by RecordingFs.Open method.
 type FakeFile struct {
 	content string
+	current int64
 	r       *strings.Reader
 }
 
@@ -42,10 +43,18 @@ func (f *FakeFile) ReadAt(p []byte, off int64) (n int, err error) {
 }
 
 func (f *FakeFile) Seek(offset int64, whence int) (int64, error) {
-	return f.reader().Seek(offset, whence)
+	var err error
+	f.current, err = f.reader().Seek(offset, whence)
+	return f.current, err
 }
 
 func (f *FakeFile) Stat() (fi os.FileInfo, err error) {
+	return
+}
+
+func (f *FakeFile) Write(p []byte) (n int, err error) {
+	n = len(p)
+	f.content = f.content[:f.current] + string(p)
 	return
 }
 
