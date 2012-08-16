@@ -168,7 +168,8 @@ func (r *RecordingFs) Stat(name string) (os.FileInfo, error) {
 	return nil, nil
 }
 
-// FailureFs is like RecordingFs, except that it returns ENOENT on Open.
+// FailureFs is like RecordingFs, except that it returns ENOENT on Open,
+// OpenFile and Remove.
 type FailureFs struct {
 	RecordingFs
 }
@@ -176,8 +177,16 @@ type FailureFs struct {
 // Open is used to simulate ENOENT.
 func (r *FailureFs) Open(name string) (fs.File, error) {
 	r.RecordingFs.Open(name)
-	err := os.PathError{
-		Err: syscall.ENOENT,
-	}
+	err := os.PathError{Err: syscall.ENOENT}
 	return nil, &err
+}
+
+func (r *FailureFs) Remove(name string) error {
+	r.RecordingFs.Remove(name)
+	return &os.PathError{Err: syscall.ENOENT}
+}
+
+func (r *FailureFs) OpenFile(name string, flag int, perm os.FileMode) (fs.File, error) {
+	r.RecordingFs.OpenFile(name, flag, perm)
+	return r.Open(name)
 }
