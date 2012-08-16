@@ -132,6 +132,15 @@ func (s *S) TestRecordingFsOpen(c *C) {
 	c.Assert(f.(*FakeFile).content, Equals, fs.FileContent)
 }
 
+func (s *S) TestRecordingFsOpenFile(c *C) {
+	fs := RecordingFs{FileContent: "the content"}
+	f, err := fs.OpenFile("/my/file", 0, 0600)
+	c.Assert(err, IsNil)
+	c.Assert(fs.HasAction("openfile /my/file with mode 0600"), Equals, true)
+	c.Assert(f, FitsTypeOf, &FakeFile{})
+	c.Assert(f.(*FakeFile).content, Equals, fs.FileContent)
+}
+
 func (s *S) TestRecordingFsRemove(c *C) {
 	fs := RecordingFs{}
 	err := fs.Remove("/my/file")

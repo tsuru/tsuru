@@ -113,6 +113,12 @@ func (r *RecordingFs) Open(name string) (fs.File, error) {
 	return &fil, nil
 }
 
+func (r *RecordingFs) OpenFile(name string, flag int, perm os.FileMode) (fs.File, error) {
+	r.actions = append(r.actions, fmt.Sprintf("openfile %s with mode %#o", name, perm))
+	fil := FakeFile{content: r.FileContent}
+	return &fil, nil
+}
+
 func (r *RecordingFs) Remove(name string) error {
 	r.actions = append(r.actions, "remove "+name)
 	return nil
