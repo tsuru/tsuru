@@ -3,6 +3,8 @@ package cmd
 import (
 	"bytes"
 	"errors"
+	"github.com/timeredbull/tsuru/fs"
+	"github.com/timeredbull/tsuru/fs/testing"
 	"io"
 	. "launchpad.net/gocheck"
 	"os"
@@ -422,4 +424,11 @@ func (s *S) TestTargetIsRegistered(c *C) {
 	target, ok := manager.Commands["target"]
 	c.Assert(ok, Equals, true)
 	c.Assert(target, FitsTypeOf, &Target{})
+}
+
+func (s *S) TestFileSystem(c *C) {
+	fsystem = &testing.RecordingFs{}
+	c.Assert(filesystem(), DeepEquals, fsystem)
+	fsystem = nil
+	c.Assert(filesystem(), DeepEquals, fs.OsFs{})
 }
