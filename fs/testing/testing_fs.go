@@ -58,6 +58,12 @@ func (f *FakeFile) Write(p []byte) (n int, err error) {
 	return
 }
 
+func (f *FakeFile) WriteString(s string) (ret int, err error) {
+	ret = len(s)
+	f.content = s
+	return
+}
+
 // RecordingFs implements the Fs interface providing a "recording" file system.
 //
 // A recording file system is a file system that does not execute any action,

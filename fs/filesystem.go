@@ -19,6 +19,7 @@ type File interface {
 	io.Seeker
 	io.Writer
 	Stat() (os.FileInfo, error)
+	WriteString(s string) (ret int, err error)
 }
 
 // Fs is the filesystem interface.
