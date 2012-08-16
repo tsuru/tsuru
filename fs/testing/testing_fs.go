@@ -101,28 +101,35 @@ func (r *RecordingFs) open(name string) (fs.File, error) {
 	return fil, nil
 }
 
+// Create records the action "create <name>" and returns an instance of
+// FakeFile and nil error.
 func (r *RecordingFs) Create(name string) (fs.File, error) {
 	r.actions = append(r.actions, "create "+name)
 	return r.open(name)
 }
 
+// Mkdir records the action "mkdir <name> with mode <perm>" and returns nil.
 func (r *RecordingFs) Mkdir(name string, perm os.FileMode) error {
 	r.actions = append(r.actions, fmt.Sprintf("mkdir %s with mode %#o", name, perm))
 	return nil
 }
 
+// MkdirAll records the action "mkdirall <path> with mode <perm>" and returns
+// nil.
 func (r *RecordingFs) MkdirAll(path string, perm os.FileMode) error {
 	r.actions = append(r.actions, fmt.Sprintf("mkdirall %s with mode %#o", path, perm))
 	return nil
 }
 
-// Open returns a FakeFile. The content of the file is provided by the
-// FileContent field.
+// Open records the action "open <name>" and returns an instance of FakeFile
+// and nil error.
 func (r *RecordingFs) Open(name string) (fs.File, error) {
 	r.actions = append(r.actions, "open "+name)
 	return r.open(name)
 }
 
+// OpenFile records the action "openfile <name> with mode <perm>" and returns
+// an instance of FakeFile and nil error.
 func (r *RecordingFs) OpenFile(name string, flag int, perm os.FileMode) (fs.File, error) {
 	r.actions = append(r.actions, fmt.Sprintf("openfile %s with mode %#o", name, perm))
 	return r.open(name)
@@ -134,18 +141,21 @@ func (r *RecordingFs) deleteFile(name string) {
 	}
 }
 
+// Remove records the action "remove <name>" and returns nil.
 func (r *RecordingFs) Remove(name string) error {
 	r.actions = append(r.actions, "remove "+name)
 	r.deleteFile(name)
 	return nil
 }
 
+// RemoveAll records the action "removeall <path>" and returns nil.
 func (r *RecordingFs) RemoveAll(path string) error {
 	r.actions = append(r.actions, "removeall "+path)
 	r.deleteFile(path)
 	return nil
 }
 
+// Stat records the action "stat <name>" and returns nil, nil.
 func (r *RecordingFs) Stat(name string) (os.FileInfo, error) {
 	r.actions = append(r.actions, "stat "+name)
 	return nil, nil
