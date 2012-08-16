@@ -5,6 +5,7 @@ import (
 	"github.com/timeredbull/keystone"
 	"github.com/timeredbull/tsuru/config"
 	"github.com/timeredbull/tsuru/db"
+	"github.com/timeredbull/tsuru/log"
 	"labix.org/v2/mgo/bson"
 )
 
@@ -23,29 +24,31 @@ var (
 )
 
 func getAuth() (err error) {
-	// TODO (flaviamissi) do not panic on errors, return
-	// and log
 	if authUrl == "" {
 		authUrl, err = config.GetString("nova:auth-url")
 		if err != nil {
+			log.Printf("ERROR: %s", err.Error())
 			return
 		}
 	}
 	if authUser == "" {
 		authUser, err = config.GetString("nova:user")
 		if err != nil {
+			log.Printf("ERROR: %s", err.Error())
 			return
 		}
 	}
 	if authPass == "" {
 		authPass, err = config.GetString("nova:password")
 		if err != nil {
+			log.Printf("ERROR: %s", err.Error())
 			return
 		}
 	}
 	if authTenant == "" {
 		authTenant, err = config.GetString("nova:tenant")
 		if err != nil {
+			log.Printf("ERROR: %s", err.Error())
 			return
 		}
 	}
@@ -59,12 +62,19 @@ func NewTenant(a *App) (tId string, err error) {
 		return
 	}
 	desc := fmt.Sprintf("Tenant for %s", a.Name)
-	t, err := Client.NewTenant("foo", desc, true)
+	log.Print(fmt.Sprintf("DEBUG: attempting to create tenant %s via keystone api...", a.Name))
+	t, err := Client.NewTenant(a.Name, desc, true)
 	if err != nil {
+		log.Printf("ERROR: %s", err.Error())
 		return
 	}
 	tId = t.Id
 	a.KeystoneEnv.TenantId = tId
 	err = db.Session.Apps().Update(bson.M{"name": a.Name}, &a)
+	if err != nil {
+		log.Printf("ERROR: %s", err.Error())
+		return
+	}
+	log.Printf("DEBUG: tenant %s successfuly created.", a.Name)
 	return
 }
