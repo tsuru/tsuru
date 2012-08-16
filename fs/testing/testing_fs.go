@@ -72,7 +72,7 @@ func (f *FakeFile) WriteString(s string) (ret int, err error) {
 // All methods from RecordingFs never return errors.
 type RecordingFs struct {
 	actions []string
-	files   map[string]fs.File
+	files   map[string]*FakeFile
 
 	// FileContent is used to provide content for files opened using
 	// RecordingFs.
@@ -98,9 +98,9 @@ func (r *RecordingFs) HasAction(action string) bool {
 
 func (r *RecordingFs) open(name string) (fs.File, error) {
 	if r.files == nil {
-		r.files = make(map[string]fs.File)
+		r.files = make(map[string]*FakeFile)
 	} else if f, ok := r.files[name]; ok {
-		f.Seek(0, 0)
+		f.r = nil
 		return f, nil
 	}
 	fil := &FakeFile{content: r.FileContent}

@@ -170,6 +170,19 @@ func (s *S) TestRecordingFsKeepFileInstances(c *C) {
 	c.Assert(string(buf), Equals, "hi")
 }
 
+func (s *S) TestRecordingFsShouldKeepWrittenContent(c *C) {
+	fs := RecordingFs{FileContent: "the content"}
+	f, _ := fs.Open("/my/file")
+	buf := make([]byte, 16)
+	n, _ := f.Read(buf)
+	c.Assert(string(buf[:n]), Equals, "the content")
+	f, _ = fs.Create("/my/file")
+	f.Write([]byte("content the"))
+	f, _ = fs.Open("/my/file")
+	n, _ = f.Read(buf)
+	c.Assert(string(buf[:n]), Equals, "content the")
+}
+
 func (s *S) TestRecordingFsRemove(c *C) {
 	fs := RecordingFs{}
 	err := fs.Remove("/my/file")
