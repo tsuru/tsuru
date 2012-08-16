@@ -77,6 +77,7 @@ func (a *App) Create() error {
 	a.Log(string(out))
 	if err != nil {
 		a.Log(fmt.Sprintf("juju finished with exit status: %s", err.Error()))
+		a.Destroy()
 		return errors.New(string(out))
 	}
 	a.Log(fmt.Sprintf("app %s successfully created", a.Name))
