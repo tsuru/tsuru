@@ -1,6 +1,7 @@
 package app
 
 import (
+	"errors"
 	"fmt"
 	"github.com/timeredbull/keystone"
 	"github.com/timeredbull/tsuru/config"
@@ -72,6 +73,10 @@ func getClient() (err error) {
 		return
 	}
 	Client, err = keystone.NewClient(authUser, authPass, authTenant, authUrl)
+	if err != nil {
+		log.Printf("ERROR: a problem occurred while trying to obtain keystone's client: %s", err.Error())
+		return
+	}
 	return
 }
 
@@ -100,5 +105,26 @@ func NewTenant(a *App) (tId string, err error) {
 		return
 	}
 	log.Printf("DEBUG: tenant %s successfuly created.", a.Name)
+	return
+}
+
+func NewUser(a *App) (uId string, err error) {
+	if a.KeystoneEnv.TenantId == "" {
+		err = errors.New("App should have an associated tenant to create an user.")
+		log.Printf("ERROR: %s", err.Error())
+		return
+	}
+	err = getClient()
+	if err != nil {
+		return
+	}
+	log.Print("DEBUG: attempting to create user %s via keystone api...", a.Name)
+	// TODO(flaviamissi): should generate a random password
+	_, err = Client.NewUser(a.Name, a.Name, "", a.KeystoneEnv.TenantId, true)
+	if err != nil {
+		log.Printf("ERROR: %s", err.Error())
+		return
+	}
+	// TODO(flaviamissi): record user id in database
 	return
 }

@@ -194,3 +194,27 @@ func (s *S) TestNewTenantUsesNovaUserPasswordAndTenantFromTsuruConf(c *C) {
 	expected := fmt.Sprintf(`{"auth": {"passwordCredentials": {"username": "%s", "password":"%s"}, "tenantName": "%s"}}`, authUser, authPass, authTenant)
 	c.Assert(req, Equals, expected)
 }
+
+func (s *S) TestNewUserCallsKeystoneApi(c *C) {
+	ts := s.mockServer(`{"user": {"id": "uuid321", "name": "appname", "email": "appname@foo.bar"}}`)
+	defer ts.Close()
+	a := App{Name: "myapp"}
+	a.KeystoneEnv.TenantId = "uuid123"
+	err := db.Session.Apps().Insert(a)
+	c.Assert(err, IsNil)
+	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
+	_, err = NewUser(&a)
+	c.Assert(err, IsNil)
+	c.Assert(uCalled, Equals, true)
+}
+
+func (s *S) TestNewUserShouldFailIfAppHasNoTenantId(c *C) {
+	ts := s.mockServer(`{"user": {"id": "uuid321", "name": "appname", "email": "appname@foo.bar"}}`)
+	defer ts.Close()
+	a := App{Name: "myapp"}
+	err := db.Session.Apps().Insert(a)
+	c.Assert(err, IsNil)
+	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
+	_, err = NewUser(&a)
+	c.Assert(err, ErrorMatches, "^App should have an associated tenant to create an user.$")
+}
