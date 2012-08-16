@@ -4,7 +4,6 @@ import (
 	"errors"
 	"io"
 	"io/ioutil"
-	"os"
 	"regexp"
 	"strings"
 	"syscall"
@@ -35,7 +34,7 @@ const DefaultTarget = "http://tsuru.plataformas.glb.com:8080"
 
 func ReadTarget() string {
 	targetPath, _ := joinWithUserDir(".tsuru_target")
-	if f, err := os.Open(targetPath); err == nil {
+	if f, err := filesystem().Open(targetPath); err == nil {
 		defer f.Close()
 		if b, err := ioutil.ReadAll(f); err == nil {
 			return string(b)
@@ -58,7 +57,7 @@ func WriteTarget(t string) error {
 	if err != nil {
 		return err
 	}
-	targetFile, err := os.OpenFile(targetPath, syscall.O_WRONLY|syscall.O_CREAT|syscall.O_TRUNC, 0600)
+	targetFile, err := filesystem().OpenFile(targetPath, syscall.O_WRONLY|syscall.O_CREAT|syscall.O_TRUNC, 0600)
 	if err != nil {
 		return err
 	}
