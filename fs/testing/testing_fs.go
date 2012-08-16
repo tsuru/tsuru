@@ -66,6 +66,7 @@ func (f *FakeFile) Write(p []byte) (n int, err error) {
 // All methods from RecordingFs never return errors.
 type RecordingFs struct {
 	actions []string
+	files   map[string]fs.File
 
 	// FileContent is used to provide content for files opened using
 	// RecordingFs.
@@ -89,10 +90,20 @@ func (r *RecordingFs) HasAction(action string) bool {
 	return false
 }
 
+func (r *RecordingFs) open(name string) (fs.File, error) {
+	if r.files == nil {
+		r.files = make(map[string]fs.File)
+	} else if f, ok := r.files[name]; ok {
+		return f, nil
+	}
+	fil := &FakeFile{content: r.FileContent}
+	r.files[name] = fil
+	return fil, nil
+}
+
 func (r *RecordingFs) Create(name string) (fs.File, error) {
 	r.actions = append(r.actions, "create "+name)
-	fil := FakeFile{content: r.FileContent}
-	return &fil, nil
+	return r.open(name)
 }
 
 func (r *RecordingFs) Mkdir(name string, perm os.FileMode) error {
@@ -109,23 +120,29 @@ func (r *RecordingFs) MkdirAll(path string, perm os.FileMode) error {
 // FileContent field.
 func (r *RecordingFs) Open(name string) (fs.File, error) {
 	r.actions = append(r.actions, "open "+name)
-	fil := FakeFile{content: r.FileContent}
-	return &fil, nil
+	return r.open(name)
 }
 
 func (r *RecordingFs) OpenFile(name string, flag int, perm os.FileMode) (fs.File, error) {
 	r.actions = append(r.actions, fmt.Sprintf("openfile %s with mode %#o", name, perm))
-	fil := FakeFile{content: r.FileContent}
-	return &fil, nil
+	return r.open(name)
+}
+
+func (r *RecordingFs) deleteFile(name string) {
+	if r.files != nil {
+		delete(r.files, name)
+	}
 }
 
 func (r *RecordingFs) Remove(name string) error {
 	r.actions = append(r.actions, "remove "+name)
+	r.deleteFile(name)
 	return nil
 }
 
 func (r *RecordingFs) RemoveAll(path string) error {
 	r.actions = append(r.actions, "removeall "+path)
+	r.deleteFile(path)
 	return nil
 }
 

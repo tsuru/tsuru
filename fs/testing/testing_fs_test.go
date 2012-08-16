@@ -141,6 +141,20 @@ func (s *S) TestRecordingFsOpenFile(c *C) {
 	c.Assert(f.(*FakeFile).content, Equals, fs.FileContent)
 }
 
+func (s *S) TestRecordingFsKeepFileInstances(c *C) {
+	fs := RecordingFs{FileContent: "the content"}
+	f, err := fs.Create("/my/file")
+	c.Assert(err, IsNil)
+	f.Write([]byte("hi"))
+	f, err = fs.Open("/my/file")
+	c.Assert(err, IsNil)
+	buf := make([]byte, 2)
+	n, err := f.Read(buf)
+	c.Assert(err, IsNil)
+	c.Assert(n, Equals, 2)
+	c.Assert(string(buf), Equals, "hi")
+}
+
 func (s *S) TestRecordingFsRemove(c *C) {
 	fs := RecordingFs{}
 	err := fs.Remove("/my/file")
@@ -148,11 +162,33 @@ func (s *S) TestRecordingFsRemove(c *C) {
 	c.Assert(fs.HasAction("remove /my/file"), Equals, true)
 }
 
+func (s *S) TestRecordingFsRemoveDeletesState(c *C) {
+	fs := RecordingFs{FileContent: "hi"}
+	f, _ := fs.Open("/my/file")
+	f.Write([]byte("ih"))
+	fs.Remove("/my/file")
+	f, _ = fs.Open("/my/file")
+	buf := make([]byte, 2)
+	f.Read(buf)
+	c.Assert(string(buf), Equals, "hi")
+}
+
 func (s *S) TestRecordingFsRemoveAll(c *C) {
 	fs := RecordingFs{}
 	err := fs.RemoveAll("/my/dir")
 	c.Assert(err, IsNil)
 	c.Assert(fs.HasAction("removeall /my/dir"), Equals, true)
+}
+
+func (s *S) TestRecordingFsRemoveAllDeletesState(c *C) {
+	fs := RecordingFs{FileContent: "hi"}
+	f, _ := fs.Open("/my/file")
+	f.Write([]byte("ih"))
+	fs.RemoveAll("/my/file")
+	f, _ = fs.Open("/my/file")
+	buf := make([]byte, 2)
+	f.Read(buf)
+	c.Assert(string(buf), Equals, "hi")
 }
 
 func (s *S) TestRecordingFsStat(c *C) {
