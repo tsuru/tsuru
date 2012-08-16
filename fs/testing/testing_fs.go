@@ -1,3 +1,6 @@
+// Package fs/testing provides fake implementations of the fs package.
+//
+// These implementations can be used to mock out the file system in tests.
 package testing
 
 import (
