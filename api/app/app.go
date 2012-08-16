@@ -60,6 +60,8 @@ func (a *App) Get() error {
 }
 
 func (a *App) Create() error {
+	// TODO (flaviamissi): check if tsuru is in multi tenant mode before
+	// creating a new tenant for an app
 	a.State = "pending"
 	// TODO (#110): make JujuEnv match the app name, and bootstrap it before
 	// deploy the app.

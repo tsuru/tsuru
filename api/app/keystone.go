@@ -3,6 +3,7 @@ package app
 import (
 	"fmt"
 	"github.com/timeredbull/keystone"
+	"github.com/timeredbull/tsuru/config"
 	"github.com/timeredbull/tsuru/db"
 	"labix.org/v2/mgo/bson"
 )
@@ -13,11 +14,47 @@ type KeystoneEnv struct {
 	AccessKey string
 }
 
-var Client *keystone.Client
-var authUrl string // should be set on init() from tsuru.conf
+var (
+	Client     *keystone.Client
+	authUrl    string
+	authUser   string
+	authPass   string
+	authTenant string
+)
+
+func getAuth() (err error) {
+	// TODO (flaviamissi) do not panic on errors, return
+	// and log
+	if authUrl == "" {
+		authUrl, err = config.GetString("nova:auth-url")
+		if err != nil {
+			return
+		}
+	}
+	if authUser == "" {
+		authUser, err = config.GetString("nova:user")
+		if err != nil {
+			return
+		}
+	}
+	if authPass == "" {
+		authPass, err = config.GetString("nova:password")
+		if err != nil {
+			return
+		}
+	}
+	if authTenant == "" {
+		authTenant, err = config.GetString("nova:tenant")
+		if err != nil {
+			return
+		}
+	}
+	return
+}
 
 func NewTenant(a *App) (tId string, err error) {
-	Client, err = keystone.NewClient("foo", "bar", "tsuru", authUrl)
+	err = getAuth()
+	Client, err = keystone.NewClient(authUser, authPass, authTenant, authUrl)
 	if err != nil {
 		return
 	}
