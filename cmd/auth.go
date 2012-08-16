@@ -101,8 +101,7 @@ func (c *Login) Run(context *Context, client Doer) error {
 		return err
 	}
 	io.WriteString(context.Stdout, "Successfully logged!\n")
-	WriteToken(out["token"])
-	return nil
+	return WriteToken(out["token"])
 }
 
 func (c *Login) Info() *Info {
@@ -125,10 +124,11 @@ func (c *Logout) Info() *Info {
 }
 
 func (c *Logout) Run(context *Context, client Doer) error {
-	err := WriteToken("")
+	tokenPath, err := joinWithUserDir(".tsuru_token")
 	if err != nil {
 		return err
 	}
+	filesystem().Remove(tokenPath)
 	io.WriteString(context.Stdout, "Successfully logout!\n")
 	return nil
 }

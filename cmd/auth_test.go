@@ -2,12 +2,16 @@ package cmd
 
 import (
 	"bytes"
+	"github.com/timeredbull/tsuru/fs/testing"
 	. "launchpad.net/gocheck"
 	"net/http"
-	"os"
 )
 
 func (s *S) TestLogin(c *C) {
+	fsystem = &testing.RecordingFs{FileContent: "old-token"}
+	defer func() {
+		fsystem = nil
+	}()
 	s.patchStdin(c, []byte("chico\n"))
 	defer s.unpatchStdin()
 	expected := "Password: \nSuccessfully logged!\n"
@@ -17,19 +21,21 @@ func (s *S) TestLogin(c *C) {
 	err := command.Run(&context, client)
 	c.Assert(err, IsNil)
 	c.Assert(manager.Stdout.(*bytes.Buffer).String(), Equals, expected)
-
 	token, err := ReadToken()
 	c.Assert(err, IsNil)
 	c.Assert(token, Equals, "sometoken")
 }
 
 func (s *S) TestLoginShouldNotDependOnTsuruTokenFile(c *C) {
-	os.Remove(os.ExpandEnv("${HOME}/.tsuru_token"))
+	fsystem = &testing.FailureFs{}
+	defer func() {
+		fsystem = nil
+	}()
 	s.patchStdin(c, []byte("bar123\n"))
 	defer s.unpatchStdin()
 	expected := "Password: \n" + `Successfully logged!` + "\n"
 	context := Context{[]string{}, []string{"foo@foo.com"}, manager.Stdout, manager.Stderr}
-	client := NewClient(&http.Client{Transport: &transport{msg: `{"token":"sometoken"}`, status: http.StatusOK}})
+	client := NewClient(&http.Client{Transport: &transport{msg: `{"token":"anothertoken"}`, status: http.StatusOK}})
 	command := Login{}
 	err := command.Run(&context, client)
 	c.Assert(err, IsNil)
@@ -48,15 +54,20 @@ func (s *S) TestLoginShouldReturnErrorIfThePasswordIsNotGiven(c *C) {
 }
 
 func (s *S) TestLogout(c *C) {
+	rfs := &testing.RecordingFs{}
+	fsystem = rfs
+	defer func() {
+		fsystem = nil
+	}()
 	expected := "Successfully logout!\n"
 	context := Context{[]string{}, []string{}, manager.Stdout, manager.Stderr}
 	command := Logout{}
 	err := command.Run(&context, nil)
 	c.Assert(err, IsNil)
 	c.Assert(manager.Stdout.(*bytes.Buffer).String(), Equals, expected)
-
-	token, err := ReadToken()
-	c.Assert(token, Equals, "")
+	tokenPath, err := joinWithUserDir(".tsuru_token")
+	c.Assert(err, IsNil)
+	c.Assert(rfs.HasAction("remove "+tokenPath), Equals, true)
 }
 
 func (s *S) TestAddUserIsSubcommandOfTeam(c *C) {
@@ -177,7 +188,10 @@ func (s *S) TestUser(c *C) {
 }
 
 func (s *S) TestUserCreateShouldNotDependOnTsuruTokenFile(c *C) {
-	os.Remove(os.ExpandEnv("${HOME}/.tsuru_token"))
+	fsystem = &testing.FailureFs{}
+	defer func() {
+		fsystem = nil
+	}()
 	s.patchStdin(c, []byte("bar123\n"))
 	defer s.unpatchStdin()
 	expected := "Password: \n" + `User "foo@foo.com" successfully created!` + "\n"

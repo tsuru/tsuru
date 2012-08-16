@@ -2,8 +2,8 @@ package cmd
 
 import (
 	"encoding/json"
+	"errors"
 	"io/ioutil"
-	"os"
 	"os/user"
 	"path"
 	"strings"
@@ -24,13 +24,16 @@ func WriteToken(token string) error {
 	if err != nil {
 		return err
 	}
-	file, err := os.Create(tokenPath)
+	file, err := filesystem().Create(tokenPath)
 	if err != nil {
 		return err
 	}
-	_, err = file.WriteString(token)
+	n, err := file.WriteString(token)
 	if err != nil {
 		return err
+	}
+	if n != len(token) {
+		return errors.New("Failed to write token file.")
 	}
 	return nil
 }
@@ -40,7 +43,12 @@ func ReadToken() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	token, err := ioutil.ReadFile(tokenPath)
+	file, err := filesystem().Open(tokenPath)
+	if err != nil {
+		return "", err
+	}
+	defer file.Close()
+	token, err := ioutil.ReadAll(file)
 	if err != nil {
 		return "", err
 	}

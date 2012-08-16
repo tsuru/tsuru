@@ -1,9 +1,9 @@
 package cmd
 
 import (
+	"github.com/timeredbull/tsuru/fs/testing"
 	. "launchpad.net/gocheck"
 	"net/http"
-	"os"
 )
 
 func (s *S) TestShouldReturnBodyMessageOnError(c *C) {
@@ -26,7 +26,10 @@ func (s *S) TestShouldReturnErrorWhenServerIsDown(c *C) {
 }
 
 func (s *S) TestShouldNotIncludeTheHeaderAuthorizationWhenTheTsuruTokenFileIsMissing(c *C) {
-	os.Remove(os.ExpandEnv("${HOME}/.tsuru_token"))
+	fsystem = &testing.FailureFs{}
+	defer func() {
+		fsystem = nil
+	}()
 	request, err := http.NewRequest("GET", "/", nil)
 	c.Assert(err, IsNil)
 	trans := &transport{msg: "", status: http.StatusOK}
@@ -39,15 +42,10 @@ func (s *S) TestShouldNotIncludeTheHeaderAuthorizationWhenTheTsuruTokenFileIsMis
 }
 
 func (s *S) TestShouldIncludeTheHeaderAuthorizationWhenTsuruTokenFileExists(c *C) {
-	token_path := os.ExpandEnv("${HOME}/.tsuru_token")
-	defer os.Remove(token_path)
-	f, err := os.Create(token_path)
-	c.Assert(err, IsNil)
-	defer f.Close()
-	token := []byte("mytoken")
-	n, err := f.Write(token)
-	c.Assert(err, IsNil)
-	c.Assert(n, Equals, len(token))
+	fsystem = &testing.RecordingFs{FileContent: "mytoken"}
+	defer func() {
+		fsystem = nil
+	}()
 	request, err := http.NewRequest("GET", "/", nil)
 	c.Assert(err, IsNil)
 	trans := &transport{msg: "", status: http.StatusOK}
