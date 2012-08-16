@@ -99,11 +99,22 @@ func (s *S) TestCantCreateTwoAppsWithTheSameName(c *C) {
 	a := App{Name: "appName", Framework: "django"}
 	err := a.Create()
 	c.Assert(err, IsNil)
-
 	err = a.Create()
 	c.Assert(err, NotNil)
-
 	a.Destroy()
+}
+
+// Issue 116
+func (s *S) TestDoesNotSaveTheAppInTheDatabaseIfJujuFail(c *C) {
+	dir, err := commandmocker.Error("juju", "juju failed", 1)
+	c.Assert(err, IsNil)
+	defer commandmocker.Remove(dir)
+	a := App{Name: "myapp", Framework: "ruby"}
+	err = a.Create()
+	c.Assert(err, NotNil)
+	c.Assert(err, ErrorMatches, "^.*juju failed.*$")
+	err = a.Get()
+	c.Assert(err, NotNil)
 }
 
 func (s *S) TestAppendOrUpdate(c *C) {
