@@ -239,6 +239,7 @@ func (s *S) TestFailureFsOpen(c *C) {
 	c.Assert(err, NotNil)
 	c.Assert(err, FitsTypeOf, &os.PathError{})
 	c.Assert(err.(*os.PathError).Err, DeepEquals, syscall.ENOENT)
+	c.Assert(err.(*os.PathError).Path, Equals, "/my/file")
 	c.Assert(fs.HasAction("open /my/file"), Equals, true)
 }
 
@@ -248,6 +249,7 @@ func (s *S) TestFailureFsRemove(c *C) {
 	c.Assert(err, NotNil)
 	c.Assert(err, FitsTypeOf, &os.PathError{})
 	c.Assert(err.(*os.PathError).Err, DeepEquals, syscall.ENOENT)
+	c.Assert(err.(*os.PathError).Path, Equals, "/my/file")
 	c.Assert(fs.HasAction("remove /my/file"), Equals, true)
 }
 
@@ -258,5 +260,6 @@ func (s *S) TestFailureFsOpenFile(c *C) {
 	c.Assert(err, NotNil)
 	c.Assert(err, FitsTypeOf, &os.PathError{})
 	c.Assert(err.(*os.PathError).Err, DeepEquals, syscall.ENOENT)
+	c.Assert(err.(*os.PathError).Path, Equals, "/my/file")
 	c.Assert(fs.HasAction("open /my/file"), Equals, true)
 }

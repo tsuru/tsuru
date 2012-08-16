@@ -177,13 +177,13 @@ type FailureFs struct {
 // Open is used to simulate ENOENT.
 func (r *FailureFs) Open(name string) (fs.File, error) {
 	r.RecordingFs.Open(name)
-	err := os.PathError{Err: syscall.ENOENT}
+	err := os.PathError{Err: syscall.ENOENT, Path: name}
 	return nil, &err
 }
 
 func (r *FailureFs) Remove(name string) error {
 	r.RecordingFs.Remove(name)
-	return &os.PathError{Err: syscall.ENOENT}
+	return &os.PathError{Err: syscall.ENOENT, Path: name}
 }
 
 func (r *FailureFs) OpenFile(name string, flag int, perm os.FileMode) (fs.File, error) {
