@@ -100,6 +100,7 @@ func (r *RecordingFs) open(name string) (fs.File, error) {
 	if r.files == nil {
 		r.files = make(map[string]fs.File)
 	} else if f, ok := r.files[name]; ok {
+		f.Seek(0, 0)
 		return f, nil
 	}
 	fil := &FakeFile{content: r.FileContent}

@@ -162,6 +162,12 @@ func (s *S) TestRecordingFsKeepFileInstances(c *C) {
 	c.Assert(err, IsNil)
 	c.Assert(n, Equals, 2)
 	c.Assert(string(buf), Equals, "hi")
+	// Opening again should read seek to position 0 in the reader
+	f, _ = fs.Open("/my/file")
+	n, err = f.Read(buf)
+	c.Assert(err, IsNil)
+	c.Assert(n, Equals, 2)
+	c.Assert(string(buf), Equals, "hi")
 }
 
 func (s *S) TestRecordingFsRemove(c *C) {
