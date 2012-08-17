@@ -96,7 +96,7 @@ func (s *S) TestRemoveUserIsASubcommandOfTeam(c *C) {
 	c.Assert(subc, FitsTypeOf, &TeamRemoveUser{})
 }
 
-func (s *S) TestCreateUsASubcommandOfTeam(c *C) {
+func (s *S) TestCreateIsASubcommandOfTeam(c *C) {
 	t := Team{}
 	subc, ok := t.Subcommands()["create"]
 	c.Assert(ok, Equals, true)
