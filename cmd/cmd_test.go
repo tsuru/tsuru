@@ -412,11 +412,32 @@ func (s *S) TestUserCreateIsRegistered(c *C) {
 	c.Assert(user, FitsTypeOf, &UserCreate{})
 }
 
-func (s *S) TestTeamIsRegistered(c *C) {
+func (s *S) TestTeamCreatedIsRegistered(c *C) {
 	manager := BuildBaseManager("tsuru")
-	team, ok := manager.Commands["team"]
+	create, ok := manager.Commands["team-create"]
 	c.Assert(ok, Equals, true)
-	c.Assert(team, FitsTypeOf, &Team{})
+	c.Assert(create, FitsTypeOf, &TeamCreate{})
+}
+
+func (s *S) TestTeamListIsRegistered(c *C) {
+	manager := BuildBaseManager("tsuru")
+	list, ok := manager.Commands["team-list"]
+	c.Assert(ok, Equals, true)
+	c.Assert(list, FitsTypeOf, &TeamList{})
+}
+
+func (s *S) TestTeamAddUserIsRegistered(c *C) {
+	manager := BuildBaseManager("tsuru")
+	adduser, ok := manager.Commands["team-user-add"]
+	c.Assert(ok, Equals, true)
+	c.Assert(adduser, FitsTypeOf, &TeamAddUser{})
+}
+
+func (s *S) TestTeamRemoveUserIsRegistered(c *C) {
+	manager := BuildBaseManager("tsuru")
+	removeuser, ok := manager.Commands["team-user-remove"]
+	c.Assert(ok, Equals, true)
+	c.Assert(removeuser, FitsTypeOf, &TeamRemoveUser{})
 }
 
 func (s *S) TestTargetIsRegistered(c *C) {

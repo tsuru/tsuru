@@ -39,7 +39,10 @@ func BuildBaseManager(name string) Manager {
 	m.Register(&Login{})
 	m.Register(&Logout{})
 	m.Register(&UserCreate{})
-	m.Register(&Team{})
+	m.Register(&TeamCreate{})
+	m.Register(&TeamList{})
+	m.Register(&TeamAddUser{})
+	m.Register(&TeamRemoveUser{})
 	m.Register(&Target{})
 	return m
 }

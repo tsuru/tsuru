@@ -82,27 +82,6 @@ func (s *S) TestLogoutWhenNotLoggedIn(c *C) {
 	c.Assert(err.Error(), Equals, "You're not logged in!")
 }
 
-func (s *S) TestAddUserIsSubcommandOfTeam(c *C) {
-	t := Team{}
-	subc, ok := t.Subcommands()["add-user"]
-	c.Assert(ok, Equals, true)
-	c.Assert(subc, FitsTypeOf, &TeamAddUser{})
-}
-
-func (s *S) TestRemoveUserIsASubcommandOfTeam(c *C) {
-	t := Team{}
-	subc, ok := t.Subcommands()["remove-user"]
-	c.Assert(ok, Equals, true)
-	c.Assert(subc, FitsTypeOf, &TeamRemoveUser{})
-}
-
-func (s *S) TestCreateIsASubcommandOfTeam(c *C) {
-	t := Team{}
-	subc, ok := t.Subcommands()["create"]
-	c.Assert(ok, Equals, true)
-	c.Assert(subc, FitsTypeOf, &TeamCreate{})
-}
-
 func (s *S) TestTeamAddUser(c *C) {
 	expected := `User "andorito" was added to the "cobrateam" team` + "\n"
 	context := Context{[]string{}, []string{"cobrateam", "andorito"}, manager.Stdout, manager.Stderr}
@@ -111,6 +90,16 @@ func (s *S) TestTeamAddUser(c *C) {
 	err := command.Run(&context, client)
 	c.Assert(err, IsNil)
 	c.Assert(manager.Stdout.(*bytes.Buffer).String(), Equals, expected)
+}
+
+func (s *S) TestTeamAddUserInfo(c *C) {
+	expected := &Info{
+		Name:    "team-user-add",
+		Usage:   "team-user-add <teamname> <useremail>",
+		Desc:    "adds a user to a team.",
+		MinArgs: 2,
+	}
+	c.Assert((&TeamAddUser{}).Info(), DeepEquals, expected)
 }
 
 func (s *S) TestTeamRemoveUser(c *C) {
@@ -123,6 +112,16 @@ func (s *S) TestTeamRemoveUser(c *C) {
 	c.Assert(manager.Stdout.(*bytes.Buffer).String(), Equals, expected)
 }
 
+func (s *S) TestTeamRemoveUserInfo(c *C) {
+	expected := &Info{
+		Name:    "team-user-remove",
+		Usage:   "team-user-remove <teamname> <useremail>",
+		Desc:    "removes a user from a team.",
+		MinArgs: 2,
+	}
+	c.Assert((&TeamRemoveUser{}).Info(), DeepEquals, expected)
+}
+
 func (s *S) TestTeamCreate(c *C) {
 	expected := `Team "core" successfully created!` + "\n"
 	context := Context{[]string{}, []string{"core"}, manager.Stdout, manager.Stderr}
@@ -131,6 +130,16 @@ func (s *S) TestTeamCreate(c *C) {
 	err := command.Run(&context, client)
 	c.Assert(err, IsNil)
 	c.Assert(manager.Stdout.(*bytes.Buffer).String(), Equals, expected)
+}
+
+func (s *S) TestTeamCreateInfo(c *C) {
+	expected := &Info{
+		Name:    "team-create",
+		Usage:   "team-create <teamname>",
+		Desc:    "creates a new team.",
+		MinArgs: 1,
+	}
+	c.Assert((&TeamCreate{}).Info(), DeepEquals, expected)
 }
 
 func (s *S) TestTeamListRun(c *C) {
@@ -164,10 +173,10 @@ func (s *S) TestTeamListRunWithNoContent(c *C) {
 	c.Assert(manager.Stdout.(*bytes.Buffer).String(), Equals, "")
 }
 
-func (s *S) TeatTeamListInfo(c *C) {
+func (s *S) TestTeamListInfo(c *C) {
 	expected := &Info{
-		Name:    "list",
-		Usage:   "team list",
+		Name:    "team-list",
+		Usage:   "team-list",
 		Desc:    "List all teams that you are member.",
 		MinArgs: 0,
 	}
@@ -182,13 +191,6 @@ func (s *S) TestTeamListIsACommand(c *C) {
 func (s *S) TeamTeamListIsAnInfoer(c *C) {
 	var infoer Infoer
 	c.Assert(&TeamList{}, Implements, &infoer)
-}
-
-func (s *S) TestTeamListIsASubCommandOfTeam(c *C) {
-	t := Team{}
-	subc, ok := t.Subcommands()["list"]
-	c.Assert(ok, Equals, true)
-	c.Assert(subc, FitsTypeOf, &TeamList{})
 }
 
 func (s *S) TestUserCreateShouldNotDependOnTsuruTokenFile(c *C) {
