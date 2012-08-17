@@ -218,3 +218,18 @@ func (s *S) TestNewUserShouldFailIfAppHasNoTenantId(c *C) {
 	_, err = NewUser(&a)
 	c.Assert(err, ErrorMatches, "^App should have an associated tenant to create an user.$")
 }
+
+func (s *S) TestNewUserShouldStoreUserInDb(c *C) {
+	ts := s.mockServer(`{"user": {"id": "uuid321", "name": "appname", "email": "appname@foo.bar"}}`)
+	defer ts.Close()
+	a := App{Name: "myapp"}
+	a.KeystoneEnv.TenantId = "uuid123"
+	err := db.Session.Apps().Insert(a)
+	c.Assert(err, IsNil)
+	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
+	uId, err := NewUser(&a)
+	c.Assert(err, IsNil)
+	c.Assert(uId, Equals, "uuid321")
+	db.Session.Apps().Find(bson.M{"name": a.Name}).One(&a)
+	c.Assert(a.KeystoneEnv.UserId, Equals, uId)
+}

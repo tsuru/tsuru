@@ -120,11 +120,13 @@ func NewUser(a *App) (uId string, err error) {
 	}
 	log.Print("DEBUG: attempting to create user %s via keystone api...", a.Name)
 	// TODO(flaviamissi): should generate a random password
-	_, err = Client.NewUser(a.Name, a.Name, "", a.KeystoneEnv.TenantId, true)
+	u, err := Client.NewUser(a.Name, a.Name, "", a.KeystoneEnv.TenantId, true)
 	if err != nil {
 		log.Printf("ERROR: %s", err.Error())
 		return
 	}
-	// TODO(flaviamissi): record user id in database
+	uId = u.Id
+	a.KeystoneEnv.UserId = uId
+	err = db.Session.Apps().Update(bson.M{"name": a.Name}, &a)
 	return
 }
