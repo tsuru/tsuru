@@ -188,11 +188,11 @@ func (s *S) TestHelp(c *C) {
 
 Available commands:
   help
-  user
+  user-create
 
 Run glb help <commandname> to get more information about a specific command.
 `
-	manager.Register(&User{})
+	manager.Register(&UserCreate{})
 	context := Context{[]string{}, []string{}, manager.Stdout, manager.Stderr}
 	command := Help{manager: &manager}
 	err := command.Run(&context, nil)
@@ -405,11 +405,11 @@ func (s *S) TestLogoutIsRegistered(c *C) {
 	c.Assert(logout, FitsTypeOf, &Logout{})
 }
 
-func (s *S) TestUserIsRegistered(c *C) {
+func (s *S) TestUserCreateIsRegistered(c *C) {
 	manager := BuildBaseManager("tsuru")
-	user, ok := manager.Commands["user"]
+	user, ok := manager.Commands["user-create"]
 	c.Assert(ok, Equals, true)
-	c.Assert(user, FitsTypeOf, &User{})
+	c.Assert(user, FitsTypeOf, &UserCreate{})
 }
 
 func (s *S) TestTeamIsRegistered(c *C) {

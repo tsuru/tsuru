@@ -191,14 +191,6 @@ func (s *S) TestTeamListIsASubCommandOfTeam(c *C) {
 	c.Assert(subc, FitsTypeOf, &TeamList{})
 }
 
-func (s *S) TestUser(c *C) {
-	expect := map[string]interface{}{
-		"create": &UserCreate{},
-	}
-	command := User{}
-	c.Assert(command.Subcommands(), DeepEquals, expect)
-}
-
 func (s *S) TestUserCreateShouldNotDependOnTsuruTokenFile(c *C) {
 	fsystem = &testing.FailureFs{}
 	defer func() {
@@ -236,4 +228,14 @@ func (s *S) TestUserCreateShouldReturnErrorIfThePasswordIsNotGiven(c *C) {
 	err := command.Run(&context, nil)
 	c.Assert(err, NotNil)
 	c.Assert(manager.Stdout.(*bytes.Buffer).String(), Equals, expected)
+}
+
+func (s *S) TestUserCreateInfo(c *C) {
+	expected := &Info{
+		Name:    "user-create",
+		Usage:   "user-create <email>",
+		Desc:    "creates a user.",
+		MinArgs: 1,
+	}
+	c.Assert((&UserCreate{}).Info(), DeepEquals, expected)
 }

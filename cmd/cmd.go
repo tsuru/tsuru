@@ -38,7 +38,7 @@ func BuildBaseManager(name string) Manager {
 	m := NewManager(name, os.Stdout, os.Stderr)
 	m.Register(&Login{})
 	m.Register(&Logout{})
-	m.Register(&User{})
+	m.Register(&UserCreate{})
 	m.Register(&Team{})
 	m.Register(&Target{})
 	return m

@@ -12,8 +12,6 @@ import (
 	"os"
 )
 
-type User struct{}
-
 func readPassword(out io.Writer, password *string) error {
 	io.WriteString(out, "Password: ")
 	*password = term.GetPassword(os.Stdin.Fd())
@@ -26,28 +24,13 @@ func readPassword(out io.Writer, password *string) error {
 	return nil
 }
 
-func (c *User) Info() *Info {
-	return &Info{
-		Name:    "user",
-		Usage:   "user (create) [args]",
-		Desc:    "manage users.",
-		MinArgs: 1,
-	}
-}
-
-func (c *User) Subcommands() map[string]interface{} {
-	return map[string]interface{}{
-		"create": &UserCreate{},
-	}
-}
-
 type UserCreate struct{}
 
 func (c *UserCreate) Info() *Info {
 	return &Info{
-		Name:    "create",
-		Usage:   "user create username",
-		Desc:    "creates user.",
+		Name:    "user-create",
+		Usage:   "user-create <email>",
+		Desc:    "creates a user.",
 		MinArgs: 1,
 	}
 }
