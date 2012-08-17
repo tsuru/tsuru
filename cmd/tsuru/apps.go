@@ -11,41 +11,18 @@ import (
 	"time"
 )
 
-type App struct{}
+type AppGrant struct{}
 
-func (c *App) Info() *cmd.Info {
+func (c *AppGrant) Info() *cmd.Info {
 	return &cmd.Info{
-		Name:    "app",
-		Usage:   "app (create|remove|list|add-team|remove-team) [args]",
-		Desc:    "manage your apps.",
-		MinArgs: 1,
-	}
-}
-
-func (c *App) Subcommands() map[string]interface{} {
-	return map[string]interface{}{
-		"add-team":    &AppAddTeam{},
-		"remove-team": &AppRemoveTeam{},
-		"create":      &AppCreate{},
-		"remove":      &AppRemove{},
-		"list":        &AppList{},
-		"run":         &AppRun{},
-		"log":         &AppLog{},
-	}
-}
-
-type AppAddTeam struct{}
-
-func (c *AppAddTeam) Info() *cmd.Info {
-	return &cmd.Info{
-		Name:    "add-team",
-		Usage:   "app add-team <appname> <teamname>",
-		Desc:    "adds team to app.",
+		Name:    "app-grant",
+		Usage:   "app-grant <appname> <teamname>",
+		Desc:    "grants access to an app to a team.",
 		MinArgs: 2,
 	}
 }
 
-func (c *AppAddTeam) Run(context *cmd.Context, client cmd.Doer) error {
+func (c *AppGrant) Run(context *cmd.Context, client cmd.Doer) error {
 	appName, teamName := context.Args[0], context.Args[1]
 	url := cmd.GetUrl(fmt.Sprintf("/apps/%s/%s", appName, teamName))
 	request, err := http.NewRequest("PUT", url, nil)
@@ -60,18 +37,18 @@ func (c *AppAddTeam) Run(context *cmd.Context, client cmd.Doer) error {
 	return nil
 }
 
-type AppRemoveTeam struct{}
+type AppRevoke struct{}
 
-func (c *AppRemoveTeam) Info() *cmd.Info {
+func (c *AppRevoke) Info() *cmd.Info {
 	return &cmd.Info{
-		Name:    "remove-team",
-		Usage:   "app remove-team <appname> <teamname>",
-		Desc:    "removes team from app.",
+		Name:    "app-revoke",
+		Usage:   "app-revoke <appname> <teamname>",
+		Desc:    "revokes access to an app from a team.",
 		MinArgs: 2,
 	}
 }
 
-func (c *AppRemoveTeam) Run(context *cmd.Context, client cmd.Doer) error {
+func (c *AppRevoke) Run(context *cmd.Context, client cmd.Doer) error {
 	appName, teamName := context.Args[0], context.Args[1]
 	url := cmd.GetUrl(fmt.Sprintf("/apps/%s/%s", appName, teamName))
 	request, err := http.NewRequest("DELETE", url, nil)
@@ -139,9 +116,9 @@ func (c *AppList) Show(result []byte, context *cmd.Context) error {
 
 func (c *AppList) Info() *cmd.Info {
 	return &cmd.Info{
-		Name:  "list",
-		Usage: "app list",
-		Desc:  "list your apps.",
+		Name:  "app-list",
+		Usage: "app-list",
+		Desc:  "list all your apps.",
 	}
 }
 
@@ -178,8 +155,8 @@ func (c *AppCreate) Run(context *cmd.Context, client cmd.Doer) error {
 
 func (c *AppCreate) Info() *cmd.Info {
 	return &cmd.Info{
-		Name:    "create",
-		Usage:   "app create <appname> <framework>",
+		Name:    "app-create",
+		Usage:   "app-create <appname> <framework>",
 		Desc:    "create a new app.",
 		MinArgs: 2,
 	}
@@ -189,9 +166,9 @@ type AppRemove struct{}
 
 func (c *AppRemove) Info() *cmd.Info {
 	return &cmd.Info{
-		Name:    "remove",
-		Usage:   "app remove <appname>",
-		Desc:    "remove your app.",
+		Name:    "app-remove",
+		Usage:   "app-remove <appname>",
+		Desc:    "removes an app.",
 		MinArgs: 1,
 	}
 }
@@ -216,8 +193,8 @@ type AppLog struct{}
 func (c *AppLog) Info() *cmd.Info {
 	return &cmd.Info{
 		Name:    "log",
-		Usage:   "app log <appname>",
-		Desc:    "shows app log",
+		Usage:   "log <appname>",
+		Desc:    "show logs for an app.",
 		MinArgs: 1,
 	}
 }

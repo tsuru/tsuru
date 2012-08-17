@@ -10,7 +10,7 @@ To list all services avaliable you can use:
 
 ::
 
-    $ tsuru service list
+    $ tsuru service-list
 
 To add a new instance of a service:
 
@@ -18,7 +18,7 @@ To add a new instance of a service:
 
 ::
 
-    $ tsuru service add <service_name>
+    $ tsuru service-add <service_name>
 
 To remove a instance of a service:
 
@@ -26,7 +26,7 @@ To remove a instance of a service:
 
 ::
 
-    $ tsuru service remove <service_instance_name>
+    $ tsuru service-remove <service_instance_name>
 
 To bind a service instance with an app you can use the `bind` command.
 If this service has any variable to be used for your app, tsuru will inject this variables in environment.
@@ -35,7 +35,7 @@ If this service has any variable to be used for your app, tsuru will inject this
 
 ::
 
-    $ tsuru service bind <service_instance_name> <app_name>
+    $ tsuru bind <service_instance_name> <app_name>
 
 And to unbind:
 
@@ -43,4 +43,4 @@ And to unbind:
 
 ::
 
-    $ tsuru service unbind <service_instance_name> <app_name>
+    $ tsuru unbind <service_instance_name> <app_name>

@@ -7,28 +7,11 @@ import (
 	"net/http"
 )
 
-func (s *S) TestEnvInfo(c *C) {
-	e := Env{}
-	i := e.Info()
-	c.Assert(i.Name, Equals, "env")
-	c.Assert(i.Usage, Equals, "env (get|set|unset) [args]")
-	c.Assert(i.Desc, Equals, "manage instance's environment variables.")
-	c.Assert(i.MinArgs, Equals, 1)
-}
-
-func (s *S) TestEnvGetSubCommands(c *C) {
-	e := Env{}
-	sc := e.Subcommands()
-	c.Assert(sc["get"], FitsTypeOf, &EnvGet{})
-	c.Assert(sc["set"], FitsTypeOf, &EnvSet{})
-	c.Assert(sc["unset"], FitsTypeOf, &EnvUnset{})
-}
-
 func (s *S) TestEnvGetInfo(c *C) {
 	e := EnvGet{}
 	i := e.Info()
-	c.Assert(i.Name, Equals, "get")
-	c.Assert(i.Usage, Equals, "env get <appname> [ENVIRONMENT_VARIABLE1] [ENVIRONMENT_VARIABLE2] ...")
+	c.Assert(i.Name, Equals, "env-get")
+	c.Assert(i.Usage, Equals, "env-get <appname> [ENVIRONMENT_VARIABLE1] [ENVIRONMENT_VARIABLE2] ...")
 	c.Assert(i.Desc, Equals, "retrieve environment variables for an app.")
 	c.Assert(i.MinArgs, Equals, 1)
 }
@@ -65,8 +48,8 @@ func (s *S) TestEnvGetRunWithMultipleParams(c *C) {
 func (s *S) TestEnvSetInfo(c *C) {
 	e := EnvSet{}
 	i := e.Info()
-	c.Assert(i.Name, Equals, "set")
-	c.Assert(i.Usage, Equals, "env set <appname> <NAME=value> [NAME=value] ...")
+	c.Assert(i.Name, Equals, "env-set")
+	c.Assert(i.Usage, Equals, "env-set <appname> <NAME=value> [NAME=value] ...")
 	c.Assert(i.Desc, Equals, "set environment variables for an app.")
 	c.Assert(i.MinArgs, Equals, 2)
 }
@@ -103,8 +86,8 @@ func (s *S) TestEnvSetRunWithMultipleParams(c *C) {
 func (s *S) TestEnvUnsetInfo(c *C) {
 	e := EnvUnset{}
 	i := e.Info()
-	c.Assert(i.Name, Equals, "unset")
-	c.Assert(i.Usage, Equals, "env unset <appname> <ENVIRONMENT_VARIABLE1> [ENVIRONMENT_VARIABLE2]")
+	c.Assert(i.Name, Equals, "env-unset")
+	c.Assert(i.Usage, Equals, "env-unset <appname> <ENVIRONMENT_VARIABLE1> [ENVIRONMENT_VARIABLE2]")
 	c.Assert(i.Desc, Equals, "unset environment variables for an app.")
 	c.Assert(i.MinArgs, Equals, 2)
 }

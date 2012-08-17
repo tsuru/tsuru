@@ -23,7 +23,7 @@ After that, all you need is create a user and authenticate to start creating app
 
 ::
 
-    $ tsuru user create youremail@gmail.com
+    $ tsuru user-create youremail@gmail.com
     $ tsuru login youremail@gmail.com
 
 Apps
@@ -38,7 +38,7 @@ To create an app:
 
 ::
 
-    $ tsuru app create myblog <platform>
+    $ tsuru app-create myblog <platform>
 
 This will return your app's remote url, you should add it to your git repository:
 
@@ -57,7 +57,7 @@ When your app is ready, you can push to it. To check whether it is ready or not,
 
 ::
 
-    $ tsuru app list
+    $ tsuru app-list
 
 This will return something like:
 
@@ -80,16 +80,24 @@ You can try to push now, but you'll get a permission error, because you haven't 
 
 ::
 
-    $ tsuru key add
+    $ tsuru key-add
 
 This will search for a `id_rsa.pub` file in ~/.ssh/, if you don't have a generated key yet, you should generate one before running this command.
-Now you can push you application to your cloud:
+
+If you have a public key in other format (for example, DSA), you can also give the public key file to ``key-add``:
 
 .. highlight:: bash
 
 ::
 
-    $ git remote add tsuru git@<tsuru-server>:myblog.git
+    $ tsuru key-add $HOME/.ssh/id_dsa.pub
+
+After your key is added, you can push you application to your cloud:
+
+.. highlight:: bash
+
+::
+
     $ git push tsuru master
 
 Running commands

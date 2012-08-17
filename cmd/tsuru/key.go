@@ -57,37 +57,19 @@ func (r *keyReader) fileNotFound(context *cmd.Context) error {
 	return errors.New("You need to have a public rsa key")
 }
 
-type Key struct{}
-
-func (c *Key) Info() *cmd.Info {
-	return &cmd.Info{
-		Name:    "key",
-		Usage:   "key (add|remove)",
-		Desc:    "manage keys.",
-		MinArgs: 1,
-	}
-}
-
-func (c *Key) Subcommands() map[string]interface{} {
-	return map[string]interface{}{
-		"add":    &AddKey{},
-		"remove": &RemoveKey{},
-	}
-}
-
-type RemoveKey struct {
+type KeyRemove struct {
 	keyReader
 }
 
-func (c *RemoveKey) Info() *cmd.Info {
+func (c *KeyRemove) Info() *cmd.Info {
 	return &cmd.Info{
-		Name:  "remove",
-		Usage: "key remove [path/to/key/file.pub]",
+		Name:  "key-remove",
+		Usage: "key-remove [path/to/key/file.pub]",
 		Desc:  "remove your public key ($HOME/.id_rsa.pub by default).",
 	}
 }
 
-func (c *RemoveKey) Run(context *cmd.Context, client cmd.Doer) error {
+func (c *KeyRemove) Run(context *cmd.Context, client cmd.Doer) error {
 	keyPath, err := getKeyPath(context.Args)
 	if err != nil {
 		return err
@@ -109,19 +91,19 @@ func (c *RemoveKey) Run(context *cmd.Context, client cmd.Doer) error {
 	return nil
 }
 
-type AddKey struct {
+type KeyAdd struct {
 	keyReader
 }
 
-func (c *AddKey) Info() *cmd.Info {
+func (c *KeyAdd) Info() *cmd.Info {
 	return &cmd.Info{
-		Name:  "add",
-		Usage: "key add [path/to/key/file.pub]",
+		Name:  "key-add",
+		Usage: "key-add [path/to/key/file.pub]",
 		Desc:  "add your public key ($HOME/.ssh/id_rsa.pub by default).",
 	}
 }
 
-func (c *AddKey) Run(context *cmd.Context, client cmd.Doer) error {
+func (c *KeyAdd) Run(context *cmd.Context, client cmd.Doer) error {
 	keyPath, err := getKeyPath(context.Args)
 	if err != nil {
 		return err

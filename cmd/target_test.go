@@ -76,11 +76,15 @@ func (s *S) TestReadTargetReturnsDefaultTargetIfTheFileDoesNotExist(c *C) {
 }
 
 func (s *S) TestTargetInfo(c *C) {
+	desc := `Defines or retrieve the target (tsuru server)
+
+If an argument is provided, this command sets the target, otherwise it displays the current target.
+`
 	expected := &Info{
 		Name:    "target",
-		Usage:   "target <target>",
-		Desc:    "Defines the target (tsuru server)",
-		MinArgs: 1,
+		Usage:   "target [target]",
+		Desc:    desc,
+		MinArgs: 0,
 	}
 	target := &Target{}
 	c.Assert(target.Info(), DeepEquals, expected)
@@ -98,6 +102,19 @@ func (s *S) TestTargetRun(c *C) {
 	c.Assert(err, IsNil)
 	c.Assert(context.Stdout.(*bytes.Buffer).String(), Equals, "New target is http://tsuru.globo.com\n")
 	c.Assert(ReadTarget(), Equals, "http://tsuru.globo.com")
+}
+
+func (s *S) TestTargetWithoutArgument(c *C) {
+	rfs := &testing.RecordingFs{FileContent: "http://tsuru.google.com"}
+	fsystem = rfs
+	defer func() {
+		fsystem = nil
+	}()
+	context := &Context{[]string{}, []string{}, manager.Stdout, manager.Stderr}
+	target := &Target{}
+	err := target.Run(context, nil)
+	c.Assert(err, IsNil)
+	c.Assert(context.Stdout.(*bytes.Buffer).String(), Equals, "Current target is http://tsuru.google.com\n")
 }
 
 func (s *S) TestGetUrl(c *C) {

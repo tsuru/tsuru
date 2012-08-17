@@ -9,31 +9,12 @@ import (
 	"strings"
 )
 
-type Env struct{}
-
-func (c *Env) Info() *cmd.Info {
-	return &cmd.Info{
-		Name:    "env",
-		Usage:   "env (get|set|unset) [args]",
-		Desc:    "manage instance's environment variables.",
-		MinArgs: 1,
-	}
-}
-
-func (c *Env) Subcommands() map[string]interface{} {
-	return map[string]interface{}{
-		"get":   &EnvGet{},
-		"set":   &EnvSet{},
-		"unset": &EnvUnset{},
-	}
-}
-
 type EnvGet struct{}
 
 func (c *EnvGet) Info() *cmd.Info {
 	return &cmd.Info{
-		Name:    "get",
-		Usage:   "env get <appname> [ENVIRONMENT_VARIABLE1] [ENVIRONMENT_VARIABLE2] ...",
+		Name:    "env-get",
+		Usage:   "env-get <appname> [ENVIRONMENT_VARIABLE1] [ENVIRONMENT_VARIABLE2] ...",
 		Desc:    "retrieve environment variables for an app.",
 		MinArgs: 1,
 	}
@@ -52,8 +33,8 @@ type EnvSet struct{}
 
 func (c *EnvSet) Info() *cmd.Info {
 	return &cmd.Info{
-		Name:    "set",
-		Usage:   "env set <appname> <NAME=value> [NAME=value] ...",
+		Name:    "env-set",
+		Usage:   "env-set <appname> <NAME=value> [NAME=value] ...",
 		Desc:    "set environment variables for an app.",
 		MinArgs: 2,
 	}
@@ -72,8 +53,8 @@ type EnvUnset struct{}
 
 func (c *EnvUnset) Info() *cmd.Info {
 	return &cmd.Info{
-		Name:    "unset",
-		Usage:   "env unset <appname> <ENVIRONMENT_VARIABLE1> [ENVIRONMENT_VARIABLE2]",
+		Name:    "env-unset",
+		Usage:   "env-unset <appname> <ENVIRONMENT_VARIABLE1> [ENVIRONMENT_VARIABLE2]",
 		Desc:    "unset environment variables for an app.",
 		MinArgs: 2,
 	}

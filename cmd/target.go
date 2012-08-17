@@ -12,21 +12,31 @@ import (
 type Target struct{}
 
 func (t *Target) Info() *Info {
+	desc := `Defines or retrieve the target (tsuru server)
+
+If an argument is provided, this command sets the target, otherwise it displays the current target.
+`
 	return &Info{
 		Name:    "target",
-		Usage:   "target <target>",
-		Desc:    "Defines the target (tsuru server)",
-		MinArgs: 1,
+		Usage:   "target [target]",
+		Desc:    desc,
+		MinArgs: 0,
 	}
 }
 
 func (t *Target) Run(ctx *Context, client Doer) error {
-	target := ctx.Args[0]
-	err := WriteTarget(target)
-	if err != nil {
-		return err
+	var target string
+	if len(ctx.Args) > 0 {
+		target = ctx.Args[0]
+		err := WriteTarget(target)
+		if err != nil {
+			return err
+		}
+		io.WriteString(ctx.Stdout, "New target is "+target+"\n")
+		return nil
 	}
-	io.WriteString(ctx.Stdout, "New target is "+target+"\n")
+	target = ReadTarget()
+	io.WriteString(ctx.Stdout, "Current target is "+target+"\n")
 	return nil
 }
 

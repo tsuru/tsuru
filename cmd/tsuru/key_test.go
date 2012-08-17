@@ -10,7 +10,7 @@ import (
 	"path"
 )
 
-func (s *S) TestAddKey(c *C) {
+func (s *S) TestKeyAdd(c *C) {
 	u, err := user.Current()
 	c.Assert(err, IsNil)
 	p := path.Join(u.HomeDir, ".ssh", "id_rsa.pub")
@@ -23,14 +23,14 @@ func (s *S) TestAddKey(c *C) {
 	}
 	client := cmd.NewClient(&http.Client{Transport: &transport{msg: "success", status: http.StatusOK}})
 	fs := fs_test.RecordingFs{FileContent: "user-key"}
-	command := AddKey{keyReader{fsystem: &fs}}
+	command := KeyAdd{keyReader{fsystem: &fs}}
 	err = command.Run(&context, client)
 	c.Assert(err, IsNil)
 	c.Assert(manager.Stdout.(*bytes.Buffer).String(), Equals, expected)
 	c.Assert(fs.HasAction("open "+p), Equals, true)
 }
 
-func (s *S) TestAddKeySpecifyingKeyFile(c *C) {
+func (s *S) TestKeyAddSpecifyingKeyFile(c *C) {
 	u, err := user.Current()
 	c.Assert(err, IsNil)
 	p := path.Join(u.HomeDir, ".ssh", "id_dsa.pub")
@@ -43,14 +43,14 @@ func (s *S) TestAddKeySpecifyingKeyFile(c *C) {
 	}
 	client := cmd.NewClient(&http.Client{Transport: &transport{msg: "success", status: http.StatusOK}})
 	fs := fs_test.RecordingFs{FileContent: "user-key"}
-	command := AddKey{keyReader{fsystem: &fs}}
+	command := KeyAdd{keyReader{fsystem: &fs}}
 	err = command.Run(&context, client)
 	c.Assert(err, IsNil)
 	c.Assert(manager.Stdout.(*bytes.Buffer).String(), Equals, expected)
 	c.Assert(fs.HasAction("open "+p), Equals, true)
 }
 
-func (s *S) TestAddKeyReturnErrorIfTheKeyDoesNotExist(c *C) {
+func (s *S) TestKeyAddReturnErrorIfTheKeyDoesNotExist(c *C) {
 	context := cmd.Context{
 		Cmds:   []string{},
 		Args:   []string{},
@@ -58,13 +58,13 @@ func (s *S) TestAddKeyReturnErrorIfTheKeyDoesNotExist(c *C) {
 		Stderr: manager.Stderr,
 	}
 	fs := fs_test.FailureFs{RecordingFs: fs_test.RecordingFs{}}
-	command := AddKey{keyReader{fsystem: &fs}}
+	command := KeyAdd{keyReader{fsystem: &fs}}
 	err := command.Run(&context, nil)
 	c.Assert(err, NotNil)
 	c.Assert(err.Error(), Equals, "You need to have a public rsa key")
 }
 
-func (s *S) TestAddKeyReturnsProperErrorIfTheGivenKeyFileDoesNotExist(c *C) {
+func (s *S) TestKeyAddReturnsProperErrorIfTheGivenKeyFileDoesNotExist(c *C) {
 	context := cmd.Context{
 		Cmds:   []string{},
 		Args:   []string{"/unknown/key.pub"},
@@ -72,23 +72,24 @@ func (s *S) TestAddKeyReturnsProperErrorIfTheGivenKeyFileDoesNotExist(c *C) {
 		Stderr: manager.Stderr,
 	}
 	fs := fs_test.FailureFs{RecordingFs: fs_test.RecordingFs{}}
-	command := AddKey{keyReader{fsystem: &fs}}
+	command := KeyAdd{keyReader{fsystem: &fs}}
 	err := command.Run(&context, nil)
 	c.Assert(err, NotNil)
 	c.Assert(err.Error(), Equals, "File /unknown/key.pub does not exist!")
 	c.Assert(context.Stderr.(*bytes.Buffer).String(), Equals, "File /unknown/key.pub does not exist!\n")
 }
 
-func (s *S) TestInfoAddKey(c *C) {
+func (s *S) TestInfoKeyAdd(c *C) {
 	expected := &cmd.Info{
-		Name:  "add",
-		Usage: "key add [path/to/key/file.pub]",
-		Desc:  "add your public key ($HOME/.ssh/id_rsa.pub by default).",
+		Name:    "key-add",
+		Usage:   "key-add [path/to/key/file.pub]",
+		Desc:    "add your public key ($HOME/.ssh/id_rsa.pub by default).",
+		MinArgs: 0,
 	}
-	c.Assert((&AddKey{}).Info(), DeepEquals, expected)
+	c.Assert((&KeyAdd{}).Info(), DeepEquals, expected)
 }
 
-func (s *S) TestRemoveKey(c *C) {
+func (s *S) TestKeyRemove(c *C) {
 	u, err := user.Current()
 	c.Assert(err, IsNil)
 	p := path.Join(u.HomeDir, ".ssh", "id_rsa.pub")
@@ -101,14 +102,14 @@ func (s *S) TestRemoveKey(c *C) {
 	}
 	client := cmd.NewClient(&http.Client{Transport: &transport{msg: "success", status: http.StatusOK}})
 	fs := fs_test.RecordingFs{FileContent: "user-key"}
-	command := RemoveKey{keyReader{fsystem: &fs}}
+	command := KeyRemove{keyReader{fsystem: &fs}}
 	err = command.Run(&context, client)
 	c.Assert(err, IsNil)
 	c.Assert(manager.Stdout.(*bytes.Buffer).String(), Equals, expected)
 	c.Assert(fs.HasAction("open "+p), Equals, true)
 }
 
-func (s *S) TestRemoveKeySpecifyingKeyFile(c *C) {
+func (s *S) TestKeyRemoveSpecifyingKeyFile(c *C) {
 	u, err := user.Current()
 	c.Assert(err, IsNil)
 	p := path.Join(u.HomeDir, ".ssh", "id_dsa.pub")
@@ -121,14 +122,14 @@ func (s *S) TestRemoveKeySpecifyingKeyFile(c *C) {
 	}
 	client := cmd.NewClient(&http.Client{Transport: &transport{msg: "success", status: http.StatusOK}})
 	fs := fs_test.RecordingFs{FileContent: "user-key"}
-	command := RemoveKey{keyReader{fsystem: &fs}}
+	command := KeyRemove{keyReader{fsystem: &fs}}
 	err = command.Run(&context, client)
 	c.Assert(err, IsNil)
 	c.Assert(manager.Stdout.(*bytes.Buffer).String(), Equals, expected)
 	c.Assert(fs.HasAction("open "+p), Equals, true)
 }
 
-func (s *S) TestRemoveKeyReturnErrorIfTheKeyDoesNotExist(c *C) {
+func (s *S) TestKeyRemoveReturnErrorIfTheKeyDoesNotExist(c *C) {
 	context := cmd.Context{
 		Cmds:   []string{},
 		Args:   []string{},
@@ -136,13 +137,13 @@ func (s *S) TestRemoveKeyReturnErrorIfTheKeyDoesNotExist(c *C) {
 		Stderr: manager.Stderr,
 	}
 	fs := fs_test.FailureFs{RecordingFs: fs_test.RecordingFs{}}
-	command := RemoveKey{keyReader{fsystem: &fs}}
+	command := KeyRemove{keyReader{fsystem: &fs}}
 	err := command.Run(&context, nil)
 	c.Assert(err, NotNil)
 	c.Assert(err.Error(), Equals, "You need to have a public rsa key")
 }
 
-func (s *S) TestRemoveKeyReturnProperErrorIfTheGivenKeyFileDoesNotExist(c *C) {
+func (s *S) TestKeyRemoveReturnProperErrorIfTheGivenKeyFileDoesNotExist(c *C) {
 	context := cmd.Context{
 		Cmds:   []string{},
 		Args:   []string{"/unknown/key.pub"},
@@ -150,27 +151,19 @@ func (s *S) TestRemoveKeyReturnProperErrorIfTheGivenKeyFileDoesNotExist(c *C) {
 		Stderr: manager.Stderr,
 	}
 	fs := fs_test.FailureFs{RecordingFs: fs_test.RecordingFs{}}
-	command := RemoveKey{keyReader{fsystem: &fs}}
+	command := KeyRemove{keyReader{fsystem: &fs}}
 	err := command.Run(&context, nil)
 	c.Assert(err, NotNil)
 	c.Assert(err.Error(), Equals, "File /unknown/key.pub does not exist!")
 	c.Assert(context.Stderr.(*bytes.Buffer).String(), Equals, err.Error()+"\n")
 }
 
-func (s *S) TestInfoRemoveKey(c *C) {
+func (s *S) TestInfoKeyRemove(c *C) {
 	expected := &cmd.Info{
-		Name:  "remove",
-		Usage: "key remove [path/to/key/file.pub]",
-		Desc:  "remove your public key ($HOME/.id_rsa.pub by default).",
+		Name:    "key-remove",
+		Usage:   "key-remove [path/to/key/file.pub]",
+		Desc:    "remove your public key ($HOME/.id_rsa.pub by default).",
+		MinArgs: 0,
 	}
-	c.Assert((&RemoveKey{}).Info(), DeepEquals, expected)
-}
-
-func (s *S) TestKey(c *C) {
-	expect := map[string]interface{}{
-		"add":    &AddKey{},
-		"remove": &RemoveKey{},
-	}
-	command := Key{}
-	c.Assert(command.Subcommands(), DeepEquals, expect)
+	c.Assert((&KeyRemove{}).Info(), DeepEquals, expected)
 }

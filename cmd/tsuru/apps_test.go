@@ -29,10 +29,20 @@ func (s *S) TestAppList(c *C) {
 	c.Assert(manager.Stdout.(*bytes.Buffer).String(), Equals, expected)
 }
 
+func (s *S) TestAppListInfo(c *C) {
+	expected := &cmd.Info{
+		Name:    "app-list",
+		Usage:   "app-list",
+		Desc:    "list all your apps.",
+		MinArgs: 0,
+	}
+	c.Assert((&AppList{}).Info(), DeepEquals, expected)
+}
+
 func (s *S) TestAppCreateInfo(c *C) {
 	expected := &cmd.Info{
-		Name:    "create",
-		Usage:   "app create <appname> <framework>",
+		Name:    "app-create",
+		Usage:   "app-create <appname> <framework>",
 		Desc:    "create a new app.",
 		MinArgs: 2,
 	}
@@ -85,7 +95,17 @@ func (s *S) TestAppRemove(c *C) {
 	c.Assert(manager.Stdout.(*bytes.Buffer).String(), Equals, expected)
 }
 
-func (s *S) TestAppAddTeam(c *C) {
+func (s *S) TestAppRemoveInfo(c *C) {
+	expected := &cmd.Info{
+		Name:    "app-remove",
+		Usage:   "app-remove <appname>",
+		Desc:    "removes an app.",
+		MinArgs: 1,
+	}
+	c.Assert((&AppRemove{}).Info(), DeepEquals, expected)
+}
+
+func (s *S) TestAppGrant(c *C) {
 	expected := `Team "cobrateam" was added to the "games" app` + "\n"
 	context := cmd.Context{
 		Cmds:   []string{},
@@ -93,14 +113,24 @@ func (s *S) TestAppAddTeam(c *C) {
 		Stdout: manager.Stdout,
 		Stderr: manager.Stderr,
 	}
-	command := AppAddTeam{}
+	command := AppGrant{}
 	client := cmd.NewClient(&http.Client{Transport: &transport{msg: "", status: http.StatusOK}})
 	err := command.Run(&context, client)
 	c.Assert(err, IsNil)
 	c.Assert(manager.Stdout.(*bytes.Buffer).String(), Equals, expected)
 }
 
-func (s *S) TestAppRemoveTeam(c *C) {
+func (s *S) TestAppGrantInfo(c *C) {
+	expected := &cmd.Info{
+		Name:    "app-grant",
+		Usage:   "app-grant <appname> <teamname>",
+		Desc:    "grants access to an app to a team.",
+		MinArgs: 2,
+	}
+	c.Assert((&AppGrant{}).Info(), DeepEquals, expected)
+}
+
+func (s *S) TestAppRevoke(c *C) {
 	expected := `Team "cobrateam" was removed from the "games" app` + "\n"
 	context := cmd.Context{
 		Cmds:   []string{},
@@ -108,11 +138,21 @@ func (s *S) TestAppRemoveTeam(c *C) {
 		Stdout: manager.Stdout,
 		Stderr: manager.Stderr,
 	}
-	command := AppRemoveTeam{}
+	command := AppRevoke{}
 	client := cmd.NewClient(&http.Client{Transport: &transport{msg: "", status: http.StatusOK}})
 	err := command.Run(&context, client)
 	c.Assert(err, IsNil)
 	c.Assert(manager.Stdout.(*bytes.Buffer).String(), Equals, expected)
+}
+
+func (s *S) TestAppRevokeInfo(c *C) {
+	expected := &cmd.Info{
+		Name:    "app-revoke",
+		Usage:   "app-revoke <appname> <teamname>",
+		Desc:    "revokes access to an app from a team.",
+		MinArgs: 2,
+	}
+	c.Assert((&AppRevoke{}).Info(), DeepEquals, expected)
 }
 
 func (s *S) TestAppLog(c *C) {
@@ -149,16 +189,12 @@ func (s *S) TestAppLogShouldReturnNilIfHasNoContent(c *C) {
 	c.Assert(manager.Stdout.(*bytes.Buffer).String(), Equals, "")
 }
 
-func (s *S) TestApp(c *C) {
-	expect := map[string]interface{}{
-		"add-team":    &AppAddTeam{},
-		"remove-team": &AppRemoveTeam{},
-		"create":      &AppCreate{},
-		"remove":      &AppRemove{},
-		"list":        &AppList{},
-		"run":         &AppRun{},
-		"log":         &AppLog{},
+func (s *S) TestAppLogInfo(c *C) {
+	expected := &cmd.Info{
+		Name:    "log",
+		Usage:   "log <appname>",
+		Desc:    "show logs for an app.",
+		MinArgs: 1,
 	}
-	command := App{}
-	c.Assert(command.Subcommands(), DeepEquals, expect)
+	c.Assert((&AppLog{}).Info(), DeepEquals, expected)
 }

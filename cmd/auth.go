@@ -12,8 +12,6 @@ import (
 	"os"
 )
 
-type User struct{}
-
 func readPassword(out io.Writer, password *string) error {
 	io.WriteString(out, "Password: ")
 	*password = term.GetPassword(os.Stdin.Fd())
@@ -26,28 +24,13 @@ func readPassword(out io.Writer, password *string) error {
 	return nil
 }
 
-func (c *User) Info() *Info {
-	return &Info{
-		Name:    "user",
-		Usage:   "user (create) [args]",
-		Desc:    "manage users.",
-		MinArgs: 1,
-	}
-}
-
-func (c *User) Subcommands() map[string]interface{} {
-	return map[string]interface{}{
-		"create": &UserCreate{},
-	}
-}
-
 type UserCreate struct{}
 
 func (c *UserCreate) Info() *Info {
 	return &Info{
-		Name:    "create",
-		Usage:   "user create username",
-		Desc:    "creates user.",
+		Name:    "user-create",
+		Usage:   "user-create <email>",
+		Desc:    "creates a user.",
 		MinArgs: 1,
 	}
 }
@@ -136,33 +119,13 @@ func (c *Logout) Run(context *Context, client Doer) error {
 	return nil
 }
 
-type Team struct{}
-
-func (c *Team) Subcommands() map[string]interface{} {
-	return map[string]interface{}{
-		"add-user":    &TeamAddUser{},
-		"remove-user": &TeamRemoveUser{},
-		"create":      &TeamCreate{},
-		"list":        &TeamList{},
-	}
-}
-
-func (c *Team) Info() *Info {
-	return &Info{
-		Name:    "team",
-		Usage:   "team (create|list|add-user|remove-user) [args]",
-		Desc:    "manage teams.",
-		MinArgs: 1,
-	}
-}
-
 type TeamCreate struct{}
 
 func (c *TeamCreate) Info() *Info {
 	return &Info{
-		Name:    "create",
-		Usage:   "team create teamname",
-		Desc:    "creates teams.",
+		Name:    "team-create",
+		Usage:   "team-create <teamname>",
+		Desc:    "creates a new team.",
 		MinArgs: 1,
 	}
 }
@@ -182,18 +145,18 @@ func (c *TeamCreate) Run(context *Context, client Doer) error {
 	return nil
 }
 
-type TeamAddUser struct{}
+type TeamUserAdd struct{}
 
-func (c *TeamAddUser) Info() *Info {
+func (c *TeamUserAdd) Info() *Info {
 	return &Info{
-		Name:    "add-user",
-		Usage:   "glb team add-user teamname username",
-		Desc:    "adds user to a team",
+		Name:    "team-user-add",
+		Usage:   "team-user-add <teamname> <useremail>",
+		Desc:    "adds a user to a team.",
 		MinArgs: 2,
 	}
 }
 
-func (c *TeamAddUser) Run(context *Context, client Doer) error {
+func (c *TeamUserAdd) Run(context *Context, client Doer) error {
 	teamName, userName := context.Args[0], context.Args[1]
 	url := GetUrl(fmt.Sprintf("/teams/%s/%s", teamName, userName))
 	request, err := http.NewRequest("PUT", url, nil)
@@ -208,18 +171,18 @@ func (c *TeamAddUser) Run(context *Context, client Doer) error {
 	return nil
 }
 
-type TeamRemoveUser struct{}
+type TeamUserRemove struct{}
 
-func (c *TeamRemoveUser) Info() *Info {
+func (c *TeamUserRemove) Info() *Info {
 	return &Info{
-		Name:    "remove-user",
-		Usage:   "glb team remove-user teamname username",
-		Desc:    "removes user from a team",
+		Name:    "team-user-remove",
+		Usage:   "team-user-remove <teamname> <useremail>",
+		Desc:    "removes a user from a team.",
 		MinArgs: 2,
 	}
 }
 
-func (c *TeamRemoveUser) Run(context *Context, client Doer) error {
+func (c *TeamUserRemove) Run(context *Context, client Doer) error {
 	teamName, userName := context.Args[0], context.Args[1]
 	url := GetUrl(fmt.Sprintf("/teams/%s/%s", teamName, userName))
 	request, err := http.NewRequest("DELETE", url, nil)
@@ -238,8 +201,8 @@ type TeamList struct{}
 
 func (c *TeamList) Info() *Info {
 	return &Info{
-		Name:    "list",
-		Usage:   "team list",
+		Name:    "team-list",
+		Usage:   "team-list",
 		Desc:    "List all teams that you are member.",
 		MinArgs: 0,
 	}
