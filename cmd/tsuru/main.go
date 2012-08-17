@@ -17,7 +17,8 @@ func buildManager(name string) cmd.Manager {
 	m.Register(&EnvGet{})
 	m.Register(&EnvSet{})
 	m.Register(&EnvUnset{})
-	m.Register(&Key{})
+	m.Register(&KeyAdd{})
+	m.Register(&KeyRemove{})
 	m.Register(&Service{})
 	return m
 }

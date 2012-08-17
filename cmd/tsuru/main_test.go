@@ -85,11 +85,18 @@ func (s *S) TestEnvUnsetIsRegistered(c *C) {
 	c.Assert(unset, FitsTypeOf, &EnvUnset{})
 }
 
-func (s *S) TestKeyIsRegistered(c *C) {
+func (s *S) TestKeyAddIsRegistered(c *C) {
 	manager := buildManager("tsuru")
-	key, ok := manager.Commands["key"]
+	add, ok := manager.Commands["key-add"]
 	c.Assert(ok, Equals, true)
-	c.Assert(key, FitsTypeOf, &Key{})
+	c.Assert(add, FitsTypeOf, &KeyAdd{})
+}
+
+func (s *S) TestKeyRemoveIsRegistered(c *C) {
+	manager := buildManager("tsuru")
+	remove, ok := manager.Commands["key-remove"]
+	c.Assert(ok, Equals, true)
+	c.Assert(remove, FitsTypeOf, &KeyRemove{})
 }
 
 func (s *S) TestServiceIsRegistered(c *C) {
