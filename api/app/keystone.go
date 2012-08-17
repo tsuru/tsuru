@@ -110,7 +110,7 @@ func NewTenant(a *App) (tId string, err error) {
 
 func NewUser(a *App) (uId string, err error) {
 	if a.KeystoneEnv.TenantId == "" {
-		err = errors.New("App should have an associated tenant to create an user.")
+		err = errors.New("App should have an associated keystone tenant to create an user.")
 		log.Printf("ERROR: %s", err.Error())
 		return
 	}
@@ -128,5 +128,28 @@ func NewUser(a *App) (uId string, err error) {
 	uId = u.Id
 	a.KeystoneEnv.UserId = uId
 	err = db.Session.Apps().Update(bson.M{"name": a.Name}, &a)
+	return
+}
+
+func NewEC2Creds(a *App) (access, secret string, err error) {
+	if a.KeystoneEnv.TenantId == "" {
+		err = errors.New("App should have an associated keystone tenant to create an user.")
+		log.Printf("ERROR: %s", err.Error())
+		return
+	}
+	if a.KeystoneEnv.UserId == "" {
+		err = errors.New("App should have an associated keystone user to create an user.")
+		log.Printf("ERROR: %s", err.Error())
+		return
+	}
+	err = getClient()
+	if err != nil {
+		return
+	}
+	_, err = Client.NewEc2(a.KeystoneEnv.UserId, a.KeystoneEnv.TenantId)
+	if err != nil {
+		log.Printf("ERROR: %s", err.Error())
+		return
+	}
 	return
 }

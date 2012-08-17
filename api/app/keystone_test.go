@@ -9,12 +9,13 @@ import (
 	. "launchpad.net/gocheck"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 )
 
 var (
 	requestJson []byte
 	// flags to detect when tenant url and user url are called
-	tCalled, uCalled bool
+	tCalled, uCalled, credCalled bool
 )
 
 func (s *S) mockServer(b string) *httptest.Server {
@@ -30,8 +31,11 @@ func (s *S) mockServer(b string) *httptest.Server {
 		} else if r.Method == "POST" && r.URL.Path == "/tenants" {
 			tCalled = true
 			w.Write([]byte(b))
-		} else {
+		} else if r.Method == "POST" && r.URL.Path == "/users" {
 			uCalled = true
+			w.Write([]byte(b))
+		} else if r.Method == "POST" && strings.Contains(r.URL.Path, "/credentials/OS-EC2") {
+			credCalled = true
 			w.Write([]byte(b))
 		}
 	}))
@@ -216,7 +220,7 @@ func (s *S) TestNewUserShouldFailIfAppHasNoTenantId(c *C) {
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
 	_, err = NewUser(&a)
-	c.Assert(err, ErrorMatches, "^App should have an associated tenant to create an user.$")
+	c.Assert(err, ErrorMatches, "^App should have an associated keystone tenant to create an user.$")
 }
 
 func (s *S) TestNewUserShouldStoreUserInDb(c *C) {
@@ -232,4 +236,42 @@ func (s *S) TestNewUserShouldStoreUserInDb(c *C) {
 	c.Assert(uId, Equals, "uuid321")
 	db.Session.Apps().Find(bson.M{"name": a.Name}).One(&a)
 	c.Assert(a.KeystoneEnv.UserId, Equals, uId)
+}
+
+func (s *S) TestNewEC2CredsShouldCallKeystoneApi(c *C) {
+	ts := s.mockServer(`{"credential": {"access": "access-key-here", "secret": "secret-key-here"}}`)
+	defer ts.Close()
+	a := App{Name: "myapp"}
+	a.KeystoneEnv.TenantId = "uuid123"
+	a.KeystoneEnv.UserId = "uuid321"
+	err := db.Session.Apps().Insert(a)
+	c.Assert(err, IsNil)
+	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
+	_, _, err = NewEC2Creds(&a)
+	c.Assert(err, IsNil)
+	c.Assert(credCalled, Equals, true)
+}
+
+func (s *S) TestNewEC2CredsShouldFailIfAppHasNoTenantId(c *C) {
+	ts := s.mockServer(`{"credential": {"access": "access-key-here", "secret": "secret-key-here"}}`)
+	defer ts.Close()
+	a := App{Name: "myapp"}
+	a.KeystoneEnv.UserId = "uuid321"
+	err := db.Session.Apps().Insert(a)
+	c.Assert(err, IsNil)
+	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
+	_, _, err = NewEC2Creds(&a)
+	c.Assert(err, ErrorMatches, "^App should have an associated keystone tenant to create an user.$")
+}
+
+func (s *S) TestNewEC2CredsShouldFailIfAppHasNoUserId(c *C) {
+	ts := s.mockServer(`{"credential": {"access": "access-key-here", "secret": "secret-key-here"}}`)
+	defer ts.Close()
+	a := App{Name: "myapp"}
+	a.KeystoneEnv.TenantId = "uuid123"
+	err := db.Session.Apps().Insert(a)
+	c.Assert(err, IsNil)
+	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
+	_, _, err = NewEC2Creds(&a)
+	c.Assert(err, ErrorMatches, "^App should have an associated keystone user to create an user.$")
 }
