@@ -14,7 +14,9 @@ func buildManager(name string) cmd.Manager {
 	m.Register(&AppLog{})
 	m.Register(&AppGrant{})
 	m.Register(&AppRevoke{})
-	m.Register(&Env{})
+	m.Register(&EnvGet{})
+	m.Register(&EnvSet{})
+	m.Register(&EnvUnset{})
 	m.Register(&Key{})
 	m.Register(&Service{})
 	return m

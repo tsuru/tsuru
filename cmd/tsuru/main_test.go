@@ -64,11 +64,25 @@ func (s *S) TestAppRunIsRegistered(c *C) {
 	c.Assert(run, FitsTypeOf, &AppRun{})
 }
 
-func (s *S) TestEnvIsRegistered(c *C) {
+func (s *S) TestEnvGetIsRegistered(c *C) {
 	manager := buildManager("tsuru")
-	env, ok := manager.Commands["env"]
+	get, ok := manager.Commands["env-get"]
 	c.Assert(ok, Equals, true)
-	c.Assert(env, FitsTypeOf, &Env{})
+	c.Assert(get, FitsTypeOf, &EnvGet{})
+}
+
+func (s *S) TestEnvSetIsRegistered(c *C) {
+	manager := buildManager("tsuru")
+	set, ok := manager.Commands["env-set"]
+	c.Assert(ok, Equals, true)
+	c.Assert(set, FitsTypeOf, &EnvSet{})
+}
+
+func (s *S) TestEnvUnsetIsRegistered(c *C) {
+	manager := buildManager("tsuru")
+	unset, ok := manager.Commands["env-unset"]
+	c.Assert(ok, Equals, true)
+	c.Assert(unset, FitsTypeOf, &EnvUnset{})
 }
 
 func (s *S) TestKeyIsRegistered(c *C) {
