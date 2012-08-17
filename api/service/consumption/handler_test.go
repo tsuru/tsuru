@@ -97,6 +97,20 @@ func (s *S) TestCreateInstanceHandlerReturnsErrorWhenServiceDoesntExists(c *C) {
 	c.Assert(err, ErrorMatches, "^Service mysql does not exist.$")
 }
 
+func (s *S) TestCreateInstanceHandlerReturnErrorIfTheServiceAPICallFailAndDoesNotSaveTheInstanceInTheDatabase(c *C) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	defer ts.Close()
+	srvc := service.Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}}
+	err := srvc.Create()
+	c.Assert(err, IsNil)
+	defer db.Session.Services().Remove(bson.M{"_id": "mysql"})
+	recorder, request := makeRequestToCreateInstanceHandler(c)
+	err = CreateInstanceHandler(recorder, request, s.user)
+	c.Assert(err, NotNil)
+}
+
 func makeRequestToRemoveInstanceHandler(name string, c *C) (*httptest.ResponseRecorder, *http.Request) {
 	url := fmt.Sprintf("/services/c/instances/%s?:name=%s", name, name)
 	request, err := http.NewRequest("DELETE", url, nil)
