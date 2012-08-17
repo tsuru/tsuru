@@ -19,7 +19,14 @@ func buildManager(name string) cmd.Manager {
 	m.Register(&EnvUnset{})
 	m.Register(&KeyAdd{})
 	m.Register(&KeyRemove{})
-	m.Register(&Service{})
+	m.Register(&ServiceList{})
+	m.Register(&ServiceAdd{})
+	m.Register(&ServiceRemove{})
+	m.Register(&ServiceBind{})
+	m.Register(&ServiceUnbind{})
+	m.Register(&ServiceDoc{})
+	m.Register(&ServiceInfo{})
+	m.Register(&ServiceInstanceStatus{})
 	return m
 }
 

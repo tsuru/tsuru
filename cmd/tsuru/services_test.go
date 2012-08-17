@@ -8,22 +8,6 @@ import (
 	"strings"
 )
 
-func (s *S) TestServiceInfo(c *C) {
-	expected := &cmd.Info{
-		Name:    "service",
-		Usage:   "service (add|remove|list|bind|unbind|instance|doc|info)",
-		Desc:    "manage your services",
-		MinArgs: 1,
-	}
-	command := &Service{}
-	c.Assert(command.Info(), DeepEquals, expected)
-}
-
-func (s *S) TestServiceShouldBeInfoer(c *C) {
-	var infoer cmd.Infoer
-	c.Assert(&Service{}, Implements, &infoer)
-}
-
 func (s *S) TestServiceList(c *C) {
 	output := `[{"service": "mysql", "instances": ["mysql01", "mysql02"]}, {"service": "oracle", "instances": []}]`
 	expectedPrefix := `+---------+------------------+
@@ -80,9 +64,10 @@ func (s *S) TestServiceListWithEmptyResponse(c *C) {
 
 func (s *S) TestInfoServiceList(c *C) {
 	expected := &cmd.Info{
-		Name:  "list",
-		Usage: "service list",
-		Desc:  "Get all available services, and user's instances for this services",
+		Name:    "service-list",
+		Usage:   "service-list",
+		Desc:    "Get all available services, and user's instances for this services",
+		MinArgs: 0,
 	}
 	command := &ServiceList{}
 	c.Assert(command.Info(), DeepEquals, expected)
@@ -96,14 +81,6 @@ func (s *S) TestServiceListShouldBeInfoer(c *C) {
 func (s *S) TestServiceListShouldBeCommand(c *C) {
 	var command cmd.Command
 	c.Assert(&ServiceList{}, Implements, &command)
-}
-
-func (s *S) TestServiceListIsASubcommandOfService(c *C) {
-	command := &Service{}
-	subc := command.Subcommands()
-	list, ok := subc["list"]
-	c.Assert(ok, Equals, true)
-	c.Assert(list, FitsTypeOf, &ServiceList{})
 }
 
 func (s *S) TestServiceBind(c *C) {
@@ -151,7 +128,7 @@ func (s *S) TestServiceBindWithRequestFailure(c *C) {
 func (s *S) TestServiceBindInfo(c *C) {
 	expected := &cmd.Info{
 		Name:    "bind",
-		Usage:   "service bind <instancename> <appname>",
+		Usage:   "bind <instancename> <appname>",
 		Desc:    "bind a service instance to an app",
 		MinArgs: 2,
 	}
@@ -166,14 +143,6 @@ func (s *S) TestServiceBindIsAnInfoer(c *C) {
 func (s *S) TestServiceBindIsACommand(c *C) {
 	var command cmd.Command
 	c.Assert(&ServiceBind{}, Implements, &command)
-}
-
-func (s *S) TestServiceBindIsASubcommandOfService(c *C) {
-	command := &Service{}
-	subc := command.Subcommands()
-	bind, ok := subc["bind"]
-	c.Assert(ok, Equals, true)
-	c.Assert(bind, FitsTypeOf, &ServiceBind{})
 }
 
 func (s *S) TestServiceUnbind(c *C) {
@@ -221,7 +190,7 @@ func (s *S) TestServiceUnbindWithRequestFailure(c *C) {
 func (s *S) TestServiceUnbindInfo(c *C) {
 	expected := &cmd.Info{
 		Name:    "unbind",
-		Usage:   "service unbind <instancename> <appname>",
+		Usage:   "unbind <instancename> <appname>",
 		Desc:    "unbind a service instance from an app",
 		MinArgs: 2,
 	}
@@ -238,30 +207,15 @@ func (s *S) TestServiceUnbindIsAComand(c *C) {
 	c.Assert(&ServiceUnbind{}, Implements, &command)
 }
 
-func (s *S) TestServiceUnbindIsASubcommandOfService(c *C) {
-	subc := (&Service{}).Subcommands()
-	unbind, ok := subc["unbind"]
-	c.Assert(ok, Equals, true)
-	c.Assert(unbind, FitsTypeOf, &ServiceUnbind{})
-}
-
-func (s *S) TestServiceAddShouldBeASubcommandOfService(c *C) {
-	command := &Service{}
-	subcmds := command.Subcommands()
-	add, ok := subcmds["add"]
-	c.Assert(ok, Equals, true)
-	c.Assert(add, FitsTypeOf, &ServiceAdd{})
-}
-
 func (s *S) TestServiceAddInfo(c *C) {
-	usage := `service add <servicename> <serviceinstancename>
+	usage := `service-add <servicename> <serviceinstancename>
 e.g.:
 
-    $ service add mongodb tsuru_mongodb
+    $ tsuru service-add mongodb tsuru_mongodb
 
 Will add a new instance of the "mongodb" service, named "tsuru_mongodb".`
 	expected := &cmd.Info{
-		Name:    "add",
+		Name:    "service-add",
 		Usage:   usage,
 		Desc:    "Create a service instance to one or more apps make use of.",
 		MinArgs: 2,
@@ -289,31 +243,14 @@ func (s *S) TestServiceAddRun(c *C) {
 	c.Assert(obtained, Equals, result)
 }
 
-func (s *S) TestServiceInstanceInfo(c *C) {
-	usg := "service instance (status)"
-	expected := &cmd.Info{
-		Name:    "instance",
-		Usage:   usg,
-		Desc:    "Retrieve information about services instances",
-		MinArgs: 1,
-	}
-	got := (&ServiceInstance{}).Info()
-	c.Assert(got, DeepEquals, expected)
-}
-
-func (s *S) TestServiceInstanceSubcommands(c *C) {
-	subcmds := (&ServiceInstance{}).Subcommands()
-	c.Assert(subcmds["status"], FitsTypeOf, &ServiceInstanceStatus{})
-}
-
 func (s *S) TestServiceInstanceStatusInfo(c *C) {
-	usg := `service instance status <serviceinstancename>
+	usg := `service-status <serviceinstancename>
 e.g.:
 
-    $ service instance status my_mongodb
+    $ tsuru service-status my_mongodb
 `
 	expected := &cmd.Info{
-		Name:    "status",
+		Name:    "service-status",
 		Usage:   usg,
 		Desc:    "Check status of a given service instance.",
 		MinArgs: 1,
@@ -339,22 +276,14 @@ func (s *S) TestServiceInstanceStatusRun(c *C) {
 	c.Assert(obtained, Equals, result)
 }
 
-func (s *S) TestServiceInstanceIsASubcommandOfService(c *C) {
-	command := &Service{}
-	subc := command.Subcommands()
-	list, ok := subc["instance"]
-	c.Assert(ok, Equals, true)
-	c.Assert(list, FitsTypeOf, &ServiceInstance{})
-}
-
 func (s *S) TestServiceInfoInfo(c *C) {
-	usg := `service info <service>
+	usg := `service-info <service>
 e.g.:
 
-    $ service info mongodb
+    $ tsuru service-info mongodb
 `
 	expected := &cmd.Info{
-		Name:    "info",
+		Name:    "service-info",
 		Usage:   usg,
 		Desc:    "List all instances of a service",
 		MinArgs: 1,
@@ -386,19 +315,11 @@ func (s *S) TestServiceInfoRun(c *C) {
 	c.Assert(obtained, Equals, expected)
 }
 
-func (s *S) TestServiceInfoIsASubcommandOfService(c *C) {
-	command := &Service{}
-	subc := command.Subcommands()
-	info, ok := subc["info"]
-	c.Assert(ok, Equals, true)
-	c.Assert(info, FitsTypeOf, &ServiceInfo{})
-}
-
 func (s *S) TestServiceDocInfo(c *C) {
 	i := (&ServiceDoc{}).Info()
 	expected := &cmd.Info{
-		Name:    "doc",
-		Usage:   "service doc <servicename>",
+		Name:    "service-doc",
+		Usage:   "service-doc <servicename>",
 		Desc:    "Show documentation of a service",
 		MinArgs: 1,
 	}
@@ -423,19 +344,11 @@ Service test is foo bar.
 	c.Assert(obtained, Equals, expected)
 }
 
-func (s *S) TestServiceDocIsASubcommandOfService(c *C) {
-	command := &Service{}
-	subc := command.Subcommands()
-	info, ok := subc["doc"]
-	c.Assert(ok, Equals, true)
-	c.Assert(info, FitsTypeOf, &ServiceDoc{})
-}
-
 func (s *S) TestServiceRemoveInfo(c *C) {
 	i := (&ServiceRemove{}).Info()
 	expected := &cmd.Info{
-		Name:    "remove",
-		Usage:   "service remove <serviceinstancename>",
+		Name:    "service-remove",
+		Usage:   "service-remove <serviceinstancename>",
 		Desc:    "Removes a service instance",
 		MinArgs: 1,
 	}
@@ -455,12 +368,4 @@ func (s *S) TestServiceRemoveRun(c *C) {
 	c.Assert(err, IsNil)
 	obtained := manager.Stdout.(*bytes.Buffer).String()
 	c.Assert(obtained, Equals, result+"\n")
-}
-
-func (s *S) TestServiceRemoveIsASubcommandOfService(c *C) {
-	command := &Service{}
-	subc := command.Subcommands()
-	info, ok := subc["remove"]
-	c.Assert(ok, Equals, true)
-	c.Assert(info, FitsTypeOf, &ServiceRemove{})
 }

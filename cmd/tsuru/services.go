@@ -12,36 +12,12 @@ import (
 	"strings"
 )
 
-type Service struct{}
-
-func (s *Service) Info() *cmd.Info {
-	return &cmd.Info{
-		Name:    "service",
-		Usage:   "service (add|remove|list|bind|unbind|instance|doc|info)",
-		Desc:    "manage your services",
-		MinArgs: 1,
-	}
-}
-
-func (s *Service) Subcommands() map[string]interface{} {
-	return map[string]interface{}{
-		"list":     &ServiceList{},
-		"add":      &ServiceAdd{},
-		"remove":   &ServiceRemove{},
-		"bind":     &ServiceBind{},
-		"info":     &ServiceInfo{},
-		"unbind":   &ServiceUnbind{},
-		"instance": &ServiceInstance{},
-		"doc":      &ServiceDoc{},
-	}
-}
-
 type ServiceList struct{}
 
 func (s *ServiceList) Info() *cmd.Info {
 	return &cmd.Info{
-		Name:  "list",
-		Usage: "service list",
+		Name:  "service-list",
+		Usage: "service-list",
 		Desc:  "Get all available services, and user's instances for this services",
 	}
 }
@@ -74,14 +50,14 @@ func (s *ServiceList) Run(ctx *cmd.Context, client cmd.Doer) error {
 type ServiceAdd struct{}
 
 func (sa *ServiceAdd) Info() *cmd.Info {
-	usage := `service add <servicename> <serviceinstancename>
+	usage := `service-add <servicename> <serviceinstancename>
 e.g.:
 
-    $ service add mongodb tsuru_mongodb
+    $ tsuru service-add mongodb tsuru_mongodb
 
 Will add a new instance of the "mongodb" service, named "tsuru_mongodb".`
 	return &cmd.Info{
-		Name:    "add",
+		Name:    "service-add",
 		Usage:   usage,
 		Desc:    "Create a service instance to one or more apps make use of.",
 		MinArgs: 2,
@@ -133,7 +109,7 @@ func (sb *ServiceBind) Run(ctx *cmd.Context, client cmd.Doer) error {
 func (sb *ServiceBind) Info() *cmd.Info {
 	return &cmd.Info{
 		Name:    "bind",
-		Usage:   "service bind <instancename> <appname>",
+		Usage:   "bind <instancename> <appname>",
 		Desc:    "bind a service instance to an app",
 		MinArgs: 2,
 	}
@@ -166,39 +142,22 @@ func (su *ServiceUnbind) Run(ctx *cmd.Context, client cmd.Doer) error {
 func (su *ServiceUnbind) Info() *cmd.Info {
 	return &cmd.Info{
 		Name:    "unbind",
-		Usage:   "service unbind <instancename> <appname>",
+		Usage:   "unbind <instancename> <appname>",
 		Desc:    "unbind a service instance from an app",
 		MinArgs: 2,
-	}
-}
-
-type ServiceInstance struct{}
-
-func (c *ServiceInstance) Info() *cmd.Info {
-	return &cmd.Info{
-		Name:    "instance",
-		Usage:   "service instance (status)",
-		Desc:    "Retrieve information about services instances",
-		MinArgs: 1,
-	}
-}
-
-func (s *ServiceInstance) Subcommands() map[string]interface{} {
-	return map[string]interface{}{
-		"status": &ServiceInstanceStatus{},
 	}
 }
 
 type ServiceInstanceStatus struct{}
 
 func (c *ServiceInstanceStatus) Info() *cmd.Info {
-	usg := `service instance status <serviceinstancename>
+	usg := `service-status <serviceinstancename>
 e.g.:
 
-    $ service instance status my_mongodb
+    $ tsuru service-status my_mongodb
 `
 	return &cmd.Info{
-		Name:    "status",
+		Name:    "service-status",
 		Usage:   usg,
 		Desc:    "Check status of a given service instance.",
 		MinArgs: 1,
@@ -235,13 +194,13 @@ func (c *ServiceInstanceStatus) Run(ctx *cmd.Context, client cmd.Doer) error {
 type ServiceInfo struct{}
 
 func (c *ServiceInfo) Info() *cmd.Info {
-	usg := `service info <service>
+	usg := `service-info <service>
 e.g.:
 
-    $ service info mongodb
+    $ tsuru service-info mongodb
 `
 	return &cmd.Info{
-		Name:    "info",
+		Name:    "service-info",
 		Usage:   usg,
 		Desc:    "List all instances of a service",
 		MinArgs: 1,
@@ -291,8 +250,8 @@ type ServiceDoc struct{}
 
 func (c *ServiceDoc) Info() *cmd.Info {
 	return &cmd.Info{
-		Name:    "doc",
-		Usage:   "service doc <servicename>",
+		Name:    "service-doc",
+		Usage:   "service-doc <servicename>",
 		Desc:    "Show documentation of a service",
 		MinArgs: 1,
 	}
@@ -323,8 +282,8 @@ type ServiceRemove struct{}
 
 func (c *ServiceRemove) Info() *cmd.Info {
 	return &cmd.Info{
-		Name:    "remove",
-		Usage:   "service remove <serviceinstancename>",
+		Name:    "service-remove",
+		Usage:   "service-remove <serviceinstancename>",
 		Desc:    "Removes a service instance",
 		MinArgs: 1,
 	}

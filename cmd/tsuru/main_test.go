@@ -99,9 +99,58 @@ func (s *S) TestKeyRemoveIsRegistered(c *C) {
 	c.Assert(remove, FitsTypeOf, &KeyRemove{})
 }
 
-func (s *S) TestServiceIsRegistered(c *C) {
+func (s *S) TestServiceListIsRegistered(c *C) {
 	manager := buildManager("tsuru")
-	service, ok := manager.Commands["service"]
+	list, ok := manager.Commands["service-list"]
 	c.Assert(ok, Equals, true)
-	c.Assert(service, FitsTypeOf, &Service{})
+	c.Assert(list, FitsTypeOf, &ServiceList{})
+}
+
+func (s *S) TestServiceAddIsRegistered(c *C) {
+	manager := buildManager("tsuru")
+	add, ok := manager.Commands["service-add"]
+	c.Assert(ok, Equals, true)
+	c.Assert(add, FitsTypeOf, &ServiceAdd{})
+}
+
+func (s *S) TestServiceRemoveIsRegistered(c *C) {
+	manager := buildManager("tsuru")
+	remove, ok := manager.Commands["service-remove"]
+	c.Assert(ok, Equals, true)
+	c.Assert(remove, FitsTypeOf, &ServiceRemove{})
+}
+
+func (s *S) TestServiceBindIsRegistered(c *C) {
+	manager := buildManager("tsuru")
+	bind, ok := manager.Commands["bind"]
+	c.Assert(ok, Equals, true)
+	c.Assert(bind, FitsTypeOf, &ServiceBind{})
+}
+
+func (s *S) TestServiceUnbindIsRegistered(c *C) {
+	manager := buildManager("tsuru")
+	unbind, ok := manager.Commands["unbind"]
+	c.Assert(ok, Equals, true)
+	c.Assert(unbind, FitsTypeOf, &ServiceUnbind{})
+}
+
+func (s *S) TestServiceDocIsRegistered(c *C) {
+	manager := buildManager("tsuru")
+	doc, ok := manager.Commands["service-doc"]
+	c.Assert(ok, Equals, true)
+	c.Assert(doc, FitsTypeOf, &ServiceDoc{})
+}
+
+func (s *S) TestServiceInfoIsRegistered(c *C) {
+	manager := buildManager("tsuru")
+	info, ok := manager.Commands["service-info"]
+	c.Assert(ok, Equals, true)
+	c.Assert(info, FitsTypeOf, &ServiceInfo{})
+}
+
+func (s *S) TestServiceInstanceStatusIsRegistered(c *C) {
+	manager := buildManager("tsuru")
+	status, ok := manager.Commands["service-status"]
+	c.Assert(ok, Equals, true)
+	c.Assert(status, FitsTypeOf, &ServiceInstanceStatus{})
 }
