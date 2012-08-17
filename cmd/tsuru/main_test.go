@@ -15,11 +15,46 @@ func (s *S) TestCommandsFromBaseManagerAreRegistered(c *C) {
 	}
 }
 
-func (s *S) TestAppIsRegistered(c *C) {
+func (s *S) TestAppCreateIsRegistered(c *C) {
 	manager := buildManager("tsuru")
-	app, ok := manager.Commands["app"]
+	create, ok := manager.Commands["app-create"]
 	c.Assert(ok, Equals, true)
-	c.Assert(app, FitsTypeOf, &App{})
+	c.Assert(create, FitsTypeOf, &AppCreate{})
+}
+
+func (s *S) TestAppRemoveIsRegistered(c *C) {
+	manager := buildManager("tsuru")
+	remove, ok := manager.Commands["app-remove"]
+	c.Assert(ok, Equals, true)
+	c.Assert(remove, FitsTypeOf, &AppRemove{})
+}
+
+func (s *S) TestAppListIsRegistered(c *C) {
+	manager := buildManager("tsuru")
+	list, ok := manager.Commands["app-list"]
+	c.Assert(ok, Equals, true)
+	c.Assert(list, FitsTypeOf, &AppList{})
+}
+
+func (s *S) TestAppAddTeamIsRegistered(c *C) {
+	manager := buildManager("tsuru")
+	grant, ok := manager.Commands["app-add-team"]
+	c.Assert(ok, Equals, true)
+	c.Assert(grant, FitsTypeOf, &AppAddTeam{})
+}
+
+func (s *S) TestAppRemoveTeamIsRegistered(c *C) {
+	manager := buildManager("tsuru")
+	grant, ok := manager.Commands["app-remove-team"]
+	c.Assert(ok, Equals, true)
+	c.Assert(grant, FitsTypeOf, &AppRemoveTeam{})
+}
+
+func (s *S) TestAppLogIsRegistered(c *C) {
+	manager := buildManager("tsuru")
+	log, ok := manager.Commands["log"]
+	c.Assert(ok, Equals, true)
+	c.Assert(log, FitsTypeOf, &AppLog{})
 }
 
 func (s *S) TestAppRunIsRegistered(c *C) {

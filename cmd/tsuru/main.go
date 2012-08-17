@@ -7,8 +7,13 @@ import (
 
 func buildManager(name string) cmd.Manager {
 	m := cmd.BuildBaseManager(name)
-	m.Register(&App{})
 	m.Register(&AppRun{})
+	m.Register(&AppCreate{})
+	m.Register(&AppRemove{})
+	m.Register(&AppList{})
+	m.Register(&AppLog{})
+	m.Register(&AppAddTeam{})
+	m.Register(&AppRemoveTeam{})
 	m.Register(&Env{})
 	m.Register(&Key{})
 	m.Register(&Service{})
