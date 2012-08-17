@@ -11,18 +11,18 @@ import (
 	"time"
 )
 
-type AppAddTeam struct{}
+type AppGrant struct{}
 
-func (c *AppAddTeam) Info() *cmd.Info {
+func (c *AppGrant) Info() *cmd.Info {
 	return &cmd.Info{
-		Name:    "app-add-team",
-		Usage:   "app-add-team <appname> <teamname>",
-		Desc:    "adds a team to an app.",
+		Name:    "app-grant",
+		Usage:   "app-grant <appname> <teamname>",
+		Desc:    "grants access to an app to a team.",
 		MinArgs: 2,
 	}
 }
 
-func (c *AppAddTeam) Run(context *cmd.Context, client cmd.Doer) error {
+func (c *AppGrant) Run(context *cmd.Context, client cmd.Doer) error {
 	appName, teamName := context.Args[0], context.Args[1]
 	url := cmd.GetUrl(fmt.Sprintf("/apps/%s/%s", appName, teamName))
 	request, err := http.NewRequest("PUT", url, nil)
@@ -37,18 +37,18 @@ func (c *AppAddTeam) Run(context *cmd.Context, client cmd.Doer) error {
 	return nil
 }
 
-type AppRemoveTeam struct{}
+type AppRevoke struct{}
 
-func (c *AppRemoveTeam) Info() *cmd.Info {
+func (c *AppRevoke) Info() *cmd.Info {
 	return &cmd.Info{
-		Name:    "app-remove-team",
-		Usage:   "app-remove-team <appname> <teamname>",
-		Desc:    "removes a team from an app.",
+		Name:    "app-revoke",
+		Usage:   "app-revoke <appname> <teamname>",
+		Desc:    "revokes access to an app from a team.",
 		MinArgs: 2,
 	}
 }
 
-func (c *AppRemoveTeam) Run(context *cmd.Context, client cmd.Doer) error {
+func (c *AppRevoke) Run(context *cmd.Context, client cmd.Doer) error {
 	appName, teamName := context.Args[0], context.Args[1]
 	url := cmd.GetUrl(fmt.Sprintf("/apps/%s/%s", appName, teamName))
 	request, err := http.NewRequest("DELETE", url, nil)

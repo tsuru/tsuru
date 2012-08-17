@@ -36,18 +36,18 @@ func (s *S) TestAppListIsRegistered(c *C) {
 	c.Assert(list, FitsTypeOf, &AppList{})
 }
 
-func (s *S) TestAppAddTeamIsRegistered(c *C) {
+func (s *S) TestAppGrantIsRegistered(c *C) {
 	manager := buildManager("tsuru")
-	grant, ok := manager.Commands["app-add-team"]
+	grant, ok := manager.Commands["app-grant"]
 	c.Assert(ok, Equals, true)
-	c.Assert(grant, FitsTypeOf, &AppAddTeam{})
+	c.Assert(grant, FitsTypeOf, &AppGrant{})
 }
 
-func (s *S) TestAppRemoveTeamIsRegistered(c *C) {
+func (s *S) TestAppRevokeIsRegistered(c *C) {
 	manager := buildManager("tsuru")
-	grant, ok := manager.Commands["app-remove-team"]
+	grant, ok := manager.Commands["app-revoke"]
 	c.Assert(ok, Equals, true)
-	c.Assert(grant, FitsTypeOf, &AppRemoveTeam{})
+	c.Assert(grant, FitsTypeOf, &AppRevoke{})
 }
 
 func (s *S) TestAppLogIsRegistered(c *C) {
