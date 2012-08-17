@@ -85,7 +85,7 @@ func (s *S) TestLogoutWhenNotLoggedIn(c *C) {
 func (s *S) TestTeamAddUser(c *C) {
 	expected := `User "andorito" was added to the "cobrateam" team` + "\n"
 	context := Context{[]string{}, []string{"cobrateam", "andorito"}, manager.Stdout, manager.Stderr}
-	command := TeamAddUser{}
+	command := TeamUserAdd{}
 	client := NewClient(&http.Client{Transport: &transport{msg: "", status: http.StatusOK}})
 	err := command.Run(&context, client)
 	c.Assert(err, IsNil)
@@ -99,13 +99,13 @@ func (s *S) TestTeamAddUserInfo(c *C) {
 		Desc:    "adds a user to a team.",
 		MinArgs: 2,
 	}
-	c.Assert((&TeamAddUser{}).Info(), DeepEquals, expected)
+	c.Assert((&TeamUserAdd{}).Info(), DeepEquals, expected)
 }
 
 func (s *S) TestTeamRemoveUser(c *C) {
 	expected := `User "andorito" was removed from the "cobrateam" team` + "\n"
 	context := Context{[]string{}, []string{"cobrateam", "andorito"}, manager.Stdout, manager.Stderr}
-	command := TeamRemoveUser{}
+	command := TeamUserRemove{}
 	client := NewClient(&http.Client{Transport: &transport{msg: "", status: http.StatusOK}})
 	err := command.Run(&context, client)
 	c.Assert(err, IsNil)
@@ -119,7 +119,7 @@ func (s *S) TestTeamRemoveUserInfo(c *C) {
 		Desc:    "removes a user from a team.",
 		MinArgs: 2,
 	}
-	c.Assert((&TeamRemoveUser{}).Info(), DeepEquals, expected)
+	c.Assert((&TeamUserRemove{}).Info(), DeepEquals, expected)
 }
 
 func (s *S) TestTeamCreate(c *C) {

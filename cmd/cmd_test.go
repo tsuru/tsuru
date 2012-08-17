@@ -430,14 +430,14 @@ func (s *S) TestTeamAddUserIsRegistered(c *C) {
 	manager := BuildBaseManager("tsuru")
 	adduser, ok := manager.Commands["team-user-add"]
 	c.Assert(ok, Equals, true)
-	c.Assert(adduser, FitsTypeOf, &TeamAddUser{})
+	c.Assert(adduser, FitsTypeOf, &TeamUserAdd{})
 }
 
 func (s *S) TestTeamRemoveUserIsRegistered(c *C) {
 	manager := BuildBaseManager("tsuru")
 	removeuser, ok := manager.Commands["team-user-remove"]
 	c.Assert(ok, Equals, true)
-	c.Assert(removeuser, FitsTypeOf, &TeamRemoveUser{})
+	c.Assert(removeuser, FitsTypeOf, &TeamUserRemove{})
 }
 
 func (s *S) TestTargetIsRegistered(c *C) {
