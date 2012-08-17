@@ -118,7 +118,7 @@ func NewUser(a *App) (uId string, err error) {
 	if err != nil {
 		return
 	}
-	log.Print("DEBUG: attempting to create user %s via keystone api...", a.Name)
+	log.Printf("DEBUG: attempting to create user %s via keystone api...", a.Name)
 	// TODO(flaviamissi): should generate a random password
 	_, err = Client.NewUser(a.Name, a.Name, "", a.KeystoneEnv.TenantId, true)
 	if err != nil {
