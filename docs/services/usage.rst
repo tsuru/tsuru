@@ -16,7 +16,7 @@ After that, all you need is create a user and authenticate:
 
 ::
 
-    $ crane user create youremail@gmail.com
+    $ crane user-create youremail@gmail.com
     $ crane login youremail@gmail.com
 
 To generate a service template:
