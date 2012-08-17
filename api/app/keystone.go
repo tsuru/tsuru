@@ -146,10 +146,14 @@ func NewEC2Creds(a *App) (access, secret string, err error) {
 	if err != nil {
 		return
 	}
-	_, err = Client.NewEc2(a.KeystoneEnv.UserId, a.KeystoneEnv.TenantId)
+	ec2, err := Client.NewEc2(a.KeystoneEnv.UserId, a.KeystoneEnv.TenantId)
 	if err != nil {
 		log.Printf("ERROR: %s", err.Error())
 		return
 	}
+	access = ec2.Access
+	secret = ec2.Secret
+	a.KeystoneEnv.AccessKey = access
+	err = db.Session.Apps().Update(bson.M{"name": a.Name}, &a)
 	return
 }

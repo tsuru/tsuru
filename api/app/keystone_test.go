@@ -275,3 +275,21 @@ func (s *S) TestNewEC2CredsShouldFailIfAppHasNoUserId(c *C) {
 	_, _, err = NewEC2Creds(&a)
 	c.Assert(err, ErrorMatches, "^App should have an associated keystone user to create an user.$")
 }
+
+func (s *S) TestNewEC2CredsShouldSaveAccessKeyInDbAndReturnAccessAndSecretKeys(c *C) {
+	ts := s.mockServer(`{"credential": {"access": "access-key-here", "secret": "secret-key-here"}}`)
+	defer ts.Close()
+	a := App{Name: "myapp"}
+	a.KeystoneEnv.TenantId = "uuid123"
+	a.KeystoneEnv.UserId = "uuid321"
+	err := db.Session.Apps().Insert(a)
+	c.Assert(err, IsNil)
+	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
+	aKey, sKey, err := NewEC2Creds(&a)
+	c.Assert(err, IsNil)
+	c.Assert(aKey, Equals, "access-key-here")
+	c.Assert(sKey, Equals, "secret-key-here")
+	err = db.Session.Apps().Find(bson.M{"name": a.Name}).One(&a)
+	c.Assert(err, IsNil)
+	c.Assert(a.KeystoneEnv.AccessKey, Equals, aKey)
+}
