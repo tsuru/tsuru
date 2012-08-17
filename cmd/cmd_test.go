@@ -412,7 +412,7 @@ func (s *S) TestUserCreateIsRegistered(c *C) {
 	c.Assert(user, FitsTypeOf, &UserCreate{})
 }
 
-func (s *S) TestTeamCreatedIsRegistered(c *C) {
+func (s *S) TestTeamCreateIsRegistered(c *C) {
 	manager := BuildBaseManager("tsuru")
 	create, ok := manager.Commands["team-create"]
 	c.Assert(ok, Equals, true)
