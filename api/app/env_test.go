@@ -9,7 +9,13 @@ func (s *S) TestRewriteEnvMessage(c *C) {
 	dir, err := commandmocker.Add("juju", output)
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(dir)
-	app := App{Name: "time", Teams: []string{s.team.Name}}
+	app := App{
+		Name:  "time",
+		Teams: []string{s.team.Name},
+		Units: []Unit{
+			Unit{AgentState: "started", MachineAgentState: "running", InstanceState: "running"},
+		},
+	}
 	msg := Message{
 		app:     &app,
 		success: make(chan bool),

@@ -268,7 +268,13 @@ pos-restart: testdata/pos.sh
 	dir, err := commandmocker.Add("juju", output)
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(dir)
-	a := App{Name: "something", Framework: "django"}
+	a := App{
+		Name:      "something",
+		Framework: "django",
+		Units: []Unit{
+			Unit{AgentState: "started", MachineAgentState: "running", InstanceState: "running"},
+		},
+	}
 	conf, err := a.conf()
 	c.Assert(err, IsNil)
 	c.Assert(conf.PreRestart, Equals, "testdata/pre.sh")
@@ -305,7 +311,13 @@ pos-restart: pos.sh
 `
 	dir, err := commandmocker.Add("juju", output)
 	c.Assert(err, IsNil)
-	a := App{Name: "something", Framework: "django"}
+	a := App{
+		Name:      "something",
+		Framework: "django",
+		Units: []Unit{
+			Unit{AgentState: "started", MachineAgentState: "running", InstanceState: "running"},
+		},
+	}
 	conf, err := a.conf()
 	c.Assert(err, IsNil)
 	commandmocker.Remove(dir)
@@ -357,7 +369,13 @@ pos-restart:
 	dir, err := commandmocker.Add("juju", output)
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(dir)
-	a := App{Name: "something", Framework: "django"}
+	a := App{
+		Name:      "something",
+		Framework: "django",
+		Units: []Unit{
+			Unit{AgentState: "started", MachineAgentState: "running", InstanceState: "running"},
+		},
+	}
 	conf, err := a.conf()
 	c.Assert(err, IsNil)
 	w := bytes.NewBuffer([]byte{})
@@ -378,7 +396,13 @@ pos-restart:
 `
 	dir, err := commandmocker.Add("juju", output)
 	c.Assert(err, IsNil)
-	a := App{Name: "something", Framework: "django"}
+	a := App{
+		Name:      "something",
+		Framework: "django",
+		Units: []Unit{
+			Unit{AgentState: "started", MachineAgentState: "running", InstanceState: "running"},
+		},
+	}
 	conf, err := a.conf()
 	c.Assert(err, IsNil)
 	commandmocker.Remove(dir)
@@ -428,7 +452,13 @@ pre-restart: somescript.sh
 	dir, err := commandmocker.Add("juju", output)
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(dir)
-	a := App{Name: "something", Framework: "django"}
+	a := App{
+		Name:      "something",
+		Framework: "django",
+		Units: []Unit{
+			Unit{AgentState: "started", MachineAgentState: "running", InstanceState: "running"},
+		},
+	}
 	conf, err := a.conf()
 	c.Assert(err, IsNil)
 	w := bytes.NewBuffer([]byte{})
@@ -446,7 +476,13 @@ something that must be discarded
 ========
 nothing here
 `
-	a := App{Name: "something", Framework: "django"}
+	a := App{
+		Name:      "something",
+		Framework: "django",
+		Units: []Unit{
+			Unit{AgentState: "started", MachineAgentState: "running", InstanceState: "running"},
+		},
+	}
 	dir, err := commandmocker.Add("juju", output)
 	c.Assert(err, IsNil)
 	conf, err := a.conf()
@@ -463,7 +499,13 @@ something that must be discarded
 pos-restart:
     somefile.sh
 `
-	a := App{Name: "something", Framework: "django"}
+	a := App{
+		Name:      "something",
+		Framework: "django",
+		Units: []Unit{
+			Unit{AgentState: "started", MachineAgentState: "running", InstanceState: "running"},
+		},
+	}
 	dir, err := commandmocker.Add("juju", output)
 	c.Assert(err, IsNil)
 	conf, err := a.conf()
@@ -474,7 +516,14 @@ pos-restart:
 }
 
 func (s *S) TestUpdateHooks(c *C) {
-	a := &App{Name: "someApp", Framework: "django", Teams: []string{s.team.Name}}
+	a := &App{
+		Name:      "someApp",
+		Framework: "django",
+		Teams:     []string{s.team.Name},
+		Units: []Unit{
+			Unit{AgentState: "started", MachineAgentState: "running", InstanceState: "running"},
+		},
+	}
 	err := a.Create()
 	c.Assert(err, IsNil)
 	err = a.updateHooks()

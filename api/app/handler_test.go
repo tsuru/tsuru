@@ -48,7 +48,13 @@ pos-restart:
 	dir, err := commandmocker.Add("juju", output)
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(dir)
-	u := Unit{Name: "someapp/0", Type: "django"}
+	u := Unit{
+		Name:              "someapp/0",
+		Type:              "django",
+		AgentState:        "started",
+		MachineAgentState: "running",
+		InstanceState:     "running",
+	}
 	a := App{Name: "someApp", Framework: "django", Teams: []string{s.team.Name}, Units: []Unit{u}}
 	err = a.Create()
 	c.Assert(err, IsNil)
@@ -77,7 +83,13 @@ pos-restart:
 	dir, err := commandmocker.Add("juju", output)
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(dir)
-	u := Unit{Name: "someapp/0", Type: "django"}
+	u := Unit{
+		Name:              "someapp/0",
+		Type:              "django",
+		AgentState:        "started",
+		MachineAgentState: "running",
+		InstanceState:     "running",
+	}
 	a := App{Name: "someApp", Framework: "django", Teams: []string{s.team.Name}, Units: []Unit{u}}
 	err = a.Create()
 	c.Assert(err, IsNil)
@@ -585,7 +597,14 @@ func (s *S) TestRunHandlerShouldExecuteTheGivenCommandInTheGivenApp(c *C) {
 	dir, err := commandmocker.Add("juju", "$*")
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(dir)
-	u := Unit{Name: "someapp/0", Type: "django", Machine: 10}
+	u := Unit{
+		Name:              "someapp/0",
+		Type:              "django",
+		Machine:           10,
+		AgentState:        "started",
+		MachineAgentState: "running",
+		InstanceState:     "running",
+	}
 	a := &App{Name: "secrets", Framework: "arch enemy", Teams: []string{s.team.Name}, Units: []Unit{u}}
 	err = a.Create()
 	c.Assert(err, IsNil)
@@ -602,7 +621,14 @@ func (s *S) TestRunHandlerShouldFilterOutputFromJuju(c *C) {
 	dir, err := commandmocker.Add("juju", output)
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(dir)
-	u := Unit{Name: "someapp/0", Type: "django", Machine: 10}
+	u := Unit{
+		Name:              "someapp/0",
+		Type:              "django",
+		Machine:           10,
+		AgentState:        "started",
+		MachineAgentState: "running",
+		InstanceState:     "running",
+	}
 	a := &App{Name: "unspeakable", Framework: "vougan", Teams: []string{s.team.Name}, Units: []Unit{u}}
 	err = a.Create()
 	c.Assert(err, IsNil)
@@ -1591,7 +1617,13 @@ func (s *S) TestRestartHandler(c *C) {
 	tmpdir, err := commandmocker.Add("juju", "$*")
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(tmpdir)
-	a := App{Name: "stress", Teams: []string{s.team.Name}, Units: []Unit{Unit{Ip: "20.20.20.20", Machine: 10}}}
+	a := App{
+		Name:  "stress",
+		Teams: []string{s.team.Name},
+		Units: []Unit{
+			Unit{AgentState: "started", MachineAgentState: "running", InstanceState: "running", Machine: 10, Ip: "20.20.20.20"},
+		},
+	}
 	err = a.Create()
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
