@@ -55,6 +55,7 @@ func (s *S) TestDestroy(c *C) {
 	authUrl = ts.URL
 	defer func() {
 		authUrl = oldAuthUrl
+		ts.Close()
 	}()
 	dir, err := commandmocker.Add("juju", "$*")
 	c.Assert(err, IsNil)
