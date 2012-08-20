@@ -14,11 +14,11 @@ import (
 )
 
 var (
-	b          string
+	b           string
 	requestJson []byte
 	// flags to detect when tenant url and user url are called
-	called      = make(map[string]bool)
-	params      = make(map[string]string)
+	called = make(map[string]bool)
+	params = make(map[string]string)
 )
 
 func (s *S) postMockServer(body string) *httptest.Server {
@@ -54,7 +54,7 @@ func handleTokens(w http.ResponseWriter, r *http.Request) {
 		panic(err)
 	}
 	requestJson = body
-    called["token"] = true
+	called["token"] = true
 	w.Write([]byte(`{"access": {"token": {"id": "token-id-987"}}}`))
 }
 
@@ -209,7 +209,7 @@ func (s *S) TestGetClientShouldNotResetClient(c *C) {
 	ts := s.postMockServer("")
 	defer ts.Close()
 	called["token"] = false
-    Client.Token = ""
+	Client.Token = ""
 	err := getClient()
 	c.Assert(err, IsNil)
 	c.Assert(called["token"], Equals, true)
