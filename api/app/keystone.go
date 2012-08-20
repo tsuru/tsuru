@@ -24,14 +24,16 @@ var (
 	authTenant string
 )
 
-// Retrieve information about openstack nova authentication
-// Uses the following confs:
-// - nova:
+// getAuth retrieves information about openstack nova authentication. Uses the
+// following confs:
+//
+//  - nova:
 //  - auth-url
 //  - user
 //  - password
 //  - tenant
-// Returns error in case of failure obtaining any of the previous confs
+//
+// Returns error in case of failure obtaining any of the previous confs.
 func getAuth() (err error) {
 	if authUrl == "" {
 		authUrl, err = config.GetString("nova:auth-url")
@@ -64,9 +66,10 @@ func getAuth() (err error) {
 	return
 }
 
-// Fills global Client variable with the returned value from
-// keystone.NewClient
-// Uses the conf variables filled by getAuth function
+// getClient fills global Client variable with the returned value from
+// keystone.NewClient.
+//
+// Uses the conf variables filled by getAuth function.
 func getClient() (err error) {
 	if Client.Token != "" {
 		return
@@ -84,11 +87,11 @@ func getClient() (err error) {
 	return
 }
 
-// Creates a tenant using keystone api
-// and stores it in database embedded in
-// the app document
-// Returns the id of the created tenant in
-// case of success and error in case of failure
+// NewTenant creates a tenant using keystone api and stores it in database
+// embedded in the app document.
+//
+// Returns the id of the created tenant in case of success and error in case of
+// failure.
 func NewTenant(a *App) (tId string, err error) {
 	err = getClient()
 	if err != nil {
@@ -160,4 +163,29 @@ func NewEC2Creds(a *App) (access, secret string, err error) {
 	a.KeystoneEnv.AccessKey = access
 	err = db.Session.Apps().Update(bson.M{"name": a.Name}, &a)
 	return
+}
+
+func destroyKeystoneEnv(a *App) error {
+	if a.KeystoneEnv.AccessKey == "" {
+		return errors.New("This app does not have keystone EC2 credentials.")
+	}
+	if a.KeystoneEnv.UserId == "" {
+		return errors.New("This app does not have a keystone user.")
+	}
+	if a.KeystoneEnv.TenantId == "" {
+		return errors.New("This app does not have a keystone tenant.")
+	}
+	err := getClient()
+	if err != nil {
+		return err
+	}
+	err = Client.RemoveEc2(a.KeystoneEnv.UserId, a.KeystoneEnv.AccessKey)
+	if err != nil {
+		return err
+	}
+	err = Client.RemoveTenant(a.KeystoneEnv.TenantId)
+	if err != nil {
+		return err
+	}
+	return Client.RemoveUser(a.KeystoneEnv.UserId)
 }
