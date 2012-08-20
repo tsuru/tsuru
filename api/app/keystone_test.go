@@ -9,40 +9,79 @@ import (
 	. "launchpad.net/gocheck"
 	"net/http"
 	"net/http/httptest"
+	"regexp"
 	"strings"
 )
 
 var (
 	requestJson []byte
-	// flags to detect when tenant url and user url are called
-	called = make(map[string]bool)
+	called      = make(map[string]bool)
+	params      = make(map[string]string)
 )
 
-func (s *S) postMockServer(b string) *httptest.Server {
+func handleTokens(w http.ResponseWriter, r *http.Request) {
+	body, err := ioutil.ReadAll(r.Body)
+	defer r.Body.Close()
+	if err != nil {
+		panic(err)
+	}
+	requestJson = body
+	w.Write([]byte(`{"access": {"token": {"id": "token-id-987"}}}`))
+}
+
+func (s *S) postMockServer(body string) *httptest.Server {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != "POST" {
+			w.WriteHeader(http.StatusMethodNotAllowed)
 			return
 		}
 		if r.URL.Path == "/tokens" {
-			body, err := ioutil.ReadAll(r.Body)
-			defer r.Body.Close()
-			if err != nil {
-				panic(err)
-			}
-			requestJson = body
-			w.Write([]byte(`{"access": {"token": {"id": "token-id-987"}}}`))
+			handleTokens(w, r)
 		} else if r.URL.Path == "/tenants" {
 			called["tenants"] = true
-			w.Write([]byte(b))
+			w.Write([]byte(body))
 		} else if r.URL.Path == "/users" {
 			called["users"] = true
-			w.Write([]byte(b))
+			w.Write([]byte(body))
 		} else if strings.Contains(r.URL.Path, "/credentials/OS-EC2") {
 			called["ec2-creds"] = true
-			w.Write([]byte(b))
+			w.Write([]byte(body))
 		}
 	}))
 	authUrl = ts.URL
+	return ts
+}
+
+func (s *S) deleteMockServer() *httptest.Server {
+	ec2Regexp := regexp.MustCompile(`/users/([\w-]+)/credentials/OS-EC2/(\w+)`)
+	usersRegexp := regexp.MustCompile(`/users/([\w-]+)`)
+	tenantsRegexp := regexp.MustCompile(`/tenants/([\w-]+)`)
+	ts := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/tokens" {
+			handleTokens(w, r)
+			return
+		}
+		if r.Method != "DELETE" {
+			w.WriteHeader(http.StatusMethodNotAllowed)
+			return
+		}
+		switch {
+		case ec2Regexp.MatchString(r.URL.Path):
+			called["delete-ec2-creds"] = true
+			submatches := ec2Regexp.FindStringSubmatch(r.URL.Path)
+			params["ec2-user"], params["ec2-access"] = submatches[1], submatches[2]
+		case usersRegexp.MatchString(r.URL.Path):
+			called["delete-user"] = true
+			submatches := usersRegexp.FindStringSubmatch(r.URL.Path)
+			params["user"] = submatches[1]
+		case tenantsRegexp.MatchString(r.URL.Path):
+			called["delete-tenant"] = true
+			submatches := tenantsRegexp.FindStringSubmatch(r.URL.Path)
+			params["tenant"] = submatches[1]
+		default:
+			w.WriteHeader(http.StatusNotFound)
+		}
+	}))
 	return ts
 }
 
@@ -295,4 +334,71 @@ func (s *S) TestNewEC2CredsShouldSaveAccessKeyInDbAndReturnAccessAndSecretKeys(c
 	err = db.Session.Apps().Find(bson.M{"name": a.Name}).One(&a)
 	c.Assert(err, IsNil)
 	c.Assert(a.KeystoneEnv.AccessKey, Equals, aKey)
+}
+
+func (s *S) TestDestroyKeystoneEnv(c *C) {
+	ts := s.deleteMockServer()
+	ts.Start()
+	oldAuthUrl := authUrl
+	authUrl = ts.URL
+	defer func() {
+		authUrl = oldAuthUrl
+	}()
+	defer ts.Close()
+	app := App{
+		Name: "lemon_song",
+		KeystoneEnv: KeystoneEnv{
+			TenantId:  "e60d1f0a-ee74-411c-b879-46aee9502bf9",
+			UserId:    "1b4d1195-7890-4274-831f-ddf8141edecc",
+			AccessKey: "91232f6796b54ca2a2b87ef50548b123",
+		},
+	}
+	err := destroyKeystoneEnv(&app)
+	c.Assert(err, IsNil)
+	c.Assert(called["delete-ec2-creds"], Equals, true)
+	c.Assert(params["ec2-access"], Equals, app.KeystoneEnv.AccessKey)
+	c.Assert(params["ec2-user"], Equals, app.KeystoneEnv.UserId)
+	c.Assert(called["delete-user"], Equals, true)
+	c.Assert(params["user"], Equals, app.KeystoneEnv.UserId)
+	c.Assert(called["delete-tenant"], Equals, true)
+	c.Assert(params["tenant"], Equals, app.KeystoneEnv.TenantId)
+}
+
+func (s *S) TestDestroyKeystoneEnvWithoutEc2Creds(c *C) {
+	app := App{
+		Name: "lemon_song",
+		KeystoneEnv: KeystoneEnv{
+			TenantId: "e60d1f0a-ee74-411c-b879-46aee9502bf9",
+			UserId:   "1b4d1195-7890-4274-831f-ddf8141edecc",
+		},
+	}
+	err := destroyKeystoneEnv(&app)
+	c.Assert(err, NotNil)
+	c.Assert(err, ErrorMatches, "This app does not have keystone EC2 credentials.")
+}
+
+func (s *S) TestDestroyKeystoneEnvWithoutUserId(c *C) {
+	app := App{
+		Name: "lemon_song",
+		KeystoneEnv: KeystoneEnv{
+			TenantId:  "e60d1f0a-ee74-411c-b879-46aee9502bf9",
+			AccessKey: "91232f6796b54ca2a2b87ef50548b123",
+		},
+	}
+	err := destroyKeystoneEnv(&app)
+	c.Assert(err, NotNil)
+	c.Assert(err, ErrorMatches, "This app does not have a keystone user.")
+}
+
+func (s *S) TestDestroyKeystoneEnvWithoutTenantId(c *C) {
+	app := App{
+		Name: "lemon_song",
+		KeystoneEnv: KeystoneEnv{
+			UserId:    "1b4d1195-7890-4274-831f-ddf8141edecc",
+			AccessKey: "91232f6796b54ca2a2b87ef50548b123",
+		},
+	}
+	err := destroyKeystoneEnv(&app)
+	c.Assert(err, NotNil)
+	c.Assert(err, ErrorMatches, "This app does not have a keystone tenant.")
 }

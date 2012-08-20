@@ -160,3 +160,28 @@ func NewEC2Creds(a *App) (access, secret string, err error) {
 	err = db.Session.Apps().Update(bson.M{"name": a.Name}, &a)
 	return
 }
+
+func destroyKeystoneEnv(a *App) error {
+	if a.KeystoneEnv.AccessKey == "" {
+		return errors.New("This app does not have keystone EC2 credentials.")
+	}
+	if a.KeystoneEnv.UserId == "" {
+		return errors.New("This app does not have a keystone user.")
+	}
+	if a.KeystoneEnv.TenantId == "" {
+		return errors.New("This app does not have a keystone tenant.")
+	}
+	err := getClient()
+	if err != nil {
+		return err
+	}
+	err = Client.RemoveEc2(a.KeystoneEnv.UserId, a.KeystoneEnv.AccessKey)
+	if err != nil {
+		return err
+	}
+	err = Client.RemoveTenant(a.KeystoneEnv.TenantId)
+	if err != nil {
+		return err
+	}
+	return Client.RemoveUser(a.KeystoneEnv.UserId)
+}
