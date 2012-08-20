@@ -16,6 +16,14 @@ func (s *S) TestAppIsABinderApp(c *C) {
 }
 
 func (s *S) TestDestroyShouldUnbindAppFromInstance(c *C) {
+	keystoneTs := s.deleteMockServer("")
+	keystoneTs.Start()
+	oldAuthUrl := authUrl
+	authUrl = keystoneTs.URL
+	defer func() {
+		authUrl = oldAuthUrl
+	}()
+	defer keystoneTs.Close()
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNoContent)
 	}))
@@ -34,6 +42,11 @@ func (s *S) TestDestroyShouldUnbindAppFromInstance(c *C) {
 			Unit{
 				Ip: "10.10.10.10",
 			},
+		},
+		KeystoneEnv: KeystoneEnv{
+			TenantId:  "e60d1f0a-ee74-411c-b879-46aee9502bf9",
+			UserId:    "1b4d1195-7890-4274-831f-ddf8141edecc",
+			AccessKey: "91232f6796b54ca2a2b87ef50548b123",
 		},
 	}
 	err = a.Create()

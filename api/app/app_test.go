@@ -49,6 +49,13 @@ func (s *S) TestGet(c *C) {
 }
 
 func (s *S) TestDestroy(c *C) {
+	ts := s.deleteMockServer("destroy-app-")
+	ts.Start()
+	oldAuthUrl := authUrl
+	authUrl = ts.URL
+	defer func() {
+		authUrl = oldAuthUrl
+	}()
 	dir, err := commandmocker.Add("juju", "$*")
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(dir)
@@ -56,7 +63,18 @@ func (s *S) TestDestroy(c *C) {
 	l := stdlog.New(w, "", stdlog.LstdFlags)
 	log.Target = l
 	u := Unit{Name: "duvido", Machine: 3}
-	a := App{Name: "duvido", Framework: "django", Units: []Unit{u}}
+	a := App{
+		Name:      "duvido",
+		Framework: "django",
+		Units: []Unit{
+			u,
+		},
+		KeystoneEnv: KeystoneEnv{
+			TenantId:  "e60d1f0a-ee74-411c-b879-46aee9502bf9",
+			UserId:    "1b4d1195-7890-4274-831f-ddf8141edecc",
+			AccessKey: "91232f6796b54ca2a2b87ef50548b123",
+		},
+	}
 	err = a.Create()
 	c.Assert(err, IsNil)
 	err = a.Destroy()
@@ -66,6 +84,9 @@ func (s *S) TestDestroy(c *C) {
 	c.Assert(logStr, Matches, ".*terminate-machine -e [a-z]+ 3.*")
 	qtd, err := db.Session.Apps().Find(bson.M{"name": a.Name}).Count()
 	c.Assert(qtd, Equals, 0)
+	c.Assert(called["destroy-app-delete-ec2-creds"], Equals, true)
+	c.Assert(called["destroy-app-delete-user"], Equals, true)
+	c.Assert(called["destroy-app-delete-tenant"], Equals, true)
 }
 
 func (s *S) TestCreate(c *C) {
