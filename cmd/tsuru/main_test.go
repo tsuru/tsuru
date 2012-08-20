@@ -64,6 +64,13 @@ func (s *S) TestAppRunIsRegistered(c *C) {
 	c.Assert(run, FitsTypeOf, &AppRun{})
 }
 
+func (s *S) TestAppRestartIsRegistered(c *C) {
+	manager := buildManager("tsuru")
+	restart, ok := manager.Commands["restart"]
+	c.Assert(ok, Equals, true)
+	c.Assert(restart, FitsTypeOf, &AppRestart{})
+}
+
 func (s *S) TestEnvGetIsRegistered(c *C) {
 	manager := buildManager("tsuru")
 	get, ok := manager.Commands["env-get"]

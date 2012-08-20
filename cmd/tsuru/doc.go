@@ -30,6 +30,7 @@ The currently available commands are (grouped by subject):
     app-revoke        revokes access to an app from a team
     log               shows log for an app
     run               runs a command in all units of an app
+	restart           restarts the app's application server
 
     env-get           display environment variables for an app
     env-set           set environment variable(s) to an app

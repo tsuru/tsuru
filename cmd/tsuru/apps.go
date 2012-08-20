@@ -230,3 +230,34 @@ func (c *AppLog) Run(context *cmd.Context, client cmd.Doer) error {
 	}
 	return err
 }
+
+type AppRestart struct{}
+
+func (c *AppRestart) Run(context *cmd.Context, client cmd.Doer) error {
+	appName := context.Args[0]
+	url := cmd.GetUrl(fmt.Sprintf("/apps/%s/restart", appName))
+	request, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return err
+	}
+	response, err := client.Do(request)
+	if err != nil {
+		return err
+	}
+	defer response.Body.Close()
+	output, err := ioutil.ReadAll(response.Body)
+	if err != nil {
+		return err
+	}
+	context.Stdout.Write(output)
+	return nil
+}
+
+func (c *AppRestart) Info() *cmd.Info {
+	return &cmd.Info{
+		Name:    "restart",
+		Usage:   "restart <appname>",
+		Desc:    "restarts an app.",
+		MinArgs: 1,
+	}
+}
