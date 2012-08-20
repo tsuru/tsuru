@@ -40,15 +40,12 @@ func (s *S) TestGet(c *C) {
 	newApp := App{Env: map[string]EnvVar{}, Name: "myApp", Framework: "django", Teams: []string{}, Logs: []Log{}}
 	err := newApp.Create()
 	c.Assert(err, IsNil)
-
+	defer db.Session.Apps().Remove(bson.M{"name": newApp.Name})
 	myApp := App{Name: "myApp"}
 	err = myApp.Get()
 	c.Assert(err, IsNil)
 	c.Assert(myApp.Name, Equals, newApp.Name)
 	c.Assert(myApp.State, Equals, newApp.State)
-
-	err = myApp.Destroy()
-	c.Assert(err, IsNil)
 }
 
 func (s *S) TestDestroy(c *C) {
@@ -82,8 +79,7 @@ func (s *S) TestCreate(c *C) {
 	err = a.Create()
 	c.Assert(err, IsNil)
 	c.Assert(a.State, Equals, "pending")
-	defer a.Destroy()
-
+	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
 	var retrievedApp App
 	err = db.Session.Apps().Find(bson.M{"name": a.Name}).One(&retrievedApp)
 	c.Assert(err, IsNil)
@@ -99,9 +95,9 @@ func (s *S) TestCantCreateTwoAppsWithTheSameName(c *C) {
 	a := App{Name: "appName", Framework: "django"}
 	err := a.Create()
 	c.Assert(err, IsNil)
+	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
 	err = a.Create()
 	c.Assert(err, NotNil)
-	a.Destroy()
 }
 
 // Issue 116
@@ -120,7 +116,7 @@ func (s *S) TestDoesNotSaveTheAppInTheDatabaseIfJujuFail(c *C) {
 func (s *S) TestAppendOrUpdate(c *C) {
 	a := App{Name: "appName", Framework: "django", Teams: []string{}}
 	a.Create()
-	defer a.Destroy()
+	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
 	u := Unit{Name: "someapp", Ip: "", Machine: 3, InstanceId: "i-00000zz8"}
 	a.AddOrUpdateUnit(&u)
 	c.Assert(len(a.Units), Equals, 1)

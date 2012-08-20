@@ -182,8 +182,7 @@ func (s *S) TearDownTest(c *C) {
 	err := db.Session.Apps().Find(nil).All(&apps)
 	c.Assert(err, IsNil)
 	for _, app := range apps {
-		err = app.Destroy()
-		c.Assert(err, IsNil)
+		app.Destroy()
 	}
 }
 

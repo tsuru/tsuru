@@ -28,7 +28,14 @@ func (s *S) TestDestroyShouldUnbindAppFromInstance(c *C) {
 	err = instance.Create()
 	c.Assert(err, IsNil)
 	defer db.Session.ServiceInstances().Remove(bson.M{"_id": instance.Name})
-	a := App{Name: "myApp", Units: []Unit{Unit{Ip: "10.10.10.10"}}}
+	a := App{
+		Name: "myApp",
+		Units: []Unit{
+			Unit{
+				Ip: "10.10.10.10",
+			},
+		},
+	}
 	err = a.Create()
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
