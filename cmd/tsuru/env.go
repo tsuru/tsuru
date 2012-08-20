@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"github.com/timeredbull/tsuru/cmd"
-	"io"
 	"io/ioutil"
 	"net/http"
 	"strings"
@@ -25,7 +24,7 @@ func (c *EnvGet) Run(context *cmd.Context, client cmd.Doer) error {
 	if err != nil {
 		return err
 	}
-	io.WriteString(context.Stdout, string(b))
+	fmt.Fprint(context.Stdout, string(b))
 	return nil
 }
 
@@ -45,7 +44,7 @@ func (c *EnvSet) Run(context *cmd.Context, client cmd.Doer) error {
 	if err != nil {
 		return err
 	}
-	io.WriteString(context.Stdout, "variable(s) successfully exported\n")
+	fmt.Fprint(context.Stdout, "variable(s) successfully exported\n")
 	return nil
 }
 
@@ -65,7 +64,7 @@ func (c *EnvUnset) Run(context *cmd.Context, client cmd.Doer) error {
 	if err != nil {
 		return err
 	}
-	io.WriteString(context.Stdout, "variable(s) successfully unset\n")
+	fmt.Fprint(context.Stdout, "variable(s) successfully unset\n")
 	return nil
 }
 

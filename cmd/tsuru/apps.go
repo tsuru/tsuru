@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/timeredbull/tsuru/cmd"
-	"io"
 	"io/ioutil"
 	"net/http"
 	"time"
@@ -33,7 +32,7 @@ func (c *AppGrant) Run(context *cmd.Context, client cmd.Doer) error {
 	if err != nil {
 		return err
 	}
-	io.WriteString(context.Stdout, fmt.Sprintf(`Team "%s" was added to the "%s" app`+"\n", teamName, appName))
+	fmt.Fprintf(context.Stdout, `Team "%s" was added to the "%s" app`+"\n", teamName, appName)
 	return nil
 }
 
@@ -59,7 +58,7 @@ func (c *AppRevoke) Run(context *cmd.Context, client cmd.Doer) error {
 	if err != nil {
 		return err
 	}
-	io.WriteString(context.Stdout, fmt.Sprintf(`Team "%s" was removed from the "%s" app`+"\n", teamName, appName))
+	fmt.Fprintf(context.Stdout, `Team "%s" was removed from the "%s" app`+"\n", teamName, appName)
 	return nil
 }
 
@@ -148,8 +147,8 @@ func (c *AppCreate) Run(context *cmd.Context, client cmd.Doer) error {
 	if err != nil {
 		return err
 	}
-	io.WriteString(context.Stdout, fmt.Sprintf(`App "%s" successfully created!`+"\n", appName))
-	io.WriteString(context.Stdout, fmt.Sprintf(`Your repository for "%s" project is "%s"`, appName, out["repository_url"])+"\n")
+	fmt.Fprintf(context.Stdout, `App "%s" successfully created!`+"\n", appName)
+	fmt.Fprintf(context.Stdout, `Your repository for "%s" project is "%s"`+"\n", appName, out["repository_url"])
 	return nil
 }
 
@@ -184,7 +183,7 @@ func (c *AppRemove) Run(context *cmd.Context, client cmd.Doer) error {
 	if err != nil {
 		return err
 	}
-	io.WriteString(context.Stdout, fmt.Sprintf(`App "%s" successfully removed!`+"\n", appName))
+	fmt.Fprintf(context.Stdout, `App "%s" successfully removed!`+"\n", appName)
 	return nil
 }
 
