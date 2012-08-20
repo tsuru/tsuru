@@ -52,7 +52,7 @@ func (s *S) postMockServer(body string) *httptest.Server {
 	return ts
 }
 
-func (s *S) deleteMockServer() *httptest.Server {
+func (s *S) deleteMockServer(prefix string) *httptest.Server {
 	ec2Regexp := regexp.MustCompile(`/users/([\w-]+)/credentials/OS-EC2/(\w+)`)
 	usersRegexp := regexp.MustCompile(`/users/([\w-]+)`)
 	tenantsRegexp := regexp.MustCompile(`/tenants/([\w-]+)`)
@@ -67,17 +67,17 @@ func (s *S) deleteMockServer() *httptest.Server {
 		}
 		switch {
 		case ec2Regexp.MatchString(r.URL.Path):
-			called["delete-ec2-creds"] = true
+			called[prefix+"delete-ec2-creds"] = true
 			submatches := ec2Regexp.FindStringSubmatch(r.URL.Path)
-			params["ec2-user"], params["ec2-access"] = submatches[1], submatches[2]
+			params[prefix+"ec2-user"], params[prefix+"ec2-access"] = submatches[1], submatches[2]
 		case usersRegexp.MatchString(r.URL.Path):
-			called["delete-user"] = true
+			called[prefix+"delete-user"] = true
 			submatches := usersRegexp.FindStringSubmatch(r.URL.Path)
-			params["user"] = submatches[1]
+			params[prefix+"user"] = submatches[1]
 		case tenantsRegexp.MatchString(r.URL.Path):
-			called["delete-tenant"] = true
+			called[prefix+"delete-tenant"] = true
 			submatches := tenantsRegexp.FindStringSubmatch(r.URL.Path)
-			params["tenant"] = submatches[1]
+			params[prefix+"tenant"] = submatches[1]
 		default:
 			w.WriteHeader(http.StatusNotFound)
 		}
@@ -337,7 +337,7 @@ func (s *S) TestNewEC2CredsShouldSaveAccessKeyInDbAndReturnAccessAndSecretKeys(c
 }
 
 func (s *S) TestDestroyKeystoneEnv(c *C) {
-	ts := s.deleteMockServer()
+	ts := s.deleteMockServer("")
 	ts.Start()
 	oldAuthUrl := authUrl
 	authUrl = ts.URL
