@@ -129,3 +129,9 @@ Below is a app.conf sample:
         deploy/pos.sh
 
 The app.conf file is located in your app's root directory, and the scripts path in the yaml are relative to it.
+
+Further instructions
+====================
+
+For a complete reference, check documentation for tsuru command:
+`<http://go.pkgdoc.org/github.com/timeredbull/tsuru/cmd/tsuru>`_.
