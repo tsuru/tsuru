@@ -24,14 +24,16 @@ var (
 	authTenant string
 )
 
-// Retrieve information about openstack nova authentication
-// Uses the following confs:
-// - nova:
+// getAuth retrieves information about openstack nova authentication. Uses the
+// following confs:
+//
+//  - nova:
 //  - auth-url
 //  - user
 //  - password
 //  - tenant
-// Returns error in case of failure obtaining any of the previous confs
+//
+// Returns error in case of failure obtaining any of the previous confs.
 func getAuth() (err error) {
 	if authUrl == "" {
 		authUrl, err = config.GetString("nova:auth-url")
@@ -64,9 +66,10 @@ func getAuth() (err error) {
 	return
 }
 
-// Fills global Client variable with the returned value from
-// keystone.NewClient
-// Uses the conf variables filled by getAuth function
+// getClient fills global Client variable with the returned value from
+// keystone.NewClient.
+//
+// Uses the conf variables filled by getAuth function.
 func getClient() (err error) {
 	err = getAuth()
 	if err != nil {
@@ -80,11 +83,11 @@ func getClient() (err error) {
 	return
 }
 
-// Creates a tenant using keystone api
-// and stores it in database embedded in
-// the app document
-// Returns the id of the created tenant in
-// case of success and error in case of failure
+// NewTenant creates a tenant using keystone api and stores it in database
+// embedded in the app document.
+//
+// Returns the id of the created tenant in case of success and error in case of
+// failure.
 func NewTenant(a *App) (tId string, err error) {
 	err = getClient()
 	if err != nil {
