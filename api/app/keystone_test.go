@@ -13,14 +13,19 @@ import (
 )
 
 var (
+	b2          string
 	requestJson []byte
 	// flags to detect when tenant url and user url are called
-	tCalled, uCalled, credCalled bool
+	tCalled, uCalled, credCalled, cCalled bool
 )
 
 func (s *S) mockServer(b string) *httptest.Server {
+	if b != "" {
+		b2 = b
+	}
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == "POST" && r.URL.Path == "/tokens" {
+			cCalled = true
 			body, err := ioutil.ReadAll(r.Body)
 			defer r.Body.Close()
 			if err != nil {
@@ -30,13 +35,13 @@ func (s *S) mockServer(b string) *httptest.Server {
 			w.Write([]byte(`{"access": {"token": {"id": "token-id-987"}}}`))
 		} else if r.Method == "POST" && r.URL.Path == "/tenants" {
 			tCalled = true
-			w.Write([]byte(b))
+			w.Write([]byte(b2))
 		} else if r.Method == "POST" && r.URL.Path == "/users" {
 			uCalled = true
-			w.Write([]byte(b))
+			w.Write([]byte(b2))
 		} else if r.Method == "POST" && strings.Contains(r.URL.Path, "/credentials/OS-EC2") {
 			credCalled = true
-			w.Write([]byte(b))
+			w.Write([]byte(b2))
 		}
 	}))
 	authUrl = ts.URL
@@ -155,6 +160,19 @@ func (s *S) TestGetClientShouldReturnClientWithAuthConfs(c *C) {
 	c.Assert(req, Not(Equals), "")
 	expected := fmt.Sprintf(`{"auth": {"passwordCredentials": {"username": "%s", "password":"%s"}, "tenantName": "%s"}}`, authUser, authPass, authTenant)
 	c.Assert(req, Equals, expected)
+}
+
+func (s *S) TestGetClientShouldNotResetClient(c *C) {
+	ts := s.mockServer("")
+	defer ts.Close()
+	cCalled = false
+	err := getClient()
+	c.Assert(err, IsNil)
+	c.Assert(cCalled, Equals, true)
+	cCalled = false
+	err = getClient()
+	c.Assert(err, IsNil)
+	c.Assert(cCalled, Equals, false)
 }
 
 func (s *S) TestNewTenantCallsKeystoneApi(c *C) {

@@ -17,7 +17,7 @@ type KeystoneEnv struct {
 }
 
 var (
-	Client     *keystone.Client
+	Client     keystone.Client
 	authUrl    string
 	authUser   string
 	authPass   string
@@ -68,11 +68,15 @@ func getAuth() (err error) {
 // keystone.NewClient
 // Uses the conf variables filled by getAuth function
 func getClient() (err error) {
+	if Client.Token != "" {
+		return
+	}
 	err = getAuth()
 	if err != nil {
 		return
 	}
-	Client, err = keystone.NewClient(authUser, authPass, authTenant, authUrl)
+	c, err := keystone.NewClient(authUser, authPass, authTenant, authUrl)
+	Client = *c
 	if err != nil {
 		log.Printf("ERROR: a problem occurred while trying to obtain keystone's client: %s", err.Error())
 		return
