@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/timeredbull/tsuru/cmd"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"time"
@@ -91,7 +92,7 @@ func (c *AppList) Run(context *cmd.Context, client cmd.Doer) error {
 	if err != nil {
 		return err
 	}
-	return c.Show([]byte(result), context)
+	return c.Show(result, context)
 }
 
 func (c *AppList) Show(result []byte, context *cmd.Context) error {
@@ -244,11 +245,10 @@ func (c *AppRestart) Run(context *cmd.Context, client cmd.Doer) error {
 		return err
 	}
 	defer response.Body.Close()
-	output, err := ioutil.ReadAll(response.Body)
+	_, err = io.Copy(context.Stdout, response.Body)
 	if err != nil {
 		return err
 	}
-	context.Stdout.Write(output)
 	return nil
 }
 
