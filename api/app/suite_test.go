@@ -186,6 +186,7 @@ func (s *S) TearDownTest(c *C) {
 	for _, app := range apps {
 		app.Destroy()
 	}
+	Client.Token = ""
 }
 
 func (s *S) getTestData(p ...string) io.ReadCloser {
