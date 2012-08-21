@@ -89,15 +89,15 @@ func collectEnvVars() {
 type JujuEnv struct {
 	AccessKey     string `yaml:"access-key"`
 	SecretKey     string `yaml:"secret-key"`
-	Ec2           string
-	S3            string
-	JujuOrigin    string
-	Type          string
-	AdminSecret   string
-	ControlBucket string
-	Series        string
-	ImageId       string
-	InstanceType  string
+	Ec2           string `yaml:"ec2-uri"`
+	S3            string `yaml:"s3-uri"`
+	JujuOrigin    string `yaml:"juju-origin"`
+	Type          string `yaml:"type"`
+	AdminSecret   string `yaml:"admin-secret"`
+	ControlBucket string `yaml:"control-bucket"`
+	Series        string `yaml:"default-series"`
+	ImageId       string `yaml:"default-image-id"`
+	InstanceType  string `yaml:"default-instance-type"`
 }
 
 func newJujuEnv(access, secret string) (JujuEnv, error) {
