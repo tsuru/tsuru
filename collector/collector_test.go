@@ -3,6 +3,7 @@ package main
 import (
 	"github.com/timeredbull/commandmocker"
 	"github.com/timeredbull/tsuru/api/app"
+	"github.com/timeredbull/tsuru/db"
 	"io/ioutil"
 	. "launchpad.net/gocheck"
 	"path/filepath"
@@ -39,7 +40,7 @@ func getOutput() *output {
 
 func getApp(c *C) *app.App {
 	a := &app.App{Name: "umaappqq", State: "STOPPED"}
-	err := a.Create()
+	err := db.Session.Apps().Insert(&a)
 	c.Assert(err, IsNil)
 	return a
 }
@@ -90,7 +91,7 @@ func (s *S) TestUpdateWithMultipleUnits(c *C) {
 
 func (s *S) TestUpdateWithDownMachine(c *C) {
 	a := app.App{Name: "barduscoapp", State: "STOPPED"}
-	err := a.Create()
+	err := db.Session.Apps().Insert(&a)
 	c.Assert(err, IsNil)
 	jujuOutput, err := ioutil.ReadFile(filepath.Join("testdata", "broken-output.yaml"))
 	c.Assert(err, IsNil)
@@ -145,7 +146,7 @@ func (s *S) TestUpdateWithMultipleApps(c *C) {
 	apps := make([]app.App, len(appDicts))
 	for i, appDict := range appDicts {
 		a := app.App{Name: appDict["name"]}
-		err := a.Create()
+		err := db.Session.Apps().Insert(&a)
 		c.Assert(err, IsNil)
 		apps[i] = a
 	}

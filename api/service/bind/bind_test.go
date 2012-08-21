@@ -45,6 +45,17 @@ func (s *S) TearDownSuite(c *C) {
 	db.Session.Apps().Database.DropDatabase()
 }
 
+func createTestApp(name, framework string, teams []string, units []app.Unit) (app.App, error) {
+	a := app.App{
+		Name:      name,
+		Framework: framework,
+		Teams:     teams,
+		Units:     units,
+	}
+	err := db.Session.Apps().Insert(&a)
+	return a, err
+}
+
 func (s *S) TestBindAddsAppToTheServiceInstance(c *C) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(`{"DATABASE_USER":"root","DATABASE_PASSWORD":"s3cr3t"}`))
@@ -57,8 +68,8 @@ func (s *S) TestBindAddsAppToTheServiceInstance(c *C) {
 	instance := service.ServiceInstance{Name: "my-mysql", ServiceName: "mysql", Teams: []string{s.team.Name}}
 	instance.Create()
 	defer db.Session.ServiceInstances().Remove(bson.M{"_id": "my-mysql"})
-	a := app.App{Name: "painkiller", Teams: []string{s.team.Name}, Units: []app.Unit{app.Unit{Ip: "10.10.10.10"}}}
-	a.Create()
+	a, err := createTestApp("painkiller", "", []string{s.team.Name}, []app.Unit{app.Unit{Ip: "10.10.10.10"}})
+	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
 	err = instance.Bind(&a)
 	c.Assert(err, IsNil)
@@ -78,12 +89,8 @@ func (s *S) TestBindDoNotAddsAppToServiceInstanceIfCommunicationWithEndpointGoes
 	instance := service.ServiceInstance{Name: "my-mysql", ServiceName: "mysql", Teams: []string{s.team.Name}}
 	instance.Create()
 	defer db.Session.ServiceInstances().Remove(bson.M{"_id": "my-mysql"})
-	a := app.App{
-		Name:  "somecoolapp",
-		Teams: []string{s.team.Name},
-		Units: []app.Unit{app.Unit{Ip: "127.0.0.1"}},
-	}
-	a.Create()
+	a, err := createTestApp("somecoolapp", "", []string{s.team.Name}, []app.Unit{app.Unit{Ip: "127.0.0.1"}})
+	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
 	err = instance.Bind(&a)
 	c.Assert(err, Not(IsNil))
@@ -105,12 +112,8 @@ func (s *S) TestBindUnbindsWhenDatabaseUpdateGoesWrong(c *C) {
 	c.Assert(err, IsNil)
 	defer db.Session.Services().Remove(bson.M{"_id": "mysql"})
 	instance := service.ServiceInstance{Name: "their-mysql", ServiceName: "mysql", Teams: []string{s.team.Name}}
-	a := app.App{
-		Name:  "somecoolapp",
-		Teams: []string{s.team.Name},
-		Units: []app.Unit{app.Unit{Ip: "127.0.0.1"}},
-	}
-	a.Create()
+	a, err := createTestApp("somecoolapp", "", []string{s.team.Name}, []app.Unit{app.Unit{Ip: "127.0.0.1"}})
+	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
 	err = instance.Bind(&a)
 	c.Assert(err, ErrorMatches, "^not found$")
@@ -134,12 +137,7 @@ func (s *S) TestBindCallTheServiceAPIAndSetsEnvironmentVariableReturnedFromTheCa
 	err = instance.Create()
 	c.Assert(err, IsNil)
 	defer db.Session.ServiceInstances().Remove(bson.M{"_id": "my-mysql"})
-	a := app.App{
-		Name:  "painkiller",
-		Teams: []string{s.team.Name},
-		Units: []app.Unit{app.Unit{Ip: "127.0.0.1"}},
-	}
-	err = a.Create()
+	a, err := createTestApp("painkiller", "", []string{s.team.Name}, []app.Unit{app.Unit{Ip: "127.0.0.1"}})
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
 	err = instance.Bind(&a)
@@ -177,12 +175,7 @@ func (s *S) TestBindReturnConflictIfTheAppIsAlreadyBinded(c *C) {
 	err = instance.Create()
 	c.Assert(err, IsNil)
 	defer db.Session.ServiceInstances().Remove(bson.M{"_id": "my-mysql"})
-	a := app.App{
-		Name:  "painkiller",
-		Teams: []string{s.team.Name},
-		Units: []app.Unit{app.Unit{Ip: "127.0.0.1"}},
-	}
-	err = a.Create()
+	a, err := createTestApp("painkiller", "", []string{s.team.Name}, []app.Unit{app.Unit{Ip: "127.0.0.1"}})
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
 	err = instance.Bind(&a)
@@ -206,8 +199,7 @@ func (s *S) TestBindReturnsPreconditionFailedIfTheAppDoesNotHaveAnUnitAndService
 	err = instance.Create()
 	c.Assert(err, IsNil)
 	defer db.Session.ServiceInstances().Remove(bson.M{"_id": "my-mysql"})
-	a := app.App{Name: "painkiller", Teams: []string{s.team.Name}}
-	err = a.Create()
+	a, err := createTestApp("painkiller", "", []string{s.team.Name}, []app.Unit{})
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
 	err = instance.Bind(&a)
@@ -235,8 +227,8 @@ func (s *S) TestUnbindRemovesAppFromServiceInstance(c *C) {
 	}
 	instance.Create()
 	defer db.Session.ServiceInstances().Remove(bson.M{"_id": "my-mysql"})
-	a := app.App{Name: "painkiller", Teams: []string{s.team.Name}, Units: []app.Unit{app.Unit{Ip: "10.10.10.10"}}}
-	a.Create()
+	a, err := createTestApp("painkiller", "", []string{s.team.Name}, []app.Unit{app.Unit{Ip: "10.10.10.10"}})
+	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
 	err = instance.Unbind(&a)
 	c.Assert(err, IsNil)
@@ -283,7 +275,8 @@ func (s *S) TestUnbindRemovesEnvironmentVariableFromApp(c *C) {
 			},
 		},
 	}
-	a.Create()
+	err = db.Session.Apps().Insert(&a)
+	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
 	err = instance.Unbind(&a)
 	c.Assert(err, IsNil)
@@ -317,12 +310,7 @@ func (s *S) TestUnbindCallsTheUnbindMethodFromAPI(c *C) {
 	err = instance.Create()
 	c.Assert(err, IsNil)
 	defer db.Session.ServiceInstances().Remove(bson.M{"_id": "my-mysql"})
-	a := app.App{
-		Name:  "painkiller",
-		Teams: []string{s.team.Name},
-		Units: []app.Unit{app.Unit{Ip: "127.0.0.1"}},
-	}
-	err = a.Create()
+	a, err := createTestApp("painkiller", "", []string{s.team.Name}, []app.Unit{app.Unit{Ip: "127.0.0.1"}})
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
 	err = instance.Unbind(&a)
@@ -354,8 +342,8 @@ func (s *S) TestUnbindReturnsPreconditionFailedIfTheAppIsNotBindedToTheInstance(
 	instance := service.ServiceInstance{Name: "my-mysql", ServiceName: "mysql", Teams: []string{s.team.Name}}
 	instance.Create()
 	defer db.Session.ServiceInstances().Remove(bson.M{"_id": "my-mysql"})
-	a := app.App{Name: "painkiller", Teams: []string{s.team.Name}, Units: []app.Unit{app.Unit{Ip: "10.10.10.10"}}}
-	a.Create()
+	a, err := createTestApp("painkiller", "", []string{s.team.Name}, []app.Unit{app.Unit{Ip: "10.10.10.10"}})
+	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
 	err = instance.Unbind(&a)
 	c.Assert(err, NotNil)

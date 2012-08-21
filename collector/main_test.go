@@ -25,7 +25,7 @@ func createApp(name, agentState, machineAgentState, instanceState string) {
 			},
 		},
 	}
-	err := a.Create()
+	err := db.Session.Apps().Insert(&a)
 	if err != nil {
 		panic(err)
 	}
