@@ -137,23 +137,29 @@ func (a *App) unbind() error {
 }
 
 func (a *App) Destroy() error {
-	unbindingApp := App{Name: a.Name}
-	err := unbindingApp.Get()
+	multitenant, err := config.GetBool("multi-tenant")
 	if err != nil {
 		return err
 	}
-	if err = destroyKeystoneEnv(&unbindingApp); err != nil {
+	app := App{Name: a.Name}
+	err = app.Get()
+	if err != nil {
 		return err
+	}
+	if multitenant {
+		if err = destroyKeystoneEnv(&app); err != nil {
+			return err
+		}
 	}
 	unbindCh := make(chan error)
 	go func() {
-		unbindCh <- unbindingApp.unbind()
+		unbindCh <- app.unbind()
 	}()
-	err = db.Session.Apps().Remove(bson.M{"name": a.Name})
+	err = db.Session.Apps().Remove(bson.M{"name": app.Name})
 	if err != nil {
 		return err
 	}
-	out, err := a.unit().Destroy()
+	out, err := app.unit().Destroy()
 	log.Printf(string(out))
 	if err != nil {
 		return err

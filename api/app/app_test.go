@@ -89,6 +89,17 @@ func (s *S) TestDestroy(c *C) {
 	c.Assert(called["destroy-app-delete-tenant"], Equals, true)
 }
 
+func (s *S) TestDestroyWithMultiTenancyOff(c *C) {
+	config.Set("multi-tenant", false)
+	defer config.Set("multi-tenant", true)
+	a, err := NewApp("ritual", "ruby", []string{s.team.Name})
+	c.Assert(err, IsNil)
+	err = a.Destroy()
+	c.Assert(err, IsNil)
+	err = a.Get()
+	c.Assert(err, NotNil)
+}
+
 func (s *S) TestNewApp(c *C) {
 	dir, err := commandmocker.Add("juju", "$*")
 	c.Assert(err, IsNil)
