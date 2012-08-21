@@ -527,11 +527,11 @@ func (s *S) TestUpdateHooks(c *C) {
 	defer commandmocker.Remove(tmpdir)
 	a, err := NewApp("someApp", "django", []string{s.team.Name})
 	c.Assert(err, IsNil)
-    a.JujuEnv = "delta"
-    a.Units = []Unit{
-        Unit{AgentState: "started", MachineAgentState: "running", InstanceState: "running", Machine: 4},
-    }
-    db.Session.Apps().Update(bson.M{"name": a.Name}, &a)
+	a.JujuEnv = "delta"
+	a.Units = []Unit{
+		Unit{AgentState: "started", MachineAgentState: "running", InstanceState: "running", Machine: 4},
+	}
+	db.Session.Apps().Update(bson.M{"name": a.Name}, &a)
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
 	out, err := a.updateHooks()
 	c.Assert(err, IsNil)
@@ -597,4 +597,16 @@ func (s *S) TestNewAppShouldCreateKeystoneEnv(c *C) {
 	c.Assert(a.KeystoneEnv.TenantId, Not(Equals), "")
 	c.Assert(a.KeystoneEnv.UserId, Not(Equals), "")
 	c.Assert(a.KeystoneEnv.AccessKey, Not(Equals), "")
+}
+
+func (s *S) TestNewAppShouldNotCreateKeystoneEnvWhenMultiTenantConfIsFalse(c *C) {
+	config.Set("multi-tenant", false)
+	defer func() {
+		config.Set("multi-tenant", true)
+	}()
+	a, err := NewApp("pumpkin", "golang", []string{s.team.Name})
+	c.Assert(err, IsNil)
+	c.Assert(a.KeystoneEnv.TenantId, Equals, "")
+	c.Assert(a.KeystoneEnv.UserId, Equals, "")
+	c.Assert(a.KeystoneEnv.AccessKey, Equals, "")
 }

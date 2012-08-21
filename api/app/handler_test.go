@@ -1609,13 +1609,13 @@ func (s *S) TestRestartHandler(c *C) {
 	tmpdir, err := commandmocker.Add("juju", "$*")
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(tmpdir)
-    a, err := NewApp("stress", "", []string{s.team.Name})
+	a, err := NewApp("stress", "", []string{s.team.Name})
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
-    a.Units = []Unit{
-        Unit{AgentState: "started", MachineAgentState: "running", InstanceState: "running", Machine: 10, Ip: "20.20.20.20"},
-    }
-    db.Session.Apps().Update(bson.M{"name": a.Name}, &a)
+	a.Units = []Unit{
+		Unit{AgentState: "started", MachineAgentState: "running", InstanceState: "running", Machine: 10, Ip: "20.20.20.20"},
+	}
+	db.Session.Apps().Update(bson.M{"name": a.Name}, &a)
 	url := fmt.Sprintf("/apps/%s/restart?:name=%s", a.Name, a.Name)
 	request, err := http.NewRequest("GET", url, nil)
 	c.Assert(err, IsNil)
@@ -1659,8 +1659,8 @@ func (s *S) TestRestartHandlerReturns412IfTheUnitOfTheAppDoesNotHaveIp(c *C) {
 	a, err := NewApp("stress", "", []string{s.team.Name})
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
-    a.Units = []Unit{Unit{Ip: "", Machine: 10}}
-    db.Session.Apps().Update(bson.M{"name": a.Name}, &a)
+	a.Units = []Unit{Unit{Ip: "", Machine: 10}}
+	db.Session.Apps().Update(bson.M{"name": a.Name}, &a)
 	url := fmt.Sprintf("/apps/%s/restart?:name=%s", a.Name, a.Name)
 	request, err := http.NewRequest("GET", url, nil)
 	c.Assert(err, IsNil)
