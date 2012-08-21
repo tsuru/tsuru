@@ -2,6 +2,7 @@ package app
 
 import (
 	"github.com/timeredbull/commandmocker"
+	"github.com/timeredbull/tsuru/config"
 	"github.com/timeredbull/tsuru/fs"
 	"github.com/timeredbull/tsuru/fs/testing"
 	"io/ioutil"
@@ -48,17 +49,49 @@ func (s *S) TestDoesNotSendInTheSuccessChannelIfItIsNil(c *C) {
 	env <- msg
 }
 
+func (s *S) TestnewJujuEnv(c *C) {
+	ec2, err := config.GetString("juju:ec2")
+	c.Assert(err, IsNil)
+	s3, err := config.GetString("juju:s3")
+	c.Assert(err, IsNil)
+	jujuOrigin, err := config.GetString("juju:origin")
+	c.Assert(err, IsNil)
+	series, err := config.GetString("juju:series")
+	c.Assert(err, IsNil)
+	imageId, err := config.GetString("juju:image-id")
+	c.Assert(err, IsNil)
+	instaceType, err := config.GetString("juju:instance-type")
+	c.Assert(err, IsNil)
+	expected := JujuEnv{
+		Ec2:           ec2,
+		S3:            s3,
+		JujuOrigin:    jujuOrigin,
+		Type:          "ec2",
+		AdminSecret:   "",
+		ControlBucket: "",
+		Series:        series,
+		ImageId:       imageId,
+		InstanceType:  instaceType,
+		AccessKey:     "access",
+		SecretKey:     "secret",
+	}
+	result, err := newJujuEnv("access", "secret")
+	c.Assert(err, IsNil)
+	c.Assert(result, DeepEquals, expected)
+}
+
 func (s *S) TestNewEnviron(c *C) {
 	expected := map[string]map[string]JujuEnv{}
 	result := map[string]map[string]JujuEnv{}
 	expected["environments"] = map[string]JujuEnv{}
-	expected["environments"]["name"] = JujuEnv{Access: "access", Secret: "secret"}
+	nameEnv, err := newJujuEnv("access", "secret")
+	expected["environments"]["name"] = nameEnv
 	rfs := &testing.RecordingFs{}
 	fsystem = rfs
 	defer func() {
 		fsystem = nil
 	}()
-	err := NewEnviron("name", "access", "secret")
+	err = NewEnviron("name", "access", "secret")
 	c.Assert(err, IsNil)
 	c.Assert(rfs.HasAction("openfile "+EnvironConfPath+" with mode 0600"), Equals, true)
 	file, err := rfs.Open(EnvironConfPath)
@@ -74,10 +107,14 @@ func (s *S) TestNewEnvironShouldKeepExistentsEnvirons(c *C) {
 	result := map[string]map[string]JujuEnv{}
 	initial := map[string]map[string]JujuEnv{}
 	initial["environments"] = map[string]JujuEnv{}
-	initial["environments"]["foo"] = JujuEnv{Access: "foo", Secret: "foo"}
+	fooEnv, err := newJujuEnv("foo", "foo")
+	c.Assert(err, IsNil)
+	initial["environments"]["foo"] = fooEnv
 	expected["environments"] = map[string]JujuEnv{}
-	expected["environments"]["foo"] = JujuEnv{Access: "foo", Secret: "foo"}
-	expected["environments"]["name"] = JujuEnv{Access: "access", Secret: "secret"}
+	expected["environments"]["foo"] = fooEnv
+	nameEnv, err := newJujuEnv("access", "secret")
+	c.Assert(err, IsNil)
+	expected["environments"]["name"] = nameEnv
 	data, err := goyaml.Marshal(&initial)
 	c.Assert(err, IsNil)
 	rfs := &testing.RecordingFs{FileContent: string(data)}

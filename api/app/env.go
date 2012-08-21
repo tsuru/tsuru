@@ -2,6 +2,7 @@ package app
 
 import (
 	"fmt"
+	"github.com/timeredbull/tsuru/config"
 	"github.com/timeredbull/tsuru/fs"
 	"github.com/timeredbull/tsuru/log"
 	"io/ioutil"
@@ -86,8 +87,57 @@ func collectEnvVars() {
 }
 
 type JujuEnv struct {
-	Access string `yaml:"access-key"`
-	Secret string `yaml:"secret-key"`
+	AccessKey     string `yaml:"access-key"`
+	SecretKey     string `yaml:"secret-key"`
+	Ec2           string
+	S3            string
+	JujuOrigin    string
+	Type          string
+	AdminSecret   string
+	ControlBucket string
+	Series        string
+	ImageId       string
+	InstanceType  string
+}
+
+func newJujuEnv(access, secret string) (JujuEnv, error) {
+	ec2, err := config.GetString("juju:ec2")
+	if err != nil {
+		return JujuEnv{}, err
+	}
+	s3, err := config.GetString("juju:s3")
+	if err != nil {
+		return JujuEnv{}, err
+	}
+	jujuOrigin, err := config.GetString("juju:origin")
+	if err != nil {
+		return JujuEnv{}, err
+	}
+	series, err := config.GetString("juju:series")
+	if err != nil {
+		return JujuEnv{}, err
+	}
+	imageId, err := config.GetString("juju:image-id")
+	if err != nil {
+		return JujuEnv{}, err
+	}
+	instaceType, err := config.GetString("juju:instance-type")
+	if err != nil {
+		return JujuEnv{}, err
+	}
+	return JujuEnv{
+		Ec2:           ec2,
+		S3:            s3,
+		JujuOrigin:    jujuOrigin,
+		Type:          "ec2",
+		AdminSecret:   "",
+		ControlBucket: "",
+		Series:        series,
+		ImageId:       imageId,
+		InstanceType:  instaceType,
+		AccessKey:     access,
+		SecretKey:     secret,
+	}, nil
 }
 
 func NewEnviron(name, access, secret string) error {
@@ -108,7 +158,11 @@ func NewEnviron(name, access, secret string) error {
 	if _, ok := envs["environments"]; !ok {
 		envs["environments"] = map[string]JujuEnv{}
 	}
-	envs["environments"][name] = JujuEnv{Access: access, Secret: secret}
+	jujuEnv, err := newJujuEnv(access, secret)
+	if err != nil {
+		return err
+	}
+	envs["environments"][name] = jujuEnv
 	data, err := goyaml.Marshal(&envs)
 	_, err = file.Write(data)
 	return err
