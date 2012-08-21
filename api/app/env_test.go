@@ -2,7 +2,13 @@ package app
 
 import (
 	"github.com/timeredbull/commandmocker"
+	"github.com/timeredbull/tsuru/fs"
+	"github.com/timeredbull/tsuru/fs/testing"
+	"io/ioutil"
 	. "launchpad.net/gocheck"
+	"launchpad.net/goyaml"
+	"os"
+	"path"
 )
 
 func (s *S) TestRewriteEnvMessage(c *C) {
@@ -34,4 +40,37 @@ func (s *S) TestDoesNotSendInTheSuccessChannelIfItIsNil(c *C) {
 		app: &app,
 	}
 	env <- msg
+}
+
+func (s *S) TestNewEnviron(c *C) {
+	expected := map[string]map[string]JujuEnv{}
+	result := map[string]map[string]JujuEnv{}
+	expected["environments"] = map[string]JujuEnv{}
+	expected["environments"]["name"] = JujuEnv{Access: "access", Secret: "secret"}
+	rfs := &testing.RecordingFs{}
+	fsystem = rfs
+	defer func() {
+		fsystem = nil
+	}()
+	err := NewEnviron("name", "access", "secret")
+	c.Assert(err, IsNil)
+	c.Assert(rfs.HasAction("openfile "+EnvironConfPath+" with mode 0600"), Equals, true)
+	file, err := rfs.Open(EnvironConfPath)
+	c.Assert(err, IsNil)
+	content, err := ioutil.ReadAll(file)
+	c.Assert(err, IsNil)
+	goyaml.Unmarshal(content, &result)
+	c.Assert(result, DeepEquals, expected)
+}
+
+func (s *S) TestEnvironConfPath(c *C) {
+	expected := path.Join(os.ExpandEnv("${HOME}"), ".juju", "environments.yml")
+	c.Assert(EnvironConfPath, Equals, expected)
+}
+
+func (s *S) TestFileSystem(c *C) {
+	fsystem = &testing.RecordingFs{}
+	c.Assert(filesystem(), DeepEquals, fsystem)
+	fsystem = nil
+	c.Assert(filesystem(), DeepEquals, fs.OsFs{})
 }

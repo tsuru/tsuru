@@ -2,7 +2,12 @@ package app
 
 import (
 	"fmt"
+	"github.com/timeredbull/tsuru/fs"
 	"github.com/timeredbull/tsuru/log"
+	"launchpad.net/goyaml"
+	"os"
+	"path"
+	"syscall"
 	"time"
 )
 
@@ -17,6 +22,8 @@ type Message struct {
 }
 
 var env chan Message = make(chan Message, ChanSize)
+
+var EnvironConfPath = path.Join(os.ExpandEnv("${HOME}"), ".juju", "environments.yml")
 
 type Cmd struct {
 	cmd    string
@@ -75,4 +82,32 @@ func collectEnvVars() {
 		cmd += "END\n"
 		runCmd(cmd, e)
 	}
+}
+
+type JujuEnv struct {
+	Access string `yaml:"access-key"`
+	Secret string `yaml:"secret-key"`
+}
+
+func NewEnviron(name, access, secret string) error {
+	envs := map[string]map[string]JujuEnv{}
+	file, err := filesystem().OpenFile(EnvironConfPath, syscall.O_CREAT|syscall.O_RDWR, 0600)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+	envs["environments"] = map[string]JujuEnv{}
+	envs["environments"][name] = JujuEnv{Access: access, Secret: secret}
+	data, err := goyaml.Marshal(&envs)
+	_, err = file.Write(data)
+	return err
+}
+
+var fsystem fs.Fs
+
+func filesystem() fs.Fs {
+	if fsystem == nil {
+		fsystem = fs.OsFs{}
+	}
+	return fsystem
 }
