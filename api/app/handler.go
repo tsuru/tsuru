@@ -474,3 +474,26 @@ func UnbindHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	}
 	return instance.Unbind(&a)
 }
+
+func RestartHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
+	app, err := getAppOrError(r.URL.Query().Get(":name"), u)
+	if err != nil {
+		return err
+	}
+	if app.unit().Ip == "" {
+		msg := "You can't restart this app because it doesn't have an IP yet."
+		return &errors.Http{Code: http.StatusPreconditionFailed, Message: msg}
+	}
+	out, err := app.unit().Command("/var/lib/tsuru/hooks/restart")
+	if err != nil {
+		return err
+	}
+	n, err := w.Write(out)
+	if err != nil {
+		return err
+	}
+	if n != len(out) {
+		return &errors.Http{Code: http.StatusInternalServerError, Message: "Failed to write response body."}
+	}
+	return nil
+}

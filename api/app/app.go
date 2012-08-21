@@ -77,7 +77,7 @@ func (a *App) Create() error {
 	a.Log(string(out))
 	if err != nil {
 		a.Log(fmt.Sprintf("juju finished with exit status: %s", err.Error()))
-		a.Destroy()
+		db.Session.Apps().Remove(bson.M{"name": a.Name})
 		return errors.New(string(out))
 	}
 	a.Log(fmt.Sprintf("app %s successfully created", a.Name))
@@ -113,6 +113,9 @@ func (a *App) Destroy() error {
 	unbindingApp := App{Name: a.Name}
 	err := unbindingApp.Get()
 	if err != nil {
+		return err
+	}
+	if err = destroyKeystoneEnv(&unbindingApp); err != nil {
 		return err
 	}
 	unbindCh := make(chan error)

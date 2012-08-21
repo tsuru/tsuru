@@ -181,10 +181,12 @@ func (s *S) TearDownTest(c *C) {
 	var apps []App
 	err := db.Session.Apps().Find(nil).All(&apps)
 	c.Assert(err, IsNil)
+	_, err = db.Session.Apps().RemoveAll(nil)
+	c.Assert(err, IsNil)
 	for _, app := range apps {
-		err = app.Destroy()
-		c.Assert(err, IsNil)
+		app.Destroy()
 	}
+	Client.Token = ""
 }
 
 func (s *S) getTestData(p ...string) io.ReadCloser {

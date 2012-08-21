@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/timeredbull/tsuru/cmd"
 	"github.com/timeredbull/tsuru/fs"
-	"io"
 	"io/ioutil"
 	"net/http"
 	"os"
@@ -49,11 +48,11 @@ func (r *keyReader) readKey(keyPath string) (string, error) {
 func (r *keyReader) fileNotFound(context *cmd.Context) error {
 	if len(context.Args) > 0 {
 		msg := fmt.Sprintf("File %s does not exist!", context.Args[0])
-		io.WriteString(context.Stderr, msg+"\n")
+		fmt.Fprint(context.Stderr, msg+"\n")
 		return errors.New(msg)
 	}
-	io.WriteString(context.Stderr, "You don't have a public key\n")
-	io.WriteString(context.Stderr, "To generate a key use 'ssh-keygen' command\n")
+	msg := "You don't have a public key\nTo generate a key use 'ssh-keygen' command\n"
+	fmt.Fprint(context.Stderr, msg)
 	return errors.New("You need to have a public rsa key")
 }
 
@@ -87,7 +86,7 @@ func (c *KeyRemove) Run(context *cmd.Context, client cmd.Doer) error {
 	if err != nil {
 		return err
 	}
-	io.WriteString(context.Stdout, "Key successfully removed!\n")
+	fmt.Fprint(context.Stdout, "Key successfully removed!\n")
 	return nil
 }
 
@@ -121,6 +120,6 @@ func (c *KeyAdd) Run(context *cmd.Context, client cmd.Doer) error {
 	if err != nil {
 		return err
 	}
-	io.WriteString(context.Stdout, "Key successfully added!\n")
+	fmt.Fprint(context.Stdout, "Key successfully added!\n")
 	return nil
 }

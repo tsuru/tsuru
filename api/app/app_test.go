@@ -40,18 +40,23 @@ func (s *S) TestGet(c *C) {
 	newApp := App{Env: map[string]EnvVar{}, Name: "myApp", Framework: "django", Teams: []string{}, Logs: []Log{}}
 	err := newApp.Create()
 	c.Assert(err, IsNil)
-
+	defer db.Session.Apps().Remove(bson.M{"name": newApp.Name})
 	myApp := App{Name: "myApp"}
 	err = myApp.Get()
 	c.Assert(err, IsNil)
 	c.Assert(myApp.Name, Equals, newApp.Name)
 	c.Assert(myApp.State, Equals, newApp.State)
-
-	err = myApp.Destroy()
-	c.Assert(err, IsNil)
 }
 
 func (s *S) TestDestroy(c *C) {
+	ts := s.deleteMockServer("destroy-app-")
+	ts.Start()
+	oldAuthUrl := authUrl
+	authUrl = ts.URL
+	defer func() {
+		authUrl = oldAuthUrl
+		ts.Close()
+	}()
 	dir, err := commandmocker.Add("juju", "$*")
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(dir)
@@ -59,7 +64,18 @@ func (s *S) TestDestroy(c *C) {
 	l := stdlog.New(w, "", stdlog.LstdFlags)
 	log.Target = l
 	u := Unit{Name: "duvido", Machine: 3}
-	a := App{Name: "duvido", Framework: "django", Units: []Unit{u}}
+	a := App{
+		Name:      "duvido",
+		Framework: "django",
+		Units: []Unit{
+			u,
+		},
+		KeystoneEnv: KeystoneEnv{
+			TenantId:  "e60d1f0a-ee74-411c-b879-46aee9502bf9",
+			UserId:    "1b4d1195-7890-4274-831f-ddf8141edecc",
+			AccessKey: "91232f6796b54ca2a2b87ef50548b123",
+		},
+	}
 	err = a.Create()
 	c.Assert(err, IsNil)
 	err = a.Destroy()
@@ -69,6 +85,9 @@ func (s *S) TestDestroy(c *C) {
 	c.Assert(logStr, Matches, ".*terminate-machine -e [a-z]+ 3.*")
 	qtd, err := db.Session.Apps().Find(bson.M{"name": a.Name}).Count()
 	c.Assert(qtd, Equals, 0)
+	c.Assert(called["destroy-app-delete-ec2-creds"], Equals, true)
+	c.Assert(called["destroy-app-delete-user"], Equals, true)
+	c.Assert(called["destroy-app-delete-tenant"], Equals, true)
 }
 
 func (s *S) TestCreate(c *C) {
@@ -82,8 +101,7 @@ func (s *S) TestCreate(c *C) {
 	err = a.Create()
 	c.Assert(err, IsNil)
 	c.Assert(a.State, Equals, "pending")
-	defer a.Destroy()
-
+	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
 	var retrievedApp App
 	err = db.Session.Apps().Find(bson.M{"name": a.Name}).One(&retrievedApp)
 	c.Assert(err, IsNil)
@@ -99,9 +117,9 @@ func (s *S) TestCantCreateTwoAppsWithTheSameName(c *C) {
 	a := App{Name: "appName", Framework: "django"}
 	err := a.Create()
 	c.Assert(err, IsNil)
+	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
 	err = a.Create()
 	c.Assert(err, NotNil)
-	a.Destroy()
 }
 
 // Issue 116
@@ -120,7 +138,7 @@ func (s *S) TestDoesNotSaveTheAppInTheDatabaseIfJujuFail(c *C) {
 func (s *S) TestAppendOrUpdate(c *C) {
 	a := App{Name: "appName", Framework: "django", Teams: []string{}}
 	a.Create()
-	defer a.Destroy()
+	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
 	u := Unit{Name: "someapp", Ip: "", Machine: 3, InstanceId: "i-00000zz8"}
 	a.AddOrUpdateUnit(&u)
 	c.Assert(len(a.Units), Equals, 1)
@@ -250,7 +268,13 @@ pos-restart: testdata/pos.sh
 	dir, err := commandmocker.Add("juju", output)
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(dir)
-	a := App{Name: "something", Framework: "django"}
+	a := App{
+		Name:      "something",
+		Framework: "django",
+		Units: []Unit{
+			Unit{AgentState: "started", MachineAgentState: "running", InstanceState: "running"},
+		},
+	}
 	conf, err := a.conf()
 	c.Assert(err, IsNil)
 	c.Assert(conf.PreRestart, Equals, "testdata/pre.sh")
@@ -287,7 +311,13 @@ pos-restart: pos.sh
 `
 	dir, err := commandmocker.Add("juju", output)
 	c.Assert(err, IsNil)
-	a := App{Name: "something", Framework: "django"}
+	a := App{
+		Name:      "something",
+		Framework: "django",
+		Units: []Unit{
+			Unit{AgentState: "started", MachineAgentState: "running", InstanceState: "running"},
+		},
+	}
 	conf, err := a.conf()
 	c.Assert(err, IsNil)
 	commandmocker.Remove(dir)
@@ -339,7 +369,13 @@ pos-restart:
 	dir, err := commandmocker.Add("juju", output)
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(dir)
-	a := App{Name: "something", Framework: "django"}
+	a := App{
+		Name:      "something",
+		Framework: "django",
+		Units: []Unit{
+			Unit{AgentState: "started", MachineAgentState: "running", InstanceState: "running"},
+		},
+	}
 	conf, err := a.conf()
 	c.Assert(err, IsNil)
 	w := bytes.NewBuffer([]byte{})
@@ -360,7 +396,13 @@ pos-restart:
 `
 	dir, err := commandmocker.Add("juju", output)
 	c.Assert(err, IsNil)
-	a := App{Name: "something", Framework: "django"}
+	a := App{
+		Name:      "something",
+		Framework: "django",
+		Units: []Unit{
+			Unit{AgentState: "started", MachineAgentState: "running", InstanceState: "running"},
+		},
+	}
 	conf, err := a.conf()
 	c.Assert(err, IsNil)
 	commandmocker.Remove(dir)
@@ -410,7 +452,13 @@ pre-restart: somescript.sh
 	dir, err := commandmocker.Add("juju", output)
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(dir)
-	a := App{Name: "something", Framework: "django"}
+	a := App{
+		Name:      "something",
+		Framework: "django",
+		Units: []Unit{
+			Unit{AgentState: "started", MachineAgentState: "running", InstanceState: "running"},
+		},
+	}
 	conf, err := a.conf()
 	c.Assert(err, IsNil)
 	w := bytes.NewBuffer([]byte{})
@@ -428,7 +476,13 @@ something that must be discarded
 ========
 nothing here
 `
-	a := App{Name: "something", Framework: "django"}
+	a := App{
+		Name:      "something",
+		Framework: "django",
+		Units: []Unit{
+			Unit{AgentState: "started", MachineAgentState: "running", InstanceState: "running"},
+		},
+	}
 	dir, err := commandmocker.Add("juju", output)
 	c.Assert(err, IsNil)
 	conf, err := a.conf()
@@ -445,7 +499,13 @@ something that must be discarded
 pos-restart:
     somefile.sh
 `
-	a := App{Name: "something", Framework: "django"}
+	a := App{
+		Name:      "something",
+		Framework: "django",
+		Units: []Unit{
+			Unit{AgentState: "started", MachineAgentState: "running", InstanceState: "running"},
+		},
+	}
 	dir, err := commandmocker.Add("juju", output)
 	c.Assert(err, IsNil)
 	conf, err := a.conf()
@@ -456,7 +516,14 @@ pos-restart:
 }
 
 func (s *S) TestUpdateHooks(c *C) {
-	a := &App{Name: "someApp", Framework: "django", Teams: []string{s.team.Name}}
+	a := &App{
+		Name:      "someApp",
+		Framework: "django",
+		Teams:     []string{s.team.Name},
+		Units: []Unit{
+			Unit{AgentState: "started", MachineAgentState: "running", InstanceState: "running"},
+		},
+	}
 	err := a.Create()
 	c.Assert(err, IsNil)
 	err = a.updateHooks()

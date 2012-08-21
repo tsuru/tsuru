@@ -33,7 +33,7 @@ func (c *AppGrant) Run(context *cmd.Context, client cmd.Doer) error {
 	if err != nil {
 		return err
 	}
-	io.WriteString(context.Stdout, fmt.Sprintf(`Team "%s" was added to the "%s" app`+"\n", teamName, appName))
+	fmt.Fprintf(context.Stdout, `Team "%s" was added to the "%s" app`+"\n", teamName, appName)
 	return nil
 }
 
@@ -59,7 +59,7 @@ func (c *AppRevoke) Run(context *cmd.Context, client cmd.Doer) error {
 	if err != nil {
 		return err
 	}
-	io.WriteString(context.Stdout, fmt.Sprintf(`Team "%s" was removed from the "%s" app`+"\n", teamName, appName))
+	fmt.Fprintf(context.Stdout, `Team "%s" was removed from the "%s" app`+"\n", teamName, appName)
 	return nil
 }
 
@@ -92,7 +92,7 @@ func (c *AppList) Run(context *cmd.Context, client cmd.Doer) error {
 	if err != nil {
 		return err
 	}
-	return c.Show([]byte(result), context)
+	return c.Show(result, context)
 }
 
 func (c *AppList) Show(result []byte, context *cmd.Context) error {
@@ -148,8 +148,8 @@ func (c *AppCreate) Run(context *cmd.Context, client cmd.Doer) error {
 	if err != nil {
 		return err
 	}
-	io.WriteString(context.Stdout, fmt.Sprintf(`App "%s" successfully created!`+"\n", appName))
-	io.WriteString(context.Stdout, fmt.Sprintf(`Your repository for "%s" project is "%s"`, appName, out["repository_url"])+"\n")
+	fmt.Fprintf(context.Stdout, `App "%s" successfully created!`+"\n", appName)
+	fmt.Fprintf(context.Stdout, `Your repository for "%s" project is "%s"`+"\n", appName, out["repository_url"])
 	return nil
 }
 
@@ -184,7 +184,7 @@ func (c *AppRemove) Run(context *cmd.Context, client cmd.Doer) error {
 	if err != nil {
 		return err
 	}
-	io.WriteString(context.Stdout, fmt.Sprintf(`App "%s" successfully removed!`+"\n", appName))
+	fmt.Fprintf(context.Stdout, `App "%s" successfully removed!`+"\n", appName)
 	return nil
 }
 
@@ -229,4 +229,34 @@ func (c *AppLog) Run(context *cmd.Context, client cmd.Doer) error {
 		context.Stdout.Write([]byte(log.Date.String() + " - " + log.Message + "\n"))
 	}
 	return err
+}
+
+type AppRestart struct{}
+
+func (c *AppRestart) Run(context *cmd.Context, client cmd.Doer) error {
+	appName := context.Args[0]
+	url := cmd.GetUrl(fmt.Sprintf("/apps/%s/restart", appName))
+	request, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return err
+	}
+	response, err := client.Do(request)
+	if err != nil {
+		return err
+	}
+	defer response.Body.Close()
+	_, err = io.Copy(context.Stdout, response.Body)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (c *AppRestart) Info() *cmd.Info {
+	return &cmd.Info{
+		Name:    "restart",
+		Usage:   "restart <appname>",
+		Desc:    "restarts an app.",
+		MinArgs: 1,
+	}
 }

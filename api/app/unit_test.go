@@ -12,7 +12,15 @@ func (s *S) TestCommand(c *C) {
 	s.tmpdir, err = commandmocker.Add("juju", "$*")
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(s.tmpdir)
-	u := Unit{Type: "django", Name: "myUnit", Machine: 1, app: &App{JujuEnv: "alpha"}}
+	u := Unit{
+		Type:              "django",
+		Name:              "myUnit",
+		Machine:           1,
+		app:               &App{JujuEnv: "alpha"},
+		InstanceState:     "running",
+		AgentState:        "started",
+		MachineAgentState: "running",
+	}
 	output, err := u.Command("uname")
 	c.Assert(err, IsNil)
 	c.Assert(string(output), Matches, `.* -e alpha \d uname`)
@@ -22,13 +30,36 @@ func (s *S) TestCommandShouldAcceptMultipleParams(c *C) {
 	dir, err := commandmocker.Add("juju", "$*")
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(dir)
-	u := Unit{Type: "django", Name: "myUnit", Machine: 1, app: &App{JujuEnv: "alpha"}}
+	u := Unit{
+		Type:              "django",
+		Name:              "myUnit",
+		Machine:           1,
+		app:               &App{JujuEnv: "alpha"},
+		InstanceState:     "running",
+		AgentState:        "started",
+		MachineAgentState: "running",
+	}
 	out, err := u.Command("uname", "-a")
 	c.Assert(string(out), Matches, `.* -e alpha \d uname -a`)
 }
 
+func (s *S) TestCommandReturnErrorIfTheUnitIsNotStarted(c *C) {
+	u := Unit{
+		Type:              "django",
+		Name:              "myUnit",
+		Machine:           1,
+		app:               &App{JujuEnv: "alpha"},
+		InstanceState:     "running",
+		AgentState:        "not-started",
+		MachineAgentState: "running",
+	}
+	_, err := u.Command("uname", "-a")
+	c.Assert(err, NotNil)
+	c.Assert(err.Error(), Equals, "Unit must be started to run commands, but it is "+u.State()+".")
+}
+
 func (s *S) TestExecuteHook(c *C) {
-	appUnit := Unit{Type: "django", Name: "myUnit", app: &App{JujuEnv: "beta"}}
+	appUnit := Unit{Type: "django", Name: "myUnit", app: &App{JujuEnv: "beta"}, MachineAgentState: "running", AgentState: "started", InstanceState: "running"}
 	_, err := appUnit.ExecuteHook("requirements")
 	c.Assert(err, IsNil)
 }
