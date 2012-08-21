@@ -355,8 +355,9 @@ File or directory does not exists
 	out, err := a.preRestart(conf)
 	c.Assert(err, IsNil)
 	st := strings.Split(w.String(), "\n")
-	c.Assert(st[len(st)-2], Matches, ".*app.conf file does not exists or is in the right place. Skipping...")
-	c.Assert(string(out), Matches, ".*app.conf file does not exists or is in the right place. Skipping...")
+	regexp := ".*app.conf file does not exists or is in the right place. Skipping pre-restart hook..."
+	c.Assert(st[len(st)-2], Matches, regexp)
+	c.Assert(string(out), Matches, regexp+"\n")
 }
 
 func (s *S) TestSkipsPreRestartWhenPreRestartSectionDoesNotExists(c *C) {
@@ -386,8 +387,9 @@ pos-restart:
 	out, err := a.preRestart(conf)
 	c.Assert(err, IsNil)
 	st := strings.Split(w.String(), "\n")
-	c.Assert(st[len(st)-2], Matches, ".*pre-restart hook section in app conf does not exists... Skipping...")
-	c.Assert(string(out), Matches, ".*pre-restart hook section in app conf does not exists... Skipping...")
+	regexp := ".*pre-restart hook section in app conf does not exists... Skipping pre-restart hook..."
+	c.Assert(st[len(st)-2], Matches, regexp)
+	c.Assert(string(out), Matches, regexp+"\n")
 }
 
 func (s *S) TestPosRestart(c *C) {
@@ -418,8 +420,9 @@ pos-restart:
 	c.Assert(err, IsNil)
 	commandmocker.Remove(dir)
 	st := strings.Split(w.String(), "\n")
-	c.Assert(st[len(st)-2], Matches, ".*/bin/bash /home/application/current/pos.sh$")
-	c.Assert(string(out), Matches, ".*/bin/bash /home/application/current/pos.sh$")
+	regexp := ".*/bin/bash /home/application/current/pos.sh$"
+	c.Assert(st[len(st)-2], Matches, regexp)
+	c.Assert(string(out), Matches, regexp)
 }
 
 func (s *S) TestPosRestartWhenAppConfDoesNotExists(c *C) {
@@ -442,8 +445,9 @@ File or directory does not exists
 	out, err := a.posRestart(conf)
 	c.Assert(err, IsNil)
 	st := strings.Split(w.String(), "\n")
-	c.Assert(st[len(st)-2], Matches, ".*app.conf file does not exists or is in the right place. Skipping...")
-	c.Assert(string(out), Matches, ".*app.conf file does not exists or is in the right place. Skipping...")
+	regexp := ".*app.conf file does not exists or is in the right place. Skipping pos-restart hook..."
+	c.Assert(st[len(st)-2], Matches, regexp)
+	c.Assert(string(out), Matches, regexp+"\n")
 }
 
 func (s *S) TestSkipsPosRestartWhenPosRestartSectionDoesNotExists(c *C) {
@@ -472,8 +476,9 @@ pre-restart: somescript.sh
 	out, err := a.posRestart(conf)
 	c.Assert(err, IsNil)
 	st := strings.Split(w.String(), "\n")
-	c.Assert(st[len(st)-2], Matches, ".*pos-restart hook section in app conf does not exists... Skipping...")
-	c.Assert(string(out), Matches, ".*pos-restart hook section in app conf does not exists... Skipping...")
+	regexp := ".*pos-restart hook section in app conf does not exists... Skipping pos-restart hook..."
+	c.Assert(st[len(st)-2], Matches, regexp)
+	c.Assert(string(out), Matches, regexp+"\n")
 }
 
 func (s *S) TestHasRestartHooksWithNoHooks(c *C) {
