@@ -69,19 +69,25 @@ func NewApp(name string, framework string, teams []string) (App, error) {
 	// TODO (flaviamissi): check if tsuru is in multi tenant mode before
 	// creating a new tenant for an app
 	var err error
-	a.KeystoneEnv.TenantId, err = NewTenant(&a)
+	isMultiTenant, err := config.GetBool("multi-tenant")
 	if err != nil {
 		return a, err
 	}
-	a.KeystoneEnv.UserId, err = NewUser(&a)
-	if err != nil {
-		return a, err
-	}
-	var secret string
-	a.KeystoneEnv.AccessKey, secret, err = NewEC2Creds(&a)
-	_ = secret
-	if err != nil {
-		return a, err
+	if isMultiTenant {
+		a.KeystoneEnv.TenantId, err = NewTenant(&a)
+		if err != nil {
+			return a, err
+		}
+		a.KeystoneEnv.UserId, err = NewUser(&a)
+		if err != nil {
+			return a, err
+		}
+		var secret string
+		a.KeystoneEnv.AccessKey, secret, err = NewEC2Creds(&a)
+		_ = secret
+		if err != nil {
+			return a, err
+		}
 	}
 	a.State = "pending"
 	// TODO (#110): make JujuEnv match the app name, and bootstrap it before

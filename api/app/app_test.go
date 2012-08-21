@@ -5,6 +5,7 @@ import (
 	"github.com/timeredbull/commandmocker"
 	"github.com/timeredbull/tsuru/api/auth"
 	"github.com/timeredbull/tsuru/api/bind"
+	"github.com/timeredbull/tsuru/config"
 	"github.com/timeredbull/tsuru/db"
 	"github.com/timeredbull/tsuru/log"
 	"labix.org/v2/mgo/bson"
@@ -597,4 +598,16 @@ func (s *S) TestNewAppShouldCreateKeystoneEnv(c *C) {
 	c.Assert(a.KeystoneEnv.TenantId, Not(Equals), "")
 	c.Assert(a.KeystoneEnv.UserId, Not(Equals), "")
 	c.Assert(a.KeystoneEnv.AccessKey, Not(Equals), "")
+}
+
+func (s *S) TestNewAppShouldNotCreateKeystoneEnvWhenMultiTenantConfIsFalse(c *C) {
+	config.Set("multi-tenant", false)
+	defer func() {
+		config.Set("multi-tenant", true)
+	}()
+	a, err := NewApp("pumpkin", "golang", []string{s.team.Name})
+	c.Assert(err, IsNil)
+	c.Assert(a.KeystoneEnv.TenantId, Equals, "")
+	c.Assert(a.KeystoneEnv.UserId, Equals, "")
+	c.Assert(a.KeystoneEnv.AccessKey, Equals, "")
 }
