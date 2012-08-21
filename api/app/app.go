@@ -59,16 +59,24 @@ func (a *App) Get() error {
 	return db.Session.Apps().Find(bson.M{"name": a.Name}).One(&a)
 }
 
-func (a *App) Create() error {
+// Creates a new app and save it in database
+// params should be passed in the following order:
+func NewApp(name string, framework string, teams []string) (App, error) {
+	a := App{
+		Name:      name,
+		Framework: framework,
+		Teams:     teams,
+	}
 	// TODO (flaviamissi): check if tsuru is in multi tenant mode before
 	// creating a new tenant for an app
+	//NewTenant(a)
 	a.State = "pending"
 	// TODO (#110): make JujuEnv match the app name, and bootstrap it before
 	// deploy the app.
 	a.JujuEnv = "delta"
 	err := db.Session.Apps().Insert(a)
 	if err != nil {
-		return err
+		return a, err
 	}
 	a.Log(fmt.Sprintf("creating app %s", a.Name))
 	cmd := exec.Command("juju", "deploy", "-e", a.JujuEnv, "--repository=/home/charms", "local:"+a.Framework, a.Name)
@@ -78,10 +86,10 @@ func (a *App) Create() error {
 	if err != nil {
 		a.Log(fmt.Sprintf("juju finished with exit status: %s", err.Error()))
 		db.Session.Apps().Remove(bson.M{"name": a.Name})
-		return errors.New(string(out))
+		return a, errors.New(string(out))
 	}
 	a.Log(fmt.Sprintf("app %s successfully created", a.Name))
-	return nil
+	return a, nil
 }
 
 func (a *App) unbind() error {

@@ -14,17 +14,13 @@ import (
 )
 
 var (
-	b           string
 	requestJson []byte
 	// flags to detect when tenant url and user url are called
 	called = make(map[string]bool)
 	params = make(map[string]string)
 )
 
-func (s *S) postMockServer(body string) *httptest.Server {
-	if body != "" {
-		b = body
-	}
+func (s *S) postMockServer(b string) *httptest.Server {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != "POST" {
 			w.WriteHeader(http.StatusMethodNotAllowed)
@@ -33,18 +29,39 @@ func (s *S) postMockServer(body string) *httptest.Server {
 		if r.URL.Path == "/tokens" {
 			handleTokens(w, r)
 		} else if r.URL.Path == "/tenants" {
-			called["tenants"] = true
-			w.Write([]byte(b))
+			handleTenants(w, r, b)
 		} else if r.URL.Path == "/users" {
-			called["users"] = true
-			w.Write([]byte(b))
+			handleUsers(w, r, b)
 		} else if strings.Contains(r.URL.Path, "/credentials/OS-EC2") {
-			called["ec2-creds"] = true
-			w.Write([]byte(b))
+			handleCreds(w, r, b)
 		}
 	}))
 	authUrl = ts.URL
 	return ts
+}
+
+func handleTenants(w http.ResponseWriter, r *http.Request, b string) {
+	if b == "" {
+		b = `{"tenant": {"id": "uuid123", "name": "tenant name", "description": "tenant desc"}}`
+	}
+	called["tenants"] = true
+	w.Write([]byte(b))
+}
+
+func handleUsers(w http.ResponseWriter, r *http.Request, b string) {
+	if b == "" {
+		b = `{"user": {"id": "uuid321", "name": "appname", "email": "appname@foo.bar"}}`
+	}
+	called["users"] = true
+	w.Write([]byte(b))
+}
+
+func handleCreds(w http.ResponseWriter, r *http.Request, b string) {
+	if b == "" {
+		b = `{"credential": {"access": "access-key-here", "secret": "secret-key-here"}}`
+	}
+	called["ec2-creds"] = true
+	w.Write([]byte(b))
 }
 
 func handleTokens(w http.ResponseWriter, r *http.Request) {
@@ -243,7 +260,6 @@ func (s *S) TestNewTenantSavesInDb(c *C) {
 	err = a.Get()
 	c.Assert(err, IsNil)
 	c.Assert(t, Equals, "uuid123")
-	c.Assert(a.KeystoneEnv.TenantId, DeepEquals, t)
 }
 
 func (s *S) TestNewTenantUsesNovaUserPasswordAndTenantFromTsuruConf(c *C) {
@@ -296,8 +312,6 @@ func (s *S) TestNewUserShouldStoreUserInDb(c *C) {
 	uId, err := NewUser(&a)
 	c.Assert(err, IsNil)
 	c.Assert(uId, Equals, "uuid321")
-	db.Session.Apps().Find(bson.M{"name": a.Name}).One(&a)
-	c.Assert(a.KeystoneEnv.UserId, Equals, uId)
 }
 
 func (s *S) TestNewEC2CredsShouldCallKeystoneApi(c *C) {
@@ -336,24 +350,6 @@ func (s *S) TestNewEC2CredsShouldFailIfAppHasNoUserId(c *C) {
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
 	_, _, err = NewEC2Creds(&a)
 	c.Assert(err, ErrorMatches, "^App should have an associated keystone user to create an user.$")
-}
-
-func (s *S) TestNewEC2CredsShouldSaveAccessKeyInDbAndReturnAccessAndSecretKeys(c *C) {
-	ts := s.postMockServer(`{"credential": {"access": "access-key-here", "secret": "secret-key-here"}}`)
-	defer ts.Close()
-	a := App{Name: "myapp"}
-	a.KeystoneEnv.TenantId = "uuid123"
-	a.KeystoneEnv.UserId = "uuid321"
-	err := db.Session.Apps().Insert(a)
-	c.Assert(err, IsNil)
-	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
-	aKey, sKey, err := NewEC2Creds(&a)
-	c.Assert(err, IsNil)
-	c.Assert(aKey, Equals, "access-key-here")
-	c.Assert(sKey, Equals, "secret-key-here")
-	err = db.Session.Apps().Find(bson.M{"name": a.Name}).One(&a)
-	c.Assert(err, IsNil)
-	c.Assert(a.KeystoneEnv.AccessKey, Equals, aKey)
 }
 
 func (s *S) TestDestroyKeystoneEnv(c *C) {

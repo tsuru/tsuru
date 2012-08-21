@@ -37,10 +37,13 @@ func (c *hasAccessToChecker) Check(params []interface{}, names []string) (bool, 
 var HasAccessTo Checker = &hasAccessToChecker{}
 
 func (s *S) TestGet(c *C) {
-	newApp := App{Env: map[string]EnvVar{}, Name: "myApp", Framework: "django", Teams: []string{}, Logs: []Log{}}
-	err := newApp.Create()
+	newApp, err := NewApp("myApp", "django", []string{})
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": newApp.Name})
+	newApp.Env = map[string]EnvVar{}
+	newApp.Logs = []Log{}
+	err = db.Session.Apps().Update(bson.M{"name": newApp.Name}, &newApp)
+	c.Assert(err, IsNil)
 	myApp := App{Name: "myApp"}
 	err = myApp.Get()
 	c.Assert(err, IsNil)
@@ -64,19 +67,15 @@ func (s *S) TestDestroy(c *C) {
 	l := stdlog.New(w, "", stdlog.LstdFlags)
 	log.Target = l
 	u := Unit{Name: "duvido", Machine: 3}
-	a := App{
-		Name:      "duvido",
-		Framework: "django",
-		Units: []Unit{
-			u,
-		},
-		KeystoneEnv: KeystoneEnv{
-			TenantId:  "e60d1f0a-ee74-411c-b879-46aee9502bf9",
-			UserId:    "1b4d1195-7890-4274-831f-ddf8141edecc",
-			AccessKey: "91232f6796b54ca2a2b87ef50548b123",
-		},
+	a, err := NewApp("duvido", "django", []string{})
+	c.Assert(err, IsNil)
+	a.KeystoneEnv = KeystoneEnv{
+		TenantId:  "e60d1f0a-ee74-411c-b879-46aee9502bf9",
+		UserId:    "1b4d1195-7890-4274-831f-ddf8141edecc",
+		AccessKey: "91232f6796b54ca2a2b87ef50548b123",
 	}
-	err = a.Create()
+	a.Units = []Unit{u}
+	err = db.Session.Apps().Update(bson.M{"name": a.Name}, &a)
 	c.Assert(err, IsNil)
 	err = a.Destroy()
 	c.Assert(err, IsNil)
@@ -90,15 +89,14 @@ func (s *S) TestDestroy(c *C) {
 	c.Assert(called["destroy-app-delete-tenant"], Equals, true)
 }
 
-func (s *S) TestCreate(c *C) {
+func (s *S) TestNewApp(c *C) {
 	dir, err := commandmocker.Add("juju", "$*")
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(dir)
 	w := bytes.NewBuffer([]byte{})
 	l := stdlog.New(w, "", stdlog.LstdFlags)
 	log.Target = l
-	a := App{Name: "appName", Framework: "django"}
-	err = a.Create()
+	a, err := NewApp("appName", "django", []string{})
 	c.Assert(err, IsNil)
 	c.Assert(a.State, Equals, "pending")
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
@@ -113,12 +111,11 @@ func (s *S) TestCreate(c *C) {
 	c.Assert(str, Matches, ".*deploy -e delta --repository=/home/charms local:django appName.*")
 }
 
-func (s *S) TestCantCreateTwoAppsWithTheSameName(c *C) {
-	a := App{Name: "appName", Framework: "django"}
-	err := a.Create()
+func (s *S) TestCantNewAppTwoAppsWithTheSameName(c *C) {
+	a, err := NewApp("appName", "django", []string{})
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
-	err = a.Create()
+	a, err = NewApp("appName", "django", []string{})
 	c.Assert(err, NotNil)
 }
 
@@ -127,8 +124,7 @@ func (s *S) TestDoesNotSaveTheAppInTheDatabaseIfJujuFail(c *C) {
 	dir, err := commandmocker.Error("juju", "juju failed", 1)
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(dir)
-	a := App{Name: "myapp", Framework: "ruby"}
-	err = a.Create()
+	a, err := NewApp("myapp", "ruby", []string{})
 	c.Assert(err, NotNil)
 	c.Assert(err, ErrorMatches, "^.*juju failed.*$")
 	err = a.Get()
@@ -136,8 +132,8 @@ func (s *S) TestDoesNotSaveTheAppInTheDatabaseIfJujuFail(c *C) {
 }
 
 func (s *S) TestAppendOrUpdate(c *C) {
-	a := App{Name: "appName", Framework: "django", Teams: []string{}}
-	a.Create()
+	a, err := NewApp("appName", "django", []string{})
+	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
 	u := Unit{Name: "someapp", Ip: "", Machine: 3, InstanceId: "i-00000zz8"}
 	a.AddOrUpdateUnit(&u)
@@ -176,7 +172,7 @@ func (s *S) TestRevokeAccessFailsIfTheTeamsDoesNotHaveAccessToTheApp(c *C) {
 	c.Assert(err, ErrorMatches, "^This team does not have access to this app$")
 }
 
-func (s *S) TestSetEnvCreatesTheMapIfItIsNil(c *C) {
+func (s *S) TestSetEnvNewAppsTheMapIfItIsNil(c *C) {
 	a := App{Name: "how-many-more-times"}
 	c.Assert(a.Env, IsNil)
 	env := EnvVar{Name: "PATH", Value: "/"}
@@ -474,16 +470,14 @@ pos-restart:
 }
 
 func (s *S) TestUpdateHooks(c *C) {
-	a := &App{Name: "someApp", Framework: "django", Teams: []string{s.team.Name}}
-	err := a.Create()
+	a, err := NewApp("someApp", "django", []string{s.team.Name})
 	c.Assert(err, IsNil)
 	err = a.updateHooks()
 	c.Assert(err, IsNil)
 }
 
 func (s *S) TestLogShouldStoreLog(c *C) {
-	a := App{Name: "newApp"}
-	err := a.Create()
+	a, err := NewApp("newApp", "", []string{})
 	c.Assert(err, IsNil)
 	err = a.Log("last log msg")
 	c.Assert(err, IsNil)
@@ -495,10 +489,11 @@ func (s *S) TestLogShouldStoreLog(c *C) {
 
 func (s *S) TestAppShouldStoreUnits(c *C) {
 	u := Unit{Name: "someapp/0", Type: "django"}
-	units := []Unit{u}
 	var instance App
-	a := App{Name: "someApp", Units: units}
-	err := a.Create()
+	a, err := NewApp("someApp", "", []string{})
+	c.Assert(err, IsNil)
+	a.Units = []Unit{u}
+	err = db.Session.Apps().Update(bson.M{"name": a.Name}, &a)
 	c.Assert(err, IsNil)
 	err = db.Session.Apps().Find(bson.M{"name": a.Name}).One(&instance)
 	c.Assert(err, IsNil)
@@ -532,4 +527,8 @@ func (s *S) TestGetUnits(c *C) {
 	app := App{Units: []Unit{Unit{Ip: "1.1.1.1"}}}
 	expected := []bind.Unit{bind.Unit(&Unit{Ip: "1.1.1.1", app: &app})}
 	c.Assert(app.GetUnits(), DeepEquals, expected)
+}
+
+func (s *S) TestNewAppShouldCreateKeystoneEnv(c *C) {
+	//NewApp("pumpkin")
 }

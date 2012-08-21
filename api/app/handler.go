@@ -146,7 +146,7 @@ func createApp(app *App, u *auth.User) ([]byte, error) {
 		return nil, &errors.Http{Code: http.StatusForbidden, Message: msg}
 	}
 	app.setTeams(teams)
-	err = app.Create()
+	_, err = NewApp(app.Name, app.Framework, app.Teams)
 	if err != nil {
 		if strings.Contains(err.Error(), "key error") {
 			msg := fmt.Sprintf(`There is already an app named "%s".`, app.Name)
@@ -179,6 +179,7 @@ func CreateAppHandler(w http.ResponseWriter, r *http.Request, u *auth.User) erro
 	if err != nil {
 		return err
 	}
+
 	fmt.Fprint(w, bytes.NewBuffer(jsonMsg).String())
 	return nil
 }

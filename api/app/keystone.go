@@ -5,9 +5,7 @@ import (
 	"fmt"
 	"github.com/timeredbull/keystone"
 	"github.com/timeredbull/tsuru/config"
-	"github.com/timeredbull/tsuru/db"
 	"github.com/timeredbull/tsuru/log"
-	"labix.org/v2/mgo/bson"
 )
 
 type KeystoneEnv struct {
@@ -79,11 +77,11 @@ func getClient() (err error) {
 		return
 	}
 	c, err := keystone.NewClient(authUser, authPass, authTenant, authUrl)
-	Client = *c
 	if err != nil {
 		log.Printf("ERROR: a problem occurred while trying to obtain keystone's client: %s", err.Error())
 		return
 	}
+	Client = *c
 	return
 }
 
@@ -105,12 +103,6 @@ func NewTenant(a *App) (tId string, err error) {
 		return
 	}
 	tId = t.Id
-	a.KeystoneEnv.TenantId = tId
-	err = db.Session.Apps().Update(bson.M{"name": a.Name}, &a)
-	if err != nil {
-		log.Printf("ERROR: %s", err.Error())
-		return
-	}
 	log.Printf("DEBUG: tenant %s successfuly created.", a.Name)
 	return
 }
@@ -133,8 +125,6 @@ func NewUser(a *App) (uId string, err error) {
 		return
 	}
 	uId = u.Id
-	a.KeystoneEnv.UserId = uId
-	err = db.Session.Apps().Update(bson.M{"name": a.Name}, &a)
 	return
 }
 
@@ -160,8 +150,6 @@ func NewEC2Creds(a *App) (access, secret string, err error) {
 	}
 	access = ec2.Access
 	secret = ec2.Secret
-	a.KeystoneEnv.AccessKey = access
-	err = db.Session.Apps().Update(bson.M{"name": a.Name}, &a)
 	return
 }
 
