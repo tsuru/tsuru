@@ -326,12 +326,13 @@ pos-restart: pos.sh
 	w := bytes.NewBuffer([]byte{})
 	l := stdlog.New(w, "", stdlog.LstdFlags)
 	log.Target = l
-	err = a.preRestart(conf)
+	out, err := a.preRestart(conf)
 	c.Assert(err, IsNil)
 	commandmocker.Remove(dir)
 	c.Assert(err, IsNil)
 	st := strings.Split(w.String(), "\n")
 	c.Assert(st[len(st)-2], Matches, ".*/bin/bash /home/application/current/pre.sh$")
+	c.Assert(string(out), Matches, ".*/bin/bash /home/application/current/pre.sh$")
 }
 
 func (s *S) TestPreRestartWhenAppConfDoesNotExists(c *C) {
@@ -351,10 +352,11 @@ File or directory does not exists
 	w := bytes.NewBuffer([]byte{})
 	l := stdlog.New(w, "", stdlog.LstdFlags)
 	log.Target = l
-	err = a.preRestart(conf)
+	out, err := a.preRestart(conf)
 	c.Assert(err, IsNil)
 	st := strings.Split(w.String(), "\n")
 	c.Assert(st[len(st)-2], Matches, ".*app.conf file does not exists or is in the right place. Skipping...")
+	c.Assert(string(out), Matches, ".*app.conf file does not exists or is in the right place. Skipping...")
 }
 
 func (s *S) TestSkipsPreRestartWhenPreRestartSectionDoesNotExists(c *C) {
@@ -381,10 +383,11 @@ pos-restart:
 	w := bytes.NewBuffer([]byte{})
 	l := stdlog.New(w, "", stdlog.LstdFlags)
 	log.Target = l
-	err = a.preRestart(conf)
+	out, err := a.preRestart(conf)
 	c.Assert(err, IsNil)
 	st := strings.Split(w.String(), "\n")
 	c.Assert(st[len(st)-2], Matches, ".*pre-restart hook section in app conf does not exists... Skipping...")
+	c.Assert(string(out), Matches, ".*pre-restart hook section in app conf does not exists... Skipping...")
 }
 
 func (s *S) TestPosRestart(c *C) {
@@ -411,11 +414,12 @@ pos-restart:
 	w := bytes.NewBuffer([]byte{})
 	l := stdlog.New(w, "", stdlog.LstdFlags)
 	log.Target = l
-	err = a.posRestart(conf)
+	out, err := a.posRestart(conf)
 	c.Assert(err, IsNil)
 	commandmocker.Remove(dir)
 	st := strings.Split(w.String(), "\n")
 	c.Assert(st[len(st)-2], Matches, ".*/bin/bash /home/application/current/pos.sh$")
+	c.Assert(string(out), Matches, ".*/bin/bash /home/application/current/pos.sh$")
 }
 
 func (s *S) TestPosRestartWhenAppConfDoesNotExists(c *C) {
@@ -435,10 +439,11 @@ File or directory does not exists
 	w := bytes.NewBuffer([]byte{})
 	l := stdlog.New(w, "", stdlog.LstdFlags)
 	log.Target = l
-	err = a.posRestart(conf)
+	out, err := a.posRestart(conf)
 	c.Assert(err, IsNil)
 	st := strings.Split(w.String(), "\n")
 	c.Assert(st[len(st)-2], Matches, ".*app.conf file does not exists or is in the right place. Skipping...")
+	c.Assert(string(out), Matches, ".*app.conf file does not exists or is in the right place. Skipping...")
 }
 
 func (s *S) TestSkipsPosRestartWhenPosRestartSectionDoesNotExists(c *C) {
@@ -464,10 +469,11 @@ pre-restart: somescript.sh
 	w := bytes.NewBuffer([]byte{})
 	l := stdlog.New(w, "", stdlog.LstdFlags)
 	log.Target = l
-	err = a.posRestart(conf)
+	out, err := a.posRestart(conf)
 	c.Assert(err, IsNil)
 	st := strings.Split(w.String(), "\n")
 	c.Assert(st[len(st)-2], Matches, ".*pos-restart hook section in app conf does not exists... Skipping...")
+	c.Assert(string(out), Matches, ".*pos-restart hook section in app conf does not exists... Skipping...")
 }
 
 func (s *S) TestHasRestartHooksWithNoHooks(c *C) {
@@ -516,18 +522,24 @@ pos-restart:
 }
 
 func (s *S) TestUpdateHooks(c *C) {
+	tmpdir, err := commandmocker.Add("juju", "$*")
+	c.Assert(err, IsNil)
+	defer commandmocker.Remove(tmpdir)
 	a := &App{
 		Name:      "someApp",
 		Framework: "django",
 		Teams:     []string{s.team.Name},
+		JujuEnv:   "delta",
 		Units: []Unit{
-			Unit{AgentState: "started", MachineAgentState: "running", InstanceState: "running"},
+			Unit{AgentState: "started", MachineAgentState: "running", InstanceState: "running", Machine: 4},
 		},
 	}
-	err := a.Create()
+	err = a.Create()
 	c.Assert(err, IsNil)
-	err = a.updateHooks()
+	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
+	out, err := a.updateHooks()
 	c.Assert(err, IsNil)
+	c.Assert(string(out), Equals, "ssh -o StrictHostKeyChecking no -e delta 4 /var/lib/tsuru/hooks/restart")
 }
 
 func (s *S) TestLogShouldStoreLog(c *C) {

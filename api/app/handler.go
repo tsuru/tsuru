@@ -9,6 +9,7 @@ import (
 	"github.com/timeredbull/tsuru/db"
 	"github.com/timeredbull/tsuru/errors"
 	"github.com/timeredbull/tsuru/repository"
+	"io"
 	"io/ioutil"
 	"labix.org/v2/mgo/bson"
 	"net/http"
@@ -37,6 +38,17 @@ func getAppOrError(name string, u *auth.User) (App, error) {
 }
 
 func CloneRepositoryHandler(w http.ResponseWriter, r *http.Request) error {
+	var write = func(w http.ResponseWriter, content []byte) error {
+		out := filterOutput(content, nil)
+		n, err := w.Write(out)
+		if err != nil {
+			return err
+		}
+		if n != len(out) {
+			return io.ErrShortWrite
+		}
+		return nil
+	}
 	var output string
 	app := App{Name: r.URL.Query().Get(":name")}
 	err := app.Get()
@@ -47,27 +59,35 @@ func CloneRepositoryHandler(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return &errors.Http{Code: http.StatusInternalServerError, Message: output}
 	}
-	out := filterOutput([]byte(output), nil)
-	n, err := w.Write(out)
+	err = write(w, []byte(output))
 	if err != nil {
 		return err
-	}
-	if n != len(out) {
-		return &errors.Http{Code: http.StatusInternalServerError, Message: "Failed to write output."}
 	}
 	c, err := app.conf()
 	if err != nil {
 		return &errors.Http{Code: http.StatusInternalServerError, Message: err.Error()}
 	}
-	err = app.preRestart(c)
+	out, err := app.preRestart(c)
 	if err != nil {
 		return &errors.Http{Code: http.StatusInternalServerError, Message: err.Error()}
 	}
-	err = app.updateHooks()
+	err = write(w, out)
+	if err != nil {
+		return err
+	}
+	out, err = app.updateHooks()
 	if err != nil {
 		return &errors.Http{Code: http.StatusInternalServerError, Message: err.Error()}
 	}
-	err = app.posRestart(c)
+	err = write(w, out)
+	if err != nil {
+		return err
+	}
+	out, err = app.posRestart(c)
+	err = write(w, out)
+	if err != nil {
+		return err
+	}
 	if err != nil {
 		return &errors.Http{Code: http.StatusInternalServerError, Message: err.Error()}
 	}
