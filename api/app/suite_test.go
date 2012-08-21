@@ -12,6 +12,7 @@ import (
 	"io/ioutil"
 	"labix.org/v2/mgo"
 	. "launchpad.net/gocheck"
+	"net/http/httptest"
 	"os"
 	"os/exec"
 	"path"
@@ -29,6 +30,7 @@ type S struct {
 	gitosisBare string
 	gitosisRepo string
 	tmpdir      string
+	ts          *httptest.Server
 }
 
 var _ = Suite(&S{})
@@ -174,6 +176,7 @@ func (s *S) TearDownSuite(c *C) {
 
 func (s *S) SetUpTest(c *C) {
 	s.createGitosisConf(c)
+	s.ts = s.mockServer("", "")
 }
 
 func (s *S) TearDownTest(c *C) {
@@ -187,6 +190,7 @@ func (s *S) TearDownTest(c *C) {
 		app.Destroy()
 	}
 	Client.Token = ""
+	s.ts.Close()
 }
 
 func (s *S) getTestData(p ...string) io.ReadCloser {

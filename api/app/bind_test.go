@@ -16,14 +16,13 @@ func (s *S) TestAppIsABinderApp(c *C) {
 }
 
 func (s *S) TestDestroyShouldUnbindAppFromInstance(c *C) {
-	keystoneTs := s.deleteMockServer("")
-	keystoneTs.Start()
-	oldAuthUrl := authUrl
+	s.ts.Close()
+	keystoneTs := s.mockServer("", "")
 	authUrl = keystoneTs.URL
 	defer func() {
-		authUrl = oldAuthUrl
+		authUrl = ""
+		keystoneTs.Close()
 	}()
-	defer keystoneTs.Close()
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNoContent)
 	}))

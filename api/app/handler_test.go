@@ -356,6 +356,22 @@ func (s *S) TestCreateAppAddsProjectToGroupsInGitosis(c *C) {
 	c.Assert("writable = "+app.Name, IsInGitosis)
 }
 
+func (s *S) TestCreateAppCreatesKeystoneEnv(c *C) {
+	b := strings.NewReader(`{"name":"someApp", "framework":"django"}`)
+	request, err := http.NewRequest("POST", "/apps", b)
+	c.Assert(err, IsNil)
+	request.Header.Set("Content-Type", "application/json")
+	recorder := httptest.NewRecorder()
+	err = CreateAppHandler(recorder, request, s.user)
+	c.Assert(err, IsNil)
+	var a App
+	err = db.Session.Apps().Find(bson.M{"name": "someApp"}).One(&a)
+	c.Assert(err, IsNil)
+	c.Assert(a.KeystoneEnv.UserId, Not(Equals), "")
+	c.Assert(a.KeystoneEnv.TenantId, Not(Equals), "")
+	c.Assert(a.KeystoneEnv.AccessKey, Not(Equals), "")
+}
+
 func (s *S) TestCreateAppReturnsConflictWithProperMessageWhenTheAppAlreadyExist(c *C) {
 	a, err := NewApp("plainsofdawn", "", []string{})
 	c.Assert(err, IsNil)
