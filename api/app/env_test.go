@@ -69,6 +69,33 @@ func (s *S) TestNewEnviron(c *C) {
 	c.Assert(result, DeepEquals, expected)
 }
 
+func (s *S) TestNewEnvironShouldKeepExistentsEnvirons(c *C) {
+	expected := map[string]map[string]JujuEnv{}
+	result := map[string]map[string]JujuEnv{}
+	initial := map[string]map[string]JujuEnv{}
+	initial["environments"] = map[string]JujuEnv{}
+	initial["environments"]["foo"] = JujuEnv{Access: "foo", Secret: "foo"}
+	expected["environments"] = map[string]JujuEnv{}
+	expected["environments"]["foo"] = JujuEnv{Access: "foo", Secret: "foo"}
+	expected["environments"]["name"] = JujuEnv{Access: "access", Secret: "secret"}
+	data, err := goyaml.Marshal(&initial)
+	c.Assert(err, IsNil)
+	rfs := &testing.RecordingFs{FileContent: string(data)}
+	fsystem = rfs
+	defer func() {
+		fsystem = nil
+	}()
+	err = NewEnviron("name", "access", "secret")
+	c.Assert(err, IsNil)
+	c.Assert(rfs.HasAction("openfile "+EnvironConfPath+" with mode 0600"), Equals, true)
+	file, err := rfs.Open(EnvironConfPath)
+	c.Assert(err, IsNil)
+	content, err := ioutil.ReadAll(file)
+	c.Assert(err, IsNil)
+	goyaml.Unmarshal(content, &result)
+	c.Assert(result, DeepEquals, expected)
+}
+
 func (s *S) TestEnvironConfPath(c *C) {
 	expected := path.Join(os.ExpandEnv("${HOME}"), ".juju", "environments.yml")
 	c.Assert(EnvironConfPath, Equals, expected)

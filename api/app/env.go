@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/timeredbull/tsuru/fs"
 	"github.com/timeredbull/tsuru/log"
+	"io/ioutil"
 	"launchpad.net/goyaml"
 	"os"
 	"path"
@@ -96,7 +97,17 @@ func NewEnviron(name, access, secret string) error {
 		return err
 	}
 	defer file.Close()
-	envs["environments"] = map[string]JujuEnv{}
+	content, err := ioutil.ReadAll(file)
+	if err != nil {
+		return err
+	}
+	err = goyaml.Unmarshal(content, &envs)
+	if err != nil {
+		return err
+	}
+	if _, ok := envs["environments"]; !ok {
+		envs["environments"] = map[string]JujuEnv{}
+	}
 	envs["environments"][name] = JujuEnv{Access: access, Secret: secret}
 	data, err := goyaml.Marshal(&envs)
 	_, err = file.Write(data)
