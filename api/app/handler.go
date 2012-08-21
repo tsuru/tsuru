@@ -49,6 +49,7 @@ func CloneRepositoryHandler(w http.ResponseWriter, r *http.Request) error {
 		}
 		return nil
 	}
+	w.Header().Set("Content-Type", "text")
 	var output string
 	app := App{Name: r.URL.Query().Get(":name")}
 	err := app.Get()
