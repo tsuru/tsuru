@@ -147,8 +147,20 @@ func (a *App) Destroy() error {
 		return err
 	}
 	if multitenant {
+		if out, err := exec.Command("juju", "destroy-environment", "-e", app.JujuEnv).CombinedOutput(); err != nil {
+			msg := fmt.Sprintf("Failed to destroy juju-environment:\n%s", out)
+			log.Print(msg)
+			return errors.New(string(out))
+		}
 		if err = destroyKeystoneEnv(&app); err != nil {
 			return err
+		}
+	} else {
+		out, err := app.unit().Destroy()
+		msg := string(out)
+		log.Printf(msg)
+		if err != nil {
+			return errors.New(msg)
 		}
 	}
 	unbindCh := make(chan error)
@@ -156,11 +168,6 @@ func (a *App) Destroy() error {
 		unbindCh <- app.unbind()
 	}()
 	err = db.Session.Apps().Remove(bson.M{"name": app.Name})
-	if err != nil {
-		return err
-	}
-	out, err := app.unit().Destroy()
-	log.Printf(string(out))
 	if err != nil {
 		return err
 	}
