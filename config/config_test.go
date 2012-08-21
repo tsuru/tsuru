@@ -21,7 +21,9 @@ var expected = map[interface{}]interface{}{
 		"salt": "xpto",
 		"key":  "sometoken1234",
 	},
-	"xpto": "ble",
+	"xpto":     "ble",
+	"istrue":   false,
+	"fakebool": "foo",
 }
 
 func (s *S) TearDownTest(c *C) {
@@ -37,6 +39,8 @@ auth:
   salt: xpto
   key: sometoken1234
 xpto: ble
+istrue: false
+fakebool: foo
 `
 	err := ReadConfigBytes([]byte(conf))
 	c.Assert(err, IsNil)
@@ -106,6 +110,25 @@ func (s *S) TestGetStringShouldReturnErrorIfTheKeyDoesNotExist(c *C) {
 	c.Assert(value, Equals, "")
 	c.Assert(err, NotNil)
 	c.Assert(err, ErrorMatches, "^key xpta not found$")
+}
+
+func (s *S) TestGetBool(c *C) {
+	configFile := "testdata/config.yml"
+	err := ReadConfigFile(configFile)
+	c.Assert(err, IsNil)
+	value, err := GetBool("istrue")
+	c.Assert(err, IsNil)
+	c.Assert(value, Equals, false)
+}
+
+func (s *S) TestGetBoolWithNonBoolConfValue(c *C) {
+	configFile := "testdata/config.yml"
+	err := ReadConfigFile(configFile)
+	c.Assert(err, IsNil)
+	value, err := GetBool("fakebool")
+	c.Assert(value, Equals, false)
+	c.Assert(err, NotNil)
+	c.Assert(err, ErrorMatches, "^key fakebool has non-boolean value$")
 }
 
 func (s *S) TestSet(c *C) {

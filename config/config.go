@@ -77,6 +77,18 @@ func GetString(key string) (string, error) {
 	return "", fmt.Errorf("key %s has non-string value", key)
 }
 
+// GetBool does a type assertion before returning the requested value
+func GetBool(key string) (bool, error) {
+	value, err := Get(key)
+	if err != nil {
+		return false, err
+	}
+	if v, ok := value.(bool); ok {
+		return v, nil
+	}
+	return false, fmt.Errorf("key %s has non-boolean value", key)
+}
+
 // mergeMaps takes two maps and merge its keys and values.
 //
 // In case of conflicts, the function picks value from map2.

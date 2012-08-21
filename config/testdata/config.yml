@@ -5,3 +5,5 @@ auth:
   salt: xpto
   key: sometoken1234
 xpto: ble
+istrue: false
+fakebool: foo
