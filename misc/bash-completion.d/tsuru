@@ -1,0 +1,37 @@
+# bash completion for "crane" command
+# Based on juju's bash completion
+
+shopt -s progcomp
+
+_crane() {
+    local cur cmds cmdIdx cmd i
+    local curOpt optEnums
+    local IFS=$' \n'
+
+    COMPREPLY=()
+    cur=${COMP_WORDS[COMP_CWORD]}
+    cmds='create doc help list login logout remove target team-create team-list team-user-add team-user-remove template update user-create'
+    # do ordinary expansion if we are anywhere after a -- argument
+    for ((i = 1; i < COMP_CWORD; ++i)); do
+        [[ ${COMP_WORDS[i]} == "--" ]] && return 0
+    done
+
+    # find the command; it's the first word not starting in -
+    cmd=
+    for ((cmdIdx = 1; cmdIdx < ${#COMP_WORDS[@]}; ++cmdIdx)); do
+        if [[ ${COMP_WORDS[cmdIdx]} != -* ]]; then
+            cmd=${COMP_WORDS[cmdIdx]}
+            break
+        fi
+    done
+
+    # complete command name if we are not already past the command
+    if [[ $COMP_CWORD -le cmdIdx ]]; then
+        COMPREPLY=( $( compgen -W "$cmds" -- "$cur" ) )
+        return 0
+    fi
+
+    return 0
+}
+
+complete -F _crane -o default crane
