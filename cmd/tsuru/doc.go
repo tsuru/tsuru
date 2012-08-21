@@ -30,6 +30,7 @@ The currently available commands are (grouped by subject):
     app-revoke        revokes access to an app from a team
     log               shows log for an app
     run               runs a command in all units of an app
+    restart           restarts the app's application server
 
     env-get           display environment variables for an app
     env-set           set environment variable(s) to an app
@@ -167,5 +168,112 @@ team to be able to remove a user from it.
 
 A team can never have 0 users. If you are the last member of a team, you can't
 remove yourself from it.
+
+
+Create an app
+
+Usage:
+
+	% tsuru app-create <appname> <platform>
+
+app-create will create a new app using the given name and platform. For tsuru,
+a platform is a Juju charm. To check the available platforms/charms, check this
+URL: https://github.com/timeredbull/charms/tree/master/centos.
+
+In order to create an app, you need to be member of at least one team. All
+teams that you are member (see "tsuru team-list") will be able to access the
+app.
+
+
+Remove an app
+
+Usage:
+
+	% tsuru app-remove <appname>
+
+app-remove removes an app. If the app is binded to any service instance, it
+will be unbinded before be removed (see "tsuru unbind"). You need to be a
+member of a team that has access to the app to be able to remove it (you are
+able to remove any app that you see in "tsuru app-list").
+
+
+List apps that the user has access to
+
+Usage:
+
+	% tsuru app-list
+
+app-list will list all apps that you have access to. App access is controlled
+by teams. If your team has access to an app, then you have access to it.
+
+
+Allow a team to access an app
+
+Usage:
+
+	% tsuru app-grant <appname> <teamname>
+
+app-grant will allow a team to access an app. You need to be a member of a team
+that has access to the app to allow another team to access it.
+
+
+Revoke from a team access to an app
+
+Usage:
+
+	% tsuru app-revoke <appname> <teamname>
+
+app-revoke will revoke the permission to access an app from a team. You need to
+have access to the app to revoke access from a team.
+
+An app cannot be orphaned, so it will always have at least one authorized team.
+
+
+See app's logs
+
+Usage:
+
+	% tsuru log <appname>
+
+Log will show log entries for an app. These logs are not related to the code of
+the app itself, but to actions of the app in tsuru server (deployments,
+restarts, etc.).
+
+
+Run an arbitrary command in the app machine
+
+Usage:
+
+	% tsuru run <appname> <command> [commandarg1] [commandarg2] ... [commandargn]
+
+Run will run an arbitrary command in the app machine. Base directory for all
+commands is the root of the app. For example, in a Django app, "tsuru run" may
+show the following output:
+
+
+	% tsuru run polls ls -l
+	app.conf
+	brogui
+	deploy
+	foo
+	__init__.py
+	__init__.pyc
+	main.go
+	manage.py
+	settings.py
+	settings.pyc
+	templates
+	urls.py
+	urls.pyc
+
+
+Restart the app's application server
+
+Usage:
+
+	% tsuru restart <appname>
+
+Restart will call the restart hook from the app platform (the "restart" hook
+from the Juju charm).
 */
 package documentation

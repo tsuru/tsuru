@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"github.com/timeredbull/tsuru/cmd"
-	"io"
 	"io/ioutil"
 	"net/http"
 	"strings"
@@ -78,7 +77,7 @@ func (sa *ServiceAdd) Run(ctx *cmd.Context, client cmd.Doer) error {
 	if err != nil {
 		return err
 	}
-	io.WriteString(ctx.Stdout, "service successfully added.\n")
+	fmt.Fprint(ctx.Stdout, "service successfully added.\n")
 	return nil
 }
 
@@ -96,7 +95,7 @@ func (sb *ServiceBind) Run(ctx *cmd.Context, client cmd.Doer) error {
 		return err
 	}
 	msg := fmt.Sprintf("Instance %s successfully binded to the app %s.\n", instanceName, appName)
-	n, err := io.WriteString(ctx.Stdout, msg)
+	n, err := fmt.Fprint(ctx.Stdout, msg)
 	if err != nil {
 		return err
 	}
@@ -129,7 +128,7 @@ func (su *ServiceUnbind) Run(ctx *cmd.Context, client cmd.Doer) error {
 		return err
 	}
 	msg := fmt.Sprintf("Instance %s successfully unbinded from the app %s.\n", instanceName, appName)
-	n, err := io.WriteString(ctx.Stdout, msg)
+	n, err := fmt.Fprint(ctx.Stdout, msg)
 	if err != nil {
 		return err
 	}
@@ -181,7 +180,7 @@ func (c *ServiceInstanceStatus) Run(ctx *cmd.Context, client cmd.Doer) error {
 		return err
 	}
 	msg := string(bMsg) + "\n"
-	n, err := io.WriteString(ctx.Stdout, msg)
+	n, err := fmt.Fprint(ctx.Stdout, msg)
 	if err != nil {
 		return err
 	}

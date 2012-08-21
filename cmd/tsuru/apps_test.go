@@ -198,3 +198,48 @@ func (s *S) TestAppLogInfo(c *C) {
 	}
 	c.Assert((&AppLog{}).Info(), DeepEquals, expected)
 }
+
+func (s *S) TestAppRestart(c *C) {
+	var called bool
+	context := cmd.Context{
+		Cmds:   []string{},
+		Args:   []string{"handful_of_nothing"},
+		Stdout: manager.Stdout,
+		Stderr: manager.Stderr,
+	}
+	trans := &conditionalTransport{
+		transport{
+			msg:    "Restarted",
+			status: http.StatusOK,
+		},
+		func(req *http.Request) bool {
+			called = true
+			return req.URL.Path == "/apps/handful_of_nothing/restart" && req.Method == "GET"
+		},
+	}
+	client := cmd.NewClient(&http.Client{Transport: trans})
+	err := (&AppRestart{}).Run(&context, client)
+	c.Assert(err, IsNil)
+	c.Assert(called, Equals, true)
+	c.Assert(manager.Stdout.(*bytes.Buffer).String(), Equals, "Restarted")
+}
+
+func (s *S) TestAppRestartInfo(c *C) {
+	expected := &cmd.Info{
+		Name:    "restart",
+		Usage:   "restart <appname>",
+		Desc:    "restarts an app.",
+		MinArgs: 1,
+	}
+	c.Assert((&AppRestart{}).Info(), DeepEquals, expected)
+}
+
+func (s *S) TestAppRestartIsACommand(c *C) {
+	var command cmd.Command
+	c.Assert(&AppRestart{}, Implements, &command)
+}
+
+func (s *S) TestAppRestartIsAnInfoer(c *C) {
+	var infoer cmd.Infoer
+	c.Assert(&AppRestart{}, Implements, &infoer)
+}

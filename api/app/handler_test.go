@@ -48,7 +48,13 @@ pos-restart:
 	dir, err := commandmocker.Add("juju", output)
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(dir)
-	u := Unit{Name: "someapp/0", Type: "django"}
+	u := Unit{
+		Name:              "someapp/0",
+		Type:              "django",
+		AgentState:        "started",
+		MachineAgentState: "running",
+		InstanceState:     "running",
+	}
 	a, err := NewApp("someapp", "django", []string{s.team.Name})
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
@@ -63,6 +69,7 @@ pos-restart:
 	c.Assert(err, IsNil)
 	c.Assert(recorder.Code, Equals, 200)
 	c.Assert(recorder.Body.String(), Not(Equals), "success")
+	c.Assert(recorder.Header().Get("Content-Type"), Equals, "text")
 }
 
 func (s *S) TestCloneRepositoryRunsCloneOrPullThenPreRestartThenRestartThenPosRestartHooksInOrder(c *C) {
@@ -79,7 +86,13 @@ pos-restart:
 	dir, err := commandmocker.Add("juju", output)
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(dir)
-	u := Unit{Name: "someapp/0", Type: "django"}
+	u := Unit{
+		Name:              "someapp/0",
+		Type:              "django",
+		AgentState:        "started",
+		MachineAgentState: "running",
+		InstanceState:     "running",
+	}
 	a, err := NewApp("someapp", "django", []string{s.team.Name})
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
@@ -599,7 +612,14 @@ func (s *S) TestRunHandlerShouldExecuteTheGivenCommandInTheGivenApp(c *C) {
 	dir, err := commandmocker.Add("juju", "$*")
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(dir)
-	u := Unit{Name: "someapp/0", Type: "django", Machine: 10}
+	u := Unit{
+		Name:              "someapp/0",
+		Type:              "django",
+		Machine:           10,
+		AgentState:        "started",
+		MachineAgentState: "running",
+		InstanceState:     "running",
+	}
 	a, err := NewApp("secrets", "arch enemy", []string{s.team.Name})
 	c.Assert(err, IsNil)
 	a.Units = []Unit{u}
@@ -618,7 +638,14 @@ func (s *S) TestRunHandlerShouldFilterOutputFromJuju(c *C) {
 	dir, err := commandmocker.Add("juju", output)
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(dir)
-	u := Unit{Name: "someapp/0", Type: "django", Machine: 10}
+	u := Unit{
+		Name:              "someapp/0",
+		Type:              "django",
+		Machine:           10,
+		AgentState:        "started",
+		MachineAgentState: "running",
+		InstanceState:     "running",
+	}
 	a, err := NewApp("unspeakable", "vougan", []string{s.team.Name})
 	c.Assert(err, IsNil)
 	a.Units = []Unit{u}
@@ -1576,4 +1603,72 @@ func (s *S) TestUnbindHandlerReturns403IfTheUserDoesNotHaveAccessToTheApp(c *C) 
 	c.Assert(ok, Equals, true)
 	c.Assert(e.Code, Equals, http.StatusForbidden)
 	c.Assert(e, ErrorMatches, "^This user does not have access to this app$")
+}
+
+func (s *S) TestRestartHandler(c *C) {
+	tmpdir, err := commandmocker.Add("juju", "$*")
+	c.Assert(err, IsNil)
+	defer commandmocker.Remove(tmpdir)
+    a, err := NewApp("stress", "", []string{s.team.Name})
+	c.Assert(err, IsNil)
+	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
+    a.Units = []Unit{
+        Unit{AgentState: "started", MachineAgentState: "running", InstanceState: "running", Machine: 10, Ip: "20.20.20.20"},
+    }
+    db.Session.Apps().Update(bson.M{"name": a.Name}, &a)
+	url := fmt.Sprintf("/apps/%s/restart?:name=%s", a.Name, a.Name)
+	request, err := http.NewRequest("GET", url, nil)
+	c.Assert(err, IsNil)
+	recorder := httptest.NewRecorder()
+	err = RestartHandler(recorder, request, s.user)
+	c.Assert(err, IsNil)
+	c.Assert(commandmocker.Ran(tmpdir), Equals, true)
+	b, err := ioutil.ReadAll(recorder.Body)
+	c.Assert(err, IsNil)
+	expected := fmt.Sprintf("ssh -o StrictHostKeyChecking no -e %s %d /var/lib/tsuru/hooks/restart", a.JujuEnv, a.unit().Machine)
+	c.Assert(string(b), Equals, expected)
+}
+
+func (s *S) TestRestartHandlerReturns404IfTheAppDoesNotExist(c *C) {
+	request, err := http.NewRequest("GET", "/apps/unknown/restart?:name=unknown", nil)
+	c.Assert(err, IsNil)
+	recorder := httptest.NewRecorder()
+	err = RestartHandler(recorder, request, s.user)
+	c.Assert(err, NotNil)
+	e, ok := err.(*errors.Http)
+	c.Assert(ok, Equals, true)
+	c.Assert(e.Code, Equals, http.StatusNotFound)
+}
+
+func (s *S) TestRestartHandlerReturns403IfTheUserDoesNotHaveAccessToTheApp(c *C) {
+	a, err := NewApp("nightmist", "", []string{})
+	c.Assert(err, IsNil)
+	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
+	url := fmt.Sprintf("/apps/%s/restart?:name=%s", a.Name, a.Name)
+	request, err := http.NewRequest("GET", url, nil)
+	c.Assert(err, IsNil)
+	recorder := httptest.NewRecorder()
+	err = RestartHandler(recorder, request, s.user)
+	c.Assert(err, NotNil)
+	e, ok := err.(*errors.Http)
+	c.Assert(ok, Equals, true)
+	c.Assert(e.Code, Equals, http.StatusForbidden)
+}
+
+func (s *S) TestRestartHandlerReturns412IfTheUnitOfTheAppDoesNotHaveIp(c *C) {
+	a, err := NewApp("stress", "", []string{s.team.Name})
+	c.Assert(err, IsNil)
+	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
+    a.Units = []Unit{Unit{Ip: "", Machine: 10}}
+    db.Session.Apps().Update(bson.M{"name": a.Name}, &a)
+	url := fmt.Sprintf("/apps/%s/restart?:name=%s", a.Name, a.Name)
+	request, err := http.NewRequest("GET", url, nil)
+	c.Assert(err, IsNil)
+	recorder := httptest.NewRecorder()
+	err = RestartHandler(recorder, request, s.user)
+	c.Assert(err, NotNil)
+	e, ok := err.(*errors.Http)
+	c.Assert(ok, Equals, true)
+	c.Assert(e.Code, Equals, http.StatusPreconditionFailed)
+	c.Assert(e.Message, Equals, "You can't restart this app because it doesn't have an IP yet.")
 }

@@ -9,6 +9,7 @@ import (
 	"github.com/timeredbull/tsuru/db"
 	"github.com/timeredbull/tsuru/errors"
 	"github.com/timeredbull/tsuru/repository"
+	"io"
 	"io/ioutil"
 	"labix.org/v2/mgo/bson"
 	"net/http"
@@ -37,6 +38,18 @@ func getAppOrError(name string, u *auth.User) (App, error) {
 }
 
 func CloneRepositoryHandler(w http.ResponseWriter, r *http.Request) error {
+	var write = func(w http.ResponseWriter, content []byte) error {
+		out := filterOutput(content, nil)
+		n, err := w.Write(out)
+		if err != nil {
+			return err
+		}
+		if n != len(out) {
+			return io.ErrShortWrite
+		}
+		return nil
+	}
+	w.Header().Set("Content-Type", "text")
 	var output string
 	app := App{Name: r.URL.Query().Get(":name")}
 	err := app.Get()
@@ -47,29 +60,38 @@ func CloneRepositoryHandler(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return &errors.Http{Code: http.StatusInternalServerError, Message: output}
 	}
+	err = write(w, []byte(output))
+	if err != nil {
+		return err
+	}
 	c, err := app.conf()
 	if err != nil {
 		return &errors.Http{Code: http.StatusInternalServerError, Message: err.Error()}
 	}
-	err = app.preRestart(c)
+	out, err := app.preRestart(c)
 	if err != nil {
 		return &errors.Http{Code: http.StatusInternalServerError, Message: err.Error()}
 	}
-	err = app.updateHooks()
-	if err != nil {
-		return &errors.Http{Code: http.StatusInternalServerError, Message: err.Error()}
-	}
-	err = app.posRestart(c)
-	if err != nil {
-		return &errors.Http{Code: http.StatusInternalServerError, Message: err.Error()}
-	}
-	out := filterOutput([]byte(output), nil)
-	n, err := w.Write(out)
+	err = write(w, out)
 	if err != nil {
 		return err
 	}
-	if n != len(out) {
-		return &errors.Http{Code: http.StatusInternalServerError, Message: "Failed to write output."}
+	out, err = app.updateHooks()
+	if err != nil {
+		write(w, out)
+		return &errors.Http{Code: http.StatusInternalServerError, Message: err.Error()}
+	}
+	err = write(w, out)
+	if err != nil {
+		return err
+	}
+	out, err = app.posRestart(c)
+	err = write(w, out)
+	if err != nil {
+		return err
+	}
+	if err != nil {
+		return &errors.Http{Code: http.StatusInternalServerError, Message: err.Error()}
 	}
 	return nil
 }
@@ -474,4 +496,27 @@ func UnbindHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 		return err
 	}
 	return instance.Unbind(&a)
+}
+
+func RestartHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
+	app, err := getAppOrError(r.URL.Query().Get(":name"), u)
+	if err != nil {
+		return err
+	}
+	if app.unit().Ip == "" {
+		msg := "You can't restart this app because it doesn't have an IP yet."
+		return &errors.Http{Code: http.StatusPreconditionFailed, Message: msg}
+	}
+	out, err := app.unit().ExecuteHook("restart")
+	if err != nil {
+		return err
+	}
+	n, err := w.Write(out)
+	if err != nil {
+		return err
+	}
+	if n != len(out) {
+		return &errors.Http{Code: http.StatusInternalServerError, Message: "Failed to write response body."}
+	}
+	return nil
 }
