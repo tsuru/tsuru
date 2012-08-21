@@ -137,10 +137,10 @@ func (s *S) TestAppendOrUpdate(c *C) {
 	u := Unit{Name: "someapp", Ip: "", Machine: 3, InstanceId: "i-00000zz8"}
 	a.AddOrUpdateUnit(&u)
 	c.Assert(len(a.Units), Equals, 1)
-	u = Unit{Name: "someapp", Ip: "192.168.0.12", Machine: 3, InstanceId: "i-00000zz8"}
+	u = Unit{Name: "someapp", Ip: "192.168.0.12", Machine: 3, InstanceId: "i-00000zz8", MachineAgentState: "running"}
 	a.AddOrUpdateUnit(&u)
 	c.Assert(len(a.Units), Equals, 1)
-	c.Assert(a.Units[0].Ip, Equals, "192.168.0.12")
+	c.Assert(a.Units[0], DeepEquals, u)
 }
 
 func (s *S) TestGrantAccess(c *C) {

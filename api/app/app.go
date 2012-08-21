@@ -158,10 +158,7 @@ func (a *App) Destroy() error {
 func (a *App) AddOrUpdateUnit(u *Unit) {
 	for i, unt := range a.Units {
 		if unt.Machine == u.Machine {
-			a.Units[i].Ip = u.Ip
-			a.Units[i].AgentState = u.AgentState
-			a.Units[i].InstanceState = u.InstanceState
-			a.Units[i].InstanceId = u.InstanceId
+			a.Units[i] = *u
 			return
 		}
 	}
