@@ -59,16 +59,37 @@ func (a *App) Get() error {
 	return db.Session.Apps().Find(bson.M{"name": a.Name}).One(&a)
 }
 
-func (a *App) Create() error {
+// Creates a new app and save it in database
+func NewApp(name string, framework string, teams []string) (App, error) {
+	a := App{
+		Name:      name,
+		Framework: framework,
+		Teams:     teams,
+	}
 	// TODO (flaviamissi): check if tsuru is in multi tenant mode before
 	// creating a new tenant for an app
+	var err error
+	a.KeystoneEnv.TenantId, err = NewTenant(&a)
+	if err != nil {
+		return a, err
+	}
+	a.KeystoneEnv.UserId, err = NewUser(&a)
+	if err != nil {
+		return a, err
+	}
+	var secret string
+	a.KeystoneEnv.AccessKey, secret, err = NewEC2Creds(&a)
+	_ = secret
+	if err != nil {
+		return a, err
+	}
 	a.State = "pending"
 	// TODO (#110): make JujuEnv match the app name, and bootstrap it before
 	// deploy the app.
 	a.JujuEnv = "delta"
-	err := db.Session.Apps().Insert(a)
+	err = db.Session.Apps().Insert(a)
 	if err != nil {
-		return err
+		return a, err
 	}
 	a.Log(fmt.Sprintf("creating app %s", a.Name))
 	cmd := exec.Command("juju", "deploy", "-e", a.JujuEnv, "--repository=/home/charms", "local:"+a.Framework, a.Name)
@@ -78,10 +99,10 @@ func (a *App) Create() error {
 	if err != nil {
 		a.Log(fmt.Sprintf("juju finished with exit status: %s", err.Error()))
 		db.Session.Apps().Remove(bson.M{"name": a.Name})
-		return errors.New(string(out))
+		return a, errors.New(string(out))
 	}
 	a.Log(fmt.Sprintf("app %s successfully created", a.Name))
-	return nil
+	return a, nil
 }
 
 func (a *App) unbind() error {
@@ -137,10 +158,7 @@ func (a *App) Destroy() error {
 func (a *App) AddOrUpdateUnit(u *Unit) {
 	for i, unt := range a.Units {
 		if unt.Machine == u.Machine {
-			a.Units[i].Ip = u.Ip
-			a.Units[i].AgentState = u.AgentState
-			a.Units[i].InstanceState = u.InstanceState
-			a.Units[i].InstanceId = u.InstanceId
+			a.Units[i] = *u
 			return
 		}
 	}
@@ -257,20 +275,20 @@ func (a *App) conf() (conf, error) {
  */
 func (a *App) preRestart(c conf) ([]byte, error) {
 	if !a.hasRestartHooks(c) {
-		msg := "app.conf file does not exists or is in the right place. Skipping..."
+		msg := "app.conf file does not exists or is in the right place. Skipping pre-restart hook..."
 		a.Log(msg)
-		return []byte(msg), nil
+		return []byte(msg + "\n"), nil
 	}
 	if c.PreRestart == "" {
-		msg := "pre-restart hook section in app conf does not exists... Skipping..."
+		msg := "pre-restart hook section in app conf does not exists... Skipping pre-restart hook..."
 		a.Log(msg)
-		return []byte(msg), nil
+		return []byte(msg + "\n"), nil
 	}
 	p, err := deployHookAbsPath(c.PreRestart)
 	if err != nil {
-		msg := fmt.Sprintf("Error obtaining absolute path to hook: %s. Skipping...", err)
+		msg := fmt.Sprintf("Error obtaining absolute path to hook: %s. Skipping pre-restart hook...", err)
 		a.Log(msg)
-		return []byte(msg), nil
+		return []byte(msg + "\n"), nil
 	}
 	a.Log("Executing pre-restart hook...")
 	out, err := a.unit().Command("/bin/bash", p)
@@ -284,20 +302,20 @@ func (a *App) preRestart(c conf) ([]byte, error) {
  */
 func (a *App) posRestart(c conf) ([]byte, error) {
 	if !a.hasRestartHooks(c) {
-		msg := "app.conf file does not exists or is in the right place. Skipping..."
+		msg := "app.conf file does not exists or is in the right place. Skipping pos-restart hook..."
 		a.Log(msg)
-		return []byte(msg), nil
+		return []byte(msg + "\n"), nil
 	}
 	if c.PosRestart == "" {
-		msg := "pos-restart hook section in app conf does not exists... Skipping..."
+		msg := "pos-restart hook section in app conf does not exists... Skipping pos-restart hook..."
 		a.Log(msg)
-		return []byte(msg), nil
+		return []byte(msg + "\n"), nil
 	}
 	p, err := deployHookAbsPath(c.PosRestart)
 	if err != nil {
-		msg := fmt.Sprintf("Error obtaining absolute path to hook: %s. Skipping...", err)
+		msg := fmt.Sprintf("Error obtaining absolute path to hook: %s. Skipping pos-restart-hook...", err)
 		a.Log(msg)
-		return []byte(msg), nil
+		return []byte(msg + "\n"), nil
 	}
 	out, err := a.unit().Command("/bin/bash", p)
 	a.Log("Executing pos-restart hook...")

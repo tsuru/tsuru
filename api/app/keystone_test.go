@@ -10,41 +10,84 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"regexp"
-	"strings"
 )
 
 var (
-	b           string
 	requestJson []byte
 	// flags to detect when tenant url and user url are called
 	called = make(map[string]bool)
 	params = make(map[string]string)
 )
 
-func (s *S) postMockServer(body string) *httptest.Server {
-	if body != "" {
-		b = body
-	}
+func (s *S) mockServer(b, prefix string) *httptest.Server {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != "POST" {
-			w.WriteHeader(http.StatusMethodNotAllowed)
-			return
-		}
+		ec2Regexp := regexp.MustCompile(`/users/([\w-]+)/credentials/OS-EC2`)
+		tenantsRegexp := regexp.MustCompile(`/tenants`)
+		usersRegexp := regexp.MustCompile(`/users`)
+		delEc2Regexp := regexp.MustCompile(`/users/([\w-]+)/credentials/OS-EC2/(\w+)`)
+		delUsersRegexp := regexp.MustCompile(`/users/([\w-]+)`)
+		delTenantsRegexp := regexp.MustCompile(`/tenants/([\w-]+)`)
 		if r.URL.Path == "/tokens" {
 			handleTokens(w, r)
-		} else if r.URL.Path == "/tenants" {
-			called["tenants"] = true
-			w.Write([]byte(b))
-		} else if r.URL.Path == "/users" {
-			called["users"] = true
-			w.Write([]byte(b))
-		} else if strings.Contains(r.URL.Path, "/credentials/OS-EC2") {
-			called["ec2-creds"] = true
-			w.Write([]byte(b))
+			return
+		}
+		if r.Method == "POST" {
+			switch {
+			case ec2Regexp.MatchString(r.URL.Path):
+				handleCreds(w, r, b)
+			case tenantsRegexp.MatchString(r.URL.Path):
+				handleTenants(w, r, b)
+			case usersRegexp.MatchString(r.URL.Path):
+				handleUsers(w, r, b)
+			default:
+				w.WriteHeader(http.StatusNotFound)
+			}
+		}
+		if r.Method == "DELETE" {
+			switch {
+			case delEc2Regexp.MatchString(r.URL.Path):
+				called[prefix+"delete-ec2-creds"] = true
+				submatches := delEc2Regexp.FindStringSubmatch(r.URL.Path)
+				params[prefix+"ec2-user"], params[prefix+"ec2-access"] = submatches[1], submatches[2]
+			case delUsersRegexp.MatchString(r.URL.Path):
+				called[prefix+"delete-user"] = true
+				submatches := delUsersRegexp.FindStringSubmatch(r.URL.Path)
+				params[prefix+"user"] = submatches[1]
+			case delTenantsRegexp.MatchString(r.URL.Path):
+				called[prefix+"delete-tenant"] = true
+				submatches := delTenantsRegexp.FindStringSubmatch(r.URL.Path)
+				params[prefix+"tenant"] = submatches[1]
+			default:
+				w.WriteHeader(http.StatusNotFound)
+			}
 		}
 	}))
 	authUrl = ts.URL
 	return ts
+}
+
+func handleTenants(w http.ResponseWriter, r *http.Request, b string) {
+	if b == "" {
+		b = `{"tenant": {"id": "uuid123", "name": "tenant name", "description": "tenant desc"}}`
+	}
+	called["tenants"] = true
+	w.Write([]byte(b))
+}
+
+func handleUsers(w http.ResponseWriter, r *http.Request, b string) {
+	if b == "" {
+		b = `{"user": {"id": "uuid321", "name": "appname", "email": "appname@foo.bar"}}`
+	}
+	called["users"] = true
+	w.Write([]byte(b))
+}
+
+func handleCreds(w http.ResponseWriter, r *http.Request, b string) {
+	if b == "" {
+		b = `{"credential": {"access": "access-key-here", "secret": "secret-key-here"}}`
+	}
+	called["ec2-creds"] = true
+	w.Write([]byte(b))
 }
 
 func handleTokens(w http.ResponseWriter, r *http.Request) {
@@ -58,40 +101,8 @@ func handleTokens(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(`{"access": {"token": {"id": "token-id-987"}}}`))
 }
 
-func (s *S) deleteMockServer(prefix string) *httptest.Server {
-	ec2Regexp := regexp.MustCompile(`/users/([\w-]+)/credentials/OS-EC2/(\w+)`)
-	usersRegexp := regexp.MustCompile(`/users/([\w-]+)`)
-	tenantsRegexp := regexp.MustCompile(`/tenants/([\w-]+)`)
-	ts := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path == "/tokens" {
-			handleTokens(w, r)
-			return
-		}
-		if r.Method != "DELETE" {
-			w.WriteHeader(http.StatusMethodNotAllowed)
-			return
-		}
-		switch {
-		case ec2Regexp.MatchString(r.URL.Path):
-			called[prefix+"delete-ec2-creds"] = true
-			submatches := ec2Regexp.FindStringSubmatch(r.URL.Path)
-			params[prefix+"ec2-user"], params[prefix+"ec2-access"] = submatches[1], submatches[2]
-		case usersRegexp.MatchString(r.URL.Path):
-			called[prefix+"delete-user"] = true
-			submatches := usersRegexp.FindStringSubmatch(r.URL.Path)
-			params[prefix+"user"] = submatches[1]
-		case tenantsRegexp.MatchString(r.URL.Path):
-			called[prefix+"delete-tenant"] = true
-			submatches := tenantsRegexp.FindStringSubmatch(r.URL.Path)
-			params[prefix+"tenant"] = submatches[1]
-		default:
-			w.WriteHeader(http.StatusNotFound)
-		}
-	}))
-	return ts
-}
-
 func (s *S) TestGetAuth(c *C) {
+	authUrl = ""
 	expectedUrl, err := config.GetString("nova:auth-url")
 	c.Assert(err, IsNil)
 	getAuth()
@@ -99,6 +110,7 @@ func (s *S) TestGetAuth(c *C) {
 }
 
 func (s *S) TestGetAuthShouldNotGetTheConfigEveryTimeItsCalled(c *C) {
+	authUrl = ""
 	expectedUrl, err := config.GetString("nova:auth-url")
 	c.Assert(err, IsNil)
 	getAuth()
@@ -195,8 +207,6 @@ func (s *S) TestGetAuthShouldReturnErrorWhenAuthPassConfigDoesntExists(c *C) {
 }
 
 func (s *S) TestGetClientShouldReturnClientWithAuthConfs(c *C) {
-	ts := s.postMockServer("")
-	defer ts.Close()
 	err := getClient()
 	c.Assert(err, IsNil)
 	req := string(requestJson)
@@ -206,8 +216,6 @@ func (s *S) TestGetClientShouldReturnClientWithAuthConfs(c *C) {
 }
 
 func (s *S) TestGetClientShouldNotResetClient(c *C) {
-	ts := s.postMockServer("")
-	defer ts.Close()
 	called["token"] = false
 	Client.Token = ""
 	err := getClient()
@@ -220,8 +228,6 @@ func (s *S) TestGetClientShouldNotResetClient(c *C) {
 }
 
 func (s *S) TestNewTenantCallsKeystoneApi(c *C) {
-	ts := s.postMockServer(`{"tenant": {"id": "uuid123", "name": "tenant name", "description": "tenant desc"}}`)
-	defer ts.Close()
 	a := App{Name: "myapp"}
 	err := db.Session.Apps().Insert(a)
 	c.Assert(err, IsNil)
@@ -232,7 +238,7 @@ func (s *S) TestNewTenantCallsKeystoneApi(c *C) {
 }
 
 func (s *S) TestNewTenantSavesInDb(c *C) {
-	ts := s.postMockServer(`{"tenant": {"id": "uuid123", "name": "tenant name", "description": "tenant desc"}}`)
+	ts := s.mockServer(`{"tenant": {"id": "uuid123", "name": "tenant name", "description": "tenant desc"}}`, "")
 	defer ts.Close()
 	a := App{Name: "myapp"}
 	err := db.Session.Apps().Insert(a)
@@ -243,11 +249,10 @@ func (s *S) TestNewTenantSavesInDb(c *C) {
 	err = a.Get()
 	c.Assert(err, IsNil)
 	c.Assert(t, Equals, "uuid123")
-	c.Assert(a.KeystoneEnv.TenantId, DeepEquals, t)
 }
 
 func (s *S) TestNewTenantUsesNovaUserPasswordAndTenantFromTsuruConf(c *C) {
-	ts := s.postMockServer(`{"tenant": {"id": "uuid123", "name": "tenant name", "description": "tenant desc"}}`)
+	ts := s.mockServer(`{"tenant": {"id": "uuid123", "name": "tenant name", "description": "tenant desc"}}`, "")
 	defer ts.Close()
 	a := App{Name: "myapp"}
 	err := db.Session.Apps().Insert(a)
@@ -262,7 +267,7 @@ func (s *S) TestNewTenantUsesNovaUserPasswordAndTenantFromTsuruConf(c *C) {
 }
 
 func (s *S) TestNewUserCallsKeystoneApi(c *C) {
-	ts := s.postMockServer(`{"user": {"id": "uuid321", "name": "appname", "email": "appname@foo.bar"}}`)
+	ts := s.mockServer(`{"user": {"id": "uuid321", "name": "appname", "email": "appname@foo.bar"}}`, "")
 	defer ts.Close()
 	a := App{Name: "myapp"}
 	a.KeystoneEnv.TenantId = "uuid123"
@@ -275,7 +280,7 @@ func (s *S) TestNewUserCallsKeystoneApi(c *C) {
 }
 
 func (s *S) TestNewUserShouldFailIfAppHasNoTenantId(c *C) {
-	ts := s.postMockServer(`{"user": {"id": "uuid321", "name": "appname", "email": "appname@foo.bar"}}`)
+	ts := s.mockServer(`{"user": {"id": "uuid321", "name": "appname", "email": "appname@foo.bar"}}`, "")
 	defer ts.Close()
 	a := App{Name: "myapp"}
 	err := db.Session.Apps().Insert(a)
@@ -286,7 +291,7 @@ func (s *S) TestNewUserShouldFailIfAppHasNoTenantId(c *C) {
 }
 
 func (s *S) TestNewUserShouldStoreUserInDb(c *C) {
-	ts := s.postMockServer(`{"user": {"id": "uuid321", "name": "appname", "email": "appname@foo.bar"}}`)
+	ts := s.mockServer(`{"user": {"id": "uuid321", "name": "appname", "email": "appname@foo.bar"}}`, "")
 	defer ts.Close()
 	a := App{Name: "myapp"}
 	a.KeystoneEnv.TenantId = "uuid123"
@@ -296,12 +301,10 @@ func (s *S) TestNewUserShouldStoreUserInDb(c *C) {
 	uId, err := NewUser(&a)
 	c.Assert(err, IsNil)
 	c.Assert(uId, Equals, "uuid321")
-	db.Session.Apps().Find(bson.M{"name": a.Name}).One(&a)
-	c.Assert(a.KeystoneEnv.UserId, Equals, uId)
 }
 
 func (s *S) TestNewEC2CredsShouldCallKeystoneApi(c *C) {
-	ts := s.postMockServer(`{"credential": {"access": "access-key-here", "secret": "secret-key-here"}}`)
+	ts := s.mockServer(`{"credential": {"access": "access-key-here", "secret": "secret-key-here"}}`, "")
 	defer ts.Close()
 	a := App{Name: "myapp"}
 	a.KeystoneEnv.TenantId = "uuid123"
@@ -315,7 +318,7 @@ func (s *S) TestNewEC2CredsShouldCallKeystoneApi(c *C) {
 }
 
 func (s *S) TestNewEC2CredsShouldFailIfAppHasNoTenantId(c *C) {
-	ts := s.postMockServer(`{"credential": {"access": "access-key-here", "secret": "secret-key-here"}}`)
+	ts := s.mockServer(`{"credential": {"access": "access-key-here", "secret": "secret-key-here"}}`, "")
 	defer ts.Close()
 	a := App{Name: "myapp"}
 	a.KeystoneEnv.UserId = "uuid321"
@@ -327,7 +330,8 @@ func (s *S) TestNewEC2CredsShouldFailIfAppHasNoTenantId(c *C) {
 }
 
 func (s *S) TestNewEC2CredsShouldFailIfAppHasNoUserId(c *C) {
-	ts := s.postMockServer(`{"credential": {"access": "access-key-here", "secret": "secret-key-here"}}`)
+	s.ts.Close()
+	ts := s.mockServer(`{"credential": {"access": "access-key-here", "secret": "secret-key-here"}}`, "")
 	defer ts.Close()
 	a := App{Name: "myapp"}
 	a.KeystoneEnv.TenantId = "uuid123"
@@ -338,27 +342,9 @@ func (s *S) TestNewEC2CredsShouldFailIfAppHasNoUserId(c *C) {
 	c.Assert(err, ErrorMatches, "^App should have an associated keystone user to create an user.$")
 }
 
-func (s *S) TestNewEC2CredsShouldSaveAccessKeyInDbAndReturnAccessAndSecretKeys(c *C) {
-	ts := s.postMockServer(`{"credential": {"access": "access-key-here", "secret": "secret-key-here"}}`)
-	defer ts.Close()
-	a := App{Name: "myapp"}
-	a.KeystoneEnv.TenantId = "uuid123"
-	a.KeystoneEnv.UserId = "uuid321"
-	err := db.Session.Apps().Insert(a)
-	c.Assert(err, IsNil)
-	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
-	aKey, sKey, err := NewEC2Creds(&a)
-	c.Assert(err, IsNil)
-	c.Assert(aKey, Equals, "access-key-here")
-	c.Assert(sKey, Equals, "secret-key-here")
-	err = db.Session.Apps().Find(bson.M{"name": a.Name}).One(&a)
-	c.Assert(err, IsNil)
-	c.Assert(a.KeystoneEnv.AccessKey, Equals, aKey)
-}
-
 func (s *S) TestDestroyKeystoneEnv(c *C) {
-	ts := s.deleteMockServer("")
-	ts.Start()
+	s.ts.Close()
+	ts := s.mockServer("", "")
 	oldAuthUrl := authUrl
 	authUrl = ts.URL
 	defer func() {

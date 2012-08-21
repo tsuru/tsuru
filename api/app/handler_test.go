@@ -55,10 +55,12 @@ pos-restart:
 		MachineAgentState: "running",
 		InstanceState:     "running",
 	}
-	a := App{Name: "someApp", Framework: "django", Teams: []string{s.team.Name}, Units: []Unit{u}}
-	err = a.Create()
+	a, err := NewApp("someapp", "django", []string{s.team.Name})
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
+	a.Units = []Unit{u}
+	err = db.Session.Apps().Update(bson.M{"name": a.Name}, &a)
+	c.Assert(err, IsNil)
 	url := fmt.Sprintf("/apps/%s/repository/clone?:name=%s", a.Name, a.Name)
 	request, err := http.NewRequest("GET", url, nil)
 	c.Assert(err, IsNil)
@@ -91,10 +93,12 @@ pos-restart:
 		MachineAgentState: "running",
 		InstanceState:     "running",
 	}
-	a := App{Name: "someApp", Framework: "django", Teams: []string{s.team.Name}, Units: []Unit{u}}
-	err = a.Create()
+	a, err := NewApp("someapp", "django", []string{s.team.Name})
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
+	a.Units = []Unit{u}
+	err = db.Session.Apps().Update(bson.M{"name": a.Name}, &a)
+	c.Assert(err, IsNil)
 	url := fmt.Sprintf("/apps/%s/repository/clone?:name=%s", a.Name, a.Name)
 	request, err := http.NewRequest("GET", url, nil)
 	c.Assert(err, IsNil)
@@ -131,11 +135,18 @@ func (s *S) TestCloneRepositoryShouldReturnNotFoundWhenAppDoesNotExist(c *C) {
 func (s *S) TestAppList(c *C) {
 	u := Unit{Name: "app1/0", Ip: "10.10.10.10"}
 	app1 := App{Name: "app1", Teams: []string{s.team.Name}, Units: []Unit{u}}
-	app1.Create()
+	app1, err := NewApp("app1", "", []string{s.team.Name})
+	c.Assert(err, IsNil)
+	app1.Units = []Unit{u}
+	err = db.Session.Apps().Update(bson.M{"name": app1.Name}, &app1)
+	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": app1.Name})
 	u2 := Unit{Name: "app2/0"}
-	app2 := App{Name: "app2", Teams: []string{s.team.Name}, Units: []Unit{u2}}
-	app2.Create()
+	app2, err := NewApp("app2", "", []string{s.team.Name})
+	c.Assert(err, IsNil)
+	app2.Units = []Unit{u2}
+	err = db.Session.Apps().Update(bson.M{"name": app2.Name}, &app2)
+	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": app2.Name})
 	expected := []App{app1, app2}
 
@@ -169,8 +180,7 @@ func (s *S) TestAppListShouldListAllAppsOfAllTeamsThatTheUserIsAMember(c *C) {
 	err := db.Session.Teams().Insert(team)
 	c.Assert(err, IsNil)
 	defer db.Session.Teams().Remove(bson.M{"_id": team.Name})
-	app1 := App{Name: "app1", Teams: []string{s.team.Name, team.Name}}
-	err = app1.Create()
+	app1, err := NewApp("app1", "", []string{s.team.Name, team.Name})
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": app1.Name})
 	request, err := http.NewRequest("GET", "/apps/", nil)
@@ -199,8 +209,8 @@ func (s *S) TestListShouldReturnStatusNoContentWhenAppListIsNil(c *C) {
 }
 
 func (s *S) TestDelete(c *C) {
-	myApp := App{Name: "MyAppToDelete", Framework: "django", Teams: []string{s.team.Name}}
-	myApp.Create()
+	myApp, err := NewApp("MyAppToDelete", "django", []string{s.team.Name})
+	c.Assert(err, IsNil)
 	request, err := http.NewRequest("DELETE", "/apps/"+myApp.Name+"?:name="+myApp.Name, nil)
 	c.Assert(err, IsNil)
 	recorder := httptest.NewRecorder()
@@ -210,8 +220,8 @@ func (s *S) TestDelete(c *C) {
 }
 
 func (s *S) TestDeleteShouldReturnForbiddenIfTheGivenUserDoesNotHaveAccesToTheapp(c *C) {
-	myApp := App{Name: "MyAppToDelete", Framework: "django"}
-	myApp.Create()
+	myApp, err := NewApp("MyAppToDelete", "django", []string{})
+	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": myApp.Name})
 	request, err := http.NewRequest("DELETE", "/apps/"+myApp.Name+"?:name="+myApp.Name, nil)
 	c.Assert(err, IsNil)
@@ -251,8 +261,8 @@ func (s *S) TestDeleteAppRemovesProjectFromAllTeamsInGitosis(c *C) {
 }
 
 func (s *S) TestAppInfo(c *C) {
-	expectedApp := App{Name: "NewApp", Framework: "django", Teams: []string{s.team.Name}}
-	expectedApp.Create()
+	expectedApp, err := NewApp("NewApp", "django", []string{s.team.Name})
+	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": expectedApp.Name})
 
 	var myApp App
@@ -274,8 +284,8 @@ func (s *S) TestAppInfo(c *C) {
 }
 
 func (s *S) TestAppInfoReturnsForbiddenWhenTheUserDoesNotHaveAccessToTheApp(c *C) {
-	expectedApp := App{Name: "NewApp", Framework: "django", Teams: []string{}}
-	expectedApp.Create()
+	expectedApp, err := NewApp("NewApp", "django", []string{})
+	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": expectedApp.Name})
 	request, err := http.NewRequest("GET", "/apps/"+expectedApp.Name+"?:name="+expectedApp.Name, nil)
 	c.Assert(err, IsNil)
@@ -359,9 +369,24 @@ func (s *S) TestCreateAppAddsProjectToGroupsInGitosis(c *C) {
 	c.Assert("writable = "+app.Name, IsInGitosis)
 }
 
+func (s *S) TestCreateAppCreatesKeystoneEnv(c *C) {
+	b := strings.NewReader(`{"name":"someApp", "framework":"django"}`)
+	request, err := http.NewRequest("POST", "/apps", b)
+	c.Assert(err, IsNil)
+	request.Header.Set("Content-Type", "application/json")
+	recorder := httptest.NewRecorder()
+	err = CreateAppHandler(recorder, request, s.user)
+	c.Assert(err, IsNil)
+	var a App
+	err = db.Session.Apps().Find(bson.M{"name": "someApp"}).One(&a)
+	c.Assert(err, IsNil)
+	c.Assert(a.KeystoneEnv.UserId, Not(Equals), "")
+	c.Assert(a.KeystoneEnv.TenantId, Not(Equals), "")
+	c.Assert(a.KeystoneEnv.AccessKey, Not(Equals), "")
+}
+
 func (s *S) TestCreateAppReturnsConflictWithProperMessageWhenTheAppAlreadyExist(c *C) {
-	a := App{Name: "plainsofdawn"}
-	err := a.Create()
+	a, err := NewApp("plainsofdawn", "", []string{})
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
 	b := strings.NewReader(`{"name":"plainsofdawn", "framework":"django"}`)
@@ -382,8 +407,7 @@ func (s *S) TestAddTeamToTheApp(c *C) {
 	err := db.Session.Teams().Insert(t)
 	c.Assert(err, IsNil)
 	defer db.Session.Teams().RemoveAll(bson.M{"_id": t.Name})
-	a := App{Name: "itshard", Framework: "django", Teams: []string{t.Name}}
-	err = a.Create()
+	a, err := NewApp("itshard", "django", []string{t.Name})
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
 	url := fmt.Sprintf("/apps/%s/%s?:app=%s&:team=%s", a.Name, s.team.Name, a.Name, s.team.Name)
@@ -410,8 +434,7 @@ func (s *S) TestGrantAccessToTeamReturn404IfTheAppDoesNotExist(c *C) {
 }
 
 func (s *S) TestGrantAccessToTeamReturn401IfTheGivenUserDoesNotHasAccessToTheApp(c *C) {
-	a := App{Name: "itshard", Framework: "django"}
-	err := a.Create()
+	a, err := NewApp("itshard", "django", []string{})
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
 	url := fmt.Sprintf("/apps/%s/%s?:app=%s&:team=%s", a.Name, s.team.Name, a.Name, s.team.Name)
@@ -427,8 +450,7 @@ func (s *S) TestGrantAccessToTeamReturn401IfTheGivenUserDoesNotHasAccessToTheApp
 }
 
 func (s *S) TestGrantAccessToTeamReturn404IfTheTeamDoesNotExist(c *C) {
-	a := App{Name: "itshard", Framework: "django", Teams: []string{s.team.Name}}
-	err := a.Create()
+	a, err := NewApp("itshard", "django", []string{s.team.Name})
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
 	url := fmt.Sprintf("/apps/%s/a?:app=%s&:team=a", a.Name, a.Name)
@@ -444,8 +466,7 @@ func (s *S) TestGrantAccessToTeamReturn404IfTheTeamDoesNotExist(c *C) {
 }
 
 func (s *S) TestGrantAccessToTeamReturn409IfTheTeamHasAlreadyAccessToTheApp(c *C) {
-	a := App{Name: "itshard", Framework: "django", Teams: []string{s.team.Name}}
-	err := a.Create()
+	a, err := NewApp("itshard", "django", []string{s.team.Name})
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
 	url := fmt.Sprintf("/apps/%s/%s?:app=%s&:team=%s", a.Name, s.team.Name, a.Name, s.team.Name)
@@ -465,8 +486,7 @@ func (s *S) TestGrantAccessToAppAddsTheProjectInGitosis(c *C) {
 	c.Assert(err, IsNil)
 	defer db.Session.Teams().Remove(bson.M{"_id": t.Name})
 	s.addGroup()
-	a := &App{Name: "tsuru", Framework: "golang", Teams: []string{t.Name}}
-	err = a.Create()
+	a, err := NewApp("tsuru", "golang", []string{t.Name})
 	c.Assert(err, IsNil)
 	err = grantAccessToTeam(a.Name, s.team.Name, s.user)
 	c.Assert(err, IsNil)
@@ -479,8 +499,7 @@ func (s *S) TestRevokeAccessFromTeam(c *C) {
 	err := db.Session.Teams().Insert(t)
 	c.Assert(err, IsNil)
 	defer db.Session.Teams().Remove(bson.M{"_id": t.Name})
-	a := App{Name: "itshard", Framework: "django", Teams: []string{s.team.Name, t.Name}}
-	err = a.Create()
+	a, err := NewApp("itshard", "django", []string{s.team.Name, t.Name})
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
 	url := fmt.Sprintf("/apps/%s/%s?:app=%s&:team=%s", a.Name, s.team.Name, a.Name, s.team.Name)
@@ -506,8 +525,7 @@ func (s *S) TestRevokeAccessFromTeamReturn404IfTheAppDoesNotExist(c *C) {
 }
 
 func (s *S) TestRevokeAccessFromTeamReturn401IfTheGivenUserDoesNotHavePermissionInTheApp(c *C) {
-	a := App{Name: "itshard", Framework: "django"}
-	err := a.Create()
+	a, err := NewApp("itshard", "django", []string{})
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
 	url := fmt.Sprintf("/apps/%s/%s?:app=%s&:team=%s", a.Name, s.team.Name, a.Name, s.team.Name)
@@ -523,8 +541,7 @@ func (s *S) TestRevokeAccessFromTeamReturn401IfTheGivenUserDoesNotHavePermission
 }
 
 func (s *S) TestRevokeAccessFromTeamReturn404IfTheTeamDoesNotExist(c *C) {
-	a := App{Name: "itshard", Framework: "django", Teams: []string{s.team.Name}}
-	err := a.Create()
+	a, err := NewApp("itshard", "django", []string{s.team.Name})
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
 	url := fmt.Sprintf("/apps/%s/x?:app=%s&:team=x", a.Name, a.Name)
@@ -545,8 +562,7 @@ func (s *S) TestRevokeAccessFromTeamReturn404IfTheTeamDoesNotHaveAccessToTheApp(
 	t2 := auth.Team{Name: "team2"}
 	db.Session.Teams().Insert(t2)
 	defer db.Session.Teams().Remove(bson.M{"_id": bson.M{"$in": []string{"blaaa", "team2"}}})
-	a := App{Name: "itshard", Framework: "django", Teams: []string{s.team.Name, t2.Name}}
-	err := a.Create()
+	a, err := NewApp("itshard", "django", []string{s.team.Name, t2.Name})
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
 	url := fmt.Sprintf("/apps/%s/%s?:app=%s&:team=%s", a.Name, t.Name, a.Name, t.Name)
@@ -561,8 +577,7 @@ func (s *S) TestRevokeAccessFromTeamReturn404IfTheTeamDoesNotHaveAccessToTheApp(
 }
 
 func (s *S) TestRevokeAccessFromTeamReturn403IfTheTeamIsTheLastWithAccessToTheApp(c *C) {
-	a := App{Name: "itshard", Framework: "django", Teams: []string{s.team.Name}}
-	err := a.Create()
+	a, err := NewApp("itshard", "django", []string{s.team.Name})
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
 	url := fmt.Sprintf("/apps/%s/%s?:app=%s&:team=%s", a.Name, s.team.Name, a.Name, s.team.Name)
@@ -583,8 +598,7 @@ func (s *S) TestRevokeAccessFromTeamRemovesTheProjectFromGitosisConf(c *C) {
 	c.Assert(err, IsNil)
 	defer db.Session.Teams().Remove(bson.M{"_id": t.Name})
 	s.addGroup()
-	a := &App{Name: "tsuru", Framework: "golang", Teams: []string{t.Name}}
-	err = a.Create()
+	a, err := NewApp("tsuru", "golang", []string{t.Name})
 	c.Assert(err, IsNil)
 	err = grantAccessToTeam(a.Name, s.team.Name, s.user)
 	c.Assert(err, IsNil)
@@ -606,8 +620,10 @@ func (s *S) TestRunHandlerShouldExecuteTheGivenCommandInTheGivenApp(c *C) {
 		MachineAgentState: "running",
 		InstanceState:     "running",
 	}
-	a := &App{Name: "secrets", Framework: "arch enemy", Teams: []string{s.team.Name}, Units: []Unit{u}}
-	err = a.Create()
+	a, err := NewApp("secrets", "arch enemy", []string{s.team.Name})
+	c.Assert(err, IsNil)
+	a.Units = []Unit{u}
+	err = db.Session.Apps().Update(bson.M{"name": a.Name}, &a)
 	c.Assert(err, IsNil)
 	url := fmt.Sprintf("/apps/%s/run/?:name=%s", a.Name, a.Name)
 	request, err := http.NewRequest("POST", url, strings.NewReader("ls"))
@@ -630,8 +646,10 @@ func (s *S) TestRunHandlerShouldFilterOutputFromJuju(c *C) {
 		MachineAgentState: "running",
 		InstanceState:     "running",
 	}
-	a := &App{Name: "unspeakable", Framework: "vougan", Teams: []string{s.team.Name}, Units: []Unit{u}}
-	err = a.Create()
+	a, err := NewApp("unspeakable", "vougan", []string{s.team.Name})
+	c.Assert(err, IsNil)
+	a.Units = []Unit{u}
+	err = db.Session.Apps().Update(bson.M{"name": a.Name}, &a)
 	c.Assert(err, IsNil)
 	url := fmt.Sprintf("/apps/%s/run/?:name=%s", a.Name, a.Name)
 	request, err := http.NewRequest("POST", url, strings.NewReader("ls"))
@@ -683,8 +701,7 @@ func (s *S) TestRunHandlerReturnsNotFoundIfTheAppDoesNotExist(c *C) {
 }
 
 func (s *S) TestRunHandlerReturnsForbiddenIfTheGivenUserDoesNotHaveAccessToTheApp(c *C) {
-	a := &App{Name: "secrets", Framework: "arch enemy"}
-	err := a.Create()
+	a, err := NewApp("secrets", "arch enemy", []string{})
 	c.Assert(err, IsNil)
 	url := fmt.Sprintf("/apps/%s/run/?:name=%s", a.Name, a.Name)
 	request, err := http.NewRequest("POST", url, strings.NewReader("ls"))
@@ -698,15 +715,16 @@ func (s *S) TestRunHandlerReturnsForbiddenIfTheGivenUserDoesNotHaveAccessToTheAp
 }
 
 func (s *S) TestGetEnvHandlerGetsEnvironmentVariableFromApp(c *C) {
-	a := &App{Name: "everything-i-want", Framework: "gotthard", Teams: []string{s.team.Name}}
+	a, err := NewApp("everything-i-want", "gotthard", []string{s.team.Name})
+	c.Assert(err, IsNil)
+	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
 	a.Env = map[string]EnvVar{
 		"DATABASE_HOST":     EnvVar{Name: "DATABASE_HOST", Value: "localhost", Public: true},
 		"DATABASE_USER":     EnvVar{Name: "DATABASE_USER", Value: "root", Public: true},
 		"DATABASE_PASSWORD": EnvVar{Name: "DATABASE_PASSWORD", Value: "secret", Public: false},
 	}
-	err := a.Create()
+	err = db.Session.Apps().Update(bson.M{"name": a.Name}, a)
 	c.Assert(err, IsNil)
-	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
 	url := fmt.Sprintf("/apps/%s/env/?:name=%s", a.Name, a.Name)
 	request, err := http.NewRequest("GET", url, strings.NewReader("DATABASE_HOST"))
 	c.Assert(err, IsNil)
@@ -717,15 +735,16 @@ func (s *S) TestGetEnvHandlerGetsEnvironmentVariableFromApp(c *C) {
 }
 
 func (s *S) TestGetEnvHandlerShouldAcceptMultipleVariables(c *C) {
-	a := &App{Name: "four-sticks", Teams: []string{s.team.Name}}
+	a, err := NewApp("four-sticks", "", []string{s.team.Name})
+	c.Assert(err, IsNil)
+	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
 	a.Env = map[string]EnvVar{
 		"DATABASE_HOST":     EnvVar{Name: "DATABASE_HOST", Value: "localhost", Public: true},
 		"DATABASE_USER":     EnvVar{Name: "DATABASE_USER", Value: "root", Public: true},
 		"DATABASE_PASSWORD": EnvVar{Name: "DATABASE_PASSWORD", Value: "secret", Public: false},
 	}
-	err := a.Create()
+	err = db.Session.Apps().Update(bson.M{"name": a.Name}, a)
 	c.Assert(err, IsNil)
-	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
 	url := fmt.Sprintf("/apps/%s/env/?:name=%s", a.Name, a.Name)
 	request, err := http.NewRequest("GET", url, strings.NewReader("DATABASE_HOST DATABASE_USER"))
 	c.Assert(err, IsNil)
@@ -736,13 +755,14 @@ func (s *S) TestGetEnvHandlerShouldAcceptMultipleVariables(c *C) {
 }
 
 func (s *S) TestGetEnvHandlerReturnsAllVariablesIfEnvironmentVariablesAreMissingWithMaskOnPrivateVars(c *C) {
-	a := &App{Name: "time", Framework: "pink-floyd", Teams: []string{s.team.Name}}
+	a, err := NewApp("time", "pink-floyd", []string{s.team.Name})
+	c.Assert(err, IsNil)
 	a.Env = map[string]EnvVar{
 		"DATABASE_HOST":     EnvVar{Name: "DATABASE_HOST", Value: "localhost", Public: true},
 		"DATABASE_USER":     EnvVar{Name: "DATABASE_USER", Value: "root", Public: true},
 		"DATABASE_PASSWORD": EnvVar{Name: "DATABASE_PASSWORD", Value: "secret", Public: false},
 	}
-	err := a.Create()
+	err = db.Session.Apps().Update(bson.M{"name": "time"}, a)
 	c.Assert(err, IsNil)
 	expected := []string{"", "DATABASE_HOST=localhost", "DATABASE_PASSWORD=*** (private variable)", "DATABASE_USER=root"}
 	bodies := []io.Reader{nil, strings.NewReader("")}
@@ -781,8 +801,7 @@ func (s *S) TestGetEnvHandlerReturnsNotFoundIfTheAppDoesNotExist(c *C) {
 }
 
 func (s *S) TestGetEnvHandlerReturnsForbiddenIfTheGivenUserDoesNotHaveAccessToTheApp(c *C) {
-	a := &App{Name: "lost", Framework: "vougan"}
-	err := a.Create()
+	a, err := NewApp("lost", "vougan", []string{})
 	c.Assert(err, IsNil)
 	url := fmt.Sprintf("/apps/%s/env/?:name=%s", a.Name, a.Name)
 	request, err := http.NewRequest("GET", url, strings.NewReader("DATABASE_HOST"))
@@ -796,17 +815,16 @@ func (s *S) TestGetEnvHandlerReturnsForbiddenIfTheGivenUserDoesNotHaveAccessToTh
 }
 
 func (s *S) TestSetEnvRespectsThePublicOnlyFlagKeepPrivateVariablesWhenItsTrue(c *C) {
-	a := &App{
-		Name: "myapp",
-		Env: map[string]EnvVar{
-			"DATABASE_HOST": EnvVar{
-				Name:   "DATABASE_HOST",
-				Value:  "localhost",
-				Public: false,
-			},
+	a, err := NewApp("myapp", "", []string{})
+	c.Assert(err, IsNil)
+	a.Env = map[string]EnvVar{
+		"DATABASE_HOST": EnvVar{
+			Name:   "DATABASE_HOST",
+			Value:  "localhost",
+			Public: false,
 		},
 	}
-	err := a.Create()
+	err = db.Session.Apps().Update(bson.M{"name": "myapp"}, a)
 	c.Assert(err, IsNil)
 	envs := []EnvVar{
 		EnvVar{
@@ -820,7 +838,7 @@ func (s *S) TestSetEnvRespectsThePublicOnlyFlagKeepPrivateVariablesWhenItsTrue(c
 			Public: true,
 		},
 	}
-	err = SetEnvsToApp(a, envs, true)
+	err = SetEnvsToApp(&a, envs, true)
 	c.Assert(err, IsNil)
 	err = a.Get()
 	c.Assert(err, IsNil)
@@ -840,17 +858,16 @@ func (s *S) TestSetEnvRespectsThePublicOnlyFlagKeepPrivateVariablesWhenItsTrue(c
 }
 
 func (s *S) TestSetEnvRespectsThePublicOnlyFlagOverwrittenAllVariablesWhenItsFalse(c *C) {
-	a := &App{
-		Name: "myapp",
-		Env: map[string]EnvVar{
-			"DATABASE_HOST": EnvVar{
-				Name:   "DATABASE_HOST",
-				Value:  "localhost",
-				Public: false,
-			},
+	a, err := NewApp("myapp", "", []string{})
+	c.Assert(err, IsNil)
+	a.Env = map[string]EnvVar{
+		"DATABASE_HOST": EnvVar{
+			Name:   "DATABASE_HOST",
+			Value:  "localhost",
+			Public: false,
 		},
 	}
-	err := a.Create()
+	err = db.Session.Apps().Update(bson.M{"name": "myapp"}, a)
 	c.Assert(err, IsNil)
 	envs := []EnvVar{
 		EnvVar{
@@ -864,7 +881,7 @@ func (s *S) TestSetEnvRespectsThePublicOnlyFlagOverwrittenAllVariablesWhenItsFal
 			Public: true,
 		},
 	}
-	err = SetEnvsToApp(a, envs, false)
+	err = SetEnvsToApp(&a, envs, false)
 	c.Assert(err, IsNil)
 	err = a.Get()
 	c.Assert(err, IsNil)
@@ -884,8 +901,7 @@ func (s *S) TestSetEnvRespectsThePublicOnlyFlagOverwrittenAllVariablesWhenItsFal
 }
 
 func (s *S) TestSetEnvHandlerShouldSetAPublicEnvironmentVariableInTheApp(c *C) {
-	a := &App{Name: "black-dog", Teams: []string{s.team.Name}}
-	err := a.Create()
+	a, err := NewApp("black-dog", "", []string{s.team.Name})
 	c.Assert(err, IsNil)
 	url := fmt.Sprintf("/apps/%s/env?:name=%s", a.Name, a.Name)
 	request, err := http.NewRequest("POST", url, strings.NewReader("DATABASE_HOST=localhost"))
@@ -903,8 +919,7 @@ func (s *S) TestSetEnvHandlerShouldSetAPublicEnvironmentVariableInTheApp(c *C) {
 }
 
 func (s *S) TestSetEnvHandlerShouldSetMultipleEnvironmentVariablesInTheApp(c *C) {
-	a := &App{Name: "vigil", Teams: []string{s.team.Name}}
-	err := a.Create()
+	a, err := NewApp("vigil", "", []string{s.team.Name})
 	c.Assert(err, IsNil)
 	url := fmt.Sprintf("/apps/%s/env?:name=%s", a.Name, a.Name)
 	request, err := http.NewRequest("POST", url, strings.NewReader("DATABASE_HOST=localhost DATABASE_USER=root"))
@@ -923,8 +938,7 @@ func (s *S) TestSetEnvHandlerShouldSetMultipleEnvironmentVariablesInTheApp(c *C)
 }
 
 func (s *S) TestSetEnvHandlerShouldSupportSpacesInTheEnvironmentVariableValue(c *C) {
-	a := &App{Name: "loser", Teams: []string{s.team.Name}}
-	err := a.Create()
+	a, err := NewApp("loser", "", []string{s.team.Name})
 	c.Assert(err, IsNil)
 	url := fmt.Sprintf("/apps/%s/env?:name=%s", a.Name, a.Name)
 	request, err := http.NewRequest("POST", url, strings.NewReader("DATABASE_HOST=local host DATABASE_USER=root"))
@@ -943,8 +957,7 @@ func (s *S) TestSetEnvHandlerShouldSupportSpacesInTheEnvironmentVariableValue(c 
 }
 
 func (s *S) TestSetEnvHandlerShouldSupportValuesWithDot(c *C) {
-	a := &App{Name: "losers", Teams: []string{s.team.Name}}
-	err := a.Create()
+	a, err := NewApp("losers", "", []string{s.team.Name})
 	c.Assert(err, IsNil)
 	url := fmt.Sprintf("/apps/%s/env?:name=%s", a.Name, a.Name)
 	request, err := http.NewRequest("POST", url, strings.NewReader("DATABASE_HOST=http://foo.com:8080"))
@@ -962,8 +975,7 @@ func (s *S) TestSetEnvHandlerShouldSupportValuesWithDot(c *C) {
 }
 
 func (s *S) TestSetEnvHandlerShouldSupportNumbersOnVariableName(c *C) {
-	a := &App{Name: "blinded", Teams: []string{s.team.Name}}
-	err := a.Create()
+	a, err := NewApp("blinded", "", []string{s.team.Name})
 	c.Assert(err, IsNil)
 	url := fmt.Sprintf("/apps/%s/env?:name=%s", a.Name, a.Name)
 	request, err := http.NewRequest("POST", url, strings.NewReader("EC2_HOST=http://foo.com:8080"))
@@ -981,8 +993,7 @@ func (s *S) TestSetEnvHandlerShouldSupportNumbersOnVariableName(c *C) {
 }
 
 func (s *S) TestSetEnvHandlerShouldSupportLowerCasedVariableName(c *C) {
-	a := &App{Name: "fragments", Teams: []string{s.team.Name}}
-	err := a.Create()
+	a, err := NewApp("fragments", "", []string{s.team.Name})
 	c.Assert(err, IsNil)
 	url := fmt.Sprintf("/apps/%s/env?:name=%s", a.Name, a.Name)
 	request, err := http.NewRequest("POST", url, strings.NewReader("http_proxy=http://my_proxy.com:3128"))
@@ -1007,8 +1018,10 @@ func (s *S) TestSetEnvHandlerShouldNotChangeValueOfPrivateVariables(c *C) {
 			Public: false,
 		},
 	}
-	a := &App{Name: "losers", Teams: []string{s.team.Name}, Env: original}
-	err := a.Create()
+	a, err := NewApp("losers", "", []string{s.team.Name})
+	c.Assert(err, IsNil)
+	a.Env = original
+	err = db.Session.Apps().Update(bson.M{"name": "losers"}, a)
 	c.Assert(err, IsNil)
 	url := fmt.Sprintf("/apps/%s/env?:name=%s", a.Name, a.Name)
 	request, err := http.NewRequest("POST", url, strings.NewReader("DATABASE_HOST=http://foo.com:8080"))
@@ -1061,8 +1074,7 @@ func (s *S) TestSetEnvHandlerReturnsNotFoundIfTheAppDoesNotExist(c *C) {
 }
 
 func (s *S) TestSetEnvHandlerReturnsForbiddenIfTheGivenUserDoesNotHaveAccessToTheApp(c *C) {
-	a := &App{Name: "rock-and-roll"}
-	err := a.Create()
+	a, err := NewApp("rock-and-roll", "", []string{})
 	c.Assert(err, IsNil)
 	url := fmt.Sprintf("/apps/%s/env/?:name=%s", a.Name, a.Name)
 	request, err := http.NewRequest("POST", url, strings.NewReader("DATABASE_HOST=localhost"))
@@ -1076,16 +1088,14 @@ func (s *S) TestSetEnvHandlerReturnsForbiddenIfTheGivenUserDoesNotHaveAccessToTh
 }
 
 func (s *S) TestUnsetEnvHandlerRemovesTheEnvironmentVariablesFromTheApp(c *C) {
-	a := &App{
-		Name:  "swift",
-		Teams: []string{s.team.Name},
-	}
+	a, err := NewApp("swift", "", []string{s.team.Name})
+	c.Assert(err, IsNil)
 	a.Env = map[string]EnvVar{
 		"DATABASE_HOST":     EnvVar{Name: "DATABASE_HOST", Value: "localhost", Public: true},
 		"DATABASE_USER":     EnvVar{Name: "DATABASE_USER", Value: "root", Public: true},
 		"DATABASE_PASSWORD": EnvVar{Name: "DATABASE_PASSWORD", Value: "secret", Public: false},
 	}
-	err := a.Create()
+	err = db.Session.Apps().Update(bson.M{"name": "swift"}, a)
 	c.Assert(err, IsNil)
 	expected := a.Env
 	delete(expected, "DATABASE_HOST")
@@ -1102,16 +1112,14 @@ func (s *S) TestUnsetEnvHandlerRemovesTheEnvironmentVariablesFromTheApp(c *C) {
 }
 
 func (s *S) TestUnsetEnvHandlerRemovesAllGivenEnvironmentVariables(c *C) {
-	a := &App{
-		Name:  "let-it-be",
-		Teams: []string{s.team.Name},
-	}
+	a, err := NewApp("let-it-be", "", []string{s.team.Name})
+	c.Assert(err, IsNil)
 	a.Env = map[string]EnvVar{
 		"DATABASE_HOST":     EnvVar{Name: "DATABASE_HOST", Value: "localhost", Public: true},
 		"DATABASE_USER":     EnvVar{Name: "DATABASE_USER", Value: "root", Public: true},
 		"DATABASE_PASSWORD": EnvVar{Name: "DATABASE_PASSWORD", Value: "secret", Public: false},
 	}
-	err := a.Create()
+	err = db.Session.Apps().Update(bson.M{"name": "let-it-be"}, a)
 	c.Assert(err, IsNil)
 	url := fmt.Sprintf("/apps/%s/env/?:name=%s", a.Name, a.Name)
 	request, err := http.NewRequest("DELETE", url, strings.NewReader("DATABASE_HOST DATABASE_USER"))
@@ -1133,16 +1141,14 @@ func (s *S) TestUnsetEnvHandlerRemovesAllGivenEnvironmentVariables(c *C) {
 }
 
 func (s *S) TestUnsetHandlerDoesNotRemovePrivateVariables(c *C) {
-	a := &App{
-		Name:  "let-it-be",
-		Teams: []string{s.team.Name},
-	}
+	a, err := NewApp("let-it-be", "", []string{s.team.Name})
+	c.Assert(err, IsNil)
 	a.Env = map[string]EnvVar{
 		"DATABASE_HOST":     EnvVar{Name: "DATABASE_HOST", Value: "localhost", Public: true},
 		"DATABASE_USER":     EnvVar{Name: "DATABASE_USER", Value: "root", Public: true},
 		"DATABASE_PASSWORD": EnvVar{Name: "DATABASE_PASSWORD", Value: "secret", Public: false},
 	}
-	err := a.Create()
+	err = db.Session.Apps().Update(bson.M{"name": "let-it-be"}, a)
 	c.Assert(err, IsNil)
 	url := fmt.Sprintf("/apps/%s/env/?:name=%s", a.Name, a.Name)
 	request, err := http.NewRequest("DELETE", url, strings.NewReader("DATABASE_HOST DATABASE_USER DATABASE_PASSWORD"))
@@ -1164,24 +1170,23 @@ func (s *S) TestUnsetHandlerDoesNotRemovePrivateVariables(c *C) {
 }
 
 func (s *S) TestUnsetEnvRespectsThePublicOnlyFlagKeepPrivateVariablesWhenItsTrue(c *C) {
-	a := &App{
-		Name: "myapp",
-		Env: map[string]EnvVar{
-			"DATABASE_HOST": EnvVar{
-				Name:   "DATABASE_HOST",
-				Value:  "localhost",
-				Public: false,
-			},
-			"DATABASE_PASSWORD": EnvVar{
-				Name:   "DATABASE_PASSWORD",
-				Value:  "123",
-				Public: true,
-			},
+	a, err := NewApp("myapp", "", []string{})
+	c.Assert(err, IsNil)
+	a.Env = map[string]EnvVar{
+		"DATABASE_HOST": EnvVar{
+			Name:   "DATABASE_HOST",
+			Value:  "localhost",
+			Public: false,
+		},
+		"DATABASE_PASSWORD": EnvVar{
+			Name:   "DATABASE_PASSWORD",
+			Value:  "123",
+			Public: true,
 		},
 	}
-	err := a.Create()
+	err = db.Session.Apps().Update(bson.M{"name": "myapp"}, a)
 	c.Assert(err, IsNil)
-	err = UnsetEnvFromApp(a, []string{"DATABASE_HOST", "DATABASE_PASSWORD"}, true)
+	err = UnsetEnvFromApp(&a, []string{"DATABASE_HOST", "DATABASE_PASSWORD"}, true)
 	c.Assert(err, IsNil)
 	err = a.Get()
 	c.Assert(err, IsNil)
@@ -1196,24 +1201,23 @@ func (s *S) TestUnsetEnvRespectsThePublicOnlyFlagKeepPrivateVariablesWhenItsTrue
 }
 
 func (s *S) TestUnsetEnvRespectsThePublicOnlyFlagUnsettingAllVariablesWhenItsFalse(c *C) {
-	a := &App{
-		Name: "myapp",
-		Env: map[string]EnvVar{
-			"DATABASE_HOST": EnvVar{
-				Name:   "DATABASE_HOST",
-				Value:  "localhost",
-				Public: false,
-			},
-			"DATABASE_PASSWORD": EnvVar{
-				Name:   "DATABASE_PASSWORD",
-				Value:  "123",
-				Public: true,
-			},
+	a, err := NewApp("myapp", "", []string{})
+	c.Assert(err, IsNil)
+	a.Env = map[string]EnvVar{
+		"DATABASE_HOST": EnvVar{
+			Name:   "DATABASE_HOST",
+			Value:  "localhost",
+			Public: false,
+		},
+		"DATABASE_PASSWORD": EnvVar{
+			Name:   "DATABASE_PASSWORD",
+			Value:  "123",
+			Public: true,
 		},
 	}
-	err := a.Create()
+	err = db.Session.Apps().Update(bson.M{"name": "myapp"}, a)
 	c.Assert(err, IsNil)
-	err = UnsetEnvFromApp(a, []string{"DATABASE_HOST", "DATABASE_PASSWORD"}, false)
+	err = UnsetEnvFromApp(&a, []string{"DATABASE_HOST", "DATABASE_PASSWORD"}, false)
 	c.Assert(err, IsNil)
 	err = a.Get()
 	c.Assert(err, IsNil)
@@ -1259,8 +1263,7 @@ func (s *S) TestUnsetEnvHandlerReturnsNotFoundIfTheAppDoesNotExist(c *C) {
 }
 
 func (s *S) TestUnsetEnvHandlerReturnsForbiddenIfTheGivenUserDoesNotHaveAccessToTheApp(c *C) {
-	a := &App{Name: "mountain-mama"}
-	err := a.Create()
+	a, err := NewApp("mountain-mama", "", []string{})
 	c.Assert(err, IsNil)
 	url := fmt.Sprintf("/apps/%s/env/?:name=%s", a.Name, a.Name)
 	request, err := http.NewRequest("POST", url, strings.NewReader("DATABASE_HOST=localhost"))
@@ -1286,8 +1289,7 @@ func (s *S) TestLogShouldReturnNotFoundWhenAppDoesNotExist(c *C) {
 }
 
 func (s *S) TestLogReturnsForbiddenIfTheGivenUserDoesNotHaveAccessToTheApp(c *C) {
-	a := &App{Name: "lost", Framework: "vougan"}
-	err := a.Create()
+	a, err := NewApp("lost", "vougan", []string{})
 	c.Assert(err, IsNil)
 	url := fmt.Sprintf("/apps/%s/log/?:name=%s", a.Name, a.Name)
 	request, err := http.NewRequest("GET", url, nil)
@@ -1301,8 +1303,7 @@ func (s *S) TestLogReturnsForbiddenIfTheGivenUserDoesNotHaveAccessToTheApp(c *C)
 }
 
 func (s *S) TestLogShouldAppLog(c *C) {
-	a := &App{Name: "lost", Framework: "vougan", Teams: []string{s.team.Name}}
-	err := a.Create()
+	a, err := NewApp("lost", "vougan", []string{s.team.Name})
 	c.Assert(err, IsNil)
 	url := fmt.Sprintf("/apps/%s/log/?:name=%s", a.Name, a.Name)
 	request, err := http.NewRequest("GET", url, nil)
@@ -1354,14 +1355,12 @@ func (s *S) TestBindHandler(c *C) {
 	err = instance.Create()
 	c.Assert(err, IsNil)
 	defer db.Session.ServiceInstances().Remove(bson.M{"_id": "my-mysql"})
-	a := App{
-		Name:  "painkiller",
-		Teams: []string{s.team.Name},
-		Units: []Unit{Unit{Ip: "127.0.0.1"}},
-	}
-	err = a.Create()
+	a, err := NewApp("painkiller", "", []string{s.team.Name})
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
+	a.Units = []Unit{Unit{Ip: "127.0.0.1"}}
+	err = db.Session.Apps().Update(bson.M{"name": "painkiller"}, a)
+	c.Assert(err, IsNil)
 	url := fmt.Sprintf("/services/instances/%s/%s?:instance=%s&:app=%s", instance.Name, a.Name, instance.Name, a.Name)
 	request, err := http.NewRequest("PUT", url, nil)
 	c.Assert(err, IsNil)
@@ -1391,8 +1390,7 @@ func (s *S) TestBindHandler(c *C) {
 }
 
 func (s *S) TestBindHandlerReturns404IfTheInstanceDoesNotExist(c *C) {
-	a := App{Name: "serviceApp", Framework: "django", Teams: []string{s.team.Name}}
-	err := a.Create()
+	a, err := NewApp("serviceApp", "django", []string{s.team.Name})
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
 	url := fmt.Sprintf("/services/instances/unknown/%s?:instance=unknown&:app=%s", a.Name, a.Name)
@@ -1412,8 +1410,7 @@ func (s *S) TestBindHandlerReturns403IfTheUserDoesNotHaveAccessToTheInstance(c *
 	err := instance.Create()
 	c.Assert(err, IsNil)
 	defer db.Session.ServiceInstances().Remove(bson.M{"_id": "my-mysql"})
-	a := App{Name: "serviceApp", Framework: "django", Teams: []string{s.team.Name}}
-	err = a.Create()
+	a, err := NewApp("serviceApp", "django", []string{s.team.Name})
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
 	url := fmt.Sprintf("/services/instances/%s/%s?:instance=%s&:app=%s", instance.Name, a.Name, instance.Name, a.Name)
@@ -1450,8 +1447,7 @@ func (s *S) TestBindHandlerReturns403IfTheUserDoesNotHaveAccessToTheApp(c *C) {
 	err := instance.Create()
 	c.Assert(err, IsNil)
 	defer db.Session.ServiceInstances().Remove(bson.M{"_id": "my-mysql"})
-	a := App{Name: "serviceApp", Framework: "django"}
-	err = a.Create()
+	a, err := NewApp("serviceApp", "django", []string{})
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
 	url := fmt.Sprintf("/services/instances/%s/%s?:instance=%s&:app=%s", instance.Name, a.Name, instance.Name, a.Name)
@@ -1485,26 +1481,24 @@ func (s *S) TestUnbindHandler(c *C) {
 	err = instance.Create()
 	c.Assert(err, IsNil)
 	defer db.Session.ServiceInstances().Remove(bson.M{"_id": "my-mysql"})
-	a := App{
-		Name:  "painkiller",
-		Teams: []string{s.team.Name},
-		Env: map[string]EnvVar{
-			"DATABASE_HOST": EnvVar{
-				Name:         "DATABASE_HOST",
-				Value:        "arrea",
-				Public:       false,
-				InstanceName: instance.Name,
-			},
-			"MY_VAR": EnvVar{
-				Name:  "MY_VAR",
-				Value: "123",
-			},
-		},
-		Units: []Unit{Unit{Ip: "127.0.0.1"}},
-	}
-	err = a.Create()
+	a, err := NewApp("painkiller", "", []string{s.team.Name})
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
+	a.Env = map[string]EnvVar{
+		"DATABASE_HOST": EnvVar{
+			Name:         "DATABASE_HOST",
+			Value:        "arrea",
+			Public:       false,
+			InstanceName: instance.Name,
+		},
+		"MY_VAR": EnvVar{
+			Name:  "MY_VAR",
+			Value: "123",
+		},
+	}
+	a.Units = []Unit{Unit{Ip: "127.0.0.1"}}
+	err = db.Session.Apps().Update(bson.M{"name": a.Name}, &a)
+	c.Assert(err, IsNil)
 	url := fmt.Sprintf("/services/instances/%s/%s?:instance=%s&:app=%s", instance.Name, a.Name, instance.Name, a.Name)
 	req, err := http.NewRequest("DELETE", url, nil)
 	c.Assert(err, IsNil)
@@ -1539,8 +1533,7 @@ func (s *S) TestUnbindHandler(c *C) {
 }
 
 func (s *S) TestUnbindHandlerReturns404IfTheInstanceDoesNotExist(c *C) {
-	a := App{Name: "serviceApp", Framework: "django", Teams: []string{s.team.Name}}
-	err := a.Create()
+	a, err := NewApp("serviceApp", "django", []string{s.team.Name})
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
 	url := fmt.Sprintf("/services/instances/unknown/%s?:instance=unknown&:app=%s", a.Name, a.Name)
@@ -1560,8 +1553,7 @@ func (s *S) TestUnbindHandlerReturns403IfTheUserDoesNotHaveAccessToTheInstance(c
 	err := instance.Create()
 	c.Assert(err, IsNil)
 	defer db.Session.ServiceInstances().Remove(bson.M{"_id": "my-mysql"})
-	a := App{Name: "serviceApp", Framework: "django", Teams: []string{s.team.Name}}
-	err = a.Create()
+	a, err := NewApp("serviceApp", "django", []string{s.team.Name})
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
 	url := fmt.Sprintf("/services/instances/%s/%s?:instance=%s&:app=%s", instance.Name, a.Name, instance.Name, a.Name)
@@ -1598,8 +1590,7 @@ func (s *S) TestUnbindHandlerReturns403IfTheUserDoesNotHaveAccessToTheApp(c *C) 
 	err := instance.Create()
 	c.Assert(err, IsNil)
 	defer db.Session.ServiceInstances().Remove(bson.M{"_id": "my-mysql"})
-	a := App{Name: "serviceApp", Framework: "django"}
-	err = a.Create()
+	a, err := NewApp("serviceApp", "django", []string{})
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
 	url := fmt.Sprintf("/services/instances/%s/%s?:instance=%s&:app=%s", instance.Name, a.Name, instance.Name, a.Name)
@@ -1618,16 +1609,13 @@ func (s *S) TestRestartHandler(c *C) {
 	tmpdir, err := commandmocker.Add("juju", "$*")
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(tmpdir)
-	a := App{
-		Name:  "stress",
-		Teams: []string{s.team.Name},
-		Units: []Unit{
-			Unit{AgentState: "started", MachineAgentState: "running", InstanceState: "running", Machine: 10, Ip: "20.20.20.20"},
-		},
-	}
-	err = a.Create()
+	a, err := NewApp("stress", "", []string{s.team.Name})
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
+	a.Units = []Unit{
+		Unit{AgentState: "started", MachineAgentState: "running", InstanceState: "running", Machine: 10, Ip: "20.20.20.20"},
+	}
+	db.Session.Apps().Update(bson.M{"name": a.Name}, &a)
 	url := fmt.Sprintf("/apps/%s/restart?:name=%s", a.Name, a.Name)
 	request, err := http.NewRequest("GET", url, nil)
 	c.Assert(err, IsNil)
@@ -1653,8 +1641,7 @@ func (s *S) TestRestartHandlerReturns404IfTheAppDoesNotExist(c *C) {
 }
 
 func (s *S) TestRestartHandlerReturns403IfTheUserDoesNotHaveAccessToTheApp(c *C) {
-	a := App{Name: "nightmist"}
-	err := a.Create()
+	a, err := NewApp("nightmist", "", []string{})
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
 	url := fmt.Sprintf("/apps/%s/restart?:name=%s", a.Name, a.Name)
@@ -1669,10 +1656,11 @@ func (s *S) TestRestartHandlerReturns403IfTheUserDoesNotHaveAccessToTheApp(c *C)
 }
 
 func (s *S) TestRestartHandlerReturns412IfTheUnitOfTheAppDoesNotHaveIp(c *C) {
-	a := App{Name: "stress", Teams: []string{s.team.Name}, Units: []Unit{Unit{Ip: "", Machine: 10}}}
-	err := a.Create()
+	a, err := NewApp("stress", "", []string{s.team.Name})
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
+	a.Units = []Unit{Unit{Ip: "", Machine: 10}}
+	db.Session.Apps().Update(bson.M{"name": a.Name}, &a)
 	url := fmt.Sprintf("/apps/%s/restart?:name=%s", a.Name, a.Name)
 	request, err := http.NewRequest("GET", url, nil)
 	c.Assert(err, IsNil)
