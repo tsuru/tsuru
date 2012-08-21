@@ -52,12 +52,11 @@ func (s *S) TestGet(c *C) {
 }
 
 func (s *S) TestDestroy(c *C) {
-	ts := s.deleteMockServer("destroy-app-")
-	ts.Start()
-	oldAuthUrl := authUrl
+	s.ts.Close()
+	ts := s.mockServer("", "destroy-app-")
 	authUrl = ts.URL
 	defer func() {
-		authUrl = oldAuthUrl
+		authUrl = ""
 		ts.Close()
 	}()
 	dir, err := commandmocker.Add("juju", "$*")
@@ -530,5 +529,9 @@ func (s *S) TestGetUnits(c *C) {
 }
 
 func (s *S) TestNewAppShouldCreateKeystoneEnv(c *C) {
-	//NewApp("pumpkin")
+	a, err := NewApp("pumpkin", "golang", []string{s.team.Name})
+	c.Assert(err, IsNil)
+	c.Assert(a.KeystoneEnv.TenantId, Not(Equals), "")
+	c.Assert(a.KeystoneEnv.UserId, Not(Equals), "")
+	c.Assert(a.KeystoneEnv.AccessKey, Not(Equals), "")
 }
