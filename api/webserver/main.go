@@ -88,11 +88,11 @@ func main() {
 	m.Put("/teams/:team/:user", AuthorizationRequiredHandler(auth.AddUserToTeam))
 	m.Del("/teams/:team/:user", AuthorizationRequiredHandler(auth.RemoveUserFromTeam))
 
-	listen, err := config.GetString("listen")
-	if err != nil {
-		panic(err)
-	}
 	if !*dry {
+		listen, err := config.GetString("listen")
+		if err != nil {
+			panic(err)
+		}
 		log.Fatal(http.ListenAndServe(listen, m))
 	}
 }
