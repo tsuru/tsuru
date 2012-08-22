@@ -20,7 +20,7 @@ To add a new instance of a service:
 
     $ tsuru service-add <service_name>
 
-To remove a instance of a service:
+To remove an instance of a service:
 
 .. highlight:: bash
 
@@ -29,7 +29,7 @@ To remove a instance of a service:
     $ tsuru service-remove <service_instance_name>
 
 To bind a service instance with an app you can use the `bind` command.
-If this service has any variable to be used for your app, tsuru will inject this variables in environment.
+If this service has any variable to be used by your app, tsuru will inject this variables in the app's environment.
 
 .. highlight:: bash
 

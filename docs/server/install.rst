@@ -11,7 +11,7 @@ To install Go, follow the official instructions in the language website:
 http://golang.org/doc/install.
 
 To install libyaml, you can use one package manager, or download it and install
-from source. To install from source, follow the instructions on PyYAML wiki:
+it from source. To install from source, follow the instructions on PyYAML wiki:
 http://pyyaml.org/wiki/LibYAML.
 
 The following instructions are system specific:
@@ -56,7 +56,7 @@ CentOS
 Installation
 ============
 
-After install and configure go, and install libyaml, just run in your terminal:
+After installing and configuring go, and installing libyaml, just run in your terminal:
 
 .. highlight:: bash
 

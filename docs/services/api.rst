@@ -2,7 +2,7 @@
 api workflow
 ++++++++++++
 
-Tsuru sends a request to your service for:
+Tsuru sends requests to your service to:
 
 * create a new instance of your service
 * bind an app with your service
@@ -12,7 +12,7 @@ Tsuru sends a request to your service for:
 Creating a new instance
 =======================
 
-This process begins when a Tsuru customer create an instance of your service via command line tool:
+This process begins when a Tsuru customer creates an instance of your service via command line tool:
 
 .. highlight:: bash
 
@@ -20,7 +20,7 @@ This process begins when a Tsuru customer create an instance of your service via
 
     $ tsuru service-add mysql mysql_instance
 
-Tsuru calls your service to create a new instance of your service via POST on ``/resources``(please notice that tsuru does not include a trailing slash) with the "name" that represents the app name in request body. Example of request:
+Tsuru calls your service to create a new instance of your service via POST on ``/resources``(please notice that tsuru does not include a trailing slash) with the "name" that represents the app name in the request body. Example of request:
 
 .. highlight:: text
 
@@ -39,7 +39,7 @@ Your API should return the following HTTP response code with the respective resp
 Binding an app to a service instance
 ====================================
 
-This process begins when a Tsuru customer bind an app to an instance of your service via command line tool:
+This process begins when a Tsuru customer binds an app to an instance of your service via command line tool:
 
 .. highlight:: bash
 
@@ -47,7 +47,7 @@ This process begins when a Tsuru customer bind an app to an instance of your ser
 
     $ tsuru bind mysql_instance my_app
 
-Tsuru calls your service to bind an app with a service instance via POST on ``/resources/<service-name>`` (please notice that tsuru does not include a trailing slash) with the "hostname" that represents the app hostname on body. Example of request:
+Tsuru calls your service to bind an app with a service instance via POST on ``/resources/<service-name>`` (please notice that tsuru does not include a trailing slash) with the "hostname" that represents the app hostname in the request body. Example of request:
 
 .. highlight:: text
 
@@ -80,7 +80,7 @@ Status codes for errors in the process:
 Unbind an app from a service instance
 =====================================
 
-This process begins when a Tsuru customer unbind an app with an instance of your service via command line tool:
+This process begins when a Tsuru customer unbinds an app from an instance of your service via command line tool:
 
 .. highlight:: bash
 
@@ -97,7 +97,7 @@ Tsuru calls your service to unbind an app with a service instance via DELETE on 
     DELETE /resources/mysql_instance/hostname/myapp.myhost.com HTTP/1.0
     Content-Length: 0
 
-Your API should return the following HTTP response code with respective response body:
+Your API should return the following HTTP response code with the respective response body:
 
     * 200: if the app is successfully unbinded from the instance. You don't need to include any content in the response body.
     * 404: if the service instance does not exist. You don't need to include any content in the response body.
@@ -106,7 +106,7 @@ Your API should return the following HTTP response code with respective response
 Destroying an instance
 ======================
 
-This process begins when a Tsuru customer remove an instance of your service via command line tool:
+This process begins when a Tsuru customer removes an instance of your service via command line tool:
 
 .. highlight:: bash
 
@@ -114,7 +114,7 @@ This process begins when a Tsuru customer remove an instance of your service via
 
     $ tsuru service-remove mysql_instance
 
-Tsuru calls your service to remove an isntance of your service via DELETE on ``/resources/<service-name>`` (please notice that tsuru does not include a trailing slash). Example of request:
+Tsuru calls your service to remove an instance of your service via DELETE on ``/resources/<service-name>`` (please notice that tsuru does not include a trailing slash). Example of request:
 
 .. highlight:: text
 
@@ -148,7 +148,7 @@ Tsuru calls your service to check the status of the instance via GET on ``/resou
 
     GET /resources/mysql_instance/status HTTP/1.0
 
-Your API should returning the following HTTP response code, with the respective response body:
+Your API should return the following HTTP response code, with the respective response body:
 
     * 202: the instance is still being provisioned (pending). You don't need to include any content in the response body.
     * 204: the instance is running and ready for connections (running). You don't need to include any content in the response body.
