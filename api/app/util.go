@@ -13,14 +13,8 @@ func filterOutput(output []byte) []byte {
 	var result [][]byte
 	var ignore bool
 	deprecation := []byte("DeprecationWarning")
-	regexLog, err := regexp.Compile(`^\d{4}-\d{2}-\d{2}\s\d{2}:\d{2}:\d{2}`)
-	if err != nil {
-		return output
-	}
-	regexSshWarning, err := regexp.Compile(`^Warning: Permanently added`)
-	if err != nil {
-		return output
-	}
+	regexLog := regexp.MustCompile(`^\d{4}-\d{2}-\d{2}\s\d{2}:\d{2}:\d{2}`)
+	regexSshWarning := regexp.MustCompile(`^Warning: Permanently added`)
 	lines := bytes.Split(output, []byte{'\n'})
 	for _, line := range lines {
 		if ignore {
