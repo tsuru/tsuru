@@ -20,7 +20,7 @@ type Unit struct {
 	app               *App
 }
 
-func (u *Unit) Destroy() ([]byte, error) {
+func (u *Unit) destroy() ([]byte, error) {
 	cmd := exec.Command("juju", "destroy-service", "-e", u.app.JujuEnv, u.app.Name)
 	log.Printf("destroying %s with name %s", u.Type, u.Name)
 	out, err := cmd.CombinedOutput()
@@ -30,6 +30,13 @@ func (u *Unit) Destroy() ([]byte, error) {
 	}
 	cmd = exec.Command("juju", "terminate-machine", "-e", u.app.JujuEnv, strconv.Itoa(u.Machine))
 	return cmd.CombinedOutput()
+}
+
+func (u *Unit) executeHook(hook string) ([]byte, error) {
+	cmd := fmt.Sprintf("/var/lib/tsuru/hooks/%s", hook)
+	output, err := u.Command(cmd)
+	log.Print(string(output))
+	return output, err
 }
 
 func (u *Unit) Command(cmds ...string) ([]byte, error) {
@@ -49,13 +56,6 @@ func (u *Unit) GetName() string {
 
 func (u *Unit) GetIp() string {
 	return u.Ip
-}
-
-func (u *Unit) ExecuteHook(hook string) ([]byte, error) {
-	cmd := fmt.Sprintf("/var/lib/tsuru/hooks/%s", hook)
-	output, err := u.Command(cmd)
-	log.Print(string(output))
-	return output, err
 }
 
 func (u *Unit) State() string {

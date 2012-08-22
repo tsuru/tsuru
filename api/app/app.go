@@ -158,7 +158,7 @@ func (a *App) Destroy() error {
 			return err
 		}
 	} else {
-		out, err := app.unit().Destroy()
+		out, err := app.unit().destroy()
 		msg := string(out)
 		log.Printf(msg)
 		if err != nil {
@@ -351,13 +351,13 @@ func (a *App) hasRestartHooks(c conf) bool {
 func (a *App) updateHooks() ([]byte, error) {
 	u := a.unit()
 	a.Log("executting hook dependencies")
-	out, err := u.ExecuteHook("dependencies")
+	out, err := u.executeHook("dependencies")
 	a.Log(string(out))
 	if err != nil {
 		return out, err
 	}
 	a.Log("executting hook to restarting")
-	out, err = u.ExecuteHook("restart")
+	out, err = u.executeHook("restart")
 	if err != nil {
 		return out, err
 	}
