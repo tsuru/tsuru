@@ -36,10 +36,11 @@ func (u *Unit) Command(cmds ...string) ([]byte, error) {
 	if state := u.State(); state != "started" {
 		return nil, fmt.Errorf("Unit must be started to run commands, but it is %s.", state)
 	}
-	c := exec.Command("juju", "ssh", "-o", "StrictHostKeyChecking no", "-e", u.app.JujuEnv, strconv.Itoa(u.Machine))
+	c := exec.Command("juju", "ssh", "-o", "StrictHostKeyChecking no", "-q", "-e", u.app.JujuEnv, strconv.Itoa(u.Machine))
 	c.Args = append(c.Args, cmds...)
 	log.Printf("executing %s on %s", strings.Join(cmds, " "), u.Name)
-	return c.CombinedOutput()
+	out, err := c.CombinedOutput()
+	return filterOutput(out), err
 }
 
 func (u *Unit) GetName() string {

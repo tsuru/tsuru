@@ -10,18 +10,12 @@ import (
 //
 // It removes all lines that does not represent useful output, like juju's
 // logging and Python's deprecation warnings.
-func filterOutput(output []byte, filterFunc func([]byte) bool) []byte {
+func filterOutput(output []byte) []byte {
 	var result [][]byte
 	var ignore bool
 	deprecation := []byte("DeprecationWarning")
-	regexLog, err := regexp.Compile(`^\d{4}-\d{2}-\d{2}\s\d{2}:\d{2}:\d{2}`)
-	if err != nil {
-		return output
-	}
-	regexSshWarning, err := regexp.Compile(`^Warning: Permanently .* to the list of known hosts.$`)
-	if err != nil {
-		return output
-	}
+	regexLog := regexp.MustCompile(`^\d{4}-\d{2}-\d{2}\s\d{2}:\d{2}:\d{2}`)
+	regexSshWarning := regexp.MustCompile(`^Warning: Permanently added`)
 	lines := bytes.Split(output, []byte{'\n'})
 	for _, line := range lines {
 		if ignore {
@@ -32,9 +26,7 @@ func filterOutput(output []byte, filterFunc func([]byte) bool) []byte {
 			ignore = true
 			continue
 		}
-		if !regexSshWarning.Match(line) &&
-			!regexLog.Match(line) &&
-			(filterFunc == nil || filterFunc(line)) {
+		if !regexSshWarning.Match(line) && !regexLog.Match(line) {
 			result = append(result, line)
 		}
 	}
