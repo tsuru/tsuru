@@ -139,24 +139,37 @@ func (a *App) unbind() error {
 }
 
 func (a *App) Destroy() error {
-	unbindingApp := App{Name: a.Name}
-	err := unbindingApp.Get()
+	multitenant, err := config.GetBool("multi-tenant")
 	if err != nil {
 		return err
 	}
-	if err = destroyKeystoneEnv(&unbindingApp); err != nil {
+	app := App{Name: a.Name}
+	err = app.Get()
+	if err != nil {
 		return err
+	}
+	if multitenant {
+		if out, err := exec.Command("juju", "destroy-environment", "-e", app.JujuEnv).CombinedOutput(); err != nil {
+			msg := fmt.Sprintf("Failed to destroy juju-environment:\n%s", out)
+			log.Print(msg)
+			return errors.New(string(out))
+		}
+		if err = destroyKeystoneEnv(&app); err != nil {
+			return err
+		}
+	} else {
+		out, err := app.unit().Destroy()
+		msg := string(out)
+		log.Printf(msg)
+		if err != nil {
+			return errors.New(msg)
+		}
 	}
 	unbindCh := make(chan error)
 	go func() {
-		unbindCh <- unbindingApp.unbind()
+		unbindCh <- app.unbind()
 	}()
-	err = db.Session.Apps().Remove(bson.M{"name": a.Name})
-	if err != nil {
-		return err
-	}
-	out, err := a.unit().Destroy()
-	log.Printf(string(out))
+	err = db.Session.Apps().Remove(bson.M{"name": app.Name})
 	if err != nil {
 		return err
 	}

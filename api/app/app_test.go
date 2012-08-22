@@ -63,9 +63,6 @@ func (s *S) TestDestroy(c *C) {
 	dir, err := commandmocker.Add("juju", "$*")
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(dir)
-	w := bytes.NewBuffer([]byte{})
-	l := stdlog.New(w, "", stdlog.LstdFlags)
-	log.Target = l
 	u := Unit{Name: "duvido", Machine: 3}
 	a, err := NewApp("duvido", "django", []string{})
 	c.Assert(err, IsNil)
@@ -79,14 +76,106 @@ func (s *S) TestDestroy(c *C) {
 	c.Assert(err, IsNil)
 	err = a.Destroy()
 	c.Assert(err, IsNil)
-	logStr := strings.Replace(w.String(), "\n", "", -1)
-	c.Assert(logStr, Matches, ".*destroy-service -e [a-z]+ duvido.*")
-	c.Assert(logStr, Matches, ".*terminate-machine -e [a-z]+ 3.*")
 	qtd, err := db.Session.Apps().Find(bson.M{"name": a.Name}).Count()
 	c.Assert(qtd, Equals, 0)
 	c.Assert(called["destroy-app-delete-ec2-creds"], Equals, true)
 	c.Assert(called["destroy-app-delete-user"], Equals, true)
 	c.Assert(called["destroy-app-delete-tenant"], Equals, true)
+}
+
+func (s *S) TestDestroyWithMultiTenancyOnCallsJujuDestroyEnvironment(c *C) {
+	s.ts.Close()
+	ts := s.mockServer("", "destroy-app-")
+	authUrl = ts.URL
+	defer func() {
+		authUrl = ""
+		ts.Close()
+	}()
+	dir, err := commandmocker.Add("juju", "$*")
+	c.Assert(err, IsNil)
+	defer commandmocker.Remove(dir)
+	u := Unit{Name: "duvido", Machine: 3}
+	a, err := NewApp("duvido", "django", []string{})
+	c.Assert(err, IsNil)
+	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
+	a.KeystoneEnv = KeystoneEnv{
+		TenantId:  "e60d1f0a-ee74-411c-b879-46aee9502bf9",
+		UserId:    "1b4d1195-7890-4274-831f-ddf8141edecc",
+		AccessKey: "91232f6796b54ca2a2b87ef50548b123",
+	}
+	a.Units = []Unit{u}
+	err = db.Session.Apps().Update(bson.M{"name": a.Name}, &a)
+	c.Assert(err, IsNil)
+	err = a.Destroy()
+	c.Assert(err, IsNil)
+	c.Assert(commandmocker.Ran(dir), Equals, true)
+}
+
+func (s *S) TestDestroyWithnMultiTenancyOnDoesNotDeleteTheAppIfTheDestroyEnvironmentFail(c *C) {
+	dir, err := commandmocker.Add("juju", "$*")
+	c.Assert(err, IsNil)
+	defer commandmocker.Remove(dir)
+	u := Unit{Name: "duvido", Machine: 3}
+	a, err := NewApp("duvido", "django", []string{})
+	c.Assert(err, IsNil)
+	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
+	a.Units = []Unit{u}
+	err = db.Session.Apps().Update(bson.M{"name": a.Name}, &a)
+	c.Assert(err, IsNil)
+	dir, err = commandmocker.Error("juju", "juju failed to destroy the environment", 1)
+	c.Assert(err, IsNil)
+	defer commandmocker.Remove(dir)
+	err = a.Destroy()
+	c.Assert(err, NotNil)
+	c.Assert(err, ErrorMatches, ".*juju failed to destroy the environment.*")
+	err = a.Get()
+	c.Assert(err, IsNil)
+}
+
+func (s *S) TestDestroyWithMultiTenancyOff(c *C) {
+	dir, err := commandmocker.Add("juju", "$*")
+	c.Assert(err, IsNil)
+	defer commandmocker.Remove(dir)
+	config.Set("multi-tenant", false)
+	defer config.Set("multi-tenant", true)
+	a, err := NewApp("ritual", "ruby", []string{s.team.Name})
+	c.Assert(err, IsNil)
+	u := Unit{Name: "duvido", Machine: 3}
+	a.Units = []Unit{u}
+	err = db.Session.Apps().Update(bson.M{"name": a.Name}, &a)
+	c.Assert(err, IsNil)
+	w := bytes.NewBuffer([]byte{})
+	l := stdlog.New(w, "", stdlog.LstdFlags)
+	log.Target = l
+	err = a.Destroy()
+	c.Assert(err, IsNil)
+	err = a.Get()
+	c.Assert(err, NotNil)
+	logStr := strings.Replace(w.String(), "\n", "", -1)
+	c.Assert(logStr, Matches, ".*destroy-service -e [a-z]+ duvido.*")
+	c.Assert(logStr, Matches, ".*terminate-machine -e [a-z]+ 3.*")
+}
+
+func (s *S) TestDestroyWithMultiTenancyOffDoesNotDeleteTheAppIfJujuFailToDestroyTheService(c *C) {
+	dir, err := commandmocker.Add("juju", "$*")
+	c.Assert(err, IsNil)
+	defer commandmocker.Remove(dir)
+	config.Set("multi-tenant", false)
+	defer config.Set("multi-tenant", true)
+	a, err := NewApp("ritual", "ruby", []string{s.team.Name})
+	c.Assert(err, IsNil)
+	u := Unit{Name: "duvido", Machine: 3}
+	a.Units = []Unit{u}
+	err = db.Session.Apps().Update(bson.M{"name": a.Name}, &a)
+	c.Assert(err, IsNil)
+	dir, err = commandmocker.Error("juju", "juju failed to destroy the service", 1)
+	c.Assert(err, IsNil)
+	defer commandmocker.Remove(dir)
+	err = a.Destroy()
+	c.Assert(err, NotNil)
+	c.Assert(err, ErrorMatches, ".*juju failed to destroy the service.*")
+	err = a.Get()
+	c.Assert(err, IsNil)
 }
 
 func (s *S) TestNewApp(c *C) {
