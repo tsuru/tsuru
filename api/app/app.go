@@ -90,11 +90,16 @@ func NewApp(name string, framework string, teams []string) (App, error) {
 		if err != nil {
 			return a, err
 		}
+		// TODO (#113): make JujuEnv match the app name, and bootstrap it before
+		// deploy the app.
+		a.JujuEnv = "delta"
+	} else {
+		a.JujuEnv, err = config.GetString("juju:default-env")
+		if err != nil {
+			return a, err
+		}
 	}
 	a.State = "pending"
-	// TODO (#110): make JujuEnv match the app name, and bootstrap it before
-	// deploy the app.
-	a.JujuEnv = "delta"
 	err = db.Session.Apps().Insert(a)
 	if err != nil {
 		return a, err

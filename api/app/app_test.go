@@ -706,5 +706,11 @@ func (s *S) TestNewAppShouldCreateNewJujuEnvironment(c *C) {
 }
 
 func (s *S) TestNewAppShouldSetAppEnvironToDefaultFromConfWhenMultiTenantIsDisabled(c *C) {
-	// FIXME(fsouza): write this test
+	defaultEnv, err := config.GetString("juju:default-env")
+	c.Assert(err, IsNil)
+	config.Set("multi-tenant", false)
+	defer config.Set("multi-tenant", true)
+	a, err := NewApp("ironic", "ruby", []string{s.team.Name})
+	c.Assert(err, IsNil)
+	c.Assert(a.JujuEnv, Equals, defaultEnv)
 }
