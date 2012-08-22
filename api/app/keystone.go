@@ -2,7 +2,6 @@ package app
 
 import (
 	"errors"
-	"fmt"
 	"github.com/timeredbull/keystone"
 	"github.com/timeredbull/tsuru/config"
 	"github.com/timeredbull/tsuru/log"
@@ -12,6 +11,7 @@ type KeystoneEnv struct {
 	TenantId  string
 	UserId    string
 	AccessKey string
+	secretKey string
 }
 
 var (
@@ -85,71 +85,35 @@ func getClient() (err error) {
 	return
 }
 
-// NewTenant creates a tenant using keystone api and stores it in database
-// embedded in the app document.
-//
-// Returns the id of the created tenant in case of success and error in case of
-// failure.
-func NewTenant(a *App) (tId string, err error) {
+func newKeystoneEnv(name string) (env KeystoneEnv, err error) {
 	err = getClient()
 	if err != nil {
 		return
 	}
-	desc := fmt.Sprintf("Tenant for %s", a.Name)
-	log.Print(fmt.Sprintf("DEBUG: attempting to create tenant %s via keystone api...", a.Name))
-	t, err := Client.NewTenant(a.Name, desc, true)
+	desc := "Tenant for " + name
+	log.Printf("DEBUG: attempting to create tenant %s via keystone api...", name)
+	tenant, err := Client.NewTenant(name, desc, true)
 	if err != nil {
-		log.Printf("ERROR: %s", err.Error())
+		log.Printf("ERROR: %s", err)
 		return
 	}
-	tId = t.Id
-	log.Printf("DEBUG: tenant %s successfuly created.", a.Name)
-	return
-}
-
-func NewUser(a *App) (uId string, err error) {
-	if a.KeystoneEnv.TenantId == "" {
-		err = errors.New("App should have an associated keystone tenant to create an user.")
-		log.Printf("ERROR: %s", err.Error())
-		return
-	}
-	err = getClient()
+	// TODO(fsouza): generate random password
+	user, err := Client.NewUser(name, name, "", tenant.Id, true)
 	if err != nil {
+		log.Printf("ERROR: %s", err)
 		return
 	}
-	log.Printf("DEBUG: attempting to create user %s via keystone api...", a.Name)
-	// TODO(flaviamissi): should generate a random password
-	u, err := Client.NewUser(a.Name, a.Name, "", a.KeystoneEnv.TenantId, true)
+	creds, err := Client.NewEc2(user.Id, tenant.Id)
 	if err != nil {
-		log.Printf("ERROR: %s", err.Error())
+		log.Printf("ERROR: %s", err)
 		return
 	}
-	uId = u.Id
-	return
-}
-
-func NewEC2Creds(a *App) (access, secret string, err error) {
-	if a.KeystoneEnv.TenantId == "" {
-		err = errors.New("App should have an associated keystone tenant to create an user.")
-		log.Printf("ERROR: %s", err.Error())
-		return
+	env = KeystoneEnv{
+		TenantId:  tenant.Id,
+		UserId:    user.Id,
+		AccessKey: creds.Access,
+		secretKey: creds.Secret,
 	}
-	if a.KeystoneEnv.UserId == "" {
-		err = errors.New("App should have an associated keystone user to create an user.")
-		log.Printf("ERROR: %s", err.Error())
-		return
-	}
-	err = getClient()
-	if err != nil {
-		return
-	}
-	ec2, err := Client.NewEc2(a.KeystoneEnv.UserId, a.KeystoneEnv.TenantId)
-	if err != nil {
-		log.Printf("ERROR: %s", err.Error())
-		return
-	}
-	access = ec2.Access
-	secret = ec2.Secret
 	return
 }
 

@@ -72,21 +72,11 @@ func NewApp(name string, framework string, teams []string) (App, error) {
 		return a, err
 	}
 	if isMultiTenant {
-		a.KeystoneEnv.TenantId, err = NewTenant(&a)
+		a.KeystoneEnv, err = newKeystoneEnv(a.Name)
 		if err != nil {
 			return a, err
 		}
-		a.KeystoneEnv.UserId, err = NewUser(&a)
-		if err != nil {
-			return a, err
-		}
-		var secret string
-		a.KeystoneEnv.AccessKey, secret, err = NewEC2Creds(&a)
-		_ = secret
-		if err != nil {
-			return a, err
-		}
-		err = NewEnviron(a.Name, a.KeystoneEnv.AccessKey, secret)
+		err = NewEnviron(a.Name, a.KeystoneEnv.AccessKey, a.KeystoneEnv.secretKey)
 		if err != nil {
 			return a, err
 		}
