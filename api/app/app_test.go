@@ -691,9 +691,7 @@ func (s *S) TestNewAppShouldCreateKeystoneEnv(c *C) {
 
 func (s *S) TestNewAppShouldNotCreateKeystoneEnvWhenMultiTenantConfIsFalse(c *C) {
 	config.Set("multi-tenant", false)
-	defer func() {
-		config.Set("multi-tenant", true)
-	}()
+	defer config.Set("multi-tenant", true)
 	a, err := NewApp("pumpkin", "golang", []string{s.team.Name})
 	c.Assert(err, IsNil)
 	c.Assert(a.KeystoneEnv.TenantId, Equals, "")
