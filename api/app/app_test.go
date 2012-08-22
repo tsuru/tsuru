@@ -701,10 +701,9 @@ func (s *S) TestNewAppShouldNotCreateKeystoneEnvWhenMultiTenantConfIsFalse(c *C)
 }
 
 func (s *S) TestNewAppShouldCreateNewJujuEnvironment(c *C) {
-	// TODO(fsouza): don't ignore something that has been just saved in the
-	// database (remove it).
-	_, err := NewApp("myApp", "golang", []string{s.team.Name})
+	app, err := NewApp("myApp", "golang", []string{s.team.Name})
 	c.Assert(err, IsNil)
+	defer db.Session.Apps().Remove(bson.M{"name": app.Name})
 	c.Assert(s.rfs.HasAction("openfile "+EnvironConfPath+" with mode 0600"), Equals, true)
 }
 
