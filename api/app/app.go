@@ -80,9 +80,14 @@ func NewApp(name string, framework string, teams []string) (App, error) {
 		if err != nil {
 			return a, err
 		}
-		// TODO (#113): make JujuEnv match the app name, and bootstrap it before
-		// deploy the app.
-		a.JujuEnv = "delta"
+		a.JujuEnv = a.Name
+		cmd := exec.Command("juju", "bootstrap", "-e", a.JujuEnv)
+		log.Printf("bootstraping juju environment %s for the app %s", a.JujuEnv, a.Name)
+		out, err := cmd.CombinedOutput()
+		if err != nil {
+			log.Printf("failed to bootstrap juju environment %s:\n%s", a.JujuEnv, out)
+			return a, fmt.Errorf("Failed to bootstrap juju env (%s): %s", err, out)
+		}
 	} else {
 		a.JujuEnv, err = config.GetString("juju:default-env")
 		if err != nil {

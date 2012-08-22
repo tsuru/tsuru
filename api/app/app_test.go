@@ -195,9 +195,10 @@ func (s *S) TestNewApp(c *C) {
 	c.Assert(retrievedApp.Name, Equals, a.Name)
 	c.Assert(retrievedApp.Framework, Equals, a.Framework)
 	c.Assert(retrievedApp.State, Equals, a.State)
-	c.Assert(retrievedApp.JujuEnv, Equals, "delta")
+	c.Assert(retrievedApp.JujuEnv, Equals, a.Name)
 	str := strings.Replace(w.String(), "\n", "", -1)
-	c.Assert(str, Matches, ".*deploy -e delta --repository=/home/charms local:django appName.*")
+	c.Assert(str, Matches, ".*bootstraping juju environment appName for the app appName.*")
+	c.Assert(str, Matches, ".*deploy -e appName --repository=/home/charms local:django appName.*")
 }
 
 func (s *S) TestCantNewAppTwoAppsWithTheSameName(c *C) {
