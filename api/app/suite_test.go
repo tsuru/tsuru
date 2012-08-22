@@ -7,6 +7,7 @@ import (
 	"github.com/timeredbull/tsuru/api/auth"
 	"github.com/timeredbull/tsuru/config"
 	"github.com/timeredbull/tsuru/db"
+	fsTesting "github.com/timeredbull/tsuru/fs/testing"
 	"github.com/timeredbull/tsuru/repository"
 	"io"
 	"io/ioutil"
@@ -31,6 +32,7 @@ type S struct {
 	gitosisRepo string
 	tmpdir      string
 	ts          *httptest.Server
+	rfs         *fsTesting.RecordingFs
 }
 
 var _ = Suite(&S{})
@@ -165,6 +167,8 @@ func (s *S) SetUpSuite(c *C) {
 	db.Session.Teams().Insert(s.team)
 	s.setupGitosis(c)
 	repository.RunAgent()
+	s.rfs = &fsTesting.RecordingFs{}
+	fsystem = s.rfs
 }
 
 func (s *S) TearDownSuite(c *C) {
@@ -172,6 +176,7 @@ func (s *S) TearDownSuite(c *C) {
 	defer s.tearDownGitosis(c)
 	defer db.Session.Close()
 	db.Session.Apps().Database.DropDatabase()
+	fsystem = nil
 }
 
 func (s *S) SetUpTest(c *C) {

@@ -66,8 +66,6 @@ func NewApp(name string, framework string, teams []string) (App, error) {
 		Framework: framework,
 		Teams:     teams,
 	}
-	// TODO (flaviamissi): check if tsuru is in multi tenant mode before
-	// creating a new tenant for an app
 	var err error
 	isMultiTenant, err := config.GetBool("multi-tenant")
 	if err != nil {
@@ -85,6 +83,10 @@ func NewApp(name string, framework string, teams []string) (App, error) {
 		var secret string
 		a.KeystoneEnv.AccessKey, secret, err = NewEC2Creds(&a)
 		_ = secret
+		if err != nil {
+			return a, err
+		}
+		err = NewEnviron(a.Name, a.KeystoneEnv.AccessKey, secret)
 		if err != nil {
 			return a, err
 		}

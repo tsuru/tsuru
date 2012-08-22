@@ -611,3 +611,11 @@ func (s *S) TestNewAppShouldNotCreateKeystoneEnvWhenMultiTenantConfIsFalse(c *C)
 	c.Assert(a.KeystoneEnv.UserId, Equals, "")
 	c.Assert(a.KeystoneEnv.AccessKey, Equals, "")
 }
+
+func (s *S) TestNewAppShouldCreateNewJujuEnvironment(c *C) {
+	_, err := NewApp("myApp", "golang", []string{s.team.Name})
+	c.Assert(err, IsNil)
+	c.Assert(s.rfs.HasAction("openfile "+EnvironConfPath+" with mode 0600"), Equals, true)
+}
+
+func (s *S) TestNewAppShouldSetAppEnvironToDefaultFromConfWhenMultiTenantIsDisabled(c *C) {}

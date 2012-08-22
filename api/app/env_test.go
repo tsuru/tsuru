@@ -88,7 +88,7 @@ func (s *S) TestNewEnviron(c *C) {
 	rfs := &testing.RecordingFs{}
 	fsystem = rfs
 	defer func() {
-		fsystem = nil
+		fsystem = s.rfs
 	}()
 	err = NewEnviron("name", "access", "secret")
 	c.Assert(err, IsNil)
@@ -119,7 +119,7 @@ func (s *S) TestNewEnvironShouldKeepExistentsEnvirons(c *C) {
 	rfs := &testing.RecordingFs{FileContent: string(data)}
 	fsystem = rfs
 	defer func() {
-		fsystem = nil
+		fsystem = s.rfs
 	}()
 	err = NewEnviron("name", "access", "secret")
 	c.Assert(err, IsNil)
@@ -142,4 +142,5 @@ func (s *S) TestFileSystem(c *C) {
 	c.Assert(filesystem(), DeepEquals, fsystem)
 	fsystem = nil
 	c.Assert(filesystem(), DeepEquals, fs.OsFs{})
+	fsystem = s.rfs
 }
