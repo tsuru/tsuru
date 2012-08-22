@@ -5,6 +5,7 @@ import (
 	"github.com/timeredbull/tsuru/config"
 	"github.com/timeredbull/tsuru/fs"
 	"github.com/timeredbull/tsuru/log"
+	"io"
 	"io/ioutil"
 	"launchpad.net/goyaml"
 	"os"
@@ -164,8 +165,14 @@ func newEnviron(a *App) error {
 	}
 	envs["environments"][a.Name] = jujuEnv
 	data, err := goyaml.Marshal(&envs)
-	_, err = file.Write(data)
-	return err
+	n, err := file.Write(data)
+	if err != nil {
+		return err
+	}
+	if n != len(data) {
+		return io.ErrShortWrite
+	}
+	return nil
 }
 
 var fsystem fs.Fs
