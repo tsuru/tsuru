@@ -226,21 +226,6 @@ func (s *S) TestGetClientShouldNotResetClient(c *C) {
 	c.Assert(called["token"], Equals, false)
 }
 
-// func (s *S) TestNewTenantUsesNovaUserPasswordAndTenantFromTsuruConf(c *C) {
-// 	ts := s.mockServer(`{"tenant": {"id": "uuid123", "name": "tenant name", "description": "tenant desc"}}`, "")
-// 	defer ts.Close()
-// 	a := App{Name: "myapp"}
-// 	err := db.Session.Apps().Insert(a)
-// 	c.Assert(err, IsNil)
-// 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
-// 	_, err = NewTenant(&a)
-// 	c.Assert(err, IsNil)
-// 	req := string(requestJson)
-// 	c.Assert(req, Not(Equals), "")
-// 	expected := fmt.Sprintf(`{"auth": {"passwordCredentials": {"username": "%s", "password":"%s"}, "tenantName": "%s"}}`, authUser, authPass, authTenant)
-// 	c.Assert(req, Equals, expected)
-// }
-
 func (s *S) TestNewKeystoneEnv(c *C) {
 	s.ts.Close()
 	tenantBody := `{"tenant": {"id": "uuid123", "name": "still", "description": "tenant desc"}}`
