@@ -17,7 +17,7 @@ func filterOutput(output []byte, filterFunc func([]byte) bool) []byte {
 	if err != nil {
 		return output
 	}
-	regexSshWarning, err := regexp.Compile(`^Warning: Permanently .* to the list of known hosts.$`)
+	regexSshWarning, err := regexp.Compile(`^Warning: Permanently added`)
 	if err != nil {
 		return output
 	}

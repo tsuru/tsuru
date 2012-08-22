@@ -64,6 +64,23 @@ nameserver 192.168.1.1`)
 	c.Assert(string(got), Equals, string(expected))
 }
 
+func (s *S) TestFilterOutputRSA(c *C) {
+	output := []byte(`/usr/lib/python2.6/site-packages/juju/providers/ec2/files.py:8: DeprecationWarning: the sha module is deprecated; use the hashlib module instead
+  import sha
+2012-08-22 14:39:18,211 WARNING ssl-hostname-verification is disabled for this environment
+2012-08-22 14:39:18,211 WARNING EC2 API calls not using secure transport
+2012-08-22 14:39:18,212 WARNING S3 API calls not using secure transport
+2012-08-22 14:39:18,212 WARNING Ubuntu Cloud Image lookups encrypted but not authenticated
+2012-08-22 14:39:18,222 INFO Connecting to environment...
+2012-08-22 14:39:18,854 INFO Connected to environment.
+2012-08-22 14:39:18,989 INFO Connecting to machine 4 at 10.170.1.193
+Warning: Permanently added '10.170.1.193' (RSA) to the list of known hosts.
+Last login: Wed Aug 15 16:08:40 2012 from 10.170.1.239`)
+	expected := []byte("Last login: Wed Aug 15 16:08:40 2012 from 10.170.1.239")
+	got := filterOutput(output, nil)
+	c.Assert(string(got), Equals, string(expected))
+}
+
 func (s *S) TestFilterOutputWithFilterFunc(c *C) {
 	output := []byte(`/usr/lib/python2.6/site-packages/juju/providers/ec2/files.py:8: DeprecationWarning: the sha module is deprecated; use the hashlib module instead
   import sha
