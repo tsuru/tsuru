@@ -3,6 +3,7 @@ package app
 import (
 	"bytes"
 	"fmt"
+	"io"
 	"regexp"
 )
 
@@ -33,18 +34,29 @@ func filterOutput(output []byte) []byte {
 	return bytes.Join(result, []byte{'\n'})
 }
 
-// newUUID generates an uuid.
-func newUUID() (string, error) {
+func randomBytes(n int) ([]byte, error) {
 	f, err := filesystem().Open("/dev/urandom")
 	if err != nil {
-		return "", err
+		return nil, err
 	}
-	b := make([]byte, 16)
-	_, err = f.Read(b)
+	b := make([]byte, n)
+	read, err := f.Read(b)
 	if err != nil {
-		return "", err
+		return nil, err
+	}
+	if read != n {
+		return nil, io.ErrShortBuffer
 	}
 	err = f.Close()
+	if err != nil {
+		return nil, err
+	}
+	return b, nil
+}
+
+// newUUID generates an uuid.
+func newUUID() (string, error) {
+	b, err := randomBytes(16)
 	if err != nil {
 		return "", err
 	}
