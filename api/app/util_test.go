@@ -2,6 +2,7 @@ package app
 
 import (
 	"bytes"
+	"github.com/timeredbull/tsuru/fs/testing"
 	. "launchpad.net/gocheck"
 )
 
@@ -84,4 +85,16 @@ nameserver 192.168.1.1`)
 nameserver 192.168.1.1`)
 	got := filterOutput(output, f)
 	c.Assert(string(got), Equals, string(expected))
+}
+
+func (s *S) TestnewUUID(c *C) {
+	rfs := &testing.RecordingFs{FileContent: string([]byte{16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31})}
+	fsystem = rfs
+	defer func() {
+		fsystem = s.rfs
+	}()
+	uuid, err := newUUID()
+	c.Assert(err, IsNil)
+	expected := "101112131415161718191a1b1c1d1e1f"
+	c.Assert(uuid, Equals, expected)
 }
