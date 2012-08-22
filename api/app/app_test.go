@@ -707,4 +707,6 @@ func (s *S) TestNewAppShouldCreateNewJujuEnvironment(c *C) {
 	c.Assert(s.rfs.HasAction("openfile "+EnvironConfPath+" with mode 0600"), Equals, true)
 }
 
-func (s *S) TestNewAppShouldSetAppEnvironToDefaultFromConfWhenMultiTenantIsDisabled(c *C) {}
+func (s *S) TestNewAppShouldSetAppEnvironToDefaultFromConfWhenMultiTenantIsDisabled(c *C) {
+	// FIXME(fsouza): write this test
+}
