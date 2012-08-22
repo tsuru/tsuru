@@ -76,7 +76,7 @@ func NewApp(name string, framework string, teams []string) (App, error) {
 		if err != nil {
 			return a, err
 		}
-		err = NewEnviron(a.Name, a.KeystoneEnv.AccessKey, a.KeystoneEnv.secretKey)
+		err = newEnviron(&a)
 		if err != nil {
 			return a, err
 		}

@@ -140,7 +140,7 @@ func newJujuEnv(access, secret string) (JujuEnv, error) {
 	}, nil
 }
 
-func NewEnviron(name, access, secret string) error {
+func newEnviron(a *App) error {
 	envs := map[string]map[string]JujuEnv{}
 	file, err := filesystem().OpenFile(EnvironConfPath, syscall.O_CREAT|syscall.O_RDWR, 0600)
 	if err != nil {
@@ -158,11 +158,11 @@ func NewEnviron(name, access, secret string) error {
 	if _, ok := envs["environments"]; !ok {
 		envs["environments"] = map[string]JujuEnv{}
 	}
-	jujuEnv, err := newJujuEnv(access, secret)
+	jujuEnv, err := newJujuEnv(a.KeystoneEnv.AccessKey, a.KeystoneEnv.secretKey)
 	if err != nil {
 		return err
 	}
-	envs["environments"][name] = jujuEnv
+	envs["environments"][a.Name] = jujuEnv
 	data, err := goyaml.Marshal(&envs)
 	_, err = file.Write(data)
 	return err
