@@ -10,13 +10,13 @@ import (
 	"strings"
 )
 
-type Exiter interface {
+type exiter interface {
 	Exit(int)
 }
 
-type OsExiter struct{}
+type osExiter struct{}
 
-func (e OsExiter) Exit(code int) {
+func (e osExiter) Exit(code int) {
 	os.Exit(code)
 }
 
@@ -25,7 +25,7 @@ type Manager struct {
 	Commands map[string]interface{}
 	Stdout   io.Writer
 	Stderr   io.Writer
-	e        Exiter
+	e        exiter
 }
 
 func NewManager(name string, stdout, stderr io.Writer) Manager {
@@ -129,9 +129,9 @@ func appendSubcmds(cmds []string, container CommandContainer, args []string, i i
 	return appendSubcmds(cmds, container, args, i+1)
 }
 
-func (m *Manager) finisher() Exiter {
+func (m *Manager) finisher() exiter {
 	if m.e == nil {
-		m.e = OsExiter{}
+		m.e = osExiter{}
 	}
 	return m.e
 }

@@ -9,7 +9,7 @@ import (
 	"path"
 )
 
-func readTarget(fs *testing.RecordingFs) string {
+func readRecordedTarget(fs *testing.RecordingFs) string {
 	filePath := path.Join(os.ExpandEnv("${HOME}"), ".tsuru_target")
 	fil, _ := fsystem.Open(filePath)
 	b, _ := ioutil.ReadAll(fil)
@@ -26,11 +26,11 @@ func (s *S) TestWriteTarget(c *C) {
 	defer func() {
 		fsystem = nil
 	}()
-	err := WriteTarget("http://tsuru.globo.com")
+	err := writeTarget("http://tsuru.globo.com")
 	c.Assert(err, IsNil)
 	filePath := path.Join(os.ExpandEnv("${HOME}"), ".tsuru_target")
 	c.Assert(rfs.HasAction("openfile "+filePath+" with mode 0600"), Equals, true)
-	c.Assert(readTarget(rfs), Equals, "http://tsuru.globo.com")
+	c.Assert(readRecordedTarget(rfs), Equals, "http://tsuru.globo.com")
 }
 
 func (s *S) TestWriteTargetShouldStripLeadingSlashs(c *C) {
@@ -39,9 +39,9 @@ func (s *S) TestWriteTargetShouldStripLeadingSlashs(c *C) {
 	defer func() {
 		fsystem = nil
 	}()
-	err := WriteTarget("http://tsuru.globo.com/")
+	err := writeTarget("http://tsuru.globo.com/")
 	c.Assert(err, IsNil)
-	c.Assert(readTarget(rfs), Equals, "http://tsuru.globo.com")
+	c.Assert(readRecordedTarget(rfs), Equals, "http://tsuru.globo.com")
 }
 
 func (s *S) TestWriteTargetShouldStripAllLeadingSlashs(c *C) {
@@ -50,9 +50,9 @@ func (s *S) TestWriteTargetShouldStripAllLeadingSlashs(c *C) {
 	defer func() {
 		fsystem = nil
 	}()
-	err := WriteTarget("http://tsuru.globo.com////")
+	err := writeTarget("http://tsuru.globo.com////")
 	c.Assert(err, IsNil)
-	target := readTarget(rfs)
+	target := readRecordedTarget(rfs)
 	c.Assert(target, Equals, "http://tsuru.globo.com")
 }
 
@@ -62,7 +62,7 @@ func (s *S) TestReadTarget(c *C) {
 	defer func() {
 		fsystem = nil
 	}()
-	target := ReadTarget()
+	target := readTarget()
 	c.Assert(target, Equals, "http://tsuru.google.com")
 }
 
@@ -71,7 +71,7 @@ func (s *S) TestReadTargetReturnsDefaultTargetIfTheFileDoesNotExist(c *C) {
 	defer func() {
 		fsystem = nil
 	}()
-	target := ReadTarget()
+	target := readTarget()
 	c.Assert(target, Equals, DefaultTarget)
 }
 
@@ -101,7 +101,7 @@ func (s *S) TestTargetRun(c *C) {
 	err := target.Run(context, nil)
 	c.Assert(err, IsNil)
 	c.Assert(context.Stdout.(*bytes.Buffer).String(), Equals, "New target is http://tsuru.globo.com\n")
-	c.Assert(ReadTarget(), Equals, "http://tsuru.globo.com")
+	c.Assert(readTarget(), Equals, "http://tsuru.globo.com")
 }
 
 func (s *S) TestTargetWithoutArgument(c *C) {

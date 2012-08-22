@@ -12,13 +12,13 @@ import (
 	"syscall"
 )
 
-type RecordingExiter int
+type recordingExiter int
 
-func (e *RecordingExiter) Exit(code int) {
-	*e = RecordingExiter(code)
+func (e *recordingExiter) Exit(code int) {
+	*e = recordingExiter(code)
 }
 
-func (e RecordingExiter) value() int {
+func (e recordingExiter) value() int {
 	return int(e)
 }
 
@@ -97,7 +97,7 @@ func (s *S) TestManagerRunShouldWriteErrorsOnStderr(c *C) {
 func (s *S) TestManagerRunShouldReturnStatus1WhenCommandFail(c *C) {
 	manager.Register(&ErrorCommand{msg: "You are wrong\n"})
 	manager.Run([]string{"error"})
-	c.Assert(manager.e.(*RecordingExiter).value(), Equals, 1)
+	c.Assert(manager.e.(*recordingExiter).value(), Equals, 1)
 }
 
 func (s *S) TestManagerRunShouldAppendNewLineOnErrorWhenItsNotPresent(c *C) {
@@ -115,7 +115,7 @@ func (s *S) TestRun(c *C) {
 func (s *S) TestRunCommandThatDoesNotExist(c *C) {
 	manager.Run([]string{"bar"})
 	c.Assert(manager.Stderr.(*bytes.Buffer).String(), Equals, "command bar does not exist\n")
-	c.Assert(manager.e.(*RecordingExiter).value(), Equals, 1)
+	c.Assert(manager.e.(*recordingExiter).value(), Equals, 1)
 }
 
 type TicCmd struct {
@@ -299,7 +299,7 @@ Minimum arguments: 1
 	manager.Register(&ArgCmd{})
 	manager.Run([]string{"arg"})
 	c.Assert(manager.Stdout.(*bytes.Buffer).String(), Equals, expected)
-	c.Assert(manager.e.(*RecordingExiter).value(), Equals, 1)
+	c.Assert(manager.e.(*recordingExiter).value(), Equals, 1)
 }
 
 func (s *S) TestRunWrongArgsNumberShouldRunsHelpForSubCmdAndReturnsStatus1(c *C) {
@@ -314,7 +314,7 @@ Minimum arguments: 2
 	manager.Register(&ArgCmd{})
 	manager.Run([]string{"arg", "subargs"})
 	c.Assert(manager.Stdout.(*bytes.Buffer).String(), Equals, expected)
-	c.Assert(manager.e.(*RecordingExiter).value(), Equals, 1)
+	c.Assert(manager.e.(*recordingExiter).value(), Equals, 1)
 }
 
 func (s *S) TestExtractCommandFromArgs(c *C) {
@@ -382,11 +382,11 @@ func (s *S) TestExtractProgramNameWithinThePATH(c *C) {
 
 func (s *S) TestFinisherReturnsOsExiterIfNotDefined(c *C) {
 	m := Manager{}
-	c.Assert(m.finisher(), FitsTypeOf, OsExiter{})
+	c.Assert(m.finisher(), FitsTypeOf, osExiter{})
 }
 
 func (s *S) TestFinisherReturnTheDefinedE(c *C) {
-	var exiter RecordingExiter
+	var exiter recordingExiter
 	m := Manager{e: &exiter}
 	c.Assert(m.finisher(), FitsTypeOf, &exiter)
 }

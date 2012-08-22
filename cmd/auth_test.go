@@ -21,7 +21,7 @@ func (s *S) TestLogin(c *C) {
 	err := command.Run(&context, client)
 	c.Assert(err, IsNil)
 	c.Assert(manager.Stdout.(*bytes.Buffer).String(), Equals, expected)
-	token, err := ReadToken()
+	token, err := readToken()
 	c.Assert(err, IsNil)
 	c.Assert(token, Equals, "sometoken")
 }

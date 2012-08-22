@@ -84,7 +84,7 @@ func (c *Login) Run(context *Context, client Doer) error {
 		return err
 	}
 	io.WriteString(context.Stdout, "Successfully logged!\n")
-	return WriteToken(out["token"])
+	return writeToken(out["token"])
 }
 
 func (c *Login) Info() *Info {
