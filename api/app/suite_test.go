@@ -168,6 +168,9 @@ func (s *S) SetUpSuite(c *C) {
 	s.setupGitosis(c)
 	repository.RunAgent()
 	s.rfs = &fsTesting.RecordingFs{}
+	file, err := s.rfs.Open("/dev/urandom")
+	c.Assert(err, IsNil)
+	file.Write([]byte{16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31})
 	fsystem = s.rfs
 }
 

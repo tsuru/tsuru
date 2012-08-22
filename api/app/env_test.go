@@ -66,8 +66,8 @@ func (s *S) TestnewJujuEnv(c *C) {
 		S3:            s3,
 		JujuOrigin:    jujuOrigin,
 		Type:          "ec2",
-		AdminSecret:   "",
-		ControlBucket: "",
+		AdminSecret:   "101112131415161718191a1b1c1d1e1f",
+		ControlBucket: "juju-101112131415161718191a1b1c1d1e1f",
 		Series:        series,
 		ImageId:       imageId,
 		InstanceType:  instaceType,
@@ -86,6 +86,8 @@ func (s *S) TestNewEnviron(c *C) {
 	nameEnv, err := newJujuEnv("access", "secret")
 	expected["environments"]["name"] = nameEnv
 	rfs := &testing.RecordingFs{}
+	file, err := rfs.Open("/dev/urandom")
+	file.Write([]byte{16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31})
 	fsystem = rfs
 	defer func() {
 		fsystem = s.rfs
@@ -93,7 +95,7 @@ func (s *S) TestNewEnviron(c *C) {
 	err = NewEnviron("name", "access", "secret")
 	c.Assert(err, IsNil)
 	c.Assert(rfs.HasAction("openfile "+EnvironConfPath+" with mode 0600"), Equals, true)
-	file, err := rfs.Open(EnvironConfPath)
+	file, err = rfs.Open(EnvironConfPath)
 	c.Assert(err, IsNil)
 	content, err := ioutil.ReadAll(file)
 	c.Assert(err, IsNil)
@@ -117,6 +119,8 @@ func (s *S) TestNewEnvironShouldKeepExistentsEnvirons(c *C) {
 	data, err := goyaml.Marshal(&initial)
 	c.Assert(err, IsNil)
 	rfs := &testing.RecordingFs{FileContent: string(data)}
+	file, err := rfs.Open("/dev/urandom")
+	file.Write([]byte{16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31})
 	fsystem = rfs
 	defer func() {
 		fsystem = s.rfs
@@ -124,7 +128,7 @@ func (s *S) TestNewEnvironShouldKeepExistentsEnvirons(c *C) {
 	err = NewEnviron("name", "access", "secret")
 	c.Assert(err, IsNil)
 	c.Assert(rfs.HasAction("openfile "+EnvironConfPath+" with mode 0600"), Equals, true)
-	file, err := rfs.Open(EnvironConfPath)
+	file, err = rfs.Open(EnvironConfPath)
 	c.Assert(err, IsNil)
 	content, err := ioutil.ReadAll(file)
 	c.Assert(err, IsNil)

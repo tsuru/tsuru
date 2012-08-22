@@ -125,13 +125,18 @@ func newJujuEnv(access, secret string) (JujuEnv, error) {
 	if err != nil {
 		return JujuEnv{}, err
 	}
+	adminSecret, err := newUUID()
+	if err != nil {
+		return JujuEnv{}, err
+	}
+	controlBucket := fmt.Sprintf("juju-%s", adminSecret)
 	return JujuEnv{
 		Ec2:           ec2,
 		S3:            s3,
 		JujuOrigin:    jujuOrigin,
 		Type:          "ec2",
-		AdminSecret:   "",
-		ControlBucket: "",
+		AdminSecret:   adminSecret,
+		ControlBucket: controlBucket,
 		Series:        series,
 		ImageId:       imageId,
 		InstanceType:  instaceType,
