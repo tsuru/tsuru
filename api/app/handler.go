@@ -38,8 +38,7 @@ func getAppOrError(name string, u *auth.User) (App, error) {
 }
 
 func CloneRepositoryHandler(w http.ResponseWriter, r *http.Request) error {
-	var write = func(w http.ResponseWriter, content []byte) error {
-		out := filterOutput(content)
+	var write = func(w http.ResponseWriter, out []byte) error {
 		n, err := w.Write(out)
 		if err != nil {
 			return err
@@ -300,7 +299,6 @@ func RunCommand(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	if err != nil {
 		return err
 	}
-	out = filterOutput(out)
 	app.Log(string(out))
 	n, err := w.Write(out)
 	if err != nil {
