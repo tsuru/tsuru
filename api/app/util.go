@@ -9,7 +9,7 @@ import (
 //
 // It removes all lines that does not represent useful output, like juju's
 // logging and Python's deprecation warnings.
-func filterOutput(output []byte, filterFunc func([]byte) bool) []byte {
+func filterOutput(output []byte) []byte {
 	var result [][]byte
 	var ignore bool
 	deprecation := []byte("DeprecationWarning")
@@ -31,9 +31,7 @@ func filterOutput(output []byte, filterFunc func([]byte) bool) []byte {
 			ignore = true
 			continue
 		}
-		if !regexSshWarning.Match(line) &&
-			!regexLog.Match(line) &&
-			(filterFunc == nil || filterFunc(line)) {
+		if !regexSshWarning.Match(line) && !regexLog.Match(line) {
 			result = append(result, line)
 		}
 	}
