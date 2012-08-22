@@ -152,7 +152,7 @@ func (s *S) TestDestroyWithMultiTenancyOff(c *C) {
 	err = a.Get()
 	c.Assert(err, NotNil)
 	logStr := strings.Replace(w.String(), "\n", "", -1)
-	c.Assert(logStr, Matches, ".*destroy-service -e [a-z]+ duvido.*")
+	c.Assert(logStr, Matches, ".*destroy-service -e [a-z]+ ritual.*")
 	c.Assert(logStr, Matches, ".*terminate-machine -e [a-z]+ 3.*")
 }
 
