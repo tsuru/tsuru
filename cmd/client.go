@@ -20,7 +20,7 @@ func NewClient(client *http.Client) *Client {
 }
 
 func (c *Client) Do(request *http.Request) (*http.Response, error) {
-	if token, err := ReadToken(); err == nil {
+	if token, err := readToken(); err == nil {
 		request.Header.Set("Authorization", token)
 	}
 	response, err := c.HttpClient.Do(request)

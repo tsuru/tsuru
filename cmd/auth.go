@@ -24,9 +24,9 @@ func readPassword(out io.Writer, password *string) error {
 	return nil
 }
 
-type UserCreate struct{}
+type userCreate struct{}
 
-func (c *UserCreate) Info() *Info {
+func (c *userCreate) Info() *Info {
 	return &Info{
 		Name:    "user-create",
 		Usage:   "user-create <email>",
@@ -35,7 +35,7 @@ func (c *UserCreate) Info() *Info {
 	}
 }
 
-func (c *UserCreate) Run(context *Context, client Doer) error {
+func (c *userCreate) Run(context *Context, client Doer) error {
 	var password string
 	email := context.Args[0]
 	err := readPassword(context.Stdout, &password)
@@ -55,9 +55,9 @@ func (c *UserCreate) Run(context *Context, client Doer) error {
 	return nil
 }
 
-type Login struct{}
+type login struct{}
 
-func (c *Login) Run(context *Context, client Doer) error {
+func (c *login) Run(context *Context, client Doer) error {
 	var password string
 	email := context.Args[0]
 	err := readPassword(context.Stdout, &password)
@@ -84,10 +84,10 @@ func (c *Login) Run(context *Context, client Doer) error {
 		return err
 	}
 	io.WriteString(context.Stdout, "Successfully logged!\n")
-	return WriteToken(out["token"])
+	return writeToken(out["token"])
 }
 
-func (c *Login) Info() *Info {
+func (c *login) Info() *Info {
 	return &Info{
 		Name:    "login",
 		Usage:   "login email",
@@ -96,9 +96,9 @@ func (c *Login) Info() *Info {
 	}
 }
 
-type Logout struct{}
+type logout struct{}
 
-func (c *Logout) Info() *Info {
+func (c *logout) Info() *Info {
 	return &Info{
 		Name:  "logout",
 		Usage: "logout",
@@ -106,7 +106,7 @@ func (c *Logout) Info() *Info {
 	}
 }
 
-func (c *Logout) Run(context *Context, client Doer) error {
+func (c *logout) Run(context *Context, client Doer) error {
 	tokenPath, err := joinWithUserDir(".tsuru_token")
 	if err != nil {
 		return err
@@ -119,9 +119,9 @@ func (c *Logout) Run(context *Context, client Doer) error {
 	return nil
 }
 
-type TeamCreate struct{}
+type teamCreate struct{}
 
-func (c *TeamCreate) Info() *Info {
+func (c *teamCreate) Info() *Info {
 	return &Info{
 		Name:    "team-create",
 		Usage:   "team-create <teamname>",
@@ -130,7 +130,7 @@ func (c *TeamCreate) Info() *Info {
 	}
 }
 
-func (c *TeamCreate) Run(context *Context, client Doer) error {
+func (c *teamCreate) Run(context *Context, client Doer) error {
 	team := context.Args[0]
 	b := bytes.NewBufferString(fmt.Sprintf(`{"name":"%s"}`, team))
 	request, err := http.NewRequest("POST", GetUrl("/teams"), b)
@@ -145,9 +145,9 @@ func (c *TeamCreate) Run(context *Context, client Doer) error {
 	return nil
 }
 
-type TeamUserAdd struct{}
+type teamUserAdd struct{}
 
-func (c *TeamUserAdd) Info() *Info {
+func (c *teamUserAdd) Info() *Info {
 	return &Info{
 		Name:    "team-user-add",
 		Usage:   "team-user-add <teamname> <useremail>",
@@ -156,7 +156,7 @@ func (c *TeamUserAdd) Info() *Info {
 	}
 }
 
-func (c *TeamUserAdd) Run(context *Context, client Doer) error {
+func (c *teamUserAdd) Run(context *Context, client Doer) error {
 	teamName, userName := context.Args[0], context.Args[1]
 	url := GetUrl(fmt.Sprintf("/teams/%s/%s", teamName, userName))
 	request, err := http.NewRequest("PUT", url, nil)
@@ -171,9 +171,9 @@ func (c *TeamUserAdd) Run(context *Context, client Doer) error {
 	return nil
 }
 
-type TeamUserRemove struct{}
+type teamUserRemove struct{}
 
-func (c *TeamUserRemove) Info() *Info {
+func (c *teamUserRemove) Info() *Info {
 	return &Info{
 		Name:    "team-user-remove",
 		Usage:   "team-user-remove <teamname> <useremail>",
@@ -182,7 +182,7 @@ func (c *TeamUserRemove) Info() *Info {
 	}
 }
 
-func (c *TeamUserRemove) Run(context *Context, client Doer) error {
+func (c *teamUserRemove) Run(context *Context, client Doer) error {
 	teamName, userName := context.Args[0], context.Args[1]
 	url := GetUrl(fmt.Sprintf("/teams/%s/%s", teamName, userName))
 	request, err := http.NewRequest("DELETE", url, nil)
@@ -197,9 +197,9 @@ func (c *TeamUserRemove) Run(context *Context, client Doer) error {
 	return nil
 }
 
-type TeamList struct{}
+type teamList struct{}
 
-func (c *TeamList) Info() *Info {
+func (c *teamList) Info() *Info {
 	return &Info{
 		Name:    "team-list",
 		Usage:   "team-list",
@@ -208,7 +208,7 @@ func (c *TeamList) Info() *Info {
 	}
 }
 
-func (c *TeamList) Run(context *Context, client Doer) error {
+func (c *teamList) Run(context *Context, client Doer) error {
 	request, err := http.NewRequest("GET", GetUrl("/teams"), nil)
 	if err != nil {
 		return err

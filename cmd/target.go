@@ -9,9 +9,9 @@ import (
 	"syscall"
 )
 
-type Target struct{}
+type target struct{}
 
-func (t *Target) Info() *Info {
+func (t *target) Info() *Info {
 	desc := `Defines or retrieve the target (tsuru server)
 
 If an argument is provided, this command sets the target, otherwise it displays the current target.
@@ -24,25 +24,25 @@ If an argument is provided, this command sets the target, otherwise it displays 
 	}
 }
 
-func (t *Target) Run(ctx *Context, client Doer) error {
+func (t *target) Run(ctx *Context, client Doer) error {
 	var target string
 	if len(ctx.Args) > 0 {
 		target = ctx.Args[0]
-		err := WriteTarget(target)
+		err := writeTarget(target)
 		if err != nil {
 			return err
 		}
 		io.WriteString(ctx.Stdout, "New target is "+target+"\n")
 		return nil
 	}
-	target = ReadTarget()
+	target = readTarget()
 	io.WriteString(ctx.Stdout, "Current target is "+target+"\n")
 	return nil
 }
 
 const DefaultTarget = "http://tsuru.plataformas.glb.com:8080"
 
-func ReadTarget() string {
+func readTarget() string {
 	targetPath, _ := joinWithUserDir(".tsuru_target")
 	if f, err := filesystem().Open(targetPath); err == nil {
 		defer f.Close()
@@ -55,14 +55,14 @@ func ReadTarget() string {
 
 func GetUrl(path string) string {
 	var prefix string
-	target := ReadTarget()
+	target := readTarget()
 	if m, _ := regexp.MatchString("^https?://", target); !m {
 		prefix = "http://"
 	}
 	return prefix + target + path
 }
 
-func WriteTarget(t string) error {
+func writeTarget(t string) error {
 	targetPath, err := joinWithUserDir(".tsuru_target")
 	if err != nil {
 		return err

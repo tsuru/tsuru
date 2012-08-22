@@ -184,7 +184,7 @@ func (s *S) TearDownSuite(c *C) {
 
 func (s *S) SetUpTest(c *C) {
 	s.createGitosisConf(c)
-	s.ts = s.mockServer("", "")
+	s.ts = s.mockServer("", "", "", "")
 }
 
 func (s *S) TearDownTest(c *C) {

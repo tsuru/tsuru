@@ -54,7 +54,7 @@ func (s *S) TestGet(c *C) {
 
 func (s *S) TestDestroy(c *C) {
 	s.ts.Close()
-	ts := s.mockServer("", "destroy-app-")
+	ts := s.mockServer("", "", "", "destroy-app-")
 	authUrl = ts.URL
 	defer func() {
 		authUrl = ""
@@ -85,7 +85,7 @@ func (s *S) TestDestroy(c *C) {
 
 func (s *S) TestDestroyWithMultiTenancyOnCallsJujuDestroyEnvironment(c *C) {
 	s.ts.Close()
-	ts := s.mockServer("", "destroy-app-")
+	ts := s.mockServer("", "", "", "destroy-app-")
 	authUrl = ts.URL
 	defer func() {
 		authUrl = ""
@@ -691,9 +691,7 @@ func (s *S) TestNewAppShouldCreateKeystoneEnv(c *C) {
 
 func (s *S) TestNewAppShouldNotCreateKeystoneEnvWhenMultiTenantConfIsFalse(c *C) {
 	config.Set("multi-tenant", false)
-	defer func() {
-		config.Set("multi-tenant", true)
-	}()
+	defer config.Set("multi-tenant", true)
 	a, err := NewApp("pumpkin", "golang", []string{s.team.Name})
 	c.Assert(err, IsNil)
 	c.Assert(a.KeystoneEnv.TenantId, Equals, "")
@@ -702,9 +700,19 @@ func (s *S) TestNewAppShouldNotCreateKeystoneEnvWhenMultiTenantConfIsFalse(c *C)
 }
 
 func (s *S) TestNewAppShouldCreateNewJujuEnvironment(c *C) {
+	// TODO(fsouza): don't ignore something that has been just saved in the
+	// database (remove it).
 	_, err := NewApp("myApp", "golang", []string{s.team.Name})
 	c.Assert(err, IsNil)
 	c.Assert(s.rfs.HasAction("openfile "+EnvironConfPath+" with mode 0600"), Equals, true)
 }
 
-func (s *S) TestNewAppShouldSetAppEnvironToDefaultFromConfWhenMultiTenantIsDisabled(c *C) {}
+func (s *S) TestNewAppShouldSetAppEnvironToDefaultFromConfWhenMultiTenantIsDisabled(c *C) {
+	defaultEnv, err := config.GetString("juju:default-env")
+	c.Assert(err, IsNil)
+	config.Set("multi-tenant", false)
+	defer config.Set("multi-tenant", true)
+	a, err := NewApp("ironic", "ruby", []string{s.team.Name})
+	c.Assert(err, IsNil)
+	c.Assert(a.JujuEnv, Equals, defaultEnv)
+}

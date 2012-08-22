@@ -17,7 +17,7 @@ func (s *S) TestAppIsABinderApp(c *C) {
 
 func (s *S) TestDestroyShouldUnbindAppFromInstance(c *C) {
 	s.ts.Close()
-	keystoneTs := s.mockServer("", "")
+	keystoneTs := s.mockServer("", "", "", "")
 	authUrl = keystoneTs.URL
 	defer func() {
 		authUrl = ""

@@ -19,7 +19,7 @@ func joinWithUserDir(p ...string) (string, error) {
 	return path.Join(paths...), nil
 }
 
-func WriteToken(token string) error {
+func writeToken(token string) error {
 	tokenPath, err := joinWithUserDir(".tsuru_token")
 	if err != nil {
 		return err
@@ -38,7 +38,7 @@ func WriteToken(token string) error {
 	return nil
 }
 
-func ReadToken() (string, error) {
+func readToken() (string, error) {
 	tokenPath, err := joinWithUserDir(".tsuru_token")
 	if err != nil {
 		return "", err

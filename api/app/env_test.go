@@ -92,7 +92,14 @@ func (s *S) TestNewEnviron(c *C) {
 	defer func() {
 		fsystem = s.rfs
 	}()
-	err = NewEnviron("name", "access", "secret")
+	a := App{
+		Name: "name",
+		KeystoneEnv: KeystoneEnv{
+			AccessKey: "access",
+			secretKey: "secret",
+		},
+	}
+	err = newEnviron(&a)
 	c.Assert(err, IsNil)
 	c.Assert(rfs.HasAction("openfile "+EnvironConfPath+" with mode 0600"), Equals, true)
 	file, err = rfs.Open(EnvironConfPath)
@@ -125,7 +132,14 @@ func (s *S) TestNewEnvironShouldKeepExistentsEnvirons(c *C) {
 	defer func() {
 		fsystem = s.rfs
 	}()
-	err = NewEnviron("name", "access", "secret")
+	a := App{
+		Name: "name",
+		KeystoneEnv: KeystoneEnv{
+			AccessKey: "access",
+			secretKey: "secret",
+		},
+	}
+	err = newEnviron(&a)
 	c.Assert(err, IsNil)
 	c.Assert(rfs.HasAction("openfile "+EnvironConfPath+" with mode 0600"), Equals, true)
 	file, err = rfs.Open(EnvironConfPath)

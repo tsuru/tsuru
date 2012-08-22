@@ -72,29 +72,24 @@ func NewApp(name string, framework string, teams []string) (App, error) {
 		return a, err
 	}
 	if isMultiTenant {
-		a.KeystoneEnv.TenantId, err = NewTenant(&a)
+		a.KeystoneEnv, err = newKeystoneEnv(a.Name)
 		if err != nil {
 			return a, err
 		}
-		a.KeystoneEnv.UserId, err = NewUser(&a)
+		err = newEnviron(&a)
 		if err != nil {
 			return a, err
 		}
-		var secret string
-		a.KeystoneEnv.AccessKey, secret, err = NewEC2Creds(&a)
-		_ = secret
-		if err != nil {
-			return a, err
-		}
-		err = NewEnviron(a.Name, a.KeystoneEnv.AccessKey, secret)
+		// TODO (#113): make JujuEnv match the app name, and bootstrap it before
+		// deploy the app.
+		a.JujuEnv = "delta"
+	} else {
+		a.JujuEnv, err = config.GetString("juju:default-env")
 		if err != nil {
 			return a, err
 		}
 	}
 	a.State = "pending"
-	// TODO (#110): make JujuEnv match the app name, and bootstrap it before
-	// deploy the app.
-	a.JujuEnv = "delta"
 	err = db.Session.Apps().Insert(a)
 	if err != nil {
 		return a, err
@@ -154,7 +149,7 @@ func (a *App) Destroy() error {
 			log.Print(msg)
 			return errors.New(string(out))
 		}
-		if err = destroyKeystoneEnv(&app); err != nil {
+		if err = destroyKeystoneEnv(&app.KeystoneEnv); err != nil {
 			return err
 		}
 	} else {

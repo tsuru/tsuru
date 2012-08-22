@@ -5,6 +5,7 @@ import (
 	"github.com/timeredbull/tsuru/config"
 	"github.com/timeredbull/tsuru/fs"
 	"github.com/timeredbull/tsuru/log"
+	"io"
 	"io/ioutil"
 	"launchpad.net/goyaml"
 	"os"
@@ -145,7 +146,7 @@ func newJujuEnv(access, secret string) (JujuEnv, error) {
 	}, nil
 }
 
-func NewEnviron(name, access, secret string) error {
+func newEnviron(a *App) error {
 	envs := map[string]map[string]JujuEnv{}
 	file, err := filesystem().OpenFile(EnvironConfPath, syscall.O_CREAT|syscall.O_RDWR, 0600)
 	if err != nil {
@@ -163,14 +164,20 @@ func NewEnviron(name, access, secret string) error {
 	if _, ok := envs["environments"]; !ok {
 		envs["environments"] = map[string]JujuEnv{}
 	}
-	jujuEnv, err := newJujuEnv(access, secret)
+	jujuEnv, err := newJujuEnv(a.KeystoneEnv.AccessKey, a.KeystoneEnv.secretKey)
 	if err != nil {
 		return err
 	}
-	envs["environments"][name] = jujuEnv
+	envs["environments"][a.Name] = jujuEnv
 	data, err := goyaml.Marshal(&envs)
-	_, err = file.Write(data)
-	return err
+	n, err := file.Write(data)
+	if err != nil {
+		return err
+	}
+	if n != len(data) {
+		return io.ErrShortWrite
+	}
+	return nil
 }
 
 var fsystem fs.Fs

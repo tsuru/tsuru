@@ -3,9 +3,7 @@ package app
 import (
 	"fmt"
 	"github.com/timeredbull/tsuru/config"
-	"github.com/timeredbull/tsuru/db"
 	"io/ioutil"
-	"labix.org/v2/mgo/bson"
 	. "launchpad.net/gocheck"
 	"net/http"
 	"net/http/httptest"
@@ -19,7 +17,7 @@ var (
 	params = make(map[string]string)
 )
 
-func (s *S) mockServer(b, prefix string) *httptest.Server {
+func (s *S) mockServer(tenantBody, userBody, ec2Body, prefix string) *httptest.Server {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ec2Regexp := regexp.MustCompile(`/users/([\w-]+)/credentials/OS-EC2`)
 		tenantsRegexp := regexp.MustCompile(`/tenants`)
@@ -34,11 +32,11 @@ func (s *S) mockServer(b, prefix string) *httptest.Server {
 		if r.Method == "POST" {
 			switch {
 			case ec2Regexp.MatchString(r.URL.Path):
-				handleCreds(w, r, b)
+				handleCreds(w, r, ec2Body)
 			case tenantsRegexp.MatchString(r.URL.Path):
-				handleTenants(w, r, b)
+				handleTenants(w, r, tenantBody)
 			case usersRegexp.MatchString(r.URL.Path):
-				handleUsers(w, r, b)
+				handleUsers(w, r, userBody)
 			default:
 				w.WriteHeader(http.StatusNotFound)
 			}
@@ -227,184 +225,90 @@ func (s *S) TestGetClientShouldNotResetClient(c *C) {
 	c.Assert(called["token"], Equals, false)
 }
 
-func (s *S) TestNewTenantCallsKeystoneApi(c *C) {
-	a := App{Name: "myapp"}
-	err := db.Session.Apps().Insert(a)
-	c.Assert(err, IsNil)
-	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
-	_, err = NewTenant(&a)
-	c.Assert(err, IsNil)
-	c.Assert(called["tenants"], Equals, true)
-}
+// func (s *S) TestNewTenantUsesNovaUserPasswordAndTenantFromTsuruConf(c *C) {
+// 	ts := s.mockServer(`{"tenant": {"id": "uuid123", "name": "tenant name", "description": "tenant desc"}}`, "")
+// 	defer ts.Close()
+// 	a := App{Name: "myapp"}
+// 	err := db.Session.Apps().Insert(a)
+// 	c.Assert(err, IsNil)
+// 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
+// 	_, err = NewTenant(&a)
+// 	c.Assert(err, IsNil)
+// 	req := string(requestJson)
+// 	c.Assert(req, Not(Equals), "")
+// 	expected := fmt.Sprintf(`{"auth": {"passwordCredentials": {"username": "%s", "password":"%s"}, "tenantName": "%s"}}`, authUser, authPass, authTenant)
+// 	c.Assert(req, Equals, expected)
+// }
 
-func (s *S) TestNewTenantSavesInDb(c *C) {
-	ts := s.mockServer(`{"tenant": {"id": "uuid123", "name": "tenant name", "description": "tenant desc"}}`, "")
-	defer ts.Close()
-	a := App{Name: "myapp"}
-	err := db.Session.Apps().Insert(a)
-	c.Assert(err, IsNil)
-	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
-	t, err := NewTenant(&a)
-	c.Assert(err, IsNil)
-	err = a.Get()
-	c.Assert(err, IsNil)
-	c.Assert(t, Equals, "uuid123")
-}
-
-func (s *S) TestNewTenantUsesNovaUserPasswordAndTenantFromTsuruConf(c *C) {
-	ts := s.mockServer(`{"tenant": {"id": "uuid123", "name": "tenant name", "description": "tenant desc"}}`, "")
-	defer ts.Close()
-	a := App{Name: "myapp"}
-	err := db.Session.Apps().Insert(a)
-	c.Assert(err, IsNil)
-	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
-	_, err = NewTenant(&a)
-	c.Assert(err, IsNil)
-	req := string(requestJson)
-	c.Assert(req, Not(Equals), "")
-	expected := fmt.Sprintf(`{"auth": {"passwordCredentials": {"username": "%s", "password":"%s"}, "tenantName": "%s"}}`, authUser, authPass, authTenant)
-	c.Assert(req, Equals, expected)
-}
-
-func (s *S) TestNewUserCallsKeystoneApi(c *C) {
-	ts := s.mockServer(`{"user": {"id": "uuid321", "name": "appname", "email": "appname@foo.bar"}}`, "")
-	defer ts.Close()
-	a := App{Name: "myapp"}
-	a.KeystoneEnv.TenantId = "uuid123"
-	err := db.Session.Apps().Insert(a)
-	c.Assert(err, IsNil)
-	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
-	_, err = NewUser(&a)
-	c.Assert(err, IsNil)
-	c.Assert(called["users"], Equals, true)
-}
-
-func (s *S) TestNewUserShouldFailIfAppHasNoTenantId(c *C) {
-	ts := s.mockServer(`{"user": {"id": "uuid321", "name": "appname", "email": "appname@foo.bar"}}`, "")
-	defer ts.Close()
-	a := App{Name: "myapp"}
-	err := db.Session.Apps().Insert(a)
-	c.Assert(err, IsNil)
-	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
-	_, err = NewUser(&a)
-	c.Assert(err, ErrorMatches, "^App should have an associated keystone tenant to create an user.$")
-}
-
-func (s *S) TestNewUserShouldStoreUserInDb(c *C) {
-	ts := s.mockServer(`{"user": {"id": "uuid321", "name": "appname", "email": "appname@foo.bar"}}`, "")
-	defer ts.Close()
-	a := App{Name: "myapp"}
-	a.KeystoneEnv.TenantId = "uuid123"
-	err := db.Session.Apps().Insert(a)
-	c.Assert(err, IsNil)
-	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
-	uId, err := NewUser(&a)
-	c.Assert(err, IsNil)
-	c.Assert(uId, Equals, "uuid321")
-}
-
-func (s *S) TestNewEC2CredsShouldCallKeystoneApi(c *C) {
-	ts := s.mockServer(`{"credential": {"access": "access-key-here", "secret": "secret-key-here"}}`, "")
-	defer ts.Close()
-	a := App{Name: "myapp"}
-	a.KeystoneEnv.TenantId = "uuid123"
-	a.KeystoneEnv.UserId = "uuid321"
-	err := db.Session.Apps().Insert(a)
-	c.Assert(err, IsNil)
-	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
-	_, _, err = NewEC2Creds(&a)
-	c.Assert(err, IsNil)
-	c.Assert(called["ec2-creds"], Equals, true)
-}
-
-func (s *S) TestNewEC2CredsShouldFailIfAppHasNoTenantId(c *C) {
-	ts := s.mockServer(`{"credential": {"access": "access-key-here", "secret": "secret-key-here"}}`, "")
-	defer ts.Close()
-	a := App{Name: "myapp"}
-	a.KeystoneEnv.UserId = "uuid321"
-	err := db.Session.Apps().Insert(a)
-	c.Assert(err, IsNil)
-	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
-	_, _, err = NewEC2Creds(&a)
-	c.Assert(err, ErrorMatches, "^App should have an associated keystone tenant to create an user.$")
-}
-
-func (s *S) TestNewEC2CredsShouldFailIfAppHasNoUserId(c *C) {
+func (s *S) TestNewKeystoneEnv(c *C) {
 	s.ts.Close()
-	ts := s.mockServer(`{"credential": {"access": "access-key-here", "secret": "secret-key-here"}}`, "")
-	defer ts.Close()
-	a := App{Name: "myapp"}
-	a.KeystoneEnv.TenantId = "uuid123"
-	err := db.Session.Apps().Insert(a)
+	tenantBody := `{"tenant": {"id": "uuid123", "name": "still", "description": "tenant desc"}}`
+	userBody := `{"user": {"id": "uuid321", "name": "still", "email": "appname@foo.bar"}}`
+	ec2Body := `{"credential": {"access": "access-key-here", "secret": "secret-key-here"}}`
+	ts := s.mockServer(tenantBody, userBody, ec2Body, "")
+	authUrl = ts.URL
+	defer func() {
+		ts.Close()
+		authUrl = ""
+	}()
+	env, err := newKeystoneEnv("still")
 	c.Assert(err, IsNil)
-	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
-	_, _, err = NewEC2Creds(&a)
-	c.Assert(err, ErrorMatches, "^App should have an associated keystone user to create an user.$")
+	c.Assert(env.TenantId, Equals, "uuid123")
+	c.Assert(env.UserId, Equals, "uuid321")
+	c.Assert(env.AccessKey, Equals, "access-key-here")
+	c.Assert(env.secretKey, Equals, "secret-key-here")
 }
 
 func (s *S) TestDestroyKeystoneEnv(c *C) {
 	s.ts.Close()
-	ts := s.mockServer("", "")
-	oldAuthUrl := authUrl
+	ts := s.mockServer("", "", "", "")
 	authUrl = ts.URL
 	defer func() {
-		authUrl = oldAuthUrl
+		ts.Close()
+		authUrl = ""
 	}()
-	defer ts.Close()
-	app := App{
-		Name: "lemon_song",
-		KeystoneEnv: KeystoneEnv{
-			TenantId:  "e60d1f0a-ee74-411c-b879-46aee9502bf9",
-			UserId:    "1b4d1195-7890-4274-831f-ddf8141edecc",
-			AccessKey: "91232f6796b54ca2a2b87ef50548b123",
-		},
+	k := KeystoneEnv{
+		TenantId:  "e60d1f0a-ee74-411c-b879-46aee9502bf9",
+		UserId:    "1b4d1195-7890-4274-831f-ddf8141edecc",
+		AccessKey: "91232f6796b54ca2a2b87ef50548b123",
 	}
-	err := destroyKeystoneEnv(&app)
+	err := destroyKeystoneEnv(&k)
 	c.Assert(err, IsNil)
 	c.Assert(called["delete-ec2-creds"], Equals, true)
-	c.Assert(params["ec2-access"], Equals, app.KeystoneEnv.AccessKey)
-	c.Assert(params["ec2-user"], Equals, app.KeystoneEnv.UserId)
+	c.Assert(params["ec2-access"], Equals, k.AccessKey)
+	c.Assert(params["ec2-user"], Equals, k.UserId)
 	c.Assert(called["delete-user"], Equals, true)
-	c.Assert(params["user"], Equals, app.KeystoneEnv.UserId)
+	c.Assert(params["user"], Equals, k.UserId)
 	c.Assert(called["delete-tenant"], Equals, true)
-	c.Assert(params["tenant"], Equals, app.KeystoneEnv.TenantId)
+	c.Assert(params["tenant"], Equals, k.TenantId)
 }
 
 func (s *S) TestDestroyKeystoneEnvWithoutEc2Creds(c *C) {
-	app := App{
-		Name: "lemon_song",
-		KeystoneEnv: KeystoneEnv{
-			TenantId: "e60d1f0a-ee74-411c-b879-46aee9502bf9",
-			UserId:   "1b4d1195-7890-4274-831f-ddf8141edecc",
-		},
+	k := KeystoneEnv{
+		TenantId: "e60d1f0a-ee74-411c-b879-46aee9502bf9",
+		UserId:   "1b4d1195-7890-4274-831f-ddf8141edecc",
 	}
-	err := destroyKeystoneEnv(&app)
+	err := destroyKeystoneEnv(&k)
 	c.Assert(err, NotNil)
-	c.Assert(err, ErrorMatches, "This app does not have keystone EC2 credentials.")
+	c.Assert(err, ErrorMatches, "Missing EC2 credentials.")
 }
 
 func (s *S) TestDestroyKeystoneEnvWithoutUserId(c *C) {
-	app := App{
-		Name: "lemon_song",
-		KeystoneEnv: KeystoneEnv{
-			TenantId:  "e60d1f0a-ee74-411c-b879-46aee9502bf9",
-			AccessKey: "91232f6796b54ca2a2b87ef50548b123",
-		},
+	k := KeystoneEnv{
+		TenantId:  "e60d1f0a-ee74-411c-b879-46aee9502bf9",
+		AccessKey: "91232f6796b54ca2a2b87ef50548b123",
 	}
-	err := destroyKeystoneEnv(&app)
+	err := destroyKeystoneEnv(&k)
 	c.Assert(err, NotNil)
-	c.Assert(err, ErrorMatches, "This app does not have a keystone user.")
+	c.Assert(err, ErrorMatches, "Missing user.")
 }
 
 func (s *S) TestDestroyKeystoneEnvWithoutTenantId(c *C) {
-	app := App{
-		Name: "lemon_song",
-		KeystoneEnv: KeystoneEnv{
-			UserId:    "1b4d1195-7890-4274-831f-ddf8141edecc",
-			AccessKey: "91232f6796b54ca2a2b87ef50548b123",
-		},
+	k := KeystoneEnv{
+		UserId:    "1b4d1195-7890-4274-831f-ddf8141edecc",
+		AccessKey: "91232f6796b54ca2a2b87ef50548b123",
 	}
-	err := destroyKeystoneEnv(&app)
+	err := destroyKeystoneEnv(&k)
 	c.Assert(err, NotNil)
-	c.Assert(err, ErrorMatches, "This app does not have a keystone tenant.")
+	c.Assert(err, ErrorMatches, "Missing tenant.")
 }

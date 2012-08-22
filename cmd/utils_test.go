@@ -12,7 +12,7 @@ func (s *S) TestWriteToken(c *C) {
 	defer func() {
 		fsystem = nil
 	}()
-	err := WriteToken("abc")
+	err := writeToken("abc")
 	c.Assert(err, IsNil)
 	tokenPath, err := joinWithUserDir(".tsuru_token")
 	c.Assert(err, IsNil)
@@ -28,7 +28,7 @@ func (s *S) TestReadToken(c *C) {
 	defer func() {
 		fsystem = nil
 	}()
-	token, err := ReadToken()
+	token, err := readToken()
 	c.Assert(err, IsNil)
 	tokenPath, err := joinWithUserDir(".tsuru_token")
 	c.Assert(err, IsNil)
