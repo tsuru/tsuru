@@ -62,32 +62,23 @@ func (m *Manager) Register(command interface{}) {
 func (m *Manager) Run(args []string) {
 	var status int
 	if len(args) == 0 {
-		args = []string{"help"}
+		args = append(args, "help")
 	}
-	cmds := m.extractCommandFromArgs(args)
-	if len(cmds) <= 0 {
+	name := args[0]
+	command, ok := m.Commands[name]
+	if !ok {
 		io.WriteString(m.Stderr, fmt.Sprintf("command %s does not exist\n", args[0]))
 		m.finisher().Exit(1)
 		return
 	}
-	args = args[len(cmds):]
-	command := m.Commands[cmds[0]]
-	command = getSubcommand(command, cmds)
-	if len(args) < command.(Infoer).Info().MinArgs && cmds[0] != "help" {
+	args = args[1:]
+	if len(args) < command.(Infoer).Info().MinArgs && name != "help" {
 		io.WriteString(m.Stdout, fmt.Sprintf("Not enough arguments to call %s.\n\n", command.(Infoer).Info().Name))
 		command = m.Commands["help"]
-		args = cmds
-		cmds = []string{"help"}
+		args = []string{name}
 		status = 1
 	}
-	if _, ok := command.(Command); !ok {
-		io.WriteString(m.Stdout, fmt.Sprintf("subcommand %s does not exist\n\n", args[0]))
-		command = m.Commands["help"]
-		args = cmds
-		cmds = []string{"help"}
-		status = 1
-	}
-	err := command.(Command).Run(&Context{cmds, args, m.Stdout, m.Stderr}, NewClient(&http.Client{}))
+	err := command.(Command).Run(&Context{nil, args, m.Stdout, m.Stderr}, NewClient(&http.Client{}))
 	if err != nil {
 		errorMsg := err.Error()
 		if !strings.HasSuffix(errorMsg, "\n") {
@@ -99,61 +90,11 @@ func (m *Manager) Run(args []string) {
 	m.finisher().Exit(status)
 }
 
-func (mngr *Manager) extractCommandFromArgs(args []string) []string {
-	cmds := []string{}
-	if len(args) <= 0 {
-		return cmds
-	}
-	if cmd, exists := mngr.Commands[args[0]]; exists {
-		cmds = append(cmds, args[0])
-		if container, ok := cmd.(CommandContainer); ok && len(args) >= 2 {
-			cmds = append([]string{}, appendSubcmds(cmds, container, args, 1)...)
-		}
-	}
-	return cmds
-}
-
-func appendSubcmds(cmds []string, container CommandContainer, args []string, i int) []string {
-	var ok bool
-	var inter interface{}
-	if len(args) <= i {
-		return cmds
-	}
-	if inter, ok = container.Subcommands()[args[i]]; !ok {
-		return cmds
-	}
-	cmds = append(cmds, args[i])
-	if container, ok = inter.(CommandContainer); !ok {
-		return cmds
-	}
-	return appendSubcmds(cmds, container, args, i+1)
-}
-
 func (m *Manager) finisher() exiter {
 	if m.e == nil {
 		m.e = osExiter{}
 	}
 	return m.e
-}
-
-func getSubcommand(cmd interface{}, cmds []string) interface{} {
-	i := 1
-	return getSubcommandRecursive(cmd, cmds, i)
-}
-
-func getSubcommandRecursive(cmd interface{}, cmds []string, i int) interface{} {
-	if c, ok := cmd.(CommandContainer); ok && len(cmds) >= 2 {
-		if len(cmds) > i {
-			if subcommand, exist := c.Subcommands()[cmds[i]]; exist {
-				cmd = getSubcommandRecursive(subcommand, cmds, i+1)
-			}
-		}
-	}
-	return cmd
-}
-
-type CommandContainer interface {
-	Subcommands() map[string]interface{}
 }
 
 type Infoer interface {
@@ -193,7 +134,6 @@ func (c *Help) Run(context *Context, client Doer) error {
 	output := ""
 	if len(context.Args) > 0 {
 		cmd := c.manager.Commands[context.Args[0]]
-		cmd = getSubcommand(cmd, context.Args)
 		info := cmd.(Infoer).Info()
 		output += fmt.Sprintf("Usage: %s %s\n", c.manager.Name, info.Usage)
 		output += fmt.Sprintf("\n%s\n", info.Desc)

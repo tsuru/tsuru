@@ -8,7 +8,6 @@ import (
 	"io"
 	. "launchpad.net/gocheck"
 	"os"
-	"strings"
 	"syscall"
 )
 
@@ -52,22 +51,6 @@ func (c *TestCommand) Info() *Info {
 func (c *TestCommand) Run(context *Context, client Doer) error {
 	io.WriteString(context.Stdout, "Running TestCommand")
 	return nil
-}
-
-func (c *TestCommand) Subcommands() map[string]interface{} {
-	return map[string]interface{}{
-		"ble": &TestSubCommand{},
-	}
-}
-
-type TestSubCommand struct{}
-
-func (c *TestSubCommand) Info() *Info {
-	return &Info{
-		Name:  "ble",
-		Desc:  "Ble do anything or nothing.",
-		Usage: "foo ble",
-	}
 }
 
 type ErrorCommand struct {
@@ -117,72 +100,6 @@ func (s *S) TestRunCommandThatDoesNotExist(c *C) {
 	c.Assert(manager.Stderr.(*bytes.Buffer).String(), Equals, "command bar does not exist\n")
 	c.Assert(manager.e.(*recordingExiter).value(), Equals, 1)
 }
-
-type TicCmd struct {
-	record *RecordCmd
-}
-
-func (c *TicCmd) Info() *Info {
-	return &Info{
-		Name:    "tic",
-		MinArgs: 1,
-		Usage:   "tic tac|record",
-		Desc:    "some tic command",
-	}
-}
-
-func (c *TicCmd) Subcommands() map[string]interface{} {
-	c.record = &RecordCmd{}
-	return map[string]interface{}{"tac": &TacCmd{}, "record": c.record}
-}
-
-type TacCmd struct{}
-
-func (c *TacCmd) Info() *Info {
-	return &Info{Name: "tac"}
-}
-
-func (c *TacCmd) Run(context *Context, client Doer) error {
-	io.WriteString(context.Stdout, "Running tac subcommand")
-	return nil
-}
-
-type RecordCmd struct {
-	args []string
-}
-
-func (c *RecordCmd) Info() *Info {
-	return &Info{Name: "record", MinArgs: 2}
-}
-
-func (c *RecordCmd) Run(context *Context, client Doer) error {
-	c.args = context.Args
-	return nil
-}
-
-func (s *S) TestSubcommand(c *C) {
-	manager.Register(&TicCmd{})
-	manager.Run([]string{"tic", "tac"})
-	c.Assert(manager.Stdout.(*bytes.Buffer).String(), Equals, "Running tac subcommand")
-}
-
-func (s *S) TestErrorWhenSubcommandDoesntExists(c *C) {
-	manager.Register(&TicCmd{})
-	manager.Run([]string{"tic", "toe"})
-	obtained := strings.Replace(manager.Stdout.(*bytes.Buffer).String(), "\n", " ", -1)
-	c.Assert(obtained, Matches, ".*subcommand toe does not exist.*")
-	c.Assert(obtained, Matches, ".*tic tac|record.*")
-	c.Assert(obtained, Matches, ".*some tic command.*")
-}
-
-func (s *S) TestSubcommandWithArgs(c *C) {
-	expected := []string{"arg1", "arg2"}
-	cmd := &TicCmd{}
-	manager.Register(cmd)
-	manager.Run([]string{"tic", "record", "arg1", "arg2"})
-	c.Assert(cmd.record.args, DeepEquals, expected)
-}
-
 func (s *S) TestHelp(c *C) {
 	expected := `Usage: glb command [args]
 
@@ -229,16 +146,6 @@ Foo do anything or nothing.
 	c.Assert(manager.Stdout.(*bytes.Buffer).String(), Equals, expected)
 }
 
-func (s *S) TestHelpShouldReturnsHelpForASubCmd(c *C) {
-	expected := `Usage: glb foo ble
-
-Ble do anything or nothing.
-`
-	manager.Register(&TestCommand{})
-	manager.Run([]string{"help", "foo", "ble"})
-	c.Assert(manager.Stdout.(*bytes.Buffer).String(), Equals, expected)
-}
-
 type ArgCmd struct{}
 
 func (c *ArgCmd) Info() *Info {
@@ -250,40 +157,7 @@ func (c *ArgCmd) Info() *Info {
 	}
 }
 
-func (c *ArgCmd) Subcommands() map[string]interface{} {
-	return map[string]interface{}{
-		"subargs": &ArgSubCmd{},
-	}
-}
-
-type ArgSubCmd struct{}
-
-func (c *ArgSubCmd) Info() *Info {
-	return &Info{
-		Name:    "subargs",
-		MinArgs: 2,
-		Usage:   "arg subargs [args]",
-		Desc:    "some subarg desc",
-	}
-}
-
-func (cmd *ArgSubCmd) Subcommands() map[string]interface{} {
-	return map[string]interface{}{
-		"subsubcmd": &ArgSubSubcmd{},
-	}
-}
-
-type ArgSubSubcmd struct{}
-
-func (cmd *ArgSubSubcmd) Info() *Info {
-	return &Info{
-		Name:  "subsubcmd",
-		Desc:  "just some sub sub cmd",
-		Usage: "tsuru arg subargs subsubcmd <arg>",
-	}
-}
-
-func (cmd *ArgSubSubcmd) Run(ctx *Context, client Doer) error {
+func (cmd *ArgCmd) Run(ctx *Context, client Doer) error {
 	return nil
 }
 
@@ -302,63 +176,15 @@ Minimum arguments: 1
 	c.Assert(manager.e.(*recordingExiter).value(), Equals, 1)
 }
 
-func (s *S) TestRunWrongArgsNumberShouldRunsHelpForSubCmdAndReturnsStatus1(c *C) {
-	expected := `Not enough arguments to call subargs.
-
-Usage: glb arg subargs [args]
-
-some subarg desc
-
-Minimum arguments: 2
-`
-	manager.Register(&ArgCmd{})
-	manager.Run([]string{"arg", "subargs"})
-	c.Assert(manager.Stdout.(*bytes.Buffer).String(), Equals, expected)
-	c.Assert(manager.e.(*recordingExiter).value(), Equals, 1)
-}
-
-func (s *S) TestExtractCommandFromArgs(c *C) {
-	manager.Register(&ArgCmd{})
-	c.Assert(manager.extractCommandFromArgs([]string{"arg", "ble"}), DeepEquals, []string{"arg"})
-}
-
-func (s *S) TestExtractCommandFromArgsWithThreeSubcmds(c *C) {
-	manager := BuildBaseManager("tsuru")
-	manager.Register(&ArgCmd{})
-	args := manager.extractCommandFromArgs([]string{"arg", "subargs", "subsubcmd", "args"})
-	c.Assert(args, DeepEquals, []string{"arg", "subargs", "subsubcmd"})
-}
-
-func (s *S) TestExtractCommandFromArgsForSubCmd(c *C) {
-	manager.Register(&ArgCmd{})
-	c.Assert(manager.extractCommandFromArgs([]string{"arg", "subargs", "xpto", "ble"}), DeepEquals, []string{"arg", "subargs"})
-}
-
-func (s *S) TestExtractCommandFromArgsWithoutArgs(c *C) {
-	manager.Register(&ArgCmd{})
-	c.Assert(manager.extractCommandFromArgs([]string{}), DeepEquals, []string{})
-}
-
-func (s *S) TestGetSubcommand(c *C) {
-	manager.Register(&ArgCmd{})
-	var cmd interface{}
-	cmd = &ArgCmd{}
-	_, ok := cmd.(CommandContainer)
-	c.Assert(ok, Equals, true)
-	cmds := []string{"arg", "subargs", "subsubcmd", "argument"}
-	got := getSubcommand(cmd, cmds)
-	c.Assert(got, FitsTypeOf, &ArgSubSubcmd{})
-}
-
 func (s *S) TestHelpShouldReturnUsageWithTheCommandName(c *C) {
-	expected := `Usage: tsuru foo ble
+	expected := `Usage: tsuru foo
 
-Ble do anything or nothing.
+Foo do anything or nothing.
 `
 	var stdout, stderr bytes.Buffer
 	manager := NewManager("tsuru", &stdout, &stderr)
 	manager.Register(&TestCommand{})
-	context := Context{[]string{}, []string{"foo", "ble"}, manager.Stdout, manager.Stderr}
+	context := Context{[]string{}, []string{"foo"}, manager.Stdout, manager.Stderr}
 	command := Help{manager: &manager}
 	err := command.Run(&context, nil)
 	c.Assert(err, IsNil)
