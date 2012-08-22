@@ -30,20 +30,20 @@ type Manager struct {
 
 func NewManager(name string, stdout, stderr io.Writer) Manager {
 	m := Manager{Name: name, Stdout: stdout, Stderr: stderr}
-	m.Register(&Help{manager: &m})
+	m.Register(&help{manager: &m})
 	return m
 }
 
 func BuildBaseManager(name string) Manager {
 	m := NewManager(name, os.Stdout, os.Stderr)
-	m.Register(&Login{})
-	m.Register(&Logout{})
-	m.Register(&UserCreate{})
-	m.Register(&TeamCreate{})
-	m.Register(&TeamList{})
-	m.Register(&TeamUserAdd{})
-	m.Register(&TeamUserRemove{})
-	m.Register(&Target{})
+	m.Register(&login{})
+	m.Register(&logout{})
+	m.Register(&userCreate{})
+	m.Register(&teamCreate{})
+	m.Register(&teamList{})
+	m.Register(&teamUserAdd{})
+	m.Register(&teamUserRemove{})
+	m.Register(&target{})
 	return m
 }
 
@@ -119,18 +119,18 @@ type Info struct {
 	Desc    string
 }
 
-type Help struct {
+type help struct {
 	manager *Manager
 }
 
-func (c *Help) Info() *Info {
+func (c *help) Info() *Info {
 	return &Info{
 		Name:  "help",
 		Usage: "command [args]",
 	}
 }
 
-func (c *Help) Run(context *Context, client Doer) error {
+func (c *help) Run(context *Context, client Doer) error {
 	output := ""
 	if len(context.Args) > 0 {
 		cmd := c.manager.Commands[context.Args[0]]

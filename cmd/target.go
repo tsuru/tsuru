@@ -9,9 +9,9 @@ import (
 	"syscall"
 )
 
-type Target struct{}
+type target struct{}
 
-func (t *Target) Info() *Info {
+func (t *target) Info() *Info {
 	desc := `Defines or retrieve the target (tsuru server)
 
 If an argument is provided, this command sets the target, otherwise it displays the current target.
@@ -24,7 +24,7 @@ If an argument is provided, this command sets the target, otherwise it displays 
 	}
 }
 
-func (t *Target) Run(ctx *Context, client Doer) error {
+func (t *target) Run(ctx *Context, client Doer) error {
 	var target string
 	if len(ctx.Args) > 0 {
 		target = ctx.Args[0]

@@ -109,9 +109,9 @@ Available commands:
 
 Run glb help <commandname> to get more information about a specific command.
 `
-	manager.Register(&UserCreate{})
+	manager.Register(&userCreate{})
 	context := Context{[]string{}, []string{}, manager.Stdout, manager.Stderr}
-	command := Help{manager: &manager}
+	command := help{manager: &manager}
 	err := command.Run(&context, nil)
 	c.Assert(err, IsNil)
 	c.Assert(manager.Stdout.(*bytes.Buffer).String(), Equals, expected)
@@ -185,7 +185,7 @@ Foo do anything or nothing.
 	manager := NewManager("tsuru", &stdout, &stderr)
 	manager.Register(&TestCommand{})
 	context := Context{[]string{}, []string{"foo"}, manager.Stdout, manager.Stderr}
-	command := Help{manager: &manager}
+	command := help{manager: &manager}
 	err := command.Run(&context, nil)
 	c.Assert(err, IsNil)
 	c.Assert(manager.Stdout.(*bytes.Buffer).String(), Equals, expected)
@@ -219,58 +219,58 @@ func (s *S) TestFinisherReturnTheDefinedE(c *C) {
 
 func (s *S) TestLoginIsRegistered(c *C) {
 	manager := BuildBaseManager("tsuru")
-	login, ok := manager.Commands["login"]
+	lgn, ok := manager.Commands["login"]
 	c.Assert(ok, Equals, true)
-	c.Assert(login, FitsTypeOf, &Login{})
+	c.Assert(lgn, FitsTypeOf, &login{})
 }
 
 func (s *S) TestLogoutIsRegistered(c *C) {
 	manager := BuildBaseManager("tsuru")
-	logout, ok := manager.Commands["logout"]
+	lgt, ok := manager.Commands["logout"]
 	c.Assert(ok, Equals, true)
-	c.Assert(logout, FitsTypeOf, &Logout{})
+	c.Assert(lgt, FitsTypeOf, &logout{})
 }
 
 func (s *S) TestUserCreateIsRegistered(c *C) {
 	manager := BuildBaseManager("tsuru")
 	user, ok := manager.Commands["user-create"]
 	c.Assert(ok, Equals, true)
-	c.Assert(user, FitsTypeOf, &UserCreate{})
+	c.Assert(user, FitsTypeOf, &userCreate{})
 }
 
 func (s *S) TestTeamCreateIsRegistered(c *C) {
 	manager := BuildBaseManager("tsuru")
 	create, ok := manager.Commands["team-create"]
 	c.Assert(ok, Equals, true)
-	c.Assert(create, FitsTypeOf, &TeamCreate{})
+	c.Assert(create, FitsTypeOf, &teamCreate{})
 }
 
 func (s *S) TestTeamListIsRegistered(c *C) {
 	manager := BuildBaseManager("tsuru")
 	list, ok := manager.Commands["team-list"]
 	c.Assert(ok, Equals, true)
-	c.Assert(list, FitsTypeOf, &TeamList{})
+	c.Assert(list, FitsTypeOf, &teamList{})
 }
 
 func (s *S) TestTeamAddUserIsRegistered(c *C) {
 	manager := BuildBaseManager("tsuru")
 	adduser, ok := manager.Commands["team-user-add"]
 	c.Assert(ok, Equals, true)
-	c.Assert(adduser, FitsTypeOf, &TeamUserAdd{})
+	c.Assert(adduser, FitsTypeOf, &teamUserAdd{})
 }
 
 func (s *S) TestTeamRemoveUserIsRegistered(c *C) {
 	manager := BuildBaseManager("tsuru")
 	removeuser, ok := manager.Commands["team-user-remove"]
 	c.Assert(ok, Equals, true)
-	c.Assert(removeuser, FitsTypeOf, &TeamUserRemove{})
+	c.Assert(removeuser, FitsTypeOf, &teamUserRemove{})
 }
 
 func (s *S) TestTargetIsRegistered(c *C) {
 	manager := BuildBaseManager("tsuru")
-	target, ok := manager.Commands["target"]
+	tgt, ok := manager.Commands["target"]
 	c.Assert(ok, Equals, true)
-	c.Assert(target, FitsTypeOf, &Target{})
+	c.Assert(tgt, FitsTypeOf, &target{})
 }
 
 func (s *S) TestFileSystem(c *C) {

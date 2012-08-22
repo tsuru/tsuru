@@ -86,7 +86,7 @@ If an argument is provided, this command sets the target, otherwise it displays 
 		Desc:    desc,
 		MinArgs: 0,
 	}
-	target := &Target{}
+	target := &target{}
 	c.Assert(target.Info(), DeepEquals, expected)
 }
 
@@ -97,7 +97,7 @@ func (s *S) TestTargetRun(c *C) {
 		fsystem = nil
 	}()
 	context := &Context{[]string{}, []string{"http://tsuru.globo.com"}, manager.Stdout, manager.Stderr}
-	target := &Target{}
+	target := &target{}
 	err := target.Run(context, nil)
 	c.Assert(err, IsNil)
 	c.Assert(context.Stdout.(*bytes.Buffer).String(), Equals, "New target is http://tsuru.globo.com\n")
@@ -111,7 +111,7 @@ func (s *S) TestTargetWithoutArgument(c *C) {
 		fsystem = nil
 	}()
 	context := &Context{[]string{}, []string{}, manager.Stdout, manager.Stderr}
-	target := &Target{}
+	target := &target{}
 	err := target.Run(context, nil)
 	c.Assert(err, IsNil)
 	c.Assert(context.Stdout.(*bytes.Buffer).String(), Equals, "Current target is http://tsuru.google.com\n")
