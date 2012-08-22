@@ -159,7 +159,7 @@ func (a *App) Destroy() error {
 			log.Print(msg)
 			return errors.New(string(out))
 		}
-		if err = destroyKeystoneEnv(&app); err != nil {
+		if err = destroyKeystoneEnv(&app.KeystoneEnv); err != nil {
 			return err
 		}
 	} else {

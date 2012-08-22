@@ -351,60 +351,48 @@ func (s *S) TestDestroyKeystoneEnv(c *C) {
 		authUrl = oldAuthUrl
 	}()
 	defer ts.Close()
-	app := App{
-		Name: "lemon_song",
-		KeystoneEnv: KeystoneEnv{
-			TenantId:  "e60d1f0a-ee74-411c-b879-46aee9502bf9",
-			UserId:    "1b4d1195-7890-4274-831f-ddf8141edecc",
-			AccessKey: "91232f6796b54ca2a2b87ef50548b123",
-		},
+	k := KeystoneEnv{
+		TenantId:  "e60d1f0a-ee74-411c-b879-46aee9502bf9",
+		UserId:    "1b4d1195-7890-4274-831f-ddf8141edecc",
+		AccessKey: "91232f6796b54ca2a2b87ef50548b123",
 	}
-	err := destroyKeystoneEnv(&app)
+	err := destroyKeystoneEnv(&k)
 	c.Assert(err, IsNil)
 	c.Assert(called["delete-ec2-creds"], Equals, true)
-	c.Assert(params["ec2-access"], Equals, app.KeystoneEnv.AccessKey)
-	c.Assert(params["ec2-user"], Equals, app.KeystoneEnv.UserId)
+	c.Assert(params["ec2-access"], Equals, k.AccessKey)
+	c.Assert(params["ec2-user"], Equals, k.UserId)
 	c.Assert(called["delete-user"], Equals, true)
-	c.Assert(params["user"], Equals, app.KeystoneEnv.UserId)
+	c.Assert(params["user"], Equals, k.UserId)
 	c.Assert(called["delete-tenant"], Equals, true)
-	c.Assert(params["tenant"], Equals, app.KeystoneEnv.TenantId)
+	c.Assert(params["tenant"], Equals, k.TenantId)
 }
 
 func (s *S) TestDestroyKeystoneEnvWithoutEc2Creds(c *C) {
-	app := App{
-		Name: "lemon_song",
-		KeystoneEnv: KeystoneEnv{
-			TenantId: "e60d1f0a-ee74-411c-b879-46aee9502bf9",
-			UserId:   "1b4d1195-7890-4274-831f-ddf8141edecc",
-		},
+	k := KeystoneEnv{
+		TenantId: "e60d1f0a-ee74-411c-b879-46aee9502bf9",
+		UserId:   "1b4d1195-7890-4274-831f-ddf8141edecc",
 	}
-	err := destroyKeystoneEnv(&app)
+	err := destroyKeystoneEnv(&k)
 	c.Assert(err, NotNil)
-	c.Assert(err, ErrorMatches, "This app does not have keystone EC2 credentials.")
+	c.Assert(err, ErrorMatches, "Missing EC2 credentials.")
 }
 
 func (s *S) TestDestroyKeystoneEnvWithoutUserId(c *C) {
-	app := App{
-		Name: "lemon_song",
-		KeystoneEnv: KeystoneEnv{
-			TenantId:  "e60d1f0a-ee74-411c-b879-46aee9502bf9",
-			AccessKey: "91232f6796b54ca2a2b87ef50548b123",
-		},
+	k := KeystoneEnv{
+		TenantId:  "e60d1f0a-ee74-411c-b879-46aee9502bf9",
+		AccessKey: "91232f6796b54ca2a2b87ef50548b123",
 	}
-	err := destroyKeystoneEnv(&app)
+	err := destroyKeystoneEnv(&k)
 	c.Assert(err, NotNil)
-	c.Assert(err, ErrorMatches, "This app does not have a keystone user.")
+	c.Assert(err, ErrorMatches, "Missing user.")
 }
 
 func (s *S) TestDestroyKeystoneEnvWithoutTenantId(c *C) {
-	app := App{
-		Name: "lemon_song",
-		KeystoneEnv: KeystoneEnv{
-			UserId:    "1b4d1195-7890-4274-831f-ddf8141edecc",
-			AccessKey: "91232f6796b54ca2a2b87ef50548b123",
-		},
+	k := KeystoneEnv{
+		UserId:    "1b4d1195-7890-4274-831f-ddf8141edecc",
+		AccessKey: "91232f6796b54ca2a2b87ef50548b123",
 	}
-	err := destroyKeystoneEnv(&app)
+	err := destroyKeystoneEnv(&k)
 	c.Assert(err, NotNil)
-	c.Assert(err, ErrorMatches, "This app does not have a keystone tenant.")
+	c.Assert(err, ErrorMatches, "Missing tenant.")
 }

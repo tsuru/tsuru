@@ -153,27 +153,27 @@ func NewEC2Creds(a *App) (access, secret string, err error) {
 	return
 }
 
-func destroyKeystoneEnv(a *App) error {
-	if a.KeystoneEnv.AccessKey == "" {
-		return errors.New("This app does not have keystone EC2 credentials.")
+func destroyKeystoneEnv(env *KeystoneEnv) error {
+	if env.AccessKey == "" {
+		return errors.New("Missing EC2 credentials.")
 	}
-	if a.KeystoneEnv.UserId == "" {
-		return errors.New("This app does not have a keystone user.")
+	if env.UserId == "" {
+		return errors.New("Missing user.")
 	}
-	if a.KeystoneEnv.TenantId == "" {
-		return errors.New("This app does not have a keystone tenant.")
+	if env.TenantId == "" {
+		return errors.New("Missing tenant.")
 	}
 	err := getClient()
 	if err != nil {
 		return err
 	}
-	err = Client.RemoveEc2(a.KeystoneEnv.UserId, a.KeystoneEnv.AccessKey)
+	err = Client.RemoveEc2(env.UserId, env.AccessKey)
 	if err != nil {
 		return err
 	}
-	err = Client.RemoveTenant(a.KeystoneEnv.TenantId)
+	err = Client.RemoveTenant(env.TenantId)
 	if err != nil {
 		return err
 	}
-	return Client.RemoveUser(a.KeystoneEnv.UserId)
+	return Client.RemoveUser(env.UserId)
 }
