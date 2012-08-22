@@ -10,7 +10,7 @@ First, you must set the target with your server url, like:
 
     $ crane target tsuru.myhost.com
 
-After that, all you need is create a user and authenticate:
+After that, all you need is to create a user and authenticate:
 
 .. highlight:: bash
 
@@ -38,7 +38,7 @@ This will create a manifest.yaml in your current path with this content:
       production: production-endpoint.com
         test: test-endpoint.com:8080
 
-The manifest.yaml it's used by crane to defined an id and an endpoint of your service.
+The manifest.yaml is used by crane to define an id and an endpoint to your service.
 
 To submit your new service, you can run:
 
@@ -84,7 +84,7 @@ To remove a service:
 
     $ crane remove service_name
 
-It should be nice that your service has some documentation. To add a documentation for you service you can use:
+It would be nice if your service had some documentation. To add a documentation to you service you can use:
 
 .. highlight:: bash
 
@@ -94,7 +94,7 @@ It should be nice that your service has some documentation. To add a documentati
 
 Crane will read the content of the file and save it.
 
-To show the current doc for your service:
+To show the current documentation of your service:
 
 .. highlight:: bash
 

@@ -18,7 +18,7 @@ Linux example: suppose you want to install the tsuru client in your `/usr/bin` d
 
     $ curl -4L https://github.com/downloads/timeredbull/tsuru/tsuru-linux-amd64 -o /usr/bin/tsuru
 
-Then you will be able to [use the client](/timeredbull/tsuru/wiki/Client-usage). On Mac OS, use `darwin` instead of `linux`:
+Then you will be able to [use the client](apps/client/usage.html). On Mac OS, use `darwin` instead of `linux`:
 
 .. highlight:: bash
 

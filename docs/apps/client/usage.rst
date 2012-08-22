@@ -17,7 +17,7 @@ Setting a target
 Authentication
 ==============
 
-After that, all you need is create a user and authenticate to start creating apps and pushing code to them:
+After that, all you need is to create a user and authenticate to start creating apps and pushing code to them:
 
 .. highlight:: bash
 
@@ -92,7 +92,7 @@ If you have a public key in other format (for example, DSA), you can also give t
 
     $ tsuru key-add $HOME/.ssh/id_dsa.pub
 
-After your key is added, you can push you application to your cloud:
+After your key is added, you can push your application to your cloud:
 
 .. highlight:: bash
 
@@ -103,7 +103,7 @@ After your key is added, you can push you application to your cloud:
 Running commands
 ================
 
-After that, you can check your app's url in the browser and see your app there. You'll probably need run migrations or other deploy related commands.
+After that, you can check your app's url in the browser and see your app there. You'll probably need to run migrations or other deploy related commands.
 To run a single command, you should use the command line:
 
 .. highlight:: bash
@@ -117,7 +117,7 @@ Adding hooks
 
 By default, the commands are run from inside the app root directory, which is /home/application. If you have more complicated deploy related commands,
 you should use the app.conf pre-restart and pos-restart scripts, those are run before and after the restart of your app, which is triggered everytime you push code.
-Below is a app.conf sample:
+Below is an app.conf sample:
 
 .. highlight:: yaml
 
@@ -133,5 +133,5 @@ The app.conf file is located in your app's root directory, and the scripts path 
 Further instructions
 ====================
 
-For a complete reference, check documentation for tsuru command:
+For a complete reference, check the documentation for tsuru command:
 `<http://go.pkgdoc.org/github.com/timeredbull/tsuru/cmd/tsuru>`_.
