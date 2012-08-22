@@ -647,7 +647,7 @@ func (s *S) TestRunHandlerShouldExecuteTheGivenCommandInTheGivenApp(c *C) {
 	recorder := httptest.NewRecorder()
 	err = RunCommand(recorder, request, s.user)
 	c.Assert(err, IsNil)
-	c.Assert(recorder.Body.String(), Equals, "ssh -o StrictHostKeyChecking no -e delta 10 [ -f /home/application/apprc ] && source /home/application/apprc; [ -d /home/application/current ] && cd /home/application/current; ls")
+	c.Assert(recorder.Body.String(), Equals, "ssh -o StrictHostKeyChecking no -q -e delta 10 [ -f /home/application/apprc ] && source /home/application/apprc; [ -d /home/application/current ] && cd /home/application/current; ls")
 }
 
 func (s *S) TestRunHandlerShouldFilterOutputFromJuju(c *C) {
@@ -1641,7 +1641,7 @@ func (s *S) TestRestartHandler(c *C) {
 	c.Assert(commandmocker.Ran(tmpdir), Equals, true)
 	b, err := ioutil.ReadAll(recorder.Body)
 	c.Assert(err, IsNil)
-	expected := fmt.Sprintf("ssh -o StrictHostKeyChecking no -e %s %d /var/lib/tsuru/hooks/restart", a.JujuEnv, a.unit().Machine)
+	expected := fmt.Sprintf("ssh -o StrictHostKeyChecking no -q -e %s %d /var/lib/tsuru/hooks/restart", a.JujuEnv, a.unit().Machine)
 	c.Assert(string(b), Equals, expected)
 }
 
