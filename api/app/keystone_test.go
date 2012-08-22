@@ -3,6 +3,7 @@ package app
 import (
 	"fmt"
 	"github.com/timeredbull/tsuru/config"
+	"github.com/timeredbull/tsuru/fs/testing"
 	"io/ioutil"
 	. "launchpad.net/gocheck"
 	"net/http"
@@ -247,9 +248,15 @@ func (s *S) TestNewKeystoneEnv(c *C) {
 	ec2Body := `{"credential": {"access": "access-key-here", "secret": "secret-key-here"}}`
 	ts := s.mockServer(tenantBody, userBody, ec2Body, "")
 	authUrl = ts.URL
+	password := make([]byte, 64)
+	for i := 0; i < len(password); i++ {
+		password[i] = 'a'
+	}
+	fsystem := &testing.RecordingFs{FileContent: string(password)}
 	defer func() {
 		ts.Close()
 		authUrl = ""
+		fsystem = s.rfs
 	}()
 	env, err := newKeystoneEnv("still")
 	c.Assert(err, IsNil)

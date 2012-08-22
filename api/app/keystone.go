@@ -2,6 +2,7 @@ package app
 
 import (
 	"errors"
+	"fmt"
 	"github.com/timeredbull/keystone"
 	"github.com/timeredbull/tsuru/config"
 	"github.com/timeredbull/tsuru/log"
@@ -97,8 +98,11 @@ func newKeystoneEnv(name string) (env KeystoneEnv, err error) {
 		log.Printf("ERROR: %s", err)
 		return
 	}
-	// TODO(fsouza): generate random password
-	user, err := Client.NewUser(name, name, "", tenant.Id, true)
+	password := name
+	if random, err := randomBytes(64); err == nil {
+		password = fmt.Sprintf("%X", random)
+	}
+	user, err := Client.NewUser(name, password, "", tenant.Id, true)
 	if err != nil {
 		log.Printf("ERROR: %s", err)
 		return
