@@ -260,6 +260,22 @@ func (s *S) TestDeleteAppRemovesProjectFromAllTeamsInGitosis(c *C) {
 	c.Assert("writable = "+myApp.Name, NotInGitosis)
 }
 
+func (s *S) TestDeleteReturnsErrorIfAppDestroyFails(c *C) {
+	dir, err := commandmocker.Add("juju", "$*")
+	c.Assert(err, IsNil)
+	defer commandmocker.Remove(dir)
+	myApp, err := NewApp("MyAppToDelete", "django", []string{s.team.Name})
+	c.Assert(err, IsNil)
+	request, err := http.NewRequest("DELETE", "/apps/"+myApp.Name+"?:name="+myApp.Name, nil)
+	c.Assert(err, IsNil)
+	recorder := httptest.NewRecorder()
+	dir, err = commandmocker.Error("juju", "$*", 1)
+	c.Assert(err, IsNil)
+	defer commandmocker.Remove(dir)
+	err = AppDelete(recorder, request, s.user)
+	c.Assert(err, NotNil)
+}
+
 func (s *S) TestAppInfo(c *C) {
 	expectedApp, err := NewApp("NewApp", "django", []string{s.team.Name})
 	c.Assert(err, IsNil)
