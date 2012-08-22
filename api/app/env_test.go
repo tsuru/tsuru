@@ -23,7 +23,7 @@ func (s *S) TestRewriteEnvMessage(c *C) {
 			Unit{AgentState: "started", MachineAgentState: "running", InstanceState: "running"},
 		},
 	}
-	msg := Message{
+	msg := message{
 		app:     &app,
 		success: make(chan bool),
 	}
@@ -42,7 +42,7 @@ func (s *S) TestDoesNotSendInTheSuccessChannelIfItIsNil(c *C) {
 	defer commandmocker.Remove(dir)
 	app, err := NewApp("rainmaker", "", []string{s.team.Name})
 	c.Assert(err, IsNil)
-	msg := Message{
+	msg := message{
 		app: &app,
 	}
 	env <- msg
@@ -61,7 +61,7 @@ func (s *S) TestnewJujuEnv(c *C) {
 	c.Assert(err, IsNil)
 	instaceType, err := config.GetString("juju:instance-type")
 	c.Assert(err, IsNil)
-	expected := JujuEnv{
+	expected := jujuEnv{
 		Ec2:           ec2,
 		S3:            s3,
 		JujuOrigin:    jujuOrigin,
@@ -80,9 +80,9 @@ func (s *S) TestnewJujuEnv(c *C) {
 }
 
 func (s *S) TestNewEnviron(c *C) {
-	expected := map[string]map[string]JujuEnv{}
-	result := map[string]map[string]JujuEnv{}
-	expected["environments"] = map[string]JujuEnv{}
+	expected := map[string]map[string]jujuEnv{}
+	result := map[string]map[string]jujuEnv{}
+	expected["environments"] = map[string]jujuEnv{}
 	nameEnv, err := newJujuEnv("access", "secret")
 	expected["environments"]["name"] = nameEnv
 	rfs := &testing.RecordingFs{}
@@ -94,15 +94,15 @@ func (s *S) TestNewEnviron(c *C) {
 	}()
 	a := App{
 		Name: "name",
-		KeystoneEnv: KeystoneEnv{
+		KeystoneEnv: keystoneEnv{
 			AccessKey: "access",
 			secretKey: "secret",
 		},
 	}
 	err = newEnviron(&a)
 	c.Assert(err, IsNil)
-	c.Assert(rfs.HasAction("openfile "+EnvironConfPath+" with mode 0600"), Equals, true)
-	file, err = rfs.Open(EnvironConfPath)
+	c.Assert(rfs.HasAction("openfile "+environConfPath+" with mode 0600"), Equals, true)
+	file, err = rfs.Open(environConfPath)
 	c.Assert(err, IsNil)
 	content, err := ioutil.ReadAll(file)
 	c.Assert(err, IsNil)
@@ -111,14 +111,14 @@ func (s *S) TestNewEnviron(c *C) {
 }
 
 func (s *S) TestNewEnvironShouldKeepExistentsEnvirons(c *C) {
-	expected := map[string]map[string]JujuEnv{}
-	result := map[string]map[string]JujuEnv{}
-	initial := map[string]map[string]JujuEnv{}
-	initial["environments"] = map[string]JujuEnv{}
+	expected := map[string]map[string]jujuEnv{}
+	result := map[string]map[string]jujuEnv{}
+	initial := map[string]map[string]jujuEnv{}
+	initial["environments"] = map[string]jujuEnv{}
 	fooEnv, err := newJujuEnv("foo", "foo")
 	c.Assert(err, IsNil)
 	initial["environments"]["foo"] = fooEnv
-	expected["environments"] = map[string]JujuEnv{}
+	expected["environments"] = map[string]jujuEnv{}
 	expected["environments"]["foo"] = fooEnv
 	nameEnv, err := newJujuEnv("access", "secret")
 	c.Assert(err, IsNil)
@@ -134,15 +134,15 @@ func (s *S) TestNewEnvironShouldKeepExistentsEnvirons(c *C) {
 	}()
 	a := App{
 		Name: "name",
-		KeystoneEnv: KeystoneEnv{
+		KeystoneEnv: keystoneEnv{
 			AccessKey: "access",
 			secretKey: "secret",
 		},
 	}
 	err = newEnviron(&a)
 	c.Assert(err, IsNil)
-	c.Assert(rfs.HasAction("openfile "+EnvironConfPath+" with mode 0600"), Equals, true)
-	file, err = rfs.Open(EnvironConfPath)
+	c.Assert(rfs.HasAction("openfile "+environConfPath+" with mode 0600"), Equals, true)
+	file, err = rfs.Open(environConfPath)
 	c.Assert(err, IsNil)
 	content, err := ioutil.ReadAll(file)
 	c.Assert(err, IsNil)
@@ -152,7 +152,7 @@ func (s *S) TestNewEnvironShouldKeepExistentsEnvirons(c *C) {
 
 func (s *S) TestEnvironConfPath(c *C) {
 	expected := path.Join(os.ExpandEnv("${HOME}"), ".juju", "environments.yml")
-	c.Assert(EnvironConfPath, Equals, expected)
+	c.Assert(environConfPath, Equals, expected)
 }
 
 func (s *S) TestFileSystem(c *C) {

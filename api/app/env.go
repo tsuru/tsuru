@@ -19,27 +19,27 @@ const (
 	runAttempts = 5
 )
 
-type Message struct {
+type message struct {
 	app     *App
 	success chan bool
 }
 
-var env chan Message = make(chan Message, ChanSize)
+var env chan message = make(chan message, ChanSize)
 
-var EnvironConfPath = path.Join(os.ExpandEnv("${HOME}"), ".juju", "environments.yml")
+var environConfPath = path.Join(os.ExpandEnv("${HOME}"), ".juju", "environments.yml")
 
-type Cmd struct {
+type cmd struct {
 	cmd    string
-	result chan CmdResult
+	result chan cmdResult
 	u      Unit
 }
 
-type CmdResult struct {
+type cmdResult struct {
 	err    error
 	output []byte
 }
 
-var cmds chan Cmd = make(chan Cmd)
+var cmds chan cmd = make(chan cmd)
 
 func init() {
 	go collectEnvVars()
@@ -50,26 +50,26 @@ func runCommands() {
 	for cmd := range cmds {
 		out, err := cmd.u.Command(cmd.cmd)
 		if cmd.result != nil {
-			r := CmdResult{output: out, err: err}
+			r := cmdResult{output: out, err: err}
 			cmd.result <- r
 		}
 	}
 }
 
-func runCmd(cmd string, msg Message) {
-	c := Cmd{
+func runCmd(command string, msg message) {
+	c := cmd{
 		u:      *msg.app.unit(),
-		cmd:    cmd,
-		result: make(chan CmdResult),
+		cmd:    command,
+		result: make(chan cmdResult),
 	}
 	cmds <- c
-	var r CmdResult
+	var r cmdResult
 	r = <-c.result
 	for i := 0; r.err != nil && i < runAttempts; i++ {
 		cmds <- c
 		r = <-c.result
 	}
-	log.Printf("running %s on %s, output:\n %s", cmd, msg.app.Name, string(r.output))
+	log.Printf("running %s on %s, output:\n %s", command, msg.app.Name, string(r.output))
 	if msg.success != nil {
 		msg.success <- r.err == nil
 	}
@@ -87,7 +87,7 @@ func collectEnvVars() {
 	}
 }
 
-type JujuEnv struct {
+type jujuEnv struct {
 	AccessKey     string `yaml:"access-key"`
 	SecretKey     string `yaml:"secret-key"`
 	Ec2           string `yaml:"ec2-uri"`
@@ -101,37 +101,37 @@ type JujuEnv struct {
 	InstanceType  string `yaml:"default-instance-type"`
 }
 
-func newJujuEnv(access, secret string) (JujuEnv, error) {
+func newJujuEnv(access, secret string) (jujuEnv, error) {
 	ec2, err := config.GetString("juju:ec2")
 	if err != nil {
-		return JujuEnv{}, err
+		return jujuEnv{}, err
 	}
 	s3, err := config.GetString("juju:s3")
 	if err != nil {
-		return JujuEnv{}, err
+		return jujuEnv{}, err
 	}
 	jujuOrigin, err := config.GetString("juju:origin")
 	if err != nil {
-		return JujuEnv{}, err
+		return jujuEnv{}, err
 	}
 	series, err := config.GetString("juju:series")
 	if err != nil {
-		return JujuEnv{}, err
+		return jujuEnv{}, err
 	}
 	imageId, err := config.GetString("juju:image-id")
 	if err != nil {
-		return JujuEnv{}, err
+		return jujuEnv{}, err
 	}
 	instaceType, err := config.GetString("juju:instance-type")
 	if err != nil {
-		return JujuEnv{}, err
+		return jujuEnv{}, err
 	}
 	adminSecret, err := newUUID()
 	if err != nil {
-		return JujuEnv{}, err
+		return jujuEnv{}, err
 	}
 	controlBucket := fmt.Sprintf("juju-%s", adminSecret)
-	return JujuEnv{
+	return jujuEnv{
 		Ec2:           ec2,
 		S3:            s3,
 		JujuOrigin:    jujuOrigin,
@@ -147,8 +147,8 @@ func newJujuEnv(access, secret string) (JujuEnv, error) {
 }
 
 func newEnviron(a *App) error {
-	envs := map[string]map[string]JujuEnv{}
-	file, err := filesystem().OpenFile(EnvironConfPath, syscall.O_CREAT|syscall.O_RDWR, 0600)
+	envs := map[string]map[string]jujuEnv{}
+	file, err := filesystem().OpenFile(environConfPath, syscall.O_CREAT|syscall.O_RDWR, 0600)
 	if err != nil {
 		return err
 	}
@@ -162,7 +162,7 @@ func newEnviron(a *App) error {
 		return err
 	}
 	if _, ok := envs["environments"]; !ok {
-		envs["environments"] = map[string]JujuEnv{}
+		envs["environments"] = map[string]jujuEnv{}
 	}
 	jujuEnv, err := newJujuEnv(a.KeystoneEnv.AccessKey, a.KeystoneEnv.secretKey)
 	if err != nil {

@@ -274,7 +274,7 @@ func (s *S) TestDestroyKeystoneEnv(c *C) {
 		ts.Close()
 		authUrl = ""
 	}()
-	k := KeystoneEnv{
+	k := keystoneEnv{
 		TenantId:  "e60d1f0a-ee74-411c-b879-46aee9502bf9",
 		UserId:    "1b4d1195-7890-4274-831f-ddf8141edecc",
 		AccessKey: "91232f6796b54ca2a2b87ef50548b123",
@@ -291,7 +291,7 @@ func (s *S) TestDestroyKeystoneEnv(c *C) {
 }
 
 func (s *S) TestDestroyKeystoneEnvWithoutEc2Creds(c *C) {
-	k := KeystoneEnv{
+	k := keystoneEnv{
 		TenantId: "e60d1f0a-ee74-411c-b879-46aee9502bf9",
 		UserId:   "1b4d1195-7890-4274-831f-ddf8141edecc",
 	}
@@ -301,7 +301,7 @@ func (s *S) TestDestroyKeystoneEnvWithoutEc2Creds(c *C) {
 }
 
 func (s *S) TestDestroyKeystoneEnvWithoutUserId(c *C) {
-	k := KeystoneEnv{
+	k := keystoneEnv{
 		TenantId:  "e60d1f0a-ee74-411c-b879-46aee9502bf9",
 		AccessKey: "91232f6796b54ca2a2b87ef50548b123",
 	}
@@ -311,7 +311,7 @@ func (s *S) TestDestroyKeystoneEnvWithoutUserId(c *C) {
 }
 
 func (s *S) TestDestroyKeystoneEnvWithoutTenantId(c *C) {
-	k := KeystoneEnv{
+	k := keystoneEnv{
 		UserId:    "1b4d1195-7890-4274-831f-ddf8141edecc",
 		AccessKey: "91232f6796b54ca2a2b87ef50548b123",
 	}

@@ -8,7 +8,7 @@ import (
 	"github.com/timeredbull/tsuru/log"
 )
 
-type KeystoneEnv struct {
+type keystoneEnv struct {
 	TenantId  string
 	UserId    string
 	AccessKey string
@@ -86,7 +86,7 @@ func getClient() (err error) {
 	return
 }
 
-func newKeystoneEnv(name string) (env KeystoneEnv, err error) {
+func newKeystoneEnv(name string) (env keystoneEnv, err error) {
 	err = getClient()
 	if err != nil {
 		return
@@ -112,7 +112,7 @@ func newKeystoneEnv(name string) (env KeystoneEnv, err error) {
 		log.Printf("ERROR: %s", err)
 		return
 	}
-	env = KeystoneEnv{
+	env = keystoneEnv{
 		TenantId:  tenant.Id,
 		UserId:    user.Id,
 		AccessKey: creds.Access,
@@ -121,7 +121,7 @@ func newKeystoneEnv(name string) (env KeystoneEnv, err error) {
 	return
 }
 
-func destroyKeystoneEnv(env *KeystoneEnv) error {
+func destroyKeystoneEnv(env *keystoneEnv) error {
 	if env.AccessKey == "" {
 		return errors.New("Missing EC2 credentials.")
 	}

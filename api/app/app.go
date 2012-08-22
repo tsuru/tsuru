@@ -37,7 +37,7 @@ type App struct {
 	Env         map[string]EnvVar
 	Framework   string
 	JujuEnv     string
-	KeystoneEnv KeystoneEnv
+	KeystoneEnv keystoneEnv
 	Logs        []Log
 	Name        string
 	State       string

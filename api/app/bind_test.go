@@ -38,7 +38,7 @@ func (s *S) TestDestroyShouldUnbindAppFromInstance(c *C) {
 	a, err := NewApp("myApp", "", []string{})
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
-	a.KeystoneEnv = KeystoneEnv{
+	a.KeystoneEnv = keystoneEnv{
 		TenantId:  "e60d1f0a-ee74-411c-b879-46aee9502bf9",
 		UserId:    "1b4d1195-7890-4274-831f-ddf8141edecc",
 		AccessKey: "91232f6796b54ca2a2b87ef50548b123",

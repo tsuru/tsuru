@@ -364,7 +364,7 @@ func SetEnvsToApp(app *App, envs []EnvVar, publicOnly bool) error {
 		if err := db.Session.Apps().Update(bson.M{"name": app.Name}, app); err != nil {
 			return err
 		}
-		mess := Message{
+		mess := message{
 			app: app,
 		}
 		env <- mess
@@ -417,7 +417,7 @@ func UnsetEnvFromApp(app *App, variableNames []string, publicOnly bool) error {
 		if err := db.Session.Apps().Update(bson.M{"name": app.Name}, app); err != nil {
 			return err
 		}
-		mess := Message{
+		mess := message{
 			app: app,
 		}
 		env <- mess
