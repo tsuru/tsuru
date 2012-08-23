@@ -151,7 +151,7 @@ func (s *S) TestNewEnvironShouldKeepExistentsEnvirons(c *C) {
 }
 
 func (s *S) TestEnvironConfPath(c *C) {
-	expected := path.Join(os.ExpandEnv("${HOME}"), ".juju", "environments.yml")
+	expected := path.Join(os.ExpandEnv("${HOME}"), ".juju", "environments.yaml")
 	c.Assert(environConfPath, Equals, expected)
 }
 

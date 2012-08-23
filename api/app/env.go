@@ -26,7 +26,7 @@ type message struct {
 
 var env chan message = make(chan message, ChanSize)
 
-var environConfPath = path.Join(os.ExpandEnv("${HOME}"), ".juju", "environments.yml")
+var environConfPath = path.Join(os.ExpandEnv("${HOME}"), ".juju", "environments.yaml")
 
 type cmd struct {
 	cmd    string
