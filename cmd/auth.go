@@ -90,7 +90,7 @@ func (c *login) Run(context *Context, client Doer) error {
 func (c *login) Info() *Info {
 	return &Info{
 		Name:    "login",
-		Usage:   "login email",
+		Usage:   "login <email>",
 		Desc:    "log in with your credentials.",
 		MinArgs: 1,
 	}
