@@ -102,7 +102,12 @@ func newKeystoneEnv(name string) (env keystoneEnv, err error) {
 	if random, err := randomBytes(64); err == nil {
 		password = fmt.Sprintf("%X", random)
 	}
-	user, err := Client.NewUser(name, password, "", tenant.Id, true)
+	var memberRole string
+	memberRole, err = config.GetString("nova:member-role")
+	if err != nil {
+		return
+	}
+	user, err := Client.NewUser(name, password, "", tenant.Id, memberRole, true)
 	if err != nil {
 		log.Printf("ERROR: %s", err)
 		return
@@ -131,7 +136,12 @@ func destroyKeystoneEnv(env *keystoneEnv) error {
 	if env.TenantId == "" {
 		return errors.New("Missing tenant.")
 	}
-	err := getClient()
+	var memberRole string
+	memberRole, err := config.GetString("nova:member-role")
+	if err != nil {
+		return err
+	}
+	err = getClient()
 	if err != nil {
 		return err
 	}
@@ -139,9 +149,9 @@ func destroyKeystoneEnv(env *keystoneEnv) error {
 	if err != nil {
 		return err
 	}
-	err = Client.RemoveTenant(env.TenantId)
+	err = Client.RemoveUser(env.UserId, env.TenantId, memberRole)
 	if err != nil {
 		return err
 	}
-	return Client.RemoveUser(env.UserId)
+	return Client.RemoveTenant(env.TenantId)
 }
