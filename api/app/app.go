@@ -164,7 +164,7 @@ func (a *App) unbind() error {
 	return nil
 }
 
-func (a *App) Destroy() error {
+func (a *App) destroy() error {
 	multitenant, err := config.GetBool("multi-tenant")
 	if err != nil {
 		return err

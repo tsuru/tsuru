@@ -5,6 +5,7 @@ import (
 	"github.com/timeredbull/tsuru/api/app"
 	"github.com/timeredbull/tsuru/db"
 	"io/ioutil"
+	"labix.org/v2/mgo/bson"
 	. "launchpad.net/gocheck"
 	"path/filepath"
 )
@@ -47,9 +48,9 @@ func getApp(c *C) *app.App {
 
 func (s *S) TestUpdate(c *C) {
 	a := getApp(c)
+	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
 	out := getOutput()
 	update(out)
-
 	err := a.Get()
 	c.Assert(err, IsNil)
 	c.Assert(a.State, Equals, "started")
@@ -59,8 +60,6 @@ func (s *S) TestUpdate(c *C) {
 	c.Assert(a.Units[0].MachineAgentState, Equals, "running")
 	c.Assert(a.Units[0].AgentState, Equals, "started")
 	c.Assert(a.Units[0].InstanceId, Equals, "i-00000zz7")
-
-	a.Destroy()
 }
 
 func (s *S) TestUpdateWithMultipleUnits(c *C) {
@@ -104,7 +103,7 @@ func (s *S) TestUpdateWithDownMachine(c *C) {
 
 func (s *S) TestUpdateTwice(c *C) {
 	a := getApp(c)
-	defer a.Destroy()
+	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
 	out := getOutput()
 	update(out)
 	err := a.Get()

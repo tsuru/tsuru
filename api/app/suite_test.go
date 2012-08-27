@@ -195,7 +195,7 @@ func (s *S) TearDownTest(c *C) {
 	_, err = db.Session.Apps().RemoveAll(nil)
 	c.Assert(err, IsNil)
 	for _, app := range apps {
-		app.Destroy()
+		app.destroy()
 	}
 	Client.Token = ""
 	s.ts.Close()

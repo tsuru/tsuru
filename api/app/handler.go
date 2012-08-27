@@ -100,7 +100,7 @@ func AppDelete(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	if err != nil {
 		return err
 	}
-	err = app.Destroy()
+	err = app.destroy()
 	if err != nil {
 		return err
 	}
