@@ -65,6 +65,7 @@ func (s *S) TestDestroy(c *C) {
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(dir)
 	u := Unit{Name: "duvido", Machine: 3}
+	authorizer := &fakeAuthorizer{}
 	a := App{
 		Name:      "duvido",
 		Framework: "django",
@@ -74,7 +75,7 @@ func (s *S) TestDestroy(c *C) {
 			AccessKey: "91232f6796b54ca2a2b87ef50548b123",
 		},
 		Units:   []Unit{u},
-		ec2Auth: &fakeAuthorizer{},
+		ec2Auth: authorizer,
 	}
 	err = createApp(&a)
 	c.Assert(err, IsNil)
@@ -85,6 +86,7 @@ func (s *S) TestDestroy(c *C) {
 	c.Assert(called["destroy-app-delete-ec2-creds"], Equals, true)
 	c.Assert(called["destroy-app-delete-user"], Equals, true)
 	c.Assert(called["destroy-app-delete-tenant"], Equals, true)
+	c.Assert(authorizer.actions, DeepEquals, []string{"authorize " + a.Name, "unauthorize " + a.Name})
 }
 
 func (s *S) TestDestroyWithMultiTenancyOnCallsJujuDestroyEnvironment(c *C) {

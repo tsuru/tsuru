@@ -7,6 +7,7 @@ import (
 	"github.com/timeredbull/commandmocker"
 	"github.com/timeredbull/tsuru/api/auth"
 	"github.com/timeredbull/tsuru/api/service"
+	"github.com/timeredbull/tsuru/config"
 	"github.com/timeredbull/tsuru/db"
 	"github.com/timeredbull/tsuru/errors"
 	"github.com/timeredbull/tsuru/log"
@@ -14,6 +15,7 @@ import (
 	"io"
 	"io/ioutil"
 	"labix.org/v2/mgo/bson"
+	"launchpad.net/goamz/ec2/ec2test"
 	. "launchpad.net/gocheck"
 	stdlog "log"
 	"net/http"
@@ -231,13 +233,20 @@ func (s *S) TestListShouldReturnStatusNoContentWhenAppListIsNil(c *C) {
 }
 
 func (s *S) TestDelete(c *C) {
+	srv, err := ec2test.NewServer()
+	c.Assert(err, IsNil)
+	defer srv.Quit()
+	old, err := config.GetString("aws:ec2-endpoint")
+	c.Assert(err, IsNil)
+	config.Set("aws:ec2-endpoint", srv.URL())
+	defer config.Set("aws:endpoint", old)
+	createGroup("juju-MyAppToDelete", srv.URL())
 	myApp := App{
 		Name:      "MyAppToDelete",
 		Framework: "django",
 		Teams:     []string{s.team.Name},
-		ec2Auth:   &fakeAuthorizer{},
 	}
-	err := createApp(&myApp)
+	err = createApp(&myApp)
 	c.Assert(err, IsNil)
 	request, err := http.NewRequest("DELETE", "/apps/"+myApp.Name+"?:name="+myApp.Name, nil)
 	c.Assert(err, IsNil)
@@ -280,9 +289,17 @@ func (s *S) TestDeleteShouldReturnNotFoundIfTheAppDoesNotExist(c *C) {
 }
 
 func (s *S) TestDeleteAppRemovesProjectFromAllTeamsInGitosis(c *C) {
+	srv, err := ec2test.NewServer()
+	c.Assert(err, IsNil)
+	defer srv.Quit()
+	old, err := config.GetString("aws:ec2-endpoint")
+	c.Assert(err, IsNil)
+	config.Set("aws:ec2-endpoint", srv.URL())
+	defer config.Set("aws:endpoint", old)
+	createGroup("juju-MyAppToDelete", srv.URL())
 	s.addGroup()
 	myApp := &App{Name: "MyAppToDelete", Framework: "django"}
-	_, err := createAppHelper(myApp, s.user)
+	_, err = createAppHelper(myApp, s.user)
 	c.Assert(err, IsNil)
 	request, err := http.NewRequest("DELETE", "/apps/"+myApp.Name+"?:name="+myApp.Name, nil)
 	c.Assert(err, IsNil)

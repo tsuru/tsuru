@@ -3,6 +3,7 @@ package app
 import (
 	"fmt"
 	"github.com/timeredbull/tsuru/config"
+	"launchpad.net/goamz/aws"
 	"launchpad.net/goamz/ec2"
 	"launchpad.net/goamz/ec2/ec2test"
 	. "launchpad.net/gocheck"
@@ -97,4 +98,12 @@ func (f *fakeEc2Conn) RevokeSecurityGroup(group ec2.SecurityGroup, perms []ec2.I
 		f.actions = append(f.actions, action)
 	}
 	return &ec2.SimpleResp{}, nil
+}
+
+func createGroup(group, endpoint string) error {
+	region := aws.Region{EC2Endpoint: endpoint}
+	auth := aws.Auth{AccessKey: "access", SecretKey: "secret"}
+	ec2Conn := ec2.New(auth, region)
+	_, err := ec2Conn.CreateSecurityGroup(group, "anything")
+	return err
 }
