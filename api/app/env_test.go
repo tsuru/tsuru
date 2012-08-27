@@ -44,6 +44,7 @@ func (s *S) TestDoesNotSendInTheSuccessChannelIfItIsNil(c *C) {
 		Name:      "rainmaker",
 		Framework: "",
 		Teams:     []string{s.team.Name},
+		ec2Auth:   &fakeAuthorizer{},
 	}
 	err = CreateApp(&app)
 	c.Assert(err, IsNil)

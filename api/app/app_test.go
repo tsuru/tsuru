@@ -38,7 +38,7 @@ func (c *hasAccessToChecker) Check(params []interface{}, names []string) (bool, 
 var HasAccessTo Checker = &hasAccessToChecker{}
 
 func (s *S) TestGet(c *C) {
-	newApp := App{Name: "myApp", Framework: "Django"}
+	newApp := App{Name: "myApp", Framework: "Django", ec2Auth: &fakeAuthorizer{}}
 	err := CreateApp(&newApp)
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": newApp.Name})
@@ -73,7 +73,8 @@ func (s *S) TestDestroy(c *C) {
 			UserId:    "1b4d1195-7890-4274-831f-ddf8141edecc",
 			AccessKey: "91232f6796b54ca2a2b87ef50548b123",
 		},
-		Units: []Unit{u},
+		Units:   []Unit{u},
+		ec2Auth: &fakeAuthorizer{},
 	}
 	err = CreateApp(&a)
 	c.Assert(err, IsNil)
@@ -107,6 +108,7 @@ func (s *S) TestDestroyWithMultiTenancyOnCallsJujuDestroyEnvironment(c *C) {
 			UserId:    "1b4d1195-7890-4274-831f-ddf8141edecc",
 			AccessKey: "91232f6796b54ca2a2b87ef50548b123",
 		},
+		ec2Auth: &fakeAuthorizer{},
 	}
 	err = CreateApp(&a)
 	c.Assert(err, IsNil)
@@ -125,6 +127,7 @@ func (s *S) TestDestroyWithnMultiTenancyOnDoesNotDeleteTheAppIfTheDestroyEnviron
 		Name:      "duvido",
 		Framework: "django",
 		Units:     []Unit{u},
+		ec2Auth:   &fakeAuthorizer{},
 	}
 	err = CreateApp(&a)
 	c.Assert(err, IsNil)
@@ -155,6 +158,7 @@ func (s *S) TestDestroyWithMultiTenancyOff(c *C) {
 				Machine: 3,
 			},
 		},
+		ec2Auth: &fakeAuthorizer{},
 	}
 	err = CreateApp(&a)
 	c.Assert(err, IsNil)
@@ -183,6 +187,7 @@ func (s *S) TestDestroyWithMultiTenancyOffDoesNotDeleteTheAppIfJujuFailToDestroy
 		Units: []Unit{
 			Unit{Name: "duvido", Machine: 3},
 		},
+		ec2Auth: &fakeAuthorizer{},
 	}
 	err = CreateApp(&a)
 	c.Assert(err, IsNil)
@@ -230,7 +235,7 @@ func (s *S) TestCantNewAppTwoAppsWithTheSameName(c *C) {
 	err := db.Session.Apps().Insert(bson.M{"name": "appName"})
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": "appName"})
-	a := App{Name: "appName"}
+	a := App{Name: "appName", ec2Auth: &fakeAuthorizer{}}
 	err = CreateApp(&a)
 	c.Assert(err, NotNil)
 }
@@ -243,6 +248,7 @@ func (s *S) TestDoesNotSaveTheAppInTheDatabaseIfJujuFail(c *C) {
 	a := App{
 		Name:      "myapp",
 		Framework: "ruby",
+		ec2Auth:   &fakeAuthorizer{},
 	}
 	err = CreateApp(&a)
 	c.Assert(err, NotNil)
@@ -255,6 +261,7 @@ func (s *S) TestAppendOrUpdate(c *C) {
 	a := App{
 		Name:      "appName",
 		Framework: "django",
+		ec2Auth:   &fakeAuthorizer{},
 	}
 	err := CreateApp(&a)
 	c.Assert(err, IsNil)
@@ -663,6 +670,7 @@ func (s *S) TestUpdateHooks(c *C) {
 			},
 		},
 		JujuEnv: "delta",
+		ec2Auth: &fakeAuthorizer{},
 	}
 	err = CreateApp(&a)
 	c.Assert(err, IsNil)
@@ -674,7 +682,8 @@ func (s *S) TestUpdateHooks(c *C) {
 
 func (s *S) TestLogShouldStoreLog(c *C) {
 	a := App{
-		Name: "newApp",
+		Name:    "newApp",
+		ec2Auth: &fakeAuthorizer{},
 	}
 	err := CreateApp(&a)
 	c.Assert(err, IsNil)
@@ -691,8 +700,9 @@ func (s *S) TestAppShouldStoreUnits(c *C) {
 	u := Unit{Name: "someapp/0", Type: "django"}
 	var instance App
 	a := App{
-		Name:  "someApp",
-		Units: []Unit{u},
+		Name:    "someApp",
+		Units:   []Unit{u},
+		ec2Auth: &fakeAuthorizer{},
 	}
 	err := CreateApp(&a)
 	c.Assert(err, IsNil)
@@ -735,6 +745,7 @@ func (s *S) TestNewAppShouldCreateKeystoneEnv(c *C) {
 		Name:      "pumpkin",
 		Framework: "golang",
 		Teams:     []string{s.team.Name},
+		ec2Auth:   &fakeAuthorizer{},
 	}
 	err := CreateApp(&a)
 	c.Assert(err, IsNil)
@@ -750,6 +761,7 @@ func (s *S) TestNewAppShouldNotCreateKeystoneEnvWhenMultiTenantConfIsFalse(c *C)
 		Name:      "pumpkin",
 		Framework: "golang",
 		Teams:     []string{s.team.Name},
+		ec2Auth:   &fakeAuthorizer{},
 	}
 	err := CreateApp(&a)
 	c.Assert(err, IsNil)
@@ -763,6 +775,7 @@ func (s *S) TestNewAppShouldCreateNewJujuEnvironment(c *C) {
 		Name:      "myApp",
 		Framework: "golang",
 		Teams:     []string{s.team.Name},
+		ec2Auth:   &fakeAuthorizer{},
 	}
 	err := CreateApp(&app)
 	c.Assert(err, IsNil)
@@ -779,6 +792,7 @@ func (s *S) TestNewAppShouldSetAppEnvironToDefaultFromConfWhenMultiTenantIsDisab
 		Name:      "ironic",
 		Framework: "ruby",
 		Teams:     []string{s.team.Name},
+		ec2Auth:   &fakeAuthorizer{},
 	}
 	err = CreateApp(&a)
 	c.Assert(err, IsNil)
