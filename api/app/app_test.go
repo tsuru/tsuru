@@ -695,22 +695,6 @@ func (s *S) TestLogShouldStoreLog(c *C) {
 	c.Assert(instance.Logs[logLen-1].Message, Equals, "last log msg")
 }
 
-// TODO(fsouza): remove this test. Why test if mgo works?!
-func (s *S) TestAppShouldStoreUnits(c *C) {
-	u := Unit{Name: "someapp/0", Type: "django"}
-	var instance App
-	a := App{
-		Name:    "someApp",
-		Units:   []Unit{u},
-		ec2Auth: &fakeAuthorizer{},
-	}
-	err := CreateApp(&a)
-	c.Assert(err, IsNil)
-	err = db.Session.Apps().Find(bson.M{"name": a.Name}).One(&instance)
-	c.Assert(err, IsNil)
-	c.Assert(len(instance.Units), Equals, 1)
-}
-
 func (s *S) TestEnvVarStringPrintPublicValue(c *C) {
 	env := EnvVar{Name: "PATH", Value: "/", Public: true}
 	c.Assert(env.String(), Equals, "PATH=/")
