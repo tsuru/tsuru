@@ -48,6 +48,7 @@ type App struct {
 	State       string
 	Units       []Unit
 	Teams       []string
+	ec2Auth     authorizer
 }
 
 type Log struct {
@@ -270,8 +271,8 @@ func deployHookAbsPath(p string) (string, error) {
 }
 
 /*
-* Returns app.conf located at app's git repository
- */
+ Returns app.conf located at app's git repository
+*/
 func (a *App) conf() (conf, error) {
 	var c conf
 	uRepo, err := repository.GetPath()
