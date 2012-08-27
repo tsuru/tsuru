@@ -444,15 +444,31 @@ func (s *S) TestCreateAppReturns403IfTheUserIsNotMemberOfAnyTeam(c *C) {
 }
 
 func (s *S) TestCreateAppAddsProjectToGroupsInGitosis(c *C) {
+	srv, err := ec2test.NewServer()
+	c.Assert(err, IsNil)
+	defer srv.Quit()
+	old, err := config.GetString("aws:ec2-endpoint")
+	c.Assert(err, IsNil)
+	config.Set("aws:ec2-endpoint", srv.URL())
+	defer config.Set("aws:endpoint", old)
+	createGroup("juju-devincachu", srv.URL())
 	s.addGroup()
 	app := &App{Name: "devincachu", Framework: "django"}
-	_, err := createAppHelper(app, s.user)
+	_, err = createAppHelper(app, s.user)
 	c.Assert(err, IsNil)
 	time.Sleep(1e9)
 	c.Assert("writable = "+app.Name, IsInGitosis)
 }
 
 func (s *S) TestCreateAppCreatesKeystoneEnv(c *C) {
+	srv, err := ec2test.NewServer()
+	c.Assert(err, IsNil)
+	defer srv.Quit()
+	old, err := config.GetString("aws:ec2-endpoint")
+	c.Assert(err, IsNil)
+	config.Set("aws:ec2-endpoint", srv.URL())
+	defer config.Set("aws:endpoint", old)
+	createGroup("juju-someApp", srv.URL())
 	b := strings.NewReader(`{"name":"someApp", "framework":"django"}`)
 	request, err := http.NewRequest("POST", "/apps", b)
 	c.Assert(err, IsNil)
@@ -469,11 +485,19 @@ func (s *S) TestCreateAppCreatesKeystoneEnv(c *C) {
 }
 
 func (s *S) TestCreateAppReturnsConflictWithProperMessageWhenTheAppAlreadyExist(c *C) {
+	srv, err := ec2test.NewServer()
+	c.Assert(err, IsNil)
+	defer srv.Quit()
+	old, err := config.GetString("aws:ec2-endpoint")
+	c.Assert(err, IsNil)
+	config.Set("aws:ec2-endpoint", srv.URL())
+	defer config.Set("aws:endpoint", old)
+	createGroup("juju-plainsofdawn", srv.URL())
 	a := App{
 		Name:    "plainsofdawn",
 		ec2Auth: &fakeAuthorizer{},
 	}
-	err := createApp(&a)
+	err = createApp(&a)
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
 	b := strings.NewReader(`{"name":"plainsofdawn", "framework":"django"}`)
@@ -1966,7 +1990,8 @@ func (s *S) TestRestartHandlerReturns404IfTheAppDoesNotExist(c *C) {
 
 func (s *S) TestRestartHandlerReturns403IfTheUserDoesNotHaveAccessToTheApp(c *C) {
 	a := App{
-		Name: "nightmist",
+		Name:    "nightmist",
+		ec2Auth: &fakeAuthorizer{},
 	}
 	err := createApp(&a)
 	c.Assert(err, IsNil)
