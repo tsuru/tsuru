@@ -159,7 +159,7 @@ func AppInfo(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	return nil
 }
 
-func createApp(app *App, u *auth.User) ([]byte, error) {
+func createAppHelper(app *App, u *auth.User) ([]byte, error) {
 	var teams []auth.Team
 	err := db.Session.Teams().Find(bson.M{"users": u.Email}).All(&teams)
 	if err != nil {
@@ -170,7 +170,7 @@ func createApp(app *App, u *auth.User) ([]byte, error) {
 		return nil, &errors.Http{Code: http.StatusForbidden, Message: msg}
 	}
 	app.setTeams(teams)
-	err = CreateApp(app)
+	err = createApp(app)
 	if err != nil {
 		if strings.Contains(err.Error(), "key error") {
 			msg := fmt.Sprintf(`There is already an app named "%s".`, app.Name)
@@ -199,7 +199,7 @@ func CreateAppHandler(w http.ResponseWriter, r *http.Request, u *auth.User) erro
 	if err != nil {
 		return err
 	}
-	jsonMsg, err := createApp(&app, u)
+	jsonMsg, err := createAppHelper(&app, u)
 	if err != nil {
 		return err
 	}

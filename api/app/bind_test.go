@@ -41,7 +41,7 @@ func (s *S) TestDestroyShouldUnbindAppFromInstance(c *C) {
 		Teams:     []string{},
 		ec2Auth:   &fakeAuthorizer{},
 	}
-	err = CreateApp(&a)
+	err = createApp(&a)
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
 	a.KeystoneEnv = keystoneEnv{

@@ -61,7 +61,7 @@ pos-restart:
 		Teams:     []string{s.team.Name},
 		ec2Auth:   &fakeAuthorizer{},
 	}
-	err = CreateApp(&a)
+	err = createApp(&a)
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
 	a.Units = []Unit{u}
@@ -105,7 +105,7 @@ pos-restart:
 		Teams:     []string{s.team.Name},
 		ec2Auth:   &fakeAuthorizer{},
 	}
-	err = CreateApp(&a)
+	err = createApp(&a)
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
 	a.Units = []Unit{u}
@@ -147,7 +147,7 @@ func (s *S) TestCloneRepositoryShouldReturnNotFoundWhenAppDoesNotExist(c *C) {
 func (s *S) TestAppList(c *C) {
 	u := Unit{Name: "app1/0", Ip: "10.10.10.10"}
 	app1 := App{Name: "app1", Teams: []string{s.team.Name}, Units: []Unit{u}, ec2Auth: &fakeAuthorizer{}}
-	err := CreateApp(&app1)
+	err := createApp(&app1)
 	c.Assert(err, IsNil)
 	app1.Units = []Unit{u}
 	err = db.Session.Apps().Update(bson.M{"name": app1.Name}, &app1)
@@ -159,7 +159,7 @@ func (s *S) TestAppList(c *C) {
 		Teams:   []string{s.team.Name},
 		ec2Auth: &fakeAuthorizer{},
 	}
-	err = CreateApp(&app2)
+	err = createApp(&app2)
 	c.Assert(err, IsNil)
 	app2.Units = []Unit{u2}
 	err = db.Session.Apps().Update(bson.M{"name": app2.Name}, &app2)
@@ -202,7 +202,7 @@ func (s *S) TestAppListShouldListAllAppsOfAllTeamsThatTheUserIsAMember(c *C) {
 		Teams:   []string{s.team.Name, "angra"},
 		ec2Auth: &fakeAuthorizer{},
 	}
-	err = CreateApp(&app1)
+	err = createApp(&app1)
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": app1.Name})
 	request, err := http.NewRequest("GET", "/apps/", nil)
@@ -237,7 +237,7 @@ func (s *S) TestDelete(c *C) {
 		Teams:     []string{s.team.Name},
 		ec2Auth:   &fakeAuthorizer{},
 	}
-	err := CreateApp(&myApp)
+	err := createApp(&myApp)
 	c.Assert(err, IsNil)
 	request, err := http.NewRequest("DELETE", "/apps/"+myApp.Name+"?:name="+myApp.Name, nil)
 	c.Assert(err, IsNil)
@@ -253,7 +253,7 @@ func (s *S) TestDeleteShouldReturnForbiddenIfTheGivenUserDoesNotHaveAccesToTheap
 		Framework: "django",
 		ec2Auth:   &fakeAuthorizer{},
 	}
-	err := CreateApp(&myApp)
+	err := createApp(&myApp)
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": myApp.Name})
 	request, err := http.NewRequest("DELETE", "/apps/"+myApp.Name+"?:name="+myApp.Name, nil)
@@ -282,7 +282,7 @@ func (s *S) TestDeleteShouldReturnNotFoundIfTheAppDoesNotExist(c *C) {
 func (s *S) TestDeleteAppRemovesProjectFromAllTeamsInGitosis(c *C) {
 	s.addGroup()
 	myApp := &App{Name: "MyAppToDelete", Framework: "django"}
-	_, err := createApp(myApp, s.user)
+	_, err := createAppHelper(myApp, s.user)
 	c.Assert(err, IsNil)
 	request, err := http.NewRequest("DELETE", "/apps/"+myApp.Name+"?:name="+myApp.Name, nil)
 	c.Assert(err, IsNil)
@@ -303,7 +303,7 @@ func (s *S) TestDeleteReturnsErrorIfAppDestroyFails(c *C) {
 		Teams:     []string{s.team.Name},
 		ec2Auth:   &fakeAuthorizer{},
 	}
-	err = CreateApp(&myApp)
+	err = createApp(&myApp)
 	c.Assert(err, IsNil)
 	request, err := http.NewRequest("DELETE", "/apps/"+myApp.Name+"?:name="+myApp.Name, nil)
 	c.Assert(err, IsNil)
@@ -322,7 +322,7 @@ func (s *S) TestAppInfo(c *C) {
 		Teams:     []string{s.team.Name},
 		ec2Auth:   &fakeAuthorizer{},
 	}
-	err := CreateApp(&expectedApp)
+	err := createApp(&expectedApp)
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": expectedApp.Name})
 
@@ -350,7 +350,7 @@ func (s *S) TestAppInfoReturnsForbiddenWhenTheUserDoesNotHaveAccessToTheApp(c *C
 		Framework: "django",
 		ec2Auth:   &fakeAuthorizer{},
 	}
-	err := CreateApp(&expectedApp)
+	err := createApp(&expectedApp)
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": expectedApp.Name})
 	request, err := http.NewRequest("GET", "/apps/"+expectedApp.Name+"?:name="+expectedApp.Name, nil)
@@ -429,7 +429,7 @@ func (s *S) TestCreateAppReturns403IfTheUserIsNotMemberOfAnyTeam(c *C) {
 func (s *S) TestCreateAppAddsProjectToGroupsInGitosis(c *C) {
 	s.addGroup()
 	app := &App{Name: "devincachu", Framework: "django"}
-	_, err := createApp(app, s.user)
+	_, err := createAppHelper(app, s.user)
 	c.Assert(err, IsNil)
 	time.Sleep(1e9)
 	c.Assert("writable = "+app.Name, IsInGitosis)
@@ -456,7 +456,7 @@ func (s *S) TestCreateAppReturnsConflictWithProperMessageWhenTheAppAlreadyExist(
 		Name:    "plainsofdawn",
 		ec2Auth: &fakeAuthorizer{},
 	}
-	err := CreateApp(&a)
+	err := createApp(&a)
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
 	b := strings.NewReader(`{"name":"plainsofdawn", "framework":"django"}`)
@@ -483,7 +483,7 @@ func (s *S) TestAddTeamToTheApp(c *C) {
 		Teams:     []string{t.Name},
 		ec2Auth:   &fakeAuthorizer{},
 	}
-	err = CreateApp(&a)
+	err = createApp(&a)
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
 	url := fmt.Sprintf("/apps/%s/%s?:app=%s&:team=%s", a.Name, s.team.Name, a.Name, s.team.Name)
@@ -515,7 +515,7 @@ func (s *S) TestGrantAccessToTeamReturn401IfTheGivenUserDoesNotHasAccessToTheApp
 		Framework: "django",
 		ec2Auth:   &fakeAuthorizer{},
 	}
-	err := CreateApp(&a)
+	err := createApp(&a)
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
 	url := fmt.Sprintf("/apps/%s/%s?:app=%s&:team=%s", a.Name, s.team.Name, a.Name, s.team.Name)
@@ -537,7 +537,7 @@ func (s *S) TestGrantAccessToTeamReturn404IfTheTeamDoesNotExist(c *C) {
 		Teams:     []string{s.team.Name},
 		ec2Auth:   &fakeAuthorizer{},
 	}
-	err := CreateApp(&a)
+	err := createApp(&a)
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
 	url := fmt.Sprintf("/apps/%s/a?:app=%s&:team=a", a.Name, a.Name)
@@ -559,7 +559,7 @@ func (s *S) TestGrantAccessToTeamReturn409IfTheTeamHasAlreadyAccessToTheApp(c *C
 		Teams:     []string{s.team.Name},
 		ec2Auth:   &fakeAuthorizer{},
 	}
-	err := CreateApp(&a)
+	err := createApp(&a)
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
 	url := fmt.Sprintf("/apps/%s/%s?:app=%s&:team=%s", a.Name, s.team.Name, a.Name, s.team.Name)
@@ -585,7 +585,7 @@ func (s *S) TestGrantAccessToAppAddsTheProjectInGitosis(c *C) {
 		Teams:     []string{t.Name},
 		ec2Auth:   &fakeAuthorizer{},
 	}
-	err = CreateApp(&a)
+	err = createApp(&a)
 	c.Assert(err, IsNil)
 	err = grantAccessToTeam(a.Name, s.team.Name, s.user)
 	c.Assert(err, IsNil)
@@ -604,7 +604,7 @@ func (s *S) TestRevokeAccessFromTeam(c *C) {
 		Teams:     []string{s.team.Name, "abcd"},
 		ec2Auth:   &fakeAuthorizer{},
 	}
-	err = CreateApp(&a)
+	err = createApp(&a)
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
 	url := fmt.Sprintf("/apps/%s/%s?:app=%s&:team=%s", a.Name, s.team.Name, a.Name, s.team.Name)
@@ -635,7 +635,7 @@ func (s *S) TestRevokeAccessFromTeamReturn401IfTheGivenUserDoesNotHavePermission
 		Framework: "django",
 		ec2Auth:   &fakeAuthorizer{},
 	}
-	err := CreateApp(&a)
+	err := createApp(&a)
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
 	url := fmt.Sprintf("/apps/%s/%s?:app=%s&:team=%s", a.Name, s.team.Name, a.Name, s.team.Name)
@@ -657,7 +657,7 @@ func (s *S) TestRevokeAccessFromTeamReturn404IfTheTeamDoesNotExist(c *C) {
 		Teams:     []string{s.team.Name},
 		ec2Auth:   &fakeAuthorizer{},
 	}
-	err := CreateApp(&a)
+	err := createApp(&a)
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
 	url := fmt.Sprintf("/apps/%s/x?:app=%s&:team=x", a.Name, a.Name)
@@ -684,7 +684,7 @@ func (s *S) TestRevokeAccessFromTeamReturn404IfTheTeamDoesNotHaveAccessToTheApp(
 		Teams:     []string{s.team.Name, t2.Name},
 		ec2Auth:   &fakeAuthorizer{},
 	}
-	err := CreateApp(&a)
+	err := createApp(&a)
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
 	url := fmt.Sprintf("/apps/%s/%s?:app=%s&:team=%s", a.Name, t.Name, a.Name, t.Name)
@@ -705,7 +705,7 @@ func (s *S) TestRevokeAccessFromTeamReturn403IfTheTeamIsTheLastWithAccessToTheAp
 		Teams:     []string{s.team.Name},
 		ec2Auth:   &fakeAuthorizer{},
 	}
-	err := CreateApp(&a)
+	err := createApp(&a)
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
 	url := fmt.Sprintf("/apps/%s/%s?:app=%s&:team=%s", a.Name, s.team.Name, a.Name, s.team.Name)
@@ -732,7 +732,7 @@ func (s *S) TestRevokeAccessFromTeamRemovesTheProjectFromGitosisConf(c *C) {
 		Teams:     []string{t.Name},
 		ec2Auth:   &fakeAuthorizer{},
 	}
-	err = CreateApp(&a)
+	err = createApp(&a)
 	c.Assert(err, IsNil)
 	err = grantAccessToTeam(a.Name, s.team.Name, s.user)
 	c.Assert(err, IsNil)
@@ -760,7 +760,7 @@ func (s *S) TestRunHandlerShouldExecuteTheGivenCommandInTheGivenApp(c *C) {
 		Teams:     []string{s.team.Name},
 		ec2Auth:   &fakeAuthorizer{},
 	}
-	err = CreateApp(&a)
+	err = createApp(&a)
 	c.Assert(err, IsNil)
 	a.Units = []Unit{u}
 	err = db.Session.Apps().Update(bson.M{"name": a.Name}, &a)
@@ -792,7 +792,7 @@ func (s *S) TestRunHandlerShouldFilterOutputFromJuju(c *C) {
 		Teams:     []string{s.team.Name},
 		ec2Auth:   &fakeAuthorizer{},
 	}
-	err = CreateApp(&a)
+	err = createApp(&a)
 	c.Assert(err, IsNil)
 	a.Units = []Unit{u}
 	err = db.Session.Apps().Update(bson.M{"name": a.Name}, &a)
@@ -852,7 +852,7 @@ func (s *S) TestRunHandlerReturnsForbiddenIfTheGivenUserDoesNotHaveAccessToTheAp
 		Framework: "arch enemy",
 		ec2Auth:   &fakeAuthorizer{},
 	}
-	err := CreateApp(&a)
+	err := createApp(&a)
 	c.Assert(err, IsNil)
 	url := fmt.Sprintf("/apps/%s/run/?:name=%s", a.Name, a.Name)
 	request, err := http.NewRequest("POST", url, strings.NewReader("ls"))
@@ -872,7 +872,7 @@ func (s *S) TestGetEnvHandlerGetsEnvironmentVariableFromApp(c *C) {
 		Teams:     []string{s.team.Name},
 		ec2Auth:   &fakeAuthorizer{},
 	}
-	err := CreateApp(&a)
+	err := createApp(&a)
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
 	a.Env = map[string]EnvVar{
@@ -897,7 +897,7 @@ func (s *S) TestGetEnvHandlerShouldAcceptMultipleVariables(c *C) {
 		Teams:   []string{s.team.Name},
 		ec2Auth: &fakeAuthorizer{},
 	}
-	err := CreateApp(&a)
+	err := createApp(&a)
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
 	a.Env = map[string]EnvVar{
@@ -923,7 +923,7 @@ func (s *S) TestGetEnvHandlerReturnsAllVariablesIfEnvironmentVariablesAreMissing
 		Teams:     []string{s.team.Name},
 		ec2Auth:   &fakeAuthorizer{},
 	}
-	err := CreateApp(&a)
+	err := createApp(&a)
 	c.Assert(err, IsNil)
 	a.Env = map[string]EnvVar{
 		"DATABASE_HOST":     EnvVar{Name: "DATABASE_HOST", Value: "localhost", Public: true},
@@ -974,7 +974,7 @@ func (s *S) TestGetEnvHandlerReturnsForbiddenIfTheGivenUserDoesNotHaveAccessToTh
 		Framework: "vougan",
 		ec2Auth:   &fakeAuthorizer{},
 	}
-	err := CreateApp(&a)
+	err := createApp(&a)
 	c.Assert(err, IsNil)
 	url := fmt.Sprintf("/apps/%s/env/?:name=%s", a.Name, a.Name)
 	request, err := http.NewRequest("GET", url, strings.NewReader("DATABASE_HOST"))
@@ -992,7 +992,7 @@ func (s *S) TestSetEnvRespectsThePublicOnlyFlagKeepPrivateVariablesWhenItsTrue(c
 		Name:    "myapp",
 		ec2Auth: &fakeAuthorizer{},
 	}
-	err := CreateApp(&a)
+	err := createApp(&a)
 	c.Assert(err, IsNil)
 	a.Env = map[string]EnvVar{
 		"DATABASE_HOST": EnvVar{
@@ -1039,7 +1039,7 @@ func (s *S) TestSetEnvRespectsThePublicOnlyFlagOverwrittenAllVariablesWhenItsFal
 		Name:    "myapp",
 		ec2Auth: &fakeAuthorizer{},
 	}
-	err := CreateApp(&a)
+	err := createApp(&a)
 	c.Assert(err, IsNil)
 	a.Env = map[string]EnvVar{
 		"DATABASE_HOST": EnvVar{
@@ -1087,7 +1087,7 @@ func (s *S) TestSetEnvHandlerShouldSetAPublicEnvironmentVariableInTheApp(c *C) {
 		Teams:   []string{s.team.Name},
 		ec2Auth: &fakeAuthorizer{},
 	}
-	err := CreateApp(&a)
+	err := createApp(&a)
 	c.Assert(err, IsNil)
 	url := fmt.Sprintf("/apps/%s/env?:name=%s", a.Name, a.Name)
 	request, err := http.NewRequest("POST", url, strings.NewReader("DATABASE_HOST=localhost"))
@@ -1110,7 +1110,7 @@ func (s *S) TestSetEnvHandlerShouldSetMultipleEnvironmentVariablesInTheApp(c *C)
 		Teams:   []string{s.team.Name},
 		ec2Auth: &fakeAuthorizer{},
 	}
-	err := CreateApp(&a)
+	err := createApp(&a)
 	c.Assert(err, IsNil)
 	url := fmt.Sprintf("/apps/%s/env?:name=%s", a.Name, a.Name)
 	request, err := http.NewRequest("POST", url, strings.NewReader("DATABASE_HOST=localhost DATABASE_USER=root"))
@@ -1134,7 +1134,7 @@ func (s *S) TestSetEnvHandlerShouldSupportSpacesInTheEnvironmentVariableValue(c 
 		Teams:   []string{s.team.Name},
 		ec2Auth: &fakeAuthorizer{},
 	}
-	err := CreateApp(&a)
+	err := createApp(&a)
 	c.Assert(err, IsNil)
 	url := fmt.Sprintf("/apps/%s/env?:name=%s", a.Name, a.Name)
 	request, err := http.NewRequest("POST", url, strings.NewReader("DATABASE_HOST=local host DATABASE_USER=root"))
@@ -1158,7 +1158,7 @@ func (s *S) TestSetEnvHandlerShouldSupportValuesWithDot(c *C) {
 		Teams:   []string{s.team.Name},
 		ec2Auth: &fakeAuthorizer{},
 	}
-	err := CreateApp(&a)
+	err := createApp(&a)
 	c.Assert(err, IsNil)
 	url := fmt.Sprintf("/apps/%s/env?:name=%s", a.Name, a.Name)
 	request, err := http.NewRequest("POST", url, strings.NewReader("DATABASE_HOST=http://foo.com:8080"))
@@ -1181,7 +1181,7 @@ func (s *S) TestSetEnvHandlerShouldSupportNumbersOnVariableName(c *C) {
 		Teams:   []string{s.team.Name},
 		ec2Auth: &fakeAuthorizer{},
 	}
-	err := CreateApp(&a)
+	err := createApp(&a)
 	c.Assert(err, IsNil)
 	url := fmt.Sprintf("/apps/%s/env?:name=%s", a.Name, a.Name)
 	request, err := http.NewRequest("POST", url, strings.NewReader("EC2_HOST=http://foo.com:8080"))
@@ -1204,7 +1204,7 @@ func (s *S) TestSetEnvHandlerShouldSupportLowerCasedVariableName(c *C) {
 		Teams:   []string{s.team.Name},
 		ec2Auth: &fakeAuthorizer{},
 	}
-	err := CreateApp(&a)
+	err := createApp(&a)
 	c.Assert(err, IsNil)
 	url := fmt.Sprintf("/apps/%s/env?:name=%s", a.Name, a.Name)
 	request, err := http.NewRequest("POST", url, strings.NewReader("http_proxy=http://my_proxy.com:3128"))
@@ -1234,7 +1234,7 @@ func (s *S) TestSetEnvHandlerShouldNotChangeValueOfPrivateVariables(c *C) {
 		Teams:   []string{s.team.Name},
 		ec2Auth: &fakeAuthorizer{},
 	}
-	err := CreateApp(&a)
+	err := createApp(&a)
 	c.Assert(err, IsNil)
 	a.Env = original
 	err = db.Session.Apps().Update(bson.M{"name": "losers"}, a)
@@ -1294,7 +1294,7 @@ func (s *S) TestSetEnvHandlerReturnsForbiddenIfTheGivenUserDoesNotHaveAccessToTh
 		Name:    "rock-and-roll",
 		ec2Auth: &fakeAuthorizer{},
 	}
-	err := CreateApp(&a)
+	err := createApp(&a)
 	c.Assert(err, IsNil)
 	url := fmt.Sprintf("/apps/%s/env/?:name=%s", a.Name, a.Name)
 	request, err := http.NewRequest("POST", url, strings.NewReader("DATABASE_HOST=localhost"))
@@ -1313,7 +1313,7 @@ func (s *S) TestUnsetEnvHandlerRemovesTheEnvironmentVariablesFromTheApp(c *C) {
 		Teams:   []string{s.team.Name},
 		ec2Auth: &fakeAuthorizer{},
 	}
-	err := CreateApp(&a)
+	err := createApp(&a)
 	c.Assert(err, IsNil)
 	a.Env = map[string]EnvVar{
 		"DATABASE_HOST":     EnvVar{Name: "DATABASE_HOST", Value: "localhost", Public: true},
@@ -1342,7 +1342,7 @@ func (s *S) TestUnsetEnvHandlerRemovesAllGivenEnvironmentVariables(c *C) {
 		Teams:   []string{s.team.Name},
 		ec2Auth: &fakeAuthorizer{},
 	}
-	err := CreateApp(&a)
+	err := createApp(&a)
 	c.Assert(err, IsNil)
 	a.Env = map[string]EnvVar{
 		"DATABASE_HOST":     EnvVar{Name: "DATABASE_HOST", Value: "localhost", Public: true},
@@ -1376,7 +1376,7 @@ func (s *S) TestUnsetHandlerDoesNotRemovePrivateVariables(c *C) {
 		Teams:   []string{s.team.Name},
 		ec2Auth: &fakeAuthorizer{},
 	}
-	err := CreateApp(&a)
+	err := createApp(&a)
 	c.Assert(err, IsNil)
 	a.Env = map[string]EnvVar{
 		"DATABASE_HOST":     EnvVar{Name: "DATABASE_HOST", Value: "localhost", Public: true},
@@ -1409,7 +1409,7 @@ func (s *S) TestUnsetEnvRespectsThePublicOnlyFlagKeepPrivateVariablesWhenItsTrue
 		Name:    "myapp",
 		ec2Auth: &fakeAuthorizer{},
 	}
-	err := CreateApp(&a)
+	err := createApp(&a)
 	c.Assert(err, IsNil)
 	a.Env = map[string]EnvVar{
 		"DATABASE_HOST": EnvVar{
@@ -1444,7 +1444,7 @@ func (s *S) TestUnsetEnvRespectsThePublicOnlyFlagUnsettingAllVariablesWhenItsFal
 		Name:    "myapp",
 		ec2Auth: &fakeAuthorizer{},
 	}
-	err := CreateApp(&a)
+	err := createApp(&a)
 	c.Assert(err, IsNil)
 	a.Env = map[string]EnvVar{
 		"DATABASE_HOST": EnvVar{
@@ -1510,7 +1510,7 @@ func (s *S) TestUnsetEnvHandlerReturnsForbiddenIfTheGivenUserDoesNotHaveAccessTo
 		Name:    "mountain-mama",
 		ec2Auth: &fakeAuthorizer{},
 	}
-	err := CreateApp(&a)
+	err := createApp(&a)
 	c.Assert(err, IsNil)
 	url := fmt.Sprintf("/apps/%s/env/?:name=%s", a.Name, a.Name)
 	request, err := http.NewRequest("POST", url, strings.NewReader("DATABASE_HOST=localhost"))
@@ -1541,7 +1541,7 @@ func (s *S) TestLogReturnsForbiddenIfTheGivenUserDoesNotHaveAccessToTheApp(c *C)
 		Framework: "vougan",
 		ec2Auth:   &fakeAuthorizer{},
 	}
-	err := CreateApp(&a)
+	err := createApp(&a)
 	c.Assert(err, IsNil)
 	url := fmt.Sprintf("/apps/%s/log/?:name=%s", a.Name, a.Name)
 	request, err := http.NewRequest("GET", url, nil)
@@ -1561,7 +1561,7 @@ func (s *S) TestLogShouldAppLog(c *C) {
 		Teams:     []string{s.team.Name},
 		ec2Auth:   &fakeAuthorizer{},
 	}
-	err := CreateApp(&a)
+	err := createApp(&a)
 	c.Assert(err, IsNil)
 	url := fmt.Sprintf("/apps/%s/log/?:name=%s", a.Name, a.Name)
 	request, err := http.NewRequest("GET", url, nil)
@@ -1618,7 +1618,7 @@ func (s *S) TestBindHandler(c *C) {
 		Teams:   []string{s.team.Name},
 		ec2Auth: &fakeAuthorizer{},
 	}
-	err = CreateApp(&a)
+	err = createApp(&a)
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
 	a.Units = []Unit{Unit{Ip: "127.0.0.1"}}
@@ -1659,7 +1659,7 @@ func (s *S) TestBindHandlerReturns404IfTheInstanceDoesNotExist(c *C) {
 		Teams:     []string{s.team.Name},
 		ec2Auth:   &fakeAuthorizer{},
 	}
-	err := CreateApp(&a)
+	err := createApp(&a)
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
 	url := fmt.Sprintf("/services/instances/unknown/%s?:instance=unknown&:app=%s", a.Name, a.Name)
@@ -1685,7 +1685,7 @@ func (s *S) TestBindHandlerReturns403IfTheUserDoesNotHaveAccessToTheInstance(c *
 		Teams:     []string{s.team.Name},
 		ec2Auth:   &fakeAuthorizer{},
 	}
-	err = CreateApp(&a)
+	err = createApp(&a)
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
 	url := fmt.Sprintf("/services/instances/%s/%s?:instance=%s&:app=%s", instance.Name, a.Name, instance.Name, a.Name)
@@ -1727,7 +1727,7 @@ func (s *S) TestBindHandlerReturns403IfTheUserDoesNotHaveAccessToTheApp(c *C) {
 		Framework: "django",
 		ec2Auth:   &fakeAuthorizer{},
 	}
-	err = CreateApp(&a)
+	err = createApp(&a)
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
 	url := fmt.Sprintf("/services/instances/%s/%s?:instance=%s&:app=%s", instance.Name, a.Name, instance.Name, a.Name)
@@ -1766,7 +1766,7 @@ func (s *S) TestUnbindHandler(c *C) {
 		Teams:   []string{s.team.Name},
 		ec2Auth: &fakeAuthorizer{},
 	}
-	err = CreateApp(&a)
+	err = createApp(&a)
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
 	a.Env = map[string]EnvVar{
@@ -1824,7 +1824,7 @@ func (s *S) TestUnbindHandlerReturns404IfTheInstanceDoesNotExist(c *C) {
 		Teams:     []string{s.team.Name},
 		ec2Auth:   &fakeAuthorizer{},
 	}
-	err := CreateApp(&a)
+	err := createApp(&a)
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
 	url := fmt.Sprintf("/services/instances/unknown/%s?:instance=unknown&:app=%s", a.Name, a.Name)
@@ -1850,7 +1850,7 @@ func (s *S) TestUnbindHandlerReturns403IfTheUserDoesNotHaveAccessToTheInstance(c
 		Teams:     []string{s.team.Name},
 		ec2Auth:   &fakeAuthorizer{},
 	}
-	err = CreateApp(&a)
+	err = createApp(&a)
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
 	url := fmt.Sprintf("/services/instances/%s/%s?:instance=%s&:app=%s", instance.Name, a.Name, instance.Name, a.Name)
@@ -1892,7 +1892,7 @@ func (s *S) TestUnbindHandlerReturns403IfTheUserDoesNotHaveAccessToTheApp(c *C) 
 		Framework: "django",
 		ec2Auth:   &fakeAuthorizer{},
 	}
-	err = CreateApp(&a)
+	err = createApp(&a)
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
 	url := fmt.Sprintf("/services/instances/%s/%s?:instance=%s&:app=%s", instance.Name, a.Name, instance.Name, a.Name)
@@ -1916,7 +1916,7 @@ func (s *S) TestRestartHandler(c *C) {
 		Teams:   []string{s.team.Name},
 		ec2Auth: &fakeAuthorizer{},
 	}
-	err = CreateApp(&a)
+	err = createApp(&a)
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
 	a.Units = []Unit{
@@ -1951,7 +1951,7 @@ func (s *S) TestRestartHandlerReturns403IfTheUserDoesNotHaveAccessToTheApp(c *C)
 	a := App{
 		Name: "nightmist",
 	}
-	err := CreateApp(&a)
+	err := createApp(&a)
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
 	url := fmt.Sprintf("/apps/%s/restart?:name=%s", a.Name, a.Name)
@@ -1971,7 +1971,7 @@ func (s *S) TestRestartHandlerReturns412IfTheUnitOfTheAppDoesNotHaveIp(c *C) {
 		Teams:   []string{s.team.Name},
 		ec2Auth: &fakeAuthorizer{},
 	}
-	err := CreateApp(&a)
+	err := createApp(&a)
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
 	a.Units = []Unit{Unit{Ip: "", Machine: 10}}

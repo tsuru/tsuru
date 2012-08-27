@@ -65,7 +65,7 @@ func (a *App) Get() error {
 	return db.Session.Apps().Find(bson.M{"name": a.Name}).One(&a)
 }
 
-// CreateApp creates a new app.
+// createApp creates a new app.
 //
 // Creating a new app is a big process that can be divided in some steps (and
 // two scenarios):
@@ -88,7 +88,7 @@ func (a *App) Get() error {
 //
 // Multi tenancy should be configured in tsuru's conf file
 // (set the "multi-tenant" flag to true or false, as desired).
-func CreateApp(a *App) error {
+func createApp(a *App) error {
 	var err error
 	isMultiTenant, err := config.GetBool("multi-tenant")
 	if err != nil {
