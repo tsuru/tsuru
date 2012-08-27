@@ -196,16 +196,18 @@ func (s *S) TestDestroyWithMultiTenancyOffDoesNotDeleteTheAppIfJujuFailToDestroy
 	c.Assert(err, IsNil)
 }
 
-func (s *S) TestNewApp(c *C) {
+func (s *S) TestCreateApp(c *C) {
 	dir, err := commandmocker.Add("juju", "$*")
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(dir)
 	w := bytes.NewBuffer([]byte{})
 	l := stdlog.New(w, "", stdlog.LstdFlags)
 	log.Target = l
+	authorizer := fakeAuthorizer{}
 	a := App{
 		Name:      "appName",
 		Framework: "django",
+		ec2Auth:   &authorizer,
 	}
 	err = CreateApp(&a)
 	c.Assert(err, IsNil)
@@ -221,6 +223,7 @@ func (s *S) TestNewApp(c *C) {
 	str := strings.Replace(w.String(), "\n", "", -1)
 	c.Assert(str, Matches, ".*bootstraping juju environment appName for the app appName.*")
 	c.Assert(str, Matches, ".*deploy -e appName --repository=/home/charms local:django appName.*")
+	c.Assert(authorizer.actions, DeepEquals, []string{"authorize appName"})
 }
 
 func (s *S) TestCantNewAppTwoAppsWithTheSameName(c *C) {
@@ -800,7 +803,7 @@ type fakeAuthorizer struct {
 }
 
 func (a *fakeAuthorizer) authorize(app *App) error {
-	a.actions = append(a.actions, "authroize "+app.Name)
+	a.actions = append(a.actions, "authorize "+app.Name)
 	return nil
 }
 

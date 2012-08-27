@@ -369,7 +369,7 @@ func (s *S) TestAppInfoReturnsNotFoundWhenAppDoesNotExist(c *C) {
 	c.Assert(e, ErrorMatches, "^App not found$")
 }
 
-func (s *S) TestCreateApp(c *C) {
+func (s *S) TestCreateAppHandler(c *C) {
 	a := App{Name: "someApp"}
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
 

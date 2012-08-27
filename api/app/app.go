@@ -113,6 +113,7 @@ func CreateApp(a *App) error {
 			log.Printf("failed to bootstrap juju environment %s:\n%s", a.JujuEnv, out)
 			return fmt.Errorf("Failed to bootstrap juju env (%s): %s", err, out)
 		}
+		err = a.authorizer().authorize(a)
 	} else {
 		a.JujuEnv, err = config.GetString("juju:default-env")
 		if err != nil {
