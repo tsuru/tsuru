@@ -65,7 +65,7 @@ func (a *App) Get() error {
 	return db.Session.Apps().Find(bson.M{"name": a.Name}).One(&a)
 }
 
-// CreateApp a new app.
+// CreateApp creates a new app.
 //
 // Creating a new app is a big process that can be divided in some steps (and
 // two scenarios):
