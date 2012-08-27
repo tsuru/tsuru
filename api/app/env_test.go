@@ -40,7 +40,12 @@ func (s *S) TestDoesNotSendInTheSuccessChannelIfItIsNil(c *C) {
 	dir, err := commandmocker.Add("juju", output)
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(dir)
-	app, err := NewApp("rainmaker", "", []string{s.team.Name})
+	app := App{
+		Name:      "rainmaker",
+		Framework: "",
+		Teams:     []string{s.team.Name},
+	}
+	err = NewApp(&app)
 	c.Assert(err, IsNil)
 	msg := message{
 		app: &app,

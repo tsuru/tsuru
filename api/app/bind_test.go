@@ -35,7 +35,12 @@ func (s *S) TestDestroyShouldUnbindAppFromInstance(c *C) {
 	err = instance.Create()
 	c.Assert(err, IsNil)
 	defer db.Session.ServiceInstances().Remove(bson.M{"_id": instance.Name})
-	a, err := NewApp("myApp", "", []string{})
+	a := App{
+		Name:      "myApp",
+		Framework: "",
+		Teams:     []string{},
+	}
+	err = NewApp(&a)
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
 	a.KeystoneEnv = keystoneEnv{

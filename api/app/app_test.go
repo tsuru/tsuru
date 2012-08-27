@@ -38,7 +38,8 @@ func (c *hasAccessToChecker) Check(params []interface{}, names []string) (bool, 
 var HasAccessTo Checker = &hasAccessToChecker{}
 
 func (s *S) TestGet(c *C) {
-	newApp, err := NewApp("myApp", "django", []string{})
+	newApp := App{Name: "myApp", Framework: "Django"}
+	err := NewApp(&newApp)
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": newApp.Name})
 	newApp.Env = map[string]EnvVar{}
@@ -64,15 +65,17 @@ func (s *S) TestDestroy(c *C) {
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(dir)
 	u := Unit{Name: "duvido", Machine: 3}
-	a, err := NewApp("duvido", "django", []string{})
-	c.Assert(err, IsNil)
-	a.KeystoneEnv = keystoneEnv{
-		TenantId:  "e60d1f0a-ee74-411c-b879-46aee9502bf9",
-		UserId:    "1b4d1195-7890-4274-831f-ddf8141edecc",
-		AccessKey: "91232f6796b54ca2a2b87ef50548b123",
+	a := App{
+		Name:      "duvido",
+		Framework: "django",
+		KeystoneEnv: keystoneEnv{
+			TenantId:  "e60d1f0a-ee74-411c-b879-46aee9502bf9",
+			UserId:    "1b4d1195-7890-4274-831f-ddf8141edecc",
+			AccessKey: "91232f6796b54ca2a2b87ef50548b123",
+		},
+		Units: []Unit{u},
 	}
-	a.Units = []Unit{u}
-	err = db.Session.Apps().Update(bson.M{"name": a.Name}, &a)
+	err = NewApp(&a)
 	c.Assert(err, IsNil)
 	err = a.Destroy()
 	c.Assert(err, IsNil)
@@ -95,17 +98,19 @@ func (s *S) TestDestroyWithMultiTenancyOnCallsJujuDestroyEnvironment(c *C) {
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(dir)
 	u := Unit{Name: "duvido", Machine: 3}
-	a, err := NewApp("duvido", "django", []string{})
+	a := App{
+		Name:      "duvido",
+		Framework: "django",
+		Units:     []Unit{u},
+		KeystoneEnv: keystoneEnv{
+			TenantId:  "e60d1f0a-ee74-411c-b879-46aee9502bf9",
+			UserId:    "1b4d1195-7890-4274-831f-ddf8141edecc",
+			AccessKey: "91232f6796b54ca2a2b87ef50548b123",
+		},
+	}
+	err = NewApp(&a)
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
-	a.KeystoneEnv = keystoneEnv{
-		TenantId:  "e60d1f0a-ee74-411c-b879-46aee9502bf9",
-		UserId:    "1b4d1195-7890-4274-831f-ddf8141edecc",
-		AccessKey: "91232f6796b54ca2a2b87ef50548b123",
-	}
-	a.Units = []Unit{u}
-	err = db.Session.Apps().Update(bson.M{"name": a.Name}, &a)
-	c.Assert(err, IsNil)
 	err = a.Destroy()
 	c.Assert(err, IsNil)
 	c.Assert(commandmocker.Ran(dir), Equals, true)
@@ -116,12 +121,14 @@ func (s *S) TestDestroyWithnMultiTenancyOnDoesNotDeleteTheAppIfTheDestroyEnviron
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(dir)
 	u := Unit{Name: "duvido", Machine: 3}
-	a, err := NewApp("duvido", "django", []string{})
+	a := App{
+		Name:      "duvido",
+		Framework: "django",
+		Units:     []Unit{u},
+	}
+	err = NewApp(&a)
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
-	a.Units = []Unit{u}
-	err = db.Session.Apps().Update(bson.M{"name": a.Name}, &a)
-	c.Assert(err, IsNil)
 	dir, err = commandmocker.Error("juju", "juju failed to destroy the environment", 1)
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(dir)
@@ -138,11 +145,18 @@ func (s *S) TestDestroyWithMultiTenancyOff(c *C) {
 	defer commandmocker.Remove(dir)
 	config.Set("multi-tenant", false)
 	defer config.Set("multi-tenant", true)
-	a, err := NewApp("ritual", "ruby", []string{s.team.Name})
-	c.Assert(err, IsNil)
-	u := Unit{Name: "duvido", Machine: 3}
-	a.Units = []Unit{u}
-	err = db.Session.Apps().Update(bson.M{"name": a.Name}, &a)
+	a := App{
+		Name:      "ritual",
+		Framework: "ruby",
+		Teams:     []string{s.team.Name},
+		Units: []Unit{
+			Unit{
+				Name:    "duvido",
+				Machine: 3,
+			},
+		},
+	}
+	err = NewApp(&a)
 	c.Assert(err, IsNil)
 	w := bytes.NewBuffer([]byte{})
 	l := stdlog.New(w, "", stdlog.LstdFlags)
@@ -162,11 +176,15 @@ func (s *S) TestDestroyWithMultiTenancyOffDoesNotDeleteTheAppIfJujuFailToDestroy
 	defer commandmocker.Remove(dir)
 	config.Set("multi-tenant", false)
 	defer config.Set("multi-tenant", true)
-	a, err := NewApp("ritual", "ruby", []string{s.team.Name})
-	c.Assert(err, IsNil)
-	u := Unit{Name: "duvido", Machine: 3}
-	a.Units = []Unit{u}
-	err = db.Session.Apps().Update(bson.M{"name": a.Name}, &a)
+	a := App{
+		Name:      "ritual",
+		Framework: "ruby",
+		Teams:     []string{s.team.Name},
+		Units: []Unit{
+			Unit{Name: "duvido", Machine: 3},
+		},
+	}
+	err = NewApp(&a)
 	c.Assert(err, IsNil)
 	dir, err = commandmocker.Error("juju", "juju failed to destroy the service", 1)
 	c.Assert(err, IsNil)
@@ -185,7 +203,11 @@ func (s *S) TestNewApp(c *C) {
 	w := bytes.NewBuffer([]byte{})
 	l := stdlog.New(w, "", stdlog.LstdFlags)
 	log.Target = l
-	a, err := NewApp("appName", "django", []string{})
+	a := App{
+		Name:      "appName",
+		Framework: "django",
+	}
+	err = NewApp(&a)
 	c.Assert(err, IsNil)
 	c.Assert(a.State, Equals, "pending")
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
@@ -202,10 +224,11 @@ func (s *S) TestNewApp(c *C) {
 }
 
 func (s *S) TestCantNewAppTwoAppsWithTheSameName(c *C) {
-	a, err := NewApp("appName", "django", []string{})
+	err := db.Session.Apps().Insert(bson.M{"name": "appName"})
 	c.Assert(err, IsNil)
-	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
-	a, err = NewApp("appName", "django", []string{})
+	defer db.Session.Apps().Remove(bson.M{"name": "appName"})
+	a := App{Name: "appName"}
+	err = NewApp(&a)
 	c.Assert(err, NotNil)
 }
 
@@ -214,7 +237,11 @@ func (s *S) TestDoesNotSaveTheAppInTheDatabaseIfJujuFail(c *C) {
 	dir, err := commandmocker.Error("juju", "juju failed", 1)
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(dir)
-	a, err := NewApp("myapp", "ruby", []string{})
+	a := App{
+		Name:      "myapp",
+		Framework: "ruby",
+	}
+	err = NewApp(&a)
 	c.Assert(err, NotNil)
 	c.Assert(err, ErrorMatches, "^.*juju failed.*$")
 	err = a.Get()
@@ -222,7 +249,11 @@ func (s *S) TestDoesNotSaveTheAppInTheDatabaseIfJujuFail(c *C) {
 }
 
 func (s *S) TestAppendOrUpdate(c *C) {
-	a, err := NewApp("appName", "django", []string{})
+	a := App{
+		Name:      "appName",
+		Framework: "django",
+	}
+	err := NewApp(&a)
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
 	u := Unit{Name: "someapp", Ip: "", Machine: 3, InstanceId: "i-00000zz8"}
@@ -616,13 +647,22 @@ func (s *S) TestUpdateHooks(c *C) {
 	tmpdir, err := commandmocker.Add("juju", "$*")
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(tmpdir)
-	a, err := NewApp("someApp", "django", []string{s.team.Name})
-	c.Assert(err, IsNil)
-	a.JujuEnv = "delta"
-	a.Units = []Unit{
-		Unit{AgentState: "started", MachineAgentState: "running", InstanceState: "running", Machine: 4},
+	a := App{
+		Name:      "someApp",
+		Framework: "django",
+		Teams:     []string{s.team.Name},
+		Units: []Unit{
+			Unit{
+				AgentState:        "started",
+				MachineAgentState: "running",
+				InstanceState:     "running",
+				Machine:           4,
+			},
+		},
+		JujuEnv: "delta",
 	}
-	db.Session.Apps().Update(bson.M{"name": a.Name}, &a)
+	err = NewApp(&a)
+	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
 	out, err := a.updateHooks()
 	c.Assert(err, IsNil)
@@ -630,7 +670,10 @@ func (s *S) TestUpdateHooks(c *C) {
 }
 
 func (s *S) TestLogShouldStoreLog(c *C) {
-	a, err := NewApp("newApp", "", []string{})
+	a := App{
+		Name: "newApp",
+	}
+	err := NewApp(&a)
 	c.Assert(err, IsNil)
 	err = a.Log("last log msg")
 	c.Assert(err, IsNil)
@@ -640,13 +683,15 @@ func (s *S) TestLogShouldStoreLog(c *C) {
 	c.Assert(instance.Logs[logLen-1].Message, Equals, "last log msg")
 }
 
+// TODO(fsouza): remove this test. Why test if mgo works?!
 func (s *S) TestAppShouldStoreUnits(c *C) {
 	u := Unit{Name: "someapp/0", Type: "django"}
 	var instance App
-	a, err := NewApp("someApp", "", []string{})
-	c.Assert(err, IsNil)
-	a.Units = []Unit{u}
-	err = db.Session.Apps().Update(bson.M{"name": a.Name}, &a)
+	a := App{
+		Name:  "someApp",
+		Units: []Unit{u},
+	}
+	err := NewApp(&a)
 	c.Assert(err, IsNil)
 	err = db.Session.Apps().Find(bson.M{"name": a.Name}).One(&instance)
 	c.Assert(err, IsNil)
@@ -683,7 +728,12 @@ func (s *S) TestGetUnits(c *C) {
 }
 
 func (s *S) TestNewAppShouldCreateKeystoneEnv(c *C) {
-	a, err := NewApp("pumpkin", "golang", []string{s.team.Name})
+	a := App{
+		Name:      "pumpkin",
+		Framework: "golang",
+		Teams:     []string{s.team.Name},
+	}
+	err := NewApp(&a)
 	c.Assert(err, IsNil)
 	c.Assert(a.KeystoneEnv.TenantId, Not(Equals), "")
 	c.Assert(a.KeystoneEnv.UserId, Not(Equals), "")
@@ -693,7 +743,12 @@ func (s *S) TestNewAppShouldCreateKeystoneEnv(c *C) {
 func (s *S) TestNewAppShouldNotCreateKeystoneEnvWhenMultiTenantConfIsFalse(c *C) {
 	config.Set("multi-tenant", false)
 	defer config.Set("multi-tenant", true)
-	a, err := NewApp("pumpkin", "golang", []string{s.team.Name})
+	a := App{
+		Name:      "pumpkin",
+		Framework: "golang",
+		Teams:     []string{s.team.Name},
+	}
+	err := NewApp(&a)
 	c.Assert(err, IsNil)
 	c.Assert(a.KeystoneEnv.TenantId, Equals, "")
 	c.Assert(a.KeystoneEnv.UserId, Equals, "")
@@ -701,7 +756,12 @@ func (s *S) TestNewAppShouldNotCreateKeystoneEnvWhenMultiTenantConfIsFalse(c *C)
 }
 
 func (s *S) TestNewAppShouldCreateNewJujuEnvironment(c *C) {
-	app, err := NewApp("myApp", "golang", []string{s.team.Name})
+	app := App{
+		Name:      "myApp",
+		Framework: "golang",
+		Teams:     []string{s.team.Name},
+	}
+	err := NewApp(&app)
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": app.Name})
 	c.Assert(s.rfs.HasAction("openfile "+environConfPath+" with mode 0600"), Equals, true)
@@ -712,7 +772,12 @@ func (s *S) TestNewAppShouldSetAppEnvironToDefaultFromConfWhenMultiTenantIsDisab
 	c.Assert(err, IsNil)
 	config.Set("multi-tenant", false)
 	defer config.Set("multi-tenant", true)
-	a, err := NewApp("ironic", "ruby", []string{s.team.Name})
+	a := App{
+		Name:      "ironic",
+		Framework: "ruby",
+		Teams:     []string{s.team.Name},
+	}
+	err = NewApp(&a)
 	c.Assert(err, IsNil)
 	c.Assert(a.JujuEnv, Equals, defaultEnv)
 }

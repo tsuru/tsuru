@@ -66,44 +66,41 @@ func (a *App) Get() error {
 }
 
 // Creates a new app and save it in database
-func NewApp(name string, framework string, teams []string) (App, error) {
-	a := App{
-		Name:      name,
-		Framework: framework,
-		Teams:     teams,
-	}
+func NewApp(a *App) error {
 	var err error
 	isMultiTenant, err := config.GetBool("multi-tenant")
 	if err != nil {
-		return a, err
+		return err
 	}
 	if isMultiTenant {
 		a.KeystoneEnv, err = newKeystoneEnv(a.Name)
 		if err != nil {
-			return a, err
+			return err
 		}
-		err = newEnviron(&a)
+		err = newEnviron(a)
 		if err != nil {
-			return a, err
+			return err
 		}
-		a.JujuEnv = a.Name
+		if a.JujuEnv == "" {
+			a.JujuEnv = a.Name
+		}
 		cmd := exec.Command("juju", "bootstrap", "-e", a.JujuEnv)
 		log.Printf("bootstraping juju environment %s for the app %s", a.JujuEnv, a.Name)
 		out, err := cmd.CombinedOutput()
 		if err != nil {
 			log.Printf("failed to bootstrap juju environment %s:\n%s", a.JujuEnv, out)
-			return a, fmt.Errorf("Failed to bootstrap juju env (%s): %s", err, out)
+			return fmt.Errorf("Failed to bootstrap juju env (%s): %s", err, out)
 		}
 	} else {
 		a.JujuEnv, err = config.GetString("juju:default-env")
 		if err != nil {
-			return a, err
+			return err
 		}
 	}
 	a.State = "pending"
 	err = db.Session.Apps().Insert(a)
 	if err != nil {
-		return a, err
+		return err
 	}
 	a.Log(fmt.Sprintf("creating app %s", a.Name))
 	cmd := exec.Command("juju", "deploy", "-e", a.JujuEnv, "--repository=/home/charms", "local:"+a.Framework, a.Name)
@@ -113,10 +110,10 @@ func NewApp(name string, framework string, teams []string) (App, error) {
 	if err != nil {
 		a.Log(fmt.Sprintf("juju finished with exit status: %s", err.Error()))
 		db.Session.Apps().Remove(bson.M{"name": a.Name})
-		return a, errors.New(string(out))
+		return errors.New(string(out))
 	}
 	a.Log(fmt.Sprintf("app %s successfully created", a.Name))
-	return a, nil
+	return nil
 }
 
 func (a *App) unbind() error {
