@@ -45,7 +45,7 @@ func (s *S) TestDoesNotSendInTheSuccessChannelIfItIsNil(c *C) {
 		Framework: "",
 		Teams:     []string{s.team.Name},
 	}
-	err = NewApp(&app)
+	err = CreateApp(&app)
 	c.Assert(err, IsNil)
 	msg := message{
 		app: &app,

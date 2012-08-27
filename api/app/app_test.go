@@ -39,7 +39,7 @@ var HasAccessTo Checker = &hasAccessToChecker{}
 
 func (s *S) TestGet(c *C) {
 	newApp := App{Name: "myApp", Framework: "Django"}
-	err := NewApp(&newApp)
+	err := CreateApp(&newApp)
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": newApp.Name})
 	newApp.Env = map[string]EnvVar{}
@@ -75,7 +75,7 @@ func (s *S) TestDestroy(c *C) {
 		},
 		Units: []Unit{u},
 	}
-	err = NewApp(&a)
+	err = CreateApp(&a)
 	c.Assert(err, IsNil)
 	err = a.Destroy()
 	c.Assert(err, IsNil)
@@ -108,7 +108,7 @@ func (s *S) TestDestroyWithMultiTenancyOnCallsJujuDestroyEnvironment(c *C) {
 			AccessKey: "91232f6796b54ca2a2b87ef50548b123",
 		},
 	}
-	err = NewApp(&a)
+	err = CreateApp(&a)
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
 	err = a.Destroy()
@@ -126,7 +126,7 @@ func (s *S) TestDestroyWithnMultiTenancyOnDoesNotDeleteTheAppIfTheDestroyEnviron
 		Framework: "django",
 		Units:     []Unit{u},
 	}
-	err = NewApp(&a)
+	err = CreateApp(&a)
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
 	dir, err = commandmocker.Error("juju", "juju failed to destroy the environment", 1)
@@ -156,7 +156,7 @@ func (s *S) TestDestroyWithMultiTenancyOff(c *C) {
 			},
 		},
 	}
-	err = NewApp(&a)
+	err = CreateApp(&a)
 	c.Assert(err, IsNil)
 	w := bytes.NewBuffer([]byte{})
 	l := stdlog.New(w, "", stdlog.LstdFlags)
@@ -184,7 +184,7 @@ func (s *S) TestDestroyWithMultiTenancyOffDoesNotDeleteTheAppIfJujuFailToDestroy
 			Unit{Name: "duvido", Machine: 3},
 		},
 	}
-	err = NewApp(&a)
+	err = CreateApp(&a)
 	c.Assert(err, IsNil)
 	dir, err = commandmocker.Error("juju", "juju failed to destroy the service", 1)
 	c.Assert(err, IsNil)
@@ -207,7 +207,7 @@ func (s *S) TestNewApp(c *C) {
 		Name:      "appName",
 		Framework: "django",
 	}
-	err = NewApp(&a)
+	err = CreateApp(&a)
 	c.Assert(err, IsNil)
 	c.Assert(a.State, Equals, "pending")
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
@@ -228,7 +228,7 @@ func (s *S) TestCantNewAppTwoAppsWithTheSameName(c *C) {
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": "appName"})
 	a := App{Name: "appName"}
-	err = NewApp(&a)
+	err = CreateApp(&a)
 	c.Assert(err, NotNil)
 }
 
@@ -241,7 +241,7 @@ func (s *S) TestDoesNotSaveTheAppInTheDatabaseIfJujuFail(c *C) {
 		Name:      "myapp",
 		Framework: "ruby",
 	}
-	err = NewApp(&a)
+	err = CreateApp(&a)
 	c.Assert(err, NotNil)
 	c.Assert(err, ErrorMatches, "^.*juju failed.*$")
 	err = a.Get()
@@ -253,7 +253,7 @@ func (s *S) TestAppendOrUpdate(c *C) {
 		Name:      "appName",
 		Framework: "django",
 	}
-	err := NewApp(&a)
+	err := CreateApp(&a)
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
 	u := Unit{Name: "someapp", Ip: "", Machine: 3, InstanceId: "i-00000zz8"}
@@ -661,7 +661,7 @@ func (s *S) TestUpdateHooks(c *C) {
 		},
 		JujuEnv: "delta",
 	}
-	err = NewApp(&a)
+	err = CreateApp(&a)
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
 	out, err := a.updateHooks()
@@ -673,7 +673,7 @@ func (s *S) TestLogShouldStoreLog(c *C) {
 	a := App{
 		Name: "newApp",
 	}
-	err := NewApp(&a)
+	err := CreateApp(&a)
 	c.Assert(err, IsNil)
 	err = a.Log("last log msg")
 	c.Assert(err, IsNil)
@@ -691,7 +691,7 @@ func (s *S) TestAppShouldStoreUnits(c *C) {
 		Name:  "someApp",
 		Units: []Unit{u},
 	}
-	err := NewApp(&a)
+	err := CreateApp(&a)
 	c.Assert(err, IsNil)
 	err = db.Session.Apps().Find(bson.M{"name": a.Name}).One(&instance)
 	c.Assert(err, IsNil)
@@ -733,7 +733,7 @@ func (s *S) TestNewAppShouldCreateKeystoneEnv(c *C) {
 		Framework: "golang",
 		Teams:     []string{s.team.Name},
 	}
-	err := NewApp(&a)
+	err := CreateApp(&a)
 	c.Assert(err, IsNil)
 	c.Assert(a.KeystoneEnv.TenantId, Not(Equals), "")
 	c.Assert(a.KeystoneEnv.UserId, Not(Equals), "")
@@ -748,7 +748,7 @@ func (s *S) TestNewAppShouldNotCreateKeystoneEnvWhenMultiTenantConfIsFalse(c *C)
 		Framework: "golang",
 		Teams:     []string{s.team.Name},
 	}
-	err := NewApp(&a)
+	err := CreateApp(&a)
 	c.Assert(err, IsNil)
 	c.Assert(a.KeystoneEnv.TenantId, Equals, "")
 	c.Assert(a.KeystoneEnv.UserId, Equals, "")
@@ -761,7 +761,7 @@ func (s *S) TestNewAppShouldCreateNewJujuEnvironment(c *C) {
 		Framework: "golang",
 		Teams:     []string{s.team.Name},
 	}
-	err := NewApp(&app)
+	err := CreateApp(&app)
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": app.Name})
 	c.Assert(s.rfs.HasAction("openfile "+environConfPath+" with mode 0600"), Equals, true)
@@ -777,7 +777,7 @@ func (s *S) TestNewAppShouldSetAppEnvironToDefaultFromConfWhenMultiTenantIsDisab
 		Framework: "ruby",
 		Teams:     []string{s.team.Name},
 	}
-	err = NewApp(&a)
+	err = CreateApp(&a)
 	c.Assert(err, IsNil)
 	c.Assert(a.JujuEnv, Equals, defaultEnv)
 }

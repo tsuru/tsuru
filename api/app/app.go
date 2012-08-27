@@ -65,8 +65,30 @@ func (a *App) Get() error {
 	return db.Session.Apps().Find(bson.M{"name": a.Name}).One(&a)
 }
 
-// Creates a new app and save it in database
-func NewApp(a *App) error {
+// CreateApp a new app.
+//
+// Creating a new app is a big process that can be divided in some steps (and
+// two scenarios):
+//
+//   Scenario 1: Multi tenancy enabled
+//
+//       1. Creates keystone credentials for the app
+//       2. Write the juju environment to juju's environments file
+//       3. Bootstrap juju environment
+//       4. Authorizes ssh and http access to the app instance
+//       5. Saves the app in the database
+//       6. Deploys juju charm
+//
+//   Scenario 2: Multi tenancy disabled
+//
+//       1. Sets app juju env to the default juju env (defined in the
+//          tsuru.conf file)
+//       2. Saves the app in the database
+//       3. Deploys juju charm
+//
+// Multi tenancy should be configured in tsuru's conf file
+// (set the "multi-tenant" flag to true or false, as desired).
+func CreateApp(a *App) error {
 	var err error
 	isMultiTenant, err := config.GetBool("multi-tenant")
 	if err != nil {

@@ -40,7 +40,7 @@ func (s *S) TestDestroyShouldUnbindAppFromInstance(c *C) {
 		Framework: "",
 		Teams:     []string{},
 	}
-	err = NewApp(&a)
+	err = CreateApp(&a)
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
 	a.KeystoneEnv = keystoneEnv{
