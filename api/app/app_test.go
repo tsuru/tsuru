@@ -716,3 +716,30 @@ func (s *S) TestNewAppShouldSetAppEnvironToDefaultFromConfWhenMultiTenantIsDisab
 	c.Assert(err, IsNil)
 	c.Assert(a.JujuEnv, Equals, defaultEnv)
 }
+
+func (s *S) TestAuthorizerReturnEc2AuthWhenItsNotNil(c *C) {
+	auth := &fakeAuthorizer{}
+	app := App{Name: "xikin", ec2Auth: auth}
+	got := app.authorizer()
+	c.Assert(got, DeepEquals, auth)
+}
+
+func (s *S) TestAuthorizerInstantiateEc2AuhtorizerWhenEc2AuthIsNul(c *C) {
+	app := App{Name: "chico"}
+	got := app.authorizer()
+	c.Assert(got, FitsTypeOf, &ec2Authorizer{})
+}
+
+type fakeAuthorizer struct {
+	actions []string
+}
+
+func (a *fakeAuthorizer) authorize(app *App) error {
+	a.actions = append(a.actions, "authroize "+app.Name)
+	return nil
+}
+
+func (a *fakeAuthorizer) unauthorize(app *App) error {
+	a.actions = append(a.actions, "unauthorize "+app.Name)
+	return nil
+}

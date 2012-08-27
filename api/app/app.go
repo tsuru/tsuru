@@ -296,6 +296,13 @@ func (a *App) conf() (conf, error) {
 	return c, nil
 }
 
+func (a *App) authorizer() authorizer {
+	if a.ec2Auth == nil {
+		a.ec2Auth = &ec2Authorizer{}
+	}
+	return a.ec2Auth
+}
+
 /*
 * preRestart is responsible for running user's pre-restart script.
 * The path to this script can be found at the app.conf file, at the root of user's app repository.
