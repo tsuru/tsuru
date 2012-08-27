@@ -20,6 +20,11 @@ import (
 
 const confSep = "========"
 
+type authorizer interface {
+	authorize(*App) error
+	unauthorize(*App) error
+}
+
 type EnvVar bind.EnvVar
 
 func (e *EnvVar) String() string {
