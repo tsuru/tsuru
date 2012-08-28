@@ -203,11 +203,28 @@ func (s *S) TestServiceByTeamKindShouldNotReturnsDeletedServices(c *C) {
 }
 
 func (s *S) TestGetServicesByOwnerTeams(c *C) {
-	srvc := Service{Name: "mongodb", Teams: []string{s.team.Name}}
+	srvc := Service{Name: "mongodb", OwnerTeams: []string{s.team.Name}, Endpoint: map[string]string{}, Teams: []string{}}
 	err := srvc.Create()
 	c.Assert(err, IsNil)
 	defer srvc.Delete()
+	srvc2 := Service{Name: "mysql", Teams: []string{s.team.Name}}
+	err = srvc2.Create()
+	c.Assert(err, IsNil)
+	defer srvc2.Delete()
 	services, err := GetServicesByOwnerTeams("owner_teams", s.user)
-	expected := []Service(nil)
+	expected := []Service{srvc}
+	c.Assert(services, DeepEquals, expected)
+}
+
+func (s *S) TestGetServicesByOwnerTeamsShouldNotReturnsDeletedServices(c *C) {
+	service := Service{Name: "mysql", OwnerTeams: []string{s.team.Name}, Endpoint: map[string]string{}, Teams: []string{}}
+	err := service.Create()
+	c.Assert(err, IsNil)
+	deleted_service := Service{Name: "mongodb", OwnerTeams: []string{s.team.Name}}
+	err = deleted_service.Create()
+	c.Assert(err, IsNil)
+	err = deleted_service.Delete()
+	services, err := GetServicesByOwnerTeams("owner_teams", s.user)
+	expected := []Service{service}
 	c.Assert(services, DeepEquals, expected)
 }
