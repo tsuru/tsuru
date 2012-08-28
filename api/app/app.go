@@ -181,9 +181,6 @@ func (a *App) destroy() error {
 		return err
 	}
 	if multitenant {
-		if err = a.authorizer().unauthorize(a); err != nil {
-			return err
-		}
 		if out, err := exec.Command("juju", "destroy-environment", "-e", app.JujuEnv).CombinedOutput(); err != nil {
 			msg := fmt.Sprintf("Failed to destroy juju-environment:\n%s", out)
 			log.Print(msg)

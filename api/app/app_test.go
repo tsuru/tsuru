@@ -86,7 +86,7 @@ func (s *S) TestDestroy(c *C) {
 	c.Assert(called["destroy-app-delete-ec2-creds"], Equals, true)
 	c.Assert(called["destroy-app-delete-user"], Equals, true)
 	c.Assert(called["destroy-app-delete-tenant"], Equals, true)
-	c.Assert(authorizer.actions, DeepEquals, []string{"setCreds access-key-here secret-key-here", "authorize " + a.Name, "unauthorize " + a.Name})
+	c.Assert(authorizer.actions, DeepEquals, []string{"setCreds access-key-here secret-key-here", "authorize " + a.Name})
 }
 
 func (s *S) TestDestroyWithMultiTenancyOnCallsJujuDestroyEnvironment(c *C) {
