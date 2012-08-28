@@ -32,20 +32,27 @@ func (a *ec2Authorizer) connection() ec2Connection {
 }
 
 func (a *ec2Authorizer) authorize(app *App) error {
-	group, perms := a.groupPerms(app)
-	_, err := a.connection().AuthorizeSecurityGroup(group, perms)
-	if e, ok := err.(*ec2.Error); ok {
-		if strings.Contains(e.Message, "This rule already exists in group") {
-			return nil
+	group, slicePerms := a.groupPerms(app)
+	for _, perms := range slicePerms {
+		_, err := a.connection().AuthorizeSecurityGroup(group, perms)
+		if e, ok := err.(*ec2.Error); ok {
+			if !strings.Contains(e.Message, "This rule already exists in group") {
+				return err
+			}
 		}
 	}
-	return err
+	return nil
 }
 
 func (a *ec2Authorizer) unauthorize(app *App) error {
-	group, perms := a.groupPerms(app)
-	_, err := a.connection().RevokeSecurityGroup(group, perms)
-	return err
+	group, slicePerms := a.groupPerms(app)
+	for _, perms := range slicePerms {
+		_, err := a.connection().RevokeSecurityGroup(group, perms)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (a *ec2Authorizer) setCreds(access, secret string) {
@@ -53,18 +60,22 @@ func (a *ec2Authorizer) setCreds(access, secret string) {
 	a.secret = secret
 }
 
-func (a *ec2Authorizer) groupPerms(app *App) (ec2.SecurityGroup, []ec2.IPPerm) {
+func (a *ec2Authorizer) groupPerms(app *App) (ec2.SecurityGroup, [][]ec2.IPPerm) {
 	group := ec2.SecurityGroup{Name: "juju-" + app.JujuEnv}
-	perms := []ec2.IPPerm{
-		ec2.IPPerm{
-			Protocol: "tcp",
-			FromPort: 22,
-			ToPort:   22,
+	perms := [][]ec2.IPPerm{
+		[]ec2.IPPerm{
+			ec2.IPPerm{
+				Protocol: "tcp",
+				FromPort: 22,
+				ToPort:   22,
+			},
 		},
-		ec2.IPPerm{
-			Protocol: "tcp",
-			FromPort: 80,
-			ToPort:   80,
+		[]ec2.IPPerm{
+			ec2.IPPerm{
+				Protocol: "tcp",
+				FromPort: 80,
+				ToPort:   80,
+			},
 		},
 	}
 	return group, perms
