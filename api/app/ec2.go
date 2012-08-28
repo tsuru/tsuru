@@ -5,6 +5,7 @@ import (
 	"github.com/timeredbull/tsuru/log"
 	"launchpad.net/goamz/aws"
 	"launchpad.net/goamz/ec2"
+	"strings"
 )
 
 type ec2Connection interface {
@@ -33,6 +34,11 @@ func (a *ec2Authorizer) connection() ec2Connection {
 func (a *ec2Authorizer) authorize(app *App) error {
 	group, perms := a.groupPerms(app)
 	_, err := a.connection().AuthorizeSecurityGroup(group, perms)
+	if e, ok := err.(*ec2.Error); ok {
+		if strings.Contains(e.Message, "This rule already exists in group") {
+			return nil
+		}
+	}
 	return err
 }
 

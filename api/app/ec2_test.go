@@ -63,6 +63,14 @@ func (s *Ec2Suite) TestEc2AuthorizerAuthorize(c *C) {
 	c.Assert(conn.hasAction(actionHttp), Equals, true)
 }
 
+func (s *Ec2Suite) TestEc2AuhtorizerAuthorizeIgnoresRulesThatAlreadyExist(c *C) {
+	app := App{Name: "military_wives", JujuEnv: "military"}
+	conn := failingEc2Conn{}
+	authorizer := &ec2Authorizer{conn: &conn}
+	err := authorizer.authorize(&app)
+	c.Assert(err, IsNil)
+}
+
 func (s *Ec2Suite) TestEc2AuthorizerUnauthorize(c *C) {
 	app := App{Name: "military_wives", JujuEnv: "military"}
 	conn := fakeEc2Conn{}
@@ -102,6 +110,14 @@ func (f *fakeEc2Conn) RevokeSecurityGroup(group ec2.SecurityGroup, perms []ec2.I
 		f.actions = append(f.actions, action)
 	}
 	return &ec2.SimpleResp{}, nil
+}
+
+type failingEc2Conn struct {
+	fakeEc2Conn
+}
+
+func (f *failingEc2Conn) AuthorizeSecurityGroup(group ec2.SecurityGroup, perms []ec2.IPPerm) (*ec2.SimpleResp, error) {
+	return nil, &ec2.Error{StatusCode: 400, Message: "FAILURE: This rule already exists in group"}
 }
 
 func createGroup(group, endpoint string) error {
