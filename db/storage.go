@@ -88,11 +88,6 @@ func (s *Storage) ServiceInstances() *mgo.Collection {
 	return s.getCollection("service_instances")
 }
 
-// Units returns the units collection from MongoDB.
-func (s *Storage) Units() *mgo.Collection {
-	return s.getCollection("units")
-}
-
 // Users returns the users collection from MongoDB.
 func (s *Storage) Users() *mgo.Collection {
 	emailIndex := mgo.Index{Key: []string{"email"}, Unique: true}

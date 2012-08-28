@@ -114,12 +114,6 @@ func (s *S) TestMethodServiceInstancesShouldReturnServiceInstancesCollection(c *
 	c.Assert(serviceApps, DeepEquals, serviceAppsc)
 }
 
-func (s *S) TestMethodUnitsShouldReturnUnitsCollection(c *C) {
-	units := s.storage.Units()
-	unitsc := s.storage.getCollection("units")
-	c.Assert(units, DeepEquals, unitsc)
-}
-
 func (s *S) TestMethodTeamsShouldReturnTeamsCollection(c *C) {
 	teams := s.storage.Teams()
 	teamsc := s.storage.getCollection("teams")

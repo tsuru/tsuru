@@ -35,6 +35,4 @@ func (s *S) TearDownSuite(c *C) {
 func (s *S) TearDownTest(c *C) {
 	_, err := db.Session.Apps().RemoveAll(nil)
 	c.Assert(err, IsNil)
-	_, err = db.Session.Units().RemoveAll(nil)
-	c.Assert(err, IsNil)
 }
