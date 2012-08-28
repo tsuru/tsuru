@@ -170,6 +170,13 @@ func newEnviron(a *App) error {
 	}
 	envs["environments"][a.Name] = jujuEnv
 	data, err := goyaml.Marshal(&envs)
+	ret, err := file.Seek(0, 0)
+	if err != nil {
+		return err
+	}
+	if ret != 0 {
+		return fmt.Errorf("Unexpected error when creating juju environment for app %s.", a.Name)
+	}
 	n, err := file.Write(data)
 	if err != nil {
 		return err

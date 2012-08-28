@@ -118,7 +118,6 @@ func (s *S) TestNewEnviron(c *C) {
 
 func (s *S) TestNewEnvironShouldKeepExistentsEnvirons(c *C) {
 	expected := map[string]map[string]jujuEnv{}
-	result := map[string]map[string]jujuEnv{}
 	initial := map[string]map[string]jujuEnv{}
 	initial["environments"] = map[string]jujuEnv{}
 	fooEnv, err := newJujuEnv("foo", "foo")
@@ -138,6 +137,8 @@ func (s *S) TestNewEnvironShouldKeepExistentsEnvirons(c *C) {
 	defer func() {
 		fsystem = s.rfs
 	}()
+	expectedData, err := goyaml.Marshal(expected)
+	c.Assert(err, IsNil)
 	a := App{
 		Name: "name",
 		KeystoneEnv: keystoneEnv{
@@ -152,8 +153,7 @@ func (s *S) TestNewEnvironShouldKeepExistentsEnvirons(c *C) {
 	c.Assert(err, IsNil)
 	content, err := ioutil.ReadAll(file)
 	c.Assert(err, IsNil)
-	goyaml.Unmarshal(content, &result)
-	c.Assert(result, DeepEquals, expected)
+	c.Assert(string(content), Equals, string(expectedData))
 }
 
 func (s *S) TestEnvironConfPath(c *C) {
