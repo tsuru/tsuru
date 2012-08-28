@@ -21,10 +21,12 @@ func (s *S) TestFakeFilePointerShouldImplementFileInterface(c *C) {
 	c.Assert(&FakeFile{}, Implements, &file)
 }
 
-func (s *S) TestFakeFileCloseJustReturnNil(c *C) {
+func (s *S) TestFakeFileClose(c *C) {
 	f := &FakeFile{content: "doesn't matter"}
+	f.current = 500
 	err := f.Close()
 	c.Assert(err, IsNil)
+	c.Assert(f.current, Equals, int64(0))
 }
 
 func (s *S) TestFakeFileRead(c *C) {
@@ -35,6 +37,7 @@ func (s *S) TestFakeFileRead(c *C) {
 	c.Assert(err, IsNil)
 	c.Assert(n, Equals, len(content))
 	c.Assert(string(buf[:n]), Equals, content)
+	c.Assert(f.current, Equals, int64(len(content)))
 }
 
 func (s *S) TestFakeFileReadAt(c *C) {
@@ -45,6 +48,7 @@ func (s *S) TestFakeFileReadAt(c *C) {
 	c.Assert(err, IsNil)
 	c.Assert(n, Equals, 4)
 	c.Assert(string(buf), Equals, "cage")
+	c.Assert(f.current, Equals, int64(len(content)))
 }
 
 func (s *S) TestFakeFileSeek(c *C) {
@@ -175,9 +179,11 @@ func (s *S) TestRecordingFsShouldKeepWrittenContent(c *C) {
 	f, _ := fs.Open("/my/file")
 	buf := make([]byte, 16)
 	n, _ := f.Read(buf)
+	f.Close()
 	c.Assert(string(buf[:n]), Equals, "the content")
 	f, _ = fs.Create("/my/file")
 	f.Write([]byte("content the"))
+	f.Close()
 	f, _ = fs.Open("/my/file")
 	n, _ = f.Read(buf)
 	c.Assert(string(buf[:n]), Equals, "content the")

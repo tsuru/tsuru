@@ -31,15 +31,20 @@ func (f *FakeFile) reader() *strings.Reader {
 }
 
 func (f *FakeFile) Close() error {
+	f.current = 0
 	return nil
 }
 
 func (f *FakeFile) Read(p []byte) (n int, err error) {
-	return f.reader().Read(p)
+	n, err = f.reader().Read(p)
+	f.current += int64(n)
+	return
 }
 
 func (f *FakeFile) ReadAt(p []byte, off int64) (n int, err error) {
-	return f.reader().ReadAt(p, off)
+	n, err = f.reader().ReadAt(p, off)
+	f.current += off + int64(n)
+	return
 }
 
 func (f *FakeFile) Seek(offset int64, whence int) (int64, error) {
