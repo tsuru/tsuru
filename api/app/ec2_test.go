@@ -42,9 +42,13 @@ func (s *Ec2Suite) TestEc2AuthorizerConnectionNil(c *C) {
 	defer config.Set("aws:endpoint", old)
 	authorizer := &ec2Authorizer{}
 	authorizer.conn = nil
+	authorizer.setCreds("access-from-test", "secret-from-test")
 	got := authorizer.connection()
 	c.Assert(got, FitsTypeOf, &ec2.EC2{})
 	c.Assert(got.(*ec2.EC2).EC2Endpoint, Equals, srv.URL())
+	c.Assert(got.(*ec2.EC2).EC2Endpoint, Equals, srv.URL())
+	c.Assert(got.(*ec2.EC2).AccessKey, Equals, "access-from-test")
+	c.Assert(got.(*ec2.EC2).SecretKey, Equals, "secret-from-test")
 }
 
 func (s *Ec2Suite) TestEc2AuthorizerAuthorize(c *C) {
@@ -57,6 +61,14 @@ func (s *Ec2Suite) TestEc2AuthorizerAuthorize(c *C) {
 	actionHttp := "authorize group juju-military. Protocol: tcp\nFromPort: 80\nToPort: 80"
 	c.Assert(conn.hasAction(actionSsh), Equals, true)
 	c.Assert(conn.hasAction(actionHttp), Equals, true)
+}
+
+func (s *Ec2Suite) TestEc2AuhtorizerAuthorizeIgnoresRulesThatAlreadyExist(c *C) {
+	app := App{Name: "military_wives", JujuEnv: "military"}
+	conn := failingEc2Conn{}
+	authorizer := &ec2Authorizer{conn: &conn}
+	err := authorizer.authorize(&app)
+	c.Assert(err, IsNil)
 }
 
 func (s *Ec2Suite) TestEc2AuthorizerUnauthorize(c *C) {
@@ -98,6 +110,14 @@ func (f *fakeEc2Conn) RevokeSecurityGroup(group ec2.SecurityGroup, perms []ec2.I
 		f.actions = append(f.actions, action)
 	}
 	return &ec2.SimpleResp{}, nil
+}
+
+type failingEc2Conn struct {
+	fakeEc2Conn
+}
+
+func (f *failingEc2Conn) AuthorizeSecurityGroup(group ec2.SecurityGroup, perms []ec2.IPPerm) (*ec2.SimpleResp, error) {
+	return nil, &ec2.Error{StatusCode: 400, Message: "FAILURE: This rule already exists in group"}
 }
 
 func createGroup(group, endpoint string) error {

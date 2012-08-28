@@ -86,7 +86,7 @@ func (s *S) TestDestroy(c *C) {
 	c.Assert(called["destroy-app-delete-ec2-creds"], Equals, true)
 	c.Assert(called["destroy-app-delete-user"], Equals, true)
 	c.Assert(called["destroy-app-delete-tenant"], Equals, true)
-	c.Assert(authorizer.actions, DeepEquals, []string{"authorize " + a.Name, "unauthorize " + a.Name})
+	c.Assert(authorizer.actions, DeepEquals, []string{"setCreds access-key-here secret-key-here", "authorize " + a.Name, "unauthorize " + a.Name})
 }
 
 func (s *S) TestDestroyWithMultiTenancyOnCallsJujuDestroyEnvironment(c *C) {
@@ -230,7 +230,7 @@ func (s *S) TestCreateApp(c *C) {
 	str := strings.Replace(w.String(), "\n", "", -1)
 	c.Assert(str, Matches, ".*bootstraping juju environment appName for the app appName.*")
 	c.Assert(str, Matches, ".*deploy -e appName --repository=/home/charms local:django appName.*")
-	c.Assert(authorizer.actions, DeepEquals, []string{"authorize appName"})
+	c.Assert(authorizer.actions, DeepEquals, []string{"setCreds access-key-here secret-key-here", "authorize appName"})
 }
 
 func (s *S) TestCantNewAppTwoAppsWithTheSameName(c *C) {
@@ -726,7 +726,7 @@ func (s *S) TestGetUnits(c *C) {
 	c.Assert(app.GetUnits(), DeepEquals, expected)
 }
 
-func (s *S) TestNewAppShouldCreateKeystoneEnv(c *C) {
+func (s *S) TestCreateAppShouldCreateKeystoneEnv(c *C) {
 	a := App{
 		Name:      "pumpkin",
 		Framework: "golang",
@@ -740,7 +740,7 @@ func (s *S) TestNewAppShouldCreateKeystoneEnv(c *C) {
 	c.Assert(a.KeystoneEnv.AccessKey, Not(Equals), "")
 }
 
-func (s *S) TestNewAppShouldNotCreateKeystoneEnvWhenMultiTenantConfIsFalse(c *C) {
+func (s *S) TestCreateAppShouldNotCreateKeystoneEnvWhenMultiTenantConfIsFalse(c *C) {
 	config.Set("multi-tenant", false)
 	defer config.Set("multi-tenant", true)
 	a := App{
@@ -756,7 +756,7 @@ func (s *S) TestNewAppShouldNotCreateKeystoneEnvWhenMultiTenantConfIsFalse(c *C)
 	c.Assert(a.KeystoneEnv.AccessKey, Equals, "")
 }
 
-func (s *S) TestNewAppShouldCreateNewJujuEnvironment(c *C) {
+func (s *S) TestCreateAppShouldCreateNewJujuEnvironment(c *C) {
 	app := App{
 		Name:      "myApp",
 		Framework: "golang",
@@ -769,7 +769,7 @@ func (s *S) TestNewAppShouldCreateNewJujuEnvironment(c *C) {
 	c.Assert(s.rfs.HasAction("openfile "+environConfPath+" with mode 0600"), Equals, true)
 }
 
-func (s *S) TestNewAppShouldSetAppEnvironToDefaultFromConfWhenMultiTenantIsDisabled(c *C) {
+func (s *S) TestCreateAppShouldSetAppEnvironToDefaultFromConfWhenMultiTenantIsDisabled(c *C) {
 	defaultEnv, err := config.GetString("juju:default-env")
 	c.Assert(err, IsNil)
 	config.Set("multi-tenant", false)
@@ -810,4 +810,8 @@ func (a *fakeAuthorizer) authorize(app *App) error {
 func (a *fakeAuthorizer) unauthorize(app *App) error {
 	a.actions = append(a.actions, "unauthorize "+app.Name)
 	return nil
+}
+
+func (a *fakeAuthorizer) setCreds(accessKey string, secretKey string) {
+	a.actions = append(a.actions, "setCreds "+accessKey+" "+secretKey)
 }
