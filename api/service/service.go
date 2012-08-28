@@ -30,8 +30,7 @@ func (s *Service) Get() error {
 
 func (s *Service) Create() error {
 	s.Status = "created"
-	err := db.Session.Services().Insert(s)
-	return err
+	return db.Session.Services().Insert(s)
 }
 
 func (s *Service) Update() error {
