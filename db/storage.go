@@ -9,6 +9,9 @@ import (
 	"sync"
 )
 
+// Session stores the current connection with the database.
+var Session *Storage
+
 // Storage holds the connection with the database.
 type Storage struct {
 	collections map[string]*mgo.Collection
