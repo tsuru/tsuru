@@ -13,18 +13,18 @@ type ec2Connection interface {
 }
 
 type ec2Authorizer struct {
-	conn ec2Connection
+	conn           ec2Connection
+	access, secret string
 }
 
 func (a *ec2Authorizer) connection() ec2Connection {
 	if a.conn == nil {
-		awsConfig, err := config.Get("aws")
+		endpoint, err := config.GetString("aws:ec2-endpoint")
 		if err != nil {
 			log.Panic(err)
 		}
-		m := awsConfig.(map[interface{}]interface{})
-		region := aws.Region{EC2Endpoint: m["ec2-endpoint"].(string)}
-		auth := aws.Auth{AccessKey: m["access-key"].(string), SecretKey: m["secret-key"].(string)}
+		region := aws.Region{EC2Endpoint: endpoint}
+		auth := aws.Auth{AccessKey: a.access, SecretKey: a.secret}
 		a.conn = ec2.New(auth, region)
 	}
 	return a.conn
@@ -40,6 +40,11 @@ func (a *ec2Authorizer) unauthorize(app *App) error {
 	group, perms := a.groupPerms(app)
 	_, err := a.connection().RevokeSecurityGroup(group, perms)
 	return err
+}
+
+func (a *ec2Authorizer) setCreds(access, secret string) {
+	a.access = access
+	a.secret = secret
 }
 
 func (a *ec2Authorizer) groupPerms(app *App) (ec2.SecurityGroup, []ec2.IPPerm) {

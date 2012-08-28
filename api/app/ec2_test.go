@@ -42,9 +42,13 @@ func (s *Ec2Suite) TestEc2AuthorizerConnectionNil(c *C) {
 	defer config.Set("aws:endpoint", old)
 	authorizer := &ec2Authorizer{}
 	authorizer.conn = nil
+	authorizer.setCreds("access-from-test", "secret-from-test")
 	got := authorizer.connection()
 	c.Assert(got, FitsTypeOf, &ec2.EC2{})
 	c.Assert(got.(*ec2.EC2).EC2Endpoint, Equals, srv.URL())
+	c.Assert(got.(*ec2.EC2).EC2Endpoint, Equals, srv.URL())
+	c.Assert(got.(*ec2.EC2).AccessKey, Equals, "access-from-test")
+	c.Assert(got.(*ec2.EC2).SecretKey, Equals, "secret-from-test")
 }
 
 func (s *Ec2Suite) TestEc2AuthorizerAuthorize(c *C) {
