@@ -4,7 +4,6 @@ import (
 	"errors"
 	"github.com/timeredbull/tsuru/api/auth"
 	"github.com/timeredbull/tsuru/db"
-	"github.com/timeredbull/tsuru/log"
 	"labix.org/v2/mgo/bson"
 	"strings"
 )
@@ -22,10 +21,6 @@ type Service struct {
 type ServiceModel struct {
 	Service   string
 	Instances []string
-}
-
-func (s *Service) Log(out []byte) {
-	log.Printf(string(out))
 }
 
 func (s *Service) Get() error {
