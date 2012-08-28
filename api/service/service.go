@@ -104,11 +104,10 @@ func GetServicesByTeamKindAndNoRestriction(teamKind string, u *auth.User) (servi
 	teams, err := u.Teams()
 	teamsNames := auth.GetTeamsNames(teams)
 	q := bson.M{"$or": []bson.M{
-		bson.M{
-			teamKind: bson.M{"$in": teamsNames},
-		},
+		bson.M{teamKind: bson.M{"$in": teamsNames}},
 		bson.M{"is_restricted": false},
 	},
+		"status": bson.M{"$ne": "deleted"},
 	}
 	err = db.Session.Services().Find(q).Select(bson.M{"name": 1}).All(&services)
 	return

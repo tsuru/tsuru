@@ -187,6 +187,21 @@ func (s *S) TestServiceByTeamKindFilteringByTeamsAndNotRetrieveRestrictedService
 	c.Assert(expected, DeepEquals, rSrvc)
 }
 
+func (s *S) TestServiceByTeamKindShouldNotReturnsDeletedServices(c *C) {
+	service := Service{Name: "mysql", Teams: []string{s.team.Name}}
+	err := service.Create()
+	c.Assert(err, IsNil)
+	deleted_service := Service{Name: "firebird", Teams: []string{s.team.Name}}
+	err = deleted_service.Create()
+	c.Assert(err, IsNil)
+	err = deleted_service.Delete()
+	c.Assert(err, IsNil)
+	result, err := GetServicesByTeamKindAndNoRestriction("teams", s.user)
+	c.Assert(err, IsNil)
+	expected := []Service{Service{Name: service.Name}}
+	c.Assert(expected, DeepEquals, result)
+}
+
 func (s *S) TestGetServicesByOwnerTeams(c *C) {
 	srvc := Service{Name: "mongodb", Teams: []string{s.team.Name}}
 	err := srvc.Create()
