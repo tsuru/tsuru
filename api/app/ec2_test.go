@@ -71,18 +71,6 @@ func (s *Ec2Suite) TestEc2AuhtorizerAuthorizeIgnoresRulesThatAlreadyExist(c *C) 
 	c.Assert(err, IsNil)
 }
 
-func (s *Ec2Suite) TestEc2AuthorizerUnauthorize(c *C) {
-	app := App{Name: "military_wives", JujuEnv: "military"}
-	conn := fakeEc2Conn{}
-	authorizer := &ec2Authorizer{conn: &conn}
-	err := authorizer.unauthorize(&app)
-	c.Assert(err, IsNil)
-	actionSsh := "revoke group juju-military. Protocol: tcp\nFromPort: 22\nToPort: 22"
-	actionHttp := "revoke group juju-military. Protocol: tcp\nFromPort: 80\nToPort: 80"
-	c.Assert(conn.hasAction(actionSsh), Equals, true)
-	c.Assert(conn.hasAction(actionHttp), Equals, true)
-}
-
 type fakeEc2Conn struct {
 	actions []string
 }
@@ -99,14 +87,6 @@ func (f *fakeEc2Conn) hasAction(action string) bool {
 func (f *fakeEc2Conn) AuthorizeSecurityGroup(group ec2.SecurityGroup, perms []ec2.IPPerm) (*ec2.SimpleResp, error) {
 	for _, perm := range perms {
 		action := fmt.Sprintf("authorize group %s. Protocol: %s\nFromPort: %d\nToPort: %d", group.Name, perm.Protocol, perm.FromPort, perm.ToPort)
-		f.actions = append(f.actions, action)
-	}
-	return &ec2.SimpleResp{}, nil
-}
-
-func (f *fakeEc2Conn) RevokeSecurityGroup(group ec2.SecurityGroup, perms []ec2.IPPerm) (*ec2.SimpleResp, error) {
-	for _, perm := range perms {
-		action := fmt.Sprintf("revoke group %s. Protocol: %s\nFromPort: %d\nToPort: %d", group.Name, perm.Protocol, perm.FromPort, perm.ToPort)
 		f.actions = append(f.actions, action)
 	}
 	return &ec2.SimpleResp{}, nil

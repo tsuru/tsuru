@@ -807,11 +807,6 @@ func (a *fakeAuthorizer) authorize(app *App) error {
 	return nil
 }
 
-func (a *fakeAuthorizer) unauthorize(app *App) error {
-	a.actions = append(a.actions, "unauthorize "+app.Name)
-	return nil
-}
-
 func (a *fakeAuthorizer) setCreds(accessKey string, secretKey string) {
 	a.actions = append(a.actions, "setCreds "+accessKey+" "+secretKey)
 }

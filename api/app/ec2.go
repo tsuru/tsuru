@@ -10,7 +10,6 @@ import (
 
 type ec2Connection interface {
 	AuthorizeSecurityGroup(ec2.SecurityGroup, []ec2.IPPerm) (*ec2.SimpleResp, error)
-	RevokeSecurityGroup(ec2.SecurityGroup, []ec2.IPPerm) (*ec2.SimpleResp, error)
 }
 
 type ec2Authorizer struct {
@@ -39,17 +38,6 @@ func (a *ec2Authorizer) authorize(app *App) error {
 			if !strings.Contains(e.Message, "This rule already exists in group") {
 				return err
 			}
-		}
-	}
-	return nil
-}
-
-func (a *ec2Authorizer) unauthorize(app *App) error {
-	group, slicePerms := a.groupPerms(app)
-	for _, perms := range slicePerms {
-		_, err := a.connection().RevokeSecurityGroup(group, perms)
-		if err != nil {
-			return err
 		}
 	}
 	return nil

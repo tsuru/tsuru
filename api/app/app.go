@@ -22,7 +22,6 @@ const confSep = "========"
 
 type authorizer interface {
 	authorize(*App) error
-	unauthorize(*App) error
 	setCreds(access string, secret string)
 }
 
