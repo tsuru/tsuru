@@ -180,7 +180,9 @@ func (a *App) destroy() error {
 		return err
 	}
 	if multitenant {
-		if out, err := exec.Command("juju", "destroy-environment", "-e", app.JujuEnv).CombinedOutput(); err != nil {
+		destroyCmd := exec.Command("juju", "destroy-environment", "-e", app.JujuEnv)
+		destroyCmd.Stdin = strings.NewReader("y")
+		if out, err := destroyCmd.CombinedOutput(); err != nil {
 			msg := fmt.Sprintf("Failed to destroy juju-environment:\n%s", out)
 			log.Print(msg)
 			return errors.New(string(out))
