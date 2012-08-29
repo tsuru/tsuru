@@ -1,6 +1,7 @@
 package app
 
 import (
+	"bytes"
 	"github.com/timeredbull/commandmocker"
 	"github.com/timeredbull/tsuru/config"
 	"github.com/timeredbull/tsuru/fs"
@@ -137,8 +138,6 @@ func (s *S) TestNewEnvironShouldKeepExistentsEnvirons(c *C) {
 	defer func() {
 		fsystem = s.rfs
 	}()
-	expectedData, err := goyaml.Marshal(expected)
-	c.Assert(err, IsNil)
 	a := App{
 		Name: "name",
 		KeystoneEnv: keystoneEnv{
@@ -146,6 +145,7 @@ func (s *S) TestNewEnvironShouldKeepExistentsEnvirons(c *C) {
 			secretKey: "secret",
 		},
 	}
+	var result map[string]map[string]jujuEnv
 	err = newEnviron(&a)
 	c.Assert(err, IsNil)
 	c.Assert(rfs.HasAction("openfile "+environConfPath+" with mode 0600"), Equals, true)
@@ -153,7 +153,11 @@ func (s *S) TestNewEnvironShouldKeepExistentsEnvirons(c *C) {
 	c.Assert(err, IsNil)
 	content, err := ioutil.ReadAll(file)
 	c.Assert(err, IsNil)
-	c.Assert(string(content), Equals, string(expectedData))
+	// Issue #127.
+	c.Assert(bytes.Count(content, []byte("environments:")), Equals, 1)
+	err = goyaml.Unmarshal(content, &result)
+	c.Assert(err, IsNil)
+	c.Assert(result, DeepEquals, expected)
 }
 
 func (s *S) TestEnvironConfPath(c *C) {
