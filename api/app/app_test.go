@@ -309,13 +309,13 @@ func (s *S) TestSetEnvNewAppsTheMapIfItIsNil(c *C) {
 	a := App{Name: "how-many-more-times"}
 	c.Assert(a.Env, IsNil)
 	env := EnvVar{Name: "PATH", Value: "/"}
-	a.SetEnv(env)
+	a.setEnv(env)
 	c.Assert(a.Env, NotNil)
 }
 
 func (s *S) TestSetEnvironmentVariableToApp(c *C) {
 	a := App{Name: "appName", Framework: "django"}
-	a.SetEnv(EnvVar{Name: "PATH", Value: "/", Public: true})
+	a.setEnv(EnvVar{Name: "PATH", Value: "/", Public: true})
 	env := a.Env["PATH"]
 	c.Assert(env.Name, Equals, "PATH")
 	c.Assert(env.Value, Equals, "/")
@@ -324,8 +324,8 @@ func (s *S) TestSetEnvironmentVariableToApp(c *C) {
 
 func (s *S) TestGetEnvironmentVariableFromApp(c *C) {
 	a := App{Name: "whole-lotta-love"}
-	a.SetEnv(EnvVar{Name: "PATH", Value: "/"})
-	v, err := a.GetEnv("PATH")
+	a.setEnv(EnvVar{Name: "PATH", Value: "/"})
+	v, err := a.getEnv("PATH")
 	c.Assert(err, IsNil)
 	c.Assert(v.Value, Equals, "/")
 }
@@ -333,13 +333,13 @@ func (s *S) TestGetEnvironmentVariableFromApp(c *C) {
 func (s *S) TestGetEnvReturnsErrorIfTheVariableIsNotDeclared(c *C) {
 	a := App{Name: "what-is-and-what-should-never"}
 	a.Env = make(map[string]EnvVar)
-	_, err := a.GetEnv("PATH")
+	_, err := a.getEnv("PATH")
 	c.Assert(err, NotNil)
 }
 
 func (s *S) TestGetEnvReturnsErrorIfTheEnvironmentMapIsNil(c *C) {
 	a := App{Name: "what-is-and-what-should-never"}
-	_, err := a.GetEnv("PATH")
+	_, err := a.getEnv("PATH")
 	c.Assert(err, NotNil)
 }
 

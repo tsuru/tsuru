@@ -263,7 +263,7 @@ func (a *App) setTeams(teams []auth.Team) {
 	}
 }
 
-func (a *App) SetEnv(env EnvVar) {
+func (a *App) setEnv(env EnvVar) {
 	if a.Env == nil {
 		a.Env = make(map[string]EnvVar)
 	}
@@ -271,12 +271,16 @@ func (a *App) SetEnv(env EnvVar) {
 	a.Log(fmt.Sprintf("setting env %s with value %s", env.Name, env.Value))
 }
 
-func (a *App) GetEnv(name string) (env EnvVar, err error) {
-	var ok bool
+func (a *App) getEnv(name string) (EnvVar, error) {
+	var (
+		env EnvVar
+		err error
+		ok  bool
+	)
 	if env, ok = a.Env[name]; !ok {
 		err = errors.New("Environment variable not declared for this app.")
 	}
-	return
+	return env, err
 }
 
 func (a *App) InstanceEnv(name string) map[string]bind.EnvVar {

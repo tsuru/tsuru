@@ -352,13 +352,13 @@ func setEnvsToApp(app *App, envs []EnvVar, publicOnly bool) error {
 		for _, env := range envs {
 			set := true
 			if publicOnly {
-				e, err := app.GetEnv(env.Name)
+				e, err := app.getEnv(env.Name)
 				if err == nil && !e.Public {
 					set = false
 				}
 			}
 			if set {
-				app.SetEnv(env)
+				app.setEnv(env)
 			}
 		}
 		if err := db.Session.Apps().Update(bson.M{"name": app.Name}, app); err != nil {
@@ -406,7 +406,7 @@ func unsetEnvFromApp(app *App, variableNames []string, publicOnly bool) error {
 	if len(variableNames) > 0 {
 		for _, name := range variableNames {
 			var unset bool
-			e, err := app.GetEnv(name)
+			e, err := app.getEnv(name)
 			if !publicOnly || (err == nil && e.Public) {
 				unset = true
 			}
