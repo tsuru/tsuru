@@ -209,7 +209,7 @@ func (a *App) destroy() error {
 	return <-unbindCh
 }
 
-func (a *App) AddOrUpdateUnit(u *Unit) {
+func (a *App) AddUnit(u *Unit) {
 	for i, unt := range a.Units {
 		if unt.Machine == u.Machine {
 			a.Units[i] = *u

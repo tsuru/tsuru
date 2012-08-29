@@ -269,10 +269,10 @@ func (s *S) TestAppendOrUpdate(c *C) {
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
 	u := Unit{Name: "someapp", Ip: "", Machine: 3, InstanceId: "i-00000zz8"}
-	a.AddOrUpdateUnit(&u)
+	a.AddUnit(&u)
 	c.Assert(len(a.Units), Equals, 1)
 	u = Unit{Name: "someapp", Ip: "192.168.0.12", Machine: 3, InstanceId: "i-00000zz8", MachineAgentState: "running"}
-	a.AddOrUpdateUnit(&u)
+	a.AddUnit(&u)
 	c.Assert(len(a.Units), Equals, 1)
 	c.Assert(a.Units[0], DeepEquals, u)
 }

@@ -53,7 +53,7 @@ func update(out *output) {
 			}
 			u.AgentState = yUnit.AgentState
 			a.State = u.State()
-			a.AddOrUpdateUnit(&u)
+			a.AddUnit(&u)
 			db.Session.Apps().Update(bson.M{"name": a.Name}, a)
 		}
 	}
