@@ -3,7 +3,7 @@ package app
 import (
 	"errors"
 	"fmt"
-	"github.com/timeredbull/keystone"
+	"github.com/timeredbull/openstack/keystone"
 	"github.com/timeredbull/tsuru/config"
 	"github.com/timeredbull/tsuru/log"
 )
