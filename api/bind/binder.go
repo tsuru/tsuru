@@ -2,7 +2,7 @@ package bind
 
 import "fmt"
 
-// AppContainer provides methdos for a container of apps.
+// AppContainer provides methods for a container of apps.
 //
 // The container stores only the names of the apps.
 type AppContainer interface {
