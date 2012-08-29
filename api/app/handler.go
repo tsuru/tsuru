@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/timeredbull/tsuru/api/auth"
+	"github.com/timeredbull/tsuru/api/bind"
 	"github.com/timeredbull/tsuru/api/service"
 	"github.com/timeredbull/tsuru/db"
 	"github.com/timeredbull/tsuru/errors"
@@ -323,7 +324,7 @@ func GetEnv(w http.ResponseWriter, r *http.Request, u *auth.User) (err error) {
 	if err != nil {
 		return err
 	}
-	var write = func(v EnvVar) error {
+	var write = func(v bind.EnvVar) error {
 		_, err := fmt.Fprintf(w, "%s\n", &v)
 		return err
 	}
@@ -347,7 +348,7 @@ func GetEnv(w http.ResponseWriter, r *http.Request, u *auth.User) (err error) {
 	return nil
 }
 
-func setEnvsToApp(app *App, envs []EnvVar, publicOnly bool) error {
+func setEnvsToApp(app *App, envs []bind.EnvVar, publicOnly bool) error {
 	if len(envs) > 0 {
 		for _, env := range envs {
 			set := true
@@ -394,10 +395,10 @@ func SetEnv(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 		return err
 	}
 	variables := regex.FindAllStringSubmatch(string(body), -1)
-	envs := make([]EnvVar, len(variables))
+	envs := make([]bind.EnvVar, len(variables))
 	for i, v := range variables {
 		parts := strings.Split(v[1], "=")
-		envs[i] = EnvVar{Name: parts[0], Value: parts[1], Public: true}
+		envs[i] = bind.EnvVar{Name: parts[0], Value: parts[1], Public: true}
 	}
 	return setEnvsToApp(&app, envs, true)
 }

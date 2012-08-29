@@ -1,5 +1,7 @@
 package bind
 
+import "fmt"
+
 // AppContainer provides methdos for a container of apps.
 //
 // The container stores only the names of the apps.
@@ -20,6 +22,17 @@ type EnvVar struct {
 	Value        string
 	Public       bool
 	InstanceName string
+}
+
+func (e *EnvVar) String() string {
+	var value, suffix string
+	if e.Public {
+		value = e.Value
+	} else {
+		value = "***"
+		suffix = " (private variable)"
+	}
+	return fmt.Sprintf("%s=%s%s", e.Name, value, suffix)
 }
 
 type Unit interface {

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/timeredbull/commandmocker"
 	"github.com/timeredbull/tsuru/api/auth"
+	"github.com/timeredbull/tsuru/api/bind"
 	"github.com/timeredbull/tsuru/api/service"
 	"github.com/timeredbull/tsuru/config"
 	"github.com/timeredbull/tsuru/db"
@@ -916,10 +917,10 @@ func (s *S) TestGetEnvHandlerGetsEnvironmentVariableFromApp(c *C) {
 	err := createApp(&a)
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
-	a.Env = map[string]EnvVar{
-		"DATABASE_HOST":     EnvVar{Name: "DATABASE_HOST", Value: "localhost", Public: true},
-		"DATABASE_USER":     EnvVar{Name: "DATABASE_USER", Value: "root", Public: true},
-		"DATABASE_PASSWORD": EnvVar{Name: "DATABASE_PASSWORD", Value: "secret", Public: false},
+	a.Env = map[string]bind.EnvVar{
+		"DATABASE_HOST":     bind.EnvVar{Name: "DATABASE_HOST", Value: "localhost", Public: true},
+		"DATABASE_USER":     bind.EnvVar{Name: "DATABASE_USER", Value: "root", Public: true},
+		"DATABASE_PASSWORD": bind.EnvVar{Name: "DATABASE_PASSWORD", Value: "secret", Public: false},
 	}
 	err = db.Session.Apps().Update(bson.M{"name": a.Name}, a)
 	c.Assert(err, IsNil)
@@ -941,10 +942,10 @@ func (s *S) TestGetEnvHandlerShouldAcceptMultipleVariables(c *C) {
 	err := createApp(&a)
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
-	a.Env = map[string]EnvVar{
-		"DATABASE_HOST":     EnvVar{Name: "DATABASE_HOST", Value: "localhost", Public: true},
-		"DATABASE_USER":     EnvVar{Name: "DATABASE_USER", Value: "root", Public: true},
-		"DATABASE_PASSWORD": EnvVar{Name: "DATABASE_PASSWORD", Value: "secret", Public: false},
+	a.Env = map[string]bind.EnvVar{
+		"DATABASE_HOST":     bind.EnvVar{Name: "DATABASE_HOST", Value: "localhost", Public: true},
+		"DATABASE_USER":     bind.EnvVar{Name: "DATABASE_USER", Value: "root", Public: true},
+		"DATABASE_PASSWORD": bind.EnvVar{Name: "DATABASE_PASSWORD", Value: "secret", Public: false},
 	}
 	err = db.Session.Apps().Update(bson.M{"name": a.Name}, a)
 	c.Assert(err, IsNil)
@@ -966,10 +967,10 @@ func (s *S) TestGetEnvHandlerReturnsAllVariablesIfEnvironmentVariablesAreMissing
 	}
 	err := createApp(&a)
 	c.Assert(err, IsNil)
-	a.Env = map[string]EnvVar{
-		"DATABASE_HOST":     EnvVar{Name: "DATABASE_HOST", Value: "localhost", Public: true},
-		"DATABASE_USER":     EnvVar{Name: "DATABASE_USER", Value: "root", Public: true},
-		"DATABASE_PASSWORD": EnvVar{Name: "DATABASE_PASSWORD", Value: "secret", Public: false},
+	a.Env = map[string]bind.EnvVar{
+		"DATABASE_HOST":     bind.EnvVar{Name: "DATABASE_HOST", Value: "localhost", Public: true},
+		"DATABASE_USER":     bind.EnvVar{Name: "DATABASE_USER", Value: "root", Public: true},
+		"DATABASE_PASSWORD": bind.EnvVar{Name: "DATABASE_PASSWORD", Value: "secret", Public: false},
 	}
 	err = db.Session.Apps().Update(bson.M{"name": "time"}, a)
 	c.Assert(err, IsNil)
@@ -1035,8 +1036,8 @@ func (s *S) TestSetEnvRespectsThePublicOnlyFlagKeepPrivateVariablesWhenItsTrue(c
 	}
 	err := createApp(&a)
 	c.Assert(err, IsNil)
-	a.Env = map[string]EnvVar{
-		"DATABASE_HOST": EnvVar{
+	a.Env = map[string]bind.EnvVar{
+		"DATABASE_HOST": bind.EnvVar{
 			Name:   "DATABASE_HOST",
 			Value:  "localhost",
 			Public: false,
@@ -1044,13 +1045,13 @@ func (s *S) TestSetEnvRespectsThePublicOnlyFlagKeepPrivateVariablesWhenItsTrue(c
 	}
 	err = db.Session.Apps().Update(bson.M{"name": "myapp"}, a)
 	c.Assert(err, IsNil)
-	envs := []EnvVar{
-		EnvVar{
+	envs := []bind.EnvVar{
+		bind.EnvVar{
 			Name:   "DATABASE_HOST",
 			Value:  "remotehost",
 			Public: false,
 		},
-		EnvVar{
+		bind.EnvVar{
 			Name:   "DATABASE_PASSWORD",
 			Value:  "123",
 			Public: true,
@@ -1060,13 +1061,13 @@ func (s *S) TestSetEnvRespectsThePublicOnlyFlagKeepPrivateVariablesWhenItsTrue(c
 	c.Assert(err, IsNil)
 	err = a.Get()
 	c.Assert(err, IsNil)
-	expected := map[string]EnvVar{
-		"DATABASE_HOST": EnvVar{
+	expected := map[string]bind.EnvVar{
+		"DATABASE_HOST": bind.EnvVar{
 			Name:   "DATABASE_HOST",
 			Value:  "localhost",
 			Public: false,
 		},
-		"DATABASE_PASSWORD": EnvVar{
+		"DATABASE_PASSWORD": bind.EnvVar{
 			Name:   "DATABASE_PASSWORD",
 			Value:  "123",
 			Public: true,
@@ -1082,8 +1083,8 @@ func (s *S) TestSetEnvRespectsThePublicOnlyFlagOverwrittenAllVariablesWhenItsFal
 	}
 	err := createApp(&a)
 	c.Assert(err, IsNil)
-	a.Env = map[string]EnvVar{
-		"DATABASE_HOST": EnvVar{
+	a.Env = map[string]bind.EnvVar{
+		"DATABASE_HOST": bind.EnvVar{
 			Name:   "DATABASE_HOST",
 			Value:  "localhost",
 			Public: false,
@@ -1091,13 +1092,13 @@ func (s *S) TestSetEnvRespectsThePublicOnlyFlagOverwrittenAllVariablesWhenItsFal
 	}
 	err = db.Session.Apps().Update(bson.M{"name": "myapp"}, a)
 	c.Assert(err, IsNil)
-	envs := []EnvVar{
-		EnvVar{
+	envs := []bind.EnvVar{
+		bind.EnvVar{
 			Name:   "DATABASE_HOST",
 			Value:  "remotehost",
 			Public: true,
 		},
-		EnvVar{
+		bind.EnvVar{
 			Name:   "DATABASE_PASSWORD",
 			Value:  "123",
 			Public: true,
@@ -1107,13 +1108,13 @@ func (s *S) TestSetEnvRespectsThePublicOnlyFlagOverwrittenAllVariablesWhenItsFal
 	c.Assert(err, IsNil)
 	err = a.Get()
 	c.Assert(err, IsNil)
-	expected := map[string]EnvVar{
-		"DATABASE_HOST": EnvVar{
+	expected := map[string]bind.EnvVar{
+		"DATABASE_HOST": bind.EnvVar{
 			Name:   "DATABASE_HOST",
 			Value:  "remotehost",
 			Public: true,
 		},
-		"DATABASE_PASSWORD": EnvVar{
+		"DATABASE_PASSWORD": bind.EnvVar{
 			Name:   "DATABASE_PASSWORD",
 			Value:  "123",
 			Public: true,
@@ -1139,8 +1140,8 @@ func (s *S) TestSetEnvHandlerShouldSetAPublicEnvironmentVariableInTheApp(c *C) {
 	app := &App{Name: "black-dog"}
 	err = app.Get()
 	c.Assert(err, IsNil)
-	expected := map[string]EnvVar{
-		"DATABASE_HOST": EnvVar{Name: "DATABASE_HOST", Value: "localhost", Public: true},
+	expected := map[string]bind.EnvVar{
+		"DATABASE_HOST": bind.EnvVar{Name: "DATABASE_HOST", Value: "localhost", Public: true},
 	}
 	c.Assert(app.Env, DeepEquals, expected)
 }
@@ -1162,9 +1163,9 @@ func (s *S) TestSetEnvHandlerShouldSetMultipleEnvironmentVariablesInTheApp(c *C)
 	app := &App{Name: "vigil"}
 	err = app.Get()
 	c.Assert(err, IsNil)
-	expected := map[string]EnvVar{
-		"DATABASE_HOST": EnvVar{Name: "DATABASE_HOST", Value: "localhost", Public: true},
-		"DATABASE_USER": EnvVar{Name: "DATABASE_USER", Value: "root", Public: true},
+	expected := map[string]bind.EnvVar{
+		"DATABASE_HOST": bind.EnvVar{Name: "DATABASE_HOST", Value: "localhost", Public: true},
+		"DATABASE_USER": bind.EnvVar{Name: "DATABASE_USER", Value: "root", Public: true},
 	}
 	c.Assert(app.Env, DeepEquals, expected)
 }
@@ -1186,9 +1187,9 @@ func (s *S) TestSetEnvHandlerShouldSupportSpacesInTheEnvironmentVariableValue(c 
 	app := &App{Name: "loser"}
 	err = app.Get()
 	c.Assert(err, IsNil)
-	expected := map[string]EnvVar{
-		"DATABASE_HOST": EnvVar{Name: "DATABASE_HOST", Value: "local host", Public: true},
-		"DATABASE_USER": EnvVar{Name: "DATABASE_USER", Value: "root", Public: true},
+	expected := map[string]bind.EnvVar{
+		"DATABASE_HOST": bind.EnvVar{Name: "DATABASE_HOST", Value: "local host", Public: true},
+		"DATABASE_USER": bind.EnvVar{Name: "DATABASE_USER", Value: "root", Public: true},
 	}
 	c.Assert(app.Env, DeepEquals, expected)
 }
@@ -1210,8 +1211,8 @@ func (s *S) TestSetEnvHandlerShouldSupportValuesWithDot(c *C) {
 	app := &App{Name: "losers"}
 	err = app.Get()
 	c.Assert(err, IsNil)
-	expected := map[string]EnvVar{
-		"DATABASE_HOST": EnvVar{Name: "DATABASE_HOST", Value: "http://foo.com:8080", Public: true},
+	expected := map[string]bind.EnvVar{
+		"DATABASE_HOST": bind.EnvVar{Name: "DATABASE_HOST", Value: "http://foo.com:8080", Public: true},
 	}
 	c.Assert(app.Env, DeepEquals, expected)
 }
@@ -1233,8 +1234,8 @@ func (s *S) TestSetEnvHandlerShouldSupportNumbersOnVariableName(c *C) {
 	app := &App{Name: "blinded"}
 	err = app.Get()
 	c.Assert(err, IsNil)
-	expected := map[string]EnvVar{
-		"EC2_HOST": EnvVar{Name: "EC2_HOST", Value: "http://foo.com:8080", Public: true},
+	expected := map[string]bind.EnvVar{
+		"EC2_HOST": bind.EnvVar{Name: "EC2_HOST", Value: "http://foo.com:8080", Public: true},
 	}
 	c.Assert(app.Env, DeepEquals, expected)
 }
@@ -1256,15 +1257,15 @@ func (s *S) TestSetEnvHandlerShouldSupportLowerCasedVariableName(c *C) {
 	app := &App{Name: "fragments"}
 	err = app.Get()
 	c.Assert(err, IsNil)
-	expected := map[string]EnvVar{
-		"http_proxy": EnvVar{Name: "http_proxy", Value: "http://my_proxy.com:3128", Public: true},
+	expected := map[string]bind.EnvVar{
+		"http_proxy": bind.EnvVar{Name: "http_proxy", Value: "http://my_proxy.com:3128", Public: true},
 	}
 	c.Assert(app.Env, DeepEquals, expected)
 }
 
 func (s *S) TestSetEnvHandlerShouldNotChangeValueOfPrivateVariables(c *C) {
-	original := map[string]EnvVar{
-		"DATABASE_HOST": EnvVar{
+	original := map[string]bind.EnvVar{
+		"DATABASE_HOST": bind.EnvVar{
 			Name:   "DATABASE_HOST",
 			Value:  "privatehost.com",
 			Public: false,
@@ -1356,10 +1357,10 @@ func (s *S) TestUnsetEnvHandlerRemovesTheEnvironmentVariablesFromTheApp(c *C) {
 	}
 	err := createApp(&a)
 	c.Assert(err, IsNil)
-	a.Env = map[string]EnvVar{
-		"DATABASE_HOST":     EnvVar{Name: "DATABASE_HOST", Value: "localhost", Public: true},
-		"DATABASE_USER":     EnvVar{Name: "DATABASE_USER", Value: "root", Public: true},
-		"DATABASE_PASSWORD": EnvVar{Name: "DATABASE_PASSWORD", Value: "secret", Public: false},
+	a.Env = map[string]bind.EnvVar{
+		"DATABASE_HOST":     bind.EnvVar{Name: "DATABASE_HOST", Value: "localhost", Public: true},
+		"DATABASE_USER":     bind.EnvVar{Name: "DATABASE_USER", Value: "root", Public: true},
+		"DATABASE_PASSWORD": bind.EnvVar{Name: "DATABASE_PASSWORD", Value: "secret", Public: false},
 	}
 	err = db.Session.Apps().Update(bson.M{"name": "swift"}, a)
 	c.Assert(err, IsNil)
@@ -1385,10 +1386,10 @@ func (s *S) TestUnsetEnvHandlerRemovesAllGivenEnvironmentVariables(c *C) {
 	}
 	err := createApp(&a)
 	c.Assert(err, IsNil)
-	a.Env = map[string]EnvVar{
-		"DATABASE_HOST":     EnvVar{Name: "DATABASE_HOST", Value: "localhost", Public: true},
-		"DATABASE_USER":     EnvVar{Name: "DATABASE_USER", Value: "root", Public: true},
-		"DATABASE_PASSWORD": EnvVar{Name: "DATABASE_PASSWORD", Value: "secret", Public: false},
+	a.Env = map[string]bind.EnvVar{
+		"DATABASE_HOST":     bind.EnvVar{Name: "DATABASE_HOST", Value: "localhost", Public: true},
+		"DATABASE_USER":     bind.EnvVar{Name: "DATABASE_USER", Value: "root", Public: true},
+		"DATABASE_PASSWORD": bind.EnvVar{Name: "DATABASE_PASSWORD", Value: "secret", Public: false},
 	}
 	err = db.Session.Apps().Update(bson.M{"name": "let-it-be"}, a)
 	c.Assert(err, IsNil)
@@ -1400,8 +1401,8 @@ func (s *S) TestUnsetEnvHandlerRemovesAllGivenEnvironmentVariables(c *C) {
 	c.Assert(err, IsNil)
 	app := App{Name: "let-it-be"}
 	err = app.Get()
-	expected := map[string]EnvVar{
-		"DATABASE_PASSWORD": EnvVar{
+	expected := map[string]bind.EnvVar{
+		"DATABASE_PASSWORD": bind.EnvVar{
 			Name:   "DATABASE_PASSWORD",
 			Value:  "secret",
 			Public: false,
@@ -1419,10 +1420,10 @@ func (s *S) TestUnsetHandlerDoesNotRemovePrivateVariables(c *C) {
 	}
 	err := createApp(&a)
 	c.Assert(err, IsNil)
-	a.Env = map[string]EnvVar{
-		"DATABASE_HOST":     EnvVar{Name: "DATABASE_HOST", Value: "localhost", Public: true},
-		"DATABASE_USER":     EnvVar{Name: "DATABASE_USER", Value: "root", Public: true},
-		"DATABASE_PASSWORD": EnvVar{Name: "DATABASE_PASSWORD", Value: "secret", Public: false},
+	a.Env = map[string]bind.EnvVar{
+		"DATABASE_HOST":     bind.EnvVar{Name: "DATABASE_HOST", Value: "localhost", Public: true},
+		"DATABASE_USER":     bind.EnvVar{Name: "DATABASE_USER", Value: "root", Public: true},
+		"DATABASE_PASSWORD": bind.EnvVar{Name: "DATABASE_PASSWORD", Value: "secret", Public: false},
 	}
 	err = db.Session.Apps().Update(bson.M{"name": "let-it-be"}, a)
 	c.Assert(err, IsNil)
@@ -1434,8 +1435,8 @@ func (s *S) TestUnsetHandlerDoesNotRemovePrivateVariables(c *C) {
 	c.Assert(err, IsNil)
 	app := App{Name: "let-it-be"}
 	err = app.Get()
-	expected := map[string]EnvVar{
-		"DATABASE_PASSWORD": EnvVar{
+	expected := map[string]bind.EnvVar{
+		"DATABASE_PASSWORD": bind.EnvVar{
 			Name:   "DATABASE_PASSWORD",
 			Value:  "secret",
 			Public: false,
@@ -1452,13 +1453,13 @@ func (s *S) TestUnsetEnvRespectsThePublicOnlyFlagKeepPrivateVariablesWhenItsTrue
 	}
 	err := createApp(&a)
 	c.Assert(err, IsNil)
-	a.Env = map[string]EnvVar{
-		"DATABASE_HOST": EnvVar{
+	a.Env = map[string]bind.EnvVar{
+		"DATABASE_HOST": bind.EnvVar{
 			Name:   "DATABASE_HOST",
 			Value:  "localhost",
 			Public: false,
 		},
-		"DATABASE_PASSWORD": EnvVar{
+		"DATABASE_PASSWORD": bind.EnvVar{
 			Name:   "DATABASE_PASSWORD",
 			Value:  "123",
 			Public: true,
@@ -1470,8 +1471,8 @@ func (s *S) TestUnsetEnvRespectsThePublicOnlyFlagKeepPrivateVariablesWhenItsTrue
 	c.Assert(err, IsNil)
 	err = a.Get()
 	c.Assert(err, IsNil)
-	expected := map[string]EnvVar{
-		"DATABASE_HOST": EnvVar{
+	expected := map[string]bind.EnvVar{
+		"DATABASE_HOST": bind.EnvVar{
 			Name:   "DATABASE_HOST",
 			Value:  "localhost",
 			Public: false,
@@ -1487,13 +1488,13 @@ func (s *S) TestUnsetEnvRespectsThePublicOnlyFlagUnsettingAllVariablesWhenItsFal
 	}
 	err := createApp(&a)
 	c.Assert(err, IsNil)
-	a.Env = map[string]EnvVar{
-		"DATABASE_HOST": EnvVar{
+	a.Env = map[string]bind.EnvVar{
+		"DATABASE_HOST": bind.EnvVar{
 			Name:   "DATABASE_HOST",
 			Value:  "localhost",
 			Public: false,
 		},
-		"DATABASE_PASSWORD": EnvVar{
+		"DATABASE_PASSWORD": bind.EnvVar{
 			Name:   "DATABASE_PASSWORD",
 			Value:  "123",
 			Public: true,
@@ -1505,7 +1506,7 @@ func (s *S) TestUnsetEnvRespectsThePublicOnlyFlagUnsettingAllVariablesWhenItsFal
 	c.Assert(err, IsNil)
 	err = a.Get()
 	c.Assert(err, IsNil)
-	c.Assert(a.Env, DeepEquals, map[string]EnvVar{})
+	c.Assert(a.Env, DeepEquals, map[string]bind.EnvVar{})
 }
 
 func (s *S) TestUnsetEnvHandlerReturnsInternalErrorIfReadAllFails(c *C) {
@@ -1676,14 +1677,14 @@ func (s *S) TestBindHandler(c *C) {
 	c.Assert(instance.Apps, DeepEquals, []string{a.Name})
 	err = db.Session.Apps().Find(bson.M{"name": a.Name}).One(&a)
 	c.Assert(err, IsNil)
-	expectedEnv := map[string]EnvVar{
-		"DATABASE_USER": EnvVar{
+	expectedEnv := map[string]bind.EnvVar{
+		"DATABASE_USER": bind.EnvVar{
 			Name:         "DATABASE_USER",
 			Value:        "root",
 			Public:       false,
 			InstanceName: instance.Name,
 		},
-		"DATABASE_PASSWORD": EnvVar{
+		"DATABASE_PASSWORD": bind.EnvVar{
 			Name:         "DATABASE_PASSWORD",
 			Value:        "s3cr3t",
 			Public:       false,
@@ -1810,14 +1811,14 @@ func (s *S) TestUnbindHandler(c *C) {
 	err = createApp(&a)
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
-	a.Env = map[string]EnvVar{
-		"DATABASE_HOST": EnvVar{
+	a.Env = map[string]bind.EnvVar{
+		"DATABASE_HOST": bind.EnvVar{
 			Name:         "DATABASE_HOST",
 			Value:        "arrea",
 			Public:       false,
 			InstanceName: instance.Name,
 		},
-		"MY_VAR": EnvVar{
+		"MY_VAR": bind.EnvVar{
 			Name:  "MY_VAR",
 			Value: "123",
 		},
@@ -1836,8 +1837,8 @@ func (s *S) TestUnbindHandler(c *C) {
 	c.Assert(instance.Apps, DeepEquals, []string{})
 	err = db.Session.Apps().Find(bson.M{"name": a.Name}).One(&a)
 	c.Assert(err, IsNil)
-	expected := map[string]EnvVar{
-		"MY_VAR": EnvVar{
+	expected := map[string]bind.EnvVar{
+		"MY_VAR": bind.EnvVar{
 			Name:  "MY_VAR",
 			Value: "123",
 		},

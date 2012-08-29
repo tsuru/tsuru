@@ -4,6 +4,7 @@ import (
 	"github.com/timeredbull/commandmocker"
 	"github.com/timeredbull/tsuru/api/app"
 	"github.com/timeredbull/tsuru/api/auth"
+	"github.com/timeredbull/tsuru/api/bind"
 	"github.com/timeredbull/tsuru/api/service"
 	"github.com/timeredbull/tsuru/db"
 	"github.com/timeredbull/tsuru/errors"
@@ -144,14 +145,14 @@ func (s *S) TestBindCallTheServiceAPIAndSetsEnvironmentVariableReturnedFromTheCa
 	c.Assert(err, IsNil)
 	err = db.Session.Apps().Find(bson.M{"name": a.Name}).One(&a)
 	c.Assert(err, IsNil)
-	expectedEnv := map[string]app.EnvVar{
-		"DATABASE_USER": app.EnvVar{
+	expectedEnv := map[string]bind.EnvVar{
+		"DATABASE_USER": bind.EnvVar{
 			Name:         "DATABASE_USER",
 			Value:        "root",
 			Public:       false,
 			InstanceName: instance.Name,
 		},
-		"DATABASE_PASSWORD": app.EnvVar{
+		"DATABASE_PASSWORD": bind.EnvVar{
 			Name:         "DATABASE_PASSWORD",
 			Value:        "s3cr3t",
 			Public:       false,
@@ -257,14 +258,14 @@ func (s *S) TestUnbindRemovesEnvironmentVariableFromApp(c *C) {
 	a := app.App{
 		Name:  "painkiller",
 		Teams: []string{s.team.Name},
-		Env: map[string]app.EnvVar{
-			"DATABASE_HOST": app.EnvVar{
+		Env: map[string]bind.EnvVar{
+			"DATABASE_HOST": bind.EnvVar{
 				Name:         "DATABASE_HOST",
 				Value:        "arrea",
 				Public:       false,
 				InstanceName: instance.Name,
 			},
-			"MY_VAR": app.EnvVar{
+			"MY_VAR": bind.EnvVar{
 				Name:  "MY_VAR",
 				Value: "123",
 			},
@@ -282,8 +283,8 @@ func (s *S) TestUnbindRemovesEnvironmentVariableFromApp(c *C) {
 	c.Assert(err, IsNil)
 	err = db.Session.Apps().Find(bson.M{"name": a.Name}).One(&a)
 	c.Assert(err, IsNil)
-	expected := map[string]app.EnvVar{
-		"MY_VAR": app.EnvVar{
+	expected := map[string]bind.EnvVar{
+		"MY_VAR": bind.EnvVar{
 			Name:  "MY_VAR",
 			Value: "123",
 		},

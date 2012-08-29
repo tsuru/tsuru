@@ -43,7 +43,7 @@ func (s *S) TestGet(c *C) {
 	err := createApp(&newApp)
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": newApp.Name})
-	newApp.Env = map[string]EnvVar{}
+	newApp.Env = map[string]bind.EnvVar{}
 	newApp.Logs = []applog{}
 	err = db.Session.Apps().Update(bson.M{"name": newApp.Name}, &newApp)
 	c.Assert(err, IsNil)
@@ -316,14 +316,14 @@ func (s *S) TestRevokeAccessFailsIfTheTeamsDoesNotHaveAccessToTheApp(c *C) {
 func (s *S) TestSetEnvNewAppsTheMapIfItIsNil(c *C) {
 	a := App{Name: "how-many-more-times"}
 	c.Assert(a.Env, IsNil)
-	env := EnvVar{Name: "PATH", Value: "/"}
+	env := bind.EnvVar{Name: "PATH", Value: "/"}
 	a.setEnv(env)
 	c.Assert(a.Env, NotNil)
 }
 
 func (s *S) TestSetEnvironmentVariableToApp(c *C) {
 	a := App{Name: "appName", Framework: "django"}
-	a.setEnv(EnvVar{Name: "PATH", Value: "/", Public: true})
+	a.setEnv(bind.EnvVar{Name: "PATH", Value: "/", Public: true})
 	env := a.Env["PATH"]
 	c.Assert(env.Name, Equals, "PATH")
 	c.Assert(env.Value, Equals, "/")
@@ -332,7 +332,7 @@ func (s *S) TestSetEnvironmentVariableToApp(c *C) {
 
 func (s *S) TestGetEnvironmentVariableFromApp(c *C) {
 	a := App{Name: "whole-lotta-love"}
-	a.setEnv(EnvVar{Name: "PATH", Value: "/"})
+	a.setEnv(bind.EnvVar{Name: "PATH", Value: "/"})
 	v, err := a.getEnv("PATH")
 	c.Assert(err, IsNil)
 	c.Assert(v.Value, Equals, "/")
@@ -340,7 +340,7 @@ func (s *S) TestGetEnvironmentVariableFromApp(c *C) {
 
 func (s *S) TestGetEnvReturnsErrorIfTheVariableIsNotDeclared(c *C) {
 	a := App{Name: "what-is-and-what-should-never"}
-	a.Env = make(map[string]EnvVar)
+	a.Env = make(map[string]bind.EnvVar)
 	_, err := a.getEnv("PATH")
 	c.Assert(err, NotNil)
 }
@@ -352,10 +352,10 @@ func (s *S) TestGetEnvReturnsErrorIfTheEnvironmentMapIsNil(c *C) {
 }
 
 func (s *S) TestInstanceEnvironmentReturnEnvironmentVariablesForTheServer(c *C) {
-	envs := map[string]EnvVar{
-		"DATABASE_HOST": EnvVar{Name: "DATABASE_HOST", Value: "localhost", Public: false, InstanceName: "mysql"},
-		"DATABASE_USER": EnvVar{Name: "DATABASE_USER", Value: "root", Public: true, InstanceName: "mysql"},
-		"HOST":          EnvVar{Name: "HOST", Value: "10.0.2.1", Public: false, InstanceName: "redis"},
+	envs := map[string]bind.EnvVar{
+		"DATABASE_HOST": bind.EnvVar{Name: "DATABASE_HOST", Value: "localhost", Public: false, InstanceName: "mysql"},
+		"DATABASE_USER": bind.EnvVar{Name: "DATABASE_USER", Value: "root", Public: true, InstanceName: "mysql"},
+		"HOST":          bind.EnvVar{Name: "HOST", Value: "10.0.2.1", Public: false, InstanceName: "redis"},
 	}
 	expected := map[string]bind.EnvVar{
 		"DATABASE_HOST": bind.EnvVar{Name: "DATABASE_HOST", Value: "localhost", Public: false, InstanceName: "mysql"},
@@ -703,16 +703,6 @@ func (s *S) TestLogShouldStoreLog(c *C) {
 	err = db.Session.Apps().Find(bson.M{"name": a.Name}).One(&instance)
 	logLen := len(instance.Logs)
 	c.Assert(instance.Logs[logLen-1].Message, Equals, "last log msg")
-}
-
-func (s *S) TestEnvVarStringPrintPublicValue(c *C) {
-	env := EnvVar{Name: "PATH", Value: "/", Public: true}
-	c.Assert(env.String(), Equals, "PATH=/")
-}
-
-func (s *S) TestEnvVarStringMaskPrivateValue(c *C) {
-	env := EnvVar{Name: "PATH", Value: "/", Public: false}
-	c.Assert(env.String(), Equals, "PATH=*** (private variable)")
 }
 
 func (s *S) TestGetTeams(c *C) {

@@ -26,21 +26,8 @@ type authorizer interface {
 	setCreds(access string, secret string)
 }
 
-type EnvVar bind.EnvVar
-
-func (e *EnvVar) String() string {
-	var value, suffix string
-	if e.Public {
-		value = e.Value
-	} else {
-		value = "***"
-		suffix = " (private variable)"
-	}
-	return fmt.Sprintf("%s=%s%s", e.Name, value, suffix)
-}
-
 type App struct {
-	Env         map[string]EnvVar
+	Env         map[string]bind.EnvVar
 	Framework   string
 	JujuEnv     string
 	KeystoneEnv keystoneEnv
@@ -265,17 +252,17 @@ func (a *App) setTeams(teams []auth.Team) {
 	}
 }
 
-func (a *App) setEnv(env EnvVar) {
+func (a *App) setEnv(env bind.EnvVar) {
 	if a.Env == nil {
-		a.Env = make(map[string]EnvVar)
+		a.Env = make(map[string]bind.EnvVar)
 	}
 	a.Env[env.Name] = env
 	a.log(fmt.Sprintf("setting env %s with value %s", env.Name, env.Value))
 }
 
-func (a *App) getEnv(name string) (EnvVar, error) {
+func (a *App) getEnv(name string) (bind.EnvVar, error) {
 	var (
-		env EnvVar
+		env bind.EnvVar
 		err error
 		ok  bool
 	)
@@ -434,9 +421,9 @@ func (a *App) GetName() string {
 }
 
 func (a *App) SetEnvs(envs []bind.EnvVar, publicOnly bool) error {
-	e := make([]EnvVar, len(envs))
+	e := make([]bind.EnvVar, len(envs))
 	for i, env := range envs {
-		e[i] = EnvVar(env)
+		e[i] = bind.EnvVar(env)
 	}
 	return setEnvsToApp(a, e, publicOnly)
 }
