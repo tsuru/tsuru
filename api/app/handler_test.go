@@ -642,7 +642,7 @@ func (s *S) TestRevokeAccessFromTeam(c *C) {
 	a := App{
 		Name:      "itshard",
 		Framework: "django",
-		Teams:     []string{s.team.Name, "abcd"},
+		Teams:     []string{"abcd", s.team.Name},
 		ec2Auth:   &fakeAuthorizer{},
 	}
 	err = createApp(&a)

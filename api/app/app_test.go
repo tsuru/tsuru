@@ -32,7 +32,8 @@ func (c *hasAccessToChecker) Check(params []interface{}, names []string) (bool, 
 	if !ok {
 		return false, "second parameter should be an app instance"
 	}
-	return app.hasTeam(&team), ""
+	_, found := app.find(&team)
+	return found, ""
 }
 
 var HasAccessTo Checker = &hasAccessToChecker{}
@@ -284,11 +285,18 @@ func (s *S) TestGrantAccess(c *C) {
 	c.Assert(s.team, HasAccessTo, a)
 }
 
+func (s *S) TestGrantAccessKeepTeamsSorted(c *C) {
+	a := App{Name: "appName", Framework: "django", Teams: []string{"acid-rain", "zito"}}
+	err := a.grant(&s.team)
+	c.Assert(err, IsNil)
+	c.Assert(a.Teams, DeepEquals, []string{"acid-rain", s.team.Name, "zito"})
+}
+
 func (s *S) TestGrantAccessFailsIfTheTeamAlreadyHasAccessToTheApp(c *C) {
 	a := App{Name: "appName", Framework: "django", Teams: []string{s.team.Name}}
 	err := a.grant(&s.team)
 	c.Assert(err, NotNil)
-	c.Assert(err, ErrorMatches, "^This team has already access to this app$")
+	c.Assert(err, ErrorMatches, "^This team already has access to this app$")
 }
 
 func (s *S) TestRevokeAccess(c *C) {

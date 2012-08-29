@@ -14,6 +14,7 @@ import (
 	"launchpad.net/goyaml"
 	"os/exec"
 	"path"
+	"sort"
 	"strings"
 	"time"
 )
@@ -219,30 +220,30 @@ func (a *App) AddUnit(u *Unit) {
 	a.Units = append(a.Units, *u)
 }
 
-func (a *App) findTeam(team *auth.Team) int {
-	for i, t := range a.Teams {
-		if t == team.Name {
-			return i
-		}
-	}
-	return -1
-}
-
-func (a *App) hasTeam(team *auth.Team) bool {
-	return a.findTeam(team) > -1
+func (a *App) find(team *auth.Team) (int, bool) {
+	pos := sort.Search(len(a.Teams), func(i int) bool {
+		return a.Teams[i] >= team.Name
+	})
+	return pos, pos < len(a.Teams) && a.Teams[pos] == team.Name
 }
 
 func (a *App) grant(team *auth.Team) error {
-	if a.hasTeam(team) {
-		return errors.New("This team has already access to this app")
+	pos, found := a.find(team)
+	if found {
+		return errors.New("This team already has access to this app")
 	}
-	a.Teams = append(a.Teams, team.Name)
+	a.Teams = append(a.Teams, "")
+	tmp := a.Teams[pos]
+	for i := pos; i < len(a.Teams)-1; i++ {
+		a.Teams[i+1], tmp = tmp, a.Teams[i]
+	}
+	a.Teams[pos] = team.Name
 	return nil
 }
 
 func (a *App) revoke(team *auth.Team) error {
-	index := a.findTeam(team)
-	if index < 0 {
+	index, found := a.find(team)
+	if !found {
 		return errors.New("This team does not have access to this app")
 	}
 	last := len(a.Teams) - 1
