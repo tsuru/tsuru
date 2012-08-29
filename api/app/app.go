@@ -232,7 +232,7 @@ func (a *App) hasTeam(team *auth.Team) bool {
 	return a.findTeam(team) > -1
 }
 
-func (a *App) GrantAccess(team *auth.Team) error {
+func (a *App) grant(team *auth.Team) error {
 	if a.hasTeam(team) {
 		return errors.New("This team has already access to this app")
 	}
@@ -240,7 +240,7 @@ func (a *App) GrantAccess(team *auth.Team) error {
 	return nil
 }
 
-func (a *App) RevokeAccess(team *auth.Team) error {
+func (a *App) revoke(team *auth.Team) error {
 	index := a.findTeam(team)
 	if index < 0 {
 		return errors.New("This team does not have access to this app")

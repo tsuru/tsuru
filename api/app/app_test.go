@@ -279,28 +279,28 @@ func (s *S) TestAppendOrUpdate(c *C) {
 
 func (s *S) TestGrantAccess(c *C) {
 	a := App{Name: "appName", Framework: "django", Teams: []string{}}
-	err := a.GrantAccess(&s.team)
+	err := a.grant(&s.team)
 	c.Assert(err, IsNil)
 	c.Assert(s.team, HasAccessTo, a)
 }
 
 func (s *S) TestGrantAccessFailsIfTheTeamAlreadyHasAccessToTheApp(c *C) {
 	a := App{Name: "appName", Framework: "django", Teams: []string{s.team.Name}}
-	err := a.GrantAccess(&s.team)
+	err := a.grant(&s.team)
 	c.Assert(err, NotNil)
 	c.Assert(err, ErrorMatches, "^This team has already access to this app$")
 }
 
 func (s *S) TestRevokeAccess(c *C) {
 	a := App{Name: "appName", Framework: "django", Teams: []string{s.team.Name}}
-	err := a.RevokeAccess(&s.team)
+	err := a.revoke(&s.team)
 	c.Assert(err, IsNil)
 	c.Assert(s.team, Not(HasAccessTo), a)
 }
 
 func (s *S) TestRevokeAccessFailsIfTheTeamsDoesNotHaveAccessToTheApp(c *C) {
 	a := App{Name: "appName", Framework: "django", Teams: []string{}}
-	err := a.RevokeAccess(&s.team)
+	err := a.revoke(&s.team)
 	c.Assert(err, NotNil)
 	c.Assert(err, ErrorMatches, "^This team does not have access to this app$")
 }

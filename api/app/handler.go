@@ -222,7 +222,7 @@ func grantAccessToTeam(appName, teamName string, u *auth.User) error {
 	if err != nil {
 		return &errors.Http{Code: http.StatusNotFound, Message: "Team not found"}
 	}
-	err = app.GrantAccess(t)
+	err = app.grant(t)
 	if err != nil {
 		return &errors.Http{Code: http.StatusConflict, Message: err.Error()}
 	}
@@ -258,7 +258,7 @@ func revokeAccessFromTeam(appName, teamName string, u *auth.User) error {
 		msg := "You can not revoke the access from this team, because it is the unique team with access to the app, and an app can not be orphaned"
 		return &errors.Http{Code: http.StatusForbidden, Message: msg}
 	}
-	err = app.RevokeAccess(t)
+	err = app.revoke(t)
 	if err != nil {
 		return &errors.Http{Code: http.StatusNotFound, Message: err.Error()}
 	}
