@@ -44,7 +44,7 @@ type App struct {
 	Framework   string
 	JujuEnv     string
 	KeystoneEnv keystoneEnv
-	Logs        []Log
+	Logs        []applog
 	Name        string
 	State       string
 	Units       []Unit
@@ -52,7 +52,7 @@ type App struct {
 	ec2Auth     authorizer
 }
 
-type Log struct {
+type applog struct {
 	Date    time.Time
 	Message string
 }
@@ -131,17 +131,17 @@ func createApp(a *App) error {
 	if err != nil {
 		return err
 	}
-	a.Log(fmt.Sprintf("creating app %s", a.Name))
+	a.log(fmt.Sprintf("creating app %s", a.Name))
 	cmd := exec.Command("juju", "deploy", "-e", a.JujuEnv, "--repository=/home/charms", "local:"+a.Framework, a.Name)
 	log.Printf("deploying %s with name %s on environment %s", a.Framework, a.Name, a.JujuEnv)
 	out, err := cmd.CombinedOutput()
-	a.Log(string(out))
+	a.log(string(out))
 	if err != nil {
-		a.Log(fmt.Sprintf("juju finished with exit status: %s", err.Error()))
+		a.log(fmt.Sprintf("juju finished with exit status: %s", err.Error()))
 		db.Session.Apps().Remove(bson.M{"name": a.Name})
 		return errors.New(string(out))
 	}
-	a.Log(fmt.Sprintf("app %s successfully created", a.Name))
+	a.log(fmt.Sprintf("app %s successfully created", a.Name))
 	return nil
 }
 
@@ -270,7 +270,7 @@ func (a *App) setEnv(env EnvVar) {
 		a.Env = make(map[string]EnvVar)
 	}
 	a.Env[env.Name] = env
-	a.Log(fmt.Sprintf("setting env %s with value %s", env.Name, env.Value))
+	a.log(fmt.Sprintf("setting env %s with value %s", env.Name, env.Value))
 }
 
 func (a *App) getEnv(name string) (EnvVar, error) {
@@ -310,20 +310,20 @@ func (a *App) conf() (conf, error) {
 	var c conf
 	uRepo, err := repository.GetPath()
 	if err != nil {
-		a.Log(fmt.Sprintf("Got error while getting repository path: %s", err.Error()))
+		a.log(fmt.Sprintf("Got error while getting repository path: %s", err.Error()))
 		return c, err
 	}
 	cPath := path.Join(uRepo, "app.conf")
 	cmd := fmt.Sprintf(`echo "%s";cat %s`, confSep, cPath)
 	o, err := a.unit().Command(cmd)
 	if err != nil {
-		a.Log(fmt.Sprintf("Got error while executing command: %s... Skipping hooks execution", err.Error()))
+		a.log(fmt.Sprintf("Got error while executing command: %s... Skipping hooks execution", err.Error()))
 		return c, nil
 	}
 	data := strings.Split(string(o), confSep)[1]
 	err = goyaml.Unmarshal([]byte(data), &c)
 	if err != nil {
-		a.Log(fmt.Sprintf("Got error while parsing yaml: %s", err.Error()))
+		a.log(fmt.Sprintf("Got error while parsing yaml: %s", err.Error()))
 		return c, err
 	}
 	return c, nil
@@ -343,23 +343,23 @@ func (a *App) authorizer() authorizer {
 func (a *App) preRestart(c conf) ([]byte, error) {
 	if !a.hasRestartHooks(c) {
 		msg := "app.conf file does not exists or is in the right place. Skipping pre-restart hook..."
-		a.Log(msg)
+		a.log(msg)
 		return []byte(msg + "\n"), nil
 	}
 	if c.PreRestart == "" {
 		msg := "pre-restart hook section in app conf does not exists... Skipping pre-restart hook..."
-		a.Log(msg)
+		a.log(msg)
 		return []byte(msg + "\n"), nil
 	}
 	p, err := deployHookAbsPath(c.PreRestart)
 	if err != nil {
 		msg := fmt.Sprintf("Error obtaining absolute path to hook: %s. Skipping pre-restart hook...", err)
-		a.Log(msg)
+		a.log(msg)
 		return []byte(msg + "\n"), nil
 	}
-	a.Log("Executing pre-restart hook...")
+	a.log("Executing pre-restart hook...")
 	out, err := a.unit().Command("/bin/bash", p)
-	a.Log(fmt.Sprintf("Output of pre-restart hook: %s", string(out)))
+	a.log(fmt.Sprintf("Output of pre-restart hook: %s", string(out)))
 	return out, err
 }
 
@@ -370,23 +370,23 @@ func (a *App) preRestart(c conf) ([]byte, error) {
 func (a *App) posRestart(c conf) ([]byte, error) {
 	if !a.hasRestartHooks(c) {
 		msg := "app.conf file does not exists or is in the right place. Skipping pos-restart hook..."
-		a.Log(msg)
+		a.log(msg)
 		return []byte(msg + "\n"), nil
 	}
 	if c.PosRestart == "" {
 		msg := "pos-restart hook section in app conf does not exists... Skipping pos-restart hook..."
-		a.Log(msg)
+		a.log(msg)
 		return []byte(msg + "\n"), nil
 	}
 	p, err := deployHookAbsPath(c.PosRestart)
 	if err != nil {
 		msg := fmt.Sprintf("Error obtaining absolute path to hook: %s. Skipping pos-restart-hook...", err)
-		a.Log(msg)
+		a.log(msg)
 		return []byte(msg + "\n"), nil
 	}
 	out, err := a.unit().Command("/bin/bash", p)
-	a.Log("Executing pos-restart hook...")
-	a.Log(fmt.Sprintf("Output of pos-restart hook: %s", string(out)))
+	a.log("Executing pos-restart hook...")
+	a.log(fmt.Sprintf("Output of pos-restart hook: %s", string(out)))
 	return out, err
 }
 
@@ -396,18 +396,18 @@ func (a *App) hasRestartHooks(c conf) bool {
 
 func (a *App) updateHooks() ([]byte, error) {
 	u := a.unit()
-	a.Log("executting hook dependencies")
+	a.log("executting hook dependencies")
 	out, err := u.executeHook("dependencies")
-	a.Log(string(out))
+	a.log(string(out))
 	if err != nil {
 		return out, err
 	}
-	a.Log("executting hook to restarting")
+	a.log("executting hook to restarting")
 	out, err = u.executeHook("restart")
 	if err != nil {
 		return out, err
 	}
-	a.Log(string(out))
+	a.log(string(out))
 	return out, nil
 }
 
@@ -445,9 +445,9 @@ func (a *App) UnsetEnvs(envs []string, publicOnly bool) error {
 	return unsetEnvFromApp(a, envs, publicOnly)
 }
 
-func (a *App) Log(message string) error {
+func (a *App) log(message string) error {
 	log.Printf(message)
-	l := Log{Date: time.Now(), Message: message}
+	l := applog{Date: time.Now(), Message: message}
 	a.Logs = append(a.Logs, l)
 	return db.Session.Apps().Update(bson.M{"name": a.Name}, a)
 }

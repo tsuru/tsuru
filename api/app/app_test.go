@@ -44,7 +44,7 @@ func (s *S) TestGet(c *C) {
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": newApp.Name})
 	newApp.Env = map[string]EnvVar{}
-	newApp.Logs = []Log{}
+	newApp.Logs = []applog{}
 	err = db.Session.Apps().Update(bson.M{"name": newApp.Name}, &newApp)
 	c.Assert(err, IsNil)
 	myApp := App{Name: "myApp"}
@@ -697,7 +697,7 @@ func (s *S) TestLogShouldStoreLog(c *C) {
 	}
 	err := createApp(&a)
 	c.Assert(err, IsNil)
-	err = a.Log("last log msg")
+	err = a.log("last log msg")
 	c.Assert(err, IsNil)
 	instance := App{}
 	err = db.Session.Apps().Find(bson.M{"name": a.Name}).One(&instance)

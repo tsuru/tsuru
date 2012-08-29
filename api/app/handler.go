@@ -294,12 +294,12 @@ func RunCommand(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 		return err
 	}
 	cmd := fmt.Sprintf("[ -f /home/application/apprc ] && source /home/application/apprc; [ -d /home/application/current ] && cd /home/application/current; %s", c)
-	app.Log(fmt.Sprintf("running '%s'", c))
+	app.log(fmt.Sprintf("running '%s'", c))
 	out, err := app.unit().Command(cmd)
 	if err != nil {
 		return err
 	}
-	app.Log(string(out))
+	app.log(string(out))
 	n, err := w.Write(out)
 	if err != nil {
 		return err

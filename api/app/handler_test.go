@@ -1614,7 +1614,7 @@ func (s *S) TestLogShouldAppLog(c *C) {
 	c.Assert(recorder.Code, Equals, 200)
 	body, err := ioutil.ReadAll(recorder.Body)
 	c.Assert(err, IsNil)
-	logs := []Log{}
+	logs := []applog{}
 	err = json.Unmarshal(body, &logs)
 	c.Assert(err, IsNil)
 	c.Assert(logs, DeepEquals, logs)
