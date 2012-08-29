@@ -33,6 +33,7 @@ type S struct {
 	tmpdir      string
 	ts          *httptest.Server
 	rfs         *fsTesting.RecordingFs
+	tokenBody   []byte
 }
 
 var _ = Suite(&S{})
@@ -172,6 +173,8 @@ func (s *S) SetUpSuite(c *C) {
 	c.Assert(err, IsNil)
 	file.Write([]byte{16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31})
 	fsystem = s.rfs
+	s.tokenBody, err = ioutil.ReadFile("testdata/response.json")
+	c.Assert(err, IsNil)
 }
 
 func (s *S) TearDownSuite(c *C) {

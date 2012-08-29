@@ -27,7 +27,7 @@ func (s *S) mockServer(tenantBody, userBody, ec2Body, prefix string) *httptest.S
 		delUsersRegexp := regexp.MustCompile(`/users/([\w-]+)`)
 		delTenantsRegexp := regexp.MustCompile(`/tenants/([\w-]+)`)
 		if r.URL.Path == "/tokens" {
-			handleTokens(w, r)
+			handleTokens(w, r, s.tokenBody)
 			return
 		}
 		if r.Method == "POST" {
@@ -89,7 +89,7 @@ func handleCreds(w http.ResponseWriter, r *http.Request, b string) {
 	w.Write([]byte(b))
 }
 
-func handleTokens(w http.ResponseWriter, r *http.Request) {
+func handleTokens(w http.ResponseWriter, r *http.Request, b []byte) {
 	body, err := ioutil.ReadAll(r.Body)
 	defer r.Body.Close()
 	if err != nil {
@@ -97,7 +97,7 @@ func handleTokens(w http.ResponseWriter, r *http.Request) {
 	}
 	requestJson = body
 	called["token"] = true
-	w.Write([]byte(`{"access": {"token": {"id": "token-id-987"}}}`))
+	w.Write(b)
 }
 
 func (s *S) TestGetAuth(c *C) {
