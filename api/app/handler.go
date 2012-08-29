@@ -104,7 +104,7 @@ func AppDelete(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	if err != nil {
 		return err
 	}
-	for _, t := range app.GetTeams() {
+	for _, t := range app.teams() {
 		sendProjectChangeToGitosis(repository.RemoveProject, &t, &app)
 	}
 	fmt.Fprint(w, "success")

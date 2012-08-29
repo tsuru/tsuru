@@ -251,9 +251,10 @@ func (a *App) RevokeAccess(team *auth.Team) error {
 	return nil
 }
 
-func (a *App) GetTeams() (teams []auth.Team) {
+func (a *App) teams() []auth.Team {
+	var teams []auth.Team
 	db.Session.Teams().Find(bson.M{"_id": bson.M{"$in": a.Teams}}).All(&teams)
-	return
+	return teams
 }
 
 func (a *App) setTeams(teams []auth.Team) {
