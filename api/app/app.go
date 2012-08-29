@@ -432,11 +432,11 @@ func (a *App) SetEnvs(envs []bind.EnvVar, publicOnly bool) error {
 	for i, env := range envs {
 		e[i] = EnvVar(env)
 	}
-	return SetEnvsToApp(a, e, publicOnly)
+	return setEnvsToApp(a, e, publicOnly)
 }
 
 func (a *App) UnsetEnvs(envs []string, publicOnly bool) error {
-	return UnsetEnvFromApp(a, envs, publicOnly)
+	return unsetEnvFromApp(a, envs, publicOnly)
 }
 
 func (a *App) Log(message string) error {

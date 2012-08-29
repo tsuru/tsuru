@@ -1056,7 +1056,7 @@ func (s *S) TestSetEnvRespectsThePublicOnlyFlagKeepPrivateVariablesWhenItsTrue(c
 			Public: true,
 		},
 	}
-	err = SetEnvsToApp(&a, envs, true)
+	err = setEnvsToApp(&a, envs, true)
 	c.Assert(err, IsNil)
 	err = a.Get()
 	c.Assert(err, IsNil)
@@ -1103,7 +1103,7 @@ func (s *S) TestSetEnvRespectsThePublicOnlyFlagOverwrittenAllVariablesWhenItsFal
 			Public: true,
 		},
 	}
-	err = SetEnvsToApp(&a, envs, false)
+	err = setEnvsToApp(&a, envs, false)
 	c.Assert(err, IsNil)
 	err = a.Get()
 	c.Assert(err, IsNil)
@@ -1466,7 +1466,7 @@ func (s *S) TestUnsetEnvRespectsThePublicOnlyFlagKeepPrivateVariablesWhenItsTrue
 	}
 	err = db.Session.Apps().Update(bson.M{"name": "myapp"}, a)
 	c.Assert(err, IsNil)
-	err = UnsetEnvFromApp(&a, []string{"DATABASE_HOST", "DATABASE_PASSWORD"}, true)
+	err = unsetEnvFromApp(&a, []string{"DATABASE_HOST", "DATABASE_PASSWORD"}, true)
 	c.Assert(err, IsNil)
 	err = a.Get()
 	c.Assert(err, IsNil)
@@ -1501,7 +1501,7 @@ func (s *S) TestUnsetEnvRespectsThePublicOnlyFlagUnsettingAllVariablesWhenItsFal
 	}
 	err = db.Session.Apps().Update(bson.M{"name": "myapp"}, a)
 	c.Assert(err, IsNil)
-	err = UnsetEnvFromApp(&a, []string{"DATABASE_HOST", "DATABASE_PASSWORD"}, false)
+	err = unsetEnvFromApp(&a, []string{"DATABASE_HOST", "DATABASE_PASSWORD"}, false)
 	c.Assert(err, IsNil)
 	err = a.Get()
 	c.Assert(err, IsNil)

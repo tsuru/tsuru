@@ -347,7 +347,7 @@ func GetEnv(w http.ResponseWriter, r *http.Request, u *auth.User) (err error) {
 	return nil
 }
 
-func SetEnvsToApp(app *App, envs []EnvVar, publicOnly bool) error {
+func setEnvsToApp(app *App, envs []EnvVar, publicOnly bool) error {
 	if len(envs) > 0 {
 		for _, env := range envs {
 			set := true
@@ -399,10 +399,10 @@ func SetEnv(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 		parts := strings.Split(v[1], "=")
 		envs[i] = EnvVar{Name: parts[0], Value: parts[1], Public: true}
 	}
-	return SetEnvsToApp(&app, envs, true)
+	return setEnvsToApp(&app, envs, true)
 }
 
-func UnsetEnvFromApp(app *App, variableNames []string, publicOnly bool) error {
+func unsetEnvFromApp(app *App, variableNames []string, publicOnly bool) error {
 	if len(variableNames) > 0 {
 		for _, name := range variableNames {
 			var unset bool
@@ -442,7 +442,7 @@ func UnsetEnv(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	if err != nil {
 		return err
 	}
-	return UnsetEnvFromApp(&app, strings.Fields(string(body)), true)
+	return unsetEnvFromApp(&app, strings.Fields(string(body)), true)
 }
 
 func AppLog(w http.ResponseWriter, r *http.Request, u *auth.User) error {
