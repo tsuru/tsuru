@@ -1,7 +1,9 @@
 package app
 
 import (
+	"errors"
 	"fmt"
+	"github.com/timeredbull/openstack/nova"
 	"github.com/timeredbull/tsuru/config"
 	"github.com/timeredbull/tsuru/fs/testing"
 	"io/ioutil"
@@ -303,4 +305,61 @@ func (s *S) TestDestroyKeystoneEnvWithoutTenantId(c *C) {
 	err := destroyKeystoneEnv(&k)
 	c.Assert(err, NotNil)
 	c.Assert(err, ErrorMatches, "Missing tenant.")
+}
+
+func (s *S) TestDisassociate(c *C) {
+	disassociator := fakeDisassociator{}
+	k := keystoneEnv{
+		TenantId: "123tenant",
+		novaApi:  &disassociator,
+	}
+	err := k.disassociate()
+	c.Assert(err, IsNil)
+	c.Assert(disassociator.actions, DeepEquals, []string{"disassociate network from tenant 123tenant"})
+}
+
+func (s *S) TestDisassociateFromTenantWithoutNetwork(c *C) {
+	disassociator := noNetworkDisassociator{}
+	k := keystoneEnv{
+		TenantId: "123tenant",
+		novaApi:  &disassociator,
+	}
+	err := k.disassociate()
+	c.Assert(err, IsNil)
+	c.Assert(disassociator.actions, DeepEquals, []string{"disassociate network from tenant 123tenant"})
+}
+
+func (s *S) TestDisassociateUnknownError(c *C) {
+	disassociator := unknownErrorDisassociator{}
+	k := keystoneEnv{
+		TenantId: "123tenant",
+		novaApi:  &disassociator,
+	}
+	err := k.disassociate()
+	c.Assert(err, NotNil)
+	c.Assert(err, ErrorMatches, "^unknown error$")
+}
+
+type fakeDisassociator struct {
+	actions []string
+}
+
+func (a *fakeDisassociator) DisassociateNetwork(tenantId string) error {
+	a.actions = append(a.actions, "disassociate network from tenant "+tenantId)
+	return nil
+}
+
+type noNetworkDisassociator struct {
+	fakeDisassociator
+}
+
+func (a *noNetworkDisassociator) DisassociateNetwork(tenantId string) error {
+	a.fakeDisassociator.DisassociateNetwork(tenantId)
+	return nova.ErrNoNetwork
+}
+
+type unknownErrorDisassociator struct{}
+
+func (a *unknownErrorDisassociator) DisassociateNetwork(tenantId string) error {
+	return errors.New("unknown error")
 }

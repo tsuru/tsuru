@@ -4,16 +4,10 @@ import (
 	"errors"
 	"fmt"
 	"github.com/timeredbull/openstack/keystone"
+	"github.com/timeredbull/openstack/nova"
 	"github.com/timeredbull/tsuru/config"
 	"github.com/timeredbull/tsuru/log"
 )
-
-type keystoneEnv struct {
-	TenantId  string
-	UserId    string
-	AccessKey string
-	secretKey string
-}
 
 var (
 	Client     keystone.Client
@@ -23,14 +17,30 @@ var (
 	authTenant string
 )
 
+type keystoneEnv struct {
+	TenantId  string
+	UserId    string
+	AccessKey string
+	secretKey string
+	novaApi   nova.NetworkDisassociator
+}
+
+func (k *keystoneEnv) disassociate() error {
+	err := k.novaApi.DisassociateNetwork(k.TenantId)
+	if err == nova.ErrNoNetwork {
+		return nil
+	}
+	return err
+}
+
 // getAuth retrieves information about openstack nova authentication. Uses the
 // following confs:
 //
-//  - nova:
-//  - auth-url
-//  - user
-//  - password
-//  - tenant
+//   - nova:
+//     auth-url
+//     user
+//     password
+//     tenant
 //
 // Returns error in case of failure obtaining any of the previous confs.
 func getAuth() (err error) {
