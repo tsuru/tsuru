@@ -718,6 +718,12 @@ func (s *S) TestSetTeams(c *C) {
 	c.Assert(app.Teams, DeepEquals, []string{s.team.Name})
 }
 
+func (s *S) TestSetTeamsSortTeamNames(c *C) {
+	app := App{Name: "app"}
+	app.setTeams([]auth.Team{s.team, auth.Team{Name: "zzz"}, auth.Team{Name: "aaa"}})
+	c.Assert(app.Teams, DeepEquals, []string{"aaa", s.team.Name, "zzz"})
+}
+
 func (s *S) TestGetUnits(c *C) {
 	app := App{Units: []Unit{Unit{Ip: "1.1.1.1"}}}
 	expected := []bind.Unit{bind.Unit(&Unit{Ip: "1.1.1.1", app: &app})}

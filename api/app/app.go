@@ -250,6 +250,7 @@ func (a *App) setTeams(teams []auth.Team) {
 	for i, team := range teams {
 		a.Teams[i] = team.Name
 	}
+	sort.Strings(a.Teams)
 }
 
 func (a *App) setEnv(env bind.EnvVar) {
