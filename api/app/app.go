@@ -162,24 +162,19 @@ func (a *App) destroy() error {
 	if err != nil {
 		return err
 	}
-	app := App{Name: a.Name}
-	err = app.Get()
-	if err != nil {
-		return err
-	}
 	if multitenant {
-		destroyCmd := exec.Command("juju", "destroy-environment", "-e", app.JujuEnv)
+		destroyCmd := exec.Command("juju", "destroy-environment", "-e", a.JujuEnv)
 		destroyCmd.Stdin = strings.NewReader("y")
 		if out, err := destroyCmd.CombinedOutput(); err != nil {
 			msg := fmt.Sprintf("Failed to destroy juju-environment:\n%s", out)
 			log.Print(msg)
 			return errors.New(string(out))
 		}
-		if err = destroyKeystoneEnv(&app.KeystoneEnv); err != nil {
+		if err = destroyKeystoneEnv(&a.KeystoneEnv); err != nil {
 			return err
 		}
 	} else {
-		out, err := app.unit().destroy()
+		out, err := a.unit().destroy()
 		msg := string(out)
 		log.Printf(msg)
 		if err != nil {
@@ -188,9 +183,9 @@ func (a *App) destroy() error {
 	}
 	unbindCh := make(chan error)
 	go func() {
-		unbindCh <- app.unbind()
+		unbindCh <- a.unbind()
 	}()
-	err = db.Session.Apps().Remove(bson.M{"name": app.Name})
+	err = db.Session.Apps().Remove(bson.M{"name": a.Name})
 	if err != nil {
 		return err
 	}
