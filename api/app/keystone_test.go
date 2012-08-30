@@ -340,6 +340,16 @@ func (s *S) TestDisassociateUnknownError(c *C) {
 	c.Assert(err, ErrorMatches, "^unknown error$")
 }
 
+func (s *S) TestDisassociator(c *C) {
+	getClient()
+	k := keystoneEnv{}
+	expected := &nova.Client{KeystoneClient: &Client}
+	c.Assert(k.disassociator(), DeepEquals, expected)
+	fake := &fakeDisassociator{}
+	k.novaApi = fake
+	c.Assert(k.disassociator(), DeepEquals, fake)
+}
+
 type fakeDisassociator struct {
 	actions []string
 }

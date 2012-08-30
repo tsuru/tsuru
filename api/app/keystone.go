@@ -26,11 +26,18 @@ type keystoneEnv struct {
 }
 
 func (k *keystoneEnv) disassociate() error {
-	err := k.novaApi.DisassociateNetwork(k.TenantId)
+	err := k.disassociator().DisassociateNetwork(k.TenantId)
 	if err == nova.ErrNoNetwork {
 		return nil
 	}
 	return err
+}
+
+func (k *keystoneEnv) disassociator() nova.NetworkDisassociator {
+	if k.novaApi == nil {
+		k.novaApi = &nova.Client{KeystoneClient: &Client}
+	}
+	return k.novaApi
 }
 
 // getAuth retrieves information about openstack nova authentication. Uses the
