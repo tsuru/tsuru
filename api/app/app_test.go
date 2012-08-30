@@ -46,16 +46,13 @@ func (s *S) TestDestroy(c *C) {
 	a := App{
 		Name:      "duvido",
 		Framework: "django",
-		KeystoneEnv: keystoneEnv{
-			TenantId:  "e60d1f0a-ee74-411c-b879-46aee9502bf9",
-			UserId:    "1b4d1195-7890-4274-831f-ddf8141edecc",
-			AccessKey: "91232f6796b54ca2a2b87ef50548b123",
-		},
-		Units:   []Unit{u},
-		ec2Auth: authorizer,
+		Units:     []Unit{u},
+		ec2Auth:   authorizer,
 	}
 	err = createApp(&a)
 	c.Assert(err, IsNil)
+	novaClient := &fakeDisassociator{}
+	a.KeystoneEnv.novaApi = novaClient
 	err = a.destroy()
 	c.Assert(err, IsNil)
 	qtd, err := db.Session.Apps().Find(bson.M{"name": a.Name}).Count()
@@ -64,6 +61,7 @@ func (s *S) TestDestroy(c *C) {
 	c.Assert(called["destroy-app-delete-user"], Equals, true)
 	c.Assert(called["destroy-app-delete-tenant"], Equals, true)
 	c.Assert(authorizer.actions, DeepEquals, []string{"setCreds access-key-here secret-key-here", "authorize " + a.Name})
+	c.Assert(novaClient.actions, DeepEquals, []string{"disassociate network from tenant " + a.KeystoneEnv.TenantId})
 }
 
 func (s *S) TestDestroyWithMultiTenancyOnCallsJujuDestroyEnvironment(c *C) {

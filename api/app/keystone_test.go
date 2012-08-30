@@ -21,6 +21,7 @@ var (
 )
 
 func (s *S) mockServer(tenantBody, userBody, ec2Body, prefix string) *httptest.Server {
+	var serverUrl string
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ec2Regexp := regexp.MustCompile(`/users/([\w-]+)/credentials/OS-EC2`)
 		tenantsRegexp := regexp.MustCompile(`/tenants`)
@@ -29,7 +30,12 @@ func (s *S) mockServer(tenantBody, userBody, ec2Body, prefix string) *httptest.S
 		delUsersRegexp := regexp.MustCompile(`/users/([\w-]+)`)
 		delTenantsRegexp := regexp.MustCompile(`/tenants/([\w-]+)`)
 		if r.URL.Path == "/tokens" {
-			handleTokens(w, r, s.tokenBody)
+			body := fmt.Sprintf(string(s.tokenBody), serverUrl)
+			handleTokens(w, r, []byte(body))
+			return
+		}
+		if m, _ := regexp.MatchString(`^/v2/[\w-]+/os-networks`, r.URL.Path); m {
+			handleNova(w, r)
 			return
 		}
 		if r.Method == "POST" {
@@ -64,6 +70,7 @@ func (s *S) mockServer(tenantBody, userBody, ec2Body, prefix string) *httptest.S
 		}
 	}))
 	authUrl = ts.URL
+	serverUrl = ts.URL
 	return ts
 }
 
@@ -100,6 +107,19 @@ func handleTokens(w http.ResponseWriter, r *http.Request, b []byte) {
 	requestJson = body
 	called["token"] = true
 	w.Write(b)
+}
+
+func handleNova(w http.ResponseWriter, r *http.Request) {
+	response := `{"networks": [{"bridge": "br1808", "vpn_public_port": 1000, "dhcp_start": "172.25.8.3", "bridge_interface": "eth1", "updated_at": "2012-05-12 02:16:48", "id": "ef0aa0c4-48d8-4d9e-903a-61486cd60805", "cidr_v6": null, "deleted_at": null, "gateway": "172.25.8.1", "label": "private_0", "project_id": "%s", "vpn_private_address": "172.25.8.2", "deleted": false, "vlan": 1808, "broadcast": "172.25.8.255", "netmask": "255.255.255.0", "injected": false, "cidr": "172.25.8.0/24", "vpn_public_address": "10.170.0.14", "multi_host": true, "dns1": null, "host": null, "gateway_v6": null, "netmask_v6": null, "created_at": "2012-05-12 02:13:17"}]}`
+	re := regexp.MustCompile(`/v2/([\w-]+)/os-networks`)
+	switch r.Method {
+	case "GET":
+		tenant := re.FindStringSubmatch(r.URL.Path)[1]
+		w.Header().Set("Content-Type", "application/json")
+		fmt.Fprintf(w, response, tenant)
+	case "POST":
+		w.WriteHeader(http.StatusAccepted)
+	}
 }
 
 func (s *S) TestGetAuth(c *C) {

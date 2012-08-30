@@ -12,7 +12,7 @@
         },
         "serviceCatalog": [{
             "endpoints": [{
-                "adminURL": "http://nova.mycloud.com:8774/v2/xpto",
+                "adminURL": "%s/v2/uuid123",
                 "region": "RegionOne",
                 "publicURL": "http://nova.mycloud.com:8774/v2/xpto",
                 "internalURL": "http://nova.mycloud.com:8774/v2/xpto"

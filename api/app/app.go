@@ -173,6 +173,9 @@ func (a *App) destroy() error {
 		if err = destroyKeystoneEnv(&a.KeystoneEnv); err != nil {
 			return err
 		}
+		if err = a.KeystoneEnv.disassociate(); err != nil {
+			return err
+		}
 	} else {
 		out, err := a.unit().destroy()
 		msg := string(out)
