@@ -14,30 +14,6 @@ import (
 	"strings"
 )
 
-type hasAccessToChecker struct{}
-
-func (c *hasAccessToChecker) Info() *CheckerInfo {
-	return &CheckerInfo{Name: "HasAccessTo", Params: []string{"team", "app"}}
-}
-
-func (c *hasAccessToChecker) Check(params []interface{}, names []string) (bool, string) {
-	if len(params) != 2 {
-		return false, "you must provide two parameters"
-	}
-	team, ok := params[0].(auth.Team)
-	if !ok {
-		return false, "first parameter should be a team instance"
-	}
-	app, ok := params[1].(App)
-	if !ok {
-		return false, "second parameter should be an app instance"
-	}
-	_, found := app.find(&team)
-	return found, ""
-}
-
-var HasAccessTo Checker = &hasAccessToChecker{}
-
 func (s *S) TestGet(c *C) {
 	newApp := App{Name: "myApp", Framework: "Django", ec2Auth: &fakeAuthorizer{}}
 	err := createApp(&newApp)
@@ -282,7 +258,8 @@ func (s *S) TestGrantAccess(c *C) {
 	a := App{Name: "appName", Framework: "django", Teams: []string{}}
 	err := a.grant(&s.team)
 	c.Assert(err, IsNil)
-	c.Assert(s.team, HasAccessTo, a)
+	_, found := a.find(&s.team)
+	c.Assert(found, Equals, true)
 }
 
 func (s *S) TestGrantAccessKeepTeamsSorted(c *C) {
@@ -303,7 +280,8 @@ func (s *S) TestRevokeAccess(c *C) {
 	a := App{Name: "appName", Framework: "django", Teams: []string{s.team.Name}}
 	err := a.revoke(&s.team)
 	c.Assert(err, IsNil)
-	c.Assert(s.team, Not(HasAccessTo), a)
+	_, found := a.find(&s.team)
+	c.Assert(found, Equals, false)
 }
 
 func (s *S) TestRevokeAccessFailsIfTheTeamsDoesNotHaveAccessToTheApp(c *C) {

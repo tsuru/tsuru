@@ -426,7 +426,8 @@ func (s *S) TestCreateAppHandler(c *C) {
 	var gotApp App
 	err = db.Session.Apps().Find(bson.M{"name": "someApp"}).One(&gotApp)
 	c.Assert(err, IsNil)
-	c.Assert(s.team, HasAccessTo, gotApp)
+	_, found := gotApp.find(&s.team)
+	c.Assert(found, Equals, true)
 }
 
 func (s *S) TestCreateAppReturns403IfTheUserIsNotMemberOfAnyTeam(c *C) {
@@ -536,7 +537,8 @@ func (s *S) TestAddTeamToTheApp(c *C) {
 	c.Assert(err, IsNil)
 	err = a.Get()
 	c.Assert(err, IsNil)
-	c.Assert(s.team, HasAccessTo, a)
+	_, found := a.find(&s.team)
+	c.Assert(found, Equals, true)
 }
 
 func (s *S) TestGrantAccessToTeamReturn404IfTheAppDoesNotExist(c *C) {
@@ -656,7 +658,8 @@ func (s *S) TestRevokeAccessFromTeam(c *C) {
 	err = RevokeAccessFromTeamHandler(recorder, request, s.user)
 	c.Assert(err, IsNil)
 	a.Get()
-	c.Assert(s.team, Not(HasAccessTo), a)
+	_, found := a.find(&s.team)
+	c.Assert(found, Equals, false)
 }
 
 func (s *S) TestRevokeAccessFromTeamReturn404IfTheAppDoesNotExist(c *C) {
