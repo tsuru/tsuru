@@ -160,7 +160,7 @@ func (a *App) unbind() error {
 func (a *App) destroy() error {
 	multitenant, err := config.GetBool("multi-tenant")
 	if err != nil {
-		return err
+		return errors.New("multi-tenant flag not defined in config file. You need to define this flag.")
 	}
 	if multitenant {
 		destroyCmd := exec.Command("juju", "destroy-environment", "-e", a.JujuEnv)
