@@ -25,20 +25,18 @@ func tcsetattr(fd uintptr, when int, termios *Termios) {
 	C.tcsetattr(C.int(fd), C.int(when), &cterm)
 }
 
-func GetPassword(fd uintptr) string {
+func ReadPassword(fd uintptr) (string, error) {
 	var termios, oldState Termios
 	tcgetattr(fd, &termios)
 	oldState = termios
 	termios.Lflag &^= syscall.ECHO
 	tcsetattr(fd, 0, &termios)
-
 	finish := make(chan bool)
 	// Restoring after reading the password
 	defer func() {
 		tcsetattr(fd, 0, &oldState)
 		finish <- true
 	}()
-
 	// Restoring on SIGINT
 	sigChan := make(chan os.Signal)
 	go func(c chan os.Signal, t Termios, fd uintptr) {
@@ -50,13 +48,15 @@ func GetPassword(fd uintptr) string {
 		}
 	}(sigChan, oldState, fd)
 	signal.Notify(sigChan, syscall.SIGINT)
-
 	var buf [16]byte
 	var pass []byte
 	for {
-		n, _ := syscall.Read(int(fd), buf[:])
+		n, err := syscall.Read(int(fd), buf[:])
 		if n == 0 {
 			break
+		}
+		if err != nil {
+			return "", err
 		}
 		for n > 0 && (buf[n-1] == '\n' || buf[n-1] == '\r') {
 			n--
@@ -66,5 +66,5 @@ func GetPassword(fd uintptr) string {
 			break
 		}
 	}
-	return string(pass)
+	return string(pass), nil
 }

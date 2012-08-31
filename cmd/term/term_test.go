@@ -37,21 +37,24 @@ func (s *S) unpatchStdin() {
 func (s *S) TestGetPassword(c *C) {
 	s.patchStdin(c, []byte("chico\n"))
 	defer s.unpatchStdin()
-	pass := GetPassword(os.Stdin.Fd())
+	pass, err := ReadPassword(os.Stdin.Fd())
+	c.Assert(err, IsNil)
 	c.Assert(pass, Equals, "chico")
 }
 
 func (s *S) TestGetPasswordShouldRemoveAllNewLineCharactersFromTheEndOfThePassword(c *C) {
 	s.patchStdin(c, []byte("chico\n\n\n"))
 	defer s.unpatchStdin()
-	pass := GetPassword(os.Stdin.Fd())
+	pass, err := ReadPassword(os.Stdin.Fd())
+	c.Assert(err, IsNil)
 	c.Assert(pass, Equals, "chico")
 }
 
 func (s *S) TestGetPasswordShouldRemoveCarriageReturnCharacterFromTheEndOfThePassword(c *C) {
 	s.patchStdin(c, []byte("opeth\r\n"))
 	defer s.unpatchStdin()
-	pass := GetPassword(os.Stdin.Fd())
+	pass, err := ReadPassword(os.Stdin.Fd())
+	c.Assert(err, IsNil)
 	c.Assert(pass, Equals, "opeth")
 }
 
@@ -60,7 +63,8 @@ func (s *S) TestGetPasswordWithEmptyPassword(c *C) {
 	for _, value := range values {
 		s.patchStdin(c, []byte(value))
 		defer s.unpatchStdin()
-		pass := GetPassword(os.Stdin.Fd())
+		pass, err := ReadPassword(os.Stdin.Fd())
+		c.Assert(err, IsNil)
 		c.Assert(pass, Equals, "")
 	}
 }

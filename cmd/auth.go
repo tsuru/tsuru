@@ -13,8 +13,12 @@ import (
 )
 
 func readPassword(out io.Writer, password *string) error {
+	var err error
 	io.WriteString(out, "Password: ")
-	*password = term.GetPassword(os.Stdin.Fd())
+	*password, err = term.ReadPassword(os.Stdin.Fd())
+	if err != nil {
+		return err
+	}
 	io.WriteString(out, "\n")
 	if *password == "" {
 		msg := "You must provide the password!\n"
