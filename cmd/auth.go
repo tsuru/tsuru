@@ -12,20 +12,19 @@ import (
 	"os"
 )
 
-func readPassword(out io.Writer, password *string) error {
-	var err error
+func readPassword(out io.Writer) (string, error) {
 	io.WriteString(out, "Password: ")
-	*password, err = term.ReadPassword(os.Stdin.Fd())
+	password, err := term.ReadPassword(os.Stdin.Fd())
 	if err != nil {
-		return err
+		return "", err
 	}
 	io.WriteString(out, "\n")
-	if *password == "" {
+	if password == "" {
 		msg := "You must provide the password!\n"
 		io.WriteString(out, msg)
-		return errors.New(msg)
+		return "", errors.New(msg)
 	}
-	return nil
+	return password, nil
 }
 
 type userCreate struct{}
@@ -40,9 +39,8 @@ func (c *userCreate) Info() *Info {
 }
 
 func (c *userCreate) Run(context *Context, client Doer) error {
-	var password string
 	email := context.Args[0]
-	err := readPassword(context.Stdout, &password)
+	password, err := readPassword(context.Stdout)
 	if err != nil {
 		return err
 	}
@@ -62,9 +60,8 @@ func (c *userCreate) Run(context *Context, client Doer) error {
 type login struct{}
 
 func (c *login) Run(context *Context, client Doer) error {
-	var password string
 	email := context.Args[0]
-	err := readPassword(context.Stdout, &password)
+	password, err := readPassword(context.Stdout)
 	if err != nil {
 		return err
 	}
