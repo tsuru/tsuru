@@ -12,8 +12,14 @@ import (
 	"os"
 )
 
-func readPassword(out io.Writer) (string, error) {
-	io.WriteString(out, "Password: ")
+type passwordReader interface {
+	readPassword(io.Writer, string) (string, error)
+}
+
+type stdinPasswordReader struct{}
+
+func (r stdinPasswordReader) readPassword(out io.Writer, msg string) (string, error) {
+	io.WriteString(out, msg)
 	password, err := term.ReadPassword(os.Stdin.Fd())
 	if err != nil {
 		return "", err
@@ -27,7 +33,16 @@ func readPassword(out io.Writer) (string, error) {
 	return password, nil
 }
 
-type userCreate struct{}
+type userCreate struct {
+	reader passwordReader
+}
+
+func (c *userCreate) preader() passwordReader {
+	if c.reader == nil {
+		c.reader = stdinPasswordReader{}
+	}
+	return c.reader
+}
 
 func (c *userCreate) Info() *Info {
 	return &Info{
@@ -40,9 +55,16 @@ func (c *userCreate) Info() *Info {
 
 func (c *userCreate) Run(context *Context, client Doer) error {
 	email := context.Args[0]
-	password, err := readPassword(context.Stdout)
+	password, err := c.preader().readPassword(context.Stdout, "Password: ")
 	if err != nil {
 		return err
+	}
+	confirm, err := c.preader().readPassword(context.Stdout, "Confirm: ")
+	if err != nil {
+		return err
+	}
+	if password != confirm {
+		return errors.New("Passwords didn't match.")
 	}
 	b := bytes.NewBufferString(`{"email":"` + email + `", "password":"` + password + `"}`)
 	request, err := http.NewRequest("POST", GetUrl("/users"), b)
@@ -57,11 +79,20 @@ func (c *userCreate) Run(context *Context, client Doer) error {
 	return nil
 }
 
-type login struct{}
+type login struct {
+	reader passwordReader
+}
+
+func (c *login) preader() passwordReader {
+	if c.reader == nil {
+		c.reader = stdinPasswordReader{}
+	}
+	return c.reader
+}
 
 func (c *login) Run(context *Context, client Doer) error {
 	email := context.Args[0]
-	password, err := readPassword(context.Stdout)
+	password, err := c.preader().readPassword(context.Stdout, "Password: ")
 	if err != nil {
 		return err
 	}

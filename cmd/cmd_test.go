@@ -7,8 +7,6 @@ import (
 	"github.com/timeredbull/tsuru/fs/testing"
 	"io"
 	. "launchpad.net/gocheck"
-	"os"
-	"syscall"
 )
 
 type recordingExiter int
@@ -19,23 +17,6 @@ func (e *recordingExiter) Exit(code int) {
 
 func (e recordingExiter) value() int {
 	return int(e)
-}
-
-func (s *S) patchStdin(c *C, content []byte) {
-	f, err := os.OpenFile("/tmp/passwdfile.txt", syscall.O_RDWR|syscall.O_NDELAY|syscall.O_CREAT|syscall.O_TRUNC, 0600)
-	c.Assert(err, IsNil)
-	n, err := f.Write(content)
-	c.Assert(err, IsNil)
-	c.Assert(n, Equals, len(content))
-	ret, err := f.Seek(0, 0)
-	c.Assert(err, IsNil)
-	c.Assert(ret, Equals, int64(0))
-	s.stdin = os.Stdin
-	os.Stdin = f
-}
-
-func (s *S) unpatchStdin() {
-	os.Stdin = s.stdin
 }
 
 type TestCommand struct{}

@@ -2,7 +2,9 @@ package cmd
 
 import (
 	"bytes"
+	"errors"
 	"github.com/timeredbull/tsuru/fs/testing"
+	"io"
 	. "launchpad.net/gocheck"
 	"net/http"
 )
@@ -12,12 +14,10 @@ func (s *S) TestLogin(c *C) {
 	defer func() {
 		fsystem = nil
 	}()
-	s.patchStdin(c, []byte("chico\n"))
-	defer s.unpatchStdin()
-	expected := "Password: \nSuccessfully logged!\n"
+	expected := "Successfully logged!\n"
 	context := Context{[]string{}, []string{"foo@foo.com"}, manager.Stdout, manager.Stderr}
 	client := NewClient(&http.Client{Transport: &transport{msg: `{"token": "sometoken"}`, status: http.StatusOK}})
-	command := login{}
+	command := login{reader: &fakeReader{outputs: []string{"chico"}}}
 	err := command.Run(&context, client)
 	c.Assert(err, IsNil)
 	c.Assert(manager.Stdout.(*bytes.Buffer).String(), Equals, expected)
@@ -31,26 +31,30 @@ func (s *S) TestLoginShouldNotDependOnTsuruTokenFile(c *C) {
 	defer func() {
 		fsystem = nil
 	}()
-	s.patchStdin(c, []byte("bar123\n"))
-	defer s.unpatchStdin()
-	expected := "Password: \n" + `Successfully logged!` + "\n"
+	expected := "Successfully logged!\n"
 	context := Context{[]string{}, []string{"foo@foo.com"}, manager.Stdout, manager.Stderr}
 	client := NewClient(&http.Client{Transport: &transport{msg: `{"token":"anothertoken"}`, status: http.StatusOK}})
-	command := login{}
+	command := login{reader: &fakeReader{outputs: []string{"bar123"}}}
 	err := command.Run(&context, client)
 	c.Assert(err, IsNil)
 	c.Assert(manager.Stdout.(*bytes.Buffer).String(), Equals, expected)
 }
 
 func (s *S) TestLoginShouldReturnErrorIfThePasswordIsNotGiven(c *C) {
-	s.patchStdin(c, []byte("\n"))
-	defer s.unpatchStdin()
-	expected := "Password: \nYou must provide the password!\n"
 	context := Context{[]string{}, []string{"foo@foo.com"}, manager.Stdout, manager.Stderr}
-	command := login{}
+	command := login{reader: &failingReader{msg: "You must provide the password!"}}
 	err := command.Run(&context, nil)
 	c.Assert(err, NotNil)
-	c.Assert(manager.Stdout.(*bytes.Buffer).String(), Equals, expected)
+	c.Assert(err, ErrorMatches, "^You must provide the password!$")
+}
+
+func (s *S) TestLoginPreader(c *C) {
+	reader := fakeReader{outputs: []string{"123", "456"}}
+	login := login{}
+	login.reader = &reader
+	c.Assert(login.preader(), DeepEquals, &reader)
+	login.reader = nil
+	c.Assert(login.preader(), DeepEquals, stdinPasswordReader{})
 }
 
 func (s *S) TestLogout(c *C) {
@@ -198,38 +202,40 @@ func (s *S) TestUserCreateShouldNotDependOnTsuruTokenFile(c *C) {
 	defer func() {
 		fsystem = nil
 	}()
-	s.patchStdin(c, []byte("bar123\n"))
-	defer s.unpatchStdin()
-	expected := "Password: \n" + `User "foo@foo.com" successfully created!` + "\n"
+	expected := `User "foo@foo.com" successfully created!` + "\n"
 	context := Context{[]string{}, []string{"foo@foo.com"}, manager.Stdout, manager.Stderr}
 	client := NewClient(&http.Client{Transport: &transport{msg: "", status: http.StatusCreated}})
-	command := userCreate{}
+	command := userCreate{reader: &fakeReader{outputs: []string{"foo123"}}}
 	err := command.Run(&context, client)
 	c.Assert(err, IsNil)
 	c.Assert(manager.Stdout.(*bytes.Buffer).String(), Equals, expected)
 }
 
-func (s *S) TestUserCreate(c *C) {
-	s.patchStdin(c, []byte("bar123\n"))
-	defer s.unpatchStdin()
-	expected := "Password: \n" + `User "foo@foo.com" successfully created!` + "\n"
+func (s *S) TestUserCreateReturnErrorIfPasswordsDontMatch(c *C) {
 	context := Context{[]string{}, []string{"foo@foo.com"}, manager.Stdout, manager.Stderr}
 	client := NewClient(&http.Client{Transport: &transport{msg: "", status: http.StatusCreated}})
-	command := userCreate{}
+	command := userCreate{reader: &fakeReader{outputs: []string{"foo123", "foo1234"}}}
+	err := command.Run(&context, client)
+	c.Assert(err, NotNil)
+	c.Assert(err, ErrorMatches, "^Passwords didn't match.$")
+}
+
+func (s *S) TestUserCreate(c *C) {
+	expected := `User "foo@foo.com" successfully created!` + "\n"
+	context := Context{[]string{}, []string{"foo@foo.com"}, manager.Stdout, manager.Stderr}
+	client := NewClient(&http.Client{Transport: &transport{msg: "", status: http.StatusCreated}})
+	command := userCreate{reader: &fakeReader{outputs: []string{"foo123"}}}
 	err := command.Run(&context, client)
 	c.Assert(err, IsNil)
 	c.Assert(manager.Stdout.(*bytes.Buffer).String(), Equals, expected)
 }
 
 func (s *S) TestUserCreateShouldReturnErrorIfThePasswordIsNotGiven(c *C) {
-	s.patchStdin(c, []byte("\n"))
-	defer s.unpatchStdin()
-	expected := "Password: \nYou must provide the password!\n"
 	context := Context{[]string{}, []string{"foo@foo.com"}, manager.Stdout, manager.Stderr}
-	command := userCreate{}
+	command := userCreate{reader: &failingReader{msg: "You must provide the password!"}}
 	err := command.Run(&context, nil)
 	c.Assert(err, NotNil)
-	c.Assert(manager.Stdout.(*bytes.Buffer).String(), Equals, expected)
+	c.Assert(err, ErrorMatches, "^You must provide the password!$")
 }
 
 func (s *S) TestUserCreateInfo(c *C) {
@@ -240,4 +246,32 @@ func (s *S) TestUserCreateInfo(c *C) {
 		MinArgs: 1,
 	}
 	c.Assert((&userCreate{}).Info(), DeepEquals, expected)
+}
+
+func (s *S) TestUserCreatePreader(c *C) {
+	reader := fakeReader{outputs: []string{"123", "456"}}
+	create := userCreate{}
+	create.reader = &reader
+	c.Assert(create.preader(), DeepEquals, &reader)
+	create.reader = nil
+	c.Assert(create.preader(), DeepEquals, stdinPasswordReader{})
+}
+
+type fakeReader struct {
+	reads   int
+	outputs []string
+}
+
+func (r *fakeReader) readPassword(out io.Writer, msg string) (string, error) {
+	output := r.outputs[r.reads%len(r.outputs)]
+	r.reads++
+	return output, nil
+}
+
+type failingReader struct {
+	msg string
+}
+
+func (r *failingReader) readPassword(out io.Writer, msg string) (string, error) {
+	return "", errors.New(r.msg)
 }
