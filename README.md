@@ -27,31 +27,27 @@ target with your server url (tsuru target), like:
 After that, all you need is create a user and authenticate to start creating
 apps and pushing code to them:
 
-    % tsuru user create youremail@gmail.com
+    % tsuru user-create youremail@gmail.com
     % tsuru login youremail@gmail.com
 
 Every command has a help, to access it, try:
 
     % tsuru help command
 
-Sometimes you also need help with a subcommand:
-
-    % tsuru help command subcommand
-
 Then, create a team:
 
-    % tsuru team create myteam
+    % tsuru team-create myteam
 
 Your user will be automatically added to this team.
 
 To create an app:
 
-    % tsuru app create myapp [framework]
+    % tsuru app-create myapp gunicorn
 
-The 'framework' parameter is optional, and defaults to 'django'. The available frameworks are listed at https://github.com/timeredbull/charms.
+The available frameworks are listed at https://github.com/timeredbull/charms.
 
-The command output will return your the git remote url for your app, you should add it to
-your git repository:
+The command output will return your the git remote url for your app, you should
+add it to your git repository:
 
     % git remote add tsuru git@tsuru.myhost.com:myapp.git
 
