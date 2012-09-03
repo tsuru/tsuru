@@ -33,10 +33,10 @@ func (s *S) setUpGit(c *C) {
 	err := os.MkdirAll(s.repoPath, 0755)
 	c.Assert(err, IsNil)
 	s.git = &repository{path: s.repoPath}
-	s.git.run("config", "user.name", "git repository test")
-	s.git.run("config", "user.email", "gitosis@tsuru-tests.com")
 	_, err = s.git.run("init")
 	c.Assert(err, IsNil)
+	s.git.run("config", "user.name", "git repository test")
+	s.git.run("config", "user.email", "gitosis@tsuru-tests.com")
 }
 
 func (s *S) tearDownGit(c *C) {
