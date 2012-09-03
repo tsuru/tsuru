@@ -3,6 +3,7 @@ package repository
 import (
 	"errors"
 	"fmt"
+	"github.com/timeredbull/tsuru/config"
 	. "launchpad.net/gocheck"
 	"strings"
 )
@@ -102,7 +103,9 @@ func (s *S) TestGetPath(c *C) {
 }
 
 func (s *S) TestGetBarePath(c *C) {
+	root, err := config.GetString("git:root")
+	c.Assert(err, IsNil)
 	path, err := GetBarePath("foobar")
 	c.Assert(err, IsNil)
-	c.Assert(path, Equals, "/tmp/git/foobar.git")
+	c.Assert(path, Equals, root+"/foobar.git")
 }

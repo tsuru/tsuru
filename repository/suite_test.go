@@ -48,11 +48,12 @@ func (s *S) SetUpSuite(c *C) {
 	c.Assert(err, IsNil)
 	err = config.ReadConfigFile("../etc/tsuru.conf")
 	c.Assert(err, IsNil)
-	s.gitRoot, err = config.GetString("git:root")
-	c.Assert(err, IsNil)
-	s.gitosisBare, err = config.GetString("git:gitosis-bare")
-	c.Assert(err, IsNil)
-	s.gitosisRepo, err = config.GetString("git:gitosis-repo")
+	s.gitRoot = ".test/git"
+	s.gitosisRepo = s.gitRoot + "/gitosis-admin"
+	s.gitosisBare = s.gitosisRepo + ".git"
+	config.Set("git:root", s.gitRoot)
+	config.Set("git:gitosis-bare", s.gitosisBare)
+	config.Set("git:gitosis-repo", s.gitosisRepo)
 	err = os.RemoveAll(s.gitRoot)
 	c.Assert(err, IsNil)
 	err = os.MkdirAll(s.gitRoot, 0777)
