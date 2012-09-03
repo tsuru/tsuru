@@ -3,9 +3,6 @@ before_install:
   - sudo apt-get update -qq
   - sudo apt-get install bzr mercurial git libyaml-dev -qq
 install:
-  - make hg
-  - make git
-  - make bzr
   - make get-test
 before_script:
   - ./check-fmt.sh
