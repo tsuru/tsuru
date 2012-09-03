@@ -91,7 +91,11 @@ func (s *S) TearDownSuite(c *C) {
 }
 
 func (s *S) TearDownTest(c *C) {
-	_, err := s.mngr.git.run("rm", "gitosis.conf")
+	out, err := s.mngr.git.run("rm", "gitosis.conf")
+	if err != nil {
+		c.Error(out)
+		c.FailNow()
+	}
 	c.Assert(err, IsNil)
 	err = s.mngr.git.commit("removing test file")
 	c.Assert(err, IsNil)
