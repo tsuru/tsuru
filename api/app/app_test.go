@@ -663,7 +663,7 @@ func (s *S) TestUpdateHooks(c *C) {
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
 	out, err := a.updateHooks()
 	c.Assert(err, IsNil)
-	c.Assert(string(out), Equals, "ssh -o StrictHostKeyChecking no -q -e delta 4 /var/lib/tsuru/hooks/restart")
+	c.Assert(string(out), Equals, "ssh -o StrictHostKeyChecking no -q -e delta 4 /var/lib/tsuru/hooks/dependenciesssh -o StrictHostKeyChecking no -q -e delta 4 /var/lib/tsuru/hooks/restart")
 }
 
 func (s *S) TestLogShouldStoreLog(c *C) {

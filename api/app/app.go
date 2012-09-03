@@ -389,7 +389,8 @@ func (a *App) updateHooks() ([]byte, error) {
 		return out, err
 	}
 	a.log("executting hook to restarting")
-	out, err = u.executeHook("restart")
+	restartOut, err := u.executeHook("restart")
+	out = append(out, restartOut...)
 	if err != nil {
 		return out, err
 	}
