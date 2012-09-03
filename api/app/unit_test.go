@@ -120,6 +120,11 @@ func (s *S) TestStateMachineAgentRunningAndInstanceAndAgentPending(c *C) {
 	c.Assert(u.State(), Equals, "installing")
 }
 
+func (s *S) TestStateMachineAgentNotStarted(c *C) {
+	u := Unit{AgentState: "pending", InstanceState: "running", MachineAgentState: "not-started"}
+	c.Assert(u.State(), Equals, "creating")
+}
+
 func (s *S) TestStateInstancePending(c *C) {
 	u := Unit{AgentState: "not-started", InstanceState: "pending"}
 	c.Assert(u.State(), Equals, "creating")

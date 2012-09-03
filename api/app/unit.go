@@ -62,7 +62,10 @@ func (u *Unit) State() string {
 	if u.InstanceState == "error" || u.AgentState == "install-error" || u.MachineAgentState == "start-error" {
 		return "error"
 	}
-	if u.MachineAgentState == "pending" || u.InstanceState == "pending" || u.MachineAgentState == "" || u.InstanceState == "" {
+	if u.MachineAgentState == "pending" || u.MachineAgentState == "not-started" || u.MachineAgentState == "" {
+		return "creating"
+	}
+	if u.InstanceState == "pending" || u.InstanceState == "" {
 		return "creating"
 	}
 	if u.MachineAgentState == "running" && u.AgentState == "not-started" {
