@@ -9,3 +9,4 @@ cmd/servicecli/servicecli
 cmd/appcli/appcli
 api/webserver/webserver
 docs/_build/*
+.test
