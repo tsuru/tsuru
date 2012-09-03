@@ -11,7 +11,8 @@ func buildManager(name string) cmd.Manager {
 	m.Register(&ServiceRemove{})
 	m.Register(&ServiceList{})
 	m.Register(&ServiceUpdate{})
-	m.Register(&ServiceDoc{})
+	m.Register(&ServiceDocGet{})
+	m.Register(&ServiceDocAdd{})
 	m.Register(&ServiceTemplate{})
 	return m
 }

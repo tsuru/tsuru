@@ -185,7 +185,7 @@ func (s *S) TestServiceUpdateIsAnInfoer(c *C) {
 	c.Assert(&ServiceUpdate{}, Implements, &infoer)
 }
 
-func (s *S) TestServiceAddDoc(c *C) {
+func (s *S) TestServiceDocAdd(c *C) {
 	var called bool
 	trans := conditionalTransport{
 		transport{
@@ -204,23 +204,23 @@ func (s *S) TestServiceAddDoc(c *C) {
 		Stdout: manager.Stdout,
 		Stderr: manager.Stderr,
 	}
-	err := (&ServiceAddDoc{}).Run(&context, client)
+	err := (&ServiceDocAdd{}).Run(&context, client)
 	c.Assert(err, IsNil)
 	c.Assert(called, Equals, true)
 	c.Assert(context.Stdout.(*bytes.Buffer).String(), Equals, "Documentation for 'serv' successfully updated.\n")
 }
 
-func (s *S) TestServiceAddDocInfo(c *C) {
+func (s *S) TestServiceDocAddInfo(c *C) {
 	expected := &cmd.Info{
-		Name:    "add",
-		Usage:   "service doc add <service> <path/to/docfile>",
+		Name:    "doc-add",
+		Usage:   "service doc-add <service> <path/to/docfile>",
 		Desc:    "Update service documentation, extracting it from the given file.",
 		MinArgs: 2,
 	}
-	c.Assert((&ServiceAddDoc{}).Info(), DeepEquals, expected)
+	c.Assert((&ServiceDocAdd{}).Info(), DeepEquals, expected)
 }
 
-func (s *S) TestServiceGetDoc(c *C) {
+func (s *S) TestServiceDocGet(c *C) {
 	var called bool
 	trans := conditionalTransport{
 		transport{
@@ -239,52 +239,20 @@ func (s *S) TestServiceGetDoc(c *C) {
 		Stdout: manager.Stdout,
 		Stderr: manager.Stderr,
 	}
-	err := (&ServiceGetDoc{}).Run(&context, client)
+	err := (&ServiceDocGet{}).Run(&context, client)
 	c.Assert(err, IsNil)
 	c.Assert(called, Equals, true)
 	c.Assert(context.Stdout.(*bytes.Buffer).String(), Equals, "some doc")
 }
 
-func (s *S) TestServiceGetDocInfo(c *C) {
+func (s *S) TestServiceDocGetInfo(c *C) {
 	expected := &cmd.Info{
-		Name:    "get",
-		Usage:   "service doc get <service>",
+		Name:    "doc-get",
+		Usage:   "service doc-get <service>",
 		Desc:    "Shows service documentation.",
 		MinArgs: 1,
 	}
-	c.Assert((&ServiceGetDoc{}).Info(), DeepEquals, expected)
-}
-
-func (s *S) TestServiceDocInfo(c *C) {
-	expected := &cmd.Info{
-		Name:    "doc",
-		Usage:   "service doc (add|get)",
-		Desc:    "Service documentation.",
-		MinArgs: 1,
-	}
-	command := &ServiceDoc{}
-	c.Assert(command.Info(), DeepEquals, expected)
-}
-
-func (s *S) TestServiceShouldBeInfoer(c *C) {
-	var infoer cmd.Infoer
-	c.Assert(&ServiceDoc{}, Implements, &infoer)
-}
-
-func (s *S) TestServiceAddDocIsASubcommandOfServiceDoc(c *C) {
-	command := &ServiceDoc{}
-	subc := command.Subcommands()
-	list, ok := subc["add"]
-	c.Assert(ok, Equals, true)
-	c.Assert(list, FitsTypeOf, &ServiceAddDoc{})
-}
-
-func (s *S) TestServiceGetDocIsASubcommandOfServiceDoc(c *C) {
-	command := &ServiceDoc{}
-	subc := command.Subcommands()
-	list, ok := subc["get"]
-	c.Assert(ok, Equals, true)
-	c.Assert(list, FitsTypeOf, &ServiceGetDoc{})
+	c.Assert((&ServiceDocGet{}).Info(), DeepEquals, expected)
 }
 
 func (s *S) TestServiceTemplateInfo(c *C) {

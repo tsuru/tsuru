@@ -136,18 +136,18 @@ func (c *ServiceUpdate) Run(ctx *cmd.Context, client cmd.Doer) error {
 	return nil
 }
 
-type ServiceAddDoc struct{}
+type ServiceDocAdd struct{}
 
-func (c *ServiceAddDoc) Info() *cmd.Info {
+func (c *ServiceDocAdd) Info() *cmd.Info {
 	return &cmd.Info{
-		Name:    "add",
-		Usage:   "service doc add <service> <path/to/docfile>",
+		Name:    "doc-add",
+		Usage:   "service doc-add <service> <path/to/docfile>",
 		Desc:    "Update service documentation, extracting it from the given file.",
 		MinArgs: 2,
 	}
 }
 
-func (c *ServiceAddDoc) Run(ctx *cmd.Context, client cmd.Doer) error {
+func (c *ServiceDocAdd) Run(ctx *cmd.Context, client cmd.Doer) error {
 	serviceName := ctx.Args[0]
 	docPath := ctx.Args[1]
 	b, err := ioutil.ReadFile(docPath)
@@ -163,9 +163,9 @@ func (c *ServiceAddDoc) Run(ctx *cmd.Context, client cmd.Doer) error {
 	return nil
 }
 
-type ServiceGetDoc struct{}
+type ServiceDocGet struct{}
 
-func (c *ServiceGetDoc) Run(ctx *cmd.Context, client cmd.Doer) error {
+func (c *ServiceDocGet) Run(ctx *cmd.Context, client cmd.Doer) error {
 	serviceName := ctx.Args[0]
 	request, err := http.NewRequest("GET", cmd.GetUrl("/services/"+serviceName+"/doc"), nil)
 	if err != nil {
@@ -185,30 +185,12 @@ func (c *ServiceGetDoc) Run(ctx *cmd.Context, client cmd.Doer) error {
 	return nil
 }
 
-func (c *ServiceGetDoc) Info() *cmd.Info {
+func (c *ServiceDocGet) Info() *cmd.Info {
 	return &cmd.Info{
-		Name:    "get",
-		Usage:   "service doc get <service>",
+		Name:    "doc-get",
+		Usage:   "service doc-get <service>",
 		Desc:    "Shows service documentation.",
 		MinArgs: 1,
-	}
-}
-
-type ServiceDoc struct{}
-
-func (c *ServiceDoc) Info() *cmd.Info {
-	return &cmd.Info{
-		Name:    "doc",
-		Usage:   "service doc (add|get)",
-		Desc:    "Service documentation.",
-		MinArgs: 1,
-	}
-}
-
-func (s *ServiceDoc) Subcommands() map[string]interface{} {
-	return map[string]interface{}{
-		"add": &ServiceAddDoc{},
-		"get": &ServiceGetDoc{},
 	}
 }
 

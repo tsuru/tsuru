@@ -43,11 +43,18 @@ func (s *S) TestUpdateIsRegistered(c *C) {
 	c.Assert(update, FitsTypeOf, &ServiceUpdate{})
 }
 
-func (s *S) TestDocIsRegistered(c *C) {
+func (s *S) TestDocGetIsRegistered(c *C) {
 	manager := buildManager("tsuru")
-	update, ok := manager.Commands["doc"]
+	update, ok := manager.Commands["doc-get"]
 	c.Assert(ok, Equals, true)
-	c.Assert(update, FitsTypeOf, &ServiceDoc{})
+	c.Assert(update, FitsTypeOf, &ServiceDocGet{})
+}
+
+func (s *S) TestDocAddIsRegistered(c *C) {
+	manager := buildManager("tsuru")
+	update, ok := manager.Commands["doc-add"]
+	c.Assert(ok, Equals, true)
+	c.Assert(update, FitsTypeOf, &ServiceDocAdd{})
 }
 
 func (s *S) TestTemplateIsRegistered(c *C) {
