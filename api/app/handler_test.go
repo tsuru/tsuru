@@ -819,6 +819,41 @@ func (s *S) TestRunHandlerShouldExecuteTheGivenCommandInTheGivenApp(c *C) {
 	c.Assert(recorder.Body.String(), Equals, "ssh -o StrictHostKeyChecking no -q -e secrets 10 [ -f /home/application/apprc ] && source /home/application/apprc; [ -d /home/application/current ] && cd /home/application/current; ls")
 }
 
+func (s *S) TestRunHandlerReturnsTheOutputOfTheCommandEvenIfItFails(c *C) {
+	dir, err := commandmocker.Add("juju", "$*")
+	c.Assert(err, IsNil)
+	defer commandmocker.Remove(dir)
+	u := Unit{
+		Name:              "someapp/0",
+		Type:              "django",
+		Machine:           10,
+		AgentState:        "started",
+		MachineAgentState: "running",
+		InstanceState:     "running",
+	}
+	a := App{
+		Name:      "secrets",
+		Framework: "arch enemy",
+		Teams:     []string{s.team.Name},
+		ec2Auth:   &fakeAuthorizer{},
+	}
+	err = createApp(&a)
+	c.Assert(err, IsNil)
+	a.Units = []Unit{u}
+	err = db.Session.Apps().Update(bson.M{"name": a.Name}, &a)
+	c.Assert(err, IsNil)
+	url := fmt.Sprintf("/apps/%s/run/?:name=%s", a.Name, a.Name)
+	request, err := http.NewRequest("POST", url, strings.NewReader("ls"))
+	c.Assert(err, IsNil)
+	errdir, err := commandmocker.Error("juju", "juju failed", 1)
+	c.Assert(err, IsNil)
+	defer commandmocker.Remove(errdir)
+	recorder := httptest.NewRecorder()
+	err = RunCommand(recorder, request, s.user)
+	c.Assert(err, NotNil)
+	c.Assert(recorder.Body.String(), Equals, "juju failed")
+}
+
 func (s *S) TestRunHandlerShouldFilterOutputFromJuju(c *C) {
 	dir, err := commandmocker.Add("juju", output)
 	c.Assert(err, IsNil)

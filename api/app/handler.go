@@ -297,13 +297,13 @@ func RunCommand(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	cmd := fmt.Sprintf("[ -f /home/application/apprc ] && source /home/application/apprc; [ -d /home/application/current ] && cd /home/application/current; %s", c)
 	app.log(fmt.Sprintf("running '%s'", c))
 	out, err := app.unit().Command(cmd)
+	n, werr := w.Write(out)
+	app.log(string(out))
 	if err != nil {
 		return err
 	}
-	app.log(string(out))
-	n, err := w.Write(out)
-	if err != nil {
-		return err
+	if werr != nil {
+		return werr
 	}
 	if n != len(out) {
 		return &errors.Http{Code: http.StatusInternalServerError, Message: "Unexpected error writing the output"}
