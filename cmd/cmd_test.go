@@ -105,6 +105,14 @@ func (s *S) TestHelpCommandShouldBeRegisteredByDefault(c *C) {
 	c.Assert(exists, Equals, true)
 }
 
+func (s *S) TestHelpReturnErrorIfTheGivenCommandDoesNotExist(c *C) {
+	command := help{manager: &manager}
+	context := Context{[]string{}, []string{"user-create"}, manager.Stdout, manager.Stderr}
+	err := command.Run(&context, nil)
+	c.Assert(err, NotNil)
+	c.Assert(err, ErrorMatches, "^Command user-create does not exist.$")
+}
+
 func (s *S) TestRunWithoutArgsShouldRunsHelp(c *C) {
 	expected := `Usage: glb command [args]
 

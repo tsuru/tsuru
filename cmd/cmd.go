@@ -133,7 +133,10 @@ func (c *help) Info() *Info {
 func (c *help) Run(context *Context, client Doer) error {
 	output := ""
 	if len(context.Args) > 0 {
-		cmd := c.manager.Commands[context.Args[0]]
+		cmd, ok := c.manager.Commands[context.Args[0]]
+		if !ok {
+			return fmt.Errorf("Command %s does not exist.", context.Args[0])
+		}
 		info := cmd.(Infoer).Info()
 		output += fmt.Sprintf("Usage: %s %s\n", c.manager.Name, info.Usage)
 		output += fmt.Sprintf("\n%s\n", info.Desc)
