@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"fmt"
 	"os/exec"
 	"path"
 	"sync"
@@ -35,17 +36,25 @@ func (r *repository) run(args ...string) (string, error) {
 //
 // It commits *everything* (git add . + git commit -am).
 func (r *repository) commit(message string) error {
-	_, err := r.run("add", ".")
+	out, err := r.run("add", ".")
 	if err != nil {
-		return err
+		return fmt.Errorf("Failed to add files: %s.\nOutput: %s.", err, out)
 	}
-	_, err = r.run("commit", "-am", message)
-	return err
+	out, err = r.run("commit", "-am", message)
+	if err != nil {
+		return fmt.Errorf("Failed to run commit: %s.\nOutput: %s.", err, out)
+	}
+	return nil
 }
 
 // push pushes commits to a remote.
 func (r *repository) push(remote, branch string) error {
-	_, err := r.run("push", remote, branch)
+	out, err := r.run("push", remote, branch)
+	if err != nil {
+		if err != nil {
+			return fmt.Errorf("Failed to push: %s.\nOutput: %s.", err, out)
+		}
+	}
 	return err
 }
 
