@@ -328,20 +328,17 @@ func (a *App) authorizer() authorizer {
  */
 func (a *App) preRestart(c conf) ([]byte, error) {
 	if !a.hasRestartHooks(c) {
-		msg := "app.conf file does not exists or is in the right place. Skipping pre-restart hook..."
-		a.log(msg)
-		return []byte(msg + "\n"), nil
+		a.log("app.conf file does not exists or is in the right place. Skipping pre-restart hook...")
+		return []byte(nil), nil
 	}
 	if c.PreRestart == "" {
-		msg := "pre-restart hook section in app conf does not exists... Skipping pre-restart hook..."
-		a.log(msg)
-		return []byte(msg + "\n"), nil
+		a.log("pre-restart hook section in app conf does not exists... Skipping pre-restart hook...")
+		return []byte(nil), nil
 	}
 	p, err := deployHookAbsPath(c.PreRestart)
 	if err != nil {
-		msg := fmt.Sprintf("Error obtaining absolute path to hook: %s. Skipping pre-restart hook...", err)
-		a.log(msg)
-		return []byte(msg + "\n"), nil
+		a.log(fmt.Sprintf("Error obtaining absolute path to hook: %s. Skipping pre-restart hook...", err))
+		return []byte(nil), nil
 	}
 	a.log("Executing pre-restart hook...")
 	out, err := a.unit().Command("/bin/bash", p)
@@ -355,20 +352,17 @@ func (a *App) preRestart(c conf) ([]byte, error) {
  */
 func (a *App) posRestart(c conf) ([]byte, error) {
 	if !a.hasRestartHooks(c) {
-		msg := "app.conf file does not exists or is in the right place. Skipping pos-restart hook..."
-		a.log(msg)
-		return []byte(msg + "\n"), nil
+		a.log("app.conf file does not exists or is in the right place. Skipping pos-restart hook...")
+		return []byte(nil), nil
 	}
 	if c.PosRestart == "" {
-		msg := "pos-restart hook section in app conf does not exists... Skipping pos-restart hook..."
-		a.log(msg)
-		return []byte(msg + "\n"), nil
+		a.log("pos-restart hook section in app conf does not exists... Skipping pos-restart hook...")
+		return []byte(nil), nil
 	}
 	p, err := deployHookAbsPath(c.PosRestart)
 	if err != nil {
-		msg := fmt.Sprintf("Error obtaining absolute path to hook: %s. Skipping pos-restart-hook...", err)
-		a.log(msg)
-		return []byte(msg + "\n"), nil
+		a.log(fmt.Sprintf("Error obtaining absolute path to hook: %s. Skipping pos-restart-hook...", err))
+		return []byte(nil), nil
 	}
 	out, err := a.unit().Command("/bin/bash", p)
 	a.log("Executing pos-restart hook...")

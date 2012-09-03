@@ -465,12 +465,11 @@ File or directory does not exists
 	w := bytes.NewBuffer([]byte{})
 	l := stdlog.New(w, "", stdlog.LstdFlags)
 	log.Target = l
-	out, err := a.preRestart(conf)
+	_, err = a.preRestart(conf)
 	c.Assert(err, IsNil)
 	st := strings.Split(w.String(), "\n")
 	regexp := ".*app.conf file does not exists or is in the right place. Skipping pre-restart hook..."
 	c.Assert(st[len(st)-2], Matches, regexp)
-	c.Assert(string(out), Matches, regexp+"\n")
 }
 
 func (s *S) TestSkipsPreRestartWhenPreRestartSectionDoesNotExists(c *C) {
@@ -497,12 +496,11 @@ pos-restart:
 	w := bytes.NewBuffer([]byte{})
 	l := stdlog.New(w, "", stdlog.LstdFlags)
 	log.Target = l
-	out, err := a.preRestart(conf)
+	_, err = a.preRestart(conf)
 	c.Assert(err, IsNil)
 	st := strings.Split(w.String(), "\n")
 	regexp := ".*pre-restart hook section in app conf does not exists... Skipping pre-restart hook..."
 	c.Assert(st[len(st)-2], Matches, regexp)
-	c.Assert(string(out), Matches, regexp+"\n")
 }
 
 func (s *S) TestPosRestart(c *C) {
@@ -555,12 +553,11 @@ File or directory does not exists
 	w := bytes.NewBuffer([]byte{})
 	l := stdlog.New(w, "", stdlog.LstdFlags)
 	log.Target = l
-	out, err := a.posRestart(conf)
+	_, err = a.posRestart(conf)
 	c.Assert(err, IsNil)
 	st := strings.Split(w.String(), "\n")
 	regexp := ".*app.conf file does not exists or is in the right place. Skipping pos-restart hook..."
 	c.Assert(st[len(st)-2], Matches, regexp)
-	c.Assert(string(out), Matches, regexp+"\n")
 }
 
 func (s *S) TestSkipsPosRestartWhenPosRestartSectionDoesNotExists(c *C) {
@@ -586,12 +583,11 @@ pre-restart: somescript.sh
 	w := bytes.NewBuffer([]byte{})
 	l := stdlog.New(w, "", stdlog.LstdFlags)
 	log.Target = l
-	out, err := a.posRestart(conf)
+	_, err = a.posRestart(conf)
 	c.Assert(err, IsNil)
 	st := strings.Split(w.String(), "\n")
 	regexp := ".*pos-restart hook section in app conf does not exists... Skipping pos-restart hook..."
 	c.Assert(st[len(st)-2], Matches, regexp)
-	c.Assert(string(out), Matches, regexp+"\n")
 }
 
 func (s *S) TestHasRestartHooksWithNoHooks(c *C) {
