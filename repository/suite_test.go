@@ -67,6 +67,8 @@ func (s *S) SetUpSuite(c *C) {
 	RunAgent()
 	s.setUpGit(c)
 	s.mngr, err = newGitosisManager()
+	s.mngr.git.run("config", "user.name", "repository test")
+	s.mngr.git.run("config", "user.email", "gitosis@tsuru-tests.com")
 	c.Assert(err, IsNil)
 	log.Target = stdlog.New(s.logFile, "[tsuru-tests]", stdlog.LstdFlags|stdlog.Llongfile)
 }
