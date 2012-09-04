@@ -64,15 +64,19 @@ func jujuCollect(ticker <-chan time.Time, multitenant bool) {
 }
 
 func main() {
-	var err error
+	var (
+		configFile string
+		dry        bool
+		err        error
+	)
 	log.Target, err = syslog.NewLogger(syslog.LOG_INFO, stdlog.LstdFlags)
 	if err != nil {
 		log.Panic(err)
 	}
-	configFile := flag.String("config", "/etc/tsuru/tsuru.conf", "tsuru config file")
-	dry := flag.Bool("dry", false, "dry-run: does not start the agent (for testing purposes)")
+	flag.StringVar(&configFile, "config", "/etc/tsuru/tsuru.conf", "tsuru config file")
+	flag.BoolVar(&dry, "dry", false, "dry-run: does not start the agent (for testing purposes)")
 	flag.Parse()
-	err = config.ReadConfigFile(*configFile)
+	err = config.ReadConfigFile(configFile)
 	if err != nil {
 		log.Panic(err)
 	}
@@ -94,7 +98,7 @@ func main() {
 		log.Panic(err)
 	}
 
-	if !*dry {
+	if !dry {
 		ticker := time.Tick(time.Minute)
 		jujuCollect(ticker, multitenant)
 	}
