@@ -184,15 +184,11 @@ func (a *App) destroy() error {
 			return errors.New(msg)
 		}
 	}
-	unbindCh := make(chan error)
-	go func() {
-		unbindCh <- a.unbind()
-	}()
-	err = db.Session.Apps().Remove(bson.M{"name": a.Name})
+	err = a.unbind()
 	if err != nil {
 		return err
 	}
-	return <-unbindCh
+	return db.Session.Apps().Remove(bson.M{"name": a.Name})
 }
 
 func (a *App) AddUnit(u *Unit) {
