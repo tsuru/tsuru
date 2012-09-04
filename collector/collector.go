@@ -18,9 +18,9 @@ type output struct {
 	Machines map[int]interface{}
 }
 
-func collect(a *app.App) ([]byte, error) {
+func collect(env string) ([]byte, error) {
 	log.Print("collecting status from juju")
-	return exec.Command("juju", "status", "-e", a.JujuEnv).Output()
+	return exec.Command("juju", "status", "-e", env).Output()
 }
 
 func parse(data []byte) *output {

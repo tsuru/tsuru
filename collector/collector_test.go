@@ -173,7 +173,7 @@ func (s *S) TestCollect(c *C) {
 	tmpdir, err := commandmocker.Add("juju", "$*")
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(tmpdir)
-	out, err := collect(&a)
+	out, err := collect(a.JujuEnv)
 	c.Assert(err, IsNil)
 	c.Assert(string(out), Equals, "status -e zeta")
 }
