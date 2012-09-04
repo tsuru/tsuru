@@ -50,7 +50,7 @@ func jujuCollect(ticker <-chan time.Time, multitenant bool) {
 		}
 	} else {
 		if env, err = config.GetString("juju:default-env"); err != nil {
-			panic("You must configure juju default-env in tsuru.conf.")
+			log.Panic("You must configure juju default-env in tsuru.conf.")
 		}
 		f = func() {
 			data, _ := collect(env)
@@ -67,7 +67,7 @@ func main() {
 	var err error
 	log.Target, err = syslog.NewLogger(syslog.LOG_INFO, stdlog.LstdFlags)
 	if err != nil {
-		panic(err)
+		log.Panic(err)
 	}
 	configFile := flag.String("config", "/etc/tsuru/tsuru.conf", "tsuru config file")
 	dry := flag.Bool("dry", false, "dry-run: does not start the agent (for testing purposes)")
@@ -78,11 +78,11 @@ func main() {
 	}
 	connString, err := config.GetString("database:url")
 	if err != nil {
-		panic(err)
+		log.Panic(err)
 	}
 	dbName, err := config.GetString("database:name")
 	if err != nil {
-		panic(err)
+		log.Panic(err)
 	}
 	db.Session, err = db.Open(connString, dbName)
 	if err != nil {
