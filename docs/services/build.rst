@@ -102,7 +102,7 @@ As an example, let's create a method that returns a json with a fake variable ca
 
     from flask import jsonify
 
-    @app.route("/resources/:name", methods=["POST"])
+    @app.route("/resources/<name>", methods=["POST"])
     def bind(name):
         out = jsonify(SOMEVAR="somevalue")
         return out, 201
@@ -120,7 +120,7 @@ Let's create a method for this action:
 
 ::
 
-    @app.route("/resources/:name", methods=["DELETE"])
+    @app.route("/resources/<name>", methods=["DELETE"])
     def unbind(name, host):
         return "", 200
 
@@ -137,7 +137,7 @@ Let's create a method for this action:
 
 ::
 
-    @app.route("/resources/:name/host/:host", methods=["DELETE"])
+    @app.route("/resources/<name>/host/<host>", methods=["DELETE"])
     def remove_instance(name):
         return "", 200
 
@@ -152,7 +152,7 @@ Let's create a function for this action:
 
 ::
 
-    @app.route("/resources/:name/status", methods=["GET"])
+    @app.route("/resources/<name>/status", methods=["GET"])
     def status(name):
         return "", 204
 
@@ -168,13 +168,13 @@ The final code for our "fake api" developed in flask is:
     app = Flask(__name__)
 
 
-    @app.route("/resources/:name", methods=["POST"])
+    @app.route("/resources/<name>", methods=["POST"])
     def bind(name):
         out = jsonify(SOMEVAR="somevalue")
         return out, 201
 
 
-    @app.route("/resources/:name", methods=["DELETE"])
+    @app.route("/resources/<name>", methods=["DELETE"])
     def unbind(name, host):
         return "", 200
 
@@ -184,12 +184,12 @@ The final code for our "fake api" developed in flask is:
         return "", 201
 
 
-    @app.route("/resources/:name/host/:host", methods=["DELETE"])
+    @app.route("/resources/<name>/host/<host>", methods=["DELETE"])
     def remove_instance(name):
         return "", 200
 
 
-    @app.route("/resources/:name/status", methods=["GET"])
+    @app.route("/resources/<name>/status", methods=["GET"])
     def status(name):
         return "", 204
 
