@@ -29,7 +29,7 @@ func getApps() []app.App {
 	var apps []app.App
 	err := db.Session.Apps().Find(query).All(&apps)
 	if err != nil {
-		log.Panicf("Failed to get apps in the database: %s.", err.Error())
+		log.Panicf("Failed to get apps in the database: %s.", err)
 	}
 	return apps
 }
@@ -74,7 +74,7 @@ func main() {
 	flag.Parse()
 	err = config.ReadConfigFile(*configFile)
 	if err != nil {
-		log.Panic(err.Error())
+		log.Panic(err)
 	}
 	connString, err := config.GetString("database:url")
 	if err != nil {
@@ -86,7 +86,7 @@ func main() {
 	}
 	db.Session, err = db.Open(connString, dbName)
 	if err != nil {
-		log.Panic(err.Error())
+		log.Panic(err)
 	}
 	defer db.Session.Close()
 	multitenant, err := config.GetBool("multi-tenant")
