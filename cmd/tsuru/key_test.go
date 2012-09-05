@@ -11,6 +11,7 @@ import (
 )
 
 func (s *S) TestKeyAdd(c *C) {
+	var stdout, stderr bytes.Buffer
 	u, err := user.Current()
 	c.Assert(err, IsNil)
 	p := path.Join(u.HomeDir, ".ssh", "id_rsa.pub")
@@ -18,19 +19,20 @@ func (s *S) TestKeyAdd(c *C) {
 	context := cmd.Context{
 		Cmds:   []string{},
 		Args:   []string{},
-		Stdout: manager.Stdout,
-		Stderr: manager.Stderr,
+		Stdout: &stdout,
+		Stderr: &stderr,
 	}
 	client := cmd.NewClient(&http.Client{Transport: &transport{msg: "success", status: http.StatusOK}})
 	fs := fs_test.RecordingFs{FileContent: "user-key"}
 	command := KeyAdd{keyReader{fsystem: &fs}}
 	err = command.Run(&context, client)
 	c.Assert(err, IsNil)
-	c.Assert(manager.Stdout.(*bytes.Buffer).String(), Equals, expected)
+	c.Assert(stdout.String(), Equals, expected)
 	c.Assert(fs.HasAction("open "+p), Equals, true)
 }
 
 func (s *S) TestKeyAddSpecifyingKeyFile(c *C) {
+	var stdout, stderr bytes.Buffer
 	u, err := user.Current()
 	c.Assert(err, IsNil)
 	p := path.Join(u.HomeDir, ".ssh", "id_dsa.pub")
@@ -38,24 +40,25 @@ func (s *S) TestKeyAddSpecifyingKeyFile(c *C) {
 	context := cmd.Context{
 		Cmds:   []string{},
 		Args:   []string{p},
-		Stdout: manager.Stdout,
-		Stderr: manager.Stderr,
+		Stdout: &stdout,
+		Stderr: &stderr,
 	}
 	client := cmd.NewClient(&http.Client{Transport: &transport{msg: "success", status: http.StatusOK}})
 	fs := fs_test.RecordingFs{FileContent: "user-key"}
 	command := KeyAdd{keyReader{fsystem: &fs}}
 	err = command.Run(&context, client)
 	c.Assert(err, IsNil)
-	c.Assert(manager.Stdout.(*bytes.Buffer).String(), Equals, expected)
+	c.Assert(stdout.String(), Equals, expected)
 	c.Assert(fs.HasAction("open "+p), Equals, true)
 }
 
 func (s *S) TestKeyAddReturnErrorIfTheKeyDoesNotExist(c *C) {
+	var stdout, stderr bytes.Buffer
 	context := cmd.Context{
 		Cmds:   []string{},
 		Args:   []string{},
-		Stdout: manager.Stdout,
-		Stderr: manager.Stderr,
+		Stdout: &stdout,
+		Stderr: &stderr,
 	}
 	fs := fs_test.FailureFs{RecordingFs: fs_test.RecordingFs{}}
 	command := KeyAdd{keyReader{fsystem: &fs}}
@@ -65,11 +68,12 @@ func (s *S) TestKeyAddReturnErrorIfTheKeyDoesNotExist(c *C) {
 }
 
 func (s *S) TestKeyAddReturnsProperErrorIfTheGivenKeyFileDoesNotExist(c *C) {
+	var stdout, stderr bytes.Buffer
 	context := cmd.Context{
 		Cmds:   []string{},
 		Args:   []string{"/unknown/key.pub"},
-		Stdout: manager.Stdout,
-		Stderr: manager.Stderr,
+		Stdout: &stdout,
+		Stderr: &stderr,
 	}
 	fs := fs_test.FailureFs{RecordingFs: fs_test.RecordingFs{}}
 	command := KeyAdd{keyReader{fsystem: &fs}}
@@ -90,6 +94,7 @@ func (s *S) TestInfoKeyAdd(c *C) {
 }
 
 func (s *S) TestKeyRemove(c *C) {
+	var stdout, stderr bytes.Buffer
 	u, err := user.Current()
 	c.Assert(err, IsNil)
 	p := path.Join(u.HomeDir, ".ssh", "id_rsa.pub")
@@ -97,19 +102,20 @@ func (s *S) TestKeyRemove(c *C) {
 	context := cmd.Context{
 		Cmds:   []string{},
 		Args:   []string{},
-		Stdout: manager.Stdout,
-		Stderr: manager.Stderr,
+		Stdout: &stdout,
+		Stderr: &stderr,
 	}
 	client := cmd.NewClient(&http.Client{Transport: &transport{msg: "success", status: http.StatusOK}})
 	fs := fs_test.RecordingFs{FileContent: "user-key"}
 	command := KeyRemove{keyReader{fsystem: &fs}}
 	err = command.Run(&context, client)
 	c.Assert(err, IsNil)
-	c.Assert(manager.Stdout.(*bytes.Buffer).String(), Equals, expected)
+	c.Assert(stdout.String(), Equals, expected)
 	c.Assert(fs.HasAction("open "+p), Equals, true)
 }
 
 func (s *S) TestKeyRemoveSpecifyingKeyFile(c *C) {
+	var stdout, stderr bytes.Buffer
 	u, err := user.Current()
 	c.Assert(err, IsNil)
 	p := path.Join(u.HomeDir, ".ssh", "id_dsa.pub")
@@ -117,24 +123,25 @@ func (s *S) TestKeyRemoveSpecifyingKeyFile(c *C) {
 	context := cmd.Context{
 		Cmds:   []string{},
 		Args:   []string{p},
-		Stdout: manager.Stdout,
-		Stderr: manager.Stderr,
+		Stdout: &stdout,
+		Stderr: &stderr,
 	}
 	client := cmd.NewClient(&http.Client{Transport: &transport{msg: "success", status: http.StatusOK}})
 	fs := fs_test.RecordingFs{FileContent: "user-key"}
 	command := KeyRemove{keyReader{fsystem: &fs}}
 	err = command.Run(&context, client)
 	c.Assert(err, IsNil)
-	c.Assert(manager.Stdout.(*bytes.Buffer).String(), Equals, expected)
+	c.Assert(stdout.String(), Equals, expected)
 	c.Assert(fs.HasAction("open "+p), Equals, true)
 }
 
 func (s *S) TestKeyRemoveReturnErrorIfTheKeyDoesNotExist(c *C) {
+	var stdout, stderr bytes.Buffer
 	context := cmd.Context{
 		Cmds:   []string{},
 		Args:   []string{},
-		Stdout: manager.Stdout,
-		Stderr: manager.Stderr,
+		Stdout: &stdout,
+		Stderr: &stderr,
 	}
 	fs := fs_test.FailureFs{RecordingFs: fs_test.RecordingFs{}}
 	command := KeyRemove{keyReader{fsystem: &fs}}
@@ -144,11 +151,12 @@ func (s *S) TestKeyRemoveReturnErrorIfTheKeyDoesNotExist(c *C) {
 }
 
 func (s *S) TestKeyRemoveReturnProperErrorIfTheGivenKeyFileDoesNotExist(c *C) {
+	var stdout, stderr bytes.Buffer
 	context := cmd.Context{
 		Cmds:   []string{},
 		Args:   []string{"/unknown/key.pub"},
-		Stdout: manager.Stdout,
-		Stderr: manager.Stderr,
+		Stdout: &stdout,
+		Stderr: &stderr,
 	}
 	fs := fs_test.FailureFs{RecordingFs: fs_test.RecordingFs{}}
 	command := KeyRemove{keyReader{fsystem: &fs}}

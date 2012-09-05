@@ -17,32 +17,34 @@ func (s *S) TestEnvGetInfo(c *C) {
 }
 
 func (s *S) TestEnvGetRun(c *C) {
+	var stdout, stderr bytes.Buffer
 	result := "DATABASE_HOST=somehost\n"
 	context := cmd.Context{
 		Cmds:   []string{},
 		Args:   []string{"someapp", "DATABASE_HOST"},
-		Stdout: manager.Stdout,
-		Stderr: manager.Stderr,
+		Stdout: &stdout,
+		Stderr: &stderr,
 	}
 	client := cmd.NewClient(&http.Client{Transport: &transport{msg: result, status: http.StatusOK}})
 	err := (&EnvGet{}).Run(&context, client)
 	c.Assert(err, IsNil)
-	c.Assert(manager.Stdout.(*bytes.Buffer).String(), Equals, result)
+	c.Assert(stdout.String(), Equals, result)
 }
 
 func (s *S) TestEnvGetRunWithMultipleParams(c *C) {
+	var stdout, stderr bytes.Buffer
 	result := "DATABASE_HOST=somehost\nDATABASE_USER=someuser"
 	params := []string{"someapp", "DATABASE_HOST", "DATABASE_USER"}
 	context := cmd.Context{
 		Cmds:   []string{},
 		Args:   params,
-		Stdout: manager.Stdout,
-		Stderr: manager.Stderr,
+		Stdout: &stdout,
+		Stderr: &stderr,
 	}
 	client := cmd.NewClient(&http.Client{Transport: &transport{msg: result, status: http.StatusOK}})
 	err := (&EnvGet{}).Run(&context, client)
 	c.Assert(err, IsNil)
-	c.Assert(manager.Stdout.(*bytes.Buffer).String(), Equals, result)
+	c.Assert(stdout.String(), Equals, result)
 }
 
 func (s *S) TestEnvSetInfo(c *C) {
@@ -55,32 +57,34 @@ func (s *S) TestEnvSetInfo(c *C) {
 }
 
 func (s *S) TestEnvSetRun(c *C) {
+	var stdout, stderr bytes.Buffer
 	result := "variable(s) successfully exported\n"
 	context := cmd.Context{
 		Cmds:   []string{},
 		Args:   []string{"someapp", "DATABASE_HOST=somehost"},
-		Stdout: manager.Stdout,
-		Stderr: manager.Stderr,
+		Stdout: &stdout,
+		Stderr: &stderr,
 	}
 	client := cmd.NewClient(&http.Client{Transport: &transport{msg: result, status: http.StatusOK}})
 	err := (&EnvSet{}).Run(&context, client)
 	c.Assert(err, IsNil)
-	c.Assert(manager.Stdout.(*bytes.Buffer).String(), Equals, result)
+	c.Assert(stdout.String(), Equals, result)
 }
 
 func (s *S) TestEnvSetRunWithMultipleParams(c *C) {
+	var stdout, stderr bytes.Buffer
 	result := "variable(s) successfully exported\n"
 	params := []string{"someapp", "DATABASE_HOST=somehost", "DATABASE_USER=user"}
 	context := cmd.Context{
 		Cmds:   []string{},
 		Args:   params,
-		Stdout: manager.Stdout,
-		Stderr: manager.Stderr,
+		Stdout: &stdout,
+		Stderr: &stderr,
 	}
 	client := cmd.NewClient(&http.Client{Transport: &transport{msg: result, status: http.StatusOK}})
 	err := (&EnvSet{}).Run(&context, client)
 	c.Assert(err, IsNil)
-	c.Assert(manager.Stdout.(*bytes.Buffer).String(), Equals, result)
+	c.Assert(stdout.String(), Equals, result)
 }
 
 func (s *S) TestEnvUnsetInfo(c *C) {
@@ -93,17 +97,18 @@ func (s *S) TestEnvUnsetInfo(c *C) {
 }
 
 func (s *S) TestEnvUnsetRun(c *C) {
+	var stdout, stderr bytes.Buffer
 	result := "variable(s) successfully unset\n"
 	context := cmd.Context{
 		Cmds:   []string{},
 		Args:   []string{"someapp", "DATABASE_HOST"},
-		Stdout: manager.Stdout,
-		Stderr: manager.Stderr,
+		Stdout: &stdout,
+		Stderr: &stderr,
 	}
 	client := cmd.NewClient(&http.Client{Transport: &transport{msg: result, status: http.StatusOK}})
 	err := (&EnvUnset{}).Run(&context, client)
 	c.Assert(err, IsNil)
-	c.Assert(manager.Stdout.(*bytes.Buffer).String(), Equals, result)
+	c.Assert(stdout.String(), Equals, result)
 }
 
 func (s *S) TestRequestEnvUrl(c *C) {

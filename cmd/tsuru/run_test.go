@@ -8,12 +8,13 @@ import (
 )
 
 func (s *S) TestAppRun(c *C) {
+	var stdout, stderr bytes.Buffer
 	expected := "http.go		http_test.go"
 	context := cmd.Context{
 		Cmds:   []string{},
 		Args:   []string{"ble", "ls"},
-		Stdout: manager.Stdout,
-		Stderr: manager.Stderr,
+		Stdout: &stdout,
+		Stderr: &stderr,
 	}
 	trans := &conditionalTransport{
 		transport{
@@ -29,16 +30,17 @@ func (s *S) TestAppRun(c *C) {
 	client := cmd.NewClient(&http.Client{Transport: trans})
 	err := (&AppRun{}).Run(&context, client)
 	c.Assert(err, IsNil)
-	c.Assert(manager.Stdout.(*bytes.Buffer).String(), Equals, expected)
+	c.Assert(stdout.String(), Equals, expected)
 }
 
 func (s *S) TestAppRunShouldUseAllSubsequentArgumentsAsArgumentsToTheGivenCommand(c *C) {
+	var stdout, stderr bytes.Buffer
 	expected := "-rw-r--r--  1 f  staff  119 Apr 26 18:23 http.go"
 	context := cmd.Context{
 		Cmds:   []string{},
 		Args:   []string{"ble", "ls", "-l"},
-		Stdout: manager.Stdout,
-		Stderr: manager.Stderr,
+		Stdout: &stdout,
+		Stderr: &stderr,
 	}
 	trans := &conditionalTransport{
 		transport{
@@ -54,7 +56,7 @@ func (s *S) TestAppRunShouldUseAllSubsequentArgumentsAsArgumentsToTheGivenComman
 	client := cmd.NewClient(&http.Client{Transport: trans})
 	err := (&AppRun{}).Run(&context, client)
 	c.Assert(err, IsNil)
-	c.Assert(manager.Stdout.(*bytes.Buffer).String(), Equals, expected)
+	c.Assert(stdout.String(), Equals, expected)
 }
 
 func (s *S) TestInfoAppRun(c *C) {
