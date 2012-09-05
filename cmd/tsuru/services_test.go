@@ -9,6 +9,7 @@ import (
 )
 
 func (s *S) TestServiceList(c *C) {
+	var stdout, stderr bytes.Buffer
 	output := `[{"service": "mysql", "instances": ["mysql01", "mysql02"]}, {"service": "oracle", "instances": []}]`
 	expectedPrefix := `+---------+------------------+
 | Service | Instances        |`
@@ -17,8 +18,8 @@ func (s *S) TestServiceList(c *C) {
 	ctx := cmd.Context{
 		Cmds:   []string{},
 		Args:   []string{},
-		Stdout: manager.Stdout,
-		Stderr: manager.Stderr,
+		Stdout: &stdout,
+		Stderr: &stderr,
 	}
 	trans := &conditionalTransport{
 		transport{
@@ -32,20 +33,21 @@ func (s *S) TestServiceList(c *C) {
 	client := cmd.NewClient(&http.Client{Transport: trans})
 	err := (&ServiceList{}).Run(&ctx, client)
 	c.Assert(err, IsNil)
-	table := manager.Stdout.(*bytes.Buffer).String()
+	table := stdout.String()
 	c.Assert(table, Matches, "^"+expectedPrefix+".*")
 	c.Assert(table, Matches, "^.*"+lineMysql+".*")
 	c.Assert(table, Matches, "^.*"+lineOracle+".*")
 }
 
 func (s *S) TestServiceListWithEmptyResponse(c *C) {
+	var stdout, stderr bytes.Buffer
 	output := "[]"
 	expected := ""
 	ctx := cmd.Context{
 		Cmds:   []string{},
 		Args:   []string{},
-		Stdout: manager.Stdout,
-		Stderr: manager.Stderr,
+		Stdout: &stdout,
+		Stderr: &stderr,
 	}
 	trans := &conditionalTransport{
 		transport{
@@ -59,7 +61,7 @@ func (s *S) TestServiceListWithEmptyResponse(c *C) {
 	client := cmd.NewClient(&http.Client{Transport: trans})
 	err := (&ServiceList{}).Run(&ctx, client)
 	c.Assert(err, IsNil)
-	c.Assert(manager.Stdout.(*bytes.Buffer).String(), Equals, expected)
+	c.Assert(stdout.String(), Equals, expected)
 }
 
 func (s *S) TestInfoServiceList(c *C) {
@@ -84,12 +86,15 @@ func (s *S) TestServiceListShouldBeCommand(c *C) {
 }
 
 func (s *S) TestServiceBind(c *C) {
-	var called bool
+	var (
+		called         bool
+		stdout, stderr bytes.Buffer
+	)
 	ctx := cmd.Context{
 		Cmds:   []string{},
 		Args:   []string{"my-mysql", "g1"},
-		Stdout: manager.Stdout,
-		Stderr: manager.Stderr,
+		Stdout: &stdout,
+		Stderr: &stderr,
 	}
 	trans := &conditionalTransport{
 		transport{
@@ -105,15 +110,16 @@ func (s *S) TestServiceBind(c *C) {
 	err := (&ServiceBind{}).Run(&ctx, client)
 	c.Assert(err, IsNil)
 	c.Assert(called, Equals, true)
-	c.Assert(manager.Stdout.(*bytes.Buffer).String(), Equals, "Instance my-mysql successfully binded to the app g1.\n")
+	c.Assert(stdout.String(), Equals, "Instance my-mysql successfully binded to the app g1.\n")
 }
 
 func (s *S) TestServiceBindWithRequestFailure(c *C) {
+	var stdout, stderr bytes.Buffer
 	ctx := cmd.Context{
 		Cmds:   []string{},
 		Args:   []string{"my-mysql", "g1"},
-		Stdout: manager.Stdout,
-		Stderr: manager.Stderr,
+		Stdout: &stdout,
+		Stderr: &stderr,
 	}
 	trans := &transport{
 		msg:    "This user does not have access to this app.",
@@ -146,12 +152,13 @@ func (s *S) TestServiceBindIsACommand(c *C) {
 }
 
 func (s *S) TestServiceUnbind(c *C) {
+	var stdout, stderr bytes.Buffer
 	var called bool
 	ctx := cmd.Context{
 		Cmds:   []string{},
 		Args:   []string{"hand", "pocket"},
-		Stdout: manager.Stdout,
-		Stderr: manager.Stderr,
+		Stdout: &stdout,
+		Stderr: &stderr,
 	}
 	trans := &conditionalTransport{
 		transport{
@@ -167,15 +174,16 @@ func (s *S) TestServiceUnbind(c *C) {
 	err := (&ServiceUnbind{}).Run(&ctx, client)
 	c.Assert(err, IsNil)
 	c.Assert(called, Equals, true)
-	c.Assert(manager.Stdout.(*bytes.Buffer).String(), Equals, "Instance hand successfully unbinded from the app pocket.\n")
+	c.Assert(stdout.String(), Equals, "Instance hand successfully unbinded from the app pocket.\n")
 }
 
 func (s *S) TestServiceUnbindWithRequestFailure(c *C) {
+	var stdout, stderr bytes.Buffer
 	ctx := cmd.Context{
 		Cmds:   []string{},
 		Args:   []string{"hand", "pocket"},
-		Stdout: manager.Stdout,
-		Stderr: manager.Stderr,
+		Stdout: &stdout,
+		Stderr: &stderr,
 	}
 	trans := &transport{
 		msg:    "This app is not binded to this service.",
@@ -225,6 +233,7 @@ Will add a new instance of the "mongodb" service, named "tsuru_mongodb".`
 }
 
 func (s *S) TestServiceAddRun(c *C) {
+	var stdout, stderr bytes.Buffer
 	result := "service successfully added.\n"
 	args := []string{
 		"my_app_db",
@@ -233,13 +242,13 @@ func (s *S) TestServiceAddRun(c *C) {
 	context := cmd.Context{
 		Cmds:   []string{},
 		Args:   args,
-		Stdout: manager.Stdout,
-		Stderr: manager.Stderr,
+		Stdout: &stdout,
+		Stderr: &stderr,
 	}
 	client := cmd.NewClient(&http.Client{Transport: &transport{msg: result, status: http.StatusOK}})
 	err := (&ServiceAdd{}).Run(&context, client)
 	c.Assert(err, IsNil)
-	obtained := manager.Stdout.(*bytes.Buffer).String()
+	obtained := stdout.String()
 	c.Assert(obtained, Equals, result)
 }
 
@@ -260,18 +269,19 @@ e.g.:
 }
 
 func (s *S) TestServiceInstanceStatusRun(c *C) {
+	var stdout, stderr bytes.Buffer
 	result := `Service instance "foo" is up`
 	args := []string{"fooBar"}
 	context := cmd.Context{
 		Cmds:   []string{},
 		Args:   args,
-		Stdout: manager.Stdout,
-		Stderr: manager.Stderr,
+		Stdout: &stdout,
+		Stderr: &stderr,
 	}
 	client := cmd.NewClient(&http.Client{Transport: &transport{msg: result, status: http.StatusOK}})
 	err := (&ServiceInstanceStatus{}).Run(&context, client)
 	c.Assert(err, IsNil)
-	obtained := manager.Stdout.(*bytes.Buffer).String()
+	obtained := stdout.String()
 	obtained = strings.Replace(obtained, "\n", "", -1)
 	c.Assert(obtained, Equals, result)
 }
@@ -293,6 +303,7 @@ e.g.:
 }
 
 func (s *S) TestServiceInfoRun(c *C) {
+	var stdout, stderr bytes.Buffer
 	result := `[{"Name":"mymongo", "Apps":["myapp"]}]`
 	expected := `Info for "mongodb"
 +-----------+-------+
@@ -305,13 +316,13 @@ func (s *S) TestServiceInfoRun(c *C) {
 	context := cmd.Context{
 		Cmds:   []string{},
 		Args:   args,
-		Stdout: manager.Stdout,
-		Stderr: manager.Stderr,
+		Stdout: &stdout,
+		Stderr: &stderr,
 	}
 	client := cmd.NewClient(&http.Client{Transport: &transport{msg: result, status: http.StatusOK}})
 	err := (&ServiceInfo{}).Run(&context, client)
 	c.Assert(err, IsNil)
-	obtained := manager.Stdout.(*bytes.Buffer).String()
+	obtained := stdout.String()
 	c.Assert(obtained, Equals, expected)
 }
 
@@ -327,6 +338,7 @@ func (s *S) TestServiceDocInfo(c *C) {
 }
 
 func (s *S) TestServiceDocRun(c *C) {
+	var stdout, stderr bytes.Buffer
 	result := `This is a test doc for a test service.
 Service test is foo bar.
 `
@@ -334,13 +346,13 @@ Service test is foo bar.
 	ctx := cmd.Context{
 		Cmds:   []string{},
 		Args:   []string{"foo"},
-		Stdout: manager.Stdout,
-		Stderr: manager.Stderr,
+		Stdout: &stdout,
+		Stderr: &stderr,
 	}
 	client := cmd.NewClient(&http.Client{Transport: &transport{msg: result, status: http.StatusOK}})
 	err := (&ServiceDoc{}).Run(&ctx, client)
 	c.Assert(err, IsNil)
-	obtained := manager.Stdout.(*bytes.Buffer).String()
+	obtained := stdout.String()
 	c.Assert(obtained, Equals, expected)
 }
 
@@ -356,16 +368,17 @@ func (s *S) TestServiceRemoveInfo(c *C) {
 }
 
 func (s *S) TestServiceRemoveRun(c *C) {
+	var stdout, stderr bytes.Buffer
 	ctx := cmd.Context{
 		Cmds:   []string{},
 		Args:   []string{"some-service-instance"},
-		Stdout: manager.Stdout,
-		Stderr: manager.Stderr,
+		Stdout: &stdout,
+		Stderr: &stderr,
 	}
 	result := "service instance successfuly removed"
 	client := cmd.NewClient(&http.Client{Transport: &transport{msg: result, status: http.StatusOK}})
 	err := (&ServiceRemove{}).Run(&ctx, client)
 	c.Assert(err, IsNil)
-	obtained := manager.Stdout.(*bytes.Buffer).String()
+	obtained := stdout.String()
 	c.Assert(obtained, Equals, result+"\n")
 }

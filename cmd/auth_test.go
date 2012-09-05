@@ -15,12 +15,12 @@ func (s *S) TestLogin(c *C) {
 		fsystem = nil
 	}()
 	expected := "Successfully logged!\n"
-	context := Context{[]string{}, []string{"foo@foo.com"}, manager.Stdout, manager.Stderr}
+	context := Context{[]string{}, []string{"foo@foo.com"}, manager.stdout, manager.stderr}
 	client := NewClient(&http.Client{Transport: &transport{msg: `{"token": "sometoken"}`, status: http.StatusOK}})
 	command := login{reader: &fakeReader{outputs: []string{"chico"}}}
 	err := command.Run(&context, client)
 	c.Assert(err, IsNil)
-	c.Assert(manager.Stdout.(*bytes.Buffer).String(), Equals, expected)
+	c.Assert(manager.stdout.(*bytes.Buffer).String(), Equals, expected)
 	token, err := readToken()
 	c.Assert(err, IsNil)
 	c.Assert(token, Equals, "sometoken")
@@ -32,16 +32,16 @@ func (s *S) TestLoginShouldNotDependOnTsuruTokenFile(c *C) {
 		fsystem = nil
 	}()
 	expected := "Successfully logged!\n"
-	context := Context{[]string{}, []string{"foo@foo.com"}, manager.Stdout, manager.Stderr}
+	context := Context{[]string{}, []string{"foo@foo.com"}, manager.stdout, manager.stderr}
 	client := NewClient(&http.Client{Transport: &transport{msg: `{"token":"anothertoken"}`, status: http.StatusOK}})
 	command := login{reader: &fakeReader{outputs: []string{"bar123"}}}
 	err := command.Run(&context, client)
 	c.Assert(err, IsNil)
-	c.Assert(manager.Stdout.(*bytes.Buffer).String(), Equals, expected)
+	c.Assert(manager.stdout.(*bytes.Buffer).String(), Equals, expected)
 }
 
 func (s *S) TestLoginShouldReturnErrorIfThePasswordIsNotGiven(c *C) {
-	context := Context{[]string{}, []string{"foo@foo.com"}, manager.Stdout, manager.Stderr}
+	context := Context{[]string{}, []string{"foo@foo.com"}, manager.stdout, manager.stderr}
 	command := login{reader: &failingReader{msg: "You must provide the password!"}}
 	err := command.Run(&context, nil)
 	c.Assert(err, NotNil)
@@ -64,11 +64,11 @@ func (s *S) TestLogout(c *C) {
 		fsystem = nil
 	}()
 	expected := "Successfully logout!\n"
-	context := Context{[]string{}, []string{}, manager.Stdout, manager.Stderr}
+	context := Context{[]string{}, []string{}, manager.stdout, manager.stderr}
 	command := logout{}
 	err := command.Run(&context, nil)
 	c.Assert(err, IsNil)
-	c.Assert(manager.Stdout.(*bytes.Buffer).String(), Equals, expected)
+	c.Assert(manager.stdout.(*bytes.Buffer).String(), Equals, expected)
 	tokenPath, err := joinWithUserDir(".tsuru_token")
 	c.Assert(err, IsNil)
 	c.Assert(rfs.HasAction("remove "+tokenPath), Equals, true)
@@ -79,7 +79,7 @@ func (s *S) TestLogoutWhenNotLoggedIn(c *C) {
 	defer func() {
 		fsystem = nil
 	}()
-	context := Context{[]string{}, []string{}, manager.Stdout, manager.Stderr}
+	context := Context{[]string{}, []string{}, manager.stdout, manager.stderr}
 	command := logout{}
 	err := command.Run(&context, nil)
 	c.Assert(err, NotNil)
@@ -88,12 +88,12 @@ func (s *S) TestLogoutWhenNotLoggedIn(c *C) {
 
 func (s *S) TestTeamAddUser(c *C) {
 	expected := `User "andorito" was added to the "cobrateam" team` + "\n"
-	context := Context{[]string{}, []string{"cobrateam", "andorito"}, manager.Stdout, manager.Stderr}
+	context := Context{[]string{}, []string{"cobrateam", "andorito"}, manager.stdout, manager.stderr}
 	command := teamUserAdd{}
 	client := NewClient(&http.Client{Transport: &transport{msg: "", status: http.StatusOK}})
 	err := command.Run(&context, client)
 	c.Assert(err, IsNil)
-	c.Assert(manager.Stdout.(*bytes.Buffer).String(), Equals, expected)
+	c.Assert(manager.stdout.(*bytes.Buffer).String(), Equals, expected)
 }
 
 func (s *S) TestTeamAddUserInfo(c *C) {
@@ -108,12 +108,12 @@ func (s *S) TestTeamAddUserInfo(c *C) {
 
 func (s *S) TestTeamRemoveUser(c *C) {
 	expected := `User "andorito" was removed from the "cobrateam" team` + "\n"
-	context := Context{[]string{}, []string{"cobrateam", "andorito"}, manager.Stdout, manager.Stderr}
+	context := Context{[]string{}, []string{"cobrateam", "andorito"}, manager.stdout, manager.stderr}
 	command := teamUserRemove{}
 	client := NewClient(&http.Client{Transport: &transport{msg: "", status: http.StatusOK}})
 	err := command.Run(&context, client)
 	c.Assert(err, IsNil)
-	c.Assert(manager.Stdout.(*bytes.Buffer).String(), Equals, expected)
+	c.Assert(manager.stdout.(*bytes.Buffer).String(), Equals, expected)
 }
 
 func (s *S) TestTeamRemoveUserInfo(c *C) {
@@ -128,12 +128,12 @@ func (s *S) TestTeamRemoveUserInfo(c *C) {
 
 func (s *S) TestTeamCreate(c *C) {
 	expected := `Team "core" successfully created!` + "\n"
-	context := Context{[]string{}, []string{"core"}, manager.Stdout, manager.Stderr}
+	context := Context{[]string{}, []string{"core"}, manager.stdout, manager.stderr}
 	client := NewClient(&http.Client{Transport: &transport{msg: "", status: http.StatusCreated}})
 	command := teamCreate{}
 	err := command.Run(&context, client)
 	c.Assert(err, IsNil)
-	c.Assert(manager.Stdout.(*bytes.Buffer).String(), Equals, expected)
+	c.Assert(manager.stdout.(*bytes.Buffer).String(), Equals, expected)
 }
 
 func (s *S) TestTeamCreateInfo(c *C) {
@@ -164,17 +164,17 @@ func (s *S) TestTeamListRun(c *C) {
   - cobrateam
 `
 	client := NewClient(&http.Client{Transport: trans})
-	err := (&teamList{}).Run(&Context{[]string{}, []string{}, manager.Stdout, manager.Stderr}, client)
+	err := (&teamList{}).Run(&Context{[]string{}, []string{}, manager.stdout, manager.stderr}, client)
 	c.Assert(err, IsNil)
 	c.Assert(called, Equals, true)
-	c.Assert(manager.Stdout.(*bytes.Buffer).String(), Equals, expected)
+	c.Assert(manager.stdout.(*bytes.Buffer).String(), Equals, expected)
 }
 
 func (s *S) TestTeamListRunWithNoContent(c *C) {
 	client := NewClient(&http.Client{Transport: &transport{msg: "", status: http.StatusNoContent}})
-	err := (&teamList{}).Run(&Context{[]string{}, []string{}, manager.Stdout, manager.Stderr}, client)
+	err := (&teamList{}).Run(&Context{[]string{}, []string{}, manager.stdout, manager.stderr}, client)
 	c.Assert(err, IsNil)
-	c.Assert(manager.Stdout.(*bytes.Buffer).String(), Equals, "")
+	c.Assert(manager.stdout.(*bytes.Buffer).String(), Equals, "")
 }
 
 func (s *S) TestTeamListInfo(c *C) {
@@ -203,16 +203,16 @@ func (s *S) TestUserCreateShouldNotDependOnTsuruTokenFile(c *C) {
 		fsystem = nil
 	}()
 	expected := `User "foo@foo.com" successfully created!` + "\n"
-	context := Context{[]string{}, []string{"foo@foo.com"}, manager.Stdout, manager.Stderr}
+	context := Context{[]string{}, []string{"foo@foo.com"}, manager.stdout, manager.stderr}
 	client := NewClient(&http.Client{Transport: &transport{msg: "", status: http.StatusCreated}})
 	command := userCreate{reader: &fakeReader{outputs: []string{"foo123"}}}
 	err := command.Run(&context, client)
 	c.Assert(err, IsNil)
-	c.Assert(manager.Stdout.(*bytes.Buffer).String(), Equals, expected)
+	c.Assert(manager.stdout.(*bytes.Buffer).String(), Equals, expected)
 }
 
 func (s *S) TestUserCreateReturnErrorIfPasswordsDontMatch(c *C) {
-	context := Context{[]string{}, []string{"foo@foo.com"}, manager.Stdout, manager.Stderr}
+	context := Context{[]string{}, []string{"foo@foo.com"}, manager.stdout, manager.stderr}
 	client := NewClient(&http.Client{Transport: &transport{msg: "", status: http.StatusCreated}})
 	command := userCreate{reader: &fakeReader{outputs: []string{"foo123", "foo1234"}}}
 	err := command.Run(&context, client)
@@ -222,16 +222,16 @@ func (s *S) TestUserCreateReturnErrorIfPasswordsDontMatch(c *C) {
 
 func (s *S) TestUserCreate(c *C) {
 	expected := `User "foo@foo.com" successfully created!` + "\n"
-	context := Context{[]string{}, []string{"foo@foo.com"}, manager.Stdout, manager.Stderr}
+	context := Context{[]string{}, []string{"foo@foo.com"}, manager.stdout, manager.stderr}
 	client := NewClient(&http.Client{Transport: &transport{msg: "", status: http.StatusCreated}})
 	command := userCreate{reader: &fakeReader{outputs: []string{"foo123"}}}
 	err := command.Run(&context, client)
 	c.Assert(err, IsNil)
-	c.Assert(manager.Stdout.(*bytes.Buffer).String(), Equals, expected)
+	c.Assert(manager.stdout.(*bytes.Buffer).String(), Equals, expected)
 }
 
 func (s *S) TestUserCreateShouldReturnErrorIfThePasswordIsNotGiven(c *C) {
-	context := Context{[]string{}, []string{"foo@foo.com"}, manager.Stdout, manager.Stderr}
+	context := Context{[]string{}, []string{"foo@foo.com"}, manager.stdout, manager.stderr}
 	command := userCreate{reader: &failingReader{msg: "You must provide the password!"}}
 	err := command.Run(&context, nil)
 	c.Assert(err, NotNil)

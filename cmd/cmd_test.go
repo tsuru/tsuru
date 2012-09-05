@@ -55,7 +55,7 @@ func (s *S) TestRegister(c *C) {
 func (s *S) TestManagerRunShouldWriteErrorsOnStderr(c *C) {
 	manager.Register(&ErrorCommand{msg: "You are wrong\n"})
 	manager.Run([]string{"error"})
-	c.Assert(manager.Stderr.(*bytes.Buffer).String(), Equals, "You are wrong\n")
+	c.Assert(manager.stderr.(*bytes.Buffer).String(), Equals, "You are wrong\n")
 }
 
 func (s *S) TestManagerRunShouldReturnStatus1WhenCommandFail(c *C) {
@@ -67,18 +67,18 @@ func (s *S) TestManagerRunShouldReturnStatus1WhenCommandFail(c *C) {
 func (s *S) TestManagerRunShouldAppendNewLineOnErrorWhenItsNotPresent(c *C) {
 	manager.Register(&ErrorCommand{msg: "You are wrong"})
 	manager.Run([]string{"error"})
-	c.Assert(manager.Stderr.(*bytes.Buffer).String(), Equals, "You are wrong\n")
+	c.Assert(manager.stderr.(*bytes.Buffer).String(), Equals, "You are wrong\n")
 }
 
 func (s *S) TestRun(c *C) {
 	manager.Register(&TestCommand{})
 	manager.Run([]string{"foo"})
-	c.Assert(manager.Stdout.(*bytes.Buffer).String(), Equals, "Running TestCommand")
+	c.Assert(manager.stdout.(*bytes.Buffer).String(), Equals, "Running TestCommand")
 }
 
 func (s *S) TestRunCommandThatDoesNotExist(c *C) {
 	manager.Run([]string{"bar"})
-	c.Assert(manager.Stderr.(*bytes.Buffer).String(), Equals, "command bar does not exist\n")
+	c.Assert(manager.stderr.(*bytes.Buffer).String(), Equals, "command bar does not exist\n")
 	c.Assert(manager.e.(*recordingExiter).value(), Equals, 1)
 }
 func (s *S) TestHelp(c *C) {
@@ -94,11 +94,11 @@ Available commands:
 Run glb help <commandname> to get more information about a specific command.
 `
 	manager.Register(&userCreate{})
-	context := Context{[]string{}, []string{}, manager.Stdout, manager.Stderr}
+	context := Context{[]string{}, []string{}, manager.stdout, manager.stderr}
 	command := help{manager: manager}
 	err := command.Run(&context, nil)
 	c.Assert(err, IsNil)
-	c.Assert(manager.Stdout.(*bytes.Buffer).String(), Equals, expected)
+	c.Assert(manager.stdout.(*bytes.Buffer).String(), Equals, expected)
 }
 
 func (s *S) TestHelpCommandShouldBeRegisteredByDefault(c *C) {
@@ -110,7 +110,7 @@ func (s *S) TestHelpCommandShouldBeRegisteredByDefault(c *C) {
 
 func (s *S) TestHelpReturnErrorIfTheGivenCommandDoesNotExist(c *C) {
 	command := help{manager: manager}
-	context := Context{[]string{}, []string{"user-create"}, manager.Stdout, manager.Stderr}
+	context := Context{[]string{}, []string{"user-create"}, manager.stdout, manager.stderr}
 	err := command.Run(&context, nil)
 	c.Assert(err, NotNil)
 	c.Assert(err, ErrorMatches, "^Command user-create does not exist.$")
@@ -128,7 +128,7 @@ Available commands:
 Run glb help <commandname> to get more information about a specific command.
 `
 	manager.Run([]string{})
-	c.Assert(manager.Stdout.(*bytes.Buffer).String(), Equals, expected)
+	c.Assert(manager.stdout.(*bytes.Buffer).String(), Equals, expected)
 }
 
 func (s *S) TestHelpShouldReturnsHelpForACmd(c *C) {
@@ -140,17 +140,17 @@ Foo do anything or nothing.
 `
 	manager.Register(&TestCommand{})
 	manager.Run([]string{"help", "foo"})
-	c.Assert(manager.Stdout.(*bytes.Buffer).String(), Equals, expected)
+	c.Assert(manager.stdout.(*bytes.Buffer).String(), Equals, expected)
 }
 
 func (s *S) TestVersion(c *C) {
 	var stdout, stderr bytes.Buffer
 	manager := NewManager("tsuru", "5.0", &stdout, &stderr)
 	command := version{manager: manager}
-	context := Context{[]string{}, []string{}, manager.Stdout, manager.Stderr}
+	context := Context{[]string{}, []string{}, manager.stdout, manager.stderr}
 	err := command.Run(&context, nil)
 	c.Assert(err, IsNil)
-	c.Assert(manager.Stdout.(*bytes.Buffer).String(), Equals, "tsuru version 5.0.\n")
+	c.Assert(manager.stdout.(*bytes.Buffer).String(), Equals, "tsuru version 5.0.\n")
 }
 
 func (s *S) TestVersionInfo(c *C) {
@@ -191,7 +191,7 @@ Minimum arguments: 1
 `
 	manager.Register(&ArgCmd{})
 	manager.Run([]string{"arg"})
-	c.Assert(manager.Stdout.(*bytes.Buffer).String(), Equals, expected)
+	c.Assert(manager.stdout.(*bytes.Buffer).String(), Equals, expected)
 	c.Assert(manager.e.(*recordingExiter).value(), Equals, 1)
 }
 
@@ -205,11 +205,11 @@ Foo do anything or nothing.
 	var stdout, stderr bytes.Buffer
 	manager := NewManager("tsuru", "1.0", &stdout, &stderr)
 	manager.Register(&TestCommand{})
-	context := Context{[]string{}, []string{"foo"}, manager.Stdout, manager.Stderr}
+	context := Context{[]string{}, []string{"foo"}, manager.stdout, manager.stderr}
 	command := help{manager: manager}
 	err := command.Run(&context, nil)
 	c.Assert(err, IsNil)
-	c.Assert(manager.Stdout.(*bytes.Buffer).String(), Equals, expected)
+	c.Assert(manager.stdout.(*bytes.Buffer).String(), Equals, expected)
 }
 
 func (s *S) TestExtractProgramNameWithAbsolutePath(c *C) {

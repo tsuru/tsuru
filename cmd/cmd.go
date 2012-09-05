@@ -21,10 +21,10 @@ func (e osExiter) Exit(code int) {
 }
 
 type Manager struct {
-	Name     string
 	Commands map[string]interface{}
-	Stdout   io.Writer
-	Stderr   io.Writer
+	name     string
+	stdout   io.Writer
+	stderr   io.Writer
 	version  string
 	e        exiter
 	original string
@@ -32,7 +32,7 @@ type Manager struct {
 }
 
 func NewManager(name, ver string, stdout, stderr io.Writer) *Manager {
-	manager := &Manager{Name: name, version: ver, Stdout: stdout, Stderr: stderr}
+	manager := &Manager{name: name, version: ver, stdout: stdout, stderr: stderr}
 	manager.Register(&help{manager})
 	manager.Register(&version{manager})
 	return manager
@@ -71,7 +71,7 @@ func (m *Manager) Run(args []string) {
 	name := args[0]
 	command, ok := m.Commands[name]
 	if !ok {
-		io.WriteString(m.Stderr, fmt.Sprintf("command %s does not exist\n", args[0]))
+		io.WriteString(m.stderr, fmt.Sprintf("command %s does not exist\n", args[0]))
 		m.finisher().Exit(1)
 		return
 	}
@@ -83,13 +83,13 @@ func (m *Manager) Run(args []string) {
 		args = []string{name}
 		status = 1
 	}
-	err := command.(Command).Run(&Context{nil, args, m.Stdout, m.Stderr}, NewClient(&http.Client{}))
+	err := command.(Command).Run(&Context{nil, args, m.stdout, m.stderr}, NewClient(&http.Client{}))
 	if err != nil {
 		errorMsg := err.Error()
 		if !strings.HasSuffix(errorMsg, "\n") {
 			errorMsg += "\n"
 		}
-		io.WriteString(m.Stderr, errorMsg)
+		io.WriteString(m.stderr, errorMsg)
 		status = 1
 	}
 	m.finisher().Exit(status)
@@ -136,7 +136,7 @@ func (c *help) Info() *Info {
 }
 
 func (c *help) Run(context *Context, client Doer) error {
-	output := fmt.Sprintf("%s version %s.\n\n", c.manager.Name, c.manager.version)
+	output := fmt.Sprintf("%s version %s.\n\n", c.manager.name, c.manager.version)
 	if c.manager.wrong {
 		output += fmt.Sprintf("ERROR: not enough arguments to call %s.\n\n", c.manager.original)
 	}
@@ -146,13 +146,13 @@ func (c *help) Run(context *Context, client Doer) error {
 			return fmt.Errorf("Command %s does not exist.", context.Args[0])
 		}
 		info := cmd.(Infoer).Info()
-		output += fmt.Sprintf("Usage: %s %s\n", c.manager.Name, info.Usage)
+		output += fmt.Sprintf("Usage: %s %s\n", c.manager.name, info.Usage)
 		output += fmt.Sprintf("\n%s\n", info.Desc)
 		if info.MinArgs > 0 {
 			output += fmt.Sprintf("\nMinimum arguments: %d\n", info.MinArgs)
 		}
 	} else {
-		output += fmt.Sprintf("Usage: %s %s\n\nAvailable commands:\n", c.manager.Name, c.Info().Usage)
+		output += fmt.Sprintf("Usage: %s %s\n\nAvailable commands:\n", c.manager.name, c.Info().Usage)
 		var commands []string
 		for k, _ := range c.manager.Commands {
 			commands = append(commands, k)
@@ -161,7 +161,7 @@ func (c *help) Run(context *Context, client Doer) error {
 		for _, command := range commands {
 			output += fmt.Sprintf("  %s\n", command)
 		}
-		output += fmt.Sprintf("\nRun %s help <commandname> to get more information about a specific command.\n", c.manager.Name)
+		output += fmt.Sprintf("\nRun %s help <commandname> to get more information about a specific command.\n", c.manager.name)
 	}
 	io.WriteString(context.Stdout, output)
 	return nil
@@ -181,7 +181,7 @@ func (c *version) Info() *Info {
 }
 
 func (c *version) Run(context *Context, client Doer) error {
-	fmt.Fprintf(context.Stdout, "%s version %s.\n", c.manager.Name, c.manager.version)
+	fmt.Fprintf(context.Stdout, "%s version %s.\n", c.manager.name, c.manager.version)
 	return nil
 }
 

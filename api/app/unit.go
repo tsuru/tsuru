@@ -1,6 +1,7 @@
 package app
 
 import (
+	"errors"
 	"fmt"
 	"github.com/timeredbull/tsuru/log"
 	"os/exec"
@@ -21,6 +22,9 @@ type Unit struct {
 }
 
 func (u *Unit) destroy() ([]byte, error) {
+	if u.Machine < 1 {
+		return nil, errors.New("No machine associated.")
+	}
 	cmd := exec.Command("juju", "destroy-service", "-e", u.app.JujuEnv, u.app.Name)
 	log.Printf("destroying %s with name %s", u.Type, u.Name)
 	out, err := cmd.CombinedOutput()

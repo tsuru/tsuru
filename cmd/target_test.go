@@ -96,7 +96,7 @@ func (s *S) TestTargetRun(c *C) {
 	defer func() {
 		fsystem = nil
 	}()
-	context := &Context{[]string{}, []string{"http://tsuru.globo.com"}, manager.Stdout, manager.Stderr}
+	context := &Context{[]string{}, []string{"http://tsuru.globo.com"}, manager.stdout, manager.stderr}
 	target := &target{}
 	err := target.Run(context, nil)
 	c.Assert(err, IsNil)
@@ -110,7 +110,7 @@ func (s *S) TestTargetWithoutArgument(c *C) {
 	defer func() {
 		fsystem = nil
 	}()
-	context := &Context{[]string{}, []string{}, manager.Stdout, manager.Stderr}
+	context := &Context{[]string{}, []string{}, manager.stdout, manager.stderr}
 	target := &target{}
 	err := target.Run(context, nil)
 	c.Assert(err, IsNil)

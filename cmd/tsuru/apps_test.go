@@ -9,6 +9,7 @@ import (
 )
 
 func (s *S) TestAppList(c *C) {
+	var stdout, stderr bytes.Buffer
 	result := `[{"Name":"app1","Framework":"","State":"", "Units":[{"Ip":"10.10.10.10"}],"Teams":[{"Name":"tsuruteam","Users":[{"Email":"whydidifall@thewho.com","Password":"123","Tokens":null,"Keys":null}]}]}]`
 	expected := `+-------------+-------+-------------+
 | Application | State | Ip          |
@@ -19,14 +20,14 @@ func (s *S) TestAppList(c *C) {
 	context := cmd.Context{
 		Cmds:   []string{},
 		Args:   []string{},
-		Stdout: manager.Stdout,
-		Stderr: manager.Stderr,
+		Stdout: &stdout,
+		Stderr: &stderr,
 	}
 	client := cmd.NewClient(&http.Client{Transport: &transport{msg: result, status: http.StatusOK}})
 	command := AppList{}
 	err := command.Run(&context, client)
 	c.Assert(err, IsNil)
-	c.Assert(manager.Stdout.(*bytes.Buffer).String(), Equals, expected)
+	c.Assert(stdout.String(), Equals, expected)
 }
 
 func (s *S) TestAppListInfo(c *C) {
@@ -50,49 +51,52 @@ func (s *S) TestAppCreateInfo(c *C) {
 }
 
 func (s *S) TestAppCreate(c *C) {
+	var stdout, stderr bytes.Buffer
 	result := `{"status":"success", "repository_url":"git@tsuru.plataformas.glb.com:ble.git"}`
 	expected := `App "ble" successfully created!
 Your repository for "ble" project is "git@tsuru.plataformas.glb.com:ble.git"` + "\n"
 	context := cmd.Context{
 		Cmds:   []string{},
 		Args:   []string{"ble", "django"},
-		Stdout: manager.Stdout,
-		Stderr: manager.Stderr,
+		Stdout: &stdout,
+		Stderr: &stderr,
 	}
 	client := cmd.NewClient(&http.Client{Transport: &transport{msg: result, status: http.StatusOK}})
 	command := AppCreate{}
 	err := command.Run(&context, client)
 	c.Assert(err, IsNil)
-	c.Assert(manager.Stdout.(*bytes.Buffer).String(), Equals, expected)
+	c.Assert(stdout.String(), Equals, expected)
 }
 
 func (s *S) TestAppCreateWithInvalidFramework(c *C) {
+	var stdout, stderr bytes.Buffer
 	context := cmd.Context{
 		Cmds:   []string{},
 		Args:   []string{"invalidapp", "lombra"},
-		Stdout: manager.Stdout,
-		Stderr: manager.Stderr,
+		Stdout: &stdout,
+		Stderr: &stderr,
 	}
 	client := cmd.NewClient(&http.Client{Transport: &transport{msg: "", status: http.StatusInternalServerError}})
 	command := AppCreate{}
 	err := command.Run(&context, client)
 	c.Assert(err, NotNil)
-	c.Assert(manager.Stdout.(*bytes.Buffer).String(), Equals, "")
+	c.Assert(stdout.String(), Equals, "")
 }
 
 func (s *S) TestAppRemove(c *C) {
+	var stdout, stderr bytes.Buffer
 	expected := `App "ble" successfully removed!` + "\n"
 	context := cmd.Context{
 		Cmds:   []string{},
 		Args:   []string{"ble"},
-		Stdout: manager.Stdout,
-		Stderr: manager.Stderr,
+		Stdout: &stdout,
+		Stderr: &stderr,
 	}
 	client := cmd.NewClient(&http.Client{Transport: &transport{msg: "", status: http.StatusOK}})
 	command := AppRemove{}
 	err := command.Run(&context, client)
 	c.Assert(err, IsNil)
-	c.Assert(manager.Stdout.(*bytes.Buffer).String(), Equals, expected)
+	c.Assert(stdout.String(), Equals, expected)
 }
 
 func (s *S) TestAppRemoveInfo(c *C) {
@@ -106,18 +110,19 @@ func (s *S) TestAppRemoveInfo(c *C) {
 }
 
 func (s *S) TestAppGrant(c *C) {
+	var stdout, stderr bytes.Buffer
 	expected := `Team "cobrateam" was added to the "games" app` + "\n"
 	context := cmd.Context{
 		Cmds:   []string{},
 		Args:   []string{"games", "cobrateam"},
-		Stdout: manager.Stdout,
-		Stderr: manager.Stderr,
+		Stdout: &stdout,
+		Stderr: &stderr,
 	}
 	command := AppGrant{}
 	client := cmd.NewClient(&http.Client{Transport: &transport{msg: "", status: http.StatusOK}})
 	err := command.Run(&context, client)
 	c.Assert(err, IsNil)
-	c.Assert(manager.Stdout.(*bytes.Buffer).String(), Equals, expected)
+	c.Assert(stdout.String(), Equals, expected)
 }
 
 func (s *S) TestAppGrantInfo(c *C) {
@@ -131,18 +136,19 @@ func (s *S) TestAppGrantInfo(c *C) {
 }
 
 func (s *S) TestAppRevoke(c *C) {
+	var stdout, stderr bytes.Buffer
 	expected := `Team "cobrateam" was removed from the "games" app` + "\n"
 	context := cmd.Context{
 		Cmds:   []string{},
 		Args:   []string{"games", "cobrateam"},
-		Stdout: manager.Stdout,
-		Stderr: manager.Stderr,
+		Stdout: &stdout,
+		Stderr: &stderr,
 	}
 	command := AppRevoke{}
 	client := cmd.NewClient(&http.Client{Transport: &transport{msg: "", status: http.StatusOK}})
 	err := command.Run(&context, client)
 	c.Assert(err, IsNil)
-	c.Assert(manager.Stdout.(*bytes.Buffer).String(), Equals, expected)
+	c.Assert(stdout.String(), Equals, expected)
 }
 
 func (s *S) TestAppRevokeInfo(c *C) {
@@ -156,6 +162,7 @@ func (s *S) TestAppRevokeInfo(c *C) {
 }
 
 func (s *S) TestAppLog(c *C) {
+	var stdout, stderr bytes.Buffer
 	result := `[{"Date":"2012-06-20T11:17:22.75-03:00","Message":"creating app lost"},{"Date":"2012-06-20T11:17:22.753-03:00","Message":"app lost successfully created"}]`
 	expected := `2012-06-20 11:17:22.75 -0300 BRT - creating app lost
 2012-06-20 11:17:22.753 -0300 BRT - app lost successfully created
@@ -163,30 +170,31 @@ func (s *S) TestAppLog(c *C) {
 	context := cmd.Context{
 		Cmds:   []string{},
 		Args:   []string{"appName"},
-		Stdout: manager.Stdout,
-		Stderr: manager.Stderr,
+		Stdout: &stdout,
+		Stderr: &stderr,
 	}
 	command := AppLog{}
 	client := cmd.NewClient(&http.Client{Transport: &transport{msg: result, status: http.StatusOK}})
 	err := command.Run(&context, client)
 	c.Assert(err, IsNil)
-	got := manager.Stdout.(*bytes.Buffer).String()
+	got := stdout.String()
 	got = strings.Replace(got, "-0300 -0300", "-0300 BRT", -1)
 	c.Assert(got, Equals, expected)
 }
 
 func (s *S) TestAppLogShouldReturnNilIfHasNoContent(c *C) {
+	var stdout, stderr bytes.Buffer
 	context := cmd.Context{
 		Cmds:   []string{},
 		Args:   []string{"appName"},
-		Stdout: manager.Stdout,
-		Stderr: manager.Stderr,
+		Stdout: &stdout,
+		Stderr: &stderr,
 	}
 	command := AppLog{}
 	client := cmd.NewClient(&http.Client{Transport: &transport{msg: "", status: http.StatusNoContent}})
 	err := command.Run(&context, client)
 	c.Assert(err, IsNil)
-	c.Assert(manager.Stdout.(*bytes.Buffer).String(), Equals, "")
+	c.Assert(stdout.String(), Equals, "")
 }
 
 func (s *S) TestAppLogInfo(c *C) {
@@ -200,12 +208,15 @@ func (s *S) TestAppLogInfo(c *C) {
 }
 
 func (s *S) TestAppRestart(c *C) {
-	var called bool
+	var (
+		called         bool
+		stdout, stderr bytes.Buffer
+	)
 	context := cmd.Context{
 		Cmds:   []string{},
 		Args:   []string{"handful_of_nothing"},
-		Stdout: manager.Stdout,
-		Stderr: manager.Stderr,
+		Stdout: &stdout,
+		Stderr: &stderr,
 	}
 	trans := &conditionalTransport{
 		transport{
@@ -221,7 +232,7 @@ func (s *S) TestAppRestart(c *C) {
 	err := (&AppRestart{}).Run(&context, client)
 	c.Assert(err, IsNil)
 	c.Assert(called, Equals, true)
-	c.Assert(manager.Stdout.(*bytes.Buffer).String(), Equals, "Restarted")
+	c.Assert(stdout.String(), Equals, "Restarted")
 }
 
 func (s *S) TestAppRestartInfo(c *C) {
