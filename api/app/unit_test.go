@@ -75,6 +75,14 @@ func (s *S) TestDestroyUnit(c *C) {
 	c.Assert(string(out), Equals, "terminate-machine -e zeta 10")
 }
 
+func (s *S) TestCantDestroyAUnitWithMachine0(c *C) {
+	u := Unit{Type: "django", Name: "nova-era", Machine: 0, app: &App{JujuEnv: "zeta"}}
+	out, err := u.destroy()
+	c.Assert(out, IsNil)
+	c.Assert(err, NotNil)
+	c.Assert(err, ErrorMatches, "^No machine associated.$")
+}
+
 func (s *S) TestGetName(c *C) {
 	u := Unit{app: &App{Name: "2112"}}
 	c.Assert(u.GetName(), Equals, "2112")
