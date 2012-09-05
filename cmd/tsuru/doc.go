@@ -1,7 +1,7 @@
 /*
 tsuru is a command line tool for application developers.
 
-It provide some commands that allow a developer to register himself/herself,
+It provides some commands that allow a developer to register himself/herself,
 manage teams, apps and services.
 
 Usage:
