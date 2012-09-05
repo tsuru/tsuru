@@ -58,7 +58,7 @@ func (s *S) TestCommandReturnErrorIfTheUnitIsNotStarted(c *C) {
 	c.Assert(err.Error(), Equals, "Unit must be started to run commands, but it is "+u.State()+".")
 }
 
-func (s *S) TestexecuteHook(c *C) {
+func (s *S) TestExecuteHook(c *C) {
 	appUnit := Unit{Type: "django", Name: "myUnit", app: &App{JujuEnv: "beta"}, MachineAgentState: "running", AgentState: "started", InstanceState: "running"}
 	_, err := appUnit.executeHook("requirements")
 	c.Assert(err, IsNil)
