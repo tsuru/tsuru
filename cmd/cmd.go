@@ -31,10 +31,11 @@ type Manager struct {
 	wrong    bool
 }
 
-func NewManager(name, version string, stdout, stderr io.Writer) *Manager {
-	m := Manager{Name: name, version: version, Stdout: stdout, Stderr: stderr}
-	m.Register(&help{manager: &m})
-	return &m
+func NewManager(name, ver string, stdout, stderr io.Writer) *Manager {
+	manager := &Manager{Name: name, version: ver, Stdout: stdout, Stderr: stderr}
+	manager.Register(&help{manager})
+	manager.Register(&version{manager})
+	return manager
 }
 
 func BuildBaseManager(name, version string) *Manager {
@@ -163,6 +164,24 @@ func (c *help) Run(context *Context, client Doer) error {
 		output += fmt.Sprintf("\nRun %s help <commandname> to get more information about a specific command.\n", c.manager.Name)
 	}
 	io.WriteString(context.Stdout, output)
+	return nil
+}
+
+type version struct {
+	manager *Manager
+}
+
+func (c *version) Info() *Info {
+	return &Info{
+		Name:    "version",
+		MinArgs: 0,
+		Usage:   "version",
+		Desc:    "display the current version",
+	}
+}
+
+func (c *version) Run(context *Context, client Doer) error {
+	fmt.Fprintf(context.Stdout, "%s version %s", c.manager.Name, c.manager.version)
 	return nil
 }
 

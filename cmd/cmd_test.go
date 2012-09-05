@@ -89,6 +89,7 @@ Usage: glb command [args]
 Available commands:
   help
   user-create
+  version
 
 Run glb help <commandname> to get more information about a specific command.
 `
@@ -122,6 +123,7 @@ Usage: glb command [args]
 
 Available commands:
   help
+  version
 
 Run glb help <commandname> to get more information about a specific command.
 `
@@ -139,6 +141,26 @@ Foo do anything or nothing.
 	manager.Register(&TestCommand{})
 	manager.Run([]string{"help", "foo"})
 	c.Assert(manager.Stdout.(*bytes.Buffer).String(), Equals, expected)
+}
+
+func (s *S) TestVersion(c *C) {
+	var stdout, stderr bytes.Buffer
+	manager := NewManager("tsuru", "5.0", &stdout, &stderr)
+	command := version{manager: manager}
+	context := Context{[]string{}, []string{}, manager.Stdout, manager.Stderr}
+	err := command.Run(&context, nil)
+	c.Assert(err, IsNil)
+	c.Assert(manager.Stdout.(*bytes.Buffer).String(), Equals, "tsuru version 5.0")
+}
+
+func (s *S) TestVersionInfo(c *C) {
+	expected := &Info{
+		Name:    "version",
+		MinArgs: 0,
+		Usage:   "version",
+		Desc:    "display the current version",
+	}
+	c.Assert((&version{}).Info(), DeepEquals, expected)
 }
 
 type ArgCmd struct{}
@@ -270,6 +292,14 @@ func (s *S) TestTargetIsRegistered(c *C) {
 	tgt, ok := manager.Commands["target"]
 	c.Assert(ok, Equals, true)
 	c.Assert(tgt, FitsTypeOf, &target{})
+}
+
+func (s *S) TestVersionIsRegisteredByNewManager(c *C) {
+	var stdout, stderr bytes.Buffer
+	manager := NewManager("tsuru", "1.0", &stdout, &stderr)
+	ver, ok := manager.Commands["version"]
+	c.Assert(ok, Equals, true)
+	c.Assert(ver, FitsTypeOf, &version{})
 }
 
 func (s *S) TestFileSystem(c *C) {
