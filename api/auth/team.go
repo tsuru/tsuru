@@ -23,7 +23,7 @@ func (t *Team) containsUser(u *User) bool {
 
 func (t *Team) addUser(u *User) error {
 	if t.containsUser(u) {
-		return fmt.Errorf("User %s is alread in the team %s.", u.Email, t.Name)
+		return fmt.Errorf("User %s is already in the team %s.", u.Email, t.Name)
 	}
 	t.Users = append(t.Users, u.Email)
 	return nil

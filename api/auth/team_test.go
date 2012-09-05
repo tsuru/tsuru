@@ -49,7 +49,7 @@ func (s *S) TestShouldReturnErrorWhenTryingToAddAUserThatIsAlreadyInTheList(c *C
 	c.Assert(err, IsNil)
 	err = t.addUser(u)
 	c.Assert(err, NotNil)
-	c.Assert(err, ErrorMatches, "^User nobody@globo.com is alread in the team timeredbull.$")
+	c.Assert(err, ErrorMatches, "^User nobody@globo.com is already in the team timeredbull.$")
 }
 
 func (s *S) TestShouldBeAbleToRemoveAUserFromATeamReturningNoErrors(c *C) {
