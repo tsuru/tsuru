@@ -29,6 +29,17 @@ After that, all you need is to create a user and authenticate to start creating 
 Apps
 ====
 
+Associating your user to a team
+-------------------------------
+
+You need to be associated to a team to create an app. 
+
+.. highlight:: bash
+
+::
+
+    $ tsuru team-create teamname
+
 Creating an app
 ---------------
 
