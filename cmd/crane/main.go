@@ -5,8 +5,10 @@ import (
 	"os"
 )
 
-func buildManager(name string) cmd.Manager {
-	m := cmd.BuildBaseManager(name)
+const version = "0.1"
+
+func buildManager(name string) *cmd.Manager {
+	m := cmd.BuildBaseManager(name, version)
 	m.Register(&ServiceCreate{})
 	m.Register(&ServiceRemove{})
 	m.Register(&ServiceList{})

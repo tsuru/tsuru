@@ -27,7 +27,7 @@ type conditionalTransport struct {
 }
 
 var _ = Suite(&S{})
-var manager Manager
+var manager *Manager
 
 func (t *transport) RoundTrip(req *http.Request) (resp *http.Response, err error) {
 	resp = &http.Response{
@@ -46,7 +46,7 @@ func (t *conditionalTransport) RoundTrip(req *http.Request) (*http.Response, err
 
 func (s *S) SetUpTest(c *C) {
 	var stdout, stderr bytes.Buffer
-	manager = NewManager("glb", &stdout, &stderr)
+	manager = NewManager("glb", "1.0", &stdout, &stderr)
 	var exiter recordingExiter
 	manager.e = &exiter
 }

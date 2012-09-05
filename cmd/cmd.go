@@ -25,17 +25,20 @@ type Manager struct {
 	Commands map[string]interface{}
 	Stdout   io.Writer
 	Stderr   io.Writer
+	version  string
 	e        exiter
+	original string
+	wrong    bool
 }
 
-func NewManager(name string, stdout, stderr io.Writer) Manager {
-	m := Manager{Name: name, Stdout: stdout, Stderr: stderr}
+func NewManager(name, version string, stdout, stderr io.Writer) *Manager {
+	m := Manager{Name: name, version: version, Stdout: stdout, Stderr: stderr}
 	m.Register(&help{manager: &m})
-	return m
+	return &m
 }
 
-func BuildBaseManager(name string) Manager {
-	m := NewManager(name, os.Stdout, os.Stderr)
+func BuildBaseManager(name, version string) *Manager {
+	m := NewManager(name, version, os.Stdout, os.Stderr)
 	m.Register(&login{})
 	m.Register(&logout{})
 	m.Register(&userCreate{})
@@ -73,7 +76,8 @@ func (m *Manager) Run(args []string) {
 	}
 	args = args[1:]
 	if len(args) < command.(Infoer).Info().MinArgs && name != "help" {
-		io.WriteString(m.Stdout, fmt.Sprintf("Not enough arguments to call %s.\n\n", command.(Infoer).Info().Name))
+		m.wrong = true
+		m.original = command.(Infoer).Info().Name
 		command = m.Commands["help"]
 		args = []string{name}
 		status = 1
@@ -131,7 +135,10 @@ func (c *help) Info() *Info {
 }
 
 func (c *help) Run(context *Context, client Doer) error {
-	output := ""
+	output := fmt.Sprintf("%s version %s.\n\n", c.manager.Name, c.manager.version)
+	if c.manager.wrong {
+		output += fmt.Sprintf("ERROR: not enough arguments to call %s.\n\n", c.manager.original)
+	}
 	if len(context.Args) > 0 {
 		cmd, ok := c.manager.Commands[context.Args[0]]
 		if !ok {

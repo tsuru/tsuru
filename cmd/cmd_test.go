@@ -82,7 +82,9 @@ func (s *S) TestRunCommandThatDoesNotExist(c *C) {
 	c.Assert(manager.e.(*recordingExiter).value(), Equals, 1)
 }
 func (s *S) TestHelp(c *C) {
-	expected := `Usage: glb command [args]
+	expected := `glb version 1.0.
+
+Usage: glb command [args]
 
 Available commands:
   help
@@ -92,7 +94,7 @@ Run glb help <commandname> to get more information about a specific command.
 `
 	manager.Register(&userCreate{})
 	context := Context{[]string{}, []string{}, manager.Stdout, manager.Stderr}
-	command := help{manager: &manager}
+	command := help{manager: manager}
 	err := command.Run(&context, nil)
 	c.Assert(err, IsNil)
 	c.Assert(manager.Stdout.(*bytes.Buffer).String(), Equals, expected)
@@ -100,13 +102,13 @@ Run glb help <commandname> to get more information about a specific command.
 
 func (s *S) TestHelpCommandShouldBeRegisteredByDefault(c *C) {
 	var stdout, stderr bytes.Buffer
-	m := NewManager("tsuru", &stdout, &stderr)
+	m := NewManager("tsuru", "1.0", &stdout, &stderr)
 	_, exists := m.Commands["help"]
 	c.Assert(exists, Equals, true)
 }
 
 func (s *S) TestHelpReturnErrorIfTheGivenCommandDoesNotExist(c *C) {
-	command := help{manager: &manager}
+	command := help{manager: manager}
 	context := Context{[]string{}, []string{"user-create"}, manager.Stdout, manager.Stderr}
 	err := command.Run(&context, nil)
 	c.Assert(err, NotNil)
@@ -114,7 +116,9 @@ func (s *S) TestHelpReturnErrorIfTheGivenCommandDoesNotExist(c *C) {
 }
 
 func (s *S) TestRunWithoutArgsShouldRunsHelp(c *C) {
-	expected := `Usage: glb command [args]
+	expected := `glb version 1.0.
+
+Usage: glb command [args]
 
 Available commands:
   help
@@ -126,7 +130,9 @@ Run glb help <commandname> to get more information about a specific command.
 }
 
 func (s *S) TestHelpShouldReturnsHelpForACmd(c *C) {
-	expected := `Usage: glb foo
+	expected := `glb version 1.0.
+
+Usage: glb foo
 
 Foo do anything or nothing.
 `
@@ -151,7 +157,9 @@ func (cmd *ArgCmd) Run(ctx *Context, client Doer) error {
 }
 
 func (s *S) TestRunWrongArgsNumberShouldRunsHelpAndReturnStatus1(c *C) {
-	expected := `Not enough arguments to call arg.
+	expected := `glb version 1.0.
+
+ERROR: not enough arguments to call arg.
 
 Usage: glb arg [args]
 
@@ -166,15 +174,17 @@ Minimum arguments: 1
 }
 
 func (s *S) TestHelpShouldReturnUsageWithTheCommandName(c *C) {
-	expected := `Usage: tsuru foo
+	expected := `tsuru version 1.0.
+
+Usage: tsuru foo
 
 Foo do anything or nothing.
 `
 	var stdout, stderr bytes.Buffer
-	manager := NewManager("tsuru", &stdout, &stderr)
+	manager := NewManager("tsuru", "1.0", &stdout, &stderr)
 	manager.Register(&TestCommand{})
 	context := Context{[]string{}, []string{"foo"}, manager.Stdout, manager.Stderr}
-	command := help{manager: &manager}
+	command := help{manager: manager}
 	err := command.Run(&context, nil)
 	c.Assert(err, IsNil)
 	c.Assert(manager.Stdout.(*bytes.Buffer).String(), Equals, expected)
@@ -207,56 +217,56 @@ func (s *S) TestFinisherReturnTheDefinedE(c *C) {
 }
 
 func (s *S) TestLoginIsRegistered(c *C) {
-	manager := BuildBaseManager("tsuru")
+	manager := BuildBaseManager("tsuru", "1.0")
 	lgn, ok := manager.Commands["login"]
 	c.Assert(ok, Equals, true)
 	c.Assert(lgn, FitsTypeOf, &login{})
 }
 
 func (s *S) TestLogoutIsRegistered(c *C) {
-	manager := BuildBaseManager("tsuru")
+	manager := BuildBaseManager("tsuru", "1.0")
 	lgt, ok := manager.Commands["logout"]
 	c.Assert(ok, Equals, true)
 	c.Assert(lgt, FitsTypeOf, &logout{})
 }
 
 func (s *S) TestUserCreateIsRegistered(c *C) {
-	manager := BuildBaseManager("tsuru")
+	manager := BuildBaseManager("tsuru", "1.0")
 	user, ok := manager.Commands["user-create"]
 	c.Assert(ok, Equals, true)
 	c.Assert(user, FitsTypeOf, &userCreate{})
 }
 
 func (s *S) TestTeamCreateIsRegistered(c *C) {
-	manager := BuildBaseManager("tsuru")
+	manager := BuildBaseManager("tsuru", "1.0")
 	create, ok := manager.Commands["team-create"]
 	c.Assert(ok, Equals, true)
 	c.Assert(create, FitsTypeOf, &teamCreate{})
 }
 
 func (s *S) TestTeamListIsRegistered(c *C) {
-	manager := BuildBaseManager("tsuru")
+	manager := BuildBaseManager("tsuru", "1.0")
 	list, ok := manager.Commands["team-list"]
 	c.Assert(ok, Equals, true)
 	c.Assert(list, FitsTypeOf, &teamList{})
 }
 
 func (s *S) TestTeamAddUserIsRegistered(c *C) {
-	manager := BuildBaseManager("tsuru")
+	manager := BuildBaseManager("tsuru", "1.0")
 	adduser, ok := manager.Commands["team-user-add"]
 	c.Assert(ok, Equals, true)
 	c.Assert(adduser, FitsTypeOf, &teamUserAdd{})
 }
 
 func (s *S) TestTeamRemoveUserIsRegistered(c *C) {
-	manager := BuildBaseManager("tsuru")
+	manager := BuildBaseManager("tsuru", "1.0")
 	removeuser, ok := manager.Commands["team-user-remove"]
 	c.Assert(ok, Equals, true)
 	c.Assert(removeuser, FitsTypeOf, &teamUserRemove{})
 }
 
 func (s *S) TestTargetIsRegistered(c *C) {
-	manager := BuildBaseManager("tsuru")
+	manager := BuildBaseManager("tsuru", "1.0")
 	tgt, ok := manager.Commands["target"]
 	c.Assert(ok, Equals, true)
 	c.Assert(tgt, FitsTypeOf, &target{})
