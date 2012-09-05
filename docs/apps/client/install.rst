@@ -23,4 +23,5 @@ Then you will be able to [use the client](apps/client/usage.html). On Mac OS, us
 .. highlight:: bash
 
 ::
+
     $ sudo curl -L https://github.com/downloads/timeredbull/tsuru/20120821-tsuru-darwin-amd64.tar.gz | sudo tar -xzv -C /usr/bin/
