@@ -56,7 +56,7 @@ Usage:
 
 	% tsuru target [target]
 
-This command should be used to get current tsuru target, or retrieve current
+This command should be used to set current tsuru target, or retrieve current
 target.
 
 The target is the tsuru server to which all operations will be directed to.
@@ -164,7 +164,7 @@ Usage:
 	% tsuru team-user-add <teamname> <useremail>
 
 team-user-add adds a user to a team. You need to be a member of the team to be
-able to add a user to it.
+able to add another user to it.
 
 
 Remove a user from a team
