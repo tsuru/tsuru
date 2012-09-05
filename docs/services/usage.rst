@@ -90,7 +90,7 @@ It would be nice if your service had some documentation. To add a documentation 
 
 ::
 
-    $ crane doc add service_name path/to/your/docfile
+    $ crane doc-add service_name path/to/your/docfile
 
 Crane will read the content of the file and save it.
 
@@ -100,4 +100,4 @@ To show the current documentation of your service:
 
 ::
 
-    $ crane doc get service_name
+    $ crane doc-get service_name
