@@ -62,6 +62,15 @@ target.
 The target is the tsuru server to which all operations will be directed to.
 
 
+Check current version
+
+Usage:
+
+	% tsuru version
+
+This command returns the current version of tsuru command.
+
+
 Create a user
 
 Usage:
