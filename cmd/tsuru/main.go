@@ -5,7 +5,7 @@ import (
 	"os"
 )
 
-const version = "1.0"
+const version = "0.1"
 
 func buildManager(name string) *cmd.Manager {
 	m := cmd.BuildBaseManager(name, version)
