@@ -150,7 +150,7 @@ func (s *S) TestVersion(c *C) {
 	context := Context{[]string{}, []string{}, manager.Stdout, manager.Stderr}
 	err := command.Run(&context, nil)
 	c.Assert(err, IsNil)
-	c.Assert(manager.Stdout.(*bytes.Buffer).String(), Equals, "tsuru version 5.0")
+	c.Assert(manager.Stdout.(*bytes.Buffer).String(), Equals, "tsuru version 5.0.\n")
 }
 
 func (s *S) TestVersionInfo(c *C) {

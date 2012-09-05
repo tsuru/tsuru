@@ -181,7 +181,7 @@ func (c *version) Info() *Info {
 }
 
 func (c *version) Run(context *Context, client Doer) error {
-	fmt.Fprintf(context.Stdout, "%s version %s", c.manager.Name, c.manager.version)
+	fmt.Fprintf(context.Stdout, "%s version %s.\n", c.manager.Name, c.manager.version)
 	return nil
 }
 
