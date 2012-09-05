@@ -16,12 +16,11 @@ Linux example: suppose you want to install the tsuru client in your `/usr/bin` d
 
 ::
 
-    $ curl -4L https://github.com/downloads/timeredbull/tsuru/tsuru-linux-amd64 -o /usr/bin/tsuru
+    $ sudo curl -L https://github.com/downloads/timeredbull/tsuru/20120821-tsuru-linux-amd64.tar.gz | sudo tar -xzv -C /usr/bin/
 
 Then you will be able to [use the client](apps/client/usage.html). On Mac OS, use `darwin` instead of `linux`:
 
 .. highlight:: bash
 
 ::
-
-    $ curl -4L https://github.com/downloads/timeredbull/tsuru/tsuru-darwin-amd64 -o /usr/bin/tsuru
+    $ sudo curl -L https://github.com/downloads/timeredbull/tsuru/20120821-tsuru-darwin-amd64.tar.gz | sudo tar -xzv -C /usr/bin/
