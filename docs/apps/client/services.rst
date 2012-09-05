@@ -18,7 +18,7 @@ To add a new instance of a service:
 
 ::
 
-    $ tsuru service-add <service_name>
+    $ tsuru service-add <service_name> <service_instance_name>
 
 To remove an instance of a service:
 
