@@ -20,13 +20,14 @@ func (s *S) TestServiceCreateInfo(c *C) {
 }
 
 func (s *S) TestServiceCreateRun(c *C) {
+	var stdout, stderr bytes.Buffer
 	result := "service someservice successfully created"
 	args := []string{"testdata/manifest.yml"}
 	context := cmd.Context{
 		Cmds:   []string{},
 		Args:   args,
-		Stdout: manager.Stdout,
-		Stderr: manager.Stderr,
+		Stdout: &stdout,
+		Stderr: &stderr,
 	}
 	client := cmd.NewClient(&http.Client{Transport: &transport{msg: result, status: http.StatusOK}})
 	err := (&ServiceCreate{}).Run(&context, client)
@@ -34,12 +35,15 @@ func (s *S) TestServiceCreateRun(c *C) {
 }
 
 func (s *S) TestServiceRemoveRun(c *C) {
-	var called bool
+	var (
+		called         bool
+		stdout, stderr bytes.Buffer
+	)
 	context := cmd.Context{
 		Cmds:   []string{},
 		Args:   []string{"my-service"},
-		Stdout: manager.Stdout,
-		Stderr: manager.Stderr,
+		Stdout: &stdout,
+		Stderr: &stderr,
 	}
 	trans := &conditionalTransport{
 		transport{
@@ -55,15 +59,16 @@ func (s *S) TestServiceRemoveRun(c *C) {
 	err := (&ServiceRemove{}).Run(&context, client)
 	c.Assert(err, IsNil)
 	c.Assert(called, Equals, true)
-	c.Assert(manager.Stdout.(*bytes.Buffer).String(), Equals, "Service successfully removed.\n")
+	c.Assert(stdout.String(), Equals, "Service successfully removed.\n")
 }
 
 func (s *S) TestServiceRemoveRunWithRequestFailure(c *C) {
+	var stdout, stderr bytes.Buffer
 	context := cmd.Context{
 		Cmds:   []string{},
 		Args:   []string{"my-service"},
-		Stdout: manager.Stdout,
-		Stderr: manager.Stderr,
+		Stdout: &stdout,
+		Stderr: &stderr,
 	}
 	trans := transport{
 		msg:    "This service cannot be removed because it has instances.\nPlease remove these instances before removing the service.",
@@ -104,6 +109,7 @@ func (s *S) TestServiceListInfo(c *C) {
 }
 
 func (s *S) TestServiceListRun(c *C) {
+	var stdout, stderr bytes.Buffer
 	response := `[{"service": "mysql", "instances": ["my_db"]}]`
 	expected := `+----------+-----------+
 | Services | Instances |
@@ -116,15 +122,16 @@ func (s *S) TestServiceListRun(c *C) {
 	context := cmd.Context{
 		Cmds:   []string{},
 		Args:   []string{},
-		Stdout: manager.Stdout,
-		Stderr: manager.Stderr,
+		Stdout: &stdout,
+		Stderr: &stderr,
 	}
 	err := (&ServiceList{}).Run(&context, client)
 	c.Assert(err, IsNil)
-	c.Assert(manager.Stdout.(*bytes.Buffer).String(), Equals, expected)
+	c.Assert(stdout.String(), Equals, expected)
 }
 
 func (s *S) TestServiceListRunWithNoServicesReturned(c *C) {
+	var stdout, stderr bytes.Buffer
 	response := `[]`
 	expected := ""
 	trans := transport{msg: response, status: http.StatusOK}
@@ -132,16 +139,19 @@ func (s *S) TestServiceListRunWithNoServicesReturned(c *C) {
 	context := cmd.Context{
 		Cmds:   []string{},
 		Args:   []string{},
-		Stdout: manager.Stdout,
-		Stderr: manager.Stderr,
+		Stdout: &stdout,
+		Stderr: &stderr,
 	}
 	err := (&ServiceList{}).Run(&context, client)
 	c.Assert(err, IsNil)
-	c.Assert(manager.Stdout.(*bytes.Buffer).String(), Equals, expected)
+	c.Assert(stdout.String(), Equals, expected)
 }
 
 func (s *S) TestServiceUpdate(c *C) {
-	var called bool
+	var (
+		called         bool
+		stdout, stderr bytes.Buffer
+	)
 	trans := conditionalTransport{
 		transport{
 			msg:    "",
@@ -156,13 +166,13 @@ func (s *S) TestServiceUpdate(c *C) {
 	context := cmd.Context{
 		Cmds:   []string{},
 		Args:   []string{"testdata/manifest.yml"},
-		Stdout: manager.Stdout,
-		Stderr: manager.Stderr,
+		Stdout: &stdout,
+		Stderr: &stderr,
 	}
 	err := (&ServiceUpdate{}).Run(&context, client)
 	c.Assert(err, IsNil)
 	c.Assert(called, Equals, true)
-	c.Assert(context.Stdout.(*bytes.Buffer).String(), Equals, "Service successfully updated.\n")
+	c.Assert(stdout.String(), Equals, "Service successfully updated.\n")
 }
 
 func (s *S) TestServiceUpdateIsACommand(c *C) {
@@ -186,7 +196,10 @@ func (s *S) TestServiceUpdateIsAnInfoer(c *C) {
 }
 
 func (s *S) TestServiceDocAdd(c *C) {
-	var called bool
+	var (
+		called         bool
+		stdout, stderr bytes.Buffer
+	)
 	trans := conditionalTransport{
 		transport{
 			msg:    "",
@@ -201,13 +214,13 @@ func (s *S) TestServiceDocAdd(c *C) {
 	context := cmd.Context{
 		Cmds:   []string{},
 		Args:   []string{"serv", "testdata/doc.md"},
-		Stdout: manager.Stdout,
-		Stderr: manager.Stderr,
+		Stdout: &stdout,
+		Stderr: &stderr,
 	}
 	err := (&ServiceDocAdd{}).Run(&context, client)
 	c.Assert(err, IsNil)
 	c.Assert(called, Equals, true)
-	c.Assert(context.Stdout.(*bytes.Buffer).String(), Equals, "Documentation for 'serv' successfully updated.\n")
+	c.Assert(stdout.String(), Equals, "Documentation for 'serv' successfully updated.\n")
 }
 
 func (s *S) TestServiceDocAddInfo(c *C) {
@@ -221,7 +234,10 @@ func (s *S) TestServiceDocAddInfo(c *C) {
 }
 
 func (s *S) TestServiceDocGet(c *C) {
-	var called bool
+	var (
+		called         bool
+		stdout, stderr bytes.Buffer
+	)
 	trans := conditionalTransport{
 		transport{
 			msg:    "some doc",
@@ -236,8 +252,8 @@ func (s *S) TestServiceDocGet(c *C) {
 	context := cmd.Context{
 		Cmds:   []string{},
 		Args:   []string{"serv"},
-		Stdout: manager.Stdout,
-		Stderr: manager.Stderr,
+		Stdout: &stdout,
+		Stderr: &stderr,
 	}
 	err := (&ServiceDocGet{}).Run(&context, client)
 	c.Assert(err, IsNil)
@@ -268,19 +284,20 @@ e.g.: $ crane template`
 }
 
 func (s *S) TestServiceTemplateRun(c *C) {
+	var stdout, stderr bytes.Buffer
 	trans := transport{msg: "", status: http.StatusOK}
 	client := cmd.NewClient(&http.Client{Transport: &trans})
 	ctx := cmd.Context{
 		Cmds:   []string{},
 		Args:   []string{},
-		Stdout: manager.Stdout,
-		Stderr: manager.Stderr,
+		Stdout: &stdout,
+		Stderr: &stderr,
 	}
 	err := (&ServiceTemplate{}).Run(&ctx, client)
 	defer os.Remove("./manifest.yaml")
 	c.Assert(err, IsNil)
 	expected := "Generated file \"manifest.yaml\" in current path\n"
-	c.Assert(ctx.Stdout.(*bytes.Buffer).String(), Equals, expected)
+	c.Assert(stdout.String(), Equals, expected)
 	f, err := os.Open("./manifest.yaml")
 	c.Assert(err, IsNil)
 	fc, err := ioutil.ReadAll(f)
