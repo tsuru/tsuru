@@ -36,8 +36,7 @@ The currently available commands are (grouped by subject):
 Use "crane help <command>" for more information about a command.
 
 
-
-Change/retrieve remote crane server
+Change or retrieve remote crane server
 
 Usage:
 
