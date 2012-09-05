@@ -10,28 +10,28 @@ Usage:
 
 The currently available commands are (grouped by subject):
 
-    target            changes or retrive the current tsuru server
-    version           displays current tsuru version
+	target            changes or retrive the current tsuru server
+	version           displays current tsuru version
 
-    user-create       creates a new user
-    login             authenticates the user with tsuru server
-    logout            finishes the session with tsuru server
-    key-add           adds a public key to tsuru deploy server
-    key-remove        removes a public key from tsuru deploy server
+	user-create       creates a new user
+	login             authenticates the user with tsuru server
+	logout            finishes the session with tsuru server
+	key-add           adds a public key to tsuru deploy server
+	key-remove        removes a public key from tsuru deploy server
 
-    team-create       creates a new team (adding the current user to it automatically)
-    team-list         list teams that the user is member
-    team-user-add     adds a user to a team
-    team-user-remove  removes a user from a team
+	team-create       creates a new team (adding the current user to it automatically)
+	team-list         list teams that the user is member
+	team-user-add     adds a user to a team
+	team-user-remove  removes a user from a team
 
-    template          generates a new manifest file, so you can just fill information for your service
-    create            creates a new service from a manifest file
-    update            updates a service using a manifest file
-    remove            removes a service
-    list              list all services that the user is administrator of
+	template          generates a new manifest file, so you can just fill information for your service
+	create            creates a new service from a manifest file
+	update            updates a service using a manifest file
+	remove            removes a service
+	list              list all services that the user is administrator of
 
-    doc-add           updates service's documentation
-    doc-get           gets current docs of the service
+	doc-add           updates service's documentation
+	doc-get           gets current docs of the service
 
 Use "crane help <command>" for more information about a command.
 
