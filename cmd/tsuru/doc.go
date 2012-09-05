@@ -11,6 +11,7 @@ Usage:
 The currently available commands are (grouped by subject):
 
     target            changes or retrive the current tsuru server
+    version           displays current tsuru version
 
     user-create       creates a new user
     login             authenticates the user with tsuru server
