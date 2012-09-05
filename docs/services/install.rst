@@ -14,7 +14,7 @@ Linux example: suppose you want to install the crane client in your `/usr/bin` d
 
     $ sudo curl -L https://github.com/downloads/timeredbull/tsuru/20120905-crane-linux-amd64.tar.gz | sudo tar -xz -C /usr/bin/
 
-Then you will be able to [use the client](/timeredbull/crane/wiki/Client-usage). On Mac OS, use `darwin` instead of `linux`:
+Then you will be able to :doc:`use the client </services/usage>`. On Mac OS, use `darwin` instead of `linux`:
 
 .. highlight:: bash
 
