@@ -17,12 +17,17 @@ func (s *S) TestShouldReturnBodyMessageOnError(c *C) {
 }
 
 func (s *S) TestShouldReturnErrorWhenServerIsDown(c *C) {
+	rfs := &testing.RecordingFs{FileContent: "http://tsuru.google.com"}
+	fsystem = rfs
+	defer func() {
+		fsystem = nil
+	}()
 	request, err := http.NewRequest("GET", "/", nil)
 	c.Assert(err, IsNil)
 	client := NewClient(&http.Client{})
 	_, err = client.Do(request)
 	c.Assert(err, NotNil)
-	c.Assert(err, ErrorMatches, "^A problem occurred while trying to do the request. Original error message is: Get /: unsupported protocol scheme \"\" \n$")
+	c.Assert(err.Error(), Equals, "Failed to connect to tsuru server (http://tsuru.google.com), it's probably down.")
 }
 
 func (s *S) TestShouldNotIncludeTheHeaderAuthorizationWhenTheTsuruTokenFileIsMissing(c *C) {

@@ -25,8 +25,7 @@ func (c *Client) Do(request *http.Request) (*http.Response, error) {
 	}
 	response, err := c.HttpClient.Do(request)
 	if err != nil {
-		msg := fmt.Sprintln("A problem occurred while trying to do the request.", "Original error message is:", err.Error(), "")
-		return nil, errors.New(msg)
+		return nil, fmt.Errorf("Failed to connect to tsuru server (%s), it's probably down.", readTarget())
 	}
 	if response.StatusCode > 399 {
 		defer response.Body.Close()
