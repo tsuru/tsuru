@@ -54,7 +54,7 @@ add it to your git repository:
 When your app is ready, you can push to it. To check whether it is ready or
 not, you can use:
 
-    % tsuru app list
+    % tsuru app-list
 
 This will return something like:
 
@@ -67,7 +67,7 @@ This will return something like:
 You can try to push now, but you'll get a permission error, because you haven't
 pushed your key yet.
 
-    % tsuru key add
+    % tsuru key-add
 
 This will search for a `id_rsa.pub` file in ~/.ssh/, if you don't have a
 generated key yet, you should generate one before running this command.
