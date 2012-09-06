@@ -85,10 +85,10 @@ To run a single command, you should use the command line:
     % tsuru run myapp env/bin/python manage.py migrate
 
 By default, the commands are run from inside the app root directory, which is
-/home/application. If you have more complicated deploy related commands, you
-should use the app.conf pre-restart and pos-restart scripts, those are run
-before and after the restart of your app, which is triggered everytime you push
-code.
+/home/application/current. If you have more complicated deploy related
+commands, you should use the app.conf pre-restart and pos-restart scripts,
+those are run before and after the restart of your app, which is triggered
+everytime you push code.
 
 Below is a app.conf sample::
 
