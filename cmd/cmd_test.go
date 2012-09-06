@@ -131,7 +131,7 @@ Run glb help <commandname> to get more information about a specific command.
 	c.Assert(manager.stdout.(*bytes.Buffer).String(), Equals, expected)
 }
 
-func (s *S) TestHelpShouldReturnsHelpForACmd(c *C) {
+func (s *S) TestHelpShouldReturnHelpForACmd(c *C) {
 	expected := `glb version 1.0.
 
 Usage: glb foo

@@ -402,7 +402,7 @@ func (s *S) TestServiceInfoHandler(c *C) {
 	c.Assert(instances, DeepEquals, expected)
 }
 
-func (s *S) TestServiceInfoHandlerShouldReturnsOnlyInstancesOfTheSameTeamOfTheUser(c *C) {
+func (s *S) TestServiceInfoHandlerShouldReturnOnlyInstancesOfTheSameTeamOfTheUser(c *C) {
 	srv := service.Service{Name: "mongodb", Teams: []string{s.team.Name}}
 	err := srv.Create()
 	c.Assert(err, IsNil)
