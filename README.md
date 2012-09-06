@@ -70,7 +70,11 @@ pushed your key yet.
     % tsuru key-add
 
 This will search for a `id_rsa.pub` file in ~/.ssh/, if you don't have a
-generated key yet, you should generate one before running this command.
+generated key yet, you should generate one before running this command. If your
+public key is in some other format, you can pass it as argument to `key-add`
+command:
+
+    % tsuru key-add $HOME/.ssh/id_dsa.pub
 
 Now you can push you application to your cloud:
 
