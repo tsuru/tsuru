@@ -745,6 +745,26 @@ func (s *S) TestCreateAppShouldCreateNewJujuEnvironment(c *C) {
 	c.Assert(s.rfs.HasAction("openfile "+environConfPath+" with mode 0600"), Equals, true)
 }
 
+func (s *S) TestCreateAppShouldRemoveKeystoneEnvironmentWhenJujuEnvCreationFails(c *C) {
+	a := App{
+		Name:      "myApp",
+		Framework: "golang",
+		Teams:     []string{s.team.Name},
+		ec2Auth:   &fakeAuthorizer{},
+	}
+	tmpdir, err := commandmocker.Add("juju", "$(exit 1)")
+	c.Assert(err, IsNil)
+	defer commandmocker.Remove(tmpdir)
+	ts := s.mockServer("", "", "", "juju-env-failure-")
+	defer ts.Close()
+	err = createApp(&a)
+	c.Assert(err, ErrorMatches, "^Failed to bootstrap juju env.*")
+	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
+	c.Assert(called["juju-env-failure-delete-ec2-creds"], Equals, true)
+	c.Assert(called["juju-env-failure-delete-user"], Equals, true)
+	c.Assert(called["juju-env-failure-delete-tenant"], Equals, true)
+}
+
 func (s *S) TestCreateAppShouldSetAppEnvironToDefaultFromConfWhenMultiTenantIsDisabled(c *C) {
 	defaultEnv, err := config.GetString("juju:default-env")
 	c.Assert(err, IsNil)
