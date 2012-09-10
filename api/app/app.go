@@ -170,6 +170,10 @@ func (a *App) destroy() error {
 			log.Print(msg)
 			return errors.New(string(out))
 		}
+		err = removeEnviron(a)
+		if err != nil {
+			return err
+		}
 		if err = destroyKeystoneEnv(&a.KeystoneEnv); err != nil {
 			return err
 		}

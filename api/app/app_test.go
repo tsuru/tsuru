@@ -8,8 +8,10 @@ import (
 	"github.com/timeredbull/tsuru/config"
 	"github.com/timeredbull/tsuru/db"
 	"github.com/timeredbull/tsuru/log"
+	"io/ioutil"
 	"labix.org/v2/mgo/bson"
 	. "launchpad.net/gocheck"
+	"launchpad.net/goyaml"
 	stdlog "log"
 	"strings"
 )
@@ -743,6 +745,27 @@ func (s *S) TestCreateAppShouldCreateNewJujuEnvironment(c *C) {
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": app.Name})
 	c.Assert(s.rfs.HasAction("openfile "+environConfPath+" with mode 0600"), Equals, true)
+}
+
+func (s *S) TestAppDestroyShouldUpdateJujuEnvironment(c *C) {
+	app := App{
+		Name:      "myApp",
+		Framework: "golang",
+		Teams:     []string{s.team.Name},
+		ec2Auth:   &fakeAuthorizer{},
+	}
+	err := createApp(&app)
+	c.Assert(err, IsNil)
+	err = app.destroy()
+	c.Assert(err, IsNil)
+	file, err := s.rfs.Open(environConfPath)
+	c.Assert(err, IsNil)
+	content, err := ioutil.ReadAll(file)
+	c.Assert(err, IsNil)
+	result := map[string]map[string]jujuEnv{}
+	goyaml.Unmarshal(content, &result)
+	_, ok := result["environments"]["myApp"]
+	c.Assert(ok, Equals, false)
 }
 
 func (s *S) TestCreateAppShouldSetAppEnvironToDefaultFromConfWhenMultiTenantIsDisabled(c *C) {
