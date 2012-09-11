@@ -767,8 +767,6 @@ func (s *S) TestBootstrapShouldReturnErrorWhenDestroyingKeystoneEnvFails(c *C) {
 	tmpdir, err := commandmocker.Add("juju", "$(exit 1)")
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(tmpdir)
-	ts := s.mockServer("", "", "", "juju-env-failure-")
-	defer ts.Close()
 	err = bootstrap(&a)
 	c.Assert(err, ErrorMatches, "^Failed to destroy keystone environment.*")
 }
