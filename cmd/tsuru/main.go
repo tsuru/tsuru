@@ -10,6 +10,7 @@ const version = "0.1"
 func buildManager(name string) *cmd.Manager {
 	m := cmd.BuildBaseManager(name, version)
 	m.Register(&AppRun{})
+	m.Register(&AppInfo{})
 	m.Register(&AppCreate{})
 	m.Register(&AppRemove{})
 	m.Register(&AppList{})
