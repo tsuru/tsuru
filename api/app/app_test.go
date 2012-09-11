@@ -733,6 +733,46 @@ func (s *S) TestBootstrapShouldReturnErrorWhenAppHasNoJujuEnv(c *C) {
 	c.Assert(err, ErrorMatches, "^App must have a juju environment name in order to bootstrap$")
 }
 
+func (s *S) TestBootstrapShouldDestroyKeystoneEnvWhenItFails(c *C) {
+	a := App{
+		Name:        "myApp",
+		Framework:   "golang",
+		JujuEnv:     "myEnv",
+		KeystoneEnv: keystoneEnv{TenantId: "foo", UserId: "bar", AccessKey: "foobar"},
+	}
+	err := db.Session.Apps().Insert(&a)
+	c.Assert(err, IsNil)
+	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
+	tmpdir, err := commandmocker.Add("juju", "$(exit 1)")
+	c.Assert(err, IsNil)
+	defer commandmocker.Remove(tmpdir)
+	ts := s.mockServer("", "", "", "juju-env-failure-")
+	defer ts.Close()
+	err = bootstrap(&a)
+	c.Assert(err, ErrorMatches, "^Failed to bootstrap juju env.*")
+	c.Assert(called["juju-env-failure-delete-ec2-creds"], Equals, true)
+	c.Assert(called["juju-env-failure-delete-user"], Equals, true)
+	c.Assert(called["juju-env-failure-delete-tenant"], Equals, true)
+}
+
+func (s *S) TestBootstrapShouldReturnErrorWhenDestroyingKeystoneEnvFails(c *C) {
+	a := App{
+		Name:      "myApp",
+		Framework: "golang",
+		JujuEnv:   "myEnv",
+	}
+	err := db.Session.Apps().Insert(&a)
+	c.Assert(err, IsNil)
+	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
+	tmpdir, err := commandmocker.Add("juju", "$(exit 1)")
+	c.Assert(err, IsNil)
+	defer commandmocker.Remove(tmpdir)
+	ts := s.mockServer("", "", "", "juju-env-failure-")
+	defer ts.Close()
+	err = bootstrap(&a)
+	c.Assert(err, ErrorMatches, "^Failed to destroy keystone environment.*")
+}
+
 func (s *S) TestCreateAppShouldCreateKeystoneEnv(c *C) {
 	a := App{
 		Name:      "pumpkin",

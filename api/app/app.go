@@ -94,19 +94,9 @@ func createApp(a *App) error {
 		if a.JujuEnv == "" {
 			a.JujuEnv = a.Name
 		}
-		cmd := exec.Command("juju", "bootstrap", "-e", a.JujuEnv)
-		log.Printf("bootstraping juju environment %s for the app %s", a.JujuEnv, a.Name)
-		out, err := cmd.CombinedOutput()
+		err = bootstrap(a)
 		if err != nil {
-			msg := fmt.Sprintf("Failed to bootstrap juju env (%s): %s", err, out)
-			log.Printf("ERROR: failed to bootstrap juju environment %s:\n%s", a.JujuEnv, out)
-			log.Print("INFO: attempting to destroy keystone env due to error...")
-			err = destroyKeystoneEnv(&a.KeystoneEnv)
-			if err != nil {
-				log.Print("ERROR: failed to destroy keystone environment")
-				msg = "Failed to destroy keystone environment"
-			}
-			return errors.New(msg)
+			return err
 		}
 		authorizer := a.authorizer()
 		authorizer.setCreds(a.KeystoneEnv.AccessKey, a.KeystoneEnv.secretKey)
