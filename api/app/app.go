@@ -153,6 +153,20 @@ func bootstrap(a *App) error {
 	return nil
 }
 
+func newJujuEnviron(a *App) error {
+	err := newEnvironConf(a)
+	if err != nil {
+		return err
+	}
+	if a.JujuEnv == "" {
+		// changes the object but doesn't save because this function
+		// is supposed to be called from createApp, that is responsible
+		// for saving the object.
+		a.JujuEnv = a.Name
+	}
+	return bootstrap(a)
+}
+
 func (a *App) unbind() error {
 	var instances []service.ServiceInstance
 	err := db.Session.ServiceInstances().Find(bson.M{"apps": bson.M{"$in": []string{a.Name}}}).All(&instances)

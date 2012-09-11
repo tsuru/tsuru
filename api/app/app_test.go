@@ -7,6 +7,7 @@ import (
 	"github.com/timeredbull/tsuru/api/bind"
 	"github.com/timeredbull/tsuru/config"
 	"github.com/timeredbull/tsuru/db"
+	"github.com/timeredbull/tsuru/fs/testing"
 	"github.com/timeredbull/tsuru/log"
 	"io/ioutil"
 	"labix.org/v2/mgo/bson"
@@ -708,6 +709,7 @@ func (s *S) TestBoostrapShouldBoostrapAppEnvironment(c *C) {
 	a := App{Name: "pumpkin", Framework: "golang", JujuEnv: "pumpkin"}
 	err := db.Session.Apps().Insert(&a)
 	c.Assert(err, IsNil)
+	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
 	w := bytes.NewBuffer([]byte{})
 	l := stdlog.New(w, "", stdlog.LstdFlags)
 	log.Target = l
@@ -724,6 +726,7 @@ func (s *S) TestBootstrapShouldReturnErrorWhenAppHasNoJujuEnv(c *C) {
 	a := App{Name: "pumpkin", Framework: "golang"}
 	err := db.Session.Apps().Insert(&a)
 	c.Assert(err, IsNil)
+	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
 	w := bytes.NewBuffer([]byte{})
 	l := stdlog.New(w, "", stdlog.LstdFlags)
 	log.Target = l
@@ -769,6 +772,62 @@ func (s *S) TestBootstrapShouldReturnErrorWhenDestroyingKeystoneEnvFails(c *C) {
 	defer commandmocker.Remove(tmpdir)
 	err = bootstrap(&a)
 	c.Assert(err, ErrorMatches, "^Failed to destroy keystone environment.*")
+}
+
+func (s *S) setupJujuEnviron(c *C) *testing.RecordingFs {
+	env := map[string]map[string]jujuEnv{}
+	env["environments"] = map[string]jujuEnv{}
+	fooEnv, err := newJujuEnvConf("access", "secret")
+	c.Assert(err, IsNil)
+	env["environments"]["name"] = fooEnv
+	data, err := goyaml.Marshal(&env)
+	c.Assert(err, IsNil)
+	rfs := &testing.RecordingFs{FileContent: string(data)}
+	fsystem = rfs
+	return rfs
+}
+
+func (s *S) TestNewJujuEnvironShouldCreateNewEnvironAndReturnJujuEnvName(c *C) {
+	rfs := s.setupJujuEnviron(c)
+	defer func() {
+		fsystem = s.rfs
+	}()
+	a := App{
+		Name:      "myApp",
+		Framework: "golang",
+		KeystoneEnv: keystoneEnv{
+			AccessKey: "access",
+			secretKey: "secret",
+		},
+	}
+	err := db.Session.Apps().Insert(&a)
+	c.Assert(err, IsNil)
+	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
+	err = newJujuEnviron(&a)
+	c.Assert(err, IsNil)
+	c.Assert(rfs.HasAction("openfile "+environConfPath+" with mode 0600"), Equals, true)
+	c.Assert(a.JujuEnv, Equals, a.Name)
+}
+
+func (s *S) TestNewJujuEnvironShouldAlsoBootstrapEnvironment(c *C) {
+	s.setupJujuEnviron(c)
+	defer func() {
+		fsystem = s.rfs
+	}()
+	a := App{Name: "pumpkin", Framework: "golang", JujuEnv: "pumpkin"}
+	err := db.Session.Apps().Insert(&a)
+	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
+	c.Assert(err, IsNil)
+	w := bytes.NewBuffer([]byte{})
+	l := stdlog.New(w, "", stdlog.LstdFlags)
+	log.Target = l
+	dir, err := commandmocker.Add("juju", "$*")
+	defer commandmocker.Remove(dir)
+	err = newJujuEnviron(&a)
+	c.Assert(err, IsNil)
+	logged := strings.Join(strings.Split(w.String(), "\n"), " ")
+	c.Assert(logged, Matches, ".*bootstraping juju environment pumpkin for the app pumpkin.*")
+	c.Assert(logged, Matches, ".*juju bootstrap -e pumpkin.*")
 }
 
 func (s *S) TestCreateAppShouldCreateKeystoneEnv(c *C) {
