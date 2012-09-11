@@ -11,6 +11,7 @@ import (
 	"launchpad.net/goyaml"
 	"os"
 	"path"
+	"syscall"
 )
 
 func (s *S) TestRewriteEnvMessage(c *C) {
@@ -163,6 +164,44 @@ func (s *S) TestNewEnvironShouldKeepExistentsEnvirons(c *C) {
 func (s *S) TestEnvironConfPath(c *C) {
 	expected := path.Join(os.ExpandEnv("${HOME}"), ".juju", "environments.yaml")
 	c.Assert(environConfPath, Equals, expected)
+}
+
+func (s *S) TestRemoveEnviron(c *C) {
+	expected := map[string]map[string]jujuEnv{}
+	expected["environments"] = map[string]jujuEnv{}
+	env1, err := newJujuEnv("access", "secret")
+	expected["environments"]["env1"] = env1
+	env2, err := newJujuEnv("access", "secret")
+	expected["environments"]["env2"] = env2
+	rfs := &testing.RecordingFs{}
+	file, err := rfs.OpenFile(environConfPath, syscall.O_RDWR, 0600)
+	file.Write([]byte{16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31})
+	data, err := goyaml.Marshal(&expected)
+	c.Assert(err, IsNil)
+	_, err = file.Write(data)
+	c.Assert(err, IsNil)
+	fsystem = rfs
+	defer func() {
+		fsystem = s.rfs
+	}()
+	a := App{
+		Name: "env2",
+		KeystoneEnv: keystoneEnv{
+			AccessKey: "access",
+			secretKey: "secret",
+		},
+	}
+	err = removeEnviron(&a)
+	c.Assert(err, IsNil)
+	c.Assert(rfs.HasAction("openfile "+environConfPath+" with mode 0600"), Equals, true)
+	delete(expected["environments"], "env2")
+	file, err = rfs.Open(environConfPath)
+	c.Assert(err, IsNil)
+	content, err := ioutil.ReadAll(file)
+	c.Assert(err, IsNil)
+	result := map[string]map[string]jujuEnv{}
+	goyaml.Unmarshal(content, &result)
+	c.Assert(result, DeepEquals, expected)
 }
 
 func (s *S) TestFileSystem(c *C) {

@@ -187,6 +187,34 @@ func newEnviron(a *App) error {
 	return nil
 }
 
+// removeEnviron removes a environ from environment.yaml
+func removeEnviron(a *App) error {
+	file, err := filesystem().OpenFile(environConfPath, syscall.O_RDWR, 0600)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+	content, err := ioutil.ReadAll(file)
+	if err != nil {
+		return err
+	}
+	envs := map[string]map[string]jujuEnv{}
+	err = goyaml.Unmarshal(content, &envs)
+	delete(envs["environments"], a.Name)
+	data, err := goyaml.Marshal(&envs)
+	if err != nil {
+		return err
+	}
+	n, err := file.Write(data)
+	if err != nil {
+		return err
+	}
+	if n != len(data) {
+		return io.ErrShortWrite
+	}
+	return nil
+}
+
 var fsystem fs.Fs
 
 func filesystem() fs.Fs {

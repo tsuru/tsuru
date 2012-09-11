@@ -164,31 +164,51 @@ func (a *App) unbind() error {
 	return nil
 }
 
+func destroyApp(a *App) error {
+	out, err := a.unit().destroy()
+	msg := string(out)
+	log.Printf(msg)
+	if err != nil {
+		return errors.New(msg)
+	}
+	return nil
+}
+
+func destroyEnvironment(a *App) error {
+	destroyCmd := exec.Command("juju", "destroy-environment", "-e", a.JujuEnv)
+	destroyCmd.Stdin = strings.NewReader("y")
+	if out, err := destroyCmd.CombinedOutput(); err != nil {
+		msg := fmt.Sprintf("Failed to destroy juju-environment:\n%s", out)
+		log.Print(msg)
+		return errors.New(string(out))
+	}
+	err := removeEnviron(a)
+	if err != nil {
+		return err
+	}
+	if err = destroyKeystoneEnv(&a.KeystoneEnv); err != nil {
+		return err
+	}
+	if err = a.KeystoneEnv.disassociate(); err != nil {
+		return err
+	}
+	return nil
+}
+
 func (a *App) destroy() error {
 	multitenant, err := config.GetBool("multi-tenant")
 	if err != nil {
 		return errors.New("multi-tenant flag not defined in config file. You need to define this flag.")
 	}
 	if multitenant {
-		destroyCmd := exec.Command("juju", "destroy-environment", "-e", a.JujuEnv)
-		destroyCmd.Stdin = strings.NewReader("y")
-		if out, err := destroyCmd.CombinedOutput(); err != nil {
-			msg := fmt.Sprintf("Failed to destroy juju-environment:\n%s", out)
-			log.Print(msg)
-			return errors.New(string(out))
-		}
-		if err = destroyKeystoneEnv(&a.KeystoneEnv); err != nil {
-			return err
-		}
-		if err = a.KeystoneEnv.disassociate(); err != nil {
+		err := destroyEnvironment(a)
+		if err != nil {
 			return err
 		}
 	} else {
-		out, err := a.unit().destroy()
-		msg := string(out)
-		log.Printf(msg)
+		err := destroyApp(a)
 		if err != nil {
-			return errors.New(msg)
+			return err
 		}
 	}
 	err = a.unbind()
