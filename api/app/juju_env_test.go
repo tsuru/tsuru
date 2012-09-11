@@ -142,7 +142,7 @@ func (s *S) TestRemoveEnviron(c *C) {
 			secretKey: "secret",
 		},
 	}
-	err = removeEnviron(&a)
+	err = removeEnvironConf(&a)
 	c.Assert(err, IsNil)
 	c.Assert(rfs.HasAction("openfile "+environConfPath+" with mode 0600"), Equals, true)
 	delete(expected["environments"], "env2")

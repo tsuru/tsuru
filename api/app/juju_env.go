@@ -109,8 +109,8 @@ func newEnvironConf(a *App) error {
 	return nil
 }
 
-// removeEnviron removes a environ from environment.yaml
-func removeEnviron(a *App) error {
+// removes a environ from environment.yaml
+func removeEnvironConf(a *App) error {
 	file, err := filesystem().OpenFile(environConfPath, syscall.O_RDWR, 0600)
 	if err != nil {
 		return err

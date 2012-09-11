@@ -210,7 +210,7 @@ func destroyEnvironment(a *App) error {
 		log.Print(msg)
 		return errors.New(string(out))
 	}
-	err := removeEnviron(a)
+	err := removeEnvironConf(a)
 	if err != nil {
 		return err
 	}
