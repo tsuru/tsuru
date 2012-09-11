@@ -1,11 +1,14 @@
 package app
 
 import (
+	"errors"
 	"fmt"
 	"github.com/timeredbull/tsuru/config"
+	"github.com/timeredbull/tsuru/log"
 	"io"
 	"io/ioutil"
 	"launchpad.net/goyaml"
+	"os/exec"
 	"syscall"
 )
 
@@ -135,4 +138,42 @@ func removeEnvironConf(a *App) error {
 		return io.ErrShortWrite
 	}
 	return nil
+}
+
+func bootstrap(a *App) error {
+	if a.JujuEnv == "" {
+		return errors.New("App must have a juju environment name in order to bootstrap")
+	}
+	cmd := exec.Command("juju", "bootstrap", "-e", a.JujuEnv)
+	log.Printf("INFO: bootstraping juju environment %s for the app %s", a.JujuEnv, a.Name)
+	log.Printf("DEBUG: executing command juju bootstrap -e %s", a.JujuEnv)
+	out, err := cmd.CombinedOutput()
+	outStr := string(out)
+	log.Printf("DEBUG: command output: %s", outStr)
+	if err != nil {
+		msg := fmt.Sprintf("Failed to bootstrap juju env (%s): %s", err, outStr)
+		log.Printf("ERROR: failed to bootstrap juju environment %s:\n%s", a.JujuEnv, outStr)
+		log.Print("INFO: attempting to destroy keystone env due to error...")
+		err = destroyKeystoneEnv(&a.KeystoneEnv)
+		if err != nil {
+			log.Print("ERROR: failed to destroy keystone environment")
+			msg = "Failed to destroy keystone environment"
+		}
+		return errors.New(msg)
+	}
+	return nil
+}
+
+func newJujuEnviron(a *App) error {
+	err := newEnvironConf(a)
+	if err != nil {
+		return err
+	}
+	if a.JujuEnv == "" {
+		// changes the object but doesn't save because this function
+		// is supposed to be called from createApp, that is responsible
+		// for saving the object.
+		a.JujuEnv = a.Name
+	}
+	return bootstrap(a)
 }
