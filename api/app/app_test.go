@@ -704,15 +704,26 @@ func (s *S) TestGetUnits(c *C) {
 }
 
 func (s *S) TestDeployShouldCallJujuDeployCommandWithRightEnvironmentInMultiTenantMode(c *C) {
-    a := App{
-        Name: "smashed pumpkin",
-        Framework: "golang",
-        JujuEnv: "smashed pumpkin",
-    }
-    err := db.Session.Apps().Insert(&a)
-    c.Assert(err, IsNil)
-    err = deploy(&a)
-    c.Assert(err, IsNil)
+	a := App{
+		Name:      "smashed_pumpkin",
+		Framework: "golang",
+		JujuEnv:   "smashed_pumpkin",
+	}
+	err := db.Session.Apps().Insert(&a)
+	c.Assert(err, IsNil)
+	w := bytes.NewBuffer([]byte{})
+	l := stdlog.New(w, "", stdlog.LstdFlags)
+	log.Target = l
+	dir, err := commandmocker.Add("juju", "$*")
+	c.Assert(err, IsNil)
+	defer commandmocker.Remove(dir)
+	err = deploy(&a)
+	c.Assert(err, IsNil)
+	logged := strings.Replace(w.String(), "\n", " ", -1)
+	expected := ".*deploying golang with name smashed_pumpkin on environment smashed_pumpkin.*"
+	c.Assert(logged, Matches, expected)
+	expected = ".*deploy -e smashed_pumpkin --repository=/home/charms local:golang smashed_pumpkin.*"
+	c.Assert(logged, Matches, expected)
 }
 
 func (s *S) TestDeployShouldCallJujuDeployCommandWithRightEnvironmentInSingleTenantMode(c *C) {

@@ -106,23 +106,29 @@ func createApp(a *App) error {
 	if err != nil {
 		return err
 	}
-	a.log(fmt.Sprintf("creating app %s", a.Name))
-	cmd := exec.Command("juju", "deploy", "-e", a.JujuEnv, "--repository=/home/charms", "local:"+a.Framework, a.Name)
-	log.Printf("deploying %s with name %s on environment %s", a.Framework, a.Name, a.JujuEnv)
-	out, err := cmd.CombinedOutput()
-	a.log(string(out))
+	err = deploy(a)
 	if err != nil {
-		a.log(fmt.Sprintf("juju finished with exit status: %s", err.Error()))
-		db.Session.Apps().Remove(bson.M{"name": a.Name})
-		return errors.New(string(out))
+		return err
 	}
 	a.log(fmt.Sprintf("app %s successfully created", a.Name))
 	return nil
 }
 
 func deploy(a *App) error {
-    // should it wait until environment is bootstraped?
-    return nil
+	// should it wait until environment finish bootstraping?
+	a.log(fmt.Sprintf("creating app %s", a.Name))
+	cmd := exec.Command("juju", "deploy", "-e", a.JujuEnv, "--repository=/home/charms", "local:"+a.Framework, a.Name)
+	log.Printf("deploying %s with name %s on environment %s", a.Framework, a.Name, a.JujuEnv)
+	out, err := cmd.CombinedOutput()
+	outStr := string(out)
+	a.log(outStr)
+	log.Printf("executing %s", outStr)
+	if err != nil {
+		a.log(fmt.Sprintf("juju finished with exit status: %s", err.Error()))
+		db.Session.Apps().Remove(bson.M{"name": a.Name})
+		return errors.New(string(out))
+	}
+	return nil
 }
 
 func (a *App) unbind() error {
