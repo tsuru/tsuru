@@ -720,6 +720,19 @@ func (s *S) TestBoostrapShouldBoostrapAppEnvironment(c *C) {
 	c.Assert(logged, Matches, ".*juju bootstrap -e pumpkin.*")
 }
 
+func (s *S) TestBootstrapShouldReturnErrorWhenAppHasNoJujuEnv(c *C) {
+	a := App{Name: "pumpkin", Framework: "golang"}
+	err := db.Session.Apps().Insert(&a)
+	c.Assert(err, IsNil)
+	w := bytes.NewBuffer([]byte{})
+	l := stdlog.New(w, "", stdlog.LstdFlags)
+	log.Target = l
+	dir, err := commandmocker.Add("juju", "$*")
+	defer commandmocker.Remove(dir)
+	err = bootstrap(&a)
+	c.Assert(err, ErrorMatches, "^App must have a juju environment name in order to bootstrap$")
+}
+
 func (s *S) TestCreateAppShouldCreateKeystoneEnv(c *C) {
 	a := App{
 		Name:      "pumpkin",
