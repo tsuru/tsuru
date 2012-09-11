@@ -8,6 +8,38 @@ import (
 	"strings"
 )
 
+func (s *S) TestAppInfo(c *C) {
+	var stdout, stderr bytes.Buffer
+	result := `{"Name":"app1","Framework":"php","State":"dead", "Units":[{"Ip":"10.10.10.10"}, {"Ip":"9.9.9.9"}],"Teams":[{"Name":"tsuruteam","Users":[{"Email":"whydidifall@thewho.com","Password":"123","Tokens":null,"Keys":null}]}, {"Name":"crane","Users":[{"Email":"whydidifall@thewho.com","Password":"123","Tokens":null,"Keys":null}]}]}`
+	expected := `Application: app1
+State: dead
+Plataform: php
+Units: 10.10.10.10, 9.9.9.9
+Teams: tsuruteam, crane
+`
+	context := cmd.Context{
+		Cmds:   []string{},
+		Args:   []string{"appname"},
+		Stdout: &stdout,
+		Stderr: &stderr,
+	}
+	client := cmd.NewClient(&http.Client{Transport: &transport{msg: result, status: http.StatusOK}})
+	command := AppInfo{}
+	err := command.Run(&context, client)
+	c.Assert(err, IsNil)
+	c.Assert(stdout.String(), Equals, expected)
+}
+
+func (s *S) TestAppInfoInfo(c *C) {
+	expected := &cmd.Info{
+		Name:    "app-info",
+		Usage:   "app-info <appname>",
+		Desc:    "show information about your app.",
+		MinArgs: 1,
+	}
+	c.Assert((&AppInfo{}).Info(), DeepEquals, expected)
+}
+
 func (s *S) TestAppList(c *C) {
 	var stdout, stderr bytes.Buffer
 	result := `[{"Name":"app1","Framework":"","State":"", "Units":[{"Ip":"10.10.10.10"}],"Teams":[{"Name":"tsuruteam","Users":[{"Email":"whydidifall@thewho.com","Password":"123","Tokens":null,"Keys":null}]}]}]`
