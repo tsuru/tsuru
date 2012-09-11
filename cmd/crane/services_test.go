@@ -24,7 +24,6 @@ func (s *S) TestServiceCreateRun(c *C) {
 	result := "service someservice successfully created"
 	args := []string{"testdata/manifest.yml"}
 	context := cmd.Context{
-		Cmds:   []string{},
 		Args:   args,
 		Stdout: &stdout,
 		Stderr: &stderr,
@@ -40,7 +39,6 @@ func (s *S) TestServiceRemoveRun(c *C) {
 		stdout, stderr bytes.Buffer
 	)
 	context := cmd.Context{
-		Cmds:   []string{},
 		Args:   []string{"my-service"},
 		Stdout: &stdout,
 		Stderr: &stderr,
@@ -65,7 +63,6 @@ func (s *S) TestServiceRemoveRun(c *C) {
 func (s *S) TestServiceRemoveRunWithRequestFailure(c *C) {
 	var stdout, stderr bytes.Buffer
 	context := cmd.Context{
-		Cmds:   []string{},
 		Args:   []string{"my-service"},
 		Stdout: &stdout,
 		Stderr: &stderr,
@@ -120,7 +117,6 @@ func (s *S) TestServiceListRun(c *C) {
 	trans := transport{msg: response, status: http.StatusOK}
 	client := cmd.NewClient(&http.Client{Transport: &trans})
 	context := cmd.Context{
-		Cmds:   []string{},
 		Args:   []string{},
 		Stdout: &stdout,
 		Stderr: &stderr,
@@ -137,7 +133,6 @@ func (s *S) TestServiceListRunWithNoServicesReturned(c *C) {
 	trans := transport{msg: response, status: http.StatusOK}
 	client := cmd.NewClient(&http.Client{Transport: &trans})
 	context := cmd.Context{
-		Cmds:   []string{},
 		Args:   []string{},
 		Stdout: &stdout,
 		Stderr: &stderr,
@@ -164,7 +159,6 @@ func (s *S) TestServiceUpdate(c *C) {
 	}
 	client := cmd.NewClient(&http.Client{Transport: &trans})
 	context := cmd.Context{
-		Cmds:   []string{},
 		Args:   []string{"testdata/manifest.yml"},
 		Stdout: &stdout,
 		Stderr: &stderr,
@@ -212,7 +206,6 @@ func (s *S) TestServiceDocAdd(c *C) {
 	}
 	client := cmd.NewClient(&http.Client{Transport: &trans})
 	context := cmd.Context{
-		Cmds:   []string{},
 		Args:   []string{"serv", "testdata/doc.md"},
 		Stdout: &stdout,
 		Stderr: &stderr,
@@ -250,7 +243,6 @@ func (s *S) TestServiceDocGet(c *C) {
 	}
 	client := cmd.NewClient(&http.Client{Transport: &trans})
 	context := cmd.Context{
-		Cmds:   []string{},
 		Args:   []string{"serv"},
 		Stdout: &stdout,
 		Stderr: &stderr,
@@ -288,7 +280,6 @@ func (s *S) TestServiceTemplateRun(c *C) {
 	trans := transport{msg: "", status: http.StatusOK}
 	client := cmd.NewClient(&http.Client{Transport: &trans})
 	ctx := cmd.Context{
-		Cmds:   []string{},
 		Args:   []string{},
 		Stdout: &stdout,
 		Stderr: &stderr,

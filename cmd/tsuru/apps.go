@@ -11,6 +11,73 @@ import (
 	"time"
 )
 
+type AppInfo struct{}
+
+func (c *AppInfo) Info() *cmd.Info {
+	return &cmd.Info{
+		Name:    "app-info",
+		Usage:   "app-info <appname>",
+		Desc:    "show information about your app.",
+		MinArgs: 1,
+	}
+}
+
+func (c *AppInfo) Run(context *cmd.Context, client cmd.Doer) error {
+	appName := context.Args[0]
+	url := cmd.GetUrl(fmt.Sprintf("/apps/%s", appName))
+	request, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return err
+	}
+	response, err := client.Do(request)
+	if err != nil {
+		return err
+	}
+	if response.StatusCode == http.StatusNoContent {
+		return nil
+	}
+	defer response.Body.Close()
+	result, err := ioutil.ReadAll(response.Body)
+	if err != nil {
+		return err
+	}
+	return c.Show(result, context)
+}
+
+func (c *AppInfo) Show(result []byte, context *cmd.Context) error {
+	var app map[string]interface{}
+	err := json.Unmarshal(result, &app)
+	if err != nil {
+		return err
+	}
+	template := `Application: %s
+State: %s
+Plataform: %s
+Units: %s
+Teams: %s
+`
+	name := app["Name"]
+	state := app["State"]
+	plataform := app["Framework"]
+	units := ""
+	for _, unit := range app["Units"].([]interface{}) {
+		if len(units) > 0 {
+			units += ", "
+		}
+		units += fmt.Sprintf("%s", unit.(map[string]interface{})["Ip"].(string))
+	}
+	teams := ""
+	for _, team := range app["Teams"].([]interface{}) {
+		if len(teams) > 0 {
+			teams += ", "
+		}
+		teams += fmt.Sprintf("%s", team.(map[string]interface{})["Name"].(string))
+	}
+	out := fmt.Sprintf(template, name, state, plataform, units, teams)
+	context.Stdout.Write([]byte(out))
+	return nil
+}
+
 type AppGrant struct{}
 
 func (c *AppGrant) Info() *cmd.Info {

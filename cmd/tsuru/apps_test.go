@@ -8,6 +8,37 @@ import (
 	"strings"
 )
 
+func (s *S) TestAppInfo(c *C) {
+	var stdout, stderr bytes.Buffer
+	result := `{"Name":"app1","Framework":"php","State":"dead", "Units":[{"Ip":"10.10.10.10"}, {"Ip":"9.9.9.9"}],"Teams":[{"Name":"tsuruteam","Users":[{"Email":"whydidifall@thewho.com","Password":"123","Tokens":null,"Keys":null}]}, {"Name":"crane","Users":[{"Email":"whydidifall@thewho.com","Password":"123","Tokens":null,"Keys":null}]}]}`
+	expected := `Application: app1
+State: dead
+Plataform: php
+Units: 10.10.10.10, 9.9.9.9
+Teams: tsuruteam, crane
+`
+	context := cmd.Context{
+		Args:   []string{"appname"},
+		Stdout: &stdout,
+		Stderr: &stderr,
+	}
+	client := cmd.NewClient(&http.Client{Transport: &transport{msg: result, status: http.StatusOK}})
+	command := AppInfo{}
+	err := command.Run(&context, client)
+	c.Assert(err, IsNil)
+	c.Assert(stdout.String(), Equals, expected)
+}
+
+func (s *S) TestAppInfoInfo(c *C) {
+	expected := &cmd.Info{
+		Name:    "app-info",
+		Usage:   "app-info <appname>",
+		Desc:    "show information about your app.",
+		MinArgs: 1,
+	}
+	c.Assert((&AppInfo{}).Info(), DeepEquals, expected)
+}
+
 func (s *S) TestAppList(c *C) {
 	var stdout, stderr bytes.Buffer
 	result := `[{"Name":"app1","Framework":"","State":"", "Units":[{"Ip":"10.10.10.10"}],"Teams":[{"Name":"tsuruteam","Users":[{"Email":"whydidifall@thewho.com","Password":"123","Tokens":null,"Keys":null}]}]}]`
@@ -18,7 +49,6 @@ func (s *S) TestAppList(c *C) {
 +-------------+-------+-------------+
 `
 	context := cmd.Context{
-		Cmds:   []string{},
 		Args:   []string{},
 		Stdout: &stdout,
 		Stderr: &stderr,
@@ -56,7 +86,6 @@ func (s *S) TestAppCreate(c *C) {
 	expected := `App "ble" successfully created!
 Your repository for "ble" project is "git@tsuru.plataformas.glb.com:ble.git"` + "\n"
 	context := cmd.Context{
-		Cmds:   []string{},
 		Args:   []string{"ble", "django"},
 		Stdout: &stdout,
 		Stderr: &stderr,
@@ -71,7 +100,6 @@ Your repository for "ble" project is "git@tsuru.plataformas.glb.com:ble.git"` + 
 func (s *S) TestAppCreateWithInvalidFramework(c *C) {
 	var stdout, stderr bytes.Buffer
 	context := cmd.Context{
-		Cmds:   []string{},
 		Args:   []string{"invalidapp", "lombra"},
 		Stdout: &stdout,
 		Stderr: &stderr,
@@ -87,7 +115,6 @@ func (s *S) TestAppRemove(c *C) {
 	var stdout, stderr bytes.Buffer
 	expected := `App "ble" successfully removed!` + "\n"
 	context := cmd.Context{
-		Cmds:   []string{},
 		Args:   []string{"ble"},
 		Stdout: &stdout,
 		Stderr: &stderr,
@@ -113,7 +140,6 @@ func (s *S) TestAppGrant(c *C) {
 	var stdout, stderr bytes.Buffer
 	expected := `Team "cobrateam" was added to the "games" app` + "\n"
 	context := cmd.Context{
-		Cmds:   []string{},
 		Args:   []string{"games", "cobrateam"},
 		Stdout: &stdout,
 		Stderr: &stderr,
@@ -139,7 +165,6 @@ func (s *S) TestAppRevoke(c *C) {
 	var stdout, stderr bytes.Buffer
 	expected := `Team "cobrateam" was removed from the "games" app` + "\n"
 	context := cmd.Context{
-		Cmds:   []string{},
 		Args:   []string{"games", "cobrateam"},
 		Stdout: &stdout,
 		Stderr: &stderr,
@@ -168,7 +193,6 @@ func (s *S) TestAppLog(c *C) {
 2012-06-20 11:17:22.753 -0300 BRT - app lost successfully created
 `
 	context := cmd.Context{
-		Cmds:   []string{},
 		Args:   []string{"appName"},
 		Stdout: &stdout,
 		Stderr: &stderr,
@@ -185,7 +209,6 @@ func (s *S) TestAppLog(c *C) {
 func (s *S) TestAppLogShouldReturnNilIfHasNoContent(c *C) {
 	var stdout, stderr bytes.Buffer
 	context := cmd.Context{
-		Cmds:   []string{},
 		Args:   []string{"appName"},
 		Stdout: &stdout,
 		Stderr: &stderr,
@@ -213,7 +236,6 @@ func (s *S) TestAppRestart(c *C) {
 		stdout, stderr bytes.Buffer
 	)
 	context := cmd.Context{
-		Cmds:   []string{},
 		Args:   []string{"handful_of_nothing"},
 		Stdout: &stdout,
 		Stderr: &stderr,

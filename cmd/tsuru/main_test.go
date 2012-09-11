@@ -161,3 +161,10 @@ func (s *S) TestServiceInstanceStatusIsRegistered(c *C) {
 	c.Assert(ok, Equals, true)
 	c.Assert(status, FitsTypeOf, &ServiceInstanceStatus{})
 }
+
+func (s *S) TestAppInfoIsRegistered(c *C) {
+	manager := buildManager("tsuru")
+	list, ok := manager.Commands["app-info"]
+	c.Assert(ok, Equals, true)
+	c.Assert(list, FitsTypeOf, &AppInfo{})
+}

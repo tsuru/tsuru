@@ -11,7 +11,6 @@ func (s *S) TestAppRun(c *C) {
 	var stdout, stderr bytes.Buffer
 	expected := "http.go		http_test.go"
 	context := cmd.Context{
-		Cmds:   []string{},
 		Args:   []string{"ble", "ls"},
 		Stdout: &stdout,
 		Stderr: &stderr,
@@ -37,7 +36,6 @@ func (s *S) TestAppRunShouldUseAllSubsequentArgumentsAsArgumentsToTheGivenComman
 	var stdout, stderr bytes.Buffer
 	expected := "-rw-r--r--  1 f  staff  119 Apr 26 18:23 http.go"
 	context := cmd.Context{
-		Cmds:   []string{},
 		Args:   []string{"ble", "ls", "-l"},
 		Stdout: &stdout,
 		Stderr: &stderr,

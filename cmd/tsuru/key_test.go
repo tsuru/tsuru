@@ -17,7 +17,6 @@ func (s *S) TestKeyAdd(c *C) {
 	p := path.Join(u.HomeDir, ".ssh", "id_rsa.pub")
 	expected := "Key successfully added!\n"
 	context := cmd.Context{
-		Cmds:   []string{},
 		Args:   []string{},
 		Stdout: &stdout,
 		Stderr: &stderr,
@@ -38,7 +37,6 @@ func (s *S) TestKeyAddSpecifyingKeyFile(c *C) {
 	p := path.Join(u.HomeDir, ".ssh", "id_dsa.pub")
 	expected := "Key successfully added!\n"
 	context := cmd.Context{
-		Cmds:   []string{},
 		Args:   []string{p},
 		Stdout: &stdout,
 		Stderr: &stderr,
@@ -55,7 +53,6 @@ func (s *S) TestKeyAddSpecifyingKeyFile(c *C) {
 func (s *S) TestKeyAddReturnErrorIfTheKeyDoesNotExist(c *C) {
 	var stdout, stderr bytes.Buffer
 	context := cmd.Context{
-		Cmds:   []string{},
 		Args:   []string{},
 		Stdout: &stdout,
 		Stderr: &stderr,
@@ -70,7 +67,6 @@ func (s *S) TestKeyAddReturnErrorIfTheKeyDoesNotExist(c *C) {
 func (s *S) TestKeyAddReturnsProperErrorIfTheGivenKeyFileDoesNotExist(c *C) {
 	var stdout, stderr bytes.Buffer
 	context := cmd.Context{
-		Cmds:   []string{},
 		Args:   []string{"/unknown/key.pub"},
 		Stdout: &stdout,
 		Stderr: &stderr,
@@ -100,7 +96,6 @@ func (s *S) TestKeyRemove(c *C) {
 	p := path.Join(u.HomeDir, ".ssh", "id_rsa.pub")
 	expected := "Key successfully removed!\n"
 	context := cmd.Context{
-		Cmds:   []string{},
 		Args:   []string{},
 		Stdout: &stdout,
 		Stderr: &stderr,
@@ -121,7 +116,6 @@ func (s *S) TestKeyRemoveSpecifyingKeyFile(c *C) {
 	p := path.Join(u.HomeDir, ".ssh", "id_dsa.pub")
 	expected := "Key successfully removed!\n"
 	context := cmd.Context{
-		Cmds:   []string{},
 		Args:   []string{p},
 		Stdout: &stdout,
 		Stderr: &stderr,
@@ -138,7 +132,6 @@ func (s *S) TestKeyRemoveSpecifyingKeyFile(c *C) {
 func (s *S) TestKeyRemoveReturnErrorIfTheKeyDoesNotExist(c *C) {
 	var stdout, stderr bytes.Buffer
 	context := cmd.Context{
-		Cmds:   []string{},
 		Args:   []string{},
 		Stdout: &stdout,
 		Stderr: &stderr,
@@ -153,7 +146,6 @@ func (s *S) TestKeyRemoveReturnErrorIfTheKeyDoesNotExist(c *C) {
 func (s *S) TestKeyRemoveReturnProperErrorIfTheGivenKeyFileDoesNotExist(c *C) {
 	var stdout, stderr bytes.Buffer
 	context := cmd.Context{
-		Cmds:   []string{},
 		Args:   []string{"/unknown/key.pub"},
 		Stdout: &stdout,
 		Stderr: &stderr,

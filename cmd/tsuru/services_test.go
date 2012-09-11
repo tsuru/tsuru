@@ -16,7 +16,6 @@ func (s *S) TestServiceList(c *C) {
 	lineMysql := "| mysql   | mysql01, mysql02 |"
 	lineOracle := "| oracle  |                  |"
 	ctx := cmd.Context{
-		Cmds:   []string{},
 		Args:   []string{},
 		Stdout: &stdout,
 		Stderr: &stderr,
@@ -44,7 +43,6 @@ func (s *S) TestServiceListWithEmptyResponse(c *C) {
 	output := "[]"
 	expected := ""
 	ctx := cmd.Context{
-		Cmds:   []string{},
 		Args:   []string{},
 		Stdout: &stdout,
 		Stderr: &stderr,
@@ -91,7 +89,6 @@ func (s *S) TestServiceBind(c *C) {
 		stdout, stderr bytes.Buffer
 	)
 	ctx := cmd.Context{
-		Cmds:   []string{},
 		Args:   []string{"my-mysql", "g1"},
 		Stdout: &stdout,
 		Stderr: &stderr,
@@ -116,7 +113,6 @@ func (s *S) TestServiceBind(c *C) {
 func (s *S) TestServiceBindWithRequestFailure(c *C) {
 	var stdout, stderr bytes.Buffer
 	ctx := cmd.Context{
-		Cmds:   []string{},
 		Args:   []string{"my-mysql", "g1"},
 		Stdout: &stdout,
 		Stderr: &stderr,
@@ -155,7 +151,6 @@ func (s *S) TestServiceUnbind(c *C) {
 	var stdout, stderr bytes.Buffer
 	var called bool
 	ctx := cmd.Context{
-		Cmds:   []string{},
 		Args:   []string{"hand", "pocket"},
 		Stdout: &stdout,
 		Stderr: &stderr,
@@ -180,7 +175,6 @@ func (s *S) TestServiceUnbind(c *C) {
 func (s *S) TestServiceUnbindWithRequestFailure(c *C) {
 	var stdout, stderr bytes.Buffer
 	ctx := cmd.Context{
-		Cmds:   []string{},
 		Args:   []string{"hand", "pocket"},
 		Stdout: &stdout,
 		Stderr: &stderr,
@@ -240,7 +234,6 @@ func (s *S) TestServiceAddRun(c *C) {
 		"mysql",
 	}
 	context := cmd.Context{
-		Cmds:   []string{},
 		Args:   args,
 		Stdout: &stdout,
 		Stderr: &stderr,
@@ -273,7 +266,6 @@ func (s *S) TestServiceInstanceStatusRun(c *C) {
 	result := `Service instance "foo" is up`
 	args := []string{"fooBar"}
 	context := cmd.Context{
-		Cmds:   []string{},
 		Args:   args,
 		Stdout: &stdout,
 		Stderr: &stderr,
@@ -314,7 +306,6 @@ func (s *S) TestServiceInfoRun(c *C) {
 `
 	args := []string{"mongodb"}
 	context := cmd.Context{
-		Cmds:   []string{},
 		Args:   args,
 		Stdout: &stdout,
 		Stderr: &stderr,
@@ -344,7 +335,6 @@ Service test is foo bar.
 `
 	expected := result
 	ctx := cmd.Context{
-		Cmds:   []string{},
 		Args:   []string{"foo"},
 		Stdout: &stdout,
 		Stderr: &stderr,
@@ -370,7 +360,6 @@ func (s *S) TestServiceRemoveInfo(c *C) {
 func (s *S) TestServiceRemoveRun(c *C) {
 	var stdout, stderr bytes.Buffer
 	ctx := cmd.Context{
-		Cmds:   []string{},
 		Args:   []string{"some-service-instance"},
 		Stdout: &stdout,
 		Stderr: &stderr,

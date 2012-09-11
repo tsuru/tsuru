@@ -20,7 +20,6 @@ func (s *S) TestEnvGetRun(c *C) {
 	var stdout, stderr bytes.Buffer
 	result := "DATABASE_HOST=somehost\n"
 	context := cmd.Context{
-		Cmds:   []string{},
 		Args:   []string{"someapp", "DATABASE_HOST"},
 		Stdout: &stdout,
 		Stderr: &stderr,
@@ -36,7 +35,6 @@ func (s *S) TestEnvGetRunWithMultipleParams(c *C) {
 	result := "DATABASE_HOST=somehost\nDATABASE_USER=someuser"
 	params := []string{"someapp", "DATABASE_HOST", "DATABASE_USER"}
 	context := cmd.Context{
-		Cmds:   []string{},
 		Args:   params,
 		Stdout: &stdout,
 		Stderr: &stderr,
@@ -60,7 +58,6 @@ func (s *S) TestEnvSetRun(c *C) {
 	var stdout, stderr bytes.Buffer
 	result := "variable(s) successfully exported\n"
 	context := cmd.Context{
-		Cmds:   []string{},
 		Args:   []string{"someapp", "DATABASE_HOST=somehost"},
 		Stdout: &stdout,
 		Stderr: &stderr,
@@ -76,7 +73,6 @@ func (s *S) TestEnvSetRunWithMultipleParams(c *C) {
 	result := "variable(s) successfully exported\n"
 	params := []string{"someapp", "DATABASE_HOST=somehost", "DATABASE_USER=user"}
 	context := cmd.Context{
-		Cmds:   []string{},
 		Args:   params,
 		Stdout: &stdout,
 		Stderr: &stderr,
@@ -100,7 +96,6 @@ func (s *S) TestEnvUnsetRun(c *C) {
 	var stdout, stderr bytes.Buffer
 	result := "variable(s) successfully unset\n"
 	context := cmd.Context{
-		Cmds:   []string{},
 		Args:   []string{"someapp", "DATABASE_HOST"},
 		Stdout: &stdout,
 		Stderr: &stderr,

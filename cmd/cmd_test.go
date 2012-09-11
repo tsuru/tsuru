@@ -94,7 +94,7 @@ Available commands:
 Run glb help <commandname> to get more information about a specific command.
 `
 	manager.Register(&userCreate{})
-	context := Context{[]string{}, []string{}, manager.stdout, manager.stderr}
+	context := Context{[]string{}, manager.stdout, manager.stderr}
 	command := help{manager: manager}
 	err := command.Run(&context, nil)
 	c.Assert(err, IsNil)
@@ -110,7 +110,7 @@ func (s *S) TestHelpCommandShouldBeRegisteredByDefault(c *C) {
 
 func (s *S) TestHelpReturnErrorIfTheGivenCommandDoesNotExist(c *C) {
 	command := help{manager: manager}
-	context := Context{[]string{}, []string{"user-create"}, manager.stdout, manager.stderr}
+	context := Context{[]string{"user-create"}, manager.stdout, manager.stderr}
 	err := command.Run(&context, nil)
 	c.Assert(err, NotNil)
 	c.Assert(err, ErrorMatches, "^Command user-create does not exist.$")
@@ -147,7 +147,7 @@ func (s *S) TestVersion(c *C) {
 	var stdout, stderr bytes.Buffer
 	manager := NewManager("tsuru", "5.0", &stdout, &stderr)
 	command := version{manager: manager}
-	context := Context{[]string{}, []string{}, manager.stdout, manager.stderr}
+	context := Context{[]string{}, manager.stdout, manager.stderr}
 	err := command.Run(&context, nil)
 	c.Assert(err, IsNil)
 	c.Assert(manager.stdout.(*bytes.Buffer).String(), Equals, "tsuru version 5.0.\n")
@@ -205,7 +205,7 @@ Foo do anything or nothing.
 	var stdout, stderr bytes.Buffer
 	manager := NewManager("tsuru", "1.0", &stdout, &stderr)
 	manager.Register(&TestCommand{})
-	context := Context{[]string{}, []string{"foo"}, manager.stdout, manager.stderr}
+	context := Context{[]string{"foo"}, manager.stdout, manager.stderr}
 	command := help{manager: manager}
 	err := command.Run(&context, nil)
 	c.Assert(err, IsNil)
