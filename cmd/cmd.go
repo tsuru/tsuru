@@ -83,7 +83,7 @@ func (m *Manager) Run(args []string) {
 		args = []string{name}
 		status = 1
 	}
-	err := command.(Command).Run(&Context{nil, args, m.stdout, m.stderr}, NewClient(&http.Client{}))
+	err := command.(Command).Run(&Context{args, m.stdout, m.stderr}, NewClient(&http.Client{}))
 	if err != nil {
 		errorMsg := err.Error()
 		if !strings.HasSuffix(errorMsg, "\n") {
@@ -111,7 +111,6 @@ type Command interface {
 }
 
 type Context struct {
-	Cmds   []string
 	Args   []string
 	Stdout io.Writer
 	Stderr io.Writer
