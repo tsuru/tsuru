@@ -82,6 +82,29 @@ This will return something like:
     | myblog      | STARTED | 10.10.10.10  |
     +-------------+---------+--------------+
 
+Showing app info
+----------------
+
+You can also use the app-info command to view information of an app. Including the status of an app:
+
+.. highlight:: bash
+
+::
+
+    $ tsuru app-info myblog
+
+This will return something like:
+
+.. highlight:: bash
+
+::
+
+    Application: myblog
+    State: started
+    Plataform: gunicorn
+    Units: 10.10.10.10, 9.9.9.9
+    Teams: team1, team2
+
 Public Keys
 ===========
 
