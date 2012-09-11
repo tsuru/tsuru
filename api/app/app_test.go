@@ -704,6 +704,22 @@ func (s *S) TestGetUnits(c *C) {
 	c.Assert(app.GetUnits(), DeepEquals, expected)
 }
 
+func (s *S) TestBoostrapShouldBoostrapAppEnvironment(c *C) {
+	a := App{Name: "pumpkin", Framework: "golang", JujuEnv: "pumpkin"}
+	err := db.Session.Apps().Insert(&a)
+	c.Assert(err, IsNil)
+	w := bytes.NewBuffer([]byte{})
+	l := stdlog.New(w, "", stdlog.LstdFlags)
+	log.Target = l
+	dir, err := commandmocker.Add("juju", "$*")
+	defer commandmocker.Remove(dir)
+	err = bootstrap(&a)
+	c.Assert(err, IsNil)
+	logged := strings.Join(strings.Split(w.String(), "\n"), " ")
+	c.Assert(logged, Matches, ".*bootstraping juju environment pumpkin for the app pumpkin.*")
+	c.Assert(logged, Matches, ".*juju bootstrap -e pumpkin.*")
+}
+
 func (s *S) TestCreateAppShouldCreateKeystoneEnv(c *C) {
 	a := App{
 		Name:      "pumpkin",

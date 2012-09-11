@@ -98,9 +98,9 @@ func createApp(a *App) error {
 		log.Printf("bootstraping juju environment %s for the app %s", a.JujuEnv, a.Name)
 		out, err := cmd.CombinedOutput()
 		if err != nil {
+			msg := fmt.Sprintf("Failed to bootstrap juju env (%s): %s", err, out)
 			log.Printf("ERROR: failed to bootstrap juju environment %s:\n%s", a.JujuEnv, out)
 			log.Print("INFO: attempting to destroy keystone env due to error...")
-			msg := fmt.Sprintf("Failed to bootstrap juju env (%s): %s", err, out)
 			err = destroyKeystoneEnv(&a.KeystoneEnv)
 			if err != nil {
 				log.Print("ERROR: failed to destroy keystone environment")
@@ -136,6 +136,27 @@ func createApp(a *App) error {
 		return errors.New(string(out))
 	}
 	a.log(fmt.Sprintf("app %s successfully created", a.Name))
+	return nil
+}
+
+func bootstrap(a *App) error {
+	cmd := exec.Command("juju", "bootstrap", "-e", a.JujuEnv)
+	log.Printf("INFO: bootstraping juju environment %s for the app %s", a.JujuEnv, a.Name)
+	log.Printf("DEBUG: executing command juju bootstrap -e %s", a.JujuEnv)
+	out, err := cmd.CombinedOutput()
+	outStr := string(out)
+	log.Printf("DEBUG: command output: %s", outStr)
+	if err != nil {
+		msg := fmt.Sprintf("Failed to bootstrap juju env (%s): %s", err, outStr)
+		log.Printf("ERROR: failed to bootstrap juju environment %s:\n%s", a.JujuEnv, outStr)
+		log.Print("INFO: attempting to destroy keystone env due to error...")
+		err = destroyKeystoneEnv(&a.KeystoneEnv)
+		if err != nil {
+			log.Print("ERROR: failed to destroy keystone environment")
+			msg = "Failed to destroy keystone environment"
+		}
+		return errors.New(msg)
+	}
 	return nil
 }
 
