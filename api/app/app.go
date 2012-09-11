@@ -87,14 +87,7 @@ func createApp(a *App) error {
 		if err != nil {
 			return err
 		}
-		err = newEnvironConf(a)
-		if err != nil {
-			return err
-		}
-		if a.JujuEnv == "" {
-			a.JujuEnv = a.Name
-		}
-		err = bootstrap(a)
+		err = newJujuEnviron(a)
 		if err != nil {
 			return err
 		}
