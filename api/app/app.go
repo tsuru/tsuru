@@ -87,7 +87,7 @@ func createApp(a *App) error {
 		if err != nil {
 			return err
 		}
-		err = newEnviron(a)
+		err = newEnvironConf(a)
 		if err != nil {
 			return err
 		}
