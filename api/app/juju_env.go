@@ -169,11 +169,9 @@ func newJujuEnviron(a *App) error {
 	if err != nil {
 		return err
 	}
-	if a.JujuEnv == "" {
-		// changes the object but doesn't save because this function
-		// is supposed to be called from createApp, that is responsible
-		// for saving the object.
-		a.JujuEnv = a.Name
-	}
+	// changes the object but doesn't save because this function
+	// is supposed to be called from createApp, that is responsible
+	// for saving the object.
+	a.JujuEnv = a.Name
 	return bootstrap(a)
 }

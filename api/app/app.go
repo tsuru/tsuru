@@ -82,6 +82,10 @@ func createApp(a *App) error {
 	if err != nil {
 		return err
 	}
+	a.JujuEnv, err = config.GetString("juju:default-env")
+	if err != nil && !isMultiTenant {
+		return err
+	}
 	if isMultiTenant {
 		a.KeystoneEnv, err = newKeystoneEnv(a.Name)
 		if err != nil {
@@ -96,11 +100,6 @@ func createApp(a *App) error {
 		err = authorizer.authorize(a)
 		if err != nil {
 			return fmt.Errorf("Failed to create the app, it was not possible to authorize the access to the app: %s", err)
-		}
-	} else {
-		a.JujuEnv, err = config.GetString("juju:default-env")
-		if err != nil {
-			return err
 		}
 	}
 	a.State = "pending"
