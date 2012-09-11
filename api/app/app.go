@@ -77,7 +77,6 @@ func (a *App) Get() error {
 // Multi tenancy should be configured in tsuru's conf file
 // (set the "multi-tenant" flag to true or false, as desired).
 func createApp(a *App) error {
-	var err error
 	isMultiTenant, err := config.GetBool("multi-tenant")
 	if err != nil {
 		return err
@@ -119,6 +118,11 @@ func createApp(a *App) error {
 	}
 	a.log(fmt.Sprintf("app %s successfully created", a.Name))
 	return nil
+}
+
+func deploy(a *App) error {
+    // should it wait until environment is bootstraped?
+    return nil
 }
 
 func (a *App) unbind() error {

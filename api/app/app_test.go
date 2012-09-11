@@ -703,6 +703,21 @@ func (s *S) TestGetUnits(c *C) {
 	c.Assert(app.GetUnits(), DeepEquals, expected)
 }
 
+func (s *S) TestDeployShouldCallJujuDeployCommandWithRightEnvironmentInMultiTenantMode(c *C) {
+    a := App{
+        Name: "smashed pumpkin",
+        Framework: "golang",
+        JujuEnv: "smashed pumpkin",
+    }
+    err := db.Session.Apps().Insert(&a)
+    c.Assert(err, IsNil)
+    err = deploy(&a)
+    c.Assert(err, IsNil)
+}
+
+func (s *S) TestDeployShouldCallJujuDeployCommandWithRightEnvironmentInSingleTenantMode(c *C) {
+}
+
 func (s *S) TestCreateAppShouldCreateKeystoneEnv(c *C) {
 	a := App{
 		Name:      "pumpkin",
