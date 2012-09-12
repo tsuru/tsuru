@@ -108,7 +108,7 @@ func createApp(a *App) error {
 
 // creates everything needed to a multi-tenant new environment
 //  - new keystone environ
-//  - new juju eniron
+//  - new juju environ
 //  - bootstrap juju environ
 //  - creates ec2 groups authorization
 func newEnviron(a *App) error {
