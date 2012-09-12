@@ -2,6 +2,7 @@ package app
 
 import (
 	"bytes"
+	"errors"
 	"github.com/timeredbull/commandmocker"
 	"github.com/timeredbull/tsuru/api/auth"
 	"github.com/timeredbull/tsuru/api/bind"
@@ -786,6 +787,26 @@ func (s *S) TestAuthorizeShouldCallEc2Authorizer(c *C) {
 	c.Assert(fakeAuth.hasAction(action), Equals, true)
 }
 
+func (s *S) TestAuthorizeShouldRepassErrorWhenEc2AuthorizeFails(c *C) {
+	fakeAuth := &fakeFailureAuthorizer{}
+	a := App{
+		Name:      "smashed_pumpkin",
+		Framework: "golang",
+		KeystoneEnv: keystoneEnv{
+			AccessKey: "access",
+			secretKey: "secret",
+		},
+		ec2Auth: fakeAuth,
+	}
+	err := db.Session.Apps().Insert(&a)
+	c.Assert(err, IsNil)
+	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
+	err = authorize(&a)
+	c.Check(err, NotNil)
+	expected := "^Failed to create the app, it was not possible to authorize the access to the app: authorize error$"
+	c.Assert(err, ErrorMatches, expected)
+}
+
 func (s *S) TestCreateAppShouldCreateKeystoneEnv(c *C) {
 	a := App{
 		Name:      "pumpkin",
@@ -913,6 +934,28 @@ func (a *fakeAuthorizer) setCreds(accessKey string, secretKey string) {
 }
 
 func (a *fakeAuthorizer) hasAction(action string) bool {
+	for _, v := range a.actions {
+		if v == action {
+			return true
+		}
+	}
+	return false
+}
+
+type fakeFailureAuthorizer struct {
+	actions []string
+}
+
+func (a *fakeFailureAuthorizer) authorize(app *App) error {
+	a.actions = append(a.actions, "authorize "+app.Name)
+	return errors.New("authorize error")
+}
+
+func (a *fakeFailureAuthorizer) setCreds(accessKey string, secretKey string) {
+	a.actions = append(a.actions, "setCreds "+accessKey+" "+secretKey)
+}
+
+func (a *fakeFailureAuthorizer) hasAction(action string) bool {
 	for _, v := range a.actions {
 		if v == action {
 			return true
