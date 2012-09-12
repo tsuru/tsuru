@@ -115,7 +115,6 @@ func createApp(a *App) error {
 }
 
 func deploy(a *App) error {
-	// should it wait until environment finish bootstraping?
 	a.log(fmt.Sprintf("creating app %s", a.Name))
 	cmd := exec.Command("juju", "deploy", "-e", a.JujuEnv, "--repository=/home/charms", "local:"+a.Framework, a.Name)
 	log.Printf("deploying %s with name %s on environment %s", a.Framework, a.Name, a.JujuEnv)
