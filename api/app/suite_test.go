@@ -188,6 +188,9 @@ func (s *S) TearDownSuite(c *C) {
 func (s *S) SetUpTest(c *C) {
 	s.createGitosisConf(c)
 	s.ts = s.mockServer("", "", "", "")
+	called["tenants"] = false
+	called["users"] = false
+	called["ec2-creds"] = false
 }
 
 func (s *S) TearDownTest(c *C) {

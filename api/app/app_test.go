@@ -3,6 +3,7 @@ package app
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"github.com/timeredbull/commandmocker"
 	"github.com/timeredbull/tsuru/api/auth"
 	"github.com/timeredbull/tsuru/api/bind"
@@ -655,7 +656,6 @@ func (s *S) TestUpdateHooks(c *C) {
 				Machine:           4,
 			},
 		},
-		JujuEnv: "delta",
 		ec2Auth: &fakeAuthorizer{},
 	}
 	err = createApp(&a)
@@ -663,7 +663,7 @@ func (s *S) TestUpdateHooks(c *C) {
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
 	out, err := a.updateHooks()
 	c.Assert(err, IsNil)
-	c.Assert(string(out), Equals, "ssh -o StrictHostKeyChecking no -q -e delta 4 /var/lib/tsuru/hooks/dependenciesssh -o StrictHostKeyChecking no -q -e delta 4 /var/lib/tsuru/hooks/restart")
+	c.Assert(string(out), Equals, "ssh -o StrictHostKeyChecking no -q -e someApp 4 /var/lib/tsuru/hooks/dependenciesssh -o StrictHostKeyChecking no -q -e someApp 4 /var/lib/tsuru/hooks/restart")
 }
 
 func (s *S) TestLogShouldStoreLog(c *C) {
@@ -704,6 +704,175 @@ func (s *S) TestGetUnits(c *C) {
 	app := App{Units: []Unit{Unit{Ip: "1.1.1.1"}}}
 	expected := []bind.Unit{bind.Unit(&Unit{Ip: "1.1.1.1", app: &app})}
 	c.Assert(app.GetUnits(), DeepEquals, expected)
+}
+
+func (s *S) TestDeployShouldCallJujuDeployCommandWithRightEnvironmentInMultiTenantMode(c *C) {
+	a := App{
+		Name:      "smashed_pumpkin",
+		Framework: "golang",
+		JujuEnv:   "smashed_pumpkin",
+	}
+	err := db.Session.Apps().Insert(&a)
+	c.Assert(err, IsNil)
+	w := bytes.NewBuffer([]byte{})
+	l := stdlog.New(w, "", stdlog.LstdFlags)
+	log.Target = l
+	dir, err := commandmocker.Add("juju", "$*")
+	c.Assert(err, IsNil)
+	defer commandmocker.Remove(dir)
+	err = deploy(&a)
+	c.Assert(err, IsNil)
+	logged := strings.Replace(w.String(), "\n", " ", -1)
+	expected := ".*deploying golang with name smashed_pumpkin on environment smashed_pumpkin.*"
+	c.Assert(logged, Matches, expected)
+	expected = ".*deploy -e smashed_pumpkin --repository=/home/charms local:golang smashed_pumpkin.*"
+	c.Assert(logged, Matches, expected)
+}
+
+func (s *S) TestDeployShouldCallJujuDeployCommandWithRightEnvironmentInSingleTenantMode(c *C) {
+	a := App{
+		Name:      "smashed_pumpkin",
+		Framework: "golang",
+		// set to tsuru.conf default (caller's responsibility)
+		JujuEnv: "xpto",
+	}
+	err := db.Session.Apps().Insert(&a)
+	c.Assert(err, IsNil)
+	w := bytes.NewBuffer([]byte{})
+	l := stdlog.New(w, "", stdlog.LstdFlags)
+	log.Target = l
+	dir, err := commandmocker.Add("juju", "$*")
+	c.Assert(err, IsNil)
+	defer commandmocker.Remove(dir)
+	err = deploy(&a)
+	c.Assert(err, IsNil)
+	logged := strings.Replace(w.String(), "\n", " ", -1)
+	expected := ".*deploy -e xpto --repository=/home/charms local:golang smashed_pumpkin.*"
+	c.Assert(logged, Matches, expected)
+}
+
+func (s *S) TestDeployShouldReturnErrorIfAppHasNoJujuEnv(c *C) {
+	a := App{
+		Name:      "smashed_pumpkin",
+		Framework: "golang",
+	}
+	err := db.Session.Apps().Insert(&a)
+	c.Assert(err, IsNil)
+	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
+	dir, err := commandmocker.Add("juju", "$*")
+	c.Assert(err, IsNil)
+	defer commandmocker.Remove(dir)
+	err = deploy(&a)
+	expected := "^" + jujuEnvEmptyError.Error() + "$"
+	c.Assert(err, ErrorMatches, expected)
+}
+
+func (s *S) TestAuthorizeShouldCallEc2Authorizer(c *C) {
+	fakeAuth := &fakeAuthorizer{}
+	a := App{
+		Name:      "smashed_pumpkin",
+		Framework: "golang",
+		KeystoneEnv: keystoneEnv{
+			AccessKey: "access",
+			secretKey: "secret",
+		},
+		ec2Auth: fakeAuth,
+	}
+	err := db.Session.Apps().Insert(&a)
+	c.Assert(err, IsNil)
+	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
+	err = authorize(&a)
+	c.Assert(err, IsNil)
+	action := "authorize " + a.Name
+	c.Assert(fakeAuth.hasAction(action), Equals, true)
+	action = "setCreds " + a.KeystoneEnv.AccessKey + " " + a.KeystoneEnv.secretKey
+	c.Assert(fakeAuth.hasAction(action), Equals, true)
+}
+
+func (s *S) TestAuthorizeShouldRepassErrorWhenEc2AuthorizeFails(c *C) {
+	fakeAuth := &fakeFailureAuthorizer{}
+	a := App{
+		Name:      "smashed_pumpkin",
+		Framework: "golang",
+		KeystoneEnv: keystoneEnv{
+			AccessKey: "access",
+			secretKey: "secret",
+		},
+		ec2Auth: fakeAuth,
+	}
+	err := db.Session.Apps().Insert(&a)
+	c.Assert(err, IsNil)
+	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
+	err = authorize(&a)
+	c.Check(err, NotNil)
+	expected := "^Failed to create the app, it was not possible to authorize the access to the app: authorize error$"
+	c.Assert(err, ErrorMatches, expected)
+}
+
+func (s *S) TestNewEnvironShouldCreateANewKeystoneEnv(c *C) {
+	fakeAuth := &fakeAuthorizer{}
+	a := App{
+		Name:      "smashed_pumpkin",
+		Framework: "golang",
+		KeystoneEnv: keystoneEnv{
+			AccessKey: "access",
+			secretKey: "secret",
+		},
+		ec2Auth: fakeAuth,
+		JujuEnv: "myApp",
+	}
+	err := db.Session.Apps().Insert(&a)
+	c.Assert(err, IsNil)
+	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
+	err = newEnviron(&a)
+	c.Assert(err, IsNil)
+	c.Assert(called["tenants"], Equals, true)
+}
+
+func (s *S) TestNewEnvironShouldCreateNewJujuEnv(c *C) {
+	rfs := s.setupJujuEnviron(c)
+	fsystem = rfs
+	defer func() {
+		fsystem = s.rfs
+	}()
+	fakeAuth := &fakeAuthorizer{}
+	a := App{
+		Name:      "myApp",
+		Framework: "golang",
+		KeystoneEnv: keystoneEnv{
+			AccessKey: "access",
+			secretKey: "secret",
+		},
+		ec2Auth: fakeAuth,
+		JujuEnv: "myApp",
+	}
+	err := db.Session.Apps().Insert(&a)
+	c.Assert(err, IsNil)
+	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
+	err = newEnviron(&a)
+	c.Assert(err, IsNil)
+	c.Assert(rfs.HasAction("openfile "+environConfPath+" with mode 0600"), Equals, true)
+}
+
+func (s *S) TestNewEnvironShouldAuthorizeAppGroup(c *C) {
+	fakeAuth := &fakeAuthorizer{}
+	a := App{
+		Name:      "myApp",
+		Framework: "golang",
+		KeystoneEnv: keystoneEnv{
+			AccessKey: "access",
+			secretKey: "secret",
+		},
+		ec2Auth: fakeAuth,
+		JujuEnv: "myApp",
+	}
+	err := db.Session.Apps().Insert(&a)
+	c.Assert(err, IsNil)
+	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
+	err = newEnviron(&a)
+	c.Assert(err, IsNil)
+	action := "authorize " + a.Name
+	c.Assert(fakeAuth.hasAction(action), Equals, true)
 }
 
 func (s *S) TestCreateAppShouldCreateKeystoneEnv(c *C) {
@@ -852,4 +1021,35 @@ func (a *fakeAuthorizer) authorize(app *App) error {
 
 func (a *fakeAuthorizer) setCreds(accessKey string, secretKey string) {
 	a.actions = append(a.actions, "setCreds "+accessKey+" "+secretKey)
+}
+
+func (a *fakeAuthorizer) hasAction(action string) bool {
+	for _, v := range a.actions {
+		if v == action {
+			return true
+		}
+	}
+	return false
+}
+
+type fakeFailureAuthorizer struct {
+	actions []string
+}
+
+func (a *fakeFailureAuthorizer) authorize(app *App) error {
+	a.actions = append(a.actions, "authorize "+app.Name)
+	return errors.New("authorize error")
+}
+
+func (a *fakeFailureAuthorizer) setCreds(accessKey string, secretKey string) {
+	a.actions = append(a.actions, "setCreds "+accessKey+" "+secretKey)
+}
+
+func (a *fakeFailureAuthorizer) hasAction(action string) bool {
+	for _, v := range a.actions {
+		if v == action {
+			return true
+		}
+	}
+	return false
 }

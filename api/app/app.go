@@ -22,6 +22,8 @@ import (
 
 const confSep = "========"
 
+var jujuEnvEmptyError = errors.New("App must have a juju environment name in order to bootstrap")
+
 type authorizer interface {
 	authorize(*App) error
 	setCreds(access string, secret string)
@@ -89,45 +91,16 @@ func (a *App) Get() error {
 // Multi tenancy should be configured in tsuru's conf file
 // (set the "multi-tenant" flag to true or false, as desired).
 func createApp(a *App) error {
-	var err error
 	isMultiTenant, err := config.GetBool("multi-tenant")
 	if err != nil {
 		return err
 	}
+	a.JujuEnv, err = config.GetString("juju:default-env")
+	if err != nil && !isMultiTenant {
+		return err
+	}
 	if isMultiTenant {
-		a.KeystoneEnv, err = newKeystoneEnv(a.Name)
-		if err != nil {
-			return err
-		}
 		err = newEnviron(a)
-		if err != nil {
-			return err
-		}
-		if a.JujuEnv == "" {
-			a.JujuEnv = a.Name
-		}
-		cmd := exec.Command("juju", "bootstrap", "-e", a.JujuEnv)
-		log.Printf("bootstraping juju environment %s for the app %s", a.JujuEnv, a.Name)
-		out, err := cmd.CombinedOutput()
-		if err != nil {
-			log.Printf("ERROR: failed to bootstrap juju environment %s:\n%s", a.JujuEnv, out)
-			log.Print("INFO: attempting to destroy keystone env due to error...")
-			msg := fmt.Sprintf("Failed to bootstrap juju env (%s): %s", err, out)
-			err = destroyKeystoneEnv(&a.KeystoneEnv)
-			if err != nil {
-				log.Print("ERROR: failed to destroy keystone environment")
-				msg = "Failed to destroy keystone environment"
-			}
-			return errors.New(msg)
-		}
-		authorizer := a.authorizer()
-		authorizer.setCreds(a.KeystoneEnv.AccessKey, a.KeystoneEnv.secretKey)
-		err = authorizer.authorize(a)
-		if err != nil {
-			return fmt.Errorf("Failed to create the app, it was not possible to authorize the access to the app: %s", err)
-		}
-	} else {
-		a.JujuEnv, err = config.GetString("juju:default-env")
 		if err != nil {
 			return err
 		}
@@ -137,17 +110,64 @@ func createApp(a *App) error {
 	if err != nil {
 		return err
 	}
+	err = deploy(a)
+	if err != nil {
+		return err
+	}
+	a.log(fmt.Sprintf("app %s successfully created", a.Name))
+	return nil
+}
+
+// creates everything needed to a multi-tenant new environment
+//  - new keystone environ
+//  - new juju environ
+//  - bootstrap juju environ
+//  - creates ec2 groups authorization
+func newEnviron(a *App) error {
+	var err error
+	a.KeystoneEnv, err = newKeystoneEnv(a.Name)
+	if err != nil {
+		return err
+	}
+	err = newJujuEnviron(a)
+	if err != nil {
+		return err
+	}
+	err = authorize(a)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func authorize(a *App) error {
+	authorizer := a.authorizer()
+	authorizer.setCreds(a.KeystoneEnv.AccessKey, a.KeystoneEnv.secretKey)
+	err := authorizer.authorize(a)
+	if err != nil {
+		return fmt.Errorf("Failed to create the app, it was not possible to authorize the access to the app: %s", err)
+	}
+	return nil
+}
+
+// deploy an app
+// it expects app.JujuEnv to be set with the right environment name
+func deploy(a *App) error {
+	if a.JujuEnv == "" {
+		return jujuEnvEmptyError
+	}
 	a.log(fmt.Sprintf("creating app %s", a.Name))
 	cmd := exec.Command("juju", "deploy", "-e", a.JujuEnv, "--repository=/home/charms", "local:"+a.Framework, a.Name)
 	log.Printf("deploying %s with name %s on environment %s", a.Framework, a.Name, a.JujuEnv)
 	out, err := cmd.CombinedOutput()
-	a.log(string(out))
+	outStr := string(out)
+	a.log(outStr)
+	log.Printf("executing %s", outStr)
 	if err != nil {
 		a.log(fmt.Sprintf("juju finished with exit status: %s", err.Error()))
 		db.Session.Apps().Remove(bson.M{"name": a.Name})
 		return errors.New(string(out))
 	}
-	a.log(fmt.Sprintf("app %s successfully created", a.Name))
 	return nil
 }
 
@@ -194,7 +214,7 @@ func destroyEnvironment(a *App) error {
 		log.Print(msg)
 		return errors.New(string(out))
 	}
-	err := removeEnviron(a)
+	err := removeEnvironConf(a)
 	if err != nil {
 		return err
 	}
