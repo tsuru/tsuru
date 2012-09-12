@@ -807,6 +807,72 @@ func (s *S) TestAuthorizeShouldRepassErrorWhenEc2AuthorizeFails(c *C) {
 	c.Assert(err, ErrorMatches, expected)
 }
 
+func (s *S) TestNewEnvironShouldCreateANewKeystoneEnv(c *C) {
+	fakeAuth := &fakeAuthorizer{}
+	a := App{
+		Name:      "smashed_pumpkin",
+		Framework: "golang",
+		KeystoneEnv: keystoneEnv{
+			AccessKey: "access",
+			secretKey: "secret",
+		},
+		ec2Auth: fakeAuth,
+		JujuEnv: "myApp",
+	}
+	err := db.Session.Apps().Insert(&a)
+	c.Assert(err, IsNil)
+	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
+	err = newEnviron(&a)
+	c.Assert(err, IsNil)
+	c.Assert(called["tenants"], Equals, true)
+}
+
+func (s *S) TestNewEnvironShouldCreateNewJujuEnv(c *C) {
+	rfs := s.setupJujuEnviron(c)
+	fsystem = rfs
+	defer func() {
+		fsystem = s.rfs
+	}()
+	fakeAuth := &fakeAuthorizer{}
+	a := App{
+		Name:      "myApp",
+		Framework: "golang",
+		KeystoneEnv: keystoneEnv{
+			AccessKey: "access",
+			secretKey: "secret",
+		},
+		ec2Auth: fakeAuth,
+		JujuEnv: "myApp",
+	}
+	err := db.Session.Apps().Insert(&a)
+	c.Assert(err, IsNil)
+	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
+	err = newEnviron(&a)
+	c.Assert(err, IsNil)
+	c.Assert(rfs.HasAction("openfile "+environConfPath+" with mode 0600"), Equals, true)
+}
+
+func (s *S) TestNewEnvironShouldAuthorizeAppGroup(c *C) {
+	fakeAuth := &fakeAuthorizer{}
+	a := App{
+		Name:      "myApp",
+		Framework: "golang",
+		KeystoneEnv: keystoneEnv{
+			AccessKey: "access",
+			secretKey: "secret",
+		},
+		ec2Auth: fakeAuth,
+		JujuEnv: "myApp",
+	}
+	err := db.Session.Apps().Insert(&a)
+	c.Assert(err, IsNil)
+	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
+	err = newEnviron(&a)
+	c.Assert(err, IsNil)
+	action := "authorize " + a.Name
+	c.Assert(fakeAuth.hasAction(action), Equals, true)
+}
+
 func (s *S) TestCreateAppShouldCreateKeystoneEnv(c *C) {
 	a := App{
 		Name:      "pumpkin",

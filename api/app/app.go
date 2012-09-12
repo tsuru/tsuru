@@ -114,6 +114,28 @@ func createApp(a *App) error {
 	return nil
 }
 
+// creates everything needed to a multi-tenant new environment
+//  - new keystone environ
+//  - new juju eniron
+//  - bootstrap juju environ
+//  - creates ec2 groups authorization
+func newEnviron(a *App) error {
+	var err error
+	a.KeystoneEnv, err = newKeystoneEnv(a.Name)
+	if err != nil {
+		return err
+	}
+	err = newJujuEnviron(a)
+	if err != nil {
+		return err
+	}
+	err = authorize(a)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 func authorize(a *App) error {
 	authorizer := a.authorizer()
 	authorizer.setCreds(a.KeystoneEnv.AccessKey, a.KeystoneEnv.secretKey)
