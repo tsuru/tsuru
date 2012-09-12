@@ -755,12 +755,35 @@ func (s *S) TestDeployShouldReturnErrorIfAppHasNoJujuEnv(c *C) {
 	}
 	err := db.Session.Apps().Insert(&a)
 	c.Assert(err, IsNil)
+	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
 	dir, err := commandmocker.Add("juju", "$*")
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(dir)
 	err = deploy(&a)
 	expected := "^" + jujuEnvEmptyError.Error() + "$"
 	c.Assert(err, ErrorMatches, expected)
+}
+
+func (s *S) TestAuthorizeShouldCallEc2Authorizer(c *C) {
+	fakeAuth := &fakeAuthorizer{}
+	a := App{
+		Name:      "smashed_pumpkin",
+		Framework: "golang",
+		KeystoneEnv: keystoneEnv{
+			AccessKey: "access",
+			secretKey: "secret",
+		},
+		ec2Auth: fakeAuth,
+	}
+	err := db.Session.Apps().Insert(&a)
+	c.Assert(err, IsNil)
+	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
+	err = authorize(&a)
+	c.Assert(err, IsNil)
+	action := "authorize " + a.Name
+	c.Assert(fakeAuth.hasAction(action), Equals, true)
+	action = "setCreds " + a.KeystoneEnv.AccessKey + " " + a.KeystoneEnv.secretKey
+	c.Assert(fakeAuth.hasAction(action), Equals, true)
 }
 
 func (s *S) TestCreateAppShouldCreateKeystoneEnv(c *C) {
@@ -887,4 +910,13 @@ func (a *fakeAuthorizer) authorize(app *App) error {
 
 func (a *fakeAuthorizer) setCreds(accessKey string, secretKey string) {
 	a.actions = append(a.actions, "setCreds "+accessKey+" "+secretKey)
+}
+
+func (a *fakeAuthorizer) hasAction(action string) bool {
+	for _, v := range a.actions {
+		if v == action {
+			return true
+		}
+	}
+	return false
 }

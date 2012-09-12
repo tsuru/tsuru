@@ -116,6 +116,16 @@ func createApp(a *App) error {
 	return nil
 }
 
+func authorize(a *App) error {
+	authorizer := a.authorizer()
+	authorizer.setCreds(a.KeystoneEnv.AccessKey, a.KeystoneEnv.secretKey)
+	err := authorizer.authorize(a)
+	if err != nil {
+		return fmt.Errorf("Failed to create the app, it was not possible to authorize the access to the app: %s", err)
+	}
+	return nil
+}
+
 // deploy an app
 // it expects app.JujuEnv to be set with the right environment name
 func deploy(a *App) error {
