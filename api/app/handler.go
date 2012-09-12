@@ -152,7 +152,7 @@ func AppInfo(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	if err != nil {
 		return err
 	}
-	b, err := json.Marshal(app)
+	b, err := json.Marshal(&app)
 	if err != nil {
 		return err
 	}

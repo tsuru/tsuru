@@ -344,7 +344,7 @@ func (s *S) TestAppInfo(c *C) {
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": expectedApp.Name})
 
-	var myApp App
+	var myApp map[string]interface{}
 	request, err := http.NewRequest("GET", "/apps/"+expectedApp.Name+"?:name="+expectedApp.Name, nil)
 	request.Header.Set("Content-Type", "application/json")
 	recorder := httptest.NewRecorder()
@@ -359,7 +359,8 @@ func (s *S) TestAppInfo(c *C) {
 
 	err = json.Unmarshal(body, &myApp)
 	c.Assert(err, IsNil)
-	c.Assert(myApp.Name, Equals, expectedApp.Name)
+	c.Assert(myApp["Name"], Equals, expectedApp.Name)
+	c.Assert(myApp["Repository"], Equals, repository.GetUrl(expectedApp.Name))
 }
 
 func (s *S) TestAppInfoReturnsForbiddenWhenTheUserDoesNotHaveAccessToTheApp(c *C) {

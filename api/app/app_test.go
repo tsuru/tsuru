@@ -2,12 +2,14 @@ package app
 
 import (
 	"bytes"
+	"encoding/json"
 	"github.com/timeredbull/commandmocker"
 	"github.com/timeredbull/tsuru/api/auth"
 	"github.com/timeredbull/tsuru/api/bind"
 	"github.com/timeredbull/tsuru/config"
 	"github.com/timeredbull/tsuru/db"
 	"github.com/timeredbull/tsuru/log"
+	"github.com/timeredbull/tsuru/repository"
 	"io/ioutil"
 	"labix.org/v2/mgo/bson"
 	. "launchpad.net/gocheck"
@@ -815,6 +817,28 @@ func (s *S) TestAuthorizerInstantiateEc2AuhtorizerWhenEc2AuthIsNul(c *C) {
 	app := App{Name: "chico"}
 	got := app.authorizer()
 	c.Assert(got, FitsTypeOf, &ec2Authorizer{})
+}
+
+func (s *S) TestAppMarshalJson(c *C) {
+	app := App{
+		Name:      "Name",
+		State:     "State",
+		Framework: "Framework",
+		Teams:     []string{"team1"},
+	}
+	expected := make(map[string]interface{})
+	expected["Name"] = "Name"
+	expected["State"] = "State"
+	expected["Framework"] = "Framework"
+	expected["Repository"] = repository.GetUrl(app.Name)
+	expected["Teams"] = []interface{}{"team1"}
+	expected["Units"] = interface{}(nil)
+	data, err := app.MarshalJSON()
+	c.Assert(err, IsNil)
+	result := make(map[string]interface{})
+	err = json.Unmarshal(data, &result)
+	c.Assert(err, IsNil)
+	c.Assert(result, DeepEquals, expected)
 }
 
 type fakeAuthorizer struct {

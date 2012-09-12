@@ -1,6 +1,7 @@
 package app
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/timeredbull/tsuru/api/auth"
@@ -37,6 +38,17 @@ type App struct {
 	Units       []Unit
 	Teams       []string
 	ec2Auth     authorizer
+}
+
+func (a *App) MarshalJSON() ([]byte, error) {
+	result := make(map[string]interface{})
+	result["Name"] = a.Name
+	result["State"] = a.State
+	result["Framework"] = a.Framework
+	result["Teams"] = a.Teams
+	result["Units"] = a.Units
+	result["Repository"] = repository.GetUrl(a.Name)
+	return json.Marshal(&result)
 }
 
 type applog struct {
