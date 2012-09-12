@@ -96,11 +96,9 @@ func createApp(a *App) error {
 		if err != nil {
 			return err
 		}
-		authorizer := a.authorizer()
-		authorizer.setCreds(a.KeystoneEnv.AccessKey, a.KeystoneEnv.secretKey)
-		err = authorizer.authorize(a)
+		err = authorize(a)
 		if err != nil {
-			return fmt.Errorf("Failed to create the app, it was not possible to authorize the access to the app: %s", err)
+			return err
 		}
 	}
 	a.State = "pending"
