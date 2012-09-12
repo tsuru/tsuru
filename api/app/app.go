@@ -88,15 +88,7 @@ func createApp(a *App) error {
 		return err
 	}
 	if isMultiTenant {
-		a.KeystoneEnv, err = newKeystoneEnv(a.Name)
-		if err != nil {
-			return err
-		}
-		err = newJujuEnviron(a)
-		if err != nil {
-			return err
-		}
-		err = authorize(a)
+		err = newEnviron(a)
 		if err != nil {
 			return err
 		}
