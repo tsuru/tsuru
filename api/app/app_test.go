@@ -727,6 +727,40 @@ func (s *S) TestDeployShouldCallJujuDeployCommandWithRightEnvironmentInMultiTena
 }
 
 func (s *S) TestDeployShouldCallJujuDeployCommandWithRightEnvironmentInSingleTenantMode(c *C) {
+	a := App{
+		Name:      "smashed_pumpkin",
+		Framework: "golang",
+		// set to tsuru.conf default (caller's responsibility)
+		JujuEnv: "xpto",
+	}
+	err := db.Session.Apps().Insert(&a)
+	c.Assert(err, IsNil)
+	w := bytes.NewBuffer([]byte{})
+	l := stdlog.New(w, "", stdlog.LstdFlags)
+	log.Target = l
+	dir, err := commandmocker.Add("juju", "$*")
+	c.Assert(err, IsNil)
+	defer commandmocker.Remove(dir)
+	err = deploy(&a)
+	c.Assert(err, IsNil)
+	logged := strings.Replace(w.String(), "\n", " ", -1)
+	expected := ".*deploy -e xpto --repository=/home/charms local:golang smashed_pumpkin.*"
+	c.Assert(logged, Matches, expected)
+}
+
+func (s *S) TestDeployShouldReturnErrorIfAppHasNoJujuEnv(c *C) {
+	a := App{
+		Name:      "smashed_pumpkin",
+		Framework: "golang",
+	}
+	err := db.Session.Apps().Insert(&a)
+	c.Assert(err, IsNil)
+	dir, err := commandmocker.Add("juju", "$*")
+	c.Assert(err, IsNil)
+	defer commandmocker.Remove(dir)
+	err = deploy(&a)
+	expected := "^" + jujuEnvEmptyError.Error() + "$"
+	c.Assert(err, ErrorMatches, expected)
 }
 
 func (s *S) TestCreateAppShouldCreateKeystoneEnv(c *C) {

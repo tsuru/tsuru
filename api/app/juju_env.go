@@ -142,7 +142,7 @@ func removeEnvironConf(a *App) error {
 
 func bootstrap(a *App) error {
 	if a.JujuEnv == "" {
-		return errors.New("App must have a juju environment name in order to bootstrap")
+		return jujuEnvEmptyError
 	}
 	cmd := exec.Command("juju", "bootstrap", "-e", a.JujuEnv)
 	log.Printf("INFO: bootstraping juju environment %s for the app %s", a.JujuEnv, a.Name)

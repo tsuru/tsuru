@@ -21,6 +21,8 @@ import (
 
 const confSep = "========"
 
+var jujuEnvEmptyError = errors.New("App must have a juju environment name in order to bootstrap")
+
 type authorizer interface {
 	authorize(*App) error
 	setCreds(access string, secret string)
@@ -114,7 +116,12 @@ func createApp(a *App) error {
 	return nil
 }
 
+// deploy an app
+// it expects app.JujuEnv to be set with the right environment name
 func deploy(a *App) error {
+	if a.JujuEnv == "" {
+		return jujuEnvEmptyError
+	}
 	a.log(fmt.Sprintf("creating app %s", a.Name))
 	cmd := exec.Command("juju", "deploy", "-e", a.JujuEnv, "--repository=/home/charms", "local:"+a.Framework, a.Name)
 	log.Printf("deploying %s with name %s on environment %s", a.Framework, a.Name, a.JujuEnv)
