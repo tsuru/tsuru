@@ -1,7 +1,6 @@
 package app
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"github.com/timeredbull/tsuru/api/auth"
@@ -143,7 +142,7 @@ func AppList(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	if err != nil {
 		return err
 	}
-	fmt.Fprint(w, bytes.NewBuffer(b).String())
+	fmt.Fprint(w, string(b))
 	return nil
 }
 
@@ -156,7 +155,7 @@ func AppInfo(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	if err != nil {
 		return err
 	}
-	fmt.Fprint(w, bytes.NewBuffer(b).String())
+	fmt.Fprint(w, string(b))
 	return nil
 }
 
@@ -205,7 +204,7 @@ func CreateAppHandler(w http.ResponseWriter, r *http.Request, u *auth.User) erro
 		return err
 	}
 
-	fmt.Fprint(w, bytes.NewBuffer(jsonMsg).String())
+	fmt.Fprint(w, string(jsonMsg))
 	return nil
 }
 
@@ -456,7 +455,7 @@ func AppLog(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	if err != nil {
 		return err
 	}
-	fmt.Fprint(w, bytes.NewBuffer(b).String())
+	fmt.Fprint(w, string(b))
 	return nil
 }
 
