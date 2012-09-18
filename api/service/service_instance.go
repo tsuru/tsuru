@@ -115,7 +115,7 @@ func (si *ServiceInstance) Unbind(app bind.App) error {
 		si.Service().ProductionEndpoint().Unbind(si, app)
 	}()
 	var envVars []string
-	for k, _ := range app.InstanceEnv(si.Name) {
+	for k := range app.InstanceEnv(si.Name) {
 		envVars = append(envVars, k)
 	}
 	return app.UnsetEnvs(envVars, false)

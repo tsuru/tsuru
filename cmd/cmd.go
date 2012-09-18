@@ -153,7 +153,7 @@ func (c *help) Run(context *Context, client Doer) error {
 	} else {
 		output += fmt.Sprintf("Usage: %s %s\n\nAvailable commands:\n", c.manager.name, c.Info().Usage)
 		var commands []string
-		for k, _ := range c.manager.Commands {
+		for k := range c.manager.Commands {
 			commands = append(commands, k)
 		}
 		sort.Strings(commands)
