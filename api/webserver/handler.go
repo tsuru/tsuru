@@ -19,6 +19,11 @@ func (fn Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 type AuthorizationRequiredHandler func(http.ResponseWriter, *http.Request, *auth.User) error
 
 func (fn AuthorizationRequiredHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	defer func() {
+		if r.Body != nil {
+			r.Body.Close()
+		}
+	}()
 	token := r.Header.Get("Authorization")
 	if token == "" {
 		http.Error(w, "You must provide the Authorization header", http.StatusUnauthorized)
