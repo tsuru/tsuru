@@ -6,7 +6,7 @@ collect
 websrv
 dist*
 cmd/servicecli/servicecli
-cmd/appcli/appcli
+cmd/tsuru/tsuru
 api/webserver/webserver
 docs/_build/*
 .test
