@@ -5,7 +5,7 @@ main
 collect
 websrv
 dist*
-cmd/servicecli/servicecli
+cmd/crane/crane
 cmd/tsuru/tsuru
 api/webserver/webserver
 docs/_build/*
