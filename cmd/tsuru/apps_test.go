@@ -10,7 +10,7 @@ import (
 
 func (s *S) TestAppInfo(c *C) {
 	var stdout, stderr bytes.Buffer
-	result := `{"Name":"app1","Framework":"php","Repository":"git@git.com:php.git","State":"dead", "Units":[{"Ip":"10.10.10.10"}, {"Ip":"9.9.9.9"}],"Teams":[{"Name":"tsuruteam","Users":[{"Email":"whydidifall@thewho.com","Password":"123","Tokens":null,"Keys":null}]}, {"Name":"crane","Users":[{"Email":"whydidifall@thewho.com","Password":"123","Tokens":null,"Keys":null}]}]}`
+	result := `{"Name":"app1","Framework":"php","Repository":"git@git.com:php.git","State":"dead", "Units":[{"Ip":"10.10.10.10"}, {"Ip":"9.9.9.9"}],"Teams":["tsuruteam","crane"]}`
 	expected := `Application: app1
 State: dead
 Repository: git@git.com:php.git

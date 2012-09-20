@@ -73,7 +73,7 @@ Teams: %s
 		if len(teams) > 0 {
 			teams += ", "
 		}
-		teams += fmt.Sprintf("%s", team.(map[string]interface{})["Name"].(string))
+		teams += fmt.Sprintf("%s", team.(string))
 	}
 	out := fmt.Sprintf(template, name, state, repository, plataform, units, teams)
 	context.Stdout.Write([]byte(out))
