@@ -10,6 +10,11 @@ import (
 type Handler func(http.ResponseWriter, *http.Request) error
 
 func (fn Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	defer func() {
+		if r.Body != nil {
+			r.Body.Close()
+		}
+	}()
 	if err := fn(w, r); err != nil {
 		http.Error(w, err.Error(), 500)
 		log.Print(err.Error())
