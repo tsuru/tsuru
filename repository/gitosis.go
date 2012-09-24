@@ -303,9 +303,8 @@ func removeOptionValue(c *ini.Config, section, option, value string) (err error)
 	if index < 0 {
 		return fmt.Errorf("Value %s not found in section %s", value, section)
 	}
-	last := len(values) - 1
-	values[index] = values[last]
-	values = values[:last]
+	copy(values[index:], values[index+1:])
+	values = values[:len(values)-1]
 	if len(values) > 0 {
 		c.AddOption(section, option, strings.Join(values, " "))
 	} else {

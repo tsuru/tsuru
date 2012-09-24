@@ -136,9 +136,8 @@ func (u *User) addKey(key Key) error {
 
 func (u *User) removeKey(key Key) error {
 	_, index := u.findKey(key)
-	last := len(u.Keys) - 1
-	u.Keys[index] = u.Keys[last]
-	u.Keys = u.Keys[:last]
+	copy(u.Keys[index:], u.Keys[index+1:])
+	u.Keys = u.Keys[:len(u.Keys)-1]
 	return nil
 }
 

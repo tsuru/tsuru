@@ -287,6 +287,19 @@ func (s *S) TestRevokeAccess(c *C) {
 	c.Assert(found, Equals, false)
 }
 
+func (s *S) TestRevoke(c *C) {
+	a := App{Name: "test", Teams: []string{"team1", "team2", "team3", "team4"}}
+	err := a.revoke(&auth.Team{Name: "team2"})
+	c.Assert(err, IsNil)
+	c.Assert(a.Teams, DeepEquals, []string{"team1", "team3", "team4"})
+	err = a.revoke(&auth.Team{Name: "team4"})
+	c.Assert(err, IsNil)
+	c.Assert(a.Teams, DeepEquals, []string{"team1", "team3"})
+	err = a.revoke(&auth.Team{Name: "team1"})
+	c.Assert(err, IsNil)
+	c.Assert(a.Teams, DeepEquals, []string{"team3"})
+}
+
 func (s *S) TestRevokeAccessFailsIfTheTeamsDoesNotHaveAccessToTheApp(c *C) {
 	a := App{Name: "appName", Framework: "django", Teams: []string{}}
 	err := a.revoke(&s.team)

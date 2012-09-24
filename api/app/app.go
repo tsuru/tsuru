@@ -286,9 +286,8 @@ func (a *App) revoke(team *auth.Team) error {
 	if !found {
 		return errors.New("This team does not have access to this app")
 	}
-	last := len(a.Teams) - 1
-	a.Teams[index] = a.Teams[last]
-	a.Teams = a.Teams[:last]
+	copy(a.Teams[index:], a.Teams[index+1:])
+	a.Teams = a.Teams[:len(a.Teams)-1]
 	return nil
 }
 

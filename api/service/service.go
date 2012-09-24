@@ -85,9 +85,8 @@ func (s *Service) RevokeAccess(team *auth.Team) error {
 	if index < 0 {
 		return errors.New("This team does not have access to this service")
 	}
-	last := len(s.Teams) - 1
-	s.Teams[index] = s.Teams[last]
-	s.Teams = s.Teams[:last]
+	copy(s.Teams[index:], s.Teams[index+1:])
+	s.Teams = s.Teams[:len(s.Teams)-1]
 	return nil
 }
 

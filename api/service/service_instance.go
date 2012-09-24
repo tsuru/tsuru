@@ -57,11 +57,8 @@ func (si *ServiceInstance) RemoveApp(appName string) error {
 	if index < 0 {
 		return stderrors.New("This app is not binded to this service instance.")
 	}
-	last := len(si.Apps) - 1
-	if index != last {
-		si.Apps[index] = si.Apps[last]
-	}
-	si.Apps = si.Apps[:last]
+	copy(si.Apps[index:], si.Apps[index+1:])
+	si.Apps = si.Apps[:len(si.Apps)-1]
 	return nil
 }
 
