@@ -49,57 +49,58 @@ func (k *keystoneEnv) disassociator() nova.NetworkDisassociator {
 //     tenant
 //
 // Returns error in case of failure obtaining any of the previous confs.
-func getAuth() (err error) {
+func getAuth() error {
+	var err error
 	if authUrl == "" {
 		authUrl, err = config.GetString("nova:auth-url")
 		if err != nil {
 			log.Printf("ERROR: %s", err.Error())
-			return
+			return err
 		}
 	}
 	if authUser == "" {
 		authUser, err = config.GetString("nova:user")
 		if err != nil {
 			log.Printf("ERROR: %s", err.Error())
-			return
+			return err
 		}
 	}
 	if authPass == "" {
 		authPass, err = config.GetString("nova:password")
 		if err != nil {
 			log.Printf("ERROR: %s", err.Error())
-			return
+			return err
 		}
 	}
 	if authTenant == "" {
 		authTenant, err = config.GetString("nova:tenant")
 		if err != nil {
 			log.Printf("ERROR: %s", err.Error())
-			return
+			return err
 		}
 	}
-	return
+	return nil
 }
 
 // getClient fills global Client variable with the returned value from
 // keystone.NewClient.
 //
 // Uses the conf variables filled by getAuth function.
-func getClient() (err error) {
+func getClient() error {
 	if Client.Token != "" {
-		return
+		return nil
 	}
-	err = getAuth()
+	err := getAuth()
 	if err != nil {
-		return
+		return err
 	}
 	c, err := keystone.NewClient(authUser, authPass, authTenant, authUrl)
 	if err != nil {
 		log.Printf("ERROR: a problem occurred while trying to obtain keystone's client: %s", err.Error())
-		return
+		return err
 	}
 	Client = *c
-	return
+	return nil
 }
 
 func newKeystoneEnv(name string) (keystoneEnv, error) {
