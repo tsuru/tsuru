@@ -2,7 +2,6 @@ package app
 
 import (
 	"errors"
-	"fmt"
 	"github.com/timeredbull/openstack/keystone"
 	"github.com/timeredbull/openstack/nova"
 	"github.com/timeredbull/tsuru/config"
@@ -103,44 +102,39 @@ func getClient() (err error) {
 	return
 }
 
-func newKeystoneEnv(name string) (env keystoneEnv, err error) {
-	err = getClient()
+func newKeystoneEnv(name string) (keystoneEnv, error) {
+	err := getClient()
 	if err != nil {
-		return
+		return keystoneEnv{}, err
 	}
 	desc := "Tenant for " + name
 	log.Printf("DEBUG: attempting to create tenant %s via keystone api...", name)
 	tenant, err := Client.NewTenant(name, desc, true)
 	if err != nil {
 		log.Printf("ERROR: %s", err)
-		return
+		return keystoneEnv{}, err
 	}
-	password := name
-	if random, err := randomBytes(64); err == nil {
-		password = fmt.Sprintf("%X", random)
-	}
-	var memberRole string
-	memberRole, err = config.GetString("nova:member-role")
+	// var memberRole string
+	// memberRole, err = config.GetString("nova:member-role")
+	// if err != nil {
+	// 	return keystoneEnv{}, err
+	// }
+	userId, err := config.GetString("nova:user-id")
 	if err != nil {
-		return
+		return keystoneEnv{}, err
 	}
-	user, err := Client.NewUser(name, password, "", tenant.Id, memberRole, true)
-	if err != nil {
-		log.Printf("ERROR: %s", err)
-		return
-	}
-	creds, err := Client.NewEc2(user.Id, tenant.Id)
+	creds, err := Client.NewEc2(userId, tenant.Id)
 	if err != nil {
 		log.Printf("ERROR: %s", err)
-		return
+		return keystoneEnv{}, err
 	}
-	env = keystoneEnv{
+	env := keystoneEnv{
 		TenantId:  tenant.Id,
-		UserId:    user.Id,
+		UserId:    userId,
 		AccessKey: creds.Access,
 		secretKey: creds.Secret,
 	}
-	return
+	return env, nil
 }
 
 func destroyKeystoneEnv(env *keystoneEnv) error {

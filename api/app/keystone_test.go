@@ -268,7 +268,9 @@ func (s *S) TestNewKeystoneEnv(c *C) {
 	env, err := newKeystoneEnv("still")
 	c.Assert(err, IsNil)
 	c.Assert(env.TenantId, Equals, "uuid123")
-	c.Assert(env.UserId, Equals, "uuid321")
+	userId, err := config.GetString("nova:user-id")
+	c.Assert(err, IsNil)
+	c.Assert(env.UserId, Equals, userId)
 	c.Assert(env.AccessKey, Equals, "access-key-here")
 	c.Assert(env.secretKey, Equals, "secret-key-here")
 }
