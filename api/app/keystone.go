@@ -115,13 +115,18 @@ func newKeystoneEnv(name string) (keystoneEnv, error) {
 		log.Printf("ERROR: %s", err)
 		return keystoneEnv{}, err
 	}
-	// var memberRole string
-	// memberRole, err = config.GetString("nova:member-role")
-	// if err != nil {
-	// 	return keystoneEnv{}, err
-	// }
+	var memberRole string
+	memberRole, err = config.GetString("nova:role-id")
+	if err != nil {
+		return keystoneEnv{}, err
+	}
 	userId, err := config.GetString("nova:user-id")
 	if err != nil {
+		return keystoneEnv{}, err
+	}
+	err = Client.AddRoleToUser(tenant.Id, userId, memberRole)
+	if err != nil {
+		log.Printf("ERROR: %s", err)
 		return keystoneEnv{}, err
 	}
 	creds, err := Client.NewEc2(userId, tenant.Id)
@@ -149,7 +154,7 @@ func destroyKeystoneEnv(env *keystoneEnv) error {
 		return errors.New("Missing tenant.")
 	}
 	var memberRole string
-	memberRole, err := config.GetString("nova:member-role")
+	memberRole, err := config.GetString("nova:role-id")
 	if err != nil {
 		return err
 	}
