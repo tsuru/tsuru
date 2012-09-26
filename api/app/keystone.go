@@ -124,23 +124,32 @@ func newKeystoneEnv(name string) (keystoneEnv, error) {
 	if err != nil {
 		return keystoneEnv{}, err
 	}
-	err = Client.AddRoleToUser(tenant.Id, userId, roleId)
-	if err != nil {
-		log.Printf("ERROR: %s", err)
-		return keystoneEnv{}, err
-	}
-	creds, err := Client.NewEc2(userId, tenant.Id)
-	if err != nil {
-		log.Printf("ERROR: %s", err)
-		return keystoneEnv{}, err
-	}
+	access, secret, err := newCredentials(tenant.Id, userId, roleId)
 	env := keystoneEnv{
 		TenantId:  tenant.Id,
 		UserId:    userId,
-		AccessKey: creds.Access,
-		secretKey: creds.Secret,
+		AccessKey: access,
+		secretKey: secret,
 	}
 	return env, nil
+}
+
+func newCredentials(tenantId, userId, roleId string) (accessKey string, secretKey string, err error) {
+	err = getClient()
+	if err != nil {
+		return
+	}
+	err = Client.AddRoleToUser(tenantId, userId, roleId)
+	if err != nil {
+		return
+	}
+	creds, err := Client.NewEc2(userId, tenantId)
+	if err != nil {
+		return
+	}
+	accessKey = creds.Access
+	secretKey = creds.Secret
+	return
 }
 
 func destroyKeystoneEnv(env *keystoneEnv) error {

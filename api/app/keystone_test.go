@@ -23,6 +23,7 @@ var (
 func (s *S) mockServer(tenantBody, userBody, ec2Body, prefix string) *httptest.Server {
 	var serverUrl string
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		addRoleToUserRegexp := regexp.MustCompile(`/tenants/([\w-]+)/users/([\w-]+)/roles/OS-KSADM/([\w-]+)`)
 		ec2Regexp := regexp.MustCompile(`/users/([\w-]+)/credentials/OS-EC2`)
 		tenantsRegexp := regexp.MustCompile(`/tenants`)
 		usersRegexp := regexp.MustCompile(`/users`)
@@ -37,6 +38,13 @@ func (s *S) mockServer(tenantBody, userBody, ec2Body, prefix string) *httptest.S
 		if m, _ := regexp.MatchString(`^/v2/[\w-]+/os-networks`, r.URL.Path); m {
 			handleNova(w, r)
 			return
+		}
+		if r.Method == "PUT" {
+			if addRoleToUserRegexp.MatchString(r.URL.Path) {
+				called["add-role-to-user"] = true
+			} else {
+				w.WriteHeader(http.StatusNotFound)
+			}
 		}
 		if r.Method == "POST" {
 			switch {
@@ -246,6 +254,17 @@ func (s *S) TestGetClientShouldNotResetClient(c *C) {
 	err = getClient()
 	c.Assert(err, IsNil)
 	c.Assert(called["token"], Equals, false)
+}
+
+func (s *S) TestNewCredentials(c *C) {
+	userId, err := config.GetString("nova:user-id")
+	c.Assert(err, IsNil)
+	roleId, err := config.GetString("nova:role-id")
+	c.Assert(err, IsNil)
+	accessKey, secretKey, err := newCredentials("uuid123", userId, roleId)
+	c.Assert(err, IsNil)
+	c.Assert(accessKey, Equals, "access-key-here")
+	c.Assert(secretKey, Equals, "secret-key-here")
 }
 
 func (s *S) TestNewKeystoneEnv(c *C) {
