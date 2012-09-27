@@ -8,14 +8,6 @@ import (
 	"github.com/timeredbull/tsuru/log"
 )
 
-var (
-	Client     keystone.Client
-	authUrl    string
-	authUser   string
-	authPass   string
-	authTenant string
-)
-
 type keystoneEnv struct {
 	TenantId  string
 	UserId    string
@@ -34,7 +26,8 @@ func (k *keystoneEnv) disassociate() error {
 
 func (k *keystoneEnv) disassociator() nova.NetworkDisassociator {
 	if k.novaApi == nil {
-		k.novaApi = &nova.Client{KeystoneClient: &Client}
+		client, _ := getClient()
+		k.novaApi = &nova.Client{KeystoneClient: client}
 	}
 	return k.novaApi
 }
@@ -49,68 +42,48 @@ func (k *keystoneEnv) disassociator() nova.NetworkDisassociator {
 //     tenant
 //
 // Returns error in case of failure obtaining any of the previous confs.
-func getAuth() error {
-	var err error
-	if authUrl == "" {
-		authUrl, err = config.GetString("nova:auth-url")
-		if err != nil {
-			log.Printf("ERROR: %s", err.Error())
-			return err
-		}
+func getAuth() (url string, user string, pass string, tenant string, err error) {
+	url, err = config.GetString("nova:auth-url")
+	if err != nil {
+		return
 	}
-	if authUser == "" {
-		authUser, err = config.GetString("nova:user")
-		if err != nil {
-			log.Printf("ERROR: %s", err.Error())
-			return err
-		}
+	user, err = config.GetString("nova:user")
+	if err != nil {
+		return
 	}
-	if authPass == "" {
-		authPass, err = config.GetString("nova:password")
-		if err != nil {
-			log.Printf("ERROR: %s", err.Error())
-			return err
-		}
+	pass, err = config.GetString("nova:password")
+	if err != nil {
+		return
 	}
-	if authTenant == "" {
-		authTenant, err = config.GetString("nova:tenant")
-		if err != nil {
-			log.Printf("ERROR: %s", err.Error())
-			return err
-		}
+	tenant, err = config.GetString("nova:tenant")
+	if err != nil {
+		return
 	}
-	return nil
+	return
 }
 
-// getClient fills global Client variable with the returned value from
-// keystone.NewClient.
-//
-// Uses the conf variables filled by getAuth function.
-func getClient() error {
-	if Client.Token != "" {
-		return nil
-	}
-	err := getAuth()
+// getClient returns a new keystone.Client
+// Uses the conf variables from the getAuth function.
+func getClient() (*keystone.Client, error) {
+	authUrl, authUser, authPass, authTenant, err := getAuth()
 	if err != nil {
-		return err
+		return &keystone.Client{}, err
 	}
 	c, err := keystone.NewClient(authUser, authPass, authTenant, authUrl)
 	if err != nil {
-		log.Printf("ERROR: a problem occurred while trying to obtain keystone's client: %s", err.Error())
-		return err
+		return &keystone.Client{}, err
 	}
-	Client = *c
-	return nil
+	return c, nil
 }
 
 func newKeystoneEnv(name string) (keystoneEnv, error) {
-	err := getClient()
+	client, err := getClient()
 	if err != nil {
 		return keystoneEnv{}, err
 	}
 	desc := "Tenant for " + name
 	log.Printf("DEBUG: attempting to create tenant %s via keystone api...", name)
-	tenant, err := Client.NewTenant(name, desc, true)
+	tenant, err := client.NewTenant(name, desc, true)
 	if err != nil {
 		log.Printf("ERROR: %s", err)
 		return keystoneEnv{}, err
@@ -135,15 +108,15 @@ func newKeystoneEnv(name string) (keystoneEnv, error) {
 }
 
 func newCredentials(tenantId, userId, roleId string) (accessKey string, secretKey string, err error) {
-	err = getClient()
+	client, err := getClient()
 	if err != nil {
 		return
 	}
-	err = Client.AddRoleToUser(tenantId, userId, roleId)
+	err = client.AddRoleToUser(tenantId, userId, roleId)
 	if err != nil {
 		return
 	}
-	creds, err := Client.NewEc2(userId, tenantId)
+	creds, err := client.NewEc2(userId, tenantId)
 	if err != nil {
 		return
 	}
@@ -167,17 +140,17 @@ func destroyKeystoneEnv(env *keystoneEnv) error {
 	if err != nil {
 		return err
 	}
-	err = getClient()
+	client, err := getClient()
 	if err != nil {
 		return err
 	}
-	err = Client.RemoveEc2(env.UserId, env.AccessKey)
+	err = client.RemoveEc2(env.UserId, env.AccessKey)
 	if err != nil {
 		return err
 	}
-	err = Client.RemoveUser(env.UserId, env.TenantId, roleId)
+	err = client.RemoveUser(env.UserId, env.TenantId, roleId)
 	if err != nil {
 		return err
 	}
-	return Client.RemoveTenant(env.TenantId)
+	return client.RemoveTenant(env.TenantId)
 }

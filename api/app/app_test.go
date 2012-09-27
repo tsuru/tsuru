@@ -38,9 +38,11 @@ func (s *S) TestGet(c *C) {
 func (s *S) TestDestroy(c *C) {
 	s.ts.Close()
 	ts := s.mockServer("", "", "", "destroy-app-")
-	authUrl = ts.URL
+	oldAuthUrl, err := config.GetString("nova:auth-url")
+	c.Assert(err, IsNil)
+	config.Set("nova:auth-url", ts.URL)
 	defer func() {
-		authUrl = ""
+		config.Set("nova:auth-url", oldAuthUrl)
 		ts.Close()
 	}()
 	dir, err := commandmocker.Add("juju", "$*")
@@ -72,9 +74,11 @@ func (s *S) TestDestroy(c *C) {
 func (s *S) TestDestroyWithMultiTenancyOnCallsJujuDestroyEnvironment(c *C) {
 	s.ts.Close()
 	ts := s.mockServer("", "", "", "destroy-app-")
-	authUrl = ts.URL
+	oldAuthUrl, err := config.GetString("nova:auth-url")
+	c.Assert(err, IsNil)
+	config.Set("nova:auth-url", ts.URL)
 	defer func() {
-		authUrl = ""
+		config.Set("nova:auth-url", oldAuthUrl)
 		ts.Close()
 	}()
 	dir, err := commandmocker.Add("juju", "$*")
@@ -101,6 +105,15 @@ func (s *S) TestDestroyWithMultiTenancyOnCallsJujuDestroyEnvironment(c *C) {
 }
 
 func (s *S) TestDestroyWithnMultiTenancyOnDoesNotDeleteTheAppIfTheDestroyEnvironmentFail(c *C) {
+	s.ts.Close()
+	ts := s.mockServer("", "", "", "destroy-app-")
+	oldAuthUrl, err := config.GetString("nova:auth-url")
+	c.Assert(err, IsNil)
+	config.Set("nova:auth-url", ts.URL)
+	defer func() {
+		config.Set("nova:auth-url", oldAuthUrl)
+		ts.Close()
+	}()
 	dir, err := commandmocker.Add("juju", "$*")
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(dir)
@@ -932,6 +945,8 @@ func (s *S) TestCreateAppShouldCreateNewJujuEnvironment(c *C) {
 }
 
 func (s *S) TestCreateAppShouldRemoveKeystoneEnvironmentWhenJujuEnvCreationFails(c *C) {
+	s.ts.Close()
+	s.ts = s.mockServer("", "", "", "juju-env-failure-")
 	a := App{
 		Name:      "myApp",
 		Framework: "golang",
@@ -941,8 +956,6 @@ func (s *S) TestCreateAppShouldRemoveKeystoneEnvironmentWhenJujuEnvCreationFails
 	tmpdir, err := commandmocker.Add("juju", "$(exit 1)")
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(tmpdir)
-	ts := s.mockServer("", "", "", "juju-env-failure-")
-	defer ts.Close()
 	err = createApp(&a)
 	c.Assert(err, ErrorMatches, "^Failed to bootstrap juju env.*")
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})

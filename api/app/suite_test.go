@@ -34,6 +34,7 @@ type S struct {
 	ts          *httptest.Server
 	rfs         *fsTesting.RecordingFs
 	tokenBody   []byte
+	oldAuthUrl  string
 }
 
 var _ = Suite(&S{})
@@ -195,15 +196,9 @@ func (s *S) SetUpTest(c *C) {
 
 func (s *S) TearDownTest(c *C) {
 	defer s.deleteGitosisConf(c)
-	var apps []App
-	err := db.Session.Apps().Find(nil).All(&apps)
+	config.Set("nova:auth-url", s.oldAuthUrl)
+	_, err := db.Session.Apps().RemoveAll(nil)
 	c.Assert(err, IsNil)
-	_, err = db.Session.Apps().RemoveAll(nil)
-	c.Assert(err, IsNil)
-	for _, app := range apps {
-		app.destroy()
-	}
-	Client.Token = ""
 	s.ts.Close()
 }
 

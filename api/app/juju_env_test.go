@@ -193,20 +193,27 @@ func (s *S) TestBootstrapShouldReturnErrorWhenAppHasNoJujuEnv(c *C) {
 }
 
 func (s *S) TestBootstrapShouldDestroyKeystoneEnvWhenItFails(c *C) {
+	s.ts.Close()
+	ts := s.mockServer("", "", "", "juju-env-failure-")
+	oldAuthUrl, err := config.GetString("nova:auth-url")
+	c.Assert(err, IsNil)
+	config.Set("nova:auth-url", ts.URL)
+	defer func() {
+		config.Set("nova:auth-url", oldAuthUrl)
+		ts.Close()
+	}()
 	a := App{
 		Name:        "myApp",
 		Framework:   "golang",
 		JujuEnv:     "myEnv",
 		KeystoneEnv: keystoneEnv{TenantId: "foo", UserId: "bar", AccessKey: "foobar"},
 	}
-	err := db.Session.Apps().Insert(&a)
+	err = db.Session.Apps().Insert(&a)
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
 	tmpdir, err := commandmocker.Add("juju", "$(exit 1)")
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(tmpdir)
-	ts := s.mockServer("", "", "", "juju-env-failure-")
-	defer ts.Close()
 	err = bootstrap(&a)
 	c.Assert(err, ErrorMatches, "^Failed to bootstrap juju env.*")
 	c.Assert(called["juju-env-failure-delete-ec2-creds"], Equals, true)
