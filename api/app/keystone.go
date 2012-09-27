@@ -93,8 +93,7 @@ func newOpenstackEnv(name string) (openstackEnv, error) {
 		log.Printf("ERROR: %s", err)
 		return openstackEnv{}, err
 	}
-	var roleId string
-	roleId, err = config.GetString("nova:role-id")
+	roleId, err := config.GetString("nova:role-id")
 	if err != nil {
 		return openstackEnv{}, err
 	}
@@ -130,15 +129,16 @@ func newCredentials(tenantId, userId, roleId string) (accessKey string, secretKe
 	return
 }
 
-func destroyOpenstackEnv(env *openstackEnv) error {
+func removeCredentials(env *openstackEnv) error {
 	if env.AccessKey == "" {
 		return errors.New("Missing EC2 credentials.")
 	}
 	if env.UserId == "" {
 		return errors.New("Missing user.")
 	}
-	if env.TenantId == "" {
-		return errors.New("Missing tenant.")
+	roleId, err := config.GetString("nova:role-id")
+	if err != nil {
+		return err
 	}
 	client, err := getClient()
 	if err != nil {
@@ -148,7 +148,18 @@ func destroyOpenstackEnv(env *openstackEnv) error {
 	if err != nil {
 		return err
 	}
-	err = client.RemoveUser(env.UserId)
+	return client.RemoveRoleFromUser(env.TenantId, env.UserId, roleId)
+}
+
+func removeOpenstackEnv(env *openstackEnv) error {
+	if env.TenantId == "" {
+		return errors.New("Missing tenant.")
+	}
+	client, err := getClient()
+	if err != nil {
+		return err
+	}
+	err = removeCredentials(env)
 	if err != nil {
 		return err
 	}

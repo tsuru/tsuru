@@ -222,7 +222,7 @@ func (s *S) TestDestroyOpenstackEnv(c *C) {
 		UserId:    "1b4d1195-7890-4274-831f-ddf8141edecc",
 		AccessKey: "91232f6796b54ca2a2b87ef50548b123",
 	}
-	err := destroyOpenstackEnv(&k)
+	err := removeOpenstackEnv(&k)
 	c.Assert(err, IsNil)
 	c.Assert(called["delete-ec2-creds"], Equals, true)
 	c.Assert(params["ec2-access"], Equals, k.AccessKey)
@@ -233,12 +233,29 @@ func (s *S) TestDestroyOpenstackEnv(c *C) {
 	c.Assert(params["tenant"], Equals, k.TenantId)
 }
 
+func (s *S) TestRemoveCredentials(c *C) {
+	s.ts.Close()
+	s.ts = s.mockServer("", "", "", "")
+	k := openstackEnv{
+		TenantId:  "e60d1f0a-ee74-411c-b879-46aee9502bf9",
+		UserId:    "1b4d1195-7890-4274-831f-ddf8141edecc",
+		AccessKey: "91232f6796b54ca2a2b87ef50548b123",
+	}
+	err := removeCredentials(&k)
+	c.Assert(err, IsNil)
+	c.Assert(called["delete-ec2-creds"], Equals, true)
+	c.Assert(params["ec2-access"], Equals, k.AccessKey)
+	c.Assert(params["ec2-user"], Equals, k.UserId)
+	c.Assert(called["delete-user"], Equals, true)
+	c.Assert(params["user"], Equals, k.UserId)
+}
+
 func (s *S) TestDestroyOpenstackEnvWithoutEc2Creds(c *C) {
 	k := openstackEnv{
 		TenantId: "e60d1f0a-ee74-411c-b879-46aee9502bf9",
 		UserId:   "1b4d1195-7890-4274-831f-ddf8141edecc",
 	}
-	err := destroyOpenstackEnv(&k)
+	err := removeOpenstackEnv(&k)
 	c.Assert(err, NotNil)
 	c.Assert(err, ErrorMatches, "Missing EC2 credentials.")
 }
@@ -248,7 +265,7 @@ func (s *S) TestDestroyOpenstackEnvWithoutUserId(c *C) {
 		TenantId:  "e60d1f0a-ee74-411c-b879-46aee9502bf9",
 		AccessKey: "91232f6796b54ca2a2b87ef50548b123",
 	}
-	err := destroyOpenstackEnv(&k)
+	err := removeOpenstackEnv(&k)
 	c.Assert(err, NotNil)
 	c.Assert(err, ErrorMatches, "Missing user.")
 }
@@ -258,7 +275,7 @@ func (s *S) TestDestroyOpenstackEnvWithoutTenantId(c *C) {
 		UserId:    "1b4d1195-7890-4274-831f-ddf8141edecc",
 		AccessKey: "91232f6796b54ca2a2b87ef50548b123",
 	}
-	err := destroyOpenstackEnv(&k)
+	err := removeOpenstackEnv(&k)
 	c.Assert(err, NotNil)
 	c.Assert(err, ErrorMatches, "Missing tenant.")
 }
