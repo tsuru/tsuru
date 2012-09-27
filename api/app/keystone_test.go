@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"github.com/timeredbull/openstack/nova"
 	"github.com/timeredbull/tsuru/config"
-	"github.com/timeredbull/tsuru/fs/testing"
 	"io/ioutil"
 	. "launchpad.net/gocheck"
 	"net/http"
@@ -150,72 +149,6 @@ func (s *S) TestGetAuth(c *C) {
 	c.Assert(tenant, Equals, expectedTenant)
 }
 
-// func (s *S) TestGetAuthShouldNotGetTheConfigEveryTimeItsCalled(c *C) {
-// 	authUrl = ""
-// 	expectedUrl, err := config.GetString("nova:auth-url")
-// 	c.Assert(err, IsNil)
-// 	getAuth()
-// 	c.Assert(authUrl, Equals, expectedUrl)
-// 	config.Set("nova:auth-url", "some-url.com")
-// 	getAuth()
-// 	c.Assert(authUrl, Equals, expectedUrl)
-// 	defer config.Set("nova:auth-url", expectedUrl)
-// }
-
-// func (s *S) TestGetAuthShouldSetAuthUser(c *C) {
-// 	expectedUser, err := config.GetString("nova:user")
-// 	c.Assert(err, IsNil)
-// 	getAuth()
-// 	c.Assert(authUser, Equals, expectedUser)
-// }
-// 
-// func (s *S) TestGetAuthShouldNotResetAuthUserWhenItIsAlreadySet(c *C) {
-// 	expectedUser, err := config.GetString("nova:user")
-// 	c.Assert(err, IsNil)
-// 	getAuth()
-// 	c.Assert(authUser, Equals, expectedUser)
-// 	config.Set("nova:user", "some-other-user")
-// 	defer config.Set("nova:user", expectedUser)
-// 	getAuth()
-// 	c.Assert(authUser, Equals, expectedUser)
-// }
-// 
-// func (s *S) TestGetAuthShouldSerAuthPass(c *C) {
-// 	expected, err := config.GetString("nova:password")
-// 	c.Assert(err, IsNil)
-// 	getAuth()
-// 	c.Assert(authPass, Equals, expected)
-// }
-// 
-// func (s *S) TestGetAuthShouldNotResetAuthPass(c *C) {
-// 	expected, err := config.GetString("nova:password")
-// 	c.Assert(err, IsNil)
-// 	getAuth()
-// 	c.Assert(authPass, Equals, expected)
-// 	config.Set("nova:password", "ultra-secret-pass")
-// 	getAuth()
-// 	c.Assert(authPass, Equals, expected)
-// 	defer config.Set("nova:password", expected)
-// }
-// 
-// func (s *S) TestGetAuthShouldSerAuthTenant(c *C) {
-// 	expected, err := config.GetString("nova:tenant")
-// 	c.Assert(err, IsNil)
-// 	getAuth()
-// 	c.Assert(authTenant, Equals, expected)
-// }
-// 
-// func (s *S) TestGetAuthShouldNotResetAuthTenant(c *C) {
-// 	expected, err := config.GetString("nova:tenant")
-// 	c.Assert(err, IsNil)
-// 	getAuth()
-// 	c.Assert(authTenant, Equals, expected)
-// 	config.Set("nova:tenant", "some-other-tenant")
-// 	getAuth()
-// 	c.Assert(authTenant, Equals, expected)
-// 	defer config.Set("nova:tenant", expected)
-// }
-
 func (s *S) TestGetAuthShouldReturnErrorWhenAuthUrlConfigDoesntExists(c *C) {
 	url, err := config.GetString("nova:auth-url")
 	c.Assert(err, IsNil)
@@ -270,20 +203,7 @@ func (s *S) TestNewKeystoneEnv(c *C) {
 	tenantBody := `{"tenant": {"id": "uuid123", "name": "still", "description": "tenant desc"}}`
 	userBody := `{"user": {"id": "uuid321", "name": "still", "email": "appname@foo.bar"}}`
 	ec2Body := `{"credential": {"access": "access-key-here", "secret": "secret-key-here"}}`
-	ts := s.mockServer(tenantBody, userBody, ec2Body, "")
-	oldAuthUrl, err := config.GetString("nova:auth-url")
-	c.Assert(err, IsNil)
-	config.Set("nova:auth-url", ts.URL)
-	password := make([]byte, 64)
-	for i := 0; i < len(password); i++ {
-		password[i] = 'a'
-	}
-	fsystem := &testing.RecordingFs{FileContent: string(password)}
-	defer func() {
-		config.Set("nova:auth-url", oldAuthUrl)
-		ts.Close()
-		fsystem = s.rfs
-	}()
+	s.ts = s.mockServer(tenantBody, userBody, ec2Body, "")
 	env, err := newKeystoneEnv("still")
 	c.Assert(err, IsNil)
 	c.Assert(env.TenantId, Equals, "uuid123")
@@ -296,20 +216,13 @@ func (s *S) TestNewKeystoneEnv(c *C) {
 
 func (s *S) TestDestroyKeystoneEnv(c *C) {
 	s.ts.Close()
-	ts := s.mockServer("", "", "", "")
-	oldAuthUrl, err := config.GetString("nova:auth-url")
-	c.Assert(err, IsNil)
-	config.Set("nova:auth-url", ts.URL)
-	defer func() {
-		config.Set("nova:auth-url", oldAuthUrl)
-		ts.Close()
-	}()
+	s.ts = s.mockServer("", "", "", "")
 	k := keystoneEnv{
 		TenantId:  "e60d1f0a-ee74-411c-b879-46aee9502bf9",
 		UserId:    "1b4d1195-7890-4274-831f-ddf8141edecc",
 		AccessKey: "91232f6796b54ca2a2b87ef50548b123",
 	}
-	err = destroyKeystoneEnv(&k)
+	err := destroyKeystoneEnv(&k)
 	c.Assert(err, IsNil)
 	c.Assert(called["delete-ec2-creds"], Equals, true)
 	c.Assert(params["ec2-access"], Equals, k.AccessKey)
