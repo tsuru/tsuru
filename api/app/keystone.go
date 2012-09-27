@@ -140,11 +140,6 @@ func destroyKeystoneEnv(env *keystoneEnv) error {
 	if env.TenantId == "" {
 		return errors.New("Missing tenant.")
 	}
-	var roleId string
-	roleId, err := config.GetString("nova:role-id")
-	if err != nil {
-		return err
-	}
 	client, err := getClient()
 	if err != nil {
 		return err
@@ -153,7 +148,7 @@ func destroyKeystoneEnv(env *keystoneEnv) error {
 	if err != nil {
 		return err
 	}
-	err = client.RemoveUser(env.UserId, env.TenantId, roleId)
+	err = client.RemoveUser(env.UserId)
 	if err != nil {
 		return err
 	}
