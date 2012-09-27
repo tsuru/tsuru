@@ -270,18 +270,13 @@ func (s *S) TestNewKeystoneEnv(c *C) {
 	tenantBody := `{"tenant": {"id": "uuid123", "name": "still", "description": "tenant desc"}}`
 	userBody := `{"user": {"id": "uuid321", "name": "still", "email": "appname@foo.bar"}}`
 	ec2Body := `{"credential": {"access": "access-key-here", "secret": "secret-key-here"}}`
-	ts := s.mockServer(tenantBody, userBody, ec2Body, "")
-	oldAuthUrl, err := config.GetString("nova:auth-url")
-	c.Assert(err, IsNil)
-	config.Set("nova:auth-url", ts.URL)
+	s.ts = s.mockServer(tenantBody, userBody, ec2Body, "")
 	password := make([]byte, 64)
 	for i := 0; i < len(password); i++ {
 		password[i] = 'a'
 	}
 	fsystem := &testing.RecordingFs{FileContent: string(password)}
 	defer func() {
-		config.Set("nova:auth-url", oldAuthUrl)
-		ts.Close()
 		fsystem = s.rfs
 	}()
 	env, err := newKeystoneEnv("still")
@@ -296,20 +291,13 @@ func (s *S) TestNewKeystoneEnv(c *C) {
 
 func (s *S) TestDestroyKeystoneEnv(c *C) {
 	s.ts.Close()
-	ts := s.mockServer("", "", "", "")
-	oldAuthUrl, err := config.GetString("nova:auth-url")
-	c.Assert(err, IsNil)
-	config.Set("nova:auth-url", ts.URL)
-	defer func() {
-		config.Set("nova:auth-url", oldAuthUrl)
-		ts.Close()
-	}()
+	s.ts = s.mockServer("", "", "", "")
 	k := keystoneEnv{
 		TenantId:  "e60d1f0a-ee74-411c-b879-46aee9502bf9",
 		UserId:    "1b4d1195-7890-4274-831f-ddf8141edecc",
 		AccessKey: "91232f6796b54ca2a2b87ef50548b123",
 	}
-	err = destroyKeystoneEnv(&k)
+	err := destroyKeystoneEnv(&k)
 	c.Assert(err, IsNil)
 	c.Assert(called["delete-ec2-creds"], Equals, true)
 	c.Assert(params["ec2-access"], Equals, k.AccessKey)

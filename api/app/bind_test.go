@@ -3,7 +3,6 @@ package app
 import (
 	"github.com/timeredbull/tsuru/api/bind"
 	"github.com/timeredbull/tsuru/api/service"
-	"github.com/timeredbull/tsuru/config"
 	"github.com/timeredbull/tsuru/db"
 	"labix.org/v2/mgo/bson"
 	. "launchpad.net/gocheck"
@@ -18,20 +17,13 @@ func (s *S) TestAppIsABinderApp(c *C) {
 
 func (s *S) TestDestroyShouldUnbindAppFromInstance(c *C) {
 	s.ts.Close()
-	keystoneTs := s.mockServer("", "", "", "")
-	oldAuthUrl, err := config.GetString("nova:auth-url")
-	c.Assert(err, IsNil)
-	config.Set("nova:auth-url", keystoneTs.URL)
-	defer func() {
-		config.Set("nova:auth-url", oldAuthUrl)
-		keystoneTs.Close()
-	}()
+	s.ts = s.mockServer("", "", "", "")
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNoContent)
 	}))
 	defer ts.Close()
 	srvc := service.Service{Name: "my", Endpoint: map[string]string{"production": ts.URL}}
-	err = srvc.Create()
+	err := srvc.Create()
 	c.Assert(err, IsNil)
 	defer db.Session.Services().Remove(bson.M{"_id": srvc.Name})
 	instance := service.ServiceInstance{Name: "MyInstance", Apps: []string{"myApp"}, ServiceName: srvc.Name}

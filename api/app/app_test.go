@@ -37,14 +37,7 @@ func (s *S) TestGet(c *C) {
 
 func (s *S) TestDestroy(c *C) {
 	s.ts.Close()
-	ts := s.mockServer("", "", "", "destroy-app-")
-	oldAuthUrl, err := config.GetString("nova:auth-url")
-	c.Assert(err, IsNil)
-	config.Set("nova:auth-url", ts.URL)
-	defer func() {
-		config.Set("nova:auth-url", oldAuthUrl)
-		ts.Close()
-	}()
+	s.ts = s.mockServer("", "", "", "destroy-app-")
 	dir, err := commandmocker.Add("juju", "$*")
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(dir)
@@ -73,14 +66,7 @@ func (s *S) TestDestroy(c *C) {
 
 func (s *S) TestDestroyWithMultiTenancyOnCallsJujuDestroyEnvironment(c *C) {
 	s.ts.Close()
-	ts := s.mockServer("", "", "", "destroy-app-")
-	oldAuthUrl, err := config.GetString("nova:auth-url")
-	c.Assert(err, IsNil)
-	config.Set("nova:auth-url", ts.URL)
-	defer func() {
-		config.Set("nova:auth-url", oldAuthUrl)
-		ts.Close()
-	}()
+	s.ts = s.mockServer("", "", "", "destroy-app-")
 	dir, err := commandmocker.Add("juju", "$*")
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(dir)
@@ -106,14 +92,7 @@ func (s *S) TestDestroyWithMultiTenancyOnCallsJujuDestroyEnvironment(c *C) {
 
 func (s *S) TestDestroyWithnMultiTenancyOnDoesNotDeleteTheAppIfTheDestroyEnvironmentFail(c *C) {
 	s.ts.Close()
-	ts := s.mockServer("", "", "", "destroy-app-")
-	oldAuthUrl, err := config.GetString("nova:auth-url")
-	c.Assert(err, IsNil)
-	config.Set("nova:auth-url", ts.URL)
-	defer func() {
-		config.Set("nova:auth-url", oldAuthUrl)
-		ts.Close()
-	}()
+	s.ts = s.mockServer("", "", "", "destroy-app-")
 	dir, err := commandmocker.Add("juju", "$*")
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(dir)
