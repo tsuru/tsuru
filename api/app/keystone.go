@@ -125,17 +125,13 @@ func newCredentials(tenantId, userId, roleId string) (accessKey string, secretKe
 	return
 }
 
-func destroyKeystoneEnv(env *keystoneEnv) error {
+func removeCredentials(env *keystoneEnv) error {
 	if env.AccessKey == "" {
 		return errors.New("Missing EC2 credentials.")
 	}
 	if env.UserId == "" {
 		return errors.New("Missing user.")
 	}
-	if env.TenantId == "" {
-		return errors.New("Missing tenant.")
-	}
-	var roleId string
 	roleId, err := config.GetString("nova:role-id")
 	if err != nil {
 		return err
@@ -148,7 +144,18 @@ func destroyKeystoneEnv(env *keystoneEnv) error {
 	if err != nil {
 		return err
 	}
-	err = client.RemoveUser(env.UserId, env.TenantId, roleId)
+	return client.RemoveUser(env.UserId, env.TenantId, roleId)
+}
+
+func destroyKeystoneEnv(env *keystoneEnv) error {
+	if env.TenantId == "" {
+		return errors.New("Missing tenant.")
+	}
+	client, err := getClient()
+	if err != nil {
+		return err
+	}
+	err = removeCredentials(env)
 	if err != nil {
 		return err
 	}
