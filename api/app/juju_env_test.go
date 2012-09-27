@@ -199,7 +199,7 @@ func (s *S) TestBootstrapShouldDestroyOpenstackEnvWhenItFails(c *C) {
 		Name:         "myApp",
 		Framework:    "golang",
 		JujuEnv:      "myEnv",
-		OpenstackEnv: openstackEnv{TenantId: "foo", UserId: "bar", AccessKey: "foobar"},
+		OpenstackEnv: openstackEnv{TenantId: "foo", AccessKey: "foobar"},
 	}
 	err := db.Session.Apps().Insert(&a)
 	c.Assert(err, IsNil)

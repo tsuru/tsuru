@@ -10,7 +10,6 @@ import (
 
 type openstackEnv struct {
 	TenantId  string
-	UserId    string
 	AccessKey string
 	secretKey string
 	novaApi   nova.NetworkDisassociator
@@ -104,7 +103,6 @@ func newOpenstackEnv(name string) (openstackEnv, error) {
 	access, secret, err := newCredentials(tenant.Id, userId, roleId)
 	env := openstackEnv{
 		TenantId:  tenant.Id,
-		UserId:    userId,
 		AccessKey: access,
 		secretKey: secret,
 	}
@@ -133,8 +131,9 @@ func removeCredentials(env *openstackEnv) error {
 	if env.AccessKey == "" {
 		return errors.New("Missing EC2 credentials.")
 	}
-	if env.UserId == "" {
-		return errors.New("Missing user.")
+	userId, err := config.GetString("nova:user-id")
+	if err != nil {
+		return err
 	}
 	roleId, err := config.GetString("nova:role-id")
 	if err != nil {
@@ -144,11 +143,11 @@ func removeCredentials(env *openstackEnv) error {
 	if err != nil {
 		return err
 	}
-	err = client.RemoveEc2(env.UserId, env.AccessKey)
+	err = client.RemoveEc2(userId, env.AccessKey)
 	if err != nil {
 		return err
 	}
-	return client.RemoveRoleFromUser(env.TenantId, env.UserId, roleId)
+	return client.RemoveRoleFromUser(env.TenantId, userId, roleId)
 }
 
 func removeOpenstackEnv(env *openstackEnv) error {

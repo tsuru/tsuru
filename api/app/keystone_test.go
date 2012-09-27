@@ -207,9 +207,7 @@ func (s *S) TestNewOpenstackEnv(c *C) {
 	env, err := newOpenstackEnv("still")
 	c.Assert(err, IsNil)
 	c.Assert(env.TenantId, Equals, "uuid123")
-	userId, err := config.GetString("nova:user-id")
 	c.Assert(err, IsNil)
-	c.Assert(env.UserId, Equals, userId)
 	c.Assert(env.AccessKey, Equals, "access-key-here")
 	c.Assert(env.secretKey, Equals, "secret-key-here")
 }
@@ -219,16 +217,13 @@ func (s *S) TestDestroyOpenstackEnv(c *C) {
 	s.ts = s.mockServer("", "", "", "")
 	k := openstackEnv{
 		TenantId:  "e60d1f0a-ee74-411c-b879-46aee9502bf9",
-		UserId:    "1b4d1195-7890-4274-831f-ddf8141edecc",
 		AccessKey: "91232f6796b54ca2a2b87ef50548b123",
 	}
 	err := removeOpenstackEnv(&k)
 	c.Assert(err, IsNil)
 	c.Assert(called["delete-ec2-creds"], Equals, true)
 	c.Assert(params["ec2-access"], Equals, k.AccessKey)
-	c.Assert(params["ec2-user"], Equals, k.UserId)
 	c.Assert(called["delete-user"], Equals, true)
-	c.Assert(params["user"], Equals, k.UserId)
 	c.Assert(called["delete-tenant"], Equals, true)
 	c.Assert(params["tenant"], Equals, k.TenantId)
 }
@@ -238,41 +233,40 @@ func (s *S) TestRemoveCredentials(c *C) {
 	s.ts = s.mockServer("", "", "", "")
 	k := openstackEnv{
 		TenantId:  "e60d1f0a-ee74-411c-b879-46aee9502bf9",
-		UserId:    "1b4d1195-7890-4274-831f-ddf8141edecc",
 		AccessKey: "91232f6796b54ca2a2b87ef50548b123",
 	}
 	err := removeCredentials(&k)
 	c.Assert(err, IsNil)
 	c.Assert(called["delete-ec2-creds"], Equals, true)
 	c.Assert(params["ec2-access"], Equals, k.AccessKey)
-	c.Assert(params["ec2-user"], Equals, k.UserId)
 	c.Assert(called["delete-user"], Equals, true)
-	c.Assert(params["user"], Equals, k.UserId)
 }
 
 func (s *S) TestDestroyOpenstackEnvWithoutEc2Creds(c *C) {
 	k := openstackEnv{
 		TenantId: "e60d1f0a-ee74-411c-b879-46aee9502bf9",
-		UserId:   "1b4d1195-7890-4274-831f-ddf8141edecc",
 	}
 	err := removeOpenstackEnv(&k)
 	c.Assert(err, NotNil)
 	c.Assert(err, ErrorMatches, "Missing EC2 credentials.")
 }
 
-func (s *S) TestDestroyOpenstackEnvWithoutUserId(c *C) {
+func (s *S) TestDestroyOpenstackEnvWithoutNovaUserIdConf(c *C) {
+	origUserId, err := config.GetString("nova:user-id")
+	c.Assert(err, IsNil)
+	config.Unset("nova:user-id")
+	defer func() { config.Set("nova:user-id", origUserId) }()
 	k := openstackEnv{
 		TenantId:  "e60d1f0a-ee74-411c-b879-46aee9502bf9",
 		AccessKey: "91232f6796b54ca2a2b87ef50548b123",
 	}
-	err := removeOpenstackEnv(&k)
+	err = removeOpenstackEnv(&k)
 	c.Assert(err, NotNil)
-	c.Assert(err, ErrorMatches, "Missing user.")
+	c.Assert(err, ErrorMatches, "key nova:user-id not found")
 }
 
 func (s *S) TestDestroyOpenstackEnvWithoutTenantId(c *C) {
 	k := openstackEnv{
-		UserId:    "1b4d1195-7890-4274-831f-ddf8141edecc",
 		AccessKey: "91232f6796b54ca2a2b87ef50548b123",
 	}
 	err := removeOpenstackEnv(&k)
