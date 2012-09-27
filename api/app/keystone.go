@@ -93,8 +93,7 @@ func newKeystoneEnv(name string) (keystoneEnv, error) {
 		log.Printf("ERROR: %s", err)
 		return keystoneEnv{}, err
 	}
-	var roleId string
-	roleId, err = config.GetString("nova:role-id")
+	roleId, err := config.GetString("nova:role-id")
 	if err != nil {
 		return keystoneEnv{}, err
 	}
