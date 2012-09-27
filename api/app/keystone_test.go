@@ -198,13 +198,13 @@ func (s *S) TestNewCredentials(c *C) {
 	c.Assert(secretKey, Equals, "secret-key-here")
 }
 
-func (s *S) TestNewKeystoneEnv(c *C) {
+func (s *S) TestNewOpenstackEnv(c *C) {
 	s.ts.Close()
 	tenantBody := `{"tenant": {"id": "uuid123", "name": "still", "description": "tenant desc"}}`
 	userBody := `{"user": {"id": "uuid321", "name": "still", "email": "appname@foo.bar"}}`
 	ec2Body := `{"credential": {"access": "access-key-here", "secret": "secret-key-here"}}`
 	s.ts = s.mockServer(tenantBody, userBody, ec2Body, "")
-	env, err := newKeystoneEnv("still")
+	env, err := newOpenstackEnv("still")
 	c.Assert(err, IsNil)
 	c.Assert(env.TenantId, Equals, "uuid123")
 	userId, err := config.GetString("nova:user-id")
@@ -214,15 +214,15 @@ func (s *S) TestNewKeystoneEnv(c *C) {
 	c.Assert(env.secretKey, Equals, "secret-key-here")
 }
 
-func (s *S) TestDestroyKeystoneEnv(c *C) {
+func (s *S) TestDestroyOpenstackEnv(c *C) {
 	s.ts.Close()
 	s.ts = s.mockServer("", "", "", "")
-	k := keystoneEnv{
+	k := openstackEnv{
 		TenantId:  "e60d1f0a-ee74-411c-b879-46aee9502bf9",
 		UserId:    "1b4d1195-7890-4274-831f-ddf8141edecc",
 		AccessKey: "91232f6796b54ca2a2b87ef50548b123",
 	}
-	err := destroyKeystoneEnv(&k)
+	err := destroyOpenstackEnv(&k)
 	c.Assert(err, IsNil)
 	c.Assert(called["delete-ec2-creds"], Equals, true)
 	c.Assert(params["ec2-access"], Equals, k.AccessKey)
@@ -233,39 +233,39 @@ func (s *S) TestDestroyKeystoneEnv(c *C) {
 	c.Assert(params["tenant"], Equals, k.TenantId)
 }
 
-func (s *S) TestDestroyKeystoneEnvWithoutEc2Creds(c *C) {
-	k := keystoneEnv{
+func (s *S) TestDestroyOpenstackEnvWithoutEc2Creds(c *C) {
+	k := openstackEnv{
 		TenantId: "e60d1f0a-ee74-411c-b879-46aee9502bf9",
 		UserId:   "1b4d1195-7890-4274-831f-ddf8141edecc",
 	}
-	err := destroyKeystoneEnv(&k)
+	err := destroyOpenstackEnv(&k)
 	c.Assert(err, NotNil)
 	c.Assert(err, ErrorMatches, "Missing EC2 credentials.")
 }
 
-func (s *S) TestDestroyKeystoneEnvWithoutUserId(c *C) {
-	k := keystoneEnv{
+func (s *S) TestDestroyOpenstackEnvWithoutUserId(c *C) {
+	k := openstackEnv{
 		TenantId:  "e60d1f0a-ee74-411c-b879-46aee9502bf9",
 		AccessKey: "91232f6796b54ca2a2b87ef50548b123",
 	}
-	err := destroyKeystoneEnv(&k)
+	err := destroyOpenstackEnv(&k)
 	c.Assert(err, NotNil)
 	c.Assert(err, ErrorMatches, "Missing user.")
 }
 
-func (s *S) TestDestroyKeystoneEnvWithoutTenantId(c *C) {
-	k := keystoneEnv{
+func (s *S) TestDestroyOpenstackEnvWithoutTenantId(c *C) {
+	k := openstackEnv{
 		UserId:    "1b4d1195-7890-4274-831f-ddf8141edecc",
 		AccessKey: "91232f6796b54ca2a2b87ef50548b123",
 	}
-	err := destroyKeystoneEnv(&k)
+	err := destroyOpenstackEnv(&k)
 	c.Assert(err, NotNil)
 	c.Assert(err, ErrorMatches, "Missing tenant.")
 }
 
 func (s *S) TestDisassociate(c *C) {
 	disassociator := fakeDisassociator{}
-	k := keystoneEnv{
+	k := openstackEnv{
 		TenantId: "123tenant",
 		novaApi:  &disassociator,
 	}
@@ -276,7 +276,7 @@ func (s *S) TestDisassociate(c *C) {
 
 func (s *S) TestDisassociateFromTenantWithoutNetwork(c *C) {
 	disassociator := noNetworkDisassociator{}
-	k := keystoneEnv{
+	k := openstackEnv{
 		TenantId: "123tenant",
 		novaApi:  &disassociator,
 	}
@@ -287,7 +287,7 @@ func (s *S) TestDisassociateFromTenantWithoutNetwork(c *C) {
 
 func (s *S) TestDisassociateUnknownError(c *C) {
 	disassociator := unknownErrorDisassociator{}
-	k := keystoneEnv{
+	k := openstackEnv{
 		TenantId: "123tenant",
 		novaApi:  &disassociator,
 	}
@@ -298,7 +298,7 @@ func (s *S) TestDisassociateUnknownError(c *C) {
 
 func (s *S) TestDisassociator(c *C) {
 	getClient()
-	k := keystoneEnv{}
+	k := openstackEnv{}
 	client, err := getClient()
 	c.Assert(err, IsNil)
 	expected := &nova.Client{KeystoneClient: client}

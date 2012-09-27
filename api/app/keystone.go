@@ -8,7 +8,7 @@ import (
 	"github.com/timeredbull/tsuru/log"
 )
 
-type keystoneEnv struct {
+type openstackEnv struct {
 	TenantId  string
 	UserId    string
 	AccessKey string
@@ -16,7 +16,7 @@ type keystoneEnv struct {
 	novaApi   nova.NetworkDisassociator
 }
 
-func (k *keystoneEnv) disassociate() error {
+func (k *openstackEnv) disassociate() error {
 	err := k.disassociator().DisassociateNetwork(k.TenantId)
 	if err == nova.ErrNoNetwork {
 		return nil
@@ -24,7 +24,7 @@ func (k *keystoneEnv) disassociate() error {
 	return err
 }
 
-func (k *keystoneEnv) disassociator() nova.NetworkDisassociator {
+func (k *openstackEnv) disassociator() nova.NetworkDisassociator {
 	if k.novaApi == nil {
 		client, _ := getClient()
 		k.novaApi = &nova.Client{KeystoneClient: client}
@@ -81,29 +81,29 @@ func getClient() (*keystone.Client, error) {
 // Confs used:
 //  - nova:user-id
 //  - nova:role-id
-func newKeystoneEnv(name string) (keystoneEnv, error) {
+func newOpenstackEnv(name string) (openstackEnv, error) {
 	client, err := getClient()
 	if err != nil {
-		return keystoneEnv{}, err
+		return openstackEnv{}, err
 	}
 	desc := "Tenant for " + name
 	log.Printf("DEBUG: attempting to create tenant %s via keystone api...", name)
 	tenant, err := client.NewTenant(name, desc, true)
 	if err != nil {
 		log.Printf("ERROR: %s", err)
-		return keystoneEnv{}, err
+		return openstackEnv{}, err
 	}
 	var roleId string
 	roleId, err = config.GetString("nova:role-id")
 	if err != nil {
-		return keystoneEnv{}, err
+		return openstackEnv{}, err
 	}
 	userId, err := config.GetString("nova:user-id")
 	if err != nil {
-		return keystoneEnv{}, err
+		return openstackEnv{}, err
 	}
 	access, secret, err := newCredentials(tenant.Id, userId, roleId)
-	env := keystoneEnv{
+	env := openstackEnv{
 		TenantId:  tenant.Id,
 		UserId:    userId,
 		AccessKey: access,
@@ -130,7 +130,7 @@ func newCredentials(tenantId, userId, roleId string) (accessKey string, secretKe
 	return
 }
 
-func destroyKeystoneEnv(env *keystoneEnv) error {
+func destroyOpenstackEnv(env *openstackEnv) error {
 	if env.AccessKey == "" {
 		return errors.New("Missing EC2 credentials.")
 	}

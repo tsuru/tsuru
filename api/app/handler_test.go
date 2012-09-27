@@ -463,7 +463,7 @@ func (s *S) TestCreateAppAddsProjectToGroupsInGitosis(c *C) {
 	c.Assert("writable = "+app.Name, IsInGitosis)
 }
 
-func (s *S) TestCreateAppCreatesKeystoneEnv(c *C) {
+func (s *S) TestCreateAppCreatesOpenstackEnv(c *C) {
 	srv, err := ec2test.NewServer()
 	c.Assert(err, IsNil)
 	defer srv.Quit()
@@ -482,9 +482,9 @@ func (s *S) TestCreateAppCreatesKeystoneEnv(c *C) {
 	var a App
 	err = db.Session.Apps().Find(bson.M{"name": "someApp"}).One(&a)
 	c.Assert(err, IsNil)
-	c.Assert(a.KeystoneEnv.UserId, Not(Equals), "")
-	c.Assert(a.KeystoneEnv.TenantId, Not(Equals), "")
-	c.Assert(a.KeystoneEnv.AccessKey, Not(Equals), "")
+	c.Assert(a.OpenstackEnv.UserId, Not(Equals), "")
+	c.Assert(a.OpenstackEnv.TenantId, Not(Equals), "")
+	c.Assert(a.OpenstackEnv.AccessKey, Not(Equals), "")
 }
 
 func (s *S) TestCreateAppReturnsConflictWithProperMessageWhenTheAppAlreadyExist(c *C) {

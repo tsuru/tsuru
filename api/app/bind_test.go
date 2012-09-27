@@ -34,7 +34,7 @@ func (s *S) TestDestroyShouldUnbindAppFromInstance(c *C) {
 		Name:      "myApp",
 		Framework: "",
 		Teams:     []string{},
-		KeystoneEnv: keystoneEnv{
+		OpenstackEnv: openstackEnv{
 			TenantId:  "e60d1f0a-ee74-411c-b879-46aee9502bf9",
 			UserId:    "1b4d1195-7890-4274-831f-ddf8141edecc",
 			AccessKey: "91232f6796b54ca2a2b87ef50548b123",

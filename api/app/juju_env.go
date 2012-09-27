@@ -89,7 +89,7 @@ func newEnvironConf(a *App) error {
 	if _, ok := envs["environments"]; !ok {
 		envs["environments"] = map[string]jujuEnv{}
 	}
-	jujuEnv, err := newJujuEnvConf(a.KeystoneEnv.AccessKey, a.KeystoneEnv.secretKey)
+	jujuEnv, err := newJujuEnvConf(a.OpenstackEnv.AccessKey, a.OpenstackEnv.secretKey)
 	if err != nil {
 		return err
 	}
@@ -154,7 +154,7 @@ func bootstrap(a *App) error {
 		msg := fmt.Sprintf("Failed to bootstrap juju env (%s): %s", err, outStr)
 		log.Printf("ERROR: failed to bootstrap juju environment %s:\n%s", a.JujuEnv, outStr)
 		log.Print("INFO: attempting to destroy keystone env due to error...")
-		err = destroyKeystoneEnv(&a.KeystoneEnv)
+		err = destroyOpenstackEnv(&a.OpenstackEnv)
 		if err != nil {
 			log.Print("ERROR: failed to destroy keystone environment")
 			msg = "Failed to destroy keystone environment"

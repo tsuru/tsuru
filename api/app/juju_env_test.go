@@ -63,7 +63,7 @@ func (s *S) TestNewEnviron(c *C) {
 	}()
 	a := App{
 		Name: "name",
-		KeystoneEnv: keystoneEnv{
+		OpenstackEnv: openstackEnv{
 			AccessKey: "access",
 			secretKey: "secret",
 		},
@@ -103,7 +103,7 @@ func (s *S) TestNewEnvironShouldKeepExistentsEnvirons(c *C) {
 	}()
 	a := App{
 		Name: "name",
-		KeystoneEnv: keystoneEnv{
+		OpenstackEnv: openstackEnv{
 			AccessKey: "access",
 			secretKey: "secret",
 		},
@@ -143,7 +143,7 @@ func (s *S) TestRemoveEnviron(c *C) {
 	}()
 	a := App{
 		Name: "env2",
-		KeystoneEnv: keystoneEnv{
+		OpenstackEnv: openstackEnv{
 			AccessKey: "access",
 			secretKey: "secret",
 		},
@@ -192,14 +192,14 @@ func (s *S) TestBootstrapShouldReturnErrorWhenAppHasNoJujuEnv(c *C) {
 	c.Assert(err, ErrorMatches, "^App must have a juju environment name in order to bootstrap$")
 }
 
-func (s *S) TestBootstrapShouldDestroyKeystoneEnvWhenItFails(c *C) {
+func (s *S) TestBootstrapShouldDestroyOpenstackEnvWhenItFails(c *C) {
 	s.ts.Close()
 	s.ts = s.mockServer("", "", "", "juju-env-failure-")
 	a := App{
-		Name:        "myApp",
-		Framework:   "golang",
-		JujuEnv:     "myEnv",
-		KeystoneEnv: keystoneEnv{TenantId: "foo", UserId: "bar", AccessKey: "foobar"},
+		Name:         "myApp",
+		Framework:    "golang",
+		JujuEnv:      "myEnv",
+		OpenstackEnv: openstackEnv{TenantId: "foo", UserId: "bar", AccessKey: "foobar"},
 	}
 	err := db.Session.Apps().Insert(&a)
 	c.Assert(err, IsNil)
@@ -214,7 +214,7 @@ func (s *S) TestBootstrapShouldDestroyKeystoneEnvWhenItFails(c *C) {
 	c.Assert(called["juju-env-failure-delete-tenant"], Equals, true)
 }
 
-func (s *S) TestBootstrapShouldReturnErrorWhenDestroyingKeystoneEnvFails(c *C) {
+func (s *S) TestBootstrapShouldReturnErrorWhenDestroyingOpenstackEnvFails(c *C) {
 	a := App{
 		Name:      "myApp",
 		Framework: "golang",
@@ -251,7 +251,7 @@ func (s *S) TestNewJujuEnvironShouldCreateNewEnvironAndReturnJujuEnvName(c *C) {
 	a := App{
 		Name:      "myApp",
 		Framework: "golang",
-		KeystoneEnv: keystoneEnv{
+		OpenstackEnv: openstackEnv{
 			AccessKey: "access",
 			secretKey: "secret",
 		},

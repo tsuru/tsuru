@@ -52,7 +52,7 @@ func (s *S) TestDestroy(c *C) {
 	err = createApp(&a)
 	c.Assert(err, IsNil)
 	novaClient := &fakeDisassociator{}
-	a.KeystoneEnv.novaApi = novaClient
+	a.OpenstackEnv.novaApi = novaClient
 	err = a.destroy()
 	c.Assert(err, IsNil)
 	qtd, err := db.Session.Apps().Find(bson.M{"name": a.Name}).Count()
@@ -61,7 +61,7 @@ func (s *S) TestDestroy(c *C) {
 	c.Assert(called["destroy-app-delete-user"], Equals, true)
 	c.Assert(called["destroy-app-delete-tenant"], Equals, true)
 	c.Assert(authorizer.actions, DeepEquals, []string{"setCreds access-key-here secret-key-here", "authorize " + a.Name})
-	c.Assert(novaClient.actions, DeepEquals, []string{"disassociate network from tenant " + a.KeystoneEnv.TenantId})
+	c.Assert(novaClient.actions, DeepEquals, []string{"disassociate network from tenant " + a.OpenstackEnv.TenantId})
 }
 
 func (s *S) TestDestroyWithMultiTenancyOnCallsJujuDestroyEnvironment(c *C) {
@@ -75,7 +75,7 @@ func (s *S) TestDestroyWithMultiTenancyOnCallsJujuDestroyEnvironment(c *C) {
 		Name:      "duvido",
 		Framework: "django",
 		Units:     []Unit{u},
-		KeystoneEnv: keystoneEnv{
+		OpenstackEnv: openstackEnv{
 			TenantId:  "e60d1f0a-ee74-411c-b879-46aee9502bf9",
 			UserId:    "1b4d1195-7890-4274-831f-ddf8141edecc",
 			AccessKey: "91232f6796b54ca2a2b87ef50548b123",
@@ -777,7 +777,7 @@ func (s *S) TestAuthorizeShouldCallEc2Authorizer(c *C) {
 	a := App{
 		Name:      "smashed_pumpkin",
 		Framework: "golang",
-		KeystoneEnv: keystoneEnv{
+		OpenstackEnv: openstackEnv{
 			AccessKey: "access",
 			secretKey: "secret",
 		},
@@ -790,7 +790,7 @@ func (s *S) TestAuthorizeShouldCallEc2Authorizer(c *C) {
 	c.Assert(err, IsNil)
 	action := "authorize " + a.Name
 	c.Assert(fakeAuth.hasAction(action), Equals, true)
-	action = "setCreds " + a.KeystoneEnv.AccessKey + " " + a.KeystoneEnv.secretKey
+	action = "setCreds " + a.OpenstackEnv.AccessKey + " " + a.OpenstackEnv.secretKey
 	c.Assert(fakeAuth.hasAction(action), Equals, true)
 }
 
@@ -799,7 +799,7 @@ func (s *S) TestAuthorizeShouldRepassErrorWhenEc2AuthorizeFails(c *C) {
 	a := App{
 		Name:      "smashed_pumpkin",
 		Framework: "golang",
-		KeystoneEnv: keystoneEnv{
+		OpenstackEnv: openstackEnv{
 			AccessKey: "access",
 			secretKey: "secret",
 		},
@@ -814,12 +814,12 @@ func (s *S) TestAuthorizeShouldRepassErrorWhenEc2AuthorizeFails(c *C) {
 	c.Assert(err, ErrorMatches, expected)
 }
 
-func (s *S) TestNewEnvironShouldCreateANewKeystoneEnv(c *C) {
+func (s *S) TestNewEnvironShouldCreateANewOpenstackEnv(c *C) {
 	fakeAuth := &fakeAuthorizer{}
 	a := App{
 		Name:      "smashed_pumpkin",
 		Framework: "golang",
-		KeystoneEnv: keystoneEnv{
+		OpenstackEnv: openstackEnv{
 			AccessKey: "access",
 			secretKey: "secret",
 		},
@@ -844,7 +844,7 @@ func (s *S) TestNewEnvironShouldCreateNewJujuEnv(c *C) {
 	a := App{
 		Name:      "myApp",
 		Framework: "golang",
-		KeystoneEnv: keystoneEnv{
+		OpenstackEnv: openstackEnv{
 			AccessKey: "access",
 			secretKey: "secret",
 		},
@@ -864,7 +864,7 @@ func (s *S) TestNewEnvironShouldAuthorizeAppGroup(c *C) {
 	a := App{
 		Name:      "myApp",
 		Framework: "golang",
-		KeystoneEnv: keystoneEnv{
+		OpenstackEnv: openstackEnv{
 			AccessKey: "access",
 			secretKey: "secret",
 		},
@@ -880,7 +880,7 @@ func (s *S) TestNewEnvironShouldAuthorizeAppGroup(c *C) {
 	c.Assert(fakeAuth.hasAction(action), Equals, true)
 }
 
-func (s *S) TestCreateAppShouldCreateKeystoneEnv(c *C) {
+func (s *S) TestCreateAppShouldCreateOpenstackEnv(c *C) {
 	a := App{
 		Name:      "pumpkin",
 		Framework: "golang",
@@ -889,12 +889,12 @@ func (s *S) TestCreateAppShouldCreateKeystoneEnv(c *C) {
 	}
 	err := createApp(&a)
 	c.Assert(err, IsNil)
-	c.Assert(a.KeystoneEnv.TenantId, Not(Equals), "")
-	c.Assert(a.KeystoneEnv.UserId, Not(Equals), "")
-	c.Assert(a.KeystoneEnv.AccessKey, Not(Equals), "")
+	c.Assert(a.OpenstackEnv.TenantId, Not(Equals), "")
+	c.Assert(a.OpenstackEnv.UserId, Not(Equals), "")
+	c.Assert(a.OpenstackEnv.AccessKey, Not(Equals), "")
 }
 
-func (s *S) TestCreateAppShouldNotCreateKeystoneEnvWhenMultiTenantConfIsFalse(c *C) {
+func (s *S) TestCreateAppShouldNotCreateOpenstackEnvWhenMultiTenantConfIsFalse(c *C) {
 	config.Set("multi-tenant", false)
 	defer config.Set("multi-tenant", true)
 	a := App{
@@ -905,9 +905,9 @@ func (s *S) TestCreateAppShouldNotCreateKeystoneEnvWhenMultiTenantConfIsFalse(c 
 	}
 	err := createApp(&a)
 	c.Assert(err, IsNil)
-	c.Assert(a.KeystoneEnv.TenantId, Equals, "")
-	c.Assert(a.KeystoneEnv.UserId, Equals, "")
-	c.Assert(a.KeystoneEnv.AccessKey, Equals, "")
+	c.Assert(a.OpenstackEnv.TenantId, Equals, "")
+	c.Assert(a.OpenstackEnv.UserId, Equals, "")
+	c.Assert(a.OpenstackEnv.AccessKey, Equals, "")
 }
 
 func (s *S) TestCreateAppShouldCreateNewJujuEnvironment(c *C) {
@@ -923,7 +923,7 @@ func (s *S) TestCreateAppShouldCreateNewJujuEnvironment(c *C) {
 	c.Assert(s.rfs.HasAction("openfile "+environConfPath+" with mode 0600"), Equals, true)
 }
 
-func (s *S) TestCreateAppShouldRemoveKeystoneEnvironmentWhenJujuEnvCreationFails(c *C) {
+func (s *S) TestCreateAppShouldRemoveOpenstackEnvironmentWhenJujuEnvCreationFails(c *C) {
 	s.ts.Close()
 	s.ts = s.mockServer("", "", "", "juju-env-failure-")
 	a := App{

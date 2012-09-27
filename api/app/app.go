@@ -30,16 +30,16 @@ type authorizer interface {
 }
 
 type App struct {
-	Env         map[string]bind.EnvVar
-	Framework   string
-	JujuEnv     string
-	KeystoneEnv keystoneEnv
-	Logs        []applog
-	Name        string
-	State       string
-	Units       []Unit
-	Teams       []string
-	ec2Auth     authorizer
+	Env          map[string]bind.EnvVar
+	Framework    string
+	JujuEnv      string
+	OpenstackEnv openstackEnv
+	Logs         []applog
+	Name         string
+	State        string
+	Units        []Unit
+	Teams        []string
+	ec2Auth      authorizer
 }
 
 func (a *App) MarshalJSON() ([]byte, error) {
@@ -125,7 +125,7 @@ func createApp(a *App) error {
 //  - creates ec2 groups authorization
 func newEnviron(a *App) error {
 	var err error
-	a.KeystoneEnv, err = newKeystoneEnv(a.Name)
+	a.OpenstackEnv, err = newOpenstackEnv(a.Name)
 	if err != nil {
 		return err
 	}
@@ -142,7 +142,7 @@ func newEnviron(a *App) error {
 
 func authorize(a *App) error {
 	authorizer := a.authorizer()
-	authorizer.setCreds(a.KeystoneEnv.AccessKey, a.KeystoneEnv.secretKey)
+	authorizer.setCreds(a.OpenstackEnv.AccessKey, a.OpenstackEnv.secretKey)
 	err := authorizer.authorize(a)
 	if err != nil {
 		return fmt.Errorf("Failed to create the app, it was not possible to authorize the access to the app: %s", err)
@@ -218,10 +218,10 @@ func destroyEnvironment(a *App) error {
 	if err != nil {
 		return err
 	}
-	if err = destroyKeystoneEnv(&a.KeystoneEnv); err != nil {
+	if err = destroyOpenstackEnv(&a.OpenstackEnv); err != nil {
 		return err
 	}
-	if err = a.KeystoneEnv.disassociate(); err != nil {
+	if err = a.OpenstackEnv.disassociate(); err != nil {
 		return err
 	}
 	return nil
