@@ -76,6 +76,11 @@ func getClient() (*keystone.Client, error) {
 	return c, nil
 }
 
+// Creates a tenant and associate it with tsuru user.
+// Also associate the user and tenant with a pre defined role.
+// Confs used:
+//  - nova:user-id
+//  - nova:role-id
 func newKeystoneEnv(name string) (keystoneEnv, error) {
 	client, err := getClient()
 	if err != nil {
