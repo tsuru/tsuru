@@ -218,7 +218,7 @@ func destroyEnvironment(a *App) error {
 	if err != nil {
 		return err
 	}
-	if err = destroyOpenstackEnv(&a.OpenstackEnv); err != nil {
+	if err = removeOpenstackEnv(&a.OpenstackEnv); err != nil {
 		return err
 	}
 	if err = a.OpenstackEnv.disassociate(); err != nil {

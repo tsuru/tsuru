@@ -154,7 +154,7 @@ func bootstrap(a *App) error {
 		msg := fmt.Sprintf("Failed to bootstrap juju env (%s): %s", err, outStr)
 		log.Printf("ERROR: failed to bootstrap juju environment %s:\n%s", a.JujuEnv, outStr)
 		log.Print("INFO: attempting to destroy keystone env due to error...")
-		err = destroyOpenstackEnv(&a.OpenstackEnv)
+		err = removeOpenstackEnv(&a.OpenstackEnv)
 		if err != nil {
 			log.Print("ERROR: failed to destroy keystone environment")
 			msg = "Failed to destroy keystone environment"
