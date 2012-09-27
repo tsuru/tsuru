@@ -23,6 +23,7 @@ var (
 func (s *S) mockServer(tenantBody, userBody, ec2Body, prefix string) *httptest.Server {
 	var serverUrl string
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		addRoleToUserRegexp := regexp.MustCompile(`/tenants/([\w-]+)/users/([\w-]+)/roles/OS-KSADM/([\w-]+)`)
 		ec2Regexp := regexp.MustCompile(`/users/([\w-]+)/credentials/OS-EC2`)
 		tenantsRegexp := regexp.MustCompile(`/tenants`)
 		usersRegexp := regexp.MustCompile(`/users`)
@@ -37,6 +38,13 @@ func (s *S) mockServer(tenantBody, userBody, ec2Body, prefix string) *httptest.S
 		if m, _ := regexp.MatchString(`^/v2/[\w-]+/os-networks`, r.URL.Path); m {
 			handleNova(w, r)
 			return
+		}
+		if r.Method == "PUT" {
+			if addRoleToUserRegexp.MatchString(r.URL.Path) {
+				called["add-role-to-user"] = true
+			} else {
+				w.WriteHeader(http.StatusNotFound)
+			}
 		}
 		if r.Method == "POST" {
 			switch {
@@ -69,7 +77,9 @@ func (s *S) mockServer(tenantBody, userBody, ec2Body, prefix string) *httptest.S
 			}
 		}
 	}))
-	authUrl = ts.URL
+	oldAuthUrl, _ := config.GetString("nova:auth-url")
+	s.oldAuthUrl = oldAuthUrl
+	config.Set("nova:auth-url", ts.URL)
 	serverUrl = ts.URL
 	return ts
 }
@@ -123,112 +133,120 @@ func handleNova(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *S) TestGetAuth(c *C) {
-	authUrl = ""
+	/* authUrl = "" */
 	expectedUrl, err := config.GetString("nova:auth-url")
 	c.Assert(err, IsNil)
-	getAuth()
-	c.Assert(authUrl, Equals, expectedUrl)
-}
-
-func (s *S) TestGetAuthShouldNotGetTheConfigEveryTimeItsCalled(c *C) {
-	authUrl = ""
-	expectedUrl, err := config.GetString("nova:auth-url")
-	c.Assert(err, IsNil)
-	getAuth()
-	c.Assert(authUrl, Equals, expectedUrl)
-	config.Set("nova:auth-url", "some-url.com")
-	getAuth()
-	c.Assert(authUrl, Equals, expectedUrl)
-	defer config.Set("nova:auth-url", expectedUrl)
-}
-
-func (s *S) TestGetAuthShouldSetAuthUser(c *C) {
 	expectedUser, err := config.GetString("nova:user")
 	c.Assert(err, IsNil)
-	getAuth()
-	c.Assert(authUser, Equals, expectedUser)
+	expectedPass, err := config.GetString("nova:password")
+	c.Assert(err, IsNil)
+	expectedTenant, err := config.GetString("nova:tenant")
+	c.Assert(err, IsNil)
+	url, user, pass, tenant, err := getAuth()
+	c.Assert(err, IsNil)
+	c.Assert(url, Equals, expectedUrl)
+	c.Assert(user, Equals, expectedUser)
+	c.Assert(pass, Equals, expectedPass)
+	c.Assert(tenant, Equals, expectedTenant)
 }
 
-func (s *S) TestGetAuthShouldNotResetAuthUserWhenItIsAlreadySet(c *C) {
-	expectedUser, err := config.GetString("nova:user")
-	c.Assert(err, IsNil)
-	getAuth()
-	c.Assert(authUser, Equals, expectedUser)
-	config.Set("nova:user", "some-other-user")
-	defer config.Set("nova:user", expectedUser)
-	getAuth()
-	c.Assert(authUser, Equals, expectedUser)
-}
+// func (s *S) TestGetAuthShouldNotGetTheConfigEveryTimeItsCalled(c *C) {
+// 	authUrl = ""
+// 	expectedUrl, err := config.GetString("nova:auth-url")
+// 	c.Assert(err, IsNil)
+// 	getAuth()
+// 	c.Assert(authUrl, Equals, expectedUrl)
+// 	config.Set("nova:auth-url", "some-url.com")
+// 	getAuth()
+// 	c.Assert(authUrl, Equals, expectedUrl)
+// 	defer config.Set("nova:auth-url", expectedUrl)
+// }
 
-func (s *S) TestGetAuthShouldSerAuthPass(c *C) {
-	expected, err := config.GetString("nova:password")
-	c.Assert(err, IsNil)
-	getAuth()
-	c.Assert(authPass, Equals, expected)
-}
-
-func (s *S) TestGetAuthShouldNotResetAuthPass(c *C) {
-	expected, err := config.GetString("nova:password")
-	c.Assert(err, IsNil)
-	getAuth()
-	c.Assert(authPass, Equals, expected)
-	config.Set("nova:password", "ultra-secret-pass")
-	getAuth()
-	c.Assert(authPass, Equals, expected)
-	defer config.Set("nova:password", expected)
-}
-
-func (s *S) TestGetAuthShouldSerAuthTenant(c *C) {
-	expected, err := config.GetString("nova:tenant")
-	c.Assert(err, IsNil)
-	getAuth()
-	c.Assert(authTenant, Equals, expected)
-}
-
-func (s *S) TestGetAuthShouldNotResetAuthTenant(c *C) {
-	expected, err := config.GetString("nova:tenant")
-	c.Assert(err, IsNil)
-	getAuth()
-	c.Assert(authTenant, Equals, expected)
-	config.Set("nova:tenant", "some-other-tenant")
-	getAuth()
-	c.Assert(authTenant, Equals, expected)
-	defer config.Set("nova:tenant", expected)
-}
+// func (s *S) TestGetAuthShouldSetAuthUser(c *C) {
+// 	expectedUser, err := config.GetString("nova:user")
+// 	c.Assert(err, IsNil)
+// 	getAuth()
+// 	c.Assert(authUser, Equals, expectedUser)
+// }
+// 
+// func (s *S) TestGetAuthShouldNotResetAuthUserWhenItIsAlreadySet(c *C) {
+// 	expectedUser, err := config.GetString("nova:user")
+// 	c.Assert(err, IsNil)
+// 	getAuth()
+// 	c.Assert(authUser, Equals, expectedUser)
+// 	config.Set("nova:user", "some-other-user")
+// 	defer config.Set("nova:user", expectedUser)
+// 	getAuth()
+// 	c.Assert(authUser, Equals, expectedUser)
+// }
+// 
+// func (s *S) TestGetAuthShouldSerAuthPass(c *C) {
+// 	expected, err := config.GetString("nova:password")
+// 	c.Assert(err, IsNil)
+// 	getAuth()
+// 	c.Assert(authPass, Equals, expected)
+// }
+// 
+// func (s *S) TestGetAuthShouldNotResetAuthPass(c *C) {
+// 	expected, err := config.GetString("nova:password")
+// 	c.Assert(err, IsNil)
+// 	getAuth()
+// 	c.Assert(authPass, Equals, expected)
+// 	config.Set("nova:password", "ultra-secret-pass")
+// 	getAuth()
+// 	c.Assert(authPass, Equals, expected)
+// 	defer config.Set("nova:password", expected)
+// }
+// 
+// func (s *S) TestGetAuthShouldSerAuthTenant(c *C) {
+// 	expected, err := config.GetString("nova:tenant")
+// 	c.Assert(err, IsNil)
+// 	getAuth()
+// 	c.Assert(authTenant, Equals, expected)
+// }
+// 
+// func (s *S) TestGetAuthShouldNotResetAuthTenant(c *C) {
+// 	expected, err := config.GetString("nova:tenant")
+// 	c.Assert(err, IsNil)
+// 	getAuth()
+// 	c.Assert(authTenant, Equals, expected)
+// 	config.Set("nova:tenant", "some-other-tenant")
+// 	getAuth()
+// 	c.Assert(authTenant, Equals, expected)
+// 	defer config.Set("nova:tenant", expected)
+// }
 
 func (s *S) TestGetAuthShouldReturnErrorWhenAuthUrlConfigDoesntExists(c *C) {
-	getAuth()
-	url := authUrl
+	url, err := config.GetString("nova:auth-url")
+	c.Assert(err, IsNil)
 	defer config.Set("nova:auth-url", url)
-	defer func() { authUrl = url }()
-	authUrl = ""
 	config.Unset("nova:auth-url")
-	err := getAuth()
-	c.Assert(err, Not(IsNil))
+	_, _, _, _, err = getAuth()
+	c.Assert(err, NotNil)
 }
 
 func (s *S) TestGetAuthShouldReturnErrorWhenAuthUserConfigDoesntExists(c *C) {
-	getAuth()
-	u := authUser
-	defer config.Set("nova:user", u)
-	defer func() { authUser = u }()
-	authUser = ""
+	url, err := config.GetString("nova:user")
+	c.Assert(err, IsNil)
+	defer config.Set("nova:user", url)
 	config.Unset("nova:user")
-	err := getAuth()
-	c.Assert(err, Not(IsNil))
+	_, _, _, _, err = getAuth()
+	c.Assert(err, NotNil)
 }
 
 func (s *S) TestGetAuthShouldReturnErrorWhenAuthPassConfigDoesntExists(c *C) {
-	defer config.Set("nova:password", "tsuru")
-	defer func() { authPass = "tsuru" }()
-	authPass = ""
+	url, err := config.GetString("nova:password")
+	c.Assert(err, IsNil)
+	defer config.Set("nova:password", url)
 	config.Unset("nova:password")
-	err := getAuth()
-	c.Assert(err, Not(IsNil))
+	_, _, _, _, err = getAuth()
+	c.Assert(err, NotNil)
 }
 
 func (s *S) TestGetClientShouldReturnClientWithAuthConfs(c *C) {
-	err := getClient()
+	_, authUser, authPass, authTenant, err := getAuth()
+	c.Assert(err, IsNil)
+	_, err = getClient()
 	c.Assert(err, IsNil)
 	req := string(requestJson)
 	c.Assert(req, Not(Equals), "")
@@ -236,16 +254,15 @@ func (s *S) TestGetClientShouldReturnClientWithAuthConfs(c *C) {
 	c.Assert(req, Equals, expected)
 }
 
-func (s *S) TestGetClientShouldNotResetClient(c *C) {
-	called["token"] = false
-	Client.Token = ""
-	err := getClient()
+func (s *S) TestNewCredentials(c *C) {
+	userId, err := config.GetString("nova:user-id")
 	c.Assert(err, IsNil)
-	c.Assert(called["token"], Equals, true)
-	called["token"] = false
-	err = getClient()
+	roleId, err := config.GetString("nova:role-id")
 	c.Assert(err, IsNil)
-	c.Assert(called["token"], Equals, false)
+	accessKey, secretKey, err := newCredentials("uuid123", userId, roleId)
+	c.Assert(err, IsNil)
+	c.Assert(accessKey, Equals, "access-key-here")
+	c.Assert(secretKey, Equals, "secret-key-here")
 }
 
 func (s *S) TestNewKeystoneEnv(c *C) {
@@ -254,15 +271,17 @@ func (s *S) TestNewKeystoneEnv(c *C) {
 	userBody := `{"user": {"id": "uuid321", "name": "still", "email": "appname@foo.bar"}}`
 	ec2Body := `{"credential": {"access": "access-key-here", "secret": "secret-key-here"}}`
 	ts := s.mockServer(tenantBody, userBody, ec2Body, "")
-	authUrl = ts.URL
+	oldAuthUrl, err := config.GetString("nova:auth-url")
+	c.Assert(err, IsNil)
+	config.Set("nova:auth-url", ts.URL)
 	password := make([]byte, 64)
 	for i := 0; i < len(password); i++ {
 		password[i] = 'a'
 	}
 	fsystem := &testing.RecordingFs{FileContent: string(password)}
 	defer func() {
+		config.Set("nova:auth-url", oldAuthUrl)
 		ts.Close()
-		authUrl = ""
 		fsystem = s.rfs
 	}()
 	env, err := newKeystoneEnv("still")
@@ -278,17 +297,19 @@ func (s *S) TestNewKeystoneEnv(c *C) {
 func (s *S) TestDestroyKeystoneEnv(c *C) {
 	s.ts.Close()
 	ts := s.mockServer("", "", "", "")
-	authUrl = ts.URL
+	oldAuthUrl, err := config.GetString("nova:auth-url")
+	c.Assert(err, IsNil)
+	config.Set("nova:auth-url", ts.URL)
 	defer func() {
+		config.Set("nova:auth-url", oldAuthUrl)
 		ts.Close()
-		authUrl = ""
 	}()
 	k := keystoneEnv{
 		TenantId:  "e60d1f0a-ee74-411c-b879-46aee9502bf9",
 		UserId:    "1b4d1195-7890-4274-831f-ddf8141edecc",
 		AccessKey: "91232f6796b54ca2a2b87ef50548b123",
 	}
-	err := destroyKeystoneEnv(&k)
+	err = destroyKeystoneEnv(&k)
 	c.Assert(err, IsNil)
 	c.Assert(called["delete-ec2-creds"], Equals, true)
 	c.Assert(params["ec2-access"], Equals, k.AccessKey)
@@ -365,7 +386,9 @@ func (s *S) TestDisassociateUnknownError(c *C) {
 func (s *S) TestDisassociator(c *C) {
 	getClient()
 	k := keystoneEnv{}
-	expected := &nova.Client{KeystoneClient: &Client}
+	client, err := getClient()
+	c.Assert(err, IsNil)
+	expected := &nova.Client{KeystoneClient: client}
 	c.Assert(k.disassociator(), DeepEquals, expected)
 	fake := &fakeDisassociator{}
 	k.novaApi = fake
