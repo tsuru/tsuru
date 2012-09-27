@@ -148,7 +148,7 @@ func removeCredentials(env *keystoneEnv) error {
 	if err != nil {
 		return err
 	}
-	return client.RemoveUser(env.UserId, env.TenantId, roleId)
+	return client.RemoveRoleFromUser(env.TenantId, env.UserId, roleId)
 }
 
 func destroyKeystoneEnv(env *keystoneEnv) error {
