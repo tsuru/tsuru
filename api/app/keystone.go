@@ -8,11 +8,12 @@ import (
 	"github.com/timeredbull/tsuru/log"
 )
 
+const novaCreds = "nova"
+
 type openstackEnv struct {
-	TenantId  string
-	AccessKey string
-	secretKey string
-	novaApi   nova.NetworkDisassociator
+	TenantId string
+	Creds    map[string]map[string]string // env.Creds["nova"]["access"]
+	novaApi  nova.NetworkDisassociator
 }
 
 func (k *openstackEnv) disassociate() error {
@@ -102,9 +103,10 @@ func newOpenstackEnv(name string) (openstackEnv, error) {
 	}
 	access, secret, err := newCredentials(tenant.Id, userId, roleId)
 	env := openstackEnv{
-		TenantId:  tenant.Id,
-		AccessKey: access,
-		secretKey: secret,
+		TenantId: tenant.Id,
+		Creds: map[string]map[string]string{
+			novaCreds: map[string]string{"access": access, "secret": secret},
+		},
 	}
 	return env, nil
 }
@@ -128,7 +130,7 @@ func newCredentials(tenantId, userId, roleId string) (accessKey string, secretKe
 }
 
 func removeCredentials(env *openstackEnv) error {
-	if env.AccessKey == "" {
+	if env.Creds[novaCreds]["access"] == "" {
 		return errors.New("Missing EC2 credentials.")
 	}
 	userId, err := config.GetString("nova:user-id")
@@ -143,7 +145,7 @@ func removeCredentials(env *openstackEnv) error {
 	if err != nil {
 		return err
 	}
-	err = client.RemoveEc2(userId, env.AccessKey)
+	err = client.RemoveEc2(userId, env.Creds[novaCreds]["access"])
 	if err != nil {
 		return err
 	}

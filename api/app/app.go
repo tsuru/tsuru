@@ -142,7 +142,7 @@ func newEnviron(a *App) error {
 
 func authorize(a *App) error {
 	authorizer := a.authorizer()
-	authorizer.setCreds(a.OpenstackEnv.AccessKey, a.OpenstackEnv.secretKey)
+	authorizer.setCreds(a.OpenstackEnv.Creds[novaCreds]["access"], a.OpenstackEnv.Creds[novaCreds]["secret"])
 	err := authorizer.authorize(a)
 	if err != nil {
 		return fmt.Errorf("Failed to create the app, it was not possible to authorize the access to the app: %s", err)

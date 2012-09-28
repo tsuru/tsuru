@@ -89,7 +89,7 @@ func newEnvironConf(a *App) error {
 	if _, ok := envs["environments"]; !ok {
 		envs["environments"] = map[string]jujuEnv{}
 	}
-	jujuEnv, err := newJujuEnvConf(a.OpenstackEnv.AccessKey, a.OpenstackEnv.secretKey)
+	jujuEnv, err := newJujuEnvConf(a.OpenstackEnv.Creds[novaCreds]["access"], a.OpenstackEnv.Creds[novaCreds]["secret"])
 	if err != nil {
 		return err
 	}

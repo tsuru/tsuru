@@ -64,8 +64,9 @@ func (s *S) TestNewEnviron(c *C) {
 	a := App{
 		Name: "name",
 		OpenstackEnv: openstackEnv{
-			AccessKey: "access",
-			secretKey: "secret",
+			Creds: map[string]map[string]string{
+				novaCreds: map[string]string{"access": "access", "secret": "secret"},
+			},
 		},
 	}
 	err = newEnvironConf(&a)
@@ -104,8 +105,9 @@ func (s *S) TestNewEnvironShouldKeepExistentsEnvirons(c *C) {
 	a := App{
 		Name: "name",
 		OpenstackEnv: openstackEnv{
-			AccessKey: "access",
-			secretKey: "secret",
+			Creds: map[string]map[string]string{
+				novaCreds: map[string]string{"access": "access", "secret": "secret"},
+			},
 		},
 	}
 	var result map[string]map[string]jujuEnv
@@ -144,8 +146,9 @@ func (s *S) TestRemoveEnviron(c *C) {
 	a := App{
 		Name: "env2",
 		OpenstackEnv: openstackEnv{
-			AccessKey: "access",
-			secretKey: "secret",
+			Creds: map[string]map[string]string{
+				novaCreds: map[string]string{"access": "access", "secret": "secret"},
+			},
 		},
 	}
 	err = removeEnvironConf(&a)
@@ -196,10 +199,15 @@ func (s *S) TestBootstrapShouldDestroyOpenstackEnvWhenItFails(c *C) {
 	s.ts.Close()
 	s.ts = s.mockServer("", "", "", "juju-env-failure-")
 	a := App{
-		Name:         "myApp",
-		Framework:    "golang",
-		JujuEnv:      "myEnv",
-		OpenstackEnv: openstackEnv{TenantId: "foo", AccessKey: "foobar"},
+		Name:      "myApp",
+		Framework: "golang",
+		JujuEnv:   "myEnv",
+		OpenstackEnv: openstackEnv{
+			TenantId: "foo",
+			Creds: map[string]map[string]string{
+				novaCreds: map[string]string{"access": "foobar"},
+			},
+		},
 	}
 	err := db.Session.Apps().Insert(&a)
 	c.Assert(err, IsNil)
@@ -252,8 +260,9 @@ func (s *S) TestNewJujuEnvironShouldCreateNewEnvironAndReturnJujuEnvName(c *C) {
 		Name:      "myApp",
 		Framework: "golang",
 		OpenstackEnv: openstackEnv{
-			AccessKey: "access",
-			secretKey: "secret",
+			Creds: map[string]map[string]string{
+				novaCreds: map[string]string{"access": "access", "secret": "secret"},
+			},
 		},
 	}
 	err := db.Session.Apps().Insert(&a)

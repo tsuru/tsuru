@@ -483,7 +483,7 @@ func (s *S) TestCreateAppCreatesOpenstackEnv(c *C) {
 	err = db.Session.Apps().Find(bson.M{"name": "someApp"}).One(&a)
 	c.Assert(err, IsNil)
 	c.Assert(a.OpenstackEnv.TenantId, Not(Equals), "")
-	c.Assert(a.OpenstackEnv.AccessKey, Not(Equals), "")
+	c.Assert(a.OpenstackEnv.Creds[novaCreds]["access"], Not(Equals), "")
 }
 
 func (s *S) TestCreateAppReturnsConflictWithProperMessageWhenTheAppAlreadyExist(c *C) {

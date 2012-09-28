@@ -76,8 +76,10 @@ func (s *S) TestDestroyWithMultiTenancyOnCallsJujuDestroyEnvironment(c *C) {
 		Framework: "django",
 		Units:     []Unit{u},
 		OpenstackEnv: openstackEnv{
-			TenantId:  "e60d1f0a-ee74-411c-b879-46aee9502bf9",
-			AccessKey: "91232f6796b54ca2a2b87ef50548b123",
+			TenantId: "e60d1f0a-ee74-411c-b879-46aee9502bf9",
+			Creds: map[string]map[string]string{
+				novaCreds: map[string]string{"access": "91232f6796b54ca2a2b87ef50548b123"},
+			},
 		},
 		ec2Auth: &fakeAuthorizer{},
 	}
@@ -777,8 +779,9 @@ func (s *S) TestAuthorizeShouldCallEc2Authorizer(c *C) {
 		Name:      "smashed_pumpkin",
 		Framework: "golang",
 		OpenstackEnv: openstackEnv{
-			AccessKey: "access",
-			secretKey: "secret",
+			Creds: map[string]map[string]string{
+				novaCreds: map[string]string{"access": "access", "secret": "secret"},
+			},
 		},
 		ec2Auth: fakeAuth,
 	}
@@ -789,7 +792,7 @@ func (s *S) TestAuthorizeShouldCallEc2Authorizer(c *C) {
 	c.Assert(err, IsNil)
 	action := "authorize " + a.Name
 	c.Assert(fakeAuth.hasAction(action), Equals, true)
-	action = "setCreds " + a.OpenstackEnv.AccessKey + " " + a.OpenstackEnv.secretKey
+	action = "setCreds " + a.OpenstackEnv.Creds[novaCreds]["access"] + " " + a.OpenstackEnv.Creds[novaCreds]["secret"]
 	c.Assert(fakeAuth.hasAction(action), Equals, true)
 }
 
@@ -799,8 +802,9 @@ func (s *S) TestAuthorizeShouldRepassErrorWhenEc2AuthorizeFails(c *C) {
 		Name:      "smashed_pumpkin",
 		Framework: "golang",
 		OpenstackEnv: openstackEnv{
-			AccessKey: "access",
-			secretKey: "secret",
+			Creds: map[string]map[string]string{
+				novaCreds: map[string]string{"access": "access", "secret": "secret"},
+			},
 		},
 		ec2Auth: fakeAuth,
 	}
@@ -819,8 +823,9 @@ func (s *S) TestNewEnvironShouldCreateANewOpenstackEnv(c *C) {
 		Name:      "smashed_pumpkin",
 		Framework: "golang",
 		OpenstackEnv: openstackEnv{
-			AccessKey: "access",
-			secretKey: "secret",
+			Creds: map[string]map[string]string{
+				novaCreds: map[string]string{"access": "access", "secret": "secret"},
+			},
 		},
 		ec2Auth: fakeAuth,
 		JujuEnv: "myApp",
@@ -844,8 +849,9 @@ func (s *S) TestNewEnvironShouldCreateNewJujuEnv(c *C) {
 		Name:      "myApp",
 		Framework: "golang",
 		OpenstackEnv: openstackEnv{
-			AccessKey: "access",
-			secretKey: "secret",
+			Creds: map[string]map[string]string{
+				novaCreds: map[string]string{"access": "access", "secret": "secret"},
+			},
 		},
 		ec2Auth: fakeAuth,
 		JujuEnv: "myApp",
@@ -864,8 +870,9 @@ func (s *S) TestNewEnvironShouldAuthorizeAppGroup(c *C) {
 		Name:      "myApp",
 		Framework: "golang",
 		OpenstackEnv: openstackEnv{
-			AccessKey: "access",
-			secretKey: "secret",
+			Creds: map[string]map[string]string{
+				novaCreds: map[string]string{"access": "access", "secret": "secret"},
+			},
 		},
 		ec2Auth: fakeAuth,
 		JujuEnv: "myApp",
@@ -889,7 +896,7 @@ func (s *S) TestCreateAppShouldCreateOpenstackEnv(c *C) {
 	err := createApp(&a)
 	c.Assert(err, IsNil)
 	c.Assert(a.OpenstackEnv.TenantId, Not(Equals), "")
-	c.Assert(a.OpenstackEnv.AccessKey, Not(Equals), "")
+	c.Assert(a.OpenstackEnv.Creds[novaCreds]["access"], Not(Equals), "")
 }
 
 func (s *S) TestCreateAppShouldNotCreateOpenstackEnvWhenMultiTenantConfIsFalse(c *C) {
@@ -904,7 +911,7 @@ func (s *S) TestCreateAppShouldNotCreateOpenstackEnvWhenMultiTenantConfIsFalse(c
 	err := createApp(&a)
 	c.Assert(err, IsNil)
 	c.Assert(a.OpenstackEnv.TenantId, Equals, "")
-	c.Assert(a.OpenstackEnv.AccessKey, Equals, "")
+	c.Assert(a.OpenstackEnv.Creds[novaCreds]["access"], Equals, "")
 }
 
 func (s *S) TestCreateAppShouldCreateNewJujuEnvironment(c *C) {
