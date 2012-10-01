@@ -8,6 +8,10 @@ Tsuru is a opensource polyglot cloud application platform. With Tsuru, you donâ€
 Install the tsuru client
 ++++++++++++++++++++++++
 
+:doc:`Install the Tsuru client </apps/client/install>` for your development operating system.
+
+The the Tsuru client is a command-line tool for creating and managing apps.
+
 Sign up
 +++++++
 
