@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/timeredbull/tsuru/cmd"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"strings"
@@ -90,17 +91,30 @@ func (sb *ServiceBind) Run(ctx *cmd.Context, client cmd.Doer) error {
 	if err != nil {
 		return err
 	}
-	_, err = client.Do(request)
+	resp, err := client.Do(request)
 	if err != nil {
 		return err
 	}
-	msg := fmt.Sprintf("Instance %s successfully binded to the app %s.\n", instanceName, appName)
+	defer resp.Body.Close()
+	var variables []string
+	dec := json.NewDecoder(resp.Body)
+	msg := fmt.Sprintf("Instance %s successfully binded to the app %s.", instanceName, appName)
+	if err = dec.Decode(&variables); err == nil {
+		msg += fmt.Sprintf(`
+
+The following environment variables are now available for use in your app:
+
+- %s
+
+For more details, please check the documentation for the service, using service-doc command.
+`, strings.Join(variables, "\n- "))
+	}
 	n, err := fmt.Fprint(ctx.Stdout, msg)
 	if err != nil {
 		return err
 	}
 	if n != len(msg) {
-		return errors.New("Failed to write to standard output.\n")
+		return io.ErrShortWrite
 	}
 	return nil
 }
