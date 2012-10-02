@@ -36,8 +36,6 @@ func (s *S) TestGet(c *C) {
 }
 
 func (s *S) TestDestroy(c *C) {
-	s.ts.Close()
-	s.ts = s.mockServer("", "", "", "destroy-app-")
 	dir, err := commandmocker.Add("juju", "$*")
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(dir)
@@ -47,26 +45,19 @@ func (s *S) TestDestroy(c *C) {
 		Name:      "duvido",
 		Framework: "django",
 		Units:     []Unit{u},
+		EC2Creds:  map[string]string{"access": "access-key-here", "secret": "secret-key-here"},
 		ec2Auth:   authorizer,
 	}
 	err = createApp(&a)
 	c.Assert(err, IsNil)
-	novaClient := &fakeDisassociator{}
-	a.OpenstackEnv.novaApi = novaClient
 	err = a.destroy()
 	c.Assert(err, IsNil)
 	qtd, err := db.Session.Apps().Find(bson.M{"name": a.Name}).Count()
 	c.Assert(qtd, Equals, 0)
-	c.Assert(called["destroy-app-delete-ec2-creds"], Equals, true)
-	c.Assert(called["destroy-app-delete-user"], Equals, true)
-	c.Assert(called["destroy-app-delete-tenant"], Equals, true)
 	c.Assert(authorizer.actions, DeepEquals, []string{"setCreds access-key-here secret-key-here", "authorize " + a.Name})
-	c.Assert(novaClient.actions, DeepEquals, []string{"disassociate network from tenant " + a.OpenstackEnv.TenantId})
 }
 
 func (s *S) TestDestroyWithMultiTenancyOnCallsJujuDestroyEnvironment(c *C) {
-	s.ts.Close()
-	s.ts = s.mockServer("", "", "", "destroy-app-")
 	dir, err := commandmocker.Add("juju", "$*")
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(dir)
@@ -75,13 +66,8 @@ func (s *S) TestDestroyWithMultiTenancyOnCallsJujuDestroyEnvironment(c *C) {
 		Name:      "duvido",
 		Framework: "django",
 		Units:     []Unit{u},
-		OpenstackEnv: openstackEnv{
-			TenantId: "e60d1f0a-ee74-411c-b879-46aee9502bf9",
-			Creds: map[string]map[string]string{
-				novaCreds: map[string]string{"access": "91232f6796b54ca2a2b87ef50548b123"},
-			},
-		},
-		ec2Auth: &fakeAuthorizer{},
+		EC2Creds:  map[string]string{"access": "91232f6796b54ca2a2b87ef50548b123"},
+		ec2Auth:   &fakeAuthorizer{},
 	}
 	err = createApp(&a)
 	c.Assert(err, IsNil)
@@ -92,8 +78,6 @@ func (s *S) TestDestroyWithMultiTenancyOnCallsJujuDestroyEnvironment(c *C) {
 }
 
 func (s *S) TestDestroyWithnMultiTenancyOnDoesNotDeleteTheAppIfTheDestroyEnvironmentFail(c *C) {
-	s.ts.Close()
-	s.ts = s.mockServer("", "", "", "destroy-app-")
 	dir, err := commandmocker.Add("juju", "$*")
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(dir)
@@ -187,6 +171,7 @@ func (s *S) TestCreateApp(c *C) {
 	a := App{
 		Name:      "appName",
 		Framework: "django",
+		EC2Creds:  map[string]string{"access": "access-key-here", "secret": "secret-key-here"},
 		ec2Auth:   &authorizer,
 	}
 	err = createApp(&a)
@@ -778,12 +763,8 @@ func (s *S) TestAuthorizeShouldCallEc2Authorizer(c *C) {
 	a := App{
 		Name:      "smashed_pumpkin",
 		Framework: "golang",
-		OpenstackEnv: openstackEnv{
-			Creds: map[string]map[string]string{
-				novaCreds: map[string]string{"access": "access", "secret": "secret"},
-			},
-		},
-		ec2Auth: fakeAuth,
+		EC2Creds:  map[string]string{"access": "access", "secret": "secret"},
+		ec2Auth:   fakeAuth,
 	}
 	err := db.Session.Apps().Insert(&a)
 	c.Assert(err, IsNil)
@@ -792,7 +773,7 @@ func (s *S) TestAuthorizeShouldCallEc2Authorizer(c *C) {
 	c.Assert(err, IsNil)
 	action := "authorize " + a.Name
 	c.Assert(fakeAuth.hasAction(action), Equals, true)
-	action = "setCreds " + a.OpenstackEnv.Creds[novaCreds]["access"] + " " + a.OpenstackEnv.Creds[novaCreds]["secret"]
+	action = "setCreds " + a.EC2Creds["access"] + " " + a.EC2Creds["secret"]
 	c.Assert(fakeAuth.hasAction(action), Equals, true)
 }
 
@@ -801,12 +782,8 @@ func (s *S) TestAuthorizeShouldRepassErrorWhenEc2AuthorizeFails(c *C) {
 	a := App{
 		Name:      "smashed_pumpkin",
 		Framework: "golang",
-		OpenstackEnv: openstackEnv{
-			Creds: map[string]map[string]string{
-				novaCreds: map[string]string{"access": "access", "secret": "secret"},
-			},
-		},
-		ec2Auth: fakeAuth,
+		EC2Creds:  map[string]string{"access": "access", "secret": "secret"},
+		ec2Auth:   fakeAuth,
 	}
 	err := db.Session.Apps().Insert(&a)
 	c.Assert(err, IsNil)
@@ -815,27 +792,6 @@ func (s *S) TestAuthorizeShouldRepassErrorWhenEc2AuthorizeFails(c *C) {
 	c.Check(err, NotNil)
 	expected := "^Failed to create the app, it was not possible to authorize the access to the app: authorize error$"
 	c.Assert(err, ErrorMatches, expected)
-}
-
-func (s *S) TestNewEnvironShouldCreateANewOpenstackEnv(c *C) {
-	fakeAuth := &fakeAuthorizer{}
-	a := App{
-		Name:      "smashed_pumpkin",
-		Framework: "golang",
-		OpenstackEnv: openstackEnv{
-			Creds: map[string]map[string]string{
-				novaCreds: map[string]string{"access": "access", "secret": "secret"},
-			},
-		},
-		ec2Auth: fakeAuth,
-		JujuEnv: "myApp",
-	}
-	err := db.Session.Apps().Insert(&a)
-	c.Assert(err, IsNil)
-	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
-	err = newEnviron(&a)
-	c.Assert(err, IsNil)
-	c.Assert(called["tenants"], Equals, true)
 }
 
 func (s *S) TestNewEnvironShouldCreateNewJujuEnv(c *C) {
@@ -848,13 +804,9 @@ func (s *S) TestNewEnvironShouldCreateNewJujuEnv(c *C) {
 	a := App{
 		Name:      "myApp",
 		Framework: "golang",
-		OpenstackEnv: openstackEnv{
-			Creds: map[string]map[string]string{
-				novaCreds: map[string]string{"access": "access", "secret": "secret"},
-			},
-		},
-		ec2Auth: fakeAuth,
-		JujuEnv: "myApp",
+		EC2Creds:  map[string]string{"access": "access", "secret": "secret"},
+		ec2Auth:   fakeAuth,
+		JujuEnv:   "myApp",
 	}
 	err := db.Session.Apps().Insert(&a)
 	c.Assert(err, IsNil)
@@ -869,13 +821,9 @@ func (s *S) TestNewEnvironShouldAuthorizeAppGroup(c *C) {
 	a := App{
 		Name:      "myApp",
 		Framework: "golang",
-		OpenstackEnv: openstackEnv{
-			Creds: map[string]map[string]string{
-				novaCreds: map[string]string{"access": "access", "secret": "secret"},
-			},
-		},
-		ec2Auth: fakeAuth,
-		JujuEnv: "myApp",
+		EC2Creds:  map[string]string{"access": "access", "secret": "secret"},
+		ec2Auth:   fakeAuth,
+		JujuEnv:   "myApp",
 	}
 	err := db.Session.Apps().Insert(&a)
 	c.Assert(err, IsNil)
@@ -884,34 +832,6 @@ func (s *S) TestNewEnvironShouldAuthorizeAppGroup(c *C) {
 	c.Assert(err, IsNil)
 	action := "authorize " + a.Name
 	c.Assert(fakeAuth.hasAction(action), Equals, true)
-}
-
-func (s *S) TestCreateAppShouldCreateOpenstackEnv(c *C) {
-	a := App{
-		Name:      "pumpkin",
-		Framework: "golang",
-		Teams:     []string{s.team.Name},
-		ec2Auth:   &fakeAuthorizer{},
-	}
-	err := createApp(&a)
-	c.Assert(err, IsNil)
-	c.Assert(a.OpenstackEnv.TenantId, Not(Equals), "")
-	c.Assert(a.OpenstackEnv.Creds[novaCreds]["access"], Not(Equals), "")
-}
-
-func (s *S) TestCreateAppShouldNotCreateOpenstackEnvWhenMultiTenantConfIsFalse(c *C) {
-	config.Set("multi-tenant", false)
-	defer config.Set("multi-tenant", true)
-	a := App{
-		Name:      "pumpkin",
-		Framework: "golang",
-		Teams:     []string{s.team.Name},
-		ec2Auth:   &fakeAuthorizer{},
-	}
-	err := createApp(&a)
-	c.Assert(err, IsNil)
-	c.Assert(a.OpenstackEnv.TenantId, Equals, "")
-	c.Assert(a.OpenstackEnv.Creds[novaCreds]["access"], Equals, "")
 }
 
 func (s *S) TestCreateAppShouldCreateNewJujuEnvironment(c *C) {
@@ -925,26 +845,6 @@ func (s *S) TestCreateAppShouldCreateNewJujuEnvironment(c *C) {
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": app.Name})
 	c.Assert(s.rfs.HasAction("openfile "+environConfPath+" with mode 0600"), Equals, true)
-}
-
-func (s *S) TestCreateAppShouldRemoveOpenstackEnvironmentWhenJujuEnvCreationFails(c *C) {
-	s.ts.Close()
-	s.ts = s.mockServer("", "", "", "juju-env-failure-")
-	a := App{
-		Name:      "myApp",
-		Framework: "golang",
-		Teams:     []string{s.team.Name},
-		ec2Auth:   &fakeAuthorizer{},
-	}
-	tmpdir, err := commandmocker.Add("juju", "$(exit 1)")
-	c.Assert(err, IsNil)
-	defer commandmocker.Remove(tmpdir)
-	err = createApp(&a)
-	c.Assert(err, ErrorMatches, "^Failed to bootstrap juju env.*")
-	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
-	c.Assert(called["juju-env-failure-delete-ec2-creds"], Equals, true)
-	c.Assert(called["juju-env-failure-delete-user"], Equals, true)
-	c.Assert(called["juju-env-failure-delete-tenant"], Equals, true)
 }
 
 func (s *S) TestAppDestroyShouldUpdateJujuEnvironment(c *C) {

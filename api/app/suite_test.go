@@ -13,7 +13,6 @@ import (
 	"io/ioutil"
 	"labix.org/v2/mgo"
 	. "launchpad.net/gocheck"
-	"net/http/httptest"
 	"os"
 	"os/exec"
 	"path"
@@ -31,7 +30,6 @@ type S struct {
 	gitosisBare string
 	gitosisRepo string
 	tmpdir      string
-	ts          *httptest.Server
 	rfs         *fsTesting.RecordingFs
 	tokenBody   []byte
 	oldAuthUrl  string
@@ -188,10 +186,6 @@ func (s *S) TearDownSuite(c *C) {
 
 func (s *S) SetUpTest(c *C) {
 	s.createGitosisConf(c)
-	s.ts = s.mockServer("", "", "", "")
-	called["tenants"] = false
-	called["users"] = false
-	called["ec2-creds"] = false
 }
 
 func (s *S) TearDownTest(c *C) {
@@ -199,7 +193,6 @@ func (s *S) TearDownTest(c *C) {
 	config.Set("nova:auth-url", s.oldAuthUrl)
 	_, err := db.Session.Apps().RemoveAll(nil)
 	c.Assert(err, IsNil)
-	s.ts.Close()
 }
 
 func (s *S) getTestData(p ...string) io.ReadCloser {

@@ -398,6 +398,14 @@ func (s *S) TestAppInfoReturnsNotFoundWhenAppDoesNotExist(c *C) {
 }
 
 func (s *S) TestCreateAppHandler(c *C) {
+	srv, err := ec2test.NewServer()
+	c.Assert(err, IsNil)
+	defer srv.Quit()
+	old, err := config.GetString("aws:ec2-endpoint")
+	c.Assert(err, IsNil)
+	config.Set("aws:ec2-endpoint", srv.URL())
+	defer config.Set("aws:endpoint", old)
+	createGroup("juju-someApp", srv.URL())
 	a := App{Name: "someApp"}
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
 
@@ -461,29 +469,6 @@ func (s *S) TestCreateAppAddsProjectToGroupsInGitosis(c *C) {
 	c.Assert(err, IsNil)
 	time.Sleep(1e9)
 	c.Assert("writable = "+app.Name, IsInGitosis)
-}
-
-func (s *S) TestCreateAppCreatesOpenstackEnv(c *C) {
-	srv, err := ec2test.NewServer()
-	c.Assert(err, IsNil)
-	defer srv.Quit()
-	old, err := config.GetString("aws:ec2-endpoint")
-	c.Assert(err, IsNil)
-	config.Set("aws:ec2-endpoint", srv.URL())
-	defer config.Set("aws:endpoint", old)
-	createGroup("juju-someApp", srv.URL())
-	b := strings.NewReader(`{"name":"someApp", "framework":"django"}`)
-	request, err := http.NewRequest("POST", "/apps", b)
-	c.Assert(err, IsNil)
-	request.Header.Set("Content-Type", "application/json")
-	recorder := httptest.NewRecorder()
-	err = CreateAppHandler(recorder, request, s.user)
-	c.Assert(err, IsNil)
-	var a App
-	err = db.Session.Apps().Find(bson.M{"name": "someApp"}).One(&a)
-	c.Assert(err, IsNil)
-	c.Assert(a.OpenstackEnv.TenantId, Not(Equals), "")
-	c.Assert(a.OpenstackEnv.Creds[novaCreds]["access"], Not(Equals), "")
 }
 
 func (s *S) TestCreateAppReturnsConflictWithProperMessageWhenTheAppAlreadyExist(c *C) {

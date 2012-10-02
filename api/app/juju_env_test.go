@@ -62,12 +62,8 @@ func (s *S) TestNewEnviron(c *C) {
 		fsystem = s.rfs
 	}()
 	a := App{
-		Name: "name",
-		OpenstackEnv: openstackEnv{
-			Creds: map[string]map[string]string{
-				novaCreds: map[string]string{"access": "access", "secret": "secret"},
-			},
-		},
+		Name:     "name",
+		EC2Creds: map[string]string{"access": "access", "secret": "secret"},
 	}
 	err = newEnvironConf(&a)
 	c.Assert(err, IsNil)
@@ -103,12 +99,8 @@ func (s *S) TestNewEnvironShouldKeepExistentsEnvirons(c *C) {
 		fsystem = s.rfs
 	}()
 	a := App{
-		Name: "name",
-		OpenstackEnv: openstackEnv{
-			Creds: map[string]map[string]string{
-				novaCreds: map[string]string{"access": "access", "secret": "secret"},
-			},
-		},
+		Name:     "name",
+		EC2Creds: map[string]string{"access": "access", "secret": "secret"},
 	}
 	var result map[string]map[string]jujuEnv
 	err = newEnvironConf(&a)
@@ -144,12 +136,8 @@ func (s *S) TestRemoveEnviron(c *C) {
 		fsystem = s.rfs
 	}()
 	a := App{
-		Name: "env2",
-		OpenstackEnv: openstackEnv{
-			Creds: map[string]map[string]string{
-				novaCreds: map[string]string{"access": "access", "secret": "secret"},
-			},
-		},
+		Name:     "env2",
+		EC2Creds: map[string]string{"access": "access", "secret": "secret"},
 	}
 	err = removeEnvironConf(&a)
 	c.Assert(err, IsNil)
@@ -195,49 +183,6 @@ func (s *S) TestBootstrapShouldReturnErrorWhenAppHasNoJujuEnv(c *C) {
 	c.Assert(err, ErrorMatches, "^App must have a juju environment name in order to bootstrap$")
 }
 
-func (s *S) TestBootstrapShouldDestroyOpenstackEnvWhenItFails(c *C) {
-	s.ts.Close()
-	s.ts = s.mockServer("", "", "", "juju-env-failure-")
-	a := App{
-		Name:      "myApp",
-		Framework: "golang",
-		JujuEnv:   "myEnv",
-		OpenstackEnv: openstackEnv{
-			TenantId: "foo",
-			Creds: map[string]map[string]string{
-				novaCreds: map[string]string{"access": "foobar"},
-			},
-		},
-	}
-	err := db.Session.Apps().Insert(&a)
-	c.Assert(err, IsNil)
-	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
-	tmpdir, err := commandmocker.Add("juju", "$(exit 1)")
-	c.Assert(err, IsNil)
-	defer commandmocker.Remove(tmpdir)
-	err = bootstrap(&a)
-	c.Assert(err, ErrorMatches, "^Failed to bootstrap juju env.*")
-	c.Assert(called["juju-env-failure-delete-ec2-creds"], Equals, true)
-	c.Assert(called["juju-env-failure-delete-user"], Equals, true)
-	c.Assert(called["juju-env-failure-delete-tenant"], Equals, true)
-}
-
-func (s *S) TestBootstrapShouldReturnErrorWhenDestroyingOpenstackEnvFails(c *C) {
-	a := App{
-		Name:      "myApp",
-		Framework: "golang",
-		JujuEnv:   "myEnv",
-	}
-	err := db.Session.Apps().Insert(&a)
-	c.Assert(err, IsNil)
-	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
-	tmpdir, err := commandmocker.Add("juju", "$(exit 1)")
-	c.Assert(err, IsNil)
-	defer commandmocker.Remove(tmpdir)
-	err = bootstrap(&a)
-	c.Assert(err, ErrorMatches, "^Failed to destroy keystone environment.*")
-}
-
 func (s *S) setupJujuEnviron(c *C) *testing.RecordingFs {
 	env := map[string]map[string]jujuEnv{}
 	env["environments"] = map[string]jujuEnv{}
@@ -259,11 +204,7 @@ func (s *S) TestNewJujuEnvironShouldCreateNewEnvironAndReturnJujuEnvName(c *C) {
 	a := App{
 		Name:      "myApp",
 		Framework: "golang",
-		OpenstackEnv: openstackEnv{
-			Creds: map[string]map[string]string{
-				novaCreds: map[string]string{"access": "access", "secret": "secret"},
-			},
-		},
+		EC2Creds:  map[string]string{"access": "access", "secret": "secret"},
 	}
 	err := db.Session.Apps().Insert(&a)
 	c.Assert(err, IsNil)

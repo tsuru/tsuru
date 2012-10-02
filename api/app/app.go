@@ -30,16 +30,16 @@ type authorizer interface {
 }
 
 type App struct {
-	Env          map[string]bind.EnvVar
-	Framework    string
-	JujuEnv      string
-	OpenstackEnv openstackEnv
-	Logs         []applog
-	Name         string
-	State        string
-	Units        []Unit
-	Teams        []string
-	ec2Auth      authorizer
+	EC2Creds  map[string]string
+	Env       map[string]bind.EnvVar
+	Framework string
+	JujuEnv   string
+	Logs      []applog
+	Name      string
+	State     string
+	Units     []Unit
+	Teams     []string
+	ec2Auth   authorizer
 }
 
 func (a *App) MarshalJSON() ([]byte, error) {
@@ -74,12 +74,11 @@ func (a *App) Get() error {
 //
 //   Scenario 1: Multi tenancy enabled
 //
-//       1. Creates keystone credentials for the app
-//       2. Write the juju environment to juju's environments file
-//       3. Bootstrap juju environment
-//       4. Authorizes ssh and http access to the app instance
-//       5. Saves the app in the database
-//       6. Deploys juju charm
+//       1. Write the juju environment to juju's environments file
+//       2. Bootstrap juju environment
+//       3. Authorizes ssh and http access to the app instance
+//       4. Saves the app in the database
+//       5. Deploys juju charm
 //
 //   Scenario 2: Multi tenancy disabled
 //
@@ -119,17 +118,11 @@ func createApp(a *App) error {
 }
 
 // creates everything needed to a multi-tenant new environment
-//  - new keystone environ
 //  - new juju environ
 //  - bootstrap juju environ
 //  - creates ec2 groups authorization
 func newEnviron(a *App) error {
-	var err error
-	a.OpenstackEnv, err = newOpenstackEnv(a.Name)
-	if err != nil {
-		return err
-	}
-	err = newJujuEnviron(a)
+	err := newJujuEnviron(a)
 	if err != nil {
 		return err
 	}
@@ -142,7 +135,7 @@ func newEnviron(a *App) error {
 
 func authorize(a *App) error {
 	authorizer := a.authorizer()
-	authorizer.setCreds(a.OpenstackEnv.Creds[novaCreds]["access"], a.OpenstackEnv.Creds[novaCreds]["secret"])
+	authorizer.setCreds(a.EC2Creds["access"], a.EC2Creds["secret"])
 	err := authorizer.authorize(a)
 	if err != nil {
 		return fmt.Errorf("Failed to create the app, it was not possible to authorize the access to the app: %s", err)
@@ -216,12 +209,6 @@ func destroyEnvironment(a *App) error {
 	}
 	err := removeEnvironConf(a)
 	if err != nil {
-		return err
-	}
-	if err = removeOpenstackEnv(&a.OpenstackEnv); err != nil {
-		return err
-	}
-	if err = a.OpenstackEnv.disassociate(); err != nil {
 		return err
 	}
 	return nil
