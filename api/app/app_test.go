@@ -697,7 +697,7 @@ func (s *S) TestGetUnits(c *C) {
 	c.Assert(app.GetUnits(), DeepEquals, expected)
 }
 
-func (s *S) TestDeployShouldCallJujuDeployCommandWithRightEnvironmentInMultiTenantMode(c *C) {
+func (s *S) TestDeployShouldCallJujuDeployCommandWithRightEnvironment(c *C) {
 	a := App{
 		Name:      "smashed_pumpkin",
 		Framework: "golang",
@@ -717,28 +717,6 @@ func (s *S) TestDeployShouldCallJujuDeployCommandWithRightEnvironmentInMultiTena
 	expected := ".*deploying golang with name smashed_pumpkin on environment smashed_pumpkin.*"
 	c.Assert(logged, Matches, expected)
 	expected = ".*deploy -e smashed_pumpkin --repository=/home/charms local:golang smashed_pumpkin.*"
-	c.Assert(logged, Matches, expected)
-}
-
-func (s *S) TestDeployShouldCallJujuDeployCommandWithRightEnvironmentInSingleTenantMode(c *C) {
-	a := App{
-		Name:      "smashed_pumpkin",
-		Framework: "golang",
-		// set to tsuru.conf default (caller's responsibility)
-		JujuEnv: "xpto",
-	}
-	err := db.Session.Apps().Insert(&a)
-	c.Assert(err, IsNil)
-	w := bytes.NewBuffer([]byte{})
-	l := stdlog.New(w, "", stdlog.LstdFlags)
-	log.Target = l
-	dir, err := commandmocker.Add("juju", "$*")
-	c.Assert(err, IsNil)
-	defer commandmocker.Remove(dir)
-	err = deploy(&a)
-	c.Assert(err, IsNil)
-	logged := strings.Replace(w.String(), "\n", " ", -1)
-	expected := ".*deploy -e xpto --repository=/home/charms local:golang smashed_pumpkin.*"
 	c.Assert(logged, Matches, expected)
 }
 
