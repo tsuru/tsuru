@@ -16,8 +16,6 @@ func (s *S) TestAppIsABinderApp(c *C) {
 }
 
 func (s *S) TestDestroyShouldUnbindAppFromInstance(c *C) {
-	s.ts.Close()
-	s.ts = s.mockServer("", "", "", "")
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNoContent)
 	}))
@@ -34,12 +32,7 @@ func (s *S) TestDestroyShouldUnbindAppFromInstance(c *C) {
 		Name:      "myApp",
 		Framework: "",
 		Teams:     []string{},
-		OpenstackEnv: openstackEnv{
-			TenantId: "e60d1f0a-ee74-411c-b879-46aee9502bf9",
-			Creds: map[string]map[string]string{
-				novaCreds: map[string]string{"access": "91232f6796b54ca2a2b87ef50548b123"},
-			},
-		},
+		EC2Creds:  map[string]string{"access": "91232f6796b54ca2a2b87ef50548b123"},
 		Units: []Unit{
 			Unit{Ip: "10.10.10.10"},
 		},
