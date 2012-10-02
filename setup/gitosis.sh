@@ -19,11 +19,11 @@ generate-files-in = /mnt/gitosis\
 gitweb = no\
 daemon = no'
 
-grep -qFx "export TSURU_HOST=http://tsuru.plataformas.glb.com:8080" /etc/profile
+grep -qFx "export TSURU_HOST=http://localhost:8080" /etc/profile
 if  [ $? -ne 0 ]
 then
     echo "Adding TSURU_HOST to /etc/profile..."
-    sudo /bin/bash -c 'echo "export TSURU_HOST=http://tsuru.plataformas.glb.com:8080" >> /etc/profile'
+    sudo /bin/bash -c 'echo "export TSURU_HOST=http://localhost:8080" >> /etc/profile'
 fi
 source /etc/profile
 
@@ -60,7 +60,7 @@ sed -ie "s,\[gitosis\],$CONF_CONTENT_ESCAPED," ${REPO_PATH}/gitosis.conf
 git --git-dir=${REPO_PATH}/.git --work-tree=${REPO_PATH} add .
 git --git-dir=${REPO_PATH}/.git --work-tree=${REPO_PATH} commit -m "Adding default gitosis conf"
 git --git-dir=${REPO_PATH}/.git --work-tree=${REPO_PATH} push origin master
-git --git-dir=${REPO_PATH}/.git --work-tree=${REPO_PATH} remote add origin2 git@tsuru.plataformas.glb.com:gitosis-admin.git
+git --git-dir=${REPO_PATH}/.git --work-tree=${REPO_PATH} remote add origin2 git@localhost:gitosis-admin.git
 git --git-dir=${REPO_PATH}/.git --work-tree=${REPO_PATH} remote rm origin
 git --git-dir=${REPO_PATH}/.git --work-tree=${REPO_PATH} remote rename origin2 origin
 
