@@ -191,7 +191,7 @@ func (s *S) TestCreateApp(c *C) {
 	c.Assert(authorizer.actions, DeepEquals, []string{"setCreds access-key-here secret-key-here", "authorize appName"})
 }
 
-func (s *S) TestCantNewAppTwoAppsWithTheSameName(c *C) {
+func (s *S) TestCantCreateTwoAppsWithTheSameName(c *C) {
 	err := db.Session.Apps().Insert(bson.M{"name": "appName"})
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": "appName"})
