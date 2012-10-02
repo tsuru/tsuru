@@ -1615,6 +1615,12 @@ func (s *S) TestBindHandler(c *C) {
 		},
 	}
 	c.Assert(a.Env, DeepEquals, expectedEnv)
+	var envs []string
+	err = json.Unmarshal(recorder.Body.Bytes(), &envs)
+	c.Assert(err, IsNil)
+	sort.Strings(envs)
+	c.Assert(envs, DeepEquals, []string{"DATABASE_PASSWORD", "DATABASE_USER"})
+	c.Assert(recorder.Header().Get("Content-Type"), Equals, "application/json")
 }
 
 func (s *S) TestBindHandlerReturns404IfTheInstanceDoesNotExist(c *C) {
