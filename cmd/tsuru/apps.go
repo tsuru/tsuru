@@ -217,7 +217,8 @@ func (c *AppCreate) Run(context *cmd.Context, client cmd.Doer) error {
 	if err != nil {
 		return err
 	}
-	fmt.Fprintf(context.Stdout, `App "%s" successfully created!`+"\n", appName)
+	fmt.Fprintf(context.Stdout, `App "%s" is being created!`+"\n", appName)
+	fmt.Fprint(context.Stdout, "Check its status with app-list.\n")
 	fmt.Fprintf(context.Stdout, `Your repository for "%s" project is "%s"`+"\n", appName, out["repository_url"])
 	return nil
 }

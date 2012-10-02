@@ -84,7 +84,8 @@ func (s *S) TestAppCreateInfo(c *C) {
 func (s *S) TestAppCreate(c *C) {
 	var stdout, stderr bytes.Buffer
 	result := `{"status":"success", "repository_url":"git@tsuru.plataformas.glb.com:ble.git"}`
-	expected := `App "ble" successfully created!
+	expected := `App "ble" is being created!
+Check its status with app-list.
 Your repository for "ble" project is "git@tsuru.plataformas.glb.com:ble.git"` + "\n"
 	context := cmd.Context{
 		Args:   []string{"ble", "django"},
