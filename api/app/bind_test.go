@@ -32,11 +32,9 @@ func (s *S) TestDestroyShouldUnbindAppFromInstance(c *C) {
 		Name:      "myApp",
 		Framework: "",
 		Teams:     []string{},
-		EC2Creds:  map[string]string{"access": "91232f6796b54ca2a2b87ef50548b123"},
 		Units: []Unit{
-			Unit{Ip: "10.10.10.10"},
+			Unit{Ip: "10.10.10.10", Machine: 1},
 		},
-		ec2Auth: &fakeAuthorizer{},
 	}
 	err = createApp(&a)
 	c.Assert(err, IsNil)

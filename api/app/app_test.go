@@ -3,24 +3,20 @@ package app
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
 	"github.com/timeredbull/commandmocker"
 	"github.com/timeredbull/tsuru/api/auth"
 	"github.com/timeredbull/tsuru/api/bind"
-	"github.com/timeredbull/tsuru/config"
 	"github.com/timeredbull/tsuru/db"
 	"github.com/timeredbull/tsuru/log"
 	"github.com/timeredbull/tsuru/repository"
-	"io/ioutil"
 	"labix.org/v2/mgo/bson"
 	. "launchpad.net/gocheck"
-	"launchpad.net/goyaml"
 	stdlog "log"
 	"strings"
 )
 
 func (s *S) TestGet(c *C) {
-	newApp := App{Name: "myApp", Framework: "Django", ec2Auth: &fakeAuthorizer{}}
+	newApp := App{Name: "myApp", Framework: "Django"}
 	err := createApp(&newApp)
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": newApp.Name})
@@ -39,74 +35,6 @@ func (s *S) TestDestroy(c *C) {
 	dir, err := commandmocker.Add("juju", "$*")
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(dir)
-	u := Unit{Name: "duvido", Machine: 3}
-	authorizer := &fakeAuthorizer{}
-	a := App{
-		Name:      "duvido",
-		Framework: "django",
-		Units:     []Unit{u},
-		EC2Creds:  map[string]string{"access": "access-key-here", "secret": "secret-key-here"},
-		ec2Auth:   authorizer,
-	}
-	err = createApp(&a)
-	c.Assert(err, IsNil)
-	err = a.destroy()
-	c.Assert(err, IsNil)
-	qtd, err := db.Session.Apps().Find(bson.M{"name": a.Name}).Count()
-	c.Assert(qtd, Equals, 0)
-	c.Assert(authorizer.actions, DeepEquals, []string{"setCreds access-key-here secret-key-here", "authorize " + a.Name})
-}
-
-func (s *S) TestDestroyWithMultiTenancyOnCallsJujuDestroyEnvironment(c *C) {
-	dir, err := commandmocker.Add("juju", "$*")
-	c.Assert(err, IsNil)
-	defer commandmocker.Remove(dir)
-	u := Unit{Name: "duvido", Machine: 3}
-	a := App{
-		Name:      "duvido",
-		Framework: "django",
-		Units:     []Unit{u},
-		EC2Creds:  map[string]string{"access": "91232f6796b54ca2a2b87ef50548b123"},
-		ec2Auth:   &fakeAuthorizer{},
-	}
-	err = createApp(&a)
-	c.Assert(err, IsNil)
-	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
-	err = a.destroy()
-	c.Assert(err, IsNil)
-	c.Assert(commandmocker.Ran(dir), Equals, true)
-}
-
-func (s *S) TestDestroyWithnMultiTenancyOnDoesNotDeleteTheAppIfTheDestroyEnvironmentFail(c *C) {
-	dir, err := commandmocker.Add("juju", "$*")
-	c.Assert(err, IsNil)
-	defer commandmocker.Remove(dir)
-	u := Unit{Name: "duvido", Machine: 3}
-	a := App{
-		Name:      "duvido",
-		Framework: "django",
-		Units:     []Unit{u},
-		ec2Auth:   &fakeAuthorizer{},
-	}
-	err = createApp(&a)
-	c.Assert(err, IsNil)
-	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
-	dir, err = commandmocker.Error("juju", "juju failed to destroy the environment", 1)
-	c.Assert(err, IsNil)
-	defer commandmocker.Remove(dir)
-	err = a.destroy()
-	c.Assert(err, NotNil)
-	c.Assert(err, ErrorMatches, ".*juju failed to destroy the environment.*")
-	err = a.Get()
-	c.Assert(err, IsNil)
-}
-
-func (s *S) TestDestroyWithMultiTenancyOff(c *C) {
-	dir, err := commandmocker.Add("juju", "$*")
-	c.Assert(err, IsNil)
-	defer commandmocker.Remove(dir)
-	config.Set("multi-tenant", false)
-	defer config.Set("multi-tenant", true)
 	a := App{
 		Name:      "ritual",
 		Framework: "ruby",
@@ -117,7 +45,6 @@ func (s *S) TestDestroyWithMultiTenancyOff(c *C) {
 				Machine: 3,
 			},
 		},
-		ec2Auth: &fakeAuthorizer{},
 	}
 	err = createApp(&a)
 	c.Assert(err, IsNil)
@@ -129,35 +56,11 @@ func (s *S) TestDestroyWithMultiTenancyOff(c *C) {
 	err = a.Get()
 	c.Assert(err, NotNil)
 	logStr := strings.Replace(w.String(), "\n", "", -1)
-	c.Assert(logStr, Matches, ".*destroy-service -e [a-z]+ ritual.*")
-	c.Assert(logStr, Matches, ".*terminate-machine -e [a-z]+ 3.*")
-}
-
-func (s *S) TestDestroyWithMultiTenancyOffDoesNotDeleteTheAppIfJujuFailToDestroyTheService(c *C) {
-	dir, err := commandmocker.Add("juju", "$*")
+	c.Assert(logStr, Matches, ".*destroy-service ritual.*")
+	c.Assert(logStr, Matches, ".*terminate-machine 3.*")
+	qt, err := db.Session.Apps().Find(bson.M{"name": a.Name}).Count()
 	c.Assert(err, IsNil)
-	defer commandmocker.Remove(dir)
-	config.Set("multi-tenant", false)
-	defer config.Set("multi-tenant", true)
-	a := App{
-		Name:      "ritual",
-		Framework: "ruby",
-		Teams:     []string{s.team.Name},
-		Units: []Unit{
-			Unit{Name: "duvido", Machine: 3},
-		},
-		ec2Auth: &fakeAuthorizer{},
-	}
-	err = createApp(&a)
-	c.Assert(err, IsNil)
-	dir, err = commandmocker.Error("juju", "juju failed to destroy the service", 1)
-	c.Assert(err, IsNil)
-	defer commandmocker.Remove(dir)
-	err = a.destroy()
-	c.Assert(err, NotNil)
-	c.Assert(err, ErrorMatches, ".*juju failed to destroy the service.*")
-	err = a.Get()
-	c.Assert(err, IsNil)
+	c.Assert(qt, Equals, 0)
 }
 
 func (s *S) TestCreateApp(c *C) {
@@ -167,12 +70,9 @@ func (s *S) TestCreateApp(c *C) {
 	w := bytes.NewBuffer([]byte{})
 	l := stdlog.New(w, "", stdlog.LstdFlags)
 	log.Target = l
-	authorizer := fakeAuthorizer{}
 	a := App{
 		Name:      "appName",
 		Framework: "django",
-		EC2Creds:  map[string]string{"access": "access-key-here", "secret": "secret-key-here"},
-		ec2Auth:   &authorizer,
 	}
 	err = createApp(&a)
 	c.Assert(err, IsNil)
@@ -184,23 +84,19 @@ func (s *S) TestCreateApp(c *C) {
 	c.Assert(retrievedApp.Name, Equals, a.Name)
 	c.Assert(retrievedApp.Framework, Equals, a.Framework)
 	c.Assert(retrievedApp.State, Equals, a.State)
-	c.Assert(retrievedApp.JujuEnv, Equals, a.Name)
 	str := strings.Replace(w.String(), "\n", "", -1)
-	c.Assert(str, Matches, ".*bootstraping juju environment appName for the app appName.*")
-	c.Assert(str, Matches, ".*deploy -e appName --repository=/home/charms local:django appName.*")
-	c.Assert(authorizer.actions, DeepEquals, []string{"setCreds access-key-here secret-key-here", "authorize appName"})
+	c.Assert(str, Matches, ".*deploy --repository=/home/charms local:django appName.*")
 }
 
 func (s *S) TestCantCreateTwoAppsWithTheSameName(c *C) {
 	err := db.Session.Apps().Insert(bson.M{"name": "appName"})
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": "appName"})
-	a := App{Name: "appName", ec2Auth: &fakeAuthorizer{}}
+	a := App{Name: "appName"}
 	err = createApp(&a)
 	c.Assert(err, NotNil)
 }
 
-// Issue 116
 func (s *S) TestDoesNotSaveTheAppInTheDatabaseIfJujuFail(c *C) {
 	dir, err := commandmocker.Error("juju", "juju failed", 1)
 	c.Assert(err, IsNil)
@@ -208,7 +104,6 @@ func (s *S) TestDoesNotSaveTheAppInTheDatabaseIfJujuFail(c *C) {
 	a := App{
 		Name:      "myapp",
 		Framework: "ruby",
-		ec2Auth:   &fakeAuthorizer{},
 	}
 	err = createApp(&a)
 	c.Assert(err, NotNil)
@@ -221,7 +116,6 @@ func (s *S) TestAppendOrUpdate(c *C) {
 	a := App{
 		Name:      "appName",
 		Framework: "django",
-		ec2Auth:   &fakeAuthorizer{},
 	}
 	err := createApp(&a)
 	c.Assert(err, IsNil)
@@ -647,21 +541,17 @@ func (s *S) TestUpdateHooks(c *C) {
 				Machine:           4,
 			},
 		},
-		ec2Auth: &fakeAuthorizer{},
 	}
 	err = createApp(&a)
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
 	out, err := a.updateHooks()
 	c.Assert(err, IsNil)
-	c.Assert(string(out), Equals, "ssh -o StrictHostKeyChecking no -q -e someApp 4 /var/lib/tsuru/hooks/dependenciesssh -o StrictHostKeyChecking no -q -e someApp 4 /var/lib/tsuru/hooks/restart")
+	c.Assert(string(out), Equals, "ssh -o StrictHostKeyChecking no -q 4 /var/lib/tsuru/hooks/dependenciesssh -o StrictHostKeyChecking no -q 4 /var/lib/tsuru/hooks/restart")
 }
 
 func (s *S) TestLogShouldStoreLog(c *C) {
-	a := App{
-		Name:    "newApp",
-		ec2Auth: &fakeAuthorizer{},
-	}
+	a := App{Name: "newApp"}
 	err := createApp(&a)
 	c.Assert(err, IsNil)
 	err = a.log("last log msg")
@@ -697,11 +587,10 @@ func (s *S) TestGetUnits(c *C) {
 	c.Assert(app.GetUnits(), DeepEquals, expected)
 }
 
-func (s *S) TestDeployShouldCallJujuDeployCommandWithRightEnvironment(c *C) {
+func (s *S) TestDeployShouldCallJujuDeployCommand(c *C) {
 	a := App{
 		Name:      "smashed_pumpkin",
 		Framework: "golang",
-		JujuEnv:   "smashed_pumpkin",
 	}
 	err := db.Session.Apps().Insert(&a)
 	c.Assert(err, IsNil)
@@ -714,165 +603,10 @@ func (s *S) TestDeployShouldCallJujuDeployCommandWithRightEnvironment(c *C) {
 	err = deploy(&a)
 	c.Assert(err, IsNil)
 	logged := strings.Replace(w.String(), "\n", " ", -1)
-	expected := ".*deploying golang with name smashed_pumpkin on environment smashed_pumpkin.*"
+	expected := ".*deploying golang with name smashed_pumpkin.*"
 	c.Assert(logged, Matches, expected)
-	expected = ".*deploy -e smashed_pumpkin --repository=/home/charms local:golang smashed_pumpkin.*"
+	expected = ".*deploy --repository=/home/charms local:golang smashed_pumpkin.*"
 	c.Assert(logged, Matches, expected)
-}
-
-func (s *S) TestDeployShouldReturnErrorIfAppHasNoJujuEnv(c *C) {
-	a := App{
-		Name:      "smashed_pumpkin",
-		Framework: "golang",
-	}
-	err := db.Session.Apps().Insert(&a)
-	c.Assert(err, IsNil)
-	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
-	dir, err := commandmocker.Add("juju", "$*")
-	c.Assert(err, IsNil)
-	defer commandmocker.Remove(dir)
-	err = deploy(&a)
-	expected := "^" + jujuEnvEmptyError.Error() + "$"
-	c.Assert(err, ErrorMatches, expected)
-}
-
-func (s *S) TestAuthorizeShouldCallEc2Authorizer(c *C) {
-	fakeAuth := &fakeAuthorizer{}
-	a := App{
-		Name:      "smashed_pumpkin",
-		Framework: "golang",
-		EC2Creds:  map[string]string{"access": "access", "secret": "secret"},
-		ec2Auth:   fakeAuth,
-	}
-	err := db.Session.Apps().Insert(&a)
-	c.Assert(err, IsNil)
-	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
-	err = authorize(&a)
-	c.Assert(err, IsNil)
-	action := "authorize " + a.Name
-	c.Assert(fakeAuth.hasAction(action), Equals, true)
-	action = "setCreds " + a.EC2Creds["access"] + " " + a.EC2Creds["secret"]
-	c.Assert(fakeAuth.hasAction(action), Equals, true)
-}
-
-func (s *S) TestAuthorizeShouldRepassErrorWhenEc2AuthorizeFails(c *C) {
-	fakeAuth := &fakeFailureAuthorizer{}
-	a := App{
-		Name:      "smashed_pumpkin",
-		Framework: "golang",
-		EC2Creds:  map[string]string{"access": "access", "secret": "secret"},
-		ec2Auth:   fakeAuth,
-	}
-	err := db.Session.Apps().Insert(&a)
-	c.Assert(err, IsNil)
-	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
-	err = authorize(&a)
-	c.Check(err, NotNil)
-	expected := "^Failed to create the app, it was not possible to authorize the access to the app: authorize error$"
-	c.Assert(err, ErrorMatches, expected)
-}
-
-func (s *S) TestNewEnvironShouldCreateNewJujuEnv(c *C) {
-	rfs := s.setupJujuEnviron(c)
-	fsystem = rfs
-	defer func() {
-		fsystem = s.rfs
-	}()
-	fakeAuth := &fakeAuthorizer{}
-	a := App{
-		Name:      "myApp",
-		Framework: "golang",
-		EC2Creds:  map[string]string{"access": "access", "secret": "secret"},
-		ec2Auth:   fakeAuth,
-		JujuEnv:   "myApp",
-	}
-	err := db.Session.Apps().Insert(&a)
-	c.Assert(err, IsNil)
-	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
-	err = newEnviron(&a)
-	c.Assert(err, IsNil)
-	c.Assert(rfs.HasAction("openfile "+environConfPath+" with mode 0600"), Equals, true)
-}
-
-func (s *S) TestNewEnvironShouldAuthorizeAppGroup(c *C) {
-	fakeAuth := &fakeAuthorizer{}
-	a := App{
-		Name:      "myApp",
-		Framework: "golang",
-		EC2Creds:  map[string]string{"access": "access", "secret": "secret"},
-		ec2Auth:   fakeAuth,
-		JujuEnv:   "myApp",
-	}
-	err := db.Session.Apps().Insert(&a)
-	c.Assert(err, IsNil)
-	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
-	err = newEnviron(&a)
-	c.Assert(err, IsNil)
-	action := "authorize " + a.Name
-	c.Assert(fakeAuth.hasAction(action), Equals, true)
-}
-
-func (s *S) TestCreateAppShouldCreateNewJujuEnvironment(c *C) {
-	app := App{
-		Name:      "myApp",
-		Framework: "golang",
-		Teams:     []string{s.team.Name},
-		ec2Auth:   &fakeAuthorizer{},
-	}
-	err := createApp(&app)
-	c.Assert(err, IsNil)
-	defer db.Session.Apps().Remove(bson.M{"name": app.Name})
-	c.Assert(s.rfs.HasAction("openfile "+environConfPath+" with mode 0600"), Equals, true)
-}
-
-func (s *S) TestAppDestroyShouldUpdateJujuEnvironment(c *C) {
-	app := App{
-		Name:      "myApp",
-		Framework: "golang",
-		Teams:     []string{s.team.Name},
-		ec2Auth:   &fakeAuthorizer{},
-	}
-	err := createApp(&app)
-	c.Assert(err, IsNil)
-	err = app.destroy()
-	c.Assert(err, IsNil)
-	file, err := s.rfs.Open(environConfPath)
-	c.Assert(err, IsNil)
-	content, err := ioutil.ReadAll(file)
-	c.Assert(err, IsNil)
-	result := map[string]map[string]jujuEnv{}
-	goyaml.Unmarshal(content, &result)
-	_, ok := result["environments"]["myApp"]
-	c.Assert(ok, Equals, false)
-}
-
-func (s *S) TestCreateAppShouldSetAppEnvironToDefaultFromConfWhenMultiTenantIsDisabled(c *C) {
-	defaultEnv, err := config.GetString("juju:default-env")
-	c.Assert(err, IsNil)
-	config.Set("multi-tenant", false)
-	defer config.Set("multi-tenant", true)
-	a := App{
-		Name:      "ironic",
-		Framework: "ruby",
-		Teams:     []string{s.team.Name},
-		ec2Auth:   &fakeAuthorizer{},
-	}
-	err = createApp(&a)
-	c.Assert(err, IsNil)
-	c.Assert(a.JujuEnv, Equals, defaultEnv)
-}
-
-func (s *S) TestAuthorizerReturnEc2AuthWhenItsNotNil(c *C) {
-	auth := &fakeAuthorizer{}
-	app := App{Name: "xikin", ec2Auth: auth}
-	got := app.authorizer()
-	c.Assert(got, DeepEquals, auth)
-}
-
-func (s *S) TestAuthorizerInstantiateEc2AuhtorizerWhenEc2AuthIsNul(c *C) {
-	app := App{Name: "chico"}
-	got := app.authorizer()
-	c.Assert(got, FitsTypeOf, &ec2Authorizer{})
 }
 
 func (s *S) TestAppMarshalJson(c *C) {
@@ -895,48 +629,4 @@ func (s *S) TestAppMarshalJson(c *C) {
 	err = json.Unmarshal(data, &result)
 	c.Assert(err, IsNil)
 	c.Assert(result, DeepEquals, expected)
-}
-
-type fakeAuthorizer struct {
-	actions []string
-}
-
-func (a *fakeAuthorizer) authorize(app *App) error {
-	a.actions = append(a.actions, "authorize "+app.Name)
-	return nil
-}
-
-func (a *fakeAuthorizer) setCreds(accessKey string, secretKey string) {
-	a.actions = append(a.actions, "setCreds "+accessKey+" "+secretKey)
-}
-
-func (a *fakeAuthorizer) hasAction(action string) bool {
-	for _, v := range a.actions {
-		if v == action {
-			return true
-		}
-	}
-	return false
-}
-
-type fakeFailureAuthorizer struct {
-	actions []string
-}
-
-func (a *fakeFailureAuthorizer) authorize(app *App) error {
-	a.actions = append(a.actions, "authorize "+app.Name)
-	return errors.New("authorize error")
-}
-
-func (a *fakeFailureAuthorizer) setCreds(accessKey string, secretKey string) {
-	a.actions = append(a.actions, "setCreds "+accessKey+" "+secretKey)
-}
-
-func (a *fakeFailureAuthorizer) hasAction(action string) bool {
-	for _, v := range a.actions {
-		if v == action {
-			return true
-		}
-	}
-	return false
 }

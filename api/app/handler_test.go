@@ -8,7 +8,6 @@ import (
 	"github.com/timeredbull/tsuru/api/auth"
 	"github.com/timeredbull/tsuru/api/bind"
 	"github.com/timeredbull/tsuru/api/service"
-	"github.com/timeredbull/tsuru/config"
 	"github.com/timeredbull/tsuru/db"
 	"github.com/timeredbull/tsuru/errors"
 	"github.com/timeredbull/tsuru/log"
@@ -16,7 +15,6 @@ import (
 	"io"
 	"io/ioutil"
 	"labix.org/v2/mgo/bson"
-	"launchpad.net/goamz/ec2/ec2test"
 	. "launchpad.net/gocheck"
 	stdlog "log"
 	"net/http"
@@ -62,7 +60,6 @@ pos-restart:
 		Name:      "someapp",
 		Framework: "django",
 		Teams:     []string{s.team.Name},
-		ec2Auth:   &fakeAuthorizer{},
 	}
 	err = createApp(&a)
 	c.Assert(err, IsNil)
@@ -106,7 +103,6 @@ pos-restart:
 		Name:      "someapp",
 		Framework: "django",
 		Teams:     []string{s.team.Name},
-		ec2Auth:   &fakeAuthorizer{},
 	}
 	err = createApp(&a)
 	c.Assert(err, IsNil)
@@ -149,7 +145,7 @@ func (s *S) TestCloneRepositoryShouldReturnNotFoundWhenAppDoesNotExist(c *C) {
 
 func (s *S) TestAppList(c *C) {
 	u := Unit{Name: "app1/0", Ip: "10.10.10.10"}
-	app1 := App{Name: "app1", Teams: []string{s.team.Name}, Units: []Unit{u}, ec2Auth: &fakeAuthorizer{}}
+	app1 := App{Name: "app1", Teams: []string{s.team.Name}, Units: []Unit{u}}
 	err := createApp(&app1)
 	c.Assert(err, IsNil)
 	app1.Units = []Unit{u}
@@ -158,9 +154,8 @@ func (s *S) TestAppList(c *C) {
 	defer db.Session.Apps().Remove(bson.M{"name": app1.Name})
 	u2 := Unit{Name: "app2/0"}
 	app2 := App{
-		Name:    "app2",
-		Teams:   []string{s.team.Name},
-		ec2Auth: &fakeAuthorizer{},
+		Name:  "app2",
+		Teams: []string{s.team.Name},
 	}
 	err = createApp(&app2)
 	c.Assert(err, IsNil)
@@ -201,9 +196,8 @@ func (s *S) TestAppListShouldListAllAppsOfAllTeamsThatTheUserIsAMember(c *C) {
 	c.Assert(err, IsNil)
 	defer db.Session.Teams().Remove(bson.M{"_id": team.Name})
 	app1 := App{
-		Name:    "app1",
-		Teams:   []string{s.team.Name, "angra"},
-		ec2Auth: &fakeAuthorizer{},
+		Name:  "app1",
+		Teams: []string{s.team.Name, "angra"},
 	}
 	err = createApp(&app1)
 	c.Assert(err, IsNil)
@@ -234,20 +228,15 @@ func (s *S) TestListShouldReturnStatusNoContentWhenAppListIsNil(c *C) {
 }
 
 func (s *S) TestDelete(c *C) {
-	srv, err := ec2test.NewServer()
-	c.Assert(err, IsNil)
-	defer srv.Quit()
-	old, err := config.GetString("aws:ec2-endpoint")
-	c.Assert(err, IsNil)
-	config.Set("aws:ec2-endpoint", srv.URL())
-	defer config.Set("aws:endpoint", old)
-	createGroup("juju-MyAppToDelete", srv.URL())
 	myApp := App{
 		Name:      "MyAppToDelete",
 		Framework: "django",
 		Teams:     []string{s.team.Name},
+		Units: []Unit{
+			Unit{Ip: "10.10.10.10", Machine: 1},
+		},
 	}
-	err = createApp(&myApp)
+	err := createApp(&myApp)
 	c.Assert(err, IsNil)
 	request, err := http.NewRequest("DELETE", "/apps/"+myApp.Name+"?:name="+myApp.Name, nil)
 	c.Assert(err, IsNil)
@@ -257,11 +246,10 @@ func (s *S) TestDelete(c *C) {
 	c.Assert(recorder.Code, Equals, 200)
 }
 
-func (s *S) TestDeleteShouldReturnForbiddenIfTheGivenUserDoesNotHaveAccesToTheapp(c *C) {
+func (s *S) TestDeleteShouldReturnForbiddenIfTheGivenUserDoesNotHaveAccesToTheApp(c *C) {
 	myApp := App{
 		Name:      "MyAppToDelete",
 		Framework: "django",
-		ec2Auth:   &fakeAuthorizer{},
 	}
 	err := createApp(&myApp)
 	c.Assert(err, IsNil)
@@ -290,17 +278,15 @@ func (s *S) TestDeleteShouldReturnNotFoundIfTheAppDoesNotExist(c *C) {
 }
 
 func (s *S) TestDeleteAppRemovesProjectFromAllTeamsInGitosis(c *C) {
-	srv, err := ec2test.NewServer()
-	c.Assert(err, IsNil)
-	defer srv.Quit()
-	old, err := config.GetString("aws:ec2-endpoint")
-	c.Assert(err, IsNil)
-	config.Set("aws:ec2-endpoint", srv.URL())
-	defer config.Set("aws:endpoint", old)
-	createGroup("juju-MyAppToDelete", srv.URL())
 	s.addGroup()
-	myApp := &App{Name: "MyAppToDelete", Framework: "django"}
-	_, err = createAppHelper(myApp, s.user)
+	myApp := &App{
+		Name:      "MyAppToDelete",
+		Framework: "django",
+		Units: []Unit{
+			Unit{Ip: "10.10.10.10", Machine: 1},
+		},
+	}
+	_, err := createAppHelper(myApp, s.user)
 	c.Assert(err, IsNil)
 	request, err := http.NewRequest("DELETE", "/apps/"+myApp.Name+"?:name="+myApp.Name, nil)
 	c.Assert(err, IsNil)
@@ -319,7 +305,6 @@ func (s *S) TestDeleteReturnsErrorIfAppDestroyFails(c *C) {
 		Name:      "MyAppToDelete",
 		Framework: "django",
 		Teams:     []string{s.team.Name},
-		ec2Auth:   &fakeAuthorizer{},
 	}
 	err = createApp(&myApp)
 	c.Assert(err, IsNil)
@@ -338,7 +323,6 @@ func (s *S) TestAppInfo(c *C) {
 		Name:      "NewApp",
 		Framework: "django",
 		Teams:     []string{s.team.Name},
-		ec2Auth:   &fakeAuthorizer{},
 	}
 	err := createApp(&expectedApp)
 	c.Assert(err, IsNil)
@@ -367,7 +351,6 @@ func (s *S) TestAppInfoReturnsForbiddenWhenTheUserDoesNotHaveAccessToTheApp(c *C
 	expectedApp := App{
 		Name:      "NewApp",
 		Framework: "django",
-		ec2Auth:   &fakeAuthorizer{},
 	}
 	err := createApp(&expectedApp)
 	c.Assert(err, IsNil)
@@ -398,29 +381,17 @@ func (s *S) TestAppInfoReturnsNotFoundWhenAppDoesNotExist(c *C) {
 }
 
 func (s *S) TestCreateAppHandler(c *C) {
-	srv, err := ec2test.NewServer()
-	c.Assert(err, IsNil)
-	defer srv.Quit()
-	old, err := config.GetString("aws:ec2-endpoint")
-	c.Assert(err, IsNil)
-	config.Set("aws:ec2-endpoint", srv.URL())
-	defer config.Set("aws:endpoint", old)
-	createGroup("juju-someApp", srv.URL())
 	a := App{Name: "someApp"}
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
-
 	b := strings.NewReader(`{"name":"someApp", "framework":"django"}`)
 	request, err := http.NewRequest("POST", "/apps", b)
 	c.Assert(err, IsNil)
 	request.Header.Set("Content-Type", "application/json")
 	recorder := httptest.NewRecorder()
-
 	err = CreateAppHandler(recorder, request, s.user)
 	c.Assert(err, IsNil)
-
 	body, err := ioutil.ReadAll(recorder.Body)
 	c.Assert(err, IsNil)
-
 	repoUrl := repository.GetUrl(a.Name)
 	var obtained map[string]string
 	expected := map[string]string{
@@ -428,10 +399,8 @@ func (s *S) TestCreateAppHandler(c *C) {
 		"repository_url": repoUrl,
 	}
 	err = json.Unmarshal(body, &obtained)
-
 	c.Assert(obtained, DeepEquals, expected)
 	c.Assert(recorder.Code, Equals, 200)
-
 	var gotApp App
 	err = db.Session.Apps().Find(bson.M{"name": "someApp"}).One(&gotApp)
 	c.Assert(err, IsNil)
@@ -455,36 +424,17 @@ func (s *S) TestCreateAppReturns403IfTheUserIsNotMemberOfAnyTeam(c *C) {
 }
 
 func (s *S) TestCreateAppAddsProjectToGroupsInGitosis(c *C) {
-	srv, err := ec2test.NewServer()
-	c.Assert(err, IsNil)
-	defer srv.Quit()
-	old, err := config.GetString("aws:ec2-endpoint")
-	c.Assert(err, IsNil)
-	config.Set("aws:ec2-endpoint", srv.URL())
-	defer config.Set("aws:endpoint", old)
-	createGroup("juju-devincachu", srv.URL())
 	s.addGroup()
 	app := &App{Name: "devincachu", Framework: "django"}
-	_, err = createAppHelper(app, s.user)
+	_, err := createAppHelper(app, s.user)
 	c.Assert(err, IsNil)
 	time.Sleep(1e9)
 	c.Assert("writable = "+app.Name, IsInGitosis)
 }
 
 func (s *S) TestCreateAppReturnsConflictWithProperMessageWhenTheAppAlreadyExist(c *C) {
-	srv, err := ec2test.NewServer()
-	c.Assert(err, IsNil)
-	defer srv.Quit()
-	old, err := config.GetString("aws:ec2-endpoint")
-	c.Assert(err, IsNil)
-	config.Set("aws:ec2-endpoint", srv.URL())
-	defer config.Set("aws:endpoint", old)
-	createGroup("juju-plainsofdawn", srv.URL())
-	a := App{
-		Name:    "plainsofdawn",
-		ec2Auth: &fakeAuthorizer{},
-	}
-	err = createApp(&a)
+	a := App{Name: "plainsofdawn"}
+	err := createApp(&a)
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
 	b := strings.NewReader(`{"name":"plainsofdawn", "framework":"django"}`)
@@ -509,7 +459,6 @@ func (s *S) TestAddTeamToTheApp(c *C) {
 		Name:      "itshard",
 		Framework: "django",
 		Teams:     []string{t.Name},
-		ec2Auth:   &fakeAuthorizer{},
 	}
 	err = createApp(&a)
 	c.Assert(err, IsNil)
@@ -542,7 +491,6 @@ func (s *S) TestGrantAccessToTeamReturn401IfTheGivenUserDoesNotHasAccessToTheApp
 	a := App{
 		Name:      "itshard",
 		Framework: "django",
-		ec2Auth:   &fakeAuthorizer{},
 	}
 	err := createApp(&a)
 	c.Assert(err, IsNil)
@@ -564,7 +512,6 @@ func (s *S) TestGrantAccessToTeamReturn404IfTheTeamDoesNotExist(c *C) {
 		Name:      "itshard",
 		Framework: "django",
 		Teams:     []string{s.team.Name},
-		ec2Auth:   &fakeAuthorizer{},
 	}
 	err := createApp(&a)
 	c.Assert(err, IsNil)
@@ -586,7 +533,6 @@ func (s *S) TestGrantAccessToTeamReturn409IfTheTeamHasAlreadyAccessToTheApp(c *C
 		Name:      "itshard",
 		Framework: "django",
 		Teams:     []string{s.team.Name},
-		ec2Auth:   &fakeAuthorizer{},
 	}
 	err := createApp(&a)
 	c.Assert(err, IsNil)
@@ -612,7 +558,6 @@ func (s *S) TestGrantAccessToAppAddsTheProjectInGitosis(c *C) {
 		Name:      "tsuru",
 		Framework: "golang",
 		Teams:     []string{t.Name},
-		ec2Auth:   &fakeAuthorizer{},
 	}
 	err = createApp(&a)
 	c.Assert(err, IsNil)
@@ -631,7 +576,6 @@ func (s *S) TestRevokeAccessFromTeam(c *C) {
 		Name:      "itshard",
 		Framework: "django",
 		Teams:     []string{"abcd", s.team.Name},
-		ec2Auth:   &fakeAuthorizer{},
 	}
 	err = createApp(&a)
 	c.Assert(err, IsNil)
@@ -663,7 +607,6 @@ func (s *S) TestRevokeAccessFromTeamReturn401IfTheGivenUserDoesNotHavePermission
 	a := App{
 		Name:      "itshard",
 		Framework: "django",
-		ec2Auth:   &fakeAuthorizer{},
 	}
 	err := createApp(&a)
 	c.Assert(err, IsNil)
@@ -685,7 +628,6 @@ func (s *S) TestRevokeAccessFromTeamReturn404IfTheTeamDoesNotExist(c *C) {
 		Name:      "itshard",
 		Framework: "django",
 		Teams:     []string{s.team.Name},
-		ec2Auth:   &fakeAuthorizer{},
 	}
 	err := createApp(&a)
 	c.Assert(err, IsNil)
@@ -712,7 +654,6 @@ func (s *S) TestRevokeAccessFromTeamReturn404IfTheTeamDoesNotHaveAccessToTheApp(
 		Name:      "itshard",
 		Framework: "django",
 		Teams:     []string{s.team.Name, t2.Name},
-		ec2Auth:   &fakeAuthorizer{},
 	}
 	err := createApp(&a)
 	c.Assert(err, IsNil)
@@ -733,7 +674,6 @@ func (s *S) TestRevokeAccessFromTeamReturn403IfTheTeamIsTheLastWithAccessToTheAp
 		Name:      "itshard",
 		Framework: "django",
 		Teams:     []string{s.team.Name},
-		ec2Auth:   &fakeAuthorizer{},
 	}
 	err := createApp(&a)
 	c.Assert(err, IsNil)
@@ -760,7 +700,6 @@ func (s *S) TestRevokeAccessFromTeamRemovesTheProjectFromGitosisConf(c *C) {
 		Name:      "tsuru",
 		Framework: "golang",
 		Teams:     []string{t.Name},
-		ec2Auth:   &fakeAuthorizer{},
 	}
 	err = createApp(&a)
 	c.Assert(err, IsNil)
@@ -788,7 +727,6 @@ func (s *S) TestRunHandlerShouldExecuteTheGivenCommandInTheGivenApp(c *C) {
 		Name:      "secrets",
 		Framework: "arch enemy",
 		Teams:     []string{s.team.Name},
-		ec2Auth:   &fakeAuthorizer{},
 	}
 	err = createApp(&a)
 	c.Assert(err, IsNil)
@@ -801,7 +739,7 @@ func (s *S) TestRunHandlerShouldExecuteTheGivenCommandInTheGivenApp(c *C) {
 	recorder := httptest.NewRecorder()
 	err = RunCommand(recorder, request, s.user)
 	c.Assert(err, IsNil)
-	c.Assert(recorder.Body.String(), Equals, "ssh -o StrictHostKeyChecking no -q -e secrets 10 [ -f /home/application/apprc ] && source /home/application/apprc; [ -d /home/application/current ] && cd /home/application/current; ls")
+	c.Assert(recorder.Body.String(), Equals, "ssh -o StrictHostKeyChecking no -q 10 [ -f /home/application/apprc ] && source /home/application/apprc; [ -d /home/application/current ] && cd /home/application/current; ls")
 }
 
 func (s *S) TestRunHandlerReturnsTheOutputOfTheCommandEvenIfItFails(c *C) {
@@ -820,7 +758,6 @@ func (s *S) TestRunHandlerReturnsTheOutputOfTheCommandEvenIfItFails(c *C) {
 		Name:      "secrets",
 		Framework: "arch enemy",
 		Teams:     []string{s.team.Name},
-		ec2Auth:   &fakeAuthorizer{},
 	}
 	err = createApp(&a)
 	c.Assert(err, IsNil)
@@ -855,7 +792,6 @@ func (s *S) TestRunHandlerShouldFilterOutputFromJuju(c *C) {
 		Name:      "unspeakable",
 		Framework: "vougan",
 		Teams:     []string{s.team.Name},
-		ec2Auth:   &fakeAuthorizer{},
 	}
 	err = createApp(&a)
 	c.Assert(err, IsNil)
@@ -915,7 +851,6 @@ func (s *S) TestRunHandlerReturnsForbiddenIfTheGivenUserDoesNotHaveAccessToTheAp
 	a := App{
 		Name:      "secrets",
 		Framework: "arch enemy",
-		ec2Auth:   &fakeAuthorizer{},
 	}
 	err := createApp(&a)
 	c.Assert(err, IsNil)
@@ -935,7 +870,6 @@ func (s *S) TestGetEnvHandlerGetsEnvironmentVariableFromApp(c *C) {
 		Name:      "everything-i-want",
 		Framework: "gotthard",
 		Teams:     []string{s.team.Name},
-		ec2Auth:   &fakeAuthorizer{},
 	}
 	err := createApp(&a)
 	c.Assert(err, IsNil)
@@ -958,9 +892,8 @@ func (s *S) TestGetEnvHandlerGetsEnvironmentVariableFromApp(c *C) {
 
 func (s *S) TestGetEnvHandlerShouldAcceptMultipleVariables(c *C) {
 	a := App{
-		Name:    "four-sticks",
-		Teams:   []string{s.team.Name},
-		ec2Auth: &fakeAuthorizer{},
+		Name:  "four-sticks",
+		Teams: []string{s.team.Name},
 	}
 	err := createApp(&a)
 	c.Assert(err, IsNil)
@@ -986,7 +919,6 @@ func (s *S) TestGetEnvHandlerReturnsAllVariablesIfEnvironmentVariablesAreMissing
 		Name:      "time",
 		Framework: "pink-floyd",
 		Teams:     []string{s.team.Name},
-		ec2Auth:   &fakeAuthorizer{},
 	}
 	err := createApp(&a)
 	c.Assert(err, IsNil)
@@ -1037,7 +969,6 @@ func (s *S) TestGetEnvHandlerReturnsForbiddenIfTheGivenUserDoesNotHaveAccessToTh
 	a := App{
 		Name:      "lost",
 		Framework: "vougan",
-		ec2Auth:   &fakeAuthorizer{},
 	}
 	err := createApp(&a)
 	c.Assert(err, IsNil)
@@ -1053,10 +984,7 @@ func (s *S) TestGetEnvHandlerReturnsForbiddenIfTheGivenUserDoesNotHaveAccessToTh
 }
 
 func (s *S) TestSetEnvRespectsThePublicOnlyFlagKeepPrivateVariablesWhenItsTrue(c *C) {
-	a := App{
-		Name:    "myapp",
-		ec2Auth: &fakeAuthorizer{},
-	}
+	a := App{Name: "myapp"}
 	err := createApp(&a)
 	c.Assert(err, IsNil)
 	a.Env = map[string]bind.EnvVar{
@@ -1100,10 +1028,7 @@ func (s *S) TestSetEnvRespectsThePublicOnlyFlagKeepPrivateVariablesWhenItsTrue(c
 }
 
 func (s *S) TestSetEnvRespectsThePublicOnlyFlagOverwrittenAllVariablesWhenItsFalse(c *C) {
-	a := App{
-		Name:    "myapp",
-		ec2Auth: &fakeAuthorizer{},
-	}
+	a := App{Name: "myapp"}
 	err := createApp(&a)
 	c.Assert(err, IsNil)
 	a.Env = map[string]bind.EnvVar{
@@ -1148,9 +1073,8 @@ func (s *S) TestSetEnvRespectsThePublicOnlyFlagOverwrittenAllVariablesWhenItsFal
 
 func (s *S) TestSetEnvHandlerShouldSetAPublicEnvironmentVariableInTheApp(c *C) {
 	a := App{
-		Name:    "black-dog",
-		Teams:   []string{s.team.Name},
-		ec2Auth: &fakeAuthorizer{},
+		Name:  "black-dog",
+		Teams: []string{s.team.Name},
 	}
 	err := createApp(&a)
 	c.Assert(err, IsNil)
@@ -1171,9 +1095,8 @@ func (s *S) TestSetEnvHandlerShouldSetAPublicEnvironmentVariableInTheApp(c *C) {
 
 func (s *S) TestSetEnvHandlerShouldSetMultipleEnvironmentVariablesInTheApp(c *C) {
 	a := App{
-		Name:    "vigil",
-		Teams:   []string{s.team.Name},
-		ec2Auth: &fakeAuthorizer{},
+		Name:  "vigil",
+		Teams: []string{s.team.Name},
 	}
 	err := createApp(&a)
 	c.Assert(err, IsNil)
@@ -1195,9 +1118,8 @@ func (s *S) TestSetEnvHandlerShouldSetMultipleEnvironmentVariablesInTheApp(c *C)
 
 func (s *S) TestSetEnvHandlerShouldSupportSpacesInTheEnvironmentVariableValue(c *C) {
 	a := App{
-		Name:    "loser",
-		Teams:   []string{s.team.Name},
-		ec2Auth: &fakeAuthorizer{},
+		Name:  "loser",
+		Teams: []string{s.team.Name},
 	}
 	err := createApp(&a)
 	c.Assert(err, IsNil)
@@ -1219,9 +1141,8 @@ func (s *S) TestSetEnvHandlerShouldSupportSpacesInTheEnvironmentVariableValue(c 
 
 func (s *S) TestSetEnvHandlerShouldSupportValuesWithDot(c *C) {
 	a := App{
-		Name:    "losers",
-		Teams:   []string{s.team.Name},
-		ec2Auth: &fakeAuthorizer{},
+		Name:  "losers",
+		Teams: []string{s.team.Name},
 	}
 	err := createApp(&a)
 	c.Assert(err, IsNil)
@@ -1242,9 +1163,8 @@ func (s *S) TestSetEnvHandlerShouldSupportValuesWithDot(c *C) {
 
 func (s *S) TestSetEnvHandlerShouldSupportNumbersOnVariableName(c *C) {
 	a := App{
-		Name:    "blinded",
-		Teams:   []string{s.team.Name},
-		ec2Auth: &fakeAuthorizer{},
+		Name:  "blinded",
+		Teams: []string{s.team.Name},
 	}
 	err := createApp(&a)
 	c.Assert(err, IsNil)
@@ -1265,9 +1185,8 @@ func (s *S) TestSetEnvHandlerShouldSupportNumbersOnVariableName(c *C) {
 
 func (s *S) TestSetEnvHandlerShouldSupportLowerCasedVariableName(c *C) {
 	a := App{
-		Name:    "fragments",
-		Teams:   []string{s.team.Name},
-		ec2Auth: &fakeAuthorizer{},
+		Name:  "fragments",
+		Teams: []string{s.team.Name},
 	}
 	err := createApp(&a)
 	c.Assert(err, IsNil)
@@ -1295,9 +1214,8 @@ func (s *S) TestSetEnvHandlerShouldNotChangeValueOfPrivateVariables(c *C) {
 		},
 	}
 	a := App{
-		Name:    "losers",
-		Teams:   []string{s.team.Name},
-		ec2Auth: &fakeAuthorizer{},
+		Name:  "losers",
+		Teams: []string{s.team.Name},
 	}
 	err := createApp(&a)
 	c.Assert(err, IsNil)
@@ -1355,10 +1273,7 @@ func (s *S) TestSetEnvHandlerReturnsNotFoundIfTheAppDoesNotExist(c *C) {
 }
 
 func (s *S) TestSetEnvHandlerReturnsForbiddenIfTheGivenUserDoesNotHaveAccessToTheApp(c *C) {
-	a := App{
-		Name:    "rock-and-roll",
-		ec2Auth: &fakeAuthorizer{},
-	}
+	a := App{Name: "rock-and-roll"}
 	err := createApp(&a)
 	c.Assert(err, IsNil)
 	url := fmt.Sprintf("/apps/%s/env/?:name=%s", a.Name, a.Name)
@@ -1374,9 +1289,8 @@ func (s *S) TestSetEnvHandlerReturnsForbiddenIfTheGivenUserDoesNotHaveAccessToTh
 
 func (s *S) TestUnsetEnvHandlerRemovesTheEnvironmentVariablesFromTheApp(c *C) {
 	a := App{
-		Name:    "swift",
-		Teams:   []string{s.team.Name},
-		ec2Auth: &fakeAuthorizer{},
+		Name:  "swift",
+		Teams: []string{s.team.Name},
 	}
 	err := createApp(&a)
 	c.Assert(err, IsNil)
@@ -1403,9 +1317,8 @@ func (s *S) TestUnsetEnvHandlerRemovesTheEnvironmentVariablesFromTheApp(c *C) {
 
 func (s *S) TestUnsetEnvHandlerRemovesAllGivenEnvironmentVariables(c *C) {
 	a := App{
-		Name:    "let-it-be",
-		Teams:   []string{s.team.Name},
-		ec2Auth: &fakeAuthorizer{},
+		Name:  "let-it-be",
+		Teams: []string{s.team.Name},
 	}
 	err := createApp(&a)
 	c.Assert(err, IsNil)
@@ -1437,9 +1350,8 @@ func (s *S) TestUnsetEnvHandlerRemovesAllGivenEnvironmentVariables(c *C) {
 
 func (s *S) TestUnsetHandlerDoesNotRemovePrivateVariables(c *C) {
 	a := App{
-		Name:    "let-it-be",
-		Teams:   []string{s.team.Name},
-		ec2Auth: &fakeAuthorizer{},
+		Name:  "let-it-be",
+		Teams: []string{s.team.Name},
 	}
 	err := createApp(&a)
 	c.Assert(err, IsNil)
@@ -1470,10 +1382,7 @@ func (s *S) TestUnsetHandlerDoesNotRemovePrivateVariables(c *C) {
 }
 
 func (s *S) TestUnsetEnvRespectsThePublicOnlyFlagKeepPrivateVariablesWhenItsTrue(c *C) {
-	a := App{
-		Name:    "myapp",
-		ec2Auth: &fakeAuthorizer{},
-	}
+	a := App{Name: "myapp"}
 	err := createApp(&a)
 	c.Assert(err, IsNil)
 	a.Env = map[string]bind.EnvVar{
@@ -1505,10 +1414,7 @@ func (s *S) TestUnsetEnvRespectsThePublicOnlyFlagKeepPrivateVariablesWhenItsTrue
 }
 
 func (s *S) TestUnsetEnvRespectsThePublicOnlyFlagUnsettingAllVariablesWhenItsFalse(c *C) {
-	a := App{
-		Name:    "myapp",
-		ec2Auth: &fakeAuthorizer{},
-	}
+	a := App{Name: "myapp"}
 	err := createApp(&a)
 	c.Assert(err, IsNil)
 	a.Env = map[string]bind.EnvVar{
@@ -1571,10 +1477,7 @@ func (s *S) TestUnsetEnvHandlerReturnsNotFoundIfTheAppDoesNotExist(c *C) {
 }
 
 func (s *S) TestUnsetEnvHandlerReturnsForbiddenIfTheGivenUserDoesNotHaveAccessToTheApp(c *C) {
-	a := App{
-		Name:    "mountain-mama",
-		ec2Auth: &fakeAuthorizer{},
-	}
+	a := App{Name: "mountain-mama"}
 	err := createApp(&a)
 	c.Assert(err, IsNil)
 	url := fmt.Sprintf("/apps/%s/env/?:name=%s", a.Name, a.Name)
@@ -1604,7 +1507,6 @@ func (s *S) TestLogReturnsForbiddenIfTheGivenUserDoesNotHaveAccessToTheApp(c *C)
 	a := App{
 		Name:      "lost",
 		Framework: "vougan",
-		ec2Auth:   &fakeAuthorizer{},
 	}
 	err := createApp(&a)
 	c.Assert(err, IsNil)
@@ -1624,7 +1526,6 @@ func (s *S) TestLogShouldAppLog(c *C) {
 		Name:      "lost",
 		Framework: "vougan",
 		Teams:     []string{s.team.Name},
-		ec2Auth:   &fakeAuthorizer{},
 	}
 	err := createApp(&a)
 	c.Assert(err, IsNil)
@@ -1679,9 +1580,8 @@ func (s *S) TestBindHandler(c *C) {
 	c.Assert(err, IsNil)
 	defer db.Session.ServiceInstances().Remove(bson.M{"_id": "my-mysql"})
 	a := App{
-		Name:    "painkiller",
-		Teams:   []string{s.team.Name},
-		ec2Auth: &fakeAuthorizer{},
+		Name:  "painkiller",
+		Teams: []string{s.team.Name},
 	}
 	err = createApp(&a)
 	c.Assert(err, IsNil)
@@ -1722,7 +1622,6 @@ func (s *S) TestBindHandlerReturns404IfTheInstanceDoesNotExist(c *C) {
 		Name:      "serviceApp",
 		Framework: "django",
 		Teams:     []string{s.team.Name},
-		ec2Auth:   &fakeAuthorizer{},
 	}
 	err := createApp(&a)
 	c.Assert(err, IsNil)
@@ -1748,7 +1647,6 @@ func (s *S) TestBindHandlerReturns403IfTheUserDoesNotHaveAccessToTheInstance(c *
 		Name:      "serviceApp",
 		Framework: "django",
 		Teams:     []string{s.team.Name},
-		ec2Auth:   &fakeAuthorizer{},
 	}
 	err = createApp(&a)
 	c.Assert(err, IsNil)
@@ -1790,7 +1688,6 @@ func (s *S) TestBindHandlerReturns403IfTheUserDoesNotHaveAccessToTheApp(c *C) {
 	a := App{
 		Name:      "serviceApp",
 		Framework: "django",
-		ec2Auth:   &fakeAuthorizer{},
 	}
 	err = createApp(&a)
 	c.Assert(err, IsNil)
@@ -1827,9 +1724,8 @@ func (s *S) TestUnbindHandler(c *C) {
 	c.Assert(err, IsNil)
 	defer db.Session.ServiceInstances().Remove(bson.M{"_id": "my-mysql"})
 	a := App{
-		Name:    "painkiller",
-		Teams:   []string{s.team.Name},
-		ec2Auth: &fakeAuthorizer{},
+		Name:  "painkiller",
+		Teams: []string{s.team.Name},
 	}
 	err = createApp(&a)
 	c.Assert(err, IsNil)
@@ -1887,7 +1783,6 @@ func (s *S) TestUnbindHandlerReturns404IfTheInstanceDoesNotExist(c *C) {
 		Name:      "serviceApp",
 		Framework: "django",
 		Teams:     []string{s.team.Name},
-		ec2Auth:   &fakeAuthorizer{},
 	}
 	err := createApp(&a)
 	c.Assert(err, IsNil)
@@ -1913,7 +1808,6 @@ func (s *S) TestUnbindHandlerReturns403IfTheUserDoesNotHaveAccessToTheInstance(c
 		Name:      "serviceApp",
 		Framework: "django",
 		Teams:     []string{s.team.Name},
-		ec2Auth:   &fakeAuthorizer{},
 	}
 	err = createApp(&a)
 	c.Assert(err, IsNil)
@@ -1955,7 +1849,6 @@ func (s *S) TestUnbindHandlerReturns403IfTheUserDoesNotHaveAccessToTheApp(c *C) 
 	a := App{
 		Name:      "serviceApp",
 		Framework: "django",
-		ec2Auth:   &fakeAuthorizer{},
 	}
 	err = createApp(&a)
 	c.Assert(err, IsNil)
@@ -1977,9 +1870,8 @@ func (s *S) TestRestartHandler(c *C) {
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(tmpdir)
 	a := App{
-		Name:    "stress",
-		Teams:   []string{s.team.Name},
-		ec2Auth: &fakeAuthorizer{},
+		Name:  "stress",
+		Teams: []string{s.team.Name},
 	}
 	err = createApp(&a)
 	c.Assert(err, IsNil)
@@ -1997,7 +1889,7 @@ func (s *S) TestRestartHandler(c *C) {
 	c.Assert(commandmocker.Ran(tmpdir), Equals, true)
 	b, err := ioutil.ReadAll(recorder.Body)
 	c.Assert(err, IsNil)
-	expected := fmt.Sprintf("ssh -o StrictHostKeyChecking no -q -e %s %d /var/lib/tsuru/hooks/restart", a.JujuEnv, a.unit().Machine)
+	expected := fmt.Sprintf("ssh -o StrictHostKeyChecking no -q %d /var/lib/tsuru/hooks/restart", a.unit().Machine)
 	c.Assert(string(b), Equals, expected)
 }
 
@@ -2013,10 +1905,7 @@ func (s *S) TestRestartHandlerReturns404IfTheAppDoesNotExist(c *C) {
 }
 
 func (s *S) TestRestartHandlerReturns403IfTheUserDoesNotHaveAccessToTheApp(c *C) {
-	a := App{
-		Name:    "nightmist",
-		ec2Auth: &fakeAuthorizer{},
-	}
+	a := App{Name: "nightmist"}
 	err := createApp(&a)
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
@@ -2033,9 +1922,8 @@ func (s *S) TestRestartHandlerReturns403IfTheUserDoesNotHaveAccessToTheApp(c *C)
 
 func (s *S) TestRestartHandlerReturns412IfTheUnitOfTheAppDoesNotHaveIp(c *C) {
 	a := App{
-		Name:    "stress",
-		Teams:   []string{s.team.Name},
-		ec2Auth: &fakeAuthorizer{},
+		Name:  "stress",
+		Teams: []string{s.team.Name},
 	}
 	err := createApp(&a)
 	c.Assert(err, IsNil)

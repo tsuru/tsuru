@@ -16,14 +16,14 @@ func (s *S) TestCommand(c *C) {
 		Type:              "django",
 		Name:              "myUnit",
 		Machine:           1,
-		app:               &App{JujuEnv: "alpha"},
+		app:               &App{},
 		InstanceState:     "running",
 		AgentState:        "started",
 		MachineAgentState: "running",
 	}
 	output, err := u.Command("uname")
 	c.Assert(err, IsNil)
-	c.Assert(string(output), Matches, `.* -e alpha \d uname`)
+	c.Assert(string(output), Matches, `.* \d uname`)
 }
 
 func (s *S) TestCommandShouldAcceptMultipleParams(c *C) {
@@ -34,13 +34,13 @@ func (s *S) TestCommandShouldAcceptMultipleParams(c *C) {
 		Type:              "django",
 		Name:              "myUnit",
 		Machine:           1,
-		app:               &App{JujuEnv: "alpha"},
+		app:               &App{},
 		InstanceState:     "running",
 		AgentState:        "started",
 		MachineAgentState: "running",
 	}
 	out, err := u.Command("uname", "-a")
-	c.Assert(string(out), Matches, `.* -e alpha \d uname -a`)
+	c.Assert(string(out), Matches, `.* \d uname -a`)
 }
 
 func (s *S) TestCommandReturnErrorIfTheUnitIsNotStarted(c *C) {
@@ -48,7 +48,7 @@ func (s *S) TestCommandReturnErrorIfTheUnitIsNotStarted(c *C) {
 		Type:              "django",
 		Name:              "myUnit",
 		Machine:           1,
-		app:               &App{JujuEnv: "alpha"},
+		app:               &App{},
 		InstanceState:     "running",
 		AgentState:        "not-started",
 		MachineAgentState: "running",
@@ -59,7 +59,7 @@ func (s *S) TestCommandReturnErrorIfTheUnitIsNotStarted(c *C) {
 }
 
 func (s *S) TestExecuteHook(c *C) {
-	appUnit := Unit{Type: "django", Name: "myUnit", app: &App{JujuEnv: "beta"}, MachineAgentState: "running", AgentState: "started", InstanceState: "running"}
+	appUnit := Unit{Type: "django", Name: "myUnit", app: &App{}, MachineAgentState: "running", AgentState: "started", InstanceState: "running"}
 	_, err := appUnit.executeHook("requirements")
 	c.Assert(err, IsNil)
 }
@@ -69,14 +69,14 @@ func (s *S) TestDestroyUnit(c *C) {
 	s.tmpdir, err = commandmocker.Add("juju", "$*")
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(s.tmpdir)
-	unit := Unit{Type: "django", Name: "myunit", Machine: 10, app: &App{JujuEnv: "zeta"}}
+	unit := Unit{Type: "django", Name: "myunit", Machine: 10, app: &App{}}
 	out, err := unit.destroy()
 	c.Assert(err, IsNil)
-	c.Assert(string(out), Equals, "terminate-machine -e zeta 10")
+	c.Assert(string(out), Equals, "terminate-machine 10")
 }
 
 func (s *S) TestCantDestroyAUnitWithMachine0(c *C) {
-	u := Unit{Type: "django", Name: "nova-era", Machine: 0, app: &App{JujuEnv: "zeta"}}
+	u := Unit{Type: "django", Name: "nova-era", Machine: 0, app: &App{}}
 	out, err := u.destroy()
 	c.Assert(out, IsNil)
 	c.Assert(err, NotNil)
