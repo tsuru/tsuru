@@ -95,7 +95,7 @@ func (s *S) TestServiceBind(c *C) {
 	}
 	trans := &conditionalTransport{
 		transport{
-			msg:    "",
+			msg:    `["DATABASE_HOST","DATABASE_USER","DATABASE_PASSWORD"]`,
 			status: http.StatusOK,
 		},
 		func(req *http.Request) bool {
@@ -107,7 +107,17 @@ func (s *S) TestServiceBind(c *C) {
 	err := (&ServiceBind{}).Run(&ctx, client)
 	c.Assert(err, IsNil)
 	c.Assert(called, Equals, true)
-	c.Assert(stdout.String(), Equals, "Instance my-mysql successfully binded to the app g1.\n")
+	expected := `Instance my-mysql successfully binded to the app g1.
+
+The following environment variables are now available for use in your app:
+
+- DATABASE_HOST
+- DATABASE_USER
+- DATABASE_PASSWORD
+
+For more details, please check the documentation for the service, using service-doc command.
+`
+	c.Assert(stdout.String(), Equals, expected)
 }
 
 func (s *S) TestServiceBindWithRequestFailure(c *C) {

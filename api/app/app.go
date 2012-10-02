@@ -22,24 +22,14 @@ import (
 
 const confSep = "========"
 
-var jujuEnvEmptyError = errors.New("App must have a juju environment name in order to bootstrap")
-
-type authorizer interface {
-	authorize(*App) error
-	setCreds(access string, secret string)
-}
-
 type App struct {
-	Env          map[string]bind.EnvVar
-	Framework    string
-	JujuEnv      string
-	OpenstackEnv openstackEnv
-	Logs         []applog
-	Name         string
-	State        string
-	Units        []Unit
-	Teams        []string
-	ec2Auth      authorizer
+	Env       map[string]bind.EnvVar
+	Framework string
+	Logs      []applog
+	Name      string
+	State     string
+	Units     []Unit
+	Teams     []string
 }
 
 func (a *App) MarshalJSON() ([]byte, error) {
@@ -69,102 +59,30 @@ func (a *App) Get() error {
 
 // createApp creates a new app.
 //
-// Creating a new app is a big process that can be divided in some steps (and
-// two scenarios):
+// Creating a new app is a process composed of two steps:
 //
-//   Scenario 1: Multi tenancy enabled
-//
-//       1. Creates keystone credentials for the app
-//       2. Write the juju environment to juju's environments file
-//       3. Bootstrap juju environment
-//       4. Authorizes ssh and http access to the app instance
-//       5. Saves the app in the database
-//       6. Deploys juju charm
-//
-//   Scenario 2: Multi tenancy disabled
-//
-//       1. Sets app juju env to the default juju env (defined in the
-//          tsuru.conf file)
-//       2. Saves the app in the database
-//       3. Deploys juju charm
-//
-// Multi tenancy should be configured in tsuru's conf file
-// (set the "multi-tenant" flag to true or false, as desired).
+//       1. Saves the app in the database
+//       2. Deploys juju charm
 func createApp(a *App) error {
-	isMultiTenant, err := config.GetBool("multi-tenant")
-	if err != nil {
-		return err
-	}
-	a.JujuEnv, err = config.GetString("juju:default-env")
-	if err != nil && !isMultiTenant {
-		return err
-	}
-	if isMultiTenant {
-		err = newEnviron(a)
-		if err != nil {
-			return err
-		}
-	}
 	a.State = "pending"
-	err = db.Session.Apps().Insert(a)
+	err := db.Session.Apps().Insert(a)
 	if err != nil {
 		return err
 	}
-	err = deploy(a)
-	if err != nil {
-		return err
-	}
-	a.log(fmt.Sprintf("app %s successfully created", a.Name))
-	return nil
+	return deploy(a)
 }
 
-// creates everything needed to a multi-tenant new environment
-//  - new keystone environ
-//  - new juju environ
-//  - bootstrap juju environ
-//  - creates ec2 groups authorization
-func newEnviron(a *App) error {
-	var err error
-	a.OpenstackEnv, err = newOpenstackEnv(a.Name)
-	if err != nil {
-		return err
-	}
-	err = newJujuEnviron(a)
-	if err != nil {
-		return err
-	}
-	err = authorize(a)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-func authorize(a *App) error {
-	authorizer := a.authorizer()
-	authorizer.setCreds(a.OpenstackEnv.Creds[novaCreds]["access"], a.OpenstackEnv.Creds[novaCreds]["secret"])
-	err := authorizer.authorize(a)
-	if err != nil {
-		return fmt.Errorf("Failed to create the app, it was not possible to authorize the access to the app: %s", err)
-	}
-	return nil
-}
-
-// deploy an app
-// it expects app.JujuEnv to be set with the right environment name
+// Deploys an app.
 func deploy(a *App) error {
-	if a.JujuEnv == "" {
-		return jujuEnvEmptyError
-	}
 	a.log(fmt.Sprintf("creating app %s", a.Name))
-	cmd := exec.Command("juju", "deploy", "-e", a.JujuEnv, "--repository=/home/charms", "local:"+a.Framework, a.Name)
-	log.Printf("deploying %s with name %s on environment %s", a.Framework, a.Name, a.JujuEnv)
+	cmd := exec.Command("juju", "deploy", "--repository=/home/charms", "local:"+a.Framework, a.Name)
+	log.Printf("deploying %s with name %s", a.Framework, a.Name)
 	out, err := cmd.CombinedOutput()
 	outStr := string(out)
 	a.log(outStr)
 	log.Printf("executing %s", outStr)
 	if err != nil {
-		a.log(fmt.Sprintf("juju finished with exit status: %s", err.Error()))
+		a.log(fmt.Sprintf("juju finished with exit status: %s", err))
 		db.Session.Apps().Remove(bson.M{"name": a.Name})
 		return errors.New(string(out))
 	}
@@ -196,52 +114,12 @@ func (a *App) unbind() error {
 	return nil
 }
 
-func destroyApp(a *App) error {
+func (a *App) destroy() error {
 	out, err := a.unit().destroy()
 	msg := string(out)
-	log.Printf(msg)
+	log.Print(msg)
 	if err != nil {
 		return errors.New(msg)
-	}
-	return nil
-}
-
-func destroyEnvironment(a *App) error {
-	destroyCmd := exec.Command("juju", "destroy-environment", "-e", a.JujuEnv)
-	destroyCmd.Stdin = strings.NewReader("y")
-	if out, err := destroyCmd.CombinedOutput(); err != nil {
-		msg := fmt.Sprintf("Failed to destroy juju-environment:\n%s", out)
-		log.Print(msg)
-		return errors.New(string(out))
-	}
-	err := removeEnvironConf(a)
-	if err != nil {
-		return err
-	}
-	if err = removeOpenstackEnv(&a.OpenstackEnv); err != nil {
-		return err
-	}
-	if err = a.OpenstackEnv.disassociate(); err != nil {
-		return err
-	}
-	return nil
-}
-
-func (a *App) destroy() error {
-	multitenant, err := config.GetBool("multi-tenant")
-	if err != nil {
-		return errors.New("multi-tenant flag not defined in config file. You need to define this flag.")
-	}
-	if multitenant {
-		err := destroyEnvironment(a)
-		if err != nil {
-			return err
-		}
-	} else {
-		err := destroyApp(a)
-		if err != nil {
-			return err
-		}
 	}
 	err = a.unbind()
 	if err != nil {
@@ -369,13 +247,6 @@ func (a *App) conf() (conf, error) {
 	return c, nil
 }
 
-func (a *App) authorizer() authorizer {
-	if a.ec2Auth == nil {
-		a.ec2Auth = &ec2Authorizer{}
-	}
-	return a.ec2Auth
-}
-
 /*
 * preRestart is responsible for running user's pre-restart script.
 * The path to this script can be found at the app.conf file, at the root of user's app repository.
@@ -459,7 +330,7 @@ func (a *App) GetUnits() []bind.Unit {
 	var units []bind.Unit
 	for _, u := range a.Units {
 		u.app = a
-		units = append(units, bind.Unit(&u))
+		units = append(units, &u)
 	}
 	return units
 }

@@ -169,11 +169,10 @@ func (s *S) TestParser(c *C) {
 }
 
 func (s *S) TestCollect(c *C) {
-	a := app.App{JujuEnv: "zeta"}
 	tmpdir, err := commandmocker.Add("juju", "$*")
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(tmpdir)
-	out, err := collect(a.JujuEnv)
+	out, err := collect()
 	c.Assert(err, IsNil)
-	c.Assert(string(out), Equals, "status -e zeta")
+	c.Assert(string(out), Equals, "status")
 }

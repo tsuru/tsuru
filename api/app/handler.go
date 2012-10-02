@@ -487,7 +487,17 @@ func BindHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	if err != nil {
 		return err
 	}
-	return instance.Bind(&a)
+	err = instance.Bind(&a)
+	if err != nil {
+		return err
+	}
+	var envs []string
+	for k := range a.InstanceEnv(instanceName) {
+		envs = append(envs, k)
+	}
+	w.Header().Set("Content-Type", "application/json")
+	enc := json.NewEncoder(w)
+	return enc.Encode(envs)
 }
 
 func UnbindHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {

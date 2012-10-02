@@ -25,14 +25,14 @@ func (u *Unit) destroy() ([]byte, error) {
 	if u.Machine < 1 {
 		return nil, errors.New("No machine associated.")
 	}
-	cmd := exec.Command("juju", "destroy-service", "-e", u.app.JujuEnv, u.app.Name)
+	cmd := exec.Command("juju", "destroy-service", u.app.Name)
 	log.Printf("destroying %s with name %s", u.Type, u.Name)
 	out, err := cmd.CombinedOutput()
 	log.Printf(string(out))
 	if err != nil {
 		return out, err
 	}
-	cmd = exec.Command("juju", "terminate-machine", "-e", u.app.JujuEnv, strconv.Itoa(u.Machine))
+	cmd = exec.Command("juju", "terminate-machine", strconv.Itoa(u.Machine))
 	return cmd.CombinedOutput()
 }
 
@@ -47,7 +47,7 @@ func (u *Unit) Command(cmds ...string) ([]byte, error) {
 	if state := u.State(); state != "started" {
 		return nil, fmt.Errorf("Unit must be started to run commands, but it is %s.", state)
 	}
-	c := exec.Command("juju", "ssh", "-o", "StrictHostKeyChecking no", "-q", "-e", u.app.JujuEnv, strconv.Itoa(u.Machine))
+	c := exec.Command("juju", "ssh", "-o", "StrictHostKeyChecking no", "-q", strconv.Itoa(u.Machine))
 	c.Args = append(c.Args, cmds...)
 	log.Printf("executing %s on %s", strings.Join(cmds, " "), u.app.Name)
 	out, err := c.CombinedOutput()

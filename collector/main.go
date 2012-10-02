@@ -34,32 +34,11 @@ func getApps() []app.App {
 	return apps
 }
 
-func jujuCollect(ticker <-chan time.Time, multitenant bool) {
-	var (
-		env string
-		err error
-		f   func()
-	)
-	if multitenant {
-		f = func() {
-			for _, app := range getApps() {
-				data, _ := collect(app.JujuEnv)
-				output := parse(data)
-				update(output)
-			}
-		}
-	} else {
-		if env, err = config.GetString("juju:default-env"); err != nil {
-			log.Panic("You must configure juju default-env in tsuru.conf.")
-		}
-		f = func() {
-			data, _ := collect(env)
-			output := parse(data)
-			update(output)
-		}
-	}
+func jujuCollect(ticker <-chan time.Time) {
 	for _ = range ticker {
-		f()
+		data, _ := collect()
+		output := parse(data)
+		update(output)
 	}
 }
 
@@ -93,13 +72,9 @@ func main() {
 		log.Panic(err)
 	}
 	defer db.Session.Close()
-	multitenant, err := config.GetBool("multi-tenant")
-	if err != nil {
-		log.Panic(err)
-	}
 
 	if !dry {
 		ticker := time.Tick(time.Minute)
-		jujuCollect(ticker, multitenant)
+		jujuCollect(ticker)
 	}
 }
