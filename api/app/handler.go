@@ -52,17 +52,16 @@ func CloneRepositoryHandler(w http.ResponseWriter, r *http.Request) error {
 		return nil
 	}
 	w.Header().Set("Content-Type", "text")
-	var output string
 	app := App{Name: r.URL.Query().Get(":name")}
 	err := app.Get()
 	if err != nil {
 		return &errors.Http{Code: http.StatusNotFound, Message: "App not found"}
 	}
-	output, err = repository.CloneOrPull(app.unit()) // should iterate over the machines
+	out, err := repository.CloneOrPull(app.unit()) // should iterate over the machines
 	if err != nil {
-		return &errors.Http{Code: http.StatusInternalServerError, Message: output}
+		return &errors.Http{Code: http.StatusInternalServerError, Message: string(out)}
 	}
-	err = write(w, []byte(output))
+	err = write(w, out)
 	if err != nil {
 		return err
 	}
@@ -70,7 +69,7 @@ func CloneRepositoryHandler(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return &errors.Http{Code: http.StatusInternalServerError, Message: err.Error()}
 	}
-	out, err := app.preRestart(c)
+	out, err = app.preRestart(c)
 	if err != nil {
 		return &errors.Http{Code: http.StatusInternalServerError, Message: err.Error()}
 	}

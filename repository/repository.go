@@ -52,16 +52,15 @@ func Pull(u Unit) ([]byte, error) {
 //
 // First it tries to clone, and if the clone fail (meaning that the repository
 // is already cloned), it pulls changes from the bare repository.
-func CloneOrPull(u Unit) (string, error) {
-	var output []byte
+func CloneOrPull(u Unit) ([]byte, error) {
 	output, err := Clone(u)
 	if err != nil {
 		output, err = Pull(u)
 		if err != nil {
-			return string(output), err
+			return output, err
 		}
 	}
-	return string(output), nil
+	return output, nil
 }
 
 // getGitServer returns the git server defined in the tsuru.conf file.
