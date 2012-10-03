@@ -46,6 +46,9 @@ func CloneRepositoryHandler(w http.ResponseWriter, r *http.Request) error {
 		if n != len(out) {
 			return io.ErrShortWrite
 		}
+		if f, ok := w.(http.Flusher); ok {
+			f.Flush()
+		}
 		return nil
 	}
 	w.Header().Set("Content-Type", "text")
