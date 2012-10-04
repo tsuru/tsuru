@@ -76,7 +76,7 @@ pos-restart:
 }
 
 func (s *S) TestCloneRepositoryRunsCloneOrPullThenPreRestartThenRestartThenPosRestartHooksInOrder(c *C) {
-	w := bytes.NewBuffer([]byte{})
+	w := new(bytes.Buffer)
 	l := stdlog.New(w, "", stdlog.LstdFlags)
 	log.Target = l
 	output := `
