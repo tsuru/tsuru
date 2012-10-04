@@ -72,7 +72,7 @@ pos-restart:
 	c.Assert(err, IsNil)
 	c.Assert(recorder.Code, Equals, 200)
 	c.Assert(strings.Replace(recorder.Body.String(), "\n", "#", -1), Matches, "^Tsuru receiving push#.*")
-	c.Assert(strings.Replace(recorder.Body.String(), "\n", "#", -1), Matches, "^Clonning your code in your machines#.*")
+	c.Assert(strings.Replace(recorder.Body.String(), "\n", "#", -1), Matches, ".*Clonning your code in your machines#.*")
 	c.Assert(recorder.Header().Get("Content-Type"), Equals, "text")
 }
 
