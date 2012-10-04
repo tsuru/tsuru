@@ -52,7 +52,7 @@ func CloneRepositoryHandler(w http.ResponseWriter, r *http.Request) error {
 		return nil
 	}
 	w.Header().Set("Content-Type", "text")
-	err := write(w, []byte("Tsuru receiving push"))
+	err := write(w, []byte("Tsuru receiving push\n"))
 	if err != nil {
 		return err
 	}

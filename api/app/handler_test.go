@@ -71,7 +71,7 @@ pos-restart:
 	err = CloneRepositoryHandler(recorder, request)
 	c.Assert(err, IsNil)
 	c.Assert(recorder.Code, Equals, 200)
-	c.Assert(strings.Replace(recorder.Body.String(), "\n", "", -1), Matches, "^Tsuru receiving push.*")
+	c.Assert(strings.Replace(recorder.Body.String(), "\n", "#", -1), Matches, "^Tsuru receiving push#.*")
 	c.Assert(recorder.Header().Get("Content-Type"), Equals, "text")
 }
 
