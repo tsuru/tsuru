@@ -52,8 +52,12 @@ func CloneRepositoryHandler(w http.ResponseWriter, r *http.Request) error {
 		return nil
 	}
 	w.Header().Set("Content-Type", "text")
+	err := write(w, []byte("Tsuru receiving push"))
+	if err != nil {
+		return err
+	}
 	app := App{Name: r.URL.Query().Get(":name")}
-	err := app.Get()
+	err = app.Get()
 	if err != nil {
 		return &errors.Http{Code: http.StatusNotFound, Message: "App not found"}
 	}
