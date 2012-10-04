@@ -325,20 +325,6 @@ func installDeps(a *App) ([]byte, error) {
 	return out, nil
 }
 
-func (a *App) updateHooks() ([]byte, error) {
-	out, err := installDeps(a)
-	if err != nil {
-		return out, err
-	}
-	restartOut, err := restart(a)
-	out = append(out, restartOut...)
-	if err != nil {
-		return out, err
-	}
-	a.log(string(out))
-	return out, nil
-}
-
 func (a *App) unit() *Unit {
 	if len(a.Units) > 0 {
 		unit := a.Units[0]

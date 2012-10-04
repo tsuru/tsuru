@@ -525,31 +525,6 @@ pos-restart:
 	c.Assert(b, Equals, true)
 }
 
-func (s *S) TestUpdateHooks(c *C) {
-	tmpdir, err := commandmocker.Add("juju", "$*")
-	c.Assert(err, IsNil)
-	defer commandmocker.Remove(tmpdir)
-	a := App{
-		Name:      "someApp",
-		Framework: "django",
-		Teams:     []string{s.team.Name},
-		Units: []Unit{
-			Unit{
-				AgentState:        "started",
-				MachineAgentState: "running",
-				InstanceState:     "running",
-				Machine:           4,
-			},
-		},
-	}
-	err = createApp(&a)
-	c.Assert(err, IsNil)
-	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
-	out, err := a.updateHooks()
-	c.Assert(err, IsNil)
-	c.Assert(string(out), Equals, "ssh -o StrictHostKeyChecking no -q 4 /var/lib/tsuru/hooks/dependenciesssh -o StrictHostKeyChecking no -q 4 /var/lib/tsuru/hooks/restart")
-}
-
 func (s *S) TestInstallDeps(c *C) {
 	tmpdir, err := commandmocker.Add("juju", "$*")
 	c.Assert(err, IsNil)
