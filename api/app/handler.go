@@ -52,7 +52,7 @@ func CloneRepositoryHandler(w http.ResponseWriter, r *http.Request) error {
 		return nil
 	}
 	w.Header().Set("Content-Type", "text")
-	err := write(w, []byte("Tsuru receiving push\n"))
+	err := write(w, []byte(" ---> Tsuru receiving push\n"))
 	if err != nil {
 		return err
 	}
@@ -61,7 +61,7 @@ func CloneRepositoryHandler(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return &errors.Http{Code: http.StatusNotFound, Message: "App not found"}
 	}
-	err = write(w, []byte("Clonning your code in your machines\n"))
+	err = write(w, []byte(" ---> Clonning your code in your machines\n"))
 	if err != nil {
 		return err
 	}
@@ -90,7 +90,7 @@ func CloneRepositoryHandler(w http.ResponseWriter, r *http.Request) error {
 		write(w, out)
 		return err
 	}
-	err = write(w, []byte("Restarting your app\n"))
+	err = write(w, []byte(" ---> Restarting your app\n"))
 	if err != nil {
 		return err
 	}
@@ -111,7 +111,7 @@ func CloneRepositoryHandler(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	return write(w, []byte("Deploy done!\n"))
+	return write(w, []byte(" ---> Deploy done!\n\n"))
 }
 
 func AppDelete(w http.ResponseWriter, r *http.Request, u *auth.User) error {
