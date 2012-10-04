@@ -75,11 +75,11 @@ func CloneRepositoryHandler(w http.ResponseWriter, r *http.Request) error {
 	}
 	c, err := app.conf()
 	if err != nil {
-		return &errors.Http{Code: http.StatusInternalServerError, Message: err.Error()}
+		return err
 	}
 	out, err = app.preRestart(c)
 	if err != nil {
-		return &errors.Http{Code: http.StatusInternalServerError, Message: err.Error()}
+		return err
 	}
 	err = write(w, out)
 	if err != nil {
@@ -88,7 +88,7 @@ func CloneRepositoryHandler(w http.ResponseWriter, r *http.Request) error {
 	out, err = app.updateHooks()
 	if err != nil {
 		write(w, out)
-		return &errors.Http{Code: http.StatusInternalServerError, Message: err.Error()}
+		return err
 	}
 	err = write(w, out)
 	if err != nil {
@@ -100,7 +100,7 @@ func CloneRepositoryHandler(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	if err != nil {
-		return &errors.Http{Code: http.StatusInternalServerError, Message: err.Error()}
+		return err
 	}
 	return write(w, []byte("Deploy done!\n"))
 }
