@@ -2,8 +2,8 @@ package main
 
 import (
 	"bytes"
-	"github.com/timeredbull/tsuru/cmd"
-	fs_test "github.com/timeredbull/tsuru/fs/testing"
+	"github.com/globocom/tsuru/cmd"
+	fs_test "github.com/globocom/tsuru/fs/testing"
 	. "launchpad.net/gocheck"
 	"net/http"
 	"os/user"

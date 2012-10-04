@@ -3,7 +3,7 @@ package cmd
 import (
 	"bytes"
 	"errors"
-	"github.com/timeredbull/tsuru/fs/testing"
+	"github.com/globocom/tsuru/fs/testing"
 	"io"
 	. "launchpad.net/gocheck"
 	"net/http"

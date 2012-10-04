@@ -3,8 +3,8 @@ package auth
 import (
 	"bytes"
 	"github.com/globocom/config"
-	"github.com/timeredbull/tsuru/db"
-	"github.com/timeredbull/tsuru/repository"
+	"github.com/globocom/tsuru/db"
+	"github.com/globocom/tsuru/repository"
 	"io"
 	"io/ioutil"
 	"labix.org/v2/mgo"

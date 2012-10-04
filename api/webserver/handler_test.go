@@ -3,9 +3,9 @@ package main
 import (
 	stderrors "errors"
 	"fmt"
-	"github.com/timeredbull/tsuru/api/auth"
-	"github.com/timeredbull/tsuru/db"
-	"github.com/timeredbull/tsuru/errors"
+	"github.com/globocom/tsuru/api/auth"
+	"github.com/globocom/tsuru/db"
+	"github.com/globocom/tsuru/errors"
 	. "launchpad.net/gocheck"
 	"net/http"
 	"net/http/httptest"

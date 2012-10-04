@@ -1,9 +1,9 @@
 package main
 
 import (
-	"github.com/timeredbull/tsuru/api/auth"
-	"github.com/timeredbull/tsuru/errors"
-	"github.com/timeredbull/tsuru/log"
+	"github.com/globocom/tsuru/api/auth"
+	"github.com/globocom/tsuru/errors"
+	"github.com/globocom/tsuru/log"
 	"net/http"
 )
 

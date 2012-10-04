@@ -2,8 +2,8 @@ package app
 
 import (
 	"fmt"
-	"github.com/timeredbull/tsuru/fs"
-	"github.com/timeredbull/tsuru/log"
+	"github.com/globocom/tsuru/fs"
+	"github.com/globocom/tsuru/log"
 	"os"
 	"path"
 	"time"

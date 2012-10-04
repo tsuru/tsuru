@@ -1,7 +1,7 @@
 package cmd
 
 import (
-	"github.com/timeredbull/tsuru/fs/testing"
+	"github.com/globocom/tsuru/fs/testing"
 	"io/ioutil"
 	. "launchpad.net/gocheck"
 )

@@ -6,7 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/globocom/config"
-	"github.com/timeredbull/tsuru/db"
+	"github.com/globocom/tsuru/db"
 	"labix.org/v2/mgo/bson"
 	"time"
 )

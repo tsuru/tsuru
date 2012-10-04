@@ -1,9 +1,9 @@
 package provision
 
 import (
-	"github.com/timeredbull/tsuru/api/auth"
-	"github.com/timeredbull/tsuru/api/service"
-	"github.com/timeredbull/tsuru/db"
+	"github.com/globocom/tsuru/api/auth"
+	"github.com/globocom/tsuru/api/service"
+	"github.com/globocom/tsuru/db"
 	. "launchpad.net/gocheck"
 	"testing"
 )

@@ -1,6 +1,6 @@
 #Tsuru
 
-[![Build Status](https://secure.travis-ci.org/timeredbull/tsuru.png?branch=master)](http://travis-ci.org/timeredbull/tsuru)
+[![Build Status](https://secure.travis-ci.org/globocom/tsuru.png?branch=master)](http://travis-ci.org/globocom/tsuru)
 
 ##What is Tsuru?
 
@@ -8,7 +8,7 @@ Tsuru is an open Platform-as-a-Service (PaaS).
 
 ##Installation
 
-Please check the [INSTALL](/timeredbull/tsuru/blob/master/INSTALL.md) file for
+Please check the [INSTALL](/globocom/tsuru/blob/master/INSTALL.md) file for
 installation instructions.
 
 ##Server configuration

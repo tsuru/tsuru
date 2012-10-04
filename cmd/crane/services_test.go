@@ -2,7 +2,7 @@ package main
 
 import (
 	"bytes"
-	"github.com/timeredbull/tsuru/cmd"
+	"github.com/globocom/tsuru/cmd"
 	"io/ioutil"
 	. "launchpad.net/gocheck"
 	"net/http"

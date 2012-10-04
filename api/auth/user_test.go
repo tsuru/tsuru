@@ -5,7 +5,7 @@ import (
 	"crypto/sha512"
 	"fmt"
 	"github.com/globocom/config"
-	"github.com/timeredbull/tsuru/db"
+	"github.com/globocom/tsuru/db"
 	"labix.org/v2/mgo/bson"
 	. "launchpad.net/gocheck"
 	"time"

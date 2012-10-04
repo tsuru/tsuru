@@ -6,7 +6,7 @@
 tsuru client install guide
 ++++++++++++++++++++++++++
 
-You can download the client binary for your platform and put it in your path. All binaries are available in the `downloads <https://github.com/timeredbull/tsuru/downloads>`_ page.
+You can download the client binary for your platform and put it in your path. All binaries are available in the `downloads <https://github.com/globocom/tsuru/downloads>`_ page.
 
 At this moment, we provide two versions of the client, for Linux amd64 and Darwin amd64.
 
@@ -16,7 +16,7 @@ Linux example: suppose you want to install the tsuru client in your `/usr/bin` d
 
 ::
 
-    $ sudo curl -L https://github.com/downloads/timeredbull/tsuru/20120905-tsuru-linux-amd64.tar.gz | sudo tar -xz -C /usr/bin/
+    $ sudo curl -L https://github.com/downloads/globocom/tsuru/20120905-tsuru-linux-amd64.tar.gz | sudo tar -xz -C /usr/bin/
 
 Then you will be able to :doc:`use the client </apps/client/usage>`. On Mac OS, use `darwin` instead of `linux`:
 
@@ -24,4 +24,4 @@ Then you will be able to :doc:`use the client </apps/client/usage>`. On Mac OS, 
 
 ::
 
-    $ sudo curl -L https://github.com/downloads/timeredbull/tsuru/20120905-tsuru-darwin-amd64.tar.gz | sudo tar -xz -C /usr/bin/
+    $ sudo curl -L https://github.com/downloads/globocom/tsuru/20120905-tsuru-darwin-amd64.tar.gz | sudo tar -xz -C /usr/bin/

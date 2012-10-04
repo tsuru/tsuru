@@ -66,7 +66,7 @@ Once you have defined the GOPATH variable, then run the following commands:
 
     % mkdir -p $GOPATH/src/github.com/timeredbull
     % cd $GOPATH/src/github.com/timeredbull
-    % git clone git://github.com/timeredbull/tsuru
+    % git clone git://github.com/globocom/tsuru
 
 If you already cloned the repository, just move the cloned directory to
 `$GOPATH/src/github.com/timeredbull`.

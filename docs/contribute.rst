@@ -2,8 +2,8 @@
 contribute
 ++++++++++
 
-* Source hosted at `GitHub <http://github.com/timeredbull/tsuru>`_
-* Report issues on `GitHub Issues <http://github.com/timeredbull/tsuru/issues>`_
+* Source hosted at `GitHub <http://github.com/globocom/tsuru>`_
+* Report issues on `GitHub Issues <http://github.com/globocom/tsuru/issues>`_
 
 Pull requests are very welcome! Make sure your patches are well tested and documented :)
 

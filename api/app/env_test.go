@@ -2,8 +2,8 @@ package app
 
 import (
 	"github.com/globocom/commandmocker"
-	"github.com/timeredbull/tsuru/fs"
-	"github.com/timeredbull/tsuru/fs/testing"
+	"github.com/globocom/tsuru/fs"
+	"github.com/globocom/tsuru/fs/testing"
 	. "launchpad.net/gocheck"
 	"os"
 	"path"

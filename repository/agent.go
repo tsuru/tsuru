@@ -41,7 +41,7 @@ type Change struct {
 //
 // Sample of code:
 //
-//     import "github.com/timeredbull/tsuru/repository"
+//     import "github.com/globocom/tsuru/repository"
 //
 //     func sendChange() {
 //         change := repository.Change{

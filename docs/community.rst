@@ -10,4 +10,4 @@ irc channel
 ticket system
 =============
 
-`ticket system <https://github.com/timeredbull/tsuru/issues>`_ - report bugs and make feature requests
+`ticket system <https://github.com/globocom/tsuru/issues>`_ - report bugs and make feature requests

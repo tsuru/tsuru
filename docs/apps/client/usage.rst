@@ -168,4 +168,4 @@ Further instructions
 ====================
 
 For a complete reference, check the documentation for tsuru command:
-`<http://go.pkgdoc.org/github.com/timeredbull/tsuru/cmd/tsuru>`_.
+`<http://go.pkgdoc.org/github.com/globocom/tsuru/cmd/tsuru>`_.

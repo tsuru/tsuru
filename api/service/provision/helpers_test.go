@@ -1,7 +1,7 @@
 package provision
 
 import (
-	. "github.com/timeredbull/tsuru/api/service"
+	. "github.com/globocom/tsuru/api/service"
 	. "launchpad.net/gocheck"
 )
 

@@ -2,8 +2,8 @@ package service
 
 import (
 	stderrors "errors"
-	"github.com/timeredbull/tsuru/api/bind"
-	"github.com/timeredbull/tsuru/errors"
+	"github.com/globocom/tsuru/api/bind"
+	"github.com/globocom/tsuru/errors"
 	"io/ioutil"
 	. "launchpad.net/gocheck"
 	"net/http"

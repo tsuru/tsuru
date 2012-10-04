@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"github.com/timeredbull/tsuru/cmd"
+	"github.com/globocom/tsuru/cmd"
 	"io"
 	"io/ioutil"
 	"net/http"

@@ -26,10 +26,10 @@ ifndef GOPATH
 	@echo "       http://golang.org/cmd/go/#GOPATH_environment_variable"
 	@exit 1
 endif
-ifneq ($(subst ~,$(HOME),$(GOPATH))/src/github.com/timeredbull/tsuru, $(PWD))
+ifneq ($(subst ~,$(HOME),$(GOPATH))/src/github.com/globocom/tsuru, $(PWD))
 	@echo "FATAL: you must clone tsuru inside your GOPATH To do so,"
-	@echo "       you can run go get github.com/timeredbull/tsuru/..."
-	@echo "       or clone it manually to the dir $(GOPATH)/src/github.com/timeredbull/tsuru"
+	@echo "       you can run go get github.com/globocom/tsuru/..."
+	@echo "       or clone it manually to the dir $(GOPATH)/src/github.com/globocom/tsuru"
 	@exit 1
 endif
 
@@ -47,17 +47,17 @@ bzr:
 get-test:
 	@/bin/echo -n "Installing test dependencies... "
 	@go list -f '{{range .TestImports}}{{.}} {{end}}' ./... | tr ' ' '\n' |\
-		grep '^.*\..*/.*$$' | grep -v 'github.com/timeredbull/tsuru' |\
+		grep '^.*\..*/.*$$' | grep -v 'github.com/globocom/tsuru' |\
 		sort | uniq | xargs go get >/dev/null 2>&1
 	@go list -f '{{range .XTestImports}}{{.}} {{end}}' ./... | tr ' ' '\n' |\
-		grep '^.*\..*/.*$$' | grep -v 'github.com/timeredbull/tsuru' |\
+		grep '^.*\..*/.*$$' | grep -v 'github.com/globocom/tsuru' |\
 		sort | uniq | xargs go get >/dev/null 2>&1
 	@/bin/echo "ok"
 
 get-prod:
 	@/bin/echo -n "Installing production dependencies... "
 	@go list -f '{{range .Imports}}{{.}} {{end}}' ./... | tr ' ' '\n' |\
-		grep '^.*\..*/.*$$' | grep -v 'github.com/timeredbull/tsuru' |\
+		grep '^.*\..*/.*$$' | grep -v 'github.com/globocom/tsuru' |\
 		sort | uniq | xargs go get >/dev/null 2>&1
 	@/bin/echo "ok"
 

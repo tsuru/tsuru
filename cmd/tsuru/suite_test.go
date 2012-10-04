@@ -3,7 +3,7 @@ package main
 import (
 	"bytes"
 	"errors"
-	"github.com/timeredbull/tsuru/cmd"
+	"github.com/globocom/tsuru/cmd"
 	"io/ioutil"
 	. "launchpad.net/gocheck"
 	"net/http"

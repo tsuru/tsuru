@@ -5,7 +5,7 @@ package testing
 
 import (
 	"fmt"
-	"github.com/timeredbull/tsuru/fs"
+	"github.com/globocom/tsuru/fs"
 	"os"
 	"strings"
 	"syscall"

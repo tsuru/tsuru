@@ -2,9 +2,9 @@ package service
 
 import (
 	"encoding/json"
-	"github.com/timeredbull/tsuru/api/bind"
-	"github.com/timeredbull/tsuru/errors"
-	"github.com/timeredbull/tsuru/log"
+	"github.com/globocom/tsuru/api/bind"
+	"github.com/globocom/tsuru/errors"
+	"github.com/globocom/tsuru/log"
 	"io"
 	"io/ioutil"
 	"net/http"

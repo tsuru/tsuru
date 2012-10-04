@@ -1,7 +1,7 @@
 package app
 
 import (
-	"github.com/timeredbull/tsuru/fs/testing"
+	"github.com/globocom/tsuru/fs/testing"
 	. "launchpad.net/gocheck"
 )
 

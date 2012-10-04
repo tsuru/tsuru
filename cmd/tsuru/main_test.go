@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/timeredbull/tsuru/cmd"
+	"github.com/globocom/tsuru/cmd"
 	. "launchpad.net/gocheck"
 )
 

@@ -2,8 +2,8 @@ package service
 
 import (
 	"errors"
-	"github.com/timeredbull/tsuru/api/auth"
-	"github.com/timeredbull/tsuru/db"
+	"github.com/globocom/tsuru/api/auth"
+	"github.com/globocom/tsuru/db"
 	"labix.org/v2/mgo/bson"
 	"strings"
 )

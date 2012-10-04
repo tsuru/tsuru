@@ -2,12 +2,12 @@ package service_test
 
 import (
 	"github.com/globocom/commandmocker"
-	"github.com/timeredbull/tsuru/api/app"
-	"github.com/timeredbull/tsuru/api/auth"
-	"github.com/timeredbull/tsuru/api/bind"
-	"github.com/timeredbull/tsuru/api/service"
-	"github.com/timeredbull/tsuru/db"
-	"github.com/timeredbull/tsuru/errors"
+	"github.com/globocom/tsuru/api/app"
+	"github.com/globocom/tsuru/api/auth"
+	"github.com/globocom/tsuru/api/bind"
+	"github.com/globocom/tsuru/api/service"
+	"github.com/globocom/tsuru/db"
+	"github.com/globocom/tsuru/errors"
 	"labix.org/v2/mgo/bson"
 	. "launchpad.net/gocheck"
 	"net/http"

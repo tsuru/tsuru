@@ -1,10 +1,10 @@
 package consumption
 
 import (
-	"github.com/timeredbull/tsuru/api/auth"
-	"github.com/timeredbull/tsuru/api/service"
-	"github.com/timeredbull/tsuru/db"
-	"github.com/timeredbull/tsuru/errors"
+	"github.com/globocom/tsuru/api/auth"
+	"github.com/globocom/tsuru/api/service"
+	"github.com/globocom/tsuru/db"
+	"github.com/globocom/tsuru/errors"
 	"labix.org/v2/mgo/bson"
 	"net/http"
 )

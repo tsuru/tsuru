@@ -3,7 +3,7 @@ package app
 import (
 	"errors"
 	"fmt"
-	"github.com/timeredbull/tsuru/log"
+	"github.com/globocom/tsuru/log"
 	"os/exec"
 	"strconv"
 	"strings"

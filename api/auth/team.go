@@ -2,7 +2,7 @@ package auth
 
 import (
 	"fmt"
-	"github.com/timeredbull/tsuru/db"
+	"github.com/globocom/tsuru/db"
 	"labix.org/v2/mgo/bson"
 	"sync"
 )

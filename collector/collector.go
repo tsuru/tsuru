@@ -1,9 +1,9 @@
 package main
 
 import (
-	"github.com/timeredbull/tsuru/api/app"
-	"github.com/timeredbull/tsuru/db"
-	"github.com/timeredbull/tsuru/log"
+	"github.com/globocom/tsuru/api/app"
+	"github.com/globocom/tsuru/db"
+	"github.com/globocom/tsuru/log"
 	"labix.org/v2/mgo/bson"
 	"launchpad.net/goyaml"
 	"os/exec"

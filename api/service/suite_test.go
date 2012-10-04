@@ -3,8 +3,8 @@ package service
 import (
 	"github.com/globocom/commandmocker"
 	"github.com/globocom/config"
-	"github.com/timeredbull/tsuru/api/auth"
-	"github.com/timeredbull/tsuru/db"
+	"github.com/globocom/tsuru/api/auth"
+	"github.com/globocom/tsuru/db"
 	"io/ioutil"
 	. "launchpad.net/gocheck"
 	"testing"

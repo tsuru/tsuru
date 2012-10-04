@@ -2,7 +2,7 @@ package cmd
 
 import (
 	"fmt"
-	"github.com/timeredbull/tsuru/fs"
+	"github.com/globocom/tsuru/fs"
 	"io"
 	"net/http"
 	"os"

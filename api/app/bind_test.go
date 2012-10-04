@@ -1,9 +1,9 @@
 package app
 
 import (
-	"github.com/timeredbull/tsuru/api/bind"
-	"github.com/timeredbull/tsuru/api/service"
-	"github.com/timeredbull/tsuru/db"
+	"github.com/globocom/tsuru/api/bind"
+	"github.com/globocom/tsuru/api/service"
+	"github.com/globocom/tsuru/db"
 	"labix.org/v2/mgo/bson"
 	. "launchpad.net/gocheck"
 	"net/http"

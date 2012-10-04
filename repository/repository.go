@@ -3,7 +3,7 @@ package repository
 import (
 	"fmt"
 	"github.com/globocom/config"
-	"github.com/timeredbull/tsuru/log"
+	"github.com/globocom/tsuru/log"
 	"path"
 )
 

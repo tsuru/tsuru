@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/timeredbull/tsuru/cmd/term"
+	"github.com/globocom/tsuru/cmd/term"
 	"io"
 	"io/ioutil"
 	"net/http"
