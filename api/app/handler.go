@@ -102,6 +102,10 @@ func CloneRepositoryHandler(w http.ResponseWriter, r *http.Request) error {
 		write(w, out)
 		return err
 	}
+	err = write(w, out)
+	if err != nil {
+		return err
+	}
 	err = write(w, []byte(" ---> Restarting your app\n"))
 	if err != nil {
 		return err
