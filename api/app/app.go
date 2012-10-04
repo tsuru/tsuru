@@ -312,11 +312,21 @@ func restart(a *App) ([]byte, error) {
 	return out, nil
 }
 
-func (a *App) updateHooks() ([]byte, error) {
+//installDeps runs the dependencies hook for the app
+//and returns your output.
+func installDeps(a *App) ([]byte, error) {
 	u := a.unit()
 	a.log("executting hook dependencies")
 	out, err := u.executeHook("dependencies")
 	a.log(string(out))
+	if err != nil {
+		return out, err
+	}
+	return out, nil
+}
+
+func (a *App) updateHooks() ([]byte, error) {
+	out, err := installDeps(a)
 	if err != nil {
 		return out, err
 	}
