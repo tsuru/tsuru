@@ -36,9 +36,6 @@ export DATABASE_USER=root
 export DATABASE_PASSWORD=secret`
 
 func (s *S) TestCloneRepositoryHandler(c *C) {
-	w := bytes.NewBuffer([]byte{})
-	l := stdlog.New(w, "", stdlog.LstdFlags)
-	log.Target = l
 	output := `
 ========
 pre-restart:
@@ -117,18 +114,11 @@ pos-restart:
 	err = CloneRepositoryHandler(recorder, request)
 	c.Assert(err, IsNil)
 	c.Assert(recorder.Code, Equals, 200)
-	str := w.String()
-	cloneIndex := strings.Index(str, "git clone")
-	c.Assert(cloneIndex, Not(Equals), -1)
-	restartIndex := strings.Index(str, "restarting")
-	c.Assert(restartIndex, Not(Equals), -1)
-	preRstIndex := strings.Index(str, "pre-restart hook")
-	c.Assert(preRstIndex, Not(Equals), -1)
-	posRstIndex := strings.Index(str, "pos-restart hook")
-	c.Assert(posRstIndex, Not(Equals), -1)
-	c.Assert(preRstIndex, Greater, cloneIndex)   // clone/pull runs before pre-restart
-	c.Assert(restartIndex, Greater, preRstIndex) // pre-restart runs before restart
-	c.Assert(posRstIndex, Greater, restartIndex) // pos-restart runs after restart
+	str := strings.Replace(w.String(), "\n", "", -1)
+	c.Assert(str, Matches, ".*git clone.*")
+	c.Assert(str, Matches, ".*restarting.*")
+	c.Assert(str, Matches, ".*pre-restart hook.*")
+	c.Assert(str, Matches, ".*pos-restart hook.*")
 }
 
 func (s *S) TestCloneRepositoryShouldReturnNotFoundWhenAppDoesNotExist(c *C) {
