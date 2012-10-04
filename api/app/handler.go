@@ -73,7 +73,15 @@ func CloneRepositoryHandler(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
+	err = write(w, []byte(" ---> Parsing app.conf\n"))
+	if err != nil {
+		return err
+	}
 	c, err := app.conf()
+	if err != nil {
+		return err
+	}
+	err = write(w, []byte(" ---> Running pre-restart\n"))
 	if err != nil {
 		return err
 	}
@@ -82,6 +90,10 @@ func CloneRepositoryHandler(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	err = write(w, out)
+	if err != nil {
+		return err
+	}
+	err = write(w, []byte(" ---> Installing dependencies\n"))
 	if err != nil {
 		return err
 	}
@@ -100,6 +112,10 @@ func CloneRepositoryHandler(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	err = write(w, out)
+	if err != nil {
+		return err
+	}
+	err = write(w, []byte(" ---> Running pos-restart\n"))
 	if err != nil {
 		return err
 	}
