@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/timeredbull/commandmocker"
+	"github.com/globocom/commandmocker"
 	"github.com/timeredbull/tsuru/db"
 	"labix.org/v2/mgo"
 	. "launchpad.net/gocheck"

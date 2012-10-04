@@ -1,7 +1,7 @@
 package service_test
 
 import (
-	"github.com/timeredbull/commandmocker"
+	"github.com/globocom/commandmocker"
 	"github.com/timeredbull/tsuru/api/app"
 	"github.com/timeredbull/tsuru/api/auth"
 	"github.com/timeredbull/tsuru/api/bind"

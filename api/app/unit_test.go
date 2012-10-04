@@ -1,7 +1,7 @@
 package app
 
 import (
-	"github.com/timeredbull/commandmocker"
+	"github.com/globocom/commandmocker"
 	"github.com/timeredbull/tsuru/api/bind"
 	"github.com/timeredbull/tsuru/repository"
 	. "launchpad.net/gocheck"

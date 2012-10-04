@@ -1,7 +1,7 @@
 package consumption
 
 import (
-	"github.com/timeredbull/commandmocker"
+	"github.com/globocom/commandmocker"
 	"github.com/timeredbull/tsuru/api/auth"
 	"github.com/timeredbull/tsuru/api/service"
 	"github.com/timeredbull/tsuru/config"
