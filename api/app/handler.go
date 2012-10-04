@@ -52,7 +52,7 @@ func CloneRepositoryHandler(w http.ResponseWriter, r *http.Request) error {
 		return nil
 	}
 	w.Header().Set("Content-Type", "text")
-	err := write(w, []byte(" ---> Tsuru receiving push\n"))
+	err := write(w, []byte("\n ---> Tsuru receiving push\n"))
 	if err != nil {
 		return err
 	}
@@ -61,7 +61,7 @@ func CloneRepositoryHandler(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return &errors.Http{Code: http.StatusNotFound, Message: "App not found"}
 	}
-	err = write(w, []byte(" ---> Clonning your code in your machines\n"))
+	err = write(w, []byte("\n ---> Clonning your code in your machines\n"))
 	if err != nil {
 		return err
 	}
@@ -73,7 +73,7 @@ func CloneRepositoryHandler(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	err = write(w, []byte(" ---> Parsing app.conf\n"))
+	err = write(w, []byte("\n ---> Parsing app.conf\n"))
 	if err != nil {
 		return err
 	}
@@ -81,7 +81,7 @@ func CloneRepositoryHandler(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	err = write(w, []byte(" ---> Running pre-restart\n"))
+	err = write(w, []byte("\n ---> Running pre-restart\n"))
 	if err != nil {
 		return err
 	}
@@ -93,7 +93,7 @@ func CloneRepositoryHandler(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	err = write(w, []byte(" ---> Installing dependencies\n"))
+	err = write(w, []byte("\n ---> Installing dependencies\n"))
 	if err != nil {
 		return err
 	}
@@ -106,7 +106,7 @@ func CloneRepositoryHandler(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	err = write(w, []byte(" ---> Restarting your app\n"))
+	err = write(w, []byte("\n ---> Restarting your app\n"))
 	if err != nil {
 		return err
 	}
@@ -119,7 +119,7 @@ func CloneRepositoryHandler(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	err = write(w, []byte(" ---> Running pos-restart\n"))
+	err = write(w, []byte("\n ---> Running pos-restart\n"))
 	if err != nil {
 		return err
 	}
@@ -131,7 +131,7 @@ func CloneRepositoryHandler(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	return write(w, []byte(" ---> Deploy done!\n\n"))
+	return write(w, []byte("\n ---> Deploy done!\n\n"))
 }
 
 func AppDelete(w http.ResponseWriter, r *http.Request, u *auth.User) error {
