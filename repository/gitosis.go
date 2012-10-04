@@ -3,8 +3,8 @@ package repository
 import (
 	"errors"
 	"fmt"
+	"github.com/globocom/config"
 	ini "github.com/kless/goconfig/config"
-	"github.com/timeredbull/tsuru/config"
 	"os"
 	"path"
 	"strings"

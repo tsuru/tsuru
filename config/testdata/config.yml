@@ -1,9 +1,0 @@
-database:
-  host: 127.0.0.1
-  port: 8080
-auth:
-  salt: xpto
-  key: sometoken1234
-xpto: ble
-istrue: false
-fakebool: foo

@@ -2,8 +2,8 @@ package repository
 
 import (
 	"fmt"
+	"github.com/globocom/config"
 	ini "github.com/kless/goconfig/config"
-	"github.com/timeredbull/tsuru/config"
 	"io/ioutil"
 	. "launchpad.net/gocheck"
 	"os"

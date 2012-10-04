@@ -3,7 +3,7 @@ package repository
 import (
 	"errors"
 	"fmt"
-	"github.com/timeredbull/tsuru/config"
+	"github.com/globocom/config"
 	. "launchpad.net/gocheck"
 	"strings"
 )

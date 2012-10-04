@@ -5,7 +5,7 @@ import (
 	"crypto/sha512"
 	"errors"
 	"fmt"
-	"github.com/timeredbull/tsuru/config"
+	"github.com/globocom/config"
 	"github.com/timeredbull/tsuru/db"
 	"labix.org/v2/mgo/bson"
 	"time"

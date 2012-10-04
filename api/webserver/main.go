@@ -3,11 +3,11 @@ package main
 import (
 	"flag"
 	"github.com/bmizerany/pat"
+	"github.com/globocom/config"
 	"github.com/timeredbull/tsuru/api/app"
 	"github.com/timeredbull/tsuru/api/auth"
 	"github.com/timeredbull/tsuru/api/service/consumption"
 	"github.com/timeredbull/tsuru/api/service/provision"
-	"github.com/timeredbull/tsuru/config"
 	"github.com/timeredbull/tsuru/db"
 	"github.com/timeredbull/tsuru/log"
 	"github.com/timeredbull/tsuru/repository"

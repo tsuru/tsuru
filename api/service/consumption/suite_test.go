@@ -2,9 +2,9 @@ package consumption
 
 import (
 	"github.com/globocom/commandmocker"
+	"github.com/globocom/config"
 	"github.com/timeredbull/tsuru/api/auth"
 	"github.com/timeredbull/tsuru/api/service"
-	"github.com/timeredbull/tsuru/config"
 	"github.com/timeredbull/tsuru/db"
 	"io/ioutil"
 	. "launchpad.net/gocheck"

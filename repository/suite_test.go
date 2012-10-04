@@ -2,7 +2,7 @@ package repository
 
 import (
 	"github.com/globocom/commandmocker"
-	"github.com/timeredbull/tsuru/config"
+	"github.com/globocom/config"
 	"github.com/timeredbull/tsuru/log"
 	. "launchpad.net/gocheck"
 	stdlog "log"

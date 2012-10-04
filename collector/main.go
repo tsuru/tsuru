@@ -2,8 +2,8 @@ package main
 
 import (
 	"flag"
+	"github.com/globocom/config"
 	"github.com/timeredbull/tsuru/api/app"
-	"github.com/timeredbull/tsuru/config"
 	"github.com/timeredbull/tsuru/db"
 	"github.com/timeredbull/tsuru/log"
 	"labix.org/v2/mgo/bson"

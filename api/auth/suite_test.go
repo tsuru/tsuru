@@ -2,7 +2,7 @@ package auth
 
 import (
 	"bytes"
-	"github.com/timeredbull/tsuru/config"
+	"github.com/globocom/config"
 	"github.com/timeredbull/tsuru/db"
 	"github.com/timeredbull/tsuru/repository"
 	"io"

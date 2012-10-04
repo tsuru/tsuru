@@ -4,7 +4,7 @@ import (
 	"code.google.com/p/go.crypto/pbkdf2"
 	"crypto/sha512"
 	"fmt"
-	"github.com/timeredbull/tsuru/config"
+	"github.com/globocom/config"
 	"github.com/timeredbull/tsuru/db"
 	"labix.org/v2/mgo/bson"
 	. "launchpad.net/gocheck"
