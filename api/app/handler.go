@@ -102,7 +102,7 @@ func CloneRepositoryHandler(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return &errors.Http{Code: http.StatusInternalServerError, Message: err.Error()}
 	}
-	return nil
+	return write(w, []byte("Deploy done!\n"))
 }
 
 func AppDelete(w http.ResponseWriter, r *http.Request, u *auth.User) error {
