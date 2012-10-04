@@ -61,6 +61,10 @@ func CloneRepositoryHandler(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return &errors.Http{Code: http.StatusNotFound, Message: "App not found"}
 	}
+	err := write(w, []byte("Clonning your code in your machines\n"))
+	if err != nil {
+		return err
+	}
 	out, err := repository.CloneOrPull(app.unit()) // should iterate over the machines
 	if err != nil {
 		return &errors.Http{Code: http.StatusInternalServerError, Message: string(out)}
