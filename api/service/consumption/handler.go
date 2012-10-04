@@ -90,9 +90,10 @@ func RemoveServiceInstanceHandler(w http.ResponseWriter, r *http.Request, u *aut
 		return &errors.Http{Code: http.StatusInternalServerError, Message: msg}
 	}
 	if err = si.Service().ProductionEndpoint().Destroy(&si); err != nil {
+        //TODO(flaviamissi): return err
 		return &errors.Http{Code: http.StatusInternalServerError, Message: err.Error()}
 	}
-	err = db.Session.ServiceInstances().Remove(bson.M{"_id": name})
+	err = db.Session.ServiceInstances().Remove(bson.M{"name": name})
 	if err != nil {
 		return err
 	}
@@ -121,7 +122,7 @@ func ServiceInstanceStatusHandler(w http.ResponseWriter, r *http.Request, u *aut
 	if siName == "" {
 		return &errors.Http{Code: http.StatusBadRequest, Message: "Service instance name not provided."}
 	}
-	err := db.Session.ServiceInstances().Find(bson.M{"_id": siName}).One(&si)
+	err := db.Session.ServiceInstances().Find(bson.M{"name": siName}).One(&si)
 	if err != nil {
 		msg := fmt.Sprintf("Service instance does not exists, error: %s", err.Error())
 		return &errors.Http{Code: http.StatusInternalServerError, Message: msg}

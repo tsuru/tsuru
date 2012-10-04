@@ -18,10 +18,10 @@ func (s *S) createServiceInstance() {
 
 func (s *S) TestCreateServiceInstance(c *C) {
 	s.createServiceInstance()
-	defer db.Session.Services().Remove(bson.M{"_id": s.service.Name})
+	defer db.Session.Services().Remove(bson.M{"name": s.service.Name})
 	var result ServiceInstance
 	query := bson.M{
-		"_id": s.service.Name,
+		"name": s.service.Name,
 	}
 	err := db.Session.ServiceInstances().Find(query).One(&result)
 	c.Check(err, IsNil)
@@ -30,10 +30,10 @@ func (s *S) TestCreateServiceInstance(c *C) {
 
 func (s *S) TestDeleteServiceInstance(c *C) {
 	s.createServiceInstance()
-	defer db.Session.Services().Remove(bson.M{"_id": s.service.Name})
+	defer db.Session.Services().Remove(bson.M{"name": s.service.Name})
 	s.serviceInstance.Delete()
 	query := bson.M{
-		"_id": s.service.Name,
+		"name": s.service.Name,
 	}
 	qtd, err := db.Session.ServiceInstances().Find(query).Count()
 	c.Assert(err, IsNil)

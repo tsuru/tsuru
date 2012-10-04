@@ -11,7 +11,7 @@ import (
 )
 
 type ServiceInstance struct {
-	Name        string `bson:"_id"`
+	Name        string
 	ServiceName string `bson:"service_name"`
 	Apps        []string
 	Teams       []string
@@ -22,7 +22,7 @@ func (si *ServiceInstance) Create() error {
 }
 
 func (si *ServiceInstance) Delete() error {
-	doc := bson.M{"_id": si.Name}
+	doc := bson.M{"name": si.Name}
 	return db.Session.ServiceInstances().Remove(doc)
 }
 
@@ -63,7 +63,7 @@ func (si *ServiceInstance) RemoveApp(appName string) error {
 }
 
 func (si *ServiceInstance) update() error {
-	return db.Session.ServiceInstances().Update(bson.M{"_id": si.Name}, si)
+	return db.Session.ServiceInstances().Update(bson.M{"name": si.Name}, si)
 }
 
 func (si *ServiceInstance) Bind(app bind.App) error {

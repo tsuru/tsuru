@@ -36,9 +36,9 @@ func (suite *S) TestCreateInstanceHandlerSavesServiceInstanceInDb(c *C) {
 	err := CreateInstanceHandler(recorder, request, suite.user)
 	c.Assert(err, IsNil)
 	var si service.ServiceInstance
-	err = db.Session.ServiceInstances().Find(bson.M{"_id": "brainSQL", "service_name": "mysql"}).One(&si)
+	err = db.Session.ServiceInstances().Find(bson.M{"name": "brainSQL", "service_name": "mysql"}).One(&si)
 	c.Assert(err, IsNil)
-	db.Session.ServiceInstances().Update(bson.M{"_id": si.Name}, si)
+	db.Session.ServiceInstances().Update(bson.M{"name": si.Name}, si)
 	c.Assert(si.Name, Equals, "brainSQL")
 	c.Assert(si.ServiceName, Equals, "mysql")
 }
@@ -58,9 +58,9 @@ func (s *S) TestCreateInstanceHandlerSavesAllTeamsThatTheGivenUserIsMemberAndHas
 	err = CreateInstanceHandler(recorder, request, s.user)
 	c.Assert(err, IsNil)
 	var si service.ServiceInstance
-	err = db.Session.ServiceInstances().Find(bson.M{"_id": "brainSQL"}).One(&si)
+	err = db.Session.ServiceInstances().Find(bson.M{"name": "brainSQL"}).One(&si)
 	c.Assert(err, IsNil)
-	db.Session.ServiceInstances().Update(bson.M{"_id": si.Name}, si)
+	db.Session.ServiceInstances().Update(bson.M{"name": si.Name}, si)
 	c.Assert(si.Teams, DeepEquals, []string{s.team.Name})
 }
 
@@ -85,7 +85,7 @@ func (s *S) TestCreateInstanceHandlerIgnoresTeamAuthIfServiceIsNotRestricted(c *
 	err = CreateInstanceHandler(recorder, request, s.user)
 	c.Assert(err, IsNil)
 	var si service.ServiceInstance
-	err = db.Session.ServiceInstances().Find(bson.M{"_id": "brainSQL"}).One(&si)
+	err = db.Session.ServiceInstances().Find(bson.M{"name": "brainSQL"}).One(&si)
 	c.Assert(err, IsNil)
 	c.Assert(si.Name, Equals, "brainSQL")
 	c.Assert(si.Teams, DeepEquals, []string{s.team.Name})
@@ -138,7 +138,7 @@ func (s *S) TestRemoveServiceInstanceHandler(c *C) {
 	b, err := ioutil.ReadAll(recorder.Body)
 	c.Assert(err, IsNil)
 	c.Assert(string(b), Equals, "service instance successfuly removed")
-	n, err := db.Session.ServiceInstances().Find(bson.M{"_id": "foo-instance"}).Count()
+	n, err := db.Session.ServiceInstances().Find(bson.M{"name": "foo-instance"}).Count()
 	c.Assert(err, IsNil)
 	c.Assert(n, Equals, 0)
 }
@@ -150,7 +150,7 @@ func (s *S) TestRemoveServiceHandlerWithoutPermissionShouldReturn401(c *C) {
 	c.Assert(err, IsNil)
 	si := service.ServiceInstance{Name: "foo-instance", ServiceName: "foo"}
 	err = si.Create()
-	defer db.Session.ServiceInstances().Remove(bson.M{"_id": si.Name})
+	defer db.Session.ServiceInstances().Remove(bson.M{"name": si.Name})
 	c.Assert(err, IsNil)
 	recorder, request := makeRequestToRemoveInstanceHandler("foo-instance", c)
 	err = RemoveServiceInstanceHandler(recorder, request, s.user)
@@ -164,7 +164,7 @@ func (s *S) TestRemoveServiceHandlerWIthAssociatedAppsShouldFailAndReturnError(c
 	c.Assert(err, IsNil)
 	si := service.ServiceInstance{Name: "foo-instance", ServiceName: "foo", Apps: []string{"foo-bar"}, Teams: []string{s.team.Name}}
 	err = si.Create()
-	defer db.Session.ServiceInstances().Remove(bson.M{"_id": si.Name})
+	defer db.Session.ServiceInstances().Remove(bson.M{"name": si.Name})
 	c.Assert(err, IsNil)
 	recorder, request := makeRequestToRemoveInstanceHandler("foo-instance", c)
 	err = RemoveServiceInstanceHandler(recorder, request, s.user)
@@ -184,7 +184,7 @@ func (s *S) TestRemoveServiceShouldCallTheServiceAPI(c *C) {
 	si := service.ServiceInstance{Name: "purity-instance", ServiceName: "purity", Teams: []string{s.team.Name}}
 	err = si.Create()
 	c.Assert(err, IsNil)
-	defer db.Session.ServiceInstances().Remove(bson.M{"_id": si.Name})
+	defer db.Session.ServiceInstances().Remove(bson.M{"name": si.Name})
 	recorder, request := makeRequestToRemoveInstanceHandler("purity-instance", c)
 	err = RemoveServiceInstanceHandler(recorder, request, s.user)
 	c.Assert(err, IsNil)
@@ -206,7 +206,7 @@ func (s *S) TestremoveServiceShouldNotRemoveTheServiceIfTheServiceAPICallFail(c 
 	si := service.ServiceInstance{Name: "deepercut-instance", ServiceName: "deepercut", Teams: []string{s.team.Name}}
 	err = si.Create()
 	c.Assert(err, IsNil)
-	defer db.Session.ServiceInstances().Remove(bson.M{"_id": si.Name})
+	defer db.Session.ServiceInstances().Remove(bson.M{"name": si.Name})
 	recorder, request := makeRequestToRemoveInstanceHandler("deepercut-instance", c)
 	err = RemoveServiceInstanceHandler(recorder, request, s.user)
 	c.Assert(err, NotNil)

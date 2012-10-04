@@ -294,13 +294,13 @@ func (s *S) TestDeleteAppRemovesProjectFromAllTeamsInGitosis(c *C) {
 func (s *S) TestDeleteReturnsErrorIfAppDestroyFails(c *C) {
 	dir, err := commandmocker.Add("juju", "$*")
 	c.Assert(err, IsNil)
-	defer commandmocker.Remove(dir)
 	myApp := App{
 		Name:      "MyAppToDelete",
 		Framework: "django",
 		Teams:     []string{s.team.Name},
 	}
 	err = createApp(&myApp)
+	commandmocker.Remove(dir)
 	c.Assert(err, IsNil)
 	request, err := http.NewRequest("DELETE", "/apps/"+myApp.Name+"?:name="+myApp.Name, nil)
 	c.Assert(err, IsNil)
@@ -1572,7 +1572,7 @@ func (s *S) TestBindHandler(c *C) {
 	}
 	err = instance.Create()
 	c.Assert(err, IsNil)
-	defer db.Session.ServiceInstances().Remove(bson.M{"_id": "my-mysql"})
+	defer db.Session.ServiceInstances().Remove(bson.M{"name": "my-mysql"})
 	a := App{
 		Name:  "painkiller",
 		Teams: []string{s.team.Name},
@@ -1589,7 +1589,7 @@ func (s *S) TestBindHandler(c *C) {
 	recorder := httptest.NewRecorder()
 	err = BindHandler(recorder, request, s.user)
 	c.Assert(err, IsNil)
-	err = db.Session.ServiceInstances().Find(bson.M{"_id": instance.Name}).One(&instance)
+	err = db.Session.ServiceInstances().Find(bson.M{"name": instance.Name}).One(&instance)
 	c.Assert(err, IsNil)
 	c.Assert(instance.Apps, DeepEquals, []string{a.Name})
 	err = db.Session.Apps().Find(bson.M{"name": a.Name}).One(&a)
@@ -1642,7 +1642,7 @@ func (s *S) TestBindHandlerReturns403IfTheUserDoesNotHaveAccessToTheInstance(c *
 	instance := service.ServiceInstance{Name: "my-mysql", ServiceName: "mysql"}
 	err := instance.Create()
 	c.Assert(err, IsNil)
-	defer db.Session.ServiceInstances().Remove(bson.M{"_id": "my-mysql"})
+	defer db.Session.ServiceInstances().Remove(bson.M{"name": "my-mysql"})
 	a := App{
 		Name:      "serviceApp",
 		Framework: "django",
@@ -1667,7 +1667,7 @@ func (s *S) TestBindHandlerReturns404IfTheAppDoesNotExist(c *C) {
 	instance := service.ServiceInstance{Name: "my-mysql", ServiceName: "mysql", Teams: []string{s.team.Name}}
 	err := instance.Create()
 	c.Assert(err, IsNil)
-	defer db.Session.ServiceInstances().Remove(bson.M{"_id": "my-mysql"})
+	defer db.Session.ServiceInstances().Remove(bson.M{"name": "my-mysql"})
 	url := fmt.Sprintf("/services/instances/%s/unknown?:instance=%s&app=unknown", instance.Name, instance.Name)
 	request, err := http.NewRequest("PUT", url, nil)
 	c.Assert(err, IsNil)
@@ -1684,7 +1684,7 @@ func (s *S) TestBindHandlerReturns403IfTheUserDoesNotHaveAccessToTheApp(c *C) {
 	instance := service.ServiceInstance{Name: "my-mysql", ServiceName: "mysql", Teams: []string{s.team.Name}}
 	err := instance.Create()
 	c.Assert(err, IsNil)
-	defer db.Session.ServiceInstances().Remove(bson.M{"_id": "my-mysql"})
+	defer db.Session.ServiceInstances().Remove(bson.M{"name": "my-mysql"})
 	a := App{
 		Name:      "serviceApp",
 		Framework: "django",
@@ -1722,7 +1722,7 @@ func (s *S) TestUnbindHandler(c *C) {
 	}
 	err = instance.Create()
 	c.Assert(err, IsNil)
-	defer db.Session.ServiceInstances().Remove(bson.M{"_id": "my-mysql"})
+	defer db.Session.ServiceInstances().Remove(bson.M{"name": "my-mysql"})
 	a := App{
 		Name:  "painkiller",
 		Teams: []string{s.team.Name},
@@ -1751,7 +1751,7 @@ func (s *S) TestUnbindHandler(c *C) {
 	recorder := httptest.NewRecorder()
 	err = UnbindHandler(recorder, req, s.user)
 	c.Assert(err, IsNil)
-	err = db.Session.ServiceInstances().Find(bson.M{"_id": instance.Name}).One(&instance)
+	err = db.Session.ServiceInstances().Find(bson.M{"name": instance.Name}).One(&instance)
 	c.Assert(err, IsNil)
 	c.Assert(instance.Apps, DeepEquals, []string{})
 	err = db.Session.Apps().Find(bson.M{"name": a.Name}).One(&a)
@@ -1803,7 +1803,7 @@ func (s *S) TestUnbindHandlerReturns403IfTheUserDoesNotHaveAccessToTheInstance(c
 	instance := service.ServiceInstance{Name: "my-mysql", ServiceName: "mysql"}
 	err := instance.Create()
 	c.Assert(err, IsNil)
-	defer db.Session.ServiceInstances().Remove(bson.M{"_id": "my-mysql"})
+	defer db.Session.ServiceInstances().Remove(bson.M{"name": "my-mysql"})
 	a := App{
 		Name:      "serviceApp",
 		Framework: "django",
@@ -1828,7 +1828,7 @@ func (s *S) TestUnbindHandlerReturns404IfTheAppDoesNotExist(c *C) {
 	instance := service.ServiceInstance{Name: "my-mysql", ServiceName: "mysql", Teams: []string{s.team.Name}}
 	err := instance.Create()
 	c.Assert(err, IsNil)
-	defer db.Session.ServiceInstances().Remove(bson.M{"_id": "my-mysql"})
+	defer db.Session.ServiceInstances().Remove(bson.M{"name": "my-mysql"})
 	url := fmt.Sprintf("/services/instances/%s/unknown?:instance=%s&app=unknown", instance.Name, instance.Name)
 	request, err := http.NewRequest("PUT", url, nil)
 	c.Assert(err, IsNil)
@@ -1845,7 +1845,7 @@ func (s *S) TestUnbindHandlerReturns403IfTheUserDoesNotHaveAccessToTheApp(c *C) 
 	instance := service.ServiceInstance{Name: "my-mysql", ServiceName: "mysql", Teams: []string{s.team.Name}}
 	err := instance.Create()
 	c.Assert(err, IsNil)
-	defer db.Session.ServiceInstances().Remove(bson.M{"_id": "my-mysql"})
+	defer db.Session.ServiceInstances().Remove(bson.M{"name": "my-mysql"})
 	a := App{
 		Name:      "serviceApp",
 		Framework: "django",

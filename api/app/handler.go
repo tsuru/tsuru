@@ -499,7 +499,7 @@ func AppLog(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 }
 
 func serviceInstanceAndAppOrError(instanceName, appName string, u *auth.User) (instance service.ServiceInstance, a App, err error) {
-	err = db.Session.ServiceInstances().Find(bson.M{"_id": instanceName}).One(&instance)
+	err = db.Session.ServiceInstances().Find(bson.M{"name": instanceName}).One(&instance)
 	if err != nil {
 		err = &errors.Http{Code: http.StatusNotFound, Message: "Instance not found"}
 		return

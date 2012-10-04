@@ -35,7 +35,7 @@ func GetServiceOrError(name string, u *auth.User) (service.Service, error) {
 
 func GetServiceInstanceOr404(name string) (service.ServiceInstance, error) {
 	var si service.ServiceInstance
-	err := db.Session.ServiceInstances().Find(bson.M{"_id": name}).One(&si)
+	err := db.Session.ServiceInstances().Find(bson.M{"name": name}).One(&si)
 	if err != nil {
 		return si, &errors.Http{Code: http.StatusNotFound, Message: "Service instance not found"}
 	}
