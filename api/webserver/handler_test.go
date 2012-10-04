@@ -64,7 +64,7 @@ func (s *S) TestHandlerReturns500WhenInternalHandlerReturnsAnError(c *C) {
 	c.Assert(err, IsNil)
 
 	Handler(errorHandler).ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, Equals, 500)
+	c.Assert(recorder.Code, Equals, http.StatusInternalServerError)
 	c.Assert(recorder.Body.String(), Equals, "some error\n")
 }
 
