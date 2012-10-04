@@ -299,6 +299,19 @@ func (a *App) hasRestartHooks(c conf) bool {
 	return !(c.PreRestart == "" && c.PosRestart == "")
 }
 
+//restart runs the restart hook for the app
+//and returns your output.
+func restart(a *App) ([]byte, error) {
+	u := a.unit()
+	a.log("executting hook to restarting")
+	out, err := u.executeHook("restart")
+	if err != nil {
+		return out, err
+	}
+	a.log(string(out))
+	return out, nil
+}
+
 func (a *App) updateHooks() ([]byte, error) {
 	u := a.unit()
 	a.log("executting hook dependencies")
@@ -307,8 +320,7 @@ func (a *App) updateHooks() ([]byte, error) {
 	if err != nil {
 		return out, err
 	}
-	a.log("executting hook to restarting")
-	restartOut, err := u.executeHook("restart")
+	restartOut, err := restart(a)
 	out = append(out, restartOut...)
 	if err != nil {
 		return out, err
