@@ -1,7 +1,6 @@
 package service_test
 
 import (
-	"github.com/globocom/commandmocker"
 	"github.com/globocom/tsuru/api/app"
 	"github.com/globocom/tsuru/api/auth"
 	"github.com/globocom/tsuru/api/bind"
@@ -30,7 +29,6 @@ func TestT(t *testing.T) {
 
 func (s *S) SetUpSuite(c *C) {
 	var err error
-	s.tmpdir, err = commandmocker.Add("juju", "$*")
 	c.Assert(err, IsNil)
 	db.Session, err = db.Open("127.0.0.1:27017", "tsuru_service_bind_test")
 	c.Assert(err, IsNil)
@@ -41,7 +39,6 @@ func (s *S) SetUpSuite(c *C) {
 }
 
 func (s *S) TearDownSuite(c *C) {
-	defer commandmocker.Remove(s.tmpdir)
 	defer db.Session.Close()
 	db.Session.Apps().Database.DropDatabase()
 }
