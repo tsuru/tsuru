@@ -3,6 +3,7 @@ package app
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"github.com/globocom/commandmocker"
 	"github.com/globocom/tsuru/api/auth"
 	"github.com/globocom/tsuru/api/bind"
@@ -17,7 +18,7 @@ import (
 
 func (s *S) TestGet(c *C) {
 	newApp := App{Name: "myApp", Framework: "Django"}
-	err := createApp(&newApp)
+	err := db.Session.Apps().Insert(newApp)
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": newApp.Name})
 	newApp.Env = map[string]bind.EnvVar{}
@@ -63,7 +64,19 @@ func (s *S) TestDestroy(c *C) {
 	c.Assert(qt, Equals, 0)
 }
 
+func (s *S) TestDestroyWithoutUnits(c *C) {
+	app := App{
+		Name: "x4",
+	}
+	err := createApp(&app)
+	c.Assert(err, IsNil)
+	err = app.destroy()
+	c.Assert(err, IsNil)
+}
+
 func (s *S) TestCreateApp(c *C) {
+	random := patchRandomReader()
+	defer unpatchRandomReader()
 	dir, err := commandmocker.Add("juju", "$*")
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(dir)
@@ -76,8 +89,8 @@ func (s *S) TestCreateApp(c *C) {
 	}
 	err = createApp(&a)
 	c.Assert(err, IsNil)
+	defer a.destroy()
 	c.Assert(a.State, Equals, "pending")
-	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
 	var retrievedApp App
 	err = db.Session.Apps().Find(bson.M{"name": a.Name}).One(&retrievedApp)
 	c.Assert(err, IsNil)
@@ -86,6 +99,19 @@ func (s *S) TestCreateApp(c *C) {
 	c.Assert(retrievedApp.State, Equals, a.State)
 	str := strings.Replace(w.String(), "\n", "", -1)
 	c.Assert(str, Matches, ".*deploy --repository=/home/charms local:django appName.*")
+	env := a.InstanceEnv(s3InstanceName)
+	c.Assert(env["TSURU_S3_ENDPOINT"].Value, Equals, s.s3Server.URL())
+	c.Assert(env["TSURU_S3_ENDPOINT"].Public, Equals, false)
+	c.Assert(env["TSURU_S3_LOCATIONCONSTRAINT"].Value, Equals, "true")
+	c.Assert(env["TSURU_S3_LOCATIONCONSTRAINT"].Public, Equals, false)
+	e, ok := env["TSURU_S3_ACCESS_KEY_ID"]
+	c.Assert(ok, Equals, true)
+	c.Assert(e.Public, Equals, false)
+	e, ok = env["TSURU_S3_SECRET_KEY"]
+	c.Assert(ok, Equals, true)
+	c.Assert(e.Public, Equals, false)
+	c.Assert(env["TSURU_S3_BUCKET"].Value, Equals, fmt.Sprintf("%s%x", strings.ToLower(a.Name), random))
+	c.Assert(env["TSURU_S3_BUCKET"].Public, Equals, false)
 }
 
 func (s *S) TestCantCreateTwoAppsWithTheSameName(c *C) {
@@ -94,6 +120,7 @@ func (s *S) TestCantCreateTwoAppsWithTheSameName(c *C) {
 	defer db.Session.Apps().Remove(bson.M{"name": "appName"})
 	a := App{Name: "appName"}
 	err = createApp(&a)
+	defer a.destroy() // clean messif test fail
 	c.Assert(err, NotNil)
 }
 
@@ -102,7 +129,7 @@ func (s *S) TestDoesNotSaveTheAppInTheDatabaseIfJujuFail(c *C) {
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(dir)
 	a := App{
-		Name:      "myapp",
+		Name:      "theirapp",
 		Framework: "ruby",
 	}
 	err = createApp(&a)
@@ -117,9 +144,6 @@ func (s *S) TestAppendOrUpdate(c *C) {
 		Name:      "appName",
 		Framework: "django",
 	}
-	err := createApp(&a)
-	c.Assert(err, IsNil)
-	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
 	u := Unit{Name: "someapp", Ip: "", Machine: 3, InstanceId: "i-00000zz8"}
 	a.AddUnit(&u)
 	c.Assert(len(a.Units), Equals, 1)
@@ -542,7 +566,7 @@ func (s *S) TestInstallDeps(c *C) {
 			},
 		},
 	}
-	err = createApp(&a)
+	err = db.Session.Apps().Insert(a)
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
 	out, err := installDeps(&a)
@@ -567,7 +591,7 @@ func (s *S) TestRestart(c *C) {
 			},
 		},
 	}
-	err = createApp(&a)
+	err = db.Session.Apps().Insert(a)
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
 	out, err := restart(&a)
@@ -577,11 +601,12 @@ func (s *S) TestRestart(c *C) {
 
 func (s *S) TestLogShouldStoreLog(c *C) {
 	a := App{Name: "newApp"}
-	err := createApp(&a)
+	err := db.Session.Apps().Insert(a)
 	c.Assert(err, IsNil)
+	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
 	err = a.log("last log msg")
 	c.Assert(err, IsNil)
-	instance := App{}
+	var instance App
 	err = db.Session.Apps().Find(bson.M{"name": a.Name}).One(&instance)
 	logLen := len(instance.Logs)
 	c.Assert(instance.Logs[logLen-1].Message, Equals, "last log msg")

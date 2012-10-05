@@ -193,7 +193,6 @@ func destroyBucket(app *App) error {
 	}
 	bucket := s3Endpoint.Bucket(bucketName)
 	if err := bucket.DelBucket(); err != nil {
-		println(bucket.S3Endpoint)
 		return err
 	}
 	if _, err := iamEndpoint.DeleteAccessKey(accessKeyId); err != nil {

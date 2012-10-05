@@ -2,8 +2,10 @@ package app
 
 import (
 	"github.com/globocom/commandmocker"
+	"github.com/globocom/tsuru/db"
 	"github.com/globocom/tsuru/fs"
 	"github.com/globocom/tsuru/fs/testing"
+	"labix.org/v2/mgo/bson"
 	. "launchpad.net/gocheck"
 	"os"
 	"path"
@@ -42,8 +44,9 @@ func (s *S) TestDoesNotSendInTheSuccessChannelIfItIsNil(c *C) {
 		Framework: "",
 		Teams:     []string{s.team.Name},
 	}
-	err = createApp(&app)
+	err = db.Session.Apps().Insert(app)
 	c.Assert(err, IsNil)
+	defer db.Session.Apps().Remove(bson.M{"name": app.Name})
 	msg := message{
 		app: &app,
 	}

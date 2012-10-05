@@ -16,6 +16,7 @@ import (
 	"os/exec"
 	"path"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -59,16 +60,39 @@ func (a *App) Get() error {
 
 // createApp creates a new app.
 //
-// Creating a new app is a process composed of two steps:
+// Creating a new app is a process composed of three steps:
 //
-//       1. Saves the app in the database
-//       2. Deploys juju charm
+//       1. Save the app in the database
+//       2. Create S3 credentials and bucket for the app
+//       3. Deploy juju charm
 func createApp(a *App) error {
 	a.State = "pending"
 	err := db.Session.Apps().Insert(a)
 	if err != nil {
 		return err
 	}
+	env, err := createBucket(a)
+	if err != nil {
+		db.Session.Apps().Remove(bson.M{"name": a.Name})
+		return err
+	}
+	variables := map[string]string{
+		"ENDPOINT":           env.endpoint,
+		"LOCATIONCONSTRAINT": strconv.FormatBool(env.locationConstraint),
+		"ACCESS_KEY_ID":      env.AccessKey,
+		"SECRET_KEY":         env.SecretKey,
+		"BUCKET":             env.bucket,
+	}
+	var envVars []bind.EnvVar
+	for name, value := range variables {
+		envVars = append(envVars, bind.EnvVar{
+			Name:         fmt.Sprintf("TSURU_S3_%s", name),
+			Value:        value,
+			Public:       false,
+			InstanceName: s3InstanceName,
+		})
+	}
+	err = setEnvsToApp(a, envVars, false)
 	return deploy(a)
 }
 
@@ -115,15 +139,21 @@ func (a *App) unbind() error {
 }
 
 func (a *App) destroy() error {
-	out, err := a.unit().destroy()
-	msg := string(out)
-	log.Print(msg)
-	if err != nil {
-		return errors.New(msg)
-	}
-	err = a.unbind()
+	err := destroyBucket(a)
 	if err != nil {
 		return err
+	}
+	if len(a.Units) > 0 {
+		out, err := a.unit().destroy()
+		msg := string(out)
+		log.Print(msg)
+		if err != nil {
+			return errors.New(msg)
+		}
+		err = a.unbind()
+		if err != nil {
+			return err
+		}
 	}
 	return db.Session.Apps().Remove(bson.M{"name": a.Name})
 }
