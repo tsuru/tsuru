@@ -204,8 +204,6 @@ func (s *S) SetUpTest(c *C) {
 func (s *S) TearDownTest(c *C) {
 	defer s.deleteGitosisConf(c)
 	config.Set("nova:auth-url", s.oldAuthUrl)
-	_, err := db.Session.Apps().RemoveAll(nil)
-	c.Assert(err, IsNil)
 }
 
 func (s *S) getTestData(p ...string) io.ReadCloser {
