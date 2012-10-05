@@ -15,14 +15,19 @@ import (
 
 type s3Env struct {
 	aws.Auth
-	bucket string
+	bucket             string
+	endpoint           string
+	locationConstraint bool
 }
 
 func (s *s3Env) empty() bool {
 	return s.bucket == "" || s.AccessKey == "" || s.SecretKey == ""
 }
 
-const randBytes = 32
+const (
+	randBytes      = 32
+	s3InstanceName = "tsurus3"
+)
 
 var (
 	rReader = rand.Reader
@@ -129,6 +134,8 @@ func createBucket(app *App) (*s3Env, error) {
 		}
 		name := fmt.Sprintf("%s%x", appName, randPart)
 		s := getS3Endpoint()
+		env.endpoint = s.S3Endpoint
+		env.locationConstraint = s.S3LocationConstraint
 		bucket := s.Bucket(name)
 		if err := bucket.PutBucket(s3.BucketOwnerFull); err != nil {
 			errChan <- err

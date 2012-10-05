@@ -2,17 +2,28 @@ package app
 
 import (
 	"bytes"
+	"crypto/rand"
 	"fmt"
 	. "launchpad.net/gocheck"
 )
 
-func (s *S) TestCreateBucket(c *C) {
-	app := App{Name: "myApp"}
+func patchRandomReader() []byte {
 	source := make([]byte, randBytes)
 	for i := 0; i < randBytes; i++ {
 		source[i] = 0xe3
 	}
 	rReader = bytes.NewReader(source)
+	return source
+}
+
+func unpatchRandomReader() {
+	rReader = rand.Reader
+}
+
+func (s *S) TestCreateBucket(c *C) {
+	app := App{Name: "myApp"}
+	source := patchRandomReader()
+	defer unpatchRandomReader()
 	env, err := createBucket(&app)
 	c.Assert(err, IsNil)
 	expected := fmt.Sprintf("myapp%x", source)
