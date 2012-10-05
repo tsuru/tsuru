@@ -84,7 +84,7 @@ func deploy(a *App) error {
 	if err != nil {
 		a.log(fmt.Sprintf("juju finished with exit status: %s", err))
 		db.Session.Apps().Remove(bson.M{"name": a.Name})
-		return errors.New(string(out))
+		return errors.New(outStr)
 	}
 	return nil
 }
