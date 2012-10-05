@@ -179,3 +179,26 @@ func createBucket(app *App) (*s3Env, error) {
 	}
 	return &env, nil
 }
+
+func destroyBucket(app *App) error {
+	appName := strings.ToLower(app.Name)
+	env := app.InstanceEnv(s3InstanceName)
+	accessKeyId := env["TSURU_S3_ACCESS_KEY_ID"].Value
+	bucketName := env["TSURU_S3_BUCKET"].Value
+	policyName := fmt.Sprintf("app-%s-bucket", appName)
+	s3Endpoint := getS3Endpoint()
+	iamEndpoint := getIAMEndpoint()
+	if _, err := iamEndpoint.DeleteUserPolicy(policyName, appName); err != nil {
+		return err
+	}
+	bucket := s3Endpoint.Bucket(bucketName)
+	if err := bucket.DelBucket(); err != nil {
+		println(bucket.S3Endpoint)
+		return err
+	}
+	if _, err := iamEndpoint.DeleteAccessKey(accessKeyId); err != nil {
+		return err
+	}
+	_, err := iamEndpoint.DeleteUser(appName)
+	return err
+}

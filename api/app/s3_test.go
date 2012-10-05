@@ -38,3 +38,21 @@ func (s *S) TestCreateBucket(c *C) {
 	policy.Execute(&policyBuffer, expected)
 	c.Assert(resp.Policy.Document, Equals, policyBuffer.String())
 }
+
+func (s *S) TestDestroyBucket(c *C) {
+	app := App{Name: "battery"}
+	bucket := fmt.Sprintf("battery%x", patchRandomReader())
+	defer unpatchRandomReader()
+	err := createApp(&app)
+	c.Assert(err, IsNil)
+	err = destroyBucket(&app)
+	c.Assert(err, IsNil)
+	s3 := getS3Endpoint()
+	_, err = s3.Bucket(bucket).List("", "/", "", 100)
+	c.Assert(err, NotNil)
+	iam := getIAMEndpoint()
+	_, err = iam.GetUserPolicy("app-battery-bucket", "battery")
+	c.Assert(err, NotNil)
+	_, err = iam.DeleteAccessKey(app.Env["TSURU_S3_ACCESS_KEY_ID"].Value)
+	c.Assert(err, NotNil)
+}
