@@ -90,7 +90,7 @@ func RemoveServiceInstanceHandler(w http.ResponseWriter, r *http.Request, u *aut
 		return &errors.Http{Code: http.StatusInternalServerError, Message: msg}
 	}
 	if err = si.Service().ProductionEndpoint().Destroy(&si); err != nil {
-        //TODO(flaviamissi): return err
+		//TODO(flaviamissi): return err
 		return &errors.Http{Code: http.StatusInternalServerError, Message: err.Error()}
 	}
 	err = db.Session.ServiceInstances().Remove(bson.M{"name": name})
