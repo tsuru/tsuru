@@ -12,6 +12,8 @@ import (
 	"io"
 	"io/ioutil"
 	"labix.org/v2/mgo"
+	"launchpad.net/goamz/iam/iamtest"
+	"launchpad.net/goamz/s3/s3test"
 	. "launchpad.net/gocheck"
 	"os"
 	"os/exec"
@@ -33,6 +35,8 @@ type S struct {
 	rfs         *fsTesting.RecordingFs
 	tokenBody   []byte
 	oldAuthUrl  string
+	iamServer   *iamtest.Server
+	s3Server    *s3test.Server
 }
 
 var _ = Suite(&S{})
@@ -174,9 +178,18 @@ func (s *S) SetUpSuite(c *C) {
 	fsystem = s.rfs
 	s.tokenBody, err = ioutil.ReadFile("testdata/response.json")
 	c.Assert(err, IsNil)
+	s.s3Server, err = s3test.NewServer()
+	c.Assert(err, IsNil)
+	config.Set("aws:s3:endpoint", s.s3Server.URL())
+	s.iamServer, err = iamtest.NewServer()
+	c.Assert(err, IsNil)
+	config.Set("aws:iam:endpoint", s.iamServer.URL())
+	config.Unset("aws:s3:bucketEndpoint")
 }
 
 func (s *S) TearDownSuite(c *C) {
+	defer s.s3Server.Quit()
+	defer s.iamServer.Quit()
 	defer commandmocker.Remove(s.tmpdir)
 	defer s.tearDownGitosis(c)
 	defer db.Session.Close()
