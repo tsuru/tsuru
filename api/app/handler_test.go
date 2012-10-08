@@ -1008,7 +1008,8 @@ func (s *S) TestSetEnvRespectsThePublicOnlyFlagKeepPrivateVariablesWhenItsTrue(c
 	}
 	err = setEnvsToApp(&a, envs, true)
 	c.Assert(err, IsNil)
-	err = a.Get()
+	newApp := App{Name: a.Name}
+	err = newApp.Get()
 	c.Assert(err, IsNil)
 	expected := map[string]bind.EnvVar{
 		"DATABASE_HOST": bind.EnvVar{
@@ -1022,7 +1023,7 @@ func (s *S) TestSetEnvRespectsThePublicOnlyFlagKeepPrivateVariablesWhenItsTrue(c
 			Public: true,
 		},
 	}
-	c.Assert(a.Env, DeepEquals, expected)
+	c.Assert(newApp.Env, DeepEquals, expected)
 }
 
 func (s *S) TestSetEnvRespectsThePublicOnlyFlagOverwrittenAllVariablesWhenItsFalse(c *C) {
@@ -1052,7 +1053,8 @@ func (s *S) TestSetEnvRespectsThePublicOnlyFlagOverwrittenAllVariablesWhenItsFal
 	}
 	err = setEnvsToApp(&a, envs, false)
 	c.Assert(err, IsNil)
-	err = a.Get()
+	newApp := App{Name: a.Name}
+	err = newApp.Get()
 	c.Assert(err, IsNil)
 	expected := map[string]bind.EnvVar{
 		"DATABASE_HOST": bind.EnvVar{
@@ -1066,7 +1068,7 @@ func (s *S) TestSetEnvRespectsThePublicOnlyFlagOverwrittenAllVariablesWhenItsFal
 			Public: true,
 		},
 	}
-	c.Assert(a.Env, DeepEquals, expected)
+	c.Assert(newApp.Env, DeepEquals, expected)
 }
 
 func (s *S) TestSetEnvHandlerShouldSetAPublicEnvironmentVariableInTheApp(c *C) {
@@ -1399,7 +1401,8 @@ func (s *S) TestUnsetEnvRespectsThePublicOnlyFlagKeepPrivateVariablesWhenItsTrue
 	c.Assert(err, IsNil)
 	err = unsetEnvFromApp(&a, []string{"DATABASE_HOST", "DATABASE_PASSWORD"}, true)
 	c.Assert(err, IsNil)
-	err = a.Get()
+	newApp := App{Name: a.Name}
+	err = newApp.Get()
 	c.Assert(err, IsNil)
 	expected := map[string]bind.EnvVar{
 		"DATABASE_HOST": bind.EnvVar{
@@ -1408,7 +1411,7 @@ func (s *S) TestUnsetEnvRespectsThePublicOnlyFlagKeepPrivateVariablesWhenItsTrue
 			Public: false,
 		},
 	}
-	c.Assert(a.Env, DeepEquals, expected)
+	c.Assert(newApp.Env, DeepEquals, expected)
 }
 
 func (s *S) TestUnsetEnvRespectsThePublicOnlyFlagUnsettingAllVariablesWhenItsFalse(c *C) {
@@ -1431,9 +1434,10 @@ func (s *S) TestUnsetEnvRespectsThePublicOnlyFlagUnsettingAllVariablesWhenItsFal
 	c.Assert(err, IsNil)
 	err = unsetEnvFromApp(&a, []string{"DATABASE_HOST", "DATABASE_PASSWORD"}, false)
 	c.Assert(err, IsNil)
-	err = a.Get()
+	newApp := App{Name: a.Name}
+	err = newApp.Get()
 	c.Assert(err, IsNil)
-	c.Assert(a.Env, DeepEquals, map[string]bind.EnvVar{})
+	c.Assert(newApp.Env, DeepEquals, map[string]bind.EnvVar{})
 }
 
 func (s *S) TestUnsetEnvHandlerReturnsInternalErrorIfReadAllFails(c *C) {
