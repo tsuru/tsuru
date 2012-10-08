@@ -15,6 +15,7 @@ import (
 	"github.com/globocom/tsuru/db"
 	"github.com/globocom/tsuru/log"
 	"github.com/globocom/tsuru/repository"
+	"io"
 	"labix.org/v2/mgo/bson"
 	"launchpad.net/goyaml"
 	"os/exec"
@@ -348,10 +349,10 @@ func restart(a *App) ([]byte, error) {
 
 //installDeps runs the dependencies hook for the app
 //and returns your output.
-func installDeps(a *App) ([]byte, error) {
+func installDeps(a *App, stdout, stderr io.Writer) ([]byte, error) {
 	u := a.unit()
 	a.log("executting hook dependencies")
-	out, err := u.executeHook(nil, nil, "dependencies")
+	out, err := u.executeHook(stdout, stderr, "dependencies")
 	a.log(string(out))
 	if err != nil {
 		return out, err
