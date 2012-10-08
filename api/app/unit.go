@@ -5,6 +5,7 @@
 package app
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"github.com/globocom/tsuru/log"
@@ -54,8 +55,11 @@ func (u *Unit) Command(cmds ...string) ([]byte, error) {
 	c := exec.Command("juju", "ssh", "-o", "StrictHostKeyChecking no", "-q", strconv.Itoa(u.Machine))
 	c.Args = append(c.Args, cmds...)
 	log.Printf("executing %s on %s", strings.Join(cmds, " "), u.app.Name)
-	out, err := c.CombinedOutput()
-	return filterOutput(out), err
+	var b bytes.Buffer
+	c.Stdout = &b
+	c.Stderr = &b
+	err := c.Run()
+	return filterOutput(b.Bytes()), err
 }
 
 func (u *Unit) GetName() string {
