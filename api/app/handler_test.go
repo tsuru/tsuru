@@ -89,7 +89,7 @@ pos-restart:
 func (s *S) TestCloneRepositoryRunsCloneOrPullThenPreRestartThenRestartThenPosRestartHooksInOrder(c *C) {
 	w := new(bytes.Buffer)
 	l := stdlog.New(w, "", stdlog.LstdFlags)
-	log.Target = l
+	log.SetLogger(l)
 	output := `
 ========
 pre-restart:

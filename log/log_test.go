@@ -20,7 +20,7 @@ var _ = Suite(&S{})
 func (s *S) TestLogPanic(c *C) {
 	buf := &bytes.Buffer{}
 	defer buf.Reset()
-	Target = stdlog.New(buf, "", 0)
+	SetLogger(stdlog.New(buf, "", 0))
 	defer func() {
 		c.Assert(recover(), Equals, "log anything")
 	}()
@@ -30,7 +30,7 @@ func (s *S) TestLogPanic(c *C) {
 func (s *S) TestLogPanicf(c *C) {
 	buf := &bytes.Buffer{}
 	defer buf.Reset()
-	Target = stdlog.New(buf, "", 0)
+	SetLogger(stdlog.New(buf, "", 0))
 	defer func() {
 		c.Assert(recover(), Equals, "log anything formatted")
 	}()
@@ -40,7 +40,7 @@ func (s *S) TestLogPanicf(c *C) {
 func (s *S) TestLogPrint(c *C) {
 	buf := &bytes.Buffer{}
 	defer buf.Reset()
-	Target = stdlog.New(buf, "", 0)
+	SetLogger(stdlog.New(buf, "", 0))
 	Print("log anything")
 	c.Assert(buf.String(), Equals, "log anything\n")
 }
@@ -48,13 +48,13 @@ func (s *S) TestLogPrint(c *C) {
 func (s *S) TestLogPrintf(c *C) {
 	buf := &bytes.Buffer{}
 	defer buf.Reset()
-	Target = stdlog.New(buf, "", 0)
+	SetLogger(stdlog.New(buf, "", 0))
 	Printf("log anything %d", 1)
 	c.Assert(buf.String(), Equals, "log anything 1\n")
 }
 
 func (s *S) TestLogFatalWithoutTarget(c *C) {
-	Target = nil
+	SetLogger(nil)
 	defer func() {
 		c.Assert(recover(), IsNil)
 	}()
@@ -62,7 +62,7 @@ func (s *S) TestLogFatalWithoutTarget(c *C) {
 }
 
 func (s *S) TestLogPanicWithoutTarget(c *C) {
-	Target = nil
+	SetLogger(nil)
 	defer func() {
 		c.Assert(recover(), IsNil)
 	}()
@@ -70,7 +70,7 @@ func (s *S) TestLogPanicWithoutTarget(c *C) {
 }
 
 func (s *S) TestLogPrintWithoutTarget(c *C) {
-	Target = nil
+	SetLogger(nil)
 	defer func() {
 		c.Assert(recover(), IsNil)
 	}()
@@ -78,7 +78,7 @@ func (s *S) TestLogPrintWithoutTarget(c *C) {
 }
 
 func (s *S) TestLogPrintfWithoutTarget(c *C) {
-	Target = nil
+	SetLogger(nil)
 	defer func() {
 		c.Assert(recover(), IsNil)
 	}()
