@@ -267,7 +267,7 @@ func (a *App) conf() (conf, error) {
 	}
 	cPath := path.Join(uRepo, "app.conf")
 	cmd := fmt.Sprintf(`echo "%s";cat %s`, confSep, cPath)
-	o, err := a.unit().Command(cmd)
+	o, err := a.unit().Command(nil, nil, cmd)
 	if err != nil {
 		a.log(fmt.Sprintf("Got error while executing command: %s... Skipping hooks execution", err.Error()))
 		return c, nil
@@ -300,7 +300,7 @@ func (a *App) preRestart(c conf) ([]byte, error) {
 		return []byte(nil), nil
 	}
 	a.log("Executing pre-restart hook...")
-	out, err := a.unit().Command("/bin/bash", p)
+	out, err := a.unit().Command(nil, nil, "/bin/bash", p)
 	a.log(fmt.Sprintf("Output of pre-restart hook: %s", string(out)))
 	return out, err
 }
@@ -323,7 +323,7 @@ func (a *App) posRestart(c conf) ([]byte, error) {
 		a.log(fmt.Sprintf("Error obtaining absolute path to hook: %s. Skipping pos-restart-hook...", err))
 		return []byte(nil), nil
 	}
-	out, err := a.unit().Command("/bin/bash", p)
+	out, err := a.unit().Command(nil, nil, "/bin/bash", p)
 	a.log("Executing pos-restart hook...")
 	a.log(fmt.Sprintf("Output of pos-restart hook: %s", string(out)))
 	return out, err

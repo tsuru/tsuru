@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/globocom/tsuru/log"
+	"io"
 	"os/exec"
 	"strconv"
 	"strings"
@@ -43,12 +44,12 @@ func (u *Unit) destroy() ([]byte, error) {
 
 func (u *Unit) executeHook(hook string) ([]byte, error) {
 	cmd := fmt.Sprintf("/var/lib/tsuru/hooks/%s", hook)
-	output, err := u.Command(cmd)
+	output, err := u.Command(nil, nil, cmd)
 	log.Print(string(output))
 	return output, err
 }
 
-func (u *Unit) Command(cmds ...string) ([]byte, error) {
+func (u *Unit) Command(stdout, stderr io.Writer, cmds ...string) ([]byte, error) {
 	if state := u.State(); state != "started" {
 		return nil, fmt.Errorf("Unit must be started to run commands, but it is %s.", state)
 	}
@@ -56,8 +57,13 @@ func (u *Unit) Command(cmds ...string) ([]byte, error) {
 	c.Args = append(c.Args, cmds...)
 	log.Printf("executing %s on %s", strings.Join(cmds, " "), u.app.Name)
 	var b bytes.Buffer
-	c.Stdout = &b
-	c.Stderr = &b
+	if stdout == nil {
+		stdout = &b
+	}
+	if stderr == nil {
+		c.Stderr = &b
+	}
+	c.Stdout = stdout
 	err := c.Run()
 	return filterOutput(b.Bytes()), err
 }

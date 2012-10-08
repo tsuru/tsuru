@@ -5,6 +5,7 @@
 package app
 
 import (
+	"bytes"
 	"github.com/globocom/commandmocker"
 	"github.com/globocom/tsuru/api/bind"
 	"github.com/globocom/tsuru/repository"
@@ -25,7 +26,7 @@ func (s *S) TestCommand(c *C) {
 		AgentState:        "started",
 		MachineAgentState: "running",
 	}
-	output, err := u.Command("uname")
+	output, err := u.Command(nil, nil, "uname")
 	c.Assert(err, IsNil)
 	c.Assert(string(output), Matches, `.* \d uname`)
 }
@@ -43,8 +44,26 @@ func (s *S) TestCommandShouldAcceptMultipleParams(c *C) {
 		AgentState:        "started",
 		MachineAgentState: "running",
 	}
-	out, err := u.Command("uname", "-a")
+	out, err := u.Command(nil, nil, "uname", "-a")
 	c.Assert(string(out), Matches, `.* \d uname -a`)
+}
+
+func (s *S) TestCommandWithCustomStdout(c *C) {
+	dir, err := commandmocker.Add("juju", "$*")
+	c.Assert(err, IsNil)
+	defer commandmocker.Remove(dir)
+	u := Unit{
+		Type:              "django",
+		Name:              "myUnit",
+		Machine:           1,
+		app:               &App{},
+		InstanceState:     "running",
+		AgentState:        "started",
+		MachineAgentState: "running",
+	}
+	var b bytes.Buffer
+	_, err = u.Command(&b, nil, "uname", "-a")
+	c.Assert(string(b.Bytes()), Matches, `.* \d uname -a`)
 }
 
 func (s *S) TestCommandReturnErrorIfTheUnitIsNotStarted(c *C) {
@@ -57,7 +76,7 @@ func (s *S) TestCommandReturnErrorIfTheUnitIsNotStarted(c *C) {
 		AgentState:        "not-started",
 		MachineAgentState: "running",
 	}
-	_, err := u.Command("uname", "-a")
+	_, err := u.Command(nil, nil, "uname", "-a")
 	c.Assert(err, NotNil)
 	c.Assert(err.Error(), Equals, "Unit must be started to run commands, but it is "+u.State()+".")
 }

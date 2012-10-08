@@ -338,7 +338,7 @@ func RunCommand(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	}
 	cmd := fmt.Sprintf("[ -f /home/application/apprc ] && source /home/application/apprc; [ -d /home/application/current ] && cd /home/application/current; %s", c)
 	app.log(fmt.Sprintf("running '%s'", c))
-	out, err := app.unit().Command(cmd)
+	out, err := app.unit().Command(nil, nil, cmd)
 	n, werr := w.Write(out)
 	app.log(string(out))
 	if err != nil {
