@@ -116,7 +116,8 @@ func getIAMEndpoint() *iam.IAM {
 	if err != nil {
 		panic("FATAL: aws:iam:endpoint must be defined in configuration file.")
 	}
-	return iam.New(getAWSAuth(), endpoint)
+	region := aws.Region{IAMEndpoint: endpoint}
+	return iam.New(getAWSAuth(), region)
 }
 
 func createBucket(app *App) (*s3Env, error) {
@@ -167,7 +168,7 @@ func createBucket(app *App) (*s3Env, error) {
 		case k := <-kChan:
 			env.AccessKey = k.Id
 			env.SecretKey = k.Secret
-			p.User = k.User
+			p.User = k.UserName
 		case bucket := <-bChan:
 			env.bucket = bucket.Name
 		case err := <-errChan:
