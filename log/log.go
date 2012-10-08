@@ -1,3 +1,7 @@
+// Copyright 2012 tsuru authors. All rights reserved.
+// Use of this source code is governed by a BSD-style
+// license that can be found in the LICENSE file.
+
 // Package log provides logging utility.
 //
 // It abstracts the Logger from the standard log package, allowing the
