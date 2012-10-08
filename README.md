@@ -44,7 +44,7 @@ To create an app:
 
     % tsuru app-create myapp gunicorn
 
-The available frameworks are listed at https://github.com/timeredbull/charms.
+The available frameworks are listed at https://github.com/globocom/charms.
 
 The command output will return your the git remote url for your app, you should
 add it to your git repository:
