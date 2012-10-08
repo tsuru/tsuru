@@ -76,7 +76,7 @@ func (s *S) SetUpSuite(c *C) {
 	s.mngr.git.run("config", "user.name", "repository test")
 	s.mngr.git.run("config", "user.email", "gitosis@tsuru-tests.com")
 	c.Assert(err, IsNil)
-	log.Target = stdlog.New(s.logFile, "[tsuru-tests]", stdlog.LstdFlags|stdlog.Llongfile)
+	log.SetLogger(stdlog.New(s.logFile, "[tsuru-tests]", stdlog.LstdFlags|stdlog.Llongfile))
 }
 
 func (s *S) SetUpTest(c *C) {

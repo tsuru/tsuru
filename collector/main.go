@@ -50,12 +50,12 @@ func main() {
 	var (
 		configFile string
 		dry        bool
-		err        error
 	)
-	log.Target, err = syslog.NewLogger(syslog.LOG_INFO, stdlog.LstdFlags)
+	logger, err := syslog.NewLogger(syslog.LOG_INFO, stdlog.LstdFlags)
 	if err != nil {
 		panic(err)
 	}
+	log.SetLogger(logger)
 	flag.StringVar(&configFile, "config", "/etc/tsuru/tsuru.conf", "tsuru config file")
 	flag.BoolVar(&dry, "dry", false, "dry-run: does not start the agent (for testing purposes)")
 	flag.Parse()

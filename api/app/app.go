@@ -58,7 +58,7 @@ type conf struct {
 }
 
 func (a *App) Get() error {
-	return db.Session.Apps().Find(bson.M{"name": a.Name}).One(&a)
+	return db.Session.Apps().Find(bson.M{"name": a.Name}).One(a)
 }
 
 // createApp creates a new app.

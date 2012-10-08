@@ -21,11 +21,11 @@ import (
 )
 
 func main() {
-	var err error
-	log.Target, err = syslog.NewLogger(syslog.LOG_INFO, stdlog.LstdFlags)
+	logger, err := syslog.NewLogger(syslog.LOG_INFO, stdlog.LstdFlags)
 	if err != nil {
 		panic(err)
 	}
+	log.SetLogger(logger)
 	configFile := flag.String("config", "/etc/tsuru/tsuru.conf", "tsuru config file")
 	dry := flag.Bool("dry", false, "dry-run: does not start the server (for testing purpose)")
 	flag.Parse()
