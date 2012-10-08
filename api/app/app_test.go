@@ -549,9 +549,61 @@ func (s *S) TestInstallDeps(c *C) {
 	err = createApp(&a)
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
-	out, err := installDeps(&a)
+	out, err := installDeps(&a, nil, nil)
 	c.Assert(err, IsNil)
 	c.Assert(string(out), Equals, "ssh -o StrictHostKeyChecking no -q 4 /var/lib/tsuru/hooks/dependencies")
+}
+
+func (s *S) TestInstallDepsWithCustomStdout(c *C) {
+	a := App{
+		Name:      "someApp",
+		Framework: "django",
+		Teams:     []string{s.team.Name},
+		Units: []Unit{
+			Unit{
+				AgentState:        "started",
+				MachineAgentState: "running",
+				InstanceState:     "running",
+				Machine:           4,
+			},
+		},
+	}
+	err := createApp(&a)
+	c.Assert(err, IsNil)
+	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
+	tmpdir, err := commandmocker.Add("juju", "$*")
+	c.Assert(err, IsNil)
+	defer commandmocker.Remove(tmpdir)
+	var b bytes.Buffer
+	_, err = installDeps(&a, &b, nil)
+	c.Assert(err, IsNil)
+	c.Assert(b.String(), Matches, `.* /var/lib/tsuru/hooks/dependencies`)
+}
+
+func (s *S) TestInstallDepsWithCustomStderr(c *C) {
+	a := App{
+		Name:      "someApp",
+		Framework: "django",
+		Teams:     []string{s.team.Name},
+		Units: []Unit{
+			Unit{
+				AgentState:        "started",
+				MachineAgentState: "running",
+				InstanceState:     "running",
+				Machine:           4,
+			},
+		},
+	}
+	err := createApp(&a)
+	c.Assert(err, IsNil)
+	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
+	tmpdir, err := commandmocker.Error("juju", "$*", 42)
+	c.Assert(err, IsNil)
+	defer commandmocker.Remove(tmpdir)
+	var b bytes.Buffer
+	_, err = installDeps(&a, nil, &b)
+	c.Assert(err, NotNil)
+	c.Assert(b.String(), Matches, `.* /var/lib/tsuru/hooks/dependencies`)
 }
 
 func (s *S) TestRestart(c *C) {

@@ -101,7 +101,7 @@ func CloneRepositoryHandler(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	out, err = installDeps(&app)
+	out, err = installDeps(&app, nil, nil)
 	if err != nil {
 		write(w, out)
 		return err
