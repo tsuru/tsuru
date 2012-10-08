@@ -61,9 +61,10 @@ func (u *Unit) Command(stdout, stderr io.Writer, cmds ...string) ([]byte, error)
 		stdout = &b
 	}
 	if stderr == nil {
-		c.Stderr = &b
+		stderr = &b
 	}
 	c.Stdout = stdout
+	c.Stderr = stderr
 	err := c.Run()
 	return filterOutput(b.Bytes()), err
 }
