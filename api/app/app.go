@@ -308,7 +308,7 @@ func (a *App) hasRestartHooks(c conf) bool {
 func restart(a *App) ([]byte, error) {
 	u := a.unit()
 	a.log("executting hook to restarting")
-	out, err := u.executeHook("restart")
+	out, err := u.executeHook(nil, nil, "restart")
 	if err != nil {
 		return out, err
 	}
@@ -321,7 +321,7 @@ func restart(a *App) ([]byte, error) {
 func installDeps(a *App) ([]byte, error) {
 	u := a.unit()
 	a.log("executting hook dependencies")
-	out, err := u.executeHook("dependencies")
+	out, err := u.executeHook(nil, nil, "dependencies")
 	a.log(string(out))
 	if err != nil {
 		return out, err
