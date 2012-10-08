@@ -47,7 +47,7 @@ func init() {
 
 func runCommands() {
 	for cmd := range cmds {
-		out, err := cmd.u.Command(cmd.cmd)
+		out, err := cmd.u.Command(nil, nil, cmd.cmd)
 		if cmd.result != nil {
 			r := cmdResult{output: out, err: err}
 			cmd.result <- r

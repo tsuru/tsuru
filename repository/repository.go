@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"github.com/globocom/config"
 	"github.com/globocom/tsuru/log"
+	"io"
 	"path"
 )
 
@@ -21,7 +22,7 @@ import (
 // Whatever that has a name and is able to run commands, is a unit.
 type Unit interface {
 	GetName() string
-	Command(cmd ...string) ([]byte, error)
+	Command(stdout, stderr io.Writer, cmd ...string) ([]byte, error)
 }
 
 // Clone runs a git clone to clone the app repository in a unit.
@@ -31,7 +32,7 @@ type Unit interface {
 // tsuru server.
 func Clone(u Unit) ([]byte, error) {
 	cmd := fmt.Sprintf("git clone %s /home/application/current --depth 1", GetReadOnlyUrl(u.GetName()))
-	output, err := u.Command(cmd)
+	output, err := u.Command(nil, nil, cmd)
 	log.Printf(`"git clone" output: %s`, string(output))
 	if err != nil {
 		return output, err
@@ -44,7 +45,7 @@ func Clone(u Unit) ([]byte, error) {
 // It works like Clone, pulling from the app bare repository.
 func Pull(u Unit) ([]byte, error) {
 	cmd := fmt.Sprintf("cd /home/application/current && git pull origin master")
-	output, err := u.Command(cmd)
+	output, err := u.Command(nil, nil, cmd)
 	log.Printf(`"git pull" output: %s`, string(output))
 	if err != nil {
 		return output, err
