@@ -42,9 +42,9 @@ func (u *Unit) destroy() ([]byte, error) {
 	return cmd.CombinedOutput()
 }
 
-func (u *Unit) executeHook(hook string) ([]byte, error) {
+func (u *Unit) executeHook(stdout, stderr io.Writer, hook string) ([]byte, error) {
 	cmd := fmt.Sprintf("/var/lib/tsuru/hooks/%s", hook)
-	output, err := u.Command(nil, nil, cmd)
+	output, err := u.Command(stdout, stderr, cmd)
 	log.Print(string(output))
 	return output, err
 }
