@@ -100,7 +100,7 @@ func (a *Agent) loop() {
 			}(change)
 		case RemoveKey:
 			go func(ch Change) {
-				err := a.mngr.deleteKeyFile(change.Args["key"])
+				err := a.mngr.deleteKeyFile(ch.Args["key"])
 				a.done(ch.Response, err)
 			}(change)
 		case AddMember:
