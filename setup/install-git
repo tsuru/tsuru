@@ -33,7 +33,7 @@ sudo chown git:git /mnt/gitosis
 sudo chmod g+rw /mnt/gitosis
 
 echo "Clonning gitosis"
-git clone http://github.com/timeredbull/gitosis.git ${HOME}/gitosis
+git clone http://github.com/globocom/gitosis.git ${HOME}/gitosis
 
 echo "Installing gitosis"
 pushd ${HOME}/gitosis
