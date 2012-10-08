@@ -14,6 +14,7 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"strings"
+	"sync"
 )
 
 type FakeUnit struct {
@@ -64,9 +65,12 @@ type TestHandler struct {
 	body   []byte
 	method string
 	url    string
+	sync.Mutex
 }
 
 func (h *TestHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	h.Lock()
+	defer h.Unlock()
 	content := `{"MYSQL_DATABASE_NAME": "CHICO", "MYSQL_HOST": "localhost", "MYSQL_PORT": "3306"}`
 	h.method = r.Method
 	h.url = r.URL.String()
@@ -83,6 +87,8 @@ func (s *S) TestCreateShouldSendTheNameOfTheResourceToTheEndpoint(c *C) {
 	err := client.Create(&instance)
 	c.Assert(err, IsNil)
 	expectedUrl := "/resources"
+	h.Lock()
+	defer h.Unlock()
 	c.Assert(h.url, Equals, expectedUrl)
 	c.Assert(h.method, Equals, "POST")
 	v, err := url.ParseQuery(string(h.body))
@@ -107,6 +113,8 @@ func (s *S) TestDestroyShouldSendADELETERequestToTheResourceURL(c *C) {
 	instance := ServiceInstance{Name: "his-redis", ServiceName: "redis"}
 	client := &Client{endpoint: ts.URL}
 	err := client.Destroy(&instance)
+	h.Lock()
+	defer h.Unlock()
 	c.Assert(err, IsNil)
 	c.Assert(h.url, Equals, "/resources/"+instance.Name)
 	c.Assert(h.method, Equals, "DELETE")
@@ -133,6 +141,8 @@ func (s *S) TestBindShouldSendAPOSTToTheResourceURL(c *C) {
 	}
 	client := &Client{endpoint: ts.URL}
 	_, err := client.Bind(&instance, &a)
+	h.Lock()
+	defer h.Unlock()
 	c.Assert(err, IsNil)
 	c.Assert(h.url, Equals, "/resources/"+instance.Name)
 	c.Assert(h.method, Equals, "POST")
@@ -205,6 +215,8 @@ func (s *S) TestUnbindSendADELETERequestToTheResourceURL(c *C) {
 	}
 	client := &Client{endpoint: ts.URL}
 	err := client.Unbind(&instance, &a)
+	h.Lock()
+	defer h.Unlock()
 	c.Assert(err, IsNil)
 	c.Assert(h.url, Equals, "/resources/heaven-can-wait/hostname/2.2.2.2")
 	c.Assert(h.method, Equals, "DELETE")
