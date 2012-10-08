@@ -52,17 +52,17 @@ get-test:
 	@/bin/echo -n "Installing test dependencies... "
 	@go list -f '{{range .TestImports}}{{.}} {{end}}' ./... | tr ' ' '\n' |\
 		grep '^.*\..*/.*$$' | grep -v 'github.com/globocom/tsuru' |\
-		sort | uniq | xargs go get >/dev/null 2>&1
+		sort | uniq | xargs go get -u >/dev/null 2>&1
 	@go list -f '{{range .XTestImports}}{{.}} {{end}}' ./... | tr ' ' '\n' |\
 		grep '^.*\..*/.*$$' | grep -v 'github.com/globocom/tsuru' |\
-		sort | uniq | xargs go get >/dev/null 2>&1
+		sort | uniq | xargs go get -u >/dev/null 2>&1
 	@/bin/echo "ok"
 
 get-prod:
 	@/bin/echo -n "Installing production dependencies... "
 	@go list -f '{{range .Imports}}{{.}} {{end}}' ./... | tr ' ' '\n' |\
 		grep '^.*\..*/.*$$' | grep -v 'github.com/globocom/tsuru' |\
-		sort | uniq | xargs go get >/dev/null 2>&1
+		sort | uniq | xargs go get -u >/dev/null 2>&1
 	@/bin/echo "ok"
 
 test:
