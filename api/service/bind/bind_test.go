@@ -144,7 +144,8 @@ func (s *S) TestBindCallTheServiceAPIAndSetsEnvironmentVariableReturnedFromTheCa
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
 	err = instance.Bind(&a)
 	c.Assert(err, IsNil)
-	err = db.Session.Apps().Find(bson.M{"name": a.Name}).One(&a)
+	newApp := app.App{Name: a.Name}
+	err = newApp.Get()
 	c.Assert(err, IsNil)
 	expectedEnv := map[string]bind.EnvVar{
 		"DATABASE_USER": bind.EnvVar{
@@ -282,7 +283,8 @@ func (s *S) TestUnbindRemovesEnvironmentVariableFromApp(c *C) {
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
 	err = instance.Unbind(&a)
 	c.Assert(err, IsNil)
-	err = db.Session.Apps().Find(bson.M{"name": a.Name}).One(&a)
+	newApp := app.App{Name: a.Name}
+	err = newApp.Get()
 	c.Assert(err, IsNil)
 	expected := map[string]bind.EnvVar{
 		"MY_VAR": bind.EnvVar{
