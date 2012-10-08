@@ -62,8 +62,27 @@ func (s *S) TestCommandWithCustomStdout(c *C) {
 		MachineAgentState: "running",
 	}
 	var b bytes.Buffer
-	_, err = u.Command(&b, nil, "uname", "-a")
-	c.Assert(string(b.Bytes()), Matches, `.* \d uname -a`)
+	u.Command(&b, nil, "uname", "-a")
+	c.Assert(b.String(), Matches, `.* \d uname -a`)
+}
+
+func (s *S) TestCommandWithCustomStderr(c *C) {
+	dir, err := commandmocker.Error("juju", "$*", 42)
+	c.Assert(err, IsNil)
+	defer commandmocker.Remove(dir)
+	u := Unit{
+		Type:              "django",
+		Name:              "myUnit",
+		Machine:           1,
+		app:               &App{},
+		InstanceState:     "running",
+		AgentState:        "started",
+		MachineAgentState: "running",
+	}
+	var b bytes.Buffer
+	_, err = u.Command(nil, &b, "uname", "-a")
+	c.Assert(err, NotNil)
+	c.Assert(b.String(), Matches, `.* \d uname -a`)
 }
 
 func (s *S) TestCommandReturnErrorIfTheUnitIsNotStarted(c *C) {
