@@ -55,7 +55,7 @@ func (s *S) TestDestroy(c *C) {
 	c.Assert(err, IsNil)
 	w := bytes.NewBuffer([]byte{})
 	l := stdlog.New(w, "", stdlog.LstdFlags)
-	log.Target = l
+	log.SetLogger(l)
 	err = a.destroy()
 	c.Assert(err, IsNil)
 	err = a.Get()
@@ -86,7 +86,7 @@ func (s *S) TestCreateApp(c *C) {
 	defer commandmocker.Remove(dir)
 	w := bytes.NewBuffer([]byte{})
 	l := stdlog.New(w, "", stdlog.LstdFlags)
-	log.Target = l
+	log.SetLogger(l)
 	a := App{
 		Name:      "appName",
 		Framework: "django",
@@ -356,7 +356,7 @@ pos-restart: pos.sh
 	c.Assert(err, IsNil)
 	w := bytes.NewBuffer([]byte{})
 	l := stdlog.New(w, "", stdlog.LstdFlags)
-	log.Target = l
+	log.SetLogger(l)
 	out, err := a.preRestart(conf)
 	c.Assert(err, IsNil)
 	commandmocker.Remove(dir)
@@ -382,7 +382,7 @@ File or directory does not exists
 	c.Assert(err, IsNil)
 	w := bytes.NewBuffer([]byte{})
 	l := stdlog.New(w, "", stdlog.LstdFlags)
-	log.Target = l
+	log.SetLogger(l)
 	_, err = a.preRestart(conf)
 	c.Assert(err, IsNil)
 	st := strings.Split(w.String(), "\n")
@@ -413,7 +413,7 @@ pos-restart:
 	c.Assert(err, IsNil)
 	w := bytes.NewBuffer([]byte{})
 	l := stdlog.New(w, "", stdlog.LstdFlags)
-	log.Target = l
+	log.SetLogger(l)
 	_, err = a.preRestart(conf)
 	c.Assert(err, IsNil)
 	st := strings.Split(w.String(), "\n")
@@ -444,7 +444,7 @@ pos-restart:
 	c.Assert(err, IsNil)
 	w := bytes.NewBuffer([]byte{})
 	l := stdlog.New(w, "", stdlog.LstdFlags)
-	log.Target = l
+	log.SetLogger(l)
 	out, err := a.posRestart(conf)
 	c.Assert(err, IsNil)
 	commandmocker.Remove(dir)
@@ -470,7 +470,7 @@ File or directory does not exists
 	c.Assert(err, IsNil)
 	w := bytes.NewBuffer([]byte{})
 	l := stdlog.New(w, "", stdlog.LstdFlags)
-	log.Target = l
+	log.SetLogger(l)
 	_, err = a.posRestart(conf)
 	c.Assert(err, IsNil)
 	st := strings.Split(w.String(), "\n")
@@ -500,7 +500,7 @@ pre-restart: somescript.sh
 	c.Assert(err, IsNil)
 	w := bytes.NewBuffer([]byte{})
 	l := stdlog.New(w, "", stdlog.LstdFlags)
-	log.Target = l
+	log.SetLogger(l)
 	_, err = a.posRestart(conf)
 	c.Assert(err, IsNil)
 	st := strings.Split(w.String(), "\n")
@@ -650,7 +650,7 @@ func (s *S) TestDeployShouldCallJujuDeployCommand(c *C) {
 	c.Assert(err, IsNil)
 	w := bytes.NewBuffer([]byte{})
 	l := stdlog.New(w, "", stdlog.LstdFlags)
-	log.Target = l
+	log.SetLogger(l)
 	dir, err := commandmocker.Add("juju", "$*")
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(dir)
