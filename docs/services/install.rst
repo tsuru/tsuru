@@ -6,7 +6,7 @@
 crane client install guide
 ++++++++++++++++++++++++++
 
-You can download the client binary for your platform and put it in your path. All binaries are available in the `downloads <https://github.com/timeredbull/crane/downloads>`_ page.
+You can download the client binary for your platform and put it in your path. All binaries are available in the `downloads <https://github.com/globocom/tsuru/downloads>`_ page.
 
 At this moment, we provide two versions of the client, for Linux amd64 and Darwin amd64.
 

@@ -192,7 +192,7 @@ Usage:
 
 app-create will create a new app using the given name and platform. For tsuru,
 a platform is a Juju charm. To check the available platforms/charms, check this
-URL: https://github.com/timeredbull/charms/tree/master/centos.
+URL: https://github.com/globocom/charms/tree/master/precise.
 
 In order to create an app, you need to be member of at least one team. All
 teams that you are member (see "tsuru team-list") will be able to access the
