@@ -93,7 +93,7 @@ func (s *S) TestCreateShouldSendTheNameOfTheResourceToTheEndpoint(c *C) {
 	c.Assert(h.method, Equals, "POST")
 	v, err := url.ParseQuery(string(h.body))
 	c.Assert(err, IsNil)
-	c.Assert(map[string][]string(v), DeepEquals, map[string][]string{"name": []string{"my-redis"}})
+	c.Assert(map[string][]string(v), DeepEquals, map[string][]string{"name": {"my-redis"}})
 }
 
 func (s *S) TestCreateShouldReturnErrorIfTheRequestFail(c *C) {
@@ -148,7 +148,7 @@ func (s *S) TestBindShouldSendAPOSTToTheResourceURL(c *C) {
 	c.Assert(h.method, Equals, "POST")
 	v, err := url.ParseQuery(string(h.body))
 	c.Assert(err, IsNil)
-	c.Assert(map[string][]string(v), DeepEquals, map[string][]string{"hostname": []string{"10.0.10.1"}})
+	c.Assert(map[string][]string(v), DeepEquals, map[string][]string{"hostname": {"10.0.10.1"}})
 }
 
 func (s *S) TestBindShouldReturnMapWithTheEnvironmentVariable(c *C) {

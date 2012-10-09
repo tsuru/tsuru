@@ -67,7 +67,7 @@ func (c *Client) Create(instance *ServiceInstance) error {
 	log.Print("Attempting to call creation of service instance " + instance.Name + " at " + instance.ServiceName + " api")
 	var resp *http.Response
 	params := map[string][]string{
-		"name": []string{instance.Name},
+		"name": {instance.Name},
 	}
 	if resp, err = c.issueRequest("/resources", "POST", params); err == nil && resp.StatusCode < 300 {
 		return nil
@@ -94,7 +94,7 @@ func (c *Client) Bind(instance *ServiceInstance, app bind.App) (envVars map[stri
 	log.Print("Attempting to call bind of service instance " + instance.Name + " and app " + app.GetName() + " at " + instance.ServiceName + " api")
 	var resp *http.Response
 	params := map[string][]string{
-		"hostname": []string{app.GetUnits()[0].GetIp()},
+		"hostname": {app.GetUnits()[0].GetIp()},
 	}
 	if resp, err = c.issueRequest("/resources/"+instance.Name, "POST", params); err == nil && resp.StatusCode < 300 {
 		return c.jsonFromResponse(resp)

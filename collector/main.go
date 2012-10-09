@@ -19,13 +19,13 @@ import (
 func getApps() []app.App {
 	query := bson.M{
 		"$or": []bson.M{
-			bson.M{
+			{
 				"units.agentstate": bson.M{"$ne": "started"},
 			},
-			bson.M{
+			{
 				"units.machineagentstate": bson.M{"$ne": "running"},
 			},
-			bson.M{
+			{
 				"units.instancestate": bson.M{"$ne": "running"},
 			},
 		},

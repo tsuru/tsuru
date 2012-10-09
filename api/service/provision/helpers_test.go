@@ -37,7 +37,7 @@ func (s *S) TestServicesAndInstancesByOwnerTeams(c *C) {
 	defer sInstance2.Delete()
 	results := ServicesAndInstancesByOwner(s.user)
 	expected := []ServiceModel{
-		ServiceModel{Service: "mysql", Instances: []string{"foo"}},
+		{Service: "mysql", Instances: []string{"foo"}},
 	}
 	c.Assert(results, DeepEquals, expected)
 }

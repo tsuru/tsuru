@@ -163,7 +163,7 @@ func (s *S) TestGetUserByTokenDoesNotFailWhenTheTokenIsValid(c *C) {
 		Email:    "masterof@puppets.com",
 		Password: "123",
 		Tokens: []Token{
-			Token{
+			{
 				Token:      "abcd",
 				ValidUntil: time.Now().Add(-24 * time.Hour),
 			},
@@ -187,7 +187,7 @@ func (s *S) TestAddKeyAddsAKeyToTheUser(c *C) {
 }
 
 func (s *S) TestRemoveKeyRemovesAKeyFromTheUser(c *C) {
-	u := &User{Email: "shineon@pinkfloyd.com", Keys: []Key{Key{Content: "my-key"}}}
+	u := &User{Email: "shineon@pinkfloyd.com", Keys: []Key{{Content: "my-key"}}}
 	err := u.removeKey(Key{Content: "my-key"})
 	c.Assert(err, IsNil)
 	c.Assert(u, Not(HasKey), "my-key")

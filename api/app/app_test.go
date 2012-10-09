@@ -44,7 +44,7 @@ func (s *S) TestDestroy(c *C) {
 		Framework: "ruby",
 		Teams:     []string{s.team.Name},
 		Units: []Unit{
-			Unit{
+			{
 				Name:    "duvido",
 				Machine: 3,
 			},
@@ -223,13 +223,13 @@ func (s *S) TestGetEnvReturnsErrorIfTheEnvironmentMapIsNil(c *C) {
 
 func (s *S) TestInstanceEnvironmentReturnEnvironmentVariablesForTheServer(c *C) {
 	envs := map[string]bind.EnvVar{
-		"DATABASE_HOST": bind.EnvVar{Name: "DATABASE_HOST", Value: "localhost", Public: false, InstanceName: "mysql"},
-		"DATABASE_USER": bind.EnvVar{Name: "DATABASE_USER", Value: "root", Public: true, InstanceName: "mysql"},
-		"HOST":          bind.EnvVar{Name: "HOST", Value: "10.0.2.1", Public: false, InstanceName: "redis"},
+		"DATABASE_HOST": {Name: "DATABASE_HOST", Value: "localhost", Public: false, InstanceName: "mysql"},
+		"DATABASE_USER": {Name: "DATABASE_USER", Value: "root", Public: true, InstanceName: "mysql"},
+		"HOST":          {Name: "HOST", Value: "10.0.2.1", Public: false, InstanceName: "redis"},
 	}
 	expected := map[string]bind.EnvVar{
-		"DATABASE_HOST": bind.EnvVar{Name: "DATABASE_HOST", Value: "localhost", Public: false, InstanceName: "mysql"},
-		"DATABASE_USER": bind.EnvVar{Name: "DATABASE_USER", Value: "root", Public: true, InstanceName: "mysql"},
+		"DATABASE_HOST": {Name: "DATABASE_HOST", Value: "localhost", Public: false, InstanceName: "mysql"},
+		"DATABASE_USER": {Name: "DATABASE_USER", Value: "root", Public: true, InstanceName: "mysql"},
 	}
 	a := App{Name: "hi-there", Env: envs}
 	c.Assert(a.InstanceEnv("mysql"), DeepEquals, expected)
@@ -279,7 +279,7 @@ pos-restart: testdata/pos.sh
 		Name:      "something",
 		Framework: "django",
 		Units: []Unit{
-			Unit{AgentState: "started", MachineAgentState: "running", InstanceState: "running"},
+			{AgentState: "started", MachineAgentState: "running", InstanceState: "running"},
 		},
 	}
 	conf, err := a.conf()
@@ -322,7 +322,7 @@ pos-restart: pos.sh
 		Name:      "something",
 		Framework: "django",
 		Units: []Unit{
-			Unit{AgentState: "started", MachineAgentState: "running", InstanceState: "running"},
+			{AgentState: "started", MachineAgentState: "running", InstanceState: "running"},
 		},
 	}
 	conf, err := a.conf()
@@ -382,7 +382,7 @@ pos-restart:
 		Name:      "something",
 		Framework: "django",
 		Units: []Unit{
-			Unit{AgentState: "started", MachineAgentState: "running", InstanceState: "running"},
+			{AgentState: "started", MachineAgentState: "running", InstanceState: "running"},
 		},
 	}
 	conf, err := a.conf()
@@ -410,7 +410,7 @@ pos-restart:
 		Name:      "something",
 		Framework: "django",
 		Units: []Unit{
-			Unit{AgentState: "started", MachineAgentState: "running", InstanceState: "running"},
+			{AgentState: "started", MachineAgentState: "running", InstanceState: "running"},
 		},
 	}
 	conf, err := a.conf()
@@ -469,7 +469,7 @@ pre-restart: somescript.sh
 		Name:      "something",
 		Framework: "django",
 		Units: []Unit{
-			Unit{AgentState: "started", MachineAgentState: "running", InstanceState: "running"},
+			{AgentState: "started", MachineAgentState: "running", InstanceState: "running"},
 		},
 	}
 	conf, err := a.conf()
@@ -494,7 +494,7 @@ nothing here
 		Name:      "something",
 		Framework: "django",
 		Units: []Unit{
-			Unit{AgentState: "started", MachineAgentState: "running", InstanceState: "running"},
+			{AgentState: "started", MachineAgentState: "running", InstanceState: "running"},
 		},
 	}
 	dir, err := commandmocker.Add("juju", output)
@@ -517,7 +517,7 @@ pos-restart:
 		Name:      "something",
 		Framework: "django",
 		Units: []Unit{
-			Unit{AgentState: "started", MachineAgentState: "running", InstanceState: "running"},
+			{AgentState: "started", MachineAgentState: "running", InstanceState: "running"},
 		},
 	}
 	dir, err := commandmocker.Add("juju", output)
@@ -538,7 +538,7 @@ func (s *S) TestInstallDeps(c *C) {
 		Framework: "django",
 		Teams:     []string{s.team.Name},
 		Units: []Unit{
-			Unit{
+			{
 				AgentState:        "started",
 				MachineAgentState: "running",
 				InstanceState:     "running",
@@ -560,7 +560,7 @@ func (s *S) TestInstallDepsWithCustomStdout(c *C) {
 		Framework: "django",
 		Teams:     []string{s.team.Name},
 		Units: []Unit{
-			Unit{
+			{
 				AgentState:        "started",
 				MachineAgentState: "running",
 				InstanceState:     "running",
@@ -586,7 +586,7 @@ func (s *S) TestInstallDepsWithCustomStderr(c *C) {
 		Framework: "django",
 		Teams:     []string{s.team.Name},
 		Units: []Unit{
-			Unit{
+			{
 				AgentState:        "started",
 				MachineAgentState: "running",
 				InstanceState:     "running",
@@ -615,7 +615,7 @@ func (s *S) TestRestart(c *C) {
 		Framework: "django",
 		Teams:     []string{s.team.Name},
 		Units: []Unit{
-			Unit{
+			{
 				AgentState:        "started",
 				MachineAgentState: "running",
 				InstanceState:     "running",
@@ -658,12 +658,12 @@ func (s *S) TestSetTeams(c *C) {
 
 func (s *S) TestSetTeamsSortTeamNames(c *C) {
 	app := App{Name: "app"}
-	app.setTeams([]auth.Team{s.team, auth.Team{Name: "zzz"}, auth.Team{Name: "aaa"}})
+	app.setTeams([]auth.Team{s.team, {Name: "zzz"}, {Name: "aaa"}})
 	c.Assert(app.Teams, DeepEquals, []string{"aaa", s.team.Name, "zzz"})
 }
 
 func (s *S) TestGetUnits(c *C) {
-	app := App{Units: []Unit{Unit{Ip: "1.1.1.1"}}}
+	app := App{Units: []Unit{{Ip: "1.1.1.1"}}}
 	expected := []bind.Unit{bind.Unit(&Unit{Ip: "1.1.1.1", app: &app})}
 	c.Assert(app.GetUnits(), DeepEquals, expected)
 }

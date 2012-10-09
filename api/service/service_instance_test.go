@@ -131,7 +131,7 @@ func (s *S) TestGetServiceInstancesByServices(c *C) {
 	c.Assert(err, IsNil)
 	sInstances, err := GetServiceInstancesByServices([]Service{srvc})
 	c.Assert(err, IsNil)
-	expected := []ServiceInstance{ServiceInstance{Name: "t3sql", ServiceName: "mysql"}, sInstance2}
+	expected := []ServiceInstance{{Name: "t3sql", ServiceName: "mysql"}, sInstance2}
 	c.Assert(sInstances, DeepEquals, expected)
 }
 
@@ -161,7 +161,7 @@ func (s *S) TestGetServiceInstancesByServicesWithTwoServices(c *C) {
 	c.Assert(err, IsNil)
 	sInstances, err := GetServiceInstancesByServices([]Service{srvc, srvc2})
 	c.Assert(err, IsNil)
-	expected := []ServiceInstance{ServiceInstance{Name: "t3sql", ServiceName: "mysql"}, sInstance2}
+	expected := []ServiceInstance{{Name: "t3sql", ServiceName: "mysql"}, sInstance2}
 	c.Assert(sInstances, DeepEquals, expected)
 }
 
@@ -175,8 +175,8 @@ func (s *S) TestGenericServiceInstancesFilter(c *C) {
 
 func (s *S) TestGenericServiceInstancesFilterWithServiceSlice(c *C) {
 	services := []Service{
-		Service{Name: "mysql"},
-		Service{Name: "mongodb"},
+		{Name: "mysql"},
+		{Name: "mongodb"},
 	}
 	names := []string{"mysql", "mongodb"}
 	teams := []string{s.team.Name}
@@ -187,8 +187,8 @@ func (s *S) TestGenericServiceInstancesFilterWithServiceSlice(c *C) {
 
 func (s *S) TestGenericServiceInstancesFilterWithoutSpecifingTeams(c *C) {
 	services := []Service{
-		Service{Name: "mysql"},
-		Service{Name: "mongodb"},
+		{Name: "mysql"},
+		{Name: "mongodb"},
 	}
 	names := []string{"mysql", "mongodb"}
 	teams := []string{}
@@ -225,13 +225,13 @@ func (s *S) TestGetServiceInstancesByServicesAndTeams(c *C) {
 	sInstance3.Create()
 	defer sInstance3.Delete()
 	expected := []ServiceInstance{
-		ServiceInstance{
+		{
 			Name:        sInstance.Name,
 			ServiceName: sInstance.ServiceName,
 			Teams:       []string(nil),
 			Apps:        []string{},
 		},
-		ServiceInstance{
+		{
 			Name:        sInstance2.Name,
 			ServiceName: sInstance2.ServiceName,
 			Teams:       []string(nil),

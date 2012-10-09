@@ -22,7 +22,7 @@ func createApp(name, agentState, machineAgentState, instanceState string) {
 	a := app.App{
 		Name: name,
 		Units: []app.Unit{
-			app.Unit{
+			{
 				AgentState:        agentState,
 				MachineAgentState: machineAgentState,
 				InstanceState:     instanceState,

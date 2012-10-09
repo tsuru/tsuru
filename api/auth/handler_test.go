@@ -374,7 +374,7 @@ func (s *S) TestListTeamsListsAllTeamsThatTheUserIsMember(c *C) {
 	var m []map[string]string
 	err = json.Unmarshal(b, &m)
 	c.Assert(err, IsNil)
-	c.Assert(m, DeepEquals, []map[string]string{map[string]string{"name": s.team.Name}})
+	c.Assert(m, DeepEquals, []map[string]string{{"name": s.team.Name}})
 }
 
 func (s *S) TestListTeamsReturns204IfTheUserHasNoTeam(c *C) {

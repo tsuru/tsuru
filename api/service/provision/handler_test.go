@@ -43,7 +43,7 @@ func (s *S) TestServicesHandlerShoudGetAllServicesFromUsersTeam(c *C) {
 	services := make([]service.ServiceModel, 1)
 	err = json.Unmarshal(b, &services)
 	expected := []service.ServiceModel{
-		service.ServiceModel{Service: "mongodb", Instances: []string{"my_nosql"}},
+		{Service: "mongodb", Instances: []string{"my_nosql"}},
 	}
 	c.Assert(services, DeepEquals, expected)
 }
