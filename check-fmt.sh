@@ -5,7 +5,7 @@
 # license that can be found in the LICENSE file.
 
 status=0
-out=`gofmt -l .`
+out=`gofmt -s -l .`
 if [ "${out}" != "" ]
 then
     echo "ERROR: there are files that need to be formatted with gofmt"
