@@ -39,6 +39,61 @@ export DATABASE_HOST=localhost
 export DATABASE_USER=root
 export DATABASE_PASSWORD=secret`
 
+func (s *S) TestAppIsAvaliableHandlerShouldReturnsErrorWhenAppUnitStatusIsnotStarted(c *C) {
+	u := Unit{
+		Name:              "someapp/0",
+		Type:              "django",
+		AgentState:        "creating",
+		MachineAgentState: "running",
+		InstanceState:     "running",
+	}
+	a := App{
+		Name:      "someapp",
+		Framework: "python",
+		Teams:     []string{s.team.Name},
+	}
+	err := createApp(&a)
+	c.Assert(err, IsNil)
+	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
+	a.Units = []Unit{u}
+	err = db.Session.Apps().Update(bson.M{"name": a.Name}, &a)
+	c.Assert(err, IsNil)
+	url := fmt.Sprintf("/apps/%s/avaliable?:name=%s", a.Name, a.Name)
+	request, err := http.NewRequest("GET", url, nil)
+	c.Assert(err, IsNil)
+	recorder := httptest.NewRecorder()
+	err = AppIsAvaliableHandler(recorder, request)
+	c.Assert(err, NotNil)
+}
+
+func (s *S) TestAppIsAvaliableHandlerShouldReturns200WhenAppUnitStatusIsStarted(c *C) {
+	u := Unit{
+		Name:              "someapp/0",
+		Type:              "django",
+		AgentState:        "started",
+		MachineAgentState: "running",
+		InstanceState:     "running",
+	}
+	a := App{
+		Name:      "someapp",
+		Framework: "python",
+		Teams:     []string{s.team.Name},
+	}
+	err := createApp(&a)
+	c.Assert(err, IsNil)
+	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
+	a.Units = []Unit{u}
+	err = db.Session.Apps().Update(bson.M{"name": a.Name}, &a)
+	c.Assert(err, IsNil)
+	url := fmt.Sprintf("/apps/%s/repository/clone?:name=%s", a.Name, a.Name)
+	request, err := http.NewRequest("GET", url, nil)
+	c.Assert(err, IsNil)
+	recorder := httptest.NewRecorder()
+	err = AppIsAvaliableHandler(recorder, request)
+	c.Assert(err, IsNil)
+	c.Assert(recorder.Code, Equals, http.StatusOK)
+}
+
 func (s *S) TestCloneRepositoryHandler(c *C) {
 	output := `
 ========

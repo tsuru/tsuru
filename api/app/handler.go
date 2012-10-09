@@ -137,6 +137,22 @@ func CloneRepositoryHandler(w http.ResponseWriter, r *http.Request) error {
 	return write(w, []byte("\n ---> Deploy done!\n\n"))
 }
 
+// AppIsAvaliableHandler verify if the app.unit().State() is
+// started. If is started it returns 200 else returns 500 for
+// status code.
+func AppIsAvaliableHandler(w http.ResponseWriter, r *http.Request) error {
+	app := App{Name: r.URL.Query().Get(":name")}
+	err := app.Get()
+	if err != nil {
+		return err
+	}
+	if state := app.unit().State(); state != "started" {
+		return fmt.Errorf("App must be started to receive pushs, but it is %s.", state)
+	}
+	w.WriteHeader(http.StatusOK)
+	return nil
+}
+
 func AppDelete(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	app, err := getAppOrError(r.URL.Query().Get(":name"), u)
 	if err != nil {
