@@ -105,10 +105,6 @@ func CloneRepositoryHandler(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	err = write(w, out)
-	if err != nil {
-		return err
-	}
 	err = write(w, []byte("\n ---> Restarting your app\n"))
 	if err != nil {
 		return err
@@ -353,17 +349,11 @@ func RunCommand(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	}
 	cmd := fmt.Sprintf("[ -f /home/application/apprc ] && source /home/application/apprc; [ -d /home/application/current ] && cd /home/application/current; %s", c)
 	app.log(fmt.Sprintf("running '%s'", c))
-	out, err := app.unit().Command(nil, nil, cmd)
-	n, werr := w.Write(out)
+	writer := FilteredWriter{w}
+	out, err := app.unit().Command(&writer, &writer, cmd)
 	app.log(string(out))
 	if err != nil {
 		return err
-	}
-	if werr != nil {
-		return werr
-	}
-	if n != len(out) {
-		return &errors.Http{Code: http.StatusInternalServerError, Message: "Unexpected error writing the output"}
 	}
 	return nil
 }
