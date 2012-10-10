@@ -74,7 +74,7 @@ func (s *S) TestServiceAndServiceInstancesByTeamsShouldReturnServiceInstancesByT
 	defer si2.Delete()
 	obtained := ServiceAndServiceInstancesByTeams(s.user)
 	expected := []ServiceModel{
-		ServiceModel{Service: "mongodb", Instances: []string{"my_nosql"}},
+		{Service: "mongodb", Instances: []string{"my_nosql"}},
 	}
 	c.Assert(obtained, DeepEquals, expected)
 }

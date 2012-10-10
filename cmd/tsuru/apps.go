@@ -57,13 +57,13 @@ func (c *AppInfo) Show(result []byte, context *cmd.Context) error {
 	template := `Application: %s
 State: %s
 Repository: %s
-Plataform: %s
+Platform: %s
 Units: %s
 Teams: %s
 `
 	name := app["Name"]
 	state := app["State"]
-	plataform := app["Framework"]
+	platform := app["Framework"]
 	repository := app["Repository"]
 	units := ""
 	for _, unit := range app["Units"].([]interface{}) {
@@ -79,7 +79,7 @@ Teams: %s
 		}
 		teams += fmt.Sprintf("%s", team.(string))
 	}
-	out := fmt.Sprintf(template, name, state, repository, plataform, units, teams)
+	out := fmt.Sprintf(template, name, state, repository, platform, units, teams)
 	context.Stdout.Write([]byte(out))
 	return nil
 }

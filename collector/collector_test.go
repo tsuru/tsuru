@@ -17,9 +17,9 @@ import (
 func getOutput() *output {
 	return &output{
 		Services: map[string]Service{
-			"umaappqq": Service{
+			"umaappqq": {
 				Units: map[string]app.Unit{
-					"umaappqq/0": app.Unit{
+					"umaappqq/0": {
 						AgentState: "started",
 						Machine:    1,
 					},
@@ -125,23 +125,23 @@ func (s *S) TestUpdateTwice(c *C) {
 
 func (s *S) TestUpdateWithMultipleApps(c *C) {
 	appDicts := []map[string]string{
-		map[string]string{
+		{
 			"name": "andrewzito3",
 			"ip":   "10.10.10.163",
 		},
-		map[string]string{
+		{
 			"name": "flaviapp",
 			"ip":   "10.10.10.208",
 		},
-		map[string]string{
+		{
 			"name": "mysqlapi",
 			"ip":   "10.10.10.131",
 		},
-		map[string]string{
+		{
 			"name": "teste_api_semantica",
 			"ip":   "10.10.10.189",
 		},
-		map[string]string{
+		{
 			"name": "xikin",
 			"ip":   "10.10.10.168",
 		},

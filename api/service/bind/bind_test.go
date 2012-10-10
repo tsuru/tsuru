@@ -70,7 +70,7 @@ func (s *S) TestBindAddsAppToTheServiceInstance(c *C) {
 	instance := service.ServiceInstance{Name: "my-mysql", ServiceName: "mysql", Teams: []string{s.team.Name}}
 	instance.Create()
 	defer db.Session.ServiceInstances().Remove(bson.M{"_id": "my-mysql"})
-	a, err := createTestApp("painkiller", "", []string{s.team.Name}, []app.Unit{app.Unit{Ip: "10.10.10.10"}})
+	a, err := createTestApp("painkiller", "", []string{s.team.Name}, []app.Unit{{Ip: "10.10.10.10"}})
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
 	err = instance.Bind(&a)
@@ -91,7 +91,7 @@ func (s *S) TestBindDoNotAddsAppToServiceInstanceIfCommunicationWithEndpointGoes
 	instance := service.ServiceInstance{Name: "my-mysql", ServiceName: "mysql", Teams: []string{s.team.Name}}
 	instance.Create()
 	defer db.Session.ServiceInstances().Remove(bson.M{"_id": "my-mysql"})
-	a, err := createTestApp("somecoolapp", "", []string{s.team.Name}, []app.Unit{app.Unit{Ip: "127.0.0.1"}})
+	a, err := createTestApp("somecoolapp", "", []string{s.team.Name}, []app.Unit{{Ip: "127.0.0.1"}})
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
 	err = instance.Bind(&a)
@@ -114,7 +114,7 @@ func (s *S) TestBindUnbindsWhenDatabaseUpdateGoesWrong(c *C) {
 	c.Assert(err, IsNil)
 	defer db.Session.Services().Remove(bson.M{"_id": "mysql"})
 	instance := service.ServiceInstance{Name: "their-mysql", ServiceName: "mysql", Teams: []string{s.team.Name}}
-	a, err := createTestApp("somecoolapp", "", []string{s.team.Name}, []app.Unit{app.Unit{Ip: "127.0.0.1"}})
+	a, err := createTestApp("somecoolapp", "", []string{s.team.Name}, []app.Unit{{Ip: "127.0.0.1"}})
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
 	err = instance.Bind(&a)
@@ -139,7 +139,7 @@ func (s *S) TestBindCallTheServiceAPIAndSetsEnvironmentVariableReturnedFromTheCa
 	err = instance.Create()
 	c.Assert(err, IsNil)
 	defer db.Session.ServiceInstances().Remove(bson.M{"_id": "my-mysql"})
-	a, err := createTestApp("painkiller", "", []string{s.team.Name}, []app.Unit{app.Unit{Ip: "127.0.0.1"}})
+	a, err := createTestApp("painkiller", "", []string{s.team.Name}, []app.Unit{{Ip: "127.0.0.1"}})
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
 	err = instance.Bind(&a)
@@ -148,13 +148,13 @@ func (s *S) TestBindCallTheServiceAPIAndSetsEnvironmentVariableReturnedFromTheCa
 	err = newApp.Get()
 	c.Assert(err, IsNil)
 	expectedEnv := map[string]bind.EnvVar{
-		"DATABASE_USER": bind.EnvVar{
+		"DATABASE_USER": {
 			Name:         "DATABASE_USER",
 			Value:        "root",
 			Public:       false,
 			InstanceName: instance.Name,
 		},
-		"DATABASE_PASSWORD": bind.EnvVar{
+		"DATABASE_PASSWORD": {
 			Name:         "DATABASE_PASSWORD",
 			Value:        "s3cr3t",
 			Public:       false,
@@ -178,7 +178,7 @@ func (s *S) TestBindReturnConflictIfTheAppIsAlreadyBinded(c *C) {
 	err = instance.Create()
 	c.Assert(err, IsNil)
 	defer db.Session.ServiceInstances().Remove(bson.M{"_id": "my-mysql"})
-	a, err := createTestApp("painkiller", "", []string{s.team.Name}, []app.Unit{app.Unit{Ip: "127.0.0.1"}})
+	a, err := createTestApp("painkiller", "", []string{s.team.Name}, []app.Unit{{Ip: "127.0.0.1"}})
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
 	err = instance.Bind(&a)
@@ -230,7 +230,7 @@ func (s *S) TestUnbindRemovesAppFromServiceInstance(c *C) {
 	}
 	instance.Create()
 	defer db.Session.ServiceInstances().Remove(bson.M{"_id": "my-mysql"})
-	a, err := createTestApp("painkiller", "", []string{s.team.Name}, []app.Unit{app.Unit{Ip: "10.10.10.10"}})
+	a, err := createTestApp("painkiller", "", []string{s.team.Name}, []app.Unit{{Ip: "10.10.10.10"}})
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
 	err = instance.Unbind(&a)
@@ -261,19 +261,19 @@ func (s *S) TestUnbindRemovesEnvironmentVariableFromApp(c *C) {
 		Name:  "painkiller",
 		Teams: []string{s.team.Name},
 		Env: map[string]bind.EnvVar{
-			"DATABASE_HOST": bind.EnvVar{
+			"DATABASE_HOST": {
 				Name:         "DATABASE_HOST",
 				Value:        "arrea",
 				Public:       false,
 				InstanceName: instance.Name,
 			},
-			"MY_VAR": bind.EnvVar{
+			"MY_VAR": {
 				Name:  "MY_VAR",
 				Value: "123",
 			},
 		},
 		Units: []app.Unit{
-			app.Unit{
+			{
 				Ip: "10.10.10.10",
 			},
 		},
@@ -287,7 +287,7 @@ func (s *S) TestUnbindRemovesEnvironmentVariableFromApp(c *C) {
 	err = newApp.Get()
 	c.Assert(err, IsNil)
 	expected := map[string]bind.EnvVar{
-		"MY_VAR": bind.EnvVar{
+		"MY_VAR": {
 			Name:  "MY_VAR",
 			Value: "123",
 		},
@@ -314,7 +314,7 @@ func (s *S) TestUnbindCallsTheUnbindMethodFromAPI(c *C) {
 	err = instance.Create()
 	c.Assert(err, IsNil)
 	defer db.Session.ServiceInstances().Remove(bson.M{"_id": "my-mysql"})
-	a, err := createTestApp("painkiller", "", []string{s.team.Name}, []app.Unit{app.Unit{Ip: "127.0.0.1"}})
+	a, err := createTestApp("painkiller", "", []string{s.team.Name}, []app.Unit{{Ip: "127.0.0.1"}})
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
 	err = instance.Unbind(&a)
@@ -346,7 +346,7 @@ func (s *S) TestUnbindReturnsPreconditionFailedIfTheAppIsNotBindedToTheInstance(
 	instance := service.ServiceInstance{Name: "my-mysql", ServiceName: "mysql", Teams: []string{s.team.Name}}
 	instance.Create()
 	defer db.Session.ServiceInstances().Remove(bson.M{"_id": "my-mysql"})
-	a, err := createTestApp("painkiller", "", []string{s.team.Name}, []app.Unit{app.Unit{Ip: "10.10.10.10"}})
+	a, err := createTestApp("painkiller", "", []string{s.team.Name}, []app.Unit{{Ip: "10.10.10.10"}})
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
 	err = instance.Unbind(&a)

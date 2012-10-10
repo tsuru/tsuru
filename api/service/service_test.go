@@ -174,7 +174,7 @@ func (s *S) TestServiceByTeamKindFilteringByOwnerTeamsAndRetrievingNotRestricted
 	c.Assert(err, IsNil)
 	rSrvc, err := GetServicesByTeamKindAndNoRestriction("owner_teams", s.user)
 	c.Assert(err, IsNil)
-	expected := []Service{Service{Name: srvc.Name}, Service{Name: srvc2.Name}}
+	expected := []Service{{Name: srvc.Name}, {Name: srvc2.Name}}
 	c.Assert(expected, DeepEquals, rSrvc)
 }
 
@@ -187,7 +187,7 @@ func (s *S) TestServiceByTeamKindFilteringByTeamsAndNotRetrieveRestrictedService
 	c.Assert(err, IsNil)
 	rSrvc, err := GetServicesByTeamKindAndNoRestriction("teams", s.user)
 	c.Assert(err, IsNil)
-	expected := []Service{Service{Name: srvc.Name}}
+	expected := []Service{{Name: srvc.Name}}
 	c.Assert(expected, DeepEquals, rSrvc)
 }
 
@@ -202,7 +202,7 @@ func (s *S) TestServiceByTeamKindShouldNotReturnsDeletedServices(c *C) {
 	c.Assert(err, IsNil)
 	result, err := GetServicesByTeamKindAndNoRestriction("teams", s.user)
 	c.Assert(err, IsNil)
-	expected := []Service{Service{Name: service.Name}}
+	expected := []Service{{Name: service.Name}}
 	c.Assert(expected, DeepEquals, result)
 }
 

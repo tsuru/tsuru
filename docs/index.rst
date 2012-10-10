@@ -25,6 +25,7 @@ Apps
 * :doc:`tsuru client install guide </apps/client/install>`
 * :doc:`tsuru client usage guide </apps/client/usage>`
 * :doc:`using services </apps/client/services>`
+* :doc:`building your application </apps/quickstart>`
 
 Services
 --------
