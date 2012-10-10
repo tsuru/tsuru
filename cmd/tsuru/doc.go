@@ -211,7 +211,7 @@ member of a team that has access to the app to be able to remove it (you are
 able to remove any app that you see in "tsuru app-list").
 
 
-List apps that the user has access to
+List apps that you has access to
 
 Usage:
 
