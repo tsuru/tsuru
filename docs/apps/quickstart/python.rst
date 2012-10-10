@@ -16,7 +16,9 @@ to a MySQL service.
 Creating the app within tsuru
 =============================
 
-To create an app, you use ``app-create`` command:
+To create an app, you use `app-create
+<http://go.pkgdoc.org/github.com/globocom/tsuru/cmd/tsuru#Create_an_app>`_
+command:
 
 .. highlight:: bash
 
@@ -34,7 +36,9 @@ very creative, let's call it "blog":
 
     $ tsuru app-create blog python
 
-You can see all your app using ``app-list`` command:
+You can see all your app using `app-list
+<http://go.pkgdoc.org/github.com/globocom/tsuru/cmd/tsuru#List_apps_that_you_have_access_to>`_
+command:
 
 .. highlight:: bash
 
@@ -63,7 +67,10 @@ Once your app is ready, it will be displayed as "started" (along with its IP add
 Application code
 ================
 
-This document will not focus on how to write a Django blog, you can clone the entire source direct from Github: https://github.com/globocom/tsuru-django-sample. Here is what we did for the project:
+This document will not focus on how to write a Django blog, you can clone the
+entire source direct from Github:
+https://github.com/globocom/tsuru-django-sample. Here is what we did for the
+project:
 
 #. Create the project (``django-admin.py startproject``)
 #. Enable django-admin
@@ -77,7 +84,9 @@ Git deployment
 ==============
 
 When you create a new app, tsuru will display the git remote that you should
-use. You can always get it using ``app-info`` command:
+use. You can always get it using `app-info
+<http://go.pkgdoc.org/github.com/globocom/tsuru/cmd/tsuru#Display_information_about_an_app>`_
+command:
 
 .. highlight:: bash
 
@@ -130,7 +139,8 @@ push to tsuru remote and your project will be deployed:
        a211fba..bbf5b53  master -> master
 
 If you get a "Permission denied (publickey).", make sure you're member of a
-team and have a public key added to tsuru. To add a key, use ``key-add``
+team and have a public key added to tsuru. To add a key, use `key-add
+<http://go.pkgdoc.org/github.com/globocom/tsuru/cmd/tsuru#Add_SSH_public_key_to_tsuru_s_git_server>`_
 command:
 
 .. highlight:: bash
