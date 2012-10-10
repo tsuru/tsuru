@@ -24,7 +24,9 @@ The the Tsuru client is a command-line tool for creating and managing apps.
 Sign up
 +++++++
 
-To create an account, you use the "tsuru user-add" command:
+To create an account, you use the `user-create
+<http://go.pkgdoc.org/github.com/globocom/tsuru/cmd/tsuru#Create_a_user>`_
+command:
 
 .. highlight:: bash
 
@@ -37,8 +39,9 @@ To create an account, you use the "tsuru user-add" command:
 Login
 +++++
 
-To login in tsuru, you use the "tsuru login" command, you will be asked for
-your password:
+To login in tsuru, you use the `login
+<http://go.pkgdoc.org/github.com/globocom/tsuru/cmd/tsuru#Authenticate_within_remote_tsuru_server>`_
+command, you will be asked for your password:
 
 .. highlight:: bash
 
