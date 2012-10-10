@@ -36,7 +36,7 @@ very creative, let's call it "blog":
 
     $ tsuru app-create blog python
 
-You can see all your app using `app-list
+You can see all your applications using `app-list
 <http://go.pkgdoc.org/github.com/globocom/tsuru/cmd/tsuru#List_apps_that_you_have_access_to>`_
 command:
 
