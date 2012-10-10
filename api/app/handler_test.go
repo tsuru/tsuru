@@ -169,7 +169,7 @@ pos-restart:
 	recorder := httptest.NewRecorder()
 	err = CloneRepositoryHandler(recorder, request)
 	c.Assert(err, IsNil)
-	c.Assert(recorder.Code, Equals, 200)
+	c.Assert(recorder.Code, Equals, http.StatusOK)
 	c.Assert(strings.Replace(recorder.Body.String(), "\n", "#", -1), Matches, "^# ---> Tsuru receiving push#.*")
 	c.Assert(strings.Replace(recorder.Body.String(), "\n", "#", -1), Matches, ".*# ---> Clonning your code in your machines#.*")
 	c.Assert(strings.Replace(recorder.Body.String(), "\n", "#", -1), Matches, ".*# ---> Parsing app.conf#.*")
@@ -219,7 +219,7 @@ pos-restart:
 	recorder := httptest.NewRecorder()
 	err = CloneRepositoryHandler(recorder, request)
 	c.Assert(err, IsNil)
-	c.Assert(recorder.Code, Equals, 200)
+	c.Assert(recorder.Code, Equals, http.StatusOK)
 	str := strings.Replace(w.String(), "\n", "", -1)
 	c.Assert(str, Matches, ".*executing git clone.*executting hook dependencies.*Executing pre-restart hook.*executting hook to restarting.*Executing pos-restart hook.*")
 }
@@ -264,7 +264,7 @@ func (s *S) TestAppList(c *C) {
 	recorder := httptest.NewRecorder()
 	err = AppList(recorder, request, s.user)
 	c.Assert(err, IsNil)
-	c.Assert(recorder.Code, Equals, 200)
+	c.Assert(recorder.Code, Equals, http.StatusOK)
 
 	body, err := ioutil.ReadAll(recorder.Body)
 	c.Assert(err, IsNil)
@@ -336,7 +336,7 @@ func (s *S) TestDelete(c *C) {
 	recorder := httptest.NewRecorder()
 	err = AppDelete(recorder, request, s.user)
 	c.Assert(err, IsNil)
-	c.Assert(recorder.Code, Equals, 200)
+	c.Assert(recorder.Code, Equals, http.StatusOK)
 }
 
 func (s *S) TestDeleteShouldReturnForbiddenIfTheGivenUserDoesNotHaveAccesToTheApp(c *C) {
@@ -429,7 +429,7 @@ func (s *S) TestAppInfo(c *C) {
 
 	err = AppInfo(recorder, request, s.user)
 	c.Assert(err, IsNil)
-	c.Assert(recorder.Code, Equals, 200)
+	c.Assert(recorder.Code, Equals, http.StatusOK)
 
 	body, err := ioutil.ReadAll(recorder.Body)
 	c.Assert(err, IsNil)
@@ -493,7 +493,7 @@ func (s *S) TestCreateAppHandler(c *C) {
 	}
 	err = json.Unmarshal(body, &obtained)
 	c.Assert(obtained, DeepEquals, expected)
-	c.Assert(recorder.Code, Equals, 200)
+	c.Assert(recorder.Code, Equals, http.StatusOK)
 	var gotApp App
 	err = db.Session.Apps().Find(bson.M{"name": "someApp"}).One(&gotApp)
 	c.Assert(err, IsNil)
@@ -1634,7 +1634,7 @@ func (s *S) TestLogShouldAppLog(c *C) {
 	request.Header.Set("Content-Type", "application/json")
 	err = AppLog(recorder, request, s.user)
 	c.Assert(err, IsNil)
-	c.Assert(recorder.Code, Equals, 200)
+	c.Assert(recorder.Code, Equals, http.StatusOK)
 	body, err := ioutil.ReadAll(recorder.Body)
 	c.Assert(err, IsNil)
 	logs := []applog{}

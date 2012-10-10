@@ -118,7 +118,7 @@ func (s *S) TestCreateHandlerSavesOwnerTeamsFromUserWhoCreated(c *C) {
 	err := CreateHandler(recorder, request, s.user)
 	c.Assert(err, IsNil)
 	c.Assert(recorder.Body.String(), Equals, "success")
-	c.Assert(recorder.Code, Equals, 200)
+	c.Assert(recorder.Code, Equals, http.StatusOK)
 	query := bson.M{"_id": "some_service"}
 	var rService service.Service
 	err = db.Session.Services().Find(query).One(&rService)

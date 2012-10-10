@@ -78,7 +78,7 @@ func (s *S) TestHandlerShouldPassAnHandlerWithoutError(c *C) {
 	c.Assert(err, IsNil)
 
 	Handler(simpleHandler).ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, Equals, 200)
+	c.Assert(recorder.Code, Equals, http.StatusOK)
 	c.Assert(recorder.Body.String(), Equals, "success")
 }
 
