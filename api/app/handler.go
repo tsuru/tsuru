@@ -332,6 +332,7 @@ func RevokeAccessFromTeamHandler(w http.ResponseWriter, r *http.Request, u *auth
 }
 
 func RunCommand(w http.ResponseWriter, r *http.Request, u *auth.User) error {
+	w.Header().Set("Content-Type", "text")
 	msg := "You must provide the command to run"
 	if r.Body == nil {
 		return &errors.Http{Code: http.StatusBadRequest, Message: msg}

@@ -833,6 +833,7 @@ func (s *S) TestRunHandlerShouldExecuteTheGivenCommandInTheGivenApp(c *C) {
 	err = RunCommand(recorder, request, s.user)
 	c.Assert(err, IsNil)
 	c.Assert(recorder.Body.String(), Equals, "ssh -o StrictHostKeyChecking no -q 10 [ -f /home/application/apprc ] && source /home/application/apprc; [ -d /home/application/current ] && cd /home/application/current; ls")
+	c.Assert(recorder.Header().Get("Content-Type"), Equals, "text")
 }
 
 func (s *S) TestRunHandlerReturnsTheOutputOfTheCommandEvenIfItFails(c *C) {
