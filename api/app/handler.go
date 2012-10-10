@@ -85,6 +85,14 @@ func CloneRepositoryHandler(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
+	err = write(w, []byte("\n ---> Installing dependencies\n"))
+	if err != nil {
+		return err
+	}
+	_, err = installDeps(&app, w, w)
+	if err != nil {
+		return err
+	}
 	err = write(w, []byte("\n ---> Running pre-restart\n"))
 	if err != nil {
 		return err
@@ -94,14 +102,6 @@ func CloneRepositoryHandler(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	err = write(w, out)
-	if err != nil {
-		return err
-	}
-	err = write(w, []byte("\n ---> Installing dependencies\n"))
-	if err != nil {
-		return err
-	}
-	_, err = installDeps(&app, w, w)
 	if err != nil {
 		return err
 	}
