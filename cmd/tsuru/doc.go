@@ -31,6 +31,7 @@ The currently available commands are (grouped by subject):
 	app-create        creates an app
 	app-remove        removes an app
 	app-list          lists apps that the user has access (see app-grant and team-user-add)
+	app-info          displays information about an app
 	app-grant         allows a team to have access to an app
 	app-revoke        revokes access to an app from a team
 	log               shows log for an app
@@ -211,7 +212,7 @@ member of a team that has access to the app to be able to remove it (you are
 able to remove any app that you see in "tsuru app-list").
 
 
-List apps that the user has access to
+List apps that you have access to
 
 Usage:
 
@@ -219,6 +220,17 @@ Usage:
 
 app-list will list all apps that you have access to. App access is controlled
 by teams. If your team has access to an app, then you have access to it.
+
+
+Display information about an app
+
+Usage:
+
+	% tsuru app-info <appname>
+
+app-info will display some informations about an specific app (its state,
+platform, git repository, etc.). You need to be a member of a team that access
+to the app to be able to see informations about it.
 
 
 Allow a team to access an app
