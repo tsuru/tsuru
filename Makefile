@@ -76,3 +76,7 @@ test:
 
 doc:
 	@cd docs && make html
+
+client:
+	@go build -o tsuru ./cmd/tsuru
+	@echo "Copy tsuru to your binary path"
