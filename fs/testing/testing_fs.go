@@ -195,6 +195,11 @@ func (r *FailureFs) Remove(name string) error {
 	return &os.PathError{Err: syscall.ENOENT, Path: name}
 }
 
+func (r *FailureFs) RemoveAll(path string) error {
+	r.RecordingFs.RemoveAll(path)
+	return &os.PathError{Err: syscall.ENOENT, Path: path}
+}
+
 func (r *FailureFs) OpenFile(name string, flag int, perm os.FileMode) (fs.File, error) {
 	r.RecordingFs.OpenFile(name, flag, perm)
 	return r.Open(name)
