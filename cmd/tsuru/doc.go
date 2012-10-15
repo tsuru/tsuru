@@ -299,7 +299,72 @@ Usage:
 
 	% tsuru restart <appname>
 
-Restart will call the restart hook from the app platform (the "restart" hook
-from the Juju charm).
+Restart will restart the application server (as defined in Procfile) of the
+application.
+
+
+Display environment variables of an application
+
+Usage:
+
+	% tsuru env-get <appname> [variable-names]
+
+env-get will display the name and the value of environment variables exported
+in the application's environment. If none name is given, it will display the
+value of all environment variables exported in the app via tsuru. It omits the
+value of private environment variables (exported by service binding, see bind
+command for more details). Examples of use:
+
+	% tsuru env-get myapp MYSQL_DATABASE_NAME MYSQL_PASSWORD
+	MYSQL_DATABASE_NAME=myapp_sql
+	MYSQL_PASSWORD=*** (private variable)
+	% tsuru env-get myapp
+	MYSQL_DATABASE_NAME=myapp_sql
+	MYSQL_USER=secret
+	MYSQL_HOST=remote.mysql.com
+	MYSQL_PASSWORD=*** (private variable)
+	% tsuru env-get myapp SOMETHING_UNKNOWN
+
+The first command retrieves only the specified variables, while the second
+command retrieves all variables. In the last command, we ask for an undefined
+variable, and env-get fails silently. All environment variable related commands
+fail silently.
+
+
+Define the value of one or more environment variables in the application
+
+Usage:
+
+	% tsuru env-set <appname> <NAME_1=VALUE_1> [NAME_2=VALUE_2] ... [NAME_N=VALUE_N]
+
+env-set will (re)define environment variables for your app. You can specify one
+or more environment variables to (re)define. env-set cannot redefine private
+variables, and all variables defined using env-set will be public (its value
+will be displayed in env-get). env-set does not restart the application after
+exporting the variables, for doing that, see restart command. Examples of use:
+
+	% tsuru env-set myapp MYSQL_DATABASE_NAME=myapp_sql2 MYSQL_PASSWORD=1234
+	% tsuru env-get myapp MYSQL_DATABASE_NAME MYSQL_PASSWORD
+	MYSQL_DATABASE_NAME=myapp_sql
+	MYSQL_PASSWORD=*** (private variable)
+
+Notice that env-set will fail silently to redefine private variables.
+
+
+Undefine an environment variable
+
+Usage:
+
+	% tsuru env-unset <appname> <NAME_1> [NAME_2] ... [NAME_N]
+
+env-unset will undefine environments variables in your app. You can specify one
+or more environment variables to undefine. env-unset cannot remove private
+variables. Examples of use:
+
+	% tsuru env-unset myapp MYSQL_DATABASE_NAME MYSQL_PASSWORD
+	% tsuru env-get myapp MYSQL_DATABASE_NAME MYSQL_PASSWORD
+	MYSQL_PASSWORD=*** (private variable)
+
+Notice that env-unset will fail silently to undefine private variables.
 */
 package documentation
