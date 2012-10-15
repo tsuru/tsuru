@@ -271,7 +271,7 @@ func (a *App) runHook(cmds []string, kind string) ([]byte, error) {
 			return nil, nil
 		}
 		a.log(fmt.Sprintf("Executing %s hook...", kind))
-		_, err = a.unit().Command(&buf, &buf, "/bin/bash", p)
+		_, err = a.unit().Command(&buf, &buf, "/bin/bash", "-c", p)
 		if err != nil {
 			return nil, err
 		}

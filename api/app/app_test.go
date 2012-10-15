@@ -386,8 +386,8 @@ pos-restart:
 	commandmocker.Remove(dir)
 	c.Assert(err, IsNil)
 	st := strings.Split(w.String(), "\n")
-	c.Assert(st[len(st)-2], Matches, ".*/bin/bash.*pre.sh$")
-	c.Assert(string(out), Matches, ".*/bin/bash.*pre.sh$")
+	c.Assert(st[len(st)-2], Matches, ".*/bin/bash -c.*pre.sh$")
+	c.Assert(string(out), Matches, ".*/bin/bash -c.*pre.sh$")
 }
 
 func (s *S) TestPreRestartWhenAppConfDoesNotExists(c *C) {
@@ -473,7 +473,7 @@ pos-restart:
 	c.Assert(err, IsNil)
 	commandmocker.Remove(dir)
 	st := strings.Split(w.String(), "\n")
-	regexp := ".*/bin/bash .*pos.sh$"
+	regexp := ".*/bin/bash -c.*pos.sh$"
 	c.Assert(st[len(st)-2], Matches, regexp)
 	c.Assert(string(out), Matches, regexp)
 }
