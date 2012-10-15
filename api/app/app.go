@@ -344,10 +344,10 @@ func restart(a *App, w io.Writer) ([]byte, error) {
 
 // installDeps runs the dependencies hook for the app
 // and returns your output.
-func installDeps(a *App, stdout, stderr io.Writer) ([]byte, error) {
+func installDeps(a *App, w io.Writer) ([]byte, error) {
 	u := a.unit()
 	a.log("executting hook dependencies")
-	out, err := u.executeHook(stdout, stderr, "dependencies")
+	out, err := u.executeHook(w, w, "dependencies")
 	a.log(string(out))
 	if err != nil {
 		return out, err
