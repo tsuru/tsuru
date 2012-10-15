@@ -318,10 +318,16 @@ func (a *App) hasRestartHooks(c conf) bool {
 
 // restart runs the restart hook for the app
 // and returns your output.
-func restart(a *App) ([]byte, error) {
+func restart(a *App, w io.Writer) ([]byte, error) {
 	u := a.unit()
 	a.log("executting hook to restarting")
-	out, err := u.executeHook(nil, nil, "restart")
+	if w != nil {
+		_, err := w.Write([]byte("\n ---> Restarting your app\n"))
+		if err != nil {
+			return nil, err
+		}
+	}
+	out, err := u.executeHook(w, w, "restart")
 	if err != nil {
 		return out, err
 	}

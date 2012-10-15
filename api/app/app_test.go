@@ -675,9 +675,12 @@ func (s *S) TestRestart(c *C) {
 	err = createApp(&a)
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
-	out, err := restart(&a)
+	var b bytes.Buffer
+	_, err = restart(&a, &b)
 	c.Assert(err, IsNil)
-	c.Assert(string(out), Equals, "ssh -o StrictHostKeyChecking no -q 4 /var/lib/tsuru/hooks/restart")
+	result := strings.Replace(b.String(), "\n", "#", -1)
+	c.Assert(result, Matches, ".*/var/lib/tsuru/hooks/restart.*")
+	c.Assert(result, Matches, ".*# ---> Restarting your app#.*")
 }
 
 func (s *S) TestLogShouldStoreLog(c *C) {
