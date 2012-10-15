@@ -316,6 +316,7 @@ func (a *App) hasRestartHooks(c conf) bool {
 	return len(c.PreRestart) > 0 || len(c.PosRestart) > 0
 }
 
+// run executes the command in app units
 func (a *App) run(cmd string, w io.Writer) error {
 	a.log(fmt.Sprintf("running '%s'", cmd))
 	cmd = fmt.Sprintf("[ -f /home/application/apprc ] && source /home/application/apprc; [ -d /home/application/current ] && cd /home/application/current; %s", cmd)
