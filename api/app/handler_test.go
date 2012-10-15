@@ -188,9 +188,9 @@ func (s *S) TestCloneRepositoryRunsCloneOrPullThenPreRestartThenRestartThenPosRe
 	output := `
 ========
 pre-restart:
-    pre.sh
+  - pre.sh
 pos-restart:
-    pos.sh
+  - pos.sh
 `
 	dir, err := commandmocker.Add("juju", output)
 	c.Assert(err, IsNil)

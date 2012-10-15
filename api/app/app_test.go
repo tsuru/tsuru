@@ -269,8 +269,10 @@ something that must be discarded
 another thing that must also be discarded
 one more
 ========
-pre-restart: testdata/pre.sh
-pos-restart: testdata/pos.sh
+pre-restart:
+  - testdata/pre.sh
+pos-restart:
+  - testdata/pos.sh
 `
 	dir, err := commandmocker.Add("juju", output)
 	c.Assert(err, IsNil)
@@ -284,8 +286,35 @@ pos-restart: testdata/pos.sh
 	}
 	conf, err := a.conf()
 	c.Assert(err, IsNil)
-	c.Assert(conf.PreRestart, Equals, "testdata/pre.sh")
-	c.Assert(conf.PosRestart, Equals, "testdata/pos.sh")
+	c.Assert(conf.PreRestart, DeepEquals, []string{"testdata/pre.sh"})
+	c.Assert(conf.PosRestart, DeepEquals, []string{"testdata/pos.sh"})
+}
+
+func (s *S) TestAppConfWithListOfCommands(c *C) {
+	output := `
+trash
+========
+pre-restart:
+  - testdata/pre.sh
+  - ls -lh
+  - sudo rm -rf /
+pos-restart:
+  - testdata/pos.sh
+`
+	dir, err := commandmocker.Add("juju", output)
+	c.Assert(err, IsNil)
+	defer commandmocker.Remove(dir)
+	a := App{
+		Name:      "something",
+		Framework: "django",
+		Units: []Unit{
+			{AgentState: "started", MachineAgentState: "running", InstanceState: "running"},
+		},
+	}
+	conf, err := a.conf()
+	c.Assert(err, IsNil)
+	c.Assert(conf.PreRestart, DeepEquals, []string{"testdata/pre.sh", "ls -lh", "sudo rm -rf /"})
+	c.Assert(conf.PosRestart, DeepEquals, []string{"testdata/pos.sh"})
 }
 
 func (s *S) TestAppConfWhenFileDoesNotExists(c *C) {
@@ -303,8 +332,8 @@ $(exit 1)
 	a := App{Name: "something", Framework: "django"}
 	conf, err := a.conf()
 	c.Assert(err, IsNil)
-	c.Assert(conf.PreRestart, Equals, "")
-	c.Assert(conf.PosRestart, Equals, "")
+	c.Assert(conf.PreRestart, IsNil)
+	c.Assert(conf.PosRestart, IsNil)
 }
 
 func (s *S) TestPreRestart(c *C) {
@@ -313,8 +342,10 @@ something that must be discarded
 another thing that must also be discarded
 one more
 ========
-pre-restart: pre.sh
-pos-restart: pos.sh
+pre-restart:
+  - pre.sh
+pos-restart:
+  - pos.sh
 `
 	dir, err := commandmocker.Add("juju", output)
 	c.Assert(err, IsNil)
@@ -373,7 +404,7 @@ another thing that must also be discarded
 one more
 ========
 pos-restart:
-    somescript.sh
+  - somescript.sh
 `
 	dir, err := commandmocker.Add("juju", output)
 	c.Assert(err, IsNil)
@@ -402,7 +433,7 @@ func (s *S) TestPosRestart(c *C) {
 sooooome
 ========
 pos-restart:
-    pos.sh
+  - pos.sh
 `
 	dir, err := commandmocker.Add("juju", output)
 	c.Assert(err, IsNil)
@@ -460,7 +491,8 @@ something that must be discarded
 another thing that must also be discarded
 one more
 ========
-pre-restart: somescript.sh
+pre-restart:
+  - somescript.sh
 `
 	dir, err := commandmocker.Add("juju", output)
 	c.Assert(err, IsNil)
@@ -511,7 +543,7 @@ func (s *S) TestHasRestartHooksWithOneHooks(c *C) {
 something that must be discarded
 ========
 pos-restart:
-    somefile.sh
+  - somefile.sh
 `
 	a := App{
 		Name:      "something",
