@@ -85,7 +85,7 @@ Last login: Wed Aug 15 16:08:40 2012 from 10.170.1.239`)
 	c.Assert(string(got), Equals, string(expected))
 }
 
-func (s *S) TestFilterWriter(c *C) {
+func (s *S) TestFilteredWriter(c *C) {
 	var b bytes.Buffer
 	writer := FilteredWriter{&b}
 	data := []byte("ble")
@@ -94,7 +94,7 @@ func (s *S) TestFilterWriter(c *C) {
 	c.Assert(b.Bytes(), DeepEquals, data)
 }
 
-func (s *S) TestFilterWriterShouldReturnsTheDataSize(c *C) {
+func (s *S) TestFilteredWriterShouldReturnsTheDataSize(c *C) {
 	var b bytes.Buffer
 	writer := FilteredWriter{&b}
 	data := []byte("ble")
