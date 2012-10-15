@@ -345,15 +345,8 @@ func RunCommand(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	if err != nil {
 		return err
 	}
-	cmd := fmt.Sprintf("[ -f /home/application/apprc ] && source /home/application/apprc; [ -d /home/application/current ] && cd /home/application/current; %s", c)
-	app.log(fmt.Sprintf("running '%s'", c))
 	writer := FilteredWriter{w}
-	out, err := app.unit().Command(&writer, &writer, cmd)
-	app.log(string(out))
-	if err != nil {
-		return err
-	}
-	return nil
+	return app.run(string(c), &writer)
 }
 
 func GetEnv(w http.ResponseWriter, r *http.Request, u *auth.User) (err error) {

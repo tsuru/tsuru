@@ -264,18 +264,18 @@ func (a *App) runHook(cmds []string, kind string) ([]byte, error) {
 		buf bytes.Buffer
 		err error
 	)
+	a.log(fmt.Sprintf("Executing %s hook...", kind))
 	for _, cmd := range cmds {
 		p, err := deployHookAbsPath(cmd)
 		if err != nil {
-			a.log(fmt.Sprintf("Error obtaining absolute path to hook: %s. Skipping %s hook...", err, kind))
-			return nil, nil
+			a.log(fmt.Sprintf("Error obtaining absolute path to hook: %s.", err))
+			continue
 		}
-		a.log(fmt.Sprintf("Executing %s hook...", kind))
-		_, err = a.unit().Command(&buf, &buf, "[ -f /home/application/apprc ] && source /home/application/apprc; [ -d /home/application/current ] && cd /home/application/current; /bin/bash", "-c", p)
+		err = a.run(p, &buf)
 		if err != nil {
 			return nil, err
 		}
-		a.log(fmt.Sprintf("Output of %s hook (%s): %s", kind, cmd, buf.Bytes()))
+		a.log(fmt.Sprintf("Output of %s (%s hook): %s", cmd, kind, buf.Bytes()))
 	}
 	return buf.Bytes(), err
 }
@@ -314,6 +314,14 @@ func (a *App) posRestart(c conf) ([]byte, error) {
 
 func (a *App) hasRestartHooks(c conf) bool {
 	return len(c.PreRestart) > 0 || len(c.PosRestart) > 0
+}
+
+func (a *App) run(cmd string, w io.Writer) error {
+	a.log(fmt.Sprintf("running '%s'", cmd))
+	cmd = fmt.Sprintf("[ -f /home/application/apprc ] && source /home/application/apprc; [ -d /home/application/current ] && cd /home/application/current; %s", cmd)
+	out, err := a.unit().Command(w, w, cmd)
+	a.log(string(out))
+	return err
 }
 
 // restart runs the restart hook for the app

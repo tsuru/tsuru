@@ -386,8 +386,8 @@ pos-restart:
 	commandmocker.Remove(dir)
 	c.Assert(err, IsNil)
 	st := strings.Split(w.String(), "\n")
-	c.Assert(st[len(st)-2], Matches, `.*\[ -f /home/application/apprc \] && source /home/application/apprc; \[ -d /home/application/current \] && cd /home/application/current; /bin/bash -c.*pre.sh$`)
-	c.Assert(string(out), Matches, `.*\[ -f /home/application/apprc \] && source /home/application/apprc; \[ -d /home/application/current \] && cd /home/application/current; /bin/bash -c.*pre.sh$`)
+	c.Assert(st[len(st)-2], Matches, `.*\[ -f /home/application/apprc \] && source /home/application/apprc; \[ -d /home/application/current \] && cd /home/application/current;.*pre.sh$`)
+	c.Assert(string(out), Matches, `.*\[ -f /home/application/apprc \] && source /home/application/apprc; \[ -d /home/application/current \] && cd /home/application/current;.*pre.sh$`)
 }
 
 func (s *S) TestPreRestartWhenAppConfDoesNotExists(c *C) {
@@ -473,7 +473,7 @@ pos-restart:
 	c.Assert(err, IsNil)
 	commandmocker.Remove(dir)
 	st := strings.Split(w.String(), "\n")
-	regexp := `.*\[ -f /home/application/apprc \] && source /home/application/apprc; \[ -d /home/application/current \] && cd /home/application/current; /bin/bash -c.*pos.sh$`
+	regexp := `.*\[ -f /home/application/apprc \] && source /home/application/apprc; \[ -d /home/application/current \] && cd /home/application/current;.*pos.sh$`
 	c.Assert(st[len(st)-2], Matches, regexp)
 	c.Assert(string(out), Matches, regexp)
 }
@@ -762,4 +762,27 @@ func (s *S) TestAppMarshalJson(c *C) {
 	err = json.Unmarshal(data, &result)
 	c.Assert(err, IsNil)
 	c.Assert(result, DeepEquals, expected)
+}
+
+func (s *S) TestRun(c *C) {
+	dir, err := commandmocker.Add("juju", "$*")
+	c.Assert(err, IsNil)
+	defer commandmocker.Remove(dir)
+	app := App{
+		Name: "myapp",
+		Units: []Unit{
+			{
+				Name:              "someapp/0",
+				Type:              "django",
+				Machine:           10,
+				AgentState:        "started",
+				MachineAgentState: "running",
+				InstanceState:     "running",
+			},
+		},
+	}
+	var buf bytes.Buffer
+	err = app.run("ls -lh", &buf)
+	c.Assert(err, IsNil)
+	c.Assert(buf.String(), Equals, "ssh -o StrictHostKeyChecking no -q 10 [ -f /home/application/apprc ] && source /home/application/apprc; [ -d /home/application/current ] && cd /home/application/current; ls -lh")
 }
