@@ -1991,10 +1991,9 @@ func (s *S) TestRestartHandler(c *C) {
 	err = RestartHandler(recorder, request, s.user)
 	c.Assert(err, IsNil)
 	c.Assert(commandmocker.Ran(tmpdir), Equals, true)
-	b, err := ioutil.ReadAll(recorder.Body)
-	c.Assert(err, IsNil)
-	expected := fmt.Sprintf("ssh -o StrictHostKeyChecking no -q %d /var/lib/tsuru/hooks/restart", a.unit().Machine)
-	c.Assert(string(b), Equals, expected)
+	result := strings.Replace(recorder.Body.String(), "\n", "#", -1)
+	c.Assert(result, Matches, ".*/var/lib/tsuru/hooks/restart.*")
+	c.Assert(result, Matches, ".*# ---> Restarting your app#.*")
 }
 
 func (s *S) TestRestartHandlerReturns404IfTheAppDoesNotExist(c *C) {
