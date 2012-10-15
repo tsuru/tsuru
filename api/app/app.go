@@ -275,8 +275,8 @@ func (a *App) runHook(cmds []string, kind string) ([]byte, error) {
 		if err != nil {
 			return nil, err
 		}
-		a.log(fmt.Sprintf("Output of %s (%s hook): %s", p, kind, buf.Bytes()))
 	}
+	a.log(fmt.Sprintf("Output of %s hooks: %s", kind, buf.Bytes()))
 	return buf.Bytes(), err
 }
 
