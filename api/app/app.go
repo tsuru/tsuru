@@ -235,9 +235,7 @@ func deployHookAbsPath(p string) (string, error) {
 	return strings.Join(cmdArgs, " "), nil
 }
 
-/*
- Returns app.conf located at app's git repository
-*/
+// Returns app.conf located at app's git repository
 func (a *App) conf() (conf, error) {
 	var c conf
 	uRepo, err := repository.GetPath()
