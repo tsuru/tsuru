@@ -5,8 +5,8 @@
 package app
 
 import (
-	"bytes"
 	. "launchpad.net/gocheck"
+	"net/http/httptest"
 )
 
 func (s *S) TestFilterOutputWithJujuLog(c *C) {
@@ -86,19 +86,26 @@ Last login: Wed Aug 15 16:08:40 2012 from 10.170.1.239`)
 }
 
 func (s *S) TestFilteredWriter(c *C) {
-	var b bytes.Buffer
-	writer := FilteredWriter{&b}
+	recorder := httptest.NewRecorder()
+	writer := FilteredWriter{recorder}
 	data := []byte("ble")
 	_, err := writer.Write(data)
 	c.Assert(err, IsNil)
-	c.Assert(b.Bytes(), DeepEquals, data)
+	c.Assert(recorder.Body.Bytes(), DeepEquals, data)
 }
 
 func (s *S) TestFilteredWriterShouldReturnsTheDataSize(c *C) {
-	var b bytes.Buffer
-	writer := FilteredWriter{&b}
+	recorder := httptest.NewRecorder()
+	writer := FilteredWriter{recorder}
 	data := []byte("ble")
 	n, err := writer.Write(data)
 	c.Assert(err, IsNil)
 	c.Assert(n, Equals, len(data))
+}
+
+func (s *S) TestFilteredWriterHeader(c *C) {
+	recorder := httptest.NewRecorder()
+	writer := FilteredWriter{recorder}
+	writer.Header().Set("Content-Type", "application/xml")
+	c.Assert(recorder.Header().Get("Content-Type"), Equals, "application/xml")
 }

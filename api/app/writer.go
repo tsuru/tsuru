@@ -6,14 +6,18 @@ package app
 
 import (
 	"bytes"
-	"io"
+	"net/http"
 	"regexp"
 )
 
 // FilteredWriter is a custom writer
 // that filter deprecation warnings and juju log output.
 type FilteredWriter struct {
-	w io.Writer
+	w http.ResponseWriter
+}
+
+func (w *FilteredWriter) Header() http.Header {
+	return w.w.Header()
 }
 
 // Write writes the data, filtering the juju warnings.
