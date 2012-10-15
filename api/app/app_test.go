@@ -8,6 +8,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"github.com/globocom/commandmocker"
+	"github.com/globocom/config"
 	"github.com/globocom/tsuru/api/auth"
 	"github.com/globocom/tsuru/api/bind"
 	"github.com/globocom/tsuru/db"
@@ -16,6 +17,8 @@ import (
 	"labix.org/v2/mgo/bson"
 	. "launchpad.net/gocheck"
 	stdlog "log"
+	"os"
+	"path"
 	"strings"
 )
 
@@ -256,9 +259,23 @@ func (s *S) TestEmptyUnit(c *C) {
 }
 
 func (s *S) TestDeployHookAbsPath(c *C) {
-	path := "deploy/pre.sh"
-	expected := "/home/application/current/deploy/pre.sh"
-	got, err := deployHookAbsPath(path)
+	pwd, err := os.Getwd()
+	c.Assert(err, IsNil)
+	old, err := config.Get("git:unit-repo")
+	c.Assert(err, IsNil)
+	config.Set("git:unit-repo", pwd)
+	defer config.Set("git:unit-repo", old)
+	expected := path.Join(pwd, "testdata", "pre.sh")
+	command := "testdata/pre.sh"
+	got, err := deployHookAbsPath(command)
+	c.Assert(err, IsNil)
+	c.Assert(got, Equals, expected)
+}
+
+func (s *S) TestDeployHookAbsPathAbsoluteCommands(c *C) {
+	command := "python manage.py syncdb --noinput"
+	expected := "python manage.py syncdb --noinput"
+	got, err := deployHookAbsPath(command)
 	c.Assert(err, IsNil)
 	c.Assert(got, Equals, expected)
 }
@@ -369,8 +386,8 @@ pos-restart:
 	commandmocker.Remove(dir)
 	c.Assert(err, IsNil)
 	st := strings.Split(w.String(), "\n")
-	c.Assert(st[len(st)-2], Matches, ".*/bin/bash /home/application/current/pre.sh$")
-	c.Assert(string(out), Matches, ".*/bin/bash /home/application/current/pre.sh$")
+	c.Assert(st[len(st)-2], Matches, ".*/bin/bash.*pre.sh$")
+	c.Assert(string(out), Matches, ".*/bin/bash.*pre.sh$")
 }
 
 func (s *S) TestPreRestartWhenAppConfDoesNotExists(c *C) {
@@ -456,7 +473,7 @@ pos-restart:
 	c.Assert(err, IsNil)
 	commandmocker.Remove(dir)
 	st := strings.Split(w.String(), "\n")
-	regexp := ".*/bin/bash /home/application/current/pos.sh$"
+	regexp := ".*/bin/bash .*pos.sh$"
 	c.Assert(st[len(st)-2], Matches, regexp)
 	c.Assert(string(out), Matches, regexp)
 }

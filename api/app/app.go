@@ -19,6 +19,7 @@ import (
 	"io"
 	"labix.org/v2/mgo/bson"
 	"launchpad.net/goyaml"
+	"os"
 	"os/exec"
 	"path"
 	"sort"
@@ -224,7 +225,14 @@ func deployHookAbsPath(p string) (string, error) {
 	if err != nil {
 		return "", nil
 	}
-	return path.Join(repoPath, p), nil
+	cmdArgs := strings.Fields(p)
+	abs := path.Join(repoPath, cmdArgs[0])
+	_, err = os.Stat(abs)
+	if os.IsNotExist(err) {
+		return p, nil
+	}
+	cmdArgs[0] = abs
+	return strings.Join(cmdArgs, " "), nil
 }
 
 /*
