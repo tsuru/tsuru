@@ -280,10 +280,9 @@ func (a *App) runHook(cmds []string, kind string) ([]byte, error) {
 	return buf.Bytes(), err
 }
 
-/*
-* preRestart is responsible for running user's pre-restart script.
-* The path to this script can be found at the app.conf file, at the root of user's app repository.
- */
+// preRestart is responsible for running user's pre-restart script.
+//
+// The path to this script can be found at the app.conf file, at the root of user's app repository.
 func (a *App) preRestart(c conf) ([]byte, error) {
 	if !a.hasRestartHooks(c) {
 		a.log("app.conf file does not exists or is in the right place. Skipping pre-restart hook...")
@@ -296,10 +295,9 @@ func (a *App) preRestart(c conf) ([]byte, error) {
 	return a.runHook(c.PreRestart, "pre-restart")
 }
 
-/*
-* posRestart is responsible for running user's pos-restart script.
-* The path to this script can be found at the app.conf file, at the root of user's app repository.
- */
+// posRestart is responsible for running user's pos-restart script.
+//
+// The path to this script can be found at the app.conf file, at the root of user's app repository.
 func (a *App) posRestart(c conf) ([]byte, error) {
 	if !a.hasRestartHooks(c) {
 		a.log("app.conf file does not exists or is in the right place. Skipping pos-restart hook...")
@@ -344,8 +342,8 @@ func restart(a *App, w io.Writer) ([]byte, error) {
 	return out, nil
 }
 
-//installDeps runs the dependencies hook for the app
-//and returns your output.
+// installDeps runs the dependencies hook for the app
+// and returns your output.
 func installDeps(a *App, stdout, stderr io.Writer) ([]byte, error) {
 	u := a.unit()
 	a.log("executting hook dependencies")
