@@ -334,7 +334,7 @@ func restart(a *App, w io.Writer) ([]byte, error) {
 			return nil, err
 		}
 	}
-	out, err := u.executeHook(w, w, "restart")
+	out, err := u.executeHook("restart", w, w)
 	if err != nil {
 		return out, err
 	}
@@ -347,7 +347,7 @@ func restart(a *App, w io.Writer) ([]byte, error) {
 func installDeps(a *App, w io.Writer) ([]byte, error) {
 	u := a.unit()
 	a.log("executting hook dependencies")
-	out, err := u.executeHook(w, w, "dependencies")
+	out, err := u.executeHook("dependencies", w, w)
 	a.log(string(out))
 	if err != nil {
 		return out, err
