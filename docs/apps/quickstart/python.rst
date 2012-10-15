@@ -471,7 +471,7 @@ instance, we should run the ``service-add`` command:
 
 ::
 
-    $ tsuru service-add
+    $ tsuru service-add mysql blogsql
     Service successfully added.
 
 Now, if we run ``service-list`` again, we will see our new service-instance in
@@ -572,3 +572,156 @@ Now let's commit it and run another deploy:
     remote:
     To git@ec2-23-22-70-116.compute-1.amazonaws.com:blog.git
        ab4e706..a780de9  master -> master
+
+Now if we try to access the admin again, we will get another error: `"Table
+'blogsql.django_session' doesn't exist"`. Well, that means that we have access
+to the database, so bind worked, but we did not set up the database yet. We
+need to run ``syncdb`` and ``migrate`` (if we're using South) in the remote
+server. We can use `run
+<http://go.pkgdoc.org/github.com/globocom/tsuru/cmd/tsuru#Run_an_arbitrary_command_in_the_app_machine>`_
+command to execute commands in the machine, so for running ``syncdb`` we could
+write:
+
+.. highlight:: bash
+
+    $ tsuru run blog python manage.py syncdb --noinput
+    Syncing...
+    Creating tables ...
+    Creating table auth_permission
+    Creating table auth_group_permissions
+    Creating table auth_group
+    Creating table auth_user_user_permissions
+    Creating table auth_user_groups
+    Creating table auth_user
+    Creating table django_content_type
+    Creating table django_session
+    Creating table django_site
+    Creating table django_admin_log
+    Creating table south_migrationhistory
+    Installing custom SQL ...
+    Installing indexes ...
+    Installed 0 object(s) from 0 fixture(s)
+
+    Synced:
+     > django.contrib.auth
+     > django.contrib.contenttypes
+     > django.contrib.sessions
+     > django.contrib.sites
+     > django.contrib.messages
+     > django.contrib.staticfiles
+     > django.contrib.admin
+     > south
+
+    Not synced (use migrations):
+     - blog.posts
+    (use ./manage.py migrate to migrate these)
+
+The same applies for ``migrate``.
+
+Deployment hooks
+================
+
+It would be boring to manually run ``syncdb`` and/or ``migrate`` after every
+deployment. So we can configure an automatic hook to always run before or after
+the app restarts. As you can see in the deploy output, there are three key
+sections related to that hooks:
+
+.. highlight:: bash
+
+::
+
+    $ git push tsuru master
+    ######
+    remote:  ---> Parsing app.conf
+    remote:
+    ######
+    remote:
+    remote:  ---> Running pre-restart
+    remote:
+    ######
+    remote:
+    remote:  ---> Running pos-restart
+    remote:
+    ######
+
+So, tsuru parses a file called ``app.conf`` and runs ``pre-restart`` and
+``pos-restart`` hooks. app.conf is a YAML file, that contains a list of
+commands that should run in pre-restart and pos-restart hooks. Here is our
+example of app.conf:
+
+.. highlight:: yaml
+
+::
+
+    pos-restart:
+      - python manage.py syncdb --noinput
+      - python manage.py migrate
+
+It should be located in the root of the project. Let's commit and deploy it:
+
+.. highlight:: bash
+
+::
+
+    $ git add app.conf
+    $ git commit -m "app.conf: added file"
+    $ git push tsuru master
+    Counting objects: 4, done.
+    Delta compression using up to 4 threads.
+    Compressing objects: 100% (3/3), done.
+    Writing objects: 100% (3/3), 338 bytes, done.
+    Total 3 (delta 1), reused 0 (delta 0)
+    remote:
+    remote:  ---> Tsuru receiving push
+    remote:
+    remote:  ---> Clonning your code in your machines
+    remote: From git://ec2-23-22-70-116.compute-1.amazonaws.com/blog
+    remote:  * branch            master     -> FETCH_HEAD
+    remote: Updating a780de9..1b675b8
+    remote: Fast-forward
+    remote:  app.conf |    3 +++
+    remote:  1 file changed, 3 insertions(+)
+    remote:  create mode 100644 app.conf
+    remote:
+    remote:  ---> Parsing app.conf
+    remote:
+    remote:  ---> Installing dependencies
+    remote: Reading package lists...
+    remote: Building dependency tree...
+    remote: Reading state information...
+    remote: python-dev is already the newest version.
+    remote: libmysqlclient-dev is already the newest version.
+    remote: 0 upgraded, 0 newly installed, 0 to remove and 15 not upgraded.
+    remote: Requirement already satisfied (use --upgrade to upgrade): Django==1.4.1 in /usr/local/lib/python2.7/dist-packages (from -r /home/application/current/requirements.txt (line 1))
+    remote: Requirement already satisfied (use --upgrade to upgrade): MySQL-python==1.2.3 in /usr/local/lib/python2.7/dist-packages (from -r /home/application/current/requirements.txt (line 2))
+    remote: Requirement already satisfied (use --upgrade to upgrade): South==0.7.6 in /usr/local/lib/python2.7/dist-packages (from -r /home/application/current/requirements.txt (line 3))
+    remote: Requirement already satisfied (use --upgrade to upgrade): gunicorn==0.14.6 in /usr/local/lib/python2.7/dist-packages (from -r /home/application/current/requirements.txt (line 4))
+    remote: Cleaning up...
+    remote:
+    remote:  ---> Running pre-restart
+    remote:
+    remote:  ---> Restarting your app
+    remote: /home/ubuntu
+    remote:
+    remote:  ---> Running pos-restart
+    remote: 2012-10-15 13:29:51,970 INFO Connecting to environment...
+    remote: 2012-10-15 13:29:53,212 INFO Connected to environment.
+    remote: 2012-10-15 13:29:53,293 INFO Connecting to machine 50 at ec2-23-22-196-207.compute-1.amazonaws.com
+    remote: 2012-10-15 13:29:55,013 INFO Connecting to environment...
+    remote: 2012-10-15 13:29:56,144 INFO Connected to environment.
+    remote: 2012-10-15 13:29:56,282 INFO Connecting to machine 50 at ec2-23-22-196-207.compute-1.amazonaws.com
+    remote:
+    remote:  ---> Deploy done!
+    remote:
+    To git@ec2-23-22-70-116.compute-1.amazonaws.com:blog.git
+       a780de9..1b675b8  master -> master
+
+It's done! Now we have a Django project deployed on tsuru, using a MySQL
+service.
+
+Going further
+=============
+
+For more information, you can dig into `tsuru docs <http://docs.tsuru.io>`_, or
+read `complete instructions of use for the tsuru command
+<http://go.pkgdoc.org/github.com/globocom/tsuru/cmd/tsuru>`_.
