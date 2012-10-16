@@ -66,7 +66,7 @@ func (u *Unit) Command(stdout, stderr io.Writer, cmds ...string) ([]byte, error)
 	c.Stdout = stdout
 	c.Stderr = stderr
 	err := c.Run()
-	return filterOutput(b.Bytes()), err
+	return b.Bytes(), err
 }
 
 func (u *Unit) GetName() string {
