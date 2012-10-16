@@ -13,24 +13,24 @@ import (
 // FilteredWriter is a custom writer
 // that filter deprecation warnings and juju log output.
 type FilteredWriter struct {
-	Writer http.ResponseWriter
+	writer http.ResponseWriter
 }
 
 // WriteHeader calls the w.Header
 func (w *FilteredWriter) Header() http.Header {
-	return w.Writer.Header()
+	return w.writer.Header()
 }
 
 // Write writes the data, filtering the juju warnings.
 func (w *FilteredWriter) Write(data []byte) (int, error) {
-	_, err := w.Writer.Write(filterOutput(data))
+	_, err := w.writer.Write(filterOutput(data))
 	// returning the len(data) to skip the 'short write' error
 	return len(data), err
 }
 
 // WriteHeader calls the w.WriteHeader
 func (w *FilteredWriter) WriteHeader(code int) {
-	w.Writer.WriteHeader(code)
+	w.writer.WriteHeader(code)
 }
 
 // filterOutput filters output from juju.
