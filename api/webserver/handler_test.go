@@ -13,6 +13,7 @@ import (
 	. "launchpad.net/gocheck"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 )
 
@@ -38,6 +39,12 @@ func simpleHandler(w http.ResponseWriter, r *http.Request) error {
 	return nil
 }
 
+func outputHandler(w http.ResponseWriter, r *http.Request) error {
+	output := "2012-06-05 17:03:36,887 WARNING ssl-hostname-verification is disabled for this environment"
+	fmt.Fprint(w, output)
+	return nil
+}
+
 func authorizedErrorHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	return errorHandler(w, r)
 }
@@ -48,6 +55,10 @@ func authorizedBadRequestHandler(w http.ResponseWriter, r *http.Request, u *auth
 
 func authorizedSimpleHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	return simpleHandler(w, r)
+}
+
+func authorizedOutputHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
+	return outputHandler(w, r)
 }
 
 func (s *S) SetUpSuite(c *C) {
@@ -131,4 +142,25 @@ func (s *S) TestAuthorizationRequiredHandlerShouldRespectTheHandlerStatusCode(c 
 	request.Header.Set("Authorization", s.t.Token)
 	AuthorizationRequiredHandler(authorizedBadRequestHandler).ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, Equals, http.StatusBadRequest)
+}
+
+func (s *S) TestAuthorizationRequiredHandlerShouldFilterOutputFromJuju(c *C) {
+	recorder := httptest.NewRecorder()
+	request, err := http.NewRequest("GET", "/apps", nil)
+	c.Assert(err, IsNil)
+	request.Header.Set("Authorization", s.t.Token)
+	AuthorizationRequiredHandler(authorizedOutputHandler).ServeHTTP(recorder, request)
+	notExpected := ".*2012-06-05 17:03:36,887 WARNING.*"
+	result := strings.Replace(recorder.Body.String(), "\n", "", -1)
+	c.Assert(result, Not(Matches), notExpected)
+}
+
+func (s *S) TestHandlerShouldFilterOutputFromJuju(c *C) {
+	recorder := httptest.NewRecorder()
+	request, err := http.NewRequest("GET", "/apps", nil)
+	c.Assert(err, IsNil)
+	Handler(outputHandler).ServeHTTP(recorder, request)
+	notExpected := ".*2012-06-05 17:03:36,887 WARNING.*"
+	result := strings.Replace(recorder.Body.String(), "\n", "", -1)
+	c.Assert(result, Not(Matches), notExpected)
 }
