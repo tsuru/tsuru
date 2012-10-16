@@ -16,6 +16,7 @@ type FilteredWriter struct {
 	w http.ResponseWriter
 }
 
+// WriteHeader calls the w.Header
 func (w *FilteredWriter) Header() http.Header {
 	return w.w.Header()
 }
@@ -25,6 +26,11 @@ func (w *FilteredWriter) Write(data []byte) (int, error) {
 	_, err := w.w.Write(filterOutput(data))
 	// returning the len(data) to skip the 'short write' error
 	return len(data), err
+}
+
+// WriteHeader calls the w.WriteHeader
+func (w *FilteredWriter) WriteHeader(code int) {
+	w.w.WriteHeader(code)
 }
 
 // filterOutput filters output from juju.

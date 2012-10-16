@@ -109,3 +109,11 @@ func (s *S) TestFilteredWriterHeader(c *C) {
 	writer.Header().Set("Content-Type", "application/xml")
 	c.Assert(recorder.Header().Get("Content-Type"), Equals, "application/xml")
 }
+
+func (s *S) TestFilteredWriterWriteHeader(c *C) {
+	recorder := httptest.NewRecorder()
+	writer := FilteredWriter{recorder}
+	expectedCode := 333
+	writer.WriteHeader(expectedCode)
+	c.Assert(recorder.Code, Equals, expectedCode)
+}
