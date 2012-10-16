@@ -240,20 +240,20 @@ func (a *App) conf() (conf, error) {
 	var c conf
 	uRepo, err := repository.GetPath()
 	if err != nil {
-		a.log(fmt.Sprintf("Got error while getting repository path: %s", err.Error()))
+		a.log(fmt.Sprintf("Got error while getting repository path: %s", err))
 		return c, err
 	}
 	cPath := path.Join(uRepo, "app.conf")
 	cmd := fmt.Sprintf(`echo "%s";cat %s`, confSep, cPath)
 	o, err := a.unit().Command(nil, nil, cmd)
 	if err != nil {
-		a.log(fmt.Sprintf("Got error while executing command: %s... Skipping hooks execution", err.Error()))
+		a.log(fmt.Sprintf("Got error while executing command: %s... Skipping hooks execution", err))
 		return c, nil
 	}
 	data := strings.Split(string(o), confSep)[1]
 	err = goyaml.Unmarshal([]byte(data), &c)
 	if err != nil {
-		a.log(fmt.Sprintf("Got error while parsing yaml: %s", err.Error()))
+		a.log(fmt.Sprintf("Got error while parsing yaml: %s", err))
 		return c, err
 	}
 	return c, nil

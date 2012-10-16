@@ -22,7 +22,7 @@ func (fn Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w = &FilteredWriter{w}
 	if err := fn(w, r); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
-		log.Print(err.Error())
+		log.Print(err)
 	}
 }
 
