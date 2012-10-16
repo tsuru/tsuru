@@ -89,8 +89,7 @@ func CloneRepositoryHandler(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	writer := FilteredWriter{w}
-	_, err = installDeps(&app, &writer)
+	_, err = installDeps(&app, w)
 	if err != nil {
 		return err
 	}
@@ -106,7 +105,7 @@ func CloneRepositoryHandler(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	out, err = restart(&app, &writer)
+	out, err = restart(&app, w)
 	if err != nil {
 		write(w, out)
 		return err
@@ -345,8 +344,7 @@ func RunCommand(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	if err != nil {
 		return err
 	}
-	writer := FilteredWriter{w}
-	return app.run(string(c), &writer)
+	return app.run(string(c), w)
 }
 
 func GetEnv(w http.ResponseWriter, r *http.Request, u *auth.User) (err error) {
