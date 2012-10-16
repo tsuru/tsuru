@@ -243,7 +243,7 @@ func (s *S) TestServicesInstancesHandler(c *C) {
 	err = json.Unmarshal(body, &instances)
 	c.Assert(err, IsNil)
 	expected := []service.ServiceModel{
-		service.ServiceModel{Service: "redis", Instances: []string{"redis-globo"}},
+		{Service: "redis", Instances: []string{"redis-globo"}},
 	}
 	c.Assert(instances, DeepEquals, expected)
 }
@@ -318,11 +318,11 @@ func (s *S) TestServicesInstancesHandlerFilterInstancesPerServiceIncludingServic
 	err = json.Unmarshal(body, &instances)
 	c.Assert(err, IsNil)
 	expected := []service.ServiceModel{
-		service.ServiceModel{Service: "redis", Instances: []string{"redis1", "redis2"}},
-		service.ServiceModel{Service: "mysql", Instances: []string{"mysql1", "mysql2"}},
-		service.ServiceModel{Service: "pgsql", Instances: []string{"pgsql1", "pgsql2"}},
-		service.ServiceModel{Service: "memcached", Instances: []string{"memcached1", "memcached2"}},
-		service.ServiceModel{Service: "oracle", Instances: []string(nil)},
+		{Service: "redis", Instances: []string{"redis1", "redis2"}},
+		{Service: "mysql", Instances: []string{"mysql1", "mysql2"}},
+		{Service: "pgsql", Instances: []string{"pgsql1", "pgsql2"}},
+		{Service: "memcached", Instances: []string{"memcached1", "memcached2"}},
+		{Service: "oracle", Instances: []string(nil)},
 	}
 	c.Assert(instances, DeepEquals, expected)
 }

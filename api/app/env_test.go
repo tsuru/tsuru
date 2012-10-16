@@ -23,7 +23,7 @@ func (s *S) TestRewriteEnvMessage(c *C) {
 		Name:  "time",
 		Teams: []string{s.team.Name},
 		Units: []Unit{
-			Unit{AgentState: "started", MachineAgentState: "running", InstanceState: "running"},
+			{AgentState: "started", MachineAgentState: "running", InstanceState: "running"},
 		},
 	}
 	msg := message{

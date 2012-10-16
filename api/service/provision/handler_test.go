@@ -43,7 +43,7 @@ func (s *S) TestServicesHandlerShoudGetAllServicesFromUsersTeam(c *C) {
 	services := make([]service.ServiceModel, 1)
 	err = json.Unmarshal(b, &services)
 	expected := []service.ServiceModel{
-		service.ServiceModel{Service: "mongodb", Instances: []string{"my_nosql"}},
+		{Service: "mongodb", Instances: []string{"my_nosql"}},
 	}
 	c.Assert(services, DeepEquals, expected)
 }
@@ -118,7 +118,7 @@ func (s *S) TestCreateHandlerSavesOwnerTeamsFromUserWhoCreated(c *C) {
 	err := CreateHandler(recorder, request, s.user)
 	c.Assert(err, IsNil)
 	c.Assert(recorder.Body.String(), Equals, "success")
-	c.Assert(recorder.Code, Equals, 200)
+	c.Assert(recorder.Code, Equals, http.StatusOK)
 	query := bson.M{"_id": "some_service"}
 	var rService service.Service
 	err = db.Session.Services().Find(query).One(&rService)

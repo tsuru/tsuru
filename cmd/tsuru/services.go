@@ -82,7 +82,7 @@ func (sa *ServiceAdd) Run(ctx *cmd.Context, client cmd.Doer) error {
 	if err != nil {
 		return err
 	}
-	fmt.Fprint(ctx.Stdout, "service successfully added.\n")
+	fmt.Fprint(ctx.Stdout, "Service successfully added.\n")
 	return nil
 }
 

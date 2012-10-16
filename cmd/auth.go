@@ -253,7 +253,7 @@ func (c *teamList) Run(context *Context, client Doer) error {
 	if err != nil {
 		return err
 	}
-	if resp.StatusCode == 200 {
+	if resp.StatusCode == http.StatusOK {
 		defer resp.Body.Close()
 		b, err := ioutil.ReadAll(resp.Body)
 		if err != nil {

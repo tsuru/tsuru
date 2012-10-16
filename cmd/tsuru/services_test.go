@@ -242,7 +242,7 @@ Will add a new instance of the "mongodb" service, named "tsuru_mongodb".`
 
 func (s *S) TestServiceAddRun(c *C) {
 	var stdout, stderr bytes.Buffer
-	result := "service successfully added.\n"
+	result := "Service successfully added.\n"
 	args := []string{
 		"my_app_db",
 		"mysql",

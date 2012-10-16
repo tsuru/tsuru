@@ -39,6 +39,61 @@ export DATABASE_HOST=localhost
 export DATABASE_USER=root
 export DATABASE_PASSWORD=secret`
 
+func (s *S) TestAppIsAvaliableHandlerShouldReturnsErrorWhenAppUnitStatusIsnotStarted(c *C) {
+	u := Unit{
+		Name:              "someapp/0",
+		Type:              "django",
+		AgentState:        "creating",
+		MachineAgentState: "running",
+		InstanceState:     "running",
+	}
+	a := App{
+		Name:      "someapp",
+		Framework: "python",
+		Teams:     []string{s.team.Name},
+	}
+	err := createApp(&a)
+	c.Assert(err, IsNil)
+	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
+	a.Units = []Unit{u}
+	err = db.Session.Apps().Update(bson.M{"name": a.Name}, &a)
+	c.Assert(err, IsNil)
+	url := fmt.Sprintf("/apps/%s/avaliable?:name=%s", a.Name, a.Name)
+	request, err := http.NewRequest("GET", url, nil)
+	c.Assert(err, IsNil)
+	recorder := httptest.NewRecorder()
+	err = AppIsAvaliableHandler(recorder, request)
+	c.Assert(err, NotNil)
+}
+
+func (s *S) TestAppIsAvaliableHandlerShouldReturns200WhenAppUnitStatusIsStarted(c *C) {
+	u := Unit{
+		Name:              "someapp/0",
+		Type:              "django",
+		AgentState:        "started",
+		MachineAgentState: "running",
+		InstanceState:     "running",
+	}
+	a := App{
+		Name:      "someapp",
+		Framework: "python",
+		Teams:     []string{s.team.Name},
+	}
+	err := createApp(&a)
+	c.Assert(err, IsNil)
+	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
+	a.Units = []Unit{u}
+	err = db.Session.Apps().Update(bson.M{"name": a.Name}, &a)
+	c.Assert(err, IsNil)
+	url := fmt.Sprintf("/apps/%s/repository/clone?:name=%s", a.Name, a.Name)
+	request, err := http.NewRequest("GET", url, nil)
+	c.Assert(err, IsNil)
+	recorder := httptest.NewRecorder()
+	err = AppIsAvaliableHandler(recorder, request)
+	c.Assert(err, IsNil)
+	c.Assert(recorder.Code, Equals, http.StatusOK)
+}
+
 func (s *S) TestCloneRepositoryHandler(c *C) {
 	output := `
 ========
@@ -72,7 +127,7 @@ pos-restart:
 	recorder := httptest.NewRecorder()
 	err = CloneRepositoryHandler(recorder, request)
 	c.Assert(err, IsNil)
-	c.Assert(recorder.Code, Equals, 200)
+	c.Assert(recorder.Code, Equals, http.StatusOK)
 	c.Assert(strings.Replace(recorder.Body.String(), "\n", "#", -1), Matches, "^# ---> Tsuru receiving push#.*")
 	c.Assert(strings.Replace(recorder.Body.String(), "\n", "#", -1), Matches, ".*# ---> Clonning your code in your machines#.*")
 	c.Assert(strings.Replace(recorder.Body.String(), "\n", "#", -1), Matches, ".*# ---> Parsing app.conf#.*")
@@ -91,9 +146,9 @@ func (s *S) TestCloneRepositoryRunsCloneOrPullThenPreRestartThenRestartThenPosRe
 	output := `
 ========
 pre-restart:
-    pre.sh
+  - pre.sh
 pos-restart:
-    pos.sh
+  - pos.sh
 `
 	dir, err := commandmocker.Add("juju", output)
 	c.Assert(err, IsNil)
@@ -120,9 +175,9 @@ pos-restart:
 	recorder := httptest.NewRecorder()
 	err = CloneRepositoryHandler(recorder, request)
 	c.Assert(err, IsNil)
-	c.Assert(recorder.Code, Equals, 200)
+	c.Assert(recorder.Code, Equals, http.StatusOK)
 	str := strings.Replace(w.String(), "\n", "", -1)
-	c.Assert(str, Matches, ".*executing git clone.*Executing pre-restart hook.*executting hook to restarting.*Executing pos-restart hook.*")
+	c.Assert(str, Matches, ".*executing git clone.*executting hook dependencies.*Executing pre-restart hook.*executting hook to restarting.*Executing pos-restart hook.*")
 }
 
 func (s *S) TestCloneRepositoryShouldReturnNotFoundWhenAppDoesNotExist(c *C) {
@@ -165,7 +220,7 @@ func (s *S) TestAppList(c *C) {
 	recorder := httptest.NewRecorder()
 	err = AppList(recorder, request, s.user)
 	c.Assert(err, IsNil)
-	c.Assert(recorder.Code, Equals, 200)
+	c.Assert(recorder.Code, Equals, http.StatusOK)
 
 	body, err := ioutil.ReadAll(recorder.Body)
 	c.Assert(err, IsNil)
@@ -227,7 +282,7 @@ func (s *S) TestDelete(c *C) {
 		Framework: "django",
 		Teams:     []string{s.team.Name},
 		Units: []Unit{
-			Unit{Ip: "10.10.10.10", Machine: 1},
+			{Ip: "10.10.10.10", Machine: 1},
 		},
 	}
 	err := createApp(&myApp)
@@ -238,7 +293,7 @@ func (s *S) TestDelete(c *C) {
 	recorder := httptest.NewRecorder()
 	err = AppDelete(recorder, request, s.user)
 	c.Assert(err, IsNil)
-	c.Assert(recorder.Code, Equals, 200)
+	c.Assert(recorder.Code, Equals, http.StatusOK)
 }
 
 func (s *S) TestDeleteShouldReturnForbiddenIfTheGivenUserDoesNotHaveAccesToTheApp(c *C) {
@@ -278,7 +333,7 @@ func (s *S) TestDeleteAppRemovesProjectFromAllTeamsInGitosis(c *C) {
 		Name:      "MyAppToDelete",
 		Framework: "django",
 		Units: []Unit{
-			Unit{Ip: "10.10.10.10", Machine: 1},
+			{Ip: "10.10.10.10", Machine: 1},
 		},
 	}
 	_, err := createAppHelper(myApp, s.user)
@@ -333,7 +388,7 @@ func (s *S) TestAppInfo(c *C) {
 
 	err = AppInfo(recorder, request, s.user)
 	c.Assert(err, IsNil)
-	c.Assert(recorder.Code, Equals, 200)
+	c.Assert(recorder.Code, Equals, http.StatusOK)
 
 	body, err := ioutil.ReadAll(recorder.Body)
 	c.Assert(err, IsNil)
@@ -397,7 +452,7 @@ func (s *S) TestCreateAppHandler(c *C) {
 	}
 	err = json.Unmarshal(body, &obtained)
 	c.Assert(obtained, DeepEquals, expected)
-	c.Assert(recorder.Code, Equals, 200)
+	c.Assert(recorder.Code, Equals, http.StatusOK)
 	var gotApp App
 	err = db.Session.Apps().Find(bson.M{"name": "someApp"}).One(&gotApp)
 	c.Assert(err, IsNil)
@@ -744,6 +799,7 @@ func (s *S) TestRunHandlerShouldExecuteTheGivenCommandInTheGivenApp(c *C) {
 	err = RunCommand(recorder, request, s.user)
 	c.Assert(err, IsNil)
 	c.Assert(recorder.Body.String(), Equals, "ssh -o StrictHostKeyChecking no -q 10 [ -f /home/application/apprc ] && source /home/application/apprc; [ -d /home/application/current ] && cd /home/application/current; ls")
+	c.Assert(recorder.Header().Get("Content-Type"), Equals, "text")
 }
 
 func (s *S) TestRunHandlerReturnsTheOutputOfTheCommandEvenIfItFails(c *C) {
@@ -777,40 +833,6 @@ func (s *S) TestRunHandlerReturnsTheOutputOfTheCommandEvenIfItFails(c *C) {
 	err = RunCommand(recorder, request, s.user)
 	c.Assert(err, NotNil)
 	c.Assert(recorder.Body.String(), Equals, "juju failed")
-}
-
-func (s *S) TestRunHandlerShouldFilterOutputFromJuju(c *C) {
-	dir, err := commandmocker.Add("juju", output)
-	c.Assert(err, IsNil)
-	defer commandmocker.Remove(dir)
-	u := Unit{
-		Name:              "unspeakable/0",
-		Type:              "django",
-		Machine:           10,
-		AgentState:        "started",
-		MachineAgentState: "running",
-		InstanceState:     "running",
-	}
-	a := App{
-		Name:      "unspeakable",
-		Framework: "vougan",
-		Teams:     []string{s.team.Name},
-	}
-	err = createApp(&a)
-	c.Assert(err, IsNil)
-	a.Units = []Unit{u}
-	err = db.Session.Apps().Update(bson.M{"name": a.Name}, &a)
-	c.Assert(err, IsNil)
-	url := fmt.Sprintf("/apps/%s/run/?:name=%s", a.Name, a.Name)
-	request, err := http.NewRequest("POST", url, strings.NewReader("ls"))
-	c.Assert(err, IsNil)
-	recorder := httptest.NewRecorder()
-	err = RunCommand(recorder, request, s.user)
-	expected := `export DATABASE_HOST=localhost
-export DATABASE_USER=root
-export DATABASE_PASSWORD=secret`
-	c.Assert(err, IsNil)
-	c.Assert(recorder.Body.String(), Equals, expected)
 }
 
 func (s *S) TestRunHandlerReturnsBadRequestIfTheCommandIsMissing(c *C) {
@@ -879,9 +901,9 @@ func (s *S) TestGetEnvHandlerGetsEnvironmentVariableFromApp(c *C) {
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
 	a.Env = map[string]bind.EnvVar{
-		"DATABASE_HOST":     bind.EnvVar{Name: "DATABASE_HOST", Value: "localhost", Public: true},
-		"DATABASE_USER":     bind.EnvVar{Name: "DATABASE_USER", Value: "root", Public: true},
-		"DATABASE_PASSWORD": bind.EnvVar{Name: "DATABASE_PASSWORD", Value: "secret", Public: false},
+		"DATABASE_HOST":     {Name: "DATABASE_HOST", Value: "localhost", Public: true},
+		"DATABASE_USER":     {Name: "DATABASE_USER", Value: "root", Public: true},
+		"DATABASE_PASSWORD": {Name: "DATABASE_PASSWORD", Value: "secret", Public: false},
 	}
 	err = db.Session.Apps().Update(bson.M{"name": a.Name}, a)
 	c.Assert(err, IsNil)
@@ -903,9 +925,9 @@ func (s *S) TestGetEnvHandlerShouldAcceptMultipleVariables(c *C) {
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
 	a.Env = map[string]bind.EnvVar{
-		"DATABASE_HOST":     bind.EnvVar{Name: "DATABASE_HOST", Value: "localhost", Public: true},
-		"DATABASE_USER":     bind.EnvVar{Name: "DATABASE_USER", Value: "root", Public: true},
-		"DATABASE_PASSWORD": bind.EnvVar{Name: "DATABASE_PASSWORD", Value: "secret", Public: false},
+		"DATABASE_HOST":     {Name: "DATABASE_HOST", Value: "localhost", Public: true},
+		"DATABASE_USER":     {Name: "DATABASE_USER", Value: "root", Public: true},
+		"DATABASE_PASSWORD": {Name: "DATABASE_PASSWORD", Value: "secret", Public: false},
 	}
 	err = db.Session.Apps().Update(bson.M{"name": a.Name}, a)
 	c.Assert(err, IsNil)
@@ -928,9 +950,9 @@ func (s *S) TestGetEnvHandlerReturnsAllVariablesIfEnvironmentVariablesAreMissing
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
 	a.Env = map[string]bind.EnvVar{
-		"DATABASE_HOST":     bind.EnvVar{Name: "DATABASE_HOST", Value: "localhost", Public: true},
-		"DATABASE_USER":     bind.EnvVar{Name: "DATABASE_USER", Value: "root", Public: true},
-		"DATABASE_PASSWORD": bind.EnvVar{Name: "DATABASE_PASSWORD", Value: "secret", Public: false},
+		"DATABASE_HOST":     {Name: "DATABASE_HOST", Value: "localhost", Public: true},
+		"DATABASE_USER":     {Name: "DATABASE_USER", Value: "root", Public: true},
+		"DATABASE_PASSWORD": {Name: "DATABASE_PASSWORD", Value: "secret", Public: false},
 	}
 	err = db.Session.Apps().Update(bson.M{"name": "time"}, a)
 	c.Assert(err, IsNil)
@@ -995,7 +1017,7 @@ func (s *S) TestSetEnvRespectsThePublicOnlyFlagKeepPrivateVariablesWhenItsTrue(c
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
 	a.Env = map[string]bind.EnvVar{
-		"DATABASE_HOST": bind.EnvVar{
+		"DATABASE_HOST": {
 			Name:   "DATABASE_HOST",
 			Value:  "localhost",
 			Public: false,
@@ -1004,12 +1026,12 @@ func (s *S) TestSetEnvRespectsThePublicOnlyFlagKeepPrivateVariablesWhenItsTrue(c
 	err = db.Session.Apps().Update(bson.M{"name": "myapp"}, a)
 	c.Assert(err, IsNil)
 	envs := []bind.EnvVar{
-		bind.EnvVar{
+		{
 			Name:   "DATABASE_HOST",
 			Value:  "remotehost",
 			Public: false,
 		},
-		bind.EnvVar{
+		{
 			Name:   "DATABASE_PASSWORD",
 			Value:  "123",
 			Public: true,
@@ -1021,12 +1043,12 @@ func (s *S) TestSetEnvRespectsThePublicOnlyFlagKeepPrivateVariablesWhenItsTrue(c
 	err = newApp.Get()
 	c.Assert(err, IsNil)
 	expected := map[string]bind.EnvVar{
-		"DATABASE_HOST": bind.EnvVar{
+		"DATABASE_HOST": {
 			Name:   "DATABASE_HOST",
 			Value:  "localhost",
 			Public: false,
 		},
-		"DATABASE_PASSWORD": bind.EnvVar{
+		"DATABASE_PASSWORD": {
 			Name:   "DATABASE_PASSWORD",
 			Value:  "123",
 			Public: true,
@@ -1041,7 +1063,7 @@ func (s *S) TestSetEnvRespectsThePublicOnlyFlagOverwrittenAllVariablesWhenItsFal
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
 	a.Env = map[string]bind.EnvVar{
-		"DATABASE_HOST": bind.EnvVar{
+		"DATABASE_HOST": {
 			Name:   "DATABASE_HOST",
 			Value:  "localhost",
 			Public: false,
@@ -1050,12 +1072,12 @@ func (s *S) TestSetEnvRespectsThePublicOnlyFlagOverwrittenAllVariablesWhenItsFal
 	err = db.Session.Apps().Update(bson.M{"name": "myapp"}, a)
 	c.Assert(err, IsNil)
 	envs := []bind.EnvVar{
-		bind.EnvVar{
+		{
 			Name:   "DATABASE_HOST",
 			Value:  "remotehost",
 			Public: true,
 		},
-		bind.EnvVar{
+		{
 			Name:   "DATABASE_PASSWORD",
 			Value:  "123",
 			Public: true,
@@ -1067,12 +1089,12 @@ func (s *S) TestSetEnvRespectsThePublicOnlyFlagOverwrittenAllVariablesWhenItsFal
 	err = newApp.Get()
 	c.Assert(err, IsNil)
 	expected := map[string]bind.EnvVar{
-		"DATABASE_HOST": bind.EnvVar{
+		"DATABASE_HOST": {
 			Name:   "DATABASE_HOST",
 			Value:  "remotehost",
 			Public: true,
 		},
-		"DATABASE_PASSWORD": bind.EnvVar{
+		"DATABASE_PASSWORD": {
 			Name:   "DATABASE_PASSWORD",
 			Value:  "123",
 			Public: true,
@@ -1163,7 +1185,7 @@ func (s *S) TestSetEnvHandlerShouldSupportValuesWithDot(c *C) {
 	err = app.Get()
 	c.Assert(err, IsNil)
 	expected := map[string]bind.EnvVar{
-		"DATABASE_HOST": bind.EnvVar{Name: "DATABASE_HOST", Value: "http://foo.com:8080", Public: true},
+		"DATABASE_HOST": {Name: "DATABASE_HOST", Value: "http://foo.com:8080", Public: true},
 	}
 	c.Assert(app.Env, DeepEquals, expected)
 }
@@ -1210,7 +1232,7 @@ func (s *S) TestSetEnvHandlerShouldSupportLowerCasedVariableName(c *C) {
 
 func (s *S) TestSetEnvHandlerShouldNotChangeValueOfPrivateVariables(c *C) {
 	original := map[string]bind.EnvVar{
-		"DATABASE_HOST": bind.EnvVar{
+		"DATABASE_HOST": {
 			Name:   "DATABASE_HOST",
 			Value:  "privatehost.com",
 			Public: false,
@@ -1299,9 +1321,9 @@ func (s *S) TestUnsetEnvHandlerRemovesTheEnvironmentVariablesFromTheApp(c *C) {
 	err := createApp(&a)
 	c.Assert(err, IsNil)
 	a.Env = map[string]bind.EnvVar{
-		"DATABASE_HOST":     bind.EnvVar{Name: "DATABASE_HOST", Value: "localhost", Public: true},
-		"DATABASE_USER":     bind.EnvVar{Name: "DATABASE_USER", Value: "root", Public: true},
-		"DATABASE_PASSWORD": bind.EnvVar{Name: "DATABASE_PASSWORD", Value: "secret", Public: false},
+		"DATABASE_HOST":     {Name: "DATABASE_HOST", Value: "localhost", Public: true},
+		"DATABASE_USER":     {Name: "DATABASE_USER", Value: "root", Public: true},
+		"DATABASE_PASSWORD": {Name: "DATABASE_PASSWORD", Value: "secret", Public: false},
 	}
 	err = db.Session.Apps().Update(bson.M{"name": "swift"}, a)
 	c.Assert(err, IsNil)
@@ -1327,9 +1349,9 @@ func (s *S) TestUnsetEnvHandlerRemovesAllGivenEnvironmentVariables(c *C) {
 	err := createApp(&a)
 	c.Assert(err, IsNil)
 	a.Env = map[string]bind.EnvVar{
-		"DATABASE_HOST":     bind.EnvVar{Name: "DATABASE_HOST", Value: "localhost", Public: true},
-		"DATABASE_USER":     bind.EnvVar{Name: "DATABASE_USER", Value: "root", Public: true},
-		"DATABASE_PASSWORD": bind.EnvVar{Name: "DATABASE_PASSWORD", Value: "secret", Public: false},
+		"DATABASE_HOST":     {Name: "DATABASE_HOST", Value: "localhost", Public: true},
+		"DATABASE_USER":     {Name: "DATABASE_USER", Value: "root", Public: true},
+		"DATABASE_PASSWORD": {Name: "DATABASE_PASSWORD", Value: "secret", Public: false},
 	}
 	err = db.Session.Apps().Update(bson.M{"name": "let-it-be"}, a)
 	c.Assert(err, IsNil)
@@ -1342,7 +1364,7 @@ func (s *S) TestUnsetEnvHandlerRemovesAllGivenEnvironmentVariables(c *C) {
 	app := App{Name: "let-it-be"}
 	err = app.Get()
 	expected := map[string]bind.EnvVar{
-		"DATABASE_PASSWORD": bind.EnvVar{
+		"DATABASE_PASSWORD": {
 			Name:   "DATABASE_PASSWORD",
 			Value:  "secret",
 			Public: false,
@@ -1361,9 +1383,9 @@ func (s *S) TestUnsetHandlerDoesNotRemovePrivateVariables(c *C) {
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
 	a.Env = map[string]bind.EnvVar{
-		"DATABASE_HOST":     bind.EnvVar{Name: "DATABASE_HOST", Value: "localhost", Public: true},
-		"DATABASE_USER":     bind.EnvVar{Name: "DATABASE_USER", Value: "root", Public: true},
-		"DATABASE_PASSWORD": bind.EnvVar{Name: "DATABASE_PASSWORD", Value: "secret", Public: false},
+		"DATABASE_HOST":     {Name: "DATABASE_HOST", Value: "localhost", Public: true},
+		"DATABASE_USER":     {Name: "DATABASE_USER", Value: "root", Public: true},
+		"DATABASE_PASSWORD": {Name: "DATABASE_PASSWORD", Value: "secret", Public: false},
 	}
 	err = db.Session.Apps().Update(bson.M{"name": "letitbe"}, a)
 	c.Assert(err, IsNil)
@@ -1376,7 +1398,7 @@ func (s *S) TestUnsetHandlerDoesNotRemovePrivateVariables(c *C) {
 	app := App{Name: "letitbe"}
 	err = app.Get()
 	expected := map[string]bind.EnvVar{
-		"DATABASE_PASSWORD": bind.EnvVar{
+		"DATABASE_PASSWORD": {
 			Name:   "DATABASE_PASSWORD",
 			Value:  "secret",
 			Public: false,
@@ -1392,12 +1414,12 @@ func (s *S) TestUnsetEnvRespectsThePublicOnlyFlagKeepPrivateVariablesWhenItsTrue
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
 	a.Env = map[string]bind.EnvVar{
-		"DATABASE_HOST": bind.EnvVar{
+		"DATABASE_HOST": {
 			Name:   "DATABASE_HOST",
 			Value:  "localhost",
 			Public: false,
 		},
-		"DATABASE_PASSWORD": bind.EnvVar{
+		"DATABASE_PASSWORD": {
 			Name:   "DATABASE_PASSWORD",
 			Value:  "123",
 			Public: true,
@@ -1411,7 +1433,7 @@ func (s *S) TestUnsetEnvRespectsThePublicOnlyFlagKeepPrivateVariablesWhenItsTrue
 	err = newApp.Get()
 	c.Assert(err, IsNil)
 	expected := map[string]bind.EnvVar{
-		"DATABASE_HOST": bind.EnvVar{
+		"DATABASE_HOST": {
 			Name:   "DATABASE_HOST",
 			Value:  "localhost",
 			Public: false,
@@ -1426,12 +1448,12 @@ func (s *S) TestUnsetEnvRespectsThePublicOnlyFlagUnsettingAllVariablesWhenItsFal
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
 	a.Env = map[string]bind.EnvVar{
-		"DATABASE_HOST": bind.EnvVar{
+		"DATABASE_HOST": {
 			Name:   "DATABASE_HOST",
 			Value:  "localhost",
 			Public: false,
 		},
-		"DATABASE_PASSWORD": bind.EnvVar{
+		"DATABASE_PASSWORD": {
 			Name:   "DATABASE_PASSWORD",
 			Value:  "123",
 			Public: true,
@@ -1537,7 +1559,7 @@ func (s *S) TestLogShouldReturnAppLog(c *C) {
 		Framework: "vougan",
 		Teams:     []string{s.team.Name},
 		Logs: []applog{
-			applog{
+			{
 				Date:    time.Now(),
 				Message: "Something new",
 			},
@@ -1553,7 +1575,7 @@ func (s *S) TestLogShouldReturnAppLog(c *C) {
 	request.Header.Set("Content-Type", "application/json")
 	err = AppLog(recorder, request, s.user)
 	c.Assert(err, IsNil)
-	c.Assert(recorder.Code, Equals, 200)
+	c.Assert(recorder.Code, Equals, http.StatusOK)
 	body, err := ioutil.ReadAll(recorder.Body)
 	c.Assert(err, IsNil)
 	logs := []applog{}
@@ -1600,7 +1622,7 @@ func (s *S) TestBindHandler(c *C) {
 	a := App{
 		Name:  "painkiller",
 		Teams: []string{s.team.Name},
-		Units: []Unit{Unit{Ip: "127.0.0.1"}},
+		Units: []Unit{{Ip: "127.0.0.1"}},
 	}
 	err = db.Session.Apps().Insert(a)
 	c.Assert(err, IsNil)
@@ -1620,13 +1642,13 @@ func (s *S) TestBindHandler(c *C) {
 	err = db.Session.Apps().Find(bson.M{"name": a.Name}).One(&a)
 	c.Assert(err, IsNil)
 	expectedEnv := map[string]bind.EnvVar{
-		"DATABASE_USER": bind.EnvVar{
+		"DATABASE_USER": {
 			Name:         "DATABASE_USER",
 			Value:        "root",
 			Public:       false,
 			InstanceName: instance.Name,
 		},
-		"DATABASE_PASSWORD": bind.EnvVar{
+		"DATABASE_PASSWORD": {
 			Name:         "DATABASE_PASSWORD",
 			Value:        "s3cr3t",
 			Public:       false,
@@ -1756,18 +1778,18 @@ func (s *S) TestUnbindHandler(c *C) {
 	c.Assert(err, IsNil)
 	defer a.destroy()
 	a.Env = map[string]bind.EnvVar{
-		"DATABASE_HOST": bind.EnvVar{
+		"DATABASE_HOST": {
 			Name:         "DATABASE_HOST",
 			Value:        "arrea",
 			Public:       false,
 			InstanceName: instance.Name,
 		},
-		"MY_VAR": bind.EnvVar{
+		"MY_VAR": {
 			Name:  "MY_VAR",
 			Value: "123",
 		},
 	}
-	a.Units = []Unit{Unit{Ip: "127.0.0.1"}}
+	a.Units = []Unit{{Ip: "127.0.0.1"}}
 	err = db.Session.Apps().Update(bson.M{"name": a.Name}, &a)
 	c.Assert(err, IsNil)
 	url := fmt.Sprintf("/services/instances/%s/%s?:instance=%s&:app=%s", instance.Name, a.Name, instance.Name, a.Name)
@@ -1782,7 +1804,7 @@ func (s *S) TestUnbindHandler(c *C) {
 	err = db.Session.Apps().Find(bson.M{"name": a.Name}).One(&a)
 	c.Assert(err, IsNil)
 	expected := map[string]bind.EnvVar{
-		"MY_VAR": bind.EnvVar{
+		"MY_VAR": {
 			Name:  "MY_VAR",
 			Value: "123",
 		},
@@ -1898,7 +1920,7 @@ func (s *S) TestRestartHandler(c *C) {
 		Name:  "stress",
 		Teams: []string{s.team.Name},
 		Units: []Unit{
-			Unit{
+			{
 				AgentState:        "started",
 				MachineAgentState: "running",
 				InstanceState:     "running",
@@ -1917,10 +1939,9 @@ func (s *S) TestRestartHandler(c *C) {
 	err = RestartHandler(recorder, request, s.user)
 	c.Assert(err, IsNil)
 	c.Assert(commandmocker.Ran(tmpdir), Equals, true)
-	b, err := ioutil.ReadAll(recorder.Body)
-	c.Assert(err, IsNil)
-	expected := fmt.Sprintf("ssh -o StrictHostKeyChecking no -q %d /var/lib/tsuru/hooks/restart", a.unit().Machine)
-	c.Assert(string(b), Equals, expected)
+	result := strings.Replace(recorder.Body.String(), "\n", "#", -1)
+	c.Assert(result, Matches, ".*/var/lib/tsuru/hooks/restart.*")
+	c.Assert(result, Matches, ".*# ---> Restarting your app#.*")
 }
 
 func (s *S) TestRestartHandlerReturns404IfTheAppDoesNotExist(c *C) {
@@ -1954,7 +1975,7 @@ func (s *S) TestRestartHandlerReturns412IfTheUnitOfTheAppDoesNotHaveIp(c *C) {
 	a := App{
 		Name:  "stress",
 		Teams: []string{s.team.Name},
-		Units: []Unit{Unit{Ip: "", Machine: 10}},
+		Units: []Unit{{Ip: "", Machine: 10}},
 	}
 	err := db.Session.Apps().Insert(a)
 	c.Assert(err, IsNil)

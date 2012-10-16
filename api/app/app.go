@@ -5,6 +5,7 @@
 package app
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -18,6 +19,7 @@ import (
 	"io"
 	"labix.org/v2/mgo/bson"
 	"launchpad.net/goyaml"
+	"os"
 	"os/exec"
 	"path"
 	"sort"
@@ -55,8 +57,8 @@ type applog struct {
 }
 
 type conf struct {
-	PreRestart string `yaml:"pre-restart"`
-	PosRestart string `yaml:"pos-restart"`
+	PreRestart []string `yaml:"pre-restart"`
+	PosRestart []string `yaml:"pos-restart"`
 }
 
 func (a *App) Get() error {
@@ -253,12 +255,17 @@ func deployHookAbsPath(p string) (string, error) {
 	if err != nil {
 		return "", nil
 	}
-	return path.Join(repoPath, p), nil
+	cmdArgs := strings.Fields(p)
+	abs := path.Join(repoPath, cmdArgs[0])
+	_, err = os.Stat(abs)
+	if os.IsNotExist(err) {
+		return p, nil
+	}
+	cmdArgs[0] = abs
+	return strings.Join(cmdArgs, " "), nil
 }
 
-/*
- Returns app.conf located at app's git repository
-*/
+// Returns app.conf located at app's git repository
 func (a *App) conf() (conf, error) {
 	var c conf
 	uRepo, err := repository.GetPath()
@@ -282,64 +289,82 @@ func (a *App) conf() (conf, error) {
 	return c, nil
 }
 
-/*
-* preRestart is responsible for running user's pre-restart script.
-* The path to this script can be found at the app.conf file, at the root of user's app repository.
- */
+func (a *App) runHook(cmds []string, kind string) ([]byte, error) {
+	var (
+		buf bytes.Buffer
+		err error
+	)
+	a.log(fmt.Sprintf("Executing %s hook...", kind))
+	for _, cmd := range cmds {
+		p, err := deployHookAbsPath(cmd)
+		if err != nil {
+			a.log(fmt.Sprintf("Error obtaining absolute path to hook: %s.", err))
+			continue
+		}
+		err = a.run(p, &buf)
+		if err != nil {
+			return nil, err
+		}
+	}
+	a.log(fmt.Sprintf("Output of %s hooks: %s", kind, buf.Bytes()))
+	return buf.Bytes(), err
+}
+
+// preRestart is responsible for running user's pre-restart script.
+//
+// The path to this script can be found at the app.conf file, at the root of user's app repository.
 func (a *App) preRestart(c conf) ([]byte, error) {
 	if !a.hasRestartHooks(c) {
 		a.log("app.conf file does not exists or is in the right place. Skipping pre-restart hook...")
 		return []byte(nil), nil
 	}
-	if c.PreRestart == "" {
+	if len(c.PreRestart) == 0 {
 		a.log("pre-restart hook section in app conf does not exists... Skipping pre-restart hook...")
 		return []byte(nil), nil
 	}
-	p, err := deployHookAbsPath(c.PreRestart)
-	if err != nil {
-		a.log(fmt.Sprintf("Error obtaining absolute path to hook: %s. Skipping pre-restart hook...", err))
-		return []byte(nil), nil
-	}
-	a.log("Executing pre-restart hook...")
-	out, err := a.unit().Command(nil, nil, "/bin/bash", p)
-	a.log(fmt.Sprintf("Output of pre-restart hook: %s", string(out)))
-	return out, err
+	return a.runHook(c.PreRestart, "pre-restart")
 }
 
-/*
-* posRestart is responsible for running user's pos-restart script.
-* The path to this script can be found at the app.conf file, at the root of user's app repository.
- */
+// posRestart is responsible for running user's pos-restart script.
+//
+// The path to this script can be found at the app.conf file, at the root of user's app repository.
 func (a *App) posRestart(c conf) ([]byte, error) {
 	if !a.hasRestartHooks(c) {
 		a.log("app.conf file does not exists or is in the right place. Skipping pos-restart hook...")
 		return []byte(nil), nil
 	}
-	if c.PosRestart == "" {
+	if len(c.PosRestart) == 0 {
 		a.log("pos-restart hook section in app conf does not exists... Skipping pos-restart hook...")
 		return []byte(nil), nil
 	}
-	p, err := deployHookAbsPath(c.PosRestart)
-	if err != nil {
-		a.log(fmt.Sprintf("Error obtaining absolute path to hook: %s. Skipping pos-restart-hook...", err))
-		return []byte(nil), nil
-	}
-	out, err := a.unit().Command(nil, nil, "/bin/bash", p)
-	a.log("Executing pos-restart hook...")
-	a.log(fmt.Sprintf("Output of pos-restart hook: %s", string(out)))
-	return out, err
+	return a.runHook(c.PosRestart, "pos-restart")
 }
 
 func (a *App) hasRestartHooks(c conf) bool {
-	return !(c.PreRestart == "" && c.PosRestart == "")
+	return len(c.PreRestart) > 0 || len(c.PosRestart) > 0
 }
 
-//restart runs the restart hook for the app
-//and returns your output.
-func restart(a *App) ([]byte, error) {
+// run executes the command in app units
+func (a *App) run(cmd string, w io.Writer) error {
+	a.log(fmt.Sprintf("running '%s'", cmd))
+	cmd = fmt.Sprintf("[ -f /home/application/apprc ] && source /home/application/apprc; [ -d /home/application/current ] && cd /home/application/current; %s", cmd)
+	out, err := a.unit().Command(w, w, cmd)
+	a.log(string(out))
+	return err
+}
+
+// restart runs the restart hook for the app
+// and returns your output.
+func restart(a *App, w io.Writer) ([]byte, error) {
 	u := a.unit()
 	a.log("executting hook to restarting")
-	out, err := u.executeHook(nil, nil, "restart")
+	if w != nil {
+		_, err := w.Write([]byte("\n ---> Restarting your app\n"))
+		if err != nil {
+			return nil, err
+		}
+	}
+	out, err := u.executeHook("restart", w, w)
 	if err != nil {
 		return out, err
 	}
@@ -347,12 +372,12 @@ func restart(a *App) ([]byte, error) {
 	return out, nil
 }
 
-//installDeps runs the dependencies hook for the app
-//and returns your output.
-func installDeps(a *App, stdout, stderr io.Writer) ([]byte, error) {
+// installDeps runs the dependencies hook for the app
+// and returns your output.
+func installDeps(a *App, w io.Writer) ([]byte, error) {
 	u := a.unit()
 	a.log("executting hook dependencies")
-	out, err := u.executeHook(stdout, stderr, "dependencies")
+	out, err := u.executeHook("dependencies", w, w)
 	a.log(string(out))
 	if err != nil {
 		return out, err

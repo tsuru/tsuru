@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/globocom/commandmocker"
+	"github.com/globocom/config"
 	"github.com/globocom/tsuru/api/auth"
 	"github.com/globocom/tsuru/api/bind"
 	"github.com/globocom/tsuru/db"
@@ -17,6 +18,8 @@ import (
 	"labix.org/v2/mgo/bson"
 	. "launchpad.net/gocheck"
 	stdlog "log"
+	"os"
+	"path"
 	"strings"
 )
 
@@ -45,7 +48,7 @@ func (s *S) TestDestroy(c *C) {
 		Framework: "ruby",
 		Teams:     []string{s.team.Name},
 		Units: []Unit{
-			Unit{
+			{
 				Name:    "duvido",
 				Machine: 3,
 			},
@@ -247,13 +250,13 @@ func (s *S) TestGetEnvReturnsErrorIfTheEnvironmentMapIsNil(c *C) {
 
 func (s *S) TestInstanceEnvironmentReturnEnvironmentVariablesForTheServer(c *C) {
 	envs := map[string]bind.EnvVar{
-		"DATABASE_HOST": bind.EnvVar{Name: "DATABASE_HOST", Value: "localhost", Public: false, InstanceName: "mysql"},
-		"DATABASE_USER": bind.EnvVar{Name: "DATABASE_USER", Value: "root", Public: true, InstanceName: "mysql"},
-		"HOST":          bind.EnvVar{Name: "HOST", Value: "10.0.2.1", Public: false, InstanceName: "redis"},
+		"DATABASE_HOST": {Name: "DATABASE_HOST", Value: "localhost", Public: false, InstanceName: "mysql"},
+		"DATABASE_USER": {Name: "DATABASE_USER", Value: "root", Public: true, InstanceName: "mysql"},
+		"HOST":          {Name: "HOST", Value: "10.0.2.1", Public: false, InstanceName: "redis"},
 	}
 	expected := map[string]bind.EnvVar{
-		"DATABASE_HOST": bind.EnvVar{Name: "DATABASE_HOST", Value: "localhost", Public: false, InstanceName: "mysql"},
-		"DATABASE_USER": bind.EnvVar{Name: "DATABASE_USER", Value: "root", Public: true, InstanceName: "mysql"},
+		"DATABASE_HOST": {Name: "DATABASE_HOST", Value: "localhost", Public: false, InstanceName: "mysql"},
+		"DATABASE_USER": {Name: "DATABASE_USER", Value: "root", Public: true, InstanceName: "mysql"},
 	}
 	a := App{Name: "hi-there", Env: envs}
 	c.Assert(a.InstanceEnv("mysql"), DeepEquals, expected)
@@ -280,9 +283,23 @@ func (s *S) TestEmptyUnit(c *C) {
 }
 
 func (s *S) TestDeployHookAbsPath(c *C) {
-	path := "deploy/pre.sh"
-	expected := "/home/application/current/deploy/pre.sh"
-	got, err := deployHookAbsPath(path)
+	pwd, err := os.Getwd()
+	c.Assert(err, IsNil)
+	old, err := config.Get("git:unit-repo")
+	c.Assert(err, IsNil)
+	config.Set("git:unit-repo", pwd)
+	defer config.Set("git:unit-repo", old)
+	expected := path.Join(pwd, "testdata", "pre.sh")
+	command := "testdata/pre.sh"
+	got, err := deployHookAbsPath(command)
+	c.Assert(err, IsNil)
+	c.Assert(got, Equals, expected)
+}
+
+func (s *S) TestDeployHookAbsPathAbsoluteCommands(c *C) {
+	command := "python manage.py syncdb --noinput"
+	expected := "python manage.py syncdb --noinput"
+	got, err := deployHookAbsPath(command)
 	c.Assert(err, IsNil)
 	c.Assert(got, Equals, expected)
 }
@@ -293,8 +310,10 @@ something that must be discarded
 another thing that must also be discarded
 one more
 ========
-pre-restart: testdata/pre.sh
-pos-restart: testdata/pos.sh
+pre-restart:
+  - testdata/pre.sh
+pos-restart:
+  - testdata/pos.sh
 `
 	dir, err := commandmocker.Add("juju", output)
 	c.Assert(err, IsNil)
@@ -303,13 +322,40 @@ pos-restart: testdata/pos.sh
 		Name:      "something",
 		Framework: "django",
 		Units: []Unit{
-			Unit{AgentState: "started", MachineAgentState: "running", InstanceState: "running"},
+			{AgentState: "started", MachineAgentState: "running", InstanceState: "running"},
 		},
 	}
 	conf, err := a.conf()
 	c.Assert(err, IsNil)
-	c.Assert(conf.PreRestart, Equals, "testdata/pre.sh")
-	c.Assert(conf.PosRestart, Equals, "testdata/pos.sh")
+	c.Assert(conf.PreRestart, DeepEquals, []string{"testdata/pre.sh"})
+	c.Assert(conf.PosRestart, DeepEquals, []string{"testdata/pos.sh"})
+}
+
+func (s *S) TestAppConfWithListOfCommands(c *C) {
+	output := `
+trash
+========
+pre-restart:
+  - testdata/pre.sh
+  - ls -lh
+  - sudo rm -rf /
+pos-restart:
+  - testdata/pos.sh
+`
+	dir, err := commandmocker.Add("juju", output)
+	c.Assert(err, IsNil)
+	defer commandmocker.Remove(dir)
+	a := App{
+		Name:      "something",
+		Framework: "django",
+		Units: []Unit{
+			{AgentState: "started", MachineAgentState: "running", InstanceState: "running"},
+		},
+	}
+	conf, err := a.conf()
+	c.Assert(err, IsNil)
+	c.Assert(conf.PreRestart, DeepEquals, []string{"testdata/pre.sh", "ls -lh", "sudo rm -rf /"})
+	c.Assert(conf.PosRestart, DeepEquals, []string{"testdata/pos.sh"})
 }
 
 func (s *S) TestAppConfWhenFileDoesNotExists(c *C) {
@@ -327,8 +373,8 @@ $(exit 1)
 	a := App{Name: "something", Framework: "django"}
 	conf, err := a.conf()
 	c.Assert(err, IsNil)
-	c.Assert(conf.PreRestart, Equals, "")
-	c.Assert(conf.PosRestart, Equals, "")
+	c.Assert(conf.PreRestart, IsNil)
+	c.Assert(conf.PosRestart, IsNil)
 }
 
 func (s *S) TestPreRestart(c *C) {
@@ -337,8 +383,10 @@ something that must be discarded
 another thing that must also be discarded
 one more
 ========
-pre-restart: pre.sh
-pos-restart: pos.sh
+pre-restart:
+  - pre.sh
+pos-restart:
+  - pos.sh
 `
 	dir, err := commandmocker.Add("juju", output)
 	c.Assert(err, IsNil)
@@ -346,7 +394,7 @@ pos-restart: pos.sh
 		Name:      "something",
 		Framework: "django",
 		Units: []Unit{
-			Unit{AgentState: "started", MachineAgentState: "running", InstanceState: "running"},
+			{AgentState: "started", MachineAgentState: "running", InstanceState: "running"},
 		},
 	}
 	conf, err := a.conf()
@@ -362,8 +410,8 @@ pos-restart: pos.sh
 	commandmocker.Remove(dir)
 	c.Assert(err, IsNil)
 	st := strings.Split(w.String(), "\n")
-	c.Assert(st[len(st)-2], Matches, ".*/bin/bash /home/application/current/pre.sh$")
-	c.Assert(string(out), Matches, ".*/bin/bash /home/application/current/pre.sh$")
+	c.Assert(st[len(st)-2], Matches, `.*\[ -f /home/application/apprc \] && source /home/application/apprc; \[ -d /home/application/current \] && cd /home/application/current;.*pre.sh$`)
+	c.Assert(string(out), Matches, `.*\[ -f /home/application/apprc \] && source /home/application/apprc; \[ -d /home/application/current \] && cd /home/application/current;.*pre.sh$`)
 }
 
 func (s *S) TestPreRestartWhenAppConfDoesNotExists(c *C) {
@@ -397,7 +445,7 @@ another thing that must also be discarded
 one more
 ========
 pos-restart:
-    somescript.sh
+  - somescript.sh
 `
 	dir, err := commandmocker.Add("juju", output)
 	c.Assert(err, IsNil)
@@ -406,7 +454,7 @@ pos-restart:
 		Name:      "something",
 		Framework: "django",
 		Units: []Unit{
-			Unit{AgentState: "started", MachineAgentState: "running", InstanceState: "running"},
+			{AgentState: "started", MachineAgentState: "running", InstanceState: "running"},
 		},
 	}
 	conf, err := a.conf()
@@ -426,7 +474,7 @@ func (s *S) TestPosRestart(c *C) {
 sooooome
 ========
 pos-restart:
-    pos.sh
+  - pos.sh
 `
 	dir, err := commandmocker.Add("juju", output)
 	c.Assert(err, IsNil)
@@ -434,7 +482,7 @@ pos-restart:
 		Name:      "something",
 		Framework: "django",
 		Units: []Unit{
-			Unit{AgentState: "started", MachineAgentState: "running", InstanceState: "running"},
+			{AgentState: "started", MachineAgentState: "running", InstanceState: "running"},
 		},
 	}
 	conf, err := a.conf()
@@ -449,7 +497,7 @@ pos-restart:
 	c.Assert(err, IsNil)
 	commandmocker.Remove(dir)
 	st := strings.Split(w.String(), "\n")
-	regexp := ".*/bin/bash /home/application/current/pos.sh$"
+	regexp := `.*\[ -f /home/application/apprc \] && source /home/application/apprc; \[ -d /home/application/current \] && cd /home/application/current;.*pos.sh$`
 	c.Assert(st[len(st)-2], Matches, regexp)
 	c.Assert(string(out), Matches, regexp)
 }
@@ -484,7 +532,8 @@ something that must be discarded
 another thing that must also be discarded
 one more
 ========
-pre-restart: somescript.sh
+pre-restart:
+  - somescript.sh
 `
 	dir, err := commandmocker.Add("juju", output)
 	c.Assert(err, IsNil)
@@ -493,7 +542,7 @@ pre-restart: somescript.sh
 		Name:      "something",
 		Framework: "django",
 		Units: []Unit{
-			Unit{AgentState: "started", MachineAgentState: "running", InstanceState: "running"},
+			{AgentState: "started", MachineAgentState: "running", InstanceState: "running"},
 		},
 	}
 	conf, err := a.conf()
@@ -518,7 +567,7 @@ nothing here
 		Name:      "something",
 		Framework: "django",
 		Units: []Unit{
-			Unit{AgentState: "started", MachineAgentState: "running", InstanceState: "running"},
+			{AgentState: "started", MachineAgentState: "running", InstanceState: "running"},
 		},
 	}
 	dir, err := commandmocker.Add("juju", output)
@@ -535,13 +584,13 @@ func (s *S) TestHasRestartHooksWithOneHooks(c *C) {
 something that must be discarded
 ========
 pos-restart:
-    somefile.sh
+  - somefile.sh
 `
 	a := App{
 		Name:      "something",
 		Framework: "django",
 		Units: []Unit{
-			Unit{AgentState: "started", MachineAgentState: "running", InstanceState: "running"},
+			{AgentState: "started", MachineAgentState: "running", InstanceState: "running"},
 		},
 	}
 	dir, err := commandmocker.Add("juju", output)
@@ -562,7 +611,7 @@ func (s *S) TestInstallDeps(c *C) {
 		Framework: "django",
 		Teams:     []string{s.team.Name},
 		Units: []Unit{
-			Unit{
+			{
 				AgentState:        "started",
 				MachineAgentState: "running",
 				InstanceState:     "running",
@@ -573,7 +622,7 @@ func (s *S) TestInstallDeps(c *C) {
 	err = db.Session.Apps().Insert(a)
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
-	out, err := installDeps(&a, nil, nil)
+	out, err := installDeps(&a, nil)
 	c.Assert(err, IsNil)
 	c.Assert(string(out), Equals, "ssh -o StrictHostKeyChecking no -q 4 /var/lib/tsuru/hooks/dependencies")
 }
@@ -584,7 +633,7 @@ func (s *S) TestInstallDepsWithCustomStdout(c *C) {
 		Framework: "django",
 		Teams:     []string{s.team.Name},
 		Units: []Unit{
-			Unit{
+			{
 				AgentState:        "started",
 				MachineAgentState: "running",
 				InstanceState:     "running",
@@ -599,7 +648,7 @@ func (s *S) TestInstallDepsWithCustomStdout(c *C) {
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(tmpdir)
 	var b bytes.Buffer
-	_, err = installDeps(&a, &b, nil)
+	_, err = installDeps(&a, &b)
 	c.Assert(err, IsNil)
 	c.Assert(b.String(), Matches, `.* /var/lib/tsuru/hooks/dependencies`)
 }
@@ -610,7 +659,7 @@ func (s *S) TestInstallDepsWithCustomStderr(c *C) {
 		Framework: "django",
 		Teams:     []string{s.team.Name},
 		Units: []Unit{
-			Unit{
+			{
 				AgentState:        "started",
 				MachineAgentState: "running",
 				InstanceState:     "running",
@@ -625,7 +674,7 @@ func (s *S) TestInstallDepsWithCustomStderr(c *C) {
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(tmpdir)
 	var b bytes.Buffer
-	_, err = installDeps(&a, nil, &b)
+	_, err = installDeps(&a, &b)
 	c.Assert(err, NotNil)
 	c.Assert(b.String(), Matches, `.* /var/lib/tsuru/hooks/dependencies`)
 }
@@ -639,7 +688,7 @@ func (s *S) TestRestart(c *C) {
 		Framework: "django",
 		Teams:     []string{s.team.Name},
 		Units: []Unit{
-			Unit{
+			{
 				AgentState:        "started",
 				MachineAgentState: "running",
 				InstanceState:     "running",
@@ -650,9 +699,12 @@ func (s *S) TestRestart(c *C) {
 	err = db.Session.Apps().Insert(a)
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
-	out, err := restart(&a)
+	var b bytes.Buffer
+	_, err = restart(&a, &b)
 	c.Assert(err, IsNil)
-	c.Assert(string(out), Equals, "ssh -o StrictHostKeyChecking no -q 4 /var/lib/tsuru/hooks/restart")
+	result := strings.Replace(b.String(), "\n", "#", -1)
+	c.Assert(result, Matches, ".*/var/lib/tsuru/hooks/restart.*")
+	c.Assert(result, Matches, ".*# ---> Restarting your app#.*")
 }
 
 func (s *S) TestLogShouldStoreLog(c *C) {
@@ -683,12 +735,12 @@ func (s *S) TestSetTeams(c *C) {
 
 func (s *S) TestSetTeamsSortTeamNames(c *C) {
 	app := App{Name: "app"}
-	app.setTeams([]auth.Team{s.team, auth.Team{Name: "zzz"}, auth.Team{Name: "aaa"}})
+	app.setTeams([]auth.Team{s.team, {Name: "zzz"}, {Name: "aaa"}})
 	c.Assert(app.Teams, DeepEquals, []string{"aaa", s.team.Name, "zzz"})
 }
 
 func (s *S) TestGetUnits(c *C) {
-	app := App{Units: []Unit{Unit{Ip: "1.1.1.1"}}}
+	app := App{Units: []Unit{{Ip: "1.1.1.1"}}}
 	expected := []bind.Unit{bind.Unit(&Unit{Ip: "1.1.1.1", app: &app})}
 	c.Assert(app.GetUnits(), DeepEquals, expected)
 }
@@ -735,4 +787,27 @@ func (s *S) TestAppMarshalJson(c *C) {
 	err = json.Unmarshal(data, &result)
 	c.Assert(err, IsNil)
 	c.Assert(result, DeepEquals, expected)
+}
+
+func (s *S) TestRun(c *C) {
+	dir, err := commandmocker.Add("juju", "$*")
+	c.Assert(err, IsNil)
+	defer commandmocker.Remove(dir)
+	app := App{
+		Name: "myapp",
+		Units: []Unit{
+			{
+				Name:              "someapp/0",
+				Type:              "django",
+				Machine:           10,
+				AgentState:        "started",
+				MachineAgentState: "running",
+				InstanceState:     "running",
+			},
+		},
+	}
+	var buf bytes.Buffer
+	err = app.run("ls -lh", &buf)
+	c.Assert(err, IsNil)
+	c.Assert(buf.String(), Equals, "ssh -o StrictHostKeyChecking no -q 10 [ -f /home/application/apprc ] && source /home/application/apprc; [ -d /home/application/current ] && cd /home/application/current; ls -lh")
 }

@@ -3,23 +3,30 @@
    license that can be found in the LICENSE file.
 
 ++++++++++++++++++++++++++
-Getting started with Tsuru
+Building your app in tsuru
 ++++++++++++++++++++++++++
 
-Tsuru is a opensource polyglot cloud application platform. With Tsuru, you don’t need to think about servers at all. You can write apps in the programming language of your choice, back it with add-on resources such as SQL and NoSQL databases, Memcached, and many others. You manage your app using the Tsuru command-line tool and you deploy code using the Git revision control system, all running on the Tsuru infrastructure.
+Tsuru is an open source polyglot cloud application platform. With Tsuru, you
+don't need to think about servers at all. You can write apps in the programming
+language of your choice, back it with add-on resources such as SQL and NoSQL
+databases, memcached, redis, and many others. You manage your app using the
+Tsuru command-line tool and you deploy code using the Git revision control
+system, all running on the Tsuru infrastructure.
 
 
 Install the tsuru client
 ++++++++++++++++++++++++
 
-:doc:`Install the Tsuru client </apps/client/install>` for your development operating system.
+:doc:`Install the Tsuru client </apps/client/install>` for your development platform.
 
 The the Tsuru client is a command-line tool for creating and managing apps.
 
 Sign up
 +++++++
 
-To create an account you can use the "tsuru user-add" command:
+To create an account, you use the `user-create
+<http://go.pkgdoc.org/github.com/globocom/tsuru/cmd/tsuru#Create_a_user>`_
+command:
 
 .. highlight:: bash
 
@@ -27,8 +34,14 @@ To create an account you can use the "tsuru user-add" command:
 
     $ tsuru user-create youremail@domain.com
 
+``user-create`` will ask for your password twice.
+
 Login
 +++++
+
+To login in tsuru, you use the `login
+<http://go.pkgdoc.org/github.com/globocom/tsuru/cmd/tsuru#Authenticate_within_remote_tsuru_server>`_
+command, you will be asked for your password:
 
 .. highlight:: bash
 
@@ -40,6 +53,7 @@ Login
 Deploy an application
 ++++++++++++++++++++
 
-Choose from the following getting started tutorials to learn how to deploy your first application using a supported language or framework:
+Choose from the following getting started tutorials to learn how to deploy your
+first application using a supported language or framework:
 
-*TODO*
+* :doc:`Deploying Python applications in tsuru </apps/quickstart/python>`

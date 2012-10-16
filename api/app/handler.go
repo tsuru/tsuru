@@ -85,6 +85,14 @@ func CloneRepositoryHandler(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
+	err = write(w, []byte("\n ---> Installing dependencies\n"))
+	if err != nil {
+		return err
+	}
+	_, err = installDeps(&app, w)
+	if err != nil {
+		return err
+	}
 	err = write(w, []byte("\n ---> Running pre-restart\n"))
 	if err != nil {
 		return err
@@ -97,24 +105,7 @@ func CloneRepositoryHandler(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	err = write(w, []byte("\n ---> Installing dependencies\n"))
-	if err != nil {
-		return err
-	}
-	out, err = installDeps(&app, nil, nil)
-	if err != nil {
-		write(w, out)
-		return err
-	}
-	err = write(w, out)
-	if err != nil {
-		return err
-	}
-	err = write(w, []byte("\n ---> Restarting your app\n"))
-	if err != nil {
-		return err
-	}
-	out, err = restart(&app)
+	out, err = restart(&app, w)
 	if err != nil {
 		write(w, out)
 		return err
@@ -136,6 +127,22 @@ func CloneRepositoryHandler(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	return write(w, []byte("\n ---> Deploy done!\n\n"))
+}
+
+// AppIsAvaliableHandler verify if the app.unit().State() is
+// started. If is started it returns 200 else returns 500 for
+// status code.
+func AppIsAvaliableHandler(w http.ResponseWriter, r *http.Request) error {
+	app := App{Name: r.URL.Query().Get(":name")}
+	err := app.Get()
+	if err != nil {
+		return err
+	}
+	if state := app.unit().State(); state != "started" {
+		return fmt.Errorf("App must be started to receive pushs, but it is %s.", state)
+	}
+	w.WriteHeader(http.StatusOK)
+	return nil
 }
 
 func AppDelete(w http.ResponseWriter, r *http.Request, u *auth.User) error {
@@ -320,6 +327,7 @@ func RevokeAccessFromTeamHandler(w http.ResponseWriter, r *http.Request, u *auth
 }
 
 func RunCommand(w http.ResponseWriter, r *http.Request, u *auth.User) error {
+	w.Header().Set("Content-Type", "text")
 	msg := "You must provide the command to run"
 	if r.Body == nil {
 		return &errors.Http{Code: http.StatusBadRequest, Message: msg}
@@ -336,21 +344,7 @@ func RunCommand(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	if err != nil {
 		return err
 	}
-	cmd := fmt.Sprintf("[ -f /home/application/apprc ] && source /home/application/apprc; [ -d /home/application/current ] && cd /home/application/current; %s", c)
-	app.log(fmt.Sprintf("running '%s'", c))
-	out, err := app.unit().Command(nil, nil, cmd)
-	n, werr := w.Write(out)
-	app.log(string(out))
-	if err != nil {
-		return err
-	}
-	if werr != nil {
-		return werr
-	}
-	if n != len(out) {
-		return &errors.Http{Code: http.StatusInternalServerError, Message: "Unexpected error writing the output"}
-	}
-	return nil
+	return app.run(string(c), w)
 }
 
 func GetEnv(w http.ResponseWriter, r *http.Request, u *auth.User) (err error) {
@@ -561,7 +555,7 @@ func RestartHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error 
 		msg := "You can't restart this app because it doesn't have an IP yet."
 		return &errors.Http{Code: http.StatusPreconditionFailed, Message: msg}
 	}
-	out, err := app.unit().executeHook(nil, nil, "restart")
+	out, err := restart(&app, w)
 	if err != nil {
 		return err
 	}

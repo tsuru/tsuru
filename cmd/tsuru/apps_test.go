@@ -18,7 +18,7 @@ func (s *S) TestAppInfo(c *C) {
 	expected := `Application: app1
 State: dead
 Repository: git@git.com:php.git
-Plataform: php
+Platform: php
 Units: 10.10.10.10, 9.9.9.9
 Teams: tsuruteam, crane
 `

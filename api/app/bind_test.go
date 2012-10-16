@@ -37,7 +37,7 @@ func (s *S) TestDestroyShouldUnbindAppFromInstance(c *C) {
 		Framework: "",
 		Teams:     []string{},
 		Units: []Unit{
-			Unit{Ip: "10.10.10.10", Machine: 1},
+			{Ip: "10.10.10.10", Machine: 1},
 		},
 	}
 	err = createApp(&a)
