@@ -43,8 +43,6 @@ var (
         "s3:DeleteBucket",
         "s3:DeleteBucketPolicy",
         "s3:DeleteBucketWebsite",
-        "s3:DeleteObject",
-        "s3:DeleteObjectVersion",
         "s3:PutBucketLogging",
         "s3:PutBucketPolicy",
         "s3:PutBucketRequestPayment",
