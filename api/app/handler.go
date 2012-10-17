@@ -21,6 +21,21 @@ import (
 	"strings"
 )
 
+func write(w io.Writer, content []byte) error {
+	n, err := w.Write(content)
+	if err != nil {
+		return err
+	}
+	if n != len(content) {
+		return io.ErrShortWrite
+	}
+	if f, ok := w.(http.Flusher); ok {
+		f.Flush()
+	}
+	return nil
+	return nil
+}
+
 func sendProjectChangeToGitosis(kind int, team *auth.Team, app *App) {
 	ch := repository.Change{
 		Kind: kind,
@@ -42,19 +57,6 @@ func getAppOrError(name string, u *auth.User) (App, error) {
 }
 
 func CloneRepositoryHandler(w http.ResponseWriter, r *http.Request) error {
-	var write = func(w http.ResponseWriter, out []byte) error {
-		n, err := w.Write(out)
-		if err != nil {
-			return err
-		}
-		if n != len(out) {
-			return io.ErrShortWrite
-		}
-		if f, ok := w.(http.Flusher); ok {
-			f.Flush()
-		}
-		return nil
-	}
 	w.Header().Set("Content-Type", "text")
 	err := write(w, []byte("\n ---> Tsuru receiving push\n"))
 	if err != nil {
