@@ -31,7 +31,7 @@ type Unit interface {
 // Given a machine id (from juju), it runs a git clone into this machine,
 // cloning from the bare repository that is being served by git-daemon in the
 // tsuru server.
-func Clone(u Unit) ([]byte, error) {
+func clone(u Unit) ([]byte, error) {
 	var buf bytes.Buffer
 	cmd := fmt.Sprintf("git clone %s /home/application/current --depth 1", GetReadOnlyUrl(u.GetName()))
 	err := u.Command(&buf, &buf, cmd)
@@ -43,7 +43,7 @@ func Clone(u Unit) ([]byte, error) {
 // Pull runs a git pull to update the code in a unit.
 //
 // It works like Clone, pulling from the app bare repository.
-func Pull(u Unit) ([]byte, error) {
+func pull(u Unit) ([]byte, error) {
 	var buf bytes.Buffer
 	cmd := fmt.Sprintf("cd /home/application/current && git pull origin master")
 	err := u.Command(&buf, &buf, cmd)
@@ -57,9 +57,9 @@ func Pull(u Unit) ([]byte, error) {
 // First it tries to clone, and if the clone fail (meaning that the repository
 // is already cloned), it pulls changes from the bare repository.
 func CloneOrPull(u Unit) ([]byte, error) {
-	b, err := Clone(u)
+	b, err := clone(u)
 	if err != nil {
-		b, err = Pull(u)
+		b, err = pull(u)
 	}
 	return b, err
 }

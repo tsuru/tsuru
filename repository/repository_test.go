@@ -50,7 +50,7 @@ func (u *FailingCloneUnit) Command(stdout, stderr io.Writer, cmd ...string) erro
 
 func (s *S) TestCloneRepository(c *C) {
 	u := FakeUnit{name: "my-unit"}
-	_, err := Clone(&u)
+	_, err := clone(&u)
 	c.Assert(err, IsNil)
 	expectedCommand := fmt.Sprintf("git clone %s /home/application/current --depth 1", GetReadOnlyUrl(u.GetName()))
 	c.Assert(u.RanCommand(expectedCommand), Equals, true)
@@ -58,7 +58,7 @@ func (s *S) TestCloneRepository(c *C) {
 
 func (s *S) TestPullRepository(c *C) {
 	u := FakeUnit{name: "your-unit"}
-	_, err := Pull(&u)
+	_, err := pull(&u)
 	c.Assert(err, IsNil)
 	expectedCommand := fmt.Sprintf("cd /home/application/current && git pull origin master")
 	c.Assert(u.RanCommand(expectedCommand), Equals, true)
