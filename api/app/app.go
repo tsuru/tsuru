@@ -329,15 +329,14 @@ func restart(a *App, w io.Writer) error {
 	u := a.unit()
 	a.log("executing hook to restart")
 	conf, _ := a.conf()
-	a.preRestart(conf)
-	_, err := w.Write([]byte("\n ---> Running pre-restart\n"))
-	content := []byte("\n ---> Restarting your app\n")
-	n, err := w.Write(content)
+	err := write(w, []byte("\n ---> Running pre-restart\n"))
 	if err != nil {
 		return err
 	}
-	if len(content) != n {
-		return io.ErrShortWrite
+	a.preRestart(conf)
+	err = write(w, []byte("\n ---> Restarting your app\n"))
+	if err != nil {
+		return err
 	}
 	return u.executeHook("restart", w, w)
 }
