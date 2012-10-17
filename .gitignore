@@ -10,3 +10,4 @@ cmd/tsuru/tsuru
 api/webserver/webserver
 docs/_build/*
 .test
+.DS_Store
