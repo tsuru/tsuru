@@ -325,7 +325,7 @@ func (a *App) run(cmd string, w io.Writer) error {
 
 // restart runs the restart hook for the app
 // and returns your output.
-func restart(a *App, w io.Writer) ([]byte, error) {
+func restart(a *App, w io.Writer) error {
 	u := a.unit()
 	a.log("executing hook to restart")
 	conf, _ := a.conf()
@@ -334,17 +334,16 @@ func restart(a *App, w io.Writer) ([]byte, error) {
 	content := []byte("\n ---> Restarting your app\n")
 	n, err := w.Write(content)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	if len(content) != n {
-		return nil, io.ErrShortWrite
+		return io.ErrShortWrite
 	}
-	out, err := u.executeHook("restart", w, w)
+	_, err = u.executeHook("restart", w, w)
 	if err != nil {
-		return out, err
+		return err
 	}
-	a.log(string(out))
-	return out, nil
+	return nil
 }
 
 // installDeps runs the dependencies hook for the app

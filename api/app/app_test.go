@@ -676,7 +676,7 @@ func (s *S) TestRestart(c *C) {
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
 	var b bytes.Buffer
-	_, err = restart(&a, &b)
+	err = restart(&a, &b)
 	c.Assert(err, IsNil)
 	result := strings.Replace(b.String(), "\n", "#", -1)
 	c.Assert(result, Matches, ".*/var/lib/tsuru/hooks/restart.*")
@@ -709,7 +709,7 @@ pre-restart:
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(a)
 	var buf bytes.Buffer
-	_, err = restart(&a, &buf)
+	err = restart(&a, &buf)
 	c.Assert(err, IsNil)
 	content := buf.String()
 	content = strings.Replace(content, "\n", "###", -1)

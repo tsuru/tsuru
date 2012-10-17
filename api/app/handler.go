@@ -93,12 +93,7 @@ func CloneRepositoryHandler(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	out, err = restart(&app, w)
-	if err != nil {
-		write(w, out)
-		return err
-	}
-	err = write(w, out)
+	err = restart(&app, w)
 	if err != nil {
 		return err
 	}
@@ -543,16 +538,5 @@ func RestartHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error 
 		msg := "You can't restart this app because it doesn't have an IP yet."
 		return &errors.Http{Code: http.StatusPreconditionFailed, Message: msg}
 	}
-	out, err := restart(&app, w)
-	if err != nil {
-		return err
-	}
-	n, err := w.Write(out)
-	if err != nil {
-		return err
-	}
-	if n != len(out) {
-		return &errors.Http{Code: http.StatusInternalServerError, Message: "Failed to write response body."}
-	}
-	return nil
+	return restart(&app, w)
 }
