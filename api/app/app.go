@@ -327,7 +327,7 @@ func (a *App) run(cmd string, w io.Writer) error {
 // and returns your output.
 func restart(a *App, w io.Writer) ([]byte, error) {
 	u := a.unit()
-	a.log("executting hook to restarting")
+	a.log("executing hook to restart")
 	if w != nil {
 		content := []byte("\n ---> Restarting your app\n")
 		n, err := w.Write(content)
