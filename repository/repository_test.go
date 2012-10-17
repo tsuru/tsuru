@@ -31,46 +31,43 @@ func (u *FakeUnit) GetName() string {
 	return u.name
 }
 
-func (u *FakeUnit) Command(stdout, stderr io.Writer, cmd ...string) ([]byte, error) {
+func (u *FakeUnit) Command(stdout, stderr io.Writer, cmd ...string) error {
 	u.commands = append(u.commands, cmd[0])
-	return []byte("success"), nil
+	return nil
 }
 
 type FailingCloneUnit struct {
 	FakeUnit
 }
 
-func (u *FailingCloneUnit) Command(stdout, stderr io.Writer, cmd ...string) ([]byte, error) {
+func (u *FailingCloneUnit) Command(stdout, stderr io.Writer, cmd ...string) error {
 	if strings.HasPrefix(cmd[0], "git clone") {
 		u.commands = append(u.commands, cmd[0])
-		return nil, errors.New("Failed to clone repository, it already exists!")
+		return errors.New("Failed to clone repository, it already exists!")
 	}
 	return u.FakeUnit.Command(nil, nil, cmd...)
 }
 
 func (s *S) TestCloneRepository(c *C) {
 	u := FakeUnit{name: "my-unit"}
-	out, err := Clone(&u)
+	err := Clone(&u)
 	c.Assert(err, IsNil)
-	c.Assert(string(out), Equals, "success")
 	expectedCommand := fmt.Sprintf("git clone %s /home/application/current --depth 1", GetReadOnlyUrl(u.GetName()))
 	c.Assert(u.RanCommand(expectedCommand), Equals, true)
 }
 
 func (s *S) TestPullRepository(c *C) {
 	u := FakeUnit{name: "your-unit"}
-	out, err := Pull(&u)
+	err := Pull(&u)
 	c.Assert(err, IsNil)
-	c.Assert(string(out), Equals, "success")
 	expectedCommand := fmt.Sprintf("cd /home/application/current && git pull origin master")
 	c.Assert(u.RanCommand(expectedCommand), Equals, true)
 }
 
 func (s *S) TestCloneOrPullRepositoryRunsClone(c *C) {
 	u := FakeUnit{name: "my-unit"}
-	out, err := CloneOrPull(&u)
+	err := CloneOrPull(&u)
 	c.Assert(err, IsNil)
-	c.Assert(string(out), Equals, "success")
 	clone := fmt.Sprintf("git clone %s /home/application/current --depth 1", GetReadOnlyUrl(u.GetName()))
 	pull := fmt.Sprintf("cd /home/application/current && git pull origin master")
 	c.Assert(u.RanCommand(clone), Equals, true)
@@ -79,9 +76,8 @@ func (s *S) TestCloneOrPullRepositoryRunsClone(c *C) {
 
 func (s *S) TestCloneOrPullRepositoryRunsPullIfCloneFail(c *C) {
 	u := FailingCloneUnit{FakeUnit{name: "my-unit"}}
-	out, err := CloneOrPull(&u)
+	err := CloneOrPull(&u)
 	c.Assert(err, IsNil)
-	c.Assert(string(out), Equals, "success")
 	clone := fmt.Sprintf("git clone %s /home/application/current --depth 1", GetReadOnlyUrl(u.GetName()))
 	pull := fmt.Sprintf("cd /home/application/current && git pull origin master")
 	c.Assert(u.RanCommand(clone), Equals, true)

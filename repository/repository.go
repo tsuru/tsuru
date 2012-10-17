@@ -5,6 +5,7 @@
 package repository
 
 import (
+	"bytes"
 	"fmt"
 	"github.com/globocom/config"
 	"github.com/globocom/tsuru/log"
@@ -22,7 +23,7 @@ import (
 // Whatever that has a name and is able to run commands, is a unit.
 type Unit interface {
 	GetName() string
-	Command(stdout, stderr io.Writer, cmd ...string) ([]byte, error)
+	Command(stdout, stderr io.Writer, cmd ...string) error
 }
 
 // Clone runs a git clone to clone the app repository in a unit.
@@ -30,42 +31,35 @@ type Unit interface {
 // Given a machine id (from juju), it runs a git clone into this machine,
 // cloning from the bare repository that is being served by git-daemon in the
 // tsuru server.
-func Clone(u Unit) ([]byte, error) {
+func Clone(u Unit) error {
+	var buf bytes.Buffer
 	cmd := fmt.Sprintf("git clone %s /home/application/current --depth 1", GetReadOnlyUrl(u.GetName()))
-	output, err := u.Command(nil, nil, cmd)
-	log.Printf(`"git clone" output: %s`, string(output))
-	if err != nil {
-		return output, err
-	}
-	return output, nil
+	err := u.Command(&buf, &buf, cmd)
+	log.Printf(`"git clone" output: %s`, buf.String())
+	return err
 }
 
 // Pull runs a git pull to update the code in a unit.
 //
 // It works like Clone, pulling from the app bare repository.
-func Pull(u Unit) ([]byte, error) {
+func Pull(u Unit) error {
+	var buf bytes.Buffer
 	cmd := fmt.Sprintf("cd /home/application/current && git pull origin master")
-	output, err := u.Command(nil, nil, cmd)
-	log.Printf(`"git pull" output: %s`, string(output))
-	if err != nil {
-		return output, err
-	}
-	return output, nil
+	err := u.Command(&buf, &buf, cmd)
+	log.Printf(`"git pull" output: %s`, buf.String())
+	return err
 }
 
 // CloneOrPull runs a git clone or a git pull in a unit of the app.
 //
 // First it tries to clone, and if the clone fail (meaning that the repository
 // is already cloned), it pulls changes from the bare repository.
-func CloneOrPull(u Unit) ([]byte, error) {
-	output, err := Clone(u)
+func CloneOrPull(u Unit) error {
+	err := Clone(u)
 	if err != nil {
-		output, err = Pull(u)
-		if err != nil {
-			return output, err
-		}
+		return Pull(u)
 	}
-	return output, nil
+	return nil
 }
 
 // getGitServer returns the git server defined in the tsuru.conf file.
