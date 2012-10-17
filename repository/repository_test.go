@@ -50,7 +50,7 @@ func (u *FailingCloneUnit) Command(stdout, stderr io.Writer, cmd ...string) erro
 
 func (s *S) TestCloneRepository(c *C) {
 	u := FakeUnit{name: "my-unit"}
-	err := Clone(&u)
+	_, err := Clone(&u)
 	c.Assert(err, IsNil)
 	expectedCommand := fmt.Sprintf("git clone %s /home/application/current --depth 1", GetReadOnlyUrl(u.GetName()))
 	c.Assert(u.RanCommand(expectedCommand), Equals, true)
@@ -58,7 +58,7 @@ func (s *S) TestCloneRepository(c *C) {
 
 func (s *S) TestPullRepository(c *C) {
 	u := FakeUnit{name: "your-unit"}
-	err := Pull(&u)
+	_, err := Pull(&u)
 	c.Assert(err, IsNil)
 	expectedCommand := fmt.Sprintf("cd /home/application/current && git pull origin master")
 	c.Assert(u.RanCommand(expectedCommand), Equals, true)
@@ -66,7 +66,7 @@ func (s *S) TestPullRepository(c *C) {
 
 func (s *S) TestCloneOrPullRepositoryRunsClone(c *C) {
 	u := FakeUnit{name: "my-unit"}
-	err := CloneOrPull(&u)
+	_, err := CloneOrPull(&u)
 	c.Assert(err, IsNil)
 	clone := fmt.Sprintf("git clone %s /home/application/current --depth 1", GetReadOnlyUrl(u.GetName()))
 	pull := fmt.Sprintf("cd /home/application/current && git pull origin master")
@@ -76,7 +76,7 @@ func (s *S) TestCloneOrPullRepositoryRunsClone(c *C) {
 
 func (s *S) TestCloneOrPullRepositoryRunsPullIfCloneFail(c *C) {
 	u := FailingCloneUnit{FakeUnit{name: "my-unit"}}
-	err := CloneOrPull(&u)
+	_, err := CloneOrPull(&u)
 	c.Assert(err, IsNil)
 	clone := fmt.Sprintf("git clone %s /home/application/current --depth 1", GetReadOnlyUrl(u.GetName()))
 	pull := fmt.Sprintf("cd /home/application/current && git pull origin master")

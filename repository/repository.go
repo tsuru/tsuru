@@ -31,35 +31,37 @@ type Unit interface {
 // Given a machine id (from juju), it runs a git clone into this machine,
 // cloning from the bare repository that is being served by git-daemon in the
 // tsuru server.
-func Clone(u Unit) error {
+func Clone(u Unit) ([]byte, error) {
 	var buf bytes.Buffer
 	cmd := fmt.Sprintf("git clone %s /home/application/current --depth 1", GetReadOnlyUrl(u.GetName()))
 	err := u.Command(&buf, &buf, cmd)
-	log.Printf(`"git clone" output: %s`, buf.String())
-	return err
+	b := buf.Bytes()
+	log.Printf(`"git clone" output: %s`, b)
+	return b, err
 }
 
 // Pull runs a git pull to update the code in a unit.
 //
 // It works like Clone, pulling from the app bare repository.
-func Pull(u Unit) error {
+func Pull(u Unit) ([]byte, error) {
 	var buf bytes.Buffer
 	cmd := fmt.Sprintf("cd /home/application/current && git pull origin master")
 	err := u.Command(&buf, &buf, cmd)
-	log.Printf(`"git pull" output: %s`, buf.String())
-	return err
+	b := buf.Bytes()
+	log.Printf(`"git pull" output: %s`, b)
+	return b, err
 }
 
 // CloneOrPull runs a git clone or a git pull in a unit of the app.
 //
 // First it tries to clone, and if the clone fail (meaning that the repository
 // is already cloned), it pulls changes from the bare repository.
-func CloneOrPull(u Unit) error {
-	err := Clone(u)
+func CloneOrPull(u Unit) ([]byte, error) {
+	b, err := Clone(u)
 	if err != nil {
-		return Pull(u)
+		b, err = Pull(u)
 	}
-	return nil
+	return b, err
 }
 
 // getGitServer returns the git server defined in the tsuru.conf file.
