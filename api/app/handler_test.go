@@ -95,9 +95,7 @@ func (s *S) TestAppIsAvaliableHandlerShouldReturns200WhenAppUnitStatusIsStarted(
 }
 
 func (s *S) TestCloneRepositoryHandler(c *C) {
-	output := `
-========
-pre-restart:
+	output := `pre-restart:
     pre.sh
 pos-restart:
     pos.sh
@@ -145,9 +143,7 @@ func (s *S) TestCloneRepositoryRunsCloneOrPullThenPreRestartThenRestartThenPosRe
 	w := new(bytes.Buffer)
 	l := stdlog.New(w, "", stdlog.LstdFlags)
 	log.SetLogger(l)
-	output := `
-========
-pre-restart:
+	output := `pre-restart:
   - pre.sh
 pos-restart:
   - pos.sh

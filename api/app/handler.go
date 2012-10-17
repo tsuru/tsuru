@@ -83,10 +83,6 @@ func CloneRepositoryHandler(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	c, err := app.conf()
-	if err != nil {
-		return err
-	}
 	err = write(w, []byte("\n ---> Installing dependencies\n"))
 	if err != nil {
 		return err
@@ -103,7 +99,7 @@ func CloneRepositoryHandler(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	out, err = app.posRestart(c)
+	out, err = app.posRestart()
 	err = write(w, out)
 	if err != nil {
 		return err

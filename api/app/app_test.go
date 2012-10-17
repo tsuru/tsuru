@@ -280,13 +280,8 @@ func (s *S) TestDeployHookAbsPathAbsoluteCommands(c *C) {
 	c.Assert(got, Equals, expected)
 }
 
-func (s *S) TestAppConf(c *C) {
-	output := `
-something that must be discarded
-another thing that must also be discarded
-one more
-========
-pre-restart:
+func (s *S) TestLoadHooks(c *C) {
+	output := `pre-restart:
   - testdata/pre.sh
 pos-restart:
   - testdata/pos.sh
@@ -301,16 +296,20 @@ pos-restart:
 			{AgentState: "started", MachineAgentState: "running", InstanceState: "running"},
 		},
 	}
-	conf, err := a.conf()
+	err = a.loadHooks()
 	c.Assert(err, IsNil)
-	c.Assert(conf.PreRestart, DeepEquals, []string{"testdata/pre.sh"})
-	c.Assert(conf.PosRestart, DeepEquals, []string{"testdata/pos.sh"})
+	c.Assert(a.hooks.PreRestart, DeepEquals, []string{"testdata/pre.sh"})
+	c.Assert(a.hooks.PosRestart, DeepEquals, []string{"testdata/pos.sh"})
 }
 
-func (s *S) TestAppConfWithListOfCommands(c *C) {
-	output := `
-trash
-========
+func (s *S) TestLoadHooksFiltersOutputFromJuju(c *C) {
+	output := `2012-06-05 17:26:15,881 WARNING ssl-hostname-verification is disabled for this environment
+2012-06-05 17:26:15,881 WARNING EC2 API calls not using secure transport
+2012-06-05 17:26:15,881 WARNING S3 API calls not using secure transport
+2012-06-05 17:26:15,881 WARNING Ubuntu Cloud Image lookups encrypted but not authenticated
+2012-06-05 17:26:15,891 INFO Connecting to environment...
+2012-06-05 17:26:16,657 INFO Connected to environment.
+2012-06-05 17:26:16,860 INFO Connecting to machine 0 at 10.170.0.191
 pre-restart:
   - testdata/pre.sh
   - ls -lh
@@ -328,44 +327,23 @@ pos-restart:
 			{AgentState: "started", MachineAgentState: "running", InstanceState: "running"},
 		},
 	}
-	conf, err := a.conf()
+	err = a.loadHooks()
 	c.Assert(err, IsNil)
-	c.Assert(conf.PreRestart, DeepEquals, []string{"testdata/pre.sh", "ls -lh", "sudo rm -rf /"})
-	c.Assert(conf.PosRestart, DeepEquals, []string{"testdata/pos.sh"})
+	c.Assert(a.hooks.PreRestart, DeepEquals, []string{"testdata/pre.sh", "ls -lh", "sudo rm -rf /"})
+	c.Assert(a.hooks.PosRestart, DeepEquals, []string{"testdata/pos.sh"})
 }
 
-func (s *S) TestAppConfWhenFileDoesNotExists(c *C) {
-	output := `
-something that must be discarded
-another thing that must also be discarded
-one more
-========
-File or directory does not exists
-$(exit 1)
+func (s *S) TestLoadHooksWithListOfCommands(c *C) {
+	output := `pre-restart:
+  - testdata/pre.sh
+  - ls -lh
+  - sudo rm -rf /
+pos-restart:
+  - testdata/pos.sh
 `
 	dir, err := commandmocker.Add("juju", output)
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(dir)
-	a := App{Name: "something", Framework: "django"}
-	conf, err := a.conf()
-	c.Assert(err, IsNil)
-	c.Assert(conf.PreRestart, IsNil)
-	c.Assert(conf.PosRestart, IsNil)
-}
-
-func (s *S) TestPreRestart(c *C) {
-	output := `
-something that must be discarded
-another thing that must also be discarded
-one more
-========
-pre-restart:
-  - pre.sh
-pos-restart:
-  - pos.sh
-`
-	dir, err := commandmocker.Add("juju", output)
-	c.Assert(err, IsNil)
 	a := App{
 		Name:      "something",
 		Framework: "django",
@@ -373,17 +351,43 @@ pos-restart:
 			{AgentState: "started", MachineAgentState: "running", InstanceState: "running"},
 		},
 	}
-	conf, err := a.conf()
+	err = a.loadHooks()
 	c.Assert(err, IsNil)
-	commandmocker.Remove(dir)
-	dir, err = commandmocker.Add("juju", "$*")
+	c.Assert(a.hooks.PreRestart, DeepEquals, []string{"testdata/pre.sh", "ls -lh", "sudo rm -rf /"})
+	c.Assert(a.hooks.PosRestart, DeepEquals, []string{"testdata/pos.sh"})
+}
+
+func (s *S) TestLoadHooksWithError(c *C) {
+	dir, err := commandmocker.Error("juju", "something", 1)
 	c.Assert(err, IsNil)
+	defer commandmocker.Remove(dir)
+	a := App{Name: "something", Framework: "django"}
+	err = a.loadHooks()
+	c.Assert(err, IsNil)
+	c.Assert(a.hooks.PreRestart, IsNil)
+	c.Assert(a.hooks.PosRestart, IsNil)
+}
+
+func (s *S) TestPreRestart(c *C) {
+	a := App{
+		Name:      "something",
+		Framework: "django",
+		Units: []Unit{
+			{AgentState: "started", MachineAgentState: "running", InstanceState: "running"},
+		},
+		hooks: &conf{
+			PreRestart: []string{"pre.sh"},
+			PosRestart: []string{"pos.sh"},
+		},
+	}
+	dir, err := commandmocker.Add("juju", "$*")
+	c.Assert(err, IsNil)
+	defer commandmocker.Remove(dir)
 	w := bytes.NewBuffer([]byte{})
 	l := stdlog.New(w, "", stdlog.LstdFlags)
 	log.SetLogger(l)
-	out, err := a.preRestart(conf)
+	out, err := a.preRestart()
 	c.Assert(err, IsNil)
-	commandmocker.Remove(dir)
 	c.Assert(err, IsNil)
 	st := strings.Split(w.String(), "\n")
 	c.Assert(st[len(st)-2], Matches, `.*\[ -f /home/application/apprc \] && source /home/application/apprc; \[ -d /home/application/current \] && cd /home/application/current;.*pre.sh$`)
@@ -391,87 +395,60 @@ pos-restart:
 }
 
 func (s *S) TestPreRestartWhenAppConfDoesNotExists(c *C) {
-	output := `
-something that must be discarded
-another thing that must also be discarded
-one more
-========
-File or directory does not exists
-`
 	dir, err := commandmocker.Add("juju", output)
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(dir)
 	a := App{Name: "something", Framework: "django"}
-	conf, err := a.conf()
-	c.Assert(err, IsNil)
 	w := bytes.NewBuffer([]byte{})
 	l := stdlog.New(w, "", stdlog.LstdFlags)
 	log.SetLogger(l)
-	_, err = a.preRestart(conf)
+	_, err = a.preRestart()
 	c.Assert(err, IsNil)
 	st := strings.Split(w.String(), "\n")
-	regexp := ".*app.conf file does not exists or is in the right place. Skipping pre-restart hook..."
+	regexp := ".*Skipping pre-restart hooks..."
 	c.Assert(st[len(st)-2], Matches, regexp)
 }
 
 func (s *S) TestSkipsPreRestartWhenPreRestartSectionDoesNotExists(c *C) {
-	output := `
-something that must be discarded
-another thing that must also be discarded
-one more
-========
-pos-restart:
-  - somescript.sh
-`
-	dir, err := commandmocker.Add("juju", output)
-	c.Assert(err, IsNil)
-	defer commandmocker.Remove(dir)
 	a := App{
 		Name:      "something",
 		Framework: "django",
 		Units: []Unit{
 			{AgentState: "started", MachineAgentState: "running", InstanceState: "running"},
 		},
+		hooks: &conf{
+			PosRestart: []string{"somescript.sh"},
+		},
 	}
-	conf, err := a.conf()
-	c.Assert(err, IsNil)
 	w := bytes.NewBuffer([]byte{})
 	l := stdlog.New(w, "", stdlog.LstdFlags)
 	log.SetLogger(l)
-	_, err = a.preRestart(conf)
+	_, err := a.preRestart()
 	c.Assert(err, IsNil)
 	st := strings.Split(w.String(), "\n")
-	regexp := ".*pre-restart hook section in app conf does not exists... Skipping pre-restart hook..."
+	regexp := ".*Skipping pre-restart hooks..."
 	c.Assert(st[len(st)-2], Matches, regexp)
 }
 
 func (s *S) TestPosRestart(c *C) {
-	output := `
-sooooome
-========
-pos-restart:
-  - pos.sh
-`
-	dir, err := commandmocker.Add("juju", output)
-	c.Assert(err, IsNil)
 	a := App{
 		Name:      "something",
 		Framework: "django",
 		Units: []Unit{
 			{AgentState: "started", MachineAgentState: "running", InstanceState: "running"},
 		},
+		hooks: &conf{
+			PosRestart: []string{"pos.sh"},
+		},
 	}
-	conf, err := a.conf()
+	dir, err := commandmocker.Add("juju", "$*")
 	c.Assert(err, IsNil)
-	commandmocker.Remove(dir)
-	dir, err = commandmocker.Add("juju", "$*")
-	c.Assert(err, IsNil)
-	w := bytes.NewBuffer([]byte{})
+	defer commandmocker.Remove(dir)
+	w := new(bytes.Buffer)
 	l := stdlog.New(w, "", stdlog.LstdFlags)
 	log.SetLogger(l)
-	out, err := a.posRestart(conf)
+	out, err := a.posRestart()
 	c.Assert(err, IsNil)
-	commandmocker.Remove(dir)
 	st := strings.Split(w.String(), "\n")
 	regexp := `.*\[ -f /home/application/apprc \] && source /home/application/apprc; \[ -d /home/application/current \] && cd /home/application/current;.*pos.sh$`
 	c.Assert(st[len(st)-2], Matches, regexp)
@@ -479,103 +456,39 @@ pos-restart:
 }
 
 func (s *S) TestPosRestartWhenAppConfDoesNotExists(c *C) {
-	output := `
-something that must be discarded
-another thing that must also be discarded
-one more
-========
-File or directory does not exists
-`
 	dir, err := commandmocker.Add("juju", output)
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(dir)
 	a := App{Name: "something", Framework: "django"}
-	conf, err := a.conf()
-	c.Assert(err, IsNil)
 	w := bytes.NewBuffer([]byte{})
 	l := stdlog.New(w, "", stdlog.LstdFlags)
 	log.SetLogger(l)
-	_, err = a.posRestart(conf)
+	_, err = a.posRestart()
 	c.Assert(err, IsNil)
 	st := strings.Split(w.String(), "\n")
-	regexp := ".*app.conf file does not exists or is in the right place. Skipping pos-restart hook..."
+	regexp := ".*Skipping pos-restart hooks..."
 	c.Assert(st[len(st)-2], Matches, regexp)
 }
 
 func (s *S) TestSkipsPosRestartWhenPosRestartSectionDoesNotExists(c *C) {
-	output := `
-something that must be discarded
-another thing that must also be discarded
-one more
-========
-pre-restart:
-  - somescript.sh
-`
-	dir, err := commandmocker.Add("juju", output)
-	c.Assert(err, IsNil)
-	defer commandmocker.Remove(dir)
 	a := App{
 		Name:      "something",
 		Framework: "django",
 		Units: []Unit{
 			{AgentState: "started", MachineAgentState: "running", InstanceState: "running"},
 		},
+		hooks: &conf{
+			PreRestart: []string{"somescript.sh"},
+		},
 	}
-	conf, err := a.conf()
-	c.Assert(err, IsNil)
 	w := bytes.NewBuffer([]byte{})
 	l := stdlog.New(w, "", stdlog.LstdFlags)
 	log.SetLogger(l)
-	_, err = a.posRestart(conf)
+	_, err := a.posRestart()
 	c.Assert(err, IsNil)
 	st := strings.Split(w.String(), "\n")
-	regexp := ".*pos-restart hook section in app conf does not exists... Skipping pos-restart hook..."
+	regexp := ".*Skipping pos-restart hooks..."
 	c.Assert(st[len(st)-2], Matches, regexp)
-}
-
-func (s *S) TestHasRestartHooksWithNoHooks(c *C) {
-	output := `
-something that must be discarded
-========
-nothing here
-`
-	a := App{
-		Name:      "something",
-		Framework: "django",
-		Units: []Unit{
-			{AgentState: "started", MachineAgentState: "running", InstanceState: "running"},
-		},
-	}
-	dir, err := commandmocker.Add("juju", output)
-	c.Assert(err, IsNil)
-	conf, err := a.conf()
-	commandmocker.Remove(dir)
-	c.Assert(err, IsNil)
-	b := a.hasRestartHooks(conf)
-	c.Assert(b, Equals, false)
-}
-
-func (s *S) TestHasRestartHooksWithOneHooks(c *C) {
-	output := `
-something that must be discarded
-========
-pos-restart:
-  - somefile.sh
-`
-	a := App{
-		Name:      "something",
-		Framework: "django",
-		Units: []Unit{
-			{AgentState: "started", MachineAgentState: "running", InstanceState: "running"},
-		},
-	}
-	dir, err := commandmocker.Add("juju", output)
-	c.Assert(err, IsNil)
-	conf, err := a.conf()
-	commandmocker.Remove(dir)
-	c.Assert(err, IsNil)
-	b := a.hasRestartHooks(conf)
-	c.Assert(b, Equals, true)
 }
 
 func (s *S) TestInstallDeps(c *C) {
@@ -685,9 +598,7 @@ func (s *S) TestRestart(c *C) {
 }
 
 func (s *S) TestRestartRunPreRestartHook(c *C) {
-	output := `something
-========
-pre-restart:
+	output := `pre-restart:
   - pre.sh
 `
 	tmpdir, err := commandmocker.Add("juju", output)
