@@ -683,6 +683,39 @@ func (s *S) TestRestart(c *C) {
 	c.Assert(result, Matches, ".*# ---> Restarting your app#.*")
 }
 
+func (s *S) TestRestartRunPreRestartHook(c *C) {
+	output := `something
+========
+pre-restart:
+  - pre.sh
+`
+	tmpdir, err := commandmocker.Add("juju", output)
+	c.Assert(err, IsNil)
+	defer commandmocker.Remove(tmpdir)
+	a := App{
+		Name:      "someApp",
+		Framework: "django",
+		Teams:     []string{s.team.Name},
+		Units: []Unit{
+			{
+				AgentState:        "started",
+				MachineAgentState: "running",
+				InstanceState:     "running",
+				Machine:           4,
+			},
+		},
+	}
+	err = db.Session.Apps().Insert(a)
+	c.Assert(err, IsNil)
+	defer db.Session.Apps().Remove(a)
+	var buf bytes.Buffer
+	_, err = restart(&a, &buf)
+	c.Assert(err, IsNil)
+	content := buf.String()
+	content = strings.Replace(content, "\n", "###", -1)
+	c.Assert(content, Matches, "^.*### ---> Running pre-restart###.*$")
+}
+
 func (s *S) TestLogShouldStoreLog(c *C) {
 	a := App{Name: "newApp"}
 	err := createApp(&a)

@@ -328,15 +328,16 @@ func (a *App) run(cmd string, w io.Writer) error {
 func restart(a *App, w io.Writer) ([]byte, error) {
 	u := a.unit()
 	a.log("executing hook to restart")
-	if w != nil {
-		content := []byte("\n ---> Restarting your app\n")
-		n, err := w.Write(content)
-		if err != nil {
-			return nil, err
-		}
-		if len(content) != n {
-			return nil, io.ErrShortWrite
-		}
+	conf, _ := a.conf()
+	a.preRestart(conf)
+	_, err := w.Write([]byte("\n ---> Running pre-restart\n"))
+	content := []byte("\n ---> Restarting your app\n")
+	n, err := w.Write(content)
+	if err != nil {
+		return nil, err
+	}
+	if len(content) != n {
+		return nil, io.ErrShortWrite
 	}
 	out, err := u.executeHook("restart", w, w)
 	if err != nil {
@@ -350,7 +351,7 @@ func restart(a *App, w io.Writer) ([]byte, error) {
 // and returns your output.
 func installDeps(a *App, w io.Writer) ([]byte, error) {
 	u := a.unit()
-	a.log("executting hook dependencies")
+	a.log("executing hook dependencies")
 	out, err := u.executeHook("dependencies", w, w)
 	a.log(string(out))
 	if err != nil {

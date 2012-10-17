@@ -93,18 +93,6 @@ func CloneRepositoryHandler(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	err = write(w, []byte("\n ---> Running pre-restart\n"))
-	if err != nil {
-		return err
-	}
-	out, err = app.preRestart(c)
-	if err != nil {
-		return err
-	}
-	err = write(w, out)
-	if err != nil {
-		return err
-	}
 	out, err = restart(&app, w)
 	if err != nil {
 		write(w, out)
