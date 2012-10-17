@@ -598,9 +598,10 @@ func (s *S) TestInstallDeps(c *C) {
 	err = createApp(&a)
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
-	out, err := installDeps(&a, nil)
+	var buf bytes.Buffer
+	err = installDeps(&a, &buf)
 	c.Assert(err, IsNil)
-	c.Assert(string(out), Equals, "ssh -o StrictHostKeyChecking no -q 4 /var/lib/tsuru/hooks/dependencies")
+	c.Assert(buf.String(), Equals, "ssh -o StrictHostKeyChecking no -q 4 /var/lib/tsuru/hooks/dependencies")
 }
 
 func (s *S) TestInstallDepsWithCustomStdout(c *C) {
@@ -624,7 +625,7 @@ func (s *S) TestInstallDepsWithCustomStdout(c *C) {
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(tmpdir)
 	var b bytes.Buffer
-	_, err = installDeps(&a, &b)
+	err = installDeps(&a, &b)
 	c.Assert(err, IsNil)
 	c.Assert(b.String(), Matches, `.* /var/lib/tsuru/hooks/dependencies`)
 }
@@ -650,7 +651,7 @@ func (s *S) TestInstallDepsWithCustomStderr(c *C) {
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(tmpdir)
 	var b bytes.Buffer
-	_, err = installDeps(&a, &b)
+	err = installDeps(&a, &b)
 	c.Assert(err, NotNil)
 	c.Assert(b.String(), Matches, `.* /var/lib/tsuru/hooks/dependencies`)
 }

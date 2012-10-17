@@ -245,12 +245,14 @@ func (a *App) conf() (conf, error) {
 	}
 	cPath := path.Join(uRepo, "app.conf")
 	cmd := fmt.Sprintf(`echo "%s";cat %s`, confSep, cPath)
-	o, err := a.unit().Command(nil, nil, cmd)
+	var buf bytes.Buffer
+	err = a.unit().Command(&buf, &buf, cmd)
 	if err != nil {
 		a.log(fmt.Sprintf("Got error while executing command: %s... Skipping hooks execution", err))
 		return c, nil
 	}
-	data := strings.Split(string(o), confSep)[1]
+	out := buf.String()
+	data := strings.Split(out, confSep)[1]
 	err = goyaml.Unmarshal([]byte(data), &c)
 	if err != nil {
 		a.log(fmt.Sprintf("Got error while parsing yaml: %s", err))
@@ -318,9 +320,7 @@ func (a *App) hasRestartHooks(c conf) bool {
 func (a *App) run(cmd string, w io.Writer) error {
 	a.log(fmt.Sprintf("running '%s'", cmd))
 	cmd = fmt.Sprintf("[ -f /home/application/apprc ] && source /home/application/apprc; [ -d /home/application/current ] && cd /home/application/current; %s", cmd)
-	out, err := a.unit().Command(w, w, cmd)
-	a.log(string(out))
-	return err
+	return a.unit().Command(w, w, cmd)
 }
 
 // restart runs the restart hook for the app
@@ -339,24 +339,14 @@ func restart(a *App, w io.Writer) error {
 	if len(content) != n {
 		return io.ErrShortWrite
 	}
-	_, err = u.executeHook("restart", w, w)
-	if err != nil {
-		return err
-	}
-	return nil
+	return u.executeHook("restart", w, w)
 }
 
 // installDeps runs the dependencies hook for the app
 // and returns your output.
-func installDeps(a *App, w io.Writer) ([]byte, error) {
-	u := a.unit()
+func installDeps(a *App, w io.Writer) error {
 	a.log("executing hook dependencies")
-	out, err := u.executeHook("dependencies", w, w)
-	a.log(string(out))
-	if err != nil {
-		return out, err
-	}
-	return out, nil
+	return a.unit().executeHook("dependencies", w, w)
 }
 
 func (a *App) unit() *Unit {

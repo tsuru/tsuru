@@ -5,7 +5,6 @@
 package app
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
 	"github.com/globocom/tsuru/log"
@@ -42,31 +41,21 @@ func (u *Unit) destroy() ([]byte, error) {
 	return cmd.CombinedOutput()
 }
 
-func (u *Unit) executeHook(hook string, stdout, stderr io.Writer) ([]byte, error) {
+func (u *Unit) executeHook(hook string, stdout, stderr io.Writer) error {
 	cmd := fmt.Sprintf("/var/lib/tsuru/hooks/%s", hook)
-	output, err := u.Command(stdout, stderr, cmd)
-	log.Print(string(output))
-	return output, err
+	return u.Command(stdout, stderr, cmd)
 }
 
-func (u *Unit) Command(stdout, stderr io.Writer, cmds ...string) ([]byte, error) {
+func (u *Unit) Command(stdout, stderr io.Writer, cmds ...string) error {
 	if state := u.State(); state != "started" {
-		return nil, fmt.Errorf("Unit must be started to run commands, but it is %s.", state)
+		return fmt.Errorf("Unit must be started to run commands, but it is %s.", state)
 	}
 	c := exec.Command("juju", "ssh", "-o", "StrictHostKeyChecking no", "-q", strconv.Itoa(u.Machine))
 	c.Args = append(c.Args, cmds...)
 	log.Printf("executing %s on %s", strings.Join(cmds, " "), u.app.Name)
-	var b bytes.Buffer
-	if stdout == nil {
-		stdout = &b
-	}
-	if stderr == nil {
-		stderr = &b
-	}
 	c.Stdout = stdout
 	c.Stderr = stderr
-	err := c.Run()
-	return b.Bytes(), err
+	return c.Run()
 }
 
 func (u *Unit) GetName() string {
