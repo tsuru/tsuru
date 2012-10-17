@@ -672,7 +672,7 @@ func (s *S) TestRestart(c *C) {
 			},
 		},
 	}
-	err = createApp(&a)
+	err = db.Session.Apps().Insert(a)
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
 	var b bytes.Buffer
