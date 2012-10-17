@@ -41,9 +41,9 @@ func (u *Unit) destroy() ([]byte, error) {
 	return cmd.CombinedOutput()
 }
 
-func (u *Unit) executeHook(hook string, stdout, stderr io.Writer) error {
+func (u *Unit) executeHook(hook string, w io.Writer) error {
 	cmd := fmt.Sprintf("/var/lib/tsuru/hooks/%s", hook)
-	return u.Command(stdout, stderr, cmd)
+	return u.Command(w, w, cmd)
 }
 
 func (u *Unit) Command(stdout, stderr io.Writer, cmds ...string) error {

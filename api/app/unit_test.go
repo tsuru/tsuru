@@ -104,29 +104,18 @@ func (s *S) TestCommandReturnErrorIfTheUnitIsNotStarted(c *C) {
 
 func (s *S) TestExecuteHook(c *C) {
 	appUnit := Unit{Type: "django", Name: "myUnit", app: &App{}, MachineAgentState: "running", AgentState: "started", InstanceState: "running"}
-	err := appUnit.executeHook("requirements", nil, nil)
+	err := appUnit.executeHook("requirements", nil)
 	c.Assert(err, IsNil)
 }
 
-func (s *S) TestExecuteHookWithCustomStdout(c *C) {
+func (s *S) TestExecuteHookWithCustomWriter(c *C) {
 	dir, err := commandmocker.Add("juju", "$*")
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(dir)
 	appUnit := Unit{Type: "django", Name: "myUnit", app: &App{}, MachineAgentState: "running", AgentState: "started", InstanceState: "running"}
 	var b bytes.Buffer
-	err = appUnit.executeHook("requirements", &b, nil)
+	err = appUnit.executeHook("requirements", &b)
 	c.Assert(err, IsNil)
-	c.Assert(b.String(), Matches, `.* \d /var/lib/tsuru/hooks/requirements`)
-}
-
-func (s *S) TestExecuteHookWithCustomStderr(c *C) {
-	dir, err := commandmocker.Error("juju", "$*", 42)
-	c.Assert(err, IsNil)
-	defer commandmocker.Remove(dir)
-	appUnit := Unit{Type: "django", Name: "myUnit", app: &App{}, MachineAgentState: "running", AgentState: "started", InstanceState: "running"}
-	var b bytes.Buffer
-	err = appUnit.executeHook("requirements", nil, &b)
-	c.Assert(err, NotNil)
 	c.Assert(b.String(), Matches, `.* \d /var/lib/tsuru/hooks/requirements`)
 }
 

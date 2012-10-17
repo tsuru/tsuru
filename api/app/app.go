@@ -338,14 +338,14 @@ func restart(a *App, w io.Writer) error {
 	if err != nil {
 		return err
 	}
-	return u.executeHook("restart", w, w)
+	return u.executeHook("restart", w)
 }
 
 // installDeps runs the dependencies hook for the app
 // and returns your output.
 func installDeps(a *App, w io.Writer) error {
 	a.log("executing hook dependencies")
-	return a.unit().executeHook("dependencies", w, w)
+	return a.unit().executeHook("dependencies", w)
 }
 
 func (a *App) unit() *Unit {
