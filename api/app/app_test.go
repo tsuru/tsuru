@@ -383,15 +383,12 @@ func (s *S) TestPreRestart(c *C) {
 	dir, err := commandmocker.Add("juju", "$*")
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(dir)
-	w := bytes.NewBuffer([]byte{})
-	l := stdlog.New(w, "", stdlog.LstdFlags)
-	log.SetLogger(l)
-	out, err := a.preRestart()
+	w := new(bytes.Buffer)
+	err = a.preRestart(w)
 	c.Assert(err, IsNil)
 	c.Assert(err, IsNil)
-	st := strings.Split(w.String(), "\n")
-	c.Assert(st[len(st)-2], Matches, `.*\[ -f /home/application/apprc \] && source /home/application/apprc; \[ -d /home/application/current \] && cd /home/application/current;.*pre.sh$`)
-	c.Assert(string(out), Matches, `.*\[ -f /home/application/apprc \] && source /home/application/apprc; \[ -d /home/application/current \] && cd /home/application/current;.*pre.sh$`)
+	st := strings.Replace(w.String(), "\n", "###", -1)
+	c.Assert(st, Matches, `.*\[ -f /home/application/apprc \] && source /home/application/apprc; \[ -d /home/application/current \] && cd /home/application/current;.*pre.sh$`)
 }
 
 func (s *S) TestPreRestartWhenAppConfDoesNotExists(c *C) {
@@ -399,10 +396,10 @@ func (s *S) TestPreRestartWhenAppConfDoesNotExists(c *C) {
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(dir)
 	a := App{Name: "something", Framework: "django"}
-	w := bytes.NewBuffer([]byte{})
+	w := new(bytes.Buffer)
 	l := stdlog.New(w, "", stdlog.LstdFlags)
 	log.SetLogger(l)
-	_, err = a.preRestart()
+	err = a.preRestart(w)
 	c.Assert(err, IsNil)
 	st := strings.Split(w.String(), "\n")
 	regexp := ".*Skipping pre-restart hooks..."
@@ -420,14 +417,13 @@ func (s *S) TestSkipsPreRestartWhenPreRestartSectionDoesNotExists(c *C) {
 			PosRestart: []string{"somescript.sh"},
 		},
 	}
-	w := bytes.NewBuffer([]byte{})
+	w := new(bytes.Buffer)
 	l := stdlog.New(w, "", stdlog.LstdFlags)
 	log.SetLogger(l)
-	_, err := a.preRestart()
+	err := a.preRestart(w)
 	c.Assert(err, IsNil)
 	st := strings.Split(w.String(), "\n")
-	regexp := ".*Skipping pre-restart hooks..."
-	c.Assert(st[len(st)-2], Matches, regexp)
+	c.Assert(st[len(st)-2], Matches, ".*Skipping pre-restart hooks...")
 }
 
 func (s *S) TestPosRestart(c *C) {
@@ -445,14 +441,10 @@ func (s *S) TestPosRestart(c *C) {
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(dir)
 	w := new(bytes.Buffer)
-	l := stdlog.New(w, "", stdlog.LstdFlags)
-	log.SetLogger(l)
-	out, err := a.posRestart()
+	err = a.posRestart(w)
 	c.Assert(err, IsNil)
-	st := strings.Split(w.String(), "\n")
-	regexp := `.*\[ -f /home/application/apprc \] && source /home/application/apprc; \[ -d /home/application/current \] && cd /home/application/current;.*pos.sh$`
-	c.Assert(st[len(st)-2], Matches, regexp)
-	c.Assert(string(out), Matches, regexp)
+	st := strings.Replace(w.String(), "\n", "###", -1)
+	c.Assert(st, Matches, `.*\[ -f /home/application/apprc \] && source /home/application/apprc; \[ -d /home/application/current \] && cd /home/application/current;.*pos.sh$`)
 }
 
 func (s *S) TestPosRestartWhenAppConfDoesNotExists(c *C) {
@@ -460,14 +452,13 @@ func (s *S) TestPosRestartWhenAppConfDoesNotExists(c *C) {
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(dir)
 	a := App{Name: "something", Framework: "django"}
-	w := bytes.NewBuffer([]byte{})
+	w := new(bytes.Buffer)
 	l := stdlog.New(w, "", stdlog.LstdFlags)
 	log.SetLogger(l)
-	_, err = a.posRestart()
+	err = a.posRestart(w)
 	c.Assert(err, IsNil)
 	st := strings.Split(w.String(), "\n")
-	regexp := ".*Skipping pos-restart hooks..."
-	c.Assert(st[len(st)-2], Matches, regexp)
+	c.Assert(st[len(st)-2], Matches, ".*Skipping pos-restart hooks...")
 }
 
 func (s *S) TestSkipsPosRestartWhenPosRestartSectionDoesNotExists(c *C) {
@@ -481,14 +472,13 @@ func (s *S) TestSkipsPosRestartWhenPosRestartSectionDoesNotExists(c *C) {
 			PreRestart: []string{"somescript.sh"},
 		},
 	}
-	w := bytes.NewBuffer([]byte{})
+	w := new(bytes.Buffer)
 	l := stdlog.New(w, "", stdlog.LstdFlags)
 	log.SetLogger(l)
-	_, err := a.posRestart()
+	err := a.posRestart(w)
 	c.Assert(err, IsNil)
 	st := strings.Split(w.String(), "\n")
-	regexp := ".*Skipping pos-restart hooks..."
-	c.Assert(st[len(st)-2], Matches, regexp)
+	c.Assert(st[len(st)-2], Matches, ".*Skipping pos-restart hooks...")
 }
 
 func (s *S) TestInstallDeps(c *C) {
@@ -598,10 +588,7 @@ func (s *S) TestRestart(c *C) {
 }
 
 func (s *S) TestRestartRunPreRestartHook(c *C) {
-	output := `pre-restart:
-  - pre.sh
-`
-	tmpdir, err := commandmocker.Add("juju", output)
+	tmpdir, err := commandmocker.Add("juju", "$*")
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(tmpdir)
 	a := App{
@@ -616,10 +603,10 @@ func (s *S) TestRestartRunPreRestartHook(c *C) {
 				Machine:           4,
 			},
 		},
+		hooks: &conf{
+			PreRestart: []string{"pre.sh"},
+		},
 	}
-	err = db.Session.Apps().Insert(a)
-	c.Assert(err, IsNil)
-	defer db.Session.Apps().Remove(a)
 	var buf bytes.Buffer
 	err = restart(&a, &buf)
 	c.Assert(err, IsNil)

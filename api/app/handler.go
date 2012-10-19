@@ -99,11 +99,7 @@ func CloneRepositoryHandler(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	out, err = app.posRestart()
-	err = write(w, out)
-	if err != nil {
-		return err
-	}
+	err = app.posRestart(w)
 	if err != nil {
 		return err
 	}

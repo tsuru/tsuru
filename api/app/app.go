@@ -260,15 +260,12 @@ func (a *App) loadHooks() error {
 	return nil
 }
 
-func (a *App) runHook(cmds []string, kind string) ([]byte, error) {
+func (a *App) runHook(w io.Writer, cmds []string, kind string) error {
 	if len(cmds) == 0 {
 		a.log(fmt.Sprintf("Skipping %s hooks...", kind))
-		return nil, nil
+		return nil
 	}
-	var (
-		buf bytes.Buffer
-		err error
-	)
+	var err error
 	a.log(fmt.Sprintf("Executing %s hook...", kind))
 	for _, cmd := range cmds {
 		p, err := deployHookAbsPath(cmd)
@@ -276,34 +273,33 @@ func (a *App) runHook(cmds []string, kind string) ([]byte, error) {
 			a.log(fmt.Sprintf("Error obtaining absolute path to hook: %s.", err))
 			continue
 		}
-		err = a.run(p, &buf)
+		err = a.run(p, w)
 		if err != nil {
-			return nil, err
+			return err
 		}
 	}
-	a.log(fmt.Sprintf("Output of %s hooks: %s", kind, buf.Bytes()))
-	return buf.Bytes(), err
+	return err
 }
 
 // preRestart is responsible for running user's pre-restart script.
 //
 // The path to this script can be found at the app.conf file, at the root of user's app repository.
-func (a *App) preRestart() ([]byte, error) {
+func (a *App) preRestart(w io.Writer) error {
 	if err := a.loadHooks(); err != nil {
-		return nil, err
+		return err
 	}
-	return a.runHook(a.hooks.PreRestart, "pre-restart")
+	return a.runHook(w, a.hooks.PreRestart, "pre-restart")
 }
 
 // posRestart is responsible for running user's pos-restart script.
 //
 // The path to this script can be found at the app.conf file, at the root of
 // user's app repository.
-func (a *App) posRestart() ([]byte, error) {
+func (a *App) posRestart(w io.Writer) error {
 	if err := a.loadHooks(); err != nil {
-		return nil, err
+		return err
 	}
-	return a.runHook(a.hooks.PosRestart, "pos-restart")
+	return a.runHook(w, a.hooks.PosRestart, "pos-restart")
 }
 
 // run executes the command in app units
@@ -322,7 +318,10 @@ func restart(a *App, w io.Writer) error {
 	if err != nil {
 		return err
 	}
-	a.preRestart()
+	err = a.preRestart(w)
+	if err != nil {
+		return err
+	}
 	err = write(w, []byte("\n ---> Restarting your app\n"))
 	if err != nil {
 		return err
