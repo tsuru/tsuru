@@ -130,7 +130,6 @@ pos-restart:
 	c.Assert(recorder.Code, Equals, http.StatusOK)
 	c.Assert(strings.Replace(recorder.Body.String(), "\n", "#", -1), Matches, "^# ---> Tsuru receiving push#.*")
 	c.Assert(strings.Replace(recorder.Body.String(), "\n", "#", -1), Matches, ".*# ---> Clonning your code in your machines#.*")
-	c.Assert(strings.Replace(recorder.Body.String(), "\n", "#", -1), Matches, ".*# ---> Parsing app.conf#.*")
 	c.Assert(strings.Replace(recorder.Body.String(), "\n", "#", -1), Matches, ".*# ---> Running pre-restart#.*")
 	c.Assert(strings.Replace(recorder.Body.String(), "\n", "#", -1), Matches, ".*# ---> Installing dependencies#.*")
 	c.Assert(strings.Replace(recorder.Body.String(), "\n", "#", -1), Matches, ".*# ---> Restarting your app#.*")
