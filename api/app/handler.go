@@ -79,10 +79,6 @@ func CloneRepositoryHandler(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	err = write(w, []byte("\n ---> Parsing app.conf\n"))
-	if err != nil {
-		return err
-	}
 	err = write(w, []byte("\n ---> Installing dependencies\n"))
 	if err != nil {
 		return err
