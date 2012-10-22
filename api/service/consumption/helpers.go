@@ -13,7 +13,7 @@ import (
 	"net/http"
 )
 
-func GetServiceOrError(name string, u *auth.User) (service.Service, error) {
+func getServiceOrError(name string, u *auth.User) (service.Service, error) {
 	s := service.Service{Name: name}
 	err := s.Get()
 	if err != nil {
@@ -29,7 +29,7 @@ func GetServiceOrError(name string, u *auth.User) (service.Service, error) {
 	return s, err
 }
 
-func GetServiceInstanceOrError(name string, u *auth.User) (service.ServiceInstance, error) {
+func getServiceInstanceOrError(name string, u *auth.User) (service.ServiceInstance, error) {
 	var si service.ServiceInstance
 	err := db.Session.ServiceInstances().Find(bson.M{"name": name}).One(&si)
 	if err != nil {
@@ -42,7 +42,7 @@ func GetServiceInstanceOrError(name string, u *auth.User) (service.ServiceInstan
 	return si, nil
 }
 
-func ServiceAndServiceInstancesByTeams(u *auth.User) []service.ServiceModel {
+func serviceAndServiceInstancesByTeams(u *auth.User) []service.ServiceModel {
 	services, _ := service.GetServicesByTeamKindAndNoRestriction("teams", u)
 	sInstances, _ := service.GetServiceInstancesByServicesAndTeams(services, u)
 	results := make([]service.ServiceModel, len(services))
