@@ -34,25 +34,6 @@ func (s *S) TestGetServiceOrErrorShoudNotReturnErrorWhenServiceIsNotRestricted(c
 	c.Assert(err, IsNil)
 }
 
-func (s *S) TestGetServiceOr404(c *C) {
-	_, err := GetServiceOr404("foo")
-	c.Assert(err, ErrorMatches, "^Service not found$")
-}
-
-func (s *S) TestGetServiceInstanceOr404(c *C) {
-	si := ServiceInstance{Name: "foo"}
-	err := si.Create()
-	c.Assert(err, IsNil)
-	rSi, err := GetServiceInstanceOr404("foo")
-	c.Assert(err, IsNil)
-	c.Assert(rSi.Name, Equals, si.Name)
-}
-
-func (s *S) TestGetServiceInstanceOr404ReturnsErrorWhenInstanceDoesntExists(c *C) {
-	_, err := GetServiceInstanceOr404("foo")
-	c.Assert(err, ErrorMatches, "^Service instance not found$")
-}
-
 func (s *S) TestGetServiceInstanceOrError(c *C) {
 	si := ServiceInstance{Name: "foo", Teams: []string{s.team.Name}}
 	err := si.Create()
