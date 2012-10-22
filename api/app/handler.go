@@ -33,7 +33,6 @@ func write(w io.Writer, content []byte) error {
 		f.Flush()
 	}
 	return nil
-	return nil
 }
 
 func sendProjectChangeToGitosis(kind int, team *auth.Team, app *App) {
