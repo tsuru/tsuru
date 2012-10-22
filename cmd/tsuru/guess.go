@@ -37,6 +37,7 @@ func (g GitGuesser) GuessName(path string) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	defer config.Free()
 	remoteUrl, err := config.GetString("remote.tsuru.url")
 	if err != nil {
 		return "", errors.New("tsuru remote not declared.")
