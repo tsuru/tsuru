@@ -11,7 +11,7 @@ import (
 	"net/http"
 )
 
-func GetServiceOrError(name string, u *auth.User) (service.Service, error) {
+func getServiceOrError(name string, u *auth.User) (service.Service, error) {
 	s := service.Service{Name: name}
 	err := s.Get()
 	if err != nil {
@@ -24,7 +24,7 @@ func GetServiceOrError(name string, u *auth.User) (service.Service, error) {
 	return s, err
 }
 
-func ServicesAndInstancesByOwner(u *auth.User) []service.ServiceModel {
+func servicesAndInstancesByOwner(u *auth.User) []service.ServiceModel {
 	services, _ := service.GetServicesByOwnerTeams("owner_teams", u)
 	sInstances, _ := service.GetServiceInstancesByServices(services)
 	results := make([]service.ServiceModel, len(services))
