@@ -29,9 +29,6 @@ func write(w io.Writer, content []byte) error {
 	if n != len(content) {
 		return io.ErrShortWrite
 	}
-	if f, ok := w.(http.Flusher); ok {
-		f.Flush()
-	}
 	return nil
 }
 
