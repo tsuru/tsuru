@@ -448,7 +448,8 @@ we must use a service. The service workflow can be resumed to two steps:
 #. Create a service instance
 #. Bind the service instance to the app
 
-But how can I see what services are available? Easy! Use ``service-list``
+But how can I see what services are available? Easy! Use `service-list
+<http://go.pkgdoc.org/github.com/globocom/tsuru/cmd/tsuru#List_available_services_and_instances>`_
 command:
 
 .. highlight:: bash
@@ -465,7 +466,9 @@ command:
 
 The output from ``service-list`` above says that there are two available
 services: "elastic-search" and "mysql", and none instances. To create our MySQL
-instance, we should run the ``service-add`` command:
+instance, we should run the `service-add
+<http://go.pkgdoc.org/github.com/globocom/tsuru/cmd/tsuru#Create_a_new_service_instance>`_
+command:
 
 .. highlight:: bash
 
@@ -474,7 +477,7 @@ instance, we should run the ``service-add`` command:
     $ tsuru service-add mysql blogsql
     Service successfully added.
 
-Now, if we run ``service-list`` again, we will see our new service-instance in
+Now, if we run ``service-list`` again, we will see our new service instance in
 the list:
 
 .. highlight:: bash
@@ -489,7 +492,9 @@ the list:
     | mysql          | blogsql   |
     +----------------+-----------+
 
-To bind the service instance to the application, we use the ``bind`` command:
+To bind the service instance to the application, we use the `bind
+<http://go.pkgdoc.org/github.com/globocom/tsuru/cmd/tsuru#Bind_an_application_to_a_service_instance>`_
+command:
 
 .. highlight:: bash
 
