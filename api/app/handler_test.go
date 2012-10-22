@@ -96,9 +96,9 @@ func (s *S) TestAppIsAvaliableHandlerShouldReturns200WhenAppUnitStatusIsStarted(
 
 func (s *S) TestCloneRepositoryHandler(c *C) {
 	output := `pre-restart:
-    pre.sh
+  - pre.sh
 pos-restart:
-    pos.sh
+  - pos.sh
 `
 	dir, err := commandmocker.Add("juju", output)
 	c.Assert(err, IsNil)
@@ -128,13 +128,15 @@ pos-restart:
 	err = CloneRepositoryHandler(recorder, request)
 	c.Assert(err, IsNil)
 	c.Assert(recorder.Code, Equals, http.StatusOK)
-	c.Assert(strings.Replace(recorder.Body.String(), "\n", "#", -1), Matches, "^# ---> Tsuru receiving push#.*")
-	c.Assert(strings.Replace(recorder.Body.String(), "\n", "#", -1), Matches, ".*# ---> Clonning your code in your machines#.*")
-	c.Assert(strings.Replace(recorder.Body.String(), "\n", "#", -1), Matches, ".*# ---> Running pre-restart#.*")
-	c.Assert(strings.Replace(recorder.Body.String(), "\n", "#", -1), Matches, ".*# ---> Installing dependencies#.*")
-	c.Assert(strings.Replace(recorder.Body.String(), "\n", "#", -1), Matches, ".*# ---> Restarting your app#.*")
-	c.Assert(strings.Replace(recorder.Body.String(), "\n", "#", -1), Matches, ".*# ---> Running pos-restart#.*")
-	c.Assert(strings.Replace(recorder.Body.String(), "\n", "#", -1), Matches, ".*# ---> Deploy done!##$.*")
+	regexp := `^# ---> Tsuru receiving push#.*
+# ---> Clonning your code in your machines#.*
+# ---> Installing dependencies#.*
+# ---> Running pre-restart#.*
+# ---> Restarting your app#.*
+# ---> Running pos-restart#.*
+# ---> Deploy done!##$
+`
+	c.Assert(strings.Replace(recorder.Body.String(), "\n", "#", -1), Matches, strings.Replace(regexp, "\n", "", -1))
 	c.Assert(recorder.Header().Get("Content-Type"), Equals, "text")
 }
 
