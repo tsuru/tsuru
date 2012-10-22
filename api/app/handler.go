@@ -44,7 +44,7 @@ func getAppOrError(name string, u *auth.User) (App, error) {
 	app := App{Name: name}
 	err := app.Get()
 	if err != nil {
-		return app, &errors.Http{Code: http.StatusNotFound, Message: "App not found"}
+		return app, &errors.Http{Code: http.StatusNotFound, Message: fmt.Sprintf("App %s not found.", name)}
 	}
 	if !auth.CheckUserAccess(app.Teams, u) {
 		return app, &errors.Http{Code: http.StatusForbidden, Message: "User does not have access to this app"}
@@ -61,7 +61,7 @@ func CloneRepositoryHandler(w http.ResponseWriter, r *http.Request) error {
 	app := App{Name: r.URL.Query().Get(":name")}
 	err = app.Get()
 	if err != nil {
-		return &errors.Http{Code: http.StatusNotFound, Message: "App not found"}
+		return &errors.Http{Code: http.StatusNotFound, Message: fmt.Sprintf("App %s not found.", app.Name)}
 	}
 	err = write(w, []byte("\n ---> Clonning your code in your machines\n"))
 	if err != nil {
@@ -221,13 +221,9 @@ func CreateAppHandler(w http.ResponseWriter, r *http.Request, u *auth.User) erro
 
 func grantAccessToTeam(appName, teamName string, u *auth.User) error {
 	t := new(auth.Team)
-	app := &App{Name: appName}
-	err := app.Get()
+	app, err := getAppOrError(appName, u)
 	if err != nil {
-		return &errors.Http{Code: http.StatusNotFound, Message: "App not found"}
-	}
-	if !auth.CheckUserAccess(app.Teams, u) {
-		return &errors.Http{Code: http.StatusUnauthorized, Message: "User unauthorized"}
+		return err
 	}
 	err = db.Session.Teams().Find(bson.M{"_id": teamName}).One(t)
 	if err != nil {
@@ -241,7 +237,7 @@ func grantAccessToTeam(appName, teamName string, u *auth.User) error {
 	if err != nil {
 		return err
 	}
-	sendProjectChangeToGitosis(repository.AddProject, t, app)
+	sendProjectChangeToGitosis(repository.AddProject, t, &app)
 	return nil
 }
 
@@ -253,13 +249,9 @@ func GrantAccessToTeamHandler(w http.ResponseWriter, r *http.Request, u *auth.Us
 
 func revokeAccessFromTeam(appName, teamName string, u *auth.User) error {
 	t := new(auth.Team)
-	app := &App{Name: appName}
-	err := app.Get()
+	app, err := getAppOrError(appName, u)
 	if err != nil {
-		return &errors.Http{Code: http.StatusNotFound, Message: "App not found"}
-	}
-	if !auth.CheckUserAccess(app.Teams, u) {
-		return &errors.Http{Code: http.StatusUnauthorized, Message: "User unauthorized"}
+		return err
 	}
 	err = db.Session.Teams().Find(bson.M{"_id": teamName}).One(t)
 	if err != nil {
@@ -277,7 +269,7 @@ func revokeAccessFromTeam(appName, teamName string, u *auth.User) error {
 	if err != nil {
 		return err
 	}
-	sendProjectChangeToGitosis(repository.RemoveProject, t, app)
+	sendProjectChangeToGitosis(repository.RemoveProject, t, &app)
 	return nil
 }
 
@@ -469,7 +461,7 @@ func serviceInstanceAndAppOrError(instanceName, appName string, u *auth.User) (i
 	}
 	err = db.Session.Apps().Find(bson.M{"name": appName}).One(&a)
 	if err != nil {
-		err = &errors.Http{Code: http.StatusNotFound, Message: "App not found"}
+		err = &errors.Http{Code: http.StatusNotFound, Message: fmt.Sprintf("App %s not found.", appName)}
 		return
 	}
 	if !auth.CheckUserAccess(a.Teams, u) {

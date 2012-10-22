@@ -190,7 +190,7 @@ func (s *S) TestCloneRepositoryShouldReturnNotFoundWhenAppDoesNotExist(c *C) {
 	e, ok := err.(*errors.Http)
 	c.Assert(ok, Equals, true)
 	c.Assert(e.Code, Equals, http.StatusNotFound)
-	c.Assert(e, ErrorMatches, "^App not found$")
+	c.Assert(e, ErrorMatches, "^App abc not found.$")
 }
 
 func (s *S) TestAppList(c *C) {
@@ -324,7 +324,7 @@ func (s *S) TestDeleteShouldReturnNotFoundIfTheAppDoesNotExist(c *C) {
 	e, ok := err.(*errors.Http)
 	c.Assert(ok, Equals, true)
 	c.Assert(e.Code, Equals, http.StatusNotFound)
-	c.Assert(e, ErrorMatches, "^App not found$")
+	c.Assert(e, ErrorMatches, "^App unknown not found.$")
 }
 
 func (s *S) TestDeleteAppRemovesProjectFromAllTeamsInGitosis(c *C) {
@@ -427,7 +427,7 @@ func (s *S) TestAppInfoReturnsNotFoundWhenAppDoesNotExist(c *C) {
 	e, ok := err.(*errors.Http)
 	c.Assert(ok, Equals, true)
 	c.Assert(e.Code, Equals, http.StatusNotFound)
-	c.Assert(e, ErrorMatches, "^App not found$")
+	c.Assert(e, ErrorMatches, "^App SomeApp not found.$")
 }
 
 func (s *S) TestCreateAppHandler(c *C) {
@@ -534,10 +534,10 @@ func (s *S) TestGrantAccessToTeamReturn404IfTheAppDoesNotExist(c *C) {
 	e, ok := err.(*errors.Http)
 	c.Assert(ok, Equals, true)
 	c.Assert(e.Code, Equals, http.StatusNotFound)
-	c.Assert(e, ErrorMatches, "^App not found$")
+	c.Assert(e, ErrorMatches, "^App a not found.$")
 }
 
-func (s *S) TestGrantAccessToTeamReturn401IfTheGivenUserDoesNotHasAccessToTheApp(c *C) {
+func (s *S) TestGrantAccessToTeamReturn403IfTheGivenUserDoesNotHasAccessToTheApp(c *C) {
 	a := App{
 		Name:      "itshard",
 		Framework: "django",
@@ -553,8 +553,8 @@ func (s *S) TestGrantAccessToTeamReturn401IfTheGivenUserDoesNotHasAccessToTheApp
 	c.Assert(err, NotNil)
 	e, ok := err.(*errors.Http)
 	c.Assert(ok, Equals, true)
-	c.Assert(e.Code, Equals, http.StatusUnauthorized)
-	c.Assert(e, ErrorMatches, "^User unauthorized$")
+	c.Assert(e.Code, Equals, http.StatusForbidden)
+	c.Assert(e, ErrorMatches, "^User does not have access to this app$")
 }
 
 func (s *S) TestGrantAccessToTeamReturn404IfTheTeamDoesNotExist(c *C) {
@@ -650,7 +650,7 @@ func (s *S) TestRevokeAccessFromTeamReturn404IfTheAppDoesNotExist(c *C) {
 	e, ok := err.(*errors.Http)
 	c.Assert(ok, Equals, true)
 	c.Assert(e.Code, Equals, http.StatusNotFound)
-	c.Assert(e, ErrorMatches, "^App not found$")
+	c.Assert(e, ErrorMatches, "^App a not found.$")
 }
 
 func (s *S) TestRevokeAccessFromTeamReturn401IfTheGivenUserDoesNotHavePermissionInTheApp(c *C) {
@@ -669,8 +669,8 @@ func (s *S) TestRevokeAccessFromTeamReturn401IfTheGivenUserDoesNotHavePermission
 	c.Assert(err, NotNil)
 	e, ok := err.(*errors.Http)
 	c.Assert(ok, Equals, true)
-	c.Assert(e.Code, Equals, http.StatusUnauthorized)
-	c.Assert(e, ErrorMatches, "^User unauthorized$")
+	c.Assert(e.Code, Equals, http.StatusForbidden)
+	c.Assert(e, ErrorMatches, "^User does not have access to this app$")
 }
 
 func (s *S) TestRevokeAccessFromTeamReturn404IfTheTeamDoesNotExist(c *C) {
@@ -861,7 +861,7 @@ func (s *S) TestRunHandlerReturnsNotFoundIfTheAppDoesNotExist(c *C) {
 	e, ok := err.(*errors.Http)
 	c.Assert(ok, Equals, true)
 	c.Assert(e.Code, Equals, http.StatusNotFound)
-	c.Assert(e, ErrorMatches, "^App not found$")
+	c.Assert(e, ErrorMatches, "^App unknown not found.$")
 }
 
 func (s *S) TestRunHandlerReturnsForbiddenIfTheGivenUserDoesNotHaveAccessToTheApp(c *C) {
@@ -979,7 +979,7 @@ func (s *S) TestGetEnvHandlerReturnsNotFoundIfTheAppDoesNotExist(c *C) {
 	e, ok := err.(*errors.Http)
 	c.Assert(ok, Equals, true)
 	c.Assert(e.Code, Equals, http.StatusNotFound)
-	c.Assert(e, ErrorMatches, "^App not found$")
+	c.Assert(e, ErrorMatches, "^App unknown not found.$")
 }
 
 func (s *S) TestGetEnvHandlerReturnsForbiddenIfTheGivenUserDoesNotHaveAccessToTheApp(c *C) {
@@ -1288,7 +1288,7 @@ func (s *S) TestSetEnvHandlerReturnsNotFoundIfTheAppDoesNotExist(c *C) {
 	e, ok := err.(*errors.Http)
 	c.Assert(ok, Equals, true)
 	c.Assert(e.Code, Equals, http.StatusNotFound)
-	c.Assert(e, ErrorMatches, "^App not found$")
+	c.Assert(e, ErrorMatches, "^App unknown not found.$")
 }
 
 func (s *S) TestSetEnvHandlerReturnsForbiddenIfTheGivenUserDoesNotHaveAccessToTheApp(c *C) {
@@ -1494,7 +1494,7 @@ func (s *S) TestUnsetEnvHandlerReturnsNotFoundIfTheAppDoesNotExist(c *C) {
 	e, ok := err.(*errors.Http)
 	c.Assert(ok, Equals, true)
 	c.Assert(e.Code, Equals, http.StatusNotFound)
-	c.Assert(e, ErrorMatches, "^App not found$")
+	c.Assert(e, ErrorMatches, "^App unknown not found.$")
 }
 
 func (s *S) TestUnsetEnvHandlerReturnsForbiddenIfTheGivenUserDoesNotHaveAccessToTheApp(c *C) {
@@ -1513,7 +1513,7 @@ func (s *S) TestUnsetEnvHandlerReturnsForbiddenIfTheGivenUserDoesNotHaveAccessTo
 }
 
 func (s *S) TestLogShouldReturnNotFoundWhenAppDoesNotExist(c *C) {
-	request, err := http.NewRequest("GET", "/apps/unknown/log/", nil)
+	request, err := http.NewRequest("GET", "/apps/unknown/log/?:name=unknown", nil)
 	c.Assert(err, IsNil)
 	recorder := httptest.NewRecorder()
 	err = AppLog(recorder, request, s.user)
@@ -1521,7 +1521,7 @@ func (s *S) TestLogShouldReturnNotFoundWhenAppDoesNotExist(c *C) {
 	e, ok := err.(*errors.Http)
 	c.Assert(ok, Equals, true)
 	c.Assert(e.Code, Equals, http.StatusNotFound)
-	c.Assert(e, ErrorMatches, "^App not found$")
+	c.Assert(e, ErrorMatches, "^App unknown not found.$")
 }
 
 func (s *S) TestLogReturnsForbiddenIfTheGivenUserDoesNotHaveAccessToTheApp(c *C) {
@@ -1695,7 +1695,7 @@ func (s *S) TestBindHandlerReturns404IfTheAppDoesNotExist(c *C) {
 	err := instance.Create()
 	c.Assert(err, IsNil)
 	defer db.Session.ServiceInstances().Remove(bson.M{"name": "my-mysql"})
-	url := fmt.Sprintf("/services/instances/%s/unknown?:instance=%s&app=unknown", instance.Name, instance.Name)
+	url := fmt.Sprintf("/services/instances/%s/unknown?:instance=%s&:app=unknown", instance.Name, instance.Name)
 	request, err := http.NewRequest("PUT", url, nil)
 	c.Assert(err, IsNil)
 	recorder := httptest.NewRecorder()
@@ -1704,7 +1704,7 @@ func (s *S) TestBindHandlerReturns404IfTheAppDoesNotExist(c *C) {
 	e, ok := err.(*errors.Http)
 	c.Assert(ok, Equals, true)
 	c.Assert(e.Code, Equals, http.StatusNotFound)
-	c.Assert(e, ErrorMatches, "^App not found$")
+	c.Assert(e, ErrorMatches, "^App unknown not found.$")
 }
 
 func (s *S) TestBindHandlerReturns403IfTheUserDoesNotHaveAccessToTheApp(c *C) {
@@ -1856,7 +1856,7 @@ func (s *S) TestUnbindHandlerReturns404IfTheAppDoesNotExist(c *C) {
 	err := instance.Create()
 	c.Assert(err, IsNil)
 	defer db.Session.ServiceInstances().Remove(bson.M{"name": "my-mysql"})
-	url := fmt.Sprintf("/services/instances/%s/unknown?:instance=%s&app=unknown", instance.Name, instance.Name)
+	url := fmt.Sprintf("/services/instances/%s/unknown?:instance=%s&:app=unknown", instance.Name, instance.Name)
 	request, err := http.NewRequest("PUT", url, nil)
 	c.Assert(err, IsNil)
 	recorder := httptest.NewRecorder()
@@ -1865,7 +1865,7 @@ func (s *S) TestUnbindHandlerReturns404IfTheAppDoesNotExist(c *C) {
 	e, ok := err.(*errors.Http)
 	c.Assert(ok, Equals, true)
 	c.Assert(e.Code, Equals, http.StatusNotFound)
-	c.Assert(e, ErrorMatches, "^App not found$")
+	c.Assert(e, ErrorMatches, "^App unknown not found.$")
 }
 
 func (s *S) TestUnbindHandlerReturns403IfTheUserDoesNotHaveAccessToTheApp(c *C) {
