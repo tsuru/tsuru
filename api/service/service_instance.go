@@ -149,6 +149,9 @@ func GetServiceInstancesByServicesAndTeams(services []Service, u *auth.User) (sI
 	if err != nil {
 		return
 	}
+	if len(teams) == 0 {
+		return
+	}
 	q, f := genericServiceInstancesFilter(services, auth.GetTeamsNames(teams))
 	err = db.Session.ServiceInstances().Find(q).Select(f).All(&sInstances)
 	return
