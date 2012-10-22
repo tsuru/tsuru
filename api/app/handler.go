@@ -91,14 +91,6 @@ func CloneRepositoryHandler(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	err = write(w, []byte("\n ---> Running pos-restart\n"))
-	if err != nil {
-		return err
-	}
-	err = app.posRestart(w)
-	if err != nil {
-		return err
-	}
 	return write(w, []byte("\n ---> Deploy done!\n\n"))
 }
 

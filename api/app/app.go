@@ -265,8 +265,11 @@ func (a *App) runHook(w io.Writer, cmds []string, kind string) error {
 		a.log(fmt.Sprintf("Skipping %s hooks...", kind))
 		return nil
 	}
-	var err error
 	a.log(fmt.Sprintf("Executing %s hook...", kind))
+	err := write(w, []byte("\n ---> Running "+kind+"\n"))
+	if err != nil {
+		return err
+	}
 	for _, cmd := range cmds {
 		p, err := deployHookAbsPath(cmd)
 		if err != nil {
@@ -314,15 +317,15 @@ func (a *App) run(cmd string, w io.Writer) error {
 func restart(a *App, w io.Writer) error {
 	u := a.unit()
 	a.log("executing hook to restart")
-	err := write(w, []byte("\n ---> Running pre-restart\n"))
-	if err != nil {
-		return err
-	}
-	err = a.preRestart(w)
+	err := a.preRestart(w)
 	if err != nil {
 		return err
 	}
 	err = write(w, []byte("\n ---> Restarting your app\n"))
+	if err != nil {
+		return err
+	}
+	err = a.posRestart(w)
 	if err != nil {
 		return err
 	}

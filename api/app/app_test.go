@@ -615,6 +615,34 @@ func (s *S) TestRestartRunPreRestartHook(c *C) {
 	c.Assert(content, Matches, "^.*### ---> Running pre-restart###.*$")
 }
 
+func (s *S) TestRestartRunsPosRestartHook(c *C) {
+	tmpdir, err := commandmocker.Add("juju", "$*")
+	c.Assert(err, IsNil)
+	defer commandmocker.Remove(tmpdir)
+	a := App{
+		Name:      "someApp",
+		Framework: "django",
+		Teams:     []string{s.team.Name},
+		Units: []Unit{
+			{
+				AgentState:        "started",
+				MachineAgentState: "running",
+				InstanceState:     "running",
+				Machine:           4,
+			},
+		},
+		hooks: &conf{
+			PosRestart: []string{"pos.sh"},
+		},
+	}
+	var buf bytes.Buffer
+	err = restart(&a, &buf)
+	c.Assert(err, IsNil)
+	content := buf.String()
+	content = strings.Replace(content, "\n", "###", -1)
+	c.Assert(content, Matches, "^.*### ---> Running pos-restart###.*$")
+}
+
 func (s *S) TestLogShouldStoreLog(c *C) {
 	a := App{Name: "newApp"}
 	err := createApp(&a)
