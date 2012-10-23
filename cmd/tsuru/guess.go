@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"github.com/fsouza/gogit/git"
 	"github.com/globocom/tsuru/cmd"
+	"os"
 	"regexp"
 )
 
@@ -63,9 +64,13 @@ func (cmd *GuessingCommand) guesser() AppGuesser {
 	return cmd.g
 }
 
-func (cmd *GuessingCommand) Guess(context *cmd.Context, position int, path string) (string, error) {
+func (cmd *GuessingCommand) Guess(context *cmd.Context, position int) (string, error) {
 	if context != nil && len(context.Args) >= position+1 {
 		return context.Args[position], nil
+	}
+	path, err := os.Getwd()
+	if err != nil {
+		return "", fmt.Errorf("Unable to guess app name: %s.", err)
 	}
 	name, err := cmd.guesser().GuessName(path)
 	if err != nil {

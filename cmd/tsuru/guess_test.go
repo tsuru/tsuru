@@ -94,44 +94,63 @@ func (s *S) TestGuessingCommandWithEnoughArguments(c *C) {
 	ctx := cmd.Context{Args: []string{"myapp"}}
 	fake := &FakeGuesser{name: "other-app"}
 	g := GuessingCommand{g: fake}
-	name, err := g.Guess(&ctx, 0, "")
+	name, err := g.Guess(&ctx, 0)
 	c.Assert(err, IsNil)
 	c.Assert(name, Equals, "myapp")
+	pwd, err := os.Getwd()
+	c.Assert(err, IsNil)
+	c.Assert(fake.HasGuess(pwd), Equals, false)
 }
 
 func (s *S) TestGuessingCommandWithoutEnoughArguments(c *C) {
 	ctx := cmd.Context{Args: []string{"myapp"}}
 	fake := &FakeGuesser{name: "other-app"}
 	g := GuessingCommand{g: fake}
-	name, err := g.Guess(&ctx, 1, "")
+	name, err := g.Guess(&ctx, 1)
 	c.Assert(err, IsNil)
 	c.Assert(name, Equals, "other-app")
+	pwd, err := os.Getwd()
+	c.Assert(err, IsNil)
+	c.Assert(fake.HasGuess(pwd), Equals, true)
 }
 
 func (s *S) TestGuessingCommandFailToGuess(c *C) {
-	g := GuessingCommand{g: &FailingFakeGuesser{}}
-	name, err := g.Guess(nil, 0, "")
+	fake := &FailingFakeGuesser{}
+	g := GuessingCommand{g: fake}
+	name, err := g.Guess(nil, 0)
 	c.Assert(name, Equals, "")
 	c.Assert(err, NotNil)
 	c.Assert(err.Error(), Equals, "tsuru wasn't able to guess the name of the app. Make sure you're in the directory of the app, and there is a git remote labeled \"tsuru\". You can provide the name of the app as a parameter to this command, anyway.")
+	pwd, err := os.Getwd()
+	c.Assert(err, IsNil)
+	c.Assert(fake.HasGuess(pwd), Equals, true)
 }
 
 type FakeGuesser struct {
-	log  []string
-	name string
+	guesses []string
+	name    string
+}
+
+func (f *FakeGuesser) HasGuess(path string) bool {
+	for _, g := range f.guesses {
+		if g == path {
+			return true
+		}
+	}
+	return false
 }
 
 func (f *FakeGuesser) GuessName(path string) (string, error) {
-	f.log = append(f.log, "Guessing "+path)
+	f.guesses = append(f.guesses, path)
 	return f.name, nil
 }
 
 type FailingFakeGuesser struct {
-	log     []string
+	FakeGuesser
 	message string
 }
 
 func (f *FailingFakeGuesser) GuessName(path string) (string, error) {
-	f.log = append(f.log, "Guessing "+path)
+	f.FakeGuesser.GuessName(path)
 	return "", errors.New(f.message)
 }
