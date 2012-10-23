@@ -5,6 +5,7 @@
 package main
 
 import (
+	"errors"
 	"github.com/fsouza/gogit/git"
 	"io"
 	. "launchpad.net/gocheck"
@@ -75,4 +76,20 @@ func (s *S) TestGitGuesserWithTsuruRemoteNotMatchingTsuruPattern(c *C) {
 	c.Assert(name, Equals, "")
 	c.Assert(err, NotNil)
 	c.Assert(err.Error(), Equals, `"tsuru" remote did not match the pattern. Want something like git@<host>:<app-name>.git, got me@myhost.com:gopher.git`)
+}
+
+type FakeGuesser struct {
+	name string
+}
+
+func (f *FakeGuesser) GuessName(path string) (string, error) {
+	return f.name, nil
+}
+
+type FailingFakeGuesser struct {
+	message string
+}
+
+func (f *FailingFakeGuesser) GuessName(path string) (string, error) {
+	return "", errors.New(f.message)
 }
