@@ -7,6 +7,7 @@ package main
 import (
 	"errors"
 	"github.com/fsouza/gogit/git"
+	"github.com/globocom/tsuru/cmd"
 	"io"
 	. "launchpad.net/gocheck"
 	"os"
@@ -87,6 +88,32 @@ func (s *S) TestGuessingCommandGuesserNonNil(c *C) {
 	fake := &FakeGuesser{}
 	g := GuessingCommand{g: fake}
 	c.Assert(g.guesser(), DeepEquals, fake)
+}
+
+func (s *S) TestGuessingCommandWithEnoughArguments(c *C) {
+	ctx := cmd.Context{Args: []string{"myapp"}}
+	fake := &FakeGuesser{name: "other-app"}
+	g := GuessingCommand{g: fake}
+	name, err := g.Guess(&ctx, 0, "")
+	c.Assert(err, IsNil)
+	c.Assert(name, Equals, "myapp")
+}
+
+func (s *S) TestGuessingCommandWithoutEnoughArguments(c *C) {
+	ctx := cmd.Context{Args: []string{"myapp"}}
+	fake := &FakeGuesser{name: "other-app"}
+	g := GuessingCommand{g: fake}
+	name, err := g.Guess(&ctx, 1, "")
+	c.Assert(err, IsNil)
+	c.Assert(name, Equals, "other-app")
+}
+
+func (s *S) TestGuessingCommandFailToGuess(c *C) {
+	g := GuessingCommand{g: &FailingFakeGuesser{}}
+	name, err := g.Guess(nil, 0, "")
+	c.Assert(name, Equals, "")
+	c.Assert(err, NotNil)
+	c.Assert(err.Error(), Equals, "tsuru wasn't able to guess the name of the app. Make sure you're in the directory of the app, and there is a git remote labeled \"tsuru\". You can provide the name of the app as a parameter to this command, anyway.")
 }
 
 type FakeGuesser struct {
