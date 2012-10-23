@@ -151,15 +151,31 @@ func (s *S) TestAppCreateWithInvalidFramework(c *C) {
 
 func (s *S) TestAppRemove(c *C) {
 	var stdout, stderr bytes.Buffer
-	expected := `App "ble" successfully removed!` + "\n"
+	expected := `Are you sure you want to remove app "ble"? (y/n) App "ble" successfully removed!` + "\n"
 	context := cmd.Context{
 		Args:   []string{"ble"},
 		Stdout: &stdout,
 		Stderr: &stderr,
+		Stdin:  strings.NewReader("y\n"),
 	}
 	client := cmd.NewClient(&http.Client{Transport: &transport{msg: "", status: http.StatusOK}})
 	command := AppRemove{}
 	err := command.Run(&context, client)
+	c.Assert(err, IsNil)
+	c.Assert(stdout.String(), Equals, expected)
+}
+
+func (s *S) TestAppRemoveWithoutConfirmation(c *C) {
+	var stdout, stderr bytes.Buffer
+	expected := `Are you sure you want to remove app "ble"? (y/n) Abort.` + "\n"
+	context := cmd.Context{
+		Args:   []string{"ble"},
+		Stdout: &stdout,
+		Stderr: &stderr,
+		Stdin:  strings.NewReader("n\n"),
+	}
+	command := AppRemove{}
+	err := command.Run(&context, nil)
 	c.Assert(err, IsNil)
 	c.Assert(stdout.String(), Equals, expected)
 }

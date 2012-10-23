@@ -254,6 +254,13 @@ func (c *AppRemove) Info() *cmd.Info {
 
 func (c *AppRemove) Run(context *cmd.Context, client cmd.Doer) error {
 	appName := context.Args[0]
+	var answer string
+	fmt.Fprintf(context.Stdout, `Are you sure you want to remove app "%s"? (y/n) `, appName)
+	fmt.Fscanf(context.Stdin, "%s", &answer)
+	if answer != "y" {
+		fmt.Fprintln(context.Stdout, "Abort.")
+		return nil
+	}
 	url := cmd.GetUrl(fmt.Sprintf("/apps/%s", appName))
 	request, err := http.NewRequest("DELETE", url, nil)
 	if err != nil {
