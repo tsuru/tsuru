@@ -34,12 +34,44 @@ Teams: tsuruteam, crane
 	c.Assert(stdout.String(), Equals, expected)
 }
 
+func (s *S) TestAppInfoWithoutArgs(c *C) {
+	var stdout, stderr bytes.Buffer
+	result := `{"Name":"secret","Framework":"ruby","Repository":"git@git.com:php.git","State":"dead", "Units":[{"Ip":"10.10.10.10"}, {"Ip":"9.9.9.9"}],"Teams":["tsuruteam","crane"]}`
+	expected := `Application: secret
+State: dead
+Repository: git@git.com:php.git
+Platform: ruby
+Units: 10.10.10.10, 9.9.9.9
+Teams: tsuruteam, crane
+`
+	context := cmd.Context{
+		Stdout: &stdout,
+		Stderr: &stderr,
+	}
+	trans := &conditionalTransport{
+		transport{
+			msg:    result,
+			status: http.StatusOK,
+		},
+		func(req *http.Request) bool {
+			return req.URL.Path == "/apps/secret" && req.Method == "GET"
+		},
+	}
+	client := cmd.NewClient(&http.Client{Transport: trans})
+	fake := FakeGuesser{name: "secret"}
+	guessCommand := GuessingCommand{g: &fake}
+	command := AppInfo{guessCommand}
+	err := command.Run(&context, client)
+	c.Assert(err, IsNil)
+	c.Assert(stdout.String(), Equals, expected)
+}
+
 func (s *S) TestAppInfoInfo(c *C) {
 	expected := &cmd.Info{
 		Name:    "app-info",
-		Usage:   "app-info <appname>",
+		Usage:   "app-info [appname]",
 		Desc:    "show information about your app.",
-		MinArgs: 1,
+		MinArgs: 0,
 	}
 	c.Assert((&AppInfo{}).Info(), DeepEquals, expected)
 }

@@ -15,19 +15,24 @@ import (
 	"time"
 )
 
-type AppInfo struct{}
+type AppInfo struct {
+	GuessingCommand
+}
 
 func (c *AppInfo) Info() *cmd.Info {
 	return &cmd.Info{
 		Name:    "app-info",
-		Usage:   "app-info <appname>",
+		Usage:   "app-info [appname]",
 		Desc:    "show information about your app.",
-		MinArgs: 1,
+		MinArgs: 0,
 	}
 }
 
 func (c *AppInfo) Run(context *cmd.Context, client cmd.Doer) error {
-	appName := context.Args[0]
+	appName, err := c.Guess(context, 0)
+	if err != nil {
+		return err
+	}
 	url := cmd.GetUrl(fmt.Sprintf("/apps/%s", appName))
 	request, err := http.NewRequest("GET", url, nil)
 	if err != nil {
