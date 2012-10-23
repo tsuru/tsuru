@@ -121,19 +121,25 @@ func (c *AppGrant) Run(context *cmd.Context, client cmd.Doer) error {
 	return nil
 }
 
-type AppRevoke struct{}
+type AppRevoke struct {
+	GuessingCommand
+}
 
 func (c *AppRevoke) Info() *cmd.Info {
 	return &cmd.Info{
 		Name:    "app-revoke",
-		Usage:   "app-revoke <appname> <teamname>",
+		Usage:   "app-revoke <teamname> [-app appname]",
 		Desc:    "revokes access to an app from a team.",
-		MinArgs: 2,
+		MinArgs: 1,
 	}
 }
 
 func (c *AppRevoke) Run(context *cmd.Context, client cmd.Doer) error {
-	appName, teamName := context.Args[0], context.Args[1]
+	appName, err := c.Guess()
+	if err != nil {
+		return err
+	}
+	teamName := context.Args[0]
 	url := cmd.GetUrl(fmt.Sprintf("/apps/%s/%s", appName, teamName))
 	request, err := http.NewRequest("DELETE", url, nil)
 	if err != nil {

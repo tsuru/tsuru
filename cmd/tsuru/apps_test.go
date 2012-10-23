@@ -261,10 +261,11 @@ func (s *S) TestAppGrantInfo(c *C) {
 }
 
 func (s *S) TestAppRevoke(c *C) {
+	*appname = "games"
 	var stdout, stderr bytes.Buffer
 	expected := `Team "cobrateam" was removed from the "games" app` + "\n"
 	context := cmd.Context{
-		Args:   []string{"games", "cobrateam"},
+		Args:   []string{"cobrateam"},
 		Stdout: &stdout,
 		Stderr: &stderr,
 	}
@@ -275,12 +276,28 @@ func (s *S) TestAppRevoke(c *C) {
 	c.Assert(stdout.String(), Equals, expected)
 }
 
+func (s *S) TestAppRevokeWithoutFlag(c *C) {
+	var stdout, stderr bytes.Buffer
+	expected := `Team "cobrateam" was removed from the "fights" app` + "\n"
+	context := cmd.Context{
+		Args:   []string{"cobrateam"},
+		Stdout: &stdout,
+		Stderr: &stderr,
+	}
+	fake := &FakeGuesser{name: "fights"}
+	command := AppRevoke{GuessingCommand{g: fake}}
+	client := cmd.NewClient(&http.Client{Transport: &transport{msg: "", status: http.StatusOK}})
+	err := command.Run(&context, client)
+	c.Assert(err, IsNil)
+	c.Assert(stdout.String(), Equals, expected)
+}
+
 func (s *S) TestAppRevokeInfo(c *C) {
 	expected := &cmd.Info{
 		Name:    "app-revoke",
-		Usage:   "app-revoke <appname> <teamname>",
+		Usage:   "app-revoke <teamname> [-app appname]",
 		Desc:    "revokes access to an app from a team.",
-		MinArgs: 2,
+		MinArgs: 1,
 	}
 	c.Assert((&AppRevoke{}).Info(), DeepEquals, expected)
 }
