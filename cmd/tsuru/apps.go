@@ -22,14 +22,14 @@ type AppInfo struct {
 func (c *AppInfo) Info() *cmd.Info {
 	return &cmd.Info{
 		Name:    "app-info",
-		Usage:   "app-info [appname]",
+		Usage:   "app-info [-app appname]",
 		Desc:    "show information about your app.",
 		MinArgs: 0,
 	}
 }
 
 func (c *AppInfo) Run(context *cmd.Context, client cmd.Doer) error {
-	appName, err := c.Guess(context, 0)
+	appName, err := c.Guess()
 	if err != nil {
 		return err
 	}
@@ -248,14 +248,14 @@ type AppRemove struct {
 func (c *AppRemove) Info() *cmd.Info {
 	return &cmd.Info{
 		Name:    "app-remove",
-		Usage:   "app-remove [appname]",
+		Usage:   "app-remove [-app appname]",
 		Desc:    "removes an app.",
 		MinArgs: 0,
 	}
 }
 
 func (c *AppRemove) Run(context *cmd.Context, client cmd.Doer) error {
-	appName, err := c.Guess(context, 0)
+	appName, err := c.Guess()
 	var answer string
 	fmt.Fprintf(context.Stdout, `Are you sure you want to remove app "%s"? (y/n) `, appName)
 	fmt.Fscanf(context.Stdin, "%s", &answer)

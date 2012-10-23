@@ -13,6 +13,7 @@ import (
 )
 
 func (s *S) TestAppInfo(c *C) {
+	*appname = "app1"
 	var stdout, stderr bytes.Buffer
 	result := `{"Name":"app1","Framework":"php","Repository":"git@git.com:php.git","State":"dead", "Units":[{"Ip":"10.10.10.10"}, {"Ip":"9.9.9.9"}],"Teams":["tsuruteam","crane"]}`
 	expected := `Application: app1
@@ -23,7 +24,6 @@ Units: 10.10.10.10, 9.9.9.9
 Teams: tsuruteam, crane
 `
 	context := cmd.Context{
-		Args:   []string{"appname"},
 		Stdout: &stdout,
 		Stderr: &stderr,
 	}
@@ -69,7 +69,7 @@ Teams: tsuruteam, crane
 func (s *S) TestAppInfoInfo(c *C) {
 	expected := &cmd.Info{
 		Name:    "app-info",
-		Usage:   "app-info [appname]",
+		Usage:   "app-info [-app appname]",
 		Desc:    "show information about your app.",
 		MinArgs: 0,
 	}
@@ -150,6 +150,7 @@ func (s *S) TestAppCreateWithInvalidFramework(c *C) {
 }
 
 func (s *S) TestAppRemove(c *C) {
+	*appname = "ble"
 	var stdout, stderr bytes.Buffer
 	expected := `Are you sure you want to remove app "ble"? (y/n) App "ble" successfully removed!` + "\n"
 	context := cmd.Context{
@@ -193,10 +194,10 @@ func (s *S) TestAppRemoveWithoutArgs(c *C) {
 }
 
 func (s *S) TestAppRemoveWithoutConfirmation(c *C) {
+	*appname = "ble"
 	var stdout, stderr bytes.Buffer
 	expected := `Are you sure you want to remove app "ble"? (y/n) Abort.` + "\n"
 	context := cmd.Context{
-		Args:   []string{"ble"},
 		Stdout: &stdout,
 		Stderr: &stderr,
 		Stdin:  strings.NewReader("n\n"),
@@ -210,7 +211,7 @@ func (s *S) TestAppRemoveWithoutConfirmation(c *C) {
 func (s *S) TestAppRemoveInfo(c *C) {
 	expected := &cmd.Info{
 		Name:    "app-remove",
-		Usage:   "app-remove [appname]",
+		Usage:   "app-remove [-app appname]",
 		Desc:    "removes an app.",
 		MinArgs: 0,
 	}
