@@ -94,6 +94,53 @@ func (s *S) TestAppIsAvaliableHandlerShouldReturns200WhenAppUnitStatusIsStarted(
 	c.Assert(recorder.Code, Equals, http.StatusOK)
 }
 
+func (s *S) TestCloneRepositoryHandlerShouldAddLogs(c *C) {
+	output := `pre-restart:
+  - pre.sh
+pos-restart:
+  - pos.sh
+`
+	dir, err := commandmocker.Add("juju", output)
+	c.Assert(err, IsNil)
+	defer commandmocker.Remove(dir)
+	u := Unit{
+		Name:              "someapp/0",
+		Type:              "django",
+		AgentState:        "started",
+		MachineAgentState: "running",
+		InstanceState:     "running",
+	}
+	a := App{
+		Name:      "someapp",
+		Framework: "django",
+		Teams:     []string{s.team.Name},
+	}
+	err = createApp(&a)
+	c.Assert(err, IsNil)
+	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
+	a.Units = []Unit{u}
+	err = db.Session.Apps().Update(bson.M{"name": a.Name}, &a)
+	c.Assert(err, IsNil)
+	url := fmt.Sprintf("/apps/%s/repository/clone?:name=%s", a.Name, a.Name)
+	request, err := http.NewRequest("GET", url, nil)
+	c.Assert(err, IsNil)
+	recorder := httptest.NewRecorder()
+	err = CloneRepositoryHandler(recorder, request)
+	c.Assert(err, IsNil)
+	c.Assert(recorder.Code, Equals, http.StatusOK)
+	messages := []string{
+		"\n ---> Tsuru receiving push\n",
+		"\n ---> Clonning your code in your machines\n",
+		"\n ---> Installing dependencies\n",
+		"\n ---> Deploy done!\n\n",
+	}
+	for _, msg := range messages {
+		length, err := db.Session.Apps().Find(bson.M{"logs.message": msg}).Count()
+		c.Check(err, IsNil)
+		c.Check(length, Equals, 1)
+	}
+}
+
 func (s *S) TestCloneRepositoryHandler(c *C) {
 	output := `pre-restart:
   - pre.sh

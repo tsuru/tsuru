@@ -54,15 +54,15 @@ func getAppOrError(name string, u *auth.User) (App, error) {
 
 func CloneRepositoryHandler(w http.ResponseWriter, r *http.Request) error {
 	w.Header().Set("Content-Type", "text")
-	err := write(w, []byte("\n ---> Tsuru receiving push\n"))
-	if err != nil {
-		return err
-	}
 	app := App{Name: r.URL.Query().Get(":name")}
-	err = app.Get()
+	err := app.Get()
 	logWriter := LogWriter{&app, w}
 	if err != nil {
 		return &errors.Http{Code: http.StatusNotFound, Message: fmt.Sprintf("App %s not found.", app.Name)}
+	}
+	err = write(&logWriter, []byte("\n ---> Tsuru receiving push\n"))
+	if err != nil {
+		return err
 	}
 	err = write(&logWriter, []byte("\n ---> Clonning your code in your machines\n"))
 	if err != nil {
@@ -72,23 +72,23 @@ func CloneRepositoryHandler(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return &errors.Http{Code: http.StatusInternalServerError, Message: string(out)}
 	}
-	err = write(w, out)
+	err = write(&logWriter, out)
 	if err != nil {
 		return err
 	}
-	err = write(w, []byte("\n ---> Installing dependencies\n"))
+	err = write(&logWriter, []byte("\n ---> Installing dependencies\n"))
 	if err != nil {
 		return err
 	}
-	err = installDeps(&app, w)
+	err = installDeps(&app, &logWriter)
 	if err != nil {
 		return err
 	}
-	err = restart(&app, w)
+	err = restart(&app, &logWriter)
 	if err != nil {
 		return err
 	}
-	return write(w, []byte("\n ---> Deploy done!\n\n"))
+	return write(&logWriter, []byte("\n ---> Deploy done!\n\n"))
 }
 
 // AppIsAvaliableHandler verify if the app.unit().State() is
