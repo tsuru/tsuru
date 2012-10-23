@@ -60,10 +60,11 @@ func CloneRepositoryHandler(w http.ResponseWriter, r *http.Request) error {
 	}
 	app := App{Name: r.URL.Query().Get(":name")}
 	err = app.Get()
+	logWriter := LogWriter{&app, w}
 	if err != nil {
 		return &errors.Http{Code: http.StatusNotFound, Message: fmt.Sprintf("App %s not found.", app.Name)}
 	}
-	err = write(w, []byte("\n ---> Clonning your code in your machines\n"))
+	err = write(&logWriter, []byte("\n ---> Clonning your code in your machines\n"))
 	if err != nil {
 		return err
 	}
