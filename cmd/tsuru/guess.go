@@ -49,3 +49,19 @@ func (g GitGuesser) GuessName(path string) (string, error) {
 	}
 	return matches[1], nil
 }
+
+// Embed this struct if you want your command to guess the name of the app.
+type GuessingCommand struct {
+	g AppGuesser
+}
+
+func (cmd *GuessingCommand) guesser() AppGuesser {
+	if cmd.g == nil {
+		cmd.g = GitGuesser{}
+	}
+	return cmd.g
+}
+
+func (cmd *GuessingCommand) Guess(path string) (string, error) {
+	return cmd.guesser().GuessName(path)
+}

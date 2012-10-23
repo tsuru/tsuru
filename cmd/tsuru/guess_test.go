@@ -78,6 +78,17 @@ func (s *S) TestGitGuesserWithTsuruRemoteNotMatchingTsuruPattern(c *C) {
 	c.Assert(err.Error(), Equals, `"tsuru" remote did not match the pattern. Want something like git@<host>:<app-name>.git, got me@myhost.com:gopher.git`)
 }
 
+func (s *S) TestGuessingCommandGuesserNil(c *C) {
+	g := GuessingCommand{g: nil}
+	c.Assert(g.guesser(), FitsTypeOf, GitGuesser{})
+}
+
+func (s *S) TestGuessingCommandGuesserNonNil(c *C) {
+	fake := &FakeGuesser{}
+	g := GuessingCommand{g: fake}
+	c.Assert(g.guesser(), DeepEquals, fake)
+}
+
 type FakeGuesser struct {
 	name string
 }
