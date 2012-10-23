@@ -90,17 +90,21 @@ func (s *S) TestGuessingCommandGuesserNonNil(c *C) {
 }
 
 type FakeGuesser struct {
+	log  []string
 	name string
 }
 
 func (f *FakeGuesser) GuessName(path string) (string, error) {
+	f.log = append(f.log, "Guessing "+path)
 	return f.name, nil
 }
 
 type FailingFakeGuesser struct {
+	log     []string
 	message string
 }
 
 func (f *FailingFakeGuesser) GuessName(path string) (string, error) {
+	f.log = append(f.log, "Guessing "+path)
 	return "", errors.New(f.message)
 }
