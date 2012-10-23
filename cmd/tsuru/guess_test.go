@@ -120,7 +120,9 @@ func (s *S) TestGuessingCommandFailToGuess(c *C) {
 	name, err := g.Guess(nil, 0)
 	c.Assert(name, Equals, "")
 	c.Assert(err, NotNil)
-	c.Assert(err.Error(), Equals, "tsuru wasn't able to guess the name of the app. Make sure you're in the directory of the app, and there is a git remote labeled \"tsuru\". You can provide the name of the app as a parameter to this command, anyway.")
+	c.Assert(err.Error(), Equals, `tsuru wasn't able to guess the name of the app.
+
+Use the -app flag to specify the name of the app.`)
 	pwd, err := os.Getwd()
 	c.Assert(err, IsNil)
 	c.Assert(fake.HasGuess(pwd), Equals, true)

@@ -74,7 +74,9 @@ func (cmd *GuessingCommand) Guess(context *cmd.Context, position int) (string, e
 	}
 	name, err := cmd.guesser().GuessName(path)
 	if err != nil {
-		return "", errors.New("tsuru wasn't able to guess the name of the app. Make sure you're in the directory of the app, and there is a git remote labeled \"tsuru\". You can provide the name of the app as a parameter to this command, anyway.")
+		return "", errors.New(`tsuru wasn't able to guess the name of the app.
+
+Use the -app flag to specify the name of the app.`)
 	}
 	return name, nil
 }
