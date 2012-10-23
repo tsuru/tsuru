@@ -165,6 +165,33 @@ func (s *S) TestAppRemove(c *C) {
 	c.Assert(stdout.String(), Equals, expected)
 }
 
+func (s *S) TestAppRemoveWithoutArgs(c *C) {
+	var stdout, stderr bytes.Buffer
+	context := cmd.Context{
+		Args:   nil,
+		Stdout: &stdout,
+		Stderr: &stderr,
+		Stdin:  strings.NewReader("y\n"),
+	}
+	expected := `Are you sure you want to remove app "secret"? (y/n) App "secret" successfully removed!` + "\n"
+	trans := &conditionalTransport{
+		transport{
+			msg:    "",
+			status: http.StatusOK,
+		},
+		func(req *http.Request) bool {
+			return req.URL.Path == "/apps/secret" && req.Method == "DELETE"
+		},
+	}
+	client := cmd.NewClient(&http.Client{Transport: trans})
+	fake := FakeGuesser{name: "secret"}
+	guessCommand := GuessingCommand{g: &fake}
+	command := AppRemove{guessCommand}
+	err := command.Run(&context, client)
+	c.Assert(err, IsNil)
+	c.Assert(stdout.String(), Equals, expected)
+}
+
 func (s *S) TestAppRemoveWithoutConfirmation(c *C) {
 	var stdout, stderr bytes.Buffer
 	expected := `Are you sure you want to remove app "ble"? (y/n) Abort.` + "\n"
@@ -183,9 +210,9 @@ func (s *S) TestAppRemoveWithoutConfirmation(c *C) {
 func (s *S) TestAppRemoveInfo(c *C) {
 	expected := &cmd.Info{
 		Name:    "app-remove",
-		Usage:   "app-remove <appname>",
+		Usage:   "app-remove [appname]",
 		Desc:    "removes an app.",
-		MinArgs: 1,
+		MinArgs: 0,
 	}
 	c.Assert((&AppRemove{}).Info(), DeepEquals, expected)
 }
