@@ -21,9 +21,11 @@ type AppInfo struct {
 
 func (c *AppInfo) Info() *cmd.Info {
 	return &cmd.Info{
-		Name:    "app-info",
-		Usage:   "app-info [-app appname]",
-		Desc:    "show information about your app.",
+		Name:  "app-info",
+		Usage: "app-info [-app appname]",
+		Desc: `show information about your app.
+
+If you don't provide the app name, tsuru will try to guess it.`,
 		MinArgs: 0,
 	}
 }
@@ -95,9 +97,11 @@ type AppGrant struct {
 
 func (c *AppGrant) Info() *cmd.Info {
 	return &cmd.Info{
-		Name:    "app-grant",
-		Usage:   "app-grant <teamname> [-app appname]",
-		Desc:    "grants access to an app to a team.",
+		Name:  "app-grant",
+		Usage: "app-grant <teamname> [-app appname]",
+		Desc: `grants access to an app to a team.
+
+If you don't provide the app name, tsuru will try to guess it.`,
 		MinArgs: 1,
 	}
 }
@@ -127,9 +131,11 @@ type AppRevoke struct {
 
 func (c *AppRevoke) Info() *cmd.Info {
 	return &cmd.Info{
-		Name:    "app-revoke",
-		Usage:   "app-revoke <teamname> [-app appname]",
-		Desc:    "revokes access to an app from a team.",
+		Name:  "app-revoke",
+		Usage: "app-revoke <teamname> [-app appname]",
+		Desc: `revokes access to an app from a team.
+
+If you don't provide the app name, tsuru will try to guess it.`,
 		MinArgs: 1,
 	}
 }
@@ -259,9 +265,11 @@ type AppRemove struct {
 
 func (c *AppRemove) Info() *cmd.Info {
 	return &cmd.Info{
-		Name:    "app-remove",
-		Usage:   "app-remove [-app appname]",
-		Desc:    "removes an app.",
+		Name:  "app-remove",
+		Usage: "app-remove [-app appname]",
+		Desc: `removes an app.
+
+If you don't provide the app name, tsuru will try to guess it.`,
 		MinArgs: 0,
 	}
 }

@@ -68,9 +68,11 @@ Teams: tsuruteam, crane
 
 func (s *S) TestAppInfoInfo(c *C) {
 	expected := &cmd.Info{
-		Name:    "app-info",
-		Usage:   "app-info [-app appname]",
-		Desc:    "show information about your app.",
+		Name:  "app-info",
+		Usage: "app-info [-app appname]",
+		Desc: `show information about your app.
+
+If you don't provide the app name, tsuru will try to guess it.`,
 		MinArgs: 0,
 	}
 	c.Assert((&AppInfo{}).Info(), DeepEquals, expected)
@@ -210,9 +212,11 @@ func (s *S) TestAppRemoveWithoutConfirmation(c *C) {
 
 func (s *S) TestAppRemoveInfo(c *C) {
 	expected := &cmd.Info{
-		Name:    "app-remove",
-		Usage:   "app-remove [-app appname]",
-		Desc:    "removes an app.",
+		Name:  "app-remove",
+		Usage: "app-remove [-app appname]",
+		Desc: `removes an app.
+
+If you don't provide the app name, tsuru will try to guess it.`,
 		MinArgs: 0,
 	}
 	c.Assert((&AppRemove{}).Info(), DeepEquals, expected)
@@ -252,9 +256,11 @@ func (s *S) TestAppGrantWithoutFlag(c *C) {
 
 func (s *S) TestAppGrantInfo(c *C) {
 	expected := &cmd.Info{
-		Name:    "app-grant",
-		Usage:   "app-grant <teamname> [-app appname]",
-		Desc:    "grants access to an app to a team.",
+		Name:  "app-grant",
+		Usage: "app-grant <teamname> [-app appname]",
+		Desc: `grants access to an app to a team.
+
+If you don't provide the app name, tsuru will try to guess it.`,
 		MinArgs: 1,
 	}
 	c.Assert((&AppGrant{}).Info(), DeepEquals, expected)
@@ -294,9 +300,11 @@ func (s *S) TestAppRevokeWithoutFlag(c *C) {
 
 func (s *S) TestAppRevokeInfo(c *C) {
 	expected := &cmd.Info{
-		Name:    "app-revoke",
-		Usage:   "app-revoke <teamname> [-app appname]",
-		Desc:    "revokes access to an app from a team.",
+		Name:  "app-revoke",
+		Usage: "app-revoke <teamname> [-app appname]",
+		Desc: `revokes access to an app from a team.
+
+If you don't provide the app name, tsuru will try to guess it.`,
 		MinArgs: 1,
 	}
 	c.Assert((&AppRevoke{}).Info(), DeepEquals, expected)
