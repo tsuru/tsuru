@@ -219,10 +219,11 @@ func (s *S) TestAppRemoveInfo(c *C) {
 }
 
 func (s *S) TestAppGrant(c *C) {
+	*appname = "games"
 	var stdout, stderr bytes.Buffer
 	expected := `Team "cobrateam" was added to the "games" app` + "\n"
 	context := cmd.Context{
-		Args:   []string{"games", "cobrateam"},
+		Args:   []string{"cobrateam"},
 		Stdout: &stdout,
 		Stderr: &stderr,
 	}
@@ -233,12 +234,28 @@ func (s *S) TestAppGrant(c *C) {
 	c.Assert(stdout.String(), Equals, expected)
 }
 
+func (s *S) TestAppGrantWithoutFlag(c *C) {
+	var stdout, stderr bytes.Buffer
+	expected := `Team "cobrateam" was added to the "fights" app` + "\n"
+	context := cmd.Context{
+		Args:   []string{"cobrateam"},
+		Stdout: &stdout,
+		Stderr: &stderr,
+	}
+	fake := &FakeGuesser{name: "fights"}
+	command := AppGrant{GuessingCommand{g: fake}}
+	client := cmd.NewClient(&http.Client{Transport: &transport{msg: "", status: http.StatusOK}})
+	err := command.Run(&context, client)
+	c.Assert(err, IsNil)
+	c.Assert(stdout.String(), Equals, expected)
+}
+
 func (s *S) TestAppGrantInfo(c *C) {
 	expected := &cmd.Info{
 		Name:    "app-grant",
-		Usage:   "app-grant <appname> <teamname>",
+		Usage:   "app-grant <teamname> [-app appname]",
 		Desc:    "grants access to an app to a team.",
-		MinArgs: 2,
+		MinArgs: 1,
 	}
 	c.Assert((&AppGrant{}).Info(), DeepEquals, expected)
 }

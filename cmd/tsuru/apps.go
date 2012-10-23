@@ -89,19 +89,25 @@ Teams: %s
 	return nil
 }
 
-type AppGrant struct{}
+type AppGrant struct {
+	GuessingCommand
+}
 
 func (c *AppGrant) Info() *cmd.Info {
 	return &cmd.Info{
 		Name:    "app-grant",
-		Usage:   "app-grant <appname> <teamname>",
+		Usage:   "app-grant <teamname> [-app appname]",
 		Desc:    "grants access to an app to a team.",
-		MinArgs: 2,
+		MinArgs: 1,
 	}
 }
 
 func (c *AppGrant) Run(context *cmd.Context, client cmd.Doer) error {
-	appName, teamName := context.Args[0], context.Args[1]
+	appName, err := c.Guess()
+	if err != nil {
+		return err
+	}
+	teamName := context.Args[0]
 	url := cmd.GetUrl(fmt.Sprintf("/apps/%s/%s", appName, teamName))
 	request, err := http.NewRequest("PUT", url, nil)
 	if err != nil {
