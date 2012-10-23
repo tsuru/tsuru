@@ -241,19 +241,28 @@ func (c *AppCreate) Info() *cmd.Info {
 	}
 }
 
-type AppRemove struct{}
+type AppRemove struct {
+	GuessingCommand
+}
 
 func (c *AppRemove) Info() *cmd.Info {
 	return &cmd.Info{
 		Name:    "app-remove",
-		Usage:   "app-remove <appname>",
+		Usage:   "app-remove [appname]",
 		Desc:    "removes an app.",
-		MinArgs: 1,
+		MinArgs: 0,
 	}
 }
 
 func (c *AppRemove) Run(context *cmd.Context, client cmd.Doer) error {
-	appName := context.Args[0]
+	appName, err := c.Guess(context, 0)
+	var answer string
+	fmt.Fprintf(context.Stdout, `Are you sure you want to remove app "%s"? (y/n) `, appName)
+	fmt.Fscanf(context.Stdin, "%s", &answer)
+	if answer != "y" {
+		fmt.Fprintln(context.Stdout, "Abort.")
+		return nil
+	}
 	url := cmd.GetUrl(fmt.Sprintf("/apps/%s", appName))
 	request, err := http.NewRequest("DELETE", url, nil)
 	if err != nil {

@@ -29,21 +29,22 @@ type Manager struct {
 	name     string
 	stdout   io.Writer
 	stderr   io.Writer
+	stdin    io.Reader
 	version  string
 	e        exiter
 	original string
 	wrong    bool
 }
 
-func NewManager(name, ver string, stdout, stderr io.Writer) *Manager {
-	manager := &Manager{name: name, version: ver, stdout: stdout, stderr: stderr}
+func NewManager(name, ver string, stdout, stderr io.Writer, stdin io.Reader) *Manager {
+	manager := &Manager{name: name, version: ver, stdout: stdout, stderr: stderr, stdin: stdin}
 	manager.Register(&help{manager})
 	manager.Register(&version{manager})
 	return manager
 }
 
 func BuildBaseManager(name, version string) *Manager {
-	m := NewManager(name, version, os.Stdout, os.Stderr)
+	m := NewManager(name, version, os.Stdout, os.Stderr, os.Stdin)
 	m.Register(&login{})
 	m.Register(&logout{})
 	m.Register(&userCreate{})
@@ -87,7 +88,7 @@ func (m *Manager) Run(args []string) {
 		args = []string{name}
 		status = 1
 	}
-	err := command.(Command).Run(&Context{args, m.stdout, m.stderr}, NewClient(&http.Client{}))
+	err := command.(Command).Run(&Context{args, m.stdout, m.stderr, m.stdin}, NewClient(&http.Client{}))
 	if err != nil {
 		errorMsg := err.Error()
 		if !strings.HasSuffix(errorMsg, "\n") {
@@ -118,6 +119,7 @@ type Context struct {
 	Args   []string
 	Stdout io.Writer
 	Stderr io.Writer
+	Stdin  io.Reader
 }
 
 type Info struct {

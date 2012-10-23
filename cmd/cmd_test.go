@@ -11,6 +11,7 @@ import (
 	"github.com/globocom/tsuru/fs/testing"
 	"io"
 	. "launchpad.net/gocheck"
+	"os"
 )
 
 type recordingExiter int
@@ -98,7 +99,7 @@ Available commands:
 Run glb help <commandname> to get more information about a specific command.
 `
 	manager.Register(&userCreate{})
-	context := Context{[]string{}, manager.stdout, manager.stderr}
+	context := Context{[]string{}, manager.stdout, manager.stderr, manager.stdin}
 	command := help{manager: manager}
 	err := command.Run(&context, nil)
 	c.Assert(err, IsNil)
@@ -107,14 +108,14 @@ Run glb help <commandname> to get more information about a specific command.
 
 func (s *S) TestHelpCommandShouldBeRegisteredByDefault(c *C) {
 	var stdout, stderr bytes.Buffer
-	m := NewManager("tsuru", "1.0", &stdout, &stderr)
+	m := NewManager("tsuru", "1.0", &stdout, &stderr, os.Stdin)
 	_, exists := m.Commands["help"]
 	c.Assert(exists, Equals, true)
 }
 
 func (s *S) TestHelpReturnErrorIfTheGivenCommandDoesNotExist(c *C) {
 	command := help{manager: manager}
-	context := Context{[]string{"user-create"}, manager.stdout, manager.stderr}
+	context := Context{[]string{"user-create"}, manager.stdout, manager.stderr, manager.stdin}
 	err := command.Run(&context, nil)
 	c.Assert(err, NotNil)
 	c.Assert(err, ErrorMatches, "^Command user-create does not exist.$")
@@ -149,9 +150,9 @@ Foo do anything or nothing.
 
 func (s *S) TestVersion(c *C) {
 	var stdout, stderr bytes.Buffer
-	manager := NewManager("tsuru", "5.0", &stdout, &stderr)
+	manager := NewManager("tsuru", "5.0", &stdout, &stderr, os.Stdin)
 	command := version{manager: manager}
-	context := Context{[]string{}, manager.stdout, manager.stderr}
+	context := Context{[]string{}, manager.stdout, manager.stderr, manager.stdin}
 	err := command.Run(&context, nil)
 	c.Assert(err, IsNil)
 	c.Assert(manager.stdout.(*bytes.Buffer).String(), Equals, "tsuru version 5.0.\n")
@@ -207,9 +208,9 @@ Usage: tsuru foo
 Foo do anything or nothing.
 `
 	var stdout, stderr bytes.Buffer
-	manager := NewManager("tsuru", "1.0", &stdout, &stderr)
+	manager := NewManager("tsuru", "1.0", &stdout, &stderr, os.Stdin)
 	manager.Register(&TestCommand{})
-	context := Context{[]string{"foo"}, manager.stdout, manager.stderr}
+	context := Context{[]string{"foo"}, manager.stdout, manager.stderr, manager.stdin}
 	command := help{manager: manager}
 	err := command.Run(&context, nil)
 	c.Assert(err, IsNil)
@@ -300,7 +301,7 @@ func (s *S) TestTargetIsRegistered(c *C) {
 
 func (s *S) TestVersionIsRegisteredByNewManager(c *C) {
 	var stdout, stderr bytes.Buffer
-	manager := NewManager("tsuru", "1.0", &stdout, &stderr)
+	manager := NewManager("tsuru", "1.0", &stdout, &stderr, os.Stdin)
 	ver, ok := manager.Commands["version"]
 	c.Assert(ok, Equals, true)
 	c.Assert(ver, FitsTypeOf, &version{})
