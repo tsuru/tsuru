@@ -21,15 +21,17 @@ type AppInfo struct {
 
 func (c *AppInfo) Info() *cmd.Info {
 	return &cmd.Info{
-		Name:    "app-info",
-		Usage:   "app-info [appname]",
-		Desc:    "show information about your app.",
+		Name:  "app-info",
+		Usage: "app-info [--app appname]",
+		Desc: `show information about your app.
+
+If you don't provide the app name, tsuru will try to guess it.`,
 		MinArgs: 0,
 	}
 }
 
 func (c *AppInfo) Run(context *cmd.Context, client cmd.Doer) error {
-	appName, err := c.Guess(context, 0)
+	appName, err := c.Guess()
 	if err != nil {
 		return err
 	}
@@ -89,19 +91,27 @@ Teams: %s
 	return nil
 }
 
-type AppGrant struct{}
+type AppGrant struct {
+	GuessingCommand
+}
 
 func (c *AppGrant) Info() *cmd.Info {
 	return &cmd.Info{
-		Name:    "app-grant",
-		Usage:   "app-grant <appname> <teamname>",
-		Desc:    "grants access to an app to a team.",
-		MinArgs: 2,
+		Name:  "app-grant",
+		Usage: "app-grant <teamname> [--app appname]",
+		Desc: `grants access to an app to a team.
+
+If you don't provide the app name, tsuru will try to guess it.`,
+		MinArgs: 1,
 	}
 }
 
 func (c *AppGrant) Run(context *cmd.Context, client cmd.Doer) error {
-	appName, teamName := context.Args[0], context.Args[1]
+	appName, err := c.Guess()
+	if err != nil {
+		return err
+	}
+	teamName := context.Args[0]
 	url := cmd.GetUrl(fmt.Sprintf("/apps/%s/%s", appName, teamName))
 	request, err := http.NewRequest("PUT", url, nil)
 	if err != nil {
@@ -115,19 +125,27 @@ func (c *AppGrant) Run(context *cmd.Context, client cmd.Doer) error {
 	return nil
 }
 
-type AppRevoke struct{}
+type AppRevoke struct {
+	GuessingCommand
+}
 
 func (c *AppRevoke) Info() *cmd.Info {
 	return &cmd.Info{
-		Name:    "app-revoke",
-		Usage:   "app-revoke <appname> <teamname>",
-		Desc:    "revokes access to an app from a team.",
-		MinArgs: 2,
+		Name:  "app-revoke",
+		Usage: "app-revoke <teamname> [--app appname]",
+		Desc: `revokes access to an app from a team.
+
+If you don't provide the app name, tsuru will try to guess it.`,
+		MinArgs: 1,
 	}
 }
 
 func (c *AppRevoke) Run(context *cmd.Context, client cmd.Doer) error {
-	appName, teamName := context.Args[0], context.Args[1]
+	appName, err := c.Guess()
+	if err != nil {
+		return err
+	}
+	teamName := context.Args[0]
 	url := cmd.GetUrl(fmt.Sprintf("/apps/%s/%s", appName, teamName))
 	request, err := http.NewRequest("DELETE", url, nil)
 	if err != nil {
@@ -247,15 +265,17 @@ type AppRemove struct {
 
 func (c *AppRemove) Info() *cmd.Info {
 	return &cmd.Info{
-		Name:    "app-remove",
-		Usage:   "app-remove [appname]",
-		Desc:    "removes an app.",
+		Name:  "app-remove",
+		Usage: "app-remove [--app appname]",
+		Desc: `removes an app.
+
+If you don't provide the app name, tsuru will try to guess it.`,
 		MinArgs: 0,
 	}
 }
 
 func (c *AppRemove) Run(context *cmd.Context, client cmd.Doer) error {
-	appName, err := c.Guess(context, 0)
+	appName, err := c.Guess()
 	var answer string
 	fmt.Fprintf(context.Stdout, `Are you sure you want to remove app "%s"? (y/n) `, appName)
 	fmt.Fscanf(context.Stdin, "%s", &answer)
@@ -276,14 +296,18 @@ func (c *AppRemove) Run(context *cmd.Context, client cmd.Doer) error {
 	return nil
 }
 
-type AppLog struct{}
+type AppLog struct {
+	GuessingCommand
+}
 
 func (c *AppLog) Info() *cmd.Info {
 	return &cmd.Info{
-		Name:    "log",
-		Usage:   "log <appname>",
-		Desc:    "show logs for an app.",
-		MinArgs: 1,
+		Name:  "log",
+		Usage: "log [--app appname]",
+		Desc: `show logs for an app.
+
+If you don't provide the app name, tsuru will try to guess it.`,
+		MinArgs: 0,
 	}
 }
 
@@ -293,7 +317,10 @@ type Log struct {
 }
 
 func (c *AppLog) Run(context *cmd.Context, client cmd.Doer) error {
-	appName := context.Args[0]
+	appName, err := c.Guess()
+	if err != nil {
+		return err
+	}
 	url := cmd.GetUrl(fmt.Sprintf("/apps/%s/log", appName))
 	request, err := http.NewRequest("GET", url, nil)
 	if err != nil {
@@ -319,10 +346,15 @@ func (c *AppLog) Run(context *cmd.Context, client cmd.Doer) error {
 	return err
 }
 
-type AppRestart struct{}
+type AppRestart struct {
+	GuessingCommand
+}
 
 func (c *AppRestart) Run(context *cmd.Context, client cmd.Doer) error {
-	appName := context.Args[0]
+	appName, err := c.Guess()
+	if err != nil {
+		return err
+	}
 	url := cmd.GetUrl(fmt.Sprintf("/apps/%s/restart", appName))
 	request, err := http.NewRequest("GET", url, nil)
 	if err != nil {
@@ -342,9 +374,11 @@ func (c *AppRestart) Run(context *cmd.Context, client cmd.Doer) error {
 
 func (c *AppRestart) Info() *cmd.Info {
 	return &cmd.Info{
-		Name:    "restart",
-		Usage:   "restart <appname>",
-		Desc:    "restarts an app.",
-		MinArgs: 1,
+		Name:  "restart",
+		Usage: "restart [--app appname]",
+		Desc: `restarts an app.
+
+If you don't provide the app name, tsuru will try to guess it.`,
+		MinArgs: 0,
 	}
 }

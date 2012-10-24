@@ -11,9 +11,20 @@ import (
 	"net/http"
 )
 
+const (
+	tsuruMin = "0.2"
+	craneMin = "0.1"
+)
+
+func setVersionHeaders(w http.ResponseWriter) {
+	w.Header().Set("Supported-Tsuru", tsuruMin)
+	w.Header().Set("Supported-Crane", craneMin)
+}
+
 type Handler func(http.ResponseWriter, *http.Request) error
 
 func (fn Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	setVersionHeaders(w)
 	defer func() {
 		if r.Body != nil {
 			r.Body.Close()
@@ -29,6 +40,7 @@ func (fn Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 type AuthorizationRequiredHandler func(http.ResponseWriter, *http.Request, *auth.User) error
 
 func (fn AuthorizationRequiredHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	setVersionHeaders(w)
 	defer func() {
 		if r.Body != nil {
 			r.Body.Close()

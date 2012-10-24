@@ -7,7 +7,6 @@ package main
 import (
 	"errors"
 	"github.com/fsouza/gogit/git"
-	"github.com/globocom/tsuru/cmd"
 	"io"
 	. "launchpad.net/gocheck"
 	"os"
@@ -90,11 +89,11 @@ func (s *S) TestGuessingCommandGuesserNonNil(c *C) {
 	c.Assert(g.guesser(), DeepEquals, fake)
 }
 
-func (s *S) TestGuessingCommandWithEnoughArguments(c *C) {
-	ctx := cmd.Context{Args: []string{"myapp"}}
+func (s *S) TestGuessingCommandWithFlagDefined(c *C) {
+	*appname = "myapp"
 	fake := &FakeGuesser{name: "other-app"}
 	g := GuessingCommand{g: fake}
-	name, err := g.Guess(&ctx, 0)
+	name, err := g.Guess()
 	c.Assert(err, IsNil)
 	c.Assert(name, Equals, "myapp")
 	pwd, err := os.Getwd()
@@ -102,11 +101,11 @@ func (s *S) TestGuessingCommandWithEnoughArguments(c *C) {
 	c.Assert(fake.HasGuess(pwd), Equals, false)
 }
 
-func (s *S) TestGuessingCommandWithoutEnoughArguments(c *C) {
-	ctx := cmd.Context{Args: []string{"myapp"}}
+func (s *S) TestGuessingCommandWithoutFlagDefined(c *C) {
+	appname = nil
 	fake := &FakeGuesser{name: "other-app"}
 	g := GuessingCommand{g: fake}
-	name, err := g.Guess(&ctx, 1)
+	name, err := g.Guess()
 	c.Assert(err, IsNil)
 	c.Assert(name, Equals, "other-app")
 	pwd, err := os.Getwd()
@@ -117,10 +116,12 @@ func (s *S) TestGuessingCommandWithoutEnoughArguments(c *C) {
 func (s *S) TestGuessingCommandFailToGuess(c *C) {
 	fake := &FailingFakeGuesser{}
 	g := GuessingCommand{g: fake}
-	name, err := g.Guess(nil, 0)
+	name, err := g.Guess()
 	c.Assert(name, Equals, "")
 	c.Assert(err, NotNil)
-	c.Assert(err.Error(), Equals, "tsuru wasn't able to guess the name of the app. Make sure you're in the directory of the app, and there is a git remote labeled \"tsuru\". You can provide the name of the app as a parameter to this command, anyway.")
+	c.Assert(err.Error(), Equals, `tsuru wasn't able to guess the name of the app.
+
+Use the -app flag to specify the name of the app.`)
 	pwd, err := os.Getwd()
 	c.Assert(err, IsNil)
 	c.Assert(fake.HasGuess(pwd), Equals, true)

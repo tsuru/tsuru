@@ -13,6 +13,7 @@ import (
 )
 
 func (s *S) TestAppInfo(c *C) {
+	*appname = "app1"
 	var stdout, stderr bytes.Buffer
 	result := `{"Name":"app1","Framework":"php","Repository":"git@git.com:php.git","State":"dead", "Units":[{"Ip":"10.10.10.10"}, {"Ip":"9.9.9.9"}],"Teams":["tsuruteam","crane"]}`
 	expected := `Application: app1
@@ -23,7 +24,6 @@ Units: 10.10.10.10, 9.9.9.9
 Teams: tsuruteam, crane
 `
 	context := cmd.Context{
-		Args:   []string{"appname"},
 		Stdout: &stdout,
 		Stderr: &stderr,
 	}
@@ -68,9 +68,11 @@ Teams: tsuruteam, crane
 
 func (s *S) TestAppInfoInfo(c *C) {
 	expected := &cmd.Info{
-		Name:    "app-info",
-		Usage:   "app-info [appname]",
-		Desc:    "show information about your app.",
+		Name:  "app-info",
+		Usage: "app-info [--app appname]",
+		Desc: `show information about your app.
+
+If you don't provide the app name, tsuru will try to guess it.`,
 		MinArgs: 0,
 	}
 	c.Assert((&AppInfo{}).Info(), DeepEquals, expected)
@@ -150,6 +152,7 @@ func (s *S) TestAppCreateWithInvalidFramework(c *C) {
 }
 
 func (s *S) TestAppRemove(c *C) {
+	*appname = "ble"
 	var stdout, stderr bytes.Buffer
 	expected := `Are you sure you want to remove app "ble"? (y/n) App "ble" successfully removed!` + "\n"
 	context := cmd.Context{
@@ -193,10 +196,10 @@ func (s *S) TestAppRemoveWithoutArgs(c *C) {
 }
 
 func (s *S) TestAppRemoveWithoutConfirmation(c *C) {
+	*appname = "ble"
 	var stdout, stderr bytes.Buffer
 	expected := `Are you sure you want to remove app "ble"? (y/n) Abort.` + "\n"
 	context := cmd.Context{
-		Args:   []string{"ble"},
 		Stdout: &stdout,
 		Stderr: &stderr,
 		Stdin:  strings.NewReader("n\n"),
@@ -209,19 +212,22 @@ func (s *S) TestAppRemoveWithoutConfirmation(c *C) {
 
 func (s *S) TestAppRemoveInfo(c *C) {
 	expected := &cmd.Info{
-		Name:    "app-remove",
-		Usage:   "app-remove [appname]",
-		Desc:    "removes an app.",
+		Name:  "app-remove",
+		Usage: "app-remove [--app appname]",
+		Desc: `removes an app.
+
+If you don't provide the app name, tsuru will try to guess it.`,
 		MinArgs: 0,
 	}
 	c.Assert((&AppRemove{}).Info(), DeepEquals, expected)
 }
 
 func (s *S) TestAppGrant(c *C) {
+	*appname = "games"
 	var stdout, stderr bytes.Buffer
 	expected := `Team "cobrateam" was added to the "games" app` + "\n"
 	context := cmd.Context{
-		Args:   []string{"games", "cobrateam"},
+		Args:   []string{"cobrateam"},
 		Stdout: &stdout,
 		Stderr: &stderr,
 	}
@@ -232,21 +238,40 @@ func (s *S) TestAppGrant(c *C) {
 	c.Assert(stdout.String(), Equals, expected)
 }
 
+func (s *S) TestAppGrantWithoutFlag(c *C) {
+	var stdout, stderr bytes.Buffer
+	expected := `Team "cobrateam" was added to the "fights" app` + "\n"
+	context := cmd.Context{
+		Args:   []string{"cobrateam"},
+		Stdout: &stdout,
+		Stderr: &stderr,
+	}
+	fake := &FakeGuesser{name: "fights"}
+	command := AppGrant{GuessingCommand{g: fake}}
+	client := cmd.NewClient(&http.Client{Transport: &transport{msg: "", status: http.StatusOK}})
+	err := command.Run(&context, client)
+	c.Assert(err, IsNil)
+	c.Assert(stdout.String(), Equals, expected)
+}
+
 func (s *S) TestAppGrantInfo(c *C) {
 	expected := &cmd.Info{
-		Name:    "app-grant",
-		Usage:   "app-grant <appname> <teamname>",
-		Desc:    "grants access to an app to a team.",
-		MinArgs: 2,
+		Name:  "app-grant",
+		Usage: "app-grant <teamname> [--app appname]",
+		Desc: `grants access to an app to a team.
+
+If you don't provide the app name, tsuru will try to guess it.`,
+		MinArgs: 1,
 	}
 	c.Assert((&AppGrant{}).Info(), DeepEquals, expected)
 }
 
 func (s *S) TestAppRevoke(c *C) {
+	*appname = "games"
 	var stdout, stderr bytes.Buffer
 	expected := `Team "cobrateam" was removed from the "games" app` + "\n"
 	context := cmd.Context{
-		Args:   []string{"games", "cobrateam"},
+		Args:   []string{"cobrateam"},
 		Stdout: &stdout,
 		Stderr: &stderr,
 	}
@@ -257,24 +282,42 @@ func (s *S) TestAppRevoke(c *C) {
 	c.Assert(stdout.String(), Equals, expected)
 }
 
+func (s *S) TestAppRevokeWithoutFlag(c *C) {
+	var stdout, stderr bytes.Buffer
+	expected := `Team "cobrateam" was removed from the "fights" app` + "\n"
+	context := cmd.Context{
+		Args:   []string{"cobrateam"},
+		Stdout: &stdout,
+		Stderr: &stderr,
+	}
+	fake := &FakeGuesser{name: "fights"}
+	command := AppRevoke{GuessingCommand{g: fake}}
+	client := cmd.NewClient(&http.Client{Transport: &transport{msg: "", status: http.StatusOK}})
+	err := command.Run(&context, client)
+	c.Assert(err, IsNil)
+	c.Assert(stdout.String(), Equals, expected)
+}
+
 func (s *S) TestAppRevokeInfo(c *C) {
 	expected := &cmd.Info{
-		Name:    "app-revoke",
-		Usage:   "app-revoke <appname> <teamname>",
-		Desc:    "revokes access to an app from a team.",
-		MinArgs: 2,
+		Name:  "app-revoke",
+		Usage: "app-revoke <teamname> [--app appname]",
+		Desc: `revokes access to an app from a team.
+
+If you don't provide the app name, tsuru will try to guess it.`,
+		MinArgs: 1,
 	}
 	c.Assert((&AppRevoke{}).Info(), DeepEquals, expected)
 }
 
 func (s *S) TestAppLog(c *C) {
+	*appname = "appName"
 	var stdout, stderr bytes.Buffer
 	result := `[{"Date":"2012-06-20T11:17:22.75-03:00","Message":"creating app lost"},{"Date":"2012-06-20T11:17:22.753-03:00","Message":"app lost successfully created"}]`
 	expected := `2012-06-20 11:17:22.75 -0300 BRT - creating app lost
 2012-06-20 11:17:22.753 -0300 BRT - app lost successfully created
 `
 	context := cmd.Context{
-		Args:   []string{"appName"},
 		Stdout: &stdout,
 		Stderr: &stderr,
 	}
@@ -287,10 +330,39 @@ func (s *S) TestAppLog(c *C) {
 	c.Assert(got, Equals, expected)
 }
 
+func (s *S) TestAppLogWithoutTheFlag(c *C) {
+	var stdout, stderr bytes.Buffer
+	result := `[{"Date":"2012-06-20T11:17:22.75-03:00","Message":"creating app lost"},{"Date":"2012-06-20T11:17:22.753-03:00","Message":"app lost successfully created"}]`
+	expected := `2012-06-20 11:17:22.75 -0300 BRT - creating app lost
+2012-06-20 11:17:22.753 -0300 BRT - app lost successfully created
+`
+	context := cmd.Context{
+		Stdout: &stdout,
+		Stderr: &stderr,
+	}
+	fake := &FakeGuesser{name: "hitthelights"}
+	command := AppLog{GuessingCommand{g: fake}}
+	trans := &conditionalTransport{
+		transport{
+			msg:    result,
+			status: http.StatusOK,
+		},
+		func(req *http.Request) bool {
+			return req.URL.Path == "/apps/hitthelights/log" && req.Method == "GET"
+		},
+	}
+	client := cmd.NewClient(&http.Client{Transport: trans})
+	err := command.Run(&context, client)
+	c.Assert(err, IsNil)
+	got := stdout.String()
+	got = strings.Replace(got, "-0300 -0300", "-0300 BRT", -1)
+	c.Assert(got, Equals, expected)
+}
+
 func (s *S) TestAppLogShouldReturnNilIfHasNoContent(c *C) {
+	*appname = "appName"
 	var stdout, stderr bytes.Buffer
 	context := cmd.Context{
-		Args:   []string{"appName"},
 		Stdout: &stdout,
 		Stderr: &stderr,
 	}
@@ -303,21 +375,23 @@ func (s *S) TestAppLogShouldReturnNilIfHasNoContent(c *C) {
 
 func (s *S) TestAppLogInfo(c *C) {
 	expected := &cmd.Info{
-		Name:    "log",
-		Usage:   "log <appname>",
-		Desc:    "show logs for an app.",
-		MinArgs: 1,
+		Name:  "log",
+		Usage: "log [--app appname]",
+		Desc: `show logs for an app.
+
+If you don't provide the app name, tsuru will try to guess it.`,
+		MinArgs: 0,
 	}
 	c.Assert((&AppLog{}).Info(), DeepEquals, expected)
 }
 
 func (s *S) TestAppRestart(c *C) {
+	*appname = "handful_of_nothing"
 	var (
 		called         bool
 		stdout, stderr bytes.Buffer
 	)
 	context := cmd.Context{
-		Args:   []string{"handful_of_nothing"},
 		Stdout: &stdout,
 		Stderr: &stderr,
 	}
@@ -338,12 +412,41 @@ func (s *S) TestAppRestart(c *C) {
 	c.Assert(stdout.String(), Equals, "Restarted")
 }
 
+func (s *S) TestAppRestartWithoutTheFlag(c *C) {
+	var (
+		called         bool
+		stdout, stderr bytes.Buffer
+	)
+	context := cmd.Context{
+		Stdout: &stdout,
+		Stderr: &stderr,
+	}
+	trans := &conditionalTransport{
+		transport{
+			msg:    "Restarted",
+			status: http.StatusOK,
+		},
+		func(req *http.Request) bool {
+			called = true
+			return req.URL.Path == "/apps/motorbreath/restart" && req.Method == "GET"
+		},
+	}
+	client := cmd.NewClient(&http.Client{Transport: trans})
+	fake := &FakeGuesser{name: "motorbreath"}
+	err := (&AppRestart{GuessingCommand{g: fake}}).Run(&context, client)
+	c.Assert(err, IsNil)
+	c.Assert(called, Equals, true)
+	c.Assert(stdout.String(), Equals, "Restarted")
+}
+
 func (s *S) TestAppRestartInfo(c *C) {
 	expected := &cmd.Info{
-		Name:    "restart",
-		Usage:   "restart <appname>",
-		Desc:    "restarts an app.",
-		MinArgs: 1,
+		Name:  "restart",
+		Usage: "restart [--app appname]",
+		Desc: `restarts an app.
+
+If you don't provide the app name, tsuru will try to guess it.`,
+		MinArgs: 0,
 	}
 	c.Assert((&AppRestart{}).Info(), DeepEquals, expected)
 }

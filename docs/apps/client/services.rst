@@ -33,13 +33,14 @@ To remove an instance of a service:
     $ tsuru service-remove <service_instance_name>
 
 To bind a service instance with an app you can use the `bind` command.
-If this service has any variable to be used by your app, tsuru will inject this variables in the app's environment.
+If this service has any variable to be used by your app, tsuru will inject this
+variables in the app's environment.
 
 .. highlight:: bash
 
 ::
 
-    $ tsuru bind <service_instance_name> <app_name>
+    $ tsuru bind <service_instance_name> [--app appname]
 
 And to unbind:
 
@@ -47,4 +48,8 @@ And to unbind:
 
 ::
 
-    $ tsuru unbind <service_instance_name> <app_name>
+    $ tsuru unbind <service_instance_name> [--app appname]
+
+For more details on the ``--app`` flag, see `"Guessing app names"
+<http://go.pkgdoc.org/github.com/globocom/tsuru/cmd/tsuru#Guessing_app_names>`_
+section of tsuru command documentation.

@@ -49,7 +49,7 @@ This process begins when a Tsuru customer binds an app to an instance of your se
 
 ::
 
-    $ tsuru bind mysql_instance my_app
+    $ tsuru bind mysql_instance --app my_app
 
 Tsuru calls your service to bind an app with a service instance via POST on ``/resources/<service-name>`` (please notice that tsuru does not include a trailing slash) with the "hostname" that represents the app hostname in the request body. Example of request:
 
@@ -90,7 +90,7 @@ This process begins when a Tsuru customer unbinds an app from an instance of you
 
 ::
 
-    $ tsuru unbind mysql_instance my_app
+    $ tsuru unbind mysql_instance --app my_app
 
 Tsuru calls your service to unbind an app with a service instance via DELETE on ``/resources/<service-name>/hostname/<app-hostname>`` (please notice that tsuru does not include a trailing slash). Example of request:
 
@@ -142,7 +142,7 @@ This process begins when a Tsuru customer wants to check the status of an instan
 
 ::
 
-    $ tsuru service instance status mysql_instance
+    $ tsuru service-status mysql_instance
 
 Tsuru calls your service to check the status of the instance via GET on ``/resources/mysql_instance/status`` (please notice that tsuru does not include a trailing slash). Example of request:
 

@@ -6,8 +6,9 @@
 Client usage
 ++++++++++++
 
-After installing the server, build the cmd/main.go file with the name you wish, and add it to your $PATH. Here we'll call it `tsuru`.
-Then you must set the target with your server url, like:
+After installing the server, build the cmd/main.go file with the name you wish,
+and add it to your $PATH. Here we'll call it `tsuru`.  Then you must set the
+target with your server url, like:
 
 Setting a target
 ================
@@ -21,7 +22,11 @@ Setting a target
 Authentication
 ==============
 
-After that, all you need is to create a user and authenticate to start creating apps and pushing code to them:
+After that, all you need is to create a user and authenticate to start creating
+apps and pushing code to them. Use `create-user
+<http://go.pkgdoc.org/github.com/globocom/tsuru/cmd/tsuru#Create_a_user>`_ and
+`login
+<http://go.pkgdoc.org/github.com/globocom/tsuru/cmd/tsuru#Authenticate_within_remote_tsuru_server>`_:
 
 .. highlight:: bash
 
@@ -36,7 +41,9 @@ Apps
 Associating your user to a team
 -------------------------------
 
-You need to be associated to a team to create an app. 
+You need to be member of a team to create an app. To create a new team, use
+`create-team
+<http://go.pkgdoc.org/github.com/globocom/tsuru/cmd/tsuru#Create_a_new_team_for_the_user>`_:
 
 .. highlight:: bash
 
@@ -47,7 +54,8 @@ You need to be associated to a team to create an app.
 Creating an app
 ---------------
 
-To create an app:
+To create an app, use `app-create
+<http://go.pkgdoc.org/github.com/globocom/tsuru/cmd/tsuru#Create_an_app>`_:
 
 .. highlight:: bash
 
@@ -55,7 +63,8 @@ To create an app:
 
     $ tsuru app-create myblog <platform>
 
-This will return your app's remote url, you should add it to your git repository:
+This will return your app's remote url, you should add it to your git
+repository:
 
 .. highlight:: bash
 
@@ -66,7 +75,9 @@ This will return your app's remote url, you should add it to your git repository
 Listing your apps
 -----------------
 
-When your app is ready, you can push to it. To check whether it is ready or not, you can use:
+When your app is ready, you can push to it. To check whether it is ready or
+not, you can use `app-list
+<http://go.pkgdoc.org/github.com/globocom/tsuru/cmd/tsuru#List_apps_that_you_have_access_to>`_:
 
 .. highlight:: bash
 
@@ -89,13 +100,15 @@ This will return something like:
 Showing app info
 ----------------
 
-You can also use the app-info command to view information of an app. Including the status of an app:
+You can also use the `app-info
+<http://go.pkgdoc.org/github.com/globocom/tsuru/cmd/tsuru#Display_information_about_an_app>`_
+command to view information of an app. Including the status of the app:
 
 .. highlight:: bash
 
 ::
 
-    $ tsuru app-info myblog
+    $ tsuru app-info
 
 This will return something like:
 
@@ -109,10 +122,16 @@ This will return something like:
     Units: 10.10.10.10, 9.9.9.9
     Teams: team1, team2
 
+Tsuru uses information from git configuration to guess the name of the app, for
+more details, see `"Guessing app names"
+<http://go.pkgdoc.org/github.com/globocom/tsuru/cmd/tsuru#Guessing_app_names>`_
+section of tsuru command documentation.
+
 Public Keys
 ===========
 
-You can try to push now, but you'll get a permission error, because you haven't pushed your key yet.
+You can try to push now, but you'll get a permission error, because you haven't
+pushed your key yet.
 
 .. highlight:: bash
 
@@ -120,9 +139,12 @@ You can try to push now, but you'll get a permission error, because you haven't 
 
     $ tsuru key-add
 
-This will search for a `id_rsa.pub` file in ~/.ssh/, if you don't have a generated key yet, you should generate one before running this command.
+This will search for a `id_rsa.pub` file in ~/.ssh/, if you don't have a
+generated key yet, you should generate one before running this command.
 
-If you have a public key in other format (for example, DSA), you can also give the public key file to ``key-add``:
+If you have a public key in other format (for example, DSA), you can also give
+the public key file to `key-add
+<http://go.pkgdoc.org/github.com/globocom/tsuru/cmd/tsuru#Add_SSH_public_key_to_tsuru_s_git_server>`_:
 
 .. highlight:: bash
 
@@ -141,20 +163,26 @@ After your key is added, you can push your application to your cloud:
 Running commands
 ================
 
-After that, you can check your app's url in the browser and see your app there. You'll probably need to run migrations or other deploy related commands.
-To run a single command, you should use the command line:
+After that, you can check your app's url in the browser and see your app there.
+You'll probably need to run migrations or other deploy related commands. To run
+a single command, you should use the command `run
+<http://go.pkgdoc.org/github.com/globocom/tsuru/cmd/tsuru#Run_an_arbitrary_command_in_the_app_machine>`_:
 
 .. highlight:: bash
 
 ::
 
-    $ tsuru run myblog env/bin/python manage.py syncdb && env/bin/python manage.py migrate
+    $ tsuru run "python manage.py syncdb && python manage.py migrate"
 
 Adding hooks
 ============
 
-By default, the commands are run from inside the app root directory, which is /home/application. If you have more complicated deploy related commands,
-you should use the app.conf pre-restart and pos-restart scripts, those are run before and after the restart of your app, which is triggered everytime you push code.
+By default, the commands are run from inside the app root directory, which is
+/home/application. If you have more complicated deploy related commands, you
+should use the app.conf pre-restart and pos-restart scripts, these are run
+before and after the restart of your app, which is triggered everytime you push
+code or call `restart
+<http://go.pkgdoc.org/github.com/globocom/tsuru/cmd/tsuru#Restart_the_app_s_application_server>`_.
 Below is an app.conf sample:
 
 .. highlight:: yaml
@@ -162,11 +190,12 @@ Below is an app.conf sample:
 ::
 
     pre-restart:
-        deploy/pre.sh
+      - deploy/pre.sh
     pos-restart:
-        deploy/pos.sh
+      - deploy/pos.sh
 
-The app.conf file is located in your app's root directory, and the scripts path in the yaml are relative to it.
+The app.conf file is located in your app's root directory, and the scripts path
+in the yaml are relative to it.
 
 Further instructions
 ====================

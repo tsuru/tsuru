@@ -88,12 +88,13 @@ func (s *S) TestServiceListShouldBeCommand(c *C) {
 }
 
 func (s *S) TestServiceBind(c *C) {
+	*appname = "g1"
 	var (
 		called         bool
 		stdout, stderr bytes.Buffer
 	)
 	ctx := cmd.Context{
-		Args:   []string{"my-mysql", "g1"},
+		Args:   []string{"my-mysql"},
 		Stdout: &stdout,
 		Stderr: &stderr,
 	}
@@ -124,10 +125,49 @@ For more details, please check the documentation for the service, using service-
 	c.Assert(stdout.String(), Equals, expected)
 }
 
+func (s *S) TestServiceBindWithoutFlag(c *C) {
+	var (
+		called         bool
+		stdout, stderr bytes.Buffer
+	)
+	ctx := cmd.Context{
+		Args:   []string{"my-mysql"},
+		Stdout: &stdout,
+		Stderr: &stderr,
+	}
+	trans := &conditionalTransport{
+		transport{
+			msg:    `["DATABASE_HOST","DATABASE_USER","DATABASE_PASSWORD"]`,
+			status: http.StatusOK,
+		},
+		func(req *http.Request) bool {
+			called = true
+			return req.Method == "PUT" && req.URL.Path == "/services/instances/my-mysql/ge"
+		},
+	}
+	client := cmd.NewClient(&http.Client{Transport: trans})
+	fake := &FakeGuesser{name: "ge"}
+	err := (&ServiceBind{GuessingCommand{g: fake}}).Run(&ctx, client)
+	c.Assert(err, IsNil)
+	c.Assert(called, Equals, true)
+	expected := `Instance my-mysql successfully binded to the app ge.
+
+The following environment variables are now available for use in your app:
+
+- DATABASE_HOST
+- DATABASE_USER
+- DATABASE_PASSWORD
+
+For more details, please check the documentation for the service, using service-doc command.
+`
+	c.Assert(stdout.String(), Equals, expected)
+}
+
 func (s *S) TestServiceBindWithRequestFailure(c *C) {
+	*appname = "g1"
 	var stdout, stderr bytes.Buffer
 	ctx := cmd.Context{
-		Args:   []string{"my-mysql", "g1"},
+		Args:   []string{"my-mysql"},
 		Stdout: &stdout,
 		Stderr: &stderr,
 	}
@@ -143,10 +183,12 @@ func (s *S) TestServiceBindWithRequestFailure(c *C) {
 
 func (s *S) TestServiceBindInfo(c *C) {
 	expected := &cmd.Info{
-		Name:    "bind",
-		Usage:   "bind <instancename> <appname>",
-		Desc:    "bind a service instance to an app",
-		MinArgs: 2,
+		Name:  "bind",
+		Usage: "bind <instancename> [--app appname]",
+		Desc: `bind a service instance to an app
+
+If you don't provide the app name, tsuru will try to guess it.`,
+		MinArgs: 1,
 	}
 	c.Assert((&ServiceBind{}).Info(), DeepEquals, expected)
 }
@@ -162,10 +204,11 @@ func (s *S) TestServiceBindIsACommand(c *C) {
 }
 
 func (s *S) TestServiceUnbind(c *C) {
+	*appname = "pocket"
 	var stdout, stderr bytes.Buffer
 	var called bool
 	ctx := cmd.Context{
-		Args:   []string{"hand", "pocket"},
+		Args:   []string{"hand"},
 		Stdout: &stdout,
 		Stderr: &stderr,
 	}
@@ -186,10 +229,37 @@ func (s *S) TestServiceUnbind(c *C) {
 	c.Assert(stdout.String(), Equals, "Instance hand successfully unbinded from the app pocket.\n")
 }
 
+func (s *S) TestServiceUnbindWithoutFlag(c *C) {
+	var stdout, stderr bytes.Buffer
+	var called bool
+	ctx := cmd.Context{
+		Args:   []string{"hand"},
+		Stdout: &stdout,
+		Stderr: &stderr,
+	}
+	trans := &conditionalTransport{
+		transport{
+			msg:    "",
+			status: http.StatusOK,
+		},
+		func(req *http.Request) bool {
+			called = true
+			return req.Method == "DELETE" && req.URL.Path == "/services/instances/hand/sleeve"
+		},
+	}
+	client := cmd.NewClient(&http.Client{Transport: trans})
+	fake := &FakeGuesser{name: "sleeve"}
+	err := (&ServiceUnbind{GuessingCommand{g: fake}}).Run(&ctx, client)
+	c.Assert(err, IsNil)
+	c.Assert(called, Equals, true)
+	c.Assert(stdout.String(), Equals, "Instance hand successfully unbinded from the app sleeve.\n")
+}
+
 func (s *S) TestServiceUnbindWithRequestFailure(c *C) {
+	*appname = "pocket"
 	var stdout, stderr bytes.Buffer
 	ctx := cmd.Context{
-		Args:   []string{"hand", "pocket"},
+		Args:   []string{"hand"},
 		Stdout: &stdout,
 		Stderr: &stderr,
 	}
@@ -205,10 +275,12 @@ func (s *S) TestServiceUnbindWithRequestFailure(c *C) {
 
 func (s *S) TestServiceUnbindInfo(c *C) {
 	expected := &cmd.Info{
-		Name:    "unbind",
-		Usage:   "unbind <instancename> <appname>",
-		Desc:    "unbind a service instance from an app",
-		MinArgs: 2,
+		Name:  "unbind",
+		Usage: "unbind <instancename> [--app appname]",
+		Desc: `unbind a service instance from an app
+
+If you don't provide the app name, tsuru will try to guess it.`,
+		MinArgs: 1,
 	}
 	c.Assert((&ServiceUnbind{}).Info(), DeepEquals, expected)
 }

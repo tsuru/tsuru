@@ -51,7 +51,8 @@ command:
     | blog        | pending |    |
     +-------------+---------+----+
 
-Once your app is ready, it will be displayed as "started" (along with its IP address or public host):
+Once your app is ready, it will be displayed as "started" (along with its IP
+address or public host):
 
 .. highlight:: bash
 
@@ -92,7 +93,7 @@ command:
 
 ::
 
-    $ tsuru app-info blog
+    $ tsuru app-info --app blog
     Application: blog
     State: started
     Repository: git@tsuruhost.com:blog.git
@@ -166,6 +167,24 @@ Then you can run:
 
     $ git push tsuru master
     Everything up-to-date
+
+And you will be also able to omit the ``--app`` flag from now on:
+
+.. highlight:: bash
+
+::
+
+    $ tsuru app-info
+    Application: blog
+    State: started
+    Repository: git@tsuruhost.com:blog.git
+    Platform: python
+    Units: 10.20.10.20
+    Teams: elasticteam
+
+For more details on the ``--app`` flag, see `"Guessing app names"
+<http://go.pkgdoc.org/github.com/globocom/tsuru/cmd/tsuru#Guessing_app_names>`_
+section of tsuru command documentation.
 
 Listing dependencies
 ====================
@@ -500,7 +519,7 @@ command:
 
 ::
 
-    $ tsuru bind blogsql blog
+    $ tsuru bind blogsql
     Instance blogsql successfully binded to the app blog.
 
     The following environment variables are now available for use in your app:
@@ -589,7 +608,9 @@ write:
 
 .. highlight:: bash
 
-    $ tsuru run blog python manage.py syncdb --noinput
+::
+
+    $ tsuru run python manage.py syncdb --noinput
     Syncing...
     Creating tables ...
     Creating table auth_permission
