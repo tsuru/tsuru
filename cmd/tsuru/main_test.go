@@ -5,8 +5,13 @@
 package main
 
 import (
+	"bytes"
+	"fmt"
 	"github.com/globocom/tsuru/cmd"
 	. "launchpad.net/gocheck"
+	"net/http"
+	"strconv"
+	"strings"
 )
 
 func (s *S) TestCommandsFromBaseManagerAreRegistered(c *C) {
@@ -171,4 +176,45 @@ func (s *S) TestAppInfoIsRegistered(c *C) {
 	list, ok := manager.Commands["app-info"]
 	c.Assert(ok, Equals, true)
 	c.Assert(list, FitsTypeOf, &AppInfo{})
+}
+
+func (s *S) TestValidateTsuruVersion(c *C) {
+	precision := len(strings.Split(version, ".")[1])
+	v, err := strconv.ParseFloat(version, 64)
+	c.Assert(err, IsNil)
+	supported := strconv.FormatFloat(v+0.1, 'f', precision, 64)
+	var buf bytes.Buffer
+	context := cmd.Context{
+		Stderr: &buf,
+	}
+	response := http.Response{
+		StatusCode: 200,
+		Header: http.Header{
+			"Supported-Tsuru": []string{supported},
+			"Supported-Crane": []string{"0.1"}, // does not matter
+		},
+	}
+	validateTsuruVersion(&response, &context)
+	expected := fmt.Sprintf(`You're using an unsupported version of tsuru client.
+
+You must have at least version %s, your current version is %s.`, supported, version)
+	c.Assert(buf.String(), Equals, expected)
+}
+
+func (s *S) TestValidateTsuruVersionMinorVersion(c *C) {
+	var buf bytes.Buffer
+	context := cmd.Context{
+		Stderr: &buf,
+	}
+	response := http.Response{
+		StatusCode: 200,
+		Header: http.Header{
+			"Supported-Tsuru": []string{version + ".1"},
+		},
+	}
+	validateTsuruVersion(&response, &context)
+	expected := fmt.Sprintf(`You're using an unsupported version of tsuru client.
+
+You must have at least version %s, your current version is %s.`, version+".1", version)
+	c.Assert(buf.String(), Equals, expected)
 }
