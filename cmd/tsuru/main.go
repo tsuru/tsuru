@@ -5,14 +5,14 @@
 package main
 
 import (
-	"flag"
 	"github.com/globocom/tsuru/cmd"
+	"launchpad.net/gnuflag"
 	"os"
 )
 
 const version = "0.1"
 
-var appname = flag.String("app", "", "App name for running app related commands.")
+var appname = gnuflag.String("app", "", "App name for running app related commands.")
 
 func buildManager(name string) *cmd.Manager {
 	m := cmd.BuildBaseManager(name, version)
@@ -42,9 +42,9 @@ func buildManager(name string) *cmd.Manager {
 }
 
 func main() {
-	flag.Parse()
+	gnuflag.Parse(true)
 	name := cmd.ExtractProgramName(os.Args[0])
 	manager := buildManager(name)
-	args := flag.Args()
+	args := gnuflag.Args()
 	manager.Run(args)
 }

@@ -69,7 +69,7 @@ Teams: tsuruteam, crane
 func (s *S) TestAppInfoInfo(c *C) {
 	expected := &cmd.Info{
 		Name:  "app-info",
-		Usage: "app-info [-app appname]",
+		Usage: "app-info [--app appname]",
 		Desc: `show information about your app.
 
 If you don't provide the app name, tsuru will try to guess it.`,
@@ -213,7 +213,7 @@ func (s *S) TestAppRemoveWithoutConfirmation(c *C) {
 func (s *S) TestAppRemoveInfo(c *C) {
 	expected := &cmd.Info{
 		Name:  "app-remove",
-		Usage: "app-remove [-app appname]",
+		Usage: "app-remove [--app appname]",
 		Desc: `removes an app.
 
 If you don't provide the app name, tsuru will try to guess it.`,
@@ -257,7 +257,7 @@ func (s *S) TestAppGrantWithoutFlag(c *C) {
 func (s *S) TestAppGrantInfo(c *C) {
 	expected := &cmd.Info{
 		Name:  "app-grant",
-		Usage: "app-grant <teamname> [-app appname]",
+		Usage: "app-grant <teamname> [--app appname]",
 		Desc: `grants access to an app to a team.
 
 If you don't provide the app name, tsuru will try to guess it.`,
@@ -301,7 +301,7 @@ func (s *S) TestAppRevokeWithoutFlag(c *C) {
 func (s *S) TestAppRevokeInfo(c *C) {
 	expected := &cmd.Info{
 		Name:  "app-revoke",
-		Usage: "app-revoke <teamname> [-app appname]",
+		Usage: "app-revoke <teamname> [--app appname]",
 		Desc: `revokes access to an app from a team.
 
 If you don't provide the app name, tsuru will try to guess it.`,
@@ -376,7 +376,7 @@ func (s *S) TestAppLogShouldReturnNilIfHasNoContent(c *C) {
 func (s *S) TestAppLogInfo(c *C) {
 	expected := &cmd.Info{
 		Name:  "log",
-		Usage: "log [-app appname]",
+		Usage: "log [--app appname]",
 		Desc: `show logs for an app.
 
 If you don't provide the app name, tsuru will try to guess it.`,
@@ -442,7 +442,7 @@ func (s *S) TestAppRestartWithoutTheFlag(c *C) {
 func (s *S) TestAppRestartInfo(c *C) {
 	expected := &cmd.Info{
 		Name:  "restart",
-		Usage: "restart [-app appname]",
+		Usage: "restart [--app appname]",
 		Desc: `restarts an app.
 
 If you don't provide the app name, tsuru will try to guess it.`,

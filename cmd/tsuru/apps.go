@@ -22,7 +22,7 @@ type AppInfo struct {
 func (c *AppInfo) Info() *cmd.Info {
 	return &cmd.Info{
 		Name:  "app-info",
-		Usage: "app-info [-app appname]",
+		Usage: "app-info [--app appname]",
 		Desc: `show information about your app.
 
 If you don't provide the app name, tsuru will try to guess it.`,
@@ -98,7 +98,7 @@ type AppGrant struct {
 func (c *AppGrant) Info() *cmd.Info {
 	return &cmd.Info{
 		Name:  "app-grant",
-		Usage: "app-grant <teamname> [-app appname]",
+		Usage: "app-grant <teamname> [--app appname]",
 		Desc: `grants access to an app to a team.
 
 If you don't provide the app name, tsuru will try to guess it.`,
@@ -132,7 +132,7 @@ type AppRevoke struct {
 func (c *AppRevoke) Info() *cmd.Info {
 	return &cmd.Info{
 		Name:  "app-revoke",
-		Usage: "app-revoke <teamname> [-app appname]",
+		Usage: "app-revoke <teamname> [--app appname]",
 		Desc: `revokes access to an app from a team.
 
 If you don't provide the app name, tsuru will try to guess it.`,
@@ -266,7 +266,7 @@ type AppRemove struct {
 func (c *AppRemove) Info() *cmd.Info {
 	return &cmd.Info{
 		Name:  "app-remove",
-		Usage: "app-remove [-app appname]",
+		Usage: "app-remove [--app appname]",
 		Desc: `removes an app.
 
 If you don't provide the app name, tsuru will try to guess it.`,
@@ -303,7 +303,7 @@ type AppLog struct {
 func (c *AppLog) Info() *cmd.Info {
 	return &cmd.Info{
 		Name:  "log",
-		Usage: "log [-app appname]",
+		Usage: "log [--app appname]",
 		Desc: `show logs for an app.
 
 If you don't provide the app name, tsuru will try to guess it.`,
@@ -375,7 +375,7 @@ func (c *AppRestart) Run(context *cmd.Context, client cmd.Doer) error {
 func (c *AppRestart) Info() *cmd.Info {
 	return &cmd.Info{
 		Name:  "restart",
-		Usage: "restart [-app appname]",
+		Usage: "restart [--app appname]",
 		Desc: `restarts an app.
 
 If you don't provide the app name, tsuru will try to guess it.`,

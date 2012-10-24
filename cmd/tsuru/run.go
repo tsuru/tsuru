@@ -25,7 +25,7 @@ If you don't provide the app name, tsuru will try to guess it.
 `
 	return &cmd.Info{
 		Name:    "run",
-		Usage:   `run <command> [commandarg1] [commandarg2] ... [commandargn] [-app appname]`,
+		Usage:   `run <command> [commandarg1] [commandarg2] ... [commandargn] [--app appname]`,
 		Desc:    desc,
 		MinArgs: 1,
 	}
