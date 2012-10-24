@@ -86,10 +86,16 @@ func (sa *ServiceAdd) Run(ctx *cmd.Context, client cmd.Doer) error {
 	return nil
 }
 
-type ServiceBind struct{}
+type ServiceBind struct {
+	GuessingCommand
+}
 
 func (sb *ServiceBind) Run(ctx *cmd.Context, client cmd.Doer) error {
-	instanceName, appName := ctx.Args[0], ctx.Args[1]
+	appName, err := sb.Guess()
+	if err != nil {
+		return err
+	}
+	instanceName := ctx.Args[0]
 	url := cmd.GetUrl("/services/instances/" + instanceName + "/" + appName)
 	request, err := http.NewRequest("PUT", url, nil)
 	if err != nil {
@@ -125,10 +131,12 @@ For more details, please check the documentation for the service, using service-
 
 func (sb *ServiceBind) Info() *cmd.Info {
 	return &cmd.Info{
-		Name:    "bind",
-		Usage:   "bind <instancename> <appname>",
-		Desc:    "bind a service instance to an app",
-		MinArgs: 2,
+		Name:  "bind",
+		Usage: "bind <instancename> [--app appname]",
+		Desc: `bind a service instance to an app
+
+If you don't provide the app name, tsuru will try to guess it.`,
+		MinArgs: 1,
 	}
 }
 
