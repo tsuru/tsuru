@@ -204,10 +204,11 @@ func (s *S) TestServiceBindIsACommand(c *C) {
 }
 
 func (s *S) TestServiceUnbind(c *C) {
+	*appname = "pocket"
 	var stdout, stderr bytes.Buffer
 	var called bool
 	ctx := cmd.Context{
-		Args:   []string{"hand", "pocket"},
+		Args:   []string{"hand"},
 		Stdout: &stdout,
 		Stderr: &stderr,
 	}
@@ -228,10 +229,37 @@ func (s *S) TestServiceUnbind(c *C) {
 	c.Assert(stdout.String(), Equals, "Instance hand successfully unbinded from the app pocket.\n")
 }
 
+func (s *S) TestServiceUnbindWithoutFlag(c *C) {
+	var stdout, stderr bytes.Buffer
+	var called bool
+	ctx := cmd.Context{
+		Args:   []string{"hand"},
+		Stdout: &stdout,
+		Stderr: &stderr,
+	}
+	trans := &conditionalTransport{
+		transport{
+			msg:    "",
+			status: http.StatusOK,
+		},
+		func(req *http.Request) bool {
+			called = true
+			return req.Method == "DELETE" && req.URL.Path == "/services/instances/hand/sleeve"
+		},
+	}
+	client := cmd.NewClient(&http.Client{Transport: trans})
+	fake := &FakeGuesser{name: "sleeve"}
+	err := (&ServiceUnbind{GuessingCommand{g: fake}}).Run(&ctx, client)
+	c.Assert(err, IsNil)
+	c.Assert(called, Equals, true)
+	c.Assert(stdout.String(), Equals, "Instance hand successfully unbinded from the app sleeve.\n")
+}
+
 func (s *S) TestServiceUnbindWithRequestFailure(c *C) {
+	*appname = "pocket"
 	var stdout, stderr bytes.Buffer
 	ctx := cmd.Context{
-		Args:   []string{"hand", "pocket"},
+		Args:   []string{"hand"},
 		Stdout: &stdout,
 		Stderr: &stderr,
 	}
@@ -247,10 +275,12 @@ func (s *S) TestServiceUnbindWithRequestFailure(c *C) {
 
 func (s *S) TestServiceUnbindInfo(c *C) {
 	expected := &cmd.Info{
-		Name:    "unbind",
-		Usage:   "unbind <instancename> <appname>",
-		Desc:    "unbind a service instance from an app",
-		MinArgs: 2,
+		Name:  "unbind",
+		Usage: "unbind <instancename> [--app appname]",
+		Desc: `unbind a service instance from an app
+
+If you don't provide the app name, tsuru will try to guess it.`,
+		MinArgs: 1,
 	}
 	c.Assert((&ServiceUnbind{}).Info(), DeepEquals, expected)
 }

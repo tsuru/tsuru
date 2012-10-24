@@ -140,10 +140,16 @@ If you don't provide the app name, tsuru will try to guess it.`,
 	}
 }
 
-type ServiceUnbind struct{}
+type ServiceUnbind struct {
+	GuessingCommand
+}
 
 func (su *ServiceUnbind) Run(ctx *cmd.Context, client cmd.Doer) error {
-	instanceName, appName := ctx.Args[0], ctx.Args[1]
+	appName, err := su.Guess()
+	if err != nil {
+		return err
+	}
+	instanceName := ctx.Args[0]
 	url := cmd.GetUrl("/services/instances/" + instanceName + "/" + appName)
 	request, err := http.NewRequest("DELETE", url, nil)
 	if err != nil {
@@ -166,10 +172,12 @@ func (su *ServiceUnbind) Run(ctx *cmd.Context, client cmd.Doer) error {
 
 func (su *ServiceUnbind) Info() *cmd.Info {
 	return &cmd.Info{
-		Name:    "unbind",
-		Usage:   "unbind <instancename> <appname>",
-		Desc:    "unbind a service instance from an app",
-		MinArgs: 2,
+		Name:  "unbind",
+		Usage: "unbind <instancename> [--app appname]",
+		Desc: `unbind a service instance from an app
+
+If you don't provide the app name, tsuru will try to guess it.`,
+		MinArgs: 1,
 	}
 }
 
