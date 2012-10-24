@@ -5,26 +5,14 @@
 package main
 
 import (
-	"fmt"
 	"github.com/globocom/tsuru/cmd"
 	"launchpad.net/gnuflag"
-	"net/http"
 	"os"
 )
 
 const version = "0.2"
 
 var appname = gnuflag.String("app", "", "App name for running app related commands.")
-
-func validateTsuruVersion(resp *http.Response, context *cmd.Context) {
-	format := `You're using an unsupported version of tsuru client.
-
-You must have at least version %s, your current version is %s.`
-	supportedHeader := resp.Header.Get("Supported-Tsuru")
-	if !cmd.ValidateVersion(supportedHeader, version) {
-		fmt.Fprintf(context.Stderr, format, supportedHeader, version)
-	}
-}
 
 func buildManager(name string) *cmd.Manager {
 	m := cmd.BuildBaseManager(name, version)
