@@ -336,6 +336,6 @@ func (s *S) TestValidateVersion(c *C) {
 		},
 	}
 	for _, cs := range cases {
-		c.Assert(ValidateVersion(cs.support, cs.current), Equals, cs.expected)
+		c.Assert(validateVersion(cs.support, cs.current), Equals, cs.expected)
 	}
 }

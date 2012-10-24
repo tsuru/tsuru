@@ -204,9 +204,9 @@ func filesystem() fs.Fs {
 	return fsystem
 }
 
-// ValidateVersion checks whether current version is greater or equal to
+// validateVersion checks whether current version is greater or equal to
 // supported version.
-func ValidateVersion(supported, current string) bool {
+func validateVersion(supported, current string) bool {
 	var (
 		bigger bool
 		limit  int
