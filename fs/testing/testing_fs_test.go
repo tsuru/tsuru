@@ -106,6 +106,22 @@ func (s *S) TestFakeFileWriteString(c *C) {
 	c.Assert(f.content, Equals, "break")
 }
 
+func (s *S) TestFakeFileTruncateSetsCurrentToZero(c *C) {
+	content := "Guardian"
+	f := &FakeFile{content: content}
+	err := f.Truncate(0)
+	c.Assert(err, IsNil)
+	c.Assert(f.current, Equals, int64(0))
+}
+
+func (s *S) TestFakeFileTruncateStripsContentWithN(c *C) {
+	content := "Guardian"
+	f := &FakeFile{content: content}
+	err := f.Truncate(4)
+	c.Assert(err, IsNil)
+	c.Assert(f.content, Equals, "Guar")
+}
+
 func (s *S) TestRecordingFsPointerShouldImplementFsInterface(c *C) {
 	var fs fs.Fs
 	c.Assert(&RecordingFs{}, Implements, &fs)
