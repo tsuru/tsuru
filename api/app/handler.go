@@ -451,7 +451,7 @@ func AppLog(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	if err != nil {
 		return err
 	}
-	err = db.Session.Apps().Find(bson.M{}).Select(selector).One(&app)
+	err = db.Session.Apps().Find(bson.M{"name": appName}).Select(selector).One(&app)
 	if err != nil {
 		return err
 	}

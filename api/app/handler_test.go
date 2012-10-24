@@ -1641,6 +1641,61 @@ func (s *S) TestAppLogSelectByLines(c *C) {
 	c.Assert(logs, HasLen, 10)
 }
 
+func (s *S) TestAppLogShouldReturnLogByApp(c *C) {
+	app1 := App{
+		Name:      "app1",
+		Framework: "vougan",
+		Teams:     []string{s.team.Name},
+	}
+	err := createApp(&app1)
+	defer app1.destroy()
+	c.Assert(err, IsNil)
+	app1.log("app1 log")
+	app2 := App{
+		Name:      "app2",
+		Framework: "vougan",
+		Teams:     []string{s.team.Name},
+	}
+	err = createApp(&app2)
+	defer app2.destroy()
+	c.Assert(err, IsNil)
+	app2.log("app2 log")
+	app3 := App{
+		Name:      "app3",
+		Framework: "vougan",
+		Teams:     []string{s.team.Name},
+	}
+	err = createApp(&app3)
+	defer app3.destroy()
+	c.Assert(err, IsNil)
+	app3.log("app3 log")
+	url := fmt.Sprintf("/apps/%s/log/?:name=%s", app3.Name, app3.Name)
+	request, err := http.NewRequest("GET", url, nil)
+	c.Assert(err, IsNil)
+	recorder := httptest.NewRecorder()
+	request.Header.Set("Content-Type", "application/json")
+	err = AppLog(recorder, request, s.user)
+	c.Assert(err, IsNil)
+	c.Assert(recorder.Code, Equals, http.StatusOK)
+	body, err := ioutil.ReadAll(recorder.Body)
+	c.Assert(err, IsNil)
+	logs := []applog{}
+	err = json.Unmarshal(body, &logs)
+	c.Assert(err, IsNil)
+	var logged bool
+	for _, log := range logs {
+		// Should not show the app1 log
+		c.Assert(log.Message, Not(Equals), "app1 log")
+		// Should not show the app2 log
+		c.Assert(log.Message, Not(Equals), "app2 log")
+		if log.Message == "app3 log" {
+			logged = true
+		}
+	}
+	// Should show the app3 log
+	c.Assert(logged, Equals, true)
+}
+
 func (s *S) TestGetTeamNamesReturnTheNameOfTeamsThatTheUserIsMember(c *C) {
 	one := &auth.User{Email: "imone@thewho.com", Password: "123"}
 	who := auth.Team{Name: "TheWho", Users: []string{one.Email}}
