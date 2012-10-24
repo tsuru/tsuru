@@ -1610,7 +1610,35 @@ func (s *S) TestLogShouldAppLog(c *C) {
 	logs := []applog{}
 	err = json.Unmarshal(body, &logs)
 	c.Assert(err, IsNil)
-	c.Assert(logs, DeepEquals, logs)
+	a.Get()
+	c.Assert(a.Logs, DeepEquals, logs)
+}
+
+func (s *S) TestLogLines(c *C) {
+	a := App{
+		Name:      "lost",
+		Framework: "vougan",
+		Teams:     []string{s.team.Name},
+	}
+	err := createApp(&a)
+	c.Assert(err, IsNil)
+	for i := 0; i < 15; i++ {
+		a.log(string(i))
+	}
+	url := fmt.Sprintf("/apps/%s/log/?:name=%s&lines=10", a.Name, a.Name)
+	request, err := http.NewRequest("GET", url, nil)
+	c.Assert(err, IsNil)
+	recorder := httptest.NewRecorder()
+	request.Header.Set("Content-Type", "application/json")
+	err = AppLog(recorder, request, s.user)
+	c.Assert(err, IsNil)
+	c.Assert(recorder.Code, Equals, http.StatusOK)
+	body, err := ioutil.ReadAll(recorder.Body)
+	c.Assert(err, IsNil)
+	logs := []applog{}
+	err = json.Unmarshal(body, &logs)
+	c.Assert(err, IsNil)
+	c.Assert(logs, HasLen, 10)
 }
 
 func (s *S) TestGetTeamNamesReturnTheNameOfTeamsThatTheUserIsMember(c *C) {

@@ -18,6 +18,7 @@ import (
 	"labix.org/v2/mgo/bson"
 	"net/http"
 	"regexp"
+	"strconv"
 	"strings"
 )
 
@@ -438,7 +439,19 @@ func UnsetEnv(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 
 func AppLog(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	appName := r.URL.Query().Get(":name")
+	var selector bson.M
+	if l := r.URL.Query().Get("lines"); l != "" {
+		lines, err := strconv.Atoi(l)
+		selector = bson.M{"logs": bson.M{"$slice": lines}}
+		if err != nil {
+			return err
+		}
+	}
 	app, err := getAppOrError(appName, u)
+	if err != nil {
+		return err
+	}
+	err = db.Session.Apps().Find(bson.M{}).Select(selector).One(&app)
 	if err != nil {
 		return err
 	}
