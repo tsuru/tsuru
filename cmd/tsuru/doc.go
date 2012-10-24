@@ -55,6 +55,27 @@ The currently available commands are (grouped by subject):
 Use "tsuru help <command>" for more information about a command.
 
 
+Guessing app names
+
+In some app-related commands (app-remove, app-info, app-grant, app-revoke, log,
+run, restart, env-get, env-set, env-unset, bind and unbind), there is an
+optional parameter --app, used to specify the name of the app.
+
+The --app parameter is optional, if omitted, tsuru will try to "guess" the name
+of the app based in the configuration of the git repository. It will try to
+find a remove labeled "tsuru", and parse its url.
+
+For example, if the file ".git/config" in you git repository contains the
+following remote declaration:
+
+	[remote "tsuru"]
+	url = git@tsuruhost.com:gopher.git
+	fetch = +refs/heads/*:refs/remotes/tsuru/*
+
+When you run "tsuru app-info" without specifying the app, tsuru would display
+information for the app "gopher".
+
+
 Change or retrieve remote tsuru server
 
 Usage:
@@ -204,12 +225,14 @@ Remove an app
 
 Usage:
 
-	% tsuru app-remove <app-name>
+	% tsuru app-remove [--app appname]
 
 app-remove removes an app. If the app is binded to any service instance, it
 will be unbinded before be removed (see "tsuru unbind"). You need to be a
 member of a team that has access to the app to be able to remove it (you are
 able to remove any app that you see in "tsuru app-list").
+
+The --app flag is optional, see "Guessing app names" section for more details.
 
 
 List apps that you have access to
@@ -226,56 +249,63 @@ Display information about an app
 
 Usage:
 
-	% tsuru app-info <app-name>
+	% tsuru app-info [--app name]
 
 app-info will display some informations about an specific app (its state,
 platform, git repository, etc.). You need to be a member of a team that access
 to the app to be able to see informations about it.
+
+The --app flag is optional, see "Guessing app names" section for more details.
 
 
 Allow a team to access an app
 
 Usage:
 
-	% tsuru app-grant <app-name> <team-name>
+	% tsuru app-grant <team-name> [--app appname]
 
 app-grant will allow a team to access an app. You need to be a member of a team
 that has access to the app to allow another team to access it.
+
+The --app flag is optional, see "Guessing app names" section for more details.
 
 
 Revoke from a team access to an app
 
 Usage:
 
-	% tsuru app-revoke <app-name> <team-name>
+	% tsuru app-revoke <team-name> [--app appname]
 
 app-revoke will revoke the permission to access an app from a team. You need to
 have access to the app to revoke access from a team.
 
 An app cannot be orphaned, so it will always have at least one authorized team.
 
+The --app flag is optional, see "Guessing app names" section for more details.
+
 
 See app's logs
 
 Usage:
 
-	% tsuru log <app-name>
+	% tsuru log [--app appname]
 
 Log will show log entries for an app. These logs are not related to the code of
 the app itself, but to actions of the app in tsuru server (deployments,
 restarts, etc.).
+
+The --app flag is optional, see "Guessing app names" section for more details.
 
 
 Run an arbitrary command in the app machine
 
 Usage:
 
-	% tsuru run <app-name> <command> [commandarg1] [commandarg2] ... [commandargn]
+	% tsuru run <command> [commandarg1] [commandarg2] ... [commandargn] [--app appname]
 
 Run will run an arbitrary command in the app machine. Base directory for all
 commands is the root of the app. For example, in a Django app, "tsuru run" may
 show the following output:
-
 
 	% tsuru run polls ls
 	app.conf
@@ -292,22 +322,26 @@ show the following output:
 	urls.py
 	urls.pyc
 
+The --app flag is optional, see "Guessing app names" section for more details.
+
 
 Restart the app's application server
 
 Usage:
 
-	% tsuru restart <app-name>
+	% tsuru restart [--app appname]
 
 Restart will restart the application server (as defined in Procfile) of the
 application.
+
+The --app flag is optional, see "Guessing app names" section for more details.
 
 
 Display environment variables of an application
 
 Usage:
 
-	% tsuru env-get <app-name> [variable-names]
+	% tsuru env-get [--app appname] [variable-names]
 
 env-get will display the name and the value of environment variables exported
 in the application's environment. If none name is given, it will display the
@@ -330,12 +364,14 @@ command retrieves all variables. In the last command, we ask for an undefined
 variable, and env-get fails silently. All environment variable related commands
 fail silently.
 
+The --app flag is optional, see "Guessing app names" section for more details.
+
 
 Define the value of one or more environment variables
 
 Usage:
 
-	% tsuru env-set <app-name> <NAME_1=VALUE_1> [NAME_2=VALUE_2] ... [NAME_N=VALUE_N]
+	% tsuru env-set <NAME_1=VALUE_1> [NAME_2=VALUE_2] ... [NAME_N=VALUE_N] [--app appname]
 
 env-set will (re)define environment variables for your app.  You can specify
 one or more environment variables to (re)define. env-set cannot redefine
@@ -351,12 +387,14 @@ use:
 
 Notice that env-set will fail silently to redefine private variables.
 
+The --app flag is optional, see "Guessing app names" section for more details.
+
 
 Undefine an environment variable
 
 Usage:
 
-	% tsuru env-unset <app-name> <NAME_1> [NAME_2] ... [NAME_N]
+	% tsuru env-unset <NAME_1> [NAME_2] ... [NAME_N] [--app appname]
 
 env-unset will undefine environments variables in your app.  You can specify
 one or more environment variables to undefine.  env-unset cannot remove private
@@ -368,12 +406,14 @@ variables. Examples of use:
 
 Notice that env-unset will fail silently to undefine private variables.
 
+The --app flag is optional, see "Guessing app names" section for more details.
+
 
 Bind an application to a service instance
 
 Usage:
 
-	% tsuru bind <instance-name> <app-name>
+	% tsuru bind <instance-name> [--app appname]
 
 Bind will bind an application to a service instance (see service-add for more
 details on how to create a service instance).
@@ -382,16 +422,20 @@ When binding an application to a service instance, tsuru will add new
 environment variables to the app. All environment variables exported by bind
 will be private (not accessible via env-get).
 
+The --app flag is optional, see "Guessing app names" section for more details.
+
 
 Unbind an application from a service instance
 
 Usage:
 
-	% tsuru unbind <instance-name> <app-name>
+	% tsuru unbind <instance-name> [--app appname]
 
 Unbind will unbind an application from a service instance.  After unbinding,
 the instance will not be available anymore.  For example, when unbinding an
 application from a MySQL service, the app would lose access to the database.
+
+The --app flag is optional, see "Guessing app names" section for more details.
 
 
 List available services and instances
