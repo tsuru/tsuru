@@ -199,8 +199,8 @@ func (s *S) TestRequestEnvUrl(c *C) {
 	*appname = "someapp"
 	result := "DATABASE_HOST=somehost"
 	client := cmd.NewClient(&http.Client{Transport: &transport{msg: result, status: http.StatusOK}})
-	context := cmd.Context{Args: []string{"DATABASE_HOST"}}
-	b, err := requestEnvUrl("GET", GuessingCommand{g: &FakeGuesser{name: "someapp"}}, &context, client)
+	args := []string{"DATABASE_HOST"}
+	b, err := requestEnvUrl("GET", GuessingCommand{g: &FakeGuesser{name: "someapp"}}, args, client)
 	c.Assert(err, IsNil)
 	c.Assert(b, Equals, result)
 }
