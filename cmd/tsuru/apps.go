@@ -344,10 +344,15 @@ func (c *AppLog) Run(context *cmd.Context, client cmd.Doer) error {
 	return err
 }
 
-type AppRestart struct{}
+type AppRestart struct {
+	GuessingCommand
+}
 
 func (c *AppRestart) Run(context *cmd.Context, client cmd.Doer) error {
-	appName := context.Args[0]
+	appName, err := c.Guess()
+	if err != nil {
+		return err
+	}
 	url := cmd.GetUrl(fmt.Sprintf("/apps/%s/restart", appName))
 	request, err := http.NewRequest("GET", url, nil)
 	if err != nil {
@@ -368,8 +373,8 @@ func (c *AppRestart) Run(context *cmd.Context, client cmd.Doer) error {
 func (c *AppRestart) Info() *cmd.Info {
 	return &cmd.Info{
 		Name:    "restart",
-		Usage:   "restart <appname>",
+		Usage:   "restart [-app appname]",
 		Desc:    "restarts an app.",
-		MinArgs: 1,
+		MinArgs: 0,
 	}
 }

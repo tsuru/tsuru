@@ -384,12 +384,12 @@ func (s *S) TestAppLogInfo(c *C) {
 }
 
 func (s *S) TestAppRestart(c *C) {
+	*appname = "handful_of_nothing"
 	var (
 		called         bool
 		stdout, stderr bytes.Buffer
 	)
 	context := cmd.Context{
-		Args:   []string{"handful_of_nothing"},
 		Stdout: &stdout,
 		Stderr: &stderr,
 	}
@@ -410,12 +410,39 @@ func (s *S) TestAppRestart(c *C) {
 	c.Assert(stdout.String(), Equals, "Restarted")
 }
 
+func (s *S) TestAppRestartWithoutTheFlag(c *C) {
+	var (
+		called         bool
+		stdout, stderr bytes.Buffer
+	)
+	context := cmd.Context{
+		Stdout: &stdout,
+		Stderr: &stderr,
+	}
+	trans := &conditionalTransport{
+		transport{
+			msg:    "Restarted",
+			status: http.StatusOK,
+		},
+		func(req *http.Request) bool {
+			called = true
+			return req.URL.Path == "/apps/motorbreath/restart" && req.Method == "GET"
+		},
+	}
+	client := cmd.NewClient(&http.Client{Transport: trans})
+	fake := &FakeGuesser{name: "motorbreath"}
+	err := (&AppRestart{GuessingCommand{g: fake}}).Run(&context, client)
+	c.Assert(err, IsNil)
+	c.Assert(called, Equals, true)
+	c.Assert(stdout.String(), Equals, "Restarted")
+}
+
 func (s *S) TestAppRestartInfo(c *C) {
 	expected := &cmd.Info{
 		Name:    "restart",
-		Usage:   "restart <appname>",
+		Usage:   "restart [-app appname]",
 		Desc:    "restarts an app.",
-		MinArgs: 1,
+		MinArgs: 0,
 	}
 	c.Assert((&AppRestart{}).Info(), DeepEquals, expected)
 }
