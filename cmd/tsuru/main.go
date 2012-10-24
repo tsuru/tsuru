@@ -10,7 +10,7 @@ import (
 	"os"
 )
 
-const version = "0.1"
+const version = "0.2"
 
 var appname = gnuflag.String("app", "", "App name for running app related commands.")
 
