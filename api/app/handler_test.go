@@ -1589,7 +1589,7 @@ func (s *S) TestLogReturnsForbiddenIfTheGivenUserDoesNotHaveAccessToTheApp(c *C)
 	c.Assert(e.Code, Equals, http.StatusForbidden)
 }
 
-func (s *S) TestLogShouldAppLog(c *C) {
+func (s *S) TestAppLog(c *C) {
 	a := App{
 		Name:      "lost",
 		Framework: "vougan",
@@ -1614,7 +1614,7 @@ func (s *S) TestLogShouldAppLog(c *C) {
 	c.Assert(a.Logs, DeepEquals, logs)
 }
 
-func (s *S) TestLogLines(c *C) {
+func (s *S) TestAppLogSelectByLines(c *C) {
 	a := App{
 		Name:      "lost",
 		Framework: "vougan",
