@@ -75,7 +75,7 @@ func (c *userCreate) Run(context *Context, client Doer) error {
 	if err != nil {
 		return err
 	}
-	_, err = client.Do(request)
+	_, err = client.Do(request, context)
 	if err != nil {
 		return err
 	}
@@ -105,7 +105,7 @@ func (c *login) Run(context *Context, client Doer) error {
 	if err != nil {
 		return err
 	}
-	response, err := client.Do(request)
+	response, err := client.Do(request, context)
 	if err != nil {
 		return err
 	}
@@ -173,7 +173,7 @@ func (c *teamCreate) Run(context *Context, client Doer) error {
 	if err != nil {
 		return err
 	}
-	_, err = client.Do(request)
+	_, err = client.Do(request, context)
 	if err != nil {
 		return err
 	}
@@ -199,7 +199,7 @@ func (c *teamUserAdd) Run(context *Context, client Doer) error {
 	if err != nil {
 		return err
 	}
-	_, err = client.Do(request)
+	_, err = client.Do(request, context)
 	if err != nil {
 		return err
 	}
@@ -225,7 +225,7 @@ func (c *teamUserRemove) Run(context *Context, client Doer) error {
 	if err != nil {
 		return err
 	}
-	_, err = client.Do(request)
+	_, err = client.Do(request, context)
 	if err != nil {
 		return err
 	}
@@ -249,7 +249,7 @@ func (c *teamList) Run(context *Context, client Doer) error {
 	if err != nil {
 		return err
 	}
-	resp, err := client.Do(request)
+	resp, err := client.Do(request, context)
 	if err != nil {
 		return err
 	}

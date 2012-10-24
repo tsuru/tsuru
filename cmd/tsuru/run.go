@@ -42,7 +42,7 @@ func (c *AppRun) Run(context *cmd.Context, client cmd.Doer) error {
 	if err != nil {
 		return err
 	}
-	r, err := client.Do(request)
+	r, err := client.Do(request, context)
 	if err != nil {
 		return err
 	}

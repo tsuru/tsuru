@@ -26,12 +26,12 @@ func (s *ServiceList) Info() *cmd.Info {
 	}
 }
 
-func (s *ServiceList) Run(ctx *cmd.Context, client cmd.Doer) error {
+func (s *ServiceList) Run(context *cmd.Context, client cmd.Doer) error {
 	req, err := http.NewRequest("GET", cmd.GetUrl("/services/instances"), nil)
 	if err != nil {
 		return err
 	}
-	resp, err := client.Do(req)
+	resp, err := client.Do(req, context)
 	if err != nil {
 		return err
 	}
@@ -44,7 +44,7 @@ func (s *ServiceList) Run(ctx *cmd.Context, client cmd.Doer) error {
 	if err != nil {
 		return err
 	}
-	n, err := ctx.Stdout.Write(rslt)
+	n, err := context.Stdout.Write(rslt)
 	if n != len(rslt) {
 		return errors.New("Failed to write the output of the command")
 	}
@@ -68,8 +68,8 @@ Will add a new instance of the "mongodb" service, named "tsuru_mongodb".`
 	}
 }
 
-func (sa *ServiceAdd) Run(ctx *cmd.Context, client cmd.Doer) error {
-	srvName, instName := ctx.Args[0], ctx.Args[1]
+func (sa *ServiceAdd) Run(context *cmd.Context, client cmd.Doer) error {
+	srvName, instName := context.Args[0], context.Args[1]
 	fmtBody := fmt.Sprintf(`{"name": "%s", "service_name": "%s"}`, instName, srvName)
 	b := bytes.NewBufferString(fmtBody)
 	url := cmd.GetUrl("/services/instances")
@@ -78,11 +78,11 @@ func (sa *ServiceAdd) Run(ctx *cmd.Context, client cmd.Doer) error {
 	if err != nil {
 		return err
 	}
-	_, err = client.Do(request)
+	_, err = client.Do(request, context)
 	if err != nil {
 		return err
 	}
-	fmt.Fprint(ctx.Stdout, "Service successfully added.\n")
+	fmt.Fprint(context.Stdout, "Service successfully added.\n")
 	return nil
 }
 
@@ -90,18 +90,18 @@ type ServiceBind struct {
 	GuessingCommand
 }
 
-func (sb *ServiceBind) Run(ctx *cmd.Context, client cmd.Doer) error {
+func (sb *ServiceBind) Run(context *cmd.Context, client cmd.Doer) error {
 	appName, err := sb.Guess()
 	if err != nil {
 		return err
 	}
-	instanceName := ctx.Args[0]
+	instanceName := context.Args[0]
 	url := cmd.GetUrl("/services/instances/" + instanceName + "/" + appName)
 	request, err := http.NewRequest("PUT", url, nil)
 	if err != nil {
 		return err
 	}
-	resp, err := client.Do(request)
+	resp, err := client.Do(request, context)
 	if err != nil {
 		return err
 	}
@@ -119,7 +119,7 @@ The following environment variables are now available for use in your app:
 For more details, please check the documentation for the service, using service-doc command.
 `, strings.Join(variables, "\n- "))
 	}
-	n, err := fmt.Fprint(ctx.Stdout, msg)
+	n, err := fmt.Fprint(context.Stdout, msg)
 	if err != nil {
 		return err
 	}
@@ -144,23 +144,23 @@ type ServiceUnbind struct {
 	GuessingCommand
 }
 
-func (su *ServiceUnbind) Run(ctx *cmd.Context, client cmd.Doer) error {
+func (su *ServiceUnbind) Run(context *cmd.Context, client cmd.Doer) error {
 	appName, err := su.Guess()
 	if err != nil {
 		return err
 	}
-	instanceName := ctx.Args[0]
+	instanceName := context.Args[0]
 	url := cmd.GetUrl("/services/instances/" + instanceName + "/" + appName)
 	request, err := http.NewRequest("DELETE", url, nil)
 	if err != nil {
 		return err
 	}
-	_, err = client.Do(request)
+	_, err = client.Do(request, context)
 	if err != nil {
 		return err
 	}
 	msg := fmt.Sprintf("Instance %s successfully unbinded from the app %s.\n", instanceName, appName)
-	n, err := fmt.Fprint(ctx.Stdout, msg)
+	n, err := fmt.Fprint(context.Stdout, msg)
 	if err != nil {
 		return err
 	}
@@ -197,14 +197,14 @@ e.g.:
 	}
 }
 
-func (c *ServiceInstanceStatus) Run(ctx *cmd.Context, client cmd.Doer) error {
-	instName := ctx.Args[0]
+func (c *ServiceInstanceStatus) Run(context *cmd.Context, client cmd.Doer) error {
+	instName := context.Args[0]
 	url := cmd.GetUrl("/services/instances/" + instName + "/status")
 	request, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return err
 	}
-	resp, err := client.Do(request)
+	resp, err := client.Do(request, context)
 	if err != nil {
 		return err
 	}
@@ -214,7 +214,7 @@ func (c *ServiceInstanceStatus) Run(ctx *cmd.Context, client cmd.Doer) error {
 		return err
 	}
 	msg := string(bMsg) + "\n"
-	n, err := fmt.Fprint(ctx.Stdout, msg)
+	n, err := fmt.Fprint(context.Stdout, msg)
 	if err != nil {
 		return err
 	}
@@ -245,14 +245,14 @@ type ServiceInstanceModel struct {
 	Apps []string
 }
 
-func (c *ServiceInfo) Run(ctx *cmd.Context, client cmd.Doer) error {
-	serviceName := ctx.Args[0]
+func (c *ServiceInfo) Run(context *cmd.Context, client cmd.Doer) error {
+	serviceName := context.Args[0]
 	url := cmd.GetUrl("/services/" + serviceName)
 	request, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return err
 	}
-	resp, err := client.Do(request)
+	resp, err := client.Do(request, context)
 	if err != nil {
 		return err
 	}
@@ -266,7 +266,7 @@ func (c *ServiceInfo) Run(ctx *cmd.Context, client cmd.Doer) error {
 	if err != nil {
 		return err
 	}
-	ctx.Stdout.Write([]byte(fmt.Sprintf("Info for \"%s\"\n", serviceName)))
+	context.Stdout.Write([]byte(fmt.Sprintf("Info for \"%s\"\n", serviceName)))
 	if len(instances) > 0 {
 		table := cmd.NewTable()
 		table.Headers = cmd.Row([]string{"Instances", "Apps"})
@@ -274,7 +274,7 @@ func (c *ServiceInfo) Run(ctx *cmd.Context, client cmd.Doer) error {
 			apps := strings.Join(instance.Apps, ", ")
 			table.AddRow(cmd.Row([]string{instance.Name, apps}))
 		}
-		ctx.Stdout.Write(table.Bytes())
+		context.Stdout.Write(table.Bytes())
 	}
 	return nil
 }
@@ -290,15 +290,15 @@ func (c *ServiceDoc) Info() *cmd.Info {
 	}
 }
 
-func (c *ServiceDoc) Run(ctx *cmd.Context, client cmd.Doer) error {
-	sName := ctx.Args[0]
+func (c *ServiceDoc) Run(context *cmd.Context, client cmd.Doer) error {
+	sName := context.Args[0]
 	url := fmt.Sprintf("/services/c/%s/doc", sName)
 	url = cmd.GetUrl(url)
 	request, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return err
 	}
-	resp, err := client.Do(request)
+	resp, err := client.Do(request, context)
 	if err != nil {
 		return err
 	}
@@ -307,7 +307,7 @@ func (c *ServiceDoc) Run(ctx *cmd.Context, client cmd.Doer) error {
 	if err != nil {
 		return err
 	}
-	ctx.Stdout.Write(result)
+	context.Stdout.Write(result)
 	return nil
 }
 
@@ -322,21 +322,21 @@ func (c *ServiceRemove) Info() *cmd.Info {
 	}
 }
 
-func (c *ServiceRemove) Run(ctx *cmd.Context, client cmd.Doer) error {
-	name := ctx.Args[0]
+func (c *ServiceRemove) Run(context *cmd.Context, client cmd.Doer) error {
+	name := context.Args[0]
 	url := fmt.Sprintf("/services/c/instances/%s", name)
 	url = cmd.GetUrl(url)
 	request, err := http.NewRequest("DELETE", url, nil)
 	if err != nil {
 		return err
 	}
-	resp, err := client.Do(request)
+	resp, err := client.Do(request, context)
 	if err != nil {
 		return err
 	}
 	defer resp.Body.Close()
 	result, _ := ioutil.ReadAll(resp.Body)
 	result = append(result, []byte("\n")...)
-	ctx.Stdout.Write(result)
+	context.Stdout.Write(result)
 	return nil
 }

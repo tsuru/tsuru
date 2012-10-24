@@ -28,7 +28,7 @@ If you don't provide the app name, tsuru will try to guess it.`,
 }
 
 func (c *EnvGet) Run(context *cmd.Context, client cmd.Doer) error {
-	b, err := requestEnvUrl("GET", c.GuessingCommand, context.Args, client)
+	b, err := requestEnvUrl("GET", c.GuessingCommand, context, client)
 	if err != nil {
 		return err
 	}
@@ -52,7 +52,7 @@ If you don't provide the app name, tsuru will try to guess it.`,
 }
 
 func (c *EnvSet) Run(context *cmd.Context, client cmd.Doer) error {
-	_, err := requestEnvUrl("POST", c.GuessingCommand, context.Args, client)
+	_, err := requestEnvUrl("POST", c.GuessingCommand, context, client)
 	if err != nil {
 		return err
 	}
@@ -76,7 +76,7 @@ If you don't provide the app name, tsuru will try to guess it.`,
 }
 
 func (c *EnvUnset) Run(context *cmd.Context, client cmd.Doer) error {
-	_, err := requestEnvUrl("DELETE", c.GuessingCommand, context.Args, client)
+	_, err := requestEnvUrl("DELETE", c.GuessingCommand, context, client)
 	if err != nil {
 		return err
 	}
@@ -84,19 +84,19 @@ func (c *EnvUnset) Run(context *cmd.Context, client cmd.Doer) error {
 	return nil
 }
 
-func requestEnvUrl(method string, g GuessingCommand, args []string, client cmd.Doer) (string, error) {
+func requestEnvUrl(method string, g GuessingCommand, context *cmd.Context, client cmd.Doer) (string, error) {
 	appName, err := g.Guess()
 	if err != nil {
 		return "", err
 	}
-	varsStr := strings.Join(args, " ")
+	varsStr := strings.Join(context.Args, " ")
 	url := cmd.GetUrl(fmt.Sprintf("/apps/%s/env", appName))
 	body := strings.NewReader(varsStr)
 	request, err := http.NewRequest(method, url, body)
 	if err != nil {
 		return "", err
 	}
-	r, err := client.Do(request)
+	r, err := client.Do(request, context)
 	if err != nil {
 		return "", err
 	}

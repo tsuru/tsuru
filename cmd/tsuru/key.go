@@ -86,7 +86,7 @@ func (c *KeyRemove) Run(context *cmd.Context, client cmd.Doer) error {
 	if err != nil {
 		return err
 	}
-	_, err = client.Do(request)
+	_, err = client.Do(request, context)
 	if err != nil {
 		return err
 	}
@@ -120,7 +120,7 @@ func (c *KeyAdd) Run(context *cmd.Context, client cmd.Doer) error {
 	if err != nil {
 		return err
 	}
-	_, err = client.Do(request)
+	_, err = client.Do(request, context)
 	if err != nil {
 		return err
 	}

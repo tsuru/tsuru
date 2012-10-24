@@ -38,7 +38,7 @@ func (c *ServiceCreate) Run(context *cmd.Context, client cmd.Doer) error {
 	if err != nil {
 		return err
 	}
-	r, err := client.Do(request)
+	r, err := client.Do(request, context)
 	if err != nil {
 		return err
 	}
@@ -59,7 +59,7 @@ func (c *ServiceRemove) Run(context *cmd.Context, client cmd.Doer) error {
 	if err != nil {
 		return err
 	}
-	_, err = client.Do(request)
+	_, err = client.Do(request, context)
 	if err != nil {
 		return err
 	}
@@ -86,13 +86,13 @@ func (c *ServiceList) Info() *cmd.Info {
 	}
 }
 
-func (c *ServiceList) Run(ctx *cmd.Context, client cmd.Doer) error {
+func (c *ServiceList) Run(context *cmd.Context, client cmd.Doer) error {
 	url := cmd.GetUrl("/services")
 	request, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return err
 	}
-	resp, err := client.Do(request)
+	resp, err := client.Do(request, context)
 	if err != nil {
 		return err
 	}
@@ -105,7 +105,7 @@ func (c *ServiceList) Run(ctx *cmd.Context, client cmd.Doer) error {
 	if err != nil {
 		return err
 	}
-	ctx.Stdout.Write(rslt)
+	context.Stdout.Write(rslt)
 	return nil
 }
 
@@ -120,8 +120,8 @@ func (c *ServiceUpdate) Info() *cmd.Info {
 	}
 }
 
-func (c *ServiceUpdate) Run(ctx *cmd.Context, client cmd.Doer) error {
-	manifest := ctx.Args[0]
+func (c *ServiceUpdate) Run(context *cmd.Context, client cmd.Doer) error {
+	manifest := context.Args[0]
 	b, err := ioutil.ReadFile(manifest)
 	if err != nil {
 		return err
@@ -130,12 +130,12 @@ func (c *ServiceUpdate) Run(ctx *cmd.Context, client cmd.Doer) error {
 	if err != nil {
 		return err
 	}
-	resp, err := client.Do(request)
+	resp, err := client.Do(request, context)
 	if err != nil {
 		return err
 	}
 	if resp.StatusCode == http.StatusNoContent {
-		io.WriteString(ctx.Stdout, "Service successfully updated.\n")
+		io.WriteString(context.Stdout, "Service successfully updated.\n")
 	}
 	return nil
 }
@@ -151,31 +151,31 @@ func (c *ServiceDocAdd) Info() *cmd.Info {
 	}
 }
 
-func (c *ServiceDocAdd) Run(ctx *cmd.Context, client cmd.Doer) error {
-	serviceName := ctx.Args[0]
-	docPath := ctx.Args[1]
+func (c *ServiceDocAdd) Run(context *cmd.Context, client cmd.Doer) error {
+	serviceName := context.Args[0]
+	docPath := context.Args[1]
 	b, err := ioutil.ReadFile(docPath)
 	request, err := http.NewRequest("PUT", cmd.GetUrl("/services/"+serviceName+"/doc"), bytes.NewReader(b))
 	if err != nil {
 		return err
 	}
-	_, err = client.Do(request)
+	_, err = client.Do(request, context)
 	if err != nil {
 		return err
 	}
-	io.WriteString(ctx.Stdout, fmt.Sprintf("Documentation for '%s' successfully updated.\n", serviceName))
+	io.WriteString(context.Stdout, fmt.Sprintf("Documentation for '%s' successfully updated.\n", serviceName))
 	return nil
 }
 
 type ServiceDocGet struct{}
 
-func (c *ServiceDocGet) Run(ctx *cmd.Context, client cmd.Doer) error {
-	serviceName := ctx.Args[0]
+func (c *ServiceDocGet) Run(context *cmd.Context, client cmd.Doer) error {
+	serviceName := context.Args[0]
 	request, err := http.NewRequest("GET", cmd.GetUrl("/services/"+serviceName+"/doc"), nil)
 	if err != nil {
 		return err
 	}
-	resp, err := client.Do(request)
+	resp, err := client.Do(request, context)
 	if err != nil {
 		return err
 	}
@@ -185,7 +185,7 @@ func (c *ServiceDocGet) Run(ctx *cmd.Context, client cmd.Doer) error {
 	if err != nil {
 		return err
 	}
-	io.WriteString(ctx.Stdout, string(b))
+	io.WriteString(context.Stdout, string(b))
 	return nil
 }
 
@@ -210,7 +210,7 @@ e.g.: $ crane template`
 	}
 }
 
-func (c *ServiceTemplate) Run(ctx *cmd.Context, client cmd.Doer) error {
+func (c *ServiceTemplate) Run(context *cmd.Context, client cmd.Doer) error {
 	template := `id: servicename
 endpoint:
   production: production-endpoint.com
@@ -221,6 +221,6 @@ endpoint:
 		return errors.New("Error while creating manifest template.\nOriginal error message is: " + err.Error())
 	}
 	f.Write([]byte(template))
-	io.WriteString(ctx.Stdout, "Generated file \"manifest.yaml\" in current path\n")
+	io.WriteString(context.Stdout, "Generated file \"manifest.yaml\" in current path\n")
 	return nil
 }

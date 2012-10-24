@@ -40,7 +40,7 @@ func (c *AppInfo) Run(context *cmd.Context, client cmd.Doer) error {
 	if err != nil {
 		return err
 	}
-	response, err := client.Do(request)
+	response, err := client.Do(request, context)
 	if err != nil {
 		return err
 	}
@@ -117,7 +117,7 @@ func (c *AppGrant) Run(context *cmd.Context, client cmd.Doer) error {
 	if err != nil {
 		return err
 	}
-	_, err = client.Do(request)
+	_, err = client.Do(request, context)
 	if err != nil {
 		return err
 	}
@@ -151,7 +151,7 @@ func (c *AppRevoke) Run(context *cmd.Context, client cmd.Doer) error {
 	if err != nil {
 		return err
 	}
-	_, err = client.Do(request)
+	_, err = client.Do(request, context)
 	if err != nil {
 		return err
 	}
@@ -176,7 +176,7 @@ func (c *AppList) Run(context *cmd.Context, client cmd.Doer) error {
 	if err != nil {
 		return err
 	}
-	response, err := client.Do(request)
+	response, err := client.Do(request, context)
 	if err != nil {
 		return err
 	}
@@ -230,7 +230,7 @@ func (c *AppCreate) Run(context *cmd.Context, client cmd.Doer) error {
 	if err != nil {
 		return err
 	}
-	response, err := client.Do(request)
+	response, err := client.Do(request, context)
 	if err != nil {
 		return err
 	}
@@ -288,7 +288,7 @@ func (c *AppRemove) Run(context *cmd.Context, client cmd.Doer) error {
 	if err != nil {
 		return err
 	}
-	_, err = client.Do(request)
+	_, err = client.Do(request, context)
 	if err != nil {
 		return err
 	}
@@ -326,7 +326,7 @@ func (c *AppLog) Run(context *cmd.Context, client cmd.Doer) error {
 	if err != nil {
 		return err
 	}
-	response, err := client.Do(request)
+	response, err := client.Do(request, context)
 	if err != nil {
 		return err
 	}
@@ -360,7 +360,7 @@ func (c *AppRestart) Run(context *cmd.Context, client cmd.Doer) error {
 	if err != nil {
 		return err
 	}
-	response, err := client.Do(request)
+	response, err := client.Do(request, context)
 	if err != nil {
 		return err
 	}
