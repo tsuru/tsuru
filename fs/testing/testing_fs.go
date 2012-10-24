@@ -73,6 +73,12 @@ func (f *FakeFile) WriteString(s string) (ret int, err error) {
 	return
 }
 
+func (f *FakeFile) Truncate(size int64) error {
+	f.current = int64(0)
+	f.content = f.content[:size]
+	return nil
+}
+
 // RecordingFs implements the Fs interface providing a "recording" file system.
 //
 // A recording file system is a file system that does not execute any action,
