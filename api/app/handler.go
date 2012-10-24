@@ -438,6 +438,7 @@ func UnsetEnv(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 }
 
 func AppLog(w http.ResponseWriter, r *http.Request, u *auth.User) error {
+	w.Header().Set("Content-Type", "application/json")
 	appName := r.URL.Query().Get(":name")
 	var selector bson.M
 	if l := r.URL.Query().Get("lines"); l != "" {

@@ -1614,6 +1614,25 @@ func (s *S) TestAppLog(c *C) {
 	c.Assert(a.Logs, DeepEquals, logs)
 }
 
+func (s *S) TestAppLogShouldHaveContentType(c *C) {
+	a := App{
+		Name:      "lost",
+		Framework: "vougan",
+		Teams:     []string{s.team.Name},
+	}
+	err := createApp(&a)
+	defer a.destroy()
+	c.Assert(err, IsNil)
+	url := fmt.Sprintf("/apps/%s/log/?:name=%s", a.Name, a.Name)
+	request, err := http.NewRequest("GET", url, nil)
+	c.Assert(err, IsNil)
+	recorder := httptest.NewRecorder()
+	request.Header.Set("Content-Type", "application/json")
+	err = AppLog(recorder, request, s.user)
+	c.Assert(err, IsNil)
+	c.Assert(recorder.Header().Get("Content-Type"), Equals, "application/json")
+}
+
 func (s *S) TestAppLogSelectByLines(c *C) {
 	a := App{
 		Name:      "lost",
