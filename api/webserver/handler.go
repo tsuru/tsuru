@@ -40,6 +40,7 @@ func (fn Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 type AuthorizationRequiredHandler func(http.ResponseWriter, *http.Request, *auth.User) error
 
 func (fn AuthorizationRequiredHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	setVersionHeaders(w)
 	defer func() {
 		if r.Body != nil {
 			r.Body.Close()
