@@ -10,12 +10,15 @@ import (
 	"os"
 )
 
-const version = "0.2"
+const (
+	version = "0.2"
+	header  = "Supported-Tsuru"
+)
 
 var appname = gnuflag.String("app", "", "App name for running app related commands.")
 
 func buildManager(name string) *cmd.Manager {
-	m := cmd.BuildBaseManager(name, version)
+	m := cmd.BuildBaseManager(name, version, header)
 	m.Register(&AppRun{})
 	m.Register(&AppInfo{})
 	m.Register(&AppCreate{})

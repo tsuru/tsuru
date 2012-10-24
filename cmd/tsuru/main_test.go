@@ -10,7 +10,7 @@ import (
 )
 
 func (s *S) TestCommandsFromBaseManagerAreRegistered(c *C) {
-	baseManager := cmd.BuildBaseManager("tsuru", version)
+	baseManager := cmd.BuildBaseManager("tsuru", version, header)
 	manager := buildManager("tsuru")
 	for name, instance := range baseManager.Commands {
 		command, ok := manager.Commands[name]

@@ -25,26 +25,27 @@ func (e osExiter) Exit(code int) {
 }
 
 type Manager struct {
-	Commands map[string]interface{}
-	name     string
-	stdout   io.Writer
-	stderr   io.Writer
-	stdin    io.Reader
-	version  string
-	e        exiter
-	original string
-	wrong    bool
+	Commands      map[string]interface{}
+	name          string
+	stdout        io.Writer
+	stderr        io.Writer
+	stdin         io.Reader
+	version       string
+	versionHeader string
+	e             exiter
+	original      string
+	wrong         bool
 }
 
-func NewManager(name, ver string, stdout, stderr io.Writer, stdin io.Reader) *Manager {
-	manager := &Manager{name: name, version: ver, stdout: stdout, stderr: stderr, stdin: stdin}
+func NewManager(name, ver, verHeader string, stdout, stderr io.Writer, stdin io.Reader) *Manager {
+	manager := &Manager{name: name, version: ver, versionHeader: verHeader, stdout: stdout, stderr: stderr, stdin: stdin}
 	manager.Register(&help{manager})
 	manager.Register(&version{manager})
 	return manager
 }
 
-func BuildBaseManager(name, version string) *Manager {
-	m := NewManager(name, version, os.Stdout, os.Stderr, os.Stdin)
+func BuildBaseManager(name, version, versionHeader string) *Manager {
+	m := NewManager(name, version, versionHeader, os.Stdout, os.Stderr, os.Stdin)
 	m.Register(&login{})
 	m.Register(&logout{})
 	m.Register(&userCreate{})
