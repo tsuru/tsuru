@@ -311,13 +311,13 @@ If you don't provide the app name, tsuru will try to guess it.`,
 }
 
 func (s *S) TestAppLog(c *C) {
+	*appname = "appName"
 	var stdout, stderr bytes.Buffer
 	result := `[{"Date":"2012-06-20T11:17:22.75-03:00","Message":"creating app lost"},{"Date":"2012-06-20T11:17:22.753-03:00","Message":"app lost successfully created"}]`
 	expected := `2012-06-20 11:17:22.75 -0300 BRT - creating app lost
 2012-06-20 11:17:22.753 -0300 BRT - app lost successfully created
 `
 	context := cmd.Context{
-		Args:   []string{"appName"},
 		Stdout: &stdout,
 		Stderr: &stderr,
 	}
@@ -330,10 +330,39 @@ func (s *S) TestAppLog(c *C) {
 	c.Assert(got, Equals, expected)
 }
 
+func (s *S) TestAppLogWithoutTheFlag(c *C) {
+	var stdout, stderr bytes.Buffer
+	result := `[{"Date":"2012-06-20T11:17:22.75-03:00","Message":"creating app lost"},{"Date":"2012-06-20T11:17:22.753-03:00","Message":"app lost successfully created"}]`
+	expected := `2012-06-20 11:17:22.75 -0300 BRT - creating app lost
+2012-06-20 11:17:22.753 -0300 BRT - app lost successfully created
+`
+	context := cmd.Context{
+		Stdout: &stdout,
+		Stderr: &stderr,
+	}
+	fake := &FakeGuesser{name: "hitthelights"}
+	command := AppLog{GuessingCommand{g: fake}}
+	trans := &conditionalTransport{
+		transport{
+			msg:    result,
+			status: http.StatusOK,
+		},
+		func(req *http.Request) bool {
+			return req.URL.Path == "/apps/hitthelights/log" && req.Method == "GET"
+		},
+	}
+	client := cmd.NewClient(&http.Client{Transport: trans})
+	err := command.Run(&context, client)
+	c.Assert(err, IsNil)
+	got := stdout.String()
+	got = strings.Replace(got, "-0300 -0300", "-0300 BRT", -1)
+	c.Assert(got, Equals, expected)
+}
+
 func (s *S) TestAppLogShouldReturnNilIfHasNoContent(c *C) {
+	*appname = "appName"
 	var stdout, stderr bytes.Buffer
 	context := cmd.Context{
-		Args:   []string{"appName"},
 		Stdout: &stdout,
 		Stderr: &stderr,
 	}
@@ -347,9 +376,9 @@ func (s *S) TestAppLogShouldReturnNilIfHasNoContent(c *C) {
 func (s *S) TestAppLogInfo(c *C) {
 	expected := &cmd.Info{
 		Name:    "log",
-		Usage:   "log <appname>",
+		Usage:   "log [-app appname]",
 		Desc:    "show logs for an app.",
-		MinArgs: 1,
+		MinArgs: 0,
 	}
 	c.Assert((&AppLog{}).Info(), DeepEquals, expected)
 }

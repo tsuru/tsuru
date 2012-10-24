@@ -296,14 +296,16 @@ func (c *AppRemove) Run(context *cmd.Context, client cmd.Doer) error {
 	return nil
 }
 
-type AppLog struct{}
+type AppLog struct {
+	GuessingCommand
+}
 
 func (c *AppLog) Info() *cmd.Info {
 	return &cmd.Info{
 		Name:    "log",
-		Usage:   "log <appname>",
+		Usage:   "log [-app appname]",
 		Desc:    "show logs for an app.",
-		MinArgs: 1,
+		MinArgs: 0,
 	}
 }
 
@@ -313,7 +315,10 @@ type Log struct {
 }
 
 func (c *AppLog) Run(context *cmd.Context, client cmd.Doer) error {
-	appName := context.Args[0]
+	appName, err := c.Guess()
+	if err != nil {
+		return err
+	}
 	url := cmd.GetUrl(fmt.Sprintf("/apps/%s/log", appName))
 	request, err := http.NewRequest("GET", url, nil)
 	if err != nil {
