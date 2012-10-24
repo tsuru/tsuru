@@ -313,3 +313,29 @@ func (s *S) TestFileSystem(c *C) {
 	fsystem = nil
 	c.Assert(filesystem(), DeepEquals, fs.OsFs{})
 }
+
+func (s *S) TestValidateVersion(c *C) {
+	var cases = []struct {
+		current, support string
+		expected         bool
+	}{
+		{
+			current:  "0.2.1",
+			support:  "0.3",
+			expected: false,
+		},
+		{
+			current:  "0.3.5",
+			support:  "0.3",
+			expected: true,
+		},
+		{
+			current:  "0.2",
+			support:  "0.3",
+			expected: false,
+		},
+	}
+	for _, cs := range cases {
+		c.Assert(ValidateVersion(cs.support, cs.current), Equals, cs.expected)
+	}
+}

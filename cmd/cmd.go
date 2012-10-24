@@ -203,3 +203,29 @@ func filesystem() fs.Fs {
 	}
 	return fsystem
 }
+
+// ValidateVersion checks wheter current version is greater or equal to
+// supported version.
+func ValidateVersion(supported, current string) bool {
+	var (
+		bigger bool
+		limit  int
+	)
+	partsSupported := strings.Split(supported, ".")
+	partsCurrent := strings.Split(current, ".")
+	if len(partsSupported) > len(partsCurrent) {
+		limit = len(partsCurrent)
+		bigger = true
+	} else {
+		limit = len(partsSupported)
+	}
+	for i := 0; i < limit; i++ {
+		if partsCurrent[i] < partsSupported[i] {
+			return false
+		}
+	}
+	if bigger {
+		return false
+	}
+	return true
+}
