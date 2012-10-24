@@ -12,25 +12,32 @@ import (
 	"strings"
 )
 
-type AppRun struct{}
+type AppRun struct {
+	GuessingCommand
+}
 
 func (c *AppRun) Info() *cmd.Info {
 	desc := `run a command in all instances of the app, and prints the output.
 Notice that you may need quotes to run your command if you want to deal with
 input and outputs redirects, and pipes.
+
+If you don't provide the app name, tsuru will try to guess it.
 `
 	return &cmd.Info{
 		Name:    "run",
-		Usage:   `run <appname> <command> [commandarg1] [commandarg2] ... [commandargn]`,
+		Usage:   `run <command> [commandarg1] [commandarg2] ... [commandargn] [-app appname]`,
 		Desc:    desc,
 		MinArgs: 1,
 	}
 }
 
 func (c *AppRun) Run(context *cmd.Context, client cmd.Doer) error {
-	appName := context.Args[0]
+	appName, err := c.Guess()
+	if err != nil {
+		return err
+	}
 	url := cmd.GetUrl(fmt.Sprintf("/apps/%s/run", appName))
-	b := strings.NewReader(strings.Join(context.Args[1:], " "))
+	b := strings.NewReader(strings.Join(context.Args, " "))
 	request, err := http.NewRequest("POST", url, b)
 	if err != nil {
 		return err
