@@ -302,9 +302,11 @@ type AppLog struct {
 
 func (c *AppLog) Info() *cmd.Info {
 	return &cmd.Info{
-		Name:    "log",
-		Usage:   "log [-app appname]",
-		Desc:    "show logs for an app.",
+		Name:  "log",
+		Usage: "log [-app appname]",
+		Desc: `show logs for an app.
+
+If you don't provide the app name, tsuru will try to guess it.`,
 		MinArgs: 0,
 	}
 }
@@ -372,9 +374,11 @@ func (c *AppRestart) Run(context *cmd.Context, client cmd.Doer) error {
 
 func (c *AppRestart) Info() *cmd.Info {
 	return &cmd.Info{
-		Name:    "restart",
-		Usage:   "restart [-app appname]",
-		Desc:    "restarts an app.",
+		Name:  "restart",
+		Usage: "restart [-app appname]",
+		Desc: `restarts an app.
+
+If you don't provide the app name, tsuru will try to guess it.`,
 		MinArgs: 0,
 	}
 }
