@@ -459,8 +459,7 @@ func AppLog(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	if err != nil {
 		return err
 	}
-	fmt.Fprint(w, string(b))
-	return nil
+	return write(w, b)
 }
 
 func serviceInstanceAndAppOrError(instanceName, appName string, u *auth.User) (instance service.ServiceInstance, a App, err error) {
