@@ -46,6 +46,8 @@ WARNING: You're using an unsupported version of tsuru client.
 
 You must have at least version %s, your current version is %s.
 
+Please go to https://github.com/globocom/tsuru/downloads and download the last version.
+
 ############################################################`
 	if !validateVersion(supported, c.currentVersion) {
 		fmt.Fprintf(c.context.Stderr, format, supported, c.currentVersion)
