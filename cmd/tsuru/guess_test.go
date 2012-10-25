@@ -90,7 +90,7 @@ func (s *S) TestGuessingCommandGuesserNonNil(c *C) {
 }
 
 func (s *S) TestGuessingCommandWithFlagDefined(c *C) {
-	*appname = "myapp"
+	*appName = "myapp"
 	fake := &FakeGuesser{name: "other-app"}
 	g := GuessingCommand{g: fake}
 	name, err := g.Guess()
@@ -102,7 +102,7 @@ func (s *S) TestGuessingCommandWithFlagDefined(c *C) {
 }
 
 func (s *S) TestGuessingCommandWithoutFlagDefined(c *C) {
-	appname = nil
+	appName = nil
 	fake := &FakeGuesser{name: "other-app"}
 	g := GuessingCommand{g: fake}
 	name, err := g.Guess()

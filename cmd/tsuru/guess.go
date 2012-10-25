@@ -64,8 +64,8 @@ func (cmd *GuessingCommand) guesser() AppGuesser {
 }
 
 func (cmd *GuessingCommand) Guess() (string, error) {
-	if appname != nil && *appname != "" {
-		return *appname, nil
+	if appName != nil && *appName != "" {
+		return *appName, nil
 	}
 	path, err := os.Getwd()
 	if err != nil {

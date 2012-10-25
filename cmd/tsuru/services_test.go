@@ -88,7 +88,7 @@ func (s *S) TestServiceListShouldBeCommand(c *C) {
 }
 
 func (s *S) TestServiceBind(c *C) {
-	*appname = "g1"
+	*appName = "g1"
 	var (
 		called         bool
 		stdout, stderr bytes.Buffer
@@ -164,7 +164,7 @@ For more details, please check the documentation for the service, using service-
 }
 
 func (s *S) TestServiceBindWithRequestFailure(c *C) {
-	*appname = "g1"
+	*appName = "g1"
 	var stdout, stderr bytes.Buffer
 	ctx := cmd.Context{
 		Args:   []string{"my-mysql"},
@@ -204,7 +204,7 @@ func (s *S) TestServiceBindIsACommand(c *C) {
 }
 
 func (s *S) TestServiceUnbind(c *C) {
-	*appname = "pocket"
+	*appName = "pocket"
 	var stdout, stderr bytes.Buffer
 	var called bool
 	ctx := cmd.Context{
@@ -256,7 +256,7 @@ func (s *S) TestServiceUnbindWithoutFlag(c *C) {
 }
 
 func (s *S) TestServiceUnbindWithRequestFailure(c *C) {
-	*appname = "pocket"
+	*appName = "pocket"
 	var stdout, stderr bytes.Buffer
 	ctx := cmd.Context{
 		Args:   []string{"hand"},

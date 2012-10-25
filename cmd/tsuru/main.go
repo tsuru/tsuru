@@ -15,7 +15,7 @@ const (
 	header  = "Supported-Tsuru"
 )
 
-var appname = gnuflag.String("app", "", "App name for running app related commands.")
+var appName = gnuflag.String("app", "", "App name for running app related commands.")
 
 func buildManager(name string) *cmd.Manager {
 	m := cmd.BuildBaseManager(name, version, header)
