@@ -28,7 +28,7 @@ If you don't provide the app name, tsuru will try to guess it.`,
 	}
 }
 
-type Log struct {
+type log struct {
 	Date    time.Time
 	Message string
 }
@@ -52,13 +52,13 @@ func (c *AppLog) Run(context *cmd.Context, client cmd.Doer) error {
 	}
 	defer response.Body.Close()
 	result, err := ioutil.ReadAll(response.Body)
-	logs := []Log{}
+	logs := []log{}
 	err = json.Unmarshal(result, &logs)
 	if err != nil {
 		return err
 	}
-	for _, log := range logs {
-		context.Stdout.Write([]byte(log.Date.String() + " - " + log.Message + "\n"))
+	for _, l := range logs {
+		context.Stdout.Write([]byte(l.Date.String() + " - " + l.Message + "\n"))
 	}
 	return err
 }
