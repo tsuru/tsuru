@@ -12,7 +12,6 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
-	"time"
 )
 
 type AppInfo struct {
@@ -294,56 +293,6 @@ func (c *AppRemove) Run(context *cmd.Context, client cmd.Doer) error {
 	}
 	fmt.Fprintf(context.Stdout, `App "%s" successfully removed!`+"\n", appName)
 	return nil
-}
-
-type AppLog struct {
-	GuessingCommand
-}
-
-func (c *AppLog) Info() *cmd.Info {
-	return &cmd.Info{
-		Name:  "log",
-		Usage: "log [--app appname]",
-		Desc: `show logs for an app.
-
-If you don't provide the app name, tsuru will try to guess it.`,
-		MinArgs: 0,
-	}
-}
-
-type Log struct {
-	Date    time.Time
-	Message string
-}
-
-func (c *AppLog) Run(context *cmd.Context, client cmd.Doer) error {
-	appName, err := c.Guess()
-	if err != nil {
-		return err
-	}
-	url := cmd.GetUrl(fmt.Sprintf("/apps/%s/log", appName))
-	request, err := http.NewRequest("GET", url, nil)
-	if err != nil {
-		return err
-	}
-	response, err := client.Do(request)
-	if err != nil {
-		return err
-	}
-	if response.StatusCode == http.StatusNoContent {
-		return nil
-	}
-	defer response.Body.Close()
-	result, err := ioutil.ReadAll(response.Body)
-	logs := []Log{}
-	err = json.Unmarshal(result, &logs)
-	if err != nil {
-		return err
-	}
-	for _, log := range logs {
-		context.Stdout.Write([]byte(log.Date.String() + " - " + log.Message + "\n"))
-	}
-	return err
 }
 
 type AppRestart struct {
