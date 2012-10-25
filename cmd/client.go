@@ -16,11 +16,19 @@ type Doer interface {
 }
 
 type Client struct {
-	HttpClient *http.Client
+	HttpClient     *http.Client
+	context        *Context
+	currentVersion string
+	versionHeader  string
 }
 
-func NewClient(client *http.Client) *Client {
-	return &Client{HttpClient: client}
+func NewClient(client *http.Client, context *Context, version, versionHeader string) *Client {
+	return &Client{
+		HttpClient:     client,
+		context:        context,
+		currentVersion: version,
+		versionHeader:  versionHeader,
+	}
 }
 
 func (c *Client) Do(request *http.Request) (*http.Response, error) {

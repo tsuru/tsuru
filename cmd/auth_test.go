@@ -20,7 +20,7 @@ func (s *S) TestLogin(c *C) {
 	}()
 	expected := "Successfully logged!\n"
 	context := Context{[]string{"foo@foo.com"}, manager.stdout, manager.stderr, manager.stdin}
-	client := NewClient(&http.Client{Transport: &transport{msg: `{"token": "sometoken"}`, status: http.StatusOK}})
+	client := NewClient(&http.Client{Transport: &transport{msg: `{"token": "sometoken"}`, status: http.StatusOK}}, nil, "", "")
 	command := login{reader: &fakeReader{outputs: []string{"chico"}}}
 	err := command.Run(&context, client)
 	c.Assert(err, IsNil)
@@ -37,7 +37,7 @@ func (s *S) TestLoginShouldNotDependOnTsuruTokenFile(c *C) {
 	}()
 	expected := "Successfully logged!\n"
 	context := Context{[]string{"foo@foo.com"}, manager.stdout, manager.stderr, manager.stdin}
-	client := NewClient(&http.Client{Transport: &transport{msg: `{"token":"anothertoken"}`, status: http.StatusOK}})
+	client := NewClient(&http.Client{Transport: &transport{msg: `{"token":"anothertoken"}`, status: http.StatusOK}}, nil, "", "")
 	command := login{reader: &fakeReader{outputs: []string{"bar123"}}}
 	err := command.Run(&context, client)
 	c.Assert(err, IsNil)
@@ -94,7 +94,7 @@ func (s *S) TestTeamAddUser(c *C) {
 	expected := `User "andorito" was added to the "cobrateam" team` + "\n"
 	context := Context{[]string{"cobrateam", "andorito"}, manager.stdout, manager.stderr, manager.stdin}
 	command := teamUserAdd{}
-	client := NewClient(&http.Client{Transport: &transport{msg: "", status: http.StatusOK}})
+	client := NewClient(&http.Client{Transport: &transport{msg: "", status: http.StatusOK}}, nil, "", "")
 	err := command.Run(&context, client)
 	c.Assert(err, IsNil)
 	c.Assert(manager.stdout.(*bytes.Buffer).String(), Equals, expected)
@@ -114,7 +114,7 @@ func (s *S) TestTeamRemoveUser(c *C) {
 	expected := `User "andorito" was removed from the "cobrateam" team` + "\n"
 	context := Context{[]string{"cobrateam", "andorito"}, manager.stdout, manager.stderr, manager.stdin}
 	command := teamUserRemove{}
-	client := NewClient(&http.Client{Transport: &transport{msg: "", status: http.StatusOK}})
+	client := NewClient(&http.Client{Transport: &transport{msg: "", status: http.StatusOK}}, nil, "", "")
 	err := command.Run(&context, client)
 	c.Assert(err, IsNil)
 	c.Assert(manager.stdout.(*bytes.Buffer).String(), Equals, expected)
@@ -133,7 +133,7 @@ func (s *S) TestTeamRemoveUserInfo(c *C) {
 func (s *S) TestTeamCreate(c *C) {
 	expected := `Team "core" successfully created!` + "\n"
 	context := Context{[]string{"core"}, manager.stdout, manager.stderr, manager.stdin}
-	client := NewClient(&http.Client{Transport: &transport{msg: "", status: http.StatusCreated}})
+	client := NewClient(&http.Client{Transport: &transport{msg: "", status: http.StatusCreated}}, nil, "", "")
 	command := teamCreate{}
 	err := command.Run(&context, client)
 	c.Assert(err, IsNil)
@@ -167,7 +167,7 @@ func (s *S) TestTeamListRun(c *C) {
   - timeredbull
   - cobrateam
 `
-	client := NewClient(&http.Client{Transport: trans})
+	client := NewClient(&http.Client{Transport: trans}, nil, "", "")
 	err := (&teamList{}).Run(&Context{[]string{}, manager.stdout, manager.stderr, manager.stdin}, client)
 	c.Assert(err, IsNil)
 	c.Assert(called, Equals, true)
@@ -175,7 +175,7 @@ func (s *S) TestTeamListRun(c *C) {
 }
 
 func (s *S) TestTeamListRunWithNoContent(c *C) {
-	client := NewClient(&http.Client{Transport: &transport{msg: "", status: http.StatusNoContent}})
+	client := NewClient(&http.Client{Transport: &transport{msg: "", status: http.StatusNoContent}}, nil, "", "")
 	err := (&teamList{}).Run(&Context{[]string{}, manager.stdout, manager.stderr, manager.stdin}, client)
 	c.Assert(err, IsNil)
 	c.Assert(manager.stdout.(*bytes.Buffer).String(), Equals, "")
@@ -208,7 +208,7 @@ func (s *S) TestUserCreateShouldNotDependOnTsuruTokenFile(c *C) {
 	}()
 	expected := `User "foo@foo.com" successfully created!` + "\n"
 	context := Context{[]string{"foo@foo.com"}, manager.stdout, manager.stderr, manager.stdin}
-	client := NewClient(&http.Client{Transport: &transport{msg: "", status: http.StatusCreated}})
+	client := NewClient(&http.Client{Transport: &transport{msg: "", status: http.StatusCreated}}, nil, "", "")
 	command := userCreate{reader: &fakeReader{outputs: []string{"foo123"}}}
 	err := command.Run(&context, client)
 	c.Assert(err, IsNil)
@@ -217,7 +217,7 @@ func (s *S) TestUserCreateShouldNotDependOnTsuruTokenFile(c *C) {
 
 func (s *S) TestUserCreateReturnErrorIfPasswordsDontMatch(c *C) {
 	context := Context{[]string{"foo@foo.com"}, manager.stdout, manager.stderr, manager.stdin}
-	client := NewClient(&http.Client{Transport: &transport{msg: "", status: http.StatusCreated}})
+	client := NewClient(&http.Client{Transport: &transport{msg: "", status: http.StatusCreated}}, nil, "", "")
 	command := userCreate{reader: &fakeReader{outputs: []string{"foo123", "foo1234"}}}
 	err := command.Run(&context, client)
 	c.Assert(err, NotNil)
@@ -227,7 +227,7 @@ func (s *S) TestUserCreateReturnErrorIfPasswordsDontMatch(c *C) {
 func (s *S) TestUserCreate(c *C) {
 	expected := `User "foo@foo.com" successfully created!` + "\n"
 	context := Context{[]string{"foo@foo.com"}, manager.stdout, manager.stderr, manager.stdin}
-	client := NewClient(&http.Client{Transport: &transport{msg: "", status: http.StatusCreated}})
+	client := NewClient(&http.Client{Transport: &transport{msg: "", status: http.StatusCreated}}, nil, "", "")
 	command := userCreate{reader: &fakeReader{outputs: []string{"foo123"}}}
 	err := command.Run(&context, client)
 	c.Assert(err, IsNil)

@@ -89,7 +89,9 @@ func (m *Manager) Run(args []string) {
 		args = []string{name}
 		status = 1
 	}
-	err := command.(Command).Run(&Context{args, m.stdout, m.stderr, m.stdin}, NewClient(&http.Client{}))
+	context := Context{args, m.stdout, m.stderr, m.stdin}
+	client := NewClient(&http.Client{}, &context, m.version, m.versionHeader)
+	err := command.(Command).Run(&context, client)
 	if err != nil {
 		errorMsg := err.Error()
 		if !strings.HasSuffix(errorMsg, "\n") {
