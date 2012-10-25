@@ -5,6 +5,7 @@
 package cmd
 
 import (
+	"bytes"
 	"github.com/globocom/tsuru/fs/testing"
 	. "launchpad.net/gocheck"
 	"net/http"
@@ -62,4 +63,53 @@ func (s *S) TestShouldIncludeTheHeaderAuthorizationWhenTsuruTokenFileExists(c *C
 	_, err = client.Do(request)
 	c.Assert(err, IsNil)
 	c.Assert(request.Header.Get("Authorization"), Equals, "mytoken")
+}
+
+func (s *S) TestShouldValidateVersion(c *C) {
+	var buf bytes.Buffer
+	request, err := http.NewRequest("GET", "/", nil)
+	c.Assert(err, IsNil)
+	context := Context{
+		Stderr: &buf,
+	}
+	trans := &transport{msg: "", status: http.StatusOK, headers: map[string][]string{"Supported-Tsuru": {"0.3"}}}
+	client := NewClient(&http.Client{Transport: trans}, &context, "0.2.1", "Supported-Tsuru")
+	_, err = client.Do(request)
+	c.Assert(err, IsNil)
+	expected := `############################################################
+
+WARNING: You're using an unsupported version of tsuru client.
+
+You must have at least version 0.3, your current version is 0.2.1.
+
+############################################################`
+	c.Assert(buf.String(), Equals, expected)
+}
+
+func (s *S) TestShouldSkipValidationIfThereIsNoSupportedHeaderDeclared(c *C) {
+	var buf bytes.Buffer
+	request, err := http.NewRequest("GET", "/", nil)
+	c.Assert(err, IsNil)
+	context := Context{
+		Stderr: &buf,
+	}
+	trans := &transport{msg: "", status: http.StatusOK, headers: map[string][]string{"Supported-Tsuru": {"0.3"}}}
+	client := NewClient(&http.Client{Transport: trans}, &context, "0.2.1", "")
+	_, err = client.Do(request)
+	c.Assert(err, IsNil)
+	c.Assert(buf.String(), Equals, "")
+}
+
+func (s *S) TestShouldSkupValidationIfServerDoesNotReturnSupportedHeader(c *C) {
+	var buf bytes.Buffer
+	request, err := http.NewRequest("GET", "/", nil)
+	c.Assert(err, IsNil)
+	context := Context{
+		Stderr: &buf,
+	}
+	trans := &transport{msg: "", status: http.StatusOK}
+	client := NewClient(&http.Client{Transport: trans}, &context, "0.2.1", "Supported-Tsuru")
+	_, err = client.Do(request)
+	c.Assert(err, IsNil)
+	c.Assert(buf.String(), Equals, "")
 }

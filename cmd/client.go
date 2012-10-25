@@ -39,6 +39,17 @@ func (c *Client) Do(request *http.Request) (*http.Response, error) {
 	if err != nil {
 		return nil, fmt.Errorf("Failed to connect to tsuru server (%s), it's probably down.", readTarget())
 	}
+	supported := response.Header.Get(c.versionHeader)
+	format := `############################################################
+
+WARNING: You're using an unsupported version of tsuru client.
+
+You must have at least version %s, your current version is %s.
+
+############################################################`
+	if !validateVersion(supported, c.currentVersion) {
+		fmt.Fprintf(c.context.Stderr, format, supported, c.currentVersion)
+	}
 	if response.StatusCode > 399 {
 		defer response.Body.Close()
 		result, _ := ioutil.ReadAll(response.Body)
