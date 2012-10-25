@@ -21,8 +21,9 @@ type S struct {
 }
 
 type transport struct {
-	msg    string
-	status int
+	msg     string
+	status  int
+	headers map[string][]string
 }
 
 type conditionalTransport struct {
@@ -37,6 +38,7 @@ func (t *transport) RoundTrip(req *http.Request) (resp *http.Response, err error
 	resp = &http.Response{
 		Body:       ioutil.NopCloser(bytes.NewBufferString(t.msg)),
 		StatusCode: t.status,
+		Header:     http.Header(t.headers),
 	}
 	return resp, nil
 }
