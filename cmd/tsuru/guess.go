@@ -75,7 +75,7 @@ func (cmd *GuessingCommand) Guess() (string, error) {
 	if err != nil {
 		return "", errors.New(`tsuru wasn't able to guess the name of the app.
 
-Use the -app flag to specify the name of the app.`)
+Use the --app flag to specify the name of the app.`)
 	}
 	return name, nil
 }
