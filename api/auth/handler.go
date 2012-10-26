@@ -121,6 +121,21 @@ func CreateTeam(w http.ResponseWriter, r *http.Request, u *User) error {
 	return createTeam(name, u)
 }
 
+func RemoveTeam(w http.ResponseWriter, r *http.Request, u *User) error {
+	name := r.URL.Query().Get(":name")
+	if n, err := db.Session.Apps().Find(bson.M{"teams": name}).Count(); err != nil || n > 0 {
+		msg := `This team cannot be removed because it have access to apps.
+
+Please remove the apps or revoke these accesses, and try again.`
+		return &errors.Http{Code: http.StatusForbidden, Message: msg}
+	}
+	query := bson.M{"_id": name, "users": u.Email}
+	if n, err := db.Session.Teams().Find(query).Count(); err != nil || n != 1 {
+		return &errors.Http{Code: http.StatusNotFound, Message: fmt.Sprintf(`Team "%s" not found.`, name)}
+	}
+	return db.Session.Teams().Remove(query)
+}
+
 func ListTeams(w http.ResponseWriter, r *http.Request, u *User) error {
 	teams, err := u.Teams()
 	if err != nil {

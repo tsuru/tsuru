@@ -363,6 +363,76 @@ func (s *S) TestCreateTeamAddsTheLoggedInUserKeysAsMemberInGitosis(c *C) {
 	c.Assert("members = "+keyname, IsInGitosis)
 }
 
+func (s *S) TestRemoveTeam(c *C) {
+	team := Team{Name: "painofsalvation", Users: []string{s.user.Email}}
+	err := db.Session.Teams().Insert(team)
+	c.Assert(err, IsNil)
+	defer db.Session.Teams().Remove(bson.M{"_id": team.Name})
+	request, err := http.NewRequest("DELETE", fmt.Sprintf("/teams/%s?:name=%s", team.Name, team.Name), nil)
+	c.Assert(err, IsNil)
+	recorder := httptest.NewRecorder()
+	err = RemoveTeam(recorder, request, s.user)
+	c.Assert(err, IsNil)
+	n, err := db.Session.Teams().Find(bson.M{"name": team.Name}).Count()
+	c.Assert(err, IsNil)
+	c.Assert(n, Equals, 0)
+}
+
+func (s *S) TestRemoveTeamGives404WhenTeamDoesNotExist(c *C) {
+	request, err := http.NewRequest("DELETE", "/teams/unknown?:name=unknown", nil)
+	c.Assert(err, IsNil)
+	recorder := httptest.NewRecorder()
+	err = RemoveTeam(recorder, request, s.user)
+	c.Assert(err, NotNil)
+	e, ok := err.(*errors.Http)
+	c.Assert(ok, Equals, true)
+	c.Assert(e.Code, Equals, http.StatusNotFound)
+	c.Assert(e.Message, Equals, `Team "unknown" not found.`)
+}
+
+func (s *S) TestRemoveTeamGives404WhenUserDoesNotHaveAccessToTheTeam(c *C) {
+	team := Team{Name: "painofsalvation"}
+	err := db.Session.Teams().Insert(team)
+	c.Assert(err, IsNil)
+	defer db.Session.Teams().Remove(bson.M{"_id": team.Name})
+	request, err := http.NewRequest("DELETE", fmt.Sprintf("/teams/%s?:name=%s", team.Name, team.Name), nil)
+	c.Assert(err, IsNil)
+	recorder := httptest.NewRecorder()
+	err = RemoveTeam(recorder, request, s.user)
+	c.Assert(err, NotNil)
+	e, ok := err.(*errors.Http)
+	c.Assert(ok, Equals, true)
+	c.Assert(e.Code, Equals, http.StatusNotFound)
+	c.Assert(e.Message, Equals, `Team "painofsalvation" not found.`)
+}
+
+func (s *S) TestRemoveTeamGives403WhenTeamHasAccessToAnyApp(c *C) {
+	type App struct {
+		Name  string
+		Teams []string
+	}
+	team := Team{Name: "evergrey", Users: []string{s.user.Email}}
+	err := db.Session.Teams().Insert(team)
+	c.Assert(err, IsNil)
+	defer db.Session.Teams().Remove(bson.M{"_id": team.Name})
+	a := App{Name: "i-should", Teams: []string{team.Name}}
+	err = db.Session.Apps().Insert(a)
+	c.Assert(err, IsNil)
+	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
+	request, err := http.NewRequest("DELETE", fmt.Sprintf("/teams/%s?:name=%s", team.Name, team.Name), nil)
+	c.Assert(err, IsNil)
+	recorder := httptest.NewRecorder()
+	err = RemoveTeam(recorder, request, s.user)
+	c.Assert(err, NotNil)
+	e, ok := err.(*errors.Http)
+	c.Assert(ok, Equals, true)
+	c.Assert(e.Code, Equals, http.StatusForbidden)
+	expected := `This team cannot be removed because it have access to apps.
+
+Please remove the apps or revoke these accesses, and try again.`
+	c.Assert(e.Message, Equals, expected)
+}
+
 func (s *S) TestListTeamsListsAllTeamsThatTheUserIsMember(c *C) {
 	request, err := http.NewRequest("GET", "/teams", nil)
 	c.Assert(err, IsNil)
