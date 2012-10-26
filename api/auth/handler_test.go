@@ -148,7 +148,7 @@ func (s *S) TestCreateUserHandlerReturnsPreconditionFailedIfPasswordHasLessThan6
 		e, ok := err.(*errors.Http)
 		c.Assert(ok, Equals, true)
 		c.Assert(e.Code, Equals, http.StatusPreconditionFailed)
-		c.Assert(e.Message, Equals, "Password length shoul be least 6 characters and at most 50 characters.")
+		c.Assert(e.Message, Equals, "Password length should be least 6 characters and at most 50 characters.")
 	}
 }
 

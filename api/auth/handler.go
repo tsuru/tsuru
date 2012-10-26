@@ -20,7 +20,7 @@ import (
 
 const (
 	emailError     = "Invalid email."
-	passwordError  = "Password length shoul be least 6 characters and at most 50 characters."
+	passwordError  = "Password length should be least 6 characters and at most 50 characters."
 	passwordMinLen = 6
 	passwordMaxLen = 50
 )
