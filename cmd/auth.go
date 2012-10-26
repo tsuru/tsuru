@@ -28,10 +28,10 @@ func (r stdinPasswordReader) readPassword(out io.Writer, msg string) (string, er
 	if err != nil {
 		return "", err
 	}
-	io.WriteString(out, "\n")
+	fmt.Fprintln(out)
 	if password == "" {
-		msg := "You must provide the password!\n"
-		io.WriteString(out, msg)
+		msg := "You must provide the password!"
+		fmt.Fprintln(out, msg)
 		return "", errors.New(msg)
 	}
 	return password, nil
@@ -79,7 +79,7 @@ func (c *userCreate) Run(context *Context, client Doer) error {
 	if err != nil {
 		return err
 	}
-	io.WriteString(context.Stdout, fmt.Sprintf(`User "%s" successfully created!`+"\n", email))
+	fmt.Fprintf(context.Stdout, `User "%s" successfully created!`+"\n", email)
 	return nil
 }
 
@@ -143,7 +143,7 @@ func (c *login) Run(context *Context, client Doer) error {
 	if err != nil {
 		return err
 	}
-	io.WriteString(context.Stdout, "Successfully logged!\n")
+	fmt.Fprintln(context.Stdout, "Successfully logged in!")
 	return writeToken(out["token"])
 }
 
@@ -175,7 +175,7 @@ func (c *logout) Run(context *Context, client Doer) error {
 	if err != nil && os.IsNotExist(err) {
 		return errors.New("You're not logged in!")
 	}
-	io.WriteString(context.Stdout, "Successfully logout!\n")
+	fmt.Fprintln(context.Stdout, "Successfully logged out!")
 	return nil
 }
 
@@ -201,7 +201,7 @@ func (c *teamCreate) Run(context *Context, client Doer) error {
 	if err != nil {
 		return err
 	}
-	io.WriteString(context.Stdout, fmt.Sprintf(`Team "%s" successfully created!`+"\n", team))
+	fmt.Fprintf(context.Stdout, `Team "%s" successfully created!`+"\n", team)
 	return nil
 }
 
@@ -227,7 +227,7 @@ func (c *teamUserAdd) Run(context *Context, client Doer) error {
 	if err != nil {
 		return err
 	}
-	io.WriteString(context.Stdout, fmt.Sprintf(`User "%s" was added to the "%s" team`+"\n", userName, teamName))
+	fmt.Fprintf(context.Stdout, `User "%s" was added to the "%s" team`+"\n", userName, teamName)
 	return nil
 }
 
@@ -253,7 +253,7 @@ func (c *teamUserRemove) Run(context *Context, client Doer) error {
 	if err != nil {
 		return err
 	}
-	io.WriteString(context.Stdout, fmt.Sprintf(`User "%s" was removed from the "%s" team`+"\n", userName, teamName))
+	fmt.Fprintf(context.Stdout, `User "%s" was removed from the "%s" team`+"\n", userName, teamName)
 	return nil
 }
 

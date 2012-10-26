@@ -78,7 +78,7 @@ func (m *Manager) Run(args []string) {
 	name := args[0]
 	command, ok := m.Commands[name]
 	if !ok {
-		io.WriteString(m.stderr, fmt.Sprintf("command %s does not exist\n", args[0]))
+		fmt.Fprintf(m.stderr, "command %s does not exist\n", args[0])
 		m.finisher().Exit(1)
 		return
 	}

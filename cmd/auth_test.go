@@ -18,7 +18,7 @@ func (s *S) TestLogin(c *C) {
 	defer func() {
 		fsystem = nil
 	}()
-	expected := "Successfully logged!\n"
+	expected := "Successfully logged in!\n"
 	context := Context{[]string{"foo@foo.com"}, manager.stdout, manager.stderr, manager.stdin}
 	client := NewClient(&http.Client{Transport: &transport{msg: `{"token": "sometoken"}`, status: http.StatusOK}}, nil, "", "")
 	command := login{reader: &fakeReader{outputs: []string{"chico"}}}
@@ -35,7 +35,7 @@ func (s *S) TestLoginShouldNotDependOnTsuruTokenFile(c *C) {
 	defer func() {
 		fsystem = nil
 	}()
-	expected := "Successfully logged!\n"
+	expected := "Successfully logged in!\n"
 	context := Context{[]string{"foo@foo.com"}, manager.stdout, manager.stderr, manager.stdin}
 	client := NewClient(&http.Client{Transport: &transport{msg: `{"token":"anothertoken"}`, status: http.StatusOK}}, nil, "", "")
 	command := login{reader: &fakeReader{outputs: []string{"bar123"}}}
@@ -67,7 +67,7 @@ func (s *S) TestLogout(c *C) {
 	defer func() {
 		fsystem = nil
 	}()
-	expected := "Successfully logout!\n"
+	expected := "Successfully logged out!\n"
 	context := Context{[]string{}, manager.stdout, manager.stderr, manager.stdin}
 	command := logout{}
 	err := command.Run(&context, nil)
