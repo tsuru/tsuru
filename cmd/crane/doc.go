@@ -18,6 +18,7 @@ The currently available commands are (grouped by subject):
 	version           displays current tsuru version
 
 	user-create       creates a new user
+	user-remove       removes your user from tsuru server
 	login             authenticates the user with tsuru server
 	logout            finishes the session with tsuru server
 	key-add           adds a public key to tsuru deploy server
@@ -69,6 +70,18 @@ Usage:
 
 user-create creates a user within crane remote server. It will ask for the
 password before issue the request.
+
+
+Remove your user from tsuru server
+
+Usage:
+
+	% tsuru user-remove
+
+user-remove will remove currently authenticated user from remote tsuru server.
+since there cannot exist any orphan teams, tsuru will refuse to remove a user
+that is the last member of some team. if this is your case, make sure you
+remove the team using "team-remove" before removing the user.
 
 
 Authenticate within remote crane server
