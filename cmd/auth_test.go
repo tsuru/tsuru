@@ -150,6 +150,62 @@ func (s *S) TestTeamCreateInfo(c *C) {
 	c.Assert((&teamCreate{}).Info(), DeepEquals, expected)
 }
 
+func (s *S) TestTeamRemove(c *C) {
+	var (
+		buf    bytes.Buffer
+		called bool
+	)
+	context := Context{
+		Args:   []string{"evergrey"},
+		Stdout: &buf,
+	}
+	trans := conditionalTransport{
+		transport{
+			msg:    "",
+			status: http.StatusOK,
+		},
+		func(req *http.Request) bool {
+			called = true
+			return req.URL.Path == "/teams/evergrey" && req.Method == "DELETE"
+		},
+	}
+	client := NewClient(&http.Client{Transport: &trans}, nil, "", "")
+	command := teamRemove{}
+	err := command.Run(&context, client)
+	c.Assert(err, IsNil)
+	c.Assert(called, Equals, true)
+	c.Assert(buf.String(), Equals, `Team "evergrey" successfully removed!`+"\n")
+}
+
+func (s *S) TestTeamRemoveFailingRequest(c *C) {
+	context := Context{
+		Args: []string{"evergrey"},
+	}
+	client := NewClient(&http.Client{Transport: &transport{msg: "Team evergrey not found.", status: http.StatusNotFound}}, nil, "", "")
+	command := teamRemove{}
+	err := command.Run(&context, client)
+	c.Assert(err, NotNil)
+	c.Assert(err, ErrorMatches, "^Team evergrey not found.$")
+}
+
+func (s *S) TestTeamRemoveInfo(c *C) {
+	expected := &Info{
+		Name:    "team-remove",
+		Usage:   "team-remove <team-name>",
+		Desc:    "removes a team from tsuru server.",
+		MinArgs: 1,
+	}
+	c.Assert((&teamRemove{}).Info(), DeepEquals, expected)
+}
+
+func (s *S) TestTeamRemoveIsACommand(c *C) {
+	var _ Command = &teamRemove{}
+}
+
+func (s *S) TestTeamRemoveIsAnInfoer(c *C) {
+	var _ Infoer = &teamRemove{}
+}
+
 func (s *S) TestTeamListRun(c *C) {
 	var called bool
 	trans := &conditionalTransport{

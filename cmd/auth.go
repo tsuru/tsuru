@@ -205,6 +205,32 @@ func (c *teamCreate) Run(context *Context, client Doer) error {
 	return nil
 }
 
+type teamRemove struct{}
+
+func (c *teamRemove) Run(context *Context, client Doer) error {
+	team := context.Args[0]
+	url := GetUrl(fmt.Sprintf("/teams/%s", team))
+	request, err := http.NewRequest("DELETE", url, nil)
+	if err != nil {
+		return err
+	}
+	_, err = client.Do(request)
+	if err != nil {
+		return err
+	}
+	fmt.Fprintf(context.Stdout, `Team "%s" successfully removed!`+"\n", team)
+	return nil
+}
+
+func (c *teamRemove) Info() *Info {
+	return &Info{
+		Name:    "team-remove",
+		Usage:   "team-remove <team-name>",
+		Desc:    "removes a team from tsuru server.",
+		MinArgs: 1,
+	}
+}
+
 type teamUserAdd struct{}
 
 func (c *teamUserAdd) Info() *Info {
