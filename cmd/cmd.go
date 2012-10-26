@@ -94,6 +94,9 @@ func (m *Manager) Run(args []string) {
 	err := command.(Command).Run(&context, client)
 	if err != nil {
 		errorMsg := err.Error()
+		if strings.HasPrefix(errorMsg, "Invalid token") {
+			errorMsg = `You're not authenticated or your session has expired. Please use "login" command for authentication.`
+		}
 		if !strings.HasSuffix(errorMsg, "\n") {
 			errorMsg += "\n"
 		}
