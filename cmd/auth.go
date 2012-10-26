@@ -83,6 +83,30 @@ func (c *userCreate) Run(context *Context, client Doer) error {
 	return nil
 }
 
+type userRemove struct{}
+
+func (c *userRemove) Run(context *Context, client Doer) error {
+	request, err := http.NewRequest("DELETE", GetUrl("/users"), nil)
+	if err != nil {
+		return err
+	}
+	_, err = client.Do(request)
+	if err != nil {
+		return err
+	}
+	fmt.Fprint(context.Stdout, "User successfully removed.\n")
+	return nil
+}
+
+func (c *userRemove) Info() *Info {
+	return &Info{
+		Name:    "user-remove",
+		Usage:   "user-remove",
+		Desc:    "removes your user from tsuru server.",
+		MinArgs: 0,
+	}
+}
+
 type login struct {
 	reader passwordReader
 }

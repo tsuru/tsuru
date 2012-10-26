@@ -252,6 +252,60 @@ func (s *S) TestUserCreateInfo(c *C) {
 	c.Assert((&userCreate{}).Info(), DeepEquals, expected)
 }
 
+func (s *S) TestUserRemove(c *C) {
+	var (
+		buf    bytes.Buffer
+		called bool
+	)
+	context := Context{
+		Stdout: &buf,
+	}
+	trans := conditionalTransport{
+		transport{
+			msg:    "",
+			status: http.StatusOK,
+		},
+		func(req *http.Request) bool {
+			called = true
+			return req.Method == "DELETE" && req.URL.Path == "/users"
+		},
+	}
+	client := NewClient(&http.Client{Transport: &trans}, nil, "", "")
+	command := userRemove{}
+	err := command.Run(&context, client)
+	c.Assert(err, IsNil)
+	c.Assert(called, Equals, true)
+	c.Assert(buf.String(), Equals, "User successfully removed.\n")
+}
+
+func (s *S) TestUserRemoveWithRequestError(c *C) {
+	client := NewClient(&http.Client{Transport: &transport{msg: "User not found.", status: http.StatusNotFound}}, nil, "", "")
+	command := userRemove{}
+	err := command.Run(&Context{}, client)
+	c.Assert(err, NotNil)
+	c.Assert(err, ErrorMatches, "^User not found.$")
+}
+
+func (s *S) TestUserRemoveInfo(c *C) {
+	expected := &Info{
+		Name:    "user-remove",
+		Usage:   "user-remove",
+		Desc:    "removes your user from tsuru server.",
+		MinArgs: 0,
+	}
+	c.Assert((&userRemove{}).Info(), DeepEquals, expected)
+}
+
+func (s *S) TestUserRemoveIsACommand(c *C) {
+	var cmd Command
+	c.Assert(&userRemove{}, Implements, &cmd)
+}
+
+func (s *S) TestUserRemoveIsAnInfoer(c *C) {
+	var infoer Infoer
+	c.Assert(&userRemove{}, Implements, &infoer)
+}
+
 func (s *S) TestUserCreatePreader(c *C) {
 	reader := fakeReader{outputs: []string{"123", "456"}}
 	create := userCreate{}
