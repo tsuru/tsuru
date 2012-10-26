@@ -310,3 +310,27 @@ func RemoveKeyFromUser(w http.ResponseWriter, r *http.Request, u *User) error {
 	}
 	return removeKeyFromUser(key, u)
 }
+
+func RemoveUser(w http.ResponseWriter, r *http.Request, u *User) error {
+	teams, err := u.Teams()
+	if err != nil {
+		return err
+	}
+	for _, team := range teams {
+		if len(team.Users) < 2 {
+			msg := fmt.Sprintf(`This user is the last member of the team "%s", so it cannot be removed.
+
+Please remove the team, them remove the user.`, team.Name)
+			return &errors.Http{Code: http.StatusForbidden, Message: msg}
+		}
+		err = team.removeUser(u)
+		if err != nil {
+			return err
+		}
+		err = db.Session.Teams().Update(bson.M{"_id": team.Name}, team)
+		if err != nil {
+			return err
+		}
+	}
+	return db.Session.Users().Remove(bson.M{"email": u.Email})
+}

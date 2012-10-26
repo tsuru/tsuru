@@ -800,3 +800,61 @@ func (s *S) TestRemoveKeyHandlerRemovesTheMemberEntryFromGitosis(c *C) {
 	time.Sleep(1e9)
 	c.Assert("members = "+keyname, NotInGitosis)
 }
+
+func (s *S) TestRemoveUser(c *C) {
+	u := User{Email: "her-voices@painofsalvation.com"}
+	err := u.Create()
+	c.Assert(err, IsNil)
+	defer db.Session.Users().Remove(bson.M{"email": u.Email})
+	request, err := http.NewRequest("DELETE", "/users", nil)
+	c.Assert(err, IsNil)
+	recorder := httptest.NewRecorder()
+	err = RemoveUser(recorder, request, &u)
+	c.Assert(err, IsNil)
+	n, err := db.Session.Users().Find(bson.M{"email": u.Email}).Count()
+	c.Assert(err, IsNil)
+	c.Assert(n, Equals, 0)
+}
+
+func (s *S) TestRemoveUserWithTheUserBeingLastMemberOfATeam(c *C) {
+	u := User{Email: "of-two-beginnings@painofsalvation.com"}
+	err := u.Create()
+	c.Assert(err, IsNil)
+	defer db.Session.Users().Remove(bson.M{"email": u.Email})
+	t := Team{Name: "painofsalvation", Users: []string{u.Email}}
+	err = db.Session.Teams().Insert(t)
+	c.Assert(err, IsNil)
+	defer db.Session.Teams().Remove(bson.M{"_id": t.Name})
+	request, err := http.NewRequest("DELETE", "/users", nil)
+	c.Assert(err, IsNil)
+	recorder := httptest.NewRecorder()
+	err = RemoveUser(recorder, request, &u)
+	c.Assert(err, NotNil)
+	e, ok := err.(*errors.Http)
+	c.Assert(ok, Equals, true)
+	c.Assert(e.Code, Equals, http.StatusForbidden)
+	expected := `This user is the last member of the team "painofsalvation", so it cannot be removed.
+
+Please remove the team, them remove the user.`
+	c.Assert(e.Message, Equals, expected)
+}
+
+func (s *S) TestRemoveUserShouldRemoveTheUserFromAllTeamsThatHeIsMember(c *C) {
+	u := User{Email: "of-two-beginnings@painofsalvation.com"}
+	err := u.Create()
+	c.Assert(err, IsNil)
+	defer db.Session.Users().Remove(bson.M{"email": u.Email})
+	t := Team{Name: "painofsalvation", Users: []string{u.Email, s.user.Email}}
+	err = db.Session.Teams().Insert(t)
+	c.Assert(err, IsNil)
+	defer db.Session.Teams().Remove(bson.M{"_id": t.Name})
+	request, err := http.NewRequest("DELETE", "/users", nil)
+	c.Assert(err, IsNil)
+	recorder := httptest.NewRecorder()
+	err = RemoveUser(recorder, request, &u)
+	c.Assert(err, IsNil)
+	err = db.Session.Teams().Find(bson.M{"_id": t.Name}).One(&t)
+	c.Assert(err, IsNil)
+	c.Assert(t.Users, HasLen, 1)
+	c.Assert(t.Users[0], Equals, s.user.Email)
+}
