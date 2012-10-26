@@ -13,7 +13,6 @@ import (
 	"github.com/globocom/tsuru/repository"
 	"github.com/globocom/tsuru/validation"
 	"io"
-	"io/ioutil"
 	"labix.org/v2/mgo/bson"
 	"net/http"
 	"strings"
@@ -28,11 +27,7 @@ const (
 
 func CreateUser(w http.ResponseWriter, r *http.Request) error {
 	var u User
-	b, err := ioutil.ReadAll(r.Body)
-	if err != nil {
-		return err
-	}
-	err = json.Unmarshal(b, &u)
+	err := json.NewDecoder(r.Body).Decode(&u)
 	if err != nil {
 		return &errors.Http{Code: http.StatusBadRequest, Message: err.Error()}
 	}
@@ -55,11 +50,7 @@ func CreateUser(w http.ResponseWriter, r *http.Request) error {
 
 func Login(w http.ResponseWriter, r *http.Request) error {
 	var pass map[string]string
-	b, err := ioutil.ReadAll(r.Body)
-	if err != nil {
-		return err
-	}
-	err = json.Unmarshal(b, &pass)
+	err := json.NewDecoder(r.Body).Decode(&pass)
 	if err != nil {
 		return &errors.Http{Code: http.StatusBadRequest, Message: "Invalid JSON"}
 	}
@@ -118,11 +109,7 @@ func createTeam(name string, u *User) error {
 
 func CreateTeam(w http.ResponseWriter, r *http.Request, u *User) error {
 	var params map[string]string
-	b, err := ioutil.ReadAll(r.Body)
-	if err != nil {
-		return err
-	}
-	err = json.Unmarshal(b, &params)
+	err := json.NewDecoder(r.Body).Decode(&params)
 	if err != nil {
 		return &errors.Http{Code: http.StatusBadRequest, Message: err.Error()}
 	}
@@ -234,11 +221,7 @@ func RemoveUserFromTeam(w http.ResponseWriter, r *http.Request, u *User) error {
 
 func getKeyFromBody(b io.Reader) (string, error) {
 	var body map[string]string
-	content, err := ioutil.ReadAll(b)
-	if err != nil {
-		return "", err
-	}
-	err = json.Unmarshal(content, &body)
+	err := json.NewDecoder(b).Decode(&body)
 	if err != nil {
 		return "", &errors.Http{Code: http.StatusBadRequest, Message: "Invalid JSON"}
 	}
