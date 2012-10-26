@@ -91,6 +91,7 @@ func main() {
 
 	m.Get("/teams", AuthorizationRequiredHandler(auth.ListTeams))
 	m.Post("/teams", AuthorizationRequiredHandler(auth.CreateTeam))
+	m.Del("/teams/:name", AuthorizationRequiredHandler(auth.RemoveTeam))
 	m.Put("/teams/:team/:user", AuthorizationRequiredHandler(auth.AddUserToTeam))
 	m.Del("/teams/:team/:user", AuthorizationRequiredHandler(auth.RemoveUserFromTeam))
 
