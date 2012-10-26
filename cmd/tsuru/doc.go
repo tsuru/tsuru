@@ -25,6 +25,7 @@ The currently available commands are (grouped by subject):
 	key-remove        removes a public key from tsuru deploy server
 
 	team-create       creates a new team (adding the current user to it automatically)
+	team-remove       removes a team from tsuru
 	team-list         list teams that the user is member
 	team-user-add     adds a user to a team
 	team-user-remove  removes a user from a team
@@ -187,6 +188,16 @@ member of at least one team in order to create an app or a service instance.
 When you create a team, you're automatically member of this team.
 
 
+Remove a team from tsuru
+
+Usage:
+
+	% tsuru team-remove <team-name>
+
+team-remove will remove a team from tsuru server. You're able to remove teams
+that you're member of. A team that has access to any app cannot be removed.
+Before removing a team, make sure it does not have access to any app (see
+"app-grant" and "app-revoke" commands for details).
 List teams that the user is member of
 
 Usage:

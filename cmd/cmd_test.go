@@ -306,6 +306,13 @@ func (s *S) TestUserRemoveIsRegistered(c *C) {
 	c.Assert(rmUser, FitsTypeOf, &userRemove{})
 }
 
+func (s *S) TestTeamRemoveIsRegistered(c *C) {
+	manager := BuildBaseManager("tsuru", "1.0", "")
+	rmTeam, ok := manager.Commands["team-remove"]
+	c.Assert(ok, Equals, true)
+	c.Assert(rmTeam, FitsTypeOf, &teamRemove{})
+}
+
 func (s *S) TestVersionIsRegisteredByNewManager(c *C) {
 	var stdout, stderr bytes.Buffer
 	manager := NewManager("tsuru", "1.0", "", &stdout, &stderr, os.Stdin)

@@ -121,6 +121,19 @@ member of at least one team in order to create a service.
 When you create a team, you're automatically member of this team.
 
 
+Remove a team from tsuru
+
+Usage:
+
+	% crane team-remove <team-name>
+
+team-remove will remove a team from tsuru server. You're able to remove teams
+that you're member of. A team that has access to any app cannot be removed.
+Before removing a team, make sure it does not have access to any app (see
+"app-grant" and "app-revoke" commands for details).
+List teams that the user is member of
+
+
 List teams that the user is member of
 
 Usage:
