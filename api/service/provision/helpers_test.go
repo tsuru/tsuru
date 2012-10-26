@@ -9,12 +9,12 @@ import (
 	. "launchpad.net/gocheck"
 )
 
-func (s *S) TestGetServiceOrError(c *C) {
+func (s *S) TestgetServiceOrError(c *C) {
 	srv := Service{Name: "foo", OwnerTeams: []string{s.team.Name}}
 	err := srv.Create()
 	c.Assert(err, IsNil)
 	defer srv.Delete()
-	rSrv, err := GetServiceOrError("foo", s.user)
+	rSrv, err := getServiceOrError("foo", s.user)
 	c.Assert(err, IsNil)
 	c.Assert(rSrv.Name, Equals, srv.Name)
 }
@@ -35,7 +35,7 @@ func (s *S) TestServicesAndInstancesByOwnerTeams(c *C) {
 	sInstance2 := ServiceInstance{Name: "bar", ServiceName: "mongodb"}
 	err = sInstance2.Create()
 	defer sInstance2.Delete()
-	results := ServicesAndInstancesByOwner(s.user)
+	results := servicesAndInstancesByOwner(s.user)
 	expected := []ServiceModel{
 		{Service: "mysql", Instances: []string{"foo"}},
 	}

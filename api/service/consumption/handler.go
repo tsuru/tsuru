@@ -76,7 +76,7 @@ func validateInstanceForCreation(s *service.Service, sJson map[string]string, u 
 		}
 		return &errors.Http{Code: http.StatusNotFound, Message: msg}
 	}
-	_, err = GetServiceOrError(sJson["service_name"], u)
+	_, err = getServiceOrError(sJson["service_name"], u)
 	if err != nil {
 		return err
 	}
@@ -85,7 +85,7 @@ func validateInstanceForCreation(s *service.Service, sJson map[string]string, u 
 
 func RemoveServiceInstanceHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	name := r.URL.Query().Get(":name")
-	si, err := GetServiceInstanceOrError(name, u)
+	si, err := getServiceInstanceOrError(name, u)
 	if err != nil {
 		return err
 	}
@@ -106,7 +106,7 @@ func RemoveServiceInstanceHandler(w http.ResponseWriter, r *http.Request, u *aut
 }
 
 func ServicesInstancesHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
-	response := ServiceAndServiceInstancesByTeams(u)
+	response := serviceAndServiceInstancesByTeams(u)
 	body, err := json.Marshal(response)
 	if err != nil {
 		return err
@@ -147,7 +147,7 @@ func ServiceInstanceStatusHandler(w http.ResponseWriter, r *http.Request, u *aut
 
 func ServiceInfoHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	serviceName := r.URL.Query().Get(":name")
-	_, err := GetServiceOrError(serviceName, u)
+	_, err := getServiceOrError(serviceName, u)
 	if err != nil {
 		return err
 	}
@@ -171,7 +171,7 @@ func ServiceInfoHandler(w http.ResponseWriter, r *http.Request, u *auth.User) er
 
 func Doc(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	sName := r.URL.Query().Get(":name")
-	s, err := GetServiceOrError(sName, u)
+	s, err := getServiceOrError(sName, u)
 	if err != nil {
 		return err
 	}

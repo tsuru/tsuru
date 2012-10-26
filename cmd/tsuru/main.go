@@ -6,13 +6,19 @@ package main
 
 import (
 	"github.com/globocom/tsuru/cmd"
+	"launchpad.net/gnuflag"
 	"os"
 )
 
-const version = "0.1"
+const (
+	version = "0.2.1"
+	header  = "Supported-Tsuru"
+)
+
+var appName = gnuflag.String("app", "", "App name for running app related commands.")
 
 func buildManager(name string) *cmd.Manager {
-	m := cmd.BuildBaseManager(name, version)
+	m := cmd.BuildBaseManager(name, version, header)
 	m.Register(&AppRun{})
 	m.Register(&AppInfo{})
 	m.Register(&AppCreate{})
@@ -39,8 +45,9 @@ func buildManager(name string) *cmd.Manager {
 }
 
 func main() {
+	gnuflag.Parse(true)
 	name := cmd.ExtractProgramName(os.Args[0])
 	manager := buildManager(name)
-	args := os.Args[1:]
+	args := gnuflag.Args()
 	manager.Run(args)
 }

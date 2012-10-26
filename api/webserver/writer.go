@@ -21,9 +21,12 @@ func (w *FilteredWriter) Header() http.Header {
 	return w.writer.Header()
 }
 
-// Write writes the data, filtering the juju warnings.
+// Write writes and flushes the data, filtering the juju warnings.
 func (w *FilteredWriter) Write(data []byte) (int, error) {
 	_, err := w.writer.Write(filterOutput(data))
+	if f, ok := w.writer.(http.Flusher); ok {
+		f.Flush()
+	}
 	// returning the len(data) to skip the 'short write' error
 	return len(data), err
 }

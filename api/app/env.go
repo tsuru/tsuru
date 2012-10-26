@@ -5,6 +5,7 @@
 package app
 
 import (
+	"bytes"
 	"fmt"
 	"github.com/globocom/tsuru/fs"
 	"github.com/globocom/tsuru/log"
@@ -47,9 +48,10 @@ func init() {
 
 func runCommands() {
 	for cmd := range cmds {
-		out, err := cmd.u.Command(nil, nil, cmd.cmd)
+		buf := new(bytes.Buffer)
+		err := cmd.u.Command(buf, buf, cmd.cmd)
 		if cmd.result != nil {
-			r := cmdResult{output: out, err: err}
+			r := cmdResult{output: buf.Bytes(), err: err}
 			cmd.result <- r
 		}
 	}

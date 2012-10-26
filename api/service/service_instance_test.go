@@ -5,6 +5,7 @@
 package service
 
 import (
+	"github.com/globocom/tsuru/api/auth"
 	"github.com/globocom/tsuru/api/bind"
 	"github.com/globocom/tsuru/db"
 	"labix.org/v2/mgo/bson"
@@ -241,4 +242,25 @@ func (s *S) TestGetServiceInstancesByServicesAndTeams(c *C) {
 	sInstances, err := GetServiceInstancesByServicesAndTeams([]Service{srvc, srvc2}, s.user)
 	c.Assert(err, IsNil)
 	c.Assert(sInstances, DeepEquals, expected)
+}
+
+func (s *S) TestGetServiceInstancesByServicesAndTeamsForUsersThatAreNotMembersOfAnyTeam(c *C) {
+	u := auth.User{Email: "noteamforme@globo.com", Password: "123"}
+	err := u.Create()
+	c.Assert(err, IsNil)
+	defer db.Session.Users().Remove(bson.M{"email": u.Email})
+	srvc := Service{Name: "mysql", Teams: []string{s.team.Name}, IsRestricted: true}
+	err = srvc.Create()
+	c.Assert(err, IsNil)
+	defer srvc.Delete()
+	instance := ServiceInstance{
+		Name:        "j4sql",
+		ServiceName: srvc.Name,
+	}
+	err = instance.Create()
+	c.Assert(err, IsNil)
+	defer instance.Delete()
+	instances, err := GetServiceInstancesByServicesAndTeams([]Service{srvc}, &u)
+	c.Assert(err, IsNil)
+	c.Assert(instances, IsNil)
 }

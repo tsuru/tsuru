@@ -18,8 +18,20 @@ import (
 	"labix.org/v2/mgo/bson"
 	"net/http"
 	"regexp"
+	"strconv"
 	"strings"
 )
+
+func write(w io.Writer, content []byte) error {
+	n, err := w.Write(content)
+	if err != nil {
+		return err
+	}
+	if n != len(content) {
+		return io.ErrShortWrite
+	}
+	return nil
+}
 
 func sendProjectChangeToGitosis(kind int, team *auth.Team, app *App) {
 	ch := repository.Change{
@@ -33,7 +45,7 @@ func getAppOrError(name string, u *auth.User) (App, error) {
 	app := App{Name: name}
 	err := app.Get()
 	if err != nil {
-		return app, &errors.Http{Code: http.StatusNotFound, Message: "App not found"}
+		return app, &errors.Http{Code: http.StatusNotFound, Message: fmt.Sprintf("App %s not found.", name)}
 	}
 	if !auth.CheckUserAccess(app.Teams, u) {
 		return app, &errors.Http{Code: http.StatusForbidden, Message: "User does not have access to this app"}
@@ -42,30 +54,18 @@ func getAppOrError(name string, u *auth.User) (App, error) {
 }
 
 func CloneRepositoryHandler(w http.ResponseWriter, r *http.Request) error {
-	var write = func(w http.ResponseWriter, out []byte) error {
-		n, err := w.Write(out)
-		if err != nil {
-			return err
-		}
-		if n != len(out) {
-			return io.ErrShortWrite
-		}
-		if f, ok := w.(http.Flusher); ok {
-			f.Flush()
-		}
-		return nil
-	}
 	w.Header().Set("Content-Type", "text")
-	err := write(w, []byte("\n ---> Tsuru receiving push\n"))
+	app := App{Name: r.URL.Query().Get(":name")}
+	err := app.Get()
+	logWriter := LogWriter{&app, w}
+	if err != nil {
+		return &errors.Http{Code: http.StatusNotFound, Message: fmt.Sprintf("App %s not found.", app.Name)}
+	}
+	err = write(&logWriter, []byte("\n ---> Tsuru receiving push\n"))
 	if err != nil {
 		return err
 	}
-	app := App{Name: r.URL.Query().Get(":name")}
-	err = app.Get()
-	if err != nil {
-		return &errors.Http{Code: http.StatusNotFound, Message: "App not found"}
-	}
-	err = write(w, []byte("\n ---> Clonning your code in your machines\n"))
+	err = write(&logWriter, []byte("\n ---> Clonning your code in your machines\n"))
 	if err != nil {
 		return err
 	}
@@ -73,60 +73,23 @@ func CloneRepositoryHandler(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return &errors.Http{Code: http.StatusInternalServerError, Message: string(out)}
 	}
-	err = write(w, out)
+	err = write(&logWriter, out)
 	if err != nil {
 		return err
 	}
-	err = write(w, []byte("\n ---> Parsing app.conf\n"))
+	err = write(&logWriter, []byte("\n ---> Installing dependencies\n"))
 	if err != nil {
 		return err
 	}
-	c, err := app.conf()
+	err = installDeps(&app, &logWriter)
 	if err != nil {
 		return err
 	}
-	err = write(w, []byte("\n ---> Installing dependencies\n"))
+	err = restart(&app, &logWriter)
 	if err != nil {
 		return err
 	}
-	_, err = installDeps(&app, w)
-	if err != nil {
-		return err
-	}
-	err = write(w, []byte("\n ---> Running pre-restart\n"))
-	if err != nil {
-		return err
-	}
-	out, err = app.preRestart(c)
-	if err != nil {
-		return err
-	}
-	err = write(w, out)
-	if err != nil {
-		return err
-	}
-	out, err = restart(&app, w)
-	if err != nil {
-		write(w, out)
-		return err
-	}
-	err = write(w, out)
-	if err != nil {
-		return err
-	}
-	err = write(w, []byte("\n ---> Running pos-restart\n"))
-	if err != nil {
-		return err
-	}
-	out, err = app.posRestart(c)
-	err = write(w, out)
-	if err != nil {
-		return err
-	}
-	if err != nil {
-		return err
-	}
-	return write(w, []byte("\n ---> Deploy done!\n\n"))
+	return write(&logWriter, []byte("\n ---> Deploy done!\n\n"))
 }
 
 // AppIsAvaliableHandler verify if the app.unit().State() is
@@ -260,13 +223,9 @@ func CreateAppHandler(w http.ResponseWriter, r *http.Request, u *auth.User) erro
 
 func grantAccessToTeam(appName, teamName string, u *auth.User) error {
 	t := new(auth.Team)
-	app := &App{Name: appName}
-	err := app.Get()
+	app, err := getAppOrError(appName, u)
 	if err != nil {
-		return &errors.Http{Code: http.StatusNotFound, Message: "App not found"}
-	}
-	if !auth.CheckUserAccess(app.Teams, u) {
-		return &errors.Http{Code: http.StatusUnauthorized, Message: "User unauthorized"}
+		return err
 	}
 	err = db.Session.Teams().Find(bson.M{"_id": teamName}).One(t)
 	if err != nil {
@@ -280,7 +239,7 @@ func grantAccessToTeam(appName, teamName string, u *auth.User) error {
 	if err != nil {
 		return err
 	}
-	sendProjectChangeToGitosis(repository.AddProject, t, app)
+	sendProjectChangeToGitosis(repository.AddProject, t, &app)
 	return nil
 }
 
@@ -292,13 +251,9 @@ func GrantAccessToTeamHandler(w http.ResponseWriter, r *http.Request, u *auth.Us
 
 func revokeAccessFromTeam(appName, teamName string, u *auth.User) error {
 	t := new(auth.Team)
-	app := &App{Name: appName}
-	err := app.Get()
+	app, err := getAppOrError(appName, u)
 	if err != nil {
-		return &errors.Http{Code: http.StatusNotFound, Message: "App not found"}
-	}
-	if !auth.CheckUserAccess(app.Teams, u) {
-		return &errors.Http{Code: http.StatusUnauthorized, Message: "User unauthorized"}
+		return err
 	}
 	err = db.Session.Teams().Find(bson.M{"_id": teamName}).One(t)
 	if err != nil {
@@ -316,7 +271,7 @@ func revokeAccessFromTeam(appName, teamName string, u *auth.User) error {
 	if err != nil {
 		return err
 	}
-	sendProjectChangeToGitosis(repository.RemoveProject, t, app)
+	sendProjectChangeToGitosis(repository.RemoveProject, t, &app)
 	return nil
 }
 
@@ -483,8 +438,21 @@ func UnsetEnv(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 }
 
 func AppLog(w http.ResponseWriter, r *http.Request, u *auth.User) error {
+	w.Header().Set("Content-Type", "application/json")
 	appName := r.URL.Query().Get(":name")
+	var selector bson.M
+	if l := r.URL.Query().Get("lines"); l != "" {
+		lines, err := strconv.Atoi(l)
+		selector = bson.M{"logs": bson.M{"$slice": lines}}
+		if err != nil {
+			return err
+		}
+	}
 	app, err := getAppOrError(appName, u)
+	if err != nil {
+		return err
+	}
+	err = db.Session.Apps().Find(bson.M{"name": appName}).Select(selector).One(&app)
 	if err != nil {
 		return err
 	}
@@ -492,8 +460,7 @@ func AppLog(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	if err != nil {
 		return err
 	}
-	fmt.Fprint(w, string(b))
-	return nil
+	return write(w, b)
 }
 
 func serviceInstanceAndAppOrError(instanceName, appName string, u *auth.User) (instance service.ServiceInstance, a App, err error) {
@@ -508,7 +475,7 @@ func serviceInstanceAndAppOrError(instanceName, appName string, u *auth.User) (i
 	}
 	err = db.Session.Apps().Find(bson.M{"name": appName}).One(&a)
 	if err != nil {
-		err = &errors.Http{Code: http.StatusNotFound, Message: "App not found"}
+		err = &errors.Http{Code: http.StatusNotFound, Message: fmt.Sprintf("App %s not found.", appName)}
 		return
 	}
 	if !auth.CheckUserAccess(a.Teams, u) {
@@ -555,16 +522,5 @@ func RestartHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error 
 		msg := "You can't restart this app because it doesn't have an IP yet."
 		return &errors.Http{Code: http.StatusPreconditionFailed, Message: msg}
 	}
-	out, err := restart(&app, w)
-	if err != nil {
-		return err
-	}
-	n, err := w.Write(out)
-	if err != nil {
-		return err
-	}
-	if n != len(out) {
-		return &errors.Http{Code: http.StatusInternalServerError, Message: "Failed to write response body."}
-	}
-	return nil
+	return restart(&app, w)
 }

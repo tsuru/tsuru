@@ -11,6 +11,7 @@ import (
 	"github.com/globocom/tsuru/log"
 	"io"
 	"os/exec"
+	"regexp"
 	"strconv"
 	"strings"
 )
@@ -42,31 +43,21 @@ func (u *Unit) destroy() ([]byte, error) {
 	return cmd.CombinedOutput()
 }
 
-func (u *Unit) executeHook(hook string, stdout, stderr io.Writer) ([]byte, error) {
+func (u *Unit) executeHook(hook string, w io.Writer) error {
 	cmd := fmt.Sprintf("/var/lib/tsuru/hooks/%s", hook)
-	output, err := u.Command(stdout, stderr, cmd)
-	log.Print(string(output))
-	return output, err
+	return u.Command(w, w, cmd)
 }
 
-func (u *Unit) Command(stdout, stderr io.Writer, cmds ...string) ([]byte, error) {
+func (u *Unit) Command(stdout, stderr io.Writer, cmds ...string) error {
 	if state := u.State(); state != "started" {
-		return nil, fmt.Errorf("Unit must be started to run commands, but it is %s.", state)
+		return fmt.Errorf("Unit must be started to run commands, but it is %s.", state)
 	}
 	c := exec.Command("juju", "ssh", "-o", "StrictHostKeyChecking no", "-q", strconv.Itoa(u.Machine))
 	c.Args = append(c.Args, cmds...)
 	log.Printf("executing %s on %s", strings.Join(cmds, " "), u.app.Name)
-	var b bytes.Buffer
-	if stdout == nil {
-		stdout = &b
-	}
-	if stderr == nil {
-		stderr = &b
-	}
 	c.Stdout = stdout
 	c.Stderr = stderr
-	err := c.Run()
-	return b.Bytes(), err
+	return c.Run()
 }
 
 func (u *Unit) GetName() string {
@@ -100,4 +91,32 @@ func (u *Unit) State() string {
 		return "started"
 	}
 	return "pending"
+}
+
+// filterOutput filters output from juju.
+//
+// This function is a duplication from api/webserver.
+//
+// TODO: find somewhere to export this function.
+func filterOutput(output []byte) []byte {
+	var result [][]byte
+	var ignore bool
+	deprecation := []byte("DeprecationWarning")
+	regexLog := regexp.MustCompile(`^\d{4}-\d{2}-\d{2}\s\d{2}:\d{2}:\d{2}`)
+	regexSshWarning := regexp.MustCompile(`^Warning: Permanently added`)
+	lines := bytes.Split(output, []byte{'\n'})
+	for _, line := range lines {
+		if ignore {
+			ignore = false
+			continue
+		}
+		if bytes.Contains(line, deprecation) {
+			ignore = true
+			continue
+		}
+		if !regexSshWarning.Match(line) && !regexLog.Match(line) {
+			result = append(result, line)
+		}
+	}
+	return bytes.Join(result, []byte{'\n'})
 }

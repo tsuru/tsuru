@@ -43,7 +43,7 @@ func (c *Client) issueRequest(path, method string, params map[string][]string) (
 	url := strings.TrimRight(c.endpoint, "/") + "/" + strings.Trim(path, "/") + suffix
 	req, err := http.NewRequest(method, url, body)
 	if err != nil {
-		log.Print("Got error while creating request: " + err.Error())
+		log.Printf("Got error while creating request: %s", err)
 		return nil, err
 	}
 	return http.DefaultClient.Do(req)
@@ -55,7 +55,7 @@ func (c *Client) jsonFromResponse(resp *http.Response) (env map[string]string, e
 	var body []byte
 	body, err = ioutil.ReadAll(resp.Body)
 	if err != nil {
-		log.Print("Got error while parsing json: " + err.Error())
+		log.Printf("Got error while parsing json: %s", err)
 		return
 	}
 	err = json.Unmarshal(body, &env)

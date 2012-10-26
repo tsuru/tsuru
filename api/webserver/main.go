@@ -31,7 +31,7 @@ func main() {
 	flag.Parse()
 	err = config.ReadConfigFile(*configFile)
 	if err != nil {
-		log.Panic(err.Error())
+		log.Panic(err)
 	}
 	connString, err := config.GetString("database:url")
 	if err != nil {
@@ -43,7 +43,7 @@ func main() {
 	}
 	db.Session, err = db.Open(connString, dbName)
 	if err != nil {
-		log.Panic(err.Error())
+		log.Panic(err)
 	}
 	defer db.Session.Close()
 

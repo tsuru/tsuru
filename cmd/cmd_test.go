@@ -11,6 +11,7 @@ import (
 	"github.com/globocom/tsuru/fs/testing"
 	"io"
 	. "launchpad.net/gocheck"
+	"os"
 )
 
 type recordingExiter int
@@ -98,7 +99,7 @@ Available commands:
 Run glb help <commandname> to get more information about a specific command.
 `
 	manager.Register(&userCreate{})
-	context := Context{[]string{}, manager.stdout, manager.stderr}
+	context := Context{[]string{}, manager.stdout, manager.stderr, manager.stdin}
 	command := help{manager: manager}
 	err := command.Run(&context, nil)
 	c.Assert(err, IsNil)
@@ -107,14 +108,14 @@ Run glb help <commandname> to get more information about a specific command.
 
 func (s *S) TestHelpCommandShouldBeRegisteredByDefault(c *C) {
 	var stdout, stderr bytes.Buffer
-	m := NewManager("tsuru", "1.0", &stdout, &stderr)
+	m := NewManager("tsuru", "1.0", "", &stdout, &stderr, os.Stdin)
 	_, exists := m.Commands["help"]
 	c.Assert(exists, Equals, true)
 }
 
 func (s *S) TestHelpReturnErrorIfTheGivenCommandDoesNotExist(c *C) {
 	command := help{manager: manager}
-	context := Context{[]string{"user-create"}, manager.stdout, manager.stderr}
+	context := Context{[]string{"user-create"}, manager.stdout, manager.stderr, manager.stdin}
 	err := command.Run(&context, nil)
 	c.Assert(err, NotNil)
 	c.Assert(err, ErrorMatches, "^Command user-create does not exist.$")
@@ -149,9 +150,9 @@ Foo do anything or nothing.
 
 func (s *S) TestVersion(c *C) {
 	var stdout, stderr bytes.Buffer
-	manager := NewManager("tsuru", "5.0", &stdout, &stderr)
+	manager := NewManager("tsuru", "5.0", "", &stdout, &stderr, os.Stdin)
 	command := version{manager: manager}
-	context := Context{[]string{}, manager.stdout, manager.stderr}
+	context := Context{[]string{}, manager.stdout, manager.stderr, manager.stdin}
 	err := command.Run(&context, nil)
 	c.Assert(err, IsNil)
 	c.Assert(manager.stdout.(*bytes.Buffer).String(), Equals, "tsuru version 5.0.\n")
@@ -207,9 +208,9 @@ Usage: tsuru foo
 Foo do anything or nothing.
 `
 	var stdout, stderr bytes.Buffer
-	manager := NewManager("tsuru", "1.0", &stdout, &stderr)
+	manager := NewManager("tsuru", "1.0", "", &stdout, &stderr, os.Stdin)
 	manager.Register(&TestCommand{})
-	context := Context{[]string{"foo"}, manager.stdout, manager.stderr}
+	context := Context{[]string{"foo"}, manager.stdout, manager.stderr, manager.stdin}
 	command := help{manager: manager}
 	err := command.Run(&context, nil)
 	c.Assert(err, IsNil)
@@ -243,56 +244,56 @@ func (s *S) TestFinisherReturnTheDefinedE(c *C) {
 }
 
 func (s *S) TestLoginIsRegistered(c *C) {
-	manager := BuildBaseManager("tsuru", "1.0")
+	manager := BuildBaseManager("tsuru", "1.0", "")
 	lgn, ok := manager.Commands["login"]
 	c.Assert(ok, Equals, true)
 	c.Assert(lgn, FitsTypeOf, &login{})
 }
 
 func (s *S) TestLogoutIsRegistered(c *C) {
-	manager := BuildBaseManager("tsuru", "1.0")
+	manager := BuildBaseManager("tsuru", "1.0", "")
 	lgt, ok := manager.Commands["logout"]
 	c.Assert(ok, Equals, true)
 	c.Assert(lgt, FitsTypeOf, &logout{})
 }
 
 func (s *S) TestUserCreateIsRegistered(c *C) {
-	manager := BuildBaseManager("tsuru", "1.0")
+	manager := BuildBaseManager("tsuru", "1.0", "")
 	user, ok := manager.Commands["user-create"]
 	c.Assert(ok, Equals, true)
 	c.Assert(user, FitsTypeOf, &userCreate{})
 }
 
 func (s *S) TestTeamCreateIsRegistered(c *C) {
-	manager := BuildBaseManager("tsuru", "1.0")
+	manager := BuildBaseManager("tsuru", "1.0", "")
 	create, ok := manager.Commands["team-create"]
 	c.Assert(ok, Equals, true)
 	c.Assert(create, FitsTypeOf, &teamCreate{})
 }
 
 func (s *S) TestTeamListIsRegistered(c *C) {
-	manager := BuildBaseManager("tsuru", "1.0")
+	manager := BuildBaseManager("tsuru", "1.0", "")
 	list, ok := manager.Commands["team-list"]
 	c.Assert(ok, Equals, true)
 	c.Assert(list, FitsTypeOf, &teamList{})
 }
 
 func (s *S) TestTeamAddUserIsRegistered(c *C) {
-	manager := BuildBaseManager("tsuru", "1.0")
+	manager := BuildBaseManager("tsuru", "1.0", "")
 	adduser, ok := manager.Commands["team-user-add"]
 	c.Assert(ok, Equals, true)
 	c.Assert(adduser, FitsTypeOf, &teamUserAdd{})
 }
 
 func (s *S) TestTeamRemoveUserIsRegistered(c *C) {
-	manager := BuildBaseManager("tsuru", "1.0")
+	manager := BuildBaseManager("tsuru", "1.0", "")
 	removeuser, ok := manager.Commands["team-user-remove"]
 	c.Assert(ok, Equals, true)
 	c.Assert(removeuser, FitsTypeOf, &teamUserRemove{})
 }
 
 func (s *S) TestTargetIsRegistered(c *C) {
-	manager := BuildBaseManager("tsuru", "1.0")
+	manager := BuildBaseManager("tsuru", "1.0", "")
 	tgt, ok := manager.Commands["target"]
 	c.Assert(ok, Equals, true)
 	c.Assert(tgt, FitsTypeOf, &target{})
@@ -300,7 +301,7 @@ func (s *S) TestTargetIsRegistered(c *C) {
 
 func (s *S) TestVersionIsRegisteredByNewManager(c *C) {
 	var stdout, stderr bytes.Buffer
-	manager := NewManager("tsuru", "1.0", &stdout, &stderr)
+	manager := NewManager("tsuru", "1.0", "", &stdout, &stderr, os.Stdin)
 	ver, ok := manager.Commands["version"]
 	c.Assert(ok, Equals, true)
 	c.Assert(ver, FitsTypeOf, &version{})
@@ -311,4 +312,30 @@ func (s *S) TestFileSystem(c *C) {
 	c.Assert(filesystem(), DeepEquals, fsystem)
 	fsystem = nil
 	c.Assert(filesystem(), DeepEquals, fs.OsFs{})
+}
+
+func (s *S) TestValidateVersion(c *C) {
+	var cases = []struct {
+		current, support string
+		expected         bool
+	}{
+		{
+			current:  "0.2.1",
+			support:  "0.3",
+			expected: false,
+		},
+		{
+			current:  "0.3.5",
+			support:  "0.3",
+			expected: true,
+		},
+		{
+			current:  "0.2",
+			support:  "0.3",
+			expected: false,
+		},
+	}
+	for _, cs := range cases {
+		c.Assert(validateVersion(cs.support, cs.current), Equals, cs.expected)
+	}
 }

@@ -87,10 +87,27 @@ func (s *S) TestHandlerShouldPassAnHandlerWithoutError(c *C) {
 	recorder := httptest.NewRecorder()
 	request, err := http.NewRequest("GET", "/apps", nil)
 	c.Assert(err, IsNil)
-
 	Handler(simpleHandler).ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, Equals, http.StatusOK)
 	c.Assert(recorder.Body.String(), Equals, "success")
+}
+
+func (s *S) TestHandlerShouldSetVersionHeaders(c *C) {
+	recorder := httptest.NewRecorder()
+	request, err := http.NewRequest("GET", "/apps", nil)
+	c.Assert(err, IsNil)
+	Handler(simpleHandler).ServeHTTP(recorder, request)
+	c.Assert(recorder.Header().Get("Supported-Tsuru"), Equals, tsuruMin)
+	c.Assert(recorder.Header().Get("Supported-Crane"), Equals, craneMin)
+}
+
+func (s *S) TestHandlerShouldSetVersionHeadersEvenOnFail(c *C) {
+	recorder := httptest.NewRecorder()
+	request, err := http.NewRequest("GET", "/apps", nil)
+	c.Assert(err, IsNil)
+	Handler(errorHandler).ServeHTTP(recorder, request)
+	c.Assert(recorder.Header().Get("Supported-Tsuru"), Equals, tsuruMin)
+	c.Assert(recorder.Header().Get("Supported-Crane"), Equals, craneMin)
 }
 
 func (s *S) TestAuthorizationRequiredHandlerShouldReturnUnauthorizedIfTheAuthorizationHeadIsNotPresent(c *C) {
@@ -108,7 +125,6 @@ func (s *S) TestAuthorizationRequiredHandlerShouldReturnUnauthorizedIfTheTokenIs
 	request, err := http.NewRequest("GET", "/apps", nil)
 	c.Assert(err, IsNil)
 	request.Header.Set("Authorization", "what the token?!")
-
 	AuthorizationRequiredHandler(authorizedSimpleHandler).ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, Equals, http.StatusUnauthorized)
 	c.Assert(recorder.Body.String(), Equals, "Invalid token\n")
@@ -119,10 +135,29 @@ func (s *S) TestAuthorizationRequiredHandlerShouldReturnTheHandlerResultIfTheTok
 	request, err := http.NewRequest("GET", "/apps", nil)
 	c.Assert(err, IsNil)
 	request.Header.Set("Authorization", s.t.Token)
-
 	AuthorizationRequiredHandler(authorizedSimpleHandler).ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, Equals, http.StatusOK)
 	c.Assert(recorder.Body.String(), Equals, "success")
+}
+
+func (s *S) TestAuthorizationRequiredHandlerShouldSetVersionHeaders(c *C) {
+	recorder := httptest.NewRecorder()
+	request, err := http.NewRequest("GET", "/apps", nil)
+	c.Assert(err, IsNil)
+	request.Header.Set("Authorization", s.t.Token)
+	AuthorizationRequiredHandler(authorizedSimpleHandler).ServeHTTP(recorder, request)
+	c.Assert(recorder.Header().Get("Supported-Tsuru"), Equals, tsuruMin)
+	c.Assert(recorder.Header().Get("Supported-Crane"), Equals, craneMin)
+}
+
+func (s *S) TestAuthorizationRequiredHandlerShouldSetVersionHeadersEvenOnError(c *C) {
+	recorder := httptest.NewRecorder()
+	request, err := http.NewRequest("GET", "/apps", nil)
+	c.Assert(err, IsNil)
+	request.Header.Set("Authorization", "what the token?!")
+	AuthorizationRequiredHandler(authorizedSimpleHandler).ServeHTTP(recorder, request)
+	c.Assert(recorder.Header().Get("Supported-Tsuru"), Equals, tsuruMin)
+	c.Assert(recorder.Header().Get("Supported-Crane"), Equals, craneMin)
 }
 
 func (s *S) TestAuthorizationRequiredHandlerShouldReturnTheHandlerErrorIfAnyHappen(c *C) {
@@ -163,4 +198,11 @@ func (s *S) TestHandlerShouldFilterOutputFromJuju(c *C) {
 	notExpected := ".*2012-06-05 17:03:36,887 WARNING.*"
 	result := strings.Replace(recorder.Body.String(), "\n", "", -1)
 	c.Assert(result, Not(Matches), notExpected)
+}
+
+func (s *S) TestSetVersionHeaders(c *C) {
+	recorder := httptest.NewRecorder()
+	setVersionHeaders(recorder)
+	c.Assert(recorder.Header().Get("Supported-Tsuru"), Equals, tsuruMin)
+	c.Assert(recorder.Header().Get("Supported-Crane"), Equals, craneMin)
 }

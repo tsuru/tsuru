@@ -94,13 +94,58 @@ func (s *S) TestAppIsAvaliableHandlerShouldReturns200WhenAppUnitStatusIsStarted(
 	c.Assert(recorder.Code, Equals, http.StatusOK)
 }
 
-func (s *S) TestCloneRepositoryHandler(c *C) {
-	output := `
-========
-pre-restart:
-    pre.sh
+func (s *S) TestCloneRepositoryHandlerShouldAddLogs(c *C) {
+	output := `pre-restart:
+  - pre.sh
 pos-restart:
-    pos.sh
+  - pos.sh
+`
+	dir, err := commandmocker.Add("juju", output)
+	c.Assert(err, IsNil)
+	defer commandmocker.Remove(dir)
+	u := Unit{
+		Name:              "someapp/0",
+		Type:              "django",
+		AgentState:        "started",
+		MachineAgentState: "running",
+		InstanceState:     "running",
+	}
+	a := App{
+		Name:      "someapp",
+		Framework: "django",
+		Teams:     []string{s.team.Name},
+	}
+	err = createApp(&a)
+	c.Assert(err, IsNil)
+	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
+	a.Units = []Unit{u}
+	err = db.Session.Apps().Update(bson.M{"name": a.Name}, &a)
+	c.Assert(err, IsNil)
+	url := fmt.Sprintf("/apps/%s/repository/clone?:name=%s", a.Name, a.Name)
+	request, err := http.NewRequest("GET", url, nil)
+	c.Assert(err, IsNil)
+	recorder := httptest.NewRecorder()
+	err = CloneRepositoryHandler(recorder, request)
+	c.Assert(err, IsNil)
+	c.Assert(recorder.Code, Equals, http.StatusOK)
+	messages := []string{
+		"\n ---> Tsuru receiving push\n",
+		"\n ---> Clonning your code in your machines\n",
+		"\n ---> Installing dependencies\n",
+		"\n ---> Deploy done!\n\n",
+	}
+	for _, msg := range messages {
+		length, err := db.Session.Apps().Find(bson.M{"logs.message": msg}).Count()
+		c.Check(err, IsNil)
+		c.Check(length, Equals, 1)
+	}
+}
+
+func (s *S) TestCloneRepositoryHandler(c *C) {
+	output := `pre-restart:
+  - pre.sh
+pos-restart:
+  - pos.sh
 `
 	dir, err := commandmocker.Add("juju", output)
 	c.Assert(err, IsNil)
@@ -128,14 +173,15 @@ pos-restart:
 	err = CloneRepositoryHandler(recorder, request)
 	c.Assert(err, IsNil)
 	c.Assert(recorder.Code, Equals, http.StatusOK)
-	c.Assert(strings.Replace(recorder.Body.String(), "\n", "#", -1), Matches, "^# ---> Tsuru receiving push#.*")
-	c.Assert(strings.Replace(recorder.Body.String(), "\n", "#", -1), Matches, ".*# ---> Clonning your code in your machines#.*")
-	c.Assert(strings.Replace(recorder.Body.String(), "\n", "#", -1), Matches, ".*# ---> Parsing app.conf#.*")
-	c.Assert(strings.Replace(recorder.Body.String(), "\n", "#", -1), Matches, ".*# ---> Running pre-restart#.*")
-	c.Assert(strings.Replace(recorder.Body.String(), "\n", "#", -1), Matches, ".*# ---> Installing dependencies#.*")
-	c.Assert(strings.Replace(recorder.Body.String(), "\n", "#", -1), Matches, ".*# ---> Restarting your app#.*")
-	c.Assert(strings.Replace(recorder.Body.String(), "\n", "#", -1), Matches, ".*# ---> Running pos-restart#.*")
-	c.Assert(strings.Replace(recorder.Body.String(), "\n", "#", -1), Matches, ".*# ---> Deploy done!##$.*")
+	regexp := `^# ---> Tsuru receiving push#.*
+# ---> Clonning your code in your machines#.*
+# ---> Installing dependencies#.*
+# ---> Running pre-restart#.*
+# ---> Restarting your app#.*
+# ---> Running pos-restart#.*
+# ---> Deploy done!##$
+`
+	c.Assert(strings.Replace(recorder.Body.String(), "\n", "#", -1), Matches, strings.Replace(regexp, "\n", "", -1))
 	c.Assert(recorder.Header().Get("Content-Type"), Equals, "text")
 }
 
@@ -143,9 +189,7 @@ func (s *S) TestCloneRepositoryRunsCloneOrPullThenPreRestartThenRestartThenPosRe
 	w := new(bytes.Buffer)
 	l := stdlog.New(w, "", stdlog.LstdFlags)
 	log.SetLogger(l)
-	output := `
-========
-pre-restart:
+	output := `pre-restart:
   - pre.sh
 pos-restart:
   - pos.sh
@@ -177,7 +221,7 @@ pos-restart:
 	c.Assert(err, IsNil)
 	c.Assert(recorder.Code, Equals, http.StatusOK)
 	str := strings.Replace(w.String(), "\n", "", -1)
-	c.Assert(str, Matches, ".*executing git clone.*executting hook dependencies.*Executing pre-restart hook.*executting hook to restarting.*Executing pos-restart hook.*")
+	c.Assert(str, Matches, ".*executing git clone.*executing hook dependencies.*executing hook to restart.*Executing pos-restart hook.*")
 }
 
 func (s *S) TestCloneRepositoryShouldReturnNotFoundWhenAppDoesNotExist(c *C) {
@@ -189,7 +233,7 @@ func (s *S) TestCloneRepositoryShouldReturnNotFoundWhenAppDoesNotExist(c *C) {
 	e, ok := err.(*errors.Http)
 	c.Assert(ok, Equals, true)
 	c.Assert(e.Code, Equals, http.StatusNotFound)
-	c.Assert(e, ErrorMatches, "^App not found$")
+	c.Assert(e, ErrorMatches, "^App abc not found.$")
 }
 
 func (s *S) TestAppList(c *C) {
@@ -324,7 +368,7 @@ func (s *S) TestDeleteShouldReturnNotFoundIfTheAppDoesNotExist(c *C) {
 	e, ok := err.(*errors.Http)
 	c.Assert(ok, Equals, true)
 	c.Assert(e.Code, Equals, http.StatusNotFound)
-	c.Assert(e, ErrorMatches, "^App not found$")
+	c.Assert(e, ErrorMatches, "^App unknown not found.$")
 }
 
 func (s *S) TestDeleteAppRemovesProjectFromAllTeamsInGitosis(c *C) {
@@ -429,7 +473,7 @@ func (s *S) TestAppInfoReturnsNotFoundWhenAppDoesNotExist(c *C) {
 	e, ok := err.(*errors.Http)
 	c.Assert(ok, Equals, true)
 	c.Assert(e.Code, Equals, http.StatusNotFound)
-	c.Assert(e, ErrorMatches, "^App not found$")
+	c.Assert(e, ErrorMatches, "^App SomeApp not found.$")
 }
 
 func (s *S) TestCreateAppHandler(c *C) {
@@ -542,10 +586,10 @@ func (s *S) TestGrantAccessToTeamReturn404IfTheAppDoesNotExist(c *C) {
 	e, ok := err.(*errors.Http)
 	c.Assert(ok, Equals, true)
 	c.Assert(e.Code, Equals, http.StatusNotFound)
-	c.Assert(e, ErrorMatches, "^App not found$")
+	c.Assert(e, ErrorMatches, "^App a not found.$")
 }
 
-func (s *S) TestGrantAccessToTeamReturn401IfTheGivenUserDoesNotHasAccessToTheApp(c *C) {
+func (s *S) TestGrantAccessToTeamReturn403IfTheGivenUserDoesNotHasAccessToTheApp(c *C) {
 	a := App{
 		Name:      "itshard",
 		Framework: "django",
@@ -561,8 +605,8 @@ func (s *S) TestGrantAccessToTeamReturn401IfTheGivenUserDoesNotHasAccessToTheApp
 	c.Assert(err, NotNil)
 	e, ok := err.(*errors.Http)
 	c.Assert(ok, Equals, true)
-	c.Assert(e.Code, Equals, http.StatusUnauthorized)
-	c.Assert(e, ErrorMatches, "^User unauthorized$")
+	c.Assert(e.Code, Equals, http.StatusForbidden)
+	c.Assert(e, ErrorMatches, "^User does not have access to this app$")
 }
 
 func (s *S) TestGrantAccessToTeamReturn404IfTheTeamDoesNotExist(c *C) {
@@ -659,7 +703,7 @@ func (s *S) TestRevokeAccessFromTeamReturn404IfTheAppDoesNotExist(c *C) {
 	e, ok := err.(*errors.Http)
 	c.Assert(ok, Equals, true)
 	c.Assert(e.Code, Equals, http.StatusNotFound)
-	c.Assert(e, ErrorMatches, "^App not found$")
+	c.Assert(e, ErrorMatches, "^App a not found.$")
 }
 
 func (s *S) TestRevokeAccessFromTeamReturn401IfTheGivenUserDoesNotHavePermissionInTheApp(c *C) {
@@ -678,8 +722,8 @@ func (s *S) TestRevokeAccessFromTeamReturn401IfTheGivenUserDoesNotHavePermission
 	c.Assert(err, NotNil)
 	e, ok := err.(*errors.Http)
 	c.Assert(ok, Equals, true)
-	c.Assert(e.Code, Equals, http.StatusUnauthorized)
-	c.Assert(e, ErrorMatches, "^User unauthorized$")
+	c.Assert(e.Code, Equals, http.StatusForbidden)
+	c.Assert(e, ErrorMatches, "^User does not have access to this app$")
 }
 
 func (s *S) TestRevokeAccessFromTeamReturn404IfTheTeamDoesNotExist(c *C) {
@@ -869,7 +913,7 @@ func (s *S) TestRunHandlerReturnsNotFoundIfTheAppDoesNotExist(c *C) {
 	e, ok := err.(*errors.Http)
 	c.Assert(ok, Equals, true)
 	c.Assert(e.Code, Equals, http.StatusNotFound)
-	c.Assert(e, ErrorMatches, "^App not found$")
+	c.Assert(e, ErrorMatches, "^App unknown not found.$")
 }
 
 func (s *S) TestRunHandlerReturnsForbiddenIfTheGivenUserDoesNotHaveAccessToTheApp(c *C) {
@@ -989,7 +1033,7 @@ func (s *S) TestGetEnvHandlerReturnsNotFoundIfTheAppDoesNotExist(c *C) {
 	e, ok := err.(*errors.Http)
 	c.Assert(ok, Equals, true)
 	c.Assert(e.Code, Equals, http.StatusNotFound)
-	c.Assert(e, ErrorMatches, "^App not found$")
+	c.Assert(e, ErrorMatches, "^App unknown not found.$")
 }
 
 func (s *S) TestGetEnvHandlerReturnsForbiddenIfTheGivenUserDoesNotHaveAccessToTheApp(c *C) {
@@ -1295,7 +1339,7 @@ func (s *S) TestSetEnvHandlerReturnsNotFoundIfTheAppDoesNotExist(c *C) {
 	e, ok := err.(*errors.Http)
 	c.Assert(ok, Equals, true)
 	c.Assert(e.Code, Equals, http.StatusNotFound)
-	c.Assert(e, ErrorMatches, "^App not found$")
+	c.Assert(e, ErrorMatches, "^App unknown not found.$")
 }
 
 func (s *S) TestSetEnvHandlerReturnsForbiddenIfTheGivenUserDoesNotHaveAccessToTheApp(c *C) {
@@ -1504,7 +1548,7 @@ func (s *S) TestUnsetEnvHandlerReturnsNotFoundIfTheAppDoesNotExist(c *C) {
 	e, ok := err.(*errors.Http)
 	c.Assert(ok, Equals, true)
 	c.Assert(e.Code, Equals, http.StatusNotFound)
-	c.Assert(e, ErrorMatches, "^App not found$")
+	c.Assert(e, ErrorMatches, "^App unknown not found.$")
 }
 
 func (s *S) TestUnsetEnvHandlerReturnsForbiddenIfTheGivenUserDoesNotHaveAccessToTheApp(c *C) {
@@ -1523,7 +1567,7 @@ func (s *S) TestUnsetEnvHandlerReturnsForbiddenIfTheGivenUserDoesNotHaveAccessTo
 }
 
 func (s *S) TestLogShouldReturnNotFoundWhenAppDoesNotExist(c *C) {
-	request, err := http.NewRequest("GET", "/apps/unknown/log/", nil)
+	request, err := http.NewRequest("GET", "/apps/unknown/log/?:name=unknown", nil)
 	c.Assert(err, IsNil)
 	recorder := httptest.NewRecorder()
 	err = AppLog(recorder, request, s.user)
@@ -1531,7 +1575,7 @@ func (s *S) TestLogShouldReturnNotFoundWhenAppDoesNotExist(c *C) {
 	e, ok := err.(*errors.Http)
 	c.Assert(ok, Equals, true)
 	c.Assert(e.Code, Equals, http.StatusNotFound)
-	c.Assert(e, ErrorMatches, "^App not found$")
+	c.Assert(e, ErrorMatches, "^App unknown not found.$")
 }
 
 func (s *S) TestLogReturnsForbiddenIfTheGivenUserDoesNotHaveAccessToTheApp(c *C) {
@@ -1553,7 +1597,7 @@ func (s *S) TestLogReturnsForbiddenIfTheGivenUserDoesNotHaveAccessToTheApp(c *C)
 	c.Assert(e.Code, Equals, http.StatusForbidden)
 }
 
-func (s *S) TestLogShouldReturnAppLog(c *C) {
+func (s *S) TestAppLog(c *C) {
 	a := App{
 		Name:      "lost",
 		Framework: "vougan",
@@ -1581,8 +1625,109 @@ func (s *S) TestLogShouldReturnAppLog(c *C) {
 	logs := []applog{}
 	err = json.Unmarshal(body, &logs)
 	c.Assert(err, IsNil)
-	c.Assert(logs, HasLen, len(a.Logs))
-	c.Assert(logs[0].Message, Equals, a.Logs[0].Message)
+	a.Get()
+	c.Assert(a.Logs, DeepEquals, logs)
+}
+
+func (s *S) TestAppLogShouldHaveContentType(c *C) {
+	a := App{
+		Name:      "lost",
+		Framework: "vougan",
+		Teams:     []string{s.team.Name},
+	}
+	err := createApp(&a)
+	defer a.destroy()
+	c.Assert(err, IsNil)
+	url := fmt.Sprintf("/apps/%s/log/?:name=%s", a.Name, a.Name)
+	request, err := http.NewRequest("GET", url, nil)
+	c.Assert(err, IsNil)
+	recorder := httptest.NewRecorder()
+	request.Header.Set("Content-Type", "application/json")
+	err = AppLog(recorder, request, s.user)
+	c.Assert(err, IsNil)
+	c.Assert(recorder.Header().Get("Content-Type"), Equals, "application/json")
+}
+
+func (s *S) TestAppLogSelectByLines(c *C) {
+	a := App{
+		Name:      "lost",
+		Framework: "vougan",
+		Teams:     []string{s.team.Name},
+	}
+	err := createApp(&a)
+	c.Assert(err, IsNil)
+	for i := 0; i < 15; i++ {
+		a.log(string(i))
+	}
+	url := fmt.Sprintf("/apps/%s/log/?:name=%s&lines=10", a.Name, a.Name)
+	request, err := http.NewRequest("GET", url, nil)
+	c.Assert(err, IsNil)
+	recorder := httptest.NewRecorder()
+	request.Header.Set("Content-Type", "application/json")
+	err = AppLog(recorder, request, s.user)
+	c.Assert(err, IsNil)
+	c.Assert(recorder.Code, Equals, http.StatusOK)
+	body, err := ioutil.ReadAll(recorder.Body)
+	c.Assert(err, IsNil)
+	logs := []applog{}
+	err = json.Unmarshal(body, &logs)
+	c.Assert(err, IsNil)
+	c.Assert(logs, HasLen, 10)
+}
+
+func (s *S) TestAppLogShouldReturnLogByApp(c *C) {
+	app1 := App{
+		Name:      "app1",
+		Framework: "vougan",
+		Teams:     []string{s.team.Name},
+	}
+	err := createApp(&app1)
+	defer app1.destroy()
+	c.Assert(err, IsNil)
+	app1.log("app1 log")
+	app2 := App{
+		Name:      "app2",
+		Framework: "vougan",
+		Teams:     []string{s.team.Name},
+	}
+	err = createApp(&app2)
+	defer app2.destroy()
+	c.Assert(err, IsNil)
+	app2.log("app2 log")
+	app3 := App{
+		Name:      "app3",
+		Framework: "vougan",
+		Teams:     []string{s.team.Name},
+	}
+	err = createApp(&app3)
+	defer app3.destroy()
+	c.Assert(err, IsNil)
+	app3.log("app3 log")
+	url := fmt.Sprintf("/apps/%s/log/?:name=%s", app3.Name, app3.Name)
+	request, err := http.NewRequest("GET", url, nil)
+	c.Assert(err, IsNil)
+	recorder := httptest.NewRecorder()
+	request.Header.Set("Content-Type", "application/json")
+	err = AppLog(recorder, request, s.user)
+	c.Assert(err, IsNil)
+	c.Assert(recorder.Code, Equals, http.StatusOK)
+	body, err := ioutil.ReadAll(recorder.Body)
+	c.Assert(err, IsNil)
+	logs := []applog{}
+	err = json.Unmarshal(body, &logs)
+	c.Assert(err, IsNil)
+	var logged bool
+	for _, log := range logs {
+		// Should not show the app1 log
+		c.Assert(log.Message, Not(Equals), "app1 log")
+		// Should not show the app2 log
+		c.Assert(log.Message, Not(Equals), "app2 log")
+		if log.Message == "app3 log" {
+			logged = true
+		}
+	}
+	// Should show the app3 log
+	c.Assert(logged, Equals, true)
 }
 
 func (s *S) TestGetTeamNamesReturnTheNameOfTeamsThatTheUserIsMember(c *C) {
@@ -1715,7 +1860,7 @@ func (s *S) TestBindHandlerReturns404IfTheAppDoesNotExist(c *C) {
 	err := instance.Create()
 	c.Assert(err, IsNil)
 	defer db.Session.ServiceInstances().Remove(bson.M{"name": "my-mysql"})
-	url := fmt.Sprintf("/services/instances/%s/unknown?:instance=%s&app=unknown", instance.Name, instance.Name)
+	url := fmt.Sprintf("/services/instances/%s/unknown?:instance=%s&:app=unknown", instance.Name, instance.Name)
 	request, err := http.NewRequest("PUT", url, nil)
 	c.Assert(err, IsNil)
 	recorder := httptest.NewRecorder()
@@ -1724,7 +1869,7 @@ func (s *S) TestBindHandlerReturns404IfTheAppDoesNotExist(c *C) {
 	e, ok := err.(*errors.Http)
 	c.Assert(ok, Equals, true)
 	c.Assert(e.Code, Equals, http.StatusNotFound)
-	c.Assert(e, ErrorMatches, "^App not found$")
+	c.Assert(e, ErrorMatches, "^App unknown not found.$")
 }
 
 func (s *S) TestBindHandlerReturns403IfTheUserDoesNotHaveAccessToTheApp(c *C) {
@@ -1876,7 +2021,7 @@ func (s *S) TestUnbindHandlerReturns404IfTheAppDoesNotExist(c *C) {
 	err := instance.Create()
 	c.Assert(err, IsNil)
 	defer db.Session.ServiceInstances().Remove(bson.M{"name": "my-mysql"})
-	url := fmt.Sprintf("/services/instances/%s/unknown?:instance=%s&app=unknown", instance.Name, instance.Name)
+	url := fmt.Sprintf("/services/instances/%s/unknown?:instance=%s&:app=unknown", instance.Name, instance.Name)
 	request, err := http.NewRequest("PUT", url, nil)
 	c.Assert(err, IsNil)
 	recorder := httptest.NewRecorder()
@@ -1885,7 +2030,7 @@ func (s *S) TestUnbindHandlerReturns404IfTheAppDoesNotExist(c *C) {
 	e, ok := err.(*errors.Http)
 	c.Assert(ok, Equals, true)
 	c.Assert(e.Code, Equals, http.StatusNotFound)
-	c.Assert(e, ErrorMatches, "^App not found$")
+	c.Assert(e, ErrorMatches, "^App unknown not found.$")
 }
 
 func (s *S) TestUnbindHandlerReturns403IfTheUserDoesNotHaveAccessToTheApp(c *C) {

@@ -11,6 +11,7 @@ import (
 	"io/ioutil"
 	. "launchpad.net/gocheck"
 	"net/http"
+	"os"
 	"testing"
 )
 
@@ -48,5 +49,5 @@ func (t *conditionalTransport) RoundTrip(req *http.Request) (*http.Response, err
 
 func (s *S) SetUpTest(c *C) {
 	var stdout, stderr bytes.Buffer
-	manager = cmd.NewManager("glb", version, &stdout, &stderr)
+	manager = cmd.NewManager("glb", version, "Supported-Crane", &stdout, &stderr, os.Stdin)
 }

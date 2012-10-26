@@ -23,7 +23,7 @@ type serviceYaml struct {
 }
 
 func ServicesHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
-	results := ServicesAndInstancesByOwner(u)
+	results := servicesAndInstancesByOwner(u)
 	b, err := json.Marshal(results)
 	if err != nil {
 		return &errors.Http{Code: http.StatusInternalServerError, Message: err.Error()}
@@ -84,7 +84,7 @@ func UpdateHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	}
 	var yaml serviceYaml
 	goyaml.Unmarshal(body, &yaml)
-	s, err := GetServiceOrError(yaml.Id, u)
+	s, err := getServiceOrError(yaml.Id, u)
 	if err != nil {
 		return err
 	}
@@ -97,7 +97,7 @@ func UpdateHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 }
 
 func DeleteHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
-	s, err := GetServiceOrError(r.URL.Query().Get(":name"), u)
+	s, err := getServiceOrError(r.URL.Query().Get(":name"), u)
 	if err != nil {
 		return err
 	}
@@ -164,7 +164,7 @@ func RevokeAccessFromTeamHandler(w http.ResponseWriter, r *http.Request, u *auth
 }
 
 func AddDocHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
-	s, err := GetServiceOrError(r.URL.Query().Get(":name"), u)
+	s, err := getServiceOrError(r.URL.Query().Get(":name"), u)
 	if err != nil {
 		return err
 	}
@@ -181,7 +181,7 @@ func AddDocHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 }
 
 func GetDocHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
-	s, err := GetServiceOrError(r.URL.Query().Get(":name"), u)
+	s, err := getServiceOrError(r.URL.Query().Get(":name"), u)
 	if err != nil {
 		return err
 	}
