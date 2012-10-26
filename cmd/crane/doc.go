@@ -25,6 +25,7 @@ The currently available commands are (grouped by subject):
 	key-remove        removes a public key from tsuru deploy server
 
 	team-create       creates a new team (adding the current user to it automatically)
+	team-remove       removes a team from tsuru
 	team-list         list teams that the user is member
 	team-user-add     adds a user to a team
 	team-user-remove  removes a user from a team
@@ -76,7 +77,7 @@ Remove your user from tsuru server
 
 Usage:
 
-	% tsuru user-remove
+	% crane user-remove
 
 user-remove will remove currently authenticated user from remote tsuru server.
 since there cannot exist any orphan teams, tsuru will refuse to remove a user
