@@ -38,7 +38,7 @@ func (c *AppLog) Run(context *cmd.Context, client cmd.Doer) error {
 	if err != nil {
 		return err
 	}
-	url := cmd.GetUrl(fmt.Sprintf("/apps/%s/log", appName))
+	url := cmd.GetUrl(fmt.Sprintf("/apps/%s/log?lines=%d", appName, *logLines))
 	request, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return err
