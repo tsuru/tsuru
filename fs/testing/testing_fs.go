@@ -74,7 +74,6 @@ func (f *FakeFile) WriteString(s string) (ret int, err error) {
 }
 
 func (f *FakeFile) Truncate(size int64) error {
-	f.current = int64(0)
 	f.content = f.content[:size]
 	return nil
 }

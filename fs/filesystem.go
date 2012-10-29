@@ -24,6 +24,7 @@ type File interface {
 	io.Writer
 	Stat() (os.FileInfo, error)
 	WriteString(s string) (ret int, err error)
+	Truncate(size int64) error
 }
 
 // Fs is the filesystem interface.
