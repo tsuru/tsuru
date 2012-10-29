@@ -377,8 +377,10 @@ func (a *App) log(message string) error {
 	log.Printf(message)
 	messages := strings.Split(message, "\n")
 	for _, msg := range messages {
-		l := applog{Date: time.Now(), Message: msg}
-		a.Logs = append(a.Logs, l)
+		if msg != "" {
+			l := applog{Date: time.Now(), Message: msg}
+			a.Logs = append(a.Logs, l)
+		}
 	}
 	return db.Session.Apps().Update(bson.M{"name": a.Name}, a)
 }
