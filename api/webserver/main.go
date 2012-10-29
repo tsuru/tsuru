@@ -85,11 +85,13 @@ func main() {
 
 	m.Post("/users", Handler(auth.CreateUser))
 	m.Post("/users/:email/tokens", Handler(auth.Login))
+	m.Del("/users", AuthorizationRequiredHandler(auth.RemoveUser))
 	m.Post("/users/keys", AuthorizationRequiredHandler(auth.AddKeyToUser))
 	m.Del("/users/keys", AuthorizationRequiredHandler(auth.RemoveKeyFromUser))
 
 	m.Get("/teams", AuthorizationRequiredHandler(auth.ListTeams))
 	m.Post("/teams", AuthorizationRequiredHandler(auth.CreateTeam))
+	m.Del("/teams/:name", AuthorizationRequiredHandler(auth.RemoveTeam))
 	m.Put("/teams/:team/:user", AuthorizationRequiredHandler(auth.AddUserToTeam))
 	m.Del("/teams/:team/:user", AuthorizationRequiredHandler(auth.RemoveUserFromTeam))
 

@@ -5,6 +5,7 @@
 package cmd
 
 import (
+	"bytes"
 	"github.com/globocom/tsuru/fs/testing"
 	. "launchpad.net/gocheck"
 	"net/http"
@@ -14,7 +15,7 @@ func (s *S) TestShouldReturnBodyMessageOnError(c *C) {
 	request, err := http.NewRequest("GET", "/", nil)
 	c.Assert(err, IsNil)
 
-	client := NewClient(&http.Client{Transport: &transport{msg: "You must be authenticated to execute this command.", status: http.StatusUnauthorized}})
+	client := NewClient(&http.Client{Transport: &transport{msg: "You must be authenticated to execute this command.", status: http.StatusUnauthorized}}, nil, "", "")
 	response, err := client.Do(request)
 	c.Assert(response, IsNil)
 	c.Assert(err.Error(), Equals, "You must be authenticated to execute this command.")
@@ -28,7 +29,7 @@ func (s *S) TestShouldReturnErrorWhenServerIsDown(c *C) {
 	}()
 	request, err := http.NewRequest("GET", "/", nil)
 	c.Assert(err, IsNil)
-	client := NewClient(&http.Client{})
+	client := NewClient(&http.Client{}, nil, "", "")
 	_, err = client.Do(request)
 	c.Assert(err, NotNil)
 	c.Assert(err.Error(), Equals, "Failed to connect to tsuru server (http://tsuru.google.com), it's probably down.")
@@ -42,7 +43,7 @@ func (s *S) TestShouldNotIncludeTheHeaderAuthorizationWhenTheTsuruTokenFileIsMis
 	request, err := http.NewRequest("GET", "/", nil)
 	c.Assert(err, IsNil)
 	trans := &transport{msg: "", status: http.StatusOK}
-	client := NewClient(&http.Client{Transport: trans})
+	client := NewClient(&http.Client{Transport: trans}, nil, "", "")
 	_, err = client.Do(request)
 	c.Assert(err, IsNil)
 	header := map[string][]string(request.Header)
@@ -58,8 +59,59 @@ func (s *S) TestShouldIncludeTheHeaderAuthorizationWhenTsuruTokenFileExists(c *C
 	request, err := http.NewRequest("GET", "/", nil)
 	c.Assert(err, IsNil)
 	trans := &transport{msg: "", status: http.StatusOK}
-	client := NewClient(&http.Client{Transport: trans})
+	client := NewClient(&http.Client{Transport: trans}, nil, "", "")
 	_, err = client.Do(request)
 	c.Assert(err, IsNil)
 	c.Assert(request.Header.Get("Authorization"), Equals, "mytoken")
+}
+
+func (s *S) TestShouldValidateVersion(c *C) {
+	var buf bytes.Buffer
+	request, err := http.NewRequest("GET", "/", nil)
+	c.Assert(err, IsNil)
+	context := Context{
+		Stderr: &buf,
+	}
+	trans := &transport{msg: "", status: http.StatusOK, headers: map[string][]string{"Supported-Tsuru": {"0.3"}}}
+	client := NewClient(&http.Client{Transport: trans}, &context, "0.2.1", "Supported-Tsuru")
+	_, err = client.Do(request)
+	c.Assert(err, IsNil)
+	expected := `############################################################
+
+WARNING: You're using an unsupported version of tsuru client.
+
+You must have at least version 0.3, your current version is 0.2.1.
+
+Please go to https://github.com/globocom/tsuru/downloads and download the last version.
+
+############################################################`
+	c.Assert(buf.String(), Equals, expected)
+}
+
+func (s *S) TestShouldSkipValidationIfThereIsNoSupportedHeaderDeclared(c *C) {
+	var buf bytes.Buffer
+	request, err := http.NewRequest("GET", "/", nil)
+	c.Assert(err, IsNil)
+	context := Context{
+		Stderr: &buf,
+	}
+	trans := &transport{msg: "", status: http.StatusOK, headers: map[string][]string{"Supported-Tsuru": {"0.3"}}}
+	client := NewClient(&http.Client{Transport: trans}, &context, "0.2.1", "")
+	_, err = client.Do(request)
+	c.Assert(err, IsNil)
+	c.Assert(buf.String(), Equals, "")
+}
+
+func (s *S) TestShouldSkupValidationIfServerDoesNotReturnSupportedHeader(c *C) {
+	var buf bytes.Buffer
+	request, err := http.NewRequest("GET", "/", nil)
+	c.Assert(err, IsNil)
+	context := Context{
+		Stderr: &buf,
+	}
+	trans := &transport{msg: "", status: http.StatusOK}
+	client := NewClient(&http.Client{Transport: trans}, &context, "0.2.1", "Supported-Tsuru")
+	_, err = client.Do(request)
+	c.Assert(err, IsNil)
+	c.Assert(buf.String(), Equals, "")
 }

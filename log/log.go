@@ -24,15 +24,15 @@ type Target struct {
 //
 // See the builtin log package for more details.
 func (t *Target) SetLogger(l *log.Logger) {
-	t.mut.Lock()
 	defer t.mut.Unlock()
+	t.mut.Lock()
 	t.logger = l
 }
 
 // Fatal is equivalent to Print() followed by os.Exit(1).
 func (t *Target) Fatal(v ...interface{}) {
-	t.mut.RLock()
 	defer t.mut.RUnlock()
+	t.mut.RLock()
 	if t.logger != nil {
 		t.logger.Fatal(v...)
 	}
@@ -41,8 +41,8 @@ func (t *Target) Fatal(v ...interface{}) {
 // Print is similar to fmt.Print, writing the given values to the Target
 // logger.
 func (t *Target) Print(v ...interface{}) {
-	t.mut.RLock()
 	defer t.mut.RUnlock()
+	t.mut.RLock()
 	if t.logger != nil {
 		t.logger.Print(v...)
 	}
@@ -51,8 +51,8 @@ func (t *Target) Print(v ...interface{}) {
 // Printf is similar to fmt.Printf, writing the formatted string to the Target
 // logger.
 func (t *Target) Printf(format string, v ...interface{}) {
-	t.mut.RLock()
 	defer t.mut.RUnlock()
+	t.mut.RLock()
 	if t.logger != nil {
 		t.logger.Printf(format, v...)
 	}
@@ -60,16 +60,16 @@ func (t *Target) Printf(format string, v ...interface{}) {
 
 // Panic is equivalent to Print() followed by panic().
 func (t *Target) Panic(v ...interface{}) {
-	t.mut.RLock()
 	defer t.mut.RUnlock()
+	t.mut.RLock()
 	if t.logger != nil {
 		t.logger.Panic(v...)
 	}
 }
 
 func (t *Target) Panicf(format string, v ...interface{}) {
-	t.mut.RLock()
 	defer t.mut.RUnlock()
+	t.mut.RLock()
 	if t.logger != nil {
 		t.logger.Panicf(format, v...)
 	}

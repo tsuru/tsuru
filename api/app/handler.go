@@ -124,17 +124,12 @@ func AppDelete(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	return nil
 }
 
-func getTeamNames(u *auth.User) (names []string, err error) {
+func getTeamNames(u *auth.User) ([]string, error) {
 	var teams []auth.Team
-	err = db.Session.Teams().Find(bson.M{"users": u.Email}).All(&teams)
-	if err != nil {
-		return
+	if err := db.Session.Teams().Find(bson.M{"users": u.Email}).All(&teams); err != nil {
+		return nil, err
 	}
-	names = make([]string, len(teams))
-	for i, team := range teams {
-		names[i] = team.Name
-	}
-	return
+	return auth.GetTeamsNames(teams), nil
 }
 
 func AppList(w http.ResponseWriter, r *http.Request, u *auth.User) error {
@@ -438,6 +433,7 @@ func UnsetEnv(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 }
 
 func AppLog(w http.ResponseWriter, r *http.Request, u *auth.User) error {
+	w.Header().Set("Content-Type", "application/json")
 	appName := r.URL.Query().Get(":name")
 	var selector bson.M
 	if l := r.URL.Query().Get("lines"); l != "" {

@@ -24,7 +24,7 @@ If you don't provide the app name, tsuru will try to guess it.`
 }
 
 func (s *S) TestEnvGetRun(c *C) {
-	*appname = "someapp"
+	*appName = "someapp"
 	var stdout, stderr bytes.Buffer
 	result := "DATABASE_HOST=somehost\n"
 	context := cmd.Context{
@@ -32,14 +32,14 @@ func (s *S) TestEnvGetRun(c *C) {
 		Stdout: &stdout,
 		Stderr: &stderr,
 	}
-	client := cmd.NewClient(&http.Client{Transport: &transport{msg: result, status: http.StatusOK}})
+	client := cmd.NewClient(&http.Client{Transport: &transport{msg: result, status: http.StatusOK}}, nil, "", "")
 	err := (&EnvGet{}).Run(&context, client)
 	c.Assert(err, IsNil)
 	c.Assert(stdout.String(), Equals, result)
 }
 
 func (s *S) TestEnvGetRunWithMultipleParams(c *C) {
-	*appname = "someapp"
+	*appName = "someapp"
 	var stdout, stderr bytes.Buffer
 	result := "DATABASE_HOST=somehost\nDATABASE_USER=someuser"
 	params := []string{"DATABASE_HOST", "DATABASE_USER"}
@@ -48,7 +48,7 @@ func (s *S) TestEnvGetRunWithMultipleParams(c *C) {
 		Stdout: &stdout,
 		Stderr: &stderr,
 	}
-	client := cmd.NewClient(&http.Client{Transport: &transport{msg: result, status: http.StatusOK}})
+	client := cmd.NewClient(&http.Client{Transport: &transport{msg: result, status: http.StatusOK}}, nil, "", "")
 	err := (&EnvGet{}).Run(&context, client)
 	c.Assert(err, IsNil)
 	c.Assert(stdout.String(), Equals, result)
@@ -72,7 +72,7 @@ func (s *S) TestEnvGetWithoutTheFlag(c *C) {
 			return req.URL.Path == "/apps/seek/env" && req.Method == "GET"
 		},
 	}
-	client := cmd.NewClient(&http.Client{Transport: trans})
+	client := cmd.NewClient(&http.Client{Transport: trans}, nil, "", "")
 	fake := &FakeGuesser{name: "seek"}
 	err := (&EnvGet{GuessingCommand{g: fake}}).Run(&context, client)
 	c.Assert(err, IsNil)
@@ -92,7 +92,7 @@ If you don't provide the app name, tsuru will try to guess it.`
 }
 
 func (s *S) TestEnvSetRun(c *C) {
-	*appname = "someapp"
+	*appName = "someapp"
 	var stdout, stderr bytes.Buffer
 	result := "variable(s) successfully exported\n"
 	context := cmd.Context{
@@ -100,14 +100,14 @@ func (s *S) TestEnvSetRun(c *C) {
 		Stdout: &stdout,
 		Stderr: &stderr,
 	}
-	client := cmd.NewClient(&http.Client{Transport: &transport{msg: result, status: http.StatusOK}})
+	client := cmd.NewClient(&http.Client{Transport: &transport{msg: result, status: http.StatusOK}}, nil, "", "")
 	err := (&EnvSet{}).Run(&context, client)
 	c.Assert(err, IsNil)
 	c.Assert(stdout.String(), Equals, result)
 }
 
 func (s *S) TestEnvSetRunWithMultipleParams(c *C) {
-	*appname = "someapp"
+	*appName = "someapp"
 	var stdout, stderr bytes.Buffer
 	result := "variable(s) successfully exported\n"
 	context := cmd.Context{
@@ -115,7 +115,7 @@ func (s *S) TestEnvSetRunWithMultipleParams(c *C) {
 		Stdout: &stdout,
 		Stderr: &stderr,
 	}
-	client := cmd.NewClient(&http.Client{Transport: &transport{msg: result, status: http.StatusOK}})
+	client := cmd.NewClient(&http.Client{Transport: &transport{msg: result, status: http.StatusOK}}, nil, "", "")
 	err := (&EnvSet{}).Run(&context, client)
 	c.Assert(err, IsNil)
 	c.Assert(stdout.String(), Equals, result)
@@ -138,7 +138,7 @@ func (s *S) TestEnvSetWithoutFlag(c *C) {
 			return req.URL.Path == "/apps/otherapp/env" && req.Method == "POST"
 		},
 	}
-	client := cmd.NewClient(&http.Client{Transport: trans})
+	client := cmd.NewClient(&http.Client{Transport: trans}, nil, "", "")
 	fake := &FakeGuesser{name: "otherapp"}
 	err := (&EnvSet{GuessingCommand{g: fake}}).Run(&context, client)
 	c.Assert(err, IsNil)
@@ -158,7 +158,7 @@ If you don't provide the app name, tsuru will try to guess it.`
 }
 
 func (s *S) TestEnvUnsetRun(c *C) {
-	*appname = "someapp"
+	*appName = "someapp"
 	var stdout, stderr bytes.Buffer
 	result := "variable(s) successfully unset\n"
 	context := cmd.Context{
@@ -166,7 +166,7 @@ func (s *S) TestEnvUnsetRun(c *C) {
 		Stdout: &stdout,
 		Stderr: &stderr,
 	}
-	client := cmd.NewClient(&http.Client{Transport: &transport{msg: result, status: http.StatusOK}})
+	client := cmd.NewClient(&http.Client{Transport: &transport{msg: result, status: http.StatusOK}}, nil, "", "")
 	err := (&EnvUnset{}).Run(&context, client)
 	c.Assert(err, IsNil)
 	c.Assert(stdout.String(), Equals, result)
@@ -188,7 +188,7 @@ func (s *S) TestEnvUnsetWithoutFlag(c *C) {
 			return req.URL.Path == "/apps/otherapp/env" && req.Method == "DELETE"
 		},
 	}
-	client := cmd.NewClient(&http.Client{Transport: trans})
+	client := cmd.NewClient(&http.Client{Transport: trans}, nil, "", "")
 	fake := &FakeGuesser{name: "otherapp"}
 	err := (&EnvUnset{GuessingCommand{g: fake}}).Run(&context, client)
 	c.Assert(err, IsNil)
@@ -196,9 +196,9 @@ func (s *S) TestEnvUnsetWithoutFlag(c *C) {
 }
 
 func (s *S) TestRequestEnvUrl(c *C) {
-	*appname = "someapp"
+	*appName = "someapp"
 	result := "DATABASE_HOST=somehost"
-	client := cmd.NewClient(&http.Client{Transport: &transport{msg: result, status: http.StatusOK}})
+	client := cmd.NewClient(&http.Client{Transport: &transport{msg: result, status: http.StatusOK}}, nil, "", "")
 	args := []string{"DATABASE_HOST"}
 	b, err := requestEnvUrl("GET", GuessingCommand{g: &FakeGuesser{name: "someapp"}}, args, client)
 	c.Assert(err, IsNil)

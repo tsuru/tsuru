@@ -148,7 +148,7 @@ func (s *S) TestCreateUserHandlerReturnsPreconditionFailedIfPasswordHasLessThan6
 		e, ok := err.(*errors.Http)
 		c.Assert(ok, Equals, true)
 		c.Assert(e.Code, Equals, http.StatusPreconditionFailed)
-		c.Assert(e.Message, Equals, "Password length shoul be least 6 characters and at most 50 characters.")
+		c.Assert(e.Message, Equals, "Password length should be least 6 characters and at most 50 characters.")
 	}
 }
 
@@ -361,6 +361,76 @@ func (s *S) TestCreateTeamAddsTheLoggedInUserKeysAsMemberInGitosis(c *C) {
 	time.Sleep(1e9)
 	c.Assert("[group timeredbull]", IsInGitosis)
 	c.Assert("members = "+keyname, IsInGitosis)
+}
+
+func (s *S) TestRemoveTeam(c *C) {
+	team := Team{Name: "painofsalvation", Users: []string{s.user.Email}}
+	err := db.Session.Teams().Insert(team)
+	c.Assert(err, IsNil)
+	defer db.Session.Teams().Remove(bson.M{"_id": team.Name})
+	request, err := http.NewRequest("DELETE", fmt.Sprintf("/teams/%s?:name=%s", team.Name, team.Name), nil)
+	c.Assert(err, IsNil)
+	recorder := httptest.NewRecorder()
+	err = RemoveTeam(recorder, request, s.user)
+	c.Assert(err, IsNil)
+	n, err := db.Session.Teams().Find(bson.M{"name": team.Name}).Count()
+	c.Assert(err, IsNil)
+	c.Assert(n, Equals, 0)
+}
+
+func (s *S) TestRemoveTeamGives404WhenTeamDoesNotExist(c *C) {
+	request, err := http.NewRequest("DELETE", "/teams/unknown?:name=unknown", nil)
+	c.Assert(err, IsNil)
+	recorder := httptest.NewRecorder()
+	err = RemoveTeam(recorder, request, s.user)
+	c.Assert(err, NotNil)
+	e, ok := err.(*errors.Http)
+	c.Assert(ok, Equals, true)
+	c.Assert(e.Code, Equals, http.StatusNotFound)
+	c.Assert(e.Message, Equals, `Team "unknown" not found.`)
+}
+
+func (s *S) TestRemoveTeamGives404WhenUserDoesNotHaveAccessToTheTeam(c *C) {
+	team := Team{Name: "painofsalvation"}
+	err := db.Session.Teams().Insert(team)
+	c.Assert(err, IsNil)
+	defer db.Session.Teams().Remove(bson.M{"_id": team.Name})
+	request, err := http.NewRequest("DELETE", fmt.Sprintf("/teams/%s?:name=%s", team.Name, team.Name), nil)
+	c.Assert(err, IsNil)
+	recorder := httptest.NewRecorder()
+	err = RemoveTeam(recorder, request, s.user)
+	c.Assert(err, NotNil)
+	e, ok := err.(*errors.Http)
+	c.Assert(ok, Equals, true)
+	c.Assert(e.Code, Equals, http.StatusNotFound)
+	c.Assert(e.Message, Equals, `Team "painofsalvation" not found.`)
+}
+
+func (s *S) TestRemoveTeamGives403WhenTeamHasAccessToAnyApp(c *C) {
+	type App struct {
+		Name  string
+		Teams []string
+	}
+	team := Team{Name: "evergrey", Users: []string{s.user.Email}}
+	err := db.Session.Teams().Insert(team)
+	c.Assert(err, IsNil)
+	defer db.Session.Teams().Remove(bson.M{"_id": team.Name})
+	a := App{Name: "i-should", Teams: []string{team.Name}}
+	err = db.Session.Apps().Insert(a)
+	c.Assert(err, IsNil)
+	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
+	request, err := http.NewRequest("DELETE", fmt.Sprintf("/teams/%s?:name=%s", team.Name, team.Name), nil)
+	c.Assert(err, IsNil)
+	recorder := httptest.NewRecorder()
+	err = RemoveTeam(recorder, request, s.user)
+	c.Assert(err, NotNil)
+	e, ok := err.(*errors.Http)
+	c.Assert(ok, Equals, true)
+	c.Assert(e.Code, Equals, http.StatusForbidden)
+	expected := `This team cannot be removed because it have access to apps.
+
+Please remove the apps or revoke these accesses, and try again.`
+	c.Assert(e.Message, Equals, expected)
 }
 
 func (s *S) TestListTeamsListsAllTeamsThatTheUserIsMember(c *C) {
@@ -799,4 +869,62 @@ func (s *S) TestRemoveKeyHandlerRemovesTheMemberEntryFromGitosis(c *C) {
 	c.Assert(err, IsNil)
 	time.Sleep(1e9)
 	c.Assert("members = "+keyname, NotInGitosis)
+}
+
+func (s *S) TestRemoveUser(c *C) {
+	u := User{Email: "her-voices@painofsalvation.com"}
+	err := u.Create()
+	c.Assert(err, IsNil)
+	defer db.Session.Users().Remove(bson.M{"email": u.Email})
+	request, err := http.NewRequest("DELETE", "/users", nil)
+	c.Assert(err, IsNil)
+	recorder := httptest.NewRecorder()
+	err = RemoveUser(recorder, request, &u)
+	c.Assert(err, IsNil)
+	n, err := db.Session.Users().Find(bson.M{"email": u.Email}).Count()
+	c.Assert(err, IsNil)
+	c.Assert(n, Equals, 0)
+}
+
+func (s *S) TestRemoveUserWithTheUserBeingLastMemberOfATeam(c *C) {
+	u := User{Email: "of-two-beginnings@painofsalvation.com"}
+	err := u.Create()
+	c.Assert(err, IsNil)
+	defer db.Session.Users().Remove(bson.M{"email": u.Email})
+	t := Team{Name: "painofsalvation", Users: []string{u.Email}}
+	err = db.Session.Teams().Insert(t)
+	c.Assert(err, IsNil)
+	defer db.Session.Teams().Remove(bson.M{"_id": t.Name})
+	request, err := http.NewRequest("DELETE", "/users", nil)
+	c.Assert(err, IsNil)
+	recorder := httptest.NewRecorder()
+	err = RemoveUser(recorder, request, &u)
+	c.Assert(err, NotNil)
+	e, ok := err.(*errors.Http)
+	c.Assert(ok, Equals, true)
+	c.Assert(e.Code, Equals, http.StatusForbidden)
+	expected := `This user is the last member of the team "painofsalvation", so it cannot be removed.
+
+Please remove the team, them remove the user.`
+	c.Assert(e.Message, Equals, expected)
+}
+
+func (s *S) TestRemoveUserShouldRemoveTheUserFromAllTeamsThatHeIsMember(c *C) {
+	u := User{Email: "of-two-beginnings@painofsalvation.com"}
+	err := u.Create()
+	c.Assert(err, IsNil)
+	defer db.Session.Users().Remove(bson.M{"email": u.Email})
+	t := Team{Name: "painofsalvation", Users: []string{u.Email, s.user.Email}}
+	err = db.Session.Teams().Insert(t)
+	c.Assert(err, IsNil)
+	defer db.Session.Teams().Remove(bson.M{"_id": t.Name})
+	request, err := http.NewRequest("DELETE", "/users", nil)
+	c.Assert(err, IsNil)
+	recorder := httptest.NewRecorder()
+	err = RemoveUser(recorder, request, &u)
+	c.Assert(err, IsNil)
+	err = db.Session.Teams().Find(bson.M{"_id": t.Name}).One(&t)
+	c.Assert(err, IsNil)
+	c.Assert(t.Users, HasLen, 1)
+	c.Assert(t.Users[0], Equals, s.user.Email)
 }

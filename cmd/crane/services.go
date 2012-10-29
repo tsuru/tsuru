@@ -9,7 +9,6 @@ import (
 	"errors"
 	"fmt"
 	"github.com/globocom/tsuru/cmd"
-	"io"
 	"io/ioutil"
 	"net/http"
 	"os"
@@ -46,7 +45,7 @@ func (c *ServiceCreate) Run(context *cmd.Context, client cmd.Doer) error {
 	if err != nil {
 		return err
 	}
-	io.WriteString(context.Stdout, string(b)+"\n")
+	fmt.Fprintln(context.Stdout, b)
 	return nil
 }
 
@@ -63,7 +62,7 @@ func (c *ServiceRemove) Run(context *cmd.Context, client cmd.Doer) error {
 	if err != nil {
 		return err
 	}
-	io.WriteString(context.Stdout, "Service successfully removed.\n")
+	fmt.Fprintln(context.Stdout, "Service successfully removed.")
 	return nil
 }
 
@@ -135,7 +134,7 @@ func (c *ServiceUpdate) Run(ctx *cmd.Context, client cmd.Doer) error {
 		return err
 	}
 	if resp.StatusCode == http.StatusNoContent {
-		io.WriteString(ctx.Stdout, "Service successfully updated.\n")
+		fmt.Fprintln(ctx.Stdout, "Service successfully updated.")
 	}
 	return nil
 }
@@ -163,7 +162,7 @@ func (c *ServiceDocAdd) Run(ctx *cmd.Context, client cmd.Doer) error {
 	if err != nil {
 		return err
 	}
-	io.WriteString(ctx.Stdout, fmt.Sprintf("Documentation for '%s' successfully updated.\n", serviceName))
+	fmt.Fprintf(ctx.Stdout, "Documentation for '%s' successfully updated.\n", serviceName)
 	return nil
 }
 
@@ -185,7 +184,7 @@ func (c *ServiceDocGet) Run(ctx *cmd.Context, client cmd.Doer) error {
 	if err != nil {
 		return err
 	}
-	io.WriteString(ctx.Stdout, string(b))
+	ctx.Stdout.Write(b)
 	return nil
 }
 
@@ -221,6 +220,6 @@ endpoint:
 		return errors.New("Error while creating manifest template.\nOriginal error message is: " + err.Error())
 	}
 	f.Write([]byte(template))
-	io.WriteString(ctx.Stdout, "Generated file \"manifest.yaml\" in current path\n")
+	fmt.Fprintln(ctx.Stdout, `Generated file "manifest.yaml" in current path`)
 	return nil
 }

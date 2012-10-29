@@ -25,30 +25,33 @@ func (e osExiter) Exit(code int) {
 }
 
 type Manager struct {
-	Commands map[string]interface{}
-	name     string
-	stdout   io.Writer
-	stderr   io.Writer
-	stdin    io.Reader
-	version  string
-	e        exiter
-	original string
-	wrong    bool
+	Commands      map[string]interface{}
+	name          string
+	stdout        io.Writer
+	stderr        io.Writer
+	stdin         io.Reader
+	version       string
+	versionHeader string
+	e             exiter
+	original      string
+	wrong         bool
 }
 
-func NewManager(name, ver string, stdout, stderr io.Writer, stdin io.Reader) *Manager {
-	manager := &Manager{name: name, version: ver, stdout: stdout, stderr: stderr, stdin: stdin}
+func NewManager(name, ver, verHeader string, stdout, stderr io.Writer, stdin io.Reader) *Manager {
+	manager := &Manager{name: name, version: ver, versionHeader: verHeader, stdout: stdout, stderr: stderr, stdin: stdin}
 	manager.Register(&help{manager})
 	manager.Register(&version{manager})
 	return manager
 }
 
-func BuildBaseManager(name, version string) *Manager {
-	m := NewManager(name, version, os.Stdout, os.Stderr, os.Stdin)
+func BuildBaseManager(name, version, versionHeader string) *Manager {
+	m := NewManager(name, version, versionHeader, os.Stdout, os.Stderr, os.Stdin)
 	m.Register(&login{})
 	m.Register(&logout{})
 	m.Register(&userCreate{})
+	m.Register(&userRemove{})
 	m.Register(&teamCreate{})
+	m.Register(&teamRemove{})
 	m.Register(&teamList{})
 	m.Register(&teamUserAdd{})
 	m.Register(&teamUserRemove{})
@@ -76,7 +79,7 @@ func (m *Manager) Run(args []string) {
 	name := args[0]
 	command, ok := m.Commands[name]
 	if !ok {
-		io.WriteString(m.stderr, fmt.Sprintf("command %s does not exist\n", args[0]))
+		fmt.Fprintf(m.stderr, "command %s does not exist\n", args[0])
 		m.finisher().Exit(1)
 		return
 	}
@@ -88,9 +91,14 @@ func (m *Manager) Run(args []string) {
 		args = []string{name}
 		status = 1
 	}
-	err := command.(Command).Run(&Context{args, m.stdout, m.stderr, m.stdin}, NewClient(&http.Client{}))
+	context := Context{args, m.stdout, m.stderr, m.stdin}
+	client := NewClient(&http.Client{}, &context, m.version, m.versionHeader)
+	err := command.(Command).Run(&context, client)
 	if err != nil {
 		errorMsg := err.Error()
+		if strings.HasPrefix(errorMsg, "Invalid token") {
+			errorMsg = `You're not authenticated or your session has expired. Please use "login" command for authentication.`
+		}
 		if !strings.HasSuffix(errorMsg, "\n") {
 			errorMsg += "\n"
 		}
@@ -202,4 +210,30 @@ func filesystem() fs.Fs {
 		fsystem = fs.OsFs{}
 	}
 	return fsystem
+}
+
+// validateVersion checks whether current version is greater or equal to
+// supported version.
+func validateVersion(supported, current string) bool {
+	var (
+		bigger bool
+		limit  int
+	)
+	partsSupported := strings.Split(supported, ".")
+	partsCurrent := strings.Split(current, ".")
+	if len(partsSupported) > len(partsCurrent) {
+		limit = len(partsCurrent)
+		bigger = true
+	} else {
+		limit = len(partsSupported)
+	}
+	for i := 0; i < limit; i++ {
+		if partsCurrent[i] < partsSupported[i] {
+			return false
+		}
+	}
+	if bigger {
+		return false
+	}
+	return true
 }

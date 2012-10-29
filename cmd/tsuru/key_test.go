@@ -25,7 +25,7 @@ func (s *S) TestKeyAdd(c *C) {
 		Stdout: &stdout,
 		Stderr: &stderr,
 	}
-	client := cmd.NewClient(&http.Client{Transport: &transport{msg: "success", status: http.StatusOK}})
+	client := cmd.NewClient(&http.Client{Transport: &transport{msg: "success", status: http.StatusOK}}, nil, "", "")
 	fs := fs_test.RecordingFs{FileContent: "user-key"}
 	command := KeyAdd{keyReader{fsystem: &fs}}
 	err = command.Run(&context, client)
@@ -45,7 +45,7 @@ func (s *S) TestKeyAddSpecifyingKeyFile(c *C) {
 		Stdout: &stdout,
 		Stderr: &stderr,
 	}
-	client := cmd.NewClient(&http.Client{Transport: &transport{msg: "success", status: http.StatusOK}})
+	client := cmd.NewClient(&http.Client{Transport: &transport{msg: "success", status: http.StatusOK}}, nil, "", "")
 	fs := fs_test.RecordingFs{FileContent: "user-key"}
 	command := KeyAdd{keyReader{fsystem: &fs}}
 	err = command.Run(&context, client)
@@ -104,7 +104,7 @@ func (s *S) TestKeyRemove(c *C) {
 		Stdout: &stdout,
 		Stderr: &stderr,
 	}
-	client := cmd.NewClient(&http.Client{Transport: &transport{msg: "success", status: http.StatusOK}})
+	client := cmd.NewClient(&http.Client{Transport: &transport{msg: "success", status: http.StatusOK}}, nil, "", "")
 	fs := fs_test.RecordingFs{FileContent: "user-key"}
 	command := KeyRemove{keyReader{fsystem: &fs}}
 	err = command.Run(&context, client)
@@ -124,7 +124,7 @@ func (s *S) TestKeyRemoveSpecifyingKeyFile(c *C) {
 		Stdout: &stdout,
 		Stderr: &stderr,
 	}
-	client := cmd.NewClient(&http.Client{Transport: &transport{msg: "success", status: http.StatusOK}})
+	client := cmd.NewClient(&http.Client{Transport: &transport{msg: "success", status: http.StatusOK}}, nil, "", "")
 	fs := fs_test.RecordingFs{FileContent: "user-key"}
 	command := KeyRemove{keyReader{fsystem: &fs}}
 	err = command.Run(&context, client)

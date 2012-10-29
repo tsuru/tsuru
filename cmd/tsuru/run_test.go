@@ -12,7 +12,7 @@ import (
 )
 
 func (s *S) TestAppRun(c *C) {
-	*appname = "ble"
+	*appName = "ble"
 	var stdout, stderr bytes.Buffer
 	expected := "http.go		http_test.go"
 	context := cmd.Context{
@@ -31,14 +31,14 @@ func (s *S) TestAppRun(c *C) {
 			return req.URL.Path == "/apps/ble/run" && string(b) == "ls"
 		},
 	}
-	client := cmd.NewClient(&http.Client{Transport: trans})
+	client := cmd.NewClient(&http.Client{Transport: trans}, nil, "", "")
 	err := (&AppRun{}).Run(&context, client)
 	c.Assert(err, IsNil)
 	c.Assert(stdout.String(), Equals, expected)
 }
 
 func (s *S) TestAppRunShouldUseAllSubsequentArgumentsAsArgumentsToTheGivenCommand(c *C) {
-	*appname = "ble"
+	*appName = "ble"
 	var stdout, stderr bytes.Buffer
 	expected := "-rw-r--r--  1 f  staff  119 Apr 26 18:23 http.go"
 	context := cmd.Context{
@@ -57,7 +57,7 @@ func (s *S) TestAppRunShouldUseAllSubsequentArgumentsAsArgumentsToTheGivenComman
 			return req.URL.Path == "/apps/ble/run" && string(b) == "ls -l"
 		},
 	}
-	client := cmd.NewClient(&http.Client{Transport: trans})
+	client := cmd.NewClient(&http.Client{Transport: trans}, nil, "", "")
 	err := (&AppRun{}).Run(&context, client)
 	c.Assert(err, IsNil)
 	c.Assert(stdout.String(), Equals, expected)
@@ -82,7 +82,7 @@ func (s *S) TestAppRunWithoutTheFlag(c *C) {
 			return req.URL.Path == "/apps/bla/run" && string(b) == "ls -lh"
 		},
 	}
-	client := cmd.NewClient(&http.Client{Transport: trans})
+	client := cmd.NewClient(&http.Client{Transport: trans}, nil, "", "")
 	fake := &FakeGuesser{name: "bla"}
 	err := (&AppRun{GuessingCommand{g: fake}}).Run(&context, client)
 	c.Assert(err, IsNil)

@@ -64,8 +64,8 @@ func (cmd *GuessingCommand) guesser() AppGuesser {
 }
 
 func (cmd *GuessingCommand) Guess() (string, error) {
-	if appname != nil && *appname != "" {
-		return *appname, nil
+	if appName != nil && *appName != "" {
+		return *appName, nil
 	}
 	path, err := os.Getwd()
 	if err != nil {
@@ -75,7 +75,7 @@ func (cmd *GuessingCommand) Guess() (string, error) {
 	if err != nil {
 		return "", errors.New(`tsuru wasn't able to guess the name of the app.
 
-Use the -app flag to specify the name of the app.`)
+Use the --app flag to specify the name of the app.`)
 	}
 	return name, nil
 }

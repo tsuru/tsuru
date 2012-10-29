@@ -9,10 +9,13 @@ import (
 	"os"
 )
 
-const version = "0.1"
+const (
+	version = "0.1"
+	header  = "Supported-Crane"
+)
 
 func buildManager(name string) *cmd.Manager {
-	m := cmd.BuildBaseManager(name, version)
+	m := cmd.BuildBaseManager(name, version, header)
 	m.Register(&ServiceCreate{})
 	m.Register(&ServiceRemove{})
 	m.Register(&ServiceList{})

@@ -16,7 +16,7 @@ Linux example: suppose you want to install the crane client in your `/usr/bin` d
 
 ::
 
-    $ curl -L https://github.com/downloads/globocom/tsuru/20121017-crane-linux-amd64.tar.gz | sudo tar -xz -C /usr/bin/
+    $ curl -L https://github.com/downloads/globocom/tsuru/crane-linux-amd64-0.1.tar.gz | sudo tar -xz -C /usr/bin/
 
 Then you will be able to :doc:`use the client </services/usage>`. On Mac OS, use `darwin` instead of `linux`:
 
@@ -24,4 +24,4 @@ Then you will be able to :doc:`use the client </services/usage>`. On Mac OS, use
 
 ::
 
-    $ curl -L https://github.com/downloads/globocom/tsuru/20121017-crane-darwin-amd64.tar.gz | sudo tar -xz -C /usr/bin/
+    $ curl -L https://github.com/downloads/globocom/tsuru/crane-darwin-amd64-0.1.tar.gz | sudo tar -xz -C /usr/bin/

@@ -6,7 +6,7 @@ package cmd
 
 import (
 	"errors"
-	"io"
+	"fmt"
 	"io/ioutil"
 	"regexp"
 	"strings"
@@ -36,11 +36,11 @@ func (t *target) Run(ctx *Context, client Doer) error {
 		if err != nil {
 			return err
 		}
-		io.WriteString(ctx.Stdout, "New target is "+target+"\n")
+		fmt.Fprintf(ctx.Stdout, "New target is %s\n", target)
 		return nil
 	}
 	target = readTarget()
-	io.WriteString(ctx.Stdout, "Current target is "+target+"\n")
+	fmt.Fprintf(ctx.Stdout, "Current target is %s\n", target)
 	return nil
 }
 
