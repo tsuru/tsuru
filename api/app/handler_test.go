@@ -129,10 +129,10 @@ pos-restart:
 	c.Assert(err, IsNil)
 	c.Assert(recorder.Code, Equals, http.StatusOK)
 	messages := []string{
-		"\n ---> Tsuru receiving push\n",
-		"\n ---> Clonning your code in your machines\n",
-		"\n ---> Installing dependencies\n",
-		"\n ---> Deploy done!\n\n",
+		" ---> Tsuru receiving push",
+		" ---> Clonning your code in your machines",
+		" ---> Installing dependencies",
+		" ---> Deploy done!",
 	}
 	for _, msg := range messages {
 		length, err := db.Session.Apps().Find(bson.M{"logs.message": msg}).Count()
