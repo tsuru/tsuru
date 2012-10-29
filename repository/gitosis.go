@@ -232,15 +232,15 @@ func nextAvailableKey(keydirname, member string) (string, error) {
 
 // getConfig reads config from gitosis.conf file.
 func (m *gitosisManager) getConfig() (*ini.Config, error) {
-	m.RLock()
 	defer m.RUnlock()
+	m.RLock()
 	return ini.Read(m.confPath, ini.DEFAULT_COMMENT, ini.ALTERNATIVE_SEPARATOR, true, true)
 }
 
 // writeConfig writes the given config object to the gitosis.conf file.
 func (m *gitosisManager) writeConfig(c *ini.Config) error {
-	m.Lock()
 	defer m.Unlock()
+	m.Lock()
 	return c.WriteFile(m.confPath, 0644, "gitosis config file")
 }
 

@@ -24,7 +24,7 @@ If you don't provide the app name, tsuru will try to guess it.`
 }
 
 func (s *S) TestEnvGetRun(c *C) {
-	*appname = "someapp"
+	*appName = "someapp"
 	var stdout, stderr bytes.Buffer
 	result := "DATABASE_HOST=somehost\n"
 	context := cmd.Context{
@@ -39,7 +39,7 @@ func (s *S) TestEnvGetRun(c *C) {
 }
 
 func (s *S) TestEnvGetRunWithMultipleParams(c *C) {
-	*appname = "someapp"
+	*appName = "someapp"
 	var stdout, stderr bytes.Buffer
 	result := "DATABASE_HOST=somehost\nDATABASE_USER=someuser"
 	params := []string{"DATABASE_HOST", "DATABASE_USER"}
@@ -92,7 +92,7 @@ If you don't provide the app name, tsuru will try to guess it.`
 }
 
 func (s *S) TestEnvSetRun(c *C) {
-	*appname = "someapp"
+	*appName = "someapp"
 	var stdout, stderr bytes.Buffer
 	result := "variable(s) successfully exported\n"
 	context := cmd.Context{
@@ -107,7 +107,7 @@ func (s *S) TestEnvSetRun(c *C) {
 }
 
 func (s *S) TestEnvSetRunWithMultipleParams(c *C) {
-	*appname = "someapp"
+	*appName = "someapp"
 	var stdout, stderr bytes.Buffer
 	result := "variable(s) successfully exported\n"
 	context := cmd.Context{
@@ -158,7 +158,7 @@ If you don't provide the app name, tsuru will try to guess it.`
 }
 
 func (s *S) TestEnvUnsetRun(c *C) {
-	*appname = "someapp"
+	*appName = "someapp"
 	var stdout, stderr bytes.Buffer
 	result := "variable(s) successfully unset\n"
 	context := cmd.Context{
@@ -196,7 +196,7 @@ func (s *S) TestEnvUnsetWithoutFlag(c *C) {
 }
 
 func (s *S) TestRequestEnvUrl(c *C) {
-	*appname = "someapp"
+	*appName = "someapp"
 	result := "DATABASE_HOST=somehost"
 	client := cmd.NewClient(&http.Client{Transport: &transport{msg: result, status: http.StatusOK}}, nil, "", "")
 	args := []string{"DATABASE_HOST"}

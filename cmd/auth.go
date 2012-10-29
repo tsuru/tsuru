@@ -28,10 +28,10 @@ func (r stdinPasswordReader) readPassword(out io.Writer, msg string) (string, er
 	if err != nil {
 		return "", err
 	}
-	io.WriteString(out, "\n")
+	fmt.Fprintln(out)
 	if password == "" {
-		msg := "You must provide the password!\n"
-		io.WriteString(out, msg)
+		msg := "You must provide the password!"
+		fmt.Fprintln(out, msg)
 		return "", errors.New(msg)
 	}
 	return password, nil
@@ -79,8 +79,32 @@ func (c *userCreate) Run(context *Context, client Doer) error {
 	if err != nil {
 		return err
 	}
-	io.WriteString(context.Stdout, fmt.Sprintf(`User "%s" successfully created!`+"\n", email))
+	fmt.Fprintf(context.Stdout, `User "%s" successfully created!`+"\n", email)
 	return nil
+}
+
+type userRemove struct{}
+
+func (c *userRemove) Run(context *Context, client Doer) error {
+	request, err := http.NewRequest("DELETE", GetUrl("/users"), nil)
+	if err != nil {
+		return err
+	}
+	_, err = client.Do(request)
+	if err != nil {
+		return err
+	}
+	fmt.Fprint(context.Stdout, "User successfully removed.\n")
+	return nil
+}
+
+func (c *userRemove) Info() *Info {
+	return &Info{
+		Name:    "user-remove",
+		Usage:   "user-remove",
+		Desc:    "removes your user from tsuru server.",
+		MinArgs: 0,
+	}
 }
 
 type login struct {
@@ -119,7 +143,7 @@ func (c *login) Run(context *Context, client Doer) error {
 	if err != nil {
 		return err
 	}
-	io.WriteString(context.Stdout, "Successfully logged!\n")
+	fmt.Fprintln(context.Stdout, "Successfully logged in!")
 	return writeToken(out["token"])
 }
 
@@ -151,7 +175,7 @@ func (c *logout) Run(context *Context, client Doer) error {
 	if err != nil && os.IsNotExist(err) {
 		return errors.New("You're not logged in!")
 	}
-	io.WriteString(context.Stdout, "Successfully logout!\n")
+	fmt.Fprintln(context.Stdout, "Successfully logged out!")
 	return nil
 }
 
@@ -177,8 +201,34 @@ func (c *teamCreate) Run(context *Context, client Doer) error {
 	if err != nil {
 		return err
 	}
-	io.WriteString(context.Stdout, fmt.Sprintf(`Team "%s" successfully created!`+"\n", team))
+	fmt.Fprintf(context.Stdout, `Team "%s" successfully created!`+"\n", team)
 	return nil
+}
+
+type teamRemove struct{}
+
+func (c *teamRemove) Run(context *Context, client Doer) error {
+	team := context.Args[0]
+	url := GetUrl(fmt.Sprintf("/teams/%s", team))
+	request, err := http.NewRequest("DELETE", url, nil)
+	if err != nil {
+		return err
+	}
+	_, err = client.Do(request)
+	if err != nil {
+		return err
+	}
+	fmt.Fprintf(context.Stdout, `Team "%s" successfully removed!`+"\n", team)
+	return nil
+}
+
+func (c *teamRemove) Info() *Info {
+	return &Info{
+		Name:    "team-remove",
+		Usage:   "team-remove <team-name>",
+		Desc:    "removes a team from tsuru server.",
+		MinArgs: 1,
+	}
 }
 
 type teamUserAdd struct{}
@@ -203,7 +253,7 @@ func (c *teamUserAdd) Run(context *Context, client Doer) error {
 	if err != nil {
 		return err
 	}
-	io.WriteString(context.Stdout, fmt.Sprintf(`User "%s" was added to the "%s" team`+"\n", userName, teamName))
+	fmt.Fprintf(context.Stdout, `User "%s" was added to the "%s" team`+"\n", userName, teamName)
 	return nil
 }
 
@@ -229,7 +279,7 @@ func (c *teamUserRemove) Run(context *Context, client Doer) error {
 	if err != nil {
 		return err
 	}
-	io.WriteString(context.Stdout, fmt.Sprintf(`User "%s" was removed from the "%s" team`+"\n", userName, teamName))
+	fmt.Fprintf(context.Stdout, `User "%s" was removed from the "%s" team`+"\n", userName, teamName)
 	return nil
 }
 

@@ -13,7 +13,7 @@ import (
 )
 
 func (s *S) TestAppLog(c *C) {
-	*appname = "appName"
+	*appName = "appName"
 	var stdout, stderr bytes.Buffer
 	result := `[{"Date":"2012-06-20T11:17:22.75-03:00","Message":"creating app lost"},{"Date":"2012-06-20T11:17:22.753-03:00","Message":"app lost successfully created"}]`
 	expected := `2012-06-20 11:17:22.75 -0300 BRT - creating app lost
@@ -62,7 +62,7 @@ func (s *S) TestAppLogWithoutTheFlag(c *C) {
 }
 
 func (s *S) TestAppLogShouldReturnNilIfHasNoContent(c *C) {
-	*appname = "appName"
+	*appName = "appName"
 	var stdout, stderr bytes.Buffer
 	context := cmd.Context{
 		Stdout: &stdout,

@@ -18,7 +18,7 @@ func (s *S) TestLogin(c *C) {
 	defer func() {
 		fsystem = nil
 	}()
-	expected := "Successfully logged!\n"
+	expected := "Successfully logged in!\n"
 	context := Context{[]string{"foo@foo.com"}, manager.stdout, manager.stderr, manager.stdin}
 	client := NewClient(&http.Client{Transport: &transport{msg: `{"token": "sometoken"}`, status: http.StatusOK}}, nil, "", "")
 	command := login{reader: &fakeReader{outputs: []string{"chico"}}}
@@ -35,7 +35,7 @@ func (s *S) TestLoginShouldNotDependOnTsuruTokenFile(c *C) {
 	defer func() {
 		fsystem = nil
 	}()
-	expected := "Successfully logged!\n"
+	expected := "Successfully logged in!\n"
 	context := Context{[]string{"foo@foo.com"}, manager.stdout, manager.stderr, manager.stdin}
 	client := NewClient(&http.Client{Transport: &transport{msg: `{"token":"anothertoken"}`, status: http.StatusOK}}, nil, "", "")
 	command := login{reader: &fakeReader{outputs: []string{"bar123"}}}
@@ -67,7 +67,7 @@ func (s *S) TestLogout(c *C) {
 	defer func() {
 		fsystem = nil
 	}()
-	expected := "Successfully logout!\n"
+	expected := "Successfully logged out!\n"
 	context := Context{[]string{}, manager.stdout, manager.stderr, manager.stdin}
 	command := logout{}
 	err := command.Run(&context, nil)
@@ -148,6 +148,62 @@ func (s *S) TestTeamCreateInfo(c *C) {
 		MinArgs: 1,
 	}
 	c.Assert((&teamCreate{}).Info(), DeepEquals, expected)
+}
+
+func (s *S) TestTeamRemove(c *C) {
+	var (
+		buf    bytes.Buffer
+		called bool
+	)
+	context := Context{
+		Args:   []string{"evergrey"},
+		Stdout: &buf,
+	}
+	trans := conditionalTransport{
+		transport{
+			msg:    "",
+			status: http.StatusOK,
+		},
+		func(req *http.Request) bool {
+			called = true
+			return req.URL.Path == "/teams/evergrey" && req.Method == "DELETE"
+		},
+	}
+	client := NewClient(&http.Client{Transport: &trans}, nil, "", "")
+	command := teamRemove{}
+	err := command.Run(&context, client)
+	c.Assert(err, IsNil)
+	c.Assert(called, Equals, true)
+	c.Assert(buf.String(), Equals, `Team "evergrey" successfully removed!`+"\n")
+}
+
+func (s *S) TestTeamRemoveFailingRequest(c *C) {
+	context := Context{
+		Args: []string{"evergrey"},
+	}
+	client := NewClient(&http.Client{Transport: &transport{msg: "Team evergrey not found.", status: http.StatusNotFound}}, nil, "", "")
+	command := teamRemove{}
+	err := command.Run(&context, client)
+	c.Assert(err, NotNil)
+	c.Assert(err, ErrorMatches, "^Team evergrey not found.$")
+}
+
+func (s *S) TestTeamRemoveInfo(c *C) {
+	expected := &Info{
+		Name:    "team-remove",
+		Usage:   "team-remove <team-name>",
+		Desc:    "removes a team from tsuru server.",
+		MinArgs: 1,
+	}
+	c.Assert((&teamRemove{}).Info(), DeepEquals, expected)
+}
+
+func (s *S) TestTeamRemoveIsACommand(c *C) {
+	var _ Command = &teamRemove{}
+}
+
+func (s *S) TestTeamRemoveIsAnInfoer(c *C) {
+	var _ Infoer = &teamRemove{}
 }
 
 func (s *S) TestTeamListRun(c *C) {
@@ -250,6 +306,60 @@ func (s *S) TestUserCreateInfo(c *C) {
 		MinArgs: 1,
 	}
 	c.Assert((&userCreate{}).Info(), DeepEquals, expected)
+}
+
+func (s *S) TestUserRemove(c *C) {
+	var (
+		buf    bytes.Buffer
+		called bool
+	)
+	context := Context{
+		Stdout: &buf,
+	}
+	trans := conditionalTransport{
+		transport{
+			msg:    "",
+			status: http.StatusOK,
+		},
+		func(req *http.Request) bool {
+			called = true
+			return req.Method == "DELETE" && req.URL.Path == "/users"
+		},
+	}
+	client := NewClient(&http.Client{Transport: &trans}, nil, "", "")
+	command := userRemove{}
+	err := command.Run(&context, client)
+	c.Assert(err, IsNil)
+	c.Assert(called, Equals, true)
+	c.Assert(buf.String(), Equals, "User successfully removed.\n")
+}
+
+func (s *S) TestUserRemoveWithRequestError(c *C) {
+	client := NewClient(&http.Client{Transport: &transport{msg: "User not found.", status: http.StatusNotFound}}, nil, "", "")
+	command := userRemove{}
+	err := command.Run(&Context{}, client)
+	c.Assert(err, NotNil)
+	c.Assert(err, ErrorMatches, "^User not found.$")
+}
+
+func (s *S) TestUserRemoveInfo(c *C) {
+	expected := &Info{
+		Name:    "user-remove",
+		Usage:   "user-remove",
+		Desc:    "removes your user from tsuru server.",
+		MinArgs: 0,
+	}
+	c.Assert((&userRemove{}).Info(), DeepEquals, expected)
+}
+
+func (s *S) TestUserRemoveIsACommand(c *C) {
+	var cmd Command
+	c.Assert(&userRemove{}, Implements, &cmd)
+}
+
+func (s *S) TestUserRemoveIsAnInfoer(c *C) {
+	var infoer Infoer
+	c.Assert(&userRemove{}, Implements, &infoer)
 }
 
 func (s *S) TestUserCreatePreader(c *C) {

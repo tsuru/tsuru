@@ -12,7 +12,7 @@ import (
 )
 
 func (s *S) TestAppRun(c *C) {
-	*appname = "ble"
+	*appName = "ble"
 	var stdout, stderr bytes.Buffer
 	expected := "http.go		http_test.go"
 	context := cmd.Context{
@@ -38,7 +38,7 @@ func (s *S) TestAppRun(c *C) {
 }
 
 func (s *S) TestAppRunShouldUseAllSubsequentArgumentsAsArgumentsToTheGivenCommand(c *C) {
-	*appname = "ble"
+	*appName = "ble"
 	var stdout, stderr bytes.Buffer
 	expected := "-rw-r--r--  1 f  staff  119 Apr 26 18:23 http.go"
 	context := cmd.Context{

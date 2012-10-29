@@ -13,7 +13,7 @@ import (
 )
 
 func (s *S) TestAppInfo(c *C) {
-	*appname = "app1"
+	*appName = "app1"
 	var stdout, stderr bytes.Buffer
 	result := `{"Name":"app1","Framework":"php","Repository":"git@git.com:php.git","State":"dead", "Units":[{"Ip":"10.10.10.10"}, {"Ip":"9.9.9.9"}],"Teams":["tsuruteam","crane"]}`
 	expected := `Application: app1
@@ -152,7 +152,7 @@ func (s *S) TestAppCreateWithInvalidFramework(c *C) {
 }
 
 func (s *S) TestAppRemove(c *C) {
-	*appname = "ble"
+	*appName = "ble"
 	var stdout, stderr bytes.Buffer
 	expected := `Are you sure you want to remove app "ble"? (y/n) App "ble" successfully removed!` + "\n"
 	context := cmd.Context{
@@ -196,7 +196,7 @@ func (s *S) TestAppRemoveWithoutArgs(c *C) {
 }
 
 func (s *S) TestAppRemoveWithoutConfirmation(c *C) {
-	*appname = "ble"
+	*appName = "ble"
 	var stdout, stderr bytes.Buffer
 	expected := `Are you sure you want to remove app "ble"? (y/n) Abort.` + "\n"
 	context := cmd.Context{
@@ -223,7 +223,7 @@ If you don't provide the app name, tsuru will try to guess it.`,
 }
 
 func (s *S) TestAppGrant(c *C) {
-	*appname = "games"
+	*appName = "games"
 	var stdout, stderr bytes.Buffer
 	expected := `Team "cobrateam" was added to the "games" app` + "\n"
 	context := cmd.Context{
@@ -267,7 +267,7 @@ If you don't provide the app name, tsuru will try to guess it.`,
 }
 
 func (s *S) TestAppRevoke(c *C) {
-	*appname = "games"
+	*appName = "games"
 	var stdout, stderr bytes.Buffer
 	expected := `Team "cobrateam" was removed from the "games" app` + "\n"
 	context := cmd.Context{
@@ -311,7 +311,7 @@ If you don't provide the app name, tsuru will try to guess it.`,
 }
 
 func (s *S) TestAppRestart(c *C) {
-	*appname = "handful_of_nothing"
+	*appName = "handful_of_nothing"
 	var (
 		called         bool
 		stdout, stderr bytes.Buffer

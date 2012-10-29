@@ -21,8 +21,8 @@ type repository struct {
 // run executes a command in the git repository, and returns the output of the
 // command or an error, if any happens.
 func (r *repository) run(args ...string) (string, error) {
-	r.Lock()
 	defer r.Unlock()
+	r.Lock()
 	var gitDir, workTree string
 	workTree = "--work-tree=" + r.path
 	if r.bare {

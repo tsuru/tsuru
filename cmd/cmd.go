@@ -49,7 +49,9 @@ func BuildBaseManager(name, version, versionHeader string) *Manager {
 	m.Register(&login{})
 	m.Register(&logout{})
 	m.Register(&userCreate{})
+	m.Register(&userRemove{})
 	m.Register(&teamCreate{})
+	m.Register(&teamRemove{})
 	m.Register(&teamList{})
 	m.Register(&teamUserAdd{})
 	m.Register(&teamUserRemove{})
@@ -77,7 +79,7 @@ func (m *Manager) Run(args []string) {
 	name := args[0]
 	command, ok := m.Commands[name]
 	if !ok {
-		io.WriteString(m.stderr, fmt.Sprintf("command %s does not exist\n", args[0]))
+		fmt.Fprintf(m.stderr, "command %s does not exist\n", args[0])
 		m.finisher().Exit(1)
 		return
 	}
@@ -94,6 +96,9 @@ func (m *Manager) Run(args []string) {
 	err := command.(Command).Run(&context, client)
 	if err != nil {
 		errorMsg := err.Error()
+		if strings.HasPrefix(errorMsg, "Invalid token") {
+			errorMsg = `You're not authenticated or your session has expired. Please use "login" command for authentication.`
+		}
 		if !strings.HasSuffix(errorMsg, "\n") {
 			errorMsg += "\n"
 		}
