@@ -10,6 +10,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"regexp"
 	"sort"
 	"strings"
 )
@@ -95,8 +96,9 @@ func (m *Manager) Run(args []string) {
 	client := NewClient(&http.Client{}, &context, m.version, m.versionHeader)
 	err := command.(Command).Run(&context, client)
 	if err != nil {
+		re := regexp.MustCompile(`^((Invalid token)|(You must provide the Authorization header))`)
 		errorMsg := err.Error()
-		if strings.HasPrefix(errorMsg, "Invalid token") {
+		if re.MatchString(errorMsg) {
 			errorMsg = `You're not authenticated or your session has expired. Please use "login" command for authentication.`
 		}
 		if !strings.HasSuffix(errorMsg, "\n") {
