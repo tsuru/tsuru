@@ -84,7 +84,9 @@ You must have at least version 0.3, your current version is 0.2.1.
 
 Please go to https://github.com/globocom/tsuru/downloads and download the last version.
 
-############################################################`
+############################################################
+
+`
 	c.Assert(buf.String(), Equals, expected)
 }
 
