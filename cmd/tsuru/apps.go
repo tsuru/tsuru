@@ -275,6 +275,9 @@ If you don't provide the app name, tsuru will try to guess it.`,
 
 func (c *AppRemove) Run(context *cmd.Context, client cmd.Doer) error {
 	appName, err := c.Guess()
+	if err != nil {
+		return err
+	}
 	var answer string
 	fmt.Fprintf(context.Stdout, `Are you sure you want to remove app "%s"? (y/n) `, appName)
 	fmt.Fscanf(context.Stdin, "%s", &answer)
