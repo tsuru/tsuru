@@ -438,10 +438,11 @@ func AppLog(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	var selector bson.M
 	if l := r.URL.Query().Get("lines"); l != "" {
 		lines, err := strconv.Atoi(l)
-		selector = bson.M{"logs": bson.M{"$slice": lines}}
 		if err != nil {
 			return err
 		}
+		lines = -1 * lines
+		selector = bson.M{"logs": bson.M{"$slice": lines}}
 	}
 	app, err := getAppOrError(appName, u)
 	if err != nil {

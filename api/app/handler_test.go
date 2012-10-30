@@ -24,6 +24,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -1642,7 +1643,7 @@ func (s *S) TestAppLogSelectByLines(c *C) {
 	err := createApp(&a)
 	c.Assert(err, IsNil)
 	for i := 0; i < 15; i++ {
-		a.log(string(i))
+		a.log(strconv.Itoa(i))
 	}
 	url := fmt.Sprintf("/apps/%s/log/?:name=%s&lines=10", a.Name, a.Name)
 	request, err := http.NewRequest("GET", url, nil)
@@ -1658,6 +1659,37 @@ func (s *S) TestAppLogSelectByLines(c *C) {
 	err = json.Unmarshal(body, &logs)
 	c.Assert(err, IsNil)
 	c.Assert(logs, HasLen, 10)
+}
+
+func (s *S) TestAppLogSelectByLinesShouldReturnsTheLastestEntries(c *C) {
+	a := App{
+		Name:      "lost",
+		Framework: "vougan",
+		Teams:     []string{s.team.Name},
+	}
+	err := createApp(&a)
+	c.Assert(err, IsNil)
+	for i := 0; i < 15; i++ {
+		a.log(strconv.Itoa(i))
+	}
+	url := fmt.Sprintf("/apps/%s/log/?:name=%s&lines=3", a.Name, a.Name)
+	request, err := http.NewRequest("GET", url, nil)
+	c.Assert(err, IsNil)
+	recorder := httptest.NewRecorder()
+	request.Header.Set("Content-Type", "application/json")
+	err = AppLog(recorder, request, s.user)
+	c.Assert(err, IsNil)
+	c.Assert(recorder.Code, Equals, http.StatusOK)
+	body, err := ioutil.ReadAll(recorder.Body)
+	c.Assert(err, IsNil)
+	logs := []applog{}
+	err = json.Unmarshal(body, &logs)
+	c.Assert(err, IsNil)
+	c.Assert(logs, HasLen, 3)
+	c.Assert(logs[0].Message, Equals, "12")
+	c.Assert(logs[1].Message, Equals, "13")
+	c.Assert(logs[2].Message, Equals, "14")
+
 }
 
 func (s *S) TestAppLogShouldReturnLogByApp(c *C) {
