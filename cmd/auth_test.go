@@ -332,6 +332,7 @@ func (s *S) TestUserRemove(c *C) {
 	)
 	context := Context{
 		Stdout: &buf,
+		Stdin:  strings.NewReader("y\n"),
 	}
 	trans := conditionalTransport{
 		transport{
@@ -348,13 +349,25 @@ func (s *S) TestUserRemove(c *C) {
 	err := command.Run(&context, client)
 	c.Assert(err, IsNil)
 	c.Assert(called, Equals, true)
-	c.Assert(buf.String(), Equals, "User successfully removed.\n")
+	c.Assert(buf.String(), Equals, "Are you sure you want to remove your user from tsuru? (y/n) User successfully removed.\n")
+}
+
+func (s *S) TestUserRemoveWithoutConfirmation(c *C) {
+	var buf bytes.Buffer
+	context := Context{
+		Stdout: &buf,
+		Stdin:  strings.NewReader("n\n"),
+	}
+	command := userRemove{}
+	err := command.Run(&context, nil)
+	c.Assert(err, IsNil)
+	c.Assert(buf.String(), Equals, "Are you sure you want to remove your user from tsuru? (y/n) Abort.\n")
 }
 
 func (s *S) TestUserRemoveWithRequestError(c *C) {
 	client := NewClient(&http.Client{Transport: &transport{msg: "User not found.", status: http.StatusNotFound}}, nil, "", "")
 	command := userRemove{}
-	err := command.Run(&Context{}, client)
+	err := command.Run(&Context{Stdout: new(bytes.Buffer), Stdin: strings.NewReader("y\n")}, client)
 	c.Assert(err, NotNil)
 	c.Assert(err, ErrorMatches, "^User not found.$")
 }

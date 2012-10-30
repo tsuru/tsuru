@@ -86,6 +86,13 @@ func (c *userCreate) Run(context *Context, client Doer) error {
 type userRemove struct{}
 
 func (c *userRemove) Run(context *Context, client Doer) error {
+	var answer string
+	fmt.Fprint(context.Stdout, `Are you sure you want to remove your user from tsuru? (y/n) `)
+	fmt.Fscanf(context.Stdin, "%s", &answer)
+	if answer != "y" {
+		fmt.Fprintln(context.Stdout, "Abort.")
+		return nil
+	}
 	request, err := http.NewRequest("DELETE", GetUrl("/users"), nil)
 	if err != nil {
 		return err
