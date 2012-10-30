@@ -11,6 +11,7 @@ import (
 	"io"
 	. "launchpad.net/gocheck"
 	"net/http"
+	"strings"
 )
 
 func (s *S) TestLogin(c *C) {
@@ -158,6 +159,7 @@ func (s *S) TestTeamRemove(c *C) {
 	context := Context{
 		Args:   []string{"evergrey"},
 		Stdout: &buf,
+		Stdin:  strings.NewReader("y\n"),
 	}
 	trans := conditionalTransport{
 		transport{
@@ -174,12 +176,27 @@ func (s *S) TestTeamRemove(c *C) {
 	err := command.Run(&context, client)
 	c.Assert(err, IsNil)
 	c.Assert(called, Equals, true)
-	c.Assert(buf.String(), Equals, `Team "evergrey" successfully removed!`+"\n")
+	c.Assert(buf.String(), Equals, `Are you sure you want to remove team "evergrey"? (y/n) Team "evergrey" successfully removed!`+"\n")
+}
+
+func (s *S) TestTeamRemoveWithouConfirmation(c *C) {
+	var buf bytes.Buffer
+	context := Context{
+		Args:   []string{"dream-theater"},
+		Stdout: &buf,
+		Stdin:  strings.NewReader("n\n"),
+	}
+	command := teamRemove{}
+	err := command.Run(&context, nil)
+	c.Assert(err, IsNil)
+	c.Assert(buf.String(), Equals, `Are you sure you want to remove team "dream-theater"? (y/n) Abort.`+"\n")
 }
 
 func (s *S) TestTeamRemoveFailingRequest(c *C) {
 	context := Context{
-		Args: []string{"evergrey"},
+		Args:   []string{"evergrey"},
+		Stdout: new(bytes.Buffer),
+		Stdin:  strings.NewReader("y\n"),
 	}
 	client := NewClient(&http.Client{Transport: &transport{msg: "Team evergrey not found.", status: http.StatusNotFound}}, nil, "", "")
 	command := teamRemove{}

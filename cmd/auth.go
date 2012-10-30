@@ -209,6 +209,13 @@ type teamRemove struct{}
 
 func (c *teamRemove) Run(context *Context, client Doer) error {
 	team := context.Args[0]
+	var answer string
+	fmt.Fprintf(context.Stdout, `Are you sure you want to remove team "%s"? (y/n) `, team)
+	fmt.Fscanf(context.Stdin, "%s", &answer)
+	if answer != "y" {
+		fmt.Fprintln(context.Stdout, "Abort.")
+		return nil
+	}
 	url := GetUrl(fmt.Sprintf("/teams/%s", team))
 	request, err := http.NewRequest("DELETE", url, nil)
 	if err != nil {
