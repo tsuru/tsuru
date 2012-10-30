@@ -20,10 +20,10 @@ type AppLog struct {
 func (c *AppLog) Info() *cmd.Info {
 	return &cmd.Info{
 		Name:  "log",
-		Usage: "log [--app appname]",
+		Usage: "log [--app appname] [--lines numberOfLines]",
 		Desc: `show logs for an app.
 
-If you don't provide the app name, tsuru will try to guess it.`,
+If you don't provide the app name, tsuru will try to guess it. The default number of lines is 10.`,
 		MinArgs: 0,
 	}
 }
