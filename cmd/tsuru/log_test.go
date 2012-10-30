@@ -16,8 +16,8 @@ func (s *S) TestAppLog(c *C) {
 	*appName = "appName"
 	var stdout, stderr bytes.Buffer
 	result := `[{"Date":"2012-06-20T11:17:22.75-03:00","Message":"creating app lost"},{"Date":"2012-06-20T11:17:22.753-03:00","Message":"app lost successfully created"}]`
-	expected := `2012-06-20 11:17:22.75 -0300 BRT - creating app lost
-2012-06-20 11:17:22.753 -0300 BRT - app lost successfully created
+	expected := `2012-06-20 11:17:22 - creating app lost
+2012-06-20 11:17:22 - app lost successfully created
 `
 	context := cmd.Context{
 		Stdout: &stdout,
@@ -35,8 +35,8 @@ func (s *S) TestAppLog(c *C) {
 func (s *S) TestAppLogWithoutTheFlag(c *C) {
 	var stdout, stderr bytes.Buffer
 	result := `[{"Date":"2012-06-20T11:17:22.75-03:00","Message":"creating app lost"},{"Date":"2012-06-20T11:17:22.753-03:00","Message":"app lost successfully created"}]`
-	expected := `2012-06-20 11:17:22.75 -0300 BRT - creating app lost
-2012-06-20 11:17:22.753 -0300 BRT - app lost successfully created
+	expected := `2012-06-20 11:17:22 - creating app lost
+2012-06-20 11:17:22 - app lost successfully created
 `
 	context := cmd.Context{
 		Stdout: &stdout,

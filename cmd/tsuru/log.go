@@ -58,7 +58,7 @@ func (c *AppLog) Run(context *cmd.Context, client cmd.Doer) error {
 		return err
 	}
 	for _, l := range logs {
-		context.Stdout.Write([]byte(l.Date.String() + " - " + l.Message + "\n"))
+		context.Stdout.Write([]byte(l.Date.Format("2006-01-02 15:04:05") + " - " + l.Message + "\n"))
 	}
 	return err
 }
