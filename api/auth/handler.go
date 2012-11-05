@@ -13,7 +13,6 @@ import (
 	"github.com/globocom/tsuru/repository"
 	"github.com/globocom/tsuru/validation"
 	"io"
-	"io/ioutil"
 	"labix.org/v2/mgo/bson"
 	"net/http"
 	"strings"
@@ -21,18 +20,14 @@ import (
 
 const (
 	emailError     = "Invalid email."
-	passwordError  = "Password length shoul be least 6 characters and at most 50 characters."
+	passwordError  = "Password length should be least 6 characters and at most 50 characters."
 	passwordMinLen = 6
 	passwordMaxLen = 50
 )
 
 func CreateUser(w http.ResponseWriter, r *http.Request) error {
 	var u User
-	b, err := ioutil.ReadAll(r.Body)
-	if err != nil {
-		return err
-	}
-	err = json.Unmarshal(b, &u)
+	err := json.NewDecoder(r.Body).Decode(&u)
 	if err != nil {
 		return &errors.Http{Code: http.StatusBadRequest, Message: err.Error()}
 	}
@@ -55,11 +50,7 @@ func CreateUser(w http.ResponseWriter, r *http.Request) error {
 
 func Login(w http.ResponseWriter, r *http.Request) error {
 	var pass map[string]string
-	b, err := ioutil.ReadAll(r.Body)
-	if err != nil {
-		return err
-	}
-	err = json.Unmarshal(b, &pass)
+	err := json.NewDecoder(r.Body).Decode(&pass)
 	if err != nil {
 		return &errors.Http{Code: http.StatusBadRequest, Message: "Invalid JSON"}
 	}
@@ -118,11 +109,7 @@ func createTeam(name string, u *User) error {
 
 func CreateTeam(w http.ResponseWriter, r *http.Request, u *User) error {
 	var params map[string]string
-	b, err := ioutil.ReadAll(r.Body)
-	if err != nil {
-		return err
-	}
-	err = json.Unmarshal(b, &params)
+	err := json.NewDecoder(r.Body).Decode(&params)
 	if err != nil {
 		return &errors.Http{Code: http.StatusBadRequest, Message: err.Error()}
 	}
@@ -132,6 +119,21 @@ func CreateTeam(w http.ResponseWriter, r *http.Request, u *User) error {
 		return &errors.Http{Code: http.StatusBadRequest, Message: msg}
 	}
 	return createTeam(name, u)
+}
+
+func RemoveTeam(w http.ResponseWriter, r *http.Request, u *User) error {
+	name := r.URL.Query().Get(":name")
+	if n, err := db.Session.Apps().Find(bson.M{"teams": name}).Count(); err != nil || n > 0 {
+		msg := `This team cannot be removed because it have access to apps.
+
+Please remove the apps or revoke these accesses, and try again.`
+		return &errors.Http{Code: http.StatusForbidden, Message: msg}
+	}
+	query := bson.M{"_id": name, "users": u.Email}
+	if n, err := db.Session.Teams().Find(query).Count(); err != nil || n != 1 {
+		return &errors.Http{Code: http.StatusNotFound, Message: fmt.Sprintf(`Team "%s" not found.`, name)}
+	}
+	return db.Session.Teams().Remove(query)
 }
 
 func ListTeams(w http.ResponseWriter, r *http.Request, u *User) error {
@@ -234,11 +236,7 @@ func RemoveUserFromTeam(w http.ResponseWriter, r *http.Request, u *User) error {
 
 func getKeyFromBody(b io.Reader) (string, error) {
 	var body map[string]string
-	content, err := ioutil.ReadAll(b)
-	if err != nil {
-		return "", err
-	}
-	err = json.Unmarshal(content, &body)
+	err := json.NewDecoder(b).Decode(&body)
 	if err != nil {
 		return "", &errors.Http{Code: http.StatusBadRequest, Message: "Invalid JSON"}
 	}
@@ -326,4 +324,28 @@ func RemoveKeyFromUser(w http.ResponseWriter, r *http.Request, u *User) error {
 		return err
 	}
 	return removeKeyFromUser(key, u)
+}
+
+func RemoveUser(w http.ResponseWriter, r *http.Request, u *User) error {
+	teams, err := u.Teams()
+	if err != nil {
+		return err
+	}
+	for _, team := range teams {
+		if len(team.Users) < 2 {
+			msg := fmt.Sprintf(`This user is the last member of the team "%s", so it cannot be removed.
+
+Please remove the team, them remove the user.`, team.Name)
+			return &errors.Http{Code: http.StatusForbidden, Message: msg}
+		}
+		err = team.removeUser(u)
+		if err != nil {
+			return err
+		}
+		err = db.Session.Teams().Update(bson.M{"_id": team.Name}, team)
+		if err != nil {
+			return err
+		}
+	}
+	return db.Session.Users().Remove(bson.M{"email": u.Email})
 }

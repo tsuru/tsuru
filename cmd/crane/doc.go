@@ -18,12 +18,14 @@ The currently available commands are (grouped by subject):
 	version           displays current tsuru version
 
 	user-create       creates a new user
+	user-remove       removes your user from tsuru server
 	login             authenticates the user with tsuru server
 	logout            finishes the session with tsuru server
 	key-add           adds a public key to tsuru deploy server
 	key-remove        removes a public key from tsuru deploy server
 
 	team-create       creates a new team (adding the current user to it automatically)
+	team-remove       removes a team from tsuru
 	team-list         list teams that the user is member
 	team-user-add     adds a user to a team
 	team-user-remove  removes a user from a team
@@ -71,6 +73,18 @@ user-create creates a user within crane remote server. It will ask for the
 password before issue the request.
 
 
+Remove your user from tsuru server
+
+Usage:
+
+	% crane user-remove
+
+user-remove will remove currently authenticated user from remote tsuru server.
+since there cannot exist any orphan teams, tsuru will refuse to remove a user
+that is the last member of some team. if this is your case, make sure you
+remove the team using "team-remove" before removing the user.
+
+
 Authenticate within remote crane server
 
 Usage:
@@ -105,6 +119,18 @@ team-create will create a team for the user. crane requires a user to be a
 member of at least one team in order to create a service.
 
 When you create a team, you're automatically member of this team.
+
+
+Remove a team from tsuru
+
+Usage:
+
+	% crane team-remove <team-name>
+
+team-remove will remove a team from tsuru server. You're able to remove teams
+that you're member of. A team that has access to any app cannot be removed.
+Before removing a team, make sure it does not have access to any app (see
+"app-grant" and "app-revoke" commands for details).
 
 
 List teams that the user is member of

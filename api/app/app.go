@@ -405,7 +405,12 @@ func (a *App) UnsetEnvs(envs []string, publicOnly bool) error {
 
 func (a *App) log(message string) error {
 	log.Printf(message)
-	l := applog{Date: time.Now(), Message: message}
-	a.Logs = append(a.Logs, l)
+	messages := strings.Split(message, "\n")
+	for _, msg := range messages {
+		if msg != "" {
+			l := applog{Date: time.Now(), Message: msg}
+			a.Logs = append(a.Logs, l)
+		}
+	}
 	return db.Session.Apps().Update(bson.M{"name": a.Name}, a)
 }

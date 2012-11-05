@@ -680,6 +680,31 @@ func (s *S) TestLogShouldStoreLog(c *C) {
 	c.Assert(instance.Logs[logLen-1].Message, Equals, "last log msg")
 }
 
+func (s *S) TestLogShouldAddOneRecordByLine(c *C) {
+	a := App{Name: "newApp"}
+	err := createApp(&a)
+	c.Assert(err, IsNil)
+	err = a.log("last log msg\nfirst log")
+	c.Assert(err, IsNil)
+	instance := App{}
+	err = db.Session.Apps().Find(bson.M{"name": a.Name}).One(&instance)
+	logLen := len(instance.Logs)
+	c.Assert(instance.Logs[logLen-2].Message, Equals, "last log msg")
+	c.Assert(instance.Logs[logLen-1].Message, Equals, "first log")
+}
+
+func (s *S) TestLogShouldNotLogWhiteLines(c *C) {
+	a := App{Name: "newApp"}
+	err := createApp(&a)
+	c.Assert(err, IsNil)
+	err = a.log("")
+	c.Assert(err, IsNil)
+	instance := App{}
+	err = db.Session.Apps().Find(bson.M{"name": a.Name}).One(&instance)
+	logLen := len(instance.Logs)
+	c.Assert(instance.Logs[logLen-1].Message, Not(Equals), "")
+}
+
 func (s *S) TestGetTeams(c *C) {
 	app := App{Name: "app", Teams: []string{s.team.Name}}
 	teams := app.teams()

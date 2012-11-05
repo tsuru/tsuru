@@ -20,10 +20,10 @@ type AppLog struct {
 func (c *AppLog) Info() *cmd.Info {
 	return &cmd.Info{
 		Name:  "log",
-		Usage: "log [--app appname]",
+		Usage: "log [--app appname] [--lines numberOfLines]",
 		Desc: `show logs for an app.
 
-If you don't provide the app name, tsuru will try to guess it.`,
+If you don't provide the app name, tsuru will try to guess it. The default number of lines is 10.`,
 		MinArgs: 0,
 	}
 }
@@ -38,7 +38,7 @@ func (c *AppLog) Run(context *cmd.Context, client cmd.Doer) error {
 	if err != nil {
 		return err
 	}
-	url := cmd.GetUrl(fmt.Sprintf("/apps/%s/log", appName))
+	url := cmd.GetUrl(fmt.Sprintf("/apps/%s/log?lines=%d", appName, *logLines))
 	request, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return err
@@ -58,7 +58,7 @@ func (c *AppLog) Run(context *cmd.Context, client cmd.Doer) error {
 		return err
 	}
 	for _, l := range logs {
-		context.Stdout.Write([]byte(l.Date.String() + " - " + l.Message + "\n"))
+		context.Stdout.Write([]byte(l.Date.Format("2006-01-02 15:04:05") + " - " + l.Message + "\n"))
 	}
 	return err
 }
