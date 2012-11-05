@@ -520,3 +520,22 @@ func RestartHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error 
 	}
 	return restart(&app, w)
 }
+
+func AddLogHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
+	app, err := getAppOrError(r.URL.Query().Get(":name"), nil)
+	defer r.Body.Close()
+	body, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		return err
+	}
+	var logs []string
+	err = json.Unmarshal(body, &logs)
+	for _, log := range logs {
+		err := app.log(log)
+		if err != nil {
+			return err
+		}
+	}
+	w.WriteHeader(http.StatusOK)
+	return nil
+}

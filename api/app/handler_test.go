@@ -2148,3 +2148,30 @@ func (s *S) TestRestartHandlerReturns412IfTheUnitOfTheAppDoesNotHaveIp(c *C) {
 	c.Assert(e.Code, Equals, http.StatusPreconditionFailed)
 	c.Assert(e.Message, Equals, "You can't restart this app because it doesn't have an IP yet.")
 }
+
+func (s *S) TestAddLogHandler(c *C) {
+	a := App{
+		Name:      "myapp",
+		Framework: "python",
+	}
+	err := createApp(&a)
+	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
+	c.Assert(err, IsNil)
+	b := strings.NewReader(`["message 1", "message 2", "message 3"]`)
+	request, err := http.NewRequest("POST", "/apps/myapp/log/?:name=myapp", b)
+	c.Assert(err, IsNil)
+	recorder := httptest.NewRecorder()
+	err = AddLogHandler(recorder, request, nil)
+	c.Assert(err, IsNil)
+	c.Assert(recorder.Code, Equals, http.StatusOK)
+	messages := []string{
+		"message 1",
+		"message 2",
+		"message 3",
+	}
+	for _, msg := range messages {
+		length, err := db.Session.Apps().Find(bson.M{"name": a.Name, "logs.message": msg}).Count()
+		c.Check(err, IsNil)
+		c.Check(length, Equals, 1)
+	}
+}
