@@ -2155,13 +2155,13 @@ func (s *S) TestAddLogHandler(c *C) {
 		Framework: "python",
 	}
 	err := createApp(&a)
-	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
+	defer a.destroy()
 	c.Assert(err, IsNil)
 	b := strings.NewReader(`["message 1", "message 2", "message 3"]`)
 	request, err := http.NewRequest("POST", "/apps/myapp/log/?:name=myapp", b)
 	c.Assert(err, IsNil)
 	recorder := httptest.NewRecorder()
-	err = AddLogHandler(recorder, request, nil)
+	err = AddLogHandler(recorder, request)
 	c.Assert(err, IsNil)
 	c.Assert(recorder.Code, Equals, http.StatusOK)
 	messages := []string{

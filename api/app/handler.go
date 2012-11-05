@@ -521,8 +521,12 @@ func RestartHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error 
 	return restart(&app, w)
 }
 
-func AddLogHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
-	app, err := getAppOrError(r.URL.Query().Get(":name"), nil)
+func AddLogHandler(w http.ResponseWriter, r *http.Request) error {
+	app := App{Name: r.URL.Query().Get(":name")}
+	err := app.Get()
+	if err != nil {
+		return err
+	}
 	defer r.Body.Close()
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
