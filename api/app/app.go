@@ -75,8 +75,10 @@ func createApp(a *App) error {
 	if err != nil {
 		return err
 	}
+	host, _ := config.GetString("host")
 	envVars := []bind.EnvVar{
 		{Name: "APPNAME", Value: a.Name, Public: false, InstanceName: ""},
+		{Name: "TSURU_HOST", Value: host, Public: false, InstanceName: ""},
 	}
 	err = setEnvsToApp(a, envVars, false)
 	return deploy(a)
