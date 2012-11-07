@@ -75,6 +75,10 @@ func createApp(a *App) error {
 	if err != nil {
 		return err
 	}
+	envVars := []bind.EnvVar{
+		{Name: "APPNAME", Value: a.Name, Public: false, InstanceName: ""},
+	}
+	err = setEnvsToApp(a, envVars, false)
 	return deploy(a)
 }
 

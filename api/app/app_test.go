@@ -83,8 +83,8 @@ func (s *S) TestCreateApp(c *C) {
 	}
 	err = createApp(&a)
 	c.Assert(err, IsNil)
+	defer a.destroy()
 	c.Assert(a.State, Equals, "pending")
-	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
 	var retrievedApp App
 	err = db.Session.Apps().Find(bson.M{"name": a.Name}).One(&retrievedApp)
 	c.Assert(err, IsNil)
@@ -93,6 +93,9 @@ func (s *S) TestCreateApp(c *C) {
 	c.Assert(retrievedApp.State, Equals, a.State)
 	str := strings.Replace(w.String(), "\n", "", -1)
 	c.Assert(str, Matches, ".*deploy --repository=/home/charms local:django appName.*")
+	env := a.InstanceEnv("")
+	c.Assert(env["APPNAME"].Value, Equals, a.Name)
+	c.Assert(env["APPNAME"].Public, Equals, false)
 }
 
 func (s *S) TestCantCreateTwoAppsWithTheSameName(c *C) {
