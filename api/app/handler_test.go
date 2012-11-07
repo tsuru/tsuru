@@ -1184,10 +1184,10 @@ func (s *S) TestSetEnvHandlerShouldSetMultipleEnvironmentVariablesInTheApp(c *C)
 	app := &App{Name: "vigil"}
 	err = app.Get()
 	c.Assert(err, IsNil)
-	hostExpected := bind.EnvVar{Name: "DATABASE_HOST", Value: "localhost", Public: true}
-	userExpected := bind.EnvVar{Name: "DATABASE_USER", Value: "root", Public: true}
-	c.Assert(app.Env["DATABASE_HOST"], DeepEquals, hostExpected)
-	c.Assert(app.Env["DATABASE_USER"], DeepEquals, userExpected)
+	expectedHost := bind.EnvVar{Name: "DATABASE_HOST", Value: "localhost", Public: true}
+	expectedUser := bind.EnvVar{Name: "DATABASE_USER", Value: "root", Public: true}
+	c.Assert(app.Env["DATABASE_HOST"], DeepEquals, expectedHost)
+	c.Assert(app.Env["DATABASE_USER"], DeepEquals, expectedUser)
 }
 
 func (s *S) TestSetEnvHandlerShouldSupportSpacesInTheEnvironmentVariableValue(c *C) {
@@ -1206,10 +1206,10 @@ func (s *S) TestSetEnvHandlerShouldSupportSpacesInTheEnvironmentVariableValue(c 
 	app := &App{Name: "loser"}
 	err = app.Get()
 	c.Assert(err, IsNil)
-	hostExpected := bind.EnvVar{Name: "DATABASE_HOST", Value: "local host", Public: true}
-	userExpected := bind.EnvVar{Name: "DATABASE_USER", Value: "root", Public: true}
-	c.Assert(app.Env["DATABASE_HOST"], DeepEquals, hostExpected)
-	c.Assert(app.Env["DATABASE_USER"], DeepEquals, userExpected)
+	expectedHost := bind.EnvVar{Name: "DATABASE_HOST", Value: "local host", Public: true}
+	expectedUser := bind.EnvVar{Name: "DATABASE_USER", Value: "root", Public: true}
+	c.Assert(app.Env["DATABASE_HOST"], DeepEquals, expectedHost)
+	c.Assert(app.Env["DATABASE_USER"], DeepEquals, expectedUser)
 }
 
 func (s *S) TestSetEnvHandlerShouldSupportValuesWithDot(c *C) {
@@ -1229,10 +1229,8 @@ func (s *S) TestSetEnvHandlerShouldSupportValuesWithDot(c *C) {
 	app := &App{Name: "losers"}
 	err = app.Get()
 	c.Assert(err, IsNil)
-	expected := map[string]bind.EnvVar{
-		"DATABASE_HOST": {Name: "DATABASE_HOST", Value: "http://foo.com:8080", Public: true},
-	}
-	c.Assert(app.Env, DeepEquals, expected)
+	expected := bind.EnvVar{Name: "DATABASE_HOST", Value: "http://foo.com:8080", Public: true}
+	c.Assert(app.Env["DATABASE_HOST"], DeepEquals, expected)
 }
 
 func (s *S) TestSetEnvHandlerShouldSupportNumbersOnVariableName(c *C) {
@@ -1818,21 +1816,10 @@ func (s *S) TestBindHandler(c *C) {
 	c.Assert(instance.Apps, DeepEquals, []string{a.Name})
 	err = db.Session.Apps().Find(bson.M{"name": a.Name}).One(&a)
 	c.Assert(err, IsNil)
-	expectedEnv := map[string]bind.EnvVar{
-		"DATABASE_USER": {
-			Name:         "DATABASE_USER",
-			Value:        "root",
-			Public:       false,
-			InstanceName: instance.Name,
-		},
-		"DATABASE_PASSWORD": {
-			Name:         "DATABASE_PASSWORD",
-			Value:        "s3cr3t",
-			Public:       false,
-			InstanceName: instance.Name,
-		},
-	}
-	c.Assert(a.Env, DeepEquals, expectedEnv)
+	expectedUser := bind.EnvVar{Name: "DATABASE_USER", Value: "root", Public: false, InstanceName: instance.Name}
+	expectedPassword := bind.EnvVar{Name: "DATABASE_PASSWORD", Value: "s3cr3t", Public: false, InstanceName: instance.Name}
+	c.Assert(a.Env["DATABASE_USER"], DeepEquals, expectedUser)
+	c.Assert(a.Env["DATABASE_PASSWORD"], DeepEquals, expectedPassword)
 	var envs []string
 	err = json.Unmarshal(recorder.Body.Bytes(), &envs)
 	c.Assert(err, IsNil)

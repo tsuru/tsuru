@@ -80,6 +80,6 @@ test:
 doc:
 	@cd docs && make html
 
-client:
+client: libgit2
 	@go build -o tsuru ./cmd/tsuru
 	@echo "Copy tsuru to your binary path"

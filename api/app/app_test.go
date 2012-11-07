@@ -119,6 +119,9 @@ func (s *S) TestCreateApp(c *C) {
 	c.Assert(e.Public, Equals, false)
 	c.Assert(env["TSURU_S3_BUCKET"].Value, Equals, fmt.Sprintf("%s%x", strings.ToLower(a.Name), random))
 	c.Assert(env["TSURU_S3_BUCKET"].Public, Equals, false)
+	env = a.InstanceEnv("")
+	c.Assert(env["APPNAME"].Value, Equals, a.Name)
+	c.Assert(env["APPNAME"].Public, Equals, false)
 }
 
 func (s *S) TestCantCreateTwoAppsWithTheSameName(c *C) {

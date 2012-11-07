@@ -98,6 +98,12 @@ func createApp(a *App) error {
 			InstanceName: s3InstanceName,
 		})
 	}
+	envVars = append(envVars, bind.EnvVar{
+		Name:         "APPNAME",
+		Value:        a.Name,
+		Public:       false,
+		InstanceName: "",
+	})
 	err = setEnvsToApp(a, envVars, false)
 	return deploy(a)
 }
