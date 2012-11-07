@@ -94,6 +94,9 @@ func (s *S) TestCreateApp(c *C) {
 		Name:      "appName",
 		Framework: "django",
 	}
+	expectedHost := "localhost"
+	config.Set("host", expectedHost)
+	c.Assert(err, IsNil)
 	err = createApp(&a)
 	c.Assert(err, IsNil)
 	defer a.destroy()
@@ -122,6 +125,8 @@ func (s *S) TestCreateApp(c *C) {
 	env = a.InstanceEnv("")
 	c.Assert(env["APPNAME"].Value, Equals, a.Name)
 	c.Assert(env["APPNAME"].Public, Equals, false)
+	c.Assert(env["TSURU_HOST"].Value, Equals, expectedHost)
+	c.Assert(env["TSURU_HOST"].Public, Equals, false)
 }
 
 func (s *S) TestCantCreateTwoAppsWithTheSameName(c *C) {

@@ -82,6 +82,11 @@ func createApp(a *App) error {
 		db.Session.Apps().Remove(bson.M{"name": a.Name})
 		return err
 	}
+	host, _ := config.GetString("host")
+	envVars := []bind.EnvVar{
+		{Name: "APPNAME", Value: a.Name, Public: false, InstanceName: ""},
+		{Name: "TSURU_HOST", Value: host, Public: false, InstanceName: ""},
+	}
 	variables := map[string]string{
 		"ENDPOINT":           env.endpoint,
 		"LOCATIONCONSTRAINT": strconv.FormatBool(env.locationConstraint),
@@ -89,7 +94,6 @@ func createApp(a *App) error {
 		"SECRET_KEY":         env.SecretKey,
 		"BUCKET":             env.bucket,
 	}
-	var envVars []bind.EnvVar
 	for name, value := range variables {
 		envVars = append(envVars, bind.EnvVar{
 			Name:         fmt.Sprintf("TSURU_S3_%s", name),
@@ -98,13 +102,7 @@ func createApp(a *App) error {
 			InstanceName: s3InstanceName,
 		})
 	}
-	envVars = append(envVars, bind.EnvVar{
-		Name:         "APPNAME",
-		Value:        a.Name,
-		Public:       false,
-		InstanceName: "",
-	})
-	err = setEnvsToApp(a, envVars, false)
+	setEnvsToApp(a, envVars, false)
 	return deploy(a)
 }
 
