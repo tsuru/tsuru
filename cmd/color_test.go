@@ -9,17 +9,17 @@ import (
 )
 
 func (s *S) TestRed(c *C) {
-	output := red("must return a red font pattern")
+	output := Colorfy("must return a red font pattern","red","","")
 	c.Assert(output, Equals, "\033[0;31;10mmust return a red font pattern\033[0m")
 }
 
 func (s *S) TestGreen(c *C) {
-	output := green("must return a green font pattern")
+	output := Colorfy("must return a green font pattern","green","","")
 	c.Assert(output, Equals, "\033[0;32;10mmust return a green font pattern\033[0m")
 }
 
 func (s *S) TestBoldWhite(c *C) {
-	output := bold_white("must return a bold white font pattern")
+	output := Colorfy("must return a bold white font pattern","white", "", "bold")
 	c.Assert(output, Equals, "\033[1;37;10mmust return a bold white font pattern\033[0m")
 }
 

@@ -33,15 +33,3 @@ var effects = map[string]int{
 func Colorfy(msg string, fontcolor string, background string, effect string) string {
 	return fmt.Sprintf(pattern, effects[effect], fontcolors[fontcolor], fontcolors[background]+bg_factor, msg)
 }
-
-func red(msg string) string {
-	return Colorfy(msg, "red", "", "")
-}
-
-func green(msg string) string {
-	return Colorfy(msg, "green", "", "")
-}
-
-func bold_white(msg string) string {
-	return Colorfy(msg, "white", "", "bold")
-}
