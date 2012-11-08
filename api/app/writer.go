@@ -13,7 +13,7 @@ type LogWriter struct {
 
 // Write writes and logs the data.
 func (w *LogWriter) Write(data []byte) (int, error) {
-	err := w.app.log(string(data))
+	err := w.app.log(string(data), "tsuru")
 	if err != nil {
 		return 0, err
 	}

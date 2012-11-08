@@ -24,8 +24,11 @@ import (
 )
 
 func (s *S) TestGet(c *C) {
+	dir, err := commandmocker.Add("juju", "")
+	c.Assert(err, IsNil)
+	defer commandmocker.Remove(dir)
 	newApp := App{Name: "myApp", Framework: "Django"}
-	err := db.Session.Apps().Insert(newApp)
+	err = db.Session.Apps().Insert(newApp)
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": newApp.Name})
 	newApp.Env = map[string]bind.EnvVar{}
@@ -130,7 +133,10 @@ func (s *S) TestCreateApp(c *C) {
 }
 
 func (s *S) TestCantCreateTwoAppsWithTheSameName(c *C) {
-	err := db.Session.Apps().Insert(bson.M{"name": "appName"})
+	dir, err := commandmocker.Add("juju", "")
+	defer commandmocker.Remove(dir)
+	c.Assert(err, IsNil)
+	err = db.Session.Apps().Insert(bson.M{"name": "appName"})
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": "appName"})
 	a := App{Name: "appName"}
@@ -155,6 +161,9 @@ func (s *S) TestDoesNotSaveTheAppInTheDatabaseIfJujuFail(c *C) {
 }
 
 func (s *S) TestAppendOrUpdate(c *C) {
+	dir, err := commandmocker.Add("juju", "")
+	defer commandmocker.Remove(dir)
+	c.Assert(err, IsNil)
 	a := App{
 		Name:      "appName",
 		Framework: "django",
@@ -540,6 +549,8 @@ func (s *S) TestInstallDeps(c *C) {
 }
 
 func (s *S) TestInstallDepsWithCustomStdout(c *C) {
+	dir, err := commandmocker.Add("juju", "")
+	c.Assert(err, IsNil)
 	a := App{
 		Name:      "someApp",
 		Framework: "django",
@@ -553,7 +564,8 @@ func (s *S) TestInstallDepsWithCustomStdout(c *C) {
 			},
 		},
 	}
-	err := createApp(&a)
+	err = createApp(&a)
+	commandmocker.Remove(dir)
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
 	tmpdir, err := commandmocker.Add("juju", "$*")
@@ -566,6 +578,8 @@ func (s *S) TestInstallDepsWithCustomStdout(c *C) {
 }
 
 func (s *S) TestInstallDepsWithCustomStderr(c *C) {
+	dir, err := commandmocker.Add("juju", "")
+	c.Assert(err, IsNil)
 	a := App{
 		Name:      "someApp",
 		Framework: "django",
@@ -579,7 +593,8 @@ func (s *S) TestInstallDepsWithCustomStderr(c *C) {
 			},
 		},
 	}
-	err := createApp(&a)
+	err = createApp(&a)
+	commandmocker.Remove(dir)
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
 	tmpdir, err := commandmocker.Error("juju", "$*", 42)
@@ -675,24 +690,31 @@ func (s *S) TestRestartRunsPosRestartHook(c *C) {
 	c.Assert(content, Matches, "^.*### ---> Running pos-restart###.*$")
 }
 
-func (s *S) TestLogShouldStoreLog(c *C) {
+func (s *S) TestLog(c *C) {
+	dir, err := commandmocker.Add("juju", "")
+	defer commandmocker.Remove(dir)
+	c.Assert(err, IsNil)
 	a := App{Name: "newApp"}
-	err := db.Session.Apps().Insert(a)
+	err = db.Session.Apps().Insert(a)
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
-	err = a.log("last log msg")
+	err = a.log("last log msg", "tsuru")
 	c.Assert(err, IsNil)
 	var instance App
 	err = db.Session.Apps().Find(bson.M{"name": a.Name}).One(&instance)
 	logLen := len(instance.Logs)
 	c.Assert(instance.Logs[logLen-1].Message, Equals, "last log msg")
+	c.Assert(instance.Logs[logLen-1].Source, Equals, "tsuru")
 }
 
 func (s *S) TestLogShouldAddOneRecordByLine(c *C) {
-	a := App{Name: "newApp"}
-	err := createApp(&a)
+	dir, err := commandmocker.Add("juju", "")
+	defer commandmocker.Remove(dir)
 	c.Assert(err, IsNil)
-	err = a.log("last log msg\nfirst log")
+	a := App{Name: "newApp"}
+	err = createApp(&a)
+	c.Assert(err, IsNil)
+	err = a.log("last log msg\nfirst log", "source")
 	c.Assert(err, IsNil)
 	instance := App{}
 	err = db.Session.Apps().Find(bson.M{"name": a.Name}).One(&instance)
@@ -702,10 +724,13 @@ func (s *S) TestLogShouldAddOneRecordByLine(c *C) {
 }
 
 func (s *S) TestLogShouldNotLogWhiteLines(c *C) {
-	a := App{Name: "newApp"}
-	err := createApp(&a)
+	dir, err := commandmocker.Add("juju", "")
+	defer commandmocker.Remove(dir)
 	c.Assert(err, IsNil)
-	err = a.log("")
+	a := App{Name: "newApp"}
+	err = createApp(&a)
+	c.Assert(err, IsNil)
+	err = a.log("", "")
 	c.Assert(err, IsNil)
 	instance := App{}
 	err = db.Session.Apps().Find(bson.M{"name": a.Name}).One(&instance)

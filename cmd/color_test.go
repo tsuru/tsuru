@@ -24,6 +24,6 @@ func (s *S) TestBoldWhite(c *C) {
 }
 
 func (s *S) TestBoldYellowGreenBG(c *C) {
-	output := colorfy("must return a bold yellow with green background", "yellow", "green", "bold")
+	output := Colorfy("must return a bold yellow with green background", "yellow", "green", "bold")
 	c.Assert(output, Equals, "\033[1;33;42mmust return a bold yellow with green background\033[0m")
 }

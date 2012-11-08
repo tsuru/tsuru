@@ -7,7 +7,6 @@ package app
 import (
 	"bytes"
 	"fmt"
-	"github.com/globocom/commandmocker"
 	"github.com/globocom/config"
 	"github.com/globocom/tsuru/api/auth"
 	"github.com/globocom/tsuru/db"
@@ -165,7 +164,6 @@ func (s *S) deleteGitosisConf(c *C) {
 
 func (s *S) SetUpSuite(c *C) {
 	var err error
-	s.tmpdir, err = commandmocker.Add("juju", "")
 	c.Assert(err, IsNil)
 	db.Session, err = db.Open("127.0.0.1:27017", "tsuru_app_test")
 	c.Assert(err, IsNil)
@@ -194,7 +192,6 @@ func (s *S) SetUpSuite(c *C) {
 func (s *S) TearDownSuite(c *C) {
 	defer s.s3Server.Quit()
 	defer s.iamServer.Quit()
-	defer commandmocker.Remove(s.tmpdir)
 	defer s.tearDownGitosis(c)
 	defer db.Session.Close()
 	db.Session.Apps().Database.DropDatabase()
