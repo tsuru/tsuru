@@ -651,23 +651,24 @@ func (s *S) TestRestartRunsPosRestartHook(c *C) {
 	c.Assert(content, Matches, "^.*### ---> Running pos-restart###.*$")
 }
 
-func (s *S) TestLogShouldStoreLog(c *C) {
+func (s *S) TestLog(c *C) {
 	a := App{Name: "newApp"}
 	err := createApp(&a)
 	c.Assert(err, IsNil)
-	err = a.log("last log msg")
+	err = a.log("last log msg", "tsuru")
 	c.Assert(err, IsNil)
 	instance := App{}
 	err = db.Session.Apps().Find(bson.M{"name": a.Name}).One(&instance)
 	logLen := len(instance.Logs)
 	c.Assert(instance.Logs[logLen-1].Message, Equals, "last log msg")
+	c.Assert(instance.Logs[logLen-1].Source, Equals, "tsuru")
 }
 
 func (s *S) TestLogShouldAddOneRecordByLine(c *C) {
 	a := App{Name: "newApp"}
 	err := createApp(&a)
 	c.Assert(err, IsNil)
-	err = a.log("last log msg\nfirst log")
+	err = a.log("last log msg\nfirst log", "source")
 	c.Assert(err, IsNil)
 	instance := App{}
 	err = db.Session.Apps().Find(bson.M{"name": a.Name}).One(&instance)
@@ -680,7 +681,7 @@ func (s *S) TestLogShouldNotLogWhiteLines(c *C) {
 	a := App{Name: "newApp"}
 	err := createApp(&a)
 	c.Assert(err, IsNil)
-	err = a.log("")
+	err = a.log("", "")
 	c.Assert(err, IsNil)
 	instance := App{}
 	err = db.Session.Apps().Find(bson.M{"name": a.Name}).One(&instance)

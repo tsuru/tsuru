@@ -52,6 +52,7 @@ func (a *App) MarshalJSON() ([]byte, error) {
 type applog struct {
 	Date    time.Time
 	Message string
+	Source  string
 }
 
 type conf struct {
@@ -86,15 +87,15 @@ func createApp(a *App) error {
 
 // Deploys an app.
 func deploy(a *App) error {
-	a.log(fmt.Sprintf("creating app %s", a.Name))
+	a.log(fmt.Sprintf("creating app %s", a.Name), "tsuru")
 	cmd := exec.Command("juju", "deploy", "--repository=/home/charms", "local:"+a.Framework, a.Name)
 	log.Printf("deploying %s with name %s", a.Framework, a.Name)
 	out, err := cmd.CombinedOutput()
 	outStr := string(out)
-	a.log(outStr)
+	a.log(outStr, "tsuru")
 	log.Printf("executing %s", outStr)
 	if err != nil {
-		a.log(fmt.Sprintf("juju finished with exit status: %s", err))
+		a.log(fmt.Sprintf("juju finished with exit status: %s", err), "tsuru")
 		db.Session.Apps().Remove(bson.M{"name": a.Name})
 		return errors.New(outStr)
 	}
@@ -200,7 +201,7 @@ func (a *App) setEnv(env bind.EnvVar) {
 		a.Env = make(map[string]bind.EnvVar)
 	}
 	a.Env[env.Name] = env
-	a.log(fmt.Sprintf("setting env %s with value %s", env.Name, env.Value))
+	a.log(fmt.Sprintf("setting env %s with value %s", env.Name, env.Value), "tsuru")
 }
 
 func (a *App) getEnv(name string) (bind.EnvVar, error) {
@@ -248,19 +249,19 @@ func (a *App) loadHooks() error {
 	a.hooks = new(conf)
 	uRepo, err := repository.GetPath()
 	if err != nil {
-		a.log(fmt.Sprintf("Got error while getting repository path: %s", err))
+		a.log(fmt.Sprintf("Got error while getting repository path: %s", err), "tsuru")
 		return err
 	}
 	cmd := "cat " + path.Join(uRepo, "app.conf")
 	var buf bytes.Buffer
 	err = a.unit().Command(&buf, &buf, cmd)
 	if err != nil {
-		a.log(fmt.Sprintf("Got error while executing command: %s... Skipping hooks execution", err))
+		a.log(fmt.Sprintf("Got error while executing command: %s... Skipping hooks execution", err), "tsuru")
 		return nil
 	}
 	err = goyaml.Unmarshal(filterOutput(buf.Bytes()), a.hooks)
 	if err != nil {
-		a.log(fmt.Sprintf("Got error while parsing yaml: %s", err))
+		a.log(fmt.Sprintf("Got error while parsing yaml: %s", err), "tsuru")
 		return err
 	}
 	return nil
@@ -268,10 +269,10 @@ func (a *App) loadHooks() error {
 
 func (a *App) runHook(w io.Writer, cmds []string, kind string) error {
 	if len(cmds) == 0 {
-		a.log(fmt.Sprintf("Skipping %s hooks...", kind))
+		a.log(fmt.Sprintf("Skipping %s hooks...", kind), "tsuru")
 		return nil
 	}
-	a.log(fmt.Sprintf("Executing %s hook...", kind))
+	a.log(fmt.Sprintf("Executing %s hook...", kind), "tsuru")
 	err := write(w, []byte("\n ---> Running "+kind+"\n"))
 	if err != nil {
 		return err
@@ -279,7 +280,7 @@ func (a *App) runHook(w io.Writer, cmds []string, kind string) error {
 	for _, cmd := range cmds {
 		p, err := deployHookAbsPath(cmd)
 		if err != nil {
-			a.log(fmt.Sprintf("Error obtaining absolute path to hook: %s.", err))
+			a.log(fmt.Sprintf("Error obtaining absolute path to hook: %s.", err), "tsuru")
 			continue
 		}
 		err = a.run(p, w)
@@ -313,7 +314,7 @@ func (a *App) posRestart(w io.Writer) error {
 
 // run executes the command in app units
 func (a *App) run(cmd string, w io.Writer) error {
-	a.log(fmt.Sprintf("running '%s'", cmd))
+	a.log(fmt.Sprintf("running '%s'", cmd), "tsuru")
 	cmd = fmt.Sprintf("[ -f /home/application/apprc ] && source /home/application/apprc; [ -d /home/application/current ] && cd /home/application/current; %s", cmd)
 	return a.unit().Command(w, w, cmd)
 }
@@ -322,7 +323,7 @@ func (a *App) run(cmd string, w io.Writer) error {
 // and returns your output.
 func restart(a *App, w io.Writer) error {
 	u := a.unit()
-	a.log("executing hook to restart")
+	a.log("executing hook to restart", "tsuru")
 	err := a.preRestart(w)
 	if err != nil {
 		return err
@@ -341,7 +342,7 @@ func restart(a *App, w io.Writer) error {
 // installDeps runs the dependencies hook for the app
 // and returns your output.
 func installDeps(a *App, w io.Writer) error {
-	a.log("executing hook dependencies")
+	a.log("executing hook dependencies", "tsuru")
 	return a.unit().executeHook("dependencies", w)
 }
 
@@ -379,12 +380,16 @@ func (a *App) UnsetEnvs(envs []string, publicOnly bool) error {
 	return unsetEnvFromApp(a, envs, publicOnly)
 }
 
-func (a *App) log(message string) error {
+func (a *App) log(message string, source string) error {
 	log.Printf(message)
 	messages := strings.Split(message, "\n")
 	for _, msg := range messages {
 		if msg != "" {
-			l := applog{Date: time.Now(), Message: msg}
+			l := applog{
+				Date:    time.Now(),
+				Message: msg,
+				Source:  source,
+			}
 			a.Logs = append(a.Logs, l)
 		}
 	}

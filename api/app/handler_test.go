@@ -1633,7 +1633,7 @@ func (s *S) TestAppLogSelectByLines(c *C) {
 	err := createApp(&a)
 	c.Assert(err, IsNil)
 	for i := 0; i < 15; i++ {
-		a.log(strconv.Itoa(i))
+		a.log(strconv.Itoa(i), "source")
 	}
 	url := fmt.Sprintf("/apps/%s/log/?:name=%s&lines=10", a.Name, a.Name)
 	request, err := http.NewRequest("GET", url, nil)
@@ -1660,7 +1660,7 @@ func (s *S) TestAppLogSelectByLinesShouldReturnsTheLastestEntries(c *C) {
 	err := createApp(&a)
 	c.Assert(err, IsNil)
 	for i := 0; i < 15; i++ {
-		a.log(strconv.Itoa(i))
+		a.log(strconv.Itoa(i), "source")
 	}
 	url := fmt.Sprintf("/apps/%s/log/?:name=%s&lines=3", a.Name, a.Name)
 	request, err := http.NewRequest("GET", url, nil)
@@ -1691,7 +1691,7 @@ func (s *S) TestAppLogShouldReturnLogByApp(c *C) {
 	err := createApp(&app1)
 	defer app1.destroy()
 	c.Assert(err, IsNil)
-	app1.log("app1 log")
+	app1.log("app1 log", "source")
 	app2 := App{
 		Name:      "app2",
 		Framework: "vougan",
@@ -1700,7 +1700,7 @@ func (s *S) TestAppLogShouldReturnLogByApp(c *C) {
 	err = createApp(&app2)
 	defer app2.destroy()
 	c.Assert(err, IsNil)
-	app2.log("app2 log")
+	app2.log("app2 log", "source")
 	app3 := App{
 		Name:      "app3",
 		Framework: "vougan",
@@ -1709,7 +1709,7 @@ func (s *S) TestAppLogShouldReturnLogByApp(c *C) {
 	err = createApp(&app3)
 	defer app3.destroy()
 	c.Assert(err, IsNil)
-	app3.log("app3 log")
+	app3.log("app3 log", "tsuru")
 	url := fmt.Sprintf("/apps/%s/log/?:name=%s", app3.Name, app3.Name)
 	request, err := http.NewRequest("GET", url, nil)
 	c.Assert(err, IsNil)

@@ -535,7 +535,7 @@ func AddLogHandler(w http.ResponseWriter, r *http.Request) error {
 	var logs []string
 	err = json.Unmarshal(body, &logs)
 	for _, log := range logs {
-		err := app.log(log)
+		err := app.log(log, "app")
 		if err != nil {
 			return err
 		}
