@@ -16,9 +16,8 @@ func (s *S) TestAppLog(c *C) {
 	*appName = "appName"
 	var stdout, stderr bytes.Buffer
 	result := `[{"Source":"tsuru","Date":"2012-06-20T11:17:22.75-03:00","Message":"creating app lost"},{"Source":"app","Date":"2012-06-20T11:17:22.753-03:00","Message":"app lost successfully created"}]`
-	expected := `2012-06-20 11:17:22 [tsuru]: creating app lost
-2012-06-20 11:17:22 [app]: app lost successfully created
-`
+	expected := cmd.Colorfy("2012-06-20 11:17:22 [tsuru]:", "blue", "", "") + " creating app lost\n"
+	expected = expected + cmd.Colorfy("2012-06-20 11:17:22 [app]:", "blue", "", "") + " app lost successfully created\n"
 	context := cmd.Context{
 		Stdout: &stdout,
 		Stderr: &stderr,
@@ -35,9 +34,8 @@ func (s *S) TestAppLog(c *C) {
 func (s *S) TestAppLogWithoutTheFlag(c *C) {
 	var stdout, stderr bytes.Buffer
 	result := `[{"Source":"tsuru","Date":"2012-06-20T11:17:22.75-03:00","Message":"creating app lost"},{"Source":"tsuru","Date":"2012-06-20T11:17:22.753-03:00","Message":"app lost successfully created"}]`
-	expected := `2012-06-20 11:17:22 [tsuru]: creating app lost
-2012-06-20 11:17:22 [tsuru]: app lost successfully created
-`
+	expected := cmd.Colorfy("2012-06-20 11:17:22 [tsuru]:", "blue", "", "") + " creating app lost\n"
+	expected = expected + cmd.Colorfy("2012-06-20 11:17:22 [tsuru]:", "blue", "", "") + " app lost successfully created\n"
 	context := cmd.Context{
 		Stdout: &stdout,
 		Stderr: &stderr,

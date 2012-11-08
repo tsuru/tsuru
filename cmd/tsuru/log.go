@@ -60,7 +60,8 @@ func (c *AppLog) Run(context *cmd.Context, client cmd.Doer) error {
 	}
 	for _, l := range logs {
 		date := l.Date.Format("2006-01-02 15:04:05")
-		msg := fmt.Sprintf("%s [%s]: %s\n", date, l.Source, l.Message)
+		prefix := fmt.Sprintf("%s [%s]:", date, l.Source)
+		msg := fmt.Sprintf("%s %s\n", cmd.Colorfy(prefix, "blue", "", ""), l.Message)
 		context.Stdout.Write([]byte(msg))
 	}
 	return err
