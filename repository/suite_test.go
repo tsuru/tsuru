@@ -91,7 +91,7 @@ func (s *S) SetUpTest(c *C) {
 }
 
 func (s *S) TearDownSuite(c *C) {
-	defer commandmocker.Remove(s.tmpdir)
+	commandmocker.Remove(s.tmpdir)
 	defer s.logFile.Close()
 	defer s.tearDownGit(c)
 	err := os.RemoveAll(s.gitRoot)

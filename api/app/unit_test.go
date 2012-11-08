@@ -103,8 +103,11 @@ func (s *S) TestCommandReturnErrorIfTheUnitIsNotStarted(c *C) {
 }
 
 func (s *S) TestExecuteHook(c *C) {
+	dir, err := commandmocker.Add("juju", "")
+	c.Assert(err, IsNil)
+	defer commandmocker.Remove(dir)
 	appUnit := Unit{Type: "django", Name: "myUnit", app: &App{}, MachineAgentState: "running", AgentState: "started", InstanceState: "running"}
-	err := appUnit.executeHook("requirements", nil)
+	err = appUnit.executeHook("requirements", nil)
 	c.Assert(err, IsNil)
 }
 

@@ -23,8 +23,11 @@ import (
 )
 
 func (s *S) TestGet(c *C) {
+	dir, err := commandmocker.Add("juju", "")
+	c.Assert(err, IsNil)
+	defer commandmocker.Remove(dir)
 	newApp := App{Name: "myApp", Framework: "Django"}
-	err := createApp(&newApp)
+	err = createApp(&newApp)
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": newApp.Name})
 	newApp.Env = map[string]bind.EnvVar{}
@@ -104,7 +107,10 @@ func (s *S) TestCreateApp(c *C) {
 }
 
 func (s *S) TestCantCreateTwoAppsWithTheSameName(c *C) {
-	err := db.Session.Apps().Insert(bson.M{"name": "appName"})
+	dir, err := commandmocker.Add("juju", "")
+	defer commandmocker.Remove(dir)
+	c.Assert(err, IsNil)
+	err = db.Session.Apps().Insert(bson.M{"name": "appName"})
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": "appName"})
 	a := App{Name: "appName"}
@@ -128,11 +134,14 @@ func (s *S) TestDoesNotSaveTheAppInTheDatabaseIfJujuFail(c *C) {
 }
 
 func (s *S) TestAppendOrUpdate(c *C) {
+	dir, err := commandmocker.Add("juju", "")
+	defer commandmocker.Remove(dir)
+	c.Assert(err, IsNil)
 	a := App{
 		Name:      "appName",
 		Framework: "django",
 	}
-	err := createApp(&a)
+	err = createApp(&a)
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
 	u := Unit{Name: "someapp", Ip: "", Machine: 3, InstanceId: "i-00000zz8"}
@@ -516,6 +525,8 @@ func (s *S) TestInstallDeps(c *C) {
 }
 
 func (s *S) TestInstallDepsWithCustomStdout(c *C) {
+	dir, err := commandmocker.Add("juju", "")
+	c.Assert(err, IsNil)
 	a := App{
 		Name:      "someApp",
 		Framework: "django",
@@ -529,7 +540,8 @@ func (s *S) TestInstallDepsWithCustomStdout(c *C) {
 			},
 		},
 	}
-	err := createApp(&a)
+	err = createApp(&a)
+	commandmocker.Remove(dir)
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
 	tmpdir, err := commandmocker.Add("juju", "$*")
@@ -542,6 +554,8 @@ func (s *S) TestInstallDepsWithCustomStdout(c *C) {
 }
 
 func (s *S) TestInstallDepsWithCustomStderr(c *C) {
+	dir, err := commandmocker.Add("juju", "")
+	c.Assert(err, IsNil)
 	a := App{
 		Name:      "someApp",
 		Framework: "django",
@@ -555,7 +569,8 @@ func (s *S) TestInstallDepsWithCustomStderr(c *C) {
 			},
 		},
 	}
-	err := createApp(&a)
+	err = createApp(&a)
+	commandmocker.Remove(dir)
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
 	tmpdir, err := commandmocker.Error("juju", "$*", 42)
@@ -652,8 +667,11 @@ func (s *S) TestRestartRunsPosRestartHook(c *C) {
 }
 
 func (s *S) TestLog(c *C) {
+	dir, err := commandmocker.Add("juju", "")
+	defer commandmocker.Remove(dir)
+	c.Assert(err, IsNil)
 	a := App{Name: "newApp"}
-	err := createApp(&a)
+	err = createApp(&a)
 	c.Assert(err, IsNil)
 	err = a.log("last log msg", "tsuru")
 	c.Assert(err, IsNil)
@@ -665,8 +683,11 @@ func (s *S) TestLog(c *C) {
 }
 
 func (s *S) TestLogShouldAddOneRecordByLine(c *C) {
+	dir, err := commandmocker.Add("juju", "")
+	defer commandmocker.Remove(dir)
+	c.Assert(err, IsNil)
 	a := App{Name: "newApp"}
-	err := createApp(&a)
+	err = createApp(&a)
 	c.Assert(err, IsNil)
 	err = a.log("last log msg\nfirst log", "source")
 	c.Assert(err, IsNil)
@@ -678,8 +699,11 @@ func (s *S) TestLogShouldAddOneRecordByLine(c *C) {
 }
 
 func (s *S) TestLogShouldNotLogWhiteLines(c *C) {
+	dir, err := commandmocker.Add("juju", "")
+	defer commandmocker.Remove(dir)
+	c.Assert(err, IsNil)
 	a := App{Name: "newApp"}
-	err := createApp(&a)
+	err = createApp(&a)
 	c.Assert(err, IsNil)
 	err = a.log("", "")
 	c.Assert(err, IsNil)

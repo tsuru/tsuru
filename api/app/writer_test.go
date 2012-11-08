@@ -6,15 +6,19 @@ package app
 
 import (
 	"bytes"
+	"github.com/globocom/commandmocker"
 	"github.com/globocom/tsuru/db"
 	"labix.org/v2/mgo/bson"
 	. "launchpad.net/gocheck"
 )
 
 func (s *S) TestLogWriter(c *C) {
+	dir, err := commandmocker.Add("juju", "")
+	defer commandmocker.Remove(dir)
+	c.Assert(err, IsNil)
 	var b bytes.Buffer
 	a := App{Name: "newApp"}
-	err := createApp(&a)
+	err = createApp(&a)
 	c.Assert(err, IsNil)
 	writer := LogWriter{&a, &b}
 	data := []byte("ble")
@@ -28,9 +32,12 @@ func (s *S) TestLogWriter(c *C) {
 }
 
 func (s *S) TestLogWriterShouldReturnsTheDataSize(c *C) {
+	dir, err := commandmocker.Add("juju", "")
+	defer commandmocker.Remove(dir)
+	c.Assert(err, IsNil)
 	var b bytes.Buffer
 	a := App{Name: "newApp"}
-	err := createApp(&a)
+	err = createApp(&a)
 	c.Assert(err, IsNil)
 	writer := LogWriter{&a, &b}
 	data := []byte("ble")
