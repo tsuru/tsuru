@@ -31,6 +31,7 @@ If you don't provide the app name, tsuru will try to guess it. The default numbe
 type log struct {
 	Date    time.Time
 	Message string
+	Source  string
 }
 
 func (c *AppLog) Run(context *cmd.Context, client cmd.Doer) error {
@@ -58,7 +59,9 @@ func (c *AppLog) Run(context *cmd.Context, client cmd.Doer) error {
 		return err
 	}
 	for _, l := range logs {
-		context.Stdout.Write([]byte(l.Date.Format("2006-01-02 15:04:05") + " - " + l.Message + "\n"))
+		date := l.Date.Format("2006-01-02 15:04:05")
+		msg := fmt.Sprintf("%s [%s]: %s\n", date, l.Source, l.Message)
+		context.Stdout.Write([]byte(msg))
 	}
 	return err
 }
