@@ -30,18 +30,18 @@ var effects = map[string]int{
 	"inverse": 7,
 }
 
-func colorfy(msg string, fontcolor string, background string, effect string) string {
+func Colorfy(msg string, fontcolor string, background string, effect string) string {
 	return fmt.Sprintf(pattern, effects[effect], fontcolors[fontcolor], fontcolors[background]+bg_factor, msg)
 }
 
 func red(msg string) string {
-	return colorfy(msg, "red", "", "")
+	return Colorfy(msg, "red", "", "")
 }
 
 func green(msg string) string {
-	return colorfy(msg, "green", "", "")
+	return Colorfy(msg, "green", "", "")
 }
 
 func bold_white(msg string) string {
-	return colorfy(msg, "white", "", "bold")
+	return Colorfy(msg, "white", "", "bold")
 }
