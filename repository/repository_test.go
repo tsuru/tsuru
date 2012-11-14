@@ -7,7 +7,6 @@ package repository
 import (
 	"errors"
 	"fmt"
-	"github.com/globocom/config"
 	"io"
 	. "launchpad.net/gocheck"
 	"strings"
@@ -86,13 +85,13 @@ func (s *S) TestCloneOrPullRepositoryRunsPullIfCloneFail(c *C) {
 
 func (s *S) TestGetRepositoryUrl(c *C) {
 	url := GetUrl("foobar")
-	expected := "git@tsuru.plataformas.glb.com:foobar.git"
+	expected := "git@gandalf.plataformas.glb.com:foobar.git"
 	c.Assert(url, Equals, expected)
 }
 
 func (s *S) TestGetReadOnlyUrl(c *C) {
 	url := GetReadOnlyUrl("foobar")
-	expected := "git://tsuru.plataformas.glb.com/foobar.git"
+	expected := "git://gandalf.plataformas.glb.com/foobar.git"
 	c.Assert(url, Equals, expected)
 }
 
@@ -101,12 +100,4 @@ func (s *S) TestGetPath(c *C) {
 	c.Assert(err, IsNil)
 	expected := "/home/application/current"
 	c.Assert(path, Equals, expected)
-}
-
-func (s *S) TestGetBarePath(c *C) {
-	root, err := config.GetString("git:root")
-	c.Assert(err, IsNil)
-	path, err := GetBarePath("foobar")
-	c.Assert(err, IsNil)
-	c.Assert(path, Equals, root+"/foobar.git")
 }

@@ -10,7 +10,6 @@ import (
 	"github.com/globocom/config"
 	"github.com/globocom/tsuru/log"
 	"io"
-	"path"
 )
 
 // Unit interface represents a unit of execution.
@@ -89,12 +88,4 @@ func GetReadOnlyUrl(app string) string {
 // units.
 func GetPath() (string, error) {
 	return config.GetString("git:unit-repo")
-}
-
-// GetBarePath returns the bare path for the app in the tsuru server.
-func GetBarePath(app string) (p string, err error) {
-	if p, err = config.GetString("git:root"); err == nil {
-		p = path.Join(p, app+".git")
-	}
-	return
 }
