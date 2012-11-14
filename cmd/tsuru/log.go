@@ -40,6 +40,9 @@ func (c *AppLog) Run(context *cmd.Context, client cmd.Doer) error {
 		return err
 	}
 	url := cmd.GetUrl(fmt.Sprintf("/apps/%s/log?lines=%d", appName, *logLines))
+	if logSource != nil && *logSource != "" {
+		url = fmt.Sprintf("%s&source=%s", url, *logSource)
+	}
 	request, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return err
