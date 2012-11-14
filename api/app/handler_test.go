@@ -1724,34 +1724,6 @@ func (s *S) TestLogReturnsForbiddenIfTheGivenUserDoesNotHaveAccessToTheApp(c *C)
 	c.Assert(e.Code, Equals, http.StatusForbidden)
 }
 
-func (s *S) TestAppLog(c *C) {
-	dir, err := commandmocker.Add("juju", "")
-	defer commandmocker.Remove(dir)
-	c.Assert(err, IsNil)
-	a := App{
-		Name:      "lost",
-		Framework: "vougan",
-		Teams:     []string{s.team.Name},
-	}
-	err = createApp(&a)
-	c.Assert(err, IsNil)
-	url := fmt.Sprintf("/apps/%s/log/?:name=%s", a.Name, a.Name)
-	request, err := http.NewRequest("GET", url, nil)
-	c.Assert(err, IsNil)
-	recorder := httptest.NewRecorder()
-	request.Header.Set("Content-Type", "application/json")
-	err = AppLog(recorder, request, s.user)
-	c.Assert(err, IsNil)
-	c.Assert(recorder.Code, Equals, http.StatusOK)
-	body, err := ioutil.ReadAll(recorder.Body)
-	c.Assert(err, IsNil)
-	logs := []applog{}
-	err = json.Unmarshal(body, &logs)
-	c.Assert(err, IsNil)
-	a.Get()
-	c.Assert(a.Logs, DeepEquals, logs)
-}
-
 func (s *S) TestAppLogShouldHaveContentType(c *C) {
 	dir, err := commandmocker.Add("juju", "")
 	defer commandmocker.Remove(dir)
@@ -1802,6 +1774,34 @@ func (s *S) TestAppLogSelectByLines(c *C) {
 	err = json.Unmarshal(body, &logs)
 	c.Assert(err, IsNil)
 	c.Assert(logs, HasLen, 10)
+}
+
+func (s *S) TestAppLogSelectBySource(c *C) {
+	a := App{
+		Name:      "lost",
+		Framework: "vougan",
+		Teams:     []string{s.team.Name},
+	}
+	err := createApp(&a)
+	c.Assert(err, IsNil)
+	a.log("mars log", "mars")
+	a.log("earth log", "earth")
+	url := fmt.Sprintf("/apps/%s/log/?:name=%s&source=mars", a.Name, a.Name)
+	request, err := http.NewRequest("GET", url, nil)
+	c.Assert(err, IsNil)
+	recorder := httptest.NewRecorder()
+	request.Header.Set("Content-Type", "application/json")
+	err = AppLog(recorder, request, s.user)
+	c.Assert(err, IsNil)
+	c.Assert(recorder.Code, Equals, http.StatusOK)
+	body, err := ioutil.ReadAll(recorder.Body)
+	c.Assert(err, IsNil)
+	logs := []applog{}
+	err = json.Unmarshal(body, &logs)
+	c.Assert(err, IsNil)
+	c.Assert(logs, HasLen, 1)
+	c.Assert(logs[0].Message, Equals, "mars log")
+	c.Assert(logs[0].Source, Equals, "mars")
 }
 
 func (s *S) TestAppLogSelectByLinesShouldReturnsTheLastestEntries(c *C) {
