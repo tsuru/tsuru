@@ -33,7 +33,7 @@ func write(w io.Writer, content []byte) error {
 	return nil
 }
 
-func sendProjectChangeToGitosis(kind int, team *auth.Team, app *App) {
+func sendProjectChange(kind int, team *auth.Team, app *App) {
 	ch := repository.Change{
 		Kind: kind,
 		Args: map[string]string{"group": team.Name, "project": app.Name},
@@ -118,7 +118,7 @@ func AppDelete(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 		return err
 	}
 	for _, t := range app.teams() {
-		sendProjectChangeToGitosis(repository.RemoveProject, &t, &app)
+		sendProjectChange(repository.RemoveProject, &t, &app)
 	}
 	fmt.Fprint(w, "success")
 	return nil
@@ -187,7 +187,7 @@ func createAppHelper(app *App, u *auth.User) ([]byte, error) {
 		return nil, err
 	}
 	for _, t := range teams {
-		sendProjectChangeToGitosis(repository.AddProject, &t, app)
+		sendProjectChange(repository.AddProject, &t, app)
 	}
 	msg := map[string]string{
 		"status":         "success",
@@ -234,7 +234,7 @@ func grantAccessToTeam(appName, teamName string, u *auth.User) error {
 	if err != nil {
 		return err
 	}
-	sendProjectChangeToGitosis(repository.AddProject, t, &app)
+	sendProjectChange(repository.AddProject, t, &app)
 	return nil
 }
 
@@ -266,7 +266,7 @@ func revokeAccessFromTeam(appName, teamName string, u *auth.User) error {
 	if err != nil {
 		return err
 	}
-	sendProjectChangeToGitosis(repository.RemoveProject, t, &app)
+	sendProjectChange(repository.RemoveProject, t, &app)
 	return nil
 }
 
