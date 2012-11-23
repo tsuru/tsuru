@@ -20,6 +20,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"time"
 )
 
 func write(w io.Writer, content []byte) error {
@@ -435,24 +436,43 @@ func UnsetEnv(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 func AppLog(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	w.Header().Set("Content-Type", "application/json")
 	appName := r.URL.Query().Get(":name")
-	var selector bson.M
+	pipe := []bson.M{}
+	pipe = append(pipe, bson.M{"$unwind": "$logs"})
+	match := bson.M{}
+	match["name"] = appName
+	if source := r.URL.Query().Get("source"); source != "" {
+		match["logs.source"] = source
+	}
+	_, err := getAppOrError(appName, u)
+	if err != nil {
+		return err
+	}
+	pipe = append(pipe, bson.M{"$match": match})
+	pipe = append(pipe, bson.M{"$project": bson.M{"_id": 0, "logs": 1}})
+	pipe = append(pipe, bson.M{"$sort": bson.M{"logs.date": -1}})
 	if l := r.URL.Query().Get("lines"); l != "" {
 		lines, err := strconv.Atoi(l)
 		if err != nil {
 			return err
 		}
-		lines = -1 * lines
-		selector = bson.M{"logs": bson.M{"$slice": lines}}
+		pipe = append(pipe, bson.M{"$limit": lines})
 	}
-	app, err := getAppOrError(appName, u)
+	var result []map[string]map[string]interface{}
+	err = db.Session.Apps().Pipe(pipe).All(&result)
 	if err != nil {
 		return err
 	}
-	err = db.Session.Apps().Find(bson.M{"name": appName}).Select(selector).One(&app)
-	if err != nil {
-		return err
+	n := len(result)
+	logs := make([]applog, n)
+	for i, row := range result {
+		log := applog{
+			Message: row["logs"]["message"].(string),
+			Source:  row["logs"]["source"].(string),
+			Date:    row["logs"]["date"].(time.Time),
+		}
+		logs[n-i-1] = log
 	}
-	b, err := json.Marshal(app.Logs)
+	b, err := json.Marshal(logs)
 	if err != nil {
 		return err
 	}

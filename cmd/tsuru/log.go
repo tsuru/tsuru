@@ -20,7 +20,7 @@ type AppLog struct {
 func (c *AppLog) Info() *cmd.Info {
 	return &cmd.Info{
 		Name:  "log",
-		Usage: "log [--app appname] [--lines numberOfLines]",
+		Usage: "log [--app appname] [--lines numberOfLines] [--source source]",
 		Desc: `show logs for an app.
 
 If you don't provide the app name, tsuru will try to guess it. The default number of lines is 10.`,
@@ -40,6 +40,9 @@ func (c *AppLog) Run(context *cmd.Context, client cmd.Doer) error {
 		return err
 	}
 	url := cmd.GetUrl(fmt.Sprintf("/apps/%s/log?lines=%d", appName, *logLines))
+	if logSource != nil && *logSource != "" {
+		url = fmt.Sprintf("%s&source=%s", url, *logSource)
+	}
 	request, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return err

@@ -314,7 +314,7 @@ See app's logs
 
 Usage:
 
-	% tsuru log [--app appname] [--lines numberOfLines]
+	% tsuru log [--app appname] [--lines numberOfLines] [--source source]
 
 Log will show log entries for an app. These logs are not related to the code of
 the app itself, but to actions of the app in tsuru server (deployments,
@@ -322,6 +322,7 @@ restarts, etc.).
 
 The --app flag is optional, see "Guessing app names" section for more details.
 The --lines flag is optional and by default its value is 10.
+The --source flag is optional.
 
 
 Run an arbitrary command in the app machine
