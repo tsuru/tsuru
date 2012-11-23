@@ -4,13 +4,13 @@ set -e
 echo "Checking git installation"
 if ! dpkg -l | grep "git-core" 2>&1 > /dev/null; then
     echo "Not found, installing..."
-    sudo apt-get install git -y
+    sudo -E apt-get install git -y --force-yes
 fi
 
 echo "Checking python-setuptools installation"
 if ! dpkg -l | grep "python-setuptools" 2>&1 > /dev/null; then
     echo "Not found, installing..."
-    sudo apt-get install python-setuptools -y
+    sudo -E apt-get install python-setuptools -y --force-yes
 fi
 
 echo "Adding \"git\" user"
