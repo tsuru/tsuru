@@ -18,7 +18,7 @@ func Test(t *testing.T) { TestingT(t) }
 
 type S struct {
 	//logFile     *os.File
-	tmpdir      string
+	tmpdir string
 }
 
 var _ = Suite(&S{})
