@@ -11,8 +11,6 @@ import (
 	gandalf "github.com/globocom/go-gandalfclient"
 	"github.com/globocom/tsuru/db"
 	"github.com/globocom/tsuru/errors"
-	"github.com/globocom/tsuru/log"
-	"github.com/globocom/tsuru/repository"
 	"github.com/globocom/tsuru/validation"
 	"io"
 	"labix.org/v2/mgo/bson"
@@ -81,17 +79,6 @@ func Login(w http.ResponseWriter, r *http.Request) error {
 	return &errors.Http{Code: http.StatusUnauthorized, Message: msg}
 }
 
-func applyChangesToKeys(kind int, team *Team, user *User) {
-	for _, key := range user.Keys {
-		log.Print("adding user ", key.Name, " to ", team.Name)
-		ch := repository.Change{
-			Kind: kind,
-			Args: map[string]string{"group": team.Name, "member": key.Name},
-		}
-		repository.Ag.Process(ch)
-	}
-}
-
 // Creates a team and store it in mongodb.
 // Also communicates with git server (gandalf) in order to
 // add the user into it (gandalf does not have the team concept)
@@ -102,6 +89,7 @@ func createTeam(name string, u *User) error {
 	if err != nil {
 		return &errors.Http{Code: http.StatusInternalServerError, Message: "Git server not found at tsuru.conf"}
 	}
+	// TODO (flaviamissi): this should be done on user creation time!
 	c := gandalf.Client{Endpoint: gUrl}
 	if _, err = c.NewUser(u.Email, keyToMap(u.Keys)); err != nil {
 		return &errors.Http{Code: http.StatusInternalServerError, Message: "Could not communicate with git server. Aborting..."}
@@ -138,6 +126,7 @@ func CreateTeam(w http.ResponseWriter, r *http.Request, u *User) error {
 	return createTeam(name, u)
 }
 
+// RemoveTeam removes a team document from the database.
 func RemoveTeam(w http.ResponseWriter, r *http.Request, u *User) error {
 	name := r.URL.Query().Get(":name")
 	if n, err := db.Session.Apps().Find(bson.M{"teams": name}).Count(); err != nil || n > 0 {
@@ -195,16 +184,20 @@ func addUserToTeam(email, teamName string, u *User) error {
 	if err != nil {
 		return &errors.Http{Code: http.StatusNotFound, Message: "User not found"}
 	}
+	// does not touches the database
 	err = team.addUser(user)
 	if err != nil {
 		return &errors.Http{Code: http.StatusConflict, Message: err.Error()}
 	}
-	err = db.Session.Teams().Update(selector, team)
+	gUrl, err := config.GetString("git:server")
 	if err != nil {
 		return err
 	}
-	applyChangesToKeys(repository.AddMember, team, user)
-	return nil
+	alwdApps, err := allowedApps(email)
+	if err := (&gandalf.Client{Endpoint: gUrl}).BulkGrantAccess(email, alwdApps); err != nil {
+		return err
+	}
+	return db.Session.Teams().Update(selector, team)
 }
 
 func AddUserToTeam(w http.ResponseWriter, r *http.Request, u *User) error {
@@ -233,16 +226,24 @@ func removeUserFromTeam(email, teamName string, u *User) error {
 	if err != nil {
 		return &errors.Http{Code: http.StatusNotFound, Message: err.Error()}
 	}
+	// does not touches the database
 	err = team.removeUser(&user)
 	if err != nil {
 		return &errors.Http{Code: http.StatusNotFound, Message: err.Error()}
 	}
-	err = db.Session.Teams().Update(selector, team)
+	// gandalf actions comes first, cuz if they fail the whole action is aborted
+	gUrl, err := config.GetString("git:server")
 	if err != nil {
 		return err
 	}
-	applyChangesToKeys(repository.RemoveMember, team, &user)
-	return nil
+	alwdApps, err := allowedApps(email)
+	if err != nil {
+		return err
+	}
+	if err := (&gandalf.Client{Endpoint: gUrl}).BulkRevokeAccess(email, alwdApps); err != nil {
+		return err
+	}
+	return db.Session.Teams().Update(selector, team)
 }
 
 func RemoveUserFromTeam(w http.ResponseWriter, r *http.Request, u *User) error {
@@ -308,31 +309,25 @@ func AddKeyToUser(w http.ResponseWriter, r *http.Request, u *User) error {
 	return addKeyToUser(key, u)
 }
 
+// revomeKeyFromUser removes a key from the given user's document
+//
+// Also removes the key from gandalf.
+// When we were using gitosis we had to revoke the write permission into the repositories in this moment,
+// now that we are using gandalf, it is not necessary anymore, this is done by addUserToTeam
 func removeKeyFromUser(content string, u *User) error {
 	key, index := u.findKey(Key{Content: content})
 	if index < 0 {
 		return &errors.Http{Code: http.StatusNotFound, Message: "User does not have this key"}
 	}
-	u.removeKey(key)
-	err := db.Session.Users().Update(bson.M{"email": u.Email}, u)
+	gUrl, err := config.GetString("git:server")
 	if err != nil {
+		return &errors.Http{Code: http.StatusInternalServerError, Message: "Git server not found at tsuru.conf"}
+	}
+	if err := (&gandalf.Client{Endpoint: gUrl}).RemoveKey(u.Email, key.Name); err != nil {
 		return err
 	}
-	ch := repository.Change{
-		Kind: repository.RemoveKey,
-		Args: map[string]string{"key": key.Name + ".pub"},
-	}
-	repository.Ag.Process(ch)
-	var teams []Team
-	db.Session.Teams().Find(bson.M{"users": u.Email}).All(&teams)
-	for _, team := range teams {
-		mch := repository.Change{
-			Kind: repository.RemoveMember,
-			Args: map[string]string{"group": team.Name, "member": key.Name},
-		}
-		repository.Ag.Process(mch)
-	}
-	return nil
+	u.removeKey(key)
+	return db.Session.Users().Update(bson.M{"email": u.Email}, u)
 }
 
 // RemoveKeyFromUser removes a key from a user.
