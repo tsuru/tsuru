@@ -368,7 +368,7 @@ func (s *S) TestCreateTeamCreatesUserInGandalf(c *C) {
 	defer db.Session.Teams().Remove(bson.M{"_id": "timeredbull"})
 	c.Assert(err, IsNil)
 	c.Assert(h.url, Equals, "/user")
-	expected := fmt.Sprintf(`{"name":"%s", "keys":{}}`)
+	expected := fmt.Sprint(`{"name":"timeredbull", "keys":{}}`)
 	c.Assert(string(h.body[0]), Equals, expected)
 	c.Assert(h.method[0], Equals, "POST")
 }
