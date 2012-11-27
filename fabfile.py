@@ -42,8 +42,9 @@ def send():
 def start():
     with cd(env.tsuru_path):
         run("tar -xzf dist.tar.gz")
-    run("GOMAXPROCS=4 nohup %s/dist/collector >& /tmp/collector.out < /tmp/collector.out &" % env.tsuru_path, pty=False)
-    run("nohup %s/dist/webserver >& /tmp/webserver.out < /tmp/webserver.out &" % env.tsuru_path, pty=False)
+    run("circusctl restart web collector")
+    # run("GOMAXPROCS=4 nohup %s/dist/collector >& /tmp/collector.out < /tmp/collector.out &" % env.tsuru_path, pty=False)
+    # run("nohup %s/dist/webserver >& /tmp/webserver.out < /tmp/webserver.out &" % env.tsuru_path, pty=False)
 
 
 def deploy():
