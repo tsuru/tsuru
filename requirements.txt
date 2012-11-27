@@ -1,2 +1,3 @@
 Fabric==1.4.2
+circus==0.5.2
 Sphinx==1.1.3
