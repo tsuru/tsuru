@@ -45,7 +45,7 @@ func (c *ServiceCreate) Run(context *cmd.Context, client cmd.Doer) error {
 	if err != nil {
 		return err
 	}
-	fmt.Fprintln(context.Stdout, b)
+	fmt.Fprintf(context.Stdout, "%s", b)
 	return nil
 }
 

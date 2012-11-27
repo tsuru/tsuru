@@ -25,16 +25,16 @@ func (s *S) TestServiceCreateInfo(c *C) {
 
 func (s *S) TestServiceCreateRun(c *C) {
 	var stdout, stderr bytes.Buffer
-	result := "service someservice successfully created"
 	args := []string{"testdata/manifest.yml"}
 	context := cmd.Context{
 		Args:   args,
 		Stdout: &stdout,
 		Stderr: &stderr,
 	}
-	client := cmd.NewClient(&http.Client{Transport: &transport{msg: result, status: http.StatusOK}}, nil, manager)
+	client := cmd.NewClient(&http.Client{Transport: &transport{msg: "success", status: http.StatusOK}}, nil, manager)
 	err := (&ServiceCreate{}).Run(&context, client)
 	c.Assert(err, IsNil)
+	c.Assert(stdout.String(), Equals, "success")
 }
 
 func (s *S) TestServiceRemoveRun(c *C) {
