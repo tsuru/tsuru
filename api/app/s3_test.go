@@ -59,6 +59,6 @@ func (s *S) TestDestroyBucket(c *C) {
 	iam := getIAMEndpoint()
 	_, err = iam.GetUserPolicy("app-battery-bucket", "battery")
 	c.Assert(err, NotNil)
-	_, err = iam.DeleteAccessKey(app.Env["TSURU_S3_ACCESS_KEY_ID"].Value)
+	_, err = iam.DeleteAccessKey(app.Env["TSURU_S3_ACCESS_KEY_ID"].Value, "")
 	c.Assert(err, NotNil)
 }

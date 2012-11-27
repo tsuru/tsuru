@@ -160,24 +160,23 @@ func createBucket(app *App) (*s3Env, error) {
 		}
 		c <- kResp.AccessKey
 	}(kChan)
-	var p iam.UserPolicy
+	var userName string
 	for env.empty() {
 		select {
 		case k := <-kChan:
 			env.AccessKey = k.Id
 			env.SecretKey = k.Secret
-			p.User = k.UserName
+			userName = k.UserName
 		case bucket := <-bChan:
 			env.bucket = bucket.Name
 		case err := <-errChan:
 			return nil, err
 		}
 	}
-	p.Name = fmt.Sprintf("app-%s-bucket", appName)
+	policyName := fmt.Sprintf("app-%s-bucket", appName)
 	var buf bytes.Buffer
 	policy.Execute(&buf, env.bucket)
-	p.Document = buf.String()
-	if _, err := iamEndpoint.PutUserPolicy(p); err != nil {
+	if _, err := iamEndpoint.PutUserPolicy(userName, policyName, buf.String()); err != nil {
 		return nil, err
 	}
 	return &env, nil
@@ -191,14 +190,14 @@ func destroyBucket(app *App) error {
 	policyName := fmt.Sprintf("app-%s-bucket", appName)
 	s3Endpoint := getS3Endpoint()
 	iamEndpoint := getIAMEndpoint()
-	if _, err := iamEndpoint.DeleteUserPolicy(policyName, appName); err != nil {
+	if _, err := iamEndpoint.DeleteUserPolicy(appName, policyName); err != nil {
 		return err
 	}
 	bucket := s3Endpoint.Bucket(bucketName)
 	if err := bucket.DelBucket(); err != nil {
 		return err
 	}
-	if _, err := iamEndpoint.DeleteAccessKey(accessKeyId); err != nil {
+	if _, err := iamEndpoint.DeleteAccessKey(accessKeyId, appName); err != nil {
 		return err
 	}
 	_, err := iamEndpoint.DeleteUser(appName)
