@@ -42,8 +42,8 @@ func (s *S) TestShouldNotIncludeTheHeaderAuthorizationWhenTheTsuruTokenFileIsMis
 	}()
 	request, err := http.NewRequest("GET", "/", nil)
 	c.Assert(err, IsNil)
-	trans := &transport{msg: "", status: http.StatusOK}
-	client := NewClient(&http.Client{Transport: trans}, nil, manager)
+	trans := transport{msg: "", status: http.StatusOK}
+	client := NewClient(&http.Client{Transport: &trans}, nil, manager)
 	_, err = client.Do(request)
 	c.Assert(err, IsNil)
 	header := map[string][]string(request.Header)
@@ -58,8 +58,8 @@ func (s *S) TestShouldIncludeTheHeaderAuthorizationWhenTsuruTokenFileExists(c *C
 	}()
 	request, err := http.NewRequest("GET", "/", nil)
 	c.Assert(err, IsNil)
-	trans := &transport{msg: "", status: http.StatusOK}
-	client := NewClient(&http.Client{Transport: trans}, nil, manager)
+	trans := transport{msg: "", status: http.StatusOK}
+	client := NewClient(&http.Client{Transport: &trans}, nil, manager)
 	_, err = client.Do(request)
 	c.Assert(err, IsNil)
 	c.Assert(request.Header.Get("Authorization"), Equals, "mytoken")
@@ -72,13 +72,13 @@ func (s *S) TestShouldValidateVersion(c *C) {
 	context := Context{
 		Stderr: &buf,
 	}
-	trans := &transport{msg: "", status: http.StatusOK, headers: map[string][]string{"Supported-Tsuru": {"0.3"}}}
-	manager := &Manager{
+	trans := transport{msg: "", status: http.StatusOK, headers: map[string][]string{"Supported-Tsuru": {"0.3"}}}
+	manager := Manager{
 		name:          "glb",
 		version:       "0.2.1",
 		versionHeader: "Supported-Tsuru",
 	}
-	client := NewClient(&http.Client{Transport: trans}, &context, manager)
+	client := NewClient(&http.Client{Transport: &trans}, &context, &manager)
 	_, err = client.Do(request)
 	c.Assert(err, IsNil)
 	expected := `############################################################
@@ -104,11 +104,11 @@ func (s *S) TestShouldSkipValidationIfThereIsNoSupportedHeaderDeclared(c *C) {
 	context := Context{
 		Stderr: &buf,
 	}
-	trans := &transport{msg: "", status: http.StatusOK, headers: map[string][]string{"Supported-Tsuru": {"0.3"}}}
-	manager := &Manager{
+	trans := transport{msg: "", status: http.StatusOK, headers: map[string][]string{"Supported-Tsuru": {"0.3"}}}
+	manager := Manager{
 		version: "0.2.1",
 	}
-	client := NewClient(&http.Client{Transport: trans}, &context, manager)
+	client := NewClient(&http.Client{Transport: &trans}, &context, &manager)
 	_, err = client.Do(request)
 	c.Assert(err, IsNil)
 	c.Assert(buf.String(), Equals, "")
@@ -121,13 +121,13 @@ func (s *S) TestShouldSkupValidationIfServerDoesNotReturnSupportedHeader(c *C) {
 	context := Context{
 		Stderr: &buf,
 	}
-	trans := &transport{msg: "", status: http.StatusOK}
+	trans := transport{msg: "", status: http.StatusOK}
 	manager := Manager{
 		name:          "glb",
 		version:       "0.2.1",
 		versionHeader: "Supported-Tsuru",
 	}
-	client := NewClient(&http.Client{Transport: trans}, &context, &manager)
+	client := NewClient(&http.Client{Transport: &trans}, &context, &manager)
 	_, err = client.Do(request)
 	c.Assert(err, IsNil)
 	c.Assert(buf.String(), Equals, "")
