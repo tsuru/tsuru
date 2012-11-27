@@ -37,8 +37,15 @@ func CreateUser(w http.ResponseWriter, r *http.Request) error {
 	if !validation.ValidateLength(u.Password, passwordMinLen, passwordMaxLen) {
 		return &errors.Http{Code: http.StatusPreconditionFailed, Message: passwordError}
 	}
-	err = u.Create()
-	if err == nil {
+	gUrl, err := config.GetString("git:server")
+	if err != nil {
+		return &errors.Http{Code: http.StatusInternalServerError, Message: "Git server not found at tsuru.conf"}
+	}
+	c := gandalf.Client{Endpoint: gUrl}
+	if _, err := c.NewUser(u.Email, keyToMap(u.Keys)); err != nil {
+		return &errors.Http{Code: http.StatusInternalServerError, Message: "Could not communicate with git server. Aborting..."}
+	}
+	if err := u.Create(); err == nil {
 		w.WriteHeader(http.StatusCreated)
 		return nil
 	}
@@ -85,15 +92,6 @@ func Login(w http.ResponseWriter, r *http.Request) error {
 // This function makes use of the git:server config at tsuru.conf
 // You can find a configuration sample at tsuru/etc/tsuru.conf
 func createTeam(name string, u *User) error {
-	gUrl, err := config.GetString("git:server")
-	if err != nil {
-		return &errors.Http{Code: http.StatusInternalServerError, Message: "Git server not found at tsuru.conf"}
-	}
-	// TODO (flaviamissi): this should be done on user creation time!
-	c := gandalf.Client{Endpoint: gUrl}
-	if _, err = c.NewUser(u.Email, keyToMap(u.Keys)); err != nil {
-		return &errors.Http{Code: http.StatusInternalServerError, Message: "Could not communicate with git server. Aborting..."}
-	}
 	team := &Team{Name: name, Users: []string{u.Email}}
 	if err := db.Session.Teams().Insert(team); err != nil && strings.Contains(err.Error(), "duplicate key error") {
 		return &errors.Http{Code: http.StatusConflict, Message: "This team already exists"}
@@ -343,7 +341,13 @@ func RemoveKeyFromUser(w http.ResponseWriter, r *http.Request, u *User) error {
 	return removeKeyFromUser(key, u)
 }
 
+// RemoveUser removes the user from the database and from gandalf server
+//
+// In order to successfuly remove a user, it's need that he/she is not the only one in a team,
+// otherwise the function will return an error
+// TODO: improve the team update, if possible
 func RemoveUser(w http.ResponseWriter, r *http.Request, u *User) error {
+	//_, err := db.Session.Teams().UpdateAll(bson.M{"users": u.Email}, bson.M{"$pull": bson.M{"users": u.Email}})
 	teams, err := u.Teams()
 	if err != nil {
 		return err
@@ -359,10 +363,26 @@ Please remove the team, them remove the user.`, team.Name)
 		if err != nil {
 			return err
 		}
+		// this can be done without the loop
 		err = db.Session.Teams().Update(bson.M{"_id": team.Name}, team)
 		if err != nil {
 			return err
 		}
+	}
+	gUrl, err := config.GetString("git:server")
+	if err != nil {
+		return &errors.Http{Code: http.StatusInternalServerError, Message: "Git server not found at tsuru.conf"}
+	}
+	c := gandalf.Client{Endpoint: gUrl}
+	alwdApps, err := allowedApps(u.Email)
+	if err != nil {
+		return err
+	}
+	if err := c.BulkRevokeAccess(u.Email, alwdApps); err != nil {
+		return err
+	}
+	if err := c.RemoveUser(u.Email); err != nil {
+		return &errors.Http{Code: http.StatusInternalServerError, Message: "Could not communicate with git server. Aborting..."}
 	}
 	return db.Session.Users().Remove(bson.M{"email": u.Email})
 }

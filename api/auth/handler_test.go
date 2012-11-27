@@ -22,40 +22,12 @@ import (
 	"time"
 )
 
-type isInGitosisChecker struct{}
-
-func (c *isInGitosisChecker) Info() *CheckerInfo {
-	return &CheckerInfo{Name: "IsInGitosis", Params: []string{"str"}}
-}
-
-func (c *isInGitosisChecker) Check(params []interface{}, names []string) (bool, string) {
-	if len(params) != 1 {
-		return false, "you should provide one string parameter"
-	}
-	str, ok := params[0].(string)
-	if !ok {
-		return false, "the parameter should be a string"
-	}
-	gitosisRepo, err := config.GetString("git:gitosis-repo")
-	if err != nil {
-		return false, "failed to get config"
-	}
-	path := path.Join(gitosisRepo, "gitosis.conf")
-	f, err := os.Open(path)
-	if err != nil {
-		return false, err.Error()
-	}
-	defer f.Close()
-	content, err := ioutil.ReadAll(f)
-	if err != nil {
-		return false, err.Error()
-	}
-	return strings.Contains(string(content), str), ""
-}
-
 var IsInGitosis, NotInGitosis Checker = &isInGitosisChecker{}, Not(IsInGitosis)
 
 func (s *S) TestCreateUserHandlerSavesTheUserInTheDatabase(c *C) {
+	h := testHandler{}
+	ts := httptest.NewServer(&h)
+	defer ts.Close()
 	b := bytes.NewBufferString(`{"email":"nobody@globo.com","password":"123456"}`)
 	request, err := http.NewRequest("POST", "/users", b)
 	c.Assert(err, IsNil)
@@ -69,6 +41,9 @@ func (s *S) TestCreateUserHandlerSavesTheUserInTheDatabase(c *C) {
 }
 
 func (s *S) TestCreateUserHandlerReturnsStatus201AfterCreateTheUser(c *C) {
+	h := testHandler{}
+	ts := httptest.NewServer(&h)
+	defer ts.Close()
 	b := bytes.NewBufferString(`{"email":"nobody@globo.com","password":"123456"}`)
 	request, err := http.NewRequest("POST", "/users", b)
 	c.Assert(err, IsNil)
@@ -150,6 +125,24 @@ func (s *S) TestCreateUserHandlerReturnsPreconditionFailedIfPasswordHasLessThan6
 		c.Assert(e.Code, Equals, http.StatusPreconditionFailed)
 		c.Assert(e.Message, Equals, "Password length should be least 6 characters and at most 50 characters.")
 	}
+}
+
+func (s *S) TestCreateUserCreatesUserInGandalf(c *C) {
+	h := testHandler{}
+	ts := httptest.NewServer(&h)
+	defer ts.Close()
+	b := bytes.NewBufferString(`{"email":"nobody@me.myself","password":"123456"}`)
+	request, err := http.NewRequest("POST", "/users", b)
+	c.Assert(err, IsNil)
+	request.Header.Set("Content-type", "application/json")
+	recorder := httptest.NewRecorder()
+	defer db.Session.Users().Remove(bson.M{"email": "nobody@me.myself"})
+	err = CreateUser(recorder, request)
+	c.Assert(err, IsNil)
+	c.Assert(h.url[0], Equals, "/user")
+	expected := fmt.Sprintf(`{"name":"%s", "keys":{}}`)
+	c.Assert(string(h.body[0]), Equals, expected)
+	c.Assert(h.method[0], Equals, "POST")
 }
 
 func (s *S) TestLoginShouldCreateTokenInTheDatabaseAndReturnItWithinTheResponse(c *C) {
@@ -358,31 +351,6 @@ func (h *testHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	h.body = append(h.body, b)
 	h.header = append(h.header, r.Header)
 	w.Write([]byte(h.content))
-}
-
-func (s *S) TestCreateTeamCreatesUserInGandalf(c *C) {
-	h := testHandler{}
-	ts := httptest.NewServer(&h)
-	defer ts.Close()
-	err := createTeam("timeredbull", s.user)
-	defer db.Session.Teams().Remove(bson.M{"_id": "timeredbull"})
-	c.Assert(err, IsNil)
-	c.Assert(h.url, Equals, "/user")
-	expected := fmt.Sprintf(`{"name":"%s", "keys":{}}`)
-	c.Assert(string(h.body[0]), Equals, expected)
-	c.Assert(h.method[0], Equals, "POST")
-}
-
-func (s *S) TestCreateTeamAddsTheLoggedInUserKeysAsMemberInGitosis(c *C) {
-	err := addKeyToUser("my-key", s.user)
-	c.Assert(err, IsNil)
-	keyname := s.user.Keys[0].Name
-	err = createTeam("timeredbull", s.user)
-	defer db.Session.Teams().Remove(bson.M{"_id": "timeredbull"})
-	c.Assert(err, IsNil)
-	time.Sleep(1e9)
-	c.Assert("[group timeredbull]", IsInGitosis)
-	c.Assert("members = "+keyname, IsInGitosis)
 }
 
 func (s *S) TestKeyToMap(c *C) {
@@ -679,7 +647,6 @@ func (s *S) TestRemoveUserFromTeamShouldReturnForbiddenIfTheUserIsTheLastInTheTe
 	c.Assert(e, ErrorMatches, "^You can not remove this user from this team, because it is the last user within the team, and a team can not be orphaned$")
 }
 
-//func (s *S) TestRemoveUserFromTeamRemovesTheMemberFromGroupInGitosis(c *C) {
 func (s *S) TestRemoveUserFromTeamRemovesUserFromGandalf(c *C) {
 	h := testHandler{}
 	ts := httptest.NewServer(&h)
@@ -697,9 +664,31 @@ func (s *S) TestRemoveUserFromTeamRemovesUserFromGandalf(c *C) {
 	keyname := u.Keys[0].Name
 	err = removeUserFromTeam("pomar@nando-reis.com", s.team.Name, s.user)
 	c.Assert(err, IsNil)
-	c.Assert(h.url[1], Equals, fmt.Sprintf("/repository/revoke/%s", s.user.Email)) // increment index because of addUserToTeam (now it's not implemented)
-	c.Assert(h.method[1], Equals, "DELETE")
-	c.Assert(h.body[1], Equals, "")
+	c.Assert(h.url[3], Equals, fmt.Sprintf("/user/%s/key/%s/", s.user.Email, keyname)) // increment index because of addUserToTeam (now it's not implemented)
+	c.Assert(h.method[3], Equals, "DELETE")
+	c.Assert(h.body[3], Equals, "")
+}
+
+func (s *S) TestRemoveUserFromTeamRevokesAccessInGandalf(c *C) {
+	h := testHandler{}
+	ts := httptest.NewServer(&h)
+	defer ts.Close()
+	u := &User{Email: "pomar@nando-reis.com", Password: "123456"}
+	err := u.Create()
+	c.Assert(err, IsNil)
+	defer db.Session.Users().Remove(bson.M{"email": u.Email})
+	err = addKeyToUser("my-key", u)
+	c.Assert(err, IsNil)
+	err = u.Get()
+	c.Assert(err, IsNil)
+	err = addUserToTeam("pomar@nando-reis.com", s.team.Name, s.user)
+	c.Assert(err, IsNil)
+	keyname := u.Keys[0].Name
+	err = removeUserFromTeam("pomar@nando-reis.com", s.team.Name, s.user)
+	c.Assert(err, IsNil)
+	c.Assert(h.url[2], Equals, fmt.Sprintf("/repository/revoke/%s", s.user.Email)) // increment index because of addUserToTeam (now it's not implemented)
+	c.Assert(h.method[2], Equals, "DELETE")
+	c.Assert(h.body[2], Equals, "")
 }
 
 func (s *S) TestAddKeyHandlerAddsAKeyToTheUser(c *C) {
