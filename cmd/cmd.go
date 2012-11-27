@@ -93,7 +93,7 @@ func (m *Manager) Run(args []string) {
 		status = 1
 	}
 	context := Context{args, m.stdout, m.stderr, m.stdin}
-	client := NewClient(&http.Client{}, &context, m.version, m.versionHeader)
+	client := NewClient(&http.Client{}, &context, m)
 	err := command.(Command).Run(&context, client)
 	if err != nil {
 		re := regexp.MustCompile(`^((Invalid token)|(You must provide the Authorization header))`)
