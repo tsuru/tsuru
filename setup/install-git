@@ -32,7 +32,7 @@ sudo mkdir /mnt/gitosis
 sudo chown git:git /mnt/gitosis
 sudo chmod g+rw /mnt/gitosis
 
-echo "Clonning gitosis"
+echo "Cloning gitosis"
 git clone http://github.com/globocom/gitosis.git ${HOME}/gitosis
 
 echo "Installing gitosis"
