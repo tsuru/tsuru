@@ -343,12 +343,34 @@ func (s *S) TestCreateTeamHandlerReturnConflictIfTheTeamToBeCreatedAlreadyExists
 	c.Assert(e, ErrorMatches, "^This team already exists$")
 }
 
-func (s *S) TestCreateTeamCreatesTheGroupWithinGitosis(c *C) {
+type testHandler struct {
+	body    [][]byte
+	method  []string
+	url     []string
+	content string
+	header  []http.Header
+}
+
+func (h *testHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	h.method = append(h.method, r.Method)
+	h.url = append(h.url, r.URL.String())
+	b, _ := ioutil.ReadAll(r.Body)
+	h.body = append(h.body, b)
+	h.header = append(h.header, r.Header)
+	w.Write([]byte(h.content))
+}
+
+func (s *S) TestCreateTeamCreatesUserInGandalf(c *C) {
+	h := testHandler{}
+	ts := httptest.NewServer(&h)
+	defer ts.Close()
 	err := createTeam("timeredbull", s.user)
 	defer db.Session.Teams().Remove(bson.M{"_id": "timeredbull"})
-	time.Sleep(1e9)
 	c.Assert(err, IsNil)
-	c.Assert("[group timeredbull]", IsInGitosis)
+	c.Assert(h.url, Equals, "/user")
+	expected := fmt.Sprintf(`{"name":"%s", "keys":{}}`)
+	c.Assert(string(h.body[0]), Equals, expected)
+	c.Assert(h.method[0], Equals, "POST")
 }
 
 func (s *S) TestCreateTeamAddsTheLoggedInUserKeysAsMemberInGitosis(c *C) {
@@ -361,6 +383,12 @@ func (s *S) TestCreateTeamAddsTheLoggedInUserKeysAsMemberInGitosis(c *C) {
 	time.Sleep(1e9)
 	c.Assert("[group timeredbull]", IsInGitosis)
 	c.Assert("members = "+keyname, IsInGitosis)
+}
+
+func (s *S) TestKeyToMap(c *C) {
+	keys := []Key{{Name: "testkey", Content: "somekey"}}
+	kMap := keyToMap(keys)
+	c.Assert(kMap, DeepEquals, map[string]string{"testkey": "somekey"})
 }
 
 func (s *S) TestRemoveTeam(c *C) {
@@ -637,6 +665,9 @@ func (s *S) TestRemoveUserFromTeamRemovesTheMemberFromGroupInGitosis(c *C) {
 }
 
 func (s *S) TestAddKeyHandlerAddsAKeyToTheUser(c *C) {
+	h := testHandler{}
+	ts := httptest.NewServer(&h)
+	defer ts.Close()
 	defer func() {
 		s.user.removeKey(Key{Content: "my-key"})
 		db.Session.Users().Update(bson.M{"email": s.user.Email}, s.user)
@@ -652,6 +683,9 @@ func (s *S) TestAddKeyHandlerAddsAKeyToTheUser(c *C) {
 }
 
 func (s *S) TestAddKeyHandlerReturnsErrorIfTheReadingOfTheBodyFails(c *C) {
+	h := testHandler{}
+	ts := httptest.NewServer(&h)
+	defer ts.Close()
 	b := s.getTestData("bodyToBeClosed.txt")
 	b.Close()
 	request, err := http.NewRequest("POST", "/users/keys", b)
@@ -662,6 +696,9 @@ func (s *S) TestAddKeyHandlerReturnsErrorIfTheReadingOfTheBodyFails(c *C) {
 }
 
 func (s *S) TestAddKeyHandlerReturnsBadRequestIfTheJsonIsInvalid(c *C) {
+	h := testHandler{}
+	ts := httptest.NewServer(&h)
+	defer ts.Close()
 	b := bytes.NewBufferString(`"aaaa}`)
 	request, err := http.NewRequest("POST", "/users/key", b)
 	c.Assert(err, IsNil)
@@ -675,6 +712,9 @@ func (s *S) TestAddKeyHandlerReturnsBadRequestIfTheJsonIsInvalid(c *C) {
 }
 
 func (s *S) TestAddKeyHandlerReturnsBadRequestIfTheKeyIsNotPresent(c *C) {
+	h := testHandler{}
+	ts := httptest.NewServer(&h)
+	defer ts.Close()
 	b := bytes.NewBufferString(`{}`)
 	request, err := http.NewRequest("POST", "/users/key", b)
 	c.Assert(err, IsNil)
@@ -688,6 +728,9 @@ func (s *S) TestAddKeyHandlerReturnsBadRequestIfTheKeyIsNotPresent(c *C) {
 }
 
 func (s *S) TestAddKeyHandlerReturnsBadRequestIfTheKeyIsEmpty(c *C) {
+	h := testHandler{}
+	ts := httptest.NewServer(&h)
+	defer ts.Close()
 	b := bytes.NewBufferString(`{"key":""}`)
 	request, err := http.NewRequest("POST", "/users/key", b)
 	c.Assert(err, IsNil)
@@ -701,6 +744,9 @@ func (s *S) TestAddKeyHandlerReturnsBadRequestIfTheKeyIsEmpty(c *C) {
 }
 
 func (s *S) TestAddKeyHandlerReturnsConflictIfTheKeyIsAlreadyPresent(c *C) {
+	h := testHandler{}
+	ts := httptest.NewServer(&h)
+	defer ts.Close()
 	s.user.addKey(Key{Content: "my-key"})
 	db.Session.Users().Update(bson.M{"email": s.user.Email}, s.user)
 	defer func() {
@@ -718,7 +764,10 @@ func (s *S) TestAddKeyHandlerReturnsConflictIfTheKeyIsAlreadyPresent(c *C) {
 	c.Assert(e.Code, Equals, http.StatusConflict)
 }
 
-func (s *S) TestAddKeyFunctionCreatesTheKeyFileInTheGitosisRepository(c *C) {
+func (s *S) TestAddKeyAddKeyToUserInGandalf(c *C) {
+	h := testHandler{}
+	ts := httptest.NewServer(&h)
+	defer ts.Close()
 	u := &User{Email: "francisco@franciscosouza.net", Password: "123456"}
 	err := u.Create()
 	c.Assert(err, IsNil)
@@ -729,36 +778,30 @@ func (s *S) TestAddKeyFunctionCreatesTheKeyFileInTheGitosisRepository(c *C) {
 		db.Session.Users().RemoveAll(bson.M{"email": u.Email})
 	}()
 	c.Assert(u.Keys[0].Name, Not(Matches), "\\.pub$")
-	keypath := path.Join(s.gitosisRepo, "keydir", u.Keys[0].Name+".pub")
-	_, err = os.Stat(keypath)
-	c.Assert(err, IsNil)
+	expectedUrl := fmt.Sprintf("/repository/%s/key", u.Email)
+	c.Assert(h.url[0], Equals, expectedUrl)
+	c.Assert(h.method[0], Equals, "GET")
 }
 
-func (s *S) TestAddKeyFunctionAddTheMemberWithTheKeyNameInTheGitosisConfigurationFileInAllTeamsThatTheUserIsMember(c *C) {
-	s.addGroup()
+func (s *S) TestAddKeyAddsUsersKeyInAllRepositoriesHeHasAccessInGandalf(c *C) {
+	h := testHandler{}
+	ts := httptest.NewServer(&h)
+	defer ts.Close()
 	err := addKeyToUser("my-key", s.user)
 	c.Assert(err, IsNil)
 	defer func() {
 		removeKeyFromUser("my-key", s.user)
-		time.Sleep(1e9)
 	}()
-	keyname := s.user.Keys[0].Name
-	ch := make(chan int8)
-	go func(ch chan int8, k string) {
-		for !c.Check("members = "+keyname, IsInGitosis) {
-		}
-		ch <- 1
-	}(ch, keyname)
-	select {
-	case <-ch:
-		c.SucceedNow()
-	case <-time.After(10 * time.Second):
-		c.Error("Did not add the key in gitosis file in a suitable time.")
-	}
+	c.Check(len(h.url), Equals, 2)
+	c.Assert(h.url[0], Equals, fmt.Sprintf("/user/%s/key", s.user.Email))
+	c.Assert(h.method[0], Equals, "POST")
+	c.Assert(string(h.body[0]), Equals, fmt.Sprintf(`{"%s-1": "my-key"}`, s.user.Email)) // should repass the key name
 }
 
 func (s *S) TestRemoveKeyHandlerRemovesTheKeyFromTheUser(c *C) {
-	s.addGroup()
+	h := testHandler{}
+	ts := httptest.NewServer(&h)
+	defer ts.Close()
 	addKeyToUser("my-key", s.user)
 	defer func() {
 		if s.user.hasKey(Key{Content: "my-key"}) {
@@ -773,6 +816,9 @@ func (s *S) TestRemoveKeyHandlerRemovesTheKeyFromTheUser(c *C) {
 	c.Assert(err, IsNil)
 	s.user.Get()
 	c.Assert(s.user, Not(HasKey), "my-key")
+	c.Assert(h.url[1], Equals, fmt.Sprintf("/user/%s/key/key", s.user.Email))
+	c.Assert(h.method[1], Equals, "DELETE")
+	c.Assert(string(h.body[1]), Equals, "")
 }
 
 func (s *S) TestRemoveKeyHandlerReturnsErrorInCaseOfAnyIOFailure(c *C) {

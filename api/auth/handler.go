@@ -7,6 +7,8 @@ package auth
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/globocom/config"
+	gandalf "github.com/globocom/go-gandalfclient"
 	"github.com/globocom/tsuru/db"
 	"github.com/globocom/tsuru/errors"
 	"github.com/globocom/tsuru/log"
@@ -90,21 +92,36 @@ func applyChangesToKeys(kind int, team *Team, user *User) {
 	}
 }
 
+// Creates a team and store it in mongodb.
+// Also communicates with git server (gandalf) in order to
+// add the user into it (gandalf does not have the team concept)
+// This function makes use of the git:server config at tsuru.conf
+// You can find a configuration sample at tsuru/etc/tsuru.conf
 func createTeam(name string, u *User) error {
+	gUrl, err := config.GetString("git:server")
+	if err != nil {
+		return &errors.Http{Code: http.StatusInternalServerError, Message: "Git server not found at tsuru.conf"}
+	}
+	c := gandalf.Client{Endpoint: gUrl}
+	if _, err = c.NewUser(u.Email, keyToMap(u.Keys)); err != nil {
+		return &errors.Http{Code: http.StatusInternalServerError, Message: "Could not communicate with git server. Aborting..."}
+	}
 	team := &Team{Name: name, Users: []string{u.Email}}
-	err := db.Session.Teams().Insert(team)
-	if err != nil && strings.Contains(err.Error(), "duplicate key error") {
+	if err := db.Session.Teams().Insert(team); err != nil && strings.Contains(err.Error(), "duplicate key error") {
 		return &errors.Http{Code: http.StatusConflict, Message: "This team already exists"}
 	}
-	ch := repository.Change{
-		Kind:     repository.AddGroup,
-		Args:     map[string]string{"group": name},
-		Response: make(chan string),
-	}
-	repository.Ag.Process(ch)
-	<-ch.Response
-	applyChangesToKeys(repository.AddMember, team, u)
 	return nil
+}
+
+// keyToMap converts a Key array into a map
+// maybe we should store a map directly instead
+// of having a convertion
+func keyToMap(keys []Key) map[string]string {
+	var kMap map[string]string
+	for _, k := range keys {
+		kMap[k.Name] = k.Content
+	}
+	return kMap
 }
 
 func CreateTeam(w http.ResponseWriter, r *http.Request, u *User) error {
@@ -247,27 +264,33 @@ func getKeyFromBody(b io.Reader) (string, error) {
 	return key, nil
 }
 
+// addKeyToUser adds a key to a user in mongodb and send the key to the git server
+// in order to allow ssh-ing into git server.
+//
+// While using gitosis, we had to give write permission to the user into a repository
+// in the same moment we add their key, with gandalf it is not needed anymore, thus here we just
+// add the key to the user, the grant step is done in user creation time
 func addKeyToUser(content string, u *User) error {
 	key := Key{Content: content}
 	if u.hasKey(key) {
 		return &errors.Http{Code: http.StatusConflict, Message: "User has this key already"}
 	}
-	r := make(chan string)
-	ch := repository.Change{
-		Kind:     repository.AddKey,
-		Args:     map[string]string{"member": u.Email, "key": content},
-		Response: r,
+	var teams []string
+	var allowedApps []string
+	if err := db.Session.Teams().Find(bson.M{"users": u.Email}).Select(bson.M{"_id": 1}).All(&teams); err != nil {
+		return err
 	}
-	repository.Ag.Process(ch)
-	var teams []Team
-	db.Session.Teams().Find(bson.M{"users": u.Email}).All(&teams)
-	key.Name = strings.Replace(<-r, ".pub", "", -1)
-	for _, team := range teams {
-		mch := repository.Change{
-			Kind: repository.AddMember,
-			Args: map[string]string{"group": team.Name, "member": key.Name},
-		}
-		repository.Ag.Process(mch)
+	// all apps that have those teams
+	if err := db.Session.Apps().Find(bson.M{"teams": bson.M{"$in": teams}}).Select(bson.M{"name": 1}).All(&allowedApps); err != nil {
+		return err
+	}
+	key.Name = fmt.Sprintf("%s-%d", u.Email, len(u.Keys)+1) // should receive from user
+	gUrl, err := config.GetString("git:server")
+	if err != nil {
+		return &errors.Http{Code: http.StatusInternalServerError, Message: "Git server not found at tsuru.conf"}
+	}
+	if err := (&gandalf.Client{Endpoint: gUrl}).AddKey(u.Email, keyToMap(u.Keys)); err != nil {
+		return err
 	}
 	u.addKey(key)
 	return db.Session.Users().Update(bson.M{"email": u.Email}, u)
