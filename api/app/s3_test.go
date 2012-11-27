@@ -8,6 +8,7 @@ import (
 	"bytes"
 	"crypto/rand"
 	"fmt"
+	"github.com/globocom/commandmocker"
 	. "launchpad.net/gocheck"
 )
 
@@ -37,7 +38,7 @@ func (s *S) TestCreateBucket(c *C) {
 	_, err = s3.Bucket(expected).List("", "/", "", 100)
 	c.Assert(err, IsNil)
 	iam := getIAMEndpoint()
-	resp, err := iam.GetUserPolicy("app-myapp-bucket", "myapp")
+	resp, err := iam.GetUserPolicy("myapp", "app-myapp-bucket")
 	c.Assert(err, IsNil)
 	var policyBuffer bytes.Buffer
 	policy.Execute(&policyBuffer, expected)
@@ -45,10 +46,13 @@ func (s *S) TestCreateBucket(c *C) {
 }
 
 func (s *S) TestDestroyBucket(c *C) {
+	dir, err := commandmocker.Add("juju", "")
+	c.Assert(err, IsNil)
+	defer commandmocker.Remove(dir)
 	app := App{Name: "battery"}
 	bucket := fmt.Sprintf("battery%x", patchRandomReader())
 	defer unpatchRandomReader()
-	err := createApp(&app)
+	err = createApp(&app)
 	c.Assert(err, IsNil)
 	defer app.destroy()
 	err = destroyBucket(&app)
