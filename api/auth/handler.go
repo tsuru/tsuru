@@ -280,7 +280,6 @@ func addKeyToUser(content string, u *User) error {
 	if err := db.Session.Teams().Find(bson.M{"users": u.Email}).Select(bson.M{"_id": 1}).All(&teams); err != nil {
 		return err
 	}
-	// all apps that have those teams
 	if err := db.Session.Apps().Find(bson.M{"teams": bson.M{"$in": teams}}).Select(bson.M{"name": 1}).All(&allowedApps); err != nil {
 		return err
 	}

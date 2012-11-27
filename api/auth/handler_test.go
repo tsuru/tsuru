@@ -816,6 +816,24 @@ func (s *S) TestRemoveKeyHandlerRemovesTheKeyFromTheUser(c *C) {
 	c.Assert(err, IsNil)
 	s.user.Get()
 	c.Assert(s.user, Not(HasKey), "my-key")
+}
+
+func (s *S) TestRemoveKeyHandlerCallsGandalfRemoveKey(c *C) {
+	h := testHandler{}
+	ts := httptest.NewServer(&h)
+	defer ts.Close()
+	addKeyToUser("my-key", s.user)
+	defer func() {
+		if s.user.hasKey(Key{Content: "my-key"}) {
+			removeKeyFromUser("my-key", s.user)
+		}
+	}()
+	b := bytes.NewBufferString(`{"key":"my-key"}`)
+	request, err := http.NewRequest("DELETE", "/users/key", b)
+	c.Assert(err, IsNil)
+	recorder := httptest.NewRecorder()
+	err = RemoveKeyFromUser(recorder, request, s.user)
+	c.Assert(err, IsNil)
 	c.Assert(h.url[1], Equals, fmt.Sprintf("/user/%s/key/key", s.user.Email))
 	c.Assert(h.method[1], Equals, "DELETE")
 	c.Assert(string(h.body[1]), Equals, "")
