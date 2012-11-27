@@ -7,6 +7,7 @@ package app
 import (
 	"bytes"
 	"fmt"
+	"github.com/fsouza/go-iam/iamtest"
 	"github.com/globocom/config"
 	"github.com/globocom/tsuru/api/auth"
 	"github.com/globocom/tsuru/db"
@@ -15,7 +16,6 @@ import (
 	"io"
 	"io/ioutil"
 	"labix.org/v2/mgo"
-	"launchpad.net/goamz/iam/iamtest"
 	"launchpad.net/goamz/s3/s3test"
 	. "launchpad.net/gocheck"
 	"os"
