@@ -15,7 +15,6 @@ import (
 	"github.com/globocom/tsuru/repository"
 	"io"
 	"io/ioutil"
-	"labix.org/v2/mgo"
 	"launchpad.net/goamz/s3/s3test"
 	. "launchpad.net/gocheck"
 	"os"
@@ -28,15 +27,12 @@ import (
 func Test(t *testing.T) { TestingT(t) }
 
 type S struct {
-	session     *mgo.Session
 	team        auth.Team
 	user        *auth.User
 	gitRoot     string
 	gitosisBare string
 	gitosisRepo string
 	rfs         *fsTesting.RecordingFs
-	tokenBody   []byte
-	oldAuthUrl  string
 	iamServer   *iamtest.Server
 	s3Server    *s3test.Server
 }
@@ -177,8 +173,6 @@ func (s *S) SetUpSuite(c *C) {
 	c.Assert(err, IsNil)
 	file.Write([]byte{16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31})
 	fsystem = s.rfs
-	s.tokenBody, err = ioutil.ReadFile("testdata/response.json")
-	c.Assert(err, IsNil)
 	s.s3Server, err = s3test.NewServer()
 	c.Assert(err, IsNil)
 	config.Set("aws:s3:endpoint", s.s3Server.URL())
@@ -203,7 +197,6 @@ func (s *S) SetUpTest(c *C) {
 
 func (s *S) TearDownTest(c *C) {
 	defer s.deleteGitosisConf(c)
-	config.Set("nova:auth-url", s.oldAuthUrl)
 }
 
 func (s *S) getTestData(p ...string) io.ReadCloser {
