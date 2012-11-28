@@ -34,7 +34,6 @@ type S struct {
 	gitRoot     string
 	gitosisBare string
 	gitosisRepo string
-	tmpdir      string
 	rfs         *fsTesting.RecordingFs
 	tokenBody   []byte
 	oldAuthUrl  string
