@@ -10,13 +10,18 @@ import (
 )
 
 func allowedApps(email string) ([]string, error) {
-	var teams []string
-	var alwdApps []string
+	var teams []Team
+	var alwdApps []map[string]string
 	if err := db.Session.Teams().Find(bson.M{"users": email}).Select(bson.M{"_id": 1}).All(&teams); err != nil {
 		return []string{}, err
 	}
-	if err := db.Session.Apps().Find(bson.M{"teams": bson.M{"$in": teams}}).Select(bson.M{"name": 1}).All(&alwdApps); err != nil {
+	teamNames := GetTeamsNames(teams)
+	if err := db.Session.Apps().Find(bson.M{"teams": bson.M{"$in": teamNames}}).Select(bson.M{"name": 1}).All(&alwdApps); err != nil {
 		return []string{}, err
 	}
-	return alwdApps, nil
+	appNames := make([]string, len(alwdApps))
+	for i, v := range alwdApps {
+		appNames[i] = v["name"]
+	}
+	return appNames, nil
 }

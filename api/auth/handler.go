@@ -274,15 +274,7 @@ func addKeyToUser(content string, u *User) error {
 	if u.hasKey(key) {
 		return &errors.Http{Code: http.StatusConflict, Message: "User has this key already"}
 	}
-	var teams []string
-	var allowedApps []string
-	if err := db.Session.Teams().Find(bson.M{"users": u.Email}).Select(bson.M{"_id": 1}).All(&teams); err != nil {
-		return err
-	}
-	if err := db.Session.Apps().Find(bson.M{"teams": bson.M{"$in": teams}}).Select(bson.M{"name": 1}).All(&allowedApps); err != nil {
-		return err
-	}
-	key.Name = fmt.Sprintf("%s-%d", u.Email, len(u.Keys)+1) // should receive from user
+	key.Name = fmt.Sprintf("%s-%d", u.Email, len(u.Keys)+1)
 	gUrl, err := config.GetString("git:server")
 	if err != nil {
 		return &errors.Http{Code: http.StatusInternalServerError, Message: "Git server not found at tsuru.conf"}

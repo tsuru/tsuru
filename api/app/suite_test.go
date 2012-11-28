@@ -63,7 +63,6 @@ func (s *S) SetUpSuite(c *C) {
 	var err error
 	err = config.ReadConfigFile("../../etc/tsuru.conf")
 	c.Assert(err, IsNil)
-	c.Assert(err, IsNil)
 	db.Session, err = db.Open("127.0.0.1:27017", "tsuru_app_test")
 	c.Assert(err, IsNil)
 	s.user = &auth.User{Email: "whydidifall@thewho.com", Password: "123"}

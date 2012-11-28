@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/globocom/commandmocker"
+	"github.com/globocom/config"
 	"github.com/globocom/tsuru/api/auth"
 	"github.com/globocom/tsuru/api/bind"
 	"github.com/globocom/tsuru/api/service"
@@ -358,6 +359,7 @@ func (s *S) TestDelete(c *C) {
 	h := testHandler{}
 	ts := httptest.NewServer(&h)
 	defer ts.Close()
+	config.Set("git:server", ts.URL)
 	dir, err := commandmocker.Add("juju", "")
 	defer commandmocker.Remove(dir)
 	c.Assert(err, IsNil)
@@ -379,7 +381,7 @@ func (s *S) TestDelete(c *C) {
 	c.Assert(recorder.Code, Equals, http.StatusOK)
 	c.Assert(h.url[0], Equals, "/repository/MyAppToDelete") // increment the index because of createApp action
 	c.Assert(h.method[0], Equals, "DELETE")
-	c.Assert(string(h.body[0]), Equals, "")
+	c.Assert(string(h.body[0]), Equals, "null")
 }
 
 func (s *S) TestDeleteShouldReturnForbiddenIfTheGivenUserDoesNotHaveAccesToTheApp(c *C) {
@@ -417,6 +419,10 @@ func (s *S) TestDeleteShouldReturnNotFoundIfTheAppDoesNotExist(c *C) {
 }
 
 func (s *S) TestDeleteReturnsErrorIfAppDestroyFails(c *C) {
+	h := testHandler{}
+	ts := httptest.NewServer(&h)
+	defer ts.Close()
+	config.Set("git:server", ts.URL)
 	dir, err := commandmocker.Add("juju", "$*")
 	c.Assert(err, IsNil)
 	myApp := App{
@@ -512,6 +518,7 @@ func (s *S) TestCreateAppHelperCreatesRepositoryInGandalf(c *C) {
 	h := testHandler{}
 	ts := httptest.NewServer(&h)
 	defer ts.Close()
+	config.Set("git:server", ts.URL)
 	dir, err := commandmocker.Add("juju", "")
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(dir)
@@ -520,7 +527,7 @@ func (s *S) TestCreateAppHelperCreatesRepositoryInGandalf(c *C) {
 	c.Assert(err, IsNil)
 	c.Assert(h.url[0], Equals, "/repository")
 	c.Assert(h.method[0], Equals, "POST")
-	expected := `{"name":"someApp","users":[],"ispublic":false}`
+	expected := fmt.Sprintf(`{"name":"someApp","users":["%s"],"ispublic":false}`, s.user.Email)
 	c.Assert(string(h.body[0]), Equals, expected)
 }
 
@@ -528,6 +535,7 @@ func (s *S) TestCreateAppHelperGrantsTeamAccessInGandalf(c *C) {
 	h := testHandler{}
 	ts := httptest.NewServer(&h)
 	defer ts.Close()
+	config.Set("git:server", ts.URL)
 	dir, err := commandmocker.Add("juju", "")
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(dir)
@@ -541,6 +549,10 @@ func (s *S) TestCreateAppHelperGrantsTeamAccessInGandalf(c *C) {
 }
 
 func (s *S) TestCreateAppHandler(c *C) {
+	h := testHandler{}
+	ts := httptest.NewServer(&h)
+	defer ts.Close()
+	config.Set("git:server", ts.URL)
 	dir, err := commandmocker.Add("juju", "")
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(dir)
@@ -589,22 +601,6 @@ func (s *S) TestCreateAppReturns403IfTheUserIsNotMemberOfAnyTeam(c *C) {
 	c.Assert(e, ErrorMatches, "^In order to create an app, you should be member of at least one team$")
 }
 
-func (s *S) TestCreateAppCreatesRepositoryInGandalf(c *C) {
-	h := testHandler{}
-	ts := httptest.NewServer(&h)
-	defer ts.Close()
-	dir, err := commandmocker.Add("juju", "")
-	c.Assert(err, IsNil)
-	defer commandmocker.Remove(dir)
-	app := &App{Name: "devincachu", Framework: "django"}
-	_, err = createAppHelper(app, s.user)
-	c.Assert(err, IsNil)
-	c.Assert(h.url[0], Equals, "/repository")
-	c.Assert(h.method[0], Equals, "POST")
-	expectedBody := fmt.Sprintf(`{"name": "devincachu", "users": ["%s"]}`, s.user.Email)
-	c.Assert(string(h.body[0]), Equals, expectedBody)
-}
-
 func (s *S) TestCreateAppReturnsConflictWithProperMessageWhenTheAppAlreadyExist(c *C) {
 	dir, err := commandmocker.Add("juju", "")
 	defer commandmocker.Remove(dir)
@@ -630,6 +626,7 @@ func (s *S) TestAddTeamToTheApp(c *C) {
 	h := testHandler{}
 	ts := httptest.NewServer(&h)
 	defer ts.Close()
+	config.Set("git:server", ts.URL)
 	dir, err := commandmocker.Add("juju", "")
 	defer commandmocker.Remove(dir)
 	c.Assert(err, IsNil)
@@ -743,6 +740,7 @@ func (s *S) TestGrantAccessToTeamCallsGandalf(c *C) {
 	h := testHandler{}
 	ts := httptest.NewServer(&h)
 	defer ts.Close()
+	config.Set("git:server", ts.URL)
 	dir, err := commandmocker.Add("juju", "")
 	defer commandmocker.Remove(dir)
 	c.Assert(err, IsNil)
@@ -769,6 +767,7 @@ func (s *S) TestRevokeAccessFromTeam(c *C) {
 	h := testHandler{}
 	ts := httptest.NewServer(&h)
 	defer ts.Close()
+	config.Set("git:server", ts.URL)
 	dir, err := commandmocker.Add("juju", "")
 	defer commandmocker.Remove(dir)
 	c.Assert(err, IsNil)
@@ -796,6 +795,10 @@ func (s *S) TestRevokeAccessFromTeam(c *C) {
 }
 
 func (s *S) TestRevokeAccessFromTeamReturn404IfTheAppDoesNotExist(c *C) {
+	h := testHandler{}
+	ts := httptest.NewServer(&h)
+	defer ts.Close()
+	config.Set("git:server", ts.URL)
 	request, err := http.NewRequest("DELETE", "/apps/a/b?:app=a&:team=b", nil)
 	c.Assert(err, IsNil)
 	recorder := httptest.NewRecorder()
@@ -910,6 +913,7 @@ func (s *S) TestRevokeAccessFromTeamRemovesRepositoryFromGandalf(c *C) {
 	h := testHandler{}
 	ts := httptest.NewServer(&h)
 	defer ts.Close()
+	config.Set("git:server", ts.URL)
 	dir, err := commandmocker.Add("juju", "")
 	defer commandmocker.Remove(dir)
 	c.Assert(err, IsNil)
@@ -927,10 +931,10 @@ func (s *S) TestRevokeAccessFromTeamRemovesRepositoryFromGandalf(c *C) {
 	err = grantAccessToTeam(a.Name, s.team.Name, s.user)
 	c.Assert(err, IsNil)
 	err = revokeAccessFromTeam(a.Name, s.team.Name, s.user)
-	c.Assert(h.url[0], Equals, "/repository/revoke") //should inc the index (because of the grantAccess)
-	c.Assert(h.method[0], Equals, "DELETE")
+	c.Assert(h.url[1], Equals, "/repository/revoke") //should inc the index (because of the grantAccess)
+	c.Assert(h.method[1], Equals, "DELETE")
 	expected := fmt.Sprintf(`{"repositories":["%s"],"users":["%s"]}`, a.Name, s.user.Email)
-	c.Assert(string(h.body[0]), Equals, expected)
+	c.Assert(string(h.body[1]), Equals, expected)
 }
 
 func (s *S) TestRunHandlerShouldExecuteTheGivenCommandInTheGivenApp(c *C) {
@@ -1826,12 +1830,15 @@ func (s *S) TestAppLogSelectByLines(c *C) {
 }
 
 func (s *S) TestAppLogSelectBySource(c *C) {
+	dir, err := commandmocker.Add("juju", "")
+	defer commandmocker.Remove(dir)
+	c.Assert(err, IsNil)
 	a := App{
 		Name:      "lost",
 		Framework: "vougan",
 		Teams:     []string{s.team.Name},
 	}
-	err := createApp(&a)
+	err = createApp(&a)
 	c.Assert(err, IsNil)
 	a.log("mars log", "mars")
 	a.log("earth log", "earth")

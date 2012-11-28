@@ -113,6 +113,8 @@ func AppDelete(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 		return &errors.Http{Code: http.StatusInternalServerError, Message: "Git server not found at tsuru.conf"}
 	}
 	if err := (&gandalf.Client{Endpoint: gUrl}).RemoveRepository(app.Name); err != nil {
+		panic(err)
+		// log or repass original error
 		return &errors.Http{Code: http.StatusInternalServerError, Message: "Could not remove app's repository at git server. Aborting..."}
 	}
 	if err := app.destroy(); err != nil {
@@ -191,8 +193,8 @@ func createAppHelper(app *App, u *auth.User) ([]byte, error) {
 		return nil, &errors.Http{Code: http.StatusInternalServerError, Message: "Git server not found at tsuru.conf"}
 	}
 	var users []string
-	if err := db.Session.Teams().Find(bson.M{"users": u.Email}).Select(bson.M{"users": 1}).All(&users); err != nil {
-		return nil, err
+	for _, t := range teams {
+		users = append(users, t.Users...)
 	}
 	c := gandalf.Client{Endpoint: gUrl}
 	if _, err := c.NewRepository(app.Name, users, false); err != nil {
@@ -215,8 +217,7 @@ func CreateAppHandler(w http.ResponseWriter, r *http.Request, u *auth.User) erro
 	if err != nil {
 		return err
 	}
-	err = json.Unmarshal(body, &app)
-	if err != nil {
+	if err = json.Unmarshal(body, &app); err != nil {
 		return err
 	}
 	jsonMsg, err := createAppHelper(&app, u)
@@ -246,8 +247,11 @@ func grantAccessToTeam(appName, teamName string, u *auth.User) error {
 	if err != nil {
 		return err
 	}
-	//sendProjectChange(repository.AddProject, t, &app)
-	return nil
+	gUrl, err := config.GetString("git:server")
+	if err != nil {
+		return &errors.Http{Code: http.StatusInternalServerError, Message: "Git server not found at tsuru.conf"}
+	}
+	return (&gandalf.Client{Endpoint: gUrl}).GrantAccess([]string{app.Name}, t.Users)
 }
 
 func GrantAccessToTeamHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
@@ -282,7 +286,10 @@ func revokeAccessFromTeam(appName, teamName string, u *auth.User) error {
 	if err != nil {
 		return &errors.Http{Code: http.StatusInternalServerError, Message: "Git server not found at tsuru.conf"}
 	}
-	return (&gandalf.Client{Endpoint: gUrl}).RevokeAccess([]string{app.Name}, t.Users)
+	if err := (&gandalf.Client{Endpoint: gUrl}).RevokeAccess([]string{app.Name}, t.Users); err != nil {
+		return &errors.Http{Code: http.StatusInternalServerError, Message: err.Error()}
+	}
+	return nil
 }
 
 func RevokeAccessFromTeamHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
