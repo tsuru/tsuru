@@ -15,7 +15,7 @@ import (
 )
 
 const (
-	ChanSize    = 10
+	chanSize    = 10
 	runAttempts = 5
 )
 
@@ -24,14 +24,14 @@ type message struct {
 	success chan bool
 }
 
-var env chan message = make(chan message, ChanSize)
+var env chan message = make(chan message, chanSize)
 
 var environConfPath = path.Join(os.ExpandEnv("${HOME}"), ".juju", "environments.yaml")
 
 type cmd struct {
 	cmd    string
 	result chan cmdResult
-	u      Unit
+	u      *Unit
 }
 
 type cmdResult struct {
@@ -39,7 +39,7 @@ type cmdResult struct {
 	output []byte
 }
 
-var cmds chan cmd = make(chan cmd)
+var cmds chan cmd = make(chan cmd, chanSize)
 
 func init() {
 	go collectEnvVars()
@@ -57,9 +57,18 @@ func runCommands() {
 	}
 }
 
-func runCmd(command string, msg message) {
+func runCmd(command string, msg message, databaseTimeout time.Duration) {
+	unit := msg.app.unit()
+	for unit.Machine == 0 {
+		time.Sleep(databaseTimeout)
+		err := msg.app.Get()
+		if err != nil {
+			return
+		}
+		unit = msg.app.unit()
+	}
 	c := cmd{
-		u:      *msg.app.unit(),
+		u:      unit,
 		cmd:    command,
 		result: make(chan cmdResult),
 	}
@@ -67,6 +76,7 @@ func runCmd(command string, msg message) {
 	var r cmdResult
 	r = <-c.result
 	for i := 0; r.err != nil && i < runAttempts; i++ {
+		time.Sleep(1e9)
 		cmds <- c
 		r = <-c.result
 	}
@@ -84,7 +94,7 @@ func collectEnvVars() {
 			cmd += fmt.Sprintf(`export %s="%s"`+"\n", k, v.Value)
 		}
 		cmd += "END\n"
-		runCmd(cmd, e)
+		runCmd(cmd, e, 5e9)
 	}
 }
 

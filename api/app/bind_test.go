@@ -32,12 +32,12 @@ func (s *S) TestDestroyShouldUnbindAppFromInstance(c *C) {
 	err = srvc.Create()
 	c.Assert(err, IsNil)
 	defer db.Session.Services().Remove(bson.M{"_id": srvc.Name})
-	instance := service.ServiceInstance{Name: "MyInstance", Apps: []string{"myApp"}, ServiceName: srvc.Name}
+	instance := service.ServiceInstance{Name: "MyInstance", Apps: []string{"whichapp"}, ServiceName: srvc.Name}
 	err = instance.Create()
 	c.Assert(err, IsNil)
 	defer db.Session.ServiceInstances().Remove(bson.M{"_id": instance.Name})
 	a := App{
-		Name:      "myApp",
+		Name:      "whichapp",
 		Framework: "",
 		Teams:     []string{},
 		Units: []Unit{
@@ -46,9 +46,9 @@ func (s *S) TestDestroyShouldUnbindAppFromInstance(c *C) {
 	}
 	err = createApp(&a)
 	c.Assert(err, IsNil)
-	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
 	err = a.destroy()
 	c.Assert(err, IsNil)
-	n, _ := db.Session.ServiceInstances().Find(bson.M{"apps": bson.M{"$in": []string{a.Name}}}).Count()
+	n, err := db.Session.ServiceInstances().Find(bson.M{"apps": bson.M{"$in": []string{a.Name}}}).Count()
+	c.Assert(err, IsNil)
 	c.Assert(n, Equals, 0)
 }
