@@ -75,10 +75,13 @@ func (s *S) TestDestroy(c *C) {
 }
 
 func (s *S) TestDestroyWithoutUnits(c *C) {
+	dir, err := commandmocker.Add("juju", "$*")
+	c.Assert(err, IsNil)
+	defer commandmocker.Remove(dir)
 	app := App{
 		Name: "x4",
 	}
-	err := createApp(&app)
+	err = createApp(&app)
 	c.Assert(err, IsNil)
 	err = app.destroy()
 	c.Assert(err, IsNil)
@@ -141,7 +144,7 @@ func (s *S) TestCantCreateTwoAppsWithTheSameName(c *C) {
 	defer db.Session.Apps().Remove(bson.M{"name": "appName"})
 	a := App{Name: "appName"}
 	err = createApp(&a)
-	defer a.destroy() // clean messif test fail
+	defer a.destroy() // clean mess if test fail
 	c.Assert(err, NotNil)
 }
 
@@ -154,6 +157,7 @@ func (s *S) TestDoesNotSaveTheAppInTheDatabaseIfJujuFail(c *C) {
 		Framework: "ruby",
 	}
 	err = createApp(&a)
+	defer a.destroy() // clean mess if test fail
 	c.Assert(err, NotNil)
 	c.Assert(err, ErrorMatches, "^.*juju failed.*$")
 	err = a.Get()
@@ -549,8 +553,6 @@ func (s *S) TestInstallDeps(c *C) {
 }
 
 func (s *S) TestInstallDepsWithCustomStdout(c *C) {
-	dir, err := commandmocker.Add("juju", "")
-	c.Assert(err, IsNil)
 	a := App{
 		Name:      "someApp",
 		Framework: "django",
@@ -564,8 +566,7 @@ func (s *S) TestInstallDepsWithCustomStdout(c *C) {
 			},
 		},
 	}
-	err = createApp(&a)
-	commandmocker.Remove(dir)
+	err := db.Session.Apps().Insert(a)
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
 	tmpdir, err := commandmocker.Add("juju", "$*")
@@ -578,8 +579,6 @@ func (s *S) TestInstallDepsWithCustomStdout(c *C) {
 }
 
 func (s *S) TestInstallDepsWithCustomStderr(c *C) {
-	dir, err := commandmocker.Add("juju", "")
-	c.Assert(err, IsNil)
 	a := App{
 		Name:      "someApp",
 		Framework: "django",
@@ -593,8 +592,7 @@ func (s *S) TestInstallDepsWithCustomStderr(c *C) {
 			},
 		},
 	}
-	err = createApp(&a)
-	commandmocker.Remove(dir)
+	err := db.Session.Apps().Insert(a)
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
 	tmpdir, err := commandmocker.Error("juju", "$*", 42)
@@ -623,9 +621,6 @@ func (s *S) TestRestart(c *C) {
 			},
 		},
 	}
-	err = db.Session.Apps().Insert(a)
-	c.Assert(err, IsNil)
-	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
 	var b bytes.Buffer
 	err = restart(&a, &b)
 	c.Assert(err, IsNil)
@@ -714,6 +709,7 @@ func (s *S) TestLogShouldAddOneRecordByLine(c *C) {
 	a := App{Name: "newApp"}
 	err = createApp(&a)
 	c.Assert(err, IsNil)
+	defer a.destroy()
 	err = a.log("last log msg\nfirst log", "source")
 	c.Assert(err, IsNil)
 	instance := App{}
@@ -730,6 +726,7 @@ func (s *S) TestLogShouldNotLogWhiteLines(c *C) {
 	a := App{Name: "newApp"}
 	err = createApp(&a)
 	c.Assert(err, IsNil)
+	defer a.destroy()
 	err = a.log("", "")
 	c.Assert(err, IsNil)
 	instance := App{}
@@ -770,6 +767,7 @@ func (s *S) TestDeployShouldCallJujuDeployCommand(c *C) {
 	}
 	err := db.Session.Apps().Insert(&a)
 	c.Assert(err, IsNil)
+	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
 	w := bytes.NewBuffer([]byte{})
 	l := stdlog.New(w, "", stdlog.LstdFlags)
 	log.SetLogger(l)
