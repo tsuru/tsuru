@@ -23,7 +23,7 @@ func (s *S) TestAppLog(c *C) {
 		Stderr: &stderr,
 	}
 	command := AppLog{}
-	client := cmd.NewClient(&http.Client{Transport: &transport{msg: result, status: http.StatusOK}}, nil, "", "")
+	client := cmd.NewClient(&http.Client{Transport: &transport{msg: result, status: http.StatusOK}}, nil, manager)
 	err := command.Run(&context, client)
 	c.Assert(err, IsNil)
 	got := stdout.String()
@@ -51,7 +51,7 @@ func (s *S) TestAppLogWithoutTheFlag(c *C) {
 			return req.URL.Path == "/apps/hitthelights/log" && req.Method == "GET"
 		},
 	}
-	client := cmd.NewClient(&http.Client{Transport: trans}, nil, "", "")
+	client := cmd.NewClient(&http.Client{Transport: trans}, nil, manager)
 	err := command.Run(&context, client)
 	c.Assert(err, IsNil)
 	got := stdout.String()
@@ -67,7 +67,7 @@ func (s *S) TestAppLogShouldReturnNilIfHasNoContent(c *C) {
 		Stderr: &stderr,
 	}
 	command := AppLog{}
-	client := cmd.NewClient(&http.Client{Transport: &transport{msg: "", status: http.StatusNoContent}}, nil, "", "")
+	client := cmd.NewClient(&http.Client{Transport: &transport{msg: "", status: http.StatusNoContent}}, nil, manager)
 	err := command.Run(&context, client)
 	c.Assert(err, IsNil)
 	c.Assert(stdout.String(), Equals, "")
@@ -106,7 +106,7 @@ func (s *S) TestAppLogBySource(c *C) {
 			return req.URL.Query().Get("source") == "mysource"
 		},
 	}
-	client := cmd.NewClient(&http.Client{Transport: trans}, nil, "", "")
+	client := cmd.NewClient(&http.Client{Transport: trans}, nil, manager)
 	err := command.Run(&context, client)
 	c.Assert(err, IsNil)
 	got := stdout.String()

@@ -347,6 +347,19 @@ func (h *testHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(h.content))
 }
 
+func (s *S) TestCreateTeamCreatesUserInGandalf(c *C) {
+	h := testHandler{}
+	ts := httptest.NewServer(&h)
+	defer ts.Close()
+	err := createTeam("timeredbull", s.user)
+	defer db.Session.Teams().Remove(bson.M{"_id": "timeredbull"})
+	c.Assert(err, IsNil)
+	c.Assert(h.url, Equals, "/user")
+	expected := fmt.Sprint(`{"name":"timeredbull", "keys":{}}`)
+	c.Assert(string(h.body[0]), Equals, expected)
+	c.Assert(h.method[0], Equals, "POST")
+}
+
 func (s *S) TestKeyToMap(c *C) {
 	keys := []Key{{Name: "testkey", Content: "somekey"}}
 	kMap := keyToMap(keys)
