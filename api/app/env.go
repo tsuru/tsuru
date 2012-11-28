@@ -39,7 +39,7 @@ type cmdResult struct {
 	output []byte
 }
 
-var cmds chan cmd = make(chan cmd)
+var cmds chan cmd = make(chan cmd, chanSize)
 
 func init() {
 	go collectEnvVars()
