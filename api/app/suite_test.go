@@ -197,6 +197,9 @@ func (s *S) SetUpTest(c *C) {
 
 func (s *S) TearDownTest(c *C) {
 	defer s.deleteGitosisConf(c)
+	close(env)
+	env = make(chan message, chanSize)
+	go collectEnvVars()
 }
 
 func (s *S) getTestData(p ...string) io.ReadCloser {
