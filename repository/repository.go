@@ -10,6 +10,7 @@ import (
 	"github.com/globocom/config"
 	"github.com/globocom/tsuru/log"
 	"io"
+	"strings"
 )
 
 // Unit interface represents a unit of execution.
@@ -76,12 +77,14 @@ func getGitServer() string {
 
 // GetUrl returns the ssh clone-url from an app.
 func GetUrl(app string) string {
-	return fmt.Sprintf("git@%s:%s.git", getGitServer(), app)
+	s := strings.Replace(getGitServer(), "http://", "", -1) // https?
+	return fmt.Sprintf("git@%s:%s.git", s, app)
 }
 
 // GetReadOnlyUrl returns the ssh url for communication with git-daemon.
 func GetReadOnlyUrl(app string) string {
-	return fmt.Sprintf("git://%s/%s.git", getGitServer(), app)
+	s := strings.Replace(getGitServer(), "http://", "", -1) // https?
+	return fmt.Sprintf("git://%s/%s.git", s, app)
 }
 
 // GetPath returns the path to the repository where the app code is in its
