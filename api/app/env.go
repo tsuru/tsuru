@@ -15,7 +15,7 @@ import (
 )
 
 const (
-	ChanSize    = 10
+	chanSize    = 10
 	runAttempts = 5
 )
 
@@ -24,7 +24,7 @@ type message struct {
 	success chan bool
 }
 
-var env chan message = make(chan message, ChanSize)
+var env chan message = make(chan message, chanSize)
 
 var environConfPath = path.Join(os.ExpandEnv("${HOME}"), ".juju", "environments.yaml")
 
