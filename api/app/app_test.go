@@ -157,6 +157,7 @@ func (s *S) TestDoesNotSaveTheAppInTheDatabaseIfJujuFail(c *C) {
 	a := App{
 		Name:      "theirapp",
 		Framework: "ruby",
+		Units:     []Unit{{Machine: 1}},
 	}
 	err = createApp(&a)
 	defer a.destroy() // clean mess if test fail
