@@ -57,10 +57,10 @@ func runCommands() {
 	}
 }
 
-func runCmd(command string, msg message) {
+func runCmd(command string, msg message, databaseTimeout time.Duration) {
 	unit := msg.app.unit()
 	for unit.Machine == 0 {
-		time.Sleep(5e9)
+		time.Sleep(databaseTimeout)
 		err := msg.app.Get()
 		if err != nil {
 			return
@@ -94,7 +94,7 @@ func collectEnvVars() {
 			cmd += fmt.Sprintf(`export %s="%s"`+"\n", k, v.Value)
 		}
 		cmd += "END\n"
-		runCmd(cmd, e)
+		runCmd(cmd, e, 5e9)
 	}
 }
 

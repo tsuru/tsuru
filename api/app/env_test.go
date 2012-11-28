@@ -13,6 +13,8 @@ import (
 	. "launchpad.net/gocheck"
 	"os"
 	"path"
+	"sync"
+	"time"
 )
 
 func (s *S) TestRewriteEnvMessage(c *C) {
@@ -58,6 +60,48 @@ func (s *S) TestDoesNotSendInTheSuccessChannelIfItIsNil(c *C) {
 		app: &app,
 	}
 	env <- msg
+}
+
+func (s *S) TestRunCmdInexistentApp(c *C) {
+	dir, err := commandmocker.Add("juju", "")
+	c.Assert(err, IsNil)
+	defer commandmocker.Remove(dir)
+	app := App{Name: "rainmaker"}
+	msg := message{app: &app}
+	runCmd("ls -lh", msg, 1e6)
+	c.Assert(commandmocker.Ran(dir), Equals, false)
+}
+
+func (s *S) TestRunCmdSavingTheMachineLater(c *C) {
+	var wg sync.WaitGroup
+	dir, err := commandmocker.Add("juju", "")
+	c.Assert(err, IsNil)
+	defer commandmocker.Remove(dir)
+	app := App{Name: "rainmaker"}
+	err = db.Session.Apps().Insert(app)
+	c.Assert(err, IsNil)
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		<-time.After(1e9 + 1e6)
+		app.Units = []Unit{
+			{
+				Machine:           1,
+				AgentState:        "started",
+				MachineAgentState: "running",
+				InstanceState:     "running",
+			},
+		}
+		err = db.Session.Apps().Update(bson.M{"name": app.Name}, app)
+		c.Assert(err, IsNil)
+	}()
+	msg := message{
+		app:     &app,
+		success: make(chan bool),
+	}
+	go runCmd("ls -lh", msg, 1e6)
+	wg.Wait()
+	c.Assert(<-msg.success, Equals, true)
 }
 
 func (s *S) TestEnvironConfPath(c *C) {
