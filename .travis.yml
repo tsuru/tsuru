@@ -22,7 +22,6 @@ script: make test
 branches:
   only:
     - master
-    - iam
 notifications:
   irc:
     channels:
