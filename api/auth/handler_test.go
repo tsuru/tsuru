@@ -8,7 +8,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/globocom/config"
 	"github.com/globocom/tsuru/db"
 	"github.com/globocom/tsuru/errors"
 	"io/ioutil"
@@ -16,13 +15,8 @@ import (
 	. "launchpad.net/gocheck"
 	"net/http"
 	"net/http/httptest"
-	"os"
-	"path"
 	"strings"
-	"time"
 )
-
-var IsInGitosis, NotInGitosis Checker = &isInGitosisChecker{}, Not(IsInGitosis)
 
 func (s *S) TestCreateUserHandlerSavesTheUserInTheDatabase(c *C) {
 	h := testHandler{}
@@ -539,7 +533,7 @@ func (s *S) TestAddUserToTeamShouldReturnConflictIfTheUserIsAlreadyInTheGroup(c 
 	c.Assert(e.Code, Equals, http.StatusConflict)
 }
 
-func (s *S) TestAddUserToTeamShoulAddAllUsersKeyToGitosisConf(c *C) {
+func (s *S) TestAddUserToTeamShoulGrantAccessInGandalf(c *C) {
 	h := testHandler{}
 	ts := httptest.NewServer(&h)
 	defer ts.Close()
@@ -552,7 +546,6 @@ func (s *S) TestAddUserToTeamShoulAddAllUsersKeyToGitosisConf(c *C) {
 	c.Assert(err, IsNil)
 	err = addUserToTeam("marathon@rush.com", s.team.Name, s.user)
 	c.Assert(err, IsNil)
-	keyname := u.Keys[0].Name
 	c.Check(len(h.url), Equals, 2)
 	c.Assert(h.url[1], Equals, fmt.Sprintf("/repository/grant/%s", s.user.Email))
 	c.Assert(h.method[1], Equals, "POST")
@@ -683,7 +676,6 @@ func (s *S) TestRemoveUserFromTeamRevokesAccessInGandalf(c *C) {
 	c.Assert(err, IsNil)
 	err = addUserToTeam("pomar@nando-reis.com", s.team.Name, s.user)
 	c.Assert(err, IsNil)
-	keyname := u.Keys[0].Name
 	err = removeUserFromTeam("pomar@nando-reis.com", s.team.Name, s.user)
 	c.Assert(err, IsNil)
 	c.Assert(h.url[2], Equals, fmt.Sprintf("/repository/revoke/%s", s.user.Email)) // increment index because of addUserToTeam (now it's not implemented)

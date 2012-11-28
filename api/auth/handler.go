@@ -103,7 +103,7 @@ func createTeam(name string, u *User) error {
 // maybe we should store a map directly instead
 // of having a convertion
 func keyToMap(keys []Key) map[string]string {
-	var kMap map[string]string
+	kMap := make(map[string]string, len(keys))
 	for _, k := range keys {
 		kMap[k.Name] = k.Content
 	}
@@ -192,7 +192,7 @@ func addUserToTeam(email, teamName string, u *User) error {
 		return err
 	}
 	alwdApps, err := allowedApps(email)
-	if err := (&gandalf.Client{Endpoint: gUrl}).BulkGrantAccess(email, alwdApps); err != nil {
+	if err := (&gandalf.Client{Endpoint: gUrl}).GrantAccess(alwdApps, []string{email}); err != nil {
 		return err
 	}
 	return db.Session.Teams().Update(selector, team)
@@ -238,7 +238,7 @@ func removeUserFromTeam(email, teamName string, u *User) error {
 	if err != nil {
 		return err
 	}
-	if err := (&gandalf.Client{Endpoint: gUrl}).BulkRevokeAccess(email, alwdApps); err != nil {
+	if err := (&gandalf.Client{Endpoint: gUrl}).RevokeAccess(alwdApps, []string{email}); err != nil {
 		return err
 	}
 	return db.Session.Teams().Update(selector, team)
@@ -378,7 +378,7 @@ Please remove the team, them remove the user.`, team.Name)
 	if err != nil {
 		return err
 	}
-	if err := c.BulkRevokeAccess(u.Email, alwdApps); err != nil {
+	if err := c.RevokeAccess(alwdApps, []string{u.Email}); err != nil {
 		return err
 	}
 	if err := c.RemoveUser(u.Email); err != nil {

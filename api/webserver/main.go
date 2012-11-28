@@ -14,7 +14,6 @@ import (
 	"github.com/globocom/tsuru/api/service/provision"
 	"github.com/globocom/tsuru/db"
 	"github.com/globocom/tsuru/log"
-	"github.com/globocom/tsuru/repository"
 	stdlog "log"
 	"log/syslog"
 	"net/http"
@@ -47,7 +46,6 @@ func main() {
 	}
 	defer db.Session.Close()
 
-	repository.RunAgent()
 	m := pat.New()
 
 	m.Get("/services/instances", AuthorizationRequiredHandler(consumption.ServicesInstancesHandler))

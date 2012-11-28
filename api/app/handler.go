@@ -7,6 +7,8 @@ package app
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/globocom/config"
+	gandalf "github.com/globocom/go-gandalfclient"
 	"github.com/globocom/tsuru/api/auth"
 	"github.com/globocom/tsuru/api/bind"
 	"github.com/globocom/tsuru/api/service"
@@ -32,14 +34,6 @@ func write(w io.Writer, content []byte) error {
 		return io.ErrShortWrite
 	}
 	return nil
-}
-
-func sendProjectChange(kind int, team *auth.Team, app *App) {
-	ch := repository.Change{
-		Kind: kind,
-		Args: map[string]string{"group": team.Name, "project": app.Name},
-	}
-	repository.Ag.Process(ch)
 }
 
 func getAppOrError(name string, u *auth.User) (App, error) {
@@ -114,17 +108,22 @@ func AppDelete(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	if err != nil {
 		return err
 	}
-	err = app.destroy()
+	gUrl, err := config.GetString("git:server")
 	if err != nil {
-		return err
+		return &errors.Http{Code: http.StatusInternalServerError, Message: "Git server not found at tsuru.conf"}
 	}
-	for _, t := range app.teams() {
-		sendProjectChange(repository.RemoveProject, &t, &app)
+	if err := (&gandalf.Client{Endpoint: gUrl}).RemoveRepository(app.Name); err != nil {
+		return &errors.Http{Code: http.StatusInternalServerError, Message: "Could not remove app's repository at git server. Aborting..."}
+	}
+	if err := app.destroy(); err != nil {
+		return err
 	}
 	fmt.Fprint(w, "success")
 	return nil
 }
 
+// TODO: this function could be just a query, e.g
+// db.Session.Teams().Find(bson.M{"users": u.Email}).Select(bson.M{"name": 1}).All(&teams)
 func getTeamNames(u *auth.User) ([]string, error) {
 	var teams []auth.Team
 	if err := db.Session.Teams().Find(bson.M{"users": u.Email}).All(&teams); err != nil {
@@ -187,8 +186,20 @@ func createAppHelper(app *App, u *auth.User) ([]byte, error) {
 		}
 		return nil, err
 	}
-	for _, t := range teams {
-		sendProjectChange(repository.AddProject, &t, app)
+	gUrl, err := config.GetString("git:server")
+	if err != nil {
+		return nil, &errors.Http{Code: http.StatusInternalServerError, Message: "Git server not found at tsuru.conf"}
+	}
+	var users []string
+	if err := db.Session.Teams().Find(bson.M{"users": u.Email}).Select(bson.M{"users": 1}).All(&users); err != nil {
+		return nil, err
+	}
+	c := gandalf.Client{Endpoint: gUrl}
+	if _, err := c.NewRepository(app.Name, users, false); err != nil {
+		return nil, err
+	}
+	if err := c.GrantAccess([]string{app.Name}, users); err != nil {
+		return nil, err
 	}
 	msg := map[string]string{
 		"status":         "success",
@@ -235,7 +246,7 @@ func grantAccessToTeam(appName, teamName string, u *auth.User) error {
 	if err != nil {
 		return err
 	}
-	sendProjectChange(repository.AddProject, t, &app)
+	//sendProjectChange(repository.AddProject, t, &app)
 	return nil
 }
 
@@ -267,8 +278,11 @@ func revokeAccessFromTeam(appName, teamName string, u *auth.User) error {
 	if err != nil {
 		return err
 	}
-	sendProjectChange(repository.RemoveProject, t, &app)
-	return nil
+	gUrl, err := config.GetString("git:server")
+	if err != nil {
+		return &errors.Http{Code: http.StatusInternalServerError, Message: "Git server not found at tsuru.conf"}
+	}
+	return (&gandalf.Client{Endpoint: gUrl}).RevokeAccess([]string{app.Name}, t.Users)
 }
 
 func RevokeAccessFromTeamHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {

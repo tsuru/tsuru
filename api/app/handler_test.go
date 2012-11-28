@@ -40,6 +40,23 @@ export DATABASE_HOST=localhost
 export DATABASE_USER=root
 export DATABASE_PASSWORD=secret`
 
+type testHandler struct {
+	body    [][]byte
+	method  []string
+	url     []string
+	content string
+	header  []http.Header
+}
+
+func (h *testHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	h.method = append(h.method, r.Method)
+	h.url = append(h.url, r.URL.String())
+	b, _ := ioutil.ReadAll(r.Body)
+	h.body = append(h.body, b)
+	h.header = append(h.header, r.Header)
+	w.Write([]byte(h.content))
+}
+
 func (s *S) TestAppIsAvaliableHandlerShouldReturnsErrorWhenAppUnitStatusIsnotStarted(c *C) {
 	dir, err := commandmocker.Add("juju", "")
 	defer commandmocker.Remove(dir)
@@ -338,6 +355,9 @@ func (s *S) TestListShouldReturnStatusNoContentWhenAppListIsNil(c *C) {
 }
 
 func (s *S) TestDelete(c *C) {
+	h := testHandler{}
+	ts := httptest.NewServer(&h)
+	defer ts.Close()
 	dir, err := commandmocker.Add("juju", "")
 	defer commandmocker.Remove(dir)
 	c.Assert(err, IsNil)
@@ -357,6 +377,9 @@ func (s *S) TestDelete(c *C) {
 	err = AppDelete(recorder, request, s.user)
 	c.Assert(err, IsNil)
 	c.Assert(recorder.Code, Equals, http.StatusOK)
+	c.Assert(h.url[0], Equals, "/repository/MyAppToDelete") // increment the index because of createApp action
+	c.Assert(h.method[0], Equals, "DELETE")
+	c.Assert(string(h.body[0]), Equals, "")
 }
 
 func (s *S) TestDeleteShouldReturnForbiddenIfTheGivenUserDoesNotHaveAccesToTheApp(c *C) {
@@ -391,29 +414,6 @@ func (s *S) TestDeleteShouldReturnNotFoundIfTheAppDoesNotExist(c *C) {
 	c.Assert(ok, Equals, true)
 	c.Assert(e.Code, Equals, http.StatusNotFound)
 	c.Assert(e, ErrorMatches, "^App unknown not found.$")
-}
-
-func (s *S) TestDeleteAppRemovesProjectFromAllTeamsInGitosis(c *C) {
-	dir, err := commandmocker.Add("juju", "")
-	c.Assert(err, IsNil)
-	defer commandmocker.Remove(dir)
-	s.addGroup()
-	myApp := &App{
-		Name:      "MyAppToDelete",
-		Framework: "django",
-		Units: []Unit{
-			{Ip: "10.10.10.10", Machine: 1},
-		},
-	}
-	_, err = createAppHelper(myApp, s.user)
-	c.Assert(err, IsNil)
-	request, err := http.NewRequest("DELETE", "/apps/"+myApp.Name+"?:name="+myApp.Name, nil)
-	c.Assert(err, IsNil)
-	recorder := httptest.NewRecorder()
-	err = AppDelete(recorder, request, s.user)
-	c.Assert(err, IsNil)
-	time.Sleep(1e9)
-	c.Assert("writable = "+myApp.Name, NotInGitosis)
 }
 
 func (s *S) TestDeleteReturnsErrorIfAppDestroyFails(c *C) {
@@ -508,6 +508,38 @@ func (s *S) TestAppInfoReturnsNotFoundWhenAppDoesNotExist(c *C) {
 	c.Assert(e, ErrorMatches, "^App SomeApp not found.$")
 }
 
+func (s *S) TestCreateAppHelperCreatesRepositoryInGandalf(c *C) {
+	h := testHandler{}
+	ts := httptest.NewServer(&h)
+	defer ts.Close()
+	dir, err := commandmocker.Add("juju", "")
+	c.Assert(err, IsNil)
+	defer commandmocker.Remove(dir)
+	a := App{Name: "someApp"}
+	_, err = createAppHelper(&a, s.user)
+	c.Assert(err, IsNil)
+	c.Assert(h.url[0], Equals, "/repository")
+	c.Assert(h.method[0], Equals, "POST")
+	expected := `{"name":"someApp","users":[],"ispublic":false}`
+	c.Assert(string(h.body[0]), Equals, expected)
+}
+
+func (s *S) TestCreateAppHelperGrantsTeamAccessInGandalf(c *C) {
+	h := testHandler{}
+	ts := httptest.NewServer(&h)
+	defer ts.Close()
+	dir, err := commandmocker.Add("juju", "")
+	c.Assert(err, IsNil)
+	defer commandmocker.Remove(dir)
+	a := App{Name: "someApp"}
+	_, err = createAppHelper(&a, s.user)
+	c.Assert(err, IsNil)
+	c.Assert(h.url[1], Equals, "/repository/grant")
+	c.Assert(h.method[1], Equals, "POST")
+	expected := fmt.Sprintf(`{"repositories":["someApp"],"users":["%s"]}`, s.user.Email)
+	c.Assert(string(h.body[1]), Equals, expected)
+}
+
 func (s *S) TestCreateAppHandler(c *C) {
 	dir, err := commandmocker.Add("juju", "")
 	c.Assert(err, IsNil)
@@ -557,16 +589,20 @@ func (s *S) TestCreateAppReturns403IfTheUserIsNotMemberOfAnyTeam(c *C) {
 	c.Assert(e, ErrorMatches, "^In order to create an app, you should be member of at least one team$")
 }
 
-func (s *S) TestCreateAppAddsProjectToGroupsInGitosis(c *C) {
+func (s *S) TestCreateAppCreatesRepositoryInGandalf(c *C) {
+	h := testHandler{}
+	ts := httptest.NewServer(&h)
+	defer ts.Close()
 	dir, err := commandmocker.Add("juju", "")
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(dir)
-	s.addGroup()
 	app := &App{Name: "devincachu", Framework: "django"}
 	_, err = createAppHelper(app, s.user)
 	c.Assert(err, IsNil)
-	time.Sleep(1e9)
-	c.Assert("writable = "+app.Name, IsInGitosis)
+	c.Assert(h.url[0], Equals, "/repository")
+	c.Assert(h.method[0], Equals, "POST")
+	expectedBody := fmt.Sprintf(`{"name": "devincachu", "users": ["%s"]}`, s.user.Email)
+	c.Assert(string(h.body[0]), Equals, expectedBody)
 }
 
 func (s *S) TestCreateAppReturnsConflictWithProperMessageWhenTheAppAlreadyExist(c *C) {
@@ -591,6 +627,9 @@ func (s *S) TestCreateAppReturnsConflictWithProperMessageWhenTheAppAlreadyExist(
 }
 
 func (s *S) TestAddTeamToTheApp(c *C) {
+	h := testHandler{}
+	ts := httptest.NewServer(&h)
+	defer ts.Close()
 	dir, err := commandmocker.Add("juju", "")
 	defer commandmocker.Remove(dir)
 	c.Assert(err, IsNil)
@@ -700,7 +739,10 @@ func (s *S) TestGrantAccessToTeamReturn409IfTheTeamHasAlreadyAccessToTheApp(c *C
 	c.Assert(e.Code, Equals, http.StatusConflict)
 }
 
-func (s *S) TestGrantAccessToAppAddsTheProjectInGitosis(c *C) {
+func (s *S) TestGrantAccessToTeamCallsGandalf(c *C) {
+	h := testHandler{}
+	ts := httptest.NewServer(&h)
+	defer ts.Close()
 	dir, err := commandmocker.Add("juju", "")
 	defer commandmocker.Remove(dir)
 	c.Assert(err, IsNil)
@@ -708,7 +750,6 @@ func (s *S) TestGrantAccessToAppAddsTheProjectInGitosis(c *C) {
 	err = db.Session.Teams().Insert(t)
 	c.Assert(err, IsNil)
 	defer db.Session.Teams().Remove(bson.M{"_id": t.Name})
-	s.addGroup()
 	a := App{
 		Name:      "tsuru",
 		Framework: "golang",
@@ -718,11 +759,16 @@ func (s *S) TestGrantAccessToAppAddsTheProjectInGitosis(c *C) {
 	c.Assert(err, IsNil)
 	err = grantAccessToTeam(a.Name, s.team.Name, s.user)
 	c.Assert(err, IsNil)
-	time.Sleep(1e9)
-	c.Assert("writable = "+a.Name, IsInGitosis)
+	c.Assert(h.url[0], Equals, "/repository/grant")
+	c.Assert(h.method[0], Equals, "POST")
+	expected := fmt.Sprintf(`{"repositories":["%s"],"users":["%s"]}`, a.Name, s.user.Email)
+	c.Assert(string(h.body[0]), Equals, expected)
 }
 
 func (s *S) TestRevokeAccessFromTeam(c *C) {
+	h := testHandler{}
+	ts := httptest.NewServer(&h)
+	defer ts.Close()
 	dir, err := commandmocker.Add("juju", "")
 	defer commandmocker.Remove(dir)
 	c.Assert(err, IsNil)
@@ -860,7 +906,10 @@ func (s *S) TestRevokeAccessFromTeamReturn403IfTheTeamIsTheLastWithAccessToTheAp
 	c.Assert(e, ErrorMatches, "^You can not revoke the access from this team, because it is the unique team with access to the app, and an app can not be orphaned$")
 }
 
-func (s *S) TestRevokeAccessFromTeamRemovesTheProjectFromGitosisConf(c *C) {
+func (s *S) TestRevokeAccessFromTeamRemovesRepositoryFromGandalf(c *C) {
+	h := testHandler{}
+	ts := httptest.NewServer(&h)
+	defer ts.Close()
 	dir, err := commandmocker.Add("juju", "")
 	defer commandmocker.Remove(dir)
 	c.Assert(err, IsNil)
@@ -868,7 +917,6 @@ func (s *S) TestRevokeAccessFromTeamRemovesTheProjectFromGitosisConf(c *C) {
 	err = db.Session.Teams().Insert(t)
 	c.Assert(err, IsNil)
 	defer db.Session.Teams().Remove(bson.M{"_id": t.Name})
-	s.addGroup()
 	a := App{
 		Name:      "tsuru",
 		Framework: "golang",
@@ -878,10 +926,11 @@ func (s *S) TestRevokeAccessFromTeamRemovesTheProjectFromGitosisConf(c *C) {
 	c.Assert(err, IsNil)
 	err = grantAccessToTeam(a.Name, s.team.Name, s.user)
 	c.Assert(err, IsNil)
-	time.Sleep(1e9)
 	err = revokeAccessFromTeam(a.Name, s.team.Name, s.user)
-	time.Sleep(1e9)
-	c.Assert("writable = "+a.Name, NotInGitosis)
+	c.Assert(h.url[0], Equals, "/repository/revoke") //should inc the index (because of the grantAccess)
+	c.Assert(h.method[0], Equals, "DELETE")
+	expected := fmt.Sprintf(`{"repositories":["%s"],"users":["%s"]}`, a.Name, s.user.Email)
+	c.Assert(string(h.body[0]), Equals, expected)
 }
 
 func (s *S) TestRunHandlerShouldExecuteTheGivenCommandInTheGivenApp(c *C) {
