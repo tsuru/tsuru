@@ -559,8 +559,8 @@ func (s *S) TestAddUserToTeamShoulGrantAccessInGandalf(c *C) {
 	c.Check(len(h.url), Equals, 2)
 	c.Assert(h.url[1], Equals, "/repository/grant")
 	c.Assert(h.method[1], Equals, "POST")
-	fmt.Println(h.body[1])
-	fmt.Println("FOOOO")
+	expected := `{"repositories":[],"users":["marathon@rush.com"]}`
+	c.Assert(string(h.body[1]), Equals, expected)
 }
 
 func (s *S) TestRemoveUserFromTeamShouldRemoveAUserFromATeamIfTheTeamExistAndTheUserIsMemberOfTheTeam(c *C) {
