@@ -20,7 +20,9 @@ before_script:
   - make get-prod
 script: make test
 branches:
-  only: master
+  only:
+    - master
+    - iam
 notifications:
   irc:
     channels:
