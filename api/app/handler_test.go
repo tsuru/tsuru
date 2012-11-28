@@ -1800,10 +1800,18 @@ func (s *S) TestAppLogSelectByLinesShouldReturnsTheLastestEntries(c *C) {
 	err := db.Session.Apps().Insert(a)
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
+	logs := make([]applog, 15)
+	now := time.Now()
 	for i := 0; i < 15; i++ {
-		time.Sleep(1e6)
-		a.log(strconv.Itoa(i), "source")
+		logs[i] = applog{
+			Date:    now.Add(time.Duration(i) * time.Hour),
+			Message: strconv.Itoa(i),
+			Source:  "source",
+		}
 	}
+	a.Logs = logs
+	err = db.Session.Apps().Update(bson.M{"name": a.Name}, a)
+	c.Assert(err, IsNil)
 	url := fmt.Sprintf("/apps/%s/log/?:name=%s&lines=3", a.Name, a.Name)
 	request, err := http.NewRequest("GET", url, nil)
 	c.Assert(err, IsNil)
@@ -1814,7 +1822,7 @@ func (s *S) TestAppLogSelectByLinesShouldReturnsTheLastestEntries(c *C) {
 	c.Assert(recorder.Code, Equals, http.StatusOK)
 	body, err := ioutil.ReadAll(recorder.Body)
 	c.Assert(err, IsNil)
-	logs := []applog{}
+	logs = []applog{}
 	err = json.Unmarshal(body, &logs)
 	c.Assert(err, IsNil)
 	c.Assert(logs, HasLen, 3)
