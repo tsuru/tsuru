@@ -49,7 +49,10 @@ func (s *S) TestDestroyBucket(c *C) {
 	dir, err := commandmocker.Add("juju", "")
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(dir)
-	app := App{Name: "battery"}
+	app := App{
+		Name:  "battery",
+		Units: []Unit{{Machine: 1}},
+	}
 	bucket := fmt.Sprintf("battery%x", patchRandomReader())
 	defer unpatchRandomReader()
 	err = createApp(&app)

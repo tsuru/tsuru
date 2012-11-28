@@ -530,8 +530,12 @@ func (s *S) TestCreateAppAddsProjectToGroupsInGitosis(c *C) {
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(dir)
 	s.addGroup()
-	app := &App{Name: "devincachu", Framework: "django"}
-	_, err = createAppHelper(app, s.user)
+	app := App{
+		Name:      "devincachu",
+		Framework: "django",
+		Units:     []Unit{{Machine: 1}},
+	}
+	_, err = createAppHelper(&app, s.user)
 	c.Assert(err, IsNil)
 	defer app.destroy()
 	err = app.Get()
@@ -544,7 +548,10 @@ func (s *S) TestCreateAppReturnsConflictWithProperMessageWhenTheAppAlreadyExist(
 	dir, err := commandmocker.Add("juju", "")
 	defer commandmocker.Remove(dir)
 	c.Assert(err, IsNil)
-	a := App{Name: "plainsofdawn"}
+	a := App{
+		Name:  "plainsofdawn",
+		Units: []Unit{{Machine: 1}},
+	}
 	err = createApp(&a)
 	c.Assert(err, IsNil)
 	defer a.destroy()
@@ -955,17 +962,15 @@ func (s *S) TestGetEnvHandlerGetsEnvironmentVariableFromApp(c *C) {
 		Name:      "everything-i-want",
 		Framework: "gotthard",
 		Teams:     []string{s.team.Name},
+		Env: map[string]bind.EnvVar{
+			"DATABASE_HOST":     {Name: "DATABASE_HOST", Value: "localhost", Public: true},
+			"DATABASE_USER":     {Name: "DATABASE_USER", Value: "root", Public: true},
+			"DATABASE_PASSWORD": {Name: "DATABASE_PASSWORD", Value: "secret", Public: false},
+		},
 	}
 	err := db.Session.Apps().Insert(a)
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
-	a.Env = map[string]bind.EnvVar{
-		"DATABASE_HOST":     {Name: "DATABASE_HOST", Value: "localhost", Public: true},
-		"DATABASE_USER":     {Name: "DATABASE_USER", Value: "root", Public: true},
-		"DATABASE_PASSWORD": {Name: "DATABASE_PASSWORD", Value: "secret", Public: false},
-	}
-	err = db.Session.Apps().Update(bson.M{"name": a.Name}, a)
-	c.Assert(err, IsNil)
 	url := fmt.Sprintf("/apps/%s/env/?:name=%s", a.Name, a.Name)
 	request, err := http.NewRequest("GET", url, strings.NewReader("DATABASE_HOST"))
 	c.Assert(err, IsNil)
@@ -979,17 +984,15 @@ func (s *S) TestGetEnvHandlerShouldAcceptMultipleVariables(c *C) {
 	a := App{
 		Name:  "four-sticks",
 		Teams: []string{s.team.Name},
+		Env: map[string]bind.EnvVar{
+			"DATABASE_HOST":     {Name: "DATABASE_HOST", Value: "localhost", Public: true},
+			"DATABASE_USER":     {Name: "DATABASE_USER", Value: "root", Public: true},
+			"DATABASE_PASSWORD": {Name: "DATABASE_PASSWORD", Value: "secret", Public: false},
+		},
 	}
 	err := db.Session.Apps().Insert(a)
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
-	a.Env = map[string]bind.EnvVar{
-		"DATABASE_HOST":     {Name: "DATABASE_HOST", Value: "localhost", Public: true},
-		"DATABASE_USER":     {Name: "DATABASE_USER", Value: "root", Public: true},
-		"DATABASE_PASSWORD": {Name: "DATABASE_PASSWORD", Value: "secret", Public: false},
-	}
-	err = db.Session.Apps().Update(bson.M{"name": a.Name}, a)
-	c.Assert(err, IsNil)
 	url := fmt.Sprintf("/apps/%s/env/?:name=%s", a.Name, a.Name)
 	request, err := http.NewRequest("GET", url, strings.NewReader("DATABASE_HOST DATABASE_USER"))
 	c.Assert(err, IsNil)
@@ -1007,17 +1010,15 @@ func (s *S) TestGetEnvHandlerReturnsAllVariablesIfEnvironmentVariablesAreMissing
 		Name:      "time",
 		Framework: "pink-floyd",
 		Teams:     []string{s.team.Name},
+		Env: map[string]bind.EnvVar{
+			"DATABASE_HOST":     {Name: "DATABASE_HOST", Value: "localhost", Public: true},
+			"DATABASE_USER":     {Name: "DATABASE_USER", Value: "root", Public: true},
+			"DATABASE_PASSWORD": {Name: "DATABASE_PASSWORD", Value: "secret", Public: false},
+		},
 	}
 	err = db.Session.Apps().Insert(a)
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
-	a.Env = map[string]bind.EnvVar{
-		"DATABASE_HOST":     {Name: "DATABASE_HOST", Value: "localhost", Public: true},
-		"DATABASE_USER":     {Name: "DATABASE_USER", Value: "root", Public: true},
-		"DATABASE_PASSWORD": {Name: "DATABASE_PASSWORD", Value: "secret", Public: false},
-	}
-	err = db.Session.Apps().Update(bson.M{"name": "time"}, a)
-	c.Assert(err, IsNil)
 	expected := []string{"", "DATABASE_HOST=localhost", "DATABASE_PASSWORD=*** (private variable)", "DATABASE_USER=root"}
 	bodies := []io.Reader{nil, strings.NewReader("")}
 	for _, body := range bodies {
@@ -1080,19 +1081,20 @@ func (s *S) TestSetEnvRespectsThePublicOnlyFlagKeepPrivateVariablesWhenItsTrue(c
 	dir, err := commandmocker.Add("juju", "")
 	defer commandmocker.Remove(dir)
 	c.Assert(err, IsNil)
-	a := App{Name: "myapp"}
+	a := App{
+		Name:  "myapp",
+		Units: []Unit{{Machine: 1}},
+		Env: map[string]bind.EnvVar{
+			"DATABASE_HOST": {
+				Name:   "DATABASE_HOST",
+				Value:  "localhost",
+				Public: false,
+			},
+		},
+	}
 	err = db.Session.Apps().Insert(a)
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
-	a.Env = map[string]bind.EnvVar{
-		"DATABASE_HOST": {
-			Name:   "DATABASE_HOST",
-			Value:  "localhost",
-			Public: false,
-		},
-	}
-	err = db.Session.Apps().Update(bson.M{"name": "myapp"}, a)
-	c.Assert(err, IsNil)
 	envs := []bind.EnvVar{
 		{
 			Name:   "DATABASE_HOST",
@@ -1129,19 +1131,22 @@ func (s *S) TestSetEnvRespectsThePublicOnlyFlagOverwrittenAllVariablesWhenItsFal
 	dir, err := commandmocker.Add("juju", "")
 	defer commandmocker.Remove(dir)
 	c.Assert(err, IsNil)
-	a := App{Name: "myapp"}
+	a := App{
+		Name: "myapp",
+		Units: []Unit{
+			{Machine: 1},
+		},
+		Env: map[string]bind.EnvVar{
+			"DATABASE_HOST": {
+				Name:   "DATABASE_HOST",
+				Value:  "localhost",
+				Public: false,
+			},
+		},
+	}
 	err = db.Session.Apps().Insert(a)
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
-	a.Env = map[string]bind.EnvVar{
-		"DATABASE_HOST": {
-			Name:   "DATABASE_HOST",
-			Value:  "localhost",
-			Public: false,
-		},
-	}
-	err = db.Session.Apps().Update(bson.M{"name": "myapp"}, a)
-	c.Assert(err, IsNil)
 	envs := []bind.EnvVar{
 		{
 			Name:   "DATABASE_HOST",
@@ -1178,6 +1183,7 @@ func (s *S) TestSetEnvHandlerShouldSetAPublicEnvironmentVariableInTheApp(c *C) {
 	a := App{
 		Name:  "black-dog",
 		Teams: []string{s.team.Name},
+		Units: []Unit{{Machine: 1}},
 	}
 	err := db.Session.Apps().Insert(a)
 	c.Assert(err, IsNil)
@@ -1199,6 +1205,7 @@ func (s *S) TestSetEnvHandlerShouldSetMultipleEnvironmentVariablesInTheApp(c *C)
 	a := App{
 		Name:  "vigil",
 		Teams: []string{s.team.Name},
+		Units: []Unit{{Machine: 1}},
 	}
 	err := db.Session.Apps().Insert(a)
 	c.Assert(err, IsNil)
@@ -1222,6 +1229,7 @@ func (s *S) TestSetEnvHandlerShouldSupportSpacesInTheEnvironmentVariableValue(c 
 	a := App{
 		Name:  "loser",
 		Teams: []string{s.team.Name},
+		Units: []Unit{{Machine: 1}},
 	}
 	err := db.Session.Apps().Insert(a)
 	c.Assert(err, IsNil)
@@ -1248,6 +1256,7 @@ func (s *S) TestSetEnvHandlerShouldSupportValuesWithDot(c *C) {
 	a := App{
 		Name:  "losers",
 		Teams: []string{s.team.Name},
+		Units: []Unit{{Machine: 1}},
 	}
 	err = db.Session.Apps().Insert(a)
 	c.Assert(err, IsNil)
@@ -1269,6 +1278,7 @@ func (s *S) TestSetEnvHandlerShouldSupportNumbersOnVariableName(c *C) {
 	a := App{
 		Name:  "blinded",
 		Teams: []string{s.team.Name},
+		Units: []Unit{{Machine: 1}},
 	}
 	err := db.Session.Apps().Insert(a)
 	c.Assert(err, IsNil)
@@ -1290,6 +1300,7 @@ func (s *S) TestSetEnvHandlerShouldSupportLowerCasedVariableName(c *C) {
 	a := App{
 		Name:  "fragments",
 		Teams: []string{s.team.Name},
+		Units: []Unit{{Machine: 1}},
 	}
 	err := db.Session.Apps().Insert(a)
 	c.Assert(err, IsNil)
@@ -1321,13 +1332,12 @@ func (s *S) TestSetEnvHandlerShouldNotChangeValueOfPrivateVariables(c *C) {
 	a := App{
 		Name:  "losers",
 		Teams: []string{s.team.Name},
+		Env:   original,
+		Units: []Unit{{Machine: 1}},
 	}
 	err = db.Session.Apps().Insert(a)
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
-	a.Env = original
-	err = db.Session.Apps().Update(bson.M{"name": "losers"}, a)
-	c.Assert(err, IsNil)
 	url := fmt.Sprintf("/apps/%s/env?:name=%s", a.Name, a.Name)
 	request, err := http.NewRequest("POST", url, strings.NewReader("DATABASE_HOST=http://foo.com:8080"))
 	c.Assert(err, IsNil)
@@ -1457,17 +1467,15 @@ func (s *S) TestUnsetHandlerDoesNotRemovePrivateVariables(c *C) {
 	a := App{
 		Name:  "letitbe",
 		Teams: []string{s.team.Name},
+		Env: map[string]bind.EnvVar{
+			"DATABASE_HOST":     {Name: "DATABASE_HOST", Value: "localhost", Public: true},
+			"DATABASE_USER":     {Name: "DATABASE_USER", Value: "root", Public: true},
+			"DATABASE_PASSWORD": {Name: "DATABASE_PASSWORD", Value: "secret", Public: false},
+		},
 	}
 	err := db.Session.Apps().Insert(a)
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
-	a.Env = map[string]bind.EnvVar{
-		"DATABASE_HOST":     {Name: "DATABASE_HOST", Value: "localhost", Public: true},
-		"DATABASE_USER":     {Name: "DATABASE_USER", Value: "root", Public: true},
-		"DATABASE_PASSWORD": {Name: "DATABASE_PASSWORD", Value: "secret", Public: false},
-	}
-	err = db.Session.Apps().Update(bson.M{"name": "letitbe"}, a)
-	c.Assert(err, IsNil)
 	url := fmt.Sprintf("/apps/%s/env/?:name=%s", a.Name, a.Name)
 	request, err := http.NewRequest("DELETE", url, strings.NewReader("DATABASE_HOST DATABASE_USER DATABASE_PASSWORD"))
 	c.Assert(err, IsNil)
@@ -1491,24 +1499,27 @@ func (s *S) TestUnsetEnvRespectsThePublicOnlyFlagKeepPrivateVariablesWhenItsTrue
 	dir, err := commandmocker.Add("juju", "")
 	defer commandmocker.Remove(dir)
 	c.Assert(err, IsNil)
-	a := App{Name: "myapp"}
+	a := App{
+		Name: "myapp",
+		Units: []Unit{
+			{Machine: 1},
+		},
+		Env: map[string]bind.EnvVar{
+			"DATABASE_HOST": {
+				Name:   "DATABASE_HOST",
+				Value:  "localhost",
+				Public: false,
+			},
+			"DATABASE_PASSWORD": {
+				Name:   "DATABASE_PASSWORD",
+				Value:  "123",
+				Public: true,
+			},
+		},
+	}
 	err = db.Session.Apps().Insert(a)
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
-	a.Env = map[string]bind.EnvVar{
-		"DATABASE_HOST": {
-			Name:   "DATABASE_HOST",
-			Value:  "localhost",
-			Public: false,
-		},
-		"DATABASE_PASSWORD": {
-			Name:   "DATABASE_PASSWORD",
-			Value:  "123",
-			Public: true,
-		},
-	}
-	err = db.Session.Apps().Update(bson.M{"name": "myapp"}, a)
-	c.Assert(err, IsNil)
 	err = unsetEnvFromApp(&a, []string{"DATABASE_HOST", "DATABASE_PASSWORD"}, true)
 	c.Assert(err, IsNil)
 	newApp := App{Name: a.Name}
@@ -1528,24 +1539,27 @@ func (s *S) TestUnsetEnvRespectsThePublicOnlyFlagUnsettingAllVariablesWhenItsFal
 	dir, err := commandmocker.Add("juju", "")
 	defer commandmocker.Remove(dir)
 	c.Assert(err, IsNil)
-	a := App{Name: "myapp"}
+	a := App{
+		Name: "myapp",
+		Units: []Unit{
+			{Machine: 1},
+		},
+		Env: map[string]bind.EnvVar{
+			"DATABASE_HOST": {
+				Name:   "DATABASE_HOST",
+				Value:  "localhost",
+				Public: false,
+			},
+			"DATABASE_PASSWORD": {
+				Name:   "DATABASE_PASSWORD",
+				Value:  "123",
+				Public: true,
+			},
+		},
+	}
 	err = db.Session.Apps().Insert(a)
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
-	a.Env = map[string]bind.EnvVar{
-		"DATABASE_HOST": {
-			Name:   "DATABASE_HOST",
-			Value:  "localhost",
-			Public: false,
-		},
-		"DATABASE_PASSWORD": {
-			Name:   "DATABASE_PASSWORD",
-			Value:  "123",
-			Public: true,
-		},
-	}
-	err = db.Session.Apps().Update(bson.M{"name": "myapp"}, a)
-	c.Assert(err, IsNil)
 	err = unsetEnvFromApp(&a, []string{"DATABASE_HOST", "DATABASE_PASSWORD"}, false)
 	c.Assert(err, IsNil)
 	newApp := App{Name: a.Name}
@@ -1854,14 +1868,12 @@ func (s *S) TestBindHandler(c *C) {
 	a := App{
 		Name:  "painkiller",
 		Teams: []string{s.team.Name},
-		Units: []Unit{{Ip: "127.0.0.1"}},
+		Units: []Unit{{Ip: "127.0.0.1", Machine: 1}},
+		Env:   map[string]bind.EnvVar{},
 	}
 	err = db.Session.Apps().Insert(a)
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
-	a.Env = map[string]bind.EnvVar{}
-	err = db.Session.Apps().Update(bson.M{"name": "painkiller"}, a)
-	c.Assert(err, IsNil)
 	url := fmt.Sprintf("/services/instances/%s/%s?:instance=%s&:app=%s", instance.Name, a.Name, instance.Name, a.Name)
 	request, err := http.NewRequest("PUT", url, nil)
 	c.Assert(err, IsNil)
@@ -2003,6 +2015,7 @@ func (s *S) TestUnbindHandler(c *C) {
 	a := App{
 		Name:  "painkiller",
 		Teams: []string{s.team.Name},
+		Units: []Unit{{Machine: 1}},
 	}
 	err = createApp(&a)
 	c.Assert(err, IsNil)
@@ -2019,7 +2032,7 @@ func (s *S) TestUnbindHandler(c *C) {
 			Value: "123",
 		},
 	}
-	a.Units = []Unit{{Ip: "127.0.0.1"}}
+	a.Units = []Unit{{Ip: "127.0.0.1", Machine: 1}}
 	err = db.Session.Apps().Update(bson.M{"name": a.Name}, &a)
 	c.Assert(err, IsNil)
 	url := fmt.Sprintf("/services/instances/%s/%s?:instance=%s&:app=%s", instance.Name, a.Name, instance.Name, a.Name)

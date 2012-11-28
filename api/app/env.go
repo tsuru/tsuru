@@ -31,7 +31,7 @@ var environConfPath = path.Join(os.ExpandEnv("${HOME}"), ".juju", "environments.
 type cmd struct {
 	cmd    string
 	result chan cmdResult
-	u      Unit
+	u      *Unit
 }
 
 type cmdResult struct {
@@ -58,8 +58,17 @@ func runCommands() {
 }
 
 func runCmd(command string, msg message) {
+	unit := msg.app.unit()
+	for unit.Machine == 0 {
+		time.Sleep(5e9)
+		err := msg.app.Get()
+		if err != nil {
+			return
+		}
+		unit = msg.app.unit()
+	}
 	c := cmd{
-		u:      *msg.app.unit(),
+		u:      unit,
 		cmd:    command,
 		result: make(chan cmdResult),
 	}
@@ -67,6 +76,7 @@ func runCmd(command string, msg message) {
 	var r cmdResult
 	r = <-c.result
 	for i := 0; r.err != nil && i < runAttempts; i++ {
+		time.Sleep(1e9)
 		cmds <- c
 		r = <-c.result
 	}

@@ -79,7 +79,8 @@ func (s *S) TestDestroyWithoutUnits(c *C) {
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(dir)
 	app := App{
-		Name: "x4",
+		Name:  "x4",
+		Units: []Unit{{Machine: 1}},
 	}
 	err = createApp(&app)
 	c.Assert(err, IsNil)
@@ -99,6 +100,7 @@ func (s *S) TestCreateApp(c *C) {
 	a := App{
 		Name:      "appName",
 		Framework: "django",
+		Units:     []Unit{{Machine: 3}},
 	}
 	expectedHost := "localhost"
 	config.Set("host", expectedHost)
@@ -703,13 +705,10 @@ func (s *S) TestLog(c *C) {
 }
 
 func (s *S) TestLogShouldAddOneRecordByLine(c *C) {
-	dir, err := commandmocker.Add("juju", "")
-	defer commandmocker.Remove(dir)
-	c.Assert(err, IsNil)
 	a := App{Name: "newApp"}
-	err = createApp(&a)
+	err := db.Session.Apps().Insert(a)
 	c.Assert(err, IsNil)
-	defer a.destroy()
+	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
 	err = a.log("last log msg\nfirst log", "source")
 	c.Assert(err, IsNil)
 	instance := App{}
@@ -720,16 +719,17 @@ func (s *S) TestLogShouldAddOneRecordByLine(c *C) {
 }
 
 func (s *S) TestLogShouldNotLogWhiteLines(c *C) {
-	dir, err := commandmocker.Add("juju", "")
-	defer commandmocker.Remove(dir)
+	a := App{
+		Name: "newApp",
+	}
+	err := db.Session.Apps().Insert(a)
 	c.Assert(err, IsNil)
-	a := App{Name: "newApp"}
-	err = createApp(&a)
+	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
+	err = a.log("some message", "tsuru")
 	c.Assert(err, IsNil)
-	defer a.destroy()
 	err = a.log("", "")
 	c.Assert(err, IsNil)
-	instance := App{}
+	var instance App
 	err = db.Session.Apps().Find(bson.M{"name": a.Name}).One(&instance)
 	logLen := len(instance.Logs)
 	c.Assert(instance.Logs[logLen-1].Message, Not(Equals), "")

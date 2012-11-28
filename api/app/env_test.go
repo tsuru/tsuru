@@ -23,7 +23,7 @@ func (s *S) TestRewriteEnvMessage(c *C) {
 		Name:  "time",
 		Teams: []string{s.team.Name},
 		Units: []Unit{
-			{AgentState: "started", MachineAgentState: "running", InstanceState: "running"},
+			{AgentState: "started", MachineAgentState: "running", InstanceState: "running", Machine: 1},
 		},
 	}
 	msg := message{
@@ -47,6 +47,9 @@ func (s *S) TestDoesNotSendInTheSuccessChannelIfItIsNil(c *C) {
 		Name:      "rainmaker",
 		Framework: "",
 		Teams:     []string{s.team.Name},
+		Units: []Unit{
+			{Machine: 1},
+		},
 	}
 	err = db.Session.Apps().Insert(app)
 	c.Assert(err, IsNil)
