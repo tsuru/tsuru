@@ -9,7 +9,7 @@ import (
 	"regexp"
 )
 
-// filterOutput filters output from juju.
+// FilterOutput filters output from juju.
 //
 // It removes all lines that does not represent useful output, like juju's
 // logging and Python's deprecation warnings.
