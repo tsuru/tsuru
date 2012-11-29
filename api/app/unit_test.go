@@ -13,10 +13,9 @@ import (
 )
 
 func (s *S) TestCommand(c *C) {
-	var err error
-	s.tmpdir, err = commandmocker.Add("juju", "$*")
+	tmpdir, err := commandmocker.Add("juju", "$*")
 	c.Assert(err, IsNil)
-	defer commandmocker.Remove(s.tmpdir)
+	defer commandmocker.Remove(tmpdir)
 	u := Unit{
 		Type:              "django",
 		Name:              "myUnit",
@@ -123,10 +122,9 @@ func (s *S) TestExecuteHookWithCustomWriter(c *C) {
 }
 
 func (s *S) TestDestroyUnit(c *C) {
-	var err error
-	s.tmpdir, err = commandmocker.Add("juju", "$*")
+	tmpdir, err := commandmocker.Add("juju", "$*")
 	c.Assert(err, IsNil)
-	defer commandmocker.Remove(s.tmpdir)
+	defer commandmocker.Remove(tmpdir)
 	unit := Unit{Type: "django", Name: "myunit", Machine: 10, app: &App{}}
 	out, err := unit.destroy()
 	c.Assert(err, IsNil)
