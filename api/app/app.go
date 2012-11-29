@@ -156,7 +156,7 @@ func (a *App) destroy() error {
 	}
 	if len(a.Units) > 0 {
 		out, err := a.unit().destroy()
-		msg := string(out)
+		msg := fmt.Sprintf("Failed to destroy unit: %s\n%s", err, out)
 		log.Print(msg)
 		if err != nil {
 			return errors.New(msg)
