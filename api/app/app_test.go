@@ -88,6 +88,32 @@ func (s *S) TestDestroyWithoutUnits(c *C) {
 	c.Assert(err, IsNil)
 }
 
+func (s *S) TestFailingDestroy(c *C) {
+	dir, err := commandmocker.Add("juju", "$*")
+	c.Assert(err, IsNil)
+	a := App{
+		Name:      "ritual",
+		Framework: "ruby",
+		Teams:     []string{s.team.Name},
+		Units: []Unit{
+			{
+				Name:    "duvido",
+				Machine: 3,
+			},
+		},
+	}
+	err = createApp(&a)
+	c.Assert(err, IsNil)
+	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
+	commandmocker.Remove(dir)
+	dir, err = commandmocker.Error("juju", "juju failed", 25)
+	c.Assert(err, IsNil)
+	defer commandmocker.Remove(dir)
+	err = a.destroy()
+	c.Assert(err, NotNil)
+	c.Assert(err.Error(), Equals, "Failed to destroy unit: exit status 25\njuju failed")
+}
+
 func (s *S) TestCreateApp(c *C) {
 	random := patchRandomReader()
 	defer unpatchRandomReader()
@@ -162,7 +188,9 @@ func (s *S) TestDoesNotSaveTheAppInTheDatabaseIfJujuFail(c *C) {
 	err = createApp(&a)
 	defer a.destroy() // clean mess if test fail
 	c.Assert(err, NotNil)
-	c.Assert(err, ErrorMatches, "^.*juju failed.*$")
+	expected := `Failed to deploy: exit status 1
+juju failed`
+	c.Assert(err.Error(), Equals, expected)
 	err = a.Get()
 	c.Assert(err, NotNil)
 }
