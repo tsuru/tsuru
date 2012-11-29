@@ -46,6 +46,8 @@ func filterOutput(output []byte) []byte {
 	deprecation := []byte("DeprecationWarning")
 	regexLog := regexp.MustCompile(`^\d{4}-\d{2}-\d{2}\s\d{2}:\d{2}:\d{2}`)
 	regexSshWarning := regexp.MustCompile(`^Warning: Permanently added`)
+	regexPythonWarning := regexp.MustCompile(`^.*warnings.warn`)
+	regexUserWarning := regexp.MustCompile(`^.*UserWarning`)
 	lines := bytes.Split(output, []byte{'\n'})
 	for _, line := range lines {
 		if ignore {
@@ -56,7 +58,7 @@ func filterOutput(output []byte) []byte {
 			ignore = true
 			continue
 		}
-		if !regexSshWarning.Match(line) && !regexLog.Match(line) {
+		if !regexSshWarning.Match(line) && !regexLog.Match(line) && !regexPythonWarning.Match(line) && !regexUserWarning.Match(line) {
 			result = append(result, line)
 		}
 	}

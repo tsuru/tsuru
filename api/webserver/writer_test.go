@@ -9,6 +9,25 @@ import (
 	"net/http/httptest"
 )
 
+func (s *S) TestFilterOutputWithPythonWarnings(c *C) {
+	output := []byte(`2012-11-28 16:00:35,615 WARNING Ubuntu Cloud Image lookups encrypted but not authenticated
+2012-11-28 16:00:35,616 INFO Connecting to environment...
+/usr/local/lib/python2.7/dist-packages/txAWS-0.2.3-py2.7.egg/txaws/client/base.py:208: UserWarning: The client attribute on BaseQuery is deprecated and will go away in future release.
+warnings.warn('The client attribute on BaseQuery is deprecated and'
+2012-11-28 16:00:36,787 INFO Connected to environment.
+2012-11-28 16:00:37,110 INFO Connecting to machine 23 at 10.19.2.195
+pre-restart:
+  - python manage.py dbmigrate
+  - python manage.py collectstatic --noinput)
+	`)
+	expected := []byte(`pre-restart:
+  - python manage.py dbmigrate
+  - python manage.py collectstatic --noinput)
+	`)
+	got := filterOutput(output)
+	c.Assert(string(got), Equals, string(expected))
+}
+
 func (s *S) TestFilterOutputWithJujuLog(c *C) {
 	output := []byte(`/usr/lib/python2.6/site-packages/juju/providers/ec2/files.py:8: DeprecationWarning: the sha module is deprecated; use the hashlib module instead
   import sha
