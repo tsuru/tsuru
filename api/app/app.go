@@ -113,7 +113,7 @@ func deploy(a *App) error {
 	cmd := exec.Command("juju", "deploy", "--repository=/home/charms", "local:"+a.Framework, a.Name)
 	log.Printf("deploying %s with name %s", a.Framework, a.Name)
 	out, err := cmd.CombinedOutput()
-	outStr := string(out)
+	outStr := fmt.Sprintf("Failed to deploy: %s\n%s", err, out)
 	a.log(outStr, "tsuru")
 	log.Printf("executing %s", outStr)
 	if err != nil {
