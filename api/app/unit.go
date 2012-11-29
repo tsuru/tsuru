@@ -5,13 +5,11 @@
 package app
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
 	"github.com/globocom/tsuru/log"
 	"io"
 	"os/exec"
-	"regexp"
 	"strconv"
 	"strings"
 )
@@ -91,32 +89,4 @@ func (u *Unit) State() string {
 		return "started"
 	}
 	return "pending"
-}
-
-// filterOutput filters output from juju.
-//
-// This function is a duplication from api/webserver.
-//
-// TODO: find somewhere to export this function.
-func filterOutput(output []byte) []byte {
-	var result [][]byte
-	var ignore bool
-	deprecation := []byte("DeprecationWarning")
-	regexLog := regexp.MustCompile(`^\d{4}-\d{2}-\d{2}\s\d{2}:\d{2}:\d{2}`)
-	regexSshWarning := regexp.MustCompile(`^Warning: Permanently added`)
-	lines := bytes.Split(output, []byte{'\n'})
-	for _, line := range lines {
-		if ignore {
-			ignore = false
-			continue
-		}
-		if bytes.Contains(line, deprecation) {
-			ignore = true
-			continue
-		}
-		if !regexSshWarning.Match(line) && !regexLog.Match(line) {
-			result = append(result, line)
-		}
-	}
-	return bytes.Join(result, []byte{'\n'})
 }
