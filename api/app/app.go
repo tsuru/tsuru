@@ -12,9 +12,9 @@ import (
 	"github.com/globocom/config"
 	"github.com/globocom/tsuru/api/auth"
 	"github.com/globocom/tsuru/api/bind"
-	"github.com/globocom/tsuru/api/filter"
 	"github.com/globocom/tsuru/api/service"
 	"github.com/globocom/tsuru/db"
+	"github.com/globocom/tsuru/juju"
 	"github.com/globocom/tsuru/log"
 	"github.com/globocom/tsuru/repository"
 	"io"
@@ -288,7 +288,7 @@ func (a *App) loadHooks() error {
 		a.log(fmt.Sprintf("Got error while executing command: %s... Skipping hooks execution", err), "tsuru")
 		return nil
 	}
-	err = goyaml.Unmarshal(filter.FilterOutput(buf.Bytes()), a.hooks)
+	err = goyaml.Unmarshal(juju.FilterOutput(buf.Bytes()), a.hooks)
 	if err != nil {
 		a.log(fmt.Sprintf("Got error while parsing yaml: %s", err), "tsuru")
 		return err

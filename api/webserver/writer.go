@@ -5,7 +5,7 @@
 package main
 
 import (
-	"github.com/globocom/tsuru/api/filter"
+	"github.com/globocom/tsuru/juju"
 	"net/http"
 )
 
@@ -22,7 +22,7 @@ func (w *FilteredWriter) Header() http.Header {
 
 // Write writes and flushes the data, filtering the juju warnings.
 func (w *FilteredWriter) Write(data []byte) (int, error) {
-	_, err := w.writer.Write(filter.FilterOutput(data))
+	_, err := w.writer.Write(juju.FilterOutput(data))
 	if f, ok := w.writer.(http.Flusher); ok {
 		f.Flush()
 	}
