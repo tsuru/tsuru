@@ -123,8 +123,6 @@ func AppDelete(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	return nil
 }
 
-// TODO: this function could be just a query, e.g
-// db.Session.Teams().Find(bson.M{"users": u.Email}).Select(bson.M{"name": 1}).All(&teams)
 func getTeamNames(u *auth.User) ([]string, error) {
 	var teams []auth.Team
 	if err := db.Session.Teams().Find(bson.M{"users": u.Email}).All(&teams); err != nil {
