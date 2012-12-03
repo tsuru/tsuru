@@ -16,37 +16,7 @@ import (
 	"os"
 )
 
-type passwordReader interface {
-	readPassword(io.Writer, string) (string, error)
-}
-
-type stdinPasswordReader struct{}
-
-func (r stdinPasswordReader) readPassword(out io.Writer, msg string) (string, error) {
-	io.WriteString(out, msg)
-	password, err := term.ReadPassword(os.Stdin.Fd())
-	if err != nil {
-		return "", err
-	}
-	fmt.Fprintln(out)
-	if password == "" {
-		msg := "You must provide the password!"
-		fmt.Fprintln(out, msg)
-		return "", errors.New(msg)
-	}
-	return password, nil
-}
-
-type userCreate struct {
-	reader passwordReader
-}
-
-func (c *userCreate) preader() passwordReader {
-	if c.reader == nil {
-		c.reader = stdinPasswordReader{}
-	}
-	return c.reader
-}
+type userCreate struct{}
 
 func (c *userCreate) Info() *Info {
 	return &Info{
@@ -59,11 +29,13 @@ func (c *userCreate) Info() *Info {
 
 func (c *userCreate) Run(context *Context, client Doer) error {
 	email := context.Args[0]
-	password, err := c.preader().readPassword(context.Stdout, "Password: ")
+	fmt.Fprint(context.Stdout, "Password: ")
+	password, err := passwordFromReader(context.Stdin)
 	if err != nil {
 		return err
 	}
-	confirm, err := c.preader().readPassword(context.Stdout, "Confirm: ")
+	fmt.Fprint(context.Stdout, "Confirm: ")
+	confirm, err := passwordFromReader(context.Stdin)
 	if err != nil {
 		return err
 	}
@@ -114,20 +86,12 @@ func (c *userRemove) Info() *Info {
 	}
 }
 
-type login struct {
-	reader passwordReader
-}
-
-func (c *login) preader() passwordReader {
-	if c.reader == nil {
-		c.reader = stdinPasswordReader{}
-	}
-	return c.reader
-}
+type login struct{}
 
 func (c *login) Run(context *Context, client Doer) error {
 	email := context.Args[0]
-	password, err := c.preader().readPassword(context.Stdout, "Password: ")
+	fmt.Fprint(context.Stdout, "Password: ")
+	password, err := passwordFromReader(context.Stdin)
 	if err != nil {
 		return err
 	}
@@ -334,4 +298,24 @@ func (c *teamList) Run(context *Context, client Doer) error {
 		}
 	}
 	return nil
+}
+
+func passwordFromReader(reader io.Reader) (string, error) {
+	var (
+		password string
+		err      error
+	)
+	if file, ok := reader.(*os.File); ok {
+		password, err = term.ReadPassword(file.Fd())
+		if err != nil {
+			return "", err
+		}
+	} else {
+		fmt.Fscanf(reader, "%s\n", &password)
+	}
+	if password == "" {
+		msg := "You must provide the password!"
+		return "", errors.New(msg)
+	}
+	return password, err
 }
