@@ -7,6 +7,7 @@ package app
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"github.com/globocom/commandmocker"
 	"github.com/globocom/config"
 	"github.com/globocom/tsuru/api/auth"
@@ -192,6 +193,30 @@ func (s *S) TestDoesNotSaveTheAppInTheDatabaseIfJujuFail(c *C) {
 juju failed`
 	c.Assert(err.Error(), Equals, expected)
 	err = a.Get()
+	c.Assert(err, NotNil)
+}
+
+func (s *S) TestDeletesIAMCredentialsAndS3BucketIfJujuFail(c *C) {
+	source := patchRandomReader()
+	defer unpatchRandomReader()
+	dir, err := commandmocker.Error("juju", "juju failed", 1)
+	c.Assert(err, IsNil)
+	defer commandmocker.Remove(dir)
+	a := App{
+		Name:      "theirapp",
+		Framework: "ruby",
+		Units:     []Unit{{Machine: 1}},
+	}
+	err = createApp(&a)
+	defer a.destroy() // clean mess if test fail
+	c.Assert(err, NotNil)
+	iam := getIAMEndpoint()
+	_, err = iam.GetUser("theirapp")
+	c.Assert(err, NotNil)
+	s3 := getS3Endpoint()
+	bucketName := fmt.Sprintf("%s%x", a.Name, source[:(maxBucketSize-len(a.Name)/2)])
+	bucket := s3.Bucket(bucketName)
+	_, err = bucket.Get("")
 	c.Assert(err, NotNil)
 }
 
