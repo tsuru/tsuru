@@ -29,7 +29,7 @@ func (s *s3Env) empty() bool {
 }
 
 const (
-	randBytes      = 32
+	maxBucketSize  = 63
 	s3InstanceName = "tsurus3"
 )
 
@@ -119,6 +119,7 @@ func getIAMEndpoint() *iam.IAM {
 }
 
 func putBucket(appName string, bucketChan chan s3.Bucket, errChan chan error) {
+	randBytes := (maxBucketSize - len(appName)) / 2
 	randPart := make([]byte, randBytes)
 	n, err := rReader.Read(randPart)
 	if err != nil {

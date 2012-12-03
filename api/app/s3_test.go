@@ -14,8 +14,8 @@ import (
 )
 
 func patchRandomReader() []byte {
-	source := make([]byte, randBytes)
-	for i := 0; i < randBytes; i++ {
+	source := make([]byte, maxBucketSize)
+	for i := 0; i < maxBucketSize; i++ {
 		source[i] = 0xe3
 	}
 	rReader = bytes.NewReader(source)
@@ -28,7 +28,7 @@ func unpatchRandomReader() {
 
 func (s *S) TestCreateBucket(c *C) {
 	app := App{Name: "myApp"}
-	source := patchRandomReader()
+	patchRandomReader()
 	defer unpatchRandomReader()
 	env, err := createBucket(&app)
 	c.Assert(err, IsNil)
@@ -56,7 +56,8 @@ func (s *S) TestCreateBucket(c *C) {
 		err := destroyBucket(&app)
 		c.Assert(err, IsNil)
 	}()
-	expected := fmt.Sprintf("myapp%x", source)
+	c.Assert(env.bucket, HasLen, maxBucketSize)
+	expected := "myappe3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3"
 	c.Assert(env.bucket, Equals, expected)
 	s3 := getS3Endpoint()
 	_, err = s3.Bucket(expected).List("", "/", "", 100)

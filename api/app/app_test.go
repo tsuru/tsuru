@@ -7,7 +7,6 @@ package app
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"github.com/globocom/commandmocker"
 	"github.com/globocom/config"
 	"github.com/globocom/tsuru/api/auth"
@@ -115,7 +114,7 @@ func (s *S) TestFailingDestroy(c *C) {
 }
 
 func (s *S) TestCreateApp(c *C) {
-	random := patchRandomReader()
+	patchRandomReader()
 	defer unpatchRandomReader()
 	dir, err := commandmocker.Add("juju", "$*")
 	c.Assert(err, IsNil)
@@ -154,7 +153,8 @@ func (s *S) TestCreateApp(c *C) {
 	e, ok = env["TSURU_S3_SECRET_KEY"]
 	c.Assert(ok, Equals, true)
 	c.Assert(e.Public, Equals, false)
-	c.Assert(env["TSURU_S3_BUCKET"].Value, Equals, fmt.Sprintf("%s%x", strings.ToLower(a.Name), random))
+	c.Assert(env["TSURU_S3_BUCKET"].Value, HasLen, maxBucketSize)
+	c.Assert(env["TSURU_S3_BUCKET"].Value, Equals, "appnamee3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3")
 	c.Assert(env["TSURU_S3_BUCKET"].Public, Equals, false)
 	env = a.InstanceEnv("")
 	c.Assert(env["APPNAME"].Value, Equals, a.Name)
