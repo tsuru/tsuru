@@ -9,8 +9,6 @@ import (
 	"fmt"
 	"github.com/globocom/tsuru/fs"
 	"github.com/globocom/tsuru/log"
-	"os"
-	"path"
 	"time"
 )
 
@@ -25,8 +23,6 @@ type message struct {
 }
 
 var env chan message = make(chan message, chanSize)
-
-var environConfPath = path.Join(os.ExpandEnv("${HOME}"), ".juju", "environments.yaml")
 
 type cmd struct {
 	cmd    string

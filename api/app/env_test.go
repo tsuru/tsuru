@@ -11,8 +11,6 @@ import (
 	"github.com/globocom/tsuru/fs/testing"
 	"labix.org/v2/mgo/bson"
 	. "launchpad.net/gocheck"
-	"os"
-	"path"
 	"sync"
 	"time"
 )
@@ -102,11 +100,6 @@ func (s *S) TestRunCmdSavingTheMachineLater(c *C) {
 	go runCmd("ls -lh", msg, 1e6)
 	wg.Wait()
 	c.Assert(<-msg.success, Equals, true)
-}
-
-func (s *S) TestEnvironConfPath(c *C) {
-	expected := path.Join(os.ExpandEnv("${HOME}"), ".juju", "environments.yaml")
-	c.Assert(environConfPath, Equals, expected)
 }
 
 func (s *S) TestFileSystem(c *C) {
