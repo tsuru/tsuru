@@ -206,8 +206,7 @@ func AddUserToTeam(w http.ResponseWriter, r *http.Request, u *User) error {
 
 func removeUserFromTeam(email, teamName string, u *User) error {
 	team := new(Team)
-	selector := bson.M{"_id": teamName}
-	err := db.Session.Teams().Find(selector).One(team)
+	err := db.Session.Teams().FindId(teamName).One(team)
 	if err != nil {
 		return &errors.Http{Code: http.StatusNotFound, Message: "Team not found"}
 	}
@@ -241,7 +240,7 @@ func removeUserFromTeam(email, teamName string, u *User) error {
 	if err := (&gandalf.Client{Endpoint: gUrl}).RevokeAccess(alwdApps, []string{email}); err != nil {
 		return err
 	}
-	return db.Session.Teams().Update(selector, team)
+	return db.Session.Teams().UpdateId(teamName, team)
 }
 
 func RemoveUserFromTeam(w http.ResponseWriter, r *http.Request, u *User) error {
@@ -340,6 +339,18 @@ func RemoveKeyFromUser(w http.ResponseWriter, r *http.Request, u *User) error {
 // TODO: improve the team update, if possible
 func RemoveUser(w http.ResponseWriter, r *http.Request, u *User) error {
 	//_, err := db.Session.Teams().UpdateAll(bson.M{"users": u.Email}, bson.M{"$pull": bson.M{"users": u.Email}})
+	gUrl, err := config.GetString("git:server")
+	if err != nil {
+		return &errors.Http{Code: http.StatusInternalServerError, Message: "Git server not found at tsuru.conf"}
+	}
+	c := gandalf.Client{Endpoint: gUrl}
+	alwdApps, err := allowedApps(u.Email)
+	if err != nil {
+		return err
+	}
+	if err := c.RevokeAccess(alwdApps, []string{u.Email}); err != nil {
+		return err
+	}
 	teams, err := u.Teams()
 	if err != nil {
 		return err
@@ -360,18 +371,6 @@ Please remove the team, them remove the user.`, team.Name)
 		if err != nil {
 			return err
 		}
-	}
-	gUrl, err := config.GetString("git:server")
-	if err != nil {
-		return &errors.Http{Code: http.StatusInternalServerError, Message: "Git server not found at tsuru.conf"}
-	}
-	c := gandalf.Client{Endpoint: gUrl}
-	alwdApps, err := allowedApps(u.Email)
-	if err != nil {
-		return err
-	}
-	if err := c.RevokeAccess(alwdApps, []string{u.Email}); err != nil {
-		return err
 	}
 	if err := c.RemoveUser(u.Email); err != nil {
 		return &errors.Http{Code: http.StatusInternalServerError, Message: "Could not communicate with git server. Aborting..."}
