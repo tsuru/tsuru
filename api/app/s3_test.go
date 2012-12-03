@@ -69,6 +69,27 @@ func (s *S) TestCreateBucket(c *C) {
 	c.Assert(resp.Policy.Document, Equals, policyBuffer.String())
 }
 
+// Issue 197.
+func (s *S) TestCreateBucketIsAtomic(c *C) {
+	app := App{Name: "myApp"}
+	source := patchRandomReader()
+	defer unpatchRandomReader()
+	iamEndpoint := getIAMEndpoint()
+	_, err := iamEndpoint.CreateUser("myapp", "/")
+	c.Assert(err, IsNil)
+	defer iamEndpoint.DeleteUser("myapp")
+	env, err := createBucket(&app)
+	c.Assert(err, NotNil)
+	defer destroyBucket(&app)
+	c.Assert(env, IsNil)
+	_, err = iamEndpoint.GetUserPolicy("myapp", "app-myapp-bucket")
+	c.Assert(err, NotNil)
+	bucketName := fmt.Sprintf("myapp%x", source)
+	bucket := getS3Endpoint().Bucket(bucketName)
+	_, err = bucket.Get("non-existent")
+	c.Assert(err, NotNil)
+}
+
 func (s *S) TestDestroyBucket(c *C) {
 	dir, err := commandmocker.Add("juju", "")
 	c.Assert(err, IsNil)

@@ -124,6 +124,7 @@ func createBucket(app *App) (*s3Env, error) {
 	errChan := make(chan error)
 	bChan := make(chan s3.Bucket)
 	kChan := make(chan iam.AccessKey)
+	s := getS3Endpoint()
 	go func(c chan s3.Bucket) {
 		randPart := make([]byte, randBytes)
 		n, err := rReader.Read(randPart)
@@ -136,7 +137,6 @@ func createBucket(app *App) (*s3Env, error) {
 			return
 		}
 		name := fmt.Sprintf("%s%x", appName, randPart)
-		s := getS3Endpoint()
 		env.endpoint = s.S3Endpoint
 		env.locationConstraint = s.S3LocationConstraint
 		bucket := s.Bucket(name)
@@ -170,6 +170,16 @@ func createBucket(app *App) (*s3Env, error) {
 		case bucket := <-bChan:
 			env.bucket = bucket.Name
 		case err := <-errChan:
+			switch err.(type) {
+			case *iam.Error:
+				if env.bucket != "" {
+					s.Bucket(env.bucket).DelBucket()
+				}
+			case *s3.Error:
+				if userName != "" {
+					iamEndpoint.DeleteUser(userName)
+				}
+			}
 			return nil, err
 		}
 	}
