@@ -349,7 +349,7 @@ func (s *S) TestDelete(c *C) {
 	defer commandmocker.Remove(dir)
 	c.Assert(err, IsNil)
 	myApp := App{
-		Name:      "MyAppToDelete",
+		Name:      "myapptodelete",
 		Framework: "django",
 		Teams:     []string{s.team.Name},
 		Units: []Unit{
@@ -365,7 +365,7 @@ func (s *S) TestDelete(c *C) {
 	err = AppDelete(recorder, request, s.user)
 	c.Assert(err, IsNil)
 	c.Assert(recorder.Code, Equals, http.StatusOK)
-	c.Assert(h.url[0], Equals, "/repository/MyAppToDelete") // increment the index because of createApp action
+	c.Assert(h.url[0], Equals, "/repository/myapptodelete") // increment the index because of createApp action
 	c.Assert(h.method[0], Equals, "DELETE")
 	c.Assert(string(h.body[0]), Equals, "null")
 }
@@ -410,7 +410,7 @@ func (s *S) TestDeleteShouldHandleWithGandalfError(c *C) {
 	defer commandmocker.Remove(dir)
 	c.Assert(err, IsNil)
 	myApp := App{
-		Name:      "MyAppToDelete",
+		Name:      "myapptodelete",
 		Framework: "django",
 		Teams:     []string{s.team.Name},
 		Units: []Unit{
