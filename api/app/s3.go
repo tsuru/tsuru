@@ -118,6 +118,41 @@ func getIAMEndpoint() *iam.IAM {
 	return iam.New(getAWSAuth(), region)
 }
 
+func putBucket(appName string, bucketChan chan s3.Bucket, errChan chan error) {
+	randPart := make([]byte, randBytes)
+	n, err := rReader.Read(randPart)
+	if err != nil {
+		errChan <- err
+		return
+	}
+	if n != randBytes {
+		errChan <- io.ErrShortBuffer
+		return
+	}
+	name := fmt.Sprintf("%s%x", appName, randPart)
+	bucket := getS3Endpoint().Bucket(name)
+	if err := bucket.PutBucket(s3.BucketOwnerFull); err != nil {
+		errChan <- err
+		return
+	}
+	bucketChan <- *bucket
+}
+
+func createIAMCredentials(appName string, keyChan chan iam.AccessKey, errChan chan error) {
+	iamEndpoint := getIAMEndpoint()
+	uResp, err := iamEndpoint.CreateUser(appName, fmt.Sprintf("/%s/", appName))
+	if err != nil {
+		errChan <- err
+		return
+	}
+	kResp, err := iamEndpoint.CreateAccessKey(uResp.User.Name)
+	if err != nil {
+		errChan <- err
+		return
+	}
+	keyChan <- kResp.AccessKey
+}
+
 func createBucket(app *App) (*s3Env, error) {
 	var env s3Env
 	appName := strings.ToLower(app.Name)
@@ -125,41 +160,9 @@ func createBucket(app *App) (*s3Env, error) {
 	bChan := make(chan s3.Bucket)
 	kChan := make(chan iam.AccessKey)
 	s := getS3Endpoint()
-	go func(c chan s3.Bucket) {
-		randPart := make([]byte, randBytes)
-		n, err := rReader.Read(randPart)
-		if err != nil {
-			errChan <- err
-			return
-		}
-		if n != randBytes {
-			errChan <- io.ErrShortBuffer
-			return
-		}
-		name := fmt.Sprintf("%s%x", appName, randPart)
-		env.endpoint = s.S3Endpoint
-		env.locationConstraint = s.S3LocationConstraint
-		bucket := s.Bucket(name)
-		if err := bucket.PutBucket(s3.BucketOwnerFull); err != nil {
-			errChan <- err
-			return
-		}
-		c <- *bucket
-	}(bChan)
+	go putBucket(appName, bChan, errChan)
+	go createIAMCredentials(appName, kChan, errChan)
 	iamEndpoint := getIAMEndpoint()
-	go func(c chan iam.AccessKey) {
-		uResp, err := iamEndpoint.CreateUser(appName, fmt.Sprintf("/%s/", appName))
-		if err != nil {
-			errChan <- err
-			return
-		}
-		kResp, err := iamEndpoint.CreateAccessKey(uResp.User.Name)
-		if err != nil {
-			errChan <- err
-			return
-		}
-		c <- kResp.AccessKey
-	}(kChan)
 	var userName string
 	for env.empty() {
 		select {
@@ -169,6 +172,8 @@ func createBucket(app *App) (*s3Env, error) {
 			userName = k.UserName
 		case bucket := <-bChan:
 			env.bucket = bucket.Name
+			env.locationConstraint = bucket.S3LocationConstraint
+			env.endpoint = bucket.S3Endpoint
 		case err := <-errChan:
 			switch err.(type) {
 			case *iam.Error:
