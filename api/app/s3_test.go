@@ -9,6 +9,7 @@ import (
 	"crypto/rand"
 	"fmt"
 	"github.com/globocom/commandmocker"
+	"github.com/globocom/tsuru/api/bind"
 	. "launchpad.net/gocheck"
 )
 
@@ -31,7 +32,30 @@ func (s *S) TestCreateBucket(c *C) {
 	defer unpatchRandomReader()
 	env, err := createBucket(&app)
 	c.Assert(err, IsNil)
-	defer destroyBucket(&app)
+	defer func() {
+		app.Env = map[string]bind.EnvVar{
+			"TSURU_S3_ENDPOINT": {
+				Name:         "TSURU_S3_ENDPOINT",
+				Value:        env.endpoint,
+				Public:       false,
+				InstanceName: s3InstanceName,
+			},
+			"TSURU_S3_BUCKET": {
+				Name:         "TSURU_S3_BUCKET",
+				Value:        env.bucket,
+				Public:       false,
+				InstanceName: s3InstanceName,
+			},
+			"TSURU_S3_ACCESS_KEY_ID": {
+				Name:         "TSURU_S3_ACCESS_KEY_ID",
+				Value:        env.AccessKey,
+				Public:       false,
+				InstanceName: s3InstanceName,
+			},
+		}
+		err := destroyBucket(&app)
+		c.Assert(err, IsNil)
+	}()
 	expected := fmt.Sprintf("myapp%x", source)
 	c.Assert(env.bucket, Equals, expected)
 	s3 := getS3Endpoint()
