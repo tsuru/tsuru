@@ -23,6 +23,7 @@ import (
 	"os"
 	"os/exec"
 	"path"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -243,6 +244,11 @@ func (a *App) getEnv(name string) (bind.EnvVar, error) {
 		err = errors.New("Environment variable not declared for this app.")
 	}
 	return env, err
+}
+
+func (a *App) isValid() bool {
+	regex := regexp.MustCompile(`^[a-z_][a-z0-9_-]{0,62}$`)
+	return regex.MatchString(a.Name)
 }
 
 func (a *App) InstanceEnv(name string) map[string]bind.EnvVar {

@@ -319,6 +319,31 @@ func (s *S) TestInstanceEnvironmentDoesNotPanicIfTheEnvMapIsNil(c *C) {
 	c.Assert(a.InstanceEnv("mysql"), DeepEquals, map[string]bind.EnvVar{})
 }
 
+func (s *S) TestIsValid(c *C) {
+	var data = []struct {
+		name     string
+		expected bool
+	}{
+		{"myappmyappmyappmyappmyappmyappmyappmyappmyappmyappmyappmyappmyapp", false},
+		{"myappmyappmyappmyappmyappmyappmyappmyappmyappmyappmyappmyappmyap", false},
+		{"myappmyappmyappmyappmyappmyappmyappmyappmyappmyappmyappmyappmya", true},
+		{"myApp", false},
+		{"my app", false},
+		{"123myapp", false},
+		{"myapp", true},
+		{"_theirapp", true},
+		{"my-app", true},
+		{"my_app", true},
+		{"b", true},
+	}
+	for _, d := range data {
+		a := App{Name: d.name}
+		if valid := a.isValid(); valid != d.expected {
+			c.Errorf("Is %q a valid app name? Expected: %v. Got: %v.", d.name, d.expected, valid)
+		}
+	}
+}
+
 func (s *S) TestUnit(c *C) {
 	u := Unit{Name: "someapp/0", Type: "django", Machine: 10}
 	a := App{Name: "appName", Framework: "django", Units: []Unit{u}}
