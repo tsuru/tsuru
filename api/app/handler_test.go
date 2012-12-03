@@ -7,7 +7,6 @@ package app
 import (
 	"bytes"
 	"encoding/json"
-	stderrors "errors"
 	"fmt"
 	"github.com/globocom/commandmocker"
 	"github.com/globocom/config"
@@ -59,17 +58,10 @@ func (h *testHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(h.content))
 }
 
-type testBadHandler struct {
-	body    [][]byte
-	method  []string
-	url     []string
-	content string
-	header  []http.Header
-}
+type testBadHandler struct{}
 
 func (h *testBadHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	err := stderrors.New("some error")
-	http.Error(w, err.Error(), http.StatusInternalServerError)
+	http.Error(w, "some error", http.StatusInternalServerError)
 }
 
 func (s *S) TestAppIsAvaliableHandlerShouldReturnsErrorWhenAppUnitStatusIsnotStarted(c *C) {
