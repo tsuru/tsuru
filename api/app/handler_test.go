@@ -7,6 +7,7 @@ package app
 import (
 	"bytes"
 	"encoding/json"
+	stderrors "errors"
 	"fmt"
 	"github.com/globocom/commandmocker"
 	"github.com/globocom/config"
@@ -56,6 +57,19 @@ func (h *testHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	h.body = append(h.body, b)
 	h.header = append(h.header, r.Header)
 	w.Write([]byte(h.content))
+}
+
+type testBadHandler struct {
+	body    [][]byte
+	method  []string
+	url     []string
+	content string
+	header  []http.Header
+}
+
+func (h *testBadHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	err := stderrors.New("some error")
+	http.Error(w, err.Error(), http.StatusInternalServerError)
 }
 
 func (s *S) TestAppIsAvaliableHandlerShouldReturnsErrorWhenAppUnitStatusIsnotStarted(c *C) {
@@ -393,6 +407,33 @@ func (s *S) TestDeleteShouldReturnNotFoundIfTheAppDoesNotExist(c *C) {
 	c.Assert(ok, Equals, true)
 	c.Assert(e.Code, Equals, http.StatusNotFound)
 	c.Assert(e, ErrorMatches, "^App unknown not found.$")
+}
+
+func (s *S) TestDeleteShouldHandleWithGandalfError(c *C) {
+	h := testBadHandler{}
+	ts := httptest.NewServer(&h)
+	defer ts.Close()
+	config.Set("git:server", ts.URL)
+	dir, err := commandmocker.Add("juju", "")
+	defer commandmocker.Remove(dir)
+	c.Assert(err, IsNil)
+	myApp := App{
+		Name:      "MyAppToDelete",
+		Framework: "django",
+		Teams:     []string{s.team.Name},
+		Units: []Unit{
+			{Ip: "10.10.10.10", Machine: 1},
+		},
+	}
+	err = createApp(&myApp)
+	c.Assert(err, IsNil)
+	defer myApp.destroy()
+	request, err := http.NewRequest("DELETE", "/apps/"+myApp.Name+"?:name="+myApp.Name, nil)
+	c.Assert(err, IsNil)
+	recorder := httptest.NewRecorder()
+	err = AppDelete(recorder, request, s.user)
+	c.Assert(err, NotNil)
+	c.Assert(err.Error(), Equals, "Could not remove app's repository at git server. Aborting...")
 }
 
 func (s *S) TestDeleteReturnsErrorIfAppDestroyFails(c *C) {

@@ -113,7 +113,6 @@ func AppDelete(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 		return &errors.Http{Code: http.StatusInternalServerError, Message: "Git server not found at tsuru.conf"}
 	}
 	if err := (&gandalf.Client{Endpoint: gUrl}).RemoveRepository(app.Name); err != nil {
-		panic(err)
 		// log or repass original error
 		return &errors.Http{Code: http.StatusInternalServerError, Message: "Could not remove app's repository at git server. Aborting..."}
 	}
