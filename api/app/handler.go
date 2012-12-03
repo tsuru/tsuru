@@ -220,6 +220,12 @@ func CreateAppHandler(w http.ResponseWriter, r *http.Request, u *auth.User) erro
 	if err = json.Unmarshal(body, &app); err != nil {
 		return err
 	}
+	if !app.isValid() {
+		msg := "Invalid app name, your app should have at most 63 " +
+			"characters, containing only lower case letters, numbers, " +
+			"underscores (_) or dashes (-), starting with letter or underscore."
+		return &errors.Http{Code: http.StatusPreconditionFailed, Message: msg}
+	}
 	jsonMsg, err := createAppHelper(&app, u)
 	if err != nil {
 		return err

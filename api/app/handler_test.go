@@ -484,13 +484,13 @@ func (s *S) TestCreateAppHelperCreatesRepositoryInGandalf(c *C) {
 	dir, err := commandmocker.Add("juju", "")
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(dir)
-	a := App{Name: "someApp"}
+	a := App{Name: "someapp"}
 	_, err = createAppHelper(&a, s.user)
 	c.Assert(err, IsNil)
 	defer a.destroy()
 	c.Assert(h.url[0], Equals, "/repository")
 	c.Assert(h.method[0], Equals, "POST")
-	expected := fmt.Sprintf(`{"name":"someApp","users":["%s"],"ispublic":false}`, s.user.Email)
+	expected := fmt.Sprintf(`{"name":"someapp","users":["%s"],"ispublic":false}`, s.user.Email)
 	c.Assert(string(h.body[0]), Equals, expected)
 }
 
@@ -502,13 +502,13 @@ func (s *S) TestCreateAppHelperGrantsTeamAccessInGandalf(c *C) {
 	dir, err := commandmocker.Add("juju", "")
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(dir)
-	a := App{Name: "someApp"}
+	a := App{Name: "someapp"}
 	_, err = createAppHelper(&a, s.user)
 	c.Assert(err, IsNil)
 	defer a.destroy()
 	c.Assert(h.url[1], Equals, "/repository/grant")
 	c.Assert(h.method[1], Equals, "POST")
-	expected := fmt.Sprintf(`{"repositories":["someApp"],"users":["%s"]}`, s.user.Email)
+	expected := fmt.Sprintf(`{"repositories":["someapp"],"users":["%s"]}`, s.user.Email)
 	c.Assert(string(h.body[1]), Equals, expected)
 }
 
@@ -520,14 +520,14 @@ func (s *S) TestCreateAppHandler(c *C) {
 	dir, err := commandmocker.Add("juju", "")
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(dir)
-	a := App{Name: "someApp"}
+	a := App{Name: "someapp"}
 	defer func() {
 		err := a.Get()
 		c.Assert(err, IsNil)
 		err = a.destroy()
 		c.Assert(err, IsNil)
 	}()
-	b := strings.NewReader(`{"name":"someApp", "framework":"django"}`)
+	b := strings.NewReader(`{"name":"someapp", "framework":"django"}`)
 	request, err := http.NewRequest("POST", "/apps", b)
 	c.Assert(err, IsNil)
 	request.Header.Set("Content-Type", "application/json")
@@ -546,10 +546,27 @@ func (s *S) TestCreateAppHandler(c *C) {
 	c.Assert(obtained, DeepEquals, expected)
 	c.Assert(recorder.Code, Equals, http.StatusOK)
 	var gotApp App
-	err = db.Session.Apps().Find(bson.M{"name": "someApp"}).One(&gotApp)
+	err = db.Session.Apps().Find(bson.M{"name": "someapp"}).One(&gotApp)
 	c.Assert(err, IsNil)
 	_, found := gotApp.find(&s.team)
 	c.Assert(found, Equals, true)
+}
+
+func (s *S) TestCreateAppReturnsPreconditionFailedIfTheAppNameIsInvalid(c *C) {
+	b := strings.NewReader(`{"name":"123myapp","framework":"django"}`)
+	request, err := http.NewRequest("POST", "/apps", b)
+	c.Assert(err, IsNil)
+	request.Header.Set("Content-Type", "application/json")
+	recorder := httptest.NewRecorder()
+	err = CreateAppHandler(recorder, request, s.user)
+	c.Assert(err, NotNil)
+	e, ok := err.(*errors.Http)
+	c.Assert(ok, Equals, true)
+	c.Assert(e.Code, Equals, http.StatusPreconditionFailed)
+	msg := "Invalid app name, your app should have at most 63 " +
+		"characters, containing only lower case letters, numbers, " +
+		"underscores (_) or dashes (-), starting with letter or underscore."
+	c.Assert(e.Error(), Equals, msg)
 }
 
 func (s *S) TestCreateAppReturns403IfTheUserIsNotMemberOfAnyTeam(c *C) {
@@ -557,7 +574,7 @@ func (s *S) TestCreateAppReturns403IfTheUserIsNotMemberOfAnyTeam(c *C) {
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(dir)
 	u := &auth.User{Email: "thetrees@rush.com", Password: "123"}
-	b := strings.NewReader(`{"name":"someApp", "framework":"django"}`)
+	b := strings.NewReader(`{"name":"someapp", "framework":"django"}`)
 	request, err := http.NewRequest("POST", "/apps", b)
 	c.Assert(err, IsNil)
 	request.Header.Set("Content-Type", "application/json")
