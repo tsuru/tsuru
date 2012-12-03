@@ -124,7 +124,7 @@ func (s *S) TestCreateApp(c *C) {
 	l := stdlog.New(w, "", stdlog.LstdFlags)
 	log.SetLogger(l)
 	a := App{
-		Name:      "appName",
+		Name:      "appname",
 		Framework: "django",
 		Units:     []Unit{{Machine: 3}},
 	}
@@ -142,7 +142,7 @@ func (s *S) TestCreateApp(c *C) {
 	c.Assert(retrievedApp.Framework, Equals, a.Framework)
 	c.Assert(retrievedApp.State, Equals, a.State)
 	str := strings.Replace(w.String(), "\n", "", -1)
-	c.Assert(str, Matches, ".*deploy --repository=/home/charms local:django appName.*")
+	c.Assert(str, Matches, ".*deploy --repository=/home/charms local:django appname.*")
 	env := a.InstanceEnv(s3InstanceName)
 	c.Assert(env["TSURU_S3_ENDPOINT"].Value, Equals, s.s3Server.URL())
 	c.Assert(env["TSURU_S3_ENDPOINT"].Public, Equals, false)
@@ -175,6 +175,21 @@ func (s *S) TestCantCreateTwoAppsWithTheSameName(c *C) {
 	err = createApp(&a)
 	defer a.destroy() // clean mess if test fail
 	c.Assert(err, NotNil)
+}
+
+func (s *S) TestCantCreateAppWithInvalidName(c *C) {
+	a := App{
+		Name:      "1123app",
+		Framework: "ruby",
+	}
+	err := createApp(&a)
+	c.Assert(err, NotNil)
+	e, ok := err.(*ValidationError)
+	c.Assert(ok, Equals, true)
+	msg := "Invalid app name, your app should have at most 63 " +
+		"characters, containing only lower case letters, numbers, " +
+		"underscores (_) or dashes (-), starting with letter or underscore."
+	c.Assert(e.Message, Equals, msg)
 }
 
 func (s *S) TestDoesNotSaveTheAppInTheDatabaseIfJujuFail(c *C) {

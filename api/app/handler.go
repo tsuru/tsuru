@@ -123,8 +123,6 @@ func AppDelete(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	return nil
 }
 
-// TODO: this function could be just a query, e.g
-// db.Session.Teams().Find(bson.M{"users": u.Email}).Select(bson.M{"name": 1}).All(&teams)
 func getTeamNames(u *auth.User) ([]string, error) {
 	var teams []auth.Team
 	if err := db.Session.Teams().Find(bson.M{"users": u.Email}).All(&teams); err != nil {
@@ -181,6 +179,9 @@ func createAppHelper(app *App, u *auth.User) ([]byte, error) {
 	app.setTeams(teams)
 	err = createApp(app)
 	if err != nil {
+		if e, ok := err.(*ValidationError); ok {
+			return nil, &errors.Http{Code: http.StatusPreconditionFailed, Message: e.Message}
+		}
 		if strings.Contains(err.Error(), "key error") {
 			msg := fmt.Sprintf(`There is already an app named "%s".`, app.Name)
 			return nil, &errors.Http{Code: http.StatusConflict, Message: msg}
@@ -218,12 +219,6 @@ func CreateAppHandler(w http.ResponseWriter, r *http.Request, u *auth.User) erro
 	}
 	if err = json.Unmarshal(body, &app); err != nil {
 		return err
-	}
-	if !app.isValid() {
-		msg := "Invalid app name, your app should have at most 63 " +
-			"characters, containing only lower case letters, numbers, " +
-			"underscores (_) or dashes (-), starting with letter or underscore."
-		return &errors.Http{Code: http.StatusPreconditionFailed, Message: msg}
 	}
 	jsonMsg, err := createAppHelper(&app, u)
 	if err != nil {

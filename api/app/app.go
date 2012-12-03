@@ -75,6 +75,12 @@ func (a *App) Get() error {
 //       2. Create S3 credentials and bucket for the app
 //       3. Deploy juju charm
 func createApp(a *App) error {
+	if !a.isValid() {
+		msg := "Invalid app name, your app should have at most 63 " +
+			"characters, containing only lower case letters, numbers, " +
+			"underscores (_) or dashes (-), starting with letter or underscore."
+		return &ValidationError{Message: msg}
+	}
 	a.State = "pending"
 	err := db.Session.Apps().Insert(a)
 	if err != nil {
@@ -430,4 +436,12 @@ func (a *App) log(message string, source string) error {
 		}
 	}
 	return db.Session.Apps().Update(bson.M{"name": a.Name}, a)
+}
+
+type ValidationError struct {
+	Message string
+}
+
+func (err *ValidationError) Error() string {
+	return err.Message
 }
