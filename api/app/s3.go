@@ -175,15 +175,11 @@ func createBucket(app *App) (*s3Env, error) {
 			env.locationConstraint = bucket.S3LocationConstraint
 			env.endpoint = bucket.S3Endpoint
 		case err := <-errChan:
-			switch err.(type) {
-			case *iam.Error:
-				if env.bucket != "" {
-					s.Bucket(env.bucket).DelBucket()
-				}
-			case *s3.Error:
-				if userName != "" {
-					iamEndpoint.DeleteUser(userName)
-				}
+			if env.bucket != "" {
+				s.Bucket(env.bucket).DelBucket()
+			}
+			if userName != "" {
+				iamEndpoint.DeleteUser(userName)
 			}
 			return nil, err
 		}
