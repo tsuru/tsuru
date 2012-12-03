@@ -120,6 +120,7 @@ func deploy(a *App) error {
 	log.Printf("executing %s", outStr)
 	if err != nil {
 		a.log(fmt.Sprintf("juju finished with exit status: %s", err), "tsuru")
+		destroyBucket(a)
 		db.Session.Apps().Remove(bson.M{"name": a.Name})
 		return errors.New(outStr)
 	}
