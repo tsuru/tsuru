@@ -5,16 +5,11 @@
 # license that can be found in the LICENSE file.
 
 import os
-from fabric.api import abort, cd, env, local, put, run, settings
+from fabric.api import abort, cd, env, local, put, run
 
 current_dir = os.path.abspath(os.path.dirname(__file__))
 env.user = 'ubuntu'
 env.tsuru_path = '/home/%s/tsuru' % env.user
-
-
-def stop():
-    with settings(warn_only=True):
-        run('killall -KILL webserver collector')
 
 
 def build():
@@ -39,7 +34,7 @@ def send():
     put(os.path.join(current_dir, "dist.tar.gz"), env.tsuru_path)
 
 
-def start():
+def restart():
     with cd(env.tsuru_path):
         run("tar -xzf dist.tar.gz")
     run("circusctl restart web")
@@ -49,6 +44,5 @@ def start():
 def deploy():
     build()
     send()
-    stop()
-    start()
+    restart()
     clean()
