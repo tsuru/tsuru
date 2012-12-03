@@ -157,8 +157,8 @@ func createBucket(app *App) (*s3Env, error) {
 	var env s3Env
 	appName := strings.ToLower(app.Name)
 	errChan := make(chan error)
-	bChan := make(chan s3.Bucket)
-	kChan := make(chan iam.AccessKey)
+	bChan := make(chan s3.Bucket, 1)
+	kChan := make(chan iam.AccessKey, 1)
 	s := getS3Endpoint()
 	go putBucket(appName, bChan, errChan)
 	go createIAMCredentials(appName, kChan, errChan)
