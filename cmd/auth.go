@@ -34,7 +34,7 @@ func (c *userCreate) Run(context *Context, client Doer) error {
 	if err != nil {
 		return err
 	}
-	fmt.Fprint(context.Stdout, "Confirm: ")
+	fmt.Fprint(context.Stdout, "\nConfirm: ")
 	confirm, err := passwordFromReader(context.Stdin)
 	if err != nil {
 		return err
@@ -51,7 +51,7 @@ func (c *userCreate) Run(context *Context, client Doer) error {
 	if err != nil {
 		return err
 	}
-	fmt.Fprintf(context.Stdout, `User "%s" successfully created!`+"\n", email)
+	fmt.Fprintf(context.Stdout, "\n"+`User "%s" successfully created!`+"\n", email)
 	return nil
 }
 
@@ -114,7 +114,7 @@ func (c *login) Run(context *Context, client Doer) error {
 	if err != nil {
 		return err
 	}
-	fmt.Fprintln(context.Stdout, "Successfully logged in!")
+	fmt.Fprintln(context.Stdout, "\nSuccessfully logged in!")
 	return writeToken(out["token"])
 }
 

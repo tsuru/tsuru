@@ -20,7 +20,7 @@ func (s *S) TestLogin(c *C) {
 	defer func() {
 		fsystem = nil
 	}()
-	expected := "Password: Successfully logged in!\n"
+	expected := "Password: \nSuccessfully logged in!\n"
 	reader := strings.NewReader("chico\n")
 	context := Context{[]string{"foo@foo.com"}, manager.stdout, manager.stderr, reader}
 	client := NewClient(&http.Client{Transport: &transport{msg: `{"token": "sometoken"}`, status: http.StatusOK}}, nil, manager)
@@ -38,7 +38,7 @@ func (s *S) TestLoginShouldNotDependOnTsuruTokenFile(c *C) {
 	defer func() {
 		fsystem = nil
 	}()
-	expected := "Password: Successfully logged in!\n"
+	expected := "Password: \nSuccessfully logged in!\n"
 	reader := strings.NewReader("chico\n")
 	context := Context{[]string{"foo@foo.com"}, manager.stdout, manager.stderr, reader}
 	client := NewClient(&http.Client{Transport: &transport{msg: `{"token":"anothertoken"}`, status: http.StatusOK}}, nil, manager)
@@ -273,7 +273,7 @@ func (s *S) TestUserCreateShouldNotDependOnTsuruTokenFile(c *C) {
 	defer func() {
 		fsystem = nil
 	}()
-	expected := `Password: Confirm: User "foo@foo.com" successfully created!` + "\n"
+	expected := "Password: \nConfirm: \n" + `User "foo@foo.com" successfully created!` + "\n"
 	reader := strings.NewReader("foo123\nfoo123\n")
 	context := Context{[]string{"foo@foo.com"}, manager.stdout, manager.stderr, reader}
 	client := NewClient(&http.Client{Transport: &transport{msg: "", status: http.StatusCreated}}, nil, manager)
@@ -294,7 +294,7 @@ func (s *S) TestUserCreateReturnErrorIfPasswordsDontMatch(c *C) {
 }
 
 func (s *S) TestUserCreate(c *C) {
-	expected := `Password: Confirm: User "foo@foo.com" successfully created!` + "\n"
+	expected := "Password: \nConfirm: \n" + `User "foo@foo.com" successfully created!` + "\n"
 	context := Context{[]string{"foo@foo.com"}, manager.stdout, manager.stderr, strings.NewReader("foo123\nfoo123\n")}
 	client := NewClient(&http.Client{Transport: &transport{msg: "", status: http.StatusCreated}}, nil, manager)
 	command := userCreate{}
