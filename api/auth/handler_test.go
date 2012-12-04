@@ -655,29 +655,6 @@ func (s *S) TestRemoveUserFromTeamShouldReturnForbiddenIfTheUserIsTheLastInTheTe
 	c.Assert(e, ErrorMatches, "^You can not remove this user from this team, because it is the last user within the team, and a team can not be orphaned$")
 }
 
-func (s *S) TestRemoveUserFromTeamRevokesAccessFromGandalf(c *C) {
-	h := testHandler{}
-	ts := httptest.NewServer(&h)
-	defer ts.Close()
-	config.Set("git:server", ts.URL)
-	u := &User{Email: "pomar@nando-reis.com", Password: "123456"}
-	err := u.Create()
-	c.Assert(err, IsNil)
-	defer db.Session.Users().Remove(bson.M{"email": u.Email})
-	err = addKeyToUser("my-key", u)
-	c.Assert(err, IsNil)
-	err = u.Get()
-	c.Assert(err, IsNil)
-	err = addUserToTeam("pomar@nando-reis.com", s.team.Name, s.user)
-	c.Assert(err, IsNil)
-	err = removeUserFromTeam("pomar@nando-reis.com", s.team.Name, s.user)
-	c.Assert(err, IsNil)
-	c.Assert(h.url[2], Equals, fmt.Sprintf("/repository/revoke"))
-	c.Assert(h.method[2], Equals, "DELETE")
-	expected := `{"repositories":[],"users":["pomar@nando-reis.com"]}`
-	c.Assert(string(h.body[2]), Equals, expected)
-}
-
 func (s *S) TestRemoveUserFromTeamRevokesAccessInGandalf(c *C) {
 	h := testHandler{}
 	ts := httptest.NewServer(&h)
@@ -693,11 +670,18 @@ func (s *S) TestRemoveUserFromTeamRevokesAccessInGandalf(c *C) {
 	c.Assert(err, IsNil)
 	err = addUserToTeam("pomar@nando-reis.com", s.team.Name, s.user)
 	c.Assert(err, IsNil)
+	a := struct {
+		Name  string
+		Teams []string
+	}{Name: "myApp", Teams: []string{s.team.Name}}
+	err = db.Session.Apps().Insert(a)
+	c.Assert(err, IsNil)
+	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
 	err = removeUserFromTeam("pomar@nando-reis.com", s.team.Name, s.user)
 	c.Assert(err, IsNil)
 	c.Assert(h.url[2], Equals, "/repository/revoke")
 	c.Assert(h.method[2], Equals, "DELETE")
-	expected := `{"repositories":[],"users":["pomar@nando-reis.com"]}`
+	expected := `{"repositories":["myApp"],"users":["pomar@nando-reis.com"]}`
 	c.Assert(string(h.body[2]), Equals, expected)
 }
 
@@ -947,6 +931,10 @@ func (s *S) TestRemoveUser(c *C) {
 }
 
 func (s *S) TestRemoveUserWithTheUserBeingLastMemberOfATeam(c *C) {
+	h := testHandler{}
+	ts := httptest.NewServer(&h)
+	defer ts.Close()
+	config.Set("git:server", ts.URL)
 	u := User{Email: "of-two-beginnings@painofsalvation.com"}
 	err := u.Create()
 	c.Assert(err, IsNil)
@@ -991,4 +979,35 @@ func (s *S) TestRemoveUserShouldRemoveTheUserFromAllTeamsThatHeIsMember(c *C) {
 	c.Assert(err, IsNil)
 	c.Assert(t.Users, HasLen, 1)
 	c.Assert(t.Users[0], Equals, s.user.Email)
+}
+
+func (s *S) TestRemoveUserRevokesAccessInGandalf(c *C) {
+	h := testHandler{}
+	ts := httptest.NewServer(&h)
+	defer ts.Close()
+	config.Set("git:server", ts.URL)
+	u := User{Email: "of-two-beginnings@painofsalvation.com"}
+	err := u.Create()
+	c.Assert(err, IsNil)
+	defer db.Session.Users().Remove(bson.M{"email": u.Email})
+	t := Team{Name: "painofsalvation", Users: []string{u.Email, s.user.Email}}
+	err = db.Session.Teams().Insert(t)
+	c.Assert(err, IsNil)
+	defer db.Session.Teams().Remove(bson.M{"_id": t.Name})
+	a := struct {
+		Name  string
+		Teams []string
+	}{Name: "myApp", Teams: []string{t.Name}}
+	err = db.Session.Apps().Insert(a)
+	c.Assert(err, IsNil)
+	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
+	request, err := http.NewRequest("DELETE", "/users", nil)
+	c.Assert(err, IsNil)
+	recorder := httptest.NewRecorder()
+	err = RemoveUser(recorder, request, &u)
+	c.Assert(err, IsNil)
+	c.Assert(h.url[0], Equals, "/repository/revoke")
+	c.Assert(h.method[0], Equals, "DELETE")
+	expected := `{"repositories":["myApp"],"users":["of-two-beginnings@painofsalvation.com"]}`
+	c.Assert(string(h.body[0]), Equals, expected)
 }
