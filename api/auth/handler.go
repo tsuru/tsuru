@@ -278,10 +278,10 @@ func addKeyToUser(content string, u *User) error {
 	if err != nil {
 		return &errors.Http{Code: http.StatusInternalServerError, Message: "Git server not found at tsuru.conf"}
 	}
+	u.addKey(key)
 	if err := (&gandalf.Client{Endpoint: gUrl}).AddKey(u.Email, keyToMap(u.Keys)); err != nil {
 		return err
 	}
-	u.addKey(key)
 	return db.Session.Users().Update(bson.M{"email": u.Email}, u)
 }
 

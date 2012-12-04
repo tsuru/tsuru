@@ -804,6 +804,8 @@ func (s *S) TestAddKeyAddKeyToUserInGandalf(c *C) {
 	expectedUrl := fmt.Sprintf("/user/%s/key", u.Email)
 	c.Assert(h.url[0], Equals, expectedUrl)
 	c.Assert(h.method[0], Equals, "POST")
+	expected := fmt.Sprintf(`{"%s-1":"my-key"}`, u.Email)
+	c.Assert(string(h.body[0]), Equals, expected)
 }
 
 func (s *S) TestRemoveKeyHandlerRemovesTheKeyFromTheUser(c *C) {
