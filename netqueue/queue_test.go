@@ -20,8 +20,26 @@ type S struct{}
 
 var _ = Suite(&S{})
 
+// SafeBuffer is a thread safe buffer.
+type SafeBuffer struct {
+	buf bytes.Buffer
+	mut sync.Mutex
+}
+
+func (sb *SafeBuffer) Read(p []byte) (int, error) {
+	sb.mut.Lock()
+	defer sb.mut.Unlock()
+	return sb.buf.Read(p)
+}
+
+func (sb *SafeBuffer) Write(p []byte) (int, error) {
+	sb.mut.Lock()
+	defer sb.mut.Unlock()
+	return sb.buf.Write(p)
+}
+
 func (s *S) TestChannelFromWriter(c *C) {
-	var buf bytes.Buffer
+	var buf SafeBuffer
 	message := Message{
 		Action: "delete",
 		Args:   []string{"everything"},
@@ -42,7 +60,7 @@ func (s *S) TestChannelFromWriter(c *C) {
 }
 
 func (s *S) TestClosesErrChanIfClientCloseMessageChannel(c *C) {
-	var buf bytes.Buffer
+	var buf SafeBuffer
 	ch, errCh := ChannelFromWriter(&buf)
 	close(ch)
 	_, ok := <-errCh
@@ -50,7 +68,7 @@ func (s *S) TestClosesErrChanIfClientCloseMessageChannel(c *C) {
 }
 
 func (s *S) TestChannelFromReader(c *C) {
-	var buf bytes.Buffer
+	var buf SafeBuffer
 	messages := []Message{
 		{Action: "delete", Args: []string{"everything"}},
 		{Action: "rename", Args: []string{"old", "new"}},
