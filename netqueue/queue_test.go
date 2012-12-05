@@ -23,18 +23,18 @@ var _ = Suite(&S{})
 // SafeBuffer is a thread safe buffer.
 type SafeBuffer struct {
 	buf bytes.Buffer
-	mut sync.Mutex
+	sync.Mutex
 }
 
 func (sb *SafeBuffer) Read(p []byte) (int, error) {
-	sb.mut.Lock()
-	defer sb.mut.Unlock()
+	sb.Lock()
+	defer sb.Unlock()
 	return sb.buf.Read(p)
 }
 
 func (sb *SafeBuffer) Write(p []byte) (int, error) {
-	sb.mut.Lock()
-	defer sb.mut.Unlock()
+	sb.Lock()
+	defer sb.Unlock()
 	return sb.buf.Write(p)
 }
 
