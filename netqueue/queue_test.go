@@ -11,6 +11,7 @@ import (
 	"net"
 	"sync"
 	"testing"
+	"time"
 )
 
 func Test(t *testing.T) {
@@ -117,4 +118,27 @@ func (s *S) TestStartServerAndReadMessage(c *C) {
 	gotMessage, err := server.Message(2e9)
 	c.Assert(err, IsNil)
 	c.Assert(gotMessage, DeepEquals, message)
+}
+
+func (s *S) TestMessageNegativeTimeout(c *C) {
+	server := QueueServer{
+		messages: make(chan Message, 1),
+		errors:   make(chan error, 1),
+	}
+	var (
+		got, want Message
+		err       error
+		wg        sync.WaitGroup
+	)
+	want = Message{Action: "create"}
+	wg.Add(1)
+	go func() {
+		got, err = server.Message(-1)
+		wg.Done()
+	}()
+	time.Sleep(1e6)
+	server.messages <- want
+	wg.Wait()
+	c.Assert(err, IsNil)
+	c.Assert(got, DeepEquals, want)
 }
