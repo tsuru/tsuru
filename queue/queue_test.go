@@ -46,14 +46,9 @@ func (s *S) TestChannelFromWriter(c *C) {
 		Action: "delete",
 		Args:   []string{"everything"},
 	}
-	var wg sync.WaitGroup
-	wg.Add(1)
 	ch, _ := ChannelFromWriter(&buf)
-	go func() {
-		ch <- message
-		wg.Done()
-	}()
-	wg.Wait()
+	ch <- message
+	time.Sleep(1e6)
 	var decodedMessage Message
 	decoder := gob.NewDecoder(&buf)
 	err := decoder.Decode(&decodedMessage)
