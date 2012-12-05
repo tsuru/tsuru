@@ -119,9 +119,9 @@ func read(r io.Reader, ch chan<- Message, errCh chan<- error) {
 	close(errCh)
 }
 
-// QueueServer is the server that hosts the queue. It receives messages and
+// Server is the server that hosts the queue. It receives messages and
 // process them.
-type QueueServer struct {
+type Server struct {
 	listener net.Listener
 	messages chan Message
 	errors   chan error
@@ -131,9 +131,9 @@ type QueueServer struct {
 //
 // The address must be a TCP address, in the format host:port (for example,
 // [::1]:8080 or 192.168.254.10:2020).
-func StartServer(laddr string) (*QueueServer, error) {
+func StartServer(laddr string) (*Server, error) {
 	var (
-		server QueueServer
+		server Server
 		err    error
 	)
 	server.listener, err = net.Listen("tcp", laddr)
@@ -148,7 +148,7 @@ func StartServer(laddr string) (*QueueServer, error) {
 
 // loop accepts connection forever, and uses read to read messages from it,
 // decoding them to a channel of messages.
-func (qs *QueueServer) loop() {
+func (qs *Server) loop() {
 	for {
 		conn, err := qs.listener.Accept()
 		if err != nil {
@@ -165,7 +165,7 @@ func (qs *QueueServer) loop() {
 // fails to read the message, or times out while waiting for the message.
 //
 // If timeout is negative, this method will wait forever for the message.
-func (qs *QueueServer) Message(timeout time.Duration) (Message, error) {
+func (qs *Server) Message(timeout time.Duration) (Message, error) {
 	var (
 		msg Message
 		err error
@@ -183,11 +183,11 @@ func (qs *QueueServer) Message(timeout time.Duration) (Message, error) {
 }
 
 // Addr returns the address of the server.
-func (qs *QueueServer) Addr() string {
+func (qs *Server) Addr() string {
 	return qs.listener.Addr().String()
 }
 
 // Close closes the server listener.
-func (qs *QueueServer) Close() error {
+func (qs *Server) Close() error {
 	return qs.listener.Close()
 }

@@ -120,9 +120,9 @@ func (s *S) TestReadSendErrorsInTheErrorChannel(c *C) {
 	c.Assert(err.Error(), Equals, "Closed connection.")
 }
 
-func (s *S) TestQueueServerAddr(c *C) {
+func (s *S) TestServerAddr(c *C) {
 	listener := NewFakeListener("0.0.0.0:8000")
-	server := QueueServer{listener: listener}
+	server := Server{listener: listener}
 	c.Assert(server.Addr(), Equals, listener.Addr().String())
 }
 
@@ -146,7 +146,7 @@ func (s *S) TestStartServerAndReadMessage(c *C) {
 }
 
 func (s *S) TestMessageNegativeTimeout(c *C) {
-	server := QueueServer{
+	server := Server{
 		messages: make(chan Message, 1),
 		errors:   make(chan error, 1),
 	}
