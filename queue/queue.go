@@ -2,12 +2,12 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-// Package netqueue implements a queue based on channels and networking.
+// Package queue implements a queue based on channels and networking.
 //
 // It is based on concepts from old/netchan and a lot of discussion about this
 // theme on the internet. The implementation present here is specific to tsuru,
 // but could be more generic.
-package netqueue
+package queue
 
 import (
 	"encoding/gob"
