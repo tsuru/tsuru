@@ -14,7 +14,8 @@ import (
 	"io"
 )
 
-// The size of buffered channels created by ChannelFromWriter.
+// The size of buffered channels created by ChannelFromReader and
+// ChannelFromWriter.
 const ChanSize = 32
 
 // Message represents the message stored in the queue.
