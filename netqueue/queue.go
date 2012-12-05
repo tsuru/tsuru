@@ -111,10 +111,8 @@ func read(r io.Reader, ch chan<- Message, errCh chan<- error) {
 		var msg Message
 		if err = decoder.Decode(&msg); err == nil {
 			ch <- msg
-		} else {
-			if err != io.EOF {
-				errCh <- err
-			}
+		} else if err != io.EOF {
+			errCh <- err
 		}
 	}
 	close(ch)
