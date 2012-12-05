@@ -8,6 +8,7 @@ import (
 	"bytes"
 	"encoding/gob"
 	. "launchpad.net/gocheck"
+	"net"
 	"sync"
 	"testing"
 )
@@ -91,4 +92,29 @@ func (s *S) TestChannelFromReader(c *C) {
 	c.Assert(ok, Equals, false)
 	_, ok = <-errCh
 	c.Assert(ok, Equals, false)
+}
+
+func (s *S) TestQueueServerAddr(c *C) {
+	listener := NewFakeListener("0.0.0.0:8000")
+	server := QueueServer{listener: listener}
+	c.Assert(server.Addr(), Equals, listener.Addr().String())
+}
+
+func (s *S) TestStartServerAndReadMessage(c *C) {
+	message := Message{
+		Action: "delete",
+		Args:   []string{"something"},
+	}
+	server, err := StartServer("127.0.0.1:0")
+	c.Assert(err, IsNil)
+	defer server.Close()
+	conn, err := net.Dial("tcp", server.Addr())
+	c.Assert(err, IsNil)
+	defer conn.Close()
+	encoder := gob.NewEncoder(conn)
+	err = encoder.Encode(message)
+	c.Assert(err, IsNil)
+	gotMessage, err := server.Message(2e9)
+	c.Assert(err, IsNil)
+	c.Assert(gotMessage, DeepEquals, message)
 }
