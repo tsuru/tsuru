@@ -69,6 +69,20 @@ func (s *S) TestClosesErrChanIfClientCloseMessageChannel(c *C) {
 	c.Assert(ok, Equals, false)
 }
 
+func (s *S) TestWriteSendErrorsInTheErrorChannel(c *C) {
+	messages := make(chan Message, 1)
+	errCh := make(chan error, 1)
+	conn := NewFakeConn("127.0.0.1:2345", "127.0.0.1:12345")
+	conn.Close()
+	go write(conn, messages, errCh)
+	messages <- Message{}
+	close(messages)
+	err, ok := <-errCh
+	c.Assert(ok, Equals, true)
+	c.Assert(err, NotNil)
+	c.Assert(err.Error(), Equals, "Closed connection.")
+}
+
 func (s *S) TestChannelFromReader(c *C) {
 	var buf SafeBuffer
 	messages := []Message{
