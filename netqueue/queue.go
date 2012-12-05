@@ -71,3 +71,48 @@ func write(w io.Writer, ch <-chan Message, errCh chan<- error) {
 		}
 	}
 }
+
+// ChannelFromReader returns a channel from a given io.Reader.
+//
+// Every time a chunk of gobs is read from r, it will be decoded to a Message
+// and sent to the message channel. ChannelFromReader also returns another
+// channel for errors in reading. You can use a select for reading messages or
+// errors:
+//
+//     ch, errCh := ChannelFromReader(r)
+//     select {
+//     case msg := <-ch:
+//         // Do something with msg
+//     case err := <-errCh:
+//         // Threat the error
+//     }
+//
+// If the reading or decoding fail for any reason, the error will be sent to
+// the error channels and both channels will be closed.
+func ChannelFromReader(r io.Reader) (<-chan Message, <-chan error) {
+	msgCh := make(chan Message, ChanSize)
+	errCh := make(chan error, ChanSize)
+	go read(r, msgCh, errCh)
+	return msgCh, errCh
+}
+
+// read reads bytes from r, decode these bytes as Message's and send each
+// message to ch.
+//
+// Any error on reading will be sen to errCh (except io.EOF).
+func read(r io.Reader, ch chan<- Message, errCh chan<- error) {
+	var err error
+	decoder := gob.NewDecoder(r)
+	for err == nil {
+		var msg Message
+		if err = decoder.Decode(&msg); err == nil {
+			ch <- msg
+		} else {
+			if err != io.EOF {
+				errCh <- err
+			}
+		}
+	}
+	close(ch)
+	close(errCh)
+}
