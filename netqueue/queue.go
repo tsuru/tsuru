@@ -137,11 +137,11 @@ func StartServer(laddr string) (*Server, error) {
 		err    error
 	)
 	server.listener, err = net.Listen("tcp", laddr)
-	server.messages = make(chan Message, ChanSize)
-	server.errors = make(chan error, ChanSize)
 	if err != nil {
 		return nil, errors.New("Could not start server: " + err.Error())
 	}
+	server.messages = make(chan Message, ChanSize)
+	server.errors = make(chan error, ChanSize)
 	go server.loop()
 	return &server, nil
 }
