@@ -33,7 +33,7 @@ type Message struct {
 	Args   []string
 }
 
-// ChannelFromWriter returns a channel from a given io.Writer.
+// ChannelFromWriter returns a channel from a given io.WriteCloser.
 //
 // Every time a Message is sent to the channel, it gets written to the writer
 // in gob format.  ChannelFromWriter also returns a channel for errors in
@@ -52,11 +52,11 @@ type Message struct {
 // ignore errors, if they are not significant for you.
 //
 // Whenever you close the message channel (and you should, to make it clear
-// that you will not send any messages to the channel anymore), error channel
-// will get automatically closed.
+// that you will not send any messages to the channel anymore), the error
+// channel will get automatically closed, so the WriteCloser.
 //
 // Both channels are buffered by ChanSize.
-func ChannelFromWriter(w io.Writer) (chan<- Message, <-chan error) {
+func ChannelFromWriter(w io.WriteCloser) (chan<- Message, <-chan error) {
 	msgChan := make(chan Message, ChanSize)
 	errChan := make(chan error, ChanSize)
 	go write(w, msgChan, errChan)
@@ -66,8 +66,9 @@ func ChannelFromWriter(w io.Writer) (chan<- Message, <-chan error) {
 // write reads messages from ch and write them to w, in gob format.
 //
 // If clients close ch, write will close errCh.
-func write(w io.Writer, ch <-chan Message, errCh chan<- error) {
+func write(w io.WriteCloser, ch <-chan Message, errCh chan<- error) {
 	defer close(errCh)
+	defer w.Close()
 	for msg := range ch {
 		encoder := gob.NewEncoder(w)
 		if err := encoder.Encode(msg); err != nil {
@@ -198,6 +199,9 @@ func (qs *Server) Close() error {
 // channel where the client will get errors from the server during writing of
 // messages and an error, that will be non-nil in case of failure to connect to
 // the queue server.
+//
+// Whenever the message channel gets closed, the connection with the remote
+// server will be closed.
 func Dial(addr string) (chan<- Message, <-chan error, error) {
 	conn, err := net.Dial("tcp", addr)
 	if err != nil {

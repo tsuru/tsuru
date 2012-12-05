@@ -10,6 +10,7 @@ import (
 	. "launchpad.net/gocheck"
 	"net"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 )
@@ -24,7 +25,8 @@ var _ = Suite(&S{})
 
 // SafeBuffer is a thread safe buffer.
 type SafeBuffer struct {
-	buf bytes.Buffer
+	closed int32
+	buf    bytes.Buffer
 	sync.Mutex
 }
 
@@ -38,6 +40,11 @@ func (sb *SafeBuffer) Write(p []byte) (int, error) {
 	sb.Lock()
 	defer sb.Unlock()
 	return sb.buf.Write(p)
+}
+
+func (sb *SafeBuffer) Close() error {
+	atomic.StoreInt32(&sb.closed, 1)
+	return nil
 }
 
 func (s *S) TestChannelFromWriter(c *C) {
@@ -56,12 +63,20 @@ func (s *S) TestChannelFromWriter(c *C) {
 	c.Assert(decodedMessage, DeepEquals, message)
 }
 
-func (s *S) TestClosesErrChanIfClientCloseMessageChannel(c *C) {
+func (s *S) TestClosesErrChanWhenClientCloseMessageChannel(c *C) {
 	var buf SafeBuffer
 	ch, errCh := ChannelFromWriter(&buf)
 	close(ch)
 	_, ok := <-errCh
 	c.Assert(ok, Equals, false)
+}
+
+func (s *S) TestClosesWriteCloserWhenClientClosesMessageChannel(c *C) {
+	var buf SafeBuffer
+	ch, _ := ChannelFromWriter(&buf)
+	close(ch)
+	time.Sleep(1e6)
+	c.Assert(atomic.LoadInt32(&buf.closed), Equals, int32(1))
 }
 
 func (s *S) TestWriteSendErrorsInTheErrorChannel(c *C) {
