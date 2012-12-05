@@ -10,7 +10,6 @@ import (
 	"github.com/globocom/config"
 	"github.com/globocom/tsuru/log"
 	"io"
-	"strings"
 )
 
 // Unit interface represents a unit of execution.
@@ -66,7 +65,7 @@ func CloneOrPull(u Unit) ([]byte, error) {
 
 // getGitServer returns the git server defined in the tsuru.conf file.
 //
-// If it is not defined, this function panics.
+// If git:server configuration is not defined, this function panics.
 func getGitServer() string {
 	gitServer, err := config.GetString("git:server")
 	if err != nil {
@@ -75,16 +74,38 @@ func getGitServer() string {
 	return gitServer
 }
 
+// gitServerUri joins the protocol, server and port together and returns.
+//
+// This functions makes uses of three configurations:
+//   - git:server
+//   - git:protocol
+//   - git:port (optional)
+//
+// If some of the required configuration is not found, this function panics.
+func gitServerUri() string {
+	server, err := config.GetString("git:server")
+	if err != nil {
+		panic(err)
+	}
+	protocol, err := config.GetString("git:protocol")
+	if err != nil {
+		panic(err)
+	}
+	uri := fmt.Sprintf("%s://%s", protocol, server)
+	if port, err := config.Get("git:port"); err == nil {
+		uri = fmt.Sprintf("%s:%d", uri, port)
+	}
+	return uri
+}
+
 // GetUrl returns the ssh clone-url from an app.
 func GetUrl(app string) string {
-	s := strings.Replace(getGitServer(), "http://", "", -1) // https?
-	return fmt.Sprintf("git@%s:%s.git", s, app)
+	return fmt.Sprintf("git@%s:%s.git", getGitServer(), app)
 }
 
 // GetReadOnlyUrl returns the ssh url for communication with git-daemon.
 func GetReadOnlyUrl(app string) string {
-	s := strings.Replace(getGitServer(), "http://", "", -1) // https?
-	return fmt.Sprintf("git://%s/%s.git", s, app)
+	return fmt.Sprintf("git://%s/%s.git", getGitServer(), app)
 }
 
 // GetPath returns the path to the repository where the app code is in its

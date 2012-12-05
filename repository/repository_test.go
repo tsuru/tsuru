@@ -7,6 +7,7 @@ package repository
 import (
 	"errors"
 	"fmt"
+	"github.com/globocom/config"
 	"io"
 	. "launchpad.net/gocheck"
 	"strings"
@@ -100,4 +101,32 @@ func (s *S) TestGetPath(c *C) {
 	c.Assert(err, IsNil)
 	expected := "/home/application/current"
 	c.Assert(path, Equals, expected)
+}
+
+func (s *S) TestGetGitServer(c *C) {
+	gitServer, err := config.GetString("git:server")
+	c.Assert(err, IsNil)
+	defer config.Set("git:server", gitServer)
+	config.Set("git:server", "gandalf-host.com")
+	uri := getGitServer()
+	c.Assert(uri, Equals, "gandalf-host.com")
+}
+
+func (s *S) TestGetServerUri(c *C) {
+	server, err := config.GetString("git:server")
+	c.Assert(err, IsNil)
+	protocol, err := config.GetString("git:protocol")
+	port, err := config.Get("git:port")
+	uri := gitServerUri()
+	c.Assert(uri, Equals, fmt.Sprintf("%s://%s:%d", protocol, server, port))
+}
+
+func (s *S) TestGetServerUriWithoutPort(c *C) {
+	config.Unset("git:port")
+	defer config.Set("git:port", 8080)
+	server, err := config.GetString("git:server")
+	c.Assert(err, IsNil)
+	protocol, err := config.GetString("git:protocol")
+	uri := gitServerUri()
+	c.Assert(uri, Equals, fmt.Sprintf("%s://%s", protocol, server))
 }
