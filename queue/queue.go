@@ -191,3 +191,18 @@ func (qs *Server) Addr() string {
 func (qs *Server) Close() error {
 	return qs.listener.Close()
 }
+
+// Dial is used to connect to a queue server.
+//
+// It returns three values: the channel to which messages should be sent, the
+// channel where the client will get errors from the server during writing of
+// messages and an error, that will be non-nil in case of failure to connect to
+// the queue server.
+func Dial(addr string) (chan<- Message, <-chan error, error) {
+	conn, err := net.Dial("tcp", addr)
+	if err != nil {
+		return nil, nil, errors.New("Could not dial to " + addr + ": " + err.Error())
+	}
+	messages, errors := ChannelFromWriter(conn)
+	return messages, errors, nil
+}

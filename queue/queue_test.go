@@ -162,3 +162,33 @@ func (s *S) TestMessageNegativeTimeout(c *C) {
 	c.Assert(err, IsNil)
 	c.Assert(got, DeepEquals, want)
 }
+
+func (s *S) TestDial(c *C) {
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	c.Assert(err, IsNil)
+	defer listener.Close()
+	received := make(chan Message, 1)
+	go func() {
+		for {
+			conn, err := listener.Accept()
+			if err != nil {
+				return
+			}
+			decoder := gob.NewDecoder(conn)
+			var message Message
+			if err = decoder.Decode(&message); err != nil {
+				panic(err)
+			}
+			received <- message
+		}
+	}()
+	sent := Message{
+		Action: "delete",
+		Args:   []string{"everything"},
+	}
+	messages, _, err := Dial(listener.Addr().String())
+	c.Assert(err, IsNil)
+	messages <- sent
+	got := <-received
+	c.Assert(got, DeepEquals, sent)
+}
