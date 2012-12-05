@@ -13,10 +13,9 @@ import (
 
 // Fake implementation of net.Conn.
 type FakeConn struct {
-	buf    *SafeBuffer
-	closed int32
-	laddr  net.Addr
-	raddr  net.Addr
+	buf   *SafeBuffer
+	laddr net.Addr
+	raddr net.Addr
 }
 
 func NewFakeConn(laddr, raddr string) *FakeConn {
@@ -35,27 +34,29 @@ func NewFakeConn(laddr, raddr string) *FakeConn {
 	}
 }
 
+func (conn *FakeConn) closed() bool {
+	return atomic.LoadInt32(&conn.buf.closed) == 1
+}
+
 func (conn *FakeConn) Read(b []byte) (int, error) {
-	if atomic.LoadInt32(&conn.closed) == 1 {
+	if conn.closed() {
 		return 0, errors.New("Closed connection.")
 	}
 	return conn.buf.Read(b)
 }
 
 func (conn *FakeConn) Write(b []byte) (int, error) {
-	if atomic.LoadInt32(&conn.closed) == 1 {
+	if conn.closed() {
 		return 0, errors.New("Closed connection.")
 	}
 	return conn.buf.Write(b)
 }
 
 func (conn *FakeConn) Close() error {
-	if atomic.LoadInt32(&conn.closed) == 1 {
+	if conn.closed() {
 		return errors.New("Connection already closed.")
 	}
-	conn.buf.Lock()
-	defer conn.buf.Unlock()
-	atomic.StoreInt32(&conn.closed, 1)
+	conn.buf.Close()
 	return nil
 }
 
