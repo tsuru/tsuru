@@ -31,9 +31,9 @@ type Message struct {
 
 // ChannelFromWriter returns a channel from a given io.Writer.
 //
-// Every time a Message is sent to the channel, it gets written to the writer.
-// ChannelFromWriter also returns a channel for errors in writtings. You can
-// use a select for error checking:
+// Every time a Message is sent to the channel, it gets written to the writer
+// in gob format.  ChannelFromWriter also returns a channel for errors in
+// writtings. You can use a select for error checking:
 //
 //     ch, errCh := ChannelFromWriter(w)
 //     // use ch
