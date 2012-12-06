@@ -94,13 +94,14 @@ func (s *S) TestWriteSendErrorsInTheErrorChannel(c *C) {
 	c.Assert(err.Error(), Equals, "Closed connection.")
 }
 
-func (s *S) TestReadSendErrorsInTheErrorChannel(c *C) {
-	messages := make(chan Message, 1)
-	errChan := make(chan error, 1)
-	conn := NewFakeConn("127.0.0.1:5055", "127.0.0.1:8080")
+func (s *S) TestHandleSendErrorsInTheErrorsChannel(c *C) {
+	conn := NewFakeConn("127.0.0.1:8000", "127.0.0.1:4000")
+	server := Server{
+		errors: make(chan error, 1),
+	}
 	conn.Close()
-	go read(conn, messages, errChan)
-	err := <-errChan
+	go server.handle(conn)
+	err := <-server.errors
 	c.Assert(err, NotNil)
 	c.Assert(err.Error(), Equals, "Closed connection.")
 }

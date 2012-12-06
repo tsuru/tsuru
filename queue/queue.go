@@ -9,7 +9,6 @@ import (
 	"errors"
 	"io"
 	"net"
-	"sync"
 	"sync/atomic"
 	"time"
 )
@@ -73,23 +72,6 @@ func write(w io.WriteCloser, ch <-chan Message, errCh chan<- error) {
 	}
 }
 
-// read reads bytes from r, decode these bytes as Message's and send each
-// message to ch.
-//
-// Any error on reading will be sen to errCh (except io.EOF).
-func read(r io.Reader, ch chan<- Message, errCh chan<- error) {
-	var err error
-	decoder := gob.NewDecoder(r)
-	for err == nil {
-		var msg Message
-		if err = decoder.Decode(&msg); err == nil {
-			ch <- msg
-		} else {
-			errCh <- err
-		}
-	}
-}
-
 // Server is the server that hosts the queue. It receives messages and
 // process them.
 type Server struct {
@@ -97,7 +79,6 @@ type Server struct {
 	messages chan Message
 	errors   chan error
 	closed   int32
-	wg       sync.WaitGroup
 }
 
 // StartServer starts a new queue server from a local address.
@@ -119,6 +100,20 @@ func StartServer(laddr string) (*Server, error) {
 	return &server, nil
 }
 
+// handle handles a new client, sending errors to the qs.errors channel.
+func (qs *Server) handle(conn net.Conn) {
+	var err error
+	decoder := gob.NewDecoder(conn)
+	for err == nil {
+		var msg Message
+		if err = decoder.Decode(&msg); err == nil {
+			qs.messages <- msg
+		} else if atomic.LoadInt32(&qs.closed) == 0 {
+			qs.errors <- err
+		}
+	}
+}
+
 // loop accepts connection forever, and uses read to read messages from it,
 // decoding them to a channel of messages.
 func (qs *Server) loop() {
@@ -130,11 +125,7 @@ func (qs *Server) loop() {
 			}
 			continue
 		}
-		qs.wg.Add(1)
-		go func() {
-			read(conn, qs.messages, qs.errors)
-			qs.wg.Done()
-		}()
+		go qs.handle(conn)
 	}
 }
 
@@ -175,9 +166,8 @@ func (qs *Server) Addr() string {
 	return qs.listener.Addr().String()
 }
 
-// Close closes the server listener.
+// Close closes the server, closing the underlying listener.
 func (qs *Server) Close() error {
-	qs.wg.Wait()
 	atomic.StoreInt32(&qs.closed, 1)
 	close(qs.messages)
 	close(qs.errors)
