@@ -179,6 +179,13 @@ func (qs *Server) Message(timeout time.Duration) (Message, error) {
 	return msg, err
 }
 
+// PutBack puts a message back in the queue. It should be used when a message
+// got using Message method cannot be processed yet. You put it back in the
+// queue for processing later.
+func (qs *Server) PutBack(message Message) {
+	qs.messages <- message
+}
+
 // Addr returns the address of the server.
 func (qs *Server) Addr() string {
 	return qs.listener.Addr().String()

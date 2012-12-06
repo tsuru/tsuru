@@ -178,6 +178,18 @@ func (s *S) TestMessageNegativeTimeout(c *C) {
 	c.Assert(got, DeepEquals, want)
 }
 
+func (s *S) TestPutBack(c *C) {
+	server := Server{
+		messages: make(chan Message, 1),
+		errors:   make(chan error, 1),
+	}
+	want := Message{Action: "delete"}
+	server.PutBack(want)
+	got, err := server.Message(1e6)
+	c.Assert(err, IsNil)
+	c.Assert(got, DeepEquals, want)
+}
+
 func (s *S) TestDial(c *C) {
 	listener, err := net.Listen("tcp", "127.0.0.1:0")
 	c.Assert(err, IsNil)
