@@ -168,7 +168,9 @@ func (qs *Server) Addr() string {
 
 // Close closes the server, closing the underlying listener.
 func (qs *Server) Close() error {
-	atomic.StoreInt32(&qs.closed, 1)
+	if !atomic.CompareAndSwapInt32(&qs.closed, 0, 1) {
+		return errors.New("Server already closed.")
+	}
 	close(qs.messages)
 	close(qs.errors)
 	return qs.listener.Close()

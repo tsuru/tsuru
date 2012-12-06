@@ -112,6 +112,16 @@ func (s *S) TestServerAddr(c *C) {
 	c.Assert(server.Addr(), Equals, listener.Addr().String())
 }
 
+func (s *S) TestServerDoubleClose(c *C) {
+	server, err := StartServer("127.0.0.1:0")
+	c.Assert(err, IsNil)
+	err = server.Close()
+	c.Assert(err, IsNil)
+	err = server.Close()
+	c.Assert(err, NotNil)
+	c.Assert(err.Error(), Equals, "Server already closed.")
+}
+
 func (s *S) TestStartServerAndReadMessage(c *C) {
 	message := Message{
 		Action: "delete",
