@@ -111,8 +111,6 @@ func read(r io.Reader, ch chan<- Message, errCh chan<- error) {
 			errCh <- err
 		}
 	}
-	close(ch)
-	close(errCh)
 }
 
 // Server is the server that hosts the queue. It receives messages and
@@ -193,6 +191,8 @@ func (qs *Server) Addr() string {
 
 // Close closes the server listener.
 func (qs *Server) Close() error {
+	close(qs.messages)
+	close(qs.errors)
 	return qs.listener.Close()
 }
 

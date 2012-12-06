@@ -190,6 +190,19 @@ func (s *S) TestPutBack(c *C) {
 	c.Assert(got, DeepEquals, want)
 }
 
+func (s *S) TestDontHangWhenClientClosesTheConnection(c *C) {
+	server, err := StartServer("127.0.0.1:0")
+	c.Assert(err, IsNil)
+	defer server.Close()
+	messages, _, err := Dial(server.Addr())
+	c.Assert(err, IsNil)
+	close(messages)
+	msg, err := server.Message(1e6)
+	c.Assert(msg, DeepEquals, Message{})
+	c.Assert(err, NotNil)
+	c.Assert(err.Error(), Equals, "Timed out waiting for the message.")
+}
+
 func (s *S) TestDial(c *C) {
 	listener, err := net.Listen("tcp", "127.0.0.1:0")
 	c.Assert(err, IsNil)
