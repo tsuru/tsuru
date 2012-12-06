@@ -49,17 +49,6 @@ func destroyApps() {
 	db.Session.Apps().Remove(bson.M{"name": bson.M{"$in": allApps}})
 }
 
-func (s *S) TestGetApps(c *C) {
-	createApps()
-	defer destroyApps()
-	apps := getApps()
-	names := make([]string, len(apps))
-	for i, app := range apps {
-		names[i] = app.Name
-	}
-	c.Assert(names, DeepEquals, pendingApps)
-}
-
 func (s *S) TestJujuCollect(c *C) {
 	b, err := ioutil.ReadFile(filepath.Join("testdata", "jujucollect.yaml"))
 	c.Assert(err, IsNil)

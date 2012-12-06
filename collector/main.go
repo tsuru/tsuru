@@ -7,36 +7,12 @@ package main
 import (
 	"flag"
 	"github.com/globocom/config"
-	"github.com/globocom/tsuru/api/app"
 	"github.com/globocom/tsuru/db"
 	"github.com/globocom/tsuru/log"
-	"labix.org/v2/mgo/bson"
 	stdlog "log"
 	"log/syslog"
 	"time"
 )
-
-func getApps() []app.App {
-	query := bson.M{
-		"$or": []bson.M{
-			{
-				"units.agentstate": bson.M{"$ne": "started"},
-			},
-			{
-				"units.machineagentstate": bson.M{"$ne": "running"},
-			},
-			{
-				"units.instancestate": bson.M{"$ne": "running"},
-			},
-		},
-	}
-	var apps []app.App
-	err := db.Session.Apps().Find(query).All(&apps)
-	if err != nil {
-		log.Panicf("Failed to get apps in the database: %s.", err)
-	}
-	return apps
-}
 
 func jujuCollect(ticker <-chan time.Time) {
 	for _ = range ticker {
