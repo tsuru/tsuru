@@ -174,7 +174,7 @@ func (s *S) TestDontHangWhenClientClosesTheConnection(c *C) {
 	msg, err := server.Message(1e6)
 	c.Assert(msg, DeepEquals, Message{})
 	c.Assert(err, NotNil)
-	c.Assert(err.Error(), Equals, "Timed out waiting for the message.")
+	c.Assert(err.Error(), Equals, "EOF: client disconnected.")
 }
 
 func (s *S) TestDial(c *C) {

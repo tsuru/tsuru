@@ -82,7 +82,7 @@ func read(r io.Reader, ch chan<- Message, errCh chan<- error) {
 		var msg Message
 		if err = decoder.Decode(&msg); err == nil {
 			ch <- msg
-		} else if err != io.EOF {
+		} else {
 			errCh <- err
 		}
 	}
@@ -146,6 +146,9 @@ func (qs *Server) Message(timeout time.Duration) (Message, error) {
 	select {
 	case msg = <-qs.messages:
 	case err = <-qs.errors:
+		if err == io.EOF {
+			err = errors.New("EOF: client disconnected.")
+		}
 	case <-time.After(timeout):
 		err = errors.New("Timed out waiting for the message.")
 	}
