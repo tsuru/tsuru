@@ -14,8 +14,12 @@ import (
 	"io"
 	"launchpad.net/goamz/s3/s3test"
 	. "launchpad.net/gocheck"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path"
+	"strconv"
+	"strings"
 	"testing"
 )
 
@@ -28,6 +32,9 @@ type S struct {
 	rfs       *fsTesting.RecordingFs
 	iamServer *iamtest.Server
 	s3Server  *s3test.Server
+	gitHost   string
+	gitPort   string
+	gitProt   string
 }
 
 var _ = Suite(&S{})
@@ -79,6 +86,9 @@ func (s *S) SetUpSuite(c *C) {
 	c.Assert(err, IsNil)
 	config.Set("aws:iam:endpoint", s.iamServer.URL())
 	config.Unset("aws:s3:bucketEndpoint")
+	s.gitHost, _ = config.GetString("git:host")
+	s.gitPort, _ = config.GetString("git:port")
+	s.gitProt, _ = config.GetString("git:protocol")
 }
 
 func (s *S) TearDownSuite(c *C) {
@@ -93,6 +103,9 @@ func (s *S) TearDownTest(c *C) {
 	close(env)
 	env = make(chan message, chanSize)
 	go collectEnvVars()
+	config.Set("git:host", s.gitHost)
+	config.Set("git:port", s.gitPort)
+	config.Set("git:protocol", s.gitProt)
 }
 
 func (s *S) getTestData(p ...string) io.ReadCloser {
@@ -100,4 +113,20 @@ func (s *S) getTestData(p ...string) io.ReadCloser {
 	fp := path.Join(p...)
 	f, _ := os.OpenFile(fp, os.O_RDONLY, 0)
 	return f
+}
+
+// starts a new httptest.Server and returns it
+// Also changes git:host, git:port and git:protocol to match the server's url
+func (s *S) startGandalfTestServer(h http.Handler) *httptest.Server {
+	ts := httptest.NewServer(h)
+	pieces := strings.Split(ts.URL, "://")
+	protocol := pieces[0]
+	hostPart := strings.Split(pieces[1], ":")
+	port := hostPart[1]
+	host := hostPart[0]
+	config.Set("git:host", host)
+	portInt, _ := strconv.ParseInt(port, 10, 0)
+	config.Set("git:port", portInt)
+	config.Set("git:protocol", protocol)
+	return ts
 }

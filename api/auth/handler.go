@@ -7,10 +7,10 @@ package auth
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/globocom/config"
 	gandalf "github.com/globocom/go-gandalfclient"
 	"github.com/globocom/tsuru/db"
 	"github.com/globocom/tsuru/errors"
+	"github.com/globocom/tsuru/repository"
 	"github.com/globocom/tsuru/validation"
 	"io"
 	"labix.org/v2/mgo/bson"
@@ -37,10 +37,7 @@ func CreateUser(w http.ResponseWriter, r *http.Request) error {
 	if !validation.ValidateLength(u.Password, passwordMinLen, passwordMaxLen) {
 		return &errors.Http{Code: http.StatusPreconditionFailed, Message: passwordError}
 	}
-	gUrl, err := config.GetString("git:server")
-	if err != nil {
-		return &errors.Http{Code: http.StatusInternalServerError, Message: "Git server not found at tsuru.conf"}
-	}
+	gUrl := repository.GitServerUri()
 	c := gandalf.Client{Endpoint: gUrl}
 	if _, err := c.NewUser(u.Email, keyToMap(u.Keys)); err != nil {
 		return &errors.Http{Code: http.StatusInternalServerError, Message: "Could not communicate with git server. Aborting..."}
@@ -89,7 +86,7 @@ func Login(w http.ResponseWriter, r *http.Request) error {
 // Creates a team and store it in mongodb.
 // Also communicates with git server (gandalf) in order to
 // add the user into it (gandalf does not have the team concept)
-// This function makes use of the git:server config at tsuru.conf
+// This function makes use of the git:host config at tsuru.conf
 // You can find a configuration sample at tsuru/etc/tsuru.conf
 func createTeam(name string, u *User) error {
 	team := &Team{Name: name, Users: []string{u.Email}}
@@ -187,10 +184,7 @@ func addUserToTeam(email, teamName string, u *User) error {
 	if err != nil {
 		return &errors.Http{Code: http.StatusConflict, Message: err.Error()}
 	}
-	gUrl, err := config.GetString("git:server")
-	if err != nil {
-		return err
-	}
+	gUrl := repository.GitServerUri()
 	alwdApps, err := allowedApps(email)
 	if err := (&gandalf.Client{Endpoint: gUrl}).GrantAccess(alwdApps, []string{email}); err != nil {
 		return err
@@ -229,10 +223,7 @@ func removeUserFromTeam(email, teamName string, u *User) error {
 		return &errors.Http{Code: http.StatusNotFound, Message: err.Error()}
 	}
 	// gandalf actions comes first, cuz if they fail the whole action is aborted
-	gUrl, err := config.GetString("git:server")
-	if err != nil {
-		return err
-	}
+	gUrl := repository.GitServerUri()
 	alwdApps, err := allowedApps(email)
 	if err != nil {
 		return err
@@ -274,10 +265,7 @@ func addKeyToUser(content string, u *User) error {
 		return &errors.Http{Code: http.StatusConflict, Message: "User has this key already"}
 	}
 	key.Name = fmt.Sprintf("%s-%d", u.Email, len(u.Keys)+1)
-	gUrl, err := config.GetString("git:server")
-	if err != nil {
-		return &errors.Http{Code: http.StatusInternalServerError, Message: "Git server not found at tsuru.conf"}
-	}
+	gUrl := repository.GitServerUri()
 	u.addKey(key)
 	if err := (&gandalf.Client{Endpoint: gUrl}).AddKey(u.Email, keyToMap(u.Keys)); err != nil {
 		return err
@@ -303,15 +291,14 @@ func AddKeyToUser(w http.ResponseWriter, r *http.Request, u *User) error {
 // Also removes the key from gandalf.
 // When we were using gitosis we had to revoke the write permission into the repositories in this moment,
 // now that we are using gandalf, it is not necessary anymore, this is done by addUserToTeam
+//
+// This functions makes uses of git:host, git:protocol and optionaly git:port configurations
 func removeKeyFromUser(content string, u *User) error {
 	key, index := u.findKey(Key{Content: content})
 	if index < 0 {
 		return &errors.Http{Code: http.StatusNotFound, Message: "User does not have this key"}
 	}
-	gUrl, err := config.GetString("git:server")
-	if err != nil {
-		return &errors.Http{Code: http.StatusInternalServerError, Message: "Git server not found at tsuru.conf"}
-	}
+	gUrl := repository.GitServerUri()
 	if err := (&gandalf.Client{Endpoint: gUrl}).RemoveKey(u.Email, key.Name); err != nil {
 		return err
 	}
@@ -339,10 +326,7 @@ func RemoveKeyFromUser(w http.ResponseWriter, r *http.Request, u *User) error {
 // TODO: improve the team update, if possible
 func RemoveUser(w http.ResponseWriter, r *http.Request, u *User) error {
 	//_, err := db.Session.Teams().UpdateAll(bson.M{"users": u.Email}, bson.M{"$pull": bson.M{"users": u.Email}})
-	gUrl, err := config.GetString("git:server")
-	if err != nil {
-		return &errors.Http{Code: http.StatusInternalServerError, Message: "Git server not found at tsuru.conf"}
-	}
+	gUrl := repository.GitServerUri()
 	c := gandalf.Client{Endpoint: gUrl}
 	alwdApps, err := allowedApps(u.Email)
 	if err != nil {

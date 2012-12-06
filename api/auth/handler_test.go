@@ -8,7 +8,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/globocom/config"
 	"github.com/globocom/tsuru/db"
 	"github.com/globocom/tsuru/errors"
 	"io/ioutil"
@@ -21,9 +20,8 @@ import (
 
 func (s *S) TestCreateUserHandlerSavesTheUserInTheDatabase(c *C) {
 	h := testHandler{}
-	ts := httptest.NewServer(&h)
+	ts := s.startGandalfTestServer(&h)
 	defer ts.Close()
-	config.Set("git:server", ts.URL)
 	b := bytes.NewBufferString(`{"email":"nobody@globo.com","password":"123456"}`)
 	request, err := http.NewRequest("POST", "/users", b)
 	c.Assert(err, IsNil)
@@ -38,9 +36,8 @@ func (s *S) TestCreateUserHandlerSavesTheUserInTheDatabase(c *C) {
 
 func (s *S) TestCreateUserHandlerReturnsStatus201AfterCreateTheUser(c *C) {
 	h := testHandler{}
-	ts := httptest.NewServer(&h)
+	ts := s.startGandalfTestServer(&h)
 	defer ts.Close()
-	config.Set("git:server", ts.URL)
 	b := bytes.NewBufferString(`{"email":"nobody@globo.com","password":"123456"}`)
 	request, err := http.NewRequest("POST", "/users", b)
 	c.Assert(err, IsNil)
@@ -79,9 +76,8 @@ func (s *S) TestCreateUserHandlerReturnErrorAndBadRequestIfInvalidJSONIsGiven(c 
 
 func (s *S) TestCreateUserHandlerReturnErrorAndConflictIfItFailsToCreateUser(c *C) {
 	h := testHandler{}
-	ts := httptest.NewServer(&h)
+	ts := s.startGandalfTestServer(&h)
 	defer ts.Close()
-	config.Set("git:server", ts.URL)
 	u := User{Email: "nobody@globo.com", Password: "123456"}
 	u.Create()
 	b := bytes.NewBufferString(`{"email":"nobody@globo.com","password":"123456"}`)
@@ -130,9 +126,8 @@ func (s *S) TestCreateUserHandlerReturnsPreconditionFailedIfPasswordHasLessThan6
 
 func (s *S) TestCreateUserCreatesUserInGandalf(c *C) {
 	h := testHandler{}
-	ts := httptest.NewServer(&h)
+	ts := s.startGandalfTestServer(&h)
 	defer ts.Close()
-	config.Set("git:server", ts.URL)
 	b := bytes.NewBufferString(`{"email":"nobody@me.myself","password":"123456"}`)
 	request, err := http.NewRequest("POST", "/users", b)
 	c.Assert(err, IsNil)
@@ -460,9 +455,8 @@ func (s *S) TestListTeamsReturns204IfTheUserHasNoTeam(c *C) {
 
 func (s *S) TestAddUserToTeamShouldAddAUserToATeamIfTheUserAndTheTeamExistAndTheGivenUserIsMemberOfTheTeam(c *C) {
 	h := testHandler{}
-	ts := httptest.NewServer(&h)
+	ts := s.startGandalfTestServer(&h)
 	defer ts.Close()
-	config.Set("git:server", ts.URL)
 	u := &User{Email: "wolverine@xmen.com", Password: "123456"}
 	err := u.Create()
 	c.Assert(err, IsNil)
@@ -481,7 +475,7 @@ func (s *S) TestAddUserToTeamShouldAddAUserToATeamIfTheUserAndTheTeamExistAndThe
 
 func (s *S) TestAddUserToTeamShouldReturnNotFoundIfThereIsNoTeamWithTheGivenName(c *C) {
 	h := testHandler{}
-	ts := httptest.NewServer(&h)
+	ts := s.startGandalfTestServer(&h)
 	defer ts.Close()
 	request, err := http.NewRequest("PUT", "/teams/abc/me@me.me?:team=abc&:user=me@me.me", nil)
 	c.Assert(err, IsNil)
@@ -496,7 +490,7 @@ func (s *S) TestAddUserToTeamShouldReturnNotFoundIfThereIsNoTeamWithTheGivenName
 
 func (s *S) TestAddUserToTeamShouldReturnUnauthorizedIfTheGivenUserIsNotInTheGivenTeam(c *C) {
 	h := testHandler{}
-	ts := httptest.NewServer(&h)
+	ts := s.startGandalfTestServer(&h)
 	defer ts.Close()
 	u := &User{Email: "hi@me.me", Password: "123456"}
 	err := u.Create()
@@ -514,7 +508,7 @@ func (s *S) TestAddUserToTeamShouldReturnUnauthorizedIfTheGivenUserIsNotInTheGiv
 
 func (s *S) TestAddUserToTeamShouldReturnNotFoundIfTheEmailInTheBodyDoesNotExistInTheDatabase(c *C) {
 	h := testHandler{}
-	ts := httptest.NewServer(&h)
+	ts := s.startGandalfTestServer(&h)
 	defer ts.Close()
 	request, err := http.NewRequest("PUT", "/teams/cobrateam/hi2@me.me?:team=cobrateam&:user=hi2@me.me", nil)
 	c.Assert(err, IsNil)
@@ -529,7 +523,7 @@ func (s *S) TestAddUserToTeamShouldReturnNotFoundIfTheEmailInTheBodyDoesNotExist
 
 func (s *S) TestAddUserToTeamShouldReturnConflictIfTheUserIsAlreadyInTheGroup(c *C) {
 	h := testHandler{}
-	ts := httptest.NewServer(&h)
+	ts := s.startGandalfTestServer(&h)
 	defer ts.Close()
 	url := fmt.Sprintf("/teams/%s/%s?:team=%s&:user=%s", s.team.Name, s.user.Email, s.team.Name, s.user.Email)
 	request, err := http.NewRequest("PUT", url, nil)
@@ -544,9 +538,8 @@ func (s *S) TestAddUserToTeamShouldReturnConflictIfTheUserIsAlreadyInTheGroup(c 
 
 func (s *S) TestAddUserToTeamShoulGrantAccessInGandalf(c *C) {
 	h := testHandler{}
-	ts := httptest.NewServer(&h)
+	ts := s.startGandalfTestServer(&h)
 	defer ts.Close()
-	config.Set("git:server", ts.URL)
 	u := &User{Email: "marathon@rush.com", Password: "123456"}
 	err := u.Create()
 	c.Assert(err, IsNil)
@@ -565,9 +558,8 @@ func (s *S) TestAddUserToTeamShoulGrantAccessInGandalf(c *C) {
 
 func (s *S) TestRemoveUserFromTeamShouldRemoveAUserFromATeamIfTheTeamExistAndTheUserIsMemberOfTheTeam(c *C) {
 	h := testHandler{}
-	ts := httptest.NewServer(&h)
+	ts := s.startGandalfTestServer(&h)
 	defer ts.Close()
-	config.Set("git:server", ts.URL)
 	u := User{Email: "nonee@me.me", Password: "none"}
 	err := u.Create()
 	c.Assert(err, IsNil)
@@ -586,9 +578,8 @@ func (s *S) TestRemoveUserFromTeamShouldRemoveAUserFromATeamIfTheTeamExistAndThe
 
 func (s *S) TestRemoveUserFromTeamShouldReturnNotFoundIfTheTeamDoesNotExist(c *C) {
 	h := testHandler{}
-	ts := httptest.NewServer(&h)
+	ts := s.startGandalfTestServer(&h)
 	defer ts.Close()
-	config.Set("git:server", ts.URL)
 	request, err := http.NewRequest("DELETE", "/teams/cobrateam/none@me.me?:team=unknown&:user=none@me.me", nil)
 	c.Assert(err, IsNil)
 	recorder := httptest.NewRecorder()
@@ -602,9 +593,8 @@ func (s *S) TestRemoveUserFromTeamShouldReturnNotFoundIfTheTeamDoesNotExist(c *C
 
 func (s *S) TestRemoveUserFromTeamShouldReturnUnauthorizedIfTheGivenUserIsNotMemberOfTheTeam(c *C) {
 	h := testHandler{}
-	ts := httptest.NewServer(&h)
+	ts := s.startGandalfTestServer(&h)
 	defer ts.Close()
-	config.Set("git:server", ts.URL)
 	request, err := http.NewRequest("DELETE", "/teams/cobrateam/none@me.me?:team=cobrateam&:user=none@me.me", nil)
 	c.Assert(err, IsNil)
 	recorder := httptest.NewRecorder()
@@ -618,9 +608,8 @@ func (s *S) TestRemoveUserFromTeamShouldReturnUnauthorizedIfTheGivenUserIsNotMem
 
 func (s *S) TestRemoveUserFromTeamShouldReturnNotFoundWhenTheUserIsNotMemberOfTheTeam(c *C) {
 	h := testHandler{}
-	ts := httptest.NewServer(&h)
+	ts := s.startGandalfTestServer(&h)
 	defer ts.Close()
-	config.Set("git:server", ts.URL)
 	u := &User{Email: "nobody@me.me", Password: "132"}
 	s.team.addUser(u)
 	db.Session.Teams().Update(bson.M{"_id": s.team.Name}, s.team)
@@ -640,9 +629,8 @@ func (s *S) TestRemoveUserFromTeamShouldReturnNotFoundWhenTheUserIsNotMemberOfTh
 
 func (s *S) TestRemoveUserFromTeamShouldReturnForbiddenIfTheUserIsTheLastInTheTeam(c *C) {
 	h := testHandler{}
-	ts := httptest.NewServer(&h)
+	ts := s.startGandalfTestServer(&h)
 	defer ts.Close()
-	config.Set("git:server", ts.URL)
 	url := "/teams/cobrateam/timeredbull@globo.com?:team=cobrateam&:user=timeredbull@globo.com"
 	request, err := http.NewRequest("DELETE", url, nil)
 	c.Assert(err, IsNil)
@@ -657,9 +645,8 @@ func (s *S) TestRemoveUserFromTeamShouldReturnForbiddenIfTheUserIsTheLastInTheTe
 
 func (s *S) TestRemoveUserFromTeamRevokesAccessInGandalf(c *C) {
 	h := testHandler{}
-	ts := httptest.NewServer(&h)
+	ts := s.startGandalfTestServer(&h)
 	defer ts.Close()
-	config.Set("git:server", ts.URL)
 	u := &User{Email: "pomar@nando-reis.com", Password: "123456"}
 	err := u.Create()
 	c.Assert(err, IsNil)
@@ -687,9 +674,8 @@ func (s *S) TestRemoveUserFromTeamRevokesAccessInGandalf(c *C) {
 
 func (s *S) TestAddKeyHandlerAddsAKeyToTheUser(c *C) {
 	h := testHandler{}
-	ts := httptest.NewServer(&h)
+	ts := s.startGandalfTestServer(&h)
 	defer ts.Close()
-	config.Set("git:server", ts.URL)
 	defer func() {
 		s.user.removeKey(Key{Content: "my-key"})
 		db.Session.Users().Update(bson.M{"email": s.user.Email}, s.user)
@@ -706,7 +692,7 @@ func (s *S) TestAddKeyHandlerAddsAKeyToTheUser(c *C) {
 
 func (s *S) TestAddKeyHandlerReturnsErrorIfTheReadingOfTheBodyFails(c *C) {
 	h := testHandler{}
-	ts := httptest.NewServer(&h)
+	ts := s.startGandalfTestServer(&h)
 	defer ts.Close()
 	b := s.getTestData("bodyToBeClosed.txt")
 	b.Close()
@@ -719,7 +705,7 @@ func (s *S) TestAddKeyHandlerReturnsErrorIfTheReadingOfTheBodyFails(c *C) {
 
 func (s *S) TestAddKeyHandlerReturnsBadRequestIfTheJsonIsInvalid(c *C) {
 	h := testHandler{}
-	ts := httptest.NewServer(&h)
+	ts := s.startGandalfTestServer(&h)
 	defer ts.Close()
 	b := bytes.NewBufferString(`"aaaa}`)
 	request, err := http.NewRequest("POST", "/users/key", b)
@@ -735,7 +721,7 @@ func (s *S) TestAddKeyHandlerReturnsBadRequestIfTheJsonIsInvalid(c *C) {
 
 func (s *S) TestAddKeyHandlerReturnsBadRequestIfTheKeyIsNotPresent(c *C) {
 	h := testHandler{}
-	ts := httptest.NewServer(&h)
+	ts := s.startGandalfTestServer(&h)
 	defer ts.Close()
 	b := bytes.NewBufferString(`{}`)
 	request, err := http.NewRequest("POST", "/users/key", b)
@@ -751,7 +737,7 @@ func (s *S) TestAddKeyHandlerReturnsBadRequestIfTheKeyIsNotPresent(c *C) {
 
 func (s *S) TestAddKeyHandlerReturnsBadRequestIfTheKeyIsEmpty(c *C) {
 	h := testHandler{}
-	ts := httptest.NewServer(&h)
+	ts := s.startGandalfTestServer(&h)
 	defer ts.Close()
 	b := bytes.NewBufferString(`{"key":""}`)
 	request, err := http.NewRequest("POST", "/users/key", b)
@@ -767,7 +753,7 @@ func (s *S) TestAddKeyHandlerReturnsBadRequestIfTheKeyIsEmpty(c *C) {
 
 func (s *S) TestAddKeyHandlerReturnsConflictIfTheKeyIsAlreadyPresent(c *C) {
 	h := testHandler{}
-	ts := httptest.NewServer(&h)
+	ts := s.startGandalfTestServer(&h)
 	defer ts.Close()
 	s.user.addKey(Key{Content: "my-key"})
 	db.Session.Users().Update(bson.M{"email": s.user.Email}, s.user)
@@ -788,9 +774,8 @@ func (s *S) TestAddKeyHandlerReturnsConflictIfTheKeyIsAlreadyPresent(c *C) {
 
 func (s *S) TestAddKeyAddKeyToUserInGandalf(c *C) {
 	h := testHandler{}
-	ts := httptest.NewServer(&h)
+	ts := s.startGandalfTestServer(&h)
 	defer ts.Close()
-	config.Set("git:server", ts.URL)
 	u := &User{Email: "francisco@franciscosouza.net", Password: "123456"}
 	err := u.Create()
 	c.Assert(err, IsNil)
@@ -810,9 +795,8 @@ func (s *S) TestAddKeyAddKeyToUserInGandalf(c *C) {
 
 func (s *S) TestRemoveKeyHandlerRemovesTheKeyFromTheUser(c *C) {
 	h := testHandler{}
-	ts := httptest.NewServer(&h)
+	ts := s.startGandalfTestServer(&h)
 	defer ts.Close()
-	config.Set("git:server", ts.URL)
 	addKeyToUser("my-key", s.user)
 	defer func() {
 		if s.user.hasKey(Key{Content: "my-key"}) {
@@ -831,9 +815,8 @@ func (s *S) TestRemoveKeyHandlerRemovesTheKeyFromTheUser(c *C) {
 
 func (s *S) TestRemoveKeyHandlerCallsGandalfRemoveKey(c *C) {
 	h := testHandler{}
-	ts := httptest.NewServer(&h)
+	ts := s.startGandalfTestServer(&h)
 	defer ts.Close()
-	config.Set("git:server", ts.URL)
 	err := addKeyToUser("my-key", s.user) //fills the first position in h properties
 	c.Assert(err, IsNil)
 	defer func() {
@@ -915,9 +898,8 @@ func (s *S) TestRemoveKeyHandlerReturnsNotFoundIfTheUserDoesNotHaveTheKey(c *C) 
 
 func (s *S) TestRemoveUser(c *C) {
 	h := testHandler{}
-	ts := httptest.NewServer(&h)
+	ts := s.startGandalfTestServer(&h)
 	defer ts.Close()
-	config.Set("git:server", ts.URL)
 	u := User{Email: "her-voices@painofsalvation.com"}
 	err := u.Create()
 	c.Assert(err, IsNil)
@@ -934,9 +916,8 @@ func (s *S) TestRemoveUser(c *C) {
 
 func (s *S) TestRemoveUserWithTheUserBeingLastMemberOfATeam(c *C) {
 	h := testHandler{}
-	ts := httptest.NewServer(&h)
+	ts := s.startGandalfTestServer(&h)
 	defer ts.Close()
-	config.Set("git:server", ts.URL)
 	u := User{Email: "of-two-beginnings@painofsalvation.com"}
 	err := u.Create()
 	c.Assert(err, IsNil)
@@ -961,9 +942,8 @@ Please remove the team, them remove the user.`
 
 func (s *S) TestRemoveUserShouldRemoveTheUserFromAllTeamsThatHeIsMember(c *C) {
 	h := testHandler{}
-	ts := httptest.NewServer(&h)
+	ts := s.startGandalfTestServer(&h)
 	defer ts.Close()
-	config.Set("git:server", ts.URL)
 	u := User{Email: "of-two-beginnings@painofsalvation.com"}
 	err := u.Create()
 	c.Assert(err, IsNil)
@@ -985,9 +965,8 @@ func (s *S) TestRemoveUserShouldRemoveTheUserFromAllTeamsThatHeIsMember(c *C) {
 
 func (s *S) TestRemoveUserRevokesAccessInGandalf(c *C) {
 	h := testHandler{}
-	ts := httptest.NewServer(&h)
+	ts := s.startGandalfTestServer(&h)
 	defer ts.Close()
-	config.Set("git:server", ts.URL)
 	u := User{Email: "of-two-beginnings@painofsalvation.com"}
 	err := u.Create()
 	c.Assert(err, IsNil)

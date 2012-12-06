@@ -7,7 +7,6 @@ package app
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/globocom/config"
 	gandalf "github.com/globocom/go-gandalfclient"
 	"github.com/globocom/tsuru/api/auth"
 	"github.com/globocom/tsuru/api/bind"
@@ -108,10 +107,7 @@ func AppDelete(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	if err != nil {
 		return err
 	}
-	gUrl, err := config.GetString("git:server")
-	if err != nil {
-		return &errors.Http{Code: http.StatusInternalServerError, Message: "Git server not found at tsuru.conf"}
-	}
+	gUrl := repository.GitServerUri()
 	if err := (&gandalf.Client{Endpoint: gUrl}).RemoveRepository(app.Name); err != nil {
 		// log or repass original error
 		return &errors.Http{Code: http.StatusInternalServerError, Message: "Could not remove app's repository at git server. Aborting..."}
@@ -188,10 +184,7 @@ func createAppHelper(app *App, u *auth.User) ([]byte, error) {
 		}
 		return nil, err
 	}
-	gUrl, err := config.GetString("git:server")
-	if err != nil {
-		return nil, &errors.Http{Code: http.StatusInternalServerError, Message: "Git server not found at tsuru.conf"}
-	}
+	gUrl := repository.GitServerUri()
 	var users []string
 	for _, t := range teams {
 		users = append(users, t.Users...)
@@ -247,10 +240,7 @@ func grantAccessToTeam(appName, teamName string, u *auth.User) error {
 	if err != nil {
 		return err
 	}
-	gUrl, err := config.GetString("git:server")
-	if err != nil {
-		return &errors.Http{Code: http.StatusInternalServerError, Message: "Git server not found at tsuru.conf"}
-	}
+	gUrl := repository.GitServerUri()
 	return (&gandalf.Client{Endpoint: gUrl}).GrantAccess([]string{app.Name}, t.Users)
 }
 
@@ -282,10 +272,7 @@ func revokeAccessFromTeam(appName, teamName string, u *auth.User) error {
 	if err != nil {
 		return err
 	}
-	gUrl, err := config.GetString("git:server")
-	if err != nil {
-		return &errors.Http{Code: http.StatusInternalServerError, Message: "Git server not found at tsuru.conf"}
-	}
+	gUrl := repository.GitServerUri()
 	if err := (&gandalf.Client{Endpoint: gUrl}).RevokeAccess([]string{app.Name}, t.Users); err != nil {
 		return &errors.Http{Code: http.StatusInternalServerError, Message: err.Error()}
 	}

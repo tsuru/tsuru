@@ -9,7 +9,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/globocom/commandmocker"
-	"github.com/globocom/config"
 	"github.com/globocom/tsuru/api/auth"
 	"github.com/globocom/tsuru/api/bind"
 	"github.com/globocom/tsuru/api/service"
@@ -342,9 +341,8 @@ func (s *S) TestListShouldReturnStatusNoContentWhenAppListIsNil(c *C) {
 
 func (s *S) TestDelete(c *C) {
 	h := testHandler{}
-	ts := httptest.NewServer(&h)
+	ts := s.startGandalfTestServer(&h)
 	defer ts.Close()
-	config.Set("git:server", ts.URL)
 	dir, err := commandmocker.Add("juju", "")
 	defer commandmocker.Remove(dir)
 	c.Assert(err, IsNil)
@@ -403,9 +401,8 @@ func (s *S) TestDeleteShouldReturnNotFoundIfTheAppDoesNotExist(c *C) {
 
 func (s *S) TestDeleteShouldHandleWithGandalfError(c *C) {
 	h := testBadHandler{}
-	ts := httptest.NewServer(&h)
+	ts := s.startGandalfTestServer(&h)
 	defer ts.Close()
-	config.Set("git:server", ts.URL)
 	dir, err := commandmocker.Add("juju", "")
 	defer commandmocker.Remove(dir)
 	c.Assert(err, IsNil)
@@ -430,9 +427,8 @@ func (s *S) TestDeleteShouldHandleWithGandalfError(c *C) {
 
 func (s *S) TestDeleteReturnsErrorIfAppDestroyFails(c *C) {
 	h := testHandler{}
-	ts := httptest.NewServer(&h)
+	ts := s.startGandalfTestServer(&h)
 	defer ts.Close()
-	config.Set("git:server", ts.URL)
 	myApp := App{
 		Name:      "MyAppToDelete",
 		Framework: "django",
@@ -511,9 +507,8 @@ func (s *S) TestAppInfoReturnsNotFoundWhenAppDoesNotExist(c *C) {
 
 func (s *S) TestCreateAppHelperCreatesRepositoryInGandalf(c *C) {
 	h := testHandler{}
-	ts := httptest.NewServer(&h)
+	ts := s.startGandalfTestServer(&h)
 	defer ts.Close()
-	config.Set("git:server", ts.URL)
 	dir, err := commandmocker.Add("juju", "")
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(dir)
@@ -529,9 +524,8 @@ func (s *S) TestCreateAppHelperCreatesRepositoryInGandalf(c *C) {
 
 func (s *S) TestCreateAppHelperGrantsTeamAccessInGandalf(c *C) {
 	h := testHandler{}
-	ts := httptest.NewServer(&h)
+	ts := s.startGandalfTestServer(&h)
 	defer ts.Close()
-	config.Set("git:server", ts.URL)
 	dir, err := commandmocker.Add("juju", "")
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(dir)
@@ -547,9 +541,8 @@ func (s *S) TestCreateAppHelperGrantsTeamAccessInGandalf(c *C) {
 
 func (s *S) TestCreateAppHandler(c *C) {
 	h := testHandler{}
-	ts := httptest.NewServer(&h)
+	ts := s.startGandalfTestServer(&h)
 	defer ts.Close()
-	config.Set("git:server", ts.URL)
 	dir, err := commandmocker.Add("juju", "")
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(dir)
@@ -646,9 +639,8 @@ func (s *S) TestCreateAppReturnsConflictWithProperMessageWhenTheAppAlreadyExist(
 
 func (s *S) TestAddTeamToTheApp(c *C) {
 	h := testHandler{}
-	ts := httptest.NewServer(&h)
+	ts := s.startGandalfTestServer(&h)
 	defer ts.Close()
-	config.Set("git:server", ts.URL)
 	t := auth.Team{Name: "itshardteam", Users: []string{s.user.Email}}
 	err := db.Session.Teams().Insert(t)
 	c.Assert(err, IsNil)
@@ -751,9 +743,8 @@ func (s *S) TestGrantAccessToTeamReturn409IfTheTeamHasAlreadyAccessToTheApp(c *C
 
 func (s *S) TestGrantAccessToTeamCallsGandalf(c *C) {
 	h := testHandler{}
-	ts := httptest.NewServer(&h)
+	ts := s.startGandalfTestServer(&h)
 	defer ts.Close()
-	config.Set("git:server", ts.URL)
 	t := &auth.Team{Name: "anything", Users: []string{s.user.Email}}
 	err := db.Session.Teams().Insert(t)
 	c.Assert(err, IsNil)
@@ -776,9 +767,8 @@ func (s *S) TestGrantAccessToTeamCallsGandalf(c *C) {
 
 func (s *S) TestRevokeAccessFromTeam(c *C) {
 	h := testHandler{}
-	ts := httptest.NewServer(&h)
+	ts := s.startGandalfTestServer(&h)
 	defer ts.Close()
-	config.Set("git:server", ts.URL)
 	t := auth.Team{Name: "abcd"}
 	err := db.Session.Teams().Insert(t)
 	c.Assert(err, IsNil)
@@ -804,9 +794,8 @@ func (s *S) TestRevokeAccessFromTeam(c *C) {
 
 func (s *S) TestRevokeAccessFromTeamReturn404IfTheAppDoesNotExist(c *C) {
 	h := testHandler{}
-	ts := httptest.NewServer(&h)
+	ts := s.startGandalfTestServer(&h)
 	defer ts.Close()
-	config.Set("git:server", ts.URL)
 	request, err := http.NewRequest("DELETE", "/apps/a/b?:app=a&:team=b", nil)
 	c.Assert(err, IsNil)
 	recorder := httptest.NewRecorder()
@@ -909,9 +898,8 @@ func (s *S) TestRevokeAccessFromTeamReturn403IfTheTeamIsTheLastWithAccessToTheAp
 
 func (s *S) TestRevokeAccessFromTeamRemovesRepositoryFromGandalf(c *C) {
 	h := testHandler{}
-	ts := httptest.NewServer(&h)
+	ts := s.startGandalfTestServer(&h)
 	defer ts.Close()
-	config.Set("git:server", ts.URL)
 	t := auth.Team{Name: "anything", Users: []string{s.user.Email}}
 	err := db.Session.Teams().Insert(t)
 	c.Assert(err, IsNil)

@@ -11,8 +11,12 @@ import (
 	"labix.org/v2/mgo"
 	"labix.org/v2/mgo/bson"
 	. "launchpad.net/gocheck"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strconv"
+	"strings"
 	"testing"
 )
 
@@ -48,6 +52,9 @@ type S struct {
 	team    *Team
 	token   *Token
 	gitRoot string
+	gitHost string
+	gitPort string
+	gitProt string
 }
 
 var _ = Suite(&S{})
@@ -70,6 +77,9 @@ func (s *S) SetUpSuite(c *C) {
 	s.team = new(Team)
 	err = db.Session.Teams().Find(bson.M{"_id": "cobrateam"}).One(s.team)
 	panicIfErr(err)
+	s.gitHost, _ = config.GetString("git:host")
+	s.gitPort, _ = config.GetString("git:port")
+	s.gitProt, _ = config.GetString("git:protocol")
 }
 
 func (s *S) TearDownSuite(c *C) {
@@ -82,6 +92,9 @@ func (s *S) TearDownTest(c *C) {
 	panicIfErr(err)
 	_, err = db.Session.Teams().RemoveAll(bson.M{"_id": bson.M{"$ne": s.team.Name}})
 	panicIfErr(err)
+	config.Set("git:host", s.gitHost)
+	config.Set("git:port", s.gitPort)
+	config.Set("git:protocol", s.gitProt)
 }
 
 func (s *S) getTestData(path ...string) io.ReadCloser {
@@ -89,4 +102,20 @@ func (s *S) getTestData(path ...string) io.ReadCloser {
 	p := filepath.Join(path...)
 	f, _ := os.OpenFile(p, os.O_RDONLY, 0)
 	return f
+}
+
+// starts a new httptest.Server and returns it
+// Also changes git:host, git:port and git:protocol to match the server's url
+func (s *S) startGandalfTestServer(h http.Handler) *httptest.Server {
+	ts := httptest.NewServer(h)
+	pieces := strings.Split(ts.URL, "://")
+	protocol := pieces[0]
+	hostPart := strings.Split(pieces[1], ":")
+	port := hostPart[1]
+	host := hostPart[0]
+	config.Set("git:host", host)
+	portInt, _ := strconv.ParseInt(port, 10, 0)
+	config.Set("git:port", portInt)
+	config.Set("git:protocol", protocol)
+	return ts
 }
