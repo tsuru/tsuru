@@ -43,5 +43,5 @@ func (s *S) TestGetGitServerPanicsIfTheConfigFileHasNoServer(c *C) {
 	err = config.Unset("git")
 	c.Assert(err, IsNil)
 	defer config.Set("git", oldConfig)
-	c.Assert(getGitServer, PanicMatches, "key git:server not found")
+	c.Assert(getGitServer, PanicMatches, "key git:host not found")
 }

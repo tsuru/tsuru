@@ -65,25 +65,25 @@ func CloneOrPull(u Unit) ([]byte, error) {
 
 // getGitServer returns the git server defined in the tsuru.conf file.
 //
-// If git:server configuration is not defined, this function panics.
+// If git:host configuration is not defined, this function panics.
 func getGitServer() string {
-	gitServer, err := config.GetString("git:server")
+	gitServer, err := config.GetString("git:host")
 	if err != nil {
 		panic(err)
 	}
 	return gitServer
 }
 
-// gitServerUri joins the protocol, server and port together and returns.
+//  joins the protocol, server and port together and returns.
 //
 // This functions makes uses of three configurations:
-//   - git:server
+//   - git:host
 //   - git:protocol
 //   - git:port (optional)
 //
 // If some of the required configuration is not found, this function panics.
-func gitServerUri() string {
-	server, err := config.GetString("git:server")
+func GitServerUri() string {
+	server, err := config.GetString("git:host")
 	if err != nil {
 		panic(err)
 	}
@@ -103,7 +103,7 @@ func GetUrl(app string) string {
 	return fmt.Sprintf("git@%s:%s.git", getGitServer(), app)
 }
 
-// GetReadOnlyUrl returns the ssh url for communication with git-daemon.
+// GetReadOnlyUrl returns the url for communication with git-daemon.
 func GetReadOnlyUrl(app string) string {
 	return fmt.Sprintf("git://%s/%s.git", getGitServer(), app)
 }
