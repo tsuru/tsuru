@@ -319,6 +319,181 @@ func (s *S) TestSetEnvironmentVariableToApp(c *C) {
 	c.Assert(env.Public, Equals, true)
 }
 
+func (s *S) TestSetEnvRespectsThePublicOnlyFlagKeepPrivateVariablesWhenItsTrue(c *C) {
+	dir, err := commandmocker.Add("juju", "")
+	defer commandmocker.Remove(dir)
+	c.Assert(err, IsNil)
+	a := App{
+		Name:  "myapp",
+		Units: []Unit{{Machine: 1}},
+		Env: map[string]bind.EnvVar{
+			"DATABASE_HOST": {
+				Name:   "DATABASE_HOST",
+				Value:  "localhost",
+				Public: false,
+			},
+		},
+	}
+	err = db.Session.Apps().Insert(a)
+	c.Assert(err, IsNil)
+	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
+	envs := []bind.EnvVar{
+		{
+			Name:   "DATABASE_HOST",
+			Value:  "remotehost",
+			Public: false,
+		},
+		{
+			Name:   "DATABASE_PASSWORD",
+			Value:  "123",
+			Public: true,
+		},
+	}
+	err = setEnvsToApp(&a, envs, true)
+	c.Assert(err, IsNil)
+	newApp := App{Name: a.Name}
+	err = newApp.Get()
+	c.Assert(err, IsNil)
+	expected := map[string]bind.EnvVar{
+		"DATABASE_HOST": {
+			Name:   "DATABASE_HOST",
+			Value:  "localhost",
+			Public: false,
+		},
+		"DATABASE_PASSWORD": {
+			Name:   "DATABASE_PASSWORD",
+			Value:  "123",
+			Public: true,
+		},
+	}
+	c.Assert(newApp.Env, DeepEquals, expected)
+}
+
+func (s *S) TestSetEnvRespectsThePublicOnlyFlagOverwrittenAllVariablesWhenItsFalse(c *C) {
+	dir, err := commandmocker.Add("juju", "")
+	defer commandmocker.Remove(dir)
+	c.Assert(err, IsNil)
+	a := App{
+		Name: "myapp",
+		Units: []Unit{
+			{Machine: 1},
+		},
+		Env: map[string]bind.EnvVar{
+			"DATABASE_HOST": {
+				Name:   "DATABASE_HOST",
+				Value:  "localhost",
+				Public: false,
+			},
+		},
+	}
+	err = db.Session.Apps().Insert(a)
+	c.Assert(err, IsNil)
+	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
+	envs := []bind.EnvVar{
+		{
+			Name:   "DATABASE_HOST",
+			Value:  "remotehost",
+			Public: true,
+		},
+		{
+			Name:   "DATABASE_PASSWORD",
+			Value:  "123",
+			Public: true,
+		},
+	}
+	err = setEnvsToApp(&a, envs, false)
+	c.Assert(err, IsNil)
+	newApp := App{Name: a.Name}
+	err = newApp.Get()
+	c.Assert(err, IsNil)
+	expected := map[string]bind.EnvVar{
+		"DATABASE_HOST": {
+			Name:   "DATABASE_HOST",
+			Value:  "remotehost",
+			Public: true,
+		},
+		"DATABASE_PASSWORD": {
+			Name:   "DATABASE_PASSWORD",
+			Value:  "123",
+			Public: true,
+		},
+	}
+	c.Assert(newApp.Env, DeepEquals, expected)
+}
+
+func (s *S) TestUnsetEnvRespectsThePublicOnlyFlagKeepPrivateVariablesWhenItsTrue(c *C) {
+	dir, err := commandmocker.Add("juju", "")
+	defer commandmocker.Remove(dir)
+	c.Assert(err, IsNil)
+	a := App{
+		Name: "myapp",
+		Units: []Unit{
+			{Machine: 1},
+		},
+		Env: map[string]bind.EnvVar{
+			"DATABASE_HOST": {
+				Name:   "DATABASE_HOST",
+				Value:  "localhost",
+				Public: false,
+			},
+			"DATABASE_PASSWORD": {
+				Name:   "DATABASE_PASSWORD",
+				Value:  "123",
+				Public: true,
+			},
+		},
+	}
+	err = db.Session.Apps().Insert(a)
+	c.Assert(err, IsNil)
+	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
+	err = unsetEnvFromApp(&a, []string{"DATABASE_HOST", "DATABASE_PASSWORD"}, true)
+	c.Assert(err, IsNil)
+	newApp := App{Name: a.Name}
+	err = newApp.Get()
+	c.Assert(err, IsNil)
+	expected := map[string]bind.EnvVar{
+		"DATABASE_HOST": {
+			Name:   "DATABASE_HOST",
+			Value:  "localhost",
+			Public: false,
+		},
+	}
+	c.Assert(newApp.Env, DeepEquals, expected)
+}
+
+func (s *S) TestUnsetEnvRespectsThePublicOnlyFlagUnsettingAllVariablesWhenItsFalse(c *C) {
+	dir, err := commandmocker.Add("juju", "")
+	defer commandmocker.Remove(dir)
+	c.Assert(err, IsNil)
+	a := App{
+		Name: "myapp",
+		Units: []Unit{
+			{Machine: 1},
+		},
+		Env: map[string]bind.EnvVar{
+			"DATABASE_HOST": {
+				Name:   "DATABASE_HOST",
+				Value:  "localhost",
+				Public: false,
+			},
+			"DATABASE_PASSWORD": {
+				Name:   "DATABASE_PASSWORD",
+				Value:  "123",
+				Public: true,
+			},
+		},
+	}
+	err = db.Session.Apps().Insert(a)
+	c.Assert(err, IsNil)
+	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
+	err = unsetEnvFromApp(&a, []string{"DATABASE_HOST", "DATABASE_PASSWORD"}, false)
+	c.Assert(err, IsNil)
+	newApp := App{Name: a.Name}
+	err = newApp.Get()
+	c.Assert(err, IsNil)
+	c.Assert(newApp.Env, DeepEquals, map[string]bind.EnvVar{})
+}
+
 func (s *S) TestGetEnvironmentVariableFromApp(c *C) {
 	a := App{Name: "whole-lotta-love"}
 	a.setEnv(bind.EnvVar{Name: "PATH", Value: "/"})

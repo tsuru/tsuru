@@ -437,8 +437,50 @@ func (a *App) SetEnvs(envs []bind.EnvVar, publicOnly bool) error {
 	return setEnvsToApp(a, e, publicOnly)
 }
 
+func setEnvsToApp(app *App, envs []bind.EnvVar, publicOnly bool) error {
+	if len(envs) > 0 {
+		for _, env := range envs {
+			set := true
+			if publicOnly {
+				e, err := app.getEnv(env.Name)
+				if err == nil && !e.Public {
+					set = false
+				}
+			}
+			if set {
+				app.setEnv(env)
+			}
+		}
+		if err := db.Session.Apps().Update(bson.M{"name": app.Name}, app); err != nil {
+			return err
+		}
+		app.SerializeEnvVars(false)
+	}
+	return nil
+}
+
 func (a *App) UnsetEnvs(envs []string, publicOnly bool) error {
 	return unsetEnvFromApp(a, envs, publicOnly)
+}
+
+func unsetEnvFromApp(app *App, variableNames []string, publicOnly bool) error {
+	if len(variableNames) > 0 {
+		for _, name := range variableNames {
+			var unset bool
+			e, err := app.getEnv(name)
+			if !publicOnly || (err == nil && e.Public) {
+				unset = true
+			}
+			if unset {
+				delete(app.Env, name)
+			}
+		}
+		if err := db.Session.Apps().Update(bson.M{"name": app.Name}, app); err != nil {
+			return err
+		}
+		app.SerializeEnvVars(false)
+	}
+	return nil
 }
 
 func (a *App) log(message string, source string) error {
