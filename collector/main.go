@@ -6,6 +6,7 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"github.com/globocom/config"
 	"github.com/globocom/tsuru/db"
 	"github.com/globocom/tsuru/log"
@@ -54,8 +55,10 @@ func main() {
 	defer db.Session.Close()
 
 	if !dry {
+		fmt.Println("tsuru collector agent started...")
 		handler := MessageHandler{}
 		handler.start()
+		fmt.Printf("queue server listening at %s.\n", handler.server.Addr())
 		defer handler.stop()
 		ticker := time.Tick(time.Minute)
 		jujuCollect(ticker)
