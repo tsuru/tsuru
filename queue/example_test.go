@@ -9,7 +9,7 @@ import (
 	"log"
 )
 
-// This example demonstrate how to start a new Server.
+// This example demonstrates how to start a new Server.
 func ExampleStartServer() {
 	server, err := queue.StartServer("127.0.0.1:0")
 	if err != nil {
@@ -18,7 +18,7 @@ func ExampleStartServer() {
 	defer server.Close()
 }
 
-// This example demonstrate how to dial to a queue server.
+// This example demonstrates how to dial to a queue server.
 func ExampleDial() {
 	messages, errors, err := queue.Dial("127.0.0.1:2021")
 	if err != nil {
