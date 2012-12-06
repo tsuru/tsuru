@@ -36,8 +36,10 @@ func (h *MessageHandler) handleMessages() {
 		if message, err := h.server.Message(-1); err == nil {
 			go h.handle(message)
 		} else if atomic.LoadInt32(&h.closed) == 0 {
+			log.Printf("Failed to receive message: %s. Trying again...", err)
 			continue
 		} else {
+			log.Printf("Connection closed, stop handling messages.")
 			return
 		}
 	}
