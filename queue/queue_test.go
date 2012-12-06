@@ -9,6 +9,7 @@ import (
 	"encoding/gob"
 	. "launchpad.net/gocheck"
 	"net"
+	"strconv"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -223,4 +224,29 @@ func (s *S) TestDial(c *C) {
 	messages <- sent
 	got := <-received
 	c.Assert(got, DeepEquals, sent)
+}
+
+func (s *S) TestClientAndServerMultipleMessages(c *C) {
+	server, err := StartServer("127.0.0.1:0")
+	c.Assert(err, IsNil)
+	defer server.Close()
+	messages, errors, err := Dial(server.Addr())
+	c.Assert(err, IsNil)
+	go func() {
+		for err := range errors {
+			c.Fatal(err)
+		}
+	}()
+	messageSlice := make([]Message, 10)
+	for i := 0; i < 10; i++ {
+		messageSlice[i] = Message{Action: "test", Args: []string{strconv.Itoa(i)}}
+		messages <- messageSlice[i]
+	}
+	for i := 0; i < 10; i++ {
+		if message, err := server.Message(-1); err == nil {
+			c.Assert(message, DeepEquals, messageSlice[i])
+		} else {
+			c.Fatal(err)
+		}
+	}
 }

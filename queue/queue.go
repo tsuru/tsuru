@@ -64,8 +64,8 @@ func ChannelFromWriter(w io.WriteCloser) (chan<- Message, <-chan error) {
 func write(w io.WriteCloser, ch <-chan Message, errCh chan<- error) {
 	defer close(errCh)
 	defer w.Close()
+	encoder := gob.NewEncoder(w)
 	for msg := range ch {
-		encoder := gob.NewEncoder(w)
 		if err := encoder.Encode(msg); err != nil {
 			errCh <- err
 		}
