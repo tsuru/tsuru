@@ -54,6 +54,7 @@ func (s *S) TestChannelFromWriter(c *C) {
 		Args:   []string{"everything"},
 	}
 	ch, _ := ChannelFromWriter(&buf)
+	defer close(ch)
 	ch <- message
 	time.Sleep(1e6)
 	var decodedMessage Message
@@ -134,20 +135,15 @@ func (s *S) TestMessageNegativeTimeout(c *C) {
 		messages: make(chan Message, 1),
 		errors:   make(chan error, 1),
 	}
+	defer close(server.messages)
+	defer close(server.errors)
 	var (
 		got, want Message
 		err       error
-		wg        sync.WaitGroup
 	)
 	want = Message{Action: "create"}
-	wg.Add(1)
-	go func() {
-		got, err = server.Message(-1)
-		wg.Done()
-	}()
-	time.Sleep(1e6)
 	server.messages <- want
-	wg.Wait()
+	got, err = server.Message(-1)
 	c.Assert(err, IsNil)
 	c.Assert(got, DeepEquals, want)
 }
@@ -171,10 +167,20 @@ func (s *S) TestDontHangWhenClientClosesTheConnection(c *C) {
 	messages, _, err := Dial(server.Addr())
 	c.Assert(err, IsNil)
 	close(messages)
-	msg, err := server.Message(1e6)
+	msg, err := server.Message(1e9)
 	c.Assert(msg, DeepEquals, Message{})
 	c.Assert(err, NotNil)
 	c.Assert(err.Error(), Equals, "EOF: client disconnected.")
+}
+
+// BUG(fss): this test fails under race detector.
+func (s *S) TestDontHangWhenServerClosesTheConnection(c *C) {
+	server, err := StartServer("127.0.0.1:0")
+	c.Assert(err, IsNil)
+	_, _, err = Dial(server.Addr())
+	errClose := server.Close()
+	c.Assert(err, IsNil)
+	c.Assert(errClose, IsNil)
 }
 
 func (s *S) TestDial(c *C) {

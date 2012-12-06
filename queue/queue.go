@@ -9,6 +9,8 @@ import (
 	"errors"
 	"io"
 	"net"
+	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -94,6 +96,8 @@ type Server struct {
 	listener net.Listener
 	messages chan Message
 	errors   chan error
+	closed   int32
+	wg       sync.WaitGroup
 }
 
 // StartServer starts a new queue server from a local address.
@@ -118,7 +122,7 @@ func StartServer(laddr string) (*Server, error) {
 // loop accepts connection forever, and uses read to read messages from it,
 // decoding them to a channel of messages.
 func (qs *Server) loop() {
-	for {
+	for atomic.LoadInt32(&qs.closed) == 0 {
 		conn, err := qs.listener.Accept()
 		if err != nil {
 			if e, ok := err.(*net.OpError); ok && !e.Temporary() {
@@ -126,7 +130,11 @@ func (qs *Server) loop() {
 			}
 			continue
 		}
-		go read(conn, qs.messages, qs.errors)
+		qs.wg.Add(1)
+		go func() {
+			read(conn, qs.messages, qs.errors)
+			qs.wg.Done()
+		}()
 	}
 }
 
@@ -169,6 +177,8 @@ func (qs *Server) Addr() string {
 
 // Close closes the server listener.
 func (qs *Server) Close() error {
+	qs.wg.Wait()
+	atomic.StoreInt32(&qs.closed, 1)
 	close(qs.messages)
 	close(qs.errors)
 	return qs.listener.Close()
