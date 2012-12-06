@@ -160,14 +160,15 @@ func (qs *Server) loop() {
 // Message returns the first available message in the queue, or an error if it
 // fails to read the message, or times out while waiting for the message.
 //
-// If timeout is negative, this method will wait forever for the message.
+// If timeout is negative, this method will wait nearly forever for the
+// arriving of a message or an error.
 func (qs *Server) Message(timeout time.Duration) (Message, error) {
 	var (
 		msg Message
 		err error
 	)
 	if timeout < 0 {
-		timeout = 365 * 30 * 24 * time.Hour
+		timeout = 1 << 62
 	}
 	select {
 	case msg = <-qs.messages:
