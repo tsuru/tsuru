@@ -410,6 +410,25 @@ func (a *App) GetName() string {
 	return a.Name
 }
 
+// SerializeEnvVars serializes the environment variables of the app. The
+// environment variables will be written the the file /home/application/apprc
+// in all units of the app.
+//
+// The wait parameter indicates whether it should wait or not for the write to
+// complete.
+func (a *App) SerializeEnvVars(wait bool) {
+	msg := message{
+		app: a,
+	}
+	if wait {
+		msg.success = make(chan bool, 1)
+	}
+	env <- msg
+	if msg.success != nil {
+		<-msg.success
+	}
+}
+
 func (a *App) SetEnvs(envs []bind.EnvVar, publicOnly bool) error {
 	e := make([]bind.EnvVar, len(envs))
 	for i, env := range envs {
