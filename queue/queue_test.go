@@ -93,32 +93,6 @@ func (s *S) TestWriteSendErrorsInTheErrorChannel(c *C) {
 	c.Assert(err.Error(), Equals, "Closed connection.")
 }
 
-func (s *S) TestChannelFromReader(c *C) {
-	var buf SafeBuffer
-	messages := []Message{
-		{Action: "delete", Args: []string{"everything"}},
-		{Action: "rename", Args: []string{"old", "new"}},
-		{Action: "destroy", Args: []string{"anything", "something", "otherthing"}},
-	}
-	encoder := gob.NewEncoder(&buf)
-	for _, message := range messages {
-		err := encoder.Encode(message)
-		c.Assert(err, IsNil)
-	}
-	gotMessages := make([]Message, len(messages))
-	ch, errCh := ChannelFromReader(&buf)
-	for i := 0; i < len(messages); i++ {
-		gotMessages[i] = <-ch
-	}
-	c.Assert(gotMessages, DeepEquals, messages)
-	err := <-errCh
-	c.Assert(err, IsNil)
-	_, ok := <-ch
-	c.Assert(ok, Equals, false)
-	_, ok = <-errCh
-	c.Assert(ok, Equals, false)
-}
-
 func (s *S) TestReadSendErrorsInTheErrorChannel(c *C) {
 	messages := make(chan Message, 1)
 	errChan := make(chan error, 1)
