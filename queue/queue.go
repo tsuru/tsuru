@@ -171,9 +171,10 @@ func (qs *Server) Close() error {
 	if !atomic.CompareAndSwapInt32(&qs.closed, 0, 1) {
 		return errors.New("Server already closed.")
 	}
+	err := qs.listener.Close()
 	close(qs.messages)
 	close(qs.errors)
-	return qs.listener.Close()
+	return err
 }
 
 // Dial is used to connect to a queue server.
