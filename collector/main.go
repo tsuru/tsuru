@@ -33,7 +33,7 @@ func main() {
 	}
 	log.SetLogger(logger)
 	flag.StringVar(&configFile, "config", "/etc/tsuru/tsuru.conf", "tsuru config file")
-	flag.BoolVar(&dry, "dry", false, "dry-run: does not start the agent (for testing purposes)")
+	flag.BoolVar(&dry, "dry", false, "dry-run: does not start the agent neither the queue (for testing purposes)")
 	flag.Parse()
 	err = config.ReadConfigFile(configFile)
 	if err != nil {
@@ -54,6 +54,9 @@ func main() {
 	defer db.Session.Close()
 
 	if !dry {
+		handler := MessageHandler{}
+		handler.start()
+		defer handler.stop()
 		ticker := time.Tick(time.Minute)
 		jujuCollect(ticker)
 	}
