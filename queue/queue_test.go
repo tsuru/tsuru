@@ -173,14 +173,15 @@ func (s *S) TestDontHangWhenClientClosesTheConnection(c *C) {
 	c.Assert(err.Error(), Equals, "EOF: client disconnected.")
 }
 
-// BUG(fss): this test fails under race detector.
 func (s *S) TestDontHangWhenServerClosesTheConnection(c *C) {
 	server, err := StartServer("127.0.0.1:0")
 	c.Assert(err, IsNil)
-	_, _, err = Dial(server.Addr())
-	errClose := server.Close()
+	for i := 0; i < 5; i++ {
+		Dial(server.Addr())
+	}
+	time.Sleep(1e9)
+	err = server.Close()
 	c.Assert(err, IsNil)
-	c.Assert(errClose, IsNil)
 }
 
 func (s *S) TestDial(c *C) {
