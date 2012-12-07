@@ -19,9 +19,7 @@ import (
 	"time"
 )
 
-// TODO(fss): fix this test
 func (s *S) TestHandleMessages(c *C) {
-	c.Skip("broken test")
 	handler := MessageHandler{}
 	err := handler.start()
 	c.Assert(err, IsNil)
@@ -63,9 +61,7 @@ func (s *S) TestHandleMessages(c *C) {
 	c.Assert(output, Matches, outputRegexp)
 }
 
-// TODO(fss): fix this test.
 func (s *S) TestHandleMessageErrors(c *C) {
-	c.Skip("Broken test.")
 	var data = []struct {
 		action      string
 		appName     string
