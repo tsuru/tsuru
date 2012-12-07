@@ -410,6 +410,25 @@ func (a *App) GetName() string {
 	return a.Name
 }
 
+// SerializeEnvVars serializes the environment variables of the app. The
+// environment variables will be written the the file /home/application/apprc
+// in all units of the app.
+//
+// The wait parameter indicates whether it should wait or not for the write to
+// complete.
+func (a *App) SerializeEnvVars(wait bool) {
+	msg := message{
+		app: a,
+	}
+	if wait {
+		msg.success = make(chan bool, 1)
+	}
+	env <- msg
+	if msg.success != nil {
+		<-msg.success
+	}
+}
+
 func (a *App) SetEnvs(envs []bind.EnvVar, publicOnly bool) error {
 	e := make([]bind.EnvVar, len(envs))
 	for i, env := range envs {
@@ -418,15 +437,58 @@ func (a *App) SetEnvs(envs []bind.EnvVar, publicOnly bool) error {
 	return setEnvsToApp(a, e, publicOnly)
 }
 
+func setEnvsToApp(app *App, envs []bind.EnvVar, publicOnly bool) error {
+	if len(envs) > 0 {
+		for _, env := range envs {
+			set := true
+			if publicOnly {
+				e, err := app.getEnv(env.Name)
+				if err == nil && !e.Public {
+					set = false
+				}
+			}
+			if set {
+				app.setEnv(env)
+			}
+		}
+		if err := db.Session.Apps().Update(bson.M{"name": app.Name}, app); err != nil {
+			return err
+		}
+		app.SerializeEnvVars(false)
+	}
+	return nil
+}
+
 func (a *App) UnsetEnvs(envs []string, publicOnly bool) error {
 	return unsetEnvFromApp(a, envs, publicOnly)
+}
+
+func unsetEnvFromApp(app *App, variableNames []string, publicOnly bool) error {
+	if len(variableNames) > 0 {
+		for _, name := range variableNames {
+			var unset bool
+			e, err := app.getEnv(name)
+			if !publicOnly || (err == nil && e.Public) {
+				unset = true
+			}
+			if unset {
+				delete(app.Env, name)
+			}
+		}
+		if err := db.Session.Apps().Update(bson.M{"name": app.Name}, app); err != nil {
+			return err
+		}
+		app.SerializeEnvVars(false)
+	}
+	return nil
 }
 
 func (a *App) log(message string, source string) error {
 	log.Printf(message)
 	messages := strings.Split(message, "\n")
 	for _, msg := range messages {
-		if msg != "" {
+		filteredMessage := juju.FilterOutput([]byte(msg))
+		if len(filteredMessage) > 0 {
 			l := applog{
 				Date:    time.Now(),
 				Message: msg,

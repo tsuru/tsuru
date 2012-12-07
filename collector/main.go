@@ -6,37 +6,14 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"github.com/globocom/config"
-	"github.com/globocom/tsuru/api/app"
 	"github.com/globocom/tsuru/db"
 	"github.com/globocom/tsuru/log"
-	"labix.org/v2/mgo/bson"
 	stdlog "log"
 	"log/syslog"
 	"time"
 )
-
-func getApps() []app.App {
-	query := bson.M{
-		"$or": []bson.M{
-			{
-				"units.agentstate": bson.M{"$ne": "started"},
-			},
-			{
-				"units.machineagentstate": bson.M{"$ne": "running"},
-			},
-			{
-				"units.instancestate": bson.M{"$ne": "running"},
-			},
-		},
-	}
-	var apps []app.App
-	err := db.Session.Apps().Find(query).All(&apps)
-	if err != nil {
-		log.Panicf("Failed to get apps in the database: %s.", err)
-	}
-	return apps
-}
 
 func jujuCollect(ticker <-chan time.Time) {
 	for _ = range ticker {
@@ -57,7 +34,7 @@ func main() {
 	}
 	log.SetLogger(logger)
 	flag.StringVar(&configFile, "config", "/etc/tsuru/tsuru.conf", "tsuru config file")
-	flag.BoolVar(&dry, "dry", false, "dry-run: does not start the agent (for testing purposes)")
+	flag.BoolVar(&dry, "dry", false, "dry-run: does not start the agent neither the queue (for testing purposes)")
 	flag.Parse()
 	err = config.ReadConfigFile(configFile)
 	if err != nil {
@@ -78,6 +55,11 @@ func main() {
 	defer db.Session.Close()
 
 	if !dry {
+		fmt.Println("tsuru collector agent started...")
+		handler := MessageHandler{}
+		handler.start()
+		fmt.Printf("queue server listening at %s.\n", handler.server.Addr())
+		defer handler.stop()
 		ticker := time.Tick(time.Minute)
 		jujuCollect(ticker)
 	}

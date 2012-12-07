@@ -347,31 +347,6 @@ func GetEnv(w http.ResponseWriter, r *http.Request, u *auth.User) (err error) {
 	return nil
 }
 
-func setEnvsToApp(app *App, envs []bind.EnvVar, publicOnly bool) error {
-	if len(envs) > 0 {
-		for _, env := range envs {
-			set := true
-			if publicOnly {
-				e, err := app.getEnv(env.Name)
-				if err == nil && !e.Public {
-					set = false
-				}
-			}
-			if set {
-				app.setEnv(env)
-			}
-		}
-		if err := db.Session.Apps().Update(bson.M{"name": app.Name}, app); err != nil {
-			return err
-		}
-		mess := message{
-			app: app,
-		}
-		env <- mess
-	}
-	return nil
-}
-
 func SetEnv(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	msg := "You must provide the environment variables"
 	if r.Body == nil {
@@ -400,29 +375,6 @@ func SetEnv(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 		envs[i] = bind.EnvVar{Name: parts[0], Value: parts[1], Public: true}
 	}
 	return setEnvsToApp(&app, envs, true)
-}
-
-func unsetEnvFromApp(app *App, variableNames []string, publicOnly bool) error {
-	if len(variableNames) > 0 {
-		for _, name := range variableNames {
-			var unset bool
-			e, err := app.getEnv(name)
-			if !publicOnly || (err == nil && e.Public) {
-				unset = true
-			}
-			if unset {
-				delete(app.Env, name)
-			}
-		}
-		if err := db.Session.Apps().Update(bson.M{"name": app.Name}, app); err != nil {
-			return err
-		}
-		mess := message{
-			app: app,
-		}
-		env <- mess
-	}
-	return nil
 }
 
 func UnsetEnv(w http.ResponseWriter, r *http.Request, u *auth.User) error {

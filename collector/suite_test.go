@@ -5,6 +5,7 @@
 package main
 
 import (
+	"github.com/globocom/config"
 	"github.com/globocom/tsuru/db"
 	"labix.org/v2/mgo"
 	. "launchpad.net/gocheck"
@@ -26,11 +27,12 @@ func (s *S) SetUpSuite(c *C) {
 	c.Assert(err, IsNil)
 	db.Session, err = db.Open("127.0.0.1:27017", "tsuru_collector_test")
 	c.Assert(err, IsNil)
+	config.Set("queue-server", "127.0.0.1:0")
 }
 
 func (s *S) TearDownSuite(c *C) {
-	defer db.Session.Close()
 	db.Session.Apps().Database.DropDatabase()
+	db.Session.Close()
 }
 
 func (s *S) TearDownTest(c *C) {

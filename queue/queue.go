@@ -9,11 +9,11 @@ import (
 	"errors"
 	"io"
 	"net"
+	"sync/atomic"
 	"time"
 )
 
-// The size of buffered channels created by ChannelFromReader and
-// ChannelFromWriter.
+// The size of buffered channels created by ChannelFromWriter.
 const ChanSize = 32
 
 // Message represents the message stored in the queue.
@@ -64,55 +64,12 @@ func ChannelFromWriter(w io.WriteCloser) (chan<- Message, <-chan error) {
 func write(w io.WriteCloser, ch <-chan Message, errCh chan<- error) {
 	defer close(errCh)
 	defer w.Close()
+	encoder := gob.NewEncoder(w)
 	for msg := range ch {
-		encoder := gob.NewEncoder(w)
 		if err := encoder.Encode(msg); err != nil {
 			errCh <- err
 		}
 	}
-}
-
-// ChannelFromReader returns a channel from a given io.Reader.
-//
-// Every time a chunk of gobs is read from r, it will be decoded to a Message
-// and sent to the message channel. ChannelFromReader also returns another
-// channel for errors in reading. You can use a select for reading messages or
-// errors:
-//
-//     ch, errCh := ChannelFromReader(r)
-//     select {
-//     case msg := <-ch:
-//         // Do something with msg
-//     case err := <-errCh:
-//         // Threat the error
-//     }
-//
-// If the reading or decoding fail for any reason, the error will be sent to
-// the error channels and both channels will be closed.
-func ChannelFromReader(r io.Reader) (<-chan Message, <-chan error) {
-	msgCh := make(chan Message, ChanSize)
-	errCh := make(chan error, ChanSize)
-	go read(r, msgCh, errCh)
-	return msgCh, errCh
-}
-
-// read reads bytes from r, decode these bytes as Message's and send each
-// message to ch.
-//
-// Any error on reading will be sen to errCh (except io.EOF).
-func read(r io.Reader, ch chan<- Message, errCh chan<- error) {
-	var err error
-	decoder := gob.NewDecoder(r)
-	for err == nil {
-		var msg Message
-		if err = decoder.Decode(&msg); err == nil {
-			ch <- msg
-		} else if err != io.EOF {
-			errCh <- err
-		}
-	}
-	close(ch)
-	close(errCh)
 }
 
 // Server is the server that hosts the queue. It receives messages and
@@ -121,6 +78,7 @@ type Server struct {
 	listener net.Listener
 	messages chan Message
 	errors   chan error
+	closed   int32
 }
 
 // StartServer starts a new queue server from a local address.
@@ -142,10 +100,25 @@ func StartServer(laddr string) (*Server, error) {
 	return &server, nil
 }
 
+// handle handles a new client, sending errors to the qs.errors channel and
+// received messages to qs.messages.
+func (qs *Server) handle(conn net.Conn) {
+	var err error
+	decoder := gob.NewDecoder(conn)
+	for err == nil {
+		var msg Message
+		if err = decoder.Decode(&msg); err == nil {
+			qs.messages <- msg
+		} else if atomic.LoadInt32(&qs.closed) == 0 {
+			qs.errors <- err
+		}
+	}
+}
+
 // loop accepts connection forever, and uses read to read messages from it,
 // decoding them to a channel of messages.
 func (qs *Server) loop() {
-	for {
+	for atomic.LoadInt32(&qs.closed) == 0 {
 		conn, err := qs.listener.Accept()
 		if err != nil {
 			if e, ok := err.(*net.OpError); ok && !e.Temporary() {
@@ -153,7 +126,7 @@ func (qs *Server) loop() {
 			}
 			continue
 		}
-		go read(conn, qs.messages, qs.errors)
+		go qs.handle(conn)
 	}
 }
 
@@ -173,10 +146,20 @@ func (qs *Server) Message(timeout time.Duration) (Message, error) {
 	select {
 	case msg = <-qs.messages:
 	case err = <-qs.errors:
+		if err == io.EOF {
+			err = errors.New("EOF: client disconnected.")
+		}
 	case <-time.After(timeout):
 		err = errors.New("Timed out waiting for the message.")
 	}
 	return msg, err
+}
+
+// PutBack puts a message back in the queue. It should be used when a message
+// got using Message method cannot be processed yet. You put it back in the
+// queue for processing later.
+func (qs *Server) PutBack(message Message) {
+	qs.messages <- message
 }
 
 // Addr returns the address of the server.
@@ -184,9 +167,15 @@ func (qs *Server) Addr() string {
 	return qs.listener.Addr().String()
 }
 
-// Close closes the server listener.
+// Close closes the server, closing the underlying listener.
 func (qs *Server) Close() error {
-	return qs.listener.Close()
+	if !atomic.CompareAndSwapInt32(&qs.closed, 0, 1) {
+		return errors.New("Server already closed.")
+	}
+	err := qs.listener.Close()
+	qs.errors <- errors.New("Server is closed.")
+	close(qs.errors)
+	return err
 }
 
 // Dial is used to connect to a queue server.

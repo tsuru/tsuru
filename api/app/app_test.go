@@ -319,6 +319,181 @@ func (s *S) TestSetEnvironmentVariableToApp(c *C) {
 	c.Assert(env.Public, Equals, true)
 }
 
+func (s *S) TestSetEnvRespectsThePublicOnlyFlagKeepPrivateVariablesWhenItsTrue(c *C) {
+	dir, err := commandmocker.Add("juju", "")
+	defer commandmocker.Remove(dir)
+	c.Assert(err, IsNil)
+	a := App{
+		Name:  "myapp",
+		Units: []Unit{{Machine: 1}},
+		Env: map[string]bind.EnvVar{
+			"DATABASE_HOST": {
+				Name:   "DATABASE_HOST",
+				Value:  "localhost",
+				Public: false,
+			},
+		},
+	}
+	err = db.Session.Apps().Insert(a)
+	c.Assert(err, IsNil)
+	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
+	envs := []bind.EnvVar{
+		{
+			Name:   "DATABASE_HOST",
+			Value:  "remotehost",
+			Public: false,
+		},
+		{
+			Name:   "DATABASE_PASSWORD",
+			Value:  "123",
+			Public: true,
+		},
+	}
+	err = setEnvsToApp(&a, envs, true)
+	c.Assert(err, IsNil)
+	newApp := App{Name: a.Name}
+	err = newApp.Get()
+	c.Assert(err, IsNil)
+	expected := map[string]bind.EnvVar{
+		"DATABASE_HOST": {
+			Name:   "DATABASE_HOST",
+			Value:  "localhost",
+			Public: false,
+		},
+		"DATABASE_PASSWORD": {
+			Name:   "DATABASE_PASSWORD",
+			Value:  "123",
+			Public: true,
+		},
+	}
+	c.Assert(newApp.Env, DeepEquals, expected)
+}
+
+func (s *S) TestSetEnvRespectsThePublicOnlyFlagOverwrittenAllVariablesWhenItsFalse(c *C) {
+	dir, err := commandmocker.Add("juju", "")
+	defer commandmocker.Remove(dir)
+	c.Assert(err, IsNil)
+	a := App{
+		Name: "myapp",
+		Units: []Unit{
+			{Machine: 1},
+		},
+		Env: map[string]bind.EnvVar{
+			"DATABASE_HOST": {
+				Name:   "DATABASE_HOST",
+				Value:  "localhost",
+				Public: false,
+			},
+		},
+	}
+	err = db.Session.Apps().Insert(a)
+	c.Assert(err, IsNil)
+	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
+	envs := []bind.EnvVar{
+		{
+			Name:   "DATABASE_HOST",
+			Value:  "remotehost",
+			Public: true,
+		},
+		{
+			Name:   "DATABASE_PASSWORD",
+			Value:  "123",
+			Public: true,
+		},
+	}
+	err = setEnvsToApp(&a, envs, false)
+	c.Assert(err, IsNil)
+	newApp := App{Name: a.Name}
+	err = newApp.Get()
+	c.Assert(err, IsNil)
+	expected := map[string]bind.EnvVar{
+		"DATABASE_HOST": {
+			Name:   "DATABASE_HOST",
+			Value:  "remotehost",
+			Public: true,
+		},
+		"DATABASE_PASSWORD": {
+			Name:   "DATABASE_PASSWORD",
+			Value:  "123",
+			Public: true,
+		},
+	}
+	c.Assert(newApp.Env, DeepEquals, expected)
+}
+
+func (s *S) TestUnsetEnvRespectsThePublicOnlyFlagKeepPrivateVariablesWhenItsTrue(c *C) {
+	dir, err := commandmocker.Add("juju", "")
+	defer commandmocker.Remove(dir)
+	c.Assert(err, IsNil)
+	a := App{
+		Name: "myapp",
+		Units: []Unit{
+			{Machine: 1},
+		},
+		Env: map[string]bind.EnvVar{
+			"DATABASE_HOST": {
+				Name:   "DATABASE_HOST",
+				Value:  "localhost",
+				Public: false,
+			},
+			"DATABASE_PASSWORD": {
+				Name:   "DATABASE_PASSWORD",
+				Value:  "123",
+				Public: true,
+			},
+		},
+	}
+	err = db.Session.Apps().Insert(a)
+	c.Assert(err, IsNil)
+	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
+	err = unsetEnvFromApp(&a, []string{"DATABASE_HOST", "DATABASE_PASSWORD"}, true)
+	c.Assert(err, IsNil)
+	newApp := App{Name: a.Name}
+	err = newApp.Get()
+	c.Assert(err, IsNil)
+	expected := map[string]bind.EnvVar{
+		"DATABASE_HOST": {
+			Name:   "DATABASE_HOST",
+			Value:  "localhost",
+			Public: false,
+		},
+	}
+	c.Assert(newApp.Env, DeepEquals, expected)
+}
+
+func (s *S) TestUnsetEnvRespectsThePublicOnlyFlagUnsettingAllVariablesWhenItsFalse(c *C) {
+	dir, err := commandmocker.Add("juju", "")
+	defer commandmocker.Remove(dir)
+	c.Assert(err, IsNil)
+	a := App{
+		Name: "myapp",
+		Units: []Unit{
+			{Machine: 1},
+		},
+		Env: map[string]bind.EnvVar{
+			"DATABASE_HOST": {
+				Name:   "DATABASE_HOST",
+				Value:  "localhost",
+				Public: false,
+			},
+			"DATABASE_PASSWORD": {
+				Name:   "DATABASE_PASSWORD",
+				Value:  "123",
+				Public: true,
+			},
+		},
+	}
+	err = db.Session.Apps().Insert(a)
+	c.Assert(err, IsNil)
+	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
+	err = unsetEnvFromApp(&a, []string{"DATABASE_HOST", "DATABASE_PASSWORD"}, false)
+	c.Assert(err, IsNil)
+	newApp := App{Name: a.Name}
+	err = newApp.Get()
+	c.Assert(err, IsNil)
+	c.Assert(newApp.Env, DeepEquals, map[string]bind.EnvVar{})
+}
+
 func (s *S) TestGetEnvironmentVariableFromApp(c *C) {
 	a := App{Name: "whole-lotta-love"}
 	a.setEnv(bind.EnvVar{Name: "PATH", Value: "/"})
@@ -829,6 +1004,35 @@ func (s *S) TestLogShouldNotLogWhiteLines(c *C) {
 	c.Assert(instance.Logs[logLen-1].Message, Not(Equals), "")
 }
 
+func (s *S) TestLogShouldNotLogWarnings(c *C) {
+	a := App{
+		Name: "newApp",
+	}
+	err := db.Session.Apps().Insert(a)
+	c.Assert(err, IsNil)
+	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
+	err = a.log("some message", "tsuru")
+	c.Assert(err, IsNil)
+	badLogs := []string{
+		"2012-11-28 16:00:35,615 WARNING Ubuntu Cloud Image lookups encrypted but not authenticated",
+		"2012-11-28 16:00:35,616 INFO Connecting to environment...",
+		"/usr/local/lib/python2.7/dist-packages/txAWS-0.2.3-py2.7.egg/txaws/client/base.py:208: UserWarning: The client attribute on BaseQuery is deprecated and will go away in future release.",
+		"warnings.warn('The client attribute on BaseQuery is deprecated and'",
+	}
+	for _, log := range badLogs {
+		err = a.log(log, "")
+		c.Assert(err, IsNil)
+	}
+	for _, log := range badLogs {
+		lenght, err := db.Session.Apps().Find(bson.M{"logs.message": log}).Count()
+		c.Assert(err, IsNil)
+		c.Assert(lenght, Equals, 0)
+	}
+
+	var instance App
+	err = db.Session.Apps().Find(bson.M{"name": a.Name}).One(&instance)
+}
+
 func (s *S) TestGetTeams(c *C) {
 	app := App{Name: "app", Teams: []string{s.team.Name}}
 	teams := app.teams()
@@ -920,4 +1124,30 @@ func (s *S) TestRun(c *C) {
 	err = app.run("ls -lh", &buf)
 	c.Assert(err, IsNil)
 	c.Assert(buf.String(), Equals, "ssh -o StrictHostKeyChecking no -q 10 [ -f /home/application/apprc ] && source /home/application/apprc; [ -d /home/application/current ] && cd /home/application/current; ls -lh")
+}
+
+func (s *S) TestSerializeEnvVars(c *C) {
+	dir, err := commandmocker.Add("juju", "$*")
+	c.Assert(err, IsNil)
+	defer commandmocker.Remove(dir)
+	app := App{
+		Name:  "time",
+		Teams: []string{s.team.Name},
+		Units: []Unit{
+			{AgentState: "started", MachineAgentState: "running", InstanceState: "running", Machine: 1},
+		},
+		Env: map[string]bind.EnvVar{
+			"http_proxy": {
+				Name:   "http_proxy",
+				Value:  "http://theirproxy.com:3128/",
+				Public: true,
+			},
+		},
+	}
+	app.SerializeEnvVars(true)
+	c.Assert(commandmocker.Ran(dir), Equals, true)
+	output := strings.Replace(commandmocker.Output(dir), "\n", " ", -1)
+	outputRegexp := `^.*1 cat > /home/application/apprc <<END # generated by tsuru .*`
+	outputRegexp += ` export http_proxy="http://theirproxy.com:3128/" END $`
+	c.Assert(output, Matches, outputRegexp)
 }
