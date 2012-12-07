@@ -19,10 +19,15 @@ import (
 	"net/http"
 )
 
+func fatal(err error) {
+	fmt.Fprintln(os.Stderr, err)
+	log.Fatal(err)
+}
+
 func main() {
 	logger, err := syslog.NewLogger(syslog.LOG_INFO, stdlog.LstdFlags)
 	if err != nil {
-		panic(err)
+		stdlog.Fatal(err)
 	}
 	log.SetLogger(logger)
 	configFile := flag.String("config", "/etc/tsuru/tsuru.conf", "tsuru config file")
@@ -30,19 +35,19 @@ func main() {
 	flag.Parse()
 	err = config.ReadConfigFile(*configFile)
 	if err != nil {
-		log.Panic(err)
+		fatal(err)
 	}
 	connString, err := config.GetString("database:url")
 	if err != nil {
-		panic(err)
+		fatal(err)
 	}
 	dbName, err := config.GetString("database:name")
 	if err != nil {
-		panic(err)
+		fatal(err)
 	}
 	db.Session, err = db.Open(connString, dbName)
 	if err != nil {
-		log.Panic(err)
+		fatal(err)
 	}
 	defer db.Session.Close()
 
@@ -97,8 +102,8 @@ func main() {
 	if !*dry {
 		listen, err := config.GetString("listen")
 		if err != nil {
-			panic(err)
+			fatal(err)
 		}
-		log.Fatal(http.ListenAndServe(listen, m))
+		fatal(http.ListenAndServe(listen, m))
 	}
 }
