@@ -80,8 +80,8 @@ func (a *App) Get() error {
 func createApp(a *App) error {
 	if !a.isValid() {
 		msg := "Invalid app name, your app should have at most 63 " +
-			"characters, containing only lower case letters, numbers, " +
-			"underscores (_) or dashes (-), starting with letter or underscore."
+			"characters, containing only lower case letters or numbers, " +
+			"starting with a letter."
 		return &ValidationError{Message: msg}
 	}
 	a.State = "pending"

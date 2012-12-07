@@ -203,8 +203,8 @@ func (s *S) TestCantCreateAppWithInvalidName(c *C) {
 	e, ok := err.(*ValidationError)
 	c.Assert(ok, Equals, true)
 	msg := "Invalid app name, your app should have at most 63 " +
-		"characters, containing only lower case letters, numbers, " +
-		"underscores (_) or dashes (-), starting with letter or underscore."
+		"characters, containing only lower case letters or numbers, " +
+		"starting with a letter."
 	c.Assert(e.Message, Equals, msg)
 }
 
