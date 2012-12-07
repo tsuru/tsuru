@@ -16,6 +16,7 @@ import (
 	"github.com/globocom/tsuru/db"
 	"github.com/globocom/tsuru/juju"
 	"github.com/globocom/tsuru/log"
+	"github.com/globocom/tsuru/queue"
 	"github.com/globocom/tsuru/repository"
 	"io"
 	"labix.org/v2/mgo/bson"
@@ -430,6 +431,23 @@ func (a *App) SetEnvs(envs []bind.EnvVar, publicOnly bool) error {
 	return a.setEnvsToApp(e, publicOnly, false)
 }
 
+func (a *App) enqueueApprcRegeneration() error {
+	addr, err := config.GetString("queue-server")
+	if err != nil {
+		return err
+	}
+	messages, _, err := queue.Dial(addr)
+	if err != nil {
+		return err
+	}
+	messages <- queue.Message{
+		Action: RegenerateApprc,
+		Args:   []string{a.Name},
+	}
+	close(messages)
+	return nil
+}
+
 // setEnvsToApp adds environment variables to an app, serializing the resulting
 // list of environment variables in all units of apps. This method can
 // serialize them directly or using a queue.
@@ -456,6 +474,9 @@ func (app *App) setEnvsToApp(envs []bind.EnvVar, publicOnly, useQueue bool) erro
 		}
 		if err := db.Session.Apps().Update(bson.M{"name": app.Name}, app); err != nil {
 			return err
+		}
+		if useQueue {
+			return app.enqueueApprcRegeneration()
 		}
 		app.SerializeEnvVars()
 	}

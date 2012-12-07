@@ -14,6 +14,7 @@ import (
 	"github.com/globocom/tsuru/api/bind"
 	"github.com/globocom/tsuru/db"
 	"github.com/globocom/tsuru/log"
+	"github.com/globocom/tsuru/queue"
 	"github.com/globocom/tsuru/repository"
 	"labix.org/v2/mgo/bson"
 	. "launchpad.net/gocheck"
@@ -114,12 +115,16 @@ func (s *S) TestFailingDestroy(c *C) {
 	c.Assert(err.Error(), Equals, "Failed to destroy unit: exit status 25\njuju failed")
 }
 
+// TODO(fss): simplify this test. Right now, it's a little monster.
 func (s *S) TestCreateApp(c *C) {
 	patchRandomReader()
 	defer unpatchRandomReader()
 	dir, err := commandmocker.Add("juju", "$*")
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(dir)
+	server := FakeQueueServer{}
+	server.Start("127.0.0.1:0")
+	defer server.Stop()
 	w := bytes.NewBuffer([]byte{})
 	l := stdlog.New(w, "", stdlog.LstdFlags)
 	log.SetLogger(l)
@@ -131,6 +136,12 @@ func (s *S) TestCreateApp(c *C) {
 	expectedHost := "localhost"
 	config.Set("host", expectedHost)
 	c.Assert(err, IsNil)
+	old, err := config.Get("queue-server")
+	if err != nil {
+		defer config.Set("queue-server", old)
+	}
+	config.Set("queue-server", server.listener.Addr().String())
+
 	err = createApp(&a)
 	c.Assert(err, IsNil)
 	defer a.destroy()
@@ -162,6 +173,11 @@ func (s *S) TestCreateApp(c *C) {
 	c.Assert(env["APPNAME"].Public, Equals, false)
 	c.Assert(env["TSURU_HOST"].Value, Equals, expectedHost)
 	c.Assert(env["TSURU_HOST"].Public, Equals, false)
+	expectedMessage := queue.Message{
+		Action: RegenerateApprc,
+		Args:   []string{a.Name},
+	}
+	c.Assert(server.messages, DeepEquals, []queue.Message{expectedMessage})
 }
 
 func (s *S) TestCantCreateTwoAppsWithTheSameName(c *C) {
