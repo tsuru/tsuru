@@ -256,7 +256,7 @@ func (a *App) getEnv(name string) (bind.EnvVar, error) {
 }
 
 func (a *App) isValid() bool {
-	regex := regexp.MustCompile(`^[a-z_][a-z0-9_-]{0,62}$`)
+	regex := regexp.MustCompile(`^[a-z][a-z0-9]{0,62}$`)
 	return regex.MatchString(a.Name)
 }
 

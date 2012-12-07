@@ -562,9 +562,9 @@ func (s *S) TestIsValid(c *C) {
 		{"my app", false},
 		{"123myapp", false},
 		{"myapp", true},
-		{"_theirapp", true},
-		{"my-app", true},
-		{"my_app", true},
+		{"_theirapp", false},
+		{"my-app", false},
+		{"my_app", false},
 		{"b", true},
 	}
 	for _, d := range data {
