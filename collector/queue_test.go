@@ -66,6 +66,7 @@ func (s *S) TestHandleMessageErrors(c *C) {
 		action      string
 		appName     string
 		expectedLog string
+		visits      int
 	}{
 		{
 			action:      "unknown-action",
@@ -87,19 +88,47 @@ func (s *S) TestHandleMessageErrors(c *C) {
 			action:      app.RegenerateApprc,
 			expectedLog: `Error handling "regenerate-apprc": this action requires at least 1 argument.`,
 		},
+		{
+			action:      "does not matter",
+			appName:     "does not matter",
+			expectedLog: `Error handling "does not matter": this message has been visited more than 35 times.`,
+			visits:      MaxVisits,
+		},
+		{
+			action:  app.RegenerateApprc,
+			appName: "marathon",
+			expectedLog: `Error handling "regenerate-apprc" for the app "marathon":` +
+				` the app is in "error" state.`,
+		},
+		{
+			action:  app.RegenerateApprc,
+			appName: "territories",
+			expectedLog: `Error handling "regenerate-apprc" for the app "territories":` +
+				` the app is down.`,
+		},
 	}
 	var buf bytes.Buffer
 	a := app.App{Name: "nemesis", State: "pending"}
 	err := db.Session.Apps().Insert(a)
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
+	a = app.App{Name: "marathon", State: "error"}
+	err = db.Session.Apps().Insert(a)
+	c.Assert(err, IsNil)
+	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
+	a = app.App{Name: "territories", State: "down"}
+	err = db.Session.Apps().Insert(a)
+	c.Assert(err, IsNil)
+	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
 	log.SetLogger(stdlog.New(&buf, "", 0))
 	handler := MessageHandler{}
 	handler.start()
+	handler.closed = 1
 	defer handler.stop()
 	for _, d := range data {
 		message := queue.Message{
 			Action: d.action,
+			Visits: d.visits,
 		}
 		if d.appName != "" {
 			message.Args = append(message.Args, d.appName)
@@ -109,8 +138,15 @@ func (s *S) TestHandleMessageErrors(c *C) {
 	content := buf.String()
 	lines := strings.Split(content, "\n")
 	for i, d := range data {
-		if lines[i] != d.expectedLog {
-			c.Errorf("\nWant: %q.\nGot: %q", d.expectedLog, lines[i])
+		var found bool
+		for j := i; j < len(lines); j++ {
+			if lines[j] == d.expectedLog {
+				found = true
+				break
+			}
+		}
+		if !found {
+			c.Errorf("\nWant: %q.\nGot:\n%s", d.expectedLog, content)
 		}
 	}
 }

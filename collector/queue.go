@@ -13,6 +13,8 @@ import (
 	"sync/atomic"
 )
 
+const MaxVisits = 35
+
 type MessageHandler struct {
 	closed int32
 	server *queue.Server
@@ -46,6 +48,10 @@ func (h *MessageHandler) handleMessages() {
 }
 
 func (h *MessageHandler) handle(msg queue.Message) {
+	if msg.Visits >= MaxVisits {
+		log.Printf("Error handling %q: this message has been visited more than %d times.", msg.Action, MaxVisits)
+		return
+	}
 	switch msg.Action {
 	case app.RegenerateApprc:
 		if len(msg.Args) < 1 {
@@ -59,10 +65,17 @@ func (h *MessageHandler) handle(msg queue.Message) {
 			return
 		}
 		if a.State != "started" {
-			format := "Error handling %q for the app %q:" +
-				` The status of the app should be "started", but it is %q.`
+			format := "Error handling %q for the app %q:"
+			switch a.State {
+			case "error":
+				format += " the app is in %q state."
+			case "down":
+				format += " the app is %s."
+			default:
+				format += ` The status of the app should be "started", but it is %q.`
+				h.server.PutBack(msg)
+			}
 			log.Printf(format, msg.Action, a.Name, a.State)
-			h.server.PutBack(msg)
 			return
 		}
 		a.SerializeEnvVars()
