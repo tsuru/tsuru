@@ -52,7 +52,7 @@ func (s *S) TestHandleMessages(c *C) {
 	defer commandmocker.Remove(tmpdir)
 	messages, _, err := queue.Dial(handler.server.Addr())
 	c.Assert(err, IsNil)
-	messages <- queue.Message{Action: "regenerate-apprc", Args: []string{a.Name}}
+	messages <- queue.Message{Action: app.RegenerateApprc, Args: []string{a.Name}}
 	time.Sleep(1e9)
 	c.Assert(commandmocker.Ran(tmpdir), Equals, true)
 	output := strings.Replace(commandmocker.Output(tmpdir), "\n", " ", -1)
@@ -73,18 +73,18 @@ func (s *S) TestHandleMessageErrors(c *C) {
 			expectedLog: `Error handling "unknown-action": invalid action.`,
 		},
 		{
-			action:  "regenerate-apprc",
+			action:  app.RegenerateApprc,
 			appName: "nemesis",
 			expectedLog: `Error handling "regenerate-apprc" for the app "nemesis":` +
 				` The status of the app should be "started", but it is "pending".`,
 		},
 		{
-			action:      "regenerate-apprc",
+			action:      app.RegenerateApprc,
 			appName:     "unknown-app",
 			expectedLog: `Error handling "regenerate-apprc": app "unknown-app" does not exist.`,
 		},
 		{
-			action:      "regenerate-apprc",
+			action:      app.RegenerateApprc,
 			expectedLog: `Error handling "regenerate-apprc": this action requires at least 1 argument.`,
 		},
 	}

@@ -30,6 +30,8 @@ import (
 	"time"
 )
 
+const RegenerateApprc = "regenerate-apprc"
+
 type App struct {
 	Env       map[string]bind.EnvVar
 	Framework string

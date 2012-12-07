@@ -47,7 +47,7 @@ func (h *MessageHandler) handleMessages() {
 
 func (h *MessageHandler) handle(msg queue.Message) {
 	switch msg.Action {
-	case "regenerate-apprc":
+	case app.RegenerateApprc:
 		if len(msg.Args) < 1 {
 			log.Printf("Error handling %q: this action requires at least 1 argument.", msg.Action)
 			return
