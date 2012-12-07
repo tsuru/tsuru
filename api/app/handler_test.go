@@ -63,6 +63,17 @@ func (h *testBadHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	http.Error(w, "some error", http.StatusInternalServerError)
 }
 
+type testNotSoBadHandler struct {
+	requests int
+}
+
+func (h *testNotSoBadHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if h.requests > 0 {
+		http.Error(w, "some error", http.StatusInternalServerError)
+	}
+	h.requests++
+}
+
 func (s *S) TestAppIsAvaliableHandlerShouldReturnsErrorWhenAppUnitStatusIsnotStarted(c *C) {
 	a := App{
 		Name:      "someapp",
@@ -503,6 +514,36 @@ func (s *S) TestAppInfoReturnsNotFoundWhenAppDoesNotExist(c *C) {
 	c.Assert(ok, Equals, true)
 	c.Assert(e.Code, Equals, http.StatusNotFound)
 	c.Assert(e, ErrorMatches, "^App SomeApp not found.$")
+}
+
+func (s *S) TestCreateAppHelperShouldNotCreateAnAppWhenAnErrorHappensOnCreateRepo(c *C) {
+	h := testBadHandler{}
+	ts := s.startGandalfTestServer(&h)
+	defer ts.Close()
+	dir, err := commandmocker.Add("juju", "")
+	defer commandmocker.Remove(dir)
+	c.Assert(err, IsNil)
+	a := App{Name: "someapp"}
+	_, err = createAppHelper(&a, s.user)
+	c.Assert(err, NotNil)
+	length, err := db.Session.Apps().Find(bson.M{"name": a.Name}).Count()
+	c.Assert(err, IsNil)
+	c.Assert(length, Equals, 0)
+}
+
+func (s *S) TestCreateAppHelperShouldNotCreateAnAppWhenAnErrorHappensOnGrant(c *C) {
+	h := testNotSoBadHandler{}
+	ts := s.startGandalfTestServer(&h)
+	defer ts.Close()
+	dir, err := commandmocker.Add("juju", "")
+	defer commandmocker.Remove(dir)
+	c.Assert(err, IsNil)
+	a := App{Name: "someapp"}
+	_, err = createAppHelper(&a, s.user)
+	c.Assert(err, NotNil)
+	length, err := db.Session.Apps().Find(bson.M{"name": a.Name}).Count()
+	c.Assert(err, IsNil)
+	c.Assert(length, Equals, 0)
 }
 
 func (s *S) TestCreateAppHelperCreatesRepositoryInGandalf(c *C) {

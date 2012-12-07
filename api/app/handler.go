@@ -194,10 +194,12 @@ func createAppHelper(app *App, u *auth.User) ([]byte, error) {
 	c := gandalf.Client{Endpoint: gUrl}
 	if _, err := c.NewRepository(app.Name, users, false); err != nil {
 		log.Printf("Got error while creating repository: %s", err.Error())
+		app.destroy()
 		return nil, &errors.Http{Code: http.StatusInternalServerError, Message: err.Error()}
 	}
 	if err := c.GrantAccess([]string{app.Name}, users); err != nil {
 		log.Printf("Got error while granting access to repository: %s", err.Error())
+		app.destroy()
 		return nil, &errors.Http{Code: http.StatusInternalServerError, Message: err.Error()}
 	}
 	msg := map[string]string{
