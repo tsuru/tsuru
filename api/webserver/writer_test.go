@@ -41,3 +41,23 @@ func (s *S) TestFilteredWriterWriteHeader(c *C) {
 	writer.WriteHeader(expectedCode)
 	c.Assert(recorder.Code, Equals, expectedCode)
 }
+
+func (s *S) TestFilteredWriterShouldNotFilterWhenTheContentTypeIsntText(c *C) {
+	recorder := httptest.NewRecorder()
+	writer := FilteredWriter{recorder}
+	writer.Header().Set("Content-Type", "application/xml")
+	data := []byte("2012-11-28 16:00:35,615 WARNING Ubuntu Cloud Image lookups encrypted but not authenticated")
+	_, err := writer.Write(data)
+	c.Assert(err, IsNil)
+	c.Assert(recorder.Body.Bytes(), DeepEquals, data)
+}
+
+func (s *S) TestFilteredWriterShouldFilterWhenTheContentTypeIsText(c *C) {
+	recorder := httptest.NewRecorder()
+	writer := FilteredWriter{recorder}
+	writer.Header().Set("Content-Type", "text")
+	data := []byte("2012-11-28 16:00:35,615 WARNING Ubuntu Cloud Image lookups encrypted but not authenticated")
+	_, err := writer.Write(data)
+	c.Assert(err, IsNil)
+	c.Assert(len(recorder.Body.Bytes()), Equals, 0)
+}

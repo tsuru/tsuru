@@ -40,6 +40,7 @@ func simpleHandler(w http.ResponseWriter, r *http.Request) error {
 }
 
 func outputHandler(w http.ResponseWriter, r *http.Request) error {
+	w.Header().Set("Content-Type", "text")
 	output := "2012-06-05 17:03:36,887 WARNING ssl-hostname-verification is disabled for this environment"
 	fmt.Fprint(w, output)
 	return nil
