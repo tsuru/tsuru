@@ -5,9 +5,18 @@
 package app
 
 import (
+	"github.com/globocom/tsuru/fs"
 	"github.com/globocom/tsuru/fs/testing"
 	. "launchpad.net/gocheck"
 )
+
+func (s *S) TestFileSystem(c *C) {
+	fsystem = &testing.RecordingFs{}
+	c.Assert(filesystem(), DeepEquals, fsystem)
+	fsystem = nil
+	c.Assert(filesystem(), DeepEquals, fs.OsFs{})
+	fsystem = s.rfs
+}
 
 func (s *S) TestnewUUID(c *C) {
 	rfs := &testing.RecordingFs{FileContent: string([]byte{16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31})}

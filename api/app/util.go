@@ -6,8 +6,18 @@ package app
 
 import (
 	"fmt"
+	"github.com/globocom/tsuru/fs"
 	"io"
 )
+
+var fsystem fs.Fs
+
+func filesystem() fs.Fs {
+	if fsystem == nil {
+		fsystem = fs.OsFs{}
+	}
+	return fsystem
+}
 
 func randomBytes(n int) ([]byte, error) {
 	f, err := filesystem().Open("/dev/urandom")
