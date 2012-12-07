@@ -12,12 +12,7 @@ import (
 // FilteredWriter is a custom writer
 // that filter deprecation warnings and juju log output.
 type FilteredWriter struct {
-	writer http.ResponseWriter
-}
-
-// WriteHeader calls the w.Header
-func (w *FilteredWriter) Header() http.Header {
-	return w.writer.Header()
+	http.ResponseWriter
 }
 
 // Write writes and flushes the data, filtering the juju warnings.
@@ -25,15 +20,10 @@ func (w *FilteredWriter) Write(data []byte) (int, error) {
 	if w.Header().Get("Content-Type") == "text" {
 		data = juju.FilterOutput(data)
 	}
-	_, err := w.writer.Write(data)
-	if f, ok := w.writer.(http.Flusher); ok {
+	_, err := w.ResponseWriter.Write(data)
+	if f, ok := w.ResponseWriter.(http.Flusher); ok {
 		f.Flush()
 	}
-	// returning the len(data) to skip the 'short write' error
+	// returning the len(data) to skip the "short write" error
 	return len(data), err
-}
-
-// WriteHeader calls the w.WriteHeader
-func (w *FilteredWriter) WriteHeader(code int) {
-	w.writer.WriteHeader(code)
 }
