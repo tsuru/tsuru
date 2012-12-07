@@ -124,7 +124,9 @@ func deploy(a *App) error {
 	log.Printf("deploying %s with name %s", a.Framework, a.Name)
 	out, err := cmd.CombinedOutput()
 	outStr := fmt.Sprintf("Failed to deploy: %s\n%s", err, out)
-	a.log(outStr, "tsuru")
+	if err != nil {
+		a.log(outStr, "tsuru")
+	}
 	log.Printf("executing %s", outStr)
 	if err != nil {
 		a.log(fmt.Sprintf("juju finished with exit status: %s", err), "tsuru")
