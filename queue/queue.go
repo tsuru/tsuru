@@ -100,14 +100,17 @@ func StartServer(laddr string) (*Server, error) {
 	return &server, nil
 }
 
-// handle handles a new client, sending errors to the qs.errors channel.
+// handle handles a new client, sending errors to the qs.errors channel and
+// received messages to qs.messages.
 func (qs *Server) handle(conn net.Conn) {
 	var err error
 	decoder := gob.NewDecoder(conn)
 	for err == nil {
 		var msg Message
 		if err = decoder.Decode(&msg); err == nil {
-			qs.messages <- msg
+			if atomic.LoadInt32(&qs.closed) == 0 {
+				qs.messages <- msg
+			}
 		} else if atomic.LoadInt32(&qs.closed) == 0 {
 			qs.errors <- err
 		}
