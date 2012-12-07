@@ -487,7 +487,8 @@ func (a *App) log(message string, source string) error {
 	log.Printf(message)
 	messages := strings.Split(message, "\n")
 	for _, msg := range messages {
-		if msg != "" {
+		filteredMessage := juju.FilterOutput([]byte(msg))
+		if len(filteredMessage) > 0 {
 			l := applog{
 				Date:    time.Now(),
 				Message: msg,

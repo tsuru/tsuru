@@ -1004,6 +1004,35 @@ func (s *S) TestLogShouldNotLogWhiteLines(c *C) {
 	c.Assert(instance.Logs[logLen-1].Message, Not(Equals), "")
 }
 
+func (s *S) TestLogShouldNotLogWarnings(c *C) {
+	a := App{
+		Name: "newApp",
+	}
+	err := db.Session.Apps().Insert(a)
+	c.Assert(err, IsNil)
+	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
+	err = a.log("some message", "tsuru")
+	c.Assert(err, IsNil)
+	badLogs := []string{
+		"2012-11-28 16:00:35,615 WARNING Ubuntu Cloud Image lookups encrypted but not authenticated",
+		"2012-11-28 16:00:35,616 INFO Connecting to environment...",
+		"/usr/local/lib/python2.7/dist-packages/txAWS-0.2.3-py2.7.egg/txaws/client/base.py:208: UserWarning: The client attribute on BaseQuery is deprecated and will go away in future release.",
+		"warnings.warn('The client attribute on BaseQuery is deprecated and'",
+	}
+	for _, log := range badLogs {
+		err = a.log(log, "")
+		c.Assert(err, IsNil)
+	}
+	for _, log := range badLogs {
+		lenght, err := db.Session.Apps().Find(bson.M{"logs.message": log}).Count()
+		c.Assert(err, IsNil)
+		c.Assert(lenght, Equals, 0)
+	}
+
+	var instance App
+	err = db.Session.Apps().Find(bson.M{"name": a.Name}).One(&instance)
+}
+
 func (s *S) TestGetTeams(c *C) {
 	app := App{Name: "app", Teams: []string{s.team.Name}}
 	teams := app.teams()
