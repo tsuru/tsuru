@@ -91,7 +91,7 @@ func (s *S) TestHandleMessageErrors(c *C) {
 		{
 			action:      "does not matter",
 			appName:     "does not matter",
-			expectedLog: `Error handling "does not matter": this message has been visited more than 35 times.`,
+			expectedLog: `Error handling "does not matter": this message has been visited more than 50 times.`,
 			visits:      MaxVisits,
 		},
 		{

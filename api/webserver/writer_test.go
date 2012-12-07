@@ -18,7 +18,7 @@ func (s *S) TestFilteredWriter(c *C) {
 	c.Assert(recorder.Body.Bytes(), DeepEquals, data)
 }
 
-func (s *S) TestFilteredWriterShouldReturnsTheDataSize(c *C) {
+func (s *S) TestFilteredWriterShouldReturnTheDataSize(c *C) {
 	recorder := httptest.NewRecorder()
 	writer := FilteredWriter{recorder}
 	data := []byte("ble")

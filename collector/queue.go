@@ -14,7 +14,7 @@ import (
 	"time"
 )
 
-const MaxVisits = 35
+const MaxVisits = 50
 
 type MessageHandler struct {
 	closed int32
