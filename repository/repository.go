@@ -69,6 +69,7 @@ func CloneOrPull(u Unit) ([]byte, error) {
 func getGitServer() string {
 	gitServer, err := config.GetString("git:host")
 	if err != nil {
+		log.Print("git:host config not found")
 		panic(err)
 	}
 	return gitServer
@@ -85,10 +86,12 @@ func getGitServer() string {
 func GitServerUri() string {
 	server, err := config.GetString("git:host")
 	if err != nil {
+		log.Print("git:host config not found")
 		panic(err)
 	}
 	protocol, err := config.GetString("git:protocol")
 	if err != nil {
+		log.Print("git:protocol config not found")
 		panic(err)
 	}
 	uri := fmt.Sprintf("%s://%s", protocol, server)

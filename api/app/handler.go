@@ -13,6 +13,7 @@ import (
 	"github.com/globocom/tsuru/api/service"
 	"github.com/globocom/tsuru/db"
 	"github.com/globocom/tsuru/errors"
+	"github.com/globocom/tsuru/log"
 	"github.com/globocom/tsuru/repository"
 	"io"
 	"io/ioutil"
@@ -175,6 +176,7 @@ func createAppHelper(app *App, u *auth.User) ([]byte, error) {
 	app.setTeams(teams)
 	err = createApp(app)
 	if err != nil {
+		log.Printf("Got error while creating app: %s", err.Error())
 		if e, ok := err.(*ValidationError); ok {
 			return nil, &errors.Http{Code: http.StatusPreconditionFailed, Message: e.Message}
 		}
@@ -191,10 +193,12 @@ func createAppHelper(app *App, u *auth.User) ([]byte, error) {
 	}
 	c := gandalf.Client{Endpoint: gUrl}
 	if _, err := c.NewRepository(app.Name, users, false); err != nil {
-		return nil, err
+		log.Printf("Got error while creating repository: %s", err.Error())
+		return nil, &errors.Http{Code: http.StatusInternalServerError, Message: err.Error()}
 	}
 	if err := c.GrantAccess([]string{app.Name}, users); err != nil {
-		return nil, err
+		log.Printf("Got error while granting access to repository: %s", err.Error())
+		return nil, &errors.Http{Code: http.StatusInternalServerError, Message: err.Error()}
 	}
 	msg := map[string]string{
 		"status":         "success",
