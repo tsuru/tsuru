@@ -96,8 +96,8 @@ func createApp(a *App) error {
 	}
 	host, _ := config.GetString("host")
 	envVars := []bind.EnvVar{
-		{Name: "APPNAME", Value: a.Name, Public: false, InstanceName: ""},
-		{Name: "TSURU_HOST", Value: host, Public: false, InstanceName: ""},
+		{Name: "APPNAME", Value: a.Name},
+		{Name: "TSURU_HOST", Value: host},
 	}
 	variables := map[string]string{
 		"ENDPOINT":           env.endpoint,
@@ -110,7 +110,6 @@ func createApp(a *App) error {
 		envVars = append(envVars, bind.EnvVar{
 			Name:         fmt.Sprintf("TSURU_S3_%s", name),
 			Value:        value,
-			Public:       false,
 			InstanceName: s3InstanceName,
 		})
 	}
