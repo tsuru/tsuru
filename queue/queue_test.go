@@ -250,3 +250,40 @@ func (s *S) TestClientAndServerMultipleMessages(c *C) {
 		}
 	}
 }
+
+// N clients, each sending 500 messages, concurrently.
+func BenchmarkMultipleClients(b *testing.B) {
+	server, err := StartServer("127.0.0.1:0")
+	if err != nil {
+		b.Fatal(err)
+	}
+	addr := server.Addr()
+	defer server.Close()
+	go func() {
+		for {
+			if _, err := server.Message(-1); err != nil && err.Error() != "EOF: client disconnected." {
+				return
+			}
+		}
+	}()
+	for i := 0; i < b.N; i++ {
+		messages, errors, err := Dial(addr)
+		if err != nil {
+			b.Fatal(err)
+		}
+		go func(ch <-chan error) {
+			for err := range ch {
+				println(err.Error())
+			}
+		}(errors)
+		go func(ch chan<- Message, n int) {
+			for j := 0; j < 500; j++ {
+				messages <- Message{
+					Action: "handle-client",
+					Args:   []string{strconv.Itoa(n + j)},
+				}
+			}
+			close(ch)
+		}(messages, i)
+	}
+}
