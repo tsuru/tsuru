@@ -51,4 +51,5 @@ func (s *S) SetUpTest(c *C) {
 	var stdout, stderr bytes.Buffer
 	manager = cmd.NewManager("glb", version, header, &stdout, &stderr, os.Stdin)
 	appName = new(string)
+	assumeYes = new(bool)
 }

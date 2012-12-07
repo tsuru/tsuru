@@ -265,7 +265,7 @@ type AppRemove struct {
 func (c *AppRemove) Info() *cmd.Info {
 	return &cmd.Info{
 		Name:  "app-remove",
-		Usage: "app-remove [--app appname]",
+		Usage: "app-remove [--app appname] [--assume-yes]",
 		Desc: `removes an app.
 
 If you don't provide the app name, tsuru will try to guess it.`,
@@ -279,11 +279,13 @@ func (c *AppRemove) Run(context *cmd.Context, client cmd.Doer) error {
 		return err
 	}
 	var answer string
-	fmt.Fprintf(context.Stdout, `Are you sure you want to remove app "%s"? (y/n) `, appName)
-	fmt.Fscanf(context.Stdin, "%s", &answer)
-	if answer != "y" {
-		fmt.Fprintln(context.Stdout, "Abort.")
-		return nil
+	if !*assumeYes {
+		fmt.Fprintf(context.Stdout, `Are you sure you want to remove app "%s"? (y/n) `, appName)
+		fmt.Fscanf(context.Stdin, "%s", &answer)
+		if answer != "y" {
+			fmt.Fprintln(context.Stdout, "Abort.")
+			return nil
+		}
 	}
 	url := cmd.GetUrl(fmt.Sprintf("/apps/%s", appName))
 	request, err := http.NewRequest("DELETE", url, nil)
