@@ -110,7 +110,7 @@ func AppDelete(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	}
 	gUrl := repository.GitServerUri()
 	if err := (&gandalf.Client{Endpoint: gUrl}).RemoveRepository(app.Name); err != nil {
-		// log or repass original error
+		log.Printf("Got error while removing repository from gandalf: %s", err.Error())
 		return &errors.Http{Code: http.StatusInternalServerError, Message: "Could not remove app's repository at git server. Aborting..."}
 	}
 	if err := app.destroy(); err != nil {
