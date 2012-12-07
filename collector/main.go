@@ -12,6 +12,7 @@ import (
 	"github.com/globocom/tsuru/log"
 	stdlog "log"
 	"log/syslog"
+	"os"
 	"time"
 )
 
@@ -55,12 +56,16 @@ func main() {
 	defer db.Session.Close()
 
 	if !dry {
-		fmt.Println("tsuru collector agent started...")
 		handler := MessageHandler{}
-		handler.start()
+		err = handler.start()
+		if err != nil {
+			fmt.Println(err)
+			os.Exit(126)
+		}
 		fmt.Printf("queue server listening at %s.\n", handler.server.Addr())
 		defer handler.stop()
 		ticker := time.Tick(time.Minute)
+		fmt.Println("tsuru collector agent started...")
 		jujuCollect(ticker)
 	}
 }

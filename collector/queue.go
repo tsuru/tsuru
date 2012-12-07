@@ -25,7 +25,7 @@ func (h *MessageHandler) start() error {
 	}
 	h.server, err = queue.StartServer(addr)
 	if err != nil {
-		return fmt.Errorf("Could not start server at %s: %s", addr, err)
+		return fmt.Errorf("Could not start queue server at %s: %s", addr, err)
 	}
 	go h.handleMessages()
 	return nil
