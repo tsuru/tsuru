@@ -302,3 +302,13 @@ func (s *S) TestTeams(c *C) {
 	c.Assert(teams[0].Name, Equals, s.team.Name)
 	c.Assert(teams[1].Name, Equals, t.Name)
 }
+
+func (s *S) TestFindKeyReturnsKeyWithNameAndContent(c *C) {
+	u := User{Email: "me@tsuru.com", Password: "123", Keys: []Key{{Name: "me@tsuru.com-1", Content: "ssh-rsa somekey me@tsuru.com"}}}
+	err := u.Create()
+	c.Assert(err, IsNil)
+	defer db.Session.Users().Remove(bson.M{"email": u.Email})
+	k, index := u.findKey(Key{Content: u.Keys[0].Content})
+	c.Assert(index, Equals, 0)
+	c.Assert(k.Name, Equals, u.Keys[0].Name)
+}
