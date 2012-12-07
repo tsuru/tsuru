@@ -111,7 +111,7 @@ func createApp(a *App) error {
 			InstanceName: s3InstanceName,
 		})
 	}
-	setEnvsToApp(a, envVars, false)
+	a.setEnvsToApp(envVars, false, true)
 	return deploy(a)
 }
 
@@ -425,10 +425,20 @@ func (a *App) SetEnvs(envs []bind.EnvVar, publicOnly bool) error {
 	for i, env := range envs {
 		e[i] = bind.EnvVar(env)
 	}
-	return setEnvsToApp(a, e, publicOnly)
+	return a.setEnvsToApp(e, publicOnly, false)
 }
 
-func setEnvsToApp(app *App, envs []bind.EnvVar, publicOnly bool) error {
+// setEnvsToApp adds environment variables to an app, serializing the resulting
+// list of environment variables in all units of apps. This method can
+// serialize them directly or using a queue.
+//
+// Besides the slice of environment variables, this method also takes two other
+// parameters: publicOnly indicates whether only public variables can be
+// overridden (if set to false, setEnvsToApp may override a private variable).
+//
+// If useQueue is true, it will use a queue to write the environment variables
+// in the units of the app.
+func (app *App) setEnvsToApp(envs []bind.EnvVar, publicOnly, useQueue bool) error {
 	if len(envs) > 0 {
 		for _, env := range envs {
 			set := true
@@ -451,10 +461,20 @@ func setEnvsToApp(app *App, envs []bind.EnvVar, publicOnly bool) error {
 }
 
 func (a *App) UnsetEnvs(envs []string, publicOnly bool) error {
-	return unsetEnvFromApp(a, envs, publicOnly)
+	return a.unsetEnvsFromApp(envs, publicOnly, false)
 }
 
-func unsetEnvFromApp(app *App, variableNames []string, publicOnly bool) error {
+// unsetEnvsFromApp removes environment variables from an app, serializing the
+// remaining list of environment variables to all units of the app. This method
+// can serialize them directly or use a queue.
+//
+// Besides the slice with the name of the variables, this method also takes two
+// other parameters: publicOnly indicates whether only public variables can be
+// overridden (if set to false, setEnvsToApp may override a private variable).
+//
+// If useQueue is true, it will use a queue to write the environment variables
+// in the units of the app.
+func (app *App) unsetEnvsFromApp(variableNames []string, publicOnly, useQueue bool) error {
 	if len(variableNames) > 0 {
 		for _, name := range variableNames {
 			var unset bool

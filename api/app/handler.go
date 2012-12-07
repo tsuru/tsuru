@@ -374,7 +374,7 @@ func SetEnv(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 		parts := strings.Split(v[1], "=")
 		envs[i] = bind.EnvVar{Name: parts[0], Value: parts[1], Public: true}
 	}
-	return setEnvsToApp(&app, envs, true)
+	return app.setEnvsToApp(envs, true, false)
 }
 
 func UnsetEnv(w http.ResponseWriter, r *http.Request, u *auth.User) error {
@@ -394,7 +394,7 @@ func UnsetEnv(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	if err != nil {
 		return err
 	}
-	return unsetEnvFromApp(&app, strings.Fields(string(body)), true)
+	return app.unsetEnvsFromApp(strings.Fields(string(body)), true, false)
 }
 
 func AppLog(w http.ResponseWriter, r *http.Request, u *auth.User) error {
