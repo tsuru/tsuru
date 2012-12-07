@@ -6,6 +6,7 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"github.com/bmizerany/pat"
 	"github.com/globocom/config"
 	"github.com/globocom/tsuru/api/app"
@@ -17,6 +18,7 @@ import (
 	stdlog "log"
 	"log/syslog"
 	"net/http"
+	"os"
 )
 
 func fatal(err error) {
