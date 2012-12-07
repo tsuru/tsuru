@@ -108,9 +108,7 @@ func (qs *Server) handle(conn net.Conn) {
 	for err == nil {
 		var msg Message
 		if err = decoder.Decode(&msg); err == nil {
-			if atomic.LoadInt32(&qs.closed) == 0 {
-				qs.messages <- msg
-			}
+			qs.messages <- msg
 		} else if atomic.LoadInt32(&qs.closed) == 0 {
 			qs.errors <- err
 		}
@@ -175,7 +173,7 @@ func (qs *Server) Close() error {
 		return errors.New("Server already closed.")
 	}
 	err := qs.listener.Close()
-	close(qs.messages)
+	qs.errors <- errors.New("Server is closed.")
 	close(qs.errors)
 	return err
 }
