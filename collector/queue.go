@@ -11,6 +11,7 @@ import (
 	"github.com/globocom/tsuru/log"
 	"github.com/globocom/tsuru/queue"
 	"sync/atomic"
+	"time"
 )
 
 const MaxVisits = 35
@@ -73,6 +74,7 @@ func (h *MessageHandler) handle(msg queue.Message) {
 				format += " the app is %s."
 			default:
 				format += ` The status of the app should be "started", but it is %q.`
+				time.Sleep(time.Duration(msg.Visits+1) * time.Second)
 				h.server.PutBack(msg)
 			}
 			log.Printf(format, msg.Action, a.Name, a.State)
