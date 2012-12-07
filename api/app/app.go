@@ -416,17 +416,8 @@ func (a *App) GetName() string {
 //
 // The wait parameter indicates whether it should wait or not for the write to
 // complete.
-func (a *App) SerializeEnvVars(wait bool) {
-	msg := message{
-		app: a,
-	}
-	if wait {
-		msg.success = make(chan bool, 1)
-	}
-	env <- msg
-	if msg.success != nil {
-		<-msg.success
-	}
+func (a *App) SerializeEnvVars() {
+	a.unit().writeEnvVars()
 }
 
 func (a *App) SetEnvs(envs []bind.EnvVar, publicOnly bool) error {
@@ -454,7 +445,7 @@ func setEnvsToApp(app *App, envs []bind.EnvVar, publicOnly bool) error {
 		if err := db.Session.Apps().Update(bson.M{"name": app.Name}, app); err != nil {
 			return err
 		}
-		app.SerializeEnvVars(false)
+		app.SerializeEnvVars()
 	}
 	return nil
 }
@@ -478,7 +469,7 @@ func unsetEnvFromApp(app *App, variableNames []string, publicOnly bool) error {
 		if err := db.Session.Apps().Update(bson.M{"name": app.Name}, app); err != nil {
 			return err
 		}
-		app.SerializeEnvVars(false)
+		app.SerializeEnvVars()
 	}
 	return nil
 }

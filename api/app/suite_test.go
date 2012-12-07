@@ -100,9 +100,6 @@ func (s *S) TearDownSuite(c *C) {
 }
 
 func (s *S) TearDownTest(c *C) {
-	close(env)
-	env = make(chan message, chanSize)
-	go collectEnvVars()
 	config.Set("git:host", s.gitHost)
 	config.Set("git:port", s.gitPort)
 	config.Set("git:protocol", s.gitProt)

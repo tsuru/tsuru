@@ -65,7 +65,7 @@ func (h *MessageHandler) handle(msg queue.Message) {
 			h.server.PutBack(msg)
 			return
 		}
-		a.SerializeEnvVars(true)
+		a.SerializeEnvVars()
 	default:
 		log.Printf("Error handling %q: invalid action.", msg.Action)
 	}
