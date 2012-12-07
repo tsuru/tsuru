@@ -26,6 +26,7 @@ const ChanSize = 32
 type Message struct {
 	Action string
 	Args   []string
+	Visits int
 }
 
 // ChannelFromWriter returns a channel from a given io.WriteCloser.
@@ -159,6 +160,7 @@ func (qs *Server) Message(timeout time.Duration) (Message, error) {
 // got using Message method cannot be processed yet. You put it back in the
 // queue for processing later.
 func (qs *Server) PutBack(message Message) {
+	message.Visits++
 	qs.messages <- message
 }
 

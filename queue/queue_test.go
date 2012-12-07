@@ -169,6 +169,7 @@ func (s *S) TestPutBack(c *C) {
 	server.PutBack(want)
 	got, err := server.Message(1e6)
 	c.Assert(err, IsNil)
+	want.Visits++
 	c.Assert(got, DeepEquals, want)
 }
 
