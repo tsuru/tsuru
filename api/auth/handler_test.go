@@ -400,10 +400,6 @@ func (s *S) TestRemoveTeamGives404WhenUserDoesNotHaveAccessToTheTeam(c *C) {
 }
 
 func (s *S) TestRemoveTeamGives403WhenTeamHasAccessToAnyApp(c *C) {
-	type App struct {
-		Name  string
-		Teams []string
-	}
 	team := Team{Name: "evergrey", Users: []string{s.user.Email}}
 	err := db.Session.Teams().Insert(team)
 	c.Assert(err, IsNil)
@@ -543,16 +539,21 @@ func (s *S) TestAddUserToTeamShoulGrantAccessInGandalf(c *C) {
 	u := &User{Email: "marathon@rush.com", Password: "123456"}
 	err := u.Create()
 	c.Assert(err, IsNil)
+	defer db.Session.Users().Remove(bson.M{"email": u.Email})
+	a := App{Name: "i-should", Teams: []string{s.team.Name}}
+	err = db.Session.Apps().Insert(a)
+	c.Assert(err, IsNil)
+	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
 	err = addKeyToUser("my-key", u)
 	c.Assert(err, IsNil)
 	err = u.Get()
 	c.Assert(err, IsNil)
-	err = addUserToTeam("marathon@rush.com", s.team.Name, s.user)
+	err = addUserToTeam(u.Email, s.team.Name, s.user)
 	c.Assert(err, IsNil)
 	c.Check(len(h.url), Equals, 2)
 	c.Assert(h.url[1], Equals, "/repository/grant")
 	c.Assert(h.method[1], Equals, "POST")
-	expected := `{"repositories":[],"users":["marathon@rush.com"]}`
+	expected := fmt.Sprintf(`{"repositories":["%s"],"users":["marathon@rush.com"]}`, a.Name)
 	c.Assert(string(h.body[1]), Equals, expected)
 }
 
@@ -961,6 +962,11 @@ func (s *S) TestRemoveUserShouldRemoveTheUserFromAllTeamsThatHeIsMember(c *C) {
 	c.Assert(err, IsNil)
 	c.Assert(t.Users, HasLen, 1)
 	c.Assert(t.Users[0], Equals, s.user.Email)
+}
+
+type App struct {
+	Name  string
+	Teams []string
 }
 
 func (s *S) TestRemoveUserRevokesAccessInGandalf(c *C) {

@@ -185,7 +185,7 @@ func addUserToTeam(email, teamName string, u *User) error {
 		return &errors.Http{Code: http.StatusConflict, Message: err.Error()}
 	}
 	gUrl := repository.GitServerUri()
-	alwdApps, err := allowedApps(email)
+	alwdApps, err := allowedApps(u.Email)
 	if err := (&gandalf.Client{Endpoint: gUrl}).GrantAccess(alwdApps, []string{email}); err != nil {
 		return err
 	}
