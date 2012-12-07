@@ -9,6 +9,7 @@ import (
 	"encoding/gob"
 	. "launchpad.net/gocheck"
 	"net"
+	"strconv"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -94,13 +95,14 @@ func (s *S) TestWriteSendErrorsInTheErrorChannel(c *C) {
 	c.Assert(err.Error(), Equals, "Closed connection.")
 }
 
-func (s *S) TestReadSendErrorsInTheErrorChannel(c *C) {
-	messages := make(chan Message, 1)
-	errChan := make(chan error, 1)
-	conn := NewFakeConn("127.0.0.1:5055", "127.0.0.1:8080")
+func (s *S) TestHandleSendErrorsInTheErrorsChannel(c *C) {
+	conn := NewFakeConn("127.0.0.1:8000", "127.0.0.1:4000")
+	server := Server{
+		errors: make(chan error, 1),
+	}
 	conn.Close()
-	go read(conn, messages, errChan)
-	err := <-errChan
+	go server.handle(conn)
+	err := <-server.errors
 	c.Assert(err, NotNil)
 	c.Assert(err.Error(), Equals, "Closed connection.")
 }
@@ -109,6 +111,16 @@ func (s *S) TestServerAddr(c *C) {
 	listener := NewFakeListener("0.0.0.0:8000")
 	server := Server{listener: listener}
 	c.Assert(server.Addr(), Equals, listener.Addr().String())
+}
+
+func (s *S) TestServerDoubleClose(c *C) {
+	server, err := StartServer("127.0.0.1:0")
+	c.Assert(err, IsNil)
+	err = server.Close()
+	c.Assert(err, IsNil)
+	err = server.Close()
+	c.Assert(err, NotNil)
+	c.Assert(err.Error(), Equals, "Server already closed.")
 }
 
 func (s *S) TestStartServerAndReadMessage(c *C) {
@@ -173,14 +185,15 @@ func (s *S) TestDontHangWhenClientClosesTheConnection(c *C) {
 	c.Assert(err.Error(), Equals, "EOF: client disconnected.")
 }
 
-// BUG(fss): this test fails under race detector.
 func (s *S) TestDontHangWhenServerClosesTheConnection(c *C) {
 	server, err := StartServer("127.0.0.1:0")
 	c.Assert(err, IsNil)
-	_, _, err = Dial(server.Addr())
-	errClose := server.Close()
+	for i := 0; i < 5; i++ {
+		Dial(server.Addr())
+	}
+	time.Sleep(1e9)
+	err = server.Close()
 	c.Assert(err, IsNil)
-	c.Assert(errClose, IsNil)
 }
 
 func (s *S) TestDial(c *C) {
@@ -211,4 +224,66 @@ func (s *S) TestDial(c *C) {
 	messages <- sent
 	got := <-received
 	c.Assert(got, DeepEquals, sent)
+}
+
+func (s *S) TestClientAndServerMultipleMessages(c *C) {
+	server, err := StartServer("127.0.0.1:0")
+	c.Assert(err, IsNil)
+	defer server.Close()
+	messages, errors, err := Dial(server.Addr())
+	c.Assert(err, IsNil)
+	go func() {
+		for err := range errors {
+			c.Fatal(err)
+		}
+	}()
+	messageSlice := make([]Message, 10)
+	for i := 0; i < 10; i++ {
+		messageSlice[i] = Message{Action: "test", Args: []string{strconv.Itoa(i)}}
+		messages <- messageSlice[i]
+	}
+	for i := 0; i < 10; i++ {
+		if message, err := server.Message(-1); err == nil {
+			c.Assert(message, DeepEquals, messageSlice[i])
+		} else {
+			c.Fatal(err)
+		}
+	}
+}
+
+// N clients, each sending 500 messages, concurrently.
+func BenchmarkMultipleClients(b *testing.B) {
+	server, err := StartServer("127.0.0.1:0")
+	if err != nil {
+		b.Fatal(err)
+	}
+	addr := server.Addr()
+	defer server.Close()
+	go func() {
+		for {
+			if _, err := server.Message(-1); err != nil && err.Error() != "EOF: client disconnected." {
+				return
+			}
+		}
+	}()
+	for i := 0; i < b.N; i++ {
+		messages, errors, err := Dial(addr)
+		if err != nil {
+			b.Fatal(err)
+		}
+		go func(ch <-chan error) {
+			for err := range ch {
+				println(err.Error())
+			}
+		}(errors)
+		go func(ch chan<- Message, n int) {
+			for j := 0; j < 500; j++ {
+				messages <- Message{
+					Action: "handle-client",
+					Args:   []string{strconv.Itoa(n + j)},
+				}
+			}
+			close(ch)
+		}(messages, i)
+	}
 }
