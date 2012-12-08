@@ -41,6 +41,7 @@ func (s *S) TestFilteredWriterWriteHeader(c *C) {
 	expectedCode := 333
 	writer.WriteHeader(expectedCode)
 	c.Assert(recorder.Code, Equals, expectedCode)
+	c.Assert(writer.wrote, Equals, true)
 }
 
 func (s *S) TestFilteredWriterShouldNotFilterWhenTheContentTypeIsntText(c *C) {

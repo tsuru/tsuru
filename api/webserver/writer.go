@@ -16,6 +16,11 @@ type FilteredWriter struct {
 	wrote bool
 }
 
+func (w *FilteredWriter) WriteHeader(code int) {
+	w.wrote = true
+	w.ResponseWriter.WriteHeader(code)
+}
+
 // Write writes and flushes the data, filtering the juju warnings.
 func (w *FilteredWriter) Write(data []byte) (int, error) {
 	w.wrote = true
