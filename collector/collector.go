@@ -5,7 +5,7 @@
 package main
 
 import (
-	"github.com/globocom/tsuru/api/app"
+	"github.com/globocom/tsuru/app"
 	"github.com/globocom/tsuru/db"
 	"github.com/globocom/tsuru/log"
 	"labix.org/v2/mgo/bson"

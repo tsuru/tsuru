@@ -101,9 +101,9 @@ func (s *S) TestDestroyBucket(c *C) {
 	}
 	bucket := fmt.Sprintf("battery%x", patchRandomReader())
 	defer unpatchRandomReader()
-	err = createApp(&app)
+	err = CreateApp(&app)
 	c.Assert(err, IsNil)
-	defer app.destroy()
+	defer app.Destroy()
 	err = destroyBucket(&app)
 	c.Assert(err, IsNil)
 	s3 := getS3Endpoint()

@@ -44,9 +44,9 @@ func (s *S) TestDestroyShouldUnbindAppFromInstance(c *C) {
 			{Ip: "10.10.10.10", Machine: 1},
 		},
 	}
-	err = createApp(&a)
+	err = CreateApp(&a)
 	c.Assert(err, IsNil)
-	err = a.destroy()
+	err = a.Destroy()
 	c.Assert(err, IsNil)
 	n, err := db.Session.ServiceInstances().Find(bson.M{"apps": bson.M{"$in": []string{a.Name}}}).Count()
 	c.Assert(err, IsNil)

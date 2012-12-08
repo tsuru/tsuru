@@ -9,7 +9,7 @@ import (
 	"fmt"
 	"github.com/bmizerany/pat"
 	"github.com/globocom/config"
-	"github.com/globocom/tsuru/api/app"
+	"github.com/globocom/tsuru/api"
 	"github.com/globocom/tsuru/api/auth"
 	"github.com/globocom/tsuru/api/service/consumption"
 	"github.com/globocom/tsuru/api/service/provision"
@@ -57,8 +57,8 @@ func main() {
 
 	m.Get("/services/instances", AuthorizationRequiredHandler(consumption.ServicesInstancesHandler))
 	m.Post("/services/instances", AuthorizationRequiredHandler(consumption.CreateInstanceHandler))
-	m.Put("/services/instances/:instance/:app", AuthorizationRequiredHandler(app.BindHandler))
-	m.Del("/services/instances/:instance/:app", AuthorizationRequiredHandler(app.UnbindHandler))
+	m.Put("/services/instances/:instance/:app", AuthorizationRequiredHandler(api.BindHandler))
+	m.Del("/services/instances/:instance/:app", AuthorizationRequiredHandler(api.UnbindHandler))
 	m.Del("/services/c/instances/:name", AuthorizationRequiredHandler(consumption.RemoveServiceInstanceHandler))
 	m.Get("/services/instances/:instance/status", AuthorizationRequiredHandler(consumption.ServiceInstanceStatusHandler))
 
@@ -73,21 +73,21 @@ func main() {
 	m.Put("/services/:service/:team", AuthorizationRequiredHandler(provision.GrantAccessToTeamHandler))
 	m.Del("/services/:service/:team", AuthorizationRequiredHandler(provision.RevokeAccessFromTeamHandler))
 
-	m.Del("/apps/:name", AuthorizationRequiredHandler(app.AppDelete))
-	m.Get("/apps/:name/repository/clone", Handler(app.CloneRepositoryHandler))
-	m.Get("/apps/:name/avaliable", Handler(app.AppIsAvaliableHandler))
-	m.Get("/apps/:name", AuthorizationRequiredHandler(app.AppInfo))
-	m.Post("/apps/:name/run", AuthorizationRequiredHandler(app.RunCommand))
-	m.Get("/apps/:name/restart", AuthorizationRequiredHandler(app.RestartHandler))
-	m.Get("/apps/:name/env", AuthorizationRequiredHandler(app.GetEnv))
-	m.Post("/apps/:name/env", AuthorizationRequiredHandler(app.SetEnv))
-	m.Del("/apps/:name/env", AuthorizationRequiredHandler(app.UnsetEnv))
-	m.Get("/apps", AuthorizationRequiredHandler(app.AppList))
-	m.Post("/apps", AuthorizationRequiredHandler(app.CreateAppHandler))
-	m.Put("/apps/:app/:team", AuthorizationRequiredHandler(app.GrantAccessToTeamHandler))
-	m.Del("/apps/:app/:team", AuthorizationRequiredHandler(app.RevokeAccessFromTeamHandler))
-	m.Get("/apps/:name/log", AuthorizationRequiredHandler(app.AppLog))
-	m.Post("/apps/:name/log", Handler(app.AddLogHandler))
+	m.Del("/apps/:name", AuthorizationRequiredHandler(api.AppDelete))
+	m.Get("/apps/:name/repository/clone", Handler(api.CloneRepositoryHandler))
+	m.Get("/apps/:name/avaliable", Handler(api.AppIsAvaliableHandler))
+	m.Get("/apps/:name", AuthorizationRequiredHandler(api.AppInfo))
+	m.Post("/apps/:name/run", AuthorizationRequiredHandler(api.RunCommand))
+	m.Get("/apps/:name/restart", AuthorizationRequiredHandler(api.RestartHandler))
+	m.Get("/apps/:name/env", AuthorizationRequiredHandler(api.GetEnv))
+	m.Post("/apps/:name/env", AuthorizationRequiredHandler(api.SetEnv))
+	m.Del("/apps/:name/env", AuthorizationRequiredHandler(api.UnsetEnv))
+	m.Get("/apps", AuthorizationRequiredHandler(api.AppList))
+	m.Post("/apps", AuthorizationRequiredHandler(api.CreateAppHandler))
+	m.Put("/apps/:app/:team", AuthorizationRequiredHandler(api.GrantAccessToTeamHandler))
+	m.Del("/apps/:app/:team", AuthorizationRequiredHandler(api.RevokeAccessFromTeamHandler))
+	m.Get("/apps/:name/log", AuthorizationRequiredHandler(api.AppLog))
+	m.Post("/apps/:name/log", Handler(api.AddLogHandler))
 
 	m.Post("/users", Handler(auth.CreateUser))
 	m.Post("/users/:email/tokens", Handler(auth.Login))

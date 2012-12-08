@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-package app
+package api
 
 import (
 	"encoding/json"
@@ -11,6 +11,7 @@ import (
 	"github.com/globocom/tsuru/api/auth"
 	"github.com/globocom/tsuru/api/bind"
 	"github.com/globocom/tsuru/api/service"
+	"github.com/globocom/tsuru/app"
 	"github.com/globocom/tsuru/db"
 	"github.com/globocom/tsuru/errors"
 	"github.com/globocom/tsuru/log"
@@ -36,8 +37,8 @@ func write(w io.Writer, content []byte) error {
 	return nil
 }
 
-func getAppOrError(name string, u *auth.User) (App, error) {
-	app := App{Name: name}
+func getAppOrError(name string, u *auth.User) (app.App, error) {
+	app := app.App{Name: name}
 	err := app.Get()
 	if err != nil {
 		return app, &errors.Http{Code: http.StatusNotFound, Message: fmt.Sprintf("App %s not found.", name)}
@@ -50,11 +51,11 @@ func getAppOrError(name string, u *auth.User) (App, error) {
 
 func CloneRepositoryHandler(w http.ResponseWriter, r *http.Request) error {
 	w.Header().Set("Content-Type", "text")
-	app := App{Name: r.URL.Query().Get(":name")}
-	err := app.Get()
-	logWriter := LogWriter{&app, w}
+	instance := app.App{Name: r.URL.Query().Get(":name")}
+	err := instance.Get()
+	logWriter := LogWriter{&instance, w}
 	if err != nil {
-		return &errors.Http{Code: http.StatusNotFound, Message: fmt.Sprintf("App %s not found.", app.Name)}
+		return &errors.Http{Code: http.StatusNotFound, Message: fmt.Sprintf("App %s not found.", instance.Name)}
 	}
 	err = write(&logWriter, []byte("\n ---> Tsuru receiving push\n"))
 	if err != nil {
@@ -64,7 +65,7 @@ func CloneRepositoryHandler(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	out, err := repository.CloneOrPull(app.unit()) // should iterate over the machines
+	out, err := repository.CloneOrPull(instance.Unit()) // should iterate over the machines
 	if err != nil {
 		return &errors.Http{Code: http.StatusInternalServerError, Message: string(out)}
 	}
@@ -76,27 +77,27 @@ func CloneRepositoryHandler(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	err = installDeps(&app, &logWriter)
+	err = app.InstallDeps(&instance, &logWriter)
 	if err != nil {
 		return err
 	}
-	err = restart(&app, &logWriter)
+	err = app.Restart(&instance, &logWriter)
 	if err != nil {
 		return err
 	}
 	return write(&logWriter, []byte("\n ---> Deploy done!\n\n"))
 }
 
-// AppIsAvaliableHandler verify if the app.unit().State() is
+// AppIsAvaliableHandler verify if the app.Unit().State() is
 // started. If is started it returns 200 else returns 500 for
 // status code.
 func AppIsAvaliableHandler(w http.ResponseWriter, r *http.Request) error {
-	app := App{Name: r.URL.Query().Get(":name")}
+	app := app.App{Name: r.URL.Query().Get(":name")}
 	err := app.Get()
 	if err != nil {
 		return err
 	}
-	if state := app.unit().State(); state != "started" {
+	if state := app.Unit().State(); state != "started" {
 		return fmt.Errorf("App must be started to receive pushs, but it is %s.", state)
 	}
 	w.WriteHeader(http.StatusOK)
@@ -113,7 +114,7 @@ func AppDelete(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 		log.Printf("Got error while removing repository from gandalf: %s", err.Error())
 		return &errors.Http{Code: http.StatusInternalServerError, Message: "Could not remove app's repository at git server. Aborting..."}
 	}
-	if err := app.destroy(); err != nil {
+	if err := app.Destroy(); err != nil {
 		return err
 	}
 	fmt.Fprint(w, "success")
@@ -133,7 +134,7 @@ func AppList(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	if err != nil {
 		return err
 	}
-	var apps []App
+	var apps []app.App
 	err = db.Session.Apps().Find(bson.M{"teams": bson.M{"$in": teams}}).All(&apps)
 	if err != nil {
 		return err
@@ -163,7 +164,7 @@ func AppInfo(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	return nil
 }
 
-func createAppHelper(app *App, u *auth.User) ([]byte, error) {
+func createAppHelper(instance *app.App, u *auth.User) ([]byte, error) {
 	var teams []auth.Team
 	err := db.Session.Teams().Find(bson.M{"users": u.Email}).All(&teams)
 	if err != nil {
@@ -173,15 +174,15 @@ func createAppHelper(app *App, u *auth.User) ([]byte, error) {
 		msg := "In order to create an app, you should be member of at least one team"
 		return nil, &errors.Http{Code: http.StatusForbidden, Message: msg}
 	}
-	app.setTeams(teams)
-	err = createApp(app)
+	instance.SetTeams(teams)
+	err = app.CreateApp(instance)
 	if err != nil {
 		log.Printf("Got error while creating app: %s", err.Error())
-		if e, ok := err.(*ValidationError); ok {
+		if e, ok := err.(*app.ValidationError); ok {
 			return nil, &errors.Http{Code: http.StatusPreconditionFailed, Message: e.Message}
 		}
 		if strings.Contains(err.Error(), "key error") {
-			msg := fmt.Sprintf(`There is already an app named "%s".`, app.Name)
+			msg := fmt.Sprintf(`There is already an app named "%s".`, instance.Name)
 			return nil, &errors.Http{Code: http.StatusConflict, Message: msg}
 		}
 		return nil, err
@@ -192,25 +193,25 @@ func createAppHelper(app *App, u *auth.User) ([]byte, error) {
 		users = append(users, t.Users...)
 	}
 	c := gandalf.Client{Endpoint: gUrl}
-	if _, err := c.NewRepository(app.Name, users, false); err != nil {
+	if _, err := c.NewRepository(instance.Name, users, false); err != nil {
 		log.Printf("Got error while creating repository: %s", err.Error())
-		app.destroy()
+		instance.Destroy()
 		return nil, &errors.Http{Code: http.StatusInternalServerError, Message: err.Error()}
 	}
-	if err := c.GrantAccess([]string{app.Name}, users); err != nil {
+	if err := c.GrantAccess([]string{instance.Name}, users); err != nil {
 		log.Printf("Got error while granting access to repository: %s", err.Error())
-		app.destroy()
+		instance.Destroy()
 		return nil, &errors.Http{Code: http.StatusInternalServerError, Message: err.Error()}
 	}
 	msg := map[string]string{
 		"status":         "success",
-		"repository_url": repository.GetUrl(app.Name),
+		"repository_url": repository.GetUrl(instance.Name),
 	}
 	return json.Marshal(msg)
 }
 
 func CreateAppHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
-	var app App
+	var app app.App
 	defer r.Body.Close()
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
@@ -238,7 +239,7 @@ func grantAccessToTeam(appName, teamName string, u *auth.User) error {
 	if err != nil {
 		return &errors.Http{Code: http.StatusNotFound, Message: "Team not found"}
 	}
-	err = app.grant(t)
+	err = app.Grant(t)
 	if err != nil {
 		return &errors.Http{Code: http.StatusConflict, Message: err.Error()}
 	}
@@ -270,7 +271,7 @@ func revokeAccessFromTeam(appName, teamName string, u *auth.User) error {
 		msg := "You can not revoke the access from this team, because it is the unique team with access to the app, and an app can not be orphaned"
 		return &errors.Http{Code: http.StatusForbidden, Message: msg}
 	}
-	err = app.revoke(t)
+	err = app.Revoke(t)
 	if err != nil {
 		return &errors.Http{Code: http.StatusNotFound, Message: err.Error()}
 	}
@@ -309,7 +310,7 @@ func RunCommand(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	if err != nil {
 		return err
 	}
-	return app.run(string(c), w)
+	return app.Run(string(c), w)
 }
 
 func GetEnv(w http.ResponseWriter, r *http.Request, u *auth.User) (err error) {
@@ -376,7 +377,7 @@ func SetEnv(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 		parts := strings.Split(v[1], "=")
 		envs[i] = bind.EnvVar{Name: parts[0], Value: parts[1], Public: true}
 	}
-	return app.setEnvsToApp(envs, true, false)
+	return app.SetEnvsToApp(envs, true, false)
 }
 
 func UnsetEnv(w http.ResponseWriter, r *http.Request, u *auth.User) error {
@@ -396,7 +397,7 @@ func UnsetEnv(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	if err != nil {
 		return err
 	}
-	return app.unsetEnvsFromApp(strings.Fields(string(body)), true, false)
+	return app.UnsetEnvsFromApp(strings.Fields(string(body)), true, false)
 }
 
 func AppLog(w http.ResponseWriter, r *http.Request, u *auth.User) error {
@@ -429,9 +430,9 @@ func AppLog(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 		return err
 	}
 	n := len(result)
-	logs := make([]applog, n)
+	logs := make([]app.Applog, n)
 	for i, row := range result {
-		log := applog{
+		log := app.Applog{
 			Message: row["logs"]["message"].(string),
 			Source:  row["logs"]["source"].(string),
 			Date:    row["logs"]["date"].(time.Time),
@@ -445,7 +446,7 @@ func AppLog(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	return write(w, b)
 }
 
-func serviceInstanceAndAppOrError(instanceName, appName string, u *auth.User) (instance service.ServiceInstance, a App, err error) {
+func serviceInstanceAndAppOrError(instanceName, appName string, u *auth.User) (instance service.ServiceInstance, a app.App, err error) {
 	err = db.Session.ServiceInstances().Find(bson.M{"name": instanceName}).One(&instance)
 	if err != nil {
 		err = &errors.Http{Code: http.StatusNotFound, Message: "Instance not found"}
@@ -496,19 +497,19 @@ func UnbindHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 }
 
 func RestartHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
-	app, err := getAppOrError(r.URL.Query().Get(":name"), u)
+	instance, err := getAppOrError(r.URL.Query().Get(":name"), u)
 	if err != nil {
 		return err
 	}
-	if app.unit().Ip == "" {
+	if instance.Unit().Ip == "" {
 		msg := "You can't restart this app because it doesn't have an IP yet."
 		return &errors.Http{Code: http.StatusPreconditionFailed, Message: msg}
 	}
-	return restart(&app, w)
+	return app.Restart(&instance, w)
 }
 
 func AddLogHandler(w http.ResponseWriter, r *http.Request) error {
-	app := App{Name: r.URL.Query().Get(":name")}
+	app := app.App{Name: r.URL.Query().Get(":name")}
 	err := app.Get()
 	if err != nil {
 		return err
@@ -521,7 +522,7 @@ func AddLogHandler(w http.ResponseWriter, r *http.Request) error {
 	var logs []string
 	err = json.Unmarshal(body, &logs)
 	for _, log := range logs {
-		err := app.log(log, "app")
+		err := app.Log(log, "app")
 		if err != nil {
 			return err
 		}

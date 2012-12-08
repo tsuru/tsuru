@@ -7,7 +7,7 @@ package main
 import (
 	"fmt"
 	"github.com/globocom/config"
-	"github.com/globocom/tsuru/api/app"
+	"github.com/globocom/tsuru/app"
 	"github.com/globocom/tsuru/log"
 	"github.com/globocom/tsuru/queue"
 	"sync/atomic"

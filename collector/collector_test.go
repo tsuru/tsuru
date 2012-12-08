@@ -6,7 +6,7 @@ package main
 
 import (
 	"github.com/globocom/commandmocker"
-	"github.com/globocom/tsuru/api/app"
+	"github.com/globocom/tsuru/app"
 	"github.com/globocom/tsuru/db"
 	"io/ioutil"
 	"labix.org/v2/mgo/bson"

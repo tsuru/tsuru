@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-package app
+package api
 
 import (
 	"fmt"
@@ -66,7 +66,7 @@ func (c *greaterChecker) Check(params []interface{}, names []string) (bool, stri
 
 func (s *S) SetUpSuite(c *C) {
 	var err error
-	err = config.ReadConfigFile("../../etc/tsuru.conf")
+	err = config.ReadConfigFile("../etc/tsuru.conf")
 	c.Assert(err, IsNil)
 	db.Session, err = db.Open("127.0.0.1:27017", "tsuru_app_test")
 	c.Assert(err, IsNil)

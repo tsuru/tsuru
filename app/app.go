@@ -33,10 +33,21 @@ import (
 
 const RegenerateApprc = "regenerate-apprc"
 
+func write(w io.Writer, content []byte) error {
+	n, err := w.Write(content)
+	if err != nil {
+		return err
+	}
+	if n != len(content) {
+		return io.ErrShortWrite
+	}
+	return nil
+}
+
 type App struct {
 	Env       map[string]bind.EnvVar
 	Framework string
-	Logs      []applog
+	Logs      []Applog
 	Name      string
 	State     string
 	Units     []Unit
@@ -55,7 +66,7 @@ func (a *App) MarshalJSON() ([]byte, error) {
 	return json.Marshal(&result)
 }
 
-type applog struct {
+type Applog struct {
 	Date    time.Time
 	Message string
 	Source  string
@@ -70,14 +81,14 @@ func (a *App) Get() error {
 	return db.Session.Apps().Find(bson.M{"name": a.Name}).One(a)
 }
 
-// createApp creates a new app.
+// CreateApp creates a new app.
 //
 // Creating a new app is a process composed of three steps:
 //
 //       1. Save the app in the database
 //       2. Create S3 credentials and bucket for the app
 //       3. Deploy juju charm
-func createApp(a *App) error {
+func CreateApp(a *App) error {
 	if !a.isValid() {
 		msg := "Invalid app name, your app should have at most 63 " +
 			"characters, containing only lower case letters or numbers, " +
@@ -113,23 +124,23 @@ func createApp(a *App) error {
 			InstanceName: s3InstanceName,
 		})
 	}
-	a.setEnvsToApp(envVars, false, true)
+	a.SetEnvsToApp(envVars, false, true)
 	return deploy(a)
 }
 
 // Deploys an app.
 func deploy(a *App) error {
-	a.log(fmt.Sprintf("creating app %s", a.Name), "tsuru")
+	a.Log(fmt.Sprintf("creating app %s", a.Name), "tsuru")
 	cmd := exec.Command("juju", "deploy", "--repository=/home/charms", "local:"+a.Framework, a.Name)
 	log.Printf("deploying %s with name %s", a.Framework, a.Name)
 	out, err := cmd.CombinedOutput()
 	outStr := fmt.Sprintf("Failed to deploy: %s\n%s", err, out)
 	if err != nil {
-		a.log(outStr, "tsuru")
+		a.Log(outStr, "tsuru")
 	}
 	log.Printf("executing %s", outStr)
 	if err != nil {
-		a.log(fmt.Sprintf("juju finished with exit status: %s", err), "tsuru")
+		a.Log(fmt.Sprintf("juju finished with exit status: %s", err), "tsuru")
 		destroyBucket(a)
 		db.Session.Apps().Remove(bson.M{"name": a.Name})
 		return errors.New(outStr)
@@ -162,13 +173,13 @@ func (a *App) unbind() error {
 	return nil
 }
 
-func (a *App) destroy() error {
+func (a *App) Destroy() error {
 	err := destroyBucket(a)
 	if err != nil {
 		return err
 	}
 	if len(a.Units) > 0 {
-		out, err := a.unit().destroy()
+		out, err := a.Unit().destroy()
 		msg := fmt.Sprintf("Failed to destroy unit: %s\n%s", err, out)
 		log.Print(msg)
 		if err != nil {
@@ -192,15 +203,15 @@ func (a *App) AddUnit(u *Unit) {
 	a.Units = append(a.Units, *u)
 }
 
-func (a *App) find(team *auth.Team) (int, bool) {
+func (a *App) Find(team *auth.Team) (int, bool) {
 	pos := sort.Search(len(a.Teams), func(i int) bool {
 		return a.Teams[i] >= team.Name
 	})
 	return pos, pos < len(a.Teams) && a.Teams[pos] == team.Name
 }
 
-func (a *App) grant(team *auth.Team) error {
-	pos, found := a.find(team)
+func (a *App) Grant(team *auth.Team) error {
+	pos, found := a.Find(team)
 	if found {
 		return errors.New("This team already has access to this app")
 	}
@@ -213,8 +224,8 @@ func (a *App) grant(team *auth.Team) error {
 	return nil
 }
 
-func (a *App) revoke(team *auth.Team) error {
-	index, found := a.find(team)
+func (a *App) Revoke(team *auth.Team) error {
+	index, found := a.Find(team)
 	if !found {
 		return errors.New("This team does not have access to this app")
 	}
@@ -229,7 +240,7 @@ func (a *App) teams() []auth.Team {
 	return teams
 }
 
-func (a *App) setTeams(teams []auth.Team) {
+func (a *App) SetTeams(teams []auth.Team) {
 	a.Teams = make([]string, len(teams))
 	for i, team := range teams {
 		a.Teams[i] = team.Name
@@ -242,7 +253,7 @@ func (a *App) setEnv(env bind.EnvVar) {
 		a.Env = make(map[string]bind.EnvVar)
 	}
 	a.Env[env.Name] = env
-	a.log(fmt.Sprintf("setting env %s with value %s", env.Name, env.Value), "tsuru")
+	a.Log(fmt.Sprintf("setting env %s with value %s", env.Name, env.Value), "tsuru")
 }
 
 func (a *App) getEnv(name string) (bind.EnvVar, error) {
@@ -295,19 +306,19 @@ func (a *App) loadHooks() error {
 	a.hooks = new(conf)
 	uRepo, err := repository.GetPath()
 	if err != nil {
-		a.log(fmt.Sprintf("Got error while getting repository path: %s", err), "tsuru")
+		a.Log(fmt.Sprintf("Got error while getting repository path: %s", err), "tsuru")
 		return err
 	}
 	cmd := "cat " + path.Join(uRepo, "app.conf")
 	var buf bytes.Buffer
-	err = a.unit().Command(&buf, &buf, cmd)
+	err = a.Unit().Command(&buf, &buf, cmd)
 	if err != nil {
-		a.log(fmt.Sprintf("Got error while executing command: %s... Skipping hooks execution", err), "tsuru")
+		a.Log(fmt.Sprintf("Got error while executing command: %s... Skipping hooks execution", err), "tsuru")
 		return nil
 	}
 	err = goyaml.Unmarshal(juju.FilterOutput(buf.Bytes()), a.hooks)
 	if err != nil {
-		a.log(fmt.Sprintf("Got error while parsing yaml: %s", err), "tsuru")
+		a.Log(fmt.Sprintf("Got error while parsing yaml: %s", err), "tsuru")
 		return err
 	}
 	return nil
@@ -315,10 +326,10 @@ func (a *App) loadHooks() error {
 
 func (a *App) runHook(w io.Writer, cmds []string, kind string) error {
 	if len(cmds) == 0 {
-		a.log(fmt.Sprintf("Skipping %s hooks...", kind), "tsuru")
+		a.Log(fmt.Sprintf("Skipping %s hooks...", kind), "tsuru")
 		return nil
 	}
-	a.log(fmt.Sprintf("Executing %s hook...", kind), "tsuru")
+	a.Log(fmt.Sprintf("Executing %s hook...", kind), "tsuru")
 	err := write(w, []byte("\n ---> Running "+kind+"\n"))
 	if err != nil {
 		return err
@@ -326,10 +337,10 @@ func (a *App) runHook(w io.Writer, cmds []string, kind string) error {
 	for _, cmd := range cmds {
 		p, err := deployHookAbsPath(cmd)
 		if err != nil {
-			a.log(fmt.Sprintf("Error obtaining absolute path to hook: %s.", err), "tsuru")
+			a.Log(fmt.Sprintf("Error obtaining absolute path to hook: %s.", err), "tsuru")
 			continue
 		}
-		err = a.run(p, w)
+		err = a.Run(p, w)
 		if err != nil {
 			return err
 		}
@@ -358,18 +369,18 @@ func (a *App) posRestart(w io.Writer) error {
 	return a.runHook(w, a.hooks.PosRestart, "pos-restart")
 }
 
-// run executes the command in app units
-func (a *App) run(cmd string, w io.Writer) error {
-	a.log(fmt.Sprintf("running '%s'", cmd), "tsuru")
+// Run executes the command in app units
+func (a *App) Run(cmd string, w io.Writer) error {
+	a.Log(fmt.Sprintf("running '%s'", cmd), "tsuru")
 	cmd = fmt.Sprintf("[ -f /home/application/apprc ] && source /home/application/apprc; [ -d /home/application/current ] && cd /home/application/current; %s", cmd)
-	return a.unit().Command(w, w, cmd)
+	return a.Unit().Command(w, w, cmd)
 }
 
-// restart runs the restart hook for the app
+// Restart runs the restart hook for the app
 // and returns your output.
-func restart(a *App, w io.Writer) error {
-	u := a.unit()
-	a.log("executing hook to restart", "tsuru")
+func Restart(a *App, w io.Writer) error {
+	u := a.Unit()
+	a.Log("executing hook to restart", "tsuru")
 	err := a.preRestart(w)
 	if err != nil {
 		return err
@@ -385,14 +396,14 @@ func restart(a *App, w io.Writer) error {
 	return u.executeHook("restart", w)
 }
 
-// installDeps runs the dependencies hook for the app
+// InstallDeps runs the dependencies hook for the app
 // and returns your output.
-func installDeps(a *App, w io.Writer) error {
-	a.log("executing hook dependencies", "tsuru")
-	return a.unit().executeHook("dependencies", w)
+func InstallDeps(a *App, w io.Writer) error {
+	a.Log("executing hook dependencies", "tsuru")
+	return a.Unit().executeHook("dependencies", w)
 }
 
-func (a *App) unit() *Unit {
+func (a *App) Unit() *Unit {
 	if len(a.Units) > 0 {
 		unit := a.Units[0]
 		unit.app = a
@@ -421,7 +432,7 @@ func (a *App) GetName() string {
 // The wait parameter indicates whether it should wait or not for the write to
 // complete.
 func (a *App) SerializeEnvVars() {
-	a.unit().writeEnvVars()
+	a.Unit().writeEnvVars()
 }
 
 func (a *App) SetEnvs(envs []bind.EnvVar, publicOnly bool) error {
@@ -429,7 +440,7 @@ func (a *App) SetEnvs(envs []bind.EnvVar, publicOnly bool) error {
 	for i, env := range envs {
 		e[i] = bind.EnvVar(env)
 	}
-	return a.setEnvsToApp(e, publicOnly, false)
+	return a.SetEnvsToApp(e, publicOnly, false)
 }
 
 func (a *App) enqueueApprcRegeneration() error {
@@ -449,7 +460,7 @@ func (a *App) enqueueApprcRegeneration() error {
 	return nil
 }
 
-// setEnvsToApp adds environment variables to an app, serializing the resulting
+// SetEnvsToApp adds environment variables to an app, serializing the resulting
 // list of environment variables in all units of apps. This method can
 // serialize them directly or using a queue.
 //
@@ -459,7 +470,7 @@ func (a *App) enqueueApprcRegeneration() error {
 //
 // If useQueue is true, it will use a queue to write the environment variables
 // in the units of the app.
-func (app *App) setEnvsToApp(envs []bind.EnvVar, publicOnly, useQueue bool) error {
+func (app *App) SetEnvsToApp(envs []bind.EnvVar, publicOnly, useQueue bool) error {
 	if len(envs) > 0 {
 		for _, env := range envs {
 			set := true
@@ -485,10 +496,10 @@ func (app *App) setEnvsToApp(envs []bind.EnvVar, publicOnly, useQueue bool) erro
 }
 
 func (a *App) UnsetEnvs(envs []string, publicOnly bool) error {
-	return a.unsetEnvsFromApp(envs, publicOnly, false)
+	return a.UnsetEnvsFromApp(envs, publicOnly, false)
 }
 
-// unsetEnvsFromApp removes environment variables from an app, serializing the
+// UnsetEnvsFromApp removes environment variables from an app, serializing the
 // remaining list of environment variables to all units of the app. This method
 // can serialize them directly or use a queue.
 //
@@ -498,7 +509,7 @@ func (a *App) UnsetEnvs(envs []string, publicOnly bool) error {
 //
 // If useQueue is true, it will use a queue to write the environment variables
 // in the units of the app.
-func (app *App) unsetEnvsFromApp(variableNames []string, publicOnly, useQueue bool) error {
+func (app *App) UnsetEnvsFromApp(variableNames []string, publicOnly, useQueue bool) error {
 	if len(variableNames) > 0 {
 		for _, name := range variableNames {
 			var unset bool
@@ -518,13 +529,13 @@ func (app *App) unsetEnvsFromApp(variableNames []string, publicOnly, useQueue bo
 	return nil
 }
 
-func (a *App) log(message string, source string) error {
+func (a *App) Log(message string, source string) error {
 	log.Printf(message)
 	messages := strings.Split(message, "\n")
 	for _, msg := range messages {
 		filteredMessage := juju.FilterOutput([]byte(msg))
 		if len(filteredMessage) > 0 {
-			l := applog{
+			l := Applog{
 				Date:    time.Now(),
 				Message: msg,
 				Source:  source,

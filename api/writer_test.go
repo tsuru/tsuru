@@ -2,10 +2,11 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-package app
+package api
 
 import (
 	"bytes"
+	"github.com/globocom/tsuru/app"
 	"github.com/globocom/tsuru/db"
 	"labix.org/v2/mgo/bson"
 	. "launchpad.net/gocheck"
@@ -13,7 +14,7 @@ import (
 
 func (s *S) TestLogWriter(c *C) {
 	var b bytes.Buffer
-	a := App{Name: "newApp"}
+	a := app.App{Name: "newApp"}
 	err := db.Session.Apps().Insert(a)
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
@@ -22,7 +23,7 @@ func (s *S) TestLogWriter(c *C) {
 	_, err = writer.Write(data)
 	c.Assert(err, IsNil)
 	c.Assert(b.Bytes(), DeepEquals, data)
-	instance := App{}
+	instance := app.App{}
 	err = db.Session.Apps().Find(bson.M{"name": a.Name}).One(&instance)
 	logLen := len(instance.Logs)
 	c.Assert(instance.Logs[logLen-1].Message, Equals, string(data))
@@ -30,7 +31,7 @@ func (s *S) TestLogWriter(c *C) {
 
 func (s *S) TestLogWriterShouldReturnsTheDataSize(c *C) {
 	var b bytes.Buffer
-	a := App{Name: "newApp"}
+	a := app.App{Name: "newApp"}
 	err := db.Session.Apps().Insert(a)
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})

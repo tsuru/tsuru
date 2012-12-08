@@ -24,6 +24,17 @@ import (
 	"strings"
 )
 
+var output = `2012-06-05 17:03:36,887 WARNING ssl-hostname-verification is disabled for this environment
+2012-06-05 17:03:36,887 WARNING EC2 API calls not using secure transport
+2012-06-05 17:03:36,887 WARNING S3 API calls not using secure transport
+2012-06-05 17:03:36,887 WARNING Ubuntu Cloud Image lookups encrypted but not authenticated
+2012-06-05 17:03:36,896 INFO Connecting to environment...
+2012-06-05 17:03:37,599 INFO Connected to environment.
+2012-06-05 17:03:37,727 INFO Connecting to machine 0 at 10.170.0.191
+export DATABASE_HOST=localhost
+export DATABASE_USER=root
+export DATABASE_PASSWORD=secret`
+
 func (s *S) TestGet(c *C) {
 	dir, err := commandmocker.Add("juju", "")
 	c.Assert(err, IsNil)
@@ -33,7 +44,7 @@ func (s *S) TestGet(c *C) {
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": newApp.Name})
 	newApp.Env = map[string]bind.EnvVar{}
-	newApp.Logs = []applog{}
+	newApp.Logs = []Applog{}
 	err = db.Session.Apps().Update(bson.M{"name": newApp.Name}, &newApp)
 	c.Assert(err, IsNil)
 	myApp := App{Name: "myApp"}
@@ -58,12 +69,12 @@ func (s *S) TestDestroy(c *C) {
 			},
 		},
 	}
-	err = createApp(&a)
+	err = CreateApp(&a)
 	c.Assert(err, IsNil)
 	w := bytes.NewBuffer([]byte{})
 	l := stdlog.New(w, "", stdlog.LstdFlags)
 	log.SetLogger(l)
-	err = a.destroy()
+	err = a.Destroy()
 	c.Assert(err, IsNil)
 	err = a.Get()
 	c.Assert(err, NotNil)
@@ -83,9 +94,9 @@ func (s *S) TestDestroyWithoutUnits(c *C) {
 		Name:  "x4",
 		Units: []Unit{{Machine: 1}},
 	}
-	err = createApp(&app)
+	err = CreateApp(&app)
 	c.Assert(err, IsNil)
-	err = app.destroy()
+	err = app.Destroy()
 	c.Assert(err, IsNil)
 }
 
@@ -103,14 +114,14 @@ func (s *S) TestFailingDestroy(c *C) {
 			},
 		},
 	}
-	err = createApp(&a)
+	err = CreateApp(&a)
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
 	commandmocker.Remove(dir)
 	dir, err = commandmocker.Error("juju", "juju failed", 25)
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(dir)
-	err = a.destroy()
+	err = a.Destroy()
 	c.Assert(err, NotNil)
 	c.Assert(err.Error(), Equals, "Failed to destroy unit: exit status 25\njuju failed")
 }
@@ -142,9 +153,9 @@ func (s *S) TestCreateApp(c *C) {
 	}
 	config.Set("queue-server", server.listener.Addr().String())
 
-	err = createApp(&a)
+	err = CreateApp(&a)
 	c.Assert(err, IsNil)
-	defer a.destroy()
+	defer a.Destroy()
 	c.Assert(a.State, Equals, "pending")
 	var retrievedApp App
 	err = db.Session.Apps().Find(bson.M{"name": a.Name}).One(&retrievedApp)
@@ -188,8 +199,8 @@ func (s *S) TestCantCreateTwoAppsWithTheSameName(c *C) {
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": "appName"})
 	a := App{Name: "appName"}
-	err = createApp(&a)
-	defer a.destroy() // clean mess if test fail
+	err = CreateApp(&a)
+	defer a.Destroy() // clean mess if test fail
 	c.Assert(err, NotNil)
 }
 
@@ -198,7 +209,7 @@ func (s *S) TestCantCreateAppWithInvalidName(c *C) {
 		Name:      "1123app",
 		Framework: "ruby",
 	}
-	err := createApp(&a)
+	err := CreateApp(&a)
 	c.Assert(err, NotNil)
 	e, ok := err.(*ValidationError)
 	c.Assert(ok, Equals, true)
@@ -217,8 +228,8 @@ func (s *S) TestDoesNotSaveTheAppInTheDatabaseIfJujuFail(c *C) {
 		Framework: "ruby",
 		Units:     []Unit{{Machine: 1}},
 	}
-	err = createApp(&a)
-	defer a.destroy() // clean mess if test fail
+	err = CreateApp(&a)
+	defer a.Destroy() // clean mess if test fail
 	c.Assert(err, NotNil)
 	expected := `Failed to deploy: exit status 1
 juju failed`
@@ -238,8 +249,8 @@ func (s *S) TestDeletesIAMCredentialsAndS3BucketIfJujuFail(c *C) {
 		Framework: "ruby",
 		Units:     []Unit{{Machine: 1}},
 	}
-	err = createApp(&a)
-	defer a.destroy() // clean mess if test fail
+	err = CreateApp(&a)
+	defer a.Destroy() // clean mess if test fail
 	c.Assert(err, NotNil)
 	iam := getIAMEndpoint()
 	_, err = iam.GetUser("theirapp")
@@ -270,50 +281,50 @@ func (s *S) TestAppendOrUpdate(c *C) {
 
 func (s *S) TestGrantAccess(c *C) {
 	a := App{Name: "appName", Framework: "django", Teams: []string{}}
-	err := a.grant(&s.team)
+	err := a.Grant(&s.team)
 	c.Assert(err, IsNil)
-	_, found := a.find(&s.team)
+	_, found := a.Find(&s.team)
 	c.Assert(found, Equals, true)
 }
 
 func (s *S) TestGrantAccessKeepTeamsSorted(c *C) {
 	a := App{Name: "appName", Framework: "django", Teams: []string{"acid-rain", "zito"}}
-	err := a.grant(&s.team)
+	err := a.Grant(&s.team)
 	c.Assert(err, IsNil)
 	c.Assert(a.Teams, DeepEquals, []string{"acid-rain", s.team.Name, "zito"})
 }
 
 func (s *S) TestGrantAccessFailsIfTheTeamAlreadyHasAccessToTheApp(c *C) {
 	a := App{Name: "appName", Framework: "django", Teams: []string{s.team.Name}}
-	err := a.grant(&s.team)
+	err := a.Grant(&s.team)
 	c.Assert(err, NotNil)
 	c.Assert(err, ErrorMatches, "^This team already has access to this app$")
 }
 
 func (s *S) TestRevokeAccess(c *C) {
 	a := App{Name: "appName", Framework: "django", Teams: []string{s.team.Name}}
-	err := a.revoke(&s.team)
+	err := a.Revoke(&s.team)
 	c.Assert(err, IsNil)
-	_, found := a.find(&s.team)
+	_, found := a.Find(&s.team)
 	c.Assert(found, Equals, false)
 }
 
 func (s *S) TestRevoke(c *C) {
 	a := App{Name: "test", Teams: []string{"team1", "team2", "team3", "team4"}}
-	err := a.revoke(&auth.Team{Name: "team2"})
+	err := a.Revoke(&auth.Team{Name: "team2"})
 	c.Assert(err, IsNil)
 	c.Assert(a.Teams, DeepEquals, []string{"team1", "team3", "team4"})
-	err = a.revoke(&auth.Team{Name: "team4"})
+	err = a.Revoke(&auth.Team{Name: "team4"})
 	c.Assert(err, IsNil)
 	c.Assert(a.Teams, DeepEquals, []string{"team1", "team3"})
-	err = a.revoke(&auth.Team{Name: "team1"})
+	err = a.Revoke(&auth.Team{Name: "team1"})
 	c.Assert(err, IsNil)
 	c.Assert(a.Teams, DeepEquals, []string{"team3"})
 }
 
 func (s *S) TestRevokeAccessFailsIfTheTeamsDoesNotHaveAccessToTheApp(c *C) {
 	a := App{Name: "appName", Framework: "django", Teams: []string{}}
-	err := a.revoke(&s.team)
+	err := a.Revoke(&s.team)
 	c.Assert(err, NotNil)
 	c.Assert(err, ErrorMatches, "^This team does not have access to this app$")
 }
@@ -365,7 +376,7 @@ func (s *S) TestSetEnvRespectsThePublicOnlyFlagKeepPrivateVariablesWhenItsTrue(c
 			Public: true,
 		},
 	}
-	err = a.setEnvsToApp(envs, true, false)
+	err = a.SetEnvsToApp(envs, true, false)
 	c.Assert(err, IsNil)
 	newApp := App{Name: a.Name}
 	err = newApp.Get()
@@ -417,7 +428,7 @@ func (s *S) TestSetEnvRespectsThePublicOnlyFlagOverwrittenAllVariablesWhenItsFal
 			Public: true,
 		},
 	}
-	err = a.setEnvsToApp(envs, false, false)
+	err = a.SetEnvsToApp(envs, false, false)
 	c.Assert(err, IsNil)
 	newApp := App{Name: a.Name}
 	err = newApp.Get()
@@ -462,7 +473,7 @@ func (s *S) TestUnsetEnvRespectsThePublicOnlyFlagKeepPrivateVariablesWhenItsTrue
 	err = db.Session.Apps().Insert(a)
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
-	err = a.unsetEnvsFromApp([]string{"DATABASE_HOST", "DATABASE_PASSWORD"}, true, false)
+	err = a.UnsetEnvsFromApp([]string{"DATABASE_HOST", "DATABASE_PASSWORD"}, true, false)
 	c.Assert(err, IsNil)
 	newApp := App{Name: a.Name}
 	err = newApp.Get()
@@ -502,7 +513,7 @@ func (s *S) TestUnsetEnvRespectsThePublicOnlyFlagUnsettingAllVariablesWhenItsFal
 	err = db.Session.Apps().Insert(a)
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
-	err = a.unsetEnvsFromApp([]string{"DATABASE_HOST", "DATABASE_PASSWORD"}, false, false)
+	err = a.UnsetEnvsFromApp([]string{"DATABASE_HOST", "DATABASE_PASSWORD"}, false, false)
 	c.Assert(err, IsNil)
 	newApp := App{Name: a.Name}
 	err = newApp.Get()
@@ -578,7 +589,7 @@ func (s *S) TestIsValid(c *C) {
 func (s *S) TestUnit(c *C) {
 	u := Unit{Name: "someapp/0", Type: "django", Machine: 10}
 	a := App{Name: "appName", Framework: "django", Units: []Unit{u}}
-	u2 := a.unit()
+	u2 := a.Unit()
 	u.app = &a
 	c.Assert(*u2, DeepEquals, u)
 }
@@ -586,7 +597,7 @@ func (s *S) TestUnit(c *C) {
 func (s *S) TestEmptyUnit(c *C) {
 	a := App{Name: "myApp"}
 	expected := Unit{app: &a}
-	unit := a.unit()
+	unit := a.Unit()
 	c.Assert(*unit, DeepEquals, expected)
 }
 
@@ -834,7 +845,7 @@ func (s *S) TestInstallDeps(c *C) {
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
 	var buf bytes.Buffer
-	err = installDeps(&a, &buf)
+	err = InstallDeps(&a, &buf)
 	c.Assert(err, IsNil)
 	c.Assert(buf.String(), Equals, "ssh -o StrictHostKeyChecking no -q 4 /var/lib/tsuru/hooks/dependencies")
 }
@@ -860,7 +871,7 @@ func (s *S) TestInstallDepsWithCustomStdout(c *C) {
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(tmpdir)
 	var b bytes.Buffer
-	err = installDeps(&a, &b)
+	err = InstallDeps(&a, &b)
 	c.Assert(err, IsNil)
 	c.Assert(b.String(), Matches, `.* /var/lib/tsuru/hooks/dependencies`)
 }
@@ -886,7 +897,7 @@ func (s *S) TestInstallDepsWithCustomStderr(c *C) {
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(tmpdir)
 	var b bytes.Buffer
-	err = installDeps(&a, &b)
+	err = InstallDeps(&a, &b)
 	c.Assert(err, NotNil)
 	c.Assert(b.String(), Matches, `.* /var/lib/tsuru/hooks/dependencies`)
 }
@@ -909,7 +920,7 @@ func (s *S) TestRestart(c *C) {
 		},
 	}
 	var b bytes.Buffer
-	err = restart(&a, &b)
+	err = Restart(&a, &b)
 	c.Assert(err, IsNil)
 	result := strings.Replace(b.String(), "\n", "#", -1)
 	c.Assert(result, Matches, ".*/var/lib/tsuru/hooks/restart.*")
@@ -937,7 +948,7 @@ func (s *S) TestRestartRunPreRestartHook(c *C) {
 		},
 	}
 	var buf bytes.Buffer
-	err = restart(&a, &buf)
+	err = Restart(&a, &buf)
 	c.Assert(err, IsNil)
 	content := buf.String()
 	content = strings.Replace(content, "\n", "###", -1)
@@ -965,7 +976,7 @@ func (s *S) TestRestartRunsPosRestartHook(c *C) {
 		},
 	}
 	var buf bytes.Buffer
-	err = restart(&a, &buf)
+	err = Restart(&a, &buf)
 	c.Assert(err, IsNil)
 	content := buf.String()
 	content = strings.Replace(content, "\n", "###", -1)
@@ -980,7 +991,7 @@ func (s *S) TestLog(c *C) {
 	err = db.Session.Apps().Insert(a)
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
-	err = a.log("last log msg", "tsuru")
+	err = a.Log("last log msg", "tsuru")
 	c.Assert(err, IsNil)
 	var instance App
 	err = db.Session.Apps().Find(bson.M{"name": a.Name}).One(&instance)
@@ -994,7 +1005,7 @@ func (s *S) TestLogShouldAddOneRecordByLine(c *C) {
 	err := db.Session.Apps().Insert(a)
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
-	err = a.log("last log msg\nfirst log", "source")
+	err = a.Log("last log msg\nfirst log", "source")
 	c.Assert(err, IsNil)
 	instance := App{}
 	err = db.Session.Apps().Find(bson.M{"name": a.Name}).One(&instance)
@@ -1010,9 +1021,9 @@ func (s *S) TestLogShouldNotLogWhiteLines(c *C) {
 	err := db.Session.Apps().Insert(a)
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
-	err = a.log("some message", "tsuru")
+	err = a.Log("some message", "tsuru")
 	c.Assert(err, IsNil)
-	err = a.log("", "")
+	err = a.Log("", "")
 	c.Assert(err, IsNil)
 	var instance App
 	err = db.Session.Apps().Find(bson.M{"name": a.Name}).One(&instance)
@@ -1027,7 +1038,7 @@ func (s *S) TestLogShouldNotLogWarnings(c *C) {
 	err := db.Session.Apps().Insert(a)
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
-	err = a.log("some message", "tsuru")
+	err = a.Log("some message", "tsuru")
 	c.Assert(err, IsNil)
 	badLogs := []string{
 		"2012-11-28 16:00:35,615 WARNING Ubuntu Cloud Image lookups encrypted but not authenticated",
@@ -1036,7 +1047,7 @@ func (s *S) TestLogShouldNotLogWarnings(c *C) {
 		"warnings.warn('The client attribute on BaseQuery is deprecated and'",
 	}
 	for _, log := range badLogs {
-		err = a.log(log, "")
+		err = a.Log(log, "")
 		c.Assert(err, IsNil)
 	}
 	for _, log := range badLogs {
@@ -1058,13 +1069,13 @@ func (s *S) TestGetTeams(c *C) {
 
 func (s *S) TestSetTeams(c *C) {
 	app := App{Name: "app"}
-	app.setTeams([]auth.Team{s.team})
+	app.SetTeams([]auth.Team{s.team})
 	c.Assert(app.Teams, DeepEquals, []string{s.team.Name})
 }
 
 func (s *S) TestSetTeamsSortTeamNames(c *C) {
 	app := App{Name: "app"}
-	app.setTeams([]auth.Team{s.team, {Name: "zzz"}, {Name: "aaa"}})
+	app.SetTeams([]auth.Team{s.team, {Name: "zzz"}, {Name: "aaa"}})
 	c.Assert(app.Teams, DeepEquals, []string{"aaa", s.team.Name, "zzz"})
 }
 
@@ -1137,7 +1148,7 @@ func (s *S) TestRun(c *C) {
 		},
 	}
 	var buf bytes.Buffer
-	err = app.run("ls -lh", &buf)
+	err = app.Run("ls -lh", &buf)
 	c.Assert(err, IsNil)
 	c.Assert(buf.String(), Equals, "ssh -o StrictHostKeyChecking no -q 10 [ -f /home/application/apprc ] && source /home/application/apprc; [ -d /home/application/current ] && cd /home/application/current; ls -lh")
 }
