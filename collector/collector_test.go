@@ -5,6 +5,7 @@
 package main
 
 import (
+	"errors"
 	"github.com/globocom/commandmocker"
 	"github.com/globocom/tsuru/app"
 	"github.com/globocom/tsuru/db"
@@ -12,6 +13,7 @@ import (
 	"labix.org/v2/mgo/bson"
 	. "launchpad.net/gocheck"
 	"path/filepath"
+	"time"
 )
 
 func getOutput() *output {
@@ -170,6 +172,39 @@ func (s *S) TestParser(c *C) {
 	c.Assert(err, IsNil)
 	expected := getOutput()
 	c.Assert(parse(jujuOutput), DeepEquals, expected)
+}
+
+func (s *S) TestExecWithTimeout(c *C) {
+	var data = []struct {
+		cmd     []string
+		timeout time.Duration
+		out     string
+		err     error
+	}{
+		{
+			cmd:     []string{"sleep", "2"},
+			timeout: 1e6,
+			out:     "",
+			err:     errors.New(`"sleep 2" ran for more than 1ms.`),
+		},
+		{
+			cmd:     []string{"python", "-c", "import time; time.sleep(1); print 'hello world!'"},
+			timeout: 2e9,
+			out:     "hello world!\n",
+			err:     nil,
+		},
+	}
+	for _, d := range data {
+		out, err := execWithTimeout(d.timeout, d.cmd[0], d.cmd[1:]...)
+		if string(out) != d.out {
+			c.Errorf("Output. Want %q. Got %q.", d.out, out)
+		}
+		if d.err == nil && err != nil {
+			c.Errorf("Error. Want %v. Got %v.", d.err, err)
+		} else if d.err != nil && err.Error() != d.err.Error() {
+			c.Errorf("Error message. Want %q. Got %q.", d.err.Error(), err.Error())
+		}
+	}
 }
 
 func (s *S) TestCollect(c *C) {

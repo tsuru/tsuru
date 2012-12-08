@@ -5,12 +5,15 @@
 package main
 
 import (
+	"fmt"
 	"github.com/globocom/tsuru/app"
 	"github.com/globocom/tsuru/db"
 	"github.com/globocom/tsuru/log"
 	"labix.org/v2/mgo/bson"
 	"launchpad.net/goyaml"
 	"os/exec"
+	"strings"
+	"time"
 )
 
 type Service struct {
@@ -22,9 +25,33 @@ type output struct {
 	Machines map[int]interface{}
 }
 
+func execWithTimeout(timeout time.Duration, cmd string, args ...string) (output []byte, err error) {
+	ch := make(chan []byte, 1)
+	errCh := make(chan error, 1)
+	command := exec.Command(cmd, args...)
+	go func() {
+		if out, err := command.Output(); err == nil {
+			ch <- out
+		} else {
+			errCh <- err
+		}
+	}()
+	select {
+	case output = <-ch:
+	case err = <-errCh:
+	case <-time.After(timeout):
+		argsStr := strings.Join(args, " ")
+		err = fmt.Errorf("%q ran for more than %s.", cmd+" "+argsStr, timeout)
+		if command.Process != nil {
+			command.Process.Kill()
+		}
+	}
+	return output, err
+}
+
 func collect() ([]byte, error) {
 	log.Print("collecting status from juju")
-	return exec.Command("juju", "status").Output()
+	return execWithTimeout(30e9, "juju", "status")
 }
 
 func parse(data []byte) *output {
