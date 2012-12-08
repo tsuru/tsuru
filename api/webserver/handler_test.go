@@ -30,6 +30,11 @@ func errorHandler(w http.ResponseWriter, r *http.Request) error {
 	return stderrors.New("some error")
 }
 
+func errorHandlerWriteHeader(w http.ResponseWriter, r *http.Request) error {
+	w.WriteHeader(http.StatusBadGateway)
+	return errorHandler(w, r)
+}
+
 func badRequestHandler(w http.ResponseWriter, r *http.Request) error {
 	return &errors.Http{Code: http.StatusBadRequest, Message: "some error"}
 }
@@ -62,6 +67,16 @@ func authorizedOutputHandler(w http.ResponseWriter, r *http.Request, u *auth.Use
 	return outputHandler(w, r)
 }
 
+type recorder struct {
+	*httptest.ResponseRecorder
+	headerWrites int
+}
+
+func (r *recorder) WriteHeader(code int) {
+	r.headerWrites++
+	r.ResponseRecorder.WriteHeader(code)
+}
+
 func (s *S) SetUpSuite(c *C) {
 	db.Session, _ = db.Open("127.0.0.1:27017", "tsuru_handler_test")
 	s.u = &auth.User{Email: "handler@tsuru.globo.com", Password: "123"}
@@ -78,10 +93,19 @@ func (s *S) TestHandlerReturns500WhenInternalHandlerReturnsAnError(c *C) {
 	recorder := httptest.NewRecorder()
 	request, err := http.NewRequest("GET", "/apps", nil)
 	c.Assert(err, IsNil)
-
 	Handler(errorHandler).ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, Equals, http.StatusInternalServerError)
 	c.Assert(recorder.Body.String(), Equals, "some error\n")
+}
+
+func (s *S) TestHandlerDontCallWriteHeaderIfItHasAlreadyBeenCalled(c *C) {
+	recorder := recorder{httptest.NewRecorder(), 0}
+	request, err := http.NewRequest("GET", "/apps", nil)
+	c.Assert(err, IsNil)
+	Handler(errorHandlerWriteHeader).ServeHTTP(&recorder, request)
+	c.Assert(recorder.Code, Equals, http.StatusBadGateway)
+	c.Assert(recorder.Body.String(), Equals, "some error\n")
+	c.Assert(recorder.headerWrites, Equals, 1)
 }
 
 func (s *S) TestHandlerShouldPassAnHandlerWithoutError(c *C) {

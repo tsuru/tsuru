@@ -5,6 +5,7 @@
 package main
 
 import (
+	"fmt"
 	"github.com/globocom/tsuru/api/auth"
 	"github.com/globocom/tsuru/errors"
 	"github.com/globocom/tsuru/log"
@@ -30,9 +31,13 @@ func (fn Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			r.Body.Close()
 		}
 	}()
-	w = &FilteredWriter{w, false}
-	if err := fn(w, r); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+	fw := FilteredWriter{w, false}
+	if err := fn(&fw, r); err != nil {
+		if fw.wrote {
+			fmt.Fprintln(&fw, err)
+		} else {
+			http.Error(&fw, err.Error(), http.StatusInternalServerError)
+		}
 		log.Print(err)
 	}
 }
