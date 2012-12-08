@@ -7,8 +7,8 @@ package main
 import (
 	"bytes"
 	"github.com/globocom/commandmocker"
-	"github.com/globocom/tsuru/app"
 	"github.com/globocom/tsuru/api/bind"
+	"github.com/globocom/tsuru/app"
 	"github.com/globocom/tsuru/db"
 	"github.com/globocom/tsuru/log"
 	"github.com/globocom/tsuru/queue"
