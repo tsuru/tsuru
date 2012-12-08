@@ -168,6 +168,24 @@ func (s *S) TestAppRemove(c *C) {
 	c.Assert(stdout.String(), Equals, expected)
 }
 
+func (s *S) TestAppRemoveWithoutAsking(c *C) {
+	*appName = "ble"
+	*assumeYes = true
+	var stdout, stderr bytes.Buffer
+	expected := `App "ble" successfully removed!` + "\n"
+	context := cmd.Context{
+		Args:   []string{"ble"},
+		Stdout: &stdout,
+		Stderr: &stderr,
+		Stdin:  strings.NewReader("y\n"),
+	}
+	client := cmd.NewClient(&http.Client{Transport: &transport{msg: "", status: http.StatusOK}}, nil, manager)
+	command := AppRemove{}
+	err := command.Run(&context, client)
+	c.Assert(err, IsNil)
+	c.Assert(stdout.String(), Equals, expected)
+}
+
 func (s *S) TestAppRemoveWithoutArgs(c *C) {
 	var stdout, stderr bytes.Buffer
 	context := cmd.Context{
@@ -213,7 +231,7 @@ func (s *S) TestAppRemoveWithoutConfirmation(c *C) {
 func (s *S) TestAppRemoveInfo(c *C) {
 	expected := &cmd.Info{
 		Name:  "app-remove",
-		Usage: "app-remove [--app appname]",
+		Usage: "app-remove [--app appname] [--assume-yes]",
 		Desc: `removes an app.
 
 If you don't provide the app name, tsuru will try to guess it.`,
