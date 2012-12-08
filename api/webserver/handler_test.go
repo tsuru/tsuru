@@ -55,6 +55,10 @@ func authorizedErrorHandler(w http.ResponseWriter, r *http.Request, u *auth.User
 	return errorHandler(w, r)
 }
 
+func authorizedErrorHandlerWriteHeader(w http.ResponseWriter, r *http.Request, u *auth.User) error {
+	return errorHandlerWriteHeader(w, r)
+}
+
 func authorizedBadRequestHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	return badRequestHandler(w, r)
 }
@@ -193,6 +197,17 @@ func (s *S) TestAuthorizationRequiredHandlerShouldReturnTheHandlerErrorIfAnyHapp
 	AuthorizationRequiredHandler(authorizedErrorHandler).ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, Equals, http.StatusInternalServerError)
 	c.Assert(recorder.Body.String(), Equals, "some error\n")
+}
+
+func (s *S) TestAuthorizetionRequiredHandlerDontCallWriteHeaderIfItHasAlreadyBeenCalled(c *C) {
+	recorder := recorder{httptest.NewRecorder(), 0}
+	request, err := http.NewRequest("GET", "/apps", nil)
+	c.Assert(err, IsNil)
+	request.Header.Set("Authorization", s.t.Token)
+	AuthorizationRequiredHandler(authorizedErrorHandlerWriteHeader).ServeHTTP(&recorder, request)
+	c.Assert(recorder.Code, Equals, http.StatusBadGateway)
+	c.Assert(recorder.Body.String(), Equals, "some error\n")
+	c.Assert(recorder.headerWrites, Equals, 1)
 }
 
 func (s *S) TestAuthorizationRequiredHandlerShouldRespectTheHandlerStatusCode(c *C) {

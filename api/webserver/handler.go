@@ -51,17 +51,21 @@ func (fn AuthorizationRequiredHandler) ServeHTTP(w http.ResponseWriter, r *http.
 			r.Body.Close()
 		}
 	}()
-	w = &FilteredWriter{w, false}
+	fw := FilteredWriter{w, false}
 	token := r.Header.Get("Authorization")
 	if token == "" {
-		http.Error(w, "You must provide the Authorization header", http.StatusUnauthorized)
+		http.Error(&fw, "You must provide the Authorization header", http.StatusUnauthorized)
 	} else if user, err := auth.CheckToken(token); err != nil {
-		http.Error(w, "Invalid token", http.StatusUnauthorized)
-	} else if err = fn(w, r, user); err != nil {
+		http.Error(&fw, "Invalid token", http.StatusUnauthorized)
+	} else if err = fn(&fw, r, user); err != nil {
 		code := http.StatusInternalServerError
 		if e, ok := err.(*errors.Http); ok {
 			code = e.Code
 		}
-		http.Error(w, err.Error(), code)
+		if fw.wrote {
+			fmt.Fprintln(&fw, err)
+		} else {
+			http.Error(&fw, err.Error(), code)
+		}
 	}
 }
