@@ -17,6 +17,7 @@ type FilteredWriter struct {
 
 // Write writes and flushes the data, filtering the juju warnings.
 func (w *FilteredWriter) Write(data []byte) (int, error) {
+	originalLength := len(data)
 	if w.Header().Get("Content-Type") == "text" {
 		data = juju.FilterOutput(data)
 	}
@@ -25,5 +26,5 @@ func (w *FilteredWriter) Write(data []byte) (int, error) {
 		f.Flush()
 	}
 	// returning the len(data) to skip the "short write" error
-	return len(data), err
+	return originalLength, err
 }

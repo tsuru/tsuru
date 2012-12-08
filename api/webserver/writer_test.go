@@ -61,3 +61,15 @@ func (s *S) TestFilteredWriterShouldFilterWhenTheContentTypeIsText(c *C) {
 	c.Assert(err, IsNil)
 	c.Assert(len(recorder.Body.Bytes()), Equals, 0)
 }
+
+func (s *S) TestFilteredWriterShouldReturnTheOriginalLength(c *C) {
+	recorder := httptest.NewRecorder()
+	writer := FilteredWriter{recorder}
+	writer.Header().Set("Content-Type", "text")
+	data := []byte("2012-11-28 16:00:35,615 WARNING Ubuntu Cloud Image lookups encrypted but not authenticated")
+	expected := len(data)
+	n, err := writer.Write(data)
+	c.Assert(err, IsNil)
+	c.Assert(len(recorder.Body.Bytes()), Equals, 0)
+	c.Assert(n, Equals, expected)
+}
