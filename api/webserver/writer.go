@@ -13,10 +13,12 @@ import (
 // that filter deprecation warnings and juju log output.
 type FilteredWriter struct {
 	http.ResponseWriter
+	wrote bool
 }
 
 // Write writes and flushes the data, filtering the juju warnings.
 func (w *FilteredWriter) Write(data []byte) (int, error) {
+	w.wrote = true
 	originalLength := len(data)
 	if w.Header().Get("Content-Type") == "text" {
 		data = juju.FilterOutput(data)
