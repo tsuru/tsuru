@@ -8,11 +8,13 @@ import (
 	"encoding/gob"
 	"github.com/globocom/tsuru/queue"
 	"net"
+	"sync"
 )
 
 // FakeQueueServer is a very dumb queue server that does not handle connections
 // concurrently.
 type FakeQueueServer struct {
+	sync.Mutex
 	listener net.Listener
 	messages []queue.Message
 	closed   bool
@@ -40,7 +42,9 @@ func (s *FakeQueueServer) loop() {
 		for err == nil {
 			var msg queue.Message
 			if err := decoder.Decode(&msg); err == nil {
+				s.Lock()
 				s.messages = append(s.messages, msg)
+				s.Unlock()
 			}
 		}
 	}

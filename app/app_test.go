@@ -188,6 +188,8 @@ func (s *S) TestCreateApp(c *C) {
 		Action: RegenerateApprc,
 		Args:   []string{a.Name},
 	}
+	server.Lock()
+	defer server.Unlock()
 	c.Assert(server.messages, DeepEquals, []queue.Message{expectedMessage})
 }
 
