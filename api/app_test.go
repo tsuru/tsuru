@@ -27,6 +27,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync/atomic"
 	"time"
 )
 
@@ -1957,9 +1958,11 @@ func (s *S) TestUnbindHandler(c *C) {
 	dir, err := commandmocker.Add("juju", "")
 	defer commandmocker.Remove(dir)
 	c.Assert(err, IsNil)
-	var called bool
+	var called int32
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		called = r.Method == "DELETE" && r.URL.Path == "/resources/my-mysql/hostname/127.0.0.1"
+		if r.Method == "DELETE" && r.URL.Path == "/resources/my-mysql/hostname/127.0.0.1" {
+			atomic.StoreInt32(&called, 1)
+		}
 	}))
 	defer ts.Close()
 	srvc := service.Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}}
@@ -2019,7 +2022,7 @@ func (s *S) TestUnbindHandler(c *C) {
 	ch := make(chan bool)
 	go func() {
 		t := time.Tick(1)
-		for _ = <-t; !called; _ = <-t {
+		for _ = <-t; atomic.LoadInt32(&called) == 0; _ = <-t {
 		}
 		ch <- true
 	}()
