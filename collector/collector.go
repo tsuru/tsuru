@@ -5,6 +5,7 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"github.com/globocom/tsuru/app"
 	"github.com/globocom/tsuru/db"
@@ -26,12 +27,17 @@ type output struct {
 }
 
 func execWithTimeout(timeout time.Duration, cmd string, args ...string) (output []byte, err error) {
+	var buf bytes.Buffer
 	ch := make(chan []byte, 1)
 	errCh := make(chan error, 1)
 	command := exec.Command(cmd, args...)
+	command.Stdout = &buf
+	if err = command.Start(); err != nil {
+		return nil, err
+	}
 	go func() {
-		if out, err := command.Output(); err == nil {
-			ch <- out
+		if err := command.Wait(); err == nil {
+			ch <- buf.Bytes()
 		} else {
 			errCh <- err
 		}
@@ -42,9 +48,7 @@ func execWithTimeout(timeout time.Duration, cmd string, args ...string) (output 
 	case <-time.After(timeout):
 		argsStr := strings.Join(args, " ")
 		err = fmt.Errorf("%q ran for more than %s.", cmd+" "+argsStr, timeout)
-		if command.Process != nil {
-			command.Process.Kill()
-		}
+		command.Process.Kill()
 	}
 	return output, err
 }
