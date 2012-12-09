@@ -8,9 +8,9 @@ install:
   - tar -xzf libgit2-0.17.0.tar.gz
   - mkdir -p libgit2-0.17.0/build
   - pushd libgit2-0.17.0/build
-  - cmake ..
-  - cmake --build .
-  - sudo cmake --build . --target install
+  - cmake .. > cmake.out || cat cmake.out && exit 1
+  - cmake --build . >> cmake.out || cat cmake.out && exit 1
+  - sudo cmake --build . --target install >> cmake.out || cat cmake.out && exit 1
   - popd
   - popd
   - sudo ldconfig
