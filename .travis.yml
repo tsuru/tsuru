@@ -20,7 +20,7 @@ before_script:
   - make get-prod
 script:
   - go test -i ./...
-  - for package in `go list ./...`; do go test $package -cpu=1,2,4; done
+  - go test ./...
 branches:
   only:
     - master
