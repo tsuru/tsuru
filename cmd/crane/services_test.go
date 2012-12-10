@@ -82,8 +82,7 @@ func (s *S) TestServiceRemoveRunWithRequestFailure(c *C) {
 }
 
 func (s *S) TestServiceRemoveIsACommand(c *C) {
-	var command cmd.Command
-	c.Assert(&ServiceRemove{}, Implements, &command)
+	var _ cmd.Command = &ServiceRemove{}
 }
 
 func (s *S) TestServiceRemoveInfo(c *C) {
@@ -97,8 +96,7 @@ func (s *S) TestServiceRemoveInfo(c *C) {
 }
 
 func (s *S) TestServiceRemoveIsAnInfor(c *C) {
-	var infoer cmd.Infoer
-	c.Assert(&ServiceRemove{}, Implements, &infoer)
+	var _ cmd.Infoer = &ServiceRemove{}
 }
 
 func (s *S) TestServiceListInfo(c *C) {
@@ -174,8 +172,7 @@ func (s *S) TestServiceUpdate(c *C) {
 }
 
 func (s *S) TestServiceUpdateIsACommand(c *C) {
-	var cmd cmd.Command
-	c.Assert(&ServiceUpdate{}, Implements, &cmd)
+	var _ cmd.Command = &ServiceUpdate{}
 }
 
 func (s *S) TestServiceUpdateInfo(c *C) {
@@ -189,8 +186,7 @@ func (s *S) TestServiceUpdateInfo(c *C) {
 }
 
 func (s *S) TestServiceUpdateIsAnInfoer(c *C) {
-	var infoer cmd.Infoer
-	c.Assert(&ServiceUpdate{}, Implements, &infoer)
+	var _ cmd.Infoer = &ServiceUpdate{}
 }
 
 func (s *S) TestServiceDocAdd(c *C) {

@@ -78,13 +78,11 @@ func (s *S) TestInfoServiceList(c *C) {
 }
 
 func (s *S) TestServiceListShouldBeInfoer(c *C) {
-	var infoer cmd.Infoer
-	c.Assert(&ServiceList{}, Implements, &infoer)
+	var _ cmd.Infoer = &ServiceList{}
 }
 
 func (s *S) TestServiceListShouldBeCommand(c *C) {
-	var command cmd.Command
-	c.Assert(&ServiceList{}, Implements, &command)
+	var _ cmd.Command = &ServiceList{}
 }
 
 func (s *S) TestServiceBind(c *C) {
@@ -194,13 +192,11 @@ If you don't provide the app name, tsuru will try to guess it.`,
 }
 
 func (s *S) TestServiceBindIsAnInfoer(c *C) {
-	var infoer cmd.Infoer
-	c.Assert(&ServiceBind{}, Implements, &infoer)
+	var _ cmd.Infoer = &ServiceBind{}
 }
 
 func (s *S) TestServiceBindIsACommand(c *C) {
-	var command cmd.Command
-	c.Assert(&ServiceBind{}, Implements, &command)
+	var _ cmd.Command = &ServiceBind{}
 }
 
 func (s *S) TestServiceUnbind(c *C) {
@@ -286,13 +282,11 @@ If you don't provide the app name, tsuru will try to guess it.`,
 }
 
 func (s *S) TestServiceUnbindIsAnInfoer(c *C) {
-	var infoer cmd.Infoer
-	c.Assert(&ServiceUnbind{}, Implements, &infoer)
+	var _ cmd.Infoer = &ServiceUnbind{}
 }
 
 func (s *S) TestServiceUnbindIsAComand(c *C) {
-	var command cmd.Command
-	c.Assert(&ServiceUnbind{}, Implements, &command)
+	var _ cmd.Command = &ServiceUnbind{}
 }
 
 func (s *S) TestServiceAddInfo(c *C) {

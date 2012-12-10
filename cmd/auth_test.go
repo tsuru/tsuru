@@ -261,13 +261,11 @@ func (s *S) TestTeamListInfo(c *C) {
 }
 
 func (s *S) TestTeamListIsACommand(c *C) {
-	var command Command
-	c.Assert(&teamList{}, Implements, &command)
+	var _ Command = &teamList{}
 }
 
 func (s *S) TeamTeamListIsAnInfoer(c *C) {
-	var infoer Infoer
-	c.Assert(&teamList{}, Implements, &infoer)
+	var _ Infoer = &teamList{}
 }
 
 func (s *S) TestUserCreateShouldNotDependOnTsuruTokenFile(c *C) {
@@ -381,13 +379,11 @@ func (s *S) TestUserRemoveInfo(c *C) {
 }
 
 func (s *S) TestUserRemoveIsACommand(c *C) {
-	var cmd Command
-	c.Assert(&userRemove{}, Implements, &cmd)
+	var _ Command = &userRemove{}
 }
 
 func (s *S) TestUserRemoveIsAnInfoer(c *C) {
-	var infoer Infoer
-	c.Assert(&userRemove{}, Implements, &infoer)
+	var _ Infoer = &userRemove{}
 }
 
 func (s *S) TestChangePassword(c *C) {
