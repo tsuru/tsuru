@@ -21,8 +21,7 @@ func Test(t *testing.T) {
 }
 
 func (s *S) TestFakeFilePointerShouldImplementFileInterface(c *C) {
-	var file fs.File
-	c.Assert(&FakeFile{}, Implements, &file)
+	var _ fs.File = &FakeFile{}
 }
 
 func (s *S) TestFakeFileClose(c *C) {
@@ -123,8 +122,7 @@ func (s *S) TestFakeFileTruncateStripsContentWithN(c *C) {
 }
 
 func (s *S) TestRecordingFsPointerShouldImplementFsInterface(c *C) {
-	var fs fs.Fs
-	c.Assert(&RecordingFs{}, Implements, &fs)
+	var _ fs.Fs = &RecordingFs{}
 }
 
 func (s *S) TestRecordingFsHasAction(c *C) {
@@ -254,8 +252,7 @@ func (s *S) TestRecordingFsStat(c *C) {
 }
 
 func (s *S) TestFailureFsPointerImplementsFsInterface(c *C) {
-	var fs fs.Fs
-	c.Assert(&FailureFs{}, Implements, &fs)
+	var _ fs.Fs = &FailureFs{}
 }
 
 func (s *S) TestFailureFsOpen(c *C) {

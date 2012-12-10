@@ -16,8 +16,7 @@ import (
 )
 
 func (s *S) TestAppIsABinderApp(c *C) {
-	var app bind.App
-	c.Assert(&App{}, Implements, &app)
+	var _ bind.App = &App{}
 }
 
 func (s *S) TestDestroyShouldUnbindAppFromInstance(c *C) {

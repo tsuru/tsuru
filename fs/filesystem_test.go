@@ -19,9 +19,7 @@ func Test(t *testing.T) {
 }
 
 func (s *S) TestOsFsImplementsFS(c *C) {
-	var fs Fs
-	var ofs OsFs
-	c.Assert(ofs, Implements, &fs)
+	var _ Fs = OsFs{}
 }
 
 func (s *S) TestOsFsCreatesTheFileInTheDisc(c *C) {
