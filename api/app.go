@@ -198,11 +198,6 @@ func createAppHelper(instance *app.App, u *auth.User) ([]byte, error) {
 		instance.Destroy()
 		return nil, &errors.Http{Code: http.StatusInternalServerError, Message: err.Error()}
 	}
-	if err := c.GrantAccess([]string{instance.Name}, users); err != nil {
-		log.Printf("Got error while granting access to repository: %s", err.Error())
-		instance.Destroy()
-		return nil, &errors.Http{Code: http.StatusInternalServerError, Message: err.Error()}
-	}
 	msg := map[string]string{
 		"status":         "success",
 		"repository_url": repository.GetUrl(instance.Name),

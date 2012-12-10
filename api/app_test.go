@@ -533,21 +533,6 @@ func (s *S) TestCreateAppHelperShouldNotCreateAnAppWhenAnErrorHappensOnCreateRep
 	c.Assert(length, Equals, 0)
 }
 
-func (s *S) TestCreateAppHelperShouldNotCreateAnAppWhenAnErrorHappensOnGrant(c *C) {
-	h := testNotSoBadHandler{}
-	ts := s.startGandalfTestServer(&h)
-	defer ts.Close()
-	dir, err := commandmocker.Add("juju", "")
-	defer commandmocker.Remove(dir)
-	c.Assert(err, IsNil)
-	a := app.App{Name: "someapp"}
-	_, err = createAppHelper(&a, s.user)
-	c.Assert(err, NotNil)
-	length, err := db.Session.Apps().Find(bson.M{"name": a.Name}).Count()
-	c.Assert(err, IsNil)
-	c.Assert(length, Equals, 0)
-}
-
 func (s *S) TestCreateAppHelperCreatesRepositoryInGandalf(c *C) {
 	h := testHandler{}
 	ts := s.startGandalfTestServer(&h)
@@ -563,23 +548,6 @@ func (s *S) TestCreateAppHelperCreatesRepositoryInGandalf(c *C) {
 	c.Assert(h.method[0], Equals, "POST")
 	expected := fmt.Sprintf(`{"name":"someapp","users":["%s"],"ispublic":false}`, s.user.Email)
 	c.Assert(string(h.body[0]), Equals, expected)
-}
-
-func (s *S) TestCreateAppHelperGrantsTeamAccessInGandalf(c *C) {
-	h := testHandler{}
-	ts := s.startGandalfTestServer(&h)
-	defer ts.Close()
-	dir, err := commandmocker.Add("juju", "")
-	c.Assert(err, IsNil)
-	defer commandmocker.Remove(dir)
-	a := app.App{Name: "someapp"}
-	_, err = createAppHelper(&a, s.user)
-	c.Assert(err, IsNil)
-	defer a.Destroy()
-	c.Assert(h.url[1], Equals, "/repository/grant")
-	c.Assert(h.method[1], Equals, "POST")
-	expected := fmt.Sprintf(`{"repositories":["someapp"],"users":["%s"]}`, s.user.Email)
-	c.Assert(string(h.body[1]), Equals, expected)
 }
 
 func (s *S) TestCreateAppHandler(c *C) {
