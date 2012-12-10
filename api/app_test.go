@@ -65,17 +65,6 @@ func (h *testBadHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	http.Error(w, "some error", http.StatusInternalServerError)
 }
 
-type testNotSoBadHandler struct {
-	requests int
-}
-
-func (h *testNotSoBadHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if h.requests > 0 {
-		http.Error(w, "some error", http.StatusInternalServerError)
-	}
-	h.requests++
-}
-
 func (s *S) TestAppIsAvaliableHandlerShouldReturnsErrorWhenAppUnitStatusIsnotStarted(c *C) {
 	a := app.App{
 		Name:      "someapp",
