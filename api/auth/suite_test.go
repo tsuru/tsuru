@@ -48,6 +48,7 @@ func Test(t *testing.T) { TestingT(t) }
 
 type S struct {
 	session *mgo.Session
+	hashed  string
 	user    *User
 	team    *Team
 	token   *Token
@@ -66,6 +67,7 @@ var panicIfErr = func(err error) {
 }
 
 func (s *S) SetUpSuite(c *C) {
+	s.hashed = hashPassword("123")
 	err := config.ReadConfigFile("../../etc/tsuru.conf")
 	c.Assert(err, IsNil)
 	db.Session, _ = db.Open("localhost:27017", "tsuru_user_test")
@@ -92,6 +94,11 @@ func (s *S) TearDownTest(c *C) {
 	panicIfErr(err)
 	_, err = db.Session.Teams().RemoveAll(bson.M{"_id": bson.M{"$ne": s.team.Name}})
 	panicIfErr(err)
+	if s.user.Password != s.hashed {
+		s.user.Password = s.hashed
+		err = s.user.update()
+		panicIfErr(err)
+	}
 	config.Set("git:host", s.gitHost)
 	config.Set("git:port", s.gitPort)
 	config.Set("git:protocol", s.gitProt)

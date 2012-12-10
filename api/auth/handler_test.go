@@ -998,3 +998,72 @@ func (s *S) TestRemoveUserRevokesAccessInGandalf(c *C) {
 	expected := `{"repositories":["myApp"],"users":["of-two-beginnings@painofsalvation.com"]}`
 	c.Assert(string(h.body[0]), Equals, expected)
 }
+
+func (s *S) TestChangePasswordHandler(c *C) {
+	body := bytes.NewBufferString(`{"old":"123","new":"123456"}`)
+	request, err := http.NewRequest("PUT", "/users/password", body)
+	c.Assert(err, IsNil)
+	recorder := httptest.NewRecorder()
+	err = ChangePassword(recorder, request, s.user)
+	c.Assert(err, IsNil)
+	otherUser := *s.user
+	err = otherUser.Get()
+	c.Assert(err, IsNil)
+	expectedPassword := hashPassword("123456")
+	c.Assert(otherUser.Password, Equals, expectedPassword)
+}
+
+func (s *S) TestChangePasswordReturns412IfNewPasswordIsInvalid(c *C) {
+	body := bytes.NewBufferString(`{"old":"123","new":"1234"}`)
+	request, err := http.NewRequest("PUT", "/users/password", body)
+	c.Assert(err, IsNil)
+	recorder := httptest.NewRecorder()
+	err = ChangePassword(recorder, request, s.user)
+	c.Assert(err, NotNil)
+	e, ok := err.(*errors.Http)
+	c.Assert(ok, Equals, true)
+	c.Assert(e.Code, Equals, http.StatusPreconditionFailed)
+	c.Assert(e.Message, Equals, "Password length should be least 6 characters and at most 50 characters.")
+}
+
+func (s *S) TestChangePasswordReturns404IfOldPasswordDidntMatch(c *C) {
+	body := bytes.NewBufferString(`{"old":"1234","new":"123456"}`)
+	request, err := http.NewRequest("PUT", "/users/password", body)
+	c.Assert(err, IsNil)
+	recorder := httptest.NewRecorder()
+	err = ChangePassword(recorder, request, s.user)
+	c.Assert(err, NotNil)
+	e, ok := err.(*errors.Http)
+	c.Assert(ok, Equals, true)
+	c.Assert(e.Code, Equals, http.StatusForbidden)
+	c.Assert(e.Message, Equals, "The given password didn't match the user's current password.")
+}
+
+func (s *S) TestChangePasswordReturns400IfRequestBodyIsInvalidJSON(c *C) {
+	body := bytes.NewBufferString(`{"invalid:"json`)
+	request, err := http.NewRequest("PUT", "/users/password", body)
+	c.Assert(err, IsNil)
+	recorder := httptest.NewRecorder()
+	err = ChangePassword(recorder, request, s.user)
+	c.Assert(err, NotNil)
+	e, ok := err.(*errors.Http)
+	c.Assert(ok, Equals, true)
+	c.Assert(e.Code, Equals, http.StatusBadRequest)
+	c.Assert(e.Message, Equals, "Invalid JSON.")
+}
+
+func (s *S) TestChangePasswordReturns400IfJSONDoesNotIncludeBothOldAndNewPasswords(c *C) {
+	bodies := []string{`{"old": "something"}`, `{"new":"something"}`, "{}", "null"}
+	for _, body := range bodies {
+		b := bytes.NewBufferString(body)
+		request, err := http.NewRequest("PUT", "/users/password", b)
+		c.Assert(err, IsNil)
+		recorder := httptest.NewRecorder()
+		err = ChangePassword(recorder, request, s.user)
+		c.Assert(err, NotNil)
+		e, ok := err.(*errors.Http)
+		c.Assert(ok, Equals, true)
+		c.Assert(e.Code, Equals, http.StatusBadRequest)
+		c.Assert(e.Message, Equals, "Both the old and the new passwords are required.")
+	}
+}

@@ -40,7 +40,10 @@ func CreateUser(w http.ResponseWriter, r *http.Request) error {
 	gUrl := repository.GitServerUri()
 	c := gandalf.Client{Endpoint: gUrl}
 	if _, err := c.NewUser(u.Email, keyToMap(u.Keys)); err != nil {
-		return &errors.Http{Code: http.StatusInternalServerError, Message: "Could not communicate with git server. Aborting..."}
+		return &errors.Http{
+			Code:    http.StatusInternalServerError,
+			Message: "Could not communicate with git server. Aborting...",
+		}
 	}
 	if err := u.Create(); err == nil {
 		w.WriteHeader(http.StatusCreated)
@@ -81,6 +84,48 @@ func Login(w http.ResponseWriter, r *http.Request) error {
 	}
 	msg := "Authentication failed, wrong password"
 	return &errors.Http{Code: http.StatusUnauthorized, Message: msg}
+}
+
+// ChangePassword changes the password from the logged in user.
+//
+// It reads the request body in JSON format. The JSON in the request body
+// should contain two attributes:
+//
+// - old: the old password
+// - new: the new password
+//
+// This handler will return 403 if the password didn't match the user, or 412
+// if the new password is invalid.
+func ChangePassword(w http.ResponseWriter, r *http.Request, u *User) error {
+	var body map[string]string
+	err := json.NewDecoder(r.Body).Decode(&body)
+	if err != nil {
+		return &errors.Http{
+			Code:    http.StatusBadRequest,
+			Message: "Invalid JSON.",
+		}
+	}
+	if body["old"] == "" || body["new"] == "" {
+		return &errors.Http{
+			Code:    http.StatusBadRequest,
+			Message: "Both the old and the new passwords are required.",
+		}
+	}
+	if !u.login(body["old"]) {
+		return &errors.Http{
+			Code:    http.StatusForbidden,
+			Message: "The given password didn't match the user's current password.",
+		}
+	}
+	if !validation.ValidateLength(body["new"], passwordMinLen, passwordMaxLen) {
+		return &errors.Http{
+			Code:    http.StatusPreconditionFailed,
+			Message: passwordError,
+		}
+	}
+	u.Password = body["new"]
+	u.hashPassword()
+	return u.update()
 }
 
 // Creates a team and store it in mongodb.

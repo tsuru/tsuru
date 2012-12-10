@@ -93,6 +93,7 @@ func main() {
 
 	m.Post("/users", Handler(auth.CreateUser))
 	m.Post("/users/:email/tokens", Handler(auth.Login))
+	m.Put("/users/password", AuthorizationRequiredHandler(auth.ChangePassword))
 	m.Del("/users", AuthorizationRequiredHandler(auth.RemoveUser))
 	m.Post("/users/keys", AuthorizationRequiredHandler(auth.AddKeyToUser))
 	m.Del("/users/keys", AuthorizationRequiredHandler(auth.RemoveKeyFromUser))
