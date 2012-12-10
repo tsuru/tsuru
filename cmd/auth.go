@@ -303,9 +303,7 @@ func (c *teamList) Run(context *Context, client Doer) error {
 type changePassword struct{}
 
 func (c *changePassword) Run(context *Context, client Doer) error {
-	var (
-		body bytes.Buffer
-	)
+	var body bytes.Buffer
 	fmt.Fprint(context.Stdout, "Current password: ")
 	old, err := passwordFromReader(context.Stdin)
 	if err != nil {
