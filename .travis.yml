@@ -19,8 +19,7 @@ before_script:
   - ./check-fmt.sh
   - make get-prod
 script:
-  - go test -i ./...
-  - go test ./...
+  - make test
 branches:
   only:
     - master
