@@ -321,6 +321,7 @@ func (c *changePassword) Run(context *Context, client Doer) error {
 	if err != nil {
 		return err
 	}
+	fmt.Fprintln(context.Stdout)
 	if new != confirm {
 		return errors.New("New password and password confirmation didn't match.")
 	}
@@ -340,7 +341,7 @@ func (c *changePassword) Run(context *Context, client Doer) error {
 	if err != nil {
 		return err
 	}
-	fmt.Fprintln(context.Stdout, "\nPassword successfully updated!")
+	fmt.Fprintln(context.Stdout, "Password successfully updated!")
 	return nil
 }
 
