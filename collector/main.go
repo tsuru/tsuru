@@ -59,6 +59,8 @@ func main() {
 		fatal(err)
 	}
 	defer db.Session.Close()
+	fmt.Printf("connected to MongoDB server at %s.\n", connString)
+	fmt.Printf("Using the database %q.\n\n", dbName)
 
 	if !dry {
 		handler := MessageHandler{}
