@@ -52,6 +52,8 @@ func main() {
 		fatal(err)
 	}
 	defer db.Session.Close()
+	fmt.Printf("Connected to MongoDB server at %s.\n", connString)
+	fmt.Printf("Using the database %q.\n\n", dbName)
 
 	m := pat.New()
 
@@ -106,6 +108,7 @@ func main() {
 		if err != nil {
 			fatal(err)
 		}
+		fmt.Printf("tsuru HTTP server listening at %s...\n", listen)
 		fatal(http.ListenAndServe(listen, m))
 	}
 }
