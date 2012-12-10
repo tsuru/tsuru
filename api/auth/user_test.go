@@ -63,6 +63,18 @@ func (s *S) TestGetUserReturnsErrorWhenNoUserIsFound(c *C) {
 	c.Assert(err, NotNil)
 }
 
+func (s *S) TestUpdateUser(c *C) {
+	u := User{Email: "wolverine@xmen.com", Password: "123"}
+	err := u.Create()
+	c.Assert(err, IsNil)
+	defer db.Session.Apps().Remove(bson.M{"email": u.Email})
+	u.Password = "1234"
+	err = u.update()
+	c.Assert(err, IsNil)
+	err = u.Get()
+	c.Assert(u.Password, Equals, "1234")
+}
+
 func (s *S) TestUserLoginReturnsTrueIfThePasswordMatches(c *C) {
 	u := User{Email: "wolverine@xmen.com", Password: "123"}
 	u.hashPassword()

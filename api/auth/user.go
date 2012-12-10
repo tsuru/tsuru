@@ -87,6 +87,10 @@ func (u *User) Create() error {
 	return db.Session.Users().Insert(u)
 }
 
+func (u *User) update() error {
+	return db.Session.Users().Update(bson.M{"email": u.Email}, u)
+}
+
 func (u *User) hashPassword() {
 	u.Password = hashPassword(u.Password)
 }
