@@ -59,7 +59,7 @@ func main() {
 		fatal(err)
 	}
 	defer db.Session.Close()
-	fmt.Printf("connected to MongoDB server at %s.\n", connString)
+	fmt.Printf("Connected to MongoDB server at %s.\n", connString)
 	fmt.Printf("Using the database %q.\n\n", dbName)
 
 	if !dry {
@@ -68,7 +68,7 @@ func main() {
 		if err != nil {
 			fatal(err)
 		}
-		fmt.Printf("queue server listening at %s.\n", handler.server.Addr())
+		fmt.Printf("Queue server listening at %s.\n", handler.server.Addr())
 		defer handler.stop()
 		ticker := time.Tick(time.Minute)
 		fmt.Println("tsuru collector agent started...")
