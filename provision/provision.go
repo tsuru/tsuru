@@ -70,7 +70,7 @@ type Provisioner interface {
 	Destroy(App) error
 
 	// ExecuteCommand runs a command in all units of the app.
-	ExecuteCommand(io.Writer, App, ...string) error
+	ExecuteCommand(io.Writer, App, string, ...string) error
 
 	// CollectStatus returns information about all provisioned units. It's used
 	// by tsuru collector when updating the status of apps in the database.
