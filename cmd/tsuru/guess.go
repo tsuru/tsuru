@@ -7,7 +7,7 @@ package main
 import (
 	"errors"
 	"fmt"
-	"github.com/fsouza/gogit/git"
+	"github.com/globocom/tsuru/git"
 	"os"
 	"regexp"
 )
@@ -33,13 +33,7 @@ func (g GitGuesser) GuessName(path string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	defer repo.Free()
-	config, err := repo.Config()
-	if err != nil {
-		return "", err
-	}
-	defer config.Free()
-	remoteUrl, err := config.GetString("remote.tsuru.url")
+	remoteUrl, err := repo.GetRemoteUrl("tsuru")
 	if err != nil {
 		return "", errors.New("tsuru remote not declared.")
 	}
