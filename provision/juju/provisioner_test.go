@@ -5,6 +5,7 @@
 package juju
 
 import (
+	"bytes"
 	"github.com/globocom/commandmocker"
 	"github.com/globocom/tsuru/provision"
 	. "launchpad.net/gocheck"
@@ -64,4 +65,33 @@ func (s *S) TestJujuDestroyFailure(c *C) {
 	c.Assert(pErr, NotNil)
 	c.Assert(pErr.Reason, Equals, "juju failed to destroy the machine")
 	c.Assert(pErr.Err.Error(), Equals, "exit status 25")
+}
+
+func (s *S) TestJujuExecuteCommand(c *C) {
+	var buf bytes.Buffer
+	tmpdir, err := commandmocker.Add("juju", "$*")
+	c.Assert(err, IsNil)
+	defer commandmocker.Remove(tmpdir)
+	app := NewFakeApp("almah", "static", 2)
+	p := JujuProvisioner{}
+	err = p.ExecuteCommand(&buf, app, "ls", "-lh")
+	c.Assert(err, IsNil)
+	output := "ssh -o StrictHostKeyChecking no -q 1 ls -lh"
+	output += "ssh -o StrictHostKeyChecking no -q 2 ls -lh"
+	c.Assert(commandmocker.Ran(tmpdir), Equals, true)
+	c.Assert(commandmocker.Output(tmpdir), Equals, output)
+	c.Assert(buf.String(), Equals, output)
+}
+
+func (s *S) TestJujuExecuteCommandFailure(c *C) {
+	var buf bytes.Buffer
+	tmpdir, err := commandmocker.Error("juju", "failed", 2)
+	c.Assert(err, IsNil)
+	defer commandmocker.Remove(tmpdir)
+	app := NewFakeApp("frases", "static", 1)
+	p := JujuProvisioner{}
+	err = p.ExecuteCommand(&buf, app, "ls", "-l")
+	c.Assert(err, NotNil)
+	c.Assert(err.Error(), Equals, "exit status 2")
+	c.Assert(buf.String(), Equals, "failed")
 }

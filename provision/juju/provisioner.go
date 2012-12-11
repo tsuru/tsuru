@@ -53,6 +53,20 @@ func (p *JujuProvisioner) Destroy(app provision.App) *provision.Error {
 }
 
 func (p *JujuProvisioner) ExecuteCommand(w io.Writer, app provision.App, cmd string, args ...string) error {
+	arguments := []string{"ssh", "-o", "StrictHostKeyChecking no", "-q"}
+	for _, unit := range app.GetUnits() {
+		var cmdargs []string
+		cmdargs = append(cmdargs, arguments...)
+		cmdargs = append(cmdargs, strconv.Itoa(unit.GetMachine()), cmd)
+		cmdargs = append(cmdargs, args...)
+		cmd := exec.Command("juju", cmdargs...)
+		cmd.Stdout = w
+		cmd.Stderr = w
+		err := cmd.Run()
+		if err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
