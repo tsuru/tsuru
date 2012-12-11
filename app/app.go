@@ -125,11 +125,11 @@ func CreateApp(a *App) error {
 		})
 	}
 	a.SetEnvsToApp(envVars, false, true)
-	return deploy(a)
+	return a.deploy()
 }
 
 // Deploys an app.
-func deploy(a *App) error {
+func (a *App) deploy() error {
 	a.Log(fmt.Sprintf("creating app %s", a.Name), "tsuru")
 	cmd := exec.Command("juju", "deploy", "--repository=/home/charms", "local:"+a.Framework, a.Name)
 	log.Printf("deploying %s with name %s", a.Framework, a.Name)

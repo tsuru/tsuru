@@ -1101,7 +1101,7 @@ func (s *S) TestDeployShouldCallJujuDeployCommand(c *C) {
 	dir, err := commandmocker.Add("juju", "$*")
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(dir)
-	err = deploy(&a)
+	err = a.deploy()
 	c.Assert(err, IsNil)
 	logged := strings.Replace(w.String(), "\n", " ", -1)
 	expected := ".*deploying golang with name smashed_pumpkin.*"
