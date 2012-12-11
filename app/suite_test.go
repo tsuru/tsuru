@@ -12,24 +12,22 @@ import (
 	fsTesting "github.com/globocom/tsuru/fs/testing"
 	tsuruTesting "github.com/globocom/tsuru/testing"
 	"io"
+	"labix.org/v2/mgo/bson"
 	. "launchpad.net/gocheck"
-	"net/http"
-	"net/http/httptest"
 	"os"
 	"path"
-	"strconv"
-	"strings"
 	"testing"
 )
 
 func Test(t *testing.T) { TestingT(t) }
 
 type S struct {
-	team    auth.Team
-	user    *auth.User
-	gitRoot string
-	rfs     *fsTesting.RecordingFs
-	t       *tsuruTesting.T
+	team      auth.Team
+	user      *auth.User
+	adminTeam auth.Team
+	admin     *auth.User
+	rfs       *fsTesting.RecordingFs
+	t         *tsuruTesting.T
 }
 
 var _ = Suite(&S{})
@@ -55,9 +53,11 @@ func (c *greaterChecker) Check(params []interface{}, names []string) (bool, stri
 	if n1 > n2 {
 		return true, ""
 	}
-	err := fmt.Sprintf("%s is not greater than %s", params[0], params[1])
+	err := fmt.Sprintf("%d is not greater than %d", params[0], params[1])
 	return false, err
 }
+
+var Greater Checker = &greaterChecker{}
 
 func (s *S) createUserAndTeam(c *C) {
 	s.user = &auth.User{Email: "whydidifall@thewho.com", Password: "123"}
@@ -104,18 +104,20 @@ func (s *S) getTestData(p ...string) io.ReadCloser {
 	return f
 }
 
-// starts a new httptest.Server and returns it
-// Also changes git:host, git:port and git:protocol to match the server's url
-func (s *S) startGandalfTestServer(h http.Handler) *httptest.Server {
-	ts := httptest.NewServer(h)
-	pieces := strings.Split(ts.URL, "://")
-	protocol := pieces[0]
-	hostPart := strings.Split(pieces[1], ":")
-	port := hostPart[1]
-	host := hostPart[0]
-	config.Set("git:host", host)
-	portInt, _ := strconv.ParseInt(port, 10, 0)
-	config.Set("git:port", portInt)
-	config.Set("git:protocol", protocol)
-	return ts
+func (s *S) createAdminUserAndTeam(c *C) {
+	s.admin = &auth.User{Email: "superuser@gmail.com", Password: "123"}
+	err := db.Session.Users().Insert(&s.admin)
+	c.Assert(err, IsNil)
+	adminTeamName, err := config.GetString("admin-team")
+	c.Assert(err, IsNil)
+	s.adminTeam = auth.Team{Name: adminTeamName, Users: []string{s.admin.Email}}
+	err = db.Session.Teams().Insert(&s.adminTeam)
+	c.Assert(err, IsNil)
+}
+
+func (s *S) removeAdminUserAndTeam(c *C) {
+	err := db.Session.Teams().RemoveId(s.adminTeam.Name)
+	c.Assert(err, IsNil)
+	err = db.Session.Users().Remove(bson.M{"email": s.admin.Email})
+	c.Assert(err, IsNil)
 }
