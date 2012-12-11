@@ -553,3 +553,22 @@ type ValidationError struct {
 func (err *ValidationError) Error() string {
 	return err.Message
 }
+
+func List(u *auth.User) ([]App, error) {
+	var apps []App
+	if u.IsAdmin() {
+		if err := db.Session.Apps().Find(nil).All(&apps); err != nil {
+			return []App{}, err
+		}
+		return apps, nil
+	}
+	ts, err := u.Teams()
+	if err != nil {
+		return []App{}, err
+	}
+	teams := auth.GetTeamsNames(ts)
+	if err := db.Session.Apps().Find(bson.M{"teams": bson.M{"$in": teams}}).All(&apps); err != nil {
+		return []App{}, err
+	}
+	return apps, nil
+}
