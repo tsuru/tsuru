@@ -7,6 +7,8 @@ package juju
 import (
 	"github.com/globocom/tsuru/provision"
 	"io"
+	"os/exec"
+	"strconv"
 )
 
 func init() {
@@ -18,11 +20,35 @@ func init() {
 // package.
 type JujuProvisioner struct{}
 
-func (p *JujuProvisioner) Provision(app provision.App) error {
+func (p *JujuProvisioner) Provision(app provision.App) *provision.Error {
+	args := []string{
+		"deploy", "--repository", "/home/charms",
+		"local:" + app.GetFramework(), app.GetName(),
+	}
+	cmd := exec.Command("juju", args...)
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		app.Log("Failed to create machine: "+string(out), "tsuru")
+		return &provision.Error{Reason: string(out), Err: err}
+	}
 	return nil
 }
 
-func (p *JujuProvisioner) Destroy(app provision.App) error {
+func (p *JujuProvisioner) Destroy(app provision.App) *provision.Error {
+	cmd := exec.Command("juju", "destroy-service", app.GetName())
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		app.Log("Failed to destroy machine: "+string(out), "tsuru")
+		return &provision.Error{Reason: string(out), Err: err}
+	}
+	for _, u := range app.GetUnits() {
+		cmd = exec.Command("juju", "terminate-machine", strconv.Itoa(u.GetMachine()))
+		out, err = cmd.CombinedOutput()
+		if err != nil {
+			app.Log("Failed to destroy machine: "+string(out), "tsuru")
+			return &provision.Error{Reason: string(out), Err: err}
+		}
+	}
 	return nil
 }
 
