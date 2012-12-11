@@ -30,8 +30,11 @@ type Unit struct {
 
 // AppUnit represents a unit in an app.
 type AppUnit interface {
-	// Executes a command in the unit.
-	Command(stdout io.Writer, stderr io.Writer, cmds ...string) error
+	// Returns the name of the unit.
+	GetName() string
+
+	// Returns the number of the unit.
+	GetMachine() int
 }
 
 // App represents a tsuru app.
