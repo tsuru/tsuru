@@ -70,25 +70,14 @@ func (s *S) SetUpSuite(c *C) {
 	c.Assert(err, IsNil)
 	db.Session, err = db.Open("127.0.0.1:27017", "tsuru_app_test")
 	c.Assert(err, IsNil)
-	s.user = &auth.User{Email: "whydidifall@thewho.com", Password: "123"}
-	s.user.Create()
-	s.team = auth.Team{Name: "tsuruteam", Users: []string{s.user.Email}}
-	db.Session.Teams().Insert(s.team)
+	s.createUserAndTeam(c)
 	s.rfs = &fsTesting.RecordingFs{}
 	file, err := s.rfs.Open("/dev/urandom")
 	c.Assert(err, IsNil)
 	file.Write([]byte{16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31})
 	fsystem = s.rfs
-	s.s3Server, err = s3test.NewServer()
-	c.Assert(err, IsNil)
-	config.Set("aws:s3:endpoint", s.s3Server.URL())
-	s.iamServer, err = iamtest.NewServer()
-	c.Assert(err, IsNil)
-	config.Set("aws:iam:endpoint", s.iamServer.URL())
-	config.Unset("aws:s3:bucketEndpoint")
-	s.gitHost, _ = config.GetString("git:host")
-	s.gitPort, _ = config.GetString("git:port")
-	s.gitProt, _ = config.GetString("git:protocol")
+	s.startAmzS3AndIAM(c)
+	s.setGitConfs(c)
 }
 
 func (s *S) TearDownSuite(c *C) {
@@ -100,9 +89,7 @@ func (s *S) TearDownSuite(c *C) {
 }
 
 func (s *S) TearDownTest(c *C) {
-	config.Set("git:host", s.gitHost)
-	config.Set("git:port", s.gitPort)
-	config.Set("git:protocol", s.gitProt)
+	s.rollbackGitConfs(c)
 }
 
 func (s *S) getTestData(p ...string) io.ReadCloser {
@@ -110,6 +97,36 @@ func (s *S) getTestData(p ...string) io.ReadCloser {
 	fp := path.Join(p...)
 	f, _ := os.OpenFile(fp, os.O_RDONLY, 0)
 	return f
+}
+
+func (s *S) startAmzS3AndIAM(c *C) {
+	var err error
+	s.s3Server, err = s3test.NewServer()
+	c.Assert(err, IsNil)
+	config.Set("aws:s3:endpoint", s.s3Server.URL())
+	s.iamServer, err = iamtest.NewServer()
+	c.Assert(err, IsNil)
+	config.Set("aws:iam:endpoint", s.iamServer.URL())
+	config.Unset("aws:s3:bucketEndpoint")
+}
+
+func (s *S) setGitConfs(c *C) {
+	s.gitHost, _ = config.GetString("git:host")
+	s.gitPort, _ = config.GetString("git:port")
+	s.gitProt, _ = config.GetString("git:protocol")
+}
+
+func (s *S) rollbackGitConfs(c *C) {
+	config.Set("git:host", s.gitHost)
+	config.Set("git:port", s.gitPort)
+	config.Set("git:protocol", s.gitProt)
+}
+
+func (s *S) createUserAndTeam(c *C) {
+	s.user = &auth.User{Email: "whydidifall@thewho.com", Password: "123"}
+	s.user.Create()
+	s.team = auth.Team{Name: "tsuruteam", Users: []string{s.user.Email}}
+	db.Session.Teams().Insert(s.team)
 }
 
 // starts a new httptest.Server and returns it
