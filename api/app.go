@@ -130,15 +130,7 @@ func getTeamNames(u *auth.User) ([]string, error) {
 }
 
 func AppList(w http.ResponseWriter, r *http.Request, u *auth.User) error {
-	teams, err := getTeamNames(u)
-	if err != nil {
-		return err
-	}
-	var apps []app.App
-	err = db.Session.Apps().Find(bson.M{"teams": bson.M{"$in": teams}}).All(&apps)
-	if err != nil {
-		return err
-	}
+	apps, err := app.List(u)
 	if len(apps) == 0 {
 		w.WriteHeader(http.StatusNoContent)
 		return nil
