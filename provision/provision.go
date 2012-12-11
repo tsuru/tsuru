@@ -12,10 +12,10 @@ import (
 )
 
 const (
-	Started = "started"
-	Pending = "pending"
-	Down    = "down"
-	Error   = "error"
+	StatusStarted = "started"
+	StatusPending = "pending"
+	StatusDown    = "down"
+	StatusError   = "error"
 )
 
 // Unit represents a provision unit. Can be a machine, container or anything
@@ -64,10 +64,10 @@ type App interface {
 // by satisfying this interface and registering it using the function Register.
 type Provisioner interface {
 	// Provision is called when tsuru is creating the app.
-	Provision(App) error
+	Provision(App) *Error
 
 	// Destroy is called when tsuru is destroying the app.
-	Destroy(App) error
+	Destroy(App) *Error
 
 	// ExecuteCommand runs a command in all units of the app.
 	ExecuteCommand(io.Writer, App, string, ...string) error
@@ -91,4 +91,19 @@ func Get(name string) (Provisioner, error) {
 		return nil, fmt.Errorf("Unknown provisioner: %q.", name)
 	}
 	return p, nil
+}
+
+type Error struct {
+	Reason string
+	Err    error
+}
+
+func (e *Error) Error() string {
+	var err string
+	if e.Err != nil {
+		err = e.Err.Error() + ": " + e.Reason
+	} else {
+		err = e.Reason
+	}
+	return err
 }

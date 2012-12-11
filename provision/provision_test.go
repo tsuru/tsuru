@@ -5,6 +5,7 @@
 package provision
 
 import (
+	"errors"
 	"reflect"
 	"testing"
 )
@@ -27,4 +28,21 @@ func TestRegisterAndGetProvisioner(t *testing.T) {
 	if err.Error() != expectedMessage {
 		t.Errorf("Expected error %q. Got %q.", expectedMessage, err.Error())
 	}
+}
+
+func TestError(t *testing.T) {
+	errs := []*Error{
+		{Reason: "something", Err: errors.New("went wrong")},
+		{Reason: "something went wrong"},
+	}
+	expected := []string{"went wrong: something", "something went wrong"}
+	for i := range errs {
+		if errs[i].Error() != expected[i] {
+			t.Errorf("Error.Error(): want %q. Got %q.", expected[i], errs[i].Error())
+		}
+	}
+}
+
+func TestErrorImplementsError(t *testing.T) {
+	var _ error = &Error{}
 }
