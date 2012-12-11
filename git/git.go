@@ -8,7 +8,9 @@
 package git
 
 import (
+	"bufio"
 	"errors"
+	"fmt"
 	"os"
 	"path"
 	"strings"
@@ -54,4 +56,30 @@ func OpenRepository(p string) (*Repository, error) {
 		return &Repository{path: p}, nil
 	}
 	return nil, errors.New("Repository not found.")
+}
+
+// GetRemoteUrl returns the URL of a remote by its name. Or an error, if the
+// remote is not declared.
+func (r *Repository) GetRemoteUrl(name string) (string, error) {
+	var next bool
+	config, err := os.Open(path.Join(r.path, "config"))
+	if err != nil {
+		return "", err
+	}
+	defer config.Close()
+	line := fmt.Sprintf("[remote %q]\n", name)
+	reader := bufio.NewReader(config)
+	l, err := reader.ReadString('\n')
+	for err == nil {
+		if next {
+			url := strings.Split(l, " = ")[1]
+			return strings.TrimSpace(url), nil
+		}
+		if l == line {
+			next = true
+		}
+		l, err = reader.ReadString('\n')
+	}
+	fmt.Println(err)
+	return "", fmt.Errorf("Remote %q not found.", name)
 }

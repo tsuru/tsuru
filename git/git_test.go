@@ -35,7 +35,7 @@ func (s *S) SetUpSuite(c *C) {
 	cmd.Dir = s.repoPath
 	err = cmd.Run()
 	c.Assert(err, IsNil)
-	err = exec.Command("cp", "testdata/gitconfig", path.Join(s.repoPath, ".git")).Run()
+	err = exec.Command("cp", "testdata/gitconfig", path.Join(s.repoPath, ".git", "config")).Run()
 	c.Assert(err, IsNil)
 	subdir := path.Join(s.repoPath, "a", "b", "c")
 	err = os.MkdirAll(subdir, 0755)
@@ -137,6 +137,29 @@ func (s *S) TestOpenRepository(c *C) {
 			c.Errorf("OpenRepository(%q): Expected non-nil error (%+v), got <nil>.", d.path, d.err)
 		} else if d.err != nil && err != nil && d.err.Error() != err.Error() {
 			c.Errorf("OpenRepository(%q): Expected error %v. Got %v.", d.path, d.err, err)
+		}
+	}
+}
+
+func (s *S) TestGetRemoteUrl(c *C) {
+	var data = []struct {
+		name     string
+		expected string
+		err      error
+	}{
+		{"origin", "git@github.com:globocom/tsuru-django-sample.git", nil},
+		{"tsuru", "git@tsuruhost.com:gopher.git", nil},
+		{"wut", "", errors.New(`Remote "wut" not found.`)},
+	}
+	repo, err := OpenRepository(s.repoPath)
+	c.Assert(err, IsNil)
+	for _, d := range data {
+		got, err := repo.GetRemoteUrl(d.name)
+		if got != d.expected {
+			c.Errorf("GetRemoteUrl(%q): Want %q. Got %q.", d.name, d.expected, got)
+		}
+		if !reflect.DeepEqual(d.err, err) {
+			c.Errorf("GetRemoteUrl(%q): Want error %q. Got %q.", d.name, d.err, err)
 		}
 	}
 }
