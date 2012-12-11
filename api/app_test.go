@@ -343,7 +343,7 @@ func (s *S) TestListShouldReturnStatusNoContentWhenAppListIsNil(c *C) {
 
 func (s *S) TestDelete(c *C) {
 	h := testHandler{}
-	ts := s.startGandalfTestServer(&h)
+	ts := s.t.StartGandalfTestServer(&h)
 	defer ts.Close()
 	dir, err := commandmocker.Add("juju", "")
 	defer commandmocker.Remove(dir)
@@ -403,7 +403,7 @@ func (s *S) TestDeleteShouldReturnNotFoundIfTheAppDoesNotExist(c *C) {
 
 func (s *S) TestDeleteShouldHandleWithGandalfError(c *C) {
 	h := testBadHandler{}
-	ts := s.startGandalfTestServer(&h)
+	ts := s.t.StartGandalfTestServer(&h)
 	defer ts.Close()
 	dir, err := commandmocker.Add("juju", "")
 	defer commandmocker.Remove(dir)
@@ -429,7 +429,7 @@ func (s *S) TestDeleteShouldHandleWithGandalfError(c *C) {
 
 func (s *S) TestDeleteReturnsErrorIfAppDestroyFails(c *C) {
 	h := testHandler{}
-	ts := s.startGandalfTestServer(&h)
+	ts := s.t.StartGandalfTestServer(&h)
 	defer ts.Close()
 	myApp := app.App{
 		Name:      "MyAppToDelete",
@@ -509,7 +509,7 @@ func (s *S) TestAppInfoReturnsNotFoundWhenAppDoesNotExist(c *C) {
 
 func (s *S) TestCreateAppHelperShouldNotCreateAnAppWhenAnErrorHappensOnCreateRepo(c *C) {
 	h := testBadHandler{}
-	ts := s.startGandalfTestServer(&h)
+	ts := s.t.StartGandalfTestServer(&h)
 	defer ts.Close()
 	dir, err := commandmocker.Add("juju", "")
 	defer commandmocker.Remove(dir)
@@ -524,7 +524,7 @@ func (s *S) TestCreateAppHelperShouldNotCreateAnAppWhenAnErrorHappensOnCreateRep
 
 func (s *S) TestCreateAppHelperCreatesRepositoryInGandalf(c *C) {
 	h := testHandler{}
-	ts := s.startGandalfTestServer(&h)
+	ts := s.t.StartGandalfTestServer(&h)
 	defer ts.Close()
 	dir, err := commandmocker.Add("juju", "")
 	c.Assert(err, IsNil)
@@ -541,7 +541,7 @@ func (s *S) TestCreateAppHelperCreatesRepositoryInGandalf(c *C) {
 
 func (s *S) TestCreateAppHandler(c *C) {
 	h := testHandler{}
-	ts := s.startGandalfTestServer(&h)
+	ts := s.t.StartGandalfTestServer(&h)
 	defer ts.Close()
 	dir, err := commandmocker.Add("juju", "")
 	c.Assert(err, IsNil)
@@ -639,7 +639,7 @@ func (s *S) TestCreateAppReturnsConflictWithProperMessageWhenTheAppAlreadyExist(
 
 func (s *S) TestAddTeamToTheApp(c *C) {
 	h := testHandler{}
-	ts := s.startGandalfTestServer(&h)
+	ts := s.t.StartGandalfTestServer(&h)
 	defer ts.Close()
 	t := auth.Team{Name: "itshardteam", Users: []string{s.user.Email}}
 	err := db.Session.Teams().Insert(t)
@@ -743,7 +743,7 @@ func (s *S) TestGrantAccessToTeamReturn409IfTheTeamHasAlreadyAccessToTheApp(c *C
 
 func (s *S) TestGrantAccessToTeamCallsGandalf(c *C) {
 	h := testHandler{}
-	ts := s.startGandalfTestServer(&h)
+	ts := s.t.StartGandalfTestServer(&h)
 	defer ts.Close()
 	t := &auth.Team{Name: "anything", Users: []string{s.user.Email}}
 	err := db.Session.Teams().Insert(t)
@@ -767,7 +767,7 @@ func (s *S) TestGrantAccessToTeamCallsGandalf(c *C) {
 
 func (s *S) TestRevokeAccessFromTeam(c *C) {
 	h := testHandler{}
-	ts := s.startGandalfTestServer(&h)
+	ts := s.t.StartGandalfTestServer(&h)
 	defer ts.Close()
 	t := auth.Team{Name: "abcd"}
 	err := db.Session.Teams().Insert(t)
@@ -794,7 +794,7 @@ func (s *S) TestRevokeAccessFromTeam(c *C) {
 
 func (s *S) TestRevokeAccessFromTeamReturn404IfTheAppDoesNotExist(c *C) {
 	h := testHandler{}
-	ts := s.startGandalfTestServer(&h)
+	ts := s.t.StartGandalfTestServer(&h)
 	defer ts.Close()
 	request, err := http.NewRequest("DELETE", "/apps/a/b?:app=a&:team=b", nil)
 	c.Assert(err, IsNil)
@@ -898,7 +898,7 @@ func (s *S) TestRevokeAccessFromTeamReturn403IfTheTeamIsTheLastWithAccessToTheAp
 
 func (s *S) TestRevokeAccessFromTeamRemovesRepositoryFromGandalf(c *C) {
 	h := testHandler{}
-	ts := s.startGandalfTestServer(&h)
+	ts := s.t.StartGandalfTestServer(&h)
 	defer ts.Close()
 	t := auth.Team{Name: "anything", Users: []string{s.user.Email}}
 	err := db.Session.Teams().Insert(t)
