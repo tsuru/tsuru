@@ -324,3 +324,17 @@ func (s *S) TestFindKeyReturnsKeyWithNameAndContent(c *C) {
 	c.Assert(index, Equals, 0)
 	c.Assert(k.Name, Equals, u.Keys[0].Name)
 }
+
+func (s *S) TestIsAdminReturnsTrueWhenUserHasATeamNamedWithAdminTeamConf(c *C) {
+	adminTeamName, err := config.GetString("admin-team")
+	c.Assert(err, IsNil)
+	t := Team{Name: adminTeamName, Users: []string{s.user.Email}}
+	err = db.Session.Teams().Insert(&t)
+	c.Assert(err, IsNil)
+	defer db.Session.Teams().RemoveId(t.Name)
+	c.Assert(s.user.IsAdmin(), Equals, true)
+}
+
+func (s *S) TestIsAdminReturnsFalseWhenUserDoNotHaveATeamNamedWithAdminTeamConf(c *C) {
+	c.Assert(s.user.IsAdmin(), Equals, false)
+}

@@ -149,6 +149,23 @@ func (u *User) removeKey(key Key) error {
 	return nil
 }
 
+func (u *User) IsAdmin() bool {
+	adminTeamName, err := config.GetString("admin-team")
+	if err != nil {
+		return false
+	}
+	teams, err := u.Teams()
+	if err != nil {
+		return false
+	}
+	for _, t := range teams {
+		if t.Name == adminTeamName {
+			return true
+		}
+	}
+	return false
+}
+
 type Token struct {
 	Token      string
 	ValidUntil time.Time
