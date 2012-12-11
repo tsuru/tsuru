@@ -80,6 +80,5 @@ func (r *Repository) GetRemoteUrl(name string) (string, error) {
 		}
 		l, err = reader.ReadString('\n')
 	}
-	fmt.Println(err)
 	return "", fmt.Errorf("Remote %q not found.", name)
 }
