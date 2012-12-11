@@ -28,13 +28,3 @@ func TestRegisterAndGetProvisioner(t *testing.T) {
 		t.Errorf("Expected error %q. Got %q.", expectedMessage, err.Error())
 	}
 }
-
-func TestStatuses(t *testing.T) {
-	names := []Status{Started, Pending, Down, Error}
-	values := []string{"started", "pending", "down", "error"}
-	for i := range names {
-		if string(names[i]) != values[i] {
-			t.Errorf("Status: Want %q. Got %q.", values[i], names[i])
-		}
-	}
-}

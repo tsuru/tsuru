@@ -25,7 +25,7 @@ type Unit struct {
 	Type    string
 	Machine int
 	Ip      string
-	Status  Status
+	Status  string
 }
 
 // AppUnit represents a unit in an app.
