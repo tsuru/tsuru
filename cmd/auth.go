@@ -300,6 +300,57 @@ func (c *teamList) Run(context *Context, client Doer) error {
 	return nil
 }
 
+type changePassword struct{}
+
+func (c *changePassword) Run(context *Context, client Doer) error {
+	var body bytes.Buffer
+	fmt.Fprint(context.Stdout, "Current password: ")
+	old, err := passwordFromReader(context.Stdin)
+	if err != nil {
+		return err
+	}
+	fmt.Fprint(context.Stdout, "\nNew password: ")
+	new, err := passwordFromReader(context.Stdin)
+	if err != nil {
+		return err
+	}
+	fmt.Fprint(context.Stdout, "\nConfirm: ")
+	confirm, err := passwordFromReader(context.Stdin)
+	if err != nil {
+		return err
+	}
+	fmt.Fprintln(context.Stdout)
+	if new != confirm {
+		return errors.New("New password and password confirmation didn't match.")
+	}
+	jsonBody := map[string]string{
+		"old": old,
+		"new": new,
+	}
+	err = json.NewEncoder(&body).Encode(jsonBody)
+	if err != nil {
+		return err
+	}
+	request, err := http.NewRequest("PUT", GetUrl("/users/password"), &body)
+	if err != nil {
+		return err
+	}
+	_, err = client.Do(request)
+	if err != nil {
+		return err
+	}
+	fmt.Fprintln(context.Stdout, "Password successfully updated!")
+	return nil
+}
+
+func (c *changePassword) Info() *Info {
+	return &Info{
+		Name:  "change-password",
+		Usage: "change-password",
+		Desc:  "Change your password.",
+	}
+}
+
 func passwordFromReader(reader io.Reader) (string, error) {
 	var (
 		password string

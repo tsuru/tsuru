@@ -233,13 +233,11 @@ func (s *S) TestGetName(c *C) {
 }
 
 func (s *S) TestUnitShouldBeARepositoryUnit(c *C) {
-	var unit repository.Unit
-	c.Assert(&Unit{}, Implements, &unit)
+	var _ repository.Unit = &Unit{}
 }
 
 func (s *S) TestUnitShouldBeABinderUnit(c *C) {
-	var unit bind.Unit
-	c.Assert(&Unit{}, Implements, &unit)
+	var _ bind.Unit = &Unit{}
 }
 
 func (s *S) TestStateMachineAgentPending(c *C) {

@@ -21,6 +21,7 @@ The currently available commands are (grouped by subject):
 	user-remove       removes your user from tsuru server
 	login             authenticates the user with tsuru server
 	logout            finishes the session with tsuru server
+	change-password   changes your password
 	key-add           adds a public key to tsuru deploy server
 	key-remove        removes a public key from tsuru deploy server
 
@@ -143,6 +144,16 @@ Usage:
 
 Logout will delete the token file and terminate the session within tsuru
 server.
+
+
+Change user's password
+
+Usage:
+
+	% tsuru change-password
+
+change-password will change the password of the logged in user. It will ask for
+the current password, the new and the confirmation.
 
 
 Add SSH public key to tsuru's git server

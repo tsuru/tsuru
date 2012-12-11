@@ -395,11 +395,9 @@ If you don't provide the app name, tsuru will try to guess it.`,
 }
 
 func (s *S) TestAppRestartIsACommand(c *C) {
-	var command cmd.Command
-	c.Assert(&AppRestart{}, Implements, &command)
+	var _ cmd.Command = &AppRestart{}
 }
 
 func (s *S) TestAppRestartIsAnInfoer(c *C) {
-	var infoer cmd.Infoer
-	c.Assert(&AppRestart{}, Implements, &infoer)
+	var _ cmd.Infoer = &AppRestart{}
 }

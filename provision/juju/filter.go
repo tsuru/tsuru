@@ -2,7 +2,6 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-// Package juju provide utilities functions for handle with juju .
 package juju
 
 import (
@@ -12,8 +11,8 @@ import (
 
 // FilterOutput filters output from juju.
 //
-// It removes all lines that does not represent useful output, like juju's
-// logging and Python's deprecation warnings.
+// It removes all lines that do not contain useful output, like juju's logging
+// and Python's deprecation warnings.
 func FilterOutput(output []byte) []byte {
 	var result [][]byte
 	var ignore bool
@@ -32,7 +31,10 @@ func FilterOutput(output []byte) []byte {
 			ignore = true
 			continue
 		}
-		if !regexSshWarning.Match(line) && !regexLog.Match(line) && !regexPythonWarning.Match(line) && !regexUserWarning.Match(line) {
+		if !regexSshWarning.Match(line) &&
+			!regexLog.Match(line) &&
+			!regexPythonWarning.Match(line) &&
+			!regexUserWarning.Match(line) {
 			result = append(result, line)
 		}
 	}

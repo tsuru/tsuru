@@ -5,7 +5,7 @@
 package main
 
 import (
-	"github.com/globocom/tsuru/juju"
+	"github.com/globocom/tsuru/provision/juju"
 	"net/http"
 )
 

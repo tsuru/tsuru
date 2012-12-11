@@ -6,7 +6,9 @@ package cmd
 
 import (
 	"bytes"
+	"encoding/json"
 	"github.com/globocom/tsuru/fs/testing"
+	"io"
 	. "launchpad.net/gocheck"
 	"net/http"
 	"os"
@@ -259,13 +261,11 @@ func (s *S) TestTeamListInfo(c *C) {
 }
 
 func (s *S) TestTeamListIsACommand(c *C) {
-	var command Command
-	c.Assert(&teamList{}, Implements, &command)
+	var _ Command = &teamList{}
 }
 
 func (s *S) TeamTeamListIsAnInfoer(c *C) {
-	var infoer Infoer
-	c.Assert(&teamList{}, Implements, &infoer)
+	var _ Infoer = &teamList{}
 }
 
 func (s *S) TestUserCreateShouldNotDependOnTsuruTokenFile(c *C) {
@@ -379,13 +379,78 @@ func (s *S) TestUserRemoveInfo(c *C) {
 }
 
 func (s *S) TestUserRemoveIsACommand(c *C) {
-	var cmd Command
-	c.Assert(&userRemove{}, Implements, &cmd)
+	var _ Command = &userRemove{}
 }
 
 func (s *S) TestUserRemoveIsAnInfoer(c *C) {
-	var infoer Infoer
-	c.Assert(&userRemove{}, Implements, &infoer)
+	var _ Infoer = &userRemove{}
+}
+
+func (s *S) TestChangePassword(c *C) {
+	var (
+		buf    bytes.Buffer
+		called bool
+		stdin  io.Reader
+	)
+	stdin = strings.NewReader("gopher\nbbrothers\nbbrothers\n")
+	context := Context{
+		Stdout: &buf,
+		Stdin:  stdin,
+	}
+	trans := conditionalTransport{
+		transport{
+			msg:    "",
+			status: http.StatusOK,
+		},
+		func(req *http.Request) bool {
+			var got map[string]string
+			called = true
+			if err := json.NewDecoder(req.Body).Decode(&got); err != nil {
+				return false
+			}
+			cond := got["old"] == "gopher" && got["new"] == "bbrothers"
+			return cond && req.Method == "PUT" && req.URL.Path == "/users/password"
+		},
+	}
+	client := NewClient(&http.Client{Transport: &trans}, nil, manager)
+	command := changePassword{}
+	err := command.Run(&context, client)
+	c.Assert(err, IsNil)
+	c.Assert(called, Equals, true)
+	expected := "Current password: \nNew password: \nConfirm: \nPassword successfully updated!\n"
+	c.Assert(buf.String(), Equals, expected)
+}
+
+func (s *S) TestChangePasswordWrongConfirmation(c *C) {
+	var buf bytes.Buffer
+	stdin := strings.NewReader("gopher\nblood\nsugar\n")
+	context := Context{
+		Stdin:  stdin,
+		Stdout: &buf,
+		Stderr: &buf,
+	}
+	command := changePassword{}
+	err := command.Run(&context, nil)
+	c.Assert(err, NotNil)
+	c.Assert(err.Error(), Equals, "New password and password confirmation didn't match.")
+}
+
+func (s *S) TestChangePasswordInfo(c *C) {
+	expected := Info{
+		Name:  "change-password",
+		Usage: "change-password",
+		Desc:  "Change your password.",
+	}
+	command := changePassword{}
+	c.Assert(command.Info(), DeepEquals, &expected)
+}
+
+func (s *S) TestChangePasswordIsACommand(c *C) {
+	var _ Command = &changePassword{}
+}
+
+func (s *S) TestChangePasswordIsAnInfoer(c *C) {
+	var _ Infoer = &changePassword{}
 }
 
 func (s *S) TestPasswordFromReaderUsingFile(c *C) {
