@@ -1,3 +1,6 @@
+//
+// This package provide test helpers for various actions
+//
 package testing
 
 import (
@@ -14,7 +17,6 @@ import (
 type T struct {
 	Admin     user
 	AdminTeam team
-	AdminApp  app
 	S3Server  *s3test.Server
 	IamServer *iamtest.Server
 	GitHost   string
@@ -30,11 +32,6 @@ type user struct {
 type team struct {
 	Name  string `bson:"_id"`
 	Users []string
-}
-
-type app struct {
-	Name  string
-	Teams []string
 }
 
 func (t *T) StartAmzS3AndIAM(c *C) {
