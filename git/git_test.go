@@ -11,6 +11,7 @@ import (
 	"os/exec"
 	"path"
 	"path/filepath"
+	"reflect"
 	"testing"
 )
 
@@ -96,6 +97,46 @@ func (s *S) TestDiscoverRepositoryPath(c *C) {
 			c.Errorf("DiscoverRepositoryPath(%q): Expected non-nil error (%+v), got <nil>.", d.path, d.err)
 		} else if err != nil && d.err != nil && d.err.Error() != err.Error() {
 			c.Errorf("DiscoverRepositoryPath(%q): Expected error %v. Got %v.", d.path, d.err, err)
+		}
+	}
+}
+
+func (s *S) TestOpenRepository(c *C) {
+	var data = []struct {
+		path     string
+		expected *Repository
+		err      error
+	}{
+		{
+			path:     s.repoPath,
+			expected: &Repository{path: path.Join(s.repoPath, ".git")},
+			err:      nil,
+		},
+		{
+			path:     path.Join(s.repoPath, ".git"),
+			expected: &Repository{path: path.Join(s.repoPath, ".git")},
+			err:      nil,
+		},
+		{
+			path:     path.Join(s.repoPath, ".git") + "/",
+			expected: &Repository{path: path.Join(s.repoPath, ".git")},
+			err:      nil,
+		},
+		{
+			path:     "/",
+			expected: nil,
+			err:      errors.New("Repository not found."),
+		},
+	}
+	for _, d := range data {
+		repo, err := OpenRepository(d.path)
+		if !reflect.DeepEqual(repo, d.expected) {
+			c.Errorf("OpenRepository(%q): Got repository %+v. Want %+v.", d.path, repo, d.expected)
+		}
+		if d.err != nil && err == nil {
+			c.Errorf("OpenRepository(%q): Expected non-nil error (%+v), got <nil>.", d.path, d.err)
+		} else if d.err != nil && err != nil && d.err.Error() != err.Error() {
+			c.Errorf("OpenRepository(%q): Expected error %v. Got %v.", d.path, d.err, err)
 		}
 	}
 }
