@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-package main
+package tsuru
 
 import (
 	"errors"
@@ -47,19 +47,19 @@ func (g GitGuesser) GuessName(path string) (string, error) {
 
 // Embed this struct if you want your command to guess the name of the app.
 type GuessingCommand struct {
-	g AppGuesser
+	G AppGuesser
 }
 
 func (cmd *GuessingCommand) guesser() AppGuesser {
-	if cmd.g == nil {
-		cmd.g = GitGuesser{}
+	if cmd.G == nil {
+		cmd.G = GitGuesser{}
 	}
-	return cmd.g
+	return cmd.G
 }
 
 func (cmd *GuessingCommand) Guess() (string, error) {
-	if appName != nil && *appName != "" {
-		return *appName, nil
+	if AppName != nil && *AppName != "" {
+		return *AppName, nil
 	}
 	path, err := os.Getwd()
 	if err != nil {

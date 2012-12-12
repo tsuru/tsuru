@@ -189,7 +189,7 @@ func (s *S) TestExecWithTimeout(c *C) {
 		},
 		{
 			cmd:     []string{"python", "-c", "import time; time.sleep(1); print 'hello world!'"},
-			timeout: 2e9,
+			timeout: 5e9,
 			out:     "hello world!\n",
 			err:     nil,
 		},

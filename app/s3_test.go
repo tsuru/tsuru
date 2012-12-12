@@ -10,6 +10,8 @@ import (
 	"fmt"
 	"github.com/globocom/commandmocker"
 	"github.com/globocom/tsuru/api/bind"
+	"github.com/globocom/tsuru/db"
+	"labix.org/v2/mgo/bson"
 	. "launchpad.net/gocheck"
 )
 
@@ -103,7 +105,7 @@ func (s *S) TestDestroyBucket(c *C) {
 	defer unpatchRandomReader()
 	err = CreateApp(&app)
 	c.Assert(err, IsNil)
-	defer app.Destroy()
+	defer db.Session.Apps().Remove(bson.M{"name": app.Name})
 	err = destroyBucket(&app)
 	c.Assert(err, IsNil)
 	s3 := getS3Endpoint()

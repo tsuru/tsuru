@@ -12,16 +12,19 @@ import (
 )
 
 const (
-	StatusStarted = "started"
-	StatusPending = "pending"
-	StatusDown    = "down"
-	StatusError   = "error"
+	StatusStarted    = "started"
+	StatusPending    = "pending"
+	StatusDown       = "down"
+	StatusError      = "error"
+	StatusInstalling = "installing"
+	StatusCreating   = "creating"
 )
 
 // Unit represents a provision unit. Can be a machine, container or anything
 // IP-addressable.
 type Unit struct {
 	Name    string
+	AppName string
 	Type    string
 	Machine int
 	Ip      string
@@ -74,7 +77,7 @@ type Provisioner interface {
 
 	// CollectStatus returns information about all provisioned units. It's used
 	// by tsuru collector when updating the status of apps in the database.
-	CollectStatus() []Unit
+	CollectStatus() ([]Unit, *Error)
 }
 
 var provisioners = make(map[string]Provisioner)
