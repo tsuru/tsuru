@@ -233,8 +233,7 @@ func (s *S) TestDoesNotSaveTheAppInTheDatabaseIfJujuFail(c *C) {
 	err = CreateApp(&a)
 	defer a.Destroy() // clean mess if test fail
 	c.Assert(err, NotNil)
-	expected := `Failed to deploy: exit status 1
-juju failed`
+	expected := `exit status 1`
 	c.Assert(err.Error(), Equals, expected)
 	err = a.Get()
 	c.Assert(err, NotNil)

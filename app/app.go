@@ -108,18 +108,8 @@ func (a *App) deploy() error {
 	cmd := exec.Command("juju", "deploy", "--repository=/home/charms", "local:"+a.Framework, a.Name)
 	log.Printf("deploying %s with name %s", a.Framework, a.Name)
 	out, err := cmd.CombinedOutput()
-	outStr := fmt.Sprintf("Failed to deploy: %s\n%s", err, out)
-	if err != nil {
-		a.Log(outStr, "tsuru")
-	}
-	log.Printf("executing %s", outStr)
-	if err != nil {
-		a.Log(fmt.Sprintf("juju finished with exit status: %s", err), "tsuru")
-		destroyBucket(a)
-		db.Session.Apps().Remove(bson.M{"name": a.Name})
-		return errors.New(outStr)
-	}
-	return nil
+	a.Log(string(out), "tsuru")
+	return err
 }
 
 func (a *App) unbind() error {
