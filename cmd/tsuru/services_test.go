@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-package main
+package tsuru
 
 import (
 	"bytes"
@@ -86,7 +86,7 @@ func (s *S) TestServiceListShouldBeCommand(c *C) {
 }
 
 func (s *S) TestServiceBind(c *C) {
-	*appName = "g1"
+	*AppName = "g1"
 	var (
 		called         bool
 		stdout, stderr bytes.Buffer
@@ -145,7 +145,7 @@ func (s *S) TestServiceBindWithoutFlag(c *C) {
 	}
 	client := cmd.NewClient(&http.Client{Transport: trans}, nil, manager)
 	fake := &FakeGuesser{name: "ge"}
-	err := (&ServiceBind{GuessingCommand{g: fake}}).Run(&ctx, client)
+	err := (&ServiceBind{GuessingCommand{G: fake}}).Run(&ctx, client)
 	c.Assert(err, IsNil)
 	c.Assert(called, Equals, true)
 	expected := `Instance my-mysql successfully binded to the app ge.
@@ -162,7 +162,7 @@ For more details, please check the documentation for the service, using service-
 }
 
 func (s *S) TestServiceBindWithRequestFailure(c *C) {
-	*appName = "g1"
+	*AppName = "g1"
 	var stdout, stderr bytes.Buffer
 	ctx := cmd.Context{
 		Args:   []string{"my-mysql"},
@@ -200,7 +200,7 @@ func (s *S) TestServiceBindIsACommand(c *C) {
 }
 
 func (s *S) TestServiceUnbind(c *C) {
-	*appName = "pocket"
+	*AppName = "pocket"
 	var stdout, stderr bytes.Buffer
 	var called bool
 	ctx := cmd.Context{
@@ -245,14 +245,14 @@ func (s *S) TestServiceUnbindWithoutFlag(c *C) {
 	}
 	client := cmd.NewClient(&http.Client{Transport: trans}, nil, manager)
 	fake := &FakeGuesser{name: "sleeve"}
-	err := (&ServiceUnbind{GuessingCommand{g: fake}}).Run(&ctx, client)
+	err := (&ServiceUnbind{GuessingCommand{G: fake}}).Run(&ctx, client)
 	c.Assert(err, IsNil)
 	c.Assert(called, Equals, true)
 	c.Assert(stdout.String(), Equals, "Instance hand successfully unbinded from the app sleeve.\n")
 }
 
 func (s *S) TestServiceUnbindWithRequestFailure(c *C) {
-	*appName = "pocket"
+	*AppName = "pocket"
 	var stdout, stderr bytes.Buffer
 	ctx := cmd.Context{
 		Args:   []string{"hand"},

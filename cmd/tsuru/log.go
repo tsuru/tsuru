@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-package main
+package tsuru
 
 import (
 	"encoding/json"
@@ -39,9 +39,9 @@ func (c *AppLog) Run(context *cmd.Context, client cmd.Doer) error {
 	if err != nil {
 		return err
 	}
-	url := cmd.GetUrl(fmt.Sprintf("/apps/%s/log?lines=%d", appName, *logLines))
-	if logSource != nil && *logSource != "" {
-		url = fmt.Sprintf("%s&source=%s", url, *logSource)
+	url := cmd.GetUrl(fmt.Sprintf("/apps/%s/log?lines=%d", appName, *LogLines))
+	if LogSource != nil && *LogSource != "" {
+		url = fmt.Sprintf("%s&source=%s", url, *LogSource)
 	}
 	request, err := http.NewRequest("GET", url, nil)
 	if err != nil {

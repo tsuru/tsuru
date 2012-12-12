@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-package main
+package tsuru
 
 import (
 	"bytes"
@@ -24,7 +24,7 @@ If you don't provide the app name, tsuru will try to guess it.`
 }
 
 func (s *S) TestEnvGetRun(c *C) {
-	*appName = "someapp"
+	*AppName = "someapp"
 	var stdout, stderr bytes.Buffer
 	result := "DATABASE_HOST=somehost\n"
 	context := cmd.Context{
@@ -39,7 +39,7 @@ func (s *S) TestEnvGetRun(c *C) {
 }
 
 func (s *S) TestEnvGetRunWithMultipleParams(c *C) {
-	*appName = "someapp"
+	*AppName = "someapp"
 	var stdout, stderr bytes.Buffer
 	result := "DATABASE_HOST=somehost\nDATABASE_USER=someuser"
 	params := []string{"DATABASE_HOST", "DATABASE_USER"}
@@ -74,7 +74,7 @@ func (s *S) TestEnvGetWithoutTheFlag(c *C) {
 	}
 	client := cmd.NewClient(&http.Client{Transport: trans}, nil, manager)
 	fake := &FakeGuesser{name: "seek"}
-	err := (&EnvGet{GuessingCommand{g: fake}}).Run(&context, client)
+	err := (&EnvGet{GuessingCommand{G: fake}}).Run(&context, client)
 	c.Assert(err, IsNil)
 	c.Assert(stdout.String(), Equals, result)
 }
@@ -92,7 +92,7 @@ If you don't provide the app name, tsuru will try to guess it.`
 }
 
 func (s *S) TestEnvSetRun(c *C) {
-	*appName = "someapp"
+	*AppName = "someapp"
 	var stdout, stderr bytes.Buffer
 	result := "variable(s) successfully exported\n"
 	context := cmd.Context{
@@ -107,7 +107,7 @@ func (s *S) TestEnvSetRun(c *C) {
 }
 
 func (s *S) TestEnvSetRunWithMultipleParams(c *C) {
-	*appName = "someapp"
+	*AppName = "someapp"
 	var stdout, stderr bytes.Buffer
 	result := "variable(s) successfully exported\n"
 	context := cmd.Context{
@@ -140,7 +140,7 @@ func (s *S) TestEnvSetWithoutFlag(c *C) {
 	}
 	client := cmd.NewClient(&http.Client{Transport: trans}, nil, manager)
 	fake := &FakeGuesser{name: "otherapp"}
-	err := (&EnvSet{GuessingCommand{g: fake}}).Run(&context, client)
+	err := (&EnvSet{GuessingCommand{G: fake}}).Run(&context, client)
 	c.Assert(err, IsNil)
 	c.Assert(stdout.String(), Equals, result)
 }
@@ -158,7 +158,7 @@ If you don't provide the app name, tsuru will try to guess it.`
 }
 
 func (s *S) TestEnvUnsetRun(c *C) {
-	*appName = "someapp"
+	*AppName = "someapp"
 	var stdout, stderr bytes.Buffer
 	result := "variable(s) successfully unset\n"
 	context := cmd.Context{
@@ -190,17 +190,17 @@ func (s *S) TestEnvUnsetWithoutFlag(c *C) {
 	}
 	client := cmd.NewClient(&http.Client{Transport: trans}, nil, manager)
 	fake := &FakeGuesser{name: "otherapp"}
-	err := (&EnvUnset{GuessingCommand{g: fake}}).Run(&context, client)
+	err := (&EnvUnset{GuessingCommand{G: fake}}).Run(&context, client)
 	c.Assert(err, IsNil)
 	c.Assert(stdout.String(), Equals, result)
 }
 
 func (s *S) TestRequestEnvUrl(c *C) {
-	*appName = "someapp"
+	*AppName = "someapp"
 	result := "DATABASE_HOST=somehost"
 	client := cmd.NewClient(&http.Client{Transport: &transport{msg: result, status: http.StatusOK}}, nil, manager)
 	args := []string{"DATABASE_HOST"}
-	b, err := requestEnvUrl("GET", GuessingCommand{g: &FakeGuesser{name: "someapp"}}, args, client)
+	b, err := requestEnvUrl("GET", GuessingCommand{G: &FakeGuesser{name: "someapp"}}, args, client)
 	c.Assert(err, IsNil)
 	c.Assert(b, Equals, result)
 }

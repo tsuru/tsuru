@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-package main
+package tsuru
 
 import (
 	"bytes"
@@ -13,7 +13,7 @@ import (
 )
 
 func (s *S) TestAppLog(c *C) {
-	*appName = "appName"
+	*AppName = "appName"
 	var stdout, stderr bytes.Buffer
 	result := `[{"Source":"tsuru","Date":"2012-06-20T11:17:22.75-03:00","Message":"creating app lost"},{"Source":"app","Date":"2012-06-20T11:17:22.753-03:00","Message":"app lost successfully created"}]`
 	expected := cmd.Colorfy("2012-06-20 11:17:22 [tsuru]:", "blue", "", "") + " creating app lost\n"
@@ -41,7 +41,7 @@ func (s *S) TestAppLogWithoutTheFlag(c *C) {
 		Stderr: &stderr,
 	}
 	fake := &FakeGuesser{name: "hitthelights"}
-	command := AppLog{GuessingCommand{g: fake}}
+	command := AppLog{GuessingCommand{G: fake}}
 	trans := &conditionalTransport{
 		transport{
 			msg:    result,
@@ -60,7 +60,7 @@ func (s *S) TestAppLogWithoutTheFlag(c *C) {
 }
 
 func (s *S) TestAppLogShouldReturnNilIfHasNoContent(c *C) {
-	*appName = "appName"
+	*AppName = "appName"
 	var stdout, stderr bytes.Buffer
 	context := cmd.Context{
 		Stdout: &stdout,
@@ -86,7 +86,7 @@ If you don't provide the app name, tsuru will try to guess it. The default numbe
 }
 
 func (s *S) TestAppLogBySource(c *C) {
-	*logSource = "mysource"
+	*LogSource = "mysource"
 	var stdout, stderr bytes.Buffer
 	result := `[{"Source":"tsuru","Date":"2012-06-20T11:17:22.75-03:00","Message":"creating app lost"},{"Source":"tsuru","Date":"2012-06-20T11:17:22.753-03:00","Message":"app lost successfully created"}]`
 	expected := cmd.Colorfy("2012-06-20 11:17:22 [tsuru]:", "blue", "", "") + " creating app lost\n"
@@ -96,7 +96,7 @@ func (s *S) TestAppLogBySource(c *C) {
 		Stderr: &stderr,
 	}
 	fake := &FakeGuesser{name: "hitthelights"}
-	command := AppLog{GuessingCommand{g: fake}}
+	command := AppLog{GuessingCommand{G: fake}}
 	trans := &conditionalTransport{
 		transport{
 			msg:    result,

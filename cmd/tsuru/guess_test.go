@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-package main
+package tsuru
 
 import (
 	"errors"
@@ -79,20 +79,20 @@ func (s *S) TestGitGuesserWithTsuruRemoteNotMatchingTsuruPattern(c *C) {
 }
 
 func (s *S) TestGuessingCommandGuesserNil(c *C) {
-	g := GuessingCommand{g: nil}
+	g := GuessingCommand{G: nil}
 	c.Assert(g.guesser(), FitsTypeOf, GitGuesser{})
 }
 
 func (s *S) TestGuessingCommandGuesserNonNil(c *C) {
 	fake := &FakeGuesser{}
-	g := GuessingCommand{g: fake}
+	g := GuessingCommand{G: fake}
 	c.Assert(g.guesser(), DeepEquals, fake)
 }
 
 func (s *S) TestGuessingCommandWithFlagDefined(c *C) {
-	*appName = "myapp"
+	*AppName = "myapp"
 	fake := &FakeGuesser{name: "other-app"}
-	g := GuessingCommand{g: fake}
+	g := GuessingCommand{G: fake}
 	name, err := g.Guess()
 	c.Assert(err, IsNil)
 	c.Assert(name, Equals, "myapp")
@@ -102,9 +102,9 @@ func (s *S) TestGuessingCommandWithFlagDefined(c *C) {
 }
 
 func (s *S) TestGuessingCommandWithoutFlagDefined(c *C) {
-	appName = nil
+	AppName = nil
 	fake := &FakeGuesser{name: "other-app"}
-	g := GuessingCommand{g: fake}
+	g := GuessingCommand{G: fake}
 	name, err := g.Guess()
 	c.Assert(err, IsNil)
 	c.Assert(name, Equals, "other-app")
@@ -115,7 +115,7 @@ func (s *S) TestGuessingCommandWithoutFlagDefined(c *C) {
 
 func (s *S) TestGuessingCommandFailToGuess(c *C) {
 	fake := &FailingFakeGuesser{}
-	g := GuessingCommand{g: fake}
+	g := GuessingCommand{G: fake}
 	name, err := g.Guess()
 	c.Assert(name, Equals, "")
 	c.Assert(err, NotNil)

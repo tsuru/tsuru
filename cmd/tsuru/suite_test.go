@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-package main
+package tsuru
 
 import (
 	"bytes"
@@ -10,8 +10,8 @@ import (
 	"github.com/globocom/tsuru/cmd"
 	"io/ioutil"
 	. "launchpad.net/gocheck"
+    "os"
 	"net/http"
-	"os"
 	"testing"
 )
 
@@ -49,7 +49,7 @@ func (t *conditionalTransport) RoundTrip(req *http.Request) (*http.Response, err
 
 func (s *S) SetUpTest(c *C) {
 	var stdout, stderr bytes.Buffer
-	manager = cmd.NewManager("glb", version, header, &stdout, &stderr, os.Stdin)
-	appName = new(string)
-	assumeYes = new(bool)
+	manager = cmd.NewManager("glb", "0.x", "Foo-Tsuru", &stdout, &stderr, os.Stdin)
+	AppName = new(string)
+	AssumeYes = new(bool)
 }

@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-package main
+package tsuru
 
 import (
 	"bytes"
@@ -12,7 +12,7 @@ import (
 )
 
 func (s *S) TestAppRun(c *C) {
-	*appName = "ble"
+	*AppName = "ble"
 	var stdout, stderr bytes.Buffer
 	expected := "http.go		http_test.go"
 	context := cmd.Context{
@@ -38,7 +38,7 @@ func (s *S) TestAppRun(c *C) {
 }
 
 func (s *S) TestAppRunShouldUseAllSubsequentArgumentsAsArgumentsToTheGivenCommand(c *C) {
-	*appName = "ble"
+	*AppName = "ble"
 	var stdout, stderr bytes.Buffer
 	expected := "-rw-r--r--  1 f  staff  119 Apr 26 18:23 http.go"
 	context := cmd.Context{
@@ -84,7 +84,7 @@ func (s *S) TestAppRunWithoutTheFlag(c *C) {
 	}
 	client := cmd.NewClient(&http.Client{Transport: trans}, nil, manager)
 	fake := &FakeGuesser{name: "bla"}
-	err := (&AppRun{GuessingCommand{g: fake}}).Run(&context, client)
+	err := (&AppRun{GuessingCommand{G: fake}}).Run(&context, client)
 	c.Assert(err, IsNil)
 	c.Assert(stdout.String(), Equals, expected)
 }
