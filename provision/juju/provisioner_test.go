@@ -127,6 +127,30 @@ func (s *S) TestJujuCollectStatus(c *C) {
 		units[0], units[1] = units[1], units[0]
 	}
 	c.Assert(units, DeepEquals, expected)
+	c.Assert(commandmocker.Ran(tmpdir), Equals, true)
+}
+
+func (s *S) TestJujuCollectStatusFailure(c *C) {
+	tmpdir, err := commandmocker.Error("juju", "juju failed", 1)
+	c.Assert(err, IsNil)
+	defer commandmocker.Remove(tmpdir)
+	p := JujuProvisioner{}
+	_, pErr := p.CollectStatus()
+	c.Assert(pErr, NotNil)
+	c.Assert(pErr.Reason, Equals, "juju failed")
+	c.Assert(pErr.Err.Error(), Equals, "exit status 1")
+	c.Assert(commandmocker.Ran(tmpdir), Equals, true)
+}
+
+func (s *S) TestJujuCollectStatusInvalidYAML(c *C) {
+	tmpdir, err := commandmocker.Add("juju", "local: somewhere::")
+	c.Assert(err, IsNil)
+	defer commandmocker.Remove(tmpdir)
+	p := JujuProvisioner{}
+	_, pErr := p.CollectStatus()
+	c.Assert(pErr, NotNil)
+	c.Assert(pErr.Reason, Equals, `"juju status" returned invalid data`)
+	c.Assert(pErr.Err, ErrorMatches, `^YAML error:.*$`)
 }
 
 func (s *S) TestExecWithTimeout(c *C) {

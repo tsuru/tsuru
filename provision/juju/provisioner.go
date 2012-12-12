@@ -72,15 +72,15 @@ func (p *JujuProvisioner) ExecuteCommand(w io.Writer, app provision.App, cmd str
 	return nil
 }
 
-func (p *JujuProvisioner) CollectStatus() ([]provision.Unit, error) {
+func (p *JujuProvisioner) CollectStatus() ([]provision.Unit, *provision.Error) {
 	output, err := execWithTimeout(30e9, "juju", "status")
 	if err != nil {
-		return nil, err
+		return nil, &provision.Error{Reason: string(output), Err: err}
 	}
 	var out jujuOutput
 	err = goyaml.Unmarshal(output, &out)
 	if err != nil {
-		return nil, err
+		return nil, &provision.Error{Reason: `"juju status" returned invalid data`, Err: err}
 	}
 	var units []provision.Unit
 	for name, service := range out.Services {
