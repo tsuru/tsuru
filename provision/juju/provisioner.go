@@ -17,7 +17,7 @@ import (
 	"time"
 )
 
-// JujuProvisioner is an implementation for Provisioner interface. For more
+// JujuProvisioner is an implementation for the Provisioner interface. For more
 // details on how a provisioner work, check the documentation of the provision
 // package.
 type JujuProvisioner struct{}
