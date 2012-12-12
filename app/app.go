@@ -15,6 +15,7 @@ import (
 	"github.com/globocom/tsuru/api/service"
 	"github.com/globocom/tsuru/db"
 	"github.com/globocom/tsuru/log"
+	"github.com/globocom/tsuru/provision"
 	"github.com/globocom/tsuru/provision/juju"
 	"github.com/globocom/tsuru/queue"
 	"github.com/globocom/tsuru/repository"
@@ -31,6 +32,8 @@ import (
 )
 
 const RegenerateApprc = "regenerate-apprc"
+
+var Provisioner provision.Provisioner
 
 func write(w io.Writer, content []byte) error {
 	n, err := w.Write(content)
