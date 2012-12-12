@@ -14,13 +14,15 @@ type action interface {
 // Execute runs an action list. If an errors ocourrs
 // Execute stops the execution for the actions and call
 // the rollback for previous actions.
-func Execute(a App, actions []action) {
+func Execute(a App, actions []action) error {
 	for index, action := range actions {
 		err := action.forward(a)
 		if err != nil {
 			RollBack(a, actions, index)
+			return err
 		}
 	}
+	return nil
 }
 
 // RollBack runs the rollback for the given actions.

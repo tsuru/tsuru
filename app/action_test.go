@@ -38,7 +38,8 @@ func (e *errorAction) backward(a App) {
 func (s *S) TestExecute(c *C) {
 	app := App{}
 	h := new(helloAction)
-	Execute(app, []action{h})
+	err := Execute(app, []action{h})
+	c.Assert(err, IsNil)
 	c.Assert(h.executed, Equals, true)
 }
 
@@ -46,7 +47,8 @@ func (s *S) TestRollBack(c *C) {
 	app := App{}
 	h := new(helloAction)
 	e := new(errorAction)
-	Execute(app, []action{h, e})
+	err := Execute(app, []action{h, e})
+	c.Assert(err, NotNil)
 	c.Assert(e.rollbacked, Equals, true)
 	c.Assert(h.rollbacked, Equals, true)
 }
@@ -55,7 +57,15 @@ func (s *S) TestRollBack2(c *C) {
 	app := App{}
 	h := new(helloAction)
 	e := new(errorAction)
-	Execute(app, []action{e, h})
+	err := Execute(app, []action{e, h})
+	c.Assert(err, NotNil)
 	c.Assert(e.rollbacked, Equals, true)
 	c.Assert(h.rollbacked, Equals, false)
+}
+
+func (s *S) TestExecuteShouldReturnsTheActionError(c *C) {
+	app := App{}
+	e := new(errorAction)
+	err := Execute(app, []action{e})
+	c.Assert(err, NotNil)
 }
