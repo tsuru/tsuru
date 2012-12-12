@@ -77,7 +77,6 @@ If you don't provide the app name, tsuru will try to guess it.`,
 	c.Assert((&AppInfo{}).Info(), DeepEquals, expected)
 }
 
-
 func (s *S) TestAppGrant(c *C) {
 	*AppName = "games"
 	var stdout, stderr bytes.Buffer

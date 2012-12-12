@@ -10,8 +10,8 @@ import (
 	"github.com/globocom/tsuru/cmd"
 	"io"
 	"io/ioutil"
-	"net/http"
 	"launchpad.net/gnuflag"
+	"net/http"
 )
 
 var AppName = gnuflag.String("app", "", "App name for running app related commands.")

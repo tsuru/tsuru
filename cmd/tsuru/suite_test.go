@@ -10,8 +10,8 @@ import (
 	"github.com/globocom/tsuru/cmd"
 	"io/ioutil"
 	. "launchpad.net/gocheck"
-    "os"
 	"net/http"
+	"os"
 	"testing"
 )
 

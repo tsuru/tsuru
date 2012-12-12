@@ -109,7 +109,6 @@ func (f *FakeGuesser) GuessName(path string) (string, error) {
 	return f.name, nil
 }
 
-
 func (s *S) TestAppRemoveWithoutArgs(c *C) {
 	var stdout, stderr bytes.Buffer
 	context := cmd.Context{
