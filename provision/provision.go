@@ -12,10 +12,12 @@ import (
 )
 
 const (
-	StatusStarted = "started"
-	StatusPending = "pending"
-	StatusDown    = "down"
-	StatusError   = "error"
+	StatusStarted    = "started"
+	StatusPending    = "pending"
+	StatusDown       = "down"
+	StatusError      = "error"
+	StatusInstalling = "installing"
+	StatusCreating   = "creating"
 )
 
 // Unit represents a provision unit. Can be a machine, container or anything
