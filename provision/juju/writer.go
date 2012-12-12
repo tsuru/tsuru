@@ -5,6 +5,7 @@
 package juju
 
 import (
+	"io"
 	"net/http"
 )
 
@@ -12,28 +13,20 @@ import (
 //
 // It ignores all Juju logging and Python warnings.
 type Writer struct {
-	http.ResponseWriter
-	wrote bool
+	io.Writer
 }
 
-func (w *Writer) WriteHeader(code int) {
-	w.wrote = true
-	w.ResponseWriter.WriteHeader(code)
-}
-
-// Write writes data to the underlying writer, filtering the juju warnings. If
-// the underlying Writer implements http.Flusher, it will also the Flush
-// method.
+// Write writes data to the underlying writer, filtering the juju warnings.
 func (w *Writer) Write(data []byte) (int, error) {
-	w.wrote = true
 	originalLength := len(data)
-	if w.Header().Get("Content-Type") == "text" {
+	if rw, ok := w.Writer.(http.ResponseWriter); ok {
+		if rw.Header().Get("Content-Type") == "text" {
+			data = FilterOutput(data)
+		}
+	} else {
 		data = FilterOutput(data)
 	}
-	_, err := w.ResponseWriter.Write(data)
-	if f, ok := w.ResponseWriter.(http.Flusher); ok {
-		f.Flush()
-	}
+	_, err := w.Writer.Write(data)
 	// returning the len(data) to skip the "short write" error
 	return originalLength, err
 }
