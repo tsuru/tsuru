@@ -26,7 +26,6 @@ import (
 	"path"
 	"regexp"
 	"sort"
-	"strconv"
 	"strings"
 	"time"
 )
@@ -95,37 +94,12 @@ func CreateApp(a *App) error {
 			"starting with a letter."
 		return &ValidationError{Message: msg}
 	}
-	a.State = "pending"
-	err := db.Session.Apps().Insert(a)
-	if err != nil {
-		return err
+	actions := []action{
+		new(insertApp),
+		new(createBucketIam),
+		new(deploy),
 	}
-	env, err := createBucket(a)
-	if err != nil {
-		db.Session.Apps().Remove(bson.M{"name": a.Name})
-		return err
-	}
-	host, _ := config.GetString("host")
-	envVars := []bind.EnvVar{
-		{Name: "APPNAME", Value: a.Name},
-		{Name: "TSURU_HOST", Value: host},
-	}
-	variables := map[string]string{
-		"ENDPOINT":           env.endpoint,
-		"LOCATIONCONSTRAINT": strconv.FormatBool(env.locationConstraint),
-		"ACCESS_KEY_ID":      env.AccessKey,
-		"SECRET_KEY":         env.SecretKey,
-		"BUCKET":             env.bucket,
-	}
-	for name, value := range variables {
-		envVars = append(envVars, bind.EnvVar{
-			Name:         fmt.Sprintf("TSURU_S3_%s", name),
-			Value:        value,
-			InstanceName: s3InstanceName,
-		})
-	}
-	a.SetEnvsToApp(envVars, false, true)
-	return a.deploy()
+	return execute(a, actions)
 }
 
 // Deploys an app.
