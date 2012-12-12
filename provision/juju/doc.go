@@ -4,4 +4,18 @@
 
 // Package juju provide utilities functions for interaction with Juju. It also
 // provides a provisioner implementation for Juju.
+//
+// In order to use the provisioner, just import tsuru's provision package and
+// juju provision package. Then call provision.Get("juju") to get an instance
+// of JujuProvisioner:
+//
+//     import (
+//         "github.com/globocom/tsuru/provision"
+//         _ "github.com/globocom/tsuru/provision/juju"
+//     )
+//     // ...
+//     func main() {
+//         provisioner, err := provision.Get("juju")
+//         // Use provisioner.
+//     }
 package juju
