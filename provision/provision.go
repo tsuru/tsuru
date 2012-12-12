@@ -22,6 +22,7 @@ const (
 // IP-addressable.
 type Unit struct {
 	Name    string
+	AppName string
 	Type    string
 	Machine int
 	Ip      string
