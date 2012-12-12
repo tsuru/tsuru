@@ -144,6 +144,7 @@ func execWithTimeout(timeout time.Duration, cmd string, args ...string) (output 
 	errCh := make(chan error, 1)
 	command := exec.Command(cmd, args...)
 	command.Stdout = &buf
+	command.Stderr = &buf
 	if err = command.Start(); err != nil {
 		return nil, err
 	}
@@ -152,11 +153,17 @@ func execWithTimeout(timeout time.Duration, cmd string, args ...string) (output 
 			ch <- buf.Bytes()
 		} else {
 			errCh <- err
+			ch <- buf.Bytes()
 		}
 	}()
 	select {
 	case output = <-ch:
+		select {
+		case err = <-errCh:
+		case <-time.After(1e9):
+		}
 	case err = <-errCh:
+		output = <-ch
 	case <-time.After(timeout):
 		argsStr := strings.Join(args, " ")
 		err = fmt.Errorf("%q ran for more than %s.", cmd+" "+argsStr, timeout)

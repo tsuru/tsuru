@@ -148,6 +148,12 @@ func (s *S) TestExecWithTimeout(c *C) {
 			out:     "hello world!\n",
 			err:     nil,
 		},
+		{
+			cmd:     []string{"python", "-c", "import sys; print 'hello world!'; exit(1)"},
+			timeout: 5e9,
+			out:     "hello world!\n",
+			err:     errors.New("exit status 1"),
+		},
 	}
 	for _, d := range data {
 		out, err := execWithTimeout(d.timeout, d.cmd[0], d.cmd[1:]...)
