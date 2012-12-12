@@ -75,7 +75,7 @@ type Provisioner interface {
 
 	// CollectStatus returns information about all provisioned units. It's used
 	// by tsuru collector when updating the status of apps in the database.
-	CollectStatus() []Unit
+	CollectStatus() ([]Unit, error)
 }
 
 var provisioners = make(map[string]Provisioner)
