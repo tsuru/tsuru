@@ -1169,3 +1169,23 @@ func (s *S) TestListReturnsAllAppsWhenUserIsInAdminTeam(c *C) {
 	c.Assert(apps[0].Name, Equals, "testApp")
 	c.Assert(apps[0].Teams, DeepEquals, []string{"notAdmin", "noSuperUser"})
 }
+
+func (s *S) TestGetName(c *C) {
+	a := App{Name: "something"}
+	c.Assert(a.GetName(), Equals, a.Name)
+}
+
+func (s *S) TestGetFramework(c *C) {
+	a := App{Framework: "django"}
+	c.Assert(a.GetFramework(), Equals, a.Framework)
+}
+
+func (s *S) TestGetProvisionUnits(c *C) {
+	a := App{Name: "anycolor", Units: []Unit{{Name: "i-0800"}, {Name: "i-0900"}, {Name: "i-a00"}}}
+	gotUnits := a.ProvisionUnits()
+	for i := range a.Units {
+		if gotUnits[i].GetName() != a.Units[i].Name {
+			c.Errorf("Failed at position %d: Want %q. Got %q.", i, a.Units[i].Name, gotUnits[i].GetName())
+		}
+	}
+}

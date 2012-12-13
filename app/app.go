@@ -402,6 +402,20 @@ func (a *App) GetName() string {
 	return a.Name
 }
 
+func (a *App) GetFramework() string {
+	return a.Framework
+}
+
+func (a *App) ProvisionUnits() []provision.AppUnit {
+	units := make([]provision.AppUnit, len(a.Units))
+	for i, u := range a.Units {
+		other := u
+		other.app = a
+		units[i] = &other
+	}
+	return units
+}
+
 // SerializeEnvVars serializes the environment variables of the app. The
 // environment variables will be written the the file /home/application/apprc
 // in all units of the app.
