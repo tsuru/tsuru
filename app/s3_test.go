@@ -94,6 +94,9 @@ func (s *S) TestCreateBucketIsAtomic(c *C) {
 }
 
 func (s *S) TestDestroyBucket(c *C) {
+	h := testHandler{}
+	ts := s.t.StartGandalfTestServer(&h)
+	defer ts.Close()
 	dir, err := commandmocker.Add("juju", "")
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(dir)

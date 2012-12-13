@@ -97,6 +97,7 @@ func CreateApp(a *App) error {
 	actions := []action{
 		new(insertApp),
 		new(createBucketIam),
+		new(createRepository),
 		new(deploy),
 	}
 	return execute(a, actions)

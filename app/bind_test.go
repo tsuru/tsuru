@@ -20,6 +20,9 @@ func (s *S) TestAppIsABinderApp(c *C) {
 }
 
 func (s *S) TestDestroyShouldUnbindAppFromInstance(c *C) {
+	h := testHandler{}
+	tsg := s.t.StartGandalfTestServer(&h)
+	defer tsg.Close()
 	dir, err := commandmocker.Add("juju", "")
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(dir)

@@ -55,6 +55,9 @@ func (s *S) TestGet(c *C) {
 }
 
 func (s *S) TestDestroy(c *C) {
+	h := testHandler{}
+	ts := s.t.StartGandalfTestServer(&h)
+	defer ts.Close()
 	dir, err := commandmocker.Add("juju", "$*")
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(dir)
@@ -87,6 +90,9 @@ func (s *S) TestDestroy(c *C) {
 }
 
 func (s *S) TestDestroyWithoutUnits(c *C) {
+	h := testHandler{}
+	ts := s.t.StartGandalfTestServer(&h)
+	defer ts.Close()
 	dir, err := commandmocker.Add("juju", "$*")
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(dir)
@@ -101,6 +107,9 @@ func (s *S) TestDestroyWithoutUnits(c *C) {
 }
 
 func (s *S) TestFailingDestroy(c *C) {
+	h := testHandler{}
+	ts := s.t.StartGandalfTestServer(&h)
+	defer ts.Close()
 	dir, err := commandmocker.Add("juju", "$*")
 	c.Assert(err, IsNil)
 	a := App{
@@ -133,6 +142,9 @@ func (s *S) TestCreateApp(c *C) {
 	dir, err := commandmocker.Add("juju", "$*")
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(dir)
+	h := testHandler{}
+	ts := s.t.StartGandalfTestServer(&h)
+	defer ts.Close()
 	server := FakeQueueServer{}
 	server.Start("127.0.0.1:0")
 	defer server.Stop()
@@ -222,6 +234,9 @@ func (s *S) TestCantCreateAppWithInvalidName(c *C) {
 }
 
 func (s *S) TestDoesNotSaveTheAppInTheDatabaseIfJujuFail(c *C) {
+	h := testHandler{}
+	ts := s.t.StartGandalfTestServer(&h)
+	defer ts.Close()
 	dir, err := commandmocker.Error("juju", "juju failed", 1)
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(dir)
@@ -240,6 +255,9 @@ func (s *S) TestDoesNotSaveTheAppInTheDatabaseIfJujuFail(c *C) {
 }
 
 func (s *S) TestDeletesIAMCredentialsAndS3BucketIfJujuFail(c *C) {
+	h := testHandler{}
+	ts := s.t.StartGandalfTestServer(&h)
+	defer ts.Close()
 	source := patchRandomReader()
 	defer unpatchRandomReader()
 	dir, err := commandmocker.Error("juju", "juju failed", 1)
