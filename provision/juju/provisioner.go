@@ -22,7 +22,7 @@ import (
 // package.
 type JujuProvisioner struct{}
 
-func (p *JujuProvisioner) Provision(app provision.App) *provision.Error {
+func (p *JujuProvisioner) Provision(app provision.App) error {
 	var buf bytes.Buffer
 	args := []string{
 		"deploy", "--repository", "/home/charms",
@@ -37,7 +37,7 @@ func (p *JujuProvisioner) Provision(app provision.App) *provision.Error {
 	return nil
 }
 
-func (p *JujuProvisioner) Destroy(app provision.App) *provision.Error {
+func (p *JujuProvisioner) Destroy(app provision.App) error {
 	var buf bytes.Buffer
 	err := runCmd(&buf, "destroy-service", app.GetName())
 	out := buf.String()
@@ -72,7 +72,7 @@ func (p *JujuProvisioner) ExecuteCommand(w io.Writer, app provision.App, cmd str
 	return nil
 }
 
-func (p *JujuProvisioner) CollectStatus() ([]provision.Unit, *provision.Error) {
+func (p *JujuProvisioner) CollectStatus() ([]provision.Unit, error) {
 	output, err := execWithTimeout(30e9, "juju", "status")
 	if err != nil {
 		return nil, &provision.Error{Reason: string(output), Err: err}

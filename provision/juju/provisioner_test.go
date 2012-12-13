@@ -37,8 +37,10 @@ func (s *S) TestJujuProvisionFailure(c *C) {
 	defer commandmocker.Remove(tmpdir)
 	app := NewFakeApp("trace", "python", 0)
 	p := JujuProvisioner{}
-	pErr := p.Provision(app)
-	c.Assert(pErr, NotNil)
+	err = p.Provision(app)
+	c.Assert(err, NotNil)
+	pErr, ok := err.(*provision.Error)
+	c.Assert(ok, Equals, true)
 	c.Assert(pErr.Reason, Equals, "juju failed")
 	c.Assert(pErr.Err.Error(), Equals, "exit status 1")
 }
@@ -63,8 +65,10 @@ func (s *S) TestJujuDestroyFailure(c *C) {
 	defer commandmocker.Remove(tmpdir)
 	app := NewFakeApp("idioglossia", "static", 1)
 	p := JujuProvisioner{}
-	pErr := p.Destroy(app)
-	c.Assert(pErr, NotNil)
+	err = p.Destroy(app)
+	c.Assert(err, NotNil)
+	pErr, ok := err.(*provision.Error)
+	c.Assert(ok, Equals, true)
 	c.Assert(pErr.Reason, Equals, "juju failed to destroy the machine")
 	c.Assert(pErr.Err.Error(), Equals, "exit status 25")
 }
@@ -135,8 +139,10 @@ func (s *S) TestJujuCollectStatusFailure(c *C) {
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(tmpdir)
 	p := JujuProvisioner{}
-	_, pErr := p.CollectStatus()
-	c.Assert(pErr, NotNil)
+	_, err = p.CollectStatus()
+	c.Assert(err, NotNil)
+	pErr, ok := err.(*provision.Error)
+	c.Assert(ok, Equals, true)
 	c.Assert(pErr.Reason, Equals, "juju failed")
 	c.Assert(pErr.Err.Error(), Equals, "exit status 1")
 	c.Assert(commandmocker.Ran(tmpdir), Equals, true)
@@ -147,8 +153,10 @@ func (s *S) TestJujuCollectStatusInvalidYAML(c *C) {
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(tmpdir)
 	p := JujuProvisioner{}
-	_, pErr := p.CollectStatus()
-	c.Assert(pErr, NotNil)
+	_, err = p.CollectStatus()
+	c.Assert(err, NotNil)
+	pErr, ok := err.(*provision.Error)
+	c.Assert(ok, Equals, true)
 	c.Assert(pErr.Reason, Equals, `"juju status" returned invalid data`)
 	c.Assert(pErr.Err, ErrorMatches, `^YAML error:.*$`)
 }

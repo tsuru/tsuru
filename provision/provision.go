@@ -67,17 +67,17 @@ type App interface {
 // by satisfying this interface and registering it using the function Register.
 type Provisioner interface {
 	// Provision is called when tsuru is creating the app.
-	Provision(App) *Error
+	Provision(App) error
 
 	// Destroy is called when tsuru is destroying the app.
-	Destroy(App) *Error
+	Destroy(App) error
 
 	// ExecuteCommand runs a command in all units of the app.
 	ExecuteCommand(io.Writer, App, string, ...string) error
 
 	// CollectStatus returns information about all provisioned units. It's used
 	// by tsuru collector when updating the status of apps in the database.
-	CollectStatus() ([]Unit, *Error)
+	CollectStatus() ([]Unit, error)
 }
 
 var provisioners = make(map[string]Provisioner)

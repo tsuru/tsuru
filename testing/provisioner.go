@@ -109,11 +109,11 @@ func (p *FakeProvisioner) FindApp(app provision.App) int {
 	return -1
 }
 
-func (p *FakeProvisioner) getError(method string) *provision.Error {
+func (p *FakeProvisioner) getError(method string) error {
 	select {
 	case fail := <-p.failures:
 		if fail.method == method {
-			return &provision.Error{Err: fail.err}
+			return fail.err
 		}
 		p.failures <- fail
 	case <-time.After(1e9):
@@ -136,7 +136,7 @@ func (p *FakeProvisioner) Reset() {
 	p.failures = make(chan failure, 8)
 }
 
-func (p *FakeProvisioner) Provision(app provision.App) *provision.Error {
+func (p *FakeProvisioner) Provision(app provision.App) error {
 	if err := p.getError("Provision"); err != nil {
 		return err
 	}
@@ -148,7 +148,7 @@ func (p *FakeProvisioner) Provision(app provision.App) *provision.Error {
 	return nil
 }
 
-func (p *FakeProvisioner) Destroy(app provision.App) *provision.Error {
+func (p *FakeProvisioner) Destroy(app provision.App) error {
 	if err := p.getError("Destroy"); err != nil {
 		return err
 	}
@@ -185,7 +185,7 @@ func (p *FakeProvisioner) ExecuteCommand(w io.Writer, app provision.App, cmd str
 	return err
 }
 
-func (p *FakeProvisioner) CollectStatus() ([]provision.Unit, *provision.Error) {
+func (p *FakeProvisioner) CollectStatus() ([]provision.Unit, error) {
 	if err := p.getError("CollectStatus"); err != nil {
 		return nil, err
 	}
