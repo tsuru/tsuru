@@ -5,42 +5,22 @@
 package main
 
 import (
-	"errors"
-	"github.com/globocom/commandmocker"
 	"github.com/globocom/tsuru/app"
 	"github.com/globocom/tsuru/db"
-	"io/ioutil"
+	"github.com/globocom/tsuru/provision"
 	"labix.org/v2/mgo/bson"
 	. "launchpad.net/gocheck"
-	"path/filepath"
-	"time"
 )
 
-func getOutput() *output {
-	return &output{
-		Services: map[string]Service{
-			"umaappqq": {
-				Units: map[string]app.Unit{
-					"umaappqq/0": {
-						AgentState: "started",
-						Machine:    1,
-					},
-				},
-			},
-		},
-		Machines: map[int]interface{}{
-			0: map[interface{}]interface{}{
-				"dns-name":       "192.168.0.10",
-				"instance-id":    "i-00000zz6",
-				"instance-state": "running",
-				"agent-state":    "running",
-			},
-			1: map[interface{}]interface{}{
-				"dns-name":       "192.168.0.11",
-				"instance-id":    "i-00000zz7",
-				"instance-state": "running",
-				"agent-state":    "running",
-			},
+func getOutput() []provision.Unit {
+	return []provision.Unit{
+		{
+			Name:    "i-00000zz8",
+			AppName: "umaappqq",
+			Type:    "python",
+			Machine: 1,
+			Ip:      "192.168.0.11",
+			Status:  provision.StatusStarted,
 		},
 	}
 }
@@ -60,51 +40,57 @@ func (s *S) TestUpdate(c *C) {
 	err := a.Get()
 	c.Assert(err, IsNil)
 	c.Assert(a.State, Equals, "started")
+	c.Assert(a.Units[0].Name, Equals, "i-00000zz8")
 	c.Assert(a.Units[0].Ip, Equals, "192.168.0.11")
 	c.Assert(a.Units[0].Machine, Equals, 1)
-	c.Assert(a.Units[0].InstanceState, Equals, "running")
-	c.Assert(a.Units[0].MachineAgentState, Equals, "running")
-	c.Assert(a.Units[0].AgentState, Equals, "started")
-	c.Assert(a.Units[0].InstanceId, Equals, "i-00000zz7")
+	c.Assert(a.Units[0].State, Equals, provision.StatusStarted)
 }
 
 func (s *S) TestUpdateWithMultipleUnits(c *C) {
 	a := getApp(c)
 	out := getOutput()
-	u := app.Unit{AgentState: "started", Machine: 2}
-	out.Services["umaappqq"].Units["umaappqq/1"] = u
-	out.Machines[2] = map[interface{}]interface{}{
-		"dns-name":       "192.168.0.12",
-		"instance-id":    "i-00000zz8",
-		"instance-state": "running",
-		"agent-state":    "running",
+	u := provision.Unit{
+		Name:    "i-00000zz9",
+		AppName: "umaappqq",
+		Type:    "python",
+		Machine: 2,
+		Ip:      "192.168.0.12",
+		Status:  provision.StatusStarted,
 	}
+	out = append(out, u)
 	update(out)
 	err := a.Get()
 	c.Assert(err, IsNil)
 	c.Assert(len(a.Units), Equals, 2)
-	for _, u = range a.Units {
-		if u.Machine == 2 {
+	var unit app.Unit
+	for _, unit = range a.Units {
+		if unit.Machine == 2 {
 			break
 		}
 	}
-	c.Assert(u.Ip, Equals, "192.168.0.12")
-	c.Assert(u.InstanceState, Equals, "running")
-	c.Assert(u.AgentState, Equals, "started")
-	c.Assert(u.MachineAgentState, Equals, "running")
+	c.Assert(unit.Name, Equals, "i-00000zz9")
+	c.Assert(unit.Ip, Equals, "192.168.0.12")
+	c.Assert(unit.State, Equals, provision.StatusStarted)
 }
 
 func (s *S) TestUpdateWithDownMachine(c *C) {
-	a := app.App{Name: "barduscoapp", State: "STOPPED"}
+	a := app.App{Name: "barduscoapp"}
 	err := db.Session.Apps().Insert(&a)
 	c.Assert(err, IsNil)
-	jujuOutput, err := ioutil.ReadFile(filepath.Join("testdata", "broken-output.yaml"))
-	c.Assert(err, IsNil)
-	out := parse(jujuOutput)
-	update(out)
+	units := []provision.Unit{
+		{
+			Name:    "i-00000zz8",
+			AppName: "barduscoapp",
+			Type:    "python",
+			Machine: 2,
+			Ip:      "",
+			Status:  provision.StatusPending,
+		},
+	}
+	update(units)
 	err = a.Get()
 	c.Assert(err, IsNil)
-	c.Assert(a.State, Equals, "creating")
+	c.Assert(a.State, Equals, provision.StatusPending)
 }
 
 func (s *S) TestUpdateTwice(c *C) {
@@ -117,9 +103,7 @@ func (s *S) TestUpdateTwice(c *C) {
 	c.Assert(a.State, Equals, "started")
 	c.Assert(a.Units[0].Ip, Equals, "192.168.0.11")
 	c.Assert(a.Units[0].Machine, Equals, 1)
-	c.Assert(a.Units[0].InstanceState, Equals, "running")
-	c.Assert(a.Units[0].MachineAgentState, Equals, "running")
-	c.Assert(a.Units[0].AgentState, Equals, "started")
+	c.Assert(a.Units[0].State, Equals, provision.StatusStarted)
 	update(out)
 	err = a.Get()
 	c.Assert(len(a.Units), Equals, 1)
@@ -149,69 +133,26 @@ func (s *S) TestUpdateWithMultipleApps(c *C) {
 		},
 	}
 	apps := make([]app.App, len(appDicts))
+	units := make([]provision.Unit, len(appDicts))
 	for i, appDict := range appDicts {
 		a := app.App{Name: appDict["name"]}
 		err := db.Session.Apps().Insert(&a)
 		c.Assert(err, IsNil)
 		apps[i] = a
+		units[i] = provision.Unit{
+			Name:    "i-00000",
+			AppName: appDict["name"],
+			Machine: i + 1,
+			Type:    "python",
+			Ip:      appDict["ip"],
+			Status:  provision.StatusInstalling,
+		}
 	}
-	jujuOutput, err := ioutil.ReadFile(filepath.Join("testdata", "multiple-apps.yaml"))
-	c.Assert(err, IsNil)
-	data := parse(jujuOutput)
-	update(data)
+	update(units)
 	for _, appDict := range appDicts {
 		a := app.App{Name: appDict["name"]}
 		err := a.Get()
 		c.Assert(err, IsNil)
 		c.Assert(a.Units[0].Ip, Equals, appDict["ip"])
 	}
-}
-
-func (s *S) TestParser(c *C) {
-	jujuOutput, err := ioutil.ReadFile(filepath.Join("testdata", "output.yaml"))
-	c.Assert(err, IsNil)
-	expected := getOutput()
-	c.Assert(parse(jujuOutput), DeepEquals, expected)
-}
-
-func (s *S) TestExecWithTimeout(c *C) {
-	var data = []struct {
-		cmd     []string
-		timeout time.Duration
-		out     string
-		err     error
-	}{
-		{
-			cmd:     []string{"sleep", "2"},
-			timeout: 1e6,
-			out:     "",
-			err:     errors.New(`"sleep 2" ran for more than 1ms.`),
-		},
-		{
-			cmd:     []string{"python", "-c", "import time; time.sleep(1); print 'hello world!'"},
-			timeout: 5e9,
-			out:     "hello world!\n",
-			err:     nil,
-		},
-	}
-	for _, d := range data {
-		out, err := execWithTimeout(d.timeout, d.cmd[0], d.cmd[1:]...)
-		if string(out) != d.out {
-			c.Errorf("Output. Want %q. Got %q.", d.out, out)
-		}
-		if d.err == nil && err != nil {
-			c.Errorf("Error. Want %v. Got %v.", d.err, err)
-		} else if d.err != nil && err.Error() != d.err.Error() {
-			c.Errorf("Error message. Want %q. Got %q.", d.err.Error(), err.Error())
-		}
-	}
-}
-
-func (s *S) TestCollect(c *C) {
-	tmpdir, err := commandmocker.Add("juju", "$*")
-	c.Assert(err, IsNil)
-	defer commandmocker.Remove(tmpdir)
-	out, err := collect()
-	c.Assert(err, IsNil)
-	c.Assert(string(out), Equals, "status")
 }

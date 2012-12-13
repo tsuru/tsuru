@@ -5,29 +5,21 @@
 package main
 
 import (
-	"github.com/globocom/commandmocker"
 	"github.com/globocom/tsuru/app"
 	"github.com/globocom/tsuru/db"
-	"io/ioutil"
+	"github.com/globocom/tsuru/provision"
 	"labix.org/v2/mgo/bson"
 	. "launchpad.net/gocheck"
-	"path/filepath"
 	"time"
 )
 
 var pendingApps = []string{"as_i_rise", "the_infanta"}
 var runningApps = []string{"caravan", "bu2b", "carnies"}
 
-func createApp(name, agentState, machineAgentState, instanceState string) {
+func createApp(name, state string) {
 	a := app.App{
-		Name: name,
-		Units: []app.Unit{
-			{
-				AgentState:        agentState,
-				MachineAgentState: machineAgentState,
-				InstanceState:     instanceState,
-			},
-		},
+		Name:  name,
+		Units: []app.Unit{{State: state}},
 	}
 	err := db.Session.Apps().Insert(&a)
 	if err != nil {
@@ -37,10 +29,10 @@ func createApp(name, agentState, machineAgentState, instanceState string) {
 
 func createApps() {
 	for _, name := range pendingApps {
-		createApp(name, "not-started", "pending", "pending")
+		createApp(name, provision.StatusPending)
 	}
 	for _, name := range runningApps {
-		createApp(name, "started", "running", "running")
+		createApp(name, provision.StatusStarted)
 	}
 }
 
@@ -50,11 +42,12 @@ func destroyApps() {
 }
 
 func (s *S) TestJujuCollect(c *C) {
-	b, err := ioutil.ReadFile(filepath.Join("testdata", "jujucollect.yaml"))
-	c.Assert(err, IsNil)
-	tmpdir, err := commandmocker.Add("juju", string(b))
-	c.Assert(err, IsNil)
-	defer commandmocker.Remove(tmpdir)
+	app1 := app.App{Name: "as_i_rise", Framework: "python"}
+	app2 := app.App{Name: "the_infanta", Framework: "python"}
+	s.provisioner.Provision(&app1)
+	defer s.provisioner.Destroy(&app1)
+	s.provisioner.Provision(&app2)
+	defer s.provisioner.Destroy(&app2)
 	createApps()
 	defer destroyApps()
 	ch := make(chan time.Time)
@@ -63,8 +56,8 @@ func (s *S) TestJujuCollect(c *C) {
 	close(ch)
 	time.Sleep(1e9)
 	var apps []app.App
-	err = db.Session.Apps().Find(bson.M{"name": bson.M{"$in": []string{"as_i_rise", "the_infanta"}}}).Sort("name").All(&apps)
+	err := db.Session.Apps().Find(bson.M{"name": bson.M{"$in": []string{"as_i_rise", "the_infanta"}}}).Sort("name").All(&apps)
 	c.Assert(err, IsNil)
-	c.Assert(apps[0].Units[1].Ip, Equals, "10.10.10.163")
-	c.Assert(apps[1].Units[1].Ip, Equals, "10.10.10.168")
+	c.Assert(apps[0].Units[1].Ip, Equals, "10.10.10.1")
+	c.Assert(apps[1].Units[1].Ip, Equals, "10.10.10.2")
 }

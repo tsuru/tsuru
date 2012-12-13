@@ -8,6 +8,7 @@ import (
 	"flag"
 	"fmt"
 	"github.com/globocom/config"
+	"github.com/globocom/tsuru/app"
 	"github.com/globocom/tsuru/db"
 	"github.com/globocom/tsuru/log"
 	stdlog "log"
@@ -18,9 +19,11 @@ import (
 
 func jujuCollect(ticker <-chan time.Time) {
 	for _ = range ticker {
-		data, _ := collect()
-		output := parse(data)
-		update(output)
+		units, err := app.Provisioner.CollectStatus()
+		if err != nil {
+			log.Printf("Failed to collect status withing the provisioner: %s.", err)
+		}
+		update(units)
 	}
 }
 
