@@ -60,7 +60,7 @@ func (a *FakeApp) GetFramework() string {
 	return a.framework
 }
 
-func (a *FakeApp) GetUnits() []provision.AppUnit {
+func (a *FakeApp) GetProvisionUnits() []provision.AppUnit {
 	a.actions = append(a.actions, "getunits")
 	return a.units
 }

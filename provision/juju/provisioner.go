@@ -45,7 +45,7 @@ func (p *JujuProvisioner) Destroy(app provision.App) *provision.Error {
 		app.Log("Failed to destroy machine: "+out, "tsuru")
 		return &provision.Error{Reason: out, Err: err}
 	}
-	for _, u := range app.GetUnits() {
+	for _, u := range app.GetProvisionUnits() {
 		buf.Reset()
 		err = runCmd(&buf, "terminate-machine", strconv.Itoa(u.GetMachine()))
 		out = buf.String()
@@ -59,7 +59,7 @@ func (p *JujuProvisioner) Destroy(app provision.App) *provision.Error {
 
 func (p *JujuProvisioner) ExecuteCommand(w io.Writer, app provision.App, cmd string, args ...string) error {
 	arguments := []string{"ssh", "-o", "StrictHostKeyChecking no", "-q"}
-	for _, unit := range app.GetUnits() {
+	for _, unit := range app.GetProvisionUnits() {
 		var cmdargs []string
 		cmdargs = append(cmdargs, arguments...)
 		cmdargs = append(cmdargs, strconv.Itoa(unit.GetMachine()), cmd)
