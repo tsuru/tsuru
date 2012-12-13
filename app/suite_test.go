@@ -22,12 +22,13 @@ import (
 func Test(t *testing.T) { TestingT(t) }
 
 type S struct {
-	team      auth.Team
-	user      *auth.User
-	adminTeam auth.Team
-	admin     *auth.User
-	rfs       *fsTesting.RecordingFs
-	t         *tsuruTesting.T
+	team        auth.Team
+	user        *auth.User
+	adminTeam   auth.Team
+	admin       *auth.User
+	rfs         *fsTesting.RecordingFs
+	t           *tsuruTesting.T
+	provisioner *tsuruTesting.FakeProvisioner
 }
 
 var _ = Suite(&S{})
@@ -83,6 +84,8 @@ func (s *S) SetUpSuite(c *C) {
 	s.createUserAndTeam(c)
 	s.t.StartAmzS3AndIAM(c)
 	s.t.SetGitConfs(c)
+	s.provisioner = tsuruTesting.NewFakeProvisioner()
+	Provisioner = s.provisioner
 }
 
 func (s *S) TearDownSuite(c *C) {
