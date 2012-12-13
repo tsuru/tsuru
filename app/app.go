@@ -82,11 +82,12 @@ func (a *App) Get() error {
 
 // CreateApp creates a new app.
 //
-// Creating a new app is a process composed of three steps:
+// Creating a new app is a process composed of four steps:
 //
 //       1. Save the app in the database
 //       2. Create S3 credentials and bucket for the app
-//       3. Deploy juju charm
+//       3. Create the git repository using gandalf
+//       4. Deploy juju charm
 func CreateApp(a *App) error {
 	if !a.isValid() {
 		msg := "Invalid app name, your app should have at most 63 " +
