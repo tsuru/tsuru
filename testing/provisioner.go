@@ -8,6 +8,7 @@ import (
 	"github.com/globocom/tsuru/provision"
 	"io"
 	"strconv"
+	"time"
 )
 
 func init() {
@@ -79,18 +80,23 @@ type Cmd struct {
 	App  provision.App
 }
 
+type failure struct {
+	method string
+	err    error
+}
+
 // Fake implementation for provision.Provisioner.
 type FakeProvisioner struct {
 	apps     []provision.App
 	Cmds     []Cmd
 	outputs  chan []byte
-	failures chan error
+	failures chan failure
 }
 
 func NewFakeProvisioner() *FakeProvisioner {
 	p := FakeProvisioner{}
 	p.outputs = make(chan []byte, 8)
-	p.failures = make(chan error, 8)
+	p.failures = make(chan failure, 8)
 	return &p
 }
 
@@ -103,22 +109,37 @@ func (p *FakeProvisioner) FindApp(app provision.App) int {
 	return -1
 }
 
+func (p *FakeProvisioner) getError(method string) *provision.Error {
+	select {
+	case fail := <-p.failures:
+		if fail.method == method {
+			return &provision.Error{Err: fail.err}
+		}
+		p.failures <- fail
+	case <-time.After(1e9):
+	}
+	return nil
+}
+
 func (p *FakeProvisioner) PrepareOutput(b []byte) {
 	p.outputs <- b
 }
 
-func (p *FakeProvisioner) PrepareCommandFailure(err error) {
-	p.failures <- err
+func (p *FakeProvisioner) PrepareFailure(method string, err error) {
+	p.failures <- failure{method, err}
 }
 
 func (p *FakeProvisioner) Reset() {
 	close(p.outputs)
 	close(p.failures)
 	p.outputs = make(chan []byte, 8)
-	p.failures = make(chan error, 8)
+	p.failures = make(chan failure, 8)
 }
 
 func (p *FakeProvisioner) Provision(app provision.App) *provision.Error {
+	if err := p.getError("Provision"); err != nil {
+		return err
+	}
 	index := p.FindApp(app)
 	if index > -1 {
 		return &provision.Error{Reason: "App already provisioned."}
@@ -128,6 +149,9 @@ func (p *FakeProvisioner) Provision(app provision.App) *provision.Error {
 }
 
 func (p *FakeProvisioner) Destroy(app provision.App) *provision.Error {
+	if err := p.getError("Destroy"); err != nil {
+		return err
+	}
 	index := p.FindApp(app)
 	if index == -1 {
 		return &provision.Error{Reason: "App is not provisioned."}
@@ -151,12 +175,20 @@ func (p *FakeProvisioner) ExecuteCommand(w io.Writer, app provision.App, cmd str
 	select {
 	case output = <-p.outputs:
 		w.Write(output)
-	case err = <-p.failures:
+	case fail := <-p.failures:
+		if fail.method == "ExecuteCommand" {
+			err = fail.err
+		} else {
+			p.failures <- fail
+		}
 	}
 	return err
 }
 
 func (p *FakeProvisioner) CollectStatus() ([]provision.Unit, *provision.Error) {
+	if err := p.getError("CollectStatus"); err != nil {
+		return nil, err
+	}
 	units := make([]provision.Unit, len(p.apps))
 	for i, app := range p.apps {
 		unit := provision.Unit{
