@@ -216,9 +216,14 @@ func (s *S) TestWriteEnvVarsErrorWithOutput(c *C) {
 	c.Assert(commandmocker.Ran(tmpdir), Equals, true)
 }
 
-func (s *S) TestGetName(c *C) {
-	u := Unit{app: &App{Name: "2112"}}
-	c.Assert(u.GetName(), Equals, "2112")
+func (s *S) TestUnitGetName(c *C) {
+	u := Unit{Name: "abcdef", app: &App{Name: "2112"}}
+	c.Assert(u.GetName(), Equals, "abcdef")
+}
+
+func (s *S) TestUnitGetMachine(c *C) {
+	u := Unit{Machine: 10}
+	c.Assert(u.GetMachine(), Equals, u.Machine)
 }
 
 func (s *S) TestUnitShouldBeARepositoryUnit(c *C) {

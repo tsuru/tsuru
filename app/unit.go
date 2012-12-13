@@ -81,7 +81,11 @@ func (u *Unit) writeEnvVars() error {
 }
 
 func (u *Unit) GetName() string {
-	return u.app.Name
+	return u.Name
+}
+
+func (u *Unit) GetMachine() int {
+	return u.Machine
 }
 
 func (u *Unit) GetIp() string {
