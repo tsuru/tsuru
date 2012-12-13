@@ -139,6 +139,14 @@ func (a *App) unbind() error {
 	return nil
 }
 
+// Destroy destroys an app.
+//
+// Destroy an app is a process composed of x steps:
+//
+//       1. Destroy the bucket and S3 credentials
+//       2. Destroy the app unit using juju
+//       3. Execute the unbind for the app
+//       4. Remove the app from the database
 func (a *App) Destroy() error {
 	err := destroyBucket(a)
 	if err != nil {
