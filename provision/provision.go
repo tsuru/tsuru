@@ -55,7 +55,7 @@ type App interface {
 	GetFramework() string
 
 	// GetUnits returns all units of the app, in a slice.
-	GetProvisionUnits() []AppUnit
+	ProvisionUnits() []AppUnit
 }
 
 // Provisioner is the basic interface of this package.
