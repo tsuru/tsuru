@@ -7,8 +7,10 @@ package app
 import (
 	"fmt"
 	"github.com/globocom/config"
+	gandalf "github.com/globocom/go-gandalfclient"
 	"github.com/globocom/tsuru/api/bind"
 	"github.com/globocom/tsuru/db"
+	"github.com/globocom/tsuru/repository"
 	"labix.org/v2/mgo/bson"
 	"strconv"
 )
@@ -57,7 +59,7 @@ func (a *createBucketIam) forward(app *App) error {
 		})
 	}
 	app.SetEnvsToApp(envVars, false, true)
-	return err
+	return nil
 }
 
 // createBucketIam backward destroys the app bucket.
@@ -75,3 +77,27 @@ func (a *deploy) forward(app *App) error {
 
 // deploy backward does nothing.
 func (a *deploy) backward(app *App) {}
+
+// createRepository is an implementation for the action interface.
+type createRepository struct{}
+
+// createRepository forward creates a git repository using the
+// gandalf client.
+func (a *createRepository) forward(app *App) error {
+	gUrl := repository.GitServerUri()
+	var users []string
+	for _, t := range app.teams() {
+		users = append(users, t.Users...)
+	}
+	c := gandalf.Client{Endpoint: gUrl}
+	_, err := c.NewRepository(app.Name, users, false)
+	return err
+}
+
+// createRepository backward remove the git repository
+// using the gandalf client.
+func (a *createRepository) backward(app *App) {
+	gUrl := repository.GitServerUri()
+	c := gandalf.Client{Endpoint: gUrl}
+	c.RemoveRepository(app.Name)
+}

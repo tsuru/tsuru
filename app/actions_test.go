@@ -9,14 +9,16 @@ import (
 	"fmt"
 	"github.com/globocom/commandmocker"
 	"github.com/globocom/config"
+	"github.com/globocom/tsuru/api/auth"
 	"github.com/globocom/tsuru/db"
 	"github.com/globocom/tsuru/log"
 	"github.com/globocom/tsuru/queue"
+	"io/ioutil"
 	"labix.org/v2/mgo/bson"
 	. "launchpad.net/gocheck"
 	stdlog "log"
+	"net/http"
 	"strings"
-	/* "time" */
 )
 
 func (s *S) TestInsertAppForward(c *C) {
@@ -151,4 +153,52 @@ func (s *S) TestDeployForward(c *C) {
 	c.Assert(err, IsNil)
 	str := strings.Replace(w.String(), "\n", "", -1)
 	c.Assert(str, Matches, ".*deploy --repository=/home/charms local:django appname.*")
+}
+
+type testHandler struct {
+	body    [][]byte
+	method  []string
+	url     []string
+	content string
+	header  []http.Header
+}
+
+func (h *testHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	h.method = append(h.method, r.Method)
+	h.url = append(h.url, r.URL.String())
+	b, _ := ioutil.ReadAll(r.Body)
+	h.body = append(h.body, b)
+	h.header = append(h.header, r.Header)
+	w.Write([]byte(h.content))
+}
+
+func (s *S) TestCreateRepositoryForward(c *C) {
+	h := testHandler{}
+	ts := s.t.StartGandalfTestServer(&h)
+	defer ts.Close()
+	a := App{Name: "someapp"}
+	var teams []auth.Team
+	err := db.Session.Teams().Find(bson.M{"users": s.user.Email}).All(&teams)
+	c.Assert(err, IsNil)
+	a.SetTeams(teams)
+	action := new(createRepository)
+	err = action.forward(&a)
+	c.Assert(err, IsNil)
+	defer action.backward(&a)
+	c.Assert(h.url[0], Equals, "/repository")
+	c.Assert(h.method[0], Equals, "POST")
+	expected := fmt.Sprintf(`{"name":"someapp","users":["%s"],"ispublic":false}`, s.user.Email)
+	c.Assert(string(h.body[0]), Equals, expected)
+}
+
+func (s *S) TestCreateRepositoryBackward(c *C) {
+	h := testHandler{}
+	ts := s.t.StartGandalfTestServer(&h)
+	defer ts.Close()
+	a := App{Name: "someapp"}
+	action := new(createRepository)
+	action.backward(&a)
+	c.Assert(h.url[0], Equals, "/repository/someapp")
+	c.Assert(h.method[0], Equals, "DELETE")
+	c.Assert(string(h.body[0]), Equals, "null")
 }
