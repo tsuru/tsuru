@@ -84,7 +84,7 @@ func (s *S) TestCreateBucketForward(c *C) {
 	err = bucket.forward(&a)
 	c.Assert(err, IsNil)
 	defer bucket.backward(&a)
-	de := new(deploy)
+	de := new(provision)
 	err = de.forward(&a)
 	env := a.InstanceEnv(s3InstanceName)
 	c.Assert(env["TSURU_S3_ENDPOINT"].Value, Equals, s.t.S3Server.URL())
@@ -143,7 +143,7 @@ func (s *S) TestDeployForward(c *C) {
 	w := bytes.NewBuffer([]byte{})
 	l := stdlog.New(w, "", stdlog.LstdFlags)
 	log.SetLogger(l)
-	action := new(deploy)
+	action := new(provision)
 	a := App{
 		Name:      "appname",
 		Framework: "django",
