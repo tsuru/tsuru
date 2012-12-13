@@ -28,11 +28,9 @@ func (s *S) TestHandleMessages(c *C) {
 		Name: "nemesis",
 		Units: []app.Unit{
 			{
-				Name:              "nemesis/0",
-				MachineAgentState: "running",
-				AgentState:        "started",
-				InstanceState:     "running",
-				Machine:           19,
+				Name:    "i-00800",
+				State:   "started",
+				Machine: 19,
 			},
 		},
 		Env: map[string]bind.EnvVar{
