@@ -8,6 +8,7 @@ import (
 	"github.com/globocom/tsuru/provision"
 	"io"
 	"strconv"
+	"time"
 )
 
 func init() {
@@ -68,7 +69,7 @@ func (a *FakeApp) GetFramework() string {
 	return a.framework
 }
 
-func (a *FakeApp) GetUnits() []provision.AppUnit {
+func (a *FakeApp) GetProvisionUnits() []provision.AppUnit {
 	a.actions = append(a.actions, "getunits")
 	return a.units
 }
@@ -81,8 +82,17 @@ type Cmd struct {
 
 // Fake implementation for provision.Provisioner.
 type FakeProvisioner struct {
-	apps []provision.App
-	Cmds []Cmd
+	apps     []provision.App
+	Cmds     []Cmd
+	outputs  chan []byte
+	failures chan error
+}
+
+func NewFakeProvisioner() *FakeProvisioner {
+	p := FakeProvisioner{}
+	p.outputs = make(chan []byte, 8)
+	p.failures = make(chan error, 8)
+	return &p
 }
 
 func (p *FakeProvisioner) FindApp(app provision.App) int {
@@ -92,6 +102,21 @@ func (p *FakeProvisioner) FindApp(app provision.App) int {
 		}
 	}
 	return -1
+}
+
+func (p *FakeProvisioner) PrepareOutput(b []byte) {
+	p.outputs <- b
+}
+
+func (p *FakeProvisioner) PrepareCommandFailure(err error) {
+	p.failures <- err
+}
+
+func (p *FakeProvisioner) Reset() {
+	close(p.outputs)
+	close(p.failures)
+	p.outputs = make(chan []byte, 8)
+	p.failures = make(chan error, 8)
 }
 
 func (p *FakeProvisioner) Provision(app provision.App) *provision.Error {
@@ -120,6 +145,12 @@ func (p *FakeProvisioner) ExecuteCommand(w io.Writer, app provision.App, cmd str
 		App:  app,
 	}
 	p.Cmds = append(p.Cmds, command)
+	var output []byte
+	select {
+	case output = <-p.outputs:
+		w.Write(output)
+	case <-time.After(1e9):
+	}
 	return nil
 }
 
