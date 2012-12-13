@@ -8,7 +8,6 @@ import (
 	"github.com/globocom/tsuru/provision"
 	"io"
 	"strconv"
-	"time"
 )
 
 func init() {
@@ -139,19 +138,22 @@ func (p *FakeProvisioner) Destroy(app provision.App) *provision.Error {
 }
 
 func (p *FakeProvisioner) ExecuteCommand(w io.Writer, app provision.App, cmd string, args ...string) error {
+	var (
+		output []byte
+		err    error
+	)
 	command := Cmd{
 		Cmd:  cmd,
 		Args: args,
 		App:  app,
 	}
 	p.Cmds = append(p.Cmds, command)
-	var output []byte
 	select {
 	case output = <-p.outputs:
 		w.Write(output)
-	case <-time.After(1e9):
+	case err = <-p.failures:
 	}
-	return nil
+	return err
 }
 
 func (p *FakeProvisioner) CollectStatus() ([]provision.Unit, *provision.Error) {
