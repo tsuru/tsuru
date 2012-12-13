@@ -11,6 +11,8 @@ import (
 	"github.com/globocom/tsuru/app"
 	"github.com/globocom/tsuru/db"
 	"github.com/globocom/tsuru/log"
+	"github.com/globocom/tsuru/provision"
+	_ "github.com/globocom/tsuru/provision/juju"
 	stdlog "log"
 	"log/syslog"
 	"os"
@@ -64,6 +66,17 @@ func main() {
 	defer db.Session.Close()
 	fmt.Printf("Connected to MongoDB server at %s.\n", connString)
 	fmt.Printf("Using the database %q.\n\n", dbName)
+
+	provisioner, err := config.GetString("provisioner")
+	if err != nil {
+		fmt.Printf("Warning: %q didn't declare a provisioner, using default provisioner.\n", configFile)
+		provisioner = "juju"
+	}
+	app.Provisioner, err = provision.Get(provisioner)
+	if err != nil {
+		fatal(err)
+	}
+	fmt.Printf("Using %q provisioner.\n\n", provisioner)
 
 	if !dry {
 		handler := MessageHandler{}
