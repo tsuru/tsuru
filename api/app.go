@@ -179,17 +179,6 @@ func createAppHelper(instance *app.App, u *auth.User) ([]byte, error) {
 		}
 		return nil, err
 	}
-	gUrl := repository.GitServerUri()
-	var users []string
-	for _, t := range teams {
-		users = append(users, t.Users...)
-	}
-	c := gandalf.Client{Endpoint: gUrl}
-	if _, err := c.NewRepository(instance.Name, users, false); err != nil {
-		log.Printf("Got error while creating repository: %s", err.Error())
-		instance.Destroy()
-		return nil, &errors.Http{Code: http.StatusInternalServerError, Message: err.Error()}
-	}
 	msg := map[string]string{
 		"status":         "success",
 		"repository_url": repository.GetUrl(instance.Name),

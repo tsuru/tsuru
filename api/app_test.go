@@ -365,9 +365,9 @@ func (s *S) TestDelete(c *C) {
 	err = AppDelete(recorder, request, s.user)
 	c.Assert(err, IsNil)
 	c.Assert(recorder.Code, Equals, http.StatusOK)
-	c.Assert(h.url[0], Equals, "/repository/myapptodelete") // increment the index because of CreateApp action
-	c.Assert(h.method[0], Equals, "DELETE")
-	c.Assert(string(h.body[0]), Equals, "null")
+	c.Assert(h.url[1], Equals, "/repository/myapptodelete") // increment the index because of CreateApp action
+	c.Assert(h.method[1], Equals, "DELETE")
+	c.Assert(string(h.body[1]), Equals, "null")
 }
 
 func (s *S) TestDeleteShouldReturnForbiddenIfTheGivenUserDoesNotHaveAccesToTheApp(c *C) {
@@ -402,12 +402,6 @@ func (s *S) TestDeleteShouldReturnNotFoundIfTheAppDoesNotExist(c *C) {
 }
 
 func (s *S) TestDeleteShouldHandleWithGandalfError(c *C) {
-	h := testBadHandler{}
-	ts := s.t.StartGandalfTestServer(&h)
-	defer ts.Close()
-	dir, err := commandmocker.Add("juju", "")
-	defer commandmocker.Remove(dir)
-	c.Assert(err, IsNil)
 	myApp := app.App{
 		Name:      "myapptodelete",
 		Framework: "django",
@@ -416,12 +410,15 @@ func (s *S) TestDeleteShouldHandleWithGandalfError(c *C) {
 			{Ip: "10.10.10.10", Machine: 1},
 		},
 	}
-	err = app.CreateApp(&myApp)
+	err := db.Session.Apps().Insert(myApp)
 	c.Assert(err, IsNil)
-	defer myApp.Destroy()
+	defer db.Session.Apps().Remove(bson.M{"name": myApp.Name})
 	request, err := http.NewRequest("DELETE", "/apps/"+myApp.Name+"?:name="+myApp.Name, nil)
 	c.Assert(err, IsNil)
 	recorder := httptest.NewRecorder()
+	h := testBadHandler{}
+	ts := s.t.StartGandalfTestServer(&h)
+	defer ts.Close()
 	err = AppDelete(recorder, request, s.user)
 	c.Assert(err, NotNil)
 	c.Assert(err.Error(), Equals, "Could not remove app's repository at git server. Aborting...")
@@ -614,16 +611,13 @@ func (s *S) TestCreateAppReturns403IfTheUserIsNotMemberOfAnyTeam(c *C) {
 }
 
 func (s *S) TestCreateAppReturnsConflictWithProperMessageWhenTheAppAlreadyExist(c *C) {
-	dir, err := commandmocker.Add("juju", "")
-	defer commandmocker.Remove(dir)
-	c.Assert(err, IsNil)
 	a := app.App{
 		Name:  "plainsofdawn",
 		Units: []app.Unit{{Machine: 1}},
 	}
-	err = app.CreateApp(&a)
+	err := db.Session.Apps().Insert(a)
 	c.Assert(err, IsNil)
-	defer a.Destroy()
+	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
 	b := strings.NewReader(`{"name":"plainsofdawn", "framework":"django"}`)
 	request, err := http.NewRequest("POST", "/apps", b)
 	c.Assert(err, IsNil)
@@ -1912,6 +1906,9 @@ func (s *S) TestBindHandlerReturns403IfTheUserDoesNotHaveAccessToTheApp(c *C) {
 }
 
 func (s *S) TestUnbindHandler(c *C) {
+	h := testHandler{}
+	gts := s.t.StartGandalfTestServer(&h)
+	defer gts.Close()
 	dir, err := commandmocker.Add("juju", "")
 	defer commandmocker.Remove(dir)
 	c.Assert(err, IsNil)
