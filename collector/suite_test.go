@@ -6,7 +6,9 @@ package main
 
 import (
 	"github.com/globocom/config"
+	"github.com/globocom/tsuru/app"
 	"github.com/globocom/tsuru/db"
+	ttesting "github.com/globocom/tsuru/testing"
 	"labix.org/v2/mgo"
 	. "launchpad.net/gocheck"
 	"testing"
@@ -15,9 +17,10 @@ import (
 func Test(t *testing.T) { TestingT(t) }
 
 type S struct {
-	session   *mgo.Session
-	tmpdir    string
-	instances []string
+	session     *mgo.Session
+	tmpdir      string
+	instances   []string
+	provisioner *ttesting.FakeProvisioner
 }
 
 var _ = Suite(&S{})
@@ -27,6 +30,8 @@ func (s *S) SetUpSuite(c *C) {
 	c.Assert(err, IsNil)
 	db.Session, err = db.Open("127.0.0.1:27017", "tsuru_collector_test")
 	c.Assert(err, IsNil)
+	s.provisioner = ttesting.NewFakeProvisioner()
+	app.Provisioner = s.provisioner
 	config.Set("queue-server", "127.0.0.1:0")
 }
 
