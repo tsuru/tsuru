@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/globocom/tsuru/log"
+	"github.com/globocom/tsuru/provision"
 	"io"
 	"os/exec"
 	"strconv"
@@ -17,15 +18,12 @@ import (
 )
 
 type Unit struct {
-	Type              string
-	Name              string
-	Machine           int
-	Ip                string
-	AgentState        string `yaml:"agent-state"`
-	MachineAgentState string
-	InstanceState     string
-	InstanceId        string
-	app               *App
+	Name    string
+	Type    string
+	Machine int
+	Ip      string
+	State   string
+	app     *App
 }
 
 func (u *Unit) destroy() ([]byte, error) {
@@ -49,8 +47,8 @@ func (u *Unit) executeHook(hook string, w io.Writer) error {
 }
 
 func (u *Unit) Command(stdout, stderr io.Writer, cmds ...string) error {
-	if state := u.State(); state != "started" {
-		return fmt.Errorf("Unit must be started to run commands, but it is %s.", state)
+	if u.State != provision.StatusStarted {
+		return fmt.Errorf("Unit must be started to run commands, but it is %q.", u.State)
 	}
 	c := exec.Command("juju", "ssh", "-o", "StrictHostKeyChecking no", "-q", strconv.Itoa(u.Machine))
 	c.Args = append(c.Args, cmds...)
@@ -88,29 +86,4 @@ func (u *Unit) GetName() string {
 
 func (u *Unit) GetIp() string {
 	return u.Ip
-}
-
-func (u *Unit) State() string {
-	if u.InstanceState == "error" || u.AgentState == "install-error" || u.MachineAgentState == "start-error" {
-		return "error"
-	}
-	if u.MachineAgentState == "pending" || u.MachineAgentState == "not-started" || u.MachineAgentState == "" {
-		return "creating"
-	}
-	if u.InstanceState == "pending" || u.InstanceState == "" {
-		return "creating"
-	}
-	if u.AgentState == "down" {
-		return "down"
-	}
-	if u.MachineAgentState == "running" && u.AgentState == "not-started" {
-		return "creating"
-	}
-	if u.MachineAgentState == "running" && u.InstanceState == "running" && u.AgentState == "pending" {
-		return "installing"
-	}
-	if u.MachineAgentState == "running" && u.AgentState == "started" && u.InstanceState == "running" {
-		return "started"
-	}
-	return "pending"
 }

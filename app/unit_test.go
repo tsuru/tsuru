@@ -6,8 +6,10 @@ package app
 
 import (
 	"bytes"
+	"fmt"
 	"github.com/globocom/commandmocker"
 	"github.com/globocom/tsuru/api/bind"
+	"github.com/globocom/tsuru/provision"
 	"github.com/globocom/tsuru/repository"
 	. "launchpad.net/gocheck"
 	"strings"
@@ -18,13 +20,11 @@ func (s *S) TestCommand(c *C) {
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(tmpdir)
 	u := Unit{
-		Type:              "django",
-		Name:              "myUnit",
-		Machine:           1,
-		app:               &App{},
-		InstanceState:     "running",
-		AgentState:        "started",
-		MachineAgentState: "running",
+		Type:    "django",
+		Name:    "i-0800",
+		Machine: 1,
+		State:   provision.StatusStarted,
+		app:     &App{},
 	}
 	var buf bytes.Buffer
 	err = u.Command(&buf, &buf, "uname")
@@ -37,13 +37,11 @@ func (s *S) TestCommandShouldAcceptMultipleParams(c *C) {
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(dir)
 	u := Unit{
-		Type:              "django",
-		Name:              "myUnit",
-		Machine:           1,
-		app:               &App{},
-		InstanceState:     "running",
-		AgentState:        "started",
-		MachineAgentState: "running",
+		Type:    "django",
+		Name:    "myUnit",
+		Machine: 1,
+		State:   provision.StatusStarted,
+		app:     &App{},
 	}
 	var buf bytes.Buffer
 	err = u.Command(&buf, &buf, "uname", "-a")
@@ -55,13 +53,11 @@ func (s *S) TestCommandWithCustomStdout(c *C) {
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(dir)
 	u := Unit{
-		Type:              "django",
-		Name:              "myUnit",
-		Machine:           1,
-		app:               &App{},
-		InstanceState:     "running",
-		AgentState:        "started",
-		MachineAgentState: "running",
+		Type:    "django",
+		Name:    "myUnit",
+		Machine: 1,
+		State:   provision.StatusStarted,
+		app:     &App{},
 	}
 	var b bytes.Buffer
 	u.Command(&b, nil, "uname", "-a")
@@ -73,13 +69,11 @@ func (s *S) TestCommandWithCustomStderr(c *C) {
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(dir)
 	u := Unit{
-		Type:              "django",
-		Name:              "myUnit",
-		Machine:           1,
-		app:               &App{},
-		InstanceState:     "running",
-		AgentState:        "started",
-		MachineAgentState: "running",
+		Type:    "django",
+		Name:    "myUnit",
+		Machine: 1,
+		State:   provision.StatusStarted,
+		app:     &App{},
 	}
 	var b bytes.Buffer
 	err = u.Command(nil, &b, "uname", "-a")
@@ -89,24 +83,23 @@ func (s *S) TestCommandWithCustomStderr(c *C) {
 
 func (s *S) TestCommandReturnErrorIfTheUnitIsNotStarted(c *C) {
 	u := Unit{
-		Type:              "django",
-		Name:              "myUnit",
-		Machine:           1,
-		app:               &App{},
-		InstanceState:     "running",
-		AgentState:        "not-started",
-		MachineAgentState: "running",
+		Type:    "django",
+		Name:    "myUnit",
+		Machine: 1,
+		State:   provision.StatusInstalling,
+		app:     &App{},
 	}
 	err := u.Command(nil, nil, "uname", "-a")
 	c.Assert(err, NotNil)
-	c.Assert(err.Error(), Equals, "Unit must be started to run commands, but it is "+u.State()+".")
+	expected := fmt.Sprintf("Unit must be started to run commands, but it is %q.", u.State)
+	c.Assert(err.Error(), Equals, expected)
 }
 
 func (s *S) TestExecuteHook(c *C) {
 	dir, err := commandmocker.Add("juju", "")
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(dir)
-	appUnit := Unit{Type: "django", Name: "myUnit", app: &App{}, MachineAgentState: "running", AgentState: "started", InstanceState: "running"}
+	appUnit := Unit{Type: "django", Name: "myUnit", app: &App{}, State: provision.StatusStarted}
 	err = appUnit.executeHook("requirements", nil)
 	c.Assert(err, IsNil)
 }
@@ -115,7 +108,7 @@ func (s *S) TestExecuteHookWithCustomWriter(c *C) {
 	dir, err := commandmocker.Add("juju", "$*")
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(dir)
-	appUnit := Unit{Type: "django", Name: "myUnit", app: &App{}, MachineAgentState: "running", AgentState: "started", InstanceState: "running"}
+	appUnit := Unit{Type: "django", Name: "myUnit", State: provision.StatusStarted, app: &App{}}
 	var b bytes.Buffer
 	err = appUnit.executeHook("requirements", &b)
 	c.Assert(err, IsNil)
@@ -155,13 +148,11 @@ func (s *S) TestWriteEnvVars(c *C) {
 		},
 	}
 	unit := Unit{
-		Type:              "django",
-		Name:              "myunit",
-		Machine:           50,
-		MachineAgentState: "running",
-		AgentState:        "started",
-		InstanceState:     "running",
-		app:               &app,
+		Type:    "django",
+		Name:    "myunit",
+		Machine: 50,
+		State:   provision.StatusStarted,
+		app:     &app,
 	}
 	err = unit.writeEnvVars()
 	c.Assert(err, IsNil)
@@ -213,13 +204,11 @@ func (s *S) TestWriteEnvVarsErrorWithOutput(c *C) {
 		},
 	}
 	unit := Unit{
-		Type:              "django",
-		Name:              "myunit",
-		Machine:           50,
-		MachineAgentState: "running",
-		AgentState:        "started",
-		InstanceState:     "running",
-		app:               &app,
+		Type:    "django",
+		Name:    "myunit",
+		Machine: 50,
+		State:   provision.StatusStarted,
+		app:     &app,
 	}
 	err = unit.writeEnvVars()
 	c.Assert(err, NotNil)
@@ -238,64 +227,4 @@ func (s *S) TestUnitShouldBeARepositoryUnit(c *C) {
 
 func (s *S) TestUnitShouldBeABinderUnit(c *C) {
 	var _ bind.Unit = &Unit{}
-}
-
-func (s *S) TestStateMachineAgentPending(c *C) {
-	u := Unit{MachineAgentState: "pending"}
-	c.Assert(u.State(), Equals, "creating")
-}
-
-func (s *S) TestStateInstanceStatePending(c *C) {
-	u := Unit{InstanceState: "pending"}
-	c.Assert(u.State(), Equals, "creating")
-}
-
-func (s *S) TestStateInstanceStateError(c *C) {
-	u := Unit{InstanceState: "error"}
-	c.Assert(u.State(), Equals, "error")
-}
-
-func (s *S) TestStateAgentStateDown(c *C) {
-	u := Unit{InstanceState: "running", MachineAgentState: "running", AgentState: "down"}
-	c.Assert(u.State(), Equals, "down")
-}
-
-func (s *S) TestStateAgentStatePending(c *C) {
-	u := Unit{AgentState: "pending", InstanceState: ""}
-	c.Assert(u.State(), Equals, "creating")
-}
-
-func (s *S) TestStateAgentAndInstanceRunning(c *C) {
-	u := Unit{AgentState: "started", InstanceState: "running", MachineAgentState: "running"}
-	c.Assert(u.State(), Equals, "started")
-}
-
-func (s *S) TestStateMachineAgentRunningAndInstanceAndAgentPending(c *C) {
-	u := Unit{AgentState: "pending", InstanceState: "running", MachineAgentState: "running"}
-	c.Assert(u.State(), Equals, "installing")
-}
-
-func (s *S) TestStateMachineAgentNotStarted(c *C) {
-	u := Unit{AgentState: "pending", InstanceState: "running", MachineAgentState: "not-started"}
-	c.Assert(u.State(), Equals, "creating")
-}
-
-func (s *S) TestStateInstancePending(c *C) {
-	u := Unit{AgentState: "not-started", InstanceState: "pending"}
-	c.Assert(u.State(), Equals, "creating")
-}
-
-func (s *S) TestStateInstancePendingWhenMachineStateIsRunning(c *C) {
-	u := Unit{AgentState: "not-started", MachineAgentState: "running"}
-	c.Assert(u.State(), Equals, "creating")
-}
-
-func (s *S) TestStatePending(c *C) {
-	u := Unit{MachineAgentState: "some-state", AgentState: "some-state", InstanceState: "some-other-state"}
-	c.Assert(u.State(), Equals, "pending")
-}
-
-func (s *S) TestStateError(c *C) {
-	u := Unit{MachineAgentState: "start-error", AgentState: "pending", InstanceState: "running"}
-	c.Assert(u.State(), Equals, "error")
 }

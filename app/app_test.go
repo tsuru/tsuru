@@ -14,6 +14,7 @@ import (
 	"github.com/globocom/tsuru/api/bind"
 	"github.com/globocom/tsuru/db"
 	"github.com/globocom/tsuru/log"
+	"github.com/globocom/tsuru/provision"
 	"github.com/globocom/tsuru/queue"
 	"github.com/globocom/tsuru/repository"
 	"labix.org/v2/mgo/bson"
@@ -289,10 +290,10 @@ func (s *S) TestAppendOrUpdate(c *C) {
 		Name:      "appName",
 		Framework: "django",
 	}
-	u := Unit{Name: "someapp", Ip: "", Machine: 3, InstanceId: "i-00000zz8"}
+	u := Unit{Name: "i-00000zz8", Ip: "", Machine: 3}
 	a.AddUnit(&u)
 	c.Assert(len(a.Units), Equals, 1)
-	u = Unit{Name: "someapp", Ip: "192.168.0.12", Machine: 3, InstanceId: "i-00000zz8", MachineAgentState: "running"}
+	u = Unit{Name: "i-00000zz9", Ip: "192.168.0.12", Machine: 3, State: provision.StatusStarted}
 	a.AddUnit(&u)
 	c.Assert(len(a.Units), Equals, 1)
 	c.Assert(a.Units[0], DeepEquals, u)
@@ -654,9 +655,7 @@ pos-restart:
 	a := App{
 		Name:      "something",
 		Framework: "django",
-		Units: []Unit{
-			{AgentState: "started", MachineAgentState: "running", InstanceState: "running"},
-		},
+		Units:     []Unit{{State: provision.StatusStarted, Machine: 1}},
 	}
 	err = a.loadHooks()
 	c.Assert(err, IsNil)
@@ -685,9 +684,7 @@ pos-restart:
 	a := App{
 		Name:      "something",
 		Framework: "django",
-		Units: []Unit{
-			{AgentState: "started", MachineAgentState: "running", InstanceState: "running"},
-		},
+		Units:     []Unit{{State: provision.StatusStarted, Machine: 1}},
 	}
 	err = a.loadHooks()
 	c.Assert(err, IsNil)
@@ -709,9 +706,7 @@ pos-restart:
 	a := App{
 		Name:      "something",
 		Framework: "django",
-		Units: []Unit{
-			{AgentState: "started", MachineAgentState: "running", InstanceState: "running"},
-		},
+		Units:     []Unit{{State: provision.StatusStarted, Machine: 1}},
 	}
 	err = a.loadHooks()
 	c.Assert(err, IsNil)
@@ -734,9 +729,7 @@ func (s *S) TestPreRestart(c *C) {
 	a := App{
 		Name:      "something",
 		Framework: "django",
-		Units: []Unit{
-			{AgentState: "started", MachineAgentState: "running", InstanceState: "running"},
-		},
+		Units:     []Unit{{State: provision.StatusStarted, Machine: 1}},
 		hooks: &conf{
 			PreRestart: []string{"pre.sh"},
 			PosRestart: []string{"pos.sh"},
@@ -772,12 +765,8 @@ func (s *S) TestSkipsPreRestartWhenPreRestartSectionDoesNotExists(c *C) {
 	a := App{
 		Name:      "something",
 		Framework: "django",
-		Units: []Unit{
-			{AgentState: "started", MachineAgentState: "running", InstanceState: "running"},
-		},
-		hooks: &conf{
-			PosRestart: []string{"somescript.sh"},
-		},
+		Units:     []Unit{{State: provision.StatusStarted, Machine: 1}},
+		hooks:     &conf{PosRestart: []string{"somescript.sh"}},
 	}
 	w := new(bytes.Buffer)
 	l := stdlog.New(w, "", stdlog.LstdFlags)
@@ -792,12 +781,8 @@ func (s *S) TestPosRestart(c *C) {
 	a := App{
 		Name:      "something",
 		Framework: "django",
-		Units: []Unit{
-			{AgentState: "started", MachineAgentState: "running", InstanceState: "running"},
-		},
-		hooks: &conf{
-			PosRestart: []string{"pos.sh"},
-		},
+		Units:     []Unit{{State: provision.StatusStarted, Machine: 1}},
+		hooks:     &conf{PosRestart: []string{"pos.sh"}},
 	}
 	dir, err := commandmocker.Add("juju", "$*")
 	c.Assert(err, IsNil)
@@ -827,12 +812,8 @@ func (s *S) TestSkipsPosRestartWhenPosRestartSectionDoesNotExists(c *C) {
 	a := App{
 		Name:      "something",
 		Framework: "django",
-		Units: []Unit{
-			{AgentState: "started", MachineAgentState: "running", InstanceState: "running"},
-		},
-		hooks: &conf{
-			PreRestart: []string{"somescript.sh"},
-		},
+		Units:     []Unit{{State: provision.StatusStarted, Machine: 1}},
+		hooks:     &conf{PreRestart: []string{"somescript.sh"}},
 	}
 	w := new(bytes.Buffer)
 	l := stdlog.New(w, "", stdlog.LstdFlags)
@@ -851,14 +832,7 @@ func (s *S) TestInstallDeps(c *C) {
 		Name:      "someApp",
 		Framework: "django",
 		Teams:     []string{s.team.Name},
-		Units: []Unit{
-			{
-				AgentState:        "started",
-				MachineAgentState: "running",
-				InstanceState:     "running",
-				Machine:           4,
-			},
-		},
+		Units:     []Unit{{State: provision.StatusStarted, Machine: 4}},
 	}
 	err = db.Session.Apps().Insert(a)
 	c.Assert(err, IsNil)
@@ -874,14 +848,7 @@ func (s *S) TestInstallDepsWithCustomStdout(c *C) {
 		Name:      "someApp",
 		Framework: "django",
 		Teams:     []string{s.team.Name},
-		Units: []Unit{
-			{
-				AgentState:        "started",
-				MachineAgentState: "running",
-				InstanceState:     "running",
-				Machine:           4,
-			},
-		},
+		Units:     []Unit{{State: provision.StatusStarted, Machine: 4}},
 	}
 	err := db.Session.Apps().Insert(a)
 	c.Assert(err, IsNil)
@@ -900,14 +867,7 @@ func (s *S) TestInstallDepsWithCustomStderr(c *C) {
 		Name:      "someApp",
 		Framework: "django",
 		Teams:     []string{s.team.Name},
-		Units: []Unit{
-			{
-				AgentState:        "started",
-				MachineAgentState: "running",
-				InstanceState:     "running",
-				Machine:           4,
-			},
-		},
+		Units:     []Unit{{State: provision.StatusStarted, Machine: 4}},
 	}
 	err := db.Session.Apps().Insert(a)
 	c.Assert(err, IsNil)
@@ -929,14 +889,7 @@ func (s *S) TestRestart(c *C) {
 		Name:      "someApp",
 		Framework: "django",
 		Teams:     []string{s.team.Name},
-		Units: []Unit{
-			{
-				AgentState:        "started",
-				MachineAgentState: "running",
-				InstanceState:     "running",
-				Machine:           4,
-			},
-		},
+		Units:     []Unit{{State: provision.StatusStarted, Machine: 4}},
 	}
 	var b bytes.Buffer
 	err = Restart(&a, &b)
@@ -954,17 +907,8 @@ func (s *S) TestRestartRunPreRestartHook(c *C) {
 		Name:      "someApp",
 		Framework: "django",
 		Teams:     []string{s.team.Name},
-		Units: []Unit{
-			{
-				AgentState:        "started",
-				MachineAgentState: "running",
-				InstanceState:     "running",
-				Machine:           4,
-			},
-		},
-		hooks: &conf{
-			PreRestart: []string{"pre.sh"},
-		},
+		Units:     []Unit{{State: provision.StatusStarted, Machine: 4}},
+		hooks:     &conf{PreRestart: []string{"pre.sh"}},
 	}
 	var buf bytes.Buffer
 	err = Restart(&a, &buf)
@@ -982,17 +926,8 @@ func (s *S) TestRestartRunsPosRestartHook(c *C) {
 		Name:      "someApp",
 		Framework: "django",
 		Teams:     []string{s.team.Name},
-		Units: []Unit{
-			{
-				AgentState:        "started",
-				MachineAgentState: "running",
-				InstanceState:     "running",
-				Machine:           4,
-			},
-		},
-		hooks: &conf{
-			PosRestart: []string{"pos.sh"},
-		},
+		Units:     []Unit{{State: provision.StatusStarted, Machine: 4}},
+		hooks:     &conf{PosRestart: []string{"pos.sh"}},
 	}
 	var buf bytes.Buffer
 	err = Restart(&a, &buf)
@@ -1157,12 +1092,10 @@ func (s *S) TestRun(c *C) {
 		Name: "myapp",
 		Units: []Unit{
 			{
-				Name:              "someapp/0",
-				Type:              "django",
-				Machine:           10,
-				AgentState:        "started",
-				MachineAgentState: "running",
-				InstanceState:     "running",
+				Name:    "i-0800",
+				Type:    "django",
+				Machine: 10,
+				State:   provision.StatusStarted,
 			},
 		},
 	}
@@ -1179,9 +1112,7 @@ func (s *S) TestSerializeEnvVars(c *C) {
 	app := App{
 		Name:  "time",
 		Teams: []string{s.team.Name},
-		Units: []Unit{
-			{AgentState: "started", MachineAgentState: "running", InstanceState: "running", Machine: 1},
-		},
+		Units: []Unit{{State: provision.StatusStarted, Machine: 1}},
 		Env: map[string]bind.EnvVar{
 			"http_proxy": {
 				Name:   "http_proxy",
