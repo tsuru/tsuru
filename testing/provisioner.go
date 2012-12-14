@@ -100,15 +100,6 @@ func NewFakeProvisioner() *FakeProvisioner {
 	return &p
 }
 
-func (p *FakeProvisioner) FindApp(app provision.App) int {
-	for i, a := range p.apps {
-		if a.GetName() == app.GetName() {
-			return i
-		}
-	}
-	return -1
-}
-
 func (p *FakeProvisioner) getError(method string) error {
 	select {
 	case fail := <-p.failures:
@@ -119,6 +110,25 @@ func (p *FakeProvisioner) getError(method string) error {
 	case <-time.After(1e6):
 	}
 	return nil
+}
+
+func (p *FakeProvisioner) GetCmds(cmd string, app provision.App) []Cmd {
+	var cmds []Cmd
+	for _, c := range p.Cmds {
+		if c.Cmd == cmd && app.GetName() == c.App.GetName() {
+			cmds = append(cmds, c)
+		}
+	}
+	return cmds
+}
+
+func (p *FakeProvisioner) FindApp(app provision.App) int {
+	for i, a := range p.apps {
+		if a.GetName() == app.GetName() {
+			return i
+		}
+	}
+	return -1
 }
 
 func (p *FakeProvisioner) PrepareOutput(b []byte) {
