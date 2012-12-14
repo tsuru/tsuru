@@ -32,17 +32,6 @@ import (
 	"time"
 )
 
-var output = `2012-06-05 17:03:36,887 WARNING ssl-hostname-verification is disabled for this environment
-2012-06-05 17:03:36,887 WARNING EC2 API calls not using secure transport
-2012-06-05 17:03:36,887 WARNING S3 API calls not using secure transport
-2012-06-05 17:03:36,887 WARNING Ubuntu Cloud Image lookups encrypted but not authenticated
-2012-06-05 17:03:36,896 INFO Connecting to environment...
-2012-06-05 17:03:37,599 INFO Connected to environment.
-2012-06-05 17:03:37,727 INFO Connecting to machine 0 at 10.170.0.191
-export DATABASE_HOST=localhost
-export DATABASE_USER=root
-export DATABASE_PASSWORD=secret`
-
 type testHandler struct {
 	body    [][]byte
 	method  []string
