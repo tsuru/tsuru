@@ -5,6 +5,7 @@
 package testing
 
 import (
+	"errors"
 	"github.com/globocom/tsuru/provision"
 	"io"
 	"strconv"
@@ -187,18 +188,30 @@ func (p *FakeProvisioner) ExecuteCommand(stdout, stderr io.Writer, app provision
 	p.Cmds = append(p.Cmds, command)
 	select {
 	case output = <-p.outputs:
-		stdout.Write(output)
-	case fail := <-p.failures:
 		select {
-		case output = <-p.outputs:
-			stderr.Write(output)
+		case fail := <-p.failures:
+			if fail.method == "ExecuteCommand" {
+				stderr.Write(output)
+				return fail.err
+			} else {
+				p.failures <- fail
+			}
 		case <-time.After(1e6):
+			stdout.Write(output)
 		}
+	case fail := <-p.failures:
 		if fail.method == "ExecuteCommand" {
 			err = fail.err
+			select {
+			case output = <-p.outputs:
+				stderr.Write(output)
+			case <-time.After(1e6):
+			}
 		} else {
 			p.failures <- fail
 		}
+	case <-time.After(2e9):
+		return errors.New("FakeProvisiner timed out waiting for output.")
 	}
 	return err
 }
