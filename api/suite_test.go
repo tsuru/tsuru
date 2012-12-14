@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"github.com/globocom/config"
 	"github.com/globocom/tsuru/api/auth"
+	"github.com/globocom/tsuru/app"
 	"github.com/globocom/tsuru/db"
 	fsTesting "github.com/globocom/tsuru/fs/testing"
 	tsuruTesting "github.com/globocom/tsuru/testing"
@@ -21,10 +22,11 @@ import (
 func Test(t *testing.T) { TestingT(t) }
 
 type S struct {
-	team auth.Team
-	user *auth.User
-	rfs  *fsTesting.RecordingFs
-	t    *tsuruTesting.T
+	team        auth.Team
+	user        *auth.User
+	rfs         *fsTesting.RecordingFs
+	t           *tsuruTesting.T
+	provisioner *tsuruTesting.FakeProvisioner
 }
 
 var _ = Suite(&S{})
@@ -78,6 +80,8 @@ func (s *S) SetUpSuite(c *C) {
 	s.createUserAndTeam(c)
 	s.t.StartAmzS3AndIAM(c)
 	s.t.SetGitConfs(c)
+	s.provisioner = tsuruTesting.NewFakeProvisioner()
+	app.Provisioner = s.provisioner
 }
 
 func (s *S) TearDownSuite(c *C) {
