@@ -477,10 +477,6 @@ func RestartHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error 
 	if err != nil {
 		return err
 	}
-	if instance.Unit().Ip == "" {
-		msg := "You can't restart this app because it doesn't have an IP yet."
-		return &errors.Http{Code: http.StatusPreconditionFailed, Message: msg}
-	}
 	return app.Restart(&instance, w)
 }
 

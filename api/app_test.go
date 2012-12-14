@@ -2107,30 +2107,6 @@ func (s *S) TestRestartHandlerReturns403IfTheUserDoesNotHaveAccessToTheApp(c *C)
 	c.Assert(e.Code, Equals, http.StatusForbidden)
 }
 
-func (s *S) TestRestartHandlerReturns412IfTheUnitOfTheAppDoesNotHaveIp(c *C) {
-	dir, err := commandmocker.Add("juju", "")
-	defer commandmocker.Remove(dir)
-	c.Assert(err, IsNil)
-	a := app.App{
-		Name:  "stress",
-		Teams: []string{s.team.Name},
-		Units: []app.Unit{{Ip: "", Machine: 10}},
-	}
-	err = db.Session.Apps().Insert(a)
-	c.Assert(err, IsNil)
-	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
-	url := fmt.Sprintf("/apps/%s/restart?:name=%s", a.Name, a.Name)
-	request, err := http.NewRequest("GET", url, nil)
-	c.Assert(err, IsNil)
-	recorder := httptest.NewRecorder()
-	err = RestartHandler(recorder, request, s.user)
-	c.Assert(err, NotNil)
-	e, ok := err.(*errors.Http)
-	c.Assert(ok, Equals, true)
-	c.Assert(e.Code, Equals, http.StatusPreconditionFailed)
-	c.Assert(e.Message, Equals, "You can't restart this app because it doesn't have an IP yet.")
-}
-
 func (s *S) TestAddLogHandler(c *C) {
 	a := app.App{
 		Name:      "myapp",
