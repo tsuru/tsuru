@@ -8,50 +8,32 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"unsafe"
 )
-
-//#include <termios.h>
-import "C"
-
-func tcsetattr(fd uintptr, when int, termios *Termios) {
-	var cterm C.struct_termios
-	var cc_t [C.NCCS]C.cc_t
-	for i, c := range termios.Cc {
-		cc_t[i] = C.cc_t(c)
-	}
-	cterm.c_iflag = C.tcflag_t(termios.Iflag)
-	cterm.c_oflag = C.tcflag_t(termios.Oflag)
-	cterm.c_cflag = C.tcflag_t(termios.Cflag)
-	cterm.c_lflag = C.tcflag_t(termios.Lflag)
-	cterm.c_cc = cc_t
-	cterm.c_ispeed = C.speed_t(termios.Ispeed)
-	cterm.c_ospeed = C.speed_t(termios.Ospeed)
-	C.tcsetattr(C.int(fd), C.int(when), &cterm)
-}
 
 func ReadPassword(fd uintptr) (string, error) {
 	var termios, oldState Termios
-	tcgetattr(fd, &termios)
-	oldState = termios
-	termios.Lflag &^= syscall.ECHO
-	tcsetattr(fd, 0, &termios)
-	finish := make(chan bool)
-	// Restoring after reading the password
-	defer func() {
-		tcsetattr(fd, 0, &oldState)
-		finish <- true
-	}()
-	// Restoring on SIGINT
-	sigChan := make(chan os.Signal)
-	go func(c chan os.Signal, t Termios, fd uintptr) {
-		select {
-		case <-c:
-			tcsetattr(fd, 0, &t)
-			os.Exit(1)
-		case <-finish:
+	if _, _, e := syscall.Syscall6(syscall.SYS_IOCTL, fd, uintptr(TCGETS),
+		uintptr(unsafe.Pointer(&termios)), 0, 0, 0); e == 0 {
+		oldState = termios
+		termios.Lflag &^= syscall.ECHO
+		if _, _, e := syscall.Syscall6(syscall.SYS_IOCTL, fd, uintptr(TCSETS),
+			uintptr(unsafe.Pointer(&termios)), 0, 0, 0); e == 0 {
 		}
-	}(sigChan, oldState, fd)
-	signal.Notify(sigChan, syscall.SIGINT)
+		// Restoring after reading the password
+		defer syscall.Syscall6(syscall.SYS_IOCTL, fd, uintptr(TCSETS), uintptr(unsafe.Pointer(&oldState)), 0, 0, 0)
+		// Restoring on SIGINT
+		sigChan := make(chan os.Signal, 1)
+		go func(c chan os.Signal, t Termios, fd uintptr) {
+			select {
+			case <-c:
+				syscall.Syscall6(syscall.SYS_IOCTL, fd, uintptr(TCSETS), uintptr(unsafe.Pointer(&oldState)), 0, 0, 0)
+				os.Exit(1)
+			}
+		}(sigChan, oldState, fd)
+		defer close(sigChan)
+		signal.Notify(sigChan, syscall.SIGINT)
+	}
 	var buf [16]byte
 	var pass []byte
 	for {
