@@ -112,10 +112,12 @@ func (p *FakeProvisioner) getError(method string) error {
 	return nil
 }
 
+// GetCmds returns a list of commands executed in an app. If you don't specify
+// the command (""), it will return all commands executed in the given app.
 func (p *FakeProvisioner) GetCmds(cmd string, app provision.App) []Cmd {
 	var cmds []Cmd
 	for _, c := range p.Cmds {
-		if c.Cmd == cmd && app.GetName() == c.App.GetName() {
+		if (cmd == "" || c.Cmd == cmd) && app.GetName() == c.App.GetName() {
 			cmds = append(cmds, c)
 		}
 	}
@@ -144,6 +146,7 @@ func (p *FakeProvisioner) Reset() {
 	close(p.failures)
 	p.outputs = make(chan []byte, 8)
 	p.failures = make(chan failure, 8)
+	p.Cmds = nil
 }
 
 func (p *FakeProvisioner) Provision(app provision.App) error {
