@@ -767,95 +767,53 @@ func (s *S) TestSkipsPosRestartWhenPosRestartSectionDoesNotExists(c *C) {
 }
 
 func (s *S) TestInstallDeps(c *C) {
-	tmpdir, err := commandmocker.Add("juju", "$*")
-	c.Assert(err, IsNil)
-	defer commandmocker.Remove(tmpdir)
+	s.provisioner.PrepareOutput([]byte("dependencies installed"))
 	a := App{
 		Name:      "someApp",
 		Framework: "django",
 		Teams:     []string{s.team.Name},
-		Units:     []Unit{{State: provision.StatusStarted, Machine: 4}},
+		State:     provision.StatusStarted,
 	}
-	err = db.Session.Apps().Insert(a)
+	err := db.Session.Apps().Insert(a)
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
 	var buf bytes.Buffer
 	err = InstallDeps(&a, &buf)
 	c.Assert(err, IsNil)
-	c.Assert(buf.String(), Equals, "ssh -o StrictHostKeyChecking no -q 4 /var/lib/tsuru/hooks/dependencies")
-}
-
-func (s *S) TestInstallDepsWithCustomStdout(c *C) {
-	a := App{
-		Name:      "someApp",
-		Framework: "django",
-		Teams:     []string{s.team.Name},
-		Units:     []Unit{{State: provision.StatusStarted, Machine: 4}},
-	}
-	err := db.Session.Apps().Insert(a)
-	c.Assert(err, IsNil)
-	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
-	tmpdir, err := commandmocker.Add("juju", "$*")
-	c.Assert(err, IsNil)
-	defer commandmocker.Remove(tmpdir)
-	var b bytes.Buffer
-	err = InstallDeps(&a, &b)
-	c.Assert(err, IsNil)
-	c.Assert(b.String(), Matches, `.* /var/lib/tsuru/hooks/dependencies`)
-}
-
-func (s *S) TestInstallDepsWithCustomStderr(c *C) {
-	a := App{
-		Name:      "someApp",
-		Framework: "django",
-		Teams:     []string{s.team.Name},
-		Units:     []Unit{{State: provision.StatusStarted, Machine: 4}},
-	}
-	err := db.Session.Apps().Insert(a)
-	c.Assert(err, IsNil)
-	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
-	tmpdir, err := commandmocker.Error("juju", "$*", 42)
-	c.Assert(err, IsNil)
-	defer commandmocker.Remove(tmpdir)
-	var b bytes.Buffer
-	err = InstallDeps(&a, &b)
-	c.Assert(err, NotNil)
-	c.Assert(b.String(), Matches, `.* /var/lib/tsuru/hooks/dependencies`)
+	c.Assert(buf.String(), Equals, "dependencies installed")
+	cmds := s.provisioner.GetCmds("/var/lib/tsuru/hooks/dependencies", &a)
+	c.Assert(cmds, HasLen, 1)
 }
 
 func (s *S) TestRestart(c *C) {
-	tmpdir, err := commandmocker.Add("juju", "$*")
-	c.Assert(err, IsNil)
-	defer commandmocker.Remove(tmpdir)
+	s.provisioner.PrepareOutput([]byte("nothing"))
 	a := App{
 		Name:      "someApp",
 		Framework: "django",
 		Teams:     []string{s.team.Name},
-		Units:     []Unit{{State: provision.StatusStarted, Machine: 4}},
+		State:     provision.StatusStarted,
 	}
 	var b bytes.Buffer
-	err = Restart(&a, &b)
+	err := Restart(&a, &b)
 	c.Assert(err, IsNil)
 	result := strings.Replace(b.String(), "\n", "#", -1)
-	c.Assert(result, Matches, ".*/var/lib/tsuru/hooks/restart.*")
 	c.Assert(result, Matches, ".*# ---> Restarting your app#.*")
+	cmds := s.provisioner.GetCmds("/var/lib/tsuru/hooks/restart", &a)
+	c.Assert(cmds, HasLen, 1)
 }
 
 func (s *S) TestRestartRunsPreRestartHook(c *C) {
-	tmpdir, err := commandmocker.Add("juju", "$*")
-	c.Assert(err, IsNil)
-	defer commandmocker.Remove(tmpdir)
 	s.provisioner.PrepareOutput([]byte("pre-restart-by-restart"))
+	s.provisioner.PrepareOutput([]byte("restart"))
 	a := App{
 		Name:      "someApp",
 		Framework: "django",
 		Teams:     []string{s.team.Name},
-		Units:     []Unit{{State: provision.StatusStarted, Machine: 4}},
 		State:     provision.StatusStarted,
 		hooks:     &conf{PreRestart: []string{"pre.sh"}},
 	}
 	var buf bytes.Buffer
-	err = Restart(&a, &buf)
+	err := Restart(&a, &buf)
 	c.Assert(err, IsNil)
 	content := buf.String()
 	content = strings.Replace(content, "\n", "###", -1)
@@ -863,20 +821,17 @@ func (s *S) TestRestartRunsPreRestartHook(c *C) {
 }
 
 func (s *S) TestRestartRunsPosRestartHook(c *C) {
-	tmpdir, err := commandmocker.Add("juju", "$*")
-	c.Assert(err, IsNil)
-	defer commandmocker.Remove(tmpdir)
 	s.provisioner.PrepareOutput([]byte("pos-restart-by-restart"))
+	s.provisioner.PrepareOutput([]byte("restart"))
 	a := App{
 		Name:      "someApp",
 		Framework: "django",
 		Teams:     []string{s.team.Name},
-		Units:     []Unit{{State: provision.StatusStarted, Machine: 4}},
 		State:     provision.StatusStarted,
 		hooks:     &conf{PosRestart: []string{"pos.sh"}},
 	}
 	var buf bytes.Buffer
-	err = Restart(&a, &buf)
+	err := Restart(&a, &buf)
 	c.Assert(err, IsNil)
 	content := buf.String()
 	content = strings.Replace(content, "\n", "###", -1)

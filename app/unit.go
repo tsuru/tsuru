@@ -25,11 +25,6 @@ type Unit struct {
 	app     *App
 }
 
-func (u *Unit) executeHook(hook string, w io.Writer) error {
-	cmd := fmt.Sprintf("/var/lib/tsuru/hooks/%s", hook)
-	return u.Command(w, w, cmd)
-}
-
 func (u *Unit) Command(stdout, stderr io.Writer, cmds ...string) error {
 	if u.State != provision.StatusStarted {
 		return fmt.Errorf("Unit must be started to run commands, but it is %q.", u.State)

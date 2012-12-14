@@ -333,22 +333,26 @@ func (a *App) posRestart(w io.Writer) error {
 	return a.runHook(w, a.hooks.PosRestart, "pos-restart")
 }
 
-// Run executes the command in app units
+// Run executes the command in app units, sourcing apprc before running the
+// command.
 func (a *App) Run(cmd string, w io.Writer) error {
-	if a.State != provision.StatusStarted {
-		return fmt.Errorf("App must be started to run commands, but it is %q.", a.State)
-	}
 	a.Log(fmt.Sprintf("running '%s'", cmd), "tsuru")
 	source := "[ -f /home/application/apprc ] && source /home/application/apprc"
 	cd := "[ -d /home/application/current ] && cd /home/application/current"
 	cmd = fmt.Sprintf("%s; %s; %s", source, cd, cmd)
+	return a.run(cmd, w)
+}
+
+func (a *App) run(cmd string, w io.Writer) error {
+	if a.State != provision.StatusStarted {
+		return fmt.Errorf("App must be started to run commands, but it is %q.", a.State)
+	}
 	return Provisioner.ExecuteCommand(w, w, a, cmd)
 }
 
 // Restart runs the restart hook for the app
 // and returns your output.
 func Restart(a *App, w io.Writer) error {
-	u := a.Unit()
 	a.Log("executing hook to restart", "tsuru")
 	err := a.preRestart(w)
 	if err != nil {
@@ -362,14 +366,13 @@ func Restart(a *App, w io.Writer) error {
 	if err != nil {
 		return err
 	}
-	return u.executeHook("restart", w)
+	return a.run("/var/lib/tsuru/hooks/restart", w)
 }
 
 // InstallDeps runs the dependencies hook for the app
 // and returns your output.
 func InstallDeps(a *App, w io.Writer) error {
-	a.Log("executing hook dependencies", "tsuru")
-	return a.Unit().executeHook("dependencies", w)
+	return a.run("/var/lib/tsuru/hooks/dependencies", w)
 }
 
 func (a *App) Unit() *Unit {

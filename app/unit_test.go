@@ -95,26 +95,6 @@ func (s *S) TestCommandReturnErrorIfTheUnitIsNotStarted(c *C) {
 	c.Assert(err.Error(), Equals, expected)
 }
 
-func (s *S) TestExecuteHook(c *C) {
-	dir, err := commandmocker.Add("juju", "")
-	c.Assert(err, IsNil)
-	defer commandmocker.Remove(dir)
-	appUnit := Unit{Type: "django", Name: "myUnit", app: &App{}, State: provision.StatusStarted}
-	err = appUnit.executeHook("requirements", nil)
-	c.Assert(err, IsNil)
-}
-
-func (s *S) TestExecuteHookWithCustomWriter(c *C) {
-	dir, err := commandmocker.Add("juju", "$*")
-	c.Assert(err, IsNil)
-	defer commandmocker.Remove(dir)
-	appUnit := Unit{Type: "django", Name: "myUnit", State: provision.StatusStarted, app: &App{}}
-	var b bytes.Buffer
-	err = appUnit.executeHook("requirements", &b)
-	c.Assert(err, IsNil)
-	c.Assert(b.String(), Matches, `.* \d /var/lib/tsuru/hooks/requirements`)
-}
-
 func (s *S) TestWriteEnvVars(c *C) {
 	tmpdir, err := commandmocker.Add("juju", "$*")
 	c.Assert(err, IsNil)
