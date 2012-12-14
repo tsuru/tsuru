@@ -116,7 +116,7 @@ func (p *FakeProvisioner) getError(method string) error {
 			return fail.err
 		}
 		p.failures <- fail
-	case <-time.After(1e9):
+	case <-time.After(1e6):
 	}
 	return nil
 }
