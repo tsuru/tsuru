@@ -94,6 +94,7 @@ func (s *S) TearDownSuite(c *C) {
 
 func (s *S) TearDownTest(c *C) {
 	s.t.RollbackGitConfs(c)
+	s.provisioner.Reset()
 }
 
 func (s *S) getTestData(p ...string) io.ReadCloser {
