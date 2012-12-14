@@ -8,7 +8,6 @@ import (
 	"bytes"
 	"crypto/rand"
 	"fmt"
-	"github.com/globocom/commandmocker"
 	"github.com/globocom/tsuru/api/bind"
 	"github.com/globocom/tsuru/db"
 	"labix.org/v2/mgo/bson"
@@ -97,16 +96,13 @@ func (s *S) TestDestroyBucket(c *C) {
 	h := testHandler{}
 	ts := s.t.StartGandalfTestServer(&h)
 	defer ts.Close()
-	dir, err := commandmocker.Add("juju", "")
-	c.Assert(err, IsNil)
-	defer commandmocker.Remove(dir)
 	app := App{
 		Name:  "battery",
 		Units: []Unit{{Machine: 1}},
 	}
 	bucket := fmt.Sprintf("battery%x", patchRandomReader())
 	defer unpatchRandomReader()
-	err = CreateApp(&app)
+	err := CreateApp(&app)
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": app.Name})
 	err = destroyBucket(&app)

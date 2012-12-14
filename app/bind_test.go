@@ -5,7 +5,6 @@
 package app
 
 import (
-	"github.com/globocom/commandmocker"
 	"github.com/globocom/tsuru/api/bind"
 	"github.com/globocom/tsuru/api/service"
 	"github.com/globocom/tsuru/db"
@@ -23,15 +22,12 @@ func (s *S) TestDestroyShouldUnbindAppFromInstance(c *C) {
 	h := testHandler{}
 	tsg := s.t.StartGandalfTestServer(&h)
 	defer tsg.Close()
-	dir, err := commandmocker.Add("juju", "")
-	c.Assert(err, IsNil)
-	defer commandmocker.Remove(dir)
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNoContent)
 	}))
 	defer ts.Close()
 	srvc := service.Service{Name: "my", Endpoint: map[string]string{"production": ts.URL}}
-	err = srvc.Create()
+	err := srvc.Create()
 	c.Assert(err, IsNil)
 	defer db.Session.Services().Remove(bson.M{"_id": srvc.Name})
 	instance := service.ServiceInstance{Name: "MyInstance", Apps: []string{"whichapp"}, ServiceName: srvc.Name}

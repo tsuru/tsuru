@@ -9,7 +9,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/globocom/commandmocker"
 	"github.com/globocom/config"
 	"github.com/globocom/tsuru/api/auth"
 	"github.com/globocom/tsuru/api/bind"
@@ -25,17 +24,6 @@ import (
 	"path"
 	"strings"
 )
-
-var output = `2012-06-05 17:03:36,887 WARNING ssl-hostname-verification is disabled for this environment
-2012-06-05 17:03:36,887 WARNING EC2 API calls not using secure transport
-2012-06-05 17:03:36,887 WARNING S3 API calls not using secure transport
-2012-06-05 17:03:36,887 WARNING Ubuntu Cloud Image lookups encrypted but not authenticated
-2012-06-05 17:03:36,896 INFO Connecting to environment...
-2012-06-05 17:03:37,599 INFO Connected to environment.
-2012-06-05 17:03:37,727 INFO Connecting to machine 0 at 10.170.0.191
-export DATABASE_HOST=localhost
-export DATABASE_USER=root
-export DATABASE_PASSWORD=secret`
 
 func (s *S) TestGet(c *C) {
 	newApp := App{Name: "myApp", Framework: "Django"}
@@ -172,10 +160,7 @@ func (s *S) TestCreateApp(c *C) {
 }
 
 func (s *S) TestCantCreateTwoAppsWithTheSameName(c *C) {
-	dir, err := commandmocker.Add("juju", "")
-	defer commandmocker.Remove(dir)
-	c.Assert(err, IsNil)
-	err = db.Session.Apps().Insert(bson.M{"name": "appName"})
+	err := db.Session.Apps().Insert(bson.M{"name": "appName"})
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": "appName"})
 	a := App{Name: "appName"}
@@ -655,11 +640,8 @@ pos-restart:
 }
 
 func (s *S) TestLoadHooksWithError(c *C) {
-	dir, err := commandmocker.Error("juju", "something", 1)
-	c.Assert(err, IsNil)
-	defer commandmocker.Remove(dir)
 	a := App{Name: "something", Framework: "django"}
-	err = a.loadHooks()
+	err := a.loadHooks()
 	c.Assert(err, IsNil)
 	c.Assert(a.hooks.PreRestart, IsNil)
 	c.Assert(a.hooks.PosRestart, IsNil)
@@ -731,14 +713,11 @@ func (s *S) TestPosRestart(c *C) {
 }
 
 func (s *S) TestPosRestartWhenAppConfDoesNotExists(c *C) {
-	dir, err := commandmocker.Add("juju", output)
-	c.Assert(err, IsNil)
-	defer commandmocker.Remove(dir)
 	a := App{Name: "something", Framework: "django"}
 	w := new(bytes.Buffer)
 	l := stdlog.New(w, "", stdlog.LstdFlags)
 	log.SetLogger(l)
-	err = a.posRestart(w)
+	err := a.posRestart(w)
 	c.Assert(err, IsNil)
 	st := strings.Split(w.String(), "\n")
 	c.Assert(st[len(st)-2], Matches, ".*Skipping pos-restart hooks...")
@@ -833,11 +812,8 @@ func (s *S) TestRestartRunsPosRestartHook(c *C) {
 }
 
 func (s *S) TestLog(c *C) {
-	dir, err := commandmocker.Add("juju", "")
-	defer commandmocker.Remove(dir)
-	c.Assert(err, IsNil)
 	a := App{Name: "newApp"}
-	err = db.Session.Apps().Insert(a)
+	err := db.Session.Apps().Insert(a)
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
 	err = a.Log("last log msg", "tsuru")

@@ -6,7 +6,6 @@ package app
 
 import (
 	"fmt"
-	"github.com/globocom/commandmocker"
 	"github.com/globocom/config"
 	"github.com/globocom/tsuru/api/auth"
 	"github.com/globocom/tsuru/db"
@@ -54,9 +53,6 @@ func (s *S) TestInsertAppBackward(c *C) {
 func (s *S) TestCreateBucketForward(c *C) {
 	patchRandomReader()
 	defer unpatchRandomReader()
-	dir, err := commandmocker.Add("juju", "$*")
-	c.Assert(err, IsNil)
-	defer commandmocker.Remove(dir)
 	server := FakeQueueServer{}
 	server.Start("127.0.0.1:0")
 	defer server.Stop()
