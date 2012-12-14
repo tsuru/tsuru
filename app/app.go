@@ -101,7 +101,7 @@ func CreateApp(a *App) error {
 		new(insertApp),
 		new(createBucketIam),
 		new(createRepository),
-		new(provision),
+		new(provisionApp),
 	}
 	return execute(a, actions)
 }

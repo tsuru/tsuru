@@ -14,6 +14,7 @@ import (
 	"io/ioutil"
 	"labix.org/v2/mgo/bson"
 	. "launchpad.net/gocheck"
+	"net/http"
 )
 
 func (s *S) TestInsertAppForward(c *C) {
@@ -79,7 +80,7 @@ func (s *S) TestCreateBucketForward(c *C) {
 	err = bucket.forward(&a)
 	c.Assert(err, IsNil)
 	defer bucket.backward(&a)
-	de := new(provision)
+	de := new(provisionApp)
 	err = de.forward(&a)
 	c.Assert(err, IsNil)
 	defer Provisioner.Destroy(&a)
@@ -134,7 +135,7 @@ func (s *S) TestCreateBucketBackward(c *C) {
 }
 
 func (s *S) TestDeployForward(c *C) {
-	action := new(deploy)
+	action := new(provisionApp)
 	a := App{
 		Name:      "appname",
 		Framework: "django",

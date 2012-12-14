@@ -67,16 +67,16 @@ func (a *createBucketIam) backward(app *App) {
 	destroyBucket(app)
 }
 
-// provision is an implementation for the action interface.
-type provision struct{}
+// provisionApp is an implementation for the action interface.
+type provisionApp struct{}
 
 // provision forward provisions the app.
-func (a *provision) forward(app *App) error {
+func (a *provisionApp) forward(app *App) error {
 	return app.deploy()
 }
 
 // provision backward does nothing.
-func (a *provision) backward(app *App) {}
+func (a *provisionApp) backward(app *App) {}
 
 // createRepository is an implementation for the action interface.
 type createRepository struct{}
