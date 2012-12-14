@@ -891,22 +891,15 @@ func (s *S) TestRevokeAccessFromTeamRemovesRepositoryFromGandalf(c *C) {
 }
 
 func (s *S) TestRunHandlerShouldExecuteTheGivenCommandInTheGivenApp(c *C) {
-	dir, err := commandmocker.Add("juju", "$*")
-	c.Assert(err, IsNil)
-	defer commandmocker.Remove(dir)
-	u := app.Unit{
-		Name:    "someapp/0",
-		Type:    "django",
-		Machine: 10,
-		State:   provision.StatusStarted,
-	}
+	s.provisioner.PrepareOutput([]byte("lots of files"))
 	a := app.App{
 		Name:      "secrets",
 		Framework: "arch enemy",
 		Teams:     []string{s.team.Name},
-		Units:     []app.Unit{u},
+		Units:     []app.Unit{{Name: "i-0800", Machine: 10}},
+		State:     provision.StatusStarted,
 	}
-	err = db.Session.Apps().Insert(a)
+	err := db.Session.Apps().Insert(a)
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
 	url := fmt.Sprintf("/apps/%s/run/?:name=%s", a.Name, a.Name)
@@ -915,40 +908,36 @@ func (s *S) TestRunHandlerShouldExecuteTheGivenCommandInTheGivenApp(c *C) {
 	recorder := httptest.NewRecorder()
 	err = RunCommand(recorder, request, s.user)
 	c.Assert(err, IsNil)
-	c.Assert(recorder.Body.String(), Equals, "ssh -o StrictHostKeyChecking no -q 10 [ -f /home/application/apprc ] && source /home/application/apprc; [ -d /home/application/current ] && cd /home/application/current; ls")
+	c.Assert(recorder.Body.String(), Equals, "lots of files")
 	c.Assert(recorder.Header().Get("Content-Type"), Equals, "text")
+	expected := "[ -f /home/application/apprc ] && source /home/application/apprc;"
+	expected += " [ -d /home/application/current ] && cd /home/application/current;"
+	expected += " ls"
+	cmds := s.provisioner.GetCmds(expected, &a)
+	c.Assert(cmds, HasLen, 1)
 }
 
 func (s *S) TestRunHandlerReturnsTheOutputOfTheCommandEvenIfItFails(c *C) {
-	dir, err := commandmocker.Add("juju", "$*")
-	c.Assert(err, IsNil)
-	u := app.Unit{
-		Name:    "someapp/0",
-		Type:    "django",
-		Machine: 10,
-		State:   provision.StatusStarted,
-	}
+	s.provisioner.PrepareFailure("ExecuteCommand", &errors.Http{Code: 500, Message: "something went wrong"})
+	s.provisioner.PrepareOutput([]byte("failure output"))
 	a := app.App{
 		Name:      "secrets",
 		Framework: "arch enemy",
 		Teams:     []string{s.team.Name},
-		Units:     []app.Unit{u},
+		Units:     []app.Unit{{Name: "i-0800"}},
+		State:     provision.StatusStarted,
 	}
-	err = db.Session.Apps().Insert(a)
-	c.Assert(err, IsNil)
-	commandmocker.Remove(dir)
+	err := db.Session.Apps().Insert(a)
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
 	url := fmt.Sprintf("/apps/%s/run/?:name=%s", a.Name, a.Name)
 	request, err := http.NewRequest("POST", url, strings.NewReader("ls"))
 	c.Assert(err, IsNil)
-	errdir, err := commandmocker.Error("juju", "juju failed", 1)
-	c.Assert(err, IsNil)
-	defer commandmocker.Remove(errdir)
 	recorder := httptest.NewRecorder()
 	err = RunCommand(recorder, request, s.user)
 	c.Assert(err, NotNil)
-	c.Assert(recorder.Body.String(), Equals, "juju failed")
+	c.Assert(err.Error(), Equals, "something went wrong")
+	c.Assert(recorder.Body.String(), Equals, "failure output")
 }
 
 func (s *S) TestRunHandlerReturnsBadRequestIfTheCommandIsMissing(c *C) {
@@ -2051,21 +2040,13 @@ func (s *S) TestUnbindHandlerReturns403IfTheUserDoesNotHaveAccessToTheApp(c *C) 
 }
 
 func (s *S) TestRestartHandler(c *C) {
-	tmpdir, err := commandmocker.Add("juju", "$*")
-	c.Assert(err, IsNil)
-	defer commandmocker.Remove(tmpdir)
+	s.provisioner.PrepareOutput([]byte("restarted"))
 	a := app.App{
 		Name:  "stress",
 		Teams: []string{s.team.Name},
-		Units: []app.Unit{
-			{
-				State:   provision.StatusStarted,
-				Machine: 10,
-				Ip:      "20.20.20.20",
-			},
-		},
+		State: provision.StatusStarted,
 	}
-	err = db.Session.Apps().Insert(a)
+	err := db.Session.Apps().Insert(a)
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
 	url := fmt.Sprintf("/apps/%s/restart?:name=%s", a.Name, a.Name)
@@ -2074,9 +2055,7 @@ func (s *S) TestRestartHandler(c *C) {
 	recorder := httptest.NewRecorder()
 	err = RestartHandler(recorder, request, s.user)
 	c.Assert(err, IsNil)
-	c.Assert(commandmocker.Ran(tmpdir), Equals, true)
 	result := strings.Replace(recorder.Body.String(), "\n", "#", -1)
-	c.Assert(result, Matches, ".*/var/lib/tsuru/hooks/restart.*")
 	c.Assert(result, Matches, ".*# ---> Restarting your app#.*")
 }
 
