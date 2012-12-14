@@ -12,9 +12,12 @@ import (
 	"github.com/globocom/tsuru/api"
 	"github.com/globocom/tsuru/api/auth"
 	"github.com/globocom/tsuru/api/service/consumption"
-	"github.com/globocom/tsuru/api/service/provision"
+	service_provision "github.com/globocom/tsuru/api/service/provision"
+	"github.com/globocom/tsuru/app"
 	"github.com/globocom/tsuru/db"
 	"github.com/globocom/tsuru/log"
+	"github.com/globocom/tsuru/provision"
+	_ "github.com/globocom/tsuru/provision/juju"
 	stdlog "log"
 	"log/syslog"
 	"net/http"
@@ -64,16 +67,16 @@ func main() {
 	m.Del("/services/c/instances/:name", AuthorizationRequiredHandler(consumption.RemoveServiceInstanceHandler))
 	m.Get("/services/instances/:instance/status", AuthorizationRequiredHandler(consumption.ServiceInstanceStatusHandler))
 
-	m.Get("/services", AuthorizationRequiredHandler(provision.ServicesHandler))
-	m.Post("/services", AuthorizationRequiredHandler(provision.CreateHandler))
-	m.Put("/services", AuthorizationRequiredHandler(provision.UpdateHandler))
-	m.Del("/services/:name", AuthorizationRequiredHandler(provision.DeleteHandler))
+	m.Get("/services", AuthorizationRequiredHandler(service_provision.ServicesHandler))
+	m.Post("/services", AuthorizationRequiredHandler(service_provision.CreateHandler))
+	m.Put("/services", AuthorizationRequiredHandler(service_provision.UpdateHandler))
+	m.Del("/services/:name", AuthorizationRequiredHandler(service_provision.DeleteHandler))
 	m.Get("/services/:name", AuthorizationRequiredHandler(consumption.ServiceInfoHandler))
 	m.Get("/services/c/:name/doc", AuthorizationRequiredHandler(consumption.Doc))
-	m.Get("/services/:name/doc", AuthorizationRequiredHandler(provision.GetDocHandler))
-	m.Put("/services/:name/doc", AuthorizationRequiredHandler(provision.AddDocHandler))
-	m.Put("/services/:service/:team", AuthorizationRequiredHandler(provision.GrantAccessToTeamHandler))
-	m.Del("/services/:service/:team", AuthorizationRequiredHandler(provision.RevokeAccessFromTeamHandler))
+	m.Get("/services/:name/doc", AuthorizationRequiredHandler(service_provision.GetDocHandler))
+	m.Put("/services/:name/doc", AuthorizationRequiredHandler(service_provision.AddDocHandler))
+	m.Put("/services/:service/:team", AuthorizationRequiredHandler(service_provision.GrantAccessToTeamHandler))
+	m.Del("/services/:service/:team", AuthorizationRequiredHandler(service_provision.RevokeAccessFromTeamHandler))
 
 	m.Del("/apps/:name", AuthorizationRequiredHandler(api.AppDelete))
 	m.Get("/apps/:name/repository/clone", Handler(api.CloneRepositoryHandler))
@@ -105,6 +108,17 @@ func main() {
 	m.Del("/teams/:team/:user", AuthorizationRequiredHandler(auth.RemoveUserFromTeam))
 
 	if !*dry {
+		provisioner, err := config.GetString("provisioner")
+		if err != nil {
+			fmt.Printf("Warning: %q didn't declare a provisioner, using default provisioner.\n", configFile)
+			provisioner = "juju"
+		}
+		app.Provisioner, err = provision.Get(provisioner)
+		if err != nil {
+			fatal(err)
+		}
+		fmt.Printf("Using %q provisioner.\n\n", provisioner)
+
 		listen, err := config.GetString("listen")
 		if err != nil {
 			fatal(err)
