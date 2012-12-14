@@ -759,6 +759,7 @@ func (s *S) TestInstallDeps(c *C) {
 }
 
 func (s *S) TestRestart(c *C) {
+	s.provisioner.PrepareOutput(nil) // loadHooks
 	s.provisioner.PrepareOutput([]byte("nothing"))
 	a := App{
 		Name:      "someApp",
