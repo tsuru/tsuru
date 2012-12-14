@@ -67,18 +67,18 @@ func main() {
 	fmt.Printf("Connected to MongoDB server at %s.\n", connString)
 	fmt.Printf("Using the database %q.\n\n", dbName)
 
-	provisioner, err := config.GetString("provisioner")
-	if err != nil {
-		fmt.Printf("Warning: %q didn't declare a provisioner, using default provisioner.\n", configFile)
-		provisioner = "juju"
-	}
-	app.Provisioner, err = provision.Get(provisioner)
-	if err != nil {
-		fatal(err)
-	}
-	fmt.Printf("Using %q provisioner.\n\n", provisioner)
-
 	if !dry {
+		provisioner, err := config.GetString("provisioner")
+		if err != nil {
+			fmt.Printf("Warning: %q didn't declare a provisioner, using default provisioner.\n", configFile)
+			provisioner = "juju"
+		}
+		app.Provisioner, err = provision.Get(provisioner)
+		if err != nil {
+			fatal(err)
+		}
+		fmt.Printf("Using %q provisioner.\n\n", provisioner)
+
 		handler := MessageHandler{}
 		err = handler.start()
 		if err != nil {
