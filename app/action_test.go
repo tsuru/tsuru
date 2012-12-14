@@ -23,6 +23,10 @@ func (h *helloAction) backward(a *App) {
 	h.rollbacked = true
 }
 
+func (h *helloAction) rollbackItself() bool {
+	return false
+}
+
 type errorAction struct {
 	rollbacked bool
 }
@@ -35,6 +39,26 @@ func (e *errorAction) backward(a *App) {
 	e.rollbacked = true
 }
 
+func (h *errorAction) rollbackItself() bool {
+	return false
+}
+
+type rollingBackItself struct {
+	rolledback bool
+}
+
+func (a *rollingBackItself) forward(app *App) error {
+	return errors.New("")
+}
+
+func (a *rollingBackItself) backward(app *App) {
+	a.rolledback = true
+}
+
+func (a *rollingBackItself) rollbackItself() bool {
+	return true
+}
+
 func (s *S) TestExecute(c *C) {
 	app := App{}
 	h := new(helloAction)
@@ -43,24 +67,34 @@ func (s *S) TestExecute(c *C) {
 	c.Assert(h.executed, Equals, true)
 }
 
-func (s *S) TestRollBack(c *C) {
+func (s *S) TestRollBackFailureOnSecondAction(c *C) {
 	app := App{}
 	h := new(helloAction)
 	e := new(errorAction)
 	err := execute(&app, []action{h, e})
 	c.Assert(err, NotNil)
-	c.Assert(e.rollbacked, Equals, true)
 	c.Assert(h.rollbacked, Equals, true)
+	c.Assert(e.rollbacked, Equals, false)
 }
 
-func (s *S) TestRollBack2(c *C) {
+func (s *S) TestRollBackFailureOnFirstAction(c *C) {
 	app := App{}
 	h := new(helloAction)
 	e := new(errorAction)
 	err := execute(&app, []action{e, h})
 	c.Assert(err, NotNil)
-	c.Assert(e.rollbacked, Equals, true)
+	c.Assert(e.rollbacked, Equals, false)
 	c.Assert(h.rollbacked, Equals, false)
+}
+
+func (s *S) TestRollBackFailureOnRollingbackItSelfAction(c *C) {
+	app := App{}
+	h := new(helloAction)
+	r := new(rollingBackItself)
+	err := execute(&app, []action{h, r})
+	c.Assert(err, NotNil)
+	c.Assert(h.rollbacked, Equals, true)
+	c.Assert(r.rolledback, Equals, true)
 }
 
 func (s *S) TestExecuteShouldReturnsTheActionError(c *C) {

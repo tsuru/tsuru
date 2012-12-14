@@ -9,6 +9,11 @@ package app
 type action interface {
 	forward(app *App) error
 	backward(app *App)
+
+	// rollbackItself indicates whether backward should be called when forward
+	// fail. If false, only previously executed actions will be rolled back on
+	// forward failures.
+	rollbackItself() bool
 }
 
 // execute runs an action list. If an errors ocourrs
@@ -18,6 +23,9 @@ func execute(a *App, actions []action) error {
 	for index, action := range actions {
 		err := action.forward(a)
 		if err != nil {
+			if !action.rollbackItself() {
+				index--
+			}
 			rollBack(a, actions, index)
 			return err
 		}
