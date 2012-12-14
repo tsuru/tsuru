@@ -4,7 +4,7 @@
 # Use of this source code is governed by a BSD-style
 # license that can be found in the LICENSE file.
 
-executable=${TMPDIR}/termtest
+executable=/tmp/termtest
 dir=`dirname $0`
 go build -o $executable $dir/test.go
 output=`echo '123' | $executable`
