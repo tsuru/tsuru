@@ -37,7 +37,7 @@ ifneq ($(subst ~,$(HOME),$(GOPATH))/src/github.com/globocom/tsuru, $(PWD))
 	@exit 1
 endif
 
-get: hg git bzr libgit2 get-test get-prod
+get: hg git bzr get-test get-prod
 
 hg:
 	$(if $(shell hg), , $(error $(HG_ERROR)))
@@ -47,9 +47,6 @@ git:
 
 bzr:
 	$(if $(shell bzr), , $(error $(BZR_ERROR)))
-
-libgit2:
-	@pkg-config --libs libgit2 >/dev/null 2>&1 || echo "You need to install libgit2. Please visit http://libgit2.github.com/ for further instructions"
 
 get-test:
 	@/bin/echo -n "Installing test dependencies... "
@@ -81,6 +78,6 @@ test:
 doc:
 	@cd docs && make html
 
-client: libgit2
-	@go build -o tsuru ./cmd/tsuru
+client:
+	@go build -o tsuru ./cmd/tsuru/developer
 	@echo "Copy tsuru to your binary path"
