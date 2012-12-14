@@ -29,6 +29,10 @@ func (a *insertApp) backward(app *App) {
 	db.Session.Apps().Remove(bson.M{"name": app.Name})
 }
 
+func (a *insertApp) rollbackItself() bool {
+	return false
+}
+
 // createBucketIam is an implementation for the action interface.
 type createBucketIam struct{}
 
@@ -67,6 +71,10 @@ func (a *createBucketIam) backward(app *App) {
 	destroyBucket(app)
 }
 
+func (a *createBucketIam) rollbackItself() bool {
+	return true
+}
+
 // provisionApp is an implementation for the action interface.
 type provisionApp struct{}
 
@@ -77,6 +85,10 @@ func (a *provisionApp) forward(app *App) error {
 
 // provision backward does nothing.
 func (a *provisionApp) backward(app *App) {}
+
+func (a *provisionApp) rollbackItself() bool {
+	return false
+}
 
 // createRepository is an implementation for the action interface.
 type createRepository struct{}
@@ -100,4 +112,8 @@ func (a *createRepository) backward(app *App) {
 	gUrl := repository.GitServerUri()
 	c := gandalf.Client{Endpoint: gUrl}
 	c.RemoveRepository(app.Name)
+}
+
+func (a *createRepository) rollbackItself() bool {
+	return false
 }

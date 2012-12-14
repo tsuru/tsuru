@@ -50,6 +50,11 @@ func (s *S) TestInsertAppBackward(c *C) {
 	c.Assert(qt, Equals, 0)
 }
 
+func (s *S) TestInsertAppRollbackItself(c *C) {
+	action := new(insertApp)
+	c.Assert(action.rollbackItself(), Equals, false)
+}
+
 func (s *S) TestCreateBucketForward(c *C) {
 	patchRandomReader()
 	defer unpatchRandomReader()
@@ -130,6 +135,11 @@ func (s *S) TestCreateBucketBackward(c *C) {
 	c.Assert(err, NotNil)
 }
 
+func (s *S) TestCreateBucketRollbackItself(c *C) {
+	action := new(createBucketIam)
+	c.Assert(action.rollbackItself(), Equals, true)
+}
+
 func (s *S) TestDeployForward(c *C) {
 	action := new(provisionApp)
 	a := App{
@@ -140,6 +150,11 @@ func (s *S) TestDeployForward(c *C) {
 	err := action.forward(&a)
 	defer s.provisioner.Destroy(&a)
 	c.Assert(err, IsNil)
+}
+
+func (s *S) TestDeployRollbackItself(c *C) {
+	action := new(provisionApp)
+	c.Assert(action.rollbackItself(), Equals, false)
 }
 
 type testHandler struct {
