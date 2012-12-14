@@ -976,6 +976,17 @@ func (s *S) TestRun(c *C) {
 	c.Assert(cmds, HasLen, 1)
 }
 
+func (s *S) TestRunWithoutEnv(c *C) {
+	s.provisioner.PrepareOutput([]byte("a lot of files"))
+	app := App{Name: "myapp", State: provision.StatusStarted}
+	var buf bytes.Buffer
+	err := app.run("ls -lh", &buf)
+	c.Assert(err, IsNil)
+	c.Assert(buf.String(), Equals, "a lot of files")
+	cmds := s.provisioner.GetCmds("ls -lh", &app)
+	c.Assert(cmds, HasLen, 1)
+}
+
 func (s *S) TestSerializeEnvVars(c *C) {
 	dir, err := commandmocker.Add("juju", "$*")
 	c.Assert(err, IsNil)
