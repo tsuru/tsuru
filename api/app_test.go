@@ -111,17 +111,19 @@ func (s *S) TestCloneRepositoryHandlerShouldAddLogs(c *C) {
 pos-restart:
   - pos.sh
 `
-	dir, err := commandmocker.Add("juju", output)
-	c.Assert(err, IsNil)
-	defer commandmocker.Remove(dir)
+	s.provisioner.PrepareOutput(nil)            // clone
+	s.provisioner.PrepareOutput(nil)            // install
+	s.provisioner.PrepareOutput([]byte(output)) // loadHooks
+	s.provisioner.PrepareOutput(nil)            // pre-restart
+	s.provisioner.PrepareOutput(nil)            // restart
+	s.provisioner.PrepareOutput(nil)            // pos-restart
 	a := app.App{
 		Name:      "someapp",
 		Framework: "django",
 		Teams:     []string{s.team.Name},
-		Units:     []app.Unit{{Name: "someapp/0", Type: "django", State: provision.StatusStarted}},
 		State:     provision.StatusStarted,
 	}
-	err = db.Session.Apps().Insert(a)
+	err := db.Session.Apps().Insert(a)
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
 	url := fmt.Sprintf("/apps/%s/repository/clone?:name=%s", a.Name, a.Name)
@@ -150,22 +152,19 @@ func (s *S) TestCloneRepositoryHandler(c *C) {
 pos-restart:
   - pos.sh
 `
-	dir, err := commandmocker.Add("juju", output)
-	c.Assert(err, IsNil)
-	defer commandmocker.Remove(dir)
-	u := app.Unit{
-		Name:  "someapp/0",
-		Type:  "django",
-		State: provision.StatusStarted,
-	}
+	s.provisioner.PrepareOutput(nil)            // clone
+	s.provisioner.PrepareOutput(nil)            // install
+	s.provisioner.PrepareOutput([]byte(output)) // loadHooks
+	s.provisioner.PrepareOutput(nil)            // pre-restart
+	s.provisioner.PrepareOutput(nil)            // restart
+	s.provisioner.PrepareOutput(nil)            // pos-restart
 	a := app.App{
 		Name:      "someapp",
 		Framework: "django",
 		Teams:     []string{s.team.Name},
-		Units:     []app.Unit{u},
 		State:     provision.StatusStarted,
 	}
-	err = db.Session.Apps().Insert(a)
+	err := db.Session.Apps().Insert(a)
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
 	url := fmt.Sprintf("/apps/%s/repository/clone?:name=%s", a.Name, a.Name)
@@ -196,21 +195,19 @@ func (s *S) TestCloneRepositoryRunsCloneOrPullThenPreRestartThenRestartThenPosRe
 pos-restart:
   - pos.sh
 `
-	dir, err := commandmocker.Add("juju", output)
-	c.Assert(err, IsNil)
-	defer commandmocker.Remove(dir)
-	u := app.Unit{
-		Name:  "someapp/0",
-		Type:  "django",
-		State: provision.StatusStarted,
-	}
+	s.provisioner.PrepareOutput(nil)            // clone
+	s.provisioner.PrepareOutput(nil)            // install
+	s.provisioner.PrepareOutput([]byte(output)) // loadHooks
+	s.provisioner.PrepareOutput(nil)            // pre-restart
+	s.provisioner.PrepareOutput(nil)            // restart
+	s.provisioner.PrepareOutput(nil)            // pos-restart
 	a := app.App{
 		Name:      "someapp",
 		Framework: "django",
 		Teams:     []string{s.team.Name},
-		Units:     []app.Unit{u},
+		State:     provision.StatusStarted,
 	}
-	err = db.Session.Apps().Insert(a)
+	err := db.Session.Apps().Insert(a)
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
 	url := fmt.Sprintf("/apps/%s/repository/clone?:name=%s", a.Name, a.Name)
@@ -221,7 +218,7 @@ pos-restart:
 	c.Assert(err, IsNil)
 	c.Assert(recorder.Code, Equals, http.StatusOK)
 	str := strings.Replace(w.String(), "\n", "", -1)
-	c.Assert(str, Matches, ".*executing git clone.*executing hook dependencies.*executing hook to restart.*Executing pos-restart hook.*")
+	c.Assert(str, Matches, ".*\"git clone\" output.*Installing dependencies.*Restarting your app.*Executing pos-restart hook.*")
 }
 
 func (s *S) TestCloneRepositoryShouldReturnNotFoundWhenAppDoesNotExist(c *C) {
@@ -2040,6 +2037,7 @@ func (s *S) TestUnbindHandlerReturns403IfTheUserDoesNotHaveAccessToTheApp(c *C) 
 }
 
 func (s *S) TestRestartHandler(c *C) {
+	s.provisioner.PrepareOutput(nil) // loadHooks
 	s.provisioner.PrepareOutput([]byte("restarted"))
 	a := app.App{
 		Name:  "stress",

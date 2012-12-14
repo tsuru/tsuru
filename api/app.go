@@ -65,7 +65,7 @@ func CloneRepositoryHandler(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	out, err := repository.CloneOrPull(instance.Unit()) // should iterate over the machines
+	out, err := repository.CloneOrPull(&instance) // should iterate over the machines
 	if err != nil {
 		return &errors.Http{Code: http.StatusInternalServerError, Message: string(out)}
 	}
