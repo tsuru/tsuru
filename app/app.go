@@ -106,11 +106,6 @@ func CreateApp(a *App) error {
 	return execute(a, actions)
 }
 
-// Deploys an app.
-func (a *App) deploy() error {
-	return Provisioner.Provision(a)
-}
-
 func (a *App) unbind() error {
 	var instances []service.ServiceInstance
 	err := db.Session.ServiceInstances().Find(bson.M{"apps": bson.M{"$in": []string{a.Name}}}).All(&instances)

@@ -72,7 +72,7 @@ type provisionApp struct{}
 
 // provision forward provisions the app.
 func (a *provisionApp) forward(app *App) error {
-	return app.deploy()
+	return Provisioner.Provision(app)
 }
 
 // provision backward does nothing.

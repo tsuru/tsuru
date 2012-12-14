@@ -985,17 +985,6 @@ func (s *S) TestGetUnits(c *C) {
 	c.Assert(app.GetUnits(), DeepEquals, expected)
 }
 
-func (s *S) TestDeployShouldCallProvisionersProvisionMethod(c *C) {
-	a := App{Name: "smashed_pumpkin", Framework: "golang"}
-	err := db.Session.Apps().Insert(&a)
-	c.Assert(err, IsNil)
-	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
-	err = a.deploy()
-	defer s.provisioner.Destroy(&a)
-	c.Assert(err, IsNil)
-	c.Assert(s.provisioner.FindApp(&a), Equals, 0)
-}
-
 func (s *S) TestAppMarshalJson(c *C) {
 	app := App{
 		Name:      "Name",
