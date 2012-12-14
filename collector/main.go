@@ -23,7 +23,7 @@ func jujuCollect(ticker <-chan time.Time) {
 	for _ = range ticker {
 		units, err := app.Provisioner.CollectStatus()
 		if err != nil {
-			log.Printf("Failed to collect status withing the provisioner: %s.", err)
+			log.Printf("Failed to collect status within the provisioner: %s.", err)
 		}
 		update(units)
 	}
