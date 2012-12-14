@@ -335,9 +335,14 @@ func (a *App) posRestart(w io.Writer) error {
 
 // Run executes the command in app units
 func (a *App) Run(cmd string, w io.Writer) error {
+	if a.State != provision.StatusStarted {
+		return fmt.Errorf("App must be started to run commands, but it is %q.", a.State)
+	}
 	a.Log(fmt.Sprintf("running '%s'", cmd), "tsuru")
-	cmd = fmt.Sprintf("[ -f /home/application/apprc ] && source /home/application/apprc; [ -d /home/application/current ] && cd /home/application/current; %s", cmd)
-	return a.Unit().Command(w, w, cmd)
+	source := "[ -f /home/application/apprc ] && source /home/application/apprc"
+	cd := "[ -d /home/application/current ] && cd /home/application/current"
+	cmd = fmt.Sprintf("%s; %s; %s", source, cd, cmd)
+	return Provisioner.ExecuteCommand(w, w, a, cmd)
 }
 
 // Restart runs the restart hook for the app

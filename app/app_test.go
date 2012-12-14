@@ -672,35 +672,33 @@ func (s *S) TestLoadHooksWithError(c *C) {
 }
 
 func (s *S) TestPreRestart(c *C) {
+	s.provisioner.PrepareOutput([]byte("pre-restarted"))
 	a := App{
 		Name:      "something",
 		Framework: "django",
-		Units:     []Unit{{State: provision.StatusStarted, Machine: 1}},
+		State:     provision.StatusStarted,
 		hooks: &conf{
 			PreRestart: []string{"pre.sh"},
 			PosRestart: []string{"pos.sh"},
 		},
 	}
-	dir, err := commandmocker.Add("juju", "$*")
-	c.Assert(err, IsNil)
-	defer commandmocker.Remove(dir)
 	w := new(bytes.Buffer)
-	err = a.preRestart(w)
+	err := a.preRestart(w)
 	c.Assert(err, IsNil)
 	c.Assert(err, IsNil)
 	st := strings.Replace(w.String(), "\n", "###", -1)
-	c.Assert(st, Matches, `.*\[ -f /home/application/apprc \] && source /home/application/apprc; \[ -d /home/application/current \] && cd /home/application/current;.*pre.sh$`)
+	c.Assert(st, Matches, `.*### ---> Running pre-restart###.*pre-restarted$`)
+	cmds := s.provisioner.GetCmds("", &a)
+	c.Assert(cmds, HasLen, 1)
+	c.Assert(cmds[0].Cmd, Matches, `^\[ -f /home/application/apprc \] && source /home/application/apprc; \[ -d /home/application/current \] && cd /home/application/current;.*pre.sh$`)
 }
 
-func (s *S) TestPreRestartWhenAppConfDoesNotExists(c *C) {
-	dir, err := commandmocker.Add("juju", output)
-	c.Assert(err, IsNil)
-	defer commandmocker.Remove(dir)
+func (s *S) TestPreRestartWhenAppConfDoesNotExist(c *C) {
 	a := App{Name: "something", Framework: "django"}
 	w := new(bytes.Buffer)
 	l := stdlog.New(w, "", stdlog.LstdFlags)
 	log.SetLogger(l)
-	err = a.preRestart(w)
+	err := a.preRestart(w)
 	c.Assert(err, IsNil)
 	st := strings.Split(w.String(), "\n")
 	regexp := ".*Skipping pre-restart hooks..."
@@ -724,20 +722,18 @@ func (s *S) TestSkipsPreRestartWhenPreRestartSectionDoesNotExists(c *C) {
 }
 
 func (s *S) TestPosRestart(c *C) {
+	s.provisioner.PrepareOutput([]byte("restarted"))
 	a := App{
 		Name:      "something",
 		Framework: "django",
-		Units:     []Unit{{State: provision.StatusStarted, Machine: 1}},
+		State:     provision.StatusStarted,
 		hooks:     &conf{PosRestart: []string{"pos.sh"}},
 	}
-	dir, err := commandmocker.Add("juju", "$*")
-	c.Assert(err, IsNil)
-	defer commandmocker.Remove(dir)
 	w := new(bytes.Buffer)
-	err = a.posRestart(w)
+	err := a.posRestart(w)
 	c.Assert(err, IsNil)
 	st := strings.Replace(w.String(), "\n", "###", -1)
-	c.Assert(st, Matches, `.*\[ -f /home/application/apprc \] && source /home/application/apprc; \[ -d /home/application/current \] && cd /home/application/current;.*pos.sh$`)
+	c.Assert(st, Matches, `.*restarted$`)
 }
 
 func (s *S) TestPosRestartWhenAppConfDoesNotExists(c *C) {
@@ -845,15 +841,17 @@ func (s *S) TestRestart(c *C) {
 	c.Assert(result, Matches, ".*# ---> Restarting your app#.*")
 }
 
-func (s *S) TestRestartRunPreRestartHook(c *C) {
+func (s *S) TestRestartRunsPreRestartHook(c *C) {
 	tmpdir, err := commandmocker.Add("juju", "$*")
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(tmpdir)
+	s.provisioner.PrepareOutput([]byte("pre-restart-by-restart"))
 	a := App{
 		Name:      "someApp",
 		Framework: "django",
 		Teams:     []string{s.team.Name},
 		Units:     []Unit{{State: provision.StatusStarted, Machine: 4}},
+		State:     provision.StatusStarted,
 		hooks:     &conf{PreRestart: []string{"pre.sh"}},
 	}
 	var buf bytes.Buffer
@@ -868,11 +866,13 @@ func (s *S) TestRestartRunsPosRestartHook(c *C) {
 	tmpdir, err := commandmocker.Add("juju", "$*")
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(tmpdir)
+	s.provisioner.PrepareOutput([]byte("pos-restart-by-restart"))
 	a := App{
 		Name:      "someApp",
 		Framework: "django",
 		Teams:     []string{s.team.Name},
 		Units:     []Unit{{State: provision.StatusStarted, Machine: 4}},
+		State:     provision.StatusStarted,
 		hooks:     &conf{PosRestart: []string{"pos.sh"}},
 	}
 	var buf bytes.Buffer
@@ -1008,24 +1008,17 @@ func (s *S) TestAppMarshalJson(c *C) {
 }
 
 func (s *S) TestRun(c *C) {
-	dir, err := commandmocker.Add("juju", "$*")
-	c.Assert(err, IsNil)
-	defer commandmocker.Remove(dir)
-	app := App{
-		Name: "myapp",
-		Units: []Unit{
-			{
-				Name:    "i-0800",
-				Type:    "django",
-				Machine: 10,
-				State:   provision.StatusStarted,
-			},
-		},
-	}
+	s.provisioner.PrepareOutput([]byte("a lot of files"))
+	app := App{Name: "myapp", State: provision.StatusStarted}
 	var buf bytes.Buffer
-	err = app.Run("ls -lh", &buf)
+	err := app.Run("ls -lh", &buf)
 	c.Assert(err, IsNil)
-	c.Assert(buf.String(), Equals, "ssh -o StrictHostKeyChecking no -q 10 [ -f /home/application/apprc ] && source /home/application/apprc; [ -d /home/application/current ] && cd /home/application/current; ls -lh")
+	c.Assert(buf.String(), Equals, "a lot of files")
+	expected := "[ -f /home/application/apprc ] && source /home/application/apprc;"
+	expected += " [ -d /home/application/current ] && cd /home/application/current;"
+	expected += " ls -lh"
+	cmds := s.provisioner.GetCmds(expected, &app)
+	c.Assert(cmds, HasLen, 1)
 }
 
 func (s *S) TestSerializeEnvVars(c *C) {
