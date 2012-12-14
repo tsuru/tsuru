@@ -16,6 +16,7 @@ import (
 	"github.com/globocom/tsuru/db"
 	"github.com/globocom/tsuru/errors"
 	"github.com/globocom/tsuru/log"
+	"github.com/globocom/tsuru/provision"
 	"github.com/globocom/tsuru/repository"
 	"io"
 	"io/ioutil"
@@ -70,8 +71,8 @@ func (s *S) TestAppIsAvaliableHandlerShouldReturnErrorWhenAppStatusIsnotStarted(
 		Name:      "someapp",
 		Framework: "python",
 		Teams:     []string{s.team.Name},
-		Units:     []app.Unit{{Name: "someapp/0", Type: "django", State: "pending"}},
-		State:     "pending",
+		Units:     []app.Unit{{Name: "someapp/0", Type: "django", State: provision.StatusPending}},
+		State:     provision.StatusPending,
 	}
 	err := db.Session.Apps().Insert(a)
 	c.Assert(err, IsNil)
@@ -89,8 +90,8 @@ func (s *S) TestAppIsAvaliableHandlerShouldReturn200WhenAppUnitStatusIsStarted(c
 		Name:      "someapp",
 		Framework: "python",
 		Teams:     []string{s.team.Name},
-		Units:     []app.Unit{{Name: "someapp/0", Type: "django", State: "started"}},
-		State:     "started",
+		Units:     []app.Unit{{Name: "someapp/0", Type: "django", State: provision.StatusStarted}},
+		State:     provision.StatusStarted,
 	}
 	err := db.Session.Apps().Insert(a)
 	c.Assert(err, IsNil)
@@ -117,8 +118,8 @@ pos-restart:
 		Name:      "someapp",
 		Framework: "django",
 		Teams:     []string{s.team.Name},
-		Units:     []app.Unit{{Name: "someapp/0", Type: "django", State: "started"}},
-		State:     "started",
+		Units:     []app.Unit{{Name: "someapp/0", Type: "django", State: provision.StatusStarted}},
+		State:     provision.StatusStarted,
 	}
 	err = db.Session.Apps().Insert(a)
 	c.Assert(err, IsNil)
@@ -155,14 +156,14 @@ pos-restart:
 	u := app.Unit{
 		Name:  "someapp/0",
 		Type:  "django",
-		State: "started",
+		State: provision.StatusStarted,
 	}
 	a := app.App{
 		Name:      "someapp",
 		Framework: "django",
 		Teams:     []string{s.team.Name},
 		Units:     []app.Unit{u},
-		State:     "started",
+		State:     provision.StatusStarted,
 	}
 	err = db.Session.Apps().Insert(a)
 	c.Assert(err, IsNil)
@@ -201,7 +202,7 @@ pos-restart:
 	u := app.Unit{
 		Name:  "someapp/0",
 		Type:  "django",
-		State: "started",
+		State: provision.StatusStarted,
 	}
 	a := app.App{
 		Name:      "someapp",
@@ -897,7 +898,7 @@ func (s *S) TestRunHandlerShouldExecuteTheGivenCommandInTheGivenApp(c *C) {
 		Name:    "someapp/0",
 		Type:    "django",
 		Machine: 10,
-		State:   "started",
+		State:   provision.StatusStarted,
 	}
 	a := app.App{
 		Name:      "secrets",
@@ -925,7 +926,7 @@ func (s *S) TestRunHandlerReturnsTheOutputOfTheCommandEvenIfItFails(c *C) {
 		Name:    "someapp/0",
 		Type:    "django",
 		Machine: 10,
-		State:   "started",
+		State:   provision.StatusStarted,
 	}
 	a := app.App{
 		Name:      "secrets",
@@ -2058,7 +2059,7 @@ func (s *S) TestRestartHandler(c *C) {
 		Teams: []string{s.team.Name},
 		Units: []app.Unit{
 			{
-				State:   "started",
+				State:   provision.StatusStarted,
 				Machine: 10,
 				Ip:      "20.20.20.20",
 			},
