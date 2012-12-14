@@ -80,7 +80,7 @@ func (s *S) TestJujuExecuteCommand(c *C) {
 	defer commandmocker.Remove(tmpdir)
 	app := NewFakeApp("almah", "static", 2)
 	p := JujuProvisioner{}
-	err = p.ExecuteCommand(&buf, app, "ls", "-lh")
+	err = p.ExecuteCommand(&buf, &buf, app, "ls", "-lh")
 	c.Assert(err, IsNil)
 	output := "ssh -o StrictHostKeyChecking no -q 1 ls -lh"
 	output += "ssh -o StrictHostKeyChecking no -q 2 ls -lh"
@@ -96,7 +96,7 @@ func (s *S) TestJujuExecuteCommandFailure(c *C) {
 	defer commandmocker.Remove(tmpdir)
 	app := NewFakeApp("frases", "static", 1)
 	p := JujuProvisioner{}
-	err = p.ExecuteCommand(&buf, app, "ls", "-l")
+	err = p.ExecuteCommand(&buf, &buf, app, "ls", "-l")
 	c.Assert(err, NotNil)
 	c.Assert(err.Error(), Equals, "exit status 2")
 	c.Assert(buf.String(), Equals, "failed")

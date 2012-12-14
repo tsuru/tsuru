@@ -28,7 +28,7 @@ func (p *JujuProvisioner) Provision(app provision.App) error {
 		"deploy", "--repository", "/home/charms",
 		"local:" + app.GetFramework(), app.GetName(),
 	}
-	err := runCmd(&buf, args...)
+	err := runCmd(&buf, &buf, args...)
 	out := buf.String()
 	if err != nil {
 		app.Log("Failed to create machine: "+out, "tsuru")
@@ -39,7 +39,7 @@ func (p *JujuProvisioner) Provision(app provision.App) error {
 
 func (p *JujuProvisioner) Destroy(app provision.App) error {
 	var buf bytes.Buffer
-	err := runCmd(&buf, "destroy-service", app.GetName())
+	err := runCmd(&buf, &buf, "destroy-service", app.GetName())
 	out := buf.String()
 	if err != nil {
 		app.Log("Failed to destroy machine: "+out, "tsuru")
@@ -47,7 +47,7 @@ func (p *JujuProvisioner) Destroy(app provision.App) error {
 	}
 	for _, u := range app.ProvisionUnits() {
 		buf.Reset()
-		err = runCmd(&buf, "terminate-machine", strconv.Itoa(u.GetMachine()))
+		err = runCmd(&buf, &buf, "terminate-machine", strconv.Itoa(u.GetMachine()))
 		out = buf.String()
 		if err != nil {
 			app.Log("Failed to destroy machine: "+out, "tsuru")
@@ -57,14 +57,14 @@ func (p *JujuProvisioner) Destroy(app provision.App) error {
 	return nil
 }
 
-func (p *JujuProvisioner) ExecuteCommand(w io.Writer, app provision.App, cmd string, args ...string) error {
+func (p *JujuProvisioner) ExecuteCommand(stdout, stderr io.Writer, app provision.App, cmd string, args ...string) error {
 	arguments := []string{"ssh", "-o", "StrictHostKeyChecking no", "-q"}
 	for _, unit := range app.ProvisionUnits() {
 		var cmdargs []string
 		cmdargs = append(cmdargs, arguments...)
 		cmdargs = append(cmdargs, strconv.Itoa(unit.GetMachine()), cmd)
 		cmdargs = append(cmdargs, args...)
-		err := runCmd(w, cmdargs...)
+		err := runCmd(stdout, stderr, cmdargs...)
 		if err != nil {
 			return err
 		}
@@ -130,11 +130,12 @@ func init() {
 	provision.Register("juju", &JujuProvisioner{})
 }
 
-func runCmd(w io.Writer, cmd ...string) error {
-	w = &Writer{w}
+func runCmd(stdout, stderr io.Writer, cmd ...string) error {
+	stdout = &Writer{stdout}
+	stderr = &Writer{stderr}
 	command := exec.Command("juju", cmd...)
-	command.Stdout = w
-	command.Stderr = w
+	command.Stdout = stdout
+	command.Stderr = stderr
 	return command.Run()
 }
 

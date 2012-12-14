@@ -161,7 +161,7 @@ func (p *FakeProvisioner) Destroy(app provision.App) error {
 	return nil
 }
 
-func (p *FakeProvisioner) ExecuteCommand(w io.Writer, app provision.App, cmd string, args ...string) error {
+func (p *FakeProvisioner) ExecuteCommand(stdout, stderr io.Writer, app provision.App, cmd string, args ...string) error {
 	var (
 		output []byte
 		err    error
@@ -174,8 +174,13 @@ func (p *FakeProvisioner) ExecuteCommand(w io.Writer, app provision.App, cmd str
 	p.Cmds = append(p.Cmds, command)
 	select {
 	case output = <-p.outputs:
-		w.Write(output)
+		stdout.Write(output)
 	case fail := <-p.failures:
+		select {
+		case output = <-p.outputs:
+			stderr.Write(output)
+		case <-time.After(1e6):
+		}
 		if fail.method == "ExecuteCommand" {
 			err = fail.err
 		} else {
