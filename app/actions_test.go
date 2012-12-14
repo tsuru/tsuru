@@ -5,20 +5,15 @@
 package app
 
 import (
-	"bytes"
 	"fmt"
 	"github.com/globocom/commandmocker"
 	"github.com/globocom/config"
 	"github.com/globocom/tsuru/api/auth"
 	"github.com/globocom/tsuru/db"
-	"github.com/globocom/tsuru/log"
 	"github.com/globocom/tsuru/queue"
 	"io/ioutil"
 	"labix.org/v2/mgo/bson"
 	. "launchpad.net/gocheck"
-	stdlog "log"
-	"net/http"
-	"strings"
 )
 
 func (s *S) TestInsertAppForward(c *C) {
@@ -86,6 +81,8 @@ func (s *S) TestCreateBucketForward(c *C) {
 	defer bucket.backward(&a)
 	de := new(provision)
 	err = de.forward(&a)
+	c.Assert(err, IsNil)
+	defer Provisioner.Destroy(&a)
 	env := a.InstanceEnv(s3InstanceName)
 	c.Assert(env["TSURU_S3_ENDPOINT"].Value, Equals, s.t.S3Server.URL())
 	c.Assert(env["TSURU_S3_ENDPOINT"].Public, Equals, false)
@@ -137,22 +134,15 @@ func (s *S) TestCreateBucketBackward(c *C) {
 }
 
 func (s *S) TestDeployForward(c *C) {
-	dir, err := commandmocker.Add("juju", "$*")
-	c.Assert(err, IsNil)
-	defer commandmocker.Remove(dir)
-	w := bytes.NewBuffer([]byte{})
-	l := stdlog.New(w, "", stdlog.LstdFlags)
-	log.SetLogger(l)
-	action := new(provision)
+	action := new(deploy)
 	a := App{
 		Name:      "appname",
 		Framework: "django",
 		Units:     []Unit{{Machine: 3}},
 	}
-	err = action.forward(&a)
+	err := action.forward(&a)
+	defer s.provisioner.Destroy(&a)
 	c.Assert(err, IsNil)
-	str := strings.Replace(w.String(), "\n", "", -1)
-	c.Assert(str, Matches, ".*deploy --repository=/home/charms local:django appname.*")
 }
 
 type testHandler struct {

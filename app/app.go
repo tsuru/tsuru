@@ -23,7 +23,6 @@ import (
 	"labix.org/v2/mgo/bson"
 	"launchpad.net/goyaml"
 	"os"
-	"os/exec"
 	"path"
 	"regexp"
 	"sort"
@@ -109,12 +108,7 @@ func CreateApp(a *App) error {
 
 // Deploys an app.
 func (a *App) deploy() error {
-	a.Log(fmt.Sprintf("creating app %s", a.Name), "tsuru")
-	cmd := exec.Command("juju", "deploy", "--repository=/home/charms", "local:"+a.Framework, a.Name)
-	log.Printf("deploying %s with name %s", a.Framework, a.Name)
-	out, err := cmd.CombinedOutput()
-	a.Log(string(out), "tsuru")
-	return err
+	return Provisioner.Provision(a)
 }
 
 func (a *App) unbind() error {
@@ -156,11 +150,9 @@ func (a *App) Destroy() error {
 		return err
 	}
 	if len(a.Units) > 0 {
-		out, err := a.Unit().destroy()
-		msg := fmt.Sprintf("Failed to destroy unit: %s\n%s", err, out)
-		log.Print(msg)
+		err = Provisioner.Destroy(a)
 		if err != nil {
-			return errors.New(msg)
+			return errors.New("Failed to destroy the app: " + err.Error())
 		}
 		err = a.unbind()
 		if err != nil {

@@ -7,6 +7,7 @@ package app
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/globocom/commandmocker"
 	"github.com/globocom/config"
@@ -37,11 +38,8 @@ export DATABASE_USER=root
 export DATABASE_PASSWORD=secret`
 
 func (s *S) TestGet(c *C) {
-	dir, err := commandmocker.Add("juju", "")
-	c.Assert(err, IsNil)
-	defer commandmocker.Remove(dir)
 	newApp := App{Name: "myApp", Framework: "Django"}
-	err = db.Session.Apps().Insert(newApp)
+	err := db.Session.Apps().Insert(newApp)
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": newApp.Name})
 	newApp.Env = map[string]bind.EnvVar{}
@@ -59,9 +57,6 @@ func (s *S) TestDestroy(c *C) {
 	h := testHandler{}
 	ts := s.t.StartGandalfTestServer(&h)
 	defer ts.Close()
-	dir, err := commandmocker.Add("juju", "$*")
-	c.Assert(err, IsNil)
-	defer commandmocker.Remove(dir)
 	a := App{
 		Name:      "ritual",
 		Framework: "ruby",
@@ -73,35 +68,24 @@ func (s *S) TestDestroy(c *C) {
 			},
 		},
 	}
-	err = CreateApp(&a)
+	err := CreateApp(&a)
 	c.Assert(err, IsNil)
-	w := bytes.NewBuffer([]byte{})
-	l := stdlog.New(w, "", stdlog.LstdFlags)
-	log.SetLogger(l)
 	err = a.Destroy()
 	c.Assert(err, IsNil)
 	err = a.Get()
 	c.Assert(err, NotNil)
-	logStr := strings.Replace(w.String(), "\n", "", -1)
-	c.Assert(logStr, Matches, ".*destroy-service ritual.*")
-	c.Assert(logStr, Matches, ".*terminate-machine 3.*")
 	qt, err := db.Session.Apps().Find(bson.M{"name": a.Name}).Count()
 	c.Assert(err, IsNil)
 	c.Assert(qt, Equals, 0)
+	c.Assert(s.provisioner.FindApp(&a), Equals, -1)
 }
 
 func (s *S) TestDestroyWithoutUnits(c *C) {
 	h := testHandler{}
 	ts := s.t.StartGandalfTestServer(&h)
 	defer ts.Close()
-	dir, err := commandmocker.Add("juju", "$*")
-	c.Assert(err, IsNil)
-	defer commandmocker.Remove(dir)
-	app := App{
-		Name:  "x4",
-		Units: []Unit{{Machine: 1}},
-	}
-	err = CreateApp(&app)
+	app := App{Name: "x4"}
+	err := CreateApp(&app)
 	c.Assert(err, IsNil)
 	err = app.Destroy()
 	c.Assert(err, IsNil)
@@ -111,47 +95,31 @@ func (s *S) TestFailingDestroy(c *C) {
 	h := testHandler{}
 	ts := s.t.StartGandalfTestServer(&h)
 	defer ts.Close()
-	dir, err := commandmocker.Add("juju", "$*")
-	c.Assert(err, IsNil)
+	s.provisioner.PrepareFailure("Destroy", errors.New("will not destroy this app!"))
 	a := App{
 		Name:      "ritual",
 		Framework: "ruby",
 		Teams:     []string{s.team.Name},
-		Units: []Unit{
-			{
-				Name:    "duvido",
-				Machine: 3,
-			},
-		},
+		Units:     []Unit{{Name: "duvido", Machine: 3}},
 	}
-	err = CreateApp(&a)
+	err := CreateApp(&a)
 	c.Assert(err, IsNil)
-	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
-	commandmocker.Remove(dir)
-	dir, err = commandmocker.Error("juju", "juju failed", 25)
-	c.Assert(err, IsNil)
-	defer commandmocker.Remove(dir)
+	defer db.Session.Apps().Remove(bson.M{"name": "ritual"})
 	err = a.Destroy()
 	c.Assert(err, NotNil)
-	c.Assert(err.Error(), Equals, "Failed to destroy unit: exit status 25\njuju failed")
+	c.Assert(err.Error(), Equals, "Failed to destroy the app: will not destroy this app!")
 }
 
 // TODO(fss): simplify this test. Right now, it's a little monster.
 func (s *S) TestCreateApp(c *C) {
 	patchRandomReader()
 	defer unpatchRandomReader()
-	dir, err := commandmocker.Add("juju", "$*")
-	c.Assert(err, IsNil)
-	defer commandmocker.Remove(dir)
 	h := testHandler{}
 	ts := s.t.StartGandalfTestServer(&h)
 	defer ts.Close()
 	server := FakeQueueServer{}
 	server.Start("127.0.0.1:0")
 	defer server.Stop()
-	w := bytes.NewBuffer([]byte{})
-	l := stdlog.New(w, "", stdlog.LstdFlags)
-	log.SetLogger(l)
 	a := App{
 		Name:      "appname",
 		Framework: "django",
@@ -159,7 +127,6 @@ func (s *S) TestCreateApp(c *C) {
 	}
 	expectedHost := "localhost"
 	config.Set("host", expectedHost)
-	c.Assert(err, IsNil)
 	old, err := config.Get("queue-server")
 	if err != nil {
 		defer config.Set("queue-server", old)
@@ -176,8 +143,6 @@ func (s *S) TestCreateApp(c *C) {
 	c.Assert(retrievedApp.Name, Equals, a.Name)
 	c.Assert(retrievedApp.Framework, Equals, a.Framework)
 	c.Assert(retrievedApp.State, Equals, a.State)
-	str := strings.Replace(w.String(), "\n", "", -1)
-	c.Assert(str, Matches, ".*deploy --repository=/home/charms local:django appname.*")
 	env := a.InstanceEnv(s3InstanceName)
 	c.Assert(env["TSURU_S3_ENDPOINT"].Value, Equals, s.t.S3Server.URL())
 	c.Assert(env["TSURU_S3_ENDPOINT"].Public, Equals, false)
@@ -234,19 +199,17 @@ func (s *S) TestCantCreateAppWithInvalidName(c *C) {
 	c.Assert(e.Message, Equals, msg)
 }
 
-func (s *S) TestDoesNotSaveTheAppInTheDatabaseIfJujuFail(c *C) {
+func (s *S) TestDoesNotSaveTheAppInTheDatabaseIfProvisionerFail(c *C) {
 	h := testHandler{}
 	ts := s.t.StartGandalfTestServer(&h)
 	defer ts.Close()
-	dir, err := commandmocker.Error("juju", "juju failed", 1)
-	c.Assert(err, IsNil)
-	defer commandmocker.Remove(dir)
+	s.provisioner.PrepareFailure("Provision", errors.New("exit status 1"))
 	a := App{
 		Name:      "theirapp",
 		Framework: "ruby",
 		Units:     []Unit{{Machine: 1}},
 	}
-	err = CreateApp(&a)
+	err := CreateApp(&a)
 	defer a.Destroy() // clean mess if test fail
 	c.Assert(err, NotNil)
 	expected := `exit status 1`
@@ -255,21 +218,19 @@ func (s *S) TestDoesNotSaveTheAppInTheDatabaseIfJujuFail(c *C) {
 	c.Assert(err, NotNil)
 }
 
-func (s *S) TestDeletesIAMCredentialsAndS3BucketIfJujuFail(c *C) {
+func (s *S) TestDeletesIAMCredentialsAndS3BucketIfProvisionerFail(c *C) {
 	h := testHandler{}
 	ts := s.t.StartGandalfTestServer(&h)
 	defer ts.Close()
+	s.provisioner.PrepareFailure("Provision", errors.New("exit status 1"))
 	source := patchRandomReader()
 	defer unpatchRandomReader()
-	dir, err := commandmocker.Error("juju", "juju failed", 1)
-	c.Assert(err, IsNil)
-	defer commandmocker.Remove(dir)
 	a := App{
 		Name:      "theirapp",
 		Framework: "ruby",
 		Units:     []Unit{{Machine: 1}},
 	}
-	err = CreateApp(&a)
+	err := CreateApp(&a)
 	defer a.Destroy() // clean mess if test fail
 	c.Assert(err, NotNil)
 	iam := getIAMEndpoint()
@@ -283,9 +244,6 @@ func (s *S) TestDeletesIAMCredentialsAndS3BucketIfJujuFail(c *C) {
 }
 
 func (s *S) TestAppendOrUpdate(c *C) {
-	dir, err := commandmocker.Add("juju", "")
-	defer commandmocker.Remove(dir)
-	c.Assert(err, IsNil)
 	a := App{
 		Name:      "appName",
 		Framework: "django",
@@ -367,9 +325,6 @@ func (s *S) TestSetEnvironmentVariableToApp(c *C) {
 }
 
 func (s *S) TestSetEnvRespectsThePublicOnlyFlagKeepPrivateVariablesWhenItsTrue(c *C) {
-	dir, err := commandmocker.Add("juju", "")
-	defer commandmocker.Remove(dir)
-	c.Assert(err, IsNil)
 	a := App{
 		Name:  "myapp",
 		Units: []Unit{{Machine: 1}},
@@ -381,7 +336,7 @@ func (s *S) TestSetEnvRespectsThePublicOnlyFlagKeepPrivateVariablesWhenItsTrue(c
 			},
 		},
 	}
-	err = db.Session.Apps().Insert(a)
+	err := db.Session.Apps().Insert(a)
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
 	envs := []bind.EnvVar{
@@ -417,9 +372,6 @@ func (s *S) TestSetEnvRespectsThePublicOnlyFlagKeepPrivateVariablesWhenItsTrue(c
 }
 
 func (s *S) TestSetEnvRespectsThePublicOnlyFlagOverwrittenAllVariablesWhenItsFalse(c *C) {
-	dir, err := commandmocker.Add("juju", "")
-	defer commandmocker.Remove(dir)
-	c.Assert(err, IsNil)
 	a := App{
 		Name: "myapp",
 		Units: []Unit{
@@ -433,7 +385,7 @@ func (s *S) TestSetEnvRespectsThePublicOnlyFlagOverwrittenAllVariablesWhenItsFal
 			},
 		},
 	}
-	err = db.Session.Apps().Insert(a)
+	err := db.Session.Apps().Insert(a)
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
 	envs := []bind.EnvVar{
@@ -469,9 +421,6 @@ func (s *S) TestSetEnvRespectsThePublicOnlyFlagOverwrittenAllVariablesWhenItsFal
 }
 
 func (s *S) TestUnsetEnvRespectsThePublicOnlyFlagKeepPrivateVariablesWhenItsTrue(c *C) {
-	dir, err := commandmocker.Add("juju", "")
-	defer commandmocker.Remove(dir)
-	c.Assert(err, IsNil)
 	a := App{
 		Name: "myapp",
 		Units: []Unit{
@@ -490,7 +439,7 @@ func (s *S) TestUnsetEnvRespectsThePublicOnlyFlagKeepPrivateVariablesWhenItsTrue
 			},
 		},
 	}
-	err = db.Session.Apps().Insert(a)
+	err := db.Session.Apps().Insert(a)
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
 	err = a.UnsetEnvsFromApp([]string{"DATABASE_HOST", "DATABASE_PASSWORD"}, true, false)
@@ -509,9 +458,6 @@ func (s *S) TestUnsetEnvRespectsThePublicOnlyFlagKeepPrivateVariablesWhenItsTrue
 }
 
 func (s *S) TestUnsetEnvRespectsThePublicOnlyFlagUnsettingAllVariablesWhenItsFalse(c *C) {
-	dir, err := commandmocker.Add("juju", "")
-	defer commandmocker.Remove(dir)
-	c.Assert(err, IsNil)
 	a := App{
 		Name: "myapp",
 		Units: []Unit{
@@ -530,7 +476,7 @@ func (s *S) TestUnsetEnvRespectsThePublicOnlyFlagUnsettingAllVariablesWhenItsFal
 			},
 		},
 	}
-	err = db.Session.Apps().Insert(a)
+	err := db.Session.Apps().Insert(a)
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
 	err = a.UnsetEnvsFromApp([]string{"DATABASE_HOST", "DATABASE_PASSWORD"}, false, false)
@@ -1039,27 +985,15 @@ func (s *S) TestGetUnits(c *C) {
 	c.Assert(app.GetUnits(), DeepEquals, expected)
 }
 
-func (s *S) TestDeployShouldCallJujuDeployCommand(c *C) {
-	a := App{
-		Name:      "smashed_pumpkin",
-		Framework: "golang",
-	}
+func (s *S) TestDeployShouldCallProvisionersProvisionMethod(c *C) {
+	a := App{Name: "smashed_pumpkin", Framework: "golang"}
 	err := db.Session.Apps().Insert(&a)
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
-	w := bytes.NewBuffer([]byte{})
-	l := stdlog.New(w, "", stdlog.LstdFlags)
-	log.SetLogger(l)
-	dir, err := commandmocker.Add("juju", "$*")
-	c.Assert(err, IsNil)
-	defer commandmocker.Remove(dir)
 	err = a.deploy()
+	defer s.provisioner.Destroy(&a)
 	c.Assert(err, IsNil)
-	logged := strings.Replace(w.String(), "\n", " ", -1)
-	expected := ".*deploying golang with name smashed_pumpkin.*"
-	c.Assert(logged, Matches, expected)
-	expected = ".*deploy --repository=/home/charms local:golang smashed_pumpkin.*"
-	c.Assert(logged, Matches, expected)
+	c.Assert(s.provisioner.FindApp(&a), Equals, 0)
 }
 
 func (s *S) TestAppMarshalJson(c *C) {
