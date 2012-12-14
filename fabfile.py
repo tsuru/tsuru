@@ -16,7 +16,8 @@ def build():
     goos = local("go env GOOS", capture=True)
     goarch = local("go env GOARCH", capture=True)
     if goos != "linux" or goarch != "amd64":
-        abort("tsuru must be built on linux_amd64 for deployment, you're on %s_%s" % (goos, goarch))
+        abort("tsuru must be built on linux_amd64 for deployment, " +
+              "you're on %s_%s" % (goos, goarch))
     local("mkdir -p dist")
     local("go clean ./...")
     local("go build -a -o dist/collector ./collector")
