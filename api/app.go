@@ -97,8 +97,8 @@ func AppIsAvaliableHandler(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	if state := app.Unit().State(); state != "started" {
-		return fmt.Errorf("App must be started to receive pushs, but it is %s.", state)
+	if app.State != "started" {
+		return fmt.Errorf("App must be started to receive pushs, but it is %q.", app.State)
 	}
 	w.WriteHeader(http.StatusOK)
 	return nil
@@ -169,7 +169,7 @@ func createAppHelper(instance *app.App, u *auth.User) ([]byte, error) {
 	instance.SetTeams(teams)
 	err = app.CreateApp(instance)
 	if err != nil {
-		log.Printf("Got error while creating app: %s", err.Error())
+		log.Printf("Got error while creating app: %s", err)
 		if e, ok := err.(*app.ValidationError); ok {
 			return nil, &errors.Http{Code: http.StatusPreconditionFailed, Message: e.Message}
 		}

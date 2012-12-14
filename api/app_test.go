@@ -65,20 +65,13 @@ func (h *testBadHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	http.Error(w, "some error", http.StatusInternalServerError)
 }
 
-func (s *S) TestAppIsAvaliableHandlerShouldReturnsErrorWhenAppUnitStatusIsnotStarted(c *C) {
+func (s *S) TestAppIsAvaliableHandlerShouldReturnErrorWhenAppStatusIsnotStarted(c *C) {
 	a := app.App{
 		Name:      "someapp",
 		Framework: "python",
 		Teams:     []string{s.team.Name},
-		Units: []app.Unit{
-			{
-				Name:              "someapp/0",
-				Type:              "django",
-				AgentState:        "creating",
-				MachineAgentState: "running",
-				InstanceState:     "running",
-			},
-		},
+		Units:     []app.Unit{{Name: "someapp/0", Type: "django", State: "pending"}},
+		State:     "pending",
 	}
 	err := db.Session.Apps().Insert(a)
 	c.Assert(err, IsNil)
@@ -91,20 +84,13 @@ func (s *S) TestAppIsAvaliableHandlerShouldReturnsErrorWhenAppUnitStatusIsnotSta
 	c.Assert(err, NotNil)
 }
 
-func (s *S) TestAppIsAvaliableHandlerShouldReturns200WhenAppUnitStatusIsStarted(c *C) {
+func (s *S) TestAppIsAvaliableHandlerShouldReturn200WhenAppUnitStatusIsStarted(c *C) {
 	a := app.App{
 		Name:      "someapp",
 		Framework: "python",
 		Teams:     []string{s.team.Name},
-		Units: []app.Unit{
-			{
-				Name:              "someapp/0",
-				Type:              "django",
-				AgentState:        "started",
-				MachineAgentState: "running",
-				InstanceState:     "running",
-			},
-		},
+		Units:     []app.Unit{{Name: "someapp/0", Type: "django", State: "started"}},
+		State:     "started",
 	}
 	err := db.Session.Apps().Insert(a)
 	c.Assert(err, IsNil)
@@ -131,15 +117,8 @@ pos-restart:
 		Name:      "someapp",
 		Framework: "django",
 		Teams:     []string{s.team.Name},
-		Units: []app.Unit{
-			{
-				Name:              "someapp/0",
-				Type:              "django",
-				AgentState:        "started",
-				MachineAgentState: "running",
-				InstanceState:     "running",
-			},
-		},
+		Units:     []app.Unit{{Name: "someapp/0", Type: "django", State: "started"}},
+		State:     "started",
 	}
 	err = db.Session.Apps().Insert(a)
 	c.Assert(err, IsNil)
@@ -174,17 +153,16 @@ pos-restart:
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(dir)
 	u := app.Unit{
-		Name:              "someapp/0",
-		Type:              "django",
-		AgentState:        "started",
-		MachineAgentState: "running",
-		InstanceState:     "running",
+		Name:  "someapp/0",
+		Type:  "django",
+		State: "started",
 	}
 	a := app.App{
 		Name:      "someapp",
 		Framework: "django",
 		Teams:     []string{s.team.Name},
 		Units:     []app.Unit{u},
+		State:     "started",
 	}
 	err = db.Session.Apps().Insert(a)
 	c.Assert(err, IsNil)
@@ -221,11 +199,9 @@ pos-restart:
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(dir)
 	u := app.Unit{
-		Name:              "someapp/0",
-		Type:              "django",
-		AgentState:        "started",
-		MachineAgentState: "running",
-		InstanceState:     "running",
+		Name:  "someapp/0",
+		Type:  "django",
+		State: "started",
 	}
 	a := app.App{
 		Name:      "someapp",
@@ -263,9 +239,7 @@ func (s *S) TestAppList(c *C) {
 	app1 := app.App{
 		Name:  "app1",
 		Teams: []string{s.team.Name},
-		Units: []app.Unit{
-			{Name: "app1/0", Ip: "10.10.10.10"},
-		},
+		Units: []app.Unit{{Name: "app1/0", Ip: "10.10.10.10"}},
 	}
 	err := db.Session.Apps().Insert(app1)
 	c.Assert(err, IsNil)
@@ -273,9 +247,7 @@ func (s *S) TestAppList(c *C) {
 	app2 := app.App{
 		Name:  "app2",
 		Teams: []string{s.team.Name},
-		Units: []app.Unit{
-			{Name: "app2/0"},
-		},
+		Units: []app.Unit{{Name: "app2/0"}},
 	}
 	err = db.Session.Apps().Insert(app2)
 	c.Assert(err, IsNil)
@@ -548,6 +520,8 @@ func (s *S) TestCreateAppHandler(c *C) {
 		err := a.Get()
 		c.Assert(err, IsNil)
 		err = a.Destroy()
+		c.Assert(err, IsNil)
+		err = s.provisioner.Destroy(&a)
 		c.Assert(err, IsNil)
 	}()
 	b := strings.NewReader(`{"name":"someapp", "framework":"django"}`)
@@ -920,12 +894,10 @@ func (s *S) TestRunHandlerShouldExecuteTheGivenCommandInTheGivenApp(c *C) {
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(dir)
 	u := app.Unit{
-		Name:              "someapp/0",
-		Type:              "django",
-		Machine:           10,
-		AgentState:        "started",
-		MachineAgentState: "running",
-		InstanceState:     "running",
+		Name:    "someapp/0",
+		Type:    "django",
+		Machine: 10,
+		State:   "started",
 	}
 	a := app.App{
 		Name:      "secrets",
@@ -950,12 +922,10 @@ func (s *S) TestRunHandlerReturnsTheOutputOfTheCommandEvenIfItFails(c *C) {
 	dir, err := commandmocker.Add("juju", "$*")
 	c.Assert(err, IsNil)
 	u := app.Unit{
-		Name:              "someapp/0",
-		Type:              "django",
-		Machine:           10,
-		AgentState:        "started",
-		MachineAgentState: "running",
-		InstanceState:     "running",
+		Name:    "someapp/0",
+		Type:    "django",
+		Machine: 10,
+		State:   "started",
 	}
 	a := app.App{
 		Name:      "secrets",
@@ -1648,7 +1618,7 @@ func (s *S) TestAppLogSelectBySource(c *C) {
 	c.Assert(logs[0].Source, Equals, "mars")
 }
 
-func (s *S) TestAppLogSelectByLinesShouldReturnsTheLastestEntries(c *C) {
+func (s *S) TestAppLogSelectByLinesShouldReturnTheLastestEntries(c *C) {
 	a := app.App{
 		Name:      "lost",
 		Framework: "vougan",
@@ -1940,18 +1910,13 @@ func (s *S) TestUnbindHandler(c *C) {
 	err = app.CreateApp(&a)
 	c.Assert(err, IsNil)
 	defer a.Destroy()
-	a.Env = map[string]bind.EnvVar{
-		"DATABASE_HOST": {
-			Name:         "DATABASE_HOST",
-			Value:        "arrea",
-			Public:       false,
-			InstanceName: instance.Name,
-		},
-		"MY_VAR": {
-			Name:  "MY_VAR",
-			Value: "123",
-		},
+	a.Env["DATABASE_HOST"] = bind.EnvVar{
+		Name:         "DATABASE_HOST",
+		Value:        "arrea",
+		Public:       false,
+		InstanceName: instance.Name,
 	}
+	a.Env["MY_VAR"] = bind.EnvVar{Name: "MY_VAR", Value: "123"}
 	a.Units = []app.Unit{{Ip: "127.0.0.1", Machine: 1}}
 	err = db.Session.Apps().Update(bson.M{"name": a.Name}, &a)
 	c.Assert(err, IsNil)
@@ -1966,13 +1931,13 @@ func (s *S) TestUnbindHandler(c *C) {
 	c.Assert(instance.Apps, DeepEquals, []string{})
 	err = db.Session.Apps().Find(bson.M{"name": a.Name}).One(&a)
 	c.Assert(err, IsNil)
-	expected := map[string]bind.EnvVar{
-		"MY_VAR": {
-			Name:  "MY_VAR",
-			Value: "123",
-		},
+	expected := bind.EnvVar{
+		Name:  "MY_VAR",
+		Value: "123",
 	}
-	c.Assert(a.Env, DeepEquals, expected)
+	c.Assert(a.Env["MY_VAR"], DeepEquals, expected)
+	_, ok := a.Env["DATABASE_HOST"]
+	c.Assert(ok, Equals, false)
 	ch := make(chan bool)
 	go func() {
 		t := time.Tick(1)
@@ -2093,11 +2058,9 @@ func (s *S) TestRestartHandler(c *C) {
 		Teams: []string{s.team.Name},
 		Units: []app.Unit{
 			{
-				AgentState:        "started",
-				MachineAgentState: "running",
-				InstanceState:     "running",
-				Machine:           10,
-				Ip:                "20.20.20.20",
+				State:   "started",
+				Machine: 10,
+				Ip:      "20.20.20.20",
 			},
 		},
 	}
