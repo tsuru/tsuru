@@ -8,17 +8,13 @@ import (
 	"encoding/json"
 	"errors"
 	"io/ioutil"
-	"os/user"
+	"os"
 	"path"
 	"strings"
 )
 
 func joinWithUserDir(p ...string) (string, error) {
-	user, err := user.Current()
-	if err != nil {
-		return "", err
-	}
-	paths := []string{user.HomeDir}
+	paths := []string{os.ExpandEnv("$HOME")}
 	paths = append(paths, p...)
 	return path.Join(paths...), nil
 }

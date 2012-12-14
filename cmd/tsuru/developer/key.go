@@ -13,7 +13,6 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
-	"os/user"
 	"strings"
 )
 
@@ -32,11 +31,8 @@ func getKeyPath(args []string) (string, error) {
 	if len(args) > 0 {
 		return args[0], nil
 	}
-	user, err := user.Current()
-	if err != nil {
-		return "", err
-	}
-	return user.HomeDir + "/.ssh/id_rsa.pub", nil
+	home := os.ExpandEnv("$HOME")
+	return home + "/.ssh/id_rsa.pub", nil
 }
 
 func (r *keyReader) readKey(keyPath string) (string, error) {
