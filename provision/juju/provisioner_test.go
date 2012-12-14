@@ -134,6 +134,38 @@ func (s *S) TestJujuCollectStatus(c *C) {
 	c.Assert(commandmocker.Ran(tmpdir), Equals, true)
 }
 
+func (s *S) TestJujuCollectStatusDirtyOutput(c *C) {
+	tmpdir, err := commandmocker.Add("juju", dirtyCollectOutput)
+	c.Assert(err, IsNil)
+	defer commandmocker.Remove(tmpdir)
+	expected := []provision.Unit{
+		{
+			Name:    "i-00000439",
+			AppName: "as_i_rise",
+			Type:    "django",
+			Machine: 105,
+			Ip:      "10.10.10.163",
+			Status:  provision.StatusStarted,
+		},
+		{
+			Name:    "i-0000043e",
+			AppName: "the_infanta",
+			Type:    "gunicorn",
+			Machine: 107,
+			Ip:      "10.10.10.168",
+			Status:  provision.StatusInstalling,
+		},
+	}
+	p := JujuProvisioner{}
+	units, err := p.CollectStatus()
+	c.Assert(err, IsNil)
+	if units[0].Type == "gunicorn" {
+		units[0], units[1] = units[1], units[0]
+	}
+	c.Assert(units, DeepEquals, expected)
+	c.Assert(commandmocker.Ran(tmpdir), Equals, true)
+}
+
 func (s *S) TestJujuCollectStatusFailure(c *C) {
 	tmpdir, err := commandmocker.Error("juju", "juju failed", 1)
 	c.Assert(err, IsNil)

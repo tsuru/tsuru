@@ -144,8 +144,8 @@ func execWithTimeout(timeout time.Duration, cmd string, args ...string) (output 
 	ch := make(chan []byte, 1)
 	errCh := make(chan error, 1)
 	command := exec.Command(cmd, args...)
-	command.Stdout = &buf
-	command.Stderr = &buf
+	command.Stdout = &Writer{&buf}
+	command.Stderr = &Writer{&buf}
 	if err = command.Start(); err != nil {
 		return nil, err
 	}
