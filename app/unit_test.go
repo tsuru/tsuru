@@ -115,24 +115,6 @@ func (s *S) TestExecuteHookWithCustomWriter(c *C) {
 	c.Assert(b.String(), Matches, `.* \d /var/lib/tsuru/hooks/requirements`)
 }
 
-func (s *S) TestDestroyUnit(c *C) {
-	tmpdir, err := commandmocker.Add("juju", "$*")
-	c.Assert(err, IsNil)
-	defer commandmocker.Remove(tmpdir)
-	unit := Unit{Type: "django", Name: "myunit", Machine: 10, app: &App{}}
-	out, err := unit.destroy()
-	c.Assert(err, IsNil)
-	c.Assert(string(out), Equals, "terminate-machine 10")
-}
-
-func (s *S) TestCantDestroyAUnitWithMachine0(c *C) {
-	u := Unit{Type: "django", Name: "nova-era", Machine: 0, app: &App{}}
-	out, err := u.destroy()
-	c.Assert(out, IsNil)
-	c.Assert(err, NotNil)
-	c.Assert(err, ErrorMatches, "^No machine associated.$")
-}
-
 func (s *S) TestWriteEnvVars(c *C) {
 	tmpdir, err := commandmocker.Add("juju", "$*")
 	c.Assert(err, IsNil)

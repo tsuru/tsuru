@@ -6,7 +6,6 @@ package app
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 	"github.com/globocom/tsuru/log"
 	"github.com/globocom/tsuru/provision"
@@ -24,21 +23,6 @@ type Unit struct {
 	Ip      string
 	State   string
 	app     *App
-}
-
-func (u *Unit) destroy() ([]byte, error) {
-	if u.Machine < 1 {
-		return nil, errors.New("No machine associated.")
-	}
-	cmd := exec.Command("juju", "destroy-service", u.app.Name)
-	log.Printf("destroying %s with name %s", u.Type, u.Name)
-	out, err := cmd.CombinedOutput()
-	log.Printf(string(out))
-	if err != nil {
-		return out, err
-	}
-	cmd = exec.Command("juju", "terminate-machine", strconv.Itoa(u.Machine))
-	return cmd.CombinedOutput()
 }
 
 func (u *Unit) executeHook(hook string, w io.Writer) error {
