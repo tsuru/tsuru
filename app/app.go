@@ -88,7 +88,7 @@ func (a *App) Get() error {
 //       1. Save the app in the database
 //       2. Create S3 credentials and bucket for the app
 //       3. Create the git repository using gandalf
-//       4. Deploy juju charm
+//       4. Provision the unit within the provisioner
 func CreateApp(a *App) error {
 	if !a.isValid() {
 		msg := "Invalid app name, your app should have at most 63 " +
