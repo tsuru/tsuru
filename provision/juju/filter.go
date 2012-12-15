@@ -9,11 +9,11 @@ import (
 	"regexp"
 )
 
-// FilterOutput filters output from juju.
+// filterOutput filters output from juju.
 //
 // It removes all lines that do not contain useful output, like juju's logging
 // and Python's deprecation warnings.
-func FilterOutput(output []byte) []byte {
+func filterOutput(output []byte) []byte {
 	var result [][]byte
 	var ignore bool
 	deprecation := []byte("DeprecationWarning")

@@ -21,10 +21,10 @@ func (w *Writer) Write(data []byte) (int, error) {
 	originalLength := len(data)
 	if rw, ok := w.Writer.(http.ResponseWriter); ok {
 		if rw.Header().Get("Content-Type") == "text" {
-			data = FilterOutput(data)
+			data = filterOutput(data)
 		}
 	} else {
-		data = FilterOutput(data)
+		data = filterOutput(data)
 	}
 	_, err := w.Writer.Write(data)
 	// returning the len(data) to skip the "short write" error
