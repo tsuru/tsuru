@@ -16,7 +16,6 @@ import (
 	"github.com/globocom/tsuru/db"
 	"github.com/globocom/tsuru/log"
 	"github.com/globocom/tsuru/provision"
-	"github.com/globocom/tsuru/provision/juju"
 	"github.com/globocom/tsuru/queue"
 	"github.com/globocom/tsuru/repository"
 	"io"
@@ -280,7 +279,7 @@ func (a *App) loadHooks() error {
 		a.Log(fmt.Sprintf("Got error while executing command: %s... Skipping hooks execution", err), "tsuru")
 		return nil
 	}
-	err = goyaml.Unmarshal(juju.FilterOutput(buf.Bytes()), a.hooks)
+	err = goyaml.Unmarshal(buf.Bytes(), a.hooks)
 	if err != nil {
 		a.Log(fmt.Sprintf("Got error while parsing yaml: %s", err), "tsuru")
 		return err
@@ -540,15 +539,12 @@ func (a *App) Log(message string, source string) error {
 	log.Printf(message)
 	messages := strings.Split(message, "\n")
 	for _, msg := range messages {
-		filteredMessage := juju.FilterOutput([]byte(msg))
-		if len(filteredMessage) > 0 {
-			l := Applog{
-				Date:    time.Now(),
-				Message: msg,
-				Source:  source,
-			}
-			a.Logs = append(a.Logs, l)
+		l := Applog{
+			Date:    time.Now(),
+			Message: msg,
+			Source:  source,
 		}
+		a.Logs = append(a.Logs, l)
 	}
 	return db.Session.Apps().Update(bson.M{"name": a.Name}, a)
 }
