@@ -31,7 +31,7 @@ func (fn Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			r.Body.Close()
 		}
 	}()
-	fw := FilteredWriter{w, false}
+	fw := FlushingWriter{w, false}
 	if err := fn(&fw, r); err != nil {
 		if fw.wrote {
 			fmt.Fprintln(&fw, err)
@@ -51,7 +51,7 @@ func (fn AuthorizationRequiredHandler) ServeHTTP(w http.ResponseWriter, r *http.
 			r.Body.Close()
 		}
 	}()
-	fw := FilteredWriter{w, false}
+	fw := FlushingWriter{w, false}
 	token := r.Header.Get("Authorization")
 	if token == "" {
 		http.Error(&fw, "You must provide the Authorization header", http.StatusUnauthorized)

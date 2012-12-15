@@ -13,7 +13,6 @@ import (
 	. "launchpad.net/gocheck"
 	"net/http"
 	"net/http/httptest"
-	"strings"
 	"testing"
 )
 
@@ -217,27 +216,6 @@ func (s *S) TestAuthorizationRequiredHandlerShouldRespectTheHandlerStatusCode(c 
 	request.Header.Set("Authorization", s.t.Token)
 	AuthorizationRequiredHandler(authorizedBadRequestHandler).ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, Equals, http.StatusBadRequest)
-}
-
-func (s *S) TestAuthorizationRequiredHandlerShouldFilterOutputFromJuju(c *C) {
-	recorder := httptest.NewRecorder()
-	request, err := http.NewRequest("GET", "/apps", nil)
-	c.Assert(err, IsNil)
-	request.Header.Set("Authorization", s.t.Token)
-	AuthorizationRequiredHandler(authorizedOutputHandler).ServeHTTP(recorder, request)
-	notExpected := ".*2012-06-05 17:03:36,887 WARNING.*"
-	result := strings.Replace(recorder.Body.String(), "\n", "", -1)
-	c.Assert(result, Not(Matches), notExpected)
-}
-
-func (s *S) TestHandlerShouldFilterOutputFromJuju(c *C) {
-	recorder := httptest.NewRecorder()
-	request, err := http.NewRequest("GET", "/apps", nil)
-	c.Assert(err, IsNil)
-	Handler(outputHandler).ServeHTTP(recorder, request)
-	notExpected := ".*2012-06-05 17:03:36,887 WARNING.*"
-	result := strings.Replace(recorder.Body.String(), "\n", "", -1)
-	c.Assert(result, Not(Matches), notExpected)
 }
 
 func (s *S) TestSetVersionHeaders(c *C) {
