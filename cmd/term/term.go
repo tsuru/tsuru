@@ -25,8 +25,7 @@ func ReadPassword(fd uintptr) (string, error) {
 		// Restoring on SIGINT
 		sigChan := make(chan os.Signal, 1)
 		go func(c chan os.Signal, t Termios, fd uintptr) {
-			select {
-			case <-c:
+			if _, ok := <-c; ok {
 				syscall.Syscall6(syscall.SYS_IOCTL, fd, uintptr(TCSETS), uintptr(unsafe.Pointer(&oldState)), 0, 0, 0)
 				os.Exit(1)
 			}
