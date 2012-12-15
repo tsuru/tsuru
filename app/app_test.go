@@ -840,7 +840,7 @@ func (s *S) TestLogShouldAddOneRecordByLine(c *C) {
 	c.Assert(instance.Logs[logLen-1].Message, Equals, "first log")
 }
 
-func (s *S) TestLogShouldNotLogWhiteLines(c *C) {
+func (s *S) TestLogShouldNotLogBlankLines(c *C) {
 	a := App{
 		Name: "newApp",
 	}
