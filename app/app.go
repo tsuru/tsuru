@@ -539,12 +539,14 @@ func (a *App) Log(message string, source string) error {
 	log.Printf(message)
 	messages := strings.Split(message, "\n")
 	for _, msg := range messages {
-		l := Applog{
-			Date:    time.Now(),
-			Message: msg,
-			Source:  source,
+		if msg != "" {
+			l := Applog{
+				Date:    time.Now(),
+				Message: msg,
+				Source:  source,
+			}
+			a.Logs = append(a.Logs, l)
 		}
-		a.Logs = append(a.Logs, l)
 	}
 	return db.Session.Apps().Update(bson.M{"name": a.Name}, a)
 }
