@@ -11,9 +11,23 @@
 #     - linux_386
 #     - linux_amd64
 
-# TODO: handle version of commands.
-
 destination_dir="dist-cmd"
+
+function get_version {
+	GOOS=`go env GOHOSTOS` GOARCH=`go env GOHOSTARCH` CGO_ENABLED=0 go build -o $destination_dir/$1 \
+		github.com/globocom/tsuru/$2
+	echo `$destination_dir/$1 version | awk '{print $3}' | sed -e 's/\.$//'`
+}
+
+function build_and_package {
+	echo -n "Building $2 $4 for $1... "
+	os=`echo $1 | cut -d '_' -f1`
+	arch=`echo $1 | cut -d '_' -f2`
+ 	GOOS=$os GOARCH=$arch CGO_ENABLED=0 go build -o $destination_dir/$2 github.com/globocom/tsuru/$3
+	tar -czf $destination_dir/$2-$os-$arch-$4.tar.gz $destination_dir/$2
+	rm $destination_dir/$2
+	echo "ok"
+}
 
 echo -n "Creating \"$destination_dir\" directory... "
 mkdir -p $destination_dir
@@ -21,35 +35,29 @@ echo "ok"
 
 targets="darwin_amd64 linux_386 linux_amd64"
 
+echo -n "Determining crane version... "
+crane_version=`get_version crane cmd/crane`
+echo $crane_version
+
+echo -n "Determining tsuru version... "
+tsuru_version=`get_version tsuru cmd/tsuru/developer`
+echo $tsuru_version
+
+echo -n "Determining tsuru-admin version... "
+tsuru_admin_version=`get_version tsuru-admin cmd/tsuru/ops`
+echo $tsuru_admin_version
+
 for target in $targets
 do
-	echo -n "Building crane for $target... "
-	os=`echo $target | cut -d '_' -f1`
-	arch=`echo $target | cut -d '_' -f2`
-	GOOS=$os GOARCH=$arg CGO_ENABLED=0 go build -o $destination_dir/crane github.com/globocom/tsuru/cmd/crane
-	tar -czf $destination_dir/crane-$os-$arch.tar.gz $destination_dir/crane
-	rm $destination_dir/crane
-	echo "ok"
+	build_and_package $target crane cmd/crane $crane_version
 done
 
 for target in $targets
 do
-	echo -n "Building tsuru for $target... "
-	os=`echo $target | cut -d '_' -f1`
-	arch=`echo $target | cut -d '_' -f2`
-	GOOS=$os GOARCH=$arg CGO_ENABLED=0 go build -o $destination_dir/tsuru github.com/globocom/tsuru/cmd/tsuru/developer
-	tar -czf $destination_dir/tsuru-$os-$arch.tar.gz $destination_dir/tsuru
-	rm $destination_dir/tsuru
-	echo "ok"
+	build_and_package $target tsuru cmd/tsuru/developer $tsuru_version
 done
 
 for target in $targets
 do
-	echo -n "Building tsuru-admin for $target... "
-	os=`echo $target | cut -d '_' -f1`
-	arch=`echo $target | cut -d '_' -f2`
-	GOOS=$os GOARCH=$arg CGO_ENABLED=0 go build -o $destination_dir/tsuru-admin github.com/globocom/tsuru/cmd/tsuru/ops
-	tar -czf $destination_dir/tsuru-admin-$os-$arch.tar.gz $destination_dir/tsuru-admin
-	rm $destination_dir/tsuru-admin
-	echo "ok"
+	build_and_package $target tsuru-admin cmd/tsuru/ops $tsuru_admin_version
 done
