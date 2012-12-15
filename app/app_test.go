@@ -592,33 +592,6 @@ pos-restart:
 	c.Assert(a.hooks.PosRestart, DeepEquals, []string{"testdata/pos.sh"})
 }
 
-func (s *S) TestLoadHooksFiltersOutputFromJuju(c *C) {
-	output := `2012-06-05 17:26:15,881 WARNING ssl-hostname-verification is disabled for this environment
-2012-06-05 17:26:15,881 WARNING EC2 API calls not using secure transport
-2012-06-05 17:26:15,881 WARNING S3 API calls not using secure transport
-2012-06-05 17:26:15,881 WARNING Ubuntu Cloud Image lookups encrypted but not authenticated
-2012-06-05 17:26:15,891 INFO Connecting to environment...
-2012-06-05 17:26:16,657 INFO Connected to environment.
-2012-06-05 17:26:16,860 INFO Connecting to machine 0 at 10.170.0.191
-pre-restart:
-  - testdata/pre.sh
-  - ls -lh
-  - sudo rm -rf /
-pos-restart:
-  - testdata/pos.sh
-`
-	s.provisioner.PrepareOutput([]byte(output))
-	a := App{
-		Name:      "something",
-		Framework: "django",
-		State:     provision.StatusStarted,
-	}
-	err := a.loadHooks()
-	c.Assert(err, IsNil)
-	c.Assert(a.hooks.PreRestart, DeepEquals, []string{"testdata/pre.sh", "ls -lh", "sudo rm -rf /"})
-	c.Assert(a.hooks.PosRestart, DeepEquals, []string{"testdata/pos.sh"})
-}
-
 func (s *S) TestLoadHooksWithListOfCommands(c *C) {
 	output := `pre-restart:
   - testdata/pre.sh
@@ -855,35 +828,6 @@ func (s *S) TestLogShouldNotLogBlankLines(c *C) {
 	err = db.Session.Apps().Find(bson.M{"name": a.Name}).One(&instance)
 	logLen := len(instance.Logs)
 	c.Assert(instance.Logs[logLen-1].Message, Not(Equals), "")
-}
-
-func (s *S) TestLogShouldNotLogWarnings(c *C) {
-	a := App{
-		Name: "newApp",
-	}
-	err := db.Session.Apps().Insert(a)
-	c.Assert(err, IsNil)
-	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
-	err = a.Log("some message", "tsuru")
-	c.Assert(err, IsNil)
-	badLogs := []string{
-		"2012-11-28 16:00:35,615 WARNING Ubuntu Cloud Image lookups encrypted but not authenticated",
-		"2012-11-28 16:00:35,616 INFO Connecting to environment...",
-		"/usr/local/lib/python2.7/dist-packages/txAWS-0.2.3-py2.7.egg/txaws/client/base.py:208: UserWarning: The client attribute on BaseQuery is deprecated and will go away in future release.",
-		"warnings.warn('The client attribute on BaseQuery is deprecated and'",
-	}
-	for _, log := range badLogs {
-		err = a.Log(log, "")
-		c.Assert(err, IsNil)
-	}
-	for _, log := range badLogs {
-		lenght, err := db.Session.Apps().Find(bson.M{"logs.message": log}).Count()
-		c.Assert(err, IsNil)
-		c.Assert(lenght, Equals, 0)
-	}
-
-	var instance App
-	err = db.Session.Apps().Find(bson.M{"name": a.Name}).One(&instance)
 }
 
 func (s *S) TestGetTeams(c *C) {
