@@ -157,8 +157,7 @@ func AppInfo(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 }
 
 func createAppHelper(instance *app.App, u *auth.User) ([]byte, error) {
-	var teams []auth.Team
-	err := db.Session.Teams().Find(bson.M{"users": u.Email}).All(&teams)
+	teams, err := u.Teams()
 	if err != nil {
 		return nil, err
 	}
