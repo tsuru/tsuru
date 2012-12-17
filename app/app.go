@@ -366,11 +366,11 @@ func Restart(a *App, w io.Writer) error {
 	if err != nil {
 		return err
 	}
-	err = a.posRestart(w)
+	err = a.run("/var/lib/tsuru/hooks/restart", w)
 	if err != nil {
 		return err
 	}
-	return a.run("/var/lib/tsuru/hooks/restart", w)
+	return a.posRestart(w)
 }
 
 // InstallDeps runs the dependencies hook for the app
