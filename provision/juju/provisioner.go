@@ -84,10 +84,10 @@ func (p *JujuProvisioner) CollectStatus() ([]provision.Unit, error) {
 	}
 	var units []provision.Unit
 	for name, service := range out.Services {
-		for _, u := range service.Units {
+		for unitName, u := range service.Units {
 			machine := out.Machines[u.Machine]
 			unit := provision.Unit{
-				Name:    machine.InstanceId,
+				Name:    unitName,
 				AppName: name,
 				Machine: u.Machine,
 				Ip:      machine.IpAddress,

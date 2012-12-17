@@ -109,7 +109,7 @@ func (s *S) TestJujuCollectStatus(c *C) {
 	p := JujuProvisioner{}
 	expected := []provision.Unit{
 		{
-			Name:    "i-00000439",
+			Name:    "as_i_rise/0",
 			AppName: "as_i_rise",
 			Type:    "django",
 			Machine: 105,
@@ -117,7 +117,7 @@ func (s *S) TestJujuCollectStatus(c *C) {
 			Status:  provision.StatusStarted,
 		},
 		{
-			Name:    "i-0000043e",
+			Name:    "the_infanta/0",
 			AppName: "the_infanta",
 			Type:    "gunicorn",
 			Machine: 107,
@@ -140,7 +140,7 @@ func (s *S) TestJujuCollectStatusDirtyOutput(c *C) {
 	defer commandmocker.Remove(tmpdir)
 	expected := []provision.Unit{
 		{
-			Name:    "i-00000439",
+			Name:    "as_i_rise/0",
 			AppName: "as_i_rise",
 			Type:    "django",
 			Machine: 105,
@@ -148,7 +148,7 @@ func (s *S) TestJujuCollectStatusDirtyOutput(c *C) {
 			Status:  provision.StatusStarted,
 		},
 		{
-			Name:    "i-0000043e",
+			Name:    "the_infanta/1",
 			AppName: "the_infanta",
 			Type:    "gunicorn",
 			Machine: 107,

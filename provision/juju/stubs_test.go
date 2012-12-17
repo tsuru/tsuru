@@ -50,7 +50,7 @@ services:
     exposed: false
     relations: {}
     units:
-      the_infanta/1:
+      the_infanta/0:
         agent-state: pending
         machine: 107
         public-address: server-1086.novalocal`
