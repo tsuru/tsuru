@@ -38,7 +38,7 @@ type team struct {
 
 func (t *T) StartAmzS3AndIAM(c *C) {
 	var err error
-	t.S3Server, err = s3test.NewServer()
+	t.S3Server, err = s3test.NewServer(&s3test.Config{Send409Conflict: true})
 	c.Assert(err, IsNil)
 	config.Set("aws:s3:endpoint", t.S3Server.URL())
 	t.IamServer, err = iamtest.NewServer()
