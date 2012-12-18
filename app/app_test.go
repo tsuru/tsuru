@@ -246,6 +246,37 @@ func (s *S) TestAppendOrUpdate(c *C) {
 	c.Assert(a.Units[0], DeepEquals, u)
 }
 
+func (s *S) TestAddUnits(c *C) {
+	app := App{Name: "warpaint", Framework: "python"}
+	s.provisioner.Provision(&app)
+	defer s.provisioner.Destroy(&app)
+	err := app.AddUnits(5)
+	c.Assert(err, IsNil)
+	units := s.provisioner.GetUnits(&app)
+	c.Assert(units, HasLen, 5)
+	err = app.AddUnits(2)
+	c.Assert(err, IsNil)
+	units = s.provisioner.GetUnits(&app)
+	c.Assert(units, HasLen, 7)
+	for _, unit := range units {
+		c.Assert(unit.AppName, Equals, app.Name)
+	}
+}
+
+func (s *S) TestAddZeroUnits(c *C) {
+	app := App{Name: "warpaint", Framework: "ruby"}
+	err := app.AddUnits(0)
+	c.Assert(err, NotNil)
+	c.Assert(err.Error(), Equals, "Cannot add zero units.")
+}
+
+func (s *S) TestAddUnitsFailureInProvisioner(c *C) {
+	app := App{Name: "scars", Framework: "golang"}
+	err := app.AddUnits(2)
+	c.Assert(err, NotNil)
+	c.Assert(err.Error(), Equals, "App is not provisioned.")
+}
+
 func (s *S) TestGrantAccess(c *C) {
 	a := App{Name: "appName", Framework: "django", Teams: []string{}}
 	err := a.Grant(&s.team)

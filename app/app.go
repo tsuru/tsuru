@@ -170,6 +170,14 @@ func (a *App) AddUnit(u *Unit) {
 	a.Units = append(a.Units, *u)
 }
 
+// AddUnits creates n new units within the provisioner.
+func (a *App) AddUnits(n uint) error {
+	if n == 0 {
+		return errors.New("Cannot add zero units.")
+	}
+	return Provisioner.AddUnits(a, n)
+}
+
 func (a *App) Find(team *auth.Team) (int, bool) {
 	pos := sort.Search(len(a.Teams), func(i int) bool {
 		return a.Teams[i] >= team.Name
