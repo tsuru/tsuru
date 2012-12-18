@@ -156,6 +156,10 @@ func (a *App) Destroy() error {
 	return db.Session.Apps().Remove(bson.M{"name": a.Name})
 }
 
+// AddUnit adds a new unit to the app (or update an existing unit). It just updates
+// the internal list of units, it does not talk to the provisioner. For
+// provisioning a new unit for the app, one should use AddUnits method, which
+// receives the number of units that you want to provision.
 func (a *App) AddUnit(u *Unit) {
 	for i, unt := range a.Units {
 		if unt.Machine == u.Machine {
