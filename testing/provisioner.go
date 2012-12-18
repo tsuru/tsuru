@@ -6,6 +6,7 @@ package testing
 
 import (
 	"errors"
+	"fmt"
 	"github.com/globocom/tsuru/provision"
 	"io"
 	"strconv"
@@ -94,6 +95,7 @@ type failure struct {
 // Fake implementation for provision.Provisioner.
 type FakeProvisioner struct {
 	apps     []provision.App
+	units    map[string][]provision.Unit
 	Cmds     []Cmd
 	outputs  chan []byte
 	failures chan failure
@@ -103,6 +105,7 @@ func NewFakeProvisioner() *FakeProvisioner {
 	p := FakeProvisioner{}
 	p.outputs = make(chan []byte, 8)
 	p.failures = make(chan failure, 8)
+	p.units = make(map[string][]provision.Unit)
 	return &p
 }
 
@@ -152,6 +155,7 @@ func (p *FakeProvisioner) Reset() {
 	close(p.failures)
 	p.outputs = make(chan []byte, 8)
 	p.failures = make(chan failure, 8)
+	p.units = make(map[string][]provision.Unit)
 	p.Cmds = nil
 }
 
@@ -164,6 +168,7 @@ func (p *FakeProvisioner) Provision(app provision.App) error {
 		return &provision.Error{Reason: "App already provisioned."}
 	}
 	p.apps = append(p.apps, app)
+	p.units[app.GetName()] = nil
 	return nil
 }
 
@@ -181,6 +186,30 @@ func (p *FakeProvisioner) Destroy(app provision.App) error {
 }
 
 func (p *FakeProvisioner) AddUnits(app provision.App, n uint) error {
+	if err := p.getError("AddUnits"); err != nil {
+		return err
+	}
+	if n == 0 {
+		return errors.New("Cannot add 0 units.")
+	}
+	index := p.FindApp(app)
+	if index < 0 {
+		return errors.New("App is not provisioned.")
+	}
+	name := app.GetName()
+	framework := app.GetFramework()
+	length := uint(len(p.units[name]))
+	for i := uint(0); i < n; i++ {
+		unit := provision.Unit{
+			Name:    fmt.Sprintf("%s/%d", name, length+i),
+			AppName: name,
+			Type:    framework,
+			Status:  provision.StatusStarted,
+			Ip:      fmt.Sprintf("10.10.10.%d", length+i),
+			Machine: int(length + i),
+		}
+		p.units[name] = append(p.units[name], unit)
+	}
 	return nil
 }
 
