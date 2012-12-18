@@ -237,7 +237,7 @@ func (s *S) TestUnitStatus(c *C) {
 		instance     string
 		agent        string
 		machineAgent string
-		expected     string
+		expected     provision.Status
 	}{
 		{"something", "nothing", "wut", provision.StatusPending},
 		{"", "", "", provision.StatusCreating},

@@ -173,7 +173,7 @@ func execWithTimeout(timeout time.Duration, cmd string, args ...string) (output 
 	return output, err
 }
 
-func unitStatus(instanceState, agentState, machineAgentState string) string {
+func unitStatus(instanceState, agentState, machineAgentState string) provision.Status {
 	if instanceState == "error" || agentState == "install-error" || machineAgentState == "start-error" {
 		return provision.StatusError
 	}

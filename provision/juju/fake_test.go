@@ -24,6 +24,11 @@ func (u *FakeUnit) GetMachine() int {
 	return u.machine
 }
 
+func (u *FakeUnit) GetStatus() provision.Status {
+	u.actions = append(u.actions, "getstatus")
+	return provision.StatusStarted
+}
+
 type FakeApp struct {
 	name      string
 	framework string
