@@ -343,7 +343,7 @@ func (a *App) Run(cmd string, w io.Writer) error {
 }
 
 func (a *App) run(cmd string, w io.Writer) error {
-	if a.State != provision.StatusStarted {
+	if a.State != string(provision.StatusStarted) {
 		return fmt.Errorf("App must be started to run commands, but it is %q.", a.State)
 	}
 	return Provisioner.ExecuteCommand(w, w, a, cmd)

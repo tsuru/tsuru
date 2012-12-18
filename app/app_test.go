@@ -236,7 +236,12 @@ func (s *S) TestAppendOrUpdate(c *C) {
 	u := Unit{Name: "i-00000zz8", Ip: "", Machine: 3}
 	a.AddUnit(&u)
 	c.Assert(len(a.Units), Equals, 1)
-	u = Unit{Name: "i-00000zz9", Ip: "192.168.0.12", Machine: 3, State: provision.StatusStarted}
+	u = Unit{
+		Name:    "i-00000zz9",
+		Ip:      "192.168.0.12",
+		Machine: 3,
+		State:   string(provision.StatusStarted),
+	}
 	a.AddUnit(&u)
 	c.Assert(len(a.Units), Equals, 1)
 	c.Assert(a.Units[0], DeepEquals, u)
@@ -584,7 +589,7 @@ pos-restart:
 	a := App{
 		Name:      "something",
 		Framework: "django",
-		State:     provision.StatusStarted,
+		State:     string(provision.StatusStarted),
 	}
 	err := a.loadHooks()
 	c.Assert(err, IsNil)
@@ -604,7 +609,7 @@ pos-restart:
 	a := App{
 		Name:      "something",
 		Framework: "django",
-		State:     provision.StatusStarted,
+		State:     string(provision.StatusStarted),
 	}
 	err := a.loadHooks()
 	c.Assert(err, IsNil)
@@ -625,7 +630,7 @@ func (s *S) TestPreRestart(c *C) {
 	a := App{
 		Name:      "something",
 		Framework: "django",
-		State:     provision.StatusStarted,
+		State:     string(provision.StatusStarted),
 		hooks: &conf{
 			PreRestart: []string{"pre.sh"},
 			PosRestart: []string{"pos.sh"},
@@ -658,7 +663,7 @@ func (s *S) TestSkipsPreRestartWhenPreRestartSectionDoesNotExists(c *C) {
 	a := App{
 		Name:      "something",
 		Framework: "django",
-		Units:     []Unit{{State: provision.StatusStarted, Machine: 1}},
+		Units:     []Unit{{State: string(provision.StatusStarted), Machine: 1}},
 		hooks:     &conf{PosRestart: []string{"somescript.sh"}},
 	}
 	w := new(bytes.Buffer)
@@ -675,7 +680,7 @@ func (s *S) TestPosRestart(c *C) {
 	a := App{
 		Name:      "something",
 		Framework: "django",
-		State:     provision.StatusStarted,
+		State:     string(provision.StatusStarted),
 		hooks:     &conf{PosRestart: []string{"pos.sh"}},
 	}
 	w := new(bytes.Buffer)
@@ -700,7 +705,7 @@ func (s *S) TestSkipsPosRestartWhenPosRestartSectionDoesNotExists(c *C) {
 	a := App{
 		Name:      "something",
 		Framework: "django",
-		Units:     []Unit{{State: provision.StatusStarted, Machine: 1}},
+		Units:     []Unit{{State: string(provision.StatusStarted), Machine: 1}},
 		hooks:     &conf{PreRestart: []string{"somescript.sh"}},
 	}
 	w := new(bytes.Buffer)
@@ -718,7 +723,7 @@ func (s *S) TestInstallDeps(c *C) {
 		Name:      "someApp",
 		Framework: "django",
 		Teams:     []string{s.team.Name},
-		State:     provision.StatusStarted,
+		State:     string(provision.StatusStarted),
 	}
 	err := db.Session.Apps().Insert(a)
 	c.Assert(err, IsNil)
@@ -738,7 +743,7 @@ func (s *S) TestRestart(c *C) {
 		Name:      "someApp",
 		Framework: "django",
 		Teams:     []string{s.team.Name},
-		State:     provision.StatusStarted,
+		State:     string(provision.StatusStarted),
 	}
 	var b bytes.Buffer
 	err := Restart(&a, &b)
@@ -756,7 +761,7 @@ func (s *S) TestRestartRunsPreRestartHook(c *C) {
 		Name:      "someApp",
 		Framework: "django",
 		Teams:     []string{s.team.Name},
-		State:     provision.StatusStarted,
+		State:     string(provision.StatusStarted),
 		hooks:     &conf{PreRestart: []string{"pre.sh"}},
 	}
 	var buf bytes.Buffer
@@ -774,7 +779,7 @@ func (s *S) TestRestartRunsPosRestartHook(c *C) {
 		Name:      "someApp",
 		Framework: "django",
 		Teams:     []string{s.team.Name},
-		State:     provision.StatusStarted,
+		State:     string(provision.StatusStarted),
 		hooks:     &conf{PosRestart: []string{"pos.sh"}},
 	}
 	var buf bytes.Buffer
@@ -879,7 +884,7 @@ func (s *S) TestAppMarshalJson(c *C) {
 
 func (s *S) TestRun(c *C) {
 	s.provisioner.PrepareOutput([]byte("a lot of files"))
-	app := App{Name: "myapp", State: provision.StatusStarted}
+	app := App{Name: "myapp", State: string(provision.StatusStarted)}
 	var buf bytes.Buffer
 	err := app.Run("ls -lh", &buf)
 	c.Assert(err, IsNil)
@@ -893,7 +898,7 @@ func (s *S) TestRun(c *C) {
 
 func (s *S) TestRunWithoutEnv(c *C) {
 	s.provisioner.PrepareOutput([]byte("a lot of files"))
-	app := App{Name: "myapp", State: provision.StatusStarted}
+	app := App{Name: "myapp", State: string(provision.StatusStarted)}
 	var buf bytes.Buffer
 	err := app.run("ls -lh", &buf)
 	c.Assert(err, IsNil)
@@ -904,7 +909,7 @@ func (s *S) TestRunWithoutEnv(c *C) {
 
 func (s *S) TestCommand(c *C) {
 	s.provisioner.PrepareOutput([]byte("lots of files"))
-	app := App{Name: "myapp", State: provision.StatusStarted}
+	app := App{Name: "myapp", State: string(provision.StatusStarted)}
 	var buf bytes.Buffer
 	err := app.Command(&buf, &buf, "ls -lh")
 	c.Assert(err, IsNil)
@@ -922,7 +927,7 @@ func (s *S) TestSerializeEnvVars(c *C) {
 	app := App{
 		Name:  "time",
 		Teams: []string{s.team.Name},
-		State: provision.StatusStarted,
+		State: string(provision.StatusStarted),
 		Env: map[string]bind.EnvVar{
 			"http_proxy": {
 				Name:   "http_proxy",
@@ -962,7 +967,7 @@ func (s *S) TestSerializeEnvVarsErrorWithOutput(c *C) {
 	s.provisioner.PrepareFailure("ExecuteCommand", errors.New("exit status 1"))
 	app := App{
 		Name:  "intheend",
-		State: provision.StatusStarted,
+		State: string(provision.StatusStarted),
 		Env: map[string]bind.EnvVar{
 			"https_proxy": {
 				Name:   "https_proxy",
