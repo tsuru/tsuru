@@ -77,6 +77,13 @@ type Provisioner interface {
 	// Destroy is called when tsuru is destroying the app.
 	Destroy(App) error
 
+	// AddUnit adds a new unit to the app.
+	AddUnit(App) error
+
+	// RemoveUnit removes a unit from the app. It receives the app and the name
+	// of the unit to be removed.
+	RemoveUnit(App, string) error
+
 	// ExecuteCommand runs a command in all units of the app.
 	ExecuteCommand(stdout, stderr io.Writer, app App, cmd string, args ...string) error
 

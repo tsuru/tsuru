@@ -57,6 +57,14 @@ func (p *JujuProvisioner) Destroy(app provision.App) error {
 	return nil
 }
 
+func (p *JujuProvisioner) AddUnit(app provision.App) error {
+	return nil
+}
+
+func (p *JujuProvisioner) RemoveUnit(app provision.App, name string) error {
+	return nil
+}
+
 func (p *JujuProvisioner) ExecuteCommand(stdout, stderr io.Writer, app provision.App, cmd string, args ...string) error {
 	arguments := []string{"ssh", "-o", "StrictHostKeyChecking no", "-q"}
 	units := app.ProvisionUnits()

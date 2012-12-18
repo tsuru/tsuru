@@ -180,6 +180,14 @@ func (p *FakeProvisioner) Destroy(app provision.App) error {
 	return nil
 }
 
+func (p *FakeProvisioner) AddUnit(app provision.App) error {
+	return nil
+}
+
+func (p *FakeProvisioner) RemoveUnit(app provision.App, name string) error {
+	return nil
+}
+
 func (p *FakeProvisioner) ExecuteCommand(stdout, stderr io.Writer, app provision.App, cmd string, args ...string) error {
 	var (
 		output []byte
