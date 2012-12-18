@@ -20,6 +20,7 @@ func init() {
 type FakeUnit struct {
 	name    string
 	machine int
+	status  provision.Status
 	actions []string
 }
 
@@ -31,6 +32,10 @@ func (u *FakeUnit) GetName() string {
 func (u *FakeUnit) GetMachine() int {
 	u.actions = append(u.actions, "getmachine")
 	return u.machine
+}
+
+func (u *FakeUnit) GetStatus() provision.Status {
+	return u.status
 }
 
 // Fake implementation for provision.App.
