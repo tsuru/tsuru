@@ -46,6 +46,18 @@ func (s *S) TestGetCmds(c *C) {
 	c.Assert(p.GetCmds("", &otherapp), HasLen, 0)
 }
 
+func (s *S) TestGetUnits(c *C) {
+	list := []provision.Unit{
+		{"chain-lighting/0", "chain-lighting", "django", 1, "10.10.10.10", provision.StatusStarted},
+		{"chain-lighting/1", "chain-lighting", "django", 2, "10.10.10.15", provision.StatusStarted},
+	}
+	app := NewFakeApp("chain-lighting", "rush", 1)
+	p := NewFakeProvisioner()
+	p.units["chain-lighting"] = list
+	units := p.GetUnits(app)
+	c.Assert(units, DeepEquals, list)
+}
+
 func (s *S) TestPrepareOutput(c *C) {
 	output := []byte("the body eletric")
 	p := NewFakeProvisioner()

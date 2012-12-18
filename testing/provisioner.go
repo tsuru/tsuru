@@ -142,6 +142,10 @@ func (p *FakeProvisioner) FindApp(app provision.App) int {
 	return -1
 }
 
+func (p *FakeProvisioner) GetUnits(app provision.App) []provision.Unit {
+	return p.units[app.GetName()]
+}
+
 func (p *FakeProvisioner) PrepareOutput(b []byte) {
 	p.outputs <- b
 }
