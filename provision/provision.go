@@ -11,13 +11,15 @@ import (
 	"io"
 )
 
+type Status string
+
 const (
-	StatusStarted    = "started"
-	StatusPending    = "pending"
-	StatusDown       = "down"
-	StatusError      = "error"
-	StatusInstalling = "installing"
-	StatusCreating   = "creating"
+	StatusStarted    = Status("started")
+	StatusPending    = Status("pending")
+	StatusDown       = Status("down")
+	StatusError      = Status("error")
+	StatusInstalling = Status("installing")
+	StatusCreating   = Status("creating")
 )
 
 // Unit represents a provision unit. Can be a machine, container or anything
@@ -28,7 +30,7 @@ type Unit struct {
 	Type    string
 	Machine int
 	Ip      string
-	Status  string
+	Status  Status
 }
 
 // AppUnit represents a unit in an app.
@@ -38,6 +40,9 @@ type AppUnit interface {
 
 	// Returns the number of the unit.
 	GetMachine() int
+
+	// Returns the status of the unit.
+	GetStatus() Status
 }
 
 // App represents a tsuru app.
