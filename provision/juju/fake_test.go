@@ -5,6 +5,7 @@
 package juju
 
 import (
+	"fmt"
 	"github.com/globocom/tsuru/provision"
 )
 
@@ -44,8 +45,13 @@ func NewFakeApp(name, framework string, units int) *FakeApp {
 		framework: framework,
 		units:     make([]provision.AppUnit, units),
 	}
+	namefmt := "%s/%d"
 	for i := 0; i < units; i++ {
-		app.units[i] = &FakeUnit{name: name, machine: i + 1, status: provision.StatusStarted}
+		app.units[i] = &FakeUnit{
+			name:    fmt.Sprintf(namefmt, name, i),
+			machine: i + 1,
+			status:  provision.StatusStarted,
+		}
 	}
 	return &app
 }

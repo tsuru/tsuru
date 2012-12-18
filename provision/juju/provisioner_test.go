@@ -82,11 +82,18 @@ func (s *S) TestJujuExecuteCommand(c *C) {
 	p := JujuProvisioner{}
 	err = p.ExecuteCommand(&buf, &buf, app, "ls", "-lh")
 	c.Assert(err, IsNil)
-	output := "ssh -o StrictHostKeyChecking no -q 1 ls -lh"
-	output += "ssh -o StrictHostKeyChecking no -q 2 ls -lh"
+	bufOutput := `Output from unit "almah/0":
+
+ssh -o StrictHostKeyChecking no -q 1 ls -lh
+
+Output from unit "almah/1":
+
+ssh -o StrictHostKeyChecking no -q 2 ls -lh
+`
+	cmdOutput := "ssh -o StrictHostKeyChecking no -q 1 ls -lhssh -o StrictHostKeyChecking no -q 2 ls -lh"
 	c.Assert(commandmocker.Ran(tmpdir), Equals, true)
-	c.Assert(commandmocker.Output(tmpdir), Equals, output)
-	c.Assert(buf.String(), Equals, output)
+	c.Assert(commandmocker.Output(tmpdir), Equals, cmdOutput)
+	c.Assert(buf.String(), Equals, bufOutput)
 }
 
 func (s *S) TestJujuExecuteCommandFailure(c *C) {
@@ -99,7 +106,11 @@ func (s *S) TestJujuExecuteCommandFailure(c *C) {
 	err = p.ExecuteCommand(&buf, &buf, app, "ls", "-l")
 	c.Assert(err, NotNil)
 	c.Assert(err.Error(), Equals, "exit status 2")
-	c.Assert(buf.String(), Equals, "failed")
+	expected := `Output from unit "frases/0":
+
+failed
+`
+	c.Assert(buf.String(), Equals, expected)
 }
 
 func (s *S) TestJujuExecuteCommandUnitDown(c *C) {
@@ -112,11 +123,23 @@ func (s *S) TestJujuExecuteCommandUnitDown(c *C) {
 	p := JujuProvisioner{}
 	err = p.ExecuteCommand(&buf, &buf, app, "ls", "-lha")
 	c.Assert(err, IsNil)
-	output := "ssh -o StrictHostKeyChecking no -q 1 ls -lha"
-	output += "ssh -o StrictHostKeyChecking no -q 3 ls -lha"
+	cmdOutput := "ssh -o StrictHostKeyChecking no -q 1 ls -lha"
+	cmdOutput += "ssh -o StrictHostKeyChecking no -q 3 ls -lha"
+	bufOutput := `Output from unit "almah/0":
+
+ssh -o StrictHostKeyChecking no -q 1 ls -lha
+
+Output from unit "almah/1":
+
+Unit state is "down", it must be "started" for running commands.
+
+Output from unit "almah/2":
+
+ssh -o StrictHostKeyChecking no -q 3 ls -lha
+`
 	c.Assert(commandmocker.Ran(tmpdir), Equals, true)
-	c.Assert(commandmocker.Output(tmpdir), Equals, output)
-	c.Assert(buf.String(), Equals, output)
+	c.Assert(commandmocker.Output(tmpdir), Equals, cmdOutput)
+	c.Assert(buf.String(), Equals, bufOutput)
 }
 
 func (s *S) TestJujuCollectStatus(c *C) {

@@ -59,8 +59,15 @@ func (p *JujuProvisioner) Destroy(app provision.App) error {
 
 func (p *JujuProvisioner) ExecuteCommand(stdout, stderr io.Writer, app provision.App, cmd string, args ...string) error {
 	arguments := []string{"ssh", "-o", "StrictHostKeyChecking no", "-q"}
-	for _, unit := range app.ProvisionUnits() {
-		if unit.GetStatus() != provision.StatusStarted {
+	units := app.ProvisionUnits()
+	for i, unit := range units {
+		if i > 0 {
+			fmt.Fprintln(stdout)
+		}
+		fmt.Fprintf(stdout, "Output from unit %q:\n\n", unit.GetName())
+		if status := unit.GetStatus(); status != provision.StatusStarted {
+			fmt.Fprintf(stdout, "Unit state is %q, it must be %q for running commands.\n",
+				status, provision.StatusStarted)
 			continue
 		}
 		var cmdargs []string
@@ -68,6 +75,7 @@ func (p *JujuProvisioner) ExecuteCommand(stdout, stderr io.Writer, app provision
 		cmdargs = append(cmdargs, strconv.Itoa(unit.GetMachine()), cmd)
 		cmdargs = append(cmdargs, args...)
 		err := runCmd(stdout, stderr, cmdargs...)
+		fmt.Fprintln(stdout)
 		if err != nil {
 			return err
 		}
