@@ -4,6 +4,10 @@
 
 package app
 
+import (
+	"github.com/globocom/tsuru/provision"
+)
+
 type Unit struct {
 	Name    string
 	Type    string
@@ -23,4 +27,8 @@ func (u *Unit) GetMachine() int {
 
 func (u *Unit) GetIp() string {
 	return u.Ip
+}
+
+func (u *Unit) GetStatus() provision.Status {
+	return provision.Status(u.State)
 }
