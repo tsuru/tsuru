@@ -228,7 +228,7 @@ func (p *FakeProvisioner) ExecuteCommand(stdout, stderr io.Writer, app provision
 			p.failures <- fail
 		}
 	case <-time.After(2e9):
-		return errors.New("FakeProvisiner timed out waiting for output.")
+		return errors.New("FakeProvisioner timed out waiting for output.")
 	}
 	return err
 }
@@ -240,14 +240,14 @@ func (p *FakeProvisioner) CollectStatus() ([]provision.Unit, error) {
 	units := make([]provision.Unit, len(p.apps))
 	for i, app := range p.apps {
 		unit := provision.Unit{
-			Name:    "somename",
+			Name:    app.GetName() + "/0",
 			AppName: app.GetName(),
 			Type:    app.GetFramework(),
 			Status:  "started",
 			Ip:      "10.10.10." + strconv.Itoa(i+1),
 			Machine: i + 1,
 		}
-		units = append(units, unit)
+		units[i] = unit
 	}
 	return units, nil
 }
