@@ -102,6 +102,23 @@ func (s *S) TestJujuExecuteCommandFailure(c *C) {
 	c.Assert(buf.String(), Equals, "failed")
 }
 
+func (s *S) TestJujuExecuteCommandUnitDown(c *C) {
+	var buf bytes.Buffer
+	tmpdir, err := commandmocker.Add("juju", "$*")
+	c.Assert(err, IsNil)
+	defer commandmocker.Remove(tmpdir)
+	app := NewFakeApp("almah", "static", 3)
+	app.units[1].(*FakeUnit).status = provision.StatusDown
+	p := JujuProvisioner{}
+	err = p.ExecuteCommand(&buf, &buf, app, "ls", "-lha")
+	c.Assert(err, IsNil)
+	output := "ssh -o StrictHostKeyChecking no -q 1 ls -lha"
+	output += "ssh -o StrictHostKeyChecking no -q 3 ls -lha"
+	c.Assert(commandmocker.Ran(tmpdir), Equals, true)
+	c.Assert(commandmocker.Output(tmpdir), Equals, output)
+	c.Assert(buf.String(), Equals, output)
+}
+
 func (s *S) TestJujuCollectStatus(c *C) {
 	tmpdir, err := commandmocker.Add("juju", collectOutput)
 	c.Assert(err, IsNil)

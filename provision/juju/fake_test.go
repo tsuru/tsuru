@@ -11,6 +11,7 @@ import (
 type FakeUnit struct {
 	name    string
 	machine int
+	status  provision.Status
 	actions []string
 }
 
@@ -26,7 +27,7 @@ func (u *FakeUnit) GetMachine() int {
 
 func (u *FakeUnit) GetStatus() provision.Status {
 	u.actions = append(u.actions, "getstatus")
-	return provision.StatusStarted
+	return u.status
 }
 
 type FakeApp struct {
@@ -44,7 +45,7 @@ func NewFakeApp(name, framework string, units int) *FakeApp {
 		units:     make([]provision.AppUnit, units),
 	}
 	for i := 0; i < units; i++ {
-		app.units[i] = &FakeUnit{name: name, machine: i + 1}
+		app.units[i] = &FakeUnit{name: name, machine: i + 1, status: provision.StatusStarted}
 	}
 	return &app
 }

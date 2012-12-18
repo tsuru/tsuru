@@ -60,6 +60,9 @@ func (p *JujuProvisioner) Destroy(app provision.App) error {
 func (p *JujuProvisioner) ExecuteCommand(stdout, stderr io.Writer, app provision.App, cmd string, args ...string) error {
 	arguments := []string{"ssh", "-o", "StrictHostKeyChecking no", "-q"}
 	for _, unit := range app.ProvisionUnits() {
+		if unit.GetStatus() != provision.StatusStarted {
+			continue
+		}
 		var cmdargs []string
 		cmdargs = append(cmdargs, arguments...)
 		cmdargs = append(cmdargs, strconv.Itoa(unit.GetMachine()), cmd)
