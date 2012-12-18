@@ -472,6 +472,7 @@ func UnbindHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 }
 
 func RestartHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
+	w.Header().Set("Content-Type", "text")
 	instance, err := getAppOrError(r.URL.Query().Get(":name"), u)
 	if err != nil {
 		return err

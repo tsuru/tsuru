@@ -1983,6 +1983,7 @@ func (s *S) TestRestartHandler(c *C) {
 	c.Assert(err, IsNil)
 	result := strings.Replace(recorder.Body.String(), "\n", "#", -1)
 	c.Assert(result, Matches, ".*# ---> Restarting your app#.*")
+	c.Assert(recorder.Header().Get("Content-Type"), Equals, "text")
 }
 
 func (s *S) TestRestartHandlerReturns404IfTheAppDoesNotExist(c *C) {
