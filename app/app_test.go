@@ -233,14 +233,13 @@ func (s *S) TestAppendOrUpdate(c *C) {
 		Name:      "appName",
 		Framework: "django",
 	}
-	u := Unit{Name: "i-00000zz8", Ip: "", Machine: 3}
+	u := Unit{Name: "i-00000zz8", Ip: "", Machine: 1}
 	a.AddUnit(&u)
 	c.Assert(len(a.Units), Equals, 1)
 	u = Unit{
-		Name:    "i-00000zz9",
-		Ip:      "192.168.0.12",
-		Machine: 3,
-		State:   string(provision.StatusStarted),
+		Name:  "i-00000zz8",
+		Ip:    "192.168.0.12",
+		State: string(provision.StatusStarted),
 	}
 	a.AddUnit(&u)
 	c.Assert(len(a.Units), Equals, 1)

@@ -162,7 +162,7 @@ func (a *App) Destroy() error {
 // receives the number of units that you want to provision.
 func (a *App) AddUnit(u *Unit) {
 	for i, unt := range a.Units {
-		if unt.Machine == u.Machine {
+		if unt.Name == u.Name {
 			a.Units[i] = *u
 			return
 		}
