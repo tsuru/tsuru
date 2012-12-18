@@ -57,11 +57,15 @@ func (p *JujuProvisioner) Destroy(app provision.App) error {
 	return nil
 }
 
-func (p *JujuProvisioner) AddUnit(app provision.App) error {
+func (p *JujuProvisioner) AddUnits(app provision.App, n uint) error {
 	return nil
 }
 
 func (p *JujuProvisioner) RemoveUnit(app provision.App, name string) error {
+	return nil
+}
+
+func (p *JujuProvisioner) RemoveUnits(app provision.App, n uint) error {
 	return nil
 }
 

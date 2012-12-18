@@ -180,11 +180,15 @@ func (p *FakeProvisioner) Destroy(app provision.App) error {
 	return nil
 }
 
-func (p *FakeProvisioner) AddUnit(app provision.App) error {
+func (p *FakeProvisioner) AddUnits(app provision.App, n uint) error {
 	return nil
 }
 
 func (p *FakeProvisioner) RemoveUnit(app provision.App, name string) error {
+	return nil
+}
+
+func (p *FakeProvisioner) RemoveUnits(app provision.App, n uint) error {
 	return nil
 }
 
