@@ -43,7 +43,7 @@ func (s *S) TestUpdate(c *C) {
 	c.Assert(a.Units[0].Name, Equals, "i-00000zz8")
 	c.Assert(a.Units[0].Ip, Equals, "192.168.0.11")
 	c.Assert(a.Units[0].Machine, Equals, 1)
-	c.Assert(a.Units[0].State, Equals, provision.StatusStarted)
+	c.Assert(a.Units[0].State, Equals, string(provision.StatusStarted))
 }
 
 func (s *S) TestUpdateWithMultipleUnits(c *C) {
@@ -70,7 +70,7 @@ func (s *S) TestUpdateWithMultipleUnits(c *C) {
 	}
 	c.Assert(unit.Name, Equals, "i-00000zz9")
 	c.Assert(unit.Ip, Equals, "192.168.0.12")
-	c.Assert(unit.State, Equals, provision.StatusStarted)
+	c.Assert(unit.State, Equals, string(provision.StatusStarted))
 }
 
 func (s *S) TestUpdateWithDownMachine(c *C) {
@@ -90,7 +90,7 @@ func (s *S) TestUpdateWithDownMachine(c *C) {
 	update(units)
 	err = a.Get()
 	c.Assert(err, IsNil)
-	c.Assert(a.State, Equals, provision.StatusPending)
+	c.Assert(a.State, Equals, string(provision.StatusPending))
 }
 
 func (s *S) TestUpdateTwice(c *C) {
@@ -103,7 +103,7 @@ func (s *S) TestUpdateTwice(c *C) {
 	c.Assert(a.State, Equals, "started")
 	c.Assert(a.Units[0].Ip, Equals, "192.168.0.11")
 	c.Assert(a.Units[0].Machine, Equals, 1)
-	c.Assert(a.Units[0].State, Equals, provision.StatusStarted)
+	c.Assert(a.Units[0].State, Equals, string(provision.StatusStarted))
 	update(out)
 	err = a.Get()
 	c.Assert(len(a.Units), Equals, 1)

@@ -41,7 +41,7 @@ func (s *S) TestHandleMessages(c *C) {
 				Public: true,
 			},
 		},
-		State: provision.StatusStarted,
+		State: string(provision.StatusStarted),
 	}
 	err = db.Session.Apps().Insert(a)
 	c.Assert(err, IsNil)

@@ -29,10 +29,10 @@ func createApp(name, state string) {
 
 func createApps() {
 	for _, name := range pendingApps {
-		createApp(name, provision.StatusPending)
+		createApp(name, string(provision.StatusPending))
 	}
 	for _, name := range runningApps {
-		createApp(name, provision.StatusStarted)
+		createApp(name, string(provision.StatusStarted))
 	}
 }
 
