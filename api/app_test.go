@@ -59,8 +59,8 @@ func (s *S) TestAppIsAvaliableHandlerShouldReturnErrorWhenAppStatusIsnotStarted(
 		Name:      "someapp",
 		Framework: "python",
 		Teams:     []string{s.team.Name},
-		Units:     []app.Unit{{Name: "someapp/0", Type: "django", State: provision.StatusPending}},
-		State:     provision.StatusPending,
+		Units:     []app.Unit{{Name: "someapp/0", Type: "django", State: string(provision.StatusPending)}},
+		State:     string(provision.StatusPending),
 	}
 	err := db.Session.Apps().Insert(a)
 	c.Assert(err, IsNil)
@@ -78,8 +78,8 @@ func (s *S) TestAppIsAvaliableHandlerShouldReturn200WhenAppUnitStatusIsStarted(c
 		Name:      "someapp",
 		Framework: "python",
 		Teams:     []string{s.team.Name},
-		Units:     []app.Unit{{Name: "someapp/0", Type: "django", State: provision.StatusStarted}},
-		State:     provision.StatusStarted,
+		Units:     []app.Unit{{Name: "someapp/0", Type: "django", State: string(provision.StatusStarted)}},
+		State:     string(provision.StatusStarted),
 	}
 	err := db.Session.Apps().Insert(a)
 	c.Assert(err, IsNil)
@@ -109,7 +109,7 @@ pos-restart:
 		Name:      "someapp",
 		Framework: "django",
 		Teams:     []string{s.team.Name},
-		State:     provision.StatusStarted,
+		State:     string(provision.StatusStarted),
 	}
 	err := db.Session.Apps().Insert(a)
 	c.Assert(err, IsNil)
@@ -150,7 +150,7 @@ pos-restart:
 		Name:      "someapp",
 		Framework: "django",
 		Teams:     []string{s.team.Name},
-		State:     provision.StatusStarted,
+		State:     string(provision.StatusStarted),
 	}
 	err := db.Session.Apps().Insert(a)
 	c.Assert(err, IsNil)
@@ -193,7 +193,7 @@ pos-restart:
 		Name:      "someapp",
 		Framework: "django",
 		Teams:     []string{s.team.Name},
-		State:     provision.StatusStarted,
+		State:     string(provision.StatusStarted),
 	}
 	err := db.Session.Apps().Insert(a)
 	c.Assert(err, IsNil)
@@ -389,7 +389,7 @@ func (s *S) TestDeleteReturnsErrorIfAppDestroyFails(c *C) {
 		Framework: "django",
 		Teams:     []string{s.team.Name},
 		Units:     []app.Unit{{Name: "i-0800", Machine: 1}},
-		State:     provision.StatusStarted,
+		State:     string(provision.StatusStarted),
 	}
 	err := db.Session.Apps().Insert(myApp)
 	c.Assert(err, IsNil)
@@ -864,7 +864,7 @@ func (s *S) TestRunHandlerShouldExecuteTheGivenCommandInTheGivenApp(c *C) {
 		Framework: "arch enemy",
 		Teams:     []string{s.team.Name},
 		Units:     []app.Unit{{Name: "i-0800", Machine: 10}},
-		State:     provision.StatusStarted,
+		State:     string(provision.StatusStarted),
 	}
 	err := db.Session.Apps().Insert(a)
 	c.Assert(err, IsNil)
@@ -892,7 +892,7 @@ func (s *S) TestRunHandlerReturnsTheOutputOfTheCommandEvenIfItFails(c *C) {
 		Framework: "arch enemy",
 		Teams:     []string{s.team.Name},
 		Units:     []app.Unit{{Name: "i-0800"}},
-		State:     provision.StatusStarted,
+		State:     string(provision.StatusStarted),
 	}
 	err := db.Session.Apps().Insert(a)
 	c.Assert(err, IsNil)
@@ -1970,7 +1970,7 @@ func (s *S) TestRestartHandler(c *C) {
 	a := app.App{
 		Name:  "stress",
 		Teams: []string{s.team.Name},
-		State: provision.StatusStarted,
+		State: string(provision.StatusStarted),
 	}
 	err := db.Session.Apps().Insert(a)
 	c.Assert(err, IsNil)
