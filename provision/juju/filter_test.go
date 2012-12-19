@@ -6,14 +6,7 @@ package juju
 
 import (
 	. "launchpad.net/gocheck"
-	"testing"
 )
-
-func Test(t *testing.T) { TestingT(t) }
-
-type S struct{}
-
-var _ = Suite(&S{})
 
 func (s *S) TestfilterOutputWithPythonWarnings(c *C) {
 	output := []byte(`2012-11-28 16:00:35,615 WARNING Ubuntu Cloud Image lookups encrypted but not authenticated
