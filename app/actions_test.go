@@ -10,6 +10,7 @@ import (
 	"github.com/globocom/tsuru/api/auth"
 	"github.com/globocom/tsuru/db"
 	"github.com/globocom/tsuru/queue"
+	"github.com/globocom/tsuru/testing"
 	"io/ioutil"
 	"labix.org/v2/mgo/bson"
 	. "launchpad.net/gocheck"
@@ -58,7 +59,7 @@ func (s *S) TestInsertAppRollbackItself(c *C) {
 func (s *S) TestCreateBucketForward(c *C) {
 	patchRandomReader()
 	defer unpatchRandomReader()
-	server := FakeQueueServer{}
+	server := testing.FakeQueueServer{}
 	server.Start("127.0.0.1:0")
 	defer server.Stop()
 	a := App{
@@ -72,7 +73,7 @@ func (s *S) TestCreateBucketForward(c *C) {
 	if err != nil {
 		defer config.Set("queue-server", old)
 	}
-	config.Set("queue-server", server.listener.Addr().String())
+	config.Set("queue-server", server.Addr())
 	insert := new(insertApp)
 	err = insert.forward(&a)
 	c.Assert(err, IsNil)
@@ -108,9 +109,7 @@ func (s *S) TestCreateBucketForward(c *C) {
 		Action: RegenerateApprc,
 		Args:   []string{a.Name},
 	}
-	server.Lock()
-	defer server.Unlock()
-	c.Assert(server.messages, DeepEquals, []queue.Message{expectedMessage})
+	c.Assert(server.Messages(), DeepEquals, []queue.Message{expectedMessage})
 }
 
 func (s *S) TestCreateBucketBackward(c *C) {

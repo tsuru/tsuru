@@ -17,6 +17,7 @@ import (
 	"github.com/globocom/tsuru/provision"
 	"github.com/globocom/tsuru/queue"
 	"github.com/globocom/tsuru/repository"
+	"github.com/globocom/tsuru/testing"
 	"labix.org/v2/mgo/bson"
 	. "launchpad.net/gocheck"
 	stdlog "log"
@@ -105,7 +106,7 @@ func (s *S) TestCreateApp(c *C) {
 	h := testHandler{}
 	ts := s.t.StartGandalfTestServer(&h)
 	defer ts.Close()
-	server := FakeQueueServer{}
+	server := testing.FakeQueueServer{}
 	server.Start("127.0.0.1:0")
 	defer server.Stop()
 	a := App{
@@ -119,7 +120,7 @@ func (s *S) TestCreateApp(c *C) {
 	if err != nil {
 		defer config.Set("queue-server", old)
 	}
-	config.Set("queue-server", server.listener.Addr().String())
+	config.Set("queue-server", server.Addr())
 
 	err = CreateApp(&a)
 	c.Assert(err, IsNil)
@@ -154,9 +155,7 @@ func (s *S) TestCreateApp(c *C) {
 		Action: RegenerateApprc,
 		Args:   []string{a.Name},
 	}
-	server.Lock()
-	defer server.Unlock()
-	c.Assert(server.messages, DeepEquals, []queue.Message{expectedMessage})
+	c.Assert(server.Messages(), DeepEquals, []queue.Message{expectedMessage})
 }
 
 func (s *S) TestCantCreateTwoAppsWithTheSameName(c *C) {
@@ -247,14 +246,14 @@ func (s *S) TestAppendOrUpdate(c *C) {
 }
 
 func (s *S) TestAddUnits(c *C) {
-	server := FakeQueueServer{}
+	server := testing.FakeQueueServer{}
 	server.Start("127.0.0.1:0")
 	defer server.Stop()
 	old, err := config.Get("queue-server")
 	if err != nil {
 		defer config.Set("queue-server", old)
 	}
-	config.Set("queue-server", server.listener.Addr().String())
+	config.Set("queue-server", server.Addr())
 	app := App{Name: "warpaint", Framework: "python"}
 	err = db.Session.Apps().Insert(app)
 	c.Assert(err, IsNil)
@@ -292,7 +291,7 @@ func (s *S) TestAddUnits(c *C) {
 			Args:   append(args, names[5:]...),
 		},
 	}
-	c.Assert(server.messages, DeepEquals, expectedMessages)
+	c.Assert(server.Messages(), DeepEquals, expectedMessages)
 }
 
 func (s *S) TestAddZeroUnits(c *C) {

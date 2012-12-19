@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-package app
+package testing
 
 import (
 	"encoding/gob"
@@ -12,9 +12,9 @@ import (
 )
 
 // FakeQueueServer is a very dumb queue server that does not handle connections
-// concurrently.
+// concurrently and stores all messages in an underlying slice.
 type FakeQueueServer struct {
-	sync.Mutex
+	mut      sync.Mutex
 	listener net.Listener
 	messages []queue.Message
 	closed   bool
@@ -42,15 +42,25 @@ func (s *FakeQueueServer) loop() {
 		for err == nil {
 			var msg queue.Message
 			if err = decoder.Decode(&msg); err == nil {
-				s.Lock()
+				s.mut.Lock()
 				s.messages = append(s.messages, msg)
-				s.Unlock()
+				s.mut.Unlock()
 			}
 		}
 	}
 }
 
+func (s *FakeQueueServer) Addr() string {
+	return s.listener.Addr().String()
+}
+
 func (s *FakeQueueServer) Stop() error {
 	s.closed = true
 	return s.listener.Close()
+}
+
+func (s *FakeQueueServer) Messages() []queue.Message {
+	s.mut.Lock()
+	defer s.mut.Unlock()
+	return s.messages
 }
