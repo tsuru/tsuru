@@ -77,11 +77,11 @@ func CloneRepositoryHandler(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	err = app.InstallDeps(&instance, &logWriter)
+	err = instance.InstallDeps(&logWriter)
 	if err != nil {
 		return err
 	}
-	err = app.Restart(&instance, &logWriter)
+	err = instance.Restart(&logWriter)
 	if err != nil {
 		return err
 	}
@@ -506,7 +506,7 @@ func RestartHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error 
 	if err != nil {
 		return err
 	}
-	return app.Restart(&instance, w)
+	return instance.Restart(w)
 }
 
 func AddLogHandler(w http.ResponseWriter, r *http.Request) error {

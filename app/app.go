@@ -391,7 +391,7 @@ func (a *App) Command(stdout, stderr io.Writer, cmdArgs ...string) error {
 
 // Restart runs the restart hook for the app
 // and returns your output.
-func Restart(a *App, w io.Writer) error {
+func (a *App) Restart(w io.Writer) error {
 	a.Log("executing hook to restart", "tsuru")
 	err := a.preRestart(w)
 	if err != nil {
@@ -410,7 +410,7 @@ func Restart(a *App, w io.Writer) error {
 
 // InstallDeps runs the dependencies hook for the app
 // and returns your output.
-func InstallDeps(a *App, w io.Writer) error {
+func (a *App) InstallDeps(w io.Writer) error {
 	return a.run("/var/lib/tsuru/hooks/dependencies", w)
 }
 

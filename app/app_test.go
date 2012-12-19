@@ -790,7 +790,7 @@ func (s *S) TestInstallDeps(c *C) {
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
 	var buf bytes.Buffer
-	err = InstallDeps(&a, &buf)
+	err = a.InstallDeps(&buf)
 	c.Assert(err, IsNil)
 	c.Assert(buf.String(), Equals, "dependencies installed")
 	cmds := s.provisioner.GetCmds("/var/lib/tsuru/hooks/dependencies", &a)
@@ -807,7 +807,7 @@ func (s *S) TestRestart(c *C) {
 		State:     string(provision.StatusStarted),
 	}
 	var b bytes.Buffer
-	err := Restart(&a, &b)
+	err := a.Restart(&b)
 	c.Assert(err, IsNil)
 	result := strings.Replace(b.String(), "\n", "#", -1)
 	c.Assert(result, Matches, ".*# ---> Restarting your app#.*")
@@ -826,7 +826,7 @@ func (s *S) TestRestartRunsPreRestartHook(c *C) {
 		hooks:     &conf{PreRestart: []string{"pre.sh"}},
 	}
 	var buf bytes.Buffer
-	err := Restart(&a, &buf)
+	err := a.Restart(&buf)
 	c.Assert(err, IsNil)
 	content := buf.String()
 	content = strings.Replace(content, "\n", "###", -1)
@@ -844,7 +844,7 @@ func (s *S) TestRestartRunsPosRestartHook(c *C) {
 		hooks:     &conf{PosRestart: []string{"pos.sh"}},
 	}
 	var buf bytes.Buffer
-	err := Restart(&a, &buf)
+	err := a.Restart(&buf)
 	c.Assert(err, IsNil)
 	content := buf.String()
 	content = strings.Replace(content, "\n", "###", -1)
