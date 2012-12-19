@@ -110,25 +110,31 @@ func (s *S) TestHandleMessageWithSpecificUnit(c *C) {
 func (s *S) TestHandleMessageErrors(c *C) {
 	var data = []struct {
 		action      string
-		appName     string
+		args        []string
 		unitName    string
 		expectedLog string
 		visits      int
 	}{
 		{
 			action:      "unknown-action",
-			appName:     "does not matter",
+			args:        []string{"does not matter"},
 			expectedLog: `Error handling "unknown-action": invalid action.`,
 		},
 		{
-			action:  app.RegenerateApprc,
-			appName: "nemesis",
+			action: app.RegenerateApprc,
+			args:   []string{"nemesis"},
 			expectedLog: `Error handling "regenerate-apprc" for the app "nemesis":` +
 				` The status of the app and all units should be "started" (the app is "pending").`,
 		},
 		{
+			action: app.RegenerateApprc,
+			args:   []string{"totem", "totem/0", "totem/1"},
+			expectedLog: `Error handling "regenerate-apprc" for the app "totem":` +
+				` The status of the app and all units should be "started" (the app is "started").`,
+		},
+		{
 			action:      app.RegenerateApprc,
-			appName:     "unknown-app",
+			args:        []string{"unknown-app"},
 			expectedLog: `Error handling "regenerate-apprc": app "unknown-app" does not exist.`,
 		},
 		{
@@ -137,19 +143,19 @@ func (s *S) TestHandleMessageErrors(c *C) {
 		},
 		{
 			action:      "does not matter",
-			appName:     "does not matter",
+			args:        []string{"does not matter"},
 			expectedLog: `Error handling "does not matter": this message has been visited more than 50 times.`,
 			visits:      MaxVisits,
 		},
 		{
-			action:  app.RegenerateApprc,
-			appName: "marathon",
+			action: app.RegenerateApprc,
+			args:   []string{"marathon"},
 			expectedLog: `Error handling "regenerate-apprc" for the app "marathon":` +
 				` the app is in "error" state.`,
 		},
 		{
-			action:  app.RegenerateApprc,
-			appName: "territories",
+			action: app.RegenerateApprc,
+			args:   []string{"territories"},
 			expectedLog: `Error handling "regenerate-apprc" for the app "territories":` +
 				` the app is down.`,
 		},
@@ -157,6 +163,17 @@ func (s *S) TestHandleMessageErrors(c *C) {
 	var buf bytes.Buffer
 	a := app.App{Name: "nemesis", State: "pending"}
 	err := db.Session.Apps().Insert(a)
+	c.Assert(err, IsNil)
+	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
+	a = app.App{
+		Name:  "totem",
+		State: "started",
+		Units: []app.Unit{
+			{Name: "totem/0", State: "pending"},
+			{Name: "totem/1", State: "started"},
+		},
+	}
+	err = db.Session.Apps().Insert(a)
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
 	a = app.App{Name: "marathon", State: "error"}
@@ -177,8 +194,8 @@ func (s *S) TestHandleMessageErrors(c *C) {
 			Action: d.action,
 			Visits: d.visits,
 		}
-		if d.appName != "" {
-			message.Args = append(message.Args, d.appName)
+		if len(d.args) > 0 {
+			message.Args = d.args
 		}
 		handler.handle(message)
 	}
