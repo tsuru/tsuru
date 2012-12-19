@@ -121,6 +121,18 @@ func (s *S) TestHandleMessageErrors(c *C) {
 			expectedLog: `Error handling "unknown-action": invalid action.`,
 		},
 		{
+			action: app.StartApp,
+			args:   []string{"nemesis"},
+			expectedLog: `Error handling "start-app" for the app "nemesis":` +
+				` The status of the app and all units should be "started" (the app is "pending").`,
+		},
+		{
+			action: app.StartApp,
+			args:   []string{"totem", "totem/0", "totem/1"},
+			expectedLog: `Error handling "start-app" for the app "totem":` +
+				` The status of the app and all units should be "started" (the app is "started").`,
+		},
+		{
 			action: app.RegenerateApprc,
 			args:   []string{"nemesis"},
 			expectedLog: `Error handling "regenerate-apprc" for the app "nemesis":` +
@@ -213,6 +225,34 @@ func (s *S) TestHandleMessageErrors(c *C) {
 			c.Errorf("\nWant: %q.\nGot:\n%s", d.expectedLog, content)
 		}
 	}
+}
+
+func (s *S) TestHandleRestartAppMessage(c *C) {
+	s.provisioner.PrepareOutput([]byte("started"))
+	handler := MessageHandler{}
+	err := handler.start()
+	c.Assert(err, IsNil)
+	defer handler.stop()
+	a := app.App{
+		Name: "nemesis",
+		Units: []app.Unit{
+			{
+				Name:    "i-00800",
+				State:   "started",
+				Machine: 19,
+			},
+		},
+		State: string(provision.StatusStarted),
+	}
+	err = db.Session.Apps().Insert(a)
+	c.Assert(err, IsNil)
+	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
+	messages, _, err := queue.Dial(handler.server.Addr())
+	c.Assert(err, IsNil)
+	messages <- queue.Message{Action: app.StartApp, Args: []string{a.Name}}
+	time.Sleep(1e9)
+	cmds := s.provisioner.GetCmds("/var/lib/tsuru/hooks/restart", &a)
+	c.Assert(cmds, HasLen, 1)
 }
 
 func (s *S) TestUnitListStarted(c *C) {

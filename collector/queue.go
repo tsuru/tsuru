@@ -11,6 +11,7 @@ import (
 	"github.com/globocom/tsuru/log"
 	"github.com/globocom/tsuru/provision"
 	"github.com/globocom/tsuru/queue"
+	"io/ioutil"
 	"sync/atomic"
 	"time"
 )
@@ -49,6 +50,30 @@ func (h *MessageHandler) handleMessages() {
 	}
 }
 
+func (h *MessageHandler) ensureAppIsStarted(msg queue.Message) (app.App, error) {
+	a := app.App{Name: msg.Args[0]}
+	err := a.Get()
+	if err != nil {
+		return a, fmt.Errorf("Error handling %q: app %q does not exist.", msg.Action, a.Name)
+	}
+	units := h.getUnits(&a, msg.Args[1:])
+	if a.State != "started" || !units.Started() {
+		format := "Error handling %q for the app %q:"
+		switch a.State {
+		case "error":
+			format += " the app is in %q state."
+		case "down":
+			format += " the app is %s."
+		default:
+			format += ` The status of the app and all units should be "started" (the app is %q).`
+			time.Sleep(time.Duration(msg.Visits+1) * time.Second)
+			h.server.PutBack(msg)
+		}
+		return a, fmt.Errorf(format, msg.Action, a.Name, a.State)
+	}
+	return a, nil
+}
+
 func (h *MessageHandler) handle(msg queue.Message) {
 	if msg.Visits >= MaxVisits {
 		log.Printf("Error handling %q: this message has been visited more than %d times.", msg.Action, MaxVisits)
@@ -60,29 +85,25 @@ func (h *MessageHandler) handle(msg queue.Message) {
 			log.Printf("Error handling %q: this action requires at least 1 argument.", msg.Action)
 			return
 		}
-		a := app.App{Name: msg.Args[0]}
-		err := a.Get()
+		app, err := h.ensureAppIsStarted(msg)
 		if err != nil {
-			log.Printf("Error handling %q: app %q does not exist.", msg.Action, a.Name)
+			log.Print(err)
 			return
 		}
-		units := h.getUnits(&a, msg.Args[1:])
-		if a.State != "started" || !units.Started() {
-			format := "Error handling %q for the app %q:"
-			switch a.State {
-			case "error":
-				format += " the app is in %q state."
-			case "down":
-				format += " the app is %s."
-			default:
-				format += ` The status of the app and all units should be "started" (the app is %q).`
-				time.Sleep(time.Duration(msg.Visits+1) * time.Second)
-				h.server.PutBack(msg)
-			}
-			log.Printf(format, msg.Action, a.Name, a.State)
+		app.SerializeEnvVars()
+	case app.StartApp:
+		if len(msg.Args) < 1 {
+			log.Printf("Error handling %q: this action requires at least 1 argument.", msg.Action)
+		}
+		app, err := h.ensureAppIsStarted(msg)
+		if err != nil {
+			log.Print(err)
 			return
 		}
-		a.SerializeEnvVars()
+		err = app.Restart(ioutil.Discard)
+		if err != nil {
+			log.Printf("Error handling %q. App failed to start:\n%s.", msg.Action, err)
+		}
 	default:
 		log.Printf("Error handling %q: invalid action.", msg.Action)
 	}

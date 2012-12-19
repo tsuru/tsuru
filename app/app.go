@@ -29,7 +29,10 @@ import (
 	"time"
 )
 
-const RegenerateApprc = "regenerate-apprc"
+const (
+	RegenerateApprc = "regenerate-apprc"
+	StartApp        = "start-app"
+)
 
 var Provisioner provision.Provisioner
 
