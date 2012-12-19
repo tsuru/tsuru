@@ -24,9 +24,9 @@ Authentication
 
 After that, all you need is to create a user and authenticate to start creating
 apps and pushing code to them. Use `create-user
-<http://godoc.go/github.com/globocom/tsuru/cmd/tsuru#Create_a_user>`_ and
+<http://godoc.go/github.com/globocom/tsuru/cmd/tsuru/developer#Create_a_user>`_ and
 `login
-<http://godoc.go/github.com/globocom/tsuru/cmd/tsuru#Authenticate_within_remote_tsuru_server>`_:
+<http://godoc.go/github.com/globocom/tsuru/cmd/tsuru/developer#Authenticate_within_remote_tsuru_server>`_:
 
 .. highlight:: bash
 
@@ -43,7 +43,7 @@ Associating your user to a team
 
 You need to be member of a team to create an app. To create a new team, use
 `create-team
-<http://godoc.go/github.com/globocom/tsuru/cmd/tsuru#Create_a_new_team_for_the_user>`_:
+<http://godoc.go/github.com/globocom/tsuru/cmd/tsuru/developer#Create_a_new_team_for_the_user>`_:
 
 .. highlight:: bash
 
@@ -55,7 +55,7 @@ Creating an app
 ---------------
 
 To create an app, use `app-create
-<http://godoc.go/github.com/globocom/tsuru/cmd/tsuru#Create_an_app>`_:
+<http://godoc.go/github.com/globocom/tsuru/cmd/tsuru/developer#Create_an_app>`_:
 
 .. highlight:: bash
 
@@ -77,7 +77,7 @@ Listing your apps
 
 When your app is ready, you can push to it. To check whether it is ready or
 not, you can use `app-list
-<http://godoc.go/github.com/globocom/tsuru/cmd/tsuru#List_apps_that_you_have_access_to>`_:
+<http://godoc.go/github.com/globocom/tsuru/cmd/tsuru/developer#List_apps_that_you_have_access_to>`_:
 
 .. highlight:: bash
 
@@ -101,7 +101,7 @@ Showing app info
 ----------------
 
 You can also use the `app-info
-<http://godoc.go/github.com/globocom/tsuru/cmd/tsuru#Display_information_about_an_app>`_
+<http://godoc.go/github.com/globocom/tsuru/cmd/tsuru/developer#Display_information_about_an_app>`_
 command to view information of an app. Including the status of the app:
 
 .. highlight:: bash
@@ -124,7 +124,7 @@ This will return something like:
 
 Tsuru uses information from git configuration to guess the name of the app, for
 more details, see `"Guessing app names"
-<http://godoc.go/github.com/globocom/tsuru/cmd/tsuru#Guessing_app_names>`_
+<http://godoc.go/github.com/globocom/tsuru/cmd/tsuru/developer#Guessing_app_names>`_
 section of tsuru command documentation.
 
 Public Keys
@@ -144,7 +144,7 @@ generated key yet, you should generate one before running this command.
 
 If you have a public key in other format (for example, DSA), you can also give
 the public key file to `key-add
-<http://godoc.go/github.com/globocom/tsuru/cmd/tsuru#Add_SSH_public_key_to_tsuru_s_git_server>`_:
+<http://godoc.go/github.com/globocom/tsuru/cmd/tsuru/developer#Add_SSH_public_key_to_tsuru_s_git_server>`_:
 
 .. highlight:: bash
 
@@ -166,7 +166,7 @@ Running commands
 After that, you can check your app's url in the browser and see your app there.
 You'll probably need to run migrations or other deploy related commands. To run
 a single command, you should use the command `run
-<http://godoc.go/github.com/globocom/tsuru/cmd/tsuru#Run_an_arbitrary_command_in_the_app_machine>`_:
+<http://godoc.go/github.com/globocom/tsuru/cmd/tsuru/developer#Run_an_arbitrary_command_in_the_app_machine>`_:
 
 .. highlight:: bash
 
@@ -182,7 +182,7 @@ By default, the commands are run from inside the app root directory, which is
 should use the app.conf pre-restart and pos-restart scripts, these are run
 before and after the restart of your app, which is triggered everytime you push
 code or call `restart
-<http://godoc.go/github.com/globocom/tsuru/cmd/tsuru#Restart_the_app_s_application_server>`_.
+<http://godoc.go/github.com/globocom/tsuru/cmd/tsuru/developer#Restart_the_app_s_application_server>`_.
 Below is an app.conf sample:
 
 .. highlight:: yaml
@@ -201,4 +201,4 @@ Further instructions
 ====================
 
 For a complete reference, check the documentation for tsuru command:
-`<http://godoc.go/github.com/globocom/tsuru/cmd/tsuru>`_.
+`<http://godoc.go/github.com/globocom/tsuru/cmd/tsuru/developer>`_.

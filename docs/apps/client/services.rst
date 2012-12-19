@@ -51,5 +51,5 @@ And to unbind:
     $ tsuru unbind <service_instance_name> [--app appname]
 
 For more details on the ``--app`` flag, see `"Guessing app names"
-<http://godoc.go/github.com/globocom/tsuru/cmd/tsuru#Guessing_app_names>`_
+<http://godoc.go/github.com/globocom/tsuru/cmd/tsuru/developer#Guessing_app_names>`_
 section of tsuru command documentation.
