@@ -204,6 +204,35 @@ func CreateAppHandler(w http.ResponseWriter, r *http.Request, u *auth.User) erro
 	return nil
 }
 
+func AddUnitsHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
+	missingMsg := "You must provide the number of units to add."
+	if r.Body == nil {
+		return &errors.Http{Code: http.StatusBadRequest, Message: missingMsg}
+	}
+	defer r.Body.Close()
+	b, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		return err
+	}
+	value := string(b)
+	if value == "" {
+		return &errors.Http{Code: http.StatusBadRequest, Message: missingMsg}
+	}
+	n, err := strconv.ParseUint(value, 10, 32)
+	if err != nil || n == 0 {
+		return &errors.Http{
+			Code:    http.StatusBadRequest,
+			Message: "Invalid number of units: the number must be a integer greater than 0.",
+		}
+	}
+	appName := r.URL.Query().Get(":name")
+	app, err := getAppOrError(appName, u)
+	if err != nil {
+		return err
+	}
+	return app.AddUnits(uint(n))
+}
+
 func grantAccessToTeam(appName, teamName string, u *auth.User) error {
 	t := new(auth.Team)
 	app, err := getAppOrError(appName, u)

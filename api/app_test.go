@@ -8,6 +8,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"github.com/globocom/config"
 	"github.com/globocom/tsuru/api/auth"
 	"github.com/globocom/tsuru/api/bind"
 	"github.com/globocom/tsuru/api/service"
@@ -17,6 +18,7 @@ import (
 	"github.com/globocom/tsuru/log"
 	"github.com/globocom/tsuru/provision"
 	"github.com/globocom/tsuru/repository"
+	"github.com/globocom/tsuru/testing"
 	"io"
 	"io/ioutil"
 	"labix.org/v2/mgo/bson"
@@ -574,6 +576,102 @@ func (s *S) TestCreateAppReturnsConflictWithProperMessageWhenTheAppAlreadyExist(
 	c.Assert(ok, Equals, true)
 	c.Assert(e.Code, Equals, http.StatusConflict)
 	c.Assert(e.Message, Equals, `There is already an app named "plainsofdawn".`)
+}
+
+func (s *S) TestAddUnits(c *C) {
+	server := testing.FakeQueueServer{}
+	err := server.Start("127.0.0.1:0")
+	c.Assert(err, IsNil)
+	defer server.Stop()
+	old, err := config.Get("queue-server")
+	if err == nil {
+		defer config.Set("queue-server", old)
+	}
+	config.Set("queue-server", server.Addr())
+	a := app.App{
+		Name:      "armorandsword",
+		Framework: "python",
+		Teams:     []string{s.team.Name},
+	}
+	err = db.Session.Apps().Insert(a)
+	c.Assert(err, IsNil)
+	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
+	err = s.provisioner.Provision(&a)
+	c.Assert(err, IsNil)
+	defer s.provisioner.Destroy(&a)
+	body := strings.NewReader("3")
+	request, err := http.NewRequest("PUT", "/apps/armorandsword/units?:name=armorandsword", body)
+	c.Assert(err, IsNil)
+	recorder := httptest.NewRecorder()
+	err = AddUnitsHandler(recorder, request, s.user)
+	c.Assert(err, IsNil)
+	err = a.Get()
+	c.Assert(err, IsNil)
+	c.Assert(a.Units, HasLen, 3)
+}
+
+func (s *S) TestAddUnitsReturns404IfAppDoesNotExist(c *C) {
+	body := strings.NewReader("1")
+	request, err := http.NewRequest("PUT", "/apps/armorandsword/units?:name=armorandsword", body)
+	c.Assert(err, IsNil)
+	recorder := httptest.NewRecorder()
+	err = AddUnitsHandler(recorder, request, s.user)
+	c.Assert(err, NotNil)
+	e, ok := err.(*errors.Http)
+	c.Assert(ok, Equals, true)
+	c.Assert(e.Code, Equals, http.StatusNotFound)
+	c.Assert(e.Message, Equals, "App armorandsword not found.")
+}
+
+func (s *S) TestAddUnitsReturns403IfTheUserDoesNotHaveAccessToTheApp(c *C) {
+	a := app.App{
+		Name:      "armorandsword",
+		Framework: "python",
+	}
+	err := db.Session.Apps().Insert(a)
+	c.Assert(err, IsNil)
+	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
+	body := strings.NewReader("1")
+	request, err := http.NewRequest("PUT", "/apps/armorandsword/units?:name=armorandsword", body)
+	c.Assert(err, IsNil)
+	recorder := httptest.NewRecorder()
+	err = AddUnitsHandler(recorder, request, s.user)
+	c.Assert(err, NotNil)
+	e, ok := err.(*errors.Http)
+	c.Assert(ok, Equals, true)
+	c.Assert(e.Code, Equals, http.StatusForbidden)
+	c.Assert(e.Message, Equals, "User does not have access to this app")
+}
+
+func (s *S) TestAddUnitsReturns400IfNumberOfUnitsIsOmited(c *C) {
+	bodies := []io.Reader{nil, strings.NewReader("")}
+	for _, body := range bodies {
+		request, err := http.NewRequest("PUT", "/apps/armorandsword/units?:name=armorandsword", body)
+		c.Assert(err, IsNil)
+		recorder := httptest.NewRecorder()
+		err = AddUnitsHandler(recorder, request, s.user)
+		c.Assert(err, NotNil)
+		e, ok := err.(*errors.Http)
+		c.Assert(ok, Equals, true)
+		c.Assert(e.Code, Equals, http.StatusBadRequest)
+		c.Assert(e.Message, Equals, "You must provide the number of units to add.")
+	}
+}
+
+func (s *S) TestAddUnitsReturns400IfNumberIsInvalid(c *C) {
+	values := []string{"-1", "0", "far cry", "12345678909876543"}
+	for _, value := range values {
+		body := strings.NewReader(value)
+		request, err := http.NewRequest("PUT", "/apps/armorandsword/units?:name=armorandsword", body)
+		c.Assert(err, IsNil)
+		recorder := httptest.NewRecorder()
+		err = AddUnitsHandler(recorder, request, s.user)
+		c.Assert(err, NotNil)
+		e, ok := err.(*errors.Http)
+		c.Assert(ok, Equals, true)
+		c.Assert(e.Code, Equals, http.StatusBadRequest)
+		c.Assert(e.Message, Equals, "Invalid number of units: the number must be a integer greater than 0.")
+	}
 }
 
 func (s *S) TestAddTeamToTheApp(c *C) {
