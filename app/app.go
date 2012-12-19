@@ -170,13 +170,35 @@ func (a *App) AddUnit(u *Unit) {
 	a.Units = append(a.Units, *u)
 }
 
-// AddUnits creates n new units within the provisioner.
+// AddUnits creates n new units within the provisioner, saves new units in the
+// database and enqueues the apprc serialization.
 func (a *App) AddUnits(n uint) error {
 	if n == 0 {
 		return errors.New("Cannot add zero units.")
 	}
-	_, err := Provisioner.AddUnits(a, n)
-	return err
+	units, err := Provisioner.AddUnits(a, n)
+	if err != nil {
+		return err
+	}
+	names := make([]string, len(units))
+	length := len(a.Units)
+	appUnits := make([]Unit, len(units))
+	a.Units = append(a.Units, appUnits...)
+	for i, unit := range units {
+		a.Units[i+length] = Unit{
+			Name:    unit.Name,
+			Type:    unit.Type,
+			Ip:      unit.Ip,
+			Machine: unit.Machine,
+			State:   provision.StatusPending.String(),
+		}
+		names[i] = unit.Name
+	}
+	err = db.Session.Apps().Update(bson.M{"name": a.Name}, a)
+	if err != nil {
+		return err
+	}
+	return a.enqueueApprcRegeneration(names...)
 }
 
 func (a *App) Find(team *auth.Team) (int, bool) {
@@ -462,7 +484,7 @@ func (a *App) SetEnvs(envs []bind.EnvVar, publicOnly bool) error {
 	return a.SetEnvsToApp(e, publicOnly, false)
 }
 
-func (a *App) enqueueApprcRegeneration() error {
+func (a *App) enqueueApprcRegeneration(unitNames ...string) error {
 	addr, err := config.GetString("queue-server")
 	if err != nil {
 		return err
@@ -471,9 +493,11 @@ func (a *App) enqueueApprcRegeneration() error {
 	if err != nil {
 		return err
 	}
+	args := []string{a.Name}
+	args = append(args, unitNames...)
 	messages <- queue.Message{
 		Action: RegenerateApprc,
-		Args:   []string{a.Name},
+		Args:   args,
 	}
 	close(messages)
 	return nil

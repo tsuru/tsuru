@@ -247,10 +247,21 @@ func (s *S) TestAppendOrUpdate(c *C) {
 }
 
 func (s *S) TestAddUnits(c *C) {
+	server := FakeQueueServer{}
+	server.Start("127.0.0.1:0")
+	defer server.Stop()
+	old, err := config.Get("queue-server")
+	if err != nil {
+		defer config.Set("queue-server", old)
+	}
+	config.Set("queue-server", server.listener.Addr().String())
 	app := App{Name: "warpaint", Framework: "python"}
+	err = db.Session.Apps().Insert(app)
+	c.Assert(err, IsNil)
+	defer db.Session.Apps().Remove(bson.M{"name": app.Name})
 	s.provisioner.Provision(&app)
 	defer s.provisioner.Destroy(&app)
-	err := app.AddUnits(5)
+	err = app.AddUnits(5)
 	c.Assert(err, IsNil)
 	units := s.provisioner.GetUnits(&app)
 	c.Assert(units, HasLen, 5)
@@ -261,6 +272,27 @@ func (s *S) TestAddUnits(c *C) {
 	for _, unit := range units {
 		c.Assert(unit.AppName, Equals, app.Name)
 	}
+	err = app.Get()
+	c.Assert(err, IsNil)
+	c.Assert(app.Units, HasLen, 7)
+	names := make([]string, len(app.Units))
+	for i, unit := range app.Units {
+		names[i] = unit.Name
+		expected := fmt.Sprintf("%s/%d", app.Name, i)
+		c.Assert(unit.Name, Equals, expected)
+	}
+	args := []string{app.Name}
+	expectedMessages := []queue.Message{
+		{
+			Action: RegenerateApprc,
+			Args:   append(args, names[:5]...),
+		},
+		{
+			Action: RegenerateApprc,
+			Args:   append(args, names[5:]...),
+		},
+	}
+	c.Assert(server.messages, DeepEquals, expectedMessages)
 }
 
 func (s *S) TestAddZeroUnits(c *C) {
