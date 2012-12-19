@@ -281,14 +281,24 @@ func (s *S) TestAddUnits(c *C) {
 		c.Assert(unit.Name, Equals, expected)
 	}
 	args := []string{app.Name}
+	firstCall := append(args, names[:5]...)
+	secondCall := append(args, names[5:]...)
 	expectedMessages := []queue.Message{
 		{
 			Action: RegenerateApprc,
-			Args:   append(args, names[:5]...),
+			Args:   firstCall,
+		},
+		{
+			Action: StartApp,
+			Args:   firstCall,
 		},
 		{
 			Action: RegenerateApprc,
-			Args:   append(args, names[5:]...),
+			Args:   secondCall,
+		},
+		{
+			Action: StartApp,
+			Args:   secondCall,
 		},
 	}
 	c.Assert(server.Messages(), DeepEquals, expectedMessages)

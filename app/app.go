@@ -183,7 +183,8 @@ func (a *App) AddUnits(n uint) error {
 	if err != nil {
 		return err
 	}
-	names := make([]string, len(units))
+	qArgs := make([]string, len(units)+1)
+	qArgs[0] = a.Name
 	length := len(a.Units)
 	appUnits := make([]Unit, len(units))
 	a.Units = append(a.Units, appUnits...)
@@ -195,13 +196,17 @@ func (a *App) AddUnits(n uint) error {
 			Machine: unit.Machine,
 			State:   provision.StatusPending.String(),
 		}
-		names[i] = unit.Name
+		qArgs[i+1] = unit.Name
 	}
 	err = db.Session.Apps().Update(bson.M{"name": a.Name}, a)
 	if err != nil {
 		return err
 	}
-	return a.enqueueApprcRegeneration(names...)
+	messages := []queue.Message{
+		{Action: RegenerateApprc, Args: qArgs},
+		{Action: StartApp, Args: qArgs},
+	}
+	return a.enqueue(messages...)
 }
 
 func (a *App) Find(team *auth.Team) (int, bool) {
@@ -487,7 +492,7 @@ func (a *App) SetEnvs(envs []bind.EnvVar, publicOnly bool) error {
 	return a.SetEnvsToApp(e, publicOnly, false)
 }
 
-func (a *App) enqueueApprcRegeneration(unitNames ...string) error {
+func (a *App) enqueue(msgs ...queue.Message) error {
 	addr, err := config.GetString("queue-server")
 	if err != nil {
 		return err
@@ -496,11 +501,8 @@ func (a *App) enqueueApprcRegeneration(unitNames ...string) error {
 	if err != nil {
 		return err
 	}
-	args := []string{a.Name}
-	args = append(args, unitNames...)
-	messages <- queue.Message{
-		Action: RegenerateApprc,
-		Args:   args,
+	for _, msg := range msgs {
+		messages <- msg
 	}
 	close(messages)
 	return nil
@@ -534,7 +536,7 @@ func (app *App) SetEnvsToApp(envs []bind.EnvVar, publicOnly, useQueue bool) erro
 			return err
 		}
 		if useQueue {
-			return app.enqueueApprcRegeneration()
+			return app.enqueue(queue.Message{Action: RegenerateApprc, Args: []string{app.Name}})
 		}
 		app.SerializeEnvVars()
 	}
