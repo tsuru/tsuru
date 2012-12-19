@@ -41,7 +41,7 @@ func (s *FakeQueueServer) loop() {
 		decoder := gob.NewDecoder(conn)
 		for err == nil {
 			var msg queue.Message
-			if err := decoder.Decode(&msg); err == nil {
+			if err = decoder.Decode(&msg); err == nil {
 				s.Lock()
 				s.messages = append(s.messages, msg)
 				s.Unlock()
