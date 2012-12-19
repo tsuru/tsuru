@@ -175,7 +175,8 @@ func (a *App) AddUnits(n uint) error {
 	if n == 0 {
 		return errors.New("Cannot add zero units.")
 	}
-	return Provisioner.AddUnits(a, n)
+	_, err := Provisioner.AddUnits(a, n)
+	return err
 }
 
 func (a *App) Find(team *auth.Team) (int, bool) {
