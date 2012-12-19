@@ -133,14 +133,16 @@ func (s *S) TestAddUnits(c *C) {
 	app := NewFakeApp("mystic-rhythms", "rush", 0)
 	p := NewFakeProvisioner()
 	p.Provision(app)
-	err := p.AddUnits(app, 2)
+	units, err := p.AddUnits(app, 2)
 	c.Assert(err, IsNil)
 	c.Assert(p.units["mystic-rhythms"], HasLen, 2)
+	c.Assert(units, HasLen, 2)
 }
 
 func (s *S) TestAddZeroUnits(c *C) {
 	p := NewFakeProvisioner()
-	err := p.AddUnits(nil, 0)
+	units, err := p.AddUnits(nil, 0)
+	c.Assert(units, IsNil)
 	c.Assert(err, NotNil)
 	c.Assert(err.Error(), Equals, "Cannot add 0 units.")
 }
@@ -148,7 +150,8 @@ func (s *S) TestAddZeroUnits(c *C) {
 func (s *S) TestAddUnitsUnprovisionedApp(c *C) {
 	app := NewFakeApp("mystic-rhythms", "rush", 0)
 	p := NewFakeProvisioner()
-	err := p.AddUnits(app, 1)
+	units, err := p.AddUnits(app, 1)
+	c.Assert(units, IsNil)
 	c.Assert(err, NotNil)
 	c.Assert(err.Error(), Equals, "App is not provisioned.")
 }
@@ -156,7 +159,8 @@ func (s *S) TestAddUnitsUnprovisionedApp(c *C) {
 func (s *S) TestAddUnitsFailure(c *C) {
 	p := NewFakeProvisioner()
 	p.PrepareFailure("AddUnits", errors.New("Cannot add more units."))
-	err := p.AddUnits(nil, 10)
+	units, err := p.AddUnits(nil, 10)
+	c.Assert(units, IsNil)
 	c.Assert(err, NotNil)
 	c.Assert(err.Error(), Equals, "Cannot add more units.")
 }

@@ -189,16 +189,16 @@ func (p *FakeProvisioner) Destroy(app provision.App) error {
 	return nil
 }
 
-func (p *FakeProvisioner) AddUnits(app provision.App, n uint) error {
+func (p *FakeProvisioner) AddUnits(app provision.App, n uint) ([]provision.Unit, error) {
 	if err := p.getError("AddUnits"); err != nil {
-		return err
+		return nil, err
 	}
 	if n == 0 {
-		return errors.New("Cannot add 0 units.")
+		return nil, errors.New("Cannot add 0 units.")
 	}
 	index := p.FindApp(app)
 	if index < 0 {
-		return errors.New("App is not provisioned.")
+		return nil, errors.New("App is not provisioned.")
 	}
 	name := app.GetName()
 	framework := app.GetFramework()
@@ -214,7 +214,7 @@ func (p *FakeProvisioner) AddUnits(app provision.App, n uint) error {
 		}
 		p.units[name] = append(p.units[name], unit)
 	}
-	return nil
+	return p.units[name][length:], nil
 }
 
 func (p *FakeProvisioner) RemoveUnit(app provision.App, name string) error {

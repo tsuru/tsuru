@@ -79,7 +79,9 @@ type Provisioner interface {
 
 	// AddUnits adds units to an app. The first parameter is the app, the
 	// second is the number of units to add.
-	AddUnits(App, uint) error
+	//
+	// It returns a slice containing all added units
+	AddUnits(App, uint) ([]Unit, error)
 
 	// RemoveUnit removes a unit from the app. It receives the app and the name
 	// of the unit to be removed.
