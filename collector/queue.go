@@ -9,6 +9,7 @@ import (
 	"github.com/globocom/config"
 	"github.com/globocom/tsuru/app"
 	"github.com/globocom/tsuru/log"
+	"github.com/globocom/tsuru/provision"
 	"github.com/globocom/tsuru/queue"
 	"sync/atomic"
 	"time"
@@ -65,7 +66,8 @@ func (h *MessageHandler) handle(msg queue.Message) {
 			log.Printf("Error handling %q: app %q does not exist.", msg.Action, a.Name)
 			return
 		}
-		if a.State != "started" {
+		units := h.getUnits(&a, msg.Args[1:])
+		if a.State != "started" || !units.Started() {
 			format := "Error handling %q for the app %q:"
 			switch a.State {
 			case "error":
@@ -73,7 +75,7 @@ func (h *MessageHandler) handle(msg queue.Message) {
 			case "down":
 				format += " the app is %s."
 			default:
-				format += ` The status of the app should be "started", but it is %q.`
+				format += ` The status of the app and all units should be "started" (the app is %q).`
 				time.Sleep(time.Duration(msg.Visits+1) * time.Second)
 				h.server.PutBack(msg)
 			}
@@ -89,4 +91,33 @@ func (h *MessageHandler) handle(msg queue.Message) {
 func (h *MessageHandler) stop() error {
 	atomic.StoreInt32(&h.closed, 1)
 	return h.server.Close()
+}
+
+type UnitList []app.Unit
+
+func (l UnitList) Started() bool {
+	for _, unit := range l {
+		if unit.State != string(provision.StatusStarted) {
+			return false
+		}
+	}
+	return true
+}
+
+func (h *MessageHandler) getUnits(a *app.App, names []string) UnitList {
+	var units []app.Unit
+	if len(names) > 0 {
+		units = make([]app.Unit, len(names))
+		i := 0
+		for _, unitName := range names {
+			for _, appUnit := range a.Units {
+				if appUnit.Name == unitName {
+					units[i] = appUnit
+					i++
+					break
+				}
+			}
+		}
+	}
+	return UnitList(units)
 }
