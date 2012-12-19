@@ -96,3 +96,34 @@ func (c *AppRemove) Run(context *cmd.Context, client cmd.Doer) error {
 	fmt.Fprintf(context.Stdout, `App "%s" successfully removed!`+"\n", appName)
 	return nil
 }
+
+type AddUnit struct {
+	tsuru.GuessingCommand
+}
+
+func (c *AddUnit) Info() *cmd.Info {
+	return &cmd.Info{
+		Name:    "add-unit",
+		Usage:   "add-unit <# of units> [--app appname]",
+		Desc:    "add new units to an app.",
+		MinArgs: 1,
+	}
+}
+
+func (c *AddUnit) Run(context *cmd.Context, client cmd.Doer) error {
+	appName, err := c.Guess()
+	if err != nil {
+		return err
+	}
+	url := cmd.GetUrl(fmt.Sprintf("/apps/%s/units", appName))
+	request, err := http.NewRequest("PUT", url, bytes.NewBufferString(context.Args[0]))
+	if err != nil {
+		return err
+	}
+	_, err = client.Do(request)
+	if err != nil {
+		return err
+	}
+	fmt.Fprintln(context.Stdout, "Units successfully added!")
+	return nil
+}

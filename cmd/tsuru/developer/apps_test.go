@@ -8,6 +8,7 @@ import (
 	"bytes"
 	"github.com/globocom/tsuru/cmd"
 	"github.com/globocom/tsuru/cmd/tsuru"
+	"io/ioutil"
 	. "launchpad.net/gocheck"
 	"net/http"
 	"strings"
@@ -161,4 +162,68 @@ If you don't provide the app name, tsuru will try to guess it.`,
 		MinArgs: 0,
 	}
 	c.Assert((&AppRemove{}).Info(), DeepEquals, expected)
+}
+
+func (s *S) TestAddUnit(c *C) {
+	*tsuru.AppName = "radio"
+	var stdout, stderr bytes.Buffer
+	var called bool
+	context := cmd.Context{
+		Args:   []string{"3"},
+		Stdout: &stdout,
+		Stderr: &stderr,
+	}
+	trans := &conditionalTransport{
+		transport{
+			msg:    "",
+			status: http.StatusOK,
+		},
+		func(req *http.Request) bool {
+			called = true
+			b, err := ioutil.ReadAll(req.Body)
+			c.Assert(err, IsNil)
+			c.Assert(string(b), Equals, "3")
+			return req.URL.Path == "/apps/radio/units" && req.Method == "PUT"
+		},
+	}
+	client := cmd.NewClient(&http.Client{Transport: trans}, nil, manager)
+	command := AddUnit{}
+	err := command.Run(&context, client)
+	c.Assert(err, IsNil)
+	c.Assert(called, Equals, true)
+	expected := "Units successfully added!\n"
+	c.Assert(stdout.String(), Equals, expected)
+}
+
+func (s *S) TestAddUnitFailure(c *C) {
+	*tsuru.AppName = "radio"
+	var stdout, stderr bytes.Buffer
+	context := cmd.Context{
+		Args:   []string{"3"},
+		Stdout: &stdout,
+		Stderr: &stderr,
+	}
+	client := cmd.NewClient(&http.Client{Transport: &transport{msg: "Failed to add.", status: 500}}, nil, manager)
+	command := AddUnit{}
+	err := command.Run(&context, client)
+	c.Assert(err, NotNil)
+	c.Assert(err.Error(), Equals, "Failed to add.")
+}
+
+func (s *S) TestAddUnitInfo(c *C) {
+	expected := &cmd.Info{
+		Name:    "add-unit",
+		Usage:   "add-unit <# of units> [--app appname]",
+		Desc:    "add new units to an app.",
+		MinArgs: 1,
+	}
+	c.Assert((&AddUnit{}).Info(), DeepEquals, expected)
+}
+
+func (s *S) TestAddUnitIsACommand(c *C) {
+	var _ cmd.Command = &AddUnit{}
+}
+
+func (s *S) TestAddUnitIsAnInfoer(c *C) {
+	var _ cmd.Infoer = &AddUnit{}
 }
