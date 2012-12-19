@@ -28,7 +28,7 @@ func (p *JujuProvisioner) Provision(app provision.App) error {
 		"deploy", "--repository", "/home/charms",
 		"local:" + app.GetFramework(), app.GetName(),
 	}
-	err := runCmd(&buf, &buf, args...)
+	err := runCmd(true, &buf, &buf, args...)
 	out := buf.String()
 	if err != nil {
 		app.Log("Failed to create machine: "+out, "tsuru")
@@ -39,7 +39,7 @@ func (p *JujuProvisioner) Provision(app provision.App) error {
 
 func (p *JujuProvisioner) Destroy(app provision.App) error {
 	var buf bytes.Buffer
-	err := runCmd(&buf, &buf, "destroy-service", app.GetName())
+	err := runCmd(true, &buf, &buf, "destroy-service", app.GetName())
 	out := buf.String()
 	if err != nil {
 		app.Log("Failed to destroy machine: "+out, "tsuru")
@@ -47,7 +47,7 @@ func (p *JujuProvisioner) Destroy(app provision.App) error {
 	}
 	for _, u := range app.ProvisionUnits() {
 		buf.Reset()
-		err = runCmd(&buf, &buf, "terminate-machine", strconv.Itoa(u.GetMachine()))
+		err = runCmd(true, &buf, &buf, "terminate-machine", strconv.Itoa(u.GetMachine()))
 		out = buf.String()
 		if err != nil {
 			app.Log("Failed to destroy machine: "+out, "tsuru")
@@ -89,7 +89,7 @@ func (p *JujuProvisioner) ExecuteCommand(stdout, stderr io.Writer, app provision
 		cmdargs = append(cmdargs, arguments...)
 		cmdargs = append(cmdargs, strconv.Itoa(unit.GetMachine()), cmd)
 		cmdargs = append(cmdargs, args...)
-		err := runCmd(stdout, stderr, cmdargs...)
+		err := runCmd(true, stdout, stderr, cmdargs...)
 		fmt.Fprintln(stdout)
 		if err != nil {
 			return err
@@ -156,9 +156,11 @@ func init() {
 	provision.Register("juju", &JujuProvisioner{})
 }
 
-func runCmd(stdout, stderr io.Writer, cmd ...string) error {
-	stdout = &Writer{stdout}
-	stderr = &Writer{stderr}
+func runCmd(filter bool, stdout, stderr io.Writer, cmd ...string) error {
+	if filter {
+		stdout = &Writer{stdout}
+		stderr = &Writer{stderr}
+	}
 	command := exec.Command("juju", cmd...)
 	command.Stdout = stdout
 	command.Stderr = stderr
