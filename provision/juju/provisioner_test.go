@@ -9,6 +9,7 @@ import (
 	"errors"
 	"github.com/globocom/commandmocker"
 	"github.com/globocom/tsuru/provision"
+	"github.com/globocom/tsuru/repository"
 	. "launchpad.net/gocheck"
 	"time"
 )
@@ -71,6 +72,52 @@ func (s *S) TestJujuDestroyFailure(c *C) {
 	c.Assert(ok, Equals, true)
 	c.Assert(pErr.Reason, Equals, "juju failed to destroy the machine")
 	c.Assert(pErr.Err.Error(), Equals, "exit status 25")
+}
+
+func (s *S) TestJujuAddUnits(c *C) {
+	tmpdir, err := commandmocker.Add("juju", addUnitsOutput)
+	c.Assert(err, IsNil)
+	defer commandmocker.Remove(tmpdir)
+	app := NewFakeApp("resist", "rush", 0)
+	p := JujuProvisioner{}
+	units, err := p.AddUnits(app, 4)
+	c.Assert(err, IsNil)
+	c.Assert(units, HasLen, 4)
+	names := make([]string, len(units))
+	for i, unit := range units {
+		names[i] = unit.Name
+	}
+	expected := []string{"resist/3", "resist/4", "resist/5", "resist/6"}
+	c.Assert(names, DeepEquals, expected)
+	c.Assert(commandmocker.Ran(tmpdir), Equals, true)
+	expectedParams := []string{
+		"set", "resist", "app-repo=" + repository.GetReadOnlyUrl("resist"),
+		"add-unit", "resist", "--num-units", "4",
+	}
+	c.Assert(commandmocker.Parameters(tmpdir), DeepEquals, expectedParams)
+}
+
+func (s *S) TestJujuAddZeroUnits(c *C) {
+	p := JujuProvisioner{}
+	units, err := p.AddUnits(nil, 0)
+	c.Assert(units, IsNil)
+	c.Assert(err, NotNil)
+	c.Assert(err.Error(), Equals, "Cannot add zero units.")
+}
+
+func (s *S) TestJujuAddUnitsFailure(c *C) {
+	tmpdir, err := commandmocker.Error("juju", "juju failed", 1)
+	c.Assert(err, IsNil)
+	defer commandmocker.Remove(tmpdir)
+	app := NewFakeApp("headlong", "rush", 1)
+	p := JujuProvisioner{}
+	units, err := p.AddUnits(app, 1)
+	c.Assert(units, IsNil)
+	c.Assert(err, NotNil)
+	e, ok := err.(*provision.Error)
+	c.Assert(ok, Equals, true)
+	c.Assert(e.Reason, Equals, "juju failed")
+	c.Assert(e.Err.Error(), Equals, "exit status 1")
 }
 
 func (s *S) TestJujuExecuteCommand(c *C) {

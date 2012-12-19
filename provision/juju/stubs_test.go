@@ -108,3 +108,11 @@ services:
         machine: 107
         public-address: server-1086.novalocal
 2012-12-14 17:19:29,665 INFO 'status' command finished successfully`
+
+var addUnitsOutput = `2012-12-19 14:05:21,275 INFO Connecting to environment...
+2012-12-19 14:05:22,681 INFO Connected to environment.
+2012-12-19 11:57:31,361 INFO Unit 'resist/3' added to service 'resist'
+2012-12-19 11:57:31,550 INFO Unit 'resist/4' added to service 'resist'
+2012-12-19 11:57:31,785 INFO Unit 'resist/5' added to service 'resist'
+2012-12-19 11:57:31,785 INFO Unit 'resist/6' added to service 'resist'
+2012-12-19 14:05:23,251 INFO 'add_unit' command finished successfully`

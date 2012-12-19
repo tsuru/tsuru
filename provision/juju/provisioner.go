@@ -5,9 +5,12 @@
 package juju
 
 import (
+	"bufio"
 	"bytes"
+	"errors"
 	"fmt"
 	"github.com/globocom/tsuru/provision"
+	"github.com/globocom/tsuru/repository"
 	"io"
 	"launchpad.net/goyaml"
 	"os/exec"
@@ -58,7 +61,36 @@ func (p *JujuProvisioner) Destroy(app provision.App) error {
 }
 
 func (p *JujuProvisioner) AddUnits(app provision.App, n uint) ([]provision.Unit, error) {
-	return nil, nil
+	if n < 1 {
+		return nil, errors.New("Cannot add zero units.")
+	}
+	var (
+		buf   bytes.Buffer
+		units []provision.Unit
+	)
+	err := runCmd(true, &buf, &buf, "set", app.GetName(), "app-repo="+repository.GetReadOnlyUrl(app.GetName()))
+	if err != nil {
+		return nil, &provision.Error{Reason: buf.String(), Err: err}
+	}
+	buf.Reset()
+	err = runCmd(false, &buf, &buf, "add-unit", app.GetName(), "--num-units", strconv.FormatUint(uint64(n), 10))
+	if err != nil {
+		return nil, &provision.Error{Reason: buf.String(), Err: err}
+	}
+	unitRe := regexp.MustCompile(fmt.Sprintf(`Unit '(%s/\d+)' added to service '%s'`, app.GetName(), app.GetName()))
+	reader := bufio.NewReader(&buf)
+	line, err := reader.ReadString('\n')
+	for err == nil {
+		matches := unitRe.FindStringSubmatch(line)
+		if len(matches) > 1 {
+			units = append(units, provision.Unit{Name: matches[1]})
+		}
+		line, err = reader.ReadString('\n')
+	}
+	if err != io.EOF {
+		return nil, &provision.Error{Reason: buf.String(), Err: err}
+	}
+	return units, nil
 }
 
 func (p *JujuProvisioner) RemoveUnit(app provision.App, name string) error {
