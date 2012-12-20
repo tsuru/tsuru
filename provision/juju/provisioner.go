@@ -45,7 +45,8 @@ func (p *JujuProvisioner) Destroy(app provision.App) error {
 	err := runCmd(false, &buf, &buf, "destroy-service", app.GetName())
 	out := buf.String()
 	if err != nil {
-		app.Log("Failed to destroy machine: "+out, "tsuru")
+		msg := fmt.Sprintf("Failed to destroy the app: %s.", out)
+		app.Log(msg, "tsuru")
 		return &provision.Error{Reason: out, Err: err}
 	}
 	for _, u := range app.ProvisionUnits() {
