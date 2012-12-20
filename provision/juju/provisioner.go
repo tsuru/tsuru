@@ -65,11 +65,8 @@ func (p *JujuProvisioner) destroyService(app provision.App) error {
 	return nil
 }
 
-func (p *JujuProvisioner) Destroy(app provision.App) error {
+func (p *JujuProvisioner) terminateMachines(app provision.App) error {
 	var buf bytes.Buffer
-	if err := p.destroyService(app); err != nil {
-		return err
-	}
 	for _, u := range app.ProvisionUnits() {
 		buf.Reset()
 		err := runCmd(false, &buf, &buf, "terminate-machine", strconv.Itoa(u.GetMachine()))
@@ -80,6 +77,14 @@ func (p *JujuProvisioner) Destroy(app provision.App) error {
 			return &provision.Error{Reason: out, Err: err}
 		}
 	}
+	return nil
+}
+
+func (p *JujuProvisioner) Destroy(app provision.App) error {
+	if err := p.destroyService(app); err != nil {
+		return err
+	}
+	go p.terminateMachines(app)
 	return nil
 }
 

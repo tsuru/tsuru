@@ -11,6 +11,7 @@ import (
 	"github.com/globocom/tsuru/provision"
 	"github.com/globocom/tsuru/repository"
 	. "launchpad.net/gocheck"
+	"reflect"
 	"time"
 )
 
@@ -60,6 +61,19 @@ func (s *S) TestJujuDestroy(c *C) {
 		"terminate-machine", "1",
 		"terminate-machine", "2",
 		"terminate-machine", "3",
+	}
+	ran := make(chan bool, 1)
+	go func() {
+		for {
+			if reflect.DeepEqual(commandmocker.Parameters(tmpdir), expected) {
+				ran <- true
+			}
+		}
+	}()
+	select {
+	case <-ran:
+	case <-time.After(2e9):
+		c.Errorf("Did not run terminate-machine commands after 2 seconds.")
 	}
 	c.Assert(commandmocker.Parameters(tmpdir), DeepEquals, expected)
 }
