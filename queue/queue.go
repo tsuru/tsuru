@@ -77,8 +77,7 @@ func write(w io.WriteCloser, ch <-chan Message, errCh chan<- error) {
 // process them.
 type Server struct {
 	listener net.Listener
-	messages chan Message
-	errors   chan error
+	pairs    chan pair
 	closed   int32
 }
 
@@ -95,8 +94,7 @@ func StartServer(laddr string) (*Server, error) {
 	if err != nil {
 		return nil, errors.New("Could not start server: " + err.Error())
 	}
-	server.messages = make(chan Message, ChanSize)
-	server.errors = make(chan error, ChanSize)
+	server.pairs = make(chan pair, ChanSize)
 	go server.loop()
 	return &server, nil
 }
@@ -108,10 +106,9 @@ func (qs *Server) handle(conn net.Conn) {
 	decoder := gob.NewDecoder(conn)
 	for err == nil {
 		var msg Message
-		if err = decoder.Decode(&msg); err == nil {
-			qs.messages <- msg
-		} else if atomic.LoadInt32(&qs.closed) == 0 {
-			qs.errors <- err
+		err = decoder.Decode(&msg)
+		if atomic.LoadInt32(&qs.closed) == 0 {
+			qs.pairs <- pair{message: msg, err: err}
 		}
 	}
 }
@@ -145,11 +142,12 @@ func (qs *Server) Message(timeout time.Duration) (Message, error) {
 		timeout = 1 << 62
 	}
 	select {
-	case msg = <-qs.messages:
-	case err = <-qs.errors:
-		if err == io.EOF {
-			err = errors.New("EOF: client disconnected.")
+	case pair := <-qs.pairs:
+		if pair.err == io.EOF {
+			pair.err = errors.New("EOF: client disconnected.")
 		}
+		msg = pair.message
+		err = pair.err
 	case <-time.After(timeout):
 		err = errors.New("Timed out waiting for the message.")
 	}
@@ -160,8 +158,10 @@ func (qs *Server) Message(timeout time.Duration) (Message, error) {
 // got using Message method cannot be processed yet. You put it back in the
 // queue for processing later.
 func (qs *Server) PutBack(message Message) {
-	message.Visits++
-	qs.messages <- message
+	if atomic.LoadInt32(&qs.closed) == 0 {
+		message.Visits++
+		qs.pairs <- pair{message: message}
+	}
 }
 
 // Addr returns the address of the server.
@@ -175,8 +175,8 @@ func (qs *Server) Close() error {
 		return errors.New("Server already closed.")
 	}
 	err := qs.listener.Close()
-	qs.errors <- errors.New("Server is closed.")
-	close(qs.errors)
+	qs.pairs <- pair{err: errors.New("Server is closed.")}
+	close(qs.pairs)
 	return err
 }
 
@@ -196,4 +196,10 @@ func Dial(addr string) (chan<- Message, <-chan error, error) {
 	}
 	messages, errors := ChannelFromWriter(conn)
 	return messages, errors, nil
+}
+
+// pair is a pair of message and error.
+type pair struct {
+	message Message
+	err     error
 }

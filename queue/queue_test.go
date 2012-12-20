@@ -98,13 +98,13 @@ func (s *S) TestWriteSendErrorsInTheErrorChannel(c *C) {
 func (s *S) TestHandleSendErrorsInTheErrorsChannel(c *C) {
 	conn := NewFakeConn("127.0.0.1:8000", "127.0.0.1:4000")
 	server := Server{
-		errors: make(chan error, 1),
+		pairs: make(chan pair, 1),
 	}
 	conn.Close()
 	go server.handle(conn)
-	err := <-server.errors
-	c.Assert(err, NotNil)
-	c.Assert(err.Error(), Equals, "Closed connection.")
+	pair := <-server.pairs
+	c.Assert(pair.err, NotNil)
+	c.Assert(pair.err.Error(), Equals, "Closed connection.")
 }
 
 func (s *S) TestServerAddr(c *C) {
@@ -144,17 +144,15 @@ func (s *S) TestStartServerAndReadMessage(c *C) {
 
 func (s *S) TestMessageNegativeTimeout(c *C) {
 	server := Server{
-		messages: make(chan Message, 1),
-		errors:   make(chan error, 1),
+		pairs: make(chan pair, 1),
 	}
-	defer close(server.messages)
-	defer close(server.errors)
+	defer close(server.pairs)
 	var (
 		got, want Message
 		err       error
 	)
 	want = Message{Action: "create"}
-	server.messages <- want
+	server.pairs <- pair{message: want}
 	got, err = server.Message(-1)
 	c.Assert(err, IsNil)
 	c.Assert(got, DeepEquals, want)
@@ -162,8 +160,7 @@ func (s *S) TestMessageNegativeTimeout(c *C) {
 
 func (s *S) TestPutBack(c *C) {
 	server := Server{
-		messages: make(chan Message, 1),
-		errors:   make(chan error, 1),
+		pairs: make(chan pair, 1),
 	}
 	want := Message{Action: "delete"}
 	server.PutBack(want)
