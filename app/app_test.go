@@ -24,6 +24,7 @@ import (
 	"os"
 	"path"
 	"strings"
+	"time"
 )
 
 func (s *S) TestGet(c *C) {
@@ -286,6 +287,7 @@ func (s *S) TestAddUnits(c *C) {
 		}
 		expectedMessages = append(expectedMessages, messages...)
 	}
+	time.Sleep(1e6)
 	c.Assert(server.Messages(), DeepEquals, expectedMessages)
 }
 
