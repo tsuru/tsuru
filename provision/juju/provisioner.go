@@ -42,7 +42,7 @@ func (p *JujuProvisioner) Provision(app provision.App) error {
 
 func (p *JujuProvisioner) Destroy(app provision.App) error {
 	var buf bytes.Buffer
-	err := runCmd(true, &buf, &buf, "destroy-service", app.GetName())
+	err := runCmd(false, &buf, &buf, "destroy-service", app.GetName())
 	out := buf.String()
 	if err != nil {
 		app.Log("Failed to destroy machine: "+out, "tsuru")
@@ -50,10 +50,11 @@ func (p *JujuProvisioner) Destroy(app provision.App) error {
 	}
 	for _, u := range app.ProvisionUnits() {
 		buf.Reset()
-		err = runCmd(true, &buf, &buf, "terminate-machine", strconv.Itoa(u.GetMachine()))
+		err = runCmd(false, &buf, &buf, "terminate-machine", strconv.Itoa(u.GetMachine()))
 		out = buf.String()
 		if err != nil {
-			app.Log("Failed to destroy machine: "+out, "tsuru")
+			msg := fmt.Sprintf("Failed to destroy unit %s: %s", u.GetName(), out)
+			app.Log(msg, "tsuru")
 			return &provision.Error{Reason: out, Err: err}
 		}
 	}
