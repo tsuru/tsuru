@@ -89,11 +89,11 @@ func main() {
 	m.Del("/apps/:name/env", AuthorizationRequiredHandler(api.UnsetEnv))
 	m.Get("/apps", AuthorizationRequiredHandler(api.AppList))
 	m.Post("/apps", AuthorizationRequiredHandler(api.CreateAppHandler))
+	m.Put("/apps/:name/units", AuthorizationRequiredHandler(api.AddUnitsHandler))
 	m.Put("/apps/:app/:team", AuthorizationRequiredHandler(api.GrantAccessToTeamHandler))
 	m.Del("/apps/:app/:team", AuthorizationRequiredHandler(api.RevokeAccessFromTeamHandler))
 	m.Get("/apps/:name/log", AuthorizationRequiredHandler(api.AppLog))
 	m.Post("/apps/:name/log", Handler(api.AddLogHandler))
-	m.Put("/apps/:name/units", AuthorizationRequiredHandler(api.AddUnitsHandler))
 
 	m.Post("/users", Handler(auth.CreateUser))
 	m.Post("/users/:email/tokens", Handler(auth.Login))
