@@ -55,9 +55,13 @@ func (s *S) TestJujuDestroy(c *C) {
 	err = p.Destroy(app)
 	c.Assert(err, IsNil)
 	c.Assert(commandmocker.Ran(tmpdir), Equals, true)
-	output := "destroy-service cribcagedterminate-machine 1"
-	output += "terminate-machine 2terminate-machine 3"
-	c.Assert(commandmocker.Output(tmpdir), Equals, output)
+	expected := []string{
+		"destroy-service", "cribcaged",
+		"terminate-machine", "1",
+		"terminate-machine", "2",
+		"terminate-machine", "3",
+	}
+	c.Assert(commandmocker.Parameters(tmpdir), DeepEquals, expected)
 }
 
 func (s *S) TestJujuDestroyFailure(c *C) {

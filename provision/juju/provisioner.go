@@ -40,19 +40,40 @@ func (p *JujuProvisioner) Provision(app provision.App) error {
 	return nil
 }
 
-func (p *JujuProvisioner) Destroy(app provision.App) error {
-	var buf bytes.Buffer
-	err := runCmd(false, &buf, &buf, "destroy-service", app.GetName())
-	out := buf.String()
+func (p *JujuProvisioner) destroyService(app provision.App) error {
+	var (
+		err error
+		buf bytes.Buffer
+		out string
+	)
+	// Sometimes juju gives the "no node" error. This is one of Zookeeper bad
+	// behaviour. Let's try it three times before raising the error to the
+	// user, and hope that someday we run away from Zookeeper.
+	for i := 0; i < 3; i++ {
+		buf.Reset()
+		err = runCmd(false, &buf, &buf, "destroy-service", app.GetName())
+		if err == nil {
+			break
+		}
+		out = buf.String()
+	}
 	if err != nil {
 		msg := fmt.Sprintf("Failed to destroy the app: %s.", out)
 		app.Log(msg, "tsuru")
 		return &provision.Error{Reason: out, Err: err}
 	}
+	return nil
+}
+
+func (p *JujuProvisioner) Destroy(app provision.App) error {
+	var buf bytes.Buffer
+	if err := p.destroyService(app); err != nil {
+		return err
+	}
 	for _, u := range app.ProvisionUnits() {
 		buf.Reset()
-		err = runCmd(false, &buf, &buf, "terminate-machine", strconv.Itoa(u.GetMachine()))
-		out = buf.String()
+		err := runCmd(false, &buf, &buf, "terminate-machine", strconv.Itoa(u.GetMachine()))
+		out := buf.String()
 		if err != nil {
 			msg := fmt.Sprintf("Failed to destroy unit %s: %s", u.GetName(), out)
 			app.Log(msg, "tsuru")
