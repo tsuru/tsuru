@@ -33,7 +33,7 @@ func (s *S) TestFindApp(c *C) {
 func (s *S) TestGetCmds(c *C) {
 	app := NewFakeApp("enemy-within", "rush", 1)
 	p := NewFakeProvisioner()
-	p.Cmds = []Cmd{
+	p.cmds = []Cmd{
 		{Cmd: "ls -lh", App: app},
 		{Cmd: "ls -lah", App: app},
 	}

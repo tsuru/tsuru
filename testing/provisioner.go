@@ -10,6 +10,7 @@ import (
 	"github.com/globocom/tsuru/provision"
 	"io"
 	"strconv"
+	"sync"
 	"time"
 )
 
@@ -96,9 +97,10 @@ type failure struct {
 type FakeProvisioner struct {
 	apps     []provision.App
 	units    map[string][]provision.Unit
-	Cmds     []Cmd
+	cmds     []Cmd
 	outputs  chan []byte
 	failures chan failure
+	mut      sync.Mutex
 }
 
 func NewFakeProvisioner() *FakeProvisioner {
@@ -125,11 +127,13 @@ func (p *FakeProvisioner) getError(method string) error {
 // the command (""), it will return all commands executed in the given app.
 func (p *FakeProvisioner) GetCmds(cmd string, app provision.App) []Cmd {
 	var cmds []Cmd
-	for _, c := range p.Cmds {
+	p.mut.Lock()
+	for _, c := range p.cmds {
 		if (cmd == "" || c.Cmd == cmd) && app.GetName() == c.App.GetName() {
 			cmds = append(cmds, c)
 		}
 	}
+	p.mut.Unlock()
 	return cmds
 }
 
@@ -160,7 +164,7 @@ func (p *FakeProvisioner) Reset() {
 	p.outputs = make(chan []byte, 8)
 	p.failures = make(chan failure, 8)
 	p.units = make(map[string][]provision.Unit)
-	p.Cmds = nil
+	p.cmds = nil
 }
 
 func (p *FakeProvisioner) Provision(app provision.App) error {
@@ -235,7 +239,9 @@ func (p *FakeProvisioner) ExecuteCommand(stdout, stderr io.Writer, app provision
 		Args: args,
 		App:  app,
 	}
-	p.Cmds = append(p.Cmds, command)
+	p.mut.Lock()
+	p.cmds = append(p.cmds, command)
+	p.mut.Unlock()
 	select {
 	case output = <-p.outputs:
 		select {
