@@ -100,7 +100,8 @@ type FakeProvisioner struct {
 	cmds     []Cmd
 	outputs  chan []byte
 	failures chan failure
-	mut      sync.Mutex
+	cmdMut   sync.Mutex
+	unitMut  sync.Mutex
 }
 
 func NewFakeProvisioner() *FakeProvisioner {
@@ -127,13 +128,13 @@ func (p *FakeProvisioner) getError(method string) error {
 // the command (""), it will return all commands executed in the given app.
 func (p *FakeProvisioner) GetCmds(cmd string, app provision.App) []Cmd {
 	var cmds []Cmd
-	p.mut.Lock()
+	p.cmdMut.Lock()
 	for _, c := range p.cmds {
 		if (cmd == "" || c.Cmd == cmd) && app.GetName() == c.App.GetName() {
 			cmds = append(cmds, c)
 		}
 	}
-	p.mut.Unlock()
+	p.cmdMut.Unlock()
 	return cmds
 }
 
@@ -147,6 +148,8 @@ func (p *FakeProvisioner) FindApp(app provision.App) int {
 }
 
 func (p *FakeProvisioner) GetUnits(app provision.App) []provision.Unit {
+	p.unitMut.Lock()
+	defer p.unitMut.Unlock()
 	return p.units[app.GetName()]
 }
 
@@ -159,12 +162,22 @@ func (p *FakeProvisioner) PrepareFailure(method string, err error) {
 }
 
 func (p *FakeProvisioner) Reset() {
-	close(p.outputs)
-	close(p.failures)
-	p.outputs = make(chan []byte, 8)
-	p.failures = make(chan failure, 8)
+	p.unitMut.Lock()
 	p.units = make(map[string][]provision.Unit)
+	p.unitMut.Unlock()
+
+	p.cmdMut.Lock()
 	p.cmds = nil
+	p.cmdMut.Unlock()
+
+	for {
+		select {
+		case <-p.outputs:
+		case <-p.failures:
+		default:
+			return
+		}
+	}
 }
 
 func (p *FakeProvisioner) Provision(app provision.App) error {
@@ -176,7 +189,9 @@ func (p *FakeProvisioner) Provision(app provision.App) error {
 		return &provision.Error{Reason: "App already provisioned."}
 	}
 	p.apps = append(p.apps, app)
+	p.unitMut.Lock()
 	p.units[app.GetName()] = nil
+	p.unitMut.Unlock()
 	return nil
 }
 
@@ -190,6 +205,9 @@ func (p *FakeProvisioner) Destroy(app provision.App) error {
 	}
 	copy(p.apps[index:], p.apps[index+1:])
 	p.apps = p.apps[:len(p.apps)-1]
+	p.unitMut.Lock()
+	delete(p.units, app.GetName())
+	p.unitMut.Unlock()
 	return nil
 }
 
@@ -206,6 +224,8 @@ func (p *FakeProvisioner) AddUnits(app provision.App, n uint) ([]provision.Unit,
 	}
 	name := app.GetName()
 	framework := app.GetFramework()
+	p.unitMut.Lock()
+	defer p.unitMut.Unlock()
 	length := uint(len(p.units[name]))
 	for i := uint(0); i < n; i++ {
 		unit := provision.Unit{
@@ -239,9 +259,9 @@ func (p *FakeProvisioner) ExecuteCommand(stdout, stderr io.Writer, app provision
 		Args: args,
 		App:  app,
 	}
-	p.mut.Lock()
+	p.cmdMut.Lock()
 	p.cmds = append(p.cmds, command)
-	p.mut.Unlock()
+	p.cmdMut.Unlock()
 	select {
 	case output = <-p.outputs:
 		select {
