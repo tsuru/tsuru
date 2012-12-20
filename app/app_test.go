@@ -274,32 +274,17 @@ func (s *S) TestAddUnits(c *C) {
 	err = app.Get()
 	c.Assert(err, IsNil)
 	c.Assert(app.Units, HasLen, 7)
+	var expectedMessages []queue.Message
 	names := make([]string, len(app.Units))
 	for i, unit := range app.Units {
 		names[i] = unit.Name
 		expected := fmt.Sprintf("%s/%d", app.Name, i)
 		c.Assert(unit.Name, Equals, expected)
-	}
-	args := []string{app.Name}
-	firstCall := append(args, names[:5]...)
-	secondCall := append(args, names[5:]...)
-	expectedMessages := []queue.Message{
-		{
-			Action: RegenerateApprc,
-			Args:   firstCall,
-		},
-		{
-			Action: StartApp,
-			Args:   firstCall,
-		},
-		{
-			Action: RegenerateApprc,
-			Args:   secondCall,
-		},
-		{
-			Action: StartApp,
-			Args:   secondCall,
-		},
+		messages := []queue.Message{
+			{Action: RegenerateApprc, Args: []string{app.Name, unit.Name}},
+			{Action: StartApp, Args: []string{app.Name, unit.Name}},
+		}
+		expectedMessages = append(expectedMessages, messages...)
 	}
 	c.Assert(server.Messages(), DeepEquals, expectedMessages)
 }
