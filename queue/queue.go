@@ -176,7 +176,6 @@ func (qs *Server) Close() error {
 	}
 	err := qs.listener.Close()
 	qs.pairs <- pair{err: errors.New("Server is closed.")}
-	close(qs.pairs)
 	return err
 }
 
