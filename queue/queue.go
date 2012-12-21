@@ -151,6 +151,7 @@ func (qs *Server) Message(timeout time.Duration) (Message, error) {
 		msg = pair.message
 		err = pair.err
 	case <-qs.close:
+		err = errors.New("Server is closed.")
 	case <-time.After(timeout):
 		err = errors.New("Timed out waiting for the message.")
 	}
