@@ -78,6 +78,7 @@ func write(w io.WriteCloser, ch <-chan Message, errCh chan<- error) {
 type Server struct {
 	listener net.Listener
 	pairs    chan pair
+	close    chan int
 	closed   int32
 }
 
@@ -95,6 +96,7 @@ func StartServer(laddr string) (*Server, error) {
 		return nil, errors.New("Could not start server: " + err.Error())
 	}
 	server.pairs = make(chan pair, ChanSize)
+	server.close = make(chan int, 1)
 	go server.loop()
 	return &server, nil
 }
@@ -148,6 +150,7 @@ func (qs *Server) Message(timeout time.Duration) (Message, error) {
 		}
 		msg = pair.message
 		err = pair.err
+	case <-qs.close:
 	case <-time.After(timeout):
 		err = errors.New("Timed out waiting for the message.")
 	}
@@ -176,6 +179,7 @@ func (qs *Server) Close() error {
 	}
 	err := qs.listener.Close()
 	qs.pairs <- pair{err: errors.New("Server is closed.")}
+	qs.close <- 1
 	return err
 }
 
