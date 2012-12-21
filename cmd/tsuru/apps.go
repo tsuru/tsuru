@@ -81,15 +81,19 @@ State: %s
 Repository: %s
 Platform: %s
 Teams: %s
-Units:
-%s`
+`
 	teams := strings.Join(a.Teams, ", ")
 	units := cmd.NewTable()
 	units.Headers = cmd.Row([]string{"Unit", "Ip", "State"})
 	for _, unit := range a.Units {
 		units.AddRow(cmd.Row([]string{unit.Name, unit.Ip, unit.State}))
 	}
-	return fmt.Sprintf(format, a.Name, a.State, a.Repository, a.Framework, teams, units)
+	args := []interface{}{a.Name, a.State, a.Repository, a.Framework, teams}
+	if len(a.Units) > 0 {
+		format += "Units:\n%s"
+		args = append(args, units)
+	}
+	return fmt.Sprintf(format, args...)
 }
 
 func (c *AppInfo) Show(result []byte, context *cmd.Context) error {

@@ -41,6 +41,28 @@ Units:
 	c.Assert(stdout.String(), Equals, expected)
 }
 
+func (s *S) TestAppInfoNoUnits(c *C) {
+	*AppName = "app1"
+	var stdout, stderr bytes.Buffer
+	result := `{"Name":"app1","Framework":"php","Repository":"git@git.com:php.git","State":"dead", "Units":[],"Teams":["tsuruteam","crane"]}`
+	expected := `Application: app1
+State: dead
+Repository: git@git.com:php.git
+Platform: php
+Teams: tsuruteam, crane
+
+`
+	context := cmd.Context{
+		Stdout: &stdout,
+		Stderr: &stderr,
+	}
+	client := cmd.NewClient(&http.Client{Transport: &transport{msg: result, status: http.StatusOK}}, nil, manager)
+	command := AppInfo{}
+	err := command.Run(&context, client)
+	c.Assert(err, IsNil)
+	c.Assert(stdout.String(), Equals, expected)
+}
+
 func (s *S) TestAppInfoWithoutArgs(c *C) {
 	var stdout, stderr bytes.Buffer
 	result := `{"Name":"secret","Framework":"ruby","Repository":"git@git.com:php.git","State":"dead", "Units":[{"Ip":"10.10.10.10","Name":"secret/0","State":"started"}, {"Ip":"9.9.9.9","Name":"secret/1","State":"pending"}],"Teams":["tsuruteam","crane"]}`
