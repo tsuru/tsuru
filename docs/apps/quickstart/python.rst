@@ -98,8 +98,15 @@ command:
     State: started
     Repository: git@tsuruhost.com:blog.git
     Platform: python
-    Units: 10.20.10.20
     Teams: elasticteam
+    Units:
+    +--------+-------------+---------+
+    | Unit   | Ip          | State   |
+    +--------+-------------+---------+
+    | blog/0 | 10.20.10.20 | started |
+    | blog/1 | 10.20.10.21 | started |
+    | blog/2 |             | pending |
+    +--------+-------------+---------+
 
 The git remote will be used to deploy your application using git. You can just
 push to tsuru remote and your project will be deployed:
@@ -179,8 +186,15 @@ And you will be also able to omit the ``--app`` flag from now on:
     State: started
     Repository: git@tsuruhost.com:blog.git
     Platform: python
-    Units: 10.20.10.20
     Teams: elasticteam
+    Units:
+    +--------+-------------+---------+
+    | Unit   | Ip          | State   |
+    +--------+-------------+---------+
+    | blog/0 | 10.20.10.20 | started |
+    | blog/1 | 10.20.10.21 | started |
+    | blog/2 |             | pending |
+    +--------+-------------+---------+
 
 For more details on the ``--app`` flag, see `"Guessing app names"
 <http://godoc.org/github.com/globocom/tsuru/cmd/tsuru/developer#Guessing_app_names>`_

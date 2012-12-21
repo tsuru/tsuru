@@ -119,8 +119,14 @@ This will return something like:
     Application: myblog
     State: started
     Plataform: gunicorn
-    Units: 10.10.10.10, 9.9.9.9
     Teams: team1, team2
+    Units:
+    +----------+-------------+---------+
+    | Unit     | Ip          | State   |
+    +----------+-------------+---------+
+    | myblog/0 | 10.11.10.11 | started |
+    | myblog/1 | 10.11.10.12 | started |
+    +----------+-------------+---------+
 
 Tsuru uses information from git configuration to guess the name of the app, for
 more details, see `"Guessing app names"
