@@ -159,8 +159,8 @@ func (qs *Server) Message(timeout time.Duration) (Message, error) {
 }
 
 // PutBack puts a message back in the queue. It should be used when a message
-// got using Message method cannot be processed yet. You put it back in the
-// queue for processing later.
+// returned by the Message method cannot be processed yet. You put it back in
+// the queue for processing later.
 func (qs *Server) PutBack(message Message) {
 	if atomic.LoadInt32(&qs.closed) == 0 {
 		message.Visits++
