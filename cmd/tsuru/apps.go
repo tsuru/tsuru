@@ -12,6 +12,7 @@ import (
 	"io/ioutil"
 	"launchpad.net/gnuflag"
 	"net/http"
+	"strings"
 )
 
 var AppName = gnuflag.String("app", "", "App name for running app related commands.")
@@ -59,39 +60,44 @@ func (c *AppInfo) Run(context *cmd.Context, client cmd.Doer) error {
 	return c.Show(result, context)
 }
 
-func (c *AppInfo) Show(result []byte, context *cmd.Context) error {
-	var app map[string]interface{}
-	err := json.Unmarshal(result, &app)
-	if err != nil {
-		return err
-	}
-	template := `Application: %s
+type unit struct {
+	Name  string
+	Ip    string
+	State string
+}
+
+type app struct {
+	Name       string
+	Framework  string
+	Repository string
+	State      string
+	Teams      []string
+	Units      []unit
+}
+
+func (a *app) String() string {
+	format := `Application: %s
 State: %s
 Repository: %s
 Platform: %s
 Units: %s
-Teams: %s
-`
-	name := app["Name"]
-	state := app["State"]
-	platform := app["Framework"]
-	repository := app["Repository"]
-	units := ""
-	for _, unit := range app["Units"].([]interface{}) {
-		if len(units) > 0 {
-			units += ", "
-		}
-		units += fmt.Sprintf("%s", unit.(map[string]interface{})["Ip"].(string))
+Teams: %s`
+	teams := strings.Join(a.Teams, ", ")
+	ips := make([]string, len(a.Units))
+	for i, unit := range a.Units {
+		ips[i] = unit.Ip
 	}
-	teams := ""
-	for _, team := range app["Teams"].([]interface{}) {
-		if len(teams) > 0 {
-			teams += ", "
-		}
-		teams += fmt.Sprintf("%s", team.(string))
+	units := strings.Join(ips, ", ")
+	return fmt.Sprintf(format, a.Name, a.State, a.Repository, a.Framework, units, teams)
+}
+
+func (c *AppInfo) Show(result []byte, context *cmd.Context) error {
+	var a app
+	err := json.Unmarshal(result, &a)
+	if err != nil {
+		return err
 	}
-	out := fmt.Sprintf(template, name, state, repository, platform, units, teams)
-	context.Stdout.Write([]byte(out))
+	fmt.Fprintln(context.Stdout, &a)
 	return nil
 }
 
