@@ -80,15 +80,16 @@ func (a *app) String() string {
 State: %s
 Repository: %s
 Platform: %s
-Units: %s
-Teams: %s`
+Teams: %s
+Units:
+%s`
 	teams := strings.Join(a.Teams, ", ")
-	ips := make([]string, len(a.Units))
-	for i, unit := range a.Units {
-		ips[i] = unit.Ip
+	units := cmd.NewTable()
+	units.Headers = cmd.Row([]string{"Unit", "Ip", "State"})
+	for _, unit := range a.Units {
+		units.AddRow(cmd.Row([]string{unit.Name, unit.Ip, unit.State}))
 	}
-	units := strings.Join(ips, ", ")
-	return fmt.Sprintf(format, a.Name, a.State, a.Repository, a.Framework, units, teams)
+	return fmt.Sprintf(format, a.Name, a.State, a.Repository, a.Framework, teams, units)
 }
 
 func (c *AppInfo) Show(result []byte, context *cmd.Context) error {

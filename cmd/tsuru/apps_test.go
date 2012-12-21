@@ -14,13 +14,21 @@ import (
 func (s *S) TestAppInfo(c *C) {
 	*AppName = "app1"
 	var stdout, stderr bytes.Buffer
-	result := `{"Name":"app1","Framework":"php","Repository":"git@git.com:php.git","State":"dead", "Units":[{"Ip":"10.10.10.10"}, {"Ip":"9.9.9.9"}],"Teams":["tsuruteam","crane"]}`
+	result := `{"Name":"app1","Framework":"php","Repository":"git@git.com:php.git","State":"dead", "Units":[{"Ip":"10.10.10.10","Name":"app1/0","State":"started"}, {"Ip":"9.9.9.9","Name":"app1/1","State":"started"}, {"Ip":"","Name":"app1/2","State":"pending"}],"Teams":["tsuruteam","crane"]}`
 	expected := `Application: app1
 State: dead
 Repository: git@git.com:php.git
 Platform: php
-Units: 10.10.10.10, 9.9.9.9
 Teams: tsuruteam, crane
+Units:
++--------+-------------+---------+
+| Unit   | Ip          | State   |
++--------+-------------+---------+
+| app1/0 | 10.10.10.10 | started |
+| app1/1 | 9.9.9.9     | started |
+| app1/2 |             | pending |
++--------+-------------+---------+
+
 `
 	context := cmd.Context{
 		Stdout: &stdout,
@@ -35,13 +43,20 @@ Teams: tsuruteam, crane
 
 func (s *S) TestAppInfoWithoutArgs(c *C) {
 	var stdout, stderr bytes.Buffer
-	result := `{"Name":"secret","Framework":"ruby","Repository":"git@git.com:php.git","State":"dead", "Units":[{"Ip":"10.10.10.10"}, {"Ip":"9.9.9.9"}],"Teams":["tsuruteam","crane"]}`
+	result := `{"Name":"secret","Framework":"ruby","Repository":"git@git.com:php.git","State":"dead", "Units":[{"Ip":"10.10.10.10","Name":"secret/0","State":"started"}, {"Ip":"9.9.9.9","Name":"secret/1","State":"pending"}],"Teams":["tsuruteam","crane"]}`
 	expected := `Application: secret
 State: dead
 Repository: git@git.com:php.git
 Platform: ruby
-Units: 10.10.10.10, 9.9.9.9
 Teams: tsuruteam, crane
+Units:
++----------+-------------+---------+
+| Unit     | Ip          | State   |
++----------+-------------+---------+
+| secret/0 | 10.10.10.10 | started |
+| secret/1 | 9.9.9.9     | pending |
++----------+-------------+---------+
+
 `
 	context := cmd.Context{
 		Stdout: &stdout,
