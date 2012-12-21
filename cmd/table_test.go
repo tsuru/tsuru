@@ -76,6 +76,22 @@ func (s *S) TestString(c *C) {
 	c.Assert(table.String(), Equals, expected)
 }
 
+func (s *S) TestRenderNoRows(c *C) {
+	table := NewTable()
+	table.Headers = Row{"Word", "Number"}
+	expected := `+------+--------+
+| Word | Number |
++------+--------+
++------+--------+
+`
+	c.Assert(table.String(), Equals, expected)
+}
+
+func (s *S) TestRenderEmpty(c *C) {
+	table := NewTable()
+	c.Assert(table.String(), Equals, "")
+}
+
 func (s *S) TestBytes(c *C) {
 	table := NewTable()
 	table.AddRow(Row{"One", "1"})
