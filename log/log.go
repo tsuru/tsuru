@@ -24,8 +24,8 @@ type Target struct {
 //
 // See the builtin log package for more details.
 func (t *Target) SetLogger(l *log.Logger) {
-	defer t.mut.Unlock()
 	t.mut.Lock()
+	defer t.mut.Unlock()
 	t.logger = l
 }
 
