@@ -1003,7 +1003,7 @@ func (s *S) TestLogShouldNotLogBlankLines(c *C) {
 
 func (s *S) TestGetTeams(c *C) {
 	app := App{Name: "app", Teams: []string{s.team.Name}}
-	teams := app.teams()
+	teams := app.GetTeams()
 	c.Assert(teams, HasLen, 1)
 	c.Assert(teams[0].Name, Equals, s.team.Name)
 }

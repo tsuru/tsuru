@@ -278,7 +278,7 @@ func (a *App) Revoke(team *auth.Team) error {
 	return nil
 }
 
-func (a *App) teams() []auth.Team {
+func (a *App) GetTeams() []auth.Team {
 	var teams []auth.Team
 	db.Session.Teams().Find(bson.M{"_id": bson.M{"$in": a.Teams}}).All(&teams)
 	return teams

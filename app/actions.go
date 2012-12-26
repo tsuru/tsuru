@@ -98,7 +98,7 @@ type createRepository struct{}
 func (a *createRepository) forward(app *App) error {
 	gUrl := repository.GitServerUri()
 	var users []string
-	for _, t := range app.teams() {
+	for _, t := range app.GetTeams() {
 		users = append(users, t.Users...)
 	}
 	c := gandalf.Client{Endpoint: gUrl}
