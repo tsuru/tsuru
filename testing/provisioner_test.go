@@ -165,6 +165,45 @@ func (s *S) TestAddUnitsFailure(c *C) {
 	c.Assert(err.Error(), Equals, "Cannot add more units.")
 }
 
+func (s *S) TestRemoveUnit(c *C) {
+	app := NewFakeApp("hemispheres", "rush", 0)
+	p := NewFakeProvisioner()
+	p.Provision(app)
+	_, err := p.AddUnits(app, 2)
+	c.Assert(err, IsNil)
+	err = p.RemoveUnit(app, "hemispheres/1")
+	c.Assert(err, IsNil)
+	c.Assert(p.units["hemispheres"], HasLen, 1)
+	c.Assert(p.units["hemispheres"][0].Name, Equals, "hemispheres/0")
+}
+
+func (s *S) TestRemoveUnitFromUnprivisionedApp(c *C) {
+	app := NewFakeApp("hemispheres", "rush", 0)
+	p := NewFakeProvisioner()
+	err := p.RemoveUnit(app, "hemispheres/1")
+	c.Assert(err, NotNil)
+	c.Assert(err.Error(), Equals, "App is not provisioned.")
+}
+
+func (s *S) TestRemoveUnknownUnit(c *C) {
+	app := NewFakeApp("hemispheres", "rush", 0)
+	p := NewFakeProvisioner()
+	p.Provision(app)
+	_, err := p.AddUnits(app, 2)
+	c.Assert(err, IsNil)
+	err = p.RemoveUnit(app, "hemispheres/2")
+	c.Assert(err, NotNil)
+	c.Assert(err.Error(), Equals, "Unit not found.")
+}
+
+func (s *S) TestRemoveUnitFailure(c *C) {
+	p := NewFakeProvisioner()
+	p.PrepareFailure("RemoveUnit", errors.New("This program has performed an illegal operation."))
+	err := p.RemoveUnit(nil, "hemispheres/5")
+	c.Assert(err, NotNil)
+	c.Assert(err.Error(), Equals, "This program has performed an illegal operation.")
+}
+
 func (s *S) TestExecuteCommand(c *C) {
 	var buf bytes.Buffer
 	output := []byte("myoutput!")

@@ -242,6 +242,27 @@ func (p *FakeProvisioner) AddUnits(app provision.App, n uint) ([]provision.Unit,
 }
 
 func (p *FakeProvisioner) RemoveUnit(app provision.App, name string) error {
+	if err := p.getError("RemoveUnit"); err != nil {
+		return err
+	}
+	index := -1
+	appName := app.GetName()
+	if index := p.FindApp(app); index < 0 {
+		return errors.New("App is not provisioned.")
+	}
+	p.unitMut.Lock()
+	defer p.unitMut.Unlock()
+	for i, unit := range p.units[appName] {
+		if unit.Name == name {
+			index = i
+			break
+		}
+	}
+	if index == -1 {
+		return errors.New("Unit not found.")
+	}
+	copy(p.units[appName][index:], p.units[appName][index+1:])
+	p.units[appName] = p.units[appName][:len(p.units[appName])-1]
 	return nil
 }
 
