@@ -654,7 +654,7 @@ func (s *S) TestAddUnitsReturns400IfNumberOfUnitsIsOmited(c *C) {
 		e, ok := err.(*errors.Http)
 		c.Assert(ok, Equals, true)
 		c.Assert(e.Code, Equals, http.StatusBadRequest)
-		c.Assert(e.Message, Equals, "You must provide the number of units to add.")
+		c.Assert(e.Message, Equals, "You must provide the number of units.")
 	}
 }
 
@@ -670,7 +670,100 @@ func (s *S) TestAddUnitsReturns400IfNumberIsInvalid(c *C) {
 		e, ok := err.(*errors.Http)
 		c.Assert(ok, Equals, true)
 		c.Assert(e.Code, Equals, http.StatusBadRequest)
-		c.Assert(e.Message, Equals, "Invalid number of units: the number must be a integer greater than 0.")
+		c.Assert(e.Message, Equals, "Invalid number of units: the number must be an integer greater than 0.")
+	}
+}
+
+func (s *S) TestRemoveUnits(c *C) {
+	a := app.App{
+		Name:      "velha",
+		Framework: "python",
+		Teams:     []string{s.team.Name},
+		Units: []app.Unit{
+			{Name: "velha/0"}, {Name: "velha/1"}, {Name: "velha/2"},
+		},
+	}
+	err := db.Session.Apps().Insert(a)
+	c.Assert(err, IsNil)
+	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
+	err = s.provisioner.Provision(&a)
+	c.Assert(err, IsNil)
+	defer s.provisioner.Destroy(&a)
+	s.provisioner.AddUnits(&a, 3)
+	body := strings.NewReader("2")
+	request, err := http.NewRequest("DELETE", "/apps/velha/units?:name=velha", body)
+	c.Assert(err, IsNil)
+	recorder := httptest.NewRecorder()
+	err = RemoveUnitsHandler(recorder, request, s.user)
+	c.Assert(err, IsNil)
+	err = a.Get()
+	c.Assert(err, IsNil)
+	c.Assert(a.Units, HasLen, 1)
+	c.Assert(a.Units[0].Name, Equals, "velha/2")
+	c.Assert(s.provisioner.GetUnits(&a), HasLen, 1)
+}
+
+func (s *S) TestRemoveUnitsReturns404IfAppDoesNotExist(c *C) {
+	body := strings.NewReader("1")
+	request, err := http.NewRequest("DELETE", "/apps/fetisha/units?:name=fetisha", body)
+	c.Assert(err, IsNil)
+	recorder := httptest.NewRecorder()
+	err = RemoveUnitsHandler(recorder, request, s.user)
+	c.Assert(err, NotNil)
+	e, ok := err.(*errors.Http)
+	c.Assert(ok, Equals, true)
+	c.Assert(e.Code, Equals, http.StatusNotFound)
+	c.Assert(e.Message, Equals, "App fetisha not found.")
+}
+
+func (s *S) TestRemoveUnitsReturns403IfTheUserDoesNotHaveAccessToTheApp(c *C) {
+	a := app.App{
+		Name:      "fetisha",
+		Framework: "python",
+	}
+	err := db.Session.Apps().Insert(a)
+	c.Assert(err, IsNil)
+	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
+	body := strings.NewReader("1")
+	request, err := http.NewRequest("DELETE", "/apps/fetisha/units?:name=fetisha", body)
+	c.Assert(err, IsNil)
+	recorder := httptest.NewRecorder()
+	err = RemoveUnitsHandler(recorder, request, s.user)
+	c.Assert(err, NotNil)
+	e, ok := err.(*errors.Http)
+	c.Assert(ok, Equals, true)
+	c.Assert(e.Code, Equals, http.StatusForbidden)
+	c.Assert(e.Message, Equals, "User does not have access to this app")
+}
+
+func (s *S) TestRemoveUnitsReturns400IfNumberOfUnitsIsOmited(c *C) {
+	bodies := []io.Reader{nil, strings.NewReader("")}
+	for _, body := range bodies {
+		request, err := http.NewRequest("DELETE", "/apps/fetisha/units?:name=fetisha", body)
+		c.Assert(err, IsNil)
+		recorder := httptest.NewRecorder()
+		err = RemoveUnitsHandler(recorder, request, s.user)
+		c.Assert(err, NotNil)
+		e, ok := err.(*errors.Http)
+		c.Assert(ok, Equals, true)
+		c.Assert(e.Code, Equals, http.StatusBadRequest)
+		c.Assert(e.Message, Equals, "You must provide the number of units.")
+	}
+}
+
+func (s *S) TestRemoveUnitsReturns400IfNumberIsInvalid(c *C) {
+	values := []string{"-1", "0", "far cry", "12345678909876543"}
+	for _, value := range values {
+		body := strings.NewReader(value)
+		request, err := http.NewRequest("DELETE", "/apps/fiend/units?:name=fiend", body)
+		c.Assert(err, IsNil)
+		recorder := httptest.NewRecorder()
+		err = RemoveUnitsHandler(recorder, request, s.user)
+		c.Assert(err, NotNil)
+		e, ok := err.(*errors.Http)
+		c.Assert(ok, Equals, true)
+		c.Assert(e.Code, Equals, http.StatusBadRequest)
+		c.Assert(e.Message, Equals, "Invalid number of units: the number must be an integer greater than 0.")
 	}
 }
 

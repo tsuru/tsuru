@@ -204,33 +204,54 @@ func CreateAppHandler(w http.ResponseWriter, r *http.Request, u *auth.User) erro
 	return nil
 }
 
-func AddUnitsHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
-	missingMsg := "You must provide the number of units to add."
+func numberOfUnitsOrError(r *http.Request) (uint, error) {
+	missingMsg := "You must provide the number of units."
 	if r.Body == nil {
-		return &errors.Http{Code: http.StatusBadRequest, Message: missingMsg}
+		return 0, &errors.Http{Code: http.StatusBadRequest, Message: missingMsg}
 	}
 	defer r.Body.Close()
 	b, err := ioutil.ReadAll(r.Body)
 	if err != nil {
-		return err
+		return 0, err
 	}
 	value := string(b)
 	if value == "" {
-		return &errors.Http{Code: http.StatusBadRequest, Message: missingMsg}
+		return 0, &errors.Http{Code: http.StatusBadRequest, Message: missingMsg}
 	}
 	n, err := strconv.ParseUint(value, 10, 32)
 	if err != nil || n == 0 {
-		return &errors.Http{
+		return 0, &errors.Http{
 			Code:    http.StatusBadRequest,
-			Message: "Invalid number of units: the number must be a integer greater than 0.",
+			Message: "Invalid number of units: the number must be an integer greater than 0.",
 		}
+	}
+	return uint(n), nil
+}
+
+func AddUnitsHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
+	n, err := numberOfUnitsOrError(r)
+	if err != nil {
+		return err
 	}
 	appName := r.URL.Query().Get(":name")
 	app, err := getAppOrError(appName, u)
 	if err != nil {
 		return err
 	}
-	return app.AddUnits(uint(n))
+	return app.AddUnits(n)
+}
+
+func RemoveUnitsHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
+	n, err := numberOfUnitsOrError(r)
+	if err != nil {
+		return err
+	}
+	appName := r.URL.Query().Get(":name")
+	app, err := getAppOrError(appName, u)
+	if err != nil {
+		return err
+	}
+	return app.RemoveUnits(uint(n))
 }
 
 func grantAccessToTeam(appName, teamName string, u *auth.User) error {
