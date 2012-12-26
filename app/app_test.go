@@ -328,6 +328,11 @@ func (s *S) TestRemoveUnits(c *C) {
 	c.Assert(units, HasLen, 2)
 	c.Assert(units[0].Name, Equals, "chemistry/2")
 	c.Assert(units[1].Name, Equals, "chemistry/3")
+	err = app.Get()
+	c.Assert(err, IsNil)
+	c.Assert(app.Units, HasLen, 2)
+	c.Assert(app.Units[0].Name, Equals, "chemistry/2")
+	c.Assert(app.Units[1].Name, Equals, "chemistry/3")
 }
 
 func (s *S) TestRemoveUnitsInvalidValues(c *C) {
@@ -377,6 +382,35 @@ func (s *S) TestRemoveUnitsFailureInProvisioner(c *C) {
 	err = app.RemoveUnits(1)
 	c.Assert(err, NotNil)
 	c.Assert(err.Error(), Equals, "Cannot remove these units.")
+}
+
+func (s *S) TestRemoveUnitsFromIndicesSlice(c *C) {
+	var tests = []struct {
+		input    []Unit
+		indices  []int
+		expected []Unit
+	}{
+		{
+			input:    []Unit{{Name: "unit1"}, {Name: "unit2"}, {Name: "unit3"}, {Name: "unit4"}},
+			indices:  []int{0, 1, 2},
+			expected: []Unit{{Name: "unit4"}},
+		},
+		{
+			input:    []Unit{{Name: "unit1"}, {Name: "unit2"}, {Name: "unit3"}, {Name: "unit4"}},
+			indices:  []int{0, 3, 4},
+			expected: []Unit{{Name: "unit2"}},
+		},
+		{
+			input:    []Unit{{Name: "unit1"}, {Name: "unit2"}, {Name: "unit3"}, {Name: "unit4"}},
+			indices:  []int{4},
+			expected: []Unit{{Name: "unit1"}, {Name: "unit2"}, {Name: "unit3"}},
+		},
+	}
+	for _, t := range tests {
+		a := App{Units: t.input}
+		a.removeUnits(t.indices)
+		c.Check(a.Units, DeepEquals, t.expected)
+	}
 }
 
 func (s *S) TestGrantAccess(c *C) {
