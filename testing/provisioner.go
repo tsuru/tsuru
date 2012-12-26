@@ -267,6 +267,20 @@ func (p *FakeProvisioner) RemoveUnit(app provision.App, name string) error {
 }
 
 func (p *FakeProvisioner) RemoveUnits(app provision.App, n uint) error {
+	if err := p.getError("RemoveUnits"); err != nil {
+		return err
+	}
+	if index := p.FindApp(app); index < 0 {
+		return errors.New("App is not provisioned.")
+	}
+	name := app.GetName()
+	p.unitMut.Lock()
+	defer p.unitMut.Unlock()
+	length := uint(len(p.units[name]))
+	if n >= length {
+		return errors.New("Too many units.")
+	}
+	p.units[name] = p.units[name][n:]
 	return nil
 }
 
