@@ -127,3 +127,35 @@ func (c *UnitAdd) Run(context *cmd.Context, client cmd.Doer) error {
 	fmt.Fprintln(context.Stdout, "Units successfully added!")
 	return nil
 }
+
+type UnitRemove struct {
+	tsuru.GuessingCommand
+}
+
+func (c *UnitRemove) Info() *cmd.Info {
+	return &cmd.Info{
+		Name:    "unit-remove",
+		Usage:   "unit-remove <# of units> [--app appname]",
+		Desc:    "remove units from an app.",
+		MinArgs: 1,
+	}
+}
+
+func (c *UnitRemove) Run(context *cmd.Context, client cmd.Doer) error {
+	appName, err := c.Guess()
+	if err != nil {
+		return err
+	}
+	url := cmd.GetUrl(fmt.Sprintf("/apps/%s/units", appName))
+	body := bytes.NewBufferString(context.Args[0])
+	request, err := http.NewRequest("DELETE", url, body)
+	if err != nil {
+		return err
+	}
+	_, err = client.Do(request)
+	if err != nil {
+		return err
+	}
+	fmt.Fprintln(context.Stdout, "Units successfully removed!")
+	return nil
+}

@@ -227,3 +227,69 @@ func (s *S) TestUnitAddIsACommand(c *C) {
 func (s *S) TestUnitAddIsAnInfoer(c *C) {
 	var _ cmd.Infoer = &UnitAdd{}
 }
+
+func (s *S) TestUnitRemove(c *C) {
+	*tsuru.AppName = "vapor"
+	var stdout, stderr bytes.Buffer
+	var called bool
+	context := cmd.Context{
+		Args:   []string{"2"},
+		Stdout: &stdout,
+		Stderr: &stderr,
+	}
+	trans := &conditionalTransport{
+		transport{
+			msg:    "",
+			status: http.StatusOK,
+		},
+		func(req *http.Request) bool {
+			called = true
+			b, err := ioutil.ReadAll(req.Body)
+			c.Assert(err, IsNil)
+			c.Assert(string(b), Equals, "2")
+			return req.URL.Path == "/apps/vapor/units" && req.Method == "DELETE"
+		},
+	}
+	client := cmd.NewClient(&http.Client{Transport: trans}, nil, manager)
+	command := UnitRemove{}
+	err := command.Run(&context, client)
+	c.Assert(err, IsNil)
+	c.Assert(called, Equals, true)
+	expected := "Units successfully removed!\n"
+	c.Assert(stdout.String(), Equals, expected)
+}
+
+func (s *S) TestUnitRemoveFailure(c *C) {
+	*tsuru.AppName = "opticon"
+	var stdout, stderr bytes.Buffer
+	context := cmd.Context{
+		Args:   []string{"1"},
+		Stdout: &stdout,
+		Stderr: &stderr,
+	}
+	client := cmd.NewClient(&http.Client{
+		Transport: &transport{msg: "Failed to remove.", status: 500},
+	}, nil, manager)
+	command := UnitRemove{}
+	err := command.Run(&context, client)
+	c.Assert(err, NotNil)
+	c.Assert(err.Error(), Equals, "Failed to remove.")
+}
+
+func (s *S) TestUnitRemoveInfo(c *C) {
+	expected := cmd.Info{
+		Name:    "unit-remove",
+		Usage:   "unit-remove <# of units> [--app appname]",
+		Desc:    "remove units from an app.",
+		MinArgs: 1,
+	}
+	c.Assert((&UnitRemove{}).Info(), DeepEquals, &expected)
+}
+
+func (s *S) TestUnitRemoveIsACommand(c *C) {
+	var _ cmd.Command = &UnitRemove{}
+}
+
+func (s *S) TestUnitRemoveIsAnInfoer(c *C) {
+	var _ cmd.Infoer = &UnitRemove{}
+}

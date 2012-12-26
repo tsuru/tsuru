@@ -38,6 +38,7 @@ The currently available commands are (grouped by subject):
 	app-grant         allows a team to have access to an app
 	app-revoke        revokes access to an app from a team
 	unit-add          adds new units to an app
+	unit-remove       remove units from an app
 	log               shows log for an app
 	run               runs a command in all units of an app
 	restart           restarts the app's application server
@@ -330,6 +331,18 @@ Usage:
 
 unit-add will add new units (instances) to an app. You need to have access to
 the app to be able to add new units to it.
+
+The --app flag is optional, see "Guessing app names" section for more details.
+
+
+Remove units from the app
+
+Usage:
+
+	% tsuru unit-remove <# of units> [--app appname]
+
+unit-remove will remove units (instances) from an app. You need to have access
+to the app to be able to remove units from it.
 
 The --app flag is optional, see "Guessing app names" section for more details.
 

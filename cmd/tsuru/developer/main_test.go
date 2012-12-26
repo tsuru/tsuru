@@ -180,3 +180,10 @@ func (s *S) TestUnitAddIsRegistered(c *C) {
 	c.Assert(ok, Equals, true)
 	c.Assert(addunit, FitsTypeOf, &UnitAdd{})
 }
+
+func (s *S) TestUnitRemoveIsRegistered(c *C) {
+	manager := buildManager("tsuru")
+	rmunit, ok := manager.Commands["unit-remove"]
+	c.Assert(ok, Equals, true)
+	c.Assert(rmunit, FitsTypeOf, &UnitRemove{})
+}
