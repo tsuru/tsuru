@@ -21,7 +21,7 @@ func (s *S) TestShouldBeRegistered(c *C) {
 	c.Assert(p, FitsTypeOf, &JujuProvisioner{})
 }
 
-func (s *S) TestJujuProvision(c *C) {
+func (s *S) TestProvision(c *C) {
 	tmpdir, err := commandmocker.Add("juju", "$*")
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(tmpdir)
@@ -33,7 +33,7 @@ func (s *S) TestJujuProvision(c *C) {
 	c.Assert(commandmocker.Output(tmpdir), Equals, "deploy --repository /home/charms local:python trace")
 }
 
-func (s *S) TestJujuProvisionFailure(c *C) {
+func (s *S) TestProvisionFailure(c *C) {
 	tmpdir, err := commandmocker.Error("juju", "juju failed", 1)
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(tmpdir)
@@ -47,7 +47,7 @@ func (s *S) TestJujuProvisionFailure(c *C) {
 	c.Assert(pErr.Err.Error(), Equals, "exit status 1")
 }
 
-func (s *S) TestJujuDestroy(c *C) {
+func (s *S) TestDestroy(c *C) {
 	tmpdir, err := commandmocker.Add("juju", "$*")
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(tmpdir)
@@ -78,7 +78,7 @@ func (s *S) TestJujuDestroy(c *C) {
 	c.Assert(commandmocker.Parameters(tmpdir), DeepEquals, expected)
 }
 
-func (s *S) TestJujuDestroyFailure(c *C) {
+func (s *S) TestDestroyFailure(c *C) {
 	tmpdir, err := commandmocker.Error("juju", "juju failed to destroy the machine", 25)
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(tmpdir)
@@ -92,7 +92,7 @@ func (s *S) TestJujuDestroyFailure(c *C) {
 	c.Assert(pErr.Err.Error(), Equals, "exit status 25")
 }
 
-func (s *S) TestJujuAddUnits(c *C) {
+func (s *S) TestAddUnits(c *C) {
 	tmpdir, err := commandmocker.Add("juju", addUnitsOutput)
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(tmpdir)
@@ -115,7 +115,7 @@ func (s *S) TestJujuAddUnits(c *C) {
 	c.Assert(commandmocker.Parameters(tmpdir), DeepEquals, expectedParams)
 }
 
-func (s *S) TestJujuAddZeroUnits(c *C) {
+func (s *S) TestAddZeroUnits(c *C) {
 	p := JujuProvisioner{}
 	units, err := p.AddUnits(nil, 0)
 	c.Assert(units, IsNil)
@@ -123,7 +123,7 @@ func (s *S) TestJujuAddZeroUnits(c *C) {
 	c.Assert(err.Error(), Equals, "Cannot add zero units.")
 }
 
-func (s *S) TestJujuAddUnitsFailure(c *C) {
+func (s *S) TestAddUnitsFailure(c *C) {
 	tmpdir, err := commandmocker.Error("juju", "juju failed", 1)
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(tmpdir)
@@ -138,7 +138,7 @@ func (s *S) TestJujuAddUnitsFailure(c *C) {
 	c.Assert(e.Err.Error(), Equals, "exit status 1")
 }
 
-func (s *S) TestJujuExecuteCommand(c *C) {
+func (s *S) TestExecuteCommand(c *C) {
 	var buf bytes.Buffer
 	tmpdir, err := commandmocker.Add("juju", "$*")
 	c.Assert(err, IsNil)
@@ -161,7 +161,7 @@ ssh -o StrictHostKeyChecking no -q 2 ls -lh
 	c.Assert(buf.String(), Equals, bufOutput)
 }
 
-func (s *S) TestJujuExecuteCommandFailure(c *C) {
+func (s *S) TestExecuteCommandFailure(c *C) {
 	var buf bytes.Buffer
 	tmpdir, err := commandmocker.Error("juju", "failed", 2)
 	c.Assert(err, IsNil)
@@ -174,7 +174,7 @@ func (s *S) TestJujuExecuteCommandFailure(c *C) {
 	c.Assert(buf.String(), Equals, "failed\n")
 }
 
-func (s *S) TestJujuExecuteCommandOneUnit(c *C) {
+func (s *S) TestExecuteCommandOneUnit(c *C) {
 	var buf bytes.Buffer
 	tmpdir, err := commandmocker.Add("juju", "$*")
 	c.Assert(err, IsNil)
@@ -189,7 +189,7 @@ func (s *S) TestJujuExecuteCommandOneUnit(c *C) {
 	c.Assert(buf.String(), Equals, output+"\n")
 }
 
-func (s *S) TestJujuExecuteCommandUnitDown(c *C) {
+func (s *S) TestExecuteCommandUnitDown(c *C) {
 	var buf bytes.Buffer
 	tmpdir, err := commandmocker.Add("juju", "$*")
 	c.Assert(err, IsNil)
@@ -218,7 +218,7 @@ ssh -o StrictHostKeyChecking no -q 3 ls -lha
 	c.Assert(buf.String(), Equals, bufOutput)
 }
 
-func (s *S) TestJujuCollectStatus(c *C) {
+func (s *S) TestCollectStatus(c *C) {
 	tmpdir, err := commandmocker.Add("juju", collectOutput)
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(tmpdir)
@@ -250,7 +250,7 @@ func (s *S) TestJujuCollectStatus(c *C) {
 	c.Assert(commandmocker.Ran(tmpdir), Equals, true)
 }
 
-func (s *S) TestJujuCollectStatusDirtyOutput(c *C) {
+func (s *S) TestCollectStatusDirtyOutput(c *C) {
 	tmpdir, err := commandmocker.Add("juju", dirtyCollectOutput)
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(tmpdir)
@@ -282,7 +282,7 @@ func (s *S) TestJujuCollectStatusDirtyOutput(c *C) {
 	c.Assert(commandmocker.Ran(tmpdir), Equals, true)
 }
 
-func (s *S) TestJujuCollectStatusFailure(c *C) {
+func (s *S) TestCollectStatusFailure(c *C) {
 	tmpdir, err := commandmocker.Error("juju", "juju failed", 1)
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(tmpdir)
@@ -296,7 +296,7 @@ func (s *S) TestJujuCollectStatusFailure(c *C) {
 	c.Assert(commandmocker.Ran(tmpdir), Equals, true)
 }
 
-func (s *S) TestJujuCollectStatusInvalidYAML(c *C) {
+func (s *S) TestCollectStatusInvalidYAML(c *C) {
 	tmpdir, err := commandmocker.Add("juju", "local: somewhere::")
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(tmpdir)
