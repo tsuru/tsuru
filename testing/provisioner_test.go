@@ -210,16 +210,18 @@ func (s *S) TestRemoveUnits(c *C) {
 	p.Provision(app)
 	_, err := p.AddUnits(app, 9)
 	c.Assert(err, IsNil)
-	err = p.RemoveUnits(app, 3)
+	units, err := p.RemoveUnits(app, 3)
 	c.Assert(err, IsNil)
 	c.Assert(p.units["trees"], HasLen, 6)
 	c.Assert(p.units["trees"][0].Name, Equals, "trees/3")
+	c.Assert(units, DeepEquals, []int{0, 1, 2})
 }
 
 func (s *S) TestRemoveUnitsFromUnprovisionedApp(c *C) {
 	app := NewFakeApp("strangiato", "rush", 0)
 	p := NewFakeProvisioner()
-	err := p.RemoveUnits(app, 2)
+	units, err := p.RemoveUnits(app, 2)
+	c.Assert(units, IsNil)
 	c.Assert(err, NotNil)
 	c.Assert(err.Error(), Equals, "App is not provisioned.")
 }
@@ -232,7 +234,7 @@ func (s *S) TestRemoveTooManyUnits(c *C) {
 	c.Assert(err, IsNil)
 	numbers := []uint{9, 10, 30}
 	for _, n := range numbers {
-		err = p.RemoveUnits(app, n)
+		_, err = p.RemoveUnits(app, n)
 		c.Assert(err, NotNil)
 		c.Assert(err.Error(), Equals, "Too many units.")
 	}
@@ -241,7 +243,8 @@ func (s *S) TestRemoveTooManyUnits(c *C) {
 func (s *S) TestRemoveUnitsFailure(c *C) {
 	p := NewFakeProvisioner()
 	p.PrepareFailure("RemoveUnits", errors.New("This program has performed an illegal operation."))
-	err := p.RemoveUnits(nil, 4)
+	units, err := p.RemoveUnits(nil, 4)
+	c.Assert(units, IsNil)
 	c.Assert(err, NotNil)
 	c.Assert(err.Error(), Equals, "This program has performed an illegal operation.")
 }

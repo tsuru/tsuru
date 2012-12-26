@@ -93,7 +93,10 @@ type Provisioner interface {
 
 	// RemoveUnits removes multiple units from an app. The first parameter it
 	// the app, the second is the number of units to remove.
-	RemoveUnits(App, uint) error
+	//
+	// It returns a slice containing the index of all removed units (the index
+	// must match the slice returned by App.ProvisionUnits).
+	RemoveUnits(App, uint) ([]int, error)
 
 	// ExecuteCommand runs a command in all units of the app.
 	ExecuteCommand(stdout, stderr io.Writer, app App, cmd string, args ...string) error

@@ -191,7 +191,7 @@ func (s *S) TestRemoveUnits(c *C) {
 	defer commandmocker.Remove(tmpdir)
 	app := NewFakeApp("xanadu", "rush", 4)
 	p := JujuProvisioner{}
-	err = p.RemoveUnits(app, 3)
+	units, err := p.RemoveUnits(app, 3)
 	c.Assert(err, IsNil)
 	expected := []string{
 		"remove-unit", "xanadu/0", "xanadu/1", "xanadu/2",
@@ -211,14 +211,16 @@ func (s *S) TestRemoveUnits(c *C) {
 	case <-ran:
 	case <-time.After(2e9):
 		params := commandmocker.Parameters(tmpdir)
-		c.Errorf("Did not run terminate-machine commands after 2 seconds. Parameters: %#v", params)
+		c.Fatalf("Did not run terminate-machine commands after 2 seconds. Parameters: %#v", params)
 	}
+	c.Assert(units, DeepEquals, []int{0, 1, 2})
 }
 
 func (s *S) TestRemoveAllUnits(c *C) {
 	app := NewFakeApp("xanadu", "rush", 2)
 	p := JujuProvisioner{}
-	err := p.RemoveUnits(app, 2)
+	units, err := p.RemoveUnits(app, 2)
+	c.Assert(units, IsNil)
 	c.Assert(err, NotNil)
 	c.Assert(err.Error(), Equals, "You can't remove all units from an app.")
 }
@@ -226,7 +228,8 @@ func (s *S) TestRemoveAllUnits(c *C) {
 func (s *S) TestRemoveTooManyUnits(c *C) {
 	app := NewFakeApp("xanadu", "rush", 2)
 	p := JujuProvisioner{}
-	err := p.RemoveUnits(app, 3)
+	units, err := p.RemoveUnits(app, 3)
+	c.Assert(units, IsNil)
 	c.Assert(err, NotNil)
 	c.Assert(err.Error(), Equals, "You can't remove 3 units from this app because it has only 2 units.")
 }
@@ -237,7 +240,8 @@ func (s *S) TestRemoveUnitsFailure(c *C) {
 	defer commandmocker.Remove(tmpdir)
 	app := NewFakeApp("closer", "rush", 3)
 	p := JujuProvisioner{}
-	err = p.RemoveUnits(app, 2)
+	units, err := p.RemoveUnits(app, 2)
+	c.Assert(units, IsNil)
 	c.Assert(err, NotNil)
 	e, ok := err.(*provision.Error)
 	c.Assert(ok, Equals, true)
