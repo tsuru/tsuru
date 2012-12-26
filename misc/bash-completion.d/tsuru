@@ -11,7 +11,7 @@ _tsuru() {
 
     COMPREPLY=()
     cur=${COMP_WORDS[COMP_CWORD]}
-    cmds='app-create app-grant app-list app-remove app-revoke app-info bind env-get env-set env-unset help key-add key-remove log login logout restart run service-add service-doc service-info service-list service-remove service-status target team-create team-list team-user-add team-user-remove unbind user-create'
+    cmds='app-create app-grant app-list app-remove app-revoke app-info unit-add unit-remove bind env-get env-set env-unset help key-add key-remove log login logout restart run service-add service-doc service-info service-list service-remove service-status target team-create team-list team-user-add team-user-remove unbind user-create'
 
     # do ordinary expansion if we are anywhere after a -- argument
     for ((i = 1; i < COMP_CWORD; ++i)); do
