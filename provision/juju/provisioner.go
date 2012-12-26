@@ -165,7 +165,14 @@ func (p *JujuProvisioner) RemoveUnit(app provision.App, name string) error {
 }
 
 func (p *JujuProvisioner) RemoveUnits(app provision.App, n uint) error {
-	return nil
+	units := app.ProvisionUnits()
+	length := uint(len(units))
+	if length == n {
+		return errors.New("You can't remove all units from an app.")
+	} else if length < n {
+		return fmt.Errorf("You can't remove %d units from this app because it has only %d units.", n, length)
+	}
+	return p.removeUnits(app, units[:n]...)
 }
 
 func (p *JujuProvisioner) ExecuteCommand(stdout, stderr io.Writer, app provision.App, cmd string, args ...string) error {
