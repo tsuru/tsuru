@@ -164,7 +164,7 @@ If you don't provide the app name, tsuru will try to guess it.`,
 	c.Assert((&AppRemove{}).Info(), DeepEquals, expected)
 }
 
-func (s *S) TestAddUnit(c *C) {
+func (s *S) TestUnitAdd(c *C) {
 	*tsuru.AppName = "radio"
 	var stdout, stderr bytes.Buffer
 	var called bool
@@ -187,7 +187,7 @@ func (s *S) TestAddUnit(c *C) {
 		},
 	}
 	client := cmd.NewClient(&http.Client{Transport: trans}, nil, manager)
-	command := AddUnit{}
+	command := UnitAdd{}
 	err := command.Run(&context, client)
 	c.Assert(err, IsNil)
 	c.Assert(called, Equals, true)
@@ -195,7 +195,7 @@ func (s *S) TestAddUnit(c *C) {
 	c.Assert(stdout.String(), Equals, expected)
 }
 
-func (s *S) TestAddUnitFailure(c *C) {
+func (s *S) TestUnitAddFailure(c *C) {
 	*tsuru.AppName = "radio"
 	var stdout, stderr bytes.Buffer
 	context := cmd.Context{
@@ -204,26 +204,26 @@ func (s *S) TestAddUnitFailure(c *C) {
 		Stderr: &stderr,
 	}
 	client := cmd.NewClient(&http.Client{Transport: &transport{msg: "Failed to add.", status: 500}}, nil, manager)
-	command := AddUnit{}
+	command := UnitAdd{}
 	err := command.Run(&context, client)
 	c.Assert(err, NotNil)
 	c.Assert(err.Error(), Equals, "Failed to add.")
 }
 
-func (s *S) TestAddUnitInfo(c *C) {
+func (s *S) TestUnitAddInfo(c *C) {
 	expected := &cmd.Info{
-		Name:    "add-unit",
-		Usage:   "add-unit <# of units> [--app appname]",
+		Name:    "unit-add",
+		Usage:   "unit-add <# of units> [--app appname]",
 		Desc:    "add new units to an app.",
 		MinArgs: 1,
 	}
-	c.Assert((&AddUnit{}).Info(), DeepEquals, expected)
+	c.Assert((&UnitAdd{}).Info(), DeepEquals, expected)
 }
 
-func (s *S) TestAddUnitIsACommand(c *C) {
-	var _ cmd.Command = &AddUnit{}
+func (s *S) TestUnitAddIsACommand(c *C) {
+	var _ cmd.Command = &UnitAdd{}
 }
 
-func (s *S) TestAddUnitIsAnInfoer(c *C) {
-	var _ cmd.Infoer = &AddUnit{}
+func (s *S) TestUnitAddIsAnInfoer(c *C) {
+	var _ cmd.Infoer = &UnitAdd{}
 }

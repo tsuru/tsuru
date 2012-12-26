@@ -97,20 +97,20 @@ func (c *AppRemove) Run(context *cmd.Context, client cmd.Doer) error {
 	return nil
 }
 
-type AddUnit struct {
+type UnitAdd struct {
 	tsuru.GuessingCommand
 }
 
-func (c *AddUnit) Info() *cmd.Info {
+func (c *UnitAdd) Info() *cmd.Info {
 	return &cmd.Info{
-		Name:    "add-unit",
-		Usage:   "add-unit <# of units> [--app appname]",
+		Name:    "unit-add",
+		Usage:   "unit-add <# of units> [--app appname]",
 		Desc:    "add new units to an app.",
 		MinArgs: 1,
 	}
 }
 
-func (c *AddUnit) Run(context *cmd.Context, client cmd.Doer) error {
+func (c *UnitAdd) Run(context *cmd.Context, client cmd.Doer) error {
 	appName, err := c.Guess()
 	if err != nil {
 		return err

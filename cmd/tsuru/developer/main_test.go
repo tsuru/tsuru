@@ -174,9 +174,9 @@ func (s *S) TestAppInfoIsRegistered(c *C) {
 	c.Assert(list, FitsTypeOf, &tsuru.AppInfo{})
 }
 
-func (s *S) TestAddUnitIsRegistered(c *C) {
+func (s *S) TestUnitAddIsRegistered(c *C) {
 	manager := buildManager("tsuru")
-	addunit, ok := manager.Commands["add-unit"]
+	addunit, ok := manager.Commands["unit-add"]
 	c.Assert(ok, Equals, true)
-	c.Assert(addunit, FitsTypeOf, &AddUnit{})
+	c.Assert(addunit, FitsTypeOf, &UnitAdd{})
 }
