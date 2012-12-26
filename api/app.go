@@ -7,7 +7,7 @@ package api
 import (
 	"encoding/json"
 	"fmt"
-	gandalf "github.com/globocom/go-gandalfclient"
+	"github.com/globocom/go-gandalfclient"
 	"github.com/globocom/tsuru/api/auth"
 	"github.com/globocom/tsuru/api/bind"
 	"github.com/globocom/tsuru/api/service"
