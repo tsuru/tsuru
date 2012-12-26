@@ -282,6 +282,28 @@ func GrantAccessToTeamHandler(w http.ResponseWriter, r *http.Request, u *auth.Us
 	return grantAccessToTeam(appName, teamName, u)
 }
 
+func getEmailsForRevoking(app *app.App, t *auth.Team) []string {
+	var i int
+	teams := app.GetTeams()
+	users := make([]string, len(t.Users))
+	for _, email := range t.Users {
+		found := false
+		for _, team := range teams {
+			for _, user := range team.Users {
+				if user == email {
+					found = true
+					break
+				}
+			}
+		}
+		if !found {
+			users[i] = email
+			i++
+		}
+	}
+	return users[:i]
+}
+
 func revokeAccessFromTeam(appName, teamName string, u *auth.User) error {
 	t := new(auth.Team)
 	app, err := getAppOrError(appName, u)
@@ -304,9 +326,12 @@ func revokeAccessFromTeam(appName, teamName string, u *auth.User) error {
 	if err != nil {
 		return err
 	}
-	gUrl := repository.GitServerUri()
-	if err := (&gandalf.Client{Endpoint: gUrl}).RevokeAccess([]string{app.Name}, t.Users); err != nil {
-		return &errors.Http{Code: http.StatusInternalServerError, Message: err.Error()}
+	users := getEmailsForRevoking(&app, t)
+	if len(users) > 0 {
+		gUrl := repository.GitServerUri()
+		if err := (&gandalf.Client{Endpoint: gUrl}).RevokeAccess([]string{app.Name}, users); err != nil {
+			return &errors.Http{Code: http.StatusInternalServerError, Message: err.Error()}
+		}
 	}
 	return nil
 }

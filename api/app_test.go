@@ -1027,8 +1027,12 @@ func (s *S) TestRevokeAccessFromTeamRemovesRepositoryFromGandalf(c *C) {
 	h := testHandler{}
 	ts := s.t.StartGandalfTestServer(&h)
 	defer ts.Close()
-	t := auth.Team{Name: "anything", Users: []string{s.user.Email}}
-	err := db.Session.Teams().Insert(t)
+	u := auth.User{Email: "again@live.com"}
+	err := db.Session.Users().Insert(u)
+	c.Assert(err, IsNil)
+	defer db.Session.Users().Remove(bson.M{"email": u.Email})
+	t := auth.Team{Name: "anything", Users: []string{u.Email}}
+	err = db.Session.Teams().Insert(t)
 	c.Assert(err, IsNil)
 	defer db.Session.Teams().Remove(bson.M{"_id": t.Name})
 	a := app.App{
@@ -1039,13 +1043,67 @@ func (s *S) TestRevokeAccessFromTeamRemovesRepositoryFromGandalf(c *C) {
 	err = db.Session.Apps().Insert(a)
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
-	err = grantAccessToTeam(a.Name, s.team.Name, s.user)
+	err = grantAccessToTeam(a.Name, s.team.Name, &u)
 	c.Assert(err, IsNil)
-	err = revokeAccessFromTeam(a.Name, s.team.Name, s.user)
+	err = revokeAccessFromTeam(a.Name, s.team.Name, &u)
 	c.Assert(h.url[1], Equals, "/repository/revoke") //should inc the index (because of the grantAccess)
 	c.Assert(h.method[1], Equals, "DELETE")
 	expected := fmt.Sprintf(`{"repositories":["%s"],"users":["%s"]}`, a.Name, s.user.Email)
 	c.Assert(string(h.body[1]), Equals, expected)
+}
+
+func (s *S) TestRevokeAccessFromTeamDontRemoveTheUserIfItHasAccesToTheAppThroughAnotherTeam(c *C) {
+	h := testHandler{}
+	ts := s.t.StartGandalfTestServer(&h)
+	defer ts.Close()
+	u := auth.User{Email: "burning@angel.com"}
+	err := db.Session.Users().Insert(u)
+	c.Assert(err, IsNil)
+	defer db.Session.Users().Remove(bson.M{"email": u.Email})
+	t := auth.Team{Name: "anything", Users: []string{s.user.Email, u.Email}}
+	err = db.Session.Teams().Insert(t)
+	c.Assert(err, IsNil)
+	defer db.Session.Teams().Remove(bson.M{"_id": t.Name})
+	a := app.App{
+		Name:      "tsuru",
+		Framework: "golang",
+		Teams:     []string{s.team.Name},
+	}
+	err = db.Session.Apps().Insert(a)
+	c.Assert(err, IsNil)
+	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
+	err = grantAccessToTeam(a.Name, t.Name, s.user)
+	c.Assert(err, IsNil)
+	err = revokeAccessFromTeam(a.Name, t.Name, s.user)
+	c.Assert(err, IsNil)
+	c.Assert(h.url[1], Equals, "/repository/revoke")
+	c.Assert(h.method[1], Equals, "DELETE")
+	expected := fmt.Sprintf(`{"repositories":[%q],"users":[%q]}`, a.Name, u.Email)
+	c.Assert(string(h.body[1]), Equals, expected)
+}
+
+func (s *S) TestRevokeAccessFromTeamDontCallGandalfIfNoUserNeedToBeRevoked(c *C) {
+	h := testHandler{}
+	ts := s.t.StartGandalfTestServer(&h)
+	defer ts.Close()
+	t := auth.Team{Name: "anything", Users: []string{s.user.Email}}
+	err := db.Session.Teams().Insert(t)
+	c.Assert(err, IsNil)
+	defer db.Session.Teams().Remove(bson.M{"_id": t.Name})
+	a := app.App{
+		Name:      "tsuru",
+		Framework: "golang",
+		Teams:     []string{s.team.Name},
+	}
+	err = db.Session.Apps().Insert(a)
+	c.Assert(err, IsNil)
+	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
+	err = grantAccessToTeam(a.Name, t.Name, s.user)
+	c.Assert(err, IsNil)
+	err = revokeAccessFromTeam(a.Name, t.Name, s.user)
+	c.Assert(err, IsNil)
+	c.Assert(h.url, HasLen, 1)
+	c.Assert(h.url[0], Equals, "/repository/grant")
 }
 
 func (s *S) TestRunHandlerShouldExecuteTheGivenCommandInTheGivenApp(c *C) {
