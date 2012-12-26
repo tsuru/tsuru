@@ -138,6 +138,53 @@ func (s *S) TestAddUnitsFailure(c *C) {
 	c.Assert(e.Err.Error(), Equals, "exit status 1")
 }
 
+func (s *S) TestRemoveUnit(c *C) {
+	tmpdir, err := commandmocker.Add("juju", "removed")
+	c.Assert(err, IsNil)
+	defer commandmocker.Remove(tmpdir)
+	app := NewFakeApp("two", "rush", 3)
+	p := JujuProvisioner{}
+	err = p.RemoveUnit(app, "two/2")
+	c.Assert(err, IsNil)
+	c.Assert(commandmocker.Ran(tmpdir), Equals, true)
+	expected := []string{"remove-unit", "two/2", "terminate-machine", "3"}
+	ran := make(chan bool, 1)
+	go func() {
+		for {
+			if reflect.DeepEqual(commandmocker.Parameters(tmpdir), expected) {
+				ran <- true
+			}
+		}
+	}()
+	select {
+	case <-ran:
+	case <-time.After(2e9):
+		c.Errorf("Did not run terminate-machine command after 2 seconds.")
+	}
+}
+
+func (s *S) TestRemoveUnknownUnit(c *C) {
+	app := NewFakeApp("tears", "rush", 2)
+	p := JujuProvisioner{}
+	err := p.RemoveUnit(app, "tears/2")
+	c.Assert(err, NotNil)
+	c.Assert(err.Error(), Equals, `App "tears" does not have a unit named "tears/2".`)
+}
+
+func (s *S) TestRemoveUnitFailure(c *C) {
+	tmpdir, err := commandmocker.Error("juju", "juju failed", 66)
+	c.Assert(err, IsNil)
+	defer commandmocker.Remove(tmpdir)
+	app := NewFakeApp("something", "rush", 1)
+	p := JujuProvisioner{}
+	err = p.RemoveUnit(app, "something/0")
+	c.Assert(err, NotNil)
+	e, ok := err.(*provision.Error)
+	c.Assert(ok, Equals, true)
+	c.Assert(e.Reason, Equals, "juju failed")
+	c.Assert(e.Err.Error(), Equals, "exit status 66")
+}
+
 func (s *S) TestExecuteCommand(c *C) {
 	var buf bytes.Buffer
 	tmpdir, err := commandmocker.Add("juju", "$*")

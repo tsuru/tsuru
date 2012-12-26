@@ -65,9 +65,12 @@ func (p *JujuProvisioner) destroyService(app provision.App) error {
 	return nil
 }
 
-func (p *JujuProvisioner) terminateMachines(app provision.App) error {
+func (p *JujuProvisioner) terminateMachines(app provision.App, units ...provision.AppUnit) error {
 	var buf bytes.Buffer
-	for _, u := range app.ProvisionUnits() {
+	if len(units) < 1 {
+		units = app.ProvisionUnits()
+	}
+	for _, u := range units {
 		buf.Reset()
 		err := runCmd(false, &buf, &buf, "terminate-machine", strconv.Itoa(u.GetMachine()))
 		out := buf.String()
@@ -121,8 +124,44 @@ func (p *JujuProvisioner) AddUnits(app provision.App, n uint) ([]provision.Unit,
 	return units, nil
 }
 
-func (p *JujuProvisioner) RemoveUnit(app provision.App, name string) error {
+func (p *JujuProvisioner) removeUnits(app provision.App, units ...provision.AppUnit) error {
+	var (
+		buf bytes.Buffer
+		err error
+	)
+	cmd := make([]string, len(units)+1)
+	cmd[0] = "remove-unit"
+	for i, unit := range units {
+		cmd[i+1] = unit.GetName()
+	}
+	// Sometimes juju gives the "no node" error. This is one of Zookeeper bad
+	// behaviour. Let's try it three times before raising the error to the
+	// user, and hope that someday we run away from Zookeeper.
+	for i := 0; i < 3; i++ {
+		buf.Reset()
+		err = runCmd(true, &buf, &buf, cmd...)
+		if err == nil {
+			break
+		}
+	}
+	if err != nil {
+		return &provision.Error{Reason: buf.String(), Err: err}
+	}
+	go p.terminateMachines(app, units...)
 	return nil
+}
+
+func (p *JujuProvisioner) RemoveUnit(app provision.App, name string) error {
+	var unit provision.AppUnit
+	for _, unit = range app.ProvisionUnits() {
+		if unit.GetName() == name {
+			break
+		}
+	}
+	if unit.GetName() != name {
+		return fmt.Errorf("App %q does not have a unit named %q.", app.GetName(), name)
+	}
+	return p.removeUnits(app, unit)
 }
 
 func (p *JujuProvisioner) RemoveUnits(app provision.App, n uint) error {
