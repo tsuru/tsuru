@@ -305,6 +305,80 @@ func (s *S) TestAddUnitsFailureInProvisioner(c *C) {
 	c.Assert(err.Error(), Equals, "App is not provisioned.")
 }
 
+func (s *S) TestRemoveUnits(c *C) {
+	app := App{
+		Name:      "chemistry",
+		Framework: "python",
+		Units: []Unit{
+			{Name: "chemistry/0"},
+			{Name: "chemistry/1"},
+			{Name: "chemistry/2"},
+			{Name: "chemistry/3"},
+		},
+	}
+	err := db.Session.Apps().Insert(app)
+	c.Assert(err, IsNil)
+	defer db.Session.Apps().Remove(bson.M{"name": app.Name})
+	s.provisioner.Provision(&app)
+	defer s.provisioner.Destroy(&app)
+	s.provisioner.AddUnits(&app, 4)
+	err = app.RemoveUnits(2)
+	c.Assert(err, IsNil)
+	units := s.provisioner.GetUnits(&app)
+	c.Assert(units, HasLen, 2)
+	c.Assert(units[0].Name, Equals, "chemistry/2")
+	c.Assert(units[1].Name, Equals, "chemistry/3")
+}
+
+func (s *S) TestRemoveUnitsInvalidValues(c *C) {
+	var tests = []struct {
+		n        uint
+		expected string
+	}{
+		{0, "Cannot remove zero units."},
+		{4, "Cannot remove all units from an app."},
+		{5, "Cannot remove 5 units from this app, it has only 4 units."},
+	}
+	app := App{
+		Name:      "chemistry",
+		Framework: "python",
+		Units: []Unit{
+			{Name: "chemistry/0"},
+			{Name: "chemistry/1"},
+			{Name: "chemistry/2"},
+			{Name: "chemistry/3"},
+		},
+	}
+	err := db.Session.Apps().Insert(app)
+	c.Assert(err, IsNil)
+	defer db.Session.Apps().Remove(bson.M{"name": app.Name})
+	s.provisioner.Provision(&app)
+	defer s.provisioner.Destroy(&app)
+	s.provisioner.AddUnits(&app, 4)
+	for _, test := range tests {
+		err := app.RemoveUnits(test.n)
+		c.Check(err, NotNil)
+		c.Check(err.Error(), Equals, test.expected)
+	}
+}
+
+func (s *S) TestRemoveUnitsFailureInProvisioner(c *C) {
+	s.provisioner.PrepareFailure("RemoveUnits", errors.New("Cannot remove these units."))
+	app := App{
+		Name:      "paradisum",
+		Framework: "python",
+		Units:     []Unit{{Name: "paradisum/0"}, {Name: "paradisum/1"}},
+	}
+	err := db.Session.Apps().Insert(app)
+	c.Assert(err, IsNil)
+	defer db.Session.Apps().Remove(bson.M{"name": app.Name})
+	s.provisioner.Provision(&app)
+	defer s.provisioner.Destroy(&app)
+	err = app.RemoveUnits(1)
+	c.Assert(err, NotNil)
+	c.Assert(err.Error(), Equals, "Cannot remove these units.")
+}
+
 func (s *S) TestGrantAccess(c *C) {
 	a := App{Name: "appName", Framework: "django", Teams: []string{}}
 	err := a.Grant(&s.team)

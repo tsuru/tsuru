@@ -210,6 +210,17 @@ func (a *App) AddUnits(n uint) error {
 	return a.enqueue(messages...)
 }
 
+func (a *App) RemoveUnits(n uint) error {
+	if n == 0 {
+		return errors.New("Cannot remove zero units.")
+	} else if l := uint(len(a.Units)); l == n {
+		return errors.New("Cannot remove all units from an app.")
+	} else if n > l {
+		return fmt.Errorf("Cannot remove %d units from this app, it has only %d units.", n, l)
+	}
+	return Provisioner.RemoveUnits(a, n)
+}
+
 func (a *App) Find(team *auth.Team) (int, bool) {
 	pos := sort.Search(len(a.Teams), func(i int) bool {
 		return a.Teams[i] >= team.Name
