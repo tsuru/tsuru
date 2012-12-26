@@ -15,6 +15,8 @@ import (
 	"labix.org/v2/mgo/bson"
 	. "launchpad.net/gocheck"
 	"net/http"
+	"reflect"
+	"time"
 )
 
 func (s *S) TestInsertAppForward(c *C) {
@@ -82,10 +84,8 @@ func (s *S) TestCreateBucketForward(c *C) {
 	err = bucket.forward(&a)
 	c.Assert(err, IsNil)
 	defer bucket.backward(&a)
-	de := new(provisionApp)
-	err = de.forward(&a)
+	err = a.Get()
 	c.Assert(err, IsNil)
-	defer Provisioner.Destroy(&a)
 	env := a.InstanceEnv(s3InstanceName)
 	c.Assert(env["TSURU_S3_ENDPOINT"].Value, Equals, s.t.S3Server.URL())
 	c.Assert(env["TSURU_S3_ENDPOINT"].Public, Equals, false)
@@ -105,11 +105,23 @@ func (s *S) TestCreateBucketForward(c *C) {
 	c.Assert(env["APPNAME"].Public, Equals, false)
 	c.Assert(env["TSURU_HOST"].Value, Equals, expectedHost)
 	c.Assert(env["TSURU_HOST"].Public, Equals, false)
-	expectedMessage := queue.Message{
-		Action: RegenerateApprc,
-		Args:   []string{a.Name},
+	ran := make(chan bool, 1)
+	go func() {
+		expectedMessages := []queue.Message{{
+			Action: RegenerateApprc,
+			Args:   []string{a.Name},
+		}}
+		for {
+			if reflect.DeepEqual(expectedMessages, server.Messages()) {
+				ran <- true
+			}
+		}
+	}()
+	select {
+	case <-ran:
+	case <-time.After(2e9):
+		c.Fatal("TIMEOUT: Did not received the expected message in the queue after 2 seconds.")
 	}
-	c.Assert(server.Messages(), DeepEquals, []queue.Message{expectedMessage})
 }
 
 func (s *S) TestCreateBucketBackward(c *C) {
