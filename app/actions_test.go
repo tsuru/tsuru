@@ -161,6 +161,8 @@ func (s *S) TestDeployForward(c *C) {
 	err := action.forward(&a)
 	defer s.provisioner.Destroy(&a)
 	c.Assert(err, IsNil)
+	index := s.provisioner.FindApp(&a)
+	c.Assert(index, Equals, 0)
 }
 
 func (s *S) TestDeployRollbackItself(c *C) {
