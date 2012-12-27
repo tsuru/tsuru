@@ -176,7 +176,7 @@ func (c *AppRevoke) Run(context *cmd.Context, client cmd.Doer) error {
 type AppModel struct {
 	Name  string
 	State string
-	Units []Units
+	Ip    string
 }
 
 type Units struct {
@@ -214,11 +214,7 @@ func (c *AppList) Show(result []byte, context *cmd.Context) error {
 	table := cmd.NewTable()
 	table.Headers = cmd.Row([]string{"Application", "State", "Ip"})
 	for _, app := range apps {
-		ip := ""
-		if len(app.Units) > 0 {
-			ip = app.Units[0].Ip
-		}
-		table.AddRow(cmd.Row([]string{app.Name, app.State, ip}))
+		table.AddRow(cmd.Row([]string{app.Name, app.State, app.Ip}))
 	}
 	context.Stdout.Write(table.Bytes())
 	return nil

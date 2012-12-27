@@ -204,12 +204,12 @@ If you don't provide the app name, tsuru will try to guess it.`,
 
 func (s *S) TestAppList(c *C) {
 	var stdout, stderr bytes.Buffer
-	result := `[{"Name":"app1","Framework":"","State":"", "Units":[{"Ip":"10.10.10.10"}],"Teams":[{"Name":"tsuruteam","Users":[{"Email":"whydidifall@thewho.com","Password":"123","Tokens":null,"Keys":null}]}]}]`
-	expected := `+-------------+-------+-------------+
-| Application | State | Ip          |
-+-------------+-------+-------------+
-| app1        |       | 10.10.10.10 |
-+-------------+-------+-------------+
+	result := `[{"Name":"app1","State":"started","Ip":"10.10.10.10","Teams":["tsuruteam"]}]`
+	expected := `+-------------+---------+-------------+
+| Application | State   | Ip          |
++-------------+---------+-------------+
+| app1        | started | 10.10.10.10 |
++-------------+---------+-------------+
 `
 	context := cmd.Context{
 		Args:   []string{},
