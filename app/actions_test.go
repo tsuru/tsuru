@@ -158,11 +158,16 @@ func (s *S) TestDeployForward(c *C) {
 		Framework: "django",
 		Units:     []Unit{{Machine: 3}},
 	}
-	err := action.forward(&a)
+	err := db.Session.Apps().Insert(a)
+	c.Assert(err, IsNil)
+	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
+	err = action.forward(&a, 4)
 	defer s.provisioner.Destroy(&a)
 	c.Assert(err, IsNil)
 	index := s.provisioner.FindApp(&a)
 	c.Assert(index, Equals, 0)
+	units := s.provisioner.GetUnits(&a)
+	c.Assert(units, HasLen, 4)
 }
 
 func (s *S) TestDeployRollbackItself(c *C) {

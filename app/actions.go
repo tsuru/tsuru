@@ -80,7 +80,30 @@ type provisionApp struct{}
 
 // provision forward provisions the app.
 func (a *provisionApp) forward(app *App, args ...interface{}) error {
-	return Provisioner.Provision(app)
+	var units uint
+	if len(args) > 0 {
+		switch args[0].(type) {
+		case int:
+			units = uint(args[0].(int))
+		case int64:
+			units = uint(args[0].(int64))
+		case uint:
+			units = args[0].(uint)
+		case uint64:
+			units = uint(args[0].(uint64))
+		default:
+			units = 1
+		}
+	}
+	err := Provisioner.Provision(app)
+	if err != nil {
+		return err
+	}
+	if units > 1 {
+		_, err = Provisioner.AddUnits(app, units-1)
+		return err
+	}
+	return nil
 }
 
 // provision backward does nothing.
