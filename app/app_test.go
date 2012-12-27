@@ -1041,6 +1041,7 @@ func (s *S) TestAppMarshalJson(c *C) {
 		State:     "State",
 		Framework: "Framework",
 		Teams:     []string{"team1"},
+		Ip:        "10.10.10.1",
 	}
 	expected := make(map[string]interface{})
 	expected["Name"] = "Name"
@@ -1048,7 +1049,8 @@ func (s *S) TestAppMarshalJson(c *C) {
 	expected["Framework"] = "Framework"
 	expected["Repository"] = repository.GetUrl(app.Name)
 	expected["Teams"] = []interface{}{"team1"}
-	expected["Units"] = interface{}(nil)
+	expected["Units"] = nil
+	expected["Ip"] = "10.10.10.1"
 	data, err := app.MarshalJSON()
 	c.Assert(err, IsNil)
 	result := make(map[string]interface{})
