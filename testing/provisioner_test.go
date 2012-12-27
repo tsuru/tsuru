@@ -81,6 +81,17 @@ func (s *S) TestProvision(c *C) {
 	err := p.Provision(app)
 	c.Assert(err, IsNil)
 	c.Assert(p.apps, DeepEquals, []provision.App{app})
+	c.Assert(p.units["kid-gloves"], HasLen, 1)
+	expected := provision.Unit{
+		Name:    "kid-gloves/0",
+		AppName: "kid-gloves",
+		Type:    "rush",
+		Status:  provision.StatusStarted,
+		Ip:      "10.10.10.1",
+		Machine: 1,
+	}
+	unit := p.units["kid-gloves"][0]
+	c.Assert(unit, DeepEquals, expected)
 }
 
 func (s *S) TestProvisionWithPreparedFailure(c *C) {
@@ -135,7 +146,7 @@ func (s *S) TestAddUnits(c *C) {
 	p.Provision(app)
 	units, err := p.AddUnits(app, 2)
 	c.Assert(err, IsNil)
-	c.Assert(p.units["mystic-rhythms"], HasLen, 2)
+	c.Assert(p.units["mystic-rhythms"], HasLen, 3)
 	c.Assert(units, HasLen, 2)
 }
 
@@ -173,7 +184,7 @@ func (s *S) TestRemoveUnit(c *C) {
 	c.Assert(err, IsNil)
 	err = p.RemoveUnit(app, "hemispheres/1")
 	c.Assert(err, IsNil)
-	c.Assert(p.units["hemispheres"], HasLen, 1)
+	c.Assert(p.units["hemispheres"], HasLen, 2)
 	c.Assert(p.units["hemispheres"][0].Name, Equals, "hemispheres/0")
 }
 
@@ -191,7 +202,7 @@ func (s *S) TestRemoveUnknownUnit(c *C) {
 	p.Provision(app)
 	_, err := p.AddUnits(app, 2)
 	c.Assert(err, IsNil)
-	err = p.RemoveUnit(app, "hemispheres/2")
+	err = p.RemoveUnit(app, "hemispheres/3")
 	c.Assert(err, NotNil)
 	c.Assert(err.Error(), Equals, "Unit not found.")
 }
@@ -212,7 +223,7 @@ func (s *S) TestRemoveUnits(c *C) {
 	c.Assert(err, IsNil)
 	units, err := p.RemoveUnits(app, 3)
 	c.Assert(err, IsNil)
-	c.Assert(p.units["trees"], HasLen, 6)
+	c.Assert(p.units["trees"], HasLen, 7)
 	c.Assert(p.units["trees"][0].Name, Equals, "trees/3")
 	c.Assert(units, DeepEquals, []int{0, 1, 2})
 }
@@ -232,7 +243,7 @@ func (s *S) TestRemoveTooManyUnits(c *C) {
 	p.Provision(app)
 	_, err := p.AddUnits(app, 9)
 	c.Assert(err, IsNil)
-	numbers := []uint{9, 10, 30}
+	numbers := []uint{10, 11, 30}
 	for _, n := range numbers {
 		_, err = p.RemoveUnits(app, n)
 		c.Assert(err, NotNil)

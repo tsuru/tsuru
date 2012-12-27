@@ -190,7 +190,16 @@ func (p *FakeProvisioner) Provision(app provision.App) error {
 	}
 	p.apps = append(p.apps, app)
 	p.unitMut.Lock()
-	p.units[app.GetName()] = nil
+	p.units[app.GetName()] = []provision.Unit{
+		{
+			Name:    app.GetName() + "/0",
+			AppName: app.GetName(),
+			Type:    app.GetFramework(),
+			Status:  provision.StatusStarted,
+			Ip:      "10.10.10.1",
+			Machine: 1,
+		},
+	}
 	p.unitMut.Unlock()
 	return nil
 }
