@@ -131,16 +131,14 @@ func getTeamNames(u *auth.User) ([]string, error) {
 
 func AppList(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	apps, err := app.List(u)
+	if err != nil {
+		return err
+	}
 	if len(apps) == 0 {
 		w.WriteHeader(http.StatusNoContent)
 		return nil
 	}
-	b, err := json.Marshal(apps)
-	if err != nil {
-		return err
-	}
-	fmt.Fprint(w, string(b))
-	return nil
+	return json.NewEncoder(w).Encode(apps)
 }
 
 func AppInfo(w http.ResponseWriter, r *http.Request, u *auth.User) error {
@@ -148,12 +146,7 @@ func AppInfo(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	if err != nil {
 		return err
 	}
-	b, err := json.Marshal(&app)
-	if err != nil {
-		return err
-	}
-	fmt.Fprint(w, string(b))
-	return nil
+	return json.NewEncoder(w).Encode(&app)
 }
 
 func createAppHelper(instance *app.App, u *auth.User, units uint) ([]byte, error) {
