@@ -28,6 +28,7 @@ func update(units []provision.Unit) {
 		u.Ip = unit.Ip
 		u.State = string(unit.Status)
 		a.State = string(unit.Status)
+		a.Ip = unit.Ip
 		a.AddUnit(&u)
 		db.Session.Apps().Update(bson.M{"name": a.Name}, a)
 	}
