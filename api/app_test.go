@@ -700,7 +700,7 @@ func (s *S) TestRemoveUnits(c *C) {
 	c.Assert(err, IsNil)
 	c.Assert(a.Units, HasLen, 1)
 	c.Assert(a.Units[0].Name, Equals, "velha/2")
-	c.Assert(s.provisioner.GetUnits(&a), HasLen, 1)
+	c.Assert(s.provisioner.GetUnits(&a), HasLen, 2)
 }
 
 func (s *S) TestRemoveUnitsReturns404IfAppDoesNotExist(c *C) {

@@ -264,11 +264,11 @@ func (s *S) TestAddUnits(c *C) {
 	err = app.AddUnits(5)
 	c.Assert(err, IsNil)
 	units := s.provisioner.GetUnits(&app)
-	c.Assert(units, HasLen, 5)
+	c.Assert(units, HasLen, 6)
 	err = app.AddUnits(2)
 	c.Assert(err, IsNil)
 	units = s.provisioner.GetUnits(&app)
-	c.Assert(units, HasLen, 7)
+	c.Assert(units, HasLen, 8)
 	for _, unit := range units {
 		c.Assert(unit.AppName, Equals, app.Name)
 	}
@@ -279,7 +279,7 @@ func (s *S) TestAddUnits(c *C) {
 	names := make([]string, len(app.Units))
 	for i, unit := range app.Units {
 		names[i] = unit.Name
-		expected := fmt.Sprintf("%s/%d", app.Name, i)
+		expected := fmt.Sprintf("%s/%d", app.Name, i+1)
 		c.Assert(unit.Name, Equals, expected)
 		messages := []queue.Message{
 			{Action: RegenerateApprc, Args: []string{app.Name, unit.Name}},
@@ -325,9 +325,10 @@ func (s *S) TestRemoveUnits(c *C) {
 	err = app.RemoveUnits(2)
 	c.Assert(err, IsNil)
 	units := s.provisioner.GetUnits(&app)
-	c.Assert(units, HasLen, 2)
+	c.Assert(units, HasLen, 3)
 	c.Assert(units[0].Name, Equals, "chemistry/2")
 	c.Assert(units[1].Name, Equals, "chemistry/3")
+	c.Assert(units[2].Name, Equals, "chemistry/4")
 	err = app.Get()
 	c.Assert(err, IsNil)
 	c.Assert(app.Units, HasLen, 2)
