@@ -20,8 +20,8 @@ def build(flags=""):
               "you're on %s_%s" % (goos, goarch))
     local("mkdir -p dist")
     local("go clean ./...")
-    local("go build %s -a -o dist/collector ./collector", flags)
-    local("go build %s -a -o dist/webserver ./api/webserver", flags)
+    local("go build %s -a -o dist/collector ./collector" % flags)
+    local("go build %s -a -o dist/webserver ./api/webserver" % flags)
 
 
 def clean():
