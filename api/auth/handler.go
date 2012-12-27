@@ -7,7 +7,7 @@ package auth
 import (
 	"encoding/json"
 	"fmt"
-	gandalf "github.com/globocom/go-gandalfclient"
+	"github.com/globocom/go-gandalfclient"
 	"github.com/globocom/tsuru/db"
 	"github.com/globocom/tsuru/errors"
 	"github.com/globocom/tsuru/repository"

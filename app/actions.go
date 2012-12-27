@@ -7,7 +7,7 @@ package app
 import (
 	"fmt"
 	"github.com/globocom/config"
-	gandalf "github.com/globocom/go-gandalfclient"
+	"github.com/globocom/go-gandalfclient"
 	"github.com/globocom/tsuru/app/bind"
 	"github.com/globocom/tsuru/db"
 	"github.com/globocom/tsuru/repository"
