@@ -16,7 +16,6 @@ import (
 )
 
 var AppName = gnuflag.String("app", "", "App name for running app related commands.")
-var AssumeYes = gnuflag.Bool("assume-yes", false, "Don't ask for confirmation on operations.")
 var LogLines = gnuflag.Int("lines", 10, "The number of log lines to display")
 var LogSource = gnuflag.String("source", "", "The log from the given source")
 

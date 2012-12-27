@@ -11,8 +11,11 @@ import (
 	"github.com/globocom/tsuru/cmd"
 	"github.com/globocom/tsuru/cmd/tsuru"
 	"io/ioutil"
+	"launchpad.net/gnuflag"
 	"net/http"
 )
+
+var AssumeYes = gnuflag.Bool("assume-yes", false, "Don't ask for confirmation on operations.")
 
 type AppCreate struct{}
 
@@ -76,7 +79,7 @@ func (c *AppRemove) Run(context *cmd.Context, client cmd.Doer) error {
 		return err
 	}
 	var answer string
-	if !*tsuru.AssumeYes {
+	if !*AssumeYes {
 		fmt.Fprintf(context.Stdout, `Are you sure you want to remove app "%s"? (y/n) `, appName)
 		fmt.Fscanf(context.Stdin, "%s", &answer)
 		if answer != "y" {

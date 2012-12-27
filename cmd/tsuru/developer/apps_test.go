@@ -75,7 +75,7 @@ func (s *S) TestAppRemove(c *C) {
 
 func (s *S) TestAppRemoveWithoutAsking(c *C) {
 	*tsuru.AppName = "ble"
-	*tsuru.AssumeYes = true
+	*AssumeYes = true
 	var stdout, stderr bytes.Buffer
 	expected := `App "ble" successfully removed!` + "\n"
 	context := cmd.Context{
