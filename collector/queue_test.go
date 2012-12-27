@@ -6,8 +6,8 @@ package main
 
 import (
 	"bytes"
-	"github.com/globocom/tsuru/api/bind"
 	"github.com/globocom/tsuru/app"
+	"github.com/globocom/tsuru/app/bind"
 	"github.com/globocom/tsuru/db"
 	"github.com/globocom/tsuru/log"
 	"github.com/globocom/tsuru/provision"
