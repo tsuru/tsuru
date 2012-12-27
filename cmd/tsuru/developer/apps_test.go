@@ -27,8 +27,8 @@ func (s *S) TestAppCreateInfo(c *C) {
 func (s *S) TestAppCreate(c *C) {
 	var stdout, stderr bytes.Buffer
 	result := `{"status":"success", "repository_url":"git@tsuru.plataformas.glb.com:ble.git"}`
-	expected := `App "ble" is being created!
-Check its status with app-list.
+	expected := `App "ble" is being created with 1 unit!
+Use app-info to check the status of the app and its units.
 Your repository for "ble" project is "git@tsuru.plataformas.glb.com:ble.git"` + "\n"
 	context := cmd.Context{
 		Args:   []string{"ble", "django"},
@@ -56,6 +56,9 @@ func (s *S) TestAppCreateMoreThanOneUnit(c *C) {
 	*NumUnits = 4
 	var stdout, stderr bytes.Buffer
 	result := `{"status":"success", "repository_url":"git@tsuru.plataformas.glb.com:ble.git"}`
+	expected := `App "ble" is being created with 4 units!
+Use app-info to check the status of the app and its units.
+Your repository for "ble" project is "git@tsuru.plataformas.glb.com:ble.git"` + "\n"
 	context := cmd.Context{
 		Args:   []string{"ble", "django"},
 		Stdout: &stdout,
@@ -75,6 +78,7 @@ func (s *S) TestAppCreateMoreThanOneUnit(c *C) {
 	command := AppCreate{}
 	err := command.Run(&context, client)
 	c.Assert(err, IsNil)
+	c.Assert(stdout.String(), Equals, expected)
 }
 
 func (s *S) TestAppCreateZeroUnits(c *C) {

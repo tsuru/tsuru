@@ -47,9 +47,13 @@ func (c *AppCreate) Run(context *cmd.Context, client cmd.Doer) error {
 	if err != nil {
 		return err
 	}
-	fmt.Fprintf(context.Stdout, `App "%s" is being created!`+"\n", appName)
-	fmt.Fprint(context.Stdout, "Check its status with app-list.\n")
-	fmt.Fprintf(context.Stdout, `Your repository for "%s" project is "%s"`+"\n", appName, out["repository_url"])
+	var plural string
+	if *NumUnits > 1 {
+		plural = "s"
+	}
+	fmt.Fprintf(context.Stdout, "App %q is being created with %d unit%s!\n", appName, *NumUnits, plural)
+	fmt.Fprintln(context.Stdout, "Use app-info to check the status of the app and its units.")
+	fmt.Fprintf(context.Stdout, "Your repository for %q project is %q\n", appName, out["repository_url"])
 	return nil
 }
 
