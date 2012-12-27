@@ -20,6 +20,12 @@ import (
 	"time"
 )
 
+// Sometimes juju gives the "no node" error when destroying a service or
+// removing a unit. This is one of Zookeeper bad behaviour. This constant
+// indicates how many times JujuProvisioner will call destroy-service and
+// remove-unit before raising the error.
+const destroyTries = 5
+
 // JujuProvisioner is an implementation for the Provisioner interface. For more
 // details on how a provisioner work, check the documentation of the provision
 // package.
@@ -49,7 +55,7 @@ func (p *JujuProvisioner) destroyService(app provision.App) error {
 	// Sometimes juju gives the "no node" error. This is one of Zookeeper bad
 	// behaviour. Let's try it three times before raising the error to the
 	// user, and hope that someday we run away from Zookeeper.
-	for i := 0; i < 3; i++ {
+	for i := 0; i < destroyTries; i++ {
 		buf.Reset()
 		err = runCmd(false, &buf, &buf, "destroy-service", app.GetName())
 		if err == nil {
@@ -137,7 +143,7 @@ func (p *JujuProvisioner) removeUnits(app provision.App, units ...provision.AppU
 	// Sometimes juju gives the "no node" error. This is one of Zookeeper bad
 	// behaviour. Let's try it three times before raising the error to the
 	// user, and hope that someday we run away from Zookeeper.
-	for i := 0; i < 3; i++ {
+	for i := 0; i < destroyTries; i++ {
 		buf.Reset()
 		err = runCmd(true, &buf, &buf, cmd...)
 		if err == nil {
