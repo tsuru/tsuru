@@ -13,6 +13,7 @@ import (
 	"sort"
 )
 
+// AppList is a list of apps. It's not thread safe.
 type AppList []*app.App
 
 func (l AppList) Search(name string) (*app.App, int) {
