@@ -17,7 +17,7 @@ import (
 func (s *S) TestAppCreateInfo(c *C) {
 	expected := &cmd.Info{
 		Name:    "app-create",
-		Usage:   "app-create <appname> <framework>",
+		Usage:   "app-create <appname> <framework> [--units 1]",
 		Desc:    "create a new app.",
 		MinArgs: 2,
 	}
@@ -35,11 +35,54 @@ Your repository for "ble" project is "git@tsuru.plataformas.glb.com:ble.git"` + 
 		Stdout: &stdout,
 		Stderr: &stderr,
 	}
-	client := cmd.NewClient(&http.Client{Transport: &transport{msg: result, status: http.StatusOK}}, nil, manager)
+	transport := conditionalTransport{
+		transport{msg: result, status: http.StatusOK},
+		func(req *http.Request) bool {
+			defer req.Body.Close()
+			body, err := ioutil.ReadAll(req.Body)
+			c.Assert(err, IsNil)
+			c.Assert(string(body), Equals, `{"name":"ble","framework":"django","units":1}`)
+			return req.Method == "POST" && req.URL.Path == "/apps"
+		},
+	}
+	client := cmd.NewClient(&http.Client{Transport: &transport}, nil, manager)
 	command := AppCreate{}
 	err := command.Run(&context, client)
 	c.Assert(err, IsNil)
 	c.Assert(stdout.String(), Equals, expected)
+}
+
+func (s *S) TestAppCreateMoreThanOneUnit(c *C) {
+	*NumUnits = 4
+	var stdout, stderr bytes.Buffer
+	result := `{"status":"success", "repository_url":"git@tsuru.plataformas.glb.com:ble.git"}`
+	context := cmd.Context{
+		Args:   []string{"ble", "django"},
+		Stdout: &stdout,
+		Stderr: &stderr,
+	}
+	transport := conditionalTransport{
+		transport{msg: result, status: http.StatusOK},
+		func(req *http.Request) bool {
+			defer req.Body.Close()
+			body, err := ioutil.ReadAll(req.Body)
+			c.Assert(err, IsNil)
+			c.Assert(string(body), Equals, `{"name":"ble","framework":"django","units":4}`)
+			return req.Method == "POST" && req.URL.Path == "/apps"
+		},
+	}
+	client := cmd.NewClient(&http.Client{Transport: &transport}, nil, manager)
+	command := AppCreate{}
+	err := command.Run(&context, client)
+	c.Assert(err, IsNil)
+}
+
+func (s *S) TestAppCreateZeroUnits(c *C) {
+	*NumUnits = 0
+	command := AppCreate{}
+	err := command.Run(nil, nil)
+	c.Assert(err, NotNil)
+	c.Assert(err.Error(), Equals, "Cannot create app with zero units.")
 }
 
 func (s *S) TestAppCreateWithInvalidFramework(c *C) {

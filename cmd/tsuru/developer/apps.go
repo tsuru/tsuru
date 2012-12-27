@@ -7,6 +7,7 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/globocom/tsuru/cmd"
 	"github.com/globocom/tsuru/cmd/tsuru"
@@ -16,14 +17,17 @@ import (
 )
 
 var AssumeYes = gnuflag.Bool("assume-yes", false, "Don't ask for confirmation on operations.")
+var NumUnits = gnuflag.Uint("units", 1, "How many units should be created with the app.")
 
 type AppCreate struct{}
 
 func (c *AppCreate) Run(context *cmd.Context, client cmd.Doer) error {
+	if *NumUnits == 0 {
+		return errors.New("Cannot create app with zero units.")
+	}
 	appName := context.Args[0]
 	framework := context.Args[1]
-
-	b := bytes.NewBufferString(fmt.Sprintf(`{"name":"%s", "framework":"%s"}`, appName, framework))
+	b := bytes.NewBufferString(fmt.Sprintf(`{"name":"%s","framework":"%s","units":%d}`, appName, framework, *NumUnits))
 	request, err := http.NewRequest("POST", cmd.GetUrl("/apps"), b)
 	request.Header.Set("Content-Type", "application/json")
 	if err != nil {
@@ -52,7 +56,7 @@ func (c *AppCreate) Run(context *cmd.Context, client cmd.Doer) error {
 func (c *AppCreate) Info() *cmd.Info {
 	return &cmd.Info{
 		Name:    "app-create",
-		Usage:   "app-create <appname> <framework>",
+		Usage:   "app-create <appname> <framework> [--units 1]",
 		Desc:    "create a new app.",
 		MinArgs: 2,
 	}

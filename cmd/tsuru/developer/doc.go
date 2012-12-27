@@ -249,11 +249,14 @@ Create an app
 
 Usage:
 
-	% tsuru app-create <app-name> <platform>
+	% tsuru app-create <app-name> <platform> [--units 1]
 
 app-create will create a new app using the given name and platform. For tsuru,
 a platform is a Juju charm. To check the available platforms/charms, check this
 URL: https://github.com/globocom/charms/tree/master/precise.
+
+The --units flag is optional, it indicates how many units will be added to the
+app when creating it. The default value is 1.
 
 In order to create an app, you need to be member of at least one team. All
 teams that you are member (see "tsuru team-list") will be able to access the
