@@ -313,7 +313,7 @@ func (s *S) TestDelete(c *C) {
 			{Ip: "10.10.10.10", Machine: 1},
 		},
 	}
-	err := app.CreateApp(&myApp)
+	err := app.CreateApp(&myApp, 1)
 	c.Assert(err, IsNil)
 	defer myApp.Destroy()
 	request, err := http.NewRequest("DELETE", "/apps/"+myApp.Name+"?:name="+myApp.Name, nil)
@@ -466,7 +466,7 @@ func (s *S) TestCreateAppHelperShouldNotCreateAnAppWhenAnErrorHappensOnCreateRep
 	ts := s.t.StartGandalfTestServer(&h)
 	defer ts.Close()
 	a := app.App{Name: "someapp"}
-	_, err := createAppHelper(&a, s.user)
+	_, err := createAppHelper(&a, s.user, 1)
 	c.Assert(err, NotNil)
 	length, err := db.Session.Apps().Find(bson.M{"name": a.Name}).Count()
 	c.Assert(err, IsNil)
@@ -478,7 +478,7 @@ func (s *S) TestCreateAppHelperCreatesRepositoryInGandalf(c *C) {
 	ts := s.t.StartGandalfTestServer(&h)
 	defer ts.Close()
 	a := app.App{Name: "someapp"}
-	_, err := createAppHelper(&a, s.user)
+	_, err := createAppHelper(&a, s.user, 1)
 	c.Assert(err, IsNil)
 	defer a.Destroy()
 	c.Assert(h.url[0], Equals, "/repository")
@@ -500,7 +500,7 @@ func (s *S) TestCreateAppHandler(c *C) {
 		err = s.provisioner.Destroy(&a)
 		c.Assert(err, IsNil)
 	}()
-	b := strings.NewReader(`{"name":"someapp", "framework":"django"}`)
+	b := strings.NewReader(`{"name":"someapp","framework":"django","units":4}`)
 	request, err := http.NewRequest("POST", "/apps", b)
 	c.Assert(err, IsNil)
 	request.Header.Set("Content-Type", "application/json")
@@ -523,6 +523,7 @@ func (s *S) TestCreateAppHandler(c *C) {
 	c.Assert(err, IsNil)
 	_, found := gotApp.Find(&s.team)
 	c.Assert(found, Equals, true)
+	c.Assert(s.provisioner.GetUnits(&gotApp), HasLen, 4)
 }
 
 func (s *S) TestCreateAppReturnsPreconditionFailedIfTheAppNameIsInvalid(c *C) {
@@ -565,7 +566,7 @@ func (s *S) TestCreateAppReturnsConflictWithProperMessageWhenTheAppAlreadyExist(
 	err := db.Session.Apps().Insert(a)
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
-	b := strings.NewReader(`{"name":"plainsofdawn", "framework":"django"}`)
+	b := strings.NewReader(`{"name":"plainsofdawn","framework":"django"}`)
 	request, err := http.NewRequest("POST", "/apps", b)
 	c.Assert(err, IsNil)
 	request.Header.Set("Content-Type", "application/json")
@@ -2080,7 +2081,7 @@ func (s *S) TestUnbindHandler(c *C) {
 		Teams: []string{s.team.Name},
 		Units: []app.Unit{{Machine: 1}},
 	}
-	err = app.CreateApp(&a)
+	err = app.CreateApp(&a, 1)
 	c.Assert(err, IsNil)
 	defer a.Destroy()
 	a.Env["DATABASE_HOST"] = bind.EnvVar{

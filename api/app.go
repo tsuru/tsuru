@@ -156,7 +156,7 @@ func AppInfo(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	return nil
 }
 
-func createAppHelper(instance *app.App, u *auth.User) ([]byte, error) {
+func createAppHelper(instance *app.App, u *auth.User, units uint) ([]byte, error) {
 	teams, err := u.Teams()
 	if err != nil {
 		return nil, err
@@ -166,7 +166,7 @@ func createAppHelper(instance *app.App, u *auth.User) ([]byte, error) {
 		return nil, &errors.Http{Code: http.StatusForbidden, Message: msg}
 	}
 	instance.SetTeams(teams)
-	err = app.CreateApp(instance)
+	err = app.CreateApp(instance, units)
 	if err != nil {
 		log.Printf("Got error while creating app: %s", err)
 		if e, ok := err.(*app.ValidationError); ok {
@@ -185,21 +185,32 @@ func createAppHelper(instance *app.App, u *auth.User) ([]byte, error) {
 	return json.Marshal(msg)
 }
 
+type jsonApp struct {
+	Name      string
+	Framework string
+	Units     uint
+}
+
 func CreateAppHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	var app app.App
+	var japp jsonApp
 	defer r.Body.Close()
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		return err
 	}
-	if err = json.Unmarshal(body, &app); err != nil {
+	if err = json.Unmarshal(body, &japp); err != nil {
 		return err
 	}
-	jsonMsg, err := createAppHelper(&app, u)
+	app.Name = japp.Name
+	app.Framework = japp.Framework
+	if japp.Units == 0 {
+		japp.Units = 1
+	}
+	jsonMsg, err := createAppHelper(&app, u, japp.Units)
 	if err != nil {
 		return err
 	}
-
 	fmt.Fprint(w, string(jsonMsg))
 	return nil
 }
