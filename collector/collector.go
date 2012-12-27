@@ -18,7 +18,7 @@ func update(units []provision.Unit) {
 		a := app.App{Name: unit.AppName}
 		err := a.Get()
 		if err != nil {
-			log.Printf("collector: app %s not found. Skipping.\n", unit.AppName)
+			log.Printf("collector: app %q not found. Skipping.\n", unit.AppName)
 			continue
 		}
 		u := app.Unit{}
