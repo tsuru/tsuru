@@ -102,7 +102,7 @@ func (s *S) TestDestroyBucket(c *C) {
 	}
 	bucket := fmt.Sprintf("battery%x", patchRandomReader())
 	defer unpatchRandomReader()
-	err := CreateApp(&app)
+	err := CreateApp(&app, 1)
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": app.Name})
 	err = destroyBucket(&app)

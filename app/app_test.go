@@ -58,7 +58,7 @@ func (s *S) TestDestroy(c *C) {
 			},
 		},
 	}
-	err := CreateApp(&a)
+	err := CreateApp(&a, 1)
 	c.Assert(err, IsNil)
 	err = a.Destroy()
 	c.Assert(err, IsNil)
@@ -75,7 +75,7 @@ func (s *S) TestDestroyWithoutUnits(c *C) {
 	ts := s.t.StartGandalfTestServer(&h)
 	defer ts.Close()
 	app := App{Name: "x4"}
-	err := CreateApp(&app)
+	err := CreateApp(&app, 1)
 	c.Assert(err, IsNil)
 	err = app.Destroy()
 	c.Assert(err, IsNil)
@@ -92,7 +92,7 @@ func (s *S) TestFailingDestroy(c *C) {
 		Teams:     []string{s.team.Name},
 		Units:     []Unit{{Name: "duvido", Machine: 3}},
 	}
-	err := CreateApp(&a)
+	err := CreateApp(&a, 1)
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": "ritual"})
 	err = a.Destroy()
@@ -123,7 +123,7 @@ func (s *S) TestCreateApp(c *C) {
 	}
 	config.Set("queue-server", server.Addr())
 
-	err = CreateApp(&a)
+	err = CreateApp(&a, 3)
 	c.Assert(err, IsNil)
 	defer a.Destroy()
 	c.Assert(a.State, Equals, "pending")
@@ -157,6 +157,14 @@ func (s *S) TestCreateApp(c *C) {
 		Args:   []string{a.Name},
 	}
 	c.Assert(server.Messages(), DeepEquals, []queue.Message{expectedMessage})
+	c.Assert(s.provisioner.GetUnits(&a), HasLen, 3)
+}
+
+func (s *S) TestCantCreateAppWithZeroUnits(c *C) {
+	a := App{Name: "paradisum"}
+	err := CreateApp(&a, 0)
+	c.Assert(err, NotNil)
+	c.Assert(err.Error(), Equals, "Cannot create app with 0 units.")
 }
 
 func (s *S) TestCantCreateTwoAppsWithTheSameName(c *C) {
@@ -164,7 +172,7 @@ func (s *S) TestCantCreateTwoAppsWithTheSameName(c *C) {
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": "appName"})
 	a := App{Name: "appName"}
-	err = CreateApp(&a)
+	err = CreateApp(&a, 1)
 	defer a.Destroy() // clean mess if test fail
 	c.Assert(err, NotNil)
 }
@@ -174,7 +182,7 @@ func (s *S) TestCantCreateAppWithInvalidName(c *C) {
 		Name:      "1123app",
 		Framework: "ruby",
 	}
-	err := CreateApp(&a)
+	err := CreateApp(&a, 1)
 	c.Assert(err, NotNil)
 	e, ok := err.(*ValidationError)
 	c.Assert(ok, Equals, true)
@@ -194,7 +202,7 @@ func (s *S) TestDoesNotSaveTheAppInTheDatabaseIfProvisionerFail(c *C) {
 		Framework: "ruby",
 		Units:     []Unit{{Machine: 1}},
 	}
-	err := CreateApp(&a)
+	err := CreateApp(&a, 1)
 	defer a.Destroy() // clean mess if test fail
 	c.Assert(err, NotNil)
 	expected := `exit status 1`
@@ -215,7 +223,7 @@ func (s *S) TestDeletesIAMCredentialsAndS3BucketIfProvisionerFail(c *C) {
 		Framework: "ruby",
 		Units:     []Unit{{Machine: 1}},
 	}
-	err := CreateApp(&a)
+	err := CreateApp(&a, 1)
 	defer a.Destroy() // clean mess if test fail
 	c.Assert(err, NotNil)
 	iam := getIAMEndpoint()

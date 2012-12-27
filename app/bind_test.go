@@ -42,7 +42,7 @@ func (s *S) TestDestroyShouldUnbindAppFromInstance(c *C) {
 			{Ip: "10.10.10.10", Machine: 1},
 		},
 	}
-	err = CreateApp(&a)
+	err = CreateApp(&a, 1)
 	c.Assert(err, IsNil)
 	err = a.Destroy()
 	c.Assert(err, IsNil)

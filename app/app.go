@@ -91,8 +91,11 @@ func (a *App) Get() error {
 //       1. Save the app in the database
 //       2. Create S3 credentials and bucket for the app
 //       3. Create the git repository using gandalf
-//       4. Provision the unit within the provisioner
-func CreateApp(a *App) error {
+//       4. Provision units within the provisioner
+func CreateApp(a *App, units uint) error {
+	if units == 0 {
+		return &ValidationError{Message: "Cannot create app with 0 units."}
+	}
 	if !a.isValid() {
 		msg := "Invalid app name, your app should have at most 63 " +
 			"characters, containing only lower case letters or numbers, " +
@@ -105,7 +108,7 @@ func CreateApp(a *App) error {
 		new(createRepository),
 		new(provisionApp),
 	}
-	return execute(a, actions)
+	return execute(a, actions, units)
 }
 
 func (a *App) unbind() error {
