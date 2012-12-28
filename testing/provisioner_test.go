@@ -48,8 +48,8 @@ func (s *S) TestGetCmds(c *C) {
 
 func (s *S) TestGetUnits(c *C) {
 	list := []provision.Unit{
-		{"chain-lighting/0", "chain-lighting", "django", 1, "10.10.10.10", provision.StatusStarted},
-		{"chain-lighting/1", "chain-lighting", "django", 2, "10.10.10.15", provision.StatusStarted},
+		{"chain-lighting/0", "chain-lighting", "django", "i-0801", 1, "10.10.10.10", provision.StatusStarted},
+		{"chain-lighting/1", "chain-lighting", "django", "i-0802", 2, "10.10.10.15", provision.StatusStarted},
 	}
 	app := NewFakeApp("chain-lighting", "rush", 1)
 	p := NewFakeProvisioner()
@@ -311,10 +311,10 @@ func (s *S) TestCollectStatus(c *C) {
 		NewFakeApp("grand-designs", "rush", 1),
 	}
 	expected := []provision.Unit{
-		{"red-lenses/0", "red-lenses", "rush", 1, "10.10.10.1", "started"},
-		{"between-the-wheels/0", "between-the-wheels", "rush", 2, "10.10.10.2", "started"},
-		{"the-big-money/0", "the-big-money", "rush", 3, "10.10.10.3", "started"},
-		{"grand-designs/0", "grand-designs", "rush", 4, "10.10.10.4", "started"},
+		{"red-lenses/0", "red-lenses", "rush", "i-0801", 1, "10.10.10.1", "started"},
+		{"between-the-wheels/0", "between-the-wheels", "rush", "i-0802", 2, "10.10.10.2", "started"},
+		{"the-big-money/0", "the-big-money", "rush", "i-0803", 3, "10.10.10.3", "started"},
+		{"grand-designs/0", "grand-designs", "rush", "i-0804", 4, "10.10.10.4", "started"},
 	}
 	units, err := p.CollectStatus()
 	c.Assert(err, IsNil)

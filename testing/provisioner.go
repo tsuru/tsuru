@@ -347,12 +347,13 @@ func (p *FakeProvisioner) CollectStatus() ([]provision.Unit, error) {
 	units := make([]provision.Unit, len(p.apps))
 	for i, app := range p.apps {
 		unit := provision.Unit{
-			Name:    app.GetName() + "/0",
-			AppName: app.GetName(),
-			Type:    app.GetFramework(),
-			Status:  "started",
-			Ip:      "10.10.10." + strconv.Itoa(i+1),
-			Machine: i + 1,
+			Name:       app.GetName() + "/0",
+			AppName:    app.GetName(),
+			Type:       app.GetFramework(),
+			Status:     "started",
+			InstanceId: fmt.Sprintf("i-0%d", 800+i+1),
+			Ip:         "10.10.10." + strconv.Itoa(i+1),
+			Machine:    i + 1,
 		}
 		units[i] = unit
 	}
