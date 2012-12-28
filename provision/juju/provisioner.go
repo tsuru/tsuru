@@ -20,6 +20,10 @@ import (
 	"time"
 )
 
+func init() {
+	provision.Register("juju", &JujuProvisioner{})
+}
+
 // Sometimes juju gives the "no node" error when destroying a service or
 // removing a unit. This is one of Zookeeper bad behaviour. This constant
 // indicates how many times JujuProvisioner will call destroy-service and
@@ -270,10 +274,6 @@ type machine struct {
 type jujuOutput struct {
 	Services map[string]service
 	Machines map[int]machine
-}
-
-func init() {
-	provision.Register("juju", &JujuProvisioner{})
 }
 
 func runCmd(filter bool, stdout, stderr io.Writer, cmd ...string) error {
