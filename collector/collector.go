@@ -55,6 +55,7 @@ func update(units []provision.Unit) {
 		u.Name = unit.Name
 		u.Type = unit.Type
 		u.Machine = unit.Machine
+		u.InstanceId = unit.InstanceId
 		u.Ip = unit.Ip
 		u.State = string(unit.Status)
 		a.State = string(unit.Status)
