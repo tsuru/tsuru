@@ -232,10 +232,11 @@ func (p *JujuProvisioner) CollectStatus() ([]provision.Unit, error) {
 		for unitName, u := range service.Units {
 			machine := out.Machines[u.Machine]
 			unit := provision.Unit{
-				Name:    unitName,
-				AppName: name,
-				Machine: u.Machine,
-				Ip:      machine.IpAddress,
+				Name:       unitName,
+				AppName:    name,
+				Machine:    u.Machine,
+				InstanceId: machine.InstanceId,
+				Ip:         machine.IpAddress,
 			}
 			typeRegexp := regexp.MustCompile(`^(local:)?(\w+)/(\w+)-\d+$`)
 			matchs := typeRegexp.FindStringSubmatch(service.Charm)

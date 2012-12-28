@@ -9,12 +9,13 @@ import (
 )
 
 type Unit struct {
-	Name    string
-	Type    string
-	Machine int
-	Ip      string
-	State   string
-	app     *App
+	Name       string
+	Type       string
+	Machine    int
+	InstanceId string
+	Ip         string
+	State      string
+	app        *App
 }
 
 func (u *Unit) GetName() string {

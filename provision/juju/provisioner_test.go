@@ -336,20 +336,22 @@ func (s *S) TestCollectStatus(c *C) {
 	p := JujuProvisioner{}
 	expected := []provision.Unit{
 		{
-			Name:    "as_i_rise/0",
-			AppName: "as_i_rise",
-			Type:    "django",
-			Machine: 105,
-			Ip:      "10.10.10.163",
-			Status:  provision.StatusStarted,
+			Name:       "as_i_rise/0",
+			AppName:    "as_i_rise",
+			Type:       "django",
+			Machine:    105,
+			InstanceId: "i-00000439",
+			Ip:         "10.10.10.163",
+			Status:     provision.StatusStarted,
 		},
 		{
-			Name:    "the_infanta/0",
-			AppName: "the_infanta",
-			Type:    "gunicorn",
-			Machine: 107,
-			Ip:      "10.10.10.168",
-			Status:  provision.StatusInstalling,
+			Name:       "the_infanta/0",
+			AppName:    "the_infanta",
+			Type:       "gunicorn",
+			Machine:    107,
+			InstanceId: "i-0000043e",
+			Ip:         "10.10.10.168",
+			Status:     provision.StatusInstalling,
 		},
 	}
 	units, err := p.CollectStatus()
@@ -367,20 +369,22 @@ func (s *S) TestCollectStatusDirtyOutput(c *C) {
 	defer commandmocker.Remove(tmpdir)
 	expected := []provision.Unit{
 		{
-			Name:    "as_i_rise/0",
-			AppName: "as_i_rise",
-			Type:    "django",
-			Machine: 105,
-			Ip:      "10.10.10.163",
-			Status:  provision.StatusStarted,
+			Name:       "as_i_rise/0",
+			AppName:    "as_i_rise",
+			Type:       "django",
+			Machine:    105,
+			InstanceId: "i-00000439",
+			Ip:         "10.10.10.163",
+			Status:     provision.StatusStarted,
 		},
 		{
-			Name:    "the_infanta/1",
-			AppName: "the_infanta",
-			Type:    "gunicorn",
-			Machine: 107,
-			Ip:      "10.10.10.168",
-			Status:  provision.StatusInstalling,
+			Name:       "the_infanta/1",
+			AppName:    "the_infanta",
+			Type:       "gunicorn",
+			Machine:    107,
+			InstanceId: "i-0000043e",
+			Ip:         "10.10.10.168",
+			Status:     provision.StatusInstalling,
 		},
 	}
 	p := JujuProvisioner{}
