@@ -8,6 +8,7 @@ import (
 	"bytes"
 	"errors"
 	"github.com/globocom/commandmocker"
+	"github.com/globocom/config"
 	"github.com/globocom/tsuru/provision"
 	"github.com/globocom/tsuru/repository"
 	. "launchpad.net/gocheck"
@@ -19,6 +20,16 @@ func (s *S) TestShouldBeRegistered(c *C) {
 	p, err := provision.Get("juju")
 	c.Assert(err, IsNil)
 	c.Assert(p, FitsTypeOf, &JujuProvisioner{})
+}
+
+func (s *S) TestELBSupport(c *C) {
+	config.Set("juju:use-elb", true)
+	p := JujuProvisioner{}
+	c.Assert(p.elbSupport(), Equals, true)
+	config.Set("juju:use-elb", false)
+	c.Assert(p.elbSupport(), Equals, true) // Read config only once.
+	p = JujuProvisioner{}
+	c.Assert(p.elbSupport(), Equals, false)
 }
 
 func (s *S) TestProvision(c *C) {

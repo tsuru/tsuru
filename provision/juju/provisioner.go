@@ -9,6 +9,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"github.com/globocom/config"
 	"github.com/globocom/tsuru/provision"
 	"github.com/globocom/tsuru/repository"
 	"io"
@@ -33,7 +34,19 @@ const destroyTries = 5
 // JujuProvisioner is an implementation for the Provisioner interface. For more
 // details on how a provisioner work, check the documentation of the provision
 // package.
-type JujuProvisioner struct{}
+type JujuProvisioner struct {
+	elb *bool
+}
+
+func (p *JujuProvisioner) elbSupport() bool {
+	if p.elb == nil {
+		p.elb = new(bool)
+		if elb, err := config.GetBool("juju:use-elb"); err == nil {
+			*p.elb = elb
+		}
+	}
+	return *p.elb
+}
 
 func (p *JujuProvisioner) Provision(app provision.App) error {
 	var buf bytes.Buffer
