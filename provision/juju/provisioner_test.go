@@ -23,11 +23,15 @@ func (s *S) TestShouldBeRegistered(c *C) {
 }
 
 func (s *S) TestELBSupport(c *C) {
+	defer config.Unset("juju:use-elb")
 	config.Set("juju:use-elb", true)
 	p := JujuProvisioner{}
 	c.Assert(p.elbSupport(), Equals, true)
 	config.Set("juju:use-elb", false)
 	c.Assert(p.elbSupport(), Equals, true) // Read config only once.
+	p = JujuProvisioner{}
+	c.Assert(p.elbSupport(), Equals, false)
+	config.Unset("juju:use-elb")
 	p = JujuProvisioner{}
 	c.Assert(p.elbSupport(), Equals, false)
 }

@@ -69,9 +69,9 @@ func (p *JujuProvisioner) destroyService(app provision.App) error {
 		buf bytes.Buffer
 		out string
 	)
-	// Sometimes juju gives the "no node" error. This is one of Zookeeper bad
-	// behaviour. Let's try it three times before raising the error to the
-	// user, and hope that someday we run away from Zookeeper.
+	// Sometimes juju gives the "no node" error. This is one of Zookeeper
+	// bad behaviors. Let's try it multiple times before raising the error
+	// to the user, and hope that someday we run away from Zookeeper.
 	for i := 0; i < destroyTries; i++ {
 		buf.Reset()
 		err = runCmd(false, &buf, &buf, "destroy-service", app.GetName())
@@ -158,7 +158,7 @@ func (p *JujuProvisioner) removeUnits(app provision.App, units ...provision.AppU
 		cmd[i+1] = unit.GetName()
 	}
 	// Sometimes juju gives the "no node" error. This is one of Zookeeper bad
-	// behaviour. Let's try it three times before raising the error to the
+	// behaviors. Let's try it multiple times before raising the error to the
 	// user, and hope that someday we run away from Zookeeper.
 	for i := 0; i < destroyTries; i++ {
 		buf.Reset()
