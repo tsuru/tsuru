@@ -1,4 +1,4 @@
-// Copyright 2012 tsuru authors. All rights reserved.
+// Copyright 2013 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -16,15 +16,10 @@ import (
 	. "launchpad.net/gocheck"
 	stdlog "log"
 	"strings"
-	"time"
 )
 
-func (s *S) TestHandleMessages(c *C) {
+func (s *S) TestHandleMessage(c *C) {
 	s.provisioner.PrepareOutput([]byte("exported"))
-	handler := MessageHandler{}
-	err := handler.start()
-	c.Assert(err, IsNil)
-	defer handler.stop()
 	a := app.App{
 		Name: "nemesis",
 		Units: []app.Unit{
@@ -43,13 +38,11 @@ func (s *S) TestHandleMessages(c *C) {
 		},
 		State: string(provision.StatusStarted),
 	}
-	err = db.Session.Apps().Insert(a)
+	err := db.Session.Apps().Insert(a)
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
-	messages, _, err := queue.Dial(handler.server.Addr())
-	c.Assert(err, IsNil)
-	messages <- queue.Message{Action: app.RegenerateApprc, Args: []string{a.Name}}
-	time.Sleep(1e9)
+	msg := queue.Message{Action: app.RegenerateApprc, Args: []string{a.Name}}
+	handle(&msg)
 	cmds := s.provisioner.GetCmds("", &a)
 	c.Assert(cmds, HasLen, 1)
 	output := strings.Replace(cmds[0].Cmd, "\n", " ", -1)
@@ -60,10 +53,6 @@ func (s *S) TestHandleMessages(c *C) {
 
 func (s *S) TestHandleMessageWithSpecificUnit(c *C) {
 	s.provisioner.PrepareOutput([]byte("exported"))
-	handler := MessageHandler{}
-	err := handler.start()
-	c.Assert(err, IsNil)
-	defer handler.stop()
 	a := app.App{
 		Name: "nemesis",
 		Units: []app.Unit{
@@ -92,13 +81,11 @@ func (s *S) TestHandleMessageWithSpecificUnit(c *C) {
 		},
 		State: string(provision.StatusStarted),
 	}
-	err = db.Session.Apps().Insert(a)
+	err := db.Session.Apps().Insert(a)
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
-	messages, _, err := queue.Dial(handler.server.Addr())
-	c.Assert(err, IsNil)
-	messages <- queue.Message{Action: app.RegenerateApprc, Args: []string{a.Name, "nemesis/1"}}
-	time.Sleep(1e9)
+	msg := queue.Message{Action: app.RegenerateApprc, Args: []string{a.Name, "nemesis/1"}}
+	handle(&msg)
 	cmds := s.provisioner.GetCmds("", &a)
 	c.Assert(cmds, HasLen, 1)
 	output := strings.Replace(cmds[0].Cmd, "\n", " ", -1)
@@ -113,7 +100,6 @@ func (s *S) TestHandleMessageErrors(c *C) {
 		args        []string
 		unitName    string
 		expectedLog string
-		visits      int
 	}{
 		{
 			action:      "unknown-action",
@@ -154,12 +140,6 @@ func (s *S) TestHandleMessageErrors(c *C) {
 			expectedLog: `Error handling "regenerate-apprc": this action requires at least 1 argument.`,
 		},
 		{
-			action:      "does not matter",
-			args:        []string{"does not matter"},
-			expectedLog: `Error handling "does not matter": this message has been visited more than 50 times.`,
-			visits:      MaxVisits,
-		},
-		{
 			action: app.RegenerateApprc,
 			args:   []string{"marathon"},
 			expectedLog: `Error handling "regenerate-apprc" for the app "marathon":` +
@@ -197,19 +177,13 @@ func (s *S) TestHandleMessageErrors(c *C) {
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
 	log.SetLogger(stdlog.New(&buf, "", 0))
-	handler := MessageHandler{}
-	handler.start()
-	handler.closed = 1
-	defer handler.stop()
 	for _, d := range data {
-		message := queue.Message{
-			Action: d.action,
-			Visits: d.visits,
-		}
+		message := queue.Message{Action: d.action}
 		if len(d.args) > 0 {
 			message.Args = d.args
 		}
-		handler.handle(message)
+		handle(&message)
+		defer queue.Delete(&message) // Sanity
 	}
 	content := buf.String()
 	lines := strings.Split(content, "\n")
@@ -229,10 +203,6 @@ func (s *S) TestHandleMessageErrors(c *C) {
 
 func (s *S) TestHandleRestartAppMessage(c *C) {
 	s.provisioner.PrepareOutput([]byte("started"))
-	handler := MessageHandler{}
-	err := handler.start()
-	c.Assert(err, IsNil)
-	defer handler.stop()
 	a := app.App{
 		Name: "nemesis",
 		Units: []app.Unit{
@@ -244,13 +214,11 @@ func (s *S) TestHandleRestartAppMessage(c *C) {
 		},
 		State: string(provision.StatusStarted),
 	}
-	err = db.Session.Apps().Insert(a)
+	err := db.Session.Apps().Insert(a)
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
-	messages, _, err := queue.Dial(handler.server.Addr())
-	c.Assert(err, IsNil)
-	messages <- queue.Message{Action: app.StartApp, Args: []string{a.Name}}
-	time.Sleep(1e9)
+	message := queue.Message{Action: app.StartApp, Args: []string{a.Name}}
+	handle(&message)
 	cmds := s.provisioner.GetCmds("/var/lib/tsuru/hooks/restart", &a)
 	c.Assert(cmds, HasLen, 1)
 }

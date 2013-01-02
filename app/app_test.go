@@ -1,4 +1,4 @@
-// Copyright 2012 tsuru authors. All rights reserved.
+// Copyright 2013 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -17,7 +17,6 @@ import (
 	"github.com/globocom/tsuru/provision"
 	"github.com/globocom/tsuru/queue"
 	"github.com/globocom/tsuru/repository"
-	"github.com/globocom/tsuru/testing"
 	"labix.org/v2/mgo/bson"
 	. "launchpad.net/gocheck"
 	stdlog "log"
@@ -107,9 +106,6 @@ func (s *S) TestCreateApp(c *C) {
 	h := testHandler{}
 	ts := s.t.StartGandalfTestServer(&h)
 	defer ts.Close()
-	server := testing.FakeQueueServer{}
-	server.Start("127.0.0.1:0")
-	defer server.Stop()
 	a := App{
 		Name:      "appname",
 		Framework: "django",
@@ -117,13 +113,8 @@ func (s *S) TestCreateApp(c *C) {
 	}
 	expectedHost := "localhost"
 	config.Set("host", expectedHost)
-	old, err := config.Get("queue-server")
-	if err != nil {
-		defer config.Set("queue-server", old)
-	}
-	config.Set("queue-server", server.Addr())
 
-	err = CreateApp(&a, 3)
+	err := CreateApp(&a, 3)
 	c.Assert(err, IsNil)
 	defer a.Destroy()
 	c.Assert(a.State, Equals, "pending")
@@ -156,7 +147,11 @@ func (s *S) TestCreateApp(c *C) {
 		Action: RegenerateApprc,
 		Args:   []string{a.Name},
 	}
-	c.Assert(server.Messages(), DeepEquals, []queue.Message{expectedMessage})
+	message, err := queue.Get(1e6)
+	c.Assert(err, IsNil)
+	defer queue.Delete(message)
+	c.Assert(message.Action, Equals, expectedMessage.Action)
+	c.Assert(message.Args, DeepEquals, expectedMessage.Args)
 	c.Assert(s.provisioner.GetUnits(&a), HasLen, 3)
 }
 
@@ -255,16 +250,8 @@ func (s *S) TestAppendOrUpdate(c *C) {
 }
 
 func (s *S) TestAddUnits(c *C) {
-	server := testing.FakeQueueServer{}
-	server.Start("127.0.0.1:0")
-	defer server.Stop()
-	old, err := config.Get("queue-server")
-	if err != nil {
-		defer config.Set("queue-server", old)
-	}
-	config.Set("queue-server", server.Addr())
 	app := App{Name: "warpaint", Framework: "python"}
-	err = db.Session.Apps().Insert(app)
+	err := db.Session.Apps().Insert(app)
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": app.Name})
 	s.provisioner.Provision(&app)
@@ -296,7 +283,13 @@ func (s *S) TestAddUnits(c *C) {
 		expectedMessages = append(expectedMessages, messages...)
 	}
 	time.Sleep(1e6)
-	c.Assert(server.Messages(), DeepEquals, expectedMessages)
+	for _, msg := range expectedMessages {
+		message, err := queue.Get(1e6)
+		c.Assert(err, IsNil)
+		defer queue.Delete(message)
+		c.Check(message.Action, Equals, msg.Action)
+		c.Check(message.Args, DeepEquals, msg.Args)
+	}
 }
 
 func (s *S) TestAddZeroUnits(c *C) {

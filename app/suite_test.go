@@ -1,4 +1,4 @@
-// Copyright 2012 tsuru authors. All rights reserved.
+// Copyright 2013 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -9,8 +9,9 @@ import (
 	"github.com/globocom/config"
 	"github.com/globocom/tsuru/api/auth"
 	"github.com/globocom/tsuru/db"
-	fsTesting "github.com/globocom/tsuru/fs/testing"
-	tsuruTesting "github.com/globocom/tsuru/testing"
+	ftesting "github.com/globocom/tsuru/fs/testing"
+	"github.com/globocom/tsuru/queue"
+	ttesting "github.com/globocom/tsuru/testing"
 	"io"
 	"labix.org/v2/mgo/bson"
 	. "launchpad.net/gocheck"
@@ -26,9 +27,9 @@ type S struct {
 	user        *auth.User
 	adminTeam   auth.Team
 	admin       *auth.User
-	rfs         *fsTesting.RecordingFs
-	t           *tsuruTesting.T
-	provisioner *tsuruTesting.FakeProvisioner
+	rfs         *ftesting.RecordingFs
+	t           *ttesting.T
+	provisioner *ttesting.FakeProvisioner
 }
 
 var _ = Suite(&S{})
@@ -75,16 +76,16 @@ func (s *S) SetUpSuite(c *C) {
 	c.Assert(err, IsNil)
 	db.Session, err = db.Open("127.0.0.1:27017", "tsuru_app_test")
 	c.Assert(err, IsNil)
-	s.rfs = &fsTesting.RecordingFs{}
+	s.rfs = &ftesting.RecordingFs{}
 	file, err := s.rfs.Open("/dev/urandom")
 	c.Assert(err, IsNil)
 	file.Write([]byte{16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31})
 	fsystem = s.rfs
-	s.t = &tsuruTesting.T{}
+	s.t = &ttesting.T{}
 	s.createUserAndTeam(c)
 	s.t.StartAmzS3AndIAM(c)
 	s.t.SetGitConfs(c)
-	s.provisioner = tsuruTesting.NewFakeProvisioner()
+	s.provisioner = ttesting.NewFakeProvisioner()
 	Provisioner = s.provisioner
 }
 
@@ -94,6 +95,18 @@ func (s *S) TearDownSuite(c *C) {
 	defer db.Session.Close()
 	db.Session.Apps().Database.DropDatabase()
 	fsystem = nil
+}
+
+func (s *S) SetUpTest(c *C) {
+	var (
+		err error
+		msg *queue.Message
+	)
+	for err == nil {
+		if msg, err = queue.Get(1e6); err == nil {
+			err = queue.Delete(msg)
+		}
+	}
 }
 
 func (s *S) TearDownTest(c *C) {

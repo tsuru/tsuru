@@ -1,4 +1,4 @@
-// Copyright 2012 tsuru authors. All rights reserved.
+// Copyright 2013 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -45,7 +45,7 @@ func main() {
 	}
 	log.SetLogger(logger)
 	flag.StringVar(&configFile, "config", "/etc/tsuru/tsuru.conf", "tsuru config file")
-	flag.BoolVar(&dry, "dry", false, "dry-run: does not start the agent neither the queue (for testing purposes)")
+	flag.BoolVar(&dry, "dry", false, "dry-run: does not start the agent (for testing purposes)")
 	flag.Parse()
 	err = config.ReadConfigFile(configFile)
 	if err != nil {
@@ -79,13 +79,12 @@ func main() {
 		}
 		fmt.Printf("Using %q provisioner.\n\n", provisioner)
 
-		handler := MessageHandler{}
-		err = handler.start()
+		qServer, err := config.GetString("queue-server")
 		if err != nil {
 			fatal(err)
 		}
-		fmt.Printf("Queue server listening at %s.\n", handler.server.Addr())
-		defer handler.stop()
+		fmt.Printf("Connected to queue server at %s.\n", qServer)
+		go handleMessages()
 		ticker := time.Tick(time.Minute)
 		fmt.Println("tsuru collector agent started...")
 		jujuCollect(ticker)

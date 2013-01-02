@@ -1,4 +1,4 @@
-// Copyright 2012 tsuru authors. All rights reserved.
+// Copyright 2013 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -8,7 +8,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/globocom/config"
 	"github.com/globocom/tsuru/api/auth"
 	"github.com/globocom/tsuru/api/service"
 	"github.com/globocom/tsuru/app"
@@ -18,7 +17,6 @@ import (
 	"github.com/globocom/tsuru/log"
 	"github.com/globocom/tsuru/provision"
 	"github.com/globocom/tsuru/repository"
-	"github.com/globocom/tsuru/testing"
 	"io"
 	"io/ioutil"
 	"labix.org/v2/mgo/bson"
@@ -580,21 +578,12 @@ func (s *S) TestCreateAppReturnsConflictWithProperMessageWhenTheAppAlreadyExist(
 }
 
 func (s *S) TestAddUnits(c *C) {
-	server := testing.FakeQueueServer{}
-	err := server.Start("127.0.0.1:0")
-	c.Assert(err, IsNil)
-	defer server.Stop()
-	old, err := config.Get("queue-server")
-	if err == nil {
-		defer config.Set("queue-server", old)
-	}
-	config.Set("queue-server", server.Addr())
 	a := app.App{
 		Name:      "armorandsword",
 		Framework: "python",
 		Teams:     []string{s.team.Name},
 	}
-	err = db.Session.Apps().Insert(a)
+	err := db.Session.Apps().Insert(a)
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
 	err = s.provisioner.Provision(&a)

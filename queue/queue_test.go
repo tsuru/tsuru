@@ -1,4 +1,4 @@
-// Copyright 2012 tsuru authors. All rights reserved.
+// Copyright 2013 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -7,13 +7,9 @@ package queue
 import (
 	"bytes"
 	"encoding/gob"
+	"github.com/globocom/config"
 	. "launchpad.net/gocheck"
-	"net"
-	"strconv"
-	"sync"
-	"sync/atomic"
 	"testing"
-	"time"
 )
 
 func Test(t *testing.T) {
@@ -24,264 +20,163 @@ type S struct{}
 
 var _ = Suite(&S{})
 
-// SafeBuffer is a thread safe buffer.
-type SafeBuffer struct {
-	closed int32
-	buf    bytes.Buffer
-	sync.Mutex
-}
+func (s *S) SetUpSuite(c *C) {
+	config.Set("queue-server", "127.0.0.1:11300")
 
-func (sb *SafeBuffer) Read(p []byte) (int, error) {
-	sb.Lock()
-	defer sb.Unlock()
-	return sb.buf.Read(p)
-}
-
-func (sb *SafeBuffer) Write(p []byte) (int, error) {
-	sb.Lock()
-	defer sb.Unlock()
-	return sb.buf.Write(p)
-}
-
-func (sb *SafeBuffer) Close() error {
-	atomic.StoreInt32(&sb.closed, 1)
-	return nil
-}
-
-func (s *S) TestChannelFromWriter(c *C) {
-	var buf SafeBuffer
-	message := Message{
-		Action: "delete",
-		Args:   []string{"everything"},
+	// Cleaning the queue. All tests must clean its mess, but we can't
+	// guarante the state of the queue before running them.
+	cn, err := connection()
+	c.Assert(err, IsNil)
+	var id uint64
+	for err == nil {
+		if id, _, err = cn.Reserve(1e6); err == nil {
+			err = cn.Delete(id)
+		}
 	}
-	ch, _ := ChannelFromWriter(&buf)
-	defer close(ch)
-	ch <- message
-	time.Sleep(1e6)
-	var decodedMessage Message
-	decoder := gob.NewDecoder(&buf)
-	err := decoder.Decode(&decodedMessage)
+}
+
+func (s *S) SetUpTest(c *C) {
+	conn = nil
+}
+
+func (s *S) TestConnection(c *C) {
+	cn, err := connection()
 	c.Assert(err, IsNil)
-	c.Assert(decodedMessage, DeepEquals, message)
+	defer cn.Close()
+	tubes, err := cn.ListTubes()
+	c.Assert(err, IsNil)
+	c.Assert(tubes, DeepEquals, []string{"default"})
 }
 
-func (s *S) TestClosesErrChanWhenClientCloseMessageChannel(c *C) {
-	var buf SafeBuffer
-	ch, errCh := ChannelFromWriter(&buf)
-	close(ch)
-	_, ok := <-errCh
-	c.Assert(ok, Equals, false)
-}
-
-func (s *S) TestClosesWriteCloserWhenClientClosesMessageChannel(c *C) {
-	var buf SafeBuffer
-	ch, _ := ChannelFromWriter(&buf)
-	close(ch)
-	time.Sleep(1e6)
-	c.Assert(atomic.LoadInt32(&buf.closed), Equals, int32(1))
-}
-
-func (s *S) TestWriteSendErrorsInTheErrorChannel(c *C) {
-	messages := make(chan Message, 1)
-	errCh := make(chan error, 1)
-	conn := NewFakeConn("127.0.0.1:2345", "127.0.0.1:12345")
-	conn.Close()
-	go write(conn, messages, errCh)
-	messages <- Message{}
-	close(messages)
-	err, ok := <-errCh
-	c.Assert(ok, Equals, true)
+func (s *S) TestConnectionQueueServerUndefined(c *C) {
+	old, _ := config.Get("queue-server")
+	config.Unset("queue-server")
+	defer config.Set("queue-server", old)
+	conn, err := connection()
+	c.Assert(conn, IsNil)
 	c.Assert(err, NotNil)
-	c.Assert(err.Error(), Equals, "Closed connection.")
+	c.Assert(err.Error(), Equals, `"queue-server" is not defined in config file.`)
 }
 
-func (s *S) TestHandleSendErrorsInTheErrorsChannel(c *C) {
-	conn := NewFakeConn("127.0.0.1:8000", "127.0.0.1:4000")
-	server := Server{
-		pairs: make(chan pair, 1),
+func (s *S) TestConnectDoubleCall(c *C) {
+	cn1, err := connection()
+	c.Assert(err, IsNil)
+	defer cn1.Close()
+	c.Assert(cn1, Equals, conn)
+	cn2, err := connection()
+	c.Assert(err, IsNil)
+	c.Assert(cn2, Equals, cn1)
+}
+
+func (s *S) TestPut(c *C) {
+	msg := Message{
+		Action: "regenerate-apprc",
+		Args:   []string{"myapp"},
 	}
-	conn.Close()
-	go server.handle(conn)
-	pair := <-server.pairs
-	c.Assert(pair.err, NotNil)
-	c.Assert(pair.err.Error(), Equals, "Closed connection.")
+	err := Put(&msg)
+	c.Assert(err, IsNil)
+	c.Assert(msg.id, Not(Equals), 0)
+	defer conn.Delete(msg.id)
+	id, body, err := conn.Reserve(1e6)
+	c.Assert(err, IsNil)
+	c.Assert(id, Equals, msg.id)
+	var got Message
+	buf := bytes.NewBuffer(body)
+	err = gob.NewDecoder(buf).Decode(&got)
+	c.Assert(err, IsNil)
+	got.id = msg.id
+	c.Assert(got, DeepEquals, msg)
 }
 
-func (s *S) TestServerAddr(c *C) {
-	listener := NewFakeListener("0.0.0.0:8000")
-	server := Server{listener: listener}
-	c.Assert(server.Addr(), Equals, listener.Addr().String())
-}
-
-func (s *S) TestServerDoubleClose(c *C) {
-	server, err := StartServer("127.0.0.1:0")
-	c.Assert(err, IsNil)
-	err = server.Close()
-	c.Assert(err, IsNil)
-	err = server.Close()
+func (s *S) TestPutConnectionFailure(c *C) {
+	old, _ := config.Get("queue-server")
+	defer config.Set("queue-server", old)
+	config.Unset("queue-server")
+	msg := Message{Action: "regenerate-apprc"}
+	err := Put(&msg)
 	c.Assert(err, NotNil)
-	c.Assert(err.Error(), Equals, "Server already closed.")
 }
 
-func (s *S) TestStartServerAndReadMessage(c *C) {
-	message := Message{
-		Action: "delete",
+func (s *S) TestGet(c *C) {
+	msg := Message{
+		Action: "regenerate-apprc",
+		Args:   []string{"myapprc"},
+	}
+	err := Put(&msg)
+	c.Assert(err, IsNil)
+	defer conn.Delete(msg.id)
+	got, err := Get(1e6)
+	c.Assert(err, IsNil)
+	c.Assert(*got, DeepEquals, msg)
+}
+
+func (s *S) TestGetConnectionError(c *C) {
+	old, _ := config.Get("queue-server")
+	defer config.Set("queue-server", old)
+	config.Unset("queue-server")
+	msg, err := Get(1e6)
+	c.Assert(msg, IsNil)
+	c.Assert(err, NotNil)
+}
+
+func (s *S) TestGetFromEmptyQueue(c *C) {
+	msg, err := Get(1e6)
+	c.Assert(msg, IsNil)
+	c.Assert(err, NotNil)
+	c.Assert(err.Error(), Equals, "Timed out waiting for message after 1ms.")
+}
+
+func (s *S) TestGetInvalidMessage(c *C) {
+	conn, err := connection()
+	c.Assert(err, IsNil)
+	id, err := conn.Put([]byte("hello world"), 1, 0, 10e9)
+	defer conn.Delete(id) // sanity
+	msg, err := Get(1e6)
+	c.Assert(msg, IsNil)
+	c.Assert(err, NotNil)
+	c.Assert(err.Error(), Equals, `Invalid message: "hello world"`)
+	_, _, err = conn.Reserve(1e6)
+	c.Assert(err, NotNil)
+	c.Assert(err, ErrorMatches, "^.*TIMED_OUT$")
+}
+
+func (s *S) TestDelete(c *C) {
+	msg := Message{
+		Action: "create-app",
 		Args:   []string{"something"},
 	}
-	server, err := StartServer("127.0.0.1:0")
+	err := Put(&msg)
 	c.Assert(err, IsNil)
-	defer server.Close()
-	conn, err := net.Dial("tcp", server.Addr())
+	defer conn.Delete(msg.id)
+	err = Delete(&msg)
 	c.Assert(err, IsNil)
-	defer conn.Close()
-	encoder := gob.NewEncoder(conn)
-	err = encoder.Encode(message)
-	c.Assert(err, IsNil)
-	gotMessage, err := server.Message(2e9)
-	c.Assert(err, IsNil)
-	c.Assert(gotMessage, DeepEquals, message)
 }
 
-func (s *S) TestMessageNegativeTimeout(c *C) {
-	server := Server{
-		pairs: make(chan pair, 1),
-	}
-	defer close(server.pairs)
-	var (
-		got, want Message
-		err       error
-	)
-	want = Message{Action: "create"}
-	server.pairs <- pair{message: want}
-	got, err = server.Message(-1)
-	c.Assert(err, IsNil)
-	c.Assert(got, DeepEquals, want)
-}
-
-func (s *S) TestPutBack(c *C) {
-	server := Server{
-		pairs: make(chan pair, 1),
-	}
-	want := Message{Action: "delete"}
-	server.PutBack(want)
-	got, err := server.Message(1e6)
-	c.Assert(err, IsNil)
-	want.Visits++
-	c.Assert(got, DeepEquals, want)
-}
-
-func (s *S) TestDontHangWhenClientClosesTheConnection(c *C) {
-	server, err := StartServer("127.0.0.1:0")
-	c.Assert(err, IsNil)
-	defer server.Close()
-	messages, _, err := Dial(server.Addr())
-	c.Assert(err, IsNil)
-	close(messages)
-	msg, err := server.Message(1e9)
-	c.Assert(msg, DeepEquals, Message{})
+func (s *S) TestDeleteConnectionError(c *C) {
+	old, _ := config.Get("queue-server")
+	defer config.Set("queue-server", old)
+	config.Unset("queue-server")
+	err := Delete(nil)
 	c.Assert(err, NotNil)
-	c.Assert(err.Error(), Equals, "EOF: client disconnected.")
 }
 
-func (s *S) TestDontHangWhenServerClosesTheConnection(c *C) {
-	server, err := StartServer("127.0.0.1:0")
-	c.Assert(err, IsNil)
-	for i := 0; i < 5; i++ {
-		Dial(server.Addr())
+func (s *S) TestDeleteUnknownMessage(c *C) {
+	msg := Message{
+		Action: "create-app",
+		Args:   []string{"something"},
+		id:     837826742,
 	}
-	time.Sleep(1e9)
-	err = server.Close()
-	c.Assert(err, IsNil)
+	err := Delete(&msg)
+	c.Assert(err, NotNil)
+	c.Assert(err.Error(), Equals, "Message not found.")
 }
 
-func (s *S) TestDial(c *C) {
-	listener, err := net.Listen("tcp", "127.0.0.1:0")
-	c.Assert(err, IsNil)
-	defer listener.Close()
-	received := make(chan Message, 1)
-	go func() {
-		for {
-			conn, err := listener.Accept()
-			if err != nil {
-				return
-			}
-			decoder := gob.NewDecoder(conn)
-			var message Message
-			if err = decoder.Decode(&message); err != nil {
-				panic(err)
-			}
-			received <- message
-		}
-	}()
-	sent := Message{
-		Action: "delete",
-		Args:   []string{"everything"},
+func (s *S) TestDeleteMessageWithoutId(c *C) {
+	msg := Message{
+		Action: "create-app",
+		Args:   []string{"something"},
 	}
-	messages, _, err := Dial(listener.Addr().String())
-	c.Assert(err, IsNil)
-	messages <- sent
-	got := <-received
-	c.Assert(got, DeepEquals, sent)
-}
-
-func (s *S) TestClientAndServerMultipleMessages(c *C) {
-	server, err := StartServer("127.0.0.1:0")
-	c.Assert(err, IsNil)
-	defer server.Close()
-	messages, errors, err := Dial(server.Addr())
-	c.Assert(err, IsNil)
-	go func() {
-		for err := range errors {
-			c.Fatal(err)
-		}
-	}()
-	messageSlice := make([]Message, 10)
-	for i := 0; i < 10; i++ {
-		messageSlice[i] = Message{Action: "test", Args: []string{strconv.Itoa(i)}}
-		messages <- messageSlice[i]
-	}
-	for i := 0; i < 10; i++ {
-		if message, err := server.Message(-1); err == nil {
-			c.Assert(message, DeepEquals, messageSlice[i])
-		} else {
-			c.Fatal(err)
-		}
-	}
-}
-
-// N clients, each sending 500 messages, concurrently.
-func BenchmarkMultipleClients(b *testing.B) {
-	server, err := StartServer("127.0.0.1:0")
-	if err != nil {
-		b.Fatal(err)
-	}
-	addr := server.Addr()
-	defer server.Close()
-	go func() {
-		for {
-			if _, err := server.Message(-1); err != nil && err.Error() != "EOF: client disconnected." {
-				return
-			}
-		}
-	}()
-	for i := 0; i < b.N; i++ {
-		messages, errors, err := Dial(addr)
-		if err != nil {
-			b.Fatal(err)
-		}
-		go func(ch <-chan error) {
-			for err := range ch {
-				println(err.Error())
-			}
-		}(errors)
-		go func(ch chan<- Message, n int) {
-			for j := 0; j < 500; j++ {
-				messages <- Message{
-					Action: "handle-client",
-					Args:   []string{strconv.Itoa(n + j)},
-				}
-			}
-			close(ch)
-		}(messages, i)
-	}
+	err := Delete(&msg)
+	c.Assert(err, NotNil)
+	c.Assert(err.Error(), Equals, "Unknown message.")
 }

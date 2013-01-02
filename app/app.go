@@ -1,4 +1,4 @@
-// Copyright 2012 tsuru authors. All rights reserved.
+// Copyright 2013 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -212,7 +212,8 @@ func (a *App) AddUnits(n uint) error {
 	if err != nil {
 		return err
 	}
-	return a.enqueue(messages...)
+	go a.enqueue(messages...)
+	return nil
 }
 
 func (a *App) removeUnits(indices []int) {
@@ -535,20 +536,11 @@ func (a *App) SetEnvs(envs []bind.EnvVar, publicOnly bool) error {
 	return a.SetEnvsToApp(e, publicOnly, false)
 }
 
-func (a *App) enqueue(msgs ...queue.Message) error {
-	addr, err := config.GetString("queue-server")
-	if err != nil {
-		return err
-	}
-	messages, _, err := queue.Dial(addr)
-	if err != nil {
-		return err
-	}
+func (a *App) enqueue(msgs ...queue.Message) {
 	for _, msg := range msgs {
-		messages <- msg
+		copy := msg
+		queue.Put(&copy)
 	}
-	close(messages)
-	return nil
 }
 
 // SetEnvsToApp adds environment variables to an app, serializing the resulting
@@ -579,7 +571,7 @@ func (app *App) SetEnvsToApp(envs []bind.EnvVar, publicOnly, useQueue bool) erro
 			return err
 		}
 		if useQueue {
-			return app.enqueue(queue.Message{Action: RegenerateApprc, Args: []string{app.Name}})
+			return queue.Put(&queue.Message{Action: RegenerateApprc, Args: []string{app.Name}})
 		}
 		app.SerializeEnvVars()
 	}

@@ -1,4 +1,4 @@
-// Copyright 2012 tsuru authors. All rights reserved.
+// Copyright 2013 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -10,13 +10,10 @@ import (
 	"github.com/globocom/tsuru/api/auth"
 	"github.com/globocom/tsuru/db"
 	"github.com/globocom/tsuru/queue"
-	"github.com/globocom/tsuru/testing"
 	"io/ioutil"
 	"labix.org/v2/mgo/bson"
 	. "launchpad.net/gocheck"
 	"net/http"
-	"reflect"
-	"time"
 )
 
 func (s *S) TestInsertAppForward(c *C) {
@@ -61,9 +58,6 @@ func (s *S) TestInsertAppRollbackItself(c *C) {
 func (s *S) TestCreateBucketForward(c *C) {
 	patchRandomReader()
 	defer unpatchRandomReader()
-	server := testing.FakeQueueServer{}
-	server.Start("127.0.0.1:0")
-	defer server.Stop()
 	a := App{
 		Name:      "appname",
 		Framework: "django",
@@ -71,13 +65,8 @@ func (s *S) TestCreateBucketForward(c *C) {
 	}
 	expectedHost := "localhost"
 	config.Set("host", expectedHost)
-	old, err := config.Get("queue-server")
-	if err != nil {
-		defer config.Set("queue-server", old)
-	}
-	config.Set("queue-server", server.Addr())
 	insert := new(insertApp)
-	err = insert.forward(&a)
+	err := insert.forward(&a)
 	c.Assert(err, IsNil)
 	defer insert.backward(&a)
 	bucket := new(createBucketIam)
@@ -105,23 +94,15 @@ func (s *S) TestCreateBucketForward(c *C) {
 	c.Assert(env["APPNAME"].Public, Equals, false)
 	c.Assert(env["TSURU_HOST"].Value, Equals, expectedHost)
 	c.Assert(env["TSURU_HOST"].Public, Equals, false)
-	ran := make(chan bool, 1)
-	go func() {
-		expectedMessages := []queue.Message{{
-			Action: RegenerateApprc,
-			Args:   []string{a.Name},
-		}}
-		for {
-			if reflect.DeepEqual(expectedMessages, server.Messages()) {
-				ran <- true
-			}
-		}
-	}()
-	select {
-	case <-ran:
-	case <-time.After(2e9):
-		c.Fatal("TIMEOUT: Did not received the expected message in the queue after 2 seconds.")
+	expected := queue.Message{
+		Action: RegenerateApprc,
+		Args:   []string{a.Name},
 	}
+	message, err := queue.Get(2e9)
+	c.Assert(err, IsNil)
+	defer queue.Delete(message)
+	c.Assert(message.Action, Equals, expected.Action)
+	c.Assert(message.Args, DeepEquals, expected.Args)
 }
 
 func (s *S) TestCreateBucketBackward(c *C) {
