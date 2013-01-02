@@ -3,6 +3,8 @@ before_install:
   - sudo apt-get update -qq > apt-get.out || (cat apt-get.out && exit 1)
   - sudo apt-get install bzr beanstalkd mercurial git libyaml-dev cmake -qq >> apt-get.out || (cat apt-get.out && exit 1)
   - sudo /etc/init.d/beanstalkd start
+  - sudo bash -c "echo START=yes > /etc/default/beanstalkd"
+  - sleep 3
 install:
   - pushd /tmp
   - curl -sLO https://github.com/downloads/libgit2/libgit2/libgit2-0.17.0.tar.gz
