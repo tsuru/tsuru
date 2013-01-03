@@ -15,7 +15,7 @@ install:
   - curl -sLO https://github.com/downloads/kr/beanstalkd/beanstalkd-1.8.tar.gz
   - tar -xzf beanstalkd-1.8.tar.gz
   - pushd beanstalkd-1.8
-  - make
+  - make -j4 > make.out || (cat make.out && exit 1)
   - ./beanstalkd -l 127.0.0.1 -p 11300 &
   - sleep 3
   - nc -z 127.0.0.1 11300
