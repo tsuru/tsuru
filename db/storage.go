@@ -1,4 +1,4 @@
-// Copyright 2012 tsuru authors. All rights reserved.
+// Copyright 2013 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -56,10 +56,10 @@ func (s *Storage) Close() {
 	s.session.Close()
 }
 
-// getCollection returns a collection by its name.
+// Collection returns a collection by its name.
 //
 // If the collection does not exist, MongoDB will create it.
-func (s *Storage) getCollection(name string) *mgo.Collection {
+func (s *Storage) Collection(name string) *mgo.Collection {
 	s.RLock()
 	collection, ok := s.collections[name]
 	s.RUnlock()
@@ -76,31 +76,31 @@ func (s *Storage) getCollection(name string) *mgo.Collection {
 // Apps returns the apps collection from MongoDB.
 func (s *Storage) Apps() *mgo.Collection {
 	nameIndex := mgo.Index{Key: []string{"name"}, Unique: true}
-	c := s.getCollection("apps")
+	c := s.Collection("apps")
 	c.EnsureIndex(nameIndex)
 	return c
 }
 
 // Services returns the services collection from MongoDB.
 func (s *Storage) Services() *mgo.Collection {
-	c := s.getCollection("services")
+	c := s.Collection("services")
 	return c
 }
 
 // ServiceInstances returns the services_instances collection from MongoDB.
 func (s *Storage) ServiceInstances() *mgo.Collection {
-	return s.getCollection("service_instances")
+	return s.Collection("service_instances")
 }
 
 // Users returns the users collection from MongoDB.
 func (s *Storage) Users() *mgo.Collection {
 	emailIndex := mgo.Index{Key: []string{"email"}, Unique: true}
-	c := s.getCollection("users")
+	c := s.Collection("users")
 	c.EnsureIndex(emailIndex)
 	return c
 }
 
 // Teams returns the teams collection from MongoDB.
 func (s *Storage) Teams() *mgo.Collection {
-	return s.getCollection("teams")
+	return s.Collection("teams")
 }
