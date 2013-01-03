@@ -3,6 +3,7 @@ before_install:
   - sudo apt-get update -qq > apt-get.out || (cat apt-get.out && exit 1)
   - sudo apt-get install bzr beanstalkd mercurial git libyaml-dev cmake -qq >> apt-get.out || (cat apt-get.out && exit 1)
   - sudo /etc/init.d/beanstalkd start
+  - nc -z 127.0.0.1 11300
   - sudo bash -c "echo START=yes > /etc/default/beanstalkd"
   - sleep 3
 install:
