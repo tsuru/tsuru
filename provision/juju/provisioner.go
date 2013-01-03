@@ -268,6 +268,9 @@ func (p *JujuProvisioner) CollectStatus() ([]provision.Unit, error) {
 }
 
 func (p *JujuProvisioner) LoadBalancer() provision.LBManager {
+	if p.elbSupport() {
+		return &ELBManager{p}
+	}
 	return nil
 }
 

@@ -1,4 +1,4 @@
-// Copyright 2012 tsuru authors. All rights reserved.
+// Copyright 2013 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -437,6 +437,21 @@ func (s *S) TestCollectStatusInvalidYAML(c *C) {
 	c.Assert(ok, Equals, true)
 	c.Assert(pErr.Reason, Equals, `"juju status" returned invalid data`)
 	c.Assert(pErr.Err, ErrorMatches, `^YAML error:.*$`)
+}
+
+func (s *S) TestLoadBalancerEnabledElb(c *C) {
+	p := JujuProvisioner{}
+	p.elb = new(bool)
+	*p.elb = true
+	lb := p.LoadBalancer()
+	_ = lb.(*ELBManager)
+}
+
+func (s *S) TestLoadBalancerDisabledElb(c *C) {
+	p := JujuProvisioner{}
+	p.elb = new(bool)
+	lb := p.LoadBalancer()
+	c.Assert(lb, IsNil)
 }
 
 func (s *S) TestExecWithTimeout(c *C) {
