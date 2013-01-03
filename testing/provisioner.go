@@ -1,4 +1,4 @@
-// Copyright 2012 tsuru authors. All rights reserved.
+// Copyright 2013 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -192,12 +192,13 @@ func (p *FakeProvisioner) Provision(app provision.App) error {
 	p.unitMut.Lock()
 	p.units[app.GetName()] = []provision.Unit{
 		{
-			Name:    app.GetName() + "/0",
-			AppName: app.GetName(),
-			Type:    app.GetFramework(),
-			Status:  provision.StatusStarted,
-			Ip:      "10.10.10.1",
-			Machine: 1,
+			Name:       app.GetName() + "/0",
+			AppName:    app.GetName(),
+			Type:       app.GetFramework(),
+			Status:     provision.StatusStarted,
+			InstanceId: "i-080",
+			Ip:         "10.10.10.1",
+			Machine:    1,
 		},
 	}
 	p.unitMut.Unlock()
@@ -238,12 +239,13 @@ func (p *FakeProvisioner) AddUnits(app provision.App, n uint) ([]provision.Unit,
 	length := uint(len(p.units[name]))
 	for i := uint(0); i < n; i++ {
 		unit := provision.Unit{
-			Name:    fmt.Sprintf("%s/%d", name, length+i),
-			AppName: name,
-			Type:    framework,
-			Status:  provision.StatusStarted,
-			Ip:      fmt.Sprintf("10.10.10.%d", length+i),
-			Machine: int(length + i),
+			Name:       fmt.Sprintf("%s/%d", name, length+i),
+			AppName:    name,
+			Type:       framework,
+			Status:     provision.StatusStarted,
+			InstanceId: fmt.Sprintf("i-08%d", length+i),
+			Ip:         fmt.Sprintf("10.10.10.%d", length+i),
+			Machine:    int(length + i),
 		}
 		p.units[name] = append(p.units[name], unit)
 	}
@@ -358,4 +360,76 @@ func (p *FakeProvisioner) CollectStatus() ([]provision.Unit, error) {
 		units[i] = unit
 	}
 	return units, nil
+}
+
+func (p *FakeProvisioner) LoadBalancer() provision.LBManager {
+	return &FakeLBManager{provisioner: p, instances: make(map[string][]string)}
+}
+
+type FakeLBManager struct {
+	instances   map[string][]string
+	provisioner *FakeProvisioner
+	instMut     sync.Mutex
+}
+
+func (lb *FakeLBManager) Create(app provision.App) error {
+	if err := lb.provisioner.getError("LB.Create"); err != nil {
+		return err
+	}
+	lb.instMut.Lock()
+	lb.instances[app.GetName()] = nil
+	lb.instMut.Unlock()
+	return nil
+}
+
+func (lb *FakeLBManager) Destroy(app provision.App) error {
+	if err := lb.provisioner.getError("LB.Destroy"); err != nil {
+		return err
+	}
+	lb.instMut.Lock()
+	delete(lb.instances, app.GetName())
+	lb.instMut.Unlock()
+	return nil
+}
+
+func (lb *FakeLBManager) Register(app provision.App, unit provision.Unit) error {
+	if err := lb.provisioner.getError("LB.Register"); err != nil {
+		return err
+	}
+	lb.instMut.Lock()
+	defer lb.instMut.Unlock()
+	if _, ok := lb.instances[app.GetName()]; !ok {
+		return errors.New("Load balancer not found.")
+	}
+	lb.instances[app.GetName()] = append(lb.instances[app.GetName()], unit.InstanceId)
+	return nil
+}
+
+func (lb *FakeLBManager) Deregister(app provision.App, unit provision.Unit) error {
+	if err := lb.provisioner.getError("LB.Deregister"); err != nil {
+		return err
+	}
+	var (
+		instances []string
+		ok        bool
+		index     int = -1
+	)
+	lb.instMut.Lock()
+	defer lb.instMut.Unlock()
+	if instances, ok = lb.instances[app.GetName()]; !ok {
+		return errors.New("Load balancer not found.")
+	}
+	for i, u := range instances {
+		if unit.InstanceId == u {
+			index = i
+			break
+		}
+	}
+	if index < 0 {
+		return errors.New("Instance not found.")
+	}
+	copy(instances[index:], instances[index+1:])
+	instances = instances[:len(instances)-1]
+	lb.instances[app.GetName()] = instances
+	return nil
 }

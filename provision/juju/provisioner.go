@@ -267,6 +267,10 @@ func (p *JujuProvisioner) CollectStatus() ([]provision.Unit, error) {
 	return units, nil
 }
 
+func (p *JujuProvisioner) LoadBalancer() provision.LBManager {
+	return nil
+}
+
 type unit struct {
 	AgentState string `yaml:"agent-state"`
 	Machine    int

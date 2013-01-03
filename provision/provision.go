@@ -1,4 +1,4 @@
-// Copyright 2012 tsuru authors. All rights reserved.
+// Copyright 2013 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -106,6 +106,24 @@ type Provisioner interface {
 	// CollectStatus returns information about all provisioned units. It's used
 	// by tsuru collector when updating the status of apps in the database.
 	CollectStatus() ([]Unit, error)
+
+	// Returns a load balancer manager.
+	LoadBalancer() LBManager
+}
+
+// LBManager provides methods to manage load balancers per app.
+type LBManager interface {
+	// Creates a new load balancer.
+	Create(App) error
+
+	// Destroys a load balancer.
+	Destroy(App) error
+
+	// Adds a unit to the load balancer.
+	Register(App, Unit) error
+
+	// Removes a unit from the load balancer.
+	Deregister(App, Unit) error
 }
 
 var provisioners = make(map[string]Provisioner)

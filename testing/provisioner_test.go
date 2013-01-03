@@ -1,4 +1,4 @@
-// Copyright 2012 tsuru authors. All rights reserved.
+// Copyright 2013 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -83,12 +83,13 @@ func (s *S) TestProvision(c *C) {
 	c.Assert(p.apps, DeepEquals, []provision.App{app})
 	c.Assert(p.units["kid-gloves"], HasLen, 1)
 	expected := provision.Unit{
-		Name:    "kid-gloves/0",
-		AppName: "kid-gloves",
-		Type:    "rush",
-		Status:  provision.StatusStarted,
-		Ip:      "10.10.10.1",
-		Machine: 1,
+		Name:       "kid-gloves/0",
+		AppName:    "kid-gloves",
+		Type:       "rush",
+		Status:     provision.StatusStarted,
+		InstanceId: "i-080",
+		Ip:         "10.10.10.1",
+		Machine:    1,
 	}
 	unit := p.units["kid-gloves"][0]
 	c.Assert(unit, DeepEquals, expected)
@@ -335,4 +336,129 @@ func (s *S) TestCollectStatusNoApps(c *C) {
 	units, err := p.CollectStatus()
 	c.Assert(err, IsNil)
 	c.Assert(units, HasLen, 0)
+}
+
+func (s *S) TestLBManager(c *C) {
+	p := NewFakeProvisioner()
+	lb := p.LoadBalancer()
+	_ = lb.(*FakeLBManager)
+}
+
+func (s *S) TestFakeLBManagerCreate(c *C) {
+	app := NewFakeApp("angels", "angra", 1)
+	p := NewFakeProvisioner()
+	lb := p.LoadBalancer()
+	err := lb.Create(app)
+	c.Assert(err, IsNil)
+	flb := lb.(*FakeLBManager)
+	_, ok := flb.instances["angels"]
+	c.Assert(ok, Equals, true)
+}
+
+func (s *S) TestFakeLBManagerCreateFailure(c *C) {
+	p := NewFakeProvisioner()
+	p.PrepareFailure("LB.Create", errors.New("Cannot create lb."))
+	lb := p.LoadBalancer()
+	err := lb.Create(nil)
+	c.Assert(err, NotNil)
+	c.Assert(err.Error(), Equals, "Cannot create lb.")
+}
+
+func (s *S) TestFakeLBManagerDestroy(c *C) {
+	app := NewFakeApp("fifteen", "ayreon", 1)
+	p := NewFakeProvisioner()
+	lb := p.LoadBalancer()
+	err := lb.Create(app)
+	c.Assert(err, IsNil)
+	err = lb.Destroy(app)
+	c.Assert(err, IsNil)
+	flb := lb.(*FakeLBManager)
+	_, ok := flb.instances["fifteen"]
+	c.Assert(ok, Equals, false)
+}
+
+func (s *S) TestFakeLBManagerDestroyFailure(c *C) {
+	p := NewFakeProvisioner()
+	p.PrepareFailure("LB.Destroy", errors.New("Cannot destroy lb."))
+	lb := p.LoadBalancer()
+	err := lb.Destroy(nil)
+	c.Assert(err, NotNil)
+	c.Assert(err.Error(), Equals, "Cannot destroy lb.")
+}
+
+func (s *S) TestFakeLBManagerRegister(c *C) {
+	app := NewFakeApp("sixteen", "ayreon", 1)
+	p := NewFakeProvisioner()
+	err := p.Provision(app)
+	c.Assert(err, IsNil)
+	lb := p.LoadBalancer()
+	err = lb.Create(app)
+	c.Assert(err, IsNil)
+	err = lb.Register(app, p.units["sixteen"][0])
+	c.Assert(err, IsNil)
+	flb := lb.(*FakeLBManager)
+	c.Assert(flb.instances["sixteen"], HasLen, 1)
+	c.Assert(flb.instances["sixteen"][0], Equals, p.units["sixteen"][0].InstanceId)
+}
+
+func (s *S) TestFakeLBManagerRegisterUnknownApp(c *C) {
+	app := NewFakeApp("disclosure", "ayreon", 1)
+	p := NewFakeProvisioner()
+	err := p.LoadBalancer().Register(app, provision.Unit{InstanceId: "i-0500"})
+	c.Assert(err, NotNil)
+	c.Assert(err.Error(), Equals, "Load balancer not found.")
+}
+
+func (s *S) TestFakeLBManagerRegisterFailure(c *C) {
+	p := NewFakeProvisioner()
+	p.PrepareFailure("LB.Register", errors.New("Cannot register unit."))
+	err := p.LoadBalancer().Register(nil, provision.Unit{})
+	c.Assert(err, NotNil)
+	c.Assert(err.Error(), Equals, "Cannot register unit.")
+}
+
+func (s *S) TestFakeLBManagerDeregister(c *C) {
+	app := NewFakeApp("seventeen", "ayreon", 1)
+	p := NewFakeProvisioner()
+	err := p.Provision(app)
+	c.Assert(err, IsNil)
+	lb := p.LoadBalancer()
+	err = lb.Create(app)
+	c.Assert(err, IsNil)
+	unit := p.units["seventeen"][0]
+	err = lb.Register(app, unit)
+	c.Assert(err, IsNil)
+	err = lb.Deregister(app, provision.Unit{InstanceId: unit.InstanceId})
+	c.Assert(err, IsNil)
+	flb := lb.(*FakeLBManager)
+	c.Assert(flb.instances["seventeen"], HasLen, 0)
+}
+
+func (s *S) TestFakeLBManagerDeregisterUnknownApp(c *C) {
+	app := NewFakeApp("twenty", "ayreon", 1)
+	p := NewFakeProvisioner()
+	err := p.LoadBalancer().Deregister(app, provision.Unit{InstanceId: "i-0300"})
+	c.Assert(err, NotNil)
+	c.Assert(err.Error(), Equals, "Load balancer not found.")
+}
+
+func (s *S) TestFakeLBManagerDeregisterUnknownUnit(c *C) {
+	app := NewFakeApp("eighteen", "ayreon", 1)
+	p := NewFakeProvisioner()
+	err := p.Provision(app)
+	c.Assert(err, IsNil)
+	lb := p.LoadBalancer()
+	err = lb.Create(app)
+	c.Assert(err, IsNil)
+	err = lb.Deregister(app, p.units["eighteen"][0])
+	c.Assert(err, NotNil)
+	c.Assert(err.Error(), Equals, "Instance not found.")
+}
+
+func (s *S) TestFakeLBManagerDeregisterFailure(c *C) {
+	p := NewFakeProvisioner()
+	p.PrepareFailure("LB.Deregister", errors.New("Cannot deregister unit."))
+	err := p.LoadBalancer().Deregister(nil, provision.Unit{})
+	c.Assert(err, NotNil)
+	c.Assert(err.Error(), Equals, "Cannot deregister unit.")
 }
