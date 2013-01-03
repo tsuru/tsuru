@@ -1,11 +1,7 @@
 language: go
 before_install:
   - sudo apt-get update -qq > apt-get.out || (cat apt-get.out && exit 1)
-  - sudo apt-get install bzr beanstalkd mercurial git libyaml-dev cmake -qq >> apt-get.out || (cat apt-get.out && exit 1)
-  - sudo /etc/init.d/beanstalkd start
-  - nc -z 127.0.0.1 11300
-  - sudo bash -c "echo START=yes > /etc/default/beanstalkd"
-  - sleep 3
+  - sudo apt-get install bzr mercurial git libyaml-dev cmake -qq >> apt-get.out || (cat apt-get.out && exit 1)
 install:
   - pushd /tmp
   - curl -sLO https://github.com/downloads/libgit2/libgit2/libgit2-0.17.0.tar.gz
@@ -15,6 +11,14 @@ install:
   - cmake .. > cmake.out || (cat cmake.out && exit 1)
   - cmake --build . >> cmake.out || (cat cmake.out && exit 1)
   - sudo cmake --build . --target install >> cmake.out || (cat cmake.out && exit 1)
+  - popd
+  - curl -sLO https://github.com/downloads/kr/beanstalkd/beanstalkd-1.8.tar.gz
+  - tar -xzf beanstalkd-1.8.tar.gz
+  - pushd beanstalkd-1.8
+  - make
+  - ./beanstalkd -l 127.0.0.1 -p 11300 &
+  - sleep 3
+  - nc -z 127.0.0.1 11300
   - popd
   - popd
   - sudo ldconfig
