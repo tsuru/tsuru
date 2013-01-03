@@ -1,4 +1,4 @@
-// Copyright 2012 tsuru authors. All rights reserved.
+// Copyright 2013 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -6,10 +6,10 @@ package tsuru
 
 import (
 	"errors"
-	"github.com/fsouza/gogit/git"
 	"io"
 	. "launchpad.net/gocheck"
 	"os"
+	"os/exec"
 	"path"
 	"syscall"
 )
@@ -21,9 +21,11 @@ func writeConfig(sourceFile string, c *C) string {
 	p := path.Join(os.TempDir(), "guesser-tests")
 	err = os.MkdirAll(p, 0700)
 	c.Assert(err, IsNil)
-	repo, err := git.InitRepository(p, false)
+	cmd := exec.Command("git", "init")
+	cmd.Dir = p
 	c.Assert(err, IsNil)
-	defer repo.Free()
+	err = cmd.Run()
+	c.Assert(err, IsNil)
 	dstConfig, err := os.OpenFile(path.Join(p, ".git", "config"), syscall.O_WRONLY|syscall.O_TRUNC|syscall.O_CREAT|syscall.O_CLOEXEC, 0644)
 	c.Assert(err, IsNil)
 	defer dstConfig.Close()

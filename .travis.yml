@@ -4,14 +4,6 @@ before_install:
   - sudo apt-get install bzr mercurial git libyaml-dev cmake -qq >> apt-get.out || (cat apt-get.out && exit 1)
 install:
   - pushd /tmp
-  - curl -sLO https://github.com/downloads/libgit2/libgit2/libgit2-0.17.0.tar.gz
-  - tar -xzf libgit2-0.17.0.tar.gz
-  - mkdir -p libgit2-0.17.0/build
-  - pushd libgit2-0.17.0/build
-  - cmake .. > cmake.out || (cat cmake.out && exit 1)
-  - cmake --build . >> cmake.out || (cat cmake.out && exit 1)
-  - sudo cmake --build . --target install >> cmake.out || (cat cmake.out && exit 1)
-  - popd
   - curl -sLO https://github.com/downloads/kr/beanstalkd/beanstalkd-1.8.tar.gz
   - tar -xzf beanstalkd-1.8.tar.gz
   - pushd beanstalkd-1.8
@@ -21,7 +13,6 @@ install:
   - nc -z 127.0.0.1 11300
   - popd
   - popd
-  - sudo ldconfig
   - make get-test
 before_script:
   - ./check-fmt.sh
