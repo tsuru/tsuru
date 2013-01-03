@@ -22,8 +22,8 @@ import (
 	stdlog "log"
 	"os"
 	"path"
+	"sort"
 	"strings"
-	"time"
 )
 
 func (s *S) TestGet(c *C) {
@@ -270,7 +270,7 @@ func (s *S) TestAddUnits(c *C) {
 	err = app.Get()
 	c.Assert(err, IsNil)
 	c.Assert(app.Units, HasLen, 7)
-	var expectedMessages []queue.Message
+	var expectedMessages MessageList
 	names := make([]string, len(app.Units))
 	for i, unit := range app.Units {
 		names[i] = unit.Name
@@ -282,14 +282,19 @@ func (s *S) TestAddUnits(c *C) {
 		}
 		expectedMessages = append(expectedMessages, messages...)
 	}
-	time.Sleep(1e6)
-	for _, msg := range expectedMessages {
+	gotMessages := make(MessageList, expectedMessages.Len())
+	for i := range expectedMessages {
 		message, err := queue.Get(1e6)
 		c.Assert(err, IsNil)
 		defer queue.Delete(message)
-		c.Check(message.Action, Equals, msg.Action)
-		c.Check(message.Args, DeepEquals, msg.Args)
+		gotMessages[i] = queue.Message{
+			Action: message.Action,
+			Args:   message.Args,
+		}
 	}
+	sort.Sort(expectedMessages)
+	sort.Sort(gotMessages)
+	c.Assert(gotMessages, DeepEquals, expectedMessages)
 }
 
 func (s *S) TestAddZeroUnits(c *C) {

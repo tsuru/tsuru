@@ -138,3 +138,38 @@ func (s *S) removeAdminUserAndTeam(c *C) {
 	err = db.Session.Users().Remove(bson.M{"email": s.admin.Email})
 	c.Assert(err, IsNil)
 }
+
+type MessageList []queue.Message
+
+func (l MessageList) Len() int {
+	return len(l)
+}
+
+func (l MessageList) Less(i, j int) bool {
+	if l[i].Action < l[j].Action {
+		return true
+	} else if l[i].Action > l[j].Action {
+		return false
+	}
+	if len(l[i].Args) == 0 {
+		return true
+	} else if len(l[j].Args) == 0 {
+		return false
+	}
+	smaller := len(l[i].Args)
+	if len(l[j].Args) < smaller {
+		smaller = len(l[j].Args)
+	}
+	for k := 0; k < smaller; k++ {
+		if l[i].Args[k] < l[j].Args[k] {
+			return true
+		} else if l[i].Args[k] > l[j].Args[k] {
+			return false
+		}
+	}
+	return false
+}
+
+func (l MessageList) Swap(i, j int) {
+	l[i], l[j] = l[j], l[i]
+}
