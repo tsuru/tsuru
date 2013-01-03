@@ -8,8 +8,11 @@ import (
 	"bytes"
 	"errors"
 	"github.com/globocom/commandmocker"
+	"github.com/globocom/config"
 	"github.com/globocom/tsuru/provision"
+	"github.com/globocom/tsuru/repository"
 	. "launchpad.net/gocheck"
+	"reflect"
 	"time"
 )
 
@@ -19,7 +22,21 @@ func (s *S) TestShouldBeRegistered(c *C) {
 	c.Assert(p, FitsTypeOf, &JujuProvisioner{})
 }
 
-func (s *S) TestJujuProvision(c *C) {
+func (s *S) TestELBSupport(c *C) {
+	defer config.Unset("juju:use-elb")
+	config.Set("juju:use-elb", true)
+	p := JujuProvisioner{}
+	c.Assert(p.elbSupport(), Equals, true)
+	config.Set("juju:use-elb", false)
+	c.Assert(p.elbSupport(), Equals, true) // Read config only once.
+	p = JujuProvisioner{}
+	c.Assert(p.elbSupport(), Equals, false)
+	config.Unset("juju:use-elb")
+	p = JujuProvisioner{}
+	c.Assert(p.elbSupport(), Equals, false)
+}
+
+func (s *S) TestProvision(c *C) {
 	tmpdir, err := commandmocker.Add("juju", "$*")
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(tmpdir)
@@ -31,7 +48,7 @@ func (s *S) TestJujuProvision(c *C) {
 	c.Assert(commandmocker.Output(tmpdir), Equals, "deploy --repository /home/charms local:python trace")
 }
 
-func (s *S) TestJujuProvisionFailure(c *C) {
+func (s *S) TestProvisionFailure(c *C) {
 	tmpdir, err := commandmocker.Error("juju", "juju failed", 1)
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(tmpdir)
@@ -45,7 +62,7 @@ func (s *S) TestJujuProvisionFailure(c *C) {
 	c.Assert(pErr.Err.Error(), Equals, "exit status 1")
 }
 
-func (s *S) TestJujuDestroy(c *C) {
+func (s *S) TestDestroy(c *C) {
 	tmpdir, err := commandmocker.Add("juju", "$*")
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(tmpdir)
@@ -54,12 +71,29 @@ func (s *S) TestJujuDestroy(c *C) {
 	err = p.Destroy(app)
 	c.Assert(err, IsNil)
 	c.Assert(commandmocker.Ran(tmpdir), Equals, true)
-	output := "destroy-service cribcagedterminate-machine 1"
-	output += "terminate-machine 2terminate-machine 3"
-	c.Assert(commandmocker.Output(tmpdir), Equals, output)
+	expected := []string{
+		"destroy-service", "cribcaged",
+		"terminate-machine", "1",
+		"terminate-machine", "2",
+		"terminate-machine", "3",
+	}
+	ran := make(chan bool, 1)
+	go func() {
+		for {
+			if reflect.DeepEqual(commandmocker.Parameters(tmpdir), expected) {
+				ran <- true
+			}
+		}
+	}()
+	select {
+	case <-ran:
+	case <-time.After(2e9):
+		c.Errorf("Did not run terminate-machine commands after 2 seconds.")
+	}
+	c.Assert(commandmocker.Parameters(tmpdir), DeepEquals, expected)
 }
 
-func (s *S) TestJujuDestroyFailure(c *C) {
+func (s *S) TestDestroyFailure(c *C) {
 	tmpdir, err := commandmocker.Error("juju", "juju failed to destroy the machine", 25)
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(tmpdir)
@@ -73,7 +107,164 @@ func (s *S) TestJujuDestroyFailure(c *C) {
 	c.Assert(pErr.Err.Error(), Equals, "exit status 25")
 }
 
-func (s *S) TestJujuExecuteCommand(c *C) {
+func (s *S) TestAddUnits(c *C) {
+	tmpdir, err := commandmocker.Add("juju", addUnitsOutput)
+	c.Assert(err, IsNil)
+	defer commandmocker.Remove(tmpdir)
+	app := NewFakeApp("resist", "rush", 0)
+	p := JujuProvisioner{}
+	units, err := p.AddUnits(app, 4)
+	c.Assert(err, IsNil)
+	c.Assert(units, HasLen, 4)
+	names := make([]string, len(units))
+	for i, unit := range units {
+		names[i] = unit.Name
+	}
+	expected := []string{"resist/3", "resist/4", "resist/5", "resist/6"}
+	c.Assert(names, DeepEquals, expected)
+	c.Assert(commandmocker.Ran(tmpdir), Equals, true)
+	expectedParams := []string{
+		"set", "resist", "app-repo=" + repository.GetReadOnlyUrl("resist"),
+		"add-unit", "resist", "--num-units", "4",
+	}
+	c.Assert(commandmocker.Parameters(tmpdir), DeepEquals, expectedParams)
+}
+
+func (s *S) TestAddZeroUnits(c *C) {
+	p := JujuProvisioner{}
+	units, err := p.AddUnits(nil, 0)
+	c.Assert(units, IsNil)
+	c.Assert(err, NotNil)
+	c.Assert(err.Error(), Equals, "Cannot add zero units.")
+}
+
+func (s *S) TestAddUnitsFailure(c *C) {
+	tmpdir, err := commandmocker.Error("juju", "juju failed", 1)
+	c.Assert(err, IsNil)
+	defer commandmocker.Remove(tmpdir)
+	app := NewFakeApp("headlong", "rush", 1)
+	p := JujuProvisioner{}
+	units, err := p.AddUnits(app, 1)
+	c.Assert(units, IsNil)
+	c.Assert(err, NotNil)
+	e, ok := err.(*provision.Error)
+	c.Assert(ok, Equals, true)
+	c.Assert(e.Reason, Equals, "juju failed")
+	c.Assert(e.Err.Error(), Equals, "exit status 1")
+}
+
+func (s *S) TestRemoveUnit(c *C) {
+	tmpdir, err := commandmocker.Add("juju", "removed")
+	c.Assert(err, IsNil)
+	defer commandmocker.Remove(tmpdir)
+	app := NewFakeApp("two", "rush", 3)
+	p := JujuProvisioner{}
+	err = p.RemoveUnit(app, "two/2")
+	c.Assert(err, IsNil)
+	c.Assert(commandmocker.Ran(tmpdir), Equals, true)
+	expected := []string{"remove-unit", "two/2", "terminate-machine", "3"}
+	ran := make(chan bool, 1)
+	go func() {
+		for {
+			if reflect.DeepEqual(commandmocker.Parameters(tmpdir), expected) {
+				ran <- true
+			}
+		}
+	}()
+	select {
+	case <-ran:
+	case <-time.After(2e9):
+		c.Errorf("Did not run terminate-machine command after 2 seconds.")
+	}
+}
+
+func (s *S) TestRemoveUnknownUnit(c *C) {
+	app := NewFakeApp("tears", "rush", 2)
+	p := JujuProvisioner{}
+	err := p.RemoveUnit(app, "tears/2")
+	c.Assert(err, NotNil)
+	c.Assert(err.Error(), Equals, `App "tears" does not have a unit named "tears/2".`)
+}
+
+func (s *S) TestRemoveUnitFailure(c *C) {
+	tmpdir, err := commandmocker.Error("juju", "juju failed", 66)
+	c.Assert(err, IsNil)
+	defer commandmocker.Remove(tmpdir)
+	app := NewFakeApp("something", "rush", 1)
+	p := JujuProvisioner{}
+	err = p.RemoveUnit(app, "something/0")
+	c.Assert(err, NotNil)
+	e, ok := err.(*provision.Error)
+	c.Assert(ok, Equals, true)
+	c.Assert(e.Reason, Equals, "juju failed")
+	c.Assert(e.Err.Error(), Equals, "exit status 66")
+}
+
+func (s *S) TestRemoveUnits(c *C) {
+	tmpdir, err := commandmocker.Add("juju", "removed")
+	c.Assert(err, IsNil)
+	defer commandmocker.Remove(tmpdir)
+	app := NewFakeApp("xanadu", "rush", 4)
+	p := JujuProvisioner{}
+	units, err := p.RemoveUnits(app, 3)
+	c.Assert(err, IsNil)
+	expected := []string{
+		"remove-unit", "xanadu/0", "xanadu/1", "xanadu/2",
+		"terminate-machine", "1",
+		"terminate-machine", "2",
+		"terminate-machine", "3",
+	}
+	ran := make(chan bool, 1)
+	go func() {
+		for {
+			if reflect.DeepEqual(commandmocker.Parameters(tmpdir), expected) {
+				ran <- true
+			}
+		}
+	}()
+	select {
+	case <-ran:
+	case <-time.After(2e9):
+		params := commandmocker.Parameters(tmpdir)
+		c.Fatalf("Did not run terminate-machine commands after 2 seconds. Parameters: %#v", params)
+	}
+	c.Assert(units, DeepEquals, []int{0, 1, 2})
+}
+
+func (s *S) TestRemoveAllUnits(c *C) {
+	app := NewFakeApp("xanadu", "rush", 2)
+	p := JujuProvisioner{}
+	units, err := p.RemoveUnits(app, 2)
+	c.Assert(units, IsNil)
+	c.Assert(err, NotNil)
+	c.Assert(err.Error(), Equals, "You can't remove all units from an app.")
+}
+
+func (s *S) TestRemoveTooManyUnits(c *C) {
+	app := NewFakeApp("xanadu", "rush", 2)
+	p := JujuProvisioner{}
+	units, err := p.RemoveUnits(app, 3)
+	c.Assert(units, IsNil)
+	c.Assert(err, NotNil)
+	c.Assert(err.Error(), Equals, "You can't remove 3 units from this app because it has only 2 units.")
+}
+
+func (s *S) TestRemoveUnitsFailure(c *C) {
+	tmpdir, err := commandmocker.Error("juju", "juju failed", 66)
+	c.Assert(err, IsNil)
+	defer commandmocker.Remove(tmpdir)
+	app := NewFakeApp("closer", "rush", 3)
+	p := JujuProvisioner{}
+	units, err := p.RemoveUnits(app, 2)
+	c.Assert(units, IsNil)
+	c.Assert(err, NotNil)
+	e, ok := err.(*provision.Error)
+	c.Assert(ok, Equals, true)
+	c.Assert(e.Reason, Equals, "juju failed")
+	c.Assert(e.Err.Error(), Equals, "exit status 66")
+}
+
+func (s *S) TestExecuteCommand(c *C) {
 	var buf bytes.Buffer
 	tmpdir, err := commandmocker.Add("juju", "$*")
 	c.Assert(err, IsNil)
@@ -82,14 +273,21 @@ func (s *S) TestJujuExecuteCommand(c *C) {
 	p := JujuProvisioner{}
 	err = p.ExecuteCommand(&buf, &buf, app, "ls", "-lh")
 	c.Assert(err, IsNil)
-	output := "ssh -o StrictHostKeyChecking no -q 1 ls -lh"
-	output += "ssh -o StrictHostKeyChecking no -q 2 ls -lh"
+	bufOutput := `Output from unit "almah/0":
+
+ssh -o StrictHostKeyChecking no -q 1 ls -lh
+
+Output from unit "almah/1":
+
+ssh -o StrictHostKeyChecking no -q 2 ls -lh
+`
+	cmdOutput := "ssh -o StrictHostKeyChecking no -q 1 ls -lhssh -o StrictHostKeyChecking no -q 2 ls -lh"
 	c.Assert(commandmocker.Ran(tmpdir), Equals, true)
-	c.Assert(commandmocker.Output(tmpdir), Equals, output)
-	c.Assert(buf.String(), Equals, output)
+	c.Assert(commandmocker.Output(tmpdir), Equals, cmdOutput)
+	c.Assert(buf.String(), Equals, bufOutput)
 }
 
-func (s *S) TestJujuExecuteCommandFailure(c *C) {
+func (s *S) TestExecuteCommandFailure(c *C) {
 	var buf bytes.Buffer
 	tmpdir, err := commandmocker.Error("juju", "failed", 2)
 	c.Assert(err, IsNil)
@@ -99,30 +297,76 @@ func (s *S) TestJujuExecuteCommandFailure(c *C) {
 	err = p.ExecuteCommand(&buf, &buf, app, "ls", "-l")
 	c.Assert(err, NotNil)
 	c.Assert(err.Error(), Equals, "exit status 2")
-	c.Assert(buf.String(), Equals, "failed")
+	c.Assert(buf.String(), Equals, "failed\n")
 }
 
-func (s *S) TestJujuCollectStatus(c *C) {
+func (s *S) TestExecuteCommandOneUnit(c *C) {
+	var buf bytes.Buffer
+	tmpdir, err := commandmocker.Add("juju", "$*")
+	c.Assert(err, IsNil)
+	defer commandmocker.Remove(tmpdir)
+	app := NewFakeApp("almah", "static", 1)
+	p := JujuProvisioner{}
+	err = p.ExecuteCommand(&buf, &buf, app, "ls", "-lh")
+	c.Assert(err, IsNil)
+	output := "ssh -o StrictHostKeyChecking no -q 1 ls -lh"
+	c.Assert(commandmocker.Ran(tmpdir), Equals, true)
+	c.Assert(commandmocker.Output(tmpdir), Equals, output)
+	c.Assert(buf.String(), Equals, output+"\n")
+}
+
+func (s *S) TestExecuteCommandUnitDown(c *C) {
+	var buf bytes.Buffer
+	tmpdir, err := commandmocker.Add("juju", "$*")
+	c.Assert(err, IsNil)
+	defer commandmocker.Remove(tmpdir)
+	app := NewFakeApp("almah", "static", 3)
+	app.units[1].(*FakeUnit).status = provision.StatusDown
+	p := JujuProvisioner{}
+	err = p.ExecuteCommand(&buf, &buf, app, "ls", "-lha")
+	c.Assert(err, IsNil)
+	cmdOutput := "ssh -o StrictHostKeyChecking no -q 1 ls -lha"
+	cmdOutput += "ssh -o StrictHostKeyChecking no -q 3 ls -lha"
+	bufOutput := `Output from unit "almah/0":
+
+ssh -o StrictHostKeyChecking no -q 1 ls -lha
+
+Output from unit "almah/1":
+
+Unit state is "down", it must be "started" for running commands.
+
+Output from unit "almah/2":
+
+ssh -o StrictHostKeyChecking no -q 3 ls -lha
+`
+	c.Assert(commandmocker.Ran(tmpdir), Equals, true)
+	c.Assert(commandmocker.Output(tmpdir), Equals, cmdOutput)
+	c.Assert(buf.String(), Equals, bufOutput)
+}
+
+func (s *S) TestCollectStatus(c *C) {
 	tmpdir, err := commandmocker.Add("juju", collectOutput)
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(tmpdir)
 	p := JujuProvisioner{}
 	expected := []provision.Unit{
 		{
-			Name:    "as_i_rise/0",
-			AppName: "as_i_rise",
-			Type:    "django",
-			Machine: 105,
-			Ip:      "10.10.10.163",
-			Status:  provision.StatusStarted,
+			Name:       "as_i_rise/0",
+			AppName:    "as_i_rise",
+			Type:       "django",
+			Machine:    105,
+			InstanceId: "i-00000439",
+			Ip:         "10.10.10.163",
+			Status:     provision.StatusStarted,
 		},
 		{
-			Name:    "the_infanta/0",
-			AppName: "the_infanta",
-			Type:    "gunicorn",
-			Machine: 107,
-			Ip:      "10.10.10.168",
-			Status:  provision.StatusInstalling,
+			Name:       "the_infanta/0",
+			AppName:    "the_infanta",
+			Type:       "gunicorn",
+			Machine:    107,
+			InstanceId: "i-0000043e",
+			Ip:         "10.10.10.168",
+			Status:     provision.StatusInstalling,
 		},
 	}
 	units, err := p.CollectStatus()
@@ -134,26 +378,28 @@ func (s *S) TestJujuCollectStatus(c *C) {
 	c.Assert(commandmocker.Ran(tmpdir), Equals, true)
 }
 
-func (s *S) TestJujuCollectStatusDirtyOutput(c *C) {
+func (s *S) TestCollectStatusDirtyOutput(c *C) {
 	tmpdir, err := commandmocker.Add("juju", dirtyCollectOutput)
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(tmpdir)
 	expected := []provision.Unit{
 		{
-			Name:    "as_i_rise/0",
-			AppName: "as_i_rise",
-			Type:    "django",
-			Machine: 105,
-			Ip:      "10.10.10.163",
-			Status:  provision.StatusStarted,
+			Name:       "as_i_rise/0",
+			AppName:    "as_i_rise",
+			Type:       "django",
+			Machine:    105,
+			InstanceId: "i-00000439",
+			Ip:         "10.10.10.163",
+			Status:     provision.StatusStarted,
 		},
 		{
-			Name:    "the_infanta/1",
-			AppName: "the_infanta",
-			Type:    "gunicorn",
-			Machine: 107,
-			Ip:      "10.10.10.168",
-			Status:  provision.StatusInstalling,
+			Name:       "the_infanta/1",
+			AppName:    "the_infanta",
+			Type:       "gunicorn",
+			Machine:    107,
+			InstanceId: "i-0000043e",
+			Ip:         "10.10.10.168",
+			Status:     provision.StatusInstalling,
 		},
 	}
 	p := JujuProvisioner{}
@@ -166,7 +412,7 @@ func (s *S) TestJujuCollectStatusDirtyOutput(c *C) {
 	c.Assert(commandmocker.Ran(tmpdir), Equals, true)
 }
 
-func (s *S) TestJujuCollectStatusFailure(c *C) {
+func (s *S) TestCollectStatusFailure(c *C) {
 	tmpdir, err := commandmocker.Error("juju", "juju failed", 1)
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(tmpdir)
@@ -180,7 +426,7 @@ func (s *S) TestJujuCollectStatusFailure(c *C) {
 	c.Assert(commandmocker.Ran(tmpdir), Equals, true)
 }
 
-func (s *S) TestJujuCollectStatusInvalidYAML(c *C) {
+func (s *S) TestCollectStatusInvalidYAML(c *C) {
 	tmpdir, err := commandmocker.Add("juju", "local: somewhere::")
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(tmpdir)
@@ -237,7 +483,7 @@ func (s *S) TestUnitStatus(c *C) {
 		instance     string
 		agent        string
 		machineAgent string
-		expected     string
+		expected     provision.Status
 	}{
 		{"something", "nothing", "wut", provision.StatusPending},
 		{"", "", "", provision.StatusCreating},

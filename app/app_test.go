@@ -1,4 +1,4 @@
-// Copyright 2012 tsuru authors. All rights reserved.
+// Copyright 2013 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -11,7 +11,7 @@ import (
 	"fmt"
 	"github.com/globocom/config"
 	"github.com/globocom/tsuru/api/auth"
-	"github.com/globocom/tsuru/api/bind"
+	"github.com/globocom/tsuru/app/bind"
 	"github.com/globocom/tsuru/db"
 	"github.com/globocom/tsuru/log"
 	"github.com/globocom/tsuru/provision"
@@ -22,6 +22,7 @@ import (
 	stdlog "log"
 	"os"
 	"path"
+	"sort"
 	"strings"
 )
 
@@ -56,7 +57,7 @@ func (s *S) TestDestroy(c *C) {
 			},
 		},
 	}
-	err := CreateApp(&a)
+	err := CreateApp(&a, 1)
 	c.Assert(err, IsNil)
 	err = a.Destroy()
 	c.Assert(err, IsNil)
@@ -73,7 +74,7 @@ func (s *S) TestDestroyWithoutUnits(c *C) {
 	ts := s.t.StartGandalfTestServer(&h)
 	defer ts.Close()
 	app := App{Name: "x4"}
-	err := CreateApp(&app)
+	err := CreateApp(&app, 1)
 	c.Assert(err, IsNil)
 	err = app.Destroy()
 	c.Assert(err, IsNil)
@@ -90,7 +91,7 @@ func (s *S) TestFailingDestroy(c *C) {
 		Teams:     []string{s.team.Name},
 		Units:     []Unit{{Name: "duvido", Machine: 3}},
 	}
-	err := CreateApp(&a)
+	err := CreateApp(&a, 1)
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": "ritual"})
 	err = a.Destroy()
@@ -105,9 +106,6 @@ func (s *S) TestCreateApp(c *C) {
 	h := testHandler{}
 	ts := s.t.StartGandalfTestServer(&h)
 	defer ts.Close()
-	server := FakeQueueServer{}
-	server.Start("127.0.0.1:0")
-	defer server.Stop()
 	a := App{
 		Name:      "appname",
 		Framework: "django",
@@ -115,13 +113,8 @@ func (s *S) TestCreateApp(c *C) {
 	}
 	expectedHost := "localhost"
 	config.Set("host", expectedHost)
-	old, err := config.Get("queue-server")
-	if err != nil {
-		defer config.Set("queue-server", old)
-	}
-	config.Set("queue-server", server.listener.Addr().String())
 
-	err = CreateApp(&a)
+	err := CreateApp(&a, 3)
 	c.Assert(err, IsNil)
 	defer a.Destroy()
 	c.Assert(a.State, Equals, "pending")
@@ -154,9 +147,19 @@ func (s *S) TestCreateApp(c *C) {
 		Action: RegenerateApprc,
 		Args:   []string{a.Name},
 	}
-	server.Lock()
-	defer server.Unlock()
-	c.Assert(server.messages, DeepEquals, []queue.Message{expectedMessage})
+	message, err := queue.Get(1e6)
+	c.Assert(err, IsNil)
+	defer queue.Delete(message)
+	c.Assert(message.Action, Equals, expectedMessage.Action)
+	c.Assert(message.Args, DeepEquals, expectedMessage.Args)
+	c.Assert(s.provisioner.GetUnits(&a), HasLen, 3)
+}
+
+func (s *S) TestCantCreateAppWithZeroUnits(c *C) {
+	a := App{Name: "paradisum"}
+	err := CreateApp(&a, 0)
+	c.Assert(err, NotNil)
+	c.Assert(err.Error(), Equals, "Cannot create app with 0 units.")
 }
 
 func (s *S) TestCantCreateTwoAppsWithTheSameName(c *C) {
@@ -164,7 +167,7 @@ func (s *S) TestCantCreateTwoAppsWithTheSameName(c *C) {
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": "appName"})
 	a := App{Name: "appName"}
-	err = CreateApp(&a)
+	err = CreateApp(&a, 1)
 	defer a.Destroy() // clean mess if test fail
 	c.Assert(err, NotNil)
 }
@@ -174,7 +177,7 @@ func (s *S) TestCantCreateAppWithInvalidName(c *C) {
 		Name:      "1123app",
 		Framework: "ruby",
 	}
-	err := CreateApp(&a)
+	err := CreateApp(&a, 1)
 	c.Assert(err, NotNil)
 	e, ok := err.(*ValidationError)
 	c.Assert(ok, Equals, true)
@@ -194,7 +197,7 @@ func (s *S) TestDoesNotSaveTheAppInTheDatabaseIfProvisionerFail(c *C) {
 		Framework: "ruby",
 		Units:     []Unit{{Machine: 1}},
 	}
-	err := CreateApp(&a)
+	err := CreateApp(&a, 1)
 	defer a.Destroy() // clean mess if test fail
 	c.Assert(err, NotNil)
 	expected := `exit status 1`
@@ -215,7 +218,7 @@ func (s *S) TestDeletesIAMCredentialsAndS3BucketIfProvisionerFail(c *C) {
 		Framework: "ruby",
 		Units:     []Unit{{Machine: 1}},
 	}
-	err := CreateApp(&a)
+	err := CreateApp(&a, 1)
 	defer a.Destroy() // clean mess if test fail
 	c.Assert(err, NotNil)
 	iam := getIAMEndpoint()
@@ -233,13 +236,188 @@ func (s *S) TestAppendOrUpdate(c *C) {
 		Name:      "appName",
 		Framework: "django",
 	}
-	u := Unit{Name: "i-00000zz8", Ip: "", Machine: 3}
+	u := Unit{Name: "i-00000zz8", Ip: "", Machine: 1}
 	a.AddUnit(&u)
 	c.Assert(len(a.Units), Equals, 1)
-	u = Unit{Name: "i-00000zz9", Ip: "192.168.0.12", Machine: 3, State: provision.StatusStarted}
+	u = Unit{
+		Name:  "i-00000zz8",
+		Ip:    "192.168.0.12",
+		State: string(provision.StatusStarted),
+	}
 	a.AddUnit(&u)
 	c.Assert(len(a.Units), Equals, 1)
 	c.Assert(a.Units[0], DeepEquals, u)
+}
+
+func (s *S) TestAddUnits(c *C) {
+	app := App{Name: "warpaint", Framework: "python"}
+	err := db.Session.Apps().Insert(app)
+	c.Assert(err, IsNil)
+	defer db.Session.Apps().Remove(bson.M{"name": app.Name})
+	s.provisioner.Provision(&app)
+	defer s.provisioner.Destroy(&app)
+	err = app.AddUnits(5)
+	c.Assert(err, IsNil)
+	units := s.provisioner.GetUnits(&app)
+	c.Assert(units, HasLen, 6)
+	err = app.AddUnits(2)
+	c.Assert(err, IsNil)
+	units = s.provisioner.GetUnits(&app)
+	c.Assert(units, HasLen, 8)
+	for _, unit := range units {
+		c.Assert(unit.AppName, Equals, app.Name)
+	}
+	err = app.Get()
+	c.Assert(err, IsNil)
+	c.Assert(app.Units, HasLen, 7)
+	var expectedMessages MessageList
+	names := make([]string, len(app.Units))
+	for i, unit := range app.Units {
+		names[i] = unit.Name
+		expected := fmt.Sprintf("%s/%d", app.Name, i+1)
+		c.Assert(unit.Name, Equals, expected)
+		messages := []queue.Message{
+			{Action: RegenerateApprc, Args: []string{app.Name, unit.Name}},
+			{Action: StartApp, Args: []string{app.Name, unit.Name}},
+		}
+		expectedMessages = append(expectedMessages, messages...)
+	}
+	gotMessages := make(MessageList, expectedMessages.Len())
+	for i := range expectedMessages {
+		message, err := queue.Get(1e6)
+		c.Assert(err, IsNil)
+		defer queue.Delete(message)
+		gotMessages[i] = queue.Message{
+			Action: message.Action,
+			Args:   message.Args,
+		}
+	}
+	sort.Sort(expectedMessages)
+	sort.Sort(gotMessages)
+	c.Assert(gotMessages, DeepEquals, expectedMessages)
+}
+
+func (s *S) TestAddZeroUnits(c *C) {
+	app := App{Name: "warpaint", Framework: "ruby"}
+	err := app.AddUnits(0)
+	c.Assert(err, NotNil)
+	c.Assert(err.Error(), Equals, "Cannot add zero units.")
+}
+
+func (s *S) TestAddUnitsFailureInProvisioner(c *C) {
+	app := App{Name: "scars", Framework: "golang"}
+	err := app.AddUnits(2)
+	c.Assert(err, NotNil)
+	c.Assert(err.Error(), Equals, "App is not provisioned.")
+}
+
+func (s *S) TestRemoveUnits(c *C) {
+	app := App{
+		Name:      "chemistry",
+		Framework: "python",
+		Units: []Unit{
+			{Name: "chemistry/0"},
+			{Name: "chemistry/1"},
+			{Name: "chemistry/2"},
+			{Name: "chemistry/3"},
+		},
+	}
+	err := db.Session.Apps().Insert(app)
+	c.Assert(err, IsNil)
+	defer db.Session.Apps().Remove(bson.M{"name": app.Name})
+	s.provisioner.Provision(&app)
+	defer s.provisioner.Destroy(&app)
+	s.provisioner.AddUnits(&app, 4)
+	err = app.RemoveUnits(2)
+	c.Assert(err, IsNil)
+	units := s.provisioner.GetUnits(&app)
+	c.Assert(units, HasLen, 3)
+	c.Assert(units[0].Name, Equals, "chemistry/2")
+	c.Assert(units[1].Name, Equals, "chemistry/3")
+	c.Assert(units[2].Name, Equals, "chemistry/4")
+	err = app.Get()
+	c.Assert(err, IsNil)
+	c.Assert(app.Units, HasLen, 2)
+	c.Assert(app.Units[0].Name, Equals, "chemistry/2")
+	c.Assert(app.Units[1].Name, Equals, "chemistry/3")
+}
+
+func (s *S) TestRemoveUnitsInvalidValues(c *C) {
+	var tests = []struct {
+		n        uint
+		expected string
+	}{
+		{0, "Cannot remove zero units."},
+		{4, "Cannot remove all units from an app."},
+		{5, "Cannot remove 5 units from this app, it has only 4 units."},
+	}
+	app := App{
+		Name:      "chemistry",
+		Framework: "python",
+		Units: []Unit{
+			{Name: "chemistry/0"},
+			{Name: "chemistry/1"},
+			{Name: "chemistry/2"},
+			{Name: "chemistry/3"},
+		},
+	}
+	err := db.Session.Apps().Insert(app)
+	c.Assert(err, IsNil)
+	defer db.Session.Apps().Remove(bson.M{"name": app.Name})
+	s.provisioner.Provision(&app)
+	defer s.provisioner.Destroy(&app)
+	s.provisioner.AddUnits(&app, 4)
+	for _, test := range tests {
+		err := app.RemoveUnits(test.n)
+		c.Check(err, NotNil)
+		c.Check(err.Error(), Equals, test.expected)
+	}
+}
+
+func (s *S) TestRemoveUnitsFailureInProvisioner(c *C) {
+	s.provisioner.PrepareFailure("RemoveUnits", errors.New("Cannot remove these units."))
+	app := App{
+		Name:      "paradisum",
+		Framework: "python",
+		Units:     []Unit{{Name: "paradisum/0"}, {Name: "paradisum/1"}},
+	}
+	err := db.Session.Apps().Insert(app)
+	c.Assert(err, IsNil)
+	defer db.Session.Apps().Remove(bson.M{"name": app.Name})
+	s.provisioner.Provision(&app)
+	defer s.provisioner.Destroy(&app)
+	err = app.RemoveUnits(1)
+	c.Assert(err, NotNil)
+	c.Assert(err.Error(), Equals, "Cannot remove these units.")
+}
+
+func (s *S) TestRemoveUnitsFromIndicesSlice(c *C) {
+	var tests = []struct {
+		input    []Unit
+		indices  []int
+		expected []Unit
+	}{
+		{
+			input:    []Unit{{Name: "unit1"}, {Name: "unit2"}, {Name: "unit3"}, {Name: "unit4"}},
+			indices:  []int{0, 1, 2},
+			expected: []Unit{{Name: "unit4"}},
+		},
+		{
+			input:    []Unit{{Name: "unit1"}, {Name: "unit2"}, {Name: "unit3"}, {Name: "unit4"}},
+			indices:  []int{0, 3, 4},
+			expected: []Unit{{Name: "unit2"}},
+		},
+		{
+			input:    []Unit{{Name: "unit1"}, {Name: "unit2"}, {Name: "unit3"}, {Name: "unit4"}},
+			indices:  []int{4},
+			expected: []Unit{{Name: "unit1"}, {Name: "unit2"}, {Name: "unit3"}},
+		},
+	}
+	for _, t := range tests {
+		a := App{Units: t.input}
+		a.removeUnits(t.indices)
+		c.Check(a.Units, DeepEquals, t.expected)
+	}
 }
 
 func (s *S) TestGrantAccess(c *C) {
@@ -584,7 +762,7 @@ pos-restart:
 	a := App{
 		Name:      "something",
 		Framework: "django",
-		State:     provision.StatusStarted,
+		State:     string(provision.StatusStarted),
 	}
 	err := a.loadHooks()
 	c.Assert(err, IsNil)
@@ -604,7 +782,7 @@ pos-restart:
 	a := App{
 		Name:      "something",
 		Framework: "django",
-		State:     provision.StatusStarted,
+		State:     string(provision.StatusStarted),
 	}
 	err := a.loadHooks()
 	c.Assert(err, IsNil)
@@ -625,7 +803,7 @@ func (s *S) TestPreRestart(c *C) {
 	a := App{
 		Name:      "something",
 		Framework: "django",
-		State:     provision.StatusStarted,
+		State:     string(provision.StatusStarted),
 		hooks: &conf{
 			PreRestart: []string{"pre.sh"},
 			PosRestart: []string{"pos.sh"},
@@ -658,7 +836,7 @@ func (s *S) TestSkipsPreRestartWhenPreRestartSectionDoesNotExists(c *C) {
 	a := App{
 		Name:      "something",
 		Framework: "django",
-		Units:     []Unit{{State: provision.StatusStarted, Machine: 1}},
+		Units:     []Unit{{State: string(provision.StatusStarted), Machine: 1}},
 		hooks:     &conf{PosRestart: []string{"somescript.sh"}},
 	}
 	w := new(bytes.Buffer)
@@ -675,7 +853,7 @@ func (s *S) TestPosRestart(c *C) {
 	a := App{
 		Name:      "something",
 		Framework: "django",
-		State:     provision.StatusStarted,
+		State:     string(provision.StatusStarted),
 		hooks:     &conf{PosRestart: []string{"pos.sh"}},
 	}
 	w := new(bytes.Buffer)
@@ -700,7 +878,7 @@ func (s *S) TestSkipsPosRestartWhenPosRestartSectionDoesNotExists(c *C) {
 	a := App{
 		Name:      "something",
 		Framework: "django",
-		Units:     []Unit{{State: provision.StatusStarted, Machine: 1}},
+		Units:     []Unit{{State: string(provision.StatusStarted), Machine: 1}},
 		hooks:     &conf{PreRestart: []string{"somescript.sh"}},
 	}
 	w := new(bytes.Buffer)
@@ -718,13 +896,13 @@ func (s *S) TestInstallDeps(c *C) {
 		Name:      "someApp",
 		Framework: "django",
 		Teams:     []string{s.team.Name},
-		State:     provision.StatusStarted,
+		State:     string(provision.StatusStarted),
 	}
 	err := db.Session.Apps().Insert(a)
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
 	var buf bytes.Buffer
-	err = InstallDeps(&a, &buf)
+	err = a.InstallDeps(&buf)
 	c.Assert(err, IsNil)
 	c.Assert(buf.String(), Equals, "dependencies installed")
 	cmds := s.provisioner.GetCmds("/var/lib/tsuru/hooks/dependencies", &a)
@@ -738,10 +916,10 @@ func (s *S) TestRestart(c *C) {
 		Name:      "someApp",
 		Framework: "django",
 		Teams:     []string{s.team.Name},
-		State:     provision.StatusStarted,
+		State:     string(provision.StatusStarted),
 	}
 	var b bytes.Buffer
-	err := Restart(&a, &b)
+	err := a.Restart(&b)
 	c.Assert(err, IsNil)
 	result := strings.Replace(b.String(), "\n", "#", -1)
 	c.Assert(result, Matches, ".*# ---> Restarting your app#.*")
@@ -756,11 +934,11 @@ func (s *S) TestRestartRunsPreRestartHook(c *C) {
 		Name:      "someApp",
 		Framework: "django",
 		Teams:     []string{s.team.Name},
-		State:     provision.StatusStarted,
+		State:     string(provision.StatusStarted),
 		hooks:     &conf{PreRestart: []string{"pre.sh"}},
 	}
 	var buf bytes.Buffer
-	err := Restart(&a, &buf)
+	err := a.Restart(&buf)
 	c.Assert(err, IsNil)
 	content := buf.String()
 	content = strings.Replace(content, "\n", "###", -1)
@@ -774,11 +952,11 @@ func (s *S) TestRestartRunsPosRestartHook(c *C) {
 		Name:      "someApp",
 		Framework: "django",
 		Teams:     []string{s.team.Name},
-		State:     provision.StatusStarted,
+		State:     string(provision.StatusStarted),
 		hooks:     &conf{PosRestart: []string{"pos.sh"}},
 	}
 	var buf bytes.Buffer
-	err := Restart(&a, &buf)
+	err := a.Restart(&buf)
 	c.Assert(err, IsNil)
 	content := buf.String()
 	content = strings.Replace(content, "\n", "###", -1)
@@ -832,7 +1010,7 @@ func (s *S) TestLogShouldNotLogBlankLines(c *C) {
 
 func (s *S) TestGetTeams(c *C) {
 	app := App{Name: "app", Teams: []string{s.team.Name}}
-	teams := app.teams()
+	teams := app.GetTeams()
 	c.Assert(teams, HasLen, 1)
 	c.Assert(teams[0].Name, Equals, s.team.Name)
 }
@@ -861,6 +1039,7 @@ func (s *S) TestAppMarshalJson(c *C) {
 		State:     "State",
 		Framework: "Framework",
 		Teams:     []string{"team1"},
+		Ip:        "10.10.10.1",
 	}
 	expected := make(map[string]interface{})
 	expected["Name"] = "Name"
@@ -868,7 +1047,8 @@ func (s *S) TestAppMarshalJson(c *C) {
 	expected["Framework"] = "Framework"
 	expected["Repository"] = repository.GetUrl(app.Name)
 	expected["Teams"] = []interface{}{"team1"}
-	expected["Units"] = interface{}(nil)
+	expected["Units"] = nil
+	expected["Ip"] = "10.10.10.1"
 	data, err := app.MarshalJSON()
 	c.Assert(err, IsNil)
 	result := make(map[string]interface{})
@@ -879,7 +1059,7 @@ func (s *S) TestAppMarshalJson(c *C) {
 
 func (s *S) TestRun(c *C) {
 	s.provisioner.PrepareOutput([]byte("a lot of files"))
-	app := App{Name: "myapp", State: provision.StatusStarted}
+	app := App{Name: "myapp", State: string(provision.StatusStarted)}
 	var buf bytes.Buffer
 	err := app.Run("ls -lh", &buf)
 	c.Assert(err, IsNil)
@@ -893,7 +1073,7 @@ func (s *S) TestRun(c *C) {
 
 func (s *S) TestRunWithoutEnv(c *C) {
 	s.provisioner.PrepareOutput([]byte("a lot of files"))
-	app := App{Name: "myapp", State: provision.StatusStarted}
+	app := App{Name: "myapp", State: string(provision.StatusStarted)}
 	var buf bytes.Buffer
 	err := app.run("ls -lh", &buf)
 	c.Assert(err, IsNil)
@@ -904,7 +1084,7 @@ func (s *S) TestRunWithoutEnv(c *C) {
 
 func (s *S) TestCommand(c *C) {
 	s.provisioner.PrepareOutput([]byte("lots of files"))
-	app := App{Name: "myapp", State: provision.StatusStarted}
+	app := App{Name: "myapp", State: string(provision.StatusStarted)}
 	var buf bytes.Buffer
 	err := app.Command(&buf, &buf, "ls -lh")
 	c.Assert(err, IsNil)
@@ -922,7 +1102,7 @@ func (s *S) TestSerializeEnvVars(c *C) {
 	app := App{
 		Name:  "time",
 		Teams: []string{s.team.Name},
-		State: provision.StatusStarted,
+		State: string(provision.StatusStarted),
 		Env: map[string]bind.EnvVar{
 			"http_proxy": {
 				Name:   "http_proxy",
@@ -962,7 +1142,7 @@ func (s *S) TestSerializeEnvVarsErrorWithOutput(c *C) {
 	s.provisioner.PrepareFailure("ExecuteCommand", errors.New("exit status 1"))
 	app := App{
 		Name:  "intheend",
-		State: provision.StatusStarted,
+		State: string(provision.StatusStarted),
 		Env: map[string]bind.EnvVar{
 			"https_proxy": {
 				Name:   "https_proxy",

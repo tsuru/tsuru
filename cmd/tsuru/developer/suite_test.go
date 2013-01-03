@@ -51,6 +51,7 @@ func (t *conditionalTransport) RoundTrip(req *http.Request) (*http.Response, err
 func (s *S) SetUpTest(c *C) {
 	var stdout, stderr bytes.Buffer
 	manager = cmd.NewManager("glb", version, header, &stdout, &stderr, os.Stdin)
-	tsuru.AppName = new(string)
-	tsuru.AssumeYes = new(bool)
+	*tsuru.AppName = ""
+	*AssumeYes = false
+	*NumUnits = 1
 }

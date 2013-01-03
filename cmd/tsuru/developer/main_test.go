@@ -173,3 +173,17 @@ func (s *S) TestAppInfoIsRegistered(c *C) {
 	c.Assert(ok, Equals, true)
 	c.Assert(list, FitsTypeOf, &tsuru.AppInfo{})
 }
+
+func (s *S) TestUnitAddIsRegistered(c *C) {
+	manager := buildManager("tsuru")
+	addunit, ok := manager.Commands["unit-add"]
+	c.Assert(ok, Equals, true)
+	c.Assert(addunit, FitsTypeOf, &UnitAdd{})
+}
+
+func (s *S) TestUnitRemoveIsRegistered(c *C) {
+	manager := buildManager("tsuru")
+	rmunit, ok := manager.Commands["unit-remove"]
+	c.Assert(ok, Equals, true)
+	c.Assert(rmunit, FitsTypeOf, &UnitRemove{})
+}

@@ -1,4 +1,4 @@
-// Copyright 2012 tsuru authors. All rights reserved.
+// Copyright 2013 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -11,8 +11,8 @@ import (
 	"fmt"
 	"github.com/globocom/config"
 	"github.com/globocom/tsuru/api/auth"
-	"github.com/globocom/tsuru/api/bind"
 	"github.com/globocom/tsuru/api/service"
+	"github.com/globocom/tsuru/app/bind"
 	"github.com/globocom/tsuru/db"
 	"github.com/globocom/tsuru/log"
 	"github.com/globocom/tsuru/provision"
@@ -29,7 +29,10 @@ import (
 	"time"
 )
 
-const RegenerateApprc = "regenerate-apprc"
+const (
+	RegenerateApprc = "regenerate-apprc"
+	StartApp        = "start-app"
+)
 
 var Provisioner provision.Provisioner
 
@@ -50,6 +53,7 @@ type App struct {
 	Logs      []Applog
 	Name      string
 	State     string
+	Ip        string
 	Units     []Unit
 	Teams     []string
 	hooks     *conf
@@ -63,6 +67,7 @@ func (a *App) MarshalJSON() ([]byte, error) {
 	result["Teams"] = a.Teams
 	result["Units"] = a.Units
 	result["Repository"] = repository.GetUrl(a.Name)
+	result["Ip"] = a.Ip
 	return json.Marshal(&result)
 }
 
@@ -88,8 +93,11 @@ func (a *App) Get() error {
 //       1. Save the app in the database
 //       2. Create S3 credentials and bucket for the app
 //       3. Create the git repository using gandalf
-//       4. Provision the unit within the provisioner
-func CreateApp(a *App) error {
+//       4. Provision units within the provisioner
+func CreateApp(a *App, units uint) error {
+	if units == 0 {
+		return &ValidationError{Message: "Cannot create app with 0 units."}
+	}
 	if !a.isValid() {
 		msg := "Invalid app name, your app should have at most 63 " +
 			"characters, containing only lower case letters or numbers, " +
@@ -102,7 +110,7 @@ func CreateApp(a *App) error {
 		new(createRepository),
 		new(provisionApp),
 	}
-	return execute(a, actions)
+	return execute(a, actions, units)
 }
 
 func (a *App) unbind() error {
@@ -156,14 +164,93 @@ func (a *App) Destroy() error {
 	return db.Session.Apps().Remove(bson.M{"name": a.Name})
 }
 
+// AddUnit adds a new unit to the app (or update an existing unit). It just updates
+// the internal list of units, it does not talk to the provisioner. For
+// provisioning a new unit for the app, one should use AddUnits method, which
+// receives the number of units that you want to provision.
 func (a *App) AddUnit(u *Unit) {
 	for i, unt := range a.Units {
-		if unt.Machine == u.Machine {
+		if unt.Name == u.Name {
 			a.Units[i] = *u
 			return
 		}
 	}
 	a.Units = append(a.Units, *u)
+}
+
+// AddUnits creates n new units within the provisioner, saves new units in the
+// database and enqueues the apprc serialization.
+func (a *App) AddUnits(n uint) error {
+	if n == 0 {
+		return errors.New("Cannot add zero units.")
+	}
+	units, err := Provisioner.AddUnits(a, n)
+	if err != nil {
+		return err
+	}
+	qArgs := make([]string, len(units)+1)
+	qArgs[0] = a.Name
+	length := len(a.Units)
+	appUnits := make([]Unit, len(units))
+	a.Units = append(a.Units, appUnits...)
+	messages := make([]queue.Message, len(units)*2)
+	mCount := 0
+	for i, unit := range units {
+		a.Units[i+length] = Unit{
+			Name:    unit.Name,
+			Type:    unit.Type,
+			Ip:      unit.Ip,
+			Machine: unit.Machine,
+			State:   provision.StatusPending.String(),
+		}
+		qArgs[i+1] = unit.Name
+		messages[mCount] = queue.Message{Action: RegenerateApprc, Args: []string{a.Name, unit.Name}}
+		messages[mCount+1] = queue.Message{Action: StartApp, Args: []string{a.Name, unit.Name}}
+		mCount += 2
+	}
+	err = db.Session.Apps().Update(bson.M{"name": a.Name}, a)
+	if err != nil {
+		return err
+	}
+	go a.enqueue(messages...)
+	return nil
+}
+
+func (a *App) removeUnits(indices []int) {
+	sequential := true
+	for i := range indices {
+		if i != indices[i] {
+			sequential = false
+			break
+		}
+	}
+	if sequential {
+		a.Units = a.Units[len(indices):]
+	} else {
+		for i, index := range indices {
+			index -= i
+			if index+1 < len(a.Units) {
+				copy(a.Units[index:], a.Units[index+1:])
+			}
+			a.Units = a.Units[:len(a.Units)-1]
+		}
+	}
+}
+
+func (a *App) RemoveUnits(n uint) error {
+	if n == 0 {
+		return errors.New("Cannot remove zero units.")
+	} else if l := uint(len(a.Units)); l == n {
+		return errors.New("Cannot remove all units from an app.")
+	} else if n > l {
+		return fmt.Errorf("Cannot remove %d units from this app, it has only %d units.", n, l)
+	}
+	indices, err := Provisioner.RemoveUnits(a, n)
+	if err != nil {
+		return err
+	}
+	a.removeUnits(indices)
+	return db.Session.Apps().Update(bson.M{"name": a.Name}, a)
 }
 
 func (a *App) Find(team *auth.Team) (int, bool) {
@@ -197,7 +284,7 @@ func (a *App) Revoke(team *auth.Team) error {
 	return nil
 }
 
-func (a *App) teams() []auth.Team {
+func (a *App) GetTeams() []auth.Team {
 	var teams []auth.Team
 	db.Session.Teams().Find(bson.M{"_id": bson.M{"$in": a.Teams}}).All(&teams)
 	return teams
@@ -343,7 +430,7 @@ func (a *App) Run(cmd string, w io.Writer) error {
 }
 
 func (a *App) run(cmd string, w io.Writer) error {
-	if a.State != provision.StatusStarted {
+	if a.State != string(provision.StatusStarted) {
 		return fmt.Errorf("App must be started to run commands, but it is %q.", a.State)
 	}
 	return Provisioner.ExecuteCommand(w, w, a, cmd)
@@ -356,7 +443,7 @@ func (a *App) Command(stdout, stderr io.Writer, cmdArgs ...string) error {
 
 // Restart runs the restart hook for the app
 // and returns your output.
-func Restart(a *App, w io.Writer) error {
+func (a *App) Restart(w io.Writer) error {
 	a.Log("executing hook to restart", "tsuru")
 	err := a.preRestart(w)
 	if err != nil {
@@ -375,7 +462,7 @@ func Restart(a *App, w io.Writer) error {
 
 // InstallDeps runs the dependencies hook for the app
 // and returns your output.
-func InstallDeps(a *App, w io.Writer) error {
+func (a *App) InstallDeps(w io.Writer) error {
 	return a.run("/var/lib/tsuru/hooks/dependencies", w)
 }
 
@@ -449,21 +536,11 @@ func (a *App) SetEnvs(envs []bind.EnvVar, publicOnly bool) error {
 	return a.SetEnvsToApp(e, publicOnly, false)
 }
 
-func (a *App) enqueueApprcRegeneration() error {
-	addr, err := config.GetString("queue-server")
-	if err != nil {
-		return err
+func (a *App) enqueue(msgs ...queue.Message) {
+	for _, msg := range msgs {
+		copy := msg
+		queue.Put(&copy)
 	}
-	messages, _, err := queue.Dial(addr)
-	if err != nil {
-		return err
-	}
-	messages <- queue.Message{
-		Action: RegenerateApprc,
-		Args:   []string{a.Name},
-	}
-	close(messages)
-	return nil
 }
 
 // SetEnvsToApp adds environment variables to an app, serializing the resulting
@@ -494,7 +571,7 @@ func (app *App) SetEnvsToApp(envs []bind.EnvVar, publicOnly, useQueue bool) erro
 			return err
 		}
 		if useQueue {
-			return app.enqueueApprcRegeneration()
+			return queue.Put(&queue.Message{Action: RegenerateApprc, Args: []string{app.Name}})
 		}
 		app.SerializeEnvVars()
 	}

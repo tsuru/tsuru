@@ -7,7 +7,7 @@ package log
 import (
 	"bytes"
 	. "launchpad.net/gocheck"
-	stdlog "log"
+	"log"
 	"testing"
 )
 
@@ -20,7 +20,7 @@ var _ = Suite(&S{})
 func (s *S) TestLogPanic(c *C) {
 	buf := &bytes.Buffer{}
 	defer buf.Reset()
-	SetLogger(stdlog.New(buf, "", 0))
+	SetLogger(log.New(buf, "", 0))
 	defer func() {
 		c.Assert(recover(), Equals, "log anything")
 	}()
@@ -30,7 +30,7 @@ func (s *S) TestLogPanic(c *C) {
 func (s *S) TestLogPanicf(c *C) {
 	buf := &bytes.Buffer{}
 	defer buf.Reset()
-	SetLogger(stdlog.New(buf, "", 0))
+	SetLogger(log.New(buf, "", 0))
 	defer func() {
 		c.Assert(recover(), Equals, "log anything formatted")
 	}()
@@ -40,7 +40,7 @@ func (s *S) TestLogPanicf(c *C) {
 func (s *S) TestLogPrint(c *C) {
 	buf := &bytes.Buffer{}
 	defer buf.Reset()
-	SetLogger(stdlog.New(buf, "", 0))
+	SetLogger(log.New(buf, "", 0))
 	Print("log anything")
 	c.Assert(buf.String(), Equals, "log anything\n")
 }
@@ -48,7 +48,7 @@ func (s *S) TestLogPrint(c *C) {
 func (s *S) TestLogPrintf(c *C) {
 	buf := &bytes.Buffer{}
 	defer buf.Reset()
-	SetLogger(stdlog.New(buf, "", 0))
+	SetLogger(log.New(buf, "", 0))
 	Printf("log anything %d", 1)
 	c.Assert(buf.String(), Equals, "log anything 1\n")
 }
@@ -83,4 +83,13 @@ func (s *S) TestLogPrintfWithoutTarget(c *C) {
 		c.Assert(recover(), IsNil)
 	}()
 	Printf("log anything %d", 1)
+}
+
+func BenchmarkLogging(b *testing.B) {
+	var buf bytes.Buffer
+	target := new(Target)
+	target.SetLogger(log.New(&buf, "", 0))
+	for i := 0; i < b.N; i++ {
+		target.Printf("Log message number %d.", i+1)
+	}
 }

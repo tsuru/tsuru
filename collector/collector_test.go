@@ -15,12 +15,13 @@ import (
 func getOutput() []provision.Unit {
 	return []provision.Unit{
 		{
-			Name:    "i-00000zz8",
-			AppName: "umaappqq",
-			Type:    "python",
-			Machine: 1,
-			Ip:      "192.168.0.11",
-			Status:  provision.StatusStarted,
+			Name:       "i-00000zz8",
+			AppName:    "umaappqq",
+			Type:       "python",
+			Machine:    1,
+			InstanceId: "i-0800",
+			Ip:         "192.168.0.11",
+			Status:     provision.StatusStarted,
 		},
 	}
 }
@@ -43,19 +44,21 @@ func (s *S) TestUpdate(c *C) {
 	c.Assert(a.Units[0].Name, Equals, "i-00000zz8")
 	c.Assert(a.Units[0].Ip, Equals, "192.168.0.11")
 	c.Assert(a.Units[0].Machine, Equals, 1)
-	c.Assert(a.Units[0].State, Equals, provision.StatusStarted)
+	c.Assert(a.Units[0].InstanceId, Equals, "i-0800")
+	c.Assert(a.Units[0].State, Equals, string(provision.StatusStarted))
 }
 
 func (s *S) TestUpdateWithMultipleUnits(c *C) {
 	a := getApp(c)
 	out := getOutput()
 	u := provision.Unit{
-		Name:    "i-00000zz9",
-		AppName: "umaappqq",
-		Type:    "python",
-		Machine: 2,
-		Ip:      "192.168.0.12",
-		Status:  provision.StatusStarted,
+		Name:       "i-00000zz9",
+		AppName:    "umaappqq",
+		Type:       "python",
+		Machine:    2,
+		InstanceId: "i-0900",
+		Ip:         "192.168.0.12",
+		Status:     provision.StatusStarted,
 	}
 	out = append(out, u)
 	update(out)
@@ -70,7 +73,8 @@ func (s *S) TestUpdateWithMultipleUnits(c *C) {
 	}
 	c.Assert(unit.Name, Equals, "i-00000zz9")
 	c.Assert(unit.Ip, Equals, "192.168.0.12")
-	c.Assert(unit.State, Equals, provision.StatusStarted)
+	c.Assert(unit.InstanceId, Equals, "i-0900")
+	c.Assert(unit.State, Equals, string(provision.StatusStarted))
 }
 
 func (s *S) TestUpdateWithDownMachine(c *C) {
@@ -90,7 +94,7 @@ func (s *S) TestUpdateWithDownMachine(c *C) {
 	update(units)
 	err = a.Get()
 	c.Assert(err, IsNil)
-	c.Assert(a.State, Equals, provision.StatusPending)
+	c.Assert(a.State, Equals, string(provision.StatusPending))
 }
 
 func (s *S) TestUpdateTwice(c *C) {
@@ -103,7 +107,8 @@ func (s *S) TestUpdateTwice(c *C) {
 	c.Assert(a.State, Equals, "started")
 	c.Assert(a.Units[0].Ip, Equals, "192.168.0.11")
 	c.Assert(a.Units[0].Machine, Equals, 1)
-	c.Assert(a.Units[0].State, Equals, provision.StatusStarted)
+	c.Assert(a.Units[0].InstanceId, Equals, "i-0800")
+	c.Assert(a.Units[0].State, Equals, string(provision.StatusStarted))
 	update(out)
 	err = a.Get()
 	c.Assert(len(a.Units), Equals, 1)

@@ -8,7 +8,7 @@ import (
 	"bytes"
 	"crypto/rand"
 	"fmt"
-	"github.com/globocom/tsuru/api/bind"
+	"github.com/globocom/tsuru/app/bind"
 	"github.com/globocom/tsuru/db"
 	"labix.org/v2/mgo/bson"
 	. "launchpad.net/gocheck"
@@ -102,7 +102,7 @@ func (s *S) TestDestroyBucket(c *C) {
 	}
 	bucket := fmt.Sprintf("battery%x", patchRandomReader())
 	defer unpatchRandomReader()
-	err := CreateApp(&app)
+	err := CreateApp(&app, 1)
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": app.Name})
 	err = destroyBucket(&app)

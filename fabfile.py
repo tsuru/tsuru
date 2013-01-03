@@ -12,7 +12,7 @@ env.user = 'ubuntu'
 env.tsuru_path = '/home/%s/tsuru' % env.user
 
 
-def build():
+def build(flags=""):
     goos = local("go env GOOS", capture=True)
     goarch = local("go env GOARCH", capture=True)
     if goos != "linux" or goarch != "amd64":
@@ -20,8 +20,8 @@ def build():
               "you're on %s_%s" % (goos, goarch))
     local("mkdir -p dist")
     local("go clean ./...")
-    local("go build -a -o dist/collector ./collector")
-    local("go build -a -o dist/webserver ./api/webserver")
+    local("go build %s -a -o dist/collector ./collector" % flags)
+    local("go build %s -a -o dist/webserver ./api/webserver" % flags)
 
 
 def clean():
@@ -38,12 +38,14 @@ def send():
 def restart():
     with cd(env.tsuru_path):
         run("tar -xzf dist.tar.gz")
-    run("circusctl restart web")
-    run("circusctl restart collector")
+    run('GORACE="log_path=%s/webserver.race.log" circusctl restart web' %
+        env.tsuru_path)
+    run('GORACE="log_path=%s/collector.race.log" circusctl restart collector' %
+        env.tsuru_path)
 
 
-def deploy():
-    build()
+def deploy(flags=""):
+    build(flags)
     send()
     restart()
     clean()

@@ -22,6 +22,8 @@ func buildManager(name string) *cmd.Manager {
 	m.Register(&tsuru.AppInfo{})
 	m.Register(&AppCreate{})
 	m.Register(&AppRemove{})
+	m.Register(&UnitAdd{})
+	m.Register(&UnitRemove{})
 	m.Register(&tsuru.AppList{})
 	m.Register(&tsuru.AppLog{})
 	m.Register(&tsuru.AppGrant{})

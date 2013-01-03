@@ -7,11 +7,11 @@ package api
 import (
 	"encoding/json"
 	"fmt"
-	gandalf "github.com/globocom/go-gandalfclient"
+	"github.com/globocom/go-gandalfclient"
 	"github.com/globocom/tsuru/api/auth"
-	"github.com/globocom/tsuru/api/bind"
 	"github.com/globocom/tsuru/api/service"
 	"github.com/globocom/tsuru/app"
+	"github.com/globocom/tsuru/app/bind"
 	"github.com/globocom/tsuru/db"
 	"github.com/globocom/tsuru/errors"
 	"github.com/globocom/tsuru/log"
@@ -77,11 +77,11 @@ func CloneRepositoryHandler(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	err = app.InstallDeps(&instance, &logWriter)
+	err = instance.InstallDeps(&logWriter)
 	if err != nil {
 		return err
 	}
-	err = app.Restart(&instance, &logWriter)
+	err = instance.Restart(&logWriter)
 	if err != nil {
 		return err
 	}
@@ -131,16 +131,14 @@ func getTeamNames(u *auth.User) ([]string, error) {
 
 func AppList(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	apps, err := app.List(u)
+	if err != nil {
+		return err
+	}
 	if len(apps) == 0 {
 		w.WriteHeader(http.StatusNoContent)
 		return nil
 	}
-	b, err := json.Marshal(apps)
-	if err != nil {
-		return err
-	}
-	fmt.Fprint(w, string(b))
-	return nil
+	return json.NewEncoder(w).Encode(apps)
 }
 
 func AppInfo(w http.ResponseWriter, r *http.Request, u *auth.User) error {
@@ -148,15 +146,10 @@ func AppInfo(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	if err != nil {
 		return err
 	}
-	b, err := json.Marshal(&app)
-	if err != nil {
-		return err
-	}
-	fmt.Fprint(w, string(b))
-	return nil
+	return json.NewEncoder(w).Encode(&app)
 }
 
-func createAppHelper(instance *app.App, u *auth.User) ([]byte, error) {
+func createAppHelper(instance *app.App, u *auth.User, units uint) ([]byte, error) {
 	teams, err := u.Teams()
 	if err != nil {
 		return nil, err
@@ -166,7 +159,7 @@ func createAppHelper(instance *app.App, u *auth.User) ([]byte, error) {
 		return nil, &errors.Http{Code: http.StatusForbidden, Message: msg}
 	}
 	instance.SetTeams(teams)
-	err = app.CreateApp(instance)
+	err = app.CreateApp(instance, units)
 	if err != nil {
 		log.Printf("Got error while creating app: %s", err)
 		if e, ok := err.(*app.ValidationError); ok {
@@ -185,23 +178,84 @@ func createAppHelper(instance *app.App, u *auth.User) ([]byte, error) {
 	return json.Marshal(msg)
 }
 
+type jsonApp struct {
+	Name      string
+	Framework string
+	Units     uint
+}
+
 func CreateAppHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	var app app.App
+	var japp jsonApp
 	defer r.Body.Close()
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		return err
 	}
-	if err = json.Unmarshal(body, &app); err != nil {
+	if err = json.Unmarshal(body, &japp); err != nil {
 		return err
 	}
-	jsonMsg, err := createAppHelper(&app, u)
+	app.Name = japp.Name
+	app.Framework = japp.Framework
+	if japp.Units == 0 {
+		japp.Units = 1
+	}
+	jsonMsg, err := createAppHelper(&app, u, japp.Units)
 	if err != nil {
 		return err
 	}
-
 	fmt.Fprint(w, string(jsonMsg))
 	return nil
+}
+
+func numberOfUnitsOrError(r *http.Request) (uint, error) {
+	missingMsg := "You must provide the number of units."
+	if r.Body == nil {
+		return 0, &errors.Http{Code: http.StatusBadRequest, Message: missingMsg}
+	}
+	defer r.Body.Close()
+	b, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		return 0, err
+	}
+	value := string(b)
+	if value == "" {
+		return 0, &errors.Http{Code: http.StatusBadRequest, Message: missingMsg}
+	}
+	n, err := strconv.ParseUint(value, 10, 32)
+	if err != nil || n == 0 {
+		return 0, &errors.Http{
+			Code:    http.StatusBadRequest,
+			Message: "Invalid number of units: the number must be an integer greater than 0.",
+		}
+	}
+	return uint(n), nil
+}
+
+func AddUnitsHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
+	n, err := numberOfUnitsOrError(r)
+	if err != nil {
+		return err
+	}
+	appName := r.URL.Query().Get(":name")
+	app, err := getAppOrError(appName, u)
+	if err != nil {
+		return err
+	}
+	return app.AddUnits(n)
+}
+
+func RemoveUnitsHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
+	n, err := numberOfUnitsOrError(r)
+	if err != nil {
+		return err
+	}
+	appName := r.URL.Query().Get(":name")
+	app, err := getAppOrError(appName, u)
+	if err != nil {
+		return err
+	}
+	return app.RemoveUnits(uint(n))
 }
 
 func grantAccessToTeam(appName, teamName string, u *auth.User) error {
@@ -232,6 +286,28 @@ func GrantAccessToTeamHandler(w http.ResponseWriter, r *http.Request, u *auth.Us
 	return grantAccessToTeam(appName, teamName, u)
 }
 
+func getEmailsForRevoking(app *app.App, t *auth.Team) []string {
+	var i int
+	teams := app.GetTeams()
+	users := make([]string, len(t.Users))
+	for _, email := range t.Users {
+		found := false
+		for _, team := range teams {
+			for _, user := range team.Users {
+				if user == email {
+					found = true
+					break
+				}
+			}
+		}
+		if !found {
+			users[i] = email
+			i++
+		}
+	}
+	return users[:i]
+}
+
 func revokeAccessFromTeam(appName, teamName string, u *auth.User) error {
 	t := new(auth.Team)
 	app, err := getAppOrError(appName, u)
@@ -254,9 +330,12 @@ func revokeAccessFromTeam(appName, teamName string, u *auth.User) error {
 	if err != nil {
 		return err
 	}
-	gUrl := repository.GitServerUri()
-	if err := (&gandalf.Client{Endpoint: gUrl}).RevokeAccess([]string{app.Name}, t.Users); err != nil {
-		return &errors.Http{Code: http.StatusInternalServerError, Message: err.Error()}
+	users := getEmailsForRevoking(&app, t)
+	if len(users) > 0 {
+		gUrl := repository.GitServerUri()
+		if err := (&gandalf.Client{Endpoint: gUrl}).RevokeAccess([]string{app.Name}, users); err != nil {
+			return &errors.Http{Code: http.StatusInternalServerError, Message: err.Error()}
+		}
 	}
 	return nil
 }
@@ -472,11 +551,12 @@ func UnbindHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 }
 
 func RestartHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
+	w.Header().Set("Content-Type", "text")
 	instance, err := getAppOrError(r.URL.Query().Get(":name"), u)
 	if err != nil {
 		return err
 	}
-	return app.Restart(&instance, w)
+	return instance.Restart(w)
 }
 
 func AddLogHandler(w http.ResponseWriter, r *http.Request) error {

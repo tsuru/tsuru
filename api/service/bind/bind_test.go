@@ -6,15 +6,16 @@ package service_test
 
 import (
 	"github.com/globocom/tsuru/api/auth"
-	"github.com/globocom/tsuru/api/bind"
 	"github.com/globocom/tsuru/api/service"
 	"github.com/globocom/tsuru/app"
+	"github.com/globocom/tsuru/app/bind"
 	"github.com/globocom/tsuru/db"
 	"github.com/globocom/tsuru/errors"
 	"labix.org/v2/mgo/bson"
 	. "launchpad.net/gocheck"
 	"net/http"
 	"net/http/httptest"
+	"sync/atomic"
 	"testing"
 	"time"
 )
@@ -296,9 +297,11 @@ func (s *S) TestUnbindRemovesEnvironmentVariableFromApp(c *C) {
 }
 
 func (s *S) TestUnbindCallsTheUnbindMethodFromAPI(c *C) {
-	var called bool
+	var called int32
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		called = r.Method == "DELETE" && r.URL.Path == "/resources/my-mysql/hostname/127.0.0.1"
+		if r.Method == "DELETE" && r.URL.Path == "/resources/my-mysql/hostname/127.0.0.1" {
+			atomic.StoreInt32(&called, 1)
+		}
 	}))
 	defer ts.Close()
 	srvc := service.Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}}
@@ -322,7 +325,7 @@ func (s *S) TestUnbindCallsTheUnbindMethodFromAPI(c *C) {
 	ch := make(chan bool)
 	go func() {
 		t := time.Tick(1)
-		for _ = <-t; !called; _ = <-t {
+		for _ = <-t; atomic.LoadInt32(&called) == 0; _ = <-t {
 		}
 		ch <- true
 	}()

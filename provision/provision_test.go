@@ -46,3 +46,11 @@ func TestError(t *testing.T) {
 func TestErrorImplementsError(t *testing.T) {
 	var _ error = &Error{}
 }
+
+func TestStatusString(t *testing.T) {
+	var s Status = "pending"
+	got := s.String()
+	if got != "pending" {
+		t.Errorf("Status.String(). want \"pending\". Got %q.", got)
+	}
+}

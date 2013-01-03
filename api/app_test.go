@@ -1,4 +1,4 @@
-// Copyright 2012 tsuru authors. All rights reserved.
+// Copyright 2013 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -9,9 +9,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/globocom/tsuru/api/auth"
-	"github.com/globocom/tsuru/api/bind"
 	"github.com/globocom/tsuru/api/service"
 	"github.com/globocom/tsuru/app"
+	"github.com/globocom/tsuru/app/bind"
 	"github.com/globocom/tsuru/db"
 	"github.com/globocom/tsuru/errors"
 	"github.com/globocom/tsuru/log"
@@ -59,8 +59,8 @@ func (s *S) TestAppIsAvaliableHandlerShouldReturnErrorWhenAppStatusIsnotStarted(
 		Name:      "someapp",
 		Framework: "python",
 		Teams:     []string{s.team.Name},
-		Units:     []app.Unit{{Name: "someapp/0", Type: "django", State: provision.StatusPending}},
-		State:     provision.StatusPending,
+		Units:     []app.Unit{{Name: "someapp/0", Type: "django", State: string(provision.StatusPending)}},
+		State:     string(provision.StatusPending),
 	}
 	err := db.Session.Apps().Insert(a)
 	c.Assert(err, IsNil)
@@ -78,8 +78,8 @@ func (s *S) TestAppIsAvaliableHandlerShouldReturn200WhenAppUnitStatusIsStarted(c
 		Name:      "someapp",
 		Framework: "python",
 		Teams:     []string{s.team.Name},
-		Units:     []app.Unit{{Name: "someapp/0", Type: "django", State: provision.StatusStarted}},
-		State:     provision.StatusStarted,
+		Units:     []app.Unit{{Name: "someapp/0", Type: "django", State: string(provision.StatusStarted)}},
+		State:     string(provision.StatusStarted),
 	}
 	err := db.Session.Apps().Insert(a)
 	c.Assert(err, IsNil)
@@ -109,7 +109,7 @@ pos-restart:
 		Name:      "someapp",
 		Framework: "django",
 		Teams:     []string{s.team.Name},
-		State:     provision.StatusStarted,
+		State:     string(provision.StatusStarted),
 	}
 	err := db.Session.Apps().Insert(a)
 	c.Assert(err, IsNil)
@@ -150,7 +150,7 @@ pos-restart:
 		Name:      "someapp",
 		Framework: "django",
 		Teams:     []string{s.team.Name},
-		State:     provision.StatusStarted,
+		State:     string(provision.StatusStarted),
 	}
 	err := db.Session.Apps().Insert(a)
 	c.Assert(err, IsNil)
@@ -193,7 +193,7 @@ pos-restart:
 		Name:      "someapp",
 		Framework: "django",
 		Teams:     []string{s.team.Name},
-		State:     provision.StatusStarted,
+		State:     string(provision.StatusStarted),
 	}
 	err := db.Session.Apps().Insert(a)
 	c.Assert(err, IsNil)
@@ -311,7 +311,7 @@ func (s *S) TestDelete(c *C) {
 			{Ip: "10.10.10.10", Machine: 1},
 		},
 	}
-	err := app.CreateApp(&myApp)
+	err := app.CreateApp(&myApp, 1)
 	c.Assert(err, IsNil)
 	defer myApp.Destroy()
 	request, err := http.NewRequest("DELETE", "/apps/"+myApp.Name+"?:name="+myApp.Name, nil)
@@ -389,7 +389,7 @@ func (s *S) TestDeleteReturnsErrorIfAppDestroyFails(c *C) {
 		Framework: "django",
 		Teams:     []string{s.team.Name},
 		Units:     []app.Unit{{Name: "i-0800", Machine: 1}},
-		State:     provision.StatusStarted,
+		State:     string(provision.StatusStarted),
 	}
 	err := db.Session.Apps().Insert(myApp)
 	c.Assert(err, IsNil)
@@ -464,7 +464,7 @@ func (s *S) TestCreateAppHelperShouldNotCreateAnAppWhenAnErrorHappensOnCreateRep
 	ts := s.t.StartGandalfTestServer(&h)
 	defer ts.Close()
 	a := app.App{Name: "someapp"}
-	_, err := createAppHelper(&a, s.user)
+	_, err := createAppHelper(&a, s.user, 1)
 	c.Assert(err, NotNil)
 	length, err := db.Session.Apps().Find(bson.M{"name": a.Name}).Count()
 	c.Assert(err, IsNil)
@@ -476,7 +476,7 @@ func (s *S) TestCreateAppHelperCreatesRepositoryInGandalf(c *C) {
 	ts := s.t.StartGandalfTestServer(&h)
 	defer ts.Close()
 	a := app.App{Name: "someapp"}
-	_, err := createAppHelper(&a, s.user)
+	_, err := createAppHelper(&a, s.user, 1)
 	c.Assert(err, IsNil)
 	defer a.Destroy()
 	c.Assert(h.url[0], Equals, "/repository")
@@ -498,7 +498,7 @@ func (s *S) TestCreateAppHandler(c *C) {
 		err = s.provisioner.Destroy(&a)
 		c.Assert(err, IsNil)
 	}()
-	b := strings.NewReader(`{"name":"someapp", "framework":"django"}`)
+	b := strings.NewReader(`{"name":"someapp","framework":"django","units":4}`)
 	request, err := http.NewRequest("POST", "/apps", b)
 	c.Assert(err, IsNil)
 	request.Header.Set("Content-Type", "application/json")
@@ -521,6 +521,7 @@ func (s *S) TestCreateAppHandler(c *C) {
 	c.Assert(err, IsNil)
 	_, found := gotApp.Find(&s.team)
 	c.Assert(found, Equals, true)
+	c.Assert(s.provisioner.GetUnits(&gotApp), HasLen, 4)
 }
 
 func (s *S) TestCreateAppReturnsPreconditionFailedIfTheAppNameIsInvalid(c *C) {
@@ -563,7 +564,7 @@ func (s *S) TestCreateAppReturnsConflictWithProperMessageWhenTheAppAlreadyExist(
 	err := db.Session.Apps().Insert(a)
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
-	b := strings.NewReader(`{"name":"plainsofdawn", "framework":"django"}`)
+	b := strings.NewReader(`{"name":"plainsofdawn","framework":"django"}`)
 	request, err := http.NewRequest("POST", "/apps", b)
 	c.Assert(err, IsNil)
 	request.Header.Set("Content-Type", "application/json")
@@ -574,6 +575,186 @@ func (s *S) TestCreateAppReturnsConflictWithProperMessageWhenTheAppAlreadyExist(
 	c.Assert(ok, Equals, true)
 	c.Assert(e.Code, Equals, http.StatusConflict)
 	c.Assert(e.Message, Equals, `There is already an app named "plainsofdawn".`)
+}
+
+func (s *S) TestAddUnits(c *C) {
+	a := app.App{
+		Name:      "armorandsword",
+		Framework: "python",
+		Teams:     []string{s.team.Name},
+	}
+	err := db.Session.Apps().Insert(a)
+	c.Assert(err, IsNil)
+	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
+	err = s.provisioner.Provision(&a)
+	c.Assert(err, IsNil)
+	defer s.provisioner.Destroy(&a)
+	body := strings.NewReader("3")
+	request, err := http.NewRequest("PUT", "/apps/armorandsword/units?:name=armorandsword", body)
+	c.Assert(err, IsNil)
+	recorder := httptest.NewRecorder()
+	err = AddUnitsHandler(recorder, request, s.user)
+	c.Assert(err, IsNil)
+	err = a.Get()
+	c.Assert(err, IsNil)
+	c.Assert(a.Units, HasLen, 3)
+}
+
+func (s *S) TestAddUnitsReturns404IfAppDoesNotExist(c *C) {
+	body := strings.NewReader("1")
+	request, err := http.NewRequest("PUT", "/apps/armorandsword/units?:name=armorandsword", body)
+	c.Assert(err, IsNil)
+	recorder := httptest.NewRecorder()
+	err = AddUnitsHandler(recorder, request, s.user)
+	c.Assert(err, NotNil)
+	e, ok := err.(*errors.Http)
+	c.Assert(ok, Equals, true)
+	c.Assert(e.Code, Equals, http.StatusNotFound)
+	c.Assert(e.Message, Equals, "App armorandsword not found.")
+}
+
+func (s *S) TestAddUnitsReturns403IfTheUserDoesNotHaveAccessToTheApp(c *C) {
+	a := app.App{
+		Name:      "armorandsword",
+		Framework: "python",
+	}
+	err := db.Session.Apps().Insert(a)
+	c.Assert(err, IsNil)
+	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
+	body := strings.NewReader("1")
+	request, err := http.NewRequest("PUT", "/apps/armorandsword/units?:name=armorandsword", body)
+	c.Assert(err, IsNil)
+	recorder := httptest.NewRecorder()
+	err = AddUnitsHandler(recorder, request, s.user)
+	c.Assert(err, NotNil)
+	e, ok := err.(*errors.Http)
+	c.Assert(ok, Equals, true)
+	c.Assert(e.Code, Equals, http.StatusForbidden)
+	c.Assert(e.Message, Equals, "User does not have access to this app")
+}
+
+func (s *S) TestAddUnitsReturns400IfNumberOfUnitsIsOmited(c *C) {
+	bodies := []io.Reader{nil, strings.NewReader("")}
+	for _, body := range bodies {
+		request, err := http.NewRequest("PUT", "/apps/armorandsword/units?:name=armorandsword", body)
+		c.Assert(err, IsNil)
+		recorder := httptest.NewRecorder()
+		err = AddUnitsHandler(recorder, request, s.user)
+		c.Assert(err, NotNil)
+		e, ok := err.(*errors.Http)
+		c.Assert(ok, Equals, true)
+		c.Assert(e.Code, Equals, http.StatusBadRequest)
+		c.Assert(e.Message, Equals, "You must provide the number of units.")
+	}
+}
+
+func (s *S) TestAddUnitsReturns400IfNumberIsInvalid(c *C) {
+	values := []string{"-1", "0", "far cry", "12345678909876543"}
+	for _, value := range values {
+		body := strings.NewReader(value)
+		request, err := http.NewRequest("PUT", "/apps/armorandsword/units?:name=armorandsword", body)
+		c.Assert(err, IsNil)
+		recorder := httptest.NewRecorder()
+		err = AddUnitsHandler(recorder, request, s.user)
+		c.Assert(err, NotNil)
+		e, ok := err.(*errors.Http)
+		c.Assert(ok, Equals, true)
+		c.Assert(e.Code, Equals, http.StatusBadRequest)
+		c.Assert(e.Message, Equals, "Invalid number of units: the number must be an integer greater than 0.")
+	}
+}
+
+func (s *S) TestRemoveUnits(c *C) {
+	a := app.App{
+		Name:      "velha",
+		Framework: "python",
+		Teams:     []string{s.team.Name},
+		Units: []app.Unit{
+			{Name: "velha/0"}, {Name: "velha/1"}, {Name: "velha/2"},
+		},
+	}
+	err := db.Session.Apps().Insert(a)
+	c.Assert(err, IsNil)
+	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
+	err = s.provisioner.Provision(&a)
+	c.Assert(err, IsNil)
+	defer s.provisioner.Destroy(&a)
+	s.provisioner.AddUnits(&a, 3)
+	body := strings.NewReader("2")
+	request, err := http.NewRequest("DELETE", "/apps/velha/units?:name=velha", body)
+	c.Assert(err, IsNil)
+	recorder := httptest.NewRecorder()
+	err = RemoveUnitsHandler(recorder, request, s.user)
+	c.Assert(err, IsNil)
+	err = a.Get()
+	c.Assert(err, IsNil)
+	c.Assert(a.Units, HasLen, 1)
+	c.Assert(a.Units[0].Name, Equals, "velha/2")
+	c.Assert(s.provisioner.GetUnits(&a), HasLen, 2)
+}
+
+func (s *S) TestRemoveUnitsReturns404IfAppDoesNotExist(c *C) {
+	body := strings.NewReader("1")
+	request, err := http.NewRequest("DELETE", "/apps/fetisha/units?:name=fetisha", body)
+	c.Assert(err, IsNil)
+	recorder := httptest.NewRecorder()
+	err = RemoveUnitsHandler(recorder, request, s.user)
+	c.Assert(err, NotNil)
+	e, ok := err.(*errors.Http)
+	c.Assert(ok, Equals, true)
+	c.Assert(e.Code, Equals, http.StatusNotFound)
+	c.Assert(e.Message, Equals, "App fetisha not found.")
+}
+
+func (s *S) TestRemoveUnitsReturns403IfTheUserDoesNotHaveAccessToTheApp(c *C) {
+	a := app.App{
+		Name:      "fetisha",
+		Framework: "python",
+	}
+	err := db.Session.Apps().Insert(a)
+	c.Assert(err, IsNil)
+	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
+	body := strings.NewReader("1")
+	request, err := http.NewRequest("DELETE", "/apps/fetisha/units?:name=fetisha", body)
+	c.Assert(err, IsNil)
+	recorder := httptest.NewRecorder()
+	err = RemoveUnitsHandler(recorder, request, s.user)
+	c.Assert(err, NotNil)
+	e, ok := err.(*errors.Http)
+	c.Assert(ok, Equals, true)
+	c.Assert(e.Code, Equals, http.StatusForbidden)
+	c.Assert(e.Message, Equals, "User does not have access to this app")
+}
+
+func (s *S) TestRemoveUnitsReturns400IfNumberOfUnitsIsOmited(c *C) {
+	bodies := []io.Reader{nil, strings.NewReader("")}
+	for _, body := range bodies {
+		request, err := http.NewRequest("DELETE", "/apps/fetisha/units?:name=fetisha", body)
+		c.Assert(err, IsNil)
+		recorder := httptest.NewRecorder()
+		err = RemoveUnitsHandler(recorder, request, s.user)
+		c.Assert(err, NotNil)
+		e, ok := err.(*errors.Http)
+		c.Assert(ok, Equals, true)
+		c.Assert(e.Code, Equals, http.StatusBadRequest)
+		c.Assert(e.Message, Equals, "You must provide the number of units.")
+	}
+}
+
+func (s *S) TestRemoveUnitsReturns400IfNumberIsInvalid(c *C) {
+	values := []string{"-1", "0", "far cry", "12345678909876543"}
+	for _, value := range values {
+		body := strings.NewReader(value)
+		request, err := http.NewRequest("DELETE", "/apps/fiend/units?:name=fiend", body)
+		c.Assert(err, IsNil)
+		recorder := httptest.NewRecorder()
+		err = RemoveUnitsHandler(recorder, request, s.user)
+		c.Assert(err, NotNil)
+		e, ok := err.(*errors.Http)
+		c.Assert(ok, Equals, true)
+		c.Assert(e.Code, Equals, http.StatusBadRequest)
+		c.Assert(e.Message, Equals, "Invalid number of units: the number must be an integer greater than 0.")
+	}
 }
 
 func (s *S) TestAddTeamToTheApp(c *C) {
@@ -836,8 +1017,12 @@ func (s *S) TestRevokeAccessFromTeamRemovesRepositoryFromGandalf(c *C) {
 	h := testHandler{}
 	ts := s.t.StartGandalfTestServer(&h)
 	defer ts.Close()
-	t := auth.Team{Name: "anything", Users: []string{s.user.Email}}
-	err := db.Session.Teams().Insert(t)
+	u := auth.User{Email: "again@live.com"}
+	err := db.Session.Users().Insert(u)
+	c.Assert(err, IsNil)
+	defer db.Session.Users().Remove(bson.M{"email": u.Email})
+	t := auth.Team{Name: "anything", Users: []string{u.Email}}
+	err = db.Session.Teams().Insert(t)
 	c.Assert(err, IsNil)
 	defer db.Session.Teams().Remove(bson.M{"_id": t.Name})
 	a := app.App{
@@ -848,13 +1033,67 @@ func (s *S) TestRevokeAccessFromTeamRemovesRepositoryFromGandalf(c *C) {
 	err = db.Session.Apps().Insert(a)
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
-	err = grantAccessToTeam(a.Name, s.team.Name, s.user)
+	err = grantAccessToTeam(a.Name, s.team.Name, &u)
 	c.Assert(err, IsNil)
-	err = revokeAccessFromTeam(a.Name, s.team.Name, s.user)
+	err = revokeAccessFromTeam(a.Name, s.team.Name, &u)
 	c.Assert(h.url[1], Equals, "/repository/revoke") //should inc the index (because of the grantAccess)
 	c.Assert(h.method[1], Equals, "DELETE")
 	expected := fmt.Sprintf(`{"repositories":["%s"],"users":["%s"]}`, a.Name, s.user.Email)
 	c.Assert(string(h.body[1]), Equals, expected)
+}
+
+func (s *S) TestRevokeAccessFromTeamDontRemoveTheUserIfItHasAccesToTheAppThroughAnotherTeam(c *C) {
+	h := testHandler{}
+	ts := s.t.StartGandalfTestServer(&h)
+	defer ts.Close()
+	u := auth.User{Email: "burning@angel.com"}
+	err := db.Session.Users().Insert(u)
+	c.Assert(err, IsNil)
+	defer db.Session.Users().Remove(bson.M{"email": u.Email})
+	t := auth.Team{Name: "anything", Users: []string{s.user.Email, u.Email}}
+	err = db.Session.Teams().Insert(t)
+	c.Assert(err, IsNil)
+	defer db.Session.Teams().Remove(bson.M{"_id": t.Name})
+	a := app.App{
+		Name:      "tsuru",
+		Framework: "golang",
+		Teams:     []string{s.team.Name},
+	}
+	err = db.Session.Apps().Insert(a)
+	c.Assert(err, IsNil)
+	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
+	err = grantAccessToTeam(a.Name, t.Name, s.user)
+	c.Assert(err, IsNil)
+	err = revokeAccessFromTeam(a.Name, t.Name, s.user)
+	c.Assert(err, IsNil)
+	c.Assert(h.url[1], Equals, "/repository/revoke")
+	c.Assert(h.method[1], Equals, "DELETE")
+	expected := fmt.Sprintf(`{"repositories":[%q],"users":[%q]}`, a.Name, u.Email)
+	c.Assert(string(h.body[1]), Equals, expected)
+}
+
+func (s *S) TestRevokeAccessFromTeamDontCallGandalfIfNoUserNeedToBeRevoked(c *C) {
+	h := testHandler{}
+	ts := s.t.StartGandalfTestServer(&h)
+	defer ts.Close()
+	t := auth.Team{Name: "anything", Users: []string{s.user.Email}}
+	err := db.Session.Teams().Insert(t)
+	c.Assert(err, IsNil)
+	defer db.Session.Teams().Remove(bson.M{"_id": t.Name})
+	a := app.App{
+		Name:      "tsuru",
+		Framework: "golang",
+		Teams:     []string{s.team.Name},
+	}
+	err = db.Session.Apps().Insert(a)
+	c.Assert(err, IsNil)
+	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
+	err = grantAccessToTeam(a.Name, t.Name, s.user)
+	c.Assert(err, IsNil)
+	err = revokeAccessFromTeam(a.Name, t.Name, s.user)
+	c.Assert(err, IsNil)
+	c.Assert(h.url, HasLen, 1)
+	c.Assert(h.url[0], Equals, "/repository/grant")
 }
 
 func (s *S) TestRunHandlerShouldExecuteTheGivenCommandInTheGivenApp(c *C) {
@@ -864,7 +1103,7 @@ func (s *S) TestRunHandlerShouldExecuteTheGivenCommandInTheGivenApp(c *C) {
 		Framework: "arch enemy",
 		Teams:     []string{s.team.Name},
 		Units:     []app.Unit{{Name: "i-0800", Machine: 10}},
-		State:     provision.StatusStarted,
+		State:     string(provision.StatusStarted),
 	}
 	err := db.Session.Apps().Insert(a)
 	c.Assert(err, IsNil)
@@ -892,7 +1131,7 @@ func (s *S) TestRunHandlerReturnsTheOutputOfTheCommandEvenIfItFails(c *C) {
 		Framework: "arch enemy",
 		Teams:     []string{s.team.Name},
 		Units:     []app.Unit{{Name: "i-0800"}},
-		State:     provision.StatusStarted,
+		State:     string(provision.StatusStarted),
 	}
 	err := db.Session.Apps().Insert(a)
 	c.Assert(err, IsNil)
@@ -1831,7 +2070,7 @@ func (s *S) TestUnbindHandler(c *C) {
 		Teams: []string{s.team.Name},
 		Units: []app.Unit{{Machine: 1}},
 	}
-	err = app.CreateApp(&a)
+	err = app.CreateApp(&a, 1)
 	c.Assert(err, IsNil)
 	defer a.Destroy()
 	a.Env["DATABASE_HOST"] = bind.EnvVar{
@@ -1970,7 +2209,7 @@ func (s *S) TestRestartHandler(c *C) {
 	a := app.App{
 		Name:  "stress",
 		Teams: []string{s.team.Name},
-		State: provision.StatusStarted,
+		State: string(provision.StatusStarted),
 	}
 	err := db.Session.Apps().Insert(a)
 	c.Assert(err, IsNil)
@@ -1983,6 +2222,7 @@ func (s *S) TestRestartHandler(c *C) {
 	c.Assert(err, IsNil)
 	result := strings.Replace(recorder.Body.String(), "\n", "#", -1)
 	c.Assert(result, Matches, ".*# ---> Restarting your app#.*")
+	c.Assert(recorder.Header().Get("Content-Type"), Equals, "text")
 }
 
 func (s *S) TestRestartHandlerReturns404IfTheAppDoesNotExist(c *C) {

@@ -6,9 +6,11 @@ package testing
 
 import (
 	"errors"
+	"fmt"
 	"github.com/globocom/tsuru/provision"
 	"io"
 	"strconv"
+	"sync"
 	"time"
 )
 
@@ -20,6 +22,7 @@ func init() {
 type FakeUnit struct {
 	name    string
 	machine int
+	status  provision.Status
 	actions []string
 }
 
@@ -31,6 +34,10 @@ func (u *FakeUnit) GetName() string {
 func (u *FakeUnit) GetMachine() int {
 	u.actions = append(u.actions, "getmachine")
 	return u.machine
+}
+
+func (u *FakeUnit) GetStatus() provision.Status {
+	return u.status
 }
 
 // Fake implementation for provision.App.
@@ -89,15 +96,19 @@ type failure struct {
 // Fake implementation for provision.Provisioner.
 type FakeProvisioner struct {
 	apps     []provision.App
-	Cmds     []Cmd
+	units    map[string][]provision.Unit
+	cmds     []Cmd
 	outputs  chan []byte
 	failures chan failure
+	cmdMut   sync.Mutex
+	unitMut  sync.Mutex
 }
 
 func NewFakeProvisioner() *FakeProvisioner {
 	p := FakeProvisioner{}
 	p.outputs = make(chan []byte, 8)
 	p.failures = make(chan failure, 8)
+	p.units = make(map[string][]provision.Unit)
 	return &p
 }
 
@@ -117,11 +128,13 @@ func (p *FakeProvisioner) getError(method string) error {
 // the command (""), it will return all commands executed in the given app.
 func (p *FakeProvisioner) GetCmds(cmd string, app provision.App) []Cmd {
 	var cmds []Cmd
-	for _, c := range p.Cmds {
+	p.cmdMut.Lock()
+	for _, c := range p.cmds {
 		if (cmd == "" || c.Cmd == cmd) && app.GetName() == c.App.GetName() {
 			cmds = append(cmds, c)
 		}
 	}
+	p.cmdMut.Unlock()
 	return cmds
 }
 
@@ -134,6 +147,12 @@ func (p *FakeProvisioner) FindApp(app provision.App) int {
 	return -1
 }
 
+func (p *FakeProvisioner) GetUnits(app provision.App) []provision.Unit {
+	p.unitMut.Lock()
+	defer p.unitMut.Unlock()
+	return p.units[app.GetName()]
+}
+
 func (p *FakeProvisioner) PrepareOutput(b []byte) {
 	p.outputs <- b
 }
@@ -143,11 +162,22 @@ func (p *FakeProvisioner) PrepareFailure(method string, err error) {
 }
 
 func (p *FakeProvisioner) Reset() {
-	close(p.outputs)
-	close(p.failures)
-	p.outputs = make(chan []byte, 8)
-	p.failures = make(chan failure, 8)
-	p.Cmds = nil
+	p.unitMut.Lock()
+	p.units = make(map[string][]provision.Unit)
+	p.unitMut.Unlock()
+
+	p.cmdMut.Lock()
+	p.cmds = nil
+	p.cmdMut.Unlock()
+
+	for {
+		select {
+		case <-p.outputs:
+		case <-p.failures:
+		default:
+			return
+		}
+	}
 }
 
 func (p *FakeProvisioner) Provision(app provision.App) error {
@@ -159,6 +189,18 @@ func (p *FakeProvisioner) Provision(app provision.App) error {
 		return &provision.Error{Reason: "App already provisioned."}
 	}
 	p.apps = append(p.apps, app)
+	p.unitMut.Lock()
+	p.units[app.GetName()] = []provision.Unit{
+		{
+			Name:    app.GetName() + "/0",
+			AppName: app.GetName(),
+			Type:    app.GetFramework(),
+			Status:  provision.StatusStarted,
+			Ip:      "10.10.10.1",
+			Machine: 1,
+		},
+	}
+	p.unitMut.Unlock()
 	return nil
 }
 
@@ -172,7 +214,87 @@ func (p *FakeProvisioner) Destroy(app provision.App) error {
 	}
 	copy(p.apps[index:], p.apps[index+1:])
 	p.apps = p.apps[:len(p.apps)-1]
+	p.unitMut.Lock()
+	delete(p.units, app.GetName())
+	p.unitMut.Unlock()
 	return nil
+}
+
+func (p *FakeProvisioner) AddUnits(app provision.App, n uint) ([]provision.Unit, error) {
+	if err := p.getError("AddUnits"); err != nil {
+		return nil, err
+	}
+	if n == 0 {
+		return nil, errors.New("Cannot add 0 units.")
+	}
+	index := p.FindApp(app)
+	if index < 0 {
+		return nil, errors.New("App is not provisioned.")
+	}
+	name := app.GetName()
+	framework := app.GetFramework()
+	p.unitMut.Lock()
+	defer p.unitMut.Unlock()
+	length := uint(len(p.units[name]))
+	for i := uint(0); i < n; i++ {
+		unit := provision.Unit{
+			Name:    fmt.Sprintf("%s/%d", name, length+i),
+			AppName: name,
+			Type:    framework,
+			Status:  provision.StatusStarted,
+			Ip:      fmt.Sprintf("10.10.10.%d", length+i),
+			Machine: int(length + i),
+		}
+		p.units[name] = append(p.units[name], unit)
+	}
+	return p.units[name][length:], nil
+}
+
+func (p *FakeProvisioner) RemoveUnit(app provision.App, name string) error {
+	if err := p.getError("RemoveUnit"); err != nil {
+		return err
+	}
+	index := -1
+	appName := app.GetName()
+	if index := p.FindApp(app); index < 0 {
+		return errors.New("App is not provisioned.")
+	}
+	p.unitMut.Lock()
+	defer p.unitMut.Unlock()
+	for i, unit := range p.units[appName] {
+		if unit.Name == name {
+			index = i
+			break
+		}
+	}
+	if index == -1 {
+		return errors.New("Unit not found.")
+	}
+	copy(p.units[appName][index:], p.units[appName][index+1:])
+	p.units[appName] = p.units[appName][:len(p.units[appName])-1]
+	return nil
+}
+
+func (p *FakeProvisioner) RemoveUnits(app provision.App, n uint) ([]int, error) {
+	if err := p.getError("RemoveUnits"); err != nil {
+		return nil, err
+	}
+	if index := p.FindApp(app); index < 0 {
+		return nil, errors.New("App is not provisioned.")
+	}
+	name := app.GetName()
+	p.unitMut.Lock()
+	defer p.unitMut.Unlock()
+	length := uint(len(p.units[name]))
+	if n >= length {
+		return nil, errors.New("Too many units.")
+	}
+	removed := make([]int, n)
+	for i := 0; i < int(n); i++ {
+		removed[i] = i
+	}
+	p.units[name] = p.units[name][n:]
+	return removed, nil
 }
 
 func (p *FakeProvisioner) ExecuteCommand(stdout, stderr io.Writer, app provision.App, cmd string, args ...string) error {
@@ -185,7 +307,9 @@ func (p *FakeProvisioner) ExecuteCommand(stdout, stderr io.Writer, app provision
 		Args: args,
 		App:  app,
 	}
-	p.Cmds = append(p.Cmds, command)
+	p.cmdMut.Lock()
+	p.cmds = append(p.cmds, command)
+	p.cmdMut.Unlock()
 	select {
 	case output = <-p.outputs:
 		select {
@@ -211,7 +335,7 @@ func (p *FakeProvisioner) ExecuteCommand(stdout, stderr io.Writer, app provision
 			p.failures <- fail
 		}
 	case <-time.After(2e9):
-		return errors.New("FakeProvisiner timed out waiting for output.")
+		return errors.New("FakeProvisioner timed out waiting for output.")
 	}
 	return err
 }
@@ -223,14 +347,15 @@ func (p *FakeProvisioner) CollectStatus() ([]provision.Unit, error) {
 	units := make([]provision.Unit, len(p.apps))
 	for i, app := range p.apps {
 		unit := provision.Unit{
-			Name:    "somename",
-			AppName: app.GetName(),
-			Type:    app.GetFramework(),
-			Status:  "started",
-			Ip:      "10.10.10." + strconv.Itoa(i+1),
-			Machine: i + 1,
+			Name:       app.GetName() + "/0",
+			AppName:    app.GetName(),
+			Type:       app.GetFramework(),
+			Status:     "started",
+			InstanceId: fmt.Sprintf("i-0%d", 800+i+1),
+			Ip:         "10.10.10." + strconv.Itoa(i+1),
+			Machine:    i + 1,
 		}
-		units = append(units, unit)
+		units[i] = unit
 	}
 	return units, nil
 }

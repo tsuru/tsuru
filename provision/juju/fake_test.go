@@ -5,12 +5,14 @@
 package juju
 
 import (
+	"fmt"
 	"github.com/globocom/tsuru/provision"
 )
 
 type FakeUnit struct {
 	name    string
 	machine int
+	status  provision.Status
 	actions []string
 }
 
@@ -22,6 +24,11 @@ func (u *FakeUnit) GetName() string {
 func (u *FakeUnit) GetMachine() int {
 	u.actions = append(u.actions, "getmachine")
 	return u.machine
+}
+
+func (u *FakeUnit) GetStatus() provision.Status {
+	u.actions = append(u.actions, "getstatus")
+	return u.status
 }
 
 type FakeApp struct {
@@ -38,8 +45,13 @@ func NewFakeApp(name, framework string, units int) *FakeApp {
 		framework: framework,
 		units:     make([]provision.AppUnit, units),
 	}
+	namefmt := "%s/%d"
 	for i := 0; i < units; i++ {
-		app.units[i] = &FakeUnit{name: name, machine: i + 1}
+		app.units[i] = &FakeUnit{
+			name:    fmt.Sprintf(namefmt, name, i),
+			machine: i + 1,
+			status:  provision.StatusStarted,
+		}
 	}
 	return &app
 }

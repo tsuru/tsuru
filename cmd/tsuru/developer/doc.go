@@ -37,6 +37,8 @@ The currently available commands are (grouped by subject):
 	app-info          displays information about an app
 	app-grant         allows a team to have access to an app
 	app-revoke        revokes access to an app from a team
+	unit-add          adds new units to an app
+	unit-remove       remove units from an app
 	log               shows log for an app
 	run               runs a command in all units of an app
 	restart           restarts the app's application server
@@ -247,11 +249,14 @@ Create an app
 
 Usage:
 
-	% tsuru app-create <app-name> <platform>
+	% tsuru app-create <app-name> <platform> [--units 1]
 
 app-create will create a new app using the given name and platform. For tsuru,
 a platform is a Juju charm. To check the available platforms/charms, check this
 URL: https://github.com/globocom/charms/tree/master/precise.
+
+The --units flag is optional, it indicates how many units will be added to the
+app when creating it. The default value is 1.
 
 In order to create an app, you need to be member of at least one team. All
 teams that you are member (see "tsuru team-list") will be able to access the
@@ -317,6 +322,30 @@ app-revoke will revoke the permission to access an app from a team. You need to
 have access to the app to revoke access from a team.
 
 An app cannot be orphaned, so it will always have at least one authorized team.
+
+The --app flag is optional, see "Guessing app names" section for more details.
+
+
+Add new units to the app
+
+Usage:
+
+	% tsuru unit-add <# of units> [--app appname]
+
+unit-add will add new units (instances) to an app. You need to have access to
+the app to be able to add new units to it.
+
+The --app flag is optional, see "Guessing app names" section for more details.
+
+
+Remove units from the app
+
+Usage:
+
+	% tsuru unit-remove <# of units> [--app appname]
+
+unit-remove will remove units (instances) from an app. You need to have access
+to the app to be able to remove units from it.
 
 The --app flag is optional, see "Guessing app names" section for more details.
 

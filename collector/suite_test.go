@@ -27,11 +27,12 @@ var _ = Suite(&S{})
 
 func (s *S) SetUpSuite(c *C) {
 	var err error
-	c.Assert(err, IsNil)
 	db.Session, err = db.Open("127.0.0.1:27017", "tsuru_collector_test")
 	c.Assert(err, IsNil)
 	s.provisioner = ttesting.NewFakeProvisioner()
 	app.Provisioner = s.provisioner
+	err = config.ReadConfigFile("../etc/tsuru.conf")
+	c.Assert(err, IsNil)
 	config.Set("queue-server", "127.0.0.1:0")
 }
 
@@ -43,4 +44,5 @@ func (s *S) TearDownSuite(c *C) {
 func (s *S) TearDownTest(c *C) {
 	_, err := db.Session.Apps().RemoveAll(nil)
 	c.Assert(err, IsNil)
+	s.provisioner.Reset()
 }

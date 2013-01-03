@@ -6,7 +6,7 @@ package service
 
 import (
 	"encoding/json"
-	"github.com/globocom/tsuru/api/bind"
+	"github.com/globocom/tsuru/app/bind"
 	"github.com/globocom/tsuru/errors"
 	"github.com/globocom/tsuru/log"
 	"io"

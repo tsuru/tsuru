@@ -12,10 +12,10 @@ import (
 	"io/ioutil"
 	"launchpad.net/gnuflag"
 	"net/http"
+	"strings"
 )
 
 var AppName = gnuflag.String("app", "", "App name for running app related commands.")
-var AssumeYes = gnuflag.Bool("assume-yes", false, "Don't ask for confirmation on operations.")
 var LogLines = gnuflag.Int("lines", 10, "The number of log lines to display")
 var LogSource = gnuflag.String("source", "", "The log from the given source")
 
@@ -59,39 +59,49 @@ func (c *AppInfo) Run(context *cmd.Context, client cmd.Doer) error {
 	return c.Show(result, context)
 }
 
-func (c *AppInfo) Show(result []byte, context *cmd.Context) error {
-	var app map[string]interface{}
-	err := json.Unmarshal(result, &app)
-	if err != nil {
-		return err
-	}
-	template := `Application: %s
+type unit struct {
+	Name  string
+	Ip    string
+	State string
+}
+
+type app struct {
+	Name       string
+	Framework  string
+	Repository string
+	State      string
+	Teams      []string
+	Units      []unit
+}
+
+func (a *app) String() string {
+	format := `Application: %s
 State: %s
 Repository: %s
 Platform: %s
-Units: %s
 Teams: %s
 `
-	name := app["Name"]
-	state := app["State"]
-	platform := app["Framework"]
-	repository := app["Repository"]
-	units := ""
-	for _, unit := range app["Units"].([]interface{}) {
-		if len(units) > 0 {
-			units += ", "
-		}
-		units += fmt.Sprintf("%s", unit.(map[string]interface{})["Ip"].(string))
+	teams := strings.Join(a.Teams, ", ")
+	units := cmd.NewTable()
+	units.Headers = cmd.Row([]string{"Unit", "Ip", "State"})
+	for _, unit := range a.Units {
+		units.AddRow(cmd.Row([]string{unit.Name, unit.Ip, unit.State}))
 	}
-	teams := ""
-	for _, team := range app["Teams"].([]interface{}) {
-		if len(teams) > 0 {
-			teams += ", "
-		}
-		teams += fmt.Sprintf("%s", team.(string))
+	args := []interface{}{a.Name, a.State, a.Repository, a.Framework, teams}
+	if len(a.Units) > 0 {
+		format += "Units:\n%s"
+		args = append(args, units)
 	}
-	out := fmt.Sprintf(template, name, state, repository, platform, units, teams)
-	context.Stdout.Write([]byte(out))
+	return fmt.Sprintf(format, args...)
+}
+
+func (c *AppInfo) Show(result []byte, context *cmd.Context) error {
+	var a app
+	err := json.Unmarshal(result, &a)
+	if err != nil {
+		return err
+	}
+	fmt.Fprintln(context.Stdout, &a)
 	return nil
 }
 
@@ -166,7 +176,7 @@ func (c *AppRevoke) Run(context *cmd.Context, client cmd.Doer) error {
 type AppModel struct {
 	Name  string
 	State string
-	Units []Units
+	Ip    string
 }
 
 type Units struct {
@@ -204,11 +214,7 @@ func (c *AppList) Show(result []byte, context *cmd.Context) error {
 	table := cmd.NewTable()
 	table.Headers = cmd.Row([]string{"Application", "State", "Ip"})
 	for _, app := range apps {
-		ip := ""
-		if len(app.Units) > 0 {
-			ip = app.Units[0].Ip
-		}
-		table.AddRow(cmd.Row([]string{app.Name, app.State, ip}))
+		table.AddRow(cmd.Row([]string{app.Name, app.State, app.Ip}))
 	}
 	context.Stdout.Write(table.Bytes())
 	return nil

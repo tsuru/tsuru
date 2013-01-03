@@ -18,6 +18,9 @@ func NewTable() *Table {
 }
 
 func (t *Table) String() string {
+	if t.Headers == nil && len(t.rows) < 1 {
+		return ""
+	}
 	sizes := t.columnsSize()
 	result := t.separator()
 	if t.Headers != nil {
@@ -48,7 +51,12 @@ func (t *Table) AddRow(row Row) {
 }
 
 func (t *Table) columnsSize() []int {
-	columns := len(t.rows[0])
+	var columns int
+	if t.Headers != nil {
+		columns = len(t.Headers)
+	} else {
+		columns = len(t.rows[0])
+	}
 	sizes := make([]int, columns)
 	for _, row := range t.rows {
 		for i := 0; i < columns; i++ {

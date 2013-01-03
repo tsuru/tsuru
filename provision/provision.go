@@ -11,24 +11,31 @@ import (
 	"io"
 )
 
+type Status string
+
+func (s Status) String() string {
+	return string(s)
+}
+
 const (
-	StatusStarted    = "started"
-	StatusPending    = "pending"
-	StatusDown       = "down"
-	StatusError      = "error"
-	StatusInstalling = "installing"
-	StatusCreating   = "creating"
+	StatusStarted    = Status("started")
+	StatusPending    = Status("pending")
+	StatusDown       = Status("down")
+	StatusError      = Status("error")
+	StatusInstalling = Status("installing")
+	StatusCreating   = Status("creating")
 )
 
 // Unit represents a provision unit. Can be a machine, container or anything
 // IP-addressable.
 type Unit struct {
-	Name    string
-	AppName string
-	Type    string
-	Machine int
-	Ip      string
-	Status  string
+	Name       string
+	AppName    string
+	Type       string
+	InstanceId string
+	Machine    int
+	Ip         string
+	Status     Status
 }
 
 // AppUnit represents a unit in an app.
@@ -38,6 +45,9 @@ type AppUnit interface {
 
 	// Returns the number of the unit.
 	GetMachine() int
+
+	// Returns the status of the unit.
+	GetStatus() Status
 }
 
 // App represents a tsuru app.
@@ -71,6 +81,24 @@ type Provisioner interface {
 
 	// Destroy is called when tsuru is destroying the app.
 	Destroy(App) error
+
+	// AddUnits adds units to an app. The first parameter is the app, the
+	// second is the number of units to add.
+	//
+	// It returns a slice containing all added units
+	AddUnits(App, uint) ([]Unit, error)
+
+	// RemoveUnit removes a unit from the app. It receives the app and the name
+	// of the unit to be removed.
+	RemoveUnit(App, string) error
+
+	// RemoveUnits removes multiple units from an app. The first parameter it
+	// the app, the second is the number of units to remove.
+	//
+	// It returns a slice containing indices of all removed units (the index
+	// must match the slice returned by App.ProvisionUnits). The list of
+	// indices must be returned sorted.
+	RemoveUnits(App, uint) ([]int, error)
 
 	// ExecuteCommand runs a command in all units of the app.
 	ExecuteCommand(stdout, stderr io.Writer, app App, cmd string, args ...string) error

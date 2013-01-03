@@ -10,16 +10,20 @@ import (
 )
 
 type helloAction struct {
-	executed   bool
-	rolledback bool
+	executed     bool
+	args         []interface{}
+	rollbackArgs []interface{}
+	rolledback   bool
 }
 
-func (h *helloAction) forward(a *App) error {
+func (h *helloAction) forward(a *App, args ...interface{}) error {
 	h.executed = true
+	h.args = args
 	return nil
 }
 
-func (h *helloAction) backward(a *App) {
+func (h *helloAction) backward(a *App, args ...interface{}) {
+	h.rollbackArgs = args
 	h.rolledback = true
 }
 
@@ -31,11 +35,11 @@ type errorAction struct {
 	rolledback bool
 }
 
-func (e *errorAction) forward(a *App) error {
+func (e *errorAction) forward(a *App, args ...interface{}) error {
 	return errors.New("")
 }
 
-func (e *errorAction) backward(a *App) {
+func (e *errorAction) backward(a *App, args ...interface{}) {
 	e.rolledback = true
 }
 
@@ -47,11 +51,11 @@ type rollingBackItself struct {
 	rolledback bool
 }
 
-func (a *rollingBackItself) forward(app *App) error {
+func (a *rollingBackItself) forward(app *App, args ...interface{}) error {
 	return errors.New("")
 }
 
-func (a *rollingBackItself) backward(app *App) {
+func (a *rollingBackItself) backward(app *App, args ...interface{}) {
 	a.rolledback = true
 }
 
@@ -65,6 +69,23 @@ func (s *S) TestExecute(c *C) {
 	err := execute(&app, []action{h})
 	c.Assert(err, IsNil)
 	c.Assert(h.executed, Equals, true)
+}
+
+func (s *S) TestArgs(c *C) {
+	app := App{}
+	h := new(helloAction)
+	err := execute(&app, []action{h}, 23, "abcdef")
+	c.Assert(err, IsNil)
+	c.Assert(h.args, DeepEquals, []interface{}{23, "abcdef"})
+}
+
+func (s *S) TestRolbackArgs(c *C) {
+	app := App{}
+	h := new(helloAction)
+	e := new(errorAction)
+	err := execute(&app, []action{h, e}, 14, "abc")
+	c.Assert(err, NotNil)
+	c.Assert(h.rollbackArgs, DeepEquals, []interface{}{14, "abc"})
 }
 
 func (s *S) TestRollBackFailureOnSecondAction(c *C) {

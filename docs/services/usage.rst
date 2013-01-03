@@ -110,4 +110,4 @@ Further instructions
 ====================
 
 For a complete reference, check the documentation for crane command:
-`<http://go.pkgdoc.org/github.com/globocom/tsuru/cmd/crane>`_.
+`<http://godoc.org/github.com/globocom/tsuru/cmd/crane>`_.

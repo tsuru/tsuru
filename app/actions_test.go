@@ -1,4 +1,4 @@
-// Copyright 2012 tsuru authors. All rights reserved.
+// Copyright 2013 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -58,9 +58,6 @@ func (s *S) TestInsertAppRollbackItself(c *C) {
 func (s *S) TestCreateBucketForward(c *C) {
 	patchRandomReader()
 	defer unpatchRandomReader()
-	server := FakeQueueServer{}
-	server.Start("127.0.0.1:0")
-	defer server.Stop()
 	a := App{
 		Name:      "appname",
 		Framework: "django",
@@ -68,23 +65,16 @@ func (s *S) TestCreateBucketForward(c *C) {
 	}
 	expectedHost := "localhost"
 	config.Set("host", expectedHost)
-	old, err := config.Get("queue-server")
-	if err != nil {
-		defer config.Set("queue-server", old)
-	}
-	config.Set("queue-server", server.listener.Addr().String())
 	insert := new(insertApp)
-	err = insert.forward(&a)
+	err := insert.forward(&a)
 	c.Assert(err, IsNil)
 	defer insert.backward(&a)
 	bucket := new(createBucketIam)
 	err = bucket.forward(&a)
 	c.Assert(err, IsNil)
 	defer bucket.backward(&a)
-	de := new(provisionApp)
-	err = de.forward(&a)
+	err = a.Get()
 	c.Assert(err, IsNil)
-	defer Provisioner.Destroy(&a)
 	env := a.InstanceEnv(s3InstanceName)
 	c.Assert(env["TSURU_S3_ENDPOINT"].Value, Equals, s.t.S3Server.URL())
 	c.Assert(env["TSURU_S3_ENDPOINT"].Public, Equals, false)
@@ -104,13 +94,15 @@ func (s *S) TestCreateBucketForward(c *C) {
 	c.Assert(env["APPNAME"].Public, Equals, false)
 	c.Assert(env["TSURU_HOST"].Value, Equals, expectedHost)
 	c.Assert(env["TSURU_HOST"].Public, Equals, false)
-	expectedMessage := queue.Message{
+	expected := queue.Message{
 		Action: RegenerateApprc,
 		Args:   []string{a.Name},
 	}
-	server.Lock()
-	defer server.Unlock()
-	c.Assert(server.messages, DeepEquals, []queue.Message{expectedMessage})
+	message, err := queue.Get(2e9)
+	c.Assert(err, IsNil)
+	defer queue.Delete(message)
+	c.Assert(message.Action, Equals, expected.Action)
+	c.Assert(message.Args, DeepEquals, expected.Args)
 }
 
 func (s *S) TestCreateBucketBackward(c *C) {
@@ -147,9 +139,16 @@ func (s *S) TestDeployForward(c *C) {
 		Framework: "django",
 		Units:     []Unit{{Machine: 3}},
 	}
-	err := action.forward(&a)
+	err := db.Session.Apps().Insert(a)
+	c.Assert(err, IsNil)
+	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
+	err = action.forward(&a, 4)
 	defer s.provisioner.Destroy(&a)
 	c.Assert(err, IsNil)
+	index := s.provisioner.FindApp(&a)
+	c.Assert(index, Equals, 0)
+	units := s.provisioner.GetUnits(&a)
+	c.Assert(units, HasLen, 4)
 }
 
 func (s *S) TestDeployRollbackItself(c *C) {
