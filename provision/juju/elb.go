@@ -12,7 +12,7 @@ import (
 	"labix.org/v2/mgo"
 )
 
-// ELBManager manages load balances within Amazon Elastic Load Balancer.
+// ELBManager manages load balancers within Amazon Elastic Load Balancer.
 //
 // If juju:use-elb is true on tsuru.conf, this manager will be used for
 // managing load balancers on tsuru.
