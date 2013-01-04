@@ -18,8 +18,6 @@ func Test(t *testing.T) { TestingT(t) }
 
 type S struct {
 	session     *mgo.Session
-	tmpdir      string
-	instances   []string
 	provisioner *ttesting.FakeProvisioner
 }
 
