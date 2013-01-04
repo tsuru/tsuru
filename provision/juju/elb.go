@@ -12,6 +12,7 @@ import (
 	"github.com/globocom/tsuru/log"
 	"github.com/globocom/tsuru/provision"
 	"labix.org/v2/mgo"
+	"labix.org/v2/mgo/bson"
 )
 
 // LoadBalancer represents an ELB instance.
@@ -103,11 +104,17 @@ func (m *ELBManager) Create(app provision.App) error {
 }
 
 func (m *ELBManager) Destroy(app provision.App) error {
-	return nil
+	_, err := m.elb().DeleteLoadBalancer(app.GetName())
+	if err != nil {
+		return err
+	}
+	return m.collection().Remove(bson.M{"name": app.GetName()})
 }
 
 func (m *ELBManager) Register(app provision.App, unit provision.Unit) error {
-	return nil
+	ids := []string{unit.InstanceId}
+	_, err := m.elb().RegisterInstancesWithLoadBalancer(ids, app.GetName())
+	return err
 }
 
 func (m *ELBManager) Deregister(app provision.App, unit provision.Unit) error {

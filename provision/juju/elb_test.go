@@ -10,6 +10,7 @@ import (
 	"github.com/flaviamissi/go-elb/elb/elbtest"
 	"github.com/globocom/config"
 	"github.com/globocom/tsuru/db"
+	"github.com/globocom/tsuru/provision"
 	"github.com/globocom/tsuru/testing"
 	"labix.org/v2/mgo/bson"
 	. "launchpad.net/gocheck"
@@ -113,4 +114,41 @@ func (s *ELBSuite) TestCreateELBUsingVPC(c *C) {
 	c.Assert(lbd.SecurityGroups, DeepEquals, []string{"sg-0900"})
 	c.Assert(lbd.Scheme, Equals, "internal")
 	c.Assert(lbd.AvailZones, HasLen, 0)
+}
+
+func (s *ELBSuite) TestDestroyELB(c *C) {
+	app := testing.NewFakeApp("blue", "who", 1)
+	manager := ELBManager{}
+	manager.e = s.client
+	err := manager.Create(app)
+	c.Assert(err, IsNil)
+	defer s.client.DeleteLoadBalancer(app.GetName())                 // sanity
+	defer manager.collection().Remove(bson.M{"name": app.GetName()}) // sanity
+	err = manager.Destroy(app)
+	c.Assert(err, IsNil)
+	_, err = s.client.DescribeLoadBalancers(app.GetName())
+	c.Assert(err, NotNil)
+	c.Assert(err, ErrorMatches, `^.*\(LoadBalancerNotFound\)$`)
+	n, err := manager.collection().Find(bson.M{"name": app.GetName()}).Count()
+	c.Assert(err, IsNil)
+	c.Assert(n, Equals, 0)
+}
+
+func (s *ELBSuite) TestRegisterUnit(c *C) {
+	id := s.server.NewInstance()
+	defer s.server.RemoveInstance(id)
+	app := testing.NewFakeApp("fooled", "who", 1)
+	manager := ELBManager{}
+	manager.e = s.client
+	err := manager.Create(app)
+	c.Assert(err, IsNil)
+	defer manager.Destroy(app)
+	err = manager.Register(app, provision.Unit{InstanceId: id})
+	c.Assert(err, IsNil)
+	resp, err := s.client.DescribeLoadBalancers(app.GetName())
+	c.Assert(err, IsNil)
+	c.Assert(resp.LoadBalancerDescriptions, HasLen, 1)
+	c.Assert(resp.LoadBalancerDescriptions[0].Instances, HasLen, 1)
+	instances := resp.LoadBalancerDescriptions[0].Instances
+	c.Assert(instances[0].InstanceId, Equals, id)
 }
