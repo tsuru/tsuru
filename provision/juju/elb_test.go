@@ -172,3 +172,27 @@ func (s *ELBSuite) TestDeregisterUnit(c *C) {
 	c.Assert(resp.LoadBalancerDescriptions, HasLen, 1)
 	c.Assert(resp.LoadBalancerDescriptions[0].Instances, HasLen, 0)
 }
+
+func (s *ELBSuite) TestAddr(c *C) {
+	app := testing.NewFakeApp("enough", "who", 1)
+	manager := ELBManager{}
+	manager.e = s.client
+	err := manager.Create(app)
+	c.Assert(err, IsNil)
+	defer manager.Destroy(app)
+	var lb LoadBalancer
+	err = manager.collection().Find(bson.M{"name": app.GetName()}).One(&lb)
+	c.Assert(err, IsNil)
+	addr, err := manager.Addr(app)
+	c.Assert(err, IsNil)
+	c.Assert(addr, Equals, lb.DNSName)
+}
+
+func (s *ELBSuite) TestAddrUnknownLoadBalancer(c *C) {
+	app := testing.NewFakeApp("five", "who", 1)
+	manager := ELBManager{}
+	addr, err := manager.Addr(app)
+	c.Assert(addr, Equals, "")
+	c.Assert(err, NotNil)
+	c.Assert(err.Error(), Equals, "not found")
+}

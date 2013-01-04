@@ -124,5 +124,7 @@ func (m *ELBManager) Deregister(app provision.App, unit provision.Unit) error {
 }
 
 func (m *ELBManager) Addr(app provision.App) (string, error) {
-	return "", nil
+	var lb LoadBalancer
+	err := m.collection().Find(bson.M{"name": app.GetName()}).One(&lb)
+	return lb.DNSName, err
 }
