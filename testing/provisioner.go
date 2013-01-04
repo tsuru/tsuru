@@ -21,6 +21,7 @@ func init() {
 // Fake implementation for provision.Unit.
 type FakeUnit struct {
 	name    string
+	ip      string
 	machine int
 	status  provision.Status
 	actions []string
@@ -38,6 +39,10 @@ func (u *FakeUnit) GetMachine() int {
 
 func (u *FakeUnit) GetStatus() provision.Status {
 	return u.status
+}
+
+func (u *FakeUnit) GetIp() string {
+	return u.ip
 }
 
 // Fake implementation for provision.App.
@@ -61,6 +66,7 @@ func NewFakeApp(name, framework string, units int) *FakeApp {
 			name:    fmt.Sprintf(namefmt, name, i),
 			machine: i + 1,
 			status:  provision.StatusStarted,
+			ip:      fmt.Sprintf("10.10.10.%d", i+1),
 		}
 	}
 	return &app
@@ -373,80 +379,8 @@ func (p *FakeProvisioner) CollectStatus() ([]provision.Unit, error) {
 	return units, nil
 }
 
-func (p *FakeProvisioner) LoadBalancer() provision.LBManager {
-	return &FakeLBManager{provisioner: p, instances: make(map[string][]string)}
-}
-
-type FakeLBManager struct {
-	instances   map[string][]string
-	provisioner *FakeProvisioner
-	instMut     sync.Mutex
-}
-
-func (lb *FakeLBManager) Create(app provision.App) error {
-	if err := lb.provisioner.getError("LB.Create"); err != nil {
-		return err
-	}
-	lb.instMut.Lock()
-	lb.instances[app.GetName()] = nil
-	lb.instMut.Unlock()
-	return nil
-}
-
-func (lb *FakeLBManager) Destroy(app provision.App) error {
-	if err := lb.provisioner.getError("LB.Destroy"); err != nil {
-		return err
-	}
-	lb.instMut.Lock()
-	delete(lb.instances, app.GetName())
-	lb.instMut.Unlock()
-	return nil
-}
-
-func (lb *FakeLBManager) Register(app provision.App, unit provision.Unit) error {
-	if err := lb.provisioner.getError("LB.Register"); err != nil {
-		return err
-	}
-	lb.instMut.Lock()
-	defer lb.instMut.Unlock()
-	if _, ok := lb.instances[app.GetName()]; !ok {
-		return errors.New("Load balancer not found.")
-	}
-	lb.instances[app.GetName()] = append(lb.instances[app.GetName()], unit.InstanceId)
-	return nil
-}
-
-func (lb *FakeLBManager) Deregister(app provision.App, unit provision.Unit) error {
-	if err := lb.provisioner.getError("LB.Deregister"); err != nil {
-		return err
-	}
-	var (
-		instances []string
-		ok        bool
-		index     int = -1
-	)
-	lb.instMut.Lock()
-	defer lb.instMut.Unlock()
-	if instances, ok = lb.instances[app.GetName()]; !ok {
-		return errors.New("Load balancer not found.")
-	}
-	for i, u := range instances {
-		if unit.InstanceId == u {
-			index = i
-			break
-		}
-	}
-	if index < 0 {
-		return errors.New("Instance not found.")
-	}
-	copy(instances[index:], instances[index+1:])
-	instances = instances[:len(instances)-1]
-	lb.instances[app.GetName()] = instances
-	return nil
-}
-
-func (lb *FakeLBManager) Addr(app provision.App) (string, error) {
-	if err := lb.provisioner.getError("LB.Addr"); err != nil {
+func (p *FakeProvisioner) Addr(app provision.App) (string, error) {
+	if err := p.getError("Addr"); err != nil {
 		return "", err
 	}
 	return fmt.Sprintf("%s.fake-lb.tsuru.io", app.GetName()), nil

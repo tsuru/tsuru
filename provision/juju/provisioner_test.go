@@ -445,7 +445,7 @@ func (s *S) TestLoadBalancerEnabledElb(c *C) {
 	p.elb = new(bool)
 	*p.elb = true
 	lb := p.LoadBalancer()
-	_ = lb.(*ELBManager)
+	c.Assert(lb, NotNil)
 }
 
 func (s *S) TestLoadBalancerDisabledElb(c *C) {
@@ -520,6 +520,23 @@ func (s *S) TestUnitStatus(c *C) {
 	}
 }
 
+func (s *S) TestAddr(c *C) {
+	app := testing.NewFakeApp("blue", "who", 1)
+	p := JujuProvisioner{}
+	addr, err := p.Addr(app)
+	c.Assert(err, IsNil)
+	c.Assert(addr, Equals, app.ProvisionUnits()[0].GetIp())
+}
+
+func (s *S) TestAddrWithoutUnits(c *C) {
+	app := testing.NewFakeApp("squeeze", "who", 0)
+	p := JujuProvisioner{}
+	addr, err := p.Addr(app)
+	c.Assert(addr, Equals, "")
+	c.Assert(err, NotNil)
+	c.Assert(err.Error(), Equals, `App "squeeze" has no units.`)
+}
+
 func (s *ELBSuite) TestProvisionWithELB(c *C) {
 	tmpdir, err := commandmocker.Add("juju", "deployed")
 	c.Assert(err, IsNil)
@@ -548,6 +565,29 @@ func (s *ELBSuite) TestDestroyWithELB(c *C) {
 	lb := p.LoadBalancer()
 	defer lb.Destroy(app) // sanity
 	addr, err := lb.Addr(app)
+	c.Assert(addr, Equals, "")
+	c.Assert(err, NotNil)
+	c.Assert(err.Error(), Equals, "not found")
+}
+
+func (s *ELBSuite) TestAddrWithELB(c *C) {
+	app := testing.NewFakeApp("jimmy", "who", 0)
+	p := JujuProvisioner{}
+	lb := p.LoadBalancer()
+	err := lb.Create(app)
+	c.Assert(err, IsNil)
+	defer lb.Destroy(app)
+	addr, err := p.Addr(app)
+	c.Assert(err, IsNil)
+	lAddr, err := lb.Addr(app)
+	c.Assert(err, IsNil)
+	c.Assert(addr, Equals, lAddr)
+}
+
+func (s *ELBSuite) TestAddrWithUnknownELB(c *C) {
+	app := testing.NewFakeApp("jimmy", "who", 0)
+	p := JujuProvisioner{}
+	addr, err := p.Addr(app)
 	c.Assert(addr, Equals, "")
 	c.Assert(err, NotNil)
 	c.Assert(err.Error(), Equals, "not found")

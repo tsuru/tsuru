@@ -48,6 +48,9 @@ type AppUnit interface {
 
 	// Returns the status of the unit.
 	GetStatus() Status
+
+	// Returns the IP of the unit.
+	GetIp() string
 }
 
 // App represents a tsuru app.
@@ -107,29 +110,11 @@ type Provisioner interface {
 	// by tsuru collector when updating the status of apps in the database.
 	CollectStatus() ([]Unit, error)
 
-	// Returns a load balancer manager.
-	LoadBalancer() LBManager
-}
-
-// LBManager provides methods to manage load balancers per app.
-type LBManager interface {
-	// Creates a new load balancer.
-	Create(App) error
-
-	// Destroys a load balancer.
-	Destroy(App) error
-
-	// Adds a unit to the load balancer.
-	Register(App, Unit) error
-
-	// Removes a unit from the load balancer.
-	Deregister(App, Unit) error
-
-	// Addr returns the address of the load balancer for an app. It will
-	// probably be a DNS name or IP address.
+	// Addr returns the address for an app. It will probably be a DNS name
+	// or IP address.
 	//
-	// Collector will use this method to get the IP (althought it might not
-	// be an actual IP, collector calls it "IP") of the app from the
+	// Tsuru will use this method to get the IP (althought it might not be
+	// an actual IP, collector calls it "IP") of the app from the
 	// provisioner.
 	Addr(App) (string, error)
 }

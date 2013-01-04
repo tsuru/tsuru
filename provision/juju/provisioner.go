@@ -272,7 +272,18 @@ func (p *JujuProvisioner) CollectStatus() ([]provision.Unit, error) {
 	return units, nil
 }
 
-func (p *JujuProvisioner) LoadBalancer() provision.LBManager {
+func (p *JujuProvisioner) Addr(app provision.App) (string, error) {
+	if p.elbSupport() {
+		return p.LoadBalancer().Addr(app)
+	}
+	units := app.ProvisionUnits()
+	if len(units) < 1 {
+		return "", fmt.Errorf("App %q has no units.", app.GetName())
+	}
+	return units[0].GetIp(), nil
+}
+
+func (p *JujuProvisioner) LoadBalancer() *ELBManager {
 	if p.elbSupport() {
 		return &ELBManager{}
 	}
