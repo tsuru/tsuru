@@ -58,6 +58,9 @@ func (p *JujuProvisioner) Provision(app provision.App) error {
 		app.Log("Failed to create machine: "+out, "tsuru")
 		return &provision.Error{Reason: out, Err: err}
 	}
+	if p.elbSupport() {
+		return p.LoadBalancer().Create(app)
+	}
 	return nil
 }
 
@@ -105,11 +108,15 @@ func (p *JujuProvisioner) terminateMachines(app provision.App, units ...provisio
 }
 
 func (p *JujuProvisioner) Destroy(app provision.App) error {
-	if err := p.destroyService(app); err != nil {
+	var err error
+	if err = p.destroyService(app); err != nil {
 		return err
 	}
+	if p.elbSupport() {
+		err = p.LoadBalancer().Destroy(app)
+	}
 	go p.terminateMachines(app)
-	return nil
+	return err
 }
 
 func (p *JujuProvisioner) AddUnits(app provision.App, n uint) ([]provision.Unit, error) {

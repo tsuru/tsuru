@@ -62,9 +62,6 @@ func (s *S) TestProvisionFailure(c *C) {
 	c.Assert(pErr.Err.Error(), Equals, "exit status 1")
 }
 
-func (s *S) TestProvisionWithELB(c *C) {
-}
-
 func (s *S) TestDestroy(c *C) {
 	tmpdir, err := commandmocker.Add("juju", "$*")
 	c.Assert(err, IsNil)
@@ -520,4 +517,37 @@ func (s *S) TestUnitStatus(c *C) {
 			c.Errorf("unitStatus(%q, %q, %q): Want %q. Got %q.", t.instance, t.agent, t.machineAgent, t.expected, got)
 		}
 	}
+}
+
+func (s *ELBSuite) TestProvisionWithELB(c *C) {
+	tmpdir, err := commandmocker.Add("juju", "deployed")
+	c.Assert(err, IsNil)
+	defer commandmocker.Remove(tmpdir)
+	app := NewFakeApp("jimmy", "who", 0)
+	p := JujuProvisioner{}
+	err = p.Provision(app)
+	c.Assert(err, IsNil)
+	lb := p.LoadBalancer()
+	defer lb.Destroy(app)
+	addr, err := lb.Addr(app)
+	c.Assert(err, IsNil)
+	c.Assert(addr, Not(Equals), "")
+}
+
+func (s *ELBSuite) TestDestroyWithELB(c *C) {
+	tmpdir, err := commandmocker.Add("juju", "deployed")
+	c.Assert(err, IsNil)
+	defer commandmocker.Remove(tmpdir)
+	app := NewFakeApp("jimmy", "who", 0)
+	p := JujuProvisioner{}
+	err = p.Provision(app)
+	c.Assert(err, IsNil)
+	err = p.Destroy(app)
+	c.Assert(err, IsNil)
+	lb := p.LoadBalancer()
+	defer lb.Destroy(app) // sanity
+	addr, err := lb.Addr(app)
+	c.Assert(addr, Equals, "")
+	c.Assert(err, NotNil)
+	c.Assert(err.Error(), Equals, "not found")
 }
