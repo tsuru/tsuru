@@ -87,6 +87,7 @@ func handle(msg *queue.Message) {
 			log.Print(err)
 			return
 		}
+		queue.Delete(msg)
 		app.SerializeEnvVars()
 	case StartApp:
 		if len(msg.Args) < 1 {
@@ -100,9 +101,12 @@ func handle(msg *queue.Message) {
 		err = app.Restart(ioutil.Discard)
 		if err != nil {
 			log.Printf("Error handling %q. App failed to start:\n%s.", msg.Action, err)
+			return
 		}
+		queue.Delete(msg)
 	default:
 		log.Printf("Error handling %q: invalid action.", msg.Action)
+		msg.Release()
 	}
 }
 
