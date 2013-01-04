@@ -2,11 +2,10 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-package main
+package app
 
 import (
 	"bytes"
-	"github.com/globocom/tsuru/app"
 	"github.com/globocom/tsuru/app/bind"
 	"github.com/globocom/tsuru/db"
 	"github.com/globocom/tsuru/log"
@@ -20,9 +19,9 @@ import (
 
 func (s *S) TestHandleMessage(c *C) {
 	s.provisioner.PrepareOutput([]byte("exported"))
-	a := app.App{
+	a := App{
 		Name: "nemesis",
-		Units: []app.Unit{
+		Units: []Unit{
 			{
 				Name:    "i-00800",
 				State:   "started",
@@ -41,7 +40,7 @@ func (s *S) TestHandleMessage(c *C) {
 	err := db.Session.Apps().Insert(a)
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
-	msg := queue.Message{Action: app.RegenerateApprc, Args: []string{a.Name}}
+	msg := queue.Message{Action: RegenerateApprc, Args: []string{a.Name}}
 	handle(&msg)
 	cmds := s.provisioner.GetCmds("", &a)
 	c.Assert(cmds, HasLen, 1)
@@ -53,9 +52,9 @@ func (s *S) TestHandleMessage(c *C) {
 
 func (s *S) TestHandleMessageWithSpecificUnit(c *C) {
 	s.provisioner.PrepareOutput([]byte("exported"))
-	a := app.App{
+	a := App{
 		Name: "nemesis",
-		Units: []app.Unit{
+		Units: []Unit{
 			{
 				Name:    "nemesis/0",
 				State:   "started",
@@ -84,7 +83,7 @@ func (s *S) TestHandleMessageWithSpecificUnit(c *C) {
 	err := db.Session.Apps().Insert(a)
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
-	msg := queue.Message{Action: app.RegenerateApprc, Args: []string{a.Name, "nemesis/1"}}
+	msg := queue.Message{Action: RegenerateApprc, Args: []string{a.Name, "nemesis/1"}}
 	handle(&msg)
 	cmds := s.provisioner.GetCmds("", &a)
 	c.Assert(cmds, HasLen, 1)
@@ -107,60 +106,60 @@ func (s *S) TestHandleMessageErrors(c *C) {
 			expectedLog: `Error handling "unknown-action": invalid action.`,
 		},
 		{
-			action: app.StartApp,
+			action: StartApp,
 			args:   []string{"nemesis"},
 			expectedLog: `Error handling "start-app" for the app "nemesis":` +
 				` The status of the app and all units should be "started" (the app is "pending").`,
 		},
 		{
-			action: app.StartApp,
+			action: StartApp,
 			args:   []string{"totem", "totem/0", "totem/1"},
 			expectedLog: `Error handling "start-app" for the app "totem":` +
 				` The status of the app and all units should be "started" (the app is "started").`,
 		},
 		{
-			action: app.RegenerateApprc,
+			action: RegenerateApprc,
 			args:   []string{"nemesis"},
 			expectedLog: `Error handling "regenerate-apprc" for the app "nemesis":` +
 				` The status of the app and all units should be "started" (the app is "pending").`,
 		},
 		{
-			action: app.RegenerateApprc,
+			action: RegenerateApprc,
 			args:   []string{"totem", "totem/0", "totem/1"},
 			expectedLog: `Error handling "regenerate-apprc" for the app "totem":` +
 				` The status of the app and all units should be "started" (the app is "started").`,
 		},
 		{
-			action:      app.RegenerateApprc,
+			action:      RegenerateApprc,
 			args:        []string{"unknown-app"},
 			expectedLog: `Error handling "regenerate-apprc": app "unknown-app" does not exist.`,
 		},
 		{
-			action:      app.RegenerateApprc,
+			action:      RegenerateApprc,
 			expectedLog: `Error handling "regenerate-apprc": this action requires at least 1 argument.`,
 		},
 		{
-			action: app.RegenerateApprc,
+			action: RegenerateApprc,
 			args:   []string{"marathon"},
 			expectedLog: `Error handling "regenerate-apprc" for the app "marathon":` +
 				` the app is in "error" state.`,
 		},
 		{
-			action: app.RegenerateApprc,
+			action: RegenerateApprc,
 			args:   []string{"territories"},
 			expectedLog: `Error handling "regenerate-apprc" for the app "territories":` +
 				` the app is down.`,
 		},
 	}
 	var buf bytes.Buffer
-	a := app.App{Name: "nemesis", State: "pending"}
+	a := App{Name: "nemesis", State: "pending"}
 	err := db.Session.Apps().Insert(a)
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
-	a = app.App{
+	a = App{
 		Name:  "totem",
 		State: "started",
-		Units: []app.Unit{
+		Units: []Unit{
 			{Name: "totem/0", State: "pending"},
 			{Name: "totem/1", State: "started"},
 		},
@@ -168,11 +167,11 @@ func (s *S) TestHandleMessageErrors(c *C) {
 	err = db.Session.Apps().Insert(a)
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
-	a = app.App{Name: "marathon", State: "error"}
+	a = App{Name: "marathon", State: "error"}
 	err = db.Session.Apps().Insert(a)
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
-	a = app.App{Name: "territories", State: "down"}
+	a = App{Name: "territories", State: "down"}
 	err = db.Session.Apps().Insert(a)
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
@@ -203,9 +202,9 @@ func (s *S) TestHandleMessageErrors(c *C) {
 
 func (s *S) TestHandleRestartAppMessage(c *C) {
 	s.provisioner.PrepareOutput([]byte("started"))
-	a := app.App{
+	a := App{
 		Name: "nemesis",
-		Units: []app.Unit{
+		Units: []Unit{
 			{
 				Name:    "i-00800",
 				State:   "started",
@@ -217,7 +216,7 @@ func (s *S) TestHandleRestartAppMessage(c *C) {
 	err := db.Session.Apps().Insert(a)
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
-	message := queue.Message{Action: app.StartApp, Args: []string{a.Name}}
+	message := queue.Message{Action: StartApp, Args: []string{a.Name}}
 	handle(&message)
 	cmds := s.provisioner.GetCmds("/var/lib/tsuru/hooks/restart", &a)
 	c.Assert(cmds, HasLen, 1)
@@ -225,11 +224,11 @@ func (s *S) TestHandleRestartAppMessage(c *C) {
 
 func (s *S) TestUnitListStarted(c *C) {
 	var tests = []struct {
-		input    []app.Unit
+		input    []Unit
 		expected bool
 	}{
 		{
-			[]app.Unit{
+			[]Unit{
 				{State: "started"},
 				{State: "started"},
 				{State: "started"},
@@ -238,7 +237,7 @@ func (s *S) TestUnitListStarted(c *C) {
 		},
 		{nil, true},
 		{
-			[]app.Unit{
+			[]Unit{
 				{State: "started"},
 				{State: "blabla"},
 			},
@@ -246,7 +245,7 @@ func (s *S) TestUnitListStarted(c *C) {
 		},
 	}
 	for _, t := range tests {
-		l := UnitList(t.input)
+		l := unitList(t.input)
 		if got := l.Started(); got != t.expected {
 			c.Errorf("l.Started(): want %v. Got %v.", t.expected, got)
 		}

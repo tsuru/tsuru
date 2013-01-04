@@ -2,30 +2,50 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-package main
+package app
 
 import (
 	"fmt"
-	"github.com/globocom/tsuru/app"
 	"github.com/globocom/tsuru/log"
 	"github.com/globocom/tsuru/provision"
 	"github.com/globocom/tsuru/queue"
 	"io/ioutil"
+	"sync/atomic"
 )
 
-func handleMessages() {
+type messageHandler struct {
+	running int32
+}
+
+// start starts the handler. It's safe to call start multiple times.
+func (h *messageHandler) start() {
+	if atomic.CompareAndSwapInt32(&h.running, 0, 1) {
+		go h.handleMessages()
+	}
+}
+
+// stop stops the handler. You can start it again by calling start.
+func (h *messageHandler) stop() {
+	atomic.StoreInt32(&h.running, 0)
+}
+
+func (h *messageHandler) handleMessages() {
 	for {
 		if message, err := queue.Get(5e9); err == nil {
 			go handle(message)
-		} else {
+		} else if atomic.LoadInt32(&h.running) == 1 {
 			log.Printf("Failed to receive message: %s. Trying again...", err)
 			continue
+		} else {
+			return
 		}
 	}
 }
 
-func ensureAppIsStarted(msg *queue.Message) (app.App, error) {
-	a := app.App{Name: msg.Args[0]}
+var handler = &messageHandler{}
+
+func ensureAppIsStarted(msg *queue.Message) (App, error) {
+	a := App{Name: msg.Args[0]}
 	err := a.Get()
 	if err != nil {
 		return a, fmt.Errorf("Error handling %q: app %q does not exist.", msg.Action, a.Name)
@@ -50,7 +70,7 @@ func ensureAppIsStarted(msg *queue.Message) (app.App, error) {
 
 func handle(msg *queue.Message) {
 	switch msg.Action {
-	case app.RegenerateApprc:
+	case RegenerateApprc:
 		if len(msg.Args) < 1 {
 			log.Printf("Error handling %q: this action requires at least 1 argument.", msg.Action)
 			return
@@ -61,7 +81,7 @@ func handle(msg *queue.Message) {
 			return
 		}
 		app.SerializeEnvVars()
-	case app.StartApp:
+	case StartApp:
 		if len(msg.Args) < 1 {
 			log.Printf("Error handling %q: this action requires at least 1 argument.", msg.Action)
 		}
@@ -79,9 +99,9 @@ func handle(msg *queue.Message) {
 	}
 }
 
-type UnitList []app.Unit
+type unitList []Unit
 
-func (l UnitList) Started() bool {
+func (l unitList) Started() bool {
 	for _, unit := range l {
 		if unit.State != string(provision.StatusStarted) {
 			return false
@@ -90,10 +110,10 @@ func (l UnitList) Started() bool {
 	return true
 }
 
-func getUnits(a *app.App, names []string) UnitList {
-	var units []app.Unit
+func getUnits(a *App, names []string) unitList {
+	var units []Unit
 	if len(names) > 0 {
-		units = make([]app.Unit, len(names))
+		units = make([]Unit, len(names))
 		i := 0
 		for _, unitName := range names {
 			for _, appUnit := range a.Units {
@@ -105,5 +125,13 @@ func getUnits(a *app.App, names []string) UnitList {
 			}
 		}
 	}
-	return UnitList(units)
+	return unitList(units)
+}
+
+func enqueue(msgs ...queue.Message) {
+	for _, msg := range msgs {
+		copy := msg
+		queue.Put(&copy)
+	}
+	handler.start()
 }

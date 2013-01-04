@@ -79,12 +79,6 @@ func main() {
 		}
 		fmt.Printf("Using %q provisioner.\n\n", provisioner)
 
-		qServer, err := config.GetString("queue-server")
-		if err != nil {
-			fatal(err)
-		}
-		fmt.Printf("Connected to queue server at %s.\n", qServer)
-		go handleMessages()
 		ticker := time.Tick(time.Minute)
 		fmt.Println("tsuru collector agent started...")
 		jujuCollect(ticker)

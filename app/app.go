@@ -212,7 +212,7 @@ func (a *App) AddUnits(n uint) error {
 	if err != nil {
 		return err
 	}
-	go a.enqueue(messages...)
+	go enqueue(messages...)
 	return nil
 }
 
@@ -536,13 +536,6 @@ func (a *App) SetEnvs(envs []bind.EnvVar, publicOnly bool) error {
 	return a.SetEnvsToApp(e, publicOnly, false)
 }
 
-func (a *App) enqueue(msgs ...queue.Message) {
-	for _, msg := range msgs {
-		copy := msg
-		queue.Put(&copy)
-	}
-}
-
 // SetEnvsToApp adds environment variables to an app, serializing the resulting
 // list of environment variables in all units of apps. This method can
 // serialize them directly or using a queue.
@@ -571,7 +564,8 @@ func (app *App) SetEnvsToApp(envs []bind.EnvVar, publicOnly, useQueue bool) erro
 			return err
 		}
 		if useQueue {
-			return queue.Put(&queue.Message{Action: RegenerateApprc, Args: []string{app.Name}})
+			enqueue(queue.Message{Action: RegenerateApprc, Args: []string{app.Name}})
+			return nil
 		}
 		app.SerializeEnvVars()
 	}
