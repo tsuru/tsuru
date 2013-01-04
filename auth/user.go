@@ -142,7 +142,7 @@ func (u *User) AddKey(key Key) error {
 	return nil
 }
 
-func (u *User) removeKey(key Key) error {
+func (u *User) RemoveKey(key Key) error {
 	_, index := u.FindKey(key)
 	copy(u.Keys[index:], u.Keys[index+1:])
 	u.Keys = u.Keys[:len(u.Keys)-1]

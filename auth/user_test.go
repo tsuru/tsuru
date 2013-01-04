@@ -200,7 +200,7 @@ func (s *S) TestAddKeyAddsAKeyToTheUser(c *C) {
 
 func (s *S) TestRemoveKeyRemovesAKeyFromTheUser(c *C) {
 	u := &User{Email: "shineon@pinkfloyd.com", Keys: []Key{{Content: "my-key"}}}
-	err := u.removeKey(Key{Content: "my-key"})
+	err := u.RemoveKey(Key{Content: "my-key"})
 	c.Assert(err, IsNil)
 	c.Assert(u, Not(HasKey), "my-key")
 }
