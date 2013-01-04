@@ -41,6 +41,24 @@ type Message struct {
 	id     uint64
 }
 
+// Release releases a message back to the queue.
+//
+// This method should be used when handling a message that you cannot handle,
+// maximizing throughput.
+func (m *Message) Release() error {
+	if m.id == 0 {
+		return errors.New("Unknown message.")
+	}
+	conn, err := connection()
+	if err != nil {
+		return err
+	}
+	if err = conn.Release(m.id, 1, 0); err != nil && notFoundRegexp.MatchString(err.Error()) {
+		return errors.New("Message not found.")
+	}
+	return err
+}
+
 // Put sends a new message to the queue.
 func Put(msg *Message) error {
 	conn, err := connection()

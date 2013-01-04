@@ -151,6 +151,36 @@ func (s *S) TestGetInvalidMessage(c *C) {
 	c.Assert(err, ErrorMatches, "^.*TIMED_OUT$")
 }
 
+func (s *S) TestRelease(c *C) {
+	conn, err := connection()
+	c.Assert(err, IsNil)
+	msg := Message{Action: "do-something"}
+	err = Put(&msg)
+	c.Assert(err, IsNil)
+	defer Delete(&msg)
+	copy, err := Get(1e6)
+	c.Assert(err, IsNil)
+	err = msg.Release()
+	c.Assert(err, IsNil)
+	id, _, err := conn.Reserve(1e6)
+	c.Assert(err, IsNil)
+	c.Assert(id, Equals, copy.id)
+}
+
+func (s *S) TestReleaseMessageWithoutId(c *C) {
+	msg := Message{Action: "do-something"}
+	err := msg.Release()
+	c.Assert(err, NotNil)
+	c.Assert(err.Error(), Equals, "Unknown message.")
+}
+
+func (s *S) TestReleaseUnknownMessage(c *C) {
+	msg := Message{Action: "do-otherthing", id: 12884}
+	err := msg.Release()
+	c.Assert(err, NotNil)
+	c.Assert(err.Error(), Equals, "Message not found.")
+}
+
 func (s *S) TestDelete(c *C) {
 	msg := Message{
 		Action: "create-app",
