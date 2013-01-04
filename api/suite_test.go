@@ -10,8 +10,8 @@ import (
 	"github.com/globocom/tsuru/api/auth"
 	"github.com/globocom/tsuru/app"
 	"github.com/globocom/tsuru/db"
-	"github.com/globocom/tsuru/service"
 	fsTesting "github.com/globocom/tsuru/fs/testing"
+	"github.com/globocom/tsuru/service"
 	tsuruTesting "github.com/globocom/tsuru/testing"
 	"io"
 	. "launchpad.net/gocheck"
@@ -23,17 +23,40 @@ import (
 func Test(t *testing.T) { TestingT(t) }
 
 type S struct {
-	team        auth.Team
-	user        *auth.User
-	rfs         *fsTesting.RecordingFs
-	t           *tsuruTesting.T
-	provisioner *tsuruTesting.FakeProvisioner
+	team            *auth.Team
+	user            *auth.User
+	rfs             *fsTesting.RecordingFs
+	t               *tsuruTesting.T
+	provisioner     *tsuruTesting.FakeProvisioner
 	service         *service.Service
 	serviceInstance *service.ServiceInstance
 	tmpdir          string
 }
 
 var _ = Suite(&S{})
+
+type hasAccessToChecker struct{}
+
+func (c *hasAccessToChecker) Info() *CheckerInfo {
+	return &CheckerInfo{Name: "HasAccessTo", Params: []string{"team", "service"}}
+}
+
+func (c *hasAccessToChecker) Check(params []interface{}, names []string) (bool, string) {
+	if len(params) != 2 {
+		return false, "you must provide two parameters"
+	}
+	team, ok := params[0].(auth.Team)
+	if !ok {
+		return false, "first parameter should be a team instance"
+	}
+	srv, ok := params[1].(service.Service)
+	if !ok {
+		return false, "second parameter should be service instance"
+	}
+	return srv.HasTeam(&team), ""
+}
+
+var HasAccessTo Checker = &hasAccessToChecker{}
 
 type greaterChecker struct{}
 
@@ -64,7 +87,7 @@ func (s *S) createUserAndTeam(c *C) {
 	s.user = &auth.User{Email: "whydidifall@thewho.com", Password: "123"}
 	err := s.user.Create()
 	c.Assert(err, IsNil)
-	s.team = auth.Team{Name: "tsuruteam", Users: []string{s.user.Email}}
+	s.team = &auth.Team{Name: "tsuruteam", Users: []string{s.user.Email}}
 	err = db.Session.Teams().Insert(s.team)
 	c.Assert(err, IsNil)
 }

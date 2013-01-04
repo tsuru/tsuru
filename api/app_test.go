@@ -519,7 +519,7 @@ func (s *S) TestCreateAppHandler(c *C) {
 	var gotApp app.App
 	err = db.Session.Apps().Find(bson.M{"name": "someapp"}).One(&gotApp)
 	c.Assert(err, IsNil)
-	_, found := gotApp.Find(&s.team)
+	_, found := gotApp.Find(s.team)
 	c.Assert(found, Equals, true)
 	c.Assert(s.provisioner.GetUnits(&gotApp), HasLen, 4)
 }
@@ -781,7 +781,7 @@ func (s *S) TestAddTeamToTheApp(c *C) {
 	c.Assert(err, IsNil)
 	err = a.Get()
 	c.Assert(err, IsNil)
-	_, found := a.Find(&s.team)
+	_, found := a.Find(s.team)
 	c.Assert(found, Equals, true)
 }
 
@@ -905,7 +905,7 @@ func (s *S) TestRevokeAccessFromTeam(c *C) {
 	err = RevokeAccessFromTeamHandler(recorder, request, s.user)
 	c.Assert(err, IsNil)
 	a.Get()
-	_, found := a.Find(&s.team)
+	_, found := a.Find(s.team)
 	c.Assert(found, Equals, false)
 }
 

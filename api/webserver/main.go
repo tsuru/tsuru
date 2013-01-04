@@ -73,8 +73,8 @@ func main() {
 	m.Get("/services/c/:name/doc", AuthorizationRequiredHandler(api.Doc))
 	m.Get("/services/:name/doc", AuthorizationRequiredHandler(api.GetDocHandler))
 	m.Put("/services/:name/doc", AuthorizationRequiredHandler(api.AddDocHandler))
-	m.Put("/services/:service/:team", AuthorizationRequiredHandler(api.GrantAccessToTeamHandler))
-	m.Del("/services/:service/:team", AuthorizationRequiredHandler(api.RevokeAccessFromTeamHandler))
+	m.Put("/services/:service/:team", AuthorizationRequiredHandler(api.GrantServiceAccessToTeamHandler))
+	m.Del("/services/:service/:team", AuthorizationRequiredHandler(api.RevokeServiceAccessFromTeamHandler))
 
 	m.Del("/apps/:name", AuthorizationRequiredHandler(api.AppDelete))
 	m.Get("/apps/:name/repository/clone", Handler(api.CloneRepositoryHandler))
