@@ -132,7 +132,7 @@ func (u *User) findKey(key Key) (Key, int) {
 	return Key{}, -1
 }
 
-func (u *User) hasKey(key Key) bool {
+func (u *User) HasKey(key Key) bool {
 	_, index := u.findKey(key)
 	return index > -1
 }

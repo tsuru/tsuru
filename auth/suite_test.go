@@ -39,7 +39,7 @@ func (c *hasKeyChecker) Check(params []interface{}, names []string) (bool, strin
 		return false, "second parameter should be a string"
 	}
 	key := Key{Content: content}
-	return user.hasKey(key), ""
+	return user.HasKey(key), ""
 }
 
 var HasKey Checker = &hasKeyChecker{}
