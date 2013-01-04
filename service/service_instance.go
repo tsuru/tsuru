@@ -6,8 +6,8 @@ package service
 
 import (
 	stderrors "errors"
-	"github.com/globocom/tsuru/auth"
 	"github.com/globocom/tsuru/app/bind"
+	"github.com/globocom/tsuru/auth"
 	"github.com/globocom/tsuru/db"
 	"github.com/globocom/tsuru/errors"
 	"labix.org/v2/mgo/bson"
