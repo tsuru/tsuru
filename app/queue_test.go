@@ -15,7 +15,44 @@ import (
 	. "launchpad.net/gocheck"
 	stdlog "log"
 	"strings"
+	"sync/atomic"
+	"testing"
+	"time"
 )
+
+func (s *S) TestHandleMessages(c *C) {
+	if testing.Short() {
+		c.Skip("Slow test.")
+	}
+	handler.state = stopped
+	handler.start()
+
+	s.provisioner.PrepareOutput([]byte("exported"))
+	a := App{
+		Name: "nemesis",
+		Units: []Unit{
+			{
+				Name:    "i-00800",
+				State:   "started",
+				Machine: 19,
+			},
+		},
+		State: provision.StatusStarted.String(),
+	}
+	err := db.Session.Apps().Insert(a)
+	c.Check(err, IsNil)
+	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
+	queue.Put(&queue.Message{Action: StartApp, Args: []string{a.Name}})
+	time.Sleep(1e9)
+	handler.stop()
+	cmds := s.provisioner.GetCmds("/var/lib/tsuru/hooks/restart", &a)
+	c.Check(cmds, HasLen, 1)
+
+	// spin
+	for atomic.LoadInt32(&handler.state) != stopped {
+		time.Sleep(1e3)
+	}
+}
 
 func (s *S) TestHandleMessage(c *C) {
 	s.provisioner.PrepareOutput([]byte("exported"))
