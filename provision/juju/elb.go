@@ -15,8 +15,8 @@ import (
 	"labix.org/v2/mgo/bson"
 )
 
-// LoadBalancer represents an ELB instance.
-type LoadBalancer struct {
+// loadBalancer represents an ELB instance.
+type loadBalancer struct {
 	Name    string
 	DNSName string
 }
@@ -99,7 +99,7 @@ func (m *ELBManager) Create(app provision.App) error {
 	if err != nil {
 		return err
 	}
-	lb := LoadBalancer{Name: app.GetName(), DNSName: resp.DNSName}
+	lb := loadBalancer{Name: app.GetName(), DNSName: resp.DNSName}
 	return m.collection().Insert(lb)
 }
 
@@ -124,7 +124,7 @@ func (m *ELBManager) Deregister(app provision.App, unit provision.Unit) error {
 }
 
 func (m *ELBManager) Addr(app provision.App) (string, error) {
-	var lb LoadBalancer
+	var lb loadBalancer
 	err := m.collection().Find(bson.M{"name": app.GetName()}).One(&lb)
 	return lb.DNSName, err
 }

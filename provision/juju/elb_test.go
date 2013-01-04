@@ -78,7 +78,7 @@ func (s *ELBSuite) TestCreateELB(c *C) {
 	c.Assert(listener.Protocol, Equals, "HTTP")
 	c.Assert(listener.SSLCertificateId, Equals, "")
 	dnsName := resp.LoadBalancerDescriptions[0].DNSName
-	var lb LoadBalancer
+	var lb loadBalancer
 	err = db.Session.Collection(s.cName).Find(bson.M{"name": app.GetName()}).One(&lb)
 	c.Assert(err, IsNil)
 	c.Assert(lb.DNSName, Equals, dnsName)
@@ -180,7 +180,7 @@ func (s *ELBSuite) TestAddr(c *C) {
 	err := manager.Create(app)
 	c.Assert(err, IsNil)
 	defer manager.Destroy(app)
-	var lb LoadBalancer
+	var lb loadBalancer
 	err = manager.collection().Find(bson.M{"name": app.GetName()}).One(&lb)
 	c.Assert(err, IsNil)
 	addr, err := manager.Addr(app)
