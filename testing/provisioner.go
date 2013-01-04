@@ -51,7 +51,6 @@ type FakeApp struct {
 	framework string
 	units     []provision.AppUnit
 	logs      []string
-	actions   []string
 }
 
 func NewFakeApp(name, framework string, units int) *FakeApp {
@@ -74,22 +73,18 @@ func NewFakeApp(name, framework string, units int) *FakeApp {
 
 func (a *FakeApp) Log(message, source string) error {
 	a.logs = append(a.logs, source+message)
-	a.actions = append(a.actions, "log "+source+" - "+message)
 	return nil
 }
 
 func (a *FakeApp) GetName() string {
-	a.actions = append(a.actions, "getname")
 	return a.name
 }
 
 func (a *FakeApp) GetFramework() string {
-	a.actions = append(a.actions, "getframework")
 	return a.framework
 }
 
 func (a *FakeApp) ProvisionUnits() []provision.AppUnit {
-	a.actions = append(a.actions, "getunits")
 	return a.units
 }
 
