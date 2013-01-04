@@ -123,7 +123,7 @@ func (u *User) Teams() (teams []Team, err error) {
 	return
 }
 
-func (u *User) findKey(key Key) (Key, int) {
+func (u *User) FindKey(key Key) (Key, int) {
 	for i, k := range u.Keys {
 		if k.Content == key.Content {
 			return k, i
@@ -133,17 +133,17 @@ func (u *User) findKey(key Key) (Key, int) {
 }
 
 func (u *User) HasKey(key Key) bool {
-	_, index := u.findKey(key)
+	_, index := u.FindKey(key)
 	return index > -1
 }
 
-func (u *User) addKey(key Key) error {
+func (u *User) AddKey(key Key) error {
 	u.Keys = append(u.Keys, key)
 	return nil
 }
 
 func (u *User) removeKey(key Key) error {
-	_, index := u.findKey(key)
+	_, index := u.FindKey(key)
 	copy(u.Keys[index:], u.Keys[index+1:])
 	u.Keys = u.Keys[:len(u.Keys)-1]
 	return nil

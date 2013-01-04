@@ -193,7 +193,7 @@ func (s *S) TestGetUserByTokenDoesNotFailWhenTheTokenIsValid(c *C) {
 
 func (s *S) TestAddKeyAddsAKeyToTheUser(c *C) {
 	u := &User{Email: "sacefulofsecrets@pinkfloyd.com"}
-	err := u.addKey(Key{Content: "my-key"})
+	err := u.AddKey(Key{Content: "my-key"})
 	c.Assert(err, IsNil)
 	c.Assert(u, HasKey, "my-key")
 }
@@ -320,7 +320,7 @@ func (s *S) TestFindKeyReturnsKeyWithNameAndContent(c *C) {
 	err := u.Create()
 	c.Assert(err, IsNil)
 	defer db.Session.Users().Remove(bson.M{"email": u.Email})
-	k, index := u.findKey(Key{Content: u.Keys[0].Content})
+	k, index := u.FindKey(Key{Content: u.Keys[0].Content})
 	c.Assert(index, Equals, 0)
 	c.Assert(k.Name, Equals, u.Keys[0].Name)
 }
