@@ -26,7 +26,7 @@ func (c *userPresenceChecker) Check(params []interface{}, names []string) (bool,
 	if !ok {
 		return false, "second parameter should be a pointer to a user instance"
 	}
-	return team.containsUser(user), ""
+	return team.ContainsUser(user), ""
 }
 
 var ContainsUser Checker = &userPresenceChecker{}

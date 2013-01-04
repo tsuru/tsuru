@@ -16,7 +16,7 @@ type Team struct {
 	Users []string
 }
 
-func (t *Team) containsUser(u *User) bool {
+func (t *Team) ContainsUser(u *User) bool {
 	for _, user := range t.Users {
 		if u.Email == user {
 			return true
@@ -26,7 +26,7 @@ func (t *Team) containsUser(u *User) bool {
 }
 
 func (t *Team) addUser(u *User) error {
-	if t.containsUser(u) {
+	if t.ContainsUser(u) {
 		return fmt.Errorf("User %s is already in the team %s.", u.Email, t.Name)
 	}
 	t.Users = append(t.Users, u.Email)
@@ -66,7 +66,7 @@ func CheckUserAccess(teamNames []string, u *User) bool {
 	for _, team := range teams {
 		wg.Add(1)
 		go func(t Team) {
-			if t.containsUser(u) {
+			if t.ContainsUser(u) {
 				found <- true
 			}
 			wg.Done()
