@@ -96,7 +96,7 @@ func (s *S) SetUpSuite(c *C) {
 	var err error
 	err = config.ReadConfigFile("../etc/tsuru.conf")
 	c.Assert(err, IsNil)
-	db.Session, err = db.Open("127.0.0.1:27017", "tsuru_app_test")
+	db.Session, err = db.Open("127.0.0.1:27017", "tsuru_api_test")
 	c.Assert(err, IsNil)
 	s.rfs = &fsTesting.RecordingFs{}
 	file, err := s.rfs.Open("/dev/urandom")
