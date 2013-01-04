@@ -58,7 +58,7 @@ func (s *S) TestConnectionQueueServerUndefined(c *C) {
 	c.Assert(err.Error(), Equals, `"queue-server" is not defined in config file.`)
 }
 
-func (s *S) TestConnectDoubleCall(c *C) {
+func (s *S) TestConnectionDoubleCall(c *C) {
 	cn1, err := connection()
 	c.Assert(err, IsNil)
 	defer cn1.Close()
@@ -66,6 +66,17 @@ func (s *S) TestConnectDoubleCall(c *C) {
 	cn2, err := connection()
 	c.Assert(err, IsNil)
 	c.Assert(cn2, Equals, cn1)
+}
+
+func (s *S) TestConnectionClosed(c *C) {
+	cn1, err := connection()
+	c.Assert(err, IsNil)
+	cn1.Close()
+	cn2, err := connection()
+	c.Assert(err, IsNil)
+	defer cn2.Close()
+	_, err = cn2.ListTubes()
+	c.Assert(err, IsNil)
 }
 
 func (s *S) TestPut(c *C) {

@@ -108,7 +108,13 @@ func connection() (*beanstalk.Conn, error) {
 		if err != nil {
 			return nil, errors.New(`"queue-server" is not defined in config file.`)
 		}
-		conn, err = beanstalk.Dial("tcp", addr)
+		if conn, err = beanstalk.Dial("tcp", addr); err != nil {
+			return nil, err
+		}
+	}
+	if _, err = conn.ListTubes(); err != nil {
+		conn = nil
+		return connection()
 	}
 	return conn, err
 }
