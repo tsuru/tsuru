@@ -1,4 +1,4 @@
-// Copyright 2012 tsuru authors. All rights reserved.
+// Copyright 2013 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -46,6 +46,8 @@ func (s *S) TestUpdate(c *C) {
 	c.Assert(a.Units[0].Machine, Equals, 1)
 	c.Assert(a.Units[0].InstanceId, Equals, "i-0800")
 	c.Assert(a.Units[0].State, Equals, string(provision.StatusStarted))
+	addr, _ := s.provisioner.Addr(a)
+	c.Assert(a.Ip, Equals, addr)
 }
 
 func (s *S) TestUpdateWithMultipleUnits(c *C) {
@@ -75,6 +77,8 @@ func (s *S) TestUpdateWithMultipleUnits(c *C) {
 	c.Assert(unit.Ip, Equals, "192.168.0.12")
 	c.Assert(unit.InstanceId, Equals, "i-0900")
 	c.Assert(unit.State, Equals, string(provision.StatusStarted))
+	addr, _ := s.provisioner.Addr(a)
+	c.Assert(a.Ip, Equals, addr)
 }
 
 func (s *S) TestUpdateWithDownMachine(c *C) {

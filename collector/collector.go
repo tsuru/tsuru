@@ -1,4 +1,4 @@
-// Copyright 2012 tsuru authors. All rights reserved.
+// Copyright 2013 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -59,13 +59,13 @@ func update(units []provision.Unit) {
 		u.Ip = unit.Ip
 		u.State = string(unit.Status)
 		a.State = string(unit.Status)
-		a.Ip = unit.Ip
 		a.AddUnit(&u)
 		if index > -1 {
 			l.Add(a, index)
 		}
 	}
 	for _, a := range l {
+		a.Ip, _ = app.Provisioner.Addr(a)
 		db.Session.Apps().Update(bson.M{"name": a.Name}, a)
 	}
 }
