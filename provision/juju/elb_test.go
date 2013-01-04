@@ -42,6 +42,7 @@ func (s *ELBSuite) SetUpSuite(c *C) {
 }
 
 func (s *ELBSuite) TearDownSuite(c *C) {
+	config.Unset("juju:use-elb")
 	db.Session.Close()
 	s.server.Quit()
 }
