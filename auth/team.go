@@ -25,7 +25,7 @@ func (t *Team) ContainsUser(u *User) bool {
 	return false
 }
 
-func (t *Team) addUser(u *User) error {
+func (t *Team) AddUser(u *User) error {
 	if t.ContainsUser(u) {
 		return fmt.Errorf("User %s is already in the team %s.", u.Email, t.Name)
 	}

@@ -41,7 +41,7 @@ func (s *S) TestGetTeamsNames(c *C) {
 func (s *S) TestShouldBeAbleToAddAUserToATeamReturningNoErrors(c *C) {
 	u := &User{Email: "nobody@globo.com"}
 	t := new(Team)
-	err := t.addUser(u)
+	err := t.AddUser(u)
 	c.Assert(err, IsNil)
 	c.Assert(t, ContainsUser, u)
 }
@@ -49,9 +49,9 @@ func (s *S) TestShouldBeAbleToAddAUserToATeamReturningNoErrors(c *C) {
 func (s *S) TestShouldReturnErrorWhenTryingToAddAUserThatIsAlreadyInTheList(c *C) {
 	u := &User{Email: "nobody@globo.com"}
 	t := &Team{Name: "timeredbull"}
-	err := t.addUser(u)
+	err := t.AddUser(u)
 	c.Assert(err, IsNil)
-	err = t.addUser(u)
+	err = t.AddUser(u)
 	c.Assert(err, NotNil)
 	c.Assert(err, ErrorMatches, "^User nobody@globo.com is already in the team timeredbull.$")
 }
