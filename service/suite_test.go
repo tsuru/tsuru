@@ -6,7 +6,7 @@ package service
 
 import (
 	"github.com/globocom/config"
-	"github.com/globocom/tsuru/api/auth"
+	"github.com/globocom/tsuru/auth"
 	"github.com/globocom/tsuru/db"
 	"io/ioutil"
 	. "launchpad.net/gocheck"

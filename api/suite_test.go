@@ -7,16 +7,20 @@ package api
 import (
 	"fmt"
 	"github.com/globocom/config"
-	"github.com/globocom/tsuru/api/auth"
 	"github.com/globocom/tsuru/app"
+	"github.com/globocom/tsuru/auth"
 	"github.com/globocom/tsuru/db"
 	fsTesting "github.com/globocom/tsuru/fs/testing"
 	"github.com/globocom/tsuru/service"
 	tsuruTesting "github.com/globocom/tsuru/testing"
 	"io"
 	. "launchpad.net/gocheck"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path"
+	"strconv"
+	"strings"
 	"testing"
 )
 
@@ -104,11 +108,14 @@ func (s *S) SetUpSuite(c *C) {
 	file.Write([]byte{16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31})
 	fsystem = s.rfs
 	s.t = &tsuruTesting.T{}
-	s.createUserAndTeam(c)
 	s.t.StartAmzS3AndIAM(c)
 	s.t.SetGitConfs(c)
 	s.provisioner = tsuruTesting.NewFakeProvisioner()
 	app.Provisioner = s.provisioner
+}
+
+func (s *S) SetUpTest(c *C) {
+	s.createUserAndTeam(c)
 }
 
 func (s *S) TearDownSuite(c *C) {
@@ -122,11 +129,13 @@ func (s *S) TearDownSuite(c *C) {
 func (s *S) TearDownTest(c *C) {
 	s.t.RollbackGitConfs(c)
 	s.provisioner.Reset()
-
 	_, err := db.Session.Services().RemoveAll(nil)
 	c.Assert(err, IsNil)
-
 	_, err = db.Session.ServiceInstances().RemoveAll(nil)
+	c.Assert(err, IsNil)
+	_, err = db.Session.Users().RemoveAll(nil)
+	c.Assert(err, IsNil)
+	_, err = db.Session.Teams().RemoveAll(nil)
 	c.Assert(err, IsNil)
 }
 
@@ -135,4 +144,20 @@ func (s *S) getTestData(p ...string) io.ReadCloser {
 	fp := path.Join(p...)
 	f, _ := os.OpenFile(fp, os.O_RDONLY, 0)
 	return f
+}
+
+// starts a new httptest.Server and returns it
+// Also changes git:host, git:port and git:protocol to match the server's url
+func (s *S) startGandalfTestServer(h http.Handler) *httptest.Server {
+	ts := httptest.NewServer(h)
+	pieces := strings.Split(ts.URL, "://")
+	protocol := pieces[0]
+	hostPart := strings.Split(pieces[1], ":")
+	port := hostPart[1]
+	host := hostPart[0]
+	config.Set("git:host", host)
+	portInt, _ := strconv.ParseInt(port, 10, 0)
+	config.Set("git:port", portInt)
+	config.Set("git:protocol", protocol)
+	return ts
 }

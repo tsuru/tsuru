@@ -6,7 +6,7 @@ package main
 
 import (
 	"fmt"
-	"github.com/globocom/tsuru/api/auth"
+	"github.com/globocom/tsuru/auth"
 	"github.com/globocom/tsuru/errors"
 	"github.com/globocom/tsuru/log"
 	"net/http"

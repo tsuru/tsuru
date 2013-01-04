@@ -6,7 +6,7 @@ package service
 
 import (
 	"errors"
-	"github.com/globocom/tsuru/api/auth"
+	"github.com/globocom/tsuru/auth"
 	"github.com/globocom/tsuru/db"
 	"labix.org/v2/mgo/bson"
 	"strings"

@@ -7,7 +7,7 @@ package app
 import (
 	"fmt"
 	"github.com/globocom/config"
-	"github.com/globocom/tsuru/api/auth"
+	"github.com/globocom/tsuru/auth"
 	"github.com/globocom/tsuru/db"
 	ftesting "github.com/globocom/tsuru/fs/testing"
 	"github.com/globocom/tsuru/queue"

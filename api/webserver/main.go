@@ -1,4 +1,4 @@
-// Copyright 2012 tsuru authors. All rights reserved.
+// Copyright 2012 tsuru apiors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -10,7 +10,6 @@ import (
 	"github.com/bmizerany/pat"
 	"github.com/globocom/config"
 	"github.com/globocom/tsuru/api"
-	"github.com/globocom/tsuru/api/auth"
 	"github.com/globocom/tsuru/app"
 	"github.com/globocom/tsuru/db"
 	"github.com/globocom/tsuru/log"
@@ -94,18 +93,18 @@ func main() {
 	m.Get("/apps/:name/log", AuthorizationRequiredHandler(api.AppLog))
 	m.Post("/apps/:name/log", Handler(api.AddLogHandler))
 
-	m.Post("/users", Handler(auth.CreateUser))
-	m.Post("/users/:email/tokens", Handler(auth.Login))
-	m.Put("/users/password", AuthorizationRequiredHandler(auth.ChangePassword))
-	m.Del("/users", AuthorizationRequiredHandler(auth.RemoveUser))
-	m.Post("/users/keys", AuthorizationRequiredHandler(auth.AddKeyToUser))
-	m.Del("/users/keys", AuthorizationRequiredHandler(auth.RemoveKeyFromUser))
+	m.Post("/users", Handler(api.CreateUser))
+	m.Post("/users/:email/tokens", Handler(api.Login))
+	m.Put("/users/password", AuthorizationRequiredHandler(api.ChangePassword))
+	m.Del("/users", AuthorizationRequiredHandler(api.RemoveUser))
+	m.Post("/users/keys", AuthorizationRequiredHandler(api.AddKeyToUser))
+	m.Del("/users/keys", AuthorizationRequiredHandler(api.RemoveKeyFromUser))
 
-	m.Get("/teams", AuthorizationRequiredHandler(auth.ListTeams))
-	m.Post("/teams", AuthorizationRequiredHandler(auth.CreateTeam))
-	m.Del("/teams/:name", AuthorizationRequiredHandler(auth.RemoveTeam))
-	m.Put("/teams/:team/:user", AuthorizationRequiredHandler(auth.AddUserToTeam))
-	m.Del("/teams/:team/:user", AuthorizationRequiredHandler(auth.RemoveUserFromTeam))
+	m.Get("/teams", AuthorizationRequiredHandler(api.ListTeams))
+	m.Post("/teams", AuthorizationRequiredHandler(api.CreateTeam))
+	m.Del("/teams/:name", AuthorizationRequiredHandler(api.RemoveTeam))
+	m.Put("/teams/:team/:user", AuthorizationRequiredHandler(api.AddUserToTeam))
+	m.Del("/teams/:team/:user", AuthorizationRequiredHandler(api.RemoveUserFromTeam))
 
 	if !*dry {
 		provisioner, err := config.GetString("provisioner")
