@@ -124,6 +124,10 @@ type LBManager interface {
 
 	// Removes a unit from the load balancer.
 	Deregister(App, Unit) error
+
+	// Addr returns the address of the load balancer for an app. It will
+	// probably be a DNS name or IP address.
+	Addr(App) (string, error)
 }
 
 var provisioners = make(map[string]Provisioner)

@@ -433,3 +433,10 @@ func (lb *FakeLBManager) Deregister(app provision.App, unit provision.Unit) erro
 	lb.instances[app.GetName()] = instances
 	return nil
 }
+
+func (lb *FakeLBManager) Addr(app provision.App) (string, error) {
+	if err := lb.provisioner.getError("LB.Addr"); err != nil {
+		return "", err
+	}
+	return fmt.Sprintf("%s.fake-lb.tsuru.io", app.GetName()), nil
+}

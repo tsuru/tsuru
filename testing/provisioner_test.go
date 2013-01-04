@@ -462,3 +462,20 @@ func (s *S) TestFakeLBManagerDeregisterFailure(c *C) {
 	c.Assert(err, NotNil)
 	c.Assert(err.Error(), Equals, "Cannot deregister unit.")
 }
+
+func (s *S) TestFakeLBManagerAddr(c *C) {
+	app := NewFakeApp("quick", "who", 1)
+	p := NewFakeProvisioner()
+	addr, err := p.LoadBalancer().Addr(app)
+	c.Assert(err, IsNil)
+	c.Assert(addr, Equals, "quick.fake-lb.tsuru.io")
+}
+
+func (s *S) TestFakeLBManagerAddrFailure(c *C) {
+	p := NewFakeProvisioner()
+	p.PrepareFailure("LB.Addr", errors.New("Cannot get addr of this app."))
+	addr, err := p.LoadBalancer().Addr(nil)
+	c.Assert(addr, Equals, "")
+	c.Assert(err, NotNil)
+	c.Assert(err.Error(), Equals, "Cannot get addr of this app.")
+}

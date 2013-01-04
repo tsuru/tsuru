@@ -99,3 +99,7 @@ func (m *ELBManager) Register(app provision.App, unit provision.Unit) error {
 func (m *ELBManager) Deregister(app provision.App, unit provision.Unit) error {
 	return nil
 }
+
+func (m *ELBManager) Addr(app provision.App) (string, error) {
+	return "", nil
+}
