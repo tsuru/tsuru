@@ -78,13 +78,13 @@ func (s *S) TestUpdateUser(c *C) {
 func (s *S) TestUserLoginReturnsTrueIfThePasswordMatches(c *C) {
 	u := User{Email: "wolverine@xmen.com", Password: "123"}
 	u.hashPassword()
-	c.Assert(u.login("123"), Equals, true)
+	c.Assert(u.Login("123"), Equals, true)
 }
 
 func (s *S) TestUserLoginReturnsFalseIfThePasswordDoesNotMatch(c *C) {
 	u := User{Email: "wolverine@xmen.com", Password: "123"}
 	u.hashPassword()
-	c.Assert(u.login("1234"), Equals, false)
+	c.Assert(u.Login("1234"), Equals, false)
 }
 
 func (s *S) TestNewTokenIsStoredInUser(c *C) {

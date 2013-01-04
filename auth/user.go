@@ -101,7 +101,7 @@ func (u *User) Get() error {
 	return db.Session.Users().Find(filter).One(&u)
 }
 
-func (u *User) login(password string) bool {
+func (u *User) Login(password string) bool {
 	hashedPassword := hashPassword(password)
 	return u.Password == hashedPassword
 }
