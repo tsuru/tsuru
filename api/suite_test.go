@@ -10,6 +10,7 @@ import (
 	"github.com/globocom/tsuru/api/auth"
 	"github.com/globocom/tsuru/app"
 	"github.com/globocom/tsuru/db"
+	"github.com/globocom/tsuru/service"
 	fsTesting "github.com/globocom/tsuru/fs/testing"
 	tsuruTesting "github.com/globocom/tsuru/testing"
 	"io"
@@ -27,6 +28,9 @@ type S struct {
 	rfs         *fsTesting.RecordingFs
 	t           *tsuruTesting.T
 	provisioner *tsuruTesting.FakeProvisioner
+	service         *service.Service
+	serviceInstance *service.ServiceInstance
+	tmpdir          string
 }
 
 var _ = Suite(&S{})
@@ -95,6 +99,12 @@ func (s *S) TearDownSuite(c *C) {
 func (s *S) TearDownTest(c *C) {
 	s.t.RollbackGitConfs(c)
 	s.provisioner.Reset()
+
+	_, err := db.Session.Services().RemoveAll(nil)
+	c.Assert(err, IsNil)
+
+	_, err = db.Session.ServiceInstances().RemoveAll(nil)
+	c.Assert(err, IsNil)
 }
 
 func (s *S) getTestData(p ...string) io.ReadCloser {

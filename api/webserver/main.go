@@ -11,8 +11,6 @@ import (
 	"github.com/globocom/config"
 	"github.com/globocom/tsuru/api"
 	"github.com/globocom/tsuru/api/auth"
-	"github.com/globocom/tsuru/api/service/consumption"
-	service_provision "github.com/globocom/tsuru/api/service/provision"
 	"github.com/globocom/tsuru/app"
 	"github.com/globocom/tsuru/db"
 	"github.com/globocom/tsuru/log"
@@ -60,23 +58,23 @@ func main() {
 
 	m := pat.New()
 
-	m.Get("/services/instances", AuthorizationRequiredHandler(consumption.ServicesInstancesHandler))
-	m.Post("/services/instances", AuthorizationRequiredHandler(consumption.CreateInstanceHandler))
+	m.Get("/services/instances", AuthorizationRequiredHandler(api.ServicesInstancesHandler))
+	m.Post("/services/instances", AuthorizationRequiredHandler(api.CreateInstanceHandler))
 	m.Put("/services/instances/:instance/:app", AuthorizationRequiredHandler(api.BindHandler))
 	m.Del("/services/instances/:instance/:app", AuthorizationRequiredHandler(api.UnbindHandler))
-	m.Del("/services/c/instances/:name", AuthorizationRequiredHandler(consumption.RemoveServiceInstanceHandler))
-	m.Get("/services/instances/:instance/status", AuthorizationRequiredHandler(consumption.ServiceInstanceStatusHandler))
+	m.Del("/services/c/instances/:name", AuthorizationRequiredHandler(api.RemoveServiceInstanceHandler))
+	m.Get("/services/instances/:instance/status", AuthorizationRequiredHandler(api.ServiceInstanceStatusHandler))
 
-	m.Get("/services", AuthorizationRequiredHandler(service_provision.ServicesHandler))
-	m.Post("/services", AuthorizationRequiredHandler(service_provision.CreateHandler))
-	m.Put("/services", AuthorizationRequiredHandler(service_provision.UpdateHandler))
-	m.Del("/services/:name", AuthorizationRequiredHandler(service_provision.DeleteHandler))
-	m.Get("/services/:name", AuthorizationRequiredHandler(consumption.ServiceInfoHandler))
-	m.Get("/services/c/:name/doc", AuthorizationRequiredHandler(consumption.Doc))
-	m.Get("/services/:name/doc", AuthorizationRequiredHandler(service_provision.GetDocHandler))
-	m.Put("/services/:name/doc", AuthorizationRequiredHandler(service_provision.AddDocHandler))
-	m.Put("/services/:service/:team", AuthorizationRequiredHandler(service_provision.GrantAccessToTeamHandler))
-	m.Del("/services/:service/:team", AuthorizationRequiredHandler(service_provision.RevokeAccessFromTeamHandler))
+	m.Get("/services", AuthorizationRequiredHandler(api.ServicesHandler))
+	m.Post("/services", AuthorizationRequiredHandler(api.CreateHandler))
+	m.Put("/services", AuthorizationRequiredHandler(api.UpdateHandler))
+	m.Del("/services/:name", AuthorizationRequiredHandler(api.DeleteHandler))
+	m.Get("/services/:name", AuthorizationRequiredHandler(api.ServiceInfoHandler))
+	m.Get("/services/c/:name/doc", AuthorizationRequiredHandler(api.Doc))
+	m.Get("/services/:name/doc", AuthorizationRequiredHandler(api.GetDocHandler))
+	m.Put("/services/:name/doc", AuthorizationRequiredHandler(api.AddDocHandler))
+	m.Put("/services/:service/:team", AuthorizationRequiredHandler(api.GrantAccessToTeamHandler))
+	m.Del("/services/:service/:team", AuthorizationRequiredHandler(api.RevokeAccessFromTeamHandler))
 
 	m.Del("/apps/:name", AuthorizationRequiredHandler(api.AppDelete))
 	m.Get("/apps/:name/repository/clone", Handler(api.CloneRepositoryHandler))

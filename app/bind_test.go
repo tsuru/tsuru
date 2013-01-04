@@ -5,9 +5,9 @@
 package app
 
 import (
-	"github.com/globocom/tsuru/api/service"
 	"github.com/globocom/tsuru/app/bind"
 	"github.com/globocom/tsuru/db"
+	"github.com/globocom/tsuru/service"
 	"labix.org/v2/mgo/bson"
 	. "launchpad.net/gocheck"
 	"net/http"
