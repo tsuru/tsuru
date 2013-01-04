@@ -68,7 +68,7 @@ get-prod:
 test:
 	@go test -i ./...
 	@go test ./...
-	@go build -o websrv ./api/webserver
+	@go build -o websrv ./api
 	@./websrv -dry=true -config=$(PWD)/etc/tsuru.conf
 	@go build -o collect ./collector/
 	@./collect -dry=true -config=$(PWD)/etc/tsuru.conf
