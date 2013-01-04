@@ -56,17 +56,16 @@ func (s *ELBSuite) TestGetELBClient(c *C) {
 	manager := ELBManager{}
 	elb := manager.elb()
 	c.Assert(elb.ELBEndpoint, Equals, s.server.URL())
-	c.Assert(manager.zones, DeepEquals, []string{"my-zone-1a", "my-zone-1b"})
 }
 
 func (s *ELBSuite) TestCreateELB(c *C) {
 	app := testing.NewFakeApp("together", "gotthard", 1)
-	defer s.client.DeleteLoadBalancer("together")
 	manager := ELBManager{}
 	manager.e = s.client
-	manager.zones = []string{"my-zone-1a"}
 	err := manager.Create(app)
 	c.Assert(err, IsNil)
+	defer s.client.DeleteLoadBalancer(app.GetName())
+	defer manager.collection().Remove(bson.M{"name": app.GetName()})
 	resp, err := s.client.DescribeLoadBalancers("together")
 	c.Assert(err, IsNil)
 	c.Assert(resp.LoadBalancerDescriptions, HasLen, 1)
@@ -82,4 +81,36 @@ func (s *ELBSuite) TestCreateELB(c *C) {
 	err = db.Session.Collection(s.cName).Find(bson.M{"name": app.GetName()}).One(&lb)
 	c.Assert(err, IsNil)
 	c.Assert(lb.DNSName, Equals, dnsName)
+}
+
+func (s *ELBSuite) TestCreateELBUsingVPC(c *C) {
+	old, _ := config.Get("juju:elb-avail-zones")
+	config.Unset("juju:elb-avail-zones")
+	config.Set("juju:elb-use-vpc", true)
+	config.Set("juju:elb-vpc-subnets", []string{"subnet-a4a3a2a1", "subnet-002200"})
+	config.Set("juju:elb-vpc-secgroups", []string{"sg-0900"})
+	config.Set("aws:access-key-id", "access")
+	config.Set("aws:secret-access-key", "s3cr3t")
+	defer func() {
+		config.Set("juju:elb-avail-zones", old)
+		config.Unset("juju:elb-use-vpc")
+		config.Unset("juju:elb-vpc-subnets")
+		config.Unset("juju:elb-vpc-secgroups")
+		config.Unset("aws:access-key-id")
+		config.Unset("aws:secret-access-key")
+	}()
+	app := testing.NewFakeApp("relax", "who", 1)
+	manager := ELBManager{}
+	err := manager.Create(app)
+	c.Assert(err, IsNil)
+	defer s.client.DeleteLoadBalancer(app.GetName())
+	defer manager.collection().Remove(bson.M{"name": app.GetName()})
+	resp, err := s.client.DescribeLoadBalancers(app.GetName())
+	c.Assert(err, IsNil)
+	c.Assert(resp.LoadBalancerDescriptions, HasLen, 1)
+	lbd := resp.LoadBalancerDescriptions[0]
+	c.Assert(lbd.Subnets, DeepEquals, []string{"subnet-a4a3a2a1", "subnet-002200"})
+	c.Assert(lbd.SecurityGroups, DeepEquals, []string{"sg-0900"})
+	c.Assert(lbd.Scheme, Equals, "internal")
+	c.Assert(lbd.AvailZones, HasLen, 0)
 }

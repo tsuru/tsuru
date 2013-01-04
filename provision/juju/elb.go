@@ -28,8 +28,7 @@ type LoadBalancer struct {
 // It uses db package and adds a new collection to tsuru's DB. The name of the
 // collection is also defined in the configuration file (juju:elb-collection).
 type ELBManager struct {
-	e     *elb.ELB
-	zones []string
+	e *elb.ELB
 }
 
 func (m *ELBManager) collection() *mgo.Collection {
@@ -54,10 +53,6 @@ func (m *ELBManager) elb() *elb.ELB {
 		if err != nil {
 			log.Fatal(err)
 		}
-		m.zones, err = config.GetList("juju:elb-avail-zones")
-		if err != nil {
-			log.Fatal(err)
-		}
 		auth := aws.Auth{AccessKey: access, SecretKey: secret}
 		region := aws.Region{ELBEndpoint: endpoint}
 		m.e = elb.New(auth, region)
@@ -65,10 +60,14 @@ func (m *ELBManager) elb() *elb.ELB {
 	return m.e
 }
 
+func (m *ELBManager) vpc() bool {
+	vpc, _ := config.GetBool("juju:elb-use-vpc")
+	return vpc
+}
+
 func (m *ELBManager) Create(app provision.App) error {
 	options := elb.CreateLoadBalancer{
-		Name:       app.GetName(),
-		AvailZones: m.zones,
+		Name: app.GetName(),
 		Listeners: []elb.Listener{
 			{
 				InstancePort:     80,
@@ -78,7 +77,23 @@ func (m *ELBManager) Create(app provision.App) error {
 			},
 		},
 	}
-	_ = options
+	var err error
+	if m.vpc() {
+		options.Subnets, err = config.GetList("juju:elb-vpc-subnets")
+		if err != nil {
+			log.Fatal(err)
+		}
+		options.SecurityGroups, err = config.GetList("juju:elb-vpc-secgroups")
+		if err != nil {
+			log.Fatal(err)
+		}
+		options.Scheme = "internal"
+	} else {
+		options.AvailZones, err = config.GetList("juju:elb-avail-zones")
+		if err != nil {
+			log.Fatal(err)
+		}
+	}
 	resp, err := m.elb().CreateLoadBalancer(&options)
 	if err != nil {
 		return err
