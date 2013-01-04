@@ -37,7 +37,7 @@ func (s *ELBSuite) SetUpSuite(c *C) {
 	c.Assert(err, IsNil)
 	s.cName = "juju_test_elbs"
 	config.Set("juju:elb-collection", s.cName)
-	config.Set("juju:elb-avail-zones", "my-zone-1a")
+	config.Set("juju:elb-avail-zones", []interface{}{"my-zone-1a", "my-zone-1b"})
 }
 
 func (s *ELBSuite) TearDownSuite(c *C) {
@@ -56,7 +56,7 @@ func (s *ELBSuite) TestGetELBClient(c *C) {
 	manager := ELBManager{}
 	elb := manager.elb()
 	c.Assert(elb.ELBEndpoint, Equals, s.server.URL())
-	c.Assert(manager.zones, DeepEquals, []string{"my-zone-1a"})
+	c.Assert(manager.zones, DeepEquals, []string{"my-zone-1a", "my-zone-1b"})
 }
 
 func (s *ELBSuite) TestCreateELB(c *C) {

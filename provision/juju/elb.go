@@ -54,14 +54,13 @@ func (m *ELBManager) elb() *elb.ELB {
 		if err != nil {
 			log.Fatal(err)
 		}
-		z, err := config.GetString("juju:elb-avail-zones")
+		m.zones, err = config.GetList("juju:elb-avail-zones")
 		if err != nil {
 			log.Fatal(err)
 		}
 		auth := aws.Auth{AccessKey: access, SecretKey: secret}
 		region := aws.Region{ELBEndpoint: endpoint}
 		m.e = elb.New(auth, region)
-		m.zones = []string{z}
 	}
 	return m.e
 }
