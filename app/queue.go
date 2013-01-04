@@ -13,33 +13,40 @@ import (
 	"sync/atomic"
 )
 
+const (
+	stopped int32 = iota
+	running
+	stopping
+)
+
 type messageHandler struct {
-	running int32
+	state int32
 }
 
 // start starts the handler. It's safe to call start multiple times.
 func (h *messageHandler) start() {
-	if atomic.CompareAndSwapInt32(&h.running, 0, 1) {
+	if atomic.CompareAndSwapInt32(&h.state, stopped, running) {
 		go h.handleMessages()
 	}
 }
 
 // stop stops the handler. You can start it again by calling start.
 func (h *messageHandler) stop() {
-	atomic.StoreInt32(&h.running, 0)
+	atomic.StoreInt32(&h.state, stopping)
 }
 
 func (h *messageHandler) handleMessages() {
 	for {
-		if message, err := queue.Get(5e9); err == nil {
+		if message, err := queue.Get(1e9); err == nil {
 			go handle(message)
-		} else if atomic.LoadInt32(&h.running) == 1 {
+		} else if atomic.LoadInt32(&h.state) == running {
 			log.Printf("Failed to receive message: %s. Trying again...", err)
 			continue
 		} else {
-			return
+			break
 		}
 	}
+	atomic.StoreInt32(&h.state, stopped)
 }
 
 var handler = &messageHandler{}

@@ -87,7 +87,7 @@ func (s *S) SetUpSuite(c *C) {
 	s.t.SetGitConfs(c)
 	s.provisioner = ttesting.NewFakeProvisioner()
 	Provisioner = s.provisioner
-	handler.running = 1
+	handler.state = running
 }
 
 func (s *S) TearDownSuite(c *C) {
