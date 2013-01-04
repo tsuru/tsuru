@@ -83,7 +83,7 @@ func GetUserByToken(token string) (*User, error) {
 }
 
 func (u *User) Create() error {
-	u.hashPassword()
+	u.HashPassword()
 	return db.Session.Users().Insert(u)
 }
 
@@ -91,7 +91,7 @@ func (u *User) update() error {
 	return db.Session.Users().Update(bson.M{"email": u.Email}, u)
 }
 
-func (u *User) hashPassword() {
+func (u *User) HashPassword() {
 	u.Password = hashPassword(u.Password)
 }
 
