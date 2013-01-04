@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-package api
+package main
 
 import (
 	"fmt"
@@ -29,6 +29,7 @@ func Test(t *testing.T) { TestingT(t) }
 type S struct {
 	team            *auth.Team
 	user            *auth.User
+	token           *auth.Token
 	rfs             *fsTesting.RecordingFs
 	t               *tsuruTesting.T
 	provisioner     *tsuruTesting.FakeProvisioner
@@ -91,6 +92,7 @@ func (s *S) createUserAndTeam(c *C) {
 	s.user = &auth.User{Email: "whydidifall@thewho.com", Password: "123"}
 	err := s.user.Create()
 	c.Assert(err, IsNil)
+	s.token, _ = s.user.CreateToken()
 	s.team = &auth.Team{Name: "tsuruteam", Users: []string{s.user.Email}}
 	err = db.Session.Teams().Insert(s.team)
 	c.Assert(err, IsNil)
