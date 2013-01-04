@@ -55,8 +55,13 @@ func NewFakeApp(name, framework string, units int) *FakeApp {
 		framework: framework,
 		units:     make([]provision.AppUnit, units),
 	}
+	namefmt := "%s/%d"
 	for i := 0; i < units; i++ {
-		app.units[i] = &FakeUnit{name: name, machine: i + 1}
+		app.units[i] = &FakeUnit{
+			name:    fmt.Sprintf(namefmt, name, i),
+			machine: i + 1,
+			status:  provision.StatusStarted,
+		}
 	}
 	return &app
 }
@@ -80,6 +85,12 @@ func (a *FakeApp) GetFramework() string {
 func (a *FakeApp) ProvisionUnits() []provision.AppUnit {
 	a.actions = append(a.actions, "getunits")
 	return a.units
+}
+
+func (a *FakeApp) SetUnitStatus(s provision.Status, index int) {
+	if index < len(a.units) {
+		a.units[index].(*FakeUnit).status = s
+	}
 }
 
 type Cmd struct {

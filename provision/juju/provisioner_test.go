@@ -11,6 +11,7 @@ import (
 	"github.com/globocom/config"
 	"github.com/globocom/tsuru/provision"
 	"github.com/globocom/tsuru/repository"
+	"github.com/globocom/tsuru/testing"
 	. "launchpad.net/gocheck"
 	"reflect"
 	"time"
@@ -40,7 +41,7 @@ func (s *S) TestProvision(c *C) {
 	tmpdir, err := commandmocker.Add("juju", "$*")
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(tmpdir)
-	app := NewFakeApp("trace", "python", 0)
+	app := testing.NewFakeApp("trace", "python", 0)
 	p := JujuProvisioner{}
 	err = p.Provision(app)
 	c.Assert(err, IsNil)
@@ -52,7 +53,7 @@ func (s *S) TestProvisionFailure(c *C) {
 	tmpdir, err := commandmocker.Error("juju", "juju failed", 1)
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(tmpdir)
-	app := NewFakeApp("trace", "python", 0)
+	app := testing.NewFakeApp("trace", "python", 0)
 	p := JujuProvisioner{}
 	err = p.Provision(app)
 	c.Assert(err, NotNil)
@@ -66,7 +67,7 @@ func (s *S) TestDestroy(c *C) {
 	tmpdir, err := commandmocker.Add("juju", "$*")
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(tmpdir)
-	app := NewFakeApp("cribcaged", "python", 3)
+	app := testing.NewFakeApp("cribcaged", "python", 3)
 	p := JujuProvisioner{}
 	err = p.Destroy(app)
 	c.Assert(err, IsNil)
@@ -97,7 +98,7 @@ func (s *S) TestDestroyFailure(c *C) {
 	tmpdir, err := commandmocker.Error("juju", "juju failed to destroy the machine", 25)
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(tmpdir)
-	app := NewFakeApp("idioglossia", "static", 1)
+	app := testing.NewFakeApp("idioglossia", "static", 1)
 	p := JujuProvisioner{}
 	err = p.Destroy(app)
 	c.Assert(err, NotNil)
@@ -111,7 +112,7 @@ func (s *S) TestAddUnits(c *C) {
 	tmpdir, err := commandmocker.Add("juju", addUnitsOutput)
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(tmpdir)
-	app := NewFakeApp("resist", "rush", 0)
+	app := testing.NewFakeApp("resist", "rush", 0)
 	p := JujuProvisioner{}
 	units, err := p.AddUnits(app, 4)
 	c.Assert(err, IsNil)
@@ -142,7 +143,7 @@ func (s *S) TestAddUnitsFailure(c *C) {
 	tmpdir, err := commandmocker.Error("juju", "juju failed", 1)
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(tmpdir)
-	app := NewFakeApp("headlong", "rush", 1)
+	app := testing.NewFakeApp("headlong", "rush", 1)
 	p := JujuProvisioner{}
 	units, err := p.AddUnits(app, 1)
 	c.Assert(units, IsNil)
@@ -157,7 +158,7 @@ func (s *S) TestRemoveUnit(c *C) {
 	tmpdir, err := commandmocker.Add("juju", "removed")
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(tmpdir)
-	app := NewFakeApp("two", "rush", 3)
+	app := testing.NewFakeApp("two", "rush", 3)
 	p := JujuProvisioner{}
 	err = p.RemoveUnit(app, "two/2")
 	c.Assert(err, IsNil)
@@ -179,7 +180,7 @@ func (s *S) TestRemoveUnit(c *C) {
 }
 
 func (s *S) TestRemoveUnknownUnit(c *C) {
-	app := NewFakeApp("tears", "rush", 2)
+	app := testing.NewFakeApp("tears", "rush", 2)
 	p := JujuProvisioner{}
 	err := p.RemoveUnit(app, "tears/2")
 	c.Assert(err, NotNil)
@@ -190,7 +191,7 @@ func (s *S) TestRemoveUnitFailure(c *C) {
 	tmpdir, err := commandmocker.Error("juju", "juju failed", 66)
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(tmpdir)
-	app := NewFakeApp("something", "rush", 1)
+	app := testing.NewFakeApp("something", "rush", 1)
 	p := JujuProvisioner{}
 	err = p.RemoveUnit(app, "something/0")
 	c.Assert(err, NotNil)
@@ -204,7 +205,7 @@ func (s *S) TestRemoveUnits(c *C) {
 	tmpdir, err := commandmocker.Add("juju", "removed")
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(tmpdir)
-	app := NewFakeApp("xanadu", "rush", 4)
+	app := testing.NewFakeApp("xanadu", "rush", 4)
 	p := JujuProvisioner{}
 	units, err := p.RemoveUnits(app, 3)
 	c.Assert(err, IsNil)
@@ -232,7 +233,7 @@ func (s *S) TestRemoveUnits(c *C) {
 }
 
 func (s *S) TestRemoveAllUnits(c *C) {
-	app := NewFakeApp("xanadu", "rush", 2)
+	app := testing.NewFakeApp("xanadu", "rush", 2)
 	p := JujuProvisioner{}
 	units, err := p.RemoveUnits(app, 2)
 	c.Assert(units, IsNil)
@@ -241,7 +242,7 @@ func (s *S) TestRemoveAllUnits(c *C) {
 }
 
 func (s *S) TestRemoveTooManyUnits(c *C) {
-	app := NewFakeApp("xanadu", "rush", 2)
+	app := testing.NewFakeApp("xanadu", "rush", 2)
 	p := JujuProvisioner{}
 	units, err := p.RemoveUnits(app, 3)
 	c.Assert(units, IsNil)
@@ -253,7 +254,7 @@ func (s *S) TestRemoveUnitsFailure(c *C) {
 	tmpdir, err := commandmocker.Error("juju", "juju failed", 66)
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(tmpdir)
-	app := NewFakeApp("closer", "rush", 3)
+	app := testing.NewFakeApp("closer", "rush", 3)
 	p := JujuProvisioner{}
 	units, err := p.RemoveUnits(app, 2)
 	c.Assert(units, IsNil)
@@ -269,7 +270,7 @@ func (s *S) TestExecuteCommand(c *C) {
 	tmpdir, err := commandmocker.Add("juju", "$*")
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(tmpdir)
-	app := NewFakeApp("almah", "static", 2)
+	app := testing.NewFakeApp("almah", "static", 2)
 	p := JujuProvisioner{}
 	err = p.ExecuteCommand(&buf, &buf, app, "ls", "-lh")
 	c.Assert(err, IsNil)
@@ -292,7 +293,7 @@ func (s *S) TestExecuteCommandFailure(c *C) {
 	tmpdir, err := commandmocker.Error("juju", "failed", 2)
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(tmpdir)
-	app := NewFakeApp("frases", "static", 1)
+	app := testing.NewFakeApp("frases", "static", 1)
 	p := JujuProvisioner{}
 	err = p.ExecuteCommand(&buf, &buf, app, "ls", "-l")
 	c.Assert(err, NotNil)
@@ -305,7 +306,7 @@ func (s *S) TestExecuteCommandOneUnit(c *C) {
 	tmpdir, err := commandmocker.Add("juju", "$*")
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(tmpdir)
-	app := NewFakeApp("almah", "static", 1)
+	app := testing.NewFakeApp("almah", "static", 1)
 	p := JujuProvisioner{}
 	err = p.ExecuteCommand(&buf, &buf, app, "ls", "-lh")
 	c.Assert(err, IsNil)
@@ -320,8 +321,8 @@ func (s *S) TestExecuteCommandUnitDown(c *C) {
 	tmpdir, err := commandmocker.Add("juju", "$*")
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(tmpdir)
-	app := NewFakeApp("almah", "static", 3)
-	app.units[1].(*FakeUnit).status = provision.StatusDown
+	app := testing.NewFakeApp("almah", "static", 3)
+	app.SetUnitStatus(provision.StatusDown, 1)
 	p := JujuProvisioner{}
 	err = p.ExecuteCommand(&buf, &buf, app, "ls", "-lha")
 	c.Assert(err, IsNil)
@@ -523,7 +524,7 @@ func (s *ELBSuite) TestProvisionWithELB(c *C) {
 	tmpdir, err := commandmocker.Add("juju", "deployed")
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(tmpdir)
-	app := NewFakeApp("jimmy", "who", 0)
+	app := testing.NewFakeApp("jimmy", "who", 0)
 	p := JujuProvisioner{}
 	err = p.Provision(app)
 	c.Assert(err, IsNil)
@@ -538,7 +539,7 @@ func (s *ELBSuite) TestDestroyWithELB(c *C) {
 	tmpdir, err := commandmocker.Add("juju", "deployed")
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(tmpdir)
-	app := NewFakeApp("jimmy", "who", 0)
+	app := testing.NewFakeApp("jimmy", "who", 0)
 	p := JujuProvisioner{}
 	err = p.Provision(app)
 	c.Assert(err, IsNil)
