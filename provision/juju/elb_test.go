@@ -152,3 +152,23 @@ func (s *ELBSuite) TestRegisterUnit(c *C) {
 	instances := resp.LoadBalancerDescriptions[0].Instances
 	c.Assert(instances[0].InstanceId, Equals, id)
 }
+
+func (s *ELBSuite) TestDeregisterUnit(c *C) {
+	id := s.server.NewInstance()
+	defer s.server.RemoveInstance(id)
+	unit := provision.Unit{InstanceId: id}
+	app := testing.NewFakeApp("dirty", "who", 1)
+	manager := ELBManager{}
+	manager.e = s.client
+	err := manager.Create(app)
+	c.Assert(err, IsNil)
+	defer manager.Destroy(app)
+	err = manager.Register(app, unit)
+	c.Assert(err, IsNil)
+	err = manager.Deregister(app, unit)
+	c.Assert(err, IsNil)
+	resp, err := s.client.DescribeLoadBalancers(app.GetName())
+	c.Assert(err, IsNil)
+	c.Assert(resp.LoadBalancerDescriptions, HasLen, 1)
+	c.Assert(resp.LoadBalancerDescriptions[0].Instances, HasLen, 0)
+}

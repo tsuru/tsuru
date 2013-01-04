@@ -118,7 +118,9 @@ func (m *ELBManager) Register(app provision.App, unit provision.Unit) error {
 }
 
 func (m *ELBManager) Deregister(app provision.App, unit provision.Unit) error {
-	return nil
+	ids := []string{unit.InstanceId}
+	_, err := m.elb().DeregisterInstancesFromLoadBalancer(ids, app.GetName())
+	return err
 }
 
 func (m *ELBManager) Addr(app provision.App) (string, error) {
