@@ -127,6 +127,10 @@ type LBManager interface {
 
 	// Addr returns the address of the load balancer for an app. It will
 	// probably be a DNS name or IP address.
+	//
+	// Collector will use this method to get the IP (althought it might not
+	// be an actual IP, collector calls it "IP") of the app from the
+	// provisioner.
 	Addr(App) (string, error)
 }
 
