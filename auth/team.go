@@ -33,7 +33,7 @@ func (t *Team) AddUser(u *User) error {
 	return nil
 }
 
-func (t *Team) removeUser(u *User) error {
+func (t *Team) RemoveUser(u *User) error {
 	index := -1
 	for i, user := range t.Users {
 		if u.Email == user {

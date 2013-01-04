@@ -58,13 +58,13 @@ func (s *S) TestShouldReturnErrorWhenTryingToAddAUserThatIsAlreadyInTheList(c *C
 
 func (s *S) TestRemoveUserFromTeam(c *C) {
 	t := &Team{Name: "timeredbull", Users: []string{"somebody@globo.com", "nobody@globo.com", "anybody@globo.com", "everybody@globo.com"}}
-	err := t.removeUser(&User{Email: "somebody@globo.com"})
+	err := t.RemoveUser(&User{Email: "somebody@globo.com"})
 	c.Assert(err, IsNil)
 	c.Assert(t.Users, DeepEquals, []string{"nobody@globo.com", "anybody@globo.com", "everybody@globo.com"})
-	err = t.removeUser(&User{Email: "anybody@globo.com"})
+	err = t.RemoveUser(&User{Email: "anybody@globo.com"})
 	c.Assert(err, IsNil)
 	c.Assert(t.Users, DeepEquals, []string{"nobody@globo.com", "everybody@globo.com"})
-	err = t.removeUser(&User{Email: "everybody@globo.com"})
+	err = t.RemoveUser(&User{Email: "everybody@globo.com"})
 	c.Assert(err, IsNil)
 	c.Assert(t.Users, DeepEquals, []string{"nobody@globo.com"})
 }
@@ -72,7 +72,7 @@ func (s *S) TestRemoveUserFromTeam(c *C) {
 func (s *S) TestShouldReturnErrorWhenTryingToRemoveAUserThatIsNotInTheTeam(c *C) {
 	u := &User{Email: "nobody@globo.com"}
 	t := &Team{Name: "timeredbull"}
-	err := t.removeUser(u)
+	err := t.RemoveUser(u)
 	c.Assert(err, NotNil)
 	c.Assert(err, ErrorMatches, "^User nobody@globo.com is not in the team timeredbull.$")
 }
