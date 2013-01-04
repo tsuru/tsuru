@@ -40,10 +40,8 @@ type JujuProvisioner struct {
 
 func (p *JujuProvisioner) elbSupport() bool {
 	if p.elb == nil {
-		p.elb = new(bool)
-		if elb, err := config.GetBool("juju:use-elb"); err == nil {
-			*p.elb = elb
-		}
+		elb, _ := config.GetBool("juju:use-elb")
+		p.elb = &elb
 	}
 	return *p.elb
 }

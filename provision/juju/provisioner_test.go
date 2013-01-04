@@ -62,6 +62,9 @@ func (s *S) TestProvisionFailure(c *C) {
 	c.Assert(pErr.Err.Error(), Equals, "exit status 1")
 }
 
+func (s *S) TestProvisionWithELB(c *C) {
+}
+
 func (s *S) TestDestroy(c *C) {
 	tmpdir, err := commandmocker.Add("juju", "$*")
 	c.Assert(err, IsNil)
