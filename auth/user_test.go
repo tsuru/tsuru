@@ -69,7 +69,7 @@ func (s *S) TestUpdateUser(c *C) {
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"email": u.Email})
 	u.Password = "1234"
-	err = u.update()
+	err = u.Update()
 	c.Assert(err, IsNil)
 	err = u.Get()
 	c.Assert(u.Password, Equals, "1234")

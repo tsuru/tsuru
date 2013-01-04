@@ -95,7 +95,7 @@ func (s *S) TearDownTest(c *C) {
 	panicIfErr(err)
 	if s.user.Password != s.hashed {
 		s.user.Password = s.hashed
-		err = s.user.update()
+		err = s.user.Update()
 		panicIfErr(err)
 	}
 	config.Set("git:host", s.gitHost)

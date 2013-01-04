@@ -87,7 +87,7 @@ func (u *User) Create() error {
 	return db.Session.Users().Insert(u)
 }
 
-func (u *User) update() error {
+func (u *User) Update() error {
 	return db.Session.Users().Update(bson.M{"email": u.Email}, u)
 }
 
