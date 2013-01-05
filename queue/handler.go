@@ -131,7 +131,10 @@ var r *registry = newRegistry()
 func Preempt() {
 	var wg sync.WaitGroup
 	r.mut.Lock()
-	preemptable := r.handlers
+	preemptable := make(map[string]*Handler, len(r.handlers))
+	for k, v := range r.handlers {
+		preemptable[k] = v
+	}
 	r.mut.Unlock()
 	wg.Add(len(preemptable))
 	for _, h := range preemptable {
