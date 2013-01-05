@@ -82,14 +82,14 @@ func (h *Handler) fakeLoop() {
 // loop will get messages from the queue and dispatch them to Handler.F.
 func (h *Handler) loop() {
 	for {
-		if message, err := Get(1e9); err == nil {
-			go h.F(message)
-		} else if atomic.LoadInt32(&h.state) == running {
-			log.Printf("Failed to get message from the queue: %s. Trying again...", err)
-			continue
-		} else {
+		if atomic.LoadInt32(&h.state) != running {
 			atomic.StoreInt32(&h.state, stopped)
 			return
+		} else if message, err := Get(1e9); err == nil {
+			go h.F(message)
+		} else {
+			log.Printf("Failed to get message from the queue: %s. Trying again...", err)
+			continue
 		}
 	}
 }
@@ -140,8 +140,9 @@ func Preempt() {
 	for _, h := range preemptable {
 		go func(h *Handler) {
 			defer wg.Done()
-			h.Stop()
-			h.Wait()
+			if err := h.Stop(); err == nil {
+				h.Wait()
+			}
 		}(h)
 	}
 	wg.Wait()

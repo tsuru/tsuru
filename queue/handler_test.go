@@ -7,6 +7,7 @@ package queue
 import (
 	"github.com/globocom/config"
 	. "launchpad.net/gocheck"
+	"strconv"
 	"sync"
 	"time"
 )
@@ -59,6 +60,25 @@ func (s *HandlerSuite) TestPreempt(c *C) {
 	c.Assert(h1.state, Equals, stopped)
 	c.Assert(h2.state, Equals, stopped)
 	c.Assert(h3.state, Equals, stopped)
+}
+
+func (s *HandlerSuite) TestPreemptWithMessagesInTheQueue(c *C) {
+	config.Set("queue-server", "127.0.0.1:11300")
+	for i := 0; i < 100; i++ {
+		Put(&Message{
+			Action: "save-something",
+			Args:   []string{strconv.Itoa(i)},
+		})
+	}
+	var sleeper = func(m *Message) {
+		Delete(m)
+		time.Sleep(1e6)
+	}
+	h1 := Handler{F: sleeper}
+	h1.Start()
+	Preempt()
+	c.Assert(h1.state, Equals, stopped)
+	cleanQ(c)
 }
 
 type MessageList struct {
