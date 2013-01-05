@@ -22,11 +22,13 @@ import (
 	"github.com/kr/beanstalk"
 	"io"
 	"regexp"
+	"sync"
 	"time"
 )
 
 var (
 	conn           *beanstalk.Conn
+	mut            sync.Mutex // for conn access
 	timeoutRegexp  = regexp.MustCompile(`TIMED_OUT$`)
 	notFoundRegexp = regexp.MustCompile(`not found$`)
 )
@@ -124,18 +126,24 @@ func connection() (*beanstalk.Conn, error) {
 		addr string
 		err  error
 	)
+	mut.Lock()
 	if conn == nil {
+		mut.Unlock()
 		addr, err = config.GetString("queue-server")
 		if err != nil {
 			return nil, errors.New(`"queue-server" is not defined in config file.`)
 		}
+		mut.Lock()
 		if conn, err = beanstalk.Dial("tcp", addr); err != nil {
+			mut.Unlock()
 			return nil, err
 		}
 	}
 	if _, err = conn.ListTubes(); err != nil {
+		mut.Unlock()
 		conn = nil
 		return connection()
 	}
+	mut.Unlock()
 	return conn, err
 }
