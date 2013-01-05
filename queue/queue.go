@@ -8,6 +8,9 @@
 //
 // It provides three functions: Put, Get and Delete, which puts, gets and
 // deletes a message from the queue.
+//
+// It also provides a generic, thread safe, handler for messages, with start
+// and stop capability.
 package queue
 
 import (

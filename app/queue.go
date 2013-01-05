@@ -10,46 +10,7 @@ import (
 	"github.com/globocom/tsuru/provision"
 	"github.com/globocom/tsuru/queue"
 	"io/ioutil"
-	"sync/atomic"
 )
-
-const (
-	stopped int32 = iota
-	running
-	stopping
-)
-
-type messageHandler struct {
-	state int32
-}
-
-// start starts the handler. It's safe to call start multiple times.
-func (h *messageHandler) start() {
-	if atomic.CompareAndSwapInt32(&h.state, stopped, running) {
-		go h.handleMessages()
-	}
-}
-
-// stop stops the handler. You can start it again by calling start.
-func (h *messageHandler) stop() {
-	atomic.StoreInt32(&h.state, stopping)
-}
-
-func (h *messageHandler) handleMessages() {
-	for {
-		if message, err := queue.Get(1e9); err == nil {
-			go handle(message)
-		} else if atomic.LoadInt32(&h.state) == running {
-			log.Printf("Failed to receive message: %s. Trying again...", err)
-			continue
-		} else {
-			break
-		}
-	}
-	atomic.StoreInt32(&h.state, stopped)
-}
-
-var handler = &messageHandler{}
 
 func ensureAppIsStarted(msg *queue.Message) (App, error) {
 	a := App{Name: msg.Args[0]}
@@ -139,10 +100,12 @@ func getUnits(a *App, names []string) unitList {
 	return unitList(units)
 }
 
+var handler = &queue.Handler{F: handle}
+
 func enqueue(msgs ...queue.Message) {
 	for _, msg := range msgs {
 		copy := msg
 		queue.Put(&copy)
 	}
-	handler.start()
+	handler.Start()
 }

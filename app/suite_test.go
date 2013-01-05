@@ -17,9 +17,7 @@ import (
 	. "launchpad.net/gocheck"
 	"os"
 	"path"
-	"sync/atomic"
 	"testing"
-	"time"
 )
 
 func Test(t *testing.T) { TestingT(t) }
@@ -89,7 +87,10 @@ func (s *S) SetUpSuite(c *C) {
 	s.t.SetGitConfs(c)
 	s.provisioner = ttesting.NewFakeProvisioner()
 	Provisioner = s.provisioner
-	handler.state = running
+	err = nil
+	for err == nil {
+		err = handler.DryRun()
+	}
 }
 
 func (s *S) TearDownSuite(c *C) {
@@ -98,10 +99,8 @@ func (s *S) TearDownSuite(c *C) {
 	defer db.Session.Close()
 	db.Session.Apps().Database.DropDatabase()
 	fsystem = nil
-	handler.stop()
-	for atomic.LoadInt32(&handler.state) == running {
-		time.Sleep(1e3)
-	}
+	handler.Stop()
+	handler.Wait()
 }
 
 func (s *S) SetUpTest(c *C) {
