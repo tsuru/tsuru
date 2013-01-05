@@ -5,8 +5,11 @@
 package queue
 
 import (
+	"crypto/rand"
 	"errors"
+	"fmt"
 	"github.com/globocom/tsuru/log"
+	"sync"
 	"sync/atomic"
 	"time"
 )
@@ -25,10 +28,12 @@ const (
 type Handler struct {
 	F     func(*Message)
 	state int32
+	id    string
 }
 
 // Start starts the handler. It's safe to call this function multiple times.
 func (h *Handler) Start() {
+	r.add(h)
 	if atomic.CompareAndSwapInt32(&h.state, stopped, running) {
 		go h.loop()
 	}
@@ -42,6 +47,8 @@ func (h *Handler) DryRun() error {
 	if !atomic.CompareAndSwapInt32(&h.state, stopped, running) {
 		return errors.New("Handler is not stopped.")
 	}
+	r.add(h)
+	go h.fakeLoop()
 	return nil
 }
 
@@ -54,7 +61,7 @@ func (h *Handler) Stop() error {
 	if !atomic.CompareAndSwapInt32(&h.state, running, stopping) {
 		return errors.New("Not running.")
 	}
-	go h.fakeLoop()
+	r.remove(h)
 	return nil
 }
 
@@ -85,4 +92,54 @@ func (h *Handler) loop() {
 			return
 		}
 	}
+}
+
+// registry stores references to all running handlers.
+type registry struct {
+	mut      sync.Mutex
+	handlers map[string]*Handler
+}
+
+func newRegistry() *registry {
+	return &registry{
+		handlers: make(map[string]*Handler),
+	}
+}
+
+func (r *registry) add(h *Handler) {
+	if h.id == "" {
+		var buf [16]byte
+		rand.Read(buf[:])
+		h.id = fmt.Sprintf("%x", buf)
+	}
+	r.mut.Lock()
+	r.handlers[h.id] = h
+	r.mut.Unlock()
+}
+
+func (r *registry) remove(h *Handler) {
+	if h.id != "" {
+		r.mut.Lock()
+		delete(r.handlers, h.id)
+		r.mut.Unlock()
+	}
+}
+
+var r *registry = newRegistry()
+
+// Preempt calls Stop and Wait for each running handler.
+func Preempt() {
+	var wg sync.WaitGroup
+	r.mut.Lock()
+	preemptable := r.handlers
+	r.mut.Unlock()
+	wg.Add(len(preemptable))
+	for _, h := range preemptable {
+		go func(h *Handler) {
+			defer wg.Done()
+			h.Stop()
+			h.Wait()
+		}(h)
+	}
+	wg.Wait()
 }

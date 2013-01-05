@@ -31,10 +31,12 @@ func (s *HandlerSuite) SetUpSuite(c *C) {
 func (s *HandlerSuite) TestHandleMessages(c *C) {
 	config.Set("queue-server", "127.0.0.1:11300")
 	s.h.Start()
+	c.Check(r.handlers, HasLen, 1)
 	err := Put(&Message{Action: "do-something", Args: []string{"this"}})
 	c.Check(err, IsNil)
 	time.Sleep(1e9)
 	s.h.Stop()
+	c.Check(r.handlers, HasLen, 0)
 	expected := []Message{
 		{Action: "do-something", Args: []string{"this"}},
 	}
@@ -42,6 +44,21 @@ func (s *HandlerSuite) TestHandleMessages(c *C) {
 	ms[0].id = 0
 	c.Assert(ms, DeepEquals, expected)
 	s.h.Wait()
+}
+
+func (s *HandlerSuite) TestPreempt(c *C) {
+	config.Set("queue-server", "127.0.0.1:11300")
+	var dumb = func(m *Message) {}
+	h1 := Handler{F: dumb}
+	h2 := Handler{F: dumb}
+	h3 := Handler{F: dumb}
+	h1.Start()
+	h2.Start()
+	h3.Start()
+	Preempt()
+	c.Assert(h1.state, Equals, stopped)
+	c.Assert(h2.state, Equals, stopped)
+	c.Assert(h3.state, Equals, stopped)
 }
 
 type MessageList struct {
