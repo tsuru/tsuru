@@ -81,6 +81,33 @@ func (s *HandlerSuite) TestPreemptWithMessagesInTheQueue(c *C) {
 	cleanQ(c)
 }
 
+func (s *HandlerSuite) TestStopNotRunningHandler(c *C) {
+	h := Handler{F: nil}
+	err := h.Stop()
+	c.Assert(err, NotNil)
+	c.Assert(err.Error(), Equals, "Not running.")
+}
+
+func (s *HandlerSuite) TestDryRun(c *C) {
+	h := Handler{F: nil}
+	err := h.DryRun()
+	c.Assert(err, IsNil)
+	c.Assert(h.state, Equals, running)
+	h.Stop()
+	h.Wait()
+	c.Assert(h.state, Equals, stopped)
+}
+
+func (s *HandlerSuite) TestDryRunRunningHandler(c *C) {
+	h := Handler{F: func(m *Message) { Delete(m) }}
+	err := h.DryRun()
+	c.Assert(err, IsNil)
+	defer h.Stop()
+	err = h.DryRun()
+	c.Assert(err, NotNil)
+	c.Assert(err.Error(), Equals, "Already running.")
+}
+
 type MessageList struct {
 	sync.Mutex
 	msgs []Message

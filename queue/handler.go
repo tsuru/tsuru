@@ -51,7 +51,7 @@ func (h *Handler) Start() {
 // stopped.
 func (h *Handler) DryRun() error {
 	if !atomic.CompareAndSwapInt32(&h.state, stopped, running) {
-		return errors.New("Handler is not stopped.")
+		return errors.New("Already running.")
 	}
 	r.add(h)
 	go h.loop(func() { time.Sleep(1e3) })
