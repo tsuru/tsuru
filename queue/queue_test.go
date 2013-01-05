@@ -25,14 +25,7 @@ func (s *S) SetUpSuite(c *C) {
 
 	// Cleaning the queue. All tests must clean its mess, but we can't
 	// guarante the state of the queue before running them.
-	cn, err := connection()
-	c.Assert(err, IsNil)
-	var id uint64
-	for err == nil {
-		if id, _, err = cn.Reserve(1e6); err == nil {
-			err = cn.Delete(id)
-		}
-	}
+	cleanQ(c)
 }
 
 func (s *S) SetUpTest(c *C) {
@@ -220,4 +213,15 @@ func (s *S) TestDeleteMessageWithoutId(c *C) {
 	err := Delete(&msg)
 	c.Assert(err, NotNil)
 	c.Assert(err.Error(), Equals, "Unknown message.")
+}
+
+func cleanQ(c *C) {
+	cn, err := connection()
+	c.Assert(err, IsNil)
+	var id uint64
+	for err == nil {
+		if id, _, err = cn.Reserve(1e6); err == nil {
+			err = cn.Delete(id)
+		}
+	}
 }
