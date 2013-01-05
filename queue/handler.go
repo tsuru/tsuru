@@ -35,7 +35,13 @@ type Handler struct {
 func (h *Handler) Start() {
 	r.add(h)
 	if atomic.CompareAndSwapInt32(&h.state, stopped, running) {
-		go h.loop()
+		go h.loop(func() {
+			if message, err := Get(1e9); err == nil {
+				go h.F(message)
+			} else {
+				log.Printf("Failed to get message from the queue: %s. Trying again...", err)
+			}
+		})
 	}
 }
 
@@ -48,7 +54,7 @@ func (h *Handler) DryRun() error {
 		return errors.New("Handler is not stopped.")
 	}
 	r.add(h)
-	go h.fakeLoop()
+	go h.loop(func() { time.Sleep(1e3) })
 	return nil
 }
 
@@ -72,26 +78,12 @@ func (h *Handler) Wait() {
 	}
 }
 
-func (h *Handler) fakeLoop() {
+// loop will execute inner while the handler is in "running" state.
+func (h *Handler) loop(inner func()) {
 	for atomic.LoadInt32(&h.state) == running {
-		time.Sleep(1e3)
+		inner()
 	}
 	atomic.StoreInt32(&h.state, stopped)
-}
-
-// loop will get messages from the queue and dispatch them to Handler.F.
-func (h *Handler) loop() {
-	for {
-		if atomic.LoadInt32(&h.state) != running {
-			atomic.StoreInt32(&h.state, stopped)
-			return
-		} else if message, err := Get(1e9); err == nil {
-			go h.F(message)
-		} else {
-			log.Printf("Failed to get message from the queue: %s. Trying again...", err)
-			continue
-		}
-	}
 }
 
 // registry stores references to all running handlers.
