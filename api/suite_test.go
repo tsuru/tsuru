@@ -11,6 +11,7 @@ import (
 	"github.com/globocom/tsuru/auth"
 	"github.com/globocom/tsuru/db"
 	fsTesting "github.com/globocom/tsuru/fs/testing"
+	"github.com/globocom/tsuru/queue"
 	"github.com/globocom/tsuru/service"
 	tsuruTesting "github.com/globocom/tsuru/testing"
 	"io"
@@ -126,6 +127,7 @@ func (s *S) TearDownSuite(c *C) {
 	defer db.Session.Close()
 	db.Session.Apps().Database.DropDatabase()
 	fsystem = nil
+	queue.Preempt()
 }
 
 func (s *S) TearDownTest(c *C) {

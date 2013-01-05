@@ -99,8 +99,7 @@ func (s *S) TearDownSuite(c *C) {
 	defer db.Session.Close()
 	db.Session.Apps().Database.DropDatabase()
 	fsystem = nil
-	handler.Stop()
-	handler.Wait()
+	queue.Preempt()
 }
 
 func (s *S) SetUpTest(c *C) {
