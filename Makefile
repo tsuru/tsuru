@@ -76,7 +76,7 @@ test:
 	@cmd/term/test.sh
 
 race:
-	for pkg in `go list ./...`; do go test -race -i $$pkg; go test -race $$pkg; done
+	@for pkg in `go list ./...`; do go test -race -i $$pkg; go test -race $$pkg; done
 
 doc:
 	@cd docs && make html
