@@ -67,7 +67,7 @@ get-prod:
 
 test:
 	@go test -i ./...
-	@go test ./...
+	@for pkg in `go list ./...`; do go test $$pkg; done
 	@go build -o websrv ./api
 	@./websrv -dry=true -config=$(PWD)/etc/tsuru.conf
 	@go build -o collect ./collector/
