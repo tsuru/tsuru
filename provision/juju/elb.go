@@ -66,7 +66,7 @@ func (m *ELBManager) vpc() bool {
 	return vpc
 }
 
-func (m *ELBManager) Create(app provision.App) error {
+func (m *ELBManager) Create(app provision.Named) error {
 	options := elb.CreateLoadBalancer{
 		Name: app.GetName(),
 		Listeners: []elb.Listener{
@@ -103,7 +103,7 @@ func (m *ELBManager) Create(app provision.App) error {
 	return m.collection().Insert(lb)
 }
 
-func (m *ELBManager) Destroy(app provision.App) error {
+func (m *ELBManager) Destroy(app provision.Named) error {
 	_, err := m.elb().DeleteLoadBalancer(app.GetName())
 	if err != nil {
 		return err
@@ -111,19 +111,19 @@ func (m *ELBManager) Destroy(app provision.App) error {
 	return m.collection().Remove(bson.M{"name": app.GetName()})
 }
 
-func (m *ELBManager) Register(app provision.App, unit provision.Unit) error {
+func (m *ELBManager) Register(app provision.Named, unit provision.Unit) error {
 	ids := []string{unit.InstanceId}
 	_, err := m.elb().RegisterInstancesWithLoadBalancer(ids, app.GetName())
 	return err
 }
 
-func (m *ELBManager) Deregister(app provision.App, unit provision.Unit) error {
+func (m *ELBManager) Deregister(app provision.Named, unit provision.Unit) error {
 	ids := []string{unit.InstanceId}
 	_, err := m.elb().DeregisterInstancesFromLoadBalancer(ids, app.GetName())
 	return err
 }
 
-func (m *ELBManager) Addr(app provision.App) (string, error) {
+func (m *ELBManager) Addr(app provision.Named) (string, error) {
 	var lb loadBalancer
 	err := m.collection().Find(bson.M{"name": app.GetName()}).One(&lb)
 	return lb.DNSName, err

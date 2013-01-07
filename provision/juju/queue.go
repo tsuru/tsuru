@@ -17,20 +17,8 @@ type app struct {
 	name string
 }
 
-func (a *app) Log(m, s string) error {
-	return nil
-}
-
 func (a *app) GetName() string {
 	return a.name
-}
-
-func (a *app) GetFramework() string {
-	return ""
-}
-
-func (a *app) ProvisionUnits() []provision.AppUnit {
-	return nil
 }
 
 func handle(msg *queue.Message) {
