@@ -19,6 +19,41 @@ import (
 	"net/http/httptest"
 )
 
+type ConsumptionSuite struct {
+	team *auth.Team
+	user *auth.User
+}
+
+var _ = Suite(&ConsumptionSuite{})
+
+func (s *ConsumptionSuite) SetUpSuite(c *C) {
+	var err error
+	db.Session, err = db.Open("127.0.0.1:27017", "tsuru_api_consumption_test")
+	c.Assert(err, IsNil)
+	s.createUserAndTeam(c)
+}
+
+func (s *ConsumptionSuite) TearDownSuite(c *C) {
+	defer db.Session.Close()
+	db.Session.Apps().Database.DropDatabase()
+}
+
+func (s *ConsumptionSuite) TearDownTest(c *C) {
+	_, err := db.Session.Services().RemoveAll(nil)
+	c.Assert(err, IsNil)
+	_, err = db.Session.ServiceInstances().RemoveAll(nil)
+	c.Assert(err, IsNil)
+}
+
+func (s *ConsumptionSuite) createUserAndTeam(c *C) {
+	s.user = &auth.User{Email: "whydidifall@thewho.com", Password: "123"}
+	err := s.user.Create()
+	c.Assert(err, IsNil)
+	s.team = &auth.Team{Name: "tsuruteam", Users: []string{s.user.Email}}
+	err = db.Session.Teams().Insert(s.team)
+	c.Assert(err, IsNil)
+}
+
 func makeRequestToCreateInstanceHandler(c *C) (*httptest.ResponseRecorder, *http.Request) {
 	b := bytes.NewBufferString(`{"name": "brainSQL", "service_name": "mysql", "app": "my_app"}`)
 	request, err := http.NewRequest("POST", "/services/instances", b)
@@ -28,7 +63,7 @@ func makeRequestToCreateInstanceHandler(c *C) (*httptest.ResponseRecorder, *http
 	return recorder, request
 }
 
-func (suite *S) TestCreateInstanceHandlerSavesServiceInstanceInDb(c *C) {
+func (suite *ConsumptionSuite) TestCreateInstanceHandlerSavesServiceInstanceInDb(c *C) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(`{"DATABASE_HOST":"localhost"}`))
 	}))
@@ -47,7 +82,7 @@ func (suite *S) TestCreateInstanceHandlerSavesServiceInstanceInDb(c *C) {
 	c.Assert(si.ServiceName, Equals, "mysql")
 }
 
-func (s *S) TestCreateInstanceHandlerSavesAllTeamsThatTheGivenUserIsMemberAndHasAccessToTheServiceInTheInstance(c *C) {
+func (s *ConsumptionSuite) TestCreateInstanceHandlerSavesAllTeamsThatTheGivenUserIsMemberAndHasAccessToTheServiceInTheInstance(c *C) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(`{"DATABASE_HOST":"localhost"}`))
 	}))
@@ -68,7 +103,7 @@ func (s *S) TestCreateInstanceHandlerSavesAllTeamsThatTheGivenUserIsMemberAndHas
 	c.Assert(si.Teams, DeepEquals, []string{s.team.Name})
 }
 
-func (s *S) TestCreateInstanceHandlerReturnsErrorWhenUserCannotUseService(c *C) {
+func (s *ConsumptionSuite) TestCreateInstanceHandlerReturnsErrorWhenUserCannotUseService(c *C) {
 	service := service.Service{Name: "mysql", IsRestricted: true}
 	service.Create()
 	recorder, request := makeRequestToCreateInstanceHandler(c)
@@ -76,7 +111,7 @@ func (s *S) TestCreateInstanceHandlerReturnsErrorWhenUserCannotUseService(c *C) 
 	c.Assert(err, ErrorMatches, "^This user does not have access to this service$")
 }
 
-func (s *S) TestCreateInstanceHandlerIgnoresTeamAuthIfServiceIsNotRestricted(c *C) {
+func (s *ConsumptionSuite) TestCreateInstanceHandlerIgnoresTeamAuthIfServiceIsNotRestricted(c *C) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(`{"DATABASE_HOST":"localhost"}`))
 	}))
@@ -95,13 +130,13 @@ func (s *S) TestCreateInstanceHandlerIgnoresTeamAuthIfServiceIsNotRestricted(c *
 	c.Assert(si.Teams, DeepEquals, []string{s.team.Name})
 }
 
-func (s *S) TestCreateInstanceHandlerReturnsErrorWhenServiceDoesntExists(c *C) {
+func (s *ConsumptionSuite) TestCreateInstanceHandlerReturnsErrorWhenServiceDoesntExists(c *C) {
 	recorder, request := makeRequestToCreateInstanceHandler(c)
 	err := CreateInstanceHandler(recorder, request, s.user)
 	c.Assert(err, ErrorMatches, "^Service mysql does not exist.$")
 }
 
-func (s *S) TestCreateInstanceHandlerReturnErrorIfTheServiceAPICallFailAndDoesNotSaveTheInstanceInTheDatabase(c *C) {
+func (s *ConsumptionSuite) TestCreateInstanceHandlerReturnErrorIfTheServiceAPICallFailAndDoesNotSaveTheInstanceInTheDatabase(c *C) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 	}))
@@ -124,7 +159,7 @@ func makeRequestToRemoveInstanceHandler(name string, c *C) (*httptest.ResponseRe
 	return recorder, request
 }
 
-func (s *S) TestRemoveServiceInstanceHandler(c *C) {
+func (s *ConsumptionSuite) TestRemoveServiceInstanceHandler(c *C) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	}))
@@ -147,7 +182,7 @@ func (s *S) TestRemoveServiceInstanceHandler(c *C) {
 	c.Assert(n, Equals, 0)
 }
 
-func (s *S) TestRemoveServiceHandlerWithoutPermissionShouldReturn401(c *C) {
+func (s *ConsumptionSuite) TestRemoveServiceHandlerWithoutPermissionShouldReturn401(c *C) {
 	se := service.Service{Name: "foo"}
 	err := se.Create()
 	defer db.Session.Services().Remove(bson.M{"_id": se.Name})
@@ -161,7 +196,7 @@ func (s *S) TestRemoveServiceHandlerWithoutPermissionShouldReturn401(c *C) {
 	c.Assert(err, ErrorMatches, "^This user does not have access to this service instance$")
 }
 
-func (s *S) TestRemoveServiceHandlerWIthAssociatedAppsShouldFailAndReturnError(c *C) {
+func (s *ConsumptionSuite) TestRemoveServiceHandlerWIthAssociatedAppsShouldFailAndReturnError(c *C) {
 	se := service.Service{Name: "foo"}
 	err := se.Create()
 	defer db.Session.Services().Remove(bson.M{"_id": se.Name})
@@ -175,7 +210,7 @@ func (s *S) TestRemoveServiceHandlerWIthAssociatedAppsShouldFailAndReturnError(c
 	c.Assert(err, ErrorMatches, "^This service instance has binded apps. Unbind them before removing it$")
 }
 
-func (s *S) TestRemoveServiceShouldCallTheServiceAPI(c *C) {
+func (s *ConsumptionSuite) TestRemoveServiceShouldCallTheServiceAPI(c *C) {
 	var called bool
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		called = r.Method == "DELETE" && r.URL.Path == "/resources/purity-instance"
@@ -195,7 +230,7 @@ func (s *S) TestRemoveServiceShouldCallTheServiceAPI(c *C) {
 	c.Assert(called, Equals, true)
 }
 
-func (s *S) TestremoveServiceShouldNotRemoveTheServiceIfTheServiceAPICallFail(c *C) {
+func (s *ConsumptionSuite) TestremoveServiceShouldNotRemoveTheServiceIfTheServiceAPICallFail(c *C) {
 	var called bool
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		called = r.Method == "DELETE" && r.URL.Path == "/resources/purity-instance"
@@ -220,7 +255,7 @@ func (s *S) TestremoveServiceShouldNotRemoveTheServiceIfTheServiceAPICallFail(c 
 	c.Assert(e.Message, Equals, "Failed to destroy the instance deepercut-instance: it's a test!")
 }
 
-func (s *S) TestServicesInstancesHandler(c *C) {
+func (s *ConsumptionSuite) TestServicesInstancesHandler(c *C) {
 	srv := service.Service{Name: "redis", Teams: []string{s.team.Name}}
 	err := srv.Create()
 	c.Assert(err, IsNil)
@@ -248,7 +283,7 @@ func (s *S) TestServicesInstancesHandler(c *C) {
 	c.Assert(instances, DeepEquals, expected)
 }
 
-func (s *S) TestServicesInstancesHandlerReturnsOnlyServicesThatTheUserHasAccess(c *C) {
+func (s *ConsumptionSuite) TestServicesInstancesHandlerReturnsOnlyServicesThatTheUserHasAccess(c *C) {
 	u := &auth.User{Email: "me@globo.com", Password: "123"}
 	err := u.Create()
 	c.Assert(err, IsNil)
@@ -277,7 +312,7 @@ func (s *S) TestServicesInstancesHandlerReturnsOnlyServicesThatTheUserHasAccess(
 	c.Assert(instances, DeepEquals, []service.ServiceModel{})
 }
 
-func (s *S) TestServicesInstancesHandlerFilterInstancesPerServiceIncludingServicesThatDoesNotHaveInstances(c *C) {
+func (s *ConsumptionSuite) TestServicesInstancesHandlerFilterInstancesPerServiceIncludingServicesThatDoesNotHaveInstances(c *C) {
 	u := &auth.User{Email: "me@globo.com", Password: "123"}
 	err := u.Create()
 	c.Assert(err, IsNil)
@@ -336,7 +371,7 @@ func makeRequestToStatusHandler(name string, c *C) (*httptest.ResponseRecorder, 
 	return recorder, request
 }
 
-func (s *S) TestServiceInstanceStatusHandler(c *C) {
+func (s *ConsumptionSuite) TestServiceInstanceStatusHandler(c *C) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNoContent)
 		w.Write([]byte(`Service instance "my_nosql" is up`))
@@ -357,19 +392,19 @@ func (s *S) TestServiceInstanceStatusHandler(c *C) {
 	c.Assert(string(b), Equals, "Service instance \"my_nosql\" is up")
 }
 
-func (s *S) TestServiceInstanceStatusHandlerShouldReturnErrorWHenNameIsNotProvided(c *C) {
+func (s *ConsumptionSuite) TestServiceInstanceStatusHandlerShouldReturnErrorWHenNameIsNotProvided(c *C) {
 	recorder, request := makeRequestToStatusHandler("", c)
 	err := ServiceInstanceStatusHandler(recorder, request, s.user)
 	c.Assert(err, ErrorMatches, "^Service instance name not provided.$")
 }
 
-func (s *S) TestServiceInstanceStatusHandlerShouldReturnErrorWhenServiceInstanceNotExists(c *C) {
+func (s *ConsumptionSuite) TestServiceInstanceStatusHandlerShouldReturnErrorWhenServiceInstanceNotExists(c *C) {
 	recorder, request := makeRequestToStatusHandler("inexistent-instance", c)
 	err := ServiceInstanceStatusHandler(recorder, request, s.user)
 	c.Assert(err, ErrorMatches, "^Service instance does not exists, error: not found$")
 }
 
-func (s *S) TestServiceInfoHandler(c *C) {
+func (s *ConsumptionSuite) TestServiceInfoHandler(c *C) {
 	srv := service.Service{Name: "mongodb", Teams: []string{s.team.Name}}
 	err := srv.Create()
 	c.Assert(err, IsNil)
@@ -406,7 +441,7 @@ func (s *S) TestServiceInfoHandler(c *C) {
 	c.Assert(instances, DeepEquals, expected)
 }
 
-func (s *S) TestServiceInfoHandlerShouldReturnOnlyInstancesOfTheSameTeamOfTheUser(c *C) {
+func (s *ConsumptionSuite) TestServiceInfoHandlerShouldReturnOnlyInstancesOfTheSameTeamOfTheUser(c *C) {
 	srv := service.Service{Name: "mongodb", Teams: []string{s.team.Name}}
 	err := srv.Create()
 	c.Assert(err, IsNil)
@@ -443,7 +478,7 @@ func (s *S) TestServiceInfoHandlerShouldReturnOnlyInstancesOfTheSameTeamOfTheUse
 	c.Assert(instances, DeepEquals, expected)
 }
 
-func (s *S) TestServiceInfoHandlerReturns404WhenTheServiceDoesNotExist(c *C) {
+func (s *ConsumptionSuite) TestServiceInfoHandlerReturns404WhenTheServiceDoesNotExist(c *C) {
 	request, err := http.NewRequest("GET", fmt.Sprintf("/services/%s?:name=%s", "mongodb", "mongodb"), nil)
 	c.Assert(err, IsNil)
 	recorder := httptest.NewRecorder()
@@ -455,7 +490,7 @@ func (s *S) TestServiceInfoHandlerReturns404WhenTheServiceDoesNotExist(c *C) {
 	c.Assert(e, ErrorMatches, "^Service not found$")
 }
 
-func (s *S) TestServiceInfoHandlerReturns403WhenTheUserDoesNotHaveAccessToTheService(c *C) {
+func (s *ConsumptionSuite) TestServiceInfoHandlerReturns403WhenTheUserDoesNotHaveAccessToTheService(c *C) {
 	se := service.Service{Name: "Mysql", IsRestricted: true}
 	se.Create()
 	defer db.Session.Services().Remove(bson.M{"_id": se.Name})
@@ -470,7 +505,7 @@ func (s *S) TestServiceInfoHandlerReturns403WhenTheUserDoesNotHaveAccessToTheSer
 	c.Assert(e, ErrorMatches, "^This user does not have access to this service$")
 }
 
-func (s *S) makeRequestToGetDocHandler(name string, c *C) (*httptest.ResponseRecorder, *http.Request) {
+func (s *ConsumptionSuite) makeRequestToGetDocHandler(name string, c *C) (*httptest.ResponseRecorder, *http.Request) {
 	url := fmt.Sprintf("/services/%s/doc/?:name=%s", name, name)
 	request, err := http.NewRequest("GET", url, nil)
 	c.Assert(err, IsNil)
@@ -479,7 +514,7 @@ func (s *S) makeRequestToGetDocHandler(name string, c *C) (*httptest.ResponseRec
 	return recorder, request
 }
 
-func (s *S) TestDocHandler(c *C) {
+func (s *ConsumptionSuite) TestDocHandler(c *C) {
 	doc := `Doc for coolnosql
 Collnosql is a really really cool nosql`
 	srv := service.Service{
@@ -497,7 +532,7 @@ Collnosql is a really really cool nosql`
 	c.Assert(string(b), Equals, doc)
 }
 
-func (s *S) TestDocHandlerReturns401WhenUserHasNoAccessToService(c *C) {
+func (s *ConsumptionSuite) TestDocHandlerReturns401WhenUserHasNoAccessToService(c *C) {
 	srv := service.Service{
 		Name:         "coolnosql",
 		Doc:          "some doc...",
@@ -510,13 +545,13 @@ func (s *S) TestDocHandlerReturns401WhenUserHasNoAccessToService(c *C) {
 	c.Assert(err, ErrorMatches, "^This user does not have access to this service$")
 }
 
-func (s *S) TestDocHandlerReturns404WhenServiceDoesNotExists(c *C) {
+func (s *ConsumptionSuite) TestDocHandlerReturns404WhenServiceDoesNotExists(c *C) {
 	recorder, request := s.makeRequestToGetDocHandler("inexistentsql", c)
 	err := Doc(recorder, request, s.user)
 	c.Assert(err, ErrorMatches, "^Service not found$")
 }
 
-func (s *S) TestGetServiceOrError(c *C) {
+func (s *ConsumptionSuite) TestGetServiceOrError(c *C) {
 	srv := service.Service{Name: "foo", Teams: []string{s.team.Name}, IsRestricted: true}
 	err := srv.Create()
 	c.Assert(err, IsNil)
@@ -525,7 +560,7 @@ func (s *S) TestGetServiceOrError(c *C) {
 	c.Assert(rSrv.Name, Equals, srv.Name)
 }
 
-func (s *S) TestGetServiceOrErrorShouldReturnErrorWhenUserHaveNoAccessToService(c *C) {
+func (s *ConsumptionSuite) TestGetServiceOrErrorShouldReturnErrorWhenUserHaveNoAccessToService(c *C) {
 	srv := service.Service{Name: "foo", IsRestricted: true}
 	err := srv.Create()
 	c.Assert(err, IsNil)
@@ -533,7 +568,7 @@ func (s *S) TestGetServiceOrErrorShouldReturnErrorWhenUserHaveNoAccessToService(
 	c.Assert(err, ErrorMatches, "^This user does not have access to this service$")
 }
 
-func (s *S) TestGetServiceOrErrorShoudNotReturnErrorWhenServiceIsNotRestricted(c *C) {
+func (s *ConsumptionSuite) TestGetServiceOrErrorShoudNotReturnErrorWhenServiceIsNotRestricted(c *C) {
 	srv := service.Service{Name: "foo"}
 	err := srv.Create()
 	c.Assert(err, IsNil)
@@ -541,7 +576,7 @@ func (s *S) TestGetServiceOrErrorShoudNotReturnErrorWhenServiceIsNotRestricted(c
 	c.Assert(err, IsNil)
 }
 
-func (s *S) TestGetServiceInstanceOrError(c *C) {
+func (s *ConsumptionSuite) TestGetServiceInstanceOrError(c *C) {
 	si := service.ServiceInstance{Name: "foo", Teams: []string{s.team.Name}}
 	err := si.Create()
 	c.Assert(err, IsNil)
@@ -550,7 +585,7 @@ func (s *S) TestGetServiceInstanceOrError(c *C) {
 	c.Assert(rSi.Name, Equals, si.Name)
 }
 
-func (s *S) TestServiceAndServiceInstancesByTeamsShouldReturnServiceInstancesByTeam(c *C) {
+func (s *ConsumptionSuite) TestServiceAndServiceInstancesByTeamsShouldReturnServiceInstancesByTeam(c *C) {
 	srv := service.Service{Name: "mongodb"}
 	srv.Create()
 	defer srv.Delete()

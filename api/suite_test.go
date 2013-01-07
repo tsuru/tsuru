@@ -126,10 +126,6 @@ func (s *S) TearDownSuite(c *C) {
 func (s *S) TearDownTest(c *C) {
 	s.t.RollbackGitConfs(c)
 	s.provisioner.Reset()
-	_, err := db.Session.Services().RemoveAll(nil)
-	c.Assert(err, IsNil)
-	_, err = db.Session.ServiceInstances().RemoveAll(nil)
-	c.Assert(err, IsNil)
 }
 
 func (s *S) getTestData(p ...string) io.ReadCloser {
