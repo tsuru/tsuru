@@ -1,4 +1,4 @@
-# Copyright 2012 tsuru authors. All rights reserved.
+# Copyright 2013 tsuru authors. All rights reserved.
 # Use of this source code is governed by a BSD-style
 # license that can be found in the LICENSE file.
 
@@ -67,7 +67,7 @@ get-prod:
 
 test:
 	@go test -i ./...
-	@for pkg in `go list ./...`; do go test $$pkg; done
+	@sh -ec 'for pkg in `go list ./...`; do go test $$pkg; done'
 	@go build -o websrv ./api
 	@./websrv -dry=true -config=$(PWD)/etc/tsuru.conf
 	@go build -o collect ./collector/
