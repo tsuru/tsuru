@@ -160,7 +160,9 @@ func (s *ELBSuite) TestRegisterUnit(c *C) {
 	instances := resp.LoadBalancerDescriptions[0].Instances
 	ids := []string{instances[0].InstanceId, instances[1].InstanceId}
 	sort.Strings(ids)
-	c.Assert(ids, DeepEquals, []string{id1, id2})
+	expected := []string{id1, id2}
+	sort.Strings(expected)
+	c.Assert(ids, DeepEquals, expected)
 }
 
 func (s *ELBSuite) TestDeregisterUnit(c *C) {
