@@ -39,6 +39,8 @@ func (s *ELBSuite) SetUpSuite(c *C) {
 	s.cName = "juju_test_elbs"
 	config.Set("juju:elb-collection", s.cName)
 	config.Set("juju:elb-avail-zones", []interface{}{"my-zone-1a", "my-zone-1b"})
+	config.Set("aws:access-key-id", "access")
+	config.Set("aws:secret-access-key", "s3cr3t")
 }
 
 func (s *ELBSuite) TearDownSuite(c *C) {
@@ -91,15 +93,11 @@ func (s *ELBSuite) TestCreateELBUsingVPC(c *C) {
 	config.Set("juju:elb-use-vpc", true)
 	config.Set("juju:elb-vpc-subnets", []string{"subnet-a4a3a2a1", "subnet-002200"})
 	config.Set("juju:elb-vpc-secgroups", []string{"sg-0900"})
-	config.Set("aws:access-key-id", "access")
-	config.Set("aws:secret-access-key", "s3cr3t")
 	defer func() {
 		config.Set("juju:elb-avail-zones", old)
 		config.Unset("juju:elb-use-vpc")
 		config.Unset("juju:elb-vpc-subnets")
 		config.Unset("juju:elb-vpc-secgroups")
-		config.Unset("aws:access-key-id")
-		config.Unset("aws:secret-access-key")
 	}()
 	app := testing.NewFakeApp("relax", "who", 1)
 	manager := ELBManager{}
