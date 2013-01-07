@@ -81,11 +81,10 @@ func (si *ServiceInstance) Bind(app bind.App) error {
 	}
 	var envs map[string]string
 	for _, unit := range app.GetUnits() {
-		env, err := cli.Bind(si, unit)
+		envs, err = cli.Bind(si, unit)
 		if err != nil {
 			return err
 		}
-		envs = env
 	}
 	err = si.update()
 	if err != nil {
