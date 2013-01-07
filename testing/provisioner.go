@@ -20,29 +20,31 @@ func init() {
 
 // Fake implementation for provision.Unit.
 type FakeUnit struct {
-	name    string
-	ip      string
-	machine int
-	status  provision.Status
-	actions []string
+	Name       string
+	Ip         string
+	InstanceId string
+	Machine    int
+	Status     provision.Status
 }
 
 func (u *FakeUnit) GetName() string {
-	u.actions = append(u.actions, "getname")
-	return u.name
+	return u.Name
 }
 
 func (u *FakeUnit) GetMachine() int {
-	u.actions = append(u.actions, "getmachine")
-	return u.machine
+	return u.Machine
 }
 
 func (u *FakeUnit) GetStatus() provision.Status {
-	return u.status
+	return u.Status
+}
+
+func (u *FakeUnit) GetInstanceId() string {
+	return u.InstanceId
 }
 
 func (u *FakeUnit) GetIp() string {
-	return u.ip
+	return u.Ip
 }
 
 // Fake implementation for provision.App.
@@ -62,10 +64,11 @@ func NewFakeApp(name, framework string, units int) *FakeApp {
 	namefmt := "%s/%d"
 	for i := 0; i < units; i++ {
 		app.units[i] = &FakeUnit{
-			name:    fmt.Sprintf(namefmt, name, i),
-			machine: i + 1,
-			status:  provision.StatusStarted,
-			ip:      fmt.Sprintf("10.10.10.%d", i+1),
+			Name:       fmt.Sprintf(namefmt, name, i),
+			Machine:    i + 1,
+			Status:     provision.StatusStarted,
+			Ip:         fmt.Sprintf("10.10.10.%d", i+1),
+			InstanceId: fmt.Sprintf("i-0%d", i+1),
 		}
 	}
 	return &app
@@ -90,7 +93,7 @@ func (a *FakeApp) ProvisionUnits() []provision.AppUnit {
 
 func (a *FakeApp) SetUnitStatus(s provision.Status, index int) {
 	if index < len(a.units) {
-		a.units[index].(*FakeUnit).status = s
+		a.units[index].(*FakeUnit).Status = s
 	}
 }
 

@@ -33,3 +33,7 @@ func (u *Unit) GetIp() string {
 func (u *Unit) GetStatus() provision.Status {
 	return provision.Status(u.State)
 }
+
+func (u *Unit) GetInstanceId() string {
+	return u.InstanceId
+}

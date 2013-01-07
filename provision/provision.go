@@ -55,6 +55,9 @@ type AppUnit interface {
 
 	// Returns the IP of the unit.
 	GetIp() string
+
+	// Returns the instance id of the unit.
+	GetInstanceId() string
 }
 
 // App represents a tsuru app.
