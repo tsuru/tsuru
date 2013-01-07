@@ -130,6 +130,8 @@ func (s *S) TestAddUnits(c *C) {
 		"add-unit", "resist", "--num-units", "4",
 	}
 	c.Assert(commandmocker.Parameters(tmpdir), DeepEquals, expectedParams)
+	_, err = queue.Get(1e6) // sanity
+	c.Assert(err, NotNil)
 }
 
 func (s *S) TestAddZeroUnits(c *C) {

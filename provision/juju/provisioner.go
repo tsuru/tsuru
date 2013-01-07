@@ -172,7 +172,9 @@ func (p *JujuProvisioner) AddUnits(app provision.App, n uint) ([]provision.Unit,
 	if err != io.EOF {
 		return nil, &provision.Error{Reason: buf.String(), Err: err}
 	}
-	p.enqueueUnits(app.GetName(), names...)
+	if p.elbSupport() {
+		p.enqueueUnits(app.GetName(), names...)
+	}
 	return units, nil
 }
 
