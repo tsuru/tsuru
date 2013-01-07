@@ -16,12 +16,8 @@ import (
 	tsuruTesting "github.com/globocom/tsuru/testing"
 	"io"
 	. "launchpad.net/gocheck"
-	"net/http"
-	"net/http/httptest"
 	"os"
 	"path"
-	"strconv"
-	"strings"
 	"testing"
 )
 
@@ -105,6 +101,7 @@ func (s *S) SetUpSuite(c *C) {
 	c.Assert(err, IsNil)
 	db.Session, err = db.Open("127.0.0.1:27017", "tsuru_api_test")
 	c.Assert(err, IsNil)
+	s.createUserAndTeam(c)
 	s.rfs = &fsTesting.RecordingFs{}
 	file, err := s.rfs.Open("/dev/urandom")
 	c.Assert(err, IsNil)
@@ -115,10 +112,6 @@ func (s *S) SetUpSuite(c *C) {
 	s.t.SetGitConfs(c)
 	s.provisioner = tsuruTesting.NewFakeProvisioner()
 	app.Provisioner = s.provisioner
-}
-
-func (s *S) SetUpTest(c *C) {
-	s.createUserAndTeam(c)
 }
 
 func (s *S) TearDownSuite(c *C) {
@@ -137,10 +130,6 @@ func (s *S) TearDownTest(c *C) {
 	c.Assert(err, IsNil)
 	_, err = db.Session.ServiceInstances().RemoveAll(nil)
 	c.Assert(err, IsNil)
-	_, err = db.Session.Users().RemoveAll(nil)
-	c.Assert(err, IsNil)
-	_, err = db.Session.Teams().RemoveAll(nil)
-	c.Assert(err, IsNil)
 }
 
 func (s *S) getTestData(p ...string) io.ReadCloser {
@@ -148,20 +137,4 @@ func (s *S) getTestData(p ...string) io.ReadCloser {
 	fp := path.Join(p...)
 	f, _ := os.OpenFile(fp, os.O_RDONLY, 0)
 	return f
-}
-
-// starts a new httptest.Server and returns it
-// Also changes git:host, git:port and git:protocol to match the server's url
-func (s *S) startGandalfTestServer(h http.Handler) *httptest.Server {
-	ts := httptest.NewServer(h)
-	pieces := strings.Split(ts.URL, "://")
-	protocol := pieces[0]
-	hostPart := strings.Split(pieces[1], ":")
-	port := hostPart[1]
-	host := hostPart[0]
-	config.Set("git:host", host)
-	portInt, _ := strconv.ParseInt(port, 10, 0)
-	config.Set("git:port", portInt)
-	config.Set("git:protocol", protocol)
-	return ts
 }
