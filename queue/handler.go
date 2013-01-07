@@ -78,7 +78,7 @@ func (h *Handler) Wait() {
 	}
 }
 
-// loop will execute inner while the handler is in "running" state.
+// loop will execute "inner" while the handler is in "running" state.
 func (h *Handler) loop(inner func()) {
 	for atomic.LoadInt32(&h.state) == running {
 		inner()
