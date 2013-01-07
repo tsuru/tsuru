@@ -15,6 +15,7 @@ import (
 	"github.com/globocom/tsuru/testing"
 	. "launchpad.net/gocheck"
 	"reflect"
+	"strconv"
 	"time"
 )
 
@@ -602,6 +603,48 @@ func (s *ELBSuite) TestAddUnitsWithELB(c *C) {
 	defer msg.Delete()
 	c.Assert(msg.Action, Equals, addUnitToLoadBalancer)
 	c.Assert(msg.Args, DeepEquals, expected)
+}
+
+func (s *ELBSuite) TestRemoveUnitsWithELB(c *C) {
+	instIds := make([]string, 4)
+	units := make([]provision.Unit, len(instIds))
+	for i := 0; i < len(instIds); i++ {
+		id := s.server.NewInstance()
+		defer s.server.RemoveInstance(id)
+		instIds[i] = id
+		units[i] = provision.Unit{
+			Name:       "radio/" + strconv.Itoa(i),
+			InstanceId: id,
+		}
+	}
+	tmpdir, err := commandmocker.Add("juju", "unit removed")
+	c.Assert(err, IsNil)
+	defer commandmocker.Remove(tmpdir)
+	app := testing.NewFakeApp("radio", "rush", 4)
+	manager := ELBManager{}
+	manager.e = s.client
+	err = manager.Create(app)
+	c.Assert(err, IsNil)
+	defer manager.Destroy(app)
+	err = manager.Register(app, units...)
+	c.Assert(err, IsNil)
+	toRemove := make([]provision.AppUnit, len(units)-1)
+	for i := 1; i < len(units); i++ {
+		unit := units[i]
+		toRemove[i-1] = &testing.FakeUnit{
+			Name:       unit.Name,
+			InstanceId: unit.InstanceId,
+		}
+	}
+	p := JujuProvisioner{}
+	err = p.removeUnits(app, toRemove...)
+	c.Assert(err, IsNil)
+	resp, err := s.client.DescribeLoadBalancers(app.GetName())
+	c.Assert(err, IsNil)
+	c.Assert(resp.LoadBalancerDescriptions, HasLen, 1)
+	c.Assert(resp.LoadBalancerDescriptions[0].Instances, HasLen, 1)
+	instance := resp.LoadBalancerDescriptions[0].Instances[0]
+	c.Assert(instance.InstanceId, Equals, instIds[0])
 }
 
 func (s *ELBSuite) TestAddrWithELB(c *C) {

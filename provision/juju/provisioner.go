@@ -201,8 +201,18 @@ func (p *JujuProvisioner) removeUnits(app provision.App, units ...provision.AppU
 	if err != nil {
 		return &provision.Error{Reason: buf.String(), Err: err}
 	}
+	if p.elbSupport() {
+		pUnits := make([]provision.Unit, len(units))
+		for i, u := range units {
+			pUnits[i] = provision.Unit{
+				Name:       u.GetName(),
+				InstanceId: u.GetInstanceId(),
+			}
+		}
+		err = p.LoadBalancer().Deregister(app, pUnits...)
+	}
 	go p.terminateMachines(app, units...)
-	return nil
+	return err
 }
 
 func (p *JujuProvisioner) RemoveUnit(app provision.App, name string) error {
