@@ -43,3 +43,7 @@ func (s *ELBSuite) TestHandleMessage(c *C) {
 	c.Assert(ids, DeepEquals, []string{id1, id2})
 	c.Assert(commandmocker.Ran(tmpdir), Equals, true)
 }
+
+func (s *ELBSuite) TestHandler(c *C) {
+	var _ queue.Handler = handler
+}

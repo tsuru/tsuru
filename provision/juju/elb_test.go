@@ -42,12 +42,16 @@ func (s *ELBSuite) SetUpSuite(c *C) {
 	config.Set("juju:elb-avail-zones", []interface{}{"my-zone-1a", "my-zone-1b"})
 	config.Set("aws:access-key-id", "access")
 	config.Set("aws:secret-access-key", "s3cr3t")
+	err = handler.DryRun()
+	c.Assert(err, IsNil)
 }
 
 func (s *ELBSuite) TearDownSuite(c *C) {
 	config.Unset("juju:use-elb")
 	db.Session.Close()
 	s.server.Quit()
+	handler.Stop()
+	handler.Wait()
 }
 
 func (s *ELBSuite) TestGetCollection(c *C) {

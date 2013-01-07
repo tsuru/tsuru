@@ -57,3 +57,5 @@ func handle(msg *queue.Message) {
 		msg.Release()
 	}
 }
+
+var handler = queue.Handler{F: handle}
