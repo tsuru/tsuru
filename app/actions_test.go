@@ -95,7 +95,7 @@ func (s *S) TestCreateBucketForward(c *C) {
 	c.Assert(env["TSURU_HOST"].Value, Equals, expectedHost)
 	c.Assert(env["TSURU_HOST"].Public, Equals, false)
 	expected := queue.Message{
-		Action: RegenerateApprc,
+		Action: regenerateApprc,
 		Args:   []string{a.Name},
 	}
 	message, err := queue.Get(2e9)

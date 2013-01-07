@@ -29,11 +29,6 @@ import (
 	"time"
 )
 
-const (
-	RegenerateApprc = "regenerate-apprc"
-	StartApp        = "start-app"
-)
-
 var Provisioner provision.Provisioner
 
 func write(w io.Writer, content []byte) error {
@@ -204,8 +199,8 @@ func (a *App) AddUnits(n uint) error {
 			State:   provision.StatusPending.String(),
 		}
 		qArgs[i+1] = unit.Name
-		messages[mCount] = queue.Message{Action: RegenerateApprc, Args: []string{a.Name, unit.Name}}
-		messages[mCount+1] = queue.Message{Action: StartApp, Args: []string{a.Name, unit.Name}}
+		messages[mCount] = queue.Message{Action: regenerateApprc, Args: []string{a.Name, unit.Name}}
+		messages[mCount+1] = queue.Message{Action: startApp, Args: []string{a.Name, unit.Name}}
 		mCount += 2
 	}
 	err = db.Session.Apps().Update(bson.M{"name": a.Name}, a)
@@ -564,7 +559,7 @@ func (app *App) SetEnvsToApp(envs []bind.EnvVar, publicOnly, useQueue bool) erro
 			return err
 		}
 		if useQueue {
-			enqueue(queue.Message{Action: RegenerateApprc, Args: []string{app.Name}})
+			enqueue(queue.Message{Action: regenerateApprc, Args: []string{app.Name}})
 			return nil
 		}
 		app.SerializeEnvVars()

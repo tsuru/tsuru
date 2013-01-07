@@ -12,6 +12,11 @@ import (
 	"io/ioutil"
 )
 
+const (
+	regenerateApprc = "regenerate-apprc"
+	startApp        = "start-app"
+)
+
 func ensureAppIsStarted(msg *queue.Message) (App, error) {
 	a := App{Name: msg.Args[0]}
 	err := a.Get()
@@ -39,7 +44,7 @@ func ensureAppIsStarted(msg *queue.Message) (App, error) {
 
 func handle(msg *queue.Message) {
 	switch msg.Action {
-	case RegenerateApprc:
+	case regenerateApprc:
 		if len(msg.Args) < 1 {
 			log.Printf("Error handling %q: this action requires at least 1 argument.", msg.Action)
 			return
@@ -51,7 +56,7 @@ func handle(msg *queue.Message) {
 		}
 		queue.Delete(msg)
 		app.SerializeEnvVars()
-	case StartApp:
+	case startApp:
 		if len(msg.Args) < 1 {
 			log.Printf("Error handling %q: this action requires at least 1 argument.", msg.Action)
 		}

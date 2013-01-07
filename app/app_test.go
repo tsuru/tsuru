@@ -144,7 +144,7 @@ func (s *S) TestCreateApp(c *C) {
 	c.Assert(env["TSURU_HOST"].Value, Equals, expectedHost)
 	c.Assert(env["TSURU_HOST"].Public, Equals, false)
 	expectedMessage := queue.Message{
-		Action: RegenerateApprc,
+		Action: regenerateApprc,
 		Args:   []string{a.Name},
 	}
 	message, err := queue.Get(1e6)
@@ -277,8 +277,8 @@ func (s *S) TestAddUnits(c *C) {
 		expected := fmt.Sprintf("%s/%d", app.Name, i+1)
 		c.Assert(unit.Name, Equals, expected)
 		messages := []queue.Message{
-			{Action: RegenerateApprc, Args: []string{app.Name, unit.Name}},
-			{Action: StartApp, Args: []string{app.Name, unit.Name}},
+			{Action: regenerateApprc, Args: []string{app.Name, unit.Name}},
+			{Action: startApp, Args: []string{app.Name, unit.Name}},
 		}
 		expectedMessages = append(expectedMessages, messages...)
 	}
