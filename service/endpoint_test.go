@@ -214,7 +214,7 @@ func (s *S) TestUnbindSendADELETERequestToTheResourceURL(c *C) {
 		ip:   "2.2.2.2",
 	}
 	client := &Client{endpoint: ts.URL}
-	err := client.Unbind(&instance, &a)
+	err := client.Unbind(&instance, a.GetUnits()[0])
 	h.Lock()
 	defer h.Unlock()
 	c.Assert(err, IsNil)
@@ -231,9 +231,9 @@ func (s *S) TestUnbindReturnsErrorIfTheRequestFails(c *C) {
 		ip:   "2.2.2.2",
 	}
 	client := &Client{endpoint: ts.URL}
-	err := client.Unbind(&instance, &a)
+	err := client.Unbind(&instance, a.GetUnits()[0])
 	c.Assert(err, NotNil)
-	c.Assert(err, ErrorMatches, "^Failed to unbind instance heaven-can-wait from the app arch-enemy: Server failed to do its job.$")
+	c.Assert(err, ErrorMatches, "^Failed to unbind instance heaven-can-wait from the unit 2.2.2.2: Server failed to do its job.$")
 }
 
 func (s *S) TestBuildErrorMessageWithNilResponse(c *C) {

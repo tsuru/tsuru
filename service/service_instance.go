@@ -88,7 +88,7 @@ func (si *ServiceInstance) Bind(app bind.App) error {
 	}
 	err = si.update()
 	if err != nil {
-		cli.Unbind(si, app)
+		si.Unbind(app)
 		return err
 	}
 	var envVars []bind.EnvVar
@@ -113,7 +113,7 @@ func (si *ServiceInstance) Unbind(app bind.App) error {
 		return err
 	}
 	go func() {
-		si.Service().ProductionEndpoint().Unbind(si, app)
+		si.Service().ProductionEndpoint().Unbind(si, app.GetUnits()[0])
 	}()
 	var envVars []string
 	for k := range app.InstanceEnv(si.Name) {

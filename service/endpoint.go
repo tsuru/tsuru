@@ -108,12 +108,12 @@ func (c *Client) Bind(instance *ServiceInstance, unit bind.Unit) (envVars map[st
 	return
 }
 
-func (c *Client) Unbind(instance *ServiceInstance, app bind.App) (err error) {
-	log.Print("Attempting to call unbind of service instance " + instance.Name + " and app " + app.GetName() + " at " + instance.ServiceName + " api")
+func (c *Client) Unbind(instance *ServiceInstance, unit bind.Unit) (err error) {
+	log.Print("Attempting to call unbind of service instance " + instance.Name + " and unit " + unit.GetIp() + " at " + instance.ServiceName + " api")
 	var resp *http.Response
-	url := "/resources/" + instance.Name + "/hostname/" + app.GetUnits()[0].GetIp()
+	url := "/resources/" + instance.Name + "/hostname/" + unit.GetIp()
 	if resp, err = c.issueRequest(url, "DELETE", nil); err == nil && resp.StatusCode > 299 {
-		msg := "Failed to unbind instance " + instance.Name + " from the app " + app.GetName() + ": " + c.buildErrorMessage(err, resp)
+		msg := "Failed to unbind instance " + instance.Name + " from the unit " + unit.GetIp() + ": " + c.buildErrorMessage(err, resp)
 		log.Print(msg)
 		err = &errors.Http{Code: http.StatusInternalServerError, Message: msg}
 	}
