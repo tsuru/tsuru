@@ -165,6 +165,33 @@ func (s *S) TestBindCallTheServiceAPIAndSetsEnvironmentVariableReturnedFromTheCa
 	c.Assert(a.Env, DeepEquals, expectedEnv)
 }
 
+func (s *S) TestBindMultiUnits(c *C) {
+	var calls int
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(`{"DATABASE_USER":"root","DATABASE_PASSWORD":"s3cr3t"}`))
+		calls++
+	}))
+	defer ts.Close()
+	srvc := service.Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}}
+	err := srvc.Create()
+	c.Assert(err, IsNil)
+	defer db.Session.Services().Remove(bson.M{"_id": "mysql"})
+	instance := service.ServiceInstance{
+		Name:        "my-mysql",
+		ServiceName: "mysql",
+		Teams:       []string{s.team.Name},
+	}
+	err = instance.Create()
+	c.Assert(err, IsNil)
+	defer db.Session.ServiceInstances().Remove(bson.M{"_id": "my-mysql"})
+	a, err := createTestApp("painkiller", "", []string{s.team.Name}, []app.Unit{{Ip: "127.0.0.1"}, {Ip: "128.0.0.1"}})
+	c.Assert(err, IsNil)
+	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
+	err = instance.Bind(&a)
+	c.Assert(err, IsNil)
+	c.Assert(calls, Equals, 2)
+}
+
 func (s *S) TestBindReturnConflictIfTheAppIsAlreadyBinded(c *C) {
 	srvc := service.Service{Name: "mysql"}
 	err := srvc.Create()
