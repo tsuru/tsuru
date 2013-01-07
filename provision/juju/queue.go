@@ -51,9 +51,7 @@ func handle(msg *queue.Message) {
 			return
 		}
 		manager := ELBManager{}
-		for _, unit := range units {
-			manager.Register(&a, unit)
-		}
+		manager.Register(&a, units...)
 		queue.Delete(msg)
 	default:
 		msg.Release()

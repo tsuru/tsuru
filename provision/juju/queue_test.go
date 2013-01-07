@@ -9,6 +9,7 @@ import (
 	"github.com/globocom/tsuru/queue"
 	"github.com/globocom/tsuru/testing"
 	. "launchpad.net/gocheck"
+	"sort"
 	"strings"
 )
 
@@ -37,7 +38,8 @@ func (s *ELBSuite) TestHandleMessage(c *C) {
 	c.Assert(resp.LoadBalancerDescriptions, HasLen, 1)
 	instances := resp.LoadBalancerDescriptions[0].Instances
 	c.Assert(instances, HasLen, 2)
-	c.Assert(instances[0].InstanceId, Equals, id1)
-	c.Assert(instances[1].InstanceId, Equals, id2)
+	ids := []string{instances[0].InstanceId, instances[1].InstanceId}
+	sort.Strings(ids)
+	c.Assert(ids, DeepEquals, []string{id1, id2})
 	c.Assert(commandmocker.Ran(tmpdir), Equals, true)
 }
