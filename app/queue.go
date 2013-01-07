@@ -29,10 +29,10 @@ func ensureAppIsStarted(msg *queue.Message) (App, error) {
 		switch a.State {
 		case "error":
 			format += " the app is in %q state."
-			queue.Delete(msg)
+			msg.Delete()
 		case "down":
 			format += " the app is %s."
-			queue.Delete(msg)
+			msg.Delete()
 		default:
 			format += ` The status of the app and all units should be "started" (the app is %q).`
 			msg.Release()
@@ -54,7 +54,7 @@ func handle(msg *queue.Message) {
 			log.Print(err)
 			return
 		}
-		queue.Delete(msg)
+		msg.Delete()
 		app.SerializeEnvVars()
 	case startApp:
 		if len(msg.Args) < 1 {
@@ -70,7 +70,7 @@ func handle(msg *queue.Message) {
 			log.Printf("Error handling %q. App failed to start:\n%s.", msg.Action, err)
 			return
 		}
-		queue.Delete(msg)
+		msg.Delete()
 	default:
 		log.Printf("Error handling %q: invalid action.", msg.Action)
 		msg.Release()
@@ -111,7 +111,7 @@ var handler = &queue.Handler{F: handle}
 func enqueue(msgs ...queue.Message) {
 	for _, msg := range msgs {
 		copy := msg
-		queue.Put(&copy)
+		copy.Put()
 	}
 	handler.Start()
 }

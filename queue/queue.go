@@ -50,22 +50,39 @@ type Message struct {
 //
 // This method should be used when handling a message that you cannot handle,
 // maximizing throughput.
-func (m *Message) Release() error {
-	if m.id == 0 {
+func (msg *Message) Release() error {
+	if msg.id == 0 {
 		return errors.New("Unknown message.")
 	}
 	conn, err := connection()
 	if err != nil {
 		return err
 	}
-	if err = conn.Release(m.id, 1, 0); err != nil && notFoundRegexp.MatchString(err.Error()) {
+	if err = conn.Release(msg.id, 1, 0); err != nil && notFoundRegexp.MatchString(err.Error()) {
 		return errors.New("Message not found.")
 	}
 	return err
 }
 
-// Put sends a new message to the queue.
-func Put(msg *Message) error {
+// Delete deletes the message from the queue. For deletion, the message must be
+// one returned by Get, or added by Put. This function uses internal state of
+// the message to delete it.
+func (msg *Message) Delete() error {
+	conn, err := connection()
+	if err != nil {
+		return err
+	}
+	if msg.id == 0 {
+		return errors.New("Unknown message.")
+	}
+	if err = conn.Delete(msg.id); err != nil && notFoundRegexp.MatchString(err.Error()) {
+		return errors.New("Message not found.")
+	}
+	return err
+}
+
+// Put sends the message to the queue.
+func (msg *Message) Put() error {
 	conn, err := connection()
 	if err != nil {
 		return err
@@ -101,24 +118,6 @@ func Get(timeout time.Duration) (*Message, error) {
 	}
 	msg.id = id
 	return &msg, nil
-}
-
-// Delete deletes a message from the queue. For deletion, the given message
-// must be one returned by Get, or added by Put. This function uses internal
-// state of the message to delete it (a message can not be deleted by its
-// content).
-func Delete(msg *Message) error {
-	conn, err := connection()
-	if err != nil {
-		return err
-	}
-	if msg.id == 0 {
-		return errors.New("Unknown message.")
-	}
-	if err = conn.Delete(msg.id); err != nil && notFoundRegexp.MatchString(err.Error()) {
-		return errors.New("Message not found.")
-	}
-	return err
 }
 
 func connection() (*beanstalk.Conn, error) {

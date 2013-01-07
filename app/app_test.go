@@ -149,7 +149,7 @@ func (s *S) TestCreateApp(c *C) {
 	}
 	message, err := queue.Get(1e6)
 	c.Assert(err, IsNil)
-	defer queue.Delete(message)
+	defer message.Delete()
 	c.Assert(message.Action, Equals, expectedMessage.Action)
 	c.Assert(message.Args, DeepEquals, expectedMessage.Args)
 	c.Assert(s.provisioner.GetUnits(&a), HasLen, 3)
@@ -286,7 +286,7 @@ func (s *S) TestAddUnits(c *C) {
 	for i := range expectedMessages {
 		message, err := queue.Get(1e6)
 		c.Assert(err, IsNil)
-		defer queue.Delete(message)
+		defer message.Delete()
 		gotMessages[i] = queue.Message{
 			Action: message.Action,
 			Args:   message.Args,

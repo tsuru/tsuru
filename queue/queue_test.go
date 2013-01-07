@@ -77,7 +77,7 @@ func (s *S) TestPut(c *C) {
 		Action: "regenerate-apprc",
 		Args:   []string{"myapp"},
 	}
-	err := Put(&msg)
+	err := msg.Put()
 	c.Assert(err, IsNil)
 	c.Assert(msg.id, Not(Equals), 0)
 	defer conn.Delete(msg.id)
@@ -97,7 +97,7 @@ func (s *S) TestPutConnectionFailure(c *C) {
 	defer config.Set("queue-server", old)
 	config.Unset("queue-server")
 	msg := Message{Action: "regenerate-apprc"}
-	err := Put(&msg)
+	err := msg.Put()
 	c.Assert(err, NotNil)
 }
 
@@ -106,7 +106,7 @@ func (s *S) TestGet(c *C) {
 		Action: "regenerate-apprc",
 		Args:   []string{"myapprc"},
 	}
-	err := Put(&msg)
+	err := msg.Put()
 	c.Assert(err, IsNil)
 	defer conn.Delete(msg.id)
 	got, err := Get(1e6)
@@ -148,9 +148,9 @@ func (s *S) TestRelease(c *C) {
 	conn, err := connection()
 	c.Assert(err, IsNil)
 	msg := Message{Action: "do-something"}
-	err = Put(&msg)
+	err = msg.Put()
 	c.Assert(err, IsNil)
-	defer Delete(&msg)
+	defer msg.Delete()
 	copy, err := Get(1e6)
 	c.Assert(err, IsNil)
 	err = msg.Release()
@@ -179,10 +179,10 @@ func (s *S) TestDelete(c *C) {
 		Action: "create-app",
 		Args:   []string{"something"},
 	}
-	err := Put(&msg)
+	err := msg.Put()
 	c.Assert(err, IsNil)
 	defer conn.Delete(msg.id)
-	err = Delete(&msg)
+	err = msg.Delete()
 	c.Assert(err, IsNil)
 }
 
@@ -190,7 +190,7 @@ func (s *S) TestDeleteConnectionError(c *C) {
 	old, _ := config.Get("queue-server")
 	defer config.Set("queue-server", old)
 	config.Unset("queue-server")
-	err := Delete(nil)
+	err := (&Message{}).Delete()
 	c.Assert(err, NotNil)
 }
 
@@ -200,7 +200,7 @@ func (s *S) TestDeleteUnknownMessage(c *C) {
 		Args:   []string{"something"},
 		id:     837826742,
 	}
-	err := Delete(&msg)
+	err := msg.Delete()
 	c.Assert(err, NotNil)
 	c.Assert(err.Error(), Equals, "Message not found.")
 }
@@ -210,7 +210,7 @@ func (s *S) TestDeleteMessageWithoutId(c *C) {
 		Action: "create-app",
 		Args:   []string{"something"},
 	}
-	err := Delete(&msg)
+	err := msg.Delete()
 	c.Assert(err, NotNil)
 	c.Assert(err.Error(), Equals, "Unknown message.")
 }

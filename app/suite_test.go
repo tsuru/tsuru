@@ -109,7 +109,7 @@ func (s *S) SetUpTest(c *C) {
 	)
 	for err == nil {
 		if msg, err = queue.Get(1e6); err == nil {
-			err = queue.Delete(msg)
+			err = msg.Delete()
 		}
 	}
 }

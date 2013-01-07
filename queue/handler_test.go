@@ -22,7 +22,7 @@ var msgs MessageList
 
 func dumbHandle(msg *Message) {
 	msgs.Add(*msg)
-	Delete(msg)
+	msg.Delete()
 }
 
 func (s *HandlerSuite) SetUpSuite(c *C) {
@@ -33,7 +33,8 @@ func (s *HandlerSuite) TestHandleMessages(c *C) {
 	config.Set("queue-server", "127.0.0.1:11300")
 	s.h.Start()
 	c.Check(r.handlers, HasLen, 1)
-	err := Put(&Message{Action: "do-something", Args: []string{"this"}})
+	msg := Message{Action: "do-something", Args: []string{"this"}}
+	err := msg.Put()
 	c.Check(err, IsNil)
 	time.Sleep(1e9)
 	s.h.Stop()
@@ -65,13 +66,15 @@ func (s *HandlerSuite) TestPreempt(c *C) {
 func (s *HandlerSuite) TestPreemptWithMessagesInTheQueue(c *C) {
 	config.Set("queue-server", "127.0.0.1:11300")
 	for i := 0; i < 100; i++ {
-		Put(&Message{
+		msg := Message{
 			Action: "save-something",
 			Args:   []string{strconv.Itoa(i)},
-		})
+		}
+		msg.Put()
+
 	}
 	var sleeper = func(m *Message) {
-		Delete(m)
+		m.Delete()
 		time.Sleep(1e6)
 	}
 	h1 := Handler{F: sleeper}
@@ -99,7 +102,7 @@ func (s *HandlerSuite) TestDryRun(c *C) {
 }
 
 func (s *HandlerSuite) TestDryRunRunningHandler(c *C) {
-	h := Handler{F: func(m *Message) { Delete(m) }}
+	h := Handler{F: func(m *Message) { m.Delete() }}
 	err := h.DryRun()
 	c.Assert(err, IsNil)
 	defer h.Stop()

@@ -102,7 +102,7 @@ func (s *ELBSuite) TestHandleMessagesWithPendingUnits(c *C) {
 	c.Assert(instances[0].InstanceId, Equals, id)
 	msg, err := queue.Get(1e6)
 	c.Assert(err, IsNil)
-	defer queue.Delete(msg)
+	defer msg.Delete()
 	c.Assert(msg.Action, Equals, addUnitToLoadBalancer)
 	c.Assert(msg.Args, DeepEquals, []string{"2112", "2112/1"})
 }
@@ -120,11 +120,11 @@ func (s *ELBSuite) TestHandleMessagesAllPendingUnits(c *C) {
 		Action: addUnitToLoadBalancer,
 		Args:   []string{"2112", "2112/0", "2112/1"},
 	}
-	err = queue.Put(&msg)
+	err = msg.Put()
 	c.Assert(err, IsNil)
 	got, err := queue.Get(1e6)
 	c.Assert(err, IsNil)
-	defer queue.Delete(got)
+	defer got.Delete()
 	handle(got)
 	resp, err := s.client.DescribeLoadBalancers(app.GetName())
 	c.Assert(err, IsNil)

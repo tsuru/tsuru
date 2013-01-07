@@ -182,7 +182,7 @@ func (s *S) TestHandleMessageErrors(c *C) {
 			message.Args = d.args
 		}
 		handle(&message)
-		defer queue.Delete(&message) // Sanity
+		defer message.Delete() // Sanity
 	}
 	content := buf.String()
 	lines := strings.Split(content, "\n")

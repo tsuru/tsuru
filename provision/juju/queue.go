@@ -26,7 +26,7 @@ func handle(msg *queue.Message) {
 	case addUnitToLoadBalancer:
 		if len(msg.Args) < 1 {
 			log.Printf("Failed to handle %q: it requires at least one argument.", msg.Action)
-			queue.Delete(msg)
+			msg.Delete()
 			return
 		}
 		a := app{name: msg.Args[0]}
@@ -51,7 +51,7 @@ func handle(msg *queue.Message) {
 		}
 		if len(units) == 0 {
 			log.Printf("Failed to handle %q: units not found.", msg.Action)
-			queue.Delete(msg)
+			msg.Delete()
 			return
 		}
 		var noId []string
@@ -68,14 +68,16 @@ func handle(msg *queue.Message) {
 		} else {
 			manager := ELBManager{}
 			manager.Register(&a, ok...)
-			queue.Delete(msg)
+			msg.Delete()
 			if len(noId) > 0 {
 				args := []string{a.name}
 				args = append(args, noId...)
-				queue.Put(&queue.Message{
+				msg := queue.Message{
 					Action: msg.Action,
 					Args:   args,
-				})
+				}
+				msg.Put()
+
 			}
 		}
 	default:
@@ -86,6 +88,6 @@ func handle(msg *queue.Message) {
 var handler = queue.Handler{F: handle}
 
 func enqueue(msg *queue.Message) {
-	queue.Put(msg)
+	msg.Put()
 	handler.Start()
 }

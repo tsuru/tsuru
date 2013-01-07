@@ -100,7 +100,7 @@ func (s *S) TestCreateBucketForward(c *C) {
 	}
 	message, err := queue.Get(2e9)
 	c.Assert(err, IsNil)
-	defer queue.Delete(message)
+	defer message.Delete()
 	c.Assert(message.Action, Equals, expected.Action)
 	c.Assert(message.Args, DeepEquals, expected.Args)
 }
