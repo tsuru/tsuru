@@ -14,6 +14,7 @@ import (
 	"github.com/globocom/tsuru/testing"
 	"labix.org/v2/mgo/bson"
 	. "launchpad.net/gocheck"
+	"sort"
 )
 
 type ELBSuite struct {
@@ -151,8 +152,9 @@ func (s *ELBSuite) TestRegisterUnit(c *C) {
 	c.Assert(resp.LoadBalancerDescriptions, HasLen, 1)
 	c.Assert(resp.LoadBalancerDescriptions[0].Instances, HasLen, 2)
 	instances := resp.LoadBalancerDescriptions[0].Instances
-	c.Assert(instances[0].InstanceId, Equals, id1)
-	c.Assert(instances[1].InstanceId, Equals, id2)
+	ids := []string{instances[0].InstanceId, instances[1].InstanceId}
+	sort.Strings(ids)
+	c.Assert(ids, DeepEquals, []string{id1, id2})
 }
 
 func (s *ELBSuite) TestDeregisterUnit(c *C) {
