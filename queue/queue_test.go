@@ -10,6 +10,7 @@ import (
 	"github.com/globocom/config"
 	. "launchpad.net/gocheck"
 	"testing"
+	"time"
 )
 
 func Test(t *testing.T) {
@@ -77,7 +78,7 @@ func (s *S) TestPut(c *C) {
 		Action: "regenerate-apprc",
 		Args:   []string{"myapp"},
 	}
-	err := msg.Put()
+	err := msg.Put(0)
 	c.Assert(err, IsNil)
 	c.Assert(msg.id, Not(Equals), 0)
 	defer conn.Delete(msg.id)
@@ -97,8 +98,24 @@ func (s *S) TestPutConnectionFailure(c *C) {
 	defer config.Set("queue-server", old)
 	config.Unset("queue-server")
 	msg := Message{Action: "regenerate-apprc"}
-	err := msg.Put()
+	err := msg.Put(0)
 	c.Assert(err, NotNil)
+}
+
+func (s *S) TestPutWithDelay(c *C) {
+	msg := Message{
+		Action: "do-something",
+		Args:   []string{"nothing"},
+	}
+	err := msg.Put(1e9)
+	c.Assert(err, IsNil)
+	defer conn.Delete(msg.id)
+	_, _, err = conn.Reserve(1e6)
+	c.Assert(err, NotNil)
+	time.Sleep(1e9)
+	id, _, err := conn.Reserve(1e6)
+	c.Assert(err, IsNil)
+	c.Assert(id, Equals, msg.id)
 }
 
 func (s *S) TestGet(c *C) {
@@ -106,7 +123,7 @@ func (s *S) TestGet(c *C) {
 		Action: "regenerate-apprc",
 		Args:   []string{"myapprc"},
 	}
-	err := msg.Put()
+	err := msg.Put(0)
 	c.Assert(err, IsNil)
 	defer conn.Delete(msg.id)
 	got, err := Get(1e6)
@@ -148,13 +165,32 @@ func (s *S) TestRelease(c *C) {
 	conn, err := connection()
 	c.Assert(err, IsNil)
 	msg := Message{Action: "do-something"}
-	err = msg.Put()
+	err = msg.Put(0)
 	c.Assert(err, IsNil)
 	defer msg.Delete()
 	copy, err := Get(1e6)
 	c.Assert(err, IsNil)
-	err = msg.Release()
+	err = msg.Release(0)
 	c.Assert(err, IsNil)
+	id, _, err := conn.Reserve(1e6)
+	c.Assert(err, IsNil)
+	c.Assert(id, Equals, copy.id)
+}
+
+func (s *S) TestReleaseWithDelay(c *C) {
+	conn, err := connection()
+	c.Assert(err, IsNil)
+	msg := Message{Action: "do-something"}
+	err = msg.Put(0)
+	c.Assert(err, IsNil)
+	defer msg.Delete()
+	copy, err := Get(1e6)
+	c.Assert(err, IsNil)
+	err = msg.Release(1e9)
+	c.Assert(err, IsNil)
+	_, _, err = conn.Reserve(1e6)
+	c.Assert(err, NotNil)
+	time.Sleep(1e9)
 	id, _, err := conn.Reserve(1e6)
 	c.Assert(err, IsNil)
 	c.Assert(id, Equals, copy.id)
@@ -162,14 +198,14 @@ func (s *S) TestRelease(c *C) {
 
 func (s *S) TestReleaseMessageWithoutId(c *C) {
 	msg := Message{Action: "do-something"}
-	err := msg.Release()
+	err := msg.Release(0)
 	c.Assert(err, NotNil)
 	c.Assert(err.Error(), Equals, "Unknown message.")
 }
 
 func (s *S) TestReleaseUnknownMessage(c *C) {
 	msg := Message{Action: "do-otherthing", id: 12884}
-	err := msg.Release()
+	err := msg.Release(0)
 	c.Assert(err, NotNil)
 	c.Assert(err.Error(), Equals, "Message not found.")
 }
@@ -179,7 +215,7 @@ func (s *S) TestDelete(c *C) {
 		Action: "create-app",
 		Args:   []string{"something"},
 	}
-	err := msg.Put()
+	err := msg.Put(0)
 	c.Assert(err, IsNil)
 	defer conn.Delete(msg.id)
 	err = msg.Delete()

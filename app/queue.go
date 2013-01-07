@@ -35,7 +35,7 @@ func ensureAppIsStarted(msg *queue.Message) (App, error) {
 			msg.Delete()
 		default:
 			format += ` The status of the app and all units should be "started" (the app is %q).`
-			msg.Release()
+			msg.Release(0)
 		}
 		return a, fmt.Errorf(format, msg.Action, a.Name, a.State)
 	}
@@ -73,7 +73,7 @@ func handle(msg *queue.Message) {
 		msg.Delete()
 	default:
 		log.Printf("Error handling %q: invalid action.", msg.Action)
-		msg.Release()
+		msg.Release(0)
 	}
 }
 
@@ -111,7 +111,7 @@ var handler = &queue.Handler{F: handle}
 func enqueue(msgs ...queue.Message) {
 	for _, msg := range msgs {
 		copy := msg
-		copy.Put()
+		copy.Put(0)
 	}
 	handler.Start()
 }

@@ -581,7 +581,7 @@ func (s *ELBSuite) TestDestroyWithELB(c *C) {
 	if msg.Action == addUnitToLoadBalancer && msg.Args[0] == "jimmy" {
 		msg.Delete()
 	} else {
-		msg.Release()
+		msg.Release(0)
 	}
 }
 

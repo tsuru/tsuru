@@ -35,7 +35,7 @@ func handle(msg *queue.Message) {
 		status, err := (&JujuProvisioner{}).CollectStatus()
 		if err != nil {
 			log.Printf("Failed to handle %q: juju status failed.\n%s.", msg.Action, err)
-			msg.Release()
+			msg.Release(0)
 			return
 		}
 		var units []provision.Unit
@@ -64,7 +64,7 @@ func handle(msg *queue.Message) {
 			}
 		}
 		if len(noId) == len(units) {
-			msg.Release()
+			msg.Release(0)
 		} else {
 			manager := ELBManager{}
 			manager.Register(&a, ok...)
@@ -76,18 +76,18 @@ func handle(msg *queue.Message) {
 					Action: msg.Action,
 					Args:   args,
 				}
-				msg.Put()
+				msg.Put(0)
 
 			}
 		}
 	default:
-		msg.Release()
+		msg.Release(0)
 	}
 }
 
 var handler = queue.Handler{F: handle}
 
 func enqueue(msg *queue.Message) {
-	msg.Put()
+	msg.Put(0)
 	handler.Start()
 }

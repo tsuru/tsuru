@@ -46,11 +46,12 @@ type Message struct {
 	id     uint64
 }
 
-// Release releases a message back to the queue.
+// Release puts a message back in the queue after a delay. To release the
+// message immediately, just set delay to 0.
 //
 // This method should be used when handling a message that you cannot handle,
 // maximizing throughput.
-func (msg *Message) Release() error {
+func (msg *Message) Release(delay time.Duration) error {
 	if msg.id == 0 {
 		return errors.New("Unknown message.")
 	}
@@ -58,7 +59,7 @@ func (msg *Message) Release() error {
 	if err != nil {
 		return err
 	}
-	if err = conn.Release(msg.id, 1, 0); err != nil && notFoundRegexp.MatchString(err.Error()) {
+	if err = conn.Release(msg.id, 1, delay); err != nil && notFoundRegexp.MatchString(err.Error()) {
 		return errors.New("Message not found.")
 	}
 	return err
@@ -81,8 +82,9 @@ func (msg *Message) Delete() error {
 	return err
 }
 
-// Put sends the message to the queue.
-func (msg *Message) Put() error {
+// Put sends the message to the queue after delay time. To send the message
+// immediately, just set delay to 0.
+func (msg *Message) Put(delay time.Duration) error {
 	conn, err := connection()
 	if err != nil {
 		return err
@@ -92,7 +94,7 @@ func (msg *Message) Put() error {
 	if err != nil {
 		return err
 	}
-	id, err := conn.Put(buf.Bytes(), 1, 0, 60e9)
+	id, err := conn.Put(buf.Bytes(), 1, delay, 60e9)
 	msg.id = id
 	return err
 }

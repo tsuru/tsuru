@@ -34,7 +34,7 @@ func (s *HandlerSuite) TestHandleMessages(c *C) {
 	s.h.Start()
 	c.Check(r.handlers, HasLen, 1)
 	msg := Message{Action: "do-something", Args: []string{"this"}}
-	err := msg.Put()
+	err := msg.Put(0)
 	c.Check(err, IsNil)
 	time.Sleep(1e9)
 	s.h.Stop()
@@ -70,7 +70,7 @@ func (s *HandlerSuite) TestPreemptWithMessagesInTheQueue(c *C) {
 			Action: "save-something",
 			Args:   []string{strconv.Itoa(i)},
 		}
-		msg.Put()
+		msg.Put(0)
 
 	}
 	var sleeper = func(m *Message) {

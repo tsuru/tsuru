@@ -120,7 +120,7 @@ func (s *ELBSuite) TestHandleMessagesAllPendingUnits(c *C) {
 		Action: addUnitToLoadBalancer,
 		Args:   []string{"2112", "2112/0", "2112/1"},
 	}
-	err = msg.Put()
+	err = msg.Put(0)
 	c.Assert(err, IsNil)
 	got, err := queue.Get(1e6)
 	c.Assert(err, IsNil)
