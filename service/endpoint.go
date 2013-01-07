@@ -90,18 +90,18 @@ func (c *Client) Destroy(instance *ServiceInstance) (err error) {
 	return err
 }
 
-func (c *Client) Bind(instance *ServiceInstance, app bind.App) (envVars map[string]string, err error) {
-	log.Print("Attempting to call bind of service instance " + instance.Name + " and app " + app.GetName() + " at " + instance.ServiceName + " api")
+func (c *Client) Bind(instance *ServiceInstance, unit bind.Unit) (envVars map[string]string, err error) {
+	log.Print("Attempting to call bind of service instance " + instance.Name + " and unit " + unit.GetIp() + " at " + instance.ServiceName + " api")
 	var resp *http.Response
 	params := map[string][]string{
-		"hostname": {app.GetUnits()[0].GetIp()},
+		"hostname": {unit.GetIp()},
 	}
 	if resp, err = c.issueRequest("/resources/"+instance.Name, "POST", params); err == nil && resp.StatusCode < 300 {
 		return c.jsonFromResponse(resp)
 	} else if resp.StatusCode == http.StatusPreconditionFailed {
 		err = &errors.Http{Code: resp.StatusCode, Message: "You cannot bind any app to this service instance because it is not ready yet."}
 	} else {
-		msg := "Failed to bind instance " + instance.Name + " to the app " + app.GetName() + ": " + c.buildErrorMessage(err, resp)
+		msg := "Failed to bind instance " + instance.Name + " to the unit " + unit.GetIp() + ": " + c.buildErrorMessage(err, resp)
 		log.Print(msg)
 		err = &errors.Http{Code: http.StatusInternalServerError, Message: msg}
 	}

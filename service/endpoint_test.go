@@ -140,7 +140,7 @@ func (s *S) TestBindShouldSendAPOSTToTheResourceURL(c *C) {
 		ip:   "10.0.10.1",
 	}
 	client := &Client{endpoint: ts.URL}
-	_, err := client.Bind(&instance, &a)
+	_, err := client.Bind(&instance, a.GetUnits()[0])
 	h.Lock()
 	defer h.Unlock()
 	c.Assert(err, IsNil)
@@ -166,7 +166,7 @@ func (s *S) TestBindShouldReturnMapWithTheEnvironmentVariable(c *C) {
 		ip:   "10.0.10.1",
 	}
 	client := &Client{endpoint: ts.URL}
-	env, err := client.Bind(&instance, &a)
+	env, err := client.Bind(&instance, a.GetUnits()[0])
 	c.Assert(err, IsNil)
 	c.Assert(env, DeepEquals, expected)
 }
@@ -180,9 +180,9 @@ func (s *S) TestBindShouldReturnErrorIfTheRequestFail(c *C) {
 		ip:   "10.0.10.1",
 	}
 	client := &Client{endpoint: ts.URL}
-	_, err := client.Bind(&instance, &a)
+	_, err := client.Bind(&instance, a.GetUnits()[0])
 	c.Assert(err, NotNil)
-	c.Assert(err, ErrorMatches, "^Failed to bind instance her-redis to the app her-app: Server failed to do its job.$")
+	c.Assert(err, ErrorMatches, "^Failed to bind instance her-redis to the unit 10.0.10.1: Server failed to do its job.$")
 }
 
 func (s *S) TestBindShouldReturnPreconditionFailedIfServiceAPIReturnPreconditionFailed(c *C) {
@@ -197,7 +197,7 @@ func (s *S) TestBindShouldReturnPreconditionFailedIfServiceAPIReturnPrecondition
 		ip:   "10.0.10.1",
 	}
 	client := &Client{endpoint: ts.URL}
-	_, err := client.Bind(&instance, &a)
+	_, err := client.Bind(&instance, a.GetUnits()[0])
 	c.Assert(err, NotNil)
 	e, ok := err.(*errors.Http)
 	c.Assert(ok, Equals, true)

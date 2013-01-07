@@ -79,7 +79,7 @@ func (si *ServiceInstance) Bind(app bind.App) error {
 	if len(app.GetUnits()) == 0 {
 		return &errors.Http{Code: http.StatusPreconditionFailed, Message: "This app does not have an IP yet."}
 	}
-	env, err := cli.Bind(si, app)
+	env, err := cli.Bind(si, app.GetUnits()[0])
 	if err != nil {
 		return err
 	}
