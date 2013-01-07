@@ -75,17 +75,6 @@ func (si *ServiceInstance) Bind(app bind.App) error {
 	if err != nil {
 		return &errors.Http{Code: http.StatusConflict, Message: "This app is already binded to this service instance."}
 	}
-	var envVars []bind.EnvVar
-	var setEnv = func(env map[string]string) {
-		for k, v := range env {
-			envVars = append(envVars, bind.EnvVar{
-				Name:         k,
-				Value:        v,
-				Public:       false,
-				InstanceName: si.Name,
-			})
-		}
-	}
 	cli := si.Service().ProductionEndpoint()
 	if len(app.GetUnits()) == 0 {
 		return &errors.Http{Code: http.StatusPreconditionFailed, Message: "This app does not have an IP yet."}
@@ -94,11 +83,19 @@ func (si *ServiceInstance) Bind(app bind.App) error {
 	if err != nil {
 		return err
 	}
-	setEnv(env)
 	err = si.update()
 	if err != nil {
 		cli.Unbind(si, app)
 		return err
+	}
+	var envVars []bind.EnvVar
+	for k, v := range env {
+		envVars = append(envVars, bind.EnvVar{
+			Name:         k,
+			Value:        v,
+			Public:       false,
+			InstanceName: si.Name,
+		})
 	}
 	return app.SetEnvs(envVars, false)
 }
