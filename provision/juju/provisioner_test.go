@@ -10,6 +10,7 @@ import (
 	"github.com/globocom/commandmocker"
 	"github.com/globocom/config"
 	"github.com/globocom/tsuru/provision"
+	"github.com/globocom/tsuru/queue"
 	"github.com/globocom/tsuru/repository"
 	"github.com/globocom/tsuru/testing"
 	. "launchpad.net/gocheck"
@@ -537,21 +538,6 @@ func (s *S) TestAddrWithoutUnits(c *C) {
 	c.Assert(err.Error(), Equals, `App "squeeze" has no units.`)
 }
 
-func (s *ELBSuite) TestProvisionWithELB(c *C) {
-	tmpdir, err := commandmocker.Add("juju", "deployed")
-	c.Assert(err, IsNil)
-	defer commandmocker.Remove(tmpdir)
-	app := testing.NewFakeApp("jimmy", "who", 0)
-	p := JujuProvisioner{}
-	err = p.Provision(app)
-	c.Assert(err, IsNil)
-	lb := p.LoadBalancer()
-	defer lb.Destroy(app)
-	addr, err := lb.Addr(app)
-	c.Assert(err, IsNil)
-	c.Assert(addr, Not(Equals), "")
-}
-
 func (s *ELBSuite) TestDestroyWithELB(c *C) {
 	tmpdir, err := commandmocker.Add("juju", "deployed")
 	c.Assert(err, IsNil)
@@ -568,6 +554,25 @@ func (s *ELBSuite) TestDestroyWithELB(c *C) {
 	c.Assert(addr, Equals, "")
 	c.Assert(err, NotNil)
 	c.Assert(err.Error(), Equals, "not found")
+}
+
+func (s *ELBSuite) TestAddUnitsWithELB(c *C) {
+	tmpdir, err := commandmocker.Add("juju", addUnitsOutput)
+	c.Assert(err, IsNil)
+	defer commandmocker.Remove(tmpdir)
+	app := testing.NewFakeApp("resist", "rush", 0)
+	p := JujuProvisioner{}
+	_, err = p.AddUnits(app, 4)
+	c.Assert(err, IsNil)
+	expected := []string{
+		"resist", "resist/3", "resist/4",
+		"resist/5", "resist/6",
+	}
+	msg, err := queue.Get(1e6)
+	c.Assert(err, IsNil)
+	defer queue.Delete(msg)
+	c.Assert(msg.Action, Equals, addUnitToLoadBalancer)
+	c.Assert(msg.Args, DeepEquals, expected)
 }
 
 func (s *ELBSuite) TestAddrWithELB(c *C) {

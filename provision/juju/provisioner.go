@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"github.com/globocom/config"
 	"github.com/globocom/tsuru/provision"
+	"github.com/globocom/tsuru/queue"
 	"github.com/globocom/tsuru/repository"
 	"io"
 	"launchpad.net/goyaml"
@@ -44,6 +45,18 @@ func (p *JujuProvisioner) elbSupport() bool {
 		p.elb = &elb
 	}
 	return *p.elb
+}
+
+func (p *JujuProvisioner) enqueueUnits(app string, units ...string) {
+	args := make([]string, len(units)+1)
+	args[0] = app
+	for i := range units {
+		args[i+1] = units[i]
+	}
+	enqueue(&queue.Message{
+		Action: addUnitToLoadBalancer,
+		Args:   args,
+	})
 }
 
 func (p *JujuProvisioner) Provision(app provision.App) error {
@@ -136,19 +149,27 @@ func (p *JujuProvisioner) AddUnits(app provision.App, n uint) ([]provision.Unit,
 	if err != nil {
 		return nil, &provision.Error{Reason: buf.String(), Err: err}
 	}
-	unitRe := regexp.MustCompile(fmt.Sprintf(`Unit '(%s/\d+)' added to service '%s'`, app.GetName(), app.GetName()))
+	unitRe := regexp.MustCompile(fmt.Sprintf(
+		`Unit '(%s/\d+)' added to service '%s'`, app.GetName(), app.GetName()),
+	)
 	reader := bufio.NewReader(&buf)
 	line, err := reader.ReadString('\n')
+	names := make([]string, n)
+	units = make([]provision.Unit, n)
+	i := 0
 	for err == nil {
 		matches := unitRe.FindStringSubmatch(line)
 		if len(matches) > 1 {
-			units = append(units, provision.Unit{Name: matches[1]})
+			units[i] = provision.Unit{Name: matches[1]}
+			names[i] = matches[1]
+			i++
 		}
 		line, err = reader.ReadString('\n')
 	}
 	if err != io.EOF {
 		return nil, &provision.Error{Reason: buf.String(), Err: err}
 	}
+	p.enqueueUnits(app.GetName(), names...)
 	return units, nil
 }
 

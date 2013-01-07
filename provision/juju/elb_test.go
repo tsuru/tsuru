@@ -42,6 +42,8 @@ func (s *ELBSuite) SetUpSuite(c *C) {
 	config.Set("juju:elb-avail-zones", []interface{}{"my-zone-1a", "my-zone-1b"})
 	config.Set("aws:access-key-id", "access")
 	config.Set("aws:secret-access-key", "s3cr3t")
+	config.Set("git:host", "git.tsuru.io")
+	config.Set("queue-server", "127.0.0.1:11300")
 	err = handler.DryRun()
 	c.Assert(err, IsNil)
 }
