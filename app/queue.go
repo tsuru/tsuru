@@ -30,6 +30,7 @@ func ensureAppIsStarted(msg *queue.Message) (App, error) {
 			queue.Delete(msg)
 		default:
 			format += ` The status of the app and all units should be "started" (the app is %q).`
+			msg.Release()
 		}
 		return a, fmt.Errorf(format, msg.Action, a.Name, a.State)
 	}
