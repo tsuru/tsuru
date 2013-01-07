@@ -125,6 +125,11 @@ var simpleCollectOutput = `machines:
     dns-name: 10.10.1.59
     instance-id: i-00004445
     instance-state: running
+  3:
+    agent-state: pending
+    dns-name: 10.10.2.59
+    instance-id: i-00004450
+    instance-state: running
 services:
   symfonia:
     charm: local:precise/python-1
@@ -138,7 +143,11 @@ services:
       symfonia/1:
         agent-state: pending
         machine: 2
-        public-address: server-1085.novalocal`
+        public-address: server-1085.novalocal
+      symfonia/2:
+        agent-state: pending
+        machine: 3
+        public-address: server-1087.novalocal`
 
 var addUnitsOutput = `2012-12-19 14:05:21,275 INFO Connecting to environment...
 2012-12-19 14:05:22,681 INFO Connected to environment.

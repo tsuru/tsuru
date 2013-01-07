@@ -41,7 +41,7 @@ func handle(msg *queue.Message) {
 		var units []provision.Unit
 		for _, u := range status {
 			n := sort.SearchStrings(unitNames, u.Name)
-			if unitNames[n] == u.Name {
+			if n < len(unitNames) && unitNames[n] == u.Name {
 				units = append(units, u)
 			}
 		}
