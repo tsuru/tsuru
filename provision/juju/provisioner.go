@@ -72,7 +72,10 @@ func (p *JujuProvisioner) Provision(app provision.App) error {
 		return &provision.Error{Reason: out, Err: err}
 	}
 	if p.elbSupport() {
-		return p.LoadBalancer().Create(app)
+		if err = p.LoadBalancer().Create(app); err != nil {
+			return err
+		}
+		p.enqueueUnits(app.GetName())
 	}
 	return nil
 }

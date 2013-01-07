@@ -538,6 +538,26 @@ func (s *S) TestAddrWithoutUnits(c *C) {
 	c.Assert(err.Error(), Equals, `App "squeeze" has no units.`)
 }
 
+func (s *ELBSuite) TestProvisionWithELB(c *C) {
+	tmpdir, err := commandmocker.Add("juju", "deployed")
+	c.Assert(err, IsNil)
+	defer commandmocker.Remove(tmpdir)
+	app := testing.NewFakeApp("jimmy", "who", 0)
+	p := JujuProvisioner{}
+	err = p.Provision(app)
+	c.Assert(err, IsNil)
+	lb := p.LoadBalancer()
+	defer lb.Destroy(app)
+	addr, err := lb.Addr(app)
+	c.Assert(err, IsNil)
+	c.Assert(addr, Not(Equals), "")
+	msg, err := queue.Get(1e6)
+	c.Assert(err, IsNil)
+	defer queue.Delete(msg)
+	c.Assert(msg.Action, Equals, addUnitToLoadBalancer)
+	c.Assert(msg.Args, DeepEquals, []string{"jimmy"})
+}
+
 func (s *ELBSuite) TestDestroyWithELB(c *C) {
 	tmpdir, err := commandmocker.Add("juju", "deployed")
 	c.Assert(err, IsNil)
@@ -554,6 +574,13 @@ func (s *ELBSuite) TestDestroyWithELB(c *C) {
 	c.Assert(addr, Equals, "")
 	c.Assert(err, NotNil)
 	c.Assert(err.Error(), Equals, "not found")
+	msg, err := queue.Get(1e6)
+	c.Assert(err, IsNil)
+	if msg.Action == addUnitToLoadBalancer && msg.Args[0] == "jimmy" {
+		queue.Delete(msg)
+	} else {
+		msg.Release()
+	}
 }
 
 func (s *ELBSuite) TestAddUnitsWithELB(c *C) {
