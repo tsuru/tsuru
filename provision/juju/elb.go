@@ -111,14 +111,20 @@ func (m *ELBManager) Destroy(app provision.Named) error {
 	return m.collection().Remove(bson.M{"name": app.GetName()})
 }
 
-func (m *ELBManager) Register(app provision.Named, unit provision.Unit) error {
-	ids := []string{unit.InstanceId}
+func (m *ELBManager) Register(app provision.Named, units ...provision.Unit) error {
+	ids := make([]string, len(units))
+	for i, u := range units {
+		ids[i] = u.InstanceId
+	}
 	_, err := m.elb().RegisterInstancesWithLoadBalancer(ids, app.GetName())
 	return err
 }
 
-func (m *ELBManager) Deregister(app provision.Named, unit provision.Unit) error {
-	ids := []string{unit.InstanceId}
+func (m *ELBManager) Deregister(app provision.Named, units ...provision.Unit) error {
+	ids := make([]string, len(units))
+	for i, u := range units {
+		ids[i] = u.InstanceId
+	}
 	_, err := m.elb().DeregisterInstancesFromLoadBalancer(ids, app.GetName())
 	return err
 }

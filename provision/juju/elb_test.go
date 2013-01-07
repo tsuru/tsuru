@@ -134,37 +134,43 @@ func (s *ELBSuite) TestDestroyELB(c *C) {
 }
 
 func (s *ELBSuite) TestRegisterUnit(c *C) {
-	id := s.server.NewInstance()
-	defer s.server.RemoveInstance(id)
+	id1 := s.server.NewInstance()
+	defer s.server.RemoveInstance(id1)
+	id2 := s.server.NewInstance()
+	defer s.server.RemoveInstance(id2)
 	app := testing.NewFakeApp("fooled", "who", 1)
 	manager := ELBManager{}
 	manager.e = s.client
 	err := manager.Create(app)
 	c.Assert(err, IsNil)
 	defer manager.Destroy(app)
-	err = manager.Register(app, provision.Unit{InstanceId: id})
+	err = manager.Register(app, provision.Unit{InstanceId: id1}, provision.Unit{InstanceId: id2})
 	c.Assert(err, IsNil)
 	resp, err := s.client.DescribeLoadBalancers(app.GetName())
 	c.Assert(err, IsNil)
 	c.Assert(resp.LoadBalancerDescriptions, HasLen, 1)
-	c.Assert(resp.LoadBalancerDescriptions[0].Instances, HasLen, 1)
+	c.Assert(resp.LoadBalancerDescriptions[0].Instances, HasLen, 2)
 	instances := resp.LoadBalancerDescriptions[0].Instances
-	c.Assert(instances[0].InstanceId, Equals, id)
+	c.Assert(instances[0].InstanceId, Equals, id1)
+	c.Assert(instances[1].InstanceId, Equals, id2)
 }
 
 func (s *ELBSuite) TestDeregisterUnit(c *C) {
-	id := s.server.NewInstance()
-	defer s.server.RemoveInstance(id)
-	unit := provision.Unit{InstanceId: id}
+	id1 := s.server.NewInstance()
+	defer s.server.RemoveInstance(id1)
+	id2 := s.server.NewInstance()
+	defer s.server.RemoveInstance(id2)
+	unit1 := provision.Unit{InstanceId: id1}
+	unit2 := provision.Unit{InstanceId: id2}
 	app := testing.NewFakeApp("dirty", "who", 1)
 	manager := ELBManager{}
 	manager.e = s.client
 	err := manager.Create(app)
 	c.Assert(err, IsNil)
 	defer manager.Destroy(app)
-	err = manager.Register(app, unit)
+	err = manager.Register(app, unit1, unit2)
 	c.Assert(err, IsNil)
-	err = manager.Deregister(app, unit)
+	err = manager.Deregister(app, unit1, unit2)
 	c.Assert(err, IsNil)
 	resp, err := s.client.DescribeLoadBalancers(app.GetName())
 	c.Assert(err, IsNil)
