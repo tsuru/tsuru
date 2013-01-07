@@ -1,4 +1,4 @@
-// Copyright 2012 tsuru authors. All rights reserved.
+// Copyright 2013 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -9,6 +9,7 @@ import (
 	"github.com/globocom/tsuru/app"
 	"github.com/globocom/tsuru/db"
 	"github.com/globocom/tsuru/provision"
+	ttesting "github.com/globocom/tsuru/testing"
 	"labix.org/v2/mgo/bson"
 	"testing"
 )
@@ -59,6 +60,7 @@ func BenchmarkUpdate(b *testing.B) {
 	defer db.Session.Apps().Database.DropDatabase()
 	_, names := getFakeApps()
 	defer db.Session.Apps().Remove(bson.M{"name": bson.M{"$in": names}})
+	app.Provisioner = ttesting.NewFakeProvisioner()
 	fakeUnits := getFakeUnits(names)
 	b.StartTimer()
 	for i := 0; i < b.N; i++ {
