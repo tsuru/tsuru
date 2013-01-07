@@ -18,4 +18,11 @@ var _ = Suite(&S{})
 
 func (s *S) SetUpSuite(c *C) {
 	config.Set("git:host", "tsuruhost.com")
+	err := handler.DryRun()
+	c.Assert(err, IsNil)
+}
+
+func (s *S) TearDownSuite(c *C) {
+	handler.Stop()
+	handler.Wait()
 }
