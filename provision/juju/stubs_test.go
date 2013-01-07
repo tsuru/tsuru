@@ -149,6 +149,59 @@ services:
         machine: 3
         public-address: server-1087.novalocal`
 
+var collectOutputNoInstanceId = `machines:
+  0:
+    agent-state: running
+    dns-name: 10.10.10.96
+    instance-id: i-00000376
+    instance-state: running
+  1:
+    agent-state: running
+    dns-name: 10.10.1.58
+    instance-id: i-00004444
+    instance-state: running
+  2:
+    instance-id: pending
+services:
+  2112:
+    charm: local:precise/python-1
+    exposed: false
+    relations: {}
+    units:
+      2112/0:
+        agent-state: pending
+        machine: 1
+        public-address: server-1086.novalocal
+      2112/1:
+        agent-state: pending
+        machine: 2
+        public-address: null`
+
+var collectOutputAllPending = `machines:
+  0:
+    agent-state: running
+    dns-name: 10.10.10.96
+    instance-id: i-00000376
+    instance-state: running
+  1:
+    instance-id: pending
+  2:
+    instance-id: pending
+services:
+  2112:
+    charm: local:precise/python-1
+    exposed: false
+    relations: {}
+    units:
+      2112/0:
+        agent-state: pending
+        machine: 1
+        public-address: null
+      2112/1:
+        agent-state: pending
+        machine: 2
+        public-address: null`
+
 var addUnitsOutput = `2012-12-19 14:05:21,275 INFO Connecting to environment...
 2012-12-19 14:05:22,681 INFO Connected to environment.
 2012-12-19 11:57:31,361 INFO Unit 'resist/3' added to service 'resist'

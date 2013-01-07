@@ -54,9 +54,30 @@ func handle(msg *queue.Message) {
 			queue.Delete(msg)
 			return
 		}
-		manager := ELBManager{}
-		manager.Register(&a, units...)
-		queue.Delete(msg)
+		var noId []string
+		var ok []provision.Unit
+		for _, u := range units {
+			if u.InstanceId == "pending" || u.InstanceId == "" {
+				noId = append(noId, u.Name)
+			} else {
+				ok = append(ok, u)
+			}
+		}
+		if len(noId) == len(units) {
+			msg.Release()
+		} else {
+			manager := ELBManager{}
+			manager.Register(&a, ok...)
+			queue.Delete(msg)
+			if len(noId) > 0 {
+				args := []string{a.name}
+				args = append(args, noId...)
+				queue.Put(&queue.Message{
+					Action: msg.Action,
+					Args:   args,
+				})
+			}
+		}
 	default:
 		msg.Release()
 	}

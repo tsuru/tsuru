@@ -78,6 +78,64 @@ func (s *ELBSuite) TestHandleMessageWithUnits(c *C) {
 	c.Assert(commandmocker.Ran(tmpdir), Equals, true)
 }
 
+func (s *ELBSuite) TestHandleMessagesWithPendingUnits(c *C) {
+	id := s.server.NewInstance()
+	defer s.server.RemoveInstance(id)
+	app := testing.NewFakeApp("2112", "python", 1)
+	manager := ELBManager{}
+	err := manager.Create(app)
+	c.Assert(err, IsNil)
+	defer manager.Destroy(app)
+	output := strings.Replace(collectOutputNoInstanceId, "i-00004444", id, 1)
+	tmpdir, err := commandmocker.Add("juju", output)
+	c.Assert(err, IsNil)
+	defer commandmocker.Remove(tmpdir)
+	handle(&queue.Message{
+		Action: addUnitToLoadBalancer,
+		Args:   []string{"2112", "2112/0", "2112/1"},
+	})
+	resp, err := s.client.DescribeLoadBalancers(app.GetName())
+	c.Assert(err, IsNil)
+	c.Assert(resp.LoadBalancerDescriptions, HasLen, 1)
+	instances := resp.LoadBalancerDescriptions[0].Instances
+	c.Assert(instances, HasLen, 1)
+	c.Assert(instances[0].InstanceId, Equals, id)
+	msg, err := queue.Get(1e6)
+	c.Assert(err, IsNil)
+	defer queue.Delete(msg)
+	c.Assert(msg.Action, Equals, addUnitToLoadBalancer)
+	c.Assert(msg.Args, DeepEquals, []string{"2112", "2112/1"})
+}
+
+func (s *ELBSuite) TestHandleMessagesAllPendingUnits(c *C) {
+	app := testing.NewFakeApp("2112", "python", 1)
+	manager := ELBManager{}
+	err := manager.Create(app)
+	c.Assert(err, IsNil)
+	defer manager.Destroy(app)
+	tmpdir, err := commandmocker.Add("juju", collectOutputAllPending)
+	c.Assert(err, IsNil)
+	defer commandmocker.Remove(tmpdir)
+	msg := queue.Message{
+		Action: addUnitToLoadBalancer,
+		Args:   []string{"2112", "2112/0", "2112/1"},
+	}
+	err = queue.Put(&msg)
+	c.Assert(err, IsNil)
+	got, err := queue.Get(1e6)
+	c.Assert(err, IsNil)
+	defer queue.Delete(got)
+	handle(got)
+	resp, err := s.client.DescribeLoadBalancers(app.GetName())
+	c.Assert(err, IsNil)
+	c.Assert(resp.LoadBalancerDescriptions, HasLen, 1)
+	instances := resp.LoadBalancerDescriptions[0].Instances
+	c.Assert(instances, HasLen, 0)
+	other, err := queue.Get(1e6)
+	c.Assert(err, IsNil)
+	c.Assert(other, DeepEquals, got)
+}
+
 func (s *ELBSuite) TestHandler(c *C) {
 	var _ queue.Handler = handler
 }
