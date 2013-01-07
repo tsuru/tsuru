@@ -38,10 +38,14 @@ type Unit struct {
 	Status     Status
 }
 
+// Named is something that has a name, providing the GetName method.
+type Named interface {
+	GetName() string
+}
+
 // AppUnit represents a unit in an app.
 type AppUnit interface {
-	// Returns the name of the unit.
-	GetName() string
+	Named
 
 	// Returns the number of the unit.
 	GetMachine() int
@@ -57,11 +61,10 @@ type AppUnit interface {
 //
 // It contains only relevant information for provisioning.
 type App interface {
+	Named
+
 	// Log should be used to log messages in the app.
 	Log(message, source string) error
-
-	// GetName returns the name of the app.
-	GetName() string
 
 	// GetFramework returns the framework (type) of the app. It is equivalent
 	// to the Unit `Type` field.
