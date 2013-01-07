@@ -10,16 +10,85 @@ import (
 	"crypto/sha512"
 	"encoding/json"
 	"fmt"
+	"github.com/globocom/config"
 	"github.com/globocom/tsuru/auth"
 	"github.com/globocom/tsuru/db"
 	"github.com/globocom/tsuru/errors"
+	"io"
 	"io/ioutil"
 	"labix.org/v2/mgo/bson"
 	. "launchpad.net/gocheck"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path"
+	"strconv"
 	"strings"
 )
+
+type AuthSuite struct {
+	team *auth.Team
+	user *auth.User
+}
+
+var _ = Suite(&AuthSuite{})
+
+func (s *AuthSuite) SetUpSuite(c *C) {
+	var err error
+	err = config.ReadConfigFile("../etc/tsuru.conf")
+	c.Assert(err, IsNil)
+	db.Session, err = db.Open("127.0.0.1:27017", "tsuru_api_auth_test")
+	c.Assert(err, IsNil)
+	s.createUserAndTeam(c)
+}
+
+func (s *AuthSuite) TearDownSuite(c *C) {
+	defer db.Session.Close()
+	db.Session.Apps().Database.DropDatabase()
+}
+
+func (s *AuthSuite) TearDownTest(c *C) {
+	_, err := db.Session.Users().RemoveAll(bson.M{"email": bson.M{"$ne": s.user.Email}})
+	c.Assert(err, IsNil)
+	_, err = db.Session.Teams().RemoveAll(bson.M{"_id": bson.M{"$ne": s.team.Name}})
+	c.Assert(err, IsNil)
+	s.user.Password = "123"
+	s.user.HashPassword()
+	err = s.user.Update()
+	c.Assert(err, IsNil)
+}
+
+func (s *AuthSuite) createUserAndTeam(c *C) {
+	s.user = &auth.User{Email: "whydidifall@thewho.com", Password: "123"}
+	err := s.user.Create()
+	c.Assert(err, IsNil)
+	s.team = &auth.Team{Name: "tsuruteam", Users: []string{s.user.Email}}
+	err = db.Session.Teams().Insert(s.team)
+	c.Assert(err, IsNil)
+}
+
+// starts a new httptest.Server and returns it
+// Also changes git:host, git:port and git:protocol to match the server's url
+func (s *AuthSuite) startGandalfTestServer(h http.Handler) *httptest.Server {
+	ts := httptest.NewServer(h)
+	pieces := strings.Split(ts.URL, "://")
+	protocol := pieces[0]
+	hostPart := strings.Split(pieces[1], ":")
+	port := hostPart[1]
+	host := hostPart[0]
+	config.Set("git:host", host)
+	portInt, _ := strconv.ParseInt(port, 10, 0)
+	config.Set("git:port", portInt)
+	config.Set("git:protocol", protocol)
+	return ts
+}
+
+func (s *AuthSuite) getTestData(p ...string) io.ReadCloser {
+	p = append([]string{}, ".", "testdata")
+	fp := path.Join(p...)
+	f, _ := os.OpenFile(fp, os.O_RDONLY, 0)
+	return f
+}
 
 type hasKeyChecker struct{}
 
@@ -66,7 +135,7 @@ func (c *userPresenceChecker) Check(params []interface{}, names []string) (bool,
 
 var ContainsUser Checker = &userPresenceChecker{}
 
-func (s *S) TestCreateUserHandlerSavesTheUserInTheDatabase(c *C) {
+func (s *AuthSuite) TestCreateUserHandlerSavesTheUserInTheDatabase(c *C) {
 	h := testHandler{}
 	ts := s.startGandalfTestServer(&h)
 	defer ts.Close()
@@ -82,7 +151,7 @@ func (s *S) TestCreateUserHandlerSavesTheUserInTheDatabase(c *C) {
 	c.Assert(err, IsNil)
 }
 
-func (s *S) TestCreateUserHandlerReturnsStatus201AfterCreateTheUser(c *C) {
+func (s *AuthSuite) TestCreateUserHandlerReturnsStatus201AfterCreateTheUser(c *C) {
 	h := testHandler{}
 	ts := s.startGandalfTestServer(&h)
 	defer ts.Close()
@@ -96,7 +165,7 @@ func (s *S) TestCreateUserHandlerReturnsStatus201AfterCreateTheUser(c *C) {
 	c.Assert(recorder.Code, Equals, 201)
 }
 
-func (s *S) TestCreateUserHandlerReturnErrorIfReadingBodyFails(c *C) {
+func (s *AuthSuite) TestCreateUserHandlerReturnErrorIfReadingBodyFails(c *C) {
 	b := s.getTestData("bodyToBeClosed.txt")
 	request, err := http.NewRequest("POST", "/users", b)
 	c.Assert(err, IsNil)
@@ -108,7 +177,7 @@ func (s *S) TestCreateUserHandlerReturnErrorIfReadingBodyFails(c *C) {
 	c.Assert(err, ErrorMatches, "^.*bad file descriptor$")
 }
 
-func (s *S) TestCreateUserHandlerReturnErrorAndBadRequestIfInvalidJSONIsGiven(c *C) {
+func (s *AuthSuite) TestCreateUserHandlerReturnErrorAndBadRequestIfInvalidJSONIsGiven(c *C) {
 	b := bytes.NewBufferString(`["invalid json":"i'm invalid"]`)
 	request, err := http.NewRequest("POST", "/users", b)
 	c.Assert(err, IsNil)
@@ -122,7 +191,7 @@ func (s *S) TestCreateUserHandlerReturnErrorAndBadRequestIfInvalidJSONIsGiven(c 
 	c.Assert(e.Code, Equals, http.StatusBadRequest)
 }
 
-func (s *S) TestCreateUserHandlerReturnErrorAndConflictIfItFailsToCreateUser(c *C) {
+func (s *AuthSuite) TestCreateUserHandlerReturnErrorAndConflictIfItFailsToCreateUser(c *C) {
 	h := testHandler{}
 	ts := s.startGandalfTestServer(&h)
 	defer ts.Close()
@@ -141,7 +210,7 @@ func (s *S) TestCreateUserHandlerReturnErrorAndConflictIfItFailsToCreateUser(c *
 	c.Assert(e.Code, Equals, http.StatusConflict)
 }
 
-func (s *S) TestCreateUserHandlerReturnsPreconditionFailedIfEmailIsNotValid(c *C) {
+func (s *AuthSuite) TestCreateUserHandlerReturnsPreconditionFailedIfEmailIsNotValid(c *C) {
 	b := bytes.NewBufferString(`{"email":"nobody","password":"123456"}`)
 	request, err := http.NewRequest("POST", "/users", b)
 	c.Assert(err, IsNil)
@@ -155,7 +224,7 @@ func (s *S) TestCreateUserHandlerReturnsPreconditionFailedIfEmailIsNotValid(c *C
 	c.Assert(e.Message, Equals, "Invalid email.")
 }
 
-func (s *S) TestCreateUserHandlerReturnsPreconditionFailedIfPasswordHasLessThan6CharactersOrMoreThan50Characters(c *C) {
+func (s *AuthSuite) TestCreateUserHandlerReturnsPreconditionFailedIfPasswordHasLessThan6CharactersOrMoreThan50Characters(c *C) {
 	passwords := []string{"123", strings.Join(make([]string, 52), "-")}
 	for _, password := range passwords {
 		b := bytes.NewBufferString(`{"email":"nobody@globo.com","password":"` + password + `"}`)
@@ -172,7 +241,7 @@ func (s *S) TestCreateUserHandlerReturnsPreconditionFailedIfPasswordHasLessThan6
 	}
 }
 
-func (s *S) TestCreateUserCreatesUserInGandalf(c *C) {
+func (s *AuthSuite) TestCreateUserCreatesUserInGandalf(c *C) {
 	h := testHandler{}
 	ts := s.startGandalfTestServer(&h)
 	defer ts.Close()
@@ -190,7 +259,7 @@ func (s *S) TestCreateUserCreatesUserInGandalf(c *C) {
 	c.Assert(h.method[0], Equals, "POST")
 }
 
-func (s *S) TestLoginShouldCreateTokenInTheDatabaseAndReturnItWithinTheResponse(c *C) {
+func (s *AuthSuite) TestLoginShouldCreateTokenInTheDatabaseAndReturnItWithinTheResponse(c *C) {
 	u := auth.User{Email: "nobody@globo.com", Password: "123456"}
 	u.Create()
 	b := bytes.NewBufferString(`{"password":"123456"}`)
@@ -209,7 +278,7 @@ func (s *S) TestLoginShouldCreateTokenInTheDatabaseAndReturnItWithinTheResponse(
 	c.Assert(recorderJson["token"], Equals, user.Tokens[0].Token)
 }
 
-func (s *S) TestLoginShouldReturnErrorAndBadRequestIfItReceivesAnInvalidJson(c *C) {
+func (s *AuthSuite) TestLoginShouldReturnErrorAndBadRequestIfItReceivesAnInvalidJson(c *C) {
 	b := bytes.NewBufferString(`"invalid":"json"]`)
 	request, err := http.NewRequest("POST", "/users/nobody@globo.com/tokens?:email=nobody@globo.com", b)
 	c.Assert(err, IsNil)
@@ -223,7 +292,7 @@ func (s *S) TestLoginShouldReturnErrorAndBadRequestIfItReceivesAnInvalidJson(c *
 	c.Assert(e.Code, Equals, http.StatusBadRequest)
 }
 
-func (s *S) TestLoginShouldReturnErrorAndBadRequestIfTheJSONDoesNotContainsAPassword(c *C) {
+func (s *AuthSuite) TestLoginShouldReturnErrorAndBadRequestIfTheJSONDoesNotContainsAPassword(c *C) {
 	b := bytes.NewBufferString(`{}`)
 	request, err := http.NewRequest("POST", "/users/nobody@globo.com/tokens?:email=nobody@globo.com", b)
 	c.Assert(err, IsNil)
@@ -237,7 +306,7 @@ func (s *S) TestLoginShouldReturnErrorAndBadRequestIfTheJSONDoesNotContainsAPass
 	c.Assert(e.Code, Equals, http.StatusBadRequest)
 }
 
-func (s *S) TestLoginShouldReturnErrorAndNotFoundIfTheUserDoesNotExist(c *C) {
+func (s *AuthSuite) TestLoginShouldReturnErrorAndNotFoundIfTheUserDoesNotExist(c *C) {
 	b := bytes.NewBufferString(`{"password":"123456"}`)
 	request, err := http.NewRequest("POST", "/users/nobody@globo.com/tokens?:email=nobody@globo.com", b)
 	c.Assert(err, IsNil)
@@ -251,7 +320,7 @@ func (s *S) TestLoginShouldReturnErrorAndNotFoundIfTheUserDoesNotExist(c *C) {
 	c.Assert(e.Code, Equals, http.StatusNotFound)
 }
 
-func (s *S) TestLoginShouldreturnErrorIfThePasswordDoesNotMatch(c *C) {
+func (s *AuthSuite) TestLoginShouldreturnErrorIfThePasswordDoesNotMatch(c *C) {
 	u := auth.User{Email: "nobody@globo.com", Password: "123456"}
 	u.Create()
 	b := bytes.NewBufferString(`{"password":"1234567"}`)
@@ -267,7 +336,7 @@ func (s *S) TestLoginShouldreturnErrorIfThePasswordDoesNotMatch(c *C) {
 	c.Assert(e.Code, Equals, http.StatusUnauthorized)
 }
 
-func (s *S) TestLoginShouldReturnErrorAndInternalServerErrorIfReadAllFails(c *C) {
+func (s *AuthSuite) TestLoginShouldReturnErrorAndInternalServerErrorIfReadAllFails(c *C) {
 	b := s.getTestData("bodyToBeClosed.txt")
 	err := b.Close()
 	c.Assert(err, IsNil)
@@ -279,7 +348,7 @@ func (s *S) TestLoginShouldReturnErrorAndInternalServerErrorIfReadAllFails(c *C)
 	c.Assert(err, NotNil)
 }
 
-func (s *S) TestLoginShouldReturnPreconditionFailedIfEmailIsNotValid(c *C) {
+func (s *AuthSuite) TestLoginShouldReturnPreconditionFailedIfEmailIsNotValid(c *C) {
 	b := bytes.NewBufferString(`{"password":"123456"}`)
 	request, err := http.NewRequest("POST", "/users/nobody/token?:email=nobody", b)
 	c.Assert(err, IsNil)
@@ -293,7 +362,7 @@ func (s *S) TestLoginShouldReturnPreconditionFailedIfEmailIsNotValid(c *C) {
 	c.Assert(e.Message, Equals, emailError)
 }
 
-func (s *S) TestLoginShouldReturnPreconditionFailedIfPasswordIsLessesThan6CharactersOrGreaterThan50Characters(c *C) {
+func (s *AuthSuite) TestLoginShouldReturnPreconditionFailedIfPasswordIsLessesThan6CharactersOrGreaterThan50Characters(c *C) {
 	passwords := []string{"123", strings.Join(make([]string, 52), "-")}
 	for _, password := range passwords {
 		b := bytes.NewBufferString(`{"password":"` + password + `"}`)
@@ -310,7 +379,7 @@ func (s *S) TestLoginShouldReturnPreconditionFailedIfPasswordIsLessesThan6Charac
 	}
 }
 
-func (s *S) TestCreateTeamHandlerSavesTheTeamInTheDatabaseWithTheAuthenticatedUser(c *C) {
+func (s *AuthSuite) TestCreateTeamHandlerSavesTheTeamInTheDatabaseWithTheAuthenticatedUser(c *C) {
 	b := bytes.NewBufferString(`{"name":"timeredbull"}`)
 	request, err := http.NewRequest("POST", "/teams", b)
 	c.Assert(err, IsNil)
@@ -325,7 +394,7 @@ func (s *S) TestCreateTeamHandlerSavesTheTeamInTheDatabaseWithTheAuthenticatedUs
 	c.Assert(t, ContainsUser, s.user)
 }
 
-func (s *S) TestCreateTeamHandlerReturnsBadRequestIfTheRequestBodyIsAnInvalidJSON(c *C) {
+func (s *AuthSuite) TestCreateTeamHandlerReturnsBadRequestIfTheRequestBodyIsAnInvalidJSON(c *C) {
 	b := bytes.NewBufferString(`{"name"["invalidjson"]}`)
 	request, err := http.NewRequest("POST", "/teams", b)
 	c.Assert(err, IsNil)
@@ -338,7 +407,7 @@ func (s *S) TestCreateTeamHandlerReturnsBadRequestIfTheRequestBodyIsAnInvalidJSO
 	c.Assert(e.Code, Equals, http.StatusBadRequest)
 }
 
-func (s *S) TestCreateTeamHandlerReturnsBadRequestIfTheNameIsNotGiven(c *C) {
+func (s *AuthSuite) TestCreateTeamHandlerReturnsBadRequestIfTheNameIsNotGiven(c *C) {
 	b := bytes.NewBufferString(`{"genre":"male"}`)
 	request, err := http.NewRequest("POST", "/teams", b)
 	c.Assert(err, IsNil)
@@ -352,7 +421,7 @@ func (s *S) TestCreateTeamHandlerReturnsBadRequestIfTheNameIsNotGiven(c *C) {
 	c.Assert(e.Code, Equals, http.StatusBadRequest)
 }
 
-func (s *S) TestCreateTeamHandlerReturnsInternalServerErrorIfReadAllFails(c *C) {
+func (s *AuthSuite) TestCreateTeamHandlerReturnsInternalServerErrorIfReadAllFails(c *C) {
 	b := s.getTestData("bodyToBeClosed.txt")
 	err := b.Close()
 	c.Assert(err, IsNil)
@@ -364,7 +433,7 @@ func (s *S) TestCreateTeamHandlerReturnsInternalServerErrorIfReadAllFails(c *C) 
 	c.Assert(err, NotNil)
 }
 
-func (s *S) TestCreateTeamHandlerReturnConflictIfTheTeamToBeCreatedAlreadyExists(c *C) {
+func (s *AuthSuite) TestCreateTeamHandlerReturnConflictIfTheTeamToBeCreatedAlreadyExists(c *C) {
 	err := db.Session.Teams().Insert(bson.M{"_id": "timeredbull"})
 	defer db.Session.Teams().Remove(bson.M{"_id": "timeredbull"})
 	c.Assert(err, IsNil)
@@ -381,13 +450,13 @@ func (s *S) TestCreateTeamHandlerReturnConflictIfTheTeamToBeCreatedAlreadyExists
 	c.Assert(e, ErrorMatches, "^This team already exists$")
 }
 
-func (s *S) TestKeyToMap(c *C) {
+func (s *AuthSuite) TestKeyToMap(c *C) {
 	keys := []auth.Key{{Name: "testkey", Content: "somekey"}}
 	kMap := keyToMap(keys)
 	c.Assert(kMap, DeepEquals, map[string]string{"testkey": "somekey"})
 }
 
-func (s *S) TestRemoveTeam(c *C) {
+func (s *AuthSuite) TestRemoveTeam(c *C) {
 	team := auth.Team{Name: "painofsalvation", Users: []string{s.user.Email}}
 	err := db.Session.Teams().Insert(team)
 	c.Assert(err, IsNil)
@@ -402,7 +471,7 @@ func (s *S) TestRemoveTeam(c *C) {
 	c.Assert(n, Equals, 0)
 }
 
-func (s *S) TestRemoveTeamGives404WhenTeamDoesNotExist(c *C) {
+func (s *AuthSuite) TestRemoveTeamGives404WhenTeamDoesNotExist(c *C) {
 	request, err := http.NewRequest("DELETE", "/teams/unknown?:name=unknown", nil)
 	c.Assert(err, IsNil)
 	recorder := httptest.NewRecorder()
@@ -414,7 +483,7 @@ func (s *S) TestRemoveTeamGives404WhenTeamDoesNotExist(c *C) {
 	c.Assert(e.Message, Equals, `Team "unknown" not found.`)
 }
 
-func (s *S) TestRemoveTeamGives404WhenUserDoesNotHaveAccessToTheTeam(c *C) {
+func (s *AuthSuite) TestRemoveTeamGives404WhenUserDoesNotHaveAccessToTheTeam(c *C) {
 	team := auth.Team{Name: "painofsalvation"}
 	err := db.Session.Teams().Insert(team)
 	c.Assert(err, IsNil)
@@ -430,7 +499,7 @@ func (s *S) TestRemoveTeamGives404WhenUserDoesNotHaveAccessToTheTeam(c *C) {
 	c.Assert(e.Message, Equals, `Team "painofsalvation" not found.`)
 }
 
-func (s *S) TestRemoveTeamGives403WhenTeamHasAccessToAnyApp(c *C) {
+func (s *AuthSuite) TestRemoveTeamGives403WhenTeamHasAccessToAnyApp(c *C) {
 	team := auth.Team{Name: "evergrey", Users: []string{s.user.Email}}
 	err := db.Session.Teams().Insert(team)
 	c.Assert(err, IsNil)
@@ -453,7 +522,7 @@ Please remove the apps or revoke these accesses, and try again.`
 	c.Assert(e.Message, Equals, expected)
 }
 
-func (s *S) TestListTeamsListsAllTeamsThatTheUserIsMember(c *C) {
+func (s *AuthSuite) TestListTeamsListsAllTeamsThatTheUserIsMember(c *C) {
 	request, err := http.NewRequest("GET", "/teams", nil)
 	c.Assert(err, IsNil)
 	recorder := httptest.NewRecorder()
@@ -467,7 +536,7 @@ func (s *S) TestListTeamsListsAllTeamsThatTheUserIsMember(c *C) {
 	c.Assert(m, DeepEquals, []map[string]string{{"name": s.team.Name}})
 }
 
-func (s *S) TestListTeamsReturns204IfTheUserHasNoTeam(c *C) {
+func (s *AuthSuite) TestListTeamsReturns204IfTheUserHasNoTeam(c *C) {
 	u := auth.User{Email: "cruiser@gotthard.com", Password: "123"}
 	err := u.Create()
 	c.Assert(err, IsNil)
@@ -480,7 +549,7 @@ func (s *S) TestListTeamsReturns204IfTheUserHasNoTeam(c *C) {
 	c.Assert(recorder.Code, Equals, http.StatusNoContent)
 }
 
-func (s *S) TestAddUserToTeamShouldAddAUserToATeamIfTheUserAndTheTeamExistAndTheGivenUserIsMemberOfTheTeam(c *C) {
+func (s *AuthSuite) TestAddUserToTeamShouldAddAUserToATeamIfTheUserAndTheTeamExistAndTheGivenUserIsMemberOfTheTeam(c *C) {
 	h := testHandler{}
 	ts := s.startGandalfTestServer(&h)
 	defer ts.Close()
@@ -500,7 +569,7 @@ func (s *S) TestAddUserToTeamShouldAddAUserToATeamIfTheUserAndTheTeamExistAndThe
 	c.Assert(t, ContainsUser, u)
 }
 
-func (s *S) TestAddUserToTeamShouldReturnNotFoundIfThereIsNoTeamWithTheGivenName(c *C) {
+func (s *AuthSuite) TestAddUserToTeamShouldReturnNotFoundIfThereIsNoTeamWithTheGivenName(c *C) {
 	h := testHandler{}
 	ts := s.startGandalfTestServer(&h)
 	defer ts.Close()
@@ -515,7 +584,7 @@ func (s *S) TestAddUserToTeamShouldReturnNotFoundIfThereIsNoTeamWithTheGivenName
 	c.Assert(e, ErrorMatches, "^Team not found$")
 }
 
-func (s *S) TestAddUserToTeamShouldReturnUnauthorizedIfTheGivenUserIsNotInTheGivenTeam(c *C) {
+func (s *AuthSuite) TestAddUserToTeamShouldReturnUnauthorizedIfTheGivenUserIsNotInTheGivenTeam(c *C) {
 	h := testHandler{}
 	ts := s.startGandalfTestServer(&h)
 	defer ts.Close()
@@ -533,7 +602,7 @@ func (s *S) TestAddUserToTeamShouldReturnUnauthorizedIfTheGivenUserIsNotInTheGiv
 	c.Assert(e, ErrorMatches, "^You are not authorized to add new users to the team tsuruteam$")
 }
 
-func (s *S) TestAddUserToTeamShouldReturnNotFoundIfTheEmailInTheBodyDoesNotExistInTheDatabase(c *C) {
+func (s *AuthSuite) TestAddUserToTeamShouldReturnNotFoundIfTheEmailInTheBodyDoesNotExistInTheDatabase(c *C) {
 	h := testHandler{}
 	ts := s.startGandalfTestServer(&h)
 	defer ts.Close()
@@ -548,7 +617,7 @@ func (s *S) TestAddUserToTeamShouldReturnNotFoundIfTheEmailInTheBodyDoesNotExist
 	c.Assert(e, ErrorMatches, "^User not found$")
 }
 
-func (s *S) TestAddUserToTeamShouldReturnConflictIfTheUserIsAlreadyInTheGroup(c *C) {
+func (s *AuthSuite) TestAddUserToTeamShouldReturnConflictIfTheUserIsAlreadyInTheGroup(c *C) {
 	h := testHandler{}
 	ts := s.startGandalfTestServer(&h)
 	defer ts.Close()
@@ -563,7 +632,7 @@ func (s *S) TestAddUserToTeamShouldReturnConflictIfTheUserIsAlreadyInTheGroup(c 
 	c.Assert(e.Code, Equals, http.StatusConflict)
 }
 
-func (s *S) TestAddUserToTeamShoulGrantAccessInGandalf(c *C) {
+func (s *AuthSuite) TestAddUserToTeamShoulGrantAccessInGandalf(c *C) {
 	h := testHandler{}
 	ts := s.startGandalfTestServer(&h)
 	defer ts.Close()
@@ -588,7 +657,7 @@ func (s *S) TestAddUserToTeamShoulGrantAccessInGandalf(c *C) {
 	c.Assert(string(h.body[1]), Equals, expected)
 }
 
-func (s *S) TestRemoveUserFromTeamShouldRemoveAUserFromATeamIfTheTeamExistAndTheUserIsMemberOfTheTeam(c *C) {
+func (s *AuthSuite) TestRemoveUserFromTeamShouldRemoveAUserFromATeamIfTheTeamExistAndTheUserIsMemberOfTheTeam(c *C) {
 	h := testHandler{}
 	ts := s.startGandalfTestServer(&h)
 	defer ts.Close()
@@ -608,7 +677,7 @@ func (s *S) TestRemoveUserFromTeamShouldRemoveAUserFromATeamIfTheTeamExistAndThe
 	c.Assert(team, Not(ContainsUser), &u)
 }
 
-func (s *S) TestRemoveUserFromTeamShouldReturnNotFoundIfTheTeamDoesNotExist(c *C) {
+func (s *AuthSuite) TestRemoveUserFromTeamShouldReturnNotFoundIfTheTeamDoesNotExist(c *C) {
 	h := testHandler{}
 	ts := s.startGandalfTestServer(&h)
 	defer ts.Close()
@@ -623,7 +692,7 @@ func (s *S) TestRemoveUserFromTeamShouldReturnNotFoundIfTheTeamDoesNotExist(c *C
 	c.Assert(e, ErrorMatches, "^Team not found$")
 }
 
-func (s *S) TestRemoveUserFromTeamShouldReturnUnauthorizedIfTheGivenUserIsNotMemberOfTheTeam(c *C) {
+func (s *AuthSuite) TestRemoveUserFromTeamShouldReturnUnauthorizedIfTheGivenUserIsNotMemberOfTheTeam(c *C) {
 	h := testHandler{}
 	ts := s.startGandalfTestServer(&h)
 	defer ts.Close()
@@ -638,7 +707,7 @@ func (s *S) TestRemoveUserFromTeamShouldReturnUnauthorizedIfTheGivenUserIsNotMem
 	c.Assert(e, ErrorMatches, "^You are not authorized to remove a member from the team tsuruteam")
 }
 
-func (s *S) TestRemoveUserFromTeamShouldReturnNotFoundWhenTheUserIsNotMemberOfTheTeam(c *C) {
+func (s *AuthSuite) TestRemoveUserFromTeamShouldReturnNotFoundWhenTheUserIsNotMemberOfTheTeam(c *C) {
 	h := testHandler{}
 	ts := s.startGandalfTestServer(&h)
 	defer ts.Close()
@@ -659,7 +728,7 @@ func (s *S) TestRemoveUserFromTeamShouldReturnNotFoundWhenTheUserIsNotMemberOfTh
 	c.Assert(e.Code, Equals, http.StatusNotFound)
 }
 
-func (s *S) TestRemoveUserFromTeamShouldReturnForbiddenIfTheUserIsTheLastInTheTeam(c *C) {
+func (s *AuthSuite) TestRemoveUserFromTeamShouldReturnForbiddenIfTheUserIsTheLastInTheTeam(c *C) {
 	h := testHandler{}
 	ts := s.startGandalfTestServer(&h)
 	defer ts.Close()
@@ -675,7 +744,7 @@ func (s *S) TestRemoveUserFromTeamShouldReturnForbiddenIfTheUserIsTheLastInTheTe
 	c.Assert(e, ErrorMatches, "^You can not remove this user from this team, because it is the last user within the team, and a team can not be orphaned$")
 }
 
-func (s *S) TestRemoveUserFromTeamRevokesAccessInGandalf(c *C) {
+func (s *AuthSuite) TestRemoveUserFromTeamRevokesAccessInGandalf(c *C) {
 	h := testHandler{}
 	ts := s.startGandalfTestServer(&h)
 	defer ts.Close()
@@ -704,7 +773,7 @@ func (s *S) TestRemoveUserFromTeamRevokesAccessInGandalf(c *C) {
 	c.Assert(string(h.body[2]), Equals, expected)
 }
 
-func (s *S) TestAddKeyHandlerAddsAKeyToTheUser(c *C) {
+func (s *AuthSuite) TestAddKeyHandlerAddsAKeyToTheUser(c *C) {
 	h := testHandler{}
 	ts := s.startGandalfTestServer(&h)
 	defer ts.Close()
@@ -722,7 +791,7 @@ func (s *S) TestAddKeyHandlerAddsAKeyToTheUser(c *C) {
 	c.Assert(s.user, HasKey, "my-key")
 }
 
-func (s *S) TestAddKeyHandlerReturnsErrorIfTheReadingOfTheBodyFails(c *C) {
+func (s *AuthSuite) TestAddKeyHandlerReturnsErrorIfTheReadingOfTheBodyFails(c *C) {
 	h := testHandler{}
 	ts := s.startGandalfTestServer(&h)
 	defer ts.Close()
@@ -735,7 +804,7 @@ func (s *S) TestAddKeyHandlerReturnsErrorIfTheReadingOfTheBodyFails(c *C) {
 	c.Assert(err, NotNil)
 }
 
-func (s *S) TestAddKeyHandlerReturnsBadRequestIfTheJsonIsInvalid(c *C) {
+func (s *AuthSuite) TestAddKeyHandlerReturnsBadRequestIfTheJsonIsInvalid(c *C) {
 	h := testHandler{}
 	ts := s.startGandalfTestServer(&h)
 	defer ts.Close()
@@ -751,7 +820,7 @@ func (s *S) TestAddKeyHandlerReturnsBadRequestIfTheJsonIsInvalid(c *C) {
 	c.Assert(e, ErrorMatches, "^Invalid JSON$")
 }
 
-func (s *S) TestAddKeyHandlerReturnsBadRequestIfTheKeyIsNotPresent(c *C) {
+func (s *AuthSuite) TestAddKeyHandlerReturnsBadRequestIfTheKeyIsNotPresent(c *C) {
 	h := testHandler{}
 	ts := s.startGandalfTestServer(&h)
 	defer ts.Close()
@@ -767,7 +836,7 @@ func (s *S) TestAddKeyHandlerReturnsBadRequestIfTheKeyIsNotPresent(c *C) {
 	c.Assert(e, ErrorMatches, "^Missing key$")
 }
 
-func (s *S) TestAddKeyHandlerReturnsBadRequestIfTheKeyIsEmpty(c *C) {
+func (s *AuthSuite) TestAddKeyHandlerReturnsBadRequestIfTheKeyIsEmpty(c *C) {
 	h := testHandler{}
 	ts := s.startGandalfTestServer(&h)
 	defer ts.Close()
@@ -783,7 +852,7 @@ func (s *S) TestAddKeyHandlerReturnsBadRequestIfTheKeyIsEmpty(c *C) {
 	c.Assert(e, ErrorMatches, "^Missing key$")
 }
 
-func (s *S) TestAddKeyHandlerReturnsConflictIfTheKeyIsAlreadyPresent(c *C) {
+func (s *AuthSuite) TestAddKeyHandlerReturnsConflictIfTheKeyIsAlreadyPresent(c *C) {
 	h := testHandler{}
 	ts := s.startGandalfTestServer(&h)
 	defer ts.Close()
@@ -804,7 +873,7 @@ func (s *S) TestAddKeyHandlerReturnsConflictIfTheKeyIsAlreadyPresent(c *C) {
 	c.Assert(e.Code, Equals, http.StatusConflict)
 }
 
-func (s *S) TestAddKeyAddKeyToUserInGandalf(c *C) {
+func (s *AuthSuite) TestAddKeyAddKeyToUserInGandalf(c *C) {
 	h := testHandler{}
 	ts := s.startGandalfTestServer(&h)
 	defer ts.Close()
@@ -825,7 +894,7 @@ func (s *S) TestAddKeyAddKeyToUserInGandalf(c *C) {
 	c.Assert(string(h.body[0]), Equals, expected)
 }
 
-func (s *S) TestRemoveKeyHandlerRemovesTheKeyFromTheUser(c *C) {
+func (s *AuthSuite) TestRemoveKeyHandlerRemovesTheKeyFromTheUser(c *C) {
 	h := testHandler{}
 	ts := s.startGandalfTestServer(&h)
 	defer ts.Close()
@@ -845,7 +914,7 @@ func (s *S) TestRemoveKeyHandlerRemovesTheKeyFromTheUser(c *C) {
 	c.Assert(s.user, Not(HasKey), "my-key")
 }
 
-func (s *S) TestRemoveKeyHandlerCallsGandalfRemoveKey(c *C) {
+func (s *AuthSuite) TestRemoveKeyHandlerCallsGandalfRemoveKey(c *C) {
 	h := testHandler{}
 	ts := s.startGandalfTestServer(&h)
 	defer ts.Close()
@@ -867,7 +936,7 @@ func (s *S) TestRemoveKeyHandlerCallsGandalfRemoveKey(c *C) {
 	c.Assert(string(h.body[1]), Equals, "null")
 }
 
-func (s *S) TestRemoveKeyHandlerReturnsErrorInCaseOfAnyIOFailure(c *C) {
+func (s *AuthSuite) TestRemoveKeyHandlerReturnsErrorInCaseOfAnyIOFailure(c *C) {
 	b := s.getTestData("bodyToBeClosed.txt")
 	b.Close()
 	request, err := http.NewRequest("DELETE", "/users/key", b)
@@ -877,7 +946,7 @@ func (s *S) TestRemoveKeyHandlerReturnsErrorInCaseOfAnyIOFailure(c *C) {
 	c.Assert(err, NotNil)
 }
 
-func (s *S) TestRemoveKeyHandlerReturnsBadRequestIfTheJSONIsInvalid(c *C) {
+func (s *AuthSuite) TestRemoveKeyHandlerReturnsBadRequestIfTheJSONIsInvalid(c *C) {
 	b := bytes.NewBufferString(`invalid"json}`)
 	request, err := http.NewRequest("DELETE", "/users/key", b)
 	c.Assert(err, IsNil)
@@ -890,7 +959,7 @@ func (s *S) TestRemoveKeyHandlerReturnsBadRequestIfTheJSONIsInvalid(c *C) {
 	c.Assert(e, ErrorMatches, "^Invalid JSON$")
 }
 
-func (s *S) TestRemoveKeyHandlerReturnsBadRequestIfTheKeyIsNotPresent(c *C) {
+func (s *AuthSuite) TestRemoveKeyHandlerReturnsBadRequestIfTheKeyIsNotPresent(c *C) {
 	b := bytes.NewBufferString(`{}`)
 	request, err := http.NewRequest("DELETE", "/users/key", b)
 	c.Assert(err, IsNil)
@@ -903,7 +972,7 @@ func (s *S) TestRemoveKeyHandlerReturnsBadRequestIfTheKeyIsNotPresent(c *C) {
 	c.Assert(e, ErrorMatches, "^Missing key$")
 }
 
-func (s *S) TestRemoveKeyHandlerReturnsBadRequestIfTheKeyIsEmpty(c *C) {
+func (s *AuthSuite) TestRemoveKeyHandlerReturnsBadRequestIfTheKeyIsEmpty(c *C) {
 	b := bytes.NewBufferString(`{"key":""}`)
 	request, err := http.NewRequest("DELETE", "/users/key", b)
 	c.Assert(err, IsNil)
@@ -916,7 +985,7 @@ func (s *S) TestRemoveKeyHandlerReturnsBadRequestIfTheKeyIsEmpty(c *C) {
 	c.Assert(e, ErrorMatches, "^Missing key$")
 }
 
-func (s *S) TestRemoveKeyHandlerReturnsNotFoundIfTheUserDoesNotHaveTheKey(c *C) {
+func (s *AuthSuite) TestRemoveKeyHandlerReturnsNotFoundIfTheUserDoesNotHaveTheKey(c *C) {
 	b := bytes.NewBufferString(`{"key":"my-key"}`)
 	request, err := http.NewRequest("DELETE", "/users/key", b)
 	c.Assert(err, IsNil)
@@ -928,7 +997,7 @@ func (s *S) TestRemoveKeyHandlerReturnsNotFoundIfTheUserDoesNotHaveTheKey(c *C) 
 	c.Assert(e.Code, Equals, http.StatusNotFound)
 }
 
-func (s *S) TestRemoveUser(c *C) {
+func (s *AuthSuite) TestRemoveUser(c *C) {
 	h := testHandler{}
 	ts := s.startGandalfTestServer(&h)
 	defer ts.Close()
@@ -946,7 +1015,7 @@ func (s *S) TestRemoveUser(c *C) {
 	c.Assert(n, Equals, 0)
 }
 
-func (s *S) TestRemoveUserWithTheUserBeingLastMemberOfATeam(c *C) {
+func (s *AuthSuite) TestRemoveUserWithTheUserBeingLastMemberOfATeam(c *C) {
 	h := testHandler{}
 	ts := s.startGandalfTestServer(&h)
 	defer ts.Close()
@@ -972,7 +1041,7 @@ Please remove the team, them remove the user.`
 	c.Assert(e.Message, Equals, expected)
 }
 
-func (s *S) TestRemoveUserShouldRemoveTheUserFromAllTeamsThatHeIsMember(c *C) {
+func (s *AuthSuite) TestRemoveUserShouldRemoveTheUserFromAllTeamsThatHeIsMember(c *C) {
 	h := testHandler{}
 	ts := s.startGandalfTestServer(&h)
 	defer ts.Close()
@@ -1000,7 +1069,7 @@ type App struct {
 	Teams []string
 }
 
-func (s *S) TestRemoveUserRevokesAccessInGandalf(c *C) {
+func (s *AuthSuite) TestRemoveUserRevokesAccessInGandalf(c *C) {
 	h := testHandler{}
 	ts := s.startGandalfTestServer(&h)
 	defer ts.Close()
@@ -1030,7 +1099,7 @@ func (s *S) TestRemoveUserRevokesAccessInGandalf(c *C) {
 	c.Assert(string(h.body[0]), Equals, expected)
 }
 
-func (s *S) TestChangePasswordHandler(c *C) {
+func (s *AuthSuite) TestChangePasswordHandler(c *C) {
 	body := bytes.NewBufferString(`{"old":"123","new":"123456"}`)
 	request, err := http.NewRequest("PUT", "/users/password", body)
 	c.Assert(err, IsNil)
@@ -1048,7 +1117,7 @@ func (s *S) TestChangePasswordHandler(c *C) {
 	c.Assert(otherUser.Password, Equals, expectedPassword)
 }
 
-func (s *S) TestChangePasswordReturns412IfNewPasswordIsInvalid(c *C) {
+func (s *AuthSuite) TestChangePasswordReturns412IfNewPasswordIsInvalid(c *C) {
 	body := bytes.NewBufferString(`{"old":"123","new":"1234"}`)
 	request, err := http.NewRequest("PUT", "/users/password", body)
 	c.Assert(err, IsNil)
@@ -1061,7 +1130,7 @@ func (s *S) TestChangePasswordReturns412IfNewPasswordIsInvalid(c *C) {
 	c.Assert(e.Message, Equals, "Password length should be least 6 characters and at most 50 characters.")
 }
 
-func (s *S) TestChangePasswordReturns404IfOldPasswordDidntMatch(c *C) {
+func (s *AuthSuite) TestChangePasswordReturns404IfOldPasswordDidntMatch(c *C) {
 	body := bytes.NewBufferString(`{"old":"1234","new":"123456"}`)
 	request, err := http.NewRequest("PUT", "/users/password", body)
 	c.Assert(err, IsNil)
@@ -1074,7 +1143,7 @@ func (s *S) TestChangePasswordReturns404IfOldPasswordDidntMatch(c *C) {
 	c.Assert(e.Message, Equals, "The given password didn't match the user's current password.")
 }
 
-func (s *S) TestChangePasswordReturns400IfRequestBodyIsInvalidJSON(c *C) {
+func (s *AuthSuite) TestChangePasswordReturns400IfRequestBodyIsInvalidJSON(c *C) {
 	body := bytes.NewBufferString(`{"invalid:"json`)
 	request, err := http.NewRequest("PUT", "/users/password", body)
 	c.Assert(err, IsNil)
@@ -1087,7 +1156,7 @@ func (s *S) TestChangePasswordReturns400IfRequestBodyIsInvalidJSON(c *C) {
 	c.Assert(e.Message, Equals, "Invalid JSON.")
 }
 
-func (s *S) TestChangePasswordReturns400IfJSONDoesNotIncludeBothOldAndNewPasswords(c *C) {
+func (s *AuthSuite) TestChangePasswordReturns400IfJSONDoesNotIncludeBothOldAndNewPasswords(c *C) {
 	bodies := []string{`{"old": "something"}`, `{"new":"something"}`, "{}", "null"}
 	for _, body := range bodies {
 		b := bytes.NewBufferString(body)
@@ -1108,7 +1177,7 @@ type testApp struct {
 	Teams []string
 }
 
-func (s *S) TestAllowedAppsShouldReturnAllAppsTheUserHasAccess(c *C) {
+func (s *AuthSuite) TestAllowedAppsShouldReturnAllAppsTheUserHasAccess(c *C) {
 	team := auth.Team{Name: "teamname", Users: []string{s.user.Email}}
 	err := db.Session.Teams().Insert(&team)
 	c.Assert(err, IsNil)
