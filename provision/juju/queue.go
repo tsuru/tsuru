@@ -24,8 +24,8 @@ func (a *app) GetName() string {
 func handle(msg *queue.Message) {
 	switch msg.Action {
 	case addUnitToLoadBalancer:
-		if len(msg.Args) < 2 {
-			log.Printf("Failed to handle %q: it requires at least two arguments.", msg.Action)
+		if len(msg.Args) < 1 {
+			log.Printf("Failed to handle %q: it requires at least one argument.", msg.Action)
 			queue.Delete(msg)
 			return
 		}
@@ -34,16 +34,20 @@ func handle(msg *queue.Message) {
 		sort.Strings(unitNames)
 		status, err := (&JujuProvisioner{}).CollectStatus()
 		if err != nil {
-			log.Printf("Failed to handle %q: failed to run juju status:\n%s.", msg.Action, err)
+			log.Printf("Failed to handle %q: juju status failed.\n%s.", msg.Action, err)
 			msg.Release()
 			return
 		}
 		var units []provision.Unit
-		for _, u := range status {
-			n := sort.SearchStrings(unitNames, u.Name)
-			if n < len(unitNames) && unitNames[n] == u.Name {
-				units = append(units, u)
+		if len(unitNames) > 0 {
+			for _, u := range status {
+				n := sort.SearchStrings(unitNames, u.Name)
+				if n < len(unitNames) && unitNames[n] == u.Name {
+					units = append(units, u)
+				}
 			}
+		} else {
+			units = status
 		}
 		if len(units) == 0 {
 			log.Printf("Failed to handle %q: units not found.", msg.Action)
