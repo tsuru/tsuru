@@ -130,6 +130,11 @@ var simpleCollectOutput = `machines:
     dns-name: 10.10.2.59
     instance-id: i-00004450
     instance-state: running
+  4:
+    agent-state: pending
+    dns-name: 10.10.2.60
+    instance-id: i-00004453
+    instance-state: running
 services:
   symfonia:
     charm: local:precise/python-1
@@ -147,7 +152,16 @@ services:
       symfonia/2:
         agent-state: pending
         machine: 3
-        public-address: server-1087.novalocal`
+        public-address: server-1087.novalocal
+  raise:
+    charm: local:precise/python-1
+    exposed: false
+    relations: {}
+    units:
+      raise/0:
+        agent-state: pending
+        machine: 1
+        public-address: server-1097.novalocal`
 
 var collectOutputNoInstanceId = `machines:
   0:

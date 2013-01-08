@@ -42,15 +42,15 @@ func handle(msg *queue.Message) {
 			return
 		}
 		var units []provision.Unit
-		if len(unitNames) > 0 {
-			for _, u := range status {
-				n := sort.SearchStrings(unitNames, u.Name)
-				if n < len(unitNames) && unitNames[n] == u.Name {
-					units = append(units, u)
-				}
+		for _, u := range status {
+			if u.AppName != a.name {
+				continue
 			}
-		} else {
-			units = status
+			n := sort.SearchStrings(unitNames, u.Name)
+			if len(unitNames) == 0 ||
+				n < len(unitNames) && unitNames[n] == u.Name {
+				units = append(units, u)
+			}
 		}
 		if len(units) == 0 {
 			log.Printf("Failed to handle %q: units not found.", msg.Action)
