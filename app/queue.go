@@ -15,6 +15,7 @@ import (
 const (
 	regenerateApprc = "regenerate-apprc"
 	startApp        = "start-app"
+	queueName       = "tsuru-app"
 )
 
 func ensureAppIsStarted(msg *queue.Message) (App, error) {
@@ -106,12 +107,12 @@ func getUnits(a *App, names []string) unitList {
 	return unitList(units)
 }
 
-var handler = &queue.Handler{F: handle, Queue: "default"}
+var handler = &queue.Handler{F: handle, Queue: queueName}
 
 func enqueue(msgs ...queue.Message) {
 	for _, msg := range msgs {
 		copy := msg
-		copy.Put("default", 0)
+		copy.Put(queueName, 0)
 	}
 	handler.Start()
 }

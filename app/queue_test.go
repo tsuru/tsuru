@@ -251,3 +251,16 @@ func (s *S) TestUnitListStarted(c *C) {
 		}
 	}
 }
+
+func (s *S) TestEnqueueUsesSpecificQueue(c *C) {
+	enqueue(queue.Message{Action: "do-something"})
+	_, err := queue.Get("default", 1e6)
+	c.Assert(err, NotNil)
+	msg, err := queue.Get(queueName, 1e6)
+	c.Assert(err, IsNil)
+	defer msg.Delete()
+}
+
+func (s *S) TestHandlerListenToSpecificQueue(c *C) {
+	c.Assert(handler.Queue, Equals, queueName)
+}

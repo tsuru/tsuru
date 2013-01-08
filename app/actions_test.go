@@ -98,7 +98,7 @@ func (s *S) TestCreateBucketForward(c *C) {
 		Action: regenerateApprc,
 		Args:   []string{a.Name},
 	}
-	message, err := queue.Get("default", 2e9)
+	message, err := queue.Get(queueName, 2e9)
 	c.Assert(err, IsNil)
 	defer message.Delete()
 	c.Assert(message.Action, Equals, expected.Action)
