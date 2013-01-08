@@ -106,12 +106,12 @@ func getUnits(a *App, names []string) unitList {
 	return unitList(units)
 }
 
-var handler = &queue.Handler{F: handle}
+var handler = &queue.Handler{F: handle, Queue: "default"}
 
 func enqueue(msgs ...queue.Message) {
 	for _, msg := range msgs {
 		copy := msg
-		copy.Put(0)
+		copy.Put("default", 0)
 	}
 	handler.Start()
 }

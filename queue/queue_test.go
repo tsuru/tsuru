@@ -78,7 +78,7 @@ func (s *S) TestPut(c *C) {
 		Action: "regenerate-apprc",
 		Args:   []string{"myapp"},
 	}
-	err := msg.Put(0)
+	err := msg.Put("default", 0)
 	c.Assert(err, IsNil)
 	c.Assert(msg.id, Not(Equals), 0)
 	defer conn.Delete(msg.id)
@@ -98,7 +98,7 @@ func (s *S) TestPutConnectionFailure(c *C) {
 	defer config.Set("queue-server", old)
 	config.Unset("queue-server")
 	msg := Message{Action: "regenerate-apprc"}
-	err := msg.Put(0)
+	err := msg.Put("default", 0)
 	c.Assert(err, NotNil)
 }
 
@@ -107,7 +107,7 @@ func (s *S) TestPutWithDelay(c *C) {
 		Action: "do-something",
 		Args:   []string{"nothing"},
 	}
-	err := msg.Put(1e9)
+	err := msg.Put("default", 1e9)
 	c.Assert(err, IsNil)
 	defer conn.Delete(msg.id)
 	_, _, err = conn.Reserve(1e6)
@@ -118,15 +118,31 @@ func (s *S) TestPutWithDelay(c *C) {
 	c.Assert(id, Equals, msg.id)
 }
 
+func (s *S) TestPutAndGetFromSpecificQueue(c *C) {
+	msg := Message{
+		Action: "do-something",
+		Args:   []string{"everything"},
+	}
+	err := msg.Put("here", 0)
+	c.Assert(err, IsNil)
+	defer msg.Delete()
+	_, err = Get("default", 1e6)
+	c.Assert(err, NotNil)
+	got, err := Get("here", 1e6)
+	c.Assert(err, IsNil)
+	c.Assert(got.Action, Equals, "do-something")
+	c.Assert(got.Args, DeepEquals, []string{"everything"})
+}
+
 func (s *S) TestGet(c *C) {
 	msg := Message{
 		Action: "regenerate-apprc",
 		Args:   []string{"myapprc"},
 	}
-	err := msg.Put(0)
+	err := msg.Put("default", 0)
 	c.Assert(err, IsNil)
 	defer conn.Delete(msg.id)
-	got, err := Get(1e6)
+	got, err := Get("default", 1e6)
 	c.Assert(err, IsNil)
 	c.Assert(*got, DeepEquals, msg)
 }
@@ -135,13 +151,13 @@ func (s *S) TestGetConnectionError(c *C) {
 	old, _ := config.Get("queue-server")
 	defer config.Set("queue-server", old)
 	config.Unset("queue-server")
-	msg, err := Get(1e6)
+	msg, err := Get("default", 1e6)
 	c.Assert(msg, IsNil)
 	c.Assert(err, NotNil)
 }
 
 func (s *S) TestGetFromEmptyQueue(c *C) {
-	msg, err := Get(1e6)
+	msg, err := Get("default", 1e6)
 	c.Assert(msg, IsNil)
 	c.Assert(err, NotNil)
 	c.Assert(err.Error(), Equals, "Timed out waiting for message after 1ms.")
@@ -152,7 +168,7 @@ func (s *S) TestGetInvalidMessage(c *C) {
 	c.Assert(err, IsNil)
 	id, err := conn.Put([]byte("hello world"), 1, 0, 10e9)
 	defer conn.Delete(id) // sanity
-	msg, err := Get(1e6)
+	msg, err := Get("default", 1e6)
 	c.Assert(msg, IsNil)
 	c.Assert(err, NotNil)
 	c.Assert(err.Error(), Equals, `Invalid message: "hello world"`)
@@ -165,10 +181,10 @@ func (s *S) TestRelease(c *C) {
 	conn, err := connection()
 	c.Assert(err, IsNil)
 	msg := Message{Action: "do-something"}
-	err = msg.Put(0)
+	err = msg.Put("default", 0)
 	c.Assert(err, IsNil)
 	defer msg.Delete()
-	copy, err := Get(1e6)
+	copy, err := Get("default", 1e6)
 	c.Assert(err, IsNil)
 	err = msg.Release(0)
 	c.Assert(err, IsNil)
@@ -181,10 +197,10 @@ func (s *S) TestReleaseWithDelay(c *C) {
 	conn, err := connection()
 	c.Assert(err, IsNil)
 	msg := Message{Action: "do-something"}
-	err = msg.Put(0)
+	err = msg.Put("default", 0)
 	c.Assert(err, IsNil)
 	defer msg.Delete()
-	copy, err := Get(1e6)
+	copy, err := Get("default", 1e6)
 	c.Assert(err, IsNil)
 	err = msg.Release(1e9)
 	c.Assert(err, IsNil)
@@ -215,7 +231,7 @@ func (s *S) TestDelete(c *C) {
 		Action: "create-app",
 		Args:   []string{"something"},
 	}
-	err := msg.Put(0)
+	err := msg.Put("default", 0)
 	c.Assert(err, IsNil)
 	defer conn.Delete(msg.id)
 	err = msg.Delete()

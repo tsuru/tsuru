@@ -131,7 +131,7 @@ func (s *S) TestAddUnits(c *C) {
 		"add-unit", "resist", "--num-units", "4",
 	}
 	c.Assert(commandmocker.Parameters(tmpdir), DeepEquals, expectedParams)
-	_, err = queue.Get(1e6) // sanity
+	_, err = queue.Get("default", 1e6) // sanity
 	c.Assert(err, NotNil)
 }
 
@@ -554,7 +554,7 @@ func (s *ELBSuite) TestProvisionWithELB(c *C) {
 	addr, err := lb.Addr(app)
 	c.Assert(err, IsNil)
 	c.Assert(addr, Not(Equals), "")
-	msg, err := queue.Get(1e6)
+	msg, err := queue.Get("default", 1e6)
 	c.Assert(err, IsNil)
 	defer msg.Delete()
 	c.Assert(msg.Action, Equals, addUnitToLoadBalancer)
@@ -577,7 +577,7 @@ func (s *ELBSuite) TestDestroyWithELB(c *C) {
 	c.Assert(addr, Equals, "")
 	c.Assert(err, NotNil)
 	c.Assert(err.Error(), Equals, "not found")
-	msg, err := queue.Get(1e6)
+	msg, err := queue.Get("default", 1e6)
 	c.Assert(err, IsNil)
 	if msg.Action == addUnitToLoadBalancer && msg.Args[0] == "jimmy" {
 		msg.Delete()
@@ -598,7 +598,7 @@ func (s *ELBSuite) TestAddUnitsWithELB(c *C) {
 		"resist", "resist/3", "resist/4",
 		"resist/5", "resist/6",
 	}
-	msg, err := queue.Get(1e6)
+	msg, err := queue.Get("default", 1e6)
 	c.Assert(err, IsNil)
 	defer msg.Delete()
 	c.Assert(msg.Action, Equals, addUnitToLoadBalancer)

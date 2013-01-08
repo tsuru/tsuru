@@ -22,11 +22,16 @@ const (
 
 // Handler is a thread safe generic handler for queue messages.
 //
-// When started, whenever a new message arrives, handler invokes F, giving the
-// message as parameter. F is invoked in its own goroutine, so the handler can
-// handle other messages as they arrive.
+// When started, whenever a new message arrives in the listening queue, handler
+// invokes F, giving the message as parameter. F is invoked in its own
+// goroutine, so the handler can handle other messages as they arrive.
 type Handler struct {
-	F     func(*Message)
+	// The function that will be called for each received message.
+	F func(*Message)
+
+	// Name of the queue that this handler will listen to.
+	Queue string
+
 	state int32
 	id    string
 }
@@ -36,7 +41,7 @@ func (h *Handler) Start() {
 	r.add(h)
 	if atomic.CompareAndSwapInt32(&h.state, stopped, running) {
 		go h.loop(func() {
-			if message, err := Get(1e9); err == nil {
+			if message, err := Get(h.Queue, 1e9); err == nil {
 				go h.F(message)
 			} else {
 				log.Printf("Failed to get message from the queue: %s. Trying again...", err)

@@ -220,7 +220,7 @@ func cleanQueue() {
 		msg *queue.Message
 	)
 	for err == nil {
-		if msg, err = queue.Get(1e6); err == nil {
+		if msg, err = queue.Get("default", 1e6); err == nil {
 			err = msg.Delete()
 		}
 	}

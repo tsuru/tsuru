@@ -76,7 +76,7 @@ func handle(msg *queue.Message) {
 					Action: msg.Action,
 					Args:   args,
 				}
-				msg.Put(0)
+				msg.Put("default", 0)
 
 			}
 		}
@@ -85,9 +85,9 @@ func handle(msg *queue.Message) {
 	}
 }
 
-var handler = queue.Handler{F: handle}
+var handler = queue.Handler{F: handle, Queue: "default"}
 
 func enqueue(msg *queue.Message) {
-	msg.Put(0)
+	msg.Put("default", 0)
 	handler.Start()
 }

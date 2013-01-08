@@ -84,7 +84,7 @@ func (msg *Message) Delete() error {
 
 // Put sends the message to the queue after delay time. To send the message
 // immediately, just set delay to 0.
-func (msg *Message) Put(delay time.Duration) error {
+func (msg *Message) Put(queueName string, delay time.Duration) error {
 	conn, err := connection()
 	if err != nil {
 		return err
@@ -94,18 +94,20 @@ func (msg *Message) Put(delay time.Duration) error {
 	if err != nil {
 		return err
 	}
-	id, err := conn.Put(buf.Bytes(), 1, delay, 60e9)
+	tube := beanstalk.Tube{Conn: conn, Name: queueName}
+	id, err := tube.Put(buf.Bytes(), 1, delay, 60e9)
 	msg.id = id
 	return err
 }
 
 // Get retrieves a message from the queue.
-func Get(timeout time.Duration) (*Message, error) {
+func Get(queueName string, timeout time.Duration) (*Message, error) {
 	conn, err := connection()
 	if err != nil {
 		return nil, err
 	}
-	id, body, err := conn.Reserve(timeout)
+	ts := beanstalk.NewTubeSet(conn, queueName)
+	id, body, err := ts.Reserve(timeout)
 	if err != nil {
 		if timeoutRegexp.MatchString(err.Error()) {
 			return nil, fmt.Errorf("Timed out waiting for message after %s.", timeout)

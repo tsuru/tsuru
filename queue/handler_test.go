@@ -26,7 +26,7 @@ func dumbHandle(msg *Message) {
 }
 
 func (s *HandlerSuite) SetUpSuite(c *C) {
-	s.h = &Handler{F: dumbHandle}
+	s.h = &Handler{F: dumbHandle, Queue: "default"}
 }
 
 func (s *HandlerSuite) TestHandleMessages(c *C) {
@@ -34,7 +34,7 @@ func (s *HandlerSuite) TestHandleMessages(c *C) {
 	s.h.Start()
 	c.Check(r.handlers, HasLen, 1)
 	msg := Message{Action: "do-something", Args: []string{"this"}}
-	err := msg.Put(0)
+	err := msg.Put("default", 0)
 	c.Check(err, IsNil)
 	time.Sleep(1e9)
 	s.h.Stop()
@@ -51,9 +51,9 @@ func (s *HandlerSuite) TestHandleMessages(c *C) {
 func (s *HandlerSuite) TestPreempt(c *C) {
 	config.Set("queue-server", "127.0.0.1:11300")
 	var dumb = func(m *Message) {}
-	h1 := Handler{F: dumb}
-	h2 := Handler{F: dumb}
-	h3 := Handler{F: dumb}
+	h1 := Handler{F: dumb, Queue: "default"}
+	h2 := Handler{F: dumb, Queue: "default"}
+	h3 := Handler{F: dumb, Queue: "default"}
 	h1.Start()
 	h2.Start()
 	h3.Start()
@@ -70,14 +70,14 @@ func (s *HandlerSuite) TestPreemptWithMessagesInTheQueue(c *C) {
 			Action: "save-something",
 			Args:   []string{strconv.Itoa(i)},
 		}
-		msg.Put(0)
+		msg.Put("default", 0)
 
 	}
 	var sleeper = func(m *Message) {
 		m.Delete()
 		time.Sleep(1e6)
 	}
-	h1 := Handler{F: sleeper}
+	h1 := Handler{F: sleeper, Queue: "default"}
 	h1.Start()
 	Preempt()
 	c.Assert(h1.state, Equals, stopped)
@@ -85,14 +85,14 @@ func (s *HandlerSuite) TestPreemptWithMessagesInTheQueue(c *C) {
 }
 
 func (s *HandlerSuite) TestStopNotRunningHandler(c *C) {
-	h := Handler{F: nil}
+	h := Handler{F: nil, Queue: "default"}
 	err := h.Stop()
 	c.Assert(err, NotNil)
 	c.Assert(err.Error(), Equals, "Not running.")
 }
 
 func (s *HandlerSuite) TestDryRun(c *C) {
-	h := Handler{F: nil}
+	h := Handler{F: nil, Queue: "default"}
 	err := h.DryRun()
 	c.Assert(err, IsNil)
 	c.Assert(h.state, Equals, running)
@@ -102,7 +102,7 @@ func (s *HandlerSuite) TestDryRun(c *C) {
 }
 
 func (s *HandlerSuite) TestDryRunRunningHandler(c *C) {
-	h := Handler{F: func(m *Message) { m.Delete() }}
+	h := Handler{F: func(m *Message) { m.Delete() }, Queue: "default"}
 	err := h.DryRun()
 	c.Assert(err, IsNil)
 	defer h.Stop()
