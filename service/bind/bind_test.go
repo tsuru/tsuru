@@ -268,6 +268,33 @@ func (s *S) TestBindReturnsPreconditionFailedIfTheAppDoesNotHaveAnUnitAndService
 	c.Assert(e.Message, Equals, "This app does not have an IP yet.")
 }
 
+func (s *S) TestUnbindUnit(c *C) {
+	var calls int
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		calls++
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	defer ts.Close()
+	srvc := service.Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}}
+	err := srvc.Create()
+	c.Assert(err, IsNil)
+	defer db.Session.Services().Remove(bson.M{"_id": "mysql"})
+	instance := service.ServiceInstance{
+		Name:        "my-mysql",
+		ServiceName: "mysql",
+		Teams:       []string{s.team.Name},
+		Apps:        []string{"painkiller"},
+	}
+	instance.Create()
+	defer db.Session.ServiceInstances().Remove(bson.M{"_id": "my-mysql"})
+	a, err := createTestApp("painkiller", "", []string{s.team.Name}, []app.Unit{{Ip: "10.10.10.10"}})
+	c.Assert(err, IsNil)
+	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
+	err = instance.UnbindUnit(a.GetUnits()[0])
+	c.Assert(err, IsNil)
+	c.Assert(calls, Equals, 1)
+}
+
 func (s *S) TestUnbindMultiUnits(c *C) {
 	var calls int
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

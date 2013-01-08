@@ -121,13 +121,18 @@ func (si *ServiceInstance) UnbindApp(app bind.App) error {
 		return err
 	}
 	for _, unit := range app.GetUnits() {
-		si.Service().ProductionEndpoint().Unbind(si, unit)
+		si.UnbindUnit(unit)
 	}
 	var envVars []string
 	for k := range app.InstanceEnv(si.Name) {
 		envVars = append(envVars, k)
 	}
 	return app.UnsetEnvs(envVars, false)
+}
+
+// UnbindUnit makes the unbind between the service instance and an unit.
+func (si *ServiceInstance) UnbindUnit(unit bind.Unit) error {
+	return si.Service().ProductionEndpoint().Unbind(si, unit)
 }
 
 func genericServiceInstancesFilter(services interface{}, teams []string) (q, f bson.M) {
