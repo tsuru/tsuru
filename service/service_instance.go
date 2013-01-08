@@ -70,7 +70,8 @@ func (si *ServiceInstance) update() error {
 	return db.Session.ServiceInstances().Update(bson.M{"name": si.Name}, si)
 }
 
-func (si *ServiceInstance) Bind(app bind.App) error {
+// BindApp makes the bind between a service instance and and app.
+func (si *ServiceInstance) BindApp(app bind.App) error {
 	err := si.AddApp(app.GetName())
 	if err != nil {
 		return &errors.Http{Code: http.StatusConflict, Message: "This app is already binded to this service instance."}

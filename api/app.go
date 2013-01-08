@@ -528,7 +528,7 @@ func BindHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	if err != nil {
 		return err
 	}
-	err = instance.Bind(&a)
+	err = instance.BindApp(&a)
 	if err != nil {
 		return err
 	}

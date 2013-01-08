@@ -8,6 +8,7 @@ package bind
 
 import "fmt"
 
+// EnvVar represents a environment variable for an app.
 type EnvVar struct {
 	Name         string
 	Value        string
@@ -27,18 +28,26 @@ func (e *EnvVar) String() string {
 }
 
 type Unit interface {
+	// GetIp returns the unit ip.
 	GetIp() string
 }
 
 type App interface {
+	// GetName returns the app name.
 	GetName() string
+	// GetUnits returns the app units.
 	GetUnits() []Unit
+	// InstanceEnv returns the app enviroment variables.
 	InstanceEnv(string) map[string]EnvVar
+	// SetEnvs adds enviroment variables in the app.
 	SetEnvs([]EnvVar, bool) error
+	// UnsetEnvs removes the given enviroment variables from the app.
 	UnsetEnvs([]string, bool) error
 }
 
 type Binder interface {
-	Bind(App) error
+	// BindApp makes the bind between the binder and and app.
+	BindApp(App) error
+	// Unbind makes the unbind between the binder and and app.
 	Unbind(App) error
 }
