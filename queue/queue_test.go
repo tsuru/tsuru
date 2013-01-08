@@ -39,7 +39,7 @@ func (s *S) TestConnection(c *C) {
 	defer cn.Close()
 	tubes, err := cn.ListTubes()
 	c.Assert(err, IsNil)
-	c.Assert(tubes, DeepEquals, []string{"default"})
+	c.Assert(tubes[0], Equals, "default")
 }
 
 func (s *S) TestConnectionQueueServerUndefined(c *C) {
