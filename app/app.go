@@ -122,7 +122,7 @@ func (a *App) unbind() error {
 		msg += fmt.Sprintf("- %s (%s)", instanceName, reason.Error())
 	}
 	for _, instance := range instances {
-		err = instance.Unbind(a)
+		err = instance.UnbindApp(a)
 		if err != nil {
 			addMsg(instance.Name, err)
 		}

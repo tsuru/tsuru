@@ -104,7 +104,8 @@ func (si *ServiceInstance) BindApp(app bind.App) error {
 	return app.SetEnvs(envVars, false)
 }
 
-func (si *ServiceInstance) Unbind(app bind.App) error {
+// UnbindApp makes the unbind between the service instance and an app.
+func (si *ServiceInstance) UnbindApp(app bind.App) error {
 	err := si.RemoveApp(app.GetName())
 	if err != nil {
 		return &errors.Http{Code: http.StatusPreconditionFailed, Message: "This app is not binded to this service instance."}
