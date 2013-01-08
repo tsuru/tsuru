@@ -80,7 +80,7 @@ func (s *S) TestBindUnit(c *C) {
 	c.Assert(err, IsNil)
 	c.Assert(called, Equals, true)
 	expectedEnvs := map[string]string{
-		"DATABASE_USER": "root",
+		"DATABASE_USER":     "root",
 		"DATABASE_PASSWORD": "s3cr3t",
 	}
 	c.Assert(envs, DeepEquals, expectedEnvs)
