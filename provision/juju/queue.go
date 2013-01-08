@@ -11,7 +11,10 @@ import (
 	"sort"
 )
 
-const addUnitToLoadBalancer = "add-unit-to-lb"
+const (
+	addUnitToLoadBalancer = "add-unit-to-lb"
+	queueName             = "tsuru-provision-juju"
+)
 
 type app struct {
 	name string
@@ -76,7 +79,7 @@ func handle(msg *queue.Message) {
 					Action: msg.Action,
 					Args:   args,
 				}
-				msg.Put("default", 0)
+				msg.Put(queueName, 0)
 
 			}
 		}
@@ -85,9 +88,9 @@ func handle(msg *queue.Message) {
 	}
 }
 
-var handler = queue.Handler{F: handle, Queue: "default"}
+var handler = queue.Handler{F: handle, Queue: queueName}
 
 func enqueue(msg *queue.Message) {
-	msg.Put("default", 0)
+	msg.Put(queueName, 0)
 	handler.Start()
 }
