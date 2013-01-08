@@ -56,6 +56,9 @@ type Action struct {
 	// that are not undoable, this attribute should be nil.
 	Backward Backward
 
+	// Minimum number of parameters that this action requires to run.
+	MinParams int
+
 	// Result of the action. Stored for use in the backward phase.
 	result Result
 }
@@ -94,12 +97,14 @@ func (p *Pipeline) Execute(params ...interface{}) error {
 	}
 	fwCtx := FWContext{Params: params}
 	for i, a := range p.actions {
-		if a.Forward != nil {
+		if a.Forward == nil {
+			err = errors.New("All actions must define the forward function.")
+		} else if len(fwCtx.Params) < a.MinParams {
+			err = errors.New("Not enough parameters to call Action.Forward.")
+		} else {
 			r, err = a.Forward(fwCtx)
 			a.result = r
 			fwCtx.Previous = r
-		} else {
-			err = errors.New("All actions must define the forward function.")
 		}
 		if err != nil {
 			p.rollback(i-1, params)
