@@ -94,9 +94,13 @@ func (p *Pipeline) Execute(params ...interface{}) error {
 	}
 	fwCtx := FWContext{Params: params}
 	for i, a := range p.actions {
-		r, err = a.Forward(fwCtx)
-		a.result = r
-		fwCtx.Previous = r
+		if a.Forward != nil {
+			r, err = a.Forward(fwCtx)
+			a.result = r
+			fwCtx.Previous = r
+		} else {
+			err = errors.New("All actions must define the forward function.")
+		}
 		if err != nil {
 			p.rollback(i-1, params)
 			return err

@@ -68,3 +68,26 @@ func (s *S) TestExecuteNoActions(c *gocheck.C) {
 	c.Assert(err, gocheck.NotNil)
 	c.Assert(err.Error(), gocheck.Equals, "No actions to execute.")
 }
+
+func (s *S) TestExecuteActionWithNilForward(c *gocheck.C) {
+	var executed bool
+	actions := []*Action{
+		{
+			Forward: func(ctx FWContext) (Result, error) {
+				return "ok", nil
+			},
+			Backward: func(ctx BWContext) {
+				executed = true
+			},
+		},
+		{
+			Forward:  nil,
+			Backward: nil,
+		},
+	}
+	pipeline := NewPipeline(actions...)
+	err := pipeline.Execute()
+	c.Assert(err, gocheck.NotNil)
+	c.Assert(err.Error(), gocheck.Equals, "All actions must define the forward function.")
+	c.Assert(executed, gocheck.Equals, true)
+}
