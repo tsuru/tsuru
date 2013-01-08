@@ -3,8 +3,8 @@
 // license that can be found in the LICENSE file.
 
 /*
-Package action implements atomic pipeline execution. A pipeline is a set of
-actions that must be executed atomically: either all occur, or nothing
+Package action implements atomic pipeline execution of actions. A pipeline is a
+set of actions that must be executed atomically: either all occur, or nothing
 occur.
 
 The pipeline executor has two possible phases: forward and backward. Whenever a
