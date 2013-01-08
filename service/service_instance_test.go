@@ -110,10 +110,6 @@ func (s *S) TestRemoveAppReturnsErrorWhenTheAppIsNotBindedToTheInstance(c *C) {
 	c.Assert(err, ErrorMatches, "^This app is not binded to this service instance.$")
 }
 
-func (s *S) TestServiceInstanceIsAnAppContainer(c *C) {
-	var _ bind.AppContainer = &ServiceInstance{}
-}
-
 func (s *S) TestServiceInstanceIsABinder(c *C) {
 	var _ bind.Binder = &ServiceInstance{}
 }

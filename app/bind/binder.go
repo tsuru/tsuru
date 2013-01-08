@@ -8,21 +8,6 @@ package bind
 
 import "fmt"
 
-// AppContainer provides methods for a container of apps.
-//
-// The container stores only the names of the apps.
-type AppContainer interface {
-	// Adds an app to the container.
-	AddApp(string) error
-
-	// Finds an app in the container, returning an index a value >= 0 if it is
-	// present, and -1 if not present.
-	FindApp(string) int
-
-	// Removes an app form the container.
-	RemoveApp(name string) error
-}
-
 type EnvVar struct {
 	Name         string
 	Value        string
@@ -54,7 +39,6 @@ type App interface {
 }
 
 type Binder interface {
-	AppContainer
 	Bind(App) error
 	Unbind(App) error
 }
