@@ -66,7 +66,7 @@ func (a *rollingBackItself) rollbackItself() bool {
 func (s *S) TestExecute(c *C) {
 	app := App{}
 	h := new(helloAction)
-	err := execute(&app, []action{h})
+	err := execute(&app, []oldaction{h})
 	c.Assert(err, IsNil)
 	c.Assert(h.executed, Equals, true)
 }
@@ -74,7 +74,7 @@ func (s *S) TestExecute(c *C) {
 func (s *S) TestArgs(c *C) {
 	app := App{}
 	h := new(helloAction)
-	err := execute(&app, []action{h}, 23, "abcdef")
+	err := execute(&app, []oldaction{h}, 23, "abcdef")
 	c.Assert(err, IsNil)
 	c.Assert(h.args, DeepEquals, []interface{}{23, "abcdef"})
 }
@@ -83,7 +83,7 @@ func (s *S) TestRolbackArgs(c *C) {
 	app := App{}
 	h := new(helloAction)
 	e := new(errorAction)
-	err := execute(&app, []action{h, e}, 14, "abc")
+	err := execute(&app, []oldaction{h, e}, 14, "abc")
 	c.Assert(err, NotNil)
 	c.Assert(h.rollbackArgs, DeepEquals, []interface{}{14, "abc"})
 }
@@ -92,7 +92,7 @@ func (s *S) TestRollBackFailureOnSecondAction(c *C) {
 	app := App{}
 	h := new(helloAction)
 	e := new(errorAction)
-	err := execute(&app, []action{h, e})
+	err := execute(&app, []oldaction{h, e})
 	c.Assert(err, NotNil)
 	c.Assert(h.rolledback, Equals, true)
 	c.Assert(e.rolledback, Equals, false)
@@ -102,7 +102,7 @@ func (s *S) TestRollBackFailureOnFirstAction(c *C) {
 	app := App{}
 	h := new(helloAction)
 	e := new(errorAction)
-	err := execute(&app, []action{e, h})
+	err := execute(&app, []oldaction{e, h})
 	c.Assert(err, NotNil)
 	c.Assert(e.rolledback, Equals, false)
 	c.Assert(h.rolledback, Equals, false)
@@ -112,7 +112,7 @@ func (s *S) TestRollBackFailureOnRollingbackItSelfAction(c *C) {
 	app := App{}
 	h := new(helloAction)
 	r := new(rollingBackItself)
-	err := execute(&app, []action{h, r})
+	err := execute(&app, []oldaction{h, r})
 	c.Assert(err, NotNil)
 	c.Assert(h.rolledback, Equals, true)
 	c.Assert(r.rolledback, Equals, true)
@@ -121,6 +121,6 @@ func (s *S) TestRollBackFailureOnRollingbackItSelfAction(c *C) {
 func (s *S) TestExecuteShouldReturnsTheActionError(c *C) {
 	app := App{}
 	e := new(errorAction)
-	err := execute(&app, []action{e})
+	err := execute(&app, []oldaction{e})
 	c.Assert(err, NotNil)
 }

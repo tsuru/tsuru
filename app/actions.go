@@ -1,4 +1,4 @@
-// Copyright 2012 tsuru authors. All rights reserved.
+// Copyright 2013 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -15,21 +15,21 @@ import (
 	"strconv"
 )
 
-// insertApp is an implementation for the action interface.
-type insertApp struct{}
+// oldInsertApp is an implementation for the action interface.
+type oldInsertApp struct{}
 
-// insertApp forward stores the app with "pending" as your state.
-func (a *insertApp) forward(app *App, args ...interface{}) error {
+// oldInsertApp forward stores the app with "pending" as your state.
+func (a *oldInsertApp) forward(app *App, args ...interface{}) error {
 	app.State = "pending"
 	return db.Session.Apps().Insert(app)
 }
 
-// insertApp backward removes the app from the database.
-func (a *insertApp) backward(app *App, args ...interface{}) {
+// oldInsertApp backward removes the app from the database.
+func (a *oldInsertApp) backward(app *App, args ...interface{}) {
 	db.Session.Apps().Remove(bson.M{"name": app.Name})
 }
 
-func (a *insertApp) rollbackItself() bool {
+func (a *oldInsertApp) rollbackItself() bool {
 	return false
 }
 

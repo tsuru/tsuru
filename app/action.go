@@ -6,7 +6,7 @@ package app
 
 // action represents an action, with the given methods to forward and backward
 // for the action.
-type action interface {
+type oldaction interface {
 	forward(app *App, args ...interface{}) error
 	backward(app *App, args ...interface{})
 
@@ -18,7 +18,7 @@ type action interface {
 
 // execute runs an list of actions. If an errors ocourrs execute stops the
 // execution for the actions and call the rollback for previous actions.
-func execute(a *App, actions []action, args ...interface{}) error {
+func execute(a *App, actions []oldaction, args ...interface{}) error {
 	for index, action := range actions {
 		err := action.forward(a, args...)
 		if err != nil {
@@ -33,7 +33,7 @@ func execute(a *App, actions []action, args ...interface{}) error {
 }
 
 // rollBack runs the rollback for the given actions.
-func rollBack(a *App, actions []action, args ...interface{}) {
+func rollBack(a *App, actions []oldaction, args ...interface{}) {
 	for i := len(actions) - 1; i >= 0; i-- {
 		action := actions[i]
 		action.backward(a, args...)

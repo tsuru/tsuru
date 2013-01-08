@@ -99,8 +99,8 @@ func CreateApp(a *App, units uint) error {
 			"starting with a letter."
 		return &ValidationError{Message: msg}
 	}
-	actions := []action{
-		new(insertApp),
+	actions := []oldaction{
+		new(oldInsertApp),
 		new(createBucketIam),
 		new(createRepository),
 		new(provisionApp),

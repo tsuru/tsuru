@@ -16,8 +16,8 @@ import (
 	"net/http"
 )
 
-func (s *S) TestInsertAppForward(c *C) {
-	action := new(insertApp)
+func (s *S) TestOldInsertAppForward(c *C) {
+	action := new(oldInsertApp)
 	a := App{
 		Name:      "appname",
 		Framework: "django",
@@ -35,8 +35,8 @@ func (s *S) TestInsertAppForward(c *C) {
 	c.Assert(retrievedApp.State, Equals, a.State)
 }
 
-func (s *S) TestInsertAppBackward(c *C) {
-	action := new(insertApp)
+func (s *S) TestOldInsertAppBackward(c *C) {
+	action := new(oldInsertApp)
 	a := App{
 		Name:      "appname",
 		Framework: "django",
@@ -50,8 +50,8 @@ func (s *S) TestInsertAppBackward(c *C) {
 	c.Assert(qt, Equals, 0)
 }
 
-func (s *S) TestInsertAppRollbackItself(c *C) {
-	action := new(insertApp)
+func (s *S) TestOldInsertAppRollbackItself(c *C) {
+	action := new(oldInsertApp)
 	c.Assert(action.rollbackItself(), Equals, false)
 }
 
@@ -65,7 +65,7 @@ func (s *S) TestCreateBucketForward(c *C) {
 	}
 	expectedHost := "localhost"
 	config.Set("host", expectedHost)
-	insert := new(insertApp)
+	insert := new(oldInsertApp)
 	err := insert.forward(&a)
 	c.Assert(err, IsNil)
 	defer insert.backward(&a)
