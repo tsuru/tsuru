@@ -35,12 +35,16 @@ type Unit interface {
 type App interface {
 	// GetName returns the app name.
 	GetName() string
+
 	// GetUnits returns the app units.
 	GetUnits() []Unit
+
 	// InstanceEnv returns the app enviroment variables.
 	InstanceEnv(string) map[string]EnvVar
+
 	// SetEnvs adds enviroment variables in the app.
 	SetEnvs([]EnvVar, bool) error
+
 	// UnsetEnvs removes the given enviroment variables from the app.
 	UnsetEnvs([]string, bool) error
 }
@@ -48,10 +52,13 @@ type App interface {
 type Binder interface {
 	// BindApp makes the bind between the binder and an app.
 	BindApp(App) error
+
 	// BindUnit makes the bind between the binder and an unit.
 	BindUnit(Unit) (map[string]string, error)
+
 	// UnbindApp makes the unbind between the binder and an app.
 	UnbindApp(App) error
+
 	// UnbindUnit makes the unbind between the binder and an unit.
 	UnbindUnit(Unit) error
 }
