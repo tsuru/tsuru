@@ -48,6 +48,8 @@ type App interface {
 type Binder interface {
 	// BindApp makes the bind between the binder and an app.
 	BindApp(App) error
+	// BindUnit makes the bind between the binder and an unit.
+	BindUnit(Unit) (map[string]string, error)
 	// UnbindApp makes the unbind between the binder and an app.
 	UnbindApp(App) error
 }

@@ -82,7 +82,7 @@ func (si *ServiceInstance) BindApp(app bind.App) error {
 	}
 	var envs map[string]string
 	for _, unit := range app.GetUnits() {
-		envs, err = cli.Bind(si, unit)
+		envs, err = si.BindUnit(unit)
 		if err != nil {
 			return err
 		}
@@ -102,6 +102,12 @@ func (si *ServiceInstance) BindApp(app bind.App) error {
 		})
 	}
 	return app.SetEnvs(envVars, false)
+}
+
+// BindUnit makes the bind between the binder and an unit.
+func (si *ServiceInstance) BindUnit(unit bind.Unit) (map[string]string, error) {
+	cli := si.Service().ProductionEndpoint()
+	return cli.Bind(si, unit)
 }
 
 // UnbindApp makes the unbind between the service instance and an app.

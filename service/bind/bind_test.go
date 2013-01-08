@@ -59,6 +59,33 @@ func createTestApp(name, framework string, teams []string, units []app.Unit) (ap
 	return a, err
 }
 
+func (s *S) TestBindUnit(c *C) {
+	called := false
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		called = true
+		w.Write([]byte(`{"DATABASE_USER":"root","DATABASE_PASSWORD":"s3cr3t"}`))
+	}))
+	defer ts.Close()
+	srvc := service.Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}}
+	err := srvc.Create()
+	c.Assert(err, IsNil)
+	defer db.Session.Services().Remove(bson.M{"_id": "mysql"})
+	instance := service.ServiceInstance{Name: "my-mysql", ServiceName: "mysql", Teams: []string{s.team.Name}}
+	instance.Create()
+	defer db.Session.ServiceInstances().Remove(bson.M{"_id": "my-mysql"})
+	a, err := createTestApp("painkiller", "", []string{s.team.Name}, []app.Unit{{Ip: "10.10.10.10"}})
+	c.Assert(err, IsNil)
+	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
+	envs, err := instance.BindUnit(a.GetUnits()[0])
+	c.Assert(err, IsNil)
+	c.Assert(called, Equals, true)
+	expectedEnvs := map[string]string{
+		"DATABASE_USER": "root",
+		"DATABASE_PASSWORD": "s3cr3t",
+	}
+	c.Assert(envs, DeepEquals, expectedEnvs)
+}
+
 func (s *S) TestBindAddsAppToTheServiceInstance(c *C) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(`{"DATABASE_USER":"root","DATABASE_PASSWORD":"s3cr3t"}`))
