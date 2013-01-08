@@ -104,8 +104,7 @@ func (si *ServiceInstance) BindApp(app bind.App) error {
 
 // BindUnit makes the bind between the binder and an unit.
 func (si *ServiceInstance) BindUnit(unit bind.Unit) (map[string]string, error) {
-	cli := si.Service().ProductionEndpoint()
-	return cli.Bind(si, unit)
+	return si.Service().ProductionEndpoint().Bind(si, unit)
 }
 
 // UnbindApp makes the unbind between the service instance and an app.
