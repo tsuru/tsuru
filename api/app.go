@@ -547,7 +547,7 @@ func UnbindHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	if err != nil {
 		return err
 	}
-	return instance.Unbind(&a)
+	return instance.UnbindApp(&a)
 }
 
 func RestartHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
