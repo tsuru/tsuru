@@ -46,8 +46,8 @@ type App interface {
 }
 
 type Binder interface {
-	// BindApp makes the bind between the binder and and app.
+	// BindApp makes the bind between the binder and an app.
 	BindApp(App) error
-	// UnbindApp makes the unbind between the binder and and app.
+	// UnbindApp makes the unbind between the binder and an app.
 	UnbindApp(App) error
 }

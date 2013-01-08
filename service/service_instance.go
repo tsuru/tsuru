@@ -70,7 +70,7 @@ func (si *ServiceInstance) update() error {
 	return db.Session.ServiceInstances().Update(bson.M{"name": si.Name}, si)
 }
 
-// BindApp makes the bind between a service instance and and app.
+// BindApp makes the bind between the service instance and an app.
 func (si *ServiceInstance) BindApp(app bind.App) error {
 	err := si.AddApp(app.GetName())
 	if err != nil {
