@@ -118,77 +118,78 @@ func getIAMEndpoint() *iam.IAM {
 	return iam.New(getAWSAuth(), region)
 }
 
-func putBucket(appName string, bucketChan chan s3.Bucket, errChan chan error) {
+func putBucket(appName string) (*s3.Bucket, error) {
 	randBytes := (maxBucketSize - len(appName)) / 2
 	randPart := make([]byte, randBytes)
 	n, err := rReader.Read(randPart)
 	if err != nil {
-		errChan <- err
-		return
+		return nil, err
 	}
 	if n != randBytes {
-		errChan <- io.ErrShortBuffer
-		return
+		return nil, io.ErrShortBuffer
 	}
 	name := fmt.Sprintf("%s%x", appName, randPart)
 	bucket := getS3Endpoint().Bucket(name)
 	if err := bucket.PutBucket(s3.BucketOwnerFull); err != nil {
-		errChan <- err
-		return
+		return nil, err
 	}
-	bucketChan <- *bucket
+	return bucket, nil
 }
 
-func createIAMCredentials(appName string, keyChan chan iam.AccessKey, errChan chan error) {
+func createIAMUser(appName string) (*iam.User, error) {
 	iamEndpoint := getIAMEndpoint()
 	uResp, err := iamEndpoint.CreateUser(appName, fmt.Sprintf("/%s/", appName))
 	if err != nil {
-		errChan <- err
-		return
+		return nil, err
 	}
-	kResp, err := iamEndpoint.CreateAccessKey(uResp.User.Name)
+	return &uResp.User, nil
+}
+
+func createIAMAccessKey(user *iam.User) (*iam.AccessKey, error) {
+	iamEndpoint := getIAMEndpoint()
+	resp, err := iamEndpoint.CreateAccessKey(user.Name)
 	if err != nil {
-		errChan <- err
-		return
+		return nil, err
 	}
-	keyChan <- kResp.AccessKey
+	return &resp.AccessKey, err
+}
+
+func createIAMUserPolicy(user *iam.User, appName, bucketName string) (*iam.UserPolicy, error) {
+	iamEndpoint := getIAMEndpoint()
+	var buf bytes.Buffer
+	policy.Execute(&buf, bucketName)
+	p := iam.UserPolicy{
+		Name:     fmt.Sprintf("app-%s-bucket", appName),
+		UserName: user.Name,
+		Document: buf.String(),
+	}
+	if _, err := iamEndpoint.PutUserPolicy(p.UserName, p.Name, p.Document); err != nil {
+		return nil, err
+	}
+	return &p, nil
 }
 
 func createBucket(app *App) (*s3Env, error) {
 	var env s3Env
 	appName := strings.ToLower(app.Name)
-	errChan := make(chan error)
-	bChan := make(chan s3.Bucket, 1)
-	kChan := make(chan iam.AccessKey, 1)
-	s := getS3Endpoint()
-	go putBucket(appName, bChan, errChan)
-	go createIAMCredentials(appName, kChan, errChan)
-	iamEndpoint := getIAMEndpoint()
-	var userName string
-	for env.empty() {
-		select {
-		case k := <-kChan:
-			env.AccessKey = k.Id
-			env.SecretKey = k.Secret
-			userName = k.UserName
-		case bucket := <-bChan:
-			env.bucket = bucket.Name
-			env.locationConstraint = bucket.S3LocationConstraint
-			env.endpoint = bucket.S3Endpoint
-		case err := <-errChan:
-			if env.bucket != "" {
-				s.Bucket(env.bucket).DelBucket()
-			}
-			if userName != "" {
-				iamEndpoint.DeleteUser(userName)
-			}
-			return nil, err
-		}
+	bucket, err := putBucket(appName)
+	if err != nil {
+		return nil, err
 	}
-	policyName := fmt.Sprintf("app-%s-bucket", appName)
-	var buf bytes.Buffer
-	policy.Execute(&buf, env.bucket)
-	if _, err := iamEndpoint.PutUserPolicy(userName, policyName, buf.String()); err != nil {
+	env.bucket = bucket.Name
+	env.locationConstraint = bucket.S3LocationConstraint
+	env.endpoint = bucket.S3Endpoint
+	user, err := createIAMUser(appName)
+	if err != nil {
+		return nil, err
+	}
+	key, err := createIAMAccessKey(user)
+	if err != nil {
+		return nil, err
+	}
+	env.AccessKey = key.Id
+	env.SecretKey = key.Secret
+	if _, err := createIAMUserPolicy(user, appName, env.bucket); err != nil {
 		return nil, err
 	}
 	return &env, nil
