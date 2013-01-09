@@ -102,7 +102,7 @@ func CreateApp(a *App, units uint) error {
 	actions := []oldaction{
 		new(oldInsertApp),
 		new(oldCreateBucketIam),
-		new(createRepository),
+		new(oldCreateRepository),
 		new(provisionApp),
 	}
 	return execute(a, actions, units)

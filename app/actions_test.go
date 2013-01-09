@@ -10,10 +10,8 @@ import (
 	"github.com/globocom/tsuru/auth"
 	"github.com/globocom/tsuru/db"
 	"github.com/globocom/tsuru/queue"
-	"io/ioutil"
 	"labix.org/v2/mgo/bson"
 	. "launchpad.net/gocheck"
-	"net/http"
 )
 
 func (s *S) TestOldInsertAppForward(c *C) {
@@ -156,24 +154,7 @@ func (s *S) TestDeployRollbackItself(c *C) {
 	c.Assert(action.rollbackItself(), Equals, false)
 }
 
-type testHandler struct {
-	body    [][]byte
-	method  []string
-	url     []string
-	content string
-	header  []http.Header
-}
-
-func (h *testHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	h.method = append(h.method, r.Method)
-	h.url = append(h.url, r.URL.String())
-	b, _ := ioutil.ReadAll(r.Body)
-	h.body = append(h.body, b)
-	h.header = append(h.header, r.Header)
-	w.Write([]byte(h.content))
-}
-
-func (s *S) TestCreateRepositoryForward(c *C) {
+func (s *S) TestOldCreateRepositoryForward(c *C) {
 	h := testHandler{}
 	ts := s.t.StartGandalfTestServer(&h)
 	defer ts.Close()
@@ -182,7 +163,7 @@ func (s *S) TestCreateRepositoryForward(c *C) {
 	err := db.Session.Teams().Find(bson.M{"users": s.user.Email}).All(&teams)
 	c.Assert(err, IsNil)
 	a.SetTeams(teams)
-	action := new(createRepository)
+	action := new(oldCreateRepository)
 	err = action.forward(&a)
 	c.Assert(err, IsNil)
 	defer action.backward(&a)
@@ -192,12 +173,12 @@ func (s *S) TestCreateRepositoryForward(c *C) {
 	c.Assert(string(h.body[0]), Equals, expected)
 }
 
-func (s *S) TestCreateRepositoryBackward(c *C) {
+func (s *S) TestOldCreateRepositoryBackward(c *C) {
 	h := testHandler{}
 	ts := s.t.StartGandalfTestServer(&h)
 	defer ts.Close()
 	a := App{Name: "someapp"}
-	action := new(createRepository)
+	action := new(oldCreateRepository)
 	action.backward(&a)
 	c.Assert(h.url[0], Equals, "/repository/someapp")
 	c.Assert(h.method[0], Equals, "DELETE")

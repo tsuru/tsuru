@@ -8,9 +8,11 @@ import (
 	"errors"
 	"fmt"
 	"github.com/globocom/config"
+	"github.com/globocom/go-gandalfclient"
 	"github.com/globocom/tsuru/action"
 	"github.com/globocom/tsuru/app/bind"
 	"github.com/globocom/tsuru/db"
+	"github.com/globocom/tsuru/repository"
 	"labix.org/v2/mgo/bson"
 	"strconv"
 )
@@ -86,5 +88,34 @@ var createBucketIam = &action.Action{
 		result := ctx.FWResult.(*createBucketResult)
 		destroyBucket(result.app)
 	},
-	MinParams: 0,
+}
+
+// createRepository creates a repository for the app in Gandalf.
+var createRepository = action.Action{
+	Forward: func(ctx action.FWContext) (action.Result, error) {
+		var app App
+		switch ctx.Params[0].(type) {
+		case App:
+			app = ctx.Params[0].(App)
+		case *App:
+			app = *ctx.Params[0].(*App)
+		default:
+			return nil, errors.New("First parameter must be App or *App.")
+		}
+		gUrl := repository.GitServerUri()
+		var users []string
+		for _, t := range app.GetTeams() {
+			users = append(users, t.Users...)
+		}
+		c := gandalf.Client{Endpoint: gUrl}
+		_, err := c.NewRepository(app.Name, users, false)
+		return &app, err
+	},
+	Backward: func(ctx action.BWContext) {
+		app := ctx.FWResult.(*App)
+		gUrl := repository.GitServerUri()
+		c := gandalf.Client{Endpoint: gUrl}
+		c.RemoveRepository(app.Name)
+	},
+	MinParams: 1,
 }

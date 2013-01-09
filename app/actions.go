@@ -113,12 +113,12 @@ func (a *provisionApp) rollbackItself() bool {
 	return false
 }
 
-// createRepository is an implementation for the action interface.
-type createRepository struct{}
+// oldCreateRepository is an implementation for the action interface.
+type oldCreateRepository struct{}
 
-// createRepository forward creates a git repository using the
+// oldCreateRepository forward creates a git repository using the
 // gandalf client.
-func (a *createRepository) forward(app *App, args ...interface{}) error {
+func (a *oldCreateRepository) forward(app *App, args ...interface{}) error {
 	gUrl := repository.GitServerUri()
 	var users []string
 	for _, t := range app.GetTeams() {
@@ -129,14 +129,14 @@ func (a *createRepository) forward(app *App, args ...interface{}) error {
 	return err
 }
 
-// createRepository backward remove the git repository
+// oldCreateRepository backward remove the git repository
 // using the gandalf client.
-func (a *createRepository) backward(app *App, args ...interface{}) {
+func (a *oldCreateRepository) backward(app *App, args ...interface{}) {
 	gUrl := repository.GitServerUri()
 	c := gandalf.Client{Endpoint: gUrl}
 	c.RemoveRepository(app.Name)
 }
 
-func (a *createRepository) rollbackItself() bool {
+func (a *oldCreateRepository) rollbackItself() bool {
 	return false
 }

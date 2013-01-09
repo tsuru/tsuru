@@ -13,8 +13,10 @@ import (
 	"github.com/globocom/tsuru/queue"
 	ttesting "github.com/globocom/tsuru/testing"
 	"io"
+	"io/ioutil"
 	"labix.org/v2/mgo/bson"
 	. "launchpad.net/gocheck"
+	"net/http"
 	"os"
 	"path"
 	"testing"
@@ -177,4 +179,21 @@ func (l MessageList) Less(i, j int) bool {
 
 func (l MessageList) Swap(i, j int) {
 	l[i], l[j] = l[j], l[i]
+}
+
+type testHandler struct {
+	body    [][]byte
+	method  []string
+	url     []string
+	content string
+	header  []http.Header
+}
+
+func (h *testHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	h.method = append(h.method, r.Method)
+	h.url = append(h.url, r.URL.String())
+	b, _ := ioutil.ReadAll(r.Body)
+	h.body = append(h.body, b)
+	h.header = append(h.header, r.Header)
+	w.Write([]byte(h.content))
 }

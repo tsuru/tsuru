@@ -155,3 +155,60 @@ func (s *S) TestCreateBucketBackward(c *C) {
 func (s *S) TestCreateBucketMinParams(c *C) {
 	c.Assert(createBucketIam.MinParams, Equals, 0)
 }
+
+func (s *S) TestCreateRepositoryForward(c *C) {
+	h := testHandler{}
+	ts := s.t.StartGandalfTestServer(&h)
+	defer ts.Close()
+	app := App{Name: "someapp", Teams: []string{s.team.Name}}
+	ctx := action.FWContext{Params: []interface{}{app}}
+	result, err := createRepository.Forward(ctx)
+	a, ok := result.(*App)
+	c.Assert(ok, Equals, true)
+	c.Assert(a.Name, Equals, app.Name)
+	c.Assert(err, IsNil)
+	c.Assert(h.url[0], Equals, "/repository")
+	c.Assert(h.method[0], Equals, "POST")
+	expected := fmt.Sprintf(`{"name":"someapp","users":["%s"],"ispublic":false}`, s.user.Email)
+	c.Assert(string(h.body[0]), Equals, expected)
+}
+
+func (s *S) TestCreateRepositoryForwardAppPointer(c *C) {
+	h := testHandler{}
+	ts := s.t.StartGandalfTestServer(&h)
+	defer ts.Close()
+	app := App{Name: "someapp", Teams: []string{s.team.Name}}
+	ctx := action.FWContext{Params: []interface{}{&app}}
+	result, err := createRepository.Forward(ctx)
+	a, ok := result.(*App)
+	c.Assert(ok, Equals, true)
+	c.Assert(a.Name, Equals, app.Name)
+	c.Assert(err, IsNil)
+	c.Assert(h.url[0], Equals, "/repository")
+	c.Assert(h.method[0], Equals, "POST")
+	expected := fmt.Sprintf(`{"name":"someapp","users":["%s"],"ispublic":false}`, s.user.Email)
+	c.Assert(string(h.body[0]), Equals, expected)
+}
+
+func (s *S) TestCreateRepositoryForwardInvalidType(c *C) {
+	ctx := action.FWContext{Params: []interface{}{"something"}}
+	_, err := createRepository.Forward(ctx)
+	c.Assert(err, NotNil)
+	c.Assert(err.Error(), Equals, "First parameter must be App or *App.")
+}
+
+func (s *S) TestCreateRepositoryBackward(c *C) {
+	h := testHandler{}
+	ts := s.t.StartGandalfTestServer(&h)
+	defer ts.Close()
+	app := App{Name: "someapp"}
+	ctx := action.BWContext{FWResult: &app, Params: []interface{}{app}}
+	createRepository.Backward(ctx)
+	c.Assert(h.url[0], Equals, "/repository/someapp")
+	c.Assert(h.method[0], Equals, "DELETE")
+	c.Assert(string(h.body[0]), Equals, "null")
+}
+
+func (s *S) TestCreateRepositoryMinParams(c *C) {
+	c.Assert(createRepository.MinParams, Equals, 1)
+}
