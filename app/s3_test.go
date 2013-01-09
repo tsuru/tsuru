@@ -105,6 +105,8 @@ func (s *S) TestDestroyBucket(c *C) {
 	err := CreateApp(&app, 1)
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": app.Name})
+	defer s.provisioner.Destroy(&app)
+	app.Get()
 	err = destroyBucket(&app)
 	c.Assert(err, IsNil)
 	s3 := getS3Endpoint()

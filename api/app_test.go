@@ -313,6 +313,7 @@ func (s *S) TestDelete(c *C) {
 	}
 	err := app.CreateApp(&myApp, 1)
 	c.Assert(err, IsNil)
+	myApp.Get()
 	defer myApp.Destroy()
 	request, err := http.NewRequest("DELETE", "/apps/"+myApp.Name+"?:name="+myApp.Name, nil)
 	c.Assert(err, IsNil)
@@ -478,6 +479,7 @@ func (s *S) TestCreateAppHelperCreatesRepositoryInGandalf(c *C) {
 	a := app.App{Name: "someapp"}
 	_, err := createAppHelper(&a, s.user, 1)
 	c.Assert(err, IsNil)
+	a.Get()
 	defer a.Destroy()
 	c.Assert(h.url[0], Equals, "/repository")
 	c.Assert(h.method[0], Equals, "POST")
@@ -2072,6 +2074,7 @@ func (s *S) TestUnbindHandler(c *C) {
 	}
 	err = app.CreateApp(&a, 1)
 	c.Assert(err, IsNil)
+	a.Get()
 	defer a.Destroy()
 	a.Env["DATABASE_HOST"] = bind.EnvVar{
 		Name:         "DATABASE_HOST",

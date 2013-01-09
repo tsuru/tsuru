@@ -10,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/globocom/config"
+	"github.com/globocom/tsuru/action"
 	"github.com/globocom/tsuru/app/bind"
 	"github.com/globocom/tsuru/auth"
 	"github.com/globocom/tsuru/db"
@@ -99,13 +100,11 @@ func CreateApp(a *App, units uint) error {
 			"starting with a letter."
 		return &ValidationError{Message: msg}
 	}
-	actions := []oldaction{
-		new(oldInsertApp),
-		new(oldCreateBucketIam),
-		new(oldCreateRepository),
-		new(oldProvisionApp),
-	}
-	return execute(a, actions, units)
+	pipeline := action.NewPipeline(
+		&insertApp, &createBucketIam,
+		&createRepository, &provisionApp,
+	)
+	return pipeline.Execute(a, units)
 }
 
 func (a *App) unbind() error {

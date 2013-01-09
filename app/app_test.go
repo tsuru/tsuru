@@ -59,6 +59,7 @@ func (s *S) TestDestroy(c *C) {
 	}
 	err := CreateApp(&a, 1)
 	c.Assert(err, IsNil)
+	a.Get()
 	err = a.Destroy()
 	c.Assert(err, IsNil)
 	err = a.Get()
@@ -76,6 +77,8 @@ func (s *S) TestDestroyWithoutUnits(c *C) {
 	app := App{Name: "x4"}
 	err := CreateApp(&app, 1)
 	c.Assert(err, IsNil)
+	defer s.provisioner.Destroy(&app)
+	app.Get()
 	err = app.Destroy()
 	c.Assert(err, IsNil)
 }
@@ -93,7 +96,9 @@ func (s *S) TestFailingDestroy(c *C) {
 	}
 	err := CreateApp(&a, 1)
 	c.Assert(err, IsNil)
+	a.Get()
 	defer db.Session.Apps().Remove(bson.M{"name": "ritual"})
+	defer s.provisioner.Destroy(&a)
 	err = a.Destroy()
 	c.Assert(err, NotNil)
 	c.Assert(err.Error(), Equals, "Failed to destroy the app: will not destroy this app!")
@@ -117,6 +122,8 @@ func (s *S) TestCreateApp(c *C) {
 	err := CreateApp(&a, 3)
 	c.Assert(err, IsNil)
 	defer a.Destroy()
+	err = a.Get()
+	c.Assert(err, IsNil)
 	c.Assert(a.State, Equals, "pending")
 	var retrievedApp App
 	err = db.Session.Apps().Find(bson.M{"name": a.Name}).One(&retrievedApp)
