@@ -1,4 +1,4 @@
-// Copyright 2012 tsuru authors. All rights reserved.
+// Copyright 2013 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -83,6 +83,7 @@ func (s *S) TestCreateIAMUser(c *C) {
 	user, err := createIAMUser("rules")
 	c.Assert(err, IsNil)
 	c.Assert(user.Name, Equals, "rules")
+	c.Assert(user.Path, Equals, "/rules/")
 	auth := aws.Auth{AccessKey: "access", SecretKey: "s3cr3t"}
 	region := aws.Region{IAMEndpoint: s.t.IamServer.URL()}
 	iamClient := iam.New(auth, region)
