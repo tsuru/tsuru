@@ -107,27 +107,6 @@ func (s *S) TestBindAddsAppToTheServiceInstance(c *C) {
 	c.Assert(instance.Apps, DeepEquals, []string{a.Name})
 }
 
-func (s *S) TestBindDoNotAddsAppToServiceInstanceIfCommunicationWithEndpointGoesWrong(c *C) {
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusInternalServerError)
-	}))
-	defer ts.Close()
-	srvc := service.Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}}
-	err := srvc.Create()
-	c.Assert(err, IsNil)
-	defer db.Session.Services().Remove(bson.M{"_id": "mysql"})
-	instance := service.ServiceInstance{Name: "my-mysql", ServiceName: "mysql", Teams: []string{s.team.Name}}
-	instance.Create()
-	defer db.Session.ServiceInstances().Remove(bson.M{"_id": "my-mysql"})
-	a, err := createTestApp("somecoolapp", "", []string{s.team.Name}, []app.Unit{{Ip: "127.0.0.1"}})
-	c.Assert(err, IsNil)
-	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
-	err = instance.BindApp(&a)
-	c.Assert(err, Not(IsNil))
-	n, err := db.Session.ServiceInstances().Find(bson.M{"app": []string{}}).Count()
-	c.Assert(n, Equals, 0)
-}
-
 func (s *S) TestBindCallTheServiceAPIAndSetsEnvironmentVariableReturnedFromTheCall(c *C) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(`{"DATABASE_USER":"root","DATABASE_PASSWORD":"s3cr3t"}`))
