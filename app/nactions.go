@@ -6,9 +6,13 @@ package app
 
 import (
 	"errors"
+	"fmt"
+	"github.com/globocom/config"
 	"github.com/globocom/tsuru/action"
+	"github.com/globocom/tsuru/app/bind"
 	"github.com/globocom/tsuru/db"
 	"labix.org/v2/mgo/bson"
+	"strconv"
 )
 
 // insertApp is an action that inserts an app in the database in Forward and
@@ -34,4 +38,53 @@ var insertApp = &action.Action{
 		db.Session.Apps().Remove(bson.M{"name": app.Name})
 	},
 	MinParams: 1,
+}
+
+type createBucketResult struct {
+	app *App
+	env *s3Env
+}
+
+// createBucketIam is an action that creates a bucket in S3, and a user,
+// credentials and user policy in IAM.
+//
+// It does not receive any parameter. It expects an app to be in the Previous
+// result, so this action cannot be the first in a pipeline.
+//
+// TODO(fss): break this action in smaller actions (createS3Bucket,
+// createIAMUser, createIAMCredentials and createIAMUserPolicy).
+var createBucketIam = &action.Action{
+	Forward: func(ctx action.FWContext) (action.Result, error) {
+		app := ctx.Previous.(*App)
+		env, err := createBucket(app)
+		if err != nil {
+			return nil, err
+		}
+		host, _ := config.GetString("host")
+		envVars := []bind.EnvVar{
+			{Name: "APPNAME", Value: app.Name},
+			{Name: "TSURU_HOST", Value: host},
+		}
+		variables := map[string]string{
+			"ENDPOINT":           env.endpoint,
+			"LOCATIONCONSTRAINT": strconv.FormatBool(env.locationConstraint),
+			"ACCESS_KEY_ID":      env.AccessKey,
+			"SECRET_KEY":         env.SecretKey,
+			"BUCKET":             env.bucket,
+		}
+		for name, value := range variables {
+			envVars = append(envVars, bind.EnvVar{
+				Name:         fmt.Sprintf("TSURU_S3_%s", name),
+				Value:        value,
+				InstanceName: s3InstanceName,
+			})
+		}
+		app.SetEnvsToApp(envVars, false, true)
+		return &createBucketResult{app: app, env: env}, nil
+	},
+	Backward: func(ctx action.BWContext) {
+		result := ctx.FWResult.(*createBucketResult)
+		destroyBucket(result.app)
+	},
+	MinParams: 0,
 }

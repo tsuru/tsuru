@@ -33,12 +33,12 @@ func (a *oldInsertApp) rollbackItself() bool {
 	return false
 }
 
-// createBucketIam is an implementation for the action interface.
-type createBucketIam struct{}
+// oldCreateBucketIam is an implementation for the action interface.
+type oldCreateBucketIam struct{}
 
-// createBucketIam forward creates a bucket and exports
+// oldCreateBucketIam forward creates a bucket and exports
 // the related info as environs in the app machine.
-func (a *createBucketIam) forward(app *App, args ...interface{}) error {
+func (a *oldCreateBucketIam) forward(app *App, args ...interface{}) error {
 	env, err := createBucket(app)
 	if err != nil {
 		return err
@@ -66,12 +66,12 @@ func (a *createBucketIam) forward(app *App, args ...interface{}) error {
 	return nil
 }
 
-// createBucketIam backward destroys the app bucket.
-func (a *createBucketIam) backward(app *App, args ...interface{}) {
+// oldCreateBucketIam backward destroys the app bucket.
+func (a *oldCreateBucketIam) backward(app *App, args ...interface{}) {
 	destroyBucket(app)
 }
 
-func (a *createBucketIam) rollbackItself() bool {
+func (a *oldCreateBucketIam) rollbackItself() bool {
 	return true
 }
 

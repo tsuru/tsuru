@@ -55,7 +55,7 @@ func (s *S) TestOldInsertAppRollbackItself(c *C) {
 	c.Assert(action.rollbackItself(), Equals, false)
 }
 
-func (s *S) TestCreateBucketForward(c *C) {
+func (s *S) TestOldCreateBucketForward(c *C) {
 	patchRandomReader()
 	defer unpatchRandomReader()
 	a := App{
@@ -69,7 +69,7 @@ func (s *S) TestCreateBucketForward(c *C) {
 	err := insert.forward(&a)
 	c.Assert(err, IsNil)
 	defer insert.backward(&a)
-	bucket := new(createBucketIam)
+	bucket := new(oldCreateBucketIam)
 	err = bucket.forward(&a)
 	c.Assert(err, IsNil)
 	defer bucket.backward(&a)
@@ -105,7 +105,7 @@ func (s *S) TestCreateBucketForward(c *C) {
 	c.Assert(message.Args, DeepEquals, expected.Args)
 }
 
-func (s *S) TestCreateBucketBackward(c *C) {
+func (s *S) TestOldCreateBucketBackward(c *C) {
 	source := patchRandomReader()
 	defer unpatchRandomReader()
 	a := App{
@@ -113,7 +113,7 @@ func (s *S) TestCreateBucketBackward(c *C) {
 		Framework: "ruby",
 		Units:     []Unit{{Machine: 1}},
 	}
-	action := new(createBucketIam)
+	action := new(oldCreateBucketIam)
 	err := action.forward(&a)
 	c.Assert(err, IsNil)
 	action.backward(&a)
@@ -127,8 +127,8 @@ func (s *S) TestCreateBucketBackward(c *C) {
 	c.Assert(err, NotNil)
 }
 
-func (s *S) TestCreateBucketRollbackItself(c *C) {
-	action := new(createBucketIam)
+func (s *S) TestOldCreateBucketRollbackItself(c *C) {
+	action := new(oldCreateBucketIam)
 	c.Assert(action.rollbackItself(), Equals, true)
 }
 
