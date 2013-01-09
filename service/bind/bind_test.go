@@ -247,9 +247,9 @@ func (s *S) TestBindReturnsPreconditionFailedIfTheAppDoesNotHaveAnUnitAndService
 }
 
 func (s *S) TestUnbindUnit(c *C) {
-	var calls int
+	called := false
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		calls++
+		called = true
 		w.WriteHeader(http.StatusNoContent)
 	}))
 	defer ts.Close()
@@ -270,7 +270,7 @@ func (s *S) TestUnbindUnit(c *C) {
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
 	err = instance.UnbindUnit(a.GetUnits()[0])
 	c.Assert(err, IsNil)
-	c.Assert(calls, Equals, 1)
+	c.Assert(called, Equals, true)
 }
 
 func (s *S) TestUnbindMultiUnits(c *C) {
