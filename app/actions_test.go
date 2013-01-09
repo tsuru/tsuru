@@ -227,11 +227,11 @@ func (s *S) TestProvisionAppForward(c *C) {
 	result, err := provisionApp.Forward(ctx)
 	defer s.provisioner.Destroy(&app)
 	c.Assert(err, IsNil)
-	c.Assert(result, IsNil)
+	a, ok := result.(*App)
+	c.Assert(ok, Equals, true)
+	c.Assert(a.Name, Equals, app.Name)
 	index := s.provisioner.FindApp(&app)
 	c.Assert(index, Equals, 0)
-	units := s.provisioner.GetUnits(&app)
-	c.Assert(units, HasLen, 4)
 }
 
 func (s *S) TestProvisionAppForwardAppPointer(c *C) {
@@ -247,11 +247,11 @@ func (s *S) TestProvisionAppForwardAppPointer(c *C) {
 	result, err := provisionApp.Forward(ctx)
 	defer s.provisioner.Destroy(&app)
 	c.Assert(err, IsNil)
-	c.Assert(result, IsNil)
+	a, ok := result.(*App)
+	c.Assert(ok, Equals, true)
+	c.Assert(a.Name, Equals, app.Name)
 	index := s.provisioner.FindApp(&app)
 	c.Assert(index, Equals, 0)
-	units := s.provisioner.GetUnits(&app)
-	c.Assert(units, HasLen, 4)
 }
 
 func (s *S) TestProvisionAppForwardInvalidApp(c *C) {
@@ -261,9 +261,51 @@ func (s *S) TestProvisionAppForwardInvalidApp(c *C) {
 }
 
 func (s *S) TestProvisionAppBackward(c *C) {
-	c.Assert(provisionApp.Backward, IsNil)
+	app := App{
+		Name:      "earthshine",
+		Framework: "django",
+		Units:     []Unit{{Machine: 3}},
+	}
+	err := db.Session.Apps().Insert(app)
+	c.Assert(err, IsNil)
+	defer db.Session.Apps().Remove(bson.M{"name": app.Name})
+	fwctx := action.FWContext{Params: []interface{}{&app, 4}}
+	result, err := provisionApp.Forward(fwctx)
+	c.Assert(err, IsNil)
+	bwctx := action.BWContext{Params: []interface{}{&app, 4}, FWResult: result}
+	provisionApp.Backward(bwctx)
+	index := s.provisioner.FindApp(&app)
+	c.Assert(index, Equals, -1)
 }
 
 func (s *S) TestProvisionAppMinParams(c *C) {
 	c.Assert(provisionApp.MinParams, Equals, 2)
+}
+
+func (s *S) TestProvisionAddUnitsForward(c *C) {
+	app := App{
+		Name:      "castle",
+		Framework: "heavens",
+		Units:     []Unit{{Machine: 2}},
+	}
+	err := db.Session.Apps().Insert(app)
+	c.Assert(err, IsNil)
+	defer db.Session.Apps().Remove(bson.M{"name": app.Name})
+	previous, err := provisionApp.Forward(action.FWContext{Params: []interface{}{&app, 4}})
+	c.Assert(err, IsNil)
+	defer provisionApp.Backward(action.BWContext{Params: []interface{}{&app, 4}, FWResult: previous})
+	ctx := action.FWContext{Params: []interface{}{&app, 4}, Previous: previous}
+	result, err := provisionAddUnits.Forward(ctx)
+	c.Assert(err, IsNil)
+	c.Assert(result, IsNil)
+	units := s.provisioner.GetUnits(&app)
+	c.Assert(units, HasLen, 4)
+}
+
+func (s *S) TestProvisionAddUnitsBackward(c *C) {
+	c.Assert(provisionAddUnits.Backward, IsNil)
+}
+
+func (s *S) TestProvisionAddUnitsMinParams(c *C) {
+	c.Assert(provisionAddUnits.MinParams, Equals, 2)
 }

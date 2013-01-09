@@ -127,15 +127,9 @@ var createRepository = action.Action{
 
 // provisionApp provisions the app in the provisioner. It takes two arguments:
 // the app, and the number of units to create (an unsigned integer).
-//
-// TODO(fss): break this action in two small actions (provisionApp and
-// addUnits).
 var provisionApp = action.Action{
 	Forward: func(ctx action.FWContext) (action.Result, error) {
-		var (
-			app   App
-			units uint
-		)
+		var app App
 		switch ctx.Params[0].(type) {
 		case App:
 			app = ctx.Params[0].(App)
@@ -144,6 +138,29 @@ var provisionApp = action.Action{
 		default:
 			return nil, errors.New("First parameter must be App or *App.")
 		}
+		err := Provisioner.Provision(&app)
+		if err != nil {
+			return nil, err
+		}
+		return &app, nil
+	},
+	Backward: func(ctx action.BWContext) {
+		app := ctx.FWResult.(*App)
+		Provisioner.Destroy(app)
+	},
+	MinParams: 2,
+}
+
+// provisionAddUnits adds n-1 units to the app. It receives two arguments: the
+// app and the total number of the units that the app must have. It assumes
+// that the app already have one unit, so it adds n-1 units to the app.
+//
+// It reads the app from the Previos result in the context, so this action
+// cannot be the first in a pipeline.
+var provisionAddUnits = action.Action{
+	Forward: func(ctx action.FWContext) (action.Result, error) {
+		app := ctx.Previous.(*App)
+		var units uint
 		switch ctx.Params[1].(type) {
 		case int:
 			units = uint(ctx.Params[1].(int))
@@ -156,12 +173,8 @@ var provisionApp = action.Action{
 		default:
 			units = 1
 		}
-		err := Provisioner.Provision(&app)
-		if err != nil {
-			return nil, err
-		}
 		if units > 1 {
-			_, err = Provisioner.AddUnits(&app, units-1)
+			_, err := Provisioner.AddUnits(app, units-1)
 			return nil, err
 		}
 		return nil, nil

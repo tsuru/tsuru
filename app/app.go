@@ -103,6 +103,7 @@ func CreateApp(a *App, units uint) error {
 	pipeline := action.NewPipeline(
 		&insertApp, &createBucketIam,
 		&createRepository, &provisionApp,
+		&provisionAddUnits,
 	)
 	return pipeline.Execute(a, units)
 }
