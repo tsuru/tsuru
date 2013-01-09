@@ -268,7 +268,7 @@ func (s *S) TestHandlerListenToSpecificQueue(c *C) {
 	c.Assert(handler.Queue, Equals, queueName)
 }
 
-func (s *S) TestHandlebindServiceMessage(c *C) {
+func (s *S) TestHandleBindServiceMessage(c *C) {
 	called := false
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		called = true
