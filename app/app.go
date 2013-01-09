@@ -103,7 +103,7 @@ func CreateApp(a *App, units uint) error {
 		new(oldInsertApp),
 		new(oldCreateBucketIam),
 		new(oldCreateRepository),
-		new(provisionApp),
+		new(oldProvisionApp),
 	}
 	return execute(a, actions, units)
 }

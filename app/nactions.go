@@ -119,3 +119,47 @@ var createRepository = action.Action{
 	},
 	MinParams: 1,
 }
+
+// provisionApp provisions the app in the provisioner. It takes two arguments:
+// the app, and the number of units to create (an unsigned integer).
+//
+// TODO(fss): break this action in two small actions (provisionApp and
+// addUnits).
+var provisionApp = action.Action{
+	Forward: func(ctx action.FWContext) (action.Result, error) {
+		var (
+			app   App
+			units uint
+		)
+		switch ctx.Params[0].(type) {
+		case App:
+			app = ctx.Params[0].(App)
+		case *App:
+			app = *ctx.Params[0].(*App)
+		default:
+			return nil, errors.New("First parameter must be App or *App.")
+		}
+		switch ctx.Params[1].(type) {
+		case int:
+			units = uint(ctx.Params[1].(int))
+		case int64:
+			units = uint(ctx.Params[1].(int64))
+		case uint:
+			units = ctx.Params[1].(uint)
+		case uint64:
+			units = uint(ctx.Params[1].(uint64))
+		default:
+			units = 1
+		}
+		err := Provisioner.Provision(&app)
+		if err != nil {
+			return nil, err
+		}
+		if units > 1 {
+			_, err = Provisioner.AddUnits(&app, units-1)
+			return nil, err
+		}
+		return nil, nil
+	},
+	MinParams: 2,
+}

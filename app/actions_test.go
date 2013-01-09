@@ -131,7 +131,7 @@ func (s *S) TestOldCreateBucketRollbackItself(c *C) {
 }
 
 func (s *S) TestDeployForward(c *C) {
-	action := new(provisionApp)
+	action := new(oldProvisionApp)
 	a := App{
 		Name:      "appname",
 		Framework: "django",
@@ -150,7 +150,7 @@ func (s *S) TestDeployForward(c *C) {
 }
 
 func (s *S) TestDeployRollbackItself(c *C) {
-	action := new(provisionApp)
+	action := new(oldProvisionApp)
 	c.Assert(action.rollbackItself(), Equals, false)
 }
 

@@ -212,3 +212,57 @@ func (s *S) TestCreateRepositoryBackward(c *C) {
 func (s *S) TestCreateRepositoryMinParams(c *C) {
 	c.Assert(createRepository.MinParams, Equals, 1)
 }
+
+func (s *S) TestProvisionAppForward(c *C) {
+	app := App{
+		Name:      "appname",
+		Framework: "django",
+		Units:     []Unit{{Machine: 3}},
+	}
+	err := db.Session.Apps().Insert(app)
+	c.Assert(err, IsNil)
+	defer db.Session.Apps().Remove(bson.M{"name": app.Name})
+	ctx := action.FWContext{Params: []interface{}{app, 4}}
+	result, err := provisionApp.Forward(ctx)
+	defer s.provisioner.Destroy(&app)
+	c.Assert(err, IsNil)
+	c.Assert(result, IsNil)
+	index := s.provisioner.FindApp(&app)
+	c.Assert(index, Equals, 0)
+	units := s.provisioner.GetUnits(&app)
+	c.Assert(units, HasLen, 4)
+}
+
+func (s *S) TestProvisionAppForwardAppPointer(c *C) {
+	app := App{
+		Name:      "appname",
+		Framework: "django",
+		Units:     []Unit{{Machine: 3}},
+	}
+	err := db.Session.Apps().Insert(app)
+	c.Assert(err, IsNil)
+	defer db.Session.Apps().Remove(bson.M{"name": app.Name})
+	ctx := action.FWContext{Params: []interface{}{&app, 4}}
+	result, err := provisionApp.Forward(ctx)
+	defer s.provisioner.Destroy(&app)
+	c.Assert(err, IsNil)
+	c.Assert(result, IsNil)
+	index := s.provisioner.FindApp(&app)
+	c.Assert(index, Equals, 0)
+	units := s.provisioner.GetUnits(&app)
+	c.Assert(units, HasLen, 4)
+}
+
+func (s *S) TestProvisionAppForwardInvalidApp(c *C) {
+	ctx := action.FWContext{Params: []interface{}{"something", 1}}
+	_, err := provisionApp.Forward(ctx)
+	c.Assert(err, NotNil)
+}
+
+func (s *S) TestProvisionAppBackward(c *C) {
+	c.Assert(provisionApp.Backward, IsNil)
+}
+
+func (s *S) TestProvisionAppMinParams(c *C) {
+	c.Assert(provisionApp.MinParams, Equals, 2)
+}

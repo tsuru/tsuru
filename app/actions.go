@@ -75,11 +75,11 @@ func (a *oldCreateBucketIam) rollbackItself() bool {
 	return true
 }
 
-// provisionApp is an implementation for the action interface.
-type provisionApp struct{}
+// oldProvisionApp is an implementation for the action interface.
+type oldProvisionApp struct{}
 
 // provision forward provisions the app.
-func (a *provisionApp) forward(app *App, args ...interface{}) error {
+func (a *oldProvisionApp) forward(app *App, args ...interface{}) error {
 	var units uint
 	if len(args) > 0 {
 		switch args[0].(type) {
@@ -107,9 +107,9 @@ func (a *provisionApp) forward(app *App, args ...interface{}) error {
 }
 
 // provision backward does nothing.
-func (a *provisionApp) backward(app *App, args ...interface{}) {}
+func (a *oldProvisionApp) backward(app *App, args ...interface{}) {}
 
-func (a *provisionApp) rollbackItself() bool {
+func (a *oldProvisionApp) rollbackItself() bool {
 	return false
 }
 
