@@ -11,9 +11,12 @@ import (
 	"github.com/globocom/tsuru/log"
 	"github.com/globocom/tsuru/provision"
 	"github.com/globocom/tsuru/queue"
+	"github.com/globocom/tsuru/service"
 	"labix.org/v2/mgo/bson"
 	. "launchpad.net/gocheck"
 	stdlog "log"
+	"net/http"
+	"net/http/httptest"
 	"strings"
 )
 
@@ -263,4 +266,40 @@ func (s *S) TestEnqueueUsesSpecificQueue(c *C) {
 
 func (s *S) TestHandlerListenToSpecificQueue(c *C) {
 	c.Assert(handler.Queue, Equals, queueName)
+}
+
+func (s *S) TestHandlebindServiceMessage(c *C) {
+	called := false
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		called = true
+		w.Write([]byte(`{"DATABASE_USER":"root","DATABASE_PASSWORD":"s3cr3t"}`))
+	}))
+	defer ts.Close()
+	srvc := service.Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}}
+	err := srvc.Create()
+	c.Assert(err, IsNil)
+	defer db.Session.Services().Remove(bson.M{"_id": "mysql"})
+	instance := service.ServiceInstance{Name: "my-mysql", ServiceName: "mysql", Teams: []string{s.team.Name}}
+	instance.Create()
+	defer db.Session.ServiceInstances().Remove(bson.M{"_id": "my-mysql"})
+	a := App{
+		Name: "nemesis",
+		Units: []Unit{
+			{
+				Name:    "i-00800",
+				State:   "started",
+				Machine: 19,
+			},
+		},
+	}
+	err = db.Session.Apps().Insert(a)
+	c.Assert(err, IsNil)
+	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
+	err = instance.AddApp(a.Name)
+	c.Assert(err, IsNil)
+	err = db.Session.ServiceInstances().Update(bson.M{"name": instance.Name}, instance)
+	c.Assert(err, IsNil)
+	message := queue.Message{Action: bindService, Args: []string{a.Name, a.Units[0].Name}}
+	handle(&message)
+	c.Assert(called, Equals, true)
 }

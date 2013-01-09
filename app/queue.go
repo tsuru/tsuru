@@ -6,16 +6,20 @@ package app
 
 import (
 	"fmt"
+	"github.com/globocom/tsuru/db"
 	"github.com/globocom/tsuru/log"
 	"github.com/globocom/tsuru/provision"
 	"github.com/globocom/tsuru/queue"
+	"github.com/globocom/tsuru/service"
 	"io/ioutil"
+	"labix.org/v2/mgo/bson"
 )
 
 const (
 	regenerateApprc = "regenerate-apprc"
 	startApp        = "start-app"
 	queueName       = "tsuru-app"
+	bindService     = "bind-service"
 )
 
 func ensureAppIsStarted(msg *queue.Message) (App, error) {
@@ -41,6 +45,27 @@ func ensureAppIsStarted(msg *queue.Message) (App, error) {
 		return a, fmt.Errorf(format, msg.Action, a.Name, a.State)
 	}
 	return a, nil
+}
+
+func bindUnit(msg *queue.Message) error {
+	a := App{Name: msg.Args[0]}
+	err := a.Get()
+	if err != nil {
+		return fmt.Errorf("Error handling %q: app %q does not exist.", msg.Action, a.Name)
+	}
+	unit := getUnits(&a, msg.Args[1:])[0]
+	var instances []service.ServiceInstance
+	err = db.Session.ServiceInstances().Find(bson.M{"apps": bson.M{"$in": []string{msg.Args[0]}}}).All(&instances)
+	if err != nil {
+		return err
+	}
+	for _, instance := range instances {
+		_, err = instance.BindUnit(&unit)
+		if err != nil {
+			log.Printf("Error binding the unit %s with the service instance %s.", unit.Name, instance.Name)
+		}
+	}
+	return nil
 }
 
 func handle(msg *queue.Message) {
@@ -69,6 +94,13 @@ func handle(msg *queue.Message) {
 		err = app.Restart(ioutil.Discard)
 		if err != nil {
 			log.Printf("Error handling %q. App failed to start:\n%s.", msg.Action, err)
+			return
+		}
+		msg.Delete()
+	case bindService:
+		err := bindUnit(msg)
+		if err != nil {
+			log.Print(err)
 			return
 		}
 		msg.Delete()

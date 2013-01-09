@@ -286,6 +286,7 @@ func (s *S) TestAddUnits(c *C) {
 		messages := []queue.Message{
 			{Action: regenerateApprc, Args: []string{app.Name, unit.Name}},
 			{Action: startApp, Args: []string{app.Name, unit.Name}},
+			{Action: bindService, Args: []string{app.Name, unit.Name}},
 		}
 		expectedMessages = append(expectedMessages, messages...)
 	}
