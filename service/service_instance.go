@@ -118,7 +118,9 @@ func (si *ServiceInstance) UnbindApp(app bind.App) error {
 		return err
 	}
 	for _, unit := range app.GetUnits() {
-		si.UnbindUnit(unit)
+		go func(unit bind.Unit) {
+			si.UnbindUnit(unit)
+		}(unit)
 	}
 	var envVars []string
 	for k := range app.InstanceEnv(si.Name) {

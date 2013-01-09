@@ -298,7 +298,21 @@ func (s *S) TestUnbindMultiUnits(c *C) {
 	err = instance.UnbindApp(&a)
 	c.Assert(err, IsNil)
 	db.Session.ServiceInstances().Find(bson.M{"_id": instance.Name}).One(&instance)
-	c.Assert(calls, Equals, 2)
+	ok := make(chan bool, 1)
+	go func() {
+		for {
+			if c.Check(calls, Equals, 2) {
+				ok <- true
+				return
+			}
+		}
+	}()
+	select {
+	case <-ok:
+		c.SucceedNow()
+	case <-time.After(1 * time.Second):
+		c.Error("endpoint not called")
+	}
 }
 
 func (s *S) TestUnbindRemovesAppFromServiceInstance(c *C) {
