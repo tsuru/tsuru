@@ -17,9 +17,12 @@ import (
 	"github.com/globocom/tsuru/provision"
 	"github.com/globocom/tsuru/queue"
 	"github.com/globocom/tsuru/repository"
+	"github.com/globocom/tsuru/service"
 	"labix.org/v2/mgo/bson"
 	. "launchpad.net/gocheck"
 	stdlog "log"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path"
 	"sort"
@@ -320,6 +323,24 @@ func (s *S) TestAddUnitsFailureInProvisioner(c *C) {
 }
 
 func (s *S) TestRemoveUnits(c *C) {
+	var calls int
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		calls++
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	defer ts.Close()
+	srvc := service.Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}}
+	err := srvc.Create()
+	c.Assert(err, IsNil)
+	defer db.Session.Services().Remove(bson.M{"_id": "mysql"})
+	instance := service.ServiceInstance{
+		Name:        "my-mysql",
+		ServiceName: "mysql",
+		Teams:       []string{s.team.Name},
+		Apps:        []string{"painkiller"},
+	}
+	instance.Create()
+	defer db.Session.ServiceInstances().Remove(bson.M{"_id": "my-mysql"})
 	app := App{
 		Name:      "chemistry",
 		Framework: "python",
@@ -330,9 +351,13 @@ func (s *S) TestRemoveUnits(c *C) {
 			{Name: "chemistry/3"},
 		},
 	}
-	err := db.Session.Apps().Insert(app)
+	err = db.Session.Apps().Insert(app)
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": app.Name})
+	err = instance.AddApp(app.Name)
+	c.Assert(err, IsNil)
+	err = db.Session.ServiceInstances().Update(bson.M{"name": instance.Name}, instance)
+	c.Assert(err, IsNil)
 	s.provisioner.Provision(&app)
 	defer s.provisioner.Destroy(&app)
 	s.provisioner.AddUnits(&app, 4)
@@ -348,6 +373,7 @@ func (s *S) TestRemoveUnits(c *C) {
 	c.Assert(app.Units, HasLen, 2)
 	c.Assert(app.Units[0].Name, Equals, "chemistry/2")
 	c.Assert(app.Units[1].Name, Equals, "chemistry/3")
+	c.Assert(calls, Equals, 2)
 }
 
 func (s *S) TestRemoveUnitsInvalidValues(c *C) {

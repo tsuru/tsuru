@@ -244,8 +244,27 @@ func (a *App) RemoveUnits(n uint) error {
 	if err != nil {
 		return err
 	}
+	for _, i := range indices {
+		unit := a.ProvisionUnits()[i]
+		a.unbindUnit(unit)
+	}
 	a.removeUnits(indices)
 	return db.Session.Apps().Update(bson.M{"name": a.Name}, a)
+}
+
+func (a *App) unbindUnit(unit provision.AppUnit) error {
+	var instances []service.ServiceInstance
+	err := db.Session.ServiceInstances().Find(bson.M{"apps": bson.M{"$in": []string{a.Name}}}).All(&instances)
+	if err != nil {
+		return err
+	}
+	for _, instance := range instances {
+		err = instance.UnbindUnit(unit)
+		if err != nil {
+			log.Printf("Error unbinding the unit %s with the service instance %s.", unit.GetIp(), instance.Name)
+		}
+	}
+	return nil
 }
 
 func (a *App) Find(team *auth.Team) (int, bool) {
