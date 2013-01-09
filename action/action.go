@@ -7,7 +7,7 @@ package action
 import "errors"
 
 // Result is the value returned by Forward. It is used in the call of the next
-// action, and also if when rolling back the actions.
+// action, and also when rolling back the actions.
 type Result interface{}
 
 // Forward is the function called by the pipeline executor in the forward
