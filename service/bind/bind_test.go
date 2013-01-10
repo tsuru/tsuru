@@ -266,9 +266,11 @@ func (s *S) TestUnbindUnit(c *C) {
 }
 
 func (s *S) TestUnbindMultiUnits(c *C) {
-	var calls int
+	var calls int32
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		calls++
+		i := atomic.LoadInt32(&calls)
+		i++
+		atomic.StoreInt32(&calls, i)
 		w.WriteHeader(http.StatusNoContent)
 	}))
 	defer ts.Close()
@@ -292,12 +294,10 @@ func (s *S) TestUnbindMultiUnits(c *C) {
 	db.Session.ServiceInstances().Find(bson.M{"_id": instance.Name}).One(&instance)
 	ok := make(chan bool, 1)
 	go func() {
-		for {
-			if c.Check(calls, Equals, 2) {
-				ok <- true
-				return
-			}
+		t := time.Tick(1)
+		for _ = <-t; atomic.LoadInt32(&calls) < 2; _ = <-t {
 		}
+		ok <- true
 	}()
 	select {
 	case <-ok:
