@@ -315,10 +315,11 @@ func (s *S) TestExportEnvironmentsBackward(c *C) {
 	defer db.Session.Apps().Remove(bson.M{"name": app.Name})
 	ctx := action.BWContext{Params: []interface{}{&app}}
 	exportEnvironmentsAction.Backward(ctx)
-	err = app.Get()
+	copy := app
+	err = copy.Get()
 	c.Assert(err, IsNil)
 	for _, name := range envNames {
-		if _, ok := app.Env[name]; ok {
+		if _, ok := copy.Env[name]; ok {
 			c.Errorf("Variable %q should be unexported, but it's still exported.", name)
 		}
 	}
