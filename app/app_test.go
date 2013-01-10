@@ -287,8 +287,7 @@ func (s *S) TestAddUnits(c *C) {
 		expected := fmt.Sprintf("%s/%d", app.Name, i+1)
 		c.Assert(unit.Name, Equals, expected)
 		messages := []queue.Message{
-			{Action: regenerateApprc, Args: []string{app.Name, unit.Name}},
-			{Action: startApp, Args: []string{app.Name, unit.Name}},
+			{Action: regenerateApprcAndStart, Args: []string{app.Name, unit.Name}},
 			{Action: bindService, Args: []string{app.Name, unit.Name}},
 		}
 		expectedMessages = append(expectedMessages, messages...)

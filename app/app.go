@@ -190,7 +190,7 @@ func (a *App) AddUnits(n uint) error {
 	length := len(a.Units)
 	appUnits := make([]Unit, len(units))
 	a.Units = append(a.Units, appUnits...)
-	messages := make([]queue.Message, len(units)*3)
+	messages := make([]queue.Message, len(units)*2)
 	mCount := 0
 	for i, unit := range units {
 		a.Units[i+length] = Unit{
@@ -201,10 +201,9 @@ func (a *App) AddUnits(n uint) error {
 			State:   provision.StatusPending.String(),
 		}
 		qArgs[i+1] = unit.Name
-		messages[mCount] = queue.Message{Action: regenerateApprc, Args: []string{a.Name, unit.Name}}
-		messages[mCount+1] = queue.Message{Action: startApp, Args: []string{a.Name, unit.Name}}
-		messages[mCount+2] = queue.Message{Action: bindService, Args: []string{a.Name, unit.Name}}
-		mCount += 3
+		messages[mCount] = queue.Message{Action: regenerateApprcAndStart, Args: []string{a.Name, unit.Name}}
+		messages[mCount+1] = queue.Message{Action: bindService, Args: []string{a.Name, unit.Name}}
+		mCount += 2
 	}
 	err = db.Session.Apps().Update(bson.M{"name": a.Name}, a)
 	if err != nil {
