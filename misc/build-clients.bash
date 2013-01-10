@@ -20,11 +20,11 @@ function get_version {
 }
 
 function build_and_package {
-	echo -n "Building $2 $4 for $1... "
+	echo -n "Building $2 for $1... "
 	os=`echo $1 | cut -d '_' -f1`
 	arch=`echo $1 | cut -d '_' -f2`
  	GOOS=$os GOARCH=$arch CGO_ENABLED=0 go build -o $destination_dir/$2 github.com/globocom/tsuru/$3
-	tar -czf $destination_dir/$2-$os-$arch-$4.tar.gz $destination_dir/$2
+	tar -czf $destination_dir/$2-$os-$arch.tar.gz $destination_dir/$2
 	rm $destination_dir/$2
 	echo "ok"
 }
@@ -49,15 +49,15 @@ echo $tsuru_admin_version
 
 for target in $targets
 do
-	build_and_package $target crane cmd/crane $crane_version
+	build_and_package $target crane cmd/crane
 done
 
 for target in $targets
 do
-	build_and_package $target tsuru cmd/tsuru/developer $tsuru_version
+	build_and_package $target tsuru cmd/tsuru/developer
 done
 
 for target in $targets
 do
-	build_and_package $target tsuru-admin cmd/tsuru/ops $tsuru_admin_version
+	build_and_package $target tsuru-admin cmd/tsuru/ops
 done
