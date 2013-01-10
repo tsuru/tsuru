@@ -43,6 +43,9 @@ func getAppOrError(name string, u *auth.User) (app.App, error) {
 	if err != nil {
 		return app, &errors.Http{Code: http.StatusNotFound, Message: fmt.Sprintf("App %s not found.", name)}
 	}
+	if u.IsAdmin() {
+		return app, nil
+	}
 	if !auth.CheckUserAccess(app.Teams, u) {
 		return app, &errors.Http{Code: http.StatusForbidden, Message: "User does not have access to this app"}
 	}

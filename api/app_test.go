@@ -8,6 +8,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"github.com/globocom/config"
 	"github.com/globocom/tsuru/app"
 	"github.com/globocom/tsuru/app/bind"
 	"github.com/globocom/tsuru/auth"
@@ -2280,4 +2281,31 @@ func (s *S) TestAddLogHandler(c *C) {
 		c.Check(err, IsNil)
 		c.Check(length, Equals, 1)
 	}
+}
+
+func (s *S) TestgetAppOrErrorWhenUserIsAdmin(c *C) {
+	admin := auth.User{Email: "superuser@gmail.com", Password: "123"}
+	err := db.Session.Users().Insert(&admin)
+	c.Assert(err, IsNil)
+	adminTeamName, err := config.GetString("admin-team")
+	c.Assert(err, IsNil)
+	adminTeam := auth.Team{Name: adminTeamName, Users: []string{admin.Email}}
+	err = db.Session.Teams().Insert(&adminTeam)
+	c.Assert(err, IsNil)
+	a := app.App{Name: "testApp", Teams: []string{"notAdmin", "noSuperUser"}}
+	err = db.Session.Apps().Insert(&a)
+	c.Assert(err, IsNil)
+	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
+	s.createAdminUserAndTeam(c)
+	defer func(admin auth.User, adminTeam auth.Team) {
+		err := db.Session.Teams().RemoveId(adminTeam.Name)
+		c.Assert(err, IsNil)
+		err = db.Session.Users().Remove(bson.M{"email": admin.Email})
+		c.Assert(err, IsNil)
+	}(admin, adminTeam)
+	app, err := getAppOrError(a.Name, &admin)
+	c.Assert(err, IsNil)
+	err = a.Get()
+	c.Assert(err, IsNil)
+	c.Assert(app, DeepEquals, a)
 }
