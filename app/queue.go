@@ -36,7 +36,7 @@ func ensureAppIsStarted(msg *queue.Message) (App, error) {
 		return a, fmt.Errorf("Error handling %q: app %q does not exist.", msg.Action, a.Name)
 	}
 	units := getUnits(&a, msg.Args[1:])
-	if a.State != "started" || !units.Started() {
+	if !a.Avaliable() || !units.Started() {
 		format := "Error handling %q for the app %q:"
 		switch a.State {
 		case "error":
