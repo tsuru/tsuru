@@ -89,9 +89,22 @@ func (s *S) SetUpSuite(c *C) {
 	s.t.SetGitConfs(c)
 	s.provisioner = ttesting.NewFakeProvisioner()
 	Provisioner = s.provisioner
-	err = nil
-	for err == nil {
+	err = handler.DryRun()
+	for err != nil {
 		err = handler.DryRun()
+	}
+	cleanQueue(queueName)
+}
+
+func cleanQueue(name string) {
+	var (
+		err error
+		msg *queue.Message
+	)
+	for err == nil {
+		if msg, err = queue.Get(name, 1e6); err == nil {
+			err = msg.Delete()
+		}
 	}
 }
 
@@ -105,15 +118,6 @@ func (s *S) TearDownSuite(c *C) {
 }
 
 func (s *S) SetUpTest(c *C) {
-	var (
-		err error
-		msg *queue.Message
-	)
-	for err == nil {
-		if msg, err = queue.Get(QueueName, 1e6); err == nil {
-			err = msg.Delete()
-		}
-	}
 }
 
 func (s *S) TearDownTest(c *C) {
