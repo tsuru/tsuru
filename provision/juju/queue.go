@@ -35,7 +35,7 @@ func handle(msg *queue.Message) {
 		a := app{name: msg.Args[0]}
 		unitNames := msg.Args[1:]
 		sort.Strings(unitNames)
-		status, err := (&JujuProvisioner{}).CollectStatus()
+		status, err := (&JujuProvisioner{}).collectStatus()
 		if err != nil {
 			log.Printf("Failed to handle %q: juju status failed.\n%s.", msg.Action, err)
 			msg.Release(0)

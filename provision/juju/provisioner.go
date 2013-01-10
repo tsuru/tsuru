@@ -10,10 +10,13 @@ import (
 	"errors"
 	"fmt"
 	"github.com/globocom/config"
+	"github.com/globocom/tsuru/db"
+	"github.com/globocom/tsuru/log"
 	"github.com/globocom/tsuru/provision"
 	"github.com/globocom/tsuru/queue"
 	"github.com/globocom/tsuru/repository"
 	"io"
+	"labix.org/v2/mgo"
 	"launchpad.net/goyaml"
 	"os/exec"
 	"regexp"
@@ -45,6 +48,14 @@ func (p *JujuProvisioner) elbSupport() bool {
 		p.elb = &elb
 	}
 	return *p.elb
+}
+
+func (p *JujuProvisioner) unitsCollection() *mgo.Collection {
+	name, err := config.GetString("juju:units-collection")
+	if err != nil {
+		log.Fatalf("FATAL: %s.", err)
+	}
+	return db.Session.Collection(name)
 }
 
 func (p *JujuProvisioner) enqueueUnits(app string, units ...string) {
@@ -275,7 +286,7 @@ func (p *JujuProvisioner) ExecuteCommand(stdout, stderr io.Writer, app provision
 	return nil
 }
 
-func (p *JujuProvisioner) CollectStatus() ([]provision.Unit, error) {
+func (p *JujuProvisioner) collectStatus() ([]provision.Unit, error) {
 	output, err := execWithTimeout(30e9, "juju", "status")
 	if err != nil {
 		return nil, &provision.Error{Reason: string(output), Err: err}
@@ -305,7 +316,25 @@ func (p *JujuProvisioner) CollectStatus() ([]provision.Unit, error) {
 			units = append(units, unit)
 		}
 	}
-	return units, nil
+	return units, err
+}
+
+func (p *JujuProvisioner) CollectStatus() ([]provision.Unit, error) {
+	units, err := p.collectStatus()
+	if err != nil {
+		return nil, err
+	}
+	coll := p.unitsCollection()
+	for _, unit := range units {
+		inst := instance{
+			UnitName:   unit.Name,
+			InstanceId: unit.InstanceId,
+		}
+		if _, err := coll.UpsertId(unit.Name, inst); err != nil {
+			return nil, &provision.Error{Reason: "Failed to save unit in the database.", Err: err}
+		}
+	}
+	return units, err
 }
 
 func (p *JujuProvisioner) Addr(app provision.App) (string, error) {
@@ -324,6 +353,12 @@ func (p *JujuProvisioner) LoadBalancer() *ELBManager {
 		return &ELBManager{}
 	}
 	return nil
+}
+
+// instance represents a unit in the database.
+type instance struct {
+	UnitName   string `bson:"_id"`
+	InstanceId string
 }
 
 type unit struct {

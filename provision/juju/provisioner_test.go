@@ -39,6 +39,12 @@ func (s *S) TestELBSupport(c *C) {
 	c.Assert(p.elbSupport(), Equals, false)
 }
 
+func (s *S) TestUnitsCollection(c *C) {
+	p := JujuProvisioner{}
+	collection := p.unitsCollection()
+	c.Assert(collection.Name, Equals, s.collName)
+}
+
 func (s *S) TestProvision(c *C) {
 	tmpdir, err := commandmocker.Add("juju", "$*")
 	c.Assert(err, IsNil)
@@ -354,6 +360,8 @@ func (s *S) TestCollectStatus(c *C) {
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(tmpdir)
 	p := JujuProvisioner{}
+	err = p.unitsCollection().Insert(instance{UnitName: "as_i_rise/0", InstanceId: "i-00000439"})
+	c.Assert(err, IsNil)
 	expected := []provision.Unit{
 		{
 			Name:       "as_i_rise/0",
@@ -381,6 +389,14 @@ func (s *S) TestCollectStatus(c *C) {
 	}
 	c.Assert(units, DeepEquals, expected)
 	c.Assert(commandmocker.Ran(tmpdir), Equals, true)
+	var instances []instance
+	err = p.unitsCollection().Find(nil).Sort("_id").All(&instances)
+	c.Assert(err, IsNil)
+	c.Assert(instances, HasLen, 2)
+	c.Assert(instances[0].UnitName, Equals, "as_i_rise/0")
+	c.Assert(instances[0].InstanceId, Equals, "i-00000439")
+	c.Assert(instances[1].UnitName, Equals, "the_infanta/0")
+	c.Assert(instances[1].InstanceId, Equals, "i-0000043e")
 }
 
 func (s *S) TestCollectStatusDirtyOutput(c *C) {
