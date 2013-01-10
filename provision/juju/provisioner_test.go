@@ -452,7 +452,7 @@ func (s *S) TestCollectStatusIDChangeDisabledELB(c *C) {
 	err = p.unitsCollection().Find(bson.M{"_id": "as_i_rise/0"}).One(&inst)
 	c.Assert(err, IsNil)
 	c.Assert(inst.InstanceId, Equals, "i-00000439")
-	msg, err := queue.Get(app.QueueName, 1e6)
+	msg, err := queue.Get(app.QueueName, 1e9)
 	c.Assert(err, IsNil)
 	defer msg.Delete()
 	c.Assert(msg.Action, Equals, app.RegenerateApprcAndStart)
@@ -596,7 +596,7 @@ func (s *ELBSuite) TestProvisionWithELB(c *C) {
 	addr, err := lb.Addr(app)
 	c.Assert(err, IsNil)
 	c.Assert(addr, Not(Equals), "")
-	msg, err := queue.Get(queueName, 1e6)
+	msg, err := queue.Get(queueName, 1e9)
 	c.Assert(err, IsNil)
 	defer msg.Delete()
 	c.Assert(msg.Action, Equals, addUnitToLoadBalancer)
@@ -619,7 +619,7 @@ func (s *ELBSuite) TestDestroyWithELB(c *C) {
 	c.Assert(addr, Equals, "")
 	c.Assert(err, NotNil)
 	c.Assert(err.Error(), Equals, "not found")
-	msg, err := queue.Get(queueName, 1e6)
+	msg, err := queue.Get(queueName, 1e9)
 	c.Assert(err, IsNil)
 	if msg.Action == addUnitToLoadBalancer && msg.Args[0] == "jimmy" {
 		msg.Delete()
@@ -640,7 +640,7 @@ func (s *ELBSuite) TestAddUnitsWithELB(c *C) {
 		"resist", "resist/3", "resist/4",
 		"resist/5", "resist/6",
 	}
-	msg, err := queue.Get(queueName, 1e6)
+	msg, err := queue.Get(queueName, 1e9)
 	c.Assert(err, IsNil)
 	defer msg.Delete()
 	c.Assert(msg.Action, Equals, addUnitToLoadBalancer)
@@ -721,7 +721,7 @@ func (s *ELBSuite) TestCollectStatusWithELBAndIDChange(c *C) {
 	c.Assert(instances, HasLen, 2)
 	c.Assert(instances[0].InstanceId, Equals, id2)
 	c.Assert(instances[1].InstanceId, Equals, id1)
-	msg, err := queue.Get(app.QueueName, 1e6)
+	msg, err := queue.Get(app.QueueName, 1e9)
 	c.Assert(err, IsNil)
 	defer msg.Delete()
 	c.Assert(msg.Action, Equals, app.RegenerateApprcAndStart)
