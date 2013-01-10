@@ -451,7 +451,7 @@ func UnsetEnv(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	if err != nil {
 		return err
 	}
-	return app.UnsetEnvsFromApp(strings.Fields(string(body)), true, false)
+	return app.UnsetEnvsFromApp(strings.Fields(string(body)), true)
 }
 
 func AppLog(w http.ResponseWriter, r *http.Request, u *auth.User) error {

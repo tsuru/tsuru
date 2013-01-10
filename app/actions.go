@@ -178,7 +178,7 @@ var exportEnvironmentsAction = action.Action{
 			}
 			vars[i] = "TSURU_HOST"
 			vars[i+1] = "APPNAME"
-			app.UnsetEnvsFromApp(vars, false, false)
+			app.UnsetEnvsFromApp(vars, false)
 		}
 	},
 	MinParams: 1,
