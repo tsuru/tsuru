@@ -88,7 +88,7 @@ func handle(msg *queue.Message) {
 	}
 }
 
-var handler = queue.Handler{F: handle, Queue: queueName}
+var handler = queue.Handler{F: handle, Queues: []string{queueName}}
 
 func enqueue(msg *queue.Message) {
 	msg.Put(queueName, 0)

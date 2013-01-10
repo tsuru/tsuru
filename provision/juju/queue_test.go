@@ -139,7 +139,7 @@ func (s *ELBSuite) TestHandleMessagesAllPendingUnits(c *C) {
 
 func (s *ELBSuite) TestHandler(c *C) {
 	var _ queue.Handler = handler
-	c.Assert(handler.Queue, Equals, queueName)
+	c.Assert(handler.Queues, DeepEquals, []string{queueName})
 }
 
 func (s *ELBSuite) TestEnqueuePutMessagesInSpecificQueue(c *C) {
