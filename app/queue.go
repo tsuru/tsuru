@@ -22,8 +22,11 @@ const (
 	RegenerateApprcAndStart = "regenerate-apprc-start-app"
 	bindService             = "bind-service"
 
-	// name of the queue
-	QueueName = "tsuru-app"
+	// name of the queue for internal messages.
+	queueName = "tsuru-app"
+
+	// Name of the queue for external messages.
+	QueueName = "tsuru-app-public"
 )
 
 func ensureAppIsStarted(msg *queue.Message) (App, error) {
@@ -149,12 +152,12 @@ func getUnits(a *App, names []string) unitList {
 	return unitList(units)
 }
 
-var handler = &queue.Handler{F: handle, Queue: QueueName}
+var handler = &queue.Handler{F: handle, Queues: []string{queueName, QueueName}}
 
 func enqueue(msgs ...queue.Message) {
 	for _, msg := range msgs {
 		copy := msg
-		copy.Put(QueueName, 0)
+		copy.Put(queueName, 0)
 	}
 	handler.Start()
 }

@@ -291,17 +291,19 @@ func (s *S) TestUnitListStarted(c *C) {
 	}
 }
 
-func (s *S) TestEnqueueUsesSpecificQueue(c *C) {
+func (s *S) TestEnqueueUsesInternalQueue(c *C) {
 	enqueue(queue.Message{Action: "do-something"})
 	_, err := queue.Get("default", 1e6)
 	c.Assert(err, NotNil)
-	msg, err := queue.Get(QueueName, 1e6)
+	_, err = queue.Get(QueueName, 1e6)
+	c.Assert(err, NotNil)
+	msg, err := queue.Get(queueName, 1e6)
 	c.Assert(err, IsNil)
-	defer msg.Delete()
+	msg.Delete()
 }
 
 func (s *S) TestHandlerListenToSpecificQueue(c *C) {
-	c.Assert(handler.Queue, Equals, QueueName)
+	c.Assert(handler.Queues, DeepEquals, []string{queueName, QueueName})
 }
 
 func (s *S) TestHandleBindServiceMessage(c *C) {

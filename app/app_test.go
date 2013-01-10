@@ -157,7 +157,7 @@ func (s *S) TestCreateApp(c *C) {
 		Action: regenerateApprc,
 		Args:   []string{a.Name},
 	}
-	message, err := queue.Get(QueueName, 1e6)
+	message, err := queue.Get(queueName, 1e6)
 	c.Assert(err, IsNil)
 	defer message.Delete()
 	c.Assert(message.Action, Equals, expectedMessage.Action)
@@ -294,7 +294,7 @@ func (s *S) TestAddUnits(c *C) {
 	}
 	gotMessages := make(MessageList, expectedMessages.Len())
 	for i := range expectedMessages {
-		message, err := queue.Get(QueueName, 1e6)
+		message, err := queue.Get(queueName, 1e6)
 		c.Assert(err, IsNil)
 		defer message.Delete()
 		gotMessages[i] = queue.Message{

@@ -289,7 +289,7 @@ func (s *S) TestExportEnvironmentsForward(c *C) {
 	c.Assert(appEnv["APPNAME"].Public, Equals, false)
 	c.Assert(appEnv["TSURU_HOST"].Value, Equals, expectedHost)
 	c.Assert(appEnv["TSURU_HOST"].Public, Equals, false)
-	message, err := queue.Get(QueueName, 2e9)
+	message, err := queue.Get(queueName, 2e9)
 	c.Assert(err, IsNil)
 	defer message.Delete()
 	c.Assert(message.Action, Equals, regenerateApprc)
