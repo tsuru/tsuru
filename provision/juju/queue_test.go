@@ -44,6 +44,7 @@ func (s *ELBSuite) TestHandleMessageWithoutUnits(c *C) {
 	c.Assert(instances, HasLen, 3)
 	ids := []string{instances[0].InstanceId, instances[1].InstanceId, instances[2].InstanceId}
 	sort.Strings(ids)
+	sort.Strings(instIds)
 	c.Assert(ids, DeepEquals, instIds)
 }
 
