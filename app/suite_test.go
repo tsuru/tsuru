@@ -93,19 +93,6 @@ func (s *S) SetUpSuite(c *C) {
 	for err != nil {
 		err = handler.DryRun()
 	}
-	cleanQueue(queueName)
-}
-
-func cleanQueue(name string) {
-	var (
-		err error
-		msg *queue.Message
-	)
-	for err == nil {
-		if msg, err = queue.Get(name, 1e6); err == nil {
-			err = msg.Delete()
-		}
-	}
 }
 
 func (s *S) TearDownSuite(c *C) {
@@ -118,6 +105,7 @@ func (s *S) TearDownSuite(c *C) {
 }
 
 func (s *S) SetUpTest(c *C) {
+	cleanQueue()
 }
 
 func (s *S) TearDownTest(c *C) {
@@ -200,4 +188,16 @@ func (h *testHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	h.body = append(h.body, b)
 	h.header = append(h.header, r.Header)
 	w.Write([]byte(h.content))
+}
+
+func cleanQueue() {
+	var (
+		err error
+		msg *queue.Message
+	)
+	for err == nil {
+		if msg, err = queue.Get(queueName, 1e6); err == nil {
+			err = msg.Delete()
+		}
+	}
 }
