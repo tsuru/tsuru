@@ -29,8 +29,8 @@ type Handler struct {
 	// The function that will be called for each received message.
 	F func(*Message)
 
-	// Name of the queue that this handler will listen to.
-	Queue string
+	// Name of the queues that this handler will listen to.
+	Queues []string
 
 	state int32
 	id    string
@@ -41,7 +41,7 @@ func (h *Handler) Start() {
 	r.add(h)
 	if atomic.CompareAndSwapInt32(&h.state, stopped, running) {
 		go h.loop(func() {
-			if message, err := Get(h.Queue, 5e9); err == nil {
+			if message, err := get(5e9, h.Queues...); err == nil {
 				go h.F(message)
 			} else {
 				log.Printf("Failed to get message from the queue: %s. Trying again...", err)

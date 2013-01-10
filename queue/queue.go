@@ -100,13 +100,12 @@ func (msg *Message) Put(queueName string, delay time.Duration) error {
 	return err
 }
 
-// Get retrieves a message from the queue.
-func Get(queueName string, timeout time.Duration) (*Message, error) {
+func get(timeout time.Duration, queues ...string) (*Message, error) {
 	conn, err := connection()
 	if err != nil {
 		return nil, err
 	}
-	ts := beanstalk.NewTubeSet(conn, queueName)
+	ts := beanstalk.NewTubeSet(conn, queues...)
 	id, body, err := ts.Reserve(timeout)
 	if err != nil {
 		if timeoutRegexp.MatchString(err.Error()) {
@@ -122,6 +121,11 @@ func Get(queueName string, timeout time.Duration) (*Message, error) {
 	}
 	msg.id = id
 	return &msg, nil
+}
+
+// Get retrieves a message from the queue.
+func Get(queueName string, timeout time.Duration) (*Message, error) {
+	return get(timeout, queueName)
 }
 
 func connection() (*beanstalk.Conn, error) {
