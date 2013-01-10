@@ -20,7 +20,7 @@ Linux example: suppose you want to install the tsuru client in your `/usr/bin` d
 
 ::
 
-    $ curl -sL https://github.com/downloads/globocom/tsuru/tsuru-linux-amd64-0.4.tar.gz | sudo tar -xz -C /usr/bin/
+    $ curl -sL https://s3.amazonaws.com/tsuru/dist-cmd/tsuru-linux-amd64.tar.gz | sudo tar -xz -C /usr/bin/
 
 Then you will be able to :doc:`use the client </apps/client/usage>`. On Mac OS, use `darwin` instead of `linux`:
 
@@ -28,4 +28,4 @@ Then you will be able to :doc:`use the client </apps/client/usage>`. On Mac OS, 
 
 ::
 
-    $ curl -sL https://github.com/downloads/globocom/tsuru/tsuru-darwin-amd64-0.4.tar.gz | sudo tar -xz -C /usr/bin/
+    $ curl -sL https://s3.amazonaws.com/tsuru/dist-cmd/tsuru-darwin-amd64.tar.gz | sudo tar -xz -C /usr/bin/
