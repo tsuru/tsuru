@@ -52,6 +52,15 @@ func (s *S) TestConnectionQueueServerUndefined(c *C) {
 	c.Assert(err.Error(), Equals, `"queue-server" is not defined in config file.`)
 }
 
+func (s *S) TestConnectionResfused(c *C) {
+	old, _ := config.Get("queue-server")
+	config.Set("queue-server", "127.0.0.1:11301")
+	defer config.Set("queue-server", old)
+	conn, err := connection()
+	c.Assert(conn, IsNil)
+	c.Assert(err, NotNil)
+}
+
 func (s *S) TestConnectionDoubleCall(c *C) {
 	cn1, err := connection()
 	c.Assert(err, IsNil)
@@ -224,6 +233,14 @@ func (s *S) TestReleaseUnknownMessage(c *C) {
 	err := msg.Release(0)
 	c.Assert(err, NotNil)
 	c.Assert(err.Error(), Equals, "Message not found.")
+}
+
+func (s *S) TestReleaseConnectionError(c *C) {
+	old, _ := config.Get("queue-server")
+	defer config.Set("queue-server", old)
+	config.Unset("queue-server")
+	err := (&Message{id: 1}).Release(0)
+	c.Assert(err, NotNil)
 }
 
 func (s *S) TestDelete(c *C) {
