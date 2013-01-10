@@ -173,6 +173,19 @@ func (s *S) TestBindMultiUnits(c *C) {
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
 	err = instance.BindApp(&a)
 	c.Assert(err, IsNil)
+	ok := make(chan bool)
+	go func() {
+		for {
+			if calls == 2 {
+				ok <- true
+			}
+		}
+	}()
+	select {
+	case <-ok:
+	case <-time.After(2e9):
+		c.Errorf("Did not bind all units afters 2s.")
+	}
 	c.Assert(calls, Equals, 2)
 }
 
