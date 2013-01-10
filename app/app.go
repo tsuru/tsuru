@@ -585,11 +585,7 @@ func (app *App) SetEnvsToApp(envs []bind.EnvVar, publicOnly, useQueue bool) erro
 	return nil
 }
 
-func (a *App) UnsetEnvs(envs []string, publicOnly bool) error {
-	return a.UnsetEnvsFromApp(envs, publicOnly)
-}
-
-// UnsetEnvsFromApp removes environment variables from an app, serializing the
+// UnsetEnvs removes environment variables from an app, serializing the
 // remaining list of environment variables to all units of the app. Unlike
 // SetEnvsToApp method, this method does not provide an option to use a queue
 // for serialization.
@@ -597,7 +593,7 @@ func (a *App) UnsetEnvs(envs []string, publicOnly bool) error {
 // Besides the slice with the name of the variables, this method also takes two
 // other parameters: publicOnly indicates whether only public variables can be
 // overridden (if set to false, setEnvsToApp may override a private variable).
-func (app *App) UnsetEnvsFromApp(variableNames []string, publicOnly bool) error {
+func (app *App) UnsetEnvs(variableNames []string, publicOnly bool) error {
 	if len(variableNames) > 0 {
 		for _, name := range variableNames {
 			var unset bool
