@@ -299,6 +299,7 @@ func (s *S) TestEnqueueUsesInternalQueue(c *C) {
 	c.Assert(err, NotNil)
 	msg, err := queue.Get(queueName, 1e6)
 	c.Assert(err, IsNil)
+	c.Assert(msg.Action, Equals, "do-something")
 	msg.Delete()
 }
 
