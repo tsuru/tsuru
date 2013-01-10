@@ -269,6 +269,16 @@ func (a *App) unbindUnit(unit provision.AppUnit) error {
 	return nil
 }
 
+// Avaliable returns true if one of N units is started.
+func (a *App) Avaliable() bool {
+	for _, unit := range a.ProvisionUnits() {
+		if unit.GetStatus() == provision.StatusStarted {
+			return true
+		}
+	}
+	return false
+}
+
 func (a *App) Find(team *auth.Team) (int, bool) {
 	pos := sort.Search(len(a.Teams), func(i int) bool {
 		return a.Teams[i] >= team.Name

@@ -1250,3 +1250,15 @@ func (s *S) TestGetProvisionUnits(c *C) {
 		}
 	}
 }
+
+func (s *S) TestAppAvaliableShouldReturnsTrueWhenOneUnitIsStarted(c *C) {
+	a := App{
+		Name: "anycolor",
+		Units: []Unit{
+			{Name: "i-0800", State: "started"},
+			{Name: "i-0900", State: "pending"},
+			{Name: "i-a00", State: "stopped"},
+		},
+	}
+	c.Assert(a.Avaliable(), Equals, true)
+}
