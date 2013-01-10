@@ -16,10 +16,14 @@ import (
 )
 
 const (
-	regenerateApprc = "regenerate-apprc"
-	startApp        = "start-app"
-	queueName       = "tsuru-app"
-	bindService     = "bind-service"
+	// queue actions
+	regenerateApprc         = "regenerate-apprc"
+	startApp                = "start-app"
+	regenerateApprcAndStart = "regenerate-apprc-start-app"
+	bindService             = "bind-service"
+
+	// name of the queue
+	queueName = "tsuru-app"
 )
 
 func ensureAppIsStarted(msg *queue.Message) (App, error) {
@@ -70,6 +74,8 @@ func bindUnit(msg *queue.Message) error {
 
 func handle(msg *queue.Message) {
 	switch msg.Action {
+	case regenerateApprcAndStart:
+		fallthrough
 	case regenerateApprc:
 		if len(msg.Args) < 1 {
 			log.Printf("Error handling %q: this action requires at least 1 argument.", msg.Action)
@@ -82,7 +88,11 @@ func handle(msg *queue.Message) {
 		}
 		msg.Delete()
 		app.SerializeEnvVars()
+		fallthrough
 	case startApp:
+		if msg.Action == regenerateApprc {
+			break
+		}
 		if len(msg.Args) < 1 {
 			log.Printf("Error handling %q: this action requires at least 1 argument.", msg.Action)
 		}
