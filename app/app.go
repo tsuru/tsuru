@@ -546,11 +546,7 @@ func (a *App) SerializeEnvVars() error {
 }
 
 func (a *App) SetEnvs(envs []bind.EnvVar, publicOnly bool) error {
-	e := make([]bind.EnvVar, len(envs))
-	for i, env := range envs {
-		e[i] = bind.EnvVar(env)
-	}
-	return a.SetEnvsToApp(e, publicOnly, false)
+	return a.SetEnvsToApp(envs, publicOnly, false)
 }
 
 // SetEnvsToApp adds environment variables to an app, serializing the resulting
