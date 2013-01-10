@@ -2296,7 +2296,6 @@ func (s *S) TestgetAppOrErrorWhenUserIsAdmin(c *C) {
 	err = db.Session.Apps().Insert(&a)
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
-	s.createAdminUserAndTeam(c)
 	defer func(admin auth.User, adminTeam auth.Team) {
 		err := db.Session.Teams().RemoveId(adminTeam.Name)
 		c.Assert(err, IsNil)
