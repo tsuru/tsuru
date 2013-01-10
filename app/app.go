@@ -584,7 +584,7 @@ func (app *App) SetEnvsToApp(envs []bind.EnvVar, publicOnly, useQueue bool) erro
 			enqueue(queue.Message{Action: regenerateApprc, Args: []string{app.Name}})
 			return nil
 		}
-		app.SerializeEnvVars()
+		go app.SerializeEnvVars()
 	}
 	return nil
 }
@@ -616,7 +616,7 @@ func (app *App) UnsetEnvsFromApp(variableNames []string, publicOnly bool) error 
 		if err := db.Session.Apps().Update(bson.M{"name": app.Name}, app); err != nil {
 			return err
 		}
-		app.SerializeEnvVars()
+		go app.SerializeEnvVars()
 	}
 	return nil
 }
