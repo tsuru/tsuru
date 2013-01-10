@@ -38,6 +38,15 @@ func (t *Target) Fatal(v ...interface{}) {
 	}
 }
 
+// Fatalf is equivalent to Printf followed by os.Exit(1).
+func (t *Target) Fatalf(format string, v ...interface{}) {
+	t.mut.RLock()
+	defer t.mut.RUnlock()
+	if t.logger != nil {
+		t.logger.Fatalf(format, v...)
+	}
+}
+
 // Print is similar to fmt.Print, writing the given values to the Target
 // logger.
 func (t *Target) Print(v ...interface{}) {
@@ -80,6 +89,11 @@ var DefaultTarget *Target = new(Target)
 // Fatal is a wrapper for DefaultTarget.Fatal.
 func Fatal(v ...interface{}) {
 	DefaultTarget.Fatal(v...)
+}
+
+// Fatalf is a wrapper for DefaultTarget.Fatalf.
+func Fatalf(format string, v ...interface{}) {
+	DefaultTarget.Fatalf(format, v...)
 }
 
 // Print is a wrapper for DefaultTarget.Print.
