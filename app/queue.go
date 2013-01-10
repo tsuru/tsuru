@@ -19,11 +19,11 @@ const (
 	// queue actions
 	regenerateApprc         = "regenerate-apprc"
 	startApp                = "start-app"
-	regenerateApprcAndStart = "regenerate-apprc-start-app"
+	RegenerateApprcAndStart = "regenerate-apprc-start-app"
 	bindService             = "bind-service"
 
 	// name of the queue
-	queueName = "tsuru-app"
+	QueueName = "tsuru-app"
 )
 
 func ensureAppIsStarted(msg *queue.Message) (App, error) {
@@ -74,7 +74,7 @@ func bindUnit(msg *queue.Message) error {
 
 func handle(msg *queue.Message) {
 	switch msg.Action {
-	case regenerateApprcAndStart:
+	case RegenerateApprcAndStart:
 		fallthrough
 	case regenerateApprc:
 		if len(msg.Args) < 1 {
@@ -149,12 +149,12 @@ func getUnits(a *App, names []string) unitList {
 	return unitList(units)
 }
 
-var handler = &queue.Handler{F: handle, Queue: queueName}
+var handler = &queue.Handler{F: handle, Queue: QueueName}
 
 func enqueue(msgs ...queue.Message) {
 	for _, msg := range msgs {
 		copy := msg
-		copy.Put(queueName, 0)
+		copy.Put(QueueName, 0)
 	}
 	handler.Start()
 }

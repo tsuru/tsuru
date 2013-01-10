@@ -157,7 +157,7 @@ func (s *S) TestCreateApp(c *C) {
 		Action: regenerateApprc,
 		Args:   []string{a.Name},
 	}
-	message, err := queue.Get(queueName, 1e6)
+	message, err := queue.Get(QueueName, 1e6)
 	c.Assert(err, IsNil)
 	defer message.Delete()
 	c.Assert(message.Action, Equals, expectedMessage.Action)
@@ -287,14 +287,14 @@ func (s *S) TestAddUnits(c *C) {
 		expected := fmt.Sprintf("%s/%d", app.Name, i+1)
 		c.Assert(unit.Name, Equals, expected)
 		messages := []queue.Message{
-			{Action: regenerateApprcAndStart, Args: []string{app.Name, unit.Name}},
+			{Action: RegenerateApprcAndStart, Args: []string{app.Name, unit.Name}},
 			{Action: bindService, Args: []string{app.Name, unit.Name}},
 		}
 		expectedMessages = append(expectedMessages, messages...)
 	}
 	gotMessages := make(MessageList, expectedMessages.Len())
 	for i := range expectedMessages {
-		message, err := queue.Get(queueName, 1e6)
+		message, err := queue.Get(QueueName, 1e6)
 		c.Assert(err, IsNil)
 		defer message.Delete()
 		gotMessages[i] = queue.Message{

@@ -249,7 +249,7 @@ func (s *S) TestHandleRegenerateAndRestart(c *C) {
 	err := db.Session.Apps().Insert(a)
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
-	msg := queue.Message{Action: regenerateApprcAndStart, Args: []string{a.Name}}
+	msg := queue.Message{Action: RegenerateApprcAndStart, Args: []string{a.Name}}
 	handle(&msg)
 	cmds := s.provisioner.GetCmds("", &a)
 	c.Assert(cmds, HasLen, 3)
@@ -295,13 +295,13 @@ func (s *S) TestEnqueueUsesSpecificQueue(c *C) {
 	enqueue(queue.Message{Action: "do-something"})
 	_, err := queue.Get("default", 1e6)
 	c.Assert(err, NotNil)
-	msg, err := queue.Get(queueName, 1e6)
+	msg, err := queue.Get(QueueName, 1e6)
 	c.Assert(err, IsNil)
 	defer msg.Delete()
 }
 
 func (s *S) TestHandlerListenToSpecificQueue(c *C) {
-	c.Assert(handler.Queue, Equals, queueName)
+	c.Assert(handler.Queue, Equals, QueueName)
 }
 
 func (s *S) TestHandleBindServiceMessage(c *C) {

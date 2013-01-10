@@ -201,7 +201,7 @@ func (a *App) AddUnits(n uint) error {
 			State:   provision.StatusPending.String(),
 		}
 		qArgs[i+1] = unit.Name
-		messages[mCount] = queue.Message{Action: regenerateApprcAndStart, Args: []string{a.Name, unit.Name}}
+		messages[mCount] = queue.Message{Action: RegenerateApprcAndStart, Args: []string{a.Name, unit.Name}}
 		messages[mCount+1] = queue.Message{Action: bindService, Args: []string{a.Name, unit.Name}}
 		mCount += 2
 	}

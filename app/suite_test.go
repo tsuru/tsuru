@@ -110,7 +110,7 @@ func (s *S) SetUpTest(c *C) {
 		msg *queue.Message
 	)
 	for err == nil {
-		if msg, err = queue.Get(queueName, 1e6); err == nil {
+		if msg, err = queue.Get(QueueName, 1e6); err == nil {
 			err = msg.Delete()
 		}
 	}
