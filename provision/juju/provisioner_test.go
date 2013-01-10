@@ -9,13 +9,16 @@ import (
 	"errors"
 	"github.com/globocom/commandmocker"
 	"github.com/globocom/config"
+	"github.com/globocom/tsuru/app"
 	"github.com/globocom/tsuru/provision"
 	"github.com/globocom/tsuru/queue"
 	"github.com/globocom/tsuru/repository"
 	"github.com/globocom/tsuru/testing"
+	"labix.org/v2/mgo/bson"
 	. "launchpad.net/gocheck"
 	"reflect"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -362,6 +365,7 @@ func (s *S) TestCollectStatus(c *C) {
 	p := JujuProvisioner{}
 	err = p.unitsCollection().Insert(instance{UnitName: "as_i_rise/0", InstanceId: "i-00000439"})
 	c.Assert(err, IsNil)
+	defer p.unitsCollection().Remove(bson.M{"_id": bson.M{"$in": []string{"as_i_rise/0", "the_infanta/0"}}})
 	expected := []provision.Unit{
 		{
 			Name:       "as_i_rise/0",
@@ -424,6 +428,7 @@ func (s *S) TestCollectStatusDirtyOutput(c *C) {
 		},
 	}
 	p := JujuProvisioner{}
+	defer p.unitsCollection().Remove(bson.M{"_id": bson.M{"$in": []string{"as_i_rise/0", "the_infanta/0"}}})
 	units, err := p.CollectStatus()
 	c.Assert(err, IsNil)
 	if units[0].Type == "gunicorn" {
@@ -431,6 +436,27 @@ func (s *S) TestCollectStatusDirtyOutput(c *C) {
 	}
 	c.Assert(units, DeepEquals, expected)
 	c.Assert(commandmocker.Ran(tmpdir), Equals, true)
+}
+
+func (s *S) TestCollectStatusIDChangeDisabledELB(c *C) {
+	tmpdir, err := commandmocker.Add("juju", collectOutput)
+	c.Assert(err, IsNil)
+	defer commandmocker.Remove(tmpdir)
+	p := JujuProvisioner{}
+	err = p.unitsCollection().Insert(instance{UnitName: "as_i_rise/0", InstanceId: "i-00000239"})
+	c.Assert(err, IsNil)
+	defer p.unitsCollection().Remove(bson.M{"_id": bson.M{"$in": []string{"as_i_rise/0", "the_infanta/0"}}})
+	_, err = p.CollectStatus()
+	c.Assert(err, IsNil)
+	var inst instance
+	err = p.unitsCollection().Find(bson.M{"_id": "as_i_rise/0"}).One(&inst)
+	c.Assert(err, IsNil)
+	c.Assert(inst.InstanceId, Equals, "i-00000439")
+	msg, err := queue.Get(app.QueueName, 1e6)
+	c.Assert(err, IsNil)
+	defer msg.Delete()
+	c.Assert(msg.Action, Equals, app.RegenerateApprcAndStart)
+	c.Assert(msg.Args, DeepEquals, []string{"as_i_rise", "as_i_rise/0"})
 }
 
 func (s *S) TestCollectStatusFailure(c *C) {
@@ -661,6 +687,45 @@ func (s *ELBSuite) TestRemoveUnitsWithELB(c *C) {
 	c.Assert(resp.LoadBalancerDescriptions[0].Instances, HasLen, 1)
 	instance := resp.LoadBalancerDescriptions[0].Instances[0]
 	c.Assert(instance.InstanceId, Equals, instIds[0])
+}
+
+func (s *ELBSuite) TestCollectStatusWithELBAndIDChange(c *C) {
+	a := testing.NewFakeApp("symfonia", "symfonia", 0)
+	p := JujuProvisioner{}
+	lb := p.LoadBalancer()
+	err := lb.Create(a)
+	c.Assert(err, IsNil)
+	defer lb.Destroy(a)
+	id1 := s.server.NewInstance()
+	defer s.server.RemoveInstance(id1)
+	id2 := s.server.NewInstance()
+	defer s.server.RemoveInstance(id2)
+	id3 := s.server.NewInstance()
+	defer s.server.RemoveInstance(id3)
+	err = p.unitsCollection().Insert(instance{UnitName: "symfonia/0", InstanceId: id3})
+	c.Assert(err, IsNil)
+	err = lb.Register(a, provision.Unit{InstanceId: id3}, provision.Unit{InstanceId: id2})
+	q := bson.M{"_id": bson.M{"$in": []string{"symfonia/0", "symfonia/1", "symfonia/2", "raise/0"}}}
+	defer p.unitsCollection().Remove(q)
+	output := strings.Replace(simpleCollectOutput, "i-00004444", id1, 1)
+	output = strings.Replace(output, "i-00004445", id2, 1)
+	tmpdir, err := commandmocker.Add("juju", output)
+	c.Assert(err, IsNil)
+	defer commandmocker.Remove(tmpdir)
+	_, err = p.CollectStatus()
+	c.Assert(err, IsNil)
+	resp, err := s.client.DescribeLoadBalancers(a.GetName())
+	c.Assert(err, IsNil)
+	c.Assert(resp.LoadBalancerDescriptions, HasLen, 1)
+	instances := resp.LoadBalancerDescriptions[0].Instances
+	c.Assert(instances, HasLen, 2)
+	c.Assert(instances[0].InstanceId, Equals, id2)
+	c.Assert(instances[1].InstanceId, Equals, id1)
+	msg, err := queue.Get(app.QueueName, 1e6)
+	c.Assert(err, IsNil)
+	defer msg.Delete()
+	c.Assert(msg.Action, Equals, app.RegenerateApprcAndStart)
+	c.Assert(msg.Args, DeepEquals, []string{a.GetName(), "symfonia/0"})
 }
 
 func (s *ELBSuite) TestAddrWithELB(c *C) {

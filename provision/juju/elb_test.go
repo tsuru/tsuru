@@ -45,6 +45,7 @@ func (s *ELBSuite) SetUpSuite(c *C) {
 	config.Set("aws:secret-access-key", "s3cr3t")
 	config.Set("git:host", "git.tsuru.io")
 	config.Set("queue-server", "127.0.0.1:11300")
+	config.Set("juju:units-collection", "juju_units_test_elb")
 	cleanQueue()
 	err = handler.DryRun()
 	c.Assert(err, IsNil)
@@ -52,6 +53,7 @@ func (s *ELBSuite) SetUpSuite(c *C) {
 
 func (s *ELBSuite) TearDownSuite(c *C) {
 	config.Unset("juju:use-elb")
+	db.Session.Collection("juju_units_test_elb").Database.DropDatabase()
 	db.Session.Close()
 	s.server.Quit()
 	handler.Stop()

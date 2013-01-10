@@ -10,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/globocom/config"
+	"github.com/globocom/tsuru/app"
 	"github.com/globocom/tsuru/db"
 	"github.com/globocom/tsuru/log"
 	"github.com/globocom/tsuru/provision"
@@ -319,21 +320,42 @@ func (p *JujuProvisioner) collectStatus() ([]provision.Unit, error) {
 	return units, err
 }
 
+func (p *JujuProvisioner) heal(units []provision.Unit) {
+	var inst instance
+	coll := p.unitsCollection()
+	for _, unit := range units {
+		err := coll.FindId(unit.Name).One(&inst)
+		if err != nil {
+			coll.Insert(instance{UnitName: unit.Name, InstanceId: unit.InstanceId})
+		} else if unit.InstanceId == inst.InstanceId {
+			continue
+		} else {
+			if p.elbSupport() {
+				a := qApp{unit.AppName}
+				manager := p.LoadBalancer()
+				manager.Deregister(&a, provision.Unit{InstanceId: inst.InstanceId})
+				err := manager.Register(&a, provision.Unit{InstanceId: unit.InstanceId})
+				if err != nil {
+					continue
+				}
+			}
+			inst.InstanceId = unit.InstanceId
+			coll.UpdateId(unit.Name, inst)
+			msg := queue.Message{
+				Action: app.RegenerateApprcAndStart,
+				Args:   []string{unit.AppName, unit.Name},
+			}
+			msg.Put(app.QueueName, 0)
+		}
+	}
+}
+
 func (p *JujuProvisioner) CollectStatus() ([]provision.Unit, error) {
 	units, err := p.collectStatus()
 	if err != nil {
 		return nil, err
 	}
-	coll := p.unitsCollection()
-	for _, unit := range units {
-		inst := instance{
-			UnitName:   unit.Name,
-			InstanceId: unit.InstanceId,
-		}
-		if _, err := coll.UpsertId(unit.Name, inst); err != nil {
-			return nil, &provision.Error{Reason: "Failed to save unit in the database.", Err: err}
-		}
-	}
+	p.heal(units)
 	return units, err
 }
 

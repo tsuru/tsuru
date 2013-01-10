@@ -16,11 +16,11 @@ const (
 	queueName             = "tsuru-provision-juju"
 )
 
-type app struct {
+type qApp struct {
 	name string
 }
 
-func (a *app) GetName() string {
+func (a *qApp) GetName() string {
 	return a.name
 }
 
@@ -32,7 +32,7 @@ func handle(msg *queue.Message) {
 			msg.Delete()
 			return
 		}
-		a := app{name: msg.Args[0]}
+		a := qApp{name: msg.Args[0]}
 		unitNames := msg.Args[1:]
 		sort.Strings(unitNames)
 		status, err := (&JujuProvisioner{}).collectStatus()
