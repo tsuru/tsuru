@@ -87,9 +87,10 @@ func (a *App) Get() error {
 // Creating a new app is a process composed of four steps:
 //
 //       1. Save the app in the database
-//       2. Create S3 credentials and bucket for the app
-//       3. Create the git repository using gandalf
-//       4. Provision units within the provisioner
+//       2. Create IAM credentials for the app
+//       3. Create S3 bucket for the app
+//       4. Create the git repository using gandalf
+//       5. Provision units within the provisioner
 func CreateApp(a *App, units uint) error {
 	if units == 0 {
 		return &ValidationError{Message: "Cannot create app with 0 units."}
@@ -101,8 +102,9 @@ func CreateApp(a *App, units uint) error {
 		return &ValidationError{Message: msg}
 	}
 	pipeline := action.NewPipeline(
-		&insertApp, &createBucketIam,
-		&createRepository, &provisionApp,
+		&insertApp, &createIAMUserAction, &createIAMAccessKeyAction,
+		&createBucketAction, &createUserPolicyAction,
+		&exportEnvironmentsAction, &createRepository, &provisionApp,
 		&provisionAddUnits,
 	)
 	return pipeline.Execute(a, units)

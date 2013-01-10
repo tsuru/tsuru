@@ -7,6 +7,7 @@ package app
 import (
 	"errors"
 	"fmt"
+	"github.com/fsouza/go-iam"
 	"github.com/globocom/config"
 	"github.com/globocom/go-gandalfclient"
 	"github.com/globocom/tsuru/action"
@@ -14,6 +15,7 @@ import (
 	"github.com/globocom/tsuru/db"
 	"github.com/globocom/tsuru/repository"
 	"labix.org/v2/mgo/bson"
+	"launchpad.net/goamz/aws"
 	"strconv"
 )
 
@@ -48,18 +50,94 @@ type createBucketResult struct {
 	env *s3Env
 }
 
-// createBucketIam is an action that creates a bucket in S3, and a user,
-// credentials and user policy in IAM.
-//
-// It does not receive any parameter. It expects an app to be in the Previous
-// result, so this action cannot be the first in a pipeline.
-//
-// TODO(fss): break this action in smaller actions (createS3Bucket,
-// createIAMUser, createIAMCredentials and createIAMUserPolicy).
-var createBucketIam = action.Action{
+// createIAMUserAction creates a user in IAM. It requires that the first
+// parameter is the a pointer to an App instance.
+var createIAMUserAction = action.Action{
 	Forward: func(ctx action.FWContext) (action.Result, error) {
 		app := ctx.Previous.(*App)
-		env, err := createBucket(app)
+		return createIAMUser(app.Name)
+	},
+	Backward: func(ctx action.BWContext) {
+		user := ctx.FWResult.(*iam.User)
+		getIAMEndpoint().DeleteUser(user.Name)
+	},
+	MinParams: 1,
+}
+
+// createIAMAccessKeyAction creates an access key in IAM. It uses the result
+// returned by createIAMUserAction, so it must come after this action.
+var createIAMAccessKeyAction = action.Action{
+	Forward: func(ctx action.FWContext) (action.Result, error) {
+		user := ctx.Previous.(*iam.User)
+		return createIAMAccessKey(user)
+	},
+	Backward: func(ctx action.BWContext) {
+		key := ctx.FWResult.(*iam.AccessKey)
+		getIAMEndpoint().DeleteAccessKey(key.Id, key.UserName)
+	},
+	MinParams: 1,
+}
+
+// createBucketAction creates a bucket in S3. It uses the result of
+// createIAMAccessKeyAction for managing permission, and the app given as
+// parameter to generate the name of the bucket. It must run after
+// createIAMAccessKey.
+var createBucketAction = action.Action{
+	Forward: func(ctx action.FWContext) (action.Result, error) {
+		app := ctx.Params[0].(*App)
+		key := ctx.Previous.(*iam.AccessKey)
+		bucket, err := putBucket(app.Name)
+		if err != nil {
+			return nil, err
+		}
+		env := s3Env{
+			Auth: aws.Auth{
+				AccessKey: key.Id,
+				SecretKey: key.Secret,
+			},
+			bucket:             bucket.Name,
+			endpoint:           bucket.S3Endpoint,
+			locationConstraint: bucket.S3LocationConstraint,
+		}
+		return &env, nil
+	},
+	Backward: func(ctx action.BWContext) {
+		env := ctx.FWResult.(*s3Env)
+		getS3Endpoint().Bucket(env.bucket).DelBucket()
+	},
+	MinParams: 1,
+}
+
+// createUserPolicyAction creates a new UserPolicy in IAM. It requires a
+// pointer to an App instance as the first parameter, and the previous result
+// to be a *s3Env (it should be used after createBucketAction).
+var createUserPolicyAction = action.Action{
+	Forward: func(ctx action.FWContext) (action.Result, error) {
+		app := ctx.Params[0].(*App)
+		env := ctx.Previous.(*s3Env)
+		_, err := createIAMUserPolicy(&iam.User{Name: app.Name}, app.Name, env.bucket)
+		if err != nil {
+			return nil, err
+		}
+		return ctx.Previous, nil
+	},
+	Backward: func(ctx action.BWContext) {
+		app := ctx.Params[0].(*App)
+		policyName := fmt.Sprintf("app-%s-bucket", app.Name)
+		getIAMEndpoint().DeleteUserPolicy(app.Name, policyName)
+	},
+	MinParams: 1,
+}
+
+// exportEnvironmentsAction exports tsuru's default environment variables in a
+// new app. It requires a pointer to an App instance as the first parameter,
+// and the previous result to be a *s3Env (it should be used after
+// createUserPolicyAction or createBucketAction).
+var exportEnvironmentsAction = action.Action{
+	Forward: func(ctx action.FWContext) (action.Result, error) {
+		app := ctx.Params[0].(*App)
+		env := ctx.Previous.(*s3Env)
+		err := app.Get()
 		if err != nil {
 			return nil, err
 		}
@@ -86,12 +164,24 @@ var createBucketIam = action.Action{
 		if err != nil {
 			return nil, err
 		}
-		return &createBucketResult{app: app, env: env}, nil
+		return ctx.Previous, nil
 	},
 	Backward: func(ctx action.BWContext) {
-		result := ctx.FWResult.(*createBucketResult)
-		destroyBucket(result.app)
+		app := ctx.Params[0].(*App)
+		if app.Get() == nil {
+			s3Env := app.InstanceEnv(s3InstanceName)
+			vars := make([]string, len(s3Env)+2)
+			i := 0
+			for k := range s3Env {
+				vars[i] = k
+				i++
+			}
+			vars[i] = "TSURU_HOST"
+			vars[i+1] = "APPNAME"
+			app.UnsetEnvsFromApp(vars, false, false)
+		}
 	},
+	MinParams: 1,
 }
 
 // createRepository creates a repository for the app in Gandalf.
