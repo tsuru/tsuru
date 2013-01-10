@@ -100,8 +100,8 @@ func AppIsAvaliableHandler(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	if app.State != "started" {
-		return fmt.Errorf("App must be started to receive pushs, but it is %q.", app.State)
+	if !app.Avaliable() {
+		return fmt.Errorf("App must be avaliable to receive pushs, but it is %q.", app.State)
 	}
 	w.WriteHeader(http.StatusOK)
 	return nil
