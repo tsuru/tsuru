@@ -388,10 +388,12 @@ func (s *S) TestCollectStatus(c *C) {
 	}
 	units, err := p.CollectStatus()
 	c.Assert(err, IsNil)
-	if units[0].Type == "gunicorn" {
-		units[0], units[1] = units[1], units[0]
+	cp := make([]provision.Unit, len(units))
+	copy(cp, units)
+	if cp[0].Type == "gunicorn" {
+		cp[0], cp[1] = cp[1], cp[0]
 	}
-	c.Assert(units, DeepEquals, expected)
+	c.Assert(cp, DeepEquals, expected)
 	c.Assert(commandmocker.Ran(tmpdir), Equals, true)
 	done := make(chan int8)
 	go func() {
@@ -445,10 +447,12 @@ func (s *S) TestCollectStatusDirtyOutput(c *C) {
 	p := JujuProvisioner{}
 	units, err := p.CollectStatus()
 	c.Assert(err, IsNil)
-	if units[0].Type == "gunicorn" {
-		units[0], units[1] = units[1], units[0]
+	cp := make([]provision.Unit, len(units))
+	copy(cp, units)
+	if cp[0].Type == "gunicorn" {
+		cp[0], cp[1] = cp[1], cp[0]
 	}
-	c.Assert(units, DeepEquals, expected)
+	c.Assert(cp, DeepEquals, expected)
 	c.Assert(commandmocker.Ran(tmpdir), Equals, true)
 	var wg sync.WaitGroup
 	wg.Add(1)
