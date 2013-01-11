@@ -76,7 +76,7 @@ func main() {
 
 	m.Del("/apps/:name", AuthorizationRequiredHandler(AppDelete))
 	m.Get("/apps/:name/repository/clone", Handler(CloneRepositoryHandler))
-	m.Get("/apps/:name/avaliable", Handler(AppIsAvaliableHandler))
+	m.Get("/apps/:name/avaliable", Handler(AppIsAvailableHandler))
 	m.Get("/apps/:name", AuthorizationRequiredHandler(AppInfo))
 	m.Post("/apps/:name/run", AuthorizationRequiredHandler(RunCommand))
 	m.Get("/apps/:name/restart", AuthorizationRequiredHandler(RestartHandler))

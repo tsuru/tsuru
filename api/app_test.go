@@ -55,7 +55,7 @@ func (h *testBadHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	http.Error(w, "some error", http.StatusInternalServerError)
 }
 
-func (s *S) TestAppIsAvaliableHandlerShouldReturnErrorWhenAppStatusIsnotStarted(c *C) {
+func (s *S) TestAppIsAvailableHandlerShouldReturnErrorWhenAppStatusIsnotStarted(c *C) {
 	a := app.App{
 		Name:      "someapp",
 		Framework: "python",
@@ -70,11 +70,11 @@ func (s *S) TestAppIsAvaliableHandlerShouldReturnErrorWhenAppStatusIsnotStarted(
 	request, err := http.NewRequest("GET", url, nil)
 	c.Assert(err, IsNil)
 	recorder := httptest.NewRecorder()
-	err = AppIsAvaliableHandler(recorder, request)
+	err = AppIsAvailableHandler(recorder, request)
 	c.Assert(err, NotNil)
 }
 
-func (s *S) TestAppIsAvaliableHandlerShouldReturn200WhenAppUnitStatusIsStarted(c *C) {
+func (s *S) TestAppIsAvailableHandlerShouldReturn200WhenAppUnitStatusIsStarted(c *C) {
 	a := app.App{
 		Name:      "someapp",
 		Framework: "python",
@@ -89,7 +89,7 @@ func (s *S) TestAppIsAvaliableHandlerShouldReturn200WhenAppUnitStatusIsStarted(c
 	request, err := http.NewRequest("GET", url, nil)
 	c.Assert(err, IsNil)
 	recorder := httptest.NewRecorder()
-	err = AppIsAvaliableHandler(recorder, request)
+	err = AppIsAvailableHandler(recorder, request)
 	c.Assert(err, IsNil)
 	c.Assert(recorder.Code, Equals, http.StatusOK)
 }

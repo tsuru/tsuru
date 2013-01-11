@@ -1269,7 +1269,7 @@ func (s *S) TestGetProvisionUnits(c *C) {
 	}
 }
 
-func (s *S) TestAppAvaliableShouldReturnsTrueWhenOneUnitIsStarted(c *C) {
+func (s *S) TestAppAvailableShouldReturnsTrueWhenOneUnitIsStarted(c *C) {
 	a := App{
 		Name: "anycolor",
 		Units: []Unit{
@@ -1278,5 +1278,5 @@ func (s *S) TestAppAvaliableShouldReturnsTrueWhenOneUnitIsStarted(c *C) {
 			{Name: "i-a00", State: "stopped"},
 		},
 	}
-	c.Assert(a.Avaliable(), Equals, true)
+	c.Assert(a.Available(), Equals, true)
 }

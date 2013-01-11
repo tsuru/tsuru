@@ -269,8 +269,8 @@ func (a *App) unbindUnit(unit provision.AppUnit) error {
 	return nil
 }
 
-// Avaliable returns true if one of N units is started.
-func (a *App) Avaliable() bool {
+// Available returns true if one of N units is started.
+func (a *App) Available() bool {
 	for _, unit := range a.ProvisionUnits() {
 		if unit.GetStatus() == provision.StatusStarted {
 			return true
@@ -456,7 +456,7 @@ func (a *App) Run(cmd string, w io.Writer) error {
 }
 
 func (a *App) run(cmd string, w io.Writer) error {
-	if !a.Avaliable() {
+	if !a.Available() {
 		return fmt.Errorf("App must be started to run commands, but it is %q.", a.State)
 	}
 	return Provisioner.ExecuteCommand(w, w, a, cmd)
