@@ -321,13 +321,15 @@ func (p *JujuProvisioner) heal(units []provision.Unit) {
 					continue
 				}
 			}
+			if inst.InstanceId != "pending" {
+				msg := queue.Message{
+					Action: app.RegenerateApprcAndStart,
+					Args:   []string{unit.AppName, unit.Name},
+				}
+				msg.Put(app.QueueName, 0)
+			}
 			inst.InstanceId = unit.InstanceId
 			coll.UpdateId(unit.Name, inst)
-			msg := queue.Message{
-				Action: app.RegenerateApprcAndStart,
-				Args:   []string{unit.AppName, unit.Name},
-			}
-			msg.Put(app.QueueName, 0)
 		}
 	}
 }
