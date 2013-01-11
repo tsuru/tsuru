@@ -193,16 +193,12 @@ func (p *JujuProvisioner) AddUnits(app provision.App, n uint) ([]provision.Unit,
 	return units, nil
 }
 
-func (p *JujuProvisioner) removeUnits(app provision.App, units ...provision.AppUnit) error {
+func (p *JujuProvisioner) removeUnit(app provision.App, unit provision.AppUnit) error {
 	var (
 		buf bytes.Buffer
 		err error
 	)
-	cmd := make([]string, len(units)+1)
-	cmd[0] = "remove-unit"
-	for i, unit := range units {
-		cmd[i+1] = unit.GetName()
-	}
+	cmd := []string{"remove-unit", unit.GetName()}
 	// Sometimes juju gives the "no node" error. This is one of Zookeeper bad
 	// behaviors. Let's try it multiple times before raising the error to the
 	// user, and hope that someday we run away from Zookeeper.
@@ -217,16 +213,13 @@ func (p *JujuProvisioner) removeUnits(app provision.App, units ...provision.AppU
 		return cmdError(buf.String(), err, cmd)
 	}
 	if p.elbSupport() {
-		pUnits := make([]provision.Unit, len(units))
-		for i, u := range units {
-			pUnits[i] = provision.Unit{
-				Name:       u.GetName(),
-				InstanceId: u.GetInstanceId(),
-			}
+		pUnit := provision.Unit{
+			Name:       unit.GetName(),
+			InstanceId: unit.GetInstanceId(),
 		}
-		err = p.LoadBalancer().Deregister(app, pUnits...)
+		err = p.LoadBalancer().Deregister(app, pUnit)
 	}
-	go p.terminateMachines(app, units...)
+	go p.terminateMachines(app, unit)
 	return err
 }
 
@@ -240,25 +233,7 @@ func (p *JujuProvisioner) RemoveUnit(app provision.App, name string) error {
 	if unit.GetName() != name {
 		return fmt.Errorf("App %q does not have a unit named %q.", app.GetName(), name)
 	}
-	return p.removeUnits(app, unit)
-}
-
-func (p *JujuProvisioner) RemoveUnits(app provision.App, n uint) ([]int, error) {
-	units := app.ProvisionUnits()
-	length := uint(len(units))
-	if length == n {
-		return nil, errors.New("You can't remove all units from an app.")
-	} else if length < n {
-		return nil, fmt.Errorf("You can't remove %d units from this app because it has only %d units.", n, length)
-	}
-	result := make([]int, n)
-	if err := p.removeUnits(app, units[:n]...); err != nil {
-		return nil, err
-	}
-	for i := 0; i < len(result); i++ {
-		result[i] = i
-	}
-	return result, nil
+	return p.removeUnit(app, unit)
 }
 
 func (p *JujuProvisioner) ExecuteCommand(stdout, stderr io.Writer, app provision.App, cmd string, args ...string) error {

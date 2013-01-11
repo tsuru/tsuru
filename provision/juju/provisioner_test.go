@@ -214,70 +214,6 @@ func (s *S) TestRemoveUnitFailure(c *C) {
 	c.Assert(e.Err.Error(), Equals, "exit status 66")
 }
 
-func (s *S) TestRemoveUnits(c *C) {
-	tmpdir, err := commandmocker.Add("juju", "removed")
-	c.Assert(err, IsNil)
-	defer commandmocker.Remove(tmpdir)
-	app := testing.NewFakeApp("xanadu", "rush", 4)
-	p := JujuProvisioner{}
-	units, err := p.RemoveUnits(app, 3)
-	c.Assert(err, IsNil)
-	expected := []string{
-		"remove-unit", "xanadu/0", "xanadu/1", "xanadu/2",
-		"terminate-machine", "1",
-		"terminate-machine", "2",
-		"terminate-machine", "3",
-	}
-	ran := make(chan bool, 1)
-	go func() {
-		for {
-			if reflect.DeepEqual(commandmocker.Parameters(tmpdir), expected) {
-				ran <- true
-			}
-		}
-	}()
-	select {
-	case <-ran:
-	case <-time.After(2e9):
-		params := commandmocker.Parameters(tmpdir)
-		c.Fatalf("Did not run terminate-machine commands after 2 seconds. Parameters: %#v", params)
-	}
-	c.Assert(units, DeepEquals, []int{0, 1, 2})
-}
-
-func (s *S) TestRemoveAllUnits(c *C) {
-	app := testing.NewFakeApp("xanadu", "rush", 2)
-	p := JujuProvisioner{}
-	units, err := p.RemoveUnits(app, 2)
-	c.Assert(units, IsNil)
-	c.Assert(err, NotNil)
-	c.Assert(err.Error(), Equals, "You can't remove all units from an app.")
-}
-
-func (s *S) TestRemoveTooManyUnits(c *C) {
-	app := testing.NewFakeApp("xanadu", "rush", 2)
-	p := JujuProvisioner{}
-	units, err := p.RemoveUnits(app, 3)
-	c.Assert(units, IsNil)
-	c.Assert(err, NotNil)
-	c.Assert(err.Error(), Equals, "You can't remove 3 units from this app because it has only 2 units.")
-}
-
-func (s *S) TestRemoveUnitsFailure(c *C) {
-	tmpdir, err := commandmocker.Error("juju", "juju failed", 66)
-	c.Assert(err, IsNil)
-	defer commandmocker.Remove(tmpdir)
-	app := testing.NewFakeApp("closer", "rush", 3)
-	p := JujuProvisioner{}
-	units, err := p.RemoveUnits(app, 2)
-	c.Assert(units, IsNil)
-	c.Assert(err, NotNil)
-	e, ok := err.(*provision.Error)
-	c.Assert(ok, Equals, true)
-	c.Assert(e.Reason, Equals, "juju failed")
-	c.Assert(e.Err.Error(), Equals, "exit status 66")
-}
-
 func (s *S) TestExecuteCommand(c *C) {
 	var buf bytes.Buffer
 	tmpdir, err := commandmocker.Add("juju", "$*")
@@ -686,7 +622,7 @@ func (s *ELBSuite) TestAddUnitsWithELB(c *C) {
 	c.Assert(msg.Args, DeepEquals, expected)
 }
 
-func (s *ELBSuite) TestRemoveUnitsWithELB(c *C) {
+func (s *ELBSuite) TestRemoveUnitWithELB(c *C) {
 	instIds := make([]string, 4)
 	units := make([]provision.Unit, len(instIds))
 	for i := 0; i < len(instIds); i++ {
@@ -709,23 +645,16 @@ func (s *ELBSuite) TestRemoveUnitsWithELB(c *C) {
 	defer manager.Destroy(app)
 	err = manager.Register(app, units...)
 	c.Assert(err, IsNil)
-	toRemove := make([]provision.AppUnit, len(units)-1)
-	for i := 1; i < len(units); i++ {
-		unit := units[i]
-		toRemove[i-1] = &testing.FakeUnit{
-			Name:       unit.Name,
-			InstanceId: unit.InstanceId,
-		}
-	}
 	p := JujuProvisioner{}
-	err = p.removeUnits(app, toRemove...)
+	fUnit := testing.FakeUnit{Name: units[0].Name, InstanceId: units[0].InstanceId}
+	err = p.removeUnit(app, &fUnit)
 	c.Assert(err, IsNil)
 	resp, err := s.client.DescribeLoadBalancers(app.GetName())
 	c.Assert(err, IsNil)
 	c.Assert(resp.LoadBalancerDescriptions, HasLen, 1)
-	c.Assert(resp.LoadBalancerDescriptions[0].Instances, HasLen, 1)
+	c.Assert(resp.LoadBalancerDescriptions[0].Instances, HasLen, len(units)-1)
 	instance := resp.LoadBalancerDescriptions[0].Instances[0]
-	c.Assert(instance.InstanceId, Equals, instIds[0])
+	c.Assert(instance.InstanceId, Equals, instIds[1])
 }
 
 func (s *ELBSuite) TestCollectStatusWithELBAndIDChange(c *C) {
