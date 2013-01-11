@@ -18,6 +18,7 @@ import (
 	"reflect"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -392,10 +393,25 @@ func (s *S) TestCollectStatus(c *C) {
 	}
 	c.Assert(units, DeepEquals, expected)
 	c.Assert(commandmocker.Ran(tmpdir), Equals, true)
+	done := make(chan int8)
+	go func() {
+		for {
+			ct, err := p.unitsCollection().Find(nil).Count()
+			c.Assert(err, IsNil)
+			if ct == 2 {
+				done <- 1
+				return
+			}
+		}
+	}()
+	select {
+	case <-done:
+	case <-time.After(2e9):
+		c.Fatal("Did not save the unit after 2 seconds.")
+	}
 	var instances []instance
 	err = p.unitsCollection().Find(nil).Sort("_id").All(&instances)
 	c.Assert(err, IsNil)
-	c.Assert(instances, HasLen, 2)
 	c.Assert(instances[0].UnitName, Equals, "as_i_rise/0")
 	c.Assert(instances[0].InstanceId, Equals, "i-00000439")
 	c.Assert(instances[1].UnitName, Equals, "the_infanta/0")
@@ -427,7 +443,6 @@ func (s *S) TestCollectStatusDirtyOutput(c *C) {
 		},
 	}
 	p := JujuProvisioner{}
-	defer p.unitsCollection().Remove(bson.M{"_id": bson.M{"$in": []string{"as_i_rise/0", "the_infanta/0"}}})
 	units, err := p.CollectStatus()
 	c.Assert(err, IsNil)
 	if units[0].Type == "gunicorn" {
@@ -435,6 +450,19 @@ func (s *S) TestCollectStatusDirtyOutput(c *C) {
 	}
 	c.Assert(units, DeepEquals, expected)
 	c.Assert(commandmocker.Ran(tmpdir), Equals, true)
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go func() {
+		q := bson.M{"_id": bson.M{"$in": []string{"as_i_rise/0", "the_infanta/0"}}}
+		for {
+			if n, _ := p.unitsCollection().Find(q).Count(); n == 2 {
+				break
+			}
+		}
+		p.unitsCollection().Remove(q)
+		wg.Done()
+	}()
+	wg.Wait()
 }
 
 func (s *S) TestCollectStatusIDChangeDisabledELB(c *C) {
@@ -447,10 +475,22 @@ func (s *S) TestCollectStatusIDChangeDisabledELB(c *C) {
 	defer p.unitsCollection().Remove(bson.M{"_id": bson.M{"$in": []string{"as_i_rise/0", "the_infanta/0"}}})
 	_, err = p.CollectStatus()
 	c.Assert(err, IsNil)
-	var inst instance
-	err = p.unitsCollection().Find(bson.M{"_id": "as_i_rise/0"}).One(&inst)
-	c.Assert(err, IsNil)
-	c.Assert(inst.InstanceId, Equals, "i-00000439")
+	done := make(chan int8)
+	go func() {
+		for {
+			ct, err := p.unitsCollection().Find(bson.M{"_id": "as_i_rise/0", "instanceid": "i-00000439"}).Count()
+			c.Assert(err, IsNil)
+			if ct == 1 {
+				done <- 1
+				return
+			}
+		}
+	}()
+	select {
+	case <-done:
+	case <-time.After(2e9):
+		c.Fatal("Did not update the unit after 2 seconds.")
+	}
 }
 
 func (s *S) TestCollectStatusFailure(c *C) {
@@ -708,6 +748,22 @@ func (s *ELBSuite) TestCollectStatusWithELBAndIDChange(c *C) {
 	defer commandmocker.Remove(tmpdir)
 	_, err = p.CollectStatus()
 	c.Assert(err, IsNil)
+	done := make(chan int8)
+	go func() {
+		for {
+			ct, err := p.unitsCollection().Find(nil).Count()
+			c.Assert(err, IsNil)
+			if ct == 4 {
+				done <- 1
+				return
+			}
+		}
+	}()
+	select {
+	case <-done:
+	case <-time.After(2e9):
+		c.Fatal("Did not save the unit after 2 seconds.")
+	}
 	resp, err := s.client.DescribeLoadBalancers(a.GetName())
 	c.Assert(err, IsNil)
 	c.Assert(resp.LoadBalancerDescriptions, HasLen, 1)

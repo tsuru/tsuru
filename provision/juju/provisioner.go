@@ -358,7 +358,7 @@ func (p *JujuProvisioner) CollectStatus() ([]provision.Unit, error) {
 	if err != nil {
 		return nil, err
 	}
-	p.heal(units)
+	go p.heal(units)
 	return units, err
 }
 
