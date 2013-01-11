@@ -10,6 +10,10 @@ import (
 	. "launchpad.net/gocheck"
 )
 
+type UtilSuite struct{}
+
+var _ = Suite(&UtilSuite{})
+
 func (s *S) TestFileSystem(c *C) {
 	fsystem = &testing.RecordingFs{}
 	c.Assert(filesystem(), DeepEquals, fsystem)
