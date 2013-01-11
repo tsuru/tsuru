@@ -13,7 +13,21 @@ import (
 	"net/http/httptest"
 )
 
-func (s *S) TestLogWriter(c *C) {
+type WriterSuite struct{}
+
+var _ = Suite(&WriterSuite{})
+
+func (s *WriterSuite) SetUpSuite(c *C) {
+	var err error
+	db.Session, err = db.Open("127.0.0.1:27017", "tsuru_api_writer_test")
+	c.Assert(err, IsNil)
+}
+
+func (s *WriterSuite) TearDownSuite(c *C) {
+	defer db.Session.Close()
+}
+
+func (s *WriterSuite) TestLogWriter(c *C) {
 	var b bytes.Buffer
 	a := app.App{Name: "newApp"}
 	err := db.Session.Apps().Insert(a)
@@ -30,7 +44,7 @@ func (s *S) TestLogWriter(c *C) {
 	c.Assert(instance.Logs[logLen-1].Message, Equals, string(data))
 }
 
-func (s *S) TestLogWriterShouldReturnsTheDataSize(c *C) {
+func (s *WriterSuite) TestLogWriterShouldReturnsTheDataSize(c *C) {
 	var b bytes.Buffer
 	a := app.App{Name: "newApp"}
 	err := db.Session.Apps().Insert(a)
@@ -43,7 +57,7 @@ func (s *S) TestLogWriterShouldReturnsTheDataSize(c *C) {
 	c.Assert(n, Equals, len(data))
 }
 
-func (s *S) TestFlushingWriter(c *C) {
+func (s *WriterSuite) TestFlushingWriter(c *C) {
 	recorder := httptest.NewRecorder()
 	writer := FlushingWriter{recorder, false}
 	data := []byte("ble")
@@ -53,7 +67,7 @@ func (s *S) TestFlushingWriter(c *C) {
 	c.Assert(writer.wrote, Equals, true)
 }
 
-func (s *S) TestFlushingWriterShouldReturnTheDataSize(c *C) {
+func (s *WriterSuite) TestFlushingWriterShouldReturnTheDataSize(c *C) {
 	recorder := httptest.NewRecorder()
 	writer := FlushingWriter{recorder, false}
 	data := []byte("ble")
@@ -62,14 +76,14 @@ func (s *S) TestFlushingWriterShouldReturnTheDataSize(c *C) {
 	c.Assert(n, Equals, len(data))
 }
 
-func (s *S) TestFlushingWriterHeader(c *C) {
+func (s *WriterSuite) TestFlushingWriterHeader(c *C) {
 	recorder := httptest.NewRecorder()
 	writer := FlushingWriter{recorder, false}
 	writer.Header().Set("Content-Type", "application/xml")
 	c.Assert(recorder.Header().Get("Content-Type"), Equals, "application/xml")
 }
 
-func (s *S) TestFlushingWriterWriteHeader(c *C) {
+func (s *WriterSuite) TestFlushingWriterWriteHeader(c *C) {
 	recorder := httptest.NewRecorder()
 	writer := FlushingWriter{recorder, false}
 	expectedCode := 333
