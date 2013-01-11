@@ -79,7 +79,6 @@ func handle(msg *queue.Message) {
 					Args:   args,
 				}
 				msg.Put(queueName, 1e9)
-
 			}
 		}
 	} else {

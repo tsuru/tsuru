@@ -102,11 +102,13 @@ func handle(msg *queue.Message) {
 		app, err := ensureAppIsStarted(msg)
 		if err != nil {
 			log.Print(err)
+			msg.Release(2e9)
 			return
 		}
 		err = app.Restart(ioutil.Discard)
 		if err != nil {
 			log.Printf("Error handling %q. App failed to start:\n%s.", msg.Action, err)
+			msg.Release(1e9)
 			return
 		}
 		msg.Delete()
@@ -114,6 +116,7 @@ func handle(msg *queue.Message) {
 		err := bindUnit(msg)
 		if err != nil {
 			log.Print(err)
+			msg.Release(1e9)
 			return
 		}
 		msg.Delete()
