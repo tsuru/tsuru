@@ -755,9 +755,10 @@ func (s *ELBSuite) TestCollectStatusWithELBAndIDChange(c *C) {
 	done := make(chan int8)
 	go func() {
 		for {
-			ct, err := p.unitsCollection().Find(nil).Count()
+			q := bson.M{"_id": "symfonia/0", "instanceid": id1}
+			ct, err := p.unitsCollection().Find(q).Count()
 			c.Assert(err, IsNil)
-			if ct == 4 {
+			if ct == 1 {
 				done <- 1
 				return
 			}
