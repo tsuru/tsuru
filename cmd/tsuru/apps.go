@@ -174,10 +174,6 @@ func (c *AppRevoke) Run(context *cmd.Context, client cmd.Doer) error {
 	return nil
 }
 
-type Units struct {
-	Ip string
-}
-
 type AppList struct{}
 
 func (c *AppList) Run(context *cmd.Context, client cmd.Doer) error {
