@@ -101,7 +101,7 @@ func (s *ELBSuite) TestHandleMessagesWithPendingUnits(c *C) {
 	instances := resp.LoadBalancerDescriptions[0].Instances
 	c.Assert(instances, HasLen, 1)
 	c.Assert(instances[0].InstanceId, Equals, id)
-	msg, err := queue.Get(queueName, 1e6)
+	msg, err := queue.Get(queueName, 1e9)
 	c.Assert(err, IsNil)
 	defer msg.Delete()
 	c.Assert(msg.Action, Equals, addUnitToLoadBalancer)
