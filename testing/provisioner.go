@@ -292,28 +292,6 @@ func (p *FakeProvisioner) RemoveUnit(app provision.App, name string) error {
 	return nil
 }
 
-func (p *FakeProvisioner) RemoveUnits(app provision.App, n uint) ([]int, error) {
-	if err := p.getError("RemoveUnits"); err != nil {
-		return nil, err
-	}
-	if index := p.FindApp(app); index < 0 {
-		return nil, errors.New("App is not provisioned.")
-	}
-	name := app.GetName()
-	p.unitMut.Lock()
-	defer p.unitMut.Unlock()
-	length := uint(len(p.units[name]))
-	if n >= length {
-		return nil, errors.New("Too many units.")
-	}
-	removed := make([]int, n)
-	for i := 0; i < int(n); i++ {
-		removed[i] = i
-	}
-	p.units[name] = p.units[name][n:]
-	return removed, nil
-}
-
 func (p *FakeProvisioner) ExecuteCommand(stdout, stderr io.Writer, app provision.App, cmd string, args ...string) error {
 	var (
 		output []byte

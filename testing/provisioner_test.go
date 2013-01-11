@@ -216,51 +216,6 @@ func (s *S) TestRemoveUnitFailure(c *C) {
 	c.Assert(err.Error(), Equals, "This program has performed an illegal operation.")
 }
 
-func (s *S) TestRemoveUnits(c *C) {
-	app := NewFakeApp("trees", "rush", 0)
-	p := NewFakeProvisioner()
-	p.Provision(app)
-	_, err := p.AddUnits(app, 9)
-	c.Assert(err, IsNil)
-	units, err := p.RemoveUnits(app, 3)
-	c.Assert(err, IsNil)
-	c.Assert(p.units["trees"], HasLen, 7)
-	c.Assert(p.units["trees"][0].Name, Equals, "trees/3")
-	c.Assert(units, DeepEquals, []int{0, 1, 2})
-}
-
-func (s *S) TestRemoveUnitsFromUnprovisionedApp(c *C) {
-	app := NewFakeApp("strangiato", "rush", 0)
-	p := NewFakeProvisioner()
-	units, err := p.RemoveUnits(app, 2)
-	c.Assert(units, IsNil)
-	c.Assert(err, NotNil)
-	c.Assert(err.Error(), Equals, "App is not provisioned.")
-}
-
-func (s *S) TestRemoveTooManyUnits(c *C) {
-	app := NewFakeApp("strangiato", "rush", 0)
-	p := NewFakeProvisioner()
-	p.Provision(app)
-	_, err := p.AddUnits(app, 9)
-	c.Assert(err, IsNil)
-	numbers := []uint{10, 11, 30}
-	for _, n := range numbers {
-		_, err = p.RemoveUnits(app, n)
-		c.Assert(err, NotNil)
-		c.Assert(err.Error(), Equals, "Too many units.")
-	}
-}
-
-func (s *S) TestRemoveUnitsFailure(c *C) {
-	p := NewFakeProvisioner()
-	p.PrepareFailure("RemoveUnits", errors.New("This program has performed an illegal operation."))
-	units, err := p.RemoveUnits(nil, 4)
-	c.Assert(units, IsNil)
-	c.Assert(err, NotNil)
-	c.Assert(err.Error(), Equals, "This program has performed an illegal operation.")
-}
-
 func (s *S) TestExecuteCommand(c *C) {
 	var buf bytes.Buffer
 	output := []byte("myoutput!")
