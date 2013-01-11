@@ -81,8 +81,7 @@ func (p *JujuProvisioner) Provision(app provision.App) error {
 	out := buf.String()
 	if err != nil {
 		app.Log("Failed to create machine: "+out, "tsuru")
-		log.Printf("Failed to create machine for the app %q: %s", app.GetName(), out)
-		return &provision.Error{Reason: out, Err: err}
+		return cmdError(out, err, args)
 	}
 	if p.elbSupport() {
 		if err = p.LoadBalancer().Create(app); err != nil {
@@ -113,8 +112,7 @@ func (p *JujuProvisioner) destroyService(app provision.App) error {
 	if err != nil {
 		msg := fmt.Sprintf("Failed to destroy the app: %s.", out)
 		app.Log(msg, "tsuru")
-		log.Printf("Failed to destroy the app %q: %s", app.GetName(), out)
-		return &provision.Error{Reason: out, Err: err}
+		return cmdError(out, err, []string{"destroy-service", app.GetName()})
 	}
 	return nil
 }
@@ -132,7 +130,7 @@ func (p *JujuProvisioner) terminateMachines(app provision.App, units ...provisio
 			msg := fmt.Sprintf("Failed to destroy unit %s: %s", u.GetName(), out)
 			app.Log(msg, "tsuru")
 			log.Printf("Failed to destroy unit %q from the app %q: %s", u.GetName(), app.GetName(), out)
-			return &provision.Error{Reason: out, Err: err}
+			return cmdError(out, err, []string{"terminate-machine", strconv.Itoa(u.GetMachine())})
 		}
 	}
 	return nil
@@ -158,14 +156,16 @@ func (p *JujuProvisioner) AddUnits(app provision.App, n uint) ([]provision.Unit,
 		buf   bytes.Buffer
 		units []provision.Unit
 	)
-	err := runCmd(true, &buf, &buf, "set", app.GetName(), "app-repo="+repository.GetReadOnlyUrl(app.GetName()))
+	args := []string{"set", app.GetName(), "app-repo=" + repository.GetReadOnlyUrl(app.GetName())}
+	err := runCmd(true, &buf, &buf, args...)
 	if err != nil {
-		return nil, &provision.Error{Reason: buf.String(), Err: err}
+		return nil, cmdError(buf.String(), err, args)
 	}
 	buf.Reset()
-	err = runCmd(false, &buf, &buf, "add-unit", app.GetName(), "--num-units", strconv.FormatUint(uint64(n), 10))
+	args = []string{"add-unit", app.GetName(), "--num-units", strconv.FormatUint(uint64(n), 10)}
+	err = runCmd(false, &buf, &buf, args...)
 	if err != nil {
-		return nil, &provision.Error{Reason: buf.String(), Err: err}
+		return nil, cmdError(buf.String(), err, args)
 	}
 	unitRe := regexp.MustCompile(fmt.Sprintf(
 		`Unit '(%s/\d+)' added to service '%s'`, app.GetName(), app.GetName()),
@@ -214,7 +214,7 @@ func (p *JujuProvisioner) removeUnits(app provision.App, units ...provision.AppU
 		}
 	}
 	if err != nil {
-		return &provision.Error{Reason: buf.String(), Err: err}
+		return cmdError(buf.String(), err, cmd)
 	}
 	if p.elbSupport() {
 		pUnits := make([]provision.Unit, len(units))
@@ -293,7 +293,7 @@ func (p *JujuProvisioner) ExecuteCommand(stdout, stderr io.Writer, app provision
 func (p *JujuProvisioner) collectStatus() ([]provision.Unit, error) {
 	output, err := execWithTimeout(30e9, "juju", "status")
 	if err != nil {
-		return nil, &provision.Error{Reason: string(output), Err: err}
+		return nil, cmdError(string(output), err, []string{"juju", "status"})
 	}
 	var out jujuOutput
 	err = goyaml.Unmarshal(output, &out)
@@ -333,12 +333,16 @@ func (p *JujuProvisioner) heal(units []provision.Unit) {
 		} else if unit.InstanceId == inst.InstanceId {
 			continue
 		} else {
+			format := "[juju] instance-id of unit %q changed from %q to %q. Healing."
+			log.Printf(format, unit.Name, inst.InstanceId, unit.InstanceId)
 			if p.elbSupport() {
 				a := qApp{unit.AppName}
 				manager := p.LoadBalancer()
 				manager.Deregister(&a, provision.Unit{InstanceId: inst.InstanceId})
 				err := manager.Register(&a, provision.Unit{InstanceId: unit.InstanceId})
 				if err != nil {
+					format := "[juju] Could not register instance %q in the load balancer: %s."
+					log.Printf(format, unit.InstanceId, err)
 					continue
 				}
 			}
@@ -417,6 +421,11 @@ func runCmd(filter bool, stdout, stderr io.Writer, cmd ...string) error {
 	command.Stdout = stdout
 	command.Stderr = stderr
 	return command.Run()
+}
+
+func cmdError(output string, err error, cmd []string) error {
+	log.Printf("[juju] Failed to run cmd %q (%s):\n%s", strings.Join(cmd, " "), err, output)
+	return &provision.Error{Reason: output, Err: err}
 }
 
 func execWithTimeout(timeout time.Duration, cmd string, args ...string) (output []byte, err error) {
