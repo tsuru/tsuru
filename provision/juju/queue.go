@@ -25,8 +25,7 @@ func (a *qApp) GetName() string {
 }
 
 func handle(msg *queue.Message) {
-	switch msg.Action {
-	case addUnitToLoadBalancer:
+	if msg.Action == addUnitToLoadBalancer {
 		if len(msg.Args) < 1 {
 			log.Printf("Failed to handle %q: it requires at least one argument.", msg.Action)
 			msg.Delete()
@@ -38,7 +37,7 @@ func handle(msg *queue.Message) {
 		status, err := (&JujuProvisioner{}).collectStatus()
 		if err != nil {
 			log.Printf("Failed to handle %q: juju status failed.\n%s.", msg.Action, err)
-			msg.Release(0)
+			msg.Release(2e9)
 			return
 		}
 		var units []provision.Unit
@@ -79,12 +78,12 @@ func handle(msg *queue.Message) {
 					Action: msg.Action,
 					Args:   args,
 				}
-				msg.Put(queueName, 0)
+				msg.Put(queueName, 1e9)
 
 			}
 		}
-	default:
-		msg.Release(0)
+	} else {
+		msg.Delete()
 	}
 }
 

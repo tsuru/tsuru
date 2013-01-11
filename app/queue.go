@@ -119,7 +119,7 @@ func handle(msg *queue.Message) {
 		msg.Delete()
 	default:
 		log.Printf("Error handling %q: invalid action.", msg.Action)
-		msg.Release(0)
+		msg.Delete()
 	}
 }
 
