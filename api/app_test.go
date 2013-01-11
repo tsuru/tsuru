@@ -111,6 +111,7 @@ pos-restart:
 		Framework: "django",
 		Teams:     []string{s.team.Name},
 		State:     string(provision.StatusStarted),
+		Units:     []app.Unit{{Name: "i-0800", State: "started"}},
 	}
 	err := db.Session.Apps().Insert(a)
 	c.Assert(err, IsNil)
@@ -152,6 +153,7 @@ pos-restart:
 		Framework: "django",
 		Teams:     []string{s.team.Name},
 		State:     string(provision.StatusStarted),
+		Units:     []app.Unit{{Name: "i-0800", State: "started"}},
 	}
 	err := db.Session.Apps().Insert(a)
 	c.Assert(err, IsNil)
@@ -195,6 +197,7 @@ pos-restart:
 		Framework: "django",
 		Teams:     []string{s.team.Name},
 		State:     string(provision.StatusStarted),
+		Units:     []app.Unit{{Name: "i-0800", State: "started"}},
 	}
 	err := db.Session.Apps().Insert(a)
 	c.Assert(err, IsNil)
@@ -1105,7 +1108,7 @@ func (s *S) TestRunHandlerShouldExecuteTheGivenCommandInTheGivenApp(c *C) {
 		Name:      "secrets",
 		Framework: "arch enemy",
 		Teams:     []string{s.team.Name},
-		Units:     []app.Unit{{Name: "i-0800", Machine: 10}},
+		Units:     []app.Unit{{Name: "i-0800", State: "started", Machine: 10}},
 		State:     string(provision.StatusStarted),
 	}
 	err := db.Session.Apps().Insert(a)
@@ -1133,7 +1136,7 @@ func (s *S) TestRunHandlerReturnsTheOutputOfTheCommandEvenIfItFails(c *C) {
 		Name:      "secrets",
 		Framework: "arch enemy",
 		Teams:     []string{s.team.Name},
-		Units:     []app.Unit{{Name: "i-0800"}},
+		Units:     []app.Unit{{Name: "i-0800", State: "started"}},
 		State:     string(provision.StatusStarted),
 	}
 	err := db.Session.Apps().Insert(a)
@@ -2214,6 +2217,7 @@ func (s *S) TestRestartHandler(c *C) {
 		Name:  "stress",
 		Teams: []string{s.team.Name},
 		State: string(provision.StatusStarted),
+		Units: []app.Unit{{Name: "i-0800", State: "started"}},
 	}
 	err := db.Session.Apps().Insert(a)
 	c.Assert(err, IsNil)
