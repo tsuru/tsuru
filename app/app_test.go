@@ -149,8 +149,8 @@ func (s *S) TestCreateApp(c *C) {
 	c.Assert(env["TSURU_S3_BUCKET"].Value, Equals, "appnamee3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3")
 	c.Assert(env["TSURU_S3_BUCKET"].Public, Equals, false)
 	env = a.InstanceEnv("")
-	c.Assert(env["APPNAME"].Value, Equals, a.Name)
-	c.Assert(env["APPNAME"].Public, Equals, false)
+	c.Assert(env["TSURU_APPNAME"].Value, Equals, a.Name)
+	c.Assert(env["TSURU_APPNAME"].Public, Equals, false)
 	c.Assert(env["TSURU_HOST"].Value, Equals, expectedHost)
 	c.Assert(env["TSURU_HOST"].Public, Equals, false)
 	expectedMessage := queue.Message{

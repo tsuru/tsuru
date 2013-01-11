@@ -285,8 +285,8 @@ func (s *S) TestExportEnvironmentsForward(c *C) {
 	c.Assert(appEnv["TSURU_S3_BUCKET"].Value, Equals, env.bucket)
 	c.Assert(appEnv["TSURU_S3_BUCKET"].Public, Equals, false)
 	appEnv = app.InstanceEnv("")
-	c.Assert(appEnv["APPNAME"].Value, Equals, app.Name)
-	c.Assert(appEnv["APPNAME"].Public, Equals, false)
+	c.Assert(appEnv["TSURU_APPNAME"].Value, Equals, app.Name)
+	c.Assert(appEnv["TSURU_APPNAME"].Public, Equals, false)
 	c.Assert(appEnv["TSURU_HOST"].Value, Equals, expectedHost)
 	c.Assert(appEnv["TSURU_HOST"].Public, Equals, false)
 	message, err := queue.Get(queueName, 2e9)
@@ -299,7 +299,7 @@ func (s *S) TestExportEnvironmentsForward(c *C) {
 func (s *S) TestExportEnvironmentsBackward(c *C) {
 	envNames := []string{
 		"TSURU_S3_ACCESS_KEY_ID", "TSURU_S3_SECRET_KEY",
-		"APPNAME", "TSURU_HOST", "TSURU_S3_ENDPOINT",
+		"TSURU_APPNAME", "TSURU_HOST", "TSURU_S3_ENDPOINT",
 		"TSURU_S3_LOCATIONCONSTRAINT", "TSURU_S3_BUCKET",
 	}
 	app := App{Name: "moon", Framework: "opeth", Env: make(map[string]bind.EnvVar)}

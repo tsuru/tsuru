@@ -143,7 +143,7 @@ var exportEnvironmentsAction = action.Action{
 		}
 		host, _ := config.GetString("host")
 		envVars := []bind.EnvVar{
-			{Name: "APPNAME", Value: app.Name},
+			{Name: "TSURU_APPNAME", Value: app.Name},
 			{Name: "TSURU_HOST", Value: host},
 		}
 		variables := map[string]string{
@@ -177,7 +177,7 @@ var exportEnvironmentsAction = action.Action{
 				i++
 			}
 			vars[i] = "TSURU_HOST"
-			vars[i+1] = "APPNAME"
+			vars[i+1] = "TSURU_APPNAME"
 			app.UnsetEnvs(vars, false)
 		}
 	},
