@@ -9,7 +9,6 @@ import (
 	"errors"
 	"github.com/globocom/commandmocker"
 	"github.com/globocom/config"
-	"github.com/globocom/tsuru/app"
 	"github.com/globocom/tsuru/provision"
 	"github.com/globocom/tsuru/queue"
 	"github.com/globocom/tsuru/repository"
@@ -452,11 +451,6 @@ func (s *S) TestCollectStatusIDChangeDisabledELB(c *C) {
 	err = p.unitsCollection().Find(bson.M{"_id": "as_i_rise/0"}).One(&inst)
 	c.Assert(err, IsNil)
 	c.Assert(inst.InstanceId, Equals, "i-00000439")
-	msg, err := queue.Get(app.QueueName, 1e9)
-	c.Assert(err, IsNil)
-	defer msg.Delete()
-	c.Assert(msg.Action, Equals, app.RegenerateApprcAndStart)
-	c.Assert(msg.Args, DeepEquals, []string{"as_i_rise", "as_i_rise/0"})
 }
 
 func (s *S) TestCollectStatusFailure(c *C) {
@@ -721,11 +715,6 @@ func (s *ELBSuite) TestCollectStatusWithELBAndIDChange(c *C) {
 	c.Assert(instances, HasLen, 2)
 	c.Assert(instances[0].InstanceId, Equals, id2)
 	c.Assert(instances[1].InstanceId, Equals, id1)
-	msg, err := queue.Get(app.QueueName, 1e9)
-	c.Assert(err, IsNil)
-	defer msg.Delete()
-	c.Assert(msg.Action, Equals, app.RegenerateApprcAndStart)
-	c.Assert(msg.Args, DeepEquals, []string{a.GetName(), "symfonia/0"})
 }
 
 func (s *ELBSuite) TestAddrWithELB(c *C) {
