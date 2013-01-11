@@ -25,6 +25,7 @@ func (s *WriterSuite) SetUpSuite(c *C) {
 
 func (s *WriterSuite) TearDownSuite(c *C) {
 	defer db.Session.Close()
+	db.Session.Apps().Database.DropDatabase()
 }
 
 func (s *WriterSuite) TestLogWriter(c *C) {

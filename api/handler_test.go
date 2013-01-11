@@ -33,6 +33,7 @@ func (s *HandlerSuite) SetUpSuite(c *C) {
 
 func (s *HandlerSuite) TearDownSuite(c *C) {
 	defer db.Session.Close()
+	db.Session.Apps().Database.DropDatabase()
 }
 
 func errorHandler(w http.ResponseWriter, r *http.Request) error {
