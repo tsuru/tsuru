@@ -26,6 +26,9 @@ import (
 	"time"
 )
 
+// Default TTR for beanstalkd messages.
+const ttr = 180e9
+
 var (
 	conn           *beanstalk.Conn
 	mut            sync.Mutex // for conn access
@@ -95,7 +98,7 @@ func (msg *Message) Put(queueName string, delay time.Duration) error {
 		return err
 	}
 	tube := beanstalk.Tube{Conn: conn, Name: queueName}
-	id, err := tube.Put(buf.Bytes(), 1, delay, 60e9)
+	id, err := tube.Put(buf.Bytes(), 1, delay, ttr)
 	msg.id = id
 	return err
 }
