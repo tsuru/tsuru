@@ -174,12 +174,6 @@ func (c *AppRevoke) Run(context *cmd.Context, client cmd.Doer) error {
 	return nil
 }
 
-type AppModel struct {
-	Name  string
-	State string
-	Ip    string
-}
-
 type Units struct {
 	Ip string
 }
