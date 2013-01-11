@@ -10,11 +10,25 @@ import (
 	. "launchpad.net/gocheck"
 )
 
-type UtilSuite struct{}
+type UtilSuite struct {
+	rfs *testing.RecordingFs
+}
 
 var _ = Suite(&UtilSuite{})
 
-func (s *S) TestFileSystem(c *C) {
+func (s *UtilSuite) SetUpSuite(c *C) {
+	s.rfs = &testing.RecordingFs{}
+	file, err := s.rfs.Open("/dev/urandom")
+	c.Assert(err, IsNil)
+	file.Write([]byte{16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31})
+	fsystem = s.rfs
+}
+
+func (s *UtilSuite) TearDownSuite(c *C) {
+	fsystem = nil
+}
+
+func (s *UtilSuite) TestFileSystem(c *C) {
 	fsystem = &testing.RecordingFs{}
 	c.Assert(filesystem(), DeepEquals, fsystem)
 	fsystem = nil
