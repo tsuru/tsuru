@@ -10,6 +10,7 @@ import (
 	"github.com/globocom/config"
 	"github.com/globocom/tsuru/app"
 	"github.com/globocom/tsuru/queue"
+	"github.com/globocom/tsuru/testing"
 	"labix.org/v2/mgo/bson"
 	. "launchpad.net/gocheck"
 	"time"
@@ -44,7 +45,7 @@ func (s *ExclusiveSuite) TearDownSuite(c *C) {
 }
 
 func (s *ExclusiveSuite) TestCollectStatusIDChangeDisabledELB(c *C) {
-	cleanQueue(app.QueueName)
+	testing.CleanQueues(app.QueueName)
 	s.s.TestCollectStatusIDChangeDisabledELB(c)
 	msg, err := queue.Get(app.QueueName, 1e6)
 	c.Assert(err, IsNil)
@@ -54,7 +55,7 @@ func (s *ExclusiveSuite) TestCollectStatusIDChangeDisabledELB(c *C) {
 }
 
 func (s *ExclusiveSuite) TestCollectStatusIDChangeFromPending(c *C) {
-	cleanQueue(app.QueueName)
+	testing.CleanQueues(app.QueueName)
 	tmpdir, err := commandmocker.Add("juju", collectOutput)
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(tmpdir)

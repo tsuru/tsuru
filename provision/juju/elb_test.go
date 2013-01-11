@@ -11,12 +11,10 @@ import (
 	"github.com/globocom/config"
 	"github.com/globocom/tsuru/db"
 	"github.com/globocom/tsuru/provision"
-	"github.com/globocom/tsuru/queue"
 	"github.com/globocom/tsuru/testing"
 	"labix.org/v2/mgo/bson"
 	. "launchpad.net/gocheck"
 	"sort"
-	"sync"
 )
 
 type ELBSuite struct {
@@ -47,7 +45,7 @@ func (s *ELBSuite) SetUpSuite(c *C) {
 	config.Set("git:host", "git.tsuru.io")
 	config.Set("queue-server", "127.0.0.1:11300")
 	config.Set("juju:units-collection", "juju_units_test_elb")
-	cleanQueue(queueName)
+	testing.CleanQueues(queueName)
 	err = handler.DryRun()
 	c.Assert(err, IsNil)
 }
@@ -215,22 +213,4 @@ func (s *ELBSuite) TestAddrUnknownLoadBalancer(c *C) {
 	c.Assert(addr, Equals, "")
 	c.Assert(err, NotNil)
 	c.Assert(err.Error(), Equals, "not found")
-}
-
-func cleanQueue(names ...string) {
-	var wg sync.WaitGroup
-	wg.Add(len(names))
-	for _, name := range names {
-		go func(qName string) {
-			var err error
-			var msg *queue.Message
-			for err == nil {
-				if msg, err = queue.Get(qName, 1e6); err == nil {
-					err = msg.Delete()
-				}
-			}
-			wg.Done()
-		}(name)
-	}
-	wg.Wait()
 }
