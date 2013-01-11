@@ -1,4 +1,4 @@
-// Copyright 2013 tsuru authors. All rights reserved.
+// Copyright 2012 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -6,7 +6,6 @@ package juju
 
 import (
 	"bytes"
-	"github.com/globocom/tsuru/log"
 	"regexp"
 )
 
@@ -15,7 +14,6 @@ import (
 // It removes all lines that do not contain useful output, like juju's logging
 // and Python's deprecation warnings.
 func filterOutput(output []byte) []byte {
-	log.Printf("[juju] filtering output:\n%s", output)
 	var result [][]byte
 	var ignore bool
 	deprecation := []byte("DeprecationWarning")
