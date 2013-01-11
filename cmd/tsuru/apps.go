@@ -66,6 +66,7 @@ type unit struct {
 }
 
 type app struct {
+	Ip         string
 	Name       string
 	Framework  string
 	Repository string
@@ -206,15 +207,22 @@ func (c *AppList) Run(context *cmd.Context, client cmd.Doer) error {
 }
 
 func (c *AppList) Show(result []byte, context *cmd.Context) error {
-	var apps []AppModel
+	var apps []app
 	err := json.Unmarshal(result, &apps)
 	if err != nil {
 		return err
 	}
 	table := cmd.NewTable()
-	table.Headers = cmd.Row([]string{"Application", "State", "Ip"})
+	table.Headers = cmd.Row([]string{"Application", "Units State Summary", "Ip"})
 	for _, app := range apps {
-		table.AddRow(cmd.Row([]string{app.Name, app.State, app.Ip}))
+		var units_started int
+		for _, unit := range app.Units {
+			if unit.State == "started" {
+				units_started += 1
+			}
+		}
+		summary := fmt.Sprintf("%d of %d units in-service", units_started, len(app.Units))
+		table.AddRow(cmd.Row([]string{app.Name, summary, app.Ip}))
 	}
 	context.Stdout.Write(table.Bytes())
 	return nil
