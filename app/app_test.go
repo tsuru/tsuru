@@ -408,7 +408,7 @@ func (s *S) TestRemoveUnitsInvalidValues(c *C) {
 }
 
 func (s *S) TestRemoveUnitsFailureInProvisioner(c *C) {
-	s.provisioner.PrepareFailure("RemoveUnits", errors.New("Cannot remove these units."))
+	s.provisioner.PrepareFailure("RemoveUnit", errors.New("Cannot remove this unit."))
 	app := App{
 		Name:      "paradisum",
 		Framework: "python",
@@ -421,36 +421,7 @@ func (s *S) TestRemoveUnitsFailureInProvisioner(c *C) {
 	defer s.provisioner.Destroy(&app)
 	err = app.RemoveUnits(1)
 	c.Assert(err, NotNil)
-	c.Assert(err.Error(), Equals, "Cannot remove these units.")
-}
-
-func (s *S) TestRemoveUnitsFromIndicesSlice(c *C) {
-	var tests = []struct {
-		input    []Unit
-		indices  []int
-		expected []Unit
-	}{
-		{
-			input:    []Unit{{Name: "unit1"}, {Name: "unit2"}, {Name: "unit3"}, {Name: "unit4"}},
-			indices:  []int{0, 1, 2},
-			expected: []Unit{{Name: "unit4"}},
-		},
-		{
-			input:    []Unit{{Name: "unit1"}, {Name: "unit2"}, {Name: "unit3"}, {Name: "unit4"}},
-			indices:  []int{0, 3, 4},
-			expected: []Unit{{Name: "unit2"}},
-		},
-		{
-			input:    []Unit{{Name: "unit1"}, {Name: "unit2"}, {Name: "unit3"}, {Name: "unit4"}},
-			indices:  []int{4},
-			expected: []Unit{{Name: "unit1"}, {Name: "unit2"}, {Name: "unit3"}},
-		},
-	}
-	for _, t := range tests {
-		a := App{Units: t.input}
-		a.removeUnits(t.indices)
-		c.Check(a.Units, DeepEquals, t.expected)
-	}
+	c.Assert(err.Error(), Equals, "Cannot remove this unit.")
 }
 
 func (s *S) TestGrantAccess(c *C) {
