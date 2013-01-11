@@ -214,14 +214,14 @@ func (a *App) AddUnits(n uint) error {
 }
 
 func (a *App) removeUnits(indices []int) {
-	sequential := true
+	prefix := true
 	for i := range indices {
 		if i != indices[i] {
-			sequential = false
+			prefix = false
 			break
 		}
 	}
-	if sequential {
+	if prefix {
 		a.Units = a.Units[len(indices):]
 	} else {
 		for i, index := range indices {
