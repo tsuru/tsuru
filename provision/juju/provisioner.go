@@ -77,7 +77,7 @@ func (p *JujuProvisioner) Provision(app provision.App) error {
 		"deploy", "--repository", "/home/charms",
 		"local:" + app.GetFramework(), app.GetName(),
 	}
-	err := runCmd(true, &buf, &buf, args...)
+	err := runCmd(false, &buf, &buf, args...)
 	out := buf.String()
 	if err != nil {
 		app.Log("Failed to create machine: "+out, "tsuru")
@@ -157,7 +157,7 @@ func (p *JujuProvisioner) AddUnits(app provision.App, n uint) ([]provision.Unit,
 		units []provision.Unit
 	)
 	args := []string{"set", app.GetName(), "app-repo=" + repository.GetReadOnlyUrl(app.GetName())}
-	err := runCmd(true, &buf, &buf, args...)
+	err := runCmd(false, &buf, &buf, args...)
 	if err != nil {
 		return nil, cmdError(buf.String(), err, args)
 	}
@@ -208,7 +208,7 @@ func (p *JujuProvisioner) removeUnits(app provision.App, units ...provision.AppU
 	// user, and hope that someday we run away from Zookeeper.
 	for i := 0; i < destroyTries; i++ {
 		buf.Reset()
-		err = runCmd(true, &buf, &buf, cmd...)
+		err = runCmd(false, &buf, &buf, cmd...)
 		if err == nil {
 			break
 		}
