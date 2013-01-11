@@ -81,6 +81,7 @@ func (p *JujuProvisioner) Provision(app provision.App) error {
 	out := buf.String()
 	if err != nil {
 		app.Log("Failed to create machine: "+out, "tsuru")
+		log.Printf("Failed to create machine for the app %q: %s", app.GetName(), out)
 		return &provision.Error{Reason: out, Err: err}
 	}
 	if p.elbSupport() {
@@ -112,6 +113,7 @@ func (p *JujuProvisioner) destroyService(app provision.App) error {
 	if err != nil {
 		msg := fmt.Sprintf("Failed to destroy the app: %s.", out)
 		app.Log(msg, "tsuru")
+		log.Printf("Failed to destroy the app %q: %s", app.GetName(), out)
 		return &provision.Error{Reason: out, Err: err}
 	}
 	return nil
@@ -129,6 +131,7 @@ func (p *JujuProvisioner) terminateMachines(app provision.App, units ...provisio
 		if err != nil {
 			msg := fmt.Sprintf("Failed to destroy unit %s: %s", u.GetName(), out)
 			app.Log(msg, "tsuru")
+			log.Printf("Failed to destroy unit %q from the app %q: %s", u.GetName(), app.GetName(), out)
 			return &provision.Error{Reason: out, Err: err}
 		}
 	}
