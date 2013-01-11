@@ -482,7 +482,8 @@ func (s *S) TestCollectStatusIDChangeDisabledELB(c *C) {
 	done := make(chan int8)
 	go func() {
 		for {
-			ct, err := p.unitsCollection().Find(bson.M{"_id": "as_i_rise/0", "instanceid": "i-00000439"}).Count()
+			q := bson.M{"_id": "as_i_rise/0", "instanceid": "i-00000439"}
+			ct, err := p.unitsCollection().Find(q).Count()
 			c.Assert(err, IsNil)
 			if ct == 1 {
 				done <- 1
