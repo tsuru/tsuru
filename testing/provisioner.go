@@ -140,7 +140,8 @@ func (p *FakeProvisioner) getError(method string) error {
 }
 
 // GetCmds returns a list of commands executed in an app. If you don't specify
-// the command (""), it will return all commands executed in the given app.
+// the command (an empty string), it will return all commands executed in the
+// given app.
 func (p *FakeProvisioner) GetCmds(cmd string, app provision.App) []Cmd {
 	var cmds []Cmd
 	p.cmdMut.Lock()
