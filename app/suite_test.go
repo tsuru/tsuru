@@ -105,7 +105,7 @@ func (s *S) TearDownSuite(c *C) {
 }
 
 func (s *S) SetUpTest(c *C) {
-	cleanQueue()
+	ttesting.CleanQueues(queueName, QueueName)
 }
 
 func (s *S) TearDownTest(c *C) {
@@ -188,16 +188,4 @@ func (h *testHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	h.body = append(h.body, b)
 	h.header = append(h.header, r.Header)
 	w.Write([]byte(h.content))
-}
-
-func cleanQueue() {
-	var (
-		err error
-		msg *queue.Message
-	)
-	for err == nil {
-		if msg, err = queue.Get(queueName, 1e6); err == nil {
-			err = msg.Delete()
-		}
-	}
 }
