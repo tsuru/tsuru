@@ -7,6 +7,7 @@ websrv
 dist*
 cmd/crane/crane
 cmd/tsuru/tsuru
+cmd/tsuru/developer/developer
 api/webserver/webserver
 docs/_build/*
 .test
