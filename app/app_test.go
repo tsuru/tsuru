@@ -424,6 +424,35 @@ func (s *S) TestRemoveUnitsFailureInProvisioner(c *C) {
 	c.Assert(err.Error(), Equals, "Cannot remove this unit.")
 }
 
+func (s *S) TestRemoveUnitsFromIndicesSlice(c *C) {
+	var tests = []struct {
+		input    []Unit
+		indices  []int
+		expected []Unit
+	}{
+		{
+			input:    []Unit{{Name: "unit1"}, {Name: "unit2"}, {Name: "unit3"}, {Name: "unit4"}},
+			indices:  []int{0, 1, 2},
+			expected: []Unit{{Name: "unit4"}},
+		},
+		{
+			input:    []Unit{{Name: "unit1"}, {Name: "unit2"}, {Name: "unit3"}, {Name: "unit4"}},
+			indices:  []int{0, 3, 4},
+			expected: []Unit{{Name: "unit2"}},
+		},
+		{
+			input:    []Unit{{Name: "unit1"}, {Name: "unit2"}, {Name: "unit3"}, {Name: "unit4"}},
+			indices:  []int{4},
+			expected: []Unit{{Name: "unit1"}, {Name: "unit2"}, {Name: "unit3"}},
+		},
+	}
+	for _, t := range tests {
+		a := App{Units: t.input}
+		a.removeUnits(t.indices)
+		c.Check(a.Units, DeepEquals, t.expected)
+	}
+}
+
 func (s *S) TestGrantAccess(c *C) {
 	a := App{Name: "appName", Framework: "django", Teams: []string{}}
 	err := a.Grant(&s.team)

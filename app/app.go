@@ -213,6 +213,27 @@ func (a *App) AddUnits(n uint) error {
 	return nil
 }
 
+func (a *App) removeUnits(indices []int) {
+	sequential := true
+	for i := range indices {
+		if i != indices[i] {
+			sequential = false
+			break
+		}
+	}
+	if sequential {
+		a.Units = a.Units[len(indices):]
+	} else {
+		for i, index := range indices {
+			index -= i
+			if index+1 < len(a.Units) {
+				copy(a.Units[index:], a.Units[index+1:])
+			}
+			a.Units = a.Units[:len(a.Units)-1]
+		}
+	}
+}
+
 func (a *App) RemoveUnits(n uint) error {
 	if n == 0 {
 		return errors.New("Cannot remove zero units.")
@@ -221,16 +242,27 @@ func (a *App) RemoveUnits(n uint) error {
 	} else if n > l {
 		return fmt.Errorf("Cannot remove %d units from this app, it has only %d units.", n, l)
 	}
+	var (
+		removed []int
+		err     error
+	)
 	units := a.ProvisionUnits()
 	for i := 0; i < int(n); i++ {
-		err := Provisioner.RemoveUnit(a, units[i].GetName())
-		if err != nil {
-			return err
+		err = Provisioner.RemoveUnit(a, units[i].GetName())
+		if err == nil {
+			removed = append(removed, i)
 		}
 		a.unbindUnit(units[i])
 	}
-	a.Units = a.Units[n:]
-	return db.Session.Apps().Update(bson.M{"name": a.Name}, a)
+	if len(removed) == 0 {
+		return err
+	}
+	a.removeUnits(removed)
+	dbErr := db.Session.Apps().Update(bson.M{"name": a.Name}, a)
+	if err == nil {
+		return dbErr
+	}
+	return err
 }
 
 func (a *App) unbindUnit(unit provision.AppUnit) error {
