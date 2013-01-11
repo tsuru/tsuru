@@ -42,6 +42,7 @@ func (h *Handler) Start() {
 	if atomic.CompareAndSwapInt32(&h.state, stopped, running) {
 		go h.loop(func() {
 			if message, err := get(5e9, h.Queues...); err == nil {
+				log.Printf("Dispatching %q message to handler function.", message.Action)
 				go h.F(message)
 			} else {
 				log.Printf("Failed to get message from the queue: %s. Trying again...", err)
