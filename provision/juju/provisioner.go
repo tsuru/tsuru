@@ -205,6 +205,9 @@ func (p *JujuProvisioner) removeUnit(app provision.App, unit provision.AppUnit) 
 	for i := 0; i < destroyTries; i++ {
 		buf.Reset()
 		err = runCmd(false, &buf, &buf, cmd...)
+		if err != nil && unitNotFound(unit.GetName(), buf.Bytes()) {
+			err = nil
+		}
 		if err == nil {
 			break
 		}
@@ -437,6 +440,17 @@ func execWithTimeout(timeout time.Duration, cmd string, args ...string) (output 
 		command.Process.Kill()
 	}
 	return output, err
+}
+
+func unitNotFound(unitName string, output []byte) bool {
+	re := regexp.MustCompile(fmt.Sprintf(`Service unit '%s' was not found$`, unitName))
+	lines := bytes.Split(output, []byte("\n"))
+	for _, line := range lines {
+		if re.Match(line) {
+			return true
+		}
+	}
+	return false
 }
 
 func unitStatus(instanceState, agentState, machineAgentState string) provision.Status {

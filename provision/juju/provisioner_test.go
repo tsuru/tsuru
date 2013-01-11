@@ -192,6 +192,20 @@ func (s *S) TestRemoveUnit(c *C) {
 	}
 }
 
+func (s *S) TestRemoveUnitUnknownByJuju(c *C) {
+	output := `013-01-11 20:02:07,883 INFO Connecting to environment...
+2013-01-11 20:02:10,147 INFO Connected to environment.
+2013-01-11 20:02:10,160 ERROR Service unit 'two/2' was not found`
+	tmpdir, err := commandmocker.Error("juju", output, 1)
+	c.Assert(err, IsNil)
+	defer commandmocker.Remove(tmpdir)
+	app := testing.NewFakeApp("two", "rush", 3)
+	p := JujuProvisioner{}
+	err = p.RemoveUnit(app, "two/2")
+	c.Assert(err, IsNil)
+	c.Assert(commandmocker.Ran(tmpdir), Equals, true)
+}
+
 func (s *S) TestRemoveUnknownUnit(c *C) {
 	app := testing.NewFakeApp("tears", "rush", 2)
 	p := JujuProvisioner{}
