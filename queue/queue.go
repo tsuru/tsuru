@@ -6,8 +6,8 @@
 // which queue server is being used, how the message gets marshaled in to the
 // wire and how it's read.
 //
-// It provides three functions: Put, Get and Delete, which puts, gets and
-// deletes a message from the queue.
+// It provides a basic type: Message. You can Put, Get, Delete and Release
+// messages, using methods and functions with respective names.
 //
 // It also provides a generic, thread safe, handler for messages, with start
 // and stop capability.
