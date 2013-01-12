@@ -121,7 +121,21 @@ func main() {
 		if err != nil {
 			fatal(err)
 		}
-		fmt.Printf("tsuru HTTP server listening at %s...\n", listen)
-		fatal(http.ListenAndServe(listen, m))
+		tls, _ := config.GetBool("use-tls")
+		if tls {
+			certFile, err := config.GetString("tls-cert-file")
+			if err != nil {
+				fatal(err)
+			}
+			keyFile, err := config.GetString("tls-key-file")
+			if err != nil {
+				fatal(err)
+			}
+			fmt.Printf("tsuru HTTP/TLS server listening at %s...\n", listen)
+			fatal(http.ListenAndServeTLS(listen, certFile, keyFile, m))
+		} else {
+			fmt.Printf("tsuru HTTP server listening at %s...\n", listen)
+			fatal(http.ListenAndServe(listen, m))
+		}
 	}
 }
