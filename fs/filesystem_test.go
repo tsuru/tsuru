@@ -34,6 +34,18 @@ func (s *S) TestOsFsCreatesTheFileInTheDisc(c *C) {
 	c.Assert(err, IsNil)
 }
 
+func (s *S) TestOsFsOpenFile(c *C) {
+	path := "/tmp/test-fs-tsuru"
+	os.Remove(path)
+	defer os.Remove(path)
+	fs := OsFs{}
+	f, err := fs.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0755)
+	c.Assert(err, IsNil)
+	defer f.Close()
+	_, ok := f.(*os.File)
+	c.Assert(ok, Equals, true)
+}
+
 func (s *S) TestOsFsMkdirWritesTheDirectoryInTheDisc(c *C) {
 	path := "/tmp/test-fs-tsuru"
 	os.RemoveAll(path)
