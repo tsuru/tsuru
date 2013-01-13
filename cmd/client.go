@@ -1,14 +1,16 @@
-// Copyright 2012 tsuru authors. All rights reserved.
+// Copyright 2013 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
 package cmd
 
 import (
+	"crypto/x509"
 	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"net/url"
 )
 
 type Doer interface {
@@ -33,13 +35,26 @@ func NewClient(client *http.Client, context *Context, manager *Manager) *Client 
 	}
 }
 
+func (c *Client) detectClientError(err error) error {
+	urlErr, ok := err.(*url.Error)
+	if !ok {
+		return err
+	}
+	switch urlErr.Err.(type) {
+	case x509.UnknownAuthorityError:
+		return fmt.Errorf("Failed to connect to tsuru server (%s): %s", readTarget(), urlErr.Err)
+	}
+	return fmt.Errorf("Failed to connect to tsuru server (%s), it's probably down.", readTarget())
+}
+
 func (c *Client) Do(request *http.Request) (*http.Response, error) {
 	if token, err := readToken(); err == nil {
 		request.Header.Set("Authorization", token)
 	}
 	response, err := c.HttpClient.Do(request)
+	err = c.detectClientError(err)
 	if err != nil {
-		return nil, fmt.Errorf("Failed to connect to tsuru server (%s), it's probably down.", readTarget())
+		return nil, err
 	}
 	supported := response.Header.Get(c.versionHeader)
 	format := `############################################################
