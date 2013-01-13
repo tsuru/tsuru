@@ -27,6 +27,8 @@ import (
 	"path"
 	"sort"
 	"strings"
+	"sync/atomic"
+	"time"
 )
 
 func (s *S) TestGet(c *C) {
@@ -322,9 +324,10 @@ func (s *S) TestAddUnitsFailureInProvisioner(c *C) {
 }
 
 func (s *S) TestRemoveUnits(c *C) {
-	var calls int
+	var calls int32
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		calls++
+		v := atomic.LoadInt32(&calls)
+		atomic.StoreInt32(&calls, v+1)
 		w.WriteHeader(http.StatusNoContent)
 	}))
 	defer ts.Close()
@@ -372,7 +375,20 @@ func (s *S) TestRemoveUnits(c *C) {
 	c.Assert(app.Units, HasLen, 2)
 	c.Assert(app.Units[0].Name, Equals, "chemistry/2")
 	c.Assert(app.Units[1].Name, Equals, "chemistry/3")
-	c.Assert(calls, Equals, 2)
+	ok := make(chan int8)
+	go func() {
+		for {
+			if atomic.LoadInt32(&calls) == 2 {
+				ok <- 1
+				return
+			}
+		}
+	}()
+	select {
+	case <-ok:
+	case <-time.After(2e9):
+		c.Fatal("Did not call service endpoint twice.")
+	}
 }
 
 func (s *S) TestRemoveUnitsInvalidValues(c *C) {
