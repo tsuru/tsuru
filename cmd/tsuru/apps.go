@@ -84,7 +84,7 @@ Teams: %s
 `
 	teams := strings.Join(a.Teams, ", ")
 	units := cmd.NewTable()
-	units.Headers = cmd.Row([]string{"Unit", "Ip", "State"})
+	units.Headers = cmd.Row([]string{"Unit", "IP", "State"})
 	for _, unit := range a.Units {
 		units.AddRow(cmd.Row([]string{unit.Name, unit.Ip, unit.State}))
 	}

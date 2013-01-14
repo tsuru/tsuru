@@ -22,7 +22,7 @@ Platform: php
 Teams: tsuruteam, crane
 Units:
 +--------+-------------+---------+
-| Unit   | Ip          | State   |
+| Unit   | IP          | State   |
 +--------+-------------+---------+
 | app1/0 | 10.10.10.10 | started |
 | app1/1 | 9.9.9.9     | started |
@@ -73,7 +73,7 @@ Platform: ruby
 Teams: tsuruteam, crane
 Units:
 +----------+-------------+---------+
-| Unit     | Ip          | State   |
+| Unit     | IP          | State   |
 +----------+-------------+---------+
 | secret/0 | 10.10.10.10 | started |
 | secret/1 | 9.9.9.9     | pending |
