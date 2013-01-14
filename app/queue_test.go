@@ -287,6 +287,33 @@ func (s *S) TestUnitListStarted(c *C) {
 	}
 }
 
+func (s *S) TestUnitListState(c *C) {
+	var tests = []struct {
+		input    []Unit
+		expected string
+	}{
+		{
+			[]Unit{{State: "started"}, {State: "started"}}, "started",
+		},
+		{nil, ""},
+		{
+			[]Unit{{State: "started"}, {State: "pending"}}, "",
+		},
+		{
+			[]Unit{{State: "error"}}, "error",
+		},
+		{
+			[]Unit{{State: "pending"}}, "pending",
+		},
+	}
+	for _, t := range tests {
+		l := unitList(t.input)
+		if got := l.State(); got != t.expected {
+			c.Errorf("l.State(): want %q. Got %q.", t.expected, got)
+		}
+	}
+}
+
 func (s *S) TestEnqueueUsesInternalQueue(c *C) {
 	enqueue(queue.Message{Action: "do-something"})
 	_, err := queue.Get("default", 1e6)
