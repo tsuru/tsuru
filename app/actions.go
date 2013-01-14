@@ -34,7 +34,6 @@ var insertApp = action.Action{
 		default:
 			return nil, errors.New("First parameter must be App or *App.")
 		}
-		app.State = "pending"
 		err := db.Session.Apps().Insert(app)
 		return &app, err
 	},

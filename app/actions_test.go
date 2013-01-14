@@ -33,7 +33,6 @@ func (s *S) TestInsertAppForward(c *C) {
 	c.Assert(a.Framework, Equals, app.Framework)
 	err = app.Get()
 	c.Assert(err, IsNil)
-	c.Assert(app.State, Equals, "pending")
 }
 
 func (s *S) TestInsertAppForwardAppPointer(c *C) {

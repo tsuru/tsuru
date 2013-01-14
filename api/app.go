@@ -91,9 +91,8 @@ func CloneRepositoryHandler(w http.ResponseWriter, r *http.Request) error {
 	return write(&logWriter, []byte("\n ---> Deploy done!\n\n"))
 }
 
-// AppIsAvailableHandler verify if the app.Unit().State() is
-// started. If is started it returns 200 else returns 500 for
-// status code.
+// AppIsAvailableHandler verify if the app.Unit().State() is started. If is
+// started it returns 200 else returns 500 for status code.
 func AppIsAvailableHandler(w http.ResponseWriter, r *http.Request) error {
 	app := app.App{Name: r.URL.Query().Get(":name")}
 	err := app.Get()
@@ -101,7 +100,7 @@ func AppIsAvailableHandler(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	if !app.Available() {
-		return fmt.Errorf("App must be avaliable to receive pushs, but it is %q.", app.State)
+		return fmt.Errorf("App must be avaliable to receive pushs.")
 	}
 	w.WriteHeader(http.StatusOK)
 	return nil

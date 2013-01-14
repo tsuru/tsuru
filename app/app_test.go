@@ -44,7 +44,6 @@ func (s *S) TestGet(c *C) {
 	err = myApp.Get()
 	c.Assert(err, IsNil)
 	c.Assert(myApp.Name, Equals, newApp.Name)
-	c.Assert(myApp.State, Equals, newApp.State)
 }
 
 func (s *S) TestDestroy(c *C) {
@@ -129,13 +128,11 @@ func (s *S) TestCreateApp(c *C) {
 	defer a.Destroy()
 	err = a.Get()
 	c.Assert(err, IsNil)
-	c.Assert(a.State, Equals, "pending")
 	var retrievedApp App
 	err = db.Session.Apps().Find(bson.M{"name": a.Name}).One(&retrievedApp)
 	c.Assert(err, IsNil)
 	c.Assert(retrievedApp.Name, Equals, a.Name)
 	c.Assert(retrievedApp.Framework, Equals, a.Framework)
-	c.Assert(retrievedApp.State, Equals, a.State)
 	env := a.InstanceEnv(s3InstanceName)
 	c.Assert(env["TSURU_S3_ENDPOINT"].Value, Equals, s.t.S3Server.URL())
 	c.Assert(env["TSURU_S3_ENDPOINT"].Public, Equals, false)
@@ -252,9 +249,8 @@ func (s *S) TestAppendOrUpdate(c *C) {
 	a.AddUnit(&u)
 	c.Assert(len(a.Units), Equals, 1)
 	u = Unit{
-		Name:  "i-00000zz8",
-		Ip:    "192.168.0.12",
-		State: string(provision.StatusStarted),
+		Name: "i-00000zz8",
+		Ip:   "192.168.0.12",
 	}
 	a.AddUnit(&u)
 	c.Assert(len(a.Units), Equals, 1)
@@ -811,7 +807,6 @@ pos-restart:
 	a := App{
 		Name:      "something",
 		Framework: "django",
-		State:     string(provision.StatusStarted),
 		Units:     []Unit{{Name: "i-0800", State: "started"}},
 	}
 	err := a.loadHooks()
@@ -832,7 +827,6 @@ pos-restart:
 	a := App{
 		Name:      "something",
 		Framework: "django",
-		State:     string(provision.StatusStarted),
 		Units:     []Unit{{Name: "i-0800", State: "started"}},
 	}
 	err := a.loadHooks()
@@ -854,7 +848,6 @@ func (s *S) TestPreRestart(c *C) {
 	a := App{
 		Name:      "something",
 		Framework: "django",
-		State:     string(provision.StatusStarted),
 		hooks: &conf{
 			PreRestart: []string{"pre.sh"},
 			PosRestart: []string{"pos.sh"},
@@ -905,7 +898,6 @@ func (s *S) TestPosRestart(c *C) {
 	a := App{
 		Name:      "something",
 		Framework: "django",
-		State:     string(provision.StatusStarted),
 		hooks:     &conf{PosRestart: []string{"pos.sh"}},
 		Units:     []Unit{{Name: "i-0800", State: "started"}},
 	}
@@ -949,7 +941,6 @@ func (s *S) TestInstallDeps(c *C) {
 		Name:      "someApp",
 		Framework: "django",
 		Teams:     []string{s.team.Name},
-		State:     string(provision.StatusStarted),
 		Units:     []Unit{{Name: "i-0800", State: "started"}},
 	}
 	err := db.Session.Apps().Insert(a)
@@ -970,7 +961,6 @@ func (s *S) TestRestart(c *C) {
 		Name:      "someApp",
 		Framework: "django",
 		Teams:     []string{s.team.Name},
-		State:     string(provision.StatusStarted),
 		Units:     []Unit{{Name: "i-0800", State: "started"}},
 	}
 	var b bytes.Buffer
@@ -989,7 +979,6 @@ func (s *S) TestRestartRunsPreRestartHook(c *C) {
 		Name:      "someApp",
 		Framework: "django",
 		Teams:     []string{s.team.Name},
-		State:     string(provision.StatusStarted),
 		hooks:     &conf{PreRestart: []string{"pre.sh"}},
 		Units:     []Unit{{Name: "i-0800", State: "started"}},
 	}
@@ -1008,7 +997,6 @@ func (s *S) TestRestartRunsPosRestartHook(c *C) {
 		Name:      "someApp",
 		Framework: "django",
 		Teams:     []string{s.team.Name},
-		State:     string(provision.StatusStarted),
 		hooks:     &conf{PosRestart: []string{"pos.sh"}},
 		Units:     []Unit{{Name: "i-0800", State: "started"}},
 	}
@@ -1093,14 +1081,12 @@ func (s *S) TestGetUnits(c *C) {
 func (s *S) TestAppMarshalJson(c *C) {
 	app := App{
 		Name:      "Name",
-		State:     "State",
 		Framework: "Framework",
 		Teams:     []string{"team1"},
 		Ip:        "10.10.10.1",
 	}
 	expected := make(map[string]interface{})
 	expected["Name"] = "Name"
-	expected["State"] = "State"
 	expected["Framework"] = "Framework"
 	expected["Repository"] = repository.GetUrl(app.Name)
 	expected["Teams"] = []interface{}{"team1"}
@@ -1118,7 +1104,6 @@ func (s *S) TestRun(c *C) {
 	s.provisioner.PrepareOutput([]byte("a lot of files"))
 	app := App{
 		Name:  "myapp",
-		State: string(provision.StatusStarted),
 		Units: []Unit{{Name: "i-0800", State: "started"}},
 	}
 	var buf bytes.Buffer
@@ -1136,7 +1121,6 @@ func (s *S) TestRunWithoutEnv(c *C) {
 	s.provisioner.PrepareOutput([]byte("a lot of files"))
 	app := App{
 		Name:  "myapp",
-		State: string(provision.StatusStarted),
 		Units: []Unit{{Name: "i-0800", State: "started"}},
 	}
 	var buf bytes.Buffer
@@ -1149,7 +1133,7 @@ func (s *S) TestRunWithoutEnv(c *C) {
 
 func (s *S) TestCommand(c *C) {
 	s.provisioner.PrepareOutput([]byte("lots of files"))
-	app := App{Name: "myapp", State: string(provision.StatusStarted)}
+	app := App{Name: "myapp"}
 	var buf bytes.Buffer
 	err := app.Command(&buf, &buf, "ls -lh")
 	c.Assert(err, IsNil)
@@ -1167,7 +1151,6 @@ func (s *S) TestSerializeEnvVars(c *C) {
 	app := App{
 		Name:  "time",
 		Teams: []string{s.team.Name},
-		State: string(provision.StatusStarted),
 		Env: map[string]bind.EnvVar{
 			"http_proxy": {
 				Name:   "http_proxy",
@@ -1200,15 +1183,14 @@ func (s *S) TestSerializeEnvVarsErrorWithoutOutput(c *C) {
 	}
 	err := app.SerializeEnvVars()
 	c.Assert(err, NotNil)
-	c.Assert(err, ErrorMatches, `^Failed to write env vars: App must be started.*\.$`)
+	c.Assert(err.Error(), Equals, "Failed to write env vars: App must be available to run commands.")
 }
 
 func (s *S) TestSerializeEnvVarsErrorWithOutput(c *C) {
 	s.provisioner.PrepareOutput([]byte("This program has performed an illegal operation"))
 	s.provisioner.PrepareFailure("ExecuteCommand", errors.New("exit status 1"))
 	app := App{
-		Name:  "intheend",
-		State: string(provision.StatusStarted),
+		Name: "intheend",
 		Env: map[string]bind.EnvVar{
 			"https_proxy": {
 				Name:   "https_proxy",

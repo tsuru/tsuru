@@ -58,7 +58,6 @@ func update(units []provision.Unit) {
 		u.InstanceId = unit.InstanceId
 		u.Ip = unit.Ip
 		u.State = string(unit.Status)
-		a.State = string(unit.Status)
 		a.AddUnit(&u)
 		if index > -1 {
 			l.Add(a, index)

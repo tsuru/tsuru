@@ -27,7 +27,7 @@ func getOutput() []provision.Unit {
 }
 
 func getApp(c *C) *app.App {
-	a := &app.App{Name: "umaappqq", State: "STOPPED"}
+	a := &app.App{Name: "umaappqq"}
 	err := db.Session.Apps().Insert(&a)
 	c.Assert(err, IsNil)
 	return a
@@ -40,12 +40,11 @@ func (s *S) TestUpdate(c *C) {
 	update(out)
 	err := a.Get()
 	c.Assert(err, IsNil)
-	c.Assert(a.State, Equals, "started")
 	c.Assert(a.Units[0].Name, Equals, "i-00000zz8")
 	c.Assert(a.Units[0].Ip, Equals, "192.168.0.11")
 	c.Assert(a.Units[0].Machine, Equals, 1)
 	c.Assert(a.Units[0].InstanceId, Equals, "i-0800")
-	c.Assert(a.Units[0].State, Equals, string(provision.StatusStarted))
+	c.Assert(a.Units[0].State, Equals, provision.StatusStarted.String())
 	addr, _ := s.provisioner.Addr(a)
 	c.Assert(a.Ip, Equals, addr)
 }
@@ -76,7 +75,7 @@ func (s *S) TestUpdateWithMultipleUnits(c *C) {
 	c.Assert(unit.Name, Equals, "i-00000zz9")
 	c.Assert(unit.Ip, Equals, "192.168.0.12")
 	c.Assert(unit.InstanceId, Equals, "i-0900")
-	c.Assert(unit.State, Equals, string(provision.StatusStarted))
+	c.Assert(unit.State, Equals, provision.StatusStarted.String())
 	addr, _ := s.provisioner.Addr(a)
 	c.Assert(a.Ip, Equals, addr)
 }
@@ -98,7 +97,6 @@ func (s *S) TestUpdateWithDownMachine(c *C) {
 	update(units)
 	err = a.Get()
 	c.Assert(err, IsNil)
-	c.Assert(a.State, Equals, string(provision.StatusPending))
 }
 
 func (s *S) TestUpdateTwice(c *C) {
@@ -108,11 +106,10 @@ func (s *S) TestUpdateTwice(c *C) {
 	update(out)
 	err := a.Get()
 	c.Assert(err, IsNil)
-	c.Assert(a.State, Equals, "started")
 	c.Assert(a.Units[0].Ip, Equals, "192.168.0.11")
 	c.Assert(a.Units[0].Machine, Equals, 1)
 	c.Assert(a.Units[0].InstanceId, Equals, "i-0800")
-	c.Assert(a.Units[0].State, Equals, string(provision.StatusStarted))
+	c.Assert(a.Units[0].State, Equals, provision.StatusStarted.String())
 	update(out)
 	err = a.Get()
 	c.Assert(len(a.Units), Equals, 1)

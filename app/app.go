@@ -48,7 +48,6 @@ type App struct {
 	Framework string
 	Logs      []Applog
 	Name      string
-	State     string
 	Ip        string
 	Units     []Unit
 	Teams     []string
@@ -58,7 +57,6 @@ type App struct {
 func (a *App) MarshalJSON() ([]byte, error) {
 	result := make(map[string]interface{})
 	result["Name"] = a.Name
-	result["State"] = a.State
 	result["Framework"] = a.Framework
 	result["Teams"] = a.Teams
 	result["Units"] = a.Units
@@ -468,7 +466,7 @@ func (a *App) Run(cmd string, w io.Writer) error {
 
 func (a *App) run(cmd string, w io.Writer) error {
 	if !a.Available() {
-		return fmt.Errorf("App must be started to run commands, but it is %q.", a.State)
+		return errors.New("App must be available to run commands")
 	}
 	return Provisioner.ExecuteCommand(w, w, a, cmd)
 }

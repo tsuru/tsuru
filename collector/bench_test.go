@@ -39,7 +39,6 @@ func getFakeApps() ([]app.App, []string) {
 		apps[i] = app.App{
 			Name:      name,
 			Framework: "python",
-			State:     provision.StatusStarted.String(),
 		}
 		err := db.Session.Apps().Insert(apps[i])
 		if err != nil {

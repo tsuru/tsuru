@@ -38,18 +38,15 @@ func ensureAppIsStarted(msg *queue.Message) (App, error) {
 	units := getUnits(&a, msg.Args[1:])
 	if !a.Available() || !units.Started() {
 		format := "Error handling %q for the app %q:"
-		switch a.State {
-		case "error":
-			format += " the app is in %q state."
+		uState := units.State()
+		if uState == "error" || uState == "down" {
+			format += fmt.Sprintf(" units are in %q state.", uState)
 			msg.Delete()
-		case "down":
-			format += " the app is %s."
-			msg.Delete()
-		default:
-			format += ` The status of the app and all units should be "started" (the app is %q).`
+		} else {
+			format += " all units must be started."
 			msg.Release(5e9)
 		}
-		return a, fmt.Errorf(format, msg.Action, a.Name, a.State)
+		return a, fmt.Errorf(format, msg.Action, a.Name)
 	}
 	return a, nil
 }
@@ -135,6 +132,20 @@ func (l unitList) Started() bool {
 		}
 	}
 	return true
+}
+
+// State returns a string if all units have the same state. Otherwise
+func (l unitList) State() string {
+	if len(l) == 0 {
+		return ""
+	}
+	state := l[0].State
+	for i := 1; i < len(l); i++ {
+		if l[i].State != state {
+			return ""
+		}
+	}
+	return state
 }
 
 func getUnits(a *App, names []string) unitList {
