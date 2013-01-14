@@ -72,6 +72,15 @@ func (s *S) TestOpenStoresConnectionInThePool(c *C) {
 	c.Assert(storage, Equals, conn["127.0.0.1:27017tsuru_storage_test"])
 }
 
+func (s *S) TestOpenReusesConnection(c *C) {
+	storage, err := Open("127.0.0.1:27017", "tsuru_storage_test")
+	c.Assert(err, IsNil)
+	defer storage.Close()
+	storage2, err := Open("127.0.0.1:27017", "tsuru_storage_test")
+	c.Assert(err, IsNil)
+	c.Assert(storage, Equals, storage2)
+}
+
 func (s *S) TestOpenReconnects(c *C) {
 	storage, err := Open("127.0.0.1:27017", "tsuru_storage_test")
 	c.Assert(err, IsNil)
@@ -80,6 +89,12 @@ func (s *S) TestOpenReconnects(c *C) {
 	c.Assert(err, IsNil)
 	err = storage.session.Ping()
 	c.Assert(err, IsNil)
+}
+
+func (s *S) TestOpenConnectionRefused(c *C) {
+	storage, err := Open("127.0.0.1:27018", "tsuru_storage_test")
+	c.Assert(storage, IsNil)
+	c.Assert(err, NotNil)
 }
 
 func (s *S) TestConn(c *C) {
