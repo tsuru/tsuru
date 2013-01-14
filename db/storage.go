@@ -4,8 +4,10 @@
 
 // Package db encapsulates tsuru connection with MongoDB.
 //
-// It uses data from configuration file to connect to the database, and store
-// the connection in the Session variable.
+// The function Open dials to MongoDB and returns a connection (represented by
+// the Storage type). It manages an internal poll of connections, and
+// reconnects in case of failures. That means that you should not store
+// references to the connection, but always call Open.
 package db
 
 import (
@@ -21,12 +23,13 @@ type Storage struct {
 	collections map[string]*mgo.Collection
 	session     *mgo.Session
 	dbname      string
-	sync.RWMutex
+	mut         sync.RWMutex
 }
 
-// Open dials to the MongoDB database.
+// Open dials to the MongoDB database, and return the connection (represented
+// by the type Storage).
 //
-// addr is a MongoDB connection URI.
+// addr is a MongoDB connection URI, and dbname is the name of the database.
 //
 // This function returns a pointer to a Storage, or a non-nil error in case of
 // any failure.
@@ -60,15 +63,15 @@ func (s *Storage) Close() {
 //
 // If the collection does not exist, MongoDB will create it.
 func (s *Storage) Collection(name string) *mgo.Collection {
-	s.RLock()
+	s.mut.RLock()
 	collection, ok := s.collections[name]
-	s.RUnlock()
+	s.mut.RUnlock()
 
 	if !ok {
 		collection = s.session.DB(s.dbname).C(name)
-		s.Lock()
+		s.mut.Lock()
 		s.collections[name] = collection
-		s.Unlock()
+		s.mut.Unlock()
 	}
 	return collection
 }
