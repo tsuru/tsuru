@@ -51,7 +51,7 @@ func readTarget() string {
 	if f, err := filesystem().Open(targetPath); err == nil {
 		defer f.Close()
 		if b, err := ioutil.ReadAll(f); err == nil {
-			return string(b)
+			return strings.TrimSpace(string(b))
 		}
 	}
 	return DefaultTarget

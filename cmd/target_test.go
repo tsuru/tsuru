@@ -79,6 +79,15 @@ func (s *S) TestReadTargetReturnsDefaultTargetIfTheFileDoesNotExist(c *C) {
 	c.Assert(target, Equals, DefaultTarget)
 }
 
+func (s *S) TestReadTargetTrimsFileContent(c *C) {
+	fsystem = &testing.RecordingFs{FileContent: "   http://tsuru.io\n\n"}
+	defer func() {
+		fsystem = nil
+	}()
+	target := readTarget()
+	c.Assert(target, Equals, "http://tsuru.io")
+}
+
 func (s *S) TestTargetInfo(c *C) {
 	desc := `Defines or retrieve the target (tsuru server)
 
