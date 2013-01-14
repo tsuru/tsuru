@@ -42,84 +42,116 @@ var HasUniqueIndex Checker = &hasUniqueIndexChecker{}
 
 func Test(t *testing.T) { TestingT(t) }
 
-type S struct {
-	storage *Storage
-}
+type S struct{}
 
 var _ = Suite(&S{})
 
-func (s *S) SetUpSuite(c *C) {
-	s.storage, _ = Open("127.0.0.1:27017", "tsuru_storage_test")
-}
-
 func (s *S) TearDownSuite(c *C) {
-	defer s.storage.Close()
-	s.storage.session.DB("tsuru_storage_test").DropDatabase()
+	storage, err := Open("127.0.0.1:27017", "tsuru_storage_test")
+	c.Assert(err, IsNil)
+	defer storage.Close()
+	storage.session.DB("tsuru_storage_test").DropDatabase()
 }
 
-func (s *S) TestShouldProvideMethodToOpenAConnection(c *C) {
-	storage, _ := Open("127.0.0.1:27017", "tsuru_storage_test")
+func (s *S) TearDownTest(c *C) {
+	conn = make(map[string]*Storage)
+}
+
+func (s *S) TestOpenConnectsToTheDatabase(c *C) {
+	storage, err := Open("127.0.0.1:27017", "tsuru_storage_test")
+	c.Assert(err, IsNil)
+	defer storage.Close()
 	c.Assert(storage.session.Ping(), IsNil)
-	storage.Close()
 }
 
-func (s *S) TestMethodCloseSholdCloseTheConnectionWithMongoDB(c *C) {
+func (s *S) TestOpenStoresConnectionInThePool(c *C) {
+	storage, err := Open("127.0.0.1:27017", "tsuru_storage_test")
+	c.Assert(err, IsNil)
+	defer storage.Close()
+	c.Assert(storage, Equals, conn["127.0.0.1:27017tsuru_storage_test"])
+}
+
+func (s *S) TestOpenReconnects(c *C) {
+	storage, err := Open("127.0.0.1:27017", "tsuru_storage_test")
+	c.Assert(err, IsNil)
+	storage.Close()
+	storage, err = Open("127.0.0.1:27017", "tsuru_storage_test")
+	c.Assert(err, IsNil)
+	err = storage.session.Ping()
+	c.Assert(err, IsNil)
+}
+
+func (s *S) TestCloseClosesTheConnectionWithMongoDB(c *C) {
 	defer func() {
 		if r := recover(); r == nil {
-			c.Errorf("Should close the connection, but did not!")
+			c.Errorf("Should close the connection.")
 		}
 	}()
 	storage, _ := Open("127.0.0.1:27017", "tsuru_storage_test")
 	storage.Close()
-	storage.session.Ping()
+	err := storage.session.Ping()
+	c.Assert(err, NotNil)
 }
 
-func (s *S) TestShouldProvidePrivateMethodToGetACollection(c *C) {
-	collection := s.storage.Collection("users")
-	c.Assert(collection.FullName, Equals, s.storage.dbname+".users")
+func (s *S) TestCloseKeepsTheConnectionInThePool(c *C) {
+	storage, _ := Open("127.0.0.1:27017", "tsuru_storage_test")
+	storage.Close()
+	_, ok := conn["127.0.0.1:27017tsuru_storage_test"]
+	c.Assert(ok, Equals, true)
+}
+
+func (s *S) TestCollection(c *C) {
+	storage, _ := Open("127.0.0.1:27017", "tsuru_storage_test")
+	defer storage.Close()
+	collection := storage.Collection("users")
+	c.Assert(collection.FullName, Equals, storage.dbname+".users")
 }
 
 func (s *S) TestShouldCacheCollection(c *C) {
-	collection := s.storage.Collection("users")
-	c.Assert(collection, DeepEquals, s.storage.collections["users"])
+	storage, _ := Open("127.0.0.1:27017", "tsuru_storage_test")
+	defer storage.Close()
+	collection := storage.Collection("users")
+	c.Assert(collection, DeepEquals, storage.collections["users"])
 }
 
-func (s *S) TestMethodUsersShouldReturnUsersCollection(c *C) {
-	users := s.storage.Users()
-	usersc := s.storage.Collection("users")
+func (s *S) TestUsers(c *C) {
+	storage, _ := Open("127.0.0.1:27017", "tsuru_storage_test")
+	defer storage.Close()
+	users := storage.Users()
+	usersc := storage.Collection("users")
 	c.Assert(users, DeepEquals, usersc)
-}
-
-func (s *S) TestMethodUserShouldReturnUsersCollectionWithUniqueIndexForEmail(c *C) {
-	users := s.storage.Users()
 	c.Assert(users, HasUniqueIndex, []string{"email"})
 }
 
-func (s *S) TestMethodAppsShouldReturnAppsCollection(c *C) {
-	apps := s.storage.Apps()
-	appsc := s.storage.Collection("apps")
+func (s *S) TestApps(c *C) {
+	storage, _ := Open("127.0.0.1:27017", "tsuru_storage_test")
+	defer storage.Close()
+	apps := storage.Apps()
+	appsc := storage.Collection("apps")
 	c.Assert(apps, DeepEquals, appsc)
-}
-
-func (s *S) TestMethodAppsShouldReturnAppsCollectionWithUniqueIndexForName(c *C) {
-	apps := s.storage.Apps()
 	c.Assert(apps, HasUniqueIndex, []string{"name"})
 }
 
-func (s *S) TestMethodServicesShouldReturnServicesCollection(c *C) {
-	services := s.storage.Services()
-	servicesc := s.storage.Collection("services")
+func (s *S) TestServices(c *C) {
+	storage, _ := Open("127.0.0.1:27017", "tsuru_storage_test")
+	defer storage.Close()
+	services := storage.Services()
+	servicesc := storage.Collection("services")
 	c.Assert(services, DeepEquals, servicesc)
 }
 
-func (s *S) TestMethodServiceInstancesShouldReturnServiceInstancesCollection(c *C) {
-	serviceApps := s.storage.ServiceInstances()
-	serviceAppsc := s.storage.Collection("service_instances")
-	c.Assert(serviceApps, DeepEquals, serviceAppsc)
+func (s *S) TestServiceInstances(c *C) {
+	storage, _ := Open("127.0.0.1:27017", "tsuru_storage_test")
+	defer storage.Close()
+	serviceInstances := storage.ServiceInstances()
+	serviceInstancesc := storage.Collection("service_instances")
+	c.Assert(serviceInstances, DeepEquals, serviceInstancesc)
 }
 
 func (s *S) TestMethodTeamsShouldReturnTeamsCollection(c *C) {
-	teams := s.storage.Teams()
-	teamsc := s.storage.Collection("teams")
+	storage, _ := Open("127.0.0.1:27017", "tsuru_storage_test")
+	defer storage.Close()
+	teams := storage.Teams()
+	teamsc := storage.Collection("teams")
 	c.Assert(teams, DeepEquals, teamsc)
 }

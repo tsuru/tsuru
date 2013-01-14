@@ -5,7 +5,7 @@
 // Package db encapsulates tsuru connection with MongoDB.
 //
 // The function Open dials to MongoDB and returns a connection (represented by
-// the Storage type). It manages an internal poll of connections, and
+// the Storage type). It manages an internal pool of connections, and
 // reconnects in case of failures. That means that you should not store
 // references to the connection, but always call Open.
 package db
@@ -15,8 +15,8 @@ import (
 	"sync"
 )
 
-// Session stores the current connection with the database.
-var Session *Storage
+// pool of connections
+var conn = make(map[string]*Storage)
 
 // Storage holds the connection with the database.
 type Storage struct {
@@ -26,6 +26,21 @@ type Storage struct {
 	mut         sync.RWMutex
 }
 
+func open(addr, dbname string) (*Storage, error) {
+	key := addr + dbname
+	session, err := mgo.Dial(addr)
+	if err != nil {
+		return nil, err
+	}
+	storage := &Storage{
+		session:     session,
+		collections: make(map[string]*mgo.Collection),
+		dbname:      dbname,
+	}
+	conn[key] = storage
+	return storage, nil
+}
+
 // Open dials to the MongoDB database, and return the connection (represented
 // by the type Storage).
 //
@@ -33,17 +48,19 @@ type Storage struct {
 //
 // This function returns a pointer to a Storage, or a non-nil error in case of
 // any failure.
-func Open(addr, dbname string) (*Storage, error) {
-	session, err := mgo.Dial(addr)
-	if err != nil {
-		return nil, err
+func Open(addr, dbname string) (storage *Storage, err error) {
+	var ok bool
+	defer func() {
+		if r := recover(); r != nil {
+			storage, err = open(addr, dbname)
+		}
+	}()
+	key := addr + dbname
+	if storage, ok = conn[key]; ok {
+		storage.session.Ping()
+		return storage, nil
 	}
-	s := &Storage{
-		session:     session,
-		collections: make(map[string]*mgo.Collection),
-		dbname:      dbname,
-	}
-	return s, nil
+	return open(addr, dbname)
 }
 
 // Close closes the connection.
