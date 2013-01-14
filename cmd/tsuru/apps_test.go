@@ -206,7 +206,7 @@ func (s *S) TestAppList(c *C) {
 	var stdout, stderr bytes.Buffer
 	result := `[{"Ip":"10.10.10.10","Name":"app1","Units":[{"Name":"app1/0","State":"started"}]}]`
 	expected := `+-------------+-------------------------+-------------+
-| Application | Units State Summary     | Ip          |
+| Application | Units State Summary     | IP          |
 +-------------+-------------------------+-------------+
 | app1        | 1 of 1 units in-service | 10.10.10.10 |
 +-------------+-------------------------+-------------+
@@ -227,7 +227,7 @@ func (s *S) TestAppListUnitIsntStarted(c *C) {
 	var stdout, stderr bytes.Buffer
 	result := `[{"Ip":"10.10.10.10","Name":"app1","Units":[{"Name":"app1/0","State":"pending"}]}]`
 	expected := `+-------------+-------------------------+-------------+
-| Application | Units State Summary     | Ip          |
+| Application | Units State Summary     | IP          |
 +-------------+-------------------------+-------------+
 | app1        | 0 of 1 units in-service | 10.10.10.10 |
 +-------------+-------------------------+-------------+

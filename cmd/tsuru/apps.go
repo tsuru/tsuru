@@ -203,7 +203,7 @@ func (c *AppList) Show(result []byte, context *cmd.Context) error {
 		return err
 	}
 	table := cmd.NewTable()
-	table.Headers = cmd.Row([]string{"Application", "Units State Summary", "Ip"})
+	table.Headers = cmd.Row([]string{"Application", "Units State Summary", "IP"})
 	for _, app := range apps {
 		var units_started int
 		for _, unit := range app.Units {
