@@ -90,6 +90,8 @@ func Conn() (storage *Storage, err error) {
 //         panic(err)
 //     }
 //     defer st.Close()
+//
+// TODO(fss): remove this method and implement a "connection collector".
 func (s *Storage) Close() {
 	s.session.Close()
 }
