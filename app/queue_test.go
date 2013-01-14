@@ -93,9 +93,7 @@ func (s *S) TestHandleMessageWithSpecificUnit(c *C) {
 	c.Assert(output, Matches, outputRegexp)
 }
 
-// TODO(fss): fix this test (app state related).
 func (s *S) TestHandleMessageErrors(c *C) {
-	c.Skip("Outdated test.")
 	var data = []struct {
 		action      string
 		args        []string
@@ -111,25 +109,25 @@ func (s *S) TestHandleMessageErrors(c *C) {
 			action: startApp,
 			args:   []string{"nemesis"},
 			expectedLog: `Error handling "start-app" for the app "nemesis":` +
-				` The status of the app and all units should be "started" (the app is "pending").`,
+				` all units must be started.`,
 		},
 		{
 			action: startApp,
 			args:   []string{"totem", "totem/0", "totem/1"},
 			expectedLog: `Error handling "start-app" for the app "totem":` +
-				` The status of the app and all units should be "started" (the app is "started").`,
+				` all units must be started.`,
 		},
 		{
 			action: regenerateApprc,
 			args:   []string{"nemesis"},
 			expectedLog: `Error handling "regenerate-apprc" for the app "nemesis":` +
-				` The status of the app and all units should be "started" (the app is "pending").`,
+				` all units must be started.`,
 		},
 		{
 			action: regenerateApprc,
 			args:   []string{"totem", "totem/0", "totem/1"},
 			expectedLog: `Error handling "regenerate-apprc" for the app "totem":` +
-				` The status of the app and all units should be "started" (the app is "started").`,
+				` all units must be started.`,
 		},
 		{
 			action:      regenerateApprc,
@@ -142,15 +140,15 @@ func (s *S) TestHandleMessageErrors(c *C) {
 		},
 		{
 			action: regenerateApprc,
-			args:   []string{"marathon"},
+			args:   []string{"marathon", "marathon/0"},
 			expectedLog: `Error handling "regenerate-apprc" for the app "marathon":` +
-				` the app is in "error" state.`,
+				` units are in "error" state.`,
 		},
 		{
 			action: regenerateApprc,
-			args:   []string{"territories"},
+			args:   []string{"territories", "territories/0"},
 			expectedLog: `Error handling "regenerate-apprc" for the app "territories":` +
-				` the app is down.`,
+				` units are in "down" state.`,
 		},
 	}
 	var buf bytes.Buffer
@@ -168,11 +166,11 @@ func (s *S) TestHandleMessageErrors(c *C) {
 	err = db.Session.Apps().Insert(a)
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
-	a = App{Name: "marathon"}
+	a = App{Name: "marathon", Units: []Unit{{Name: "marathon/0", State: "error"}}}
 	err = db.Session.Apps().Insert(a)
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
-	a = App{Name: "territories"}
+	a = App{Name: "territories", Units: []Unit{{Name: "territories/0", State: "down"}}}
 	err = db.Session.Apps().Insert(a)
 	c.Assert(err, IsNil)
 	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
