@@ -11,6 +11,8 @@
 package db
 
 import (
+	"fmt"
+	"github.com/globocom/config"
 	"labix.org/v2/mgo"
 	"sync"
 )
@@ -61,6 +63,22 @@ func Open(addr, dbname string) (storage *Storage, err error) {
 		return storage, nil
 	}
 	return open(addr, dbname)
+}
+
+// Conn reads the tsuru config and calls Open to get a database connection.
+//
+// Most tsuru packages should probably use this function. Open is intended for
+// use when supporting more than one database.
+func Conn() (storage *Storage, err error) {
+	url, err := config.GetString("database:url")
+	if err != nil {
+		return nil, fmt.Errorf("configuration error: %s", err)
+	}
+	dbname, err := config.GetString("database:name")
+	if err != nil {
+		return nil, fmt.Errorf("configuration error: %s", err)
+	}
+	return Open(url, dbname)
 }
 
 // Close closes the connection.

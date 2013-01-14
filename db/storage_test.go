@@ -5,6 +5,7 @@
 package db
 
 import (
+	"github.com/globocom/config"
 	"labix.org/v2/mgo"
 	. "launchpad.net/gocheck"
 	"reflect"
@@ -79,6 +80,34 @@ func (s *S) TestOpenReconnects(c *C) {
 	c.Assert(err, IsNil)
 	err = storage.session.Ping()
 	c.Assert(err, IsNil)
+}
+
+func (s *S) TestConn(c *C) {
+	config.Set("database:url", "127.0.0.1:27017")
+	defer config.Unset("database:url")
+	config.Set("database:name", "tsuru_storage_test")
+	defer config.Unset("database:name")
+	storage, err := Conn()
+	c.Assert(err, IsNil)
+	defer storage.Close()
+	err = storage.session.Ping()
+	c.Assert(err, IsNil)
+}
+
+func (s *S) TestConnMissingDatabaseUrl(c *C) {
+	storage, err := Conn()
+	c.Assert(storage, IsNil)
+	c.Assert(err, NotNil)
+	c.Assert(err.Error(), Equals, `configuration error: key "database:url" not found`)
+}
+
+func (s *S) TestConnMissingDatabaseName(c *C) {
+	config.Set("database:url", "127.0.0.1:27017")
+	defer config.Unset("database:url")
+	storage, err := Conn()
+	c.Assert(storage, IsNil)
+	c.Assert(err, NotNil)
+	c.Assert(err.Error(), Equals, `configuration error: key "database:name" not found`)
 }
 
 func (s *S) TestCloseClosesTheConnectionWithMongoDB(c *C) {
