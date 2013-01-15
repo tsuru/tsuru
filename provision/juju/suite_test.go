@@ -1,4 +1,4 @@
-// Copyright 2012 tsuru authors. All rights reserved.
+// Copyright 2013 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -15,6 +15,7 @@ func Test(t *testing.T) { TestingT(t) }
 
 type S struct {
 	collName string
+	conn     *db.Storage
 }
 
 var _ = Suite(&S{})
@@ -25,13 +26,15 @@ func (s *S) SetUpSuite(c *C) {
 	config.Set("juju:units-collection", s.collName)
 	err := handler.DryRun()
 	c.Assert(err, IsNil)
-	db.Session, err = db.Open("127.0.0.1:27017", "juju_provision_tests_s")
+	config.Set("database:url", "127.0.0.1:27017")
+	config.Set("database:name", "juju_provision_tests_s")
+	s.conn, err = db.Conn()
 	c.Assert(err, IsNil)
 }
 
 func (s *S) TearDownSuite(c *C) {
 	handler.Stop()
 	handler.Wait()
-	db.Session.Collection(s.collName).Database.DropDatabase()
-	db.Session.Close()
+	s.conn.Collection(s.collName).Database.DropDatabase()
+	s.conn.Close()
 }

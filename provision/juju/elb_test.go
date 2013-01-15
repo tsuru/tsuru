@@ -20,6 +20,7 @@ import (
 type ELBSuite struct {
 	server *elbtest.Server
 	client *elb.ELB
+	conn   *db.Storage
 	cName  string
 }
 
@@ -27,8 +28,9 @@ var _ = Suite(&ELBSuite{})
 
 func (s *ELBSuite) SetUpSuite(c *C) {
 	var err error
-	db.Session, err = db.Open("127.0.0.1:27017", "juju_tests")
-	c.Assert(err, IsNil)
+	config.Set("database:url", "127.0.0.1:27017")
+	config.Set("database:name", "juju_elb_tests")
+	s.conn, err = db.Conn()
 	s.server, err = elbtest.NewServer()
 	c.Assert(err, IsNil)
 	config.Set("juju:elb-endpoint", s.server.URL())
@@ -52,8 +54,8 @@ func (s *ELBSuite) SetUpSuite(c *C) {
 
 func (s *ELBSuite) TearDownSuite(c *C) {
 	config.Unset("juju:use-elb")
-	db.Session.Collection("juju_units_test_elb").Database.DropDatabase()
-	db.Session.Close()
+	s.conn.Collection("juju_units_test_elb").Database.DropDatabase()
+	s.conn.Close()
 	s.server.Quit()
 	handler.Stop()
 	handler.Wait()
@@ -62,7 +64,7 @@ func (s *ELBSuite) TearDownSuite(c *C) {
 func (s *ELBSuite) TestGetCollection(c *C) {
 	manager := ELBManager{}
 	coll := manager.collection()
-	other := db.Session.Collection(s.cName)
+	other := s.conn.Collection(s.cName)
 	c.Assert(coll, DeepEquals, other)
 }
 
@@ -92,7 +94,7 @@ func (s *ELBSuite) TestCreateELB(c *C) {
 	c.Assert(listener.SSLCertificateId, Equals, "")
 	dnsName := resp.LoadBalancerDescriptions[0].DNSName
 	var lb loadBalancer
-	err = db.Session.Collection(s.cName).Find(bson.M{"name": app.GetName()}).One(&lb)
+	err = s.conn.Collection(s.cName).Find(bson.M{"name": app.GetName()}).One(&lb)
 	c.Assert(err, IsNil)
 	c.Assert(lb.DNSName, Equals, dnsName)
 }

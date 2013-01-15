@@ -56,7 +56,11 @@ func (p *JujuProvisioner) unitsCollection() *mgo.Collection {
 	if err != nil {
 		log.Fatalf("FATAL: %s.", err)
 	}
-	return db.Session.Collection(name)
+	conn, err := db.Conn()
+	if err != nil {
+		log.Printf("Failed to connect to the database: %s", err)
+	}
+	return conn.Collection(name)
 }
 
 func (p *JujuProvisioner) enqueueUnits(app string, units ...string) {

@@ -37,7 +37,12 @@ func (m *ELBManager) collection() *mgo.Collection {
 	if err != nil {
 		log.Fatal("juju:elb-collection is undefined on config file.")
 	}
-	return db.Session.Collection(name)
+	conn, err := db.Conn()
+	if err != nil {
+		log.Printf("[juju] Failed to connect to the database: %s", err)
+		return nil
+	}
+	return conn.Collection(name)
 }
 
 func (m *ELBManager) elb() *elb.ELB {
