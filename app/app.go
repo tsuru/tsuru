@@ -200,8 +200,6 @@ func (a *App) AddUnits(n uint) error {
 	if err != nil {
 		return err
 	}
-	qArgs := make([]string, len(units)+1)
-	qArgs[0] = a.Name
 	length := len(a.Units)
 	appUnits := make([]Unit, len(units))
 	a.Units = append(a.Units, appUnits...)
@@ -215,7 +213,6 @@ func (a *App) AddUnits(n uint) error {
 			Machine: unit.Machine,
 			State:   provision.StatusPending.String(),
 		}
-		qArgs[i+1] = unit.Name
 		messages[mCount] = queue.Message{Action: RegenerateApprcAndStart, Args: []string{a.Name, unit.Name}}
 		messages[mCount+1] = queue.Message{Action: bindService, Args: []string{a.Name, unit.Name}}
 		mCount += 2
@@ -226,6 +223,32 @@ func (a *App) AddUnits(n uint) error {
 	}
 	go enqueue(messages...)
 	return nil
+}
+
+// Removes a unit by its id or name
+//
+// Will search first by id, if no instance is found,
+// then tries to search for the unit name, then calls the removal
+// function from provisioner
+//
+// Returns an error in case of failure.
+func (a *App) RemoveUnit(id string) error {
+	var unit Unit
+	for i, u := range a.Units {
+		if u.InstanceId == id || u.GetName() == id {
+			a.removeUnits([]int{i})
+			unit = u
+			break
+		}
+	}
+	if err := Provisioner.RemoveUnit(a, unit.GetName()); err != nil {
+		return err
+	}
+	conn, err := db.Conn()
+	if err != nil {
+		return err
+	}
+	return conn.Apps().Update(bson.M{"name": a.Name}, a)
 }
 
 func (a *App) removeUnits(indices []int) {

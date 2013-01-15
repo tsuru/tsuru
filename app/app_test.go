@@ -464,6 +464,103 @@ func (s *S) TestRemoveUnitsFromIndicesSlice(c *C) {
 	}
 }
 
+func (s *S) TestRemoveUnitByNameOrInstanceId(c *C) {
+	app := App{
+		Name:      "chemistry",
+		Framework: "python",
+		Units: []Unit{
+			{Name: "chemistry/0", InstanceId: "i-0"},
+			{Name: "chemistry/1", InstanceId: "i-1"},
+			{Name: "chemistry/2", InstanceId: "i-2"},
+			{Name: "chemistry/3", InstanceId: "i-3"},
+		},
+	}
+	err := s.conn.Apps().Insert(app)
+	c.Assert(err, IsNil)
+	err = s.provisioner.Provision(&app)
+	c.Assert(err, IsNil)
+	defer func() {
+		s.provisioner.Destroy(&app)
+		s.conn.Apps().Remove(bson.M{"name": app.Name})
+	}()
+	err = app.RemoveUnit("i-0")
+	c.Assert(err, IsNil)
+	units := s.provisioner.GetUnits(&app)
+	c.Assert(len(units), Equals, 3)
+	expected := []Unit{
+		{
+			Name:       "chemistry/1",
+			InstanceId: "i-1",
+		},
+		{
+			Name:       "chemistry/2",
+			InstanceId: "i-2",
+		},
+		{
+			Name:       "chemistry/3",
+			InstanceId: "i-3",
+		},
+	}
+	c.Assert(units, Equals, expected)
+	err = app.RemoveUnit("chemistry/1")
+	c.Assert(err, IsNil)
+	units := s.provisioner.GetUnits(&app)
+	c.Assert(units, HasLen, 2)
+	expected := []Unit{
+		{
+			Name:       "chemistry/2",
+			InstanceId: "i-2",
+		},
+		{
+			Name:       "chemistry/3",
+			InstanceId: "i-3",
+		},
+	}
+	c.Assert(units, Equals, expected)
+	err = app.Get()
+	c.Assert(err, IsNil)
+	c.Assert(app.Units, HasLen, 2)
+	c.Assert(app.Units[0].Name, Equals, "chemistry/2")
+	c.Assert(app.Units[1].Name, Equals, "chemistry/3")
+}
+
+func (s *S) TestRemoveAbsentUnit(c *C) {
+	app := App{
+		Name:      "chemistry",
+		Framework: "python",
+		Units: []Unit{
+			{Name: "chemistry/0", InstanceId: "i-0"},
+			{Name: "chemistry/1", InstanceId: "i-1"},
+		},
+	}
+	err := s.conn.Apps().Insert(app)
+	c.Assert(err, IsNil)
+	err = s.provisioner.Provision(&app)
+	c.Assert(err, IsNil)
+	defer func() {
+		s.provisioner.Destroy(&app)
+		s.conn.Apps().Remove(bson.M{"name": app.Name})
+	}()
+	err = app.RemoveUnit("i-0")
+	c.Assert(err, IsNil)
+	err = app.RemoveUnit("i-0")
+	c.Assert(err, NotNil)
+	c.Assert(err, ErrorMatches, "not found")
+	err = app.Get()
+	c.Assert(err, IsNil)
+	c.Assert(app.Units, HasLen, 1)
+	c.Assert(app.Units[0].Name, Equals, "chemistry/1")
+	units := s.provisioner.GetUnits(&app)
+	c.Assert(units, HasLen, 1)
+	expected := []Unit{
+		{
+			Name:       "chemistry/2",
+			InstanceId: "i-2",
+		},
+	}
+	c.Assert(units, Equals, expected)
+}
+
 func (s *S) TestGrantAccess(c *C) {
 	a := App{Name: "appName", Framework: "django", Teams: []string{}}
 	err := a.Grant(&s.team)
