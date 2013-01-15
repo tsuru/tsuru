@@ -6,6 +6,7 @@ package main
 
 import (
 	"bytes"
+	"github.com/globocom/config"
 	"github.com/globocom/tsuru/app"
 	"github.com/globocom/tsuru/db"
 	"labix.org/v2/mgo/bson"
@@ -13,44 +14,50 @@ import (
 	"net/http/httptest"
 )
 
-type WriterSuite struct{}
+type WriterSuite struct {
+	conn *db.Storage
+}
 
 var _ = Suite(&WriterSuite{})
 
 func (s *WriterSuite) SetUpSuite(c *C) {
 	var err error
-	db.Session, err = db.Open("127.0.0.1:27017", "tsuru_api_writer_test")
+	config.Set("database:url", "127.0.0.1:27017")
+	config.Set("database:name", "tsuru_api_writer_test")
+	s.conn, err = db.Conn()
 	c.Assert(err, IsNil)
 }
 
 func (s *WriterSuite) TearDownSuite(c *C) {
-	defer db.Session.Close()
-	db.Session.Apps().Database.DropDatabase()
+	defer s.conn.Close()
+	s.conn.Apps().Database.DropDatabase()
 }
 
 func (s *WriterSuite) TestLogWriter(c *C) {
 	var b bytes.Buffer
-	a := app.App{Name: "newApp"}
-	err := db.Session.Apps().Insert(a)
+	a := app.App{Name: "down"}
+	err := s.conn.Apps().Insert(a)
 	c.Assert(err, IsNil)
-	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	writer := LogWriter{&a, &b}
 	data := []byte("ble")
 	_, err = writer.Write(data)
 	c.Assert(err, IsNil)
 	c.Assert(b.Bytes(), DeepEquals, data)
 	instance := app.App{}
-	err = db.Session.Apps().Find(bson.M{"name": a.Name}).One(&instance)
+	err = s.conn.Apps().Find(bson.M{"name": a.Name}).One(&instance)
 	logLen := len(instance.Logs)
 	c.Assert(instance.Logs[logLen-1].Message, Equals, string(data))
 }
 
-func (s *WriterSuite) TestLogWriterShouldReturnsTheDataSize(c *C) {
+func (s *WriterSuite) TestLogWriterShouldReturnTheDataSize(c *C) {
 	var b bytes.Buffer
-	a := app.App{Name: "newApp"}
-	err := db.Session.Apps().Insert(a)
+	a := app.App{Name: "down"}
+	err := s.conn.Apps().Insert(a)
 	c.Assert(err, IsNil)
-	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
+	var apps []App
+	s.conn.Apps().Find(bson.M{"name": "down"}).All(&apps)
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	writer := LogWriter{&a, &b}
 	data := []byte("ble")
 	n, err := writer.Write(data)

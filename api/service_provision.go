@@ -49,13 +49,20 @@ func CreateHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	if _, ok := sy.Endpoint["production"]; !ok {
 		return &errors.Http{Code: http.StatusBadRequest, Message: "You must provide a production endpoint in the manifest file."}
 	}
+	conn, err := db.Conn()
+	if err != nil {
+		return err
+	}
 	var teams []auth.Team
-	db.Session.Teams().Find(bson.M{"users": u.Email}).All(&teams)
+	err = conn.Teams().Find(bson.M{"users": u.Email}).All(&teams)
+	if err != nil {
+		return err
+	}
 	if len(teams) == 0 {
 		msg := "In order to create a service, you should be member of at least one team"
 		return &errors.Http{Code: http.StatusForbidden, Message: msg}
 	}
-	n, err := db.Session.Services().Find(bson.M{"_id": sy.Id}).Count()
+	n, err := conn.Services().Find(bson.M{"_id": sy.Id}).Count()
 	if err != nil {
 		return &errors.Http{Code: http.StatusInternalServerError, Message: err.Error()}
 	}
@@ -101,7 +108,11 @@ func DeleteHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	if err != nil {
 		return err
 	}
-	n, err := db.Session.ServiceInstances().Find(bson.M{"service_name": s.Name}).Count()
+	conn, err := db.Conn()
+	if err != nil {
+		return err
+	}
+	n, err := conn.ServiceInstances().Find(bson.M{"service_name": s.Name}).Count()
 	if err != nil {
 		return err
 	}
@@ -117,7 +128,7 @@ func DeleteHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	return nil
 }
 
-func getServiceAndTeamOrError(serviceName string, teamName string, u *auth.User) (*service.Service, *auth.Team, error) {
+func getServiceAndTeam(serviceName string, teamName string, u *auth.User) (*service.Service, *auth.Team, error) {
 	service := &service.Service{Name: serviceName}
 	err := service.Get()
 	if err != nil {
@@ -128,7 +139,11 @@ func getServiceAndTeamOrError(serviceName string, teamName string, u *auth.User)
 		return nil, nil, &errors.Http{Code: http.StatusForbidden, Message: msg}
 	}
 	t := new(auth.Team)
-	err = db.Session.Teams().Find(bson.M{"_id": teamName}).One(t)
+	conn, err := db.Conn()
+	if err != nil {
+		return nil, nil, err
+	}
+	err = conn.Teams().Find(bson.M{"_id": teamName}).One(t)
 	if err != nil {
 		return nil, nil, &errors.Http{Code: http.StatusNotFound, Message: "Team not found"}
 	}
@@ -136,7 +151,7 @@ func getServiceAndTeamOrError(serviceName string, teamName string, u *auth.User)
 }
 
 func GrantServiceAccessToTeamHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
-	service, t, err := getServiceAndTeamOrError(r.URL.Query().Get(":service"), r.URL.Query().Get(":team"), u)
+	service, t, err := getServiceAndTeam(r.URL.Query().Get(":service"), r.URL.Query().Get(":team"), u)
 	if err != nil {
 		return err
 	}
@@ -144,11 +159,15 @@ func GrantServiceAccessToTeamHandler(w http.ResponseWriter, r *http.Request, u *
 	if err != nil {
 		return &errors.Http{Code: http.StatusConflict, Message: err.Error()}
 	}
-	return db.Session.Services().Update(bson.M{"_id": service.Name}, service)
+	conn, err := db.Conn()
+	if err != nil {
+		return err
+	}
+	return conn.Services().Update(bson.M{"_id": service.Name}, service)
 }
 
 func RevokeServiceAccessFromTeamHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
-	service, t, err := getServiceAndTeamOrError(r.URL.Query().Get(":service"), r.URL.Query().Get(":team"), u)
+	service, t, err := getServiceAndTeam(r.URL.Query().Get(":service"), r.URL.Query().Get(":team"), u)
 	if err != nil {
 		return err
 	}
@@ -160,7 +179,11 @@ func RevokeServiceAccessFromTeamHandler(w http.ResponseWriter, r *http.Request, 
 	if err != nil {
 		return &errors.Http{Code: http.StatusNotFound, Message: err.Error()}
 	}
-	return db.Session.Services().Update(bson.M{"_id": service.Name}, service)
+	conn, err := db.Conn()
+	if err != nil {
+		return err
+	}
+	return conn.Services().Update(bson.M{"_id": service.Name}, service)
 }
 
 func AddDocHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {

@@ -37,7 +37,7 @@ func write(w io.Writer, content []byte) error {
 	return nil
 }
 
-func getAppOrError(name string, u *auth.User) (app.App, error) {
+func getApp(name string, u *auth.User) (app.App, error) {
 	app := app.App{Name: name}
 	err := app.Get()
 	if err != nil {
@@ -107,7 +107,7 @@ func AppIsAvailableHandler(w http.ResponseWriter, r *http.Request) error {
 }
 
 func AppDelete(w http.ResponseWriter, r *http.Request, u *auth.User) error {
-	app, err := getAppOrError(r.URL.Query().Get(":name"), u)
+	app, err := getApp(r.URL.Query().Get(":name"), u)
 	if err != nil {
 		return err
 	}
@@ -124,8 +124,11 @@ func AppDelete(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 }
 
 func getTeamNames(u *auth.User) ([]string, error) {
-	var teams []auth.Team
-	if err := db.Session.Teams().Find(bson.M{"users": u.Email}).All(&teams); err != nil {
+	var (
+		teams []auth.Team
+		err   error
+	)
+	if teams, err = u.Teams(); err != nil {
 		return nil, err
 	}
 	return auth.GetTeamsNames(teams), nil
@@ -144,7 +147,7 @@ func AppList(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 }
 
 func AppInfo(w http.ResponseWriter, r *http.Request, u *auth.User) error {
-	app, err := getAppOrError(r.URL.Query().Get(":name"), u)
+	app, err := getApp(r.URL.Query().Get(":name"), u)
 	if err != nil {
 		return err
 	}
@@ -240,7 +243,7 @@ func AddUnitsHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error
 		return err
 	}
 	appName := r.URL.Query().Get(":name")
-	app, err := getAppOrError(appName, u)
+	app, err := getApp(appName, u)
 	if err != nil {
 		return err
 	}
@@ -253,7 +256,7 @@ func RemoveUnitsHandler(w http.ResponseWriter, r *http.Request, u *auth.User) er
 		return err
 	}
 	appName := r.URL.Query().Get(":name")
-	app, err := getAppOrError(appName, u)
+	app, err := getApp(appName, u)
 	if err != nil {
 		return err
 	}
@@ -262,11 +265,15 @@ func RemoveUnitsHandler(w http.ResponseWriter, r *http.Request, u *auth.User) er
 
 func grantAccessToTeam(appName, teamName string, u *auth.User) error {
 	t := new(auth.Team)
-	app, err := getAppOrError(appName, u)
+	app, err := getApp(appName, u)
 	if err != nil {
 		return err
 	}
-	err = db.Session.Teams().Find(bson.M{"_id": teamName}).One(t)
+	conn, err := db.Conn()
+	if err != nil {
+		return err
+	}
+	err = conn.Teams().Find(bson.M{"_id": teamName}).One(t)
 	if err != nil {
 		return &errors.Http{Code: http.StatusNotFound, Message: "Team not found"}
 	}
@@ -274,7 +281,7 @@ func grantAccessToTeam(appName, teamName string, u *auth.User) error {
 	if err != nil {
 		return &errors.Http{Code: http.StatusConflict, Message: err.Error()}
 	}
-	err = db.Session.Apps().Update(bson.M{"name": app.Name}, app)
+	err = conn.Apps().Update(bson.M{"name": app.Name}, app)
 	if err != nil {
 		return err
 	}
@@ -312,11 +319,15 @@ func getEmailsForRevoking(app *app.App, t *auth.Team) []string {
 
 func revokeAccessFromTeam(appName, teamName string, u *auth.User) error {
 	t := new(auth.Team)
-	app, err := getAppOrError(appName, u)
+	app, err := getApp(appName, u)
 	if err != nil {
 		return err
 	}
-	err = db.Session.Teams().Find(bson.M{"_id": teamName}).One(t)
+	conn, err := db.Conn()
+	if err != nil {
+		return err
+	}
+	err = conn.Teams().Find(bson.M{"_id": teamName}).One(t)
 	if err != nil {
 		return &errors.Http{Code: http.StatusNotFound, Message: "Team not found"}
 	}
@@ -328,7 +339,7 @@ func revokeAccessFromTeam(appName, teamName string, u *auth.User) error {
 	if err != nil {
 		return &errors.Http{Code: http.StatusNotFound, Message: err.Error()}
 	}
-	err = db.Session.Apps().Update(bson.M{"name": app.Name}, app)
+	err = conn.Apps().Update(bson.M{"name": app.Name}, app)
 	if err != nil {
 		return err
 	}
@@ -362,7 +373,7 @@ func RunCommand(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 		return &errors.Http{Code: http.StatusBadRequest, Message: msg}
 	}
 	appName := r.URL.Query().Get(":name")
-	app, err := getAppOrError(appName, u)
+	app, err := getApp(appName, u)
 	if err != nil {
 		return err
 	}
@@ -378,7 +389,7 @@ func GetEnv(w http.ResponseWriter, r *http.Request, u *auth.User) (err error) {
 		}
 	}
 	appName := r.URL.Query().Get(":name")
-	app, err := getAppOrError(appName, u)
+	app, err := getApp(appName, u)
 	if err != nil {
 		return err
 	}
@@ -419,7 +430,7 @@ func SetEnv(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 		return &errors.Http{Code: http.StatusBadRequest, Message: msg}
 	}
 	appName := r.URL.Query().Get(":name")
-	app, err := getAppOrError(appName, u)
+	app, err := getApp(appName, u)
 	if err != nil {
 		return err
 	}
@@ -449,7 +460,7 @@ func UnsetEnv(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 		return &errors.Http{Code: http.StatusBadRequest, Message: msg}
 	}
 	appName := r.URL.Query().Get(":name")
-	app, err := getAppOrError(appName, u)
+	app, err := getApp(appName, u)
 	if err != nil {
 		return err
 	}
@@ -466,7 +477,11 @@ func AppLog(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	if source := r.URL.Query().Get("source"); source != "" {
 		match["logs.source"] = source
 	}
-	_, err := getAppOrError(appName, u)
+	_, err := getApp(appName, u)
+	if err != nil {
+		return err
+	}
+	conn, err := db.Conn()
 	if err != nil {
 		return err
 	}
@@ -481,7 +496,7 @@ func AppLog(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 		pipe = append(pipe, bson.M{"$limit": lines})
 	}
 	var result []map[string]map[string]interface{}
-	err = db.Session.Apps().Pipe(pipe).All(&result)
+	err = conn.Apps().Pipe(pipe).All(&result)
 	if err != nil {
 		return err
 	}
@@ -502,31 +517,39 @@ func AppLog(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	return write(w, b)
 }
 
-func serviceInstanceAndAppOrError(instanceName, appName string, u *auth.User) (instance service.ServiceInstance, a app.App, err error) {
-	err = db.Session.ServiceInstances().Find(bson.M{"name": instanceName}).One(&instance)
+func getServiceInstace(instanceName, appName string, u *auth.User) (service.ServiceInstance, app.App, error) {
+	var (
+		instance service.ServiceInstance
+		app      app.App
+	)
+	conn, err := db.Conn()
+	if err != nil {
+		return instance, app, err
+	}
+	err = conn.ServiceInstances().Find(bson.M{"name": instanceName}).One(&instance)
 	if err != nil {
 		err = &errors.Http{Code: http.StatusNotFound, Message: "Instance not found"}
-		return
+		return instance, app, err
 	}
 	if !auth.CheckUserAccess(instance.Teams, u) {
 		err = &errors.Http{Code: http.StatusForbidden, Message: "This user does not have access to this instance"}
-		return
+		return instance, app, err
 	}
-	err = db.Session.Apps().Find(bson.M{"name": appName}).One(&a)
+	err = conn.Apps().Find(bson.M{"name": appName}).One(&app)
 	if err != nil {
 		err = &errors.Http{Code: http.StatusNotFound, Message: fmt.Sprintf("App %s not found.", appName)}
-		return
+		return instance, app, err
 	}
-	if !auth.CheckUserAccess(a.Teams, u) {
+	if !auth.CheckUserAccess(app.Teams, u) {
 		err = &errors.Http{Code: http.StatusForbidden, Message: "This user does not have access to this app"}
-		return
+		return instance, app, err
 	}
-	return
+	return instance, app, nil
 }
 
 func BindHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	instanceName, appName := r.URL.Query().Get(":instance"), r.URL.Query().Get(":app")
-	instance, a, err := serviceInstanceAndAppOrError(instanceName, appName, u)
+	instance, a, err := getServiceInstace(instanceName, appName, u)
 	if err != nil {
 		return err
 	}
@@ -545,7 +568,7 @@ func BindHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 
 func UnbindHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	instanceName, appName := r.URL.Query().Get(":instance"), r.URL.Query().Get(":app")
-	instance, a, err := serviceInstanceAndAppOrError(instanceName, appName, u)
+	instance, a, err := getServiceInstace(instanceName, appName, u)
 	if err != nil {
 		return err
 	}
@@ -554,7 +577,7 @@ func UnbindHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 
 func RestartHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	w.Header().Set("Content-Type", "text")
-	instance, err := getAppOrError(r.URL.Query().Get(":name"), u)
+	instance, err := getApp(r.URL.Query().Get(":name"), u)
 	if err != nil {
 		return err
 	}

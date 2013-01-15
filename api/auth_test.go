@@ -27,6 +27,7 @@ import (
 )
 
 type AuthSuite struct {
+	conn *db.Storage
 	team *auth.Team
 	user *auth.User
 }
@@ -34,23 +35,23 @@ type AuthSuite struct {
 var _ = Suite(&AuthSuite{})
 
 func (s *AuthSuite) SetUpSuite(c *C) {
-	var err error
-	err = config.ReadConfigFile("../etc/tsuru.conf")
+	err := config.ReadConfigFile("../etc/tsuru.conf")
 	c.Assert(err, IsNil)
-	db.Session, err = db.Open("127.0.0.1:27017", "tsuru_api_auth_test")
+	config.Set("database:name", "tsuru_api_auth_test")
+	s.conn, err = db.Conn()
 	c.Assert(err, IsNil)
 	s.createUserAndTeam(c)
 }
 
 func (s *AuthSuite) TearDownSuite(c *C) {
-	defer db.Session.Close()
-	db.Session.Apps().Database.DropDatabase()
+	defer s.conn.Close()
+	s.conn.Apps().Database.DropDatabase()
 }
 
 func (s *AuthSuite) TearDownTest(c *C) {
-	_, err := db.Session.Users().RemoveAll(bson.M{"email": bson.M{"$ne": s.user.Email}})
+	_, err := s.conn.Users().RemoveAll(bson.M{"email": bson.M{"$ne": s.user.Email}})
 	c.Assert(err, IsNil)
-	_, err = db.Session.Teams().RemoveAll(bson.M{"_id": bson.M{"$ne": s.team.Name}})
+	_, err = s.conn.Teams().RemoveAll(bson.M{"_id": bson.M{"$ne": s.team.Name}})
 	c.Assert(err, IsNil)
 	s.user.Password = "123"
 	s.user.HashPassword()
@@ -63,7 +64,7 @@ func (s *AuthSuite) createUserAndTeam(c *C) {
 	err := s.user.Create()
 	c.Assert(err, IsNil)
 	s.team = &auth.Team{Name: "tsuruteam", Users: []string{s.user.Email}}
-	err = db.Session.Teams().Insert(s.team)
+	err = s.conn.Teams().Insert(s.team)
 	c.Assert(err, IsNil)
 }
 
@@ -250,7 +251,7 @@ func (s *AuthSuite) TestCreateUserCreatesUserInGandalf(c *C) {
 	c.Assert(err, IsNil)
 	request.Header.Set("Content-type", "application/json")
 	recorder := httptest.NewRecorder()
-	defer db.Session.Users().Remove(bson.M{"email": "nobody@me.myself"})
+	defer s.conn.Users().Remove(bson.M{"email": "nobody@me.myself"})
 	err = CreateUser(recorder, request)
 	c.Assert(err, IsNil)
 	c.Assert(h.url[0], Equals, "/user")
@@ -270,7 +271,7 @@ func (s *AuthSuite) TestLoginShouldCreateTokenInTheDatabaseAndReturnItWithinTheR
 	err = Login(recorder, request)
 	c.Assert(err, IsNil)
 	var user auth.User
-	collection := db.Session.Users()
+	collection := s.conn.Users()
 	err = collection.Find(bson.M{"email": "nobody@globo.com"}).One(&user)
 	var recorderJson map[string]string
 	r, _ := ioutil.ReadAll(recorder.Body)
@@ -388,8 +389,8 @@ func (s *AuthSuite) TestCreateTeamHandlerSavesTheTeamInTheDatabaseWithTheAuthent
 	err = CreateTeam(recorder, request, s.user)
 	c.Assert(err, IsNil)
 	t := new(auth.Team)
-	err = db.Session.Teams().Find(bson.M{"_id": "timeredbull"}).One(t)
-	defer db.Session.Teams().Remove(bson.M{"_id": "timeredbull"})
+	err = s.conn.Teams().Find(bson.M{"_id": "timeredbull"}).One(t)
+	defer s.conn.Teams().Remove(bson.M{"_id": "timeredbull"})
 	c.Assert(err, IsNil)
 	c.Assert(t, ContainsUser, s.user)
 }
@@ -434,8 +435,8 @@ func (s *AuthSuite) TestCreateTeamHandlerReturnsInternalServerErrorIfReadAllFail
 }
 
 func (s *AuthSuite) TestCreateTeamHandlerReturnConflictIfTheTeamToBeCreatedAlreadyExists(c *C) {
-	err := db.Session.Teams().Insert(bson.M{"_id": "timeredbull"})
-	defer db.Session.Teams().Remove(bson.M{"_id": "timeredbull"})
+	err := s.conn.Teams().Insert(bson.M{"_id": "timeredbull"})
+	defer s.conn.Teams().Remove(bson.M{"_id": "timeredbull"})
 	c.Assert(err, IsNil)
 	b := bytes.NewBufferString(`{"name":"timeredbull"}`)
 	request, err := http.NewRequest("POST", "/teams", b)
@@ -458,15 +459,15 @@ func (s *AuthSuite) TestKeyToMap(c *C) {
 
 func (s *AuthSuite) TestRemoveTeam(c *C) {
 	team := auth.Team{Name: "painofsalvation", Users: []string{s.user.Email}}
-	err := db.Session.Teams().Insert(team)
+	err := s.conn.Teams().Insert(team)
 	c.Assert(err, IsNil)
-	defer db.Session.Teams().Remove(bson.M{"_id": team.Name})
+	defer s.conn.Teams().Remove(bson.M{"_id": team.Name})
 	request, err := http.NewRequest("DELETE", fmt.Sprintf("/teams/%s?:name=%s", team.Name, team.Name), nil)
 	c.Assert(err, IsNil)
 	recorder := httptest.NewRecorder()
 	err = RemoveTeam(recorder, request, s.user)
 	c.Assert(err, IsNil)
-	n, err := db.Session.Teams().Find(bson.M{"name": team.Name}).Count()
+	n, err := s.conn.Teams().Find(bson.M{"name": team.Name}).Count()
 	c.Assert(err, IsNil)
 	c.Assert(n, Equals, 0)
 }
@@ -485,9 +486,9 @@ func (s *AuthSuite) TestRemoveTeamGives404WhenTeamDoesNotExist(c *C) {
 
 func (s *AuthSuite) TestRemoveTeamGives404WhenUserDoesNotHaveAccessToTheTeam(c *C) {
 	team := auth.Team{Name: "painofsalvation"}
-	err := db.Session.Teams().Insert(team)
+	err := s.conn.Teams().Insert(team)
 	c.Assert(err, IsNil)
-	defer db.Session.Teams().Remove(bson.M{"_id": team.Name})
+	defer s.conn.Teams().Remove(bson.M{"_id": team.Name})
 	request, err := http.NewRequest("DELETE", fmt.Sprintf("/teams/%s?:name=%s", team.Name, team.Name), nil)
 	c.Assert(err, IsNil)
 	recorder := httptest.NewRecorder()
@@ -501,13 +502,13 @@ func (s *AuthSuite) TestRemoveTeamGives404WhenUserDoesNotHaveAccessToTheTeam(c *
 
 func (s *AuthSuite) TestRemoveTeamGives403WhenTeamHasAccessToAnyApp(c *C) {
 	team := auth.Team{Name: "evergrey", Users: []string{s.user.Email}}
-	err := db.Session.Teams().Insert(team)
+	err := s.conn.Teams().Insert(team)
 	c.Assert(err, IsNil)
-	defer db.Session.Teams().Remove(bson.M{"_id": team.Name})
+	defer s.conn.Teams().Remove(bson.M{"_id": team.Name})
 	a := App{Name: "i-should", Teams: []string{team.Name}}
-	err = db.Session.Apps().Insert(a)
+	err = s.conn.Apps().Insert(a)
 	c.Assert(err, IsNil)
-	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	request, err := http.NewRequest("DELETE", fmt.Sprintf("/teams/%s?:name=%s", team.Name, team.Name), nil)
 	c.Assert(err, IsNil)
 	recorder := httptest.NewRecorder()
@@ -540,7 +541,7 @@ func (s *AuthSuite) TestListTeamsReturns204IfTheUserHasNoTeam(c *C) {
 	u := auth.User{Email: "cruiser@gotthard.com", Password: "123"}
 	err := u.Create()
 	c.Assert(err, IsNil)
-	defer db.Session.Users().Remove(bson.M{"email": u.Email})
+	defer s.conn.Users().Remove(bson.M{"email": u.Email})
 	request, err := http.NewRequest("GET", "/teams", nil)
 	c.Assert(err, IsNil)
 	recorder := httptest.NewRecorder()
@@ -563,7 +564,7 @@ func (s *AuthSuite) TestAddUserToTeamShouldAddAUserToATeamIfTheUserAndTheTeamExi
 	err = AddUserToTeam(recorder, request, s.user)
 	c.Assert(err, IsNil)
 	t := new(auth.Team)
-	err = db.Session.Teams().Find(bson.M{"_id": "tsuruteam"}).One(t)
+	err = s.conn.Teams().Find(bson.M{"_id": "tsuruteam"}).One(t)
 	c.Assert(err, IsNil)
 	c.Assert(t, ContainsUser, s.user)
 	c.Assert(t, ContainsUser, u)
@@ -639,11 +640,11 @@ func (s *AuthSuite) TestAddUserToTeamShoulGrantAccessInGandalf(c *C) {
 	u := &auth.User{Email: "marathon@rush.com", Password: "123456"}
 	err := u.Create()
 	c.Assert(err, IsNil)
-	defer db.Session.Users().Remove(bson.M{"email": u.Email})
+	defer s.conn.Users().Remove(bson.M{"email": u.Email})
 	a := App{Name: "i-should", Teams: []string{s.team.Name}}
-	err = db.Session.Apps().Insert(a)
+	err = s.conn.Apps().Insert(a)
 	c.Assert(err, IsNil)
-	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	err = addKeyToUser("my-key", u)
 	c.Assert(err, IsNil)
 	err = u.Get()
@@ -665,14 +666,14 @@ func (s *AuthSuite) TestRemoveUserFromTeamShouldRemoveAUserFromATeamIfTheTeamExi
 	err := u.Create()
 	c.Assert(err, IsNil)
 	s.team.AddUser(&u)
-	db.Session.Teams().Update(bson.M{"_id": s.team.Name}, s.team)
+	s.conn.Teams().Update(bson.M{"_id": s.team.Name}, s.team)
 	request, err := http.NewRequest("DELETE", "/teams/tsuruteam/nonee@me.me?:team=tsuruteam&:user=nonee@me.me", nil)
 	c.Assert(err, IsNil)
 	recorder := httptest.NewRecorder()
 	err = RemoveUserFromTeam(recorder, request, s.user)
 	c.Assert(err, IsNil)
 	team := new(auth.Team)
-	err = db.Session.Teams().Find(bson.M{"_id": s.team.Name}).One(team)
+	err = s.conn.Teams().Find(bson.M{"_id": s.team.Name}).One(team)
 	c.Assert(err, IsNil)
 	c.Assert(team, Not(ContainsUser), &u)
 }
@@ -713,10 +714,10 @@ func (s *AuthSuite) TestRemoveUserFromTeamShouldReturnNotFoundWhenTheUserIsNotMe
 	defer ts.Close()
 	u := &auth.User{Email: "nobody@me.me", Password: "132"}
 	s.team.AddUser(u)
-	db.Session.Teams().Update(bson.M{"_id": s.team.Name}, s.team)
+	s.conn.Teams().Update(bson.M{"_id": s.team.Name}, s.team)
 	defer func(t *auth.Team, u *auth.User) {
 		s.team.RemoveUser(u)
-		db.Session.Teams().Update(bson.M{"_id": t.Name}, t)
+		s.conn.Teams().Update(bson.M{"_id": t.Name}, t)
 	}(s.team, u)
 	request, err := http.NewRequest("DELETE", "/teams/tsuruteam/none@me.me?:team=tsuruteam&:user=none@me.me", nil)
 	c.Assert(err, IsNil)
@@ -751,7 +752,7 @@ func (s *AuthSuite) TestRemoveUserFromTeamRevokesAccessInGandalf(c *C) {
 	u := &auth.User{Email: "pomar@nando-reis.com", Password: "123456"}
 	err := u.Create()
 	c.Assert(err, IsNil)
-	defer db.Session.Users().Remove(bson.M{"email": u.Email})
+	defer s.conn.Users().Remove(bson.M{"email": u.Email})
 	err = addKeyToUser("my-key", u)
 	c.Assert(err, IsNil)
 	err = u.Get()
@@ -762,9 +763,9 @@ func (s *AuthSuite) TestRemoveUserFromTeamRevokesAccessInGandalf(c *C) {
 		Name  string
 		Teams []string
 	}{Name: "myApp", Teams: []string{s.team.Name}}
-	err = db.Session.Apps().Insert(a)
+	err = s.conn.Apps().Insert(a)
 	c.Assert(err, IsNil)
-	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	err = removeUserFromTeam("pomar@nando-reis.com", s.team.Name, s.user)
 	c.Assert(err, IsNil)
 	c.Assert(h.url[2], Equals, "/repository/revoke")
@@ -779,7 +780,7 @@ func (s *AuthSuite) TestAddKeyHandlerAddsAKeyToTheUser(c *C) {
 	defer ts.Close()
 	defer func() {
 		s.user.RemoveKey(auth.Key{Content: "my-key"})
-		db.Session.Users().Update(bson.M{"email": s.user.Email}, s.user)
+		s.conn.Users().Update(bson.M{"email": s.user.Email}, s.user)
 	}()
 	b := bytes.NewBufferString(`{"key":"my-key"}`)
 	request, err := http.NewRequest("POST", "/users/keys", b)
@@ -857,10 +858,10 @@ func (s *AuthSuite) TestAddKeyHandlerReturnsConflictIfTheKeyIsAlreadyPresent(c *
 	ts := s.startGandalfTestServer(&h)
 	defer ts.Close()
 	s.user.AddKey(auth.Key{Content: "my-key"})
-	db.Session.Users().Update(bson.M{"email": s.user.Email}, s.user)
+	s.conn.Users().Update(bson.M{"email": s.user.Email}, s.user)
 	defer func() {
 		s.user.RemoveKey(auth.Key{Content: "my-key"})
-		db.Session.Users().Update(bson.M{"email": s.user.Email}, s.user)
+		s.conn.Users().Update(bson.M{"email": s.user.Email}, s.user)
 	}()
 	b := bytes.NewBufferString(`{"key":"my-key"}`)
 	request, err := http.NewRequest("POST", "/users/key", b)
@@ -884,7 +885,7 @@ func (s *AuthSuite) TestAddKeyAddKeyToUserInGandalf(c *C) {
 	c.Assert(err, IsNil)
 	defer func() {
 		removeKeyFromUser("my-key", u)
-		db.Session.Users().RemoveAll(bson.M{"email": u.Email})
+		s.conn.Users().RemoveAll(bson.M{"email": u.Email})
 	}()
 	c.Assert(u.Keys[0].Name, Not(Matches), "\\.pub$")
 	expectedUrl := fmt.Sprintf("/user/%s/key", u.Email)
@@ -1004,13 +1005,13 @@ func (s *AuthSuite) TestRemoveUser(c *C) {
 	u := auth.User{Email: "her-voices@painofsalvation.com"}
 	err := u.Create()
 	c.Assert(err, IsNil)
-	defer db.Session.Users().Remove(bson.M{"email": u.Email})
+	defer s.conn.Users().Remove(bson.M{"email": u.Email})
 	request, err := http.NewRequest("DELETE", "/users", nil)
 	c.Assert(err, IsNil)
 	recorder := httptest.NewRecorder()
 	err = RemoveUser(recorder, request, &u)
 	c.Assert(err, IsNil)
-	n, err := db.Session.Users().Find(bson.M{"email": u.Email}).Count()
+	n, err := s.conn.Users().Find(bson.M{"email": u.Email}).Count()
 	c.Assert(err, IsNil)
 	c.Assert(n, Equals, 0)
 }
@@ -1022,11 +1023,11 @@ func (s *AuthSuite) TestRemoveUserWithTheUserBeingLastMemberOfATeam(c *C) {
 	u := auth.User{Email: "of-two-beginnings@painofsalvation.com"}
 	err := u.Create()
 	c.Assert(err, IsNil)
-	defer db.Session.Users().Remove(bson.M{"email": u.Email})
+	defer s.conn.Users().Remove(bson.M{"email": u.Email})
 	t := auth.Team{Name: "painofsalvation", Users: []string{u.Email}}
-	err = db.Session.Teams().Insert(t)
+	err = s.conn.Teams().Insert(t)
 	c.Assert(err, IsNil)
-	defer db.Session.Teams().Remove(bson.M{"_id": t.Name})
+	defer s.conn.Teams().Remove(bson.M{"_id": t.Name})
 	request, err := http.NewRequest("DELETE", "/users", nil)
 	c.Assert(err, IsNil)
 	recorder := httptest.NewRecorder()
@@ -1048,17 +1049,17 @@ func (s *AuthSuite) TestRemoveUserShouldRemoveTheUserFromAllTeamsThatHeIsMember(
 	u := auth.User{Email: "of-two-beginnings@painofsalvation.com"}
 	err := u.Create()
 	c.Assert(err, IsNil)
-	defer db.Session.Users().Remove(bson.M{"email": u.Email})
+	defer s.conn.Users().Remove(bson.M{"email": u.Email})
 	t := auth.Team{Name: "painofsalvation", Users: []string{u.Email, s.user.Email}}
-	err = db.Session.Teams().Insert(t)
+	err = s.conn.Teams().Insert(t)
 	c.Assert(err, IsNil)
-	defer db.Session.Teams().Remove(bson.M{"_id": t.Name})
+	defer s.conn.Teams().Remove(bson.M{"_id": t.Name})
 	request, err := http.NewRequest("DELETE", "/users", nil)
 	c.Assert(err, IsNil)
 	recorder := httptest.NewRecorder()
 	err = RemoveUser(recorder, request, &u)
 	c.Assert(err, IsNil)
-	err = db.Session.Teams().Find(bson.M{"_id": t.Name}).One(&t)
+	err = s.conn.Teams().Find(bson.M{"_id": t.Name}).One(&t)
 	c.Assert(err, IsNil)
 	c.Assert(t.Users, HasLen, 1)
 	c.Assert(t.Users[0], Equals, s.user.Email)
@@ -1076,18 +1077,18 @@ func (s *AuthSuite) TestRemoveUserRevokesAccessInGandalf(c *C) {
 	u := auth.User{Email: "of-two-beginnings@painofsalvation.com"}
 	err := u.Create()
 	c.Assert(err, IsNil)
-	defer db.Session.Users().Remove(bson.M{"email": u.Email})
+	defer s.conn.Users().Remove(bson.M{"email": u.Email})
 	t := auth.Team{Name: "painofsalvation", Users: []string{u.Email, s.user.Email}}
-	err = db.Session.Teams().Insert(t)
+	err = s.conn.Teams().Insert(t)
 	c.Assert(err, IsNil)
-	defer db.Session.Teams().Remove(bson.M{"_id": t.Name})
+	defer s.conn.Teams().Remove(bson.M{"_id": t.Name})
 	a := struct {
 		Name  string
 		Teams []string
 	}{Name: "myApp", Teams: []string{t.Name}}
-	err = db.Session.Apps().Insert(a)
+	err = s.conn.Apps().Insert(a)
 	c.Assert(err, IsNil)
-	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	request, err := http.NewRequest("DELETE", "/users", nil)
 	c.Assert(err, IsNil)
 	recorder := httptest.NewRecorder()
@@ -1179,17 +1180,17 @@ type testApp struct {
 
 func (s *AuthSuite) TestAllowedAppsShouldReturnAllAppsTheUserHasAccess(c *C) {
 	team := auth.Team{Name: "teamname", Users: []string{s.user.Email}}
-	err := db.Session.Teams().Insert(&team)
+	err := s.conn.Teams().Insert(&team)
 	c.Assert(err, IsNil)
 	a := testApp{Name: "myapp", Teams: []string{s.team.Name}}
-	err = db.Session.Apps().Insert(&a)
+	err = s.conn.Apps().Insert(&a)
 	c.Assert(err, IsNil)
 	a2 := testApp{Name: "myotherapp", Teams: []string{team.Name}}
-	err = db.Session.Apps().Insert(&a2)
+	err = s.conn.Apps().Insert(&a2)
 	c.Assert(err, IsNil)
 	defer func() {
-		db.Session.Apps().Remove(bson.M{"name": bson.M{"$in": []string{a.Name, a2.Name}}})
-		db.Session.Teams().RemoveId(team.Name)
+		s.conn.Apps().Remove(bson.M{"name": bson.M{"$in": []string{a.Name, a2.Name}}})
+		s.conn.Teams().RemoveId(team.Name)
 	}()
 	aApps, err := allowedApps(s.user.Email)
 	c.Assert(aApps, DeepEquals, []string{a.Name, a2.Name})

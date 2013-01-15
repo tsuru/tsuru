@@ -130,21 +130,27 @@ func ChangePassword(w http.ResponseWriter, r *http.Request, u *auth.User) error 
 }
 
 // Creates a team and store it in mongodb.
-// Also communicates with git server (gandalf) in order to
-// add the user into it (gandalf does not have the team concept)
-// This function makes use of the git:host config at tsuru.conf
-// You can find a configuration sample at tsuru/etc/tsuru.conf
+//
+// Also communicates with git server (gandalf) in order to add the user into it
+// (gandalf does not have the team concept) This function makes use of the
+// git:host config at tsuru.conf You can find a configuration sample at
+// tsuru/etc/tsuru.conf.
 func createTeam(name string, u *auth.User) error {
+	conn, err := db.Conn()
+	if err != nil {
+		return err
+	}
 	team := &auth.Team{Name: name, Users: []string{u.Email}}
-	if err := db.Session.Teams().Insert(team); err != nil && strings.Contains(err.Error(), "duplicate key error") {
-		return &errors.Http{Code: http.StatusConflict, Message: "This team already exists"}
+	if err := conn.Teams().Insert(team); err != nil &&
+		strings.Contains(err.Error(), "duplicate key error") {
+		msg := "This team already exists"
+		return &errors.Http{Code: http.StatusConflict, Message: msg}
 	}
 	return nil
 }
 
-// keyToMap converts a Key array into a map
-// maybe we should store a map directly instead
-// of having a convertion
+// keyToMap converts a Key array into a map maybe we should store a map
+// directly instead of having a convertion
 func keyToMap(keys []auth.Key) map[string]string {
 	kMap := make(map[string]string, len(keys))
 	for _, k := range keys {
@@ -169,18 +175,22 @@ func CreateTeam(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 
 // RemoveTeam removes a team document from the database.
 func RemoveTeam(w http.ResponseWriter, r *http.Request, u *auth.User) error {
+	conn, err := db.Conn()
+	if err != nil {
+		return err
+	}
 	name := r.URL.Query().Get(":name")
-	if n, err := db.Session.Apps().Find(bson.M{"teams": name}).Count(); err != nil || n > 0 {
+	if n, err := conn.Apps().Find(bson.M{"teams": name}).Count(); err != nil || n > 0 {
 		msg := `This team cannot be removed because it have access to apps.
 
 Please remove the apps or revoke these accesses, and try again.`
 		return &errors.Http{Code: http.StatusForbidden, Message: msg}
 	}
 	query := bson.M{"_id": name, "users": u.Email}
-	if n, err := db.Session.Teams().Find(query).Count(); err != nil || n != 1 {
+	if n, err := conn.Teams().Find(query).Count(); err != nil || n != 1 {
 		return &errors.Http{Code: http.StatusNotFound, Message: fmt.Sprintf(`Team "%s" not found.`, name)}
 	}
-	return db.Session.Teams().Remove(query)
+	return conn.Teams().Remove(query)
 }
 
 func ListTeams(w http.ResponseWriter, r *http.Request, u *auth.User) error {
@@ -211,9 +221,13 @@ func ListTeams(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 }
 
 func addUserToTeam(email, teamName string, u *auth.User) error {
+	conn, err := db.Conn()
+	if err != nil {
+		return err
+	}
 	team, user := new(auth.Team), new(auth.User)
 	selector := bson.M{"_id": teamName}
-	err := db.Session.Teams().Find(selector).One(team)
+	err = conn.Teams().Find(selector).One(team)
 	if err != nil {
 		return &errors.Http{Code: http.StatusNotFound, Message: "Team not found"}
 	}
@@ -221,7 +235,7 @@ func addUserToTeam(email, teamName string, u *auth.User) error {
 		msg := fmt.Sprintf("You are not authorized to add new users to the team %s", team.Name)
 		return &errors.Http{Code: http.StatusUnauthorized, Message: msg}
 	}
-	err = db.Session.Users().Find(bson.M{"email": email}).One(user)
+	err = conn.Users().Find(bson.M{"email": email}).One(user)
 	if err != nil {
 		return &errors.Http{Code: http.StatusNotFound, Message: "User not found"}
 	}
@@ -235,7 +249,7 @@ func addUserToTeam(email, teamName string, u *auth.User) error {
 	if err := (&gandalf.Client{Endpoint: gUrl}).GrantAccess(alwdApps, []string{email}); err != nil {
 		return err
 	}
-	return db.Session.Teams().Update(selector, team)
+	return conn.Teams().Update(selector, team)
 }
 
 func AddUserToTeam(w http.ResponseWriter, r *http.Request, u *auth.User) error {
@@ -245,8 +259,12 @@ func AddUserToTeam(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 }
 
 func removeUserFromTeam(email, teamName string, u *auth.User) error {
+	conn, err := db.Conn()
+	if err != nil {
+		return err
+	}
 	team := new(auth.Team)
-	err := db.Session.Teams().FindId(teamName).One(team)
+	err = conn.Teams().FindId(teamName).One(team)
 	if err != nil {
 		return &errors.Http{Code: http.StatusNotFound, Message: "Team not found"}
 	}
@@ -277,7 +295,7 @@ func removeUserFromTeam(email, teamName string, u *auth.User) error {
 	if err := (&gandalf.Client{Endpoint: gUrl}).RevokeAccess(alwdApps, []string{email}); err != nil {
 		return err
 	}
-	return db.Session.Teams().UpdateId(teamName, team)
+	return conn.Teams().UpdateId(teamName, team)
 }
 
 func RemoveUserFromTeam(w http.ResponseWriter, r *http.Request, u *auth.User) error {
@@ -316,7 +334,11 @@ func addKeyToUser(content string, u *auth.User) error {
 	if err := (&gandalf.Client{Endpoint: gUrl}).AddKey(u.Email, keyToMap(u.Keys)); err != nil {
 		return err
 	}
-	return db.Session.Users().Update(bson.M{"email": u.Email}, u)
+	conn, err := db.Conn()
+	if err != nil {
+		return err
+	}
+	return conn.Users().Update(bson.M{"email": u.Email}, u)
 }
 
 // AddKeyToUser adds a key to a user.
@@ -348,8 +370,12 @@ func removeKeyFromUser(content string, u *auth.User) error {
 	if err := (&gandalf.Client{Endpoint: gUrl}).RemoveKey(u.Email, key.Name); err != nil {
 		return err
 	}
+	conn, err := db.Conn()
+	if err != nil {
+		return err
+	}
 	u.RemoveKey(key)
-	return db.Session.Users().Update(bson.M{"email": u.Email}, u)
+	return conn.Users().Update(bson.M{"email": u.Email}, u)
 }
 
 // RemoveKeyFromUser removes a key from a user.
@@ -367,11 +393,9 @@ func RemoveKeyFromUser(w http.ResponseWriter, r *http.Request, u *auth.User) err
 
 // RemoveUser removes the user from the database and from gandalf server
 //
-// In order to successfuly remove a user, it's need that he/she is not the only one in a team,
-// otherwise the function will return an error
-// TODO: improve the team update, if possible
+// In order to successfuly remove a user, it's need that he/she is not the only
+// one in a team, otherwise the function will return an error.
 func RemoveUser(w http.ResponseWriter, r *http.Request, u *auth.User) error {
-	//_, err := db.Session.Teams().UpdateAll(bson.M{"users": u.Email}, bson.M{"$pull": bson.M{"users": u.Email}})
 	gUrl := repository.GitServerUri()
 	c := gandalf.Client{Endpoint: gUrl}
 	alwdApps, err := allowedApps(u.Email)
@@ -382,6 +406,10 @@ func RemoveUser(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 		return err
 	}
 	teams, err := u.Teams()
+	if err != nil {
+		return err
+	}
+	conn, err := db.Conn()
 	if err != nil {
 		return err
 	}
@@ -397,7 +425,7 @@ Please remove the team, them remove the user.`, team.Name)
 			return err
 		}
 		// this can be done without the loop
-		err = db.Session.Teams().Update(bson.M{"_id": team.Name}, team)
+		err = conn.Teams().Update(bson.M{"_id": team.Name}, team)
 		if err != nil {
 			return err
 		}
@@ -405,17 +433,25 @@ Please remove the team, them remove the user.`, team.Name)
 	if err := c.RemoveUser(u.Email); err != nil {
 		return &errors.Http{Code: http.StatusInternalServerError, Message: "Could not communicate with git server. Aborting..."}
 	}
-	return db.Session.Users().Remove(bson.M{"email": u.Email})
+	return conn.Users().Remove(bson.M{"email": u.Email})
 }
 
 func allowedApps(email string) ([]string, error) {
-	var teams []auth.Team
-	var alwdApps []map[string]string
-	if err := db.Session.Teams().Find(bson.M{"users": email}).Select(bson.M{"_id": 1}).All(&teams); err != nil {
+	conn, err := db.Conn()
+	if err != nil {
+		return nil, err
+	}
+	var (
+		teams    []auth.Team
+		alwdApps []map[string]string
+	)
+	q := bson.M{"users": email}
+	if err := conn.Teams().Find(q).Select(bson.M{"_id": 1}).All(&teams); err != nil {
 		return []string{}, err
 	}
 	teamNames := auth.GetTeamsNames(teams)
-	if err := db.Session.Apps().Find(bson.M{"teams": bson.M{"$in": teamNames}}).Select(bson.M{"name": 1}).All(&alwdApps); err != nil {
+	q = bson.M{"teams": bson.M{"$in": teamNames}}
+	if err := conn.Apps().Find(q).Select(bson.M{"name": 1}).All(&alwdApps); err != nil {
 		return []string{}, err
 	}
 	appNames := make([]string, len(alwdApps))

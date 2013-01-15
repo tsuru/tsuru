@@ -23,6 +23,7 @@ import (
 func Test(t *testing.T) { TestingT(t) }
 
 type S struct {
+	conn        *db.Storage
 	team        *auth.Team
 	user        *auth.User
 	t           *tsuruTesting.T
@@ -84,15 +85,16 @@ func (s *S) createUserAndTeam(c *C) {
 	err := s.user.Create()
 	c.Assert(err, IsNil)
 	s.team = &auth.Team{Name: "tsuruteam", Users: []string{s.user.Email}}
-	err = db.Session.Teams().Insert(s.team)
+	err = s.conn.Teams().Insert(s.team)
 	c.Assert(err, IsNil)
 }
 
 func (s *S) SetUpSuite(c *C) {
-	var err error
-	err = config.ReadConfigFile("../etc/tsuru.conf")
+	err := config.ReadConfigFile("../etc/tsuru.conf")
 	c.Assert(err, IsNil)
-	db.Session, err = db.Open("127.0.0.1:27017", "tsuru_api_test")
+	config.Set("database:url", "127.0.0.1:27017")
+	config.Set("database:name", "tsuru_api_test")
+	s.conn, err = db.Conn()
 	c.Assert(err, IsNil)
 	s.createUserAndTeam(c)
 	s.t = &tsuruTesting.T{}
@@ -105,10 +107,10 @@ func (s *S) SetUpSuite(c *C) {
 func (s *S) TearDownSuite(c *C) {
 	defer s.t.S3Server.Quit()
 	defer s.t.IamServer.Quit()
-	defer db.Session.Close()
-	db.Session.Apps().Database.DropDatabase()
-	fsystem = nil
+	defer s.conn.Close()
 	queue.Preempt()
+	s.conn.Apps().Database.DropDatabase()
+	fsystem = nil
 }
 
 func (s *S) TearDownTest(c *C) {

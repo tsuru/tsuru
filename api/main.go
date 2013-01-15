@@ -10,7 +10,6 @@ import (
 	"github.com/bmizerany/pat"
 	"github.com/globocom/config"
 	"github.com/globocom/tsuru/app"
-	"github.com/globocom/tsuru/db"
 	"github.com/globocom/tsuru/log"
 	"github.com/globocom/tsuru/provision"
 	_ "github.com/globocom/tsuru/provision/juju"
@@ -46,13 +45,7 @@ func main() {
 	if err != nil {
 		fatal(err)
 	}
-	db.Session, err = db.Open(connString, dbName)
-	if err != nil {
-		fatal(err)
-	}
-	defer db.Session.Close()
-	fmt.Printf("Connected to MongoDB server at %s.\n", connString)
-	fmt.Printf("Using the database %q.\n\n", dbName)
+	fmt.Printf("Using the database %q from the server %q.\n\n", dbName, connString)
 
 	m := pat.New()
 

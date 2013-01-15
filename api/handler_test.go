@@ -7,6 +7,7 @@ package main
 import (
 	stderrors "errors"
 	"fmt"
+	"github.com/globocom/config"
 	"github.com/globocom/tsuru/auth"
 	"github.com/globocom/tsuru/db"
 	"github.com/globocom/tsuru/errors"
@@ -16,6 +17,7 @@ import (
 )
 
 type HandlerSuite struct {
+	conn  *db.Storage
 	token *auth.Token
 }
 
@@ -23,7 +25,9 @@ var _ = Suite(&HandlerSuite{})
 
 func (s *HandlerSuite) SetUpSuite(c *C) {
 	var err error
-	db.Session, err = db.Open("127.0.0.1:27017", "tsuru_api_handler_test")
+	config.Set("database:url", "127.0.0.1:27017")
+	config.Set("database:name", "tsuru_api_handler_test")
+	s.conn, err = db.Conn()
 	c.Assert(err, IsNil)
 	user := &auth.User{Email: "whydidifall@thewho.com", Password: "123"}
 	err = user.Create()
@@ -32,8 +36,8 @@ func (s *HandlerSuite) SetUpSuite(c *C) {
 }
 
 func (s *HandlerSuite) TearDownSuite(c *C) {
-	defer db.Session.Close()
-	db.Session.Apps().Database.DropDatabase()
+	defer s.conn.Close()
+	s.conn.Apps().Database.DropDatabase()
 }
 
 func errorHandler(w http.ResponseWriter, r *http.Request) error {
