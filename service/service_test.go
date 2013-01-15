@@ -5,7 +5,6 @@
 package service
 
 import (
-	"github.com/globocom/tsuru/db"
 	"labix.org/v2/mgo/bson"
 	. "launchpad.net/gocheck"
 )
@@ -24,9 +23,9 @@ func (s *S) TestGetService(c *C) {
 
 func (s *S) TestGetServiceReturnsErrorIfTheServiceIsDeleted(c *C) {
 	se := Service{Name: "anything", Status: "deleted"}
-	err := db.Session.Services().Insert(se)
+	err := s.conn.Services().Insert(se)
 	c.Assert(err, IsNil)
-	defer db.Session.Services().Remove(bson.M{"_id": se.Name})
+	defer s.conn.Services().Remove(bson.M{"_id": se.Name})
 	err = se.Get()
 	c.Assert(err, NotNil)
 }
@@ -57,10 +56,10 @@ func (s *S) TestCreateService(c *C) {
 func (s *S) TestDeleteService(c *C) {
 	s.createService()
 	err := s.service.Delete()
-	defer db.Session.Services().Remove(bson.M{"_id": s.service.Name})
+	defer s.conn.Services().Remove(bson.M{"_id": s.service.Name})
 	c.Assert(err, IsNil)
 	var se Service
-	err = db.Session.Services().Find(bson.M{"_id": s.service.Name}).One(&se)
+	err = s.conn.Services().Find(bson.M{"_id": s.service.Name}).One(&se)
 	c.Assert(se.Status, Equals, "deleted")
 }
 
@@ -151,11 +150,11 @@ func (s *S) TestUpdateService(c *C) {
 	service := Service{Name: "something", Status: "created"}
 	err := service.Create()
 	c.Assert(err, IsNil)
-	defer db.Session.Services().Remove(bson.M{"_id": service.Name})
+	defer s.conn.Services().Remove(bson.M{"_id": service.Name})
 	service.Status = "destroyed"
 	err = service.Update()
 	c.Assert(err, IsNil)
-	err = db.Session.Services().Find(bson.M{"_id": service.Name}).One(&service)
+	err = s.conn.Services().Find(bson.M{"_id": service.Name}).One(&service)
 	c.Assert(service.Status, Equals, "destroyed")
 }
 

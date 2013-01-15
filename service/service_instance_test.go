@@ -7,7 +7,6 @@ package service
 import (
 	"github.com/globocom/tsuru/app/bind"
 	"github.com/globocom/tsuru/auth"
-	"github.com/globocom/tsuru/db"
 	"labix.org/v2/mgo/bson"
 	. "launchpad.net/gocheck"
 )
@@ -23,24 +22,24 @@ func (s *S) createServiceInstance() {
 
 func (s *S) TestCreateServiceInstance(c *C) {
 	s.createServiceInstance()
-	defer db.Session.Services().Remove(bson.M{"name": s.service.Name})
+	defer s.conn.Services().Remove(bson.M{"name": s.service.Name})
 	var result ServiceInstance
 	query := bson.M{
 		"name": s.service.Name,
 	}
-	err := db.Session.ServiceInstances().Find(query).One(&result)
+	err := s.conn.ServiceInstances().Find(query).One(&result)
 	c.Check(err, IsNil)
 	c.Assert(result.Name, Equals, s.service.Name)
 }
 
 func (s *S) TestDeleteServiceInstance(c *C) {
 	s.createServiceInstance()
-	defer db.Session.Services().Remove(bson.M{"name": s.service.Name})
+	defer s.conn.Services().Remove(bson.M{"name": s.service.Name})
 	s.serviceInstance.Delete()
 	query := bson.M{
 		"name": s.service.Name,
 	}
-	qtd, err := db.Session.ServiceInstances().Find(query).Count()
+	qtd, err := s.conn.ServiceInstances().Find(query).Count()
 	c.Assert(err, IsNil)
 	c.Assert(qtd, Equals, 0)
 }
@@ -242,7 +241,7 @@ func (s *S) TestGetServiceInstancesByServicesAndTeamsForUsersThatAreNotMembersOf
 	u := auth.User{Email: "noteamforme@globo.com", Password: "123"}
 	err := u.Create()
 	c.Assert(err, IsNil)
-	defer db.Session.Users().Remove(bson.M{"email": u.Email})
+	defer s.conn.Users().Remove(bson.M{"email": u.Email})
 	srvc := Service{Name: "mysql", Teams: []string{s.team.Name}, IsRestricted: true}
 	err = srvc.Create()
 	c.Assert(err, IsNil)

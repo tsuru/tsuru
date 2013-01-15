@@ -22,28 +22,39 @@ type Service struct {
 	IsRestricted bool `bson:"is_restricted"`
 }
 
-type ServiceModel struct {
-	Service   string
-	Instances []string
-}
-
 func (s *Service) Get() error {
+	conn, err := db.Conn()
+	if err != nil {
+		return err
+	}
 	query := bson.M{"_id": s.Name, "status": bson.M{"$ne": "deleted"}}
-	return db.Session.Services().Find(query).One(&s)
+	return conn.Services().Find(query).One(&s)
 }
 
 func (s *Service) Create() error {
+	conn, err := db.Conn()
+	if err != nil {
+		return err
+	}
 	s.Status = "created"
-	return db.Session.Services().Insert(s)
+	return conn.Services().Insert(s)
 }
 
 func (s *Service) Update() error {
-	return db.Session.Services().Update(bson.M{"_id": s.Name}, s)
+	conn, err := db.Conn()
+	if err != nil {
+		return err
+	}
+	return conn.Services().Update(bson.M{"_id": s.Name}, s)
 }
 
 func (s *Service) Delete() error {
+	conn, err := db.Conn()
+	if err != nil {
+		return err
+	}
 	s.Status = "deleted"
-	return db.Session.Services().Update(bson.M{"_id": s.Name}, s)
+	return conn.Services().Update(bson.M{"_id": s.Name}, s)
 }
 
 func (s *Service) getClient(endpoint string) (cli *Client, err error) {
@@ -104,6 +115,13 @@ func GetServicesNames(services []Service) []string {
 
 func GetServicesByTeamKindAndNoRestriction(teamKind string, u *auth.User) (services []Service, err error) {
 	teams, err := u.Teams()
+	if err != nil {
+		return nil, err
+	}
+	conn, err := db.Conn()
+	if err != nil {
+		return nil, err
+	}
 	teamsNames := auth.GetTeamsNames(teams)
 	q := bson.M{"$or": []bson.M{
 		{teamKind: bson.M{"$in": teamsNames}},
@@ -111,14 +129,26 @@ func GetServicesByTeamKindAndNoRestriction(teamKind string, u *auth.User) (servi
 	},
 		"status": bson.M{"$ne": "deleted"},
 	}
-	err = db.Session.Services().Find(q).Select(bson.M{"name": 1}).All(&services)
+	err = conn.Services().Find(q).Select(bson.M{"name": 1}).All(&services)
 	return
 }
 
 func GetServicesByOwnerTeams(teamKind string, u *auth.User) (services []Service, err error) {
 	teams, err := u.Teams()
+	if err != nil {
+		return nil, err
+	}
+	conn, err := db.Conn()
+	if err != nil {
+		return nil, err
+	}
 	teamsNames := auth.GetTeamsNames(teams)
 	q := bson.M{teamKind: bson.M{"$in": teamsNames}, "status": bson.M{"$ne": "deleted"}}
-	err = db.Session.Services().Find(q).All(&services)
+	err = conn.Services().Find(q).All(&services)
 	return
+}
+
+type ServiceModel struct {
+	Service   string
+	Instances []string
 }

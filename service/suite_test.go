@@ -16,6 +16,7 @@ import (
 func Test(t *testing.T) { TestingT(t) }
 
 type S struct {
+	conn            *db.Storage
 	service         *Service
 	serviceInstance *ServiceInstance
 	team            *auth.Team
@@ -52,13 +53,15 @@ func (s *S) SetUpSuite(c *C) {
 	var err error
 	s.setupConfig(c)
 	c.Assert(err, IsNil)
-	db.Session, err = db.Open("127.0.0.1:27017", "tsuru_service_test")
+	config.Set("database:url", "127.0.0.1:27017")
+	config.Set("database:name", "tsuru_service_test")
+	s.conn, err = db.Conn()
 	c.Assert(err, IsNil)
 	s.user = &auth.User{Email: "cidade@raul.com", Password: "123"}
 	err = s.user.Create()
 	c.Assert(err, IsNil)
 	s.team = &auth.Team{Name: "Raul", Users: []string{s.user.Email}}
-	err = db.Session.Teams().Insert(s.team)
+	err = s.conn.Teams().Insert(s.team)
 	c.Assert(err, IsNil)
 	if err != nil {
 		c.Fail()
@@ -66,15 +69,14 @@ func (s *S) SetUpSuite(c *C) {
 }
 
 func (s *S) TearDownSuite(c *C) {
-	defer db.Session.Close()
-	db.Session.Apps().Database.DropDatabase()
+	defer s.conn.Close()
+	s.conn.Apps().Database.DropDatabase()
 }
 
 func (s *S) TearDownTest(c *C) {
-	_, err := db.Session.Services().RemoveAll(nil)
+	_, err := s.conn.Services().RemoveAll(nil)
 	c.Assert(err, IsNil)
-
-	_, err = db.Session.ServiceInstances().RemoveAll(nil)
+	_, err = s.conn.ServiceInstances().RemoveAll(nil)
 	c.Assert(err, IsNil)
 }
 

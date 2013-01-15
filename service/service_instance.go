@@ -10,6 +10,7 @@ import (
 	"github.com/globocom/tsuru/auth"
 	"github.com/globocom/tsuru/db"
 	"github.com/globocom/tsuru/errors"
+	"github.com/globocom/tsuru/log"
 	"labix.org/v2/mgo/bson"
 	"net/http"
 )
@@ -22,18 +23,30 @@ type ServiceInstance struct {
 }
 
 func (si *ServiceInstance) Create() error {
-	return db.Session.ServiceInstances().Insert(si)
+	conn, err := db.Conn()
+	if err != nil {
+		return err
+	}
+	return conn.ServiceInstances().Insert(si)
 }
 
 func (si *ServiceInstance) Delete() error {
-	doc := bson.M{"name": si.Name}
-	return db.Session.ServiceInstances().Remove(doc)
+	conn, err := db.Conn()
+	if err != nil {
+		return err
+	}
+	return conn.ServiceInstances().Remove(bson.M{"name": si.Name})
 }
 
 func (si *ServiceInstance) Service() *Service {
-	s := &Service{}
-	db.Session.Services().Find(bson.M{"_id": si.ServiceName}).One(s)
-	return s
+	conn, err := db.Conn()
+	if err != nil {
+		log.Printf("Failed to connect to the database: %s", err)
+		return nil
+	}
+	var s Service
+	conn.Services().Find(bson.M{"_id": si.ServiceName}).One(&s)
+	return &s
 }
 
 func (si *ServiceInstance) AddApp(appName string) error {
@@ -67,7 +80,11 @@ func (si *ServiceInstance) RemoveApp(appName string) error {
 }
 
 func (si *ServiceInstance) update() error {
-	return db.Session.ServiceInstances().Update(bson.M{"name": si.Name}, si)
+	conn, err := db.Conn()
+	if err != nil {
+		return err
+	}
+	return conn.ServiceInstances().Update(bson.M{"name": si.Name}, si)
 }
 
 // BindApp makes the bind between the service instance and an app.
@@ -150,21 +167,32 @@ func genericServiceInstancesFilter(services interface{}, teams []string) (q, f b
 	return
 }
 
-func GetServiceInstancesByServices(services []Service) (sInstances []ServiceInstance, err error) {
+func GetServiceInstancesByServices(services []Service) ([]ServiceInstance, error) {
+	var instances []ServiceInstance
+	conn, err := db.Conn()
+	if err != nil {
+		return nil, err
+	}
 	q, _ := genericServiceInstancesFilter(services, []string{})
-	err = db.Session.ServiceInstances().Find(q).Select(bson.M{"name": 1, "service_name": 1}).All(&sInstances)
-	return
+	f := bson.M{"name": 1, "service_name": 1}
+	err = conn.ServiceInstances().Find(q).Select(f).All(&instances)
+	return instances, err
 }
 
-func GetServiceInstancesByServicesAndTeams(services []Service, u *auth.User) (sInstances []ServiceInstance, err error) {
+func GetServiceInstancesByServicesAndTeams(services []Service, u *auth.User) ([]ServiceInstance, error) {
+	var instances []ServiceInstance
 	teams, err := u.Teams()
 	if err != nil {
-		return
+		return nil, err
 	}
 	if len(teams) == 0 {
-		return
+		return nil, nil
+	}
+	conn, err := db.Conn()
+	if err != nil {
+		return nil, err
 	}
 	q, f := genericServiceInstancesFilter(services, auth.GetTeamsNames(teams))
-	err = db.Session.ServiceInstances().Find(q).Select(f).All(&sInstances)
-	return
+	err = conn.ServiceInstances().Find(q).Select(f).All(&instances)
+	return instances, err
 }
