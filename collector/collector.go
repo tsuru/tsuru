@@ -63,8 +63,13 @@ func update(units []provision.Unit) {
 			l.Add(a, index)
 		}
 	}
+	conn, err := db.Conn()
+	if err != nil {
+		log.Printf("collector failed to connect to the database: %s", err)
+		return
+	}
 	for _, a := range l {
 		a.Ip, _ = app.Provisioner.Addr(a)
-		db.Session.Apps().Update(bson.M{"name": a.Name}, a)
+		conn.Apps().Update(bson.M{"name": a.Name}, a)
 	}
 }

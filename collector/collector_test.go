@@ -26,16 +26,16 @@ func getOutput() []provision.Unit {
 	}
 }
 
-func getApp(c *C) *app.App {
+func getApp(conn *db.Storage, c *C) *app.App {
 	a := &app.App{Name: "umaappqq"}
-	err := db.Session.Apps().Insert(&a)
+	err := conn.Apps().Insert(&a)
 	c.Assert(err, IsNil)
 	return a
 }
 
 func (s *S) TestUpdate(c *C) {
-	a := getApp(c)
-	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
+	a := getApp(s.conn, c)
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	out := getOutput()
 	update(out)
 	err := a.Get()
@@ -50,7 +50,7 @@ func (s *S) TestUpdate(c *C) {
 }
 
 func (s *S) TestUpdateWithMultipleUnits(c *C) {
-	a := getApp(c)
+	a := getApp(s.conn, c)
 	out := getOutput()
 	u := provision.Unit{
 		Name:       "i-00000zz9",
@@ -82,7 +82,7 @@ func (s *S) TestUpdateWithMultipleUnits(c *C) {
 
 func (s *S) TestUpdateWithDownMachine(c *C) {
 	a := app.App{Name: "barduscoapp"}
-	err := db.Session.Apps().Insert(&a)
+	err := s.conn.Apps().Insert(&a)
 	c.Assert(err, IsNil)
 	units := []provision.Unit{
 		{
@@ -100,8 +100,8 @@ func (s *S) TestUpdateWithDownMachine(c *C) {
 }
 
 func (s *S) TestUpdateTwice(c *C) {
-	a := getApp(c)
-	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
+	a := getApp(s.conn, c)
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	out := getOutput()
 	update(out)
 	err := a.Get()
@@ -142,7 +142,7 @@ func (s *S) TestUpdateWithMultipleApps(c *C) {
 	units := make([]provision.Unit, len(appDicts))
 	for i, appDict := range appDicts {
 		a := app.App{Name: appDict["name"]}
-		err := db.Session.Apps().Insert(&a)
+		err := s.conn.Apps().Insert(&a)
 		c.Assert(err, IsNil)
 		apps[i] = a
 		units[i] = provision.Unit{

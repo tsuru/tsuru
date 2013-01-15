@@ -6,11 +6,11 @@ package main
 
 import (
 	"fmt"
+	"github.com/globocom/config"
 	"github.com/globocom/tsuru/app"
 	"github.com/globocom/tsuru/db"
 	"github.com/globocom/tsuru/provision"
 	ttesting "github.com/globocom/tsuru/testing"
-	"labix.org/v2/mgo/bson"
 	"testing"
 )
 
@@ -30,7 +30,7 @@ func getFakeUnits(apps []string) []provision.Unit {
 	return units
 }
 
-func getFakeApps() ([]app.App, []string) {
+func getFakeApps(conn *db.Storage) ([]app.App, []string) {
 	apps := make([]app.App, 20)
 	names := make([]string, len(apps))
 	for i := range apps {
@@ -40,7 +40,7 @@ func getFakeApps() ([]app.App, []string) {
 			Name:      name,
 			Framework: "python",
 		}
-		err := db.Session.Apps().Insert(apps[i])
+		err := conn.Apps().Insert(apps[i])
 		if err != nil {
 			panic(err)
 		}
@@ -50,15 +50,15 @@ func getFakeApps() ([]app.App, []string) {
 
 func BenchmarkUpdate(b *testing.B) {
 	b.StopTimer()
-	var err error
-	db.Session, err = db.Open("127.0.0.1:27017", "collector-benchmark")
+	config.Set("database:url", "127.0.0.1:27017")
+	config.Set("database:name", "collector-benchmark")
+	conn, err := db.Conn()
 	if err != nil {
 		panic(err)
 	}
-	defer db.Session.Close()
-	defer db.Session.Apps().Database.DropDatabase()
-	_, names := getFakeApps()
-	defer db.Session.Apps().Remove(bson.M{"name": bson.M{"$in": names}})
+	defer conn.Close()
+	defer conn.Apps().Database.DropDatabase()
+	_, names := getFakeApps(conn)
 	app.Provisioner = ttesting.NewFakeProvisioner()
 	fakeUnits := getFakeUnits(names)
 	b.StartTimer()
