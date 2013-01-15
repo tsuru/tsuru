@@ -9,7 +9,7 @@
 #
 # Usage:
 #
-#    ./backup-mongodb.bash <bucket> <host> <database>
+#    ./backup-mongodb.bash <bucket-path> <host> <database>
 
 filename="`date +%y-%m-%d-%H-%M-%S`-mongodb-dump.tar.gz"
 
@@ -17,7 +17,7 @@ if [ $# -lt 3 ]
 then
 	echo "Usage:"
 	echo
-	echo "  $0 <bucket> <host> <database>"
+	echo "  $0 <bucket-path> <host> <database>"
 	exit 1
 fi
 
