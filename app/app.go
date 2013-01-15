@@ -77,7 +77,11 @@ type conf struct {
 }
 
 func (a *App) Get() error {
-	return db.Session.Apps().Find(bson.M{"name": a.Name}).One(a)
+	conn, err := db.Conn()
+	if err != nil {
+		return err
+	}
+	return conn.Apps().Find(bson.M{"name": a.Name}).One(a)
 }
 
 // CreateApp creates a new app.
@@ -110,7 +114,12 @@ func CreateApp(a *App, units uint) error {
 
 func (a *App) unbind() error {
 	var instances []service.ServiceInstance
-	err := db.Session.ServiceInstances().Find(bson.M{"apps": bson.M{"$in": []string{a.Name}}}).All(&instances)
+	conn, err := db.Conn()
+	if err != nil {
+		return err
+	}
+	q := bson.M{"apps": bson.M{"$in": []string{a.Name}}}
+	err = conn.ServiceInstances().Find(q).All(&instances)
 	if err != nil {
 		return err
 	}
@@ -156,7 +165,11 @@ func (a *App) Destroy() error {
 			return err
 		}
 	}
-	return db.Session.Apps().Remove(bson.M{"name": a.Name})
+	conn, err := db.Conn()
+	if err != nil {
+		return err
+	}
+	return conn.Apps().Remove(bson.M{"name": a.Name})
 }
 
 // AddUnit adds a new unit to the app (or update an existing unit). It just updates
@@ -183,6 +196,10 @@ func (a *App) AddUnits(n uint) error {
 	if err != nil {
 		return err
 	}
+	conn, err := db.Conn()
+	if err != nil {
+		return err
+	}
 	qArgs := make([]string, len(units)+1)
 	qArgs[0] = a.Name
 	length := len(a.Units)
@@ -203,7 +220,7 @@ func (a *App) AddUnits(n uint) error {
 		messages[mCount+1] = queue.Message{Action: bindService, Args: []string{a.Name, unit.Name}}
 		mCount += 2
 	}
-	err = db.Session.Apps().Update(bson.M{"name": a.Name}, a)
+	err = conn.Apps().Update(bson.M{"name": a.Name}, a)
 	if err != nil {
 		return err
 	}
@@ -255,8 +272,12 @@ func (a *App) RemoveUnits(n uint) error {
 	if len(removed) == 0 {
 		return err
 	}
+	conn, err := db.Conn()
+	if err != nil {
+		return err
+	}
 	a.removeUnits(removed)
-	dbErr := db.Session.Apps().Update(bson.M{"name": a.Name}, a)
+	dbErr := conn.Apps().Update(bson.M{"name": a.Name}, a)
 	if err == nil {
 		return dbErr
 	}
@@ -264,8 +285,13 @@ func (a *App) RemoveUnits(n uint) error {
 }
 
 func (a *App) unbindUnit(unit provision.AppUnit) error {
+	conn, err := db.Conn()
+	if err != nil {
+		return err
+	}
 	var instances []service.ServiceInstance
-	err := db.Session.ServiceInstances().Find(bson.M{"apps": bson.M{"$in": []string{a.Name}}}).All(&instances)
+	q := bson.M{"apps": bson.M{"$in": []string{a.Name}}}
+	err = conn.ServiceInstances().Find(q).All(&instances)
 	if err != nil {
 		return err
 	}
@@ -321,7 +347,12 @@ func (a *App) Revoke(team *auth.Team) error {
 
 func (a *App) GetTeams() []auth.Team {
 	var teams []auth.Team
-	db.Session.Teams().Find(bson.M{"_id": bson.M{"$in": a.Teams}}).All(&teams)
+	conn, err := db.Conn()
+	if err != nil {
+		log.Printf("Failed to connect to the database: %s", err)
+		return nil
+	}
+	conn.Teams().Find(bson.M{"_id": bson.M{"$in": a.Teams}}).All(&teams)
 	return teams
 }
 
@@ -591,7 +622,11 @@ func (app *App) SetEnvsToApp(envs []bind.EnvVar, publicOnly, useQueue bool) erro
 				app.setEnv(env)
 			}
 		}
-		if err := db.Session.Apps().Update(bson.M{"name": app.Name}, app); err != nil {
+		conn, err := db.Conn()
+		if err != nil {
+			return err
+		}
+		if err := conn.Apps().Update(bson.M{"name": app.Name}, app); err != nil {
 			return err
 		}
 		if useQueue {
@@ -623,7 +658,11 @@ func (app *App) UnsetEnvs(variableNames []string, publicOnly bool) error {
 				delete(app.Env, name)
 			}
 		}
-		if err := db.Session.Apps().Update(bson.M{"name": app.Name}, app); err != nil {
+		conn, err := db.Conn()
+		if err != nil {
+			return err
+		}
+		if err := conn.Apps().Update(bson.M{"name": app.Name}, app); err != nil {
 			return err
 		}
 		go app.SerializeEnvVars()
@@ -633,6 +672,10 @@ func (app *App) UnsetEnvs(variableNames []string, publicOnly bool) error {
 
 func (a *App) Log(message string, source string) error {
 	log.Printf(message)
+	conn, err := db.Conn()
+	if err != nil {
+		return err
+	}
 	messages := strings.Split(message, "\n")
 	for _, msg := range messages {
 		if msg != "" {
@@ -644,7 +687,7 @@ func (a *App) Log(message string, source string) error {
 			a.Logs = append(a.Logs, l)
 		}
 	}
-	return db.Session.Apps().Update(bson.M{"name": a.Name}, a)
+	return conn.Apps().Update(bson.M{"name": a.Name}, a)
 }
 
 type ValidationError struct {
@@ -657,8 +700,12 @@ func (err *ValidationError) Error() string {
 
 func List(u *auth.User) ([]App, error) {
 	var apps []App
+	conn, err := db.Conn()
+	if err != nil {
+		return nil, err
+	}
 	if u.IsAdmin() {
-		if err := db.Session.Apps().Find(nil).All(&apps); err != nil {
+		if err := conn.Apps().Find(nil).All(&apps); err != nil {
 			return []App{}, err
 		}
 		return apps, nil
@@ -668,7 +715,7 @@ func List(u *auth.User) ([]App, error) {
 		return []App{}, err
 	}
 	teams := auth.GetTeamsNames(ts)
-	if err := db.Session.Apps().Find(bson.M{"teams": bson.M{"$in": teams}}).All(&apps); err != nil {
+	if err := conn.Apps().Find(bson.M{"teams": bson.M{"$in": teams}}).All(&apps); err != nil {
 		return []App{}, err
 	}
 	return apps, nil

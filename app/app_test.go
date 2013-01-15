@@ -12,7 +12,6 @@ import (
 	"github.com/globocom/config"
 	"github.com/globocom/tsuru/app/bind"
 	"github.com/globocom/tsuru/auth"
-	"github.com/globocom/tsuru/db"
 	"github.com/globocom/tsuru/log"
 	"github.com/globocom/tsuru/provision"
 	"github.com/globocom/tsuru/queue"
@@ -33,12 +32,12 @@ import (
 
 func (s *S) TestGet(c *C) {
 	newApp := App{Name: "myApp", Framework: "Django"}
-	err := db.Session.Apps().Insert(newApp)
+	err := s.conn.Apps().Insert(newApp)
 	c.Assert(err, IsNil)
-	defer db.Session.Apps().Remove(bson.M{"name": newApp.Name})
+	defer s.conn.Apps().Remove(bson.M{"name": newApp.Name})
 	newApp.Env = map[string]bind.EnvVar{}
 	newApp.Logs = []Applog{}
-	err = db.Session.Apps().Update(bson.M{"name": newApp.Name}, &newApp)
+	err = s.conn.Apps().Update(bson.M{"name": newApp.Name}, &newApp)
 	c.Assert(err, IsNil)
 	myApp := App{Name: "myApp"}
 	err = myApp.Get()
@@ -68,7 +67,7 @@ func (s *S) TestDestroy(c *C) {
 	c.Assert(err, IsNil)
 	err = a.Get()
 	c.Assert(err, NotNil)
-	qt, err := db.Session.Apps().Find(bson.M{"name": a.Name}).Count()
+	qt, err := s.conn.Apps().Find(bson.M{"name": a.Name}).Count()
 	c.Assert(err, IsNil)
 	c.Assert(qt, Equals, 0)
 	c.Assert(s.provisioner.FindApp(&a), Equals, -1)
@@ -101,7 +100,7 @@ func (s *S) TestFailingDestroy(c *C) {
 	err := CreateApp(&a, 1)
 	c.Assert(err, IsNil)
 	a.Get()
-	defer db.Session.Apps().Remove(bson.M{"name": "ritual"})
+	defer s.conn.Apps().Remove(bson.M{"name": "ritual"})
 	defer s.provisioner.Destroy(&a)
 	err = a.Destroy()
 	c.Assert(err, NotNil)
@@ -129,7 +128,7 @@ func (s *S) TestCreateApp(c *C) {
 	err = a.Get()
 	c.Assert(err, IsNil)
 	var retrievedApp App
-	err = db.Session.Apps().Find(bson.M{"name": a.Name}).One(&retrievedApp)
+	err = s.conn.Apps().Find(bson.M{"name": a.Name}).One(&retrievedApp)
 	c.Assert(err, IsNil)
 	c.Assert(retrievedApp.Name, Equals, a.Name)
 	c.Assert(retrievedApp.Framework, Equals, a.Framework)
@@ -172,9 +171,9 @@ func (s *S) TestCantCreateAppWithZeroUnits(c *C) {
 }
 
 func (s *S) TestCantCreateTwoAppsWithTheSameName(c *C) {
-	err := db.Session.Apps().Insert(bson.M{"name": "appName"})
+	err := s.conn.Apps().Insert(bson.M{"name": "appName"})
 	c.Assert(err, IsNil)
-	defer db.Session.Apps().Remove(bson.M{"name": "appName"})
+	defer s.conn.Apps().Remove(bson.M{"name": "appName"})
 	a := App{Name: "appName"}
 	err = CreateApp(&a, 1)
 	defer a.Destroy() // clean mess if test fail
@@ -259,9 +258,9 @@ func (s *S) TestAppendOrUpdate(c *C) {
 
 func (s *S) TestAddUnits(c *C) {
 	app := App{Name: "warpaint", Framework: "python"}
-	err := db.Session.Apps().Insert(app)
+	err := s.conn.Apps().Insert(app)
 	c.Assert(err, IsNil)
-	defer db.Session.Apps().Remove(bson.M{"name": app.Name})
+	defer s.conn.Apps().Remove(bson.M{"name": app.Name})
 	s.provisioner.Provision(&app)
 	defer s.provisioner.Destroy(&app)
 	err = app.AddUnits(5)
@@ -330,7 +329,7 @@ func (s *S) TestRemoveUnits(c *C) {
 	srvc := service.Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}}
 	err := srvc.Create()
 	c.Assert(err, IsNil)
-	defer db.Session.Services().Remove(bson.M{"_id": "mysql"})
+	defer s.conn.Services().Remove(bson.M{"_id": "mysql"})
 	instance := service.ServiceInstance{
 		Name:        "my-mysql",
 		ServiceName: "mysql",
@@ -338,7 +337,7 @@ func (s *S) TestRemoveUnits(c *C) {
 		Apps:        []string{"painkiller"},
 	}
 	instance.Create()
-	defer db.Session.ServiceInstances().Remove(bson.M{"_id": "my-mysql"})
+	defer s.conn.ServiceInstances().Remove(bson.M{"_id": "my-mysql"})
 	app := App{
 		Name:      "chemistry",
 		Framework: "python",
@@ -349,12 +348,12 @@ func (s *S) TestRemoveUnits(c *C) {
 			{Name: "chemistry/3"},
 		},
 	}
-	err = db.Session.Apps().Insert(app)
+	err = s.conn.Apps().Insert(app)
 	c.Assert(err, IsNil)
-	defer db.Session.Apps().Remove(bson.M{"name": app.Name})
+	defer s.conn.Apps().Remove(bson.M{"name": app.Name})
 	err = instance.AddApp(app.Name)
 	c.Assert(err, IsNil)
-	err = db.Session.ServiceInstances().Update(bson.M{"name": instance.Name}, instance)
+	err = s.conn.ServiceInstances().Update(bson.M{"name": instance.Name}, instance)
 	c.Assert(err, IsNil)
 	s.provisioner.Provision(&app)
 	defer s.provisioner.Destroy(&app)
@@ -406,9 +405,9 @@ func (s *S) TestRemoveUnitsInvalidValues(c *C) {
 			{Name: "chemistry/3"},
 		},
 	}
-	err := db.Session.Apps().Insert(app)
+	err := s.conn.Apps().Insert(app)
 	c.Assert(err, IsNil)
-	defer db.Session.Apps().Remove(bson.M{"name": app.Name})
+	defer s.conn.Apps().Remove(bson.M{"name": app.Name})
 	s.provisioner.Provision(&app)
 	defer s.provisioner.Destroy(&app)
 	s.provisioner.AddUnits(&app, 4)
@@ -426,9 +425,9 @@ func (s *S) TestRemoveUnitsFailureInProvisioner(c *C) {
 		Framework: "python",
 		Units:     []Unit{{Name: "paradisum/0"}, {Name: "paradisum/1"}},
 	}
-	err := db.Session.Apps().Insert(app)
+	err := s.conn.Apps().Insert(app)
 	c.Assert(err, IsNil)
-	defer db.Session.Apps().Remove(bson.M{"name": app.Name})
+	defer s.conn.Apps().Remove(bson.M{"name": app.Name})
 	s.provisioner.Provision(&app)
 	defer s.provisioner.Destroy(&app)
 	err = app.RemoveUnits(1)
@@ -544,9 +543,9 @@ func (s *S) TestSetEnvRespectsThePublicOnlyFlagKeepPrivateVariablesWhenItsTrue(c
 			},
 		},
 	}
-	err := db.Session.Apps().Insert(a)
+	err := s.conn.Apps().Insert(a)
 	c.Assert(err, IsNil)
-	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	envs := []bind.EnvVar{
 		{
 			Name:   "DATABASE_HOST",
@@ -593,9 +592,9 @@ func (s *S) TestSetEnvRespectsThePublicOnlyFlagOverwrittenAllVariablesWhenItsFal
 			},
 		},
 	}
-	err := db.Session.Apps().Insert(a)
+	err := s.conn.Apps().Insert(a)
 	c.Assert(err, IsNil)
-	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	envs := []bind.EnvVar{
 		{
 			Name:   "DATABASE_HOST",
@@ -647,9 +646,9 @@ func (s *S) TestUnsetEnvRespectsThePublicOnlyFlagKeepPrivateVariablesWhenItsTrue
 			},
 		},
 	}
-	err := db.Session.Apps().Insert(a)
+	err := s.conn.Apps().Insert(a)
 	c.Assert(err, IsNil)
-	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	err = a.UnsetEnvs([]string{"DATABASE_HOST", "DATABASE_PASSWORD"}, true)
 	c.Assert(err, IsNil)
 	newApp := App{Name: a.Name}
@@ -684,9 +683,9 @@ func (s *S) TestUnsetEnvRespectsThePublicOnlyFlagUnsettingAllVariablesWhenItsFal
 			},
 		},
 	}
-	err := db.Session.Apps().Insert(a)
+	err := s.conn.Apps().Insert(a)
 	c.Assert(err, IsNil)
-	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	err = a.UnsetEnvs([]string{"DATABASE_HOST", "DATABASE_PASSWORD"}, false)
 	c.Assert(err, IsNil)
 	newApp := App{Name: a.Name}
@@ -943,9 +942,9 @@ func (s *S) TestInstallDeps(c *C) {
 		Teams:     []string{s.team.Name},
 		Units:     []Unit{{Name: "i-0800", State: "started"}},
 	}
-	err := db.Session.Apps().Insert(a)
+	err := s.conn.Apps().Insert(a)
 	c.Assert(err, IsNil)
-	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	var buf bytes.Buffer
 	err = a.InstallDeps(&buf)
 	c.Assert(err, IsNil)
@@ -1010,13 +1009,13 @@ func (s *S) TestRestartRunsPosRestartHook(c *C) {
 
 func (s *S) TestLog(c *C) {
 	a := App{Name: "newApp"}
-	err := db.Session.Apps().Insert(a)
+	err := s.conn.Apps().Insert(a)
 	c.Assert(err, IsNil)
-	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	err = a.Log("last log msg", "tsuru")
 	c.Assert(err, IsNil)
 	var instance App
-	err = db.Session.Apps().Find(bson.M{"name": a.Name}).One(&instance)
+	err = s.conn.Apps().Find(bson.M{"name": a.Name}).One(&instance)
 	logLen := len(instance.Logs)
 	c.Assert(instance.Logs[logLen-1].Message, Equals, "last log msg")
 	c.Assert(instance.Logs[logLen-1].Source, Equals, "tsuru")
@@ -1024,13 +1023,13 @@ func (s *S) TestLog(c *C) {
 
 func (s *S) TestLogShouldAddOneRecordByLine(c *C) {
 	a := App{Name: "newApp"}
-	err := db.Session.Apps().Insert(a)
+	err := s.conn.Apps().Insert(a)
 	c.Assert(err, IsNil)
-	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	err = a.Log("last log msg\nfirst log", "source")
 	c.Assert(err, IsNil)
 	instance := App{}
-	err = db.Session.Apps().Find(bson.M{"name": a.Name}).One(&instance)
+	err = s.conn.Apps().Find(bson.M{"name": a.Name}).One(&instance)
 	logLen := len(instance.Logs)
 	c.Assert(instance.Logs[logLen-2].Message, Equals, "last log msg")
 	c.Assert(instance.Logs[logLen-1].Message, Equals, "first log")
@@ -1040,15 +1039,15 @@ func (s *S) TestLogShouldNotLogBlankLines(c *C) {
 	a := App{
 		Name: "newApp",
 	}
-	err := db.Session.Apps().Insert(a)
+	err := s.conn.Apps().Insert(a)
 	c.Assert(err, IsNil)
-	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	err = a.Log("some message", "tsuru")
 	c.Assert(err, IsNil)
 	err = a.Log("", "")
 	c.Assert(err, IsNil)
 	var instance App
-	err = db.Session.Apps().Find(bson.M{"name": a.Name}).One(&instance)
+	err = s.conn.Apps().Find(bson.M{"name": a.Name}).One(&instance)
 	logLen := len(instance.Logs)
 	c.Assert(instance.Logs[logLen-1].Message, Not(Equals), "")
 }
@@ -1215,13 +1214,13 @@ func (s *S) TestListReturnsAppsForAGivenUser(c *C) {
 		Name:  "othertestapp",
 		Teams: []string{"commonteam", s.team.Name},
 	}
-	err := db.Session.Apps().Insert(&a)
+	err := s.conn.Apps().Insert(&a)
 	c.Assert(err, IsNil)
-	err = db.Session.Apps().Insert(&a2)
+	err = s.conn.Apps().Insert(&a2)
 	c.Assert(err, IsNil)
 	defer func() {
-		db.Session.Apps().Remove(bson.M{"name": a.Name})
-		db.Session.Apps().Remove(bson.M{"name": a2.Name})
+		s.conn.Apps().Remove(bson.M{"name": a.Name})
+		s.conn.Apps().Remove(bson.M{"name": a2.Name})
 	}()
 	apps, err := List(s.user)
 	c.Assert(err, IsNil)
@@ -1236,9 +1235,9 @@ func (s *S) TestListReturnsEmptyAppArrayWhenUserHasNoAccessToAnyApp(c *C) {
 
 func (s *S) TestListReturnsAllAppsWhenUserIsInAdminTeam(c *C) {
 	a := App{Name: "testApp", Teams: []string{"notAdmin", "noSuperUser"}}
-	err := db.Session.Apps().Insert(&a)
+	err := s.conn.Apps().Insert(&a)
 	c.Assert(err, IsNil)
-	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	s.createAdminUserAndTeam(c)
 	defer s.removeAdminUserAndTeam(c)
 	apps, err := List(s.admin)

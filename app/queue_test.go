@@ -7,7 +7,6 @@ package app
 import (
 	"bytes"
 	"github.com/globocom/tsuru/app/bind"
-	"github.com/globocom/tsuru/db"
 	"github.com/globocom/tsuru/log"
 	"github.com/globocom/tsuru/queue"
 	"github.com/globocom/tsuru/service"
@@ -38,9 +37,9 @@ func (s *S) TestHandleMessage(c *C) {
 			},
 		},
 	}
-	err := db.Session.Apps().Insert(a)
+	err := s.conn.Apps().Insert(a)
 	c.Assert(err, IsNil)
-	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	msg := queue.Message{Action: regenerateApprc, Args: []string{a.Name}}
 	handle(&msg)
 	cmds := s.provisioner.GetCmds("", &a)
@@ -80,9 +79,9 @@ func (s *S) TestHandleMessageWithSpecificUnit(c *C) {
 			},
 		},
 	}
-	err := db.Session.Apps().Insert(a)
+	err := s.conn.Apps().Insert(a)
 	c.Assert(err, IsNil)
-	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	msg := queue.Message{Action: regenerateApprc, Args: []string{a.Name, "nemesis/1"}}
 	handle(&msg)
 	cmds := s.provisioner.GetCmds("", &a)
@@ -153,9 +152,9 @@ func (s *S) TestHandleMessageErrors(c *C) {
 	}
 	var buf bytes.Buffer
 	a := App{Name: "nemesis"}
-	err := db.Session.Apps().Insert(a)
+	err := s.conn.Apps().Insert(a)
 	c.Assert(err, IsNil)
-	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	a = App{
 		Name: "totem",
 		Units: []Unit{
@@ -163,17 +162,17 @@ func (s *S) TestHandleMessageErrors(c *C) {
 			{Name: "totem/1", State: "started"},
 		},
 	}
-	err = db.Session.Apps().Insert(a)
+	err = s.conn.Apps().Insert(a)
 	c.Assert(err, IsNil)
-	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	a = App{Name: "marathon", Units: []Unit{{Name: "marathon/0", State: "error"}}}
-	err = db.Session.Apps().Insert(a)
+	err = s.conn.Apps().Insert(a)
 	c.Assert(err, IsNil)
-	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	a = App{Name: "territories", Units: []Unit{{Name: "territories/0", State: "down"}}}
-	err = db.Session.Apps().Insert(a)
+	err = s.conn.Apps().Insert(a)
 	c.Assert(err, IsNil)
-	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	log.SetLogger(stdlog.New(&buf, "", 0))
 	for _, d := range data {
 		message := queue.Message{Action: d.action}
@@ -211,9 +210,9 @@ func (s *S) TestHandleRestartAppMessage(c *C) {
 			},
 		},
 	}
-	err := db.Session.Apps().Insert(a)
+	err := s.conn.Apps().Insert(a)
 	c.Assert(err, IsNil)
-	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	message := queue.Message{Action: startApp, Args: []string{a.Name}}
 	handle(&message)
 	cmds := s.provisioner.GetCmds("/var/lib/tsuru/hooks/restart", &a)
@@ -240,9 +239,9 @@ func (s *S) TestHandleRegenerateAndRestart(c *C) {
 			},
 		},
 	}
-	err := db.Session.Apps().Insert(a)
+	err := s.conn.Apps().Insert(a)
 	c.Assert(err, IsNil)
-	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	msg := queue.Message{Action: RegenerateApprcAndStart, Args: []string{a.Name}}
 	handle(&msg)
 	cmds := s.provisioner.GetCmds("", &a)
@@ -336,10 +335,10 @@ func (s *S) TestHandleBindServiceMessage(c *C) {
 	srvc := service.Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}}
 	err := srvc.Create()
 	c.Assert(err, IsNil)
-	defer db.Session.Services().Remove(bson.M{"_id": "mysql"})
+	defer s.conn.Services().Remove(bson.M{"_id": "mysql"})
 	instance := service.ServiceInstance{Name: "my-mysql", ServiceName: "mysql", Teams: []string{s.team.Name}}
 	instance.Create()
-	defer db.Session.ServiceInstances().Remove(bson.M{"_id": "my-mysql"})
+	defer s.conn.ServiceInstances().Remove(bson.M{"_id": "my-mysql"})
 	a := App{
 		Name: "nemesis",
 		Units: []Unit{
@@ -350,12 +349,12 @@ func (s *S) TestHandleBindServiceMessage(c *C) {
 			},
 		},
 	}
-	err = db.Session.Apps().Insert(a)
+	err = s.conn.Apps().Insert(a)
 	c.Assert(err, IsNil)
-	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	err = instance.AddApp(a.Name)
 	c.Assert(err, IsNil)
-	err = db.Session.ServiceInstances().Update(bson.M{"name": instance.Name}, instance)
+	err = s.conn.ServiceInstances().Update(bson.M{"name": instance.Name}, instance)
 	c.Assert(err, IsNil)
 	message := queue.Message{Action: bindService, Args: []string{a.Name, a.Units[0].Name}}
 	handle(&message)

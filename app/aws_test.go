@@ -11,7 +11,6 @@ import (
 	"github.com/fsouza/go-iam"
 	"github.com/globocom/config"
 	"github.com/globocom/tsuru/app/bind"
-	"github.com/globocom/tsuru/db"
 	"labix.org/v2/mgo/bson"
 	"launchpad.net/goamz/aws"
 	"launchpad.net/goamz/s3"
@@ -201,7 +200,7 @@ func (s *S) TestDestroyBucket(c *C) {
 	defer unpatchRandomReader()
 	err := CreateApp(&app, 1)
 	c.Assert(err, IsNil)
-	defer db.Session.Apps().Remove(bson.M{"name": app.Name})
+	defer s.conn.Apps().Remove(bson.M{"name": app.Name})
 	defer s.provisioner.Destroy(&app)
 	app.Get()
 	err = destroyBucket(&app)

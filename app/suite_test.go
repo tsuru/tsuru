@@ -25,6 +25,7 @@ import (
 func Test(t *testing.T) { TestingT(t) }
 
 type S struct {
+	conn        *db.Storage
 	team        auth.Team
 	user        *auth.User
 	adminTeam   auth.Team
@@ -68,15 +69,16 @@ func (s *S) createUserAndTeam(c *C) {
 	err := s.user.Create()
 	c.Assert(err, IsNil)
 	s.team = auth.Team{Name: "tsuruteam", Users: []string{s.user.Email}}
-	err = db.Session.Teams().Insert(s.team)
+	err = s.conn.Teams().Insert(s.team)
 	c.Assert(err, IsNil)
 }
 
 func (s *S) SetUpSuite(c *C) {
-	var err error
-	err = config.ReadConfigFile("../etc/tsuru.conf")
+	err := config.ReadConfigFile("../etc/tsuru.conf")
 	c.Assert(err, IsNil)
-	db.Session, err = db.Open("127.0.0.1:27017", "tsuru_app_test")
+	config.Set("database:url", "127.0.0.1:27017")
+	config.Set("database:name", "tsuru_app_test")
+	s.conn, err = db.Conn()
 	c.Assert(err, IsNil)
 	s.rfs = &ftesting.RecordingFs{}
 	file, err := s.rfs.Open("/dev/urandom")
@@ -98,8 +100,8 @@ func (s *S) SetUpSuite(c *C) {
 func (s *S) TearDownSuite(c *C) {
 	defer s.t.S3Server.Quit()
 	defer s.t.IamServer.Quit()
-	defer db.Session.Close()
-	db.Session.Apps().Database.DropDatabase()
+	defer s.conn.Close()
+	s.conn.Apps().Database.DropDatabase()
 	fsystem = nil
 	queue.Preempt()
 }
@@ -122,19 +124,19 @@ func (s *S) getTestData(p ...string) io.ReadCloser {
 
 func (s *S) createAdminUserAndTeam(c *C) {
 	s.admin = &auth.User{Email: "superuser@gmail.com", Password: "123"}
-	err := db.Session.Users().Insert(&s.admin)
+	err := s.conn.Users().Insert(&s.admin)
 	c.Assert(err, IsNil)
 	adminTeamName, err := config.GetString("admin-team")
 	c.Assert(err, IsNil)
 	s.adminTeam = auth.Team{Name: adminTeamName, Users: []string{s.admin.Email}}
-	err = db.Session.Teams().Insert(&s.adminTeam)
+	err = s.conn.Teams().Insert(&s.adminTeam)
 	c.Assert(err, IsNil)
 }
 
 func (s *S) removeAdminUserAndTeam(c *C) {
-	err := db.Session.Teams().RemoveId(s.adminTeam.Name)
+	err := s.conn.Teams().RemoveId(s.adminTeam.Name)
 	c.Assert(err, IsNil)
-	err = db.Session.Users().Remove(bson.M{"email": s.admin.Email})
+	err = s.conn.Users().Remove(bson.M{"email": s.admin.Email})
 	c.Assert(err, IsNil)
 }
 

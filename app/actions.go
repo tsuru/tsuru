@@ -13,6 +13,7 @@ import (
 	"github.com/globocom/tsuru/action"
 	"github.com/globocom/tsuru/app/bind"
 	"github.com/globocom/tsuru/db"
+	"github.com/globocom/tsuru/log"
 	"github.com/globocom/tsuru/repository"
 	"labix.org/v2/mgo/bson"
 	"launchpad.net/goamz/aws"
@@ -34,12 +35,21 @@ var insertApp = action.Action{
 		default:
 			return nil, errors.New("First parameter must be App or *App.")
 		}
-		err := db.Session.Apps().Insert(app)
+		conn, err := db.Conn()
+		if err != nil {
+			return nil, err
+		}
+		err = conn.Apps().Insert(app)
 		return &app, err
 	},
 	Backward: func(ctx action.BWContext) {
 		app := ctx.FWResult.(*App)
-		db.Session.Apps().Remove(bson.M{"name": app.Name})
+		conn, err := db.Conn()
+		if err != nil {
+			log.Printf("Could not connect to the database: %s", err)
+			return
+		}
+		conn.Apps().Remove(bson.M{"name": app.Name})
 	},
 	MinParams: 1,
 }

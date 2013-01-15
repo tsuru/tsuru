@@ -10,7 +10,6 @@ import (
 	"github.com/globocom/config"
 	"github.com/globocom/tsuru/action"
 	"github.com/globocom/tsuru/app/bind"
-	"github.com/globocom/tsuru/db"
 	"github.com/globocom/tsuru/queue"
 	"labix.org/v2/mgo/bson"
 	"launchpad.net/goamz/aws"
@@ -26,7 +25,7 @@ func (s *S) TestInsertAppForward(c *C) {
 	}
 	r, err := insertApp.Forward(ctx)
 	c.Assert(err, IsNil)
-	defer db.Session.Apps().Remove(bson.M{"name": app.Name})
+	defer s.conn.Apps().Remove(bson.M{"name": app.Name})
 	a, ok := r.(*App)
 	c.Assert(ok, Equals, true)
 	c.Assert(a.Name, Equals, app.Name)
@@ -42,7 +41,7 @@ func (s *S) TestInsertAppForwardAppPointer(c *C) {
 	}
 	r, err := insertApp.Forward(ctx)
 	c.Assert(err, IsNil)
-	defer db.Session.Apps().Remove(bson.M{"name": app.Name})
+	defer s.conn.Apps().Remove(bson.M{"name": app.Name})
 	a, ok := r.(*App)
 	c.Assert(ok, Equals, true)
 	c.Assert(a.Name, Equals, app.Name)
@@ -67,11 +66,11 @@ func (s *S) TestInsertAppBackward(c *C) {
 		Params:   []interface{}{app},
 		FWResult: &app,
 	}
-	err := db.Session.Apps().Insert(app)
+	err := s.conn.Apps().Insert(app)
 	c.Assert(err, IsNil)
-	defer db.Session.Apps().Remove(bson.M{"name": app.Name}) // sanity
+	defer s.conn.Apps().Remove(bson.M{"name": app.Name}) // sanity
 	insertApp.Backward(ctx)
-	n, err := db.Session.Apps().Find(bson.M{"name": app.Name}).Count()
+	n, err := s.conn.Apps().Find(bson.M{"name": app.Name}).Count()
 	c.Assert(err, IsNil)
 	c.Assert(n, Equals, 0)
 }
@@ -257,9 +256,9 @@ func (s *S) TestExportEnvironmentsForward(c *C) {
 	expectedHost := "localhost"
 	config.Set("host", expectedHost)
 	app := App{Name: "mist", Framework: "opeth"}
-	err := db.Session.Apps().Insert(app)
+	err := s.conn.Apps().Insert(app)
 	c.Assert(err, IsNil)
-	defer db.Session.Apps().Remove(bson.M{"name": app.Name})
+	defer s.conn.Apps().Remove(bson.M{"name": app.Name})
 	env := s3Env{
 		Auth:               aws.Auth{AccessKey: "access", SecretKey: "s3cr3t"},
 		bucket:             app.Name + "-bucket",
@@ -309,9 +308,9 @@ func (s *S) TestExportEnvironmentsBackward(c *C) {
 		}
 		app.Env[name] = envVar
 	}
-	err := db.Session.Apps().Insert(app)
+	err := s.conn.Apps().Insert(app)
 	c.Assert(err, IsNil)
-	defer db.Session.Apps().Remove(bson.M{"name": app.Name})
+	defer s.conn.Apps().Remove(bson.M{"name": app.Name})
 	ctx := action.BWContext{Params: []interface{}{&app}}
 	exportEnvironmentsAction.Backward(ctx)
 	copy := app
@@ -391,9 +390,9 @@ func (s *S) TestProvisionAppForward(c *C) {
 		Framework: "django",
 		Units:     []Unit{{Machine: 3}},
 	}
-	err := db.Session.Apps().Insert(app)
+	err := s.conn.Apps().Insert(app)
 	c.Assert(err, IsNil)
-	defer db.Session.Apps().Remove(bson.M{"name": app.Name})
+	defer s.conn.Apps().Remove(bson.M{"name": app.Name})
 	ctx := action.FWContext{Params: []interface{}{app, 4}}
 	result, err := provisionApp.Forward(ctx)
 	defer s.provisioner.Destroy(&app)
@@ -411,9 +410,9 @@ func (s *S) TestProvisionAppForwardAppPointer(c *C) {
 		Framework: "django",
 		Units:     []Unit{{Machine: 3}},
 	}
-	err := db.Session.Apps().Insert(app)
+	err := s.conn.Apps().Insert(app)
 	c.Assert(err, IsNil)
-	defer db.Session.Apps().Remove(bson.M{"name": app.Name})
+	defer s.conn.Apps().Remove(bson.M{"name": app.Name})
 	ctx := action.FWContext{Params: []interface{}{&app, 4}}
 	result, err := provisionApp.Forward(ctx)
 	defer s.provisioner.Destroy(&app)
@@ -437,9 +436,9 @@ func (s *S) TestProvisionAppBackward(c *C) {
 		Framework: "django",
 		Units:     []Unit{{Machine: 3}},
 	}
-	err := db.Session.Apps().Insert(app)
+	err := s.conn.Apps().Insert(app)
 	c.Assert(err, IsNil)
-	defer db.Session.Apps().Remove(bson.M{"name": app.Name})
+	defer s.conn.Apps().Remove(bson.M{"name": app.Name})
 	fwctx := action.FWContext{Params: []interface{}{&app, 4}}
 	result, err := provisionApp.Forward(fwctx)
 	c.Assert(err, IsNil)
@@ -459,9 +458,9 @@ func (s *S) TestProvisionAddUnitsForward(c *C) {
 		Framework: "heavens",
 		Units:     []Unit{{Machine: 2}},
 	}
-	err := db.Session.Apps().Insert(app)
+	err := s.conn.Apps().Insert(app)
 	c.Assert(err, IsNil)
-	defer db.Session.Apps().Remove(bson.M{"name": app.Name})
+	defer s.conn.Apps().Remove(bson.M{"name": app.Name})
 	previous, err := provisionApp.Forward(action.FWContext{Params: []interface{}{&app, 4}})
 	c.Assert(err, IsNil)
 	defer provisionApp.Backward(action.BWContext{Params: []interface{}{&app, 4}, FWResult: previous})

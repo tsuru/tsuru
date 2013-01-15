@@ -57,9 +57,14 @@ func bindUnit(msg *queue.Message) error {
 	if err != nil {
 		return fmt.Errorf("Error handling %q: app %q does not exist.", msg.Action, a.Name)
 	}
+	conn, err := db.Conn()
+	if err != nil {
+		return fmt.Errorf("Error handling %q: %s", msg.Action, err)
+	}
 	unit := getUnits(&a, msg.Args[1:])[0]
 	var instances []service.ServiceInstance
-	err = db.Session.ServiceInstances().Find(bson.M{"apps": bson.M{"$in": []string{msg.Args[0]}}}).All(&instances)
+	q := bson.M{"apps": bson.M{"$in": []string{msg.Args[0]}}}
+	err = conn.ServiceInstances().Find(q).All(&instances)
 	if err != nil {
 		return err
 	}

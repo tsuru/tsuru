@@ -6,7 +6,6 @@ package app
 
 import (
 	"github.com/globocom/tsuru/app/bind"
-	"github.com/globocom/tsuru/db"
 	"github.com/globocom/tsuru/service"
 	"labix.org/v2/mgo/bson"
 	. "launchpad.net/gocheck"
@@ -29,11 +28,11 @@ func (s *S) TestDestroyShouldUnbindAppFromInstance(c *C) {
 	srvc := service.Service{Name: "my", Endpoint: map[string]string{"production": ts.URL}}
 	err := srvc.Create()
 	c.Assert(err, IsNil)
-	defer db.Session.Services().Remove(bson.M{"_id": srvc.Name})
+	defer s.conn.Services().Remove(bson.M{"_id": srvc.Name})
 	instance := service.ServiceInstance{Name: "MyInstance", Apps: []string{"whichapp"}, ServiceName: srvc.Name}
 	err = instance.Create()
 	c.Assert(err, IsNil)
-	defer db.Session.ServiceInstances().Remove(bson.M{"_id": instance.Name})
+	defer s.conn.ServiceInstances().Remove(bson.M{"_id": instance.Name})
 	a := App{
 		Name:      "whichapp",
 		Framework: "",
@@ -47,7 +46,7 @@ func (s *S) TestDestroyShouldUnbindAppFromInstance(c *C) {
 	a.Get()
 	err = a.Destroy()
 	c.Assert(err, IsNil)
-	n, err := db.Session.ServiceInstances().Find(bson.M{"apps": bson.M{"$in": []string{a.Name}}}).Count()
+	n, err := s.conn.ServiceInstances().Find(bson.M{"apps": bson.M{"$in": []string{a.Name}}}).Count()
 	c.Assert(err, IsNil)
 	c.Assert(n, Equals, 0)
 }
