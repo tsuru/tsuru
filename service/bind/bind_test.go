@@ -5,6 +5,7 @@
 package service_test
 
 import (
+	"github.com/globocom/config"
 	"github.com/globocom/tsuru/app"
 	"github.com/globocom/tsuru/app/bind"
 	"github.com/globocom/tsuru/auth"
@@ -21,6 +22,7 @@ import (
 )
 
 type S struct {
+	conn   *db.Storage
 	user   auth.User
 	team   auth.Team
 	tmpdir string
@@ -34,28 +36,29 @@ func TestT(t *testing.T) {
 
 func (s *S) SetUpSuite(c *C) {
 	var err error
-	c.Assert(err, IsNil)
-	db.Session, err = db.Open("127.0.0.1:27017", "tsuru_service_bind_test")
+	config.Set("database:url", "127.0.0.1:27017")
+	config.Set("database:name", "tsuru_service_bind_test")
+	s.conn, err = db.Conn()
 	c.Assert(err, IsNil)
 	s.user = auth.User{Email: "sad-but-true@metallica.com"}
 	s.user.Create()
 	s.team = auth.Team{Name: "metallica", Users: []string{s.user.Email}}
-	db.Session.Teams().Insert(s.team)
+	s.conn.Teams().Insert(s.team)
 }
 
 func (s *S) TearDownSuite(c *C) {
-	defer db.Session.Close()
-	db.Session.Apps().Database.DropDatabase()
+	defer s.conn.Close()
+	s.conn.Apps().Database.DropDatabase()
 }
 
-func createTestApp(name, framework string, teams []string, units []app.Unit) (app.App, error) {
+func createTestApp(conn *db.Storage, name, framework string, teams []string, units []app.Unit) (app.App, error) {
 	a := app.App{
 		Name:      name,
 		Framework: framework,
 		Teams:     teams,
 		Units:     units,
 	}
-	err := db.Session.Apps().Insert(&a)
+	err := conn.Apps().Insert(&a)
 	return a, err
 }
 
@@ -69,13 +72,13 @@ func (s *S) TestBindUnit(c *C) {
 	srvc := service.Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}}
 	err := srvc.Create()
 	c.Assert(err, IsNil)
-	defer db.Session.Services().Remove(bson.M{"_id": "mysql"})
+	defer s.conn.Services().Remove(bson.M{"_id": "mysql"})
 	instance := service.ServiceInstance{Name: "my-mysql", ServiceName: "mysql", Teams: []string{s.team.Name}}
 	instance.Create()
-	defer db.Session.ServiceInstances().Remove(bson.M{"_id": "my-mysql"})
-	a, err := createTestApp("painkiller", "", []string{s.team.Name}, []app.Unit{{Ip: "10.10.10.10"}})
+	defer s.conn.ServiceInstances().Remove(bson.M{"_id": "my-mysql"})
+	a, err := createTestApp(s.conn, "painkiller", "", []string{s.team.Name}, []app.Unit{{Ip: "10.10.10.10"}})
 	c.Assert(err, IsNil)
-	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	envs, err := instance.BindUnit(a.GetUnits()[0])
 	c.Assert(err, IsNil)
 	c.Assert(called, Equals, true)
@@ -94,16 +97,16 @@ func (s *S) TestBindAddsAppToTheServiceInstance(c *C) {
 	srvc := service.Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}}
 	err := srvc.Create()
 	c.Assert(err, IsNil)
-	defer db.Session.Services().Remove(bson.M{"_id": "mysql"})
+	defer s.conn.Services().Remove(bson.M{"_id": "mysql"})
 	instance := service.ServiceInstance{Name: "my-mysql", ServiceName: "mysql", Teams: []string{s.team.Name}}
 	instance.Create()
-	defer db.Session.ServiceInstances().Remove(bson.M{"_id": "my-mysql"})
-	a, err := createTestApp("painkiller", "", []string{s.team.Name}, []app.Unit{{Ip: "10.10.10.10"}})
+	defer s.conn.ServiceInstances().Remove(bson.M{"_id": "my-mysql"})
+	a, err := createTestApp(s.conn, "painkiller", "", []string{s.team.Name}, []app.Unit{{Ip: "10.10.10.10"}})
 	c.Assert(err, IsNil)
-	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	err = instance.BindApp(&a)
 	c.Assert(err, IsNil)
-	db.Session.ServiceInstances().Find(bson.M{"_id": instance.Name}).One(&instance)
+	s.conn.ServiceInstances().Find(bson.M{"_id": instance.Name}).One(&instance)
 	c.Assert(instance.Apps, DeepEquals, []string{a.Name})
 }
 
@@ -115,7 +118,7 @@ func (s *S) TestBindCallTheServiceAPIAndSetsEnvironmentVariableReturnedFromTheCa
 	srvc := service.Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}}
 	err := srvc.Create()
 	c.Assert(err, IsNil)
-	defer db.Session.Services().Remove(bson.M{"_id": "mysql"})
+	defer s.conn.Services().Remove(bson.M{"_id": "mysql"})
 	instance := service.ServiceInstance{
 		Name:        "my-mysql",
 		ServiceName: "mysql",
@@ -123,10 +126,10 @@ func (s *S) TestBindCallTheServiceAPIAndSetsEnvironmentVariableReturnedFromTheCa
 	}
 	err = instance.Create()
 	c.Assert(err, IsNil)
-	defer db.Session.ServiceInstances().Remove(bson.M{"_id": "my-mysql"})
-	a, err := createTestApp("painkiller", "", []string{s.team.Name}, []app.Unit{{Ip: "127.0.0.1"}})
+	defer s.conn.ServiceInstances().Remove(bson.M{"_id": "my-mysql"})
+	a, err := createTestApp(s.conn, "painkiller", "", []string{s.team.Name}, []app.Unit{{Ip: "127.0.0.1"}})
 	c.Assert(err, IsNil)
-	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	err = instance.BindApp(&a)
 	c.Assert(err, IsNil)
 	newApp := app.App{Name: a.Name}
@@ -159,7 +162,7 @@ func (s *S) TestBindMultiUnits(c *C) {
 	srvc := service.Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}}
 	err := srvc.Create()
 	c.Assert(err, IsNil)
-	defer db.Session.Services().Remove(bson.M{"_id": "mysql"})
+	defer s.conn.Services().Remove(bson.M{"_id": "mysql"})
 	instance := service.ServiceInstance{
 		Name:        "my-mysql",
 		ServiceName: "mysql",
@@ -167,10 +170,10 @@ func (s *S) TestBindMultiUnits(c *C) {
 	}
 	err = instance.Create()
 	c.Assert(err, IsNil)
-	defer db.Session.ServiceInstances().Remove(bson.M{"_id": "my-mysql"})
-	a, err := createTestApp("painkiller", "", []string{s.team.Name}, []app.Unit{{Ip: "127.0.0.1"}, {Ip: "128.0.0.1"}})
+	defer s.conn.ServiceInstances().Remove(bson.M{"_id": "my-mysql"})
+	a, err := createTestApp(s.conn, "painkiller", "", []string{s.team.Name}, []app.Unit{{Ip: "127.0.0.1"}, {Ip: "128.0.0.1"}})
 	c.Assert(err, IsNil)
-	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	err = instance.BindApp(&a)
 	c.Assert(err, IsNil)
 	ok := make(chan bool)
@@ -193,7 +196,7 @@ func (s *S) TestBindReturnConflictIfTheAppIsAlreadyBinded(c *C) {
 	srvc := service.Service{Name: "mysql"}
 	err := srvc.Create()
 	c.Assert(err, IsNil)
-	defer db.Session.Services().Remove(bson.M{"_id": "mysql"})
+	defer s.conn.Services().Remove(bson.M{"_id": "mysql"})
 	instance := service.ServiceInstance{
 		Name:        "my-mysql",
 		ServiceName: "mysql",
@@ -202,10 +205,10 @@ func (s *S) TestBindReturnConflictIfTheAppIsAlreadyBinded(c *C) {
 	}
 	err = instance.Create()
 	c.Assert(err, IsNil)
-	defer db.Session.ServiceInstances().Remove(bson.M{"_id": "my-mysql"})
-	a, err := createTestApp("painkiller", "", []string{s.team.Name}, []app.Unit{{Ip: "127.0.0.1"}})
+	defer s.conn.ServiceInstances().Remove(bson.M{"_id": "my-mysql"})
+	a, err := createTestApp(s.conn, "painkiller", "", []string{s.team.Name}, []app.Unit{{Ip: "127.0.0.1"}})
 	c.Assert(err, IsNil)
-	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	err = instance.BindApp(&a)
 	c.Assert(err, NotNil)
 	e, ok := err.(*errors.Http)
@@ -222,14 +225,14 @@ func (s *S) TestBindReturnsPreconditionFailedIfTheAppDoesNotHaveAnUnitAndService
 	srvc := service.Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}}
 	err := srvc.Create()
 	c.Assert(err, IsNil)
-	defer db.Session.Services().Remove(bson.M{"_id": "mysql"})
+	defer s.conn.Services().Remove(bson.M{"_id": "mysql"})
 	instance := service.ServiceInstance{Name: "my-mysql", ServiceName: "mysql", Teams: []string{s.team.Name}}
 	err = instance.Create()
 	c.Assert(err, IsNil)
-	defer db.Session.ServiceInstances().Remove(bson.M{"_id": "my-mysql"})
-	a, err := createTestApp("painkiller", "", []string{s.team.Name}, []app.Unit{})
+	defer s.conn.ServiceInstances().Remove(bson.M{"_id": "my-mysql"})
+	a, err := createTestApp(s.conn, "painkiller", "", []string{s.team.Name}, []app.Unit{})
 	c.Assert(err, IsNil)
-	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	err = instance.BindApp(&a)
 	c.Assert(err, NotNil)
 	e, ok := err.(*errors.Http)
@@ -248,7 +251,7 @@ func (s *S) TestUnbindUnit(c *C) {
 	srvc := service.Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}}
 	err := srvc.Create()
 	c.Assert(err, IsNil)
-	defer db.Session.Services().Remove(bson.M{"_id": "mysql"})
+	defer s.conn.Services().Remove(bson.M{"_id": "mysql"})
 	instance := service.ServiceInstance{
 		Name:        "my-mysql",
 		ServiceName: "mysql",
@@ -256,10 +259,10 @@ func (s *S) TestUnbindUnit(c *C) {
 		Apps:        []string{"painkiller"},
 	}
 	instance.Create()
-	defer db.Session.ServiceInstances().Remove(bson.M{"_id": "my-mysql"})
-	a, err := createTestApp("painkiller", "", []string{s.team.Name}, []app.Unit{{Ip: "10.10.10.10"}})
+	defer s.conn.ServiceInstances().Remove(bson.M{"_id": "my-mysql"})
+	a, err := createTestApp(s.conn, "painkiller", "", []string{s.team.Name}, []app.Unit{{Ip: "10.10.10.10"}})
 	c.Assert(err, IsNil)
-	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	err = instance.UnbindUnit(a.GetUnits()[0])
 	c.Assert(err, IsNil)
 	c.Assert(called, Equals, true)
@@ -277,7 +280,7 @@ func (s *S) TestUnbindMultiUnits(c *C) {
 	srvc := service.Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}}
 	err := srvc.Create()
 	c.Assert(err, IsNil)
-	defer db.Session.Services().Remove(bson.M{"_id": "mysql"})
+	defer s.conn.Services().Remove(bson.M{"_id": "mysql"})
 	instance := service.ServiceInstance{
 		Name:        "my-mysql",
 		ServiceName: "mysql",
@@ -285,13 +288,13 @@ func (s *S) TestUnbindMultiUnits(c *C) {
 		Apps:        []string{"painkiller"},
 	}
 	instance.Create()
-	defer db.Session.ServiceInstances().Remove(bson.M{"_id": "my-mysql"})
-	a, err := createTestApp("painkiller", "", []string{s.team.Name}, []app.Unit{{Ip: "10.10.10.10"}, {Ip: "9.9.9.9"}})
+	defer s.conn.ServiceInstances().Remove(bson.M{"_id": "my-mysql"})
+	a, err := createTestApp(s.conn, "painkiller", "", []string{s.team.Name}, []app.Unit{{Ip: "10.10.10.10"}, {Ip: "9.9.9.9"}})
 	c.Assert(err, IsNil)
-	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	err = instance.UnbindApp(&a)
 	c.Assert(err, IsNil)
-	db.Session.ServiceInstances().Find(bson.M{"_id": instance.Name}).One(&instance)
+	s.conn.ServiceInstances().Find(bson.M{"_id": instance.Name}).One(&instance)
 	ok := make(chan bool, 1)
 	go func() {
 		t := time.Tick(1)
@@ -315,7 +318,7 @@ func (s *S) TestUnbindRemovesAppFromServiceInstance(c *C) {
 	srvc := service.Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}}
 	err := srvc.Create()
 	c.Assert(err, IsNil)
-	defer db.Session.Services().Remove(bson.M{"_id": "mysql"})
+	defer s.conn.Services().Remove(bson.M{"_id": "mysql"})
 	instance := service.ServiceInstance{
 		Name:        "my-mysql",
 		ServiceName: "mysql",
@@ -323,13 +326,13 @@ func (s *S) TestUnbindRemovesAppFromServiceInstance(c *C) {
 		Apps:        []string{"painkiller"},
 	}
 	instance.Create()
-	defer db.Session.ServiceInstances().Remove(bson.M{"_id": "my-mysql"})
-	a, err := createTestApp("painkiller", "", []string{s.team.Name}, []app.Unit{{Ip: "10.10.10.10"}})
+	defer s.conn.ServiceInstances().Remove(bson.M{"_id": "my-mysql"})
+	a, err := createTestApp(s.conn, "painkiller", "", []string{s.team.Name}, []app.Unit{{Ip: "10.10.10.10"}})
 	c.Assert(err, IsNil)
-	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	err = instance.UnbindApp(&a)
 	c.Assert(err, IsNil)
-	db.Session.ServiceInstances().Find(bson.M{"_id": instance.Name}).One(&instance)
+	s.conn.ServiceInstances().Find(bson.M{"_id": instance.Name}).One(&instance)
 	c.Assert(instance.Apps, DeepEquals, []string{})
 }
 
@@ -341,7 +344,7 @@ func (s *S) TestUnbindRemovesEnvironmentVariableFromApp(c *C) {
 	srvc := service.Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}}
 	err := srvc.Create()
 	c.Assert(err, IsNil)
-	defer db.Session.Services().Remove(bson.M{"_id": "mysql"})
+	defer s.conn.Services().Remove(bson.M{"_id": "mysql"})
 	instance := service.ServiceInstance{
 		Name:        "my-mysql",
 		ServiceName: "mysql",
@@ -350,7 +353,7 @@ func (s *S) TestUnbindRemovesEnvironmentVariableFromApp(c *C) {
 	}
 	err = instance.Create()
 	c.Assert(err, IsNil)
-	defer db.Session.ServiceInstances().Remove(bson.M{"_id": "my-mysql"})
+	defer s.conn.ServiceInstances().Remove(bson.M{"_id": "my-mysql"})
 	a := app.App{
 		Name:  "painkiller",
 		Teams: []string{s.team.Name},
@@ -372,9 +375,9 @@ func (s *S) TestUnbindRemovesEnvironmentVariableFromApp(c *C) {
 			},
 		},
 	}
-	err = db.Session.Apps().Insert(&a)
+	err = s.conn.Apps().Insert(&a)
 	c.Assert(err, IsNil)
-	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	err = instance.UnbindApp(&a)
 	c.Assert(err, IsNil)
 	newApp := app.App{Name: a.Name}
@@ -400,7 +403,7 @@ func (s *S) TestUnbindCallsTheUnbindMethodFromAPI(c *C) {
 	srvc := service.Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}}
 	err := srvc.Create()
 	c.Assert(err, IsNil)
-	defer db.Session.Services().Remove(bson.M{"_id": "mysql"})
+	defer s.conn.Services().Remove(bson.M{"_id": "mysql"})
 	instance := service.ServiceInstance{
 		Name:        "my-mysql",
 		ServiceName: "mysql",
@@ -409,10 +412,10 @@ func (s *S) TestUnbindCallsTheUnbindMethodFromAPI(c *C) {
 	}
 	err = instance.Create()
 	c.Assert(err, IsNil)
-	defer db.Session.ServiceInstances().Remove(bson.M{"_id": "my-mysql"})
-	a, err := createTestApp("painkiller", "", []string{s.team.Name}, []app.Unit{{Ip: "127.0.0.1"}})
+	defer s.conn.ServiceInstances().Remove(bson.M{"_id": "my-mysql"})
+	a, err := createTestApp(s.conn, "painkiller", "", []string{s.team.Name}, []app.Unit{{Ip: "127.0.0.1"}})
 	c.Assert(err, IsNil)
-	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	err = instance.UnbindApp(&a)
 	c.Assert(err, IsNil)
 	ch := make(chan bool)
@@ -438,13 +441,13 @@ func (s *S) TestUnbindReturnsPreconditionFailedIfTheAppIsNotBindedToTheInstance(
 	srvc := service.Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}}
 	err := srvc.Create()
 	c.Assert(err, IsNil)
-	defer db.Session.Services().Remove(bson.M{"_id": "mysql"})
+	defer s.conn.Services().Remove(bson.M{"_id": "mysql"})
 	instance := service.ServiceInstance{Name: "my-mysql", ServiceName: "mysql", Teams: []string{s.team.Name}}
 	instance.Create()
-	defer db.Session.ServiceInstances().Remove(bson.M{"_id": "my-mysql"})
-	a, err := createTestApp("painkiller", "", []string{s.team.Name}, []app.Unit{{Ip: "10.10.10.10"}})
+	defer s.conn.ServiceInstances().Remove(bson.M{"_id": "my-mysql"})
+	a, err := createTestApp(s.conn, "painkiller", "", []string{s.team.Name}, []app.Unit{{Ip: "10.10.10.10"}})
 	c.Assert(err, IsNil)
-	defer db.Session.Apps().Remove(bson.M{"name": a.Name})
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	err = instance.UnbindApp(&a)
 	c.Assert(err, NotNil)
 	e, ok := err.(*errors.Http)
