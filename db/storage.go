@@ -17,8 +17,10 @@ import (
 	"sync"
 )
 
-// pool of connections
-var conn = make(map[string]*Storage)
+var (
+	conn = make(map[string]*Storage) // pool of connections
+	mut  sync.RWMutex                // for pool thread safety
+)
 
 // Storage holds the connection with the database.
 type Storage struct {
@@ -39,7 +41,9 @@ func open(addr, dbname string) (*Storage, error) {
 		collections: make(map[string]*mgo.Collection),
 		dbname:      dbname,
 	}
+	mut.Lock()
 	conn[key] = storage
+	mut.Unlock()
 	return storage, nil
 }
 
@@ -58,10 +62,13 @@ func Open(addr, dbname string) (storage *Storage, err error) {
 		}
 	}()
 	key := addr + dbname
+	mut.RLock()
 	if storage, ok = conn[key]; ok {
+		mut.RUnlock()
 		storage.session.Ping()
 		return storage, nil
 	}
+	mut.RUnlock()
 	return open(addr, dbname)
 }
 
