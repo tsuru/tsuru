@@ -151,13 +151,6 @@ func (s *S) TestCollection(c *C) {
 	c.Assert(collection.FullName, Equals, storage.dbname+".users")
 }
 
-func (s *S) TestShouldCacheCollection(c *C) {
-	storage, _ := Open("127.0.0.1:27017", "tsuru_storage_test")
-	defer storage.Close()
-	collection := storage.Collection("users")
-	c.Assert(collection, DeepEquals, storage.collections["users"])
-}
-
 func (s *S) TestUsers(c *C) {
 	storage, _ := Open("127.0.0.1:27017", "tsuru_storage_test")
 	defer storage.Close()

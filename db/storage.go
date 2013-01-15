@@ -24,10 +24,8 @@ var (
 
 // Storage holds the connection with the database.
 type Storage struct {
-	collections map[string]*mgo.Collection
-	session     *mgo.Session
-	dbname      string
-	mut         sync.RWMutex
+	session *mgo.Session
+	dbname  string
 }
 
 func open(addr, dbname string) (*Storage, error) {
@@ -36,11 +34,7 @@ func open(addr, dbname string) (*Storage, error) {
 	if err != nil {
 		return nil, err
 	}
-	storage := &Storage{
-		session:     session,
-		collections: make(map[string]*mgo.Collection),
-		dbname:      dbname,
-	}
+	storage := &Storage{session: session, dbname: dbname}
 	mut.Lock()
 	conn[key] = storage
 	mut.Unlock()
@@ -107,17 +101,7 @@ func (s *Storage) Close() {
 //
 // If the collection does not exist, MongoDB will create it.
 func (s *Storage) Collection(name string) *mgo.Collection {
-	s.mut.RLock()
-	collection, ok := s.collections[name]
-	s.mut.RUnlock()
-
-	if !ok {
-		collection = s.session.DB(s.dbname).C(name)
-		s.mut.Lock()
-		s.collections[name] = collection
-		s.mut.Unlock()
-	}
-	return collection
+	return s.session.DB(s.dbname).C(name)
 }
 
 // Apps returns the apps collection from MongoDB.

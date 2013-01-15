@@ -8,7 +8,6 @@ import (
 	"github.com/globocom/config"
 	"github.com/globocom/tsuru/db"
 	"io"
-	"labix.org/v2/mgo/bson"
 	. "launchpad.net/gocheck"
 	"net/http"
 	"net/http/httptest"
@@ -90,13 +89,9 @@ func (s *S) TearDownSuite(c *C) {
 }
 
 func (s *S) TearDownTest(c *C) {
-	_, err := s.conn.Users().RemoveAll(bson.M{"email": bson.M{"$ne": s.user.Email}})
-	panicIfErr(err)
-	_, err = s.conn.Teams().RemoveAll(bson.M{"_id": bson.M{"$ne": s.team.Name}})
-	panicIfErr(err)
 	if s.user.Password != s.hashed {
 		s.user.Password = s.hashed
-		err = s.user.Update()
+		err := s.user.Update()
 		panicIfErr(err)
 	}
 	config.Set("git:host", s.gitHost)

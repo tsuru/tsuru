@@ -183,7 +183,7 @@ func (s *S) TestGetInvalidMessage(c *C) {
 	c.Assert(err.Error(), Equals, `Invalid message: "hello world"`)
 	_, _, err = conn.Reserve(1e6)
 	c.Assert(err, NotNil)
-	c.Assert(err, ErrorMatches, "^.*TIMED_OUT$")
+	c.Assert(timeoutRegexp.MatchString(err.Error()), Equals, true)
 }
 
 func (s *S) TestRelease(c *C) {
