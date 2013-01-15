@@ -8,7 +8,6 @@ import (
 	"github.com/globocom/config"
 	"github.com/globocom/tsuru/db"
 	"io"
-	"labix.org/v2/mgo"
 	"labix.org/v2/mgo/bson"
 	. "launchpad.net/gocheck"
 	"net/http"
@@ -47,7 +46,7 @@ var HasKey Checker = &hasKeyChecker{}
 func Test(t *testing.T) { TestingT(t) }
 
 type S struct {
-	session *mgo.Session
+	conn    *db.Storage
 	hashed  string
 	user    *User
 	team    *Team
@@ -70,12 +69,14 @@ func (s *S) SetUpSuite(c *C) {
 	s.hashed = hashPassword("123")
 	err := config.ReadConfigFile("../etc/tsuru.conf")
 	c.Assert(err, IsNil)
-	db.Session, _ = db.Open("localhost:27017", "tsuru_user_test")
+	config.Set("database:url", "127.0.0.1:27017")
+	config.Set("database:name", "tsuru_auth_test")
+	s.conn, _ = db.Conn()
 	s.user = &User{Email: "timeredbull@globo.com", Password: "123"}
 	s.user.Create()
 	s.token, _ = s.user.CreateToken()
 	team := &Team{Name: "cobrateam", Users: []string{s.user.Email}}
-	err = db.Session.Teams().Insert(team)
+	err = s.conn.Teams().Insert(team)
 	panicIfErr(err)
 	s.team = team
 	s.gitHost, _ = config.GetString("git:host")
@@ -84,14 +85,14 @@ func (s *S) SetUpSuite(c *C) {
 }
 
 func (s *S) TearDownSuite(c *C) {
-	defer db.Session.Close()
-	db.Session.Apps().Database.DropDatabase()
+	defer s.conn.Close()
+	s.conn.Apps().Database.DropDatabase()
 }
 
 func (s *S) TearDownTest(c *C) {
-	_, err := db.Session.Users().RemoveAll(bson.M{"email": bson.M{"$ne": s.user.Email}})
+	_, err := s.conn.Users().RemoveAll(bson.M{"email": bson.M{"$ne": s.user.Email}})
 	panicIfErr(err)
-	_, err = db.Session.Teams().RemoveAll(bson.M{"_id": bson.M{"$ne": s.team.Name}})
+	_, err = s.conn.Teams().RemoveAll(bson.M{"_id": bson.M{"$ne": s.team.Name}})
 	panicIfErr(err)
 	if s.user.Password != s.hashed {
 		s.user.Password = s.hashed

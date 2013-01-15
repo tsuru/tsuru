@@ -9,7 +9,6 @@ import (
 	"crypto/sha512"
 	"fmt"
 	"github.com/globocom/config"
-	"github.com/globocom/tsuru/db"
 	"labix.org/v2/mgo/bson"
 	. "launchpad.net/gocheck"
 	"time"
@@ -20,7 +19,7 @@ func (s *S) TestCreateUser(c *C) {
 	err := u.Create()
 	c.Assert(err, IsNil)
 	var result User
-	collection := db.Session.Users()
+	collection := s.conn.Users()
 	err = collection.Find(bson.M{"email": u.Email}).One(&result)
 	c.Assert(err, IsNil)
 	c.Assert(result.Email, Equals, u.Email)
@@ -33,7 +32,7 @@ func (s *S) TestCreateUserHashesThePasswordUsingPBKDF2SHA512AndSalt(c *C) {
 	err := u.Create()
 	c.Assert(err, IsNil)
 	var result User
-	collection := db.Session.Users()
+	collection := s.conn.Users()
 	err = collection.Find(bson.M{"email": u.Email}).One(&result)
 	c.Assert(err, IsNil)
 	c.Assert(result.Password, Equals, expectedPassword)
@@ -67,7 +66,7 @@ func (s *S) TestUpdateUser(c *C) {
 	u := User{Email: "wolverine@xmen.com", Password: "123"}
 	err := u.Create()
 	c.Assert(err, IsNil)
-	defer db.Session.Apps().Remove(bson.M{"email": u.Email})
+	defer s.conn.Apps().Remove(bson.M{"email": u.Email})
 	u.Password = "1234"
 	err = u.Update()
 	c.Assert(err, IsNil)
@@ -120,7 +119,7 @@ func (s *S) TestCreateTokenShouldSaveTheTokenInUserInTheDatabase(c *C) {
 	_, err = u.CreateToken()
 	c.Assert(err, IsNil)
 	var result User
-	collection := db.Session.Users()
+	collection := s.conn.Users()
 	err = collection.Find(nil).One(&result)
 	c.Assert(err, IsNil)
 	c.Assert(result.Tokens[0].Token, NotNil)
@@ -154,7 +153,7 @@ func (s *S) TestGetUserByTokenShouldReturnErrorWhenTheGivenTokenDoesNotExist(c *
 }
 
 func (s *S) TestGetUserByTokenShouldReturnErrorWhenTheGivenTokenHasExpired(c *C) {
-	collection := db.Session.Users()
+	collection := s.conn.Users()
 	u := User{Email: "wolverine@xmen.com", Password: "123"}
 	err := u.Create()
 	c.Assert(err, IsNil)
@@ -183,7 +182,7 @@ func (s *S) TestGetUserByTokenDoesNotFailWhenTheTokenIsValid(c *C) {
 	}
 	err := u.Create()
 	c.Assert(err, IsNil)
-	defer db.Session.Users().Remove(bson.M{"email": u.Email})
+	defer s.conn.Users().Remove(bson.M{"email": u.Email})
 	t, err := u.CreateToken()
 	c.Assert(err, IsNil)
 	user, err := GetUserByToken(t.Token)
@@ -296,18 +295,18 @@ func (s *S) TestTeams(c *C) {
 	u := User{Email: "me@tsuru.com", Password: "123"}
 	err := u.Create()
 	c.Assert(err, IsNil)
-	defer db.Session.Users().Remove(bson.M{"email": u.Email})
+	defer s.conn.Users().Remove(bson.M{"email": u.Email})
 	s.team.AddUser(&u)
-	err = db.Session.Teams().Update(bson.M{"_id": s.team.Name}, s.team)
+	err = s.conn.Teams().Update(bson.M{"_id": s.team.Name}, s.team)
 	c.Assert(err, IsNil)
 	defer func(u *User, t *Team) {
 		t.RemoveUser(u)
-		db.Session.Teams().Update(bson.M{"_id": t.Name}, t)
+		s.conn.Teams().Update(bson.M{"_id": t.Name}, t)
 	}(&u, s.team)
 	t := Team{Name: "abc", Users: []string{u.Email}}
-	err = db.Session.Teams().Insert(t)
+	err = s.conn.Teams().Insert(t)
 	c.Assert(err, IsNil)
-	defer db.Session.Teams().Remove(bson.M{"_id": t.Name})
+	defer s.conn.Teams().Remove(bson.M{"_id": t.Name})
 	teams, err := u.Teams()
 	c.Assert(err, IsNil)
 	c.Assert(teams, HasLen, 2)
@@ -319,7 +318,7 @@ func (s *S) TestFindKeyReturnsKeyWithNameAndContent(c *C) {
 	u := User{Email: "me@tsuru.com", Password: "123", Keys: []Key{{Name: "me@tsuru.com-1", Content: "ssh-rsa somekey me@tsuru.com"}}}
 	err := u.Create()
 	c.Assert(err, IsNil)
-	defer db.Session.Users().Remove(bson.M{"email": u.Email})
+	defer s.conn.Users().Remove(bson.M{"email": u.Email})
 	k, index := u.FindKey(Key{Content: u.Keys[0].Content})
 	c.Assert(index, Equals, 0)
 	c.Assert(k.Name, Equals, u.Keys[0].Name)
@@ -329,9 +328,9 @@ func (s *S) TestIsAdminReturnsTrueWhenUserHasATeamNamedWithAdminTeamConf(c *C) {
 	adminTeamName, err := config.GetString("admin-team")
 	c.Assert(err, IsNil)
 	t := Team{Name: adminTeamName, Users: []string{s.user.Email}}
-	err = db.Session.Teams().Insert(&t)
+	err = s.conn.Teams().Insert(&t)
 	c.Assert(err, IsNil)
-	defer db.Session.Teams().RemoveId(t.Name)
+	defer s.conn.Teams().RemoveId(t.Name)
 	c.Assert(s.user.IsAdmin(), Equals, true)
 }
 

@@ -5,7 +5,6 @@
 package auth
 
 import (
-	"github.com/globocom/tsuru/db"
 	"labix.org/v2/mgo/bson"
 	. "launchpad.net/gocheck"
 )
@@ -84,11 +83,11 @@ func (s *S) TestCheckUserAccess(c *C) {
 	u2 := User{Email: "whola-lotta-love@ledzeppelin.com"}
 	err = u2.Create()
 	c.Assert(err, IsNil)
-	defer db.Session.Users().Remove(bson.M{"email": bson.M{"$in": []string{u1.Email, u2.Email}}})
+	defer s.conn.Users().Remove(bson.M{"email": bson.M{"$in": []string{u1.Email, u2.Email}}})
 	t := Team{Name: "ledzeppelin", Users: []string{u1.Email}}
-	err = db.Session.Teams().Insert(t)
+	err = s.conn.Teams().Insert(t)
 	c.Assert(err, IsNil)
-	defer db.Session.Teams().Remove(bson.M{"_id": t.Name})
+	defer s.conn.Teams().Remove(bson.M{"_id": t.Name})
 	c.Assert(CheckUserAccess([]string{t.Name}, &u1), Equals, true)
 	c.Assert(CheckUserAccess([]string{t.Name}, &u2), Equals, false)
 }
@@ -98,19 +97,19 @@ func (s *S) TestCheckUserAccessWithMultipleUsersOnMultipleTeams(c *C) {
 	punk := User{Email: "punk@thewho.com", Password: "123"}
 	cut := User{Email: "cutmyhair@thewho.com", Password: "123"}
 	who := Team{Name: "TheWho", Users: []string{one.Email, punk.Email, cut.Email}}
-	err := db.Session.Teams().Insert(who)
-	defer db.Session.Teams().Remove(bson.M{"_id": who.Name})
+	err := s.conn.Teams().Insert(who)
+	defer s.conn.Teams().Remove(bson.M{"_id": who.Name})
 	c.Assert(err, IsNil)
 	what := Team{Name: "TheWhat", Users: []string{one.Email, punk.Email}}
-	err = db.Session.Teams().Insert(what)
-	defer db.Session.Teams().Remove(bson.M{"_id": what.Name})
+	err = s.conn.Teams().Insert(what)
+	defer s.conn.Teams().Remove(bson.M{"_id": what.Name})
 	c.Assert(err, IsNil)
 	where := Team{Name: "TheWhere", Users: []string{one.Email}}
-	err = db.Session.Teams().Insert(where)
-	defer db.Session.Teams().Remove(bson.M{"_id": where.Name})
+	err = s.conn.Teams().Insert(where)
+	defer s.conn.Teams().Remove(bson.M{"_id": where.Name})
 	c.Assert(err, IsNil)
 	teams := []string{who.Name, what.Name, where.Name}
-	defer db.Session.Teams().RemoveAll(bson.M{"_id": bson.M{"$in": teams}})
+	defer s.conn.Teams().RemoveAll(bson.M{"_id": bson.M{"$in": teams}})
 	c.Assert(CheckUserAccess(teams, &cut), Equals, true)
 	c.Assert(CheckUserAccess(teams, &punk), Equals, true)
 	c.Assert(CheckUserAccess(teams, &one), Equals, true)

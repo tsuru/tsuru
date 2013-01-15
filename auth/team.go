@@ -7,6 +7,7 @@ package auth
 import (
 	"fmt"
 	"github.com/globocom/tsuru/db"
+	"github.com/globocom/tsuru/log"
 	"labix.org/v2/mgo/bson"
 	"sync"
 )
@@ -60,7 +61,12 @@ func GetTeamsNames(teams []Team) []string {
 func CheckUserAccess(teamNames []string, u *User) bool {
 	q := bson.M{"_id": bson.M{"$in": teamNames}}
 	var teams []Team
-	db.Session.Teams().Find(q).All(&teams)
+	conn, err := db.Conn()
+	if err != nil {
+		log.Printf("Failed to connect to the database: %s", err)
+		return false
+	}
+	conn.Teams().Find(q).All(&teams)
 	var wg sync.WaitGroup
 	found := make(chan bool)
 	for _, team := range teams {

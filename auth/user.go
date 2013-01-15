@@ -62,10 +62,13 @@ type User struct {
 }
 
 func GetUserByToken(token string) (*User, error) {
-	c := db.Session.Users()
+	conn, err := db.Conn()
+	if err != nil {
+		return nil, err
+	}
 	u := new(User)
 	query := bson.M{"tokens.token": token}
-	err := c.Find(query).One(&u)
+	err = conn.Users().Find(query).One(&u)
 	if err != nil {
 		return nil, errors.New("Token not found")
 	}
@@ -83,12 +86,20 @@ func GetUserByToken(token string) (*User, error) {
 }
 
 func (u *User) Create() error {
+	conn, err := db.Conn()
+	if err != nil {
+		return err
+	}
 	u.HashPassword()
-	return db.Session.Users().Insert(u)
+	return conn.Users().Insert(u)
 }
 
 func (u *User) Update() error {
-	return db.Session.Users().Update(bson.M{"email": u.Email}, u)
+	conn, err := db.Conn()
+	if err != nil {
+		return err
+	}
+	return conn.Users().Update(bson.M{"email": u.Email}, u)
 }
 
 func (u *User) HashPassword() {
@@ -96,9 +107,11 @@ func (u *User) HashPassword() {
 }
 
 func (u *User) Get() error {
-	var filter = bson.M{}
-	filter["email"] = u.Email
-	return db.Session.Users().Find(filter).One(&u)
+	conn, err := db.Conn()
+	if err != nil {
+		return err
+	}
+	return conn.Users().Find(bson.M{"email": u.Email}).One(&u)
 }
 
 func (u *User) Login(password string) bool {
@@ -110,16 +123,23 @@ func (u *User) CreateToken() (*Token, error) {
 	if u.Email == "" {
 		return nil, errors.New("User does not have an email")
 	}
+	conn, err := db.Conn()
+	if err != nil {
+		return nil, err
+	}
 	t, _ := newToken(u)
 	u.Tokens = append(u.Tokens, *t)
-	c := db.Session.Users()
-	err := c.Update(bson.M{"email": u.Email}, u)
+	err = conn.Users().Update(bson.M{"email": u.Email}, u)
 	return t, err
 }
 
-// Teams returns a slice containing all teams that the user is member
+// Teams returns a slice containing all teams that the user is member of.
 func (u *User) Teams() (teams []Team, err error) {
-	err = db.Session.Teams().Find(bson.M{"users": u.Email}).All(&teams)
+	conn, err := db.Conn()
+	if err != nil {
+		return nil, err
+	}
+	err = conn.Teams().Find(bson.M{"users": u.Email}).All(&teams)
 	return
 }
 
