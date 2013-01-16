@@ -1,4 +1,4 @@
-#!/bin/bash -u
+#!/bin/bash
 
 # Copyright 2013 tsuru authors. All rights reserved.
 # Use of this source code is governed by a BSD-style
@@ -28,6 +28,32 @@ function usage() {
 	echo
 }
 
+function download() {
+	echo "Downloading $1 from S3..."
+	s3cmd get $1 dump.tar.gz
+	tar -xzf dump.tar.gz
+}
+
+function heal_collections() {
+	healing=${@:3}
+	declare -a failed
+	i=0
+	for c in $healing
+	do
+		if [ -f dump/$2/$c.bson ]
+		then
+			mongorestore -h $1 dump/$2/$c.bson 1>&2
+		else
+			failed[$i]=$c
+			((i++))
+		fi
+	done
+	if [ ! -z "$failed" ]
+	then
+		echo "${failed[@]}"
+	fi
+}
+
 # heal heals a collection. It takes the following parameters:
 #
 #   bucket-path ($1): path ot he bucket where archives are stored.
@@ -35,28 +61,38 @@ function usage() {
 #   database ($3): database to connect to.
 #   collections ($4): array containing the name of collections to heal.
 function heal() {
-	healing=${@:4}
-	file=`s3cmd ls $1 | grep mongodb-dump.tar.gz$ | tail -1 | awk '{print $4}'`
-	if [ -z "$file" ]
+	files=`s3cmd ls $1 | grep mongodb-dump.tar.gz$ | tail -3 | awk '{print $4}'`
+	if [ -z "$files" ]
 	then
 		echo "FATAL: no backups found!"
 		exit 500
 	fi
-	echo "Downloading $file from S3..."
-	s3cmd get $file dump.tar.gz
-	tar -xzf dump.tar.gz
-	echo
-	for c in $healing
+	healing=${@:4}
+	ct=0
+	l=""
+	while [ $ct -lt 3 ]
 	do
-		if [ -f dump/$3/$c.bson ]
+		file=`echo "$files" | tail -n $((ct+1)) | head -1`
+		if [ "$l" = "$file" ]
 		then
-			echo "Restoring collection \"$c\"..."
-			mongorestore dump/$3/$c.bson
-		else
-			echo "WARNING: backup for the collection \"$c\" does not exist. Skipping..."
+			break
 		fi
+		download $file
+		echo
+		healing=`heal_collections $2 $3 $healing`
+		rm -rf dump dump.tar.gz
+		if [ -z "$healing" ]
+		then
+			break
+		fi
+		((ct++))
+		l=$file
 	done
-	rm -rf dump dump.tar.gz
+	if [ ! -z "$healing" ]
+	then
+		echo "FATAIL: did not find any backup for the following collection(s): $healing."
+		exit 1
+	fi
 }
 
 if [ $# -lt 4 ]
