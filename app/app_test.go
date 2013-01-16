@@ -323,35 +323,32 @@ func (s *S) TestRemoveUnits(c *C) {
 		atomic.StoreInt32(&calls, v+1)
 		w.WriteHeader(http.StatusNoContent)
 	}))
-	defer ts.Close()
 	srvc := service.Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}}
 	err := srvc.Create()
 	c.Assert(err, IsNil)
 	defer s.conn.Services().Remove(bson.M{"_id": "mysql"})
-	instance := service.ServiceInstance{
-		Name:        "my-mysql",
-		ServiceName: "mysql",
-		Teams:       []string{s.team.Name},
-		Apps:        []string{"painkiller"},
-	}
-	instance.Create()
-	defer s.conn.ServiceInstances().Remove(bson.M{"_id": "my-mysql"})
 	app := App{
 		Name:      "chemistry",
 		Framework: "python",
 	}
+	instance := service.ServiceInstance{
+		Name:        "my-inst",
+		ServiceName: "mysql",
+		Teams:       []string{s.team.Name},
+		Apps:        []string{app.Name},
+	}
+	instance.Create()
+	defer s.conn.ServiceInstances().Remove(bson.M{"name": "my-inst"})
 	err = s.conn.Apps().Insert(app)
 	c.Assert(err, IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": app.Name})
-	err = instance.AddApp(app.Name)
-	c.Assert(err, IsNil)
-	err = s.conn.ServiceInstances().Update(bson.M{"name": instance.Name}, instance)
 	c.Assert(err, IsNil)
 	s.provisioner.Provision(&app)
 	defer s.provisioner.Destroy(&app)
 	app.AddUnits(4)
 	err = app.RemoveUnits(2)
 	c.Assert(err, IsNil)
+	ts.Close()
 	units := s.provisioner.GetUnits(&app)
 	c.Assert(units, HasLen, 3) // when you provision you already have one, so it's 4+1-2 (in provisioner, in app struct we have 2)
 	c.Assert(units[0].Name, Equals, "chemistry/0")
@@ -364,7 +361,7 @@ func (s *S) TestRemoveUnits(c *C) {
 	c.Assert(app.Units[1].Name, Equals, "chemistry/4")
 	ok := make(chan int8)
 	go func() {
-		for {
+		for _ = range time.Tick(1e3) {
 			if atomic.LoadInt32(&calls) == 2 {
 				ok <- 1
 				return
@@ -457,14 +454,32 @@ func (s *S) TestRemoveUnitsFromIndicesSlice(c *C) {
 }
 
 func (s *S) TestRemoveUnitByNameOrInstanceId(c *C) {
+	var calls int32
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		v := atomic.LoadInt32(&calls)
+		atomic.StoreInt32(&calls, v+1)
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	srvc := service.Service{Name: "nosql", Endpoint: map[string]string{"production": ts.URL}}
+	err := srvc.Create()
+	c.Assert(err, IsNil)
+	defer s.conn.Services().Remove(bson.M{"_id": "nosql"})
 	app := App{
-		Name:      "chemistry",
+		Name:      "physics",
 		Framework: "python",
 		Units: []Unit{
-			{Name: "chemistry/0"},
+			{Name: "physics/0"},
 		},
 	}
-	err := s.conn.Apps().Insert(app)
+	instance := service.ServiceInstance{
+		Name:        "my-mysql",
+		ServiceName: "nosql",
+		Teams:       []string{s.team.Name},
+		Apps:        []string{app.Name},
+	}
+	instance.Create()
+	defer s.conn.ServiceInstances().Remove(bson.M{"name": "my-mysql"})
+	err = s.conn.Apps().Insert(app)
 	c.Assert(err, IsNil)
 	err = s.provisioner.Provision(&app)
 	c.Assert(err, IsNil)
@@ -476,20 +491,35 @@ func (s *S) TestRemoveUnitByNameOrInstanceId(c *C) {
 	}()
 	err = app.RemoveUnit(app.Units[0].Name)
 	c.Assert(err, IsNil)
+	ts.Close()
 	err = app.Get()
 	c.Assert(err, IsNil)
 	c.Assert(app.Units, HasLen, 4)
-	c.Assert(app.Units[0].Name, Equals, "chemistry/1")
-	c.Assert(app.Units[1].Name, Equals, "chemistry/2")
-	c.Assert(app.Units[2].Name, Equals, "chemistry/3")
-	c.Assert(app.Units[3].Name, Equals, "chemistry/4")
+	c.Assert(app.Units[0].Name, Equals, "physics/1")
+	c.Assert(app.Units[1].Name, Equals, "physics/2")
+	c.Assert(app.Units[2].Name, Equals, "physics/3")
+	c.Assert(app.Units[3].Name, Equals, "physics/4")
 	err = app.RemoveUnit(app.Units[1].InstanceId)
 	c.Assert(err, IsNil)
 	units := s.provisioner.GetUnits(&app)
 	c.Assert(units, HasLen, 3)
-	c.Assert(units[0].Name, Equals, "chemistry/1")
-	c.Assert(units[1].Name, Equals, "chemistry/3")
-	c.Assert(units[2].Name, Equals, "chemistry/4")
+	c.Assert(units[0].Name, Equals, "physics/1")
+	c.Assert(units[1].Name, Equals, "physics/3")
+	c.Assert(units[2].Name, Equals, "physics/4")
+	ok := make(chan int8)
+	go func() {
+		for _ = range time.Tick(1e3) {
+			if atomic.LoadInt32(&calls) == 1 {
+				ok <- 1
+				return
+			}
+		}
+	}()
+	select {
+	case <-ok:
+	case <-time.After(2e9):
+		c.Fatal("Did not call service endpoint once.")
+	}
 }
 
 func (s *S) TestRemoveAbsentUnit(c *C) {

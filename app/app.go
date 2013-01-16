@@ -234,21 +234,21 @@ func (a *App) AddUnits(n uint) error {
 //
 // Returns an error in case of failure.
 func (a *App) RemoveUnit(id string) error {
-	var unit string
+	var unit Unit
 	for i, u := range a.Units {
 		if u.InstanceId == id || u.GetName() == id {
 			a.removeUnits([]int{i})
-			unit = u.GetName()
+			unit = u
 			break
 		}
 	}
-	if unit == "" {
+	if unit.GetName() == "" {
 		return errors.New("Unit not found.")
 	}
-	if err := Provisioner.RemoveUnit(a, unit); err != nil {
+	if err := Provisioner.RemoveUnit(a, unit.GetName()); err != nil {
 		return err
 	}
-	// should call unbind
+	a.unbindUnit(&unit)
 	conn, err := db.Conn()
 	if err != nil {
 		return err
