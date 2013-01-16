@@ -15,8 +15,8 @@ import (
 	"github.com/globocom/tsuru/log"
 	"github.com/globocom/tsuru/provision"
 	"github.com/globocom/tsuru/repository"
+	"github.com/globocom/tsuru/safe"
 	"github.com/globocom/tsuru/service"
-	"github.com/globocom/tsuru/testing"
 	"io"
 	"io/ioutil"
 	"labix.org/v2/mgo/bson"
@@ -173,7 +173,7 @@ pos-restart:
 }
 
 func (s *S) TestCloneRepositoryRunsCloneOrPullThenPreRestartThenRestartThenPosRestartHooksInOrder(c *C) {
-	var w testing.SafeBuffer
+	var w safe.Buffer
 	l := stdlog.New(&w, "", stdlog.LstdFlags)
 	log.SetLogger(l)
 	output := `pre-restart:
