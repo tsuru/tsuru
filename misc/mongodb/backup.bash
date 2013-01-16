@@ -11,7 +11,7 @@
 #
 #    ./backup-mongodb.bash <bucket-path> <host> <database>
 
-filename="`date +%y-%m-%d-%H-%M-%S`-mongodb-dump.tar.gz"
+filename="`date +%Y-%m-%d-%H-%M-%S`-mongodb-dump.tar.gz"
 
 if [ $# -lt 3 ]
 then
