@@ -207,11 +207,12 @@ func (a *App) AddUnits(n uint) error {
 	mCount := 0
 	for i, unit := range units {
 		a.Units[i+length] = Unit{
-			Name:    unit.Name,
-			Type:    unit.Type,
-			Ip:      unit.Ip,
-			Machine: unit.Machine,
-			State:   provision.StatusPending.String(),
+			Name:       unit.Name,
+			Type:       unit.Type,
+			Ip:         unit.Ip,
+			Machine:    unit.Machine,
+			State:      provision.StatusPending.String(),
+			InstanceId: unit.InstanceId,
 		}
 		messages[mCount] = queue.Message{Action: RegenerateApprcAndStart, Args: []string{a.Name, unit.Name}}
 		messages[mCount+1] = queue.Message{Action: bindService, Args: []string{a.Name, unit.Name}}
@@ -233,17 +234,21 @@ func (a *App) AddUnits(n uint) error {
 //
 // Returns an error in case of failure.
 func (a *App) RemoveUnit(id string) error {
-	var unit Unit
+	var unit string
 	for i, u := range a.Units {
 		if u.InstanceId == id || u.GetName() == id {
 			a.removeUnits([]int{i})
-			unit = u
+			unit = u.GetName()
 			break
 		}
 	}
-	if err := Provisioner.RemoveUnit(a, unit.GetName()); err != nil {
+	if unit == "" {
+		return errors.New("Unit not found.")
+	}
+	if err := Provisioner.RemoveUnit(a, unit); err != nil {
 		return err
 	}
+	// should call unbind
 	conn, err := db.Conn()
 	if err != nil {
 		return err

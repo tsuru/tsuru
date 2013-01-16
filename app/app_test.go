@@ -276,12 +276,10 @@ func (s *S) TestAddUnits(c *C) {
 	}
 	err = app.Get()
 	c.Assert(err, IsNil)
-	c.Assert(app.Units, HasLen, 7)
+	c.Assert(app.Units, HasLen, 7) // the 8a (which actually is the first one) unit is added by collector, so it's not here.
 	var expectedMessages MessageList
-	names := make([]string, len(app.Units))
 	for i, unit := range app.Units {
-		names[i] = unit.Name
-		expected := fmt.Sprintf("%s/%d", app.Name, i+1)
+		expected := fmt.Sprintf("%s/%d", app.Name, i+1) // since the first unit is not here, we skip the unit number 0
 		c.Assert(unit.Name, Equals, expected)
 		messages := []queue.Message{
 			{Action: RegenerateApprcAndStart, Args: []string{app.Name, unit.Name}},
@@ -341,12 +339,6 @@ func (s *S) TestRemoveUnits(c *C) {
 	app := App{
 		Name:      "chemistry",
 		Framework: "python",
-		Units: []Unit{
-			{Name: "chemistry/0"},
-			{Name: "chemistry/1"},
-			{Name: "chemistry/2"},
-			{Name: "chemistry/3"},
-		},
 	}
 	err = s.conn.Apps().Insert(app)
 	c.Assert(err, IsNil)
@@ -357,19 +349,19 @@ func (s *S) TestRemoveUnits(c *C) {
 	c.Assert(err, IsNil)
 	s.provisioner.Provision(&app)
 	defer s.provisioner.Destroy(&app)
-	s.provisioner.AddUnits(&app, 4)
+	app.AddUnits(4)
 	err = app.RemoveUnits(2)
 	c.Assert(err, IsNil)
 	units := s.provisioner.GetUnits(&app)
-	c.Assert(units, HasLen, 3)
-	c.Assert(units[0].Name, Equals, "chemistry/2")
+	c.Assert(units, HasLen, 3) // when you provision you already have one, so it's 4+1-2 (in provisioner, in app struct we have 2)
+	c.Assert(units[0].Name, Equals, "chemistry/0")
 	c.Assert(units[1].Name, Equals, "chemistry/3")
 	c.Assert(units[2].Name, Equals, "chemistry/4")
 	err = app.Get()
 	c.Assert(err, IsNil)
 	c.Assert(app.Units, HasLen, 2)
-	c.Assert(app.Units[0].Name, Equals, "chemistry/2")
-	c.Assert(app.Units[1].Name, Equals, "chemistry/3")
+	c.Assert(app.Units[0].Name, Equals, "chemistry/3")
+	c.Assert(app.Units[1].Name, Equals, "chemistry/4")
 	ok := make(chan int8)
 	go func() {
 		for {
@@ -469,59 +461,35 @@ func (s *S) TestRemoveUnitByNameOrInstanceId(c *C) {
 		Name:      "chemistry",
 		Framework: "python",
 		Units: []Unit{
-			{Name: "chemistry/0", InstanceId: "i-0"},
-			{Name: "chemistry/1", InstanceId: "i-1"},
-			{Name: "chemistry/2", InstanceId: "i-2"},
-			{Name: "chemistry/3", InstanceId: "i-3"},
+			{Name: "chemistry/0"},
 		},
 	}
 	err := s.conn.Apps().Insert(app)
 	c.Assert(err, IsNil)
 	err = s.provisioner.Provision(&app)
 	c.Assert(err, IsNil)
+	err = app.AddUnits(4)
+	c.Assert(err, IsNil)
 	defer func() {
 		s.provisioner.Destroy(&app)
 		s.conn.Apps().Remove(bson.M{"name": app.Name})
 	}()
-	err = app.RemoveUnit("i-0")
+	err = app.RemoveUnit(app.Units[0].Name)
 	c.Assert(err, IsNil)
-	units := s.provisioner.GetUnits(&app)
-	c.Assert(len(units), Equals, 3)
-	expected := []Unit{
-		{
-			Name:       "chemistry/1",
-			InstanceId: "i-1",
-		},
-		{
-			Name:       "chemistry/2",
-			InstanceId: "i-2",
-		},
-		{
-			Name:       "chemistry/3",
-			InstanceId: "i-3",
-		},
-	}
-	c.Assert(units, Equals, expected)
-	err = app.RemoveUnit("chemistry/1")
-	c.Assert(err, IsNil)
-	units := s.provisioner.GetUnits(&app)
-	c.Assert(units, HasLen, 2)
-	expected := []Unit{
-		{
-			Name:       "chemistry/2",
-			InstanceId: "i-2",
-		},
-		{
-			Name:       "chemistry/3",
-			InstanceId: "i-3",
-		},
-	}
-	c.Assert(units, Equals, expected)
 	err = app.Get()
 	c.Assert(err, IsNil)
-	c.Assert(app.Units, HasLen, 2)
-	c.Assert(app.Units[0].Name, Equals, "chemistry/2")
-	c.Assert(app.Units[1].Name, Equals, "chemistry/3")
+	c.Assert(app.Units, HasLen, 4)
+	c.Assert(app.Units[0].Name, Equals, "chemistry/1")
+	c.Assert(app.Units[1].Name, Equals, "chemistry/2")
+	c.Assert(app.Units[2].Name, Equals, "chemistry/3")
+	c.Assert(app.Units[3].Name, Equals, "chemistry/4")
+	err = app.RemoveUnit(app.Units[1].InstanceId)
+	c.Assert(err, IsNil)
+	units := s.provisioner.GetUnits(&app)
+	c.Assert(units, HasLen, 3)
+	c.Assert(units[0].Name, Equals, "chemistry/1")
+	c.Assert(units[1].Name, Equals, "chemistry/3")
+	c.Assert(units[2].Name, Equals, "chemistry/4")
 }
 
 func (s *S) TestRemoveAbsentUnit(c *C) {
@@ -529,36 +497,34 @@ func (s *S) TestRemoveAbsentUnit(c *C) {
 		Name:      "chemistry",
 		Framework: "python",
 		Units: []Unit{
-			{Name: "chemistry/0", InstanceId: "i-0"},
-			{Name: "chemistry/1", InstanceId: "i-1"},
+			{Name: "chemistry/0"},
 		},
 	}
 	err := s.conn.Apps().Insert(app)
 	c.Assert(err, IsNil)
 	err = s.provisioner.Provision(&app)
 	c.Assert(err, IsNil)
+	err = app.AddUnits(1)
+	c.Assert(err, IsNil)
 	defer func() {
 		s.provisioner.Destroy(&app)
 		s.conn.Apps().Remove(bson.M{"name": app.Name})
 	}()
-	err = app.RemoveUnit("i-0")
+	err = app.Get()
 	c.Assert(err, IsNil)
-	err = app.RemoveUnit("i-0")
+	instId := app.Units[1].InstanceId
+	err = app.RemoveUnit(instId)
+	c.Assert(err, IsNil)
+	err = app.RemoveUnit(instId)
 	c.Assert(err, NotNil)
-	c.Assert(err, ErrorMatches, "not found")
+	c.Assert(err, ErrorMatches, "Unit not found.")
 	err = app.Get()
 	c.Assert(err, IsNil)
 	c.Assert(app.Units, HasLen, 1)
-	c.Assert(app.Units[0].Name, Equals, "chemistry/1")
+	c.Assert(app.Units[0].Name, Equals, "chemistry/0")
 	units := s.provisioner.GetUnits(&app)
 	c.Assert(units, HasLen, 1)
-	expected := []Unit{
-		{
-			Name:       "chemistry/2",
-			InstanceId: "i-2",
-		},
-	}
-	c.Assert(units, Equals, expected)
+	c.Assert(units[0].Name, Equals, "chemistry/0")
 }
 
 func (s *S) TestGrantAccess(c *C) {
