@@ -36,12 +36,27 @@ function usage() {
 #   collections ($4): array containing the name of collections to heal.
 function heal() {
 	healing=${@:4}
-	files=`s3cmd ls $1 | grep mongosdb-dump.tar.gz$`
-	if [ -z "$files" ]
+	file=`s3cmd ls $1 | grep mongodb-dump.tar.gz$ | tail -1 | awk '{print $4}'`
+	if [ -z "$file" ]
 	then
 		echo "FATAL: no backups found!"
 		exit 500
 	fi
+	echo "Downloading $file from S3..."
+	s3cmd get $file dump.tar.gz
+	tar -xzf dump.tar.gz
+	echo
+	for c in $healing
+	do
+		if [ -f dump/$3/$c.bson ]
+		then
+			echo "Restoring collection \"$c\"..."
+			mongorestore dump/$3/$c.bson
+		else
+			echo "WARNING: backup for the collection \"$c\" does not exist. Skipping..."
+		fi
+	done
+	rm -rf dump dump.tar.gz
 }
 
 if [ $# -lt 4 ]
@@ -79,6 +94,7 @@ then
 	echo
 	coll=`printf ", %s" ${sick[@]}`
 	echo "Healing collections: ${coll:2}."
+	echo
 	heal $1 $2 $3 ${sick[@]}
 else
 	echo "Everything is fine :-)"
