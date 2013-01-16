@@ -112,6 +112,7 @@ type failure struct {
 type FakeProvisioner struct {
 	apps     []provision.App
 	units    map[string][]provision.Unit
+	unitLen  uint
 	cmds     []Cmd
 	outputs  chan []byte
 	failures chan failure
@@ -124,6 +125,7 @@ func NewFakeProvisioner() *FakeProvisioner {
 	p.outputs = make(chan []byte, 8)
 	p.failures = make(chan failure, 8)
 	p.units = make(map[string][]provision.Unit)
+	p.unitLen = 0
 	return &p
 }
 
@@ -217,6 +219,7 @@ func (p *FakeProvisioner) Provision(app provision.App) error {
 			Machine:    1,
 		},
 	}
+	p.unitLen++
 	p.unitMut.Unlock()
 	return nil
 }
@@ -233,6 +236,7 @@ func (p *FakeProvisioner) Destroy(app provision.App) error {
 	p.apps = p.apps[:len(p.apps)-1]
 	p.unitMut.Lock()
 	delete(p.units, app.GetName())
+	p.unitLen = 0
 	p.unitMut.Unlock()
 	return nil
 }
@@ -255,7 +259,7 @@ func (p *FakeProvisioner) AddUnits(app provision.App, n uint) ([]provision.Unit,
 	length := uint(len(p.units[name]))
 	for i := uint(0); i < n; i++ {
 		unit := provision.Unit{
-			Name:       fmt.Sprintf("%s/%d", name, length+i),
+			Name:       fmt.Sprintf("%s/%d", name, p.unitLen),
 			AppName:    name,
 			Type:       framework,
 			Status:     provision.StatusStarted,
@@ -264,6 +268,7 @@ func (p *FakeProvisioner) AddUnits(app provision.App, n uint) ([]provision.Unit,
 			Machine:    int(length + i),
 		}
 		p.units[name] = append(p.units[name], unit)
+		p.unitLen++
 	}
 	return p.units[name][length:], nil
 }
@@ -290,6 +295,7 @@ func (p *FakeProvisioner) RemoveUnit(app provision.App, name string) error {
 	}
 	copy(p.units[appName][index:], p.units[appName][index+1:])
 	p.units[appName] = p.units[appName][:len(p.units[appName])-1]
+	p.unitLen--
 	return nil
 }
 
