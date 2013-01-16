@@ -663,6 +663,59 @@ func (s *S) TestAddUnitsReturns400IfNumberIsInvalid(c *C) {
 	}
 }
 
+func (s *S) TestRemoveUnit(c *C) {
+	a := app.App{
+		Name:      "velha",
+		Framework: "python",
+		Teams:     []string{s.team.Name},
+	}
+	err := s.conn.Apps().Insert(a)
+	c.Assert(err, IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	err = s.provisioner.Provision(&a)
+	c.Assert(err, IsNil)
+	defer s.provisioner.Destroy(&a)
+	s.provisioner.AddUnits(&a, 2)
+	units := s.provisioner.GetUnits(&a)
+	// adds provisioned units into app
+	for _, unit := range units {
+		u := app.Unit{
+			Name:       unit.Name,
+			InstanceId: unit.InstanceId,
+			Machine:    unit.Machine,
+			Type:       unit.Type,
+		}
+		a.Units = append(a.Units, u)
+	}
+	err = s.conn.Apps().Update(bson.M{"name": a.Name}, &a)
+	c.Assert(err, IsNil)
+
+	body := strings.NewReader(units[0].InstanceId)
+	request, err := http.NewRequest("DELETE", "/apps/velha/unit?:name=velha", body)
+	c.Assert(err, IsNil)
+	recorder := httptest.NewRecorder()
+	err = RemoveUnitHandler(recorder, request, s.user)
+	c.Assert(err, IsNil)
+	err = a.Get()
+	c.Assert(err, IsNil)
+	c.Assert(a.Units, HasLen, 2)
+	c.Assert(a.Units[0].Name, Equals, "velha/1")
+	c.Assert(a.Units[1].Name, Equals, "velha/2")
+	units = s.provisioner.GetUnits(&a)
+	c.Assert(units, HasLen, 2)
+	c.Assert(units[0].Name, Equals, "velha/1")
+	c.Assert(units[1].Name, Equals, "velha/2")
+}
+
+func (s *S) TestRemoveUnitsWithoutBody(c *C) {
+	request, err := http.NewRequest("DELETE", "/apps/velha/unit?:name=velha", nil)
+	c.Assert(err, IsNil)
+	recorder := httptest.NewRecorder()
+	err = RemoveUnitHandler(recorder, request, s.user)
+	c.Assert(err, NotNil)
+	c.Assert(err, ErrorMatches, "You must provide the instance-id or unit-name.")
+}
+
 func (s *S) TestRemoveUnits(c *C) {
 	a := app.App{
 		Name:      "velha",
