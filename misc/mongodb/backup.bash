@@ -23,7 +23,7 @@ fi
 
 echo "Dumping ${3} from ${2} and saving in the bucket ${1}..."
 mongodump -h $2 -d $3
-tar -czvf ${filename} dump
+tar -czf ${filename} dump
 rm -rf dump
 s3cmd put ${filename} ${1}
 rm -f ${filename}
