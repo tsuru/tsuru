@@ -14,8 +14,13 @@ func init() {
 // details on how a healer work, check the documentation of the heal package.
 type BootstrapHealer struct{}
 
+// NeedsHeal returns true if the AgentState of bootstrap machine is "not-started".
 func (h *BootstrapHealer) NeedsHeal() bool {
-	return false
+	p := JujuProvisioner{}
+	output, _ := p.getOutput()
+	// for juju bootstrap machine always is the machine 0.
+	bootstrapMachine := output.Machines[0]
+	return bootstrapMachine.AgentState == "not-started"
 }
 
 func (h *BootstrapHealer) Heal() error {
