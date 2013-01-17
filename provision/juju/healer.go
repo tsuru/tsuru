@@ -14,7 +14,7 @@ func init() {
 // details on how a healer work, check the documentation of the heal package.
 type BootstrapHealer struct{}
 
-func (h *BootstrapHealer) Check() bool {
+func (h *BootstrapHealer) NeedsHeal() bool {
 	return false
 }
 

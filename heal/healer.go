@@ -9,8 +9,8 @@ import "fmt"
 
 // Healer represents a healer.
 type Healer interface {
-	// Check verifies if something is need a heal.
-	Check() bool
+	// Check verifies if something needs the heal.
+	NeedsHeal() bool
 
 	// Heal heals something.
 	Heal() error
