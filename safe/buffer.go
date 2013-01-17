@@ -2,7 +2,8 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-package testing
+// Package safe provides some thread safe types, wrapping builtin types.
+package safe
 
 import (
 	"bytes"
@@ -10,120 +11,120 @@ import (
 	"sync"
 )
 
-// SafeBuffer is a thread safe version of bytes.Buffer.
-type SafeBuffer struct {
+// Buffer is a thread safe version of bytes.Buffer.
+type Buffer struct {
 	buf bytes.Buffer
 	mut sync.Mutex
 }
 
-func NewSafeBuffer(b []byte) *SafeBuffer {
+func NewBuffer(b []byte) *Buffer {
 	buf := bytes.NewBuffer(b)
-	return &SafeBuffer{buf: *buf}
+	return &Buffer{buf: *buf}
 }
 
-func (sb *SafeBuffer) Bytes() []byte {
+func (sb *Buffer) Bytes() []byte {
 	sb.mut.Lock()
 	defer sb.mut.Unlock()
 	return sb.buf.Bytes()
 }
 
-func (sb *SafeBuffer) Len() int {
+func (sb *Buffer) Len() int {
 	sb.mut.Lock()
 	defer sb.mut.Unlock()
 	return sb.buf.Len()
 }
 
-func (sb *SafeBuffer) Next(n int) []byte {
+func (sb *Buffer) Next(n int) []byte {
 	sb.mut.Lock()
 	defer sb.mut.Unlock()
 	return sb.buf.Next(n)
 }
 
-func (sb *SafeBuffer) Read(p []byte) (int, error) {
+func (sb *Buffer) Read(p []byte) (int, error) {
 	sb.mut.Lock()
 	defer sb.mut.Unlock()
 	return sb.buf.Read(p)
 }
 
-func (sb *SafeBuffer) ReadByte() (byte, error) {
+func (sb *Buffer) ReadByte() (byte, error) {
 	sb.mut.Lock()
 	defer sb.mut.Unlock()
 	return sb.buf.ReadByte()
 }
 
-func (sb *SafeBuffer) ReadBytes(delim byte) ([]byte, error) {
+func (sb *Buffer) ReadBytes(delim byte) ([]byte, error) {
 	sb.mut.Lock()
 	defer sb.mut.Unlock()
 	return sb.buf.ReadBytes(delim)
 }
 
-func (sb *SafeBuffer) ReadFrom(r io.Reader) (int64, error) {
+func (sb *Buffer) ReadFrom(r io.Reader) (int64, error) {
 	sb.mut.Lock()
 	defer sb.mut.Unlock()
 	return sb.buf.ReadFrom(r)
 }
 
-func (sb *SafeBuffer) ReadRune() (rune, int, error) {
+func (sb *Buffer) ReadRune() (rune, int, error) {
 	sb.mut.Lock()
 	defer sb.mut.Unlock()
 	return sb.buf.ReadRune()
 }
 
-func (sb *SafeBuffer) ReadString(delim byte) (string, error) {
+func (sb *Buffer) ReadString(delim byte) (string, error) {
 	sb.mut.Lock()
 	defer sb.mut.Unlock()
 	return sb.buf.ReadString(delim)
 }
 
-func (sb *SafeBuffer) Reset() {
+func (sb *Buffer) Reset() {
 	sb.mut.Lock()
 	defer sb.mut.Unlock()
 	sb.buf.Reset()
 }
 
-func (sb *SafeBuffer) String() string {
+func (sb *Buffer) String() string {
 	sb.mut.Lock()
 	defer sb.mut.Unlock()
 	return sb.buf.String()
 }
 
-func (sb *SafeBuffer) Truncate(n int) {
+func (sb *Buffer) Truncate(n int) {
 	sb.mut.Lock()
 	defer sb.mut.Unlock()
 	sb.buf.Truncate(n)
 }
 
-func (sb *SafeBuffer) UnreadByte() error {
+func (sb *Buffer) UnreadByte() error {
 	sb.mut.Lock()
 	defer sb.mut.Unlock()
 	return sb.buf.UnreadByte()
 }
 
-func (sb *SafeBuffer) UnreadRune() error {
+func (sb *Buffer) UnreadRune() error {
 	sb.mut.Lock()
 	defer sb.mut.Unlock()
 	return sb.buf.UnreadRune()
 }
 
-func (sb *SafeBuffer) Write(p []byte) (int, error) {
+func (sb *Buffer) Write(p []byte) (int, error) {
 	sb.mut.Lock()
 	defer sb.mut.Unlock()
 	return sb.buf.Write(p)
 }
 
-func (sb *SafeBuffer) WriteByte(c byte) error {
+func (sb *Buffer) WriteByte(c byte) error {
 	sb.mut.Lock()
 	defer sb.mut.Unlock()
 	return sb.buf.WriteByte(c)
 }
 
-func (sb *SafeBuffer) WriteRune(r rune) (int, error) {
+func (sb *Buffer) WriteRune(r rune) (int, error) {
 	sb.mut.Lock()
 	defer sb.mut.Unlock()
 	return sb.buf.WriteRune(r)
 }
 
-func (sb *SafeBuffer) WriteTo(w io.Writer) (int64, error) {
+func (sb *Buffer) WriteTo(w io.Writer) (int64, error) {
 	sb.mut.Lock()
 	defer sb.mut.Unlock()
 	return sb.buf.WriteTo(w)

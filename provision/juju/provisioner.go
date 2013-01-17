@@ -16,6 +16,7 @@ import (
 	"github.com/globocom/tsuru/provision"
 	"github.com/globocom/tsuru/queue"
 	"github.com/globocom/tsuru/repository"
+	"github.com/globocom/tsuru/safe"
 	"io"
 	"labix.org/v2/mgo"
 	"launchpad.net/goyaml"
@@ -413,7 +414,7 @@ func cmdError(output string, err error, cmd []string) error {
 }
 
 func execWithTimeout(timeout time.Duration, cmd string, args ...string) (output []byte, err error) {
-	var buf bytes.Buffer
+	var buf safe.Buffer
 	ch := make(chan []byte, 1)
 	errCh := make(chan error, 1)
 	command := exec.Command(cmd, args...)
