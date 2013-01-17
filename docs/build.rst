@@ -30,7 +30,7 @@ Installing tsuru webserver from source
 
     $ sudo apt-get update
     $ sudo apt-get upgrade
-    $ sudo apt-get install -y golang-go git mercurial bzr gcc
+    $ sudo apt-get install -y golang-go git mercurial bzr gcc mongodb beanstalkd
 
 2. Install the tsuru api
 
