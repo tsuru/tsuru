@@ -5,6 +5,8 @@
 // Package heal provides an interface for heal anything.
 package heal
 
+import "fmt"
+
 // Healer represents a healer.
 type Healer interface {
 	// Check verifies if something is need a heal.
@@ -23,6 +25,9 @@ func Register(name string, h Healer) {
 
 // Get gets the named healer from the registry.
 func Get(name string) (Healer, error) {
-	h := healers[name]
+	h, ok := healers[name]
+	if !ok {
+		return nil, fmt.Errorf("Unknown healer: %q.", name)
+	}
 	return h, nil
 }

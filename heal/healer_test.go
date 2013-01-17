@@ -21,4 +21,6 @@ func (s *S) TestRegisterAndGetHealer(c *C) {
 	got, err := Get("my-healer")
 	c.Assert(err, IsNil)
 	c.Assert(got, DeepEquals, h)
+	_, err = Get("unknown-healer")
+	c.Assert(err, ErrorMatches, `Unknown healer: "unknown-healer".`)
 }
