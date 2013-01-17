@@ -4,7 +4,10 @@
 
 package juju
 
-import "github.com/globocom/tsuru/heal"
+import (
+	"bytes"
+	"github.com/globocom/tsuru/heal"
+)
 
 func init() {
 	heal.Register("bootstrap", &BootstrapHealer{})
@@ -23,6 +26,24 @@ func (h *BootstrapHealer) NeedsHeal() bool {
 	return bootstrapMachine.AgentState == "not-started"
 }
 
+/// Heal executes the action for heal the bootstrap agent.
 func (h *BootstrapHealer) Heal() error {
-	return nil
+	p := JujuProvisioner{}
+	output, _ := p.getOutput()
+	// for juju bootstrap machine always is the machine 0.
+	bootstrapMachine := output.Machines[0]
+	cmd := []string{
+		"ssh",
+		"-o",
+		"StrictHostKeyChecking no",
+		"-q",
+		"-l",
+		"ubuntu",
+		bootstrapMachine.IpAddress,
+		"sudo",
+		"restart",
+		"juju-machine-agent",
+	}
+	var buf bytes.Buffer
+	return runCmd(true, &buf, &buf, cmd...)
 }

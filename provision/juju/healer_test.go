@@ -23,3 +23,27 @@ func (s *S) TestBootstrapNeedsHeal(c *C) {
 	h := BootstrapHealer{}
 	c.Assert(h.NeedsHeal(), Equals, true)
 }
+
+func (s *S) TestBootstrapHeal(c *C) {
+	tmpdir, err := commandmocker.Add("juju", collectOutputBootstrapDown)
+	c.Assert(err, IsNil)
+	defer commandmocker.Remove(tmpdir)
+	cmdOutput := []string{
+		"status", // for juju status that gets the output
+		"ssh",
+		"-o",
+		"StrictHostKeyChecking no",
+		"-q",
+		"-l",
+		"ubuntu",
+		"10.10.10.96",
+		"sudo",
+		"restart",
+		"juju-machine-agent",
+	}
+	h := BootstrapHealer{}
+	err = h.Heal()
+	c.Assert(err, IsNil)
+	c.Assert(commandmocker.Ran(tmpdir), Equals, true)
+	c.Assert(commandmocker.Parameters(tmpdir), DeepEquals, cmdOutput)
+}
