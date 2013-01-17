@@ -24,3 +24,15 @@ func (s *S) TestRegisterAndGetHealer(c *C) {
 	_, err = Get("unknown-healer")
 	c.Assert(err, ErrorMatches, `Unknown healer: "unknown-healer".`)
 }
+
+func (s *S) TestAll(c *C) {
+	var h Healer
+	Register("healer1", h)
+	Register("healer2", h)
+	healers := All()
+	expected := map[string]Healer{
+		"healer1": h,
+		"healer2": h,
+	}
+	c.Assert(healers, DeepEquals, expected)
+}

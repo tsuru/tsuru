@@ -31,3 +31,7 @@ func Get(name string) (Healer, error) {
 	}
 	return h, nil
 }
+
+func All() map[string]Healer {
+	return healers
+}
