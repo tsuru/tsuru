@@ -24,6 +24,14 @@ func (s *S) TestBootstrapNeedsHeal(c *C) {
 	c.Assert(h.NeedsHeal(), Equals, true)
 }
 
+func (s *S) TestBootstrapDontNeedsHeal(c *C) {
+	tmpdir, err := commandmocker.Add("juju", collectOutput)
+	c.Assert(err, IsNil)
+	defer commandmocker.Remove(tmpdir)
+	h := BootstrapHealer{}
+	c.Assert(h.NeedsHeal(), Equals, false)
+}
+
 func (s *S) TestBootstrapHeal(c *C) {
 	tmpdir, err := commandmocker.Add("juju", collectOutputBootstrapDown)
 	c.Assert(err, IsNil)
