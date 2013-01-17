@@ -5,8 +5,8 @@
 package juju
 
 import (
-	"bytes"
 	"github.com/globocom/tsuru/heal"
+	"os/exec"
 )
 
 func init() {
@@ -35,8 +35,7 @@ func (h *BootstrapHealer) NeedsHeal() bool {
 func (h *BootstrapHealer) Heal() error {
 	if h.NeedsHeal() {
 		bootstrapMachine := getBootstrapMachine()
-		cmd := []string{
-			"ssh",
+		args := []string{
 			"-o",
 			"StrictHostKeyChecking no",
 			"-q",
@@ -47,8 +46,8 @@ func (h *BootstrapHealer) Heal() error {
 			"restart",
 			"juju-machine-agent",
 		}
-		var buf bytes.Buffer
-		return runCmd(true, &buf, &buf, cmd...)
+		cmd := exec.Command("ssh", args...)
+		return cmd.Run()
 	}
 	return nil
 }

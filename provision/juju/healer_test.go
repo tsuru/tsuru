@@ -33,13 +33,17 @@ func (s *S) TestBootstrapDontNeedsHeal(c *C) {
 }
 
 func (s *S) TestBootstrapHeal(c *C) {
-	tmpdir, err := commandmocker.Add("juju", collectOutputBootstrapDown)
+	jujuTmpdir, err := commandmocker.Add("juju", collectOutputBootstrapDown)
 	c.Assert(err, IsNil)
-	defer commandmocker.Remove(tmpdir)
-	cmdOutput := []string{
+	defer commandmocker.Remove(jujuTmpdir)
+	sshTmpdir, err := commandmocker.Add("ssh", "$*")
+	c.Assert(err, IsNil)
+	defer commandmocker.Remove(sshTmpdir)
+	jujuOutput := []string{
 		"status", // for verify if heal is need
 		"status", // for juju status that gets the output
-		"ssh",
+	}
+	sshOutput := []string{
 		"-o",
 		"StrictHostKeyChecking no",
 		"-q",
@@ -53,8 +57,10 @@ func (s *S) TestBootstrapHeal(c *C) {
 	h := BootstrapHealer{}
 	err = h.Heal()
 	c.Assert(err, IsNil)
-	c.Assert(commandmocker.Ran(tmpdir), Equals, true)
-	c.Assert(commandmocker.Parameters(tmpdir), DeepEquals, cmdOutput)
+	c.Assert(commandmocker.Ran(jujuTmpdir), Equals, true)
+	c.Assert(commandmocker.Parameters(jujuTmpdir), DeepEquals, jujuOutput)
+	c.Assert(commandmocker.Ran(sshTmpdir), Equals, true)
+	c.Assert(commandmocker.Parameters(sshTmpdir), DeepEquals, sshOutput)
 }
 
 func (s *S) TestBootstrapOnlyHealsWhenItIsNeeded(c *C) {
