@@ -71,6 +71,8 @@ func (m *ELBManager) vpc() bool {
 	return vpc
 }
 
+// Create creates a new Elastic Load Balancing instance for the given app. The
+// name of the instance will be the same as the name of the app.
 func (m *ELBManager) Create(app provision.Named) error {
 	options := elb.CreateLoadBalancer{
 		Name: app.GetName(),
@@ -108,6 +110,8 @@ func (m *ELBManager) Create(app provision.Named) error {
 	return m.collection().Insert(lb)
 }
 
+// Destroy destroys an Elastic Load Balancing instance from AWS. It matches the
+// name of the given app.
 func (m *ELBManager) Destroy(app provision.Named) error {
 	_, err := m.elb().DeleteLoadBalancer(app.GetName())
 	if err != nil {
@@ -116,6 +120,7 @@ func (m *ELBManager) Destroy(app provision.Named) error {
 	return m.collection().Remove(bson.M{"name": app.GetName()})
 }
 
+// Register adds new EC2 instances (represented as units) to a load balancer.
 func (m *ELBManager) Register(app provision.Named, units ...provision.Unit) error {
 	ids := make([]string, len(units))
 	for i, u := range units {
@@ -125,6 +130,8 @@ func (m *ELBManager) Register(app provision.Named, units ...provision.Unit) erro
 	return err
 }
 
+// Deregister removes EC2 instances (represented as units) from a load
+// balancer.
 func (m *ELBManager) Deregister(app provision.Named, units ...provision.Unit) error {
 	ids := make([]string, len(units))
 	for i, u := range units {
@@ -134,6 +141,8 @@ func (m *ELBManager) Deregister(app provision.Named, units ...provision.Unit) er
 	return err
 }
 
+// Addr returns the dns-name of a load balancer, which is also the DNS name of
+// the app.
 func (m *ELBManager) Addr(app provision.Named) (string, error) {
 	var lb loadBalancer
 	err := m.collection().Find(bson.M{"name": app.GetName()}).One(&lb)
