@@ -13,3 +13,16 @@ type Healer interface {
 	// Heal heals something.
 	Heal() error
 }
+
+var healers = make(map[string]Healer)
+
+// Register registers a new healer in the Healer registry.
+func Register(name string, h Healer) {
+	healers[name] = h
+}
+
+// Get gets the named healer from the registry.
+func Get(name string) (Healer, error) {
+	h := healers[name]
+	return h, nil
+}
