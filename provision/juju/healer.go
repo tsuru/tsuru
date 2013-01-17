@@ -33,19 +33,22 @@ func (h *BootstrapHealer) NeedsHeal() bool {
 
 // Heal executes the action for heal the bootstrap agent.
 func (h *BootstrapHealer) Heal() error {
-	bootstrapMachine := getBootstrapMachine()
-	cmd := []string{
-		"ssh",
-		"-o",
-		"StrictHostKeyChecking no",
-		"-q",
-		"-l",
-		"ubuntu",
-		bootstrapMachine.IpAddress,
-		"sudo",
-		"restart",
-		"juju-machine-agent",
+	if h.NeedsHeal() {
+		bootstrapMachine := getBootstrapMachine()
+		cmd := []string{
+			"ssh",
+			"-o",
+			"StrictHostKeyChecking no",
+			"-q",
+			"-l",
+			"ubuntu",
+			bootstrapMachine.IpAddress,
+			"sudo",
+			"restart",
+			"juju-machine-agent",
+		}
+		var buf bytes.Buffer
+		return runCmd(true, &buf, &buf, cmd...)
 	}
-	var buf bytes.Buffer
-	return runCmd(true, &buf, &buf, cmd...)
+	return nil
 }

@@ -37,6 +37,7 @@ func (s *S) TestBootstrapHeal(c *C) {
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(tmpdir)
 	cmdOutput := []string{
+		"status", // for verify if heal is need
 		"status", // for juju status that gets the output
 		"ssh",
 		"-o",
@@ -48,6 +49,20 @@ func (s *S) TestBootstrapHeal(c *C) {
 		"sudo",
 		"restart",
 		"juju-machine-agent",
+	}
+	h := BootstrapHealer{}
+	err = h.Heal()
+	c.Assert(err, IsNil)
+	c.Assert(commandmocker.Ran(tmpdir), Equals, true)
+	c.Assert(commandmocker.Parameters(tmpdir), DeepEquals, cmdOutput)
+}
+
+func (s *S) TestBootstrapOnlyHealsWhenItIsNeeded(c *C) {
+	tmpdir, err := commandmocker.Add("juju", collectOutput)
+	c.Assert(err, IsNil)
+	defer commandmocker.Remove(tmpdir)
+	cmdOutput := []string{
+		"status", // for verify if heal is need
 	}
 	h := BootstrapHealer{}
 	err = h.Heal()
