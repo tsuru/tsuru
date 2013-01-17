@@ -8,7 +8,7 @@ dist*
 cmd/crane/crane
 cmd/tsuru/tsuru
 cmd/tsuru/developer/developer
-api/webserver/webserver
+api/api
 docs/_build/*
 .test
 .DS_Store
