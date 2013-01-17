@@ -460,6 +460,7 @@ func (s *S) TestRemoveUnitByNameOrInstanceId(c *C) {
 		atomic.StoreInt32(&calls, v+1)
 		w.WriteHeader(http.StatusNoContent)
 	}))
+	defer ts.Close()
 	srvc := service.Service{Name: "nosql", Endpoint: map[string]string{"production": ts.URL}}
 	err := srvc.Create()
 	c.Assert(err, IsNil)
@@ -491,7 +492,6 @@ func (s *S) TestRemoveUnitByNameOrInstanceId(c *C) {
 	}()
 	err = app.RemoveUnit(app.Units[0].Name)
 	c.Assert(err, IsNil)
-	ts.Close()
 	err = app.Get()
 	c.Assert(err, IsNil)
 	c.Assert(app.Units, HasLen, 4)
@@ -509,7 +509,7 @@ func (s *S) TestRemoveUnitByNameOrInstanceId(c *C) {
 	ok := make(chan int8)
 	go func() {
 		for _ = range time.Tick(1e3) {
-			if atomic.LoadInt32(&calls) == 1 {
+			if atomic.LoadInt32(&calls) == 2 {
 				ok <- 1
 				return
 			}
@@ -518,7 +518,7 @@ func (s *S) TestRemoveUnitByNameOrInstanceId(c *C) {
 	select {
 	case <-ok:
 	case <-time.After(2e9):
-		c.Fatal("Did not call service endpoint once.")
+		c.Fatal("Did not call service endpoint twice.")
 	}
 }
 
