@@ -61,3 +61,23 @@ Example:
 ::
 
     DELETE /apps/myapp HTTP/1.1
+
+App create
+==========
+
+Creates an app.
+
+    * Method: POST
+    * URI: /apps
+    * Format: json
+
+Returns 200 in case of success, and json in the body of hte response containing the statusn and the url for git repository.
+
+Example:
+
+.. highlight:: bash
+
+::
+
+    POST /apps HTTP/1.1
+    {"status":"success", "repository_url":"git@tsuru.plataformas.glb.com:ble.git"}
