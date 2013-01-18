@@ -78,11 +78,15 @@ func (p *JujuProvisioner) enqueueUnits(app string, units ...string) {
 
 func (p *JujuProvisioner) Provision(app provision.App) error {
 	var buf bytes.Buffer
+	charms, err := config.GetString("juju:charms-path")
+	if err != nil {
+		return errors.New(`Setting "juju:charms-path" is not defined.`)
+	}
 	args := []string{
-		"deploy", "--repository", "/home/charms",
+		"deploy", "--repository", charms,
 		"local:" + app.GetFramework(), app.GetName(),
 	}
-	err := runCmd(false, &buf, &buf, args...)
+	err = runCmd(false, &buf, &buf, args...)
 	out := buf.String()
 	if err != nil {
 		app.Log("Failed to create machine: "+out, "tsuru")
