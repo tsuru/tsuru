@@ -69,3 +69,23 @@ Tsuru needs the mongodb version 2.2>= so, to install it please `do this simple s
 
     $ sudo mkdir -p /etc/tsuru
     $ sudo touch /etc/tsuru/tsuru.conf
+
+6. Download the charms
+
+Charms define how plataforms will be installed. To use the charms provided by tsuru you can get it from
+`tsuru charms repository <https://github.com/globocom/charms>`_ and put it on /home/charms directory.
+
+.. highlight:: bash
+
+::
+
+    $ git clone git://github.com/globocom/charms.git /home/charms
+
+7. Starting tsuru
+
+.. highlight:: bash
+
+::
+
+    $ api
+
