@@ -47,7 +47,7 @@ are the options that affect how tsuru's API behaves:
   setting is optional, unless ``use-tls`` is true.
 
 Database access
-===============
+---------------
 
 Tsuru uses MongoDB as database manager, to store information about users, VM's,
 and its components. Regarding database control, you're able to define to which
@@ -66,7 +66,7 @@ related options are listed below:
   "tsuru".
 
 Git configuration
-=================
+-----------------
 
 Tsuru uses `Gandalf <https://github.com/globocom/gandalf>`_ to manage git
 repositories. Gandalf exposes a REST API for repositories management, and tsuru
@@ -90,7 +90,7 @@ units storage. Here are all options related to git repositories:
   to "http".
 
 Authentication configuration
-============================
+----------------------------
 
 Tsuru has its own authentication mechanism, that hashes passwords using SHA512,
 PBKDF2 and salt. It also uses SHA512 for hashing tokens, generated during
