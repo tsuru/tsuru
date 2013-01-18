@@ -72,14 +72,20 @@ Tsuru needs the mongodb version 2.2>= so, to install it please `do this simple s
 
 6. Download the charms
 
-Charms define how plataforms will be installed. To use the charms provided by tsuru you can get it from
-`tsuru charms repository <https://github.com/globocom/charms>`_ and put it on /home/charms directory.
+Charms define how platforms will be installed. To use the charms provided by
+tsuru you can get it from `tsuru charms repository
+<https://github.com/globocom/charms>`_ and put it somewhere. Then define the
+setting ``juju:charms-path`` in the configuration file:
 
 .. highlight:: bash
 
 ::
 
-    $ git clone git://github.com/globocom/charms.git /home/charms
+    $ git clone git://github.com/globocom/charms.git /home/me/charms
+    $ cat /etc/tsuru/tsuru.conf
+    # ...
+    juju:
+      charms-path: /home/me/charms
 
 7. Starting tsuru
 
