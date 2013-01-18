@@ -64,8 +64,7 @@ WARNING: You're using an unsupported version of %s.
 You must have at least version %s, your current
 version is %s.
 
-Please go to https://github.com/globocom/tsuru/downloads
-and download the last version.
+Please go to http://tsuru.io and download the last version.
 
 ############################################################
 
