@@ -3,7 +3,7 @@
    license that can be found in the LICENSE file.
 
 +++++++++++++++++++
-Build your won PaaS
+Build your own PaaS
 +++++++++++++++++++
 
 This documents describes how to create a private PaaS service using tsuru.
