@@ -16,7 +16,6 @@ func (s *S) TestAppInfo(c *C) {
 	var stdout, stderr bytes.Buffer
 	result := `{"Name":"app1","Framework":"php","Repository":"git@git.com:php.git","State":"dead", "Units":[{"Ip":"10.10.10.10","Name":"app1/0","State":"started"}, {"Ip":"9.9.9.9","Name":"app1/1","State":"started"}, {"Ip":"","Name":"app1/2","State":"pending"}],"Teams":["tsuruteam","crane"]}`
 	expected := `Application: app1
-State: dead
 Repository: git@git.com:php.git
 Platform: php
 Teams: tsuruteam, crane
@@ -46,7 +45,6 @@ func (s *S) TestAppInfoNoUnits(c *C) {
 	var stdout, stderr bytes.Buffer
 	result := `{"Name":"app1","Framework":"php","Repository":"git@git.com:php.git","State":"dead", "Units":[],"Teams":["tsuruteam","crane"]}`
 	expected := `Application: app1
-State: dead
 Repository: git@git.com:php.git
 Platform: php
 Teams: tsuruteam, crane
@@ -67,7 +65,6 @@ func (s *S) TestAppInfoWithoutArgs(c *C) {
 	var stdout, stderr bytes.Buffer
 	result := `{"Name":"secret","Framework":"ruby","Repository":"git@git.com:php.git","State":"dead", "Units":[{"Ip":"10.10.10.10","Name":"secret/0","State":"started"}, {"Ip":"9.9.9.9","Name":"secret/1","State":"pending"}],"Teams":["tsuruteam","crane"]}`
 	expected := `Application: secret
-State: dead
 Repository: git@git.com:php.git
 Platform: ruby
 Teams: tsuruteam, crane

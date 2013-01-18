@@ -70,14 +70,12 @@ type app struct {
 	Name       string
 	Framework  string
 	Repository string
-	State      string
 	Teams      []string
 	Units      []unit
 }
 
 func (a *app) String() string {
 	format := `Application: %s
-State: %s
 Repository: %s
 Platform: %s
 Teams: %s
@@ -88,7 +86,7 @@ Teams: %s
 	for _, unit := range a.Units {
 		units.AddRow(cmd.Row([]string{unit.Name, unit.Ip, unit.State}))
 	}
-	args := []interface{}{a.Name, a.State, a.Repository, a.Framework, teams}
+	args := []interface{}{a.Name, a.Repository, a.Framework, teams}
 	if len(a.Units) > 0 {
 		format += "Units:\n%s"
 		args = append(args, units)
