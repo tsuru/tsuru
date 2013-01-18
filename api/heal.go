@@ -19,3 +19,8 @@ func healers(w http.ResponseWriter, r *http.Request) error {
 	}
 	return json.NewEncoder(w).Encode(h)
 }
+
+func healer(w http.ResponseWriter, r *http.Request) error {
+	healer, _ := heal.Get(r.URL.Query().Get(":healer"))
+	return healer.Heal()
+}
