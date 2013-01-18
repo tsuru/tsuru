@@ -32,8 +32,7 @@ Installing tsuru webserver from source
     $ sudo apt-get upgrade
     $ sudo apt-get install -y golang-go git mercurial bzr gcc beanstalkd
 
-Tsuru needs the mongodb version 2.2>= so, to install it please do this simple steps:
-http://docs.mongodb.org/manual/tutorial/install-mongodb-on-ubuntu/
+Tsuru needs the mongodb version 2.2>= so, to install it please `do this simple steps <http://docs.mongodb.org/manual/tutorial/install-mongodb-on-ubuntu/>`_
 
 2. Install the tsuru api
 
