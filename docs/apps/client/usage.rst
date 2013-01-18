@@ -117,8 +117,7 @@ This will return something like:
 ::
 
     Application: myblog
-    State: started
-    Plataform: gunicorn
+    Platform: gunicorn
     Teams: team1, team2
     Units:
     +----------+-------------+---------+
