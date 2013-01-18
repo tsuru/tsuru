@@ -82,9 +82,9 @@ Teams: %s
 `
 	teams := strings.Join(a.Teams, ", ")
 	units := cmd.NewTable()
-	units.Headers = cmd.Row([]string{"Unit", "IP", "State"})
+	units.Headers = cmd.Row([]string{"Unit", "State"})
 	for _, unit := range a.Units {
-		units.AddRow(cmd.Row([]string{unit.Name, unit.Ip, unit.State}))
+		units.AddRow(cmd.Row([]string{unit.Name, unit.State}))
 	}
 	args := []interface{}{a.Name, a.Repository, a.Framework, teams}
 	if len(a.Units) > 0 {

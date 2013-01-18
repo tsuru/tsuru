@@ -20,13 +20,13 @@ Repository: git@git.com:php.git
 Platform: php
 Teams: tsuruteam, crane
 Units:
-+--------+-------------+---------+
-| Unit   | IP          | State   |
-+--------+-------------+---------+
-| app1/0 | 10.10.10.10 | started |
-| app1/1 | 9.9.9.9     | started |
-| app1/2 |             | pending |
-+--------+-------------+---------+
++--------+---------+
+| Unit   | State   |
++--------+---------+
+| app1/0 | started |
+| app1/1 | started |
+| app1/2 | pending |
++--------+---------+
 
 `
 	context := cmd.Context{
@@ -69,12 +69,12 @@ Repository: git@git.com:php.git
 Platform: ruby
 Teams: tsuruteam, crane
 Units:
-+----------+-------------+---------+
-| Unit     | IP          | State   |
-+----------+-------------+---------+
-| secret/0 | 10.10.10.10 | started |
-| secret/1 | 9.9.9.9     | pending |
-+----------+-------------+---------+
++----------+---------+
+| Unit     | State   |
++----------+---------+
+| secret/0 | started |
+| secret/1 | pending |
++----------+---------+
 
 `
 	context := cmd.Context{
