@@ -59,8 +59,10 @@ func Open(addr, dbname string) (storage *Storage, err error) {
 	mut.RLock()
 	if storage, ok = conn[key]; ok {
 		mut.RUnlock()
-		storage.session.Ping()
-		return storage, nil
+		if err = storage.session.Ping(); err == nil {
+			return storage, nil
+		}
+		return open(addr, dbname)
 	}
 	mut.RUnlock()
 	return open(addr, dbname)
