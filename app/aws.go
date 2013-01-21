@@ -112,7 +112,7 @@ func getS3Endpoint() *s3.S3 {
 func getIAMEndpoint() *iam.IAM {
 	endpoint, err := config.GetString("aws:iam:endpoint")
 	if err != nil {
-		panic("FATAL: aws:iam:endpoint must be defined in configuration file.")
+		endpoint = "https://iam.amazonaws.com/"
 	}
 	region := aws.Region{IAMEndpoint: endpoint}
 	return iam.New(getAWSAuth(), region)

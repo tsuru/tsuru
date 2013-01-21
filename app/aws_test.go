@@ -64,6 +64,16 @@ func (s *S) TestGetIAMEndpoint(c *C) {
 	c.Assert(iam.IAMEndpoint, Equals, edp)
 }
 
+func (s *S) TestGetIAMEndpointDefault(c *C) {
+	defaultEndpoint := "https://iam.amazonaws.com/"
+	old, err := config.GetString("aws:iam:endpoint")
+	c.Assert(err, IsNil)
+	config.Unset("aws:iam:endpoint")
+	defer config.Set("aws:iam:endpoint", old)
+	iam := getIAMEndpoint()
+	c.Assert(iam.IAMEndpoint, Equals, defaultEndpoint)
+}
+
 func (s *S) TestPutBucket(c *C) {
 	patchRandomReader()
 	defer unpatchRandomReader()
