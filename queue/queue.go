@@ -141,7 +141,7 @@ func connection() (*beanstalk.Conn, error) {
 		mut.Unlock()
 		addr, err = config.GetString("queue-server")
 		if err != nil {
-			return nil, errors.New(`"queue-server" is not defined in config file.`)
+			addr = "localhost:11300"
 		}
 		mut.Lock()
 		if conn, err = beanstalk.Dial("tcp", addr); err != nil {
