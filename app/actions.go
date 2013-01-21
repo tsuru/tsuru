@@ -145,7 +145,6 @@ var createUserPolicyAction = action.Action{
 var exportEnvironmentsAction = action.Action{
 	Forward: func(ctx action.FWContext) (action.Result, error) {
 		app := ctx.Params[0].(*App)
-		env := ctx.Previous.(*s3Env)
 		err := app.Get()
 		if err != nil {
 			return nil, err
@@ -155,19 +154,22 @@ var exportEnvironmentsAction = action.Action{
 			{Name: "TSURU_APPNAME", Value: app.Name},
 			{Name: "TSURU_HOST", Value: host},
 		}
-		variables := map[string]string{
-			"ENDPOINT":           env.endpoint,
-			"LOCATIONCONSTRAINT": strconv.FormatBool(env.locationConstraint),
-			"ACCESS_KEY_ID":      env.AccessKey,
-			"SECRET_KEY":         env.SecretKey,
-			"BUCKET":             env.bucket,
-		}
-		for name, value := range variables {
-			envVars = append(envVars, bind.EnvVar{
-				Name:         fmt.Sprintf("TSURU_S3_%s", name),
-				Value:        value,
-				InstanceName: s3InstanceName,
-			})
+		env, ok := ctx.Previous.(*s3Env)
+		if ok {
+			variables := map[string]string{
+				"ENDPOINT":           env.endpoint,
+				"LOCATIONCONSTRAINT": strconv.FormatBool(env.locationConstraint),
+				"ACCESS_KEY_ID":      env.AccessKey,
+				"SECRET_KEY":         env.SecretKey,
+				"BUCKET":             env.bucket,
+			}
+			for name, value := range variables {
+				envVars = append(envVars, bind.EnvVar{
+					Name:         fmt.Sprintf("TSURU_S3_%s", name),
+					Value:        value,
+					InstanceName: s3InstanceName,
+				})
+			}
 		}
 		err = app.SetEnvsToApp(envVars, false, true)
 		if err != nil {

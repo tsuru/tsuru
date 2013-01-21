@@ -103,12 +103,16 @@ func CreateApp(a *App, units uint) error {
 			"starting with a letter."
 		return &ValidationError{Message: msg}
 	}
-	pipeline := action.NewPipeline(
-		&insertApp, &createIAMUserAction, &createIAMAccessKeyAction,
-		&createBucketAction, &createUserPolicyAction,
-		&exportEnvironmentsAction, &createRepository, &provisionApp,
-		&provisionAddUnits,
-	)
+	actions := []*action.Action{&insertApp}
+	useS3, _ := config.GetBool("bucket-support")
+	if useS3 {
+		actions = append(actions, &createIAMUserAction,
+			&createIAMAccessKeyAction,
+			&createBucketAction, &createUserPolicyAction)
+	}
+	actions = append(actions, &exportEnvironmentsAction,
+		&createRepository, &provisionApp, &provisionAddUnits)
+	pipeline := action.NewPipeline(actions...)
 	return pipeline.Execute(a, units)
 }
 

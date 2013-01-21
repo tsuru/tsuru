@@ -294,6 +294,28 @@ func (s *S) TestExportEnvironmentsForward(c *C) {
 	c.Assert(message.Args, DeepEquals, []string{app.Name})
 }
 
+func (s *S) TestExportEnvironmentsForwardWithoutS3Env(c *C) {
+	expectedHost := "localhost"
+	config.Set("host", expectedHost)
+	app := App{Name: "mist", Framework: "opeth"}
+	err := s.conn.Apps().Insert(app)
+	c.Assert(err, IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": app.Name})
+	ctx := action.FWContext{Params: []interface{}{&app}, Previous: &app}
+	result, err := exportEnvironmentsAction.Forward(ctx)
+	c.Assert(err, IsNil)
+	c.Assert(result, Equals, &app)
+	err = app.Get()
+	c.Assert(err, IsNil)
+	appEnv := app.InstanceEnv(s3InstanceName)
+	c.Assert(appEnv, DeepEquals, map[string]bind.EnvVar{})
+	appEnv = app.InstanceEnv("")
+	c.Assert(appEnv["TSURU_APPNAME"].Value, Equals, app.Name)
+	c.Assert(appEnv["TSURU_APPNAME"].Public, Equals, false)
+	c.Assert(appEnv["TSURU_HOST"].Value, Equals, expectedHost)
+	c.Assert(appEnv["TSURU_HOST"].Public, Equals, false)
+}
+
 func (s *S) TestExportEnvironmentsBackward(c *C) {
 	envNames := []string{
 		"TSURU_S3_ACCESS_KEY_ID", "TSURU_S3_SECRET_KEY",
