@@ -104,6 +104,7 @@ func CreateApp(a *App, units uint) error {
 		return &ValidationError{Message: msg}
 	}
 	actions := []*action.Action{&insertApp}
+	// TODO(fss): add test and docs for bucket-support = false.
 	useS3, _ := config.GetBool("bucket-support")
 	if useS3 {
 		actions = append(actions, &createIAMUserAction,
