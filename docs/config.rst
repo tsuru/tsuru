@@ -157,10 +157,92 @@ auth:token-key
 process. If this value changes, all tokens will expire. This setting is
 optional, and defaults to "tsuru-key".
 
+Amazon Web Services (AWS) configuration
+---------------------------------------
+
+Tsuru uses Amazon Web Services (AWS) Simple Storage Service (S3) to provide
+static storage for apps. In the process of app creation, tsuru creates a S3
+bucket and AWS Identity and Access Management (IAM) credentials to access this
+bucket. In order to be able to comunicate with AWS API's, tsuru needs some
+settings, listed below.
+
+For more details on AWS authentication, AWS AIM and AWS S3, check AWS docs:
+https://aws.amazon.com/documentation/.
+
+aws:access-key-id
++++++++++++++++++
+
+``aws:access-key-id`` is the access key ID used by tsuru to authenticate with
+AWS API. This setting is required and has no default value.
+
+aws:secret-access-key
++++++++++++++++++++++
+
+``aws:secret-access-key`` is the secret access key used by tsuru to
+authenticate with AWS API. This setting is required and has no default value.
+
+aws:iam:endpoint
+++++++++++++++++
+
+``aws:iam:endpoint`` is the IAM endpoint that tsuru will call to create
+credentials for its applications. This setting is optional, and defaults to
+``https://iam.amazonaws.com/``. You should change this setting only when using
+another service that also implements IAM's API.
+
+aws:s3:region-name
+++++++++++++++++++
+
+``aws:s3:region-name`` is the name of the region that tsuru will use to create
+S3 buckets. This setting is required and has no default value.
+
+aws:s3:endpoint
++++++++++++++++
+
+``aws:s3:endpoint`` is the S3 endpoint that tsuru will call to create buckets
+for its applications. This setting is required and has no default value.
+
+aws:s3:location-constraint
+++++++++++++++++++++++++++
+
+``aws:s3:location-constraint`` indicates whether buckets should be stored in
+the selected region. This setting is required and has no default value.
+
+For more details, check the documentation for buckets and regions:
+http://docs.aws.amazon.com/AmazonS3/latest/dev/LocationSelection.html.
+
+aws:s3:lowercase-bucket
++++++++++++++++++++++++
+
+``aws:s3:lowercase-bucket`` will be true if the region requires bucket names to
+be lowercase. This setting is required and has no default value.
+
+provisioner
++++++++++++
+
+Tsuru support multiple provisioner. A provisioner is a Go type that satisfies
+an interface. By default, tsuru will use ``JujuProvisioner``. To use other
+provisioner, that has been already registered with tsuru, one must define the
+setting ``provisioner``. This setting is optional and defaults to "juju".
+
+queue-server
+++++++++++++
+
+Tsuru uses `beanstalkd <http://kr.github.com/beanstalkd>`_ as a work queue.
+``queue-server`` is the TCP address where beanstalkd is listening. This setting
+is optional and defaults to "localhost:11300".
+
+admin-team
+++++++++++
+
+``admin-team`` is the name of the administration team for the current tsuru
+installation. All members of the administration team is able to use the
+``tsuru-admin`` command.
+
 Juju provisioner configuration
 ==============================
 
-    PENDING
+    PENDING. See `Issue 263 <https://github.com/globocom/tsuru/issues/263>`_
+    for details.
 
 Sample file
 ===========
