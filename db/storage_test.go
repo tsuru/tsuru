@@ -55,7 +55,7 @@ func (s *S) TearDownSuite(c *C) {
 }
 
 func (s *S) TearDownTest(c *C) {
-	conn = make(map[string]*Storage)
+	conn = make(map[string]*mgo.Session)
 }
 
 func (s *S) TestOpenConnectsToTheDatabase(c *C) {
@@ -69,7 +69,7 @@ func (s *S) TestOpenStoresConnectionInThePool(c *C) {
 	storage, err := Open("127.0.0.1:27017", "tsuru_storage_test")
 	c.Assert(err, IsNil)
 	defer storage.Close()
-	c.Assert(storage, Equals, conn["127.0.0.1:27017tsuru_storage_test"])
+	c.Assert(storage.session, Equals, conn["127.0.0.1:27017"])
 }
 
 func (s *S) TestOpenReusesConnection(c *C) {
@@ -78,7 +78,7 @@ func (s *S) TestOpenReusesConnection(c *C) {
 	defer storage.Close()
 	storage2, err := Open("127.0.0.1:27017", "tsuru_storage_test")
 	c.Assert(err, IsNil)
-	c.Assert(storage, Equals, storage2)
+	c.Assert(storage.session, Equals, storage2.session)
 }
 
 func (s *S) TestOpenReconnects(c *C) {
@@ -140,7 +140,7 @@ func (s *S) TestCloseClosesTheConnectionWithMongoDB(c *C) {
 func (s *S) TestCloseKeepsTheConnectionInThePool(c *C) {
 	storage, _ := Open("127.0.0.1:27017", "tsuru_storage_test")
 	storage.Close()
-	_, ok := conn["127.0.0.1:27017tsuru_storage_test"]
+	_, ok := conn["127.0.0.1:27017"]
 	c.Assert(ok, Equals, true)
 }
 
