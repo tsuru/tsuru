@@ -24,6 +24,8 @@ var (
 	ticker *time.Ticker                // for garbage collection
 )
 
+const period time.Duration = 7 * 24 * time.Hour
+
 type session struct {
 	s    *mgo.Session
 	used time.Time
@@ -129,4 +131,30 @@ func (s *Storage) Users() *mgo.Collection {
 // Teams returns the teams collection from MongoDB.
 func (s *Storage) Teams() *mgo.Collection {
 	return s.Collection("teams")
+}
+
+func init() {
+	ticker = time.NewTicker(72 * time.Hour)
+	go retire(ticker)
+}
+
+// retire retires old connections :-)
+func retire(t *time.Ticker) {
+	for _ = range t.C {
+		now := time.Now()
+		var old []string
+		mut.RLock()
+		for k, v := range conn {
+			if now.Sub(v.used) >= period {
+				old = append(old, k)
+			}
+		}
+		mut.RUnlock()
+		mut.Lock()
+		for _, c := range old {
+			conn[c].s.Close()
+			delete(conn, c)
+		}
+		mut.Unlock()
+	}
 }

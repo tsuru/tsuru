@@ -9,7 +9,9 @@ import (
 	"labix.org/v2/mgo"
 	. "launchpad.net/gocheck"
 	"reflect"
+	"sync"
 	"testing"
+	"time"
 )
 
 type hasUniqueIndexChecker struct{}
@@ -46,6 +48,10 @@ func Test(t *testing.T) { TestingT(t) }
 type S struct{}
 
 var _ = Suite(&S{})
+
+func (s *S) SetUpSuite(c *C) {
+	ticker.Stop()
+}
 
 func (s *S) TearDownSuite(c *C) {
 	storage, err := Open("127.0.0.1:27017", "tsuru_storage_test")
@@ -172,4 +178,31 @@ func (s *S) TestMethodTeamsShouldReturnTeamsCollection(c *C) {
 	teams := storage.Teams()
 	teamsc := storage.Collection("teams")
 	c.Assert(teams, DeepEquals, teamsc)
+}
+
+func (s *S) TestRetire(c *C) {
+	defer func() {
+		if r := recover(); !c.Failed() && r == nil {
+			c.Errorf("Should panic in ping, but did not!")
+		}
+	}()
+	storage, _ := Open("127.0.0.1:27017", "tsuru_storage_test")
+	sess := conn["127.0.0.1:27017"]
+	sess.used = sess.used.Add(-1 * 2 * period)
+	conn["127.0.0.1:27017"] = sess
+	var ticker time.Ticker
+	ch := make(chan time.Time, 1)
+	ticker.C = ch
+	ch <- time.Now()
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go func() {
+		retire(&ticker)
+		wg.Done()
+	}()
+	close(ch)
+	wg.Wait()
+	_, ok := conn["127.0.0.1:27017"]
+	c.Check(ok, Equals, false)
+	storage.session.Ping()
 }
