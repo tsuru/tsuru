@@ -44,7 +44,6 @@ func (s *AuthSuite) SetUpSuite(c *C) {
 }
 
 func (s *AuthSuite) TearDownSuite(c *C) {
-	defer s.conn.Close()
 	s.conn.Apps().Database.DropDatabase()
 }
 

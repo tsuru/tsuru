@@ -35,7 +35,6 @@ func (s *S) SetUpSuite(c *C) {
 
 func (s *S) TearDownSuite(c *C) {
 	s.conn.Apps().Database.DropDatabase()
-	s.conn.Close()
 }
 
 func (s *S) TearDownTest(c *C) {

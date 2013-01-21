@@ -50,7 +50,7 @@ var _ = Suite(&S{})
 func (s *S) TearDownSuite(c *C) {
 	storage, err := Open("127.0.0.1:27017", "tsuru_storage_test")
 	c.Assert(err, IsNil)
-	defer storage.Close()
+	defer storage.session.Close()
 	storage.session.DB("tsuru_storage_test").DropDatabase()
 }
 
@@ -61,21 +61,21 @@ func (s *S) TearDownTest(c *C) {
 func (s *S) TestOpenConnectsToTheDatabase(c *C) {
 	storage, err := Open("127.0.0.1:27017", "tsuru_storage_test")
 	c.Assert(err, IsNil)
-	defer storage.Close()
+	defer storage.session.Close()
 	c.Assert(storage.session.Ping(), IsNil)
 }
 
 func (s *S) TestOpenStoresConnectionInThePool(c *C) {
 	storage, err := Open("127.0.0.1:27017", "tsuru_storage_test")
 	c.Assert(err, IsNil)
-	defer storage.Close()
+	defer storage.session.Close()
 	c.Assert(storage.session, Equals, conn["127.0.0.1:27017"])
 }
 
 func (s *S) TestOpenReusesConnection(c *C) {
 	storage, err := Open("127.0.0.1:27017", "tsuru_storage_test")
 	c.Assert(err, IsNil)
-	defer storage.Close()
+	defer storage.session.Close()
 	storage2, err := Open("127.0.0.1:27017", "tsuru_storage_test")
 	c.Assert(err, IsNil)
 	c.Assert(storage.session, Equals, storage2.session)
@@ -84,7 +84,7 @@ func (s *S) TestOpenReusesConnection(c *C) {
 func (s *S) TestOpenReconnects(c *C) {
 	storage, err := Open("127.0.0.1:27017", "tsuru_storage_test")
 	c.Assert(err, IsNil)
-	storage.Close()
+	storage.session.Close()
 	storage, err = Open("127.0.0.1:27017", "tsuru_storage_test")
 	c.Assert(err, IsNil)
 	err = storage.session.Ping()
@@ -104,7 +104,7 @@ func (s *S) TestConn(c *C) {
 	defer config.Unset("database:name")
 	storage, err := Conn()
 	c.Assert(err, IsNil)
-	defer storage.Close()
+	defer storage.session.Close()
 	err = storage.session.Ping()
 	c.Assert(err, IsNil)
 }
@@ -125,35 +125,16 @@ func (s *S) TestConnMissingDatabaseName(c *C) {
 	c.Assert(err.Error(), Equals, `configuration error: key "database:name" not found`)
 }
 
-func (s *S) TestCloseClosesTheConnectionWithMongoDB(c *C) {
-	defer func() {
-		if r := recover(); r == nil {
-			c.Errorf("Should close the connection.")
-		}
-	}()
-	storage, _ := Open("127.0.0.1:27017", "tsuru_storage_test")
-	storage.Close()
-	err := storage.session.Ping()
-	c.Assert(err, NotNil)
-}
-
-func (s *S) TestCloseKeepsTheConnectionInThePool(c *C) {
-	storage, _ := Open("127.0.0.1:27017", "tsuru_storage_test")
-	storage.Close()
-	_, ok := conn["127.0.0.1:27017"]
-	c.Assert(ok, Equals, true)
-}
-
 func (s *S) TestCollection(c *C) {
 	storage, _ := Open("127.0.0.1:27017", "tsuru_storage_test")
-	defer storage.Close()
+	defer storage.session.Close()
 	collection := storage.Collection("users")
 	c.Assert(collection.FullName, Equals, storage.dbname+".users")
 }
 
 func (s *S) TestUsers(c *C) {
 	storage, _ := Open("127.0.0.1:27017", "tsuru_storage_test")
-	defer storage.Close()
+	defer storage.session.Close()
 	users := storage.Users()
 	usersc := storage.Collection("users")
 	c.Assert(users, DeepEquals, usersc)
@@ -162,7 +143,7 @@ func (s *S) TestUsers(c *C) {
 
 func (s *S) TestApps(c *C) {
 	storage, _ := Open("127.0.0.1:27017", "tsuru_storage_test")
-	defer storage.Close()
+	defer storage.session.Close()
 	apps := storage.Apps()
 	appsc := storage.Collection("apps")
 	c.Assert(apps, DeepEquals, appsc)
@@ -171,7 +152,7 @@ func (s *S) TestApps(c *C) {
 
 func (s *S) TestServices(c *C) {
 	storage, _ := Open("127.0.0.1:27017", "tsuru_storage_test")
-	defer storage.Close()
+	defer storage.session.Close()
 	services := storage.Services()
 	servicesc := storage.Collection("services")
 	c.Assert(services, DeepEquals, servicesc)
@@ -179,7 +160,7 @@ func (s *S) TestServices(c *C) {
 
 func (s *S) TestServiceInstances(c *C) {
 	storage, _ := Open("127.0.0.1:27017", "tsuru_storage_test")
-	defer storage.Close()
+	defer storage.session.Close()
 	serviceInstances := storage.ServiceInstances()
 	serviceInstancesc := storage.Collection("service_instances")
 	c.Assert(serviceInstances, DeepEquals, serviceInstancesc)
@@ -187,7 +168,7 @@ func (s *S) TestServiceInstances(c *C) {
 
 func (s *S) TestMethodTeamsShouldReturnTeamsCollection(c *C) {
 	storage, _ := Open("127.0.0.1:27017", "tsuru_storage_test")
-	defer storage.Close()
+	defer storage.session.Close()
 	teams := storage.Teams()
 	teamsc := storage.Collection("teams")
 	c.Assert(teams, DeepEquals, teamsc)

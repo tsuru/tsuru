@@ -36,5 +36,4 @@ func (s *S) TearDownSuite(c *C) {
 	handler.Stop()
 	handler.Wait()
 	s.conn.Collection(s.collName).Database.DropDatabase()
-	s.conn.Close()
 }

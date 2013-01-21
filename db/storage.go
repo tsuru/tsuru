@@ -81,21 +81,6 @@ func Conn() (storage *Storage, err error) {
 	return Open(url, dbname)
 }
 
-// Close closes the connection.
-//
-// You can take advantage of defer statement, and write code that look like this:
-//
-//     st, err := Open("localhost:27017", "tsuru")
-//     if err != nil {
-//         panic(err)
-//     }
-//     defer st.Close()
-//
-// TODO(fss): remove this method and implement a "connection collector".
-func (s *Storage) Close() {
-	s.session.Close()
-}
-
 // Collection returns a collection by its name.
 //
 // If the collection does not exist, MongoDB will create it.
