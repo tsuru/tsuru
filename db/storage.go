@@ -15,12 +15,19 @@ import (
 	"github.com/globocom/config"
 	"labix.org/v2/mgo"
 	"sync"
+	"time"
 )
 
 var (
-	conn = make(map[string]*mgo.Session) // pool of connections
-	mut  sync.RWMutex                    // for pool thread safety
+	conn   = make(map[string]*session) // pool of connections
+	mut    sync.RWMutex                // for pool thread safety
+	ticker *time.Ticker                // for garbage collection
 )
+
+type session struct {
+	s    *mgo.Session
+	used time.Time
+}
 
 // Storage holds the connection with the database.
 type Storage struct {
@@ -29,13 +36,13 @@ type Storage struct {
 }
 
 func open(addr, dbname string) (*Storage, error) {
-	session, err := mgo.Dial(addr)
+	sess, err := mgo.Dial(addr)
 	if err != nil {
 		return nil, err
 	}
-	storage := &Storage{session: session, dbname: dbname}
+	storage := &Storage{session: sess, dbname: dbname}
 	mut.Lock()
-	conn[addr] = session
+	conn[addr] = &session{s: sess, used: time.Now()}
 	mut.Unlock()
 	return storage, nil
 }
@@ -56,8 +63,12 @@ func Open(addr, dbname string) (storage *Storage, err error) {
 	mut.RLock()
 	if session, ok := conn[addr]; ok {
 		mut.RUnlock()
-		if err = session.Ping(); err == nil {
-			return &Storage{session, dbname}, nil
+		if err = session.s.Ping(); err == nil {
+			session.used = time.Now()
+			mut.Lock()
+			conn[addr] = session
+			mut.Unlock()
+			return &Storage{session.s, dbname}, nil
 		}
 		return open(addr, dbname)
 	}
