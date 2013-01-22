@@ -228,20 +228,24 @@ aws:s3:lowercase-bucket
 be lowercase. Given that ``bucket-support`` is true, this setting is required
 and has no default value.
 
-provisioner
-+++++++++++
+beanstalkd configuration
+------------------------
 
-Tsuru support multiple provisioner. A provisioner is a Go type that satisfies
-an interface. By default, tsuru will use ``JujuProvisioner``. To use other
-provisioner, that has been already registered with tsuru, one must define the
-setting ``provisioner``. This setting is optional and defaults to "juju".
+Tsuru uses `beanstalkd <http://kr.github.com/beanstalkd>`_ for its work queue.
+You can define to which beanstalkd instance you will connect.
 
 queue-server
 ++++++++++++
 
-Tsuru uses `beanstalkd <http://kr.github.com/beanstalkd>`_ as a work queue.
 ``queue-server`` is the TCP address where beanstalkd is listening. This setting
 is optional and defaults to "localhost:11300".
+
+Admin users
+-----------
+
+Tsuru has a very simple way to identify admin users: an admin user is a user
+that is the member of the admin team, and the admin team is defined in the
+configuration file, using the ``admin-team`` setting.
 
 admin-team
 ++++++++++
@@ -249,6 +253,23 @@ admin-team
 ``admin-team`` is the name of the administration team for the current tsuru
 installation. All members of the administration team is able to use the
 ``tsuru-admin`` command.
+
+Defining the provisioner
+------------------------
+
+Tsuru supports multiple provisioners. A provisioner is a Go type that satisfies
+an interface. By default, tsuru will use ``JujuProvisioner`` (identified by the
+string "juju"). To use other provisioner, that has been already registered with
+tsuru, one must define the setting ``provisioner``.
+
+provisioner
++++++++++++
+
+``provisioner`` is the string the name of the provisioner that will be used by
+tsuru. This setting is optional and defaults to "juju".
+
+You can also configure the provisioner (check the next section for details on
+Juju configuration).
 
 Juju provisioner configuration
 ==============================
