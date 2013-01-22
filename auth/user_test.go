@@ -27,6 +27,7 @@ func (s *S) TestCreateUser(c *C) {
 }
 
 func (s *S) TestCreateUserHashesThePasswordUsingPBKDF2SHA512AndSalt(c *C) {
+	loadConfig()
 	salt := []byte(salt)
 	expectedPassword := fmt.Sprintf("%x", pbkdf2.Key([]byte("123456"), salt, 4096, len(salt)*8, sha512.New))
 	u := User{Email: "wolverine@xmen.com", Password: "123456"}
@@ -47,6 +48,20 @@ func (s *S) TestCreateUserReturnsErrorWhenTryingToCreateAUserWithDuplicatedEmail
 	defer s.conn.Users().Remove(bson.M{"email": u.Email})
 	err = u.Create()
 	c.Assert(err, NotNil)
+}
+
+func (s *S) TestCreateUserUndefinedSaltPanics(c *C) {
+	old, err := config.Get("auth:salt")
+	c.Assert(err, IsNil)
+	defer config.Set("auth:salt", old)
+	err = config.Unset("auth:salt")
+	c.Assert(err, IsNil)
+	u := User{Email: "wolverine@xmen.com", Password: "123"}
+	defer func() {
+		r := recover()
+		c.Assert(r, NotNil)
+	}()
+	u.Create()
 }
 
 func (s *S) TestGetUserByEmail(c *C) {
@@ -113,6 +128,18 @@ func (s *S) TestNewTokenReturnsErrorWhenUserIsNil(c *C) {
 	c.Assert(t, IsNil)
 	c.Assert(err, NotNil)
 	c.Assert(err, ErrorMatches, "^User is nil$")
+}
+
+func (s *S) TestNewTokenWithoutTokenKey(c *C) {
+	old, err := config.Get("auth:token-key")
+	c.Assert(err, IsNil)
+	defer config.Set("auth:token-key", old)
+	err = config.Unset("auth:token-key")
+	c.Assert(err, IsNil)
+	t, err := newToken(&User{Email: "gopher@golang.org"})
+	c.Assert(t, IsNil)
+	c.Assert(err, NotNil)
+	c.Assert(err.Error(), Equals, `Setting "auth:token-key" is undefined.`)
 }
 
 func (s *S) TestCreateTokenShouldSaveTheTokenInUserInTheDatabase(c *C) {
@@ -303,6 +330,15 @@ func (s *S) TestLoadConfigUndefineTokenKey(c *C) {
 	c.Assert(err, NotNil)
 	c.Assert(err.Error(), Equals, `Setting "auth:token-key" is undefined.`)
 	c.Assert(tokenKey, Equals, "")
+}
+
+func (s *S) TestLoadConfigDontOverride(c *C) {
+	tokenKey = "something"
+	salt = "salt"
+	err := loadConfig()
+	c.Assert(err, IsNil)
+	c.Assert(tokenKey, Equals, "something")
+	c.Assert(salt, Equals, "salt")
 }
 
 func (s *S) TestTeams(c *C) {
