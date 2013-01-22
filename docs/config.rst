@@ -160,26 +160,34 @@ optional, and defaults to "tsuru-key".
 Amazon Web Services (AWS) configuration
 ---------------------------------------
 
-Tsuru uses Amazon Web Services (AWS) Simple Storage Service (S3) to provide
-static storage for apps. In the process of app creation, tsuru creates a S3
-bucket and AWS Identity and Access Management (IAM) credentials to access this
-bucket. In order to be able to comunicate with AWS API's, tsuru needs some
-settings, listed below.
+Tsuru is able to use Amazon Web Services (AWS) Simple Storage Service (S3) to
+provide static storage for apps. Whenever ``bucket-support`` is true, Tsuru
+will create a S3 bucket and AWS Identity and Access Management (IAM)
+credentials to access this bucket during the app creation process. In order to
+be able to comunicate with AWS API's, tsuru needs some settings, listed below.
 
 For more details on AWS authentication, AWS AIM and AWS S3, check AWS docs:
 https://aws.amazon.com/documentation/.
+
+bucket-support
+++++++++++++++
+
+``bucket-support`` is a boolean flag, that turns on the bucket per app feature.
+This field is optional, and defaults to false.
 
 aws:access-key-id
 +++++++++++++++++
 
 ``aws:access-key-id`` is the access key ID used by tsuru to authenticate with
-AWS API. This setting is required and has no default value.
+AWS API. Given that ``bucket-support`` is true, this setting is required and
+has no default value.
 
 aws:secret-access-key
 +++++++++++++++++++++
 
 ``aws:secret-access-key`` is the secret access key used by tsuru to
-authenticate with AWS API. This setting is required and has no default value.
+authenticate with AWS API. Given that ``bucket-support`` is true, this
+setting is required and has no default value.
 
 aws:iam:endpoint
 ++++++++++++++++
@@ -193,19 +201,22 @@ aws:s3:region-name
 ++++++++++++++++++
 
 ``aws:s3:region-name`` is the name of the region that tsuru will use to create
-S3 buckets. This setting is required and has no default value.
+S3 buckets. Given that ``bucket-support`` is true, this setting is required and
+has no default value.
 
 aws:s3:endpoint
 +++++++++++++++
 
 ``aws:s3:endpoint`` is the S3 endpoint that tsuru will call to create buckets
-for its applications. This setting is required and has no default value.
+for its applications. Given that ``bucket-support`` is true, this setting is
+required and has no default value.
 
 aws:s3:location-constraint
 ++++++++++++++++++++++++++
 
 ``aws:s3:location-constraint`` indicates whether buckets should be stored in
-the selected region. This setting is required and has no default value.
+the selected region. Given that ``bucket-support`` is true, this setting is
+required and has no default value.
 
 For more details, check the documentation for buckets and regions:
 http://docs.aws.amazon.com/AmazonS3/latest/dev/LocationSelection.html.
@@ -214,7 +225,8 @@ aws:s3:lowercase-bucket
 +++++++++++++++++++++++
 
 ``aws:s3:lowercase-bucket`` will be true if the region requires bucket names to
-be lowercase. This setting is required and has no default value.
+be lowercase. Given that ``bucket-support`` is true, this setting is required
+and has no default value.
 
 provisioner
 +++++++++++
@@ -247,7 +259,7 @@ Juju provisioner configuration
 Sample file
 ===========
 
-Here is a complete example, with VPC, HTTP/TLS and load balacing enabled:
+Here is a complete example, with S3, VPC, HTTP/TLS and load balacing enabled:
 
 .. highlight:: yaml
 
@@ -270,6 +282,7 @@ Here is a complete example, with VPC, HTTP/TLS and load balacing enabled:
       salt: salt
       token-expire-days: 14
       token-key: key
+    bucket-support: true
     aws:
       access-key-id: access-key
       secret-access-key: s3cr3t
