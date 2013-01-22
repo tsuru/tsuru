@@ -139,9 +139,9 @@ below:
 auth:salt
 +++++++++
 
-``auth:salt`` is the salt used by tsuru when hashing password. This value is
-optional and defaults to "tsuru-salt". This value affects all passwords, so *if
-it change at anytime, all password must be regenerated*.
+``auth:salt`` is the salt used by tsuru when hashing password. This setting is
+required and has no default value. This value affects all passwords, so *if it
+change at anytime, all password must be regenerated*.
 
 auth:token-expire-days
 ++++++++++++++++++++++
@@ -155,7 +155,7 @@ auth:token-key
 
 ``auth:token-key`` is the key used for token hashing, during authentication
 process. If this value changes, all tokens will expire. This setting is
-optional, and defaults to "tsuru-key".
+required, and has no default value.
 
 Amazon Web Services (AWS) configuration
 ---------------------------------------
