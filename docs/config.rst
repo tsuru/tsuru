@@ -274,8 +274,154 @@ Juju configuration).
 Juju provisioner configuration
 ==============================
 
-    PENDING. See `Issue 263 <https://github.com/globocom/tsuru/issues/263>`_
-    for details.
+"juju" is the default provisioner used by Tsuru. It's named after the `tool
+used by tsuru <https://juju.ubuntu.com/>`_ to provision and manage instances.
+It's a extended version of Juju, supporting Amazon's `Virtual Private Cloud
+(VPC) <https://aws.amazon.com/vpc/>`_ and `Elastic Load Balancing (ELB)
+<https://aws.amazon.com/elasticloadbalancing/>`_.
+
+Charms path
+-----------
+
+Juju describe services as `Charms <http://jujucharms.com/>`_. Each tsuru
+platform is a Juju charm. The tsuru team provides a collection of charms with
+customized hooks: https://github.com/globocom/charms. In order (for more
+details, refer to :doc:`build documentation </build>`).
+
+juju:charms-path
+++++++++++++++++
+
+``charms-path`` is the path where tsuru should look for charms when creating
+new apps. If you specify the value "/etc/juju/charms", your charms tree should
+look something like this:
+
+::
+
+    .
+    ├── centos
+    │   ├── ...
+    └── precise
+        ├── go
+        │   ├── config.yaml
+        │   ├── hooks
+        │   ...
+        │   └── metadata.yaml
+        ├── nodejs
+        │   ├── config.yaml
+        │   ├── hooks
+        │   ...
+        │   └── metadata.yaml
+        ├── python
+        │   ├── config.yaml
+        │   ├── hooks
+        │   ...
+        │   ├── metadata.yaml
+        │   └── utils
+        │       ├── circus.ini
+        │       └── nginx.conf
+        ├── rack
+        │   ├── config.yaml
+        │   ├── hooks
+        │   ...
+        │   ├── metadata.yaml
+        ├── ruby
+        │   ├── config.yaml
+        │   ├── hooks
+        │   ...
+        │   └── metadata.yaml
+        └── static
+            ├── config.yaml
+            ├── hooks
+            ...
+            └── metadata.yaml
+
+Given that you're using juju, this setting is mandatory and has no default
+value.
+
+Storing units in the database
+-----------------------------
+
+Juju provisioner uses the database to store information about units. It uses a
+MongoDB collection that will be located in the same database used by tsuru. One
+can set the name of this collection using the setting described below:
+
+juju:units-collection
++++++++++++++++++++++
+
+``juju:units-collection`` defines the name of the collection that Juju
+provisioner should use to store information about units. This setting is
+required by the provisioner and has no default value.
+
+Elastic Load Balancing support
+------------------------------
+
+Juju provisioner can manage load balancers per app using Elastic Load Balancing
+(ELB) API, provided by Amazon. In order to enable Elastic Load Balancing
+support, one must set ``juju:use-elb`` to true and define other settings
+described below:
+
+juju:use-elb
+++++++++++++
+
+``juju:use-elb`` is a boolean flag that indicates whether Juju provisioner will
+use ELB. When enabled, it will create a load balancer per app, registering and
+deregistering units as they come and go, and deleting the load balancer when
+the app is removed. This setting is optional and defaults to false.
+
+Whenever ``juju:use-elb`` is defined to be true, other settings related to load
+balancing become mandatory: ``juju:elb-endpoint``, ``juju:elb-collection``,
+``juju:elb-avail-zones`` (or ``juju:elb-vpc-subnets`` and
+``juju:elb-vpc-secgroups``, see ``juju:elb-use-vpc`` for more details).
+
+juju:elb-endpoint
++++++++++++++++++
+
+``juju:elb-endpoint`` is the ELB endpoint that tsuru will use to manage load
+balancers. This setting has no default value, and is mandatory once
+``juju:use-elb`` is true. When ``juju:use-elb`` is false, the value of this
+setting is irrelevant.
+
+juju:elb-collection
++++++++++++++++++++
+
+``juju:elb-collection`` is the name of the collection that Juju provisioner
+will use to store information about load balancers.
+
+This setting has no default value, and is mandatory once ``juju:use-elb`` is
+true. When ``juju:use-elb`` is false, the value of this setting is irrelevant.
+
+juju:elb-use-vpc
+++++++++++++++++
+
+``juju:elb-use-vpc`` is another boolean flag. It indicates whether load
+balancers should be created using an Amazon Virtual Private Cloud. When this
+setting is true, one must also define ``juju:elb-vpc-subnets`` and
+``juju:elb-vpc-secgroups``.
+
+This setting is optional, defaults to false and has no effect when
+``juju:use-elb`` is false.
+
+juju:elb-vpc-subnets
+++++++++++++++++++++
+
+``juju:elb-vpc-subnets`` contains a list of subnets that will be attached to
+the load balancer. This setting must be defined whenever ``juju:elb-use-vpc``
+is true. It has no default value.
+
+juju:elb-vpc-secgroups
+++++++++++++++++++++++
+
+``juju:elb-vpc-secgroups`` contains a list of security groups from which the
+load balancer will inherit rules. This setting must be defined whenever
+``juju:elb-use-vpc`` is true. It has no default value.
+
+juju:elb-avail-zones
+++++++++++++++++++++
+
+``juju:elb-avail-zones`` contains a list of availability zones that the load
+balancer will communicate with. This setting has no effect when
+``juju:elb-use-vpc`` is true, has no default value and must be defined whenever
+``juju:elb-use-vpc`` is false.
 
 Sample file
 ===========
@@ -319,12 +465,12 @@ Here is a complete example, with S3, VPC, HTTP/TLS and load balacing enabled:
     admin-team: admin
     juju:
       charms-path: /etc/juju/charms
+      units-collection: j_units
       use-elb: true
-      elb-use-vpc: true
       elb-endpoint: https://elasticloadbalancing.amazonaws.com
+      elb-collection: j_lbs
+      elb-use-vpc: true
       elb-vpc-subnets:
         - subnet-a1a1a1
       elb-vpc-secgroups:
         - sg-a1a1a1
-      elb-collection: j_lbs
-      units-collection: j_units
