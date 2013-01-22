@@ -90,7 +90,7 @@ func (a *App) Get() error {
 //
 //       1. Save the app in the database
 //       2. Create IAM credentials for the app
-//       3. Create S3 bucket for the app
+//       3. Create S3 bucket for the app (if the bucket support is enabled)
 //       4. Create the git repository using gandalf
 //       5. Provision units within the provisioner
 func CreateApp(a *App, units uint) error {
@@ -104,7 +104,6 @@ func CreateApp(a *App, units uint) error {
 		return &ValidationError{Message: msg}
 	}
 	actions := []*action.Action{&insertApp}
-	// TODO(fss): add test and docs for bucket-support = false.
 	useS3, _ := config.GetBool("bucket-support")
 	if useS3 {
 		actions = append(actions, &createIAMUserAction,
@@ -151,17 +150,21 @@ func (a *App) unbind() error {
 //
 // Destroy an app is a process composed of x steps:
 //
-//       1. Destroy the bucket and S3 credentials
+//       1. Destroy the bucket and S3 credentials (if bucket-support is
+//       enabled).
 //       2. Destroy the app unit using juju
 //       3. Execute the unbind for the app
 //       4. Remove the app from the database
 func (a *App) Destroy() error {
-	err := destroyBucket(a)
-	if err != nil {
-		return err
+	useS3, _ := config.GetBool("bucket-support")
+	if useS3 {
+		err := destroyBucket(a)
+		if err != nil {
+			return err
+		}
 	}
 	if len(a.Units) > 0 {
-		err = Provisioner.Destroy(a)
+		err := Provisioner.Destroy(a)
 		if err != nil {
 			return errors.New("Failed to destroy the app: " + err.Error())
 		}

@@ -73,6 +73,31 @@ func (s *S) TestDestroy(c *C) {
 	c.Assert(s.provisioner.FindApp(&a), Equals, -1)
 }
 
+func (s *S) TestDestroyWithoutBucketSupport(c *C) {
+	config.Unset("bucket-support")
+	defer config.Set("bucket-support", true)
+	h := testHandler{}
+	ts := s.t.StartGandalfTestServer(&h)
+	defer ts.Close()
+	a := App{
+		Name:      "blinded",
+		Framework: "evergrey",
+		Teams:     []string{s.team.Name},
+		Units:     []Unit{{Name: "duvido", Machine: 3}},
+	}
+	err := CreateApp(&a, 1)
+	c.Assert(err, IsNil)
+	a.Get()
+	err = a.Destroy()
+	c.Assert(err, IsNil)
+	err = a.Get()
+	c.Assert(err, NotNil)
+	qt, err := s.conn.Apps().Find(bson.M{"name": a.Name}).Count()
+	c.Assert(err, IsNil)
+	c.Assert(qt, Equals, 0)
+	c.Assert(s.provisioner.FindApp(&a), Equals, -1)
+}
+
 func (s *S) TestDestroyWithoutUnits(c *C) {
 	h := testHandler{}
 	ts := s.t.StartGandalfTestServer(&h)
@@ -160,6 +185,39 @@ func (s *S) TestCreateApp(c *C) {
 	defer message.Delete()
 	c.Assert(message.Action, Equals, expectedMessage.Action)
 	c.Assert(message.Args, DeepEquals, expectedMessage.Args)
+	c.Assert(s.provisioner.GetUnits(&a), HasLen, 3)
+}
+
+func (s *S) TestCreateWithoutBucketSupport(c *C) {
+	config.Unset("bucket-support")
+	defer config.Set("bucket-support", true)
+	h := testHandler{}
+	ts := s.t.StartGandalfTestServer(&h)
+	defer ts.Close()
+	a := App{
+		Name:      "sorry",
+		Framework: "evergrey",
+		Units:     []Unit{{Machine: 3}},
+	}
+	expectedHost := "localhost"
+	config.Set("host", expectedHost)
+	err := CreateApp(&a, 3)
+	c.Assert(err, IsNil)
+	defer a.Destroy()
+	err = a.Get()
+	c.Assert(err, IsNil)
+	var retrievedApp App
+	err = s.conn.Apps().Find(bson.M{"name": a.Name}).One(&retrievedApp)
+	c.Assert(err, IsNil)
+	c.Assert(retrievedApp.Name, Equals, a.Name)
+	c.Assert(retrievedApp.Framework, Equals, a.Framework)
+	env := a.InstanceEnv(s3InstanceName)
+	c.Assert(env, DeepEquals, map[string]bind.EnvVar{})
+	message, err := queue.Get(queueName, 1e6)
+	c.Assert(err, IsNil)
+	defer message.Delete()
+	c.Assert(message.Action, Equals, regenerateApprc)
+	c.Assert(message.Args, DeepEquals, []string{a.Name})
 	c.Assert(s.provisioner.GetUnits(&a), HasLen, 3)
 }
 
