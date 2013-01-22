@@ -66,8 +66,8 @@ func Open(addr, dbname string) (storage *Storage, err error) {
 	if session, ok := conn[addr]; ok {
 		mut.RUnlock()
 		if err = session.s.Ping(); err == nil {
-			session.used = time.Now()
 			mut.Lock()
+			session.used = time.Now()
 			conn[addr] = session
 			mut.Unlock()
 			return &Storage{session.s, dbname}, nil
