@@ -15,23 +15,15 @@ import (
 	"time"
 )
 
-const (
-	defaultSalt       = "tsuru-salt"
-	defaultExpiration = 7 * 24 * time.Hour
-	defaultKey        = "tsuru-key"
-)
+const defaultExpiration = 7 * 24 * time.Hour
 
 var salt, tokenKey string
 var tokenExpire time.Duration
 
-func init() {
-	loadConfig()
-}
-
-func loadConfig() {
+func loadConfig() error {
 	var err error
 	if salt, err = config.GetString("auth:salt"); err != nil {
-		salt = defaultSalt
+		return errors.New(`Setting "auth:salt" is undefined.`)
 	}
 	if iface, err := config.Get("auth:token-expire-days"); err == nil {
 		day := int64(iface.(int))
@@ -40,8 +32,9 @@ func loadConfig() {
 		tokenExpire = defaultExpiration
 	}
 	if tokenKey, err = config.GetString("auth:token-key"); err != nil {
-		tokenKey = defaultKey
+		return errors.New(`Setting "auth:token-key" is undefined.`)
 	}
+	return nil
 }
 
 func hashPassword(password string) string {
