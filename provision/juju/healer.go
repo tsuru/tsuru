@@ -6,7 +6,9 @@ package juju
 
 import (
 	"github.com/globocom/tsuru/heal"
+	"github.com/globocom/tsuru/log"
 	"os/exec"
+	"strings"
 )
 
 func init() {
@@ -47,7 +49,10 @@ func (h *BootstrapHealer) Heal() error {
 			"juju-machine-agent",
 		}
 		cmd := exec.Command("ssh", args...)
+		log.Printf("Healing bootstrap juju-machine-agent")
+		log.Printf(strings.Join(args, " "))
 		return cmd.Run()
 	}
+	log.Printf("Bootstrap juju-machine-agent needs no cure, skipping...")
 	return nil
 }
