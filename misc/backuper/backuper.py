@@ -12,7 +12,8 @@ def snapshot(conn, instance_ids):
     """takes a snapshot of the given VMs"""
     image_ids = []
     for instance_id in instance_ids:
-        image_id = conn.create_image(instance_id, "{0}-snapshot".format(instance_id))
+        image_id = conn.create_image(instance_id,
+                                     "{0}-snapshot".format(instance_id))
         image_ids.append(image_id)
     return image_ids
 

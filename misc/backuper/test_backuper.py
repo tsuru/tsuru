@@ -1,7 +1,8 @@
-import backuper
 import unittest
+
 from mock import patch, call
 
+import backuper
 
 
 class TestBackuper(unittest.TestCase):
@@ -13,7 +14,6 @@ class TestBackuper(unittest.TestCase):
         images = backuper.backup("access", "secret", ["i-1"])
         mock.assert_called_with("access", "secret")
         self.assertListEqual(["test-ami-1"], images)
-
 
     @patch("boto.ec2.connection.EC2Connection")
     def test_snapshot_calls_ec2_create_image_with_right_instances(self, mock):
