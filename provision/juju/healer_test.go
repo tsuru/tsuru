@@ -51,7 +51,7 @@ func (s *S) TestBootstrapHeal(c *C) {
 		"ubuntu",
 		"10.10.10.96",
 		"sudo",
-		"restart",
+		"start",
 		"juju-machine-agent",
 	}
 	h := BootstrapHealer{}

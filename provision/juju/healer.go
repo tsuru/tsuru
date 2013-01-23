@@ -45,7 +45,7 @@ func (h *BootstrapHealer) Heal() error {
 			"ubuntu",
 			bootstrapMachine.IpAddress,
 			"sudo",
-			"restart",
+			"start",
 			"juju-machine-agent",
 		}
 		cmd := exec.Command("ssh", args...)
