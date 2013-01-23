@@ -10,29 +10,29 @@ import (
 	. "launchpad.net/gocheck"
 )
 
-func (s *S) TestBootstrapShouldBeRegistered(c *C) {
+func (s *S) TestBootstrapMachineHealerShouldBeRegistered(c *C) {
 	h, err := heal.Get("bootstrap")
 	c.Assert(err, IsNil)
-	c.Assert(h, FitsTypeOf, &BootstrapHealer{})
+	c.Assert(h, FitsTypeOf, &BootstrapMachineHealer{})
 }
 
-func (s *S) TestBootstrapNeedsHeal(c *C) {
+func (s *S) TestBootstrapMachineHealerNeedsHeal(c *C) {
 	tmpdir, err := commandmocker.Add("juju", collectOutputBootstrapDown)
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(tmpdir)
-	h := BootstrapHealer{}
+	h := BootstrapMachineHealer{}
 	c.Assert(h.NeedsHeal(), Equals, true)
 }
 
-func (s *S) TestBootstrapDontNeedsHeal(c *C) {
+func (s *S) TestBootstrapMachineHealerDontNeedsHeal(c *C) {
 	tmpdir, err := commandmocker.Add("juju", collectOutput)
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(tmpdir)
-	h := BootstrapHealer{}
+	h := BootstrapMachineHealer{}
 	c.Assert(h.NeedsHeal(), Equals, false)
 }
 
-func (s *S) TestBootstrapHeal(c *C) {
+func (s *S) TestBootstrapMachineHealerHeal(c *C) {
 	jujuTmpdir, err := commandmocker.Add("juju", collectOutputBootstrapDown)
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(jujuTmpdir)
@@ -54,7 +54,7 @@ func (s *S) TestBootstrapHeal(c *C) {
 		"start",
 		"juju-machine-agent",
 	}
-	h := BootstrapHealer{}
+	h := BootstrapMachineHealer{}
 	err = h.Heal()
 	c.Assert(err, IsNil)
 	c.Assert(commandmocker.Ran(jujuTmpdir), Equals, true)
@@ -63,14 +63,14 @@ func (s *S) TestBootstrapHeal(c *C) {
 	c.Assert(commandmocker.Parameters(sshTmpdir), DeepEquals, sshOutput)
 }
 
-func (s *S) TestBootstrapOnlyHealsWhenItIsNeeded(c *C) {
+func (s *S) TestBootstrapMachineHealerOnlyHealsWhenItIsNeeded(c *C) {
 	tmpdir, err := commandmocker.Add("juju", collectOutput)
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(tmpdir)
 	cmdOutput := []string{
 		"status", // for verify if heal is need
 	}
-	h := BootstrapHealer{}
+	h := BootstrapMachineHealer{}
 	err = h.Heal()
 	c.Assert(err, IsNil)
 	c.Assert(commandmocker.Ran(tmpdir), Equals, true)

@@ -12,12 +12,12 @@ import (
 )
 
 func init() {
-	heal.Register("bootstrap", &BootstrapHealer{})
+	heal.Register("bootstrap", &BootstrapMachineHealer{})
 }
 
-// BootstrapHealer is an implementation for the Healer interface. For more
+// BootstrapMachineHealer is an implementation for the Healer interface. For more
 // details on how a healer work, check the documentation of the heal package.
-type BootstrapHealer struct{}
+type BootstrapMachineHealer struct{}
 
 // getBootstrapMachine returns the bootstrap machine.
 func getBootstrapMachine() machine {
@@ -28,13 +28,13 @@ func getBootstrapMachine() machine {
 }
 
 // NeedsHeal returns true if the AgentState of bootstrap machine is "not-started".
-func (h *BootstrapHealer) NeedsHeal() bool {
+func (h *BootstrapMachineHealer) NeedsHeal() bool {
 	bootstrapMachine := getBootstrapMachine()
 	return bootstrapMachine.AgentState == "not-started"
 }
 
-// Heal executes the action for heal the bootstrap agent.
-func (h *BootstrapHealer) Heal() error {
+// Heal executes the action for heal the bootstrap machine agent.
+func (h *BootstrapMachineHealer) Heal() error {
 	if h.NeedsHeal() {
 		bootstrapMachine := getBootstrapMachine()
 		args := []string{
