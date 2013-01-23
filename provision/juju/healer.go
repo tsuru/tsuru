@@ -13,6 +13,19 @@ import (
 
 func init() {
 	heal.Register("bootstrap", &BootstrapMachineHealer{})
+	heal.Register("bootstrap-provision", &BootstrapProvisionHealer{})
+}
+
+// BootstrapProvisionHealer is an import for the Healer interface. For more
+// details on how a healer work, check the documentation of the heal package.
+type BootstrapProvisionHealer struct{}
+
+func (h *BootstrapProvisionHealer) NeedsHeal() bool {
+	return false
+}
+
+func (h *BootstrapProvisionHealer) Heal() error {
+	return nil
 }
 
 // BootstrapMachineHealer is an implementation for the Healer interface. For more

@@ -10,6 +10,12 @@ import (
 	. "launchpad.net/gocheck"
 )
 
+func (s *S) TestBootstrapProvisionHealerShouldBeRegistered(c *C) {
+	h, err := heal.Get("bootstrap-provision")
+	c.Assert(err, IsNil)
+	c.Assert(h, FitsTypeOf, &BootstrapProvisionHealer{})
+}
+
 func (s *S) TestBootstrapMachineHealerShouldBeRegistered(c *C) {
 	h, err := heal.Get("bootstrap")
 	c.Assert(err, IsNil)
