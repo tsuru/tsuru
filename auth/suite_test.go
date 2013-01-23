@@ -58,16 +58,10 @@ type S struct {
 
 var _ = Suite(&S{})
 
-var panicIfErr = func(err error) {
-	if err != nil {
-		panic(err)
-	}
-}
-
 func (s *S) SetUpSuite(c *C) {
-	s.hashed = hashPassword("123")
 	err := config.ReadConfigFile("../etc/tsuru.conf")
 	c.Assert(err, IsNil)
+	s.hashed = hashPassword("123")
 	config.Set("database:url", "127.0.0.1:27017")
 	config.Set("database:name", "tsuru_auth_test")
 	s.conn, _ = db.Conn()
@@ -76,7 +70,7 @@ func (s *S) SetUpSuite(c *C) {
 	s.token, _ = s.user.CreateToken()
 	team := &Team{Name: "cobrateam", Users: []string{s.user.Email}}
 	err = s.conn.Teams().Insert(team)
-	panicIfErr(err)
+	c.Assert(err, IsNil)
 	s.team = team
 	s.gitHost, _ = config.GetString("git:host")
 	s.gitPort, _ = config.GetString("git:port")
@@ -84,7 +78,6 @@ func (s *S) SetUpSuite(c *C) {
 }
 
 func (s *S) TearDownSuite(c *C) {
-	defer s.conn.Close()
 	s.conn.Apps().Database.DropDatabase()
 }
 
@@ -92,11 +85,13 @@ func (s *S) TearDownTest(c *C) {
 	if s.user.Password != s.hashed {
 		s.user.Password = s.hashed
 		err := s.user.Update()
-		panicIfErr(err)
+		c.Assert(err, IsNil)
 	}
 	config.Set("git:host", s.gitHost)
 	config.Set("git:port", s.gitPort)
 	config.Set("git:protocol", s.gitProt)
+	salt = ""
+	tokenKey = ""
 }
 
 func (s *S) getTestData(path ...string) io.ReadCloser {

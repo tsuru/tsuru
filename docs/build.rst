@@ -3,7 +3,7 @@
    license that can be found in the LICENSE file.
 
 +++++++++++++++++++
-Build your won PaaS
+Build your own PaaS
 +++++++++++++++++++
 
 This documents describes how to create a private PaaS service using tsuru.
@@ -30,7 +30,9 @@ Installing tsuru webserver from source
 
     $ sudo apt-get update
     $ sudo apt-get upgrade
-    $ sudo apt-get install -y golang-go git mercurial bzr gcc
+    $ sudo apt-get install -y golang-go git mercurial bzr gcc beanstalkd
+
+Tsuru needs the mongodb version 2.2>= so, to install it please `do this simple steps <http://docs.mongodb.org/manual/tutorial/install-mongodb-on-ubuntu/>`_
 
 2. Install the tsuru api
 
@@ -67,3 +69,29 @@ Installing tsuru webserver from source
 
     $ sudo mkdir -p /etc/tsuru
     $ sudo touch /etc/tsuru/tsuru.conf
+
+6. Download the charms
+
+Charms define how platforms will be installed. To use the charms provided by
+tsuru you can get it from `tsuru charms repository
+<https://github.com/globocom/charms>`_ and put it somewhere. Then define the
+setting ``juju:charms-path`` in the configuration file:
+
+.. highlight:: bash
+
+::
+
+    $ git clone git://github.com/globocom/charms.git /home/me/charms
+    $ cat /etc/tsuru/tsuru.conf
+    # ...
+    juju:
+      charms-path: /home/me/charms
+
+7. Starting tsuru
+
+.. highlight:: bash
+
+::
+
+    $ api
+

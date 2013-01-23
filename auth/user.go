@@ -15,36 +15,35 @@ import (
 	"time"
 )
 
-const (
-	defaultSalt       = "tsuru-salt"
-	defaultExpiration = 7 * 24 * time.Hour
-	defaultKey        = "tsuru-key"
-)
+const defaultExpiration = 7 * 24 * time.Hour
 
 var salt, tokenKey string
 var tokenExpire time.Duration
 
-func init() {
-	loadConfig()
-}
-
-func loadConfig() {
-	var err error
-	if salt, err = config.GetString("auth:salt"); err != nil {
-		salt = defaultSalt
+func loadConfig() error {
+	if salt == "" && tokenKey == "" {
+		var err error
+		if salt, err = config.GetString("auth:salt"); err != nil {
+			return errors.New(`Setting "auth:salt" is undefined.`)
+		}
+		if iface, err := config.Get("auth:token-expire-days"); err == nil {
+			day := int64(iface.(int))
+			tokenExpire = time.Duration(day * 24 * int64(time.Hour))
+		} else {
+			tokenExpire = defaultExpiration
+		}
+		if tokenKey, err = config.GetString("auth:token-key"); err != nil {
+			return errors.New(`Setting "auth:token-key" is undefined.`)
+		}
 	}
-	if iface, err := config.Get("auth:token-expire-days"); err == nil {
-		day := int64(iface.(int))
-		tokenExpire = time.Duration(day * 24 * int64(time.Hour))
-	} else {
-		tokenExpire = defaultExpiration
-	}
-	if tokenKey, err = config.GetString("auth:token-key"); err != nil {
-		tokenKey = defaultKey
-	}
+	return nil
 }
 
 func hashPassword(password string) string {
+	err := loadConfig()
+	if err != nil {
+		panic(err)
+	}
 	salt := []byte(salt)
 	return fmt.Sprintf("%x", pbkdf2.Key([]byte(password), salt, 4096, len(salt)*8, sha512.New))
 }
@@ -197,6 +196,9 @@ func newToken(u *User) (*Token, error) {
 	}
 	if u.Email == "" {
 		return nil, errors.New("Impossible to generate tokens for users without email")
+	}
+	if err := loadConfig(); err != nil {
+		return nil, err
 	}
 	h := sha512.New()
 	h.Write([]byte(u.Email))

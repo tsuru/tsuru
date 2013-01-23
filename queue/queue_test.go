@@ -47,9 +47,8 @@ func (s *S) TestConnectionQueueServerUndefined(c *C) {
 	config.Unset("queue-server")
 	defer config.Set("queue-server", old)
 	conn, err := connection()
-	c.Assert(conn, IsNil)
-	c.Assert(err, NotNil)
-	c.Assert(err.Error(), Equals, `"queue-server" is not defined in config file.`)
+	c.Assert(err, IsNil)
+	c.Assert(conn, NotNil)
 }
 
 func (s *S) TestConnectionResfused(c *C) {
@@ -100,15 +99,6 @@ func (s *S) TestPut(c *C) {
 	c.Assert(err, IsNil)
 	got.id = msg.id
 	c.Assert(got, DeepEquals, msg)
-}
-
-func (s *S) TestPutConnectionFailure(c *C) {
-	old, _ := config.Get("queue-server")
-	defer config.Set("queue-server", old)
-	config.Unset("queue-server")
-	msg := Message{Action: "regenerate-apprc"}
-	err := msg.Put("default", 0)
-	c.Assert(err, NotNil)
 }
 
 func (s *S) TestPutWithDelay(c *C) {

@@ -27,6 +27,7 @@ func (s *S) TestCreateUser(c *C) {
 }
 
 func (s *S) TestCreateUserHashesThePasswordUsingPBKDF2SHA512AndSalt(c *C) {
+	loadConfig()
 	salt := []byte(salt)
 	expectedPassword := fmt.Sprintf("%x", pbkdf2.Key([]byte("123456"), salt, 4096, len(salt)*8, sha512.New))
 	u := User{Email: "wolverine@xmen.com", Password: "123456"}
@@ -47,6 +48,20 @@ func (s *S) TestCreateUserReturnsErrorWhenTryingToCreateAUserWithDuplicatedEmail
 	defer s.conn.Users().Remove(bson.M{"email": u.Email})
 	err = u.Create()
 	c.Assert(err, NotNil)
+}
+
+func (s *S) TestCreateUserUndefinedSaltPanics(c *C) {
+	old, err := config.Get("auth:salt")
+	c.Assert(err, IsNil)
+	defer config.Set("auth:salt", old)
+	err = config.Unset("auth:salt")
+	c.Assert(err, IsNil)
+	u := User{Email: "wolverine@xmen.com", Password: "123"}
+	defer func() {
+		r := recover()
+		c.Assert(r, NotNil)
+	}()
+	u.Create()
 }
 
 func (s *S) TestGetUserByEmail(c *C) {
@@ -113,6 +128,18 @@ func (s *S) TestNewTokenReturnsErrorWhenUserIsNil(c *C) {
 	c.Assert(t, IsNil)
 	c.Assert(err, NotNil)
 	c.Assert(err, ErrorMatches, "^User is nil$")
+}
+
+func (s *S) TestNewTokenWithoutTokenKey(c *C) {
+	old, err := config.Get("auth:token-key")
+	c.Assert(err, IsNil)
+	defer config.Set("auth:token-key", old)
+	err = config.Unset("auth:token-key")
+	c.Assert(err, IsNil)
+	t, err := newToken(&User{Email: "gopher@golang.org"})
+	c.Assert(t, IsNil)
+	c.Assert(err, NotNil)
+	c.Assert(err.Error(), Equals, `Setting "auth:token-key" is undefined.`)
 }
 
 func (s *S) TestCreateTokenShouldSaveTheTokenInUserInTheDatabase(c *C) {
@@ -232,25 +259,27 @@ func (s *S) TestCheckTokenReturnTheUserIfTheTokenIsValid(c *C) {
 	c.Assert(u.Email, Equals, s.user.Email)
 }
 
-func (s *S) TestLoadConfigSetsTheSaltThatIsInTheConfigFile(c *C) {
+func (s *S) TestLoadConfigSalt(c *C) {
 	configuredSalt, err := config.GetString("auth:salt")
 	c.Assert(err, IsNil)
 	loadConfig()
 	c.Assert(salt, Equals, configuredSalt)
 }
 
-func (s *S) TestLoadConfigSetsTheSaltToDefaultIfItIsNotPresentInConfig(c *C) {
-	key := "auth"
+func (s *S) TestLoadConfigUndefinedSalt(c *C) {
+	key := "auth:salt"
 	oldValue, err := config.Get(key)
 	c.Assert(err, IsNil)
 	err = config.Unset(key)
 	c.Assert(err, IsNil)
 	defer config.Set(key, oldValue)
-	loadConfig()
-	c.Assert(salt, Equals, defaultSalt)
+	err = loadConfig()
+	c.Assert(err, NotNil)
+	c.Assert(err.Error(), Equals, `Setting "auth:salt" is undefined.`)
+	c.Assert(salt, Equals, "")
 }
 
-func (s *S) TestLoadConfigSetsTheTokenExpireToTheValueInTheConfig(c *C) {
+func (s *S) TestLoadConfigTokenExpire(c *C) {
 	configuredToken, err := config.Get("auth:token-expire-days")
 	c.Assert(err, IsNil)
 	expected := time.Duration(int64(configuredToken.(int)) * 24 * int64(time.Hour))
@@ -258,14 +287,16 @@ func (s *S) TestLoadConfigSetsTheTokenExpireToTheValueInTheConfig(c *C) {
 	c.Assert(tokenExpire, Equals, expected)
 }
 
-func (s *S) TestLoadConfigSetTheTokenExpireToTheDefaultValueIfTheConfigIsNotPresent(c *C) {
-	key := "auth"
+func (s *S) TestLoadConfigUndefinedTokenExpire(c *C) {
+	tokenExpire = 0
+	key := "auth:token-expire-days"
 	oldConfig, err := config.Get(key)
 	c.Assert(err, IsNil)
 	err = config.Unset(key)
 	c.Assert(err, IsNil)
 	defer config.Set(key, oldConfig)
-	loadConfig()
+	err = loadConfig()
+	c.Assert(err, IsNil)
 	c.Assert(tokenExpire, Equals, defaultExpiration)
 }
 
@@ -281,22 +312,33 @@ func (s *S) TestLoadConfigShouldPanicIfTheTokenExpireDaysIsNotInteger(c *C) {
 	loadConfig()
 }
 
-func (s *S) TestLoadConfigShouldSetTheTokenKeyToTheValueInTheConfig(c *C) {
+func (s *S) TestLoadConfigTokenKey(c *C) {
 	configuredKey, err := config.Get("auth:token-key")
 	c.Assert(err, IsNil)
 	loadConfig()
 	c.Assert(tokenKey, Equals, configuredKey)
 }
 
-func (s *S) TestLoadConfigShouldSetTheTokenKeyToTheDefaultValueIfItsIsNotInTheConfig(c *C) {
-	key := "auth"
+func (s *S) TestLoadConfigUndefineTokenKey(c *C) {
+	key := "auth:token-key"
 	oldConfig, err := config.Get(key)
 	c.Assert(err, IsNil)
 	err = config.Unset(key)
 	c.Assert(err, IsNil)
 	defer config.Set(key, oldConfig)
-	loadConfig()
-	c.Assert(tokenKey, Equals, defaultKey)
+	err = loadConfig()
+	c.Assert(err, NotNil)
+	c.Assert(err.Error(), Equals, `Setting "auth:token-key" is undefined.`)
+	c.Assert(tokenKey, Equals, "")
+}
+
+func (s *S) TestLoadConfigDontOverride(c *C) {
+	tokenKey = "something"
+	salt = "salt"
+	err := loadConfig()
+	c.Assert(err, IsNil)
+	c.Assert(tokenKey, Equals, "something")
+	c.Assert(salt, Equals, "salt")
 }
 
 func (s *S) TestTeams(c *C) {

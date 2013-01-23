@@ -73,6 +73,31 @@ func (s *S) TestDestroy(c *C) {
 	c.Assert(s.provisioner.FindApp(&a), Equals, -1)
 }
 
+func (s *S) TestDestroyWithoutBucketSupport(c *C) {
+	config.Unset("bucket-support")
+	defer config.Set("bucket-support", true)
+	h := testHandler{}
+	ts := s.t.StartGandalfTestServer(&h)
+	defer ts.Close()
+	a := App{
+		Name:      "blinded",
+		Framework: "evergrey",
+		Teams:     []string{s.team.Name},
+		Units:     []Unit{{Name: "duvido", Machine: 3}},
+	}
+	err := CreateApp(&a, 1)
+	c.Assert(err, IsNil)
+	a.Get()
+	err = a.Destroy()
+	c.Assert(err, IsNil)
+	err = a.Get()
+	c.Assert(err, NotNil)
+	qt, err := s.conn.Apps().Find(bson.M{"name": a.Name}).Count()
+	c.Assert(err, IsNil)
+	c.Assert(qt, Equals, 0)
+	c.Assert(s.provisioner.FindApp(&a), Equals, -1)
+}
+
 func (s *S) TestDestroyWithoutUnits(c *C) {
 	h := testHandler{}
 	ts := s.t.StartGandalfTestServer(&h)
@@ -160,6 +185,39 @@ func (s *S) TestCreateApp(c *C) {
 	defer message.Delete()
 	c.Assert(message.Action, Equals, expectedMessage.Action)
 	c.Assert(message.Args, DeepEquals, expectedMessage.Args)
+	c.Assert(s.provisioner.GetUnits(&a), HasLen, 3)
+}
+
+func (s *S) TestCreateWithoutBucketSupport(c *C) {
+	config.Unset("bucket-support")
+	defer config.Set("bucket-support", true)
+	h := testHandler{}
+	ts := s.t.StartGandalfTestServer(&h)
+	defer ts.Close()
+	a := App{
+		Name:      "sorry",
+		Framework: "evergrey",
+		Units:     []Unit{{Machine: 3}},
+	}
+	expectedHost := "localhost"
+	config.Set("host", expectedHost)
+	err := CreateApp(&a, 3)
+	c.Assert(err, IsNil)
+	defer a.Destroy()
+	err = a.Get()
+	c.Assert(err, IsNil)
+	var retrievedApp App
+	err = s.conn.Apps().Find(bson.M{"name": a.Name}).One(&retrievedApp)
+	c.Assert(err, IsNil)
+	c.Assert(retrievedApp.Name, Equals, a.Name)
+	c.Assert(retrievedApp.Framework, Equals, a.Framework)
+	env := a.InstanceEnv(s3InstanceName)
+	c.Assert(env, DeepEquals, map[string]bind.EnvVar{})
+	message, err := queue.Get(queueName, 1e6)
+	c.Assert(err, IsNil)
+	defer message.Delete()
+	c.Assert(message.Action, Equals, regenerateApprc)
+	c.Assert(message.Args, DeepEquals, []string{a.Name})
 	c.Assert(s.provisioner.GetUnits(&a), HasLen, 3)
 }
 
@@ -460,6 +518,7 @@ func (s *S) TestRemoveUnitByNameOrInstanceId(c *C) {
 		atomic.StoreInt32(&calls, v+1)
 		w.WriteHeader(http.StatusNoContent)
 	}))
+	defer ts.Close()
 	srvc := service.Service{Name: "nosql", Endpoint: map[string]string{"production": ts.URL}}
 	err := srvc.Create()
 	c.Assert(err, IsNil)
@@ -491,7 +550,6 @@ func (s *S) TestRemoveUnitByNameOrInstanceId(c *C) {
 	}()
 	err = app.RemoveUnit(app.Units[0].Name)
 	c.Assert(err, IsNil)
-	ts.Close()
 	err = app.Get()
 	c.Assert(err, IsNil)
 	c.Assert(app.Units, HasLen, 4)
@@ -509,7 +567,7 @@ func (s *S) TestRemoveUnitByNameOrInstanceId(c *C) {
 	ok := make(chan int8)
 	go func() {
 		for _ = range time.Tick(1e3) {
-			if atomic.LoadInt32(&calls) == 1 {
+			if atomic.LoadInt32(&calls) == 2 {
 				ok <- 1
 				return
 			}
@@ -518,7 +576,7 @@ func (s *S) TestRemoveUnitByNameOrInstanceId(c *C) {
 	select {
 	case <-ok:
 	case <-time.After(2e9):
-		c.Fatal("Did not call service endpoint once.")
+		c.Fatal("Did not call service endpoint twice.")
 	}
 }
 

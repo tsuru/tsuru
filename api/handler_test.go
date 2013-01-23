@@ -36,7 +36,6 @@ func (s *HandlerSuite) SetUpSuite(c *C) {
 }
 
 func (s *HandlerSuite) TearDownSuite(c *C) {
-	defer s.conn.Close()
 	s.conn.Apps().Database.DropDatabase()
 }
 

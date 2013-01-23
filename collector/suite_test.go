@@ -23,8 +23,7 @@ type S struct {
 var _ = Suite(&S{})
 
 func (s *S) SetUpSuite(c *C) {
-	err := config.ReadConfigFile("../etc/tsuru.conf")
-	c.Assert(err, IsNil)
+	var err error
 	config.Set("database:url", "127.0.0.1:27017")
 	config.Set("database:name", "tsuru_collector_test")
 	s.conn, err = db.Conn()
@@ -36,7 +35,6 @@ func (s *S) SetUpSuite(c *C) {
 
 func (s *S) TearDownSuite(c *C) {
 	s.conn.Apps().Database.DropDatabase()
-	s.conn.Close()
 }
 
 func (s *S) TearDownTest(c *C) {

@@ -29,7 +29,6 @@ func (s *WriterSuite) SetUpSuite(c *C) {
 }
 
 func (s *WriterSuite) TearDownSuite(c *C) {
-	defer s.conn.Close()
 	s.conn.Apps().Database.DropDatabase()
 }
 

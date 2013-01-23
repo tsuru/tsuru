@@ -49,6 +49,8 @@ func (s *S) TestUnitsCollection(c *C) {
 }
 
 func (s *S) TestProvision(c *C) {
+	config.Set("juju:charms-path", "/etc/juju/charms")
+	defer config.Unset("juju:charms-path")
 	tmpdir, err := commandmocker.Add("juju", "$*")
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(tmpdir)
@@ -57,10 +59,20 @@ func (s *S) TestProvision(c *C) {
 	err = p.Provision(app)
 	c.Assert(err, IsNil)
 	c.Assert(commandmocker.Ran(tmpdir), Equals, true)
-	c.Assert(commandmocker.Output(tmpdir), Equals, "deploy --repository /home/charms local:python trace")
+	c.Assert(commandmocker.Output(tmpdir), Equals, "deploy --repository /etc/juju/charms local:python trace")
+}
+
+func (s *S) TestProvisionUndefinedCharmsPath(c *C) {
+	config.Unset("juju:charms-path")
+	p := JujuProvisioner{}
+	err := p.Provision(testing.NewFakeApp("eternity", "sandman", 0))
+	c.Assert(err, NotNil)
+	c.Assert(err.Error(), Equals, `Setting "juju:charms-path" is not defined.`)
 }
 
 func (s *S) TestProvisionFailure(c *C) {
+	config.Set("juju:charms-path", "/home/charms")
+	defer config.Unset("juju:charms-path")
 	tmpdir, err := commandmocker.Error("juju", "juju failed", 1)
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(tmpdir)
@@ -573,6 +585,8 @@ func (s *S) TestAddrWithoutUnits(c *C) {
 }
 
 func (s *ELBSuite) TestProvisionWithELB(c *C) {
+	config.Set("juju:charms-path", "/home/charms")
+	defer config.Unset("juju:charms-path")
 	tmpdir, err := commandmocker.Add("juju", "deployed")
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(tmpdir)
@@ -593,6 +607,8 @@ func (s *ELBSuite) TestProvisionWithELB(c *C) {
 }
 
 func (s *ELBSuite) TestDestroyWithELB(c *C) {
+	config.Set("juju:charms-path", "/home/charms")
+	defer config.Unset("juju:charms-path")
 	tmpdir, err := commandmocker.Add("juju", "deployed")
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(tmpdir)

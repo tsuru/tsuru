@@ -107,7 +107,6 @@ func (s *S) SetUpSuite(c *C) {
 func (s *S) TearDownSuite(c *C) {
 	defer s.t.S3Server.Quit()
 	defer s.t.IamServer.Quit()
-	defer s.conn.Close()
 	queue.Preempt()
 	s.conn.Apps().Database.DropDatabase()
 	fsystem = nil

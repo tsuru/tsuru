@@ -15,12 +15,21 @@ import (
 	"github.com/globocom/config"
 	"labix.org/v2/mgo"
 	"sync"
+	"time"
 )
 
 var (
-	conn = make(map[string]*Storage) // pool of connections
-	mut  sync.RWMutex                // for pool thread safety
+	conn   = make(map[string]*session) // pool of connections
+	mut    sync.RWMutex                // for pool thread safety
+	ticker *time.Ticker                // for garbage collection
 )
+
+const period time.Duration = 7 * 24 * time.Hour
+
+type session struct {
+	s    *mgo.Session
+	used time.Time
+}
 
 // Storage holds the connection with the database.
 type Storage struct {
@@ -29,14 +38,13 @@ type Storage struct {
 }
 
 func open(addr, dbname string) (*Storage, error) {
-	key := addr + dbname
-	session, err := mgo.Dial(addr)
+	sess, err := mgo.Dial(addr)
 	if err != nil {
 		return nil, err
 	}
-	storage := &Storage{session: session, dbname: dbname}
+	storage := &Storage{session: sess, dbname: dbname}
 	mut.Lock()
-	conn[key] = storage
+	conn[addr] = &session{s: sess, used: time.Now()}
 	mut.Unlock()
 	return storage, nil
 }
@@ -49,18 +57,22 @@ func open(addr, dbname string) (*Storage, error) {
 // This function returns a pointer to a Storage, or a non-nil error in case of
 // any failure.
 func Open(addr, dbname string) (storage *Storage, err error) {
-	var ok bool
 	defer func() {
 		if r := recover(); r != nil {
 			storage, err = open(addr, dbname)
 		}
 	}()
-	key := addr + dbname
 	mut.RLock()
-	if storage, ok = conn[key]; ok {
+	if session, ok := conn[addr]; ok {
 		mut.RUnlock()
-		storage.session.Ping()
-		return storage, nil
+		if err = session.s.Ping(); err == nil {
+			mut.Lock()
+			session.used = time.Now()
+			conn[addr] = session
+			mut.Unlock()
+			return &Storage{session.s, dbname}, nil
+		}
+		return open(addr, dbname)
 	}
 	mut.RUnlock()
 	return open(addr, dbname)
@@ -80,21 +92,6 @@ func Conn() (storage *Storage, err error) {
 		return nil, fmt.Errorf("configuration error: %s", err)
 	}
 	return Open(url, dbname)
-}
-
-// Close closes the connection.
-//
-// You can take advantage of defer statement, and write code that look like this:
-//
-//     st, err := Open("localhost:27017", "tsuru")
-//     if err != nil {
-//         panic(err)
-//     }
-//     defer st.Close()
-//
-// TODO(fss): remove this method and implement a "connection collector".
-func (s *Storage) Close() {
-	s.session.Close()
 }
 
 // Collection returns a collection by its name.
@@ -134,4 +131,30 @@ func (s *Storage) Users() *mgo.Collection {
 // Teams returns the teams collection from MongoDB.
 func (s *Storage) Teams() *mgo.Collection {
 	return s.Collection("teams")
+}
+
+func init() {
+	ticker = time.NewTicker(72 * time.Hour)
+	go retire(ticker)
+}
+
+// retire retires old connections :-)
+func retire(t *time.Ticker) {
+	for _ = range t.C {
+		now := time.Now()
+		var old []string
+		mut.RLock()
+		for k, v := range conn {
+			if now.Sub(v.used) >= period {
+				old = append(old, k)
+			}
+		}
+		mut.RUnlock()
+		mut.Lock()
+		for _, c := range old {
+			conn[c].s.Close()
+			delete(conn, c)
+		}
+		mut.Unlock()
+	}
 }

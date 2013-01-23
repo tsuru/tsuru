@@ -55,7 +55,6 @@ func (s *ELBSuite) SetUpSuite(c *C) {
 func (s *ELBSuite) TearDownSuite(c *C) {
 	config.Unset("juju:use-elb")
 	s.conn.Collection("juju_units_test_elb").Database.DropDatabase()
-	s.conn.Close()
 	s.server.Quit()
 	handler.Stop()
 	handler.Wait()

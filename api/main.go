@@ -99,6 +99,9 @@ func main() {
 	m.Put("/teams/:team/:user", AuthorizationRequiredHandler(AddUserToTeam))
 	m.Del("/teams/:team/:user", AuthorizationRequiredHandler(RemoveUserFromTeam))
 
+	m.Get("/healers", Handler(healers))
+	m.Get("/healers/:healer", Handler(healer))
+
 	if !*dry {
 		provisioner, err := config.GetString("provisioner")
 		if err != nil {

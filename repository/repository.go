@@ -89,10 +89,9 @@ func GitServerUri() string {
 		log.Print("git:host config not found")
 		panic(err)
 	}
-	protocol, err := config.GetString("git:protocol")
-	if err != nil {
-		log.Print("git:protocol config not found")
-		panic(err)
+	protocol, _ := config.GetString("git:protocol")
+	if protocol == "" {
+		protocol = "http"
 	}
 	uri := fmt.Sprintf("%s://%s", protocol, server)
 	if port, err := config.Get("git:port"); err == nil {

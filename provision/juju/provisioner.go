@@ -78,11 +78,15 @@ func (p *JujuProvisioner) enqueueUnits(app string, units ...string) {
 
 func (p *JujuProvisioner) Provision(app provision.App) error {
 	var buf bytes.Buffer
+	charms, err := config.GetString("juju:charms-path")
+	if err != nil {
+		return errors.New(`Setting "juju:charms-path" is not defined.`)
+	}
 	args := []string{
-		"deploy", "--repository", "/home/charms",
+		"deploy", "--repository", charms,
 		"local:" + app.GetFramework(), app.GetName(),
 	}
-	err := runCmd(false, &buf, &buf, args...)
+	err = runCmd(false, &buf, &buf, args...)
 	out := buf.String()
 	if err != nil {
 		app.Log("Failed to create machine: "+out, "tsuru")
@@ -273,15 +277,23 @@ func (p *JujuProvisioner) ExecuteCommand(stdout, stderr io.Writer, app provision
 	return nil
 }
 
-func (p *JujuProvisioner) collectStatus() ([]provision.Unit, error) {
+func (p *JujuProvisioner) getOutput() (jujuOutput, error) {
 	output, err := execWithTimeout(30e9, "juju", "status")
 	if err != nil {
-		return nil, cmdError(string(output), err, []string{"juju", "status"})
+		return jujuOutput{}, cmdError(string(output), err, []string{"juju", "status"})
 	}
 	var out jujuOutput
 	err = goyaml.Unmarshal(output, &out)
 	if err != nil {
-		return nil, &provision.Error{Reason: `"juju status" returned invalid data`, Err: err}
+		return jujuOutput{}, &provision.Error{Reason: `"juju status" returned invalid data`, Err: err}
+	}
+	return out, nil
+}
+
+func (p *JujuProvisioner) collectStatus() ([]provision.Unit, error) {
+	out, err := p.getOutput()
+	if err != nil {
+		return nil, err
 	}
 	var units []provision.Unit
 	for name, service := range out.Services {

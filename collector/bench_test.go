@@ -56,7 +56,6 @@ func BenchmarkUpdate(b *testing.B) {
 	if err != nil {
 		panic(err)
 	}
-	defer conn.Close()
 	defer conn.Apps().Database.DropDatabase()
 	_, names := getFakeApps(conn)
 	app.Provisioner = ttesting.NewFakeProvisioner()

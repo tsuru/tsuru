@@ -38,7 +38,6 @@ func (s *ConsumptionSuite) SetUpSuite(c *C) {
 }
 
 func (s *ConsumptionSuite) TearDownSuite(c *C) {
-	defer s.conn.Close()
 	s.conn.Apps().Database.DropDatabase()
 }
 

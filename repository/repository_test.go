@@ -130,3 +130,12 @@ func (s *S) TestGetServerUriWithoutPort(c *C) {
 	uri := GitServerUri()
 	c.Assert(uri, Equals, fmt.Sprintf("%s://%s", protocol, server))
 }
+
+func (s *S) TestGetServerUriWithoutProtocol(c *C) {
+	config.Unset("git:protocol")
+	defer config.Set("git:protocol", "http")
+	server, err := config.GetString("git:host")
+	c.Assert(err, IsNil)
+	uri := GitServerUri()
+	c.Assert(uri, Equals, "http://"+server+":8080")
+}

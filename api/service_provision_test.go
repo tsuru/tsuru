@@ -39,7 +39,6 @@ func (s *ProvisionSuite) SetUpSuite(c *C) {
 }
 
 func (s *ProvisionSuite) TearDownSuite(c *C) {
-	defer s.conn.Close()
 	s.conn.Apps().Database.DropDatabase()
 }
 
