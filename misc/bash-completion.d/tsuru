@@ -1,4 +1,4 @@
-# Copyright 2012 tsuru authors. All rights reserved.
+# Copyright 2013 tsuru authors. All rights reserved.
 # Use of this source code is governed by a BSD-style
 # license that can be found in the LICENSE file.
 
@@ -11,7 +11,7 @@ _tsuru() {
 
     COMPREPLY=()
     cur=${COMP_WORDS[COMP_CWORD]}
-    cmds='app-create app-grant app-list app-remove app-revoke app-info unit-add unit-remove bind env-get env-set env-unset help key-add key-remove log login logout restart run service-add service-doc service-info service-list service-remove service-status target team-create team-list team-user-add team-user-remove unbind user-create'
+    cmds='app-create app-grant app-info app-list app-remove app-revoke bind change-password env-get env-set env-unset help key-add key-remove log login logout restart run service-add service-doc service-info service-list service-remove service-status target team-create team-list team-remove team-user-add team-user-remove unbind unit-add unit-remove user-create user-remove version'
 
     # do ordinary expansion if we are anywhere after a -- argument
     for ((i = 1; i < COMP_CWORD; ++i)); do

@@ -1,4 +1,4 @@
-# Copyright 2012 tsuru authors. All rights reserved.
+# Copyright 2013 tsuru authors. All rights reserved.
 # Use of this source code is governed by a BSD-style
 # license that can be found in the LICENSE file.
 
@@ -11,7 +11,8 @@ _crane() {
 
     COMPREPLY=()
     cur=${COMP_WORDS[COMP_CWORD]}
-    cmds='create doc help list login logout remove target team-create team-list team-user-add team-user-remove template update user-create'
+    cmds='change-password create doc-add doc-get help list login logout remove target team-create team-list team-remove team-user-add team-user-remove template update user-create user-remove version'
+
     # do ordinary expansion if we are anywhere after a -- argument
     for ((i = 1; i < COMP_CWORD; ++i)); do
         [[ ${COMP_WORDS[i]} == "--" ]] && return 0
