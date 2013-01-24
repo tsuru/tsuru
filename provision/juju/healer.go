@@ -42,6 +42,7 @@ func (h *BootstrapProvisionHealer) NeedsHeal() bool {
 	return true
 }
 
+// Heal starts the juju-provision-agent using upstart.
 func (h *BootstrapProvisionHealer) Heal() error {
 	bootstrapMachine := getBootstrapMachine()
 	log.Printf("Healing bootstrap juju-provision-agent")
