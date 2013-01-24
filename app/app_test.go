@@ -1295,7 +1295,7 @@ func (s *S) TestSerializeEnvVars(c *C) {
 		},
 		Units: []Unit{{Name: "i-0800", State: "started"}},
 	}
-	err := app.SerializeEnvVars()
+	err := app.serializeEnvVars()
 	c.Assert(err, IsNil)
 	cmds := s.provisioner.GetCmds("", &app)
 	c.Assert(cmds, HasLen, 1)
@@ -1316,7 +1316,7 @@ func (s *S) TestSerializeEnvVarsErrorWithoutOutput(c *C) {
 			},
 		},
 	}
-	err := app.SerializeEnvVars()
+	err := app.serializeEnvVars()
 	c.Assert(err, NotNil)
 	c.Assert(err.Error(), Equals, "Failed to write env vars: App must be available to run commands.")
 }
@@ -1335,7 +1335,7 @@ func (s *S) TestSerializeEnvVarsErrorWithOutput(c *C) {
 		},
 		Units: []Unit{{Name: "i-0800", State: "started"}},
 	}
-	err := app.SerializeEnvVars()
+	err := app.serializeEnvVars()
 	c.Assert(err, NotNil)
 	expected := "Failed to write env vars (exit status 1): This program has performed an illegal operation."
 	c.Assert(err.Error(), Equals, expected)

@@ -97,7 +97,7 @@ func handle(msg *queue.Message) {
 			return
 		}
 		msg.Delete()
-		app.SerializeEnvVars()
+		app.serializeEnvVars()
 		fallthrough
 	case startApp:
 		if msg.Action == regenerateApprc {
