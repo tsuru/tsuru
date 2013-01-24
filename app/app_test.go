@@ -619,7 +619,7 @@ func (s *S) TestGrantAccess(c *C) {
 	a := App{Name: "appName", Framework: "django", Teams: []string{}}
 	err := a.Grant(&s.team)
 	c.Assert(err, IsNil)
-	_, found := a.Find(&s.team)
+	_, found := a.find(&s.team)
 	c.Assert(found, Equals, true)
 }
 
@@ -641,7 +641,7 @@ func (s *S) TestRevokeAccess(c *C) {
 	a := App{Name: "appName", Framework: "django", Teams: []string{s.team.Name}}
 	err := a.Revoke(&s.team)
 	c.Assert(err, IsNil)
-	_, found := a.Find(&s.team)
+	_, found := a.find(&s.team)
 	c.Assert(found, Equals, false)
 }
 

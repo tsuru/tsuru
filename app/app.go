@@ -383,9 +383,7 @@ func (a *App) Available() bool {
 // where it was found.
 //
 // Its's implemented after sort.Search. That's why it works this way.
-//
-// TODO(fss): this method should not be exported.
-func (a *App) Find(team *auth.Team) (int, bool) {
+func (a *App) find(team *auth.Team) (int, bool) {
 	pos := sort.Search(len(a.Teams), func(i int) bool {
 		return a.Teams[i] >= team.Name
 	})
@@ -395,7 +393,7 @@ func (a *App) Find(team *auth.Team) (int, bool) {
 // Grant allows a team to have access to an app. It returns an error if the
 // team already have access to the app.
 func (a *App) Grant(team *auth.Team) error {
-	pos, found := a.Find(team)
+	pos, found := a.find(team)
 	if found {
 		return errors.New("This team already has access to this app")
 	}
@@ -411,7 +409,7 @@ func (a *App) Grant(team *auth.Team) error {
 // Revoke removes the access from a team. It returns an error if the team do
 // not have access to the app.
 func (a *App) Revoke(team *auth.Team) error {
-	index, found := a.Find(team)
+	index, found := a.find(team)
 	if !found {
 		return errors.New("This team does not have access to this app")
 	}
