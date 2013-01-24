@@ -26,7 +26,9 @@ func (h *BootstrapProvisionHealer) NeedsHeal() bool {
 }
 
 func (h *BootstrapProvisionHealer) Heal() error {
-	return nil
+	bootstrapMachine := getBootstrapMachine()
+	log.Printf("Healing bootstrap juju-provision-agent")
+	return upStartCmd("start", "juju-provision-agent", bootstrapMachine.IpAddress)
 }
 
 // BootstrapMachineHealer is an implementation for the Healer interface. For more

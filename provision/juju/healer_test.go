@@ -21,6 +21,36 @@ func (s *S) TestBootstrapProvisionHealerNeedsHeal(c *C) {
 	c.Assert(h.NeedsHeal(), Equals, true)
 }
 
+func (s *S) TestBootstrapProvisionHealerHeal(c *C) {
+	jujuTmpdir, err := commandmocker.Add("juju", collectOutputBootstrapDown)
+	c.Assert(err, IsNil)
+	defer commandmocker.Remove(jujuTmpdir)
+	sshTmpdir, err := commandmocker.Add("ssh", "$*")
+	c.Assert(err, IsNil)
+	defer commandmocker.Remove(sshTmpdir)
+	jujuOutput := []string{
+		"status", // for juju status that gets the output
+	}
+	sshOutput := []string{
+		"-o",
+		"StrictHostKeyChecking no",
+		"-q",
+		"-l",
+		"ubuntu",
+		"10.10.10.96",
+		"sudo",
+		"start",
+		"juju-provision-agent",
+	}
+	h := BootstrapProvisionHealer{}
+	err = h.Heal()
+	c.Assert(err, IsNil)
+	c.Assert(commandmocker.Ran(jujuTmpdir), Equals, true)
+	c.Assert(commandmocker.Parameters(jujuTmpdir), DeepEquals, jujuOutput)
+	c.Assert(commandmocker.Ran(sshTmpdir), Equals, true)
+	c.Assert(commandmocker.Parameters(sshTmpdir), DeepEquals, sshOutput)
+}
+
 func (s *S) TestBootstrapMachineHealerShouldBeRegistered(c *C) {
 	h, err := heal.Get("bootstrap")
 	c.Assert(err, IsNil)
