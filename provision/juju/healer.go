@@ -14,6 +14,19 @@ import (
 func init() {
 	heal.Register("bootstrap", &BootstrapMachineHealer{})
 	heal.Register("bootstrap-provision", &BootstrapProvisionHealer{})
+	heal.Register("zookeeper", &ZookeeperHealer{})
+}
+
+// ZookeeperHealer is an implementation for the Healer interface. For more
+// detail on how a healer work, check the documentation of the heal package.
+type ZookeeperHealer struct{}
+
+func (h *ZookeeperHealer) NeedsHeal() bool {
+	return false
+}
+
+func (h *ZookeeperHealer) Heal() error {
+	return nil
 }
 
 // BootstrapProvisionHealer is an import for the Healer interface. For more
