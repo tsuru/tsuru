@@ -17,6 +17,8 @@ import (
 	"text/template"
 )
 
+// s3Env represents a S3 environment set. This information is stored in the app
+// using environment variables.
 type s3Env struct {
 	aws.Auth
 	bucket             string
@@ -69,6 +71,8 @@ var (
 }`))
 )
 
+// getAWSAuth returns an aws.Auth instance using aws:access-key-id and
+// aws:secret-access-key settings.
 func getAWSAuth() aws.Auth {
 	access, err := config.GetString("aws:access-key-id")
 	if err != nil {
@@ -84,6 +88,8 @@ func getAWSAuth() aws.Auth {
 	}
 }
 
+// getS3Endpoint returns an s3.S3 instance configured with information provided
+// by aws:s3:* settings.
 func getS3Endpoint() *s3.S3 {
 	regionName, _ := config.GetString("aws:s3:region-name")
 	endpoint, err := config.GetString("aws:s3:endpoint")
@@ -109,6 +115,9 @@ func getS3Endpoint() *s3.S3 {
 	return s3.New(getAWSAuth(), region)
 }
 
+// getIAMEndpoint returns an iam.IAM instance configured to access the endpoint
+// defined in aws:iam:endpoint. If this setting is undefined, it will use the
+// default endpoint (https://iam.amazonaws.com).
 func getIAMEndpoint() *iam.IAM {
 	endpoint, err := config.GetString("aws:iam:endpoint")
 	if err != nil {
@@ -118,6 +127,9 @@ func getIAMEndpoint() *iam.IAM {
 	return iam.New(getAWSAuth(), region)
 }
 
+// putBucket creates a bucket for the given app. It uses the appName and a
+// bunch of random bytes to maximize the length of the bucket name. The name
+// will be at most maxBucketSize length.
 func putBucket(appName string) (*s3.Bucket, error) {
 	randBytes := (maxBucketSize - len(appName)) / 2
 	randPart := make([]byte, randBytes)
@@ -136,6 +148,8 @@ func putBucket(appName string) (*s3.Bucket, error) {
 	return bucket, nil
 }
 
+// createIAMUser creates a new user in IAM using the given appName. The name of
+// the user will be the same as in the app.
 func createIAMUser(appName string) (*iam.User, error) {
 	iamEndpoint := getIAMEndpoint()
 	uResp, err := iamEndpoint.CreateUser(appName, fmt.Sprintf("/%s/", appName))
@@ -145,6 +159,7 @@ func createIAMUser(appName string) (*iam.User, error) {
 	return &uResp.User, nil
 }
 
+// createIAMAccessKey uses IAM to create a new access key for the given user.
 func createIAMAccessKey(user *iam.User) (*iam.AccessKey, error) {
 	iamEndpoint := getIAMEndpoint()
 	resp, err := iamEndpoint.CreateAccessKey(user.Name)
@@ -154,6 +169,8 @@ func createIAMAccessKey(user *iam.User) (*iam.AccessKey, error) {
 	return &resp.AccessKey, err
 }
 
+// createIAMUserPolicy creates the user policy that allows the user to
+// manipulate the bucket.
 func createIAMUserPolicy(user *iam.User, appName, bucketName string) (*iam.UserPolicy, error) {
 	iamEndpoint := getIAMEndpoint()
 	var buf bytes.Buffer
@@ -169,32 +186,8 @@ func createIAMUserPolicy(user *iam.User, appName, bucketName string) (*iam.UserP
 	return &p, nil
 }
 
-func createBucket(app *App) (*s3Env, error) {
-	var env s3Env
-	appName := strings.ToLower(app.Name)
-	bucket, err := putBucket(appName)
-	if err != nil {
-		return nil, err
-	}
-	env.bucket = bucket.Name
-	env.locationConstraint = bucket.S3LocationConstraint
-	env.endpoint = bucket.S3Endpoint
-	user, err := createIAMUser(appName)
-	if err != nil {
-		return nil, err
-	}
-	key, err := createIAMAccessKey(user)
-	if err != nil {
-		return nil, err
-	}
-	env.AccessKey = key.Id
-	env.SecretKey = key.Secret
-	if _, err := createIAMUserPolicy(user, appName, env.bucket); err != nil {
-		return nil, err
-	}
-	return &env, nil
-}
-
+// destroyBucket removes the bucket created for the app, and all resources
+// related to the bucket (IAM user and IAM access key).
 func destroyBucket(app *App) error {
 	appName := strings.ToLower(app.Name)
 	env := app.InstanceEnv(s3InstanceName)

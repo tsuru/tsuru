@@ -619,7 +619,7 @@ func (s *S) TestGrantAccess(c *C) {
 	a := App{Name: "appName", Framework: "django", Teams: []string{}}
 	err := a.Grant(&s.team)
 	c.Assert(err, IsNil)
-	_, found := a.Find(&s.team)
+	_, found := a.find(&s.team)
 	c.Assert(found, Equals, true)
 }
 
@@ -641,7 +641,7 @@ func (s *S) TestRevokeAccess(c *C) {
 	a := App{Name: "appName", Framework: "django", Teams: []string{s.team.Name}}
 	err := a.Revoke(&s.team)
 	c.Assert(err, IsNil)
-	_, found := a.Find(&s.team)
+	_, found := a.find(&s.team)
 	c.Assert(found, Equals, false)
 }
 
@@ -709,7 +709,7 @@ func (s *S) TestSetEnvRespectsThePublicOnlyFlagKeepPrivateVariablesWhenItsTrue(c
 			Public: true,
 		},
 	}
-	err = a.SetEnvsToApp(envs, true, false)
+	err = a.setEnvsToApp(envs, true, false)
 	c.Assert(err, IsNil)
 	newApp := App{Name: a.Name}
 	err = newApp.Get()
@@ -758,7 +758,7 @@ func (s *S) TestSetEnvRespectsThePublicOnlyFlagOverwrittenAllVariablesWhenItsFal
 			Public: true,
 		},
 	}
-	err = a.SetEnvsToApp(envs, false, false)
+	err = a.setEnvsToApp(envs, false, false)
 	c.Assert(err, IsNil)
 	newApp := App{Name: a.Name}
 	err = newApp.Get()
@@ -908,21 +908,6 @@ func (s *S) TestIsValid(c *C) {
 			c.Errorf("Is %q a valid app name? Expected: %v. Got: %v.", d.name, d.expected, valid)
 		}
 	}
-}
-
-func (s *S) TestUnit(c *C) {
-	u := Unit{Name: "someapp/0", Type: "django", Machine: 10}
-	a := App{Name: "appName", Framework: "django", Units: []Unit{u}}
-	u2 := a.Unit()
-	u.app = &a
-	c.Assert(*u2, DeepEquals, u)
-}
-
-func (s *S) TestEmptyUnit(c *C) {
-	a := App{Name: "myApp"}
-	expected := Unit{app: &a}
-	unit := a.Unit()
-	c.Assert(*unit, DeepEquals, expected)
 }
 
 func (s *S) TestDeployHookAbsPath(c *C) {
@@ -1310,7 +1295,7 @@ func (s *S) TestSerializeEnvVars(c *C) {
 		},
 		Units: []Unit{{Name: "i-0800", State: "started"}},
 	}
-	err := app.SerializeEnvVars()
+	err := app.serializeEnvVars()
 	c.Assert(err, IsNil)
 	cmds := s.provisioner.GetCmds("", &app)
 	c.Assert(cmds, HasLen, 1)
@@ -1331,7 +1316,7 @@ func (s *S) TestSerializeEnvVarsErrorWithoutOutput(c *C) {
 			},
 		},
 	}
-	err := app.SerializeEnvVars()
+	err := app.serializeEnvVars()
 	c.Assert(err, NotNil)
 	c.Assert(err.Error(), Equals, "Failed to write env vars: App must be available to run commands.")
 }
@@ -1350,7 +1335,7 @@ func (s *S) TestSerializeEnvVarsErrorWithOutput(c *C) {
 		},
 		Units: []Unit{{Name: "i-0800", State: "started"}},
 	}
-	err := app.SerializeEnvVars()
+	err := app.serializeEnvVars()
 	c.Assert(err, NotNil)
 	expected := "Failed to write env vars (exit status 1): This program has performed an illegal operation."
 	c.Assert(err.Error(), Equals, expected)

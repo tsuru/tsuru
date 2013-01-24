@@ -6,16 +6,31 @@ package juju
 
 import (
 	"github.com/globocom/tsuru/heal"
+	"github.com/globocom/tsuru/log"
 	"os/exec"
+	"strings"
 )
 
 func init() {
-	heal.Register("bootstrap", &BootstrapHealer{})
+	heal.Register("bootstrap", &BootstrapMachineHealer{})
+	heal.Register("bootstrap-provision", &BootstrapProvisionHealer{})
 }
 
-// BootstrapHealer is an implementation for the Healer interface. For more
+// BootstrapProvisionHealer is an import for the Healer interface. For more
 // details on how a healer work, check the documentation of the heal package.
-type BootstrapHealer struct{}
+type BootstrapProvisionHealer struct{}
+
+func (h *BootstrapProvisionHealer) NeedsHeal() bool {
+	return false
+}
+
+func (h *BootstrapProvisionHealer) Heal() error {
+	return nil
+}
+
+// BootstrapMachineHealer is an implementation for the Healer interface. For more
+// details on how a healer work, check the documentation of the heal package.
+type BootstrapMachineHealer struct{}
 
 // getBootstrapMachine returns the bootstrap machine.
 func getBootstrapMachine() machine {
@@ -26,28 +41,36 @@ func getBootstrapMachine() machine {
 }
 
 // NeedsHeal returns true if the AgentState of bootstrap machine is "not-started".
-func (h *BootstrapHealer) NeedsHeal() bool {
+func (h *BootstrapMachineHealer) NeedsHeal() bool {
 	bootstrapMachine := getBootstrapMachine()
 	return bootstrapMachine.AgentState == "not-started"
 }
 
-// Heal executes the action for heal the bootstrap agent.
-func (h *BootstrapHealer) Heal() error {
+func upStartCmd(cmd, daemon, machine string) error {
+	args := []string{
+		"-o",
+		"StrictHostKeyChecking no",
+		"-q",
+		"-l",
+		"ubuntu",
+		machine,
+		"sudo",
+		cmd,
+		daemon,
+	}
+	log.Printf(strings.Join(args, " "))
+	c := exec.Command("ssh", args...)
+	return c.Run()
+}
+
+// Heal executes the action for heal the bootstrap machine agent.
+func (h *BootstrapMachineHealer) Heal() error {
 	if h.NeedsHeal() {
 		bootstrapMachine := getBootstrapMachine()
-		args := []string{
-			"-o",
-			"StrictHostKeyChecking no",
-			"-q",
-			"-l",
-			"ubuntu",
-			bootstrapMachine.IpAddress,
-			"sudo",
-			"restart",
-			"juju-machine-agent",
-		}
-		cmd := exec.Command("ssh", args...)
-		return cmd.Run()
+		log.Printf("Healing bootstrap juju-machine-agent")
+		upStartCmd("stop", "juju-machine-agent", bootstrapMachine.IpAddress)
+		return upStartCmd("start", "juju-machine-agent", bootstrapMachine.IpAddress)
 	}
+	log.Printf("Bootstrap juju-machine-agent needs no cure, skipping...")
 	return nil
 }

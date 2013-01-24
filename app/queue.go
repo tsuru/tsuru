@@ -29,6 +29,8 @@ const (
 	QueueName = "tsuru-app-public"
 )
 
+// ensureAppIsStarted make sure that the app and all units present in the given
+// message are started.
 func ensureAppIsStarted(msg *queue.Message) (App, error) {
 	a := App{Name: msg.Args[0]}
 	err := a.Get()
@@ -51,6 +53,8 @@ func ensureAppIsStarted(msg *queue.Message) (App, error) {
 	return a, nil
 }
 
+// bindUnit handles the bind-service message, binding a unit to all service
+// instances binded to the app.
 func bindUnit(msg *queue.Message) error {
 	a := App{Name: msg.Args[0]}
 	err := a.Get()
@@ -77,6 +81,7 @@ func bindUnit(msg *queue.Message) error {
 	return nil
 }
 
+// handle is the function called by the queue handler on each message.
 func handle(msg *queue.Message) {
 	switch msg.Action {
 	case RegenerateApprcAndStart:
@@ -92,7 +97,7 @@ func handle(msg *queue.Message) {
 			return
 		}
 		msg.Delete()
-		app.SerializeEnvVars()
+		app.serializeEnvVars()
 		fallthrough
 	case startApp:
 		if msg.Action == regenerateApprc {
@@ -128,8 +133,10 @@ func handle(msg *queue.Message) {
 	}
 }
 
+// unitList is a simple slice of units, with special methods to handle state.
 type unitList []Unit
 
+// Started returns true if all units in the list is started.
 func (l unitList) Started() bool {
 	for _, unit := range l {
 		if unit.State != string(provision.StatusStarted) {
@@ -139,7 +146,8 @@ func (l unitList) Started() bool {
 	return true
 }
 
-// State returns a string if all units have the same state. Otherwise
+// State returns a string if all units have the same state. Otherwise it
+// returns an empty string.
 func (l unitList) State() string {
 	if len(l) == 0 {
 		return ""
@@ -153,6 +161,8 @@ func (l unitList) State() string {
 	return state
 }
 
+// getUnits builds a unitList from the given app and the names in the string
+// slice.
 func getUnits(a *App, names []string) unitList {
 	var units []Unit
 	if len(names) > 0 {
@@ -171,8 +181,11 @@ func getUnits(a *App, names []string) unitList {
 	return unitList(units)
 }
 
+// handler is the queue.Handler instance used by ths package to handle app
+// queues.
 var handler = &queue.Handler{F: handle, Queues: []string{queueName, QueueName}}
 
+// enqueues the given messages and start the handler.
 func enqueue(msgs ...queue.Message) {
 	for _, msg := range msgs {
 		copy := msg
