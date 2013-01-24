@@ -16,6 +16,45 @@ func (s *S) TestZookeeperHealerShouldBeRegistered(c *C) {
 	c.Assert(h, FitsTypeOf, &ZookeeperHealer{})
 }
 
+func (s *S) TestZookeeperHealerHeal(c *C) {
+	jujuTmpdir, err := commandmocker.Add("juju", collectOutputBootstrapDown)
+	c.Assert(err, IsNil)
+	defer commandmocker.Remove(jujuTmpdir)
+	sshTmpdir, err := commandmocker.Add("ssh", "$*")
+	c.Assert(err, IsNil)
+	defer commandmocker.Remove(sshTmpdir)
+	jujuOutput := []string{
+		"status", // for juju status that gets the output
+	}
+	sshOutput := []string{
+		"-o",
+		"StrictHostKeyChecking no",
+		"-q",
+		"-l",
+		"ubuntu",
+		"10.10.10.96",
+		"sudo",
+		"stop",
+		"zookeeper",
+		"-o",
+		"StrictHostKeyChecking no",
+		"-q",
+		"-l",
+		"ubuntu",
+		"10.10.10.96",
+		"sudo",
+		"start",
+		"zookeeper",
+	}
+	h := ZookeeperHealer{}
+	err = h.Heal()
+	c.Assert(err, IsNil)
+	c.Assert(commandmocker.Ran(jujuTmpdir), Equals, true)
+	c.Assert(commandmocker.Parameters(jujuTmpdir), DeepEquals, jujuOutput)
+	c.Assert(commandmocker.Ran(sshTmpdir), Equals, true)
+	c.Assert(commandmocker.Parameters(sshTmpdir), DeepEquals, sshOutput)
+}
+
 func (s *S) TestBootstrapProvisionHealerShouldBeRegistered(c *C) {
 	h, err := heal.Get("bootstrap-provision")
 	c.Assert(err, IsNil)

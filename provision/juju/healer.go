@@ -25,8 +25,12 @@ func (h *ZookeeperHealer) NeedsHeal() bool {
 	return false
 }
 
+// Heal restarts the zookeeper using upstart.
 func (h *ZookeeperHealer) Heal() error {
-	return nil
+	bootstrapMachine := getBootstrapMachine()
+	log.Printf("Healing zookeeper")
+	upStartCmd("stop", "zookeeper", bootstrapMachine.IpAddress)
+	return upStartCmd("start", "zookeeper", bootstrapMachine.IpAddress)
 }
 
 // BootstrapProvisionHealer is an import for the Healer interface. For more
