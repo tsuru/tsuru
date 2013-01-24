@@ -185,6 +185,8 @@ func (s *S) TestRemoveUnit(c *C) {
 	defer commandmocker.Remove(tmpdir)
 	app := testing.NewFakeApp("two", "rush", 3)
 	p := JujuProvisioner{}
+	err = p.unitsCollection().Insert(instance{UnitName: "two/2", InstanceId: "i-00000439"})
+	c.Assert(err, IsNil)
 	err = p.RemoveUnit(app, "two/2")
 	c.Assert(err, IsNil)
 	c.Assert(commandmocker.Ran(tmpdir), Equals, true)
@@ -197,6 +199,9 @@ func (s *S) TestRemoveUnit(c *C) {
 			}
 		}
 	}()
+	n, err := p.unitsCollection().Find(bson.M{"_id": "two/2"}).Count()
+	c.Assert(err, IsNil)
+	c.Assert(n, Equals, 0)
 	select {
 	case <-ran:
 	case <-time.After(2e9):

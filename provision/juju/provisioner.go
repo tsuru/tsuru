@@ -231,6 +231,7 @@ func (p *JujuProvisioner) removeUnit(app provision.App, unit provision.AppUnit) 
 		}
 		err = p.LoadBalancer().Deregister(app, pUnit)
 	}
+	p.unitsCollection().RemoveId(unit.GetName())
 	go p.terminateMachines(app, unit)
 	return err
 }
