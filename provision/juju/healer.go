@@ -46,40 +46,30 @@ func (h *BootstrapMachineHealer) NeedsHeal() bool {
 	return bootstrapMachine.AgentState == "not-started"
 }
 
+func upStartCmd(cmd, daemon, machine string) error {
+	args := []string{
+		"-o",
+		"StrictHostKeyChecking no",
+		"-q",
+		"-l",
+		"ubuntu",
+		machine,
+		"sudo",
+		cmd,
+		daemon,
+	}
+	log.Printf(strings.Join(args, " "))
+	c := exec.Command("ssh", args...)
+	return c.Run()
+}
+
 // Heal executes the action for heal the bootstrap machine agent.
 func (h *BootstrapMachineHealer) Heal() error {
 	if h.NeedsHeal() {
 		bootstrapMachine := getBootstrapMachine()
-		args := []string{
-			"-o",
-			"StrictHostKeyChecking no",
-			"-q",
-			"-l",
-			"ubuntu",
-			bootstrapMachine.IpAddress,
-			"sudo",
-			"stop",
-			"juju-machine-agent",
-		}
-		cmd := exec.Command("ssh", args...)
-		log.Printf("Healing bootstrap juju-machine-agent (stop)")
-		log.Printf(strings.Join(args, " "))
-		cmd.Run()
-		args = []string{
-			"-o",
-			"StrictHostKeyChecking no",
-			"-q",
-			"-l",
-			"ubuntu",
-			bootstrapMachine.IpAddress,
-			"sudo",
-			"start",
-			"juju-machine-agent",
-		}
-		cmd = exec.Command("ssh", args...)
-		log.Printf("Healing bootstrap juju-machine-agent (start)")
-		log.Printf(strings.Join(args, " "))
-		return cmd.Run()
+		log.Printf("Healing bootstrap juju-machine-agent")
+		upStartCmd("stop", "juju-machine-agent", bootstrapMachine.IpAddress)
+		return upStartCmd("start", "juju-machine-agent", bootstrapMachine.IpAddress)
 	}
 	log.Printf("Bootstrap juju-machine-agent needs no cure, skipping...")
 	return nil
