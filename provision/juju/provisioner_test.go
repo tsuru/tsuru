@@ -376,6 +376,7 @@ func (s *S) TestCollectStatus(c *C) {
 	var instances []instance
 	err = p.unitsCollection().Find(nil).Sort("_id").All(&instances)
 	c.Assert(err, IsNil)
+	c.Assert(instances, HasLen, 2)
 	c.Assert(instances[0].UnitName, Equals, "as_i_rise/0")
 	c.Assert(instances[0].InstanceId, Equals, "i-00000439")
 	c.Assert(instances[1].UnitName, Equals, "the_infanta/0")
