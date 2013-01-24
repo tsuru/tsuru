@@ -8,12 +8,15 @@ Tsuru is an open Platform-as-a-Service (PaaS).
 
 ##Installation
 
-Please check the [INSTALL](/globocom/tsuru/blob/master/INSTALL.md) file for
-installation instructions.
+For development, check:
+http://tsuru.readthedocs.org/en/latest/contribute/setting-up-your-tsuru-development-environment.html.
+
+For execution environment (production, staging, etc.):
+http://tsuru.readthedocs.org/en/latest/build.html
 
 ##Server configuration
 
-TODO!
+Please refer to http://tsuru.rtfd.org/config.
 
 ##Usage
 
