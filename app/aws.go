@@ -186,41 +186,6 @@ func createIAMUserPolicy(user *iam.User, appName, bucketName string) (*iam.UserP
 	return &p, nil
 }
 
-// createBucket creates and sets up a bucket for an app. It does that through
-// the following steps:
-//
-//    1. create the bucket in S3
-//    2. create the user in IAM
-//    3. create the access key in IAM
-//    4. create the user policy in IAM
-//
-// TODO(fss): remove this function.
-func createBucket(app *App) (*s3Env, error) {
-	var env s3Env
-	appName := strings.ToLower(app.Name)
-	bucket, err := putBucket(appName)
-	if err != nil {
-		return nil, err
-	}
-	env.bucket = bucket.Name
-	env.locationConstraint = bucket.S3LocationConstraint
-	env.endpoint = bucket.S3Endpoint
-	user, err := createIAMUser(appName)
-	if err != nil {
-		return nil, err
-	}
-	key, err := createIAMAccessKey(user)
-	if err != nil {
-		return nil, err
-	}
-	env.AccessKey = key.Id
-	env.SecretKey = key.Secret
-	if _, err := createIAMUserPolicy(user, appName, env.bucket); err != nil {
-		return nil, err
-	}
-	return &env, nil
-}
-
 // destroyBucket removes the bucket created for the app, and all resources
 // related to the bucket (IAM user and IAM access key).
 func destroyBucket(app *App) error {

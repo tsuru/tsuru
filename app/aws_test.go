@@ -10,7 +10,6 @@ import (
 	"fmt"
 	"github.com/fsouza/go-iam"
 	"github.com/globocom/config"
-	"github.com/globocom/tsuru/app/bind"
 	"labix.org/v2/mgo/bson"
 	"launchpad.net/goamz/aws"
 	"launchpad.net/goamz/s3"
@@ -131,71 +130,6 @@ func (s *S) TestCreateIAMUserPolicy(c *C) {
 	var buf bytes.Buffer
 	policy.Execute(&buf, "mybucket")
 	c.Assert(resp.Policy.Document, Equals, buf.String())
-}
-
-func (s *S) TestCreateBucket(c *C) {
-	app := App{Name: "myApp"}
-	patchRandomReader()
-	defer unpatchRandomReader()
-	env, err := createBucket(&app)
-	c.Assert(err, IsNil)
-	defer func() {
-		app.Env = map[string]bind.EnvVar{
-			"TSURU_S3_ENDPOINT": {
-				Name:         "TSURU_S3_ENDPOINT",
-				Value:        env.endpoint,
-				Public:       false,
-				InstanceName: s3InstanceName,
-			},
-			"TSURU_S3_BUCKET": {
-				Name:         "TSURU_S3_BUCKET",
-				Value:        env.bucket,
-				Public:       false,
-				InstanceName: s3InstanceName,
-			},
-			"TSURU_S3_ACCESS_KEY_ID": {
-				Name:         "TSURU_S3_ACCESS_KEY_ID",
-				Value:        env.AccessKey,
-				Public:       false,
-				InstanceName: s3InstanceName,
-			},
-		}
-		err := destroyBucket(&app)
-		c.Assert(err, IsNil)
-	}()
-	c.Assert(env.bucket, HasLen, maxBucketSize)
-	expected := "myappe3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3"
-	c.Assert(env.bucket, Equals, expected)
-	s3 := getS3Endpoint()
-	_, err = s3.Bucket(expected).List("", "/", "", 100)
-	c.Assert(err, IsNil)
-	iam := getIAMEndpoint()
-	resp, err := iam.GetUserPolicy("myapp", "app-myapp-bucket")
-	c.Assert(err, IsNil)
-	var policyBuffer bytes.Buffer
-	policy.Execute(&policyBuffer, expected)
-	c.Assert(resp.Policy.Document, Equals, policyBuffer.String())
-}
-
-// Issue 197.
-func (s *S) TestCreateBucketIsAtomic(c *C) {
-	app := App{Name: "myApp"}
-	source := patchRandomReader()
-	defer unpatchRandomReader()
-	iamEndpoint := getIAMEndpoint()
-	_, err := iamEndpoint.CreateUser("myapp", "/")
-	c.Assert(err, IsNil)
-	defer iamEndpoint.DeleteUser("myapp")
-	env, err := createBucket(&app)
-	c.Assert(err, NotNil)
-	defer destroyBucket(&app)
-	c.Assert(env, IsNil)
-	_, err = iamEndpoint.GetUserPolicy("myapp", "app-myapp-bucket")
-	c.Assert(err, NotNil)
-	bucketName := fmt.Sprintf("myapp%x", source)
-	bucket := getS3Endpoint().Bucket(bucketName)
-	_, err = bucket.Get("non-existent")
-	c.Assert(err, NotNil)
 }
 
 func (s *S) TestDestroyBucket(c *C) {
