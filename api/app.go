@@ -154,6 +154,7 @@ func AppInfo(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	return json.NewEncoder(w).Encode(&app)
 }
 
+// TODO(fss): move this logic to the app package.
 func createAppHelper(instance *app.App, u *auth.User, units uint) ([]byte, error) {
 	teams, err := u.Teams()
 	if err != nil {
