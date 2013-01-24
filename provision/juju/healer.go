@@ -20,8 +20,9 @@ func init() {
 // details on how a healer work, check the documentation of the heal package.
 type BootstrapProvisionHealer struct{}
 
+// NeedsHeal always returns true.
 func (h *BootstrapProvisionHealer) NeedsHeal() bool {
-	return false
+	return true
 }
 
 func (h *BootstrapProvisionHealer) Heal() error {

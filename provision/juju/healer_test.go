@@ -16,6 +16,11 @@ func (s *S) TestBootstrapProvisionHealerShouldBeRegistered(c *C) {
 	c.Assert(h, FitsTypeOf, &BootstrapProvisionHealer{})
 }
 
+func (s *S) TestBootstrapProvisionHealerNeedsHeal(c *C) {
+	h := BootstrapProvisionHealer{}
+	c.Assert(h.NeedsHeal(), Equals, true)
+}
+
 func (s *S) TestBootstrapMachineHealerShouldBeRegistered(c *C) {
 	h, err := heal.Get("bootstrap")
 	c.Assert(err, IsNil)
