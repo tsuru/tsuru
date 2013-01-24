@@ -58,11 +58,26 @@ func (h *BootstrapMachineHealer) Heal() error {
 			"ubuntu",
 			bootstrapMachine.IpAddress,
 			"sudo",
-			"start",
+			"stop",
 			"juju-machine-agent",
 		}
 		cmd := exec.Command("ssh", args...)
-		log.Printf("Healing bootstrap juju-machine-agent")
+		log.Printf("Healing bootstrap juju-machine-agent (stop)")
+		log.Printf(strings.Join(args, " "))
+		cmd.Run()
+		args = []string{
+			"-o",
+			"StrictHostKeyChecking no",
+			"-q",
+			"-l",
+			"ubuntu",
+			bootstrapMachine.IpAddress,
+			"sudo",
+			"start",
+			"juju-machine-agent",
+		}
+		cmd = exec.Command("ssh", args...)
+		log.Printf("Healing bootstrap juju-machine-agent (start)")
 		log.Printf(strings.Join(args, " "))
 		return cmd.Run()
 	}
