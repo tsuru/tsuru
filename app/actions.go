@@ -171,7 +171,7 @@ var exportEnvironmentsAction = action.Action{
 				})
 			}
 		}
-		err = app.SetEnvsToApp(envVars, false, true)
+		err = app.setEnvsToApp(envVars, false, true)
 		if err != nil {
 			return nil, err
 		}

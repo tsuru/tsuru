@@ -666,22 +666,20 @@ func (a *App) serializeEnvVars() error {
 // parameter indicates whether only public variables can be overridden (if set
 // to false, SetEnvs may override a private variable).
 func (a *App) SetEnvs(envs []bind.EnvVar, publicOnly bool) error {
-	return a.SetEnvsToApp(envs, publicOnly, false)
+	return a.setEnvsToApp(envs, publicOnly, false)
 }
 
-// SetEnvsToApp adds environment variables to an app, serializing the resulting
+// setEnvsToApp adds environment variables to an app, serializing the resulting
 // list of environment variables in all units of apps. This method can
 // serialize them directly or using a queue.
 //
 // Besides the slice of environment variables, this method also takes two other
 // parameters: publicOnly indicates whether only public variables can be
-// overridden (if set to false, SetEnvsToApp may override a private variable).
+// overridden (if set to false, setEnvsToApp may override a private variable).
 //
 // If useQueue is true, it will use a queue to write the environment variables
 // in the units of the app.
-//
-// TODO(fss): this method should not be exported.
-func (app *App) SetEnvsToApp(envs []bind.EnvVar, publicOnly, useQueue bool) error {
+func (app *App) setEnvsToApp(envs []bind.EnvVar, publicOnly, useQueue bool) error {
 	if len(envs) > 0 {
 		for _, env := range envs {
 			set := true
@@ -712,9 +710,7 @@ func (app *App) SetEnvsToApp(envs []bind.EnvVar, publicOnly, useQueue bool) erro
 }
 
 // UnsetEnvs removes environment variables from an app, serializing the
-// remaining list of environment variables to all units of the app. Unlike
-// SetEnvsToApp method, this method does not provide an option to use a queue
-// for serialization.
+// remaining list of environment variables to all units of the app.
 //
 // Besides the slice with the name of the variables, this method also takes the
 // parameter publicOnly, which indicates whether only public variables can be

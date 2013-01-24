@@ -709,7 +709,7 @@ func (s *S) TestSetEnvRespectsThePublicOnlyFlagKeepPrivateVariablesWhenItsTrue(c
 			Public: true,
 		},
 	}
-	err = a.SetEnvsToApp(envs, true, false)
+	err = a.setEnvsToApp(envs, true, false)
 	c.Assert(err, IsNil)
 	newApp := App{Name: a.Name}
 	err = newApp.Get()
@@ -758,7 +758,7 @@ func (s *S) TestSetEnvRespectsThePublicOnlyFlagOverwrittenAllVariablesWhenItsFal
 			Public: true,
 		},
 	}
-	err = a.SetEnvsToApp(envs, false, false)
+	err = a.setEnvsToApp(envs, false, false)
 	c.Assert(err, IsNil)
 	newApp := App{Name: a.Name}
 	err = newApp.Get()
