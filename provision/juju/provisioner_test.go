@@ -502,7 +502,7 @@ func (s *S) TestCollectStatusInvalidYAML(c *C) {
 	c.Assert(err, NotNil)
 	pErr, ok := err.(*provision.Error)
 	c.Assert(ok, Equals, true)
-	c.Assert(pErr.Reason, Equals, `"juju status" returned invalid data`)
+	c.Assert(pErr.Reason, Equals, `"juju status" returned invalid data: local: somewhere::`)
 	c.Assert(pErr.Err, ErrorMatches, `^YAML error:.*$`)
 }
 

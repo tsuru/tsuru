@@ -297,7 +297,8 @@ func (p *JujuProvisioner) getOutput() (jujuOutput, error) {
 	var out jujuOutput
 	err = goyaml.Unmarshal(output, &out)
 	if err != nil {
-		return jujuOutput{}, &provision.Error{Reason: `"juju status" returned invalid data`, Err: err}
+		reason := fmt.Sprintf("%q returned invalid data: %s", "juju status", output)
+		return jujuOutput{}, &provision.Error{Reason: reason, Err: err}
 	}
 	return out, nil
 }
