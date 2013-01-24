@@ -8,6 +8,11 @@ import (
 	"github.com/globocom/tsuru/provision"
 )
 
+// Unit is the smaller bit in tsuru. Each app is composed of one or more units.
+//
+// The unit is equivalent to a machine. How the machine is actually represented
+// (baremetal, virtual machine, jails, containers, etc.) is up to the
+// provisioner.
 type Unit struct {
 	Name       string
 	Type       string
