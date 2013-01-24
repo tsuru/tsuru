@@ -91,11 +91,11 @@ This will return something like:
 
 ::
 
-    +-------------+---------+--------------+
-    | Application | State   | Ip           |
-    +-------------+---------+--------------+
-    | myblog      | STARTED | 10.10.10.10  |
-    +-------------+---------+--------------+
+    +-------------+-------------------------+-------------------------------------------+
+    | Application | Units State Summary     | Ip                                        |
+    +-------------+-------------------------+-------------------------------------------+
+    | myblog      | 1 of 1 units in-service | myblog-838381.us-east-1-elb.amazonaws.com |
+    +-------------+-------------------------+-------------------------------------------+
 
 Showing app info
 ----------------
@@ -118,14 +118,15 @@ This will return something like:
 
     Application: myblog
     Platform: gunicorn
+    Repository: git@githost.com:myblog.git
     Teams: team1, team2
     Units:
-    +----------+-------------+---------+
-    | Unit     | Ip          | State   |
-    +----------+-------------+---------+
-    | myblog/0 | 10.11.10.11 | started |
-    | myblog/1 | 10.11.10.12 | started |
-    +----------+-------------+---------+
+    +----------+---------+
+    | Unit     | State   |
+    +----------+---------+
+    | myblog/0 | started |
+    | myblog/1 | started |
+    +----------+---------+
 
 Tsuru uses information from git configuration to guess the name of the app, for
 more details, see `"Guessing app names"
