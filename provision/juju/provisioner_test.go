@@ -420,7 +420,7 @@ func (s *S) TestCollectStatusDirtyOutput(c *C) {
 	var wg sync.WaitGroup
 	wg.Add(1)
 	go func() {
-		q := bson.M{"_id": bson.M{"$in": []string{"as_i_rise/0", "the_infanta/0"}}}
+		q := bson.M{"_id": bson.M{"$in": []string{"as_i_rise/0", "the_infanta/1"}}}
 		for {
 			if n, _ := p.unitsCollection().Find(q).Count(); n == 2 {
 				break
