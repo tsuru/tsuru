@@ -92,6 +92,12 @@ func (s *S) TestDestroy(c *C) {
 	defer commandmocker.Remove(tmpdir)
 	app := testing.NewFakeApp("cribcaged", "python", 3)
 	p := JujuProvisioner{}
+	err = p.unitsCollection().Insert(
+		instance{UnitName: "cribcaged/0"},
+		instance{UnitName: "cribcaged/1"},
+		instance{UnitName: "cribcaged/2"},
+	)
+	c.Assert(err, IsNil)
 	err = p.Destroy(app)
 	c.Assert(err, IsNil)
 	c.Assert(commandmocker.Ran(tmpdir), Equals, true)
@@ -109,6 +115,13 @@ func (s *S) TestDestroy(c *C) {
 			}
 		}
 	}()
+	n, err := p.unitsCollection().Find(bson.M{
+		"_id": bson.M{
+			"$in": []string{"cribcaged/0", "cribcaged/1", "cribcaged/2"},
+		},
+	}).Count()
+	c.Assert(err, IsNil)
+	c.Assert(n, Equals, 0)
 	select {
 	case <-ran:
 	case <-time.After(2e9):
@@ -185,6 +198,8 @@ func (s *S) TestRemoveUnit(c *C) {
 	defer commandmocker.Remove(tmpdir)
 	app := testing.NewFakeApp("two", "rush", 3)
 	p := JujuProvisioner{}
+	err = p.unitsCollection().Insert(instance{UnitName: "two/2", InstanceId: "i-00000439"})
+	c.Assert(err, IsNil)
 	err = p.RemoveUnit(app, "two/2")
 	c.Assert(err, IsNil)
 	c.Assert(commandmocker.Ran(tmpdir), Equals, true)
@@ -197,6 +212,9 @@ func (s *S) TestRemoveUnit(c *C) {
 			}
 		}
 	}()
+	n, err := p.unitsCollection().Find(bson.M{"_id": "two/2"}).Count()
+	c.Assert(err, IsNil)
+	c.Assert(n, Equals, 0)
 	select {
 	case <-ran:
 	case <-time.After(2e9):
@@ -376,6 +394,7 @@ func (s *S) TestCollectStatus(c *C) {
 	var instances []instance
 	err = p.unitsCollection().Find(nil).Sort("_id").All(&instances)
 	c.Assert(err, IsNil)
+	c.Assert(instances, HasLen, 2)
 	c.Assert(instances[0].UnitName, Equals, "as_i_rise/0")
 	c.Assert(instances[0].InstanceId, Equals, "i-00000439")
 	c.Assert(instances[1].UnitName, Equals, "the_infanta/0")
@@ -419,7 +438,7 @@ func (s *S) TestCollectStatusDirtyOutput(c *C) {
 	var wg sync.WaitGroup
 	wg.Add(1)
 	go func() {
-		q := bson.M{"_id": bson.M{"$in": []string{"as_i_rise/0", "the_infanta/0"}}}
+		q := bson.M{"_id": bson.M{"$in": []string{"as_i_rise/0", "the_infanta/1"}}}
 		for {
 			if n, _ := p.unitsCollection().Find(q).Count(); n == 2 {
 				break
@@ -483,7 +502,7 @@ func (s *S) TestCollectStatusInvalidYAML(c *C) {
 	c.Assert(err, NotNil)
 	pErr, ok := err.(*provision.Error)
 	c.Assert(ok, Equals, true)
-	c.Assert(pErr.Reason, Equals, `"juju status" returned invalid data`)
+	c.Assert(pErr.Reason, Equals, `"juju status" returned invalid data: local: somewhere::`)
 	c.Assert(pErr.Err, ErrorMatches, `^YAML error:.*$`)
 }
 
