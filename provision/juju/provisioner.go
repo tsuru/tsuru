@@ -19,6 +19,7 @@ import (
 	"github.com/globocom/tsuru/safe"
 	"io"
 	"labix.org/v2/mgo"
+	"labix.org/v2/mgo/bson"
 	"launchpad.net/goyaml"
 	"os/exec"
 	"regexp"
@@ -145,6 +146,15 @@ func (p *JujuProvisioner) terminateMachines(app provision.App, units ...provisio
 	return nil
 }
 
+func (p *JujuProvisioner) deleteUnits(app provision.App) {
+	units := app.ProvisionUnits()
+	names := make([]string, len(units))
+	for i, u := range units {
+		names[i] = u.GetName()
+	}
+	p.unitsCollection().RemoveAll(bson.M{"_id": bson.M{"$in": names}})
+}
+
 func (p *JujuProvisioner) Destroy(app provision.App) error {
 	var err error
 	if err = p.destroyService(app); err != nil {
@@ -154,6 +164,7 @@ func (p *JujuProvisioner) Destroy(app provision.App) error {
 		err = p.LoadBalancer().Destroy(app)
 	}
 	go p.terminateMachines(app)
+	p.deleteUnits(app)
 	return err
 }
 

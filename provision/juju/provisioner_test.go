@@ -92,6 +92,12 @@ func (s *S) TestDestroy(c *C) {
 	defer commandmocker.Remove(tmpdir)
 	app := testing.NewFakeApp("cribcaged", "python", 3)
 	p := JujuProvisioner{}
+	err = p.unitsCollection().Insert(
+		instance{UnitName: "cribcaged/0"},
+		instance{UnitName: "cribcaged/1"},
+		instance{UnitName: "cribcaged/2"},
+	)
+	c.Assert(err, IsNil)
 	err = p.Destroy(app)
 	c.Assert(err, IsNil)
 	c.Assert(commandmocker.Ran(tmpdir), Equals, true)
@@ -109,6 +115,13 @@ func (s *S) TestDestroy(c *C) {
 			}
 		}
 	}()
+	n, err := p.unitsCollection().Find(bson.M{
+		"_id": bson.M{
+			"$in": []string{"cribcaged/0", "cribcaged/1", "cribcaged/2"},
+		},
+	}).Count()
+	c.Assert(err, IsNil)
+	c.Assert(n, Equals, 0)
 	select {
 	case <-ran:
 	case <-time.After(2e9):
