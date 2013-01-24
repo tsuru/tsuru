@@ -910,21 +910,6 @@ func (s *S) TestIsValid(c *C) {
 	}
 }
 
-func (s *S) TestUnit(c *C) {
-	u := Unit{Name: "someapp/0", Type: "django", Machine: 10}
-	a := App{Name: "appName", Framework: "django", Units: []Unit{u}}
-	u2 := a.Unit()
-	u.app = &a
-	c.Assert(*u2, DeepEquals, u)
-}
-
-func (s *S) TestEmptyUnit(c *C) {
-	a := App{Name: "myApp"}
-	expected := Unit{app: &a}
-	unit := a.Unit()
-	c.Assert(*unit, DeepEquals, expected)
-}
-
 func (s *S) TestDeployHookAbsPath(c *C) {
 	pwd, err := os.Getwd()
 	c.Assert(err, IsNil)

@@ -607,19 +607,6 @@ func (a *App) InstallDeps(w io.Writer) error {
 	return a.run("/var/lib/tsuru/hooks/dependencies", w)
 }
 
-// Unit returns a pointer to the first Unit in the app. If the app does not
-// have any unit, it returns a pointer to a zeroed Unit instance.
-//
-// TODO(fss): remove this method.
-func (a *App) Unit() *Unit {
-	if len(a.Units) > 0 {
-		unit := a.Units[0]
-		unit.app = a
-		return &unit
-	}
-	return &Unit{app: a}
-}
-
 // GetUnits returns the internal list of units converted to bind.Unit.
 func (a *App) GetUnits() []bind.Unit {
 	var units []bind.Unit
