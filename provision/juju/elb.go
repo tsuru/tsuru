@@ -17,8 +17,17 @@ import (
 
 // loadBalancer represents an ELB instance.
 type loadBalancer struct {
-	Name    string
-	DNSName string
+	Name      string
+	DNSName   string
+	instances []elbInstance
+}
+
+type elbInstance struct {
+	instanceId   string
+	description  string
+	reasonCode   string
+	state        string
+	loadBalancer string
 }
 
 // ELBManager manages load balancers within Amazon Elastic Load Balancer.
@@ -47,21 +56,7 @@ func (m *ELBManager) collection() *mgo.Collection {
 
 func (m *ELBManager) elb() *elb.ELB {
 	if m.e == nil {
-		access, err := config.GetString("aws:access-key-id")
-		if err != nil {
-			log.Fatal(err)
-		}
-		secret, err := config.GetString("aws:secret-access-key")
-		if err != nil {
-			log.Fatal(err)
-		}
-		endpoint, err := config.GetString("juju:elb-endpoint")
-		if err != nil {
-			log.Fatal(err)
-		}
-		auth := aws.Auth{AccessKey: access, SecretKey: secret}
-		region := aws.Region{ELBEndpoint: endpoint}
-		m.e = elb.New(auth, region)
+		m.e = getELBEndpoint()
 	}
 	return m.e
 }
@@ -147,4 +142,22 @@ func (m *ELBManager) Addr(app provision.Named) (string, error) {
 	var lb loadBalancer
 	err := m.collection().Find(bson.M{"name": app.GetName()}).One(&lb)
 	return lb.DNSName, err
+}
+
+func getELBEndpoint() *elb.ELB {
+	access, err := config.GetString("aws:access-key-id")
+	if err != nil {
+		log.Fatal(err)
+	}
+	secret, err := config.GetString("aws:secret-access-key")
+	if err != nil {
+		log.Fatal(err)
+	}
+	endpoint, err := config.GetString("juju:elb-endpoint")
+	if err != nil {
+		log.Fatal(err)
+	}
+	auth := aws.Auth{AccessKey: access, SecretKey: secret}
+	region := aws.Region{ELBEndpoint: endpoint}
+	return elb.New(auth, region)
 }
