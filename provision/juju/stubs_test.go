@@ -7,7 +7,7 @@ package juju
 var collectOutputBootstrapDown = `machines:
   0:
     agent-state: not-started
-    dns-name: 10.10.10.96
+    dns-name: localhost
     instance-id: i-00000376
     instance-state: running
   105:

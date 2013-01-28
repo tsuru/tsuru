@@ -5,9 +5,11 @@
 package juju
 
 import (
+	"fmt"
 	"github.com/globocom/commandmocker"
 	"github.com/globocom/tsuru/heal"
 	. "launchpad.net/gocheck"
+	"net"
 )
 
 func (s *S) TestZookeeperHealerShouldBeRegistered(c *C) {
@@ -16,7 +18,57 @@ func (s *S) TestZookeeperHealerShouldBeRegistered(c *C) {
 	c.Assert(h, FitsTypeOf, &ZookeeperHealer{})
 }
 
+func (s *S) TestZookeeperNeedsHeal(c *C) {
+	ln, err := net.Listen("tcp", ":2181")
+	defer ln.Close()
+	go func() {
+		c.Assert(err, IsNil)
+		conn, _ := ln.Accept()
+		fmt.Fprintln(conn, "imok")
+		conn.Close()
+	}()
+	jujuTmpdir, err := commandmocker.Add("juju", collectOutputBootstrapDown)
+	c.Assert(err, IsNil)
+	defer commandmocker.Remove(jujuTmpdir)
+	h := ZookeeperHealer{}
+	c.Assert(h.NeedsHeal(), Equals, true)
+	jujuOutput := []string{
+		"status", // for juju status that gets the output
+	}
+	c.Assert(commandmocker.Ran(jujuTmpdir), Equals, true)
+	c.Assert(commandmocker.Parameters(jujuTmpdir), DeepEquals, jujuOutput)
+}
+
+func (s *S) TestZookeeperNotNeedsHeal(c *C) {
+	ln, err := net.Listen("tcp", ":2181")
+	defer ln.Close()
+	go func() {
+		c.Assert(err, IsNil)
+		conn, _ := ln.Accept()
+		fmt.Fprintln(conn, "notok")
+		conn.Close()
+	}()
+	jujuTmpdir, err := commandmocker.Add("juju", collectOutputBootstrapDown)
+	c.Assert(err, IsNil)
+	defer commandmocker.Remove(jujuTmpdir)
+	h := ZookeeperHealer{}
+	c.Assert(h.NeedsHeal(), Equals, false)
+	jujuOutput := []string{
+		"status", // for juju status that gets the output
+	}
+	c.Assert(commandmocker.Ran(jujuTmpdir), Equals, true)
+	c.Assert(commandmocker.Parameters(jujuTmpdir), DeepEquals, jujuOutput)
+}
+
 func (s *S) TestZookeeperHealerHeal(c *C) {
+	ln, err := net.Listen("tcp", ":2181")
+	defer ln.Close()
+	go func() {
+		c.Assert(err, IsNil)
+		conn, _ := ln.Accept()
+		fmt.Fprintln(conn, "imok")
+		conn.Close()
+	}()
 	jujuTmpdir, err := commandmocker.Add("juju", collectOutputBootstrapDown)
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(jujuTmpdir)
@@ -25,6 +77,7 @@ func (s *S) TestZookeeperHealerHeal(c *C) {
 	defer commandmocker.Remove(sshTmpdir)
 	jujuOutput := []string{
 		"status", // for juju status that gets the output
+		"status", // for juju status that gets the output
 	}
 	sshOutput := []string{
 		"-o",
@@ -32,7 +85,7 @@ func (s *S) TestZookeeperHealerHeal(c *C) {
 		"-q",
 		"-l",
 		"ubuntu",
-		"10.10.10.96",
+		"localhost",
 		"sudo",
 		"stop",
 		"zookeeper",
@@ -41,7 +94,7 @@ func (s *S) TestZookeeperHealerHeal(c *C) {
 		"-q",
 		"-l",
 		"ubuntu",
-		"10.10.10.96",
+		"localhost",
 		"sudo",
 		"start",
 		"zookeeper",
@@ -82,7 +135,7 @@ func (s *S) TestBootstrapProvisionHealerHeal(c *C) {
 		"-q",
 		"-l",
 		"ubuntu",
-		"10.10.10.96",
+		"localhost",
 		"sudo",
 		"start",
 		"juju-provision-agent",
@@ -135,7 +188,7 @@ func (s *S) TestBootstrapMachineHealerHeal(c *C) {
 		"-q",
 		"-l",
 		"ubuntu",
-		"10.10.10.96",
+		"localhost",
 		"sudo",
 		"stop",
 		"juju-machine-agent",
@@ -144,7 +197,7 @@ func (s *S) TestBootstrapMachineHealerHeal(c *C) {
 		"-q",
 		"-l",
 		"ubuntu",
-		"10.10.10.96",
+		"localhost",
 		"sudo",
 		"start",
 		"juju-machine-agent",

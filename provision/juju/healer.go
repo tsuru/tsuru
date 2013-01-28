@@ -5,8 +5,11 @@
 package juju
 
 import (
+	"bufio"
+	"fmt"
 	"github.com/globocom/tsuru/heal"
 	"github.com/globocom/tsuru/log"
+	"net"
 	"os/exec"
 	"strings"
 )
@@ -21,16 +24,26 @@ func init() {
 // detail on how a healer work, check the documentation of the heal package.
 type ZookeeperHealer struct{}
 
+// NeedsHeal verifies if zookeeper is ok using 'ruok' command.
 func (h *ZookeeperHealer) NeedsHeal() bool {
-	return false
+	bootstrapMachine := getBootstrapMachine()
+	conn, _ := net.Dial("tcp", fmt.Sprintf("%s:2181", bootstrapMachine.IpAddress))
+	defer conn.Close()
+	fmt.Fprintf(conn, "ruok\r\n\r\n")
+	status, _ := bufio.NewReader(conn).ReadString('\n')
+	return strings.Contains(status, "imok")
 }
 
 // Heal restarts the zookeeper using upstart.
 func (h *ZookeeperHealer) Heal() error {
-	bootstrapMachine := getBootstrapMachine()
-	log.Printf("Healing zookeeper")
-	upStartCmd("stop", "zookeeper", bootstrapMachine.IpAddress)
-	return upStartCmd("start", "zookeeper", bootstrapMachine.IpAddress)
+	if h.NeedsHeal() {
+		bootstrapMachine := getBootstrapMachine()
+		log.Printf("Healing zookeeper")
+		upStartCmd("stop", "zookeeper", bootstrapMachine.IpAddress)
+		return upStartCmd("start", "zookeeper", bootstrapMachine.IpAddress)
+	}
+	log.Printf("Zookeeper needs no cure, skipping...")
+	return nil
 }
 
 // BootstrapProvisionHealer is an import for the Healer interface. For more
