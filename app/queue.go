@@ -59,6 +59,7 @@ func bindUnit(msg *queue.Message) error {
 	a := App{Name: msg.Args[0]}
 	err := a.Get()
 	if err != nil {
+		msg.Delete()
 		return fmt.Errorf("Error handling %q: app %q does not exist.", msg.Action, a.Name)
 	}
 	conn, err := db.Conn()
