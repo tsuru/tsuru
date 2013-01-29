@@ -26,6 +26,8 @@ func init() {
 // detail on how a healer work, check the documentation of the heal package.
 type InstanceUnitHealer struct{}
 
+// Heal iterates through all juju units verifying if
+// a juju-unit-agent is down and heal these machines.
 func (h *InstanceUnitHealer) Heal() error {
 	p := JujuProvisioner{}
 	output, _ := p.getOutput()
