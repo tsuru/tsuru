@@ -21,8 +21,12 @@ func init() {
 	heal.Register("zookeeper", &ZookeeperHealer{})
 }
 
+// InstanceMachineHealer is an implementation for the Healer interface. For more
+// detail on how a healer work, check the documentation of the heal package.
 type InstanceMachineHealer struct{}
 
+// Heal iterates through all juju machines verifying if
+// a juju-machine-agent is down and heal these machines.
 func (h *InstanceMachineHealer) Heal() error {
 	p := JujuProvisioner{}
 	output, _ := p.getOutput()
