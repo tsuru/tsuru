@@ -31,10 +31,13 @@ func (h *InstanceUnitHealer) Heal() error {
 	output, _ := p.getOutput()
 	for _, service := range output.Services {
 		for unitName, unit := range service.Units {
+			agent := fmt.Sprintf("juju-%s", strings.Join(strings.Split(unitName, "/"), "-"))
 			if unit.AgentState == "down" {
-				agent := fmt.Sprintf("juju-%s", strings.Join(strings.Split(unitName, "/"), "-"))
+				log.Printf("Healing %s", agent)
 				upStartCmd("stop", agent, unit.PublicAddress)
 				upStartCmd("start", agent, unit.PublicAddress)
+			} else {
+				log.Printf("%s needs no cure, skipping...", agent)
 			}
 		}
 	}
