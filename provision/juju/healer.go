@@ -31,7 +31,7 @@ func (h *ZookeeperHealer) NeedsHeal() bool {
 	defer conn.Close()
 	fmt.Fprintf(conn, "ruok\r\n\r\n")
 	status, _ := bufio.NewReader(conn).ReadString('\n')
-	return strings.Contains(status, "imok")
+	return !strings.Contains(status, "imok")
 }
 
 // Heal restarts the zookeeper using upstart.

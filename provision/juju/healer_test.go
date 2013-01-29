@@ -24,7 +24,7 @@ func (s *S) TestZookeeperNeedsHeal(c *C) {
 	go func() {
 		c.Assert(err, IsNil)
 		conn, _ := ln.Accept()
-		fmt.Fprintln(conn, "imok")
+		fmt.Fprintln(conn, "notok")
 		conn.Close()
 	}()
 	jujuTmpdir, err := commandmocker.Add("juju", collectOutputBootstrapDown)
@@ -45,7 +45,7 @@ func (s *S) TestZookeeperNotNeedsHeal(c *C) {
 	go func() {
 		c.Assert(err, IsNil)
 		conn, _ := ln.Accept()
-		fmt.Fprintln(conn, "notok")
+		fmt.Fprintln(conn, "imok")
 		conn.Close()
 	}()
 	jujuTmpdir, err := commandmocker.Add("juju", collectOutputBootstrapDown)
@@ -66,7 +66,7 @@ func (s *S) TestZookeeperHealerHeal(c *C) {
 	go func() {
 		c.Assert(err, IsNil)
 		conn, _ := ln.Accept()
-		fmt.Fprintln(conn, "imok")
+		fmt.Fprintln(conn, "notok")
 		conn.Close()
 	}()
 	jujuTmpdir, err := commandmocker.Add("juju", collectOutputBootstrapDown)
