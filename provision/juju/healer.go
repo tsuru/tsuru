@@ -24,6 +24,17 @@ func init() {
 type InstanceMachineHealer struct{}
 
 func (h *InstanceMachineHealer) Heal() error {
+	p := JujuProvisioner{}
+	output, _ := p.getOutput()
+	for _, machine := range output.Machines {
+		if machine.AgentState == "down" {
+			log.Printf("Healing juju-machine-agent in machine %s", machine.InstanceId)
+			upStartCmd("stop", "juju-machine-agent", machine.IpAddress)
+			upStartCmd("start", "juju-machine-agent", machine.IpAddress)
+		} else {
+			log.Printf("juju-machine-agent for machine %s needs no cure, skipping...", machine.InstanceId)
+		}
+	}
 	return nil
 }
 
