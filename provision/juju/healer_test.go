@@ -18,6 +18,24 @@ func (s *S) TestInstanceUnitShouldBeRegistered(c *C) {
 	c.Assert(h, FitsTypeOf, &InstanceUnitHealer{})
 }
 
+func (s *S) TestInstaceUnitHealWhenEverythingIsOk(c *C) {
+	jujuTmpdir, err := commandmocker.Add("juju", collectOutputInstanceDown)
+	c.Assert(err, IsNil)
+	defer commandmocker.Remove(jujuTmpdir)
+	sshTmpdir, err := commandmocker.Add("ssh", "$*")
+	c.Assert(err, IsNil)
+	defer commandmocker.Remove(sshTmpdir)
+	jujuOutput := []string{
+		"status", // for juju status that gets the output
+	}
+	h := InstanceUnitHealer{}
+	err = h.Heal()
+	c.Assert(err, IsNil)
+	c.Assert(commandmocker.Ran(jujuTmpdir), Equals, true)
+	c.Assert(commandmocker.Parameters(jujuTmpdir), DeepEquals, jujuOutput)
+	c.Assert(commandmocker.Ran(sshTmpdir), Equals, false)
+}
+
 func (s *S) TestInstaceUnitHeal(c *C) {
 	jujuTmpdir, err := commandmocker.Add("juju", collectOutputInstanceDown)
 	c.Assert(err, IsNil)
