@@ -19,7 +19,7 @@ func (s *S) TestInstanceUnitShouldBeRegistered(c *C) {
 }
 
 func (s *S) TestInstaceUnitHealWhenEverythingIsOk(c *C) {
-	jujuTmpdir, err := commandmocker.Add("juju", collectOutputInstanceDown)
+	jujuTmpdir, err := commandmocker.Add("juju", collectOutput)
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(jujuTmpdir)
 	sshTmpdir, err := commandmocker.Add("ssh", "$*")
