@@ -12,6 +12,12 @@ import (
 	"net"
 )
 
+func (s *S) TestInstanceMachineHealer(c *C) {
+	h, err := heal.Get("instance-machine")
+	c.Assert(err, IsNil)
+	c.Assert(h, FitsTypeOf, &InstanceMachineHealer{})
+}
+
 func (s *S) TestZookeeperHealerShouldBeRegistered(c *C) {
 	h, err := heal.Get("zookeeper")
 	c.Assert(err, IsNil)
