@@ -12,6 +12,12 @@ import (
 	"net"
 )
 
+func (s *S) TestInstanceUnitShouldBeRegistered(c *C) {
+	h, err := heal.Get("instance-unit")
+	c.Assert(err, IsNil)
+	c.Assert(h, FitsTypeOf, &InstanceUnitHealer{})
+}
+
 func (s *S) TestInstanceMachineShouldBeRegistered(c *C) {
 	h, err := heal.Get("instance-machine")
 	c.Assert(err, IsNil)

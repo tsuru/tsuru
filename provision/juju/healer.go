@@ -18,7 +18,16 @@ func init() {
 	heal.Register("bootstrap", &BootstrapMachineHealer{})
 	heal.Register("bootstrap-provision", &BootstrapProvisionHealer{})
 	heal.Register("instance-machine", &InstanceMachineHealer{})
+	heal.Register("instance-unit", &InstanceUnitHealer{})
 	heal.Register("zookeeper", &ZookeeperHealer{})
+}
+
+// InstanceUnitHealer is an implementation for the Healer interface. For more
+// detail on how a healer work, check the documentation of the heal package.
+type InstanceUnitHealer struct{}
+
+func (h *InstanceUnitHealer) Heal() error {
+	return nil
 }
 
 // InstanceMachineHealer is an implementation for the Healer interface. For more
