@@ -133,11 +133,6 @@ func (s *S) TestBootstrapProvisionHealerShouldBeRegistered(c *C) {
 	c.Assert(h, FitsTypeOf, &BootstrapProvisionHealer{})
 }
 
-func (s *S) TestBootstrapProvisionHealerNeedsHeal(c *C) {
-	h := BootstrapProvisionHealer{}
-	c.Assert(h.NeedsHeal(), Equals, true)
-}
-
 func (s *S) TestBootstrapProvisionHealerHeal(c *C) {
 	jujuTmpdir, err := commandmocker.Add("juju", collectOutputBootstrapDown)
 	c.Assert(err, IsNil)

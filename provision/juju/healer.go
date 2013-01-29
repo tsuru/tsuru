@@ -23,10 +23,6 @@ func init() {
 
 type InstanceMachineHealer struct{}
 
-func (h *InstanceMachineHealer) NeedsHeal() bool {
-	return false
-}
-
 func (h *InstanceMachineHealer) Heal() error {
 	return nil
 }
@@ -63,11 +59,6 @@ func (h *ZookeeperHealer) Heal() error {
 // BootstrapProvisionHealer is an import for the Healer interface. For more
 // details on how a healer work, check the documentation of the heal package.
 type BootstrapProvisionHealer struct{}
-
-// NeedsHeal always returns true.
-func (h *BootstrapProvisionHealer) NeedsHeal() bool {
-	return true
-}
 
 // Heal starts the juju-provision-agent using upstart.
 func (h *BootstrapProvisionHealer) Heal() error {
