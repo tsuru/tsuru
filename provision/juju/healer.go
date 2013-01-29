@@ -42,8 +42,8 @@ func (h *InstanceMachineHealer) Heal() error {
 // detail on how a healer work, check the documentation of the heal package.
 type ZookeeperHealer struct{}
 
-// NeedsHeal verifies if zookeeper is ok using 'ruok' command.
-func (h *ZookeeperHealer) NeedsHeal() bool {
+// needsHeal verifies if zookeeper is ok using 'ruok' command.
+func (h *ZookeeperHealer) needsHeal() bool {
 	bootstrapMachine := getBootstrapMachine()
 	conn, err := net.Dial("tcp", fmt.Sprintf("%s:2181", bootstrapMachine.IpAddress))
 	if err != nil {
@@ -57,7 +57,7 @@ func (h *ZookeeperHealer) NeedsHeal() bool {
 
 // Heal restarts the zookeeper using upstart.
 func (h *ZookeeperHealer) Heal() error {
-	if h.NeedsHeal() {
+	if h.needsHeal() {
 		bootstrapMachine := getBootstrapMachine()
 		log.Printf("Healing zookeeper")
 		upStartCmd("stop", "zookeeper", bootstrapMachine.IpAddress)
@@ -90,8 +90,8 @@ func getBootstrapMachine() machine {
 	return output.Machines[0]
 }
 
-// NeedsHeal returns true if the AgentState of bootstrap machine is "not-started".
-func (h *BootstrapMachineHealer) NeedsHeal() bool {
+// needsHeal returns true if the AgentState of bootstrap machine is "not-started".
+func (h *BootstrapMachineHealer) needsHeal() bool {
 	bootstrapMachine := getBootstrapMachine()
 	return bootstrapMachine.AgentState == "not-started"
 }
@@ -115,7 +115,7 @@ func upStartCmd(cmd, daemon, machine string) error {
 
 // Heal executes the action for heal the bootstrap machine agent.
 func (h *BootstrapMachineHealer) Heal() error {
-	if h.NeedsHeal() {
+	if h.needsHeal() {
 		bootstrapMachine := getBootstrapMachine()
 		log.Printf("Healing bootstrap juju-machine-agent")
 		upStartCmd("stop", "juju-machine-agent", bootstrapMachine.IpAddress)
