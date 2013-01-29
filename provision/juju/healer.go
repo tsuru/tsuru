@@ -27,6 +27,17 @@ func init() {
 type InstanceUnitHealer struct{}
 
 func (h *InstanceUnitHealer) Heal() error {
+	p := JujuProvisioner{}
+	output, _ := p.getOutput()
+	for _, service := range output.Services {
+		for unitName, unit := range service.Units {
+			if unit.AgentState == "down" {
+				agent := fmt.Sprintf("juju-%s", strings.Join(strings.Split(unitName, "/"), "-"))
+				upStartCmd("stop", agent, unit.PublicAddress)
+				upStartCmd("start", agent, unit.PublicAddress)
+			}
+		}
+	}
 	return nil
 }
 

@@ -401,8 +401,9 @@ type instance struct {
 }
 
 type unit struct {
-	AgentState string `yaml:"agent-state"`
-	Machine    int
+	AgentState    string `yaml:"agent-state"`
+	Machine       int
+	PublicAddress string `yaml:"public-address"`
 }
 
 type service struct {

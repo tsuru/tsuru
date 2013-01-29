@@ -18,6 +18,45 @@ func (s *S) TestInstanceUnitShouldBeRegistered(c *C) {
 	c.Assert(h, FitsTypeOf, &InstanceUnitHealer{})
 }
 
+func (s *S) TestInstaceUnitHeal(c *C) {
+	jujuTmpdir, err := commandmocker.Add("juju", collectOutputInstanceDown)
+	c.Assert(err, IsNil)
+	defer commandmocker.Remove(jujuTmpdir)
+	sshTmpdir, err := commandmocker.Add("ssh", "$*")
+	c.Assert(err, IsNil)
+	defer commandmocker.Remove(sshTmpdir)
+	jujuOutput := []string{
+		"status", // for juju status that gets the output
+	}
+	sshOutput := []string{
+		"-o",
+		"StrictHostKeyChecking no",
+		"-q",
+		"-l",
+		"ubuntu",
+		"server-1081.novalocal",
+		"sudo",
+		"stop",
+		"juju-as_i_rise-0",
+		"-o",
+		"StrictHostKeyChecking no",
+		"-q",
+		"-l",
+		"ubuntu",
+		"server-1081.novalocal",
+		"sudo",
+		"start",
+		"juju-as_i_rise-0",
+	}
+	h := InstanceUnitHealer{}
+	err = h.Heal()
+	c.Assert(err, IsNil)
+	c.Assert(commandmocker.Ran(jujuTmpdir), Equals, true)
+	c.Assert(commandmocker.Parameters(jujuTmpdir), DeepEquals, jujuOutput)
+	c.Assert(commandmocker.Ran(sshTmpdir), Equals, true)
+	c.Assert(commandmocker.Parameters(sshTmpdir), DeepEquals, sshOutput)
+}
+
 func (s *S) TestInstanceMachineShouldBeRegistered(c *C) {
 	h, err := heal.Get("instance-machine")
 	c.Assert(err, IsNil)

@@ -11,7 +11,7 @@ var collectOutputInstanceDown = `machines:
     instance-id: i-00000376
     instance-state: running
   105:
-    agent-state: down 
+    agent-state: down
     dns-name: 10.10.10.163
     instance-id: i-00000439
     instance-state: running
@@ -22,7 +22,7 @@ services:
     relations: {}
     units:
       as_i_rise/0:
-        agent-state: started
+        agent-state: down
         machine: 105
         public-address: server-1081.novalocal`
 
