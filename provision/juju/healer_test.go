@@ -20,9 +20,9 @@ func (s *S) TestZookeeperHealerShouldBeRegistered(c *C) {
 
 func (s *S) TestZookeeperNeedsHeal(c *C) {
 	ln, err := net.Listen("tcp", ":2181")
+	c.Assert(err, IsNil)
 	defer ln.Close()
 	go func() {
-		c.Assert(err, IsNil)
 		conn, _ := ln.Accept()
 		fmt.Fprintln(conn, "notok")
 		conn.Close()
@@ -41,9 +41,9 @@ func (s *S) TestZookeeperNeedsHeal(c *C) {
 
 func (s *S) TestZookeeperNotNeedsHeal(c *C) {
 	ln, err := net.Listen("tcp", ":2181")
+	c.Assert(err, IsNil)
 	defer ln.Close()
 	go func() {
-		c.Assert(err, IsNil)
 		conn, _ := ln.Accept()
 		fmt.Fprintln(conn, "imok")
 		conn.Close()
@@ -62,9 +62,9 @@ func (s *S) TestZookeeperNotNeedsHeal(c *C) {
 
 func (s *S) TestZookeeperHealerHeal(c *C) {
 	ln, err := net.Listen("tcp", ":2181")
+	c.Assert(err, IsNil)
 	defer ln.Close()
 	go func() {
-		c.Assert(err, IsNil)
 		conn, _ := ln.Accept()
 		fmt.Fprintln(conn, "notok")
 		conn.Close()
