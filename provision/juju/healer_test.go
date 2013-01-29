@@ -39,6 +39,19 @@ func (s *S) TestZookeeperNeedsHeal(c *C) {
 	c.Assert(commandmocker.Parameters(jujuTmpdir), DeepEquals, jujuOutput)
 }
 
+func (s *S) TestZookeeperNeedsHealConnectionRefused(c *C) {
+	jujuTmpdir, err := commandmocker.Add("juju", collectOutputBootstrapDown)
+	c.Assert(err, IsNil)
+	defer commandmocker.Remove(jujuTmpdir)
+	h := ZookeeperHealer{}
+	c.Assert(h.NeedsHeal(), Equals, true)
+	jujuOutput := []string{
+		"status", // for juju status that gets the output
+	}
+	c.Assert(commandmocker.Ran(jujuTmpdir), Equals, true)
+	c.Assert(commandmocker.Parameters(jujuTmpdir), DeepEquals, jujuOutput)
+}
+
 func (s *S) TestZookeeperNotNeedsHeal(c *C) {
 	ln, err := net.Listen("tcp", ":2181")
 	c.Assert(err, IsNil)

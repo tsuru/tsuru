@@ -27,7 +27,10 @@ type ZookeeperHealer struct{}
 // NeedsHeal verifies if zookeeper is ok using 'ruok' command.
 func (h *ZookeeperHealer) NeedsHeal() bool {
 	bootstrapMachine := getBootstrapMachine()
-	conn, _ := net.Dial("tcp", fmt.Sprintf("%s:2181", bootstrapMachine.IpAddress))
+	conn, err := net.Dial("tcp", fmt.Sprintf("%s:2181", bootstrapMachine.IpAddress))
+	if err != nil {
+		return true
+	}
 	defer conn.Close()
 	fmt.Fprintf(conn, "ruok\r\n\r\n")
 	status, _ := bufio.NewReader(conn).ReadString('\n')
