@@ -17,8 +17,9 @@ install:
 before_script:
   - ./check-fmt.sh
   - make get-prod
+  - go get -d ./...
 script:
-  - make test
+  - go test ./...
 notifications:
   irc:
     channels:
