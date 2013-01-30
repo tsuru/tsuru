@@ -3,6 +3,8 @@ before_install:
   - sudo apt-get update -qq > apt-get.out || (cat apt-get.out && exit 1)
   - sudo apt-get install bzr mercurial git libyaml-dev cmake -qq >> apt-get.out || (cat apt-get.out && exit 1)
 install:
+  - mkdir -p $GOPATH/src/github.com/globocom/tsuru
+  - cp -r * $GOPATH/src/github.com/globocom/tsuru
   - pushd /tmp
   - curl -sLO https://github.com/downloads/kr/beanstalkd/beanstalkd-1.8.tar.gz
   - tar -xzf beanstalkd-1.8.tar.gz
@@ -13,13 +15,18 @@ install:
   - nc -z 127.0.0.1 11300
   - popd
   - popd
+  - pushd $GOPATH/src/github.com/globocom/tsuru
   - make get-test
+  - popd
 before_script:
+  - pushd $GOPATH/src/github.com/globocom/tsuru
   - ./check-fmt.sh
   - make get-prod
-  - go get -d ./...
+  - popd
 script:
-  - go test ./...
+  - pushd $GOPATH/src/github.com/globocom/tsuru
+  - make test
+  - popd
 notifications:
   irc:
     channels:
