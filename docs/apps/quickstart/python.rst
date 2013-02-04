@@ -45,11 +45,11 @@ command:
 ::
 
     $ tsuru app-list
-    +-------------+---------+----+
-    | Application | State   | Ip |
-    +-------------+---------+----+
-    | blog        | pending |    |
-    +-------------+---------+----+
+    +-------------+-------------------------+----+
+    | Application | Units State Summary     | IP |
+    +-------------+-------------------------+----+
+    | blog        | 0 of 1 units in-service |    |
+    +-------------+-------------------------+----+
 
 Once your app is ready, it will be displayed as "started" (along with its IP
 address or public host):
@@ -59,11 +59,11 @@ address or public host):
 ::
 
     $ tsuru app-list
-    +-------------+---------+-------------+
-    | Application | State   | Ip          |
-    +-------------+---------+-------------+
-    | blog        | started | 10.20.10.20 |
-    +-------------+---------+-------------+
+    +-------------+-------------------------+-------------+
+    | Application | Units State Summary     | IP          |
+    +-------------+-------------------------+-------------+
+    | blog        | 1 of 1 units in-service | 10.10.10.10 |
+    +-------------+-------------------------+-------------+
 
 Application code
 ================
