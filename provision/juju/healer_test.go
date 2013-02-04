@@ -8,12 +8,12 @@ import (
 	"fmt"
 	"github.com/flaviamissi/go-elb/elb"
 	"github.com/globocom/commandmocker"
+	"github.com/globocom/tsuru/app"
+	"github.com/globocom/tsuru/db"
 	"github.com/globocom/tsuru/heal"
+	"labix.org/v2/mgo/bson"
 	. "launchpad.net/gocheck"
 	"net"
-	"net/http"
-	"net/http/httptest"
-	"sync"
 )
 
 func (s *S) TestInstanceUnitShouldBeRegistered(c *C) {
@@ -377,6 +377,7 @@ func (s *ELBSuite) TestELBInstanceHealerCheckInstances(c *C) {
 	s.server.NewLoadBalancer(lb)
 	defer s.server.RemoveLoadBalancer(lb)
 	s.server.RegisterInstance(instance, lb)
+	defer s.server.DeregisterInstance(instance, lb)
 	state := elb.InstanceState{
 		Description: "Instance has failed at least the UnhealthyThreshold number of health checks consecutively.",
 		State:       "OutOfService",
@@ -393,19 +394,43 @@ func (s *ELBSuite) TestELBInstanceHealerCheckInstances(c *C) {
 			state:       "OutOfService",
 			reasonCode:  "Instance",
 			instanceId:  instance,
+			lb:          "elbtest",
 		},
 	}
 	c.Assert(instances, DeepEquals, expected)
 }
 
 func (s *ELBSuite) TestELBInstanceHealer(c *C) {
-	var mut sync.Mutex
-	reqs := []*http.Request{}
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		mut.Lock()
-		reqs = append(reqs, r)
-		mut.Unlock()
-		w.Write([]byte("123"))
-	}))
-	defer ts.Close()
+	lb := "elbtest"
+	instance := s.server.NewInstance()
+	defer s.server.RemoveInstance(instance)
+	s.server.NewLoadBalancer(lb)
+	defer s.server.RemoveLoadBalancer(lb)
+	s.server.RegisterInstance(instance, lb)
+	defer s.server.DeregisterInstance(instance, lb)
+	a := app.App{
+		Name:  "elbtest",
+		Units: []app.Unit{{InstanceId: instance, State: "started", Name: "elbtest/0"}},
+	}
+	storage, err := db.Conn()
+	c.Assert(err, IsNil)
+	err = storage.Apps().Insert(a)
+	c.Assert(err, IsNil)
+	defer storage.Apps().Remove(bson.M{"name": a.Name})
+	s.provisioner.Provision(&a)
+	defer s.provisioner.Destroy(&a)
+	state := elb.InstanceState{
+		Description: "Instance has failed at least the UnhealthyThreshold number of health checks consecutively.",
+		State:       "OutOfService",
+		ReasonCode:  "Instance",
+		InstanceId:  instance,
+	}
+	s.server.ChangeInstanceState(lb, state)
+	healer := ELBInstanceHealer{}
+	err = healer.Heal()
+	c.Assert(err, IsNil)
+	err = a.Get()
+	c.Assert(err, IsNil)
+	c.Assert(a.Units, HasLen, 1)
+	c.Assert(a.Units[0].InstanceId, Not(Equals), instance)
 }

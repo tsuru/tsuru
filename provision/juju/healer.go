@@ -8,6 +8,7 @@ import (
 	"bufio"
 	"fmt"
 	"github.com/globocom/config"
+	"github.com/globocom/tsuru/app"
 	"github.com/globocom/tsuru/heal"
 	"github.com/globocom/tsuru/log"
 	"net"
@@ -157,6 +158,25 @@ func (h *BootstrapMachineHealer) Heal() error {
 
 type ELBInstanceHealer struct{}
 
+func (h ELBInstanceHealer) Heal() error {
+	if instances, err := h.checkInstances(); err == nil && len(instances) > 0 {
+		for _, instance := range instances {
+			app := app.App{Name: instance.lb}
+			if err := app.Get(); err != nil {
+				log.Printf("Warning: app not found for the load balancer %s.", instance.lb)
+				continue
+			}
+			if err := app.RemoveUnit(instance.instanceId); err != nil {
+				return err
+			}
+			if err := app.AddUnits(1); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
 func (h ELBInstanceHealer) checkInstances() ([]elbInstance, error) {
 	if elbSupport, _ := config.GetBool("juju:use-elb"); !elbSupport {
 		return nil, nil
@@ -209,6 +229,7 @@ func (h ELBInstanceHealer) describeInstancesHealth(lb string) ([]elbInstance, er
 		instances[i].description = state.Description
 		instances[i].reasonCode = state.ReasonCode
 		instances[i].state = state.State
+		instances[i].lb = lb
 	}
 	return instances, nil
 }
