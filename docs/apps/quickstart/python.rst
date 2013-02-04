@@ -453,7 +453,7 @@ Now we commit the changes and run another deploy:
        530c528..542403a  master -> master
 
 Now that the app is deployed, you can access it from your browser, getting the
-IP or host listed in ``app-list`` and opening it in port ``8080``. For example,
+IP or host listed in ``app-list`` and opening it. For example,
 in the list below:
 
 .. highlight:: bash
@@ -467,7 +467,7 @@ in the list below:
     | blog        | started | 10.20.10.20 |
     +-------------+---------+-------------+
 
-We can access the admin of the app in the URL http://10.20.10.20:8080/admin/.
+We can access the admin of the app in the URL http://10.20.10.20/admin/.
 
 Using services
 ==============
