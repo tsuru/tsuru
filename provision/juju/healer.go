@@ -18,7 +18,7 @@ import (
 
 func init() {
 	heal.Register("bootstrap", &bootstrapMachineHealer{})
-	heal.Register("bootstrap-provision", &BootstrapProvisionHealer{})
+	heal.Register("bootstrap-provision", &bootstrapProvisionHealer{})
 	heal.Register("instance-machine", &InstanceMachineHealer{})
 	heal.Register("instance-unit", &InstanceUnitHealer{})
 	heal.Register("zookeeper", &ZookeeperHealer{})
@@ -101,10 +101,10 @@ func (h *ZookeeperHealer) Heal() error {
 
 // BootstrapProvisionHealer is an import for the Healer interface. For more
 // details on how a healer work, check the documentation of the heal package.
-type BootstrapProvisionHealer struct{}
+type bootstrapProvisionHealer struct{}
 
 // Heal starts the juju-provision-agent using upstart.
-func (h *BootstrapProvisionHealer) Heal() error {
+func (h *bootstrapProvisionHealer) Heal() error {
 	bootstrapMachine := getBootstrapMachine()
 	log.Printf("Healing bootstrap juju-provision-agent")
 	return upStartCmd("start", "juju-provision-agent", bootstrapMachine.IpAddress)

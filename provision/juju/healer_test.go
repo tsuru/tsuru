@@ -254,7 +254,7 @@ func (s *S) TestZookeeperHealerHeal(c *C) {
 func (s *S) TestBootstrapProvisionHealerShouldBeRegistered(c *C) {
 	h, err := heal.Get("bootstrap-provision")
 	c.Assert(err, IsNil)
-	c.Assert(h, FitsTypeOf, &BootstrapProvisionHealer{})
+	c.Assert(h, FitsTypeOf, &bootstrapProvisionHealer{})
 }
 
 func (s *S) TestBootstrapProvisionHealerHeal(c *C) {
@@ -278,7 +278,7 @@ func (s *S) TestBootstrapProvisionHealerHeal(c *C) {
 		"start",
 		"juju-provision-agent",
 	}
-	h := BootstrapProvisionHealer{}
+	h := bootstrapProvisionHealer{}
 	err = h.Heal()
 	c.Assert(err, IsNil)
 	c.Assert(commandmocker.Ran(jujuTmpdir), Equals, true)
