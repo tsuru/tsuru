@@ -145,7 +145,7 @@ func (s *S) TestInstanceMachineHeal(c *C) {
 func (s *S) TestZookeeperHealerShouldBeRegistered(c *C) {
 	h, err := heal.Get("zookeeper")
 	c.Assert(err, IsNil)
-	c.Assert(h, FitsTypeOf, &ZookeeperHealer{})
+	c.Assert(h, FitsTypeOf, &zookeeperHealer{})
 }
 
 func (s *S) TestZookeeperNeedsHeal(c *C) {
@@ -160,7 +160,7 @@ func (s *S) TestZookeeperNeedsHeal(c *C) {
 	jujuTmpdir, err := commandmocker.Add("juju", collectOutputBootstrapDown)
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(jujuTmpdir)
-	h := ZookeeperHealer{}
+	h := zookeeperHealer{}
 	c.Assert(h.needsHeal(), Equals, true)
 	jujuOutput := []string{
 		"status", // for juju status that gets the output
@@ -173,7 +173,7 @@ func (s *S) TestZookeeperNeedsHealConnectionRefused(c *C) {
 	jujuTmpdir, err := commandmocker.Add("juju", collectOutputBootstrapDown)
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(jujuTmpdir)
-	h := ZookeeperHealer{}
+	h := zookeeperHealer{}
 	c.Assert(h.needsHeal(), Equals, true)
 	jujuOutput := []string{
 		"status", // for juju status that gets the output
@@ -194,7 +194,7 @@ func (s *S) TestZookeeperNotNeedsHeal(c *C) {
 	jujuTmpdir, err := commandmocker.Add("juju", collectOutputBootstrapDown)
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(jujuTmpdir)
-	h := ZookeeperHealer{}
+	h := zookeeperHealer{}
 	c.Assert(h.needsHeal(), Equals, false)
 	jujuOutput := []string{
 		"status", // for juju status that gets the output
@@ -242,7 +242,7 @@ func (s *S) TestZookeeperHealerHeal(c *C) {
 		"start",
 		"zookeeper",
 	}
-	h := ZookeeperHealer{}
+	h := zookeeperHealer{}
 	err = h.Heal()
 	c.Assert(err, IsNil)
 	c.Assert(commandmocker.Ran(jujuTmpdir), Equals, true)

@@ -21,7 +21,7 @@ func init() {
 	heal.Register("bootstrap-provision", &bootstrapProvisionHealer{})
 	heal.Register("instance-machine", &instanceMachineHealer{})
 	heal.Register("instance-unit", &instanceUnitHealer{})
-	heal.Register("zookeeper", &ZookeeperHealer{})
+	heal.Register("zookeeper", &zookeeperHealer{})
 	heal.Register("elb-instance", ELBInstanceHealer{})
 }
 
@@ -72,10 +72,10 @@ func (h *instanceMachineHealer) Heal() error {
 
 // ZookeeperHealer is an implementation for the Healer interface. For more
 // detail on how a healer work, check the documentation of the heal package.
-type ZookeeperHealer struct{}
+type zookeeperHealer struct{}
 
 // needsHeal verifies if zookeeper is ok using 'ruok' command.
-func (h *ZookeeperHealer) needsHeal() bool {
+func (h *zookeeperHealer) needsHeal() bool {
 	bootstrapMachine := getBootstrapMachine()
 	conn, err := net.Dial("tcp", fmt.Sprintf("%s:2181", bootstrapMachine.IpAddress))
 	if err != nil {
@@ -88,7 +88,7 @@ func (h *ZookeeperHealer) needsHeal() bool {
 }
 
 // Heal restarts the zookeeper using upstart.
-func (h *ZookeeperHealer) Heal() error {
+func (h *zookeeperHealer) Heal() error {
 	if h.needsHeal() {
 		bootstrapMachine := getBootstrapMachine()
 		log.Printf("Healing zookeeper")
