@@ -19,7 +19,7 @@ import (
 func (s *S) TestInstanceUnitShouldBeRegistered(c *C) {
 	h, err := heal.Get("instance-unit")
 	c.Assert(err, IsNil)
-	c.Assert(h, FitsTypeOf, &InstanceUnitHealer{})
+	c.Assert(h, FitsTypeOf, &instanceUnitHealer{})
 }
 
 func (s *S) TestInstaceUnitHealWhenEverythingIsOk(c *C) {
@@ -32,7 +32,7 @@ func (s *S) TestInstaceUnitHealWhenEverythingIsOk(c *C) {
 	jujuOutput := []string{
 		"status", // for juju status that gets the output
 	}
-	h := InstanceUnitHealer{}
+	h := instanceUnitHealer{}
 	err = h.Heal()
 	c.Assert(err, IsNil)
 	c.Assert(commandmocker.Ran(jujuTmpdir), Equals, true)
@@ -70,7 +70,7 @@ func (s *S) TestInstaceUnitHeal(c *C) {
 		"start",
 		"juju-as_i_rise-0",
 	}
-	h := InstanceUnitHealer{}
+	h := instanceUnitHealer{}
 	err = h.Heal()
 	c.Assert(err, IsNil)
 	c.Assert(commandmocker.Ran(jujuTmpdir), Equals, true)

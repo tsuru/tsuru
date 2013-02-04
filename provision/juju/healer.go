@@ -20,18 +20,18 @@ func init() {
 	heal.Register("bootstrap", &bootstrapMachineHealer{})
 	heal.Register("bootstrap-provision", &bootstrapProvisionHealer{})
 	heal.Register("instance-machine", &instanceMachineHealer{})
-	heal.Register("instance-unit", &InstanceUnitHealer{})
+	heal.Register("instance-unit", &instanceUnitHealer{})
 	heal.Register("zookeeper", &ZookeeperHealer{})
 	heal.Register("elb-instance", ELBInstanceHealer{})
 }
 
 // InstanceUnitHealer is an implementation for the Healer interface. For more
 // detail on how a healer work, check the documentation of the heal package.
-type InstanceUnitHealer struct{}
+type instanceUnitHealer struct{}
 
 // Heal iterates through all juju units verifying if
 // a juju-unit-agent is down and heal these machines.
-func (h *InstanceUnitHealer) Heal() error {
+func (h *instanceUnitHealer) Heal() error {
 	p := JujuProvisioner{}
 	output, _ := p.getOutput()
 	for _, service := range output.Services {
