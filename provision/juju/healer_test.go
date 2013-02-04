@@ -82,7 +82,7 @@ func (s *S) TestInstaceUnitHeal(c *C) {
 func (s *S) TestInstanceMachineShouldBeRegistered(c *C) {
 	h, err := heal.Get("instance-machine")
 	c.Assert(err, IsNil)
-	c.Assert(h, FitsTypeOf, &InstanceMachineHealer{})
+	c.Assert(h, FitsTypeOf, &instanceMachineHealer{})
 }
 
 func (s *S) TestInstanceMachineHealWhenEverythingIsOk(c *C) {
@@ -95,7 +95,7 @@ func (s *S) TestInstanceMachineHealWhenEverythingIsOk(c *C) {
 	jujuOutput := []string{
 		"status", // for juju status that gets the output
 	}
-	h := InstanceMachineHealer{}
+	h := instanceMachineHealer{}
 	err = h.Heal()
 	c.Assert(err, IsNil)
 	c.Assert(commandmocker.Ran(jujuTmpdir), Equals, true)
@@ -133,7 +133,7 @@ func (s *S) TestInstanceMachineHeal(c *C) {
 		"start",
 		"juju-machine-agent",
 	}
-	h := InstanceMachineHealer{}
+	h := instanceMachineHealer{}
 	err = h.Heal()
 	c.Assert(err, IsNil)
 	c.Assert(commandmocker.Ran(jujuTmpdir), Equals, true)

@@ -19,7 +19,7 @@ import (
 func init() {
 	heal.Register("bootstrap", &bootstrapMachineHealer{})
 	heal.Register("bootstrap-provision", &bootstrapProvisionHealer{})
-	heal.Register("instance-machine", &InstanceMachineHealer{})
+	heal.Register("instance-machine", &instanceMachineHealer{})
 	heal.Register("instance-unit", &InstanceUnitHealer{})
 	heal.Register("zookeeper", &ZookeeperHealer{})
 	heal.Register("elb-instance", ELBInstanceHealer{})
@@ -51,11 +51,11 @@ func (h *InstanceUnitHealer) Heal() error {
 
 // InstanceMachineHealer is an implementation for the Healer interface. For more
 // detail on how a healer work, check the documentation of the heal package.
-type InstanceMachineHealer struct{}
+type instanceMachineHealer struct{}
 
 // Heal iterates through all juju machines verifying if
 // a juju-machine-agent is down and heal these machines.
-func (h *InstanceMachineHealer) Heal() error {
+func (h *instanceMachineHealer) Heal() error {
 	p := JujuProvisioner{}
 	output, _ := p.getOutput()
 	for _, machine := range output.Machines {
