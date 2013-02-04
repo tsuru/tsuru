@@ -22,6 +22,7 @@ func init() {
 	heal.Register("instance-machine", &InstanceMachineHealer{})
 	heal.Register("instance-unit", &InstanceUnitHealer{})
 	heal.Register("zookeeper", &ZookeeperHealer{})
+	heal.Register("elb-instance", ELBInstanceHealer{})
 }
 
 // InstanceUnitHealer is an implementation for the Healer interface. For more
