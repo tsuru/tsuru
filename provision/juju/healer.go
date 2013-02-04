@@ -7,6 +7,7 @@ package juju
 import (
 	"bufio"
 	"fmt"
+	"github.com/globocom/config"
 	"github.com/globocom/tsuru/heal"
 	"github.com/globocom/tsuru/log"
 	"net"
@@ -152,4 +153,62 @@ func (h *BootstrapMachineHealer) Heal() error {
 	}
 	log.Printf("Bootstrap juju-machine-agent needs no cure, skipping...")
 	return nil
+}
+
+type ELBInstanceHealer struct{}
+
+func (h ELBInstanceHealer) checkInstances() ([]elbInstance, error) {
+	if elbSupport, _ := config.GetBool("juju:use-elb"); !elbSupport {
+		return nil, nil
+	}
+	lbs, err := h.describeLoadBalancers()
+	if err != nil {
+		return nil, err
+	}
+	var unhealthy []elbInstance
+	description := "Instance has failed at least the UnhealthyThreshold number of health checks consecutively."
+	state := "OutOfService"
+	reasonCode := "Instance"
+	for _, lb := range lbs {
+		instances, err := h.describeInstancesHealth(lb)
+		if err != nil {
+			return nil, err
+		}
+		for _, instance := range instances {
+			if instance.description == description &&
+				instance.state == state &&
+				instance.reasonCode == reasonCode {
+				unhealthy = append(unhealthy, instance)
+			}
+		}
+	}
+	log.Printf("Found %d unhealthy instances.", len(unhealthy))
+	return unhealthy, nil
+}
+
+func (h ELBInstanceHealer) describeLoadBalancers() ([]string, error) {
+	resp, err := getELBEndpoint().DescribeLoadBalancers()
+	if err != nil {
+		return nil, err
+	}
+	lbs := make([]string, len(resp.LoadBalancerDescriptions))
+	for i, lbdesc := range resp.LoadBalancerDescriptions {
+		lbs[i] = lbdesc.LoadBalancerName
+	}
+	return lbs, nil
+}
+
+func (h ELBInstanceHealer) describeInstancesHealth(lb string) ([]elbInstance, error) {
+	resp, err := getELBEndpoint().DescribeInstanceHealth(lb)
+	if err != nil {
+		return nil, err
+	}
+	instances := make([]elbInstance, len(resp.InstanceStates))
+	for i, state := range resp.InstanceStates {
+		instances[i].instanceId = state.InstanceId
+		instances[i].description = state.Description
+		instances[i].reasonCode = state.ReasonCode
+		instances[i].state = state.State
+	}
+	return instances, nil
 }

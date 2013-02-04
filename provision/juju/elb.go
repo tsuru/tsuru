@@ -17,17 +17,15 @@ import (
 
 // loadBalancer represents an ELB instance.
 type loadBalancer struct {
-	Name      string
-	DNSName   string
-	instances []elbInstance
+	Name    string
+	DNSName string
 }
 
 type elbInstance struct {
-	instanceId   string
-	description  string
-	reasonCode   string
-	state        string
-	loadBalancer string
+	instanceId  string
+	description string
+	reasonCode  string
+	state       string
 }
 
 // ELBManager manages load balancers within Amazon Elastic Load Balancer.

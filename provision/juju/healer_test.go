@@ -6,10 +6,14 @@ package juju
 
 import (
 	"fmt"
+	"github.com/flaviamissi/go-elb/elb"
 	"github.com/globocom/commandmocker"
 	"github.com/globocom/tsuru/heal"
 	. "launchpad.net/gocheck"
 	"net"
+	"net/http"
+	"net/http/httptest"
+	"sync"
 )
 
 func (s *S) TestInstanceUnitShouldBeRegistered(c *C) {
@@ -357,4 +361,51 @@ func (s *S) TestBootstrapMachineHealerOnlyHealsWhenItIsNeeded(c *C) {
 	c.Assert(err, IsNil)
 	c.Assert(commandmocker.Ran(tmpdir), Equals, true)
 	c.Assert(commandmocker.Parameters(tmpdir), DeepEquals, cmdOutput)
+}
+
+func (s *S) TestELBInstanceHealerCheckInstancesDisabledELB(c *C) {
+	healer := ELBInstanceHealer{}
+	instances, err := healer.checkInstances()
+	c.Assert(err, IsNil)
+	c.Assert(instances, HasLen, 0)
+}
+
+func (s *ELBSuite) TestELBInstanceHealerCheckInstances(c *C) {
+	lb := "elbtest"
+	instance := s.server.NewInstance()
+	defer s.server.RemoveInstance(instance)
+	s.server.NewLoadBalancer(lb)
+	defer s.server.RemoveLoadBalancer(lb)
+	s.server.RegisterInstance(instance, lb)
+	state := elb.InstanceState{
+		Description: "Instance has failed at least the UnhealthyThreshold number of health checks consecutively.",
+		State:       "OutOfService",
+		ReasonCode:  "Instance",
+		InstanceId:  instance,
+	}
+	s.server.ChangeInstanceState(lb, state)
+	healer := ELBInstanceHealer{}
+	instances, err := healer.checkInstances()
+	c.Assert(err, IsNil)
+	expected := []elbInstance{
+		{
+			description: "Instance has failed at least the UnhealthyThreshold number of health checks consecutively.",
+			state:       "OutOfService",
+			reasonCode:  "Instance",
+			instanceId:  instance,
+		},
+	}
+	c.Assert(instances, DeepEquals, expected)
+}
+
+func (s *ELBSuite) TestELBInstanceHealer(c *C) {
+	var mut sync.Mutex
+	reqs := []*http.Request{}
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		mut.Lock()
+		reqs = append(reqs, r)
+		mut.Unlock()
+		w.Write([]byte("123"))
+	}))
+	defer ts.Close()
 }
