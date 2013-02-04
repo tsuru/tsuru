@@ -22,7 +22,7 @@ func init() {
 	heal.Register("instance-machine", &instanceMachineHealer{})
 	heal.Register("instance-unit", &instanceUnitHealer{})
 	heal.Register("zookeeper", &zookeeperHealer{})
-	heal.Register("elb-instance", ELBInstanceHealer{})
+	heal.Register("elb-instance", elbInstanceHealer{})
 }
 
 // InstanceUnitHealer is an implementation for the Healer interface. For more
@@ -157,9 +157,9 @@ func (h *bootstrapMachineHealer) Heal() error {
 	return nil
 }
 
-type ELBInstanceHealer struct{}
+type elbInstanceHealer struct{}
 
-func (h ELBInstanceHealer) Heal() error {
+func (h elbInstanceHealer) Heal() error {
 	if instances, err := h.checkInstances(); err == nil && len(instances) > 0 {
 		for _, instance := range instances {
 			app := app.App{Name: instance.lb}
@@ -178,7 +178,7 @@ func (h ELBInstanceHealer) Heal() error {
 	return nil
 }
 
-func (h ELBInstanceHealer) checkInstances() ([]elbInstance, error) {
+func (h elbInstanceHealer) checkInstances() ([]elbInstance, error) {
 	if elbSupport, _ := config.GetBool("juju:use-elb"); !elbSupport {
 		return nil, nil
 	}
@@ -207,7 +207,7 @@ func (h ELBInstanceHealer) checkInstances() ([]elbInstance, error) {
 	return unhealthy, nil
 }
 
-func (h ELBInstanceHealer) describeLoadBalancers() ([]string, error) {
+func (h elbInstanceHealer) describeLoadBalancers() ([]string, error) {
 	resp, err := getELBEndpoint().DescribeLoadBalancers()
 	if err != nil {
 		return nil, err
@@ -219,7 +219,7 @@ func (h ELBInstanceHealer) describeLoadBalancers() ([]string, error) {
 	return lbs, nil
 }
 
-func (h ELBInstanceHealer) describeInstancesHealth(lb string) ([]elbInstance, error) {
+func (h elbInstanceHealer) describeInstancesHealth(lb string) ([]elbInstance, error) {
 	resp, err := getELBEndpoint().DescribeInstanceHealth(lb)
 	if err != nil {
 		return nil, err

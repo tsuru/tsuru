@@ -364,7 +364,7 @@ func (s *S) TestBootstrapMachineHealerOnlyHealsWhenItIsNeeded(c *C) {
 }
 
 func (s *S) TestELBInstanceHealerCheckInstancesDisabledELB(c *C) {
-	healer := ELBInstanceHealer{}
+	healer := elbInstanceHealer{}
 	instances, err := healer.checkInstances()
 	c.Assert(err, IsNil)
 	c.Assert(instances, HasLen, 0)
@@ -385,7 +385,7 @@ func (s *ELBSuite) TestELBInstanceHealerCheckInstances(c *C) {
 		InstanceId:  instance,
 	}
 	s.server.ChangeInstanceState(lb, state)
-	healer := ELBInstanceHealer{}
+	healer := elbInstanceHealer{}
 	instances, err := healer.checkInstances()
 	c.Assert(err, IsNil)
 	expected := []elbInstance{
@@ -426,7 +426,7 @@ func (s *ELBSuite) TestELBInstanceHealer(c *C) {
 		InstanceId:  instance,
 	}
 	s.server.ChangeInstanceState(lb, state)
-	healer := ELBInstanceHealer{}
+	healer := elbInstanceHealer{}
 	err = healer.Heal()
 	c.Assert(err, IsNil)
 	err = a.Get()
