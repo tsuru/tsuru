@@ -9,6 +9,7 @@ import (
 	"github.com/flaviamissi/go-elb/elb"
 	"github.com/flaviamissi/go-elb/elb/elbtest"
 	"github.com/globocom/config"
+	"github.com/globocom/tsuru/app"
 	"github.com/globocom/tsuru/db"
 	"github.com/globocom/tsuru/provision"
 	"github.com/globocom/tsuru/testing"
@@ -18,10 +19,11 @@ import (
 )
 
 type ELBSuite struct {
-	server *elbtest.Server
-	client *elb.ELB
-	conn   *db.Storage
-	cName  string
+	server      *elbtest.Server
+	client      *elb.ELB
+	conn        *db.Storage
+	cName       string
+	provisioner *testing.FakeProvisioner
 }
 
 var _ = Suite(&ELBSuite{})
@@ -47,6 +49,8 @@ func (s *ELBSuite) SetUpSuite(c *C) {
 	config.Set("git:host", "git.tsuru.io")
 	config.Set("queue-server", "127.0.0.1:11300")
 	config.Set("juju:units-collection", "juju_units_test_elb")
+	s.provisioner = testing.NewFakeProvisioner()
+	app.Provisioner = s.provisioner
 	testing.CleanQueues(queueName)
 	err = handler.DryRun()
 	c.Assert(err, IsNil)
