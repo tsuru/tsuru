@@ -26,6 +26,7 @@ type elbInstance struct {
 	description string
 	reasonCode  string
 	state       string
+	lb          string
 }
 
 // ELBManager manages load balancers within Amazon Elastic Load Balancer.
