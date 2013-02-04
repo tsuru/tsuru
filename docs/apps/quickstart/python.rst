@@ -346,7 +346,7 @@ how the Procfile should look like:
 
 ::
 
-    web: gunicorn -b 0.0.0.0:8080 blog.wsgi
+    web: gunicorn -b 0.0.0.0:8888 blog.wsgi
 
 Now that we commit the file and push the changes to tsuru git server, running
 another deploy:
