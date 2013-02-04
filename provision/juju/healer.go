@@ -17,7 +17,7 @@ import (
 )
 
 func init() {
-	heal.Register("bootstrap", &BootstrapMachineHealer{})
+	heal.Register("bootstrap", &bootstrapMachineHealer{})
 	heal.Register("bootstrap-provision", &BootstrapProvisionHealer{})
 	heal.Register("instance-machine", &InstanceMachineHealer{})
 	heal.Register("instance-unit", &InstanceUnitHealer{})
@@ -112,7 +112,7 @@ func (h *BootstrapProvisionHealer) Heal() error {
 
 // BootstrapMachineHealer is an implementation for the Healer interface. For more
 // details on how a healer work, check the documentation of the heal package.
-type BootstrapMachineHealer struct{}
+type bootstrapMachineHealer struct{}
 
 // getBootstrapMachine returns the bootstrap machine.
 func getBootstrapMachine() machine {
@@ -123,7 +123,7 @@ func getBootstrapMachine() machine {
 }
 
 // needsHeal returns true if the AgentState of bootstrap machine is "not-started".
-func (h *BootstrapMachineHealer) needsHeal() bool {
+func (h *bootstrapMachineHealer) needsHeal() bool {
 	bootstrapMachine := getBootstrapMachine()
 	return bootstrapMachine.AgentState == "not-started"
 }
@@ -146,7 +146,7 @@ func upStartCmd(cmd, daemon, machine string) error {
 }
 
 // Heal executes the action for heal the bootstrap machine agent.
-func (h *BootstrapMachineHealer) Heal() error {
+func (h *bootstrapMachineHealer) Heal() error {
 	if h.needsHeal() {
 		bootstrapMachine := getBootstrapMachine()
 		log.Printf("Healing bootstrap juju-machine-agent")

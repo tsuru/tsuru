@@ -290,14 +290,14 @@ func (s *S) TestBootstrapProvisionHealerHeal(c *C) {
 func (s *S) TestBootstrapMachineHealerShouldBeRegistered(c *C) {
 	h, err := heal.Get("bootstrap")
 	c.Assert(err, IsNil)
-	c.Assert(h, FitsTypeOf, &BootstrapMachineHealer{})
+	c.Assert(h, FitsTypeOf, &bootstrapMachineHealer{})
 }
 
 func (s *S) TestBootstrapMachineHealerNeedsHeal(c *C) {
 	tmpdir, err := commandmocker.Add("juju", collectOutputBootstrapDown)
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(tmpdir)
-	h := BootstrapMachineHealer{}
+	h := bootstrapMachineHealer{}
 	c.Assert(h.needsHeal(), Equals, true)
 }
 
@@ -305,7 +305,7 @@ func (s *S) TestBootstrapMachineHealerDontNeedsHeal(c *C) {
 	tmpdir, err := commandmocker.Add("juju", collectOutput)
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(tmpdir)
-	h := BootstrapMachineHealer{}
+	h := bootstrapMachineHealer{}
 	c.Assert(h.needsHeal(), Equals, false)
 }
 
@@ -340,7 +340,7 @@ func (s *S) TestBootstrapMachineHealerHeal(c *C) {
 		"start",
 		"juju-machine-agent",
 	}
-	h := BootstrapMachineHealer{}
+	h := bootstrapMachineHealer{}
 	err = h.Heal()
 	c.Assert(err, IsNil)
 	c.Assert(commandmocker.Ran(jujuTmpdir), Equals, true)
@@ -356,7 +356,7 @@ func (s *S) TestBootstrapMachineHealerOnlyHealsWhenItIsNeeded(c *C) {
 	cmdOutput := []string{
 		"status", // for verify if heal is need
 	}
-	h := BootstrapMachineHealer{}
+	h := bootstrapMachineHealer{}
 	err = h.Heal()
 	c.Assert(err, IsNil)
 	c.Assert(commandmocker.Ran(tmpdir), Equals, true)
