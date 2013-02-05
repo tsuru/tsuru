@@ -124,4 +124,8 @@ func (s *ELBSuite) TestELBInstanceHealer(c *C) {
 	c.Assert(err, IsNil)
 	c.Assert(a.Units, HasLen, 1)
 	c.Assert(a.Units[0].InstanceId, Not(Equals), instance)
+	queue.Preempt()
+	testing.CleanQueues(queueName, app.QueueName)
+	err = handler.DryRun()
+	c.Assert(err, IsNil)
 }
