@@ -16,7 +16,7 @@ import (
 func (s *S) TestInstanceUnitShouldBeRegistered(c *C) {
 	h, err := heal.Get("instance-unit")
 	c.Assert(err, IsNil)
-	c.Assert(h, FitsTypeOf, &instanceUnitHealer{})
+	c.Assert(h, FitsTypeOf, instanceUnitHealer{})
 }
 
 func (s *S) TestInstaceUnitHealWhenEverythingIsOk(c *C) {
@@ -79,7 +79,7 @@ func (s *S) TestInstaceUnitHeal(c *C) {
 func (s *S) TestInstanceMachineShouldBeRegistered(c *C) {
 	h, err := heal.Get("instance-machine")
 	c.Assert(err, IsNil)
-	c.Assert(h, FitsTypeOf, &instanceMachineHealer{})
+	c.Assert(h, FitsTypeOf, instanceMachineHealer{})
 }
 
 func (s *S) TestInstanceMachineHealWhenEverythingIsOk(c *C) {
@@ -142,7 +142,7 @@ func (s *S) TestInstanceMachineHeal(c *C) {
 func (s *S) TestZookeeperHealerShouldBeRegistered(c *C) {
 	h, err := heal.Get("zookeeper")
 	c.Assert(err, IsNil)
-	c.Assert(h, FitsTypeOf, &zookeeperHealer{})
+	c.Assert(h, FitsTypeOf, zookeeperHealer{})
 }
 
 func (s *S) TestZookeeperNeedsHeal(c *C) {
@@ -251,7 +251,7 @@ func (s *S) TestZookeeperHealerHeal(c *C) {
 func (s *S) TestBootstrapProvisionHealerShouldBeRegistered(c *C) {
 	h, err := heal.Get("bootstrap-provision")
 	c.Assert(err, IsNil)
-	c.Assert(h, FitsTypeOf, &bootstrapProvisionHealer{})
+	c.Assert(h, FitsTypeOf, bootstrapProvisionHealer{})
 }
 
 func (s *S) TestBootstrapProvisionHealerHeal(c *C) {
@@ -287,7 +287,7 @@ func (s *S) TestBootstrapProvisionHealerHeal(c *C) {
 func (s *S) TestBootstrapMachineHealerShouldBeRegistered(c *C) {
 	h, err := heal.Get("bootstrap")
 	c.Assert(err, IsNil)
-	c.Assert(h, FitsTypeOf, &bootstrapMachineHealer{})
+	c.Assert(h, FitsTypeOf, bootstrapMachineHealer{})
 }
 
 func (s *S) TestBootstrapMachineHealerNeedsHeal(c *C) {

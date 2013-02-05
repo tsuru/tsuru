@@ -17,11 +17,11 @@ import (
 )
 
 func init() {
-	heal.Register("bootstrap", &bootstrapMachineHealer{})
-	heal.Register("bootstrap-provision", &bootstrapProvisionHealer{})
-	heal.Register("instance-machine", &instanceMachineHealer{})
-	heal.Register("instance-unit", &instanceUnitHealer{})
-	heal.Register("zookeeper", &zookeeperHealer{})
+	heal.Register("bootstrap", bootstrapMachineHealer{})
+	heal.Register("bootstrap-provision", bootstrapProvisionHealer{})
+	heal.Register("instance-machine", instanceMachineHealer{})
+	heal.Register("instance-unit", instanceUnitHealer{})
+	heal.Register("zookeeper", zookeeperHealer{})
 	heal.Register("elb-instance", elbInstanceHealer{})
 }
 
@@ -31,7 +31,7 @@ type instanceUnitHealer struct{}
 
 // Heal iterates through all juju units verifying if
 // a juju-unit-agent is down and heal these machines.
-func (h *instanceUnitHealer) Heal() error {
+func (h instanceUnitHealer) Heal() error {
 	p := JujuProvisioner{}
 	output, _ := p.getOutput()
 	for _, service := range output.Services {
@@ -55,7 +55,7 @@ type instanceMachineHealer struct{}
 
 // Heal iterates through all juju machines verifying if
 // a juju-machine-agent is down and heal these machines.
-func (h *instanceMachineHealer) Heal() error {
+func (h instanceMachineHealer) Heal() error {
 	p := JujuProvisioner{}
 	output, _ := p.getOutput()
 	for _, machine := range output.Machines {
@@ -75,7 +75,7 @@ func (h *instanceMachineHealer) Heal() error {
 type zookeeperHealer struct{}
 
 // needsHeal verifies if zookeeper is ok using 'ruok' command.
-func (h *zookeeperHealer) needsHeal() bool {
+func (h zookeeperHealer) needsHeal() bool {
 	bootstrapMachine := getBootstrapMachine()
 	conn, err := net.Dial("tcp", fmt.Sprintf("%s:2181", bootstrapMachine.IpAddress))
 	if err != nil {
@@ -88,7 +88,7 @@ func (h *zookeeperHealer) needsHeal() bool {
 }
 
 // Heal restarts the zookeeper using upstart.
-func (h *zookeeperHealer) Heal() error {
+func (h zookeeperHealer) Heal() error {
 	if h.needsHeal() {
 		bootstrapMachine := getBootstrapMachine()
 		log.Printf("Healing zookeeper")
@@ -104,7 +104,7 @@ func (h *zookeeperHealer) Heal() error {
 type bootstrapProvisionHealer struct{}
 
 // Heal starts the juju-provision-agent using upstart.
-func (h *bootstrapProvisionHealer) Heal() error {
+func (h bootstrapProvisionHealer) Heal() error {
 	bootstrapMachine := getBootstrapMachine()
 	log.Printf("Healing bootstrap juju-provision-agent")
 	return upStartCmd("start", "juju-provision-agent", bootstrapMachine.IpAddress)
@@ -123,7 +123,7 @@ func getBootstrapMachine() machine {
 }
 
 // needsHeal returns true if the AgentState of bootstrap machine is "not-started".
-func (h *bootstrapMachineHealer) needsHeal() bool {
+func (h bootstrapMachineHealer) needsHeal() bool {
 	bootstrapMachine := getBootstrapMachine()
 	return bootstrapMachine.AgentState == "not-started"
 }
@@ -146,7 +146,7 @@ func upStartCmd(cmd, daemon, machine string) error {
 }
 
 // Heal executes the action for heal the bootstrap machine agent.
-func (h *bootstrapMachineHealer) Heal() error {
+func (h bootstrapMachineHealer) Heal() error {
 	if h.needsHeal() {
 		bootstrapMachine := getBootstrapMachine()
 		log.Printf("Healing bootstrap juju-machine-agent")
