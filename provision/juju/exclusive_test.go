@@ -6,9 +6,11 @@ package juju
 
 import (
 	"flag"
+	"github.com/flaviamissi/go-elb/elb"
 	"github.com/globocom/commandmocker"
 	"github.com/globocom/config"
 	"github.com/globocom/tsuru/app"
+	"github.com/globocom/tsuru/db"
 	"github.com/globocom/tsuru/queue"
 	"github.com/globocom/tsuru/testing"
 	"labix.org/v2/mgo/bson"
@@ -84,4 +86,42 @@ func (s *ExclusiveSuite) TestCollectStatusIDChangeFromPending(c *C) {
 	}
 	_, err = queue.Get(app.QueueName, 1e6)
 	c.Assert(err, NotNil)
+}
+
+func (s *ELBSuite) TestELBInstanceHealer(c *C) {
+	if !*exclusive {
+		c.Skip("Not in exclusive mode.")
+	}
+	lb := "elbtest"
+	instance := s.server.NewInstance()
+	defer s.server.RemoveInstance(instance)
+	s.server.NewLoadBalancer(lb)
+	defer s.server.RemoveLoadBalancer(lb)
+	s.server.RegisterInstance(instance, lb)
+	defer s.server.DeregisterInstance(instance, lb)
+	a := app.App{
+		Name:  "elbtest",
+		Units: []app.Unit{{InstanceId: instance, State: "started", Name: "elbtest/0"}},
+	}
+	storage, err := db.Conn()
+	c.Assert(err, IsNil)
+	err = storage.Apps().Insert(a)
+	c.Assert(err, IsNil)
+	defer storage.Apps().Remove(bson.M{"name": a.Name})
+	s.provisioner.Provision(&a)
+	defer s.provisioner.Destroy(&a)
+	state := elb.InstanceState{
+		Description: "Instance has failed at least the UnhealthyThreshold number of health checks consecutively.",
+		State:       "OutOfService",
+		ReasonCode:  "Instance",
+		InstanceId:  instance,
+	}
+	s.server.ChangeInstanceState(lb, state)
+	healer := elbInstanceHealer{}
+	err = healer.Heal()
+	c.Assert(err, IsNil)
+	err = a.Get()
+	c.Assert(err, IsNil)
+	c.Assert(a.Units, HasLen, 1)
+	c.Assert(a.Units[0].InstanceId, Not(Equals), instance)
 }
