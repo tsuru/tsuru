@@ -168,11 +168,11 @@ func (h elbInstanceHealer) Heal() error {
 				log.Printf("Warning: app not found for the load balancer %s.", instance.lb)
 				continue
 			}
-			if !h.shouldHeal(&app, instance.instanceId) {
-				log.Printf("Instance %q is pending, skipping...", instance.instanceId)
+			if !h.shouldHeal(&app, instance.id) {
+				log.Printf("Instance %q is pending, skipping...", instance.id)
 				continue
 			}
-			if err := app.RemoveUnit(instance.instanceId); err != nil {
+			if err := app.RemoveUnit(instance.id); err != nil {
 				return err
 			}
 			if err := app.AddUnits(1); err != nil {
@@ -243,7 +243,7 @@ func (h elbInstanceHealer) describeInstancesHealth(lb string) ([]elbInstance, er
 	}
 	instances := make([]elbInstance, len(resp.InstanceStates))
 	for i, state := range resp.InstanceStates {
-		instances[i].instanceId = state.InstanceId
+		instances[i].id = state.InstanceId
 		instances[i].description = state.Description
 		instances[i].reasonCode = state.ReasonCode
 		instances[i].state = state.State

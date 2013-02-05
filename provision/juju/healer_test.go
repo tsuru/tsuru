@@ -396,7 +396,7 @@ func (s *ELBSuite) TestELBInstanceHealerCheckInstances(c *C) {
 			description: "Instance has failed at least the UnhealthyThreshold number of health checks consecutively.",
 			state:       "OutOfService",
 			reasonCode:  "Instance",
-			instanceId:  instance,
+			id:          instance,
 			lb:          "elbtest",
 		},
 	}

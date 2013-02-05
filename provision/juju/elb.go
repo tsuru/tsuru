@@ -22,7 +22,7 @@ type loadBalancer struct {
 }
 
 type elbInstance struct {
-	instanceId  string
+	id          string
 	description string
 	reasonCode  string
 	state       string
