@@ -81,8 +81,8 @@ func (s *ExclusiveSuite) TestCollectStatusIDChangeFromPending(c *C) {
 	}()
 	select {
 	case <-done:
-	case <-time.After(2e9):
-		c.Fatal("Did not update the unit after 2 seconds.")
+	case <-time.After(5e9):
+		c.Fatal("Did not update the unit after 5 seconds.")
 	}
 	_, err = queue.Get(app.QueueName, 1e6)
 	c.Assert(err, NotNil)
