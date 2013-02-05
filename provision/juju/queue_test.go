@@ -75,7 +75,9 @@ func (s *ELBSuite) TestHandleMessageWithUnits(c *C) {
 	c.Assert(instances, HasLen, 2)
 	ids := []string{instances[0].InstanceId, instances[1].InstanceId}
 	sort.Strings(ids)
-	c.Assert(ids, DeepEquals, []string{id1, id2})
+	want := []string{id1, id2}
+	sort.Strings(want)
+	c.Assert(ids, DeepEquals, want)
 	c.Assert(commandmocker.Ran(tmpdir), Equals, true)
 }
 
