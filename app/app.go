@@ -153,7 +153,7 @@ func (a *App) unbind() error {
 
 // Destroy destroys an app.
 //
-// Destroy an app is a process composed of four steps:
+// Destroying an app is a process composed of four steps:
 //
 //       1. Destroy the bucket and S3 credentials (if bucket-support is
 //       enabled).
