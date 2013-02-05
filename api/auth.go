@@ -319,10 +319,6 @@ func getKeyFromBody(b io.Reader) (string, error) {
 
 // addKeyToUser adds a key to a user in mongodb and send the key to the git server
 // in order to allow ssh-ing into git server.
-//
-// While using gitosis, we had to give write permission to the user into a repository
-// in the same moment we add their key, with gandalf it is not needed anymore, thus here we just
-// add the key to the user, the grant step is done in user creation time
 func addKeyToUser(content string, u *auth.User) error {
 	key := auth.Key{Content: content}
 	if u.HasKey(key) {
@@ -357,8 +353,6 @@ func AddKeyToUser(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 // revomeKeyFromUser removes a key from the given user's document
 //
 // Also removes the key from gandalf.
-// When we were using gitosis we had to revoke the write permission into the repositories in this moment,
-// now that we are using gandalf, it is not necessary anymore, this is done by addUserToTeam
 //
 // This functions makes uses of git:host, git:protocol and optionaly git:port configurations
 func removeKeyFromUser(content string, u *auth.User) error {
