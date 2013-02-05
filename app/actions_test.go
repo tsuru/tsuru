@@ -60,6 +60,20 @@ func (s *S) TestInsertAppForwardInvalidValue(c *C) {
 	c.Assert(err.Error(), Equals, "First parameter must be App or *App.")
 }
 
+func (s *S) TestInsertAppDuplication(c *C) {
+	app := App{Name: "come", Framework: "gotthard"}
+	err := s.conn.Apps().Insert(app)
+	c.Assert(err, IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": app.Name})
+	ctx := action.FWContext{
+		Params: []interface{}{&app},
+	}
+	r, err := insertApp.Forward(ctx)
+	c.Assert(r, IsNil)
+	c.Assert(err, NotNil)
+	c.Assert(err.Error(), Equals, "there is already an app with this name.")
+}
+
 func (s *S) TestInsertAppBackward(c *C) {
 	app := App{Name: "conviction", Framework: "evergrey"}
 	ctx := action.BWContext{

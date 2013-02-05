@@ -18,6 +18,7 @@ import (
 	"labix.org/v2/mgo/bson"
 	"launchpad.net/goamz/aws"
 	"strconv"
+	"strings"
 )
 
 // insertApp is an action that inserts an app in the database in Forward and
@@ -40,6 +41,9 @@ var insertApp = action.Action{
 			return nil, err
 		}
 		err = conn.Apps().Insert(app)
+		if err != nil && strings.HasPrefix(err.Error(), "E11000") {
+			return nil, errors.New("there is already an app with this name.")
+		}
 		return &app, err
 	},
 	Backward: func(ctx action.BWContext) {
