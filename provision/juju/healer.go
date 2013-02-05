@@ -161,21 +161,26 @@ func (h bootstrapMachineHealer) Heal() error {
 type elbInstanceHealer struct{}
 
 func (h elbInstanceHealer) Heal() error {
+	apps := make(map[string]*app.App)
 	if instances, err := h.checkInstances(); err == nil && len(instances) > 0 {
 		for _, instance := range instances {
-			app := app.App{Name: instance.lb}
-			if err := app.Get(); err != nil {
-				log.Printf("Warning: app not found for the load balancer %s.", instance.lb)
-				continue
+			a, ok := apps[instance.lb]
+			if !ok {
+				a = &app.App{Name: instance.lb}
+				if err := a.Get(); err != nil {
+					log.Printf("Warning: app not found for the load balancer %s.", instance.lb)
+					continue
+				}
+				apps[instance.lb] = a
 			}
-			if !h.shouldHeal(&app, instance.id) {
+			if !h.shouldHeal(a, instance.id) {
 				log.Printf("Instance %q is pending, skipping...", instance.id)
 				continue
 			}
-			if err := app.RemoveUnit(instance.id); err != nil {
+			if err := a.RemoveUnit(instance.id); err != nil {
 				return err
 			}
-			if err := app.AddUnits(1); err != nil {
+			if err := a.AddUnits(1); err != nil {
 				return err
 			}
 		}
