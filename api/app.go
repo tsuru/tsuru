@@ -251,31 +251,6 @@ func AddUnitsHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error
 	return app.AddUnits(n)
 }
 
-// Removes a single unit by it's unit name or instance id.
-//
-// The expected body is only the instance id/unit name, nothing else.
-func RemoveUnitHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
-	missingMsg := "You must provide the instance-id or unit-name."
-	if r.Body == nil {
-		return &errors.Http{Code: http.StatusBadRequest, Message: missingMsg}
-	}
-	defer r.Body.Close()
-	b, err := ioutil.ReadAll(r.Body)
-	if err != nil {
-		return err
-	}
-	value := string(b)
-	if value == "" {
-		return &errors.Http{Code: http.StatusBadRequest, Message: missingMsg}
-	}
-	appName := r.URL.Query().Get(":name")
-	app, err := getApp(appName, u)
-	if err != nil {
-		return err
-	}
-	return app.RemoveUnit(value)
-}
-
 func RemoveUnitsHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	n, err := numberOfUnitsOrError(r)
 	if err != nil {
