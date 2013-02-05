@@ -11,6 +11,7 @@ import (
 	"github.com/globocom/tsuru/app"
 	"github.com/globocom/tsuru/heal"
 	"github.com/globocom/tsuru/log"
+	"github.com/globocom/tsuru/provision"
 	"net"
 	"os/exec"
 	"strings"
@@ -167,6 +168,10 @@ func (h elbInstanceHealer) Heal() error {
 				log.Printf("Warning: app not found for the load balancer %s.", instance.lb)
 				continue
 			}
+			if !h.shouldHeal(&app, instance.instanceId) {
+				log.Printf("Instance %q is pending, skipping...", instance.instanceId)
+				continue
+			}
 			if err := app.RemoveUnit(instance.instanceId); err != nil {
 				return err
 			}
@@ -176,6 +181,18 @@ func (h elbInstanceHealer) Heal() error {
 		}
 	}
 	return nil
+}
+
+func (h elbInstanceHealer) shouldHeal(app *app.App, id string) bool {
+	var state provision.Status
+	for _, unit := range app.ProvisionUnits() {
+		if unit.GetInstanceId() == id {
+			state = unit.GetStatus()
+			break
+		}
+	}
+	return state != "" &&
+		(state == provision.StatusDown || state == provision.StatusError)
 }
 
 func (h elbInstanceHealer) checkInstances() ([]elbInstance, error) {
