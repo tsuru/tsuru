@@ -229,10 +229,10 @@ func (s *S) TestCantCreateAppWithZeroUnits(c *C) {
 }
 
 func (s *S) TestCantCreateTwoAppsWithTheSameName(c *C) {
-	err := s.conn.Apps().Insert(bson.M{"name": "appName"})
+	err := s.conn.Apps().Insert(bson.M{"name": "appname"})
 	c.Assert(err, IsNil)
-	defer s.conn.Apps().Remove(bson.M{"name": "appName"})
-	a := App{Name: "appName"}
+	defer s.conn.Apps().Remove(bson.M{"name": "appname"})
+	a := App{Name: "appname"}
 	err = CreateApp(&a, 1)
 	defer a.Destroy() // clean mess if test fail
 	c.Assert(err, NotNil)
