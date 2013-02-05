@@ -360,6 +360,12 @@ func (s *S) TestBootstrapMachineHealerOnlyHealsWhenItIsNeeded(c *C) {
 	c.Assert(commandmocker.Parameters(tmpdir), DeepEquals, cmdOutput)
 }
 
+func (s *S) TestELBInstanceHealerShouldBeRegistered(c *C) {
+	h, err := heal.Get("elb-instance")
+	c.Assert(err, IsNil)
+	c.Assert(h, FitsTypeOf, elbInstanceHealer{})
+}
+
 func (s *S) TestELBInstanceHealerCheckInstancesDisabledELB(c *C) {
 	healer := elbInstanceHealer{}
 	instances, err := healer.checkInstances()
