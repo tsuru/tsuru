@@ -236,6 +236,11 @@ func (s *S) TestCantCreateTwoAppsWithTheSameName(c *C) {
 	err = CreateApp(&a, 1)
 	defer a.Destroy() // clean mess if test fail
 	c.Assert(err, NotNil)
+	e, ok := err.(*appCreationError)
+	c.Assert(ok, Equals, true)
+	c.Assert(e.app, Equals, "appname")
+	c.Assert(e.err, NotNil)
+	c.Assert(e.err.Error(), Equals, "there's already an app with this name.")
 }
 
 func (s *S) TestCantCreateAppWithInvalidName(c *C) {
@@ -266,7 +271,7 @@ func (s *S) TestDoesNotSaveTheAppInTheDatabaseIfProvisionerFail(c *C) {
 	err := CreateApp(&a, 1)
 	defer a.Destroy() // clean mess if test fail
 	c.Assert(err, NotNil)
-	expected := `exit status 1`
+	expected := `Tsuru failed to create the app "theirapp": exit status 1`
 	c.Assert(err.Error(), Equals, expected)
 	err = a.Get()
 	c.Assert(err, NotNil)

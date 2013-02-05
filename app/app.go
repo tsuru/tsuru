@@ -115,7 +115,11 @@ func CreateApp(a *App, units uint) error {
 	actions = append(actions, &exportEnvironmentsAction,
 		&createRepository, &provisionApp, &provisionAddUnits)
 	pipeline := action.NewPipeline(actions...)
-	return pipeline.Execute(a, units)
+	err := pipeline.Execute(a, units)
+	if err != nil {
+		return &appCreationError{app: a.Name, err: err}
+	}
+	return nil
 }
 
 // unbind takes all service instances that are binded to the app, and unbind
@@ -830,4 +834,13 @@ func deployHookAbsPath(p string) (string, error) {
 	}
 	cmdArgs[0] = abs
 	return strings.Join(cmdArgs, " "), nil
+}
+
+type appCreationError struct {
+	app string
+	err error
+}
+
+func (e *appCreationError) Error() string {
+	return fmt.Sprintf("Tsuru failed to create the app %q: %s", e.app, e.err)
 }
