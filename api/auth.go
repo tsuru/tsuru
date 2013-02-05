@@ -326,7 +326,7 @@ func getKeyFromBody(b io.Reader) (string, error) {
 func addKeyToUser(content string, u *auth.User) error {
 	key := auth.Key{Content: content}
 	if u.HasKey(key) {
-		return &errors.Http{Code: http.StatusConflict, Message: "User has this key already"}
+		return &errors.Http{Code: http.StatusConflict, Message: "User already has this key"}
 	}
 	key.Name = fmt.Sprintf("%s-%d", u.Email, len(u.Keys)+1)
 	gUrl := repository.GitServerUri()

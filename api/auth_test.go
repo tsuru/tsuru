@@ -871,6 +871,7 @@ func (s *AuthSuite) TestAddKeyHandlerReturnsConflictIfTheKeyIsAlreadyPresent(c *
 	e, ok := err.(*errors.Http)
 	c.Assert(ok, Equals, true)
 	c.Assert(e.Code, Equals, http.StatusConflict)
+	c.Assert(e.Message, Equals, "User already has this key")
 }
 
 func (s *AuthSuite) TestAddKeyAddKeyToUserInGandalf(c *C) {
