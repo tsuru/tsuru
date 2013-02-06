@@ -43,6 +43,7 @@ Tsuru needs the mongodb version 2.2>= so, to install it please `do this simple s
     $ export GOPATH=/home/ubuntu/.go
     $ export PATH=${GOPATH}/bin:${PATH}
     $ go get github.com/globocom/tsuru/api
+    $ go get github.com/globocom/tsuru/collector
 
 3. Start mongodb
 
@@ -87,11 +88,11 @@ setting ``juju:charms-path`` in the configuration file:
     juju:
       charms-path: /home/me/charms
 
-7. Starting tsuru
+7. Starting tsuru and collector
 
 .. highlight:: bash
 
 ::
 
-    $ api
-
+    $ api &
+    $ collector &
