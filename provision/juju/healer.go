@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"github.com/globocom/config"
 	"github.com/globocom/tsuru/app"
+	"github.com/globocom/tsuru/db"
 	"github.com/globocom/tsuru/heal"
 	"github.com/globocom/tsuru/log"
 	"github.com/globocom/tsuru/provision"
@@ -227,6 +228,30 @@ func (h elbInstanceHealer) checkInstances() ([]elbInstance, error) {
 	}
 	log.Printf("Found %d unhealthy instances.", len(unhealthy))
 	return unhealthy, nil
+}
+
+func (h elbInstanceHealer) getUnhealthyApps() map[string]app.App {
+	conn, err := db.Conn()
+	if err != nil {
+		return nil
+	}
+	var all []app.App
+	apps := make(map[string]app.App)
+	s := map[string]interface{}{"name": 1, "units": 1}
+	err = conn.Apps().Find(nil).Select(s).All(&all)
+	if err != nil {
+		return nil
+	}
+	for _, a := range all {
+		for _, u := range a.ProvisionUnits() {
+			if u.GetStatus() == provision.StatusDown ||
+				u.GetStatus() == provision.StatusError {
+				apps[a.Name] = a
+				break
+			}
+		}
+	}
+	return apps
 }
 
 func (h elbInstanceHealer) describeLoadBalancers() ([]string, error) {

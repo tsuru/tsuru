@@ -8,7 +8,10 @@ import (
 	"fmt"
 	"github.com/flaviamissi/go-elb/elb"
 	"github.com/globocom/commandmocker"
+	"github.com/globocom/tsuru/app"
+	"github.com/globocom/tsuru/db"
 	"github.com/globocom/tsuru/heal"
+	"labix.org/v2/mgo/bson"
 	. "launchpad.net/gocheck"
 	"net"
 )
@@ -371,6 +374,31 @@ func (s *S) TestELBInstanceHealerCheckInstancesDisabledELB(c *C) {
 	instances, err := healer.checkInstances()
 	c.Assert(err, IsNil)
 	c.Assert(instances, HasLen, 0)
+}
+
+func (s *ELBSuite) TestELBInstanceHealerGetUnhealthyApps(c *C) {
+	conn, err := db.Conn()
+	c.Assert(err, IsNil)
+	apps := []interface{}{
+		app.App{Name: "when", Units: []app.Unit{{Name: "when/0", State: "started"}}},
+		app.App{Name: "what", Units: []app.Unit{{Name: "what/0", State: "error"}}},
+		app.App{Name: "why", Units: []app.Unit{{Name: "why/0", State: "down"}}},
+		app.App{Name: "how", Units: []app.Unit{
+			{Name: "how/0", State: "started"},
+			{Name: "how/1", State: "down"},
+		}},
+	}
+	err = conn.Apps().Insert(apps...)
+	c.Assert(err, IsNil)
+	defer conn.Apps().RemoveAll(bson.M{"name": bson.M{"$in": []string{"what", "when", "why", "how"}}})
+	healer := elbInstanceHealer{}
+	unhealthy := healer.getUnhealthyApps()
+	expected := map[string]app.App{
+		"what": apps[1].(app.App),
+		"why":  apps[2].(app.App),
+		"how":  apps[3].(app.App),
+	}
+	c.Assert(unhealthy, DeepEquals, expected)
 }
 
 func (s *ELBSuite) TestELBInstanceHealerCheckInstances(c *C) {
