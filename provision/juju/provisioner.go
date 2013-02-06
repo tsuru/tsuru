@@ -93,12 +93,12 @@ func (p *JujuProvisioner) Provision(app provision.App) error {
 		app.Log("Failed to create machine: "+out, "tsuru")
 		return cmdError(out, err, args)
 	}
-	err = setEnv(app.GetName(), "TSURU_APPNAME", app.GetName())
+	err = setOption(app.GetName(), "TSURU_APPNAME", app.GetName())
 	if err != nil {
 		return err
 	}
 	host, _ := config.GetString("host")
-	err = setEnv(app.GetName(), "TSURU_HOST", host)
+	err = setOption(app.GetName(), "TSURU_HOST", host)
 	if err != nil {
 		return err
 	}
@@ -177,7 +177,7 @@ func (p *JujuProvisioner) Destroy(app provision.App) error {
 	return err
 }
 
-func setEnv(serviceName, key, value string) error {
+func setOption(serviceName, key, value string) error {
 	var buf bytes.Buffer
 	args := []string{"set", serviceName, key + "=" + value}
 	err := runCmd(false, &buf, &buf, args...)
@@ -195,7 +195,7 @@ func (p *JujuProvisioner) AddUnits(app provision.App, n uint) ([]provision.Unit,
 		buf   bytes.Buffer
 		units []provision.Unit
 	)
-	err := setEnv(app.GetName(), "app-repo", repository.GetReadOnlyUrl(app.GetName()))
+	err := setOption(app.GetName(), "app-repo", repository.GetReadOnlyUrl(app.GetName()))
 	if err != nil {
 		return nil, err
 	}
