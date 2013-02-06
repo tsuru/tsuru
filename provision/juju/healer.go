@@ -162,22 +162,20 @@ func (h bootstrapMachineHealer) Heal() error {
 type elbInstanceHealer struct{}
 
 func (h elbInstanceHealer) Heal() error {
-	apps := make(map[string]*app.App)
-	if instances, err := h.checkInstances(); err == nil && len(instances) > 0 {
+	apps := h.getUnhealthyApps()
+	if len(apps) == 0 {
+		log.Print("No app is down.")
+		return nil
+	}
+	names := make([]string, len(apps))
+	i := 0
+	for n := range apps {
+		names[i] = n
+		i++
+	}
+	if instances, err := h.checkInstances(names); err == nil && len(instances) > 0 {
 		for _, instance := range instances {
-			a, ok := apps[instance.lb]
-			if !ok {
-				a = &app.App{Name: instance.lb}
-				if err := a.Get(); err != nil {
-					log.Printf("Warning: app not found for the load balancer %s.", instance.lb)
-					continue
-				}
-				apps[instance.lb] = a
-			}
-			if !h.shouldHeal(a, instance.id) {
-				log.Printf("Instance %q is pending, skipping...", instance.id)
-				continue
-			}
+			a := apps[instance.lb]
 			if err := a.RemoveUnit(instance.id); err != nil {
 				return err
 			}
@@ -189,23 +187,11 @@ func (h elbInstanceHealer) Heal() error {
 	return nil
 }
 
-func (h elbInstanceHealer) shouldHeal(app *app.App, id string) bool {
-	var state provision.Status
-	for _, unit := range app.ProvisionUnits() {
-		if unit.GetInstanceId() == id {
-			state = unit.GetStatus()
-			break
-		}
-	}
-	return state != "" &&
-		(state == provision.StatusDown || state == provision.StatusError)
-}
-
-func (h elbInstanceHealer) checkInstances() ([]elbInstance, error) {
+func (h elbInstanceHealer) checkInstances(names []string) ([]elbInstance, error) {
 	if elbSupport, _ := config.GetBool("juju:use-elb"); !elbSupport {
 		return nil, nil
 	}
-	lbs, err := h.describeLoadBalancers()
+	lbs, err := h.describeLoadBalancers(names)
 	if err != nil {
 		return nil, err
 	}
@@ -254,8 +240,8 @@ func (h elbInstanceHealer) getUnhealthyApps() map[string]app.App {
 	return apps
 }
 
-func (h elbInstanceHealer) describeLoadBalancers() ([]string, error) {
-	resp, err := getELBEndpoint().DescribeLoadBalancers()
+func (h elbInstanceHealer) describeLoadBalancers(names []string) ([]string, error) {
+	resp, err := getELBEndpoint().DescribeLoadBalancers(names...)
 	if err != nil {
 		return nil, err
 	}

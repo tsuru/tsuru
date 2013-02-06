@@ -371,7 +371,7 @@ func (s *S) TestELBInstanceHealerShouldBeRegistered(c *C) {
 
 func (s *S) TestELBInstanceHealerCheckInstancesDisabledELB(c *C) {
 	healer := elbInstanceHealer{}
-	instances, err := healer.checkInstances()
+	instances, err := healer.checkInstances(nil)
 	c.Assert(err, IsNil)
 	c.Assert(instances, HasLen, 0)
 }
@@ -417,7 +417,7 @@ func (s *ELBSuite) TestELBInstanceHealerCheckInstances(c *C) {
 	}
 	s.server.ChangeInstanceState(lb, state)
 	healer := elbInstanceHealer{}
-	instances, err := healer.checkInstances()
+	instances, err := healer.checkInstances([]string{lb})
 	c.Assert(err, IsNil)
 	expected := []elbInstance{
 		{
