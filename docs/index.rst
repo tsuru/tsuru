@@ -35,6 +35,7 @@ Building your own PaaS server
 
 * :doc:`build your own PaaS </build>`
 * :doc:`backing up tsuru </server/backup>`
+* :doc:`tsuru api reference </api>`
 
 Contribute
 ==========
