@@ -569,10 +569,7 @@ func (s *S) TestCreateAppReturnsConflictWithProperMessageWhenTheAppAlreadyExist(
 	recorder := httptest.NewRecorder()
 	err = CreateAppHandler(recorder, request, s.user)
 	c.Assert(err, NotNil)
-	e, ok := err.(*errors.Http)
-	c.Assert(ok, Equals, true)
-	c.Assert(e.Code, Equals, http.StatusConflict)
-	c.Assert(e.Message, Equals, `There is already an app named "plainsofdawn".`)
+	c.Assert(err, ErrorMatches, ".*there is already an app with this name.*")
 }
 
 func (s *S) TestAddUnits(c *C) {
