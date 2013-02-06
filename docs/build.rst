@@ -24,6 +24,7 @@ And these components have any dependencies, like:
 * mongodb
 * beanstalkd
 * git daemon
+* juju
 
 Installing tsuru webserver from source
 ======================================
@@ -39,6 +40,8 @@ Installing tsuru webserver from source
     $ sudo apt-get install -y golang-go git mercurial bzr gcc beanstalkd
 
 Tsuru needs the mongodb version 2.2>= so, to install it please `do this simple steps <http://docs.mongodb.org/manual/tutorial/install-mongodb-on-ubuntu/>`_
+
+Tsuru uses juju to orchestrates your "apps". To install juju follow the `juju install guide <https://juju.ubuntu.com/docs/getting-started.html#installation>`_. It's need to configure the `.juju/enviroment.yml` and do the `bootstrap` too.
 
 2. Install the tsuru api
 
