@@ -33,7 +33,7 @@ Services
 Building your own PaaS server
 =============================
 
-* :doc:`server install guide </server/install>`
+* :doc:`build your own PaaS </build>`
 * :doc:`backing up tsuru </server/backup>`
 
 Contribute
