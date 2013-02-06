@@ -8,14 +8,27 @@ status=0
 out=`gofmt -s -l .`
 if [ "${out}" != "" ]
 then
-	echo "ERROR: there are files that need to be formatted with gofmt"
-	echo
-	echo "Files:"
-	for file in $out
-	do
-	    echo "- ${file}"
-	done
-	status=1
+    echo "ERROR: there are files that need to be formatted with gofmt"
+    echo
+    echo "Files:"
+    for file in $out
+    do
+        echo "- ${file}"
+    done
+    status=1
 fi
 
+`go vet ./... > .vet`
+out=`cat .vet`
+if [ "${out}" != "" ]
+then
+    echo "ERROR: go vet failures:"
+    echo
+    cat <<END
+${out}
+END
+    status=1
+fi
+
+rm .vet || true
 exit $status
