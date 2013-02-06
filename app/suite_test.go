@@ -91,9 +91,7 @@ func (s *S) SetUpSuite(c *C) {
 	s.t.SetGitConfs(c)
 	s.provisioner = ttesting.NewFakeProvisioner()
 	Provisioner = s.provisioner
-	err = handler.DryRun()
-	for err != nil {
-		err = handler.DryRun()
+	for err := handler.DryRun(); err != nil; err = handler.DryRun() {
 	}
 }
 
