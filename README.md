@@ -8,7 +8,7 @@ Tsuru is an open Platform-as-a-Service (PaaS).
 
 ##Building your own PaaS
 
-* [Server install guide](http://docs.tsuru.io/en/latest/server/install.html)
+* [Server install guide](http://docs.tsuru.io/en/latest/build.html)
 
 ##Using the PaaS
 
