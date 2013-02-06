@@ -51,6 +51,8 @@ func (s *S) TestUnitsCollection(c *C) {
 func (s *S) TestProvision(c *C) {
 	config.Set("juju:charms-path", "/etc/juju/charms")
 	defer config.Unset("juju:charms-path")
+	config.Set("host", "somehost")
+	defer config.Unset("host")
 	tmpdir, err := commandmocker.Add("juju", "$*")
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(tmpdir)
@@ -59,7 +61,10 @@ func (s *S) TestProvision(c *C) {
 	err = p.Provision(app)
 	c.Assert(err, IsNil)
 	c.Assert(commandmocker.Ran(tmpdir), Equals, true)
-	c.Assert(commandmocker.Output(tmpdir), Equals, "deploy --repository /etc/juju/charms local:python trace")
+	expected := "deploy --repository /etc/juju/charms local:python trace"
+	expected = expected + "set trace TUSUR_APPNAME=trace"
+	expected = expected + "set trace TUSUR_HOST=somehost"
+	c.Assert(commandmocker.Output(tmpdir), Equals, expected)
 }
 
 func (s *S) TestProvisionUndefinedCharmsPath(c *C) {

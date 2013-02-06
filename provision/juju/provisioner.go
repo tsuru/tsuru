@@ -93,6 +93,20 @@ func (p *JujuProvisioner) Provision(app provision.App) error {
 		app.Log("Failed to create machine: "+out, "tsuru")
 		return cmdError(out, err, args)
 	}
+	buf.Reset()
+	args = []string{"set", app.GetName(), "TUSUR_APPNAME=" + app.GetName()}
+	err = runCmd(false, &buf, &buf, args...)
+	if err != nil {
+		return cmdError(buf.String(), err, args)
+	}
+	buf.Reset()
+	host, _ := config.GetString("host")
+	args = []string{"set", app.GetName(), "TUSUR_HOST=" + host}
+	err = runCmd(false, &buf, &buf, args...)
+	if err != nil {
+		return cmdError(buf.String(), err, args)
+	}
+	buf.Reset()
 	if p.elbSupport() {
 		if err = p.LoadBalancer().Create(app); err != nil {
 			return err
