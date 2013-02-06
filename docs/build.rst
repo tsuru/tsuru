@@ -19,6 +19,12 @@ The Tsuru PaaS is composed by X components:
 * gandalf
 * charms
 
+And these components have any dependencies, like:
+
+* mongodb
+* beanstalkd
+* git daemon
+
 Installing tsuru webserver from source
 ======================================
 
