@@ -93,20 +93,15 @@ func (p *JujuProvisioner) Provision(app provision.App) error {
 		app.Log("Failed to create machine: "+out, "tsuru")
 		return cmdError(out, err, args)
 	}
-	buf.Reset()
-	args = []string{"set", app.GetName(), "TUSUR_APPNAME=" + app.GetName()}
-	err = runCmd(false, &buf, &buf, args...)
+	err = setEnv(app.GetName(), "TSURU_APPNAME", app.GetName())
 	if err != nil {
-		return cmdError(buf.String(), err, args)
+		return err
 	}
-	buf.Reset()
 	host, _ := config.GetString("host")
-	args = []string{"set", app.GetName(), "TUSUR_HOST=" + host}
-	err = runCmd(false, &buf, &buf, args...)
+	err = setEnv(app.GetName(), "TSURU_HOST", host)
 	if err != nil {
-		return cmdError(buf.String(), err, args)
+		return err
 	}
-	buf.Reset()
 	if p.elbSupport() {
 		if err = p.LoadBalancer().Create(app); err != nil {
 			return err
@@ -182,6 +177,16 @@ func (p *JujuProvisioner) Destroy(app provision.App) error {
 	return err
 }
 
+func setEnv(serviceName, key, value string) error {
+	var buf bytes.Buffer
+	args := []string{"set", serviceName, key + "=" + value}
+	err := runCmd(false, &buf, &buf, args...)
+	if err != nil {
+		return cmdError(buf.String(), err, args)
+	}
+	return nil
+}
+
 func (p *JujuProvisioner) AddUnits(app provision.App, n uint) ([]provision.Unit, error) {
 	if n < 1 {
 		return nil, errors.New("Cannot add zero units.")
@@ -190,13 +195,11 @@ func (p *JujuProvisioner) AddUnits(app provision.App, n uint) ([]provision.Unit,
 		buf   bytes.Buffer
 		units []provision.Unit
 	)
-	args := []string{"set", app.GetName(), "app-repo=" + repository.GetReadOnlyUrl(app.GetName())}
-	err := runCmd(false, &buf, &buf, args...)
+	err := setEnv(app.GetName(), "app-repo", repository.GetReadOnlyUrl(app.GetName()))
 	if err != nil {
-		return nil, cmdError(buf.String(), err, args)
+		return nil, err
 	}
-	buf.Reset()
-	args = []string{"add-unit", app.GetName(), "--num-units", strconv.FormatUint(uint64(n), 10)}
+	args := []string{"add-unit", app.GetName(), "--num-units", strconv.FormatUint(uint64(n), 10)}
 	err = runCmd(false, &buf, &buf, args...)
 	if err != nil {
 		return nil, cmdError(buf.String(), err, args)

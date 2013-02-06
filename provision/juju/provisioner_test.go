@@ -62,8 +62,8 @@ func (s *S) TestProvision(c *C) {
 	c.Assert(err, IsNil)
 	c.Assert(commandmocker.Ran(tmpdir), Equals, true)
 	expected := "deploy --repository /etc/juju/charms local:python trace"
-	expected = expected + "set trace TUSUR_APPNAME=trace"
-	expected = expected + "set trace TUSUR_HOST=somehost"
+	expected = expected + "set trace TSURU_APPNAME=trace"
+	expected = expected + "set trace TSURU_HOST=somehost"
 	c.Assert(commandmocker.Output(tmpdir), Equals, expected)
 }
 
