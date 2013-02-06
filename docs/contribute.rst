@@ -15,7 +15,7 @@ Pull requests are very welcome! Make sure your patches are well tested and docum
 development environment
 =======================
 
-See this guide to `setting up you tsuru development environment </contribute/setting-up-your-tsuru-development-environment>`
+See this guide to :doc:`setting up you tsuru development environment </contribute/setting-up-your-tsuru-development-environment>`.
 
 running the tests
 =================
