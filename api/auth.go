@@ -11,6 +11,7 @@ import (
 	"github.com/globocom/tsuru/auth"
 	"github.com/globocom/tsuru/db"
 	"github.com/globocom/tsuru/errors"
+	"github.com/globocom/tsuru/log"
 	"github.com/globocom/tsuru/repository"
 	"github.com/globocom/tsuru/validation"
 	"io"
@@ -41,10 +42,7 @@ func CreateUser(w http.ResponseWriter, r *http.Request) error {
 	gUrl := repository.GitServerUri()
 	c := gandalf.Client{Endpoint: gUrl}
 	if _, err := c.NewUser(u.Email, keyToMap(u.Keys)); err != nil {
-		return &errors.Http{
-			Code:    http.StatusInternalServerError,
-			Message: "Could not communicate with git server. Aborting...",
-		}
+		return fmt.Errorf("Failed to create user in the git server: %s", err)
 	}
 	if err := u.Create(); err == nil {
 		w.WriteHeader(http.StatusCreated)
@@ -247,7 +245,7 @@ func addUserToTeam(email, teamName string, u *auth.User) error {
 	gUrl := repository.GitServerUri()
 	alwdApps, err := allowedApps(u.Email)
 	if err := (&gandalf.Client{Endpoint: gUrl}).GrantAccess(alwdApps, []string{email}); err != nil {
-		return err
+		return fmt.Errorf("Failed to grant access to git repositories: %s", err)
 	}
 	return conn.Teams().Update(selector, team)
 }
@@ -293,7 +291,7 @@ func removeUserFromTeam(email, teamName string, u *auth.User) error {
 		return err
 	}
 	if err := (&gandalf.Client{Endpoint: gUrl}).RevokeAccess(alwdApps, []string{email}); err != nil {
-		return err
+		return fmt.Errorf("Failed to revoke access from git repositories: %s", err)
 	}
 	return conn.Teams().UpdateId(teamName, team)
 }
@@ -328,7 +326,7 @@ func addKeyToUser(content string, u *auth.User) error {
 	gUrl := repository.GitServerUri()
 	u.AddKey(key)
 	if err := (&gandalf.Client{Endpoint: gUrl}).AddKey(u.Email, keyToMap(u.Keys)); err != nil {
-		return err
+		return fmt.Errorf("Failed to add key to git server: %s", err)
 	}
 	conn, err := db.Conn()
 	if err != nil {
@@ -362,7 +360,7 @@ func removeKeyFromUser(content string, u *auth.User) error {
 	}
 	gUrl := repository.GitServerUri()
 	if err := (&gandalf.Client{Endpoint: gUrl}).RemoveKey(u.Email, key.Name); err != nil {
-		return err
+		return fmt.Errorf("Failed to remove the key from git server: %s", err)
 	}
 	conn, err := db.Conn()
 	if err != nil {
@@ -397,7 +395,8 @@ func RemoveUser(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 		return err
 	}
 	if err := c.RevokeAccess(alwdApps, []string{u.Email}); err != nil {
-		return err
+		log.Printf("Failed to revoke access in Gandalf: %s", err)
+		return fmt.Errorf("Failed to revoke acess from git repositories: %s", err)
 	}
 	teams, err := u.Teams()
 	if err != nil {
@@ -425,7 +424,8 @@ Please remove the team, them remove the user.`, team.Name)
 		}
 	}
 	if err := c.RemoveUser(u.Email); err != nil {
-		return &errors.Http{Code: http.StatusInternalServerError, Message: "Could not communicate with git server. Aborting..."}
+		log.Printf("Failed to remove user from gandalf: %s", err)
+		return fmt.Errorf("Failed to remove the user from the git server: %s", err)
 	}
 	return conn.Users().Remove(bson.M{"email": u.Email})
 }

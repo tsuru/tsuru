@@ -113,8 +113,11 @@ func AppDelete(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	}
 	gUrl := repository.GitServerUri()
 	if err := (&gandalf.Client{Endpoint: gUrl}).RemoveRepository(app.Name); err != nil {
-		log.Printf("Got error while removing repository from gandalf: %s", err.Error())
-		return &errors.Http{Code: http.StatusInternalServerError, Message: "Could not remove app's repository at git server. Aborting..."}
+		log.Printf("Got error while removing repository from gandalf: %s", err)
+		return &errors.Http{
+			Code:    http.StatusInternalServerError,
+			Message: "Could not remove app's repository at git server. Aborting...",
+		}
 	}
 	if err := app.Destroy(); err != nil {
 		return err
@@ -287,7 +290,11 @@ func grantAccessToTeam(appName, teamName string, u *auth.User) error {
 		return err
 	}
 	gUrl := repository.GitServerUri()
-	return (&gandalf.Client{Endpoint: gUrl}).GrantAccess([]string{app.Name}, t.Users)
+	gClient := gandalf.Client{Endpoint: gUrl}
+	if err := gClient.GrantAccess([]string{app.Name}, t.Users); err != nil {
+		return fmt.Errorf("Failed to grant access in the git server: %s.", err)
+	}
+	return nil
 }
 
 func GrantAccessToTeamHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
@@ -348,7 +355,7 @@ func revokeAccessFromTeam(appName, teamName string, u *auth.User) error {
 	if len(users) > 0 {
 		gUrl := repository.GitServerUri()
 		if err := (&gandalf.Client{Endpoint: gUrl}).RevokeAccess([]string{app.Name}, users); err != nil {
-			return &errors.Http{Code: http.StatusInternalServerError, Message: err.Error()}
+			return fmt.Errorf("Failed to revoke access in the git server: %s", err)
 		}
 	}
 	return nil
