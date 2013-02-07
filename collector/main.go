@@ -46,7 +46,7 @@ func main() {
 	flag.StringVar(&configFile, "config", "/etc/tsuru/tsuru.conf", "tsuru config file")
 	flag.BoolVar(&dry, "dry", false, "dry-run: does not start the agent (for testing purposes)")
 	flag.Parse()
-	err = config.ReadConfigFile(configFile)
+	err = config.ReadAndWatchConfigFile(configFile)
 	if err != nil {
 		fatal(err)
 	}
