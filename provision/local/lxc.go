@@ -2,6 +2,7 @@ package local
 
 import "os/exec"
 
+// container represents an lxc container with the given name.
 type container struct {
 	name string
 }
