@@ -91,6 +91,7 @@ func (s *S) SetUpSuite(c *C) {
 	s.t.SetGitConfs(c)
 	s.provisioner = ttesting.NewFakeProvisioner()
 	Provisioner = s.provisioner
+	queue.Preempt()
 	for err := handler.DryRun(); err != nil; err = handler.DryRun() {
 	}
 }
