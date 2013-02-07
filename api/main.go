@@ -33,7 +33,7 @@ func main() {
 	configFile := flag.String("config", "/etc/tsuru/tsuru.conf", "tsuru config file")
 	dry := flag.Bool("dry", false, "dry-run: does not start the server (for testing purpose)")
 	flag.Parse()
-	err = config.ReadConfigFile(*configFile)
+	err = config.ReadAndWatchConfigFile(*configFile)
 	if err != nil {
 		fatal(err)
 	}
