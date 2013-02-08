@@ -40,3 +40,15 @@ func (s *S) TestStop(c *C) {
 	expected := "lxc-stop -n container"
 	c.Assert(commandmocker.Output(tmpdir), Equals, expected)
 }
+
+func (s *S) TestDestroy(c *C) {
+	tmpdir, err := commandmocker.Add("sudo", "$*")
+	c.Assert(err, IsNil)
+	defer commandmocker.Remove(tmpdir)
+	container := container{name: "container"}
+	err = container.destroy()
+	c.Assert(err, IsNil)
+	c.Assert(commandmocker.Ran(tmpdir), Equals, true)
+	expected := "lxc-destroy -n container"
+	c.Assert(commandmocker.Output(tmpdir), Equals, expected)
+}

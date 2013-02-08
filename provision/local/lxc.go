@@ -24,3 +24,9 @@ func (c *container) stop() error {
 	cmd := exec.Command("sudo", "lxc-stop", "-n", c.name)
 	return cmd.Run()
 }
+
+// destroy destory a lxc container.
+func (c *container) destroy() error {
+	cmd := exec.Command("sudo", "lxc-destroy", "-n", c.name)
+	return cmd.Run()
+}
