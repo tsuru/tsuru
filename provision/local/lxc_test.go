@@ -28,3 +28,15 @@ func (s *S) TestStart(c *C) {
 	expected := "lxc-start --daemon -n container"
 	c.Assert(commandmocker.Output(tmpdir), Equals, expected)
 }
+
+func (s *S) TestStop(c *C) {
+	tmpdir, err := commandmocker.Add("sudo", "$*")
+	c.Assert(err, IsNil)
+	defer commandmocker.Remove(tmpdir)
+	container := container{name: "container"}
+	err = container.stop()
+	c.Assert(err, IsNil)
+	c.Assert(commandmocker.Ran(tmpdir), Equals, true)
+	expected := "lxc-stop -n container"
+	c.Assert(commandmocker.Output(tmpdir), Equals, expected)
+}
