@@ -31,3 +31,11 @@ func (s *S) TestProvisionerDestroy(c *C) {
 	expected += "lxc-destroy -n myapp"
 	c.Assert(commandmocker.Output(tmpdir), Equals, expected)
 }
+
+func (s *S) TestProvisionerAddr(c *C) {
+	var p LocalProvisioner
+	app := testing.NewFakeApp("myapp", "python", 1)
+	addr, err := p.Addr(app)
+	c.Assert(err, IsNil)
+	c.Assert(addr, Equals, app.ProvisionUnits()[0].GetIp())
+}

@@ -29,3 +29,8 @@ func (*LocalProvisioner) Destroy(app provision.App) error {
 	}
 	return nil
 }
+
+func (*LocalProvisioner) Addr(app provision.App) (string, error) {
+	units := app.ProvisionUnits()
+	return units[0].GetIp(), nil
+}
