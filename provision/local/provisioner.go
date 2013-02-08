@@ -34,3 +34,11 @@ func (*LocalProvisioner) Addr(app provision.App) (string, error) {
 	units := app.ProvisionUnits()
 	return units[0].GetIp(), nil
 }
+
+func (*LocalProvisioner) AddUnits(app provision.App, units uint) ([]provision.Unit, error) {
+	return []provision.Unit{}, nil
+}
+
+func (*LocalProvisioner) RemoveUnit(app provision.App, unitName string) error {
+	return nil
+}
