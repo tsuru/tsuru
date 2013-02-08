@@ -16,3 +16,16 @@ func (*LocalProvisioner) Provision(app provision.App) error {
 	}
 	return nil
 }
+
+func (*LocalProvisioner) Destroy(app provision.App) error {
+	container := container{name: app.GetName()}
+	err := container.stop()
+	if err != nil {
+		return err
+	}
+	err = container.destroy()
+	if err != nil {
+		return err
+	}
+	return nil
+}

@@ -5,7 +5,7 @@ import (
 	. "launchpad.net/gocheck"
 )
 
-func (s *S) TestCreate(c *C) {
+func (s *S) TestLXCCreate(c *C) {
 	tmpdir, err := commandmocker.Add("sudo", "$*")
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(tmpdir)
@@ -17,7 +17,7 @@ func (s *S) TestCreate(c *C) {
 	c.Assert(commandmocker.Output(tmpdir), Equals, expected)
 }
 
-func (s *S) TestStart(c *C) {
+func (s *S) TestLXCStart(c *C) {
 	tmpdir, err := commandmocker.Add("sudo", "$*")
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(tmpdir)
@@ -29,7 +29,7 @@ func (s *S) TestStart(c *C) {
 	c.Assert(commandmocker.Output(tmpdir), Equals, expected)
 }
 
-func (s *S) TestStop(c *C) {
+func (s *S) TestLXCStop(c *C) {
 	tmpdir, err := commandmocker.Add("sudo", "$*")
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(tmpdir)
@@ -41,7 +41,7 @@ func (s *S) TestStop(c *C) {
 	c.Assert(commandmocker.Output(tmpdir), Equals, expected)
 }
 
-func (s *S) TestDestroy(c *C) {
+func (s *S) TestLXCDestroy(c *C) {
 	tmpdir, err := commandmocker.Add("sudo", "$*")
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(tmpdir)

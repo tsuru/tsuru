@@ -6,7 +6,7 @@ import (
 	. "launchpad.net/gocheck"
 )
 
-func (s *S) TestProvision(c *C) {
+func (s *S) TestProvisionerProvision(c *C) {
 	tmpdir, err := commandmocker.Add("sudo", "$*")
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(tmpdir)
@@ -16,5 +16,18 @@ func (s *S) TestProvision(c *C) {
 	c.Assert(commandmocker.Ran(tmpdir), Equals, true)
 	expected := "lxc-create -t ubuntu -n myapp"
 	expected += "lxc-start --daemon -n myapp"
+	c.Assert(commandmocker.Output(tmpdir), Equals, expected)
+}
+
+func (s *S) TestProvisionerDestroy(c *C) {
+	tmpdir, err := commandmocker.Add("sudo", "$*")
+	c.Assert(err, IsNil)
+	defer commandmocker.Remove(tmpdir)
+	var p LocalProvisioner
+	app := testing.NewFakeApp("myapp", "python", 0)
+	c.Assert(p.Destroy(app), IsNil)
+	c.Assert(commandmocker.Ran(tmpdir), Equals, true)
+	expected := "lxc-stop -n myapp"
+	expected += "lxc-destroy -n myapp"
 	c.Assert(commandmocker.Output(tmpdir), Equals, expected)
 }
