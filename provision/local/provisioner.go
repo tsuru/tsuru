@@ -1,6 +1,10 @@
 package local
 
-import "github.com/globocom/tsuru/provision"
+import (
+	"github.com/globocom/tsuru/provision"
+	"io"
+	"os/exec"
+)
 
 type LocalProvisioner struct{}
 
@@ -40,5 +44,20 @@ func (*LocalProvisioner) AddUnits(app provision.App, units uint) ([]provision.Un
 }
 
 func (*LocalProvisioner) RemoveUnit(app provision.App, unitName string) error {
+	return nil
+}
+
+func (*LocalProvisioner) ExecuteCommand(stdout, stderr io.Writer, app provision.App, cmd string, args ...string) error {
+	arguments := []string{"-l", "ubuntu", "-q", "-o", "StrictHostKeyChecking no"}
+	arguments = append(arguments, app.ProvisionUnits()[0].GetIp())
+	arguments = append(arguments, cmd)
+	arguments = append(arguments, args...)
+	c := exec.Command("ssh", arguments...)
+	c.Stdout = stdout
+	c.Stderr = stderr
+	err := c.Run()
+	if err != nil {
+		return err
+	}
 	return nil
 }
