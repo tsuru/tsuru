@@ -1,8 +1,12 @@
 package local
 
 import (
+	"github.com/globocom/config"
+	"github.com/globocom/tsuru/db"
+	"github.com/globocom/tsuru/log"
 	"github.com/globocom/tsuru/provision"
 	"io"
+	"labix.org/v2/mgo"
 	"os/exec"
 )
 
@@ -60,4 +64,20 @@ func (*LocalProvisioner) ExecuteCommand(stdout, stderr io.Writer, app provision.
 		return err
 	}
 	return nil
+}
+
+func (*LocalProvisioner) CollectStatus() ([]provision.Unit, error) {
+	return []provision.Unit{}, nil
+}
+
+func (p *LocalProvisioner) collection() *mgo.Collection {
+	name, err := config.GetString("local:collection")
+	if err != nil {
+		log.Fatalf("FATAL: %s.", err)
+	}
+	conn, err := db.Conn()
+	if err != nil {
+		log.Printf("Failed to connect to the database: %s", err)
+	}
+	return conn.Collection(name)
 }

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"github.com/globocom/commandmocker"
+	"github.com/globocom/config"
 	"github.com/globocom/tsuru/provision"
 	"github.com/globocom/tsuru/testing"
 	. "launchpad.net/gocheck"
@@ -70,4 +71,41 @@ func (s *S) TestProvisionerExecuteCommand(c *C) {
 	cmdOutput := fmt.Sprintf("-l ubuntu -q -o StrictHostKeyChecking no %s ls -lh", app.ProvisionUnits()[0].GetIp())
 	c.Assert(commandmocker.Ran(tmpdir), Equals, true)
 	c.Assert(commandmocker.Output(tmpdir), Equals, cmdOutput)
+}
+
+func (s *S) TestCollectStatus(c *C) {
+	var p LocalProvisioner
+	expected := []provision.Unit{
+		{
+			Name:       "vm1",
+			AppName:    "vm1",
+			Type:       "django",
+			Machine:    0,
+			InstanceId: "vm1",
+			Ip:         "10.10.10.9",
+			Status:     provision.StatusStarted,
+		},
+		{
+			Name:       "vm2",
+			AppName:    "vm2",
+			Type:       "gunicorn",
+			Machine:    0,
+			InstanceId: "vm2",
+			Ip:         "10.10.10.10",
+			Status:     provision.StatusInstalling,
+		},
+	}
+	units, err := p.CollectStatus()
+	c.Assert(err, IsNil)
+	c.Assert(units, DeepEquals, expected)
+}
+
+func (s *S) TestProvisionCollection(c *C) {
+	collName := "collectionName"
+	config.Set("local:collection", collName)
+	config.Set("database:url", "127.0.0.1:27017")
+	config.Set("database:name", "juju_provision_tests_s")
+	var p LocalProvisioner
+	collection := p.collection()
+	c.Assert(collection.Name, Equals, collName)
 }
