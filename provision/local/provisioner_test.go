@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"fmt"
 	"github.com/globocom/commandmocker"
-	"github.com/globocom/config"
 	"github.com/globocom/tsuru/provision"
 	"github.com/globocom/tsuru/testing"
 	. "launchpad.net/gocheck"
@@ -101,11 +100,7 @@ func (s *S) TestCollectStatus(c *C) {
 }
 
 func (s *S) TestProvisionCollection(c *C) {
-	collName := "collectionName"
-	config.Set("local:collection", collName)
-	config.Set("database:url", "127.0.0.1:27017")
-	config.Set("database:name", "juju_provision_tests_s")
 	var p LocalProvisioner
 	collection := p.collection()
-	c.Assert(collection.Name, Equals, collName)
+	c.Assert(collection.Name, Equals, s.collName)
 }
