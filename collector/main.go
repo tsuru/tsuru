@@ -18,7 +18,7 @@ import (
 	"time"
 )
 
-func jujuCollect(ticker <-chan time.Time) {
+func collect(ticker <-chan time.Time) {
 	for _ = range ticker {
 		units, err := app.Provisioner.CollectStatus()
 		if err != nil {
@@ -74,6 +74,6 @@ func main() {
 
 		ticker := time.Tick(time.Minute)
 		fmt.Println("tsuru collector agent started...")
-		jujuCollect(ticker)
+		collect(ticker)
 	}
 }

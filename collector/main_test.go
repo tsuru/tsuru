@@ -51,7 +51,7 @@ func (s *S) TestJujuCollect(c *C) {
 	createApps(s.conn)
 	defer destroyApps(s.conn)
 	ch := make(chan time.Time)
-	go jujuCollect(ch)
+	go collect(ch)
 	ch <- time.Now()
 	close(ch)
 	time.Sleep(1e9)
