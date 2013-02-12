@@ -9,6 +9,12 @@ import (
 	. "launchpad.net/gocheck"
 )
 
+func (s *S) TestShouldBeRegistered(c *C) {
+	p, err := provision.Get("local")
+	c.Assert(err, IsNil)
+	c.Assert(p, FitsTypeOf, &LocalProvisioner{})
+}
+
 func (s *S) TestProvisionerProvision(c *C) {
 	tmpdir, err := commandmocker.Add("sudo", "$*")
 	c.Assert(err, IsNil)

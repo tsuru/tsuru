@@ -10,6 +10,10 @@ import (
 	"os/exec"
 )
 
+func init() {
+	provision.Register("local", &LocalProvisioner{})
+}
+
 type LocalProvisioner struct{}
 
 func (*LocalProvisioner) Provision(app provision.App) error {
