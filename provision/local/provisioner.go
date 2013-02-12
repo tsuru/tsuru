@@ -66,8 +66,13 @@ func (*LocalProvisioner) ExecuteCommand(stdout, stderr io.Writer, app provision.
 	return nil
 }
 
-func (*LocalProvisioner) CollectStatus() ([]provision.Unit, error) {
-	return []provision.Unit{}, nil
+func (p *LocalProvisioner) CollectStatus() ([]provision.Unit, error) {
+	var units []provision.Unit
+	err := p.collection().Find(nil).All(&units)
+	if err != nil {
+		return []provision.Unit{}, err
+	}
+	return units, nil
 }
 
 func (p *LocalProvisioner) collection() *mgo.Collection {

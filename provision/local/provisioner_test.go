@@ -94,6 +94,10 @@ func (s *S) TestCollectStatus(c *C) {
 			Status:     provision.StatusInstalling,
 		},
 	}
+	for _, u := range expected {
+		err := p.collection().Insert(u)
+		c.Assert(err, IsNil)
+	}
 	units, err := p.CollectStatus()
 	c.Assert(err, IsNil)
 	c.Assert(units, DeepEquals, expected)
