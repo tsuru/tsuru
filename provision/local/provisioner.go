@@ -16,7 +16,7 @@ func init() {
 
 type LocalProvisioner struct{}
 
-func (*LocalProvisioner) Provision(app provision.App) error {
+func (p *LocalProvisioner) Provision(app provision.App) error {
 	container := container{name: app.GetName()}
 	err := container.create()
 	if err != nil {
@@ -26,7 +26,15 @@ func (*LocalProvisioner) Provision(app provision.App) error {
 	if err != nil {
 		return err
 	}
-	return nil
+	u := provision.Unit{
+		Name:       app.GetName(),
+		AppName:    app.GetName(),
+		Type:       app.GetFramework(),
+		Machine:    0,
+		InstanceId: app.GetName(),
+		Status:     provision.StatusCreating,
+	}
+	return p.collection().Insert(u)
 }
 
 func (*LocalProvisioner) Destroy(app provision.App) error {

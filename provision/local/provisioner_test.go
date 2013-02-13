@@ -6,6 +6,7 @@ import (
 	"github.com/globocom/commandmocker"
 	"github.com/globocom/tsuru/provision"
 	"github.com/globocom/tsuru/testing"
+	"labix.org/v2/mgo/bson"
 	. "launchpad.net/gocheck"
 )
 
@@ -26,6 +27,10 @@ func (s *S) TestProvisionerProvision(c *C) {
 	expected := "lxc-create -t ubuntu -n myapp"
 	expected += "lxc-start --daemon -n myapp"
 	c.Assert(commandmocker.Output(tmpdir), Equals, expected)
+	var unit provision.Unit
+	err = p.collection().Find(bson.M{"name": "myapp"}).One(&unit)
+	c.Assert(err, IsNil)
+	defer p.collection().Remove(bson.M{"name": "myapp"})
 }
 
 func (s *S) TestProvisionerDestroy(c *C) {
