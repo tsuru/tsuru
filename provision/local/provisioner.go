@@ -7,6 +7,7 @@ import (
 	"github.com/globocom/tsuru/provision"
 	"io"
 	"labix.org/v2/mgo"
+	"labix.org/v2/mgo/bson"
 	"os/exec"
 )
 
@@ -37,7 +38,7 @@ func (p *LocalProvisioner) Provision(app provision.App) error {
 	return p.collection().Insert(u)
 }
 
-func (*LocalProvisioner) Destroy(app provision.App) error {
+func (p *LocalProvisioner) Destroy(app provision.App) error {
 	container := container{name: app.GetName()}
 	err := container.stop()
 	if err != nil {
@@ -47,7 +48,7 @@ func (*LocalProvisioner) Destroy(app provision.App) error {
 	if err != nil {
 		return err
 	}
-	return nil
+	return p.collection().Remove(bson.M{"name": app.GetName()})
 }
 
 func (*LocalProvisioner) Addr(app provision.App) (string, error) {

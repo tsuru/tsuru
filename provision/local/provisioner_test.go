@@ -39,11 +39,18 @@ func (s *S) TestProvisionerDestroy(c *C) {
 	defer commandmocker.Remove(tmpdir)
 	var p LocalProvisioner
 	app := testing.NewFakeApp("myapp", "python", 0)
+	err = p.Provision(app)
+	c.Assert(err, IsNil)
 	c.Assert(p.Destroy(app), IsNil)
 	c.Assert(commandmocker.Ran(tmpdir), Equals, true)
-	expected := "lxc-stop -n myapp"
+	expected := "lxc-create -t ubuntu -n myapp"
+	expected += "lxc-start --daemon -n myapp"
+	expected += "lxc-stop -n myapp"
 	expected += "lxc-destroy -n myapp"
 	c.Assert(commandmocker.Output(tmpdir), Equals, expected)
+	length, err := p.collection().Find(bson.M{"name": "myapp"}).Count()
+	c.Assert(err, IsNil)
+	c.Assert(length, Equals, 0)
 }
 
 func (s *S) TestProvisionerAddr(c *C) {
