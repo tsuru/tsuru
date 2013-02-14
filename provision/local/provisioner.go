@@ -46,14 +46,20 @@ func (p *LocalProvisioner) Provision(app provision.App) error {
 
 func (p *LocalProvisioner) Destroy(app provision.App) error {
 	container := container{name: app.GetName()}
+	log.Printf("destroying container %s", app.GetName())
 	err := container.stop()
 	if err != nil {
+		log.Printf("error on stop container %s", app.GetName())
+		log.Print(err)
 		return err
 	}
 	err = container.destroy()
 	if err != nil {
+		log.Printf("error on destroy container %s", app.GetName())
+		log.Print(err)
 		return err
 	}
+	log.Printf("removing container %s from the database", app.GetName())
 	return p.collection().Remove(bson.M{"name": app.GetName()})
 }
 
