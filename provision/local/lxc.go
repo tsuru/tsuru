@@ -15,7 +15,7 @@ func runCmd(cmd string, args ...string) error {
 	command := exec.Command(cmd, args...)
 	out, err := command.CombinedOutput()
 	log.Printf("running the cmd: %s with the args: %s", cmd, args)
-	log.Print(out)
+	log.Print(string(out))
 	return err
 }
 
