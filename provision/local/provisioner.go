@@ -19,12 +19,17 @@ type LocalProvisioner struct{}
 
 func (p *LocalProvisioner) Provision(app provision.App) error {
 	container := container{name: app.GetName()}
+	log.Printf("creating container %s", app.GetName())
 	err := container.create()
 	if err != nil {
+		log.Printf("error on create container %s", app.GetName())
+		log.Print(err)
 		return err
 	}
 	err = container.start()
 	if err != nil {
+		log.Printf("error on start container %s", app.GetName())
+		log.Print(err)
 		return err
 	}
 	u := provision.Unit{
@@ -35,6 +40,7 @@ func (p *LocalProvisioner) Provision(app provision.App) error {
 		InstanceId: app.GetName(),
 		Status:     provision.StatusCreating,
 	}
+	log.Printf("inserting container unit %s in the database", app.GetName())
 	return p.collection().Insert(u)
 }
 
