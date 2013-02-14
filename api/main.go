@@ -13,6 +13,7 @@ import (
 	"github.com/globocom/tsuru/log"
 	"github.com/globocom/tsuru/provision"
 	_ "github.com/globocom/tsuru/provision/juju"
+	_ "github.com/globocom/tsuru/provision/local"
 	stdlog "log"
 	"log/syslog"
 	"net/http"
