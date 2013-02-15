@@ -39,6 +39,7 @@ func (p *LocalProvisioner) Provision(app provision.App) error {
 		Machine:    0,
 		InstanceId: app.GetName(),
 		Status:     provision.StatusCreating,
+		Ip:         container.ip(),
 	}
 	log.Printf("inserting container unit %s in the database", app.GetName())
 	return p.collection().Insert(u)

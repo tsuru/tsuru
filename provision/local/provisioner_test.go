@@ -4,10 +4,13 @@ import (
 	"bytes"
 	"fmt"
 	"github.com/globocom/commandmocker"
+	fstesting "github.com/globocom/tsuru/fs/testing"
 	"github.com/globocom/tsuru/provision"
 	"github.com/globocom/tsuru/testing"
+	"io/ioutil"
 	"labix.org/v2/mgo/bson"
 	. "launchpad.net/gocheck"
+	"os"
 )
 
 func (s *S) TestShouldBeRegistered(c *C) {
@@ -17,6 +20,14 @@ func (s *S) TestShouldBeRegistered(c *C) {
 }
 
 func (s *S) TestProvisionerProvision(c *C) {
+	file, _ := os.Open("testdata/dnsmasq.leases")
+	data, err := ioutil.ReadAll(file)
+	c.Assert(err, IsNil)
+	rfs := &fstesting.RecordingFs{FileContent: string(data)}
+	fsystem = rfs
+	defer func() {
+		fsystem = nil
+	}()
 	tmpdir, err := commandmocker.Add("sudo", "$*")
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(tmpdir)
@@ -30,6 +41,7 @@ func (s *S) TestProvisionerProvision(c *C) {
 	var unit provision.Unit
 	err = p.collection().Find(bson.M{"name": "myapp"}).One(&unit)
 	c.Assert(err, IsNil)
+	c.Assert(unit.Ip, Equals, "10.10.10.15")
 	defer p.collection().Remove(bson.M{"name": "myapp"})
 }
 

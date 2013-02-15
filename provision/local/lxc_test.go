@@ -2,7 +2,10 @@ package local
 
 import (
 	"github.com/globocom/commandmocker"
+	"github.com/globocom/tsuru/fs/testing"
+	"io/ioutil"
 	. "launchpad.net/gocheck"
+	"os"
 )
 
 func (s *S) TestLXCCreate(c *C) {
@@ -51,4 +54,19 @@ func (s *S) TestLXCDestroy(c *C) {
 	c.Assert(commandmocker.Ran(tmpdir), Equals, true)
 	expected := "lxc-destroy -n container"
 	c.Assert(commandmocker.Output(tmpdir), Equals, expected)
+}
+
+func (s *S) TestContainerIP(c *C) {
+	file, _ := os.Open("testdata/dnsmasq.leases")
+	data, err := ioutil.ReadAll(file)
+	c.Assert(err, IsNil)
+	rfs := &testing.RecordingFs{FileContent: string(data)}
+	fsystem = rfs
+	defer func() {
+		fsystem = nil
+	}()
+	cont := container{name: "vm1"}
+	c.Assert(cont.ip(), Equals, "10.10.10.10")
+	cont = container{name: "notfound"}
+	c.Assert(cont.ip(), Equals, "")
 }

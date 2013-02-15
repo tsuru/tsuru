@@ -1,9 +1,21 @@
 package local
 
 import (
+	"github.com/globocom/tsuru/fs"
 	"github.com/globocom/tsuru/log"
+	"io/ioutil"
 	"os/exec"
+	"strings"
 )
+
+var fsystem fs.Fs
+
+func filesystem() fs.Fs {
+	if fsystem == nil {
+		fsystem = fs.OsFs{}
+	}
+	return fsystem
+}
 
 // container represents an lxc container with the given name.
 type container struct {
@@ -17,6 +29,18 @@ func runCmd(cmd string, args ...string) error {
 	log.Printf("running the cmd: %s with the args: %s", cmd, args)
 	log.Print(string(out))
 	return err
+}
+
+// ip returns the ip for the container.
+func (c *container) ip() string {
+	file, _ := filesystem().Open("/var/lib/misc/dnsmasq.leases")
+	data, _ := ioutil.ReadAll(file)
+	for _, line := range strings.Split(string(data), "\n") {
+		if strings.Index(line, c.name) != -1 {
+			return strings.Split(line, " ")[2]
+		}
+	}
+	return ""
 }
 
 // create creates a lxc container with ubuntu template by default.
