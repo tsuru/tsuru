@@ -7,6 +7,7 @@ package juju
 import (
 	"github.com/globocom/config"
 	"github.com/globocom/tsuru/db"
+	"github.com/globocom/tsuru/queue"
 	. "launchpad.net/gocheck"
 	"testing"
 )
@@ -36,4 +37,5 @@ func (s *S) TearDownSuite(c *C) {
 	handler.Stop()
 	handler.Wait()
 	s.conn.Collection(s.collName).Database.DropDatabase()
+	queue.Preempt()
 }

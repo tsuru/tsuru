@@ -12,6 +12,7 @@ import (
 	"github.com/globocom/tsuru/app"
 	"github.com/globocom/tsuru/db"
 	"github.com/globocom/tsuru/provision"
+	"github.com/globocom/tsuru/queue"
 	"github.com/globocom/tsuru/testing"
 	"labix.org/v2/mgo/bson"
 	. "launchpad.net/gocheck"
@@ -60,8 +61,7 @@ func (s *ELBSuite) TearDownSuite(c *C) {
 	config.Unset("juju:use-elb")
 	s.conn.Collection("juju_units_test_elb").Database.DropDatabase()
 	s.server.Quit()
-	handler.Stop()
-	handler.Wait()
+	queue.Preempt()
 }
 
 func (s *ELBSuite) TestGetCollection(c *C) {
