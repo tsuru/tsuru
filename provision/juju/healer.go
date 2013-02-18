@@ -22,9 +22,18 @@ func init() {
 	heal.Register("bootstrap", bootstrapMachineHealer{})
 	heal.Register("bootstrap-provision", bootstrapProvisionHealer{})
 	heal.Register("instance-machine", instanceMachineHealer{})
+	heal.Register("instance-agents-config", instanceAgentsConfigHealer{})
 	heal.Register("instance-unit", instanceUnitHealer{})
 	heal.Register("zookeeper", zookeeperHealer{})
 	heal.Register("elb-instance", elbInstanceHealer{})
+}
+
+// instanceAgentsConfigHealer is an implementation for the Haler interface. For more
+// detail on how a healer work, check the documentation of the heal package.
+type instanceAgentsConfigHealer struct{}
+
+func (instanceAgentsConfigHealer) Heal() error {
+	return nil
 }
 
 // InstanceUnitHealer is an implementation for the Healer interface. For more

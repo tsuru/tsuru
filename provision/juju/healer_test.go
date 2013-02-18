@@ -16,6 +16,12 @@ import (
 	"net"
 )
 
+func (s *S) TestInstanceAgentsConfigHealerShouldBeRegistered(c *C) {
+	h, err := heal.Get("instance-agents-config")
+	c.Assert(err, IsNil)
+	c.Assert(h, FitsTypeOf, instanceAgentsConfigHealer{})
+}
+
 func (s *S) TestInstanceUnitShouldBeRegistered(c *C) {
 	h, err := heal.Get("instance-unit")
 	c.Assert(err, IsNil)
