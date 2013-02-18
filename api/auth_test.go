@@ -773,7 +773,7 @@ func (s *AuthSuite) TestRemoveUserFromTeamRevokesAccessInGandalf(c *C) {
 	c.Assert(string(h.body[2]), Equals, expected)
 }
 
-func (s *AuthSuite) TestAddKeyHandlerAddsAKeyToTheUser(c *C) {
+func (s *AuthSuite) TestAddKeyToUserAddsAKeyToTheUser(c *C) {
 	h := testHandler{}
 	ts := s.startGandalfTestServer(&h)
 	defer ts.Close()
@@ -791,7 +791,7 @@ func (s *AuthSuite) TestAddKeyHandlerAddsAKeyToTheUser(c *C) {
 	c.Assert(s.user, HasKey, "my-key")
 }
 
-func (s *AuthSuite) TestAddKeyHandlerReturnsErrorIfTheReadingOfTheBodyFails(c *C) {
+func (s *AuthSuite) TestAddKeyToUserReturnsErrorIfTheReadingOfTheBodyFails(c *C) {
 	h := testHandler{}
 	ts := s.startGandalfTestServer(&h)
 	defer ts.Close()
@@ -804,7 +804,7 @@ func (s *AuthSuite) TestAddKeyHandlerReturnsErrorIfTheReadingOfTheBodyFails(c *C
 	c.Assert(err, NotNil)
 }
 
-func (s *AuthSuite) TestAddKeyHandlerReturnsBadRequestIfTheJsonIsInvalid(c *C) {
+func (s *AuthSuite) TestAddKeyToUserReturnsBadRequestIfTheJsonIsInvalid(c *C) {
 	h := testHandler{}
 	ts := s.startGandalfTestServer(&h)
 	defer ts.Close()
@@ -820,7 +820,7 @@ func (s *AuthSuite) TestAddKeyHandlerReturnsBadRequestIfTheJsonIsInvalid(c *C) {
 	c.Assert(e, ErrorMatches, "^Invalid JSON$")
 }
 
-func (s *AuthSuite) TestAddKeyHandlerReturnsBadRequestIfTheKeyIsNotPresent(c *C) {
+func (s *AuthSuite) TestAddKeyToUserReturnsBadRequestIfTheKeyIsNotPresent(c *C) {
 	h := testHandler{}
 	ts := s.startGandalfTestServer(&h)
 	defer ts.Close()
@@ -836,7 +836,7 @@ func (s *AuthSuite) TestAddKeyHandlerReturnsBadRequestIfTheKeyIsNotPresent(c *C)
 	c.Assert(e, ErrorMatches, "^Missing key$")
 }
 
-func (s *AuthSuite) TestAddKeyHandlerReturnsBadRequestIfTheKeyIsEmpty(c *C) {
+func (s *AuthSuite) TestAddKeyToUserReturnsBadRequestIfTheKeyIsEmpty(c *C) {
 	h := testHandler{}
 	ts := s.startGandalfTestServer(&h)
 	defer ts.Close()
@@ -852,7 +852,7 @@ func (s *AuthSuite) TestAddKeyHandlerReturnsBadRequestIfTheKeyIsEmpty(c *C) {
 	c.Assert(e, ErrorMatches, "^Missing key$")
 }
 
-func (s *AuthSuite) TestAddKeyHandlerReturnsConflictIfTheKeyIsAlreadyPresent(c *C) {
+func (s *AuthSuite) TestAddKeyToUserReturnsConflictIfTheKeyIsAlreadyPresent(c *C) {
 	h := testHandler{}
 	ts := s.startGandalfTestServer(&h)
 	defer ts.Close()
