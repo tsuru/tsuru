@@ -136,8 +136,7 @@ func (s *S) TestFailingDestroy(c *C) {
 func (s *S) TestCreateApp(c *C) {
 	patchRandomReader()
 	defer unpatchRandomReader()
-	h := testHandler{}
-	ts := s.t.StartGandalfTestServer(&h)
+	ts := s.t.StartGandalfTestServer(&testHandler{})
 	defer ts.Close()
 	a := App{
 		Name:      "appname",
