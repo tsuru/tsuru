@@ -108,6 +108,7 @@ func (s *S) TearDownSuite(c *C) {
 	defer s.t.S3Server.Quit()
 	defer s.t.IamServer.Quit()
 	queue.Preempt()
+	tsuruTesting.CleanQueues(app.QueueName, "tsuru-app")
 	s.conn.Apps().Database.DropDatabase()
 	fsystem = nil
 }
