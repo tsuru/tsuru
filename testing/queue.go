@@ -105,7 +105,7 @@ func (f *FakeQFactory) Get(name string) (queue.Q, error) {
 }
 
 func (f *FakeQFactory) Handler(fn func(*queue.Message), names ...string) (queue.Handler, error) {
-	return nil, nil
+	return &fakeHandler{}, nil
 }
 
 type messageNode struct {
