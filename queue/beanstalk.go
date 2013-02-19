@@ -93,8 +93,11 @@ func (b beanstalkFactory) Handler(f func(*Message), name ...string) (Handler, er
 				log.Printf("Dispatching %q message to handler function.", message.Action)
 				go func(m *Message) {
 					f(m)
+					q := beanstalkQ{}
 					if m.delete {
-						(&beanstalkQ{}).Delete(m)
+						q.Delete(m)
+					} else {
+						q.Release(m, 0)
 					}
 				}(message)
 			} else {
