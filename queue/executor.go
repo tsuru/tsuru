@@ -28,8 +28,8 @@ type executor struct {
 }
 
 func (e *executor) Start() {
-	r.add(e)
 	if atomic.CompareAndSwapInt32(&e.state, stopped, running) {
+		r.add(e)
 		go e.loop()
 	}
 }
