@@ -322,9 +322,9 @@ func addKeyToUser(content string, u *auth.User) error {
 	if u.HasKey(key) {
 		return &errors.Http{Code: http.StatusConflict, Message: "User already has this key"}
 	}
-    if err := addKeyInGandalf(key, u); err != nil {
-        return err
-    }
+	if err := addKeyInGandalf(&key, u); err != nil {
+		return err
+	}
 	return addKeyInDatabase(u)
 }
 
@@ -336,14 +336,14 @@ func addKeyInDatabase(u *auth.User) error {
 	return conn.Users().Update(bson.M{"email": u.Email}, u)
 }
 
-func addKeyInGandalf(key auth.Key, u *auth.User) error {
+func addKeyInGandalf(key *auth.Key, u *auth.User) error {
 	key.Name = fmt.Sprintf("%s-%d", u.Email, len(u.Keys)+1)
 	gUrl := repository.GitServerUri()
-	u.AddKey(key)
+	u.AddKey(*key)
 	if err := (&gandalf.Client{Endpoint: gUrl}).AddKey(u.Email, keyToMap(u.Keys)); err != nil {
 		return fmt.Errorf("Failed to add key to git server: %s", err)
 	}
-    return nil
+	return nil
 }
 
 // AddKeyToUser adds a key to a user.
@@ -369,16 +369,28 @@ func removeKeyFromUser(content string, u *auth.User) error {
 	if index < 0 {
 		return &errors.Http{Code: http.StatusNotFound, Message: "User does not have this key"}
 	}
-	gUrl := repository.GitServerUri()
-	if err := (&gandalf.Client{Endpoint: gUrl}).RemoveKey(u.Email, key.Name); err != nil {
-		return fmt.Errorf("Failed to remove the key from git server: %s", err)
+	err := removeKeyFromGandalf(&key, u)
+	if err != nil {
+		return err
 	}
+	return removeKeyFromDatabase(&key, u)
+}
+
+func removeKeyFromDatabase(key *auth.Key, u *auth.User) error {
 	conn, err := db.Conn()
 	if err != nil {
 		return err
 	}
-	u.RemoveKey(key)
+	u.RemoveKey(*key)
 	return conn.Users().Update(bson.M{"email": u.Email}, u)
+}
+
+func removeKeyFromGandalf(key *auth.Key, u *auth.User) error {
+	gUrl := repository.GitServerUri()
+	if err := (&gandalf.Client{Endpoint: gUrl}).RemoveKey(u.Email, key.Name); err != nil {
+		return fmt.Errorf("Failed to remove the key from git server: %s", err)
+	}
+	return nil
 }
 
 // RemoveKeyFromUser removes a key from a user.
