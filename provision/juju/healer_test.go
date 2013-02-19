@@ -12,6 +12,9 @@ import (
 	"github.com/globocom/tsuru/db"
 	"github.com/globocom/tsuru/heal"
 	"labix.org/v2/mgo/bson"
+	"launchpad.net/goamz/aws"
+	"launchpad.net/goamz/ec2"
+	"launchpad.net/goamz/ec2/ec2test"
 	. "launchpad.net/gocheck"
 	"net"
 )
@@ -20,6 +23,28 @@ func (s *S) TestInstanceAgentsConfigHealerShouldBeRegistered(c *C) {
 	h, err := heal.Get("instance-agents-config")
 	c.Assert(err, IsNil)
 	c.Assert(h, FitsTypeOf, instanceAgentsConfigHealer{})
+}
+
+func (s *ELBSuite) TestInstanceAgenstConfigHealerGetEC2(c *C) {
+	h := instanceAgentsConfigHealer{}
+	ec2 := h.ec2()
+	c.Assert(ec2.EC2Endpoint, Equals, "")
+}
+
+func (s *S) TestGetPrivateDns(c *C) {
+	server, err := ec2test.NewServer()
+	c.Assert(err, IsNil)
+	defer server.Quit()
+	h := instanceAgentsConfigHealer{}
+	region := aws.SAEast
+	region.EC2Endpoint = server.URL()
+	h.e = ec2.New(aws.Auth{AccessKey: "some", SecretKey: "thing"}, region)
+	resp, err := h.ec2().RunInstances(&ec2.RunInstances{MaxCount: 1})
+	c.Assert(err, IsNil)
+	instance := resp.Instances[0]
+	dns, err := h.getPrivateDns(instance.InstanceId)
+	c.Assert(err, IsNil)
+	c.Assert(dns, Equals, instance.PrivateDNSName)
 }
 
 func (s *S) TestInstanceUnitShouldBeRegistered(c *C) {

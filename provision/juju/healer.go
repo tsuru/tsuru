@@ -13,6 +13,8 @@ import (
 	"github.com/globocom/tsuru/heal"
 	"github.com/globocom/tsuru/log"
 	"github.com/globocom/tsuru/provision"
+	"launchpad.net/goamz/aws"
+	"launchpad.net/goamz/ec2"
 	"net"
 	"os/exec"
 	"strings"
@@ -30,7 +32,38 @@ func init() {
 
 // instanceAgentsConfigHealer is an implementation for the Haler interface. For more
 // detail on how a healer work, check the documentation of the heal package.
-type instanceAgentsConfigHealer struct{}
+type instanceAgentsConfigHealer struct {
+	e *ec2.EC2
+}
+
+func (h *instanceAgentsConfigHealer) ec2() *ec2.EC2 {
+	if h.e == nil {
+		h.e = getEC2Endpoint()
+	}
+	return h.e
+}
+
+func getEC2Endpoint() *ec2.EC2 {
+	access, err := config.GetString("aws:access-key-id")
+	if err != nil {
+		log.Fatal(err)
+	}
+	secret, err := config.GetString("aws:secret-access-key")
+	if err != nil {
+		log.Fatal(err)
+	}
+	auth := aws.Auth{AccessKey: access, SecretKey: secret}
+	return ec2.New(auth, aws.Region{})
+}
+
+func (h *instanceAgentsConfigHealer) getPrivateDns(instanceId string) (string, error) {
+	resp, err := h.ec2().Instances([]string{instanceId}, nil)
+	if err != nil {
+		return "", err
+	}
+	dns := resp.Reservations[0].Instances[0].PrivateDNSName
+	return dns, nil
+}
 
 func (instanceAgentsConfigHealer) Heal() error {
 	return nil
