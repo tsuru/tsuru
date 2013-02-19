@@ -895,6 +895,46 @@ func (s *AuthSuite) TestAddKeyAddKeyToUserInGandalf(c *C) {
 	c.Assert(string(h.body[0]), Equals, expected)
 }
 
+func (s *AuthSuite) TestAddKeyToUserShouldNotInsertKeyInDatabaseWhenGandalfAdditionFails(c *C) {
+	u := &auth.User{Email: "me@gmail.com", Password: "123456"}
+	err := u.Create()
+	c.Assert(err, IsNil)
+	err = addKeyToUser("my-key", u)
+	c.Assert(err, NotNil)
+    c.Assert(err.Error(), Equals, "Failed to add key to git server: Failed to connect to Gandalf server, it's probably down.")
+	defer func() {
+		s.conn.Users().RemoveAll(bson.M{"email": u.Email})
+	}()
+    u.Get()
+    c.Assert(u.Keys, DeepEquals, []auth.Key{})
+}
+
+func (s *AuthSuite) TestAddKeyInDatabaseShouldStoreUsersKeyInDB(c *C) {
+	u := &auth.User{Email: "me@gmail.com", Password: "123456"}
+	err := u.Create()
+	c.Assert(err, IsNil)
+    key := auth.Key{Content: "my-ssh-key", Name: "key1"}
+    u.AddKey(key)
+    err = addKeyInDatabase(u)
+    c.Assert(err, IsNil)
+    u.Get()
+    c.Assert(u.Keys, DeepEquals, []auth.Key{key})
+}
+
+func (s *AuthSuite) TestAddKeyInGandalfShouldCallGandalfApi(c *C) {
+	h := testHandler{}
+	ts := s.startGandalfTestServer(&h)
+	defer ts.Close()
+	u := &auth.User{Email: "me@gmail.com", Password: "123456"}
+	err := u.Create()
+	c.Assert(err, IsNil)
+    key := auth.Key{Content: "my-ssh-key", Name: "key1"}
+    err = addKeyInGandalf(key, u)
+    c.Assert(err, IsNil)
+    c.Assert(len(h.url), Equals, 1)
+    c.Assert(h.url[0], Equals, "/user/me@gmail.com/key")
+}
+
 func (s *AuthSuite) TestRemoveKeyHandlerRemovesTheKeyFromTheUser(c *C) {
 	h := testHandler{}
 	ts := s.startGandalfTestServer(&h)
