@@ -91,3 +91,17 @@ func (s *S) TestFakeHandlerStop(c *C) {
 	h.Stop()
 	c.Assert(h.running, Equals, false)
 }
+
+func (s *S) TestFakeQFactory(c *C) {
+	h := NewFakeQFactory()
+	q, err := h.Get("default")
+	c.Assert(err, IsNil)
+	_, ok := q.(*FakeQ)
+	c.Assert(ok, Equals, true)
+	q2, err := h.Get("default")
+	c.Assert(err, IsNil)
+	c.Assert(q, Equals, q2)
+	q3, err := h.Get("non-default")
+	c.Assert(err, IsNil)
+	c.Assert(q, Not(Equals), q3)
+}

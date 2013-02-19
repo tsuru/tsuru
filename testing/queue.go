@@ -12,7 +12,7 @@ import (
 )
 
 func init() {
-	queue.Register("fake", &fakeQFactory{})
+	queue.Register("fake", NewFakeQFactory())
 }
 
 type fakeHandler struct {
@@ -85,13 +85,26 @@ func (q *FakeQ) Release(m *queue.Message, delay time.Duration) error {
 	return q.Put(m, delay)
 }
 
-type fakeQFactory struct{}
-
-func (f *fakeQFactory) Get(name string) (queue.Q, error) {
-	return nil, nil
+type FakeQFactory struct {
+	queues map[string]*FakeQ
 }
 
-func (f *fakeQFactory) Handler(fn func(*queue.Message), names ...string) (queue.Handler, error) {
+func NewFakeQFactory() *FakeQFactory {
+	return &FakeQFactory{
+		queues: make(map[string]*FakeQ),
+	}
+}
+
+func (f *FakeQFactory) Get(name string) (queue.Q, error) {
+	if q, ok := f.queues[name]; ok {
+		return q, nil
+	}
+	q := FakeQ{}
+	f.queues[name] = &q
+	return &q, nil
+}
+
+func (f *FakeQFactory) Handler(fn func(*queue.Message), names ...string) (queue.Handler, error) {
 	return nil, nil
 }
 
