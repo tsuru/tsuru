@@ -5,8 +5,8 @@
 package queue
 
 import (
+	"github.com/globocom/tsuru/safe"
 	. "launchpad.net/gocheck"
-	"sync/atomic"
 	"time"
 )
 
@@ -19,13 +19,13 @@ func dumb() {
 }
 
 func (s *ExecutorSuite) TestStart(c *C) {
-	var ct counter
-	h1 := executor{inner: func() { ct.increment() }}
+	var ct safe.Counter
+	h1 := executor{inner: func() { ct.Increment() }}
 	h1.Start()
 	c.Assert(h1.state, Equals, running)
 	h1.Stop()
 	h1.Wait()
-	c.Assert(ct.value(), Not(Equals), 0)
+	c.Assert(ct.Val(), Not(Equals), 0)
 }
 
 func (s *ExecutorSuite) TestPreempt(c *C) {
@@ -50,21 +50,4 @@ func (s *ExecutorSuite) TestStopNotRunningExecutor(c *C) {
 
 func (s *ExecutorSuite) TestExecutorImplementsHandler(c *C) {
 	var _ Handler = &executor{}
-}
-
-type counter struct {
-	v int32
-}
-
-func (c *counter) increment() {
-	old := atomic.LoadInt32(&c.v)
-	swapped := atomic.CompareAndSwapInt32(&c.v, old, old+1)
-	for !swapped {
-		old = atomic.LoadInt32(&c.v)
-		swapped = atomic.CompareAndSwapInt32(&c.v, old, old+1)
-	}
-}
-
-func (c *counter) value() int32 {
-	return atomic.LoadInt32(&c.v)
 }
