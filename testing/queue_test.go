@@ -56,3 +56,17 @@ func (s *S) TestFakeQRelease(c *C) {
 	_, err = q.Get(1e6)
 	c.Assert(err, IsNil)
 }
+
+func (s *S) TestFakeHandlerStart(c *C) {
+	h := fakeHandler{}
+	c.Assert(h.running, Equals, false)
+	h.Start()
+	c.Assert(h.running, Equals, true)
+}
+
+func (s *S) TestFakeHandlerStop(c *C) {
+	h := fakeHandler{}
+	h.Start()
+	h.Stop()
+	c.Assert(h.running, Equals, false)
+}
