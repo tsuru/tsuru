@@ -285,6 +285,10 @@ func (s *BeanstalkSuite) TestDeleteMessageWithoutId(c *C) {
 	c.Assert(err.Error(), Equals, "Unknown message.")
 }
 
+func (s *BeanstalkSuite) TestBeanstalkQSatisfiesQueue(c *C) {
+	var _ Queue = &beanstalkQ{}
+}
+
 func cleanQ(c *C) {
 	cn, err := connection()
 	c.Assert(err, IsNil)
