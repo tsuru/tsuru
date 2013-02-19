@@ -48,6 +48,10 @@ func (s *ExecutorSuite) TestStopNotRunningExecutor(c *C) {
 	c.Assert(err.Error(), Equals, "Not running.")
 }
 
+func (s *ExecutorSuite) TestExecutorImplementsHandler(c *C) {
+	var _ Handler = &executor{}
+}
+
 type counter struct {
 	v int32
 }
