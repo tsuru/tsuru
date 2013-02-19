@@ -5,6 +5,7 @@
 package queue
 
 import (
+	"github.com/globocom/config"
 	. "launchpad.net/gocheck"
 	"testing"
 )
@@ -22,4 +23,29 @@ func (s *S) TestMessageDelete(c *C) {
 	c.Assert(m.delete, Equals, false)
 	m.Delete()
 	c.Assert(m.delete, Equals, true)
+}
+
+func (s *S) TestFactory(c *C) {
+	config.Set("queue", "beanstalk")
+	defer config.Unset("queue")
+	f, err := Factory()
+	c.Assert(err, IsNil)
+	_, ok := f.(beanstalkFactory)
+	c.Assert(ok, Equals, true)
+}
+
+func (s *S) TestFactoryConfigUndefined(c *C) {
+	f, err := Factory()
+	c.Assert(err, IsNil)
+	_, ok := f.(beanstalkFactory)
+	c.Assert(ok, Equals, true)
+}
+
+func (s *S) TestFactoryConfigUnknown(c *C) {
+	config.Set("queue", "unknown")
+	defer config.Unset("queue")
+	f, err := Factory()
+	c.Assert(f, IsNil)
+	c.Assert(err, NotNil)
+	c.Assert(err.Error(), Equals, `Queue "unknown" is not known.`)
 }

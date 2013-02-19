@@ -13,7 +13,11 @@
 // and stop capability.
 package queue
 
-import "time"
+import (
+	"fmt"
+	"github.com/globocom/config"
+	"time"
+)
 
 // Queue represents a queue. A queue is a type that supports the set of
 // operations described by this interface.
@@ -74,7 +78,14 @@ var factories = map[string]QFactory{
 // beanstalk) and returns an instance of the configured system, if it's
 // registered. Otherwise it will return an error.
 func Factory() (QFactory, error) {
-	return nil, nil
+	name, err := config.GetString("queue")
+	if err != nil {
+		name = "beanstalk"
+	}
+	if f, ok := factories[name]; ok {
+		return f, nil
+	}
+	return nil, fmt.Errorf("Queue %q is not known.", name)
 }
 
 // Message represents the message stored in the queue.
