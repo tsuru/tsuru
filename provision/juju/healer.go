@@ -80,7 +80,8 @@ func (h instanceAgentsConfigHealer) Heal() error {
 			err := cmd.Run()
 			if err != nil {
 				log.Printf("Injecting bootstrap private dns for machine %d", unit.Machine)
-				//heal
+				cmd := exec.Command("ssh", "-o", "StrictHostKeyChecking no", "-q", "-l", "ubuntu", unit.PublicAddress, "sudo", "sed", "-i", "'s/env JUJU_ZOOKEEPER=.*/env JUJU_ZOOKEEPER=\""+dns+":2181\"/g'", "/etc/init/juju-machine-agent.conf")
+				cmd.Run()
 			}
 		}
 	}

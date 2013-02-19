@@ -35,7 +35,7 @@ func (s *S) TestInstanceAgenstConfigHealerHeal(c *C) {
 	jujuTmpdir, err := commandmocker.Add("juju", collectOutputInstanceDown)
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(jujuTmpdir)
-	sshTmpdir, err := commandmocker.Add("ssh", "$*")
+	sshTmpdir, err := commandmocker.Error("ssh", "", 1)
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(sshTmpdir)
 	h := instanceAgentsConfigHealer{}
@@ -54,6 +54,17 @@ func (s *S) TestInstanceAgenstConfigHealerHeal(c *C) {
 		"server-1081.novalocal",
 		"grep",
 		"",
+		"/etc/init/juju-machine-agent.conf",
+		"-o",
+		"StrictHostKeyChecking no",
+		"-q",
+		"-l",
+		"ubuntu",
+		"server-1081.novalocal",
+		"sudo",
+		"sed",
+		"-i",
+		"'s/env JUJU_ZOOKEEPER=.*/env JUJU_ZOOKEEPER=\":2181\"/g'",
 		"/etc/init/juju-machine-agent.conf",
 	}
 	c.Assert(commandmocker.Ran(jujuTmpdir), Equals, true)
