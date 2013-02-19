@@ -10,15 +10,15 @@ import (
 	"time"
 )
 
-type HandlerSuite struct{}
+type ExecutorSuite struct{}
 
-var _ = Suite(&HandlerSuite{})
+var _ = Suite(&ExecutorSuite{})
 
 func dumb() {
 	time.Sleep(1e3)
 }
 
-func (s *HandlerSuite) TestStart(c *C) {
+func (s *ExecutorSuite) TestStart(c *C) {
 	var ct counter
 	h1 := executor{inner: func() { ct.increment() }}
 	h1.Start()
@@ -28,7 +28,7 @@ func (s *HandlerSuite) TestStart(c *C) {
 	c.Assert(ct.value(), Not(Equals), 0)
 }
 
-func (s *HandlerSuite) TestPreempt(c *C) {
+func (s *ExecutorSuite) TestPreempt(c *C) {
 	h1 := executor{inner: dumb}
 	h2 := executor{inner: dumb}
 	h3 := executor{inner: dumb}
@@ -41,7 +41,7 @@ func (s *HandlerSuite) TestPreempt(c *C) {
 	c.Assert(h3.state, Equals, stopped)
 }
 
-func (s *HandlerSuite) TestStopNotRunningHandler(c *C) {
+func (s *ExecutorSuite) TestStopNotRunningExecutor(c *C) {
 	h := executor{inner: dumb}
 	err := h.Stop()
 	c.Assert(err, NotNil)

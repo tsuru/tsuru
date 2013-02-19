@@ -19,23 +19,6 @@ const (
 	stopping
 )
 
-// Handler represents a runnable routine. It can be started and stopped.
-type Handler interface {
-	// Start starts the handler. It must be safe to call this function
-	// multiple times, even if the handler is already running.
-	Start()
-
-	// Stop sends a signal to stop the handler, it won't stop the handler
-	// immediately. After calling Stop, one should call Wait for blocking
-	// until the handler is stopped.
-	//
-	// This method will return an error if the handler is not running.
-	Stop() error
-
-	// Wait blocks until the handler actually stops.
-	Wait()
-}
-
 // executor will execute the inner function until Stop is called. It implements
 // the Handler interface.
 type executor struct {
