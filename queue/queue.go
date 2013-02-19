@@ -65,6 +65,10 @@ type QFactory interface {
 	Handler(f func(*Message), name ...string) (Handler, error)
 }
 
+var factories = map[string]QFactory{
+	"beanstalk": beanstalkFactory{},
+}
+
 // Factory returns an instance of the QFactory used in tsuru. It reads tsuru
 // configuration to find the currently used queue system (for example,
 // beanstalk) and returns an instance of the configured system, if it's

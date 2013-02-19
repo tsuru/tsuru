@@ -363,6 +363,13 @@ func (s *BeanstalkSuite) TestBeanstalkFactoryHandlerReleaseMessage(c *C) {
 	c.Assert(id, Equals, msg.id)
 }
 
+func (s *BeanstalkSuite) TestBeanstalkFactoryIsInFactoriesMap(c *C) {
+	f, ok := factories["beanstalk"]
+	c.Assert(ok, Equals, true)
+	_, ok = f.(beanstalkFactory)
+	c.Assert(ok, Equals, true)
+}
+
 func cleanQ(c *C) {
 	cn, err := connection()
 	c.Assert(err, IsNil)
