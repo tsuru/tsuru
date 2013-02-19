@@ -31,6 +31,37 @@ func (s *S) TestInstanceAgenstConfigHealerGetEC2(c *C) {
 	c.Assert(ec2.EC2Endpoint, Equals, "")
 }
 
+func (s *S) TestInstanceAgenstConfigHealerHeal(c *C) {
+	jujuTmpdir, err := commandmocker.Add("juju", collectOutputInstanceDown)
+	c.Assert(err, IsNil)
+	defer commandmocker.Remove(jujuTmpdir)
+	sshTmpdir, err := commandmocker.Add("ssh", "$*")
+	c.Assert(err, IsNil)
+	defer commandmocker.Remove(sshTmpdir)
+	h := instanceAgentsConfigHealer{}
+	err = h.Heal()
+	c.Assert(err, IsNil)
+	jujuOutput := []string{
+		"status", // for juju status that gets the output
+		"status", // for get the bootstrap private dns
+	}
+	sshOutput := []string{
+		"-o",
+		"StrictHostKeyChecking no",
+		"-q",
+		"-l",
+		"ubuntu",
+		"server-1081.novalocal",
+		"grep",
+		"",
+		"/etc/init/juju-machine-agent.conf",
+	}
+	c.Assert(commandmocker.Ran(jujuTmpdir), Equals, true)
+	c.Assert(commandmocker.Parameters(jujuTmpdir), DeepEquals, jujuOutput)
+	c.Assert(commandmocker.Ran(sshTmpdir), Equals, true)
+	c.Assert(commandmocker.Parameters(sshTmpdir), DeepEquals, sshOutput)
+}
+
 func (s *S) TestBootstrapPrivateDns(c *C) {
 	server, err := ec2test.NewServer()
 	c.Assert(err, IsNil)

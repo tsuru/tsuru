@@ -70,7 +70,20 @@ func (h *instanceAgentsConfigHealer) bootstrapPrivateDns() (string, error) {
 	return h.getPrivateDns(machine.InstanceId)
 }
 
-func (instanceAgentsConfigHealer) Heal() error {
+func (h instanceAgentsConfigHealer) Heal() error {
+	p := JujuProvisioner{}
+	output, _ := p.getOutput()
+	for _, service := range output.Services {
+		for _, unit := range service.Units {
+			dns, _ := h.bootstrapPrivateDns()
+			cmd := exec.Command("ssh", "-o", "StrictHostKeyChecking no", "-q", "-l", "ubuntu", unit.PublicAddress, "grep", dns, "/etc/init/juju-machine-agent.conf")
+			err := cmd.Run()
+			if err != nil {
+				log.Printf("Injecting bootstrap private dns for machine %d", unit.Machine)
+				//heal
+			}
+		}
+	}
 	return nil
 }
 
