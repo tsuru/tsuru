@@ -16,3 +16,10 @@ func Test(t *testing.T) {
 type S struct{}
 
 var _ = Suite(&S{})
+
+func (s *S) TestMessageDelete(c *C) {
+	m := Message{}
+	c.Assert(m.delete, Equals, false)
+	m.Delete()
+	c.Assert(m.delete, Equals, true)
+}

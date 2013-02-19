@@ -82,4 +82,10 @@ type Message struct {
 	Action string
 	Args   []string
 	id     uint64
+	delete bool
+}
+
+// Delete deletes the message from the queue.
+func (m *Message) Delete() {
+	m.delete = true
 }
