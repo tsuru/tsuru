@@ -19,9 +19,9 @@ import (
 	"time"
 )
 
-// Queue represents a queue. A queue is a type that supports the set of
+// Q represents a queue. A queue is a type that supports the set of
 // operations described by this interface.
-type Queue interface {
+type Q interface {
 	// Get retrieves a message from the queue.
 	Get(timeout time.Duration) (*Message, error)
 
@@ -61,7 +61,7 @@ type Handler interface {
 // instances.
 type QFactory interface {
 	// Get returns a queue instance, identified by the given name.
-	Get(name string) (Queue, error)
+	Get(name string) (Q, error)
 
 	// Handler returns a handler for the given queue names. Once the
 	// handler is started (after calling Start method), it will call f

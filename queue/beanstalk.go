@@ -82,7 +82,7 @@ func (b *beanstalkQ) Release(m *Message, delay time.Duration) error {
 
 type beanstalkFactory struct{}
 
-func (b beanstalkFactory) Get(name string) (Queue, error) {
+func (b beanstalkFactory) Get(name string) (Q, error) {
 	return &beanstalkQ{name: name}, nil
 }
 

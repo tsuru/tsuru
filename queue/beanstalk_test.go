@@ -258,7 +258,7 @@ func (s *BeanstalkSuite) TestDeleteMessageWithoutId(c *C) {
 }
 
 func (s *BeanstalkSuite) TestBeanstalkQSatisfiesQueue(c *C) {
-	var _ Queue = &beanstalkQ{}
+	var _ Q = &beanstalkQ{}
 }
 
 func (s *BeanstalkSuite) TestBeanstalkFactoryGet(c *C) {
