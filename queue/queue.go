@@ -59,7 +59,9 @@ type QFactory interface {
 	// Get returns a queue instance, identified by the given name.
 	Get(name string) (Queue, error)
 
-	// Handler returns a handler for the given queue names.
+	// Handler returns a handler for the given queue names. Once the
+	// handler is started (after calling Start method), it will call f
+	// whenever a new message arrives in one of the given queue names.
 	Handler(f func(*Message), name ...string) (Handler, error)
 }
 
