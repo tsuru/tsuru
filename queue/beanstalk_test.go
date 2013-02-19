@@ -145,16 +145,6 @@ func (s *BeanstalkSuite) TestGet(c *C) {
 	c.Assert(*got, DeepEquals, msg)
 }
 
-func (s *BeanstalkSuite) TestGetConnectionError(c *C) {
-	old, _ := config.Get("queue-server")
-	defer config.Set("queue-server", old)
-	config.Unset("queue-server")
-	q := beanstalkQ{name: "default"}
-	msg, err := q.Get(1e6)
-	c.Assert(msg, IsNil)
-	c.Assert(err, NotNil)
-}
-
 func (s *BeanstalkSuite) TestGetFromEmptyQueue(c *C) {
 	q := beanstalkQ{name: "default"}
 	msg, err := q.Get(1e6)
@@ -231,15 +221,6 @@ func (s *BeanstalkSuite) TestReleaseMessageNotFound(c *C) {
 	c.Assert(err.Error(), Equals, "Message not found.")
 }
 
-func (s *BeanstalkSuite) TestReleaseConnectionError(c *C) {
-	old, _ := config.Get("queue-server")
-	defer config.Set("queue-server", old)
-	config.Unset("queue-server")
-	q := beanstalkQ{name: "default"}
-	err := q.Release(&Message{id: 1}, 0)
-	c.Assert(err, NotNil)
-}
-
 func (s *BeanstalkSuite) TestDelete(c *C) {
 	msg := Message{
 		Action: "create-app",
@@ -251,15 +232,6 @@ func (s *BeanstalkSuite) TestDelete(c *C) {
 	defer conn.Delete(msg.id)
 	err = q.Delete(&msg)
 	c.Assert(err, IsNil)
-}
-
-func (s *BeanstalkSuite) TestDeleteConnectionError(c *C) {
-	old, _ := config.Get("queue-server")
-	defer config.Set("queue-server", old)
-	config.Unset("queue-server")
-	q := beanstalkQ{name: "default"}
-	err := q.Delete(&Message{})
-	c.Assert(err, NotNil)
 }
 
 func (s *BeanstalkSuite) TestDeleteUnknownMessage(c *C) {
