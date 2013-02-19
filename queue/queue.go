@@ -60,7 +60,7 @@ type QFactory interface {
 	Get(name string) (Queue, error)
 
 	// Handler returns a handler for the given queue names.
-	Handler(f func(Queue, *Message), name ...string) (Handler, error)
+	Handler(f func(*Message), name ...string) (Handler, error)
 }
 
 // Factory returns an instance of the QFactory used in tsuru. It reads tsuru
