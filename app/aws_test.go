@@ -157,4 +157,8 @@ func (s *S) TestDestroyBucket(c *C) {
 	c.Assert(err, NotNil)
 	_, err = iam.DeleteAccessKey(app.Env["TSURU_S3_ACCESS_KEY_ID"].Value, "")
 	c.Assert(err, NotNil)
+	msg, err := aqueue().Get(1e6)
+	c.Assert(err, IsNil)
+	c.Assert(msg.Args, DeepEquals, []string{app.Name})
+	msg.Delete()
 }

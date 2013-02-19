@@ -71,6 +71,10 @@ func (s *S) TestDestroy(c *C) {
 	c.Assert(err, IsNil)
 	c.Assert(qt, Equals, 0)
 	c.Assert(s.provisioner.FindApp(&a), Equals, -1)
+	msg, err := aqueue().Get(1e6)
+	c.Assert(err, IsNil)
+	c.Assert(msg.Args, DeepEquals, []string{a.Name})
+	msg.Delete()
 }
 
 func (s *S) TestDestroyWithoutBucketSupport(c *C) {
@@ -96,6 +100,10 @@ func (s *S) TestDestroyWithoutBucketSupport(c *C) {
 	c.Assert(err, IsNil)
 	c.Assert(qt, Equals, 0)
 	c.Assert(s.provisioner.FindApp(&a), Equals, -1)
+	msg, err := aqueue().Get(1e6)
+	c.Assert(err, IsNil)
+	c.Assert(msg.Args, DeepEquals, []string{a.Name})
+	msg.Delete()
 }
 
 func (s *S) TestDestroyWithoutUnits(c *C) {
@@ -109,6 +117,10 @@ func (s *S) TestDestroyWithoutUnits(c *C) {
 	app.Get()
 	err = app.Destroy()
 	c.Assert(err, IsNil)
+	msg, err := aqueue().Get(1e6)
+	c.Assert(err, IsNil)
+	c.Assert(msg.Args, DeepEquals, []string{app.Name})
+	msg.Delete()
 }
 
 func (s *S) TestFailingDestroy(c *C) {
@@ -274,6 +286,10 @@ func (s *S) TestDoesNotSaveTheAppInTheDatabaseIfProvisionerFail(c *C) {
 	c.Assert(err.Error(), Equals, expected)
 	err = a.Get()
 	c.Assert(err, NotNil)
+	msg, err := aqueue().Get(1e6)
+	c.Assert(err, IsNil)
+	c.Assert(msg.Args, DeepEquals, []string{a.Name})
+	msg.Delete()
 }
 
 func (s *S) TestDeletesIAMCredentialsAndS3BucketIfProvisionerFail(c *C) {
@@ -299,6 +315,10 @@ func (s *S) TestDeletesIAMCredentialsAndS3BucketIfProvisionerFail(c *C) {
 	bucket := s3.Bucket(bucketName)
 	_, err = bucket.Get("")
 	c.Assert(err, NotNil)
+	msg, err := aqueue().Get(1e6)
+	c.Assert(err, IsNil)
+	c.Assert(msg.Args, DeepEquals, []string{a.Name})
+	msg.Delete()
 }
 
 func (s *S) TestAppendOrUpdate(c *C) {
