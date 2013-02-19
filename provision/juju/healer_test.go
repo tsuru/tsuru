@@ -31,6 +31,37 @@ func (s *ELBSuite) TestInstanceAgenstConfigHealerGetEC2(c *C) {
 	c.Assert(ec2.EC2Endpoint, Equals, "")
 }
 
+func (s *S) TestBootstrapPrivateDns(c *C) {
+	server, err := ec2test.NewServer()
+	c.Assert(err, IsNil)
+	defer server.Quit()
+	h := instanceAgentsConfigHealer{}
+	region := aws.SAEast
+	region.EC2Endpoint = server.URL()
+	h.e = ec2.New(aws.Auth{AccessKey: "some", SecretKey: "thing"}, region)
+	resp, err := h.ec2().RunInstances(&ec2.RunInstances{MaxCount: 1})
+	c.Assert(err, IsNil)
+	instance := resp.Instances[0]
+	output := `machines:
+  0:
+    agent-state: running
+    dns-name: localhost
+    instance-id: %s
+    instance-state: running`
+	output = fmt.Sprintf(output, instance.InstanceId)
+	jujuTmpdir, err := commandmocker.Add("juju", output)
+	c.Assert(err, IsNil)
+	defer commandmocker.Remove(jujuTmpdir)
+	dns, err := h.bootstrapPrivateDns()
+	c.Assert(err, IsNil)
+	c.Assert(dns, Equals, instance.PrivateDNSName)
+	jujuOutput := []string{
+		"status", // for juju status that gets the output
+	}
+	c.Assert(commandmocker.Ran(jujuTmpdir), Equals, true)
+	c.Assert(commandmocker.Parameters(jujuTmpdir), DeepEquals, jujuOutput)
+}
+
 func (s *S) TestGetPrivateDns(c *C) {
 	server, err := ec2test.NewServer()
 	c.Assert(err, IsNil)

@@ -65,6 +65,11 @@ func (h *instanceAgentsConfigHealer) getPrivateDns(instanceId string) (string, e
 	return dns, nil
 }
 
+func (h *instanceAgentsConfigHealer) bootstrapPrivateDns() (string, error) {
+	machine := getBootstrapMachine()
+	return h.getPrivateDns(machine.InstanceId)
+}
+
 func (instanceAgentsConfigHealer) Heal() error {
 	return nil
 }
