@@ -49,3 +49,11 @@ func (s *S) TestFactoryConfigUnknown(c *C) {
 	c.Assert(err, NotNil)
 	c.Assert(err.Error(), Equals, `Queue "unknown" is not known.`)
 }
+
+func (s *S) TestRegister(c *C) {
+	config.Set("queue", "unregistered")
+	defer config.Unset("queue")
+	Register("unregistered", beanstalkFactory{})
+	_, err := Factory()
+	c.Assert(err, IsNil)
+}

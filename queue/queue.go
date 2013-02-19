@@ -73,6 +73,12 @@ var factories = map[string]QFactory{
 	"beanstalk": beanstalkFactory{},
 }
 
+// Register registers a new queue factory. This is how one would add a new
+// queue to tsuru.
+func Register(name string, factory QFactory) {
+	factories[name] = factory
+}
+
 // Factory returns an instance of the QFactory used in tsuru. It reads tsuru
 // configuration to find the currently used queue system (for example,
 // beanstalk) and returns an instance of the configured system, if it's
