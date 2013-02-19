@@ -289,6 +289,38 @@ func (s *BeanstalkSuite) TestBeanstalkQSatisfiesQueue(c *C) {
 	var _ Queue = &beanstalkQ{}
 }
 
+func (s *BeanstalkSuite) TestBeanstalkFactoryGet(c *C) {
+	var factory beanstalkFactory
+	q, err := factory.Get("someq")
+	c.Assert(err, IsNil)
+	bq, ok := q.(*beanstalkQ)
+	c.Assert(ok, Equals, true)
+	c.Assert(bq.name, Equals, "someq")
+}
+
+func (s *BeanstalkSuite) TestBeanstalkFactoryHandler(c *C) {
+	msg := Message{
+		Action: "create-app",
+		Args:   []string{"something"},
+		id:     837826742,
+	}
+	q := beanstalkQ{name: "default"}
+	q.Put(&msg, 0)
+	defer q.Delete(&msg)
+	var called bool
+	var dumb = func(m *Message) {
+		called = true
+	}
+	var factory beanstalkFactory
+	handler, err := factory.Handler(dumb, "default")
+	c.Assert(err, IsNil)
+	exec, ok := handler.(*executor)
+	c.Assert(ok, Equals, true)
+	exec.inner()
+	time.Sleep(1e3)
+	c.Assert(called, Equals, true)
+}
+
 func cleanQ(c *C) {
 	cn, err := connection()
 	c.Assert(err, IsNil)

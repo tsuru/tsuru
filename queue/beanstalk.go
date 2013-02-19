@@ -10,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/globocom/config"
+	"github.com/globocom/tsuru/log"
 	"github.com/kr/beanstalk"
 	"io"
 	"regexp"
@@ -77,6 +78,25 @@ func (b *beanstalkQ) Release(m *Message, delay time.Duration) error {
 		return errors.New("Message not found.")
 	}
 	return err
+}
+
+type beanstalkFactory struct{}
+
+func (b beanstalkFactory) Get(name string) (Queue, error) {
+	return &beanstalkQ{name: name}, nil
+}
+
+func (b beanstalkFactory) Handler(f func(*Message), name ...string) (Handler, error) {
+	return &executor{
+		inner: func() {
+			if message, err := get(5e9, name...); err == nil {
+				log.Printf("Dispatching %q message to handler function.", message.Action)
+				go f(message)
+			} else {
+				log.Printf("Failed to get message from the queue: %s. Trying again...", err)
+			}
+		},
+	}, nil
 }
 
 func connection() (*beanstalk.Conn, error) {
