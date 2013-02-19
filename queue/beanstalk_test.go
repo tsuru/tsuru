@@ -321,6 +321,27 @@ func (s *BeanstalkSuite) TestBeanstalkFactoryHandler(c *C) {
 	c.Assert(called, Equals, true)
 }
 
+func (s *BeanstalkSuite) TestBeanstalkFactoryHandlerDeleteMessage(c *C) {
+	var factory beanstalkFactory
+	msg := Message{
+		Action: "create-app",
+		Args:   []string{"something"},
+		id:     837826742,
+	}
+	q := beanstalkQ{name: "default"}
+	q.Put(&msg, 0)
+	defer q.Delete(&msg) // sanity
+	handler, err := factory.Handler(func(m *Message) { m.Delete() }, "default")
+	c.Assert(err, IsNil)
+	handler.(*executor).inner()
+	time.Sleep(1e3)
+	q.Release(&msg, 0) // sanity
+	cn, err := connection()
+	c.Assert(err, IsNil)
+	_, _, err = cn.Reserve(1e6)
+	c.Assert(err, NotNil)
+}
+
 func cleanQ(c *C) {
 	cn, err := connection()
 	c.Assert(err, IsNil)

@@ -91,7 +91,12 @@ func (b beanstalkFactory) Handler(f func(*Message), name ...string) (Handler, er
 		inner: func() {
 			if message, err := get(5e9, name...); err == nil {
 				log.Printf("Dispatching %q message to handler function.", message.Action)
-				go f(message)
+				go func(m *Message) {
+					f(m)
+					if m.delete {
+						(&beanstalkQ{}).Delete(m)
+					}
+				}(message)
 			} else {
 				log.Printf("Failed to get message from the queue: %s. Trying again...", err)
 			}
