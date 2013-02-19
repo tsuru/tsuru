@@ -46,7 +46,6 @@ func ensureAppIsStarted(msg *queue.Message) (App, error) {
 			msg.Delete()
 		} else {
 			format += " all units must be started."
-			msg.Release(5e9)
 		}
 		return a, fmt.Errorf(format, msg.Action, a.Name)
 	}
@@ -110,13 +109,11 @@ func handle(msg *queue.Message) {
 		app, err := ensureAppIsStarted(msg)
 		if err != nil {
 			log.Print(err)
-			msg.Release(2e9)
 			return
 		}
 		err = app.Restart(ioutil.Discard)
 		if err != nil {
 			log.Printf("Error handling %q. App failed to start:\n%s.", msg.Action, err)
-			msg.Release(1e9)
 			return
 		}
 		msg.Delete()
@@ -124,7 +121,6 @@ func handle(msg *queue.Message) {
 		err := bindUnit(msg)
 		if err != nil {
 			log.Print(err)
-			msg.Release(1e9)
 			return
 		}
 		msg.Delete()
@@ -182,15 +178,53 @@ func getUnits(a *App, names []string) unitList {
 	return unitList(units)
 }
 
-// handler is the queue.Handler instance used by ths package to handle app
-// queues.
-var handler = &queue.Handler{F: handle, Queues: []string{queueName, QueueName}}
+var (
+	qfactory queue.QFactory
+	_queue   queue.Q
+	_handler queue.Handler
+)
+
+func handler() queue.Handler {
+	if _handler != nil {
+		return _handler
+	}
+	var err error
+	if qfactory == nil {
+		qfactory, err = queue.Factory()
+		if err != nil {
+			log.Fatalf("Failed to get the queue instance: %s", err)
+		}
+	}
+	_handler, err = qfactory.Handler(handle, queueName, QueueName)
+	if err != nil {
+		log.Fatalf("Failed to create the queue handler: %s", err)
+	}
+	return _handler
+}
+
+func aqueue() queue.Q {
+	if _queue != nil {
+		return _queue
+	}
+	var err error
+	if qfactory == nil {
+		qfactory, err = queue.Factory()
+		if err != nil {
+			log.Fatalf("Failed to get the queue instance: %s", err)
+		}
+	}
+	_queue, err = qfactory.Get(queueName)
+	if err != nil {
+		log.Fatalf("Failed to get the queue: %s", err)
+	}
+	return _queue
+}
 
 // enqueues the given messages and start the handler.
 func enqueue(msgs ...queue.Message) {
 	for _, msg := range msgs {
 		copy := msg
-		copy.Put(queueName, 0)
+		aqueue().Put(&copy, 0)
 	}
-	handler.Start()
+	handler().Start()
 }
