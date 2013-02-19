@@ -17,24 +17,44 @@ import (
 	"bytes"
 	"encoding/gob"
 	"errors"
-	"fmt"
-	"github.com/globocom/config"
 	"github.com/kr/beanstalk"
-	"io"
-	"regexp"
-	"sync"
 	"time"
 )
 
-// Default TTR for beanstalkd messages.
-const ttr = 180e9
+// Queue represents a queue. A queue is a type that supports the set of
+// operations described by this interface.
+type Queue interface {
+	// Get retrieves a message from the queue.
+	Get(timeout time.Duration) (*Message, error)
 
-var (
-	conn           *beanstalk.Conn
-	mut            sync.Mutex // for conn access
-	timeoutRegexp  = regexp.MustCompile(`(TIMED_OUT|timeout)$`)
-	notFoundRegexp = regexp.MustCompile(`not found$`)
-)
+	// Put sends a message to the queue after delay time. To send the
+	// message immediately, just set delay to 0.
+	Put(m *Message, delay time.Duration) error
+
+	// Delete deletes a message from the queue.
+	Delete(m *Message) error
+
+	// Release puts a message back in the queue after a delay. To release
+	// the message immediately, just set delay to 0.
+	//
+	// This method should be used when handling a message that you cannot
+	// handle, maximizing throughput.
+	Release(m *Message, delay time.Duration) error
+}
+
+// QueueFactory manages queues. It's able to create new queue and handlers
+// instances.
+type QueueFactory interface {
+	Get(name string) (Queue, error)
+}
+
+// Factory returns an instance of the QueueFactory used in tsuru. It reads
+// tsuru configuration to find the currently used queue system (for example,
+// beanstalk) and returns an instance of the configured system, if it's
+// registered. Otherwise it will return an error.
+func Factory() (QueueFactory, error) {
+	return nil, nil
+}
 
 // Message represents the message stored in the queue.
 //
@@ -103,57 +123,7 @@ func (msg *Message) Put(queueName string, delay time.Duration) error {
 	return err
 }
 
-func get(timeout time.Duration, queues ...string) (*Message, error) {
-	conn, err := connection()
-	if err != nil {
-		return nil, err
-	}
-	ts := beanstalk.NewTubeSet(conn, queues...)
-	id, body, err := ts.Reserve(timeout)
-	if err != nil {
-		if timeoutRegexp.MatchString(err.Error()) {
-			return nil, fmt.Errorf("Timed out waiting for message after %s.", timeout)
-		}
-		return nil, err
-	}
-	r := bytes.NewReader(body)
-	var msg Message
-	if err = gob.NewDecoder(r).Decode(&msg); err != nil && err != io.EOF {
-		conn.Delete(id)
-		return nil, fmt.Errorf("Invalid message: %q", body)
-	}
-	msg.id = id
-	return &msg, nil
-}
-
 // Get retrieves a message from the queue.
 func Get(queueName string, timeout time.Duration) (*Message, error) {
 	return get(timeout, queueName)
-}
-
-func connection() (*beanstalk.Conn, error) {
-	var (
-		addr string
-		err  error
-	)
-	mut.Lock()
-	if conn == nil {
-		mut.Unlock()
-		addr, err = config.GetString("queue-server")
-		if err != nil {
-			addr = "localhost:11300"
-		}
-		mut.Lock()
-		if conn, err = beanstalk.Dial("tcp", addr); err != nil {
-			mut.Unlock()
-			return nil, err
-		}
-	}
-	if _, err = conn.ListTubes(); err != nil {
-		mut.Unlock()
-		conn = nil
-		return connection()
-	}
-	mut.Unlock()
-	return conn, err
 }
