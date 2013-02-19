@@ -19,6 +19,27 @@ func (s *S) TestFakeQPutAndGet(c *C) {
 	c.Assert(m.Action, Equals, msg.Action)
 }
 
+func (s *S) TestFakeQPutAndGetMultipleMessages(c *C) {
+	q := FakeQ{}
+	messages := []queue.Message{
+		{Action: "do-something"},
+		{Action: "do-otherthing"},
+		{Action: "do-all-things"},
+		{Action: "do-anything"},
+	}
+	for _, m := range messages {
+		copy := m
+		q.Put(&copy, 0)
+	}
+	got := make([]queue.Message, len(messages))
+	for i := range got {
+		msg, err := q.Get(1e6)
+		c.Check(err, IsNil)
+		got[i] = *msg
+	}
+	c.Assert(got, DeepEquals, messages)
+}
+
 func (s *S) TestFakeQGetTimeout(c *C) {
 	q := FakeQ{}
 	m, err := q.Get(1e6)
