@@ -25,7 +25,7 @@ func (s *S) TestInstanceAgentsConfigHealerShouldBeRegistered(c *C) {
 	c.Assert(h, FitsTypeOf, instanceAgentsConfigHealer{})
 }
 
-func (s *ELBSuite) TestInstanceAgenstConfigHealerGetEC2(c *C) {
+func (s *S) TestInstanceAgenstConfigHealerGetEC2(c *C) {
 	h := instanceAgentsConfigHealer{}
 	ec2 := h.ec2()
 	c.Assert(ec2.EC2Endpoint, Equals, "")
