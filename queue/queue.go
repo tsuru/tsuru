@@ -42,17 +42,21 @@ type Queue interface {
 	Release(m *Message, delay time.Duration) error
 }
 
-// QueueFactory manages queues. It's able to create new queue and handlers
+// QFactory manages queues. It's able to create new queue and handler
 // instances.
-type QueueFactory interface {
+type QFactory interface {
+	// Get returns a queue instance, identified by the given name.
 	Get(name string) (Queue, error)
+
+	// Handler returns a handler for the given queue names.
+	Handler(f func(Queue, *Message), name ...string) (*Handler, error)
 }
 
-// Factory returns an instance of the QueueFactory used in tsuru. It reads
-// tsuru configuration to find the currently used queue system (for example,
+// Factory returns an instance of the QFactory used in tsuru. It reads tsuru
+// configuration to find the currently used queue system (for example,
 // beanstalk) and returns an instance of the configured system, if it's
 // registered. Otherwise it will return an error.
-func Factory() (QueueFactory, error) {
+func Factory() (QFactory, error) {
 	return nil, nil
 }
 
