@@ -5,60 +5,33 @@
 package queue
 
 import (
-	"github.com/globocom/config"
 	. "launchpad.net/gocheck"
-	"strconv"
-	"sync"
+	"sync/atomic"
 	"time"
 )
 
-type HandlerSuite struct {
-	h *Handler
-}
+type HandlerSuite struct{}
 
 var _ = Suite(&HandlerSuite{})
 
-var msgs MessageList
-
-func dumbHandle(msg *Message) {
-	msgs.Add(*msg)
-	msg.Delete()
+func dumb() {
+	time.Sleep(1e3)
 }
 
-func (s *HandlerSuite) SetUpSuite(c *C) {
-	s.h = &Handler{F: dumbHandle, Queues: []string{"default", "not-default"}}
-}
-
-func (s *HandlerSuite) TestHandleMessages(c *C) {
-	config.Set("queue-server", "127.0.0.1:11300")
-	s.h.Start()
-	c.Check(r.handlers, HasLen, 1)
-	msg := Message{Action: "do-something", Args: []string{"this"}}
-	err := msg.Put("default", 0)
-	c.Check(err, IsNil)
-	msg.Args = []string{"that"}
-	err = msg.Put("not-default", 0)
-	c.Assert(err, IsNil)
-	time.Sleep(1e9)
-	s.h.Stop()
-	c.Check(r.handlers, HasLen, 0)
-	expected := []Message{
-		{Action: "do-something", Args: []string{"this"}},
-		{Action: "do-something", Args: []string{"that"}},
-	}
-	ms := msgs.Get()
-	ms[0].id = 0
-	ms[1].id = 0
-	c.Assert(ms, DeepEquals, expected)
-	s.h.Wait()
+func (s *HandlerSuite) TestStart(c *C) {
+	var ct counter
+	h1 := Handler{inner: func() { ct.increment() }}
+	h1.Start()
+	c.Assert(h1.state, Equals, running)
+	h1.Stop()
+	h1.Wait()
+	c.Assert(ct.value(), Not(Equals), 0)
 }
 
 func (s *HandlerSuite) TestPreempt(c *C) {
-	config.Set("queue-server", "127.0.0.1:11300")
-	var dumb = func(m *Message) {}
-	h1 := Handler{F: dumb, Queues: []string{"default"}}
-	h2 := Handler{F: dumb, Queues: []string{"default"}}
-	h3 := Handler{F: dumb, Queues: []string{"default"}}
+	h1 := Handler{inner: dumb}
+	h2 := Handler{inner: dumb}
+	h3 := Handler{inner: dumb}
 	h1.Start()
 	h2.Start()
 	h3.Start()
@@ -68,67 +41,26 @@ func (s *HandlerSuite) TestPreempt(c *C) {
 	c.Assert(h3.state, Equals, stopped)
 }
 
-func (s *HandlerSuite) TestPreemptWithMessagesInTheQueue(c *C) {
-	config.Set("queue-server", "127.0.0.1:11300")
-	for i := 0; i < 100; i++ {
-		msg := Message{
-			Action: "save-something",
-			Args:   []string{strconv.Itoa(i)},
-		}
-		msg.Put("default", 0)
-
-	}
-	var sleeper = func(m *Message) {
-		m.Delete()
-		time.Sleep(1e6)
-	}
-	h1 := Handler{F: sleeper, Queues: []string{"default"}}
-	h1.Start()
-	Preempt()
-	c.Assert(h1.state, Equals, stopped)
-	cleanQ(c)
-}
-
 func (s *HandlerSuite) TestStopNotRunningHandler(c *C) {
-	h := Handler{F: nil, Queues: []string{"default"}}
+	h := Handler{inner: dumb}
 	err := h.Stop()
 	c.Assert(err, NotNil)
 	c.Assert(err.Error(), Equals, "Not running.")
 }
 
-func (s *HandlerSuite) TestDryRun(c *C) {
-	h := Handler{F: nil, Queues: []string{"default"}}
-	err := h.DryRun()
-	c.Assert(err, IsNil)
-	c.Assert(h.state, Equals, running)
-	h.Stop()
-	h.Wait()
-	c.Assert(h.state, Equals, stopped)
+type counter struct {
+	v int32
 }
 
-func (s *HandlerSuite) TestDryRunRunningHandler(c *C) {
-	h := Handler{F: func(m *Message) { m.Delete() }, Queues: []string{"default"}}
-	err := h.DryRun()
-	c.Assert(err, IsNil)
-	defer h.Stop()
-	err = h.DryRun()
-	c.Assert(err, NotNil)
-	c.Assert(err.Error(), Equals, "Already running.")
+func (c *counter) increment() {
+	old := atomic.LoadInt32(&c.v)
+	swapped := atomic.CompareAndSwapInt32(&c.v, old, old+1)
+	for !swapped {
+		old = atomic.LoadInt32(&c.v)
+		swapped = atomic.CompareAndSwapInt32(&c.v, old, old+1)
+	}
 }
 
-type MessageList struct {
-	sync.Mutex
-	msgs []Message
-}
-
-func (l *MessageList) Add(m Message) {
-	l.Lock()
-	l.msgs = append(l.msgs, m)
-	l.Unlock()
-}
-
-func (l *MessageList) Get() []Message {
-	l.Lock()
-	defer l.Unlock()
-	return l.msgs
+func (c *counter) value() int32 {
+	return atomic.LoadInt32(&c.v)
 }

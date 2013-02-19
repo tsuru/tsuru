@@ -8,7 +8,6 @@ import (
 	"crypto/rand"
 	"errors"
 	"fmt"
-	"github.com/globocom/tsuru/log"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -26,12 +25,7 @@ const (
 // invokes F, giving the message as parameter. F is invoked in its own
 // goroutine, so the handler can handle other messages as they arrive.
 type Handler struct {
-	// The function that will be called for each received message.
-	F func(*Message)
-
-	// Name of the queues that this handler will listen to.
-	Queues []string
-
+	inner func()
 	state int32
 	id    string
 }
@@ -40,28 +34,16 @@ type Handler struct {
 func (h *Handler) Start() {
 	r.add(h)
 	if atomic.CompareAndSwapInt32(&h.state, stopped, running) {
-		go h.loop(func() {
-			if message, err := get(5e9, h.Queues...); err == nil {
-				log.Printf("Dispatching %q message to handler function.", message.Action)
-				go h.F(message)
-			} else {
-				log.Printf("Failed to get message from the queue: %s. Trying again...", err)
-			}
-		})
+		// go h.loop(func() {
+		// 	if message, err := get(5e9, h.Queues...); err == nil {
+		// 		log.Printf("Dispatching %q message to handler function.", message.Action)
+		// 		go h.F(message)
+		// 	} else {
+		// 		log.Printf("Failed to get message from the queue: %s. Trying again...", err)
+		// 	}
+		// })
+		go h.loop()
 	}
-}
-
-// DryRun changes the state of the handler, but does not start it.
-//
-// It's intended for using in tests. It returns an error if the handler is not
-// stopped.
-func (h *Handler) DryRun() error {
-	if !atomic.CompareAndSwapInt32(&h.state, stopped, running) {
-		return errors.New("Already running.")
-	}
-	r.add(h)
-	go h.loop(func() { time.Sleep(1e3) })
-	return nil
 }
 
 // Stop sends a signal to stop the handler, it won't stop the handler
@@ -85,9 +67,9 @@ func (h *Handler) Wait() {
 }
 
 // loop will execute "inner" while the handler is in "running" state.
-func (h *Handler) loop(inner func()) {
+func (h *Handler) loop() {
 	for atomic.LoadInt32(&h.state) == running {
-		inner()
+		h.inner()
 	}
 	atomic.StoreInt32(&h.state, stopped)
 }
