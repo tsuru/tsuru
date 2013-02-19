@@ -13,13 +13,17 @@ import (
 func CleanQueues(names ...string) {
 	var wg sync.WaitGroup
 	wg.Add(len(names))
+	factory, err := queue.Factory()
+	if err != nil {
+		panic(err)
+	}
 	for _, name := range names {
 		go func(qName string) {
-			var err error
 			var msg *queue.Message
+			q, err := factory.Get(qName)
 			for err == nil {
-				if msg, err = queue.Get(qName, 1e6); err == nil {
-					err = msg.Delete()
+				if msg, err = q.Get(1e6); err == nil {
+					err = q.Delete(msg)
 				}
 			}
 			wg.Done()
