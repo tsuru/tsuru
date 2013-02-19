@@ -34,14 +34,6 @@ type Handler struct {
 func (h *Handler) Start() {
 	r.add(h)
 	if atomic.CompareAndSwapInt32(&h.state, stopped, running) {
-		// go h.loop(func() {
-		// 	if message, err := get(5e9, h.Queues...); err == nil {
-		// 		log.Printf("Dispatching %q message to handler function.", message.Action)
-		// 		go h.F(message)
-		// 	} else {
-		// 		log.Printf("Failed to get message from the queue: %s. Trying again...", err)
-		// 	}
-		// })
 		go h.loop()
 	}
 }
@@ -66,7 +58,7 @@ func (h *Handler) Wait() {
 	}
 }
 
-// loop will execute "inner" while the handler is in "running" state.
+// loop will execute h.inner while the handler is in running state.
 func (h *Handler) loop() {
 	for atomic.LoadInt32(&h.state) == running {
 		h.inner()
