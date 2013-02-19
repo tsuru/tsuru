@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-// Package queue implements all the queue handling with tsuru. It abstract
+// Package queue implements all the queue handling with tsuru. It abstracts
 // which queue server is being used, how the message gets marshaled in to the
 // wire and how it's read.
 //
