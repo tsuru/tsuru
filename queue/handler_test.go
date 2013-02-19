@@ -20,7 +20,7 @@ func dumb() {
 
 func (s *HandlerSuite) TestStart(c *C) {
 	var ct counter
-	h1 := Handler{inner: func() { ct.increment() }}
+	h1 := executor{inner: func() { ct.increment() }}
 	h1.Start()
 	c.Assert(h1.state, Equals, running)
 	h1.Stop()
@@ -29,9 +29,9 @@ func (s *HandlerSuite) TestStart(c *C) {
 }
 
 func (s *HandlerSuite) TestPreempt(c *C) {
-	h1 := Handler{inner: dumb}
-	h2 := Handler{inner: dumb}
-	h3 := Handler{inner: dumb}
+	h1 := executor{inner: dumb}
+	h2 := executor{inner: dumb}
+	h3 := executor{inner: dumb}
 	h1.Start()
 	h2.Start()
 	h3.Start()
@@ -42,7 +42,7 @@ func (s *HandlerSuite) TestPreempt(c *C) {
 }
 
 func (s *HandlerSuite) TestStopNotRunningHandler(c *C) {
-	h := Handler{inner: dumb}
+	h := executor{inner: dumb}
 	err := h.Stop()
 	c.Assert(err, NotNil)
 	c.Assert(err.Error(), Equals, "Not running.")

@@ -19,80 +19,87 @@ const (
 	stopping
 )
 
-// Handler is a thread safe generic handler for queue messages.
-//
-// When started, whenever a new message arrives in the listening queue, handler
-// invokes F, giving the message as parameter. F is invoked in its own
-// goroutine, so the handler can handle other messages as they arrive.
-type Handler struct {
+// Handler represents a runnable routine. It can be started and stopped.
+type Handler interface {
+	// Start starts the handler. It must be safe to call this function
+	// multiple times, even if the handler is already running.
+	Start()
+
+	// Stop sends a signal to stop the handler, it won't stop the handler
+	// immediately. After calling Stop, one should call Wait for blocking
+	// until the handler is stopped.
+	//
+	// This method will return an error if the handler is not running.
+	Stop() error
+
+	// Wait blocks until the handler actually stops.
+	Wait()
+}
+
+// executor will execute the inner function until Stop is called. It implements
+// the Handler interface.
+type executor struct {
 	inner func()
 	state int32
 	id    string
 }
 
-// Start starts the handler. It's safe to call this function multiple times.
-func (h *Handler) Start() {
-	r.add(h)
-	if atomic.CompareAndSwapInt32(&h.state, stopped, running) {
-		go h.loop()
+func (e *executor) Start() {
+	r.add(e)
+	if atomic.CompareAndSwapInt32(&e.state, stopped, running) {
+		go e.loop()
 	}
 }
 
-// Stop sends a signal to stop the handler, it won't stop the handler
-// immediately. After calling Stop, one should call Wait for blocking until the
-// handler is stopped.
-//
-// This method will return an error if the handler is not running.
-func (h *Handler) Stop() error {
-	if !atomic.CompareAndSwapInt32(&h.state, running, stopping) {
+func (e *executor) Stop() error {
+	if !atomic.CompareAndSwapInt32(&e.state, running, stopping) {
 		return errors.New("Not running.")
 	}
-	r.remove(h)
+	r.remove(e)
 	return nil
 }
 
 // Wait blocks until the handler is stopped.
-func (h *Handler) Wait() {
-	for atomic.LoadInt32(&h.state) != stopped {
+func (e *executor) Wait() {
+	for atomic.LoadInt32(&e.state) != stopped {
 		time.Sleep(1e3)
 	}
 }
 
-// loop will execute h.inner while the handler is in running state.
-func (h *Handler) loop() {
-	for atomic.LoadInt32(&h.state) == running {
-		h.inner()
+func (e *executor) loop() {
+	for atomic.LoadInt32(&e.state) == running {
+		e.inner()
 	}
-	atomic.StoreInt32(&h.state, stopped)
+	atomic.StoreInt32(&e.state, stopped)
 }
 
 // registry stores references to all running handlers.
 type registry struct {
 	mut      sync.Mutex
-	handlers map[string]*Handler
+	handlers map[string]*executor
 }
 
 func newRegistry() *registry {
 	return &registry{
-		handlers: make(map[string]*Handler),
+		handlers: make(map[string]*executor),
 	}
 }
 
-func (r *registry) add(h *Handler) {
-	if h.id == "" {
+func (r *registry) add(e *executor) {
+	if e.id == "" {
 		var buf [16]byte
 		rand.Read(buf[:])
-		h.id = fmt.Sprintf("%x", buf)
+		e.id = fmt.Sprintf("%x", buf)
 	}
 	r.mut.Lock()
-	r.handlers[h.id] = h
+	r.handlers[e.id] = e
 	r.mut.Unlock()
 }
 
-func (r *registry) remove(h *Handler) {
-	if h.id != "" {
+func (r *registry) remove(e *executor) {
+	if e.id != "" {
 		r.mut.Lock()
-		delete(r.handlers, h.id)
+		delete(r.handlers, e.id)
 		r.mut.Unlock()
 	}
 }
@@ -103,19 +110,19 @@ var r *registry = newRegistry()
 func Preempt() {
 	var wg sync.WaitGroup
 	r.mut.Lock()
-	preemptable := make(map[string]*Handler, len(r.handlers))
+	preemptable := make(map[string]*executor, len(r.handlers))
 	for k, v := range r.handlers {
 		preemptable[k] = v
 	}
 	r.mut.Unlock()
 	wg.Add(len(preemptable))
-	for _, h := range preemptable {
-		go func(h *Handler) {
+	for _, e := range preemptable {
+		go func(e *executor) {
 			defer wg.Done()
-			if err := h.Stop(); err == nil {
-				h.Wait()
+			if err := e.Stop(); err == nil {
+				e.Wait()
 			}
-		}(h)
+		}(e)
 	}
 	wg.Wait()
 }
