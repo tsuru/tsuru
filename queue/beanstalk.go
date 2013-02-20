@@ -28,15 +28,15 @@ var (
 	notFoundRegexp = regexp.MustCompile(`not found$`)
 )
 
-type beanstalkQ struct {
+type beanstalkdQ struct {
 	name string
 }
 
-func (b *beanstalkQ) Get(timeout time.Duration) (*Message, error) {
+func (b *beanstalkdQ) Get(timeout time.Duration) (*Message, error) {
 	return get(timeout, b.name)
 }
 
-func (b *beanstalkQ) Put(m *Message, delay time.Duration) error {
+func (b *beanstalkdQ) Put(m *Message, delay time.Duration) error {
 	conn, err := connection()
 	if err != nil {
 		return err
@@ -52,7 +52,7 @@ func (b *beanstalkQ) Put(m *Message, delay time.Duration) error {
 	return err
 }
 
-func (b *beanstalkQ) Delete(m *Message) error {
+func (b *beanstalkdQ) Delete(m *Message) error {
 	if m.id == 0 {
 		return errors.New("Unknown message.")
 	}
@@ -66,7 +66,7 @@ func (b *beanstalkQ) Delete(m *Message) error {
 	return err
 }
 
-func (b *beanstalkQ) Release(m *Message, delay time.Duration) error {
+func (b *beanstalkdQ) Release(m *Message, delay time.Duration) error {
 	if m.id == 0 {
 		return errors.New("Unknown message.")
 	}
@@ -80,20 +80,20 @@ func (b *beanstalkQ) Release(m *Message, delay time.Duration) error {
 	return err
 }
 
-type beanstalkFactory struct{}
+type beanstalkdFactory struct{}
 
-func (b beanstalkFactory) Get(name string) (Q, error) {
-	return &beanstalkQ{name: name}, nil
+func (b beanstalkdFactory) Get(name string) (Q, error) {
+	return &beanstalkdQ{name: name}, nil
 }
 
-func (b beanstalkFactory) Handler(f func(*Message), name ...string) (Handler, error) {
+func (b beanstalkdFactory) Handler(f func(*Message), name ...string) (Handler, error) {
 	return &executor{
 		inner: func() {
 			if message, err := get(5e9, name...); err == nil {
 				log.Printf("Dispatching %q message to handler function.", message.Action)
 				go func(m *Message) {
 					f(m)
-					q := beanstalkQ{}
+					q := beanstalkdQ{}
 					if m.delete {
 						q.Delete(m)
 					} else {

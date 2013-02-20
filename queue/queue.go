@@ -70,7 +70,7 @@ type QFactory interface {
 }
 
 var factories = map[string]QFactory{
-	"beanstalk": beanstalkFactory{},
+	"beanstalkd": beanstalkdFactory{},
 }
 
 // Register registers a new queue factory. This is how one would add a new
@@ -81,12 +81,12 @@ func Register(name string, factory QFactory) {
 
 // Factory returns an instance of the QFactory used in tsuru. It reads tsuru
 // configuration to find the currently used queue system (for example,
-// beanstalk) and returns an instance of the configured system, if it's
+// beanstalkd) and returns an instance of the configured system, if it's
 // registered. Otherwise it will return an error.
 func Factory() (QFactory, error) {
 	name, err := config.GetString("queue")
 	if err != nil {
-		name = "beanstalk"
+		name = "beanstalkd"
 	}
 	if f, ok := factories[name]; ok {
 		return f, nil
