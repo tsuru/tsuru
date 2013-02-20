@@ -26,18 +26,18 @@ func (s *S) TestMessageDelete(c *C) {
 }
 
 func (s *S) TestFactory(c *C) {
-	config.Set("queue", "beanstalk")
+	config.Set("queue", "beanstalkd")
 	defer config.Unset("queue")
 	f, err := Factory()
 	c.Assert(err, IsNil)
-	_, ok := f.(beanstalkFactory)
+	_, ok := f.(beanstalkdFactory)
 	c.Assert(ok, Equals, true)
 }
 
 func (s *S) TestFactoryConfigUndefined(c *C) {
 	f, err := Factory()
 	c.Assert(err, IsNil)
-	_, ok := f.(beanstalkFactory)
+	_, ok := f.(beanstalkdFactory)
 	c.Assert(ok, Equals, true)
 }
 
@@ -53,7 +53,7 @@ func (s *S) TestFactoryConfigUnknown(c *C) {
 func (s *S) TestRegister(c *C) {
 	config.Set("queue", "unregistered")
 	defer config.Unset("queue")
-	Register("unregistered", beanstalkFactory{})
+	Register("unregistered", beanstalkdFactory{})
 	_, err := Factory()
 	c.Assert(err, IsNil)
 }

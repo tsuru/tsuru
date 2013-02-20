@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/globocom/go-gandalfclient"
+	"github.com/globocom/tsuru/action"
 	"github.com/globocom/tsuru/auth"
 	"github.com/globocom/tsuru/db"
 	"github.com/globocom/tsuru/errors"
@@ -322,25 +323,31 @@ func addKeyToUser(content string, u *auth.User) error {
 	if u.HasKey(key) {
 		return &errors.Http{Code: http.StatusConflict, Message: "User already has this key"}
 	}
-	if err := addKeyInGandalf(&key, u); err != nil {
+	actions := []*action.Action{
+		&addKeyInGandalfAction,
+		&addKeyInDatabaseAction,
+	}
+	pipeline := action.NewPipeline(actions...)
+	err := pipeline.Execute(&key, u)
+	if err != nil {
 		return err
 	}
-	return addKeyInDatabase(u)
+	return nil
 }
 
-func addKeyInDatabase(u *auth.User) error {
+func addKeyInDatabase(key *auth.Key, u *auth.User) error {
 	conn, err := db.Conn()
 	if err != nil {
 		return err
 	}
+	u.AddKey(*key)
 	return conn.Users().Update(bson.M{"email": u.Email}, u)
 }
 
 func addKeyInGandalf(key *auth.Key, u *auth.User) error {
 	key.Name = fmt.Sprintf("%s-%d", u.Email, len(u.Keys)+1)
 	gUrl := repository.GitServerUri()
-	u.AddKey(*key)
-	if err := (&gandalf.Client{Endpoint: gUrl}).AddKey(u.Email, keyToMap(u.Keys)); err != nil {
+	if err := (&gandalf.Client{Endpoint: gUrl}).AddKey(u.Email, keyToMap([]auth.Key{*key})); err != nil {
 		return fmt.Errorf("Failed to add key to git server: %s", err)
 	}
 	return nil

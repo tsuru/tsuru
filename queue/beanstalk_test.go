@@ -9,6 +9,7 @@ import (
 	"encoding/gob"
 	"github.com/globocom/config"
 	. "launchpad.net/gocheck"
+	"sync/atomic"
 	"time"
 )
 
@@ -80,7 +81,7 @@ func (s *BeanstalkSuite) TestPut(c *C) {
 		Action: "regenerate-apprc",
 		Args:   []string{"myapp"},
 	}
-	q := beanstalkQ{name: "default"}
+	q := beanstalkdQ{name: "default"}
 	err := q.Put(&msg, 0)
 	c.Assert(err, IsNil)
 	c.Assert(msg.id, Not(Equals), 0)
@@ -101,7 +102,7 @@ func (s *BeanstalkSuite) TestPutWithDelay(c *C) {
 		Action: "do-something",
 		Args:   []string{"nothing"},
 	}
-	q := beanstalkQ{name: "default"}
+	q := beanstalkdQ{name: "default"}
 	err := q.Put(&msg, 1e9)
 	c.Assert(err, IsNil)
 	defer conn.Delete(msg.id)
@@ -118,11 +119,11 @@ func (s *BeanstalkSuite) TestPutAndGetFromSpecificQueue(c *C) {
 		Action: "do-something",
 		Args:   []string{"everything"},
 	}
-	q := beanstalkQ{name: "here"}
+	q := beanstalkdQ{name: "here"}
 	err := q.Put(&msg, 0)
 	c.Assert(err, IsNil)
 	defer q.Delete(&msg)
-	dQ := beanstalkQ{name: "default"}
+	dQ := beanstalkdQ{name: "default"}
 	_, err = dQ.Get(1e6)
 	c.Assert(err, NotNil)
 	got, err := q.Get(1e6)
@@ -136,7 +137,7 @@ func (s *BeanstalkSuite) TestGet(c *C) {
 		Action: "regenerate-apprc",
 		Args:   []string{"myapprc"},
 	}
-	q := beanstalkQ{name: "default"}
+	q := beanstalkdQ{name: "default"}
 	err := q.Put(&msg, 0)
 	c.Assert(err, IsNil)
 	defer conn.Delete(msg.id)
@@ -146,7 +147,7 @@ func (s *BeanstalkSuite) TestGet(c *C) {
 }
 
 func (s *BeanstalkSuite) TestGetFromEmptyQueue(c *C) {
-	q := beanstalkQ{name: "default"}
+	q := beanstalkdQ{name: "default"}
 	msg, err := q.Get(1e6)
 	c.Assert(msg, IsNil)
 	c.Assert(err, NotNil)
@@ -158,7 +159,7 @@ func (s *BeanstalkSuite) TestGetInvalidMessage(c *C) {
 	c.Assert(err, IsNil)
 	id, err := conn.Put([]byte("hello world"), 1, 0, 10e9)
 	defer conn.Delete(id) // sanity
-	q := beanstalkQ{name: "default"}
+	q := beanstalkdQ{name: "default"}
 	msg, err := q.Get(1e6)
 	c.Assert(msg, IsNil)
 	c.Assert(err, NotNil)
@@ -172,7 +173,7 @@ func (s *BeanstalkSuite) TestRelease(c *C) {
 	conn, err := connection()
 	c.Assert(err, IsNil)
 	msg := Message{Action: "do-something"}
-	q := beanstalkQ{name: "default"}
+	q := beanstalkdQ{name: "default"}
 	err = q.Put(&msg, 0)
 	c.Assert(err, IsNil)
 	defer q.Delete(&msg)
@@ -189,7 +190,7 @@ func (s *BeanstalkSuite) TestReleaseWithDelay(c *C) {
 	conn, err := connection()
 	c.Assert(err, IsNil)
 	msg := Message{Action: "do-something"}
-	q := beanstalkQ{name: "default"}
+	q := beanstalkdQ{name: "default"}
 	err = q.Put(&msg, 0)
 	c.Assert(err, IsNil)
 	defer q.Delete(&msg)
@@ -207,7 +208,7 @@ func (s *BeanstalkSuite) TestReleaseWithDelay(c *C) {
 
 func (s *BeanstalkSuite) TestReleaseMessageWithoutId(c *C) {
 	msg := Message{Action: "do-something"}
-	q := beanstalkQ{name: "default"}
+	q := beanstalkdQ{name: "default"}
 	err := q.Release(&msg, 0)
 	c.Assert(err, NotNil)
 	c.Assert(err.Error(), Equals, "Unknown message.")
@@ -215,7 +216,7 @@ func (s *BeanstalkSuite) TestReleaseMessageWithoutId(c *C) {
 
 func (s *BeanstalkSuite) TestReleaseMessageNotFound(c *C) {
 	msg := Message{Action: "do-otherthing", id: 12884}
-	q := beanstalkQ{name: "default"}
+	q := beanstalkdQ{name: "default"}
 	err := q.Release(&msg, 0)
 	c.Assert(err, NotNil)
 	c.Assert(err.Error(), Equals, "Message not found.")
@@ -226,7 +227,7 @@ func (s *BeanstalkSuite) TestDelete(c *C) {
 		Action: "create-app",
 		Args:   []string{"something"},
 	}
-	q := beanstalkQ{name: "default"}
+	q := beanstalkdQ{name: "default"}
 	err := q.Put(&msg, 0)
 	c.Assert(err, IsNil)
 	defer conn.Delete(msg.id)
@@ -240,7 +241,7 @@ func (s *BeanstalkSuite) TestDeleteUnknownMessage(c *C) {
 		Args:   []string{"something"},
 		id:     837826742,
 	}
-	q := beanstalkQ{name: "default"}
+	q := beanstalkdQ{name: "default"}
 	err := q.Delete(&msg)
 	c.Assert(err, NotNil)
 	c.Assert(err.Error(), Equals, "Message not found.")
@@ -251,21 +252,21 @@ func (s *BeanstalkSuite) TestDeleteMessageWithoutId(c *C) {
 		Action: "create-app",
 		Args:   []string{"something"},
 	}
-	q := beanstalkQ{name: "default"}
+	q := beanstalkdQ{name: "default"}
 	err := q.Delete(&msg)
 	c.Assert(err, NotNil)
 	c.Assert(err.Error(), Equals, "Unknown message.")
 }
 
 func (s *BeanstalkSuite) TestBeanstalkQSatisfiesQueue(c *C) {
-	var _ Q = &beanstalkQ{}
+	var _ Q = &beanstalkdQ{}
 }
 
 func (s *BeanstalkSuite) TestBeanstalkFactoryGet(c *C) {
-	var factory beanstalkFactory
+	var factory beanstalkdFactory
 	q, err := factory.Get("someq")
 	c.Assert(err, IsNil)
-	bq, ok := q.(*beanstalkQ)
+	bq, ok := q.(*beanstalkdQ)
 	c.Assert(ok, Equals, true)
 	c.Assert(bq.name, Equals, "someq")
 }
@@ -276,31 +277,31 @@ func (s *BeanstalkSuite) TestBeanstalkFactoryHandler(c *C) {
 		Args:   []string{"something"},
 		id:     837826742,
 	}
-	q := beanstalkQ{name: "default"}
+	q := beanstalkdQ{name: "default"}
 	q.Put(&msg, 0)
 	defer q.Delete(&msg)
-	var called bool
+	var called int32
 	var dumb = func(m *Message) {
-		called = true
+		atomic.StoreInt32(&called, 1)
 	}
-	var factory beanstalkFactory
+	var factory beanstalkdFactory
 	handler, err := factory.Handler(dumb, "default")
 	c.Assert(err, IsNil)
 	exec, ok := handler.(*executor)
 	c.Assert(ok, Equals, true)
 	exec.inner()
 	time.Sleep(1e3)
-	c.Assert(called, Equals, true)
+	c.Assert(atomic.LoadInt32(&called), Equals, int32(1))
 }
 
 func (s *BeanstalkSuite) TestBeanstalkFactoryHandlerDeleteMessage(c *C) {
-	var factory beanstalkFactory
+	var factory beanstalkdFactory
 	msg := Message{
 		Action: "create-app",
 		Args:   []string{"something"},
 		id:     837826742,
 	}
-	q := beanstalkQ{name: "default"}
+	q := beanstalkdQ{name: "default"}
 	q.Put(&msg, 0)
 	defer q.Delete(&msg) // sanity
 	handler, err := factory.Handler(func(m *Message) { m.Delete() }, "default")
@@ -315,13 +316,13 @@ func (s *BeanstalkSuite) TestBeanstalkFactoryHandlerDeleteMessage(c *C) {
 }
 
 func (s *BeanstalkSuite) TestBeanstalkFactoryHandlerReleaseMessage(c *C) {
-	var factory beanstalkFactory
+	var factory beanstalkdFactory
 	msg := Message{
 		Action: "create-app",
 		Args:   []string{"something"},
 		id:     837826742,
 	}
-	q := beanstalkQ{name: "default"}
+	q := beanstalkdQ{name: "default"}
 	q.Put(&msg, 0)
 	defer q.Delete(&msg)
 	handler, err := factory.Handler(func(m *Message) { time.Sleep(1e3) }, "default")
@@ -336,9 +337,9 @@ func (s *BeanstalkSuite) TestBeanstalkFactoryHandlerReleaseMessage(c *C) {
 }
 
 func (s *BeanstalkSuite) TestBeanstalkFactoryIsInFactoriesMap(c *C) {
-	f, ok := factories["beanstalk"]
+	f, ok := factories["beanstalkd"]
 	c.Assert(ok, Equals, true)
-	_, ok = f.(beanstalkFactory)
+	_, ok = f.(beanstalkdFactory)
 	c.Assert(ok, Equals, true)
 }
 

@@ -787,8 +787,8 @@ func (s *ELBSuite) TestCollectStatusWithELBAndIDChange(c *C) {
 	}()
 	select {
 	case <-done:
-	case <-time.After(2e9):
-		c.Fatal("Did not save the unit after 2 seconds.")
+	case <-time.After(5e9):
+		c.Fatal("Did not save the unit after 5 seconds.")
 	}
 	resp, err := s.client.DescribeLoadBalancers(a.GetName())
 	c.Assert(err, IsNil)

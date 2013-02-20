@@ -9,6 +9,7 @@ import (
 	"github.com/globocom/tsuru/provision"
 	"github.com/globocom/tsuru/queue"
 	"sort"
+	"sync"
 )
 
 const (
@@ -89,20 +90,29 @@ var (
 	qfactory queue.QFactory
 	_handler queue.Handler
 	queues   map[string]queue.Q
+	fmut     sync.Mutex
+	hmut     sync.Mutex
+	qmut     sync.Mutex
 )
 
 func handler() queue.Handler {
+	// TODO(fss): avoid these mutexes contention.
+	hmut.Lock()
+	defer hmut.Unlock()
 	if _handler != nil {
 		return _handler
 	}
 	var err error
+	fmut.Lock()
 	if qfactory == nil {
 		qfactory, err = queue.Factory()
 		if err != nil {
+			fmut.Unlock()
 			log.Fatalf("Failed to get the queue instance: %s", err)
 		}
 	}
 	_handler, err = qfactory.Handler(handle, queueName)
+	fmut.Unlock()
 	if err != nil {
 		log.Fatalf("Failed to create the queue handler: %s", err)
 	}
@@ -110,6 +120,9 @@ func handler() queue.Handler {
 }
 
 func getQueue(name string) queue.Q {
+	// TODO(fss): avoid these mutexes contention.
+	qmut.Lock()
+	defer qmut.Unlock()
 	if queues == nil {
 		queues = make(map[string]queue.Q)
 	}
@@ -117,13 +130,16 @@ func getQueue(name string) queue.Q {
 		return q
 	}
 	var err error
+	fmut.Lock()
 	if qfactory == nil {
 		qfactory, err = queue.Factory()
 		if err != nil {
+			fmut.Unlock()
 			log.Fatalf("Failed to get the queue instance: %s", err)
 		}
 	}
 	queues[name], err = qfactory.Get(name)
+	fmut.Unlock()
 	if err != nil {
 		log.Fatalf("Failed to get the queue: %s", err)
 	}
