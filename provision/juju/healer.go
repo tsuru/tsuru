@@ -34,10 +34,18 @@ func init() {
 
 type bootstrapInstanceIdHealer struct {
 	s *s3.S3
+	e *ec2.EC2
 }
 
 func (bootstrapInstanceIdHealer) Heal() error {
 	return nil
+}
+
+func (h *bootstrapInstanceIdHealer) ec2() *ec2.EC2 {
+	if h.e == nil {
+		h.e = getEC2Endpoint()
+	}
+	return h.e
 }
 
 func (h *bootstrapInstanceIdHealer) s3() *s3.S3 {
@@ -69,6 +77,23 @@ func (h *bootstrapInstanceIdHealer) bootstrapInstanceIdFromBucket() (string, err
 	s := strings.Replace(string(data), "zookeeper-instances: [", "", -1)
 	s = strings.Replace(s, "]", "", -1)
 	return s, nil
+}
+
+func (h *bootstrapInstanceIdHealer) bootstrapInstanceId() (string, error) {
+	resp, err := h.ec2().Instances(nil, nil)
+	if err != nil {
+		return "", err
+	}
+	for _, reservation := range resp.Reservations {
+		for _, group := range reservation.SecurityGroups {
+			if group.Name == "juju-delta-0" {
+				for _, instance := range reservation.Instances {
+					return instance.InstanceId, nil
+				}
+			}
+		}
+	}
+	return "", nil
 }
 
 func (bootstrapInstanceIdHealer) needsHeal() bool {
