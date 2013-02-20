@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"os/exec"
 	"strings"
+	"time"
 )
 
 var fsystem fs.Fs
@@ -35,7 +36,8 @@ func runCmd(cmd string, args ...string) error {
 func (c *container) ip() string {
 	file, _ := filesystem().Open("/var/lib/misc/dnsmasq.leases")
 	data, _ := ioutil.ReadAll(file)
-	log.Print(data)
+	log.Print(string(data))
+	time.Sleep(5 * time.Second)
 	for _, line := range strings.Split(string(data), "\n") {
 		if strings.Index(line, c.name) != -1 {
 			log.Printf("ip in %s", line)
