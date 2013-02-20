@@ -60,6 +60,7 @@ func getEC2Endpoint() *ec2.EC2 {
 	return ec2.New(auth, aws.Region{EC2Endpoint: endpoint})
 }
 
+// getPrivateDns returns the private dns for an instance.
 func (h *instanceAgentsConfigHealer) getPrivateDns(instanceId string) (string, error) {
 	log.Printf("getting dns for %s", instanceId)
 	resp, err := h.ec2().Instances([]string{instanceId}, nil)
@@ -72,18 +73,22 @@ func (h *instanceAgentsConfigHealer) getPrivateDns(instanceId string) (string, e
 	return dns, nil
 }
 
+// bootstrapProvisionHealer returns the bootstrap private dns.
 func (h *instanceAgentsConfigHealer) bootstrapPrivateDns() (string, error) {
 	machine := getBootstrapMachine()
 	return h.getPrivateDns(machine.InstanceId)
 }
 
+// Heal verifies if the bootstrap private dns is different of the bootstrap
+// private dns setted into agents for each machine.
+// If the bootstrap private dns is wrong, Heal will injects the correct value.
 func (h instanceAgentsConfigHealer) Heal() error {
 	p := JujuProvisioner{}
 	output, _ := p.getOutput()
 	dns, _ := h.bootstrapPrivateDns()
 	log.Printf("bootstrap dns is %s", dns)
 	for _, service := range output.Services {
-		for _, unit := range service.Units {
+		for unitName, unit := range service.Units {
 			cmd := exec.Command("ssh", "-o", "StrictHostKeyChecking no", "-q", "-l", "ubuntu", unit.PublicAddress, "grep", dns, "/etc/init/juju-machine-agent.conf")
 			err := cmd.Run()
 			if err != nil {
@@ -91,6 +96,15 @@ func (h instanceAgentsConfigHealer) Heal() error {
 				cmd := exec.Command("ssh", "-o", "StrictHostKeyChecking no", "-q", "-l", "ubuntu", unit.PublicAddress, "sudo", "sed", "-i", "'s/env JUJU_ZOOKEEPER=.*/env JUJU_ZOOKEEPER=\""+dns+":2181\"/g'", "/etc/init/juju-machine-agent.conf")
 				cmd.Run()
 			}
+			agent := fmt.Sprintf("/etc/init/juju-%s.conf", strings.Join(strings.Split(unitName, "/"), "-"))
+			cmd = exec.Command("ssh", "-o", "StrictHostKeyChecking no", "-q", "-l", "ubuntu", unit.PublicAddress, "grep", dns, agent)
+			err = cmd.Run()
+			if err != nil {
+				log.Printf("Injecting bootstrap private dns for agent %s", agent)
+				cmd := exec.Command("ssh", "-o", "StrictHostKeyChecking no", "-q", "-l", "ubuntu", unit.PublicAddress, "sudo", "sed", "-i", "'s/env JUJU_ZOOKEEPER=.*/env JUJU_ZOOKEEPER=\""+dns+":2181\"/g'", agent)
+				cmd.Run()
+			}
+
 		}
 	}
 	return nil
