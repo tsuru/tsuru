@@ -35,8 +35,10 @@ func runCmd(cmd string, args ...string) error {
 func (c *container) ip() string {
 	file, _ := filesystem().Open("/var/lib/misc/dnsmasq.leases")
 	data, _ := ioutil.ReadAll(file)
+	log.Print(data)
 	for _, line := range strings.Split(string(data), "\n") {
 		if strings.Index(line, c.name) != -1 {
+			log.Printf("ip in %s", line)
 			return strings.Split(line, " ")[2]
 		}
 	}
