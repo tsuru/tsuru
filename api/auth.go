@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/globocom/go-gandalfclient"
+	"github.com/globocom/tsuru/action"
 	"github.com/globocom/tsuru/auth"
 	"github.com/globocom/tsuru/db"
 	"github.com/globocom/tsuru/errors"
@@ -322,10 +323,16 @@ func addKeyToUser(content string, u *auth.User) error {
 	if u.HasKey(key) {
 		return &errors.Http{Code: http.StatusConflict, Message: "User already has this key"}
 	}
-	if err := addKeyInGandalf(&key, u); err != nil {
+	actions := []*action.Action{
+		&addKeyInGandalfAction,
+		&addKeyInDatabaseAction,
+	}
+	pipeline := action.NewPipeline(actions...)
+	err := pipeline.Execute(&key, u)
+	if err != nil {
 		return err
 	}
-	return addKeyInDatabase(&key, u)
+	return nil
 }
 
 func addKeyInDatabase(key *auth.Key, u *auth.User) error {
