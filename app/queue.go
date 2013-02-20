@@ -13,6 +13,7 @@ import (
 	"github.com/globocom/tsuru/service"
 	"io/ioutil"
 	"labix.org/v2/mgo/bson"
+	"sync"
 )
 
 const (
@@ -182,20 +183,29 @@ var (
 	qfactory queue.QFactory
 	_queue   queue.Q
 	_handler queue.Handler
+	fmut     sync.Mutex
+	hmut     sync.Mutex
+	qmut     sync.Mutex
 )
 
 func handler() queue.Handler {
+	// TODO(fss): avoid these mutexes contention.
+	hmut.Lock()
+	defer hmut.Unlock()
 	if _handler != nil {
 		return _handler
 	}
 	var err error
+	fmut.Lock()
 	if qfactory == nil {
 		qfactory, err = queue.Factory()
 		if err != nil {
+			fmut.Unlock()
 			log.Fatalf("Failed to get the queue instance: %s", err)
 		}
 	}
 	_handler, err = qfactory.Handler(handle, queueName, QueueName)
+	fmut.Unlock()
 	if err != nil {
 		log.Fatalf("Failed to create the queue handler: %s", err)
 	}
@@ -203,17 +213,23 @@ func handler() queue.Handler {
 }
 
 func aqueue() queue.Q {
+	// TODO(fss): avoid these mutexes contention.
+	qmut.Lock()
+	defer qmut.Unlock()
 	if _queue != nil {
 		return _queue
 	}
 	var err error
+	fmut.Lock()
 	if qfactory == nil {
 		qfactory, err = queue.Factory()
 		if err != nil {
+			fmut.Unlock()
 			log.Fatalf("Failed to get the queue instance: %s", err)
 		}
 	}
 	_queue, err = qfactory.Get(queueName)
+	fmut.Unlock()
 	if err != nil {
 		log.Fatalf("Failed to get the queue: %s", err)
 	}
