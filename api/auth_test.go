@@ -915,8 +915,7 @@ func (s *AuthSuite) TestAddKeyInDatabaseShouldStoreUsersKeyInDB(c *C) {
 	c.Assert(err, IsNil)
 	defer s.conn.Users().Remove(bson.M{"email": u.Email})
 	key := auth.Key{Content: "my-ssh-key", Name: "key1"}
-	u.AddKey(key)
-	err = addKeyInDatabase(u)
+	err = addKeyInDatabase(&key, u)
 	c.Assert(err, IsNil)
 	u.Get()
 	c.Assert(u.Keys, DeepEquals, []auth.Key{key})
@@ -961,8 +960,7 @@ func (s *AuthSuite) TestRemoveKeyFromDatabase(c *C) {
 	c.Assert(err, IsNil)
 	defer s.conn.Users().Remove(bson.M{"email": u.Email})
 	key := auth.Key{Name: "mykey", Content: "my-ssh-key"}
-	u.AddKey(key)
-	err = addKeyInDatabase(u)
+	err = addKeyInDatabase(&key, u)
 	c.Assert(err, IsNil)
 	err = removeKeyFromDatabase(&key, u)
 	c.Assert(err, IsNil)

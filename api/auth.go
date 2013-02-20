@@ -325,22 +325,22 @@ func addKeyToUser(content string, u *auth.User) error {
 	if err := addKeyInGandalf(&key, u); err != nil {
 		return err
 	}
-	return addKeyInDatabase(u)
+	return addKeyInDatabase(&key, u)
 }
 
-func addKeyInDatabase(u *auth.User) error {
+func addKeyInDatabase(key *auth.Key, u *auth.User) error {
 	conn, err := db.Conn()
 	if err != nil {
 		return err
 	}
+	u.AddKey(*key)
 	return conn.Users().Update(bson.M{"email": u.Email}, u)
 }
 
 func addKeyInGandalf(key *auth.Key, u *auth.User) error {
 	key.Name = fmt.Sprintf("%s-%d", u.Email, len(u.Keys)+1)
 	gUrl := repository.GitServerUri()
-	u.AddKey(*key)
-	if err := (&gandalf.Client{Endpoint: gUrl}).AddKey(u.Email, keyToMap(u.Keys)); err != nil {
+	if err := (&gandalf.Client{Endpoint: gUrl}).AddKey(u.Email, keyToMap([]auth.Key{*key})); err != nil {
 		return fmt.Errorf("Failed to add key to git server: %s", err)
 	}
 	return nil
