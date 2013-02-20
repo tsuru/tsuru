@@ -234,11 +234,22 @@ aws:s3:lowercase-bucket
 be lowercase. Given that ``bucket-support`` is true, this setting is required
 and has no default value.
 
-beanstalkd configuration
-------------------------
+queue configuration
+-------------------
 
-Tsuru uses `beanstalkd <http://kr.github.com/beanstalkd>`_ for its work queue.
-You can define to which beanstalkd instance you will connect.
+Tsuru uses a work queue for asynchronous tasks. By default it will use
+`beanstalkd <http://kr.github.com/beanstalkd>`_. You can customize the used
+queue, and settings related to the queue (like the address where beanstalkd is
+listening).
+
+Creating a new queue provider is as easy as implementing `an interface
+<http://godoc.org/github.com/globocom/tsuru/queue#Q>`_.
+
+queue
++++++
+
+``queue`` is the name of the queue implementation that tsuru will use. This
+setting is optional and defaults to "beanstalkd".
 
 queue-server
 ++++++++++++
