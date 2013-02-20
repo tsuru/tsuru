@@ -189,6 +189,12 @@ aws:secret-access-key
 authenticate with AWS API. Given that ``bucket-support`` is true, this
 setting is required and has no default value.
 
+aws:ec2:endpoint
+++++++++++++++++
+
+``aws:ec2:endpoint`` is the EC2 endpoint that tsuru will call to communicate
+with ec2. It's only used for `juju` healers.
+
 aws:iam:endpoint
 ++++++++++++++++
 
