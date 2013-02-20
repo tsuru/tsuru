@@ -25,6 +25,17 @@ func (s *S) TestBootstrapInstanceIdHealerShouldBeRegistered(c *C) {
 	c.Assert(h, FitsTypeOf, bootstrapInstanceIdHealer{})
 }
 
+func (s *S) TestBootstrapInstanceIdHealerNeedsHeal(c *C) {
+	h := bootstrapInstanceIdHealer{}
+	c.Assert(h.needsHeal(), Equals, false)
+}
+
+func (s *S) TestBootstrapInstanceIdHealerS3(c *C) {
+	h := bootstrapInstanceIdHealer{}
+	s3 := h.s3()
+	c.Assert(s3.Region, DeepEquals, aws.USEast)
+}
+
 func (s *S) TestInstanceAgentsConfigHealerShouldBeRegistered(c *C) {
 	h, err := heal.Get("instance-agents-config")
 	c.Assert(err, IsNil)

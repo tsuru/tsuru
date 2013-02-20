@@ -15,6 +15,7 @@ import (
 	"github.com/globocom/tsuru/provision"
 	"launchpad.net/goamz/aws"
 	"launchpad.net/goamz/ec2"
+	"launchpad.net/goamz/s3"
 	"net"
 	"os/exec"
 	"strings"
@@ -31,10 +32,47 @@ func init() {
 	heal.Register("bootstrap-instanceid", bootstrapInstanceIdHealer{})
 }
 
-type bootstrapInstanceIdHealer struct{}
+type bootstrapInstanceIdHealer struct {
+	s *s3.S3
+}
 
 func (bootstrapInstanceIdHealer) Heal() error {
 	return nil
+}
+
+func (h *bootstrapInstanceIdHealer) s3() *s3.S3 {
+	if h.s == nil {
+		h.s = h.getS3Endpoint()
+	}
+	return h.s
+}
+
+func (bootstrapInstanceIdHealer) getS3Endpoint() *s3.S3 {
+	access, err := config.GetString("aws:access-key-id")
+	if err != nil {
+		log.Fatal(err)
+	}
+	secret, err := config.GetString("aws:secret-access-key")
+	if err != nil {
+		log.Fatal(err)
+	}
+	auth := aws.Auth{AccessKey: access, SecretKey: secret}
+	return s3.New(auth, aws.USEast)
+}
+
+func (h *bootstrapInstanceIdHealer) bootstrapInstanceIdFromBucket() (string, error) {
+	bucket := h.s3().Bucket("juju-696227fdd0d747ec97deaa7e5d39f958")
+	data, err := bucket.Get("provider-state")
+	if err != nil {
+		return "", err
+	}
+	s := strings.Replace(string(data), "zookeeper-instances: [", "", -1)
+	s = strings.Replace(s, "]", "", -1)
+	return s, nil
+}
+
+func (bootstrapInstanceIdHealer) needsHeal() bool {
+	return false
 }
 
 // instanceAgentsConfigHealer is an implementation for the Haler interface. For more
