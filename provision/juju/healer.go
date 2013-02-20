@@ -76,6 +76,7 @@ func (h instanceAgentsConfigHealer) Heal() error {
 	for _, service := range output.Services {
 		for _, unit := range service.Units {
 			dns, _ := h.bootstrapPrivateDns()
+			log.Printf("bootstrap dns is %s", dns)
 			cmd := exec.Command("ssh", "-o", "StrictHostKeyChecking no", "-q", "-l", "ubuntu", unit.PublicAddress, "grep", dns, "/etc/init/juju-machine-agent.conf")
 			err := cmd.Run()
 			if err != nil {
