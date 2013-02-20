@@ -19,6 +19,12 @@ import (
 	"net"
 )
 
+func (s *S) TestBootstrapInstanceIdHealerShouldBeRegistered(c *C) {
+	h, err := heal.Get("bootstrap-instanceid")
+	c.Assert(err, IsNil)
+	c.Assert(h, FitsTypeOf, bootstrapInstanceIdHealer{})
+}
+
 func (s *S) TestInstanceAgentsConfigHealerShouldBeRegistered(c *C) {
 	h, err := heal.Get("instance-agents-config")
 	c.Assert(err, IsNil)

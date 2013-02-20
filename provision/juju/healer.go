@@ -28,6 +28,13 @@ func init() {
 	heal.Register("instance-unit", instanceUnitHealer{})
 	heal.Register("zookeeper", zookeeperHealer{})
 	heal.Register("elb-instance", elbInstanceHealer{})
+	heal.Register("bootstrap-instanceid", bootstrapInstanceIdHealer{})
+}
+
+type bootstrapInstanceIdHealer struct{}
+
+func (bootstrapInstanceIdHealer) Heal() error {
+	return nil
 }
 
 // instanceAgentsConfigHealer is an implementation for the Haler interface. For more
