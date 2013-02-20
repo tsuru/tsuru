@@ -34,14 +34,25 @@ func runCmd(cmd string, args ...string) error {
 
 // ip returns the ip for the container.
 func (c *container) ip() string {
-	file, _ := filesystem().Open("/var/lib/misc/dnsmasq.leases")
-	data, _ := ioutil.ReadAll(file)
-	log.Print(string(data))
-	time.Sleep(5 * time.Second)
-	for _, line := range strings.Split(string(data), "\n") {
-		if strings.Index(line, c.name) != -1 {
-			log.Printf("ip in %s", line)
-			return strings.Split(line, " ")[2]
+	quit := time.After(10 * time.Second)
+	tick := time.Tick(2 * time.Second)
+	for {
+		select {
+		case <-tick:
+			file, _ := filesystem().Open("/var/lib/misc/dnsmasq.leases")
+			data, _ := ioutil.ReadAll(file)
+			log.Print("dnsmasq.leases")
+			log.Print(string(data))
+			for _, line := range strings.Split(string(data), "\n") {
+				if strings.Index(line, c.name) != -1 {
+					log.Printf("ip in %s", line)
+					return strings.Split(line, " ")[2]
+				}
+			}
+		case <-quit:
+			return ""
+		default:
+			time.Sleep(1 * time.Second)
 		}
 	}
 	return ""
