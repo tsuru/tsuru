@@ -52,8 +52,12 @@ func getEC2Endpoint() *ec2.EC2 {
 	if err != nil {
 		log.Fatal(err)
 	}
+	endpoint, err := config.GetString("aws:ec2:endpoint")
+	if err != nil {
+		log.Fatal(err)
+	}
 	auth := aws.Auth{AccessKey: access, SecretKey: secret}
-	return ec2.New(auth, aws.Region{})
+	return ec2.New(auth, aws.Region{EC2Endpoint: endpoint})
 }
 
 func (h *instanceAgentsConfigHealer) getPrivateDns(instanceId string) (string, error) {
