@@ -24,6 +24,8 @@ var addKeyInGandalfAction = action.Action{
 	},
 }
 
+// addKeyInDatabaseAction adds a key to a user in the database.
+// It expects a *auth.Key and a *auth.User from the executor.
 var addKeyInDatabaseAction = action.Action{
 	Forward: func(ctx action.FWContext) (action.Result, error) {
 		key := ctx.Params[0].(*auth.Key)
