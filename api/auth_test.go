@@ -657,6 +657,30 @@ func (s *AuthSuite) TestAddUserToTeamShoulGrantAccessInGandalf(c *C) {
 	c.Assert(string(h.body[1]), Equals, expected)
 }
 
+func (s *AuthSuite) TestAddUserToTeamInDatabase(c *C) {
+	user := &auth.User{Email: "nobody@gmail.com", Password: "123456"}
+	team := &auth.Team{Name: "myteam"}
+	err := s.conn.Teams().Insert(team)
+	c.Assert(err, IsNil)
+	defer s.conn.Teams().RemoveId(team.Name)
+	err = addUserToTeamInDatabase(user, team)
+	c.Assert(err, IsNil)
+	s.conn.Teams().FindId(team.Name).One(team)
+	fmt.Println(team)
+	c.Assert(team.Users, DeepEquals, []string{user.Email})
+}
+
+func (s *AuthSuite) TestAddUserToTeamInGandalfShouldCallGandalfApi(c *C) {
+	h := testHandler{}
+	ts := s.startGandalfTestServer(&h)
+	defer ts.Close()
+	u := auth.User{Email: "nonee@me.me", Password: "none"}
+	err := addUserToTeamInGandalf("me@gmail.com", &u, s.team)
+	c.Assert(err, IsNil)
+	c.Assert(len(h.url), Equals, 1)
+	c.Assert(h.url[0], Equals, "/repository/grant")
+}
+
 func (s *AuthSuite) TestRemoveUserFromTeamShouldRemoveAUserFromATeamIfTheTeamExistAndTheUserIsMemberOfTheTeam(c *C) {
 	h := testHandler{}
 	ts := s.startGandalfTestServer(&h)

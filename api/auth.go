@@ -226,29 +226,43 @@ func addUserToTeam(email, teamName string, u *auth.User) error {
 	}
 	team, user := new(auth.Team), new(auth.User)
 	selector := bson.M{"_id": teamName}
-	err = conn.Teams().Find(selector).One(team)
-	if err != nil {
+	if err := conn.Teams().Find(selector).One(team); err != nil {
 		return &errors.Http{Code: http.StatusNotFound, Message: "Team not found"}
 	}
 	if !team.ContainsUser(u) {
 		msg := fmt.Sprintf("You are not authorized to add new users to the team %s", team.Name)
 		return &errors.Http{Code: http.StatusUnauthorized, Message: msg}
 	}
-	err = conn.Users().Find(bson.M{"email": email}).One(user)
-	if err != nil {
+	if err := conn.Users().Find(bson.M{"email": email}).One(user); err != nil {
 		return &errors.Http{Code: http.StatusNotFound, Message: "User not found"}
 	}
-	// does not touches the database
-	err = team.AddUser(user)
-	if err != nil {
+	if err := addUserToTeamInGandalf(email, u, team); err != nil {
+		return err
+	}
+	return addUserToTeamInDatabase(user, team)
+}
+
+func addUserToTeamInDatabase(user *auth.User, team *auth.Team) error {
+	if err := team.AddUser(user); err != nil {
 		return &errors.Http{Code: http.StatusConflict, Message: err.Error()}
 	}
+	conn, err := db.Conn()
+	if err != nil {
+		return err
+	}
+	return conn.Teams().UpdateId(team.Name, team)
+}
+
+func addUserToTeamInGandalf(email string, u *auth.User, t *auth.Team) error {
 	gUrl := repository.GitServerUri()
 	alwdApps, err := allowedApps(u.Email)
+	if err != nil {
+		return fmt.Errorf("Failed to obtain allowed apps to grant: %s", err.Error())
+	}
 	if err := (&gandalf.Client{Endpoint: gUrl}).GrantAccess(alwdApps, []string{email}); err != nil {
 		return fmt.Errorf("Failed to grant access to git repositories: %s", err)
 	}
-	return conn.Teams().Update(selector, team)
+	return nil
 }
 
 func AddUserToTeam(w http.ResponseWriter, r *http.Request, u *auth.User) error {
