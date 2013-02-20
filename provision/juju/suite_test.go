@@ -22,20 +22,18 @@ type S struct {
 var _ = Suite(&S{})
 
 func (s *S) SetUpSuite(c *C) {
+	var err error
 	s.collName = "juju_units_test"
 	config.Set("git:host", "tsuruhost.com")
 	config.Set("juju:units-collection", s.collName)
-	err := handler.DryRun()
-	c.Assert(err, IsNil)
 	config.Set("database:url", "127.0.0.1:27017")
 	config.Set("database:name", "juju_provision_tests_s")
+	config.Set("queue", "fake")
 	s.conn, err = db.Conn()
 	c.Assert(err, IsNil)
 }
 
 func (s *S) TearDownSuite(c *C) {
-	handler.Stop()
-	handler.Wait()
-	s.conn.Collection(s.collName).Database.DropDatabase()
 	queue.Preempt()
+	s.conn.Collection(s.collName).Database.DropDatabase()
 }

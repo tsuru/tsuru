@@ -9,8 +9,8 @@ import (
 	"errors"
 	"github.com/globocom/commandmocker"
 	"github.com/globocom/config"
+	"github.com/globocom/tsuru/app"
 	"github.com/globocom/tsuru/provision"
-	"github.com/globocom/tsuru/queue"
 	"github.com/globocom/tsuru/repository"
 	"github.com/globocom/tsuru/testing"
 	"labix.org/v2/mgo/bson"
@@ -170,7 +170,7 @@ func (s *S) TestAddUnits(c *C) {
 		"add-unit", "resist", "--num-units", "4",
 	}
 	c.Assert(commandmocker.Parameters(tmpdir), DeepEquals, expectedParams)
-	_, err = queue.Get(queueName, 1e6) // sanity
+	_, err = getQueue(queueName).Get(1e6)
 	c.Assert(err, NotNil)
 }
 
@@ -482,6 +482,42 @@ func (s *S) TestCollectStatusIDChangeDisabledELB(c *C) {
 	case <-time.After(5e9):
 		c.Fatal("Did not update the unit after 5 seconds.")
 	}
+	msg, err := getQueue(app.QueueName).Get(1e6)
+	c.Assert(err, IsNil)
+	defer msg.Delete()
+	c.Assert(msg.Action, Equals, app.RegenerateApprcAndStart)
+	c.Assert(msg.Args, DeepEquals, []string{"as_i_rise", "as_i_rise/0"})
+}
+
+func (s *S) TestCollectStatusIDChangeFromPending(c *C) {
+	tmpdir, err := commandmocker.Add("juju", collectOutput)
+	c.Assert(err, IsNil)
+	defer commandmocker.Remove(tmpdir)
+	p := JujuProvisioner{}
+	err = p.unitsCollection().Insert(instance{UnitName: "as_i_rise/0", InstanceId: "pending"})
+	c.Assert(err, IsNil)
+	defer p.unitsCollection().Remove(bson.M{"_id": bson.M{"$in": []string{"as_i_rise/0", "the_infanta/0"}}})
+	_, err = p.CollectStatus()
+	c.Assert(err, IsNil)
+	done := make(chan int8)
+	go func() {
+		for {
+			q := bson.M{"_id": "as_i_rise/0", "instanceid": "i-00000439"}
+			ct, err := p.unitsCollection().Find(q).Count()
+			c.Assert(err, IsNil)
+			if ct == 1 {
+				done <- 1
+				return
+			}
+		}
+	}()
+	select {
+	case <-done:
+	case <-time.After(5e9):
+		c.Fatal("Did not update the unit after 5 seconds.")
+	}
+	_, err = getQueue(app.QueueName).Get(1e6)
+	c.Assert(err, NotNil)
 }
 
 func (s *S) TestCollectStatusFailure(c *C) {
@@ -623,7 +659,7 @@ func (s *ELBSuite) TestProvisionWithELB(c *C) {
 	addr, err := lb.Addr(app)
 	c.Assert(err, IsNil)
 	c.Assert(addr, Not(Equals), "")
-	msg, err := queue.Get(queueName, 1e9)
+	msg, err := getQueue(queueName).Get(1e9)
 	c.Assert(err, IsNil)
 	defer msg.Delete()
 	c.Assert(msg.Action, Equals, addUnitToLoadBalancer)
@@ -648,12 +684,13 @@ func (s *ELBSuite) TestDestroyWithELB(c *C) {
 	c.Assert(addr, Equals, "")
 	c.Assert(err, NotNil)
 	c.Assert(err.Error(), Equals, "not found")
-	msg, err := queue.Get(queueName, 1e9)
+	q := getQueue(queueName)
+	msg, err := q.Get(1e9)
 	c.Assert(err, IsNil)
 	if msg.Action == addUnitToLoadBalancer && msg.Args[0] == "jimmy" {
 		msg.Delete()
 	} else {
-		msg.Release(0)
+		q.Release(msg, 0)
 	}
 }
 
@@ -669,7 +706,7 @@ func (s *ELBSuite) TestAddUnitsWithELB(c *C) {
 		"resist", "resist/3", "resist/4",
 		"resist/5", "resist/6",
 	}
-	msg, err := queue.Get(queueName, 1e9)
+	msg, err := getQueue(queueName).Get(1e9)
 	c.Assert(err, IsNil)
 	defer msg.Delete()
 	c.Assert(msg.Action, Equals, addUnitToLoadBalancer)
@@ -760,6 +797,10 @@ func (s *ELBSuite) TestCollectStatusWithELBAndIDChange(c *C) {
 	c.Assert(instances, HasLen, 2)
 	c.Assert(instances[0].InstanceId, Equals, id2)
 	c.Assert(instances[1].InstanceId, Equals, id1)
+	msg, err := getQueue(app.QueueName).Get(1e6)
+	c.Assert(err, IsNil)
+	c.Assert(msg.Args, DeepEquals, []string{"symfonia", "symfonia/0"})
+	msg.Delete()
 }
 
 func (s *ELBSuite) TestAddrWithELB(c *C) {
