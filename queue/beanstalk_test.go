@@ -9,6 +9,7 @@ import (
 	"encoding/gob"
 	"github.com/globocom/config"
 	. "launchpad.net/gocheck"
+	"sync/atomic"
 	"time"
 )
 
@@ -279,9 +280,9 @@ func (s *BeanstalkSuite) TestBeanstalkFactoryHandler(c *C) {
 	q := beanstalkdQ{name: "default"}
 	q.Put(&msg, 0)
 	defer q.Delete(&msg)
-	var called bool
+	var called int32
 	var dumb = func(m *Message) {
-		called = true
+		atomic.StoreInt32(&called, 1)
 	}
 	var factory beanstalkdFactory
 	handler, err := factory.Handler(dumb, "default")
@@ -290,7 +291,7 @@ func (s *BeanstalkSuite) TestBeanstalkFactoryHandler(c *C) {
 	c.Assert(ok, Equals, true)
 	exec.inner()
 	time.Sleep(1e3)
-	c.Assert(called, Equals, true)
+	c.Assert(atomic.LoadInt32(&called), Equals, int32(1))
 }
 
 func (s *BeanstalkSuite) TestBeanstalkFactoryHandlerDeleteMessage(c *C) {
