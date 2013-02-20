@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-// Package queue implements all the queue handling with tsuru. It abstract
+// Package queue implements all the queue handling with tsuru. It abstracts
 // which queue server is being used, how the message gets marshaled in to the
 // wire and how it's read.
 //
@@ -14,27 +14,85 @@
 package queue
 
 import (
-	"bytes"
-	"encoding/gob"
-	"errors"
 	"fmt"
 	"github.com/globocom/config"
-	"github.com/kr/beanstalk"
-	"io"
-	"regexp"
-	"sync"
 	"time"
 )
 
-// Default TTR for beanstalkd messages.
-const ttr = 180e9
+// Q represents a queue. A queue is a type that supports the set of
+// operations described by this interface.
+type Q interface {
+	// Get retrieves a message from the queue.
+	Get(timeout time.Duration) (*Message, error)
 
-var (
-	conn           *beanstalk.Conn
-	mut            sync.Mutex // for conn access
-	timeoutRegexp  = regexp.MustCompile(`(TIMED_OUT|timeout)$`)
-	notFoundRegexp = regexp.MustCompile(`not found$`)
-)
+	// Put sends a message to the queue after the given delay. When delay
+	// is 0, the message is sent immediately to the queue.
+	Put(m *Message, delay time.Duration) error
+
+	// Delete deletes a message from the queue.
+	Delete(m *Message) error
+
+	// Release puts a message back in the queue the given delay. When delay
+	// is 0, the message is released immediately.
+	//
+	// This method should be used when handling a message that you cannot
+	// handle, maximizing throughput.
+	Release(m *Message, delay time.Duration) error
+}
+
+// Handler represents a runnable routine. It can be started and stopped.
+type Handler interface {
+	// Start starts the handler. It must be safe to call this function
+	// multiple times, even if the handler is already running.
+	Start()
+
+	// Stop sends a signal to stop the handler, it won't stop the handler
+	// immediately. After calling Stop, one should call Wait for blocking
+	// until the handler is stopped.
+	//
+	// This method will return an error if the handler is not running.
+	Stop() error
+
+	// Wait blocks until the handler actually stops.
+	Wait()
+}
+
+// QFactory manages queues. It's able to create new queue and handler
+// instances.
+type QFactory interface {
+	// Get returns a queue instance, identified by the given name.
+	Get(name string) (Q, error)
+
+	// Handler returns a handler for the given queue names. Once the
+	// handler is started (after calling Start method), it will call f
+	// whenever a new message arrives in one of the given queue names.
+	Handler(f func(*Message), name ...string) (Handler, error)
+}
+
+var factories = map[string]QFactory{
+	"beanstalk": beanstalkFactory{},
+}
+
+// Register registers a new queue factory. This is how one would add a new
+// queue to tsuru.
+func Register(name string, factory QFactory) {
+	factories[name] = factory
+}
+
+// Factory returns an instance of the QFactory used in tsuru. It reads tsuru
+// configuration to find the currently used queue system (for example,
+// beanstalk) and returns an instance of the configured system, if it's
+// registered. Otherwise it will return an error.
+func Factory() (QFactory, error) {
+	name, err := config.GetString("queue")
+	if err != nil {
+		name = "beanstalk"
+	}
+	if f, ok := factories[name]; ok {
+		return f, nil
+	}
+	return nil, fmt.Errorf("Queue %q is not known.", name)
+}
 
 // Message represents the message stored in the queue.
 //
@@ -47,113 +105,10 @@ type Message struct {
 	Action string
 	Args   []string
 	id     uint64
+	delete bool
 }
 
-// Release puts a message back in the queue after a delay. To release the
-// message immediately, just set delay to 0.
-//
-// This method should be used when handling a message that you cannot handle,
-// maximizing throughput.
-func (msg *Message) Release(delay time.Duration) error {
-	if msg.id == 0 {
-		return errors.New("Unknown message.")
-	}
-	conn, err := connection()
-	if err != nil {
-		return err
-	}
-	if err = conn.Release(msg.id, 1, delay); err != nil && notFoundRegexp.MatchString(err.Error()) {
-		return errors.New("Message not found.")
-	}
-	return err
-}
-
-// Delete deletes the message from the queue. For deletion, the message must be
-// one returned by Get, or added by Put. This function uses internal state of
-// the message to delete it.
-func (msg *Message) Delete() error {
-	conn, err := connection()
-	if err != nil {
-		return err
-	}
-	if msg.id == 0 {
-		return errors.New("Unknown message.")
-	}
-	if err = conn.Delete(msg.id); err != nil && notFoundRegexp.MatchString(err.Error()) {
-		return errors.New("Message not found.")
-	}
-	return err
-}
-
-// Put sends the message to the queue after delay time. To send the message
-// immediately, just set delay to 0.
-func (msg *Message) Put(queueName string, delay time.Duration) error {
-	conn, err := connection()
-	if err != nil {
-		return err
-	}
-	var buf bytes.Buffer
-	err = gob.NewEncoder(&buf).Encode(msg)
-	if err != nil {
-		return err
-	}
-	tube := beanstalk.Tube{Conn: conn, Name: queueName}
-	id, err := tube.Put(buf.Bytes(), 1, delay, ttr)
-	msg.id = id
-	return err
-}
-
-func get(timeout time.Duration, queues ...string) (*Message, error) {
-	conn, err := connection()
-	if err != nil {
-		return nil, err
-	}
-	ts := beanstalk.NewTubeSet(conn, queues...)
-	id, body, err := ts.Reserve(timeout)
-	if err != nil {
-		if timeoutRegexp.MatchString(err.Error()) {
-			return nil, fmt.Errorf("Timed out waiting for message after %s.", timeout)
-		}
-		return nil, err
-	}
-	r := bytes.NewReader(body)
-	var msg Message
-	if err = gob.NewDecoder(r).Decode(&msg); err != nil && err != io.EOF {
-		conn.Delete(id)
-		return nil, fmt.Errorf("Invalid message: %q", body)
-	}
-	msg.id = id
-	return &msg, nil
-}
-
-// Get retrieves a message from the queue.
-func Get(queueName string, timeout time.Duration) (*Message, error) {
-	return get(timeout, queueName)
-}
-
-func connection() (*beanstalk.Conn, error) {
-	var (
-		addr string
-		err  error
-	)
-	mut.Lock()
-	if conn == nil {
-		mut.Unlock()
-		addr, err = config.GetString("queue-server")
-		if err != nil {
-			addr = "localhost:11300"
-		}
-		mut.Lock()
-		if conn, err = beanstalk.Dial("tcp", addr); err != nil {
-			mut.Unlock()
-			return nil, err
-		}
-	}
-	if _, err = conn.ListTubes(); err != nil {
-		mut.Unlock()
-		conn = nil
-		return connection()
-	}
-	mut.Unlock()
-	return conn, err
+// Delete deletes the message from the queue.
+func (m *Message) Delete() {
+	m.delete = true
 }

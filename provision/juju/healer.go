@@ -13,6 +13,8 @@ import (
 	"github.com/globocom/tsuru/heal"
 	"github.com/globocom/tsuru/log"
 	"github.com/globocom/tsuru/provision"
+	"launchpad.net/goamz/aws"
+	"launchpad.net/goamz/ec2"
 	"net"
 	"os/exec"
 	"strings"
@@ -22,9 +24,76 @@ func init() {
 	heal.Register("bootstrap", bootstrapMachineHealer{})
 	heal.Register("bootstrap-provision", bootstrapProvisionHealer{})
 	heal.Register("instance-machine", instanceMachineHealer{})
+	heal.Register("instance-agents-config", instanceAgentsConfigHealer{})
 	heal.Register("instance-unit", instanceUnitHealer{})
 	heal.Register("zookeeper", zookeeperHealer{})
 	heal.Register("elb-instance", elbInstanceHealer{})
+}
+
+// instanceAgentsConfigHealer is an implementation for the Haler interface. For more
+// detail on how a healer work, check the documentation of the heal package.
+type instanceAgentsConfigHealer struct {
+	e *ec2.EC2
+}
+
+func (h *instanceAgentsConfigHealer) ec2() *ec2.EC2 {
+	if h.e == nil {
+		h.e = getEC2Endpoint()
+	}
+	return h.e
+}
+
+func getEC2Endpoint() *ec2.EC2 {
+	access, err := config.GetString("aws:access-key-id")
+	if err != nil {
+		log.Fatal(err)
+	}
+	secret, err := config.GetString("aws:secret-access-key")
+	if err != nil {
+		log.Fatal(err)
+	}
+	endpoint, err := config.GetString("aws:ec2:endpoint")
+	if err != nil {
+		log.Fatal(err)
+	}
+	auth := aws.Auth{AccessKey: access, SecretKey: secret}
+	return ec2.New(auth, aws.Region{EC2Endpoint: endpoint})
+}
+
+func (h *instanceAgentsConfigHealer) getPrivateDns(instanceId string) (string, error) {
+	log.Printf("getting dns for %s", instanceId)
+	resp, err := h.ec2().Instances([]string{instanceId}, nil)
+	if err != nil {
+		log.Printf("error in gettings dns for %s", instanceId)
+		log.Print(err)
+		return "", err
+	}
+	dns := resp.Reservations[0].Instances[0].PrivateDNSName
+	return dns, nil
+}
+
+func (h *instanceAgentsConfigHealer) bootstrapPrivateDns() (string, error) {
+	machine := getBootstrapMachine()
+	return h.getPrivateDns(machine.InstanceId)
+}
+
+func (h instanceAgentsConfigHealer) Heal() error {
+	p := JujuProvisioner{}
+	output, _ := p.getOutput()
+	dns, _ := h.bootstrapPrivateDns()
+	log.Printf("bootstrap dns is %s", dns)
+	for _, service := range output.Services {
+		for _, unit := range service.Units {
+			cmd := exec.Command("ssh", "-o", "StrictHostKeyChecking no", "-q", "-l", "ubuntu", unit.PublicAddress, "grep", dns, "/etc/init/juju-machine-agent.conf")
+			err := cmd.Run()
+			if err != nil {
+				log.Printf("Injecting bootstrap private dns for machine %d", unit.Machine)
+				cmd := exec.Command("ssh", "-o", "StrictHostKeyChecking no", "-q", "-l", "ubuntu", unit.PublicAddress, "sudo", "sed", "-i", "'s/env JUJU_ZOOKEEPER=.*/env JUJU_ZOOKEEPER=\""+dns+":2181\"/g'", "/etc/init/juju-machine-agent.conf")
+				cmd.Run()
+			}
+		}
+	}
+	return nil
 }
 
 // InstanceUnitHealer is an implementation for the Healer interface. For more

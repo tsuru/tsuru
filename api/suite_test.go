@@ -94,6 +94,7 @@ func (s *S) SetUpSuite(c *C) {
 	c.Assert(err, IsNil)
 	config.Set("database:url", "127.0.0.1:27017")
 	config.Set("database:name", "tsuru_api_test")
+	config.Set("queue", "fake")
 	s.conn, err = db.Conn()
 	c.Assert(err, IsNil)
 	s.createUserAndTeam(c)
@@ -108,7 +109,6 @@ func (s *S) TearDownSuite(c *C) {
 	defer s.t.S3Server.Quit()
 	defer s.t.IamServer.Quit()
 	queue.Preempt()
-	tsuruTesting.CleanQueues(app.QueueName, "tsuru-app")
 	s.conn.Apps().Database.DropDatabase()
 	fsystem = nil
 }

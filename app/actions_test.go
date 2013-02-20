@@ -10,7 +10,6 @@ import (
 	"github.com/globocom/config"
 	"github.com/globocom/tsuru/action"
 	"github.com/globocom/tsuru/app/bind"
-	"github.com/globocom/tsuru/queue"
 	"labix.org/v2/mgo/bson"
 	"launchpad.net/goamz/aws"
 	"launchpad.net/goamz/s3"
@@ -301,7 +300,7 @@ func (s *S) TestExportEnvironmentsForward(c *C) {
 	c.Assert(appEnv["TSURU_APPNAME"].Public, Equals, false)
 	c.Assert(appEnv["TSURU_HOST"].Value, Equals, expectedHost)
 	c.Assert(appEnv["TSURU_HOST"].Public, Equals, false)
-	message, err := queue.Get(queueName, 2e9)
+	message, err := aqueue().Get(2e9)
 	c.Assert(err, IsNil)
 	defer message.Delete()
 	c.Assert(message.Action, Equals, regenerateApprc)

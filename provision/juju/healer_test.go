@@ -12,9 +12,113 @@ import (
 	"github.com/globocom/tsuru/db"
 	"github.com/globocom/tsuru/heal"
 	"labix.org/v2/mgo/bson"
+	"launchpad.net/goamz/aws"
+	"launchpad.net/goamz/ec2"
+	"launchpad.net/goamz/ec2/ec2test"
 	. "launchpad.net/gocheck"
 	"net"
 )
+
+func (s *S) TestInstanceAgentsConfigHealerShouldBeRegistered(c *C) {
+	h, err := heal.Get("instance-agents-config")
+	c.Assert(err, IsNil)
+	c.Assert(h, FitsTypeOf, instanceAgentsConfigHealer{})
+}
+
+func (s *S) TestInstanceAgenstConfigHealerGetEC2(c *C) {
+	h := instanceAgentsConfigHealer{}
+	ec2 := h.ec2()
+	c.Assert(ec2.EC2Endpoint, Equals, "")
+}
+
+func (s *S) TestInstanceAgenstConfigHealerHeal(c *C) {
+	jujuTmpdir, err := commandmocker.Add("juju", collectOutputInstanceDown)
+	c.Assert(err, IsNil)
+	defer commandmocker.Remove(jujuTmpdir)
+	sshTmpdir, err := commandmocker.Error("ssh", "", 1)
+	c.Assert(err, IsNil)
+	defer commandmocker.Remove(sshTmpdir)
+	h := instanceAgentsConfigHealer{}
+	err = h.Heal()
+	c.Assert(err, IsNil)
+	jujuOutput := []string{
+		"status", // for juju status that gets the output
+		"status", // for get the bootstrap private dns
+	}
+	sshOutput := []string{
+		"-o",
+		"StrictHostKeyChecking no",
+		"-q",
+		"-l",
+		"ubuntu",
+		"server-1081.novalocal",
+		"grep",
+		"",
+		"/etc/init/juju-machine-agent.conf",
+		"-o",
+		"StrictHostKeyChecking no",
+		"-q",
+		"-l",
+		"ubuntu",
+		"server-1081.novalocal",
+		"sudo",
+		"sed",
+		"-i",
+		"'s/env JUJU_ZOOKEEPER=.*/env JUJU_ZOOKEEPER=\":2181\"/g'",
+		"/etc/init/juju-machine-agent.conf",
+	}
+	c.Assert(commandmocker.Ran(jujuTmpdir), Equals, true)
+	c.Assert(commandmocker.Parameters(jujuTmpdir), DeepEquals, jujuOutput)
+	c.Assert(commandmocker.Ran(sshTmpdir), Equals, true)
+	c.Assert(commandmocker.Parameters(sshTmpdir), DeepEquals, sshOutput)
+}
+
+func (s *S) TestBootstrapPrivateDns(c *C) {
+	server, err := ec2test.NewServer()
+	c.Assert(err, IsNil)
+	defer server.Quit()
+	h := instanceAgentsConfigHealer{}
+	region := aws.SAEast
+	region.EC2Endpoint = server.URL()
+	h.e = ec2.New(aws.Auth{AccessKey: "some", SecretKey: "thing"}, region)
+	resp, err := h.ec2().RunInstances(&ec2.RunInstances{MaxCount: 1})
+	c.Assert(err, IsNil)
+	instance := resp.Instances[0]
+	output := `machines:
+  0:
+    agent-state: running
+    dns-name: localhost
+    instance-id: %s
+    instance-state: running`
+	output = fmt.Sprintf(output, instance.InstanceId)
+	jujuTmpdir, err := commandmocker.Add("juju", output)
+	c.Assert(err, IsNil)
+	defer commandmocker.Remove(jujuTmpdir)
+	dns, err := h.bootstrapPrivateDns()
+	c.Assert(err, IsNil)
+	c.Assert(dns, Equals, instance.PrivateDNSName)
+	jujuOutput := []string{
+		"status", // for juju status that gets the output
+	}
+	c.Assert(commandmocker.Ran(jujuTmpdir), Equals, true)
+	c.Assert(commandmocker.Parameters(jujuTmpdir), DeepEquals, jujuOutput)
+}
+
+func (s *S) TestGetPrivateDns(c *C) {
+	server, err := ec2test.NewServer()
+	c.Assert(err, IsNil)
+	defer server.Quit()
+	h := instanceAgentsConfigHealer{}
+	region := aws.SAEast
+	region.EC2Endpoint = server.URL()
+	h.e = ec2.New(aws.Auth{AccessKey: "some", SecretKey: "thing"}, region)
+	resp, err := h.ec2().RunInstances(&ec2.RunInstances{MaxCount: 1})
+	c.Assert(err, IsNil)
+	instance := resp.Instances[0]
+	dns, err := h.getPrivateDns(instance.InstanceId)
+	c.Assert(err, IsNil)
+	c.Assert(dns, Equals, instance.PrivateDNSName)
+}
 
 func (s *S) TestInstanceUnitShouldBeRegistered(c *C) {
 	h, err := heal.Get("instance-unit")

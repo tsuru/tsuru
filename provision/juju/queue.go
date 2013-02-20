@@ -37,7 +37,6 @@ func handle(msg *queue.Message) {
 		status, err := (&JujuProvisioner{}).collectStatus()
 		if err != nil {
 			log.Printf("Failed to handle %q: juju status failed.\n%s.", msg.Action, err)
-			msg.Release(2e9)
 			return
 		}
 		var units []provision.Unit
@@ -66,7 +65,7 @@ func handle(msg *queue.Message) {
 			}
 		}
 		if len(noId) == len(units) {
-			msg.Release(0)
+			getQueue(queueName).Release(msg, 0)
 		} else {
 			manager := ELBManager{}
 			manager.Register(&a, ok...)
@@ -78,7 +77,7 @@ func handle(msg *queue.Message) {
 					Action: msg.Action,
 					Args:   args,
 				}
-				msg.Put(queueName, 1e9)
+				getQueue(queueName).Put(&msg, 1e9)
 			}
 		}
 	} else {
@@ -86,9 +85,52 @@ func handle(msg *queue.Message) {
 	}
 }
 
-var handler = queue.Handler{F: handle, Queues: []string{queueName}}
+var (
+	qfactory queue.QFactory
+	_handler queue.Handler
+	queues   map[string]queue.Q
+)
+
+func handler() queue.Handler {
+	if _handler != nil {
+		return _handler
+	}
+	var err error
+	if qfactory == nil {
+		qfactory, err = queue.Factory()
+		if err != nil {
+			log.Fatalf("Failed to get the queue instance: %s", err)
+		}
+	}
+	_handler, err = qfactory.Handler(handle, queueName)
+	if err != nil {
+		log.Fatalf("Failed to create the queue handler: %s", err)
+	}
+	return _handler
+}
+
+func getQueue(name string) queue.Q {
+	if queues == nil {
+		queues = make(map[string]queue.Q)
+	}
+	if q, ok := queues[name]; ok {
+		return q
+	}
+	var err error
+	if qfactory == nil {
+		qfactory, err = queue.Factory()
+		if err != nil {
+			log.Fatalf("Failed to get the queue instance: %s", err)
+		}
+	}
+	queues[name], err = qfactory.Get(name)
+	if err != nil {
+		log.Fatalf("Failed to get the queue: %s", err)
+	}
+	return queues[name]
+}
 
 func enqueue(msg *queue.Message) {
-	msg.Put(queueName, 0)
-	handler.Start()
+	getQueue(queueName).Put(msg, 0)
+	handler().Start()
 }

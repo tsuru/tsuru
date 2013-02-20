@@ -78,6 +78,7 @@ func (s *S) SetUpSuite(c *C) {
 	c.Assert(err, IsNil)
 	config.Set("database:url", "127.0.0.1:27017")
 	config.Set("database:name", "tsuru_app_test")
+	config.Set("queue", "fake")
 	s.conn, err = db.Conn()
 	c.Assert(err, IsNil)
 	s.rfs = &ftesting.RecordingFs{}
@@ -91,9 +92,6 @@ func (s *S) SetUpSuite(c *C) {
 	s.t.SetGitConfs(c)
 	s.provisioner = ttesting.NewFakeProvisioner()
 	Provisioner = s.provisioner
-	queue.Preempt()
-	for err := handler.DryRun(); err != nil; err = handler.DryRun() {
-	}
 }
 
 func (s *S) TearDownSuite(c *C) {
@@ -102,10 +100,6 @@ func (s *S) TearDownSuite(c *C) {
 	s.conn.Apps().Database.DropDatabase()
 	fsystem = nil
 	queue.Preempt()
-}
-
-func (s *S) SetUpTest(c *C) {
-	ttesting.CleanQueues(queueName, QueueName)
 }
 
 func (s *S) TearDownTest(c *C) {

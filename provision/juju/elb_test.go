@@ -48,13 +48,10 @@ func (s *ELBSuite) SetUpSuite(c *C) {
 	config.Set("aws:access-key-id", "access")
 	config.Set("aws:secret-access-key", "s3cr3t")
 	config.Set("git:host", "git.tsuru.io")
-	config.Set("queue-server", "127.0.0.1:11300")
+	config.Set("queue", "fake")
 	config.Set("juju:units-collection", "juju_units_test_elb")
 	s.provisioner = testing.NewFakeProvisioner()
 	app.Provisioner = s.provisioner
-	testing.CleanQueues(queueName)
-	err = handler.DryRun()
-	c.Assert(err, IsNil)
 }
 
 func (s *ELBSuite) TearDownSuite(c *C) {
@@ -218,4 +215,75 @@ func (s *ELBSuite) TestAddrUnknownLoadBalancer(c *C) {
 	c.Assert(addr, Equals, "")
 	c.Assert(err, NotNil)
 	c.Assert(err.Error(), Equals, "not found")
+}
+
+func (s *ELBSuite) TestELBInstanceHealer(c *C) {
+	lb := "elbtest"
+	instance := s.server.NewInstance()
+	defer s.server.RemoveInstance(instance)
+	s.server.NewLoadBalancer(lb)
+	defer s.server.RemoveLoadBalancer(lb)
+	s.server.RegisterInstance(instance, lb)
+	defer s.server.DeregisterInstance(instance, lb)
+	a := app.App{
+		Name:  "elbtest",
+		Units: []app.Unit{{InstanceId: instance, State: "error", Name: "elbtest/0"}},
+	}
+	storage, err := db.Conn()
+	c.Assert(err, IsNil)
+	err = storage.Apps().Insert(a)
+	c.Assert(err, IsNil)
+	defer storage.Apps().Remove(bson.M{"name": a.Name})
+	s.provisioner.Provision(&a)
+	defer s.provisioner.Destroy(&a)
+	state := elb.InstanceState{
+		Description: "Instance has failed at least the UnhealthyThreshold number of health checks consecutively.",
+		State:       "OutOfService",
+		ReasonCode:  "Instance",
+		InstanceId:  instance,
+	}
+	s.server.ChangeInstanceState(lb, state)
+	healer := elbInstanceHealer{}
+	err = healer.Heal()
+	c.Assert(err, IsNil)
+	err = a.Get()
+	c.Assert(err, IsNil)
+	c.Assert(a.Units, HasLen, 1)
+	c.Assert(a.Units[0].InstanceId, Not(Equals), instance)
+	queue.Preempt()
+}
+
+func (s *ELBSuite) TestELBInstanceHealerInstallingUnit(c *C) {
+	lb := "elbtest"
+	instance := s.server.NewInstance()
+	defer s.server.RemoveInstance(instance)
+	s.server.NewLoadBalancer(lb)
+	defer s.server.RemoveLoadBalancer(lb)
+	s.server.RegisterInstance(instance, lb)
+	defer s.server.DeregisterInstance(instance, lb)
+	a := app.App{
+		Name:  "elbtest",
+		Units: []app.Unit{{InstanceId: instance, State: "installing", Name: "elbtest/0"}},
+	}
+	storage, err := db.Conn()
+	c.Assert(err, IsNil)
+	err = storage.Apps().Insert(a)
+	c.Assert(err, IsNil)
+	defer storage.Apps().Remove(bson.M{"name": a.Name})
+	s.provisioner.Provision(&a)
+	defer s.provisioner.Destroy(&a)
+	state := elb.InstanceState{
+		Description: "Instance has failed at least the UnhealthyThreshold number of health checks consecutively.",
+		State:       "OutOfService",
+		ReasonCode:  "Instance",
+		InstanceId:  instance,
+	}
+	s.server.ChangeInstanceState(lb, state)
+	healer := elbInstanceHealer{}
+	err = healer.Heal()
+	c.Assert(err, IsNil)
+	err = a.Get()
+	c.Assert(err, IsNil)
+	c.Assert(a.Units, HasLen, 1)
+	c.Assert(a.Units[0].InstanceId, Equals, instance)
 }

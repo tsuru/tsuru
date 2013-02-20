@@ -103,7 +103,7 @@ func (s *ELBSuite) TestHandleMessagesWithPendingUnits(c *C) {
 	instances := resp.LoadBalancerDescriptions[0].Instances
 	c.Assert(instances, HasLen, 1)
 	c.Assert(instances[0].InstanceId, Equals, id)
-	msg, err := queue.Get(queueName, 1e9)
+	msg, err := getQueue(queueName).Get(1e9)
 	c.Assert(err, IsNil)
 	defer msg.Delete()
 	c.Assert(msg.Action, Equals, addUnitToLoadBalancer)
@@ -123,36 +123,28 @@ func (s *ELBSuite) TestHandleMessagesAllPendingUnits(c *C) {
 		Action: addUnitToLoadBalancer,
 		Args:   []string{"2112", "2112/0", "2112/1"},
 	}
-	err = msg.Put(queueName, 0)
-	c.Assert(err, IsNil)
-	got, err := queue.Get(queueName, 1e6)
-	c.Assert(err, IsNil)
-	defer got.Delete()
-	handle(got)
+	handle(&msg)
 	resp, err := s.client.DescribeLoadBalancers(app.GetName())
 	c.Assert(err, IsNil)
 	c.Assert(resp.LoadBalancerDescriptions, HasLen, 1)
 	instances := resp.LoadBalancerDescriptions[0].Instances
 	c.Assert(instances, HasLen, 0)
-	other, err := queue.Get(queueName, 1e6)
+	got, err := getQueue(queueName).Get(1e6)
 	c.Assert(err, IsNil)
-	c.Assert(other, DeepEquals, got)
-}
-
-func (s *ELBSuite) TestHandler(c *C) {
-	var _ queue.Handler = handler
-	c.Assert(handler.Queues, DeepEquals, []string{queueName})
+	c.Assert(*got, DeepEquals, msg)
+	got.Delete()
 }
 
 func (s *ELBSuite) TestEnqueuePutMessagesInSpecificQueue(c *C) {
 	enqueue(&queue.Message{Action: "clean-everything"})
-	msg, err := queue.Get("default", 1e6)
+	msg, err := getQueue("default").Get(1e6)
 	if err == nil {
 		// cleaning up if the test fail
 		defer msg.Delete()
 		c.Fatalf("Expected non-nil error, got <nil>.")
 	}
-	msg, err = queue.Get(queueName, 1e6)
+	msg, err = getQueue(queueName).Get(1e6)
 	c.Assert(err, IsNil)
-	defer msg.Delete()
+	c.Assert(msg.Action, Equals, "clean-everything")
+	msg.Delete()
 }
