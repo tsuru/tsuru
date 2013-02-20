@@ -89,61 +89,33 @@ func handle(msg *queue.Message) {
 var (
 	qfactory queue.QFactory
 	_handler queue.Handler
-	queues   map[string]queue.Q
-	fmut     sync.Mutex
-	hmut     sync.Mutex
-	qmut     sync.Mutex
+	o        sync.Once
 )
 
-func handler() queue.Handler {
-	// TODO(fss): avoid these mutexes contention.
-	hmut.Lock()
-	defer hmut.Unlock()
-	if _handler != nil {
-		return _handler
-	}
+func setQueue() {
 	var err error
-	fmut.Lock()
-	if qfactory == nil {
-		qfactory, err = queue.Factory()
-		if err != nil {
-			fmut.Unlock()
-			log.Fatalf("Failed to get the queue instance: %s", err)
-		}
+	qfactory, err = queue.Factory()
+	if err != nil {
+		log.Fatalf("Failed to get the queue instance: %s", err)
 	}
 	_handler, err = qfactory.Handler(handle, queueName)
-	fmut.Unlock()
 	if err != nil {
 		log.Fatalf("Failed to create the queue handler: %s", err)
 	}
+}
+
+func handler() queue.Handler {
+	o.Do(setQueue)
 	return _handler
 }
 
 func getQueue(name string) queue.Q {
-	// TODO(fss): avoid these mutexes contention.
-	qmut.Lock()
-	defer qmut.Unlock()
-	if queues == nil {
-		queues = make(map[string]queue.Q)
-	}
-	if q, ok := queues[name]; ok {
-		return q
-	}
-	var err error
-	fmut.Lock()
-	if qfactory == nil {
-		qfactory, err = queue.Factory()
-		if err != nil {
-			fmut.Unlock()
-			log.Fatalf("Failed to get the queue instance: %s", err)
-		}
-	}
-	queues[name], err = qfactory.Get(name)
-	fmut.Unlock()
+	o.Do(setQueue)
+	q, err := qfactory.Get(name)
 	if err != nil {
-		log.Fatalf("Failed to get the queue: %s", err)
+		log.Fatalf("Failed to get queue %q: %s", name, err)
 	}
-	return queues[name]
+	return q
 }
 
 func enqueue(msg *queue.Message) {
