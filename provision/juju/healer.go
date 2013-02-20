@@ -57,8 +57,11 @@ func getEC2Endpoint() *ec2.EC2 {
 }
 
 func (h *instanceAgentsConfigHealer) getPrivateDns(instanceId string) (string, error) {
+	log.Printf("getting dns for %s", instanceId)
 	resp, err := h.ec2().Instances([]string{instanceId}, nil)
 	if err != nil {
+		log.Printf("error in gettings dns for %s", instanceId)
+		log.Print(err)
 		return "", err
 	}
 	dns := resp.Reservations[0].Instances[0].PrivateDNSName
@@ -73,10 +76,10 @@ func (h *instanceAgentsConfigHealer) bootstrapPrivateDns() (string, error) {
 func (h instanceAgentsConfigHealer) Heal() error {
 	p := JujuProvisioner{}
 	output, _ := p.getOutput()
+	dns, _ := h.bootstrapPrivateDns()
+	log.Printf("bootstrap dns is %s", dns)
 	for _, service := range output.Services {
 		for _, unit := range service.Units {
-			dns, _ := h.bootstrapPrivateDns()
-			log.Printf("bootstrap dns is %s", dns)
 			cmd := exec.Command("ssh", "-o", "StrictHostKeyChecking no", "-q", "-l", "ubuntu", unit.PublicAddress, "grep", dns, "/etc/init/juju-machine-agent.conf")
 			err := cmd.Run()
 			if err != nil {
