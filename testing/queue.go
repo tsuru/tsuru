@@ -87,6 +87,7 @@ func (q *FakeQ) Release(m *queue.Message, delay time.Duration) error {
 
 type FakeQFactory struct {
 	queues map[string]*FakeQ
+	sync.Mutex
 }
 
 func NewFakeQFactory() *FakeQFactory {
@@ -96,6 +97,8 @@ func NewFakeQFactory() *FakeQFactory {
 }
 
 func (f *FakeQFactory) Get(name string) (queue.Q, error) {
+	f.Lock()
+	defer f.Unlock()
 	if q, ok := f.queues[name]; ok {
 		return q, nil
 	}
