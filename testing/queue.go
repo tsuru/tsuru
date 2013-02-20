@@ -8,6 +8,7 @@ import (
 	"errors"
 	"github.com/globocom/tsuru/queue"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -16,18 +17,17 @@ func init() {
 }
 
 type fakeHandler struct {
-	running bool
+	running int32
 }
 
 func (h *fakeHandler) Start() {
-	h.running = true
+	atomic.StoreInt32(&h.running, 1)
 }
 
 func (h *fakeHandler) Stop() error {
-	if !h.running {
+	if !atomic.CompareAndSwapInt32(&h.running, 1, 0) {
 		return errors.New("Not running.")
 	}
-	h.running = false
 	return nil
 }
 

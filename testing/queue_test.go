@@ -80,16 +80,16 @@ func (s *S) TestFakeQRelease(c *C) {
 
 func (s *S) TestFakeHandlerStart(c *C) {
 	h := fakeHandler{}
-	c.Assert(h.running, Equals, false)
+	c.Assert(h.running, Equals, int32(0))
 	h.Start()
-	c.Assert(h.running, Equals, true)
+	c.Assert(h.running, Equals, int32(1))
 }
 
 func (s *S) TestFakeHandlerStop(c *C) {
 	h := fakeHandler{}
 	h.Start()
 	h.Stop()
-	c.Assert(h.running, Equals, false)
+	c.Assert(h.running, Equals, int32(0))
 }
 
 func (s *S) TestFakeQFactoryGet(c *C) {
