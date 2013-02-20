@@ -30,6 +30,12 @@ func (s *S) TestBootstrapInstanceIdHealerNeedsHeal(c *C) {
 	c.Assert(h.needsHeal(), Equals, false)
 }
 
+func (s *S) TestBootstrapInstanceIdHealerEC2(c *C) {
+	h := bootstrapInstanceIdHealer{}
+	ec2 := h.ec2()
+	c.Assert(ec2.EC2Endpoint, Equals, "")
+}
+
 func (s *S) TestBootstrapInstanceIdHealerS3(c *C) {
 	h := bootstrapInstanceIdHealer{}
 	s3 := h.s3()
