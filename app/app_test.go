@@ -922,7 +922,8 @@ func (s *S) TestIsValid(c *C) {
 		{"123myapp", false},
 		{"myapp", true},
 		{"_theirapp", false},
-		{"my-app", false},
+		{"my-app", true},
+		{"-myapp", false},
 		{"my_app", false},
 		{"b", true},
 	}

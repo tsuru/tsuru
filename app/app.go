@@ -470,7 +470,7 @@ func (a *App) getEnv(name string) (bind.EnvVar, error) {
 
 // isValid indicates whether the name of the app is valid.
 func (a *App) isValid() bool {
-	regex := regexp.MustCompile(`^[a-z][a-z0-9]{0,62}$`)
+	regex := regexp.MustCompile(`^[a-z][a-z0-9-]{0,62}$`)
 	return regex.MatchString(a.Name)
 }
 
