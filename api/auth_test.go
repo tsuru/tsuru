@@ -666,7 +666,6 @@ func (s *AuthSuite) TestAddUserToTeamInDatabase(c *C) {
 	err = addUserToTeamInDatabase(user, team)
 	c.Assert(err, IsNil)
 	s.conn.Teams().FindId(team.Name).One(team)
-	fmt.Println(team)
 	c.Assert(team.Users, DeepEquals, []string{user.Email})
 }
 
