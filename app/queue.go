@@ -161,13 +161,13 @@ func (l unitList) State() string {
 
 // getUnits builds a unitList from the given app and the names in the string
 // slice.
-func getUnits(a *App, names []string) unitList {
+func getUnits(app *App, names []string) unitList {
 	var units []Unit
 	if len(names) > 0 {
 		units = make([]Unit, len(names))
 		i := 0
 		for _, unitName := range names {
-			for _, appUnit := range a.Units {
+			for _, appUnit := range app.Units {
 				if appUnit.Name == unitName {
 					units[i] = appUnit
 					i++

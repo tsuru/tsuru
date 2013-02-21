@@ -49,15 +49,15 @@ type App struct {
 
 // MarshalJSON marshals the app in json format. It returns a JSON object with
 // the following keys: Name, Framework, Teams, Units, Repository and Ip.
-func (a *App) MarshalJSON() ([]byte, error) {
+func (app *App) MarshalJSON() ([]byte, error) {
 	result := make(map[string]interface{})
-	result["Name"] = a.Name
-	result["Framework"] = a.Framework
-	result["Teams"] = a.Teams
-	result["Units"] = a.Units
-	result["Repository"] = repository.GetUrl(a.Name)
-	result["Ip"] = a.Ip
-	result["CName"] = a.CName
+	result["Name"] = app.Name
+	result["Framework"] = app.Framework
+	result["Teams"] = app.Teams
+	result["Units"] = app.Units
+	result["Repository"] = repository.GetUrl(app.Name)
+	result["Ip"] = app.Ip
+	result["CName"] = app.CName
 	return json.Marshal(&result)
 }
 
@@ -80,12 +80,12 @@ type conf struct {
 //     app := App{Name: "myapp"}
 //     err := app.Get()
 //     // do something with the app
-func (a *App) Get() error {
+func (app *App) Get() error {
 	conn, err := db.Conn()
 	if err != nil {
 		return err
 	}
-	return conn.Apps().Find(bson.M{"name": a.Name}).One(a)
+	return conn.Apps().Find(bson.M{"name": app.Name}).One(app)
 }
 
 // CreateApp creates a new app.
@@ -97,11 +97,11 @@ func (a *App) Get() error {
 //       3. Create S3 bucket for the app (if the bucket support is enabled)
 //       4. Create the git repository using gandalf
 //       5. Provision units within the provisioner
-func CreateApp(a *App, units uint) error {
+func CreateApp(app *App, units uint) error {
 	if units == 0 {
 		return &ValidationError{Message: "Cannot create app with 0 units."}
 	}
-	if !a.isValid() {
+	if !app.isValid() {
 		msg := "Invalid app name, your app should have at most 63 " +
 			"characters, containing only lower case letters or numbers, " +
 			"starting with a letter."
@@ -117,9 +117,9 @@ func CreateApp(a *App, units uint) error {
 	actions = append(actions, &exportEnvironmentsAction,
 		&createRepository, &provisionApp, &provisionAddUnits)
 	pipeline := action.NewPipeline(actions...)
-	err := pipeline.Execute(a, units)
+	err := pipeline.Execute(app, units)
 	if err != nil {
-		return &appCreationError{app: a.Name, err: err}
+		return &appCreationError{app: app.Name, err: err}
 	}
 	return nil
 }
@@ -127,13 +127,13 @@ func CreateApp(a *App, units uint) error {
 // unbind takes all service instances that are binded to the app, and unbind
 // them. This method is used by Destroy (before destroying the app, it unbinds
 // all service instances). Refer to Destroy docs for more details.
-func (a *App) unbind() error {
+func (app *App) unbind() error {
 	var instances []service.ServiceInstance
 	conn, err := db.Conn()
 	if err != nil {
 		return err
 	}
-	q := bson.M{"apps": bson.M{"$in": []string{a.Name}}}
+	q := bson.M{"apps": bson.M{"$in": []string{app.Name}}}
 	err = conn.ServiceInstances().Find(q).All(&instances)
 	if err != nil {
 		return err
@@ -146,7 +146,7 @@ func (a *App) unbind() error {
 		msg += fmt.Sprintf("- %s (%s)", instanceName, reason.Error())
 	}
 	for _, instance := range instances {
-		err = instance.UnbindApp(a)
+		err = instance.UnbindApp(app)
 		if err != nil {
 			addMsg(instance.Name, err)
 		}
@@ -166,20 +166,20 @@ func (a *App) unbind() error {
 //       2. Destroy the app unit using juju
 //       3. Unbind all service instances from the app
 //       4. Remove the app from the database
-func (a *App) Destroy() error {
+func (app *App) Destroy() error {
 	useS3, _ := config.GetBool("bucket-support")
 	if useS3 {
-		err := destroyBucket(a)
+		err := destroyBucket(app)
 		if err != nil {
 			return err
 		}
 	}
-	if len(a.Units) > 0 {
-		err := Provisioner.Destroy(a)
+	if len(app.Units) > 0 {
+		err := Provisioner.Destroy(app)
 		if err != nil {
 			return errors.New("Failed to destroy the app: " + err.Error())
 		}
-		err = a.unbind()
+		err = app.unbind()
 		if err != nil {
 			return err
 		}
@@ -188,30 +188,30 @@ func (a *App) Destroy() error {
 	if err != nil {
 		return err
 	}
-	return conn.Apps().Remove(bson.M{"name": a.Name})
+	return conn.Apps().Remove(bson.M{"name": app.Name})
 }
 
 // AddUnit adds a new unit to the app (or update an existing unit). It just updates
 // the internal list of units, it does not talk to the provisioner. For
 // provisioning a new unit for the app, one should use AddUnits method, which
 // receives the number of units that you want to provision.
-func (a *App) AddUnit(u *Unit) {
-	for i, unt := range a.Units {
+func (app *App) AddUnit(u *Unit) {
+	for i, unt := range app.Units {
 		if unt.Name == u.Name {
-			a.Units[i] = *u
+			app.Units[i] = *u
 			return
 		}
 	}
-	a.Units = append(a.Units, *u)
+	app.Units = append(app.Units, *u)
 }
 
 // AddUnits creates n new units within the provisioner, saves new units in the
 // database and enqueues the apprc serialization.
-func (a *App) AddUnits(n uint) error {
+func (app *App) AddUnits(n uint) error {
 	if n == 0 {
 		return errors.New("Cannot add zero units.")
 	}
-	units, err := Provisioner.AddUnits(a, n)
+	units, err := Provisioner.AddUnits(app, n)
 	if err != nil {
 		return err
 	}
@@ -219,13 +219,13 @@ func (a *App) AddUnits(n uint) error {
 	if err != nil {
 		return err
 	}
-	length := len(a.Units)
+	length := len(app.Units)
 	appUnits := make([]Unit, len(units))
-	a.Units = append(a.Units, appUnits...)
+	app.Units = append(app.Units, appUnits...)
 	messages := make([]queue.Message, len(units)*2)
 	mCount := 0
 	for i, unit := range units {
-		a.Units[i+length] = Unit{
+		app.Units[i+length] = Unit{
 			Name:       unit.Name,
 			Type:       unit.Type,
 			Ip:         unit.Ip,
@@ -233,11 +233,11 @@ func (a *App) AddUnits(n uint) error {
 			State:      provision.StatusPending.String(),
 			InstanceId: unit.InstanceId,
 		}
-		messages[mCount] = queue.Message{Action: RegenerateApprcAndStart, Args: []string{a.Name, unit.Name}}
-		messages[mCount+1] = queue.Message{Action: bindService, Args: []string{a.Name, unit.Name}}
+		messages[mCount] = queue.Message{Action: RegenerateApprcAndStart, Args: []string{app.Name, unit.Name}}
+		messages[mCount+1] = queue.Message{Action: bindService, Args: []string{app.Name, unit.Name}}
 		mCount += 2
 	}
-	err = conn.Apps().Update(bson.M{"name": a.Name}, a)
+	err = conn.Apps().Update(bson.M{"name": app.Name}, app)
 	if err != nil {
 		return err
 	}
@@ -251,13 +251,13 @@ func (a *App) AddUnits(n uint) error {
 // search using the unit name, then calls the removal function from provisioner
 //
 // Returns an error in case of failure.
-func (a *App) RemoveUnit(id string) error {
+func (app *App) RemoveUnit(id string) error {
 	var (
 		unit Unit
 		i    int
 		u    Unit
 	)
-	for i, u = range a.Units {
+	for i, u = range app.Units {
 		if u.InstanceId == id || u.GetName() == id {
 			unit = u
 			break
@@ -266,16 +266,16 @@ func (a *App) RemoveUnit(id string) error {
 	if unit.GetName() == "" {
 		return errors.New("Unit not found.")
 	}
-	if err := Provisioner.RemoveUnit(a, unit.GetName()); err != nil {
+	if err := Provisioner.RemoveUnit(app, unit.GetName()); err != nil {
 		return err
 	}
-	a.removeUnits([]int{i})
-	a.unbindUnit(&unit)
+	app.removeUnits([]int{i})
+	app.unbindUnit(&unit)
 	conn, err := db.Conn()
 	if err != nil {
 		return err
 	}
-	return conn.Apps().Update(bson.M{"name": a.Name}, a)
+	return conn.Apps().Update(bson.M{"name": app.Name}, app)
 }
 
 // removeUnits removes units identified by the given indices. The slice of
@@ -288,7 +288,7 @@ func (a *App) RemoveUnit(id string) error {
 //
 // Calling this method with with the slice []int{2, 4} would remove "unit3" and
 // "unit5" from the list.
-func (a *App) removeUnits(indices []int) {
+func (app *App) removeUnits(indices []int) {
 	prefix := true
 	for i := range indices {
 		if i != indices[i] {
@@ -297,14 +297,14 @@ func (a *App) removeUnits(indices []int) {
 		}
 	}
 	if prefix {
-		a.Units = a.Units[len(indices):]
+		app.Units = app.Units[len(indices):]
 	} else {
 		for i, index := range indices {
 			index -= i
-			if index+1 < len(a.Units) {
-				copy(a.Units[index:], a.Units[index+1:])
+			if index+1 < len(app.Units) {
+				copy(app.Units[index:], app.Units[index+1:])
 			}
-			a.Units = a.Units[:len(a.Units)-1]
+			app.Units = app.Units[:len(app.Units)-1]
 		}
 	}
 }
@@ -316,10 +316,10 @@ func (a *App) removeUnits(indices []int) {
 //     2. Unbind units from service instances binded to the app
 //     3. Remove units from the app list
 //     4. Update the app in the database
-func (a *App) RemoveUnits(n uint) error {
+func (app *App) RemoveUnits(n uint) error {
 	if n == 0 {
 		return errors.New("Cannot remove zero units.")
-	} else if l := uint(len(a.Units)); l == n {
+	} else if l := uint(len(app.Units)); l == n {
 		return errors.New("Cannot remove all units from an app.")
 	} else if n > l {
 		return fmt.Errorf("Cannot remove %d units from this app, it has only %d units.", n, l)
@@ -328,13 +328,13 @@ func (a *App) RemoveUnits(n uint) error {
 		removed []int
 		err     error
 	)
-	units := a.ProvisionUnits()
+	units := app.ProvisionUnits()
 	for i := 0; i < int(n); i++ {
-		err = Provisioner.RemoveUnit(a, units[i].GetName())
+		err = Provisioner.RemoveUnit(app, units[i].GetName())
 		if err == nil {
 			removed = append(removed, i)
 		}
-		a.unbindUnit(units[i])
+		app.unbindUnit(units[i])
 	}
 	if len(removed) == 0 {
 		return err
@@ -343,8 +343,8 @@ func (a *App) RemoveUnits(n uint) error {
 	if err != nil {
 		return err
 	}
-	a.removeUnits(removed)
-	dbErr := conn.Apps().Update(bson.M{"name": a.Name}, a)
+	app.removeUnits(removed)
+	dbErr := conn.Apps().Update(bson.M{"name": app.Name}, app)
 	if err == nil {
 		return dbErr
 	}
@@ -353,13 +353,13 @@ func (a *App) RemoveUnits(n uint) error {
 
 // unbindUnit unbinds a unit from all service instances binded to the app. It
 // is used by RemoveUnit and RemoveUnits methods.
-func (a *App) unbindUnit(unit provision.AppUnit) error {
+func (app *App) unbindUnit(unit provision.AppUnit) error {
 	conn, err := db.Conn()
 	if err != nil {
 		return err
 	}
 	var instances []service.ServiceInstance
-	q := bson.M{"apps": bson.M{"$in": []string{a.Name}}}
+	q := bson.M{"apps": bson.M{"$in": []string{app.Name}}}
 	err = conn.ServiceInstances().Find(q).All(&instances)
 	if err != nil {
 		return err
@@ -374,8 +374,8 @@ func (a *App) unbindUnit(unit provision.AppUnit) error {
 }
 
 // Available returns true if at least one of N units is started.
-func (a *App) Available() bool {
-	for _, unit := range a.ProvisionUnits() {
+func (app *App) Available() bool {
+	for _, unit := range app.ProvisionUnits() {
 		if unit.GetStatus() == provision.StatusStarted {
 			return true
 		}
@@ -389,100 +389,100 @@ func (a *App) Available() bool {
 // where it was found.
 //
 // Its's implemented after sort.Search. That's why it works this way.
-func (a *App) find(team *auth.Team) (int, bool) {
-	pos := sort.Search(len(a.Teams), func(i int) bool {
-		return a.Teams[i] >= team.Name
+func (app *App) find(team *auth.Team) (int, bool) {
+	pos := sort.Search(len(app.Teams), func(i int) bool {
+		return app.Teams[i] >= team.Name
 	})
-	return pos, pos < len(a.Teams) && a.Teams[pos] == team.Name
+	return pos, pos < len(app.Teams) && app.Teams[pos] == team.Name
 }
 
 // Grant allows a team to have access to an app. It returns an error if the
 // team already have access to the app.
-func (a *App) Grant(team *auth.Team) error {
-	pos, found := a.find(team)
+func (app *App) Grant(team *auth.Team) error {
+	pos, found := app.find(team)
 	if found {
 		return errors.New("This team already has access to this app")
 	}
-	a.Teams = append(a.Teams, "")
-	tmp := a.Teams[pos]
-	for i := pos; i < len(a.Teams)-1; i++ {
-		a.Teams[i+1], tmp = tmp, a.Teams[i]
+	app.Teams = append(app.Teams, "")
+	tmp := app.Teams[pos]
+	for i := pos; i < len(app.Teams)-1; i++ {
+		app.Teams[i+1], tmp = tmp, app.Teams[i]
 	}
-	a.Teams[pos] = team.Name
+	app.Teams[pos] = team.Name
 	return nil
 }
 
 // Revoke removes the access from a team. It returns an error if the team do
 // not have access to the app.
-func (a *App) Revoke(team *auth.Team) error {
-	index, found := a.find(team)
+func (app *App) Revoke(team *auth.Team) error {
+	index, found := app.find(team)
 	if !found {
 		return errors.New("This team does not have access to this app")
 	}
-	copy(a.Teams[index:], a.Teams[index+1:])
-	a.Teams = a.Teams[:len(a.Teams)-1]
+	copy(app.Teams[index:], app.Teams[index+1:])
+	app.Teams = app.Teams[:len(app.Teams)-1]
 	return nil
 }
 
 // GetTeams returns a slice of teams that have access to the app.
-func (a *App) GetTeams() []auth.Team {
+func (app *App) GetTeams() []auth.Team {
 	var teams []auth.Team
 	conn, err := db.Conn()
 	if err != nil {
 		log.Printf("Failed to connect to the database: %s", err)
 		return nil
 	}
-	conn.Teams().Find(bson.M{"_id": bson.M{"$in": a.Teams}}).All(&teams)
+	conn.Teams().Find(bson.M{"_id": bson.M{"$in": app.Teams}}).All(&teams)
 	return teams
 }
 
 // SetTeams sets the values of the internal te
 //
 // TODO(fss): this method should not be exported.
-func (a *App) SetTeams(teams []auth.Team) {
-	a.Teams = make([]string, len(teams))
+func (app *App) SetTeams(teams []auth.Team) {
+	app.Teams = make([]string, len(teams))
 	for i, team := range teams {
-		a.Teams[i] = team.Name
+		app.Teams[i] = team.Name
 	}
-	sort.Strings(a.Teams)
+	sort.Strings(app.Teams)
 }
 
 // setEnv sets the given environment variable in the app.
-func (a *App) setEnv(env bind.EnvVar) {
-	if a.Env == nil {
-		a.Env = make(map[string]bind.EnvVar)
+func (app *App) setEnv(env bind.EnvVar) {
+	if app.Env == nil {
+		app.Env = make(map[string]bind.EnvVar)
 	}
-	a.Env[env.Name] = env
-	a.Log(fmt.Sprintf("setting env %s with value %s", env.Name, env.Value), "tsuru")
+	app.Env[env.Name] = env
+	app.Log(fmt.Sprintf("setting env %s with value %s", env.Name, env.Value), "tsuru")
 }
 
 // getEnv returns the environment variable if it's declared in the app. It will
 // return an error if the variable is not defined in this app.
-func (a *App) getEnv(name string) (bind.EnvVar, error) {
+func (app *App) getEnv(name string) (bind.EnvVar, error) {
 	var (
 		env bind.EnvVar
 		err error
 		ok  bool
 	)
-	if env, ok = a.Env[name]; !ok {
+	if env, ok = app.Env[name]; !ok {
 		err = errors.New("Environment variable not declared for this app.")
 	}
 	return env, err
 }
 
 // isValid indicates whether the name of the app is valid.
-func (a *App) isValid() bool {
+func (app *App) isValid() bool {
 	regex := regexp.MustCompile(`^[a-z][a-z0-9-]{0,62}$`)
-	return regex.MatchString(a.Name)
+	return regex.MatchString(app.Name)
 }
 
 // InstanceEnv returns a map of environment variables that belongs to the given
 // service instance (identified by the name only).
 //
 // TODO(fss): this method should not be exported.
-func (a *App) InstanceEnv(name string) map[string]bind.EnvVar {
+func (app *App) InstanceEnv(name string) map[string]bind.EnvVar {
 	envs := make(map[string]bind.EnvVar)
-	for k, env := range a.Env {
+	for k, env := range app.Env {
 		if env.InstanceName == name {
 			envs[k] = bind.EnvVar(env)
 		}
@@ -494,26 +494,26 @@ func (a *App) InstanceEnv(name string) map[string]bind.EnvVar {
 //
 // app.conf uses YAML format, this function looks for two keys: pre-restart and
 // pos-restart.
-func (a *App) loadHooks() error {
-	if a.hooks != nil {
+func (app *App) loadHooks() error {
+	if app.hooks != nil {
 		return nil
 	}
-	a.hooks = new(conf)
+	app.hooks = new(conf)
 	uRepo, err := repository.GetPath()
 	if err != nil {
-		a.Log(fmt.Sprintf("Got error while getting repository path: %s", err), "tsuru")
+		app.Log(fmt.Sprintf("Got error while getting repository path: %s", err), "tsuru")
 		return err
 	}
 	cmd := "cat " + path.Join(uRepo, "app.conf")
 	var buf bytes.Buffer
-	err = a.run(cmd, &buf)
+	err = app.run(cmd, &buf)
 	if err != nil {
-		a.Log(fmt.Sprintf("Got error while executing command: %s... Skipping hooks execution", err), "tsuru")
+		app.Log(fmt.Sprintf("Got error while executing command: %s... Skipping hooks execution", err), "tsuru")
 		return nil
 	}
-	err = goyaml.Unmarshal(buf.Bytes(), a.hooks)
+	err = goyaml.Unmarshal(buf.Bytes(), app.hooks)
 	if err != nil {
-		a.Log(fmt.Sprintf("Got error while parsing yaml: %s", err), "tsuru")
+		app.Log(fmt.Sprintf("Got error while parsing yaml: %s", err), "tsuru")
 		return err
 	}
 	return nil
@@ -523,12 +523,12 @@ func (a *App) loadHooks() error {
 // kind string. If the list is empty, it returns nil.
 //
 // The hook itself may be "pre-restart" or "pos-restart".
-func (a *App) runHook(w io.Writer, cmds []string, kind string) error {
+func (app *App) runHook(w io.Writer, cmds []string, kind string) error {
 	if len(cmds) == 0 {
-		a.Log(fmt.Sprintf("Skipping %s hooks...", kind), "tsuru")
+		app.Log(fmt.Sprintf("Skipping %s hooks...", kind), "tsuru")
 		return nil
 	}
-	a.Log(fmt.Sprintf("Executing %s hook...", kind), "tsuru")
+	app.Log(fmt.Sprintf("Executing %s hook...", kind), "tsuru")
 	err := write(w, []byte("\n ---> Running "+kind+"\n"))
 	if err != nil {
 		return err
@@ -536,10 +536,10 @@ func (a *App) runHook(w io.Writer, cmds []string, kind string) error {
 	for _, cmd := range cmds {
 		p, err := deployHookAbsPath(cmd)
 		if err != nil {
-			a.Log(fmt.Sprintf("Error obtaining absolute path to hook: %s.", err), "tsuru")
+			app.Log(fmt.Sprintf("Error obtaining absolute path to hook: %s.", err), "tsuru")
 			continue
 		}
-		err = a.Run(p, w)
+		err = app.Run(p, w)
 		if err != nil {
 			return err
 		}
@@ -550,50 +550,50 @@ func (a *App) runHook(w io.Writer, cmds []string, kind string) error {
 // preRestart is responsible for running user's pre-restart script.
 //
 // The path to this script can be found at the app.conf file, at the root of user's app repository.
-func (a *App) preRestart(w io.Writer) error {
-	if err := a.loadHooks(); err != nil {
+func (app *App) preRestart(w io.Writer) error {
+	if err := app.loadHooks(); err != nil {
 		return err
 	}
-	return a.runHook(w, a.hooks.PreRestart, "pre-restart")
+	return app.runHook(w, app.hooks.PreRestart, "pre-restart")
 }
 
 // posRestart is responsible for running user's pos-restart script.
 //
 // The path to this script can be found at the app.conf file, at the root of
 // user's app repository.
-func (a *App) posRestart(w io.Writer) error {
-	if err := a.loadHooks(); err != nil {
+func (app *App) posRestart(w io.Writer) error {
+	if err := app.loadHooks(); err != nil {
 		return err
 	}
-	return a.runHook(w, a.hooks.PosRestart, "pos-restart")
+	return app.runHook(w, app.hooks.PosRestart, "pos-restart")
 }
 
 // Run executes the command in app units, sourcing apprc before running the
 // command.
-func (a *App) Run(cmd string, w io.Writer) error {
-	a.Log(fmt.Sprintf("running '%s'", cmd), "tsuru")
+func (app *App) Run(cmd string, w io.Writer) error {
+	app.Log(fmt.Sprintf("running '%s'", cmd), "tsuru")
 	source := "[ -f /home/application/apprc ] && source /home/application/apprc"
 	cd := "[ -d /home/application/current ] && cd /home/application/current"
 	cmd = fmt.Sprintf("%s; %s; %s", source, cd, cmd)
-	return a.run(cmd, w)
+	return app.run(cmd, w)
 }
 
-func (a *App) run(cmd string, w io.Writer) error {
-	if !a.Available() {
+func (app *App) run(cmd string, w io.Writer) error {
+	if !app.Available() {
 		return errors.New("App must be available to run commands")
 	}
-	return Provisioner.ExecuteCommand(w, w, a, cmd)
+	return Provisioner.ExecuteCommand(w, w, app, cmd)
 }
 
 // Command is declared just to satisfy repository.Unit interface.
-func (a *App) Command(stdout, stderr io.Writer, cmdArgs ...string) error {
-	return Provisioner.ExecuteCommand(stdout, stderr, a, cmdArgs[0], cmdArgs[1:]...)
+func (app *App) Command(stdout, stderr io.Writer, cmdArgs ...string) error {
+	return Provisioner.ExecuteCommand(stdout, stderr, app, cmdArgs[0], cmdArgs[1:]...)
 }
 
 // Restart runs the restart hook for the app, writing its output to w.
-func (a *App) Restart(w io.Writer) error {
-	a.Log("executing hook to restart", "tsuru")
-	err := a.preRestart(w)
+func (app *App) Restart(w io.Writer) error {
+	app.Log("executing hook to restart", "tsuru")
+	err := app.preRestart(w)
 	if err != nil {
 		return err
 	}
@@ -601,45 +601,45 @@ func (a *App) Restart(w io.Writer) error {
 	if err != nil {
 		return err
 	}
-	err = a.run("/var/lib/tsuru/hooks/restart", w)
+	err = app.run("/var/lib/tsuru/hooks/restart", w)
 	if err != nil {
 		return err
 	}
-	return a.posRestart(w)
+	return app.posRestart(w)
 }
 
 // InstallDeps runs the dependencies hook for the app, writing its output to w.
-func (a *App) InstallDeps(w io.Writer) error {
-	return a.run("/var/lib/tsuru/hooks/dependencies", w)
+func (app *App) InstallDeps(w io.Writer) error {
+	return app.run("/var/lib/tsuru/hooks/dependencies", w)
 }
 
 // GetUnits returns the internal list of units converted to bind.Unit.
-func (a *App) GetUnits() []bind.Unit {
+func (app *App) GetUnits() []bind.Unit {
 	var units []bind.Unit
-	for _, u := range a.Units {
-		u.app = a
+	for _, u := range app.Units {
+		u.app = app
 		units = append(units, &u)
 	}
 	return units
 }
 
 // GetName returns the name of the app.
-func (a *App) GetName() string {
-	return a.Name
+func (app *App) GetName() string {
+	return app.Name
 }
 
 // GetFramework returns the framework of the app.
-func (a *App) GetFramework() string {
-	return a.Framework
+func (app *App) GetFramework() string {
+	return app.Framework
 }
 
 // ProvisionUnits returns the internal list of units converted to
 // provision.AppUnit.
-func (a *App) ProvisionUnits() []provision.AppUnit {
-	units := make([]provision.AppUnit, len(a.Units))
-	for i, u := range a.Units {
+func (app *App) ProvisionUnits() []provision.AppUnit {
+	units := make([]provision.AppUnit, len(app.Units))
+	for i, u := range app.Units {
 		other := u
-		other.app = a
+		other.app = app
 		units[i] = &other
 	}
 	return units
@@ -648,15 +648,15 @@ func (a *App) ProvisionUnits() []provision.AppUnit {
 // SerializeEnvVars serializes the environment variables of the app. The
 // environment variables will be written the the file /home/application/apprc
 // in all units of the app.
-func (a *App) serializeEnvVars() error {
+func (app *App) serializeEnvVars() error {
 	var buf bytes.Buffer
 	cmd := "cat > /home/application/apprc <<END\n"
 	cmd += fmt.Sprintf("# generated by tsuru at %s\n", time.Now().Format(time.RFC822Z))
-	for k, v := range a.Env {
+	for k, v := range app.Env {
 		cmd += fmt.Sprintf(`export %s="%s"`+"\n", k, v.Value)
 	}
 	cmd += "END\n"
-	err := a.run(cmd, &buf)
+	err := app.run(cmd, &buf)
 	if err != nil {
 		output := buf.Bytes()
 		if output == nil {
@@ -671,8 +671,8 @@ func (a *App) serializeEnvVars() error {
 // SetEnvs saves a list of environment variables in the app. The publicOnly
 // parameter indicates whether only public variables can be overridden (if set
 // to false, SetEnvs may override a private variable).
-func (a *App) SetEnvs(envs []bind.EnvVar, publicOnly bool) error {
-	return a.setEnvsToApp(envs, publicOnly, false)
+func (app *App) SetEnvs(envs []bind.EnvVar, publicOnly bool) error {
+	return app.setEnvsToApp(envs, publicOnly, false)
 }
 
 // setEnvsToApp adds environment variables to an app, serializing the resulting
@@ -762,7 +762,7 @@ func (app *App) SetCName(cname string) error {
 
 // Log adds a log message to the app. Specifying a good source is good so the
 // user can filter where the message come from.
-func (a *App) Log(message, source string) error {
+func (app *App) Log(message, source string) error {
 	log.Printf(message)
 	conn, err := db.Conn()
 	if err != nil {
@@ -776,10 +776,10 @@ func (a *App) Log(message, source string) error {
 				Message: msg,
 				Source:  source,
 			}
-			a.Logs = append(a.Logs, l)
+			app.Logs = append(app.Logs, l)
 		}
 	}
-	return conn.Apps().Update(bson.M{"name": a.Name}, a)
+	return conn.Apps().Update(bson.M{"name": app.Name}, app)
 }
 
 // ValidationError is an error implementation used whenever a ValidationError
