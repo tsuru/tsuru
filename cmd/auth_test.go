@@ -215,10 +215,6 @@ func (s *S) TestTeamRemoveIsACommand(c *C) {
 	var _ Command = &teamRemove{}
 }
 
-func (s *S) TestTeamRemoveIsAnInfoer(c *C) {
-	var _ Infoer = &teamRemove{}
-}
-
 func (s *S) TestTeamListRun(c *C) {
 	var called bool
 	trans := &conditionalTransport{
@@ -262,10 +258,6 @@ func (s *S) TestTeamListInfo(c *C) {
 
 func (s *S) TestTeamListIsACommand(c *C) {
 	var _ Command = &teamList{}
-}
-
-func (s *S) TeamTeamListIsAnInfoer(c *C) {
-	var _ Infoer = &teamList{}
 }
 
 func (s *S) TestUserCreateShouldNotDependOnTsuruTokenFile(c *C) {
@@ -382,10 +374,6 @@ func (s *S) TestUserRemoveIsACommand(c *C) {
 	var _ Command = &userRemove{}
 }
 
-func (s *S) TestUserRemoveIsAnInfoer(c *C) {
-	var _ Infoer = &userRemove{}
-}
-
 func (s *S) TestChangePassword(c *C) {
 	var (
 		buf    bytes.Buffer
@@ -447,10 +435,6 @@ func (s *S) TestChangePasswordInfo(c *C) {
 
 func (s *S) TestChangePasswordIsACommand(c *C) {
 	var _ Command = &changePassword{}
-}
-
-func (s *S) TestChangePasswordIsAnInfoer(c *C) {
-	var _ Infoer = &changePassword{}
 }
 
 func (s *S) TestPasswordFromReaderUsingFile(c *C) {

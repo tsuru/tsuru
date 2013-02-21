@@ -26,7 +26,7 @@ func (e osExiter) Exit(code int) {
 }
 
 type Manager struct {
-	Commands      map[string]interface{}
+	Commands      map[string]Command
 	name          string
 	stdout        io.Writer
 	stderr        io.Writer
@@ -61,11 +61,11 @@ func BuildBaseManager(name, version, versionHeader string) *Manager {
 	return m
 }
 
-func (m *Manager) Register(command interface{}) {
+func (m *Manager) Register(command Command) {
 	if m.Commands == nil {
-		m.Commands = make(map[string]interface{})
+		m.Commands = make(map[string]Command)
 	}
-	name := command.(Infoer).Info().Name
+	name := command.Info().Name
 	_, found := m.Commands[name]
 	if found {
 		panic(fmt.Sprintf("command already registered: %s", name))
@@ -86,16 +86,17 @@ func (m *Manager) Run(args []string) {
 		return
 	}
 	args = args[1:]
-	if len(args) < command.(Infoer).Info().MinArgs && name != "help" {
+	info := command.Info()
+	if len(args) < info.MinArgs && name != "help" {
 		m.wrong = true
-		m.original = command.(Infoer).Info().Name
+		m.original = info.Name
 		command = m.Commands["help"]
 		args = []string{name}
 		status = 1
 	}
 	context := Context{args, m.stdout, m.stderr, m.stdin}
 	client := NewClient(&http.Client{}, &context, m)
-	err := command.(Command).Run(&context, client)
+	err := command.Run(&context, client)
 	if err != nil {
 		re := regexp.MustCompile(`^((Invalid token)|(You must provide the Authorization header))`)
 		errorMsg := err.Error()
@@ -118,11 +119,8 @@ func (m *Manager) finisher() exiter {
 	return m.e
 }
 
-type Infoer interface {
-	Info() *Info
-}
-
 type Command interface {
+	Info() *Info
 	Run(context *Context, client Doer) error
 }
 
@@ -161,7 +159,7 @@ func (c *help) Run(context *Context, client Doer) error {
 		if !ok {
 			return fmt.Errorf("Command %s does not exist.", context.Args[0])
 		}
-		info := cmd.(Infoer).Info()
+		info := cmd.Info()
 		output += fmt.Sprintf("Usage: %s %s\n", c.manager.name, info.Usage)
 		output += fmt.Sprintf("\n%s\n", info.Desc)
 		if info.MinArgs > 0 {
