@@ -1240,18 +1240,20 @@ func (s *S) TestGetUnits(c *C) {
 
 func (s *S) TestAppMarshalJson(c *C) {
 	app := App{
-		Name:      "Name",
+		Name:      "name",
 		Framework: "Framework",
 		Teams:     []string{"team1"},
 		Ip:        "10.10.10.1",
+		CName:     "name.mycompany.com",
 	}
 	expected := make(map[string]interface{})
-	expected["Name"] = "Name"
+	expected["Name"] = "name"
 	expected["Framework"] = "Framework"
 	expected["Repository"] = repository.GetUrl(app.Name)
 	expected["Teams"] = []interface{}{"team1"}
 	expected["Units"] = nil
 	expected["Ip"] = "10.10.10.1"
+	expected["CName"] = "name.mycompany.com"
 	data, err := app.MarshalJSON()
 	c.Assert(err, IsNil)
 	result := make(map[string]interface{})

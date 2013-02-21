@@ -41,6 +41,7 @@ type App struct {
 	Logs      []Applog
 	Name      string
 	Ip        string
+	CName     string
 	Units     []Unit
 	Teams     []string
 	hooks     *conf
@@ -56,6 +57,7 @@ func (a *App) MarshalJSON() ([]byte, error) {
 	result["Units"] = a.Units
 	result["Repository"] = repository.GetUrl(a.Name)
 	result["Ip"] = a.Ip
+	result["CName"] = a.CName
 	return json.Marshal(&result)
 }
 
