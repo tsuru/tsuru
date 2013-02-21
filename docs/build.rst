@@ -12,7 +12,7 @@ We will be building the PaaS using source avaliable at https://github.com/globoc
 Overview
 ========
 
-The Tsuru PaaS is composed by X components:
+The Tsuru PaaS is composed by multiple components:
 
 * tsuru webserver
 * tsuru collector
