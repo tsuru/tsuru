@@ -15,6 +15,8 @@ import (
 	"launchpad.net/goamz/aws"
 	"launchpad.net/goamz/ec2"
 	"launchpad.net/goamz/ec2/ec2test"
+	"launchpad.net/goamz/s3"
+	"launchpad.net/goamz/s3/s3test"
 	. "launchpad.net/gocheck"
 	"net"
 )
@@ -26,7 +28,48 @@ func (s *S) TestBootstrapInstanceIdHealerShouldBeRegistered(c *C) {
 }
 
 func (s *S) TestBootstrapInstanceIdHealerNeedsHeal(c *C) {
+	ec2Server, err := ec2test.NewServer()
+	c.Assert(err, IsNil)
+	defer ec2Server.Quit()
+	s3Server, err := s3test.NewServer(nil)
+	c.Assert(err, IsNil)
+	defer s3Server.Quit()
 	h := bootstrapInstanceIdHealer{}
+	region := aws.SAEast
+	region.EC2Endpoint = ec2Server.URL()
+	region.S3Endpoint = s3Server.URL()
+	h.e = ec2.New(aws.Auth{AccessKey: "some", SecretKey: "thing"}, region)
+	h.s = s3.New(aws.Auth{AccessKey: "some", SecretKey: "thing"}, region)
+	bucket := h.s3().Bucket("juju-696227fdd0d747ec97deaa7e5d39f958")
+	err = bucket.PutBucket(s3.PublicReadWrite)
+	c.Assert(err, IsNil)
+	err = bucket.Put("provider-state", []byte("doesnotexist"), "binary/octet-stream", s3.PublicReadWrite)
+	c.Assert(err, IsNil)
+	c.Assert(h.needsHeal(), Equals, true)
+}
+
+func (s *S) TestBootstrapInstanceIdHealerNotNeedsHeal(c *C) {
+	ec2Server, err := ec2test.NewServer()
+	c.Assert(err, IsNil)
+	defer ec2Server.Quit()
+	s3Server, err := s3test.NewServer(nil)
+	c.Assert(err, IsNil)
+	defer s3Server.Quit()
+	h := bootstrapInstanceIdHealer{}
+	region := aws.SAEast
+	region.EC2Endpoint = ec2Server.URL()
+	region.S3Endpoint = s3Server.URL()
+	h.e = ec2.New(aws.Auth{AccessKey: "some", SecretKey: "thing"}, region)
+	sg, err := h.ec2().CreateSecurityGroup("juju-delta-0", "")
+	c.Assert(err, IsNil)
+	h.s = s3.New(aws.Auth{AccessKey: "some", SecretKey: "thing"}, region)
+	bucket := h.s3().Bucket("juju-696227fdd0d747ec97deaa7e5d39f958")
+	err = bucket.PutBucket(s3.PublicReadWrite)
+	c.Assert(err, IsNil)
+	resp, err := h.ec2().RunInstances(&ec2.RunInstances{MaxCount: 1, SecurityGroups: []ec2.SecurityGroup{sg.SecurityGroup}})
+	c.Assert(err, IsNil)
+	err = bucket.Put("provider-state", []byte(resp.Instances[0].InstanceId), "binary/octet-stream", s3.PublicReadWrite)
+	c.Assert(err, IsNil)
 	c.Assert(h.needsHeal(), Equals, false)
 }
 

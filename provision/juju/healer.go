@@ -41,6 +41,21 @@ func (bootstrapInstanceIdHealer) Heal() error {
 	return nil
 }
 
+func (h *bootstrapInstanceIdHealer) needsHeal() bool {
+	s3InstanceId, err := h.bootstrapInstanceIdFromBucket()
+	if err != nil {
+		return false
+	}
+	ec2InstanceId, err := h.bootstrapInstanceId()
+	if err != nil {
+		return false
+	}
+	if s3InstanceId != ec2InstanceId {
+		return true
+	}
+	return false
+}
+
 func (h *bootstrapInstanceIdHealer) ec2() *ec2.EC2 {
 	if h.e == nil {
 		h.e = getEC2Endpoint()
@@ -94,10 +109,6 @@ func (h *bootstrapInstanceIdHealer) bootstrapInstanceId() (string, error) {
 		}
 	}
 	return "", nil
-}
-
-func (bootstrapInstanceIdHealer) needsHeal() bool {
-	return false
 }
 
 // instanceAgentsConfigHealer is an implementation for the Haler interface. For more
