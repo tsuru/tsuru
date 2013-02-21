@@ -39,7 +39,11 @@ type bootstrapInstanceIdHealer struct {
 
 func (h bootstrapInstanceIdHealer) Heal() error {
 	if h.needsHeal() {
-		bucket := h.s3().Bucket("juju-696227fdd0d747ec97deaa7e5d39f958")
+		jujuBucket, err := config.GetString("juju:bucket")
+		if err != nil {
+			return err
+		}
+		bucket := h.s3().Bucket(jujuBucket)
 		ec2InstanceId, err := h.bootstrapInstanceId()
 		if err != nil {
 			return err
@@ -92,7 +96,11 @@ func (bootstrapInstanceIdHealer) getS3Endpoint() *s3.S3 {
 }
 
 func (h *bootstrapInstanceIdHealer) bootstrapInstanceIdFromBucket() (string, error) {
-	bucket := h.s3().Bucket("juju-696227fdd0d747ec97deaa7e5d39f958")
+	jujuBucket, err := config.GetString("juju:bucket")
+	if err != nil {
+		return "", err
+	}
+	bucket := h.s3().Bucket(jujuBucket)
 	data, err := bucket.Get("provider-state")
 	if err != nil {
 		return "", err

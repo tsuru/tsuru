@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"github.com/flaviamissi/go-elb/elb"
 	"github.com/globocom/commandmocker"
+	"github.com/globocom/config"
 	"github.com/globocom/tsuru/app"
 	"github.com/globocom/tsuru/db"
 	"github.com/globocom/tsuru/heal"
@@ -40,7 +41,9 @@ func (s *S) TestBootstrapInstanceIdHealerNeedsHeal(c *C) {
 	region.S3Endpoint = s3Server.URL()
 	h.e = ec2.New(aws.Auth{AccessKey: "some", SecretKey: "thing"}, region)
 	h.s = s3.New(aws.Auth{AccessKey: "some", SecretKey: "thing"}, region)
-	bucket := h.s3().Bucket("juju-696227fdd0d747ec97deaa7e5d39f958")
+	jujuBucket := "ble"
+	config.Set("juju:bucket", jujuBucket)
+	bucket := h.s3().Bucket(jujuBucket)
 	err = bucket.PutBucket(s3.PublicReadWrite)
 	c.Assert(err, IsNil)
 	err = bucket.Put("provider-state", []byte("doesnotexist"), "binary/octet-stream", s3.PublicReadWrite)
@@ -63,7 +66,9 @@ func (s *S) TestBootstrapInstanceIdHealerNotNeedsHeal(c *C) {
 	sg, err := h.ec2().CreateSecurityGroup("juju-delta-0", "")
 	c.Assert(err, IsNil)
 	h.s = s3.New(aws.Auth{AccessKey: "some", SecretKey: "thing"}, region)
-	bucket := h.s3().Bucket("juju-696227fdd0d747ec97deaa7e5d39f958")
+	jujuBucket := "ble"
+	config.Set("juju:bucket", jujuBucket)
+	bucket := h.s3().Bucket(jujuBucket)
 	err = bucket.PutBucket(s3.PublicReadWrite)
 	c.Assert(err, IsNil)
 	resp, err := h.ec2().RunInstances(&ec2.RunInstances{MaxCount: 1, SecurityGroups: []ec2.SecurityGroup{sg.SecurityGroup}})
@@ -88,7 +93,9 @@ func (s *S) TestBootstrapInstanceIdHealerHeal(c *C) {
 	sg, err := h.ec2().CreateSecurityGroup("juju-delta-0", "")
 	c.Assert(err, IsNil)
 	h.s = s3.New(aws.Auth{AccessKey: "some", SecretKey: "thing"}, region)
-	bucket := h.s3().Bucket("juju-696227fdd0d747ec97deaa7e5d39f958")
+	jujuBucket := "ble"
+	config.Set("juju:bucket", jujuBucket)
+	bucket := h.s3().Bucket(jujuBucket)
 	err = bucket.PutBucket(s3.PublicReadWrite)
 	c.Assert(err, IsNil)
 	resp, err := h.ec2().RunInstances(&ec2.RunInstances{MaxCount: 1, SecurityGroups: []ec2.SecurityGroup{sg.SecurityGroup}})
