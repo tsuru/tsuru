@@ -387,3 +387,26 @@ func (s *S) TestIsAdminReturnsTrueWhenUserHasATeamNamedWithAdminTeamConf(c *C) {
 func (s *S) TestIsAdminReturnsFalseWhenUserDoNotHaveATeamNamedWithAdminTeamConf(c *C) {
 	c.Assert(s.user.IsAdmin(), Equals, false)
 }
+
+type testApp struct {
+	Name  string
+	Teams []string
+}
+
+func (s *S) TestAllowedAppsShouldReturnAllAppsTheUserHasAccess(c *C) {
+	team := Team{Name: "teamname", Users: []string{s.user.Email}}
+	err := s.conn.Teams().Insert(&team)
+	c.Assert(err, IsNil)
+	a := testApp{Name: "myapp", Teams: []string{s.team.Name}}
+	err = s.conn.Apps().Insert(&a)
+	c.Assert(err, IsNil)
+	a2 := testApp{Name: "myotherapp", Teams: []string{team.Name}}
+	err = s.conn.Apps().Insert(&a2)
+	c.Assert(err, IsNil)
+	defer func() {
+		s.conn.Apps().Remove(bson.M{"name": bson.M{"$in": []string{a.Name, a2.Name}}})
+		s.conn.Teams().RemoveId(team.Name)
+	}()
+	aApps, err := s.user.AllowedApps()
+	c.Assert(aApps, DeepEquals, []string{a.Name, a2.Name})
+}

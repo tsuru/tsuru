@@ -11,6 +11,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/globocom/config"
+	"github.com/globocom/tsuru/app"
 	"github.com/globocom/tsuru/auth"
 	"github.com/globocom/tsuru/db"
 	"github.com/globocom/tsuru/errors"
@@ -700,6 +701,35 @@ func (s *AuthSuite) TestRemoveUserFromTeamShouldRemoveAUserFromATeamIfTheTeamExi
 	c.Assert(team, Not(ContainsUser), &u)
 }
 
+func (s *AuthSuite) TestRemoveUserFromTeamShouldRemoveOnlyAppsInThatTeamInGandalfWhenUserIsInMoreThanOneTeam(c *C) {
+	h := testHandler{}
+	ts := s.startGandalfTestServer(&h)
+	defer ts.Close()
+	u := auth.User{Email: "nobody@me.me", Password: "none"}
+	err := u.Create()
+	c.Assert(err, IsNil)
+	defer s.conn.Users().Remove(bson.M{"email": u.Email})
+	s.team.AddUser(&u)
+	s.conn.Teams().Update(bson.M{"_id": s.team.Name}, s.team)
+	team2 := auth.Team{Name: "team2", Users: []string{u.Email}}
+	err = s.conn.Teams().Insert(&team2)
+	c.Assert(err, IsNil)
+	defer s.conn.Teams().RemoveId(team2.Name)
+	app1 := app.App{Name: "app1", Teams: []string{s.team.Name}}
+	err = s.conn.Apps().Insert(&app1)
+	c.Assert(err, IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": app1.Name})
+	app2 := app.App{Name: "app2", Teams: []string{team2.Name}}
+	err = s.conn.Apps().Insert(&app2)
+	c.Assert(err, IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": app2.Name})
+	err = removeUserFromTeam("nobody@me.me", s.team.Name, s.user)
+	c.Assert(err, IsNil)
+	expected := `{"repositories": ["app1"], "users": ["nobody@me.me"]}`
+	c.Assert(len(h.body), Equals, 1)
+	c.Assert(string(h.body[0]), Equals, expected)
+}
+
 func (s *AuthSuite) TestRemoveUserFromTeamShouldReturnNotFoundIfTheTeamDoesNotExist(c *C) {
 	h := testHandler{}
 	ts := s.startGandalfTestServer(&h)
@@ -795,6 +825,13 @@ func (s *AuthSuite) TestRemoveUserFromTeamRevokesAccessInGandalf(c *C) {
 	expected := `{"repositories":["myApp"],"users":["pomar@nando-reis.com"]}`
 	c.Assert(string(h.body[2]), Equals, expected)
 }
+
+// func (s *AuthSuite) TestRemoveUserFromTeamInGandalf(c *C) {
+// 	h := testHandler{}
+// 	ts := s.startGandalfTestServer(&h)
+// 	defer ts.Close()
+//     removeUserFromTeamInGandalf(email)
+// }
 
 func (s *AuthSuite) TestAddKeyToUserAddsAKeyToTheUser(c *C) {
 	h := testHandler{}
@@ -1267,27 +1304,4 @@ func (s *AuthSuite) TestChangePasswordReturns400IfJSONDoesNotIncludeBothOldAndNe
 		c.Assert(e.Code, Equals, http.StatusBadRequest)
 		c.Assert(e.Message, Equals, "Both the old and the new passwords are required.")
 	}
-}
-
-type testApp struct {
-	Name  string
-	Teams []string
-}
-
-func (s *AuthSuite) TestAllowedAppsShouldReturnAllAppsTheUserHasAccess(c *C) {
-	team := auth.Team{Name: "teamname", Users: []string{s.user.Email}}
-	err := s.conn.Teams().Insert(&team)
-	c.Assert(err, IsNil)
-	a := testApp{Name: "myapp", Teams: []string{s.team.Name}}
-	err = s.conn.Apps().Insert(&a)
-	c.Assert(err, IsNil)
-	a2 := testApp{Name: "myotherapp", Teams: []string{team.Name}}
-	err = s.conn.Apps().Insert(&a2)
-	c.Assert(err, IsNil)
-	defer func() {
-		s.conn.Apps().Remove(bson.M{"name": bson.M{"$in": []string{a.Name, a2.Name}}})
-		s.conn.Teams().RemoveId(team.Name)
-	}()
-	aApps, err := allowedApps(s.user.Email)
-	c.Assert(aApps, DeepEquals, []string{a.Name, a2.Name})
 }

@@ -255,7 +255,7 @@ func addUserToTeamInDatabase(user *auth.User, team *auth.Team) error {
 
 func addUserToTeamInGandalf(email string, u *auth.User, t *auth.Team) error {
 	gUrl := repository.GitServerUri()
-	alwdApps, err := allowedApps(u.Email)
+	alwdApps, err := u.AllowedApps()
 	if err != nil {
 		return fmt.Errorf("Failed to obtain allowed apps to grant: %s", err.Error())
 	}
@@ -301,7 +301,7 @@ func removeUserFromTeam(email, teamName string, u *auth.User) error {
 	}
 	// gandalf actions comes first, cuz if they fail the whole action is aborted
 	gUrl := repository.GitServerUri()
-	alwdApps, err := allowedApps(email)
+	alwdApps, err := user.AllowedApps() //this might be wrong, what if the user is in, let's say, two teams, this line would remove user's access to all of it's apps
 	if err != nil {
 		return err
 	}
@@ -434,7 +434,7 @@ func RemoveKeyFromUser(w http.ResponseWriter, r *http.Request, u *auth.User) err
 func RemoveUser(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	gUrl := repository.GitServerUri()
 	c := gandalf.Client{Endpoint: gUrl}
-	alwdApps, err := allowedApps(u.Email)
+	alwdApps, err := u.AllowedApps()
 	if err != nil {
 		return err
 	}
@@ -472,29 +472,4 @@ Please remove the team, them remove the user.`, team.Name)
 		return fmt.Errorf("Failed to remove the user from the git server: %s", err)
 	}
 	return conn.Users().Remove(bson.M{"email": u.Email})
-}
-
-func allowedApps(email string) ([]string, error) {
-	conn, err := db.Conn()
-	if err != nil {
-		return nil, err
-	}
-	var (
-		teams    []auth.Team
-		alwdApps []map[string]string
-	)
-	q := bson.M{"users": email}
-	if err := conn.Teams().Find(q).Select(bson.M{"_id": 1}).All(&teams); err != nil {
-		return []string{}, err
-	}
-	teamNames := auth.GetTeamsNames(teams)
-	q = bson.M{"teams": bson.M{"$in": teamNames}}
-	if err := conn.Apps().Find(q).Select(bson.M{"name": 1}).All(&alwdApps); err != nil {
-		return []string{}, err
-	}
-	appNames := make([]string, len(alwdApps))
-	for i, v := range alwdApps {
-		appNames[i] = v["name"]
-	}
-	return appNames, nil
 }
