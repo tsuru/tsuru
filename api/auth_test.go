@@ -688,6 +688,7 @@ func (s *AuthSuite) TestRemoveUserFromTeamShouldRemoveAUserFromATeamIfTheTeamExi
 	u := auth.User{Email: "nonee@me.me", Password: "none"}
 	err := u.Create()
 	c.Assert(err, IsNil)
+	defer s.conn.Users().Remove(bson.M{"email": u.Email})
 	s.team.AddUser(&u)
 	s.conn.Teams().Update(bson.M{"_id": s.team.Name}, s.team)
 	request, err := http.NewRequest("DELETE", "/teams/tsuruteam/nonee@me.me?:team=tsuruteam&:user=nonee@me.me", nil)
@@ -695,10 +696,9 @@ func (s *AuthSuite) TestRemoveUserFromTeamShouldRemoveAUserFromATeamIfTheTeamExi
 	recorder := httptest.NewRecorder()
 	err = RemoveUserFromTeam(recorder, request, s.user)
 	c.Assert(err, IsNil)
-	team := new(auth.Team)
-	err = s.conn.Teams().Find(bson.M{"_id": s.team.Name}).One(team)
+	err = s.conn.Teams().Find(bson.M{"_id": s.team.Name}).One(s.team)
 	c.Assert(err, IsNil)
-	c.Assert(team, Not(ContainsUser), &u)
+	c.Assert(s.team, Not(ContainsUser), &u)
 }
 
 func (s *AuthSuite) TestRemoveUserFromTeamShouldRemoveOnlyAppsInThatTeamInGandalfWhenUserIsInMoreThanOneTeam(c *C) {
@@ -710,7 +710,7 @@ func (s *AuthSuite) TestRemoveUserFromTeamShouldRemoveOnlyAppsInThatTeamInGandal
 	c.Assert(err, IsNil)
 	defer s.conn.Users().Remove(bson.M{"email": u.Email})
 	s.team.AddUser(&u)
-	s.conn.Teams().Update(bson.M{"_id": s.team.Name}, s.team)
+	s.conn.Teams().UpdateId(s.team.Name, s.team)
 	team2 := auth.Team{Name: "team2", Users: []string{u.Email}}
 	err = s.conn.Teams().Insert(&team2)
 	c.Assert(err, IsNil)
@@ -723,11 +723,13 @@ func (s *AuthSuite) TestRemoveUserFromTeamShouldRemoveOnlyAppsInThatTeamInGandal
 	err = s.conn.Apps().Insert(&app2)
 	c.Assert(err, IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": app2.Name})
-	err = removeUserFromTeam("nobody@me.me", s.team.Name, s.user)
+	err = removeUserFromTeam(u.Email, s.team.Name, s.user)
 	c.Assert(err, IsNil)
 	expected := `{"repositories":["app1"],"users":["nobody@me.me"]}`
 	c.Assert(len(h.body), Equals, 1)
 	c.Assert(string(h.body[0]), Equals, expected)
+	s.conn.Teams().FindId(s.team.Name).One(s.team)
+	c.Assert(s.team, Not(ContainsUser), &u) // just in case
 }
 
 func (s *AuthSuite) TestRemoveUserFromTeamShouldReturnNotFoundIfTheTeamDoesNotExist(c *C) {
@@ -790,6 +792,7 @@ func (s *AuthSuite) TestRemoveUserFromTeamShouldReturnForbiddenIfTheUserIsTheLas
 	c.Assert(err, IsNil)
 	recorder := httptest.NewRecorder()
 	err = RemoveUserFromTeam(recorder, request, s.user)
+	fmt.Println(s.team.Users)
 	c.Assert(err, NotNil)
 	e, ok := err.(*errors.Http)
 	c.Assert(ok, Equals, true)
