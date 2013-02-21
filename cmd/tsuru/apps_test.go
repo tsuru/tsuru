@@ -303,7 +303,11 @@ func (s *S) TestAppListInfo(c *C) {
 		Desc:    "list all your apps.",
 		MinArgs: 0,
 	}
-	c.Assert((&AppList{}).Info(), DeepEquals, expected)
+	c.Assert(AppList{}.Info(), DeepEquals, expected)
+}
+
+func (s *S) TestAppListIsACommand(c *C) {
+	var _ cmd.Command = AppList{}
 }
 
 func (s *S) TestAppRestart(c *C) {

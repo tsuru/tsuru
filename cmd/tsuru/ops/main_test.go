@@ -1,4 +1,4 @@
-// Copyright 2012 tsuru authors. All rights reserved.
+// Copyright 2013 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -14,7 +14,7 @@ func (s *S) TestAppListIsRegistered(c *C) {
 	manager := buildManager("tsuru")
 	list, ok := manager.Commands["app-list"]
 	c.Assert(ok, Equals, true)
-	c.Assert(list, FitsTypeOf, &tsuru.AppList{})
+	c.Assert(list, FitsTypeOf, tsuru.AppList{})
 }
 
 func (s *S) TestSetCNameIsRegistered(c *C) {

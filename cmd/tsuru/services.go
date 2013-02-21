@@ -1,4 +1,4 @@
-// Copyright 2012 tsuru authors. All rights reserved.
+// Copyright 2013 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -18,7 +18,7 @@ import (
 
 type ServiceList struct{}
 
-func (s *ServiceList) Info() *cmd.Info {
+func (s ServiceList) Info() *cmd.Info {
 	return &cmd.Info{
 		Name:  "service-list",
 		Usage: "service-list",
@@ -26,7 +26,7 @@ func (s *ServiceList) Info() *cmd.Info {
 	}
 }
 
-func (s *ServiceList) Run(ctx *cmd.Context, client cmd.Doer) error {
+func (s ServiceList) Run(ctx *cmd.Context, client cmd.Doer) error {
 	req, err := http.NewRequest("GET", cmd.GetUrl("/services/instances"), nil)
 	if err != nil {
 		return err
@@ -53,7 +53,7 @@ func (s *ServiceList) Run(ctx *cmd.Context, client cmd.Doer) error {
 
 type ServiceAdd struct{}
 
-func (sa *ServiceAdd) Info() *cmd.Info {
+func (sa ServiceAdd) Info() *cmd.Info {
 	usage := `service-add <servicename> <serviceinstancename>
 e.g.:
 
@@ -68,7 +68,7 @@ Will add a new instance of the "mongodb" service, named "tsuru_mongodb".`
 	}
 }
 
-func (sa *ServiceAdd) Run(ctx *cmd.Context, client cmd.Doer) error {
+func (sa ServiceAdd) Run(ctx *cmd.Context, client cmd.Doer) error {
 	srvName, instName := ctx.Args[0], ctx.Args[1]
 	fmtBody := fmt.Sprintf(`{"name": "%s", "service_name": "%s"}`, instName, srvName)
 	b := bytes.NewBufferString(fmtBody)
@@ -183,7 +183,7 @@ If you don't provide the app name, tsuru will try to guess it.`,
 
 type ServiceInstanceStatus struct{}
 
-func (c *ServiceInstanceStatus) Info() *cmd.Info {
+func (c ServiceInstanceStatus) Info() *cmd.Info {
 	usg := `service-status <serviceinstancename>
 e.g.:
 
@@ -197,7 +197,7 @@ e.g.:
 	}
 }
 
-func (c *ServiceInstanceStatus) Run(ctx *cmd.Context, client cmd.Doer) error {
+func (c ServiceInstanceStatus) Run(ctx *cmd.Context, client cmd.Doer) error {
 	instName := ctx.Args[0]
 	url := cmd.GetUrl("/services/instances/" + instName + "/status")
 	request, err := http.NewRequest("GET", url, nil)
@@ -226,7 +226,7 @@ func (c *ServiceInstanceStatus) Run(ctx *cmd.Context, client cmd.Doer) error {
 
 type ServiceInfo struct{}
 
-func (c *ServiceInfo) Info() *cmd.Info {
+func (c ServiceInfo) Info() *cmd.Info {
 	usg := `service-info <service>
 e.g.:
 
@@ -245,7 +245,7 @@ type ServiceInstanceModel struct {
 	Apps []string
 }
 
-func (c *ServiceInfo) Run(ctx *cmd.Context, client cmd.Doer) error {
+func (c ServiceInfo) Run(ctx *cmd.Context, client cmd.Doer) error {
 	serviceName := ctx.Args[0]
 	url := cmd.GetUrl("/services/" + serviceName)
 	request, err := http.NewRequest("GET", url, nil)
@@ -281,7 +281,7 @@ func (c *ServiceInfo) Run(ctx *cmd.Context, client cmd.Doer) error {
 
 type ServiceDoc struct{}
 
-func (c *ServiceDoc) Info() *cmd.Info {
+func (c ServiceDoc) Info() *cmd.Info {
 	return &cmd.Info{
 		Name:    "service-doc",
 		Usage:   "service-doc <servicename>",
@@ -290,7 +290,7 @@ func (c *ServiceDoc) Info() *cmd.Info {
 	}
 }
 
-func (c *ServiceDoc) Run(ctx *cmd.Context, client cmd.Doer) error {
+func (c ServiceDoc) Run(ctx *cmd.Context, client cmd.Doer) error {
 	sName := ctx.Args[0]
 	url := fmt.Sprintf("/services/c/%s/doc", sName)
 	url = cmd.GetUrl(url)
@@ -313,7 +313,7 @@ func (c *ServiceDoc) Run(ctx *cmd.Context, client cmd.Doer) error {
 
 type ServiceRemove struct{}
 
-func (c *ServiceRemove) Info() *cmd.Info {
+func (c ServiceRemove) Info() *cmd.Info {
 	return &cmd.Info{
 		Name:    "service-remove",
 		Usage:   "service-remove <serviceinstancename>",
@@ -322,7 +322,7 @@ func (c *ServiceRemove) Info() *cmd.Info {
 	}
 }
 
-func (c *ServiceRemove) Run(ctx *cmd.Context, client cmd.Doer) error {
+func (c ServiceRemove) Run(ctx *cmd.Context, client cmd.Doer) error {
 	name := ctx.Args[0]
 	url := fmt.Sprintf("/services/c/instances/%s", name)
 	url = cmd.GetUrl(url)

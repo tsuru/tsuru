@@ -1,4 +1,4 @@
-// Copyright 2012 tsuru authors. All rights reserved.
+// Copyright 2013 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -38,7 +38,7 @@ func (s *S) TestAppListIsRegistered(c *C) {
 	manager := buildManager("tsuru")
 	list, ok := manager.Commands["app-list"]
 	c.Assert(ok, Equals, true)
-	c.Assert(list, FitsTypeOf, &tsuru.AppList{})
+	c.Assert(list, FitsTypeOf, tsuru.AppList{})
 }
 
 func (s *S) TestAppGrantIsRegistered(c *C) {
@@ -115,21 +115,21 @@ func (s *S) TestServiceListIsRegistered(c *C) {
 	manager := buildManager("tsuru")
 	list, ok := manager.Commands["service-list"]
 	c.Assert(ok, Equals, true)
-	c.Assert(list, FitsTypeOf, &tsuru.ServiceList{})
+	c.Assert(list, FitsTypeOf, tsuru.ServiceList{})
 }
 
 func (s *S) TestServiceAddIsRegistered(c *C) {
 	manager := buildManager("tsuru")
 	add, ok := manager.Commands["service-add"]
 	c.Assert(ok, Equals, true)
-	c.Assert(add, FitsTypeOf, &tsuru.ServiceAdd{})
+	c.Assert(add, FitsTypeOf, tsuru.ServiceAdd{})
 }
 
 func (s *S) TestServiceRemoveIsRegistered(c *C) {
 	manager := buildManager("tsuru")
 	remove, ok := manager.Commands["service-remove"]
 	c.Assert(ok, Equals, true)
-	c.Assert(remove, FitsTypeOf, &tsuru.ServiceRemove{})
+	c.Assert(remove, FitsTypeOf, tsuru.ServiceRemove{})
 }
 
 func (s *S) TestServiceBindIsRegistered(c *C) {
@@ -150,21 +150,21 @@ func (s *S) TestServiceDocIsRegistered(c *C) {
 	manager := buildManager("tsuru")
 	doc, ok := manager.Commands["service-doc"]
 	c.Assert(ok, Equals, true)
-	c.Assert(doc, FitsTypeOf, &tsuru.ServiceDoc{})
+	c.Assert(doc, FitsTypeOf, tsuru.ServiceDoc{})
 }
 
 func (s *S) TestServiceInfoIsRegistered(c *C) {
 	manager := buildManager("tsuru")
 	info, ok := manager.Commands["service-info"]
 	c.Assert(ok, Equals, true)
-	c.Assert(info, FitsTypeOf, &tsuru.ServiceInfo{})
+	c.Assert(info, FitsTypeOf, tsuru.ServiceInfo{})
 }
 
 func (s *S) TestServiceInstanceStatusIsRegistered(c *C) {
 	manager := buildManager("tsuru")
 	status, ok := manager.Commands["service-status"]
 	c.Assert(ok, Equals, true)
-	c.Assert(status, FitsTypeOf, &tsuru.ServiceInstanceStatus{})
+	c.Assert(status, FitsTypeOf, tsuru.ServiceInstanceStatus{})
 }
 
 func (s *S) TestAppInfoIsRegistered(c *C) {
