@@ -37,7 +37,15 @@ type bootstrapInstanceIdHealer struct {
 	e *ec2.EC2
 }
 
-func (bootstrapInstanceIdHealer) Heal() error {
+func (h bootstrapInstanceIdHealer) Heal() error {
+	if h.needsHeal() {
+		bucket := h.s3().Bucket("juju-696227fdd0d747ec97deaa7e5d39f958")
+		ec2InstanceId, err := h.bootstrapInstanceId()
+		if err != nil {
+			return err
+		}
+		return bucket.Put("provider-state", []byte(ec2InstanceId), "binary/octet-stream", s3.BucketOwnerFull)
+	}
 	return nil
 }
 
