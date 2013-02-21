@@ -1745,6 +1745,23 @@ func (s *S) TestSetCNameHandlerUserWithoutAccessToTheApp(c *C) {
 	c.Assert(e.Code, Equals, http.StatusForbidden)
 }
 
+func (s *S) TestSetCNameHandlerInvalidCName(c *C) {
+	a := app.App{Name: "leper", Teams: []string{s.team.Name}}
+	err := s.conn.Apps().Insert(a)
+	c.Assert(err, IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	url := fmt.Sprintf("/apps/%s?:name=%s", a.Name, a.Name)
+	request, err := http.NewRequest("POST", url, strings.NewReader(".leper.secretcompany.com"))
+	c.Assert(err, IsNil)
+	recorder := httptest.NewRecorder()
+	err = setCName(recorder, request, s.user)
+	c.Assert(err, NotNil)
+	e, ok := err.(*errors.Http)
+	c.Assert(ok, Equals, true)
+	c.Assert(e.Code, Equals, http.StatusPreconditionFailed)
+	c.Assert(e.Message, Equals, "Invalid cname")
+}
+
 func (s *S) TestLogShouldReturnNotFoundWhenAppDoesNotExist(c *C) {
 	request, err := http.NewRequest("GET", "/apps/unknown/log/?:name=unknown", nil)
 	c.Assert(err, IsNil)

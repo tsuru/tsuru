@@ -492,7 +492,13 @@ func setCName(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	if err != nil {
 		return err
 	}
-	return app.SetCName(string(body))
+	if err = app.SetCName(string(body)); err == nil {
+		return nil
+	}
+	if err.Error() == "Invalid cname" {
+		return &errors.Http{Code: http.StatusPreconditionFailed, Message: err.Error()}
+	}
+	return err
 }
 
 func AppLog(w http.ResponseWriter, r *http.Request, u *auth.User) error {
