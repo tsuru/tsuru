@@ -77,10 +77,6 @@ func (s *S) TestInfoServiceList(c *C) {
 	c.Assert(command.Info(), DeepEquals, expected)
 }
 
-func (s *S) TestServiceListShouldBeInfoer(c *C) {
-	var _ cmd.Infoer = &ServiceList{}
-}
-
 func (s *S) TestServiceListShouldBeCommand(c *C) {
 	var _ cmd.Command = &ServiceList{}
 }
@@ -191,10 +187,6 @@ If you don't provide the app name, tsuru will try to guess it.`,
 	c.Assert((&ServiceBind{}).Info(), DeepEquals, expected)
 }
 
-func (s *S) TestServiceBindIsAnInfoer(c *C) {
-	var _ cmd.Infoer = &ServiceBind{}
-}
-
 func (s *S) TestServiceBindIsACommand(c *C) {
 	var _ cmd.Command = &ServiceBind{}
 }
@@ -279,10 +271,6 @@ If you don't provide the app name, tsuru will try to guess it.`,
 		MinArgs: 1,
 	}
 	c.Assert((&ServiceUnbind{}).Info(), DeepEquals, expected)
-}
-
-func (s *S) TestServiceUnbindIsAnInfoer(c *C) {
-	var _ cmd.Infoer = &ServiceUnbind{}
 }
 
 func (s *S) TestServiceUnbindIsAComand(c *C) {

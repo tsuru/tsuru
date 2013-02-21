@@ -376,10 +376,6 @@ func (s *S) TestAppRestartIsACommand(c *C) {
 	var _ cmd.Command = &AppRestart{}
 }
 
-func (s *S) TestAppRestartIsAnInfoer(c *C) {
-	var _ cmd.Infoer = &AppRestart{}
-}
-
 func (s *S) TestSetCName(c *C) {
 	*AppName = "death"
 	var (
@@ -469,10 +465,6 @@ func (s *S) TestSetCNameInfo(c *C) {
 		MinArgs: 1,
 	}
 	c.Assert((&SetCName{}).Info(), DeepEquals, expected)
-}
-
-func (s *S) TestSetCNameIsAnInfoer(c *C) {
-	var _ cmd.Infoer = &SetCName{}
 }
 
 func (s *S) TestSetCNameIsACommand(c *C) {

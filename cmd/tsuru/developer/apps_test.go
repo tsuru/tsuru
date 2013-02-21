@@ -271,10 +271,6 @@ func (s *S) TestUnitAddIsACommand(c *C) {
 	var _ cmd.Command = &UnitAdd{}
 }
 
-func (s *S) TestUnitAddIsAnInfoer(c *C) {
-	var _ cmd.Infoer = &UnitAdd{}
-}
-
 func (s *S) TestUnitRemove(c *C) {
 	*tsuru.AppName = "vapor"
 	var stdout, stderr bytes.Buffer
@@ -335,8 +331,4 @@ func (s *S) TestUnitRemoveInfo(c *C) {
 
 func (s *S) TestUnitRemoveIsACommand(c *C) {
 	var _ cmd.Command = &UnitRemove{}
-}
-
-func (s *S) TestUnitRemoveIsAnInfoer(c *C) {
-	var _ cmd.Infoer = &UnitRemove{}
 }
