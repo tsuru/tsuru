@@ -81,7 +81,7 @@ func (m *Manager) Run(args []string) {
 	name := args[0]
 	command, ok := m.Commands[name]
 	if !ok {
-		fmt.Fprintf(m.stderr, "command %s does not exist\n", args[0])
+		fmt.Fprintf(m.stderr, "Error: command %q does not exist\n", args[0])
 		m.finisher().Exit(1)
 		return
 	}
@@ -101,12 +101,12 @@ func (m *Manager) Run(args []string) {
 		re := regexp.MustCompile(`^((Invalid token)|(You must provide the Authorization header))`)
 		errorMsg := err.Error()
 		if re.MatchString(errorMsg) {
-			errorMsg = `You're not authenticated or your session has expired. Please use "login" command for authentication.`
+			errorMsg = `Error: You're not authenticated or your session has expired. Please use "login" command for authentication.`
 		}
 		if !strings.HasSuffix(errorMsg, "\n") {
 			errorMsg += "\n"
 		}
-		io.WriteString(m.stderr, errorMsg)
+		io.WriteString(m.stderr, "Error: "+errorMsg)
 		status = 1
 	}
 	m.finisher().Exit(status)
@@ -157,7 +157,7 @@ func (c *help) Run(context *Context, client Doer) error {
 	if len(context.Args) > 0 {
 		cmd, ok := c.manager.Commands[context.Args[0]]
 		if !ok {
-			return fmt.Errorf("Command %s does not exist.", context.Args[0])
+			return fmt.Errorf("Error: command %q does not exist.", context.Args[0])
 		}
 		info := cmd.Info()
 		output += fmt.Sprintf("Usage: %s %s\n", c.manager.name, info.Usage)

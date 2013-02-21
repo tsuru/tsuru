@@ -60,7 +60,7 @@ func (s *S) TestRegister(c *C) {
 func (s *S) TestManagerRunShouldWriteErrorsOnStderr(c *C) {
 	manager.Register(&ErrorCommand{msg: "You are wrong\n"})
 	manager.Run([]string{"error"})
-	c.Assert(manager.stderr.(*bytes.Buffer).String(), Equals, "You are wrong\n")
+	c.Assert(manager.stderr.(*bytes.Buffer).String(), Equals, "Error: You are wrong\n")
 }
 
 func (s *S) TestManagerRunShouldReturnStatus1WhenCommandFail(c *C) {
@@ -72,7 +72,7 @@ func (s *S) TestManagerRunShouldReturnStatus1WhenCommandFail(c *C) {
 func (s *S) TestManagerRunShouldAppendNewLineOnErrorWhenItsNotPresent(c *C) {
 	manager.Register(&ErrorCommand{msg: "You are wrong"})
 	manager.Run([]string{"error"})
-	c.Assert(manager.stderr.(*bytes.Buffer).String(), Equals, "You are wrong\n")
+	c.Assert(manager.stderr.(*bytes.Buffer).String(), Equals, "Error: You are wrong\n")
 }
 
 func (s *S) TestRun(c *C) {
@@ -83,7 +83,7 @@ func (s *S) TestRun(c *C) {
 
 func (s *S) TestRunCommandThatDoesNotExist(c *C) {
 	manager.Run([]string{"bar"})
-	c.Assert(manager.stderr.(*bytes.Buffer).String(), Equals, "command bar does not exist\n")
+	c.Assert(manager.stderr.(*bytes.Buffer).String(), Equals, `Error: command "bar" does not exist`+"\n")
 	c.Assert(manager.e.(*recordingExiter).value(), Equals, 1)
 }
 func (s *S) TestHelp(c *C) {
@@ -118,7 +118,7 @@ func (s *S) TestHelpReturnErrorIfTheGivenCommandDoesNotExist(c *C) {
 	context := Context{[]string{"user-create"}, manager.stdout, manager.stderr, manager.stdin}
 	err := command.Run(&context, nil)
 	c.Assert(err, NotNil)
-	c.Assert(err, ErrorMatches, "^Command user-create does not exist.$")
+	c.Assert(err, ErrorMatches, `^Error: command "user-create" does not exist.$`)
 }
 
 func (s *S) TestRunWithoutArgsShouldRunsHelp(c *C) {
