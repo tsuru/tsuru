@@ -6,8 +6,13 @@
 Build your own PaaS
 +++++++++++++++++++
 
-This documents describes how to create a private PaaS service using tsuru.
-We will be building the PaaS using source avaliable at https://github.com/globocom/tsuru.
+This document describes how to create a private PaaS service using tsuru.  We
+will be building the PaaS using source avaliable at
+https://github.com/globocom/tsuru.
+
+There's also a contributed `Vagrant <http://www.vagrantup.com/>`_ box, that
+setups a PaaS using `Chef <http://www.opscode.com/chef/>`_. You can check this
+out: https://github.com/hfeeki/vagrant-tsuru.
 
 Overview
 ========
@@ -39,9 +44,13 @@ Installing tsuru webserver from source
     $ sudo apt-get upgrade
     $ sudo apt-get install -y golang-go git mercurial bzr gcc beanstalkd
 
-Tsuru needs the mongodb version 2.2>= so, to install it please `do this simple steps <http://docs.mongodb.org/manual/tutorial/install-mongodb-on-ubuntu/>`_
+Tsuru needs the mongodb version 2.2>= so, to install it please `do this simple
+steps <http://docs.mongodb.org/manual/tutorial/install-mongodb-on-ubuntu/>`_
 
-Tsuru uses juju to orchestrates your "apps". To install juju follow the `juju install guide <https://juju.ubuntu.com/docs/getting-started.html#installation>`_. It's need to configure the `.juju/enviroment.yml` and do the `bootstrap` too.
+Tsuru uses juju to orchestrates your "apps". To install juju follow the `juju
+install guide
+<https://juju.ubuntu.com/docs/getting-started.html#installation>`_. It's need
+to configure the `.juju/enviroment.yml` and do the `bootstrap` too.
 
 2. Install the tsuru api
 
