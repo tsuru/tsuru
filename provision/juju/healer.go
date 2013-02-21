@@ -39,6 +39,7 @@ type bootstrapInstanceIdHealer struct {
 
 func (h bootstrapInstanceIdHealer) Heal() error {
 	if h.needsHeal() {
+		log.Print("healing bootstrap instance id")
 		jujuBucket, err := config.GetString("juju:bucket")
 		if err != nil {
 			return err
