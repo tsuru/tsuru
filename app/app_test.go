@@ -909,6 +909,38 @@ func (s *S) TestInstanceEnvironmentDoesNotPanicIfTheEnvMapIsNil(c *C) {
 	c.Assert(a.InstanceEnv("mysql"), DeepEquals, map[string]bind.EnvVar{})
 }
 
+func (s *S) TestSetCName(c *C) {
+	a := App{Name: "ktulu"}
+	err := s.conn.Apps().Insert(a)
+	c.Assert(err, IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	err = a.SetCName("ktulu.mycompany.com")
+	c.Assert(err, IsNil)
+	err = a.Get()
+	c.Assert(err, IsNil)
+	c.Assert(a.CName, Equals, "ktulu.mycompany.com")
+}
+
+func (s *S) TestSetCNamePartialUpdate(c *C) {
+	a := App{Name: "master", Framework: "puppet"}
+	err := s.conn.Apps().Insert(a)
+	c.Assert(err, IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	other := App{Name: a.Name}
+	err = other.SetCName("ktulu.mycompany.com")
+	c.Assert(err, IsNil)
+	err = other.Get()
+	c.Assert(other.Framework, Equals, "puppet")
+	c.Assert(other.Name, Equals, "master")
+	c.Assert(other.CName, Equals, "ktulu.mycompany.com")
+}
+
+func (s *S) TestSetCNameUnknownApp(c *C) {
+	a := App{Name: "ktulu"}
+	err := a.SetCName("ktulu.mycompany.com")
+	c.Assert(err, NotNil)
+}
+
 func (s *S) TestIsValid(c *C) {
 	var data = []struct {
 		name     string

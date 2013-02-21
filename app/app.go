@@ -745,6 +745,20 @@ func (app *App) UnsetEnvs(variableNames []string, publicOnly bool) error {
 	return nil
 }
 
+// SetCName defines the CName of the app. It updates the attribute and saves
+// the app in the database, returning an error when it cannot save the app.
+func (app *App) SetCName(cname string) error {
+	conn, err := db.Conn()
+	if err != nil {
+		return err
+	}
+	app.CName = cname
+	return conn.Apps().Update(
+		bson.M{"name": app.Name},
+		bson.M{"$set": bson.M{"cname": app.CName}},
+	)
+}
+
 // Log adds a log message to the app. Specifying a good source is good so the
 // user can filter where the message come from.
 func (a *App) Log(message, source string) error {
