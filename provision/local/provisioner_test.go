@@ -158,3 +158,23 @@ func (s *S) TestProvisionInstall(c *C) {
 	}
 	c.Assert(commandmocker.Parameters(tmpdir), DeepEquals, cmds)
 }
+
+func (s *S) TestProvisionStart(c *C) {
+	tmpdir, err := commandmocker.Add("ssh", "$*")
+	c.Assert(err, IsNil)
+	defer commandmocker.Remove(tmpdir)
+	p := LocalProvisioner{}
+	err = p.start("10.10.10.10")
+	c.Assert(err, IsNil)
+	c.Assert(commandmocker.Ran(tmpdir), Equals, true)
+	cmds := []string{
+		"-q",
+		"-o",
+		"StrictHostKeyChecking no",
+		"-l",
+		"ubuntu",
+		"10.10.10.10",
+		"/var/lib/tsuru/hooks/start",
+	}
+	c.Assert(commandmocker.Parameters(tmpdir), DeepEquals, cmds)
+}
