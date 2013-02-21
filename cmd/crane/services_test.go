@@ -95,10 +95,6 @@ func (s *S) TestServiceRemoveInfo(c *C) {
 	c.Assert((&ServiceRemove{}).Info(), DeepEquals, expected)
 }
 
-func (s *S) TestServiceRemoveIsAnInfor(c *C) {
-	var _ cmd.Infoer = &ServiceRemove{}
-}
-
 func (s *S) TestServiceListInfo(c *C) {
 	cmd := ServiceList{}
 	i := cmd.Info()
@@ -183,10 +179,6 @@ func (s *S) TestServiceUpdateInfo(c *C) {
 		MinArgs: 1,
 	}
 	c.Assert((&ServiceUpdate{}).Info(), DeepEquals, expected)
-}
-
-func (s *S) TestServiceUpdateIsAnInfoer(c *C) {
-	var _ cmd.Infoer = &ServiceUpdate{}
 }
 
 func (s *S) TestServiceDocAdd(c *C) {
