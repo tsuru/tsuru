@@ -792,7 +792,6 @@ func (s *AuthSuite) TestRemoveUserFromTeamShouldReturnForbiddenIfTheUserIsTheLas
 	c.Assert(err, IsNil)
 	recorder := httptest.NewRecorder()
 	err = RemoveUserFromTeam(recorder, request, s.user)
-	fmt.Println(s.team.Users)
 	c.Assert(err, NotNil)
 	e, ok := err.(*errors.Http)
 	c.Assert(ok, Equals, true)
