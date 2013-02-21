@@ -67,11 +67,19 @@ type unit struct {
 
 type app struct {
 	Ip         string
+	CName      string
 	Name       string
 	Framework  string
 	Repository string
 	Teams      []string
 	Units      []unit
+}
+
+func (a *app) Addr() string {
+	if a.CName != "" {
+		return a.CName
+	}
+	return a.Ip
 }
 
 func (a *app) String() string {
@@ -202,7 +210,7 @@ func (c *AppList) Show(result []byte, context *cmd.Context) error {
 		return err
 	}
 	table := cmd.NewTable()
-	table.Headers = cmd.Row([]string{"Application", "Units State Summary", "IP"})
+	table.Headers = cmd.Row([]string{"Application", "Units State Summary", "Address"})
 	for _, app := range apps {
 		var units_started int
 		for _, unit := range app.Units {
@@ -211,7 +219,7 @@ func (c *AppList) Show(result []byte, context *cmd.Context) error {
 			}
 		}
 		summary := fmt.Sprintf("%d of %d units in-service", units_started, len(app.Units))
-		table.AddRow(cmd.Row([]string{app.Name, summary, app.Ip}))
+		table.AddRow(cmd.Row([]string{app.Name, summary, app.Addr()}))
 	}
 	context.Stdout.Write(table.Bytes())
 	return nil

@@ -206,7 +206,7 @@ func (s *S) TestAppList(c *C) {
 	var stdout, stderr bytes.Buffer
 	result := `[{"Ip":"10.10.10.10","Name":"app1","Units":[{"Name":"app1/0","State":"started"}]}]`
 	expected := `+-------------+-------------------------+-------------+
-| Application | Units State Summary     | IP          |
+| Application | Units State Summary     | Address     |
 +-------------+-------------------------+-------------+
 | app1        | 1 of 1 units in-service | 10.10.10.10 |
 +-------------+-------------------------+-------------+
@@ -227,10 +227,31 @@ func (s *S) TestAppListUnitIsntStarted(c *C) {
 	var stdout, stderr bytes.Buffer
 	result := `[{"Ip":"10.10.10.10","Name":"app1","Units":[{"Name":"app1/0","State":"pending"}]}]`
 	expected := `+-------------+-------------------------+-------------+
-| Application | Units State Summary     | IP          |
+| Application | Units State Summary     | Address     |
 +-------------+-------------------------+-------------+
 | app1        | 0 of 1 units in-service | 10.10.10.10 |
 +-------------+-------------------------+-------------+
+`
+	context := cmd.Context{
+		Args:   []string{},
+		Stdout: &stdout,
+		Stderr: &stderr,
+	}
+	client := cmd.NewClient(&http.Client{Transport: &transport{msg: result, status: http.StatusOK}}, nil, manager)
+	command := AppList{}
+	err := command.Run(&context, client)
+	c.Assert(err, IsNil)
+	c.Assert(stdout.String(), Equals, expected)
+}
+
+func (s *S) TestAppListCName(c *C) {
+	var stdout, stderr bytes.Buffer
+	result := `[{"Ip":"10.10.10.10","CName":"app1.tsuru.io","Name":"app1","Units":[{"Name":"app1/0","State":"started"}]}]`
+	expected := `+-------------+-------------------------+---------------+
+| Application | Units State Summary     | Address       |
++-------------+-------------------------+---------------+
+| app1        | 1 of 1 units in-service | app1.tsuru.io |
++-------------+-------------------------+---------------+
 `
 	context := cmd.Context{
 		Args:   []string{},
