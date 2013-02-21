@@ -1679,7 +1679,8 @@ func (s *S) TestSetCNameHandler(c *C) {
 	c.Assert(err, IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	url := fmt.Sprintf("/apps/%s?:name=%s", a.Name, a.Name)
-	request, err := http.NewRequest("POST", url, strings.NewReader("leper.secretcompany.com"))
+	b := strings.NewReader(`{"cname":"leper.secretcompany.com"}`)
+	request, err := http.NewRequest("POST", url, b)
 	c.Assert(err, IsNil)
 	recorder := httptest.NewRecorder()
 	err = setCName(recorder, request, s.user)
@@ -1689,7 +1690,7 @@ func (s *S) TestSetCNameHandler(c *C) {
 	c.Assert(a.CName, Equals, "leper.secretcompany.com")
 }
 
-func (s *S) TestSetCNameHandlerReturnsInternalErrorIfReadAllFails(c *C) {
+func (s *S) TestSetCNameHandlerReturnsInternalErrorIfItFailsToReadTheBody(c *C) {
 	b := s.getTestData("bodyToBeClosed.txt")
 	request, err := http.NewRequest("POST", "/apps/unkown?:name=unknown", b)
 	c.Assert(err, IsNil)
@@ -1700,7 +1701,7 @@ func (s *S) TestSetCNameHandlerReturnsInternalErrorIfReadAllFails(c *C) {
 }
 
 func (s *S) TestSetCNameHandlerReturnsBadRequestWhenCNameIsMissingFromTheBody(c *C) {
-	bodies := []io.Reader{nil, strings.NewReader("")}
+	bodies := []io.Reader{nil, strings.NewReader(`{}`), strings.NewReader(`{"name":"something"}`)}
 	for _, b := range bodies {
 		request, err := http.NewRequest("POST", "/apps/unknown?:name=unknown", b)
 		c.Assert(err, IsNil)
@@ -1714,8 +1715,22 @@ func (s *S) TestSetCNameHandlerReturnsBadRequestWhenCNameIsMissingFromTheBody(c 
 	}
 }
 
+func (s *S) TestSetCNameHandlerInvalidJSON(c *C) {
+	b := strings.NewReader(`}"I'm invalid json"`)
+	request, err := http.NewRequest("POST", "/apps/unknown?:name=unknown", b)
+	c.Assert(err, IsNil)
+	recorder := httptest.NewRecorder()
+	err = setCName(recorder, request, s.user)
+	c.Assert(err, NotNil)
+	e, ok := err.(*errors.Http)
+	c.Assert(ok, Equals, true)
+	c.Assert(e.Code, Equals, http.StatusBadRequest)
+	c.Assert(e.Message, Equals, "Invalid JSON in request body.")
+}
+
 func (s *S) TestSetCNameHandlerUnknownApp(c *C) {
-	request, err := http.NewRequest("POST", "/apps/unknown?:name=unknown", strings.NewReader("leper.secretcompany.com"))
+	b := strings.NewReader(`{"cname": "leper.secretcompany.com"}`)
+	request, err := http.NewRequest("POST", "/apps/unknown?:name=unknown", b)
 	c.Assert(err, IsNil)
 	recorder := httptest.NewRecorder()
 	err = setCName(recorder, request, s.user)
@@ -1734,7 +1749,7 @@ func (s *S) TestSetCNameHandlerUserWithoutAccessToTheApp(c *C) {
 	c.Assert(err, IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	url := fmt.Sprintf("/apps/%s?:name=%s", a.Name, a.Name)
-	b := strings.NewReader("lost.secretcompany.com")
+	b := strings.NewReader(`{"cname": "lost.secretcompany.com"}`)
 	request, err := http.NewRequest("POST", url, b)
 	c.Assert(err, IsNil)
 	recorder := httptest.NewRecorder()
@@ -1751,7 +1766,8 @@ func (s *S) TestSetCNameHandlerInvalidCName(c *C) {
 	c.Assert(err, IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	url := fmt.Sprintf("/apps/%s?:name=%s", a.Name, a.Name)
-	request, err := http.NewRequest("POST", url, strings.NewReader(".leper.secretcompany.com"))
+	b := strings.NewReader(`{"cname": ".leper.secretcompany.com"}`)
+	request, err := http.NewRequest("POST", url, b)
 	c.Assert(err, IsNil)
 	recorder := httptest.NewRecorder()
 	err = setCName(recorder, request, s.user)

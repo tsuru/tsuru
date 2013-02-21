@@ -480,11 +480,12 @@ func setCName(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	if r.Body == nil {
 		return &errors.Http{Code: http.StatusBadRequest, Message: msg}
 	}
-	body, err := ioutil.ReadAll(r.Body)
+	var v map[string]string
+	err := json.NewDecoder(r.Body).Decode(&v)
 	if err != nil {
-		return err
+		return &errors.Http{Code: http.StatusBadRequest, Message: "Invalid JSON in request body."}
 	}
-	if len(body) == 0 {
+	if _, ok := v["cname"]; !ok {
 		return &errors.Http{Code: http.StatusBadRequest, Message: msg}
 	}
 	appName := r.URL.Query().Get(":name")
@@ -492,7 +493,7 @@ func setCName(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	if err != nil {
 		return err
 	}
-	if err = app.SetCName(string(body)); err == nil {
+	if err = app.SetCName(v["cname"]); err == nil {
 		return nil
 	}
 	if err.Error() == "Invalid cname" {
