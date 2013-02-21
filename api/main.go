@@ -72,6 +72,7 @@ func main() {
 	m.Get("/apps/:name/repository/clone", Handler(CloneRepositoryHandler))
 	m.Get("/apps/:name/avaliable", Handler(AppIsAvailableHandler))
 	m.Get("/apps/:name", AuthorizationRequiredHandler(AppInfo))
+	m.Post("/apps/:name", AuthorizationRequiredHandler(setCName))
 	m.Post("/apps/:name/run", AuthorizationRequiredHandler(RunCommand))
 	m.Get("/apps/:name/restart", AuthorizationRequiredHandler(RestartHandler))
 	m.Get("/apps/:name/env", AuthorizationRequiredHandler(GetEnv))
