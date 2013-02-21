@@ -475,6 +475,26 @@ func UnsetEnv(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	return app.UnsetEnvs(strings.Fields(string(body)), true)
 }
 
+func setCName(w http.ResponseWriter, r *http.Request, u *auth.User) error {
+	msg := "You must provide the cname."
+	if r.Body == nil {
+		return &errors.Http{Code: http.StatusBadRequest, Message: msg}
+	}
+	body, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		return err
+	}
+	if len(body) == 0 {
+		return &errors.Http{Code: http.StatusBadRequest, Message: msg}
+	}
+	appName := r.URL.Query().Get(":name")
+	app, err := getApp(appName, u)
+	if err != nil {
+		return err
+	}
+	return app.SetCName(string(body))
+}
+
 func AppLog(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	w.Header().Set("Content-Type", "application/json")
 	appName := r.URL.Query().Get(":name")
