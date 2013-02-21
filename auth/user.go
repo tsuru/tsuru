@@ -191,15 +191,14 @@ func (u *User) AllowedApps() ([]string, error) {
 		return nil, err
 	}
 	var (
-		teams    []Team
 		alwdApps []map[string]string
 	)
-	q := bson.M{"users": u.Email}
-	if err := conn.Teams().Find(q).Select(bson.M{"_id": 1}).All(&teams); err != nil {
+	teams, err := u.Teams()
+	if err != nil {
 		return []string{}, err
 	}
 	teamNames := GetTeamsNames(teams)
-	q = bson.M{"teams": bson.M{"$in": teamNames}}
+	q := bson.M{"teams": bson.M{"$in": teamNames}}
 	if err := conn.Apps().Find(q).Select(bson.M{"name": 1}).All(&alwdApps); err != nil {
 		return []string{}, err
 	}
