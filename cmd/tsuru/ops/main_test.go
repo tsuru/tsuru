@@ -17,6 +17,13 @@ func (s *S) TestAppListIsRegistered(c *C) {
 	c.Assert(list, FitsTypeOf, &tsuru.AppList{})
 }
 
+func (s *S) TestSetCNameIsRegistered(c *C) {
+	manager := buildManager("tsuru-admin")
+	cname, ok := manager.Commands["set-cname"]
+	c.Assert(ok, Equals, true)
+	c.Assert(cname, FitsTypeOf, &tsuru.SetCName{})
+}
+
 func (s *S) TestCommandsFromBaseManagerAreRegistered(c *C) {
 	baseManager := cmd.BuildBaseManager("tsuru", version, header)
 	manager := buildManager("tsuru")

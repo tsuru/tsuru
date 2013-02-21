@@ -19,6 +19,7 @@ const (
 func buildManager(name string) *cmd.Manager {
 	m := cmd.BuildBaseManager(name, version, header)
 	m.Register(&tsuru.AppList{})
+	m.Register(&tsuru.SetCName{})
 	return m
 }
 
