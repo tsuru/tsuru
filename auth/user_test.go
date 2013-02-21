@@ -422,10 +422,10 @@ func (s *S) TestAllowedAppsByTeam(c *C) {
 	err = s.conn.Apps().Insert(&a2)
 	c.Assert(err, IsNil)
 	defer func() {
-        s.conn.Apps().Remove(bson.M{"name": a.Name})
-        s.conn.Apps().Remove(bson.M{"name": a2.Name})
+		s.conn.Apps().Remove(bson.M{"name": a.Name})
+		s.conn.Apps().Remove(bson.M{"name": a2.Name})
 		s.conn.Teams().RemoveId(team.Name)
 	}()
 	alwdApps, err := s.user.AllowedAppsByTeam(team.Name)
-    c.Assert(alwdApps, DeepEquals, []string{a2.Name})
+	c.Assert(alwdApps, DeepEquals, []string{a2.Name})
 }
