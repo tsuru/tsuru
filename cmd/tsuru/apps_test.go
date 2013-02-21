@@ -14,7 +14,7 @@ import (
 func (s *S) TestAppInfo(c *C) {
 	*AppName = "app1"
 	var stdout, stderr bytes.Buffer
-	result := `{"Name":"app1","Ip":"myapp.tsuru.io","Framework":"php","Repository":"git@git.com:php.git","State":"dead", "Units":[{"Ip":"10.10.10.10","Name":"app1/0","State":"started"}, {"Ip":"9.9.9.9","Name":"app1/1","State":"started"}, {"Ip":"","Name":"app1/2","State":"pending"}],"Teams":["tsuruteam","crane"]}`
+	result := `{"Name":"app1","CName":"","Ip":"myapp.tsuru.io","Framework":"php","Repository":"git@git.com:php.git","State":"dead", "Units":[{"Ip":"10.10.10.10","Name":"app1/0","State":"started"}, {"Ip":"9.9.9.9","Name":"app1/1","State":"started"}, {"Ip":"","Name":"app1/2","State":"pending"}],"Teams":["tsuruteam","crane"]}`
 	expected := `Application: app1
 Repository: git@git.com:php.git
 Platform: php
@@ -97,6 +97,36 @@ Units:
 	fake := FakeGuesser{name: "secret"}
 	guessCommand := GuessingCommand{G: &fake}
 	command := AppInfo{guessCommand}
+	err := command.Run(&context, client)
+	c.Assert(err, IsNil)
+	c.Assert(stdout.String(), Equals, expected)
+}
+
+func (s *S) TestAppInfoCName(c *C) {
+	*AppName = "app1"
+	var stdout, stderr bytes.Buffer
+	result := `{"Name":"app1","Ip":"myapp.tsuru.io","CName":"yourapp.tsuru.io","Framework":"php","Repository":"git@git.com:php.git","State":"dead", "Units":[{"Ip":"10.10.10.10","Name":"app1/0","State":"started"}, {"Ip":"9.9.9.9","Name":"app1/1","State":"started"}, {"Ip":"","Name":"app1/2","State":"pending"}],"Teams":["tsuruteam","crane"]}`
+	expected := `Application: app1
+Repository: git@git.com:php.git
+Platform: php
+Teams: tsuruteam, crane
+Address: yourapp.tsuru.io
+Units:
++--------+---------+
+| Unit   | State   |
++--------+---------+
+| app1/0 | started |
+| app1/1 | started |
+| app1/2 | pending |
++--------+---------+
+
+`
+	context := cmd.Context{
+		Stdout: &stdout,
+		Stderr: &stderr,
+	}
+	client := cmd.NewClient(&http.Client{Transport: &transport{msg: result, status: http.StatusOK}}, nil, manager)
+	command := AppInfo{}
 	err := command.Run(&context, client)
 	c.Assert(err, IsNil)
 	c.Assert(stdout.String(), Equals, expected)

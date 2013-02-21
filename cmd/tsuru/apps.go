@@ -95,7 +95,7 @@ Address: %s
 	for _, unit := range a.Units {
 		units.AddRow(cmd.Row([]string{unit.Name, unit.State}))
 	}
-	args := []interface{}{a.Name, a.Repository, a.Framework, teams, a.Ip}
+	args := []interface{}{a.Name, a.Repository, a.Framework, teams, a.Addr()}
 	if len(a.Units) > 0 {
 		format += "Units:\n%s"
 		args = append(args, units)
