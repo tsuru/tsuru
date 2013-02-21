@@ -17,6 +17,15 @@ func init() {
 
 type LocalProvisioner struct{}
 
+func (p *LocalProvisioner) setup(ip string) error {
+	formulasPath, err := config.GetString("local:formulas-path")
+	if err != nil {
+		return err
+	}
+	cmd := exec.Command("scp", "-q", "-o", "StrictHostKeyChecking no", "-l", "ubuntu", "10.10.10.10:"+formulasPath, "/var/lib/tsuru")
+	return cmd.Run()
+}
+
 func (p *LocalProvisioner) install(ip string) error {
 	cmd := exec.Command("ssh", "-q", "-o", "StrictHostKeyChecking no", "-l", "ubuntu", "10.10.10.10", "/var/lib/tsuru/hooks/install")
 	return cmd.Run()

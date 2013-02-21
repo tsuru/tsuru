@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"github.com/globocom/commandmocker"
+	"github.com/globocom/config"
 	fstesting "github.com/globocom/tsuru/fs/testing"
 	"github.com/globocom/tsuru/provision"
 	"github.com/globocom/tsuru/testing"
@@ -175,6 +176,28 @@ func (s *S) TestProvisionStart(c *C) {
 		"ubuntu",
 		"10.10.10.10",
 		"/var/lib/tsuru/hooks/start",
+	}
+	c.Assert(commandmocker.Parameters(tmpdir), DeepEquals, cmds)
+}
+
+func (s *S) TestProvisionSetup(c *C) {
+	tmpdir, err := commandmocker.Add("scp", "$*")
+	c.Assert(err, IsNil)
+	defer commandmocker.Remove(tmpdir)
+	p := LocalProvisioner{}
+	formulasPath := "/home/ubuntu/formulas"
+	config.Set("local:formulas-path", formulasPath)
+	err = p.setup("10.10.10.10")
+	c.Assert(err, IsNil)
+	c.Assert(commandmocker.Ran(tmpdir), Equals, true)
+	cmds := []string{
+		"-q",
+		"-o",
+		"StrictHostKeyChecking no",
+		"-l",
+		"ubuntu",
+		"10.10.10.10:" + formulasPath,
+		"/var/lib/tsuru",
 	}
 	c.Assert(commandmocker.Parameters(tmpdir), DeepEquals, cmds)
 }
