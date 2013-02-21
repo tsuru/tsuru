@@ -301,7 +301,7 @@ func removeUserFromTeam(email, teamName string, u *auth.User) error {
 	}
 	// gandalf actions comes first, cuz if they fail the whole action is aborted
 	gUrl := repository.GitServerUri()
-	alwdApps, err := user.AllowedApps() //this might be wrong, what if the user is in, let's say, two teams, this line would remove user's access to all of it's apps
+	alwdApps, err := user.AllowedAppsByTeam(teamName)
 	if err != nil {
 		return err
 	}

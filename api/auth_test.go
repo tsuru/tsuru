@@ -725,7 +725,7 @@ func (s *AuthSuite) TestRemoveUserFromTeamShouldRemoveOnlyAppsInThatTeamInGandal
 	defer s.conn.Apps().Remove(bson.M{"name": app2.Name})
 	err = removeUserFromTeam("nobody@me.me", s.team.Name, s.user)
 	c.Assert(err, IsNil)
-	expected := `{"repositories": ["app1"], "users": ["nobody@me.me"]}`
+	expected := `{"repositories":["app1"],"users":["nobody@me.me"]}`
 	c.Assert(len(h.body), Equals, 1)
 	c.Assert(string(h.body[0]), Equals, expected)
 }
