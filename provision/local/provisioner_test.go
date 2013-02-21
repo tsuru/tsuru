@@ -138,3 +138,23 @@ func (s *S) TestProvisionCollection(c *C) {
 	collection := p.collection()
 	c.Assert(collection.Name, Equals, s.collName)
 }
+
+func (s *S) TestProvisionInstall(c *C) {
+	tmpdir, err := commandmocker.Add("ssh", "$*")
+	c.Assert(err, IsNil)
+	defer commandmocker.Remove(tmpdir)
+	p := LocalProvisioner{}
+	err = p.install("10.10.10.10")
+	c.Assert(err, IsNil)
+	c.Assert(commandmocker.Ran(tmpdir), Equals, true)
+	cmds := []string{
+		"-q",
+		"-o",
+		"StrictHostKeyChecking no",
+		"-l",
+		"ubuntu",
+		"10.10.10.10",
+		"/var/lib/tsuru/hooks/install",
+	}
+	c.Assert(commandmocker.Parameters(tmpdir), DeepEquals, cmds)
+}

@@ -17,6 +17,11 @@ func init() {
 
 type LocalProvisioner struct{}
 
+func (p *LocalProvisioner) install(ip string) error {
+	cmd := exec.Command("ssh", "-q", "-o", "StrictHostKeyChecking no", "-l", "ubuntu", "10.10.10.10", "/var/lib/tsuru/hooks/install")
+	return cmd.Run()
+}
+
 func (p *LocalProvisioner) Provision(app provision.App) error {
 	container := container{name: app.GetName()}
 	log.Printf("creating container %s", app.GetName())
