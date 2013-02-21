@@ -38,10 +38,7 @@ def send():
 def restart():
     with cd(env.tsuru_path):
         run("tar -xzf dist.tar.gz")
-    run('GORACE="log_path=%s/webserver.race.log" circusctl restart web' %
-        env.tsuru_path)
-    run('GORACE="log_path=%s/collector.race.log" circusctl restart collector' %
-        env.tsuru_path)
+    run('circusctl restart')
 
 
 def deploy(flags=""):
