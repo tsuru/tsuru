@@ -196,10 +196,13 @@ func (s *S) TestProvisionSetup(c *C) {
 	tmpdir, err := commandmocker.Add("scp", "$*")
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(tmpdir)
+	sshTempDir, err := commandmocker.Add("ssh", "$*")
+	c.Assert(err, IsNil)
+	defer commandmocker.Remove(sshTempDir)
 	p := LocalProvisioner{}
 	formulasPath := "/home/ubuntu/formulas"
 	config.Set("local:formulas-path", formulasPath)
-	err = p.setup("10.10.10.10")
+	err = p.setup("10.10.10.10", "static")
 	c.Assert(err, IsNil)
 	c.Assert(commandmocker.Ran(tmpdir), Equals, true)
 	cmds := []string{
@@ -208,8 +211,19 @@ func (s *S) TestProvisionSetup(c *C) {
 		"StrictHostKeyChecking no",
 		"-l",
 		"ubuntu",
-		"10.10.10.10:" + formulasPath,
-		"/var/lib/tsuru",
+		formulasPath + "/static/hooks/*",
+		"10.10.10.10:/var/lib/tsuru/hooks",
 	}
 	c.Assert(commandmocker.Parameters(tmpdir), DeepEquals, cmds)
+	c.Assert(commandmocker.Ran(sshTempDir), Equals, true)
+	cmds = []string{
+		"-q",
+		"-o",
+		"StrictHostKeyChecking no",
+		"-l",
+		"ubuntu",
+		"10.10.10.10",
+		"mkdir -p /var/lib/tsuru/hooks",
+	}
+	c.Assert(commandmocker.Parameters(sshTempDir), DeepEquals, cmds)
 }

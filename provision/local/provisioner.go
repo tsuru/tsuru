@@ -17,12 +17,17 @@ func init() {
 
 type LocalProvisioner struct{}
 
-func (p *LocalProvisioner) setup(ip string) error {
+func (p *LocalProvisioner) setup(ip, framework string) error {
 	formulasPath, err := config.GetString("local:formulas-path")
 	if err != nil {
 		return err
 	}
-	cmd := exec.Command("scp", "-q", "-o", "StrictHostKeyChecking no", "-l", "ubuntu", "10.10.10.10:"+formulasPath, "/var/lib/tsuru")
+	cmd := exec.Command("ssh", "-q", "-o", "StrictHostKeyChecking no", "-l", "ubuntu", ip, "mkdir -p /var/lib/tsuru/hooks")
+	err = cmd.Run()
+	if err != nil {
+		return err
+	}
+	cmd = exec.Command("scp", "-q", "-o", "StrictHostKeyChecking no", "-l", "ubuntu", formulasPath+"/"+framework+"/hooks/*", ip+":/var/lib/tsuru/hooks")
 	return cmd.Run()
 }
 
@@ -52,7 +57,7 @@ func (p *LocalProvisioner) Provision(app provision.App) error {
 		return err
 	}
 	ip := container.ip()
-	err = p.setup(ip)
+	err = p.setup(ip, app.GetFramework())
 	if err != nil {
 		log.Printf("error on setup container %s", app.GetName())
 		log.Print(err)
