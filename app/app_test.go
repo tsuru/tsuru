@@ -941,6 +941,38 @@ func (s *S) TestSetCNameUnknownApp(c *C) {
 	c.Assert(err, NotNil)
 }
 
+func (s *S) TestSetCNameValidatesTheCName(c *C) {
+	var data = []struct {
+		input string
+		valid bool
+	}{
+		{"ktulu.mycompany.com", true},
+		{"ktulu-super.mycompany.com", true},
+		{"ktulu_super.mycompany.com", true},
+		{"KTULU.MYCOMPANY.COM", true},
+		{"ktulu", true},
+		{"KTULU", true},
+		{"http://ktulu.mycompany.com", false},
+		{"http:ktulu.mycompany.com", false},
+		{"/ktulu.mycompany.com", false},
+		{".ktulu.mycompany.com", false},
+		{"0800.com", true},
+		{"-0800.com", false},
+	}
+	a := App{Name: "live-to-die"}
+	err := s.conn.Apps().Insert(a)
+	c.Assert(err, IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	for _, t := range data {
+		err := a.SetCName(t.input)
+		if !t.valid {
+			c.Check(err.Error(), Equals, "Invalid cname")
+		} else {
+			c.Check(err, IsNil)
+		}
+	}
+}
+
 func (s *S) TestIsValid(c *C) {
 	var data = []struct {
 		name     string

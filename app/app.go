@@ -32,6 +32,11 @@ import (
 
 var Provisioner provision.Provisioner
 
+var (
+	nameRegexp  = regexp.MustCompile(`^[a-z][a-z0-9-]{0,62}$`)
+	cnameRegexp = regexp.MustCompile(`^[a-zA-Z0-9][\w-.]+$`)
+)
+
 // App is the main type in tsuru. An app represents a real world application.
 // This struct holds information about the app: its name, address, list of
 // teams that have access to it, used platform, etc.
@@ -472,8 +477,7 @@ func (app *App) getEnv(name string) (bind.EnvVar, error) {
 
 // isValid indicates whether the name of the app is valid.
 func (app *App) isValid() bool {
-	regex := regexp.MustCompile(`^[a-z][a-z0-9-]{0,62}$`)
-	return regex.MatchString(app.Name)
+	return nameRegexp.MatchString(app.Name)
 }
 
 // InstanceEnv returns a map of environment variables that belongs to the given
@@ -749,6 +753,9 @@ func (app *App) UnsetEnvs(variableNames []string, publicOnly bool) error {
 // the app in the database, returning an error when it cannot save the change
 // in the database.
 func (app *App) SetCName(cname string) error {
+	if !cnameRegexp.MatchString(cname) {
+		return errors.New("Invalid cname")
+	}
 	conn, err := db.Conn()
 	if err != nil {
 		return err
