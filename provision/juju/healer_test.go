@@ -106,7 +106,8 @@ func (s *S) TestBootstrapInstanceIdHealerHeal(c *C) {
 	err = h.Heal()
 	c.Assert(err, IsNil)
 	data, err := bucket.Get("provider-state")
-	c.Assert(string(data), Equals, resp.Instances[0].InstanceId)
+	expected := "zookeeper-instances: [" + resp.Instances[0].InstanceId + "]"
+	c.Assert(string(data), Equals, expected)
 }
 
 func (s *S) TestBootstrapInstanceIdHealerEC2(c *C) {

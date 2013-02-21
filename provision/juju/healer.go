@@ -48,7 +48,7 @@ func (h bootstrapInstanceIdHealer) Heal() error {
 		if err != nil {
 			return err
 		}
-		return bucket.Put("provider-state", []byte(ec2InstanceId), "binary/octet-stream", s3.BucketOwnerFull)
+		return bucket.Put("provider-state", []byte("zookeeper-instances: ["+ec2InstanceId+"]"), "binary/octet-stream", s3.BucketOwnerFull)
 	}
 	return nil
 }
