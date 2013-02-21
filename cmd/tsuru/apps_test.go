@@ -6,6 +6,7 @@ package tsuru
 
 import (
 	"bytes"
+	"encoding/json"
 	"github.com/globocom/tsuru/cmd"
 	. "launchpad.net/gocheck"
 	"net/http"
@@ -377,4 +378,103 @@ func (s *S) TestAppRestartIsACommand(c *C) {
 
 func (s *S) TestAppRestartIsAnInfoer(c *C) {
 	var _ cmd.Infoer = &AppRestart{}
+}
+
+func (s *S) TestSetCName(c *C) {
+	*AppName = "death"
+	var (
+		called         bool
+		stdout, stderr bytes.Buffer
+	)
+	context := cmd.Context{
+		Stdout: &stdout,
+		Stderr: &stderr,
+		Args:   []string{"death.evergrey.mycompany.com"},
+	}
+	trans := &conditionalTransport{
+		transport{
+			msg:    "Restarted",
+			status: http.StatusOK,
+		},
+		func(req *http.Request) bool {
+			called = true
+			var m map[string]string
+			err := json.NewDecoder(req.Body).Decode(&m)
+			c.Assert(err, IsNil)
+			return req.URL.Path == "/apps/death" &&
+				req.Method == "POST" &&
+				m["cname"] == "death.evergrey.mycompany.com"
+		},
+	}
+	client := cmd.NewClient(&http.Client{Transport: trans}, nil, manager)
+	err := (&SetCName{}).Run(&context, client)
+	c.Assert(err, IsNil)
+	c.Assert(called, Equals, true)
+	c.Assert(stdout.String(), Equals, "cname successfully defined.\n")
+}
+
+func (s *S) TestSetCNameWithoutTheFlag(c *C) {
+	var (
+		called         bool
+		stdout, stderr bytes.Buffer
+	)
+	context := cmd.Context{
+		Stdout: &stdout,
+		Stderr: &stderr,
+		Args:   []string{"corey.evergrey.mycompany.com"},
+	}
+	fake := &FakeGuesser{name: "corey"}
+	trans := &conditionalTransport{
+		transport{
+			msg:    "Restarted",
+			status: http.StatusOK,
+		},
+		func(req *http.Request) bool {
+			called = true
+			var m map[string]string
+			err := json.NewDecoder(req.Body).Decode(&m)
+			c.Assert(err, IsNil)
+			return req.URL.Path == "/apps/corey" &&
+				req.Method == "POST" &&
+				m["cname"] == "corey.evergrey.mycompany.com"
+		},
+	}
+	client := cmd.NewClient(&http.Client{Transport: trans}, nil, manager)
+	err := (&SetCName{GuessingCommand{G: fake}}).Run(&context, client)
+	c.Assert(err, IsNil)
+	c.Assert(called, Equals, true)
+	c.Assert(stdout.String(), Equals, "cname successfully defined.\n")
+}
+
+func (s *S) TestSetCNameFailure(c *C) {
+	var stdout, stderr bytes.Buffer
+	*AppName = "masterplan"
+	context := cmd.Context{
+		Stdout: &stdout,
+		Stderr: &stderr,
+		Args:   []string{"masterplan.evergrey.mycompany.com"},
+	}
+	trans := &transport{msg: "Invalid cname", status: http.StatusPreconditionFailed}
+	client := cmd.NewClient(&http.Client{Transport: trans}, nil, manager)
+	err := (&SetCName{}).Run(&context, client)
+	c.Assert(err, NotNil)
+	c.Assert(err.Error(), Equals, "Invalid cname")
+}
+
+func (s *S) TestSetCNameInfo(c *C) {
+	expected := &cmd.Info{
+		Name:    "set-cname",
+		Usage:   "set-cname <cname> [--app appname]",
+		Desc:    `defines a cname for your app.`,
+		MinArgs: 1,
+	}
+	c.Assert((&SetCName{}).Info(), DeepEquals, expected)
+}
+
+func (s *S) TestSetCNameIsAnInfoer(c *C) {
+	var _ cmd.Infoer = &SetCName{}
+}
+
+func (s *S) TestSetCNameIsACommand(c *C) {
+	var _ cmd.Command = &SetCName{}
 }

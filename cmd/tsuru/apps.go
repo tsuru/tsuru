@@ -269,3 +269,35 @@ If you don't provide the app name, tsuru will try to guess it.`,
 		MinArgs: 0,
 	}
 }
+
+type SetCName struct {
+	GuessingCommand
+}
+
+func (c *SetCName) Run(context *cmd.Context, client cmd.Doer) error {
+	appName, err := c.Guess()
+	if err != nil {
+		return err
+	}
+	url := cmd.GetUrl(fmt.Sprintf("/apps/%s", appName))
+	body := strings.NewReader(fmt.Sprintf(`{"cname": "%s"}`, context.Args[0]))
+	request, err := http.NewRequest("POST", url, body)
+	if err != nil {
+		return err
+	}
+	_, err = client.Do(request)
+	if err != nil {
+		return err
+	}
+	fmt.Fprintln(context.Stdout, "cname successfully defined.")
+	return nil
+}
+
+func (c *SetCName) Info() *cmd.Info {
+	return &cmd.Info{
+		Name:    "set-cname",
+		Usage:   "set-cname <cname> [--app appname]",
+		Desc:    `defines a cname for your app.`,
+		MinArgs: 1,
+	}
+}
