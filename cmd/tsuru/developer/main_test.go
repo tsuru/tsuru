@@ -187,3 +187,10 @@ func (s *S) TestUnitRemoveIsRegistered(c *C) {
 	c.Assert(ok, Equals, true)
 	c.Assert(rmunit, FitsTypeOf, &UnitRemove{})
 }
+
+func (s *S) TestSetCNameIsRegistered(c *C) {
+	manager := buildManager("tsuru")
+	cname, ok := manager.Commands["set-cname"]
+	c.Assert(ok, Equals, true)
+	c.Assert(cname, FitsTypeOf, &tsuru.SetCName{})
+}
