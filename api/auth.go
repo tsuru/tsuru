@@ -236,10 +236,12 @@ func addUserToTeam(email, teamName string, u *auth.User) error {
 	if err := conn.Users().Find(bson.M{"email": email}).One(user); err != nil {
 		return &errors.Http{Code: http.StatusNotFound, Message: "User not found"}
 	}
-	if err := addUserToTeamInGandalf(email, u, team); err != nil {
-		return err
+	actions := []*action.Action{
+		&addUserToTeamInGandalfAction,
+		&addUserToTeamInDatabaseAction,
 	}
-	return addUserToTeamInDatabase(user, team)
+	pipeline := action.NewPipeline(actions...)
+	return pipeline.Execute(user.Email, u, team)
 }
 
 func addUserToTeamInDatabase(user *auth.User, team *auth.Team) error {
