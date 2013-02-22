@@ -797,7 +797,7 @@ func (s *ELBSuite) TestCollectStatusWithELBAndIDChange(c *C) {
 	c.Assert(instances, HasLen, 2)
 	c.Assert(instances[0].InstanceId, Equals, id2)
 	c.Assert(instances[1].InstanceId, Equals, id1)
-	msg, err := getQueue(app.QueueName).Get(1e6)
+	msg, err := getQueue(app.QueueName).Get(1e9)
 	c.Assert(err, IsNil)
 	c.Assert(msg.Args, DeepEquals, []string{"symfonia", "symfonia/0"})
 	msg.Delete()
