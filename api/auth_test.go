@@ -828,12 +828,30 @@ func (s *AuthSuite) TestRemoveUserFromTeamRevokesAccessInGandalf(c *C) {
 	c.Assert(string(h.body[2]), Equals, expected)
 }
 
-// func (s *AuthSuite) TestRemoveUserFromTeamInGandalf(c *C) {
-// 	h := testHandler{}
-// 	ts := s.startGandalfTestServer(&h)
-// 	defer ts.Close()
-//     removeUserFromTeamInGandalf(email)
-// }
+func (s *AuthSuite) TestRemoveUserFromTeamInDatabase(c *C) {
+	u := &auth.User{Email: "nobody@gmail.com", Password: "123456"}
+	err := u.Create()
+	c.Assert(err, IsNil)
+	s.team.AddUser(u)
+	err = s.conn.Teams().UpdateId(s.team.Name, s.team)
+	c.Assert(err, IsNil)
+	err = removeUserFromTeamInDatabase(u, s.team)
+	c.Assert(err, IsNil)
+	err = s.conn.Teams().FindId(s.team.Name).One(s.team)
+	c.Assert(err, IsNil)
+	c.Assert(s.team, Not(ContainsUser), u)
+}
+
+func (s *AuthSuite) TestRemoveUserFromTeamInGandalf(c *C) {
+	h := testHandler{}
+	ts := s.startGandalfTestServer(&h)
+	defer ts.Close()
+	u := &auth.User{Email: "nobody@gmail.com"}
+	err := removeUserFromTeamInGandalf(u, "someteam")
+	c.Assert(err, IsNil)
+	c.Assert(len(h.url), Equals, 1)
+	c.Assert(h.url[0], Equals, "/repository/revoke")
+}
 
 func (s *AuthSuite) TestAddKeyToUserAddsAKeyToTheUser(c *C) {
 	h := testHandler{}

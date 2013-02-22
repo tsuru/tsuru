@@ -294,21 +294,34 @@ func removeUserFromTeam(email, teamName string, u *auth.User) error {
 	if err != nil {
 		return &errors.Http{Code: http.StatusNotFound, Message: err.Error()}
 	}
-	// does not touches the database
-	err = team.RemoveUser(&user)
+	err = removeUserFromTeamInGandalf(&user, team.Name)
 	if err != nil {
-		return &errors.Http{Code: http.StatusNotFound, Message: err.Error()}
+		return nil
 	}
-	// gandalf actions comes first, cuz if they fail the whole action is aborted
-	gUrl := repository.GitServerUri()
-	alwdApps, err := user.AllowedAppsByTeam(teamName)
+	return removeUserFromTeamInDatabase(&user, team)
+}
+
+func removeUserFromTeamInDatabase(u *auth.User, team *auth.Team) error {
+	conn, err := db.Conn()
 	if err != nil {
 		return err
 	}
-	if err := (&gandalf.Client{Endpoint: gUrl}).RevokeAccess(alwdApps, []string{email}); err != nil {
+	if err = team.RemoveUser(u); err != nil {
+		return &errors.Http{Code: http.StatusNotFound, Message: err.Error()}
+	}
+	return conn.Teams().UpdateId(team.Name, team)
+}
+
+func removeUserFromTeamInGandalf(u *auth.User, team string) error {
+	gUrl := repository.GitServerUri()
+	alwdApps, err := u.AllowedAppsByTeam(team)
+	if err != nil {
+		return err
+	}
+	if err := (&gandalf.Client{Endpoint: gUrl}).RevokeAccess(alwdApps, []string{u.Email}); err != nil {
 		return fmt.Errorf("Failed to revoke access from git repositories: %s", err)
 	}
-	return conn.Teams().UpdateId(teamName, team)
+	return nil
 }
 
 func RemoveUserFromTeam(w http.ResponseWriter, r *http.Request, u *auth.User) error {
