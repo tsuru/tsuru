@@ -102,7 +102,7 @@ func (app *App) Get() error {
 //       3. Create S3 bucket for the app (if the bucket support is enabled)
 //       4. Create the git repository using gandalf
 //       5. Provision units within the provisioner
-func CreateApp(app *App, units uint) error {
+func CreateApp(app *App, units uint, teams []auth.Team) error {
 	if units == 0 {
 		return &ValidationError{Message: "Cannot create app with 0 units."}
 	}

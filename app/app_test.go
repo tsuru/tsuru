@@ -60,7 +60,7 @@ func (s *S) TestDestroy(c *C) {
 			},
 		},
 	}
-	err := CreateApp(&a, 1)
+	err := CreateApp(&a, 1, []auth.Team{s.team})
 	c.Assert(err, IsNil)
 	a.Get()
 	err = a.Destroy()
@@ -89,7 +89,7 @@ func (s *S) TestDestroyWithoutBucketSupport(c *C) {
 		Teams:     []string{s.team.Name},
 		Units:     []Unit{{Name: "duvido", Machine: 3}},
 	}
-	err := CreateApp(&a, 1)
+	err := CreateApp(&a, 1, []auth.Team{s.team})
 	c.Assert(err, IsNil)
 	a.Get()
 	err = a.Destroy()
@@ -111,7 +111,7 @@ func (s *S) TestDestroyWithoutUnits(c *C) {
 	ts := s.t.StartGandalfTestServer(&h)
 	defer ts.Close()
 	app := App{Name: "x4"}
-	err := CreateApp(&app, 1)
+	err := CreateApp(&app, 1, []auth.Team{s.team})
 	c.Assert(err, IsNil)
 	defer s.provisioner.Destroy(&app)
 	app.Get()
@@ -134,7 +134,7 @@ func (s *S) TestFailingDestroy(c *C) {
 		Teams:     []string{s.team.Name},
 		Units:     []Unit{{Name: "duvido", Machine: 3}},
 	}
-	err := CreateApp(&a, 1)
+	err := CreateApp(&a, 1, []auth.Team{s.team})
 	c.Assert(err, IsNil)
 	a.Get()
 	defer s.conn.Apps().Remove(bson.M{"name": "ritual"})
@@ -157,7 +157,7 @@ func (s *S) TestCreateApp(c *C) {
 	expectedHost := "localhost"
 	config.Set("host", expectedHost)
 
-	err := CreateApp(&a, 3)
+	err := CreateApp(&a, 3, []auth.Team{s.team})
 	c.Assert(err, IsNil)
 	defer a.Destroy()
 	err = a.Get()
@@ -211,7 +211,7 @@ func (s *S) TestCreateWithoutBucketSupport(c *C) {
 	}
 	expectedHost := "localhost"
 	config.Set("host", expectedHost)
-	err := CreateApp(&a, 3)
+	err := CreateApp(&a, 3, []auth.Team{s.team})
 	c.Assert(err, IsNil)
 	defer a.Destroy()
 	err = a.Get()
@@ -233,7 +233,7 @@ func (s *S) TestCreateWithoutBucketSupport(c *C) {
 
 func (s *S) TestCantCreateAppWithZeroUnits(c *C) {
 	a := App{Name: "paradisum"}
-	err := CreateApp(&a, 0)
+	err := CreateApp(&a, 0, []auth.Team{s.team})
 	c.Assert(err, NotNil)
 	c.Assert(err.Error(), Equals, "Cannot create app with 0 units.")
 }
@@ -243,7 +243,7 @@ func (s *S) TestCantCreateTwoAppsWithTheSameName(c *C) {
 	c.Assert(err, IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": "appname"})
 	a := App{Name: "appname"}
-	err = CreateApp(&a, 1)
+	err = CreateApp(&a, 1, []auth.Team{s.team})
 	defer a.Destroy() // clean mess if test fail
 	c.Assert(err, NotNil)
 	e, ok := err.(*appCreationError)
@@ -258,7 +258,7 @@ func (s *S) TestCantCreateAppWithInvalidName(c *C) {
 		Name:      "1123app",
 		Framework: "ruby",
 	}
-	err := CreateApp(&a, 1)
+	err := CreateApp(&a, 1, []auth.Team{s.team})
 	c.Assert(err, NotNil)
 	e, ok := err.(*ValidationError)
 	c.Assert(ok, Equals, true)
@@ -278,7 +278,7 @@ func (s *S) TestDoesNotSaveTheAppInTheDatabaseIfProvisionerFail(c *C) {
 		Framework: "ruby",
 		Units:     []Unit{{Machine: 1}},
 	}
-	err := CreateApp(&a, 1)
+	err := CreateApp(&a, 1, []auth.Team{s.team})
 	defer a.Destroy() // clean mess if test fail
 	c.Assert(err, NotNil)
 	expected := `Tsuru failed to create the app "theirapp": exit status 1`
@@ -303,7 +303,7 @@ func (s *S) TestDeletesIAMCredentialsAndS3BucketIfProvisionerFail(c *C) {
 		Framework: "ruby",
 		Units:     []Unit{{Machine: 1}},
 	}
-	err := CreateApp(&a, 1)
+	err := CreateApp(&a, 1, []auth.Team{s.team})
 	defer a.Destroy() // clean mess if test fail
 	c.Assert(err, NotNil)
 	iam := getIAMEndpoint()
@@ -329,7 +329,7 @@ func (s *S) TestCreateAppCreatesRepositoryInGandalf(c *C) {
 		Teams: []string{s.team.Name},
 		Units: []Unit{{Machine: 3}},
 	}
-	err := CreateApp(&a, 1)
+	err := CreateApp(&a, 1, []auth.Team{s.team})
 	c.Assert(err, IsNil)
 	err = a.Get()
 	c.Assert(err, IsNil)
@@ -347,7 +347,7 @@ func (s *S) TestCreateAppDoesNotSaveTheAppWhenGandalfFailstoCreateTheRepository(
 	ts := s.t.StartGandalfTestServer(&testBadHandler{msg: "could not create the repository"})
 	defer ts.Close()
 	a := App{Name: "otherapp", Teams: []string{s.team.Name}}
-	err := CreateApp(&a, 1)
+	err := CreateApp(&a, 1, []auth.Team{s.team})
 	c.Assert(err, NotNil)
 	count, err := s.conn.Apps().Find(bson.M{"name": a.Name}).Count()
 	c.Assert(err, IsNil)
