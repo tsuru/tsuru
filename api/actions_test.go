@@ -109,3 +109,33 @@ func (s *ActionsSuite) TestAddKeyInDatabaseActionBackward(c *C) {
 	u.Get()
 	c.Assert(u.Keys, DeepEquals, []auth.Key{})
 }
+
+func (s *ActionsSuite) TestAddUserToTeamInGandalfActionForward(c *C) {
+	h := testHandler{}
+	ts := s.startGandalfTestServer(&h)
+	defer ts.Close()
+	u := &auth.User{Email: "nobody@gmail.com", Password: "123456"}
+	t := &auth.Team{Name: "myteam"}
+	ctx := action.FWContext{
+		Params: []interface{}{"me@gmail.com", u, t},
+	}
+	result, err := addUserToTeamInGandalfAction.Forward(ctx)
+	c.Assert(err, IsNil)
+	c.Assert(result, IsNil)
+	c.Assert(len(h.url), Equals, 1)
+	c.Assert(h.url[0], Equals, "/repository/grant")
+}
+
+func (s *ActionsSuite) TestAddUserToTeamInGandalfActionBackward(c *C) {
+	h := testHandler{}
+	ts := s.startGandalfTestServer(&h)
+	defer ts.Close()
+	u := &auth.User{Email: "nobody@gmail.com", Password: "123456"}
+	t := &auth.Team{Name: "myteam"}
+	ctx := action.BWContext{
+		Params: []interface{}{"me@gmail.com", u, t},
+	}
+	addUserToTeamInGandalfAction.Backward(ctx)
+	c.Assert(len(h.url), Equals, 1)
+	c.Assert(h.url[0], Equals, "/repository/revoke")
+}
