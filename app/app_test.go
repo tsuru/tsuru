@@ -320,6 +320,43 @@ func (s *S) TestDeletesIAMCredentialsAndS3BucketIfProvisionerFail(c *C) {
 	msg.Delete()
 }
 
+func (s *S) TestCreateAppCreatesRepositoryInGandalf(c *C) {
+	h := testHandler{}
+	ts := s.t.StartGandalfTestServer(&h)
+	defer ts.Close()
+	a := App{
+		Name:  "someapp",
+		Teams: []string{s.team.Name},
+		Units: []Unit{{Machine: 3}},
+	}
+	err := CreateApp(&a, 1)
+	c.Assert(err, IsNil)
+	err = a.Get()
+	c.Assert(err, IsNil)
+	defer a.Destroy()
+	c.Assert(h.url[0], Equals, "/repository")
+	c.Assert(h.method[0], Equals, "POST")
+	expected := fmt.Sprintf(`{"name":"someapp","users":["%s"],"ispublic":false}`, s.user.Email)
+	c.Assert(string(h.body[0]), Equals, expected)
+	msg, err := aqueue().Get(1e6)
+	c.Assert(err, IsNil)
+	c.Assert(msg.Args, DeepEquals, []string{a.Name})
+}
+
+func (s *S) TestCreateAppDoesNotSaveTheAppWhenGandalfFailstoCreateTheRepository(c *C) {
+	ts := s.t.StartGandalfTestServer(&testBadHandler{msg: "could not create the repository"})
+	defer ts.Close()
+	a := App{Name: "otherapp", Teams: []string{s.team.Name}}
+	err := CreateApp(&a, 1)
+	c.Assert(err, NotNil)
+	count, err := s.conn.Apps().Find(bson.M{"name": a.Name}).Count()
+	c.Assert(err, IsNil)
+	c.Assert(count, Equals, 0)
+	msg, err := aqueue().Get(1e6)
+	c.Assert(err, IsNil)
+	c.Assert(msg.Args, DeepEquals, []string{a.Name})
+}
+
 func (s *S) TestAppendOrUpdate(c *C) {
 	a := App{
 		Name:      "appName",
