@@ -15,3 +15,6 @@ try:
 except urllib2.HTTPError as e:
     sys.stderr.write("\n ---> {0}\n\n".format(e.read()))
     sys.exit(1)
+except:
+    sys.stderr.write("\n ---> Failed to communicate with tsuru server\n")
+    sys.exit(1)
