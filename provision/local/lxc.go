@@ -1,6 +1,7 @@
 package local
 
 import (
+	"github.com/globocom/config"
 	"github.com/globocom/tsuru/fs"
 	"github.com/globocom/tsuru/log"
 	"io/ioutil"
@@ -58,9 +59,27 @@ func (c *container) ip() string {
 	return ""
 }
 
+// authorizedKey returns the authorized keys.
+func authorizedKey() (string, error) {
+	authorizedKeyPath, err := config.GetString("local:authorized-key-path")
+	file, err := filesystem().Open(authorizedKeyPath)
+	if err != nil {
+		return "", err
+	}
+	data, err := ioutil.ReadAll(file)
+	if err != nil {
+		return "", err
+	}
+	return string(data), nil
+}
+
 // create creates a lxc container with ubuntu template by default.
 func (c *container) create() error {
-	return runCmd("sudo", "lxc-create", "-t", "ubuntu", "-n", c.name)
+	keycontent, err := authorizedKey()
+	if err != nil {
+		return err
+	}
+	return runCmd("sudo", "lxc-create", "-t", "ubuntu", "-n", c.name, "--", "-S", keycontent)
 }
 
 // start starts a lxc container.

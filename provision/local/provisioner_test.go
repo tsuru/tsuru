@@ -21,10 +21,51 @@ func (s *S) TestShouldBeRegistered(c *C) {
 }
 
 func (s *S) TestProvisionerProvision(c *C) {
-	file, _ := os.Open("testdata/dnsmasq.leases")
+	config.Set("local:authorized-key-path", "somepath")
+	key := "somekey"
+	rfs := &fstesting.RecordingFs{}
+	fsystem = rfs
+	defer func() {
+		fsystem = nil
+	}()
+	file, err := rfs.Open("somepath")
+	c.Assert(err, IsNil)
+	_, err = file.Write([]byte(key))
+	c.Assert(err, IsNil)
+	file, _ = os.Open("testdata/dnsmasq.leases")
 	data, err := ioutil.ReadAll(file)
 	c.Assert(err, IsNil)
-	rfs := &fstesting.RecordingFs{FileContent: string(data)}
+	file, err = rfs.Open("/var/lib/misc/dnsmasq.leases")
+	c.Assert(err, IsNil)
+	_, err = file.Write(data)
+	c.Assert(err, IsNil)
+	tmpdir, err := commandmocker.Add("sudo", "$*")
+	c.Assert(err, IsNil)
+	defer commandmocker.Remove(tmpdir)
+	sshTempDir, err := commandmocker.Add("ssh", "$*")
+	c.Assert(err, IsNil)
+	defer commandmocker.Remove(sshTempDir)
+	scpTempDir, err := commandmocker.Add("scp", "$*")
+	c.Assert(err, IsNil)
+	defer commandmocker.Remove(scpTempDir)
+	var p LocalProvisioner
+	app := testing.NewFakeApp("myapp", "python", 0)
+	c.Assert(p.Provision(app), IsNil)
+	c.Assert(commandmocker.Ran(tmpdir), Equals, true)
+	expected := "lxc-create -t ubuntu -n myapp -- -S " + key
+	expected += "lxc-start --daemon -n myapp"
+	c.Assert(commandmocker.Output(tmpdir), Equals, expected)
+	var unit provision.Unit
+	err = p.collection().Find(bson.M{"name": "myapp"}).One(&unit)
+	c.Assert(err, IsNil)
+	c.Assert(unit.Ip, Equals, "10.10.10.15")
+	defer p.collection().Remove(bson.M{"name": "myapp"})
+}
+
+func (s *S) TestProvisionerDestroy(c *C) {
+	config.Set("local:authorized-key-path", "somepath")
+	key := "somekey"
+	rfs := &fstesting.RecordingFs{FileContent: string(key)}
 	fsystem = rfs
 	defer func() {
 		fsystem = nil
@@ -40,35 +81,11 @@ func (s *S) TestProvisionerProvision(c *C) {
 	defer commandmocker.Remove(scpTempDir)
 	var p LocalProvisioner
 	app := testing.NewFakeApp("myapp", "python", 0)
-	c.Assert(p.Provision(app), IsNil)
-	c.Assert(commandmocker.Ran(tmpdir), Equals, true)
-	expected := "lxc-create -t ubuntu -n myapp"
-	expected += "lxc-start --daemon -n myapp"
-	c.Assert(commandmocker.Output(tmpdir), Equals, expected)
-	var unit provision.Unit
-	err = p.collection().Find(bson.M{"name": "myapp"}).One(&unit)
-	c.Assert(err, IsNil)
-	c.Assert(unit.Ip, Equals, "10.10.10.15")
-	defer p.collection().Remove(bson.M{"name": "myapp"})
-}
-
-func (s *S) TestProvisionerDestroy(c *C) {
-	tmpdir, err := commandmocker.Add("sudo", "$*")
-	c.Assert(err, IsNil)
-	defer commandmocker.Remove(tmpdir)
-	sshTempDir, err := commandmocker.Add("ssh", "$*")
-	c.Assert(err, IsNil)
-	defer commandmocker.Remove(sshTempDir)
-	scpTempDir, err := commandmocker.Add("scp", "$*")
-	c.Assert(err, IsNil)
-	defer commandmocker.Remove(scpTempDir)
-	var p LocalProvisioner
-	app := testing.NewFakeApp("myapp", "python", 0)
 	err = p.Provision(app)
 	c.Assert(err, IsNil)
 	c.Assert(p.Destroy(app), IsNil)
 	c.Assert(commandmocker.Ran(tmpdir), Equals, true)
-	expected := "lxc-create -t ubuntu -n myapp"
+	expected := "lxc-create -t ubuntu -n myapp -- -S " + key
 	expected += "lxc-start --daemon -n myapp"
 	expected += "lxc-stop -n myapp"
 	expected += "lxc-destroy -n myapp"

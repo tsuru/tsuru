@@ -2,6 +2,7 @@ package local
 
 import (
 	"github.com/globocom/commandmocker"
+	"github.com/globocom/config"
 	"github.com/globocom/tsuru/fs/testing"
 	"io/ioutil"
 	. "launchpad.net/gocheck"
@@ -9,6 +10,13 @@ import (
 )
 
 func (s *S) TestLXCCreate(c *C) {
+	config.Set("local:authorized-key-path", "somepath")
+	key := "somekey"
+	rfs := &testing.RecordingFs{FileContent: string(key)}
+	fsystem = rfs
+	defer func() {
+		fsystem = nil
+	}()
 	tmpdir, err := commandmocker.Add("sudo", "$*")
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(tmpdir)
@@ -16,7 +24,7 @@ func (s *S) TestLXCCreate(c *C) {
 	err = container.create()
 	c.Assert(err, IsNil)
 	c.Assert(commandmocker.Ran(tmpdir), Equals, true)
-	expected := "lxc-create -t ubuntu -n container"
+	expected := "lxc-create -t ubuntu -n container -- -S " + key
 	c.Assert(commandmocker.Output(tmpdir), Equals, expected)
 }
 
@@ -69,4 +77,17 @@ func (s *S) TestContainerIP(c *C) {
 	c.Assert(cont.ip(), Equals, "10.10.10.10")
 	cont = container{name: "notfound"}
 	c.Assert(cont.ip(), Equals, "")
+}
+
+func (s *S) TestGetAuthorizedKey(c *C) {
+	config.Set("local:authorized-key-path", "somepath")
+	expected := "somekey"
+	rfs := &testing.RecordingFs{FileContent: string(expected)}
+	fsystem = rfs
+	defer func() {
+		fsystem = nil
+	}()
+	key, err := authorizedKey()
+	c.Assert(err, IsNil)
+	c.Assert(key, Equals, expected)
 }
