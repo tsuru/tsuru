@@ -12,5 +12,5 @@ timeout = 1800
 try:
     f = urllib2.urlopen("{0}/apps/{1}/avaliable".format(tsuru_host, app_name), timeout=timeout)
 except urllib2.HTTPError as e:
-    print "\n ---> {0}\n".format(e.read())
+    sys.stderr.write("\n ---> {0}\n".format(e.read()))
     sys.exit(1)
