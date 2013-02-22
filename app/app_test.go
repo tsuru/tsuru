@@ -52,7 +52,6 @@ func (s *S) TestDestroy(c *C) {
 	a := App{
 		Name:      "ritual",
 		Framework: "ruby",
-		Teams:     []string{s.team.Name},
 		Units: []Unit{
 			{
 				Name:    "duvido",
@@ -86,7 +85,6 @@ func (s *S) TestDestroyWithoutBucketSupport(c *C) {
 	a := App{
 		Name:      "blinded",
 		Framework: "evergrey",
-		Teams:     []string{s.team.Name},
 		Units:     []Unit{{Name: "duvido", Machine: 3}},
 	}
 	err := CreateApp(&a, 1, []auth.Team{s.team})
@@ -131,7 +129,6 @@ func (s *S) TestFailingDestroy(c *C) {
 	a := App{
 		Name:      "ritual",
 		Framework: "ruby",
-		Teams:     []string{s.team.Name},
 		Units:     []Unit{{Name: "duvido", Machine: 3}},
 	}
 	err := CreateApp(&a, 1, []auth.Team{s.team})
@@ -167,6 +164,7 @@ func (s *S) TestCreateApp(c *C) {
 	c.Assert(err, IsNil)
 	c.Assert(retrievedApp.Name, Equals, a.Name)
 	c.Assert(retrievedApp.Framework, Equals, a.Framework)
+	c.Assert(retrievedApp.Teams, DeepEquals, []string{s.team.Name})
 	env := a.InstanceEnv(s3InstanceName)
 	c.Assert(env["TSURU_S3_ENDPOINT"].Value, Equals, s.t.S3Server.URL())
 	c.Assert(env["TSURU_S3_ENDPOINT"].Public, Equals, false)
@@ -221,6 +219,7 @@ func (s *S) TestCreateWithoutBucketSupport(c *C) {
 	c.Assert(err, IsNil)
 	c.Assert(retrievedApp.Name, Equals, a.Name)
 	c.Assert(retrievedApp.Framework, Equals, a.Framework)
+	c.Assert(retrievedApp.Teams, DeepEquals, []string{s.team.Name})
 	env := a.InstanceEnv(s3InstanceName)
 	c.Assert(env, DeepEquals, map[string]bind.EnvVar{})
 	message, err := aqueue().Get(1e6)
@@ -236,6 +235,17 @@ func (s *S) TestCantCreateAppWithZeroUnits(c *C) {
 	err := CreateApp(&a, 0, []auth.Team{s.team})
 	c.Assert(err, NotNil)
 	c.Assert(err.Error(), Equals, "Cannot create app with 0 units.")
+}
+
+func (s *S) TestCantCreateAppWithoutTeams(c *C) {
+	input := [][]auth.Team{nil, {}}
+	a := App{Name: "beyond"}
+	for _, t := range input {
+		err := CreateApp(&a, 1, t)
+		c.Check(err, NotNil)
+		_, ok := err.(NoTeamsError)
+		c.Check(ok, Equals, true)
+	}
 }
 
 func (s *S) TestCantCreateTwoAppsWithTheSameName(c *C) {
@@ -346,7 +356,7 @@ func (s *S) TestCreateAppCreatesRepositoryInGandalf(c *C) {
 func (s *S) TestCreateAppDoesNotSaveTheAppWhenGandalfFailstoCreateTheRepository(c *C) {
 	ts := s.t.StartGandalfTestServer(&testBadHandler{msg: "could not create the repository"})
 	defer ts.Close()
-	a := App{Name: "otherapp", Teams: []string{s.team.Name}}
+	a := App{Name: "otherapp"}
 	err := CreateApp(&a, 1, []auth.Team{s.team})
 	c.Assert(err, NotNil)
 	count, err := s.conn.Apps().Find(bson.M{"name": a.Name}).Count()

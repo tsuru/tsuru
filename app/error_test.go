@@ -19,3 +19,8 @@ func (s *S) TestAppCreationError(c *C) {
 	expected := `Tsuru failed to create the app "myapp": failure in app`
 	c.Assert(e.Error(), Equals, expected)
 }
+
+func (s *S) TestNoTeamsError(c *C) {
+	e := NoTeamsError{}
+	c.Assert(e.Error(), Equals, "Cannot create app without teams.")
+}

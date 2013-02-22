@@ -106,6 +106,10 @@ func CreateApp(app *App, units uint, teams []auth.Team) error {
 	if units == 0 {
 		return &ValidationError{Message: "Cannot create app with 0 units."}
 	}
+	if len(teams) == 0 {
+		return NoTeamsError{}
+	}
+	app.SetTeams(teams)
 	if !app.isValid() {
 		msg := "Invalid app name, your app should have at most 63 " +
 			"characters, containing only lower case letters or numbers, " +

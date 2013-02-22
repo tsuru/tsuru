@@ -26,3 +26,11 @@ type ValidationError struct {
 func (err *ValidationError) Error() string {
 	return err.Message
 }
+
+// NoTeamsError is the error returned when one tries to create an app without
+// any team.
+type NoTeamsError struct{}
+
+func (err NoTeamsError) Error() string {
+	return "Cannot create app without teams."
+}
