@@ -144,7 +144,6 @@ func (s *S) TestFailingDestroy(c *C) {
 	c.Assert(err.Error(), Equals, "Failed to destroy the app: will not destroy this app!")
 }
 
-// TODO(fss): simplify this test. Right now, it's a little monster.
 func (s *S) TestCreateApp(c *C) {
 	patchRandomReader()
 	defer unpatchRandomReader()
