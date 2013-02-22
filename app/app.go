@@ -789,16 +789,6 @@ func (app *App) Log(message, source string) error {
 	return conn.Apps().Update(bson.M{"name": app.Name}, app)
 }
 
-// ValidationError is an error implementation used whenever a ValidationError
-// occurs in the app.
-type ValidationError struct {
-	Message string
-}
-
-func (err *ValidationError) Error() string {
-	return err.Message
-}
-
 // List returns the list of apps that the given user has access to.
 //
 // If the user does not have acces to any app, this function returns an empty
@@ -858,13 +848,4 @@ func deployHookAbsPath(p string) (string, error) {
 	}
 	cmdArgs[0] = abs
 	return strings.Join(cmdArgs, " "), nil
-}
-
-type appCreationError struct {
-	app string
-	err error
-}
-
-func (e *appCreationError) Error() string {
-	return fmt.Sprintf("Tsuru failed to create the app %q: %s", e.app, e.err)
 }
