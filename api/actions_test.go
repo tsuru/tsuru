@@ -139,3 +139,41 @@ func (s *ActionsSuite) TestAddUserToTeamInGandalfActionBackward(c *C) {
 	c.Assert(len(h.url), Equals, 1)
 	c.Assert(h.url[0], Equals, "/repository/revoke")
 }
+
+func (s *ActionsSuite) TestAddUserToTeamInDatabaseActionForward(c *C) {
+	u := &auth.User{Email: "nobody@gmail.com", Password: "123456"}
+	err := u.Create()
+	c.Assert(err, IsNil)
+	t := &auth.Team{Name: "myteam"}
+	err = s.conn.Teams().Insert(t)
+	c.Assert(err, IsNil)
+	defer s.conn.Teams().RemoveId(t.Name)
+	defer s.conn.Users().Remove(bson.M{"email": u.Email})
+	ctx := action.FWContext{
+		Params: []interface{}{u, t},
+	}
+	result, err := addUserToTeamInDatabaseAction.Forward(ctx)
+	c.Assert(err, IsNil)
+	c.Assert(result, IsNil)
+	err = s.conn.Teams().FindId(t.Name).One(&t)
+	c.Assert(err, IsNil)
+	c.Assert(t, ContainsUser, u)
+}
+
+func (s *ActionsSuite) TestAddUserToTeamInDatabaseActionBackward(c *C) {
+	u := &auth.User{Email: "nobody@gmail.com", Password: "123456"}
+	err := u.Create()
+	c.Assert(err, IsNil)
+	t := &auth.Team{Name: "myteam", Users: []string{u.Email}}
+	err = s.conn.Teams().Insert(t)
+	c.Assert(err, IsNil)
+	defer s.conn.Teams().RemoveId(t.Name)
+	defer s.conn.Users().Remove(bson.M{"email": u.Email})
+	ctx := action.BWContext{
+		Params: []interface{}{u, t},
+	}
+	addUserToTeamInDatabaseAction.Backward(ctx)
+	err = s.conn.Teams().FindId(t.Name).One(&t)
+	c.Assert(err, IsNil)
+	c.Assert(t, Not(ContainsUser), u)
+}

@@ -52,3 +52,16 @@ var addUserToTeamInGandalfAction = action.Action{
 		removeUserFromTeamInGandalf(u, t.Name)
 	},
 }
+
+var addUserToTeamInDatabaseAction = action.Action{
+	Forward: func(ctx action.FWContext) (action.Result, error) {
+		u := ctx.Params[0].(*auth.User)
+		t := ctx.Params[1].(*auth.Team)
+		return nil, addUserToTeamInDatabase(u, t)
+	},
+	Backward: func(ctx action.BWContext) {
+		u := ctx.Params[0].(*auth.User)
+		t := ctx.Params[1].(*auth.Team)
+		removeUserFromTeamInDatabase(u, t)
+	},
+}
