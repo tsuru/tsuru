@@ -141,39 +141,41 @@ func (s *ActionsSuite) TestAddUserToTeamInGandalfActionBackward(c *C) {
 }
 
 func (s *ActionsSuite) TestAddUserToTeamInDatabaseActionForward(c *C) {
-	u := &auth.User{Email: "nobody@gmail.com", Password: "123456"}
-	err := u.Create()
+	u := &auth.User{Email: "nobody@gmail.com", Password: "123456"} // it's not used in this action
+	newUser := &auth.User{Email: "me@gmail.com", Password: "123456"}
+	err := newUser.Create()
 	c.Assert(err, IsNil)
 	t := &auth.Team{Name: "myteam"}
 	err = s.conn.Teams().Insert(t)
 	c.Assert(err, IsNil)
 	defer s.conn.Teams().RemoveId(t.Name)
-	defer s.conn.Users().Remove(bson.M{"email": u.Email})
+	defer s.conn.Users().Remove(bson.M{"email": newUser.Email})
 	ctx := action.FWContext{
-		Params: []interface{}{u, t},
+		Params: []interface{}{newUser.Email, u, t},
 	}
 	result, err := addUserToTeamInDatabaseAction.Forward(ctx)
 	c.Assert(err, IsNil)
 	c.Assert(result, IsNil)
 	err = s.conn.Teams().FindId(t.Name).One(&t)
 	c.Assert(err, IsNil)
-	c.Assert(t, ContainsUser, u)
+	c.Assert(t, ContainsUser, newUser)
 }
 
 func (s *ActionsSuite) TestAddUserToTeamInDatabaseActionBackward(c *C) {
 	u := &auth.User{Email: "nobody@gmail.com", Password: "123456"}
 	err := u.Create()
 	c.Assert(err, IsNil)
-	t := &auth.Team{Name: "myteam", Users: []string{u.Email}}
+	uEmail := "me@gmail.com"
+	t := &auth.Team{Name: "myteam", Users: []string{uEmail}}
 	err = s.conn.Teams().Insert(t)
 	c.Assert(err, IsNil)
 	defer s.conn.Teams().RemoveId(t.Name)
 	defer s.conn.Users().Remove(bson.M{"email": u.Email})
 	ctx := action.BWContext{
-		Params: []interface{}{u, t},
+		Params: []interface{}{uEmail, u, t},
 	}
 	addUserToTeamInDatabaseAction.Backward(ctx)
 	err = s.conn.Teams().FindId(t.Name).One(&t)
 	c.Assert(err, IsNil)
-	c.Assert(t, Not(ContainsUser), u)
+	c.Assert(t, Not(ContainsUser), &auth.User{Email: uEmail})
 }
