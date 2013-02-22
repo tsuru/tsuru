@@ -1,4 +1,3 @@
-ubuntu@ip-10-64-55-11:/home/git/bare-template/hooks$ cat pre-receive
 #!/bin/bash -el
 
 python hooks/pre-receive.py
