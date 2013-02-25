@@ -18,17 +18,17 @@ then
     status=1
 fi
 
-`go vet ./... > .vet`
-out=`cat .vet`
-if [ "${out}" != "" ]
-then
-    echo "ERROR: go vet failures:"
-    echo
-    cat <<END
-${out}
-END
-    status=1
-fi
-
-rm .vet || true
+# `go vet ./... > .vet`
+# out=`cat .vet`
+# if [ "${out}" != "" ]
+# then
+#     echo "ERROR: go vet failures:"
+#     echo
+#     cat <<END
+# ${out}
+# END
+#     status=1
+# fi
+#
+# rm .vet || true
 exit $status
