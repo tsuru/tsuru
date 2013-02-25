@@ -31,10 +31,30 @@ And these components have any dependencies, like:
 * git daemon
 * juju
 
-Installing tsuru webserver from source
-======================================
+Requirements
+============
 
-1. Install the base requirements for tsuru.
+1. Operating System
+
+At the moment, tsuru webserver is fully supported and tested on Ubuntu 12.04 and
+the steps bellow will guide you throught the install process.
+
+If you try to build tsuru webserver on most Linux systems, you should have few
+problems and if there are problems, we are able to help you. Just
+ask on #tsuru channel on irc.freenode.net.
+
+*Have you tried tsuru webserver on other systems? Let us know and*
+:doc:`contribute </community>` *to the project.*
+
+2. Hardware
+
+    Memory: :TODO
+
+    CPU: :TODO
+ 
+    Disc: :TODO
+
+3. Software
 
 .. highlight:: bash
 
@@ -52,7 +72,10 @@ install guide
 <https://juju.ubuntu.com/docs/getting-started.html#installation>`_. It's need
 to configure the `.juju/enviroment.yml` and do the `bootstrap` too.
 
-2. Install the tsuru api
+Installing tsuru webserver from source
+======================================
+
+1. Install the tsuru api
 
 .. highlight:: bash
 
@@ -63,7 +86,7 @@ to configure the `.juju/enviroment.yml` and do the `bootstrap` too.
     $ go get github.com/globocom/tsuru/api
     $ go get github.com/globocom/tsuru/collector
 
-3. Start mongodb
+2. Start mongodb
 
 .. highlight:: bash
 
@@ -71,7 +94,7 @@ to configure the `.juju/enviroment.yml` and do the `bootstrap` too.
 
     $ sudo service mongodb  start
 
-4. Start beanstalkd
+3. Start beanstalkd
 
 .. highlight:: bash
 
@@ -80,7 +103,7 @@ to configure the `.juju/enviroment.yml` and do the `bootstrap` too.
     $ sudo service beanstalkd start
 
 
-5. Configuring tsuru
+4. Configuring tsuru
 
 .. highlight:: bash
 
@@ -89,7 +112,7 @@ to configure the `.juju/enviroment.yml` and do the `bootstrap` too.
     $ sudo mkdir -p /etc/tsuru
     $ sudo touch /etc/tsuru/tsuru.conf
 
-6. Download the charms
+5. Download the charms
 
 Charms define how platforms will be installed. To use the charms provided by
 tsuru you can get it from `tsuru charms repository
@@ -106,7 +129,7 @@ setting ``juju:charms-path`` in the configuration file:
     juju:
       charms-path: /home/me/charms
 
-7. Starting tsuru and collector
+6. Starting tsuru and collector
 
 .. highlight:: bash
 
