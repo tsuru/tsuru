@@ -502,7 +502,10 @@ func unitNotFound(unitName string, output []byte) bool {
 }
 
 func unitStatus(instanceState, agentState, machineAgentState string) provision.Status {
-	if instanceState == "error" || agentState == "install-error" || machineAgentState == "start-error" {
+	if instanceState == "error" ||
+		agentState == "install-error" ||
+		agentState == "start-error" ||
+		machineAgentState == "start-error" {
 		return provision.StatusError
 	}
 	if machineAgentState == "pending" || machineAgentState == "not-started" || machineAgentState == "" {
