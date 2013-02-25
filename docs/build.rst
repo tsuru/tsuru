@@ -112,6 +112,26 @@ Installing from source
     $ go get github.com/globocom/tsuru/api
     $ go get github.com/globocom/tsuru/collector
 
+Configuring tsuru
+=================
+
+Before running tsuru, you must configure it. By default, tsuru will look for
+the configuration file in the ``/etc/tsuru/tsuru.cnf`` path. You can check a
+sample configuration file and documentation for each tsuru setting in the
+:doc:`"Configuring tsuru" </config>` page.
+
+You can download the sample configuration file from Github:
+
+.. highlight:: bash
+
+::
+
+    $ [sudo] mkdir /etc/tsuru
+    $ [sudo] curl -sL https://raw.github.com/globocom/tsuru/master/etc/tsuru.conf -o /etc/tsuru/tsuru.conf
+
+Make sure you define the required settings (database connection, authentication
+configuration, AWS credentials, etc.) before running tsuru.
+
 Running tsuru
 =============
 
