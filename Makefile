@@ -84,8 +84,3 @@ doc:
 client:
 	@go build -o tsuru ./cmd/tsuru/developer
 	@echo "Copy tsuru to your binary path"
-
-build-clients:
-	@/bin/echo "Building clients... "
-	@/bin/bash misc/build-clients.bash
-	@/bin/echo "ok"

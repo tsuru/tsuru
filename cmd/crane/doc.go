@@ -284,4 +284,4 @@ Usage:
 
 doc-get will retrieve the current documentation of the service.
 */
-package documentation
+package main

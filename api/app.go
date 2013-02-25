@@ -157,36 +157,6 @@ func AppInfo(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	return json.NewEncoder(w).Encode(&app)
 }
 
-// TODO(fss): move this logic to the app package.
-func createAppHelper(instance *app.App, u *auth.User, units uint) ([]byte, error) {
-	teams, err := u.Teams()
-	if err != nil {
-		return nil, err
-	}
-	if len(teams) < 1 {
-		msg := "In order to create an app, you should be member of at least one team"
-		return nil, &errors.Http{Code: http.StatusForbidden, Message: msg}
-	}
-	instance.SetTeams(teams)
-	err = app.CreateApp(instance, units)
-	if err != nil {
-		log.Printf("Got error while creating app: %s", err)
-		if e, ok := err.(*app.ValidationError); ok {
-			return nil, &errors.Http{Code: http.StatusPreconditionFailed, Message: e.Message}
-		}
-		if strings.Contains(err.Error(), "key error") {
-			msg := fmt.Sprintf(`There is already an app named "%s".`, instance.Name)
-			return nil, &errors.Http{Code: http.StatusConflict, Message: msg}
-		}
-		return nil, err
-	}
-	msg := map[string]string{
-		"status":         "success",
-		"repository_url": repository.GetUrl(instance.Name),
-	}
-	return json.Marshal(msg)
-}
-
 type jsonApp struct {
 	Name      string
 	Framework string
@@ -194,7 +164,7 @@ type jsonApp struct {
 }
 
 func CreateAppHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
-	var app app.App
+	var a app.App
 	var japp jsonApp
 	defer r.Body.Close()
 	body, err := ioutil.ReadAll(r.Body)
@@ -204,16 +174,40 @@ func CreateAppHandler(w http.ResponseWriter, r *http.Request, u *auth.User) erro
 	if err = json.Unmarshal(body, &japp); err != nil {
 		return err
 	}
-	app.Name = japp.Name
-	app.Framework = japp.Framework
+	a.Name = japp.Name
+	a.Framework = japp.Framework
 	if japp.Units == 0 {
 		japp.Units = 1
 	}
-	jsonMsg, err := createAppHelper(&app, u, japp.Units)
+	teams, err := u.Teams()
 	if err != nil {
 		return err
 	}
-	fmt.Fprint(w, string(jsonMsg))
+	if len(teams) < 1 {
+		msg := "In order to create an app, you should be member of at least one team"
+		return &errors.Http{Code: http.StatusForbidden, Message: msg}
+	}
+	err = app.CreateApp(&a, japp.Units, teams)
+	if err != nil {
+		log.Printf("Got error while creating app: %s", err)
+		if e, ok := err.(*app.ValidationError); ok {
+			return &errors.Http{Code: http.StatusPreconditionFailed, Message: e.Message}
+		}
+		if strings.Contains(err.Error(), "key error") {
+			msg := fmt.Sprintf(`There is already an app named "%s".`, a.Name)
+			return &errors.Http{Code: http.StatusConflict, Message: msg}
+		}
+		return err
+	}
+	msg := map[string]string{
+		"status":         "success",
+		"repository_url": repository.GetUrl(a.Name),
+	}
+	jsonMsg, err := json.Marshal(msg)
+	if err != nil {
+		return err
+	}
+	fmt.Fprintf(w, "%s", jsonMsg)
 	return nil
 }
 

@@ -52,7 +52,6 @@ func (s *S) TestDestroy(c *C) {
 	a := App{
 		Name:      "ritual",
 		Framework: "ruby",
-		Teams:     []string{s.team.Name},
 		Units: []Unit{
 			{
 				Name:    "duvido",
@@ -60,7 +59,7 @@ func (s *S) TestDestroy(c *C) {
 			},
 		},
 	}
-	err := CreateApp(&a, 1)
+	err := CreateApp(&a, 1, []auth.Team{s.team})
 	c.Assert(err, IsNil)
 	a.Get()
 	err = a.Destroy()
@@ -86,10 +85,9 @@ func (s *S) TestDestroyWithoutBucketSupport(c *C) {
 	a := App{
 		Name:      "blinded",
 		Framework: "evergrey",
-		Teams:     []string{s.team.Name},
 		Units:     []Unit{{Name: "duvido", Machine: 3}},
 	}
-	err := CreateApp(&a, 1)
+	err := CreateApp(&a, 1, []auth.Team{s.team})
 	c.Assert(err, IsNil)
 	a.Get()
 	err = a.Destroy()
@@ -111,7 +109,7 @@ func (s *S) TestDestroyWithoutUnits(c *C) {
 	ts := s.t.StartGandalfTestServer(&h)
 	defer ts.Close()
 	app := App{Name: "x4"}
-	err := CreateApp(&app, 1)
+	err := CreateApp(&app, 1, []auth.Team{s.team})
 	c.Assert(err, IsNil)
 	defer s.provisioner.Destroy(&app)
 	app.Get()
@@ -131,10 +129,9 @@ func (s *S) TestFailingDestroy(c *C) {
 	a := App{
 		Name:      "ritual",
 		Framework: "ruby",
-		Teams:     []string{s.team.Name},
 		Units:     []Unit{{Name: "duvido", Machine: 3}},
 	}
-	err := CreateApp(&a, 1)
+	err := CreateApp(&a, 1, []auth.Team{s.team})
 	c.Assert(err, IsNil)
 	a.Get()
 	defer s.conn.Apps().Remove(bson.M{"name": "ritual"})
@@ -144,7 +141,6 @@ func (s *S) TestFailingDestroy(c *C) {
 	c.Assert(err.Error(), Equals, "Failed to destroy the app: will not destroy this app!")
 }
 
-// TODO(fss): simplify this test. Right now, it's a little monster.
 func (s *S) TestCreateApp(c *C) {
 	patchRandomReader()
 	defer unpatchRandomReader()
@@ -158,7 +154,7 @@ func (s *S) TestCreateApp(c *C) {
 	expectedHost := "localhost"
 	config.Set("host", expectedHost)
 
-	err := CreateApp(&a, 3)
+	err := CreateApp(&a, 3, []auth.Team{s.team})
 	c.Assert(err, IsNil)
 	defer a.Destroy()
 	err = a.Get()
@@ -168,6 +164,7 @@ func (s *S) TestCreateApp(c *C) {
 	c.Assert(err, IsNil)
 	c.Assert(retrievedApp.Name, Equals, a.Name)
 	c.Assert(retrievedApp.Framework, Equals, a.Framework)
+	c.Assert(retrievedApp.Teams, DeepEquals, []string{s.team.Name})
 	env := a.InstanceEnv(s3InstanceName)
 	c.Assert(env["TSURU_S3_ENDPOINT"].Value, Equals, s.t.S3Server.URL())
 	c.Assert(env["TSURU_S3_ENDPOINT"].Public, Equals, false)
@@ -212,7 +209,7 @@ func (s *S) TestCreateWithoutBucketSupport(c *C) {
 	}
 	expectedHost := "localhost"
 	config.Set("host", expectedHost)
-	err := CreateApp(&a, 3)
+	err := CreateApp(&a, 3, []auth.Team{s.team})
 	c.Assert(err, IsNil)
 	defer a.Destroy()
 	err = a.Get()
@@ -222,6 +219,7 @@ func (s *S) TestCreateWithoutBucketSupport(c *C) {
 	c.Assert(err, IsNil)
 	c.Assert(retrievedApp.Name, Equals, a.Name)
 	c.Assert(retrievedApp.Framework, Equals, a.Framework)
+	c.Assert(retrievedApp.Teams, DeepEquals, []string{s.team.Name})
 	env := a.InstanceEnv(s3InstanceName)
 	c.Assert(env, DeepEquals, map[string]bind.EnvVar{})
 	message, err := aqueue().Get(1e6)
@@ -234,9 +232,20 @@ func (s *S) TestCreateWithoutBucketSupport(c *C) {
 
 func (s *S) TestCantCreateAppWithZeroUnits(c *C) {
 	a := App{Name: "paradisum"}
-	err := CreateApp(&a, 0)
+	err := CreateApp(&a, 0, []auth.Team{s.team})
 	c.Assert(err, NotNil)
 	c.Assert(err.Error(), Equals, "Cannot create app with 0 units.")
+}
+
+func (s *S) TestCantCreateAppWithoutTeams(c *C) {
+	input := [][]auth.Team{nil, {}}
+	a := App{Name: "beyond"}
+	for _, t := range input {
+		err := CreateApp(&a, 1, t)
+		c.Check(err, NotNil)
+		_, ok := err.(NoTeamsError)
+		c.Check(ok, Equals, true)
+	}
 }
 
 func (s *S) TestCantCreateTwoAppsWithTheSameName(c *C) {
@@ -244,7 +253,7 @@ func (s *S) TestCantCreateTwoAppsWithTheSameName(c *C) {
 	c.Assert(err, IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": "appname"})
 	a := App{Name: "appname"}
-	err = CreateApp(&a, 1)
+	err = CreateApp(&a, 1, []auth.Team{s.team})
 	defer a.Destroy() // clean mess if test fail
 	c.Assert(err, NotNil)
 	e, ok := err.(*appCreationError)
@@ -259,7 +268,7 @@ func (s *S) TestCantCreateAppWithInvalidName(c *C) {
 		Name:      "1123app",
 		Framework: "ruby",
 	}
-	err := CreateApp(&a, 1)
+	err := CreateApp(&a, 1, []auth.Team{s.team})
 	c.Assert(err, NotNil)
 	e, ok := err.(*ValidationError)
 	c.Assert(ok, Equals, true)
@@ -279,7 +288,7 @@ func (s *S) TestDoesNotSaveTheAppInTheDatabaseIfProvisionerFail(c *C) {
 		Framework: "ruby",
 		Units:     []Unit{{Machine: 1}},
 	}
-	err := CreateApp(&a, 1)
+	err := CreateApp(&a, 1, []auth.Team{s.team})
 	defer a.Destroy() // clean mess if test fail
 	c.Assert(err, NotNil)
 	expected := `Tsuru failed to create the app "theirapp": exit status 1`
@@ -304,7 +313,7 @@ func (s *S) TestDeletesIAMCredentialsAndS3BucketIfProvisionerFail(c *C) {
 		Framework: "ruby",
 		Units:     []Unit{{Machine: 1}},
 	}
-	err := CreateApp(&a, 1)
+	err := CreateApp(&a, 1, []auth.Team{s.team})
 	defer a.Destroy() // clean mess if test fail
 	c.Assert(err, NotNil)
 	iam := getIAMEndpoint()
@@ -319,6 +328,43 @@ func (s *S) TestDeletesIAMCredentialsAndS3BucketIfProvisionerFail(c *C) {
 	c.Assert(err, IsNil)
 	c.Assert(msg.Args, DeepEquals, []string{a.Name})
 	msg.Delete()
+}
+
+func (s *S) TestCreateAppCreatesRepositoryInGandalf(c *C) {
+	h := testHandler{}
+	ts := s.t.StartGandalfTestServer(&h)
+	defer ts.Close()
+	a := App{
+		Name:  "someapp",
+		Teams: []string{s.team.Name},
+		Units: []Unit{{Machine: 3}},
+	}
+	err := CreateApp(&a, 1, []auth.Team{s.team})
+	c.Assert(err, IsNil)
+	err = a.Get()
+	c.Assert(err, IsNil)
+	defer a.Destroy()
+	c.Assert(h.url[0], Equals, "/repository")
+	c.Assert(h.method[0], Equals, "POST")
+	expected := fmt.Sprintf(`{"name":"someapp","users":["%s"],"ispublic":false}`, s.user.Email)
+	c.Assert(string(h.body[0]), Equals, expected)
+	msg, err := aqueue().Get(1e6)
+	c.Assert(err, IsNil)
+	c.Assert(msg.Args, DeepEquals, []string{a.Name})
+}
+
+func (s *S) TestCreateAppDoesNotSaveTheAppWhenGandalfFailstoCreateTheRepository(c *C) {
+	ts := s.t.StartGandalfTestServer(&testBadHandler{msg: "could not create the repository"})
+	defer ts.Close()
+	a := App{Name: "otherapp"}
+	err := CreateApp(&a, 1, []auth.Team{s.team})
+	c.Assert(err, NotNil)
+	count, err := s.conn.Apps().Find(bson.M{"name": a.Name}).Count()
+	c.Assert(err, IsNil)
+	c.Assert(count, Equals, 0)
+	msg, err := aqueue().Get(1e6)
+	c.Assert(err, IsNil)
+	c.Assert(msg.Args, DeepEquals, []string{a.Name})
 }
 
 func (s *S) TestAppendOrUpdate(c *C) {

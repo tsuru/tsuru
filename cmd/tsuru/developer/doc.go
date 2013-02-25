@@ -603,4 +603,4 @@ Usage:
 
 service-doc will display the documentation of a service.
 */
-package documentation
+package main

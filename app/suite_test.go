@@ -183,3 +183,11 @@ func (h *testHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	h.header = append(h.header, r.Header)
 	w.Write([]byte(h.content))
 }
+
+type testBadHandler struct {
+	msg string
+}
+
+func (h *testBadHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	http.Error(w, h.msg, http.StatusInternalServerError)
+}

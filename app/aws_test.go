@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"github.com/fsouza/go-iam"
 	"github.com/globocom/config"
+	"github.com/globocom/tsuru/auth"
 	"labix.org/v2/mgo/bson"
 	"launchpad.net/goamz/aws"
 	"launchpad.net/goamz/s3"
@@ -142,7 +143,7 @@ func (s *S) TestDestroyBucket(c *C) {
 	}
 	bucket := fmt.Sprintf("battery%x", patchRandomReader())
 	defer unpatchRandomReader()
-	err := CreateApp(&app, 1)
+	err := CreateApp(&app, 1, []auth.Team{s.team})
 	c.Assert(err, IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": app.Name})
 	defer s.provisioner.Destroy(&app)
