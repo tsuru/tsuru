@@ -11,7 +11,7 @@ contains instructions on how to build tsuru and some of its components from
 source.
 
 This document assumes that tsuru is being installed on a Ubuntu machine. You
-can use equivalent packages for beanstalkd, MongoDB and other tsuru
+can use equivalent packages for beanstalkd, git, MongoDB and other tsuru
 dependencies. Please make sure you satisfy minimal version requirements.
 
 There's also a contributed `Vagrant <http://www.vagrantup.com/>`_ box, that
@@ -28,12 +28,12 @@ The Tsuru PaaS is composed by multiple components:
 * gandalf
 * charms
 
-And these components have any dependencies, like:
+And these components have their own dependencies, like:
 
-* mongodb
-* beanstalkd
-* git daemon
-* juju
+* mongodb (>=2.2.0)
+* beanstalkd (>=1.4.6)
+* git-daemon (git>=1.7)
+* juju (python version, >=0.5)
 
 Installing tsuru webserver from source
 ======================================
