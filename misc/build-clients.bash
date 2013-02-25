@@ -4,12 +4,20 @@
 # Use of this source code is governed by a BSD-style
 # license that can be found in the LICENSE file.
 
-# This script is used to build tsuru, tsuru-admin and crane on the following
-# platforms:
+# This script is used to build tsuru, tsuru-admin and crane in the specified
+# platform.
 #
-#     - darwin_amd64
-#     - linux_386
-#     - linux_amd64
+# Usage:
+#
+#   % build-clients.bash <os>_<arch>
+
+if [ $# -lt 1 ]
+then
+	echo "Usage: "
+	echo
+	echo "  % $0 <os>_<arch>"
+	exit 7
+fi
 
 destination_dir="dist-cmd"
 
@@ -27,19 +35,6 @@ echo -n "Creating \"$destination_dir\" directory... "
 mkdir -p $destination_dir
 echo "ok"
 
-targets="darwin_amd64 linux_386 linux_amd64"
-
-for target in $targets
-do
-	build_and_package $target crane cmd/crane
-done
-
-for target in $targets
-do
-	build_and_package $target tsuru cmd/tsuru/developer
-done
-
-for target in $targets
-do
-	build_and_package $target tsuru-admin cmd/tsuru/ops
-done
+build_and_package $1 crane cmd/crane
+build_and_package $1 tsuru cmd/tsuru/developer
+build_and_package $1 tsuru-admin cmd/tsuru/ops
