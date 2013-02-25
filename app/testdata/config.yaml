@@ -1,0 +1,28 @@
+database:
+  url: 127.0.0.1:27017
+  name: tsuru_app_test
+git:
+  unit-repo: /home/application/current
+  host: gitserver.tsuru.io
+  protocol: http
+  port: 8080
+bucket-support: true
+aws:
+  access-key-id: access-id-here
+  secret-access-key: secret-very-secret
+  ec2:
+    endpoint: https://ec2.us-east-1.amazonaws.com
+  iam:
+    endpoint: https://iam.amazonaws.com/
+  s3:
+    region-name: us-west-1
+    endpoint: https://ec2.us-west-1.amazonaws.com
+    bucketEndpoint: https://s3-us-west-1.amazonaws.com
+    location-constraint: true
+    lowercase-bucket: true
+auth:
+  salt: tsuru-salt
+  token-expire-days: 2
+  token-key: TSURU-KEY
+queue: fake
+admin-team: admin
