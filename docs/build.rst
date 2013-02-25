@@ -6,8 +6,8 @@
 Build your own PaaS
 +++++++++++++++++++
 
-This document describes how to create a private PaaS service using tsuru.  We
-will be building the PaaS using source avaliable at
+This document describes how to create a private PaaS service using tsuru. It
+contains instructions on how to build tsuru and its components from source.
 https://github.com/globocom/tsuru.
 
 There's also a contributed `Vagrant <http://www.vagrantup.com/>`_ box, that
