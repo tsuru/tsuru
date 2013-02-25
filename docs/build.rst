@@ -7,8 +7,12 @@ Build your own PaaS
 +++++++++++++++++++
 
 This document describes how to create a private PaaS service using tsuru. It
-contains instructions on how to build tsuru and its components from source.
-https://github.com/globocom/tsuru.
+contains instructions on how to build tsuru and some of its components from
+source.
+
+This document assumes that tsuru is being installed on a Ubuntu machine. You
+can use equivalent packages for beanstalkd, MongoDB and other tsuru
+dependencies. Please make sure you satisfy minimal version requirements.
 
 There's also a contributed `Vagrant <http://www.vagrantup.com/>`_ box, that
 setups a PaaS using `Chef <http://www.opscode.com/chef/>`_. You can check this
