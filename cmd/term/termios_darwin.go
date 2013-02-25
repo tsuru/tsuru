@@ -7,6 +7,6 @@ package term
 import "syscall"
 
 var (
-	TCGETS = syscall.TIOCGETA
-	TCSETS = syscall.TIOCSETA
+	TCGETS uint = syscall.TIOCGETA
+	TCSETS uint = syscall.TIOCSETA
 )
