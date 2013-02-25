@@ -59,8 +59,10 @@ type S struct {
 var _ = Suite(&S{})
 
 func (s *S) SetUpSuite(c *C) {
-	err := config.ReadConfigFile("../etc/tsuru.conf")
-	c.Assert(err, IsNil)
+	config.Set("auth:salt", "tsuru-salt")
+	config.Set("auth:token-expire-days", 2)
+	config.Set("auth:token-key", "TSURU-KEY")
+	config.Set("admin-team", "admin")
 	s.hashed = hashPassword("123")
 	config.Set("database:url", "127.0.0.1:27017")
 	config.Set("database:name", "tsuru_auth_test")
@@ -69,7 +71,7 @@ func (s *S) SetUpSuite(c *C) {
 	s.user.Create()
 	s.token, _ = s.user.CreateToken()
 	team := &Team{Name: "cobrateam", Users: []string{s.user.Email}}
-	err = s.conn.Teams().Insert(team)
+	err := s.conn.Teams().Insert(team)
 	c.Assert(err, IsNil)
 	s.team = team
 	s.gitHost, _ = config.GetString("git:host")
