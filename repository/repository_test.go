@@ -1,4 +1,4 @@
-// Copyright 2012 tsuru authors. All rights reserved.
+// Copyright 2013 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -138,4 +138,15 @@ func (s *S) TestGetServerUriWithoutProtocol(c *C) {
 	c.Assert(err, IsNil)
 	uri := GitServerUri()
 	c.Assert(uri, Equals, "http://"+server+":8080")
+}
+
+func (s *S) TestGetServerUriWithoutHost(c *C) {
+	old, _ := config.Get("git:host")
+	defer config.Set("git:host", old)
+	config.Unset("git:host")
+	defer func() {
+		r := recover()
+		c.Assert(r, NotNil)
+	}()
+	GitServerUri()
 }
