@@ -17,16 +17,13 @@ install:
   - popd
   - pushd $GOPATH/src/github.com/globocom/tsuru
   - make get-test
-  - popd
 before_script:
   - pushd $GOPATH/src/github.com/globocom/tsuru
   - ./check-fmt.sh
   - make get-prod
-  - popd
 script:
   - pushd $GOPATH/src/github.com/globocom/tsuru
   - make test
-  - popd
 notifications:
   irc:
     channels:
