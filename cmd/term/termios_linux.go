@@ -11,6 +11,6 @@ import (
 type Termios syscall.Termios
 
 var (
-	TCGETS uint = syscall.TCGETS
-	TCSETS uint = syscall.TCSETS
+	TCGETS uintptr = syscall.TCGETS
+	TCSETS uintptr = syscall.TCSETS
 )
