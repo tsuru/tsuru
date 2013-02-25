@@ -34,29 +34,74 @@ And these components have their own dependencies, like:
 * beanstalkd (>=1.4.6)
 * git-daemon (git>=1.7)
 * juju (python version, >=0.5)
+* libyaml (>=0.1.4)
 
-Installing tsuru webserver from source
-======================================
+Installing tsuru's dependencies
+===============================
 
-1. Install the base requirements for tsuru.
+Using apt-get, that's an easy task:
+
+.. highlight:: bash
+
+    $ sudo apt-get install git beanstalkd libyaml-dev juju
+
+You will also need MongoDB stable, distributed by 10gen. `It's pretty easy to
+get it running on Ubuntu <ec2-50-19-178-134.compute-1.amazonaws.com>`_.
+
+Please make sure that you `configure Juju
+<https://juju.ubuntu.com/docs/getting-started.html#configuring-your-environment-using-ec2>`_
+properly. Then run:
+
+.. highlight:: bash
+
+    $ juju bootstrap
+
+Installing pre-built binaries
+=============================
+
+You can download pre-built binaries of tsuru and collector. There are binaries
+available only for Linux 64 bits, so make sure that ``uname -m`` prints
+``x86_64``:
 
 .. highlight:: bash
 
 ::
 
-    $ sudo apt-get update
-    $ sudo apt-get upgrade
-    $ sudo apt-get install -y golang-go git mercurial bzr gcc beanstalkd
+    $ uname -m
+    x86_64
 
-Tsuru needs the mongodb version 2.2>= so, to install it please `do this simple
-steps <http://docs.mongodb.org/manual/tutorial/install-mongodb-on-ubuntu/>`_
+Then download and install the binaries. First, collector:
 
-Tsuru uses juju to orchestrates your "apps". To install juju follow the `juju
-install guide
-<https://juju.ubuntu.com/docs/getting-started.html#installation>`_. It's need
-to configure the `.juju/enviroment.yml` and do the `bootstrap` too.
+.. highlight:: bash
 
-2. Install the tsuru api
+::
+
+    $ curl -sL https://s3.amazonaws.com/tsuru/dist-server/tsuru-collector.tar.gz | sudo tar -xz -C /usr/bin
+
+Then the API webserver:
+
+.. highlight:: bash
+
+::
+
+    $ curl -sL https://s3.amazonaws.com/tsuru/dist-server/tsuru-api.tar.gz | sudo tar -xz -C /usr/bin
+
+These commands will install ``collector`` and ``api`` commands in ``/usr/bin``
+(you will need to be a sudoer and provide your password). You may install these
+commands somewhere else in your ``PATH``.
+
+Installing from source
+======================
+
+1. Install the build requirements for tsuru.
+
+.. highlight:: bash
+
+::
+
+    $ sudo apt-get install -y golang-go git mercurial bzr gcc
+
+2. Build and install tsuru webserver and collector
 
 .. highlight:: bash
 
@@ -67,7 +112,13 @@ to configure the `.juju/enviroment.yml` and do the `bootstrap` too.
     $ go get github.com/globocom/tsuru/api
     $ go get github.com/globocom/tsuru/collector
 
-3. Start mongodb
+Running tsuru
+=============
+
+Now that you have ``api`` and ``collector`` properly installed, and you
+:doc:`configured tsuru </config>`, you're four steps away from running it.
+
+1. Start mongodb
 
 .. highlight:: bash
 
@@ -75,7 +126,7 @@ to configure the `.juju/enviroment.yml` and do the `bootstrap` too.
 
     $ sudo service mongodb  start
 
-4. Start beanstalkd
+2. Start beanstalkd
 
 .. highlight:: bash
 
@@ -83,17 +134,7 @@ to configure the `.juju/enviroment.yml` and do the `bootstrap` too.
 
     $ sudo service beanstalkd start
 
-
-5. Configuring tsuru
-
-.. highlight:: bash
-
-::
-
-    $ sudo mkdir -p /etc/tsuru
-    $ sudo touch /etc/tsuru/tsuru.conf
-
-6. Download the charms
+3. Download the charms
 
 Charms define how platforms will be installed. To use the charms provided by
 tsuru you can get it from `tsuru charms repository
@@ -110,7 +151,7 @@ setting ``juju:charms-path`` in the configuration file:
     juju:
       charms-path: /home/me/charms
 
-7. Starting tsuru and collector
+4. Starting tsuru and collector
 
 .. highlight:: bash
 
