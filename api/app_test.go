@@ -309,7 +309,7 @@ func (s *S) TestDelete(c *C) {
 			{Ip: "10.10.10.10", Machine: 1},
 		},
 	}
-	err := app.CreateApp(&myApp, 1)
+	err := app.CreateApp(&myApp, 1, []auth.Team{*s.team})
 	c.Assert(err, IsNil)
 	myApp.Get()
 	defer myApp.Destroy()
@@ -455,33 +455,6 @@ func (s *S) TestAppInfoReturnsNotFoundWhenAppDoesNotExist(c *C) {
 	c.Assert(ok, Equals, true)
 	c.Assert(e.Code, Equals, http.StatusNotFound)
 	c.Assert(e, ErrorMatches, "^App SomeApp not found.$")
-}
-
-func (s *S) TestCreateAppHelperShouldNotCreateAnAppWhenAnErrorHappensOnCreateRepo(c *C) {
-	h := testBadHandler{}
-	ts := s.t.StartGandalfTestServer(&h)
-	defer ts.Close()
-	a := app.App{Name: "someapp"}
-	_, err := createAppHelper(&a, s.user, 1)
-	c.Assert(err, NotNil)
-	length, err := s.conn.Apps().Find(bson.M{"name": a.Name}).Count()
-	c.Assert(err, IsNil)
-	c.Assert(length, Equals, 0)
-}
-
-func (s *S) TestCreateAppHelperCreatesRepositoryInGandalf(c *C) {
-	h := testHandler{}
-	ts := s.t.StartGandalfTestServer(&h)
-	defer ts.Close()
-	a := app.App{Name: "someapp"}
-	_, err := createAppHelper(&a, s.user, 1)
-	c.Assert(err, IsNil)
-	a.Get()
-	defer a.Destroy()
-	c.Assert(h.url[0], Equals, "/repository")
-	c.Assert(h.method[0], Equals, "POST")
-	expected := fmt.Sprintf(`{"name":"someapp","users":["%s"],"ispublic":false}`, s.user.Email)
-	c.Assert(string(h.body[0]), Equals, expected)
 }
 
 func (s *S) TestCreateAppHandler(c *C) {
@@ -2168,7 +2141,7 @@ func (s *S) TestUnbindHandler(c *C) {
 		Teams: []string{s.team.Name},
 		Units: []app.Unit{{Machine: 1}},
 	}
-	err = app.CreateApp(&a, 1)
+	err = app.CreateApp(&a, 1, []auth.Team{*s.team})
 	c.Assert(err, IsNil)
 	a.Get()
 	defer a.Destroy()
