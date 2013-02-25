@@ -86,13 +86,13 @@ func (s *S) TestCloneOrPullRepositoryRunsPullIfCloneFail(c *C) {
 
 func (s *S) TestGetRepositoryUrl(c *C) {
 	url := GetUrl("foobar")
-	expected := "git@gandalf.plataformas.glb.com:foobar.git"
+	expected := "git@mygithost:foobar.git"
 	c.Assert(url, Equals, expected)
 }
 
 func (s *S) TestGetReadOnlyUrl(c *C) {
 	url := GetReadOnlyUrl("foobar")
-	expected := "git://gandalf.plataformas.glb.com/foobar.git"
+	expected := "git://mygithost/foobar.git"
 	c.Assert(url, Equals, expected)
 }
 
