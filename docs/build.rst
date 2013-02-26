@@ -6,9 +6,13 @@
 Build your own PaaS
 +++++++++++++++++++
 
-This document describes how to create a private PaaS service using tsuru.  We
-will be building the PaaS using source avaliable at
-https://github.com/globocom/tsuru.
+This document describes how to create a private PaaS service using tsuru. It
+contains instructions on how to build tsuru and some of its components from
+source.
+
+This document assumes that tsuru is being installed on a Ubuntu machine. You
+can use equivalent packages for beanstalkd, git, MongoDB and other tsuru
+dependencies. Please make sure you satisfy minimal version requirements.
 
 There's also a contributed `Vagrant <http://www.vagrantup.com/>`_ box, that
 setups a PaaS using `Chef <http://www.opscode.com/chef/>`_. You can check this
@@ -24,12 +28,13 @@ The Tsuru PaaS is composed by multiple components:
 * gandalf
 * charms
 
-And these components have any dependencies, like:
+And these components have their own dependencies, like:
 
-* mongodb
-* beanstalkd
-* git daemon
-* juju
+* mongodb (>=2.2.0)
+* beanstalkd (>=1.4.6)
+* git-daemon (git>=1.7)
+* juju (python version, >=0.5)
+* libyaml (>=0.1.4)
 
 Requirements
 ============
@@ -61,15 +66,21 @@ Disc: :TODO
 
 3.1 MongoDB
 
-Tsuru needs the mongodb version 2.2>= so, to install it please `do this simple
-steps <http://docs.mongodb.org/manual/tutorial/install-mongodb-on-ubuntu/>`_
+Tsuru needs MongoDB stable, distributed by 10gen. `It's pretty easy to
+get it running on Ubuntu <http://docs.mongodb.org/manual/tutorial/install-mongodb-on-ubuntu/>`_
 
 3.2 Juju
 
 Tsuru uses juju to orchestrates your "apps". To install juju follow the `juju
 install guide
 <https://juju.ubuntu.com/docs/getting-started.html#installation>`_.
-It's need to configure the `.juju/enviroment.yml` and do the `bootstrap` too.
+Please make sure that you `configure Juju
+<https://juju.ubuntu.com/docs/getting-started.html#configuring-your-environment-using-ec2>`_
+properly. Then run:
+
+.. highlight:: bash
+
+    $ juju bootstrap
 
 3.3 Beanstalkd
 
@@ -83,19 +94,52 @@ Install the latest version, by doing this:
     $ sudo apt-get update && sudo apt-get upgrade
     $ sudo apt-get install -y beanstalkd
 
-3.4 Build dependencies
+Installing pre-built binaries
+=============================
 
-To build tsuru from source you will need  to install the packages below
+You can download pre-built binaries of tsuru and collector. There are binaries
+available only for Linux 64 bits, so make sure that ``uname -m`` prints
+``x86_64``:
+
+.. highlight:: bash
+
+::
+
+    $ uname -m
+    x86_64
+
+Then download and install the binaries. First, collector:
+
+.. highlight:: bash
+
+::
+
+    $ curl -sL https://s3.amazonaws.com/tsuru/dist-server/tsuru-collector.tar.gz | sudo tar -xz -C /usr/bin
+
+Then the API webserver:
+
+.. highlight:: bash
+
+::
+
+    $ curl -sL https://s3.amazonaws.com/tsuru/dist-server/tsuru-api.tar.gz | sudo tar -xz -C /usr/bin
+
+These commands will install ``collector`` and ``api`` commands in ``/usr/bin``
+(you will need to be a sudoer and provide your password). You may install these
+commands somewhere else in your ``PATH``.
+
+Installing tsuru webserver from source
+======================================
+
+0. Build dependencies
+
+To build tsuru from source you will need to install the following packages
 
 .. highlight:: bash
 
 ::
 
     $ sudo apt-get install -y golang-go git mercurial bzr gcc
-
-
-Installing tsuru webserver from source
-======================================
 
 1. Install the tsuru api
 
@@ -118,18 +162,59 @@ Then execute:
     $ go get github.com/globocom/tsuru/api
     $ go get github.com/globocom/tsuru/collector
 
-2. Configuring tsuru
+Configuring tsuru
+=================
+
+Before running tsuru, you must configure it. By default, tsuru will look for
+the configuration file in the ``/etc/tsuru/tsuru.cnf`` path. You can check a
+sample configuration file and documentation for each tsuru setting in the
+:doc:`"Configuring tsuru" </config>` page.
+
+You can download the sample configuration file from Github:
 
 .. highlight:: bash
 
 ::
 
-    $ sudo mkdir -p /etc/tsuru
-    $ sudo sh -c "curl -sL https://raw.github.com/globocom/tsuru/master/etc/tsuru.conf > /etc/tsuru/tsuru.conf"
+    $ [sudo] mkdir /etc/tsuru
+    $ [sudo] curl -sL https://raw.github.com/globocom/tsuru/master/etc/tsuru.conf -o /etc/tsuru/tsuru.conf
 
-Edit /etc/tsuru.conf as needed.
+Make sure you define the required settings (database connection, authentication
+configuration, AWS credentials, etc.) before running tsuru.
 
-3. Download the charms
+Running tsuru
+=============
+
+Now that you have ``api`` and ``collector`` properly installed, and you
+:doc:`configured tsuru </config>`, you're four steps away from running it.
+
+1. Start mongodb
+
+.. highlight:: bash
+
+::
+
+    $ sudo service mongodb  start
+
+2. Start beanstalkd
+
+.. highlight:: bash
+
+::
+
+    $ sudo service beanstalkd start
+
+3. Starting tsuru and collector
+
+.. highlight:: bash
+
+::
+
+    $ api &
+    $ collector &
+
+Download the charms
+===================
 
 Charms define how platforms will be installed. To use the charms provided by
 tsuru you can get it from `tsuru charms repository
@@ -145,12 +230,3 @@ setting ``juju:charms-path`` in the configuration file:
     # ...
     juju:
       charms-path: /home/me/charms
-
-4. Starting tsuru and collector
-
-.. highlight:: bash
-
-::
-
-    $ api &
-    $ collector &
