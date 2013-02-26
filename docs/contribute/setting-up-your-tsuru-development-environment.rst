@@ -86,12 +86,12 @@ Once you have defined the GOPATH variable, then run the following commands:
 
 ::
 
-    $ mkdir -p $GOPATH/src/github.com/timeredbull
-    $ cd $GOPATH/src/github.com/timeredbull
+    $ mkdir -p $GOPATH/src/github.com/globocom
+    $ cd $GOPATH/src/github.com/globocom
     $ git clone git://github.com/globocom/tsuru
 
 If you have already cloned the repository, just move the cloned directory to
-`$GOPATH/src/github.com/timeredbull`.
+`$GOPATH/src/github.com/globocom`.
 
 For more details on GOPATH, please check this url:
 http://golang.org/cmd/go/#GOPATH_environment_variable
