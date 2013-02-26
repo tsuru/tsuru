@@ -239,3 +239,9 @@ One can see the logs in:
 
     $ tail -f /var/log/syslog
 
+Using tsuru
+===========
+
+Congratulations! At this point you should have a working tsuru server running
+on your machine, follow the :doc:`tsuru client usage guide
+</apps/client/usage>` to start build your apps.
