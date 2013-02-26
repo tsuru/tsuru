@@ -62,8 +62,6 @@ func (s *S) TestProvision(c *C) {
 	c.Assert(err, IsNil)
 	c.Assert(commandmocker.Ran(tmpdir), Equals, true)
 	expected := "deploy --repository /etc/juju/charms local:python trace"
-	expected = expected + "set trace tsuru-appname=trace"
-	expected = expected + "set trace tsuru-host=somehost"
 	c.Assert(commandmocker.Output(tmpdir), Equals, expected)
 }
 
@@ -615,6 +613,7 @@ func (s *S) TestUnitStatus(c *C) {
 		{"pending", "", "", provision.StatusCreating},
 		{"", "not-started", "running", provision.StatusCreating},
 		{"error", "install-error", "start-error", provision.StatusError},
+		{"started", "start-error", "running", provision.StatusError},
 		{"running", "pending", "running", provision.StatusInstalling},
 		{"running", "started", "running", provision.StatusStarted},
 		{"running", "down", "running", provision.StatusDown},

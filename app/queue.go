@@ -36,6 +36,7 @@ func ensureAppIsStarted(msg *queue.Message) (App, error) {
 	a := App{Name: msg.Args[0]}
 	err := a.Get()
 	if err != nil {
+		msg.Delete()
 		return a, fmt.Errorf("Error handling %q: app %q does not exist.", msg.Action, a.Name)
 	}
 	units := getUnits(&a, msg.Args[1:])

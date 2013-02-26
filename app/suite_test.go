@@ -74,11 +74,8 @@ func (s *S) createUserAndTeam(c *C) {
 }
 
 func (s *S) SetUpSuite(c *C) {
-	err := config.ReadConfigFile("../etc/tsuru.conf")
+	err := config.ReadConfigFile("testdata/config.yaml")
 	c.Assert(err, IsNil)
-	config.Set("database:url", "127.0.0.1:27017")
-	config.Set("database:name", "tsuru_app_test")
-	config.Set("queue", "fake")
 	s.conn, err = db.Conn()
 	c.Assert(err, IsNil)
 	s.rfs = &ftesting.RecordingFs{}

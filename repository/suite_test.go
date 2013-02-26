@@ -17,9 +17,10 @@ type S struct{}
 var _ = Suite(&S{})
 
 func (s *S) SetUpSuite(c *C) {
-	var err error
-	err = config.ReadConfigFile("../etc/tsuru.conf")
-	c.Assert(err, IsNil)
+	config.Set("git:host", "mygithost")
+	config.Set("git:protocol", "http")
+	config.Set("git:port", "8090")
+	config.Set("git:unit-repo", "/home/application/current")
 }
 
 func (s *S) TestGetGitServerPanicsIfTheConfigFileHasNoServer(c *C) {

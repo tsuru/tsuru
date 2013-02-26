@@ -93,15 +93,6 @@ func (p *JujuProvisioner) Provision(app provision.App) error {
 		app.Log("Failed to create machine: "+out, "tsuru")
 		return cmdError(out, err, args)
 	}
-	err = setOption(app.GetName(), "tsuru-appname", app.GetName())
-	if err != nil {
-		return err
-	}
-	host, _ := config.GetString("host")
-	err = setOption(app.GetName(), "tsuru-host", host)
-	if err != nil {
-		return err
-	}
 	if p.elbSupport() {
 		if err = p.LoadBalancer().Create(app); err != nil {
 			return err
@@ -502,7 +493,10 @@ func unitNotFound(unitName string, output []byte) bool {
 }
 
 func unitStatus(instanceState, agentState, machineAgentState string) provision.Status {
-	if instanceState == "error" || agentState == "install-error" || machineAgentState == "start-error" {
+	if instanceState == "error" ||
+		agentState == "install-error" ||
+		agentState == "start-error" ||
+		machineAgentState == "start-error" {
 		return provision.StatusError
 	}
 	if machineAgentState == "pending" || machineAgentState == "not-started" || machineAgentState == "" {

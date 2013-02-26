@@ -8,7 +8,6 @@ import (
 	"github.com/globocom/config"
 	"github.com/globocom/tsuru/auth"
 	"github.com/globocom/tsuru/db"
-	"io/ioutil"
 	. "launchpad.net/gocheck"
 	"testing"
 )
@@ -51,10 +50,10 @@ var HasAccessTo Checker = &hasAccessToChecker{}
 
 func (s *S) SetUpSuite(c *C) {
 	var err error
-	s.setupConfig(c)
-	c.Assert(err, IsNil)
 	config.Set("database:url", "127.0.0.1:27017")
 	config.Set("database:name", "tsuru_service_test")
+	config.Set("auth:salt", "tsuru-salt")
+	config.Set("auth:token-key", "TSURU-KEY")
 	s.conn, err = db.Conn()
 	c.Assert(err, IsNil)
 	s.user = &auth.User{Email: "cidade@raul.com", Password: "123"}
@@ -77,15 +76,4 @@ func (s *S) TearDownTest(c *C) {
 	c.Assert(err, IsNil)
 	_, err = s.conn.ServiceInstances().RemoveAll(nil)
 	c.Assert(err, IsNil)
-}
-
-func (s *S) setupConfig(c *C) {
-	data, err := ioutil.ReadFile("../etc/tsuru.conf")
-	if err != nil {
-		c.Fatal(err)
-	}
-	err = config.ReadConfigBytes(data)
-	if err != nil {
-		c.Fatal(err)
-	}
 }

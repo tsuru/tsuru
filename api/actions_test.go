@@ -25,9 +25,11 @@ type ActionsSuite struct {
 var _ = Suite(&ActionsSuite{})
 
 func (s *ActionsSuite) SetUpSuite(c *C) {
-	err := config.ReadConfigFile("../etc/tsuru.conf")
-	c.Assert(err, IsNil)
+	config.Set("database:url", "127.0.0.1:27017")
 	config.Set("database:name", "tsuru_api_actions_test")
+	config.Set("auth:salt", "tsuru-salt")
+	config.Set("auth:token-key", "TSURU-SALT")
+	var err error
 	s.conn, err = db.Conn()
 	c.Assert(err, IsNil)
 }

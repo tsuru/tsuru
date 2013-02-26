@@ -34,6 +34,7 @@ Building your own PaaS server
 =============================
 
 * :doc:`build your own PaaS </build>`
+* :doc:`tsuru configuration </config>`
 * :doc:`backing up tsuru </server/backup>`
 * :doc:`tsuru api reference </api>`
 
