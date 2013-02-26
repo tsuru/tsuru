@@ -23,7 +23,7 @@ Overview
 
 The Tsuru PaaS is composed by multiple components:
 
-* tsuru webserver
+* tsuru server
 * tsuru collector
 * gandalf
 * charms
@@ -42,34 +42,30 @@ Requirements
 1. Operating System
 -------------------
 
-At the moment, tsuru webserver is fully supported and tested on Ubuntu 12.04 and
+At the moment, tsuru server is fully supported and tested on Ubuntu 12.04 and
 the steps below will guide you throught the install process.
 
-If you try to build tsuru webserver on most Linux systems, you should have few
+If you try to build tsuru server on most Linux systems, you should have few
 problems and if there are problems, we are able to help you. Just
 ask on #tsuru channel on irc.freenode.net.
 
-* *Have you tried tsuru webserver on other systems? Let us know 
+* *Have you tried tsuru server on other systems? Let us know 
   and* :doc:`contribute </community>` *to the project.*
 
 2. Hardware
 -----------
 
-Memory: :TODO
-
-CPU: :TODO
-
-Disc: :TODO
+Tsuru server is a lightweight framework and can be run in a single small machine along with all the deps.
 
 3. Software
 -----------
 
-3.1 MongoDB
+**3.1 MongoDB**
 
 Tsuru needs MongoDB stable, distributed by 10gen. `It's pretty easy to
 get it running on Ubuntu <http://docs.mongodb.org/manual/tutorial/install-mongodb-on-ubuntu/>`_
 
-3.2 Juju
+**3.2 Juju**
 
 Tsuru uses juju to orchestrates your "apps". To install juju follow the `juju
 install guide
@@ -80,9 +76,28 @@ properly. Then run:
 
 .. highlight:: bash
 
+::
+
     $ juju bootstrap
 
-3.3 Beanstalkd
+Juju Charms define how platforms will be installed.  You may take a look at
+`juju charms collection <http://jujucharms.com/charms>`_ or use the `charms
+provided by tsuru <https://github.com/globocom/charms>`_
+
+Put it somewhere and define the setting ``juju:charms-path`` in the configuration
+file:
+
+.. highlight:: bash
+
+::
+
+    $ git clone git://github.com/globocom/charms.git /home/me/charms
+    $ cat /etc/tsuru/tsuru.conf
+    # ...
+    juju:
+      charms-path: /home/me/charms
+
+**3.3 Beanstalkd**
 
 Tsuru uses `Beanstalkd <http://kr.github.com/beanstalkd/>`_ as a work queue.
 Install the latest version, by doing this:
@@ -91,8 +106,11 @@ Install the latest version, by doing this:
 
 ::
 
-    $ sudo apt-get update && sudo apt-get upgrade
     $ sudo apt-get install -y beanstalkd
+
+**3.4 Gandalf**
+
+Tsuru uses `Gandalf <https://github.com/globocom/gandalf>`_ to manage git repositories, to get it installed `follow this steps <https://gandalf.readthedocs.org/en/latest/install.html>`_
 
 Installing pre-built binaries
 =============================
@@ -116,7 +134,7 @@ Then download and install the binaries. First, collector:
 
     $ curl -sL https://s3.amazonaws.com/tsuru/dist-server/tsuru-collector.tar.gz | sudo tar -xz -C /usr/bin
 
-Then the API webserver:
+Then the API server:
 
 .. highlight:: bash
 
@@ -128,8 +146,8 @@ These commands will install ``collector`` and ``api`` commands in ``/usr/bin``
 (you will need to be a sudoer and provide your password). You may install these
 commands somewhere else in your ``PATH``.
 
-Installing tsuru webserver from source
-======================================
+Installing from source
+======================
 
 0. Build dependencies
 
@@ -186,7 +204,7 @@ Running tsuru
 =============
 
 Now that you have ``api`` and ``collector`` properly installed, and you
-:doc:`configured tsuru </config>`, you're four steps away from running it.
+:doc:`configured tsuru </config>`, you're three steps away from running it.
 
 1. Start mongodb
 
@@ -204,7 +222,7 @@ Now that you have ``api`` and ``collector`` properly installed, and you
 
     $ sudo service beanstalkd start
 
-3. Starting tsuru and collector
+3. Start tsuru and collector
 
 .. highlight:: bash
 
@@ -213,20 +231,11 @@ Now that you have ``api`` and ``collector`` properly installed, and you
     $ api &
     $ collector &
 
-Download the charms
-===================
-
-Charms define how platforms will be installed. To use the charms provided by
-tsuru you can get it from `tsuru charms repository
-<https://github.com/globocom/charms>`_ and put it somewhere. Then define the
-setting ``juju:charms-path`` in the configuration file:
+One can see the logs in:
 
 .. highlight:: bash
 
 ::
 
-    $ git clone git://github.com/globocom/charms.git /home/me/charms
-    $ cat /etc/tsuru/tsuru.conf
-    # ...
-    juju:
-      charms-path: /home/me/charms
+    $ tail -f /var/log/syslog
+
