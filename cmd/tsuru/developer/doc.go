@@ -42,6 +42,8 @@ The currently available commands are (grouped by subject):
 	log               shows log for an app
 	run               runs a command in all units of an app
 	restart           restarts the app's application server
+	set-cname         defines a cname for an app
+	unset-cname       unsets the cname from an app
 
 	env-get           display environment variables for an app
 	env-set           set environment variable(s) to an app
@@ -389,6 +391,32 @@ show the following output:
 	templates
 	urls.py
 	urls.pyc
+
+The --app flag is optional, see "Guessing app names" section for more details.
+
+
+Define a CNAME for the app
+
+Usage:
+
+	% tsuru set-cname <cname> [--app appname]
+
+set-cname will define a CNAME for the app. It will not manage any DNS register,
+it's up to the user to create the DNS register. Once the app contains a custom
+CNAME, it will be displayed by "app-list" and "app-info".
+
+The --app flag is optional, see "Guessing app names" section for more details.
+
+
+Undefine the CNAME from the app
+
+Usage:
+
+	% tsuru unset-cname [--app appname]
+
+unset-cname undoes the change that set-cname does. After unsetting the CNAME
+from the app, "app-list" and "app-info" will display the internal, unfriendly
+address that tsuru uses.
 
 The --app flag is optional, see "Guessing app names" section for more details.
 
