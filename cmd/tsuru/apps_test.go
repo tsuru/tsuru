@@ -474,3 +474,81 @@ func (s *S) TestSetCNameInfo(c *C) {
 func (s *S) TestSetCNameIsACommand(c *C) {
 	var _ cmd.Command = &SetCName{}
 }
+
+func (s *S) TestUnsetCName(c *C) {
+	*AppName = "death"
+	var (
+		called         bool
+		stdout, stderr bytes.Buffer
+	)
+	context := cmd.Context{
+		Stdout: &stdout,
+		Stderr: &stderr,
+	}
+	trans := &conditionalTransport{
+		transport{
+			msg:    "Restarted",
+			status: http.StatusOK,
+		},
+		func(req *http.Request) bool {
+			called = true
+			var m map[string]string
+			err := json.NewDecoder(req.Body).Decode(&m)
+			c.Assert(err, IsNil)
+			return req.URL.Path == "/apps/death" &&
+				req.Method == "POST" &&
+				m["cname"] == ""
+		},
+	}
+	client := cmd.NewClient(&http.Client{Transport: trans}, nil, manager)
+	err := (&UnsetCName{}).Run(&context, client)
+	c.Assert(err, IsNil)
+	c.Assert(called, Equals, true)
+	c.Assert(stdout.String(), Equals, "cname successfully undefined.\n")
+}
+
+func (s *S) TestUnsetCNameWithoutTheFlag(c *C) {
+	var (
+		called         bool
+		stdout, stderr bytes.Buffer
+	)
+	context := cmd.Context{
+		Stdout: &stdout,
+		Stderr: &stderr,
+	}
+	fake := &FakeGuesser{name: "corey"}
+	trans := &conditionalTransport{
+		transport{
+			msg:    "Restarted",
+			status: http.StatusOK,
+		},
+		func(req *http.Request) bool {
+			called = true
+			var m map[string]string
+			err := json.NewDecoder(req.Body).Decode(&m)
+			c.Assert(err, IsNil)
+			return req.URL.Path == "/apps/corey" &&
+				req.Method == "POST" &&
+				m["cname"] == ""
+		},
+	}
+	client := cmd.NewClient(&http.Client{Transport: trans}, nil, manager)
+	err := (&UnsetCName{GuessingCommand{G: fake}}).Run(&context, client)
+	c.Assert(err, IsNil)
+	c.Assert(called, Equals, true)
+	c.Assert(stdout.String(), Equals, "cname successfully undefined.\n")
+}
+
+func (s *S) TestUnsetCNameInfo(c *C) {
+	expected := &cmd.Info{
+		Name:    "unset-cname",
+		Usage:   "unset-cname [--app appname]",
+		Desc:    `unsets the current cname of your app.`,
+		MinArgs: 0,
+	}
+	c.Assert((&UnsetCName{}).Info(), DeepEquals, expected)
+}
+
+func (s *S) TestUnsetCNameIsACommand(c *C) {
+	var _ cmd.Command = &UnsetCName{}
+}

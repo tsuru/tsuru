@@ -275,17 +275,7 @@ type SetCName struct {
 }
 
 func (c *SetCName) Run(context *cmd.Context, client cmd.Doer) error {
-	appName, err := c.Guess()
-	if err != nil {
-		return err
-	}
-	url := cmd.GetUrl(fmt.Sprintf("/apps/%s", appName))
-	body := strings.NewReader(fmt.Sprintf(`{"cname": "%s"}`, context.Args[0]))
-	request, err := http.NewRequest("POST", url, body)
-	if err != nil {
-		return err
-	}
-	_, err = client.Do(request)
+	err := setCName(context.Args[0], c.GuessingCommand, client)
 	if err != nil {
 		return err
 	}
@@ -300,4 +290,44 @@ func (c *SetCName) Info() *cmd.Info {
 		Desc:    `defines a cname for your app.`,
 		MinArgs: 1,
 	}
+}
+
+type UnsetCName struct {
+	GuessingCommand
+}
+
+func (c *UnsetCName) Run(context *cmd.Context, client cmd.Doer) error {
+	err := setCName("", c.GuessingCommand, client)
+	if err != nil {
+		return err
+	}
+	fmt.Fprintln(context.Stdout, "cname successfully undefined.")
+	return nil
+}
+
+func (c *UnsetCName) Info() *cmd.Info {
+	return &cmd.Info{
+		Name:    "unset-cname",
+		Usage:   "unset-cname [--app appname]",
+		Desc:    `unsets the current cname of your app.`,
+		MinArgs: 0,
+	}
+}
+
+func setCName(v string, g GuessingCommand, client cmd.Doer) error {
+	appName, err := g.Guess()
+	if err != nil {
+		return err
+	}
+	url := cmd.GetUrl(fmt.Sprintf("/apps/%s", appName))
+	body := strings.NewReader(fmt.Sprintf(`{"cname": "%s"}`, v))
+	request, err := http.NewRequest("POST", url, body)
+	if err != nil {
+		return err
+	}
+	_, err = client.Do(request)
+	if err != nil {
+		return err
+	}
+	return nil
 }
