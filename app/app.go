@@ -246,7 +246,10 @@ func (app *App) AddUnits(n uint) error {
 		messages[mCount+1] = queue.Message{Action: bindService, Args: []string{app.Name, unit.Name}}
 		mCount += 2
 	}
-	err = conn.Apps().Update(bson.M{"name": app.Name}, app)
+	err = conn.Apps().Update(
+		bson.M{"name": app.Name},
+		bson.M{"$set": bson.M{"units": app.Units}},
+	)
 	if err != nil {
 		return err
 	}

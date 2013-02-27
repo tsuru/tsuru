@@ -391,11 +391,12 @@ func (s *S) TestAddUnits(c *C) {
 	defer s.conn.Apps().Remove(bson.M{"name": app.Name})
 	s.provisioner.Provision(&app)
 	defer s.provisioner.Destroy(&app)
-	err = app.AddUnits(5)
+	otherApp := App{Name: "warpaint"}
+	err = otherApp.AddUnits(5)
 	c.Assert(err, IsNil)
 	units := s.provisioner.GetUnits(&app)
 	c.Assert(units, HasLen, 6)
-	err = app.AddUnits(2)
+	err = otherApp.AddUnits(2)
 	c.Assert(err, IsNil)
 	units = s.provisioner.GetUnits(&app)
 	c.Assert(units, HasLen, 8)
@@ -404,10 +405,11 @@ func (s *S) TestAddUnits(c *C) {
 	}
 	err = app.Get()
 	c.Assert(err, IsNil)
-	c.Assert(app.Units, HasLen, 7) // the 8a (which actually is the first one) unit is added by collector, so it's not here.
+	c.Assert(app.Units, HasLen, 7)
+	c.Assert(app.Framework, Equals, "python")
 	var expectedMessages MessageList
 	for i, unit := range app.Units {
-		expected := fmt.Sprintf("%s/%d", app.Name, i+1) // since the first unit is not here, we skip the unit number 0
+		expected := fmt.Sprintf("%s/%d", app.Name, i+1)
 		c.Assert(unit.Name, Equals, expected)
 		messages := []queue.Message{
 			{Action: RegenerateApprcAndStart, Args: []string{app.Name, unit.Name}},
