@@ -1663,6 +1663,23 @@ func (s *S) TestSetCNameHandler(c *C) {
 	c.Assert(a.CName, Equals, "leper.secretcompany.com")
 }
 
+func (s *S) TestSetCNameHandlerAcceptsEmptyCName(c *C) {
+	a := app.App{Name: "leper", Teams: []string{s.team.Name}, CName: "leper.secretcompany.com"}
+	err := s.conn.Apps().Insert(a)
+	c.Assert(err, IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	url := fmt.Sprintf("/apps/%s?:name=%s", a.Name, a.Name)
+	b := strings.NewReader(`{"cname":""}`)
+	request, err := http.NewRequest("POST", url, b)
+	c.Assert(err, IsNil)
+	recorder := httptest.NewRecorder()
+	err = setCName(recorder, request, s.user)
+	c.Assert(err, IsNil)
+	err = a.Get()
+	c.Assert(err, IsNil)
+	c.Assert(a.CName, Equals, "")
+}
+
 func (s *S) TestSetCNameHandlerReturnsInternalErrorIfItFailsToReadTheBody(c *C) {
 	b := s.getTestData("bodyToBeClosed.txt")
 	request, err := http.NewRequest("POST", "/apps/unkown?:name=unknown", b)
