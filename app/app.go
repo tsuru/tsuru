@@ -287,7 +287,10 @@ func (app *App) RemoveUnit(id string) error {
 	if err != nil {
 		return err
 	}
-	return conn.Apps().Update(bson.M{"name": app.Name}, app)
+	return conn.Apps().Update(
+		bson.M{"name": app.Name},
+		bson.M{"$set": bson.M{"units": app.Units}},
+	)
 }
 
 // removeUnits removes units identified by the given indices. The slice of

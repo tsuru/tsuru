@@ -622,10 +622,12 @@ func (s *S) TestRemoveUnitByNameOrInstanceId(c *C) {
 		s.provisioner.Destroy(&app)
 		s.conn.Apps().Remove(bson.M{"name": app.Name})
 	}()
-	err = app.RemoveUnit(app.Units[0].Name)
+	otherApp := App{Name: app.Name, Units: app.Units}
+	err = otherApp.RemoveUnit(app.Units[0].Name)
 	c.Assert(err, IsNil)
 	err = app.Get()
 	c.Assert(err, IsNil)
+	c.Assert(app.Framework, Equals, "python")
 	c.Assert(app.Units, HasLen, 4)
 	c.Assert(app.Units[0].Name, Equals, "physics/1")
 	c.Assert(app.Units[1].Name, Equals, "physics/2")
