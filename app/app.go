@@ -757,7 +757,7 @@ func (app *App) UnsetEnvs(variableNames []string, publicOnly bool) error {
 // the app in the database, returning an error when it cannot save the change
 // in the database.
 func (app *App) SetCName(cname string) error {
-	if !cnameRegexp.MatchString(cname) {
+	if cname != "" && !cnameRegexp.MatchString(cname) {
 		return errors.New("Invalid cname")
 	}
 	conn, err := db.Conn()

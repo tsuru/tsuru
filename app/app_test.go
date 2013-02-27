@@ -1004,6 +1004,7 @@ func (s *S) TestSetCNameValidatesTheCName(c *C) {
 		{".ktulu.mycompany.com", false},
 		{"0800.com", true},
 		{"-0800.com", false},
+		{"", true},
 	}
 	a := App{Name: "live-to-die"}
 	err := s.conn.Apps().Insert(a)
