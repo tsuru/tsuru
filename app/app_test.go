@@ -476,7 +476,8 @@ func (s *S) TestRemoveUnits(c *C) {
 	s.provisioner.Provision(&app)
 	defer s.provisioner.Destroy(&app)
 	app.AddUnits(4)
-	err = app.RemoveUnits(2)
+	otherApp := App{Name: app.Name, Units: app.Units}
+	err = otherApp.RemoveUnits(2)
 	c.Assert(err, IsNil)
 	ts.Close()
 	units := s.provisioner.GetUnits(&app)
@@ -486,6 +487,7 @@ func (s *S) TestRemoveUnits(c *C) {
 	c.Assert(units[2].Name, Equals, "chemistry/4")
 	err = app.Get()
 	c.Assert(err, IsNil)
+	c.Assert(app.Framework, Equals, "python")
 	c.Assert(app.Units, HasLen, 2)
 	c.Assert(app.Units[0].Name, Equals, "chemistry/3")
 	c.Assert(app.Units[1].Name, Equals, "chemistry/4")

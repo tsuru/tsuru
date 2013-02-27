@@ -356,7 +356,10 @@ func (app *App) RemoveUnits(n uint) error {
 		return err
 	}
 	app.removeUnits(removed)
-	dbErr := conn.Apps().Update(bson.M{"name": app.Name}, app)
+	dbErr := conn.Apps().Update(
+		bson.M{"name": app.Name},
+		bson.M{"$set": bson.M{"units": app.Units}},
+	)
 	if err == nil {
 		return dbErr
 	}
