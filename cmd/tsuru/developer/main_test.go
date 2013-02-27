@@ -194,3 +194,10 @@ func (s *S) TestSetCNameIsRegistered(c *C) {
 	c.Assert(ok, Equals, true)
 	c.Assert(cname, FitsTypeOf, &tsuru.SetCName{})
 }
+
+func (s *S) TestUnsetCNameIsRegistered(c *C) {
+	manager := buildManager("tsuru")
+	cname, ok := manager.Commands["unset-cname"]
+	c.Assert(ok, Equals, true)
+	c.Assert(cname, FitsTypeOf, &tsuru.UnsetCName{})
+}
