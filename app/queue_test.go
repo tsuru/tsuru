@@ -357,3 +357,23 @@ func (s *S) TestHandleBindServiceMessage(c *C) {
 	handle(&message)
 	c.Assert(called, Equals, true)
 }
+
+func (s *S) TestEnsureAppIsStartedUnknownUnits(c *C) {
+	a := App{
+		Name:      "neon",
+		Framework: "symfonia",
+		Units: []Unit{
+			{Name: "neon/0", State: "started"},
+			{Name: "neon/1", State: "started"},
+			{Name: "neon/3", State: "started"},
+			{Name: "neon/5", State: "started"},
+		},
+	}
+	err := s.conn.Apps().Insert(a)
+	c.Assert(err, IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	msg := queue.Message{Action: regenerateApprc, Args: []string{"neon", "neon/2", "neon/4"}}
+	_, err = ensureAppIsStarted(&msg)
+	c.Assert(err, NotNil)
+	c.Assert(err, ErrorMatches, "^.*unknown units in the message. Deleting it...$")
+}

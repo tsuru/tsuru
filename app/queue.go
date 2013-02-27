@@ -5,6 +5,7 @@
 package app
 
 import (
+	"errors"
 	"fmt"
 	"github.com/globocom/tsuru/db"
 	"github.com/globocom/tsuru/log"
@@ -40,6 +41,11 @@ func ensureAppIsStarted(msg *queue.Message) (App, error) {
 		return a, fmt.Errorf("Error handling %q: app %q does not exist.", msg.Action, a.Name)
 	}
 	units := getUnits(&a, msg.Args[1:])
+	if len(msg.Args) > 1 && len(units) == 0 {
+		msg.Delete()
+		format := "Error handling %q for the app %q: unknown units in the message. Deleting it..."
+		return a, fmt.Errorf(format, msg.Action, a.Name)
+	}
 	if !a.Available() || !units.Started() {
 		format := "Error handling %q for the app %q:"
 		uState := units.State()
@@ -67,7 +73,12 @@ func bindUnit(msg *queue.Message) error {
 	if err != nil {
 		return fmt.Errorf("Error handling %q: %s", msg.Action, err)
 	}
-	unit := getUnits(&a, msg.Args[1:])[0]
+	units := getUnits(&a, msg.Args[1:])
+	if len(units) == 0 {
+		msg.Delete()
+		return errors.New("Unknown unit in the message.")
+	}
+	unit := units[0]
 	var instances []service.ServiceInstance
 	q := bson.M{"apps": bson.M{"$in": []string{msg.Args[0]}}}
 	err = conn.ServiceInstances().Find(q).All(&instances)
@@ -165,13 +176,10 @@ func (l unitList) State() string {
 func getUnits(app *App, names []string) unitList {
 	var units []Unit
 	if len(names) > 0 {
-		units = make([]Unit, len(names))
-		i := 0
 		for _, unitName := range names {
 			for _, appUnit := range app.Units {
 				if appUnit.Name == unitName {
-					units[i] = appUnit
-					i++
+					units = append(units, appUnit)
 					break
 				}
 			}
