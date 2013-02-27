@@ -1,4 +1,4 @@
-// Copyright 2012 tsuru authors. All rights reserved.
+// Copyright 2013 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -39,6 +39,7 @@ func (c *userCreate) Run(context *Context, client Doer) error {
 	if err != nil {
 		return err
 	}
+	fmt.Fprintln(context.Stdout)
 	if password != confirm {
 		return errors.New("Passwords didn't match.")
 	}
@@ -51,7 +52,7 @@ func (c *userCreate) Run(context *Context, client Doer) error {
 	if err != nil {
 		return err
 	}
-	fmt.Fprintf(context.Stdout, "\n"+`User "%s" successfully created!`+"\n", email)
+	fmt.Fprintf(context.Stdout, `User "%s" successfully created!`+"\n", email)
 	return nil
 }
 
@@ -95,6 +96,7 @@ func (c *login) Run(context *Context, client Doer) error {
 	if err != nil {
 		return err
 	}
+	fmt.Fprintln(context.Stdout)
 	b := bytes.NewBufferString(`{"password":"` + password + `"}`)
 	request, err := http.NewRequest("POST", GetUrl("/users/"+email+"/tokens"), b)
 	if err != nil {
@@ -114,7 +116,7 @@ func (c *login) Run(context *Context, client Doer) error {
 	if err != nil {
 		return err
 	}
-	fmt.Fprintln(context.Stdout, "\nSuccessfully logged in!")
+	fmt.Fprintln(context.Stdout, "Successfully logged in!")
 	return writeToken(out["token"])
 }
 
