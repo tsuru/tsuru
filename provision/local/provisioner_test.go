@@ -173,7 +173,7 @@ func (s *S) TestProvisionInstall(c *C) {
 		"-l",
 		"ubuntu",
 		"10.10.10.10",
-		"/var/lib/tsuru/hooks/install",
+		"sudo /var/lib/tsuru/hooks/install",
 	}
 	c.Assert(commandmocker.Parameters(tmpdir), DeepEquals, cmds)
 }
@@ -193,7 +193,7 @@ func (s *S) TestProvisionStart(c *C) {
 		"-l",
 		"ubuntu",
 		"10.10.10.10",
-		"/var/lib/tsuru/hooks/start",
+		"sudo /var/lib/tsuru/hooks/start",
 	}
 	c.Assert(commandmocker.Parameters(tmpdir), DeepEquals, cmds)
 }

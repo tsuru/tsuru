@@ -37,12 +37,12 @@ func (p *LocalProvisioner) setup(ip, framework string) error {
 }
 
 func (p *LocalProvisioner) install(ip string) error {
-	cmd := exec.Command("ssh", "-q", "-o", "StrictHostKeyChecking no", "-l", "ubuntu", ip, "/var/lib/tsuru/hooks/install")
+	cmd := exec.Command("ssh", "-q", "-o", "StrictHostKeyChecking no", "-l", "ubuntu", ip, "sudo /var/lib/tsuru/hooks/install")
 	return cmd.Run()
 }
 
 func (p *LocalProvisioner) start(ip string) error {
-	cmd := exec.Command("ssh", "-q", "-o", "StrictHostKeyChecking no", "-l", "ubuntu", ip, "/var/lib/tsuru/hooks/start")
+	cmd := exec.Command("ssh", "-q", "-o", "StrictHostKeyChecking no", "-l", "ubuntu", ip, "sudo /var/lib/tsuru/hooks/start")
 	return cmd.Run()
 }
 
