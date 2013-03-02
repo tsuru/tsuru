@@ -116,6 +116,7 @@ func (s *S) TestDestroy(c *C) {
 			if reflect.DeepEqual(commandmocker.Parameters(tmpdir), expected) {
 				ran <- true
 			}
+			time.Sleep(1e3)
 		}
 	}()
 	n, err := p.unitsCollection().Find(bson.M{
@@ -213,6 +214,7 @@ func (s *S) TestRemoveUnit(c *C) {
 			if reflect.DeepEqual(commandmocker.Parameters(tmpdir), expected) {
 				ran <- true
 			}
+			time.Sleep(1e3)
 		}
 	}()
 	n, err := p.unitsCollection().Find(bson.M{"_id": "two/2"}).Count()
@@ -446,6 +448,7 @@ func (s *S) TestCollectStatusDirtyOutput(c *C) {
 			if n, _ := p.unitsCollection().Find(q).Count(); n == 2 {
 				break
 			}
+			time.Sleep(1e3)
 		}
 		p.unitsCollection().Remove(q)
 		wg.Done()
@@ -473,6 +476,7 @@ func (s *S) TestCollectStatusIDChangeDisabledELB(c *C) {
 				done <- 1
 				return
 			}
+			time.Sleep(1e3)
 		}
 	}()
 	select {
@@ -507,6 +511,7 @@ func (s *S) TestCollectStatusIDChangeFromPending(c *C) {
 				done <- 1
 				return
 			}
+			time.Sleep(1e3)
 		}
 	}()
 	select {
@@ -782,6 +787,7 @@ func (s *ELBSuite) TestCollectStatusWithELBAndIDChange(c *C) {
 				done <- 1
 				return
 			}
+			time.Sleep(1e3)
 		}
 	}()
 	select {
