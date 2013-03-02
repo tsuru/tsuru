@@ -393,8 +393,8 @@ func (s *S) TestCollectStatus(c *C) {
 	}()
 	select {
 	case <-done:
-	case <-time.After(2e9):
-		c.Fatal("Did not save the unit after 2 seconds.")
+	case <-time.After(5e9):
+		c.Fatal("Did not save the unit after 5 seconds.")
 	}
 	var instances []instance
 	err = p.unitsCollection().Find(nil).Sort("_id").All(&instances)
