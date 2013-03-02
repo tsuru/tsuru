@@ -9,16 +9,16 @@ import (
 	"github.com/globocom/tsuru/auth"
 	"github.com/globocom/tsuru/service"
 	"labix.org/v2/mgo/bson"
-	. "launchpad.net/gocheck"
+	"launchpad.net/gocheck"
 	"net/http"
 	"net/http/httptest"
 )
 
-func (s *S) TestAppIsABinderApp(c *C) {
+func (s *S) TestAppIsABinderApp(c *gocheck.C) {
 	var _ bind.App = &App{}
 }
 
-func (s *S) TestDestroyShouldUnbindAppFromInstance(c *C) {
+func (s *S) TestDestroyShouldUnbindAppFromInstance(c *gocheck.C) {
 	h := testHandler{}
 	tsg := s.t.StartGandalfTestServer(&h)
 	defer tsg.Close()
@@ -28,11 +28,11 @@ func (s *S) TestDestroyShouldUnbindAppFromInstance(c *C) {
 	defer ts.Close()
 	srvc := service.Service{Name: "my", Endpoint: map[string]string{"production": ts.URL}}
 	err := srvc.Create()
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Services().Remove(bson.M{"_id": srvc.Name})
 	instance := service.ServiceInstance{Name: "MyInstance", Apps: []string{"whichapp"}, ServiceName: srvc.Name}
 	err = instance.Create()
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	defer s.conn.ServiceInstances().Remove(bson.M{"_id": instance.Name})
 	a := App{
 		Name:      "whichapp",
@@ -43,15 +43,15 @@ func (s *S) TestDestroyShouldUnbindAppFromInstance(c *C) {
 		},
 	}
 	err = CreateApp(&a, 1, []auth.Team{s.team})
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	a.Get()
 	err = a.Destroy()
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	n, err := s.conn.ServiceInstances().Find(bson.M{"apps": bson.M{"$in": []string{a.Name}}}).Count()
-	c.Assert(err, IsNil)
-	c.Assert(n, Equals, 0)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(n, gocheck.Equals, 0)
 	msg, err := aqueue().Get(1e6)
-	c.Assert(err, IsNil)
-	c.Assert(msg.Args, DeepEquals, []string{a.Name})
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(msg.Args, gocheck.DeepEquals, []string{a.Name})
 	msg.Delete()
 }

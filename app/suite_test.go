@@ -15,14 +15,14 @@ import (
 	"io"
 	"io/ioutil"
 	"labix.org/v2/mgo/bson"
-	. "launchpad.net/gocheck"
+	"launchpad.net/gocheck"
 	"net/http"
 	"os"
 	"path"
 	"testing"
 )
 
-func Test(t *testing.T) { TestingT(t) }
+func Test(t *testing.T) { gocheck.TestingT(t) }
 
 type S struct {
 	conn        *db.Storage
@@ -35,12 +35,12 @@ type S struct {
 	provisioner *ttesting.FakeProvisioner
 }
 
-var _ = Suite(&S{})
+var _ = gocheck.Suite(&S{})
 
 type greaterChecker struct{}
 
-func (c *greaterChecker) Info() *CheckerInfo {
-	return &CheckerInfo{Name: "Greater", Params: []string{"expected", "obtained"}}
+func (c *greaterChecker) Info() *gocheck.CheckerInfo {
+	return &gocheck.CheckerInfo{Name: "Greater", Params: []string{"expected", "obtained"}}
 }
 
 func (c *greaterChecker) Check(params []interface{}, names []string) (bool, string) {
@@ -62,25 +62,25 @@ func (c *greaterChecker) Check(params []interface{}, names []string) (bool, stri
 	return false, err
 }
 
-var Greater Checker = &greaterChecker{}
+var Greater gocheck.Checker = &greaterChecker{}
 
-func (s *S) createUserAndTeam(c *C) {
+func (s *S) createUserAndTeam(c *gocheck.C) {
 	s.user = &auth.User{Email: "whydidifall@thewho.com", Password: "123"}
 	err := s.user.Create()
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	s.team = auth.Team{Name: "tsuruteam", Users: []string{s.user.Email}}
 	err = s.conn.Teams().Insert(s.team)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 }
 
-func (s *S) SetUpSuite(c *C) {
+func (s *S) SetUpSuite(c *gocheck.C) {
 	err := config.ReadConfigFile("testdata/config.yaml")
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	s.conn, err = db.Conn()
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	s.rfs = &ftesting.RecordingFs{}
 	file, err := s.rfs.Open("/dev/urandom")
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	file.Write([]byte{16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31})
 	fsystem = s.rfs
 	s.t = &ttesting.T{}
@@ -91,7 +91,7 @@ func (s *S) SetUpSuite(c *C) {
 	Provisioner = s.provisioner
 }
 
-func (s *S) TearDownSuite(c *C) {
+func (s *S) TearDownSuite(c *gocheck.C) {
 	defer s.t.S3Server.Quit()
 	defer s.t.IamServer.Quit()
 	s.conn.Apps().Database.DropDatabase()
@@ -99,7 +99,7 @@ func (s *S) TearDownSuite(c *C) {
 	queue.Preempt()
 }
 
-func (s *S) TearDownTest(c *C) {
+func (s *S) TearDownTest(c *gocheck.C) {
 	s.t.RollbackGitConfs(c)
 	s.provisioner.Reset()
 }
@@ -111,22 +111,22 @@ func (s *S) getTestData(p ...string) io.ReadCloser {
 	return f
 }
 
-func (s *S) createAdminUserAndTeam(c *C) {
+func (s *S) createAdminUserAndTeam(c *gocheck.C) {
 	s.admin = &auth.User{Email: "superuser@gmail.com", Password: "123"}
 	err := s.conn.Users().Insert(&s.admin)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	adminTeamName, err := config.GetString("admin-team")
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	s.adminTeam = auth.Team{Name: adminTeamName, Users: []string{s.admin.Email}}
 	err = s.conn.Teams().Insert(&s.adminTeam)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 }
 
-func (s *S) removeAdminUserAndTeam(c *C) {
+func (s *S) removeAdminUserAndTeam(c *gocheck.C) {
 	err := s.conn.Teams().RemoveId(s.adminTeam.Name)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	err = s.conn.Users().Remove(bson.M{"email": s.admin.Email})
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 }
 
 type MessageList []queue.Message

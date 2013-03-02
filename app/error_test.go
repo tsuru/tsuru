@@ -6,21 +6,21 @@ package app
 
 import (
 	"errors"
-	. "launchpad.net/gocheck"
+	"launchpad.net/gocheck"
 )
 
-func (s *S) TestValidationError(c *C) {
+func (s *S) TestValidationError(c *gocheck.C) {
 	e := ValidationError{Message: "something"}
-	c.Assert(e.Error(), Equals, "something")
+	c.Assert(e.Error(), gocheck.Equals, "something")
 }
 
-func (s *S) TestAppCreationError(c *C) {
+func (s *S) TestAppCreationError(c *gocheck.C) {
 	e := appCreationError{app: "myapp", err: errors.New("failure in app")}
 	expected := `Tsuru failed to create the app "myapp": failure in app`
-	c.Assert(e.Error(), Equals, expected)
+	c.Assert(e.Error(), gocheck.Equals, expected)
 }
 
-func (s *S) TestNoTeamsError(c *C) {
+func (s *S) TestNoTeamsError(c *gocheck.C) {
 	e := NoTeamsError{}
-	c.Assert(e.Error(), Equals, "Cannot create app without teams.")
+	c.Assert(e.Error(), gocheck.Equals, "Cannot create app without teams.")
 }

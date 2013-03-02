@@ -7,20 +7,20 @@ package app
 import (
 	"github.com/globocom/tsuru/app/bind"
 	"github.com/globocom/tsuru/provision"
-	. "launchpad.net/gocheck"
+	"launchpad.net/gocheck"
 )
 
-func (s *S) TestUnitGetName(c *C) {
+func (s *S) TestUnitGetName(c *gocheck.C) {
 	u := Unit{Name: "abcdef", app: &App{Name: "2112"}}
-	c.Assert(u.GetName(), Equals, "abcdef")
+	c.Assert(u.GetName(), gocheck.Equals, "abcdef")
 }
 
-func (s *S) TestUnitGetMachine(c *C) {
+func (s *S) TestUnitGetMachine(c *gocheck.C) {
 	u := Unit{Machine: 10}
-	c.Assert(u.GetMachine(), Equals, u.Machine)
+	c.Assert(u.GetMachine(), gocheck.Equals, u.Machine)
 }
 
-func (s *S) TestUnitGetStatus(c *C) {
+func (s *S) TestUnitGetStatus(c *gocheck.C) {
 	var tests = []struct {
 		input    string
 		expected provision.Status
@@ -42,6 +42,6 @@ func (s *S) TestUnitGetStatus(c *C) {
 	}
 }
 
-func (s *S) TestUnitShouldBeABinderUnit(c *C) {
+func (s *S) TestUnitShouldBeABinderUnit(c *gocheck.C) {
 	var _ bind.Unit = &Unit{}
 }
