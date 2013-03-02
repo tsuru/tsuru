@@ -8,11 +8,11 @@ import (
 	"bytes"
 	"crypto/rand"
 	"fmt"
-	"github.com/fsouza/go-iam"
 	"github.com/globocom/config"
 	"github.com/globocom/tsuru/auth"
 	"labix.org/v2/mgo/bson"
 	"launchpad.net/goamz/aws"
+	"launchpad.net/goamz/iam"
 	"launchpad.net/goamz/s3"
 	. "launchpad.net/gocheck"
 )
@@ -111,7 +111,7 @@ func (s *S) TestCreateIAMAccessKey(c *C) {
 	key, err := createIAMAccessKey(user)
 	c.Assert(err, IsNil)
 	c.Assert(key.Id, Not(Equals), "")
-	c.Assert(key.Secret, Not(Equals), "")
+	c.Assert(key.Secret, Equals, "")
 	c.Assert(key.UserName, Equals, user.Name)
 }
 

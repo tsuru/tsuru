@@ -7,7 +7,6 @@ package app
 import (
 	"errors"
 	"fmt"
-	"github.com/fsouza/go-iam"
 	"github.com/globocom/config"
 	"github.com/globocom/go-gandalfclient"
 	"github.com/globocom/tsuru/action"
@@ -17,6 +16,7 @@ import (
 	"github.com/globocom/tsuru/repository"
 	"labix.org/v2/mgo/bson"
 	"launchpad.net/goamz/aws"
+	"launchpad.net/goamz/iam"
 	"strconv"
 	"strings"
 )

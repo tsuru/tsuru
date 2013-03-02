@@ -6,12 +6,12 @@ package app
 
 import (
 	"fmt"
-	"github.com/fsouza/go-iam"
 	"github.com/globocom/config"
 	"github.com/globocom/tsuru/action"
 	"github.com/globocom/tsuru/app/bind"
 	"labix.org/v2/mgo/bson"
 	"launchpad.net/goamz/aws"
+	"launchpad.net/goamz/iam"
 	"launchpad.net/goamz/s3"
 	. "launchpad.net/gocheck"
 	"strings"
@@ -138,7 +138,7 @@ func (s *S) TestCreateIAMAccessKeyForward(c *C) {
 	c.Assert(ok, Equals, true)
 	c.Assert(ak.UserName, Equals, resp.User.Name)
 	c.Assert(ak.Id, Not(Equals), "")
-	c.Assert(ak.Secret, Not(Equals), "")
+	c.Assert(ak.Secret, Equals, "")
 	defer iamClient.DeleteAccessKey(ak.Id, ak.UserName)
 }
 

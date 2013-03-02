@@ -6,8 +6,8 @@
 package testing
 
 import (
-	"github.com/fsouza/go-iam/iamtest"
 	"github.com/globocom/config"
+	"launchpad.net/goamz/iam/iamtest"
 	"launchpad.net/goamz/s3/s3test"
 	. "launchpad.net/gocheck"
 	"net/http"
