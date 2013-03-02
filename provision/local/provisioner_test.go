@@ -22,20 +22,15 @@ func (s *S) TestShouldBeRegistered(c *C) {
 
 func (s *S) TestProvisionerProvision(c *C) {
 	config.Set("local:authorized-key-path", "somepath")
-	key := "somekey"
 	rfs := &fstesting.RecordingFs{}
 	fsystem = rfs
 	defer func() {
 		fsystem = nil
 	}()
-	file, err := rfs.Open("somepath")
+	f, _ := os.Open("testdata/dnsmasq.leases")
+	data, err := ioutil.ReadAll(f)
 	c.Assert(err, IsNil)
-	_, err = file.Write([]byte(key))
-	c.Assert(err, IsNil)
-	file, _ = os.Open("testdata/dnsmasq.leases")
-	data, err := ioutil.ReadAll(file)
-	c.Assert(err, IsNil)
-	file, err = rfs.Open("/var/lib/misc/dnsmasq.leases")
+	file, err := rfs.Open("/var/lib/misc/dnsmasq.leases")
 	c.Assert(err, IsNil)
 	_, err = file.Write(data)
 	c.Assert(err, IsNil)
@@ -52,7 +47,7 @@ func (s *S) TestProvisionerProvision(c *C) {
 	app := testing.NewFakeApp("myapp", "python", 0)
 	c.Assert(p.Provision(app), IsNil)
 	c.Assert(commandmocker.Ran(tmpdir), Equals, true)
-	expected := "lxc-create -t ubuntu -n myapp -- -S " + key
+	expected := "lxc-create -t ubuntu -n myapp -- -S somepath"
 	expected += "lxc-start --daemon -n myapp"
 	c.Assert(commandmocker.Output(tmpdir), Equals, expected)
 	var unit provision.Unit
@@ -64,12 +59,6 @@ func (s *S) TestProvisionerProvision(c *C) {
 
 func (s *S) TestProvisionerDestroy(c *C) {
 	config.Set("local:authorized-key-path", "somepath")
-	key := "somekey"
-	rfs := &fstesting.RecordingFs{FileContent: string(key)}
-	fsystem = rfs
-	defer func() {
-		fsystem = nil
-	}()
 	tmpdir, err := commandmocker.Add("sudo", "$*")
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(tmpdir)
@@ -85,7 +74,7 @@ func (s *S) TestProvisionerDestroy(c *C) {
 	c.Assert(err, IsNil)
 	c.Assert(p.Destroy(app), IsNil)
 	c.Assert(commandmocker.Ran(tmpdir), Equals, true)
-	expected := "lxc-create -t ubuntu -n myapp -- -S " + key
+	expected := "lxc-create -t ubuntu -n myapp -- -S somepath"
 	expected += "lxc-start --daemon -n myapp"
 	expected += "lxc-stop -n myapp"
 	expected += "lxc-destroy -n myapp"

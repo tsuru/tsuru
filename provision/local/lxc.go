@@ -59,27 +59,13 @@ func (c *container) ip() string {
 	return ""
 }
 
-// authorizedKey returns the authorized keys.
-func authorizedKey() (string, error) {
-	authorizedKeyPath, err := config.GetString("local:authorized-key-path")
-	file, err := filesystem().Open(authorizedKeyPath)
-	if err != nil {
-		return "", err
-	}
-	data, err := ioutil.ReadAll(file)
-	if err != nil {
-		return "", err
-	}
-	return string(data), nil
-}
-
 // create creates a lxc container with ubuntu template by default.
 func (c *container) create() error {
-	keycontent, err := authorizedKey()
+	keyPath, err := config.GetString("local:authorized-key-path")
 	if err != nil {
 		return err
 	}
-	return runCmd("sudo", "lxc-create", "-t", "ubuntu", "-n", c.name, "--", "-S", keycontent)
+	return runCmd("sudo", "lxc-create", "-t", "ubuntu", "-n", c.name, "--", "-S", keyPath)
 }
 
 // start starts a lxc container.
