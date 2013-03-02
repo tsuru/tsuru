@@ -215,10 +215,8 @@ func (s *S) TestProvisionSetup(c *C) {
 		"-q",
 		"-o",
 		"StrictHostKeyChecking no",
-		"-l",
-		"ubuntu",
 		formulasPath + "/static/hooks/*",
-		"10.10.10.10:/var/lib/tsuru/hooks",
+		"ubuntu@10.10.10.10:/var/lib/tsuru/hooks",
 	}
 	c.Assert(commandmocker.Parameters(tmpdir), DeepEquals, cmds)
 	c.Assert(commandmocker.Ran(sshTempDir), Equals, true)
@@ -229,7 +227,14 @@ func (s *S) TestProvisionSetup(c *C) {
 		"-l",
 		"ubuntu",
 		"10.10.10.10",
-		"mkdir -p /var/lib/tsuru/hooks",
+		"sudo mkdir -p /var/lib/tsuru/hooks",
+		"-q",
+		"-o",
+		"StrictHostKeyChecking no",
+		"-l",
+		"ubuntu",
+		"10.10.10.10",
+		"sudo chown -R ubuntu /var/lib/tsuru/hooks",
 	}
 	c.Assert(commandmocker.Parameters(sshTempDir), DeepEquals, cmds)
 }

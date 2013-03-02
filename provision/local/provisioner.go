@@ -22,12 +22,17 @@ func (p *LocalProvisioner) setup(ip, framework string) error {
 	if err != nil {
 		return err
 	}
-	cmd := exec.Command("ssh", "-q", "-o", "StrictHostKeyChecking no", "-l", "ubuntu", ip, "mkdir -p /var/lib/tsuru/hooks")
+	cmd := exec.Command("ssh", "-q", "-o", "StrictHostKeyChecking no", "-l", "ubuntu", ip, "sudo mkdir -p /var/lib/tsuru/hooks")
 	err = cmd.Run()
 	if err != nil {
 		return err
 	}
-	cmd = exec.Command("scp", "-q", "-o", "StrictHostKeyChecking no", "-l", "ubuntu", formulasPath+"/"+framework+"/hooks/*", ip+":/var/lib/tsuru/hooks")
+	cmd = exec.Command("ssh", "-q", "-o", "StrictHostKeyChecking no", "-l", "ubuntu", ip, "sudo chown -R ubuntu /var/lib/tsuru/hooks")
+	err = cmd.Run()
+	if err != nil {
+		return err
+	}
+	cmd = exec.Command("scp", "-q", "-o", "StrictHostKeyChecking no", formulasPath+"/"+framework+"/hooks/*", "ubuntu@"+ip+":/var/lib/tsuru/hooks")
 	return cmd.Run()
 }
 
