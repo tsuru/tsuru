@@ -13,7 +13,7 @@ function get_version {
 }
 
 function package {
-	tar -czf $1 *
+	git archive -o $1 master
 	shasum -a 256 $1
 }
 
