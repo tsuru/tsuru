@@ -284,3 +284,80 @@ func (s *S) TestTargetListRun(c *C) {
 	}
 
 }
+
+func (s *S) TestResetTargetList(c *C) {
+	rfs := &testing.RecordingFs{FileContent: "first\thttp://tsuru.io/\ndefault\thttp://tsuru.google.com"}
+	fsystem = rfs
+	defer func() {
+		fsystem = nil
+	}()
+
+	var expected = map[string]string{
+		"first":   "http://tsuru.io/",
+		"default": "http://tsuru.google.com",
+	}
+
+	got, err := getTargets()
+	c.Assert(err, IsNil)
+
+	c.Assert(len(got), Equals, len(expected))
+
+	err = resetTargetList()
+	c.Assert(err, IsNil)
+
+	got, err = getTargets()
+	c.Assert(err, IsNil)
+	c.Assert(got, DeepEquals, map[string]string{})
+}
+
+func (s *S) TestTargetRemoveInfo(c *C) {
+	desc := `Remove a target from target-list (tsuru server)
+`
+	expected := &Info{
+		Name:    "target-remove",
+		Usage:   "target-remove",
+		Desc:    desc,
+		MinArgs: 1,
+	}
+	targetRemove := &targetRemove{}
+	c.Assert(targetRemove.Info(), DeepEquals, expected)
+}
+
+func (s *S) TestTargetRemove(c *C) {
+	rfs := &testing.RecordingFs{FileContent: "first\thttp://tsuru.io/\ndefault\thttp://tsuru.google.com"}
+	fsystem = rfs
+	defer func() {
+		fsystem = nil
+	}()
+
+	var expectedBefore = map[string]string{
+		"first":   "http://tsuru.io/",
+		"default": "http://tsuru.google.com",
+	}
+
+	var expectedAfter = map[string]string{
+		"default": "http://tsuru.google.com",
+	}
+
+	got, err := getTargets()
+	c.Assert(err, IsNil)
+
+	c.Assert(len(got), Equals, len(expectedBefore))
+
+	targetRemove := &targetRemove{}
+	context := &Context{[]string{"first"}, manager.stdout, manager.stderr, manager.stdin}
+
+	err = targetRemove.Run(context, nil)
+	c.Assert(err, IsNil)
+
+	got, err = getTargets()
+	c.Assert(err, IsNil)
+
+	c.Assert(len(got), Equals, len(expectedAfter))
+
+	_, hasKey := got["default"]
+	c.Assert(hasKey, Equals, true)
+
+	_, hasKey = got["first"]
+	c.Assert(hasKey, Equals, false)
+}

@@ -106,8 +106,39 @@ func (t *targetAdd) Run(ctx *Context, client Doer) error {
 		return errors.New("Invalid arguments")
 	}
 
-	label = strings.TrimSpace(ctx.Args[0])
-	target = strings.TrimSpace(ctx.Args[1])
+	label = ctx.Args[0]
+	target = ctx.Args[1]
+
+	err := writeOnTargetList(label, target)
+
+	if err != nil {
+		return err
+	}
+
+	fmt.Fprintf(ctx.Stdout, "New target %s -> %s added to target-list\n", label, target)
+
+	return nil
+
+}
+
+func resetTargetList() error {
+	targetsPath, err := joinWithUserDir(".tsuru_targets")
+	if err != nil {
+		return err
+	}
+	targetsFile, err := filesystem().OpenFile(targetsPath, syscall.O_WRONLY|syscall.O_CREAT|syscall.O_TRUNC, 0600)
+	if err != nil {
+		return err
+	}
+	targetsFile.Truncate(0)
+	defer targetsFile.Close()
+
+	return nil
+}
+
+func writeOnTargetList(label string, target string) error {
+	label = strings.TrimSpace(label)
+	target = strings.TrimSpace(target)
 
 	targetExist, err := checkIfTargetLabelExists(label)
 	if err != nil {
@@ -134,10 +165,7 @@ func (t *targetAdd) Run(ctx *Context, client Doer) error {
 		return errors.New("Failed to write the target file")
 	}
 
-	fmt.Fprintf(ctx.Stdout, "New target %s -> %s added to target-list\n", label, target)
-
 	return nil
-
 }
 
 func checkIfTargetLabelExists(label string) (bool, error) {
@@ -210,5 +238,48 @@ func (t *targetList) Run(ctx *Context, client Doer) error {
 	fmt.Fprintf(ctx.Stdout, table.String())
 
 	return nil
+}
 
+type targetRemove struct{}
+
+func (t *targetRemove) Info() *Info {
+	desc := `Remove a target from target-list (tsuru server)
+`
+	return &Info{
+		Name:    "target-remove",
+		Usage:   "target-remove",
+		Desc:    desc,
+		MinArgs: 1,
+	}
+}
+
+func (t *targetRemove) Run(ctx *Context, client Doer) error {
+	if len(ctx.Args) != 1 {
+		return errors.New("Invalid arguments")
+	}
+
+	targetLabelToRemove := strings.TrimSpace(ctx.Args[0])
+
+	targets, err := getTargets()
+
+	if err != nil {
+		return err
+	}
+
+	for label, _ := range targets {
+		if label == targetLabelToRemove {
+			delete(targets, label)
+		}
+	}
+
+	err = resetTargetList()
+	if err != nil {
+		return err
+	}
+
+	for label, target := range targets {
+		writeOnTargetList(label, target)
+	}
+
+	return nil
 }
