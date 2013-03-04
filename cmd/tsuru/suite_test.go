@@ -1,13 +1,14 @@
-// Copyright 2012 tsuru authors. All rights reserved.
+// Copyright 2013 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-package tsuru
+package main
 
 import (
 	"bytes"
 	"errors"
 	"github.com/globocom/tsuru/cmd"
+	"github.com/globocom/tsuru/cmd/tsuru-base"
 	"io/ioutil"
 	. "launchpad.net/gocheck"
 	"net/http"
@@ -49,6 +50,8 @@ func (t *conditionalTransport) RoundTrip(req *http.Request) (*http.Response, err
 
 func (s *S) SetUpTest(c *C) {
 	var stdout, stderr bytes.Buffer
-	manager = cmd.NewManager("glb", "0.x", "Foo-Tsuru", &stdout, &stderr, os.Stdin)
-	AppName = new(string)
+	manager = cmd.NewManager("glb", version, header, &stdout, &stderr, os.Stdin)
+	*tsuru.AppName = ""
+	*AssumeYes = false
+	*NumUnits = 1
 }

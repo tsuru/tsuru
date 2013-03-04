@@ -36,5 +36,5 @@ mkdir -p $destination_dir
 echo "ok"
 
 build_and_package $1 crane cmd/crane
-build_and_package $1 tsuru cmd/tsuru/developer
-build_and_package $1 tsuru-admin cmd/tsuru/ops
+build_and_package $1 tsuru cmd/tsuru
+build_and_package $1 tsuru-admin cmd/tsuru-admin

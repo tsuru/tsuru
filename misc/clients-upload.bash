@@ -26,11 +26,11 @@ crane_version=`get_version crane cmd/crane`
 echo $crane_version
 
 echo -n "Determining tsuru version... "
-tsuru_version=`get_version tsuru cmd/tsuru/developer`
+tsuru_version=`get_version tsuru cmd/tsuru`
 echo $tsuru_version
 
 echo -n "Determining tsuru-admin version... "
-admin_version=`get_version tsuru-admin cmd/tsuru/ops`
+admin_version=`get_version tsuru-admin cmd/tsuru-admin`
 echo $admin_version
 
 echo

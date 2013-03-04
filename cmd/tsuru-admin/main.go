@@ -7,7 +7,7 @@ package main
 
 import (
 	"github.com/globocom/tsuru/cmd"
-	"github.com/globocom/tsuru/cmd/tsuru"
+	"github.com/globocom/tsuru/cmd/tsuru-base"
 	"os"
 )
 
