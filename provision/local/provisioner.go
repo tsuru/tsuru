@@ -42,7 +42,7 @@ func (p *LocalProvisioner) setup(ip, framework string) error {
 	cmd = exec.Command("scp", "-q", "-o", "StrictHostKeyChecking no", formulasPath+"/"+framework+"/hooks/*", "ubuntu@"+ip+":/var/lib/tsuru/hooks")
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		log.Printf("error on coping to %s", ip)
+		log.Printf("error on execute scp with the args: %#v", cmd.Args)
 		log.Print(string(output))
 		log.Print(err)
 		return err
