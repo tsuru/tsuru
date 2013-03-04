@@ -14,10 +14,11 @@ Tsuru is an open Platform-as-a-Service (PaaS).
 Using tsuru
 ===========
 
+* :doc:`clients installation guide </install/client>`
+
 Apps
 ----
 
-* :doc:`tsuru client install guide </apps/client/install>`
 * :doc:`tsuru client usage guide </apps/client/usage>`
 * :doc:`using services </apps/client/services>`
 * :doc:`building your application </apps/quickstart>`
@@ -26,7 +27,6 @@ Services
 --------
 
 * :doc:`building your service tutorial </services/build>`
-* :doc:`crane install guide </services/install>`
 * :doc:`crane usage guide </services/usage>`
 * :doc:`tsuru services api workflow </services/api>`
 
