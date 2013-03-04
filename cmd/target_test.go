@@ -160,3 +160,19 @@ func (s *S) TestGetUrlShouldNotPrependHttpIfTheTargetIsHttps(c *C) {
 	got := GetUrl("/apps")
 	c.Assert(got, Equals, "https://localhost/apps")
 }
+
+
+func (s *S) TestTargetAddInfo(c *C) {
+	desc := `Add a new target on target-list (tsuru server)
+`
+	expected := &Info{
+		Name:    "target-add",
+		Usage:   "target-add <label> <target>",
+		Desc:    desc,
+		MinArgs: 2,
+	}
+	targetAdd := &targetAdd{}
+	c.Assert(targetAdd.Info(), DeepEquals, expected)
+}
+
+

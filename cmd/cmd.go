@@ -58,6 +58,7 @@ func BuildBaseManager(name, version, versionHeader string) *Manager {
 	m.Register(&teamUserRemove{})
 	m.Register(&changePassword{})
 	m.Register(&target{})
+	m.Register(&targetAdd{})
 	return m
 }
 
