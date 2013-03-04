@@ -22,23 +22,43 @@ func (p *LocalProvisioner) setup(ip, framework string) error {
 	if err != nil {
 		return err
 	}
+	log.Printf("Creating hooks dir for %s", ip)
 	cmd := exec.Command("ssh", "-q", "-o", "StrictHostKeyChecking no", "-l", "ubuntu", ip, "sudo mkdir -p /var/lib/tsuru/hooks")
 	err = cmd.Run()
 	if err != nil {
+		log.Printf("error on creating hooks dir for %s", ip)
+		log.Print(err)
 		return err
 	}
+	log.Printf("Permissons on hooks dir for %s", ip)
 	cmd = exec.Command("ssh", "-q", "-o", "StrictHostKeyChecking no", "-l", "ubuntu", ip, "sudo chown -R ubuntu /var/lib/tsuru/hooks")
 	err = cmd.Run()
 	if err != nil {
+		log.Printf("error on permissions for %s", ip)
+		log.Print(err)
 		return err
 	}
+	log.Printf("coping hooks to %s", ip)
 	cmd = exec.Command("scp", "-q", "-o", "StrictHostKeyChecking no", formulasPath+"/"+framework+"/hooks/*", "ubuntu@"+ip+":/var/lib/tsuru/hooks")
-	return cmd.Run()
+	err = cmd.Run()
+	if err != nil {
+		log.Printf("error on coping to %s", ip)
+		log.Print(err)
+		return err
+	}
+	return nil
 }
 
 func (p *LocalProvisioner) install(ip string) error {
+	log.Printf("executing the install hook for %s", ip)
 	cmd := exec.Command("ssh", "-q", "-o", "StrictHostKeyChecking no", "-l", "ubuntu", ip, "sudo /var/lib/tsuru/hooks/install")
-	return cmd.Run()
+	err := cmd.Run()
+	if err != nil {
+		log.Printf("error on install for %s", ip)
+		log.Print(err)
+		return err
+	}
+	return nil
 }
 
 func (p *LocalProvisioner) start(ip string) error {
