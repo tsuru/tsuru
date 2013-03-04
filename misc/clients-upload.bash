@@ -38,3 +38,6 @@ echo
 package ${destination_dir}/crane-${crane_version}.tar.gz
 package ${destination_dir}/tsuru-${tsuru_version}.tar.gz
 package ${destination_dir}/tsuru-admin-${admin_version}.tar.gz
+
+cd /tmp
+s3cmd -P sync dist-src s3://tsuru
