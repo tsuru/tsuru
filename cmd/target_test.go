@@ -201,7 +201,7 @@ func (s *S) TestTargetAddRunOnlyOneArg(c *C) {
 }
 
 func (s *S) TestIfTargetLabelExists(c *C) {
-	rfs := &testing.RecordingFs{FileContent: "default\thttp://tsuru.google.com"}
+	rfs := &testing.RecordingFs{FileContent: "first\thttp://tsuru.io/\ndefault\thttp://tsuru.google.com"}
 	fsystem = rfs
 	defer func() {
 		fsystem = nil
@@ -213,7 +213,7 @@ func (s *S) TestIfTargetLabelExists(c *C) {
 }
 
 func (s *S) TestIfTargetLabelDoesNotExists(c *C) {
-	rfs := &testing.RecordingFs{FileContent: "default\thttp://tsuru.google.com"}
+	rfs := &testing.RecordingFs{FileContent: "first\thttp://tsuru.io/\ndefault\thttp://tsuru.google.com"}
 	fsystem = rfs
 	defer func() {
 		fsystem = nil

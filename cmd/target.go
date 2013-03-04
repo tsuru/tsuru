@@ -109,6 +109,14 @@ func (t *targetAdd) Run(ctx *Context, client Doer) error {
 	label = strings.TrimSpace(ctx.Args[0])
 	target = strings.TrimSpace(ctx.Args[1])
 
+	targetExist, err := checkIfTargetLabelExists(label)
+	if err != nil {
+		return err
+	}
+	if targetExist {
+		return errors.New("Target label provided already exist")
+	}
+
 	targetsPath, err := joinWithUserDir(".tsuru_targets")
 	if err != nil {
 		return err
@@ -141,12 +149,15 @@ func checkIfTargetLabelExists(label string) (bool, error) {
 	if f, err := filesystem().Open(targetsPath); err == nil {
 		defer f.Close()
 		if b, err := ioutil.ReadAll(f); err == nil {
-			var targetLine = strings.TrimSpace(string(b))
-			var targetLabel = strings.Split(targetLine, "\t")[0]
+			var targetLines = strings.Split(strings.TrimSpace(string(b)), "\n")
 
-			if label == targetLabel {
-				return true, nil
+			for i := range targetLines {
+				var targetLabel = strings.Split(targetLines[i], "\t")[0]
+				if label == targetLabel {
+					return true, nil
+				}
 			}
+
 		} else {
 			return false, err
 		}
