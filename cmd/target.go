@@ -146,19 +146,18 @@ func checkIfTargetLabelExists(label string) (bool, error) {
 		return false, err
 	}
 
-    _, exists := targets[label]
-	if exists{
-	    return true, nil
+	_, exists := targets[label]
+	if exists {
+		return true, nil
 	}
 
 	return false, nil
 
 }
 
-
 func getTargets() (map[string]string, error) {
-    var targets = map[string] string {}
-    
+	var targets = map[string]string{}
+
 	targetsPath, err := joinWithUserDir(".tsuru_targets")
 	if err != nil {
 		return targets, err
@@ -170,10 +169,10 @@ func getTargets() (map[string]string, error) {
 			var targetLines = strings.Split(strings.TrimSpace(string(b)), "\n")
 
 			for i := range targetLines {
-			    var targetSplt = strings.Split(targetLines[i], "\t")
+				var targetSplt = strings.Split(targetLines[i], "\t")
 
-			    if (len(targetSplt) == 2){
-				    targets[targetSplt[0]] = targetSplt[1]
+				if len(targetSplt) == 2 {
+					targets[targetSplt[0]] = targetSplt[1]
 				}
 			}
 		}
@@ -195,9 +194,9 @@ func (t *targetList) Info() *Info {
 }
 
 func (t *targetList) Run(ctx *Context, client Doer) error {
-	
-    fmt.Fprintf(ctx.Stdout, "target-list not implemented")
-    
+
+	fmt.Fprintf(ctx.Stdout, "target-list not implemented")
+
 	return nil
 
 }

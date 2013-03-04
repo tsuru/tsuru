@@ -230,19 +230,19 @@ func (s *S) TestGetTargets(c *C) {
 	defer func() {
 		fsystem = nil
 	}()
-	
-	var expected = map[string] string {
-        "first":  "http://tsuru.io/",
-        "default": "http://tsuru.google.com",
-    }
+
+	var expected = map[string]string{
+		"first":   "http://tsuru.io/",
+		"default": "http://tsuru.google.com",
+	}
 
 	got, err := getTargets()
 	c.Assert(err, IsNil)
-	
+
 	c.Assert(len(got), Equals, len(expected))
 	for k, v := range got {
-       c.Assert(expected[k], Equals, v)
-    }
+		c.Assert(expected[k], Equals, v)
+	}
 }
 
 func (s *S) TestTargetListInfo(c *C) {
