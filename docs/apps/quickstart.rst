@@ -1,4 +1,4 @@
-.. Copyright 2012 tsuru authors. All rights reserved.
+.. Copyright 2013 tsuru authors. All rights reserved.
    Use of this source code is governed by a BSD-style
    license that can be found in the LICENSE file.
 
@@ -17,7 +17,7 @@ system, all running on the Tsuru infrastructure.
 Install the tsuru client
 ++++++++++++++++++++++++
 
-:doc:`Install the Tsuru client </apps/client/install>` for your development platform.
+:doc:`Install the Tsuru client </install/client>` for your development platform.
 
 The the Tsuru client is a command-line tool for creating and managing apps.
 
