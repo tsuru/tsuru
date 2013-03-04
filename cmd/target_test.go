@@ -199,3 +199,27 @@ func (s *S) TestTargetAddRunOnlyOneArg(c *C) {
 	c.Assert(err, NotNil)
 	c.Assert(err.Error(), Equals, "Invalid arguments")
 }
+
+func (s *S) TestIfTargetLabelExists(c *C) {
+	rfs := &testing.RecordingFs{FileContent: "default\thttp://tsuru.google.com"}
+	fsystem = rfs
+	defer func() {
+		fsystem = nil
+	}()
+
+	mustBeTrueIfExist, err := checkIfTargetLabelExists("default")
+	c.Assert(err, IsNil)
+	c.Assert(mustBeTrueIfExist, Equals, true)
+}
+
+func (s *S) TestIfTargetLabelDoesNotExists(c *C) {
+	rfs := &testing.RecordingFs{FileContent: "default\thttp://tsuru.google.com"}
+	fsystem = rfs
+	defer func() {
+		fsystem = nil
+	}()
+
+	mustBeFalse, err := checkIfTargetLabelExists("doesnotexist")
+	c.Assert(err, IsNil)
+	c.Assert(mustBeFalse, Equals, false)
+}

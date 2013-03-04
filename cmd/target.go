@@ -131,3 +131,25 @@ func (t *targetAdd) Run(ctx *Context, client Doer) error {
 	return nil
 
 }
+
+func checkIfTargetLabelExists(label string) (bool, error) {
+	targetsPath, err := joinWithUserDir(".tsuru_targets")
+	if err != nil {
+		return false, err
+	}
+
+	if f, err := filesystem().Open(targetsPath); err == nil {
+		defer f.Close()
+		if b, err := ioutil.ReadAll(f); err == nil {
+			var targetLine = strings.TrimSpace(string(b))
+			var targetLabel = strings.Split(targetLine, "\t")[0]
+
+			if label == targetLabel {
+				return true, nil
+			}
+		} else {
+			return false, err
+		}
+	}
+	return false, nil
+}
