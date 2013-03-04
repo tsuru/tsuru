@@ -59,6 +59,7 @@ func BuildBaseManager(name, version, versionHeader string) *Manager {
 	m.Register(&changePassword{})
 	m.Register(&target{})
 	m.Register(&targetAdd{})
+	m.Register(&targetList{})
 	return m
 }
 

@@ -11,6 +11,7 @@ import (
 	. "launchpad.net/gocheck"
 	"os"
 	"path"
+	"strings"
 )
 
 func readRecordedTarget(fs *testing.RecordingFs) string {
@@ -256,4 +257,30 @@ func (s *S) TestTargetListInfo(c *C) {
 	}
 	targetList := &targetList{}
 	c.Assert(targetList.Info(), DeepEquals, expected)
+}
+
+func (s *S) TestTargetListRun(c *C) {
+	rfs := &testing.RecordingFs{FileContent: "first\thttp://tsuru.io/\ndefault\thttp://tsuru.google.com"}
+	fsystem = rfs
+	defer func() {
+		fsystem = nil
+	}()
+
+	expected := []string{"+---------+-------------------------+",
+		"| first   | http://tsuru.io/        |",
+		"| default | http://tsuru.google.com |",
+		"+---------+-------------------------+", ""}
+
+	targetList := &targetList{}
+	context := &Context{[]string{""}, manager.stdout, manager.stderr, manager.stdin}
+
+	err := targetList.Run(context, nil)
+	c.Assert(err, IsNil)
+
+	got := context.Stdout.(*bytes.Buffer).String()
+
+	for i := range expected {
+		c.Assert(strings.Contains(got, expected[i]), Equals, true)
+	}
+
 }

@@ -177,6 +177,7 @@ func getTargets() (map[string]string, error) {
 			}
 		}
 	}
+
 	return targets, nil
 }
 
@@ -195,7 +196,18 @@ func (t *targetList) Info() *Info {
 
 func (t *targetList) Run(ctx *Context, client Doer) error {
 
-	fmt.Fprintf(ctx.Stdout, "target-list not implemented")
+	table := NewTable()
+	targets, err := getTargets()
+
+	if err != nil {
+		return err
+	}
+
+	for label, target := range targets {
+		table.AddRow(Row{label, target})
+	}
+
+	fmt.Fprintf(ctx.Stdout, table.String())
 
 	return nil
 
