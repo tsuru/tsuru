@@ -141,9 +141,27 @@ func (t *targetAdd) Run(ctx *Context, client Doer) error {
 }
 
 func checkIfTargetLabelExists(label string) (bool, error) {
-	targetsPath, err := joinWithUserDir(".tsuru_targets")
+	targets, err := getTargets()
 	if err != nil {
 		return false, err
+	}
+
+    _, exists := targets[label]
+	if exists{
+	    return true, nil
+	}
+
+	return false, nil
+
+}
+
+
+func getTargets() (map[string]string, error) {
+    var targets = map[string] string {}
+    
+	targetsPath, err := joinWithUserDir(".tsuru_targets")
+	if err != nil {
+		return targets, err
 	}
 
 	if f, err := filesystem().Open(targetsPath); err == nil {
@@ -152,15 +170,34 @@ func checkIfTargetLabelExists(label string) (bool, error) {
 			var targetLines = strings.Split(strings.TrimSpace(string(b)), "\n")
 
 			for i := range targetLines {
-				var targetLabel = strings.Split(targetLines[i], "\t")[0]
-				if label == targetLabel {
-					return true, nil
+			    var targetSplt = strings.Split(targetLines[i], "\t")
+
+			    if (len(targetSplt) == 2){
+				    targets[targetSplt[0]] = targetSplt[1]
 				}
 			}
-
-		} else {
-			return false, err
 		}
 	}
-	return false, nil
+	return targets, nil
+}
+
+type targetList struct{}
+
+func (t *targetList) Info() *Info {
+	desc := `List all targets (tsuru server)
+`
+	return &Info{
+		Name:    "target-list",
+		Usage:   "target-list",
+		Desc:    desc,
+		MinArgs: 0,
+	}
+}
+
+func (t *targetList) Run(ctx *Context, client Doer) error {
+	
+    fmt.Fprintf(ctx.Stdout, "target-list not implemented")
+    
+	return nil
+
 }

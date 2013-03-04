@@ -223,3 +223,37 @@ func (s *S) TestIfTargetLabelDoesNotExists(c *C) {
 	c.Assert(err, IsNil)
 	c.Assert(mustBeFalse, Equals, false)
 }
+
+func (s *S) TestGetTargets(c *C) {
+	rfs := &testing.RecordingFs{FileContent: "first\thttp://tsuru.io/\ndefault\thttp://tsuru.google.com"}
+	fsystem = rfs
+	defer func() {
+		fsystem = nil
+	}()
+	
+	var expected = map[string] string {
+        "first":  "http://tsuru.io/",
+        "default": "http://tsuru.google.com",
+    }
+
+	got, err := getTargets()
+	c.Assert(err, IsNil)
+	
+	c.Assert(len(got), Equals, len(expected))
+	for k, v := range got {
+       c.Assert(expected[k], Equals, v)
+    }
+}
+
+func (s *S) TestTargetListInfo(c *C) {
+	desc := `List all targets (tsuru server)
+`
+	expected := &Info{
+		Name:    "target-list",
+		Usage:   "target-list",
+		Desc:    desc,
+		MinArgs: 0,
+	}
+	targetList := &targetList{}
+	c.Assert(targetList.Info(), DeepEquals, expected)
+}
