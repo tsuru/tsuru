@@ -85,11 +85,6 @@ func writeTarget(t string) error {
 	return nil
 }
 
-
-
-
-
-
 type targetAdd struct{}
 
 func (t *targetAdd) Info() *Info {
@@ -106,14 +101,14 @@ func (t *targetAdd) Info() *Info {
 func (t *targetAdd) Run(ctx *Context, client Doer) error {
 	var target string
 	var label string
-    
+
 	if len(ctx.Args) == 2 {
-	    label = ctx.Args[0]
+		label = ctx.Args[0]
 		target = ctx.Args[1]
-		
-		fmt.Fprintf(ctx.Stdout, "Not implemented. Will add new target %s %s\n", label, target)
+
+		fmt.Fprintf(ctx.Stdout, "Not implemented. Will add new target (%s) -> %s\n", label, target)
 	}
 
 	return nil
-	
+
 }
