@@ -102,12 +102,31 @@ func (t *targetAdd) Run(ctx *Context, client Doer) error {
 	var target string
 	var label string
 
-	if len(ctx.Args) == 2 {
-		label = ctx.Args[0]
-		target = ctx.Args[1]
-
-		fmt.Fprintf(ctx.Stdout, "Not implemented. Will add new target (%s) -> %s\n", label, target)
+	if len(ctx.Args) != 2 {
+		return errors.New("Invalid arguments")
 	}
+
+	label = strings.TrimSpace(ctx.Args[0])
+	target = strings.TrimSpace(ctx.Args[1])
+
+	targetsPath, err := joinWithUserDir(".tsuru_targets")
+	if err != nil {
+		return err
+	}
+
+	targetsFile, err := filesystem().OpenFile(targetsPath, syscall.O_RDWR|syscall.O_CREAT|syscall.O_APPEND, 0600)
+	if err != nil {
+		return err
+	}
+
+	defer targetsFile.Close()
+	var content = label + "\t" + target + "\n"
+	n, err := targetsFile.WriteString(content)
+	if n != len(content) || err != nil {
+		return errors.New("Failed to write the target file")
+	}
+
+	fmt.Fprintf(ctx.Stdout, "New target %s -> %s added to target-list\n", label, target)
 
 	return nil
 

@@ -161,7 +161,6 @@ func (s *S) TestGetUrlShouldNotPrependHttpIfTheTargetIsHttps(c *C) {
 	c.Assert(got, Equals, "https://localhost/apps")
 }
 
-
 func (s *S) TestTargetAddInfo(c *C) {
 	desc := `Add a new target on target-list (tsuru server)
 `
@@ -175,4 +174,28 @@ func (s *S) TestTargetAddInfo(c *C) {
 	c.Assert(targetAdd.Info(), DeepEquals, expected)
 }
 
+func (s *S) TestTargetAddRun(c *C) {
+	rfs := &testing.RecordingFs{FileContent: "default   http://tsuru.google.com"}
+	fsystem = rfs
+	defer func() {
+		fsystem = nil
+	}()
+	context := &Context{[]string{"default", "http://tsuru.google.com"}, manager.stdout, manager.stderr, manager.stdin}
+	targetAdd := &targetAdd{}
+	err := targetAdd.Run(context, nil)
+	c.Assert(err, IsNil)
+	c.Assert(context.Stdout.(*bytes.Buffer).String(), Equals, "New target default -> http://tsuru.google.com added to target-list\n")
+}
 
+func (s *S) TestTargetAddRunOnlyOneArg(c *C) {
+	rfs := &testing.RecordingFs{FileContent: "default   http://tsuru.google.com"}
+	fsystem = rfs
+	defer func() {
+		fsystem = nil
+	}()
+	context := &Context{[]string{"default http://tsuru.google.com"}, manager.stdout, manager.stderr, manager.stdin}
+	targetAdd := &targetAdd{}
+	err := targetAdd.Run(context, nil)
+	c.Assert(err, NotNil)
+	c.Assert(err.Error(), Equals, "Invalid arguments")
+}
