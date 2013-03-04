@@ -30,7 +30,7 @@ If you use Mac OS X and `homebrew <http://mxcl.github.com/homebrew/>`_, you may
 use a custom tap to install ``tsuru``, ``crane`` and ``tsuru-admin``. First you
 need to add the tap:
 
-.. highlight: bash
+.. highlight:: bash
 
 ::
 
@@ -38,7 +38,7 @@ need to add the tap:
 
 Now you can install tsuru, tsuru-admin and crane:
 
-.. highlight: bash
+.. highlight:: bash
 
 ::
 
@@ -48,7 +48,7 @@ Now you can install tsuru, tsuru-admin and crane:
 
 Whenever a new version of any of tsuru's clients is out, you can just run:
 
-.. highlight: bash
+.. highlight:: bash
 
 ::
 
@@ -94,3 +94,21 @@ and put the binary somewhere in your PATH:
 * tsuru: https://s3.amazonaws.com/tsuru/dist-cmd/tsuru-linux-amd64.tar.gz
 * tsuru-admin: https://s3.amazonaws.com/tsuru/dist-cmd/tsuru-admin-linux-amd64.tar.gz
 * crane: https://s3.amazonaws.com/tsuru/dist-cmd/crane-linux-amd64.tar.gz
+
+Build from source (any platform supported by Go)
+================================================
+
+`Tsuru's source <https://github.com/globocom/tsuru>`_ is written in `Go
+<http://golang.org>`_, so before installing tsuru from source, please make sure
+you have `installed and configured Go <http://golang.org/doc/install>`_.
+
+With Go installed and configured, you can use ``go get`` to install any of
+tsuru's clients:
+
+.. highlight:: bash
+
+::
+
+    $ go get github.com/globocom/tsuru/cmd/tsuru
+    $ go get github.com/globocom/tsuru/cmd/tsuru-admin
+    $ go get github.com/globocom/tsuru/cmd/crane
