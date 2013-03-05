@@ -49,6 +49,7 @@ func (s *S) TestProvisionerProvision(c *C) {
 	c.Assert(commandmocker.Ran(tmpdir), Equals, true)
 	expected := "lxc-create -t ubuntu -n myapp -- -S somepath"
 	expected += "lxc-start --daemon -n myapp"
+	expected += "service nginx restart"
 	c.Assert(commandmocker.Output(tmpdir), Equals, expected)
 	var unit provision.Unit
 	err = p.collection().Find(bson.M{"name": "myapp"}).One(&unit)
@@ -59,6 +60,18 @@ func (s *S) TestProvisionerProvision(c *C) {
 
 func (s *S) TestProvisionerDestroy(c *C) {
 	config.Set("local:authorized-key-path", "somepath")
+	rfs := &fstesting.RecordingFs{}
+	fsystem = rfs
+	defer func() {
+		fsystem = nil
+	}()
+	f, _ := os.Open("testdata/dnsmasq.leases")
+	data, err := ioutil.ReadAll(f)
+	c.Assert(err, IsNil)
+	file, err := rfs.Open("/var/lib/misc/dnsmasq.leases")
+	c.Assert(err, IsNil)
+	_, err = file.Write(data)
+	c.Assert(err, IsNil)
 	tmpdir, err := commandmocker.Add("sudo", "$*")
 	c.Assert(err, IsNil)
 	defer commandmocker.Remove(tmpdir)
@@ -76,6 +89,7 @@ func (s *S) TestProvisionerDestroy(c *C) {
 	c.Assert(commandmocker.Ran(tmpdir), Equals, true)
 	expected := "lxc-create -t ubuntu -n myapp -- -S somepath"
 	expected += "lxc-start --daemon -n myapp"
+	expected += "service nginx restart"
 	expected += "lxc-stop -n myapp"
 	expected += "lxc-destroy -n myapp"
 	c.Assert(commandmocker.Output(tmpdir), Equals, expected)
