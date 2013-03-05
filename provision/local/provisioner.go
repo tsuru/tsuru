@@ -107,6 +107,16 @@ func (p *LocalProvisioner) Provision(app provision.App) error {
 		Status:     provision.StatusStarted,
 		Ip:         ip,
 	}
+	err = AddRoute(app.GetName(), ip)
+	if err != nil {
+		log.Printf("error on add route for %s with ip %s", app.GetName(), ip)
+		log.Print(err)
+	}
+	err = RestartRouter()
+	if err != nil {
+		log.Printf("error on restart router")
+		log.Print(err)
+	}
 	log.Printf("inserting container unit %s in the database", app.GetName())
 	return p.collection().Insert(u)
 }
