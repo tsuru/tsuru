@@ -14,7 +14,12 @@ Usage:
 
 The currently available commands are (grouped by subject):
 
-	target            changes or retrive the current tsuru server
+	target            retrive the current tsuru server
+	target-add        add a new tsuru server to target-list
+	target-list       list all targets
+	target-set        set current target
+	target-remove     remove a tsuru server from target-list
+
 	version           displays current tsuru version
 
 	user-create       creates a new user

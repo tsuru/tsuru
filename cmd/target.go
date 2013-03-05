@@ -31,7 +31,7 @@ Displays the current target.
 func (t *target) Run(ctx *Context, client Doer) error {
 	var target string
 	if len(ctx.Args) > 0 {
-		fmt.Fprintf(ctx.Stdout, "To set a new target use target-add\n")
+		fmt.Fprintf(ctx.Stdout, "To add a new target use target-add\n")
 		return nil
 	}
 	target = readTarget()
@@ -96,24 +96,17 @@ func (t *targetAdd) Info() *Info {
 func (t *targetAdd) Run(ctx *Context, client Doer) error {
 	var target string
 	var label string
-
 	if len(ctx.Args) != 2 {
 		return errors.New("Invalid arguments")
 	}
-
 	label = ctx.Args[0]
 	target = ctx.Args[1]
-
 	err := writeOnTargetList(label, target)
-
 	if err != nil {
 		return err
 	}
-
 	fmt.Fprintf(ctx.Stdout, "New target %s -> %s added to target-list\n", label, target)
-
 	return nil
-
 }
 
 func resetTargetList() error {
@@ -127,14 +120,12 @@ func resetTargetList() error {
 	}
 	targetsFile.Truncate(0)
 	defer targetsFile.Close()
-
 	return nil
 }
 
 func writeOnTargetList(label string, target string) error {
 	label = strings.TrimSpace(label)
 	target = strings.TrimSpace(target)
-
 	targetExist, err := checkIfTargetLabelExists(label)
 	if err != nil {
 		return err
@@ -142,24 +133,20 @@ func writeOnTargetList(label string, target string) error {
 	if targetExist {
 		return errors.New("Target label provided already exist")
 	}
-
 	targetsPath, err := joinWithUserDir(".tsuru_targets")
 	if err != nil {
 		return err
 	}
-
 	targetsFile, err := filesystem().OpenFile(targetsPath, syscall.O_RDWR|syscall.O_CREAT|syscall.O_APPEND, 0600)
 	if err != nil {
 		return err
 	}
-
 	defer targetsFile.Close()
 	var content = label + "\t" + target + "\n"
 	n, err := targetsFile.WriteString(content)
 	if n != len(content) || err != nil {
 		return errors.New("Failed to write the target file")
 	}
-
 	return nil
 }
 
@@ -168,24 +155,19 @@ func checkIfTargetLabelExists(label string) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-
 	_, exists := targets[label]
 	if exists {
 		return true, nil
 	}
-
 	return false, nil
-
 }
 
 func getTargets() (map[string]string, error) {
 	var targets = map[string]string{}
-
 	targetsPath, err := joinWithUserDir(".tsuru_targets")
 	if err != nil {
 		return targets, err
 	}
-
 	if f, err := filesystem().Open(targetsPath); err == nil {
 		defer f.Close()
 		if b, err := ioutil.ReadAll(f); err == nil {
@@ -200,7 +182,6 @@ func getTargets() (map[string]string, error) {
 			}
 		}
 	}
-
 	return targets, nil
 }
 
@@ -218,20 +199,15 @@ func (t *targetList) Info() *Info {
 }
 
 func (t *targetList) Run(ctx *Context, client Doer) error {
-
 	table := NewTable()
 	targets, err := getTargets()
-
 	if err != nil {
 		return err
 	}
-
 	for label, target := range targets {
 		table.AddRow(Row{label, target})
 	}
-
 	fmt.Fprintf(ctx.Stdout, table.String())
-
 	return nil
 }
 
@@ -252,30 +228,23 @@ func (t *targetRemove) Run(ctx *Context, client Doer) error {
 	if len(ctx.Args) != 1 {
 		return errors.New("Invalid arguments")
 	}
-
 	targetLabelToRemove := strings.TrimSpace(ctx.Args[0])
-
 	targets, err := getTargets()
-
 	if err != nil {
 		return err
 	}
-
 	for label := range targets {
 		if label == targetLabelToRemove {
 			delete(targets, label)
 		}
 	}
-
 	err = resetTargetList()
 	if err != nil {
 		return err
 	}
-
 	for label, target := range targets {
 		writeOnTargetList(label, target)
 	}
-
 	return nil
 }
 
@@ -296,32 +265,23 @@ func (t *targetSet) Run(ctx *Context, client Doer) error {
 	if len(ctx.Args) != 1 {
 		return errors.New("Invalid arguments")
 	}
-
 	targetLabelToSet := strings.TrimSpace(ctx.Args[0])
-
 	labelExist, err := checkIfTargetLabelExists(targetLabelToSet)
-
 	if !labelExist {
 		return errors.New("Target not found")
 	}
-
 	targets, err := getTargets()
-
 	if err != nil {
 		return err
 	}
-
 	for label, target := range targets {
 		if label == targetLabelToSet {
 			err = writeTarget(target)
-
 			if err != nil {
 				return err
 			}
-
 			fmt.Fprintf(ctx.Stdout, "New target is %s -> %s\n", label, target)
 		}
 	}
-
 	return nil
 }
