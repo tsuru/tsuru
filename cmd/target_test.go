@@ -109,7 +109,7 @@ func (s *S) TestTargetRun(c *C) {
 	target := &target{}
 	err := target.Run(context, nil)
 	c.Assert(err, IsNil)
-	c.Assert(context.Stdout.(*bytes.Buffer).String(), Equals, "To set a new target use target-add\n")
+	c.Assert(context.Stdout.(*bytes.Buffer).String(), Equals, "To add a new target use target-add\n")
 }
 
 func (s *S) TestTargetWithoutArgument(c *C) {
@@ -201,7 +201,6 @@ func (s *S) TestIfTargetLabelExists(c *C) {
 	defer func() {
 		fsystem = nil
 	}()
-
 	mustBeTrueIfExist, err := checkIfTargetLabelExists("default")
 	c.Assert(err, IsNil)
 	c.Assert(mustBeTrueIfExist, Equals, true)
@@ -213,7 +212,6 @@ func (s *S) TestIfTargetLabelDoesNotExists(c *C) {
 	defer func() {
 		fsystem = nil
 	}()
-
 	mustBeFalse, err := checkIfTargetLabelExists("doesnotexist")
 	c.Assert(err, IsNil)
 	c.Assert(mustBeFalse, Equals, false)
@@ -225,15 +223,12 @@ func (s *S) TestGetTargets(c *C) {
 	defer func() {
 		fsystem = nil
 	}()
-
 	var expected = map[string]string{
 		"first":   "http://tsuru.io/",
 		"default": "http://tsuru.google.com",
 	}
-
 	got, err := getTargets()
 	c.Assert(err, IsNil)
-
 	c.Assert(len(got), Equals, len(expected))
 	for k, v := range got {
 		c.Assert(expected[k], Equals, v)
@@ -259,24 +254,18 @@ func (s *S) TestTargetListRun(c *C) {
 	defer func() {
 		fsystem = nil
 	}()
-
 	expected := []string{"+---------+-------------------------+",
 		"| first   | http://tsuru.io/        |",
 		"| default | http://tsuru.google.com |",
 		"+---------+-------------------------+", ""}
-
 	targetList := &targetList{}
 	context := &Context{[]string{""}, manager.stdout, manager.stderr, manager.stdin}
-
 	err := targetList.Run(context, nil)
 	c.Assert(err, IsNil)
-
 	got := context.Stdout.(*bytes.Buffer).String()
-
 	for i := range expected {
 		c.Assert(strings.Contains(got, expected[i]), Equals, true)
 	}
-
 }
 
 func (s *S) TestResetTargetList(c *C) {
@@ -285,20 +274,15 @@ func (s *S) TestResetTargetList(c *C) {
 	defer func() {
 		fsystem = nil
 	}()
-
 	var expected = map[string]string{
 		"first":   "http://tsuru.io/",
 		"default": "http://tsuru.google.com",
 	}
-
 	got, err := getTargets()
 	c.Assert(err, IsNil)
-
 	c.Assert(len(got), Equals, len(expected))
-
 	err = resetTargetList()
 	c.Assert(err, IsNil)
-
 	got, err = getTargets()
 	c.Assert(err, IsNil)
 	c.Assert(got, DeepEquals, map[string]string{})
@@ -323,35 +307,25 @@ func (s *S) TestTargetRemove(c *C) {
 	defer func() {
 		fsystem = nil
 	}()
-
 	var expectedBefore = map[string]string{
 		"first":   "http://tsuru.io/",
 		"default": "http://tsuru.google.com",
 	}
-
 	var expectedAfter = map[string]string{
 		"default": "http://tsuru.google.com",
 	}
-
 	got, err := getTargets()
 	c.Assert(err, IsNil)
-
 	c.Assert(len(got), Equals, len(expectedBefore))
-
 	targetRemove := &targetRemove{}
 	context := &Context{[]string{"first"}, manager.stdout, manager.stderr, manager.stdin}
-
 	err = targetRemove.Run(context, nil)
 	c.Assert(err, IsNil)
-
 	got, err = getTargets()
 	c.Assert(err, IsNil)
-
 	c.Assert(len(got), Equals, len(expectedAfter))
-
 	_, hasKey := got["default"]
 	c.Assert(hasKey, Equals, true)
-
 	_, hasKey = got["first"]
 	c.Assert(hasKey, Equals, false)
 }
@@ -375,17 +349,12 @@ func (s *S) TestTargetSetRun(c *C) {
 	defer func() {
 		fsystem = nil
 	}()
-
 	targetSet := &targetSet{}
 	context := &Context{[]string{"default"}, manager.stdout, manager.stderr, manager.stdin}
-
 	err := targetSet.Run(context, nil)
 	c.Assert(err, IsNil)
-
 	got := context.Stdout.(*bytes.Buffer).String()
-
 	c.Assert(strings.Contains(got, "New target is default -> http://tsuru.google.com\n"), Equals, true)
-
 }
 
 func (s *S) TestTargetSetRunUnknowTarget(c *C) {
@@ -394,11 +363,8 @@ func (s *S) TestTargetSetRunUnknowTarget(c *C) {
 	defer func() {
 		fsystem = nil
 	}()
-
 	targetSet := &targetSet{}
 	context := &Context{[]string{"doesnotexist"}, manager.stdout, manager.stderr, manager.stdin}
-
 	err := targetSet.Run(context, nil)
 	c.Assert(err, ErrorMatches, "Target not found")
-
 }
