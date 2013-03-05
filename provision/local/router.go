@@ -6,12 +6,6 @@ import (
 	"os/exec"
 )
 
-// route represents an route.
-type route struct {
-	name string
-	ip   string
-}
-
 func AddRoute(name, ip string) error {
 	domain, err := config.GetString("local:domain")
 	if err != nil {
