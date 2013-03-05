@@ -215,8 +215,9 @@ func (s *S) TestProvisionSetup(c *C) {
 		"-q",
 		"-o",
 		"StrictHostKeyChecking no",
-		formulasPath + "/static/hooks/*",
-		"ubuntu@10.10.10.10:/var/lib/tsuru/hooks",
+		"-r",
+		formulasPath + "/static/hooks",
+		"ubuntu@10.10.10.10:/var/lib/tsuru",
 	}
 	c.Assert(commandmocker.Parameters(tmpdir), DeepEquals, cmds)
 	c.Assert(commandmocker.Ran(sshTempDir), Equals, true)
