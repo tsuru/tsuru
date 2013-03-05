@@ -261,7 +261,7 @@ func (t *targetRemove) Run(ctx *Context, client Doer) error {
 		return err
 	}
 
-	for label, _ := range targets {
+	for label := range targets {
 		if label == targetLabelToRemove {
 			delete(targets, label)
 		}
