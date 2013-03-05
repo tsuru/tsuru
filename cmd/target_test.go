@@ -90,13 +90,13 @@ func (s *S) TestReadTargetTrimsFileContent(c *C) {
 }
 
 func (s *S) TestTargetInfo(c *C) {
-	desc := `Defines or retrieve the target (tsuru server)
+	desc := `Retrieve current target (tsuru server)
 
-If an argument is provided, this command sets the target, otherwise it displays the current target.
+Displays the current target.
 `
 	expected := &Info{
 		Name:    "target",
-		Usage:   "target [target]",
+		Usage:   "target",
 		Desc:    desc,
 		MinArgs: 0,
 	}
@@ -105,17 +105,11 @@ If an argument is provided, this command sets the target, otherwise it displays 
 }
 
 func (s *S) TestTargetRun(c *C) {
-	rfs := &testing.RecordingFs{FileContent: "http://tsuru.google.com"}
-	fsystem = rfs
-	defer func() {
-		fsystem = nil
-	}()
 	context := &Context{[]string{"http://tsuru.globo.com"}, manager.stdout, manager.stderr, manager.stdin}
 	target := &target{}
 	err := target.Run(context, nil)
 	c.Assert(err, IsNil)
-	c.Assert(context.Stdout.(*bytes.Buffer).String(), Equals, "New target is http://tsuru.globo.com\n")
-	c.Assert(readTarget(), Equals, "http://tsuru.globo.com")
+	c.Assert(context.Stdout.(*bytes.Buffer).String(), Equals, "To set a new target use target-add\n")
 }
 
 func (s *S) TestTargetWithoutArgument(c *C) {
@@ -360,4 +354,51 @@ func (s *S) TestTargetRemove(c *C) {
 
 	_, hasKey = got["first"]
 	c.Assert(hasKey, Equals, false)
+}
+
+func (s *S) TestTargetSetInfo(c *C) {
+	desc := `Change current target (tsuru server)
+`
+	expected := &Info{
+		Name:    "target-set",
+		Usage:   "target-set <label>",
+		Desc:    desc,
+		MinArgs: 1,
+	}
+	targetSet := &targetSet{}
+	c.Assert(targetSet.Info(), DeepEquals, expected)
+}
+
+func (s *S) TestTargetSetRun(c *C) {
+	rfs := &testing.RecordingFs{FileContent: "first\thttp://tsuru.io/\ndefault\thttp://tsuru.google.com"}
+	fsystem = rfs
+	defer func() {
+		fsystem = nil
+	}()
+
+	targetSet := &targetSet{}
+	context := &Context{[]string{"default"}, manager.stdout, manager.stderr, manager.stdin}
+
+	err := targetSet.Run(context, nil)
+	c.Assert(err, IsNil)
+
+	got := context.Stdout.(*bytes.Buffer).String()
+
+	c.Assert(strings.Contains(got, "New target is default -> http://tsuru.google.com\n"), Equals, true)
+
+}
+
+func (s *S) TestTargetSetRunUnknowTarget(c *C) {
+	rfs := &testing.RecordingFs{FileContent: "first\thttp://tsuru.io/\ndefault\thttp://tsuru.google.com"}
+	fsystem = rfs
+	defer func() {
+		fsystem = nil
+	}()
+
+	targetSet := &targetSet{}
+	context := &Context{[]string{"doesnotexist"}, manager.stdout, manager.stderr, manager.stdin}
+
+	err := targetSet.Run(context, nil)
+	c.Assert(err, ErrorMatches, "Target not found")
+
 }

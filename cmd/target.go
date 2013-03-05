@@ -16,13 +16,13 @@ import (
 type target struct{}
 
 func (t *target) Info() *Info {
-	desc := `Defines or retrieve the target (tsuru server)
+	desc := `Retrieve current target (tsuru server)
 
-If an argument is provided, this command sets the target, otherwise it displays the current target.
+Displays the current target.
 `
 	return &Info{
 		Name:    "target",
-		Usage:   "target [target]",
+		Usage:   "target",
 		Desc:    desc,
 		MinArgs: 0,
 	}
@@ -31,12 +31,7 @@ If an argument is provided, this command sets the target, otherwise it displays 
 func (t *target) Run(ctx *Context, client Doer) error {
 	var target string
 	if len(ctx.Args) > 0 {
-		target = ctx.Args[0]
-		err := writeTarget(target)
-		if err != nil {
-			return err
-		}
-		fmt.Fprintf(ctx.Stdout, "New target is %s\n", target)
+		fmt.Fprintf(ctx.Stdout, "To set a new target use target-add\n")
 		return nil
 	}
 	target = readTarget()
@@ -279,6 +274,53 @@ func (t *targetRemove) Run(ctx *Context, client Doer) error {
 
 	for label, target := range targets {
 		writeOnTargetList(label, target)
+	}
+
+	return nil
+}
+
+type targetSet struct{}
+
+func (t *targetSet) Info() *Info {
+	desc := `Change current target (tsuru server)
+`
+	return &Info{
+		Name:    "target-set",
+		Usage:   "target-set <label>",
+		Desc:    desc,
+		MinArgs: 1,
+	}
+}
+
+func (t *targetSet) Run(ctx *Context, client Doer) error {
+	if len(ctx.Args) != 1 {
+		return errors.New("Invalid arguments")
+	}
+
+	targetLabelToSet := strings.TrimSpace(ctx.Args[0])
+
+	labelExist, err := checkIfTargetLabelExists(targetLabelToSet)
+
+	if !labelExist {
+		return errors.New("Target not found")
+	}
+
+	targets, err := getTargets()
+
+	if err != nil {
+		return err
+	}
+
+	for label, target := range targets {
+		if label == targetLabelToSet {
+			err = writeTarget(target)
+
+			if err != nil {
+				return err
+			}
+
+			fmt.Fprintf(ctx.Stdout, "New target is %s -> %s\n", label, target)
+		}
 	}
 
 	return nil
