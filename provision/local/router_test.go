@@ -1,6 +1,7 @@
 package local
 
 import (
+	"github.com/globocom/commandmocker"
 	"github.com/globocom/config"
 	"github.com/globocom/tsuru/fs/testing"
 	"io/ioutil"
@@ -28,4 +29,14 @@ func (s *S) TestAddRoute(c *C) {
 	}
 }`
 	c.Assert(string(data), Equals, expected)
+}
+
+func (s *S) TestRestartRouter(c *C) {
+	tmpdir, err := commandmocker.Add("sudo", "$*")
+	c.Assert(err, IsNil)
+	err = RestartRouter()
+	c.Assert(err, IsNil)
+	c.Assert(commandmocker.Ran(tmpdir), Equals, true)
+	expected := "service nginx restart"
+	c.Assert(commandmocker.Output(tmpdir), Equals, expected)
 }

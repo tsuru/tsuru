@@ -3,6 +3,7 @@ package local
 import (
 	"fmt"
 	"github.com/globocom/config"
+	"os/exec"
 )
 
 // route represents an route.
@@ -33,4 +34,9 @@ func AddRoute(name, ip string) error {
 	data := []byte(template)
 	_, err = file.Write(data)
 	return err
+}
+
+func RestartRouter() error {
+	cmd := exec.Command("sudo", "service", "nginx", "restart")
+	return cmd.Run()
 }
