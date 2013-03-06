@@ -142,8 +142,8 @@ Let's create a method for this action:
 
 ::
 
-    @app.route("/resources/<name>/host/<host>", methods=["DELETE"])
-    def remove_instance(name, host):
+    @app.route("/resources/<name>", methods=["DELETE"])
+    def remove_instance(name):
         return "", 200
 
 Implementing the url for status checking
@@ -189,7 +189,7 @@ The final code for our "fake api" developed in flask is:
         return "", 201
 
 
-    @app.route("/resources/<name>/host/<host>", methods=["DELETE"])
+    @app.route("/resources/<name>", methods=["DELETE"])
     def remove_instance(name, host):
         return "", 200
 
