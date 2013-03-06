@@ -105,7 +105,7 @@ func (m *Manager) Run(args []string) {
 		re := regexp.MustCompile(`^((Invalid token)|(You must provide the Authorization header))`)
 		errorMsg := err.Error()
 		if re.MatchString(errorMsg) {
-			errorMsg = `Error: You're not authenticated or your session has expired. Please use "login" command for authentication.`
+			errorMsg = `You're not authenticated or your session has expired. Please use "login" command for authentication.`
 		}
 		if !strings.HasSuffix(errorMsg, "\n") {
 			errorMsg += "\n"
