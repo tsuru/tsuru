@@ -114,7 +114,8 @@ As an example, let's create a method that returns a json with a fake variable ca
 Implementing the unbinding
 --------------------------
 
-In the unbind action, tsuru calls your service via DELETE on /resources/<service_name>/hostname/<app_hostname>/.
+In the unbind action, tsuru calls your service via DELETE on
+/resources/<service_name>/hostname/<app_hostname>/.
 
 If the app is successfully unbinded from the instance you should return 200 as status code.
 
@@ -124,7 +125,7 @@ Let's create a method for this action:
 
 ::
 
-    @app.route("/resources/<name>", methods=["DELETE"])
+    @app.route("/resources/<name>/hostname/<host>", methods=["DELETE"])
     def unbind(name, host):
         return "", 200
 
@@ -178,7 +179,7 @@ The final code for our "fake api" developed in flask is:
         return out, 201
 
 
-    @app.route("/resources/<name>", methods=["DELETE"])
+    @app.route("/resources/<name>/hostname/<host>", methods=["DELETE"])
     def unbind(name, host):
         return "", 200
 
