@@ -484,7 +484,7 @@ func (s *S) TestCollectStatusIDChangeDisabledELB(c *C) {
 	case <-time.After(5e9):
 		c.Fatal("Did not update the unit after 5 seconds.")
 	}
-	msg, err := getQueue(app.QueueName).Get(1e6)
+	msg, err := getQueue(app.QueueName).Get(1e9)
 	c.Assert(err, IsNil)
 	defer msg.Delete()
 	c.Assert(msg.Action, Equals, app.RegenerateApprcAndStart)
