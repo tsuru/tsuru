@@ -6,28 +6,28 @@ package repository
 
 import (
 	"github.com/globocom/config"
-	. "launchpad.net/gocheck"
+	"launchpad.net/gocheck"
 	"testing"
 )
 
-func Test(t *testing.T) { TestingT(t) }
+func Test(t *testing.T) { gocheck.TestingT(t) }
 
 type S struct{}
 
-var _ = Suite(&S{})
+var _ = gocheck.Suite(&S{})
 
-func (s *S) SetUpSuite(c *C) {
+func (s *S) SetUpSuite(c *gocheck.C) {
 	config.Set("git:host", "mygithost")
 	config.Set("git:protocol", "http")
 	config.Set("git:port", "8090")
 	config.Set("git:unit-repo", "/home/application/current")
 }
 
-func (s *S) TestGetGitServerPanicsIfTheConfigFileHasNoServer(c *C) {
+func (s *S) TestGetGitServerPanicsIfTheConfigFileHasNoServer(c *gocheck.C) {
 	oldConfig, err := config.Get("git")
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	err = config.Unset("git")
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	defer config.Set("git", oldConfig)
-	c.Assert(getGitServer, PanicMatches, `key "git:host" not found`)
+	c.Assert(getGitServer, gocheck.PanicMatches, `key "git:host" not found`)
 }
