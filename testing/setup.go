@@ -1,4 +1,4 @@
-// Copyright 2012 tsuru authors. All rights reserved.
+// Copyright 2013 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -9,7 +9,7 @@ import (
 	"github.com/globocom/config"
 	"launchpad.net/goamz/iam/iamtest"
 	"launchpad.net/goamz/s3/s3test"
-	. "launchpad.net/gocheck"
+	"launchpad.net/gocheck"
 	"net/http"
 	"net/http/httptest"
 	"strconv"
@@ -36,24 +36,24 @@ type team struct {
 	Users []string
 }
 
-func (t *T) StartAmzS3AndIAM(c *C) {
+func (t *T) StartAmzS3AndIAM(c *gocheck.C) {
 	var err error
 	t.S3Server, err = s3test.NewServer(&s3test.Config{Send409Conflict: true})
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	config.Set("aws:s3:endpoint", t.S3Server.URL())
 	t.IamServer, err = iamtest.NewServer()
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	config.Set("aws:iam:endpoint", t.IamServer.URL())
 	config.Unset("aws:s3:bucketEndpoint")
 }
 
-func (t *T) SetGitConfs(c *C) {
+func (t *T) SetGitConfs(c *gocheck.C) {
 	t.GitHost, _ = config.GetString("git:host")
 	t.GitPort, _ = config.GetString("git:port")
 	t.GitProt, _ = config.GetString("git:protocol")
 }
 
-func (t *T) RollbackGitConfs(c *C) {
+func (t *T) RollbackGitConfs(c *gocheck.C) {
 	config.Set("git:host", t.GitHost)
 	config.Set("git:port", t.GitPort)
 	config.Set("git:protocol", t.GitProt)
