@@ -7,14 +7,14 @@
 package db
 
 import (
-	. "launchpad.net/gocheck"
+	"launchpad.net/gocheck"
 	"sync"
 	"time"
 )
 
-func (s *S) TestOpenIsThreadSafe(c *C) {
+func (s *S) TestOpenIsThreadSafe(c *gocheck.C) {
 	storage, err := Open("127.0.0.1:27017", "tsuru_db_race_tests")
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	defer storage.session.Close()
 	sess := conn["127.0.0.1:27017"]
 	sess.used = time.Now().Add(-1 * time.Hour)
@@ -23,20 +23,20 @@ func (s *S) TestOpenIsThreadSafe(c *C) {
 	wg.Add(3)
 	go func() {
 		st1, err := Open("127.0.0.1:27017", "tsuru_db_race_tests_2")
-		c.Check(err, IsNil)
-		c.Check(st1.session, Equals, storage.session)
+		c.Check(err, gocheck.IsNil)
+		c.Check(st1.session, gocheck.Equals, storage.session)
 		wg.Done()
 	}()
 	go func() {
 		st2, err := Open("127.0.0.1:27017", "tsuru_db_race_tests_3")
-		c.Check(err, IsNil)
-		c.Check(st2.session, Equals, storage.session)
+		c.Check(err, gocheck.IsNil)
+		c.Check(st2.session, gocheck.Equals, storage.session)
 		wg.Done()
 	}()
 	go func() {
 		st3, err := Open("127.0.0.1:27017", "tsuru_db_race_tests_4")
-		c.Check(err, IsNil)
-		c.Check(st3.session, Equals, storage.session)
+		c.Check(err, gocheck.IsNil)
+		c.Check(st3.session, gocheck.Equals, storage.session)
 		wg.Done()
 	}()
 	wg.Wait()
