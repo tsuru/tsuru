@@ -7,11 +7,11 @@
 package safe
 
 import (
-	. "launchpad.net/gocheck"
+	"launchpad.net/gocheck"
 	"sync"
 )
 
-func (s *S) TestSafeBufferIsThreadSafe(c *C) {
+func (s *S) TestSafeBufferIsThreadSafe(c *gocheck.C) {
 	var buf Buffer
 	var wg sync.WaitGroup
 	wg.Add(2)
