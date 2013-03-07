@@ -11,7 +11,7 @@ import (
 	"github.com/globocom/tsuru/auth"
 	"github.com/globocom/tsuru/db"
 	"labix.org/v2/mgo/bson"
-	. "launchpad.net/gocheck"
+	"launchpad.net/gocheck"
 	"net/http"
 	"net/http/httptest"
 	"strconv"
@@ -22,16 +22,16 @@ type ActionsSuite struct {
 	conn *db.Storage
 }
 
-var _ = Suite(&ActionsSuite{})
+var _ = gocheck.Suite(&ActionsSuite{})
 
-func (s *ActionsSuite) SetUpSuite(c *C) {
+func (s *ActionsSuite) SetUpSuite(c *gocheck.C) {
 	config.Set("database:url", "127.0.0.1:27017")
 	config.Set("database:name", "tsuru_api_actions_test")
 	config.Set("auth:salt", "tsuru-salt")
 	config.Set("auth:token-key", "TSURU-SALT")
 	var err error
 	s.conn, err = db.Conn()
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 }
 
 func (s *ActionsSuite) startGandalfTestServer(h http.Handler) *httptest.Server {
@@ -48,7 +48,7 @@ func (s *ActionsSuite) startGandalfTestServer(h http.Handler) *httptest.Server {
 	return ts
 }
 
-func (s *ActionsSuite) TestAddKeyInGandalfActionForward(c *C) {
+func (s *ActionsSuite) TestAddKeyInGandalfActionForward(c *gocheck.C) {
 	h := testHandler{}
 	ts := s.startGandalfTestServer(&h)
 	defer ts.Close()
@@ -58,14 +58,14 @@ func (s *ActionsSuite) TestAddKeyInGandalfActionForward(c *C) {
 		Params: []interface{}{key, u},
 	}
 	result, err := addKeyInGandalfAction.Forward(ctx)
-	c.Assert(err, IsNil)
-	c.Assert(result, IsNil) // we're not gonna need the result
-	c.Assert(len(h.url), Equals, 1)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(result, gocheck.IsNil) // we're not gonna need the result
+	c.Assert(len(h.url), gocheck.Equals, 1)
 	expected := fmt.Sprintf("/user/%s/key", u.Email)
-	c.Assert(h.url[0], Equals, expected)
+	c.Assert(h.url[0], gocheck.Equals, expected)
 }
 
-func (s *ActionsSuite) TestAddKeyInGandalfActionBackward(c *C) {
+func (s *ActionsSuite) TestAddKeyInGandalfActionBackward(c *gocheck.C) {
 	h := testHandler{}
 	ts := s.startGandalfTestServer(&h)
 	defer ts.Close()
@@ -75,44 +75,44 @@ func (s *ActionsSuite) TestAddKeyInGandalfActionBackward(c *C) {
 		Params: []interface{}{key, u},
 	}
 	addKeyInGandalfAction.Backward(ctx)
-	c.Assert(len(h.url), Equals, 1)
+	c.Assert(len(h.url), gocheck.Equals, 1)
 	expected := fmt.Sprintf("/user/%s/key/%s", u.Email, key.Name)
-	c.Assert(h.url[0], Equals, expected)
+	c.Assert(h.url[0], gocheck.Equals, expected)
 }
 
-func (s *ActionsSuite) TestAddKeyInDatabaseActionForward(c *C) {
+func (s *ActionsSuite) TestAddKeyInDatabaseActionForward(c *gocheck.C) {
 	key := &auth.Key{Name: "mysshkey", Content: "my-ssh-key"}
 	u := &auth.User{Email: "me@gmail.com", Password: "123456"}
 	err := u.Create()
 	defer s.conn.Users().Remove(bson.M{"email": u.Email})
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	ctx := action.FWContext{
 		Params: []interface{}{key, u},
 	}
 	result, err := addKeyInDatabaseAction.Forward(ctx)
-	c.Assert(err, IsNil)
-	c.Assert(result, IsNil) // we do not need it
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(result, gocheck.IsNil) // we do not need it
 	u.Get()
-	c.Assert(u.Keys, DeepEquals, []auth.Key{*key})
+	c.Assert(u.Keys, gocheck.DeepEquals, []auth.Key{*key})
 }
 
-func (s *ActionsSuite) TestAddKeyInDatabaseActionBackward(c *C) {
+func (s *ActionsSuite) TestAddKeyInDatabaseActionBackward(c *gocheck.C) {
 	key := &auth.Key{Name: "mysshkey", Content: "my-ssh-key"}
 	u := &auth.User{Email: "me@gmail.com", Password: "123456"}
 	u.AddKey(*key)
 	err := u.Create()
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Users().Remove(bson.M{"email": u.Email})
-	c.Assert(u.Keys, DeepEquals, []auth.Key{*key}) // just in case
+	c.Assert(u.Keys, gocheck.DeepEquals, []auth.Key{*key}) // just in case
 	ctx := action.BWContext{
 		Params: []interface{}{key, u},
 	}
 	addKeyInDatabaseAction.Backward(ctx)
 	u.Get()
-	c.Assert(u.Keys, DeepEquals, []auth.Key{})
+	c.Assert(u.Keys, gocheck.DeepEquals, []auth.Key{})
 }
 
-func (s *ActionsSuite) TestAddUserToTeamInGandalfActionForward(c *C) {
+func (s *ActionsSuite) TestAddUserToTeamInGandalfActionForward(c *gocheck.C) {
 	h := testHandler{}
 	ts := s.startGandalfTestServer(&h)
 	defer ts.Close()
@@ -122,13 +122,13 @@ func (s *ActionsSuite) TestAddUserToTeamInGandalfActionForward(c *C) {
 		Params: []interface{}{"me@gmail.com", u, t},
 	}
 	result, err := addUserToTeamInGandalfAction.Forward(ctx)
-	c.Assert(err, IsNil)
-	c.Assert(result, IsNil)
-	c.Assert(len(h.url), Equals, 1)
-	c.Assert(h.url[0], Equals, "/repository/grant")
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(result, gocheck.IsNil)
+	c.Assert(len(h.url), gocheck.Equals, 1)
+	c.Assert(h.url[0], gocheck.Equals, "/repository/grant")
 }
 
-func (s *ActionsSuite) TestAddUserToTeamInGandalfActionBackward(c *C) {
+func (s *ActionsSuite) TestAddUserToTeamInGandalfActionBackward(c *gocheck.C) {
 	h := testHandler{}
 	ts := s.startGandalfTestServer(&h)
 	defer ts.Close()
@@ -138,39 +138,39 @@ func (s *ActionsSuite) TestAddUserToTeamInGandalfActionBackward(c *C) {
 		Params: []interface{}{"me@gmail.com", u, t},
 	}
 	addUserToTeamInGandalfAction.Backward(ctx)
-	c.Assert(len(h.url), Equals, 1)
-	c.Assert(h.url[0], Equals, "/repository/revoke")
+	c.Assert(len(h.url), gocheck.Equals, 1)
+	c.Assert(h.url[0], gocheck.Equals, "/repository/revoke")
 }
 
-func (s *ActionsSuite) TestAddUserToTeamInDatabaseActionForward(c *C) {
+func (s *ActionsSuite) TestAddUserToTeamInDatabaseActionForward(c *gocheck.C) {
 	u := &auth.User{Email: "nobody@gmail.com", Password: "123456"} // it's not used in this action
 	newUser := &auth.User{Email: "me@gmail.com", Password: "123456"}
 	err := newUser.Create()
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	t := &auth.Team{Name: "myteam"}
 	err = s.conn.Teams().Insert(t)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Teams().RemoveId(t.Name)
 	defer s.conn.Users().Remove(bson.M{"email": newUser.Email})
 	ctx := action.FWContext{
 		Params: []interface{}{newUser.Email, u, t},
 	}
 	result, err := addUserToTeamInDatabaseAction.Forward(ctx)
-	c.Assert(err, IsNil)
-	c.Assert(result, IsNil)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(result, gocheck.IsNil)
 	err = s.conn.Teams().FindId(t.Name).One(&t)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	c.Assert(t, ContainsUser, newUser)
 }
 
-func (s *ActionsSuite) TestAddUserToTeamInDatabaseActionBackward(c *C) {
+func (s *ActionsSuite) TestAddUserToTeamInDatabaseActionBackward(c *gocheck.C) {
 	u := &auth.User{Email: "nobody@gmail.com", Password: "123456"}
 	err := u.Create()
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	uEmail := "me@gmail.com"
 	t := &auth.Team{Name: "myteam", Users: []string{uEmail}}
 	err = s.conn.Teams().Insert(t)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Teams().RemoveId(t.Name)
 	defer s.conn.Users().Remove(bson.M{"email": u.Email})
 	ctx := action.BWContext{
@@ -178,6 +178,6 @@ func (s *ActionsSuite) TestAddUserToTeamInDatabaseActionBackward(c *C) {
 	}
 	addUserToTeamInDatabaseAction.Backward(ctx)
 	err = s.conn.Teams().FindId(t.Name).One(&t)
-	c.Assert(err, IsNil)
-	c.Assert(t, Not(ContainsUser), &auth.User{Email: uEmail})
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(t, gocheck.Not(ContainsUser), &auth.User{Email: uEmail})
 }

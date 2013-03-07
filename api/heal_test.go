@@ -9,14 +9,14 @@ import (
 	"fmt"
 	"github.com/globocom/tsuru/heal"
 	"io/ioutil"
-	. "launchpad.net/gocheck"
+	"launchpad.net/gocheck"
 	"net/http"
 	"net/http/httptest"
 )
 
 type HealerSuite struct{}
 
-var _ = Suite(&HealerSuite{})
+var _ = gocheck.Suite(&HealerSuite{})
 
 type FakeHealer struct {
 	called bool
@@ -32,33 +32,33 @@ func (h *FakeHealer) Heal() error {
 	return nil
 }
 
-func (s *HealerSuite) TestHealers(c *C) {
+func (s *HealerSuite) TestHealers(c *gocheck.C) {
 	recorder := httptest.NewRecorder()
 	request, err := http.NewRequest("GET", "/healers", nil)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	err = healers(recorder, request)
-	c.Assert(err, IsNil)
-	c.Assert(recorder.Code, Equals, http.StatusOK)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(recorder.Code, gocheck.Equals, http.StatusOK)
 	body, err := ioutil.ReadAll(recorder.Body)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	h := map[string]string{}
 	err = json.Unmarshal(body, &h)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	expected := map[string]string{}
 	for healer := range heal.All() {
 		expected[healer] = fmt.Sprintf("/healers/%s", healer)
 	}
-	c.Assert(h, DeepEquals, expected)
+	c.Assert(h, gocheck.DeepEquals, expected)
 }
 
-func (s *HealerSuite) TestHealer(c *C) {
+func (s *HealerSuite) TestHealer(c *gocheck.C) {
 	fake := &FakeHealer{}
 	heal.Register("fake", fake)
 	recorder := httptest.NewRecorder()
 	request, err := http.NewRequest("GET", "/healers/fake?:healer=fake", nil)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	err = healer(recorder, request)
-	c.Assert(err, IsNil)
-	c.Assert(recorder.Code, Equals, http.StatusOK)
-	c.Assert(fake.called, Equals, true)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(recorder.Code, gocheck.Equals, http.StatusOK)
+	c.Assert(fake.called, gocheck.Equals, true)
 }
