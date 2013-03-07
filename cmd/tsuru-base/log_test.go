@@ -7,12 +7,12 @@ package tsuru
 import (
 	"bytes"
 	"github.com/globocom/tsuru/cmd"
-	. "launchpad.net/gocheck"
+	"launchpad.net/gocheck"
 	"net/http"
 	"strings"
 )
 
-func (s *S) TestAppLog(c *C) {
+func (s *S) TestAppLog(c *gocheck.C) {
 	*AppName = "appName"
 	var stdout, stderr bytes.Buffer
 	result := `[{"Source":"tsuru","Date":"2012-06-20T11:17:22.75-03:00","Message":"creating app lost"},{"Source":"app","Date":"2012-06-20T11:17:22.753-03:00","Message":"app lost successfully created"}]`
@@ -25,13 +25,13 @@ func (s *S) TestAppLog(c *C) {
 	command := AppLog{}
 	client := cmd.NewClient(&http.Client{Transport: &transport{msg: result, status: http.StatusOK}}, nil, manager)
 	err := command.Run(&context, client)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	got := stdout.String()
 	got = strings.Replace(got, "-0300 -0300", "-0300 BRT", -1)
-	c.Assert(got, Equals, expected)
+	c.Assert(got, gocheck.Equals, expected)
 }
 
-func (s *S) TestAppLogWithoutTheFlag(c *C) {
+func (s *S) TestAppLogWithoutTheFlag(c *gocheck.C) {
 	var stdout, stderr bytes.Buffer
 	result := `[{"Source":"tsuru","Date":"2012-06-20T11:17:22.75-03:00","Message":"creating app lost"},{"Source":"tsuru","Date":"2012-06-20T11:17:22.753-03:00","Message":"app lost successfully created"}]`
 	expected := cmd.Colorfy("2012-06-20 11:17:22 [tsuru]:", "blue", "", "") + " creating app lost\n"
@@ -53,13 +53,13 @@ func (s *S) TestAppLogWithoutTheFlag(c *C) {
 	}
 	client := cmd.NewClient(&http.Client{Transport: trans}, nil, manager)
 	err := command.Run(&context, client)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	got := stdout.String()
 	got = strings.Replace(got, "-0300 -0300", "-0300 BRT", -1)
-	c.Assert(got, Equals, expected)
+	c.Assert(got, gocheck.Equals, expected)
 }
 
-func (s *S) TestAppLogShouldReturnNilIfHasNoContent(c *C) {
+func (s *S) TestAppLogShouldReturnNilIfHasNoContent(c *gocheck.C) {
 	*AppName = "appName"
 	var stdout, stderr bytes.Buffer
 	context := cmd.Context{
@@ -69,11 +69,11 @@ func (s *S) TestAppLogShouldReturnNilIfHasNoContent(c *C) {
 	command := AppLog{}
 	client := cmd.NewClient(&http.Client{Transport: &transport{msg: "", status: http.StatusNoContent}}, nil, manager)
 	err := command.Run(&context, client)
-	c.Assert(err, IsNil)
-	c.Assert(stdout.String(), Equals, "")
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(stdout.String(), gocheck.Equals, "")
 }
 
-func (s *S) TestAppLogInfo(c *C) {
+func (s *S) TestAppLogInfo(c *gocheck.C) {
 	expected := &cmd.Info{
 		Name:  "log",
 		Usage: "log [--app appname] [--lines numberOfLines] [--source source]",
@@ -82,10 +82,10 @@ func (s *S) TestAppLogInfo(c *C) {
 If you don't provide the app name, tsuru will try to guess it. The default number of lines is 10.`,
 		MinArgs: 0,
 	}
-	c.Assert((&AppLog{}).Info(), DeepEquals, expected)
+	c.Assert((&AppLog{}).Info(), gocheck.DeepEquals, expected)
 }
 
-func (s *S) TestAppLogBySource(c *C) {
+func (s *S) TestAppLogBySource(c *gocheck.C) {
 	*LogSource = "mysource"
 	var stdout, stderr bytes.Buffer
 	result := `[{"Source":"tsuru","Date":"2012-06-20T11:17:22.75-03:00","Message":"creating app lost"},{"Source":"tsuru","Date":"2012-06-20T11:17:22.753-03:00","Message":"app lost successfully created"}]`
@@ -108,8 +108,8 @@ func (s *S) TestAppLogBySource(c *C) {
 	}
 	client := cmd.NewClient(&http.Client{Transport: trans}, nil, manager)
 	err := command.Run(&context, client)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	got := stdout.String()
 	got = strings.Replace(got, "-0300 -0300", "-0300 BRT", -1)
-	c.Assert(got, Equals, expected)
+	c.Assert(got, gocheck.Equals, expected)
 }

@@ -9,7 +9,7 @@ import (
 	"errors"
 	"github.com/globocom/tsuru/cmd"
 	"io/ioutil"
-	. "launchpad.net/gocheck"
+	"launchpad.net/gocheck"
 	"net/http"
 	"os"
 	"testing"
@@ -27,10 +27,10 @@ type conditionalTransport struct {
 	condFunc func(*http.Request) bool
 }
 
-var _ = Suite(&S{})
+var _ = gocheck.Suite(&S{})
 var manager *cmd.Manager
 
-func Test(t *testing.T) { TestingT(t) }
+func Test(t *testing.T) { gocheck.TestingT(t) }
 
 func (t *transport) RoundTrip(req *http.Request) (resp *http.Response, err error) {
 	resp = &http.Response{
@@ -47,7 +47,7 @@ func (t *conditionalTransport) RoundTrip(req *http.Request) (*http.Response, err
 	return t.transport.RoundTrip(req)
 }
 
-func (s *S) SetUpTest(c *C) {
+func (s *S) SetUpTest(c *gocheck.C) {
 	var stdout, stderr bytes.Buffer
 	manager = cmd.NewManager("glb", "0.x", "Foo-Tsuru", &stdout, &stderr, os.Stdin)
 	AppName = new(string)
