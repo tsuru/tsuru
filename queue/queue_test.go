@@ -6,54 +6,54 @@ package queue
 
 import (
 	"github.com/globocom/config"
-	. "launchpad.net/gocheck"
+	"launchpad.net/gocheck"
 	"testing"
 )
 
 func Test(t *testing.T) {
-	TestingT(t)
+	gocheck.TestingT(t)
 }
 
 type S struct{}
 
-var _ = Suite(&S{})
+var _ = gocheck.Suite(&S{})
 
-func (s *S) TestMessageDelete(c *C) {
+func (s *S) TestMessageDelete(c *gocheck.C) {
 	m := Message{}
-	c.Assert(m.delete, Equals, false)
+	c.Assert(m.delete, gocheck.Equals, false)
 	m.Delete()
-	c.Assert(m.delete, Equals, true)
+	c.Assert(m.delete, gocheck.Equals, true)
 }
 
-func (s *S) TestFactory(c *C) {
+func (s *S) TestFactory(c *gocheck.C) {
 	config.Set("queue", "beanstalkd")
 	defer config.Unset("queue")
 	f, err := Factory()
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	_, ok := f.(beanstalkdFactory)
-	c.Assert(ok, Equals, true)
+	c.Assert(ok, gocheck.Equals, true)
 }
 
-func (s *S) TestFactoryConfigUndefined(c *C) {
+func (s *S) TestFactoryConfigUndefined(c *gocheck.C) {
 	f, err := Factory()
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	_, ok := f.(beanstalkdFactory)
-	c.Assert(ok, Equals, true)
+	c.Assert(ok, gocheck.Equals, true)
 }
 
-func (s *S) TestFactoryConfigUnknown(c *C) {
+func (s *S) TestFactoryConfigUnknown(c *gocheck.C) {
 	config.Set("queue", "unknown")
 	defer config.Unset("queue")
 	f, err := Factory()
-	c.Assert(f, IsNil)
-	c.Assert(err, NotNil)
-	c.Assert(err.Error(), Equals, `Queue "unknown" is not known.`)
+	c.Assert(f, gocheck.IsNil)
+	c.Assert(err, gocheck.NotNil)
+	c.Assert(err.Error(), gocheck.Equals, `Queue "unknown" is not known.`)
 }
 
-func (s *S) TestRegister(c *C) {
+func (s *S) TestRegister(c *gocheck.C) {
 	config.Set("queue", "unregistered")
 	defer config.Unset("queue")
 	Register("unregistered", beanstalkdFactory{})
 	_, err := Factory()
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 }
