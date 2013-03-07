@@ -9,70 +9,70 @@ import (
 	"github.com/globocom/config"
 	"github.com/globocom/tsuru/fs/testing"
 	"io/ioutil"
-	. "launchpad.net/gocheck"
+	"launchpad.net/gocheck"
 	"os"
 )
 
-func (s *S) TestLXCCreate(c *C) {
+func (s *S) TestLXCCreate(c *gocheck.C) {
 	config.Set("local:authorized-key-path", "somepath")
 	tmpdir, err := commandmocker.Add("sudo", "$*")
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	defer commandmocker.Remove(tmpdir)
 	container := container{name: "container"}
 	err = container.create()
-	c.Assert(err, IsNil)
-	c.Assert(commandmocker.Ran(tmpdir), Equals, true)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(commandmocker.Ran(tmpdir), gocheck.Equals, true)
 	expected := "lxc-create -t ubuntu -n container -- -S somepath"
-	c.Assert(commandmocker.Output(tmpdir), Equals, expected)
+	c.Assert(commandmocker.Output(tmpdir), gocheck.Equals, expected)
 }
 
-func (s *S) TestLXCStart(c *C) {
+func (s *S) TestLXCStart(c *gocheck.C) {
 	tmpdir, err := commandmocker.Add("sudo", "$*")
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	defer commandmocker.Remove(tmpdir)
 	container := container{name: "container"}
 	err = container.start()
-	c.Assert(err, IsNil)
-	c.Assert(commandmocker.Ran(tmpdir), Equals, true)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(commandmocker.Ran(tmpdir), gocheck.Equals, true)
 	expected := "lxc-start --daemon -n container"
-	c.Assert(commandmocker.Output(tmpdir), Equals, expected)
+	c.Assert(commandmocker.Output(tmpdir), gocheck.Equals, expected)
 }
 
-func (s *S) TestLXCStop(c *C) {
+func (s *S) TestLXCStop(c *gocheck.C) {
 	tmpdir, err := commandmocker.Add("sudo", "$*")
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	defer commandmocker.Remove(tmpdir)
 	container := container{name: "container"}
 	err = container.stop()
-	c.Assert(err, IsNil)
-	c.Assert(commandmocker.Ran(tmpdir), Equals, true)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(commandmocker.Ran(tmpdir), gocheck.Equals, true)
 	expected := "lxc-stop -n container"
-	c.Assert(commandmocker.Output(tmpdir), Equals, expected)
+	c.Assert(commandmocker.Output(tmpdir), gocheck.Equals, expected)
 }
 
-func (s *S) TestLXCDestroy(c *C) {
+func (s *S) TestLXCDestroy(c *gocheck.C) {
 	tmpdir, err := commandmocker.Add("sudo", "$*")
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	defer commandmocker.Remove(tmpdir)
 	container := container{name: "container"}
 	err = container.destroy()
-	c.Assert(err, IsNil)
-	c.Assert(commandmocker.Ran(tmpdir), Equals, true)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(commandmocker.Ran(tmpdir), gocheck.Equals, true)
 	expected := "lxc-destroy -n container"
-	c.Assert(commandmocker.Output(tmpdir), Equals, expected)
+	c.Assert(commandmocker.Output(tmpdir), gocheck.Equals, expected)
 }
 
-func (s *S) TestContainerIP(c *C) {
+func (s *S) TestContainerIP(c *gocheck.C) {
 	file, _ := os.Open("testdata/dnsmasq.leases")
 	data, err := ioutil.ReadAll(file)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	rfs := &testing.RecordingFs{FileContent: string(data)}
 	fsystem = rfs
 	defer func() {
 		fsystem = nil
 	}()
 	cont := container{name: "vm1"}
-	c.Assert(cont.ip(), Equals, "10.10.10.10")
+	c.Assert(cont.ip(), gocheck.Equals, "10.10.10.10")
 	cont = container{name: "notfound"}
-	c.Assert(cont.ip(), Equals, "")
+	c.Assert(cont.ip(), gocheck.Equals, "")
 }
