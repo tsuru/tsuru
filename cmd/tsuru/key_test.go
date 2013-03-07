@@ -8,16 +8,16 @@ import (
 	"bytes"
 	"github.com/globocom/tsuru/cmd"
 	fs_test "github.com/globocom/tsuru/fs/testing"
-	. "launchpad.net/gocheck"
+	"launchpad.net/gocheck"
 	"net/http"
 	"os/user"
 	"path"
 )
 
-func (s *S) TestKeyAdd(c *C) {
+func (s *S) TestKeyAdd(c *gocheck.C) {
 	var stdout, stderr bytes.Buffer
 	u, err := user.Current()
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	p := path.Join(u.HomeDir, ".ssh", "id_rsa.pub")
 	expected := "Key successfully added!\n"
 	context := cmd.Context{
@@ -29,15 +29,15 @@ func (s *S) TestKeyAdd(c *C) {
 	fs := fs_test.RecordingFs{FileContent: "user-key"}
 	command := KeyAdd{keyReader{fsystem: &fs}}
 	err = command.Run(&context, client)
-	c.Assert(err, IsNil)
-	c.Assert(stdout.String(), Equals, expected)
-	c.Assert(fs.HasAction("open "+p), Equals, true)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(stdout.String(), gocheck.Equals, expected)
+	c.Assert(fs.HasAction("open "+p), gocheck.Equals, true)
 }
 
-func (s *S) TestKeyAddSpecifyingKeyFile(c *C) {
+func (s *S) TestKeyAddSpecifyingKeyFile(c *gocheck.C) {
 	var stdout, stderr bytes.Buffer
 	u, err := user.Current()
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	p := path.Join(u.HomeDir, ".ssh", "id_dsa.pub")
 	expected := "Key successfully added!\n"
 	context := cmd.Context{
@@ -49,12 +49,12 @@ func (s *S) TestKeyAddSpecifyingKeyFile(c *C) {
 	fs := fs_test.RecordingFs{FileContent: "user-key"}
 	command := KeyAdd{keyReader{fsystem: &fs}}
 	err = command.Run(&context, client)
-	c.Assert(err, IsNil)
-	c.Assert(stdout.String(), Equals, expected)
-	c.Assert(fs.HasAction("open "+p), Equals, true)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(stdout.String(), gocheck.Equals, expected)
+	c.Assert(fs.HasAction("open "+p), gocheck.Equals, true)
 }
 
-func (s *S) TestKeyAddReturnErrorIfTheKeyDoesNotExist(c *C) {
+func (s *S) TestKeyAddReturnErrorIfTheKeyDoesNotExist(c *gocheck.C) {
 	var stdout, stderr bytes.Buffer
 	context := cmd.Context{
 		Args:   []string{},
@@ -64,11 +64,11 @@ func (s *S) TestKeyAddReturnErrorIfTheKeyDoesNotExist(c *C) {
 	fs := fs_test.FailureFs{RecordingFs: fs_test.RecordingFs{}}
 	command := KeyAdd{keyReader{fsystem: &fs}}
 	err := command.Run(&context, nil)
-	c.Assert(err, NotNil)
-	c.Assert(err.Error(), Equals, "You need to have a public rsa key")
+	c.Assert(err, gocheck.NotNil)
+	c.Assert(err.Error(), gocheck.Equals, "You need to have a public rsa key")
 }
 
-func (s *S) TestKeyAddReturnsProperErrorIfTheGivenKeyFileDoesNotExist(c *C) {
+func (s *S) TestKeyAddReturnsProperErrorIfTheGivenKeyFileDoesNotExist(c *gocheck.C) {
 	var stdout, stderr bytes.Buffer
 	context := cmd.Context{
 		Args:   []string{"/unknown/key.pub"},
@@ -78,25 +78,25 @@ func (s *S) TestKeyAddReturnsProperErrorIfTheGivenKeyFileDoesNotExist(c *C) {
 	fs := fs_test.FailureFs{RecordingFs: fs_test.RecordingFs{}}
 	command := KeyAdd{keyReader{fsystem: &fs}}
 	err := command.Run(&context, nil)
-	c.Assert(err, NotNil)
-	c.Assert(err.Error(), Equals, "File /unknown/key.pub does not exist!")
-	c.Assert(context.Stderr.(*bytes.Buffer).String(), Equals, "File /unknown/key.pub does not exist!\n")
+	c.Assert(err, gocheck.NotNil)
+	c.Assert(err.Error(), gocheck.Equals, "File /unknown/key.pub does not exist!")
+	c.Assert(context.Stderr.(*bytes.Buffer).String(), gocheck.Equals, "File /unknown/key.pub does not exist!\n")
 }
 
-func (s *S) TestInfoKeyAdd(c *C) {
+func (s *S) TestInfoKeyAdd(c *gocheck.C) {
 	expected := &cmd.Info{
 		Name:    "key-add",
 		Usage:   "key-add [path/to/key/file.pub]",
 		Desc:    "add your public key ($HOME/.ssh/id_rsa.pub by default).",
 		MinArgs: 0,
 	}
-	c.Assert((&KeyAdd{}).Info(), DeepEquals, expected)
+	c.Assert((&KeyAdd{}).Info(), gocheck.DeepEquals, expected)
 }
 
-func (s *S) TestKeyRemove(c *C) {
+func (s *S) TestKeyRemove(c *gocheck.C) {
 	var stdout, stderr bytes.Buffer
 	u, err := user.Current()
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	p := path.Join(u.HomeDir, ".ssh", "id_rsa.pub")
 	expected := "Key successfully removed!\n"
 	context := cmd.Context{
@@ -108,15 +108,15 @@ func (s *S) TestKeyRemove(c *C) {
 	fs := fs_test.RecordingFs{FileContent: "user-key"}
 	command := KeyRemove{keyReader{fsystem: &fs}}
 	err = command.Run(&context, client)
-	c.Assert(err, IsNil)
-	c.Assert(stdout.String(), Equals, expected)
-	c.Assert(fs.HasAction("open "+p), Equals, true)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(stdout.String(), gocheck.Equals, expected)
+	c.Assert(fs.HasAction("open "+p), gocheck.Equals, true)
 }
 
-func (s *S) TestKeyRemoveSpecifyingKeyFile(c *C) {
+func (s *S) TestKeyRemoveSpecifyingKeyFile(c *gocheck.C) {
 	var stdout, stderr bytes.Buffer
 	u, err := user.Current()
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	p := path.Join(u.HomeDir, ".ssh", "id_dsa.pub")
 	expected := "Key successfully removed!\n"
 	context := cmd.Context{
@@ -128,12 +128,12 @@ func (s *S) TestKeyRemoveSpecifyingKeyFile(c *C) {
 	fs := fs_test.RecordingFs{FileContent: "user-key"}
 	command := KeyRemove{keyReader{fsystem: &fs}}
 	err = command.Run(&context, client)
-	c.Assert(err, IsNil)
-	c.Assert(stdout.String(), Equals, expected)
-	c.Assert(fs.HasAction("open "+p), Equals, true)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(stdout.String(), gocheck.Equals, expected)
+	c.Assert(fs.HasAction("open "+p), gocheck.Equals, true)
 }
 
-func (s *S) TestKeyRemoveReturnErrorIfTheKeyDoesNotExist(c *C) {
+func (s *S) TestKeyRemoveReturnErrorIfTheKeyDoesNotExist(c *gocheck.C) {
 	var stdout, stderr bytes.Buffer
 	context := cmd.Context{
 		Args:   []string{},
@@ -143,11 +143,11 @@ func (s *S) TestKeyRemoveReturnErrorIfTheKeyDoesNotExist(c *C) {
 	fs := fs_test.FailureFs{RecordingFs: fs_test.RecordingFs{}}
 	command := KeyRemove{keyReader{fsystem: &fs}}
 	err := command.Run(&context, nil)
-	c.Assert(err, NotNil)
-	c.Assert(err.Error(), Equals, "You need to have a public rsa key")
+	c.Assert(err, gocheck.NotNil)
+	c.Assert(err.Error(), gocheck.Equals, "You need to have a public rsa key")
 }
 
-func (s *S) TestKeyRemoveReturnProperErrorIfTheGivenKeyFileDoesNotExist(c *C) {
+func (s *S) TestKeyRemoveReturnProperErrorIfTheGivenKeyFileDoesNotExist(c *gocheck.C) {
 	var stdout, stderr bytes.Buffer
 	context := cmd.Context{
 		Args:   []string{"/unknown/key.pub"},
@@ -157,17 +157,17 @@ func (s *S) TestKeyRemoveReturnProperErrorIfTheGivenKeyFileDoesNotExist(c *C) {
 	fs := fs_test.FailureFs{RecordingFs: fs_test.RecordingFs{}}
 	command := KeyRemove{keyReader{fsystem: &fs}}
 	err := command.Run(&context, nil)
-	c.Assert(err, NotNil)
-	c.Assert(err.Error(), Equals, "File /unknown/key.pub does not exist!")
-	c.Assert(context.Stderr.(*bytes.Buffer).String(), Equals, err.Error()+"\n")
+	c.Assert(err, gocheck.NotNil)
+	c.Assert(err.Error(), gocheck.Equals, "File /unknown/key.pub does not exist!")
+	c.Assert(context.Stderr.(*bytes.Buffer).String(), gocheck.Equals, err.Error()+"\n")
 }
 
-func (s *S) TestInfoKeyRemove(c *C) {
+func (s *S) TestInfoKeyRemove(c *gocheck.C) {
 	expected := &cmd.Info{
 		Name:    "key-remove",
 		Usage:   "key-remove [path/to/key/file.pub]",
 		Desc:    "remove your public key ($HOME/.id_rsa.pub by default).",
 		MinArgs: 0,
 	}
-	c.Assert((&KeyRemove{}).Info(), DeepEquals, expected)
+	c.Assert((&KeyRemove{}).Info(), gocheck.DeepEquals, expected)
 }
