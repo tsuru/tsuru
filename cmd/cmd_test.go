@@ -10,7 +10,7 @@ import (
 	"github.com/globocom/tsuru/fs"
 	"github.com/globocom/tsuru/fs/testing"
 	"io"
-	. "launchpad.net/gocheck"
+	"launchpad.net/gocheck"
 	"os"
 )
 
@@ -51,42 +51,42 @@ func (c *ErrorCommand) Run(context *Context, client Doer) error {
 	return errors.New(c.msg)
 }
 
-func (s *S) TestRegister(c *C) {
+func (s *S) TestRegister(c *gocheck.C) {
 	manager.Register(&TestCommand{})
 	badCall := func() { manager.Register(&TestCommand{}) }
-	c.Assert(badCall, PanicMatches, "command already registered: foo")
+	c.Assert(badCall, gocheck.PanicMatches, "command already registered: foo")
 }
 
-func (s *S) TestManagerRunShouldWriteErrorsOnStderr(c *C) {
+func (s *S) TestManagerRunShouldWriteErrorsOnStderr(c *gocheck.C) {
 	manager.Register(&ErrorCommand{msg: "You are wrong\n"})
 	manager.Run([]string{"error"})
-	c.Assert(manager.stderr.(*bytes.Buffer).String(), Equals, "Error: You are wrong\n")
+	c.Assert(manager.stderr.(*bytes.Buffer).String(), gocheck.Equals, "Error: You are wrong\n")
 }
 
-func (s *S) TestManagerRunShouldReturnStatus1WhenCommandFail(c *C) {
+func (s *S) TestManagerRunShouldReturnStatus1WhenCommandFail(c *gocheck.C) {
 	manager.Register(&ErrorCommand{msg: "You are wrong\n"})
 	manager.Run([]string{"error"})
-	c.Assert(manager.e.(*recordingExiter).value(), Equals, 1)
+	c.Assert(manager.e.(*recordingExiter).value(), gocheck.Equals, 1)
 }
 
-func (s *S) TestManagerRunShouldAppendNewLineOnErrorWhenItsNotPresent(c *C) {
+func (s *S) TestManagerRunShouldAppendNewLineOnErrorWhenItsNotPresent(c *gocheck.C) {
 	manager.Register(&ErrorCommand{msg: "You are wrong"})
 	manager.Run([]string{"error"})
-	c.Assert(manager.stderr.(*bytes.Buffer).String(), Equals, "Error: You are wrong\n")
+	c.Assert(manager.stderr.(*bytes.Buffer).String(), gocheck.Equals, "Error: You are wrong\n")
 }
 
-func (s *S) TestRun(c *C) {
+func (s *S) TestRun(c *gocheck.C) {
 	manager.Register(&TestCommand{})
 	manager.Run([]string{"foo"})
-	c.Assert(manager.stdout.(*bytes.Buffer).String(), Equals, "Running TestCommand")
+	c.Assert(manager.stdout.(*bytes.Buffer).String(), gocheck.Equals, "Running TestCommand")
 }
 
-func (s *S) TestRunCommandThatDoesNotExist(c *C) {
+func (s *S) TestRunCommandThatDoesNotExist(c *gocheck.C) {
 	manager.Run([]string{"bar"})
-	c.Assert(manager.stderr.(*bytes.Buffer).String(), Equals, `Error: command "bar" does not exist`+"\n")
-	c.Assert(manager.e.(*recordingExiter).value(), Equals, 1)
+	c.Assert(manager.stderr.(*bytes.Buffer).String(), gocheck.Equals, `Error: command "bar" does not exist`+"\n")
+	c.Assert(manager.e.(*recordingExiter).value(), gocheck.Equals, 1)
 }
-func (s *S) TestHelp(c *C) {
+func (s *S) TestHelp(c *gocheck.C) {
 	expected := `glb version 1.0.
 
 Usage: glb command [args]
@@ -102,26 +102,26 @@ Run glb help <commandname> to get more information about a specific command.
 	context := Context{[]string{}, manager.stdout, manager.stderr, manager.stdin}
 	command := help{manager: manager}
 	err := command.Run(&context, nil)
-	c.Assert(err, IsNil)
-	c.Assert(manager.stdout.(*bytes.Buffer).String(), Equals, expected)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(manager.stdout.(*bytes.Buffer).String(), gocheck.Equals, expected)
 }
 
-func (s *S) TestHelpCommandShouldBeRegisteredByDefault(c *C) {
+func (s *S) TestHelpCommandShouldBeRegisteredByDefault(c *gocheck.C) {
 	var stdout, stderr bytes.Buffer
 	m := NewManager("tsuru", "1.0", "", &stdout, &stderr, os.Stdin)
 	_, exists := m.Commands["help"]
-	c.Assert(exists, Equals, true)
+	c.Assert(exists, gocheck.Equals, true)
 }
 
-func (s *S) TestHelpReturnErrorIfTheGivenCommandDoesNotExist(c *C) {
+func (s *S) TestHelpReturnErrorIfTheGivenCommandDoesNotExist(c *gocheck.C) {
 	command := help{manager: manager}
 	context := Context{[]string{"user-create"}, manager.stdout, manager.stderr, manager.stdin}
 	err := command.Run(&context, nil)
-	c.Assert(err, NotNil)
-	c.Assert(err, ErrorMatches, `^Error: command "user-create" does not exist.$`)
+	c.Assert(err, gocheck.NotNil)
+	c.Assert(err, gocheck.ErrorMatches, `^Error: command "user-create" does not exist.$`)
 }
 
-func (s *S) TestRunWithoutArgsShouldRunsHelp(c *C) {
+func (s *S) TestRunWithoutArgsShouldRunsHelp(c *gocheck.C) {
 	expected := `glb version 1.0.
 
 Usage: glb command [args]
@@ -133,10 +133,10 @@ Available commands:
 Run glb help <commandname> to get more information about a specific command.
 `
 	manager.Run([]string{})
-	c.Assert(manager.stdout.(*bytes.Buffer).String(), Equals, expected)
+	c.Assert(manager.stdout.(*bytes.Buffer).String(), gocheck.Equals, expected)
 }
 
-func (s *S) TestHelpShouldReturnHelpForACmd(c *C) {
+func (s *S) TestHelpShouldReturnHelpForACmd(c *gocheck.C) {
 	expected := `glb version 1.0.
 
 Usage: glb foo
@@ -145,27 +145,27 @@ Foo do anything or nothing.
 `
 	manager.Register(&TestCommand{})
 	manager.Run([]string{"help", "foo"})
-	c.Assert(manager.stdout.(*bytes.Buffer).String(), Equals, expected)
+	c.Assert(manager.stdout.(*bytes.Buffer).String(), gocheck.Equals, expected)
 }
 
-func (s *S) TestVersion(c *C) {
+func (s *S) TestVersion(c *gocheck.C) {
 	var stdout, stderr bytes.Buffer
 	manager := NewManager("tsuru", "5.0", "", &stdout, &stderr, os.Stdin)
 	command := version{manager: manager}
 	context := Context{[]string{}, manager.stdout, manager.stderr, manager.stdin}
 	err := command.Run(&context, nil)
-	c.Assert(err, IsNil)
-	c.Assert(manager.stdout.(*bytes.Buffer).String(), Equals, "tsuru version 5.0.\n")
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(manager.stdout.(*bytes.Buffer).String(), gocheck.Equals, "tsuru version 5.0.\n")
 }
 
-func (s *S) TestVersionInfo(c *C) {
+func (s *S) TestVersionInfo(c *gocheck.C) {
 	expected := &Info{
 		Name:    "version",
 		MinArgs: 0,
 		Usage:   "version",
 		Desc:    "display the current version",
 	}
-	c.Assert((&version{}).Info(), DeepEquals, expected)
+	c.Assert((&version{}).Info(), gocheck.DeepEquals, expected)
 }
 
 type ArgCmd struct{}
@@ -183,7 +183,7 @@ func (cmd *ArgCmd) Run(ctx *Context, client Doer) error {
 	return nil
 }
 
-func (s *S) TestRunWrongArgsNumberShouldRunsHelpAndReturnStatus1(c *C) {
+func (s *S) TestRunWrongArgsNumberShouldRunsHelpAndReturnStatus1(c *gocheck.C) {
 	expected := `glb version 1.0.
 
 ERROR: not enough arguments to call arg.
@@ -196,11 +196,11 @@ Minimum arguments: 1
 `
 	manager.Register(&ArgCmd{})
 	manager.Run([]string{"arg"})
-	c.Assert(manager.stdout.(*bytes.Buffer).String(), Equals, expected)
-	c.Assert(manager.e.(*recordingExiter).value(), Equals, 1)
+	c.Assert(manager.stdout.(*bytes.Buffer).String(), gocheck.Equals, expected)
+	c.Assert(manager.e.(*recordingExiter).value(), gocheck.Equals, 1)
 }
 
-func (s *S) TestHelpShouldReturnUsageWithTheCommandName(c *C) {
+func (s *S) TestHelpShouldReturnUsageWithTheCommandName(c *gocheck.C) {
 	expected := `tsuru version 1.0.
 
 Usage: tsuru foo
@@ -213,129 +213,129 @@ Foo do anything or nothing.
 	context := Context{[]string{"foo"}, manager.stdout, manager.stderr, manager.stdin}
 	command := help{manager: manager}
 	err := command.Run(&context, nil)
-	c.Assert(err, IsNil)
-	c.Assert(manager.stdout.(*bytes.Buffer).String(), Equals, expected)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(manager.stdout.(*bytes.Buffer).String(), gocheck.Equals, expected)
 }
 
-func (s *S) TestExtractProgramNameWithAbsolutePath(c *C) {
+func (s *S) TestExtractProgramNameWithAbsolutePath(c *gocheck.C) {
 	got := ExtractProgramName("/usr/bin/tsuru")
-	c.Assert(got, Equals, "tsuru")
+	c.Assert(got, gocheck.Equals, "tsuru")
 }
 
-func (s *S) TestExtractProgramNameWithRelativePath(c *C) {
+func (s *S) TestExtractProgramNameWithRelativePath(c *gocheck.C) {
 	got := ExtractProgramName("./tsuru")
-	c.Assert(got, Equals, "tsuru")
+	c.Assert(got, gocheck.Equals, "tsuru")
 }
 
-func (s *S) TestExtractProgramNameWithinThePATH(c *C) {
+func (s *S) TestExtractProgramNameWithinThePATH(c *gocheck.C) {
 	got := ExtractProgramName("tsuru")
-	c.Assert(got, Equals, "tsuru")
+	c.Assert(got, gocheck.Equals, "tsuru")
 }
 
-func (s *S) TestFinisherReturnsOsExiterIfNotDefined(c *C) {
+func (s *S) TestFinisherReturnsOsExiterIfNotDefined(c *gocheck.C) {
 	m := Manager{}
-	c.Assert(m.finisher(), FitsTypeOf, osExiter{})
+	c.Assert(m.finisher(), gocheck.FitsTypeOf, osExiter{})
 }
 
-func (s *S) TestFinisherReturnTheDefinedE(c *C) {
+func (s *S) TestFinisherReturnTheDefinedE(c *gocheck.C) {
 	var exiter recordingExiter
 	m := Manager{e: &exiter}
-	c.Assert(m.finisher(), FitsTypeOf, &exiter)
+	c.Assert(m.finisher(), gocheck.FitsTypeOf, &exiter)
 }
 
-func (s *S) TestLoginIsRegistered(c *C) {
+func (s *S) TestLoginIsRegistered(c *gocheck.C) {
 	manager := BuildBaseManager("tsuru", "1.0", "")
 	lgn, ok := manager.Commands["login"]
-	c.Assert(ok, Equals, true)
-	c.Assert(lgn, FitsTypeOf, &login{})
+	c.Assert(ok, gocheck.Equals, true)
+	c.Assert(lgn, gocheck.FitsTypeOf, &login{})
 }
 
-func (s *S) TestLogoutIsRegistered(c *C) {
+func (s *S) TestLogoutIsRegistered(c *gocheck.C) {
 	manager := BuildBaseManager("tsuru", "1.0", "")
 	lgt, ok := manager.Commands["logout"]
-	c.Assert(ok, Equals, true)
-	c.Assert(lgt, FitsTypeOf, &logout{})
+	c.Assert(ok, gocheck.Equals, true)
+	c.Assert(lgt, gocheck.FitsTypeOf, &logout{})
 }
 
-func (s *S) TestUserCreateIsRegistered(c *C) {
+func (s *S) TestUserCreateIsRegistered(c *gocheck.C) {
 	manager := BuildBaseManager("tsuru", "1.0", "")
 	user, ok := manager.Commands["user-create"]
-	c.Assert(ok, Equals, true)
-	c.Assert(user, FitsTypeOf, &userCreate{})
+	c.Assert(ok, gocheck.Equals, true)
+	c.Assert(user, gocheck.FitsTypeOf, &userCreate{})
 }
 
-func (s *S) TestTeamCreateIsRegistered(c *C) {
+func (s *S) TestTeamCreateIsRegistered(c *gocheck.C) {
 	manager := BuildBaseManager("tsuru", "1.0", "")
 	create, ok := manager.Commands["team-create"]
-	c.Assert(ok, Equals, true)
-	c.Assert(create, FitsTypeOf, &teamCreate{})
+	c.Assert(ok, gocheck.Equals, true)
+	c.Assert(create, gocheck.FitsTypeOf, &teamCreate{})
 }
 
-func (s *S) TestTeamListIsRegistered(c *C) {
+func (s *S) TestTeamListIsRegistered(c *gocheck.C) {
 	manager := BuildBaseManager("tsuru", "1.0", "")
 	list, ok := manager.Commands["team-list"]
-	c.Assert(ok, Equals, true)
-	c.Assert(list, FitsTypeOf, &teamList{})
+	c.Assert(ok, gocheck.Equals, true)
+	c.Assert(list, gocheck.FitsTypeOf, &teamList{})
 }
 
-func (s *S) TestTeamAddUserIsRegistered(c *C) {
+func (s *S) TestTeamAddUserIsRegistered(c *gocheck.C) {
 	manager := BuildBaseManager("tsuru", "1.0", "")
 	adduser, ok := manager.Commands["team-user-add"]
-	c.Assert(ok, Equals, true)
-	c.Assert(adduser, FitsTypeOf, &teamUserAdd{})
+	c.Assert(ok, gocheck.Equals, true)
+	c.Assert(adduser, gocheck.FitsTypeOf, &teamUserAdd{})
 }
 
-func (s *S) TestTeamRemoveUserIsRegistered(c *C) {
+func (s *S) TestTeamRemoveUserIsRegistered(c *gocheck.C) {
 	manager := BuildBaseManager("tsuru", "1.0", "")
 	removeuser, ok := manager.Commands["team-user-remove"]
-	c.Assert(ok, Equals, true)
-	c.Assert(removeuser, FitsTypeOf, &teamUserRemove{})
+	c.Assert(ok, gocheck.Equals, true)
+	c.Assert(removeuser, gocheck.FitsTypeOf, &teamUserRemove{})
 }
 
-func (s *S) TestTargetIsRegistered(c *C) {
+func (s *S) TestTargetIsRegistered(c *gocheck.C) {
 	manager := BuildBaseManager("tsuru", "1.0", "")
 	tgt, ok := manager.Commands["target"]
-	c.Assert(ok, Equals, true)
-	c.Assert(tgt, FitsTypeOf, &target{})
+	c.Assert(ok, gocheck.Equals, true)
+	c.Assert(tgt, gocheck.FitsTypeOf, &target{})
 }
 
-func (s *S) TestUserRemoveIsRegistered(c *C) {
+func (s *S) TestUserRemoveIsRegistered(c *gocheck.C) {
 	manager := BuildBaseManager("tsuru", "1.0", "")
 	rmUser, ok := manager.Commands["user-remove"]
-	c.Assert(ok, Equals, true)
-	c.Assert(rmUser, FitsTypeOf, &userRemove{})
+	c.Assert(ok, gocheck.Equals, true)
+	c.Assert(rmUser, gocheck.FitsTypeOf, &userRemove{})
 }
 
-func (s *S) TestTeamRemoveIsRegistered(c *C) {
+func (s *S) TestTeamRemoveIsRegistered(c *gocheck.C) {
 	manager := BuildBaseManager("tsuru", "1.0", "")
 	rmTeam, ok := manager.Commands["team-remove"]
-	c.Assert(ok, Equals, true)
-	c.Assert(rmTeam, FitsTypeOf, &teamRemove{})
+	c.Assert(ok, gocheck.Equals, true)
+	c.Assert(rmTeam, gocheck.FitsTypeOf, &teamRemove{})
 }
 
-func (s *S) TestChangePasswordIsRegistered(c *C) {
+func (s *S) TestChangePasswordIsRegistered(c *gocheck.C) {
 	manager := BuildBaseManager("tsuru", "1.0", "")
 	chpass, ok := manager.Commands["change-password"]
-	c.Assert(ok, Equals, true)
-	c.Assert(chpass, FitsTypeOf, &changePassword{})
+	c.Assert(ok, gocheck.Equals, true)
+	c.Assert(chpass, gocheck.FitsTypeOf, &changePassword{})
 }
 
-func (s *S) TestVersionIsRegisteredByNewManager(c *C) {
+func (s *S) TestVersionIsRegisteredByNewManager(c *gocheck.C) {
 	var stdout, stderr bytes.Buffer
 	manager := NewManager("tsuru", "1.0", "", &stdout, &stderr, os.Stdin)
 	ver, ok := manager.Commands["version"]
-	c.Assert(ok, Equals, true)
-	c.Assert(ver, FitsTypeOf, &version{})
+	c.Assert(ok, gocheck.Equals, true)
+	c.Assert(ver, gocheck.FitsTypeOf, &version{})
 }
 
-func (s *S) TestFileSystem(c *C) {
+func (s *S) TestFileSystem(c *gocheck.C) {
 	fsystem = &testing.RecordingFs{}
-	c.Assert(filesystem(), DeepEquals, fsystem)
+	c.Assert(filesystem(), gocheck.DeepEquals, fsystem)
 	fsystem = nil
-	c.Assert(filesystem(), DeepEquals, fs.OsFs{})
+	c.Assert(filesystem(), gocheck.DeepEquals, fs.OsFs{})
 }
 
-func (s *S) TestValidateVersion(c *C) {
+func (s *S) TestValidateVersion(c *gocheck.C) {
 	var cases = []struct {
 		current, support string
 		expected         bool
@@ -357,6 +357,6 @@ func (s *S) TestValidateVersion(c *C) {
 		},
 	}
 	for _, cs := range cases {
-		c.Assert(validateVersion(cs.support, cs.current), Equals, cs.expected)
+		c.Assert(validateVersion(cs.support, cs.current), gocheck.Equals, cs.expected)
 	}
 }
