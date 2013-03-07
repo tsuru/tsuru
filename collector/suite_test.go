@@ -9,36 +9,36 @@ import (
 	"github.com/globocom/tsuru/app"
 	"github.com/globocom/tsuru/db"
 	ttesting "github.com/globocom/tsuru/testing"
-	. "launchpad.net/gocheck"
+	"launchpad.net/gocheck"
 	"testing"
 )
 
-func Test(t *testing.T) { TestingT(t) }
+func Test(t *testing.T) { gocheck.TestingT(t) }
 
 type S struct {
 	conn        *db.Storage
 	provisioner *ttesting.FakeProvisioner
 }
 
-var _ = Suite(&S{})
+var _ = gocheck.Suite(&S{})
 
-func (s *S) SetUpSuite(c *C) {
+func (s *S) SetUpSuite(c *gocheck.C) {
 	var err error
 	config.Set("database:url", "127.0.0.1:27017")
 	config.Set("database:name", "tsuru_collector_test")
 	s.conn, err = db.Conn()
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	s.provisioner = ttesting.NewFakeProvisioner()
 	app.Provisioner = s.provisioner
 	config.Set("queue-server", "127.0.0.1:0")
 }
 
-func (s *S) TearDownSuite(c *C) {
+func (s *S) TearDownSuite(c *gocheck.C) {
 	s.conn.Apps().Database.DropDatabase()
 }
 
-func (s *S) TearDownTest(c *C) {
+func (s *S) TearDownTest(c *gocheck.C) {
 	_, err := s.conn.Apps().RemoveAll(nil)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	s.provisioner.Reset()
 }

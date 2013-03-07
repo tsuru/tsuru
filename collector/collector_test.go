@@ -9,7 +9,7 @@ import (
 	"github.com/globocom/tsuru/db"
 	"github.com/globocom/tsuru/provision"
 	"labix.org/v2/mgo/bson"
-	. "launchpad.net/gocheck"
+	"launchpad.net/gocheck"
 )
 
 func getOutput() []provision.Unit {
@@ -26,30 +26,30 @@ func getOutput() []provision.Unit {
 	}
 }
 
-func getApp(conn *db.Storage, c *C) *app.App {
+func getApp(conn *db.Storage, c *gocheck.C) *app.App {
 	a := &app.App{Name: "umaappqq"}
 	err := conn.Apps().Insert(&a)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	return a
 }
 
-func (s *S) TestUpdate(c *C) {
+func (s *S) TestUpdate(c *gocheck.C) {
 	a := getApp(s.conn, c)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	out := getOutput()
 	update(out)
 	err := a.Get()
-	c.Assert(err, IsNil)
-	c.Assert(a.Units[0].Name, Equals, "i-00000zz8")
-	c.Assert(a.Units[0].Ip, Equals, "192.168.0.11")
-	c.Assert(a.Units[0].Machine, Equals, 1)
-	c.Assert(a.Units[0].InstanceId, Equals, "i-0800")
-	c.Assert(a.Units[0].State, Equals, provision.StatusStarted.String())
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(a.Units[0].Name, gocheck.Equals, "i-00000zz8")
+	c.Assert(a.Units[0].Ip, gocheck.Equals, "192.168.0.11")
+	c.Assert(a.Units[0].Machine, gocheck.Equals, 1)
+	c.Assert(a.Units[0].InstanceId, gocheck.Equals, "i-0800")
+	c.Assert(a.Units[0].State, gocheck.Equals, provision.StatusStarted.String())
 	addr, _ := s.provisioner.Addr(a)
-	c.Assert(a.Ip, Equals, addr)
+	c.Assert(a.Ip, gocheck.Equals, addr)
 }
 
-func (s *S) TestUpdateWithMultipleUnits(c *C) {
+func (s *S) TestUpdateWithMultipleUnits(c *gocheck.C) {
 	a := getApp(s.conn, c)
 	out := getOutput()
 	u := provision.Unit{
@@ -64,26 +64,26 @@ func (s *S) TestUpdateWithMultipleUnits(c *C) {
 	out = append(out, u)
 	update(out)
 	err := a.Get()
-	c.Assert(err, IsNil)
-	c.Assert(len(a.Units), Equals, 2)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(len(a.Units), gocheck.Equals, 2)
 	var unit app.Unit
 	for _, unit = range a.Units {
 		if unit.Machine == 2 {
 			break
 		}
 	}
-	c.Assert(unit.Name, Equals, "i-00000zz9")
-	c.Assert(unit.Ip, Equals, "192.168.0.12")
-	c.Assert(unit.InstanceId, Equals, "i-0900")
-	c.Assert(unit.State, Equals, provision.StatusStarted.String())
+	c.Assert(unit.Name, gocheck.Equals, "i-00000zz9")
+	c.Assert(unit.Ip, gocheck.Equals, "192.168.0.12")
+	c.Assert(unit.InstanceId, gocheck.Equals, "i-0900")
+	c.Assert(unit.State, gocheck.Equals, provision.StatusStarted.String())
 	addr, _ := s.provisioner.Addr(a)
-	c.Assert(a.Ip, Equals, addr)
+	c.Assert(a.Ip, gocheck.Equals, addr)
 }
 
-func (s *S) TestUpdateWithDownMachine(c *C) {
+func (s *S) TestUpdateWithDownMachine(c *gocheck.C) {
 	a := app.App{Name: "barduscoapp"}
 	err := s.conn.Apps().Insert(&a)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	units := []provision.Unit{
 		{
 			Name:    "i-00000zz8",
@@ -96,26 +96,26 @@ func (s *S) TestUpdateWithDownMachine(c *C) {
 	}
 	update(units)
 	err = a.Get()
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 }
 
-func (s *S) TestUpdateTwice(c *C) {
+func (s *S) TestUpdateTwice(c *gocheck.C) {
 	a := getApp(s.conn, c)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	out := getOutput()
 	update(out)
 	err := a.Get()
-	c.Assert(err, IsNil)
-	c.Assert(a.Units[0].Ip, Equals, "192.168.0.11")
-	c.Assert(a.Units[0].Machine, Equals, 1)
-	c.Assert(a.Units[0].InstanceId, Equals, "i-0800")
-	c.Assert(a.Units[0].State, Equals, provision.StatusStarted.String())
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(a.Units[0].Ip, gocheck.Equals, "192.168.0.11")
+	c.Assert(a.Units[0].Machine, gocheck.Equals, 1)
+	c.Assert(a.Units[0].InstanceId, gocheck.Equals, "i-0800")
+	c.Assert(a.Units[0].State, gocheck.Equals, provision.StatusStarted.String())
 	update(out)
 	err = a.Get()
-	c.Assert(len(a.Units), Equals, 1)
+	c.Assert(len(a.Units), gocheck.Equals, 1)
 }
 
-func (s *S) TestUpdateWithMultipleApps(c *C) {
+func (s *S) TestUpdateWithMultipleApps(c *gocheck.C) {
 	appDicts := []map[string]string{
 		{
 			"name": "andrewzito3",
@@ -143,7 +143,7 @@ func (s *S) TestUpdateWithMultipleApps(c *C) {
 	for i, appDict := range appDicts {
 		a := app.App{Name: appDict["name"]}
 		err := s.conn.Apps().Insert(&a)
-		c.Assert(err, IsNil)
+		c.Assert(err, gocheck.IsNil)
 		apps[i] = a
 		units[i] = provision.Unit{
 			Name:    "i-00000",
@@ -158,7 +158,7 @@ func (s *S) TestUpdateWithMultipleApps(c *C) {
 	for _, appDict := range appDicts {
 		a := app.App{Name: appDict["name"]}
 		err := a.Get()
-		c.Assert(err, IsNil)
-		c.Assert(a.Units[0].Ip, Equals, appDict["ip"])
+		c.Assert(err, gocheck.IsNil)
+		c.Assert(a.Units[0].Ip, gocheck.Equals, appDict["ip"])
 	}
 }

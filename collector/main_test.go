@@ -1,4 +1,4 @@
-// Copyright 2012 tsuru authors. All rights reserved.
+// Copyright 2013 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -9,7 +9,7 @@ import (
 	"github.com/globocom/tsuru/db"
 	"github.com/globocom/tsuru/provision"
 	"labix.org/v2/mgo/bson"
-	. "launchpad.net/gocheck"
+	"launchpad.net/gocheck"
 	"time"
 )
 
@@ -41,7 +41,7 @@ func destroyApps(conn *db.Storage) {
 	conn.Apps().Remove(bson.M{"name": bson.M{"$in": allApps}})
 }
 
-func (s *S) TestJujuCollect(c *C) {
+func (s *S) TestJujuCollect(c *gocheck.C) {
 	app1 := app.App{Name: "as_i_rise", Framework: "python"}
 	app2 := app.App{Name: "the_infanta", Framework: "python"}
 	s.provisioner.Provision(&app1)
@@ -57,7 +57,7 @@ func (s *S) TestJujuCollect(c *C) {
 	time.Sleep(1e9)
 	var apps []app.App
 	err := s.conn.Apps().Find(bson.M{"name": bson.M{"$in": []string{"as_i_rise", "the_infanta"}}}).Sort("name").All(&apps)
-	c.Assert(err, IsNil)
-	c.Assert(apps[0].Units[1].Ip, Equals, "10.10.10.1")
-	c.Assert(apps[1].Units[1].Ip, Equals, "10.10.10.2")
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(apps[0].Units[1].Ip, gocheck.Equals, "10.10.10.1")
+	c.Assert(apps[1].Units[1].Ip, gocheck.Equals, "10.10.10.2")
 }
