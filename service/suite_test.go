@@ -8,11 +8,11 @@ import (
 	"github.com/globocom/config"
 	"github.com/globocom/tsuru/auth"
 	"github.com/globocom/tsuru/db"
-	. "launchpad.net/gocheck"
+	"launchpad.net/gocheck"
 	"testing"
 )
 
-func Test(t *testing.T) { TestingT(t) }
+func Test(t *testing.T) { gocheck.TestingT(t) }
 
 type S struct {
 	conn            *db.Storage
@@ -23,12 +23,12 @@ type S struct {
 	tmpdir          string
 }
 
-var _ = Suite(&S{})
+var _ = gocheck.Suite(&S{})
 
 type hasAccessToChecker struct{}
 
-func (c *hasAccessToChecker) Info() *CheckerInfo {
-	return &CheckerInfo{Name: "HasAccessTo", Params: []string{"team", "service"}}
+func (c *hasAccessToChecker) Info() *gocheck.CheckerInfo {
+	return &gocheck.CheckerInfo{Name: "HasAccessTo", Params: []string{"team", "service"}}
 }
 
 func (c *hasAccessToChecker) Check(params []interface{}, names []string) (bool, string) {
@@ -46,34 +46,34 @@ func (c *hasAccessToChecker) Check(params []interface{}, names []string) (bool, 
 	return service.HasTeam(&team), ""
 }
 
-var HasAccessTo Checker = &hasAccessToChecker{}
+var HasAccessTo gocheck.Checker = &hasAccessToChecker{}
 
-func (s *S) SetUpSuite(c *C) {
+func (s *S) SetUpSuite(c *gocheck.C) {
 	var err error
 	config.Set("database:url", "127.0.0.1:27017")
 	config.Set("database:name", "tsuru_service_test")
 	config.Set("auth:salt", "tsuru-salt")
 	config.Set("auth:token-key", "TSURU-KEY")
 	s.conn, err = db.Conn()
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	s.user = &auth.User{Email: "cidade@raul.com", Password: "123"}
 	err = s.user.Create()
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	s.team = &auth.Team{Name: "Raul", Users: []string{s.user.Email}}
 	err = s.conn.Teams().Insert(s.team)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	if err != nil {
 		c.Fail()
 	}
 }
 
-func (s *S) TearDownSuite(c *C) {
+func (s *S) TearDownSuite(c *gocheck.C) {
 	s.conn.Apps().Database.DropDatabase()
 }
 
-func (s *S) TearDownTest(c *C) {
+func (s *S) TearDownTest(c *gocheck.C) {
 	_, err := s.conn.Services().RemoveAll(nil)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	_, err = s.conn.ServiceInstances().RemoveAll(nil)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 }
