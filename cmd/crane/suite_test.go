@@ -1,4 +1,4 @@
-// Copyright 2012 tsuru authors. All rights reserved.
+// Copyright 2013 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -9,7 +9,7 @@ import (
 	"errors"
 	"github.com/globocom/tsuru/cmd"
 	"io/ioutil"
-	. "launchpad.net/gocheck"
+	"launchpad.net/gocheck"
 	"net/http"
 	"os"
 	"testing"
@@ -27,10 +27,10 @@ type conditionalTransport struct {
 	condFunc func(*http.Request) bool
 }
 
-var _ = Suite(&S{})
+var _ = gocheck.Suite(&S{})
 var manager *cmd.Manager
 
-func Test(t *testing.T) { TestingT(t) }
+func Test(t *testing.T) { gocheck.TestingT(t) }
 
 func (t *transport) RoundTrip(req *http.Request) (resp *http.Response, err error) {
 	resp = &http.Response{
@@ -47,7 +47,7 @@ func (t *conditionalTransport) RoundTrip(req *http.Request) (*http.Response, err
 	return t.transport.RoundTrip(req)
 }
 
-func (s *S) SetUpTest(c *C) {
+func (s *S) SetUpTest(c *gocheck.C) {
 	var stdout, stderr bytes.Buffer
 	manager = cmd.NewManager("glb", version, "Supported-Crane", &stdout, &stderr, os.Stdin)
 }
