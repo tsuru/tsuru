@@ -5,7 +5,6 @@
 package main
 
 import (
-	"fmt"
 	"github.com/globocom/config"
 	"github.com/globocom/tsuru/app"
 	"github.com/globocom/tsuru/auth"
@@ -54,31 +53,6 @@ func (c *hasAccessToChecker) Check(params []interface{}, names []string) (bool, 
 }
 
 var HasAccessTo gocheck.Checker = &hasAccessToChecker{}
-
-type greaterChecker struct{}
-
-func (c *greaterChecker) Info() *gocheck.CheckerInfo {
-	return &gocheck.CheckerInfo{Name: "Greater", Params: []string{"expected", "obtained"}}
-}
-
-func (c *greaterChecker) Check(params []interface{}, names []string) (bool, string) {
-	if len(params) != 2 {
-		return false, "you should pass two values to compare"
-	}
-	n1, ok := params[0].(int)
-	if !ok {
-		return false, "first parameter should be int"
-	}
-	n2, ok := params[1].(int)
-	if !ok {
-		return false, "second parameter should be int"
-	}
-	if n1 > n2 {
-		return true, ""
-	}
-	err := fmt.Sprintf("%s is not greater than %s", params[0], params[1])
-	return false, err
-}
 
 func (s *S) createUserAndTeam(c *gocheck.C) {
 	s.user = &auth.User{Email: "whydidifall@thewho.com", Password: "123"}
