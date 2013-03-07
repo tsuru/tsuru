@@ -7,36 +7,36 @@ package main
 import (
 	"github.com/globocom/tsuru/cmd"
 	"github.com/globocom/tsuru/cmd/tsuru-base"
-	. "launchpad.net/gocheck"
+	"launchpad.net/gocheck"
 )
 
-func (s *S) TestAppListIsRegistered(c *C) {
+func (s *S) TestAppListIsRegistered(c *gocheck.C) {
 	manager := buildManager("tsuru")
 	list, ok := manager.Commands["app-list"]
-	c.Assert(ok, Equals, true)
-	c.Assert(list, FitsTypeOf, tsuru.AppList{})
+	c.Assert(ok, gocheck.Equals, true)
+	c.Assert(list, gocheck.FitsTypeOf, tsuru.AppList{})
 }
 
-func (s *S) TestSetCNameIsRegistered(c *C) {
+func (s *S) TestSetCNameIsRegistered(c *gocheck.C) {
 	manager := buildManager("tsuru-admin")
 	cname, ok := manager.Commands["set-cname"]
-	c.Assert(ok, Equals, true)
-	c.Assert(cname, FitsTypeOf, &tsuru.SetCName{})
+	c.Assert(ok, gocheck.Equals, true)
+	c.Assert(cname, gocheck.FitsTypeOf, &tsuru.SetCName{})
 }
 
-func (s *S) TestUnsetCNameIsRegistered(c *C) {
+func (s *S) TestUnsetCNameIsRegistered(c *gocheck.C) {
 	manager := buildManager("tsuru-admin")
 	cname, ok := manager.Commands["unset-cname"]
-	c.Assert(ok, Equals, true)
-	c.Assert(cname, FitsTypeOf, &tsuru.UnsetCName{})
+	c.Assert(ok, gocheck.Equals, true)
+	c.Assert(cname, gocheck.FitsTypeOf, &tsuru.UnsetCName{})
 }
 
-func (s *S) TestCommandsFromBaseManagerAreRegistered(c *C) {
+func (s *S) TestCommandsFromBaseManagerAreRegistered(c *gocheck.C) {
 	baseManager := cmd.BuildBaseManager("tsuru", version, header)
 	manager := buildManager("tsuru")
 	for name, instance := range baseManager.Commands {
 		command, ok := manager.Commands[name]
-		c.Assert(ok, Equals, true)
-		c.Assert(command, FitsTypeOf, instance)
+		c.Assert(ok, gocheck.Equals, true)
+		c.Assert(command, gocheck.FitsTypeOf, instance)
 	}
 }
