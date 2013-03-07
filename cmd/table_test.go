@@ -89,3 +89,11 @@ func (s *S) TestRenderEmpty(c *gocheck.C) {
 	table := NewTable()
 	c.Assert(table.String(), gocheck.Equals, "")
 }
+
+func (s *S) TestBytes(c *gocheck.C) {
+	table := NewTable()
+	table.AddRow(Row{"One", "1"})
+	table.AddRow(Row{"Two", "2"})
+	table.AddRow(Row{"Three", "3"})
+	c.Assert(table.Bytes(), gocheck.DeepEquals, []byte(table.String()))
+}
