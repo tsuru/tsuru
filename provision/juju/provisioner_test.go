@@ -61,8 +61,11 @@ func (s *S) TestProvision(c *gocheck.C) {
 	err = p.Provision(app)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(commandmocker.Ran(tmpdir), gocheck.Equals, true)
-	expected := "deploy --repository /etc/juju/charms local:python trace"
-	c.Assert(commandmocker.Output(tmpdir), gocheck.Equals, expected)
+	expectedParams := []string{
+		"deploy", "--repository", "/etc/juju/charms", "local:python", "trace",
+		"set", "trace", "app-repo=" + repository.GetReadOnlyUrl("trace"),
+	}
+	c.Assert(commandmocker.Parameters(tmpdir), gocheck.DeepEquals, expectedParams)
 }
 
 func (s *S) TestProvisionUndefinedCharmsPath(c *gocheck.C) {
@@ -165,7 +168,6 @@ func (s *S) TestAddUnits(c *gocheck.C) {
 	c.Assert(names, gocheck.DeepEquals, expected)
 	c.Assert(commandmocker.Ran(tmpdir), gocheck.Equals, true)
 	expectedParams := []string{
-		"set", "resist", "app-repo=" + repository.GetReadOnlyUrl("resist"),
 		"add-unit", "resist", "--num-units", "4",
 	}
 	c.Assert(commandmocker.Parameters(tmpdir), gocheck.DeepEquals, expectedParams)
