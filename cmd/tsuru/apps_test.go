@@ -9,22 +9,22 @@ import (
 	"github.com/globocom/tsuru/cmd"
 	"github.com/globocom/tsuru/cmd/tsuru-base"
 	"io/ioutil"
-	. "launchpad.net/gocheck"
+	"launchpad.net/gocheck"
 	"net/http"
 	"strings"
 )
 
-func (s *S) TestAppCreateInfo(c *C) {
+func (s *S) TestAppCreateInfo(c *gocheck.C) {
 	expected := &cmd.Info{
 		Name:    "app-create",
 		Usage:   "app-create <appname> <framework> [--units 1]",
 		Desc:    "create a new app.",
 		MinArgs: 2,
 	}
-	c.Assert((&AppCreate{}).Info(), DeepEquals, expected)
+	c.Assert((&AppCreate{}).Info(), gocheck.DeepEquals, expected)
 }
 
-func (s *S) TestAppCreate(c *C) {
+func (s *S) TestAppCreate(c *gocheck.C) {
 	var stdout, stderr bytes.Buffer
 	result := `{"status":"success", "repository_url":"git@tsuru.plataformas.glb.com:ble.git"}`
 	expected := `App "ble" is being created with 1 unit!
@@ -40,19 +40,19 @@ Your repository for "ble" project is "git@tsuru.plataformas.glb.com:ble.git"` + 
 		func(req *http.Request) bool {
 			defer req.Body.Close()
 			body, err := ioutil.ReadAll(req.Body)
-			c.Assert(err, IsNil)
-			c.Assert(string(body), Equals, `{"name":"ble","framework":"django","units":1}`)
+			c.Assert(err, gocheck.IsNil)
+			c.Assert(string(body), gocheck.Equals, `{"name":"ble","framework":"django","units":1}`)
 			return req.Method == "POST" && req.URL.Path == "/apps"
 		},
 	}
 	client := cmd.NewClient(&http.Client{Transport: &transport}, nil, manager)
 	command := AppCreate{}
 	err := command.Run(&context, client)
-	c.Assert(err, IsNil)
-	c.Assert(stdout.String(), Equals, expected)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(stdout.String(), gocheck.Equals, expected)
 }
 
-func (s *S) TestAppCreateMoreThanOneUnit(c *C) {
+func (s *S) TestAppCreateMoreThanOneUnit(c *gocheck.C) {
 	*NumUnits = 4
 	var stdout, stderr bytes.Buffer
 	result := `{"status":"success", "repository_url":"git@tsuru.plataformas.glb.com:ble.git"}`
@@ -69,27 +69,27 @@ Your repository for "ble" project is "git@tsuru.plataformas.glb.com:ble.git"` + 
 		func(req *http.Request) bool {
 			defer req.Body.Close()
 			body, err := ioutil.ReadAll(req.Body)
-			c.Assert(err, IsNil)
-			c.Assert(string(body), Equals, `{"name":"ble","framework":"django","units":4}`)
+			c.Assert(err, gocheck.IsNil)
+			c.Assert(string(body), gocheck.Equals, `{"name":"ble","framework":"django","units":4}`)
 			return req.Method == "POST" && req.URL.Path == "/apps"
 		},
 	}
 	client := cmd.NewClient(&http.Client{Transport: &transport}, nil, manager)
 	command := AppCreate{}
 	err := command.Run(&context, client)
-	c.Assert(err, IsNil)
-	c.Assert(stdout.String(), Equals, expected)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(stdout.String(), gocheck.Equals, expected)
 }
 
-func (s *S) TestAppCreateZeroUnits(c *C) {
+func (s *S) TestAppCreateZeroUnits(c *gocheck.C) {
 	*NumUnits = 0
 	command := AppCreate{}
 	err := command.Run(nil, nil)
-	c.Assert(err, NotNil)
-	c.Assert(err.Error(), Equals, "Cannot create app with zero units.")
+	c.Assert(err, gocheck.NotNil)
+	c.Assert(err.Error(), gocheck.Equals, "Cannot create app with zero units.")
 }
 
-func (s *S) TestAppCreateWithInvalidFramework(c *C) {
+func (s *S) TestAppCreateWithInvalidFramework(c *gocheck.C) {
 	var stdout, stderr bytes.Buffer
 	context := cmd.Context{
 		Args:   []string{"invalidapp", "lombra"},
@@ -99,11 +99,11 @@ func (s *S) TestAppCreateWithInvalidFramework(c *C) {
 	client := cmd.NewClient(&http.Client{Transport: &transport{msg: "", status: http.StatusInternalServerError}}, nil, manager)
 	command := AppCreate{}
 	err := command.Run(&context, client)
-	c.Assert(err, NotNil)
-	c.Assert(stdout.String(), Equals, "")
+	c.Assert(err, gocheck.NotNil)
+	c.Assert(stdout.String(), gocheck.Equals, "")
 }
 
-func (s *S) TestAppRemove(c *C) {
+func (s *S) TestAppRemove(c *gocheck.C) {
 	*tsuru.AppName = "ble"
 	var stdout, stderr bytes.Buffer
 	expected := `Are you sure you want to remove app "ble"? (y/n) App "ble" successfully removed!` + "\n"
@@ -116,11 +116,11 @@ func (s *S) TestAppRemove(c *C) {
 	client := cmd.NewClient(&http.Client{Transport: &transport{msg: "", status: http.StatusOK}}, nil, manager)
 	command := AppRemove{}
 	err := command.Run(&context, client)
-	c.Assert(err, IsNil)
-	c.Assert(stdout.String(), Equals, expected)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(stdout.String(), gocheck.Equals, expected)
 }
 
-func (s *S) TestAppRemoveWithoutAsking(c *C) {
+func (s *S) TestAppRemoveWithoutAsking(c *gocheck.C) {
 	*tsuru.AppName = "ble"
 	*AssumeYes = true
 	var stdout, stderr bytes.Buffer
@@ -134,8 +134,8 @@ func (s *S) TestAppRemoveWithoutAsking(c *C) {
 	client := cmd.NewClient(&http.Client{Transport: &transport{msg: "", status: http.StatusOK}}, nil, manager)
 	command := AppRemove{}
 	err := command.Run(&context, client)
-	c.Assert(err, IsNil)
-	c.Assert(stdout.String(), Equals, expected)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(stdout.String(), gocheck.Equals, expected)
 }
 
 type FakeGuesser struct {
@@ -157,7 +157,7 @@ func (f *FakeGuesser) GuessName(path string) (string, error) {
 	return f.name, nil
 }
 
-func (s *S) TestAppRemoveWithoutArgs(c *C) {
+func (s *S) TestAppRemoveWithoutArgs(c *gocheck.C) {
 	var stdout, stderr bytes.Buffer
 	context := cmd.Context{
 		Args:   nil,
@@ -180,11 +180,11 @@ func (s *S) TestAppRemoveWithoutArgs(c *C) {
 	guessCommand := tsuru.GuessingCommand{G: &fake}
 	command := AppRemove{guessCommand}
 	err := command.Run(&context, client)
-	c.Assert(err, IsNil)
-	c.Assert(stdout.String(), Equals, expected)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(stdout.String(), gocheck.Equals, expected)
 }
 
-func (s *S) TestAppRemoveWithoutConfirmation(c *C) {
+func (s *S) TestAppRemoveWithoutConfirmation(c *gocheck.C) {
 	*tsuru.AppName = "ble"
 	var stdout, stderr bytes.Buffer
 	expected := `Are you sure you want to remove app "ble"? (y/n) Abort.` + "\n"
@@ -195,11 +195,11 @@ func (s *S) TestAppRemoveWithoutConfirmation(c *C) {
 	}
 	command := AppRemove{}
 	err := command.Run(&context, nil)
-	c.Assert(err, IsNil)
-	c.Assert(stdout.String(), Equals, expected)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(stdout.String(), gocheck.Equals, expected)
 }
 
-func (s *S) TestAppRemoveInfo(c *C) {
+func (s *S) TestAppRemoveInfo(c *gocheck.C) {
 	expected := &cmd.Info{
 		Name:  "app-remove",
 		Usage: "app-remove [--app appname] [--assume-yes]",
@@ -208,10 +208,10 @@ func (s *S) TestAppRemoveInfo(c *C) {
 If you don't provide the app name, tsuru will try to guess it.`,
 		MinArgs: 0,
 	}
-	c.Assert((&AppRemove{}).Info(), DeepEquals, expected)
+	c.Assert((&AppRemove{}).Info(), gocheck.DeepEquals, expected)
 }
 
-func (s *S) TestUnitAdd(c *C) {
+func (s *S) TestUnitAdd(c *gocheck.C) {
 	*tsuru.AppName = "radio"
 	var stdout, stderr bytes.Buffer
 	var called bool
@@ -228,21 +228,21 @@ func (s *S) TestUnitAdd(c *C) {
 		func(req *http.Request) bool {
 			called = true
 			b, err := ioutil.ReadAll(req.Body)
-			c.Assert(err, IsNil)
-			c.Assert(string(b), Equals, "3")
+			c.Assert(err, gocheck.IsNil)
+			c.Assert(string(b), gocheck.Equals, "3")
 			return req.URL.Path == "/apps/radio/units" && req.Method == "PUT"
 		},
 	}
 	client := cmd.NewClient(&http.Client{Transport: trans}, nil, manager)
 	command := UnitAdd{}
 	err := command.Run(&context, client)
-	c.Assert(err, IsNil)
-	c.Assert(called, Equals, true)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(called, gocheck.Equals, true)
 	expected := "Units successfully added!\n"
-	c.Assert(stdout.String(), Equals, expected)
+	c.Assert(stdout.String(), gocheck.Equals, expected)
 }
 
-func (s *S) TestUnitAddFailure(c *C) {
+func (s *S) TestUnitAddFailure(c *gocheck.C) {
 	*tsuru.AppName = "radio"
 	var stdout, stderr bytes.Buffer
 	context := cmd.Context{
@@ -253,25 +253,25 @@ func (s *S) TestUnitAddFailure(c *C) {
 	client := cmd.NewClient(&http.Client{Transport: &transport{msg: "Failed to add.", status: 500}}, nil, manager)
 	command := UnitAdd{}
 	err := command.Run(&context, client)
-	c.Assert(err, NotNil)
-	c.Assert(err.Error(), Equals, "Failed to add.")
+	c.Assert(err, gocheck.NotNil)
+	c.Assert(err.Error(), gocheck.Equals, "Failed to add.")
 }
 
-func (s *S) TestUnitAddInfo(c *C) {
+func (s *S) TestUnitAddInfo(c *gocheck.C) {
 	expected := &cmd.Info{
 		Name:    "unit-add",
 		Usage:   "unit-add <# of units> [--app appname]",
 		Desc:    "add new units to an app.",
 		MinArgs: 1,
 	}
-	c.Assert((&UnitAdd{}).Info(), DeepEquals, expected)
+	c.Assert((&UnitAdd{}).Info(), gocheck.DeepEquals, expected)
 }
 
-func (s *S) TestUnitAddIsACommand(c *C) {
+func (s *S) TestUnitAddIsACommand(c *gocheck.C) {
 	var _ cmd.Command = &UnitAdd{}
 }
 
-func (s *S) TestUnitRemove(c *C) {
+func (s *S) TestUnitRemove(c *gocheck.C) {
 	*tsuru.AppName = "vapor"
 	var stdout, stderr bytes.Buffer
 	var called bool
@@ -288,21 +288,21 @@ func (s *S) TestUnitRemove(c *C) {
 		func(req *http.Request) bool {
 			called = true
 			b, err := ioutil.ReadAll(req.Body)
-			c.Assert(err, IsNil)
-			c.Assert(string(b), Equals, "2")
+			c.Assert(err, gocheck.IsNil)
+			c.Assert(string(b), gocheck.Equals, "2")
 			return req.URL.Path == "/apps/vapor/units" && req.Method == "DELETE"
 		},
 	}
 	client := cmd.NewClient(&http.Client{Transport: trans}, nil, manager)
 	command := UnitRemove{}
 	err := command.Run(&context, client)
-	c.Assert(err, IsNil)
-	c.Assert(called, Equals, true)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(called, gocheck.Equals, true)
 	expected := "Units successfully removed!\n"
-	c.Assert(stdout.String(), Equals, expected)
+	c.Assert(stdout.String(), gocheck.Equals, expected)
 }
 
-func (s *S) TestUnitRemoveFailure(c *C) {
+func (s *S) TestUnitRemoveFailure(c *gocheck.C) {
 	*tsuru.AppName = "opticon"
 	var stdout, stderr bytes.Buffer
 	context := cmd.Context{
@@ -315,20 +315,20 @@ func (s *S) TestUnitRemoveFailure(c *C) {
 	}, nil, manager)
 	command := UnitRemove{}
 	err := command.Run(&context, client)
-	c.Assert(err, NotNil)
-	c.Assert(err.Error(), Equals, "Failed to remove.")
+	c.Assert(err, gocheck.NotNil)
+	c.Assert(err.Error(), gocheck.Equals, "Failed to remove.")
 }
 
-func (s *S) TestUnitRemoveInfo(c *C) {
+func (s *S) TestUnitRemoveInfo(c *gocheck.C) {
 	expected := cmd.Info{
 		Name:    "unit-remove",
 		Usage:   "unit-remove <# of units> [--app appname]",
 		Desc:    "remove units from an app.",
 		MinArgs: 1,
 	}
-	c.Assert((&UnitRemove{}).Info(), DeepEquals, &expected)
+	c.Assert((&UnitRemove{}).Info(), gocheck.DeepEquals, &expected)
 }
 
-func (s *S) TestUnitRemoveIsACommand(c *C) {
+func (s *S) TestUnitRemoveIsACommand(c *gocheck.C) {
 	var _ cmd.Command = &UnitRemove{}
 }

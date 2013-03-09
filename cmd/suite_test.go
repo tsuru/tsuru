@@ -1,4 +1,4 @@
-// Copyright 2012 tsuru authors. All rights reserved.
+// Copyright 2013 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -8,13 +8,13 @@ import (
 	"bytes"
 	"errors"
 	"io/ioutil"
-	. "launchpad.net/gocheck"
+	"launchpad.net/gocheck"
 	"net/http"
 	"os"
 	"testing"
 )
 
-func Test(t *testing.T) { TestingT(t) }
+func Test(t *testing.T) { gocheck.TestingT(t) }
 
 type S struct {
 	stdin *os.File
@@ -31,7 +31,7 @@ type conditionalTransport struct {
 	condFunc func(*http.Request) bool
 }
 
-var _ = Suite(&S{})
+var _ = gocheck.Suite(&S{})
 var manager *Manager
 
 func (t *transport) RoundTrip(req *http.Request) (resp *http.Response, err error) {
@@ -50,7 +50,7 @@ func (t *conditionalTransport) RoundTrip(req *http.Request) (*http.Response, err
 	return t.transport.RoundTrip(req)
 }
 
-func (s *S) SetUpTest(c *C) {
+func (s *S) SetUpTest(c *gocheck.C) {
 	var stdout, stderr bytes.Buffer
 	manager = NewManager("glb", "1.0", "", &stdout, &stderr, os.Stdin)
 	var exiter recordingExiter

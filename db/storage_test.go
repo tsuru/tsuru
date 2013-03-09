@@ -7,7 +7,7 @@ package db
 import (
 	"github.com/globocom/config"
 	"labix.org/v2/mgo"
-	. "launchpad.net/gocheck"
+	"launchpad.net/gocheck"
 	"reflect"
 	"sync"
 	"testing"
@@ -16,8 +16,8 @@ import (
 
 type hasUniqueIndexChecker struct{}
 
-func (c *hasUniqueIndexChecker) Info() *CheckerInfo {
-	return &CheckerInfo{Name: "HasUniqueField", Params: []string{"collection", "key"}}
+func (c *hasUniqueIndexChecker) Info() *gocheck.CheckerInfo {
+	return &gocheck.CheckerInfo{Name: "HasUniqueField", Params: []string{"collection", "key"}}
 }
 
 func (c *hasUniqueIndexChecker) Check(params []interface{}, names []string) (bool, string) {
@@ -41,146 +41,146 @@ func (c *hasUniqueIndexChecker) Check(params []interface{}, names []string) (boo
 	return false, ""
 }
 
-var HasUniqueIndex Checker = &hasUniqueIndexChecker{}
+var HasUniqueIndex gocheck.Checker = &hasUniqueIndexChecker{}
 
-func Test(t *testing.T) { TestingT(t) }
+func Test(t *testing.T) { gocheck.TestingT(t) }
 
 type S struct{}
 
-var _ = Suite(&S{})
+var _ = gocheck.Suite(&S{})
 
-func (s *S) SetUpSuite(c *C) {
+func (s *S) SetUpSuite(c *gocheck.C) {
 	ticker.Stop()
 }
 
-func (s *S) TearDownSuite(c *C) {
+func (s *S) TearDownSuite(c *gocheck.C) {
 	storage, err := Open("127.0.0.1:27017", "tsuru_storage_test")
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	defer storage.session.Close()
 	storage.session.DB("tsuru_storage_test").DropDatabase()
 }
 
-func (s *S) TearDownTest(c *C) {
+func (s *S) TearDownTest(c *gocheck.C) {
 	conn = make(map[string]*session)
 }
 
-func (s *S) TestOpenConnectsToTheDatabase(c *C) {
+func (s *S) TestOpenConnectsToTheDatabase(c *gocheck.C) {
 	storage, err := Open("127.0.0.1:27017", "tsuru_storage_test")
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	defer storage.session.Close()
-	c.Assert(storage.session.Ping(), IsNil)
+	c.Assert(storage.session.Ping(), gocheck.IsNil)
 }
 
-func (s *S) TestOpenStoresConnectionInThePool(c *C) {
+func (s *S) TestOpenStoresConnectionInThePool(c *gocheck.C) {
 	storage, err := Open("127.0.0.1:27017", "tsuru_storage_test")
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	defer storage.session.Close()
-	c.Assert(storage.session, Equals, conn["127.0.0.1:27017"].s)
+	c.Assert(storage.session, gocheck.Equals, conn["127.0.0.1:27017"].s)
 }
 
-func (s *S) TestOpenReusesConnection(c *C) {
+func (s *S) TestOpenReusesConnection(c *gocheck.C) {
 	storage, err := Open("127.0.0.1:27017", "tsuru_storage_test")
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	defer storage.session.Close()
 	storage2, err := Open("127.0.0.1:27017", "tsuru_storage_test")
-	c.Assert(err, IsNil)
-	c.Assert(storage.session, Equals, storage2.session)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(storage.session, gocheck.Equals, storage2.session)
 }
 
-func (s *S) TestOpenReconnects(c *C) {
+func (s *S) TestOpenReconnects(c *gocheck.C) {
 	storage, err := Open("127.0.0.1:27017", "tsuru_storage_test")
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	storage.session.Close()
 	storage, err = Open("127.0.0.1:27017", "tsuru_storage_test")
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	err = storage.session.Ping()
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 }
 
-func (s *S) TestOpenConnectionRefused(c *C) {
+func (s *S) TestOpenConnectionRefused(c *gocheck.C) {
 	storage, err := Open("127.0.0.1:27018", "tsuru_storage_test")
-	c.Assert(storage, IsNil)
-	c.Assert(err, NotNil)
+	c.Assert(storage, gocheck.IsNil)
+	c.Assert(err, gocheck.NotNil)
 }
 
-func (s *S) TestConn(c *C) {
+func (s *S) TestConn(c *gocheck.C) {
 	config.Set("database:url", "127.0.0.1:27017")
 	defer config.Unset("database:url")
 	config.Set("database:name", "tsuru_storage_test")
 	defer config.Unset("database:name")
 	storage, err := Conn()
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	defer storage.session.Close()
 	err = storage.session.Ping()
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 }
 
-func (s *S) TestConnMissingDatabaseUrl(c *C) {
+func (s *S) TestConnMissingDatabaseUrl(c *gocheck.C) {
 	storage, err := Conn()
-	c.Assert(storage, IsNil)
-	c.Assert(err, NotNil)
-	c.Assert(err.Error(), Equals, `configuration error: key "database:url" not found`)
+	c.Assert(storage, gocheck.IsNil)
+	c.Assert(err, gocheck.NotNil)
+	c.Assert(err.Error(), gocheck.Equals, `configuration error: key "database:url" not found`)
 }
 
-func (s *S) TestConnMissingDatabaseName(c *C) {
+func (s *S) TestConnMissingDatabaseName(c *gocheck.C) {
 	config.Set("database:url", "127.0.0.1:27017")
 	defer config.Unset("database:url")
 	storage, err := Conn()
-	c.Assert(storage, IsNil)
-	c.Assert(err, NotNil)
-	c.Assert(err.Error(), Equals, `configuration error: key "database:name" not found`)
+	c.Assert(storage, gocheck.IsNil)
+	c.Assert(err, gocheck.NotNil)
+	c.Assert(err.Error(), gocheck.Equals, `configuration error: key "database:name" not found`)
 }
 
-func (s *S) TestCollection(c *C) {
+func (s *S) TestCollection(c *gocheck.C) {
 	storage, _ := Open("127.0.0.1:27017", "tsuru_storage_test")
 	defer storage.session.Close()
 	collection := storage.Collection("users")
-	c.Assert(collection.FullName, Equals, storage.dbname+".users")
+	c.Assert(collection.FullName, gocheck.Equals, storage.dbname+".users")
 }
 
-func (s *S) TestUsers(c *C) {
+func (s *S) TestUsers(c *gocheck.C) {
 	storage, _ := Open("127.0.0.1:27017", "tsuru_storage_test")
 	defer storage.session.Close()
 	users := storage.Users()
 	usersc := storage.Collection("users")
-	c.Assert(users, DeepEquals, usersc)
+	c.Assert(users, gocheck.DeepEquals, usersc)
 	c.Assert(users, HasUniqueIndex, []string{"email"})
 }
 
-func (s *S) TestApps(c *C) {
+func (s *S) TestApps(c *gocheck.C) {
 	storage, _ := Open("127.0.0.1:27017", "tsuru_storage_test")
 	defer storage.session.Close()
 	apps := storage.Apps()
 	appsc := storage.Collection("apps")
-	c.Assert(apps, DeepEquals, appsc)
+	c.Assert(apps, gocheck.DeepEquals, appsc)
 	c.Assert(apps, HasUniqueIndex, []string{"name"})
 }
 
-func (s *S) TestServices(c *C) {
+func (s *S) TestServices(c *gocheck.C) {
 	storage, _ := Open("127.0.0.1:27017", "tsuru_storage_test")
 	defer storage.session.Close()
 	services := storage.Services()
 	servicesc := storage.Collection("services")
-	c.Assert(services, DeepEquals, servicesc)
+	c.Assert(services, gocheck.DeepEquals, servicesc)
 }
 
-func (s *S) TestServiceInstances(c *C) {
+func (s *S) TestServiceInstances(c *gocheck.C) {
 	storage, _ := Open("127.0.0.1:27017", "tsuru_storage_test")
 	defer storage.session.Close()
 	serviceInstances := storage.ServiceInstances()
 	serviceInstancesc := storage.Collection("service_instances")
-	c.Assert(serviceInstances, DeepEquals, serviceInstancesc)
+	c.Assert(serviceInstances, gocheck.DeepEquals, serviceInstancesc)
 }
 
-func (s *S) TestMethodTeamsShouldReturnTeamsCollection(c *C) {
+func (s *S) TestMethodTeamsShouldReturnTeamsCollection(c *gocheck.C) {
 	storage, _ := Open("127.0.0.1:27017", "tsuru_storage_test")
 	defer storage.session.Close()
 	teams := storage.Teams()
 	teamsc := storage.Collection("teams")
-	c.Assert(teams, DeepEquals, teamsc)
+	c.Assert(teams, gocheck.DeepEquals, teamsc)
 }
 
-func (s *S) TestRetire(c *C) {
+func (s *S) TestRetire(c *gocheck.C) {
 	defer func() {
 		if r := recover(); !c.Failed() && r == nil {
 			c.Errorf("Should panic in ping, but did not!")
@@ -203,6 +203,6 @@ func (s *S) TestRetire(c *C) {
 	close(ch)
 	wg.Wait()
 	_, ok := conn["127.0.0.1:27017"]
-	c.Check(ok, Equals, false)
+	c.Check(ok, gocheck.Equals, false)
 	storage.session.Ping()
 }

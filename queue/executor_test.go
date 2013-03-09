@@ -6,29 +6,29 @@ package queue
 
 import (
 	"github.com/globocom/tsuru/safe"
-	. "launchpad.net/gocheck"
+	"launchpad.net/gocheck"
 	"time"
 )
 
 type ExecutorSuite struct{}
 
-var _ = Suite(&ExecutorSuite{})
+var _ = gocheck.Suite(&ExecutorSuite{})
 
 func dumb() {
 	time.Sleep(1e3)
 }
 
-func (s *ExecutorSuite) TestStart(c *C) {
+func (s *ExecutorSuite) TestStart(c *gocheck.C) {
 	var ct safe.Counter
 	h1 := executor{inner: func() { ct.Increment() }}
 	h1.Start()
-	c.Assert(h1.state, Equals, running)
+	c.Assert(h1.state, gocheck.Equals, running)
 	h1.Stop()
 	h1.Wait()
-	c.Assert(ct.Val(), Not(Equals), 0)
+	c.Assert(ct.Val(), gocheck.Not(gocheck.Equals), 0)
 }
 
-func (s *ExecutorSuite) TestPreempt(c *C) {
+func (s *ExecutorSuite) TestPreempt(c *gocheck.C) {
 	h1 := executor{inner: dumb}
 	h2 := executor{inner: dumb}
 	h3 := executor{inner: dumb}
@@ -36,18 +36,18 @@ func (s *ExecutorSuite) TestPreempt(c *C) {
 	h2.Start()
 	h3.Start()
 	Preempt()
-	c.Assert(h1.state, Equals, stopped)
-	c.Assert(h2.state, Equals, stopped)
-	c.Assert(h3.state, Equals, stopped)
+	c.Assert(h1.state, gocheck.Equals, stopped)
+	c.Assert(h2.state, gocheck.Equals, stopped)
+	c.Assert(h3.state, gocheck.Equals, stopped)
 }
 
-func (s *ExecutorSuite) TestStopNotRunningExecutor(c *C) {
+func (s *ExecutorSuite) TestStopNotRunningExecutor(c *gocheck.C) {
 	h := executor{inner: dumb}
 	err := h.Stop()
-	c.Assert(err, NotNil)
-	c.Assert(err.Error(), Equals, "Not running.")
+	c.Assert(err, gocheck.NotNil)
+	c.Assert(err.Error(), gocheck.Equals, "Not running.")
 }
 
-func (s *ExecutorSuite) TestExecutorImplementsHandler(c *C) {
+func (s *ExecutorSuite) TestExecutorImplementsHandler(c *gocheck.C) {
 	var _ Handler = &executor{}
 }

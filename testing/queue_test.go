@@ -6,20 +6,20 @@ package testing
 
 import (
 	"github.com/globocom/tsuru/queue"
-	. "launchpad.net/gocheck"
+	"launchpad.net/gocheck"
 )
 
-func (s *S) TestFakeQPutAndGet(c *C) {
+func (s *S) TestFakeQPutAndGet(c *gocheck.C) {
 	q := FakeQ{}
 	msg := queue.Message{Action: "do-something"}
 	err := q.Put(&msg, 0)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	m, err := q.Get(1e6)
-	c.Assert(err, IsNil)
-	c.Assert(m.Action, Equals, msg.Action)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(m.Action, gocheck.Equals, msg.Action)
 }
 
-func (s *S) TestFakeQPutAndGetMultipleMessages(c *C) {
+func (s *S) TestFakeQPutAndGetMultipleMessages(c *gocheck.C) {
 	q := FakeQ{}
 	messages := []queue.Message{
 		{Action: "do-something"},
@@ -34,82 +34,82 @@ func (s *S) TestFakeQPutAndGetMultipleMessages(c *C) {
 	got := make([]queue.Message, len(messages))
 	for i := range got {
 		msg, err := q.Get(1e6)
-		c.Check(err, IsNil)
+		c.Check(err, gocheck.IsNil)
 		got[i] = *msg
 	}
-	c.Assert(got, DeepEquals, messages)
+	c.Assert(got, gocheck.DeepEquals, messages)
 }
 
-func (s *S) TestFakeQGetTimeout(c *C) {
+func (s *S) TestFakeQGetTimeout(c *gocheck.C) {
 	q := FakeQ{}
 	m, err := q.Get(1e6)
-	c.Assert(m, IsNil)
-	c.Assert(err, NotNil)
-	c.Assert(err.Error(), Equals, "Timed out.")
+	c.Assert(m, gocheck.IsNil)
+	c.Assert(err, gocheck.NotNil)
+	c.Assert(err.Error(), gocheck.Equals, "Timed out.")
 }
 
-func (s *S) TestFakeQPutWithTimeout(c *C) {
+func (s *S) TestFakeQPutWithTimeout(c *gocheck.C) {
 	q := FakeQ{}
 	msg := queue.Message{Action: "do-something"}
 	err := q.Put(&msg, 1e6)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	_, err = q.Get(1e3)
-	c.Assert(err, NotNil)
+	c.Assert(err, gocheck.NotNil)
 	_, err = q.Get(1e9)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 }
 
-func (s *S) TestFakeQDelete(c *C) {
+func (s *S) TestFakeQDelete(c *gocheck.C) {
 	q := FakeQ{}
 	err := q.Delete(nil)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 }
 
-func (s *S) TestFakeQRelease(c *C) {
+func (s *S) TestFakeQRelease(c *gocheck.C) {
 	q := FakeQ{}
 	msg := queue.Message{Action: "do-something"}
 	err := q.Put(&msg, 0)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	m, err := q.Get(1e6)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	err = q.Release(m, 0)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	_, err = q.Get(1e6)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 }
 
-func (s *S) TestFakeHandlerStart(c *C) {
+func (s *S) TestFakeHandlerStart(c *gocheck.C) {
 	h := fakeHandler{}
-	c.Assert(h.running, Equals, int32(0))
+	c.Assert(h.running, gocheck.Equals, int32(0))
 	h.Start()
-	c.Assert(h.running, Equals, int32(1))
+	c.Assert(h.running, gocheck.Equals, int32(1))
 }
 
-func (s *S) TestFakeHandlerStop(c *C) {
+func (s *S) TestFakeHandlerStop(c *gocheck.C) {
 	h := fakeHandler{}
 	h.Start()
 	h.Stop()
-	c.Assert(h.running, Equals, int32(0))
+	c.Assert(h.running, gocheck.Equals, int32(0))
 }
 
-func (s *S) TestFakeQFactoryGet(c *C) {
+func (s *S) TestFakeQFactoryGet(c *gocheck.C) {
 	f := NewFakeQFactory()
 	q, err := f.Get("default")
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	_, ok := q.(*FakeQ)
-	c.Assert(ok, Equals, true)
+	c.Assert(ok, gocheck.Equals, true)
 	q2, err := f.Get("default")
-	c.Assert(err, IsNil)
-	c.Assert(q, Equals, q2)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(q, gocheck.Equals, q2)
 	q3, err := f.Get("non-default")
-	c.Assert(err, IsNil)
-	c.Assert(q, Not(Equals), q3)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(q, gocheck.Not(gocheck.Equals), q3)
 }
 
-func (s *S) TestFakeQFactoryHandler(c *C) {
+func (s *S) TestFakeQFactoryHandler(c *gocheck.C) {
 	f := NewFakeQFactory()
 	h, err := f.Handler(nil)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	_, ok := h.(*fakeHandler)
-	c.Assert(ok, Equals, true)
+	c.Assert(ok, gocheck.Equals, true)
 }

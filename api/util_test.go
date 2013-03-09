@@ -7,31 +7,31 @@ package main
 import (
 	"github.com/globocom/tsuru/fs"
 	"github.com/globocom/tsuru/fs/testing"
-	. "launchpad.net/gocheck"
+	"launchpad.net/gocheck"
 )
 
 type UtilSuite struct {
 	rfs *testing.RecordingFs
 }
 
-var _ = Suite(&UtilSuite{})
+var _ = gocheck.Suite(&UtilSuite{})
 
-func (s *UtilSuite) SetUpSuite(c *C) {
+func (s *UtilSuite) SetUpSuite(c *gocheck.C) {
 	s.rfs = &testing.RecordingFs{}
 	file, err := s.rfs.Open("/dev/urandom")
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	file.Write([]byte{16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31})
 	fsystem = s.rfs
 }
 
-func (s *UtilSuite) TearDownSuite(c *C) {
+func (s *UtilSuite) TearDownSuite(c *gocheck.C) {
 	fsystem = nil
 }
 
-func (s *UtilSuite) TestFileSystem(c *C) {
+func (s *UtilSuite) TestFileSystem(c *gocheck.C) {
 	fsystem = &testing.RecordingFs{}
-	c.Assert(filesystem(), DeepEquals, fsystem)
+	c.Assert(filesystem(), gocheck.DeepEquals, fsystem)
 	fsystem = nil
-	c.Assert(filesystem(), DeepEquals, fs.OsFs{})
+	c.Assert(filesystem(), gocheck.DeepEquals, fs.OsFs{})
 	fsystem = s.rfs
 }

@@ -5,27 +5,27 @@
 package heal
 
 import (
-	. "launchpad.net/gocheck"
+	"launchpad.net/gocheck"
 	"testing"
 )
 
-func Test(t *testing.T) { TestingT(t) }
+func Test(t *testing.T) { gocheck.TestingT(t) }
 
 type S struct{}
 
-var _ = Suite(&S{})
+var _ = gocheck.Suite(&S{})
 
-func (s *S) TestRegisterAndGetHealer(c *C) {
+func (s *S) TestRegisterAndGetHealer(c *gocheck.C) {
 	var h Healer
 	Register("my-healer", h)
 	got, err := Get("my-healer")
-	c.Assert(err, IsNil)
-	c.Assert(got, DeepEquals, h)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(got, gocheck.DeepEquals, h)
 	_, err = Get("unknown-healer")
-	c.Assert(err, ErrorMatches, `Unknown healer: "unknown-healer".`)
+	c.Assert(err, gocheck.ErrorMatches, `Unknown healer: "unknown-healer".`)
 }
 
-func (s *S) TestAll(c *C) {
+func (s *S) TestAll(c *gocheck.C) {
 	var h Healer
 	Register("healer1", h)
 	Register("healer2", h)
@@ -34,5 +34,5 @@ func (s *S) TestAll(c *C) {
 		"healer1": h,
 		"healer2": h,
 	}
-	c.Assert(healers, DeepEquals, expected)
+	c.Assert(healers, gocheck.DeepEquals, expected)
 }

@@ -15,7 +15,7 @@ import (
 	"github.com/globocom/tsuru/queue"
 	"github.com/globocom/tsuru/testing"
 	"labix.org/v2/mgo/bson"
-	. "launchpad.net/gocheck"
+	"launchpad.net/gocheck"
 	"sort"
 )
 
@@ -27,21 +27,21 @@ type ELBSuite struct {
 	provisioner *testing.FakeProvisioner
 }
 
-var _ = Suite(&ELBSuite{})
+var _ = gocheck.Suite(&ELBSuite{})
 
-func (s *ELBSuite) SetUpSuite(c *C) {
+func (s *ELBSuite) SetUpSuite(c *gocheck.C) {
 	var err error
 	config.Set("database:url", "127.0.0.1:27017")
 	config.Set("database:name", "juju_elb_tests")
 	s.conn, err = db.Conn()
 	s.server, err = elbtest.NewServer()
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	config.Set("juju:elb-endpoint", s.server.URL())
 	config.Set("juju:use-elb", true)
 	region := aws.SAEast
 	region.ELBEndpoint = s.server.URL()
 	s.client = elb.New(aws.Auth{AccessKey: "some", SecretKey: "thing"}, region)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	s.cName = "juju_test_elbs"
 	config.Set("juju:elb-collection", s.cName)
 	config.Set("juju:elb-avail-zones", []interface{}{"my-zone-1a", "my-zone-1b"})
@@ -54,52 +54,52 @@ func (s *ELBSuite) SetUpSuite(c *C) {
 	app.Provisioner = s.provisioner
 }
 
-func (s *ELBSuite) TearDownSuite(c *C) {
+func (s *ELBSuite) TearDownSuite(c *gocheck.C) {
 	config.Unset("juju:use-elb")
 	s.conn.Collection("juju_units_test_elb").Database.DropDatabase()
 	s.server.Quit()
 	queue.Preempt()
 }
 
-func (s *ELBSuite) TestGetCollection(c *C) {
+func (s *ELBSuite) TestGetCollection(c *gocheck.C) {
 	manager := ELBManager{}
 	coll := manager.collection()
 	other := s.conn.Collection(s.cName)
-	c.Assert(coll, DeepEquals, other)
+	c.Assert(coll, gocheck.DeepEquals, other)
 }
 
-func (s *ELBSuite) TestGetELBClient(c *C) {
+func (s *ELBSuite) TestGetELBClient(c *gocheck.C) {
 	manager := ELBManager{}
 	elb := manager.elb()
-	c.Assert(elb.ELBEndpoint, Equals, s.server.URL())
+	c.Assert(elb.ELBEndpoint, gocheck.Equals, s.server.URL())
 }
 
-func (s *ELBSuite) TestCreateELB(c *C) {
+func (s *ELBSuite) TestCreateELB(c *gocheck.C) {
 	app := testing.NewFakeApp("together", "gotthard", 1)
 	manager := ELBManager{}
 	manager.e = s.client
 	err := manager.Create(app)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	defer s.client.DeleteLoadBalancer(app.GetName())
 	defer manager.collection().Remove(bson.M{"name": app.GetName()})
 	resp, err := s.client.DescribeLoadBalancers("together")
-	c.Assert(err, IsNil)
-	c.Assert(resp.LoadBalancerDescriptions, HasLen, 1)
-	c.Assert(resp.LoadBalancerDescriptions[0].ListenerDescriptions, HasLen, 1)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(resp.LoadBalancerDescriptions, gocheck.HasLen, 1)
+	c.Assert(resp.LoadBalancerDescriptions[0].ListenerDescriptions, gocheck.HasLen, 1)
 	listener := resp.LoadBalancerDescriptions[0].ListenerDescriptions[0].Listener
-	c.Assert(listener.InstancePort, Equals, 80)
-	c.Assert(listener.LoadBalancerPort, Equals, 80)
-	c.Assert(listener.InstanceProtocol, Equals, "HTTP")
-	c.Assert(listener.Protocol, Equals, "HTTP")
-	c.Assert(listener.SSLCertificateId, Equals, "")
+	c.Assert(listener.InstancePort, gocheck.Equals, 80)
+	c.Assert(listener.LoadBalancerPort, gocheck.Equals, 80)
+	c.Assert(listener.InstanceProtocol, gocheck.Equals, "HTTP")
+	c.Assert(listener.Protocol, gocheck.Equals, "HTTP")
+	c.Assert(listener.SSLCertificateId, gocheck.Equals, "")
 	dnsName := resp.LoadBalancerDescriptions[0].DNSName
 	var lb loadBalancer
 	err = s.conn.Collection(s.cName).Find(bson.M{"name": app.GetName()}).One(&lb)
-	c.Assert(err, IsNil)
-	c.Assert(lb.DNSName, Equals, dnsName)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(lb.DNSName, gocheck.Equals, dnsName)
 }
 
-func (s *ELBSuite) TestCreateELBUsingVPC(c *C) {
+func (s *ELBSuite) TestCreateELBUsingVPC(c *gocheck.C) {
 	old, _ := config.Get("juju:elb-avail-zones")
 	config.Unset("juju:elb-avail-zones")
 	config.Set("juju:elb-use-vpc", true)
@@ -114,38 +114,38 @@ func (s *ELBSuite) TestCreateELBUsingVPC(c *C) {
 	app := testing.NewFakeApp("relax", "who", 1)
 	manager := ELBManager{}
 	err := manager.Create(app)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	defer s.client.DeleteLoadBalancer(app.GetName())
 	defer manager.collection().Remove(bson.M{"name": app.GetName()})
 	resp, err := s.client.DescribeLoadBalancers(app.GetName())
-	c.Assert(err, IsNil)
-	c.Assert(resp.LoadBalancerDescriptions, HasLen, 1)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(resp.LoadBalancerDescriptions, gocheck.HasLen, 1)
 	lbd := resp.LoadBalancerDescriptions[0]
-	c.Assert(lbd.Subnets, DeepEquals, []string{"subnet-a4a3a2a1", "subnet-002200"})
-	c.Assert(lbd.SecurityGroups, DeepEquals, []string{"sg-0900"})
-	c.Assert(lbd.Scheme, Equals, "internal")
-	c.Assert(lbd.AvailZones, HasLen, 0)
+	c.Assert(lbd.Subnets, gocheck.DeepEquals, []string{"subnet-a4a3a2a1", "subnet-002200"})
+	c.Assert(lbd.SecurityGroups, gocheck.DeepEquals, []string{"sg-0900"})
+	c.Assert(lbd.Scheme, gocheck.Equals, "internal")
+	c.Assert(lbd.AvailZones, gocheck.HasLen, 0)
 }
 
-func (s *ELBSuite) TestDestroyELB(c *C) {
+func (s *ELBSuite) TestDestroyELB(c *gocheck.C) {
 	app := testing.NewFakeApp("blue", "who", 1)
 	manager := ELBManager{}
 	manager.e = s.client
 	err := manager.Create(app)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	defer s.client.DeleteLoadBalancer(app.GetName())                 // sanity
 	defer manager.collection().Remove(bson.M{"name": app.GetName()}) // sanity
 	err = manager.Destroy(app)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	_, err = s.client.DescribeLoadBalancers(app.GetName())
-	c.Assert(err, NotNil)
-	c.Assert(err, ErrorMatches, `^.*\(LoadBalancerNotFound\)$`)
+	c.Assert(err, gocheck.NotNil)
+	c.Assert(err, gocheck.ErrorMatches, `^.*\(LoadBalancerNotFound\)$`)
 	n, err := manager.collection().Find(bson.M{"name": app.GetName()}).Count()
-	c.Assert(err, IsNil)
-	c.Assert(n, Equals, 0)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(n, gocheck.Equals, 0)
 }
 
-func (s *ELBSuite) TestRegisterUnit(c *C) {
+func (s *ELBSuite) TestRegisterUnit(c *gocheck.C) {
 	id1 := s.server.NewInstance()
 	defer s.server.RemoveInstance(id1)
 	id2 := s.server.NewInstance()
@@ -154,23 +154,23 @@ func (s *ELBSuite) TestRegisterUnit(c *C) {
 	manager := ELBManager{}
 	manager.e = s.client
 	err := manager.Create(app)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	defer manager.Destroy(app)
 	err = manager.Register(app, provision.Unit{InstanceId: id1}, provision.Unit{InstanceId: id2})
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	resp, err := s.client.DescribeLoadBalancers(app.GetName())
-	c.Assert(err, IsNil)
-	c.Assert(resp.LoadBalancerDescriptions, HasLen, 1)
-	c.Assert(resp.LoadBalancerDescriptions[0].Instances, HasLen, 2)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(resp.LoadBalancerDescriptions, gocheck.HasLen, 1)
+	c.Assert(resp.LoadBalancerDescriptions[0].Instances, gocheck.HasLen, 2)
 	instances := resp.LoadBalancerDescriptions[0].Instances
 	ids := []string{instances[0].InstanceId, instances[1].InstanceId}
 	sort.Strings(ids)
 	expected := []string{id1, id2}
 	sort.Strings(expected)
-	c.Assert(ids, DeepEquals, expected)
+	c.Assert(ids, gocheck.DeepEquals, expected)
 }
 
-func (s *ELBSuite) TestDeregisterUnit(c *C) {
+func (s *ELBSuite) TestDeregisterUnit(c *gocheck.C) {
 	id1 := s.server.NewInstance()
 	defer s.server.RemoveInstance(id1)
 	id2 := s.server.NewInstance()
@@ -181,43 +181,43 @@ func (s *ELBSuite) TestDeregisterUnit(c *C) {
 	manager := ELBManager{}
 	manager.e = s.client
 	err := manager.Create(app)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	defer manager.Destroy(app)
 	err = manager.Register(app, unit1, unit2)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	err = manager.Deregister(app, unit1, unit2)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	resp, err := s.client.DescribeLoadBalancers(app.GetName())
-	c.Assert(err, IsNil)
-	c.Assert(resp.LoadBalancerDescriptions, HasLen, 1)
-	c.Assert(resp.LoadBalancerDescriptions[0].Instances, HasLen, 0)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(resp.LoadBalancerDescriptions, gocheck.HasLen, 1)
+	c.Assert(resp.LoadBalancerDescriptions[0].Instances, gocheck.HasLen, 0)
 }
 
-func (s *ELBSuite) TestAddr(c *C) {
+func (s *ELBSuite) TestAddr(c *gocheck.C) {
 	app := testing.NewFakeApp("enough", "who", 1)
 	manager := ELBManager{}
 	manager.e = s.client
 	err := manager.Create(app)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	defer manager.Destroy(app)
 	var lb loadBalancer
 	err = manager.collection().Find(bson.M{"name": app.GetName()}).One(&lb)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	addr, err := manager.Addr(app)
-	c.Assert(err, IsNil)
-	c.Assert(addr, Equals, lb.DNSName)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(addr, gocheck.Equals, lb.DNSName)
 }
 
-func (s *ELBSuite) TestAddrUnknownLoadBalancer(c *C) {
+func (s *ELBSuite) TestAddrUnknownLoadBalancer(c *gocheck.C) {
 	app := testing.NewFakeApp("five", "who", 1)
 	manager := ELBManager{}
 	addr, err := manager.Addr(app)
-	c.Assert(addr, Equals, "")
-	c.Assert(err, NotNil)
-	c.Assert(err.Error(), Equals, "not found")
+	c.Assert(addr, gocheck.Equals, "")
+	c.Assert(err, gocheck.NotNil)
+	c.Assert(err.Error(), gocheck.Equals, "not found")
 }
 
-func (s *ELBSuite) TestELBInstanceHealer(c *C) {
+func (s *ELBSuite) TestELBInstanceHealer(c *gocheck.C) {
 	lb := "elbtest"
 	instance := s.server.NewInstance()
 	defer s.server.RemoveInstance(instance)
@@ -230,9 +230,9 @@ func (s *ELBSuite) TestELBInstanceHealer(c *C) {
 		Units: []app.Unit{{InstanceId: instance, State: "error", Name: "elbtest/0"}},
 	}
 	storage, err := db.Conn()
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	err = storage.Apps().Insert(a)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	defer storage.Apps().Remove(bson.M{"name": a.Name})
 	s.provisioner.Provision(&a)
 	defer s.provisioner.Destroy(&a)
@@ -245,15 +245,15 @@ func (s *ELBSuite) TestELBInstanceHealer(c *C) {
 	s.server.ChangeInstanceState(lb, state)
 	healer := elbInstanceHealer{}
 	err = healer.Heal()
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	err = a.Get()
-	c.Assert(err, IsNil)
-	c.Assert(a.Units, HasLen, 1)
-	c.Assert(a.Units[0].InstanceId, Not(Equals), instance)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(a.Units, gocheck.HasLen, 1)
+	c.Assert(a.Units[0].InstanceId, gocheck.Not(gocheck.Equals), instance)
 	queue.Preempt()
 }
 
-func (s *ELBSuite) TestELBInstanceHealerInstallingUnit(c *C) {
+func (s *ELBSuite) TestELBInstanceHealerInstallingUnit(c *gocheck.C) {
 	lb := "elbtest"
 	instance := s.server.NewInstance()
 	defer s.server.RemoveInstance(instance)
@@ -266,9 +266,9 @@ func (s *ELBSuite) TestELBInstanceHealerInstallingUnit(c *C) {
 		Units: []app.Unit{{InstanceId: instance, State: "installing", Name: "elbtest/0"}},
 	}
 	storage, err := db.Conn()
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	err = storage.Apps().Insert(a)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	defer storage.Apps().Remove(bson.M{"name": a.Name})
 	s.provisioner.Provision(&a)
 	defer s.provisioner.Destroy(&a)
@@ -281,9 +281,9 @@ func (s *ELBSuite) TestELBInstanceHealerInstallingUnit(c *C) {
 	s.server.ChangeInstanceState(lb, state)
 	healer := elbInstanceHealer{}
 	err = healer.Heal()
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	err = a.Get()
-	c.Assert(err, IsNil)
-	c.Assert(a.Units, HasLen, 1)
-	c.Assert(a.Units[0].InstanceId, Equals, instance)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(a.Units, gocheck.HasLen, 1)
+	c.Assert(a.Units[0].InstanceId, gocheck.Equals, instance)
 }

@@ -8,7 +8,7 @@ import (
 	"github.com/globocom/config"
 	"github.com/globocom/tsuru/db"
 	"io"
-	. "launchpad.net/gocheck"
+	"launchpad.net/gocheck"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -20,8 +20,8 @@ import (
 
 type hasKeyChecker struct{}
 
-func (c *hasKeyChecker) Info() *CheckerInfo {
-	return &CheckerInfo{Name: "HasKey", Params: []string{"user", "key"}}
+func (c *hasKeyChecker) Info() *gocheck.CheckerInfo {
+	return &gocheck.CheckerInfo{Name: "HasKey", Params: []string{"user", "key"}}
 }
 
 func (c *hasKeyChecker) Check(params []interface{}, names []string) (bool, string) {
@@ -40,9 +40,9 @@ func (c *hasKeyChecker) Check(params []interface{}, names []string) (bool, strin
 	return user.HasKey(key), ""
 }
 
-var HasKey Checker = &hasKeyChecker{}
+var HasKey gocheck.Checker = &hasKeyChecker{}
 
-func Test(t *testing.T) { TestingT(t) }
+func Test(t *testing.T) { gocheck.TestingT(t) }
 
 type S struct {
 	conn    *db.Storage
@@ -56,9 +56,9 @@ type S struct {
 	gitProt string
 }
 
-var _ = Suite(&S{})
+var _ = gocheck.Suite(&S{})
 
-func (s *S) SetUpSuite(c *C) {
+func (s *S) SetUpSuite(c *gocheck.C) {
 	config.Set("auth:salt", "tsuru-salt")
 	config.Set("auth:token-expire-days", 2)
 	config.Set("auth:token-key", "TSURU-KEY")
@@ -72,22 +72,22 @@ func (s *S) SetUpSuite(c *C) {
 	s.token, _ = s.user.CreateToken()
 	team := &Team{Name: "cobrateam", Users: []string{s.user.Email}}
 	err := s.conn.Teams().Insert(team)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	s.team = team
 	s.gitHost, _ = config.GetString("git:host")
 	s.gitPort, _ = config.GetString("git:port")
 	s.gitProt, _ = config.GetString("git:protocol")
 }
 
-func (s *S) TearDownSuite(c *C) {
+func (s *S) TearDownSuite(c *gocheck.C) {
 	s.conn.Apps().Database.DropDatabase()
 }
 
-func (s *S) TearDownTest(c *C) {
+func (s *S) TearDownTest(c *gocheck.C) {
 	if s.user.Password != s.hashed {
 		s.user.Password = s.hashed
 		err := s.user.Update()
-		c.Assert(err, IsNil)
+		c.Assert(err, gocheck.IsNil)
 	}
 	config.Set("git:host", s.gitHost)
 	config.Set("git:port", s.gitPort)

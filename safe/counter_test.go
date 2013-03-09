@@ -5,23 +5,23 @@
 package safe
 
 import (
-	. "launchpad.net/gocheck"
+	"launchpad.net/gocheck"
 	"runtime"
 	"sync"
 )
 
-func (s *S) TestNewCounter(c *C) {
+func (s *S) TestNewCounter(c *gocheck.C) {
 	ct := NewCounter(2)
-	c.Assert(ct.v, Equals, int64(2))
+	c.Assert(ct.v, gocheck.Equals, int64(2))
 }
 
-func (s *S) TestCounterVal(c *C) {
+func (s *S) TestCounterVal(c *gocheck.C) {
 	ct := NewCounter(2)
 	ct.v = 5
-	c.Assert(ct.Val(), Equals, int64(5))
+	c.Assert(ct.Val(), gocheck.Equals, int64(5))
 }
 
-func (s *S) TestIncrement(c *C) {
+func (s *S) TestIncrement(c *gocheck.C) {
 	defer runtime.GOMAXPROCS(runtime.GOMAXPROCS(16))
 	n := 50
 	var wg sync.WaitGroup
@@ -36,10 +36,10 @@ func (s *S) TestIncrement(c *C) {
 		}()
 	}
 	wg.Wait()
-	c.Assert(ct.Val(), Equals, int64(n*n))
+	c.Assert(ct.Val(), gocheck.Equals, int64(n*n))
 }
 
-func (s *S) TestDecrement(c *C) {
+func (s *S) TestDecrement(c *gocheck.C) {
 	defer runtime.GOMAXPROCS(runtime.GOMAXPROCS(16))
 	n := 50
 	var wg sync.WaitGroup
@@ -54,5 +54,5 @@ func (s *S) TestDecrement(c *C) {
 		}()
 	}
 	wg.Wait()
-	c.Assert(ct.Val(), Equals, int64(0))
+	c.Assert(ct.Val(), gocheck.Equals, int64(0))
 }

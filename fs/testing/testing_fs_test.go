@@ -1,4 +1,4 @@
-// Copyright 2012 tsuru authors. All rights reserved.
+// Copyright 2013 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -6,7 +6,7 @@ package testing
 
 import (
 	"github.com/globocom/tsuru/fs"
-	. "launchpad.net/gocheck"
+	"launchpad.net/gocheck"
 	"os"
 	"syscall"
 	"testing"
@@ -14,207 +14,207 @@ import (
 
 type S struct{}
 
-var _ = Suite(&S{})
+var _ = gocheck.Suite(&S{})
 
 func Test(t *testing.T) {
-	TestingT(t)
+	gocheck.TestingT(t)
 }
 
-func (s *S) TestFakeFilePointerShouldImplementFileInterface(c *C) {
+func (s *S) TestFakeFilePointerShouldImplementFileInterface(c *gocheck.C) {
 	var _ fs.File = &FakeFile{}
 }
 
-func (s *S) TestFakeFileClose(c *C) {
+func (s *S) TestFakeFileClose(c *gocheck.C) {
 	f := &FakeFile{content: "doesn't matter"}
 	f.current = 500
 	err := f.Close()
-	c.Assert(err, IsNil)
-	c.Assert(f.current, Equals, int64(0))
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(f.current, gocheck.Equals, int64(0))
 }
 
-func (s *S) TestFakeFileRead(c *C) {
+func (s *S) TestFakeFileRead(c *gocheck.C) {
 	content := "all I am"
 	f := &FakeFile{content: content}
 	buf := make([]byte, 20)
 	n, err := f.Read(buf)
-	c.Assert(err, IsNil)
-	c.Assert(n, Equals, len(content))
-	c.Assert(string(buf[:n]), Equals, content)
-	c.Assert(f.current, Equals, int64(len(content)))
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(n, gocheck.Equals, len(content))
+	c.Assert(string(buf[:n]), gocheck.Equals, content)
+	c.Assert(f.current, gocheck.Equals, int64(len(content)))
 }
 
-func (s *S) TestFakeFileReadAt(c *C) {
+func (s *S) TestFakeFileReadAt(c *gocheck.C) {
 	content := "invisible cage"
 	f := &FakeFile{content: content}
 	buf := make([]byte, 4)
 	n, err := f.ReadAt(buf, int64(len(content)-len(buf)))
-	c.Assert(err, IsNil)
-	c.Assert(n, Equals, 4)
-	c.Assert(string(buf), Equals, "cage")
-	c.Assert(f.current, Equals, int64(len(content)))
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(n, gocheck.Equals, 4)
+	c.Assert(string(buf), gocheck.Equals, "cage")
+	c.Assert(f.current, gocheck.Equals, int64(len(content)))
 }
 
-func (s *S) TestFakeFileSeek(c *C) {
+func (s *S) TestFakeFileSeek(c *gocheck.C) {
 	content := "fragile equality"
 	f := &FakeFile{content: content}
 	n, err := f.Seek(8, 0)
-	c.Assert(err, IsNil)
-	c.Assert(n, Equals, int64(8))
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(n, gocheck.Equals, int64(8))
 	buf := make([]byte, 5)
 	read, err := f.Read(buf)
-	c.Assert(err, IsNil)
-	c.Assert(read, Equals, 5)
-	c.Assert(string(buf), Equals, "equal")
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(read, gocheck.Equals, 5)
+	c.Assert(string(buf), gocheck.Equals, "equal")
 }
 
-func (s *S) TestFakeFileStat(c *C) {
+func (s *S) TestFakeFileStat(c *gocheck.C) {
 	var empty os.FileInfo
 	f := &FakeFile{content: "doesn't matter"}
 	fi, err := f.Stat()
-	c.Assert(err, IsNil)
-	c.Assert(fi, DeepEquals, empty)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(fi, gocheck.DeepEquals, empty)
 }
 
-func (s *S) TestFakeFileWrite(c *C) {
+func (s *S) TestFakeFileWrite(c *gocheck.C) {
 	content := "Guardian"
 	f := &FakeFile{content: content}
 	n, err := f.Write([]byte("break"))
-	c.Assert(err, IsNil)
-	c.Assert(n, Equals, len("break"))
-	c.Assert(f.content, Equals, "break")
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(n, gocheck.Equals, len("break"))
+	c.Assert(f.content, gocheck.Equals, "break")
 }
 
-func (s *S) TestFakeFileWriteFromPosition(c *C) {
+func (s *S) TestFakeFileWriteFromPosition(c *gocheck.C) {
 	content := "Guardian"
 	f := &FakeFile{content: content}
 	n, err := f.Seek(5, 0)
-	c.Assert(err, IsNil)
-	c.Assert(n, Equals, int64(5))
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(n, gocheck.Equals, int64(5))
 	written, err := f.Write([]byte("break"))
-	c.Assert(err, IsNil)
-	c.Assert(written, Equals, len("break"))
-	c.Assert(f.content, Equals, "Guardbreak")
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(written, gocheck.Equals, len("break"))
+	c.Assert(f.content, gocheck.Equals, "Guardbreak")
 }
 
-func (s *S) TestFakeFileWriteString(c *C) {
+func (s *S) TestFakeFileWriteString(c *gocheck.C) {
 	content := "Guardian"
 	f := &FakeFile{content: content}
 	ret, err := f.WriteString("break")
-	c.Assert(err, IsNil)
-	c.Assert(ret, Equals, len("break"))
-	c.Assert(f.content, Equals, "break")
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(ret, gocheck.Equals, len("break"))
+	c.Assert(f.content, gocheck.Equals, "break")
 }
 
-func (s *S) TestFakeFileTruncateSetsCurrentToZero(c *C) {
+func (s *S) TestFakeFileTruncateSetsCurrentToZero(c *gocheck.C) {
 	content := "Guardian"
 	f := &FakeFile{content: content}
 	err := f.Truncate(0)
-	c.Assert(err, IsNil)
-	c.Assert(f.current, Equals, int64(0))
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(f.current, gocheck.Equals, int64(0))
 }
 
-func (s *S) TestFakeFileTruncateStripsContentWithN(c *C) {
+func (s *S) TestFakeFileTruncateStripsContentWithN(c *gocheck.C) {
 	content := "Guardian"
 	f := &FakeFile{content: content}
 	err := f.Truncate(4)
-	c.Assert(err, IsNil)
-	c.Assert(f.content, Equals, "Guar")
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(f.content, gocheck.Equals, "Guar")
 }
 
-func (s *S) TestRecordingFsPointerShouldImplementFsInterface(c *C) {
+func (s *S) TestRecordingFsPointerShouldImplementFsInterface(c *gocheck.C) {
 	var _ fs.Fs = &RecordingFs{}
 }
 
-func (s *S) TestRecordingFsHasAction(c *C) {
+func (s *S) TestRecordingFsHasAction(c *gocheck.C) {
 	fs := RecordingFs{actions: []string{"torn", "shade of my soul"}}
-	c.Assert(fs.HasAction("torn"), Equals, true)
-	c.Assert(fs.HasAction("shade of my soul"), Equals, true)
-	c.Assert(fs.HasAction("meaningles world"), Equals, false)
+	c.Assert(fs.HasAction("torn"), gocheck.Equals, true)
+	c.Assert(fs.HasAction("shade of my soul"), gocheck.Equals, true)
+	c.Assert(fs.HasAction("meaningles world"), gocheck.Equals, false)
 }
 
-func (s *S) TestRecordingFsCreate(c *C) {
+func (s *S) TestRecordingFsCreate(c *gocheck.C) {
 	fs := RecordingFs{}
 	f, err := fs.Create("/my/file.txt")
-	c.Assert(err, IsNil)
-	c.Assert(fs.HasAction("create /my/file.txt"), Equals, true)
-	c.Assert(f, FitsTypeOf, &FakeFile{})
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(fs.HasAction("create /my/file.txt"), gocheck.Equals, true)
+	c.Assert(f, gocheck.FitsTypeOf, &FakeFile{})
 }
 
-func (s *S) TestRecordingFsMkdir(c *C) {
+func (s *S) TestRecordingFsMkdir(c *gocheck.C) {
 	fs := RecordingFs{}
 	err := fs.Mkdir("/my/dir", 0777)
-	c.Assert(err, IsNil)
-	c.Assert(fs.HasAction("mkdir /my/dir with mode 0777"), Equals, true)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(fs.HasAction("mkdir /my/dir with mode 0777"), gocheck.Equals, true)
 }
 
-func (s *S) TestRecordingFsMkdirAll(c *C) {
+func (s *S) TestRecordingFsMkdirAll(c *gocheck.C) {
 	fs := RecordingFs{}
 	err := fs.MkdirAll("/my/dir/with/subdir", 0777)
-	c.Assert(err, IsNil)
-	c.Assert(fs.HasAction("mkdirall /my/dir/with/subdir with mode 0777"), Equals, true)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(fs.HasAction("mkdirall /my/dir/with/subdir with mode 0777"), gocheck.Equals, true)
 }
 
-func (s *S) TestRecordingFsOpen(c *C) {
+func (s *S) TestRecordingFsOpen(c *gocheck.C) {
 	fs := RecordingFs{FileContent: "the content"}
 	f, err := fs.Open("/my/file")
-	c.Assert(err, IsNil)
-	c.Assert(fs.HasAction("open /my/file"), Equals, true)
-	c.Assert(f, FitsTypeOf, &FakeFile{})
-	c.Assert(f.(*FakeFile).content, Equals, fs.FileContent)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(fs.HasAction("open /my/file"), gocheck.Equals, true)
+	c.Assert(f, gocheck.FitsTypeOf, &FakeFile{})
+	c.Assert(f.(*FakeFile).content, gocheck.Equals, fs.FileContent)
 }
 
-func (s *S) TestRecordingFsOpenFile(c *C) {
+func (s *S) TestRecordingFsOpenFile(c *gocheck.C) {
 	fs := RecordingFs{FileContent: "the content"}
 	f, err := fs.OpenFile("/my/file", 0, 0600)
-	c.Assert(err, IsNil)
-	c.Assert(fs.HasAction("openfile /my/file with mode 0600"), Equals, true)
-	c.Assert(f, FitsTypeOf, &FakeFile{})
-	c.Assert(f.(*FakeFile).content, Equals, fs.FileContent)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(fs.HasAction("openfile /my/file with mode 0600"), gocheck.Equals, true)
+	c.Assert(f, gocheck.FitsTypeOf, &FakeFile{})
+	c.Assert(f.(*FakeFile).content, gocheck.Equals, fs.FileContent)
 }
 
-func (s *S) TestRecordingFsKeepFileInstances(c *C) {
+func (s *S) TestRecordingFsKeepFileInstances(c *gocheck.C) {
 	fs := RecordingFs{FileContent: "the content"}
 	f, err := fs.Create("/my/file")
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	f.Write([]byte("hi"))
 	f, err = fs.Open("/my/file")
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	buf := make([]byte, 2)
 	n, err := f.Read(buf)
-	c.Assert(err, IsNil)
-	c.Assert(n, Equals, 2)
-	c.Assert(string(buf), Equals, "hi")
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(n, gocheck.Equals, 2)
+	c.Assert(string(buf), gocheck.Equals, "hi")
 	// Opening again should read seek to position 0 in the reader
 	f, _ = fs.Open("/my/file")
 	n, err = f.Read(buf)
-	c.Assert(err, IsNil)
-	c.Assert(n, Equals, 2)
-	c.Assert(string(buf), Equals, "hi")
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(n, gocheck.Equals, 2)
+	c.Assert(string(buf), gocheck.Equals, "hi")
 }
 
-func (s *S) TestRecordingFsShouldKeepWrittenContent(c *C) {
+func (s *S) TestRecordingFsShouldKeepWrittenContent(c *gocheck.C) {
 	fs := RecordingFs{FileContent: "the content"}
 	f, _ := fs.Open("/my/file")
 	buf := make([]byte, 16)
 	n, _ := f.Read(buf)
 	f.Close()
-	c.Assert(string(buf[:n]), Equals, "the content")
+	c.Assert(string(buf[:n]), gocheck.Equals, "the content")
 	f, _ = fs.Create("/my/file")
 	f.Write([]byte("content the"))
 	f.Close()
 	f, _ = fs.Open("/my/file")
 	n, _ = f.Read(buf)
-	c.Assert(string(buf[:n]), Equals, "content the")
+	c.Assert(string(buf[:n]), gocheck.Equals, "content the")
 }
 
-func (s *S) TestRecordingFsRemove(c *C) {
+func (s *S) TestRecordingFsRemove(c *gocheck.C) {
 	fs := RecordingFs{}
 	err := fs.Remove("/my/file")
-	c.Assert(err, IsNil)
-	c.Assert(fs.HasAction("remove /my/file"), Equals, true)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(fs.HasAction("remove /my/file"), gocheck.Equals, true)
 }
 
-func (s *S) TestRecordingFsRemoveDeletesState(c *C) {
+func (s *S) TestRecordingFsRemoveDeletesState(c *gocheck.C) {
 	fs := RecordingFs{FileContent: "hi"}
 	f, _ := fs.Open("/my/file")
 	f.Write([]byte("ih"))
@@ -222,17 +222,17 @@ func (s *S) TestRecordingFsRemoveDeletesState(c *C) {
 	f, _ = fs.Open("/my/file")
 	buf := make([]byte, 2)
 	f.Read(buf)
-	c.Assert(string(buf), Equals, "hi")
+	c.Assert(string(buf), gocheck.Equals, "hi")
 }
 
-func (s *S) TestRecordingFsRemoveAll(c *C) {
+func (s *S) TestRecordingFsRemoveAll(c *gocheck.C) {
 	fs := RecordingFs{}
 	err := fs.RemoveAll("/my/dir")
-	c.Assert(err, IsNil)
-	c.Assert(fs.HasAction("removeall /my/dir"), Equals, true)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(fs.HasAction("removeall /my/dir"), gocheck.Equals, true)
 }
 
-func (s *S) TestRecordingFsRemoveAllDeletesState(c *C) {
+func (s *S) TestRecordingFsRemoveAllDeletesState(c *gocheck.C) {
 	fs := RecordingFs{FileContent: "hi"}
 	f, _ := fs.Open("/my/file")
 	f.Write([]byte("ih"))
@@ -240,59 +240,59 @@ func (s *S) TestRecordingFsRemoveAllDeletesState(c *C) {
 	f, _ = fs.Open("/my/file")
 	buf := make([]byte, 2)
 	f.Read(buf)
-	c.Assert(string(buf), Equals, "hi")
+	c.Assert(string(buf), gocheck.Equals, "hi")
 }
 
-func (s *S) TestRecordingFsStat(c *C) {
+func (s *S) TestRecordingFsStat(c *gocheck.C) {
 	fs := RecordingFs{}
 	fi, err := fs.Stat("/my/file")
-	c.Assert(err, IsNil)
-	c.Assert(fi, IsNil)
-	c.Assert(fs.HasAction("stat /my/file"), Equals, true)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(fi, gocheck.IsNil)
+	c.Assert(fs.HasAction("stat /my/file"), gocheck.Equals, true)
 }
 
-func (s *S) TestFailureFsPointerImplementsFsInterface(c *C) {
+func (s *S) TestFailureFsPointerImplementsFsInterface(c *gocheck.C) {
 	var _ fs.Fs = &FailureFs{}
 }
 
-func (s *S) TestFailureFsOpen(c *C) {
+func (s *S) TestFailureFsOpen(c *gocheck.C) {
 	fs := FailureFs{}
 	f, err := fs.Open("/my/file")
-	c.Assert(f, IsNil)
-	c.Assert(err, NotNil)
-	c.Assert(err, FitsTypeOf, &os.PathError{})
-	c.Assert(err.(*os.PathError).Err, DeepEquals, syscall.ENOENT)
-	c.Assert(err.(*os.PathError).Path, Equals, "/my/file")
-	c.Assert(fs.HasAction("open /my/file"), Equals, true)
+	c.Assert(f, gocheck.IsNil)
+	c.Assert(err, gocheck.NotNil)
+	c.Assert(err, gocheck.FitsTypeOf, &os.PathError{})
+	c.Assert(err.(*os.PathError).Err, gocheck.DeepEquals, syscall.ENOENT)
+	c.Assert(err.(*os.PathError).Path, gocheck.Equals, "/my/file")
+	c.Assert(fs.HasAction("open /my/file"), gocheck.Equals, true)
 }
 
-func (s *S) TestFailureFsRemove(c *C) {
+func (s *S) TestFailureFsRemove(c *gocheck.C) {
 	fs := FailureFs{}
 	err := fs.Remove("/my/file")
-	c.Assert(err, NotNil)
-	c.Assert(err, FitsTypeOf, &os.PathError{})
-	c.Assert(err.(*os.PathError).Err, DeepEquals, syscall.ENOENT)
-	c.Assert(err.(*os.PathError).Path, Equals, "/my/file")
-	c.Assert(fs.HasAction("remove /my/file"), Equals, true)
+	c.Assert(err, gocheck.NotNil)
+	c.Assert(err, gocheck.FitsTypeOf, &os.PathError{})
+	c.Assert(err.(*os.PathError).Err, gocheck.DeepEquals, syscall.ENOENT)
+	c.Assert(err.(*os.PathError).Path, gocheck.Equals, "/my/file")
+	c.Assert(fs.HasAction("remove /my/file"), gocheck.Equals, true)
 }
 
-func (s *S) TestFailureFsOpenFile(c *C) {
+func (s *S) TestFailureFsOpenFile(c *gocheck.C) {
 	fs := FailureFs{}
 	f, err := fs.OpenFile("/my/file", 0, 0600)
-	c.Assert(f, IsNil)
-	c.Assert(err, NotNil)
-	c.Assert(err, FitsTypeOf, &os.PathError{})
-	c.Assert(err.(*os.PathError).Err, DeepEquals, syscall.ENOENT)
-	c.Assert(err.(*os.PathError).Path, Equals, "/my/file")
-	c.Assert(fs.HasAction("open /my/file"), Equals, true)
+	c.Assert(f, gocheck.IsNil)
+	c.Assert(err, gocheck.NotNil)
+	c.Assert(err, gocheck.FitsTypeOf, &os.PathError{})
+	c.Assert(err.(*os.PathError).Err, gocheck.DeepEquals, syscall.ENOENT)
+	c.Assert(err.(*os.PathError).Path, gocheck.Equals, "/my/file")
+	c.Assert(fs.HasAction("open /my/file"), gocheck.Equals, true)
 }
 
-func (s *S) TestFailureFsRemoveAll(c *C) {
+func (s *S) TestFailureFsRemoveAll(c *gocheck.C) {
 	fs := FailureFs{}
 	err := fs.RemoveAll("/my/file")
-	c.Assert(err, NotNil)
-	c.Assert(err, FitsTypeOf, &os.PathError{})
-	c.Assert(err.(*os.PathError).Err, DeepEquals, syscall.ENOENT)
-	c.Assert(err.(*os.PathError).Path, Equals, "/my/file")
-	c.Assert(fs.HasAction("removeall /my/file"), Equals, true)
+	c.Assert(err, gocheck.NotNil)
+	c.Assert(err, gocheck.FitsTypeOf, &os.PathError{})
+	c.Assert(err.(*os.PathError).Err, gocheck.DeepEquals, syscall.ENOENT)
+	c.Assert(err.(*os.PathError).Path, gocheck.Equals, "/my/file")
+	c.Assert(fs.HasAction("removeall /my/file"), gocheck.Equals, true)
 }

@@ -9,7 +9,7 @@ import (
 	"fmt"
 	"github.com/globocom/config"
 	"io"
-	. "launchpad.net/gocheck"
+	"launchpad.net/gocheck"
 	"strings"
 )
 
@@ -48,105 +48,105 @@ func (u *FailingCloneUnit) Command(stdout, stderr io.Writer, cmd ...string) erro
 	return u.FakeUnit.Command(nil, nil, cmd...)
 }
 
-func (s *S) TestCloneRepository(c *C) {
+func (s *S) TestCloneRepository(c *gocheck.C) {
 	u := FakeUnit{name: "my-unit"}
 	_, err := clone(&u)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	expectedCommand := fmt.Sprintf("git clone %s /home/application/current --depth 1", GetReadOnlyUrl(u.GetName()))
-	c.Assert(u.RanCommand(expectedCommand), Equals, true)
+	c.Assert(u.RanCommand(expectedCommand), gocheck.Equals, true)
 }
 
-func (s *S) TestPullRepository(c *C) {
+func (s *S) TestPullRepository(c *gocheck.C) {
 	u := FakeUnit{name: "your-unit"}
 	_, err := pull(&u)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	expectedCommand := fmt.Sprintf("cd /home/application/current && git pull origin master")
-	c.Assert(u.RanCommand(expectedCommand), Equals, true)
+	c.Assert(u.RanCommand(expectedCommand), gocheck.Equals, true)
 }
 
-func (s *S) TestCloneOrPullRepositoryRunsClone(c *C) {
+func (s *S) TestCloneOrPullRepositoryRunsClone(c *gocheck.C) {
 	u := FakeUnit{name: "my-unit"}
 	_, err := CloneOrPull(&u)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	clone := fmt.Sprintf("git clone %s /home/application/current --depth 1", GetReadOnlyUrl(u.GetName()))
 	pull := fmt.Sprintf("cd /home/application/current && git pull origin master")
-	c.Assert(u.RanCommand(clone), Equals, true)
-	c.Assert(u.RanCommand(pull), Equals, false)
+	c.Assert(u.RanCommand(clone), gocheck.Equals, true)
+	c.Assert(u.RanCommand(pull), gocheck.Equals, false)
 }
 
-func (s *S) TestCloneOrPullRepositoryRunsPullIfCloneFail(c *C) {
+func (s *S) TestCloneOrPullRepositoryRunsPullIfCloneFail(c *gocheck.C) {
 	u := FailingCloneUnit{FakeUnit{name: "my-unit"}}
 	_, err := CloneOrPull(&u)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	clone := fmt.Sprintf("git clone %s /home/application/current --depth 1", GetReadOnlyUrl(u.GetName()))
 	pull := fmt.Sprintf("cd /home/application/current && git pull origin master")
-	c.Assert(u.RanCommand(clone), Equals, true)
-	c.Assert(u.RanCommand(pull), Equals, true)
+	c.Assert(u.RanCommand(clone), gocheck.Equals, true)
+	c.Assert(u.RanCommand(pull), gocheck.Equals, true)
 }
 
-func (s *S) TestGetRepositoryUrl(c *C) {
+func (s *S) TestGetRepositoryUrl(c *gocheck.C) {
 	url := GetUrl("foobar")
 	expected := "git@mygithost:foobar.git"
-	c.Assert(url, Equals, expected)
+	c.Assert(url, gocheck.Equals, expected)
 }
 
-func (s *S) TestGetReadOnlyUrl(c *C) {
+func (s *S) TestGetReadOnlyUrl(c *gocheck.C) {
 	url := GetReadOnlyUrl("foobar")
 	expected := "git://mygithost/foobar.git"
-	c.Assert(url, Equals, expected)
+	c.Assert(url, gocheck.Equals, expected)
 }
 
-func (s *S) TestGetPath(c *C) {
+func (s *S) TestGetPath(c *gocheck.C) {
 	path, err := GetPath()
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	expected := "/home/application/current"
-	c.Assert(path, Equals, expected)
+	c.Assert(path, gocheck.Equals, expected)
 }
 
-func (s *S) TestGetGitServer(c *C) {
+func (s *S) TestGetGitServer(c *gocheck.C) {
 	gitServer, err := config.GetString("git:host")
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	defer config.Set("git:host", gitServer)
 	config.Set("git:host", "gandalf-host.com")
 	uri := getGitServer()
-	c.Assert(uri, Equals, "gandalf-host.com")
+	c.Assert(uri, gocheck.Equals, "gandalf-host.com")
 }
 
-func (s *S) TestGetServerUri(c *C) {
+func (s *S) TestGetServerUri(c *gocheck.C) {
 	server, err := config.GetString("git:host")
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	protocol, err := config.GetString("git:protocol")
 	port, err := config.Get("git:port")
 	uri := GitServerUri()
-	c.Assert(uri, Equals, fmt.Sprintf("%s://%s:%d", protocol, server, port))
+	c.Assert(uri, gocheck.Equals, fmt.Sprintf("%s://%s:%d", protocol, server, port))
 }
 
-func (s *S) TestGetServerUriWithoutPort(c *C) {
+func (s *S) TestGetServerUriWithoutPort(c *gocheck.C) {
 	config.Unset("git:port")
 	defer config.Set("git:port", 8080)
 	server, err := config.GetString("git:host")
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	protocol, err := config.GetString("git:protocol")
 	uri := GitServerUri()
-	c.Assert(uri, Equals, fmt.Sprintf("%s://%s", protocol, server))
+	c.Assert(uri, gocheck.Equals, fmt.Sprintf("%s://%s", protocol, server))
 }
 
-func (s *S) TestGetServerUriWithoutProtocol(c *C) {
+func (s *S) TestGetServerUriWithoutProtocol(c *gocheck.C) {
 	config.Unset("git:protocol")
 	defer config.Set("git:protocol", "http")
 	server, err := config.GetString("git:host")
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	uri := GitServerUri()
-	c.Assert(uri, Equals, "http://"+server+":8080")
+	c.Assert(uri, gocheck.Equals, "http://"+server+":8080")
 }
 
-func (s *S) TestGetServerUriWithoutHost(c *C) {
+func (s *S) TestGetServerUriWithoutHost(c *gocheck.C) {
 	old, _ := config.Get("git:host")
 	defer config.Set("git:host", old)
 	config.Unset("git:host")
 	defer func() {
 		r := recover()
-		c.Assert(r, NotNil)
+		c.Assert(r, gocheck.NotNil)
 	}()
 	GitServerUri()
 }

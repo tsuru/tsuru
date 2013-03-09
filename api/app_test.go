@@ -20,7 +20,7 @@ import (
 	"io"
 	"io/ioutil"
 	"labix.org/v2/mgo/bson"
-	. "launchpad.net/gocheck"
+	"launchpad.net/gocheck"
 	stdlog "log"
 	"net/http"
 	"net/http/httptest"
@@ -54,7 +54,7 @@ func (h *testBadHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	http.Error(w, "some error", http.StatusInternalServerError)
 }
 
-func (s *S) TestAppIsAvailableHandlerShouldReturnErrorWhenAppStatusIsnotStarted(c *C) {
+func (s *S) TestAppIsAvailableHandlerShouldReturnErrorWhenAppStatusIsnotStarted(c *gocheck.C) {
 	a := app.App{
 		Name:      "someapp",
 		Framework: "python",
@@ -62,17 +62,17 @@ func (s *S) TestAppIsAvailableHandlerShouldReturnErrorWhenAppStatusIsnotStarted(
 		Units:     []app.Unit{{Name: "someapp/0", Type: "django", State: string(provision.StatusPending)}},
 	}
 	err := s.conn.Apps().Insert(a)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	url := fmt.Sprintf("/apps/%s/avaliable?:name=%s", a.Name, a.Name)
 	request, err := http.NewRequest("GET", url, nil)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
 	err = AppIsAvailableHandler(recorder, request)
-	c.Assert(err, NotNil)
+	c.Assert(err, gocheck.NotNil)
 }
 
-func (s *S) TestAppIsAvailableHandlerShouldReturn200WhenAppUnitStatusIsStarted(c *C) {
+func (s *S) TestAppIsAvailableHandlerShouldReturn200WhenAppUnitStatusIsStarted(c *gocheck.C) {
 	a := app.App{
 		Name:      "someapp",
 		Framework: "python",
@@ -80,18 +80,18 @@ func (s *S) TestAppIsAvailableHandlerShouldReturn200WhenAppUnitStatusIsStarted(c
 		Units:     []app.Unit{{Name: "someapp/0", Type: "django", State: string(provision.StatusStarted)}},
 	}
 	err := s.conn.Apps().Insert(a)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	url := fmt.Sprintf("/apps/%s/repository/clone?:name=%s", a.Name, a.Name)
 	request, err := http.NewRequest("GET", url, nil)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
 	err = AppIsAvailableHandler(recorder, request)
-	c.Assert(err, IsNil)
-	c.Assert(recorder.Code, Equals, http.StatusOK)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(recorder.Code, gocheck.Equals, http.StatusOK)
 }
 
-func (s *S) TestCloneRepositoryHandlerShouldAddLogs(c *C) {
+func (s *S) TestCloneRepositoryHandlerShouldAddLogs(c *gocheck.C) {
 	output := `pre-restart:
   - pre.sh
 pos-restart:
@@ -110,15 +110,15 @@ pos-restart:
 		Units:     []app.Unit{{Name: "i-0800", State: "started"}},
 	}
 	err := s.conn.Apps().Insert(a)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	url := fmt.Sprintf("/apps/%s/repository/clone?:name=%s", a.Name, a.Name)
 	request, err := http.NewRequest("GET", url, nil)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
 	err = CloneRepositoryHandler(recorder, request)
-	c.Assert(err, IsNil)
-	c.Assert(recorder.Code, Equals, http.StatusOK)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(recorder.Code, gocheck.Equals, http.StatusOK)
 	messages := []string{
 		" ---> Tsuru receiving push",
 		" ---> Cloning your code in your machines",
@@ -127,12 +127,12 @@ pos-restart:
 	}
 	for _, msg := range messages {
 		length, err := s.conn.Apps().Find(bson.M{"logs.message": msg}).Count()
-		c.Check(err, IsNil)
-		c.Check(length, Equals, 1)
+		c.Check(err, gocheck.IsNil)
+		c.Check(length, gocheck.Equals, 1)
 	}
 }
 
-func (s *S) TestCloneRepositoryHandler(c *C) {
+func (s *S) TestCloneRepositoryHandler(c *gocheck.C) {
 	output := `pre-restart:
   - pre.sh
 pos-restart:
@@ -151,15 +151,15 @@ pos-restart:
 		Units:     []app.Unit{{Name: "i-0800", State: "started"}},
 	}
 	err := s.conn.Apps().Insert(a)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	url := fmt.Sprintf("/apps/%s/repository/clone?:name=%s", a.Name, a.Name)
 	request, err := http.NewRequest("GET", url, nil)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
 	err = CloneRepositoryHandler(recorder, request)
-	c.Assert(err, IsNil)
-	c.Assert(recorder.Code, Equals, http.StatusOK)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(recorder.Code, gocheck.Equals, http.StatusOK)
 	regexp := `^# ---> Tsuru receiving push#.*
 # ---> Cloning your code in your machines#.*
 # ---> Installing dependencies#.*
@@ -168,11 +168,11 @@ pos-restart:
 # ---> Running pos-restart#.*
 # ---> Deploy done!##$
 `
-	c.Assert(strings.Replace(recorder.Body.String(), "\n", "#", -1), Matches, strings.Replace(regexp, "\n", "", -1))
-	c.Assert(recorder.Header().Get("Content-Type"), Equals, "text")
+	c.Assert(strings.Replace(recorder.Body.String(), "\n", "#", -1), gocheck.Matches, strings.Replace(regexp, "\n", "", -1))
+	c.Assert(recorder.Header().Get("Content-Type"), gocheck.Equals, "text")
 }
 
-func (s *S) TestCloneRepositoryRunsCloneOrPullThenPreRestartThenRestartThenPosRestartHooksInOrder(c *C) {
+func (s *S) TestCloneRepositoryRunsCloneOrPullThenPreRestartThenRestartThenPosRestartHooksInOrder(c *gocheck.C) {
 	var w safe.Buffer
 	l := stdlog.New(&w, "", stdlog.LstdFlags)
 	log.SetLogger(l)
@@ -194,39 +194,39 @@ pos-restart:
 		Units:     []app.Unit{{Name: "i-0800", State: "started"}},
 	}
 	err := s.conn.Apps().Insert(a)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	url := fmt.Sprintf("/apps/%s/repository/clone?:name=%s", a.Name, a.Name)
 	request, err := http.NewRequest("GET", url, nil)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
 	err = CloneRepositoryHandler(recorder, request)
-	c.Assert(err, IsNil)
-	c.Assert(recorder.Code, Equals, http.StatusOK)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(recorder.Code, gocheck.Equals, http.StatusOK)
 	str := strings.Replace(w.String(), "\n", "", -1)
-	c.Assert(str, Matches, ".*\"git clone\" output.*Installing dependencies.*Restarting your app.*Executing pos-restart hook.*")
+	c.Assert(str, gocheck.Matches, ".*\"git clone\" output.*Installing dependencies.*Restarting your app.*Executing pos-restart hook.*")
 }
 
-func (s *S) TestCloneRepositoryShouldReturnNotFoundWhenAppDoesNotExist(c *C) {
+func (s *S) TestCloneRepositoryShouldReturnNotFoundWhenAppDoesNotExist(c *gocheck.C) {
 	request, err := http.NewRequest("GET", "/apps/abc/repository/clone?:name=abc", nil)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
 	err = CloneRepositoryHandler(recorder, request)
-	c.Assert(err, NotNil)
+	c.Assert(err, gocheck.NotNil)
 	e, ok := err.(*errors.Http)
-	c.Assert(ok, Equals, true)
-	c.Assert(e.Code, Equals, http.StatusNotFound)
-	c.Assert(e, ErrorMatches, "^App abc not found.$")
+	c.Assert(ok, gocheck.Equals, true)
+	c.Assert(e.Code, gocheck.Equals, http.StatusNotFound)
+	c.Assert(e, gocheck.ErrorMatches, "^App abc not found.$")
 }
 
-func (s *S) TestAppList(c *C) {
+func (s *S) TestAppList(c *gocheck.C) {
 	app1 := app.App{
 		Name:  "app1",
 		Teams: []string{s.team.Name},
 		Units: []app.Unit{{Name: "app1/0", Ip: "10.10.10.10"}},
 	}
 	err := s.conn.Apps().Insert(app1)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": app1.Name})
 	app2 := app.App{
 		Name:  "app2",
@@ -234,70 +234,70 @@ func (s *S) TestAppList(c *C) {
 		Units: []app.Unit{{Name: "app2/0"}},
 	}
 	err = s.conn.Apps().Insert(app2)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": app2.Name})
 	expected := []app.App{app1, app2}
 	request, err := http.NewRequest("GET", "/apps/", nil)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	request.Header.Set("Content-Type", "application/json")
 	recorder := httptest.NewRecorder()
 	err = AppList(recorder, request, s.user)
-	c.Assert(err, IsNil)
-	c.Assert(recorder.Code, Equals, http.StatusOK)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(recorder.Code, gocheck.Equals, http.StatusOK)
 	body, err := ioutil.ReadAll(recorder.Body)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	apps := []app.App{}
 	err = json.Unmarshal(body, &apps)
-	c.Assert(err, IsNil)
-	c.Assert(len(apps), Equals, len(expected))
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(len(apps), gocheck.Equals, len(expected))
 	for i, app := range apps {
-		c.Assert(app.Name, DeepEquals, expected[i].Name)
+		c.Assert(app.Name, gocheck.DeepEquals, expected[i].Name)
 		if app.Units[0].Ip != "" {
-			c.Assert(app.Units[0].Ip, Equals, "10.10.10.10")
+			c.Assert(app.Units[0].Ip, gocheck.Equals, "10.10.10.10")
 		}
 	}
 }
 
 // Issue #52.
-func (s *S) TestAppListShouldListAllAppsOfAllTeamsThatTheUserIsAMember(c *C) {
+func (s *S) TestAppListShouldListAllAppsOfAllTeamsThatTheUserIsAMember(c *gocheck.C) {
 	u := auth.User{Email: "passing-by@angra.com"}
 	team := auth.Team{Name: "angra", Users: []string{s.user.Email, u.Email}}
 	err := s.conn.Teams().Insert(team)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Teams().Remove(bson.M{"_id": team.Name})
 	app1 := app.App{
 		Name:  "app1",
 		Teams: []string{s.team.Name, "angra"},
 	}
 	err = s.conn.Apps().Insert(app1)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": app1.Name})
 	request, err := http.NewRequest("GET", "/apps/", nil)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	request.Header.Set("Content-Type", "application/json")
 	recorder := httptest.NewRecorder()
 	err = AppList(recorder, request, &u)
-	c.Assert(err, IsNil)
-	c.Assert(recorder.Code, Equals, http.StatusOK)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(recorder.Code, gocheck.Equals, http.StatusOK)
 	body, err := ioutil.ReadAll(recorder.Body)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	var apps []app.App
 	err = json.Unmarshal(body, &apps)
-	c.Assert(err, IsNil)
-	c.Assert(apps[0].Name, Equals, app1.Name)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(apps[0].Name, gocheck.Equals, app1.Name)
 }
 
-func (s *S) TestListShouldReturnStatusNoContentWhenAppListIsNil(c *C) {
+func (s *S) TestListShouldReturnStatusNoContentWhenAppListIsNil(c *gocheck.C) {
 	request, err := http.NewRequest("GET", "/apps/", nil)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	request.Header.Set("Content-Type", "application/json")
 	recorder := httptest.NewRecorder()
 	err = AppList(recorder, request, s.user)
-	c.Assert(err, IsNil)
-	c.Assert(recorder.Code, Equals, http.StatusNoContent)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(recorder.Code, gocheck.Equals, http.StatusNoContent)
 }
 
-func (s *S) TestDelete(c *C) {
+func (s *S) TestDelete(c *gocheck.C) {
 	h := testHandler{}
 	ts := s.t.StartGandalfTestServer(&h)
 	defer ts.Close()
@@ -310,52 +310,52 @@ func (s *S) TestDelete(c *C) {
 		},
 	}
 	err := app.CreateApp(&myApp, 1, []auth.Team{*s.team})
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	myApp.Get()
 	defer myApp.Destroy()
 	request, err := http.NewRequest("DELETE", "/apps/"+myApp.Name+"?:name="+myApp.Name, nil)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
 	err = AppDelete(recorder, request, s.user)
-	c.Assert(err, IsNil)
-	c.Assert(recorder.Code, Equals, http.StatusOK)
-	c.Assert(h.url[1], Equals, "/repository/myapptodelete") // increment the index because of CreateApp action
-	c.Assert(h.method[1], Equals, "DELETE")
-	c.Assert(string(h.body[1]), Equals, "null")
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(recorder.Code, gocheck.Equals, http.StatusOK)
+	c.Assert(h.url[1], gocheck.Equals, "/repository/myapptodelete") // increment the index because of CreateApp action
+	c.Assert(h.method[1], gocheck.Equals, "DELETE")
+	c.Assert(string(h.body[1]), gocheck.Equals, "null")
 }
 
-func (s *S) TestDeleteShouldReturnForbiddenIfTheGivenUserDoesNotHaveAccesToTheApp(c *C) {
+func (s *S) TestDeleteShouldReturnForbiddenIfTheGivenUserDoesNotHaveAccesToTheApp(c *gocheck.C) {
 	myApp := app.App{
 		Name:      "MyAppToDelete",
 		Framework: "django",
 	}
 	err := s.conn.Apps().Insert(myApp)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": myApp.Name})
 	request, err := http.NewRequest("DELETE", "/apps/"+myApp.Name+"?:name="+myApp.Name, nil)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
 	err = AppDelete(recorder, request, s.user)
-	c.Assert(err, NotNil)
+	c.Assert(err, gocheck.NotNil)
 	e, ok := err.(*errors.Http)
-	c.Assert(ok, Equals, true)
-	c.Assert(e.Code, Equals, http.StatusForbidden)
-	c.Assert(e, ErrorMatches, "^User does not have access to this app$")
+	c.Assert(ok, gocheck.Equals, true)
+	c.Assert(e.Code, gocheck.Equals, http.StatusForbidden)
+	c.Assert(e, gocheck.ErrorMatches, "^User does not have access to this app$")
 }
 
-func (s *S) TestDeleteShouldReturnNotFoundIfTheAppDoesNotExist(c *C) {
+func (s *S) TestDeleteShouldReturnNotFoundIfTheAppDoesNotExist(c *gocheck.C) {
 	request, err := http.NewRequest("DELETE", "/apps/unkown?:name=unknown", nil)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
 	err = AppDelete(recorder, request, s.user)
-	c.Assert(err, NotNil)
+	c.Assert(err, gocheck.NotNil)
 	e, ok := err.(*errors.Http)
-	c.Assert(ok, Equals, true)
-	c.Assert(e.Code, Equals, http.StatusNotFound)
-	c.Assert(e, ErrorMatches, "^App unknown not found.$")
+	c.Assert(ok, gocheck.Equals, true)
+	c.Assert(e.Code, gocheck.Equals, http.StatusNotFound)
+	c.Assert(e, gocheck.ErrorMatches, "^App unknown not found.$")
 }
 
-func (s *S) TestDeleteShouldHandleWithGandalfError(c *C) {
+func (s *S) TestDeleteShouldHandleWithGandalfError(c *gocheck.C) {
 	myApp := app.App{
 		Name:      "myapptodelete",
 		Framework: "django",
@@ -365,20 +365,20 @@ func (s *S) TestDeleteShouldHandleWithGandalfError(c *C) {
 		},
 	}
 	err := s.conn.Apps().Insert(myApp)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": myApp.Name})
 	request, err := http.NewRequest("DELETE", "/apps/"+myApp.Name+"?:name="+myApp.Name, nil)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
 	h := testBadHandler{}
 	ts := s.t.StartGandalfTestServer(&h)
 	defer ts.Close()
 	err = AppDelete(recorder, request, s.user)
-	c.Assert(err, NotNil)
-	c.Assert(err.Error(), Equals, "Could not remove app's repository at git server. Aborting...")
+	c.Assert(err, gocheck.NotNil)
+	c.Assert(err.Error(), gocheck.Equals, "Could not remove app's repository at git server. Aborting...")
 }
 
-func (s *S) TestDeleteReturnsErrorIfAppDestroyFails(c *C) {
+func (s *S) TestDeleteReturnsErrorIfAppDestroyFails(c *gocheck.C) {
 	s.provisioner.PrepareFailure("Destroy", &errors.Http{Code: 500, Message: "fatal"})
 	h := testHandler{}
 	ts := s.t.StartGandalfTestServer(&h)
@@ -390,95 +390,95 @@ func (s *S) TestDeleteReturnsErrorIfAppDestroyFails(c *C) {
 		Units:     []app.Unit{{Name: "i-0800", Machine: 1}},
 	}
 	err := s.conn.Apps().Insert(myApp)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": myApp.Name})
 	request, err := http.NewRequest("DELETE", "/apps/"+myApp.Name+"?:name="+myApp.Name, nil)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
 	err = AppDelete(recorder, request, s.user)
-	c.Assert(err, NotNil)
+	c.Assert(err, gocheck.NotNil)
 }
 
-func (s *S) TestAppInfo(c *C) {
+func (s *S) TestAppInfo(c *gocheck.C) {
 	expectedApp := app.App{
 		Name:      "NewApp",
 		Framework: "django",
 		Teams:     []string{s.team.Name},
 	}
 	err := s.conn.Apps().Insert(expectedApp)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": expectedApp.Name})
 	var myApp map[string]interface{}
 	request, err := http.NewRequest("GET", "/apps/"+expectedApp.Name+"?:name="+expectedApp.Name, nil)
 	request.Header.Set("Content-Type", "application/json")
 	recorder := httptest.NewRecorder()
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	err = AppInfo(recorder, request, s.user)
-	c.Assert(err, IsNil)
-	c.Assert(recorder.Code, Equals, http.StatusOK)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(recorder.Code, gocheck.Equals, http.StatusOK)
 	body, err := ioutil.ReadAll(recorder.Body)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	err = json.Unmarshal(body, &myApp)
-	c.Assert(err, IsNil)
-	c.Assert(myApp["Name"], Equals, expectedApp.Name)
-	c.Assert(myApp["Repository"], Equals, repository.GetUrl(expectedApp.Name))
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(myApp["Name"], gocheck.Equals, expectedApp.Name)
+	c.Assert(myApp["Repository"], gocheck.Equals, repository.GetUrl(expectedApp.Name))
 }
 
-func (s *S) TestAppInfoReturnsForbiddenWhenTheUserDoesNotHaveAccessToTheApp(c *C) {
+func (s *S) TestAppInfoReturnsForbiddenWhenTheUserDoesNotHaveAccessToTheApp(c *gocheck.C) {
 	expectedApp := app.App{
 		Name:      "NewApp",
 		Framework: "django",
 	}
 	err := s.conn.Apps().Insert(expectedApp)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(expectedApp)
 	request, err := http.NewRequest("GET", "/apps/"+expectedApp.Name+"?:name="+expectedApp.Name, nil)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
 	err = AppInfo(recorder, request, s.user)
-	c.Assert(err, NotNil)
+	c.Assert(err, gocheck.NotNil)
 	e, ok := err.(*errors.Http)
-	c.Assert(ok, Equals, true)
-	c.Assert(e.Code, Equals, http.StatusForbidden)
-	c.Assert(e, ErrorMatches, "^User does not have access to this app$")
+	c.Assert(ok, gocheck.Equals, true)
+	c.Assert(e.Code, gocheck.Equals, http.StatusForbidden)
+	c.Assert(e, gocheck.ErrorMatches, "^User does not have access to this app$")
 }
 
-func (s *S) TestAppInfoReturnsNotFoundWhenAppDoesNotExist(c *C) {
+func (s *S) TestAppInfoReturnsNotFoundWhenAppDoesNotExist(c *gocheck.C) {
 	myApp := app.App{Name: "SomeApp"}
 	request, err := http.NewRequest("GET", "/apps/"+myApp.Name+"?:name="+myApp.Name, nil)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	request.Header.Set("Content-Type", "application/json")
 	recorder := httptest.NewRecorder()
 	err = AppInfo(recorder, request, s.user)
-	c.Assert(err, NotNil)
+	c.Assert(err, gocheck.NotNil)
 	e, ok := err.(*errors.Http)
-	c.Assert(ok, Equals, true)
-	c.Assert(e.Code, Equals, http.StatusNotFound)
-	c.Assert(e, ErrorMatches, "^App SomeApp not found.$")
+	c.Assert(ok, gocheck.Equals, true)
+	c.Assert(e.Code, gocheck.Equals, http.StatusNotFound)
+	c.Assert(e, gocheck.ErrorMatches, "^App SomeApp not found.$")
 }
 
-func (s *S) TestCreateAppHandler(c *C) {
+func (s *S) TestCreateAppHandler(c *gocheck.C) {
 	h := testHandler{}
 	ts := s.t.StartGandalfTestServer(&h)
 	defer ts.Close()
 	a := app.App{Name: "someapp"}
 	defer func() {
 		err := a.Get()
-		c.Assert(err, IsNil)
+		c.Assert(err, gocheck.IsNil)
 		err = a.Destroy()
-		c.Assert(err, IsNil)
+		c.Assert(err, gocheck.IsNil)
 		err = s.provisioner.Destroy(&a)
-		c.Assert(err, IsNil)
+		c.Assert(err, gocheck.IsNil)
 	}()
 	b := strings.NewReader(`{"name":"someapp","framework":"django","units":4}`)
 	request, err := http.NewRequest("POST", "/apps", b)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	request.Header.Set("Content-Type", "application/json")
 	recorder := httptest.NewRecorder()
 	err = CreateAppHandler(recorder, request, s.user)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	body, err := ioutil.ReadAll(recorder.Body)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	repoUrl := repository.GetUrl(a.Name)
 	var obtained map[string]string
 	expected := map[string]string{
@@ -486,153 +486,153 @@ func (s *S) TestCreateAppHandler(c *C) {
 		"repository_url": repoUrl,
 	}
 	err = json.Unmarshal(body, &obtained)
-	c.Assert(obtained, DeepEquals, expected)
-	c.Assert(recorder.Code, Equals, http.StatusOK)
+	c.Assert(obtained, gocheck.DeepEquals, expected)
+	c.Assert(recorder.Code, gocheck.Equals, http.StatusOK)
 	var gotApp app.App
 	err = s.conn.Apps().Find(bson.M{"name": "someapp"}).One(&gotApp)
-	c.Assert(err, IsNil)
-	c.Assert(gotApp.Teams, DeepEquals, []string{s.team.Name})
-	c.Assert(s.provisioner.GetUnits(&gotApp), HasLen, 4)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(gotApp.Teams, gocheck.DeepEquals, []string{s.team.Name})
+	c.Assert(s.provisioner.GetUnits(&gotApp), gocheck.HasLen, 4)
 }
 
-func (s *S) TestCreateAppReturnsPreconditionFailedIfTheAppNameIsInvalid(c *C) {
+func (s *S) TestCreateAppReturnsPreconditionFailedIfTheAppNameIsInvalid(c *gocheck.C) {
 	b := strings.NewReader(`{"name":"123myapp","framework":"django"}`)
 	request, err := http.NewRequest("POST", "/apps", b)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	request.Header.Set("Content-Type", "application/json")
 	recorder := httptest.NewRecorder()
 	err = CreateAppHandler(recorder, request, s.user)
-	c.Assert(err, NotNil)
+	c.Assert(err, gocheck.NotNil)
 	e, ok := err.(*errors.Http)
-	c.Assert(ok, Equals, true)
-	c.Assert(e.Code, Equals, http.StatusPreconditionFailed)
+	c.Assert(ok, gocheck.Equals, true)
+	c.Assert(e.Code, gocheck.Equals, http.StatusPreconditionFailed)
 	msg := "Invalid app name, your app should have at most 63 " +
 		"characters, containing only lower case letters or numbers, " +
 		"starting with a letter."
-	c.Assert(e.Error(), Equals, msg)
+	c.Assert(e.Error(), gocheck.Equals, msg)
 }
 
-func (s *S) TestCreateAppReturns403IfTheUserIsNotMemberOfAnyTeam(c *C) {
+func (s *S) TestCreateAppReturns403IfTheUserIsNotMemberOfAnyTeam(c *gocheck.C) {
 	u := &auth.User{Email: "thetrees@rush.com", Password: "123"}
 	b := strings.NewReader(`{"name":"someapp", "framework":"django"}`)
 	request, err := http.NewRequest("POST", "/apps", b)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	request.Header.Set("Content-Type", "application/json")
 	recorder := httptest.NewRecorder()
 	err = CreateAppHandler(recorder, request, u)
-	c.Assert(err, NotNil)
+	c.Assert(err, gocheck.NotNil)
 	e, ok := err.(*errors.Http)
-	c.Assert(ok, Equals, true)
-	c.Assert(e.Code, Equals, http.StatusForbidden)
-	c.Assert(e, ErrorMatches, "^In order to create an app, you should be member of at least one team$")
+	c.Assert(ok, gocheck.Equals, true)
+	c.Assert(e.Code, gocheck.Equals, http.StatusForbidden)
+	c.Assert(e, gocheck.ErrorMatches, "^In order to create an app, you should be member of at least one team$")
 }
 
-func (s *S) TestCreateAppReturnsConflictWithProperMessageWhenTheAppAlreadyExist(c *C) {
+func (s *S) TestCreateAppReturnsConflictWithProperMessageWhenTheAppAlreadyExist(c *gocheck.C) {
 	a := app.App{
 		Name:  "plainsofdawn",
 		Units: []app.Unit{{Machine: 1}},
 	}
 	err := s.conn.Apps().Insert(a)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	b := strings.NewReader(`{"name":"plainsofdawn","framework":"django"}`)
 	request, err := http.NewRequest("POST", "/apps", b)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	request.Header.Set("Content-Type", "application/json")
 	recorder := httptest.NewRecorder()
 	err = CreateAppHandler(recorder, request, s.user)
-	c.Assert(err, NotNil)
-	c.Assert(err, ErrorMatches, ".*there is already an app with this name.*")
+	c.Assert(err, gocheck.NotNil)
+	c.Assert(err, gocheck.ErrorMatches, ".*there is already an app with this name.*")
 }
 
-func (s *S) TestAddUnits(c *C) {
+func (s *S) TestAddUnits(c *gocheck.C) {
 	a := app.App{
 		Name:      "armorandsword",
 		Framework: "python",
 		Teams:     []string{s.team.Name},
 	}
 	err := s.conn.Apps().Insert(a)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	err = s.provisioner.Provision(&a)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	defer s.provisioner.Destroy(&a)
 	body := strings.NewReader("3")
 	request, err := http.NewRequest("PUT", "/apps/armorandsword/units?:name=armorandsword", body)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
 	err = AddUnitsHandler(recorder, request, s.user)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	err = a.Get()
-	c.Assert(err, IsNil)
-	c.Assert(a.Units, HasLen, 3)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(a.Units, gocheck.HasLen, 3)
 }
 
-func (s *S) TestAddUnitsReturns404IfAppDoesNotExist(c *C) {
+func (s *S) TestAddUnitsReturns404IfAppDoesNotExist(c *gocheck.C) {
 	body := strings.NewReader("1")
 	request, err := http.NewRequest("PUT", "/apps/armorandsword/units?:name=armorandsword", body)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
 	err = AddUnitsHandler(recorder, request, s.user)
-	c.Assert(err, NotNil)
+	c.Assert(err, gocheck.NotNil)
 	e, ok := err.(*errors.Http)
-	c.Assert(ok, Equals, true)
-	c.Assert(e.Code, Equals, http.StatusNotFound)
-	c.Assert(e.Message, Equals, "App armorandsword not found.")
+	c.Assert(ok, gocheck.Equals, true)
+	c.Assert(e.Code, gocheck.Equals, http.StatusNotFound)
+	c.Assert(e.Message, gocheck.Equals, "App armorandsword not found.")
 }
 
-func (s *S) TestAddUnitsReturns403IfTheUserDoesNotHaveAccessToTheApp(c *C) {
+func (s *S) TestAddUnitsReturns403IfTheUserDoesNotHaveAccessToTheApp(c *gocheck.C) {
 	a := app.App{
 		Name:      "armorandsword",
 		Framework: "python",
 	}
 	err := s.conn.Apps().Insert(a)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	body := strings.NewReader("1")
 	request, err := http.NewRequest("PUT", "/apps/armorandsword/units?:name=armorandsword", body)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
 	err = AddUnitsHandler(recorder, request, s.user)
-	c.Assert(err, NotNil)
+	c.Assert(err, gocheck.NotNil)
 	e, ok := err.(*errors.Http)
-	c.Assert(ok, Equals, true)
-	c.Assert(e.Code, Equals, http.StatusForbidden)
-	c.Assert(e.Message, Equals, "User does not have access to this app")
+	c.Assert(ok, gocheck.Equals, true)
+	c.Assert(e.Code, gocheck.Equals, http.StatusForbidden)
+	c.Assert(e.Message, gocheck.Equals, "User does not have access to this app")
 }
 
-func (s *S) TestAddUnitsReturns400IfNumberOfUnitsIsOmited(c *C) {
+func (s *S) TestAddUnitsReturns400IfNumberOfUnitsIsOmited(c *gocheck.C) {
 	bodies := []io.Reader{nil, strings.NewReader("")}
 	for _, body := range bodies {
 		request, err := http.NewRequest("PUT", "/apps/armorandsword/units?:name=armorandsword", body)
-		c.Assert(err, IsNil)
+		c.Assert(err, gocheck.IsNil)
 		recorder := httptest.NewRecorder()
 		err = AddUnitsHandler(recorder, request, s.user)
-		c.Assert(err, NotNil)
+		c.Assert(err, gocheck.NotNil)
 		e, ok := err.(*errors.Http)
-		c.Assert(ok, Equals, true)
-		c.Assert(e.Code, Equals, http.StatusBadRequest)
-		c.Assert(e.Message, Equals, "You must provide the number of units.")
+		c.Assert(ok, gocheck.Equals, true)
+		c.Assert(e.Code, gocheck.Equals, http.StatusBadRequest)
+		c.Assert(e.Message, gocheck.Equals, "You must provide the number of units.")
 	}
 }
 
-func (s *S) TestAddUnitsReturns400IfNumberIsInvalid(c *C) {
+func (s *S) TestAddUnitsReturns400IfNumberIsInvalid(c *gocheck.C) {
 	values := []string{"-1", "0", "far cry", "12345678909876543"}
 	for _, value := range values {
 		body := strings.NewReader(value)
 		request, err := http.NewRequest("PUT", "/apps/armorandsword/units?:name=armorandsword", body)
-		c.Assert(err, IsNil)
+		c.Assert(err, gocheck.IsNil)
 		recorder := httptest.NewRecorder()
 		err = AddUnitsHandler(recorder, request, s.user)
-		c.Assert(err, NotNil)
+		c.Assert(err, gocheck.NotNil)
 		e, ok := err.(*errors.Http)
-		c.Assert(ok, Equals, true)
-		c.Assert(e.Code, Equals, http.StatusBadRequest)
-		c.Assert(e.Message, Equals, "Invalid number of units: the number must be an integer greater than 0.")
+		c.Assert(ok, gocheck.Equals, true)
+		c.Assert(e.Code, gocheck.Equals, http.StatusBadRequest)
+		c.Assert(e.Message, gocheck.Equals, "Invalid number of units: the number must be an integer greater than 0.")
 	}
 }
 
-func (s *S) TestRemoveUnits(c *C) {
+func (s *S) TestRemoveUnits(c *gocheck.C) {
 	a := app.App{
 		Name:      "velha",
 		Framework: "python",
@@ -642,96 +642,96 @@ func (s *S) TestRemoveUnits(c *C) {
 		},
 	}
 	err := s.conn.Apps().Insert(a)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	err = s.provisioner.Provision(&a)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	defer s.provisioner.Destroy(&a)
 	s.provisioner.AddUnits(&a, 3)
 	body := strings.NewReader("2")
 	request, err := http.NewRequest("DELETE", "/apps/velha/units?:name=velha", body)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
 	err = RemoveUnitsHandler(recorder, request, s.user)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	err = a.Get()
-	c.Assert(err, IsNil)
-	c.Assert(a.Units, HasLen, 1)
-	c.Assert(a.Units[0].Name, Equals, "velha/2")
-	c.Assert(s.provisioner.GetUnits(&a), HasLen, 2)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(a.Units, gocheck.HasLen, 1)
+	c.Assert(a.Units[0].Name, gocheck.Equals, "velha/2")
+	c.Assert(s.provisioner.GetUnits(&a), gocheck.HasLen, 2)
 }
 
-func (s *S) TestRemoveUnitsReturns404IfAppDoesNotExist(c *C) {
+func (s *S) TestRemoveUnitsReturns404IfAppDoesNotExist(c *gocheck.C) {
 	body := strings.NewReader("1")
 	request, err := http.NewRequest("DELETE", "/apps/fetisha/units?:name=fetisha", body)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
 	err = RemoveUnitsHandler(recorder, request, s.user)
-	c.Assert(err, NotNil)
+	c.Assert(err, gocheck.NotNil)
 	e, ok := err.(*errors.Http)
-	c.Assert(ok, Equals, true)
-	c.Assert(e.Code, Equals, http.StatusNotFound)
-	c.Assert(e.Message, Equals, "App fetisha not found.")
+	c.Assert(ok, gocheck.Equals, true)
+	c.Assert(e.Code, gocheck.Equals, http.StatusNotFound)
+	c.Assert(e.Message, gocheck.Equals, "App fetisha not found.")
 }
 
-func (s *S) TestRemoveUnitsReturns403IfTheUserDoesNotHaveAccessToTheApp(c *C) {
+func (s *S) TestRemoveUnitsReturns403IfTheUserDoesNotHaveAccessToTheApp(c *gocheck.C) {
 	a := app.App{
 		Name:      "fetisha",
 		Framework: "python",
 	}
 	err := s.conn.Apps().Insert(a)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	body := strings.NewReader("1")
 	request, err := http.NewRequest("DELETE", "/apps/fetisha/units?:name=fetisha", body)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
 	err = RemoveUnitsHandler(recorder, request, s.user)
-	c.Assert(err, NotNil)
+	c.Assert(err, gocheck.NotNil)
 	e, ok := err.(*errors.Http)
-	c.Assert(ok, Equals, true)
-	c.Assert(e.Code, Equals, http.StatusForbidden)
-	c.Assert(e.Message, Equals, "User does not have access to this app")
+	c.Assert(ok, gocheck.Equals, true)
+	c.Assert(e.Code, gocheck.Equals, http.StatusForbidden)
+	c.Assert(e.Message, gocheck.Equals, "User does not have access to this app")
 }
 
-func (s *S) TestRemoveUnitsReturns400IfNumberOfUnitsIsOmited(c *C) {
+func (s *S) TestRemoveUnitsReturns400IfNumberOfUnitsIsOmited(c *gocheck.C) {
 	bodies := []io.Reader{nil, strings.NewReader("")}
 	for _, body := range bodies {
 		request, err := http.NewRequest("DELETE", "/apps/fetisha/units?:name=fetisha", body)
-		c.Assert(err, IsNil)
+		c.Assert(err, gocheck.IsNil)
 		recorder := httptest.NewRecorder()
 		err = RemoveUnitsHandler(recorder, request, s.user)
-		c.Assert(err, NotNil)
+		c.Assert(err, gocheck.NotNil)
 		e, ok := err.(*errors.Http)
-		c.Assert(ok, Equals, true)
-		c.Assert(e.Code, Equals, http.StatusBadRequest)
-		c.Assert(e.Message, Equals, "You must provide the number of units.")
+		c.Assert(ok, gocheck.Equals, true)
+		c.Assert(e.Code, gocheck.Equals, http.StatusBadRequest)
+		c.Assert(e.Message, gocheck.Equals, "You must provide the number of units.")
 	}
 }
 
-func (s *S) TestRemoveUnitsReturns400IfNumberIsInvalid(c *C) {
+func (s *S) TestRemoveUnitsReturns400IfNumberIsInvalid(c *gocheck.C) {
 	values := []string{"-1", "0", "far cry", "12345678909876543"}
 	for _, value := range values {
 		body := strings.NewReader(value)
 		request, err := http.NewRequest("DELETE", "/apps/fiend/units?:name=fiend", body)
-		c.Assert(err, IsNil)
+		c.Assert(err, gocheck.IsNil)
 		recorder := httptest.NewRecorder()
 		err = RemoveUnitsHandler(recorder, request, s.user)
-		c.Assert(err, NotNil)
+		c.Assert(err, gocheck.NotNil)
 		e, ok := err.(*errors.Http)
-		c.Assert(ok, Equals, true)
-		c.Assert(e.Code, Equals, http.StatusBadRequest)
-		c.Assert(e.Message, Equals, "Invalid number of units: the number must be an integer greater than 0.")
+		c.Assert(ok, gocheck.Equals, true)
+		c.Assert(e.Code, gocheck.Equals, http.StatusBadRequest)
+		c.Assert(e.Message, gocheck.Equals, "Invalid number of units: the number must be an integer greater than 0.")
 	}
 }
 
-func (s *S) TestAddTeamToTheApp(c *C) {
+func (s *S) TestAddTeamToTheApp(c *gocheck.C) {
 	h := testHandler{}
 	ts := s.t.StartGandalfTestServer(&h)
 	defer ts.Close()
 	t := auth.Team{Name: "itshardteam", Users: []string{s.user.Email}}
 	err := s.conn.Teams().Insert(t)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Teams().RemoveAll(bson.M{"_id": t.Name})
 	a := app.App{
 		Name:      "itshard",
@@ -739,100 +739,100 @@ func (s *S) TestAddTeamToTheApp(c *C) {
 		Teams:     []string{t.Name},
 	}
 	err = s.conn.Apps().Insert(a)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	url := fmt.Sprintf("/apps/%s/%s?:app=%s&:team=%s", a.Name, s.team.Name, a.Name, s.team.Name)
 	request, err := http.NewRequest("PUT", url, nil)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
 	err = GrantAccessToTeamHandler(recorder, request, s.user)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	err = a.Get()
-	c.Assert(err, IsNil)
-	c.Assert(a.Teams, HasLen, 2)
-	c.Assert(a.Teams[1], Equals, s.team.Name)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(a.Teams, gocheck.HasLen, 2)
+	c.Assert(a.Teams[1], gocheck.Equals, s.team.Name)
 }
 
-func (s *S) TestGrantAccessToTeamReturn404IfTheAppDoesNotExist(c *C) {
+func (s *S) TestGrantAccessToTeamReturn404IfTheAppDoesNotExist(c *gocheck.C) {
 	request, err := http.NewRequest("PUT", "/apps/a/b?:app=a&:team=b", nil)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
 	err = GrantAccessToTeamHandler(recorder, request, s.user)
-	c.Assert(err, NotNil)
+	c.Assert(err, gocheck.NotNil)
 	e, ok := err.(*errors.Http)
-	c.Assert(ok, Equals, true)
-	c.Assert(e.Code, Equals, http.StatusNotFound)
-	c.Assert(e, ErrorMatches, "^App a not found.$")
+	c.Assert(ok, gocheck.Equals, true)
+	c.Assert(e.Code, gocheck.Equals, http.StatusNotFound)
+	c.Assert(e, gocheck.ErrorMatches, "^App a not found.$")
 }
 
-func (s *S) TestGrantAccessToTeamReturn403IfTheGivenUserDoesNotHasAccessToTheApp(c *C) {
+func (s *S) TestGrantAccessToTeamReturn403IfTheGivenUserDoesNotHasAccessToTheApp(c *gocheck.C) {
 	a := app.App{
 		Name:      "itshard",
 		Framework: "django",
 	}
 	err := s.conn.Apps().Insert(a)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	url := fmt.Sprintf("/apps/%s/%s?:app=%s&:team=%s", a.Name, s.team.Name, a.Name, s.team.Name)
 	request, err := http.NewRequest("PUT", url, nil)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
 	err = GrantAccessToTeamHandler(recorder, request, s.user)
-	c.Assert(err, NotNil)
+	c.Assert(err, gocheck.NotNil)
 	e, ok := err.(*errors.Http)
-	c.Assert(ok, Equals, true)
-	c.Assert(e.Code, Equals, http.StatusForbidden)
-	c.Assert(e, ErrorMatches, "^User does not have access to this app$")
+	c.Assert(ok, gocheck.Equals, true)
+	c.Assert(e.Code, gocheck.Equals, http.StatusForbidden)
+	c.Assert(e, gocheck.ErrorMatches, "^User does not have access to this app$")
 }
 
-func (s *S) TestGrantAccessToTeamReturn404IfTheTeamDoesNotExist(c *C) {
+func (s *S) TestGrantAccessToTeamReturn404IfTheTeamDoesNotExist(c *gocheck.C) {
 	a := app.App{
 		Name:      "itshard",
 		Framework: "django",
 		Teams:     []string{s.team.Name},
 	}
 	err := s.conn.Apps().Insert(a)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	url := fmt.Sprintf("/apps/%s/a?:app=%s&:team=a", a.Name, a.Name)
 	request, err := http.NewRequest("PUT", url, nil)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
 	err = GrantAccessToTeamHandler(recorder, request, s.user)
-	c.Assert(err, NotNil)
+	c.Assert(err, gocheck.NotNil)
 	e, ok := err.(*errors.Http)
-	c.Assert(ok, Equals, true)
-	c.Assert(e.Code, Equals, http.StatusNotFound)
-	c.Assert(e, ErrorMatches, "^Team not found$")
+	c.Assert(ok, gocheck.Equals, true)
+	c.Assert(e.Code, gocheck.Equals, http.StatusNotFound)
+	c.Assert(e, gocheck.ErrorMatches, "^Team not found$")
 }
 
-func (s *S) TestGrantAccessToTeamReturn409IfTheTeamHasAlreadyAccessToTheApp(c *C) {
+func (s *S) TestGrantAccessToTeamReturn409IfTheTeamHasAlreadyAccessToTheApp(c *gocheck.C) {
 	a := app.App{
 		Name:      "itshard",
 		Framework: "django",
 		Teams:     []string{s.team.Name},
 	}
 	err := s.conn.Apps().Insert(a)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	url := fmt.Sprintf("/apps/%s/%s?:app=%s&:team=%s", a.Name, s.team.Name, a.Name, s.team.Name)
 	request, err := http.NewRequest("PUT", url, nil)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
 	err = GrantAccessToTeamHandler(recorder, request, s.user)
-	c.Assert(err, NotNil)
+	c.Assert(err, gocheck.NotNil)
 	e, ok := err.(*errors.Http)
-	c.Assert(ok, Equals, true)
-	c.Assert(e.Code, Equals, http.StatusConflict)
+	c.Assert(ok, gocheck.Equals, true)
+	c.Assert(e.Code, gocheck.Equals, http.StatusConflict)
 }
 
-func (s *S) TestGrantAccessToTeamCallsGandalf(c *C) {
+func (s *S) TestGrantAccessToTeamCallsGandalf(c *gocheck.C) {
 	h := testHandler{}
 	ts := s.t.StartGandalfTestServer(&h)
 	defer ts.Close()
 	t := &auth.Team{Name: "anything", Users: []string{s.user.Email}}
 	err := s.conn.Teams().Insert(t)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Teams().Remove(bson.M{"_id": t.Name})
 	a := app.App{
 		Name:      "tsuru",
@@ -840,23 +840,23 @@ func (s *S) TestGrantAccessToTeamCallsGandalf(c *C) {
 		Teams:     []string{t.Name},
 	}
 	err = s.conn.Apps().Insert(a)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	err = grantAccessToTeam(a.Name, s.team.Name, s.user)
-	c.Assert(err, IsNil)
-	c.Assert(h.url[0], Equals, "/repository/grant")
-	c.Assert(h.method[0], Equals, "POST")
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(h.url[0], gocheck.Equals, "/repository/grant")
+	c.Assert(h.method[0], gocheck.Equals, "POST")
 	expected := fmt.Sprintf(`{"repositories":["%s"],"users":["%s"]}`, a.Name, s.user.Email)
-	c.Assert(string(h.body[0]), Equals, expected)
+	c.Assert(string(h.body[0]), gocheck.Equals, expected)
 }
 
-func (s *S) TestRevokeAccessFromTeam(c *C) {
+func (s *S) TestRevokeAccessFromTeam(c *gocheck.C) {
 	h := testHandler{}
 	ts := s.t.StartGandalfTestServer(&h)
 	defer ts.Close()
 	t := auth.Team{Name: "abcd"}
 	err := s.conn.Teams().Insert(t)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Teams().Remove(bson.M{"_id": t.Name})
 	a := app.App{
 		Name:      "itshard",
@@ -864,82 +864,82 @@ func (s *S) TestRevokeAccessFromTeam(c *C) {
 		Teams:     []string{"abcd", s.team.Name},
 	}
 	err = s.conn.Apps().Insert(a)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	url := fmt.Sprintf("/apps/%s/%s?:app=%s&:team=%s", a.Name, s.team.Name, a.Name, s.team.Name)
 	request, err := http.NewRequest("DELETE", url, nil)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
 	err = RevokeAccessFromTeamHandler(recorder, request, s.user)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	a.Get()
-	c.Assert(a.Teams, HasLen, 1)
-	c.Assert(a.Teams[0], Equals, "abcd")
+	c.Assert(a.Teams, gocheck.HasLen, 1)
+	c.Assert(a.Teams[0], gocheck.Equals, "abcd")
 }
 
-func (s *S) TestRevokeAccessFromTeamReturn404IfTheAppDoesNotExist(c *C) {
+func (s *S) TestRevokeAccessFromTeamReturn404IfTheAppDoesNotExist(c *gocheck.C) {
 	h := testHandler{}
 	ts := s.t.StartGandalfTestServer(&h)
 	defer ts.Close()
 	request, err := http.NewRequest("DELETE", "/apps/a/b?:app=a&:team=b", nil)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
 	err = RevokeAccessFromTeamHandler(recorder, request, s.user)
-	c.Assert(err, NotNil)
+	c.Assert(err, gocheck.NotNil)
 	e, ok := err.(*errors.Http)
-	c.Assert(ok, Equals, true)
-	c.Assert(e.Code, Equals, http.StatusNotFound)
-	c.Assert(e, ErrorMatches, "^App a not found.$")
+	c.Assert(ok, gocheck.Equals, true)
+	c.Assert(e.Code, gocheck.Equals, http.StatusNotFound)
+	c.Assert(e, gocheck.ErrorMatches, "^App a not found.$")
 }
 
-func (s *S) TestRevokeAccessFromTeamReturn401IfTheGivenUserDoesNotHavePermissionInTheApp(c *C) {
+func (s *S) TestRevokeAccessFromTeamReturn401IfTheGivenUserDoesNotHavePermissionInTheApp(c *gocheck.C) {
 	a := app.App{
 		Name:      "itshard",
 		Framework: "django",
 	}
 	err := s.conn.Apps().Insert(a)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	url := fmt.Sprintf("/apps/%s/%s?:app=%s&:team=%s", a.Name, s.team.Name, a.Name, s.team.Name)
 	request, err := http.NewRequest("DELETE", url, nil)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
 	err = RevokeAccessFromTeamHandler(recorder, request, s.user)
-	c.Assert(err, NotNil)
+	c.Assert(err, gocheck.NotNil)
 	e, ok := err.(*errors.Http)
-	c.Assert(ok, Equals, true)
-	c.Assert(e.Code, Equals, http.StatusForbidden)
-	c.Assert(e, ErrorMatches, "^User does not have access to this app$")
+	c.Assert(ok, gocheck.Equals, true)
+	c.Assert(e.Code, gocheck.Equals, http.StatusForbidden)
+	c.Assert(e, gocheck.ErrorMatches, "^User does not have access to this app$")
 }
 
-func (s *S) TestRevokeAccessFromTeamReturn404IfTheTeamDoesNotExist(c *C) {
+func (s *S) TestRevokeAccessFromTeamReturn404IfTheTeamDoesNotExist(c *gocheck.C) {
 	a := app.App{
 		Name:      "itshard",
 		Framework: "django",
 		Teams:     []string{s.team.Name},
 	}
 	err := s.conn.Apps().Insert(a)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	url := fmt.Sprintf("/apps/%s/x?:app=%s&:team=x", a.Name, a.Name)
 	request, err := http.NewRequest("DELETE", url, nil)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
 	err = RevokeAccessFromTeamHandler(recorder, request, s.user)
-	c.Assert(err, NotNil)
+	c.Assert(err, gocheck.NotNil)
 	e, ok := err.(*errors.Http)
-	c.Assert(ok, Equals, true)
-	c.Assert(e.Code, Equals, http.StatusNotFound)
-	c.Assert(e, ErrorMatches, "^Team not found$")
+	c.Assert(ok, gocheck.Equals, true)
+	c.Assert(e.Code, gocheck.Equals, http.StatusNotFound)
+	c.Assert(e, gocheck.ErrorMatches, "^Team not found$")
 }
 
-func (s *S) TestRevokeAccessFromTeamReturn404IfTheTeamDoesNotHaveAccessToTheApp(c *C) {
+func (s *S) TestRevokeAccessFromTeamReturn404IfTheTeamDoesNotHaveAccessToTheApp(c *gocheck.C) {
 	t := auth.Team{Name: "blaaa"}
 	err := s.conn.Teams().Insert(t)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	t2 := auth.Team{Name: "team2"}
 	err = s.conn.Teams().Insert(t2)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Teams().Remove(bson.M{"_id": bson.M{"$in": []string{"blaaa", "team2"}}})
 	a := app.App{
 		Name:      "itshard",
@@ -947,51 +947,51 @@ func (s *S) TestRevokeAccessFromTeamReturn404IfTheTeamDoesNotHaveAccessToTheApp(
 		Teams:     []string{s.team.Name, t2.Name},
 	}
 	err = s.conn.Apps().Insert(a)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	url := fmt.Sprintf("/apps/%s/%s?:app=%s&:team=%s", a.Name, t.Name, a.Name, t.Name)
 	request, err := http.NewRequest("DELETE", url, nil)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
 	err = RevokeAccessFromTeamHandler(recorder, request, s.user)
-	c.Assert(err, NotNil)
+	c.Assert(err, gocheck.NotNil)
 	e, ok := err.(*errors.Http)
-	c.Assert(ok, Equals, true)
-	c.Assert(e.Code, Equals, http.StatusNotFound)
+	c.Assert(ok, gocheck.Equals, true)
+	c.Assert(e.Code, gocheck.Equals, http.StatusNotFound)
 }
 
-func (s *S) TestRevokeAccessFromTeamReturn403IfTheTeamIsTheLastWithAccessToTheApp(c *C) {
+func (s *S) TestRevokeAccessFromTeamReturn403IfTheTeamIsTheLastWithAccessToTheApp(c *gocheck.C) {
 	a := app.App{
 		Name:      "itshard",
 		Framework: "django",
 		Teams:     []string{s.team.Name},
 	}
 	err := s.conn.Apps().Insert(a)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	url := fmt.Sprintf("/apps/%s/%s?:app=%s&:team=%s", a.Name, s.team.Name, a.Name, s.team.Name)
 	request, err := http.NewRequest("DELETE", url, nil)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
 	err = RevokeAccessFromTeamHandler(recorder, request, s.user)
-	c.Assert(err, NotNil)
+	c.Assert(err, gocheck.NotNil)
 	e, ok := err.(*errors.Http)
-	c.Assert(ok, Equals, true)
-	c.Assert(e.Code, Equals, http.StatusForbidden)
-	c.Assert(e, ErrorMatches, "^You can not revoke the access from this team, because it is the unique team with access to the app, and an app can not be orphaned$")
+	c.Assert(ok, gocheck.Equals, true)
+	c.Assert(e.Code, gocheck.Equals, http.StatusForbidden)
+	c.Assert(e, gocheck.ErrorMatches, "^You can not revoke the access from this team, because it is the unique team with access to the app, and an app can not be orphaned$")
 }
 
-func (s *S) TestRevokeAccessFromTeamRemovesRepositoryFromGandalf(c *C) {
+func (s *S) TestRevokeAccessFromTeamRemovesRepositoryFromGandalf(c *gocheck.C) {
 	h := testHandler{}
 	ts := s.t.StartGandalfTestServer(&h)
 	defer ts.Close()
 	u := auth.User{Email: "again@live.com"}
 	err := s.conn.Users().Insert(u)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Users().Remove(bson.M{"email": u.Email})
 	t := auth.Team{Name: "anything", Users: []string{u.Email}}
 	err = s.conn.Teams().Insert(t)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Teams().Remove(bson.M{"_id": t.Name})
 	a := app.App{
 		Name:      "tsuru",
@@ -999,28 +999,28 @@ func (s *S) TestRevokeAccessFromTeamRemovesRepositoryFromGandalf(c *C) {
 		Teams:     []string{t.Name},
 	}
 	err = s.conn.Apps().Insert(a)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	err = grantAccessToTeam(a.Name, s.team.Name, &u)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	err = revokeAccessFromTeam(a.Name, s.team.Name, &u)
-	c.Assert(h.url[1], Equals, "/repository/revoke") //should inc the index (because of the grantAccess)
-	c.Assert(h.method[1], Equals, "DELETE")
+	c.Assert(h.url[1], gocheck.Equals, "/repository/revoke") //should inc the index (because of the grantAccess)
+	c.Assert(h.method[1], gocheck.Equals, "DELETE")
 	expected := fmt.Sprintf(`{"repositories":["%s"],"users":["%s"]}`, a.Name, s.user.Email)
-	c.Assert(string(h.body[1]), Equals, expected)
+	c.Assert(string(h.body[1]), gocheck.Equals, expected)
 }
 
-func (s *S) TestRevokeAccessFromTeamDontRemoveTheUserIfItHasAccesToTheAppThroughAnotherTeam(c *C) {
+func (s *S) TestRevokeAccessFromTeamDontRemoveTheUserIfItHasAccesToTheAppThroughAnotherTeam(c *gocheck.C) {
 	h := testHandler{}
 	ts := s.t.StartGandalfTestServer(&h)
 	defer ts.Close()
 	u := auth.User{Email: "burning@angel.com"}
 	err := s.conn.Users().Insert(u)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Users().Remove(bson.M{"email": u.Email})
 	t := auth.Team{Name: "anything", Users: []string{s.user.Email, u.Email}}
 	err = s.conn.Teams().Insert(t)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Teams().Remove(bson.M{"_id": t.Name})
 	a := app.App{
 		Name:      "tsuru",
@@ -1028,25 +1028,25 @@ func (s *S) TestRevokeAccessFromTeamDontRemoveTheUserIfItHasAccesToTheAppThrough
 		Teams:     []string{s.team.Name},
 	}
 	err = s.conn.Apps().Insert(a)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	err = grantAccessToTeam(a.Name, t.Name, s.user)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	err = revokeAccessFromTeam(a.Name, t.Name, s.user)
-	c.Assert(err, IsNil)
-	c.Assert(h.url[1], Equals, "/repository/revoke")
-	c.Assert(h.method[1], Equals, "DELETE")
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(h.url[1], gocheck.Equals, "/repository/revoke")
+	c.Assert(h.method[1], gocheck.Equals, "DELETE")
 	expected := fmt.Sprintf(`{"repositories":[%q],"users":[%q]}`, a.Name, u.Email)
-	c.Assert(string(h.body[1]), Equals, expected)
+	c.Assert(string(h.body[1]), gocheck.Equals, expected)
 }
 
-func (s *S) TestRevokeAccessFromTeamDontCallGandalfIfNoUserNeedToBeRevoked(c *C) {
+func (s *S) TestRevokeAccessFromTeamDontCallGandalfIfNoUserNeedToBeRevoked(c *gocheck.C) {
 	h := testHandler{}
 	ts := s.t.StartGandalfTestServer(&h)
 	defer ts.Close()
 	t := auth.Team{Name: "anything", Users: []string{s.user.Email}}
 	err := s.conn.Teams().Insert(t)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Teams().Remove(bson.M{"_id": t.Name})
 	a := app.App{
 		Name:      "tsuru",
@@ -1054,17 +1054,17 @@ func (s *S) TestRevokeAccessFromTeamDontCallGandalfIfNoUserNeedToBeRevoked(c *C)
 		Teams:     []string{s.team.Name},
 	}
 	err = s.conn.Apps().Insert(a)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	err = grantAccessToTeam(a.Name, t.Name, s.user)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	err = revokeAccessFromTeam(a.Name, t.Name, s.user)
-	c.Assert(err, IsNil)
-	c.Assert(h.url, HasLen, 1)
-	c.Assert(h.url[0], Equals, "/repository/grant")
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(h.url, gocheck.HasLen, 1)
+	c.Assert(h.url[0], gocheck.Equals, "/repository/grant")
 }
 
-func (s *S) TestRunHandlerShouldExecuteTheGivenCommandInTheGivenApp(c *C) {
+func (s *S) TestRunHandlerShouldExecuteTheGivenCommandInTheGivenApp(c *gocheck.C) {
 	s.provisioner.PrepareOutput([]byte("lots of files"))
 	a := app.App{
 		Name:      "secrets",
@@ -1073,24 +1073,24 @@ func (s *S) TestRunHandlerShouldExecuteTheGivenCommandInTheGivenApp(c *C) {
 		Units:     []app.Unit{{Name: "i-0800", State: "started", Machine: 10}},
 	}
 	err := s.conn.Apps().Insert(a)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	url := fmt.Sprintf("/apps/%s/run/?:name=%s", a.Name, a.Name)
 	request, err := http.NewRequest("POST", url, strings.NewReader("ls"))
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
 	err = RunCommand(recorder, request, s.user)
-	c.Assert(err, IsNil)
-	c.Assert(recorder.Body.String(), Equals, "lots of files")
-	c.Assert(recorder.Header().Get("Content-Type"), Equals, "text")
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(recorder.Body.String(), gocheck.Equals, "lots of files")
+	c.Assert(recorder.Header().Get("Content-Type"), gocheck.Equals, "text")
 	expected := "[ -f /home/application/apprc ] && source /home/application/apprc;"
 	expected += " [ -d /home/application/current ] && cd /home/application/current;"
 	expected += " ls"
 	cmds := s.provisioner.GetCmds(expected, &a)
-	c.Assert(cmds, HasLen, 1)
+	c.Assert(cmds, gocheck.HasLen, 1)
 }
 
-func (s *S) TestRunHandlerReturnsTheOutputOfTheCommandEvenIfItFails(c *C) {
+func (s *S) TestRunHandlerReturnsTheOutputOfTheCommandEvenIfItFails(c *gocheck.C) {
 	s.provisioner.PrepareFailure("ExecuteCommand", &errors.Http{Code: 500, Message: "something went wrong"})
 	s.provisioner.PrepareOutput([]byte("failure output"))
 	a := app.App{
@@ -1100,75 +1100,75 @@ func (s *S) TestRunHandlerReturnsTheOutputOfTheCommandEvenIfItFails(c *C) {
 		Units:     []app.Unit{{Name: "i-0800", State: "started"}},
 	}
 	err := s.conn.Apps().Insert(a)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	url := fmt.Sprintf("/apps/%s/run/?:name=%s", a.Name, a.Name)
 	request, err := http.NewRequest("POST", url, strings.NewReader("ls"))
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
 	err = RunCommand(recorder, request, s.user)
-	c.Assert(err, NotNil)
-	c.Assert(err.Error(), Equals, "something went wrong")
-	c.Assert(recorder.Body.String(), Equals, "failure output")
+	c.Assert(err, gocheck.NotNil)
+	c.Assert(err.Error(), gocheck.Equals, "something went wrong")
+	c.Assert(recorder.Body.String(), gocheck.Equals, "failure output")
 }
 
-func (s *S) TestRunHandlerReturnsBadRequestIfTheCommandIsMissing(c *C) {
+func (s *S) TestRunHandlerReturnsBadRequestIfTheCommandIsMissing(c *gocheck.C) {
 	bodies := []io.Reader{nil, strings.NewReader("")}
 	for _, body := range bodies {
 		request, err := http.NewRequest("POST", "/apps/unknown/run/?:name=unkown", body)
-		c.Assert(err, IsNil)
+		c.Assert(err, gocheck.IsNil)
 		recorder := httptest.NewRecorder()
 		err = RunCommand(recorder, request, s.user)
-		c.Assert(err, NotNil)
+		c.Assert(err, gocheck.NotNil)
 		e, ok := err.(*errors.Http)
-		c.Assert(ok, Equals, true)
-		c.Assert(e.Code, Equals, http.StatusBadRequest)
-		c.Assert(e, ErrorMatches, "^You must provide the command to run$")
+		c.Assert(ok, gocheck.Equals, true)
+		c.Assert(e.Code, gocheck.Equals, http.StatusBadRequest)
+		c.Assert(e, gocheck.ErrorMatches, "^You must provide the command to run$")
 	}
 }
 
-func (s *S) TestRunHandlerReturnsInternalErrorIfReadAllFails(c *C) {
+func (s *S) TestRunHandlerReturnsInternalErrorIfReadAllFails(c *gocheck.C) {
 	b := s.getTestData("bodyToBeClosed.txt")
 	request, err := http.NewRequest("POST", "/users", b)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	request.Body.Close()
 	recorder := httptest.NewRecorder()
 	err = RunCommand(recorder, request, s.user)
-	c.Assert(err, NotNil)
+	c.Assert(err, gocheck.NotNil)
 }
 
-func (s *S) TestRunHandlerReturnsNotFoundIfTheAppDoesNotExist(c *C) {
+func (s *S) TestRunHandlerReturnsNotFoundIfTheAppDoesNotExist(c *gocheck.C) {
 	request, err := http.NewRequest("POST", "/apps/unknown/run/?:name=unknown", strings.NewReader("ls"))
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
 	err = RunCommand(recorder, request, s.user)
-	c.Assert(err, NotNil)
+	c.Assert(err, gocheck.NotNil)
 	e, ok := err.(*errors.Http)
-	c.Assert(ok, Equals, true)
-	c.Assert(e.Code, Equals, http.StatusNotFound)
-	c.Assert(e, ErrorMatches, "^App unknown not found.$")
+	c.Assert(ok, gocheck.Equals, true)
+	c.Assert(e.Code, gocheck.Equals, http.StatusNotFound)
+	c.Assert(e, gocheck.ErrorMatches, "^App unknown not found.$")
 }
 
-func (s *S) TestRunHandlerReturnsForbiddenIfTheGivenUserDoesNotHaveAccessToTheApp(c *C) {
+func (s *S) TestRunHandlerReturnsForbiddenIfTheGivenUserDoesNotHaveAccessToTheApp(c *gocheck.C) {
 	a := app.App{
 		Name:      "secrets",
 		Framework: "arch enemy",
 	}
 	err := s.conn.Apps().Insert(a)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	url := fmt.Sprintf("/apps/%s/run/?:name=%s", a.Name, a.Name)
 	request, err := http.NewRequest("POST", url, strings.NewReader("ls"))
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
 	err = RunCommand(recorder, request, s.user)
-	c.Assert(err, NotNil)
+	c.Assert(err, gocheck.NotNil)
 	e, ok := err.(*errors.Http)
-	c.Assert(ok, Equals, true)
-	c.Assert(e.Code, Equals, http.StatusForbidden)
+	c.Assert(ok, gocheck.Equals, true)
+	c.Assert(e.Code, gocheck.Equals, http.StatusForbidden)
 }
 
-func (s *S) TestGetEnvHandlerGetsEnvironmentVariableFromApp(c *C) {
+func (s *S) TestGetEnvHandlerGetsEnvironmentVariableFromApp(c *gocheck.C) {
 	a := app.App{
 		Name:      "everything-i-want",
 		Framework: "gotthard",
@@ -1180,18 +1180,18 @@ func (s *S) TestGetEnvHandlerGetsEnvironmentVariableFromApp(c *C) {
 		},
 	}
 	err := s.conn.Apps().Insert(a)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	url := fmt.Sprintf("/apps/%s/env/?:name=%s", a.Name, a.Name)
 	request, err := http.NewRequest("GET", url, strings.NewReader("DATABASE_HOST"))
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
 	err = GetEnv(recorder, request, s.user)
-	c.Assert(err, IsNil)
-	c.Assert(recorder.Body.String(), Equals, "DATABASE_HOST=localhost\n")
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(recorder.Body.String(), gocheck.Equals, "DATABASE_HOST=localhost\n")
 }
 
-func (s *S) TestGetEnvHandlerShouldAcceptMultipleVariables(c *C) {
+func (s *S) TestGetEnvHandlerShouldAcceptMultipleVariables(c *gocheck.C) {
 	a := app.App{
 		Name:  "four-sticks",
 		Teams: []string{s.team.Name},
@@ -1202,18 +1202,18 @@ func (s *S) TestGetEnvHandlerShouldAcceptMultipleVariables(c *C) {
 		},
 	}
 	err := s.conn.Apps().Insert(a)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	url := fmt.Sprintf("/apps/%s/env/?:name=%s", a.Name, a.Name)
 	request, err := http.NewRequest("GET", url, strings.NewReader("DATABASE_HOST DATABASE_USER"))
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
 	err = GetEnv(recorder, request, s.user)
-	c.Assert(err, IsNil)
-	c.Assert(recorder.Body.String(), Equals, "DATABASE_HOST=localhost\nDATABASE_USER=root\n")
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(recorder.Body.String(), gocheck.Equals, "DATABASE_HOST=localhost\nDATABASE_USER=root\n")
 }
 
-func (s *S) TestGetEnvHandlerReturnsAllVariablesIfEnvironmentVariablesAreMissingWithMaskOnPrivateVars(c *C) {
+func (s *S) TestGetEnvHandlerReturnsAllVariablesIfEnvironmentVariablesAreMissingWithMaskOnPrivateVars(c *gocheck.C) {
 	a := app.App{
 		Name:      "time",
 		Framework: "pink-floyd",
@@ -1225,200 +1225,200 @@ func (s *S) TestGetEnvHandlerReturnsAllVariablesIfEnvironmentVariablesAreMissing
 		},
 	}
 	err := s.conn.Apps().Insert(a)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	expected := []string{"", "DATABASE_HOST=localhost", "DATABASE_PASSWORD=*** (private variable)", "DATABASE_USER=root"}
 	bodies := []io.Reader{nil, strings.NewReader("")}
 	for _, body := range bodies {
 		request, err := http.NewRequest("GET", "/apps/time/env/?:name=time", body)
-		c.Assert(err, IsNil)
+		c.Assert(err, gocheck.IsNil)
 		recorder := httptest.NewRecorder()
 		err = GetEnv(recorder, request, s.user)
-		c.Assert(err, IsNil)
+		c.Assert(err, gocheck.IsNil)
 		got := strings.Split(recorder.Body.String(), "\n")
 		sort.Strings(got)
-		c.Assert(got, DeepEquals, expected)
+		c.Assert(got, gocheck.DeepEquals, expected)
 	}
 }
 
-func (s *S) TestGetEnvHandlerReturnsInternalErrorIfReadAllFails(c *C) {
+func (s *S) TestGetEnvHandlerReturnsInternalErrorIfReadAllFails(c *gocheck.C) {
 	b := s.getTestData("bodyToBeClosed.txt")
 	request, err := http.NewRequest("GET", "/apps/unkown/env/?:name=unknown", b)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	request.Body.Close()
 	recorder := httptest.NewRecorder()
 	err = GetEnv(recorder, request, s.user)
-	c.Assert(err, NotNil)
+	c.Assert(err, gocheck.NotNil)
 }
 
-func (s *S) TestGetEnvHandlerReturnsNotFoundIfTheAppDoesNotExist(c *C) {
+func (s *S) TestGetEnvHandlerReturnsNotFoundIfTheAppDoesNotExist(c *gocheck.C) {
 	request, err := http.NewRequest("GET", "/apps/unknown/env/?:name=unknown", strings.NewReader("DATABASE_HOST"))
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
 	err = GetEnv(recorder, request, s.user)
-	c.Assert(err, NotNil)
+	c.Assert(err, gocheck.NotNil)
 	e, ok := err.(*errors.Http)
-	c.Assert(ok, Equals, true)
-	c.Assert(e.Code, Equals, http.StatusNotFound)
-	c.Assert(e, ErrorMatches, "^App unknown not found.$")
+	c.Assert(ok, gocheck.Equals, true)
+	c.Assert(e.Code, gocheck.Equals, http.StatusNotFound)
+	c.Assert(e, gocheck.ErrorMatches, "^App unknown not found.$")
 }
 
-func (s *S) TestGetEnvHandlerReturnsForbiddenIfTheGivenUserDoesNotHaveAccessToTheApp(c *C) {
+func (s *S) TestGetEnvHandlerReturnsForbiddenIfTheGivenUserDoesNotHaveAccessToTheApp(c *gocheck.C) {
 	a := app.App{
 		Name:      "lost",
 		Framework: "vougan",
 	}
 	err := s.conn.Apps().Insert(a)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	url := fmt.Sprintf("/apps/%s/env/?:name=%s", a.Name, a.Name)
 	request, err := http.NewRequest("GET", url, strings.NewReader("DATABASE_HOST"))
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
 	err = GetEnv(recorder, request, s.user)
-	c.Assert(err, NotNil)
+	c.Assert(err, gocheck.NotNil)
 	e, ok := err.(*errors.Http)
-	c.Assert(ok, Equals, true)
-	c.Assert(e.Code, Equals, http.StatusForbidden)
+	c.Assert(ok, gocheck.Equals, true)
+	c.Assert(e.Code, gocheck.Equals, http.StatusForbidden)
 }
 
-func (s *S) TestSetEnvHandlerShouldSetAPublicEnvironmentVariableInTheApp(c *C) {
+func (s *S) TestSetEnvHandlerShouldSetAPublicEnvironmentVariableInTheApp(c *gocheck.C) {
 	a := app.App{
 		Name:  "black-dog",
 		Teams: []string{s.team.Name},
 		Units: []app.Unit{{Machine: 1}},
 	}
 	err := s.conn.Apps().Insert(a)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	url := fmt.Sprintf("/apps/%s/env?:name=%s", a.Name, a.Name)
 	request, err := http.NewRequest("POST", url, strings.NewReader("DATABASE_HOST=localhost"))
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
 	err = SetEnv(recorder, request, s.user)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	app := &app.App{Name: "black-dog"}
 	err = app.Get()
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	expected := bind.EnvVar{Name: "DATABASE_HOST", Value: "localhost", Public: true}
-	c.Assert(app.Env["DATABASE_HOST"], DeepEquals, expected)
+	c.Assert(app.Env["DATABASE_HOST"], gocheck.DeepEquals, expected)
 }
 
-func (s *S) TestSetEnvHandlerShouldSetMultipleEnvironmentVariablesInTheApp(c *C) {
+func (s *S) TestSetEnvHandlerShouldSetMultipleEnvironmentVariablesInTheApp(c *gocheck.C) {
 	a := app.App{
 		Name:  "vigil",
 		Teams: []string{s.team.Name},
 		Units: []app.Unit{{Machine: 1}},
 	}
 	err := s.conn.Apps().Insert(a)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	url := fmt.Sprintf("/apps/%s/env?:name=%s", a.Name, a.Name)
 	request, err := http.NewRequest("POST", url, strings.NewReader("DATABASE_HOST=localhost DATABASE_USER=root"))
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
 	err = SetEnv(recorder, request, s.user)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	app := &app.App{Name: "vigil"}
 	err = app.Get()
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	expectedHost := bind.EnvVar{Name: "DATABASE_HOST", Value: "localhost", Public: true}
 	expectedUser := bind.EnvVar{Name: "DATABASE_USER", Value: "root", Public: true}
-	c.Assert(app.Env["DATABASE_HOST"], DeepEquals, expectedHost)
-	c.Assert(app.Env["DATABASE_USER"], DeepEquals, expectedUser)
+	c.Assert(app.Env["DATABASE_HOST"], gocheck.DeepEquals, expectedHost)
+	c.Assert(app.Env["DATABASE_USER"], gocheck.DeepEquals, expectedUser)
 }
 
-func (s *S) TestSetEnvHandlerShouldSupportSpacesInTheEnvironmentVariableValue(c *C) {
+func (s *S) TestSetEnvHandlerShouldSupportSpacesInTheEnvironmentVariableValue(c *gocheck.C) {
 	a := app.App{
 		Name:  "loser",
 		Teams: []string{s.team.Name},
 		Units: []app.Unit{{Machine: 1}},
 	}
 	err := s.conn.Apps().Insert(a)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	url := fmt.Sprintf("/apps/%s/env?:name=%s", a.Name, a.Name)
 	request, err := http.NewRequest("POST", url, strings.NewReader("DATABASE_HOST=local host DATABASE_USER=root"))
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
 	err = SetEnv(recorder, request, s.user)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	app := &app.App{Name: "loser"}
 	err = app.Get()
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	expectedHost := bind.EnvVar{Name: "DATABASE_HOST", Value: "local host", Public: true}
 	expectedUser := bind.EnvVar{Name: "DATABASE_USER", Value: "root", Public: true}
-	c.Assert(app.Env["DATABASE_HOST"], DeepEquals, expectedHost)
-	c.Assert(app.Env["DATABASE_USER"], DeepEquals, expectedUser)
+	c.Assert(app.Env["DATABASE_HOST"], gocheck.DeepEquals, expectedHost)
+	c.Assert(app.Env["DATABASE_USER"], gocheck.DeepEquals, expectedUser)
 }
 
-func (s *S) TestSetEnvHandlerShouldSupportValuesWithDot(c *C) {
+func (s *S) TestSetEnvHandlerShouldSupportValuesWithDot(c *gocheck.C) {
 	a := app.App{
 		Name:  "losers",
 		Teams: []string{s.team.Name},
 		Units: []app.Unit{{Machine: 1}},
 	}
 	err := s.conn.Apps().Insert(a)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	url := fmt.Sprintf("/apps/%s/env?:name=%s", a.Name, a.Name)
 	request, err := http.NewRequest("POST", url, strings.NewReader("DATABASE_HOST=http://foo.com:8080"))
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
 	err = SetEnv(recorder, request, s.user)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	app := &app.App{Name: "losers"}
 	err = app.Get()
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	expected := bind.EnvVar{Name: "DATABASE_HOST", Value: "http://foo.com:8080", Public: true}
-	c.Assert(app.Env["DATABASE_HOST"], DeepEquals, expected)
+	c.Assert(app.Env["DATABASE_HOST"], gocheck.DeepEquals, expected)
 }
 
-func (s *S) TestSetEnvHandlerShouldSupportNumbersOnVariableName(c *C) {
+func (s *S) TestSetEnvHandlerShouldSupportNumbersOnVariableName(c *gocheck.C) {
 	a := app.App{
 		Name:  "blinded",
 		Teams: []string{s.team.Name},
 		Units: []app.Unit{{Machine: 1}},
 	}
 	err := s.conn.Apps().Insert(a)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	url := fmt.Sprintf("/apps/%s/env?:name=%s", a.Name, a.Name)
 	request, err := http.NewRequest("POST", url, strings.NewReader("EC2_HOST=http://foo.com:8080"))
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
 	err = SetEnv(recorder, request, s.user)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	app := &app.App{Name: "blinded"}
 	err = app.Get()
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	expected := bind.EnvVar{Name: "EC2_HOST", Value: "http://foo.com:8080", Public: true}
-	c.Assert(app.Env["EC2_HOST"], DeepEquals, expected)
+	c.Assert(app.Env["EC2_HOST"], gocheck.DeepEquals, expected)
 }
 
-func (s *S) TestSetEnvHandlerShouldSupportLowerCasedVariableName(c *C) {
+func (s *S) TestSetEnvHandlerShouldSupportLowerCasedVariableName(c *gocheck.C) {
 	a := app.App{
 		Name:  "fragments",
 		Teams: []string{s.team.Name},
 		Units: []app.Unit{{Machine: 1}},
 	}
 	err := s.conn.Apps().Insert(a)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	url := fmt.Sprintf("/apps/%s/env?:name=%s", a.Name, a.Name)
 	request, err := http.NewRequest("POST", url, strings.NewReader("http_proxy=http://my_proxy.com:3128"))
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
 	err = SetEnv(recorder, request, s.user)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	app := &app.App{Name: "fragments"}
 	err = app.Get()
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	expected := bind.EnvVar{Name: "http_proxy", Value: "http://my_proxy.com:3128", Public: true}
-	c.Assert(app.Env["http_proxy"], DeepEquals, expected)
+	c.Assert(app.Env["http_proxy"], gocheck.DeepEquals, expected)
 }
 
-func (s *S) TestSetEnvHandlerShouldNotChangeValueOfPrivateVariables(c *C) {
+func (s *S) TestSetEnvHandlerShouldNotChangeValueOfPrivateVariables(c *gocheck.C) {
 	original := map[string]bind.EnvVar{
 		"DATABASE_HOST": {
 			Name:   "DATABASE_HOST",
@@ -1433,75 +1433,75 @@ func (s *S) TestSetEnvHandlerShouldNotChangeValueOfPrivateVariables(c *C) {
 		Units: []app.Unit{{Machine: 1}},
 	}
 	err := s.conn.Apps().Insert(a)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	url := fmt.Sprintf("/apps/%s/env?:name=%s", a.Name, a.Name)
 	request, err := http.NewRequest("POST", url, strings.NewReader("DATABASE_HOST=http://foo.com:8080"))
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
 	err = SetEnv(recorder, request, s.user)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	app := &app.App{Name: "losers"}
 	err = app.Get()
-	c.Assert(err, IsNil)
-	c.Assert(app.Env, DeepEquals, original)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(app.Env, gocheck.DeepEquals, original)
 }
 
-func (s *S) TestSetEnvHandlerReturnsInternalErrorIfReadAllFails(c *C) {
+func (s *S) TestSetEnvHandlerReturnsInternalErrorIfReadAllFails(c *gocheck.C) {
 	b := s.getTestData("bodyToBeClosed.txt")
 	request, err := http.NewRequest("POST", "/apps/unkown/env/?:name=unknown", b)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	request.Body.Close()
 	recorder := httptest.NewRecorder()
 	err = SetEnv(recorder, request, s.user)
-	c.Assert(err, NotNil)
+	c.Assert(err, gocheck.NotNil)
 }
 
-func (s *S) TestSetEnvHandlerReturnsBadRequestIfVariablesAreMissing(c *C) {
+func (s *S) TestSetEnvHandlerReturnsBadRequestIfVariablesAreMissing(c *gocheck.C) {
 	bodies := []io.Reader{nil, strings.NewReader("")}
 	for _, body := range bodies {
 		request, err := http.NewRequest("POST", "/apps/unknown/env/?:name=unkown", body)
-		c.Assert(err, IsNil)
+		c.Assert(err, gocheck.IsNil)
 		recorder := httptest.NewRecorder()
 		err = SetEnv(recorder, request, s.user)
-		c.Assert(err, NotNil)
+		c.Assert(err, gocheck.NotNil)
 		e, ok := err.(*errors.Http)
-		c.Assert(ok, Equals, true)
-		c.Assert(e.Code, Equals, http.StatusBadRequest)
-		c.Assert(e, ErrorMatches, "^You must provide the environment variables$")
+		c.Assert(ok, gocheck.Equals, true)
+		c.Assert(e.Code, gocheck.Equals, http.StatusBadRequest)
+		c.Assert(e, gocheck.ErrorMatches, "^You must provide the environment variables$")
 	}
 }
 
-func (s *S) TestSetEnvHandlerReturnsNotFoundIfTheAppDoesNotExist(c *C) {
+func (s *S) TestSetEnvHandlerReturnsNotFoundIfTheAppDoesNotExist(c *gocheck.C) {
 	b := strings.NewReader("DATABASE_HOST=localhost")
 	request, err := http.NewRequest("POST", "/apps/unknown/env/?:name=unknown", b)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
 	err = SetEnv(recorder, request, s.user)
-	c.Assert(err, NotNil)
+	c.Assert(err, gocheck.NotNil)
 	e, ok := err.(*errors.Http)
-	c.Assert(ok, Equals, true)
-	c.Assert(e.Code, Equals, http.StatusNotFound)
-	c.Assert(e, ErrorMatches, "^App unknown not found.$")
+	c.Assert(ok, gocheck.Equals, true)
+	c.Assert(e.Code, gocheck.Equals, http.StatusNotFound)
+	c.Assert(e, gocheck.ErrorMatches, "^App unknown not found.$")
 }
 
-func (s *S) TestSetEnvHandlerReturnsForbiddenIfTheGivenUserDoesNotHaveAccessToTheApp(c *C) {
+func (s *S) TestSetEnvHandlerReturnsForbiddenIfTheGivenUserDoesNotHaveAccessToTheApp(c *gocheck.C) {
 	a := app.App{Name: "rock-and-roll"}
 	err := s.conn.Apps().Insert(a)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	url := fmt.Sprintf("/apps/%s/env/?:name=%s", a.Name, a.Name)
 	request, err := http.NewRequest("POST", url, strings.NewReader("DATABASE_HOST=localhost"))
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
 	err = SetEnv(recorder, request, s.user)
-	c.Assert(err, NotNil)
+	c.Assert(err, gocheck.NotNil)
 	e, ok := err.(*errors.Http)
-	c.Assert(ok, Equals, true)
-	c.Assert(e.Code, Equals, http.StatusForbidden)
+	c.Assert(ok, gocheck.Equals, true)
+	c.Assert(e.Code, gocheck.Equals, http.StatusForbidden)
 }
 
-func (s *S) TestUnsetEnvHandlerRemovesTheEnvironmentVariablesFromTheApp(c *C) {
+func (s *S) TestUnsetEnvHandlerRemovesTheEnvironmentVariablesFromTheApp(c *gocheck.C) {
 	a := app.App{
 		Name:  "swift",
 		Teams: []string{s.team.Name},
@@ -1512,23 +1512,23 @@ func (s *S) TestUnsetEnvHandlerRemovesTheEnvironmentVariablesFromTheApp(c *C) {
 		},
 	}
 	err := s.conn.Apps().Insert(a)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	expected := a.Env
 	delete(expected, "DATABASE_HOST")
 	url := fmt.Sprintf("/apps/%s/env/?:name=%s", a.Name, a.Name)
 	request, err := http.NewRequest("DELETE", url, strings.NewReader("DATABASE_HOST"))
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
 	err = UnsetEnv(recorder, request, s.user)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	app := app.App{Name: "swift"}
 	err = app.Get()
-	c.Assert(err, IsNil)
-	c.Assert(app.Env, DeepEquals, expected)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(app.Env, gocheck.DeepEquals, expected)
 }
 
-func (s *S) TestUnsetEnvHandlerRemovesAllGivenEnvironmentVariables(c *C) {
+func (s *S) TestUnsetEnvHandlerRemovesAllGivenEnvironmentVariables(c *gocheck.C) {
 	a := app.App{
 		Name:  "let-it-be",
 		Teams: []string{s.team.Name},
@@ -1539,14 +1539,14 @@ func (s *S) TestUnsetEnvHandlerRemovesAllGivenEnvironmentVariables(c *C) {
 		},
 	}
 	err := s.conn.Apps().Insert(a)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	url := fmt.Sprintf("/apps/%s/env/?:name=%s", a.Name, a.Name)
 	request, err := http.NewRequest("DELETE", url, strings.NewReader("DATABASE_HOST DATABASE_USER"))
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
 	err = UnsetEnv(recorder, request, s.user)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	app := app.App{Name: "let-it-be"}
 	err = app.Get()
 	expected := map[string]bind.EnvVar{
@@ -1556,11 +1556,11 @@ func (s *S) TestUnsetEnvHandlerRemovesAllGivenEnvironmentVariables(c *C) {
 			Public: false,
 		},
 	}
-	c.Assert(err, IsNil)
-	c.Assert(app.Env, DeepEquals, expected)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(app.Env, gocheck.DeepEquals, expected)
 }
 
-func (s *S) TestUnsetHandlerDoesNotRemovePrivateVariables(c *C) {
+func (s *S) TestUnsetHandlerDoesNotRemovePrivateVariables(c *gocheck.C) {
 	a := app.App{
 		Name:  "letitbe",
 		Teams: []string{s.team.Name},
@@ -1571,14 +1571,14 @@ func (s *S) TestUnsetHandlerDoesNotRemovePrivateVariables(c *C) {
 		},
 	}
 	err := s.conn.Apps().Insert(a)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	url := fmt.Sprintf("/apps/%s/env/?:name=%s", a.Name, a.Name)
 	request, err := http.NewRequest("DELETE", url, strings.NewReader("DATABASE_HOST DATABASE_USER DATABASE_PASSWORD"))
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
 	err = UnsetEnv(recorder, request, s.user)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	app := app.App{Name: "letitbe"}
 	err = app.Get()
 	expected := map[string]bind.EnvVar{
@@ -1588,218 +1588,218 @@ func (s *S) TestUnsetHandlerDoesNotRemovePrivateVariables(c *C) {
 			Public: false,
 		},
 	}
-	c.Assert(err, IsNil)
-	c.Assert(app.Env, DeepEquals, expected)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(app.Env, gocheck.DeepEquals, expected)
 }
 
-func (s *S) TestUnsetEnvHandlerReturnsInternalErrorIfReadAllFails(c *C) {
+func (s *S) TestUnsetEnvHandlerReturnsInternalErrorIfReadAllFails(c *gocheck.C) {
 	b := s.getTestData("bodyToBeClosed.txt")
 	request, err := http.NewRequest("POST", "/apps/unkown/env/?:name=unknown", b)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	request.Body.Close()
 	recorder := httptest.NewRecorder()
 	err = UnsetEnv(recorder, request, s.user)
-	c.Assert(err, NotNil)
+	c.Assert(err, gocheck.NotNil)
 }
 
-func (s *S) TestUnsetEnvHandlerReturnsBadRequestIfVariablesAreMissing(c *C) {
+func (s *S) TestUnsetEnvHandlerReturnsBadRequestIfVariablesAreMissing(c *gocheck.C) {
 	bodies := []io.Reader{nil, strings.NewReader("")}
 	for _, body := range bodies {
 		request, err := http.NewRequest("POST", "/apps/unknown/env/?:name=unkown", body)
-		c.Assert(err, IsNil)
+		c.Assert(err, gocheck.IsNil)
 		recorder := httptest.NewRecorder()
 		err = UnsetEnv(recorder, request, s.user)
-		c.Assert(err, NotNil)
+		c.Assert(err, gocheck.NotNil)
 		e, ok := err.(*errors.Http)
-		c.Assert(ok, Equals, true)
-		c.Assert(e.Code, Equals, http.StatusBadRequest)
-		c.Assert(e, ErrorMatches, "^You must provide the environment variables$")
+		c.Assert(ok, gocheck.Equals, true)
+		c.Assert(e.Code, gocheck.Equals, http.StatusBadRequest)
+		c.Assert(e, gocheck.ErrorMatches, "^You must provide the environment variables$")
 	}
 }
 
-func (s *S) TestUnsetEnvHandlerReturnsNotFoundIfTheAppDoesNotExist(c *C) {
+func (s *S) TestUnsetEnvHandlerReturnsNotFoundIfTheAppDoesNotExist(c *gocheck.C) {
 	b := strings.NewReader("DATABASE_HOST")
 	request, err := http.NewRequest("POST", "/apps/unknown/env/?:name=unknown", b)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
 	err = UnsetEnv(recorder, request, s.user)
-	c.Assert(err, NotNil)
+	c.Assert(err, gocheck.NotNil)
 	e, ok := err.(*errors.Http)
-	c.Assert(ok, Equals, true)
-	c.Assert(e.Code, Equals, http.StatusNotFound)
-	c.Assert(e, ErrorMatches, "^App unknown not found.$")
+	c.Assert(ok, gocheck.Equals, true)
+	c.Assert(e.Code, gocheck.Equals, http.StatusNotFound)
+	c.Assert(e, gocheck.ErrorMatches, "^App unknown not found.$")
 }
 
-func (s *S) TestUnsetEnvHandlerReturnsForbiddenIfTheGivenUserDoesNotHaveAccessToTheApp(c *C) {
+func (s *S) TestUnsetEnvHandlerReturnsForbiddenIfTheGivenUserDoesNotHaveAccessToTheApp(c *gocheck.C) {
 	a := app.App{Name: "mountain-mama"}
 	err := s.conn.Apps().Insert(a)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	url := fmt.Sprintf("/apps/%s/env/?:name=%s", a.Name, a.Name)
 	request, err := http.NewRequest("POST", url, strings.NewReader("DATABASE_HOST=localhost"))
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
 	err = UnsetEnv(recorder, request, s.user)
-	c.Assert(err, NotNil)
+	c.Assert(err, gocheck.NotNil)
 	e, ok := err.(*errors.Http)
-	c.Assert(ok, Equals, true)
-	c.Assert(e.Code, Equals, http.StatusForbidden)
+	c.Assert(ok, gocheck.Equals, true)
+	c.Assert(e.Code, gocheck.Equals, http.StatusForbidden)
 }
 
-func (s *S) TestSetCNameHandler(c *C) {
+func (s *S) TestSetCNameHandler(c *gocheck.C) {
 	a := app.App{Name: "leper", Teams: []string{s.team.Name}}
 	err := s.conn.Apps().Insert(a)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	url := fmt.Sprintf("/apps/%s?:name=%s", a.Name, a.Name)
 	b := strings.NewReader(`{"cname":"leper.secretcompany.com"}`)
 	request, err := http.NewRequest("POST", url, b)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
 	err = setCName(recorder, request, s.user)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	err = a.Get()
-	c.Assert(err, IsNil)
-	c.Assert(a.CName, Equals, "leper.secretcompany.com")
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(a.CName, gocheck.Equals, "leper.secretcompany.com")
 }
 
-func (s *S) TestSetCNameHandlerAcceptsEmptyCName(c *C) {
+func (s *S) TestSetCNameHandlerAcceptsEmptyCName(c *gocheck.C) {
 	a := app.App{Name: "leper", Teams: []string{s.team.Name}, CName: "leper.secretcompany.com"}
 	err := s.conn.Apps().Insert(a)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	url := fmt.Sprintf("/apps/%s?:name=%s", a.Name, a.Name)
 	b := strings.NewReader(`{"cname":""}`)
 	request, err := http.NewRequest("POST", url, b)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
 	err = setCName(recorder, request, s.user)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	err = a.Get()
-	c.Assert(err, IsNil)
-	c.Assert(a.CName, Equals, "")
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(a.CName, gocheck.Equals, "")
 }
 
-func (s *S) TestSetCNameHandlerReturnsInternalErrorIfItFailsToReadTheBody(c *C) {
+func (s *S) TestSetCNameHandlerReturnsInternalErrorIfItFailsToReadTheBody(c *gocheck.C) {
 	b := s.getTestData("bodyToBeClosed.txt")
 	request, err := http.NewRequest("POST", "/apps/unkown?:name=unknown", b)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	request.Body.Close()
 	recorder := httptest.NewRecorder()
 	err = setCName(recorder, request, s.user)
-	c.Assert(err, NotNil)
+	c.Assert(err, gocheck.NotNil)
 }
 
-func (s *S) TestSetCNameHandlerReturnsBadRequestWhenCNameIsMissingFromTheBody(c *C) {
+func (s *S) TestSetCNameHandlerReturnsBadRequestWhenCNameIsMissingFromTheBody(c *gocheck.C) {
 	bodies := []io.Reader{nil, strings.NewReader(`{}`), strings.NewReader(`{"name":"something"}`)}
 	for _, b := range bodies {
 		request, err := http.NewRequest("POST", "/apps/unknown?:name=unknown", b)
-		c.Assert(err, IsNil)
+		c.Assert(err, gocheck.IsNil)
 		recorder := httptest.NewRecorder()
 		err = setCName(recorder, request, s.user)
-		c.Check(err, NotNil)
+		c.Check(err, gocheck.NotNil)
 		e, ok := err.(*errors.Http)
-		c.Check(ok, Equals, true)
-		c.Check(e.Code, Equals, http.StatusBadRequest)
-		c.Check(e.Message, Equals, "You must provide the cname.")
+		c.Check(ok, gocheck.Equals, true)
+		c.Check(e.Code, gocheck.Equals, http.StatusBadRequest)
+		c.Check(e.Message, gocheck.Equals, "You must provide the cname.")
 	}
 }
 
-func (s *S) TestSetCNameHandlerInvalidJSON(c *C) {
+func (s *S) TestSetCNameHandlerInvalidJSON(c *gocheck.C) {
 	b := strings.NewReader(`}"I'm invalid json"`)
 	request, err := http.NewRequest("POST", "/apps/unknown?:name=unknown", b)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
 	err = setCName(recorder, request, s.user)
-	c.Assert(err, NotNil)
+	c.Assert(err, gocheck.NotNil)
 	e, ok := err.(*errors.Http)
-	c.Assert(ok, Equals, true)
-	c.Assert(e.Code, Equals, http.StatusBadRequest)
-	c.Assert(e.Message, Equals, "Invalid JSON in request body.")
+	c.Assert(ok, gocheck.Equals, true)
+	c.Assert(e.Code, gocheck.Equals, http.StatusBadRequest)
+	c.Assert(e.Message, gocheck.Equals, "Invalid JSON in request body.")
 }
 
-func (s *S) TestSetCNameHandlerUnknownApp(c *C) {
+func (s *S) TestSetCNameHandlerUnknownApp(c *gocheck.C) {
 	b := strings.NewReader(`{"cname": "leper.secretcompany.com"}`)
 	request, err := http.NewRequest("POST", "/apps/unknown?:name=unknown", b)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
 	err = setCName(recorder, request, s.user)
-	c.Assert(err, NotNil)
+	c.Assert(err, gocheck.NotNil)
 	e, ok := err.(*errors.Http)
-	c.Assert(ok, Equals, true)
-	c.Assert(e.Code, Equals, http.StatusNotFound)
+	c.Assert(ok, gocheck.Equals, true)
+	c.Assert(e.Code, gocheck.Equals, http.StatusNotFound)
 }
 
-func (s *S) TestSetCNameHandlerUserWithoutAccessToTheApp(c *C) {
+func (s *S) TestSetCNameHandlerUserWithoutAccessToTheApp(c *gocheck.C) {
 	a := app.App{
 		Name:      "lost",
 		Framework: "vougan",
 	}
 	err := s.conn.Apps().Insert(a)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	url := fmt.Sprintf("/apps/%s?:name=%s", a.Name, a.Name)
 	b := strings.NewReader(`{"cname": "lost.secretcompany.com"}`)
 	request, err := http.NewRequest("POST", url, b)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
 	err = setCName(recorder, request, s.user)
-	c.Assert(err, NotNil)
+	c.Assert(err, gocheck.NotNil)
 	e, ok := err.(*errors.Http)
-	c.Assert(ok, Equals, true)
-	c.Assert(e.Code, Equals, http.StatusForbidden)
+	c.Assert(ok, gocheck.Equals, true)
+	c.Assert(e.Code, gocheck.Equals, http.StatusForbidden)
 }
 
-func (s *S) TestSetCNameHandlerInvalidCName(c *C) {
+func (s *S) TestSetCNameHandlerInvalidCName(c *gocheck.C) {
 	a := app.App{Name: "leper", Teams: []string{s.team.Name}}
 	err := s.conn.Apps().Insert(a)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	url := fmt.Sprintf("/apps/%s?:name=%s", a.Name, a.Name)
 	b := strings.NewReader(`{"cname": ".leper.secretcompany.com"}`)
 	request, err := http.NewRequest("POST", url, b)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
 	err = setCName(recorder, request, s.user)
-	c.Assert(err, NotNil)
+	c.Assert(err, gocheck.NotNil)
 	e, ok := err.(*errors.Http)
-	c.Assert(ok, Equals, true)
-	c.Assert(e.Code, Equals, http.StatusPreconditionFailed)
-	c.Assert(e.Message, Equals, "Invalid cname")
+	c.Assert(ok, gocheck.Equals, true)
+	c.Assert(e.Code, gocheck.Equals, http.StatusPreconditionFailed)
+	c.Assert(e.Message, gocheck.Equals, "Invalid cname")
 }
 
-func (s *S) TestLogShouldReturnNotFoundWhenAppDoesNotExist(c *C) {
+func (s *S) TestLogShouldReturnNotFoundWhenAppDoesNotExist(c *gocheck.C) {
 	request, err := http.NewRequest("GET", "/apps/unknown/log/?:name=unknown", nil)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
 	err = AppLog(recorder, request, s.user)
-	c.Assert(err, NotNil)
+	c.Assert(err, gocheck.NotNil)
 	e, ok := err.(*errors.Http)
-	c.Assert(ok, Equals, true)
-	c.Assert(e.Code, Equals, http.StatusNotFound)
-	c.Assert(e, ErrorMatches, "^App unknown not found.$")
+	c.Assert(ok, gocheck.Equals, true)
+	c.Assert(e.Code, gocheck.Equals, http.StatusNotFound)
+	c.Assert(e, gocheck.ErrorMatches, "^App unknown not found.$")
 }
 
-func (s *S) TestLogReturnsForbiddenIfTheGivenUserDoesNotHaveAccessToTheApp(c *C) {
+func (s *S) TestLogReturnsForbiddenIfTheGivenUserDoesNotHaveAccessToTheApp(c *gocheck.C) {
 	a := app.App{
 		Name:      "lost",
 		Framework: "vougan",
 	}
 	err := s.conn.Apps().Insert(a)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	url := fmt.Sprintf("/apps/%s/log/?:name=%s", a.Name, a.Name)
 	request, err := http.NewRequest("GET", url, nil)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
 	err = AppLog(recorder, request, s.user)
-	c.Assert(err, NotNil)
+	c.Assert(err, gocheck.NotNil)
 	e, ok := err.(*errors.Http)
-	c.Assert(ok, Equals, true)
-	c.Assert(e.Code, Equals, http.StatusForbidden)
+	c.Assert(ok, gocheck.Equals, true)
+	c.Assert(e.Code, gocheck.Equals, http.StatusForbidden)
 }
 
-func (s *S) TestAppLogShouldHaveContentType(c *C) {
+func (s *S) TestAppLogShouldHaveContentType(c *gocheck.C) {
 	a := app.App{
 		Name:      "lost",
 		Framework: "vougan",
@@ -1812,83 +1812,83 @@ func (s *S) TestAppLogShouldHaveContentType(c *C) {
 		},
 	}
 	err := s.conn.Apps().Insert(a)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	url := fmt.Sprintf("/apps/%s/log/?:name=%s", a.Name, a.Name)
 	request, err := http.NewRequest("GET", url, nil)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
 	request.Header.Set("Content-Type", "application/json")
 	err = AppLog(recorder, request, s.user)
-	c.Assert(err, IsNil)
-	c.Assert(recorder.Header().Get("Content-Type"), Equals, "application/json")
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(recorder.Header().Get("Content-Type"), gocheck.Equals, "application/json")
 }
 
-func (s *S) TestAppLogSelectByLines(c *C) {
+func (s *S) TestAppLogSelectByLines(c *gocheck.C) {
 	a := app.App{
 		Name:      "lost",
 		Framework: "vougan",
 		Teams:     []string{s.team.Name},
 	}
 	err := s.conn.Apps().Insert(a)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	for i := 0; i < 15; i++ {
 		a.Log(strconv.Itoa(i), "source")
 	}
 	url := fmt.Sprintf("/apps/%s/log/?:name=%s&lines=10", a.Name, a.Name)
 	request, err := http.NewRequest("GET", url, nil)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
 	request.Header.Set("Content-Type", "application/json")
 	err = AppLog(recorder, request, s.user)
-	c.Assert(err, IsNil)
-	c.Assert(recorder.Code, Equals, http.StatusOK)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(recorder.Code, gocheck.Equals, http.StatusOK)
 	body, err := ioutil.ReadAll(recorder.Body)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	logs := []app.Applog{}
 	err = json.Unmarshal(body, &logs)
-	c.Assert(err, IsNil)
-	c.Assert(logs, HasLen, 10)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(logs, gocheck.HasLen, 10)
 }
 
-func (s *S) TestAppLogSelectBySource(c *C) {
+func (s *S) TestAppLogSelectBySource(c *gocheck.C) {
 	a := app.App{
 		Name:      "lost",
 		Framework: "vougan",
 		Teams:     []string{s.team.Name},
 	}
 	err := s.conn.Apps().Insert(a)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	a.Log("mars log", "mars")
 	a.Log("earth log", "earth")
 	url := fmt.Sprintf("/apps/%s/log/?:name=%s&source=mars", a.Name, a.Name)
 	request, err := http.NewRequest("GET", url, nil)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
 	request.Header.Set("Content-Type", "application/json")
 	err = AppLog(recorder, request, s.user)
-	c.Assert(err, IsNil)
-	c.Assert(recorder.Code, Equals, http.StatusOK)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(recorder.Code, gocheck.Equals, http.StatusOK)
 	body, err := ioutil.ReadAll(recorder.Body)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	logs := []app.Applog{}
 	err = json.Unmarshal(body, &logs)
-	c.Assert(err, IsNil)
-	c.Assert(logs, HasLen, 1)
-	c.Assert(logs[0].Message, Equals, "mars log")
-	c.Assert(logs[0].Source, Equals, "mars")
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(logs, gocheck.HasLen, 1)
+	c.Assert(logs[0].Message, gocheck.Equals, "mars log")
+	c.Assert(logs[0].Source, gocheck.Equals, "mars")
 }
 
-func (s *S) TestAppLogSelectByLinesShouldReturnTheLastestEntries(c *C) {
+func (s *S) TestAppLogSelectByLinesShouldReturnTheLastestEntries(c *gocheck.C) {
 	a := app.App{
 		Name:      "lost",
 		Framework: "vougan",
 		Teams:     []string{s.team.Name},
 	}
 	err := s.conn.Apps().Insert(a)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	logs := make([]app.Applog, 15)
 	now := time.Now()
@@ -1901,34 +1901,34 @@ func (s *S) TestAppLogSelectByLinesShouldReturnTheLastestEntries(c *C) {
 	}
 	a.Logs = logs
 	err = s.conn.Apps().Update(bson.M{"name": a.Name}, a)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	url := fmt.Sprintf("/apps/%s/log/?:name=%s&lines=3", a.Name, a.Name)
 	request, err := http.NewRequest("GET", url, nil)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
 	request.Header.Set("Content-Type", "application/json")
 	err = AppLog(recorder, request, s.user)
-	c.Assert(err, IsNil)
-	c.Assert(recorder.Code, Equals, http.StatusOK)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(recorder.Code, gocheck.Equals, http.StatusOK)
 	body, err := ioutil.ReadAll(recorder.Body)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	logs = []app.Applog{}
 	err = json.Unmarshal(body, &logs)
-	c.Assert(err, IsNil)
-	c.Assert(logs, HasLen, 3)
-	c.Assert(logs[0].Message, Equals, "12")
-	c.Assert(logs[1].Message, Equals, "13")
-	c.Assert(logs[2].Message, Equals, "14")
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(logs, gocheck.HasLen, 3)
+	c.Assert(logs[0].Message, gocheck.Equals, "12")
+	c.Assert(logs[1].Message, gocheck.Equals, "13")
+	c.Assert(logs[2].Message, gocheck.Equals, "14")
 }
 
-func (s *S) TestAppLogShouldReturnLogByApp(c *C) {
+func (s *S) TestAppLogShouldReturnLogByApp(c *gocheck.C) {
 	app1 := app.App{
 		Name:      "app1",
 		Framework: "vougan",
 		Teams:     []string{s.team.Name},
 	}
 	err := s.conn.Apps().Insert(app1)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": app1.Name})
 	app1.Log("app1 log", "source")
 	app2 := app.App{
@@ -1937,7 +1937,7 @@ func (s *S) TestAppLogShouldReturnLogByApp(c *C) {
 		Teams:     []string{s.team.Name},
 	}
 	err = s.conn.Apps().Insert(app2)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": app2.Name})
 	app2.Log("app2 log", "source")
 	app3 := app.App{
@@ -1946,61 +1946,61 @@ func (s *S) TestAppLogShouldReturnLogByApp(c *C) {
 		Teams:     []string{s.team.Name},
 	}
 	err = s.conn.Apps().Insert(app3)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": app3.Name})
 	app3.Log("app3 log", "tsuru")
 	url := fmt.Sprintf("/apps/%s/log/?:name=%s", app3.Name, app3.Name)
 	request, err := http.NewRequest("GET", url, nil)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
 	request.Header.Set("Content-Type", "application/json")
 	err = AppLog(recorder, request, s.user)
-	c.Assert(err, IsNil)
-	c.Assert(recorder.Code, Equals, http.StatusOK)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(recorder.Code, gocheck.Equals, http.StatusOK)
 	body, err := ioutil.ReadAll(recorder.Body)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	logs := []app.Applog{}
 	err = json.Unmarshal(body, &logs)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	var logged bool
 	for _, log := range logs {
 		// Should not show the app1 log
-		c.Assert(log.Message, Not(Equals), "app1 log")
+		c.Assert(log.Message, gocheck.Not(gocheck.Equals), "app1 log")
 		// Should not show the app2 log
-		c.Assert(log.Message, Not(Equals), "app2 log")
+		c.Assert(log.Message, gocheck.Not(gocheck.Equals), "app2 log")
 		if log.Message == "app3 log" {
 			logged = true
 		}
 	}
 	// Should show the app3 log
-	c.Assert(logged, Equals, true)
+	c.Assert(logged, gocheck.Equals, true)
 }
 
-func (s *S) TestGetTeamNamesReturnTheNameOfTeamsThatTheUserIsMember(c *C) {
+func (s *S) TestGetTeamNamesReturnTheNameOfTeamsThatTheUserIsMember(c *gocheck.C) {
 	one := &auth.User{Email: "imone@thewho.com", Password: "123"}
 	who := auth.Team{Name: "TheWho", Users: []string{one.Email}}
 	err := s.conn.Teams().Insert(who)
 	what := auth.Team{Name: "TheWhat", Users: []string{one.Email}}
 	err = s.conn.Teams().Insert(what)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	where := auth.Team{Name: "TheWhere", Users: []string{one.Email}}
 	err = s.conn.Teams().Insert(where)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	teams := []string{who.Name, what.Name, where.Name}
 	defer s.conn.Teams().RemoveAll(bson.M{"_id": bson.M{"$in": teams}})
 	names, err := getTeamNames(one)
-	c.Assert(err, IsNil)
-	c.Assert(names, DeepEquals, teams)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(names, gocheck.DeepEquals, teams)
 }
 
-func (s *S) TestBindHandler(c *C) {
+func (s *S) TestBindHandler(c *gocheck.C) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(`{"DATABASE_USER":"root","DATABASE_PASSWORD":"s3cr3t"}`))
 	}))
 	defer ts.Close()
 	srvc := service.Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}}
 	err := srvc.Create()
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Services().Remove(bson.M{"_id": "mysql"})
 	instance := service.ServiceInstance{
 		Name:        "my-mysql",
@@ -2008,7 +2008,7 @@ func (s *S) TestBindHandler(c *C) {
 		Teams:       []string{s.team.Name},
 	}
 	err = instance.Create()
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	defer s.conn.ServiceInstances().Remove(bson.M{"name": "my-mysql"})
 	a := app.App{
 		Name:  "painkiller",
@@ -2017,56 +2017,56 @@ func (s *S) TestBindHandler(c *C) {
 		Env:   map[string]bind.EnvVar{},
 	}
 	err = s.conn.Apps().Insert(a)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	url := fmt.Sprintf("/services/instances/%s/%s?:instance=%s&:app=%s", instance.Name, a.Name, instance.Name, a.Name)
 	request, err := http.NewRequest("PUT", url, nil)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
 	err = BindHandler(recorder, request, s.user)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	err = s.conn.ServiceInstances().Find(bson.M{"name": instance.Name}).One(&instance)
-	c.Assert(err, IsNil)
-	c.Assert(instance.Apps, DeepEquals, []string{a.Name})
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(instance.Apps, gocheck.DeepEquals, []string{a.Name})
 	err = s.conn.Apps().Find(bson.M{"name": a.Name}).One(&a)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	expectedUser := bind.EnvVar{Name: "DATABASE_USER", Value: "root", Public: false, InstanceName: instance.Name}
 	expectedPassword := bind.EnvVar{Name: "DATABASE_PASSWORD", Value: "s3cr3t", Public: false, InstanceName: instance.Name}
-	c.Assert(a.Env["DATABASE_USER"], DeepEquals, expectedUser)
-	c.Assert(a.Env["DATABASE_PASSWORD"], DeepEquals, expectedPassword)
+	c.Assert(a.Env["DATABASE_USER"], gocheck.DeepEquals, expectedUser)
+	c.Assert(a.Env["DATABASE_PASSWORD"], gocheck.DeepEquals, expectedPassword)
 	var envs []string
 	err = json.Unmarshal(recorder.Body.Bytes(), &envs)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	sort.Strings(envs)
-	c.Assert(envs, DeepEquals, []string{"DATABASE_PASSWORD", "DATABASE_USER"})
-	c.Assert(recorder.Header().Get("Content-Type"), Equals, "application/json")
+	c.Assert(envs, gocheck.DeepEquals, []string{"DATABASE_PASSWORD", "DATABASE_USER"})
+	c.Assert(recorder.Header().Get("Content-Type"), gocheck.Equals, "application/json")
 }
 
-func (s *S) TestBindHandlerReturns404IfTheInstanceDoesNotExist(c *C) {
+func (s *S) TestBindHandlerReturns404IfTheInstanceDoesNotExist(c *gocheck.C) {
 	a := app.App{
 		Name:      "serviceApp",
 		Framework: "django",
 		Teams:     []string{s.team.Name},
 	}
 	err := s.conn.Apps().Insert(a)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	url := fmt.Sprintf("/services/instances/unknown/%s?:instance=unknown&:app=%s", a.Name, a.Name)
 	request, err := http.NewRequest("PUT", url, nil)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
 	err = BindHandler(recorder, request, s.user)
-	c.Assert(err, NotNil)
+	c.Assert(err, gocheck.NotNil)
 	e, ok := err.(*errors.Http)
-	c.Assert(ok, Equals, true)
-	c.Assert(e.Code, Equals, http.StatusNotFound)
-	c.Assert(e, ErrorMatches, "^Instance not found$")
+	c.Assert(ok, gocheck.Equals, true)
+	c.Assert(e.Code, gocheck.Equals, http.StatusNotFound)
+	c.Assert(e, gocheck.ErrorMatches, "^Instance not found$")
 }
 
-func (s *S) TestBindHandlerReturns403IfTheUserDoesNotHaveAccessToTheInstance(c *C) {
+func (s *S) TestBindHandlerReturns403IfTheUserDoesNotHaveAccessToTheInstance(c *gocheck.C) {
 	instance := service.ServiceInstance{Name: "my-mysql", ServiceName: "mysql"}
 	err := instance.Create()
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	defer s.conn.ServiceInstances().Remove(bson.M{"name": "my-mysql"})
 	a := app.App{
 		Name:      "serviceApp",
@@ -2074,62 +2074,62 @@ func (s *S) TestBindHandlerReturns403IfTheUserDoesNotHaveAccessToTheInstance(c *
 		Teams:     []string{s.team.Name},
 	}
 	err = s.conn.Apps().Insert(a)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	url := fmt.Sprintf("/services/instances/%s/%s?:instance=%s&:app=%s", instance.Name, a.Name, instance.Name, a.Name)
 	request, err := http.NewRequest("PUT", url, nil)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
 	err = BindHandler(recorder, request, s.user)
-	c.Assert(err, NotNil)
+	c.Assert(err, gocheck.NotNil)
 	e, ok := err.(*errors.Http)
-	c.Assert(ok, Equals, true)
-	c.Assert(e.Code, Equals, http.StatusForbidden)
-	c.Assert(e, ErrorMatches, "^This user does not have access to this instance$")
+	c.Assert(ok, gocheck.Equals, true)
+	c.Assert(e.Code, gocheck.Equals, http.StatusForbidden)
+	c.Assert(e, gocheck.ErrorMatches, "^This user does not have access to this instance$")
 }
 
-func (s *S) TestBindHandlerReturns404IfTheAppDoesNotExist(c *C) {
+func (s *S) TestBindHandlerReturns404IfTheAppDoesNotExist(c *gocheck.C) {
 	instance := service.ServiceInstance{Name: "my-mysql", ServiceName: "mysql", Teams: []string{s.team.Name}}
 	err := instance.Create()
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	defer s.conn.ServiceInstances().Remove(bson.M{"name": "my-mysql"})
 	url := fmt.Sprintf("/services/instances/%s/unknown?:instance=%s&:app=unknown", instance.Name, instance.Name)
 	request, err := http.NewRequest("PUT", url, nil)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
 	err = BindHandler(recorder, request, s.user)
-	c.Assert(err, NotNil)
+	c.Assert(err, gocheck.NotNil)
 	e, ok := err.(*errors.Http)
-	c.Assert(ok, Equals, true)
-	c.Assert(e.Code, Equals, http.StatusNotFound)
-	c.Assert(e, ErrorMatches, "^App unknown not found.$")
+	c.Assert(ok, gocheck.Equals, true)
+	c.Assert(e.Code, gocheck.Equals, http.StatusNotFound)
+	c.Assert(e, gocheck.ErrorMatches, "^App unknown not found.$")
 }
 
-func (s *S) TestBindHandlerReturns403IfTheUserDoesNotHaveAccessToTheApp(c *C) {
+func (s *S) TestBindHandlerReturns403IfTheUserDoesNotHaveAccessToTheApp(c *gocheck.C) {
 	instance := service.ServiceInstance{Name: "my-mysql", ServiceName: "mysql", Teams: []string{s.team.Name}}
 	err := instance.Create()
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	defer s.conn.ServiceInstances().Remove(bson.M{"name": "my-mysql"})
 	a := app.App{
 		Name:      "serviceApp",
 		Framework: "django",
 	}
 	err = s.conn.Apps().Insert(a)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	url := fmt.Sprintf("/services/instances/%s/%s?:instance=%s&:app=%s", instance.Name, a.Name, instance.Name, a.Name)
 	request, err := http.NewRequest("PUT", url, nil)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
 	err = BindHandler(recorder, request, s.user)
-	c.Assert(err, NotNil)
+	c.Assert(err, gocheck.NotNil)
 	e, ok := err.(*errors.Http)
-	c.Assert(ok, Equals, true)
-	c.Assert(e.Code, Equals, http.StatusForbidden)
-	c.Assert(e, ErrorMatches, "^This user does not have access to this app$")
+	c.Assert(ok, gocheck.Equals, true)
+	c.Assert(e.Code, gocheck.Equals, http.StatusForbidden)
+	c.Assert(e, gocheck.ErrorMatches, "^This user does not have access to this app$")
 }
 
-func (s *S) TestUnbindHandler(c *C) {
+func (s *S) TestUnbindHandler(c *gocheck.C) {
 	h := testHandler{}
 	gts := s.t.StartGandalfTestServer(&h)
 	defer gts.Close()
@@ -2142,7 +2142,7 @@ func (s *S) TestUnbindHandler(c *C) {
 	defer ts.Close()
 	srvc := service.Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}}
 	err := srvc.Create()
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Services().Remove(bson.M{"_id": "mysql"})
 	instance := service.ServiceInstance{
 		Name:        "my-mysql",
@@ -2151,7 +2151,7 @@ func (s *S) TestUnbindHandler(c *C) {
 		Apps:        []string{"painkiller"},
 	}
 	err = instance.Create()
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	defer s.conn.ServiceInstances().Remove(bson.M{"name": "my-mysql"})
 	a := app.App{
 		Name:  "painkiller",
@@ -2159,7 +2159,7 @@ func (s *S) TestUnbindHandler(c *C) {
 		Units: []app.Unit{{Machine: 1}},
 	}
 	err = app.CreateApp(&a, 1, []auth.Team{*s.team})
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	a.Get()
 	defer a.Destroy()
 	a.Env["DATABASE_HOST"] = bind.EnvVar{
@@ -2171,25 +2171,25 @@ func (s *S) TestUnbindHandler(c *C) {
 	a.Env["MY_VAR"] = bind.EnvVar{Name: "MY_VAR", Value: "123"}
 	a.Units = []app.Unit{{Ip: "127.0.0.1", Machine: 1}}
 	err = s.conn.Apps().Update(bson.M{"name": a.Name}, &a)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	url := fmt.Sprintf("/services/instances/%s/%s?:instance=%s&:app=%s", instance.Name, a.Name, instance.Name, a.Name)
 	req, err := http.NewRequest("DELETE", url, nil)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
 	err = UnbindHandler(recorder, req, s.user)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	err = s.conn.ServiceInstances().Find(bson.M{"name": instance.Name}).One(&instance)
-	c.Assert(err, IsNil)
-	c.Assert(instance.Apps, DeepEquals, []string{})
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(instance.Apps, gocheck.DeepEquals, []string{})
 	err = s.conn.Apps().Find(bson.M{"name": a.Name}).One(&a)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	expected := bind.EnvVar{
 		Name:  "MY_VAR",
 		Value: "123",
 	}
-	c.Assert(a.Env["MY_VAR"], DeepEquals, expected)
+	c.Assert(a.Env["MY_VAR"], gocheck.DeepEquals, expected)
 	_, ok := a.Env["DATABASE_HOST"]
-	c.Assert(ok, Equals, false)
+	c.Assert(ok, gocheck.Equals, false)
 	ch := make(chan bool)
 	go func() {
 		t := time.Tick(1)
@@ -2205,31 +2205,31 @@ func (s *S) TestUnbindHandler(c *C) {
 	}
 }
 
-func (s *S) TestUnbindHandlerReturns404IfTheInstanceDoesNotExist(c *C) {
+func (s *S) TestUnbindHandlerReturns404IfTheInstanceDoesNotExist(c *gocheck.C) {
 	a := app.App{
 		Name:      "serviceApp",
 		Framework: "django",
 		Teams:     []string{s.team.Name},
 	}
 	err := s.conn.Apps().Insert(a)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	url := fmt.Sprintf("/services/instances/unknown/%s?:instance=unknown&:app=%s", a.Name, a.Name)
 	request, err := http.NewRequest("PUT", url, nil)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
 	err = UnbindHandler(recorder, request, s.user)
-	c.Assert(err, NotNil)
+	c.Assert(err, gocheck.NotNil)
 	e, ok := err.(*errors.Http)
-	c.Assert(ok, Equals, true)
-	c.Assert(e.Code, Equals, http.StatusNotFound)
-	c.Assert(e, ErrorMatches, "^Instance not found$")
+	c.Assert(ok, gocheck.Equals, true)
+	c.Assert(e.Code, gocheck.Equals, http.StatusNotFound)
+	c.Assert(e, gocheck.ErrorMatches, "^Instance not found$")
 }
 
-func (s *S) TestUnbindHandlerReturns403IfTheUserDoesNotHaveAccessToTheInstance(c *C) {
+func (s *S) TestUnbindHandlerReturns403IfTheUserDoesNotHaveAccessToTheInstance(c *gocheck.C) {
 	instance := service.ServiceInstance{Name: "my-mysql", ServiceName: "mysql"}
 	err := instance.Create()
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	defer s.conn.ServiceInstances().Remove(bson.M{"name": "my-mysql"})
 	a := app.App{
 		Name:      "serviceApp",
@@ -2237,62 +2237,62 @@ func (s *S) TestUnbindHandlerReturns403IfTheUserDoesNotHaveAccessToTheInstance(c
 		Teams:     []string{s.team.Name},
 	}
 	err = s.conn.Apps().Insert(a)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	url := fmt.Sprintf("/services/instances/%s/%s?:instance=%s&:app=%s", instance.Name, a.Name, instance.Name, a.Name)
 	request, err := http.NewRequest("PUT", url, nil)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
 	err = UnbindHandler(recorder, request, s.user)
-	c.Assert(err, NotNil)
+	c.Assert(err, gocheck.NotNil)
 	e, ok := err.(*errors.Http)
-	c.Assert(ok, Equals, true)
-	c.Assert(e.Code, Equals, http.StatusForbidden)
-	c.Assert(e, ErrorMatches, "^This user does not have access to this instance$")
+	c.Assert(ok, gocheck.Equals, true)
+	c.Assert(e.Code, gocheck.Equals, http.StatusForbidden)
+	c.Assert(e, gocheck.ErrorMatches, "^This user does not have access to this instance$")
 }
 
-func (s *S) TestUnbindHandlerReturns404IfTheAppDoesNotExist(c *C) {
+func (s *S) TestUnbindHandlerReturns404IfTheAppDoesNotExist(c *gocheck.C) {
 	instance := service.ServiceInstance{Name: "my-mysql", ServiceName: "mysql", Teams: []string{s.team.Name}}
 	err := instance.Create()
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	defer s.conn.ServiceInstances().Remove(bson.M{"name": "my-mysql"})
 	url := fmt.Sprintf("/services/instances/%s/unknown?:instance=%s&:app=unknown", instance.Name, instance.Name)
 	request, err := http.NewRequest("PUT", url, nil)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
 	err = UnbindHandler(recorder, request, s.user)
-	c.Assert(err, NotNil)
+	c.Assert(err, gocheck.NotNil)
 	e, ok := err.(*errors.Http)
-	c.Assert(ok, Equals, true)
-	c.Assert(e.Code, Equals, http.StatusNotFound)
-	c.Assert(e, ErrorMatches, "^App unknown not found.$")
+	c.Assert(ok, gocheck.Equals, true)
+	c.Assert(e.Code, gocheck.Equals, http.StatusNotFound)
+	c.Assert(e, gocheck.ErrorMatches, "^App unknown not found.$")
 }
 
-func (s *S) TestUnbindHandlerReturns403IfTheUserDoesNotHaveAccessToTheApp(c *C) {
+func (s *S) TestUnbindHandlerReturns403IfTheUserDoesNotHaveAccessToTheApp(c *gocheck.C) {
 	instance := service.ServiceInstance{Name: "my-mysql", ServiceName: "mysql", Teams: []string{s.team.Name}}
 	err := instance.Create()
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	defer s.conn.ServiceInstances().Remove(bson.M{"name": "my-mysql"})
 	a := app.App{
 		Name:      "serviceApp",
 		Framework: "django",
 	}
 	err = s.conn.Apps().Insert(a)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	url := fmt.Sprintf("/services/instances/%s/%s?:instance=%s&:app=%s", instance.Name, a.Name, instance.Name, a.Name)
 	request, err := http.NewRequest("PUT", url, nil)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
 	err = UnbindHandler(recorder, request, s.user)
-	c.Assert(err, NotNil)
+	c.Assert(err, gocheck.NotNil)
 	e, ok := err.(*errors.Http)
-	c.Assert(ok, Equals, true)
-	c.Assert(e.Code, Equals, http.StatusForbidden)
-	c.Assert(e, ErrorMatches, "^This user does not have access to this app$")
+	c.Assert(ok, gocheck.Equals, true)
+	c.Assert(e.Code, gocheck.Equals, http.StatusForbidden)
+	c.Assert(e, gocheck.ErrorMatches, "^This user does not have access to this app$")
 }
 
-func (s *S) TestRestartHandler(c *C) {
+func (s *S) TestRestartHandler(c *gocheck.C) {
 	s.provisioner.PrepareOutput(nil) // loadHooks
 	s.provisioner.PrepareOutput([]byte("restarted"))
 	a := app.App{
@@ -2301,61 +2301,61 @@ func (s *S) TestRestartHandler(c *C) {
 		Units: []app.Unit{{Name: "i-0800", State: "started"}},
 	}
 	err := s.conn.Apps().Insert(a)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	url := fmt.Sprintf("/apps/%s/restart?:name=%s", a.Name, a.Name)
 	request, err := http.NewRequest("GET", url, nil)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
 	err = RestartHandler(recorder, request, s.user)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	result := strings.Replace(recorder.Body.String(), "\n", "#", -1)
-	c.Assert(result, Matches, ".*# ---> Restarting your app#.*")
-	c.Assert(recorder.Header().Get("Content-Type"), Equals, "text")
+	c.Assert(result, gocheck.Matches, ".*# ---> Restarting your app#.*")
+	c.Assert(recorder.Header().Get("Content-Type"), gocheck.Equals, "text")
 }
 
-func (s *S) TestRestartHandlerReturns404IfTheAppDoesNotExist(c *C) {
+func (s *S) TestRestartHandlerReturns404IfTheAppDoesNotExist(c *gocheck.C) {
 	request, err := http.NewRequest("GET", "/apps/unknown/restart?:name=unknown", nil)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
 	err = RestartHandler(recorder, request, s.user)
-	c.Assert(err, NotNil)
+	c.Assert(err, gocheck.NotNil)
 	e, ok := err.(*errors.Http)
-	c.Assert(ok, Equals, true)
-	c.Assert(e.Code, Equals, http.StatusNotFound)
+	c.Assert(ok, gocheck.Equals, true)
+	c.Assert(e.Code, gocheck.Equals, http.StatusNotFound)
 }
 
-func (s *S) TestRestartHandlerReturns403IfTheUserDoesNotHaveAccessToTheApp(c *C) {
+func (s *S) TestRestartHandlerReturns403IfTheUserDoesNotHaveAccessToTheApp(c *gocheck.C) {
 	a := app.App{Name: "nightmist"}
 	err := s.conn.Apps().Insert(a)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	url := fmt.Sprintf("/apps/%s/restart?:name=%s", a.Name, a.Name)
 	request, err := http.NewRequest("GET", url, nil)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
 	err = RestartHandler(recorder, request, s.user)
-	c.Assert(err, NotNil)
+	c.Assert(err, gocheck.NotNil)
 	e, ok := err.(*errors.Http)
-	c.Assert(ok, Equals, true)
-	c.Assert(e.Code, Equals, http.StatusForbidden)
+	c.Assert(ok, gocheck.Equals, true)
+	c.Assert(e.Code, gocheck.Equals, http.StatusForbidden)
 }
 
-func (s *S) TestAddLogHandler(c *C) {
+func (s *S) TestAddLogHandler(c *gocheck.C) {
 	a := app.App{
 		Name:      "myapp",
 		Framework: "python",
 	}
 	err := s.conn.Apps().Insert(a)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	b := strings.NewReader(`["message 1", "message 2", "message 3"]`)
 	request, err := http.NewRequest("POST", "/apps/myapp/log/?:name=myapp", b)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
 	err = AddLogHandler(recorder, request)
-	c.Assert(err, IsNil)
-	c.Assert(recorder.Code, Equals, http.StatusOK)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(recorder.Code, gocheck.Equals, http.StatusOK)
 	messages := []string{
 		"message 1",
 		"message 2",
@@ -2363,33 +2363,33 @@ func (s *S) TestAddLogHandler(c *C) {
 	}
 	for _, msg := range messages {
 		length, err := s.conn.Apps().Find(bson.M{"name": a.Name, "logs.message": msg}).Count()
-		c.Check(err, IsNil)
-		c.Check(length, Equals, 1)
+		c.Check(err, gocheck.IsNil)
+		c.Check(length, gocheck.Equals, 1)
 	}
 }
 
-func (s *S) TestgetAppOrErrorWhenUserIsAdmin(c *C) {
+func (s *S) TestgetAppOrErrorWhenUserIsAdmin(c *gocheck.C) {
 	admin := auth.User{Email: "superuser@gmail.com", Password: "123"}
 	err := s.conn.Users().Insert(&admin)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	adminTeamName, err := config.GetString("admin-team")
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	adminTeam := auth.Team{Name: adminTeamName, Users: []string{admin.Email}}
 	err = s.conn.Teams().Insert(&adminTeam)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	a := app.App{Name: "testApp", Teams: []string{"notAdmin", "noSuperUser"}}
 	err = s.conn.Apps().Insert(&a)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	defer func(admin auth.User, adminTeam auth.Team) {
 		err := s.conn.Teams().RemoveId(adminTeam.Name)
-		c.Assert(err, IsNil)
+		c.Assert(err, gocheck.IsNil)
 		err = s.conn.Users().Remove(bson.M{"email": admin.Email})
-		c.Assert(err, IsNil)
+		c.Assert(err, gocheck.IsNil)
 	}(admin, adminTeam)
 	app, err := getApp(a.Name, &admin)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	err = a.Get()
-	c.Assert(err, IsNil)
-	c.Assert(app, DeepEquals, a)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(app, gocheck.DeepEquals, a)
 }

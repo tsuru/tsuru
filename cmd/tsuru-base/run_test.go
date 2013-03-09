@@ -7,11 +7,11 @@ package tsuru
 import (
 	"bytes"
 	"github.com/globocom/tsuru/cmd"
-	. "launchpad.net/gocheck"
+	"launchpad.net/gocheck"
 	"net/http"
 )
 
-func (s *S) TestAppRun(c *C) {
+func (s *S) TestAppRun(c *gocheck.C) {
 	*AppName = "ble"
 	var stdout, stderr bytes.Buffer
 	expected := "http.go		http_test.go"
@@ -33,11 +33,11 @@ func (s *S) TestAppRun(c *C) {
 	}
 	client := cmd.NewClient(&http.Client{Transport: trans}, nil, manager)
 	err := (&AppRun{}).Run(&context, client)
-	c.Assert(err, IsNil)
-	c.Assert(stdout.String(), Equals, expected)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(stdout.String(), gocheck.Equals, expected)
 }
 
-func (s *S) TestAppRunShouldUseAllSubsequentArgumentsAsArgumentsToTheGivenCommand(c *C) {
+func (s *S) TestAppRunShouldUseAllSubsequentArgumentsAsArgumentsToTheGivenCommand(c *gocheck.C) {
 	*AppName = "ble"
 	var stdout, stderr bytes.Buffer
 	expected := "-rw-r--r--  1 f  staff  119 Apr 26 18:23 http.go"
@@ -59,11 +59,11 @@ func (s *S) TestAppRunShouldUseAllSubsequentArgumentsAsArgumentsToTheGivenComman
 	}
 	client := cmd.NewClient(&http.Client{Transport: trans}, nil, manager)
 	err := (&AppRun{}).Run(&context, client)
-	c.Assert(err, IsNil)
-	c.Assert(stdout.String(), Equals, expected)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(stdout.String(), gocheck.Equals, expected)
 }
 
-func (s *S) TestAppRunWithoutTheFlag(c *C) {
+func (s *S) TestAppRunWithoutTheFlag(c *gocheck.C) {
 	var stdout, stderr bytes.Buffer
 	expected := "-rw-r--r--  1 f  staff  119 Apr 26 18:23 http.go"
 	context := cmd.Context{
@@ -85,11 +85,11 @@ func (s *S) TestAppRunWithoutTheFlag(c *C) {
 	client := cmd.NewClient(&http.Client{Transport: trans}, nil, manager)
 	fake := &FakeGuesser{name: "bla"}
 	err := (&AppRun{GuessingCommand{G: fake}}).Run(&context, client)
-	c.Assert(err, IsNil)
-	c.Assert(stdout.String(), Equals, expected)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(stdout.String(), gocheck.Equals, expected)
 }
 
-func (s *S) TestInfoAppRun(c *C) {
+func (s *S) TestInfoAppRun(c *gocheck.C) {
 	desc := `run a command in all instances of the app, and prints the output.
 Notice that you may need quotes to run your command if you want to deal with
 input and outputs redirects, and pipes.
@@ -103,5 +103,5 @@ If you don't provide the app name, tsuru will try to guess it.
 		MinArgs: 1,
 	}
 	command := AppRun{}
-	c.Assert(command.Info(), DeepEquals, expected)
+	c.Assert(command.Info(), gocheck.DeepEquals, expected)
 }

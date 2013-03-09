@@ -7,29 +7,29 @@ package local
 import (
 	"github.com/globocom/config"
 	"github.com/globocom/tsuru/db"
-	. "launchpad.net/gocheck"
+	"launchpad.net/gocheck"
 	"testing"
 )
 
-func Test(t *testing.T) { TestingT(t) }
+func Test(t *testing.T) { gocheck.TestingT(t) }
 
 type S struct {
 	collName string
 	conn     *db.Storage
 }
 
-var _ = Suite(&S{})
+var _ = gocheck.Suite(&S{})
 
-func (s *S) SetUpSuite(c *C) {
+func (s *S) SetUpSuite(c *gocheck.C) {
 	s.collName = "collName"
 	config.Set("local:collection", s.collName)
 	config.Set("database:url", "127.0.0.1:27017")
 	config.Set("database:name", "juju_provision_tests_s")
 	var err error
 	s.conn, err = db.Conn()
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 }
 
-func (s *S) TearDownSuite(c *C) {
+func (s *S) TearDownSuite(c *gocheck.C) {
 	s.conn.Collection(s.collName).Database.DropDatabase()
 }

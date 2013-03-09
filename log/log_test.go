@@ -1,4 +1,4 @@
-// Copyright 2012 tsuru authors. All rights reserved.
+// Copyright 2013 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -6,81 +6,81 @@ package log
 
 import (
 	"bytes"
-	. "launchpad.net/gocheck"
+	"launchpad.net/gocheck"
 	"log"
 	"testing"
 )
 
-func Test(t *testing.T) { TestingT(t) }
+func Test(t *testing.T) { gocheck.TestingT(t) }
 
 type S struct{}
 
-var _ = Suite(&S{})
+var _ = gocheck.Suite(&S{})
 
-func (s *S) TestLogPanic(c *C) {
+func (s *S) TestLogPanic(c *gocheck.C) {
 	buf := &bytes.Buffer{}
 	defer buf.Reset()
 	SetLogger(log.New(buf, "", 0))
 	defer func() {
-		c.Assert(recover(), Equals, "log anything")
+		c.Assert(recover(), gocheck.Equals, "log anything")
 	}()
 	Panic("log anything")
 }
 
-func (s *S) TestLogPanicf(c *C) {
+func (s *S) TestLogPanicf(c *gocheck.C) {
 	buf := &bytes.Buffer{}
 	defer buf.Reset()
 	SetLogger(log.New(buf, "", 0))
 	defer func() {
-		c.Assert(recover(), Equals, "log anything formatted")
+		c.Assert(recover(), gocheck.Equals, "log anything formatted")
 	}()
 	Panicf("log anything %s", "formatted")
 }
 
-func (s *S) TestLogPrint(c *C) {
+func (s *S) TestLogPrint(c *gocheck.C) {
 	buf := &bytes.Buffer{}
 	defer buf.Reset()
 	SetLogger(log.New(buf, "", 0))
 	Print("log anything")
-	c.Assert(buf.String(), Equals, "log anything\n")
+	c.Assert(buf.String(), gocheck.Equals, "log anything\n")
 }
 
-func (s *S) TestLogPrintf(c *C) {
+func (s *S) TestLogPrintf(c *gocheck.C) {
 	buf := &bytes.Buffer{}
 	defer buf.Reset()
 	SetLogger(log.New(buf, "", 0))
 	Printf("log anything %d", 1)
-	c.Assert(buf.String(), Equals, "log anything 1\n")
+	c.Assert(buf.String(), gocheck.Equals, "log anything 1\n")
 }
 
-func (s *S) TestLogFatalWithoutTarget(c *C) {
+func (s *S) TestLogFatalWithoutTarget(c *gocheck.C) {
 	SetLogger(nil)
 	defer func() {
-		c.Assert(recover(), IsNil)
+		c.Assert(recover(), gocheck.IsNil)
 	}()
 	Fatal("log anything")
 }
 
-func (s *S) TestLogPanicWithoutTarget(c *C) {
+func (s *S) TestLogPanicWithoutTarget(c *gocheck.C) {
 	SetLogger(nil)
 	defer func() {
-		c.Assert(recover(), IsNil)
+		c.Assert(recover(), gocheck.IsNil)
 	}()
 	Panic("log anything")
 }
 
-func (s *S) TestLogPrintWithoutTarget(c *C) {
+func (s *S) TestLogPrintWithoutTarget(c *gocheck.C) {
 	SetLogger(nil)
 	defer func() {
-		c.Assert(recover(), IsNil)
+		c.Assert(recover(), gocheck.IsNil)
 	}()
 	Print("log anything")
 }
 
-func (s *S) TestLogPrintfWithoutTarget(c *C) {
+func (s *S) TestLogPrintfWithoutTarget(c *gocheck.C) {
 	SetLogger(nil)
 	defer func() {
-		c.Assert(recover(), IsNil)
+		c.Assert(recover(), gocheck.IsNil)
 	}()
 	Printf("log anything %d", 1)
 }

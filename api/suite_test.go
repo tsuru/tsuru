@@ -5,7 +5,6 @@
 package main
 
 import (
-	"fmt"
 	"github.com/globocom/config"
 	"github.com/globocom/tsuru/app"
 	"github.com/globocom/tsuru/auth"
@@ -14,13 +13,13 @@ import (
 	"github.com/globocom/tsuru/service"
 	tsuruTesting "github.com/globocom/tsuru/testing"
 	"io"
-	. "launchpad.net/gocheck"
+	"launchpad.net/gocheck"
 	"os"
 	"path"
 	"testing"
 )
 
-func Test(t *testing.T) { TestingT(t) }
+func Test(t *testing.T) { gocheck.TestingT(t) }
 
 type S struct {
 	conn        *db.Storage
@@ -30,12 +29,12 @@ type S struct {
 	provisioner *tsuruTesting.FakeProvisioner
 }
 
-var _ = Suite(&S{})
+var _ = gocheck.Suite(&S{})
 
 type hasAccessToChecker struct{}
 
-func (c *hasAccessToChecker) Info() *CheckerInfo {
-	return &CheckerInfo{Name: "HasAccessTo", Params: []string{"team", "service"}}
+func (c *hasAccessToChecker) Info() *gocheck.CheckerInfo {
+	return &gocheck.CheckerInfo{Name: "HasAccessTo", Params: []string{"team", "service"}}
 }
 
 func (c *hasAccessToChecker) Check(params []interface{}, names []string) (bool, string) {
@@ -53,46 +52,21 @@ func (c *hasAccessToChecker) Check(params []interface{}, names []string) (bool, 
 	return srv.HasTeam(&team), ""
 }
 
-var HasAccessTo Checker = &hasAccessToChecker{}
+var HasAccessTo gocheck.Checker = &hasAccessToChecker{}
 
-type greaterChecker struct{}
-
-func (c *greaterChecker) Info() *CheckerInfo {
-	return &CheckerInfo{Name: "Greater", Params: []string{"expected", "obtained"}}
-}
-
-func (c *greaterChecker) Check(params []interface{}, names []string) (bool, string) {
-	if len(params) != 2 {
-		return false, "you should pass two values to compare"
-	}
-	n1, ok := params[0].(int)
-	if !ok {
-		return false, "first parameter should be int"
-	}
-	n2, ok := params[1].(int)
-	if !ok {
-		return false, "second parameter should be int"
-	}
-	if n1 > n2 {
-		return true, ""
-	}
-	err := fmt.Sprintf("%s is not greater than %s", params[0], params[1])
-	return false, err
-}
-
-func (s *S) createUserAndTeam(c *C) {
+func (s *S) createUserAndTeam(c *gocheck.C) {
 	s.user = &auth.User{Email: "whydidifall@thewho.com", Password: "123"}
 	err := s.user.Create()
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	s.team = &auth.Team{Name: "tsuruteam", Users: []string{s.user.Email}}
 	err = s.conn.Teams().Insert(s.team)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 }
 
-func (s *S) SetUpSuite(c *C) {
+func (s *S) SetUpSuite(c *gocheck.C) {
 	err := config.ReadConfigFile("testdata/config.yaml")
 	s.conn, err = db.Conn()
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	s.createUserAndTeam(c)
 	s.t = &tsuruTesting.T{}
 	s.t.StartAmzS3AndIAM(c)
@@ -101,7 +75,7 @@ func (s *S) SetUpSuite(c *C) {
 	app.Provisioner = s.provisioner
 }
 
-func (s *S) TearDownSuite(c *C) {
+func (s *S) TearDownSuite(c *gocheck.C) {
 	defer s.t.S3Server.Quit()
 	defer s.t.IamServer.Quit()
 	queue.Preempt()
@@ -109,7 +83,7 @@ func (s *S) TearDownSuite(c *C) {
 	fsystem = nil
 }
 
-func (s *S) TearDownTest(c *C) {
+func (s *S) TearDownTest(c *gocheck.C) {
 	s.t.RollbackGitConfs(c)
 	s.provisioner.Reset()
 }

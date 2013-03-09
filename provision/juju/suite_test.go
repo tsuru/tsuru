@@ -8,20 +8,20 @@ import (
 	"github.com/globocom/config"
 	"github.com/globocom/tsuru/db"
 	"github.com/globocom/tsuru/queue"
-	. "launchpad.net/gocheck"
+	"launchpad.net/gocheck"
 	"testing"
 )
 
-func Test(t *testing.T) { TestingT(t) }
+func Test(t *testing.T) { gocheck.TestingT(t) }
 
 type S struct {
 	collName string
 	conn     *db.Storage
 }
 
-var _ = Suite(&S{})
+var _ = gocheck.Suite(&S{})
 
-func (s *S) SetUpSuite(c *C) {
+func (s *S) SetUpSuite(c *gocheck.C) {
 	var err error
 	s.collName = "juju_units_test"
 	config.Set("git:host", "tsuruhost.com")
@@ -30,10 +30,10 @@ func (s *S) SetUpSuite(c *C) {
 	config.Set("database:name", "juju_provision_tests_s")
 	config.Set("queue", "fake")
 	s.conn, err = db.Conn()
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 }
 
-func (s *S) TearDownSuite(c *C) {
+func (s *S) TearDownSuite(c *gocheck.C) {
 	queue.Preempt()
 	s.conn.Collection(s.collName).Database.DropDatabase()
 }

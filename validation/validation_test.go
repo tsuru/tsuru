@@ -1,23 +1,23 @@
-// Copyright 2012 tsuru authors. All rights reserved.
+// Copyright 2013 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
 package validation
 
 import (
-	. "launchpad.net/gocheck"
+	"launchpad.net/gocheck"
 	"testing"
 )
 
 type S struct{}
 
-var _ = Suite(&S{})
+var _ = gocheck.Suite(&S{})
 
 func Test(t *testing.T) {
-	TestingT(t)
+	gocheck.TestingT(t)
 }
 
-func (s *S) TestValidateEmail(c *C) {
+func (s *S) TestValidateEmail(c *gocheck.C) {
 	var data = []struct {
 		input    string
 		expected bool
@@ -34,11 +34,11 @@ func (s *S) TestValidateEmail(c *C) {
 		{"invalid@validate", false},
 	}
 	for _, d := range data {
-		c.Assert(ValidateEmail(d.input), Equals, d.expected)
+		c.Assert(ValidateEmail(d.input), gocheck.Equals, d.expected)
 	}
 }
 
-func (s *S) TestValidateLength(c *C) {
+func (s *S) TestValidateLength(c *gocheck.C) {
 	var data = []struct {
 		input    string
 		min      int
@@ -50,6 +50,6 @@ func (s *S) TestValidateLength(c *C) {
 		{"gopher", -1, 3, false},
 	}
 	for _, d := range data {
-		c.Assert(ValidateLength(d.input, d.min, d.max), Equals, d.expected)
+		c.Assert(ValidateLength(d.input, d.min, d.max), gocheck.Equals, d.expected)
 	}
 }

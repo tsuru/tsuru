@@ -18,22 +18,22 @@ import (
 	"launchpad.net/goamz/ec2/ec2test"
 	"launchpad.net/goamz/s3"
 	"launchpad.net/goamz/s3/s3test"
-	. "launchpad.net/gocheck"
+	"launchpad.net/gocheck"
 	"net"
 )
 
-func (s *S) TestBootstrapInstanceIdHealerShouldBeRegistered(c *C) {
+func (s *S) TestBootstrapInstanceIdHealerShouldBeRegistered(c *gocheck.C) {
 	h, err := heal.Get("bootstrap-instanceid")
-	c.Assert(err, IsNil)
-	c.Assert(h, FitsTypeOf, bootstrapInstanceIdHealer{})
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(h, gocheck.FitsTypeOf, bootstrapInstanceIdHealer{})
 }
 
-func (s *S) TestBootstrapInstanceIdHealerNeedsHeal(c *C) {
+func (s *S) TestBootstrapInstanceIdHealerNeedsHeal(c *gocheck.C) {
 	ec2Server, err := ec2test.NewServer()
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	defer ec2Server.Quit()
 	s3Server, err := s3test.NewServer(nil)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	defer s3Server.Quit()
 	h := bootstrapInstanceIdHealer{}
 	region := aws.SAEast
@@ -45,18 +45,18 @@ func (s *S) TestBootstrapInstanceIdHealerNeedsHeal(c *C) {
 	config.Set("juju:bucket", jujuBucket)
 	bucket := h.s3().Bucket(jujuBucket)
 	err = bucket.PutBucket(s3.PublicReadWrite)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	err = bucket.Put("provider-state", []byte("doesnotexist"), "binary/octet-stream", s3.PublicReadWrite)
-	c.Assert(err, IsNil)
-	c.Assert(h.needsHeal(), Equals, true)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(h.needsHeal(), gocheck.Equals, true)
 }
 
-func (s *S) TestBootstrapInstanceIdHealerNotNeedsHeal(c *C) {
+func (s *S) TestBootstrapInstanceIdHealerNotNeedsHeal(c *gocheck.C) {
 	ec2Server, err := ec2test.NewServer()
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	defer ec2Server.Quit()
 	s3Server, err := s3test.NewServer(nil)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	defer s3Server.Quit()
 	h := bootstrapInstanceIdHealer{}
 	region := aws.SAEast
@@ -64,26 +64,26 @@ func (s *S) TestBootstrapInstanceIdHealerNotNeedsHeal(c *C) {
 	region.S3Endpoint = s3Server.URL()
 	h.e = ec2.New(aws.Auth{AccessKey: "some", SecretKey: "thing"}, region)
 	sg, err := h.ec2().CreateSecurityGroup("juju-delta-0", "")
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	h.s = s3.New(aws.Auth{AccessKey: "some", SecretKey: "thing"}, region)
 	jujuBucket := "ble"
 	config.Set("juju:bucket", jujuBucket)
 	bucket := h.s3().Bucket(jujuBucket)
 	err = bucket.PutBucket(s3.PublicReadWrite)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	resp, err := h.ec2().RunInstances(&ec2.RunInstances{MaxCount: 1, SecurityGroups: []ec2.SecurityGroup{sg.SecurityGroup}})
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	err = bucket.Put("provider-state", []byte(resp.Instances[0].InstanceId), "binary/octet-stream", s3.PublicReadWrite)
-	c.Assert(err, IsNil)
-	c.Assert(h.needsHeal(), Equals, false)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(h.needsHeal(), gocheck.Equals, false)
 }
 
-func (s *S) TestBootstrapInstanceIdHealerHeal(c *C) {
+func (s *S) TestBootstrapInstanceIdHealerHeal(c *gocheck.C) {
 	ec2Server, err := ec2test.NewServer()
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	defer ec2Server.Quit()
 	s3Server, err := s3test.NewServer(nil)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	defer s3Server.Quit()
 	h := bootstrapInstanceIdHealer{}
 	region := aws.SAEast
@@ -91,59 +91,59 @@ func (s *S) TestBootstrapInstanceIdHealerHeal(c *C) {
 	region.S3Endpoint = s3Server.URL()
 	h.e = ec2.New(aws.Auth{AccessKey: "some", SecretKey: "thing"}, region)
 	sg, err := h.ec2().CreateSecurityGroup("juju-delta-0", "")
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	h.s = s3.New(aws.Auth{AccessKey: "some", SecretKey: "thing"}, region)
 	jujuBucket := "ble"
 	config.Set("juju:bucket", jujuBucket)
 	bucket := h.s3().Bucket(jujuBucket)
 	err = bucket.PutBucket(s3.PublicReadWrite)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	resp, err := h.ec2().RunInstances(&ec2.RunInstances{MaxCount: 1, SecurityGroups: []ec2.SecurityGroup{sg.SecurityGroup}})
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	err = bucket.Put("provider-state", []byte("doesnotexist"), "binary/octet-stream", s3.PublicReadWrite)
-	c.Assert(err, IsNil)
-	c.Assert(h.needsHeal(), Equals, true)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(h.needsHeal(), gocheck.Equals, true)
 	err = h.Heal()
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	data, err := bucket.Get("provider-state")
 	expected := "zookeeper-instances: [" + resp.Instances[0].InstanceId + "]"
-	c.Assert(string(data), Equals, expected)
+	c.Assert(string(data), gocheck.Equals, expected)
 }
 
-func (s *S) TestBootstrapInstanceIdHealerEC2(c *C) {
+func (s *S) TestBootstrapInstanceIdHealerEC2(c *gocheck.C) {
 	h := bootstrapInstanceIdHealer{}
 	ec2 := h.ec2()
-	c.Assert(ec2.EC2Endpoint, Equals, "")
+	c.Assert(ec2.EC2Endpoint, gocheck.Equals, "")
 }
 
-func (s *S) TestBootstrapInstanceIdHealerS3(c *C) {
+func (s *S) TestBootstrapInstanceIdHealerS3(c *gocheck.C) {
 	h := bootstrapInstanceIdHealer{}
 	s3 := h.s3()
-	c.Assert(s3.Region, DeepEquals, aws.USEast)
+	c.Assert(s3.Region, gocheck.DeepEquals, aws.USEast)
 }
 
-func (s *S) TestInstanceAgentsConfigHealerShouldBeRegistered(c *C) {
+func (s *S) TestInstanceAgentsConfigHealerShouldBeRegistered(c *gocheck.C) {
 	h, err := heal.Get("instance-agents-config")
-	c.Assert(err, IsNil)
-	c.Assert(h, FitsTypeOf, instanceAgentsConfigHealer{})
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(h, gocheck.FitsTypeOf, instanceAgentsConfigHealer{})
 }
 
-func (s *S) TestInstanceAgenstConfigHealerGetEC2(c *C) {
+func (s *S) TestInstanceAgenstConfigHealerGetEC2(c *gocheck.C) {
 	h := instanceAgentsConfigHealer{}
 	ec2 := h.ec2()
-	c.Assert(ec2.EC2Endpoint, Equals, "")
+	c.Assert(ec2.EC2Endpoint, gocheck.Equals, "")
 }
 
-func (s *S) TestInstanceAgenstConfigHealerHeal(c *C) {
+func (s *S) TestInstanceAgenstConfigHealerHeal(c *gocheck.C) {
 	jujuTmpdir, err := commandmocker.Add("juju", collectOutputInstanceDown)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	defer commandmocker.Remove(jujuTmpdir)
 	sshTmpdir, err := commandmocker.Error("ssh", "", 1)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	defer commandmocker.Remove(sshTmpdir)
 	h := instanceAgentsConfigHealer{}
 	err = h.Heal()
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	jujuOutput := []string{
 		"status", // for juju status that gets the output
 		"status", // for get the bootstrap private dns
@@ -190,22 +190,22 @@ func (s *S) TestInstanceAgenstConfigHealerHeal(c *C) {
 		"'s/env JUJU_ZOOKEEPER=.*/env JUJU_ZOOKEEPER=\":2181\"/g'",
 		"/etc/init/juju-as_i_rise-0.conf",
 	}
-	c.Assert(commandmocker.Ran(jujuTmpdir), Equals, true)
-	c.Assert(commandmocker.Parameters(jujuTmpdir), DeepEquals, jujuOutput)
-	c.Assert(commandmocker.Ran(sshTmpdir), Equals, true)
-	c.Assert(commandmocker.Parameters(sshTmpdir), DeepEquals, sshOutput)
+	c.Assert(commandmocker.Ran(jujuTmpdir), gocheck.Equals, true)
+	c.Assert(commandmocker.Parameters(jujuTmpdir), gocheck.DeepEquals, jujuOutput)
+	c.Assert(commandmocker.Ran(sshTmpdir), gocheck.Equals, true)
+	c.Assert(commandmocker.Parameters(sshTmpdir), gocheck.DeepEquals, sshOutput)
 }
 
-func (s *S) TestBootstrapPrivateDns(c *C) {
+func (s *S) TestBootstrapPrivateDns(c *gocheck.C) {
 	server, err := ec2test.NewServer()
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	defer server.Quit()
 	h := instanceAgentsConfigHealer{}
 	region := aws.SAEast
 	region.EC2Endpoint = server.URL()
 	h.e = ec2.New(aws.Auth{AccessKey: "some", SecretKey: "thing"}, region)
 	resp, err := h.ec2().RunInstances(&ec2.RunInstances{MaxCount: 1})
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	instance := resp.Instances[0]
 	output := `machines:
   0:
@@ -215,64 +215,64 @@ func (s *S) TestBootstrapPrivateDns(c *C) {
     instance-state: running`
 	output = fmt.Sprintf(output, instance.InstanceId)
 	jujuTmpdir, err := commandmocker.Add("juju", output)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	defer commandmocker.Remove(jujuTmpdir)
 	dns, err := h.bootstrapPrivateDns()
-	c.Assert(err, IsNil)
-	c.Assert(dns, Equals, instance.PrivateDNSName)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(dns, gocheck.Equals, instance.PrivateDNSName)
 	jujuOutput := []string{
 		"status", // for juju status that gets the output
 	}
-	c.Assert(commandmocker.Ran(jujuTmpdir), Equals, true)
-	c.Assert(commandmocker.Parameters(jujuTmpdir), DeepEquals, jujuOutput)
+	c.Assert(commandmocker.Ran(jujuTmpdir), gocheck.Equals, true)
+	c.Assert(commandmocker.Parameters(jujuTmpdir), gocheck.DeepEquals, jujuOutput)
 }
 
-func (s *S) TestGetPrivateDns(c *C) {
+func (s *S) TestGetPrivateDns(c *gocheck.C) {
 	server, err := ec2test.NewServer()
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	defer server.Quit()
 	h := instanceAgentsConfigHealer{}
 	region := aws.SAEast
 	region.EC2Endpoint = server.URL()
 	h.e = ec2.New(aws.Auth{AccessKey: "some", SecretKey: "thing"}, region)
 	resp, err := h.ec2().RunInstances(&ec2.RunInstances{MaxCount: 1})
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	instance := resp.Instances[0]
 	dns, err := h.getPrivateDns(instance.InstanceId)
-	c.Assert(err, IsNil)
-	c.Assert(dns, Equals, instance.PrivateDNSName)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(dns, gocheck.Equals, instance.PrivateDNSName)
 }
 
-func (s *S) TestInstanceUnitShouldBeRegistered(c *C) {
+func (s *S) TestInstanceUnitShouldBeRegistered(c *gocheck.C) {
 	h, err := heal.Get("instance-unit")
-	c.Assert(err, IsNil)
-	c.Assert(h, FitsTypeOf, instanceUnitHealer{})
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(h, gocheck.FitsTypeOf, instanceUnitHealer{})
 }
 
-func (s *S) TestInstaceUnitHealWhenEverythingIsOk(c *C) {
+func (s *S) TestInstaceUnitHealWhenEverythingIsOk(c *gocheck.C) {
 	jujuTmpdir, err := commandmocker.Add("juju", collectOutput)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	defer commandmocker.Remove(jujuTmpdir)
 	sshTmpdir, err := commandmocker.Add("ssh", "$*")
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	defer commandmocker.Remove(sshTmpdir)
 	jujuOutput := []string{
 		"status", // for juju status that gets the output
 	}
 	h := instanceUnitHealer{}
 	err = h.Heal()
-	c.Assert(err, IsNil)
-	c.Assert(commandmocker.Ran(jujuTmpdir), Equals, true)
-	c.Assert(commandmocker.Parameters(jujuTmpdir), DeepEquals, jujuOutput)
-	c.Assert(commandmocker.Ran(sshTmpdir), Equals, false)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(commandmocker.Ran(jujuTmpdir), gocheck.Equals, true)
+	c.Assert(commandmocker.Parameters(jujuTmpdir), gocheck.DeepEquals, jujuOutput)
+	c.Assert(commandmocker.Ran(sshTmpdir), gocheck.Equals, false)
 }
 
-func (s *S) TestInstaceUnitHeal(c *C) {
+func (s *S) TestInstaceUnitHeal(c *gocheck.C) {
 	jujuTmpdir, err := commandmocker.Add("juju", collectOutputInstanceDown)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	defer commandmocker.Remove(jujuTmpdir)
 	sshTmpdir, err := commandmocker.Add("ssh", "$*")
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	defer commandmocker.Remove(sshTmpdir)
 	jujuOutput := []string{
 		"status", // for juju status that gets the output
@@ -299,43 +299,43 @@ func (s *S) TestInstaceUnitHeal(c *C) {
 	}
 	h := instanceUnitHealer{}
 	err = h.Heal()
-	c.Assert(err, IsNil)
-	c.Assert(commandmocker.Ran(jujuTmpdir), Equals, true)
-	c.Assert(commandmocker.Parameters(jujuTmpdir), DeepEquals, jujuOutput)
-	c.Assert(commandmocker.Ran(sshTmpdir), Equals, true)
-	c.Assert(commandmocker.Parameters(sshTmpdir), DeepEquals, sshOutput)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(commandmocker.Ran(jujuTmpdir), gocheck.Equals, true)
+	c.Assert(commandmocker.Parameters(jujuTmpdir), gocheck.DeepEquals, jujuOutput)
+	c.Assert(commandmocker.Ran(sshTmpdir), gocheck.Equals, true)
+	c.Assert(commandmocker.Parameters(sshTmpdir), gocheck.DeepEquals, sshOutput)
 }
 
-func (s *S) TestInstanceMachineShouldBeRegistered(c *C) {
+func (s *S) TestInstanceMachineShouldBeRegistered(c *gocheck.C) {
 	h, err := heal.Get("instance-machine")
-	c.Assert(err, IsNil)
-	c.Assert(h, FitsTypeOf, instanceMachineHealer{})
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(h, gocheck.FitsTypeOf, instanceMachineHealer{})
 }
 
-func (s *S) TestInstanceMachineHealWhenEverythingIsOk(c *C) {
+func (s *S) TestInstanceMachineHealWhenEverythingIsOk(c *gocheck.C) {
 	jujuTmpdir, err := commandmocker.Add("juju", collectOutput)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	defer commandmocker.Remove(jujuTmpdir)
 	sshTmpdir, err := commandmocker.Add("ssh", "$*")
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	defer commandmocker.Remove(sshTmpdir)
 	jujuOutput := []string{
 		"status", // for juju status that gets the output
 	}
 	h := instanceMachineHealer{}
 	err = h.Heal()
-	c.Assert(err, IsNil)
-	c.Assert(commandmocker.Ran(jujuTmpdir), Equals, true)
-	c.Assert(commandmocker.Parameters(jujuTmpdir), DeepEquals, jujuOutput)
-	c.Assert(commandmocker.Ran(sshTmpdir), Equals, false)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(commandmocker.Ran(jujuTmpdir), gocheck.Equals, true)
+	c.Assert(commandmocker.Parameters(jujuTmpdir), gocheck.DeepEquals, jujuOutput)
+	c.Assert(commandmocker.Ran(sshTmpdir), gocheck.Equals, false)
 }
 
-func (s *S) TestInstanceMachineHeal(c *C) {
+func (s *S) TestInstanceMachineHeal(c *gocheck.C) {
 	jujuTmpdir, err := commandmocker.Add("juju", collectOutputInstanceDown)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	defer commandmocker.Remove(jujuTmpdir)
 	sshTmpdir, err := commandmocker.Add("ssh", "$*")
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	defer commandmocker.Remove(sshTmpdir)
 	jujuOutput := []string{
 		"status", // for juju status that gets the output
@@ -362,22 +362,22 @@ func (s *S) TestInstanceMachineHeal(c *C) {
 	}
 	h := instanceMachineHealer{}
 	err = h.Heal()
-	c.Assert(err, IsNil)
-	c.Assert(commandmocker.Ran(jujuTmpdir), Equals, true)
-	c.Assert(commandmocker.Parameters(jujuTmpdir), DeepEquals, jujuOutput)
-	c.Assert(commandmocker.Ran(sshTmpdir), Equals, true)
-	c.Assert(commandmocker.Parameters(sshTmpdir), DeepEquals, sshOutput)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(commandmocker.Ran(jujuTmpdir), gocheck.Equals, true)
+	c.Assert(commandmocker.Parameters(jujuTmpdir), gocheck.DeepEquals, jujuOutput)
+	c.Assert(commandmocker.Ran(sshTmpdir), gocheck.Equals, true)
+	c.Assert(commandmocker.Parameters(sshTmpdir), gocheck.DeepEquals, sshOutput)
 }
 
-func (s *S) TestZookeeperHealerShouldBeRegistered(c *C) {
+func (s *S) TestZookeeperHealerShouldBeRegistered(c *gocheck.C) {
 	h, err := heal.Get("zookeeper")
-	c.Assert(err, IsNil)
-	c.Assert(h, FitsTypeOf, zookeeperHealer{})
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(h, gocheck.FitsTypeOf, zookeeperHealer{})
 }
 
-func (s *S) TestZookeeperNeedsHeal(c *C) {
+func (s *S) TestZookeeperNeedsHeal(c *gocheck.C) {
 	ln, err := net.Listen("tcp", ":2181")
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	defer ln.Close()
 	go func() {
 		conn, _ := ln.Accept()
@@ -385,33 +385,33 @@ func (s *S) TestZookeeperNeedsHeal(c *C) {
 		conn.Close()
 	}()
 	jujuTmpdir, err := commandmocker.Add("juju", collectOutputBootstrapDown)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	defer commandmocker.Remove(jujuTmpdir)
 	h := zookeeperHealer{}
-	c.Assert(h.needsHeal(), Equals, true)
+	c.Assert(h.needsHeal(), gocheck.Equals, true)
 	jujuOutput := []string{
 		"status", // for juju status that gets the output
 	}
-	c.Assert(commandmocker.Ran(jujuTmpdir), Equals, true)
-	c.Assert(commandmocker.Parameters(jujuTmpdir), DeepEquals, jujuOutput)
+	c.Assert(commandmocker.Ran(jujuTmpdir), gocheck.Equals, true)
+	c.Assert(commandmocker.Parameters(jujuTmpdir), gocheck.DeepEquals, jujuOutput)
 }
 
-func (s *S) TestZookeeperNeedsHealConnectionRefused(c *C) {
+func (s *S) TestZookeeperNeedsHealConnectionRefused(c *gocheck.C) {
 	jujuTmpdir, err := commandmocker.Add("juju", collectOutputBootstrapDown)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	defer commandmocker.Remove(jujuTmpdir)
 	h := zookeeperHealer{}
-	c.Assert(h.needsHeal(), Equals, true)
+	c.Assert(h.needsHeal(), gocheck.Equals, true)
 	jujuOutput := []string{
 		"status", // for juju status that gets the output
 	}
-	c.Assert(commandmocker.Ran(jujuTmpdir), Equals, true)
-	c.Assert(commandmocker.Parameters(jujuTmpdir), DeepEquals, jujuOutput)
+	c.Assert(commandmocker.Ran(jujuTmpdir), gocheck.Equals, true)
+	c.Assert(commandmocker.Parameters(jujuTmpdir), gocheck.DeepEquals, jujuOutput)
 }
 
-func (s *S) TestZookeeperNotNeedsHeal(c *C) {
+func (s *S) TestZookeeperNotNeedsHeal(c *gocheck.C) {
 	ln, err := net.Listen("tcp", ":2181")
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	defer ln.Close()
 	go func() {
 		conn, _ := ln.Accept()
@@ -419,20 +419,20 @@ func (s *S) TestZookeeperNotNeedsHeal(c *C) {
 		conn.Close()
 	}()
 	jujuTmpdir, err := commandmocker.Add("juju", collectOutputBootstrapDown)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	defer commandmocker.Remove(jujuTmpdir)
 	h := zookeeperHealer{}
-	c.Assert(h.needsHeal(), Equals, false)
+	c.Assert(h.needsHeal(), gocheck.Equals, false)
 	jujuOutput := []string{
 		"status", // for juju status that gets the output
 	}
-	c.Assert(commandmocker.Ran(jujuTmpdir), Equals, true)
-	c.Assert(commandmocker.Parameters(jujuTmpdir), DeepEquals, jujuOutput)
+	c.Assert(commandmocker.Ran(jujuTmpdir), gocheck.Equals, true)
+	c.Assert(commandmocker.Parameters(jujuTmpdir), gocheck.DeepEquals, jujuOutput)
 }
 
-func (s *S) TestZookeeperHealerHeal(c *C) {
+func (s *S) TestZookeeperHealerHeal(c *gocheck.C) {
 	ln, err := net.Listen("tcp", ":2181")
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	defer ln.Close()
 	go func() {
 		conn, _ := ln.Accept()
@@ -440,10 +440,10 @@ func (s *S) TestZookeeperHealerHeal(c *C) {
 		conn.Close()
 	}()
 	jujuTmpdir, err := commandmocker.Add("juju", collectOutputBootstrapDown)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	defer commandmocker.Remove(jujuTmpdir)
 	sshTmpdir, err := commandmocker.Add("ssh", "$*")
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	defer commandmocker.Remove(sshTmpdir)
 	jujuOutput := []string{
 		"status", // for juju status that gets the output
@@ -471,25 +471,25 @@ func (s *S) TestZookeeperHealerHeal(c *C) {
 	}
 	h := zookeeperHealer{}
 	err = h.Heal()
-	c.Assert(err, IsNil)
-	c.Assert(commandmocker.Ran(jujuTmpdir), Equals, true)
-	c.Assert(commandmocker.Parameters(jujuTmpdir), DeepEquals, jujuOutput)
-	c.Assert(commandmocker.Ran(sshTmpdir), Equals, true)
-	c.Assert(commandmocker.Parameters(sshTmpdir), DeepEquals, sshOutput)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(commandmocker.Ran(jujuTmpdir), gocheck.Equals, true)
+	c.Assert(commandmocker.Parameters(jujuTmpdir), gocheck.DeepEquals, jujuOutput)
+	c.Assert(commandmocker.Ran(sshTmpdir), gocheck.Equals, true)
+	c.Assert(commandmocker.Parameters(sshTmpdir), gocheck.DeepEquals, sshOutput)
 }
 
-func (s *S) TestBootstrapProvisionHealerShouldBeRegistered(c *C) {
+func (s *S) TestBootstrapProvisionHealerShouldBeRegistered(c *gocheck.C) {
 	h, err := heal.Get("bootstrap-provision")
-	c.Assert(err, IsNil)
-	c.Assert(h, FitsTypeOf, bootstrapProvisionHealer{})
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(h, gocheck.FitsTypeOf, bootstrapProvisionHealer{})
 }
 
-func (s *S) TestBootstrapProvisionHealerHeal(c *C) {
+func (s *S) TestBootstrapProvisionHealerHeal(c *gocheck.C) {
 	jujuTmpdir, err := commandmocker.Add("juju", collectOutputBootstrapDown)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	defer commandmocker.Remove(jujuTmpdir)
 	sshTmpdir, err := commandmocker.Add("ssh", "$*")
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	defer commandmocker.Remove(sshTmpdir)
 	jujuOutput := []string{
 		"status", // for juju status that gets the output
@@ -507,41 +507,41 @@ func (s *S) TestBootstrapProvisionHealerHeal(c *C) {
 	}
 	h := bootstrapProvisionHealer{}
 	err = h.Heal()
-	c.Assert(err, IsNil)
-	c.Assert(commandmocker.Ran(jujuTmpdir), Equals, true)
-	c.Assert(commandmocker.Parameters(jujuTmpdir), DeepEquals, jujuOutput)
-	c.Assert(commandmocker.Ran(sshTmpdir), Equals, true)
-	c.Assert(commandmocker.Parameters(sshTmpdir), DeepEquals, sshOutput)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(commandmocker.Ran(jujuTmpdir), gocheck.Equals, true)
+	c.Assert(commandmocker.Parameters(jujuTmpdir), gocheck.DeepEquals, jujuOutput)
+	c.Assert(commandmocker.Ran(sshTmpdir), gocheck.Equals, true)
+	c.Assert(commandmocker.Parameters(sshTmpdir), gocheck.DeepEquals, sshOutput)
 }
 
-func (s *S) TestBootstrapMachineHealerShouldBeRegistered(c *C) {
+func (s *S) TestBootstrapMachineHealerShouldBeRegistered(c *gocheck.C) {
 	h, err := heal.Get("bootstrap")
-	c.Assert(err, IsNil)
-	c.Assert(h, FitsTypeOf, bootstrapMachineHealer{})
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(h, gocheck.FitsTypeOf, bootstrapMachineHealer{})
 }
 
-func (s *S) TestBootstrapMachineHealerNeedsHeal(c *C) {
+func (s *S) TestBootstrapMachineHealerNeedsHeal(c *gocheck.C) {
 	tmpdir, err := commandmocker.Add("juju", collectOutputBootstrapDown)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	defer commandmocker.Remove(tmpdir)
 	h := bootstrapMachineHealer{}
-	c.Assert(h.needsHeal(), Equals, true)
+	c.Assert(h.needsHeal(), gocheck.Equals, true)
 }
 
-func (s *S) TestBootstrapMachineHealerDontNeedsHeal(c *C) {
+func (s *S) TestBootstrapMachineHealerDontNeedsHeal(c *gocheck.C) {
 	tmpdir, err := commandmocker.Add("juju", collectOutput)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	defer commandmocker.Remove(tmpdir)
 	h := bootstrapMachineHealer{}
-	c.Assert(h.needsHeal(), Equals, false)
+	c.Assert(h.needsHeal(), gocheck.Equals, false)
 }
 
-func (s *S) TestBootstrapMachineHealerHeal(c *C) {
+func (s *S) TestBootstrapMachineHealerHeal(c *gocheck.C) {
 	jujuTmpdir, err := commandmocker.Add("juju", collectOutputBootstrapDown)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	defer commandmocker.Remove(jujuTmpdir)
 	sshTmpdir, err := commandmocker.Add("ssh", "$*")
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	defer commandmocker.Remove(sshTmpdir)
 	jujuOutput := []string{
 		"status", // for verify if heal is need
@@ -569,43 +569,43 @@ func (s *S) TestBootstrapMachineHealerHeal(c *C) {
 	}
 	h := bootstrapMachineHealer{}
 	err = h.Heal()
-	c.Assert(err, IsNil)
-	c.Assert(commandmocker.Ran(jujuTmpdir), Equals, true)
-	c.Assert(commandmocker.Parameters(jujuTmpdir), DeepEquals, jujuOutput)
-	c.Assert(commandmocker.Ran(sshTmpdir), Equals, true)
-	c.Assert(commandmocker.Parameters(sshTmpdir), DeepEquals, sshOutput)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(commandmocker.Ran(jujuTmpdir), gocheck.Equals, true)
+	c.Assert(commandmocker.Parameters(jujuTmpdir), gocheck.DeepEquals, jujuOutput)
+	c.Assert(commandmocker.Ran(sshTmpdir), gocheck.Equals, true)
+	c.Assert(commandmocker.Parameters(sshTmpdir), gocheck.DeepEquals, sshOutput)
 }
 
-func (s *S) TestBootstrapMachineHealerOnlyHealsWhenItIsNeeded(c *C) {
+func (s *S) TestBootstrapMachineHealerOnlyHealsWhenItIsNeeded(c *gocheck.C) {
 	tmpdir, err := commandmocker.Add("juju", collectOutput)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	defer commandmocker.Remove(tmpdir)
 	cmdOutput := []string{
 		"status", // for verify if heal is need
 	}
 	h := bootstrapMachineHealer{}
 	err = h.Heal()
-	c.Assert(err, IsNil)
-	c.Assert(commandmocker.Ran(tmpdir), Equals, true)
-	c.Assert(commandmocker.Parameters(tmpdir), DeepEquals, cmdOutput)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(commandmocker.Ran(tmpdir), gocheck.Equals, true)
+	c.Assert(commandmocker.Parameters(tmpdir), gocheck.DeepEquals, cmdOutput)
 }
 
-func (s *S) TestELBInstanceHealerShouldBeRegistered(c *C) {
+func (s *S) TestELBInstanceHealerShouldBeRegistered(c *gocheck.C) {
 	h, err := heal.Get("elb-instance")
-	c.Assert(err, IsNil)
-	c.Assert(h, FitsTypeOf, elbInstanceHealer{})
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(h, gocheck.FitsTypeOf, elbInstanceHealer{})
 }
 
-func (s *S) TestELBInstanceHealerCheckInstancesDisabledELB(c *C) {
+func (s *S) TestELBInstanceHealerCheckInstancesDisabledELB(c *gocheck.C) {
 	healer := elbInstanceHealer{}
 	instances, err := healer.checkInstances(nil)
-	c.Assert(err, IsNil)
-	c.Assert(instances, HasLen, 0)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(instances, gocheck.HasLen, 0)
 }
 
-func (s *ELBSuite) TestELBInstanceHealerGetUnhealthyApps(c *C) {
+func (s *ELBSuite) TestELBInstanceHealerGetUnhealthyApps(c *gocheck.C) {
 	conn, err := db.Conn()
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	apps := []interface{}{
 		app.App{Name: "when", Units: []app.Unit{{Name: "when/0", State: "started"}}},
 		app.App{Name: "what", Units: []app.Unit{{Name: "what/0", State: "error"}}},
@@ -616,7 +616,7 @@ func (s *ELBSuite) TestELBInstanceHealerGetUnhealthyApps(c *C) {
 		}},
 	}
 	err = conn.Apps().Insert(apps...)
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	defer conn.Apps().RemoveAll(bson.M{"name": bson.M{"$in": []string{"what", "when", "why", "how"}}})
 	healer := elbInstanceHealer{}
 	unhealthy := healer.getUnhealthyApps()
@@ -625,10 +625,10 @@ func (s *ELBSuite) TestELBInstanceHealerGetUnhealthyApps(c *C) {
 		"why":  apps[2].(app.App),
 		"how":  apps[3].(app.App),
 	}
-	c.Assert(unhealthy, DeepEquals, expected)
+	c.Assert(unhealthy, gocheck.DeepEquals, expected)
 }
 
-func (s *ELBSuite) TestELBInstanceHealerCheckInstances(c *C) {
+func (s *ELBSuite) TestELBInstanceHealerCheckInstances(c *gocheck.C) {
 	lb := "elbtest"
 	instance := s.server.NewInstance()
 	defer s.server.RemoveInstance(instance)
@@ -645,7 +645,7 @@ func (s *ELBSuite) TestELBInstanceHealerCheckInstances(c *C) {
 	s.server.ChangeInstanceState(lb, state)
 	healer := elbInstanceHealer{}
 	instances, err := healer.checkInstances([]string{lb})
-	c.Assert(err, IsNil)
+	c.Assert(err, gocheck.IsNil)
 	expected := []elbInstance{
 		{
 			description: "Instance has failed at least the UnhealthyThreshold number of health checks consecutively.",
@@ -655,5 +655,5 @@ func (s *ELBSuite) TestELBInstanceHealerCheckInstances(c *C) {
 			lb:          "elbtest",
 		},
 	}
-	c.Assert(instances, DeepEquals, expected)
+	c.Assert(instances, gocheck.DeepEquals, expected)
 }

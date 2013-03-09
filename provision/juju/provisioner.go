@@ -93,6 +93,10 @@ func (p *JujuProvisioner) Provision(app provision.App) error {
 		app.Log("Failed to create machine: "+out, "tsuru")
 		return cmdError(out, err, args)
 	}
+	setOption := []string{
+		"set", app.GetName(), "app-repo=" + repository.GetReadOnlyUrl(app.GetName()),
+	}
+	runCmd(true, &buf, &buf, setOption...)
 	if p.elbSupport() {
 		if err = p.LoadBalancer().Create(app); err != nil {
 			return err
@@ -186,12 +190,8 @@ func (p *JujuProvisioner) AddUnits(app provision.App, n uint) ([]provision.Unit,
 		buf   bytes.Buffer
 		units []provision.Unit
 	)
-	err := setOption(app.GetName(), "app-repo", repository.GetReadOnlyUrl(app.GetName()))
-	if err != nil {
-		return nil, err
-	}
 	args := []string{"add-unit", app.GetName(), "--num-units", strconv.FormatUint(uint64(n), 10)}
-	err = runCmd(false, &buf, &buf, args...)
+	err := runCmd(false, &buf, &buf, args...)
 	if err != nil {
 		return nil, cmdError(buf.String(), err, args)
 	}
