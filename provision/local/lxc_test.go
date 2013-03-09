@@ -59,6 +59,7 @@ func (s *S) TestLXCDestroy(c *C) {
 }
 
 func (s *S) TestContainerIP(c *C) {
+	config.Set("local:ip-timeout", 10)
 	file, _ := os.Open("testdata/dnsmasq.leases")
 	data, err := ioutil.ReadAll(file)
 	c.Assert(err, IsNil)
@@ -67,6 +68,9 @@ func (s *S) TestContainerIP(c *C) {
 	defer func() {
 		fsystem = nil
 	}()
+	f, _ := rfs.Open("/var/lib/misc/dnsmasq.leases")
+	f.Write(data)
+	f.Close()
 	cont := container{name: "vm1"}
 	c.Assert(cont.ip(), Equals, "10.10.10.10")
 	cont = container{name: "notfound"}

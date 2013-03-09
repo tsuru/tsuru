@@ -35,7 +35,11 @@ func runCmd(cmd string, args ...string) error {
 
 // ip returns the ip for the container.
 func (c *container) ip() string {
-	quit := time.After(10 * time.Second)
+	timeout, err := config.GetInt("local:ip-timeout")
+	if err != nil {
+		timeout = 60
+	}
+	quit := time.After(time.Duration(timeout) * time.Second)
 	tick := time.Tick(2 * time.Second)
 	for {
 		select {
