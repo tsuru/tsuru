@@ -16,6 +16,7 @@ import (
 	"labix.org/v2/mgo/bson"
 	"launchpad.net/gocheck"
 	"os"
+	"time"
 )
 
 func (s *S) TestShouldBeRegistered(c *gocheck.C) {
@@ -90,6 +91,7 @@ func (s *S) TestProvisionerDestroy(c *gocheck.C) {
 	err = p.Provision(app)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(p.Destroy(app), gocheck.IsNil)
+	time.Sleep(1 * time.Second)
 	c.Assert(commandmocker.Ran(tmpdir), gocheck.Equals, true)
 	expected := "lxc-create -t ubuntu -n myapp -- -S somepath"
 	expected += "lxc-start --daemon -n myapp"
