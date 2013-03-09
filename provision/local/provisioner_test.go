@@ -51,6 +51,7 @@ func (s *S) TestProvisionerProvision(c *gocheck.C) {
 	var p LocalProvisioner
 	app := testing.NewFakeApp("myapp", "python", 0)
 	c.Assert(p.Provision(app), gocheck.IsNil)
+	time.Sleep(5 * time.Second)
 	c.Assert(commandmocker.Ran(tmpdir), gocheck.Equals, true)
 	expected := "lxc-create -t ubuntu -n myapp -- -S somepath"
 	expected += "lxc-start --daemon -n myapp"
@@ -89,9 +90,10 @@ func (s *S) TestProvisionerDestroy(c *gocheck.C) {
 	var p LocalProvisioner
 	app := testing.NewFakeApp("myapp", "python", 0)
 	err = p.Provision(app)
+	time.Sleep(5 * time.Second)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(p.Destroy(app), gocheck.IsNil)
-	time.Sleep(1 * time.Second)
+	time.Sleep(5 * time.Second)
 	c.Assert(commandmocker.Ran(tmpdir), gocheck.Equals, true)
 	expected := "lxc-create -t ubuntu -n myapp -- -S somepath"
 	expected += "lxc-start --daemon -n myapp"

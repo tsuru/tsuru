@@ -72,57 +72,61 @@ func (p *LocalProvisioner) start(ip string) error {
 }
 
 func (p *LocalProvisioner) Provision(app provision.App) error {
-	container := container{name: app.GetName()}
-	log.Printf("creating container %s", app.GetName())
-	err := container.create()
-	if err != nil {
-		log.Printf("error on create container %s", app.GetName())
-		log.Print(err)
-		return err
-	}
-	err = container.start()
-	if err != nil {
-		log.Printf("error on start container %s", app.GetName())
-		log.Print(err)
-		return err
-	}
-	ip := container.ip()
-	err = p.setup(ip, app.GetFramework())
-	if err != nil {
-		log.Printf("error on setup container %s", app.GetName())
-		log.Print(err)
-	}
-	err = p.install(ip)
-	if err != nil {
-		log.Printf("error on install container %s", app.GetName())
-		log.Print(err)
-	}
-	err = p.start(ip)
-	if err != nil {
-		log.Printf("error on start app for container %s", app.GetName())
-		log.Print(err)
-	}
-	u := provision.Unit{
-		Name:       app.GetName(),
-		AppName:    app.GetName(),
-		Type:       app.GetFramework(),
-		Machine:    0,
-		InstanceId: app.GetName(),
-		Status:     provision.StatusStarted,
-		Ip:         ip,
-	}
-	err = AddRoute(app.GetName(), ip)
-	if err != nil {
-		log.Printf("error on add route for %s with ip %s", app.GetName(), ip)
-		log.Print(err)
-	}
-	err = RestartRouter()
-	if err != nil {
-		log.Printf("error on restart router")
-		log.Print(err)
-	}
-	log.Printf("inserting container unit %s in the database", app.GetName())
-	return p.collection().Insert(u)
+	go func(p *LocalProvisioner, app provision.App) {
+		c := container{name: app.GetName()}
+		log.Printf("creating container %s", c.name)
+		err := c.create()
+		if err != nil {
+			log.Printf("error on create container %s", app.GetName())
+			log.Print(err)
+		}
+		err = c.start()
+		if err != nil {
+			log.Printf("error on start container %s", app.GetName())
+			log.Print(err)
+		}
+		ip := c.ip()
+		err = p.setup(ip, app.GetFramework())
+		if err != nil {
+			log.Printf("error on setup container %s", app.GetName())
+			log.Print(err)
+		}
+		err = p.install(ip)
+		if err != nil {
+			log.Printf("error on install container %s", app.GetName())
+			log.Print(err)
+		}
+		err = p.start(ip)
+		if err != nil {
+			log.Printf("error on start app for container %s", app.GetName())
+			log.Print(err)
+		}
+		u := provision.Unit{
+			Name:       app.GetName(),
+			AppName:    app.GetName(),
+			Type:       app.GetFramework(),
+			Machine:    0,
+			InstanceId: app.GetName(),
+			Status:     provision.StatusStarted,
+			Ip:         ip,
+		}
+		err = AddRoute(app.GetName(), ip)
+		if err != nil {
+			log.Printf("error on add route for %s with ip %s", app.GetName(), ip)
+			log.Print(err)
+		}
+		err = RestartRouter()
+		if err != nil {
+			log.Printf("error on restart router")
+			log.Print(err)
+		}
+		log.Printf("inserting container unit %s in the database", app.GetName())
+		err = p.collection().Insert(u)
+		if err != nil {
+			log.Print(err)
+		}
+	}(p, app)
+	return nil
 }
 
 func (p *LocalProvisioner) Destroy(app provision.App) error {
