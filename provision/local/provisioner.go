@@ -75,7 +75,21 @@ func (p *LocalProvisioner) Provision(app provision.App) error {
 	go func(p *LocalProvisioner, app provision.App) {
 		c := container{name: app.GetName()}
 		log.Printf("creating container %s", c.name)
-		err := c.create()
+		u := provision.Unit{
+			Name:       app.GetName(),
+			AppName:    app.GetName(),
+			Type:       app.GetFramework(),
+			Machine:    0,
+			InstanceId: app.GetName(),
+			Status:     provision.StatusCreating,
+			Ip:         "",
+		}
+		log.Printf("inserting container unit %s in the database", app.GetName())
+		err := p.collection().Insert(u)
+		if err != nil {
+			log.Print(err)
+		}
+		err = c.create()
 		if err != nil {
 			log.Printf("error on create container %s", app.GetName())
 			log.Print(err)
@@ -86,6 +100,12 @@ func (p *LocalProvisioner) Provision(app provision.App) error {
 			log.Print(err)
 		}
 		ip := c.ip()
+		u.Ip = ip
+		u.Status = provision.StatusInstalling
+		err = p.collection().Update(bson.M{"name": u.Name}, u)
+		if err != nil {
+			log.Print(err)
+		}
 		err = p.setup(ip, app.GetFramework())
 		if err != nil {
 			log.Printf("error on setup container %s", app.GetName())
@@ -101,15 +121,6 @@ func (p *LocalProvisioner) Provision(app provision.App) error {
 			log.Printf("error on start app for container %s", app.GetName())
 			log.Print(err)
 		}
-		u := provision.Unit{
-			Name:       app.GetName(),
-			AppName:    app.GetName(),
-			Type:       app.GetFramework(),
-			Machine:    0,
-			InstanceId: app.GetName(),
-			Status:     provision.StatusStarted,
-			Ip:         ip,
-		}
 		err = AddRoute(app.GetName(), ip)
 		if err != nil {
 			log.Printf("error on add route for %s with ip %s", app.GetName(), ip)
@@ -120,8 +131,8 @@ func (p *LocalProvisioner) Provision(app provision.App) error {
 			log.Printf("error on restart router")
 			log.Print(err)
 		}
-		log.Printf("inserting container unit %s in the database", app.GetName())
-		err = p.collection().Insert(u)
+		u.Status = provision.StatusStarted
+		err = p.collection().Update(bson.M{"name": u.Name}, u)
 		if err != nil {
 			log.Print(err)
 		}
