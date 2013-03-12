@@ -79,7 +79,7 @@ You then need to implement the resources expected by the :doc:`Tsuru api workflo
 Provisioning the resource for new instances
 -------------------------------------------
 
-For new instances tsuru sends a POST to /resources with the "name" that represents the app name in the request body. If the service instance is successfully created, your API should return 201 in status code.
+For new instances tsuru sends a POST to /resources with the "name" that represents the service instance name in the request body. If the service instance is successfully created, your API should return 201 in status code.
 
 Let's create a method for this action:
 
