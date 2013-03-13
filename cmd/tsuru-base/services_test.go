@@ -106,7 +106,7 @@ func (s *S) TestServiceBind(c *gocheck.C) {
 	err := (&ServiceBind{}).Run(&ctx, client)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(called, gocheck.Equals, true)
-	expected := `Instance my-mysql successfully binded to the app g1.
+	expected := `Instance "my-mysql" is now bound to the app "g1".
 
 The following environment variables are now available for use in your app:
 
@@ -144,7 +144,7 @@ func (s *S) TestServiceBindWithoutFlag(c *gocheck.C) {
 	err := (&ServiceBind{GuessingCommand{G: fake}}).Run(&ctx, client)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(called, gocheck.Equals, true)
-	expected := `Instance my-mysql successfully binded to the app ge.
+	expected := `Instance "my-mysql" is now bound to the app "ge".
 
 The following environment variables are now available for use in your app:
 
@@ -214,7 +214,7 @@ func (s *S) TestServiceUnbind(c *gocheck.C) {
 	err := (&ServiceUnbind{}).Run(&ctx, client)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(called, gocheck.Equals, true)
-	c.Assert(stdout.String(), gocheck.Equals, "Instance hand successfully unbinded from the app pocket.\n")
+	c.Assert(stdout.String(), gocheck.Equals, "Instance \"hand\" is not bound to the app \"pocket\" anymore.\n")
 }
 
 func (s *S) TestServiceUnbindWithoutFlag(c *gocheck.C) {
@@ -240,7 +240,7 @@ func (s *S) TestServiceUnbindWithoutFlag(c *gocheck.C) {
 	err := (&ServiceUnbind{GuessingCommand{G: fake}}).Run(&ctx, client)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(called, gocheck.Equals, true)
-	c.Assert(stdout.String(), gocheck.Equals, "Instance hand successfully unbinded from the app sleeve.\n")
+	c.Assert(stdout.String(), gocheck.Equals, "Instance \"hand\" is not bound to the app \"sleeve\" anymore.\n")
 }
 
 func (s *S) TestServiceUnbindWithRequestFailure(c *gocheck.C) {
@@ -252,7 +252,7 @@ func (s *S) TestServiceUnbindWithRequestFailure(c *gocheck.C) {
 		Stderr: &stderr,
 	}
 	trans := &transport{
-		msg:    "This app is not binded to this service.",
+		msg:    "This app is not bound to this service.",
 		status: http.StatusPreconditionFailed,
 	}
 	client := cmd.NewClient(&http.Client{Transport: trans}, nil, manager)

@@ -214,7 +214,7 @@ func (s *ConsumptionSuite) TestRemoveServiceHandlerWIthAssociatedAppsShouldFailA
 	c.Assert(err, gocheck.IsNil)
 	recorder, request := makeRequestToRemoveInstanceHandler("foo-instance", c)
 	err = RemoveServiceInstanceHandler(recorder, request, s.user)
-	c.Assert(err, gocheck.ErrorMatches, "^This service instance has binded apps. Unbind them before removing it$")
+	c.Assert(err, gocheck.ErrorMatches, "^This service instance is bound to at least one app. Unbind them before removing it$")
 }
 
 func (s *ConsumptionSuite) TestRemoveServiceShouldCallTheServiceAPI(c *gocheck.C) {

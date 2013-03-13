@@ -1,4 +1,4 @@
-// Copyright 2012 tsuru authors. All rights reserved.
+// Copyright 2013 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -268,7 +268,7 @@ doc-add will update service's doc. Example of usage:
 
 	This service is used for mysql connections.
 
-	Once binded, you will be able to use the following environment variables:
+	Once bound, you will be able to use the following environment variables:
 
 		- MYSQL_HOST: host of MySQL server
 		- MYSQL_PORT: port of MySQL instance

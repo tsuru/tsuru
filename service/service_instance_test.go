@@ -99,14 +99,14 @@ func (s *S) TestRemoveApp(c *gocheck.C) {
 	c.Assert(instance.Apps, gocheck.DeepEquals, []string{"app1"})
 }
 
-func (s *S) TestRemoveAppReturnsErrorWhenTheAppIsNotBindedToTheInstance(c *gocheck.C) {
+func (s *S) TestRemoveAppReturnsErrorWhenTheAppIsNotBoundToTheInstance(c *gocheck.C) {
 	instance := ServiceInstance{
 		Name: "myinstance",
 		Apps: []string{"app1", "app2", "app3"},
 	}
 	err := instance.RemoveApp("app4")
 	c.Assert(err, gocheck.NotNil)
-	c.Assert(err, gocheck.ErrorMatches, "^This app is not binded to this service instance.$")
+	c.Assert(err, gocheck.ErrorMatches, "^This app is not bound to this service instance.$")
 }
 
 func (s *S) TestServiceInstanceIsABinder(c *gocheck.C) {

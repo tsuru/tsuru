@@ -133,7 +133,7 @@ func CreateApp(app *App, units uint, teams []auth.Team) error {
 	return nil
 }
 
-// unbind takes all service instances that are binded to the app, and unbind
+// unbind takes all service instances that are bound to the app, and unbind
 // them. This method is used by Destroy (before destroying the app, it unbinds
 // all service instances). Refer to Destroy docs for more details.
 func (app *App) unbind() error {
@@ -328,7 +328,7 @@ func (app *App) removeUnits(indices []int) {
 // steps:
 //
 //     1. Remove units from the provisioner
-//     2. Unbind units from service instances binded to the app
+//     2. Unbind units from service instances bound to the app
 //     3. Remove units from the app list
 //     4. Update the app in the database
 func (app *App) RemoveUnits(n uint) error {
@@ -369,8 +369,8 @@ func (app *App) RemoveUnits(n uint) error {
 	return err
 }
 
-// unbindUnit unbinds a unit from all service instances binded to the app. It
-// is used by RemoveUnit and RemoveUnits methods.
+// unbindUnit unbinds a unit from all service instances that are bound to the
+// app. It is used by RemoveUnit and RemoveUnits methods.
 func (app *App) unbindUnit(unit provision.AppUnit) error {
 	conn, err := db.Conn()
 	if err != nil {

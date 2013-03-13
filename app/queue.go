@@ -61,7 +61,7 @@ func ensureAppIsStarted(msg *queue.Message) (App, error) {
 }
 
 // bindUnit handles the bind-service message, binding a unit to all service
-// instances binded to the app.
+// instances bound to the app.
 func bindUnit(msg *queue.Message) error {
 	a := App{Name: msg.Args[0]}
 	err := a.Get()

@@ -72,7 +72,7 @@ func (si *ServiceInstance) FindApp(appName string) int {
 func (si *ServiceInstance) RemoveApp(appName string) error {
 	index := si.FindApp(appName)
 	if index < 0 {
-		return stderrors.New("This app is not binded to this service instance.")
+		return stderrors.New("This app is not bound to this service instance.")
 	}
 	copy(si.Apps[index:], si.Apps[index+1:])
 	si.Apps = si.Apps[:len(si.Apps)-1]
@@ -91,7 +91,7 @@ func (si *ServiceInstance) update() error {
 func (si *ServiceInstance) BindApp(app bind.App) error {
 	err := si.AddApp(app.GetName())
 	if err != nil {
-		return &errors.Http{Code: http.StatusConflict, Message: "This app is already binded to this service instance."}
+		return &errors.Http{Code: http.StatusConflict, Message: "This app is already bound to this service instance."}
 	}
 	err = si.update()
 	if err != nil {
@@ -128,7 +128,7 @@ func (si *ServiceInstance) BindUnit(unit bind.Unit) (map[string]string, error) {
 func (si *ServiceInstance) UnbindApp(app bind.App) error {
 	err := si.RemoveApp(app.GetName())
 	if err != nil {
-		return &errors.Http{Code: http.StatusPreconditionFailed, Message: "This app is not binded to this service instance."}
+		return &errors.Http{Code: http.StatusPreconditionFailed, Message: "This app is not bound to this service instance."}
 	}
 	err = si.update()
 	if err != nil {

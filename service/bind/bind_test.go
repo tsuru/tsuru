@@ -193,7 +193,7 @@ func (s *S) TestBindMultiUnits(c *gocheck.C) {
 	c.Assert(calls, gocheck.Equals, 2)
 }
 
-func (s *S) TestBindReturnConflictIfTheAppIsAlreadyBinded(c *gocheck.C) {
+func (s *S) TestBindReturnConflictIfTheAppIsAlreadyBound(c *gocheck.C) {
 	srvc := service.Service{Name: "mysql"}
 	err := srvc.Create()
 	c.Assert(err, gocheck.IsNil)
@@ -215,7 +215,7 @@ func (s *S) TestBindReturnConflictIfTheAppIsAlreadyBinded(c *gocheck.C) {
 	e, ok := err.(*errors.Http)
 	c.Assert(ok, gocheck.Equals, true)
 	c.Assert(e.Code, gocheck.Equals, http.StatusConflict)
-	c.Assert(e, gocheck.ErrorMatches, "^This app is already binded to this service instance.$")
+	c.Assert(e, gocheck.ErrorMatches, "^This app is already bound to this service instance.$")
 }
 
 func (s *S) TestBindReturnsPreconditionFailedIfTheAppDoesNotHaveAnUnitAndServiceHasEndpoint(c *gocheck.C) {
@@ -434,7 +434,7 @@ func (s *S) TestUnbindCallsTheUnbindMethodFromAPI(c *gocheck.C) {
 	}
 }
 
-func (s *S) TestUnbindReturnsPreconditionFailedIfTheAppIsNotBindedToTheInstance(c *gocheck.C) {
+func (s *S) TestUnbindReturnsPreconditionFailedIfTheAppIsNotBoundToTheInstance(c *gocheck.C) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNoContent)
 	}))
@@ -453,5 +453,5 @@ func (s *S) TestUnbindReturnsPreconditionFailedIfTheAppIsNotBindedToTheInstance(
 	c.Assert(err, gocheck.NotNil)
 	e, ok := err.(*errors.Http)
 	c.Assert(ok, gocheck.Equals, true)
-	c.Assert(e, gocheck.ErrorMatches, "^This app is not binded to this service instance.$")
+	c.Assert(e, gocheck.ErrorMatches, "^This app is not bound to this service instance.$")
 }

@@ -108,7 +108,7 @@ func (sb *ServiceBind) Run(ctx *cmd.Context, client cmd.Doer) error {
 	defer resp.Body.Close()
 	var variables []string
 	dec := json.NewDecoder(resp.Body)
-	msg := fmt.Sprintf("Instance %s successfully binded to the app %s.", instanceName, appName)
+	msg := fmt.Sprintf("Instance %q is now bound to the app %q.", instanceName, appName)
 	if err = dec.Decode(&variables); err == nil {
 		msg += fmt.Sprintf(`
 
@@ -159,7 +159,7 @@ func (su *ServiceUnbind) Run(ctx *cmd.Context, client cmd.Doer) error {
 	if err != nil {
 		return err
 	}
-	msg := fmt.Sprintf("Instance %s successfully unbinded from the app %s.\n", instanceName, appName)
+	msg := fmt.Sprintf("Instance %q is not bound to the app %q anymore.\n", instanceName, appName)
 	n, err := fmt.Fprint(ctx.Stdout, msg)
 	if err != nil {
 		return err

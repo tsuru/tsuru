@@ -56,7 +56,7 @@ The currently available commands are (grouped by subject):
 	service-add       creates a new instance of a service
 	service-remove    removes a instance of a service
 	service-status    checks the status of a service instance
-	service-info      list instances of a service, and apps binded to each instance
+	service-info      list instances of a service, and apps bound to each instance
 	service-doc       displays documentation for a service
 
 Use "tsuru help <command>" for more information about a command.
@@ -271,10 +271,10 @@ Usage:
 
 	% tsuru app-remove [--app appname]
 
-app-remove removes an app. If the app is binded to any service instance, it
-will be unbinded before be removed (see "tsuru unbind"). You need to be a
-member of a team that has access to the app to be able to remove it (you are
-able to remove any app that you see in "tsuru app-list").
+app-remove removes an app. If the app is bound to any service instance, all
+binds will be removed before the app gets deleted (see "tsuru unbind"). You
+need to be a member of a team that has access to the app to be able to remove
+it (you are able to remove any app that you see in "tsuru app-list").
 
 The --app flag is optional, see "Guessing app names" section for more details.
 
@@ -579,8 +579,8 @@ Usage:
 	% tsuru service-remove <instance-name>
 
 service-remove will destroy a service instance. It can't remove a service
-instance binded to an app, so before remove a service instance, make sure there
-is no apps binded to it (see "service-info" command).
+instance that is bound to an app, so before remove a service instance, make
+sure there is no apps bound to it (see "service-info" command).
 
 
 Display information about a service
@@ -590,7 +590,7 @@ Usage:
 	% tsuru service-info <service-name>
 
 service-info will display a list of all instances of a given service (that the
-user has access to), and apps binded to these instances.
+user has access to), and apps bound to these instances.
 
 Example of use:
 
