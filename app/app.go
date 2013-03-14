@@ -720,7 +720,8 @@ func (app *App) setEnvsToApp(envs []bind.EnvVar, publicOnly, useQueue bool) erro
 		if err != nil {
 			return err
 		}
-		if err := conn.Apps().Update(bson.M{"name": app.Name}, app); err != nil {
+		err = conn.Apps().Update(bson.M{"name": app.Name}, bson.M{"$set": bson.M{"env": app.Env}})
+		if err != nil {
 			return err
 		}
 		if useQueue {
@@ -754,7 +755,8 @@ func (app *App) UnsetEnvs(variableNames []string, publicOnly bool) error {
 		if err != nil {
 			return err
 		}
-		if err := conn.Apps().Update(bson.M{"name": app.Name}, app); err != nil {
+		err = conn.Apps().Update(bson.M{"name": app.Name}, bson.M{"$set": bson.M{"env": app.Env}})
+		if err != nil {
 			return err
 		}
 		go app.serializeEnvVars()
@@ -784,10 +786,6 @@ func (app *App) SetCName(cname string) error {
 // user can filter where the message come from.
 func (app *App) Log(message, source string) error {
 	log.Printf(message)
-	conn, err := db.Conn()
-	if err != nil {
-		return err
-	}
 	messages := strings.Split(message, "\n")
 	for _, msg := range messages {
 		if msg != "" {
@@ -799,7 +797,11 @@ func (app *App) Log(message, source string) error {
 			app.Logs = append(app.Logs, l)
 		}
 	}
-	return conn.Apps().Update(bson.M{"name": app.Name}, app)
+	conn, err := db.Conn()
+	if err != nil {
+		return err
+	}
+	return conn.Apps().Update(bson.M{"name": app.Name}, bson.M{"$set": bson.M{"logs": app.Logs}})
 }
 
 // List returns the list of apps that the given user has access to.
