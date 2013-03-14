@@ -311,6 +311,22 @@ func (p *JujuProvisioner) getOutput() (jujuOutput, error) {
 	return out, nil
 }
 
+func (p *JujuProvisioner) saveBootstrapMachine(m machine) error {
+	return p.bootstrapCollection().Insert(&m)
+}
+
+func (p *JujuProvisioner) bootstrapCollection() *mgo.Collection {
+	name, err := config.GetString("juju:bootstrap-collection")
+	if err != nil {
+		log.Fatalf("FATAL: %s.", err)
+	}
+	conn, err := db.Conn()
+	if err != nil {
+		log.Printf("Failed to connect to the database: %s", err)
+	}
+	return conn.Collection(name)
+}
+
 func (p *JujuProvisioner) collectStatus() ([]provision.Unit, error) {
 	out, err := p.getOutput()
 	if err != nil {

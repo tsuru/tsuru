@@ -345,6 +345,20 @@ ssh -o StrictHostKeyChecking no -q 3 ls -lha
 	c.Assert(buf.String(), gocheck.Equals, bufOutput)
 }
 
+func (s *S) TestSaveBootstrapMachine(c *gocheck.C) {
+	p := JujuProvisioner{}
+	m := machine{
+		AgentState:    "state",
+		IpAddress:     "ip",
+		InstanceId:    "id",
+		InstanceState: "state",
+	}
+	p.saveBootstrapMachine(m)
+	var mach machine
+	p.bootstrapCollection().Find(bson.M{}).One(&mach)
+	c.Assert(mach, gocheck.DeepEquals, m)
+}
+
 func (s *S) TestCollectStatus(c *gocheck.C) {
 	tmpdir, err := commandmocker.Add("juju", collectOutput)
 	c.Assert(err, gocheck.IsNil)
