@@ -34,7 +34,12 @@ func (s *S) SetUpSuite(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 }
 
+func (s *S) TearDownTest(c *gocheck.C) {
+	s.conn.Collection("juju_bootstrap_test").Remove(nil)
+}
+
 func (s *S) TearDownSuite(c *gocheck.C) {
 	queue.Preempt()
 	s.conn.Collection(s.collName).Database.DropDatabase()
+	s.conn.Collection("juju_bootstrap_test").Database.DropDatabase()
 }

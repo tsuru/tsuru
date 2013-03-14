@@ -354,8 +354,9 @@ func (s *S) TestSaveBootstrapMachine(c *gocheck.C) {
 		InstanceState: "state",
 	}
 	p.saveBootstrapMachine(m)
+	defer p.bootstrapCollection().Remove(m)
 	var mach machine
-	p.bootstrapCollection().Find(bson.M{}).One(&mach)
+	p.bootstrapCollection().Find(nil).One(&mach)
 	c.Assert(mach, gocheck.DeepEquals, m)
 }
 
@@ -420,6 +421,9 @@ func (s *S) TestCollectStatus(c *gocheck.C) {
 	c.Assert(instances[0].InstanceId, gocheck.Equals, "i-00000439")
 	c.Assert(instances[1].UnitName, gocheck.Equals, "the_infanta/0")
 	c.Assert(instances[1].InstanceId, gocheck.Equals, "i-0000043e")
+	var b machine
+	err = p.bootstrapCollection().Find(nil).One(&b)
+	c.Assert(err, gocheck.IsNil)
 }
 
 func (s *S) TestCollectStatusDirtyOutput(c *gocheck.C) {

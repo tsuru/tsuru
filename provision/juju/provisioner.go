@@ -352,6 +352,7 @@ func (p *JujuProvisioner) collectStatus() ([]provision.Unit, error) {
 			units = append(units, unit)
 		}
 	}
+	p.saveBootstrapMachine(out.Machines[0])
 	return units, err
 }
 

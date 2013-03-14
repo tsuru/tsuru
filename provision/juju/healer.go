@@ -299,10 +299,10 @@ type bootstrapMachineHealer struct{}
 
 // getBootstrapMachine returns the bootstrap machine.
 func getBootstrapMachine() machine {
+	var b machine
 	p := JujuProvisioner{}
-	output, _ := p.getOutput()
-	// for juju bootstrap machine always is the machine 0.
-	return output.Machines[0]
+	p.bootstrapCollection().Find(nil).One(&b)
+	return b
 }
 
 // needsHeal returns true if the AgentState of bootstrap machine is "not-started".
