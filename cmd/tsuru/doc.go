@@ -14,7 +14,11 @@ Usage:
 
 The currently available commands are (grouped by subject):
 
-	target            changes or retrive the current tsuru server
+	target            retrive the current tsuru server
+    target-add        add a new named tsuru server target
+    target-remove     remove a named target
+    target-set        set a target for usage by name
+    target-list       list all targets
 	version           displays current tsuru version
 
 	user-create       creates a new user
@@ -83,16 +87,20 @@ When you run "tsuru app-info" without specifying the app, tsuru would display
 information for the app "gopher".
 
 
-Change or retrieve remote tsuru server
+Managing remote tsuru server endpoints
 
 Usage:
 
-	% tsuru target [target]
-
-This command should be used to set current tsuru target, or retrieve current
-target.
+    % tsuru target
+	% tsuru target-add <label> <address>
+    % tsuru target-set <label>
+    % tsuru target-list
+    % tsuru target-remove <label>
 
 The target is the tsuru server to which all operations will be directed to.
+
+With this set of commands you are be able to check the current target, add a new labeled target, set a target for usage,
+list the added targets and remove a target, respectively.
 
 
 Check current version
