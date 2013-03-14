@@ -18,6 +18,7 @@ Setting a target
 ::
 
     $ tsuru target-add default tsuru.myhost.com
+    $ tsuru target-set default
 
 Authentication
 ==============
