@@ -543,6 +543,7 @@ func (app *App) loadHooks() error {
 func (app *App) runHook(w io.Writer, cmds []string, kind string) error {
 	if len(cmds) == 0 {
 		app.Log(fmt.Sprintf("Skipping %s hooks...", kind), "tsuru")
+		fmt.Fprintf(w, "Skipping %s hooks...", kind)
 		return nil
 	}
 	app.Log(fmt.Sprintf("Executing %s hook...", kind), "tsuru")
@@ -785,7 +786,6 @@ func (app *App) SetCName(cname string) error {
 // Log adds a log message to the app. Specifying a good source is good so the
 // user can filter where the message come from.
 func (app *App) Log(message, source string) error {
-	log.Printf(message)
 	messages := strings.Split(message, "\n")
 	for _, msg := range messages {
 		if msg != "" {

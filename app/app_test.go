@@ -1151,7 +1151,7 @@ func (s *S) TestPreRestartWhenAppConfDoesNotExist(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	st := strings.Split(w.String(), "\n")
 	regexp := ".*Skipping pre-restart hooks..."
-	c.Assert(st[len(st)-2], gocheck.Matches, regexp)
+	c.Assert(st[0], gocheck.Matches, regexp)
 }
 
 func (s *S) TestSkipsPreRestartWhenPreRestartSectionDoesNotExists(c *gocheck.C) {
@@ -1167,7 +1167,7 @@ func (s *S) TestSkipsPreRestartWhenPreRestartSectionDoesNotExists(c *gocheck.C) 
 	err := a.preRestart(w)
 	c.Assert(err, gocheck.IsNil)
 	st := strings.Split(w.String(), "\n")
-	c.Assert(st[len(st)-2], gocheck.Matches, ".*Skipping pre-restart hooks...")
+	c.Assert(st[0], gocheck.Matches, ".*Skipping pre-restart hooks...")
 }
 
 func (s *S) TestPosRestart(c *gocheck.C) {
@@ -1193,7 +1193,7 @@ func (s *S) TestPosRestartWhenAppConfDoesNotExists(c *gocheck.C) {
 	err := a.posRestart(w)
 	c.Assert(err, gocheck.IsNil)
 	st := strings.Split(w.String(), "\n")
-	c.Assert(st[len(st)-2], gocheck.Matches, ".*Skipping pos-restart hooks...")
+	c.Assert(st[0], gocheck.Matches, ".*Skipping pos-restart hooks...")
 }
 
 func (s *S) TestSkipsPosRestartWhenPosRestartSectionDoesNotExists(c *gocheck.C) {
@@ -1209,7 +1209,7 @@ func (s *S) TestSkipsPosRestartWhenPosRestartSectionDoesNotExists(c *gocheck.C) 
 	err := a.posRestart(w)
 	c.Assert(err, gocheck.IsNil)
 	st := strings.Split(w.String(), "\n")
-	c.Assert(st[len(st)-2], gocheck.Matches, ".*Skipping pos-restart hooks...")
+	c.Assert(st[0], gocheck.Matches, ".*Skipping pos-restart hooks...")
 }
 
 func (s *S) TestInstallDeps(c *gocheck.C) {
