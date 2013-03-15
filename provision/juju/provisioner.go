@@ -312,7 +312,8 @@ func (p *JujuProvisioner) getOutput() (jujuOutput, error) {
 }
 
 func (p *JujuProvisioner) saveBootstrapMachine(m machine) error {
-	return p.bootstrapCollection().Insert(&m)
+	_, err := p.bootstrapCollection().Upsert(nil, &m)
+	return err
 }
 
 func (p *JujuProvisioner) bootstrapCollection() *mgo.Collection {

@@ -359,6 +359,20 @@ func (s *S) TestSaveBootstrapMachine(c *gocheck.C) {
 	c.Assert(mach, gocheck.DeepEquals, m)
 }
 
+func (s *S) TestCollectStatusShouldNotAddBootstraTwice(c *gocheck.C) {
+	tmpdir, err := commandmocker.Add("juju", collectOutput)
+	c.Assert(err, gocheck.IsNil)
+	defer commandmocker.Remove(tmpdir)
+	p := JujuProvisioner{}
+	_, err = p.CollectStatus()
+	c.Assert(err, gocheck.IsNil)
+	_, err = p.CollectStatus()
+	c.Assert(err, gocheck.IsNil)
+	l, err := p.bootstrapCollection().Find(nil).Count()
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(l, gocheck.Equals, 1)
+}
+
 func (s *S) TestCollectStatus(c *gocheck.C) {
 	tmpdir, err := commandmocker.Add("juju", collectOutput)
 	c.Assert(err, gocheck.IsNil)
