@@ -15,10 +15,10 @@ Usage:
 The currently available commands are (grouped by subject):
 
 	target            retrive the current tsuru server
-    target-add        add a new named tsuru server target
-    target-remove     remove a named target
-    target-set        set a target for usage by name
-    target-list       list all targets
+	target-add        add a new named tsuru server target
+	target-remove     remove a named target
+	target-set        set a target for usage by name
+	target-list       list all targets
 	version           displays current tsuru version
 
 	user-create       creates a new user
@@ -91,11 +91,11 @@ Managing remote tsuru server endpoints
 
 Usage:
 
-    % tsuru target
-    % tsuru target-add <label> <address>
-    % tsuru target-set <label>
-    % tsuru target-list
-    % tsuru target-remove <label>
+	% tsuru target
+	% tsuru target-add <label> <address>
+	% tsuru target-set <label>
+	% tsuru target-list
+	% tsuru target-remove <label>
 
 The target is the tsuru server to which all operations will be directed to.
 
