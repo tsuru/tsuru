@@ -92,7 +92,7 @@ Managing remote tsuru server endpoints
 Usage:
 
     % tsuru target
-	% tsuru target-add <label> <address>
+    % tsuru target-add <label> <address>
     % tsuru target-set <label>
     % tsuru target-list
     % tsuru target-remove <label>
