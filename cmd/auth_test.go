@@ -314,6 +314,11 @@ func (s *S) TestUserCreateInfo(c *gocheck.C) {
 }
 
 func (s *S) TestUserRemove(c *gocheck.C) {
+	rfs := &testing.RecordingFs{}
+	fsystem = rfs
+	defer func() {
+		fsystem = nil
+	}()
 	var (
 		buf    bytes.Buffer
 		called bool
@@ -338,6 +343,8 @@ func (s *S) TestUserRemove(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(called, gocheck.Equals, true)
 	c.Assert(buf.String(), gocheck.Equals, "Are you sure you want to remove your user from tsuru? (y/n) User successfully removed.\n")
+	tFile, _ := joinWithUserDir(".tsuru_token")
+	c.Assert(rfs.HasAction("remove "+tFile), gocheck.Equals, true)
 }
 
 func (s *S) TestUserRemoveWithoutConfirmation(c *gocheck.C) {

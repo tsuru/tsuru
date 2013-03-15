@@ -74,6 +74,8 @@ func (c *userRemove) Run(context *Context, client Doer) error {
 	if err != nil {
 		return err
 	}
+	tPath, _ := joinWithUserDir(".tsuru_token")
+	filesystem().Remove(tPath)
 	fmt.Fprint(context.Stdout, "User successfully removed.\n")
 	return nil
 }
