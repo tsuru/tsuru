@@ -384,7 +384,7 @@ func (p *JujuProvisioner) heal(units []provision.Unit) {
 					Action: app.RegenerateApprcAndStart,
 					Args:   []string{unit.AppName, unit.Name},
 				}
-				getQueue(app.QueueName).Put(&msg, 0)
+				app.Enqueue(msg)
 			}
 			inst.InstanceId = unit.InstanceId
 			coll.UpdateId(unit.Name, inst)

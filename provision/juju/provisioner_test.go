@@ -9,7 +9,6 @@ import (
 	"errors"
 	"github.com/globocom/commandmocker"
 	"github.com/globocom/config"
-	"github.com/globocom/tsuru/app"
 	"github.com/globocom/tsuru/provision"
 	"github.com/globocom/tsuru/repository"
 	"github.com/globocom/tsuru/testing"
@@ -504,11 +503,6 @@ func (s *S) TestCollectStatusIDChangeDisabledELB(c *gocheck.C) {
 	case <-time.After(5e9):
 		c.Fatal("Did not update the unit after 5 seconds.")
 	}
-	msg, err := getQueue(app.QueueName).Get(1e9)
-	c.Assert(err, gocheck.IsNil)
-	defer msg.Delete()
-	c.Assert(msg.Action, gocheck.Equals, app.RegenerateApprcAndStart)
-	c.Assert(msg.Args, gocheck.DeepEquals, []string{"as_i_rise", "as_i_rise/0"})
 }
 
 func (s *S) TestCollectStatusIDChangeFromPending(c *gocheck.C) {
@@ -539,8 +533,6 @@ func (s *S) TestCollectStatusIDChangeFromPending(c *gocheck.C) {
 	case <-time.After(5e9):
 		c.Fatal("Did not update the unit after 5 seconds.")
 	}
-	_, err = getQueue(app.QueueName).Get(1e6)
-	c.Assert(err, gocheck.NotNil)
 }
 
 func (s *S) TestCollectStatusFailure(c *gocheck.C) {
@@ -822,10 +814,6 @@ func (s *ELBSuite) TestCollectStatusWithELBAndIDChange(c *gocheck.C) {
 	c.Assert(instances, gocheck.HasLen, 2)
 	c.Assert(instances[0].InstanceId, gocheck.Equals, id2)
 	c.Assert(instances[1].InstanceId, gocheck.Equals, id1)
-	msg, err := getQueue(app.QueueName).Get(1e9)
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(msg.Args, gocheck.DeepEquals, []string{"symfonia", "symfonia/0"})
-	msg.Delete()
 }
 
 func (s *ELBSuite) TestAddrWithELB(c *gocheck.C) {
