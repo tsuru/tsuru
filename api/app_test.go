@@ -204,7 +204,7 @@ pos-restart:
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(recorder.Code, gocheck.Equals, http.StatusOK)
 	str := strings.Replace(w.String(), "\n", "", -1)
-	c.Assert(str, gocheck.Matches, ".*\"git clone\" output.*Installing dependencies.*Restarting your app.*Executing pos-restart hook.*")
+	c.Assert(str, gocheck.Matches, ".*\"git clone\" output.*")
 }
 
 func (s *S) TestCloneRepositoryShouldReturnNotFoundWhenAppDoesNotExist(c *gocheck.C) {
