@@ -215,17 +215,22 @@ type instanceUnitHealer struct{}
 // Heal iterates through all juju units verifying if
 // a juju-unit-agent is down and heal these machines.
 func (h instanceUnitHealer) Heal() error {
-	p := JujuProvisioner{}
-	output, _ := p.getOutput()
-	for _, service := range output.Services {
-		for unitName, unit := range service.Units {
-			agent := fmt.Sprintf("juju-%s", strings.Join(strings.Split(unitName, "/"), "-"))
-			if unit.AgentState == "down" {
+	conn, err := db.Conn()
+	if err != nil {
+		return err
+	}
+	var apps []app.App
+	err = conn.Apps().Find(nil).All(&apps)
+	if err != nil {
+		return err
+	}
+	for _, app := range apps {
+		for _, u := range app.ProvisionUnits() {
+			agent := fmt.Sprintf("juju-%s", strings.Join(strings.Split(u.GetName(), "/"), "-"))
+			if u.GetStatus() == provision.StatusDown {
 				log.Printf("Healing %s", agent)
-				upStartCmd("stop", agent, unit.PublicAddress)
-				upStartCmd("start", agent, unit.PublicAddress)
-			} else {
-				log.Printf("%s needs no cure, skipping...", agent)
+				upStartCmd("stop", agent, u.GetIp())
+				upStartCmd("start", agent, u.GetIp())
 			}
 		}
 	}

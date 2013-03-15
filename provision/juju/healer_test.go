@@ -252,33 +252,38 @@ func (s *S) TestInstanceUnitShouldBeRegistered(c *gocheck.C) {
 }
 
 func (s *S) TestInstaceUnitHealWhenEverythingIsOk(c *gocheck.C) {
-	jujuTmpdir, err := commandmocker.Add("juju", collectOutput)
+	conn, err := db.Conn()
 	c.Assert(err, gocheck.IsNil)
-	defer commandmocker.Remove(jujuTmpdir)
+	a := []app.App{
+		{Name: "as_i_rise",
+			Units: []app.Unit{{Name: "as_i_rise/0", State: "started", Ip: "server-1081.novalocal"}}},
+		{Name: "the_infanta",
+			Units: []app.Unit{{Name: "the_infanta/0", State: "started", Ip: "server-1086.novalocal"}}},
+	}
+	err = conn.Apps().Insert(&a)
+	c.Assert(err, gocheck.IsNil)
+	defer conn.Apps().RemoveAll(bson.M{"name": bson.M{"$in": []string{"as_i_rise", "the_infanta"}}})
 	sshTmpdir, err := commandmocker.Add("ssh", "$*")
 	c.Assert(err, gocheck.IsNil)
 	defer commandmocker.Remove(sshTmpdir)
-	jujuOutput := []string{
-		"status", // for juju status that gets the output
-	}
 	h := instanceUnitHealer{}
 	err = h.Heal()
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(commandmocker.Ran(jujuTmpdir), gocheck.Equals, true)
-	c.Assert(commandmocker.Parameters(jujuTmpdir), gocheck.DeepEquals, jujuOutput)
 	c.Assert(commandmocker.Ran(sshTmpdir), gocheck.Equals, false)
 }
 
 func (s *S) TestInstaceUnitHeal(c *gocheck.C) {
-	jujuTmpdir, err := commandmocker.Add("juju", collectOutputInstanceDown)
+	conn, err := db.Conn()
 	c.Assert(err, gocheck.IsNil)
-	defer commandmocker.Remove(jujuTmpdir)
+	a := app.App{
+		Name:  "as_i_rise",
+		Units: []app.Unit{{Name: "as_i_rise/0", State: "down", Ip: "server-1081.novalocal"}},
+	}
+	err = conn.Apps().Insert(&a)
+	c.Assert(err, gocheck.IsNil)
+	defer conn.Apps().Remove(bson.M{"name": "as_i_rise"})
 	sshTmpdir, err := commandmocker.Add("ssh", "$*")
 	c.Assert(err, gocheck.IsNil)
 	defer commandmocker.Remove(sshTmpdir)
-	jujuOutput := []string{
-		"status", // for juju status that gets the output
-	}
 	sshOutput := []string{
 		"-o",
 		"StrictHostKeyChecking no",
@@ -302,8 +307,6 @@ func (s *S) TestInstaceUnitHeal(c *gocheck.C) {
 	h := instanceUnitHealer{}
 	err = h.Heal()
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(commandmocker.Ran(jujuTmpdir), gocheck.Equals, true)
-	c.Assert(commandmocker.Parameters(jujuTmpdir), gocheck.DeepEquals, jujuOutput)
 	c.Assert(commandmocker.Ran(sshTmpdir), gocheck.Equals, true)
 	c.Assert(commandmocker.Parameters(sshTmpdir), gocheck.DeepEquals, sshOutput)
 }
