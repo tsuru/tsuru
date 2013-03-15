@@ -144,18 +144,21 @@ func (s *S) TestInstanceAgenstConfigHealerHeal(c *gocheck.C) {
 	}
 	p.saveBootstrapMachine(m)
 	defer p.bootstrapCollection().Remove(m)
-	jujuTmpdir, err := commandmocker.Add("juju", collectOutputInstanceDown)
+	conn, err := db.Conn()
 	c.Assert(err, gocheck.IsNil)
-	defer commandmocker.Remove(jujuTmpdir)
+	a := app.App{
+		Name:  "as_i_rise",
+		Units: []app.Unit{{Name: "as_i_rise/0", State: "down", Ip: "server-1081.novalocal"}},
+	}
+	err = conn.Apps().Insert(&a)
+	c.Assert(err, gocheck.IsNil)
+	defer conn.Apps().Remove(bson.M{"name": "as_i_rise"})
 	sshTmpdir, err := commandmocker.Error("ssh", "", 1)
 	c.Assert(err, gocheck.IsNil)
 	defer commandmocker.Remove(sshTmpdir)
 	h := instanceAgentsConfigHealer{}
 	err = h.Heal()
 	c.Assert(err, gocheck.IsNil)
-	jujuOutput := []string{
-		"status", // for get the bootstrap private dns
-	}
 	sshOutput := []string{
 		"-o",
 		"StrictHostKeyChecking no",
@@ -198,8 +201,6 @@ func (s *S) TestInstanceAgenstConfigHealerHeal(c *gocheck.C) {
 		"'s/env JUJU_ZOOKEEPER=.*/env JUJU_ZOOKEEPER=\":2181\"/g'",
 		"/etc/init/juju-as_i_rise-0.conf",
 	}
-	c.Assert(commandmocker.Ran(jujuTmpdir), gocheck.Equals, true)
-	c.Assert(commandmocker.Parameters(jujuTmpdir), gocheck.DeepEquals, jujuOutput)
 	c.Assert(commandmocker.Ran(sshTmpdir), gocheck.Equals, true)
 	c.Assert(commandmocker.Parameters(sshTmpdir), gocheck.DeepEquals, sshOutput)
 }
@@ -255,10 +256,8 @@ func (s *S) TestInstaceUnitHealWhenEverythingIsOk(c *gocheck.C) {
 	conn, err := db.Conn()
 	c.Assert(err, gocheck.IsNil)
 	a := []app.App{
-		{Name: "as_i_rise",
-			Units: []app.Unit{{Name: "as_i_rise/0", State: "started", Ip: "server-1081.novalocal"}}},
-		{Name: "the_infanta",
-			Units: []app.Unit{{Name: "the_infanta/0", State: "started", Ip: "server-1086.novalocal"}}},
+		{Name: "as_i_rise", Units: []app.Unit{{Name: "as_i_rise/0", State: "started", Ip: "server-1081.novalocal"}}},
+		{Name: "the_infanta", Units: []app.Unit{{Name: "the_infanta/0", State: "started", Ip: "server-1086.novalocal"}}},
 	}
 	err = conn.Apps().Insert(&a)
 	c.Assert(err, gocheck.IsNil)
