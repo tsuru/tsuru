@@ -253,7 +253,7 @@ func (app *App) AddUnits(n uint) error {
 	if err != nil {
 		return err
 	}
-	go enqueue(messages...)
+	go Enqueue(messages...)
 	return nil
 }
 
@@ -726,7 +726,7 @@ func (app *App) setEnvsToApp(envs []bind.EnvVar, publicOnly, useQueue bool) erro
 			return err
 		}
 		if useQueue {
-			enqueue(queue.Message{Action: regenerateApprc, Args: []string{app.Name}})
+			Enqueue(queue.Message{Action: regenerateApprc, Args: []string{app.Name}})
 			return nil
 		}
 		go app.serializeEnvVars()

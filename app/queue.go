@@ -24,11 +24,7 @@ const (
 	RegenerateApprcAndStart = "regenerate-apprc-start-app"
 	bindService             = "bind-service"
 
-	// name of the queue for internal messages.
 	queueName = "tsuru-app"
-
-	// Name of the queue for external messages.
-	QueueName = "tsuru-app-public"
 )
 
 // ensureAppIsStarted make sure that the app and all units present in the given
@@ -201,7 +197,7 @@ func setQueue() {
 	if err != nil {
 		log.Fatalf("Failed to get the queue instance: %s", err)
 	}
-	_handler, err = qfactory.Handler(handle, queueName, QueueName)
+	_handler, err = qfactory.Handler(handle, queueName)
 	if err != nil {
 		log.Fatalf("Failed to create the queue handler: %s", err)
 	}
@@ -221,11 +217,18 @@ func aqueue() queue.Q {
 	return _queue
 }
 
-// enqueues the given messages and start the handler.
-func enqueue(msgs ...queue.Message) {
+// Enqueue puts the given message in the queue. The app queue is able to handle
+// only messages defined in this package.
+//
+// Here is a functional example for this function:
+//
+//     msg := queue.Message{Action: app.RegenerateApprcAndStart, Args: []string{"myapp"}}
+//     app.Enqueue(msg)
+func Enqueue(msgs ...queue.Message) {
+	q := aqueue()
 	for _, msg := range msgs {
 		copy := msg
-		aqueue().Put(&copy, 0)
+		q.Put(&copy, 0)
 	}
 	handler().Start()
 }

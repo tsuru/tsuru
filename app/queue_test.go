@@ -312,7 +312,7 @@ func (s *S) TestUnitListState(c *gocheck.C) {
 }
 
 func (s *S) TestEnqueueUsesInternalQueue(c *gocheck.C) {
-	enqueue(queue.Message{Action: "do-something"})
+	Enqueue(queue.Message{Action: "do-something"})
 	dqueue, _ := qfactory.Get("default")
 	_, err := dqueue.Get(1e6)
 	c.Assert(err, gocheck.NotNil)
