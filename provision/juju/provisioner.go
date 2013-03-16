@@ -106,6 +106,17 @@ func (p *JujuProvisioner) Provision(app provision.App) error {
 	return nil
 }
 
+func (p *JujuProvisioner) Restart(app provision.App) error {
+	var buf bytes.Buffer
+	err := p.ExecuteCommand(&buf, &buf, app, "/var/lib/tsuru/hooks/restart")
+	if err != nil {
+		msg := fmt.Sprintf("Failed to restart the app (%s): %s", err, buf.String())
+		app.Log(msg, "tsuru-provisioner")
+		return &provision.Error{Reason: buf.String(), Err: err}
+	}
+	return nil
+}
+
 func (p *JujuProvisioner) destroyService(app provision.App) error {
 	var (
 		err error

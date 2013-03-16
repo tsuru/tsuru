@@ -91,6 +91,35 @@ func (s *S) TestProvisionFailure(c *gocheck.C) {
 	c.Assert(pErr.Err.Error(), gocheck.Equals, "exit status 1")
 }
 
+func (s *S) TestRestart(c *gocheck.C) {
+	tmpdir, err := commandmocker.Add("juju", "restart")
+	c.Assert(err, gocheck.IsNil)
+	defer commandmocker.Remove(tmpdir)
+	app := testing.NewFakeApp("cribcaged", "python", 1)
+	p := JujuProvisioner{}
+	err = p.Restart(app)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(commandmocker.Ran(tmpdir), gocheck.Equals, true)
+	expected := []string{
+		"ssh", "-o", "StrictHostKeyChecking no", "-q", "1", "/var/lib/tsuru/hooks/restart",
+	}
+	c.Assert(commandmocker.Parameters(tmpdir), gocheck.DeepEquals, expected)
+}
+
+func (s *S) TestRestartFailure(c *gocheck.C) {
+	tmpdir, err := commandmocker.Error("juju", "juju failed to run command", 25)
+	c.Assert(err, gocheck.IsNil)
+	defer commandmocker.Remove(tmpdir)
+	app := testing.NewFakeApp("cribcaged", "python", 1)
+	p := JujuProvisioner{}
+	err = p.Restart(app)
+	c.Assert(err, gocheck.NotNil)
+	pErr, ok := err.(*provision.Error)
+	c.Assert(ok, gocheck.Equals, true)
+	c.Assert(pErr.Reason, gocheck.Equals, "juju failed to run command\n")
+	c.Assert(pErr.Err.Error(), gocheck.Equals, "exit status 25")
+}
+
 func (s *S) TestDestroy(c *gocheck.C) {
 	tmpdir, err := commandmocker.Add("juju", "$*")
 	c.Assert(err, gocheck.IsNil)
