@@ -8,7 +8,7 @@ import "strings"
 
 type Table struct {
 	Headers Row
-	rows    []Row
+	rows    rowList
 }
 
 type Row []string
@@ -47,7 +47,7 @@ func (t *Table) Bytes() []byte {
 }
 
 func (t *Table) AddRow(row Row) {
-	t.rows = append(t.rows, row)
+	t.rows.add(row)
 }
 
 func (t *Table) columnsSize() []int {
