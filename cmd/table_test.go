@@ -4,7 +4,10 @@
 
 package cmd
 
-import "launchpad.net/gocheck"
+import (
+	"launchpad.net/gocheck"
+	"sort"
+)
 
 func (s *S) TestAddOneRow(c *gocheck.C) {
 	table := NewTable()
@@ -102,4 +105,29 @@ func (s *S) TestRowListAdd(c *gocheck.C) {
 	l := rowList([]Row{{"one", "1"}})
 	l.add(Row{"two", "2"})
 	c.Assert(len(l), gocheck.Equals, 2)
+}
+
+func (s *S) TestRowListLen(c *gocheck.C) {
+	l := rowList([]Row{{"one", "1"}})
+	c.Assert(l.Len(), gocheck.Equals, 1)
+	l.add(Row{"two", "2"})
+	c.Assert(l.Len(), gocheck.Equals, 2)
+}
+
+func (s *S) TestRowListLess(c *gocheck.C) {
+	l := rowList([]Row{{"zero", "0"}, {"one", "1"}, {"two", "2"}})
+	c.Assert(l.Less(0, 1), gocheck.Equals, false)
+	c.Assert(l.Less(0, 2), gocheck.Equals, false)
+	c.Assert(l.Less(1, 2), gocheck.Equals, true)
+	c.Assert(l.Less(1, 0), gocheck.Equals, true)
+}
+
+func (s *S) TestRowListSwap(c *gocheck.C) {
+	l := rowList([]Row{{"zero", "0"}, {"one", "1"}, {"two", "2"}})
+	l.Swap(0, 2)
+	c.Assert(l.Less(0, 2), gocheck.Equals, true)
+}
+
+func (s *S) TestRowListIsSortable(c *gocheck.C) {
+	var _ sort.Interface = rowList{}
 }

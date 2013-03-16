@@ -90,3 +90,15 @@ type rowList []Row
 func (l *rowList) add(r Row) {
 	*l = append(*l, r)
 }
+
+func (l rowList) Len() int {
+	return len(l)
+}
+
+func (l rowList) Less(i, j int) bool {
+	return l[i][0] < l[j][0]
+}
+
+func (l rowList) Swap(i, j int) {
+	l[i], l[j] = l[j], l[i]
+}
