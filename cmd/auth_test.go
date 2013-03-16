@@ -315,6 +315,10 @@ func (s *S) TestUserCreateInfo(c *gocheck.C) {
 
 func (s *S) TestUserRemove(c *gocheck.C) {
 	rfs := &testing.RecordingFs{}
+	path, _ := joinWithUserDir(".tsuru_target")
+	f, _ := rfs.OpenFile(path, 0, 0644)
+	f.Write([]byte("http://tsuru.io"))
+	f.Close()
 	fsystem = rfs
 	defer func() {
 		fsystem = nil
