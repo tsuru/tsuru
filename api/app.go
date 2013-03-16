@@ -106,6 +106,18 @@ func AppIsAvailableHandler(w http.ResponseWriter, r *http.Request) error {
 	return nil
 }
 
+func forceDeleteApp(w http.ResponseWriter, r *http.Request, u *auth.User) error {
+	a, err := getApp(r.URL.Query().Get(":name"), u)
+	if err != nil {
+		return err
+	}
+	gUrl := repository.GitServerUri()
+	(&gandalf.Client{Endpoint: gUrl}).RemoveRepository(a.Name)
+	app.ForceDestroy(&a)
+	fmt.Fprint(w, "success")
+	return nil
+}
+
 func AppDelete(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	app, err := getApp(r.URL.Query().Get(":name"), u)
 	if err != nil {

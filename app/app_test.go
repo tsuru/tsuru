@@ -45,7 +45,7 @@ func (s *S) TestGet(c *gocheck.C) {
 	c.Assert(myApp.Name, gocheck.Equals, newApp.Name)
 }
 
-func (s *S) TestDestroyForce(c *gocheck.C) {
+func (s *S) TestForceDestroy(c *gocheck.C) {
 	a := App{
 		Name:      "ritual",
 		Framework: "ruby",
@@ -54,7 +54,7 @@ func (s *S) TestDestroyForce(c *gocheck.C) {
 	err := s.conn.Apps().Insert(&a)
 	c.Assert(err, gocheck.IsNil)
 	a.Get()
-	err = DestroyAppWithForce(&a)
+	err = ForceDestroy(&a)
 	c.Assert(err, gocheck.IsNil)
 	err = a.Get()
 	c.Assert(err, gocheck.NotNil)

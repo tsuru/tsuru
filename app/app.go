@@ -166,7 +166,7 @@ func (app *App) unbind() error {
 	return nil
 }
 
-// Destroy destroys an app with force.
+// ForceDestroy destroys an app with force.
 //
 // Destroying an app is a process composed of four steps:
 //
@@ -175,7 +175,7 @@ func (app *App) unbind() error {
 //       2. Destroy the app unit using juju
 //       3. Unbind all service instances from the app
 //       4. Remove the app from the database
-func DestroyAppWithForce(app *App) error {
+func ForceDestroy(app *App) error {
 	useS3, _ := config.GetBool("bucket-support")
 	if useS3 {
 		destroyBucket(app)

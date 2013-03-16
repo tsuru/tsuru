@@ -297,6 +297,29 @@ func (s *S) TestListShouldReturnStatusNoContentWhenAppListIsNil(c *gocheck.C) {
 	c.Assert(recorder.Code, gocheck.Equals, http.StatusNoContent)
 }
 
+func (s *S) TestForceDeleteApp(c *gocheck.C) {
+	a := app.App{
+		Name:      "myapptodelete",
+		Framework: "django",
+		Teams:     []string{s.team.Name},
+		Units: []app.Unit{
+			{Ip: "10.10.10.10", Machine: 1},
+		},
+	}
+	err := s.conn.Apps().Insert(&a)
+	c.Assert(err, gocheck.IsNil)
+	a.Get()
+	request, err := http.NewRequest("DELETE", "/apps/"+a.Name+"/force?:name="+a.Name, nil)
+	c.Assert(err, gocheck.IsNil)
+	recorder := httptest.NewRecorder()
+	err = forceDeleteApp(recorder, request, s.user)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(recorder.Code, gocheck.Equals, http.StatusOK)
+	qt, err := s.conn.Apps().Find(bson.M{"name": a.Name}).Count()
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(qt, gocheck.Equals, 0)
+}
+
 func (s *S) TestDelete(c *gocheck.C) {
 	h := testHandler{}
 	ts := s.t.StartGandalfTestServer(&h)
