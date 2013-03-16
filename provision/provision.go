@@ -104,6 +104,9 @@ type Provisioner interface {
 	// ExecuteCommand runs a command in all units of the app.
 	ExecuteCommand(stdout, stderr io.Writer, app App, cmd string, args ...string) error
 
+	// Restart restarts the app.
+	Restart(App) error
+
 	// CollectStatus returns information about all provisioned units. It's used
 	// by tsuru collector when updating the status of apps in the database.
 	CollectStatus() ([]Unit, error)
