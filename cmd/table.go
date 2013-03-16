@@ -104,7 +104,7 @@ func (l rowList) Len() int {
 }
 
 func (l rowList) Less(i, j int) bool {
-	return l[i][0] < l[j][0]
+	return strings.ToLower(l[i][0]) < strings.ToLower(l[j][0])
 }
 
 func (l rowList) Swap(i, j int) {

@@ -139,6 +139,14 @@ func (s *S) TestRowListLess(c *gocheck.C) {
 	c.Assert(l.Less(1, 0), gocheck.Equals, true)
 }
 
+func (s *S) TestRowListLessDifferentCase(c *gocheck.C) {
+	l := rowList([]Row{{"Zero", "0"}, {"one", "1"}, {"two", "2"}})
+	c.Assert(l.Less(0, 1), gocheck.Equals, false)
+	c.Assert(l.Less(0, 2), gocheck.Equals, false)
+	c.Assert(l.Less(1, 2), gocheck.Equals, true)
+	c.Assert(l.Less(1, 0), gocheck.Equals, true)
+}
+
 func (s *S) TestRowListSwap(c *gocheck.C) {
 	l := rowList([]Row{{"zero", "0"}, {"one", "1"}, {"two", "2"}})
 	l.Swap(0, 2)
