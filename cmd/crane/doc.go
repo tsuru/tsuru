@@ -48,16 +48,20 @@ The currently available commands are (grouped by subject):
 Use "crane help <command>" for more information about a command.
 
 
-Change or retrieve remote crane server
+Managing remote crane server endpoints
 
 Usage:
 
-	% crane target [target]
-
-This command should be used to set current crane target, or retrieve current
-target.
+	% tsuru target
+	% tsuru target-add <label> <address>
+	% tsuru target-set <label>
+	% tsuru target-list
+	% tsuru target-remove <label>
 
 The target is the crane server to which all operations will be directed to.
+
+With this set of commands you are be able to check the current target, add a new labeled target, set a target for usage,
+list the added targets and remove a target, respectively.
 
 
 Check current version
