@@ -97,3 +97,9 @@ func (s *S) TestBytes(c *gocheck.C) {
 	table.AddRow(Row{"Three", "3"})
 	c.Assert(table.Bytes(), gocheck.DeepEquals, []byte(table.String()))
 }
+
+func (s *S) TestRowListAdd(c *gocheck.C) {
+	l := rowList([]Row{{"one", "1"}})
+	l.add(Row{"two", "2"})
+	c.Assert(len(l), gocheck.Equals, 2)
+}
