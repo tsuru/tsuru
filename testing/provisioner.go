@@ -198,6 +198,10 @@ func (p *FakeProvisioner) Reset() {
 	p.cmds = nil
 	p.cmdMut.Unlock()
 
+	p.restMut.Lock()
+	p.restarts = make(map[string]int)
+	p.restMut.Unlock()
+
 	for {
 		select {
 		case <-p.outputs:
