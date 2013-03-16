@@ -118,6 +118,8 @@ type FakeProvisioner struct {
 	failures chan failure
 	cmdMut   sync.Mutex
 	unitMut  sync.Mutex
+	restarts map[string]int
+	restMut  sync.Mutex
 }
 
 func NewFakeProvisioner() *FakeProvisioner {
@@ -125,6 +127,7 @@ func NewFakeProvisioner() *FakeProvisioner {
 	p.outputs = make(chan []byte, 8)
 	p.failures = make(chan failure, 8)
 	p.units = make(map[string][]provision.Unit)
+	p.restarts = make(map[string]int)
 	p.unitLen = 0
 	return &p
 }
@@ -141,6 +144,7 @@ func (p *FakeProvisioner) getError(method string) error {
 	return nil
 }
 
+// Returns the number of calls to restart.
 // GetCmds returns a list of commands executed in an app. If you don't specify
 // the command (an empty string), it will return all commands executed in the
 // given app.
@@ -221,6 +225,18 @@ func (p *FakeProvisioner) Provision(app provision.App) error {
 	}
 	p.unitLen++
 	p.unitMut.Unlock()
+	return nil
+}
+
+func (p *FakeProvisioner) Restart(app provision.App) error {
+	if err := p.getError("Restart"); err != nil {
+		return err
+	}
+	p.restMut.Lock()
+	v := p.restarts[app.GetName()]
+	v++
+	p.restarts[app.GetName()] = v
+	p.restMut.Unlock()
 	return nil
 }
 

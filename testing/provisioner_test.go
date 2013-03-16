@@ -114,6 +114,23 @@ func (s *S) TestDoubleProvision(c *gocheck.C) {
 	c.Assert(err.Error(), gocheck.Equals, "App already provisioned.")
 }
 
+func (s *S) TestRestart(c *gocheck.C) {
+	app := NewFakeApp("kid-gloves", "rush", 1)
+	p := NewFakeProvisioner()
+	err := p.Restart(app)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(p.restarts[app.GetName()], gocheck.Equals, 1)
+}
+
+func (s *S) TestRestartWithPreparedFailure(c *gocheck.C) {
+	app := NewFakeApp("fairy-tale", "shaman", 1)
+	p := NewFakeProvisioner()
+	p.PrepareFailure("Restart", errors.New("Failed to restart."))
+	err := p.Restart(app)
+	c.Assert(err, gocheck.NotNil)
+	c.Assert(err.Error(), gocheck.Equals, "Failed to restart.")
+}
+
 func (s *S) TestDestroy(c *gocheck.C) {
 	app := NewFakeApp("kid-gloves", "rush", 1)
 	p := NewFakeProvisioner()
