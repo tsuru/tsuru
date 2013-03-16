@@ -1,4 +1,4 @@
-// Copyright 2012 tsuru authors. All rights reserved.
+// Copyright 2013 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -13,17 +13,14 @@ import (
 	"strings"
 )
 
-func joinWithUserDir(p ...string) (string, error) {
+func joinWithUserDir(p ...string) string {
 	paths := []string{os.ExpandEnv("$HOME")}
 	paths = append(paths, p...)
-	return path.Join(paths...), nil
+	return path.Join(paths...)
 }
 
 func writeToken(token string) error {
-	tokenPath, err := joinWithUserDir(".tsuru_token")
-	if err != nil {
-		return err
-	}
+	tokenPath := joinWithUserDir(".tsuru_token")
 	file, err := filesystem().Create(tokenPath)
 	if err != nil {
 		return err
@@ -39,10 +36,7 @@ func writeToken(token string) error {
 }
 
 func readToken() (string, error) {
-	tokenPath, err := joinWithUserDir(".tsuru_token")
-	if err != nil {
-		return "", err
-	}
+	tokenPath := joinWithUserDir(".tsuru_token")
 	file, err := filesystem().Open(tokenPath)
 	if err != nil {
 		return "", err

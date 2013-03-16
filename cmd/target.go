@@ -42,7 +42,7 @@ func (t *target) Run(ctx *Context, client Doer) error {
 const DefaultTarget = "http://tsuru.plataformas.glb.com:8080"
 
 func readTarget() string {
-	targetPath, _ := joinWithUserDir(".tsuru_target")
+	targetPath := joinWithUserDir(".tsuru_target")
 	if f, err := filesystem().Open(targetPath); err == nil {
 		defer f.Close()
 		if b, err := ioutil.ReadAll(f); err == nil {
@@ -62,10 +62,7 @@ func GetUrl(path string) string {
 }
 
 func writeTarget(t string) error {
-	targetPath, err := joinWithUserDir(".tsuru_target")
-	if err != nil {
-		return err
-	}
+	targetPath := joinWithUserDir(".tsuru_target")
 	targetFile, err := filesystem().OpenFile(targetPath, syscall.O_WRONLY|syscall.O_CREAT|syscall.O_TRUNC, 0600)
 	if err != nil {
 		return err
@@ -110,10 +107,7 @@ func (t *targetAdd) Run(ctx *Context, client Doer) error {
 }
 
 func resetTargetList() error {
-	targetsPath, err := joinWithUserDir(".tsuru_targets")
-	if err != nil {
-		return err
-	}
+	targetsPath := joinWithUserDir(".tsuru_targets")
 	targetsFile, err := filesystem().OpenFile(targetsPath, syscall.O_WRONLY|syscall.O_CREAT|syscall.O_TRUNC, 0600)
 	if err != nil {
 		return err
@@ -133,16 +127,13 @@ func writeOnTargetList(label string, target string) error {
 	if targetExist {
 		return errors.New("Target label provided already exist")
 	}
-	targetsPath, err := joinWithUserDir(".tsuru_targets")
-	if err != nil {
-		return err
-	}
+	targetsPath := joinWithUserDir(".tsuru_targets")
 	targetsFile, err := filesystem().OpenFile(targetsPath, syscall.O_RDWR|syscall.O_CREAT|syscall.O_APPEND, 0600)
 	if err != nil {
 		return err
 	}
 	defer targetsFile.Close()
-	var content = label + "\t" + target + "\n"
+	content := label + "\t" + target + "\n"
 	n, err := targetsFile.WriteString(content)
 	if n != len(content) || err != nil {
 		return errors.New("Failed to write the target file")
@@ -164,10 +155,7 @@ func checkIfTargetLabelExists(label string) (bool, error) {
 
 func getTargets() (map[string]string, error) {
 	var targets = map[string]string{}
-	targetsPath, err := joinWithUserDir(".tsuru_targets")
-	if err != nil {
-		return targets, err
-	}
+	targetsPath := joinWithUserDir(".tsuru_targets")
 	if f, err := filesystem().Open(targetsPath); err == nil {
 		defer f.Close()
 		if b, err := ioutil.ReadAll(f); err == nil {

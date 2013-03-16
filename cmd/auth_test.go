@@ -70,9 +70,7 @@ func (s *S) TestLogout(c *gocheck.C) {
 	err := command.Run(&context, nil)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(manager.stdout.(*bytes.Buffer).String(), gocheck.Equals, expected)
-	tokenPath, err := joinWithUserDir(".tsuru_token")
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(rfs.HasAction("remove "+tokenPath), gocheck.Equals, true)
+	c.Assert(rfs.HasAction("remove "+joinWithUserDir(".tsuru_token")), gocheck.Equals, true)
 }
 
 func (s *S) TestLogoutWhenNotLoggedIn(c *gocheck.C) {
@@ -315,8 +313,7 @@ func (s *S) TestUserCreateInfo(c *gocheck.C) {
 
 func (s *S) TestUserRemove(c *gocheck.C) {
 	rfs := &testing.RecordingFs{}
-	path, _ := joinWithUserDir(".tsuru_target")
-	f, _ := rfs.OpenFile(path, 0, 0644)
+	f, _ := rfs.OpenFile(joinWithUserDir(".tsuru_target"), 0, 0644)
 	f.Write([]byte("http://tsuru.io"))
 	f.Close()
 	fsystem = rfs
@@ -347,8 +344,7 @@ func (s *S) TestUserRemove(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(called, gocheck.Equals, true)
 	c.Assert(buf.String(), gocheck.Equals, "Are you sure you want to remove your user from tsuru? (y/n) User successfully removed.\n")
-	tFile, _ := joinWithUserDir(".tsuru_token")
-	c.Assert(rfs.HasAction("remove "+tFile), gocheck.Equals, true)
+	c.Assert(rfs.HasAction("remove "+joinWithUserDir(".tsuru_token")), gocheck.Equals, true)
 }
 
 func (s *S) TestUserRemoveWithoutConfirmation(c *gocheck.C) {

@@ -74,8 +74,7 @@ func (c *userRemove) Run(context *Context, client Doer) error {
 	if err != nil {
 		return err
 	}
-	tPath, _ := joinWithUserDir(".tsuru_token")
-	filesystem().Remove(tPath)
+	filesystem().Remove(joinWithUserDir(".tsuru_token"))
 	fmt.Fprint(context.Stdout, "User successfully removed.\n")
 	return nil
 }
@@ -142,11 +141,7 @@ func (c *logout) Info() *Info {
 }
 
 func (c *logout) Run(context *Context, client Doer) error {
-	tokenPath, err := joinWithUserDir(".tsuru_token")
-	if err != nil {
-		return err
-	}
-	err = filesystem().Remove(tokenPath)
+	err := filesystem().Remove(joinWithUserDir(".tsuru_token"))
 	if err != nil && os.IsNotExist(err) {
 		return errors.New("You're not logged in!")
 	}
