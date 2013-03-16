@@ -195,6 +195,7 @@ func (t *targetList) Run(ctx *Context, client Doer) error {
 	for label, target := range targets {
 		table.AddRow(Row{label, target})
 	}
+	table.Sort()
 	fmt.Fprintf(ctx.Stdout, table.String())
 	return nil
 }

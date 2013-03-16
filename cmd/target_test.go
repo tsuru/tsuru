@@ -254,18 +254,17 @@ func (s *S) TestTargetListRun(c *gocheck.C) {
 	defer func() {
 		fsystem = nil
 	}()
-	expected := []string{"+---------+-------------------------+",
-		"| first   | http://tsuru.io/        |",
-		"| default | http://tsuru.google.com |",
-		"+---------+-------------------------+", ""}
+	expected := `+---------+-------------------------+
+| default | http://tsuru.google.com |
+| first   | http://tsuru.io/        |
++---------+-------------------------+
+`
 	targetList := &targetList{}
 	context := &Context{[]string{""}, manager.stdout, manager.stderr, manager.stdin}
 	err := targetList.Run(context, nil)
 	c.Assert(err, gocheck.IsNil)
 	got := context.Stdout.(*bytes.Buffer).String()
-	for i := range expected {
-		c.Assert(strings.Contains(got, expected[i]), gocheck.Equals, true)
-	}
+	c.Assert(got, gocheck.Equals, expected)
 }
 
 func (s *S) TestResetTargetList(c *gocheck.C) {
