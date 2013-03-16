@@ -38,7 +38,9 @@ def send():
 def restart():
     with cd(env.tsuru_path):
         run("tar -xzf dist.tar.gz")
-    run('circusctl restart')
+    run('circusctl restart web')
+    run('circusctl restart collector')
+    run('circusctl restart healer')
 
 
 def deploy(flags=""):
