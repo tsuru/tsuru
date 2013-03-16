@@ -30,6 +30,19 @@ func (s *S) TestFindApp(c *gocheck.C) {
 	c.Assert(p.FindApp(&otherapp), gocheck.Equals, -1)
 }
 
+func (s *S) TestRestarts(c *gocheck.C) {
+	app1 := NewFakeApp("fairy-tale", "shaman", 1)
+	app2 := NewFakeApp("unfairy-tale", "shaman", 1)
+	p := NewFakeProvisioner()
+	p.restarts = map[string]int{
+		app1.GetName(): 10,
+		app2.GetName(): 0,
+	}
+	c.Assert(p.Restarts(app1), gocheck.Equals, 10)
+	c.Assert(p.Restarts(app2), gocheck.Equals, 0)
+	c.Assert(p.Restarts(NewFakeApp("pride", "shaman", 1)), gocheck.Equals, 0)
+}
+
 func (s *S) TestGetCmds(c *gocheck.C) {
 	app := NewFakeApp("enemy-within", "rush", 1)
 	p := NewFakeProvisioner()

@@ -144,6 +144,12 @@ func (p *FakeProvisioner) getError(method string) error {
 	return nil
 }
 
+func (p *FakeProvisioner) Restarts(app provision.App) int {
+	p.restMut.Lock()
+	defer p.restMut.Unlock()
+	return p.restarts[app.GetName()]
+}
+
 // Returns the number of calls to restart.
 // GetCmds returns a list of commands executed in an app. If you don't specify
 // the command (an empty string), it will return all commands executed in the
