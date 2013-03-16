@@ -166,6 +166,31 @@ func (app *App) unbind() error {
 	return nil
 }
 
+// Destroy destroys an app with force.
+//
+// Destroying an app is a process composed of four steps:
+//
+//       1. Destroy the bucket and S3 credentials (if bucket-support is
+//       enabled).
+//       2. Destroy the app unit using juju
+//       3. Unbind all service instances from the app
+//       4. Remove the app from the database
+func DestroyAppWithForce(app *App) error {
+	useS3, _ := config.GetBool("bucket-support")
+	if useS3 {
+		destroyBucket(app)
+	}
+	if len(app.Units) > 0 {
+		Provisioner.Destroy(app)
+		app.unbind()
+	}
+	conn, err := db.Conn()
+	if err != nil {
+		return err
+	}
+	return conn.Apps().Remove(bson.M{"name": app.Name})
+}
+
 // Destroy destroys an app.
 //
 // Destroying an app is a process composed of four steps:

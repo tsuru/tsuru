@@ -45,6 +45,24 @@ func (s *S) TestGet(c *gocheck.C) {
 	c.Assert(myApp.Name, gocheck.Equals, newApp.Name)
 }
 
+func (s *S) TestDestroyForce(c *gocheck.C) {
+	a := App{
+		Name:      "ritual",
+		Framework: "ruby",
+		Units:     []Unit{{Name: "duvido", Machine: 3}},
+	}
+	err := s.conn.Apps().Insert(&a)
+	c.Assert(err, gocheck.IsNil)
+	a.Get()
+	err = DestroyAppWithForce(&a)
+	c.Assert(err, gocheck.IsNil)
+	err = a.Get()
+	c.Assert(err, gocheck.NotNil)
+	qt, err := s.conn.Apps().Find(bson.M{"name": a.Name}).Count()
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(qt, gocheck.Equals, 0)
+	c.Assert(s.provisioner.FindApp(&a), gocheck.Equals, -1)
+}
 func (s *S) TestDestroy(c *gocheck.C) {
 	h := testHandler{}
 	ts := s.t.StartGandalfTestServer(&h)
