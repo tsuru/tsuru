@@ -221,6 +221,7 @@ func (c AppList) Show(result []byte, context *cmd.Context) error {
 		summary := fmt.Sprintf("%d of %d units in-service", units_started, len(app.Units))
 		table.AddRow(cmd.Row([]string{app.Name, summary, app.Addr()}))
 	}
+	table.Sort()
 	context.Stdout.Write(table.Bytes())
 	return nil
 }

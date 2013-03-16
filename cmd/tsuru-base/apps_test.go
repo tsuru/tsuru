@@ -254,6 +254,28 @@ func (s *S) TestAppList(c *gocheck.C) {
 	c.Assert(stdout.String(), gocheck.Equals, expected)
 }
 
+func (s *S) TestAppListDisplayAppsInAlphabeticalOrder(c *gocheck.C) {
+	var stdout, stderr bytes.Buffer
+	result := `[{"Ip":"10.10.10.11","Name":"sapp","Units":[{"Name":"sapp1/0","State":"started"}]},{"Ip":"10.10.10.10","Name":"app1","Units":[{"Name":"app1/0","State":"started"}]}]`
+	expected := `+-------------+-------------------------+-------------+
+| Application | Units State Summary     | Address     |
++-------------+-------------------------+-------------+
+| app1        | 1 of 1 units in-service | 10.10.10.10 |
+| sapp        | 1 of 1 units in-service | 10.10.10.11 |
++-------------+-------------------------+-------------+
+`
+	context := cmd.Context{
+		Args:   []string{},
+		Stdout: &stdout,
+		Stderr: &stderr,
+	}
+	client := cmd.NewClient(&http.Client{Transport: &transport{msg: result, status: http.StatusOK}}, nil, manager)
+	command := AppList{}
+	err := command.Run(&context, client)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(stdout.String(), gocheck.Equals, expected)
+}
+
 func (s *S) TestAppListUnitIsntStarted(c *gocheck.C) {
 	var stdout, stderr bytes.Buffer
 	result := `[{"Ip":"10.10.10.10","Name":"app1","Units":[{"Name":"app1/0","State":"pending"}]}]`
