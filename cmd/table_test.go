@@ -29,6 +29,23 @@ func (s *S) TestAddRows(c *gocheck.C) {
 	c.Assert(table.String(), gocheck.Equals, expected)
 }
 
+func (s *S) TestSort(c *gocheck.C) {
+	table := NewTable()
+	table.AddRow(Row{"Three", "3"})
+	table.AddRow(Row{"Zero", "0"})
+	table.AddRow(Row{"One", "1"})
+	table.AddRow(Row{"Two", "2"})
+	expected := `+-------+---+
+| One   | 1 |
+| Three | 3 |
+| Two   | 2 |
+| Zero  | 0 |
++-------+---+
+`
+	table.Sort()
+	c.Assert(table.String(), gocheck.Equals, expected)
+}
+
 func (s *S) TestColumnsSize(c *gocheck.C) {
 	table := NewTable()
 	table.AddRow(Row{"One", "1"})

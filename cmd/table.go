@@ -4,7 +4,10 @@
 
 package cmd
 
-import "strings"
+import (
+	"sort"
+	"strings"
+)
 
 type Table struct {
 	Headers Row
@@ -15,6 +18,11 @@ type Row []string
 
 func NewTable() *Table {
 	return &Table{}
+}
+
+// Sort sorts the rows in the table using the first column as key.
+func (t *Table) Sort() {
+	sort.Sort(t.rows)
 }
 
 func (t *Table) String() string {
