@@ -5,6 +5,8 @@
 package local
 
 import (
+	"bytes"
+	"fmt"
 	"github.com/globocom/config"
 	"github.com/globocom/tsuru/db"
 	"github.com/globocom/tsuru/log"
@@ -137,6 +139,17 @@ func (p *LocalProvisioner) Provision(app provision.App) error {
 			log.Print(err)
 		}
 	}(p, app)
+	return nil
+}
+
+func (p *LocalProvisioner) Restart(app provision.App) error {
+	var buf bytes.Buffer
+	err := p.ExecuteCommand(&buf, &buf, app, "/var/lib/tsuru/hooks/restart")
+	if err != nil {
+		msg := fmt.Sprintf("Failed to restart the app (%s): %s", err, buf.String())
+		app.Log(msg, "tsuru-provisioner")
+		return &provision.Error{Reason: buf.String(), Err: err}
+	}
 	return nil
 }
 

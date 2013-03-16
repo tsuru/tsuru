@@ -64,6 +64,36 @@ func (s *S) TestProvisionerProvision(c *gocheck.C) {
 	defer p.collection().Remove(bson.M{"name": "myapp"})
 }
 
+func (s *S) TestProvisionerRestart(c *gocheck.C) {
+	var p LocalProvisioner
+	tmpdir, err := commandmocker.Add("ssh", "ok")
+	c.Assert(err, gocheck.IsNil)
+	defer commandmocker.Remove(tmpdir)
+	app := testing.NewFakeApp("almah", "static", 1)
+	err = p.Restart(app)
+	c.Assert(err, gocheck.IsNil)
+	ip := app.ProvisionUnits()[0].GetIp()
+	expected := []string{
+		"-l", "ubuntu", "-q", "-o", "StrictHostKeyChecking no", ip, "/var/lib/tsuru/hooks/restart",
+	}
+	c.Assert(commandmocker.Ran(tmpdir), gocheck.Equals, true)
+	c.Assert(commandmocker.Parameters(tmpdir), gocheck.DeepEquals, expected)
+}
+
+func (s *S) TestProvisionerRestartFailure(c *gocheck.C) {
+	tmpdir, err := commandmocker.Error("ssh", "fatal unexpected failure", 25)
+	c.Assert(err, gocheck.IsNil)
+	defer commandmocker.Remove(tmpdir)
+	app := testing.NewFakeApp("cribcaged", "python", 1)
+	p := LocalProvisioner{}
+	err = p.Restart(app)
+	c.Assert(err, gocheck.NotNil)
+	pErr, ok := err.(*provision.Error)
+	c.Assert(ok, gocheck.Equals, true)
+	c.Assert(pErr.Reason, gocheck.Equals, "fatal unexpected failure")
+	c.Assert(pErr.Err.Error(), gocheck.Equals, "exit status 25")
+}
+
 func (s *S) TestProvisionerDestroy(c *gocheck.C) {
 	config.Set("local:authorized-key-path", "somepath")
 	rfs := &fstesting.RecordingFs{}
