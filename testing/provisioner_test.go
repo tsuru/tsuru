@@ -135,10 +135,13 @@ func (s *S) TestDestroy(c *gocheck.C) {
 	app := NewFakeApp("kid-gloves", "rush", 1)
 	p := NewFakeProvisioner()
 	p.apps = []provision.App{app}
+	p.restarts = map[string]int{app.GetName(): 2}
 	err := p.Destroy(app)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(p.FindApp(app), gocheck.Equals, -1)
 	c.Assert(p.apps, gocheck.DeepEquals, []provision.App{})
+	_, ok := p.restarts[app.GetName()]
+	c.Assert(ok, gocheck.Equals, false)
 }
 
 func (s *S) TestDestroyWithPreparedFailure(c *gocheck.C) {

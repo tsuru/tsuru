@@ -254,6 +254,9 @@ func (p *FakeProvisioner) Destroy(app provision.App) error {
 	delete(p.units, app.GetName())
 	p.unitLen = 0
 	p.unitMut.Unlock()
+	p.restMut.Lock()
+	delete(p.restarts, app.GetName())
+	p.restMut.Unlock()
 	return nil
 }
 
