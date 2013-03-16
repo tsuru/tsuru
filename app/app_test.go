@@ -46,6 +46,9 @@ func (s *S) TestGet(c *gocheck.C) {
 }
 
 func (s *S) TestForceDestroy(c *gocheck.C) {
+	h := testHandler{}
+	ts := s.t.StartGandalfTestServer(&h)
+	defer ts.Close()
 	a := App{
 		Name:      "ritual",
 		Framework: "ruby",

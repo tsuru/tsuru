@@ -298,6 +298,9 @@ func (s *S) TestListShouldReturnStatusNoContentWhenAppListIsNil(c *gocheck.C) {
 }
 
 func (s *S) TestForceDeleteApp(c *gocheck.C) {
+	h := testHandler{}
+	ts := s.t.StartGandalfTestServer(&h)
+	defer ts.Close()
 	a := app.App{
 		Name:      "myapptodelete",
 		Framework: "django",

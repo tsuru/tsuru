@@ -10,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/globocom/config"
+	"github.com/globocom/go-gandalfclient"
 	"github.com/globocom/tsuru/action"
 	"github.com/globocom/tsuru/app/bind"
 	"github.com/globocom/tsuru/auth"
@@ -176,6 +177,8 @@ func (app *App) unbind() error {
 //       3. Unbind all service instances from the app
 //       4. Remove the app from the database
 func ForceDestroy(app *App) error {
+	gUrl := repository.GitServerUri()
+	(&gandalf.Client{Endpoint: gUrl}).RemoveRepository(app.Name)
 	useS3, _ := config.GetBool("bucket-support")
 	if useS3 {
 		destroyBucket(app)

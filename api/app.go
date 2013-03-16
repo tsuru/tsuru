@@ -111,8 +111,6 @@ func forceDeleteApp(w http.ResponseWriter, r *http.Request, u *auth.User) error 
 	if err != nil {
 		return err
 	}
-	gUrl := repository.GitServerUri()
-	(&gandalf.Client{Endpoint: gUrl}).RemoveRepository(a.Name)
 	app.ForceDestroy(&a)
 	fmt.Fprint(w, "success")
 	return nil
