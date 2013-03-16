@@ -1254,7 +1254,6 @@ func (s *S) TestInstallDeps(c *gocheck.C) {
 
 func (s *S) TestRestart(c *gocheck.C) {
 	s.provisioner.PrepareOutput(nil) // loadHooks
-	s.provisioner.PrepareOutput([]byte("nothing"))
 	a := App{
 		Name:      "someApp",
 		Framework: "django",
@@ -1266,13 +1265,12 @@ func (s *S) TestRestart(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	result := strings.Replace(b.String(), "\n", "#", -1)
 	c.Assert(result, gocheck.Matches, ".*# ---> Restarting your app#.*")
-	cmds := s.provisioner.GetCmds("/var/lib/tsuru/hooks/restart", &a)
-	c.Assert(cmds, gocheck.HasLen, 1)
+	restarts := s.provisioner.Restarts(&a)
+	c.Assert(restarts, gocheck.Equals, 1)
 }
 
 func (s *S) TestRestartRunsPreRestartHook(c *gocheck.C) {
 	s.provisioner.PrepareOutput([]byte("pre-restart-by-restart"))
-	s.provisioner.PrepareOutput([]byte("restart"))
 	a := App{
 		Name:      "someApp",
 		Framework: "django",
@@ -1290,7 +1288,6 @@ func (s *S) TestRestartRunsPreRestartHook(c *gocheck.C) {
 
 func (s *S) TestRestartRunsPosRestartHook(c *gocheck.C) {
 	s.provisioner.PrepareOutput([]byte("pos-restart-by-restart"))
-	s.provisioner.PrepareOutput([]byte("restart"))
 	a := App{
 		Name:      "someApp",
 		Framework: "django",

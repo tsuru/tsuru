@@ -647,7 +647,7 @@ func (app *App) Restart(w io.Writer) error {
 	if err != nil {
 		return err
 	}
-	err = app.run("/var/lib/tsuru/hooks/restart", w)
+	err = Provisioner.Restart(app)
 	if err != nil {
 		return err
 	}
