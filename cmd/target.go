@@ -196,7 +196,7 @@ func (t *targetList) Run(ctx *Context, client Doer) error {
 		table.AddRow(Row{label, target})
 	}
 	table.Sort()
-	fmt.Fprintf(ctx.Stdout, table.String())
+	fmt.Fprint(ctx.Stdout, table)
 	return nil
 }
 
