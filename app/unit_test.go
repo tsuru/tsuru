@@ -50,3 +50,19 @@ func (s *S) TestUnitSliceLen(c *gocheck.C) {
 	units := UnitSlice{Unit{}, Unit{}}
 	c.Assert(units.Len(), gocheck.Equals, 2)
 }
+
+func (s *S) TestUnitSliceLess(c *gocheck.C) {
+	units := UnitSlice{
+		Unit{Name: "a", State: string(provision.StatusError)},
+		Unit{Name: "b", State: string(provision.StatusDown)},
+		Unit{Name: "c", State: string(provision.StatusPending)},
+		Unit{Name: "d", State: string(provision.StatusCreating)},
+		Unit{Name: "e", State: string(provision.StatusInstalling)},
+		Unit{Name: "f", State: string(provision.StatusStarted)},
+	}
+	c.Assert(units.Less(0, 1), gocheck.Equals, true)
+	c.Assert(units.Less(1, 2), gocheck.Equals, true)
+	c.Assert(units.Less(2, 3), gocheck.Equals, true)
+	c.Assert(units.Less(4, 5), gocheck.Equals, true)
+	c.Assert(units.Less(5, 0), gocheck.Equals, false)
+}
