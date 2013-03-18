@@ -8,6 +8,7 @@ import (
 	"github.com/globocom/tsuru/app/bind"
 	"github.com/globocom/tsuru/provision"
 	"launchpad.net/gocheck"
+	"sort"
 )
 
 func (s *S) TestUnitGetName(c *gocheck.C) {
@@ -78,4 +79,18 @@ func (s *S) TestUnitSliceSwap(c *gocheck.C) {
 	}
 	units.Swap(0, 2)
 	c.Assert(units.Less(0, 2), gocheck.Equals, true)
+}
+
+func (s *S) TestUnitSliceSort(c *gocheck.C) {
+	units := UnitSlice{
+		Unit{Name: "b", State: string(provision.StatusDown)},
+		Unit{Name: "c", State: string(provision.StatusPending)},
+		Unit{Name: "a", State: string(provision.StatusError)},
+		Unit{Name: "d", State: string(provision.StatusCreating)},
+		Unit{Name: "e", State: string(provision.StatusInstalling)},
+		Unit{Name: "f", State: string(provision.StatusStarted)},
+	}
+	c.Assert(sort.IsSorted(units), gocheck.Equals, false)
+	sort.Sort(units)
+	c.Assert(sort.IsSorted(units), gocheck.Equals, true)
 }
