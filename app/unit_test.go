@@ -66,3 +66,16 @@ func (s *S) TestUnitSliceLess(c *gocheck.C) {
 	c.Assert(units.Less(4, 5), gocheck.Equals, true)
 	c.Assert(units.Less(5, 0), gocheck.Equals, false)
 }
+
+func (s *S) TestUnitSliceSwap(c *gocheck.C) {
+	units := UnitSlice{
+		Unit{Name: "b", State: string(provision.StatusDown)},
+		Unit{Name: "c", State: string(provision.StatusPending)},
+		Unit{Name: "a", State: string(provision.StatusError)},
+		Unit{Name: "d", State: string(provision.StatusCreating)},
+		Unit{Name: "e", State: string(provision.StatusInstalling)},
+		Unit{Name: "f", State: string(provision.StatusStarted)},
+	}
+	units.Swap(0, 2)
+	c.Assert(units.Less(0, 2), gocheck.Equals, true)
+}

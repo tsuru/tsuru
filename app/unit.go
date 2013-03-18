@@ -61,3 +61,7 @@ func (u UnitSlice) Less(i, j int) bool {
 	}
 	return weight[u[i].State] < weight[u[j].State]
 }
+
+func (u UnitSlice) Swap(i, j int) {
+	u[i], u[j] = u[j], u[i]
+}
