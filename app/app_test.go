@@ -24,6 +24,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path"
+	"reflect"
 	"sort"
 	"strings"
 	"sync/atomic"
@@ -445,6 +446,72 @@ func (s *S) TestAddUnitsFailureInProvisioner(c *gocheck.C) {
 	err := app.AddUnits(2)
 	c.Assert(err, gocheck.NotNil)
 	c.Assert(err.Error(), gocheck.Equals, "App is not provisioned.")
+}
+
+type hasUnitChecker struct{}
+
+func (c *hasUnitChecker) Info() *gocheck.CheckerInfo {
+	return &gocheck.CheckerInfo{Name: "HasUnit", Params: []string{"app", "unit"}}
+}
+
+func (c *hasUnitChecker) Check(params []interface{}, names []string) (bool, string) {
+	a, ok := params[0].(*App)
+	if !ok {
+		return false, "first parameter should be a pointer to an app instance"
+	}
+	u, ok := params[1].(provision.AppUnit)
+	if !ok {
+		return false, "second parameter should be a pointer to an unit instance"
+	}
+	for _, unit := range a.ProvisionUnits() {
+		if reflect.DeepEqual(unit, u) {
+			return true, ""
+		}
+	}
+	return false, ""
+}
+
+var HasUnit gocheck.Checker = &hasUnitChecker{}
+
+func (s *S) TestRemoveUnitsPriority(c *gocheck.C) {
+	units := []Unit{
+		{Name: "ble/0", State: string(provision.StatusStarted)},
+		{Name: "ble/1", State: string(provision.StatusDown)},
+		{Name: "ble/2", State: string(provision.StatusCreating)},
+		{Name: "ble/3", State: string(provision.StatusPending)},
+		{Name: "ble/4", State: string(provision.StatusError)},
+		{Name: "ble/5", State: string(provision.StatusInstalling)},
+	}
+	a := App{Name: "ble", Units: units}
+	err := s.conn.Apps().Insert(a)
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	s.provisioner.Provision(&a)
+	s.provisioner.AddUnits(&a, 6)
+	un := a.ProvisionUnits()
+	c.Assert(&a, HasUnit, un[0])
+	c.Assert(&a, HasUnit, un[1])
+	c.Assert(&a, HasUnit, un[2])
+	c.Assert(&a, HasUnit, un[3])
+	c.Assert(&a, HasUnit, un[4])
+	c.Assert(&a, HasUnit, un[5])
+	err = a.RemoveUnits(1)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(&a, gocheck.Not(HasUnit), un[4])
+	err = a.RemoveUnits(1)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(&a, gocheck.Not(HasUnit), un[1])
+	err = a.RemoveUnits(1)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(&a, gocheck.Not(HasUnit), un[3])
+	err = a.RemoveUnits(1)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(&a, gocheck.Not(HasUnit), un[2])
+	err = a.RemoveUnits(1)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(&a, gocheck.Not(HasUnit), un[5])
+	c.Assert(&a, HasUnit, un[0])
+	c.Assert(a.ProvisionUnits(), gocheck.HasLen, 1)
 }
 
 func (s *S) TestRemoveUnits(c *gocheck.C) {

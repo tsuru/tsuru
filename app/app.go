@@ -337,13 +337,14 @@ func (app *App) RemoveUnits(n uint) error {
 		removed []int
 		err     error
 	)
-	units := app.ProvisionUnits()
+	units := UnitSlice(app.Units)
+	sort.Sort(units)
 	for i := 0; i < int(n); i++ {
 		err = Provisioner.RemoveUnit(app, units[i].GetName())
 		if err == nil {
 			removed = append(removed, i)
 		}
-		app.unbindUnit(units[i])
+		app.unbindUnit(&units[i])
 	}
 	if len(removed) == 0 {
 		return err
