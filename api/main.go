@@ -68,7 +68,7 @@ func main() {
 	m.Put("/services/:service/:team", AuthorizationRequiredHandler(GrantServiceAccessToTeamHandler))
 	m.Del("/services/:service/:team", AuthorizationRequiredHandler(RevokeServiceAccessFromTeamHandler))
 
-	m.Del("/apps/:name", AuthorizationRequiredHandler(AppDelete))
+	m.Del("/apps/:name", AuthorizationRequiredHandler(appDelete))
 	m.Get("/apps/:name/repository/clone", Handler(CloneRepositoryHandler))
 	m.Get("/apps/:name/avaliable", Handler(AppIsAvailableHandler))
 	m.Get("/apps/:name", AuthorizationRequiredHandler(AppInfo))

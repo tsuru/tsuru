@@ -116,7 +116,7 @@ func forceDeleteApp(w http.ResponseWriter, r *http.Request, u *auth.User) error 
 	return nil
 }
 
-func AppDelete(w http.ResponseWriter, r *http.Request, u *auth.User) error {
+func appDelete(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	a, err := getApp(r.URL.Query().Get(":name"), u)
 	if err != nil {
 		return err
