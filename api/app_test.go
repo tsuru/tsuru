@@ -381,50 +381,6 @@ func (s *S) TestDeleteShouldReturnNotFoundIfTheAppDoesNotExist(c *gocheck.C) {
 	c.Assert(e, gocheck.ErrorMatches, "^App unknown not found.$")
 }
 
-func (s *S) TestDeleteShouldHandleWithGandalfError(c *gocheck.C) {
-	myApp := app.App{
-		Name:      "myapptodelete",
-		Framework: "django",
-		Teams:     []string{s.team.Name},
-		Units: []app.Unit{
-			{Ip: "10.10.10.10", Machine: 1},
-		},
-	}
-	err := s.conn.Apps().Insert(myApp)
-	c.Assert(err, gocheck.IsNil)
-	defer s.conn.Apps().Remove(bson.M{"name": myApp.Name})
-	request, err := http.NewRequest("DELETE", "/apps/"+myApp.Name+"?:name="+myApp.Name, nil)
-	c.Assert(err, gocheck.IsNil)
-	recorder := httptest.NewRecorder()
-	h := testBadHandler{}
-	ts := s.t.StartGandalfTestServer(&h)
-	defer ts.Close()
-	err = AppDelete(recorder, request, s.user)
-	c.Assert(err, gocheck.NotNil)
-	c.Assert(err.Error(), gocheck.Equals, "Could not remove app's repository at git server. Aborting...")
-}
-
-func (s *S) TestDeleteReturnsErrorIfAppDestroyFails(c *gocheck.C) {
-	s.provisioner.PrepareFailure("Destroy", &errors.Http{Code: 500, Message: "fatal"})
-	h := testHandler{}
-	ts := s.t.StartGandalfTestServer(&h)
-	defer ts.Close()
-	myApp := app.App{
-		Name:      "MyAppToDelete",
-		Framework: "django",
-		Teams:     []string{s.team.Name},
-		Units:     []app.Unit{{Name: "i-0800", Machine: 1}},
-	}
-	err := s.conn.Apps().Insert(myApp)
-	c.Assert(err, gocheck.IsNil)
-	defer s.conn.Apps().Remove(bson.M{"name": myApp.Name})
-	request, err := http.NewRequest("DELETE", "/apps/"+myApp.Name+"?:name="+myApp.Name, nil)
-	c.Assert(err, gocheck.IsNil)
-	recorder := httptest.NewRecorder()
-	err = AppDelete(recorder, request, s.user)
-	c.Assert(err, gocheck.NotNil)
-}
-
 func (s *S) TestAppInfo(c *gocheck.C) {
 	expectedApp := app.App{
 		Name:      "NewApp",
