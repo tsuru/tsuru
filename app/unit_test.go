@@ -45,3 +45,8 @@ func (s *S) TestUnitGetStatus(c *gocheck.C) {
 func (s *S) TestUnitShouldBeABinderUnit(c *gocheck.C) {
 	var _ bind.Unit = &Unit{}
 }
+
+func (s *S) TestUnitSliceLen(c *gocheck.C) {
+	units := UnitSlice{Unit{}, Unit{}}
+	c.Assert(units.Len(), gocheck.Equals, 2)
+}

@@ -42,3 +42,10 @@ func (u *Unit) GetStatus() provision.Status {
 func (u *Unit) GetInstanceId() string {
 	return u.InstanceId
 }
+
+// UnitSlice attaches the methods of sort.Interface to []Unit, sorting in increasing order.
+type UnitSlice []Unit
+
+func (u UnitSlice) Len() int {
+	return len(u)
+}
