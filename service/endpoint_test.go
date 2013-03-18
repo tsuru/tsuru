@@ -94,6 +94,7 @@ func (s *S) TestCreateShouldSendTheNameOfTheResourceToTheEndpoint(c *gocheck.C) 
 	v, err := url.ParseQuery(string(h.body))
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(map[string][]string(v), gocheck.DeepEquals, map[string][]string{"name": {"my-redis"}})
+	c.Assert("application/x-www-form-urlencoded", gocheck.DeepEquals, h.Headers.Get("Content-Type"))
 }
 
 func (s *S) TestCreateShouldReturnErrorIfTheRequestFail(c *gocheck.C) {
