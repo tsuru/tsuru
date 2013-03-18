@@ -62,9 +62,10 @@ func failHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 type TestHandler struct {
-	body   []byte
-	method string
-	url    string
+	body    []byte
+	method  string
+	url     string
+	request *http.Request
 	sync.Mutex
 }
 
@@ -75,6 +76,7 @@ func (h *TestHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	h.method = r.Method
 	h.url = r.URL.String()
 	h.body, _ = ioutil.ReadAll(r.Body)
+	h.request = r
 	w.Write([]byte(content))
 }
 
@@ -94,7 +96,7 @@ func (s *S) TestCreateShouldSendTheNameOfTheResourceToTheEndpoint(c *gocheck.C) 
 	v, err := url.ParseQuery(string(h.body))
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(map[string][]string(v), gocheck.DeepEquals, map[string][]string{"name": {"my-redis"}})
-	c.Assert("application/x-www-form-urlencoded", gocheck.DeepEquals, h.Headers.Get("Content-Type"))
+	c.Assert("application/x-www-form-urlencoded", gocheck.DeepEquals, h.request.Header.Get("Content-Type"))
 }
 
 func (s *S) TestCreateShouldReturnErrorIfTheRequestFail(c *gocheck.C) {
