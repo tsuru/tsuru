@@ -82,7 +82,7 @@ func Open(addr, dbname string) (storage *Storage, err error) {
 //
 // Most tsuru packages should probably use this function. Open is intended for
 // use when supporting more than one database.
-func Conn() (storage *Storage, err error) {
+func Conn() (*Storage, error) {
 	url, err := config.GetString("database:url")
 	if err != nil {
 		return nil, fmt.Errorf("configuration error: %s", err)
