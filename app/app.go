@@ -194,40 +194,6 @@ func ForceDestroy(app *App) error {
 	return conn.Apps().Remove(bson.M{"name": app.Name})
 }
 
-// Destroy destroys an app.
-//
-// Destroying an app is a process composed of four steps:
-//
-//       1. Destroy the bucket and S3 credentials (if bucket-support is
-//       enabled).
-//       2. Destroy the app unit using juju
-//       3. Unbind all service instances from the app
-//       4. Remove the app from the database
-func (app *App) Destroy() error {
-	useS3, _ := config.GetBool("bucket-support")
-	if useS3 {
-		err := destroyBucket(app)
-		if err != nil {
-			return err
-		}
-	}
-	if len(app.Units) > 0 {
-		err := Provisioner.Destroy(app)
-		if err != nil {
-			return errors.New("Failed to destroy the app: " + err.Error())
-		}
-		err = app.unbind()
-		if err != nil {
-			return err
-		}
-	}
-	conn, err := db.Conn()
-	if err != nil {
-		return err
-	}
-	return conn.Apps().Remove(bson.M{"name": app.Name})
-}
-
 // AddUnit adds a new unit to the app (or update an existing unit). It just updates
 // the internal list of units, it does not talk to the provisioner. For
 // provisioning a new unit for the app, one should use AddUnits method, which

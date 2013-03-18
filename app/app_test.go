@@ -83,7 +83,7 @@ func (s *S) TestDestroy(c *gocheck.C) {
 	err := CreateApp(&a, 1, []auth.Team{s.team})
 	c.Assert(err, gocheck.IsNil)
 	a.Get()
-	err = a.Destroy()
+	err = ForceDestroy(&a)
 	c.Assert(err, gocheck.IsNil)
 	err = a.Get()
 	c.Assert(err, gocheck.NotNil)
@@ -111,7 +111,7 @@ func (s *S) TestDestroyWithoutBucketSupport(c *gocheck.C) {
 	err := CreateApp(&a, 1, []auth.Team{s.team})
 	c.Assert(err, gocheck.IsNil)
 	a.Get()
-	err = a.Destroy()
+	err = ForceDestroy(&a)
 	c.Assert(err, gocheck.IsNil)
 	err = a.Get()
 	c.Assert(err, gocheck.NotNil)
@@ -134,32 +134,12 @@ func (s *S) TestDestroyWithoutUnits(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	defer s.provisioner.Destroy(&app)
 	app.Get()
-	err = app.Destroy()
+	err = ForceDestroy(&app)
 	c.Assert(err, gocheck.IsNil)
 	msg, err := aqueue().Get(1e6)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(msg.Args, gocheck.DeepEquals, []string{app.Name})
 	msg.Delete()
-}
-
-func (s *S) TestFailingDestroy(c *gocheck.C) {
-	h := testHandler{}
-	ts := s.t.StartGandalfTestServer(&h)
-	defer ts.Close()
-	s.provisioner.PrepareFailure("Destroy", errors.New("will not destroy this app!"))
-	a := App{
-		Name:      "ritual",
-		Framework: "ruby",
-		Units:     []Unit{{Name: "duvido", Machine: 3}},
-	}
-	err := CreateApp(&a, 1, []auth.Team{s.team})
-	c.Assert(err, gocheck.IsNil)
-	a.Get()
-	defer s.conn.Apps().Remove(bson.M{"name": "ritual"})
-	defer s.provisioner.Destroy(&a)
-	err = a.Destroy()
-	c.Assert(err, gocheck.NotNil)
-	c.Assert(err.Error(), gocheck.Equals, "Failed to destroy the app: will not destroy this app!")
 }
 
 func (s *S) TestCreateApp(c *gocheck.C) {
@@ -177,7 +157,7 @@ func (s *S) TestCreateApp(c *gocheck.C) {
 
 	err := CreateApp(&a, 3, []auth.Team{s.team})
 	c.Assert(err, gocheck.IsNil)
-	defer a.Destroy()
+	defer ForceDestroy(&a)
 	err = a.Get()
 	c.Assert(err, gocheck.IsNil)
 	var retrievedApp App
@@ -232,7 +212,7 @@ func (s *S) TestCreateWithoutBucketSupport(c *gocheck.C) {
 	config.Set("host", expectedHost)
 	err := CreateApp(&a, 3, []auth.Team{s.team})
 	c.Assert(err, gocheck.IsNil)
-	defer a.Destroy()
+	defer ForceDestroy(&a)
 	err = a.Get()
 	c.Assert(err, gocheck.IsNil)
 	var retrievedApp App
@@ -275,7 +255,7 @@ func (s *S) TestCantCreateTwoAppsWithTheSameName(c *gocheck.C) {
 	defer s.conn.Apps().Remove(bson.M{"name": "appname"})
 	a := App{Name: "appname"}
 	err = CreateApp(&a, 1, []auth.Team{s.team})
-	defer a.Destroy() // clean mess if test fail
+	defer ForceDestroy(&a) // clean mess if test fail
 	c.Assert(err, gocheck.NotNil)
 	e, ok := err.(*appCreationError)
 	c.Assert(ok, gocheck.Equals, true)
@@ -310,7 +290,7 @@ func (s *S) TestDoesNotSaveTheAppInTheDatabaseIfProvisionerFail(c *gocheck.C) {
 		Units:     []Unit{{Machine: 1}},
 	}
 	err := CreateApp(&a, 1, []auth.Team{s.team})
-	defer a.Destroy() // clean mess if test fail
+	defer ForceDestroy(&a) // clean mess if test fail
 	c.Assert(err, gocheck.NotNil)
 	expected := `Tsuru failed to create the app "theirapp": exit status 1`
 	c.Assert(err.Error(), gocheck.Equals, expected)
@@ -335,7 +315,7 @@ func (s *S) TestDeletesIAMCredentialsAndS3BucketIfProvisionerFail(c *gocheck.C) 
 		Units:     []Unit{{Machine: 1}},
 	}
 	err := CreateApp(&a, 1, []auth.Team{s.team})
-	defer a.Destroy() // clean mess if test fail
+	defer ForceDestroy(&a) // clean mess if test fail
 	c.Assert(err, gocheck.NotNil)
 	iam := getIAMEndpoint()
 	_, err = iam.GetUser("theirapp")
@@ -364,7 +344,7 @@ func (s *S) TestCreateAppCreatesRepositoryInGandalf(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	err = a.Get()
 	c.Assert(err, gocheck.IsNil)
-	defer a.Destroy()
+	defer ForceDestroy(&a)
 	c.Assert(h.url[0], gocheck.Equals, "/repository")
 	c.Assert(h.method[0], gocheck.Equals, "POST")
 	expected := fmt.Sprintf(`{"name":"someapp","users":["%s"],"ispublic":false}`, s.user.Email)

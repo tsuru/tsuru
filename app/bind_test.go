@@ -45,7 +45,7 @@ func (s *S) TestDestroyShouldUnbindAppFromInstance(c *gocheck.C) {
 	err = CreateApp(&a, 1, []auth.Team{s.team})
 	c.Assert(err, gocheck.IsNil)
 	a.Get()
-	err = a.Destroy()
+	err = ForceDestroy(&a)
 	c.Assert(err, gocheck.IsNil)
 	n, err := s.conn.ServiceInstances().Find(bson.M{"apps": bson.M{"$in": []string{a.Name}}}).Count()
 	c.Assert(err, gocheck.IsNil)
