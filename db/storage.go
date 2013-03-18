@@ -134,7 +134,7 @@ func (s *Storage) Teams() *mgo.Collection {
 }
 
 func init() {
-	ticker = time.NewTicker(72 * time.Hour)
+	ticker = time.NewTicker(time.Hour)
 	go retire(ticker)
 }
 
