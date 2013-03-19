@@ -68,6 +68,7 @@ func update(units []provision.Unit) {
 		log.Printf("collector failed to connect to the database: %s", err)
 		return
 	}
+	defer conn.Close()
 	for _, a := range l {
 		a.Ip, _ = app.Provisioner.Addr(a)
 		conn.Apps().Update(bson.M{"name": a.Name}, a)
