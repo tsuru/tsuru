@@ -27,6 +27,7 @@ func (s *Service) Get() error {
 	if err != nil {
 		return err
 	}
+	defer conn.Close()
 	query := bson.M{"_id": s.Name, "status": bson.M{"$ne": "deleted"}}
 	return conn.Services().Find(query).One(&s)
 }
@@ -36,6 +37,7 @@ func (s *Service) Create() error {
 	if err != nil {
 		return err
 	}
+	defer conn.Close()
 	s.Status = "created"
 	return conn.Services().Insert(s)
 }
@@ -45,6 +47,7 @@ func (s *Service) Update() error {
 	if err != nil {
 		return err
 	}
+	defer conn.Close()
 	return conn.Services().Update(bson.M{"_id": s.Name}, s)
 }
 
@@ -53,6 +56,7 @@ func (s *Service) Delete() error {
 	if err != nil {
 		return err
 	}
+	defer conn.Close()
 	s.Status = "deleted"
 	return conn.Services().Update(bson.M{"_id": s.Name}, s)
 }
@@ -122,6 +126,7 @@ func GetServicesByTeamKindAndNoRestriction(teamKind string, u *auth.User) (servi
 	if err != nil {
 		return nil, err
 	}
+	defer conn.Close()
 	teamsNames := auth.GetTeamsNames(teams)
 	q := bson.M{"$or": []bson.M{
 		{teamKind: bson.M{"$in": teamsNames}},
@@ -142,6 +147,7 @@ func GetServicesByOwnerTeams(teamKind string, u *auth.User) (services []Service,
 	if err != nil {
 		return nil, err
 	}
+	defer conn.Close()
 	teamsNames := auth.GetTeamsNames(teams)
 	q := bson.M{teamKind: bson.M{"$in": teamsNames}, "status": bson.M{"$ne": "deleted"}}
 	err = conn.Services().Find(q).All(&services)

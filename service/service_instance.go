@@ -27,6 +27,7 @@ func (si *ServiceInstance) Create() error {
 	if err != nil {
 		return err
 	}
+	defer conn.Close()
 	return conn.ServiceInstances().Insert(si)
 }
 
@@ -35,6 +36,7 @@ func (si *ServiceInstance) Delete() error {
 	if err != nil {
 		return err
 	}
+	defer conn.Close()
 	return conn.ServiceInstances().Remove(bson.M{"name": si.Name})
 }
 
@@ -44,6 +46,7 @@ func (si *ServiceInstance) Service() *Service {
 		log.Printf("Failed to connect to the database: %s", err)
 		return nil
 	}
+	defer conn.Close()
 	var s Service
 	conn.Services().Find(bson.M{"_id": si.ServiceName}).One(&s)
 	return &s
@@ -84,6 +87,7 @@ func (si *ServiceInstance) update() error {
 	if err != nil {
 		return err
 	}
+	defer conn.Close()
 	return conn.ServiceInstances().Update(bson.M{"name": si.Name}, si)
 }
 
@@ -173,6 +177,7 @@ func GetServiceInstancesByServices(services []Service) ([]ServiceInstance, error
 	if err != nil {
 		return nil, err
 	}
+	defer conn.Close()
 	q, _ := genericServiceInstancesFilter(services, []string{})
 	f := bson.M{"name": 1, "service_name": 1}
 	err = conn.ServiceInstances().Find(q).Select(f).All(&instances)
@@ -192,6 +197,7 @@ func GetServiceInstancesByServicesAndTeams(services []Service, u *auth.User) ([]
 	if err != nil {
 		return nil, err
 	}
+	defer conn.Close()
 	q, f := genericServiceInstancesFilter(services, auth.GetTeamsNames(teams))
 	err = conn.ServiceInstances().Find(q).Select(f).All(&instances)
 	return instances, err
