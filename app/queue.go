@@ -69,6 +69,7 @@ func bindUnit(msg *queue.Message) error {
 	if err != nil {
 		return fmt.Errorf("Error handling %q: %s", msg.Action, err)
 	}
+	defer conn.Close()
 	units := getUnits(&a, msg.Args[1:])
 	if len(units) == 0 {
 		msg.Delete()

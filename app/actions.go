@@ -40,6 +40,7 @@ var insertApp = action.Action{
 		if err != nil {
 			return nil, err
 		}
+		defer conn.Close()
 		err = conn.Apps().Insert(app)
 		if err != nil && strings.HasPrefix(err.Error(), "E11000") {
 			return nil, errors.New("there is already an app with this name.")
@@ -53,6 +54,7 @@ var insertApp = action.Action{
 			log.Printf("Could not connect to the database: %s", err)
 			return
 		}
+		defer conn.Close()
 		conn.Apps().Remove(bson.M{"name": app.Name})
 	},
 	MinParams: 1,

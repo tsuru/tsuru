@@ -91,6 +91,7 @@ func (app *App) Get() error {
 	if err != nil {
 		return err
 	}
+	defer conn.Close()
 	return conn.Apps().Find(bson.M{"name": app.Name}).One(app)
 }
 
@@ -143,6 +144,7 @@ func (app *App) unbind() error {
 	if err != nil {
 		return err
 	}
+	defer conn.Close()
 	q := bson.M{"apps": bson.M{"$in": []string{app.Name}}}
 	err = conn.ServiceInstances().Find(q).All(&instances)
 	if err != nil {
@@ -191,6 +193,7 @@ func ForceDestroy(app *App) error {
 	if err != nil {
 		return err
 	}
+	defer conn.Close()
 	return conn.Apps().Remove(bson.M{"name": app.Name})
 }
 
@@ -222,6 +225,7 @@ func (app *App) AddUnits(n uint) error {
 	if err != nil {
 		return err
 	}
+	defer conn.Close()
 	length := len(app.Units)
 	appUnits := make([]Unit, len(units))
 	app.Units = append(app.Units, appUnits...)
@@ -281,6 +285,7 @@ func (app *App) RemoveUnit(id string) error {
 	if err != nil {
 		return err
 	}
+	defer conn.Close()
 	return conn.Apps().Update(
 		bson.M{"name": app.Name},
 		bson.M{"$set": bson.M{"units": app.Units}},
@@ -353,6 +358,7 @@ func (app *App) RemoveUnits(n uint) error {
 	if err != nil {
 		return err
 	}
+	defer conn.Close()
 	app.removeUnits(removed)
 	dbErr := conn.Apps().Update(
 		bson.M{"name": app.Name},
@@ -371,6 +377,7 @@ func (app *App) unbindUnit(unit provision.AppUnit) error {
 	if err != nil {
 		return err
 	}
+	defer conn.Close()
 	var instances []service.ServiceInstance
 	q := bson.M{"apps": bson.M{"$in": []string{app.Name}}}
 	err = conn.ServiceInstances().Find(q).All(&instances)
@@ -445,6 +452,7 @@ func (app *App) GetTeams() []auth.Team {
 		log.Printf("Failed to connect to the database: %s", err)
 		return nil
 	}
+	defer conn.Close()
 	conn.Teams().Find(bson.M{"_id": bson.M{"$in": app.Teams}}).All(&teams)
 	return teams
 }
@@ -716,6 +724,7 @@ func (app *App) setEnvsToApp(envs []bind.EnvVar, publicOnly, useQueue bool) erro
 		if err != nil {
 			return err
 		}
+		defer conn.Close()
 		err = conn.Apps().Update(bson.M{"name": app.Name}, bson.M{"$set": bson.M{"env": app.Env}})
 		if err != nil {
 			return err
@@ -751,6 +760,7 @@ func (app *App) UnsetEnvs(variableNames []string, publicOnly bool) error {
 		if err != nil {
 			return err
 		}
+		defer conn.Close()
 		err = conn.Apps().Update(bson.M{"name": app.Name}, bson.M{"$set": bson.M{"env": app.Env}})
 		if err != nil {
 			return err
@@ -771,6 +781,7 @@ func (app *App) SetCName(cname string) error {
 	if err != nil {
 		return err
 	}
+	defer conn.Close()
 	app.CName = cname
 	return conn.Apps().Update(
 		bson.M{"name": app.Name},
@@ -796,6 +807,7 @@ func (app *App) Log(message, source string) error {
 	if err != nil {
 		return err
 	}
+	defer conn.Close()
 	return conn.Apps().Update(bson.M{"name": app.Name}, bson.M{"$set": bson.M{"logs": app.Logs}})
 }
 
@@ -809,6 +821,7 @@ func List(u *auth.User) ([]App, error) {
 	if err != nil {
 		return nil, err
 	}
+	defer conn.Close()
 	if u.IsAdmin() {
 		if err := conn.Apps().Find(nil).All(&apps); err != nil {
 			return []App{}, err
