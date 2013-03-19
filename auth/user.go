@@ -65,6 +65,7 @@ func GetUserByToken(token string) (*User, error) {
 	if err != nil {
 		return nil, err
 	}
+	defer conn.Close()
 	u := new(User)
 	query := bson.M{"tokens.token": token}
 	err = conn.Users().Find(query).One(&u)
@@ -89,6 +90,7 @@ func (u *User) Create() error {
 	if err != nil {
 		return err
 	}
+	defer conn.Close()
 	u.HashPassword()
 	return conn.Users().Insert(u)
 }
@@ -98,6 +100,7 @@ func (u *User) Update() error {
 	if err != nil {
 		return err
 	}
+	defer conn.Close()
 	return conn.Users().Update(bson.M{"email": u.Email}, u)
 }
 
@@ -110,6 +113,7 @@ func (u *User) Get() error {
 	if err != nil {
 		return err
 	}
+	defer conn.Close()
 	return conn.Users().Find(bson.M{"email": u.Email}).One(&u)
 }
 
@@ -126,6 +130,7 @@ func (u *User) CreateToken() (*Token, error) {
 	if err != nil {
 		return nil, err
 	}
+	defer conn.Close()
 	t, _ := newToken(u)
 	u.Tokens = append(u.Tokens, *t)
 	err = conn.Users().Update(bson.M{"email": u.Email}, u)
@@ -138,6 +143,7 @@ func (u *User) Teams() (teams []Team, err error) {
 	if err != nil {
 		return nil, err
 	}
+	defer conn.Close()
 	err = conn.Teams().Find(bson.M{"users": u.Email}).All(&teams)
 	return
 }
@@ -190,6 +196,7 @@ func (u *User) AllowedApps() ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
+	defer conn.Close()
 	var alwdApps []map[string]string
 	teams, err := u.Teams()
 	if err != nil {
@@ -212,6 +219,7 @@ func (u *User) AllowedAppsByTeam(team string) ([]string, error) {
 	if err != nil {
 		return []string{}, err
 	}
+	defer conn.Close()
 	alwdApps := []map[string]string{}
 	if err := conn.Apps().Find(bson.M{"teams": bson.M{"$in": []string{team}}}).Select(bson.M{"name": 1}).All(&alwdApps); err != nil {
 		return []string{}, err

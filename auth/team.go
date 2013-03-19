@@ -66,6 +66,7 @@ func CheckUserAccess(teamNames []string, u *User) bool {
 		log.Printf("Failed to connect to the database: %s", err)
 		return false
 	}
+	defer conn.Close()
 	conn.Teams().Find(q).All(&teams)
 	var wg sync.WaitGroup
 	found := make(chan bool)
