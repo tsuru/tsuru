@@ -19,9 +19,10 @@ import (
 )
 
 var (
-	conn   = make(map[string]*session) // pool of connections
-	mut    sync.RWMutex                // for pool thread safety
-	ticker *time.Ticker                // for garbage collection
+	conn        = make(map[string]*session) // pool of connections
+	mut         sync.RWMutex                // for pool thread safety
+	ticker      *time.Ticker                // for garbage collection
+	maxIdleTime = 5 * time.Minute           // max idle time for connections
 )
 
 const period time.Duration = 7 * 24 * time.Hour
@@ -42,7 +43,12 @@ func open(addr, dbname string) (*Storage, error) {
 	if err != nil {
 		return nil, err
 	}
-	storage := &Storage{session: sess.Copy(), dbname: dbname}
+	copy := sess.Copy()
+	go func() {
+		time.Sleep(maxIdleTime)
+		copy.Close()
+	}()
+	storage := &Storage{session: copy, dbname: dbname}
 	mut.Lock()
 	conn[addr] = &session{s: sess, used: time.Now()}
 	mut.Unlock()
@@ -70,7 +76,12 @@ func Open(addr, dbname string) (storage *Storage, err error) {
 			session.used = time.Now()
 			conn[addr] = session
 			mut.Unlock()
-			return &Storage{session.s.Copy(), dbname}, nil
+			copy := session.s.Copy()
+			go func() {
+				time.Sleep(maxIdleTime)
+				copy.Close()
+			}()
+			return &Storage{copy, dbname}, nil
 		}
 		return open(addr, dbname)
 	}
