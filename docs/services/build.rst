@@ -94,7 +94,7 @@ Let's create a method for this action:
 Implementing the bind
 ---------------------
 
-In the bind action, tsuru calls your service via POST on /resources/<service_name>/ with the "hostname" that represents the app hostname on body.
+In the bind action, tsuru calls your service via POST on /resources/<service_name>/ with the "app-hostname" that represents the app hostname and the "unit-hostname" that represents the unit hostname on body.
 
 If the app is successfully binded to the instance, you should return 201 as status code with the variables to be exported in the app environment on body with the json format.
 
@@ -115,7 +115,7 @@ Implementing the unbinding
 --------------------------
 
 In the unbind action, tsuru calls your service via DELETE on
-/resources/<service_name>/hostname/<app_hostname>/.
+/resources/<service_name>/hostname/<unit_hostname>/.
 
 If the app is successfully unbinded from the instance you should return 200 as status code.
 
