@@ -135,11 +135,15 @@ func (s *S) TestInstanceAgenstConfigHealerGetEC2(c *gocheck.C) {
 }
 
 func (s *S) TestInstanceAgenstConfigHealerHeal(c *gocheck.C) {
+	server, err := ec2test.NewServer()
+	c.Assert(err, gocheck.IsNil)
+	defer server.Quit()
+	id := server.NewInstances(1, "small", "ami-123", ec2.InstanceState{Code: 16, Name: "running"}, nil)[0]
 	p := JujuProvisioner{}
 	m := machine{
 		AgentState:    "not-started",
 		IpAddress:     "localhost",
-		InstanceId:    "i-00000376",
+		InstanceId:    id,
 		InstanceState: "running",
 	}
 	p.saveBootstrapMachine(m)
@@ -157,6 +161,10 @@ func (s *S) TestInstanceAgenstConfigHealerHeal(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	defer commandmocker.Remove(sshTmpdir)
 	h := instanceAgentsConfigHealer{}
+	auth := aws.Auth{AccessKey: "access", SecretKey: "secret"}
+	region := aws.SAEast
+	region.EC2Endpoint = server.URL()
+	h.e = ec2.New(auth, region)
 	err = h.Heal()
 	c.Assert(err, gocheck.IsNil)
 	sshOutput := []string{
@@ -203,6 +211,30 @@ func (s *S) TestInstanceAgenstConfigHealerHeal(c *gocheck.C) {
 	}
 	c.Assert(commandmocker.Ran(sshTmpdir), gocheck.Equals, true)
 	c.Assert(commandmocker.Parameters(sshTmpdir), gocheck.DeepEquals, sshOutput)
+}
+
+func (s *S) TestInstanceAgenstConfigHealerHealAWSFailure(c *gocheck.C) {
+	p := JujuProvisioner{}
+	m := machine{
+		AgentState:    "not-started",
+		IpAddress:     "localhost",
+		InstanceId:    "i-0800",
+		InstanceState: "running",
+	}
+	p.saveBootstrapMachine(m)
+	defer p.bootstrapCollection().Remove(m)
+	conn, err := db.Conn()
+	c.Assert(err, gocheck.IsNil)
+	a := app.App{
+		Name:  "as_i_rise",
+		Units: []app.Unit{{Name: "as_i_rise/0", State: "down", Ip: "server-1081.novalocal"}},
+	}
+	err = conn.Apps().Insert(&a)
+	c.Assert(err, gocheck.IsNil)
+	defer conn.Apps().Remove(bson.M{"name": "as_i_rise"})
+	h := instanceAgentsConfigHealer{}
+	err = h.Heal()
+	c.Assert(err, gocheck.NotNil)
 }
 
 func (s *S) TestBootstrapPrivateDns(c *gocheck.C) {

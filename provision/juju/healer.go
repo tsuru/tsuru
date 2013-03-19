@@ -191,7 +191,10 @@ func (h instanceAgentsConfigHealer) Heal() error {
 	if err != nil {
 		return err
 	}
-	dns, _ := h.bootstrapPrivateDns()
+	dns, err := h.bootstrapPrivateDns()
+	if err != nil {
+		return err
+	}
 	for _, app := range apps {
 		for _, u := range app.ProvisionUnits() {
 			cmd := exec.Command("ssh", "-o", "StrictHostKeyChecking no", "-q", "-l", "ubuntu", u.GetIp(), "grep", dns, "/etc/init/juju-machine-agent.conf")
