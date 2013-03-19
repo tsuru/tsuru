@@ -42,7 +42,7 @@ func open(addr, dbname string) (*Storage, error) {
 	if err != nil {
 		return nil, err
 	}
-	storage := &Storage{session: sess, dbname: dbname}
+	storage := &Storage{session: sess.Copy(), dbname: dbname}
 	mut.Lock()
 	conn[addr] = &session{s: sess, used: time.Now()}
 	mut.Unlock()

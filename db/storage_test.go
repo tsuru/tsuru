@@ -71,11 +71,13 @@ func (s *S) TestOpenConnectsToTheDatabase(c *gocheck.C) {
 	c.Assert(storage.session.Ping(), gocheck.IsNil)
 }
 
-func (s *S) TestOpenStoresConnectionInThePool(c *gocheck.C) {
+func (s *S) TestOpenStoresConnectionInThePoolAndReturnsACopy(c *gocheck.C) {
 	storage, err := Open("127.0.0.1:27017", "tsuru_storage_test")
 	c.Assert(err, gocheck.IsNil)
 	defer storage.session.Close()
-	c.Assert(storage.session, gocheck.Equals, conn["127.0.0.1:27017"].s)
+	cn, ok := conn["127.0.0.1:27017"]
+	c.Assert(ok, gocheck.Equals, true)
+	c.Assert(storage.session, gocheck.Not(gocheck.Equals), cn.s)
 }
 
 func (s *S) TestOpenCopiesConnection(c *gocheck.C) {
@@ -198,7 +200,7 @@ func (s *S) TestRetire(c *gocheck.C) {
 			c.Errorf("Should panic in ping, but did not!")
 		}
 	}()
-	storage, _ := Open("127.0.0.1:27017", "tsuru_storage_test")
+	Open("127.0.0.1:27017", "tsuru_storage_test")
 	sess := conn["127.0.0.1:27017"]
 	sess.used = sess.used.Add(-1 * 2 * period)
 	conn["127.0.0.1:27017"] = sess
@@ -216,5 +218,5 @@ func (s *S) TestRetire(c *gocheck.C) {
 	wg.Wait()
 	_, ok := conn["127.0.0.1:27017"]
 	c.Check(ok, gocheck.Equals, false)
-	storage.session.Ping()
+	sess.s.Ping()
 }
