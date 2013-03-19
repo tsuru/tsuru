@@ -70,7 +70,7 @@ func Open(addr, dbname string) (storage *Storage, err error) {
 			session.used = time.Now()
 			conn[addr] = session
 			mut.Unlock()
-			return &Storage{session.s, dbname}, nil
+			return &Storage{session.s.Copy(), dbname}, nil
 		}
 		return open(addr, dbname)
 	}

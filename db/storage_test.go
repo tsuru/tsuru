@@ -78,13 +78,13 @@ func (s *S) TestOpenStoresConnectionInThePool(c *gocheck.C) {
 	c.Assert(storage.session, gocheck.Equals, conn["127.0.0.1:27017"].s)
 }
 
-func (s *S) TestOpenReusesConnection(c *gocheck.C) {
+func (s *S) TestOpenCopiesConnection(c *gocheck.C) {
 	storage, err := Open("127.0.0.1:27017", "tsuru_storage_test")
 	c.Assert(err, gocheck.IsNil)
 	defer storage.session.Close()
 	storage2, err := Open("127.0.0.1:27017", "tsuru_storage_test")
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(storage.session, gocheck.Equals, storage2.session)
+	c.Assert(storage.session, gocheck.Not(gocheck.Equals), storage2.session)
 }
 
 func (s *S) TestOpenReconnects(c *gocheck.C) {
