@@ -24,19 +24,19 @@ func (s *S) TestOpenIsThreadSafe(c *gocheck.C) {
 	go func() {
 		st1, err := Open("127.0.0.1:27017", "tsuru_db_race_tests_2")
 		c.Check(err, gocheck.IsNil)
-		c.Check(st1.session, gocheck.Equals, storage.session)
+		c.Check(st1.session.LiveServers(), gocheck.DeepEquals, storage.session.LiveServers())
 		wg.Done()
 	}()
 	go func() {
 		st2, err := Open("127.0.0.1:27017", "tsuru_db_race_tests_3")
 		c.Check(err, gocheck.IsNil)
-		c.Check(st2.session, gocheck.Equals, storage.session)
+		c.Check(st2.session.LiveServers(), gocheck.DeepEquals, storage.session.LiveServers())
 		wg.Done()
 	}()
 	go func() {
 		st3, err := Open("127.0.0.1:27017", "tsuru_db_race_tests_4")
 		c.Check(err, gocheck.IsNil)
-		c.Check(st3.session, gocheck.Equals, storage.session)
+		c.Check(st3.session.LiveServers(), gocheck.DeepEquals, storage.session.LiveServers())
 		wg.Done()
 	}()
 	wg.Wait()
