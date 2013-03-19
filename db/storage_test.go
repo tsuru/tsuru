@@ -103,6 +103,18 @@ func (s *S) TestOpenConnectionRefused(c *gocheck.C) {
 	c.Assert(err, gocheck.NotNil)
 }
 
+func (s *S) TestClose(c *gocheck.C) {
+	defer func() {
+		r := recover()
+		c.Check(r, gocheck.NotNil)
+	}()
+	storage, err := Open("127.0.0.1:27017", "tsuru_storage_test")
+	c.Assert(err, gocheck.IsNil)
+	storage.Close()
+	err = storage.session.Ping()
+	c.Check(err, gocheck.NotNil)
+}
+
 func (s *S) TestConn(c *gocheck.C) {
 	config.Set("database:url", "127.0.0.1:27017")
 	defer config.Unset("database:url")

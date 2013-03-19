@@ -94,6 +94,11 @@ func Conn() (*Storage, error) {
 	return Open(url, dbname)
 }
 
+// Close closes the storage, releasing the connection.
+func (s *Storage) Close() {
+	s.session.Close()
+}
+
 // Collection returns a collection by its name.
 //
 // If the collection does not exist, MongoDB will create it.
