@@ -50,18 +50,37 @@ func (s *S) TestProvisionerProvision(c *gocheck.C) {
 	defer commandmocker.Remove(scpTempDir)
 	var p LocalProvisioner
 	app := testing.NewFakeApp("myapp", "python", 0)
+	defer p.collection().Remove(bson.M{"name": "myapp"})
 	c.Assert(p.Provision(app), gocheck.IsNil)
-	time.Sleep(5 * time.Second)
+	ok := make(chan bool, 1)
+	go func() {
+		for {
+			coll := s.conn.Collection(s.collName)
+			ct, err := coll.Find(bson.M{"name": "myapp", "status": provision.StatusStarted}).Count()
+			if err != nil {
+				c.Fatal(err)
+			}
+			if ct > 0 {
+				ok <- true
+				return
+			}
+			time.Sleep(1e3)
+		}
+	}()
+	select {
+	case <-ok:
+	case <-time.After(10e9):
+		c.Fatal("Timed out waiting for the container to be provisioned (10 seconds)")
+	}
 	c.Assert(commandmocker.Ran(tmpdir), gocheck.Equals, true)
 	expected := "lxc-create -t ubuntu -n myapp -- -S somepath"
 	expected += "lxc-start --daemon -n myapp"
 	expected += "service nginx restart"
 	c.Assert(commandmocker.Output(tmpdir), gocheck.Equals, expected)
 	var unit provision.Unit
-	err = p.collection().Find(bson.M{"name": "myapp"}).One(&unit)
+	err = s.conn.Collection(s.collName).Find(bson.M{"name": "myapp"}).One(&unit)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(unit.Ip, gocheck.Equals, "10.10.10.15")
-	defer p.collection().Remove(bson.M{"name": "myapp"})
 }
 
 func (s *S) TestProvisionerRestart(c *gocheck.C) {
