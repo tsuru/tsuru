@@ -185,6 +185,7 @@ func (h instanceAgentsConfigHealer) Heal() error {
 	if err != nil {
 		return err
 	}
+	defer conn.Close()
 	var apps []app.App
 	err = conn.Apps().Find(nil).All(&apps)
 	if err != nil {
@@ -224,6 +225,7 @@ func (h instanceUnitHealer) Heal() error {
 	if err != nil {
 		return err
 	}
+	defer conn.Close()
 	var apps []app.App
 	err = conn.Apps().Find(nil).All(&apps)
 	if err != nil {
@@ -412,6 +414,7 @@ func (h elbInstanceHealer) getUnhealthyApps() map[string]app.App {
 	if err != nil {
 		return nil
 	}
+	defer conn.Close()
 	var all []app.App
 	apps := make(map[string]app.App)
 	s := map[string]interface{}{"name": 1, "units": 1}
