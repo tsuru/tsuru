@@ -107,7 +107,7 @@ func (si *ServiceInstance) BindApp(app bind.App) error {
 	envs := make(chan map[string]string, len(app.GetUnits())+1)
 	for _, unit := range app.GetUnits() {
 		go func(unit bind.Unit) {
-			vars, _ := si.BindUnit(unit)
+			vars, _ := si.BindUnit(app, unit)
 			envs <- vars
 		}(unit)
 	}
@@ -124,8 +124,8 @@ func (si *ServiceInstance) BindApp(app bind.App) error {
 }
 
 // BindUnit makes the bind between the binder and an unit.
-func (si *ServiceInstance) BindUnit(unit bind.Unit) (map[string]string, error) {
-	return si.Service().ProductionEndpoint().Bind(si, unit)
+func (si *ServiceInstance) BindUnit(app bind.App, unit bind.Unit) (map[string]string, error) {
+	return si.Service().ProductionEndpoint().Bind(si, app, unit)
 }
 
 // UnbindApp makes the unbind between the service instance and an app.

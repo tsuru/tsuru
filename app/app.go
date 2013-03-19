@@ -649,6 +649,11 @@ func (app *App) GetName() string {
 	return app.Name
 }
 
+// GetIp returns the ip of the app.
+func (app *App) GetIp() string {
+	return app.Ip
+}
+
 // GetFramework returns the framework of the app.
 func (app *App) GetFramework() string {
 	return app.Framework

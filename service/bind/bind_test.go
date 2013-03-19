@@ -80,7 +80,7 @@ func (s *S) TestBindUnit(c *gocheck.C) {
 	a, err := createTestApp(s.conn, "painkiller", "", []string{s.team.Name}, []app.Unit{{Ip: "10.10.10.10"}})
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
-	envs, err := instance.BindUnit(a.GetUnits()[0])
+	envs, err := instance.BindUnit(&a, a.GetUnits()[0])
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(called, gocheck.Equals, true)
 	expectedEnvs := map[string]string{

@@ -91,11 +91,12 @@ func (c *Client) Destroy(instance *ServiceInstance) (err error) {
 	return err
 }
 
-func (c *Client) Bind(instance *ServiceInstance, unit bind.Unit) (map[string]string, error) {
+func (c *Client) Bind(instance *ServiceInstance, app bind.App, unit bind.Unit) (map[string]string, error) {
 	log.Print("Attempting to call bind of service instance " + instance.Name + " and unit " + unit.GetIp() + " at " + instance.ServiceName + " api")
 	var resp *http.Response
 	params := map[string][]string{
-		"hostname": {unit.GetIp()},
+		"unit-host": {unit.GetIp()},
+		"app-host":  {app.GetIp()},
 	}
 	resp, err := c.issueRequest("/resources/"+instance.Name, "POST", params)
 	if err == nil && resp.StatusCode < 300 {

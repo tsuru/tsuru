@@ -83,7 +83,7 @@ func bindUnit(msg *queue.Message) error {
 		return err
 	}
 	for _, instance := range instances {
-		_, err = instance.BindUnit(&unit)
+		_, err = instance.BindUnit(&a, &unit)
 		if err != nil {
 			log.Printf("Error binding the unit %s with the service instance %s.", unit.Name, instance.Name)
 		}

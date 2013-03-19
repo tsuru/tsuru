@@ -1596,6 +1596,11 @@ func (s *S) TestGetName(c *gocheck.C) {
 	c.Assert(a.GetName(), gocheck.Equals, a.Name)
 }
 
+func (s *S) TestGetIp(c *gocheck.C) {
+	a := App{Ip: "10.10.10.10"}
+	c.Assert(a.GetIp(), gocheck.Equals, a.Ip)
+}
+
 func (s *S) TestGetFramework(c *gocheck.C) {
 	a := App{Framework: "django"}
 	c.Assert(a.GetFramework(), gocheck.Equals, a.Framework)

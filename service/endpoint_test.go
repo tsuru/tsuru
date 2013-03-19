@@ -30,6 +30,10 @@ type FakeApp struct {
 	name string
 }
 
+func (a *FakeApp) GetIp() string {
+	return a.ip
+}
+
 func (a *FakeApp) GetName() string {
 	return a.name
 }
@@ -143,7 +147,7 @@ func (s *S) TestBindShouldSendAPOSTToTheResourceURL(c *gocheck.C) {
 		ip:   "10.0.10.1",
 	}
 	client := &Client{endpoint: ts.URL}
-	_, err := client.Bind(&instance, a.GetUnits()[0])
+	_, err := client.Bind(&instance, &a, a.GetUnits()[0])
 	h.Lock()
 	defer h.Unlock()
 	c.Assert(err, gocheck.IsNil)
@@ -151,7 +155,8 @@ func (s *S) TestBindShouldSendAPOSTToTheResourceURL(c *gocheck.C) {
 	c.Assert(h.method, gocheck.Equals, "POST")
 	v, err := url.ParseQuery(string(h.body))
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(map[string][]string(v), gocheck.DeepEquals, map[string][]string{"hostname": {"10.0.10.1"}})
+	expected := map[string][]string{"unit-host": {"10.0.10.1"}, "app-host": {"10.0.10.1"}}
+	c.Assert(map[string][]string(v), gocheck.DeepEquals, expected)
 }
 
 func (s *S) TestBindShouldReturnMapWithTheEnvironmentVariable(c *gocheck.C) {
@@ -169,7 +174,7 @@ func (s *S) TestBindShouldReturnMapWithTheEnvironmentVariable(c *gocheck.C) {
 		ip:   "10.0.10.1",
 	}
 	client := &Client{endpoint: ts.URL}
-	env, err := client.Bind(&instance, a.GetUnits()[0])
+	env, err := client.Bind(&instance, &a, a.GetUnits()[0])
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(env, gocheck.DeepEquals, expected)
 }
@@ -183,7 +188,7 @@ func (s *S) TestBindShouldReturnErrorIfTheRequestFail(c *gocheck.C) {
 		ip:   "10.0.10.1",
 	}
 	client := &Client{endpoint: ts.URL}
-	_, err := client.Bind(&instance, a.GetUnits()[0])
+	_, err := client.Bind(&instance, &a, a.GetUnits()[0])
 	c.Assert(err, gocheck.NotNil)
 	c.Assert(err, gocheck.ErrorMatches, "^Failed to bind instance her-redis to the unit 10.0.10.1: Server failed to do its job.$")
 }
@@ -200,7 +205,7 @@ func (s *S) TestBindShouldReturnPreconditionFailedIfServiceAPIReturnPrecondition
 		ip:   "10.0.10.1",
 	}
 	client := &Client{endpoint: ts.URL}
-	_, err := client.Bind(&instance, a.GetUnits()[0])
+	_, err := client.Bind(&instance, &a, a.GetUnits()[0])
 	c.Assert(err, gocheck.NotNil)
 	e, ok := err.(*errors.Http)
 	c.Assert(ok, gocheck.Equals, true)
