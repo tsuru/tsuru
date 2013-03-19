@@ -44,10 +44,10 @@ func open(addr, dbname string) (*Storage, error) {
 		return nil, err
 	}
 	copy := sess.Copy()
-	go func() {
-		time.Sleep(maxIdleTime)
+	go func(t time.Duration) {
+		time.Sleep(t)
 		copy.Close()
-	}()
+	}(maxIdleTime)
 	storage := &Storage{session: copy, dbname: dbname}
 	mut.Lock()
 	conn[addr] = &session{s: sess, used: time.Now()}
