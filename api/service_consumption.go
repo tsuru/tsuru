@@ -72,6 +72,7 @@ func validateInstanceForCreation(s *service.Service, sJson map[string]string, u 
 	if err != nil {
 		return err
 	}
+	defer conn.Close()
 	q := bson.M{"_id": sJson["service_name"], "status": bson.M{"$ne": "deleted"}}
 	err = conn.Services().Find(q).One(s)
 	if err != nil {
@@ -105,6 +106,7 @@ func RemoveServiceInstanceHandler(w http.ResponseWriter, r *http.Request, u *aut
 	if err != nil {
 		return err
 	}
+	defer conn.Close()
 	err = conn.ServiceInstances().Remove(bson.M{"name": name})
 	if err != nil {
 		return err
@@ -138,6 +140,7 @@ func ServiceInstanceStatusHandler(w http.ResponseWriter, r *http.Request, u *aut
 	if err != nil {
 		return err
 	}
+	defer conn.Close()
 	err = conn.ServiceInstances().Find(bson.M{"name": siName}).One(&si)
 	if err != nil {
 		msg := fmt.Sprintf("Service instance does not exists, error: %s", err.Error())
@@ -172,6 +175,7 @@ func ServiceInfoHandler(w http.ResponseWriter, r *http.Request, u *auth.User) er
 	if err != nil {
 		return err
 	}
+	defer conn.Close()
 	teamsNames := auth.GetTeamsNames(teams)
 	q := bson.M{"service_name": serviceName, "teams": bson.M{"$in": teamsNames}}
 	err = conn.ServiceInstances().Find(q).All(&instances)
@@ -218,6 +222,7 @@ func getServiceInstanceOrError(name string, u *auth.User) (service.ServiceInstan
 	if err != nil {
 		return si, err
 	}
+	defer conn.Close()
 	err = conn.ServiceInstances().Find(bson.M{"name": name}).One(&si)
 	if err != nil {
 		return si, &errors.Http{Code: http.StatusNotFound, Message: "Service instance not found"}

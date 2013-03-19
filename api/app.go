@@ -271,6 +271,7 @@ func grantAccessToTeam(appName, teamName string, u *auth.User) error {
 	if err != nil {
 		return err
 	}
+	defer conn.Close()
 	err = conn.Teams().Find(bson.M{"_id": teamName}).One(t)
 	if err != nil {
 		return &errors.Http{Code: http.StatusNotFound, Message: "Team not found"}
@@ -329,6 +330,7 @@ func revokeAccessFromTeam(appName, teamName string, u *auth.User) error {
 	if err != nil {
 		return err
 	}
+	defer conn.Close()
 	err = conn.Teams().Find(bson.M{"_id": teamName}).One(t)
 	if err != nil {
 		return &errors.Http{Code: http.StatusNotFound, Message: "Team not found"}
@@ -514,6 +516,7 @@ func AppLog(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	if err != nil {
 		return err
 	}
+	defer conn.Close()
 	pipe = append(pipe, bson.M{"$match": match})
 	pipe = append(pipe, bson.M{"$project": bson.M{"_id": 0, "logs": 1}})
 	pipe = append(pipe, bson.M{"$sort": bson.M{"logs.date": -1}})
@@ -555,6 +558,7 @@ func getServiceInstace(instanceName, appName string, u *auth.User) (service.Serv
 	if err != nil {
 		return instance, app, err
 	}
+	defer conn.Close()
 	err = conn.ServiceInstances().Find(bson.M{"name": instanceName}).One(&instance)
 	if err != nil {
 		err = &errors.Http{Code: http.StatusNotFound, Message: "Instance not found"}

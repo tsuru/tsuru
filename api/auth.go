@@ -139,6 +139,7 @@ func createTeam(name string, u *auth.User) error {
 	if err != nil {
 		return err
 	}
+	defer conn.Close()
 	team := &auth.Team{Name: name, Users: []string{u.Email}}
 	if err := conn.Teams().Insert(team); err != nil &&
 		strings.Contains(err.Error(), "duplicate key error") {
@@ -178,6 +179,7 @@ func RemoveTeam(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	if err != nil {
 		return err
 	}
+	defer conn.Close()
 	name := r.URL.Query().Get(":name")
 	if n, err := conn.Apps().Find(bson.M{"teams": name}).Count(); err != nil || n > 0 {
 		msg := `This team cannot be removed because it have access to apps.
@@ -224,6 +226,7 @@ func addUserToTeam(email, teamName string, u *auth.User) error {
 	if err != nil {
 		return err
 	}
+	defer conn.Close()
 	team, user := new(auth.Team), new(auth.User)
 	selector := bson.M{"_id": teamName}
 	if err := conn.Teams().Find(selector).One(team); err != nil {
@@ -252,6 +255,7 @@ func addUserToTeamInDatabase(user *auth.User, team *auth.Team) error {
 	if err != nil {
 		return err
 	}
+	defer conn.Close()
 	return conn.Teams().UpdateId(team.Name, team)
 }
 
@@ -278,6 +282,7 @@ func removeUserFromTeam(email, teamName string, u *auth.User) error {
 	if err != nil {
 		return err
 	}
+	defer conn.Close()
 	team := new(auth.Team)
 	err = conn.Teams().FindId(teamName).One(team)
 	if err != nil {
@@ -308,6 +313,7 @@ func removeUserFromTeamInDatabase(u *auth.User, team *auth.Team) error {
 	if err != nil {
 		return err
 	}
+	defer conn.Close()
 	if err = team.RemoveUser(u); err != nil {
 		return &errors.Http{Code: http.StatusNotFound, Message: err.Error()}
 	}
@@ -369,6 +375,7 @@ func addKeyInDatabase(key *auth.Key, u *auth.User) error {
 	if err != nil {
 		return err
 	}
+	defer conn.Close()
 	u.AddKey(*key)
 	return conn.Users().Update(bson.M{"email": u.Email}, u)
 }
@@ -417,6 +424,7 @@ func removeKeyFromDatabase(key *auth.Key, u *auth.User) error {
 	if err != nil {
 		return err
 	}
+	defer conn.Close()
 	u.RemoveKey(*key)
 	return conn.Users().Update(bson.M{"email": u.Email}, u)
 }
@@ -465,6 +473,7 @@ func RemoveUser(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	if err != nil {
 		return err
 	}
+	defer conn.Close()
 	for _, team := range teams {
 		if len(team.Users) < 2 {
 			msg := fmt.Sprintf(`This user is the last member of the team "%s", so it cannot be removed.

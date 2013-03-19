@@ -53,6 +53,7 @@ func CreateHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	if err != nil {
 		return err
 	}
+	defer conn.Close()
 	var teams []auth.Team
 	err = conn.Teams().Find(bson.M{"users": u.Email}).All(&teams)
 	if err != nil {
