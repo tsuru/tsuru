@@ -65,7 +65,7 @@ func (s *ELBSuite) TestGetCollection(c *gocheck.C) {
 	manager := ELBManager{}
 	coll := manager.collection()
 	other := s.conn.Collection(s.cName)
-	c.Assert(coll, gocheck.DeepEquals, other)
+	c.Assert(coll.FullName, gocheck.Equals, other.FullName)
 }
 
 func (s *ELBSuite) TestGetELBClient(c *gocheck.C) {
