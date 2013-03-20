@@ -20,14 +20,15 @@ type Client struct {
 	endpoint string
 }
 
-func (c *Client) buildErrorMessage(err error, resp *http.Response) (msg string) {
+func (c *Client) buildErrorMessage(err error, resp *http.Response) string {
 	if err != nil {
-		msg = err.Error()
-	} else if resp != nil {
-		b, _ := ioutil.ReadAll(resp.Body)
-		msg = string(b)
+		return err.Error()
 	}
-	return
+	if resp != nil {
+		b, _ := ioutil.ReadAll(resp.Body)
+		return string(b)
+	}
+	return ""
 }
 
 func (c *Client) issueRequest(path, method string, params map[string][]string) (*http.Response, error) {
@@ -50,17 +51,17 @@ func (c *Client) issueRequest(path, method string, params map[string][]string) (
 	return http.DefaultClient.Do(req)
 }
 
-func (c *Client) jsonFromResponse(resp *http.Response) (env map[string]string, err error) {
+func (c *Client) jsonFromResponse(resp *http.Response) (map[string]string, error) {
 	log.Print("Parsing response json...")
 	defer resp.Body.Close()
-	var body []byte
-	body, err = ioutil.ReadAll(resp.Body)
+	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		log.Printf("Got error while parsing json: %s", err)
-		return
+		return nil, err
 	}
+	var env map[string]string
 	err = json.Unmarshal(body, &env)
-	return
+	return env, err
 }
 
 func (c *Client) Create(instance *ServiceInstance) error {
@@ -80,13 +81,13 @@ func (c *Client) Create(instance *ServiceInstance) error {
 	return err
 }
 
-func (c *Client) Destroy(instance *ServiceInstance) (err error) {
+func (c *Client) Destroy(instance *ServiceInstance) error {
 	log.Print("Attempting to call destroy of service instance " + instance.Name + " at " + instance.ServiceName + " api")
-	var resp *http.Response
-	if resp, err = c.issueRequest("/resources/"+instance.Name, "DELETE", nil); err == nil && resp.StatusCode > 299 {
+	resp, err := c.issueRequest("/resources/"+instance.Name, "DELETE", nil)
+	if err == nil && resp.StatusCode > 299 {
 		msg := "Failed to destroy the instance " + instance.Name + ": " + c.buildErrorMessage(err, resp)
 		log.Print(msg)
-		err = &errors.Http{Code: http.StatusInternalServerError, Message: msg}
+		return &errors.Http{Code: http.StatusInternalServerError, Message: msg}
 	}
 	return err
 }
@@ -110,16 +111,17 @@ func (c *Client) Bind(instance *ServiceInstance, app bind.App, unit bind.Unit) (
 	return nil, &errors.Http{Code: http.StatusInternalServerError, Message: msg}
 }
 
-func (c *Client) Unbind(instance *ServiceInstance, unit bind.Unit) (err error) {
+func (c *Client) Unbind(instance *ServiceInstance, unit bind.Unit) error {
 	log.Print("Attempting to call unbind of service instance " + instance.Name + " and unit " + unit.GetIp() + " at " + instance.ServiceName + " api")
 	var resp *http.Response
 	url := "/resources/" + instance.Name + "/hostname/" + unit.GetIp()
-	if resp, err = c.issueRequest(url, "DELETE", nil); err == nil && resp.StatusCode > 299 {
+	resp, err := c.issueRequest(url, "DELETE", nil)
+	if err == nil && resp.StatusCode > 299 {
 		msg := "Failed to unbind instance " + instance.Name + " from the unit " + unit.GetIp() + ": " + c.buildErrorMessage(err, resp)
 		log.Print(msg)
-		err = &errors.Http{Code: http.StatusInternalServerError, Message: msg}
+		return &errors.Http{Code: http.StatusInternalServerError, Message: msg}
 	}
-	return
+	return err
 }
 
 // Connects into service's api

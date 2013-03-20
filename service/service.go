@@ -117,7 +117,7 @@ func GetServicesNames(services []Service) []string {
 	return sNames
 }
 
-func GetServicesByTeamKindAndNoRestriction(teamKind string, u *auth.User) (services []Service, err error) {
+func GetServicesByTeamKindAndNoRestriction(teamKind string, u *auth.User) ([]Service, error) {
 	teams, err := u.Teams()
 	if err != nil {
 		return nil, err
@@ -134,11 +134,12 @@ func GetServicesByTeamKindAndNoRestriction(teamKind string, u *auth.User) (servi
 	},
 		"status": bson.M{"$ne": "deleted"},
 	}
+	var services []Service
 	err = conn.Services().Find(q).Select(bson.M{"name": 1}).All(&services)
-	return
+	return services, err
 }
 
-func GetServicesByOwnerTeams(teamKind string, u *auth.User) (services []Service, err error) {
+func GetServicesByOwnerTeams(teamKind string, u *auth.User) ([]Service, error) {
 	teams, err := u.Teams()
 	if err != nil {
 		return nil, err
@@ -150,8 +151,9 @@ func GetServicesByOwnerTeams(teamKind string, u *auth.User) (services []Service,
 	defer conn.Close()
 	teamsNames := auth.GetTeamsNames(teams)
 	q := bson.M{teamKind: bson.M{"$in": teamsNames}, "status": bson.M{"$ne": "deleted"}}
+	var services []Service
 	err = conn.Services().Find(q).All(&services)
-	return
+	return services, err
 }
 
 type ServiceModel struct {
