@@ -12,7 +12,7 @@ Tsuru is an open Platform-as-a-Service (PaaS).
 
 ##Using the PaaS
 
-* [Client install guide](http://docs.tsuru.io/en/latest/apps/client/install.html)
+* [Client install guide](http://docs.tsuru.io/en/latest/install/client.html)
 * [Quickstart](http://docs.tsuru.io/en/latest/apps/quickstart.html)
 * [Client usage](http://docs.tsuru.io/en/latest/apps/client/usage.html)
 
