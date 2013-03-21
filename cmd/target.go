@@ -50,13 +50,16 @@ func readTarget() (string, error) {
 	return "", undefinedTargetError{}
 }
 
-func GetUrl(path string) string {
+func GetUrl(path string) (string, error) {
 	var prefix string
-	target, _ := readTarget()
+	target, err := readTarget()
+	if err != nil {
+		return "", err
+	}
 	if m, _ := regexp.MatchString("^https?://", target); !m {
 		prefix = "http://"
 	}
-	return prefix + target + path
+	return prefix + target + path, nil
 }
 
 func writeTarget(t string) error {

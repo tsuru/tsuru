@@ -132,7 +132,8 @@ func (s *S) TestGetUrl(c *gocheck.C) {
 		fsystem = nil
 	}()
 	expected := "http://localhost/apps"
-	got := GetUrl("/apps")
+	got, err := GetUrl("/apps")
+	c.Assert(err, gocheck.IsNil)
 	c.Assert(got, gocheck.Equals, expected)
 }
 
@@ -143,7 +144,8 @@ func (s *S) TestGetUrlPutsHttpIfItIsNotPresent(c *gocheck.C) {
 		fsystem = nil
 	}()
 	expected := "http://remotehost/apps"
-	got := GetUrl("/apps")
+	got, err := GetUrl("/apps")
+	c.Assert(err, gocheck.IsNil)
 	c.Assert(got, gocheck.Equals, expected)
 }
 
@@ -153,8 +155,22 @@ func (s *S) TestGetUrlShouldNotPrependHttpIfTheTargetIsHttps(c *gocheck.C) {
 	defer func() {
 		fsystem = nil
 	}()
-	got := GetUrl("/apps")
+	got, err := GetUrl("/apps")
+	c.Assert(err, gocheck.IsNil)
 	c.Assert(got, gocheck.Equals, "https://localhost/apps")
+}
+
+func (s *S) TestGetUrlUndefinedTarget(c *gocheck.C) {
+	rfs := &testing.FailureFs{}
+	fsystem = rfs
+	defer func() {
+		fsystem = nil
+	}()
+	got, err := GetUrl("/apps")
+	c.Assert(got, gocheck.Equals, "")
+	c.Assert(err, gocheck.NotNil)
+	_, ok := err.(undefinedTargetError)
+	c.Assert(ok, gocheck.Equals, true)
 }
 
 func (s *S) TestTargetAddInfo(c *gocheck.C) {

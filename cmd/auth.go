@@ -28,6 +28,10 @@ func (c *userCreate) Info() *Info {
 }
 
 func (c *userCreate) Run(context *Context, client Doer) error {
+	url, err := GetUrl("/users")
+	if err != nil {
+		return err
+	}
 	email := context.Args[0]
 	fmt.Fprint(context.Stdout, "Password: ")
 	password, err := passwordFromReader(context.Stdin)
@@ -44,7 +48,7 @@ func (c *userCreate) Run(context *Context, client Doer) error {
 		return errors.New("Passwords didn't match.")
 	}
 	b := bytes.NewBufferString(`{"email":"` + email + `", "password":"` + password + `"}`)
-	request, err := http.NewRequest("POST", GetUrl("/users"), b)
+	request, err := http.NewRequest("POST", url, b)
 	if err != nil {
 		return err
 	}
@@ -66,7 +70,11 @@ func (c *userRemove) Run(context *Context, client Doer) error {
 		fmt.Fprintln(context.Stdout, "Abort.")
 		return nil
 	}
-	request, err := http.NewRequest("DELETE", GetUrl("/users"), nil)
+	url, err := GetUrl("/users")
+	if err != nil {
+		return err
+	}
+	request, err := http.NewRequest("DELETE", url, nil)
 	if err != nil {
 		return err
 	}
@@ -92,6 +100,10 @@ type login struct{}
 
 func (c *login) Run(context *Context, client Doer) error {
 	email := context.Args[0]
+	url, err := GetUrl("/users/" + email + "/tokens")
+	if err != nil {
+		return err
+	}
 	fmt.Fprint(context.Stdout, "Password: ")
 	password, err := passwordFromReader(context.Stdin)
 	if err != nil {
@@ -99,7 +111,7 @@ func (c *login) Run(context *Context, client Doer) error {
 	}
 	fmt.Fprintln(context.Stdout)
 	b := bytes.NewBufferString(`{"password":"` + password + `"}`)
-	request, err := http.NewRequest("POST", GetUrl("/users/"+email+"/tokens"), b)
+	request, err := http.NewRequest("POST", url, b)
 	if err != nil {
 		return err
 	}
@@ -163,7 +175,11 @@ func (c *teamCreate) Info() *Info {
 func (c *teamCreate) Run(context *Context, client Doer) error {
 	team := context.Args[0]
 	b := bytes.NewBufferString(fmt.Sprintf(`{"name":"%s"}`, team))
-	request, err := http.NewRequest("POST", GetUrl("/teams"), b)
+	url, err := GetUrl("/teams")
+	if err != nil {
+		return err
+	}
+	request, err := http.NewRequest("POST", url, b)
 	if err != nil {
 		return err
 	}
@@ -186,7 +202,10 @@ func (c *teamRemove) Run(context *Context, client Doer) error {
 		fmt.Fprintln(context.Stdout, "Abort.")
 		return nil
 	}
-	url := GetUrl(fmt.Sprintf("/teams/%s", team))
+	url, err := GetUrl(fmt.Sprintf("/teams/%s", team))
+	if err != nil {
+		return err
+	}
 	request, err := http.NewRequest("DELETE", url, nil)
 	if err != nil {
 		return err
@@ -221,7 +240,10 @@ func (c *teamUserAdd) Info() *Info {
 
 func (c *teamUserAdd) Run(context *Context, client Doer) error {
 	teamName, userName := context.Args[0], context.Args[1]
-	url := GetUrl(fmt.Sprintf("/teams/%s/%s", teamName, userName))
+	url, err := GetUrl(fmt.Sprintf("/teams/%s/%s", teamName, userName))
+	if err != nil {
+		return err
+	}
 	request, err := http.NewRequest("PUT", url, nil)
 	if err != nil {
 		return err
@@ -247,7 +269,10 @@ func (c *teamUserRemove) Info() *Info {
 
 func (c *teamUserRemove) Run(context *Context, client Doer) error {
 	teamName, userName := context.Args[0], context.Args[1]
-	url := GetUrl(fmt.Sprintf("/teams/%s/%s", teamName, userName))
+	url, err := GetUrl(fmt.Sprintf("/teams/%s/%s", teamName, userName))
+	if err != nil {
+		return err
+	}
 	request, err := http.NewRequest("DELETE", url, nil)
 	if err != nil {
 		return err
@@ -272,7 +297,11 @@ func (c *teamList) Info() *Info {
 }
 
 func (c *teamList) Run(context *Context, client Doer) error {
-	request, err := http.NewRequest("GET", GetUrl("/teams"), nil)
+	url, err := GetUrl("/teams")
+	if err != nil {
+		return err
+	}
+	request, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return err
 	}
@@ -302,6 +331,10 @@ func (c *teamList) Run(context *Context, client Doer) error {
 type changePassword struct{}
 
 func (c *changePassword) Run(context *Context, client Doer) error {
+	url, err := GetUrl("/users/password")
+	if err != nil {
+		return err
+	}
 	var body bytes.Buffer
 	fmt.Fprint(context.Stdout, "Current password: ")
 	old, err := passwordFromReader(context.Stdin)
@@ -330,7 +363,7 @@ func (c *changePassword) Run(context *Context, client Doer) error {
 	if err != nil {
 		return err
 	}
-	request, err := http.NewRequest("PUT", GetUrl("/users/password"), &body)
+	request, err := http.NewRequest("PUT", url, &body)
 	if err != nil {
 		return err
 	}

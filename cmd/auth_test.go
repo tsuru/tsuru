@@ -36,7 +36,11 @@ func (s *S) TestLogin(c *gocheck.C) {
 }
 
 func (s *S) TestLoginShouldNotDependOnTsuruTokenFile(c *gocheck.C) {
-	fsystem = &testing.FailureFs{}
+	rfs := &testing.RecordingFs{}
+	f, _ := rfs.Create(joinWithUserDir(".tsuru_target"))
+	f.Write([]byte("http://localhost"))
+	f.Close()
+	fsystem = rfs
 	defer func() {
 		fsystem = nil
 	}()
@@ -259,7 +263,11 @@ func (s *S) TestTeamListIsACommand(c *gocheck.C) {
 }
 
 func (s *S) TestUserCreateShouldNotDependOnTsuruTokenFile(c *gocheck.C) {
-	fsystem = &testing.FailureFs{}
+	rfs := &testing.RecordingFs{}
+	f, _ := rfs.Create(joinWithUserDir(".tsuru_target"))
+	f.Write([]byte("http://localhost"))
+	f.Close()
+	fsystem = rfs
 	defer func() {
 		fsystem = nil
 	}()
@@ -313,7 +321,7 @@ func (s *S) TestUserCreateInfo(c *gocheck.C) {
 
 func (s *S) TestUserRemove(c *gocheck.C) {
 	rfs := &testing.RecordingFs{}
-	f, _ := rfs.OpenFile(joinWithUserDir(".tsuru_target"), 0, 0644)
+	f, _ := rfs.Create(joinWithUserDir(".tsuru_target"))
 	f.Write([]byte("http://tsuru.io"))
 	f.Close()
 	fsystem = rfs
