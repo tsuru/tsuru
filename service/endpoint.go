@@ -51,17 +51,15 @@ func (c *Client) issueRequest(path, method string, params map[string][]string) (
 	return http.DefaultClient.Do(req)
 }
 
-func (c *Client) jsonFromResponse(resp *http.Response) (map[string]string, error) {
+func (c *Client) jsonFromResponse(resp *http.Response, v interface{}) error {
 	log.Print("Parsing response json...")
 	defer resp.Body.Close()
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		log.Printf("Got error while parsing json: %s", err)
-		return nil, err
+		return err
 	}
-	var env map[string]string
-	err = json.Unmarshal(body, &env)
-	return env, err
+	return json.Unmarshal(body, &v)
 }
 
 func (c *Client) Create(instance *ServiceInstance) error {
@@ -101,7 +99,12 @@ func (c *Client) Bind(instance *ServiceInstance, app bind.App, unit bind.Unit) (
 	}
 	resp, err := c.issueRequest("/resources/"+instance.Name, "POST", params)
 	if err == nil && resp.StatusCode < 300 {
-		return c.jsonFromResponse(resp)
+		var result map[string]string
+		err = c.jsonFromResponse(resp, &result)
+		if err != nil {
+			return nil, err
+		}
+		return result, nil
 	}
 	if resp.StatusCode == http.StatusPreconditionFailed {
 		return nil, &errors.Http{Code: resp.StatusCode, Message: "You cannot bind any app to this service instance because it is not ready yet."}
@@ -151,4 +154,23 @@ func (c *Client) Status(instance *ServiceInstance) (string, error) {
 	log.Print(msg)
 	err = &errors.Http{Code: http.StatusInternalServerError, Message: msg}
 	return "", err
+}
+
+// Info returns the additional info about a service instance.
+// The api should be prepared to receive the request,
+// like below:
+// GET /resources/<name>
+func (c *Client) Info(instance *ServiceInstance) ([]map[string]string, error) {
+	log.Print("Attempting to call info of service instance " + instance.Name + " at " + instance.ServiceName + " api")
+	url := "/resources/" + instance.Name + "/status"
+	resp, err := c.issueRequest(url, "GET", nil)
+	if err != nil || resp.StatusCode != 200 {
+		return nil, err
+	}
+	result := []map[string]string{}
+	err = c.jsonFromResponse(resp, &result)
+	if err != nil {
+		return nil, err
+	}
+	return result, nil
 }

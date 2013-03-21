@@ -60,6 +60,15 @@ func noContentHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
+func notFoundHandler(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotFound)
+}
+
+func infoHandler(w http.ResponseWriter, r *http.Request) {
+	content := `[{"label": "some label", "value": "some value"}, {"label": "label2.0", "value": "v2"}]`
+	w.Write([]byte(content))
+}
+
 func failHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusInternalServerError)
 	w.Write([]byte("Server failed to do its job."))
@@ -301,4 +310,28 @@ func (s *S) TestStatusShouldReturnPendingWhenApiReturns202(c *gocheck.C) {
 	state, err := client.Status(&instance)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(state, gocheck.Equals, "pending")
+}
+
+func (s *S) TestInfo(c *gocheck.C) {
+	ts := httptest.NewServer(http.HandlerFunc(infoHandler))
+	defer ts.Close()
+	instance := ServiceInstance{Name: "my-redis", ServiceName: "redis"}
+	client := &Client{endpoint: ts.URL}
+	result, err := client.Info(&instance)
+	c.Assert(err, gocheck.IsNil)
+	expected := []map[string]string{
+		{"label": "some label", "value": "some value"},
+		{"label": "label2.0", "value": "v2"},
+	}
+	c.Assert(result, gocheck.DeepEquals, expected)
+}
+
+func (s *S) TestInfoNotFound(c *gocheck.C) {
+	ts := httptest.NewServer(http.HandlerFunc(notFoundHandler))
+	defer ts.Close()
+	instance := ServiceInstance{Name: "my-redis", ServiceName: "redis"}
+	client := &Client{endpoint: ts.URL}
+	result, err := client.Info(&instance)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(result, gocheck.IsNil)
 }
