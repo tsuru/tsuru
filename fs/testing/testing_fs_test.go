@@ -207,6 +207,14 @@ func (s *S) TestRecordingFsShouldKeepWrittenContent(c *gocheck.C) {
 	c.Assert(string(buf[:n]), gocheck.Equals, "content the")
 }
 
+func (s *S) TestRecordingFsFailToOpenUnknownFilesWithoutContent(c *gocheck.C) {
+	fs := RecordingFs{}
+	f, err := fs.Open("/my/file")
+	c.Assert(f, gocheck.IsNil)
+	c.Assert(err, gocheck.NotNil)
+	c.Assert(os.IsNotExist(err), gocheck.Equals, true)
+}
+
 func (s *S) TestRecordingFsRemove(c *gocheck.C) {
 	fs := RecordingFs{}
 	err := fs.Remove("/my/file")

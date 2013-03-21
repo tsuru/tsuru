@@ -110,12 +110,17 @@ func (r *RecordingFs) HasAction(action string) bool {
 	return false
 }
 
-func (r *RecordingFs) open(name string) (fs.File, error) {
+func (r *RecordingFs) open(name string, read bool) (fs.File, error) {
 	if r.files == nil {
 		r.files = make(map[string]*FakeFile)
+		if r.FileContent == "" && read {
+			return nil, syscall.ENOENT
+		}
 	} else if f, ok := r.files[name]; ok {
 		f.r = nil
 		return f, nil
+	} else if r.FileContent == "" && read {
+		return nil, syscall.ENOENT
 	}
 	fil := &FakeFile{content: r.FileContent}
 	r.files[name] = fil
@@ -126,7 +131,7 @@ func (r *RecordingFs) open(name string) (fs.File, error) {
 // FakeFile and nil error.
 func (r *RecordingFs) Create(name string) (fs.File, error) {
 	r.actions = append(r.actions, "create "+name)
-	return r.open(name)
+	return r.open(name, false)
 }
 
 // Mkdir records the action "mkdir <name> with mode <perm>" and returns nil.
@@ -146,14 +151,19 @@ func (r *RecordingFs) MkdirAll(path string, perm os.FileMode) error {
 // and nil error.
 func (r *RecordingFs) Open(name string) (fs.File, error) {
 	r.actions = append(r.actions, "open "+name)
-	return r.open(name)
+	return r.open(name, true)
 }
 
 // OpenFile records the action "openfile <name> with mode <perm>" and returns
 // an instance of FakeFile and nil error.
 func (r *RecordingFs) OpenFile(name string, flag int, perm os.FileMode) (fs.File, error) {
 	r.actions = append(r.actions, fmt.Sprintf("openfile %s with mode %#o", name, perm))
-	return r.open(name)
+	read := flag&syscall.O_CREAT != syscall.O_CREAT &&
+		flag&syscall.O_APPEND != syscall.O_APPEND &&
+		flag&syscall.O_RDWR != syscall.O_RDWR &&
+		flag&syscall.O_TRUNC != syscall.O_TRUNC &&
+		flag&syscall.O_WRONLY != syscall.O_WRONLY
+	return r.open(name, read)
 }
 
 func (r *RecordingFs) deleteFile(name string) {
