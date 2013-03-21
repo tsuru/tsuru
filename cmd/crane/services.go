@@ -1,4 +1,4 @@
-// Copyright 2012 tsuru authors. All rights reserved.
+// Copyright 2013 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -28,7 +28,10 @@ func (c *ServiceCreate) Info() *cmd.Info {
 
 func (c *ServiceCreate) Run(context *cmd.Context, client cmd.Doer) error {
 	manifest := context.Args[0]
-	url := cmd.GetUrl("/services")
+	url, err := cmd.GetUrl("/services")
+	if err != nil {
+		return err
+	}
 	b, err := ioutil.ReadFile(manifest)
 	if err != nil {
 		return err
@@ -53,7 +56,10 @@ type ServiceRemove struct{}
 
 func (c *ServiceRemove) Run(context *cmd.Context, client cmd.Doer) error {
 	serviceName := context.Args[0]
-	url := cmd.GetUrl("/services/" + serviceName)
+	url, err := cmd.GetUrl("/services/" + serviceName)
+	if err != nil {
+		return err
+	}
 	request, err := http.NewRequest("DELETE", url, nil)
 	if err != nil {
 		return err
@@ -86,7 +92,10 @@ func (c *ServiceList) Info() *cmd.Info {
 }
 
 func (c *ServiceList) Run(ctx *cmd.Context, client cmd.Doer) error {
-	url := cmd.GetUrl("/services")
+	url, err := cmd.GetUrl("/services")
+	if err != nil {
+		return err
+	}
 	request, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return err
@@ -125,7 +134,11 @@ func (c *ServiceUpdate) Run(ctx *cmd.Context, client cmd.Doer) error {
 	if err != nil {
 		return err
 	}
-	request, err := http.NewRequest("PUT", cmd.GetUrl("/services"), bytes.NewReader(b))
+	url, err := cmd.GetUrl("/services")
+	if err != nil {
+		return err
+	}
+	request, err := http.NewRequest("PUT", url, bytes.NewReader(b))
 	if err != nil {
 		return err
 	}
@@ -152,9 +165,13 @@ func (c *ServiceDocAdd) Info() *cmd.Info {
 
 func (c *ServiceDocAdd) Run(ctx *cmd.Context, client cmd.Doer) error {
 	serviceName := ctx.Args[0]
+	url, err := cmd.GetUrl("/services/" + serviceName + "/doc")
+	if err != nil {
+		return err
+	}
 	docPath := ctx.Args[1]
 	b, err := ioutil.ReadFile(docPath)
-	request, err := http.NewRequest("PUT", cmd.GetUrl("/services/"+serviceName+"/doc"), bytes.NewReader(b))
+	request, err := http.NewRequest("PUT", url, bytes.NewReader(b))
 	if err != nil {
 		return err
 	}
@@ -170,7 +187,11 @@ type ServiceDocGet struct{}
 
 func (c *ServiceDocGet) Run(ctx *cmd.Context, client cmd.Doer) error {
 	serviceName := ctx.Args[0]
-	request, err := http.NewRequest("GET", cmd.GetUrl("/services/"+serviceName+"/doc"), nil)
+	url, err := cmd.GetUrl("/services/" + serviceName + "/doc")
+	if err != nil {
+		return err
+	}
+	request, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return err
 	}
