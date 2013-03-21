@@ -28,11 +28,15 @@ func (c *AppCreate) Run(context *cmd.Context, client cmd.Doer) error {
 	appName := context.Args[0]
 	framework := context.Args[1]
 	b := bytes.NewBufferString(fmt.Sprintf(`{"name":"%s","framework":"%s","units":%d}`, appName, framework, *NumUnits))
-	request, err := http.NewRequest("POST", cmd.GetUrl("/apps"), b)
-	request.Header.Set("Content-Type", "application/json")
+	url, err := cmd.GetUrl("/apps")
 	if err != nil {
 		return err
 	}
+	request, err := http.NewRequest("POST", url, b)
+	if err != nil {
+		return err
+	}
+	request.Header.Set("Content-Type", "application/json")
 	response, err := client.Do(request)
 	if err != nil {
 		return err
@@ -95,7 +99,10 @@ func (c *AppRemove) Run(context *cmd.Context, client cmd.Doer) error {
 			return nil
 		}
 	}
-	url := cmd.GetUrl(fmt.Sprintf("/apps/%s", appName))
+	url, err := cmd.GetUrl(fmt.Sprintf("/apps/%s", appName))
+	if err != nil {
+		return err
+	}
 	request, err := http.NewRequest("DELETE", url, nil)
 	if err != nil {
 		return err
@@ -126,7 +133,10 @@ func (c *UnitAdd) Run(context *cmd.Context, client cmd.Doer) error {
 	if err != nil {
 		return err
 	}
-	url := cmd.GetUrl(fmt.Sprintf("/apps/%s/units", appName))
+	url, err := cmd.GetUrl(fmt.Sprintf("/apps/%s/units", appName))
+	if err != nil {
+		return err
+	}
 	request, err := http.NewRequest("PUT", url, bytes.NewBufferString(context.Args[0]))
 	if err != nil {
 		return err
@@ -157,7 +167,10 @@ func (c *UnitRemove) Run(context *cmd.Context, client cmd.Doer) error {
 	if err != nil {
 		return err
 	}
-	url := cmd.GetUrl(fmt.Sprintf("/apps/%s/units", appName))
+	url, err := cmd.GetUrl(fmt.Sprintf("/apps/%s/units", appName))
+	if err != nil {
+		return err
+	}
 	body := bytes.NewBufferString(context.Args[0])
 	request, err := http.NewRequest("DELETE", url, body)
 	if err != nil {

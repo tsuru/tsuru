@@ -78,7 +78,11 @@ func (c *KeyRemove) Run(context *cmd.Context, client cmd.Doer) error {
 		return c.fileNotFound(context)
 	}
 	b := bytes.NewBufferString(fmt.Sprintf(`{"key":"%s"}`, strings.Replace(key, "\n", "", -1)))
-	request, err := http.NewRequest("DELETE", cmd.GetUrl("/users/keys"), b)
+	url, err := cmd.GetUrl("/users/keys")
+	if err != nil {
+		return err
+	}
+	request, err := http.NewRequest("DELETE", url, b)
 	if err != nil {
 		return err
 	}
@@ -112,7 +116,11 @@ func (c *KeyAdd) Run(context *cmd.Context, client cmd.Doer) error {
 		return c.fileNotFound(context)
 	}
 	b := bytes.NewBufferString(fmt.Sprintf(`{"key":"%s"}`, strings.Replace(key, "\n", "", -1)))
-	request, err := http.NewRequest("POST", cmd.GetUrl("/users/keys"), b)
+	url, err := cmd.GetUrl("/users/keys")
+	if err != nil {
+		return err
+	}
+	request, err := http.NewRequest("POST", url, b)
 	if err != nil {
 		return err
 	}
