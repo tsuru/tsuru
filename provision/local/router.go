@@ -19,7 +19,7 @@ func AddRoute(name, ip string) error {
 	if err != nil {
 		return err
 	}
-	file, _ := filesystem().Open(routesPath + "/" + name)
+	file, _ := filesystem().Create(routesPath + "/" + name)
 	defer file.Close()
 	template := `server {
 	listen 80;
