@@ -80,6 +80,7 @@ func (c *AppLog) Flags() *gnuflag.FlagSet {
 		c.fs = gnuflag.NewFlagSet("log", gnuflag.ContinueOnError)
 		c.fs.Int("lines", 10, "The number of log lines to display")
 		c.fs.String("source", "", "The log from the given source")
+		AddAppFlag(c.fs)
 	}
 	return c.fs
 }

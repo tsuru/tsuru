@@ -150,7 +150,7 @@ func (s *S) TestAppLogWithLinces(c *gocheck.C) {
 func (s *S) TestAppLogFlagSet(c *gocheck.C) {
 	command := AppLog{}
 	flagset := command.Flags()
-	flagset.Parse(true, []string{"--source", "tsuru", "--lines", "12"})
+	flagset.Parse(true, []string{"--source", "tsuru", "--lines", "12", "--app", "ashamed"})
 	source := flagset.Lookup("source")
 	c.Assert(source, gocheck.NotNil)
 	c.Assert(source.Name, gocheck.Equals, "source")
@@ -163,4 +163,10 @@ func (s *S) TestAppLogFlagSet(c *gocheck.C) {
 	c.Assert(lines.Usage, gocheck.Equals, "The number of log lines to display")
 	c.Assert(lines.Value.String(), gocheck.Equals, "12")
 	c.Assert(lines.DefValue, gocheck.Equals, "10")
+	app := flagset.Lookup("app")
+	c.Assert(app, gocheck.NotNil)
+	c.Assert(app.Name, gocheck.Equals, "app")
+	c.Assert(app.Usage, gocheck.Equals, "The name of the app.")
+	c.Assert(app.Value.String(), gocheck.Equals, "ashamed")
+	c.Assert(app.DefValue, gocheck.Equals, "")
 }
