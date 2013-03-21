@@ -89,8 +89,11 @@ func requestEnvUrl(method string, g GuessingCommand, args []string, client cmd.D
 	if err != nil {
 		return "", err
 	}
+	url, err := cmd.GetUrl(fmt.Sprintf("/apps/%s/env", appName))
+	if err != nil {
+		return "", err
+	}
 	varsStr := strings.Join(args, " ")
-	url := cmd.GetUrl(fmt.Sprintf("/apps/%s/env", appName))
 	body := strings.NewReader(varsStr)
 	request, err := http.NewRequest(method, url, body)
 	if err != nil {

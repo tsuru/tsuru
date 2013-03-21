@@ -27,7 +27,11 @@ func (s ServiceList) Info() *cmd.Info {
 }
 
 func (s ServiceList) Run(ctx *cmd.Context, client cmd.Doer) error {
-	req, err := http.NewRequest("GET", cmd.GetUrl("/services/instances"), nil)
+	url, err := cmd.GetUrl("/services/instances")
+	if err != nil {
+		return err
+	}
+	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return err
 	}
@@ -72,12 +76,15 @@ func (sa ServiceAdd) Run(ctx *cmd.Context, client cmd.Doer) error {
 	srvName, instName := ctx.Args[0], ctx.Args[1]
 	fmtBody := fmt.Sprintf(`{"name": "%s", "service_name": "%s"}`, instName, srvName)
 	b := bytes.NewBufferString(fmtBody)
-	url := cmd.GetUrl("/services/instances")
-	request, err := http.NewRequest("POST", url, b)
-	request.Header.Set("Content-Type", "application/json")
+	url, err := cmd.GetUrl("/services/instances")
 	if err != nil {
 		return err
 	}
+	request, err := http.NewRequest("POST", url, b)
+	if err != nil {
+		return err
+	}
+	request.Header.Set("Content-Type", "application/json")
 	_, err = client.Do(request)
 	if err != nil {
 		return err
@@ -96,7 +103,10 @@ func (sb *ServiceBind) Run(ctx *cmd.Context, client cmd.Doer) error {
 		return err
 	}
 	instanceName := ctx.Args[0]
-	url := cmd.GetUrl("/services/instances/" + instanceName + "/" + appName)
+	url, err := cmd.GetUrl("/services/instances/" + instanceName + "/" + appName)
+	if err != nil {
+		return err
+	}
 	request, err := http.NewRequest("PUT", url, nil)
 	if err != nil {
 		return err
@@ -150,7 +160,10 @@ func (su *ServiceUnbind) Run(ctx *cmd.Context, client cmd.Doer) error {
 		return err
 	}
 	instanceName := ctx.Args[0]
-	url := cmd.GetUrl("/services/instances/" + instanceName + "/" + appName)
+	url, err := cmd.GetUrl("/services/instances/" + instanceName + "/" + appName)
+	if err != nil {
+		return err
+	}
 	request, err := http.NewRequest("DELETE", url, nil)
 	if err != nil {
 		return err
@@ -199,7 +212,10 @@ e.g.:
 
 func (c ServiceInstanceStatus) Run(ctx *cmd.Context, client cmd.Doer) error {
 	instName := ctx.Args[0]
-	url := cmd.GetUrl("/services/instances/" + instName + "/status")
+	url, err := cmd.GetUrl("/services/instances/" + instName + "/status")
+	if err != nil {
+		return err
+	}
 	request, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return err
@@ -247,7 +263,10 @@ type ServiceInstanceModel struct {
 
 func (c ServiceInfo) Run(ctx *cmd.Context, client cmd.Doer) error {
 	serviceName := ctx.Args[0]
-	url := cmd.GetUrl("/services/" + serviceName)
+	url, err := cmd.GetUrl("/services/" + serviceName)
+	if err != nil {
+		return err
+	}
 	request, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return err
@@ -293,7 +312,10 @@ func (c ServiceDoc) Info() *cmd.Info {
 func (c ServiceDoc) Run(ctx *cmd.Context, client cmd.Doer) error {
 	sName := ctx.Args[0]
 	url := fmt.Sprintf("/services/c/%s/doc", sName)
-	url = cmd.GetUrl(url)
+	url, err := cmd.GetUrl(url)
+	if err != nil {
+		return err
+	}
 	request, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return err
@@ -325,7 +347,10 @@ func (c ServiceRemove) Info() *cmd.Info {
 func (c ServiceRemove) Run(ctx *cmd.Context, client cmd.Doer) error {
 	name := ctx.Args[0]
 	url := fmt.Sprintf("/services/c/instances/%s", name)
-	url = cmd.GetUrl(url)
+	url, err := cmd.GetUrl(url)
+	if err != nil {
+		return err
+	}
 	request, err := http.NewRequest("DELETE", url, nil)
 	if err != nil {
 		return err

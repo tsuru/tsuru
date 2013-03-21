@@ -39,7 +39,10 @@ func (c *AppInfo) Run(context *cmd.Context, client cmd.Doer) error {
 	if err != nil {
 		return err
 	}
-	url := cmd.GetUrl(fmt.Sprintf("/apps/%s", appName))
+	url, err := cmd.GetUrl(fmt.Sprintf("/apps/%s", appName))
+	if err != nil {
+		return err
+	}
 	request, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return err
@@ -134,7 +137,10 @@ func (c *AppGrant) Run(context *cmd.Context, client cmd.Doer) error {
 		return err
 	}
 	teamName := context.Args[0]
-	url := cmd.GetUrl(fmt.Sprintf("/apps/%s/%s", appName, teamName))
+	url, err := cmd.GetUrl(fmt.Sprintf("/apps/%s/%s", appName, teamName))
+	if err != nil {
+		return err
+	}
 	request, err := http.NewRequest("PUT", url, nil)
 	if err != nil {
 		return err
@@ -168,7 +174,10 @@ func (c *AppRevoke) Run(context *cmd.Context, client cmd.Doer) error {
 		return err
 	}
 	teamName := context.Args[0]
-	url := cmd.GetUrl(fmt.Sprintf("/apps/%s/%s", appName, teamName))
+	url, err := cmd.GetUrl(fmt.Sprintf("/apps/%s/%s", appName, teamName))
+	if err != nil {
+		return err
+	}
 	request, err := http.NewRequest("DELETE", url, nil)
 	if err != nil {
 		return err
@@ -184,7 +193,11 @@ func (c *AppRevoke) Run(context *cmd.Context, client cmd.Doer) error {
 type AppList struct{}
 
 func (c AppList) Run(context *cmd.Context, client cmd.Doer) error {
-	request, err := http.NewRequest("GET", cmd.GetUrl("/apps"), nil)
+	url, err := cmd.GetUrl("/apps")
+	if err != nil {
+		return err
+	}
+	request, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return err
 	}
@@ -243,7 +256,10 @@ func (c *AppRestart) Run(context *cmd.Context, client cmd.Doer) error {
 	if err != nil {
 		return err
 	}
-	url := cmd.GetUrl(fmt.Sprintf("/apps/%s/restart", appName))
+	url, err := cmd.GetUrl(fmt.Sprintf("/apps/%s/restart", appName))
+	if err != nil {
+		return err
+	}
 	request, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return err
@@ -320,7 +336,10 @@ func setCName(v string, g GuessingCommand, client cmd.Doer) error {
 	if err != nil {
 		return err
 	}
-	url := cmd.GetUrl(fmt.Sprintf("/apps/%s", appName))
+	url, err := cmd.GetUrl(fmt.Sprintf("/apps/%s", appName))
+	if err != nil {
+		return err
+	}
 	body := strings.NewReader(fmt.Sprintf(`{"cname": "%s"}`, v))
 	request, err := http.NewRequest("POST", url, body)
 	if err != nil {

@@ -36,7 +36,10 @@ func (c *AppRun) Run(context *cmd.Context, client cmd.Doer) error {
 	if err != nil {
 		return err
 	}
-	url := cmd.GetUrl(fmt.Sprintf("/apps/%s/run", appName))
+	url, err := cmd.GetUrl(fmt.Sprintf("/apps/%s/run", appName))
+	if err != nil {
+		return err
+	}
 	b := strings.NewReader(strings.Join(context.Args, " "))
 	request, err := http.NewRequest("POST", url, b)
 	if err != nil {
