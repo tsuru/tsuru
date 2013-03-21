@@ -9,6 +9,8 @@ import (
 	"github.com/globocom/tsuru/auth"
 	"labix.org/v2/mgo/bson"
 	"launchpad.net/gocheck"
+	"net/http"
+	"net/http/httptest"
 )
 
 func (s *S) createServiceInstance() {
@@ -256,4 +258,23 @@ func (s *S) TestGetServiceInstancesByServicesAndTeamsForUsersThatAreNotMembersOf
 	instances, err := GetServiceInstancesByServicesAndTeams([]Service{srvc}, &u)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(instances, gocheck.IsNil)
+}
+
+func (s *S) TestServiceInfo(c *gocheck.C) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(`[{"label": "key", "value": "value"}, {"label": "key2", "value": "value2"}]`))
+	}))
+	defer ts.Close()
+	srvc := Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}}
+	err := srvc.Create()
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Services().Remove(bson.M{"_id": "mysql"})
+	si := ServiceInstance{Name: "ql", ServiceName: srvc.Name}
+	info, err := si.Info()
+	c.Assert(err, gocheck.IsNil)
+	expected := map[string]string{
+		"key":  "value",
+		"key2": "value2",
+	}
+	c.Assert(info, gocheck.DeepEquals, expected)
 }

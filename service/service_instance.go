@@ -22,6 +22,18 @@ type ServiceInstance struct {
 	Teams       []string
 }
 
+func (si *ServiceInstance) Info() (map[string]string, error) {
+	result, err := si.Service().ProductionEndpoint().Info(si)
+	if err != nil {
+		return nil, err
+	}
+	info := map[string]string{}
+	for _, d := range result {
+		info[d["label"]] = d["value"]
+	}
+	return info, nil
+}
+
 func (si *ServiceInstance) Create() error {
 	conn, err := db.Conn()
 	if err != nil {
