@@ -272,3 +272,11 @@ func (t *targetSet) Run(ctx *Context, client Doer) error {
 	}
 	return nil
 }
+
+type undefinedTargetError struct{}
+
+func (t undefinedTargetError) Error() string {
+	return `No target defined. Please use target-add/target-set to define a target.
+
+For more details, please run "tsuru help target".`
+}

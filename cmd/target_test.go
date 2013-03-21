@@ -363,3 +363,11 @@ func (s *S) TestTargetSetRunUnknowTarget(c *gocheck.C) {
 	err := targetSet.Run(context, nil)
 	c.Assert(err, gocheck.ErrorMatches, "Target not found")
 }
+
+func (s *S) TestUndefinedTarget(c *gocheck.C) {
+	expectedMsg := `No target defined. Please use target-add/target-set to define a target.
+
+For more details, please run "tsuru help target".`
+	var e error = undefinedTargetError{}
+	c.Assert(e.Error(), gocheck.Equals, expectedMsg)
+}
