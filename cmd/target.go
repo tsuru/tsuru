@@ -227,9 +227,16 @@ func (t *targetRemove) Run(ctx *Context, client Doer) error {
 	if err != nil {
 		return err
 	}
-	for label := range targets {
+	var turl string
+	for label, url := range targets {
 		if label == targetLabelToRemove {
+			turl = url
 			delete(targets, label)
+		}
+	}
+	if turl != "" {
+		if current, err := readTarget(); err == nil && current == turl {
+			deleteTargetFile()
 		}
 	}
 	err = resetTargetList()

@@ -330,6 +330,9 @@ func (s *S) TestTargetRemoveInfo(c *gocheck.C) {
 
 func (s *S) TestTargetRemove(c *gocheck.C) {
 	rfs := &testing.RecordingFs{FileContent: "first\thttp://tsuru.io/\ndefault\thttp://tsuru.google.com"}
+	f, _ := rfs.Create(joinWithUserDir(".tsuru_target"))
+	f.Write([]byte("http://tsuru.google.com"))
+	f.Close()
 	fsystem = rfs
 	defer func() {
 		fsystem = nil
@@ -355,6 +358,26 @@ func (s *S) TestTargetRemove(c *gocheck.C) {
 	c.Assert(hasKey, gocheck.Equals, true)
 	_, hasKey = got["first"]
 	c.Assert(hasKey, gocheck.Equals, false)
+}
+
+func (s *S) TestTargetRemoveCurrentTarget(c *gocheck.C) {
+	rfs := &testing.RecordingFs{}
+	f, _ := rfs.Create(joinWithUserDir(".tsuru_targets"))
+	f.Write([]byte("first\thttp://tsuru.io/\ndefault\thttp://tsuru.google.com"))
+	f.Close()
+	f, _ = rfs.Create(joinWithUserDir(".tsuru_target"))
+	f.Write([]byte("http://tsuru.google.com"))
+	f.Close()
+	fsystem = rfs
+	defer func() {
+		fsystem = nil
+	}()
+	targetRemove := &targetRemove{}
+	context := &Context{[]string{"default"}, manager.stdout, manager.stderr, manager.stdin}
+	err := targetRemove.Run(context, nil)
+	c.Assert(err, gocheck.IsNil)
+	_, err = readTarget()
+	c.Assert(err, gocheck.NotNil)
 }
 
 func (s *S) TestTargetSetInfo(c *gocheck.C) {
