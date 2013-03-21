@@ -41,7 +41,7 @@ func (s *S) TestAppLogWithoutTheFlag(c *gocheck.C) {
 		Stderr: &stderr,
 	}
 	fake := &FakeGuesser{name: "hitthelights"}
-	command := AppLog{GuessingCommand{G: fake}}
+	command := AppLog{GuessingCommand: GuessingCommand{G: fake}}
 	trans := &conditionalTransport{
 		transport{
 			msg:    result,
@@ -96,7 +96,7 @@ func (s *S) TestAppLogBySource(c *gocheck.C) {
 		Stderr: &stderr,
 	}
 	fake := &FakeGuesser{name: "hitthelights"}
-	command := AppLog{GuessingCommand{G: fake}}
+	command := AppLog{GuessingCommand: GuessingCommand{G: fake}}
 	trans := &conditionalTransport{
 		transport{
 			msg:    result,
@@ -112,4 +112,22 @@ func (s *S) TestAppLogBySource(c *gocheck.C) {
 	got := stdout.String()
 	got = strings.Replace(got, "-0300 -0300", "-0300 BRT", -1)
 	c.Assert(got, gocheck.Equals, expected)
+}
+
+func (s *S) TestAppLogFlagSet(c *gocheck.C) {
+	command := AppLog{}
+	flagset := command.Flags()
+	flagset.Parse(true, []string{"--source", "tsuru", "--lines", "12"})
+	source := flagset.Lookup("source")
+	c.Assert(source, gocheck.NotNil)
+	c.Assert(source.Name, gocheck.Equals, "source")
+	c.Assert(source.Usage, gocheck.Equals, "The log from the given source")
+	c.Assert(source.Value.String(), gocheck.Equals, "tsuru")
+	c.Assert(source.DefValue, gocheck.Equals, "")
+	lines := flagset.Lookup("lines")
+	c.Assert(lines, gocheck.NotNil)
+	c.Assert(lines.Name, gocheck.Equals, "lines")
+	c.Assert(lines.Usage, gocheck.Equals, "The number of log lines to display")
+	c.Assert(lines.Value.String(), gocheck.Equals, "12")
+	c.Assert(lines.DefValue, gocheck.Equals, "10")
 }

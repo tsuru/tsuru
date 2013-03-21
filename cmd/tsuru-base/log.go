@@ -9,12 +9,14 @@ import (
 	"fmt"
 	"github.com/globocom/tsuru/cmd"
 	"io/ioutil"
+	"launchpad.net/gnuflag"
 	"net/http"
 	"time"
 )
 
 type AppLog struct {
 	GuessingCommand
+	fs *gnuflag.FlagSet
 }
 
 func (c *AppLog) Info() *cmd.Info {
@@ -71,4 +73,13 @@ func (c *AppLog) Run(context *cmd.Context, client cmd.Doer) error {
 		context.Stdout.Write([]byte(msg))
 	}
 	return err
+}
+
+func (c *AppLog) Flags() *gnuflag.FlagSet {
+	if c.fs == nil {
+		c.fs = gnuflag.NewFlagSet("log", gnuflag.ContinueOnError)
+		c.fs.Int("lines", 10, "The number of log lines to display")
+		c.fs.String("source", "", "The log from the given source")
+	}
+	return c.fs
 }
