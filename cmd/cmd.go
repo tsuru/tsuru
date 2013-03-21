@@ -96,7 +96,7 @@ func (m *Manager) Run(args []string) {
 		flagset := flagged.Flags()
 		err := flagset.Parse(true, args)
 		if err != nil {
-			fmt.Fprintf(m.stderr, "Error: failed to parse flags %s", err)
+			fmt.Fprint(m.stderr, err)
 			m.finisher().Exit(1)
 			return
 		}
