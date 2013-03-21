@@ -39,8 +39,6 @@ func (t *target) Run(ctx *Context, client Doer) error {
 	return nil
 }
 
-const DefaultTarget = "http://tsuru.plataformas.glb.com:8080"
-
 func readTarget() string {
 	targetPath := joinWithUserDir(".tsuru_target")
 	if f, err := filesystem().Open(targetPath); err == nil {
@@ -49,7 +47,7 @@ func readTarget() string {
 			return strings.TrimSpace(string(b))
 		}
 	}
-	return DefaultTarget
+	return ""
 }
 
 func GetUrl(path string) string {

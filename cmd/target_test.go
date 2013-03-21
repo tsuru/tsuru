@@ -21,10 +21,6 @@ func readRecordedTarget(fs *testing.RecordingFs) string {
 	return string(b)
 }
 
-func (s *S) TestDefaultTarget(c *gocheck.C) {
-	c.Assert(DefaultTarget, gocheck.Equals, "http://tsuru.plataformas.glb.com:8080")
-}
-
 func (s *S) TestWriteTarget(c *gocheck.C) {
 	rfs := &testing.RecordingFs{}
 	fsystem = rfs
@@ -71,13 +67,13 @@ func (s *S) TestReadTarget(c *gocheck.C) {
 	c.Assert(target, gocheck.Equals, "http://tsuru.google.com")
 }
 
-func (s *S) TestReadTargetReturnsDefaultTargetIfTheFileDoesNotExist(c *gocheck.C) {
+func (s *S) TestReadTargetReturnsEmptyStringIfTheFileDoesNotExist(c *gocheck.C) {
 	fsystem = &testing.FailureFs{}
 	defer func() {
 		fsystem = nil
 	}()
 	target := readTarget()
-	c.Assert(target, gocheck.Equals, DefaultTarget)
+	c.Assert(target, gocheck.Equals, "")
 }
 
 func (s *S) TestReadTargetTrimsFileContent(c *gocheck.C) {
@@ -126,22 +122,22 @@ func (s *S) TestTargetWithoutArgument(c *gocheck.C) {
 }
 
 func (s *S) TestGetUrl(c *gocheck.C) {
-	fsystem = &testing.FailureFs{}
+	fsystem = &testing.RecordingFs{FileContent: "http://localhost"}
 	defer func() {
 		fsystem = nil
 	}()
-	expected := DefaultTarget + "/apps"
+	expected := "http://localhost/apps"
 	got := GetUrl("/apps")
 	c.Assert(got, gocheck.Equals, expected)
 }
 
 func (s *S) TestGetUrlPutsHttpIfItIsNotPresent(c *gocheck.C) {
-	rfs := &testing.RecordingFs{FileContent: "localhost"}
+	rfs := &testing.RecordingFs{FileContent: "remotehost"}
 	fsystem = rfs
 	defer func() {
 		fsystem = nil
 	}()
-	expected := "http://localhost/apps"
+	expected := "http://remotehost/apps"
 	got := GetUrl("/apps")
 	c.Assert(got, gocheck.Equals, expected)
 }
