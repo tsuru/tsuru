@@ -163,7 +163,11 @@ func (r *RecordingFs) OpenFile(name string, flag int, perm os.FileMode) (fs.File
 		flag&syscall.O_RDWR != syscall.O_RDWR &&
 		flag&syscall.O_TRUNC != syscall.O_TRUNC &&
 		flag&syscall.O_WRONLY != syscall.O_WRONLY
-	return r.open(name, read)
+	f, err := r.open(name, read)
+	if flag&syscall.O_TRUNC == syscall.O_TRUNC {
+		f.Truncate(0)
+	}
+	return f, err
 }
 
 func (r *RecordingFs) deleteFile(name string) {

@@ -172,6 +172,15 @@ func (s *S) TestRecordingFsOpenFile(c *gocheck.C) {
 	c.Assert(f.(*FakeFile).content, gocheck.Equals, fs.FileContent)
 }
 
+func (s *S) TestRecordingFsOpenFileTruncate(c *gocheck.C) {
+	fs := RecordingFs{FileContent: "the content"}
+	f, err := fs.OpenFile("/my/file", syscall.O_TRUNC, 0600)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(fs.HasAction("openfile /my/file with mode 0600"), gocheck.Equals, true)
+	c.Assert(f, gocheck.FitsTypeOf, &FakeFile{})
+	c.Assert(f.(*FakeFile).content, gocheck.Equals, "")
+}
+
 func (s *S) TestRecordingFsKeepFileInstances(c *gocheck.C) {
 	fs := RecordingFs{FileContent: "the content"}
 	f, err := fs.Create("/my/file")
