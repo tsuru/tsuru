@@ -17,6 +17,10 @@ import (
 
 var AppName = gnuflag.String("app", "", "App name for running app related commands.")
 
+func AddAppFlag(fs *gnuflag.FlagSet) {
+	fs.String("app", "", "The name of the app.")
+}
+
 type AppInfo struct {
 	GuessingCommand
 }
