@@ -90,6 +90,17 @@ func (s *S) TestReadTargetTrimsFileContent(c *gocheck.C) {
 	c.Assert(target, gocheck.Equals, "http://tsuru.io")
 }
 
+func (s *S) TestDeleteTargetFile(c *gocheck.C) {
+	rfs := &testing.RecordingFs{FileContent: "   http://tsuru.io\n\n"}
+	fsystem = rfs
+	defer func() {
+		fsystem = nil
+	}()
+	deleteTargetFile()
+	targetFile := joinWithUserDir(".tsuru_target")
+	c.Assert(rfs.HasAction("remove "+targetFile), gocheck.Equals, true)
+}
+
 func (s *S) TestTargetInfo(c *gocheck.C) {
 	desc := `Retrieve current target (tsuru server)
 

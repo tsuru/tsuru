@@ -50,6 +50,10 @@ func readTarget() (string, error) {
 	return "", undefinedTargetError{}
 }
 
+func deleteTargetFile() {
+	filesystem().Remove(joinWithUserDir(".tsuru_target"))
+}
+
 func GetUrl(path string) (string, error) {
 	var prefix string
 	target, err := readTarget()
