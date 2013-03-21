@@ -79,7 +79,7 @@ func (s *S) SetUpSuite(c *gocheck.C) {
 	s.conn, err = db.Conn()
 	c.Assert(err, gocheck.IsNil)
 	s.rfs = &ftesting.RecordingFs{}
-	file, err := s.rfs.Open("/dev/urandom")
+	file, err := s.rfs.Create("/dev/urandom")
 	c.Assert(err, gocheck.IsNil)
 	file.Write([]byte{16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31})
 	fsystem = s.rfs
