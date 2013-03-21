@@ -12,10 +12,33 @@ import (
 	"launchpad.net/gocheck"
 	"net/http"
 	"os"
+	"os/exec"
 	"testing"
 )
 
-type S struct{}
+type S struct {
+	recover []string
+}
+
+func (s *S) SetUpSuite(c *gocheck.C) {
+	targetFile := os.Getenv("HOME") + "/.tsuru_target"
+	_, err := os.Stat(targetFile)
+	if err == nil {
+		old := targetFile + ".old"
+		s.recover = []string{"mv", old, targetFile}
+		exec.Command("mv", targetFile, old)
+	} else {
+		s.recover = []string{"rm", targetFile}
+	}
+	f, err := os.Create(targetFile)
+	c.Assert(err, gocheck.IsNil)
+	f.Write([]byte("http://localhost"))
+	f.Close()
+}
+
+func (s *S) TearDownSuite(c *gocheck.C) {
+	exec.Command(s.recover[0], s.recover[1:]...).Run()
+}
 
 type transport struct {
 	msg    string
