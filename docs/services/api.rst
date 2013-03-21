@@ -157,3 +157,28 @@ Your API should return the following HTTP response code, with the respective res
     * 202: the instance is still being provisioned (pending). You don't need to include any content in the response body.
     * 204: the instance is running and ready for connections (running). You don't need to include any content in the response body.
     * 500: the instance is not running, nor ready for connections. Make sure you include the reason why the instance is not running.
+
+Additional info about an instance
+=================================
+
+You can add additional info about instances of your service. To do it it's needed to implement the resource below:
+
+.. highlight:: text
+
+::
+
+    GET /resources/mysql_instance HTTP/1.0
+
+Your API should return the following HTTP response code, with the respective body:
+
+    * 404: when your api doesn't have extra info about the service instance. You don't need to include any content in the response body.
+    * 200: when your app has an extra info about the service instance. The response body must be a JSON containing a list of fields. A field is composed by two key/value's `label` and `value`:
+
+.. highlight:: text
+
+::
+
+    HTTP/1.1 200 OK
+    Content-Type: application/json; charset=UTF-8
+
+    [{"label": "my label", "value": "my value"}, {"label": "myLabel2.0", "value": "my value 2.0"}]
