@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"github.com/globocom/tsuru/fs"
 	"io"
+	"launchpad.net/gnuflag"
 	"net/http"
 	"os"
 	"regexp"
@@ -91,6 +92,16 @@ func (m *Manager) Run(args []string) {
 	}
 	args = args[1:]
 	info := command.Info()
+	if flagged, ok := command.(FlaggedCommand); ok {
+		flagset := flagged.Flags()
+		err := flagset.Parse(true, args)
+		if err != nil {
+			fmt.Fprintf(m.stderr, "Error: failed to parse flags %s", err)
+			m.finisher().Exit(1)
+			return
+		}
+		args = flagset.Args()
+	}
 	if len(args) < info.MinArgs && name != "help" {
 		m.wrong = true
 		m.original = info.Name
@@ -126,6 +137,11 @@ func (m *Manager) finisher() exiter {
 type Command interface {
 	Info() *Info
 	Run(context *Context, client Doer) error
+}
+
+type FlaggedCommand interface {
+	Command
+	Flags() *gnuflag.FlagSet
 }
 
 type Context struct {

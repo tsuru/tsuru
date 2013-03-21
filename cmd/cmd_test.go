@@ -10,6 +10,7 @@ import (
 	"github.com/globocom/tsuru/fs"
 	"github.com/globocom/tsuru/fs/testing"
 	"io"
+	"launchpad.net/gnuflag"
 	"launchpad.net/gocheck"
 	"os"
 )
@@ -51,6 +52,30 @@ func (c *ErrorCommand) Run(context *Context, client Doer) error {
 	return errors.New(c.msg)
 }
 
+type CommandWithFlags struct {
+	fs      *gnuflag.FlagSet
+	age     int
+	minArgs int
+	args    []string
+}
+
+func (c *CommandWithFlags) Info() *Info {
+	return &Info{Name: "with-flags", MinArgs: c.minArgs}
+}
+
+func (c *CommandWithFlags) Run(context *Context, client Doer) error {
+	c.args = context.Args
+	return nil
+}
+
+func (c *CommandWithFlags) Flags() *gnuflag.FlagSet {
+	if c.fs == nil {
+		c.fs = gnuflag.NewFlagSet("with-flags", gnuflag.ContinueOnError)
+		c.fs.IntVar(&c.age, "age", 0, "your age")
+	}
+	return c.fs
+}
+
 func (s *S) TestRegister(c *gocheck.C) {
 	manager.Register(&TestCommand{})
 	badCall := func() { manager.Register(&TestCommand{}) }
@@ -73,6 +98,35 @@ func (s *S) TestManagerRunShouldAppendNewLineOnErrorWhenItsNotPresent(c *gocheck
 	manager.Register(&ErrorCommand{msg: "You are wrong"})
 	manager.Run([]string{"error"})
 	c.Assert(manager.stderr.(*bytes.Buffer).String(), gocheck.Equals, "Error: You are wrong\n")
+}
+
+func (s *S) TestManagerRunWithFlags(c *gocheck.C) {
+	cmd := &CommandWithFlags{}
+	manager.Register(cmd)
+	manager.Run([]string{"with-flags", "--age", "10"})
+	c.Assert(cmd.fs.Parsed(), gocheck.Equals, true)
+	c.Assert(cmd.age, gocheck.Equals, 10)
+}
+
+func (s *S) TestManagerRunWithFlagsAndArgs(c *gocheck.C) {
+	cmd := &CommandWithFlags{minArgs: 2}
+	manager.Register(cmd)
+	manager.Run([]string{"with-flags", "something", "--age", "20", "otherthing"})
+	c.Assert(cmd.args, gocheck.DeepEquals, []string{"something", "otherthing"})
+}
+
+func (s *S) TestManagerRunWithInvalidValueForFlag(c *gocheck.C) {
+	var exiter recordingExiter
+	old := manager.e
+	manager.e = &exiter
+	defer func() {
+		manager.e = old
+	}()
+	cmd := &CommandWithFlags{}
+	manager.Register(cmd)
+	manager.Run([]string{"with-flags", "--age", "tsuru"})
+	c.Assert(cmd.fs.Parsed(), gocheck.Equals, true)
+	c.Assert(exiter.value(), gocheck.Equals, 1)
 }
 
 func (s *S) TestRun(c *gocheck.C) {
