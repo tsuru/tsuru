@@ -41,12 +41,12 @@ func (c *AppLog) Run(context *cmd.Context, client cmd.Doer) error {
 	if err != nil {
 		return err
 	}
-	url, err := cmd.GetUrl(fmt.Sprintf("/apps/%s/log?lines=%d", appName, *LogLines))
+	url, err := cmd.GetUrl(fmt.Sprintf("/apps/%s/log?lines=%s", appName, c.fs.Lookup("lines").Value.String()))
 	if err != nil {
 		return err
 	}
-	if LogSource != nil && *LogSource != "" {
-		url = fmt.Sprintf("%s&source=%s", url, *LogSource)
+	if source := c.fs.Lookup("source").Value.String(); source != "" {
+		url = fmt.Sprintf("%s&source=%s", url, source)
 	}
 	request, err := http.NewRequest("GET", url, nil)
 	if err != nil {

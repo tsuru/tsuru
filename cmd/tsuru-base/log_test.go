@@ -24,6 +24,7 @@ func (s *S) TestAppLog(c *gocheck.C) {
 	}
 	command := AppLog{}
 	client := cmd.NewClient(&http.Client{Transport: &transport{msg: result, status: http.StatusOK}}, nil, manager)
+	command.Flags().Parse(true, nil)
 	err := command.Run(&context, client)
 	c.Assert(err, gocheck.IsNil)
 	got := stdout.String()
@@ -42,13 +43,15 @@ func (s *S) TestAppLogWithoutTheFlag(c *gocheck.C) {
 	}
 	fake := &FakeGuesser{name: "hitthelights"}
 	command := AppLog{GuessingCommand: GuessingCommand{G: fake}}
+	command.Flags().Parse(true, nil)
 	trans := &conditionalTransport{
 		transport{
 			msg:    result,
 			status: http.StatusOK,
 		},
 		func(req *http.Request) bool {
-			return req.URL.Path == "/apps/hitthelights/log" && req.Method == "GET"
+			return req.URL.Path == "/apps/hitthelights/log" && req.Method == "GET" &&
+				req.URL.Query().Get("lines") == "10"
 		},
 	}
 	client := cmd.NewClient(&http.Client{Transport: trans}, nil, manager)
@@ -68,6 +71,7 @@ func (s *S) TestAppLogShouldReturnNilIfHasNoContent(c *gocheck.C) {
 	}
 	command := AppLog{}
 	client := cmd.NewClient(&http.Client{Transport: &transport{msg: "", status: http.StatusNoContent}}, nil, manager)
+	command.Flags().Parse(true, nil)
 	err := command.Run(&context, client)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(stdout.String(), gocheck.Equals, "")
@@ -86,7 +90,6 @@ If you don't provide the app name, tsuru will try to guess it. The default numbe
 }
 
 func (s *S) TestAppLogBySource(c *gocheck.C) {
-	*LogSource = "mysource"
 	var stdout, stderr bytes.Buffer
 	result := `[{"Source":"tsuru","Date":"2012-06-20T11:17:22.75-03:00","Message":"creating app lost"},{"Source":"tsuru","Date":"2012-06-20T11:17:22.753-03:00","Message":"app lost successfully created"}]`
 	expected := cmd.Colorfy("2012-06-20 11:17:22 [tsuru]:", "blue", "", "") + " creating app lost\n"
@@ -97,6 +100,7 @@ func (s *S) TestAppLogBySource(c *gocheck.C) {
 	}
 	fake := &FakeGuesser{name: "hitthelights"}
 	command := AppLog{GuessingCommand: GuessingCommand{G: fake}}
+	command.Flags().Parse(true, []string{"--source", "mysource"})
 	trans := &conditionalTransport{
 		transport{
 			msg:    result,
@@ -104,6 +108,35 @@ func (s *S) TestAppLogBySource(c *gocheck.C) {
 		},
 		func(req *http.Request) bool {
 			return req.URL.Query().Get("source") == "mysource"
+		},
+	}
+	client := cmd.NewClient(&http.Client{Transport: trans}, nil, manager)
+	err := command.Run(&context, client)
+	c.Assert(err, gocheck.IsNil)
+	got := stdout.String()
+	got = strings.Replace(got, "-0300 -0300", "-0300 BRT", -1)
+	c.Assert(got, gocheck.Equals, expected)
+}
+
+func (s *S) TestAppLogWithLinces(c *gocheck.C) {
+	var stdout, stderr bytes.Buffer
+	result := `[{"Source":"tsuru","Date":"2012-06-20T11:17:22.75-03:00","Message":"creating app lost"},{"Source":"tsuru","Date":"2012-06-20T11:17:22.753-03:00","Message":"app lost successfully created"}]`
+	expected := cmd.Colorfy("2012-06-20 11:17:22 [tsuru]:", "blue", "", "") + " creating app lost\n"
+	expected = expected + cmd.Colorfy("2012-06-20 11:17:22 [tsuru]:", "blue", "", "") + " app lost successfully created\n"
+	context := cmd.Context{
+		Stdout: &stdout,
+		Stderr: &stderr,
+	}
+	fake := &FakeGuesser{name: "hitthelights"}
+	command := AppLog{GuessingCommand: GuessingCommand{G: fake}}
+	command.Flags().Parse(true, []string{"--lines", "12"})
+	trans := &conditionalTransport{
+		transport{
+			msg:    result,
+			status: http.StatusOK,
+		},
+		func(req *http.Request) bool {
+			return req.URL.Query().Get("lines") == "12"
 		},
 	}
 	client := cmd.NewClient(&http.Client{Transport: trans}, nil, manager)
