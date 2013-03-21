@@ -117,7 +117,6 @@ func resetTargetList() error {
 	if err != nil {
 		return err
 	}
-	targetsFile.Truncate(0)
 	defer targetsFile.Close()
 	return nil
 }
