@@ -34,25 +34,25 @@ func (t *target) Run(ctx *Context, client Doer) error {
 		fmt.Fprintf(ctx.Stdout, "To add a new target use target-add\n")
 		return nil
 	}
-	target = readTarget()
+	target, _ = readTarget()
 	fmt.Fprintf(ctx.Stdout, "Current target is %s\n", target)
 	return nil
 }
 
-func readTarget() string {
+func readTarget() (string, error) {
 	targetPath := joinWithUserDir(".tsuru_target")
 	if f, err := filesystem().Open(targetPath); err == nil {
 		defer f.Close()
 		if b, err := ioutil.ReadAll(f); err == nil {
-			return strings.TrimSpace(string(b))
+			return strings.TrimSpace(string(b)), nil
 		}
 	}
-	return ""
+	return "", undefinedTargetError{}
 }
 
 func GetUrl(path string) string {
 	var prefix string
-	target := readTarget()
+	target, _ := readTarget()
 	if m, _ := regexp.MatchString("^https?://", target); !m {
 		prefix = "http://"
 	}

@@ -63,7 +63,8 @@ func (s *S) TestReadTarget(c *gocheck.C) {
 	defer func() {
 		fsystem = nil
 	}()
-	target := readTarget()
+	target, err := readTarget()
+	c.Assert(err, gocheck.IsNil)
 	c.Assert(target, gocheck.Equals, "http://tsuru.google.com")
 }
 
@@ -72,8 +73,11 @@ func (s *S) TestReadTargetReturnsEmptyStringIfTheFileDoesNotExist(c *gocheck.C) 
 	defer func() {
 		fsystem = nil
 	}()
-	target := readTarget()
+	target, err := readTarget()
 	c.Assert(target, gocheck.Equals, "")
+	c.Assert(err, gocheck.NotNil)
+	_, ok := err.(undefinedTargetError)
+	c.Assert(ok, gocheck.Equals, true)
 }
 
 func (s *S) TestReadTargetTrimsFileContent(c *gocheck.C) {
@@ -81,7 +85,8 @@ func (s *S) TestReadTargetTrimsFileContent(c *gocheck.C) {
 	defer func() {
 		fsystem = nil
 	}()
-	target := readTarget()
+	target, err := readTarget()
+	c.Assert(err, gocheck.IsNil)
 	c.Assert(target, gocheck.Equals, "http://tsuru.io")
 }
 

@@ -42,9 +42,11 @@ func (c *Client) detectClientError(err error) error {
 	}
 	switch urlErr.Err.(type) {
 	case x509.UnknownAuthorityError:
-		return fmt.Errorf("Failed to connect to tsuru server (%s): %s", readTarget(), urlErr.Err)
+		target, _ := readTarget()
+		return fmt.Errorf("Failed to connect to tsuru server (%s): %s", target, urlErr.Err)
 	}
-	return fmt.Errorf("Failed to connect to tsuru server (%s), it's probably down.", readTarget())
+	target, _ := readTarget()
+	return fmt.Errorf("Failed to connect to tsuru server (%s), it's probably down.", target)
 }
 
 func (c *Client) Do(request *http.Request) (*http.Response, error) {
