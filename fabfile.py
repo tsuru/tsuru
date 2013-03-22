@@ -40,7 +40,6 @@ def restart():
         run("tar -xzf dist.tar.gz")
     run('circusctl restart web')
     run('circusctl restart collector')
-    # run('circusctl restart healer')
 
 
 def deploy(flags=""):
