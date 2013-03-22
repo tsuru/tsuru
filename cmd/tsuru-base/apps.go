@@ -159,7 +159,6 @@ func (c *AppGrant) Run(context *cmd.Context, client cmd.Doer) error {
 
 type AppRevoke struct {
 	GuessingCommand
-	fs *gnuflag.FlagSet
 }
 
 func (c *AppRevoke) Info() *cmd.Info {
