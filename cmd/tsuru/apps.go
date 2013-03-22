@@ -16,8 +16,6 @@ import (
 	"net/http"
 )
 
-var AssumeYes = gnuflag.Bool("assume-yes", false, "Don't ask for confirmation on operations.")
-
 type AppCreate struct {
 	fs *gnuflag.FlagSet
 }
@@ -82,6 +80,8 @@ func (c *AppCreate) Flags() *gnuflag.FlagSet {
 
 type AppRemove struct {
 	tsuru.GuessingCommand
+	yes bool
+	fs  *gnuflag.FlagSet
 }
 
 func (c *AppRemove) Info() *cmd.Info {
@@ -101,7 +101,7 @@ func (c *AppRemove) Run(context *cmd.Context, client cmd.Doer) error {
 		return err
 	}
 	var answer string
-	if !*AssumeYes {
+	if !c.yes {
 		fmt.Fprintf(context.Stdout, `Are you sure you want to remove app "%s"? (y/n) `, appName)
 		fmt.Fscanf(context.Stdin, "%s", &answer)
 		if answer != "y" {
@@ -123,6 +123,15 @@ func (c *AppRemove) Run(context *cmd.Context, client cmd.Doer) error {
 	}
 	fmt.Fprintf(context.Stdout, `App "%s" successfully removed!`+"\n", appName)
 	return nil
+}
+
+func (c *AppRemove) Flags() *gnuflag.FlagSet {
+	if c.fs == nil {
+		c.fs = c.GuessingCommand.Flags()
+		c.fs.BoolVar(&c.yes, "assume-yes", false, "Don't ask for confirmation, just remove the app.")
+		c.fs.BoolVar(&c.yes, "y", false, "Don't ask for confirmation, just remove the app.")
+	}
+	return c.fs
 }
 
 type UnitAdd struct {

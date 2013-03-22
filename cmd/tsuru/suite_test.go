@@ -73,5 +73,4 @@ func (t *conditionalTransport) RoundTrip(req *http.Request) (*http.Response, err
 func (s *S) SetUpTest(c *gocheck.C) {
 	var stdout, stderr bytes.Buffer
 	manager = cmd.NewManager("glb", version, header, &stdout, &stderr, os.Stdin)
-	*AssumeYes = false
 }

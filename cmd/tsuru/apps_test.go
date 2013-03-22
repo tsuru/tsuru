@@ -136,7 +136,6 @@ func (s *S) TestAppRemove(c *gocheck.C) {
 }
 
 func (s *S) TestAppRemoveWithoutAsking(c *gocheck.C) {
-	*AssumeYes = true
 	var stdout, stderr bytes.Buffer
 	expected := `App "ble" successfully removed!` + "\n"
 	context := cmd.Context{
@@ -147,10 +146,42 @@ func (s *S) TestAppRemoveWithoutAsking(c *gocheck.C) {
 	}
 	client := cmd.NewClient(&http.Client{Transport: &transport{msg: "", status: http.StatusOK}}, nil, manager)
 	command := AppRemove{}
-	command.Flags().Parse(true, []string{"-a", "ble"})
+	command.Flags().Parse(true, []string{"-a", "ble", "-y"})
 	err := command.Run(&context, client)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(stdout.String(), gocheck.Equals, expected)
+}
+
+func (s *S) TestAppRemoveFlags(c *gocheck.C) {
+	command := AppRemove{}
+	flagset := command.Flags()
+	c.Assert(flagset, gocheck.NotNil)
+	flagset.Parse(true, []string{"-a", "ashamed", "-y"})
+	app := flagset.Lookup("app")
+	c.Check(app, gocheck.NotNil)
+	c.Check(app.Name, gocheck.Equals, "app")
+	c.Check(app.Usage, gocheck.Equals, "The name of the app.")
+	c.Check(app.Value.String(), gocheck.Equals, "ashamed")
+	c.Check(app.DefValue, gocheck.Equals, "")
+	sapp := flagset.Lookup("a")
+	c.Check(sapp, gocheck.NotNil)
+	c.Check(sapp.Name, gocheck.Equals, "a")
+	c.Check(sapp.Usage, gocheck.Equals, "The name of the app.")
+	c.Check(sapp.Value.String(), gocheck.Equals, "ashamed")
+	c.Check(sapp.DefValue, gocheck.Equals, "")
+	assume := flagset.Lookup("assume-yes")
+	c.Check(assume, gocheck.NotNil)
+	c.Check(assume.Name, gocheck.Equals, "assume-yes")
+	c.Check(assume.Usage, gocheck.Equals, "Don't ask for confirmation, just remove the app.")
+	c.Check(assume.Value.String(), gocheck.Equals, "true")
+	c.Check(assume.DefValue, gocheck.Equals, "false")
+	sassume := flagset.Lookup("y")
+	c.Check(sassume, gocheck.NotNil)
+	c.Check(sassume.Name, gocheck.Equals, "y")
+	c.Check(sassume.Usage, gocheck.Equals, "Don't ask for confirmation, just remove the app.")
+	c.Check(sassume.Value.String(), gocheck.Equals, "true")
+	c.Check(sassume.DefValue, gocheck.Equals, "false")
+	c.Check(command.yes, gocheck.Equals, true)
 }
 
 type FakeGuesser struct {
@@ -193,7 +224,7 @@ func (s *S) TestAppRemoveWithoutArgs(c *gocheck.C) {
 	client := cmd.NewClient(&http.Client{Transport: trans}, nil, manager)
 	fake := FakeGuesser{name: "secret"}
 	guessCommand := tsuru.GuessingCommand{G: &fake}
-	command := AppRemove{guessCommand}
+	command := AppRemove{GuessingCommand: guessCommand}
 	err := command.Run(&context, client)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(stdout.String(), gocheck.Equals, expected)
