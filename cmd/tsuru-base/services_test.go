@@ -82,7 +82,6 @@ func (s *S) TestServiceListShouldBeCommand(c *gocheck.C) {
 }
 
 func (s *S) TestServiceBind(c *gocheck.C) {
-	*AppName = "g1"
 	var (
 		called         bool
 		stdout, stderr bytes.Buffer
@@ -103,7 +102,9 @@ func (s *S) TestServiceBind(c *gocheck.C) {
 		},
 	}
 	client := cmd.NewClient(&http.Client{Transport: trans}, nil, manager)
-	err := (&ServiceBind{}).Run(&ctx, client)
+	command := ServiceBind{}
+	command.Flags().Parse(true, []string{"-a", "g1"})
+	err := command.Run(&ctx, client)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(called, gocheck.Equals, true)
 	expected := `Instance "my-mysql" is now bound to the app "g1".
@@ -158,7 +159,6 @@ For more details, please check the documentation for the service, using service-
 }
 
 func (s *S) TestServiceBindWithRequestFailure(c *gocheck.C) {
-	*AppName = "g1"
 	var stdout, stderr bytes.Buffer
 	ctx := cmd.Context{
 		Args:   []string{"my-mysql"},
@@ -170,7 +170,9 @@ func (s *S) TestServiceBindWithRequestFailure(c *gocheck.C) {
 		status: http.StatusForbidden,
 	}
 	client := cmd.NewClient(&http.Client{Transport: trans}, nil, manager)
-	err := (&ServiceBind{}).Run(&ctx, client)
+	command := ServiceBind{}
+	command.Flags().Parse(true, []string{"-a", "g1"})
+	err := command.Run(&ctx, client)
 	c.Assert(err, gocheck.NotNil)
 	c.Assert(err.Error(), gocheck.Equals, trans.msg)
 }
@@ -187,8 +189,8 @@ If you don't provide the app name, tsuru will try to guess it.`,
 	c.Assert((&ServiceBind{}).Info(), gocheck.DeepEquals, expected)
 }
 
-func (s *S) TestServiceBindIsACommand(c *gocheck.C) {
-	var _ cmd.Command = &ServiceBind{}
+func (s *S) TestServiceBindIsAFlaggedCommand(c *gocheck.C) {
+	var _ cmd.FlaggedCommand = &ServiceBind{}
 }
 
 func (s *S) TestServiceUnbind(c *gocheck.C) {

@@ -98,6 +98,7 @@ type ServiceBind struct {
 }
 
 func (sb *ServiceBind) Run(ctx *cmd.Context, client cmd.Doer) error {
+	sb.Name = "bind"
 	appName, err := sb.Guess()
 	if err != nil {
 		return err
