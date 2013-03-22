@@ -529,7 +529,6 @@ func (s *S) TestSetCNameIsAFlaggedCommand(c *gocheck.C) {
 }
 
 func (s *S) TestUnsetCName(c *gocheck.C) {
-	*AppName = "death"
 	var (
 		called         bool
 		stdout, stderr bytes.Buffer
@@ -554,7 +553,9 @@ func (s *S) TestUnsetCName(c *gocheck.C) {
 		},
 	}
 	client := cmd.NewClient(&http.Client{Transport: trans}, nil, manager)
-	err := (&UnsetCName{}).Run(&context, client)
+	command := UnsetCName{}
+	command.Flags().Parse(true, []string{"--app", "death"})
+	err := command.Run(&context, client)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(called, gocheck.Equals, true)
 	c.Assert(stdout.String(), gocheck.Equals, "cname successfully undefined.\n")
@@ -602,6 +603,6 @@ func (s *S) TestUnsetCNameInfo(c *gocheck.C) {
 	c.Assert((&UnsetCName{}).Info(), gocheck.DeepEquals, expected)
 }
 
-func (s *S) TestUnsetCNameIsACommand(c *gocheck.C) {
-	var _ cmd.Command = &UnsetCName{}
+func (s *S) TestUnsetCNameIsAFlaggedCommand(c *gocheck.C) {
+	var _ cmd.FlaggedCommand = &UnsetCName{}
 }

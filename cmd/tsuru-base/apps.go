@@ -317,6 +317,7 @@ type UnsetCName struct {
 }
 
 func (c *UnsetCName) Run(context *cmd.Context, client cmd.Doer) error {
+	c.Name = "unset-cname"
 	err := setCName("", c.GuessingCommand, client)
 	if err != nil {
 		return err
