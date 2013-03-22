@@ -91,20 +91,7 @@ func (s *S) TestGuessingCommandGuesserNonNil(c *gocheck.C) {
 	c.Assert(g.guesser(), gocheck.DeepEquals, fake)
 }
 
-func (s *S) TestGuessingCommandWithFlagDefined(c *gocheck.C) {
-	*AppName = "myapp"
-	fake := &FakeGuesser{name: "other-app"}
-	g := GuessingCommand{G: fake}
-	name, err := g.Guess()
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(name, gocheck.Equals, "myapp")
-	pwd, err := os.Getwd()
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(fake.HasGuess(pwd), gocheck.Equals, false)
-}
-
-func (s *S) TestGuessingCommandWithoutFlagDefined(c *gocheck.C) {
-	AppName = nil
+func (s *S) TestGuessingCommand(c *gocheck.C) {
 	fake := &FakeGuesser{name: "other-app"}
 	g := GuessingCommand{G: fake}
 	name, err := g.Guess()
