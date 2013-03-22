@@ -98,7 +98,6 @@ type ServiceBind struct {
 }
 
 func (sb *ServiceBind) Run(ctx *cmd.Context, client cmd.Doer) error {
-	sb.Name = "bind"
 	appName, err := sb.Guess()
 	if err != nil {
 		return err
@@ -156,7 +155,6 @@ type ServiceUnbind struct {
 }
 
 func (su *ServiceUnbind) Run(ctx *cmd.Context, client cmd.Doer) error {
-	su.Name = "unbind"
 	appName, err := su.Guess()
 	if err != nil {
 		return err

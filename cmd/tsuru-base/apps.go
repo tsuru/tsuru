@@ -30,7 +30,6 @@ If you don't provide the app name, tsuru will try to guess it.`,
 }
 
 func (c *AppInfo) Run(context *cmd.Context, client cmd.Doer) error {
-	c.Name = "app-info"
 	appName, err := c.Guess()
 	if err != nil {
 		return err
@@ -128,7 +127,6 @@ If you don't provide the app name, tsuru will try to guess it.`,
 }
 
 func (c *AppGrant) Run(context *cmd.Context, client cmd.Doer) error {
-	c.Name = "app-grant"
 	appName, err := c.Guess()
 	if err != nil {
 		return err
@@ -166,7 +164,6 @@ If you don't provide the app name, tsuru will try to guess it.`,
 }
 
 func (c *AppRevoke) Run(context *cmd.Context, client cmd.Doer) error {
-	c.Name = "app-revoke"
 	appName, err := c.Guess()
 	if err != nil {
 		return err
@@ -250,7 +247,6 @@ type AppRestart struct {
 }
 
 func (c *AppRestart) Run(context *cmd.Context, client cmd.Doer) error {
-	c.Name = "restart"
 	appName, err := c.Guess()
 	if err != nil {
 		return err
@@ -291,7 +287,6 @@ type SetCName struct {
 }
 
 func (c *SetCName) Run(context *cmd.Context, client cmd.Doer) error {
-	c.Name = "set-cname"
 	err := setCName(context.Args[0], c.GuessingCommand, client)
 	if err != nil {
 		return err
@@ -314,7 +309,6 @@ type UnsetCName struct {
 }
 
 func (c *UnsetCName) Run(context *cmd.Context, client cmd.Doer) error {
-	c.Name = "unset-cname"
 	err := setCName("", c.GuessingCommand, client)
 	if err != nil {
 		return err

@@ -39,7 +39,6 @@ type log struct {
 }
 
 func (c *AppLog) Run(context *cmd.Context, client cmd.Doer) error {
-	c.Name = "log"
 	appName, err := c.Guess()
 	if err != nil {
 		return err
