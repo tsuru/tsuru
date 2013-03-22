@@ -603,14 +603,3 @@ func (s *S) TestUnsetCNameInfo(c *gocheck.C) {
 func (s *S) TestUnsetCNameIsACommand(c *gocheck.C) {
 	var _ cmd.Command = &UnsetCName{}
 }
-
-func (s *S) TestAddAppFlag(c *gocheck.C) {
-	fs := gnuflag.NewFlagSet("something", gnuflag.ExitOnError)
-	AddAppFlag(fs)
-	flag := fs.Lookup("app")
-	c.Assert(flag, gocheck.NotNil)
-	c.Assert(flag.Name, gocheck.Equals, "app")
-	c.Assert(flag.Usage, gocheck.Equals, "The name of the app.")
-	c.Assert(flag.Value.String(), gocheck.Equals, "")
-	c.Assert(flag.DefValue, gocheck.Equals, "")
-}
