@@ -367,7 +367,6 @@ func (s *S) TestAppListIsACommand(c *gocheck.C) {
 }
 
 func (s *S) TestAppRestart(c *gocheck.C) {
-	*AppName = "handful_of_nothing"
 	var (
 		called         bool
 		stdout, stderr bytes.Buffer
@@ -387,7 +386,9 @@ func (s *S) TestAppRestart(c *gocheck.C) {
 		},
 	}
 	client := cmd.NewClient(&http.Client{Transport: trans}, nil, manager)
-	err := (&AppRestart{}).Run(&context, client)
+	command := AppRestart{}
+	command.Flags().Parse(true, []string{"--app", "handful_of_nothing"})
+	err := command.Run(&context, client)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(called, gocheck.Equals, true)
 	c.Assert(stdout.String(), gocheck.Equals, "Restarted")
@@ -414,7 +415,9 @@ func (s *S) TestAppRestartWithoutTheFlag(c *gocheck.C) {
 	}
 	client := cmd.NewClient(&http.Client{Transport: trans}, nil, manager)
 	fake := &FakeGuesser{name: "motorbreath"}
-	err := (&AppRestart{GuessingCommand{G: fake}}).Run(&context, client)
+	command := AppRestart{GuessingCommand: GuessingCommand{G: fake}}
+	command.Flags().Parse(true, nil)
+	err := command.Run(&context, client)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(called, gocheck.Equals, true)
 	c.Assert(stdout.String(), gocheck.Equals, "Restarted")
@@ -432,8 +435,15 @@ If you don't provide the app name, tsuru will try to guess it.`,
 	c.Assert((&AppRestart{}).Info(), gocheck.DeepEquals, expected)
 }
 
-func (s *S) TestAppRestartIsACommand(c *gocheck.C) {
-	var _ cmd.Command = &AppRestart{}
+func (s *S) TestAppRestartIsAFlaggedCommand(c *gocheck.C) {
+	var _ cmd.FlaggedCommand = &AppRestart{}
+}
+
+func (s *S) TestAppRestartFlags(c *gocheck.C) {
+	command := AppRestart{}
+	flag := command.Flags().Lookup("app")
+	flag.Value = nil
+	c.Assert(flag, gocheck.DeepEquals, appflag)
 }
 
 func (s *S) TestSetCName(c *gocheck.C) {
