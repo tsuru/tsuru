@@ -156,6 +156,7 @@ type ServiceUnbind struct {
 }
 
 func (su *ServiceUnbind) Run(ctx *cmd.Context, client cmd.Doer) error {
+	su.Name = "unbind"
 	appName, err := su.Guess()
 	if err != nil {
 		return err

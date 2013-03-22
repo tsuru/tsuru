@@ -194,7 +194,6 @@ func (s *S) TestServiceBindIsAFlaggedCommand(c *gocheck.C) {
 }
 
 func (s *S) TestServiceUnbind(c *gocheck.C) {
-	*AppName = "pocket"
 	var stdout, stderr bytes.Buffer
 	var called bool
 	ctx := cmd.Context{
@@ -213,7 +212,9 @@ func (s *S) TestServiceUnbind(c *gocheck.C) {
 		},
 	}
 	client := cmd.NewClient(&http.Client{Transport: trans}, nil, manager)
-	err := (&ServiceUnbind{}).Run(&ctx, client)
+	command := ServiceUnbind{}
+	command.Flags().Parse(true, []string{"-a", "pocket"})
+	err := command.Run(&ctx, client)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(called, gocheck.Equals, true)
 	c.Assert(stdout.String(), gocheck.Equals, "Instance \"hand\" is not bound to the app \"pocket\" anymore.\n")
@@ -246,7 +247,6 @@ func (s *S) TestServiceUnbindWithoutFlag(c *gocheck.C) {
 }
 
 func (s *S) TestServiceUnbindWithRequestFailure(c *gocheck.C) {
-	*AppName = "pocket"
 	var stdout, stderr bytes.Buffer
 	ctx := cmd.Context{
 		Args:   []string{"hand"},
@@ -258,7 +258,9 @@ func (s *S) TestServiceUnbindWithRequestFailure(c *gocheck.C) {
 		status: http.StatusPreconditionFailed,
 	}
 	client := cmd.NewClient(&http.Client{Transport: trans}, nil, manager)
-	err := (&ServiceUnbind{}).Run(&ctx, client)
+	command := ServiceUnbind{}
+	command.Flags().Parse(true, []string{"-a", "pocket"})
+	err := command.Run(&ctx, client)
 	c.Assert(err, gocheck.NotNil)
 	c.Assert(err.Error(), gocheck.Equals, trans.msg)
 }
@@ -275,8 +277,8 @@ If you don't provide the app name, tsuru will try to guess it.`,
 	c.Assert((&ServiceUnbind{}).Info(), gocheck.DeepEquals, expected)
 }
 
-func (s *S) TestServiceUnbindIsAComand(c *gocheck.C) {
-	var _ cmd.Command = &ServiceUnbind{}
+func (s *S) TestServiceUnbindIsAFlaggedComand(c *gocheck.C) {
+	var _ cmd.FlaggedCommand = &ServiceUnbind{}
 }
 
 func (s *S) TestServiceAddInfo(c *gocheck.C) {
