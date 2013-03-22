@@ -76,5 +76,4 @@ func (s *S) SetUpTest(c *gocheck.C) {
 	manager = cmd.NewManager("glb", version, header, &stdout, &stderr, os.Stdin)
 	*tsuru.AppName = ""
 	*AssumeYes = false
-	*NumUnits = 1
 }

@@ -17,19 +17,19 @@ import (
 )
 
 var AssumeYes = gnuflag.Bool("assume-yes", false, "Don't ask for confirmation on operations.")
-var NumUnits = gnuflag.Uint("units", 1, "How many units should be created with the app.")
 
 type AppCreate struct {
 	fs *gnuflag.FlagSet
 }
 
 func (c *AppCreate) Run(context *cmd.Context, client cmd.Doer) error {
-	if *NumUnits == 0 {
+	units := c.fs.Lookup("units").Value.String()
+	if units == "0" {
 		return errors.New("Cannot create app with zero units.")
 	}
 	appName := context.Args[0]
 	framework := context.Args[1]
-	b := bytes.NewBufferString(fmt.Sprintf(`{"name":"%s","framework":"%s","units":%d}`, appName, framework, *NumUnits))
+	b := bytes.NewBufferString(fmt.Sprintf(`{"name":"%s","framework":"%s","units":%s}`, appName, framework, units))
 	url, err := cmd.GetUrl("/apps")
 	if err != nil {
 		return err
@@ -54,10 +54,10 @@ func (c *AppCreate) Run(context *cmd.Context, client cmd.Doer) error {
 		return err
 	}
 	var plural string
-	if *NumUnits > 1 {
+	if units != "1" {
 		plural = "s"
 	}
-	fmt.Fprintf(context.Stdout, "App %q is being created with %d unit%s!\n", appName, *NumUnits, plural)
+	fmt.Fprintf(context.Stdout, "App %q is being created with %s unit%s!\n", appName, units, plural)
 	fmt.Fprintln(context.Stdout, "Use app-info to check the status of the app and its units.")
 	fmt.Fprintf(context.Stdout, "Your repository for %q project is %q\n", appName, out["repository_url"])
 	return nil

@@ -47,13 +47,13 @@ Your repository for "ble" project is "git@tsuru.plataformas.glb.com:ble.git"` + 
 	}
 	client := cmd.NewClient(&http.Client{Transport: &transport}, nil, manager)
 	command := AppCreate{}
+	command.Flags().Parse(true, nil)
 	err := command.Run(&context, client)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(stdout.String(), gocheck.Equals, expected)
 }
 
 func (s *S) TestAppCreateMoreThanOneUnit(c *gocheck.C) {
-	*NumUnits = 4
 	var stdout, stderr bytes.Buffer
 	result := `{"status":"success", "repository_url":"git@tsuru.plataformas.glb.com:ble.git"}`
 	expected := `App "ble" is being created with 4 units!
@@ -76,14 +76,15 @@ Your repository for "ble" project is "git@tsuru.plataformas.glb.com:ble.git"` + 
 	}
 	client := cmd.NewClient(&http.Client{Transport: &transport}, nil, manager)
 	command := AppCreate{}
+	command.Flags().Parse(true, []string{"--units", "4"})
 	err := command.Run(&context, client)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(stdout.String(), gocheck.Equals, expected)
 }
 
 func (s *S) TestAppCreateZeroUnits(c *gocheck.C) {
-	*NumUnits = 0
 	command := AppCreate{}
+	command.Flags().Parse(true, []string{"--units", "0"})
 	err := command.Run(nil, nil)
 	c.Assert(err, gocheck.NotNil)
 	c.Assert(err.Error(), gocheck.Equals, "Cannot create app with zero units.")
@@ -98,6 +99,7 @@ func (s *S) TestAppCreateWithInvalidFramework(c *gocheck.C) {
 	}
 	client := cmd.NewClient(&http.Client{Transport: &transport{msg: "", status: http.StatusInternalServerError}}, nil, manager)
 	command := AppCreate{}
+	command.Flags().Parse(true, nil)
 	err := command.Run(&context, client)
 	c.Assert(err, gocheck.NotNil)
 	c.Assert(stdout.String(), gocheck.Equals, "")
