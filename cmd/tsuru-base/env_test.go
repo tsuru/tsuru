@@ -94,7 +94,6 @@ If you don't provide the app name, tsuru will try to guess it.`
 }
 
 func (s *S) TestEnvSetRun(c *gocheck.C) {
-	*AppName = "someapp"
 	var stdout, stderr bytes.Buffer
 	result := "variable(s) successfully exported\n"
 	context := cmd.Context{
@@ -103,13 +102,14 @@ func (s *S) TestEnvSetRun(c *gocheck.C) {
 		Stderr: &stderr,
 	}
 	client := cmd.NewClient(&http.Client{Transport: &transport{msg: result, status: http.StatusOK}}, nil, manager)
-	err := (&EnvSet{}).Run(&context, client)
+	command := EnvSet{}
+	command.Flags().Parse(true, []string{"-a", "someapp"})
+	err := command.Run(&context, client)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(stdout.String(), gocheck.Equals, result)
 }
 
 func (s *S) TestEnvSetRunWithMultipleParams(c *gocheck.C) {
-	*AppName = "someapp"
 	var stdout, stderr bytes.Buffer
 	result := "variable(s) successfully exported\n"
 	context := cmd.Context{
@@ -118,7 +118,9 @@ func (s *S) TestEnvSetRunWithMultipleParams(c *gocheck.C) {
 		Stderr: &stderr,
 	}
 	client := cmd.NewClient(&http.Client{Transport: &transport{msg: result, status: http.StatusOK}}, nil, manager)
-	err := (&EnvSet{}).Run(&context, client)
+	command := EnvSet{}
+	command.Flags().Parse(true, []string{"-a", "someapp"})
+	err := command.Run(&context, client)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(stdout.String(), gocheck.Equals, result)
 }

@@ -53,6 +53,7 @@ If you don't provide the app name, tsuru will try to guess it.`,
 }
 
 func (c *EnvSet) Run(context *cmd.Context, client cmd.Doer) error {
+	c.Name = "env-set"
 	_, err := requestEnvUrl("POST", c.GuessingCommand, context.Args, client)
 	if err != nil {
 		return err
