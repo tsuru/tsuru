@@ -431,13 +431,6 @@ func (s *S) TestAppRestartIsAFlaggedCommand(c *gocheck.C) {
 	var _ cmd.FlaggedCommand = &AppRestart{}
 }
 
-func (s *S) TestAppRestartFlags(c *gocheck.C) {
-	command := AppRestart{}
-	flag := command.Flags().Lookup("app")
-	flag.Value = nil
-	c.Assert(flag, gocheck.DeepEquals, appflag)
-}
-
 func (s *S) TestSetCName(c *gocheck.C) {
 	*AppName = "death"
 	var (
