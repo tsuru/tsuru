@@ -23,7 +23,6 @@ func AddAppFlag(fs *gnuflag.FlagSet) {
 
 type AppInfo struct {
 	GuessingCommand
-	fs *gnuflag.FlagSet
 }
 
 func (c *AppInfo) Info() *cmd.Info {
@@ -38,13 +37,10 @@ If you don't provide the app name, tsuru will try to guess it.`,
 }
 
 func (c *AppInfo) Run(context *cmd.Context, client cmd.Doer) error {
-	var err error
-	appName := c.fs.Lookup("app").Value.String()
-	if appName == "" {
-		appName, err = c.Guess()
-		if err != nil {
-			return err
-		}
+	c.Name = "app-info"
+	appName, err := c.Guess()
+	if err != nil {
+		return err
 	}
 	url, err := cmd.GetUrl(fmt.Sprintf("/apps/%s", appName))
 	if err != nil {
@@ -67,14 +63,6 @@ func (c *AppInfo) Run(context *cmd.Context, client cmd.Doer) error {
 		return err
 	}
 	return c.Show(result, context)
-}
-
-func (c *AppInfo) Flags() *gnuflag.FlagSet {
-	if c.fs == nil {
-		c.fs = gnuflag.NewFlagSet("app-info", gnuflag.ContinueOnError)
-		AddAppFlag(c.fs)
-	}
-	return c.fs
 }
 
 type unit struct {
