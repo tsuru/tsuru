@@ -5,6 +5,7 @@
 package service
 
 import (
+	"encoding/json"
 	stderrors "errors"
 	"github.com/globocom/tsuru/app/bind"
 	"github.com/globocom/tsuru/auth"
@@ -20,6 +21,22 @@ type ServiceInstance struct {
 	ServiceName string `bson:"service_name"`
 	Apps        []string
 	Teams       []string
+}
+
+// MarshalJSON marshals the Repository in json format.
+func (si *ServiceInstance) MarshalJSON() ([]byte, error) {
+	info, err := si.Info()
+	if err != nil {
+		return nil, err
+	}
+	data := map[string]interface{}{
+		"Name":        si.Name,
+		"Teams":       si.Teams,
+		"Apps":        si.Apps,
+		"ServiceName": si.ServiceName,
+		"Info":        info,
+	}
+	return json.Marshal(&data)
 }
 
 func (si *ServiceInstance) Info() (map[string]string, error) {

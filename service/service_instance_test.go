@@ -5,6 +5,7 @@
 package service
 
 import (
+	"encoding/json"
 	"github.com/globocom/tsuru/app/bind"
 	"github.com/globocom/tsuru/auth"
 	"labix.org/v2/mgo/bson"
@@ -260,7 +261,7 @@ func (s *S) TestGetServiceInstancesByServicesAndTeamsForUsersThatAreNotMembersOf
 	c.Assert(instances, gocheck.IsNil)
 }
 
-func (s *S) TestServiceInfo(c *gocheck.C) {
+func (s *S) TestAdditionalInfo(c *gocheck.C) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(`[{"label": "key", "value": "value"}, {"label": "key2", "value": "value2"}]`))
 	}))
@@ -277,4 +278,29 @@ func (s *S) TestServiceInfo(c *gocheck.C) {
 		"key2": "value2",
 	}
 	c.Assert(info, gocheck.DeepEquals, expected)
+}
+
+func (s *S) TestMarshalJSON(c *gocheck.C) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(`[{"label": "key", "value": "value"}]`))
+	}))
+	defer ts.Close()
+	srvc := Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}}
+	err := srvc.Create()
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Services().Remove(bson.M{"_id": "mysql"})
+	si := ServiceInstance{Name: "ql", ServiceName: srvc.Name}
+	data, err := json.Marshal(&si)
+	c.Assert(err, gocheck.IsNil)
+	var result map[string]interface{}
+	err = json.Unmarshal(data, &result)
+	c.Assert(err, gocheck.IsNil)
+	expected := map[string]interface{}{
+		"Name":        "ql",
+		"Teams":       nil,
+		"Apps":        nil,
+		"ServiceName": "mysql",
+		"Info":        map[string]interface{}{"key": "value"},
+	}
+	c.Assert(result, gocheck.DeepEquals, expected)
 }
