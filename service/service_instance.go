@@ -23,11 +23,11 @@ type ServiceInstance struct {
 	Teams       []string
 }
 
-// MarshalJSON marshals the Repository in json format.
+// MarshalJSON marshals the ServiceName in json format.
 func (si *ServiceInstance) MarshalJSON() ([]byte, error) {
 	info, err := si.Info()
 	if err != nil {
-		return nil, err
+		info = nil
 	}
 	data := map[string]interface{}{
 		"Name":        si.Name,
