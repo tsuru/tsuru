@@ -12,7 +12,6 @@ import (
 )
 
 func (s *S) TestAppRun(c *gocheck.C) {
-	*AppName = "ble"
 	var stdout, stderr bytes.Buffer
 	expected := "http.go		http_test.go"
 	context := cmd.Context{
@@ -32,13 +31,14 @@ func (s *S) TestAppRun(c *gocheck.C) {
 		},
 	}
 	client := cmd.NewClient(&http.Client{Transport: trans}, nil, manager)
-	err := (&AppRun{}).Run(&context, client)
+	command := AppRun{}
+	command.Flags().Parse(true, []string{"--app", "ble"})
+	err := command.Run(&context, client)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(stdout.String(), gocheck.Equals, expected)
 }
 
 func (s *S) TestAppRunShouldUseAllSubsequentArgumentsAsArgumentsToTheGivenCommand(c *gocheck.C) {
-	*AppName = "ble"
 	var stdout, stderr bytes.Buffer
 	expected := "-rw-r--r--  1 f  staff  119 Apr 26 18:23 http.go"
 	context := cmd.Context{
@@ -58,7 +58,9 @@ func (s *S) TestAppRunShouldUseAllSubsequentArgumentsAsArgumentsToTheGivenComman
 		},
 	}
 	client := cmd.NewClient(&http.Client{Transport: trans}, nil, manager)
-	err := (&AppRun{}).Run(&context, client)
+	command := AppRun{}
+	command.Flags().Parse(true, []string{"--app", "ble"})
+	err := command.Run(&context, client)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(stdout.String(), gocheck.Equals, expected)
 }
@@ -84,12 +86,14 @@ func (s *S) TestAppRunWithoutTheFlag(c *gocheck.C) {
 	}
 	client := cmd.NewClient(&http.Client{Transport: trans}, nil, manager)
 	fake := &FakeGuesser{name: "bla"}
-	err := (&AppRun{GuessingCommand{G: fake}}).Run(&context, client)
+	command := AppRun{GuessingCommand: GuessingCommand{G: fake}}
+	command.Flags().Parse(true, nil)
+	err := command.Run(&context, client)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(stdout.String(), gocheck.Equals, expected)
 }
 
-func (s *S) TestInfoAppRun(c *gocheck.C) {
+func (s *S) TestAppRunInfo(c *gocheck.C) {
 	desc := `run a command in all instances of the app, and prints the output.
 Notice that you may need quotes to run your command if you want to deal with
 input and outputs redirects, and pipes.
@@ -104,4 +108,11 @@ If you don't provide the app name, tsuru will try to guess it.
 	}
 	command := AppRun{}
 	c.Assert(command.Info(), gocheck.DeepEquals, expected)
+}
+
+func (s *S) TestAppRunFlags(c *gocheck.C) {
+	command := AppRun{}
+	flag := command.Flags().Lookup("app")
+	flag.Value = nil
+	c.Assert(flag, gocheck.DeepEquals, appflag)
 }
