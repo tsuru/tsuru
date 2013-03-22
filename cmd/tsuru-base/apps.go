@@ -121,7 +121,6 @@ func (c *AppInfo) Show(result []byte, context *cmd.Context) error {
 
 type AppGrant struct {
 	GuessingCommand
-	fs *gnuflag.FlagSet
 }
 
 func (c *AppGrant) Info() *cmd.Info {
@@ -136,13 +135,10 @@ If you don't provide the app name, tsuru will try to guess it.`,
 }
 
 func (c *AppGrant) Run(context *cmd.Context, client cmd.Doer) error {
-	var err error
-	appName := c.fs.Lookup("app").Value.String()
-	if appName == "" {
-		appName, err = c.Guess()
-		if err != nil {
-			return err
-		}
+	c.Name = "app-grant"
+	appName, err := c.Guess()
+	if err != nil {
+		return err
 	}
 	teamName := context.Args[0]
 	url, err := cmd.GetUrl(fmt.Sprintf("/apps/%s/%s", appName, teamName))
@@ -159,14 +155,6 @@ func (c *AppGrant) Run(context *cmd.Context, client cmd.Doer) error {
 	}
 	fmt.Fprintf(context.Stdout, `Team "%s" was added to the "%s" app`+"\n", teamName, appName)
 	return nil
-}
-
-func (c *AppGrant) Flags() *gnuflag.FlagSet {
-	if c.fs == nil {
-		c.fs = gnuflag.NewFlagSet("app-grant", gnuflag.ContinueOnError)
-		AddAppFlag(c.fs)
-	}
-	return c.fs
 }
 
 type AppRevoke struct {

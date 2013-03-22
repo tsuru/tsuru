@@ -214,14 +214,6 @@ If you don't provide the app name, tsuru will try to guess it.`,
 	c.Assert((&AppGrant{}).Info(), gocheck.DeepEquals, expected)
 }
 
-func (s *S) TestAppGrantFlags(c *gocheck.C) {
-	command := AppGrant{}
-	flagset := command.Flags()
-	flag := flagset.Lookup("app")
-	flag.Value = nil
-	c.Assert(flag, gocheck.DeepEquals, appflag)
-}
-
 func (s *S) TestAppRevoke(c *gocheck.C) {
 	var stdout, stderr bytes.Buffer
 	expected := `Team "cobrateam" was removed from the "games" app` + "\n"
