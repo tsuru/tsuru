@@ -259,13 +259,6 @@ If you don't provide the app name, tsuru will try to guess it.`,
 	c.Assert((&AppRevoke{}).Info(), gocheck.DeepEquals, expected)
 }
 
-func (s *S) TestAppRevokeFlags(c *gocheck.C) {
-	command := AppRevoke{}
-	flag := command.Flags().Lookup("app")
-	flag.Value = nil
-	c.Assert(flag, gocheck.DeepEquals, appflag)
-}
-
 func (s *S) TestAppList(c *gocheck.C) {
 	var stdout, stderr bytes.Buffer
 	result := `[{"Ip":"10.10.10.10","Name":"app1","Units":[{"Name":"app1/0","State":"started"}]}]`
