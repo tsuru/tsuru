@@ -11,7 +11,7 @@ import (
 
 type Table struct {
 	Headers Row
-	rows    rowList
+	rows    rowSlice
 }
 
 type Row []string
@@ -93,20 +93,20 @@ func (t *Table) separator() string {
 	return result
 }
 
-type rowList []Row
+type rowSlice []Row
 
-func (l *rowList) add(r Row) {
+func (l *rowSlice) add(r Row) {
 	*l = append(*l, r)
 }
 
-func (l rowList) Len() int {
+func (l rowSlice) Len() int {
 	return len(l)
 }
 
-func (l rowList) Less(i, j int) bool {
+func (l rowSlice) Less(i, j int) bool {
 	return strings.ToLower(l[i][0]) < strings.ToLower(l[j][0])
 }
 
-func (l rowList) Swap(i, j int) {
+func (l rowSlice) Swap(i, j int) {
 	l[i], l[j] = l[j], l[i]
 }

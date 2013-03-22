@@ -119,20 +119,20 @@ func (s *S) TestBytes(c *gocheck.C) {
 }
 
 func (s *S) TestRowListAdd(c *gocheck.C) {
-	l := rowList([]Row{{"one", "1"}})
+	l := rowSlice([]Row{{"one", "1"}})
 	l.add(Row{"two", "2"})
 	c.Assert(len(l), gocheck.Equals, 2)
 }
 
 func (s *S) TestRowListLen(c *gocheck.C) {
-	l := rowList([]Row{{"one", "1"}})
+	l := rowSlice([]Row{{"one", "1"}})
 	c.Assert(l.Len(), gocheck.Equals, 1)
 	l.add(Row{"two", "2"})
 	c.Assert(l.Len(), gocheck.Equals, 2)
 }
 
 func (s *S) TestRowListLess(c *gocheck.C) {
-	l := rowList([]Row{{"zero", "0"}, {"one", "1"}, {"two", "2"}})
+	l := rowSlice([]Row{{"zero", "0"}, {"one", "1"}, {"two", "2"}})
 	c.Assert(l.Less(0, 1), gocheck.Equals, false)
 	c.Assert(l.Less(0, 2), gocheck.Equals, false)
 	c.Assert(l.Less(1, 2), gocheck.Equals, true)
@@ -140,7 +140,7 @@ func (s *S) TestRowListLess(c *gocheck.C) {
 }
 
 func (s *S) TestRowListLessDifferentCase(c *gocheck.C) {
-	l := rowList([]Row{{"Zero", "0"}, {"one", "1"}, {"two", "2"}})
+	l := rowSlice([]Row{{"Zero", "0"}, {"one", "1"}, {"two", "2"}})
 	c.Assert(l.Less(0, 1), gocheck.Equals, false)
 	c.Assert(l.Less(0, 2), gocheck.Equals, false)
 	c.Assert(l.Less(1, 2), gocheck.Equals, true)
@@ -148,11 +148,11 @@ func (s *S) TestRowListLessDifferentCase(c *gocheck.C) {
 }
 
 func (s *S) TestRowListSwap(c *gocheck.C) {
-	l := rowList([]Row{{"zero", "0"}, {"one", "1"}, {"two", "2"}})
+	l := rowSlice([]Row{{"zero", "0"}, {"one", "1"}, {"two", "2"}})
 	l.Swap(0, 2)
 	c.Assert(l.Less(0, 2), gocheck.Equals, true)
 }
 
 func (s *S) TestRowListIsSortable(c *gocheck.C) {
-	var _ sort.Interface = rowList{}
+	var _ sort.Interface = rowSlice{}
 }
