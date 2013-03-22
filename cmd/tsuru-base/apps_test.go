@@ -432,7 +432,6 @@ func (s *S) TestAppRestartIsAFlaggedCommand(c *gocheck.C) {
 }
 
 func (s *S) TestSetCName(c *gocheck.C) {
-	*AppName = "death"
 	var (
 		called         bool
 		stdout, stderr bytes.Buffer
@@ -458,7 +457,9 @@ func (s *S) TestSetCName(c *gocheck.C) {
 		},
 	}
 	client := cmd.NewClient(&http.Client{Transport: trans}, nil, manager)
-	err := (&SetCName{}).Run(&context, client)
+	command := SetCName{}
+	command.Flags().Parse(true, []string{"-a", "death"})
+	err := command.Run(&context, client)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(called, gocheck.Equals, true)
 	c.Assert(stdout.String(), gocheck.Equals, "cname successfully defined.\n")
@@ -499,7 +500,6 @@ func (s *S) TestSetCNameWithoutTheFlag(c *gocheck.C) {
 
 func (s *S) TestSetCNameFailure(c *gocheck.C) {
 	var stdout, stderr bytes.Buffer
-	*AppName = "masterplan"
 	context := cmd.Context{
 		Stdout: &stdout,
 		Stderr: &stderr,
@@ -507,7 +507,9 @@ func (s *S) TestSetCNameFailure(c *gocheck.C) {
 	}
 	trans := &transport{msg: "Invalid cname", status: http.StatusPreconditionFailed}
 	client := cmd.NewClient(&http.Client{Transport: trans}, nil, manager)
-	err := (&SetCName{}).Run(&context, client)
+	command := SetCName{}
+	command.Flags().Parse(true, []string{"-a", "masterplan"})
+	err := command.Run(&context, client)
 	c.Assert(err, gocheck.NotNil)
 	c.Assert(err.Error(), gocheck.Equals, "Invalid cname")
 }
@@ -522,8 +524,8 @@ func (s *S) TestSetCNameInfo(c *gocheck.C) {
 	c.Assert((&SetCName{}).Info(), gocheck.DeepEquals, expected)
 }
 
-func (s *S) TestSetCNameIsACommand(c *gocheck.C) {
-	var _ cmd.Command = &SetCName{}
+func (s *S) TestSetCNameIsAFlaggedCommand(c *gocheck.C) {
+	var _ cmd.FlaggedCommand = &SetCName{}
 }
 
 func (s *S) TestUnsetCName(c *gocheck.C) {

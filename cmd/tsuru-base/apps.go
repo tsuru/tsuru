@@ -294,6 +294,7 @@ type SetCName struct {
 }
 
 func (c *SetCName) Run(context *cmd.Context, client cmd.Doer) error {
+	c.Name = "set-cname"
 	err := setCName(context.Args[0], c.GuessingCommand, client)
 	if err != nil {
 		return err
