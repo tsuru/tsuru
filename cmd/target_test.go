@@ -223,6 +223,26 @@ func (s *S) TestTargetAddRunOnlyOneArg(c *gocheck.C) {
 	c.Assert(err.Error(), gocheck.Equals, "Invalid arguments")
 }
 
+func (s *S) TestTargetAddFlags(c *gocheck.C) {
+	command := targetAdd{}
+	flagset := command.Flags()
+	c.Assert(flagset, gocheck.NotNil)
+	flagset.Parse(true, []string{"--set-current"})
+	set := flagset.Lookup("set-current")
+	c.Assert(set, gocheck.NotNil)
+	c.Check(set.Name, gocheck.Equals, "set-current")
+	c.Check(set.Usage, gocheck.Equals, "Add and define the target as the current target")
+	c.Check(set.Value.String(), gocheck.Equals, "true")
+	c.Check(set.DefValue, gocheck.Equals, "false")
+	sset := flagset.Lookup("s")
+	c.Assert(sset, gocheck.NotNil)
+	c.Check(sset.Name, gocheck.Equals, "s")
+	c.Check(sset.Usage, gocheck.Equals, "Add and define the target as the current target")
+	c.Check(sset.Value.String(), gocheck.Equals, "true")
+	c.Check(sset.DefValue, gocheck.Equals, "false")
+	c.Check(command.set, gocheck.Equals, true)
+}
+
 func (s *S) TestIfTargetLabelExists(c *gocheck.C) {
 	rfs := &testing.RecordingFs{FileContent: "first\thttp://tsuru.io/\ndefault\thttp://tsuru.google.com"}
 	fsystem = rfs

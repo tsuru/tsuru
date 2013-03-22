@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"launchpad.net/gnuflag"
 	"regexp"
 	"strings"
 	"syscall"
@@ -82,7 +83,10 @@ func writeTarget(t string) error {
 	return nil
 }
 
-type targetAdd struct{}
+type targetAdd struct {
+	fs  *gnuflag.FlagSet
+	set bool
+}
 
 func (t *targetAdd) Info() *Info {
 	desc := `Add a new target on target-list (tsuru server)
@@ -109,6 +113,15 @@ func (t *targetAdd) Run(ctx *Context, client Doer) error {
 	}
 	fmt.Fprintf(ctx.Stdout, "New target %s -> %s added to target-list\n", label, target)
 	return nil
+}
+
+func (t *targetAdd) Flags() *gnuflag.FlagSet {
+	if t.fs == nil {
+		t.fs = gnuflag.NewFlagSet("target-add", gnuflag.ExitOnError)
+		t.fs.BoolVar(&t.set, "set-current", false, "Add and define the target as the current target")
+		t.fs.BoolVar(&t.set, "s", false, "Add and define the target as the current target")
+	}
+	return t.fs
 }
 
 func resetTargetList() error {
