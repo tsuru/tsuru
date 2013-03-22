@@ -37,9 +37,13 @@ type log struct {
 }
 
 func (c *AppLog) Run(context *cmd.Context, client cmd.Doer) error {
-	appName, err := c.Guess()
-	if err != nil {
-		return err
+	var err error
+	appName := c.fs.Lookup("app").Value.String()
+	if appName == "" {
+		appName, err = c.Guess()
+		if err != nil {
+			return err
+		}
 	}
 	url, err := cmd.GetUrl(fmt.Sprintf("/apps/%s/log?lines=%s", appName, c.fs.Lookup("lines").Value.String()))
 	if err != nil {

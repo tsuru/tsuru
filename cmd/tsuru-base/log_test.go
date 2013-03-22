@@ -13,7 +13,6 @@ import (
 )
 
 func (s *S) TestAppLog(c *gocheck.C) {
-	*AppName = "appName"
 	var stdout, stderr bytes.Buffer
 	result := `[{"Source":"tsuru","Date":"2012-06-20T11:17:22.75-03:00","Message":"creating app lost"},{"Source":"app","Date":"2012-06-20T11:17:22.753-03:00","Message":"app lost successfully created"}]`
 	expected := cmd.Colorfy("2012-06-20 11:17:22 [tsuru]:", "blue", "", "") + " creating app lost\n"
@@ -24,7 +23,7 @@ func (s *S) TestAppLog(c *gocheck.C) {
 	}
 	command := AppLog{}
 	client := cmd.NewClient(&http.Client{Transport: &transport{msg: result, status: http.StatusOK}}, nil, manager)
-	command.Flags().Parse(true, nil)
+	command.Flags().Parse(true, []string{"--app", "appName"})
 	err := command.Run(&context, client)
 	c.Assert(err, gocheck.IsNil)
 	got := stdout.String()
@@ -63,7 +62,6 @@ func (s *S) TestAppLogWithoutTheFlag(c *gocheck.C) {
 }
 
 func (s *S) TestAppLogShouldReturnNilIfHasNoContent(c *gocheck.C) {
-	*AppName = "appName"
 	var stdout, stderr bytes.Buffer
 	context := cmd.Context{
 		Stdout: &stdout,
@@ -71,7 +69,7 @@ func (s *S) TestAppLogShouldReturnNilIfHasNoContent(c *gocheck.C) {
 	}
 	command := AppLog{}
 	client := cmd.NewClient(&http.Client{Transport: &transport{msg: "", status: http.StatusNoContent}}, nil, manager)
-	command.Flags().Parse(true, nil)
+	command.Flags().Parse(true, []string{"--app", "appName"})
 	err := command.Run(&context, client)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(stdout.String(), gocheck.Equals, "")
