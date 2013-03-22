@@ -110,7 +110,7 @@ func (s *S) TestGuessingCommandFailToGuess(c *gocheck.C) {
 	c.Assert(err, gocheck.NotNil)
 	c.Assert(err.Error(), gocheck.Equals, `tsuru wasn't able to guess the name of the app.
 
-Use the --app flag to specify the name of the app.`)
+Use the --app flag to specify it.`)
 	pwd, err := os.Getwd()
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(fake.HasGuess(pwd), gocheck.Equals, true)
