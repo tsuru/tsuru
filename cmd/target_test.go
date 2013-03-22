@@ -234,7 +234,7 @@ func (s *S) TestIfTargetLabelExists(c *gocheck.C) {
 	c.Assert(mustBeTrueIfExist, gocheck.Equals, true)
 }
 
-func (s *S) TestIfTargetLabelDoesNotExists(c *gocheck.C) {
+func (s *S) TestIfTargetLabelDoesNotExist(c *gocheck.C) {
 	rfs := &testing.RecordingFs{FileContent: "first\thttp://tsuru.io/\ndefault\thttp://tsuru.google.com"}
 	fsystem = rfs
 	defer func() {
