@@ -189,7 +189,7 @@ func (s *S) TestTargetAddInfo(c *gocheck.C) {
 `
 	expected := &Info{
 		Name:    "target-add",
-		Usage:   "target-add <label> <target>",
+		Usage:   "target-add <label> <target> [--set-current]",
 		Desc:    desc,
 		MinArgs: 2,
 	}
