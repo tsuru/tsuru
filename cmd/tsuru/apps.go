@@ -17,17 +17,17 @@ import (
 )
 
 type AppCreate struct {
-	fs *gnuflag.FlagSet
+	fs    *gnuflag.FlagSet
+	units uint
 }
 
 func (c *AppCreate) Run(context *cmd.Context, client cmd.Doer) error {
-	units := c.fs.Lookup("units").Value.String()
-	if units == "0" {
+	if c.units == 0 {
 		return errors.New("Cannot create app with zero units.")
 	}
 	appName := context.Args[0]
 	framework := context.Args[1]
-	b := bytes.NewBufferString(fmt.Sprintf(`{"name":"%s","framework":"%s","units":%s}`, appName, framework, units))
+	b := bytes.NewBufferString(fmt.Sprintf(`{"name":"%s","framework":"%s","units":%d}`, appName, framework, c.units))
 	url, err := cmd.GetUrl("/apps")
 	if err != nil {
 		return err
@@ -52,10 +52,10 @@ func (c *AppCreate) Run(context *cmd.Context, client cmd.Doer) error {
 		return err
 	}
 	var plural string
-	if units != "1" {
+	if c.units > 1 {
 		plural = "s"
 	}
-	fmt.Fprintf(context.Stdout, "App %q is being created with %s unit%s!\n", appName, units, plural)
+	fmt.Fprintf(context.Stdout, "App %q is being created with %d unit%s!\n", appName, c.units, plural)
 	fmt.Fprintln(context.Stdout, "Use app-info to check the status of the app and its units.")
 	fmt.Fprintf(context.Stdout, "Your repository for %q project is %q\n", appName, out["repository_url"])
 	return nil
@@ -73,7 +73,8 @@ func (c *AppCreate) Info() *cmd.Info {
 func (c *AppCreate) Flags() *gnuflag.FlagSet {
 	if c.fs == nil {
 		c.fs = gnuflag.NewFlagSet("app-create", gnuflag.ContinueOnError)
-		c.fs.Uint("units", 1, "How many units should be created with the app.")
+		c.fs.UintVar(&c.units, "units", 1, "How many units should be created with the app.")
+		c.fs.UintVar(&c.units, "n", 1, "How many units should be created with the app.")
 	}
 	return c.fs
 }

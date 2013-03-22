@@ -116,6 +116,12 @@ func (s *S) TestAppCreateFlags(c *gocheck.C) {
 	c.Assert(flag.Usage, gocheck.Equals, "How many units should be created with the app.")
 	c.Assert(flag.Value.String(), gocheck.Equals, "10")
 	c.Assert(flag.DefValue, gocheck.Equals, "1")
+	sflag := flagset.Lookup("n")
+	c.Assert(sflag, gocheck.NotNil)
+	c.Assert(sflag.Name, gocheck.Equals, "n")
+	c.Assert(sflag.Usage, gocheck.Equals, "How many units should be created with the app.")
+	c.Assert(sflag.Value.String(), gocheck.Equals, "10")
+	c.Assert(sflag.DefValue, gocheck.Equals, "1")
 }
 
 func (s *S) TestAppRemove(c *gocheck.C) {
