@@ -49,7 +49,6 @@ func (g GitGuesser) GuessName(path string) (string, error) {
 // Embed this struct if you want your command to guess the name of the app.
 type GuessingCommand struct {
 	G       AppGuesser
-	Name    string
 	fs      *gnuflag.FlagSet
 	appName string
 }
@@ -80,7 +79,7 @@ Use the --app flag to specify it.`)
 
 func (cmd *GuessingCommand) Flags() *gnuflag.FlagSet {
 	if cmd.fs == nil {
-		cmd.fs = gnuflag.NewFlagSet(cmd.Name, gnuflag.ExitOnError)
+		cmd.fs = gnuflag.NewFlagSet("", gnuflag.ExitOnError)
 		cmd.fs.StringVar(&cmd.appName, "app", "", "The name of the app.")
 		cmd.fs.StringVar(&cmd.appName, "a", "", "The name of the app.")
 	}
