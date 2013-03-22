@@ -16,7 +16,6 @@ The currently available commands are (grouped by subject):
 
 	target            retrive the current tsuru server
 	target-add        add a new tsuru server to target-list
-	target-list       list all targets
 	target-set        set current target
 	target-remove     remove a tsuru server from target-list
 
@@ -53,9 +52,8 @@ Managing remote crane server endpoints
 Usage:
 
 	% tsuru target
-	% tsuru target-add <label> <address>
+	% tsuru target-add <label> <address> [--set-current]
 	% tsuru target-set <label>
-	% tsuru target-list
 	% tsuru target-remove <label>
 
 The target is the crane server to which all operations will be directed to.
