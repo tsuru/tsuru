@@ -11,7 +11,7 @@ _crane() {
 
     COMPREPLY=()
     cur=${COMP_WORDS[COMP_CWORD]}
-    cmds='change-password create doc-add doc-get help list login logout remove target target-add target-list target-set target-remove team-create team-list team-remove team-user-add team-user-remove template update user-create user-remove version'
+    cmds='change-password create doc-add doc-get help list login logout remove target target-add target-set target-remove team-create team-list team-remove team-user-add team-user-remove template update user-create user-remove version'
 
     # do ordinary expansion if we are anywhere after a -- argument
     for ((i = 1; i < COMP_CWORD; ++i)); do
