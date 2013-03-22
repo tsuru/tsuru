@@ -101,42 +101,6 @@ func (s *S) TestDeleteTargetFile(c *gocheck.C) {
 	c.Assert(rfs.HasAction("remove "+targetFile), gocheck.Equals, true)
 }
 
-func (s *S) TestTargetInfo(c *gocheck.C) {
-	desc := `Retrieve current target (tsuru server)
-
-Displays the current target.
-`
-	expected := &Info{
-		Name:    "target",
-		Usage:   "target",
-		Desc:    desc,
-		MinArgs: 0,
-	}
-	target := &target{}
-	c.Assert(target.Info(), gocheck.DeepEquals, expected)
-}
-
-func (s *S) TestTargetRun(c *gocheck.C) {
-	context := &Context{[]string{"http://tsuru.globo.com"}, manager.stdout, manager.stderr, manager.stdin}
-	target := &target{}
-	err := target.Run(context, nil)
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(context.Stdout.(*bytes.Buffer).String(), gocheck.Equals, "To add a new target use target-add\n")
-}
-
-func (s *S) TestTargetWithoutArgument(c *gocheck.C) {
-	rfs := &testing.RecordingFs{FileContent: "http://tsuru.google.com"}
-	fsystem = rfs
-	defer func() {
-		fsystem = nil
-	}()
-	context := &Context{[]string{}, manager.stdout, manager.stderr, manager.stdin}
-	target := &target{}
-	err := target.Run(context, nil)
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(context.Stdout.(*bytes.Buffer).String(), gocheck.Equals, "Current target is http://tsuru.google.com\n")
-}
-
 func (s *S) TestGetUrl(c *gocheck.C) {
 	fsystem = &testing.RecordingFs{FileContent: "http://localhost"}
 	defer func() {
@@ -283,33 +247,45 @@ func (s *S) TestGetTargets(c *gocheck.C) {
 	}
 }
 
-func (s *S) TestTargetListInfo(c *gocheck.C) {
-	desc := `List all targets (tsuru server)
-`
+func (s *S) TestTargetInfo(c *gocheck.C) {
+	desc := `Displays the list of targets, marking the current.
+
+Other commands related to target:
+
+  - target-add: adds a new target to the list of targets
+  - target-set: defines one of the targets in the list as the current target
+  - target-remove: removes one target from the list`
 	expected := &Info{
-		Name:    "target-list",
-		Usage:   "target-list",
+		Name:    "target",
+		Usage:   "target",
 		Desc:    desc,
 		MinArgs: 0,
 	}
-	targetList := &targetList{}
-	c.Assert(targetList.Info(), gocheck.DeepEquals, expected)
+	target := &target{}
+	c.Assert(target.Info(), gocheck.DeepEquals, expected)
 }
 
-func (s *S) TestTargetListRun(c *gocheck.C) {
-	rfs := &testing.RecordingFs{FileContent: "first\thttp://tsuru.io/\ndefault\thttp://tsuru.google.com"}
+func (s *S) TestTargetRun(c *gocheck.C) {
+	content := `first	http://tsuru.io
+default	http://tsuru.google.com
+other	http://other.tsuru.io`
+	rfs := &testing.RecordingFs{}
+	f, _ := rfs.Create(joinWithUserDir(".tsuru_target"))
+	f.Write([]byte("http://tsuru.io"))
+	f.Close()
+	f, _ = rfs.Create(joinWithUserDir(".tsuru_targets"))
+	f.Write([]byte(content))
+	f.Close()
 	fsystem = rfs
 	defer func() {
 		fsystem = nil
 	}()
-	expected := `+---------+-------------------------+
-| default | http://tsuru.google.com |
-| first   | http://tsuru.io/        |
-+---------+-------------------------+
-`
-	targetList := &targetList{}
+	expected := `  default (http://tsuru.google.com)
+* first (http://tsuru.io)
+  other (http://other.tsuru.io)`
+	target := &target{}
 	context := &Context{[]string{""}, manager.stdout, manager.stderr, manager.stdin}
-	err := targetList.Run(context, nil)
+	err := target.Run(context, nil)
 	c.Assert(err, gocheck.IsNil)
 	got := context.Stdout.(*bytes.Buffer).String()
 	c.Assert(got, gocheck.Equals, expected)
@@ -445,4 +421,151 @@ func (s *S) TestUndefinedTarget(c *gocheck.C) {
 For more details, please run "tsuru help target".`
 	var e error = undefinedTargetError{}
 	c.Assert(e.Error(), gocheck.Equals, expectedMsg)
+}
+
+func (s *S) TestNewTargetSlice(c *gocheck.C) {
+	var t *targetSlice = newTargetSlice()
+	c.Assert(t.sorted, gocheck.Equals, false)
+	c.Assert(t.current, gocheck.Equals, -1)
+	c.Assert(t.targets, gocheck.IsNil)
+}
+
+func (s *S) TestTargetSliceAdd(c *gocheck.C) {
+	var t targetSlice
+	t.sorted = true
+	t.add("default", "http://tsuru.io")
+	c.Assert(t.targets, gocheck.DeepEquals, []tsuruTarget{{label: "default", url: "http://tsuru.io"}})
+	c.Assert(t.sorted, gocheck.Equals, true)
+	t.add("abc", "http://tsuru.io")
+	c.Assert(t.sorted, gocheck.Equals, false)
+}
+
+func (s *S) TestTargetSliceLen(c *gocheck.C) {
+	t := targetSlice{
+		targets: []tsuruTarget{{label: "default", url: ""}},
+	}
+	c.Assert(t.Len(), gocheck.Equals, len(t.targets))
+}
+
+func (s *S) TestTargetSliceLess(c *gocheck.C) {
+	t := targetSlice{
+		targets: []tsuruTarget{
+			{label: "first", url: ""},
+			{label: "default", url: ""},
+			{label: "second", url: ""},
+		},
+	}
+	c.Check(t.Less(0, 1), gocheck.Equals, false)
+	c.Check(t.Less(0, 2), gocheck.Equals, true)
+	c.Check(t.Less(1, 0), gocheck.Equals, true)
+	c.Check(t.Less(1, 2), gocheck.Equals, true)
+	c.Check(t.Less(2, 0), gocheck.Equals, false)
+}
+
+func (s *S) TestTargetSliceSwap(c *gocheck.C) {
+	t := targetSlice{
+		targets: []tsuruTarget{
+			{label: "first", url: ""},
+			{label: "default", url: ""},
+			{label: "second", url: ""},
+		},
+	}
+	c.Assert(t.Less(0, 1), gocheck.Equals, false)
+	t.Swap(0, 1)
+	c.Assert(t.Less(0, 1), gocheck.Equals, true)
+}
+
+func (s *S) TestTargetSliceSort(c *gocheck.C) {
+	t := targetSlice{
+		targets: []tsuruTarget{
+			{label: "first", url: ""},
+			{label: "default", url: ""},
+			{label: "second", url: ""},
+		},
+	}
+	t.Sort()
+	c.Assert(t.Less(0, 1), gocheck.Equals, true)
+	c.Assert(t.Less(1, 2), gocheck.Equals, true)
+	c.Assert(t.sorted, gocheck.Equals, true)
+}
+
+func (s *S) TestTargetSliceSetCurrent(c *gocheck.C) {
+	t := targetSlice{
+		targets: []tsuruTarget{
+			{label: "first", url: "first.tsuru.io"},
+			{label: "default", url: "default.tsuru.io"},
+			{label: "second", url: "second.tsuru.io"},
+		},
+		current: -1,
+	}
+	t.setCurrent("unknown.tsuru.io")
+	c.Check(t.current, gocheck.Equals, -1)
+	t.setCurrent("first.tsuru.io")
+	c.Check(t.current, gocheck.Equals, 1) // sort the slice
+	t.setCurrent("second.tsuru.io")
+	c.Check(t.current, gocheck.Equals, 2)
+	t.setCurrent("unknown.tsuru.io")
+	c.Check(t.current, gocheck.Equals, 2)
+}
+
+func (s *S) TestTargetSliceStringSortedNoCurrent(c *gocheck.C) {
+	expected := `  default (default.tsuru.io)
+  first (first.tsuru.io)
+  second (second.tsuru.io)`
+	t := targetSlice{
+		targets: []tsuruTarget{
+			{label: "first", url: "first.tsuru.io"},
+			{label: "default", url: "default.tsuru.io"},
+			{label: "second", url: "second.tsuru.io"},
+		},
+		current: -1,
+	}
+	t.Sort()
+	c.Assert(t.String(), gocheck.Equals, expected)
+}
+
+func (s *S) TestTargetSliceStringUnsortedNoCurrent(c *gocheck.C) {
+	expected := `  default (default.tsuru.io)
+  first (first.tsuru.io)
+  second (second.tsuru.io)`
+	t := targetSlice{
+		targets: []tsuruTarget{
+			{label: "first", url: "first.tsuru.io"},
+			{label: "default", url: "default.tsuru.io"},
+			{label: "second", url: "second.tsuru.io"},
+		},
+		current: -1,
+	}
+	c.Assert(t.String(), gocheck.Equals, expected)
+}
+
+func (s *S) TestTargetSliceStringSortedWithCurrent(c *gocheck.C) {
+	expected := `  default (default.tsuru.io)
+  first (first.tsuru.io)
+* second (second.tsuru.io)`
+	t := targetSlice{
+		targets: []tsuruTarget{
+			{label: "first", url: "first.tsuru.io"},
+			{label: "default", url: "default.tsuru.io"},
+			{label: "second", url: "second.tsuru.io"},
+		},
+		current: 2,
+	}
+	t.Sort()
+	c.Assert(t.String(), gocheck.Equals, expected)
+}
+
+func (s *S) TestTargetSliceStringUnsortedWithCurrent(c *gocheck.C) {
+	expected := `  default (default.tsuru.io)
+* first (first.tsuru.io)
+  second (second.tsuru.io)`
+	t := targetSlice{
+		targets: []tsuruTarget{
+			{label: "first", url: "first.tsuru.io"},
+			{label: "default", url: "default.tsuru.io"},
+			{label: "second", url: "second.tsuru.io"},
+		},
+		current: 1,
+	}
+	c.Assert(t.String(), gocheck.Equals, expected)
 }

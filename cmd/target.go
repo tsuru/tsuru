@@ -10,34 +10,79 @@ import (
 	"io/ioutil"
 	"launchpad.net/gnuflag"
 	"regexp"
+	"sort"
 	"strings"
 	"syscall"
 )
 
-type target struct{}
+type tsuruTarget struct {
+	label, url string
+}
 
-func (t *target) Info() *Info {
-	desc := `Retrieve current target (tsuru server)
+func (t *tsuruTarget) String() string {
+	return t.label + " (" + t.url + ")"
+}
 
-Displays the current target.
-`
-	return &Info{
-		Name:    "target",
-		Usage:   "target",
-		Desc:    desc,
-		MinArgs: 0,
+type targetSlice struct {
+	targets []tsuruTarget
+	current int
+	sorted  bool
+}
+
+func newTargetSlice() *targetSlice {
+	return &targetSlice{current: -1}
+}
+
+func (t *targetSlice) add(label, url string) {
+	t.targets = append(t.targets, tsuruTarget{label: label, url: url})
+	length := t.Len()
+	if length > 1 && !t.Less(t.Len()-2, t.Len()-1) {
+		t.sorted = false
 	}
 }
 
-func (t *target) Run(ctx *Context, client Doer) error {
-	var target string
-	if len(ctx.Args) > 0 {
-		fmt.Fprintf(ctx.Stdout, "To add a new target use target-add\n")
-		return nil
+func (t *targetSlice) Len() int {
+	return len(t.targets)
+}
+
+func (t *targetSlice) Less(i, j int) bool {
+	return t.targets[i].label < t.targets[j].label
+}
+
+func (t *targetSlice) Swap(i, j int) {
+	t.targets[i], t.targets[j] = t.targets[j], t.targets[i]
+}
+
+func (t *targetSlice) Sort() {
+	sort.Sort(t)
+	t.sorted = true
+}
+
+func (t *targetSlice) setCurrent(url string) {
+	if !t.sorted {
+		t.Sort()
 	}
-	target, _ = readTarget()
-	fmt.Fprintf(ctx.Stdout, "Current target is %s\n", target)
-	return nil
+	for i, target := range t.targets {
+		if target.url == url {
+			t.current = i
+			break
+		}
+	}
+}
+
+func (t *targetSlice) String() string {
+	if !t.sorted {
+		t.Sort()
+	}
+	values := make([]string, len(t.targets))
+	for i, target := range t.targets {
+		prefix := "  "
+		if t.current == i {
+			prefix = "* "
+		}
+		values[i] = prefix + target.String()
+	}
+	return strings.Join(values, "\n")
 }
 
 func readTarget() (string, error) {
@@ -190,30 +235,37 @@ func getTargets() (map[string]string, error) {
 	return targets, nil
 }
 
-type targetList struct{}
+type target struct{}
 
-func (t *targetList) Info() *Info {
-	desc := `List all targets (tsuru server)
-`
+func (t *target) Info() *Info {
+	desc := `Displays the list of targets, marking the current.
+
+Other commands related to target:
+
+  - target-add: adds a new target to the list of targets
+  - target-set: defines one of the targets in the list as the current target
+  - target-remove: removes one target from the list`
 	return &Info{
-		Name:    "target-list",
-		Usage:   "target-list",
+		Name:    "target",
+		Usage:   "target",
 		Desc:    desc,
 		MinArgs: 0,
 	}
 }
 
-func (t *targetList) Run(ctx *Context, client Doer) error {
-	table := NewTable()
+func (t *target) Run(ctx *Context, client Doer) error {
+	slice := newTargetSlice()
 	targets, err := getTargets()
 	if err != nil {
 		return err
 	}
 	for label, target := range targets {
-		table.AddRow(Row{label, target})
+		slice.add(label, target)
 	}
-	table.Sort()
-	fmt.Fprint(ctx.Stdout, table)
+	if current, err := readTarget(); err == nil {
+		slice.setCurrent(current)
+	}
+	fmt.Fprint(ctx.Stdout, slice)
 	return nil
 }
 
