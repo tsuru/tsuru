@@ -80,7 +80,7 @@ Use the --app flag to specify it.`)
 
 func (cmd *GuessingCommand) Flags() *gnuflag.FlagSet {
 	if cmd.fs == nil {
-		cmd.fs = gnuflag.NewFlagSet(cmd.Name, gnuflag.ContinueOnError)
+		cmd.fs = gnuflag.NewFlagSet(cmd.Name, gnuflag.ExitOnError)
 		cmd.fs.StringVar(&cmd.appName, "app", "", "The name of the app.")
 		cmd.fs.StringVar(&cmd.appName, "a", "", "The name of the app.")
 	}

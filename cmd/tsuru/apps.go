@@ -72,7 +72,7 @@ func (c *AppCreate) Info() *cmd.Info {
 
 func (c *AppCreate) Flags() *gnuflag.FlagSet {
 	if c.fs == nil {
-		c.fs = gnuflag.NewFlagSet("app-create", gnuflag.ContinueOnError)
+		c.fs = gnuflag.NewFlagSet("app-create", gnuflag.ExitOnError)
 		c.fs.UintVar(&c.units, "units", 1, "How many units should be created with the app.")
 		c.fs.UintVar(&c.units, "n", 1, "How many units should be created with the app.")
 	}
