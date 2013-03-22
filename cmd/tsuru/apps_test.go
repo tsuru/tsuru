@@ -119,7 +119,6 @@ func (s *S) TestAppCreateFlags(c *gocheck.C) {
 }
 
 func (s *S) TestAppRemove(c *gocheck.C) {
-	*tsuru.AppName = "ble"
 	var stdout, stderr bytes.Buffer
 	expected := `Are you sure you want to remove app "ble"? (y/n) App "ble" successfully removed!` + "\n"
 	context := cmd.Context{
@@ -130,13 +129,13 @@ func (s *S) TestAppRemove(c *gocheck.C) {
 	}
 	client := cmd.NewClient(&http.Client{Transport: &transport{msg: "", status: http.StatusOK}}, nil, manager)
 	command := AppRemove{}
+	command.Flags().Parse(true, []string{"-a", "ble"})
 	err := command.Run(&context, client)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(stdout.String(), gocheck.Equals, expected)
 }
 
 func (s *S) TestAppRemoveWithoutAsking(c *gocheck.C) {
-	*tsuru.AppName = "ble"
 	*AssumeYes = true
 	var stdout, stderr bytes.Buffer
 	expected := `App "ble" successfully removed!` + "\n"
@@ -148,6 +147,7 @@ func (s *S) TestAppRemoveWithoutAsking(c *gocheck.C) {
 	}
 	client := cmd.NewClient(&http.Client{Transport: &transport{msg: "", status: http.StatusOK}}, nil, manager)
 	command := AppRemove{}
+	command.Flags().Parse(true, []string{"-a", "ble"})
 	err := command.Run(&context, client)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(stdout.String(), gocheck.Equals, expected)
@@ -200,7 +200,6 @@ func (s *S) TestAppRemoveWithoutArgs(c *gocheck.C) {
 }
 
 func (s *S) TestAppRemoveWithoutConfirmation(c *gocheck.C) {
-	*tsuru.AppName = "ble"
 	var stdout, stderr bytes.Buffer
 	expected := `Are you sure you want to remove app "ble"? (y/n) Abort.` + "\n"
 	context := cmd.Context{
@@ -209,6 +208,7 @@ func (s *S) TestAppRemoveWithoutConfirmation(c *gocheck.C) {
 		Stdin:  strings.NewReader("n\n"),
 	}
 	command := AppRemove{}
+	command.Flags().Parse(true, []string{"--app", "ble"})
 	err := command.Run(&context, nil)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(stdout.String(), gocheck.Equals, expected)
@@ -227,7 +227,6 @@ If you don't provide the app name, tsuru will try to guess it.`,
 }
 
 func (s *S) TestUnitAdd(c *gocheck.C) {
-	*tsuru.AppName = "radio"
 	var stdout, stderr bytes.Buffer
 	var called bool
 	context := cmd.Context{
@@ -250,6 +249,7 @@ func (s *S) TestUnitAdd(c *gocheck.C) {
 	}
 	client := cmd.NewClient(&http.Client{Transport: trans}, nil, manager)
 	command := UnitAdd{}
+	command.Flags().Parse(true, []string{"-a", "radio"})
 	err := command.Run(&context, client)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(called, gocheck.Equals, true)
@@ -258,7 +258,6 @@ func (s *S) TestUnitAdd(c *gocheck.C) {
 }
 
 func (s *S) TestUnitAddFailure(c *gocheck.C) {
-	*tsuru.AppName = "radio"
 	var stdout, stderr bytes.Buffer
 	context := cmd.Context{
 		Args:   []string{"3"},
@@ -267,6 +266,7 @@ func (s *S) TestUnitAddFailure(c *gocheck.C) {
 	}
 	client := cmd.NewClient(&http.Client{Transport: &transport{msg: "Failed to add.", status: 500}}, nil, manager)
 	command := UnitAdd{}
+	command.Flags().Parse(true, []string{"-a", "radio"})
 	err := command.Run(&context, client)
 	c.Assert(err, gocheck.NotNil)
 	c.Assert(err.Error(), gocheck.Equals, "Failed to add.")
@@ -282,12 +282,11 @@ func (s *S) TestUnitAddInfo(c *gocheck.C) {
 	c.Assert((&UnitAdd{}).Info(), gocheck.DeepEquals, expected)
 }
 
-func (s *S) TestUnitAddIsACommand(c *gocheck.C) {
-	var _ cmd.Command = &UnitAdd{}
+func (s *S) TestUnitAddIsFlaggedACommand(c *gocheck.C) {
+	var _ cmd.FlaggedCommand = &UnitAdd{}
 }
 
 func (s *S) TestUnitRemove(c *gocheck.C) {
-	*tsuru.AppName = "vapor"
 	var stdout, stderr bytes.Buffer
 	var called bool
 	context := cmd.Context{
@@ -310,6 +309,7 @@ func (s *S) TestUnitRemove(c *gocheck.C) {
 	}
 	client := cmd.NewClient(&http.Client{Transport: trans}, nil, manager)
 	command := UnitRemove{}
+	command.Flags().Parse(true, []string{"-a", "vapor"})
 	err := command.Run(&context, client)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(called, gocheck.Equals, true)
@@ -318,7 +318,6 @@ func (s *S) TestUnitRemove(c *gocheck.C) {
 }
 
 func (s *S) TestUnitRemoveFailure(c *gocheck.C) {
-	*tsuru.AppName = "opticon"
 	var stdout, stderr bytes.Buffer
 	context := cmd.Context{
 		Args:   []string{"1"},
@@ -329,6 +328,7 @@ func (s *S) TestUnitRemoveFailure(c *gocheck.C) {
 		Transport: &transport{msg: "Failed to remove.", status: 500},
 	}, nil, manager)
 	command := UnitRemove{}
+	command.Flags().Parse(true, []string{"-a", "vapor"})
 	err := command.Run(&context, client)
 	c.Assert(err, gocheck.NotNil)
 	c.Assert(err.Error(), gocheck.Equals, "Failed to remove.")

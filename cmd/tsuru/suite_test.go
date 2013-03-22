@@ -8,7 +8,6 @@ import (
 	"bytes"
 	"errors"
 	"github.com/globocom/tsuru/cmd"
-	"github.com/globocom/tsuru/cmd/tsuru-base"
 	"io/ioutil"
 	"launchpad.net/gocheck"
 	"net/http"
@@ -74,6 +73,5 @@ func (t *conditionalTransport) RoundTrip(req *http.Request) (*http.Response, err
 func (s *S) SetUpTest(c *gocheck.C) {
 	var stdout, stderr bytes.Buffer
 	manager = cmd.NewManager("glb", version, header, &stdout, &stderr, os.Stdin)
-	*tsuru.AppName = ""
 	*AssumeYes = false
 }
