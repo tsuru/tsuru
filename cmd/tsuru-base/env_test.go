@@ -24,7 +24,6 @@ If you don't provide the app name, tsuru will try to guess it.`
 }
 
 func (s *S) TestEnvGetRun(c *gocheck.C) {
-	*AppName = "someapp"
 	var stdout, stderr bytes.Buffer
 	result := "DATABASE_HOST=somehost\n"
 	context := cmd.Context{
@@ -33,13 +32,14 @@ func (s *S) TestEnvGetRun(c *gocheck.C) {
 		Stderr: &stderr,
 	}
 	client := cmd.NewClient(&http.Client{Transport: &transport{msg: result, status: http.StatusOK}}, nil, manager)
-	err := (&EnvGet{}).Run(&context, client)
+	command := EnvGet{}
+	command.Flags().Parse(true, []string{"-a", "someapp"})
+	err := command.Run(&context, client)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(stdout.String(), gocheck.Equals, result)
 }
 
 func (s *S) TestEnvGetRunWithMultipleParams(c *gocheck.C) {
-	*AppName = "someapp"
 	var stdout, stderr bytes.Buffer
 	result := "DATABASE_HOST=somehost\nDATABASE_USER=someuser"
 	params := []string{"DATABASE_HOST", "DATABASE_USER"}
@@ -49,7 +49,9 @@ func (s *S) TestEnvGetRunWithMultipleParams(c *gocheck.C) {
 		Stderr: &stderr,
 	}
 	client := cmd.NewClient(&http.Client{Transport: &transport{msg: result, status: http.StatusOK}}, nil, manager)
-	err := (&EnvGet{}).Run(&context, client)
+	command := EnvGet{}
+	command.Flags().Parse(true, []string{"-a", "someapp"})
+	err := command.Run(&context, client)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(stdout.String(), gocheck.Equals, result)
 }
