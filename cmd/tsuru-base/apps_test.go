@@ -13,8 +13,14 @@ import (
 	"net/http"
 )
 
+var appflag = &gnuflag.Flag{
+	Name:     "app",
+	Usage:    "The name of the app.",
+	Value:    nil,
+	DefValue: "",
+}
+
 func (s *S) TestAppInfo(c *gocheck.C) {
-	*AppName = "app1"
 	var stdout, stderr bytes.Buffer
 	result := `{"Name":"app1","CName":"","Ip":"myapp.tsuru.io","Framework":"php","Repository":"git@git.com:php.git","State":"dead", "Units":[{"Ip":"10.10.10.10","Name":"app1/0","State":"started"}, {"Ip":"9.9.9.9","Name":"app1/1","State":"started"}, {"Ip":"","Name":"app1/2","State":"pending"}],"Teams":["tsuruteam","crane"]}`
 	expected := `Application: app1
@@ -38,13 +44,13 @@ Units:
 	}
 	client := cmd.NewClient(&http.Client{Transport: &transport{msg: result, status: http.StatusOK}}, nil, manager)
 	command := AppInfo{}
+	command.Flags().Parse(true, []string{"--app", "app1"})
 	err := command.Run(&context, client)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(stdout.String(), gocheck.Equals, expected)
 }
 
 func (s *S) TestAppInfoNoUnits(c *gocheck.C) {
-	*AppName = "app1"
 	var stdout, stderr bytes.Buffer
 	result := `{"Name":"app1","Ip":"app1.tsuru.io","Framework":"php","Repository":"git@git.com:php.git","State":"dead", "Units":[],"Teams":["tsuruteam","crane"]}`
 	expected := `Application: app1
@@ -60,6 +66,7 @@ Address: app1.tsuru.io
 	}
 	client := cmd.NewClient(&http.Client{Transport: &transport{msg: result, status: http.StatusOK}}, nil, manager)
 	command := AppInfo{}
+	command.Flags().Parse(true, []string{"--app", "app1"})
 	err := command.Run(&context, client)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(stdout.String(), gocheck.Equals, expected)
@@ -98,14 +105,14 @@ Units:
 	client := cmd.NewClient(&http.Client{Transport: trans}, nil, manager)
 	fake := FakeGuesser{name: "secret"}
 	guessCommand := GuessingCommand{G: &fake}
-	command := AppInfo{guessCommand}
+	command := AppInfo{GuessingCommand: guessCommand}
+	command.Flags().Parse(true, nil)
 	err := command.Run(&context, client)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(stdout.String(), gocheck.Equals, expected)
 }
 
 func (s *S) TestAppInfoCName(c *gocheck.C) {
-	*AppName = "app1"
 	var stdout, stderr bytes.Buffer
 	result := `{"Name":"app1","Ip":"myapp.tsuru.io","CName":"yourapp.tsuru.io","Framework":"php","Repository":"git@git.com:php.git","State":"dead", "Units":[{"Ip":"10.10.10.10","Name":"app1/0","State":"started"}, {"Ip":"9.9.9.9","Name":"app1/1","State":"started"}, {"Ip":"","Name":"app1/2","State":"pending"}],"Teams":["tsuruteam","crane"]}`
 	expected := `Application: app1
@@ -129,6 +136,7 @@ Units:
 	}
 	client := cmd.NewClient(&http.Client{Transport: &transport{msg: result, status: http.StatusOK}}, nil, manager)
 	command := AppInfo{}
+	command.Flags().Parse(true, []string{"--app", "app1"})
 	err := command.Run(&context, client)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(stdout.String(), gocheck.Equals, expected)
@@ -144,6 +152,14 @@ If you don't provide the app name, tsuru will try to guess it.`,
 		MinArgs: 0,
 	}
 	c.Assert((&AppInfo{}).Info(), gocheck.DeepEquals, expected)
+}
+
+func (s *S) TestAppInfoFlags(c *gocheck.C) {
+	command := AppInfo{}
+	flagset := command.Flags()
+	flag := flagset.Lookup("app")
+	flag.Value = nil
+	c.Assert(flag, gocheck.DeepEquals, appflag)
 }
 
 func (s *S) TestAppGrant(c *gocheck.C) {
