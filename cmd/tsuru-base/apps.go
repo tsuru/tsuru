@@ -10,12 +10,9 @@ import (
 	"github.com/globocom/tsuru/cmd"
 	"io"
 	"io/ioutil"
-	"launchpad.net/gnuflag"
 	"net/http"
 	"strings"
 )
-
-var AppName = gnuflag.String("app", "", "App name for running app related commands.")
 
 type AppInfo struct {
 	GuessingCommand
