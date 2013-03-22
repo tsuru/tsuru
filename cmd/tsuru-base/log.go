@@ -16,7 +16,9 @@ import (
 
 type AppLog struct {
 	GuessingCommand
-	fs *gnuflag.FlagSet
+	fs     *gnuflag.FlagSet
+	source string
+	lines  int
 }
 
 func (c *AppLog) Info() *cmd.Info {
@@ -37,20 +39,17 @@ type log struct {
 }
 
 func (c *AppLog) Run(context *cmd.Context, client cmd.Doer) error {
-	var err error
-	appName := c.fs.Lookup("app").Value.String()
-	if appName == "" {
-		appName, err = c.Guess()
-		if err != nil {
-			return err
-		}
-	}
-	url, err := cmd.GetUrl(fmt.Sprintf("/apps/%s/log?lines=%s", appName, c.fs.Lookup("lines").Value.String()))
+	c.Name = "log"
+	appName, err := c.Guess()
 	if err != nil {
 		return err
 	}
-	if source := c.fs.Lookup("source").Value.String(); source != "" {
-		url = fmt.Sprintf("%s&source=%s", url, source)
+	url, err := cmd.GetUrl(fmt.Sprintf("/apps/%s/log?lines=%d", appName, c.lines))
+	if err != nil {
+		return err
+	}
+	if c.source != "" {
+		url = fmt.Sprintf("%s&source=%s", url, c.source)
 	}
 	request, err := http.NewRequest("GET", url, nil)
 	if err != nil {
@@ -81,10 +80,11 @@ func (c *AppLog) Run(context *cmd.Context, client cmd.Doer) error {
 
 func (c *AppLog) Flags() *gnuflag.FlagSet {
 	if c.fs == nil {
-		c.fs = gnuflag.NewFlagSet("log", gnuflag.ContinueOnError)
-		c.fs.Int("lines", 10, "The number of log lines to display")
-		c.fs.String("source", "", "The log from the given source")
-		AddAppFlag(c.fs)
+		c.fs = c.GuessingCommand.Flags()
+		c.fs.IntVar(&c.lines, "lines", 10, "The number of log lines to display")
+		c.fs.IntVar(&c.lines, "l", 10, "The number of log lines to display")
+		c.fs.StringVar(&c.source, "source", "", "The log from the given source")
+		c.fs.StringVar(&c.source, "s", "", "The log from the given source")
 	}
 	return c.fs
 }
