@@ -163,7 +163,6 @@ func (s *S) TestAppInfoFlags(c *gocheck.C) {
 }
 
 func (s *S) TestAppGrant(c *gocheck.C) {
-	*AppName = "games"
 	var stdout, stderr bytes.Buffer
 	expected := `Team "cobrateam" was added to the "games" app` + "\n"
 	context := cmd.Context{
@@ -172,6 +171,7 @@ func (s *S) TestAppGrant(c *gocheck.C) {
 		Stderr: &stderr,
 	}
 	command := AppGrant{}
+	command.Flags().Parse(true, []string{"--app", "games"})
 	client := cmd.NewClient(&http.Client{Transport: &transport{msg: "", status: http.StatusOK}}, nil, manager)
 	err := command.Run(&context, client)
 	c.Assert(err, gocheck.IsNil)
@@ -187,7 +187,8 @@ func (s *S) TestAppGrantWithoutFlag(c *gocheck.C) {
 		Stderr: &stderr,
 	}
 	fake := &FakeGuesser{name: "fights"}
-	command := AppGrant{GuessingCommand{G: fake}}
+	command := AppGrant{GuessingCommand: GuessingCommand{G: fake}}
+	command.Flags().Parse(true, nil)
 	client := cmd.NewClient(&http.Client{Transport: &transport{msg: "", status: http.StatusOK}}, nil, manager)
 	err := command.Run(&context, client)
 	c.Assert(err, gocheck.IsNil)
@@ -204,6 +205,14 @@ If you don't provide the app name, tsuru will try to guess it.`,
 		MinArgs: 1,
 	}
 	c.Assert((&AppGrant{}).Info(), gocheck.DeepEquals, expected)
+}
+
+func (s *S) TestAppGrantFlags(c *gocheck.C) {
+	command := AppGrant{}
+	flagset := command.Flags()
+	flag := flagset.Lookup("app")
+	flag.Value = nil
+	c.Assert(flag, gocheck.DeepEquals, appflag)
 }
 
 func (s *S) TestAppRevoke(c *gocheck.C) {
