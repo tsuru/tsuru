@@ -109,10 +109,3 @@ If you don't provide the app name, tsuru will try to guess it.
 	command := AppRun{}
 	c.Assert(command.Info(), gocheck.DeepEquals, expected)
 }
-
-func (s *S) TestAppRunFlags(c *gocheck.C) {
-	command := AppRun{}
-	flag := command.Flags().Lookup("app")
-	flag.Value = nil
-	c.Assert(flag, gocheck.DeepEquals, appflag)
-}

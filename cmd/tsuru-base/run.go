@@ -8,14 +8,12 @@ import (
 	"fmt"
 	"github.com/globocom/tsuru/cmd"
 	"io"
-	"launchpad.net/gnuflag"
 	"net/http"
 	"strings"
 )
 
 type AppRun struct {
 	GuessingCommand
-	fs *gnuflag.FlagSet
 }
 
 func (c *AppRun) Info() *cmd.Info {
@@ -34,13 +32,10 @@ If you don't provide the app name, tsuru will try to guess it.
 }
 
 func (c *AppRun) Run(context *cmd.Context, client cmd.Doer) error {
-	var err error
-	appName := c.fs.Lookup("app").Value.String()
-	if appName == "" {
-		appName, err = c.Guess()
-		if err != nil {
-			return err
-		}
+	c.Name = "run"
+	appName, err := c.Guess()
+	if err != nil {
+		return err
 	}
 	url, err := cmd.GetUrl(fmt.Sprintf("/apps/%s/run", appName))
 	if err != nil {
@@ -58,12 +53,4 @@ func (c *AppRun) Run(context *cmd.Context, client cmd.Doer) error {
 	defer r.Body.Close()
 	_, err = io.Copy(context.Stdout, r.Body)
 	return err
-}
-
-func (c *AppRun) Flags() *gnuflag.FlagSet {
-	if c.fs == nil {
-		c.fs = gnuflag.NewFlagSet("run", gnuflag.ContinueOnError)
-		AddAppFlag(c.fs)
-	}
-	return c.fs
 }
