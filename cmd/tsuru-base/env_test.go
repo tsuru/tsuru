@@ -201,11 +201,11 @@ func (s *S) TestEnvUnsetWithoutFlag(c *gocheck.C) {
 }
 
 func (s *S) TestRequestEnvUrl(c *gocheck.C) {
-	*AppName = "someapp"
 	result := "DATABASE_HOST=somehost"
 	client := cmd.NewClient(&http.Client{Transport: &transport{msg: result, status: http.StatusOK}}, nil, manager)
 	args := []string{"DATABASE_HOST"}
-	b, err := requestEnvUrl("GET", GuessingCommand{G: &FakeGuesser{name: "someapp"}}, args, client)
+	g := GuessingCommand{G: &FakeGuesser{name: "someapp"}, appName: "something"}
+	b, err := requestEnvUrl("GET", g, args, client)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(b, gocheck.Equals, result)
 }
