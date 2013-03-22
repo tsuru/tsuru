@@ -103,6 +103,19 @@ func (s *S) TestAppCreateWithInvalidFramework(c *gocheck.C) {
 	c.Assert(stdout.String(), gocheck.Equals, "")
 }
 
+func (s *S) TestAppCreateFlags(c *gocheck.C) {
+	command := AppCreate{}
+	flagset := command.Flags()
+	c.Assert(flagset, gocheck.NotNil)
+	flagset.Parse(true, []string{"--units", "10"})
+	flag := flagset.Lookup("units")
+	c.Assert(flag, gocheck.NotNil)
+	c.Assert(flag.Name, gocheck.Equals, "units")
+	c.Assert(flag.Usage, gocheck.Equals, "How many units should be created with the app.")
+	c.Assert(flag.Value.String(), gocheck.Equals, "10")
+	c.Assert(flag.DefValue, gocheck.Equals, "1")
+}
+
 func (s *S) TestAppRemove(c *gocheck.C) {
 	*tsuru.AppName = "ble"
 	var stdout, stderr bytes.Buffer

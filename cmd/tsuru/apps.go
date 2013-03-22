@@ -19,7 +19,9 @@ import (
 var AssumeYes = gnuflag.Bool("assume-yes", false, "Don't ask for confirmation on operations.")
 var NumUnits = gnuflag.Uint("units", 1, "How many units should be created with the app.")
 
-type AppCreate struct{}
+type AppCreate struct {
+	fs *gnuflag.FlagSet
+}
 
 func (c *AppCreate) Run(context *cmd.Context, client cmd.Doer) error {
 	if *NumUnits == 0 {
@@ -68,6 +70,14 @@ func (c *AppCreate) Info() *cmd.Info {
 		Desc:    "create a new app.",
 		MinArgs: 2,
 	}
+}
+
+func (c *AppCreate) Flags() *gnuflag.FlagSet {
+	if c.fs == nil {
+		c.fs = gnuflag.NewFlagSet("app-create", gnuflag.ContinueOnError)
+		c.fs.Uint("units", 1, "How many units should be created with the app.")
+	}
+	return c.fs
 }
 
 type AppRemove struct {
