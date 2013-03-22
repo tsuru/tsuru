@@ -7,6 +7,7 @@ package tsuru
 import (
 	"errors"
 	"io"
+	"launchpad.net/gnuflag"
 	"launchpad.net/gocheck"
 	"os"
 	"os/exec"
@@ -91,7 +92,31 @@ func (s *S) TestGuessingCommandGuesserNonNil(c *gocheck.C) {
 	c.Assert(g.guesser(), gocheck.DeepEquals, fake)
 }
 
-func (s *S) TestGuessingCommand(c *gocheck.C) {
+func (s *S) TestGuessingCommandWithFlagDefined(c *gocheck.C) {
+	fake := &FakeGuesser{name: "other-app"}
+	g := GuessingCommand{G: fake}
+	g.Flags().Parse(true, []string{"--app", "myapp"})
+	name, err := g.Guess()
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(name, gocheck.Equals, "myapp")
+	pwd, err := os.Getwd()
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(fake.HasGuess(pwd), gocheck.Equals, false)
+}
+
+func (s *S) TestGuessingCommandWithShortFlagDefined(c *gocheck.C) {
+	fake := &FakeGuesser{name: "other-app"}
+	g := GuessingCommand{G: fake}
+	g.Flags().Parse(true, []string{"-a", "myapp"})
+	name, err := g.Guess()
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(name, gocheck.Equals, "myapp")
+	pwd, err := os.Getwd()
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(fake.HasGuess(pwd), gocheck.Equals, false)
+}
+
+func (s *S) TestGuessingCommandWithoutFlagDefined(c *gocheck.C) {
 	fake := &FakeGuesser{name: "other-app"}
 	g := GuessingCommand{G: fake}
 	name, err := g.Guess()
@@ -114,6 +139,18 @@ Use the --app flag to specify it.`)
 	pwd, err := os.Getwd()
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(fake.HasGuess(pwd), gocheck.Equals, true)
+}
+
+func (s *S) TestGuessingCommandFlags(c *gocheck.C) {
+	var flags []gnuflag.Flag
+	expected := []gnuflag.Flag{*appshortflag, *appflag}
+	command := GuessingCommand{}
+	flagset := command.Flags()
+	flagset.VisitAll(func(f *gnuflag.Flag) {
+		f.Value = nil
+		flags = append(flags, *f)
+	})
+	c.Assert(flags, gocheck.DeepEquals, expected)
 }
 
 type FakeGuesser struct {

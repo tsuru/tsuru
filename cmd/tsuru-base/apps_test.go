@@ -20,6 +20,13 @@ var appflag = &gnuflag.Flag{
 	DefValue: "",
 }
 
+var appshortflag = &gnuflag.Flag{
+	Name:     "a",
+	Usage:    "The name of the app.",
+	Value:    nil,
+	DefValue: "",
+}
+
 func (s *S) TestAppInfo(c *gocheck.C) {
 	var stdout, stderr bytes.Buffer
 	result := `{"Name":"app1","CName":"","Ip":"myapp.tsuru.io","Framework":"php","Repository":"git@git.com:php.git","State":"dead", "Units":[{"Ip":"10.10.10.10","Name":"app1/0","State":"started"}, {"Ip":"9.9.9.9","Name":"app1/1","State":"started"}, {"Ip":"","Name":"app1/2","State":"pending"}],"Teams":["tsuruteam","crane"]}`

@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/globocom/tsuru/git"
+	"launchpad.net/gnuflag"
 	"os"
 	"regexp"
 )
@@ -47,7 +48,10 @@ func (g GitGuesser) GuessName(path string) (string, error) {
 
 // Embed this struct if you want your command to guess the name of the app.
 type GuessingCommand struct {
-	G AppGuesser
+	G       AppGuesser
+	Name    string
+	fs      *gnuflag.FlagSet
+	appName string
 }
 
 func (cmd *GuessingCommand) guesser() AppGuesser {
@@ -58,6 +62,9 @@ func (cmd *GuessingCommand) guesser() AppGuesser {
 }
 
 func (cmd *GuessingCommand) Guess() (string, error) {
+	if cmd.appName != "" {
+		return cmd.appName, nil
+	}
 	path, err := os.Getwd()
 	if err != nil {
 		return "", fmt.Errorf("Unable to guess app name: %s.", err)
@@ -69,4 +76,13 @@ func (cmd *GuessingCommand) Guess() (string, error) {
 Use the --app flag to specify it.`)
 	}
 	return name, nil
+}
+
+func (cmd *GuessingCommand) Flags() *gnuflag.FlagSet {
+	if cmd.fs == nil {
+		cmd.fs = gnuflag.NewFlagSet(cmd.Name, gnuflag.ContinueOnError)
+		cmd.fs.StringVar(&cmd.appName, "app", "", "The name of the app.")
+		cmd.fs.StringVar(&cmd.appName, "a", "", "The name of the app.")
+	}
+	return cmd.fs
 }
