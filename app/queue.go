@@ -99,6 +99,7 @@ func handle(msg *queue.Message) {
 	case regenerateApprc:
 		if len(msg.Args) < 1 {
 			log.Printf("Error handling %q: this action requires at least 1 argument.", msg.Action)
+			msg.Delete()
 			return
 		}
 		app, err := ensureAppIsStarted(msg)
