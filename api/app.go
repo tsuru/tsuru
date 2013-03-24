@@ -550,16 +550,13 @@ func AppLog(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 }
 
 func getServiceInstace(instanceName, appName string, u *auth.User) (service.ServiceInstance, app.App, error) {
-	var (
-		instance service.ServiceInstance
-		app      app.App
-	)
+	var app app.App
 	conn, err := db.Conn()
 	if err != nil {
-		return instance, app, err
+		return service.ServiceInstance{}, app, err
 	}
 	defer conn.Close()
-	err = conn.ServiceInstances().Find(bson.M{"name": instanceName}).One(&instance)
+	instance, err := service.GetInstance(instanceName)
 	if err != nil {
 		err = &errors.Http{Code: http.StatusNotFound, Message: "Instance not found"}
 		return instance, app, err

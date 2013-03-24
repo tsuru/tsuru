@@ -24,15 +24,15 @@ type ServiceInstance struct {
 }
 
 // GetInstance gets the service instance by name from database.
-func GetInstance(name string) (*ServiceInstance, error) {
+func GetInstance(name string) (ServiceInstance, error) {
 	conn, err := db.Conn()
 	if err != nil {
-		return nil, err
+		return ServiceInstance{}, err
 	}
 	defer conn.Close()
 	var si ServiceInstance
 	err = conn.ServiceInstances().Find(bson.M{"name": name}).One(&si)
-	return &si, err
+	return si, err
 }
 
 // MarshalJSON marshals the ServiceName in json format.

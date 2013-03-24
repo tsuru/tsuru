@@ -132,16 +132,10 @@ func ServiceInstanceStatusHandler(w http.ResponseWriter, r *http.Request, u *aut
 	// #TODO (flaviamissi) should check if user has access to service
 	// just call GetServiceInstanceOrError should be enough
 	siName := r.URL.Query().Get(":instance")
-	var si service.ServiceInstance
 	if siName == "" {
 		return &errors.Http{Code: http.StatusBadRequest, Message: "Service instance name not provided."}
 	}
-	conn, err := db.Conn()
-	if err != nil {
-		return err
-	}
-	defer conn.Close()
-	err = conn.ServiceInstances().Find(bson.M{"name": siName}).One(&si)
+	si, err := service.GetInstance(siName)
 	if err != nil {
 		msg := fmt.Sprintf("Service instance does not exists, error: %s", err.Error())
 		return &errors.Http{Code: http.StatusInternalServerError, Message: msg}
@@ -217,13 +211,7 @@ func getServiceOrError(name string, u *auth.User) (service.Service, error) {
 }
 
 func getServiceInstanceOrError(name string, u *auth.User) (service.ServiceInstance, error) {
-	var si service.ServiceInstance
-	conn, err := db.Conn()
-	if err != nil {
-		return si, err
-	}
-	defer conn.Close()
-	err = conn.ServiceInstances().Find(bson.M{"name": name}).One(&si)
+	si, err := service.GetInstance(name)
 	if err != nil {
 		return si, &errors.Http{Code: http.StatusNotFound, Message: "Service instance not found"}
 	}

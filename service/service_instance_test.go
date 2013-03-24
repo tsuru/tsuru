@@ -353,7 +353,7 @@ func (s *S) TestGetInstance(c *gocheck.C) {
 	defer s.conn.ServiceInstances().Remove(bson.M{"name": expected.Name})
 	si, err := GetInstance(expected.Name)
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(si, gocheck.DeepEquals, &expected)
+	c.Assert(si, gocheck.DeepEquals, expected)
 }
 
 func (s *S) TestGetInstanceNotFound(c *gocheck.C) {
