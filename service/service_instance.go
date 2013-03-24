@@ -23,6 +23,18 @@ type ServiceInstance struct {
 	Teams       []string
 }
 
+// GetInstance gets the service instance by name from database.
+func GetInstance(name string) (*ServiceInstance, error) {
+	conn, err := db.Conn()
+	if err != nil {
+		return nil, err
+	}
+	defer conn.Close()
+	var si ServiceInstance
+	err = conn.ServiceInstances().Find(bson.M{"name": name}).One(&si)
+	return &si, err
+}
+
 // MarshalJSON marshals the ServiceName in json format.
 func (si *ServiceInstance) MarshalJSON() ([]byte, error) {
 	info, err := si.Info()
@@ -40,7 +52,11 @@ func (si *ServiceInstance) MarshalJSON() ([]byte, error) {
 }
 
 func (si *ServiceInstance) Info() (map[string]string, error) {
-	result, err := si.Service().ProductionEndpoint().Info(si)
+	endpoint := si.Service().ProductionEndpoint()
+	if endpoint == nil {
+		return nil, stderrors.New("endpoint does not exists")
+	}
+	result, err := endpoint.Info(si)
 	if err != nil {
 		return nil, err
 	}
