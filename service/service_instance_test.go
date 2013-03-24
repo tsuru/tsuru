@@ -350,6 +350,7 @@ func (s *S) TestMarshalJSONWithoutEndpoint(c *gocheck.C) {
 func (s *S) TestGetInstance(c *gocheck.C) {
 	expected := ServiceInstance{Name: "instance", Apps: []string{}, Teams: []string{}}
 	err := s.conn.ServiceInstances().Insert(&expected)
+	c.Assert(err, gocheck.IsNil)
 	defer s.conn.ServiceInstances().Remove(bson.M{"name": expected.Name})
 	si, err := GetInstance(expected.Name)
 	c.Assert(err, gocheck.IsNil)
@@ -359,4 +360,15 @@ func (s *S) TestGetInstance(c *gocheck.C) {
 func (s *S) TestGetInstanceNotFound(c *gocheck.C) {
 	_, err := GetInstance("name")
 	c.Assert(err, gocheck.NotNil)
+}
+
+func (s *S) TestDestroyInstance(c *gocheck.C) {
+	si := ServiceInstance{Name: "instance", Apps: []string{}, Teams: []string{}}
+	err := s.conn.ServiceInstances().Insert(&si)
+	c.Assert(err, gocheck.IsNil)
+	err = DestroyInstance(&si)
+	c.Assert(err, gocheck.IsNil)
+	l, err := s.conn.ServiceInstances().Find(bson.M{"name": si.Name}).Count()
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(l, gocheck.Equals, 0)
 }

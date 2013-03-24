@@ -35,6 +35,16 @@ func GetInstance(name string) (ServiceInstance, error) {
 	return si, err
 }
 
+// DestroyInstance removes teh service instance from the database.
+func DestroyInstance(si *ServiceInstance) error {
+	conn, err := db.Conn()
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+	return conn.ServiceInstances().Remove(bson.M{"name": si.Name})
+}
+
 // MarshalJSON marshals the ServiceName in json format.
 func (si *ServiceInstance) MarshalJSON() ([]byte, error) {
 	info, err := si.Info()
