@@ -13,6 +13,7 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
+	"sort"
 	"strings"
 )
 
@@ -281,10 +282,11 @@ func (ServiceInfo) ExtraHeaders(instances []ServiceInstanceModel) []string {
 			}
 		}
 	}
+	sort.Sort(sort.StringSlice(headers))
 	return headers
 }
 
-func (c ServiceInfo) Run(ctx *cmd.Context, client cmd.Doer) error {
+func (c *ServiceInfo) Run(ctx *cmd.Context, client cmd.Doer) error {
 	serviceName := ctx.Args[0]
 	url, err := cmd.GetUrl("/services/" + serviceName)
 	if err != nil {
@@ -311,12 +313,17 @@ func (c ServiceInfo) Run(ctx *cmd.Context, client cmd.Doer) error {
 	ctx.Stdout.Write([]byte(fmt.Sprintf("Info for \"%s\"\n", serviceName)))
 	if len(instances) > 0 {
 		table := cmd.NewTable()
-		headers := []string{"Instance", "Apps"}
+		extraHeaders := c.ExtraHeaders(instances)
 		for _, instance := range instances {
 			apps := strings.Join(instance.Apps, ", ")
-
-			table.AddRow(cmd.Row([]string{instance.Name, apps}))
+			data := []string{instance.Name, apps}
+			for _, h := range extraHeaders {
+				data = append(data, instance.Info[h])
+			}
+			table.AddRow(cmd.Row(data))
 		}
+		headers := []string{"Instances", "Apps"}
+		headers = append(headers, extraHeaders...)
 		table.Headers = cmd.Row(headers)
 		ctx.Stdout.Write(table.Bytes())
 	}

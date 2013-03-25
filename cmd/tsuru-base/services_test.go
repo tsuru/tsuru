@@ -10,7 +10,6 @@ import (
 	"github.com/globocom/tsuru/cmd"
 	"launchpad.net/gocheck"
 	"net/http"
-	"sort"
 	"strings"
 )
 
@@ -374,7 +373,6 @@ func (s *S) TestServiceInfoExtraHeaders(c *gocheck.C) {
 	json.Unmarshal(result, &instances)
 	expected := []string{"key", "key2"}
 	headers := (&ServiceInfo{}).ExtraHeaders(instances)
-	sort.Sort(sort.StringSlice(headers))
 	c.Assert(headers, gocheck.DeepEquals, expected)
 }
 
@@ -382,11 +380,11 @@ func (s *S) TestServiceInfoRun(c *gocheck.C) {
 	var stdout, stderr bytes.Buffer
 	result := `[{"Name":"mymongo", "Apps":["myapp"], "Info":{"key": "value", "key2": "value2"}}]`
 	expected := `Info for "mongodb"
-+-----------+-------+-------+
-| Instances | Apps  | key   |
-+-----------+-------+-------+
-| mymongo   | myapp | value |
-+-----------+-------+-------+
++-----------+-------+-------+--------+
+| Instances | Apps  | key   | key2   |
++-----------+-------+-------+--------+
+| mymongo   | myapp | value | value2 |
++-----------+-------+-------+--------+
 `
 	args := []string{"mongodb"}
 	context := cmd.Context{
