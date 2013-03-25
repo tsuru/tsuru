@@ -38,7 +38,7 @@ func (s *S) TestCreateServiceInstance(c *gocheck.C) {
 func (s *S) TestDeleteServiceInstance(c *gocheck.C) {
 	s.createServiceInstance()
 	defer s.conn.Services().Remove(bson.M{"name": s.service.Name})
-	DestroyInstance(s.serviceInstance)
+	DeleteInstance(s.serviceInstance)
 	query := bson.M{
 		"name": s.service.Name,
 	}
@@ -207,20 +207,20 @@ func (s *S) TestGetServiceInstancesByServicesAndTeams(c *gocheck.C) {
 		Teams:       []string{s.team.Name},
 	}
 	sInstance.Create()
-	defer DestroyInstance(&sInstance)
+	defer DeleteInstance(&sInstance)
 	sInstance2 := ServiceInstance{
 		Name:        "j4nosql",
 		ServiceName: srvc2.Name,
 		Teams:       []string{s.team.Name},
 	}
 	sInstance2.Create()
-	defer DestroyInstance(&sInstance2)
+	defer DeleteInstance(&sInstance2)
 	sInstance3 := ServiceInstance{
 		Name:        "f9nosql",
 		ServiceName: srvc2.Name,
 	}
 	sInstance3.Create()
-	defer DestroyInstance(&sInstance3)
+	defer DeleteInstance(&sInstance3)
 	expected := []ServiceInstance{
 		{
 			Name:        sInstance.Name,
@@ -255,7 +255,7 @@ func (s *S) TestGetServiceInstancesByServicesAndTeamsForUsersThatAreNotMembersOf
 	}
 	err = instance.Create()
 	c.Assert(err, gocheck.IsNil)
-	defer DestroyInstance(&instance)
+	defer DeleteInstance(&instance)
 	instances, err := GetServiceInstancesByServicesAndTeams([]Service{srvc}, &u)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(instances, gocheck.IsNil)
@@ -362,7 +362,7 @@ func (s *S) TestGetInstanceNotFound(c *gocheck.C) {
 	c.Assert(err, gocheck.NotNil)
 }
 
-func (s *S) TestDestroyInstance(c *gocheck.C) {
+func (s *S) TestDeleteInstance(c *gocheck.C) {
 	h := TestHandler{}
 	ts := httptest.NewServer(&h)
 	defer ts.Close()
@@ -373,7 +373,7 @@ func (s *S) TestDestroyInstance(c *gocheck.C) {
 	si := ServiceInstance{Name: "instance", ServiceName: srv.Name}
 	err = s.conn.ServiceInstances().Insert(&si)
 	c.Assert(err, gocheck.IsNil)
-	err = DestroyInstance(&si)
+	err = DeleteInstance(&si)
 	h.Lock()
 	defer h.Unlock()
 	c.Assert(err, gocheck.IsNil)
@@ -396,7 +396,7 @@ func (s *S) TestNewInstance(c *gocheck.C) {
 	si := ServiceInstance{Name: "instance", Apps: []string{}, Teams: []string{}, ServiceName: srv.Name}
 	si, err = NewInstance(si)
 	c.Assert(err, gocheck.IsNil)
-	defer DestroyInstance(&si)
+	defer DeleteInstance(&si)
 	expected, err := GetInstance(si.Name)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(si, gocheck.DeepEquals, expected)

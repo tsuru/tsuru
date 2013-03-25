@@ -94,7 +94,7 @@ func RemoveServiceInstanceHandler(w http.ResponseWriter, r *http.Request, u *aut
 		msg := "This service instance is bound to at least one app. Unbind them before removing it"
 		return &errors.Http{Code: http.StatusInternalServerError, Message: msg}
 	}
-	err = service.DestroyInstance(&si)
+	err = service.DeleteInstance(&si)
 	if err != nil {
 		return err
 	}

@@ -35,8 +35,8 @@ func GetInstance(name string) (ServiceInstance, error) {
 	return si, err
 }
 
-// DestroyInstance removes teh service instance from the database.
-func DestroyInstance(si *ServiceInstance) error {
+// DeleteInstance deletes the service instance from the database.
+func DeleteInstance(si *ServiceInstance) error {
 	endpoint, err := si.Service().getClient("production")
 	if err == nil {
 		endpoint.Destroy(si)
