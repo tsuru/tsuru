@@ -10,7 +10,6 @@ import (
 	"github.com/globocom/tsuru/auth"
 	"github.com/globocom/tsuru/db"
 	"github.com/globocom/tsuru/errors"
-	"github.com/globocom/tsuru/log"
 	"github.com/globocom/tsuru/service"
 	"io/ioutil"
 	"labix.org/v2/mgo/bson"
@@ -18,25 +17,18 @@ import (
 )
 
 func CreateInstanceHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
-	log.Print("Receiving request to create a service instance")
 	b, err := ioutil.ReadAll(r.Body)
 	if err != nil {
-		log.Print("Got error while reading request body:")
-		log.Print(err.Error())
-		return &errors.Http{Code: http.StatusInternalServerError, Message: err.Error()}
+		return err
 	}
 	var sJson map[string]string
 	err = json.Unmarshal(b, &sJson)
 	if err != nil {
-		log.Print("Got a problem while unmarshalling request's json:")
-		log.Print(err.Error())
-		return &errors.Http{Code: http.StatusInternalServerError, Message: err.Error()}
+		return err
 	}
 	var s service.Service
 	err = validateInstanceForCreation(&s, sJson, u)
 	if err != nil {
-		log.Print("Got error while validation:")
-		log.Print(err.Error())
 		return err
 	}
 	var teamNames []string
