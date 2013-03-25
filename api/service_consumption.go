@@ -135,9 +135,8 @@ func ServiceInstanceStatusHandler(w http.ResponseWriter, r *http.Request, u *aut
 		msg := fmt.Sprintf("Service instance does not exists, error: %s", err.Error())
 		return &errors.Http{Code: http.StatusInternalServerError, Message: msg}
 	}
-	s := si.Service()
 	var b string
-	if b, err = s.ProductionEndpoint().Status(&si); err != nil {
+	if b, err = si.Status(); err != nil {
 		msg := fmt.Sprintf("Could not retrieve status of service instance, error: %s", err.Error())
 		return &errors.Http{Code: http.StatusInternalServerError, Message: msg}
 	}
