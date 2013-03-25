@@ -67,5 +67,6 @@ func (fn AuthorizationRequiredHandler) ServeHTTP(w http.ResponseWriter, r *http.
 		} else {
 			http.Error(&fw, err.Error(), code)
 		}
+		log.Print(err)
 	}
 }
