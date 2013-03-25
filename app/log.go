@@ -5,7 +5,9 @@
 package app
 
 import (
+	"errors"
 	"sync"
+	"sync/atomic"
 )
 
 const (
@@ -21,18 +23,41 @@ var listeners = struct {
 }
 
 type LogListener struct {
-	C     <-chan Applog
-	c     chan Applog
-	state int32
+	C       <-chan Applog
+	c       chan Applog
+	state   int32
+	appname string
 }
 
 func NewLogListener(a *App) *LogListener {
 	c := make(chan Applog)
-	l := LogListener{C: c, c: c, state: open}
+	l := LogListener{C: c, c: c, state: open, appname: a.Name}
 	listeners.Lock()
-	list := listeners.m[a.Name]
+	list := listeners.m[l.appname]
 	list = append(list, &l)
 	listeners.m[a.Name] = list
 	listeners.Unlock()
 	return &l
+}
+
+func (l *LogListener) Close() error {
+	if !atomic.CompareAndSwapInt32(&l.state, open, closed) {
+		return errors.New("Already closed.")
+	}
+	close(l.c)
+	listeners.Lock()
+	defer listeners.Unlock()
+	list := listeners.m[l.appname]
+	index := -1
+	for i, listener := range list {
+		if listener == l {
+			index = i
+			break
+		}
+	}
+	if index > -1 {
+		list[index], list[len(list)-1] = list[len(list)-1], list[index]
+		listeners.m[l.appname] = list[:len(list)-1]
+	}
+	return nil
 }
