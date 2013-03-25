@@ -384,7 +384,7 @@ func (s *S) TestDeleteInstance(c *gocheck.C) {
 	c.Assert(h.method, gocheck.Equals, "DELETE")
 }
 
-func (s *S) TestNewInstance(c *gocheck.C) {
+func (s *S) TestCreateInstance(c *gocheck.C) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNoContent)
 	}))
@@ -394,7 +394,7 @@ func (s *S) TestNewInstance(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	defer srv.Delete()
 	si := ServiceInstance{Name: "instance", Apps: []string{}, Teams: []string{}, ServiceName: srv.Name}
-	si, err = NewInstance(si)
+	err = CreateInstance(&si)
 	c.Assert(err, gocheck.IsNil)
 	defer DeleteInstance(&si)
 	expected, err := GetInstance(si.Name)

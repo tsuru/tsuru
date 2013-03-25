@@ -54,7 +54,7 @@ func CreateInstanceHandler(w http.ResponseWriter, r *http.Request, u *auth.User)
 		ServiceName: sJson["service_name"],
 		Teams:       teamNames,
 	}
-	si, err = service.NewInstance(si)
+	err = service.CreateInstance(&si)
 	if err != nil {
 		return err
 	}

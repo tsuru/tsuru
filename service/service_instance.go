@@ -49,22 +49,22 @@ func DeleteInstance(si *ServiceInstance) error {
 	return conn.ServiceInstances().Remove(bson.M{"name": si.Name})
 }
 
-// NewInstance store a service instance into the database.
-func NewInstance(si ServiceInstance) (ServiceInstance, error) {
+// CreateInstance store a service instance into the database.
+func CreateInstance(si *ServiceInstance) error {
 	endpoint, err := si.Service().getClient("production")
 	if err != nil {
-		return ServiceInstance{}, err
+		return err
 	}
-	err = endpoint.Create(&si)
+	err = endpoint.Create(si)
 	if err != nil {
-		return ServiceInstance{}, err
+		return err
 	}
 	conn, err := db.Conn()
 	if err != nil {
-		return ServiceInstance{}, err
+		return err
 	}
 	defer conn.Close()
-	return si, conn.ServiceInstances().Insert(si)
+	return conn.ServiceInstances().Insert(si)
 }
 
 // MarshalJSON marshals the ServiceName in json format.
