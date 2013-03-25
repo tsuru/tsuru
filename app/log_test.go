@@ -6,6 +6,8 @@ package app
 
 import (
 	"launchpad.net/gocheck"
+	"sync"
+	"time"
 )
 
 func (s *S) TestNewLogListener(c *gocheck.C) {
@@ -42,4 +44,53 @@ func (s *S) TestLogListenerDoubleClose(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	err = l.Close()
 	c.Assert(err, gocheck.NotNil)
+}
+
+func (s *S) TestNotify(c *gocheck.C) {
+	var logs struct {
+		l []Applog
+		sync.Mutex
+	}
+	app := App{Name: "fade"}
+	l := NewLogListener(&app)
+	defer l.Close()
+	go func() {
+		for log := range l.C {
+			logs.Lock()
+			logs.l = append(logs.l, log)
+			logs.Unlock()
+		}
+	}()
+	ms := []Applog{
+		{Date: time.Now(), Message: "Something went wrong. Check it out:", Source: "tsuru"},
+		{Date: time.Now(), Message: "This program has performed an illegal operation.", Source: "tsuru"},
+	}
+	notify(&app, ms)
+	done := make(chan bool, 1)
+	q := make(chan bool)
+	go func(quit chan bool) {
+		for _ = range time.Tick(1e3) {
+			select {
+			case <-quit:
+				return
+			default:
+			}
+			logs.Lock()
+			if len(logs.l) == 2 {
+				logs.Unlock()
+				done <- true
+				return
+			}
+			logs.Unlock()
+		}
+	}(q)
+	select {
+	case <-done:
+	case <-time.After(2e9):
+		defer close(q)
+		c.Fatal("Timed out.")
+	}
+	logs.Lock()
+	defer logs.Unlock()
+	c.Assert(logs.l, gocheck.DeepEquals, ms)
 }
