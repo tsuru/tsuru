@@ -208,4 +208,4 @@ Further instructions
 ====================
 
 For a complete reference, check the documentation for tsuru command:
-`<http://godoc.org/github.com/globocom/tsuru/cmd/tsuru/developer>`_.
+`<http://godoc.org/github.com/globocom/tsuru/cmd/tsuru>`_.
