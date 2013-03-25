@@ -53,7 +53,10 @@ func DestroyInstance(si *ServiceInstance) error {
 func NewInstance(si ServiceInstance) (ServiceInstance, error) {
 	endpoint := si.Service().ProductionEndpoint()
 	if endpoint != nil {
-		endpoint.Create(&si)
+		err := endpoint.Create(&si)
+		if err != nil {
+			return ServiceInstance{}, err
+		}
 	}
 	conn, err := db.Conn()
 	if err != nil {

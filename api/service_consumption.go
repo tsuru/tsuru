@@ -54,12 +54,7 @@ func CreateInstanceHandler(w http.ResponseWriter, r *http.Request, u *auth.User)
 		ServiceName: sJson["service_name"],
 		Teams:       teamNames,
 	}
-	if err = s.ProductionEndpoint().Create(&si); err != nil {
-		log.Print("Error while calling create action from service api.")
-		log.Print(err.Error())
-		return err
-	}
-	err = si.Create()
+	si, err = service.NewInstance(si)
 	if err != nil {
 		return err
 	}
