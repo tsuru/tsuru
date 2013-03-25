@@ -259,6 +259,29 @@ e.g.:
 type ServiceInstanceModel struct {
 	Name string
 	Apps []string
+	Info map[string]string
+}
+
+// in returns true if the list contains the value
+func in(value string, list []string) bool {
+	for _, item := range list {
+		if value == item {
+			return true
+		}
+	}
+	return false
+}
+
+func (ServiceInfo) ExtraHeaders(instances []ServiceInstanceModel) []string {
+	var headers []string
+	for _, instance := range instances {
+		for key, _ := range instance.Info {
+			if !in(key, headers) {
+				headers = append(headers, key)
+			}
+		}
+	}
+	return headers
 }
 
 func (c ServiceInfo) Run(ctx *cmd.Context, client cmd.Doer) error {
@@ -288,11 +311,13 @@ func (c ServiceInfo) Run(ctx *cmd.Context, client cmd.Doer) error {
 	ctx.Stdout.Write([]byte(fmt.Sprintf("Info for \"%s\"\n", serviceName)))
 	if len(instances) > 0 {
 		table := cmd.NewTable()
-		table.Headers = cmd.Row([]string{"Instances", "Apps"})
+		headers := []string{"Instance", "Apps"}
 		for _, instance := range instances {
 			apps := strings.Join(instance.Apps, ", ")
+
 			table.AddRow(cmd.Row([]string{instance.Name, apps}))
 		}
+		table.Headers = cmd.Row(headers)
 		ctx.Stdout.Write(table.Bytes())
 	}
 	return nil

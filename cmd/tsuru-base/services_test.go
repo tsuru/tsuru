@@ -6,9 +6,11 @@ package tsuru
 
 import (
 	"bytes"
+	"encoding/json"
 	"github.com/globocom/tsuru/cmd"
 	"launchpad.net/gocheck"
 	"net/http"
+	"sort"
 	"strings"
 )
 
@@ -366,15 +368,25 @@ e.g.:
 	c.Assert(got, gocheck.DeepEquals, expected)
 }
 
+func (s *S) TestServiceInfoExtraHeaders(c *gocheck.C) {
+	result := []byte(`[{"Name":"mymongo", "Apps":["myapp"], "Info":{"key": "value", "key2": "value2"}}]`)
+	var instances []ServiceInstanceModel
+	json.Unmarshal(result, &instances)
+	expected := []string{"key", "key2"}
+	headers := (&ServiceInfo{}).ExtraHeaders(instances)
+	sort.Sort(sort.StringSlice(headers))
+	c.Assert(headers, gocheck.DeepEquals, expected)
+}
+
 func (s *S) TestServiceInfoRun(c *gocheck.C) {
 	var stdout, stderr bytes.Buffer
-	result := `[{"Name":"mymongo", "Apps":["myapp"]}]`
+	result := `[{"Name":"mymongo", "Apps":["myapp"], "Info":{"key": "value", "key2": "value2"}}]`
 	expected := `Info for "mongodb"
-+-----------+-------+
-| Instances | Apps  |
-+-----------+-------+
-| mymongo   | myapp |
-+-----------+-------+
++-----------+-------+-------+
+| Instances | Apps  | key   |
++-----------+-------+-------+
+| mymongo   | myapp | value |
++-----------+-------+-------+
 `
 	args := []string{"mongodb"}
 	context := cmd.Context{
