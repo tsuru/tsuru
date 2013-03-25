@@ -5,7 +5,6 @@
 package app
 
 import (
-	"fmt"
 	"github.com/globocom/tsuru/fs"
 	"io"
 )
@@ -37,14 +36,4 @@ func randomBytes(n int) ([]byte, error) {
 		return nil, err
 	}
 	return b, nil
-}
-
-// newUUID generates an uuid.
-func newUUID() (string, error) {
-	b, err := randomBytes(16)
-	if err != nil {
-		return "", err
-	}
-	uuid := fmt.Sprintf("%x", b)
-	return uuid, nil
 }

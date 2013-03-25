@@ -18,18 +18,6 @@ func (s *S) TestFileSystem(c *gocheck.C) {
 	fsystem = s.rfs
 }
 
-func (s *S) TestnewUUID(c *gocheck.C) {
-	rfs := &testing.RecordingFs{FileContent: string([]byte{16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31})}
-	fsystem = rfs
-	defer func() {
-		fsystem = s.rfs
-	}()
-	uuid, err := newUUID()
-	c.Assert(err, gocheck.IsNil)
-	expected := "101112131415161718191a1b1c1d1e1f"
-	c.Assert(uuid, gocheck.Equals, expected)
-}
-
 func (s *S) TestRandomBytes(c *gocheck.C) {
 	rfs := &testing.RecordingFs{FileContent: string([]byte{16, 17})}
 	fsystem = rfs
