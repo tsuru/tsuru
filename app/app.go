@@ -798,6 +798,7 @@ func (app *App) SetCName(cname string) error {
 // user can filter where the message come from.
 func (app *App) Log(message, source string) error {
 	messages := strings.Split(message, "\n")
+	logs := make([]Applog, 0, len(messages))
 	for _, msg := range messages {
 		if msg != "" {
 			l := Applog{
@@ -805,15 +806,20 @@ func (app *App) Log(message, source string) error {
 				Message: msg,
 				Source:  source,
 			}
-			app.Logs = append(app.Logs, l)
+			logs = append(logs, l)
 		}
 	}
-	conn, err := db.Conn()
-	if err != nil {
-		return err
+	if len(logs) > 0 {
+		go notify(app, logs)
+		app.Logs = append(app.Logs, logs...)
+		conn, err := db.Conn()
+		if err != nil {
+			return err
+		}
+		defer conn.Close()
+		return conn.Apps().Update(bson.M{"name": app.Name}, bson.M{"$set": bson.M{"logs": app.Logs}})
 	}
-	defer conn.Close()
-	return conn.Apps().Update(bson.M{"name": app.Name}, bson.M{"$set": bson.M{"logs": app.Logs}})
+	return nil
 }
 
 // List returns the list of apps that the given user has access to.

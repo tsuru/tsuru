@@ -27,6 +27,7 @@ import (
 	"reflect"
 	"sort"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"time"
 )
@@ -1393,6 +1394,60 @@ func (s *S) TestLogShouldNotLogBlankLines(c *gocheck.C) {
 	err = s.conn.Apps().Find(bson.M{"name": a.Name}).One(&instance)
 	logLen := len(instance.Logs)
 	c.Assert(instance.Logs[logLen-1].Message, gocheck.Not(gocheck.Equals), "")
+}
+
+func (s *S) TestLogWithListeners(c *gocheck.C) {
+	var logs struct {
+		l []Applog
+		sync.Mutex
+	}
+	a := App{
+		Name: "newApp",
+	}
+	err := s.conn.Apps().Insert(a)
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	l := NewLogListener(&a)
+	defer l.Close()
+	go func() {
+		for log := range l.C {
+			logs.Lock()
+			logs.l = append(logs.l, log)
+			logs.Unlock()
+		}
+	}()
+	err = a.Log("last log msg", "tsuru")
+	c.Assert(err, gocheck.IsNil)
+	done := make(chan bool, 1)
+	q := make(chan bool)
+	go func(quit chan bool) {
+		for _ = range time.Tick(1e3) {
+			select {
+			case <-quit:
+				return
+			default:
+			}
+			logs.Lock()
+			if len(logs.l) == 1 {
+				logs.Unlock()
+				done <- true
+				return
+			}
+			logs.Unlock()
+		}
+	}(q)
+	select {
+	case <-done:
+	case <-time.After(2e9):
+		defer close(q)
+		c.Fatal("Timed out.")
+	}
+	logs.Lock()
+	c.Assert(logs.l, gocheck.HasLen, 1)
+	log := logs.l[0]
+	logs.Unlock()
+	c.Assert(log.Message, gocheck.Equals, "last log msg")
+	c.Assert(log.Source, gocheck.Equals, "tsuru")
 }
 
 func (s *S) TestGetTeams(c *gocheck.C) {
