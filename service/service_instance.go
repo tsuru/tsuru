@@ -96,15 +96,6 @@ func (si *ServiceInstance) Create() error {
 	return conn.ServiceInstances().Insert(si)
 }
 
-// func (si *ServiceInstance) Delete() error {
-// 	conn, err := db.Conn()
-// 	if err != nil {
-// 		return err
-// 	}
-// 	defer conn.Close()
-// 	return conn.ServiceInstances().Remove(bson.M{"name": si.Name})
-// }
-
 func (si *ServiceInstance) Service() *Service {
 	conn, err := db.Conn()
 	if err != nil {
@@ -218,6 +209,11 @@ func (si *ServiceInstance) UnbindApp(app bind.App) error {
 // UnbindUnit makes the unbind between the service instance and an unit.
 func (si *ServiceInstance) UnbindUnit(unit bind.Unit) error {
 	return si.Service().ProductionEndpoint().Unbind(si, unit)
+}
+
+// Status returns the service instance status.
+func (si *ServiceInstance) Status() (string, error) {
+	return si.Service().ProductionEndpoint().Status(si)
 }
 
 func genericServiceInstancesFilter(services interface{}, teams []string) (q, f bson.M) {

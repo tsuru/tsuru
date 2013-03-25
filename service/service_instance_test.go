@@ -382,3 +382,18 @@ func (s *S) TestNewInstance(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(si, gocheck.DeepEquals, expected)
 }
+
+func (s *S) TestStatus(c *gocheck.C) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	defer ts.Close()
+	srv := Service{Name: "mongodb", Endpoint: map[string]string{"production": ts.URL}}
+	err := srv.Create()
+	c.Assert(err, gocheck.IsNil)
+	defer srv.Delete()
+	si := ServiceInstance{Name: "instance", ServiceName: srv.Name}
+	status, err := si.Status()
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(status, gocheck.Equals, "up")
+}
