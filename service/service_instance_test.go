@@ -372,3 +372,13 @@ func (s *S) TestDestroyInstance(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(l, gocheck.Equals, 0)
 }
+
+func (s *S) TestNewInstance(c *gocheck.C) {
+	si := ServiceInstance{Name: "instance", Apps: []string{}, Teams: []string{}}
+	si, err := NewInstance(si)
+	c.Assert(err, gocheck.IsNil)
+	defer DestroyInstance(&si)
+	expected, err := GetInstance(si.Name)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(si, gocheck.DeepEquals, expected)
+}
