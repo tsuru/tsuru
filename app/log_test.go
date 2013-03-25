@@ -65,7 +65,7 @@ func (s *S) TestNotify(c *gocheck.C) {
 		{Date: time.Now(), Message: "Something went wrong. Check it out:", Source: "tsuru"},
 		{Date: time.Now(), Message: "This program has performed an illegal operation.", Source: "tsuru"},
 	}
-	notify(&app, ms)
+	notify(app.Name, ms)
 	done := make(chan bool, 1)
 	q := make(chan bool)
 	go func(quit chan bool) {

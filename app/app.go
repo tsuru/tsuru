@@ -810,7 +810,7 @@ func (app *App) Log(message, source string) error {
 		}
 	}
 	if len(logs) > 0 {
-		go notify(app, logs)
+		go notify(app.Name, logs)
 		app.Logs = append(app.Logs, logs...)
 		conn, err := db.Conn()
 		if err != nil {
