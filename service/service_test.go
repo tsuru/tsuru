@@ -63,15 +63,6 @@ func (s *S) TestDeleteService(c *gocheck.C) {
 	c.Assert(se.Status, gocheck.Equals, "deleted")
 }
 
-func (s *S) TestProductionEndpoint(c *gocheck.C) {
-	endpoints := map[string]string{
-		"production": "http://mysql.api.com",
-		"test":       "http://localhost:9090",
-	}
-	service := Service{Name: "redis", Endpoint: endpoints}
-	c.Assert(service.ProductionEndpoint(), gocheck.DeepEquals, &Client{endpoint: endpoints["production"]})
-}
-
 func (s *S) TestGetClient(c *gocheck.C) {
 	endpoints := map[string]string{
 		"production": "http://mysql.api.com",

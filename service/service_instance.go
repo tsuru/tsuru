@@ -37,8 +37,8 @@ func GetInstance(name string) (ServiceInstance, error) {
 
 // DestroyInstance removes teh service instance from the database.
 func DestroyInstance(si *ServiceInstance) error {
-	endpoint := si.Service().ProductionEndpoint()
-	if endpoint != nil {
+	endpoint, err := si.Service().getClient("production")
+	if err == nil {
 		endpoint.Destroy(si)
 	}
 	conn, err := db.Conn()
@@ -51,12 +51,13 @@ func DestroyInstance(si *ServiceInstance) error {
 
 // NewInstance store a service instance into the database.
 func NewInstance(si ServiceInstance) (ServiceInstance, error) {
-	endpoint := si.Service().ProductionEndpoint()
-	if endpoint != nil {
-		err := endpoint.Create(&si)
-		if err != nil {
-			return ServiceInstance{}, err
-		}
+	endpoint, err := si.Service().getClient("production")
+	if err != nil {
+		return ServiceInstance{}, err
+	}
+	err = endpoint.Create(&si)
+	if err != nil {
+		return ServiceInstance{}, err
 	}
 	conn, err := db.Conn()
 	if err != nil {
@@ -83,8 +84,8 @@ func (si *ServiceInstance) MarshalJSON() ([]byte, error) {
 }
 
 func (si *ServiceInstance) Info() (map[string]string, error) {
-	endpoint := si.Service().ProductionEndpoint()
-	if endpoint == nil {
+	endpoint, err := si.Service().getClient("production")
+	if err != nil {
 		return nil, stderrors.New("endpoint does not exists")
 	}
 	result, err := endpoint.Info(si)
@@ -192,7 +193,11 @@ func (si *ServiceInstance) BindApp(app bind.App) error {
 
 // BindUnit makes the bind between the binder and an unit.
 func (si *ServiceInstance) BindUnit(app bind.App, unit bind.Unit) (map[string]string, error) {
-	return si.Service().ProductionEndpoint().Bind(si, app, unit)
+	endpoint, err := si.Service().getClient("production")
+	if err != nil {
+		return nil, err
+	}
+	return endpoint.Bind(si, app, unit)
 }
 
 // UnbindApp makes the unbind between the service instance and an app.
@@ -219,12 +224,20 @@ func (si *ServiceInstance) UnbindApp(app bind.App) error {
 
 // UnbindUnit makes the unbind between the service instance and an unit.
 func (si *ServiceInstance) UnbindUnit(unit bind.Unit) error {
-	return si.Service().ProductionEndpoint().Unbind(si, unit)
+	endpoint, err := si.Service().getClient("production")
+	if err != nil {
+		return err
+	}
+	return endpoint.Unbind(si, unit)
 }
 
 // Status returns the service instance status.
 func (si *ServiceInstance) Status() (string, error) {
-	return si.Service().ProductionEndpoint().Status(si)
+	endpoint, err := si.Service().getClient("production")
+	if err != nil {
+		return "", err
+	}
+	return endpoint.Status(si)
 }
 
 func genericServiceInstancesFilter(services interface{}, teams []string) (q, f bson.M) {

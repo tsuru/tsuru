@@ -385,8 +385,16 @@ func (s *S) TestDestroyInstance(c *gocheck.C) {
 }
 
 func (s *S) TestNewInstance(c *gocheck.C) {
-	si := ServiceInstance{Name: "instance", Apps: []string{}, Teams: []string{}}
-	si, err := NewInstance(si)
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	defer ts.Close()
+	srv := Service{Name: "mongodb", Endpoint: map[string]string{"production": ts.URL}}
+	err := srv.Create()
+	c.Assert(err, gocheck.IsNil)
+	defer srv.Delete()
+	si := ServiceInstance{Name: "instance", Apps: []string{}, Teams: []string{}, ServiceName: srv.Name}
+	si, err = NewInstance(si)
 	c.Assert(err, gocheck.IsNil)
 	defer DestroyInstance(&si)
 	expected, err := GetInstance(si.Name)
