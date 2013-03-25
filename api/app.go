@@ -497,7 +497,7 @@ func setCName(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	return err
 }
 
-func AppLog(w http.ResponseWriter, r *http.Request, u *auth.User) error {
+func appLog(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	var err error
 	var lines int
 	if l := r.URL.Query().Get("lines"); l != "" {
