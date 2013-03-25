@@ -363,14 +363,25 @@ func (s *S) TestGetInstanceNotFound(c *gocheck.C) {
 }
 
 func (s *S) TestDestroyInstance(c *gocheck.C) {
-	si := ServiceInstance{Name: "instance", Apps: []string{}, Teams: []string{}}
-	err := s.conn.ServiceInstances().Insert(&si)
+	h := TestHandler{}
+	ts := httptest.NewServer(&h)
+	defer ts.Close()
+	srv := Service{Name: "mongodb", Endpoint: map[string]string{"production": ts.URL}}
+	err := srv.Create()
+	c.Assert(err, gocheck.IsNil)
+	defer srv.Delete()
+	si := ServiceInstance{Name: "instance", ServiceName: srv.Name}
+	err = s.conn.ServiceInstances().Insert(&si)
 	c.Assert(err, gocheck.IsNil)
 	err = DestroyInstance(&si)
+	h.Lock()
+	defer h.Unlock()
 	c.Assert(err, gocheck.IsNil)
 	l, err := s.conn.ServiceInstances().Find(bson.M{"name": si.Name}).Count()
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(l, gocheck.Equals, 0)
+	c.Assert(h.url, gocheck.Equals, "/resources/"+si.Name)
+	c.Assert(h.method, gocheck.Equals, "DELETE")
 }
 
 func (s *S) TestNewInstance(c *gocheck.C) {

@@ -237,31 +237,6 @@ func (s *ConsumptionSuite) TestRemoveServiceShouldCallTheServiceAPI(c *gocheck.C
 	c.Assert(called, gocheck.Equals, true)
 }
 
-func (s *ConsumptionSuite) TestremoveServiceShouldNotRemoveTheServiceIfTheServiceAPICallFail(c *gocheck.C) {
-	var called bool
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		called = r.Method == "DELETE" && r.URL.Path == "/resources/purity-instance"
-		w.WriteHeader(500)
-		fmt.Fprint(w, "it's a test!")
-	}))
-	defer ts.Close()
-	se := service.Service{Name: "deepercut", Endpoint: map[string]string{"production": ts.URL}}
-	err := se.Create()
-	defer s.conn.Services().Remove(bson.M{"_id": se.Name})
-	c.Assert(err, gocheck.IsNil)
-	si := service.ServiceInstance{Name: "deepercut-instance", ServiceName: "deepercut", Teams: []string{s.team.Name}}
-	err = si.Create()
-	c.Assert(err, gocheck.IsNil)
-	defer s.conn.ServiceInstances().Remove(bson.M{"name": si.Name})
-	recorder, request := makeRequestToRemoveInstanceHandler("deepercut-instance", c)
-	err = RemoveServiceInstanceHandler(recorder, request, s.user)
-	c.Assert(err, gocheck.NotNil)
-	e, ok := err.(*errors.Http)
-	c.Assert(ok, gocheck.Equals, true)
-	c.Assert(e.Code, gocheck.Equals, http.StatusInternalServerError)
-	c.Assert(e.Message, gocheck.Equals, "Failed to destroy the instance deepercut-instance: it's a test!")
-}
-
 func (s *ConsumptionSuite) TestServicesInstancesHandler(c *gocheck.C) {
 	srv := service.Service{Name: "redis", Teams: []string{s.team.Name}}
 	err := srv.Create()
