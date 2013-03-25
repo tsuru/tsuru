@@ -102,12 +102,7 @@ func RemoveServiceInstanceHandler(w http.ResponseWriter, r *http.Request, u *aut
 	if err = si.Service().ProductionEndpoint().Destroy(&si); err != nil {
 		return err
 	}
-	conn, err := db.Conn()
-	if err != nil {
-		return err
-	}
-	defer conn.Close()
-	err = conn.ServiceInstances().Remove(bson.M{"name": name})
+	err = service.DestroyInstance(&si)
 	if err != nil {
 		return err
 	}

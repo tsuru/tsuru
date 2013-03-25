@@ -70,7 +70,7 @@ func (s *ProvisionSuite) TestServicesHandlerShoudGetAllServicesFromUsersTeam(c *
 	defer s.conn.Services().Remove(bson.M{"_id": srv.Name})
 	si := service.ServiceInstance{Name: "my_nosql", ServiceName: srv.Name, Teams: []string{s.team.Name}}
 	si.Create()
-	defer si.Delete()
+	defer service.DestroyInstance(&si)
 	recorder, request := s.makeRequestToServicesHandler(c)
 	err := ServicesHandler(recorder, request, s.user)
 	c.Assert(err, gocheck.IsNil)
@@ -334,7 +334,7 @@ func (s *ProvisionSuite) TestDeleteHandlerReturns403WhenTheServiceHasInstance(c 
 	instance := service.ServiceInstance{Name: "my-mysql", ServiceName: se.Name}
 	err = instance.Create()
 	c.Assert(err, gocheck.IsNil)
-	defer instance.Delete()
+	defer service.DestroyInstance(&instance)
 	request, err := http.NewRequest("DELETE", fmt.Sprintf("/services/%s?:name=%s", se.Name, se.Name), nil)
 	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
@@ -636,10 +636,10 @@ func (s *ProvisionSuite) TestServicesAndInstancesByOwnerTeams(c *gocheck.C) {
 	sInstance := service.ServiceInstance{Name: "foo", ServiceName: "mysql"}
 	err = sInstance.Create()
 	c.Assert(err, gocheck.IsNil)
-	defer sInstance.Delete()
+	defer service.DestroyInstance(&sInstance)
 	sInstance2 := service.ServiceInstance{Name: "bar", ServiceName: "mongodb"}
 	err = sInstance2.Create()
-	defer sInstance2.Delete()
+	defer service.DestroyInstance(&sInstance2)
 	results := servicesAndInstancesByOwner(s.user)
 	expected := []service.ServiceModel{
 		{Service: "mysql", Instances: []string{"foo"}},

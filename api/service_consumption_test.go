@@ -391,7 +391,7 @@ func (s *ConsumptionSuite) TestServiceInstanceStatusHandler(c *gocheck.C) {
 	si := service.ServiceInstance{Name: "my_nosql", ServiceName: srv.Name}
 	err = si.Create()
 	c.Assert(err, gocheck.IsNil)
-	defer si.Delete()
+	defer service.DestroyInstance(&si)
 	recorder, request := makeRequestToStatusHandler("my_nosql", c)
 	err = ServiceInstanceStatusHandler(recorder, request, s.user)
 	c.Assert(err, gocheck.IsNil)
@@ -424,7 +424,7 @@ func (s *ConsumptionSuite) TestServiceInfoHandler(c *gocheck.C) {
 	}
 	err = si1.Create()
 	c.Assert(err, gocheck.IsNil)
-	defer si1.Delete()
+	defer service.DestroyInstance(&si1)
 	si2 := service.ServiceInstance{
 		Name:        "your_nosql",
 		ServiceName: srv.Name,
@@ -433,7 +433,7 @@ func (s *ConsumptionSuite) TestServiceInfoHandler(c *gocheck.C) {
 	}
 	err = si2.Create()
 	c.Assert(err, gocheck.IsNil)
-	defer si2.Delete()
+	defer service.DestroyInstance(&si2)
 	request, err := http.NewRequest("GET", fmt.Sprintf("/services/%s?:name=%s", "mongodb", "mongodb"), nil)
 	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
@@ -461,7 +461,7 @@ func (s *ConsumptionSuite) TestServiceInfoHandlerShouldReturnOnlyInstancesOfTheS
 	}
 	err = si1.Create()
 	c.Assert(err, gocheck.IsNil)
-	defer si1.Delete()
+	defer service.DestroyInstance(&si1)
 	si2 := service.ServiceInstance{
 		Name:        "your_nosql",
 		ServiceName: srv.Name,
@@ -470,7 +470,7 @@ func (s *ConsumptionSuite) TestServiceInfoHandlerShouldReturnOnlyInstancesOfTheS
 	}
 	err = si2.Create()
 	c.Assert(err, gocheck.IsNil)
-	defer si2.Delete()
+	defer service.DestroyInstance(&si2)
 	request, err := http.NewRequest("GET", fmt.Sprintf("/services/%s?:name=%s", "mongodb", "mongodb"), nil)
 	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
@@ -598,10 +598,10 @@ func (s *ConsumptionSuite) TestServiceAndServiceInstancesByTeamsShouldReturnServ
 	defer srv.Delete()
 	si := service.ServiceInstance{Name: "my_nosql", ServiceName: srv.Name, Teams: []string{s.team.Name}}
 	si.Create()
-	defer si.Delete()
+	defer service.DestroyInstance(&si)
 	si2 := service.ServiceInstance{Name: "some_nosql", ServiceName: srv.Name}
 	si2.Create()
-	defer si2.Delete()
+	defer service.DestroyInstance(&si2)
 	obtained := serviceAndServiceInstancesByTeams(s.user)
 	expected := []service.ServiceModel{
 		{Service: "mongodb", Instances: []string{"my_nosql"}},

@@ -86,14 +86,14 @@ func (si *ServiceInstance) Create() error {
 	return conn.ServiceInstances().Insert(si)
 }
 
-func (si *ServiceInstance) Delete() error {
-	conn, err := db.Conn()
-	if err != nil {
-		return err
-	}
-	defer conn.Close()
-	return conn.ServiceInstances().Remove(bson.M{"name": si.Name})
-}
+// func (si *ServiceInstance) Delete() error {
+// 	conn, err := db.Conn()
+// 	if err != nil {
+// 		return err
+// 	}
+// 	defer conn.Close()
+// 	return conn.ServiceInstances().Remove(bson.M{"name": si.Name})
+// }
 
 func (si *ServiceInstance) Service() *Service {
 	conn, err := db.Conn()

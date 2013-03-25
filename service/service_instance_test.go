@@ -38,7 +38,7 @@ func (s *S) TestCreateServiceInstance(c *gocheck.C) {
 func (s *S) TestDeleteServiceInstance(c *gocheck.C) {
 	s.createServiceInstance()
 	defer s.conn.Services().Remove(bson.M{"name": s.service.Name})
-	s.serviceInstance.Delete()
+	DestroyInstance(s.serviceInstance)
 	query := bson.M{
 		"name": s.service.Name,
 	}
@@ -207,20 +207,20 @@ func (s *S) TestGetServiceInstancesByServicesAndTeams(c *gocheck.C) {
 		Teams:       []string{s.team.Name},
 	}
 	sInstance.Create()
-	defer sInstance.Delete()
+	defer DestroyInstance(&sInstance)
 	sInstance2 := ServiceInstance{
 		Name:        "j4nosql",
 		ServiceName: srvc2.Name,
 		Teams:       []string{s.team.Name},
 	}
 	sInstance2.Create()
-	defer sInstance2.Delete()
+	defer DestroyInstance(&sInstance2)
 	sInstance3 := ServiceInstance{
 		Name:        "f9nosql",
 		ServiceName: srvc2.Name,
 	}
 	sInstance3.Create()
-	defer sInstance3.Delete()
+	defer DestroyInstance(&sInstance3)
 	expected := []ServiceInstance{
 		{
 			Name:        sInstance.Name,
@@ -255,7 +255,7 @@ func (s *S) TestGetServiceInstancesByServicesAndTeamsForUsersThatAreNotMembersOf
 	}
 	err = instance.Create()
 	c.Assert(err, gocheck.IsNil)
-	defer instance.Delete()
+	defer DestroyInstance(&instance)
 	instances, err := GetServiceInstancesByServicesAndTeams([]Service{srvc}, &u)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(instances, gocheck.IsNil)
