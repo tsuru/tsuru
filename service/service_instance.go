@@ -51,6 +51,10 @@ func DestroyInstance(si *ServiceInstance) error {
 
 // NewInstance store a service instance into the database.
 func NewInstance(si ServiceInstance) (ServiceInstance, error) {
+	endpoint := si.Service().ProductionEndpoint()
+	if endpoint != nil {
+		endpoint.Create(&si)
+	}
 	conn, err := db.Conn()
 	if err != nil {
 		return ServiceInstance{}, err
