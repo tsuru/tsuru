@@ -286,7 +286,7 @@ func (ServiceInfo) ExtraHeaders(instances []ServiceInstanceModel) []string {
 	return headers
 }
 
-func (c *ServiceInfo) Run(ctx *cmd.Context, client cmd.Doer) error {
+func (c ServiceInfo) Run(ctx *cmd.Context, client cmd.Doer) error {
 	serviceName := ctx.Args[0]
 	url, err := cmd.GetUrl("/services/" + serviceName)
 	if err != nil {
