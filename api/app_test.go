@@ -1751,7 +1751,7 @@ func (s *S) TestSetCNameHandlerInvalidCName(c *gocheck.C) {
 }
 
 func (s *S) TestLogShouldReturnNotFoundWhenAppDoesNotExist(c *gocheck.C) {
-	request, err := http.NewRequest("GET", "/apps/unknown/log/?:name=unknown", nil)
+	request, err := http.NewRequest("GET", "/apps/unknown/log/?:name=unknown&lines=10", nil)
 	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
 	err = AppLog(recorder, request, s.user)
@@ -1770,7 +1770,7 @@ func (s *S) TestLogReturnsForbiddenIfTheGivenUserDoesNotHaveAccessToTheApp(c *go
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
-	url := fmt.Sprintf("/apps/%s/log/?:name=%s", a.Name, a.Name)
+	url := fmt.Sprintf("/apps/%s/log/?:name=%s&lines=10", a.Name, a.Name)
 	request, err := http.NewRequest("GET", url, nil)
 	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
@@ -1779,6 +1779,32 @@ func (s *S) TestLogReturnsForbiddenIfTheGivenUserDoesNotHaveAccessToTheApp(c *go
 	e, ok := err.(*errors.Http)
 	c.Assert(ok, gocheck.Equals, true)
 	c.Assert(e.Code, gocheck.Equals, http.StatusForbidden)
+}
+
+func (s *S) TestAppLogReturnsBadRequestIfNumberOfLinesIsMissing(c *gocheck.C) {
+	url := "/apps/something/log/?:name=doesntmatter"
+	request, err := http.NewRequest("GET", url, nil)
+	c.Assert(err, gocheck.IsNil)
+	recorder := httptest.NewRecorder()
+	err = AppLog(recorder, request, s.user)
+	c.Assert(err, gocheck.NotNil)
+	e, ok := err.(*errors.Http)
+	c.Assert(ok, gocheck.Equals, true)
+	c.Assert(e.Code, gocheck.Equals, http.StatusBadRequest)
+	c.Assert(e.Message, gocheck.Equals, `Parameter "lines" is mandatory.`)
+}
+
+func (s *S) TestAppLogReturnsBadRequestIfNumberOfLinesIsNotAnInteger(c *gocheck.C) {
+	url := "/apps/something/log/?:name=doesntmatter&lines=2.34"
+	request, err := http.NewRequest("GET", url, nil)
+	c.Assert(err, gocheck.IsNil)
+	recorder := httptest.NewRecorder()
+	err = AppLog(recorder, request, s.user)
+	c.Assert(err, gocheck.NotNil)
+	e, ok := err.(*errors.Http)
+	c.Assert(ok, gocheck.Equals, true)
+	c.Assert(e.Code, gocheck.Equals, http.StatusBadRequest)
+	c.Assert(e.Message, gocheck.Equals, `Parameter "lines" must be an integer.`)
 }
 
 func (s *S) TestAppLogShouldHaveContentType(c *gocheck.C) {
@@ -1796,7 +1822,7 @@ func (s *S) TestAppLogShouldHaveContentType(c *gocheck.C) {
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
-	url := fmt.Sprintf("/apps/%s/log/?:name=%s", a.Name, a.Name)
+	url := fmt.Sprintf("/apps/%s/log/?:name=%s&lines=10", a.Name, a.Name)
 	request, err := http.NewRequest("GET", url, nil)
 	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
@@ -1845,7 +1871,7 @@ func (s *S) TestAppLogSelectBySource(c *gocheck.C) {
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	a.Log("mars log", "mars")
 	a.Log("earth log", "earth")
-	url := fmt.Sprintf("/apps/%s/log/?:name=%s&source=mars", a.Name, a.Name)
+	url := fmt.Sprintf("/apps/%s/log/?:name=%s&source=mars&lines=10", a.Name, a.Name)
 	request, err := http.NewRequest("GET", url, nil)
 	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
@@ -1931,7 +1957,7 @@ func (s *S) TestAppLogShouldReturnLogByApp(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": app3.Name})
 	app3.Log("app3 log", "tsuru")
-	url := fmt.Sprintf("/apps/%s/log/?:name=%s", app3.Name, app3.Name)
+	url := fmt.Sprintf("/apps/%s/log/?:name=%s&lines=10", app3.Name, app3.Name)
 	request, err := http.NewRequest("GET", url, nil)
 	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()

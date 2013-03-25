@@ -499,6 +499,17 @@ func setCName(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 }
 
 func AppLog(w http.ResponseWriter, r *http.Request, u *auth.User) error {
+	var err error
+	var lines int
+	if l := r.URL.Query().Get("lines"); l != "" {
+		lines, err = strconv.Atoi(l)
+		if err != nil {
+			msg := `Parameter "lines" must be an integer.`
+			return &errors.Http{Code: http.StatusBadRequest, Message: msg}
+		}
+	} else {
+		return &errors.Http{Code: http.StatusBadRequest, Message: `Parameter "lines" is mandatory.`}
+	}
 	w.Header().Set("Content-Type", "application/json")
 	appName := r.URL.Query().Get(":name")
 	pipe := []bson.M{}
@@ -508,7 +519,7 @@ func AppLog(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	if source := r.URL.Query().Get("source"); source != "" {
 		match["logs.source"] = source
 	}
-	_, err := getApp(appName, u)
+	_, err = getApp(appName, u)
 	if err != nil {
 		return err
 	}
@@ -520,13 +531,7 @@ func AppLog(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	pipe = append(pipe, bson.M{"$match": match})
 	pipe = append(pipe, bson.M{"$project": bson.M{"_id": 0, "logs": 1}})
 	pipe = append(pipe, bson.M{"$sort": bson.M{"logs.date": -1}})
-	if l := r.URL.Query().Get("lines"); l != "" {
-		lines, err := strconv.Atoi(l)
-		if err != nil {
-			return err
-		}
-		pipe = append(pipe, bson.M{"$limit": lines})
-	}
+	pipe = append(pipe, bson.M{"$limit": lines})
 	var result []map[string]map[string]interface{}
 	err = conn.Apps().Pipe(pipe).All(&result)
 	if err != nil {
