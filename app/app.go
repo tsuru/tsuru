@@ -822,6 +822,44 @@ func (app *App) Log(message, source string) error {
 	return nil
 }
 
+// LastLogs returns a list of the last `lines` log of the app, matching the
+// given source.
+func (a *App) LastLogs(lines int, source string) ([]Applog, error) {
+	conn, err := db.Conn()
+	if err != nil {
+		return nil, err
+	}
+	defer conn.Close()
+	match := bson.M{}
+	match["name"] = a.Name
+	if source != "" {
+		match["logs.source"] = source
+	}
+	pipe := []bson.M{
+		{"$unwind": "$logs"},
+		{"$match": match},
+		{"$project": bson.M{"_id": 0, "logs": 1}},
+		{"$sort": bson.M{"logs.date": -1}},
+		{"$limit": lines},
+	}
+	var result []map[string]map[string]interface{}
+	err = conn.Apps().Pipe(pipe).All(&result)
+	if err != nil {
+		return nil, err
+	}
+	n := len(result)
+	logs := make([]Applog, n)
+	for i, row := range result {
+		log := Applog{
+			Message: row["logs"]["message"].(string),
+			Source:  row["logs"]["source"].(string),
+			Date:    row["logs"]["date"].(time.Time),
+		}
+		logs[n-i-1] = log
+	}
+	return logs, nil
+}
+
 // List returns the list of apps that the given user has access to.
 //
 // If the user does not have acces to any app, this function returns an empty

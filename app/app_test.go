@@ -26,6 +26,7 @@ import (
 	"path"
 	"reflect"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -1448,6 +1449,29 @@ func (s *S) TestLogWithListeners(c *gocheck.C) {
 	logs.Unlock()
 	c.Assert(log.Message, gocheck.Equals, "last log msg")
 	c.Assert(log.Source, gocheck.Equals, "tsuru")
+}
+
+func (s *S) TestLastLogs(c *gocheck.C) {
+	app := App{
+		Name:      "app3",
+		Framework: "vougan",
+		Teams:     []string{s.team.Name},
+	}
+	err := s.conn.Apps().Insert(app)
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": app.Name})
+	for i := 0; i < 15; i++ {
+		app.Log(strconv.Itoa(i), "tsuru")
+		time.Sleep(1e6) // let the time flow
+	}
+	app.Log("app3 log from circus", "circus")
+	logs, err := app.LastLogs(10, "tsuru")
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(logs, gocheck.HasLen, 10)
+	for i := 5; i < 15; i++ {
+		c.Check(logs[i-5].Message, gocheck.Equals, strconv.Itoa(i))
+		c.Check(logs[i-5].Source, gocheck.Equals, "tsuru")
+	}
 }
 
 func (s *S) TestGetTeams(c *gocheck.C) {

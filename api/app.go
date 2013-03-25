@@ -23,7 +23,6 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
-	"time"
 )
 
 func write(w io.Writer, content []byte) error {
@@ -512,46 +511,15 @@ func AppLog(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	}
 	w.Header().Set("Content-Type", "application/json")
 	appName := r.URL.Query().Get(":name")
-	pipe := []bson.M{}
-	pipe = append(pipe, bson.M{"$unwind": "$logs"})
-	match := bson.M{}
-	match["name"] = appName
-	if source := r.URL.Query().Get("source"); source != "" {
-		match["logs.source"] = source
-	}
-	_, err = getApp(appName, u)
+	app, err := getApp(appName, u)
 	if err != nil {
 		return err
 	}
-	conn, err := db.Conn()
+	logs, err := app.LastLogs(lines, r.URL.Query().Get("source"))
 	if err != nil {
 		return err
 	}
-	defer conn.Close()
-	pipe = append(pipe, bson.M{"$match": match})
-	pipe = append(pipe, bson.M{"$project": bson.M{"_id": 0, "logs": 1}})
-	pipe = append(pipe, bson.M{"$sort": bson.M{"logs.date": -1}})
-	pipe = append(pipe, bson.M{"$limit": lines})
-	var result []map[string]map[string]interface{}
-	err = conn.Apps().Pipe(pipe).All(&result)
-	if err != nil {
-		return err
-	}
-	n := len(result)
-	logs := make([]app.Applog, n)
-	for i, row := range result {
-		log := app.Applog{
-			Message: row["logs"]["message"].(string),
-			Source:  row["logs"]["source"].(string),
-			Date:    row["logs"]["date"].(time.Time),
-		}
-		logs[n-i-1] = log
-	}
-	b, err := json.Marshal(logs)
-	if err != nil {
-		return err
-	}
-	return write(w, b)
+	return json.NewEncoder(w).Encode(logs)
 }
 
 func getServiceInstace(instanceName, appName string, u *auth.User) (service.ServiceInstance, app.App, error) {
