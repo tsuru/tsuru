@@ -36,9 +36,11 @@ func (s *S) TestJsonWriter(c *gocheck.C) {
 func (s *S) TestJsonWriterInvalidJson(c *gocheck.C) {
 	var buf bytes.Buffer
 	w := jsonWriter{&buf}
-	n, err := w.Write([]byte("-----"))
-	c.Assert(n, gocheck.Equals, 0)
-	c.Assert(err, gocheck.NotNil)
+	b := []byte("-----")
+	n, err := w.Write(b)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(n, gocheck.Equals, len(b))
+	c.Assert(buf.String(), gocheck.Equals, "")
 }
 
 func (s *S) TestAppLog(c *gocheck.C) {
@@ -174,10 +176,39 @@ func (s *S) TestAppLogWithLines(c *gocheck.C) {
 	c.Assert(got, gocheck.Equals, expected)
 }
 
+func (s *S) TestAppLogWithFollow(c *gocheck.C) {
+	var stdout, stderr bytes.Buffer
+	result := `[{"Source":"tsuru","Date":"2012-06-20T11:17:22.75-03:00","Message":"creating app lost"},{"Source":"tsuru","Date":"2012-06-20T11:17:22.753-03:00","Message":"app lost successfully created"}]`
+	expected := cmd.Colorfy("2012-06-20 11:17:22 [tsuru]:", "blue", "", "") + " creating app lost\n"
+	expected = expected + cmd.Colorfy("2012-06-20 11:17:22 [tsuru]:", "blue", "", "") + " app lost successfully created\n"
+	context := cmd.Context{
+		Stdout: &stdout,
+		Stderr: &stderr,
+	}
+	fake := &FakeGuesser{name: "hitthelights"}
+	command := AppLog{GuessingCommand: GuessingCommand{G: fake}}
+	command.Flags().Parse(true, []string{"--lines", "12", "-f"})
+	trans := &conditionalTransport{
+		transport{
+			msg:    result,
+			status: http.StatusOK,
+		},
+		func(req *http.Request) bool {
+			return req.URL.Query().Get("lines") == "12" && req.URL.Query().Get("follow") == "1"
+		},
+	}
+	client := cmd.NewClient(&http.Client{Transport: trans}, nil, manager)
+	err := command.Run(&context, client)
+	c.Assert(err, gocheck.IsNil)
+	got := stdout.String()
+	got = strings.Replace(got, "-0300 -0300", "-0300 BRT", -1)
+	c.Assert(got, gocheck.Equals, expected)
+}
+
 func (s *S) TestAppLogFlagSet(c *gocheck.C) {
 	command := AppLog{}
 	flagset := command.Flags()
-	flagset.Parse(true, []string{"--source", "tsuru", "--lines", "12", "--app", "ashamed"})
+	flagset.Parse(true, []string{"--source", "tsuru", "--lines", "12", "--app", "ashamed", "--follow"})
 	source := flagset.Lookup("source")
 	c.Check(source, gocheck.NotNil)
 	c.Check(source.Name, gocheck.Equals, "source")
@@ -214,4 +245,16 @@ func (s *S) TestAppLogFlagSet(c *gocheck.C) {
 	c.Check(sapp.Usage, gocheck.Equals, "The name of the app.")
 	c.Check(sapp.Value.String(), gocheck.Equals, "ashamed")
 	c.Check(sapp.DefValue, gocheck.Equals, "")
+	follow := flagset.Lookup("follow")
+	c.Check(follow, gocheck.NotNil)
+	c.Check(follow.Name, gocheck.Equals, "follow")
+	c.Check(follow.Usage, gocheck.Equals, "Follow logs")
+	c.Check(follow.Value.String(), gocheck.Equals, "true")
+	c.Check(follow.DefValue, gocheck.Equals, "false")
+	sfollow := flagset.Lookup("f")
+	c.Check(sfollow, gocheck.NotNil)
+	c.Check(sfollow.Name, gocheck.Equals, "f")
+	c.Check(sfollow.Usage, gocheck.Equals, "Follow logs")
+	c.Check(sfollow.Value.String(), gocheck.Equals, "true")
+	c.Check(sfollow.DefValue, gocheck.Equals, "false")
 }

@@ -5,11 +5,10 @@
 package tsuru
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"github.com/globocom/tsuru/cmd"
-	"io/ioutil"
+	"io"
 	"launchpad.net/gnuflag"
 	"net/http"
 	"time"
@@ -20,6 +19,7 @@ type AppLog struct {
 	fs     *gnuflag.FlagSet
 	source string
 	lines  int
+	follow bool
 }
 
 func (c *AppLog) Info() *cmd.Info {
@@ -41,7 +41,7 @@ func (j *jsonWriter) Write(b []byte) (int, error) {
 	var logs []log
 	err := json.Unmarshal(b, &logs)
 	if err != nil {
-		return 0, err
+		return len(b), nil
 	}
 	for _, l := range logs {
 		date := l.Date.Format("2006-01-02 15:04:05")
@@ -69,6 +69,9 @@ func (c *AppLog) Run(context *cmd.Context, client cmd.Doer) error {
 	if c.source != "" {
 		url = fmt.Sprintf("%s&source=%s", url, c.source)
 	}
+	if c.follow {
+		url += "&follow=1"
+	}
 	request, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return err
@@ -81,19 +84,10 @@ func (c *AppLog) Run(context *cmd.Context, client cmd.Doer) error {
 		return nil
 	}
 	defer response.Body.Close()
-	result, err := ioutil.ReadAll(response.Body)
-	logs := []log{}
-	err = json.Unmarshal(result, &logs)
-	if err != nil {
-		return err
+	w := jsonWriter{context.Stdout}
+	for n, err := io.Copy(&w, response.Body); n > 0 && err == nil; n, err = io.Copy(&w, response.Body) {
 	}
-	for _, l := range logs {
-		date := l.Date.Format("2006-01-02 15:04:05")
-		prefix := fmt.Sprintf("%s [%s]:", date, l.Source)
-		msg := fmt.Sprintf("%s %s\n", cmd.Colorfy(prefix, "blue", "", ""), l.Message)
-		context.Stdout.Write([]byte(msg))
-	}
-	return err
+	return nil
 }
 
 func (c *AppLog) Flags() *gnuflag.FlagSet {
@@ -103,6 +97,8 @@ func (c *AppLog) Flags() *gnuflag.FlagSet {
 		c.fs.IntVar(&c.lines, "l", 10, "The number of log lines to display")
 		c.fs.StringVar(&c.source, "source", "", "The log from the given source")
 		c.fs.StringVar(&c.source, "s", "", "The log from the given source")
+		c.fs.BoolVar(&c.follow, "follow", false, "Follow logs")
+		c.fs.BoolVar(&c.follow, "f", false, "Follow logs")
 	}
 	return c.fs
 }
