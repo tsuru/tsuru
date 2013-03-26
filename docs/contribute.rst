@@ -17,6 +17,8 @@ development environment
 
 See this guide to :doc:`setting up you tsuru development environment </contribute/setting-up-your-tsuru-development-environment>`.
 
+And follow our :doc:`coding style guide </contribute/coding-style>`.
+
 running the tests
 =================
 

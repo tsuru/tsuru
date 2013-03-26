@@ -47,6 +47,7 @@ For tsuru ops
 Contributions and Feedback
 ==========================
 
-* :doc:`setting up your tsuru development environment </contribute/setting-up-your-tsuru-development-environment>`
 * :doc:`how to contribute </contribute>`
+* :doc:`coding style </contribute/coding-style>`
+* :doc:`setting up your tsuru development environment </contribute/setting-up-your-tsuru-development-environment>`
 * :doc:`community </community>`
