@@ -172,23 +172,34 @@ func (si *ServiceInstance) BindApp(app bind.App) error {
 	if len(app.GetUnits()) == 0 {
 		return &errors.Http{Code: http.StatusPreconditionFailed, Message: "This app does not have an IP yet."}
 	}
-	envs := make(chan map[string]string, len(app.GetUnits())+1)
+	envsChan := make(chan map[string]string, len(app.GetUnits())+1)
+	errChan := make(chan error, len(app.GetUnits())+1)
 	for _, unit := range app.GetUnits() {
 		go func(unit bind.Unit) {
-			vars, _ := si.BindUnit(app, unit)
-			envs <- vars
+			vars, err := si.BindUnit(app, unit)
+			if err != nil {
+				errChan <- err
+				return
+			}
+			envsChan <- vars
 		}(unit)
 	}
 	var envVars []bind.EnvVar
-	for k, v := range <-envs {
-		envVars = append(envVars, bind.EnvVar{
-			Name:         k,
-			Value:        v,
-			Public:       false,
-			InstanceName: si.Name,
-		})
+	select {
+	case envs := <-envsChan:
+		for k, v := range envs {
+			envVars = append(envVars, bind.EnvVar{
+				Name:         k,
+				Value:        v,
+				Public:       false,
+				InstanceName: si.Name,
+			})
+		}
+		return app.SetEnvs(envVars, false)
+	case err = <-errChan:
+		return err
 	}
-	return app.SetEnvs(envVars, false)
+	return nil
 }
 
 // BindUnit makes the bind between the binder and an unit.

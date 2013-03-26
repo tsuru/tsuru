@@ -90,6 +90,21 @@ func (s *S) TestBindUnit(c *gocheck.C) {
 	c.Assert(envs, gocheck.DeepEquals, expectedEnvs)
 }
 
+func (s *S) TestBindAddsWhenEndpointIsDown(c *gocheck.C) {
+	srvc := service.Service{Name: "mysql", Endpoint: map[string]string{"production": ""}}
+	err := srvc.Create()
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Services().Remove(bson.M{"_id": "mysql"})
+	instance := service.ServiceInstance{Name: "my-mysql", ServiceName: "mysql", Teams: []string{s.team.Name}}
+	instance.Create()
+	defer s.conn.ServiceInstances().Remove(bson.M{"_id": "my-mysql"})
+	a, err := createTestApp(s.conn, "painkiller", "", []string{s.team.Name}, []app.Unit{{Ip: "10.10.10.10"}})
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	err = instance.BindApp(&a)
+	c.Assert(err, gocheck.NotNil)
+}
+
 func (s *S) TestBindAddsAppToTheServiceInstance(c *gocheck.C) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(`{"DATABASE_USER":"root","DATABASE_PASSWORD":"s3cr3t"}`))
@@ -153,7 +168,7 @@ func (s *S) TestBindCallTheServiceAPIAndSetsEnvironmentVariableReturnedFromTheCa
 	c.Assert(a.Env, gocheck.DeepEquals, expectedEnv)
 }
 
-func (s *S) TestBindMultiUnits(c *gocheck.C) {
+func (s *S) TestBindAppMultiUnits(c *gocheck.C) {
 	var calls int
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(`{"DATABASE_USER":"root","DATABASE_PASSWORD":"s3cr3t"}`))

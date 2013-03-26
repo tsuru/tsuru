@@ -2001,6 +2001,36 @@ func (s *S) TestGetTeamNamesReturnTheNameOfTeamsThatTheUserIsMember(c *gocheck.C
 	c.Assert(names, gocheck.DeepEquals, teams)
 }
 
+func (s *S) TestBindHandlerEndpointIsDown(c *gocheck.C) {
+	srvc := service.Service{Name: "mysql", Endpoint: map[string]string{"production": "http://localhost:1234"}}
+	err := srvc.Create()
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Services().Remove(bson.M{"_id": "mysql"})
+	instance := service.ServiceInstance{
+		Name:        "my-mysql",
+		ServiceName: "mysql",
+		Teams:       []string{s.team.Name},
+	}
+	err = instance.Create()
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.ServiceInstances().Remove(bson.M{"name": "my-mysql"})
+	a := app.App{
+		Name:  "painkiller",
+		Teams: []string{s.team.Name},
+		Units: []app.Unit{{Ip: "127.0.0.1", Machine: 1}},
+		Env:   map[string]bind.EnvVar{},
+	}
+	err = s.conn.Apps().Insert(a)
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	url := fmt.Sprintf("/services/instances/%s/%s?:instance=%s&:app=%s", instance.Name, a.Name, instance.Name, a.Name)
+	request, err := http.NewRequest("PUT", url, nil)
+	c.Assert(err, gocheck.IsNil)
+	recorder := httptest.NewRecorder()
+	err = BindHandler(recorder, request, s.user)
+	c.Assert(err, gocheck.NotNil)
+}
+
 func (s *S) TestBindHandler(c *gocheck.C) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(`{"DATABASE_USER":"root","DATABASE_PASSWORD":"s3cr3t"}`))
