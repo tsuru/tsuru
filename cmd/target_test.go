@@ -282,7 +282,7 @@ other	http://other.tsuru.io`
 	}()
 	expected := `  default (http://tsuru.google.com)
 * first (http://tsuru.io)
-  other (http://other.tsuru.io)`
+  other (http://other.tsuru.io)` + "\n"
 	target := &target{}
 	context := &Context{[]string{""}, manager.stdout, manager.stderr, manager.stdin}
 	err := target.Run(context, nil)

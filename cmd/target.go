@@ -265,7 +265,7 @@ func (t *target) Run(ctx *Context, client Doer) error {
 	if current, err := readTarget(); err == nil {
 		slice.setCurrent(current)
 	}
-	fmt.Fprint(ctx.Stdout, slice)
+	fmt.Fprintf(ctx.Stdout, "%s\n", slice)
 	return nil
 }
 
