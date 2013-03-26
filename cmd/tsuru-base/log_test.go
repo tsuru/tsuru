@@ -6,11 +6,40 @@ package tsuru
 
 import (
 	"bytes"
+	"encoding/json"
 	"github.com/globocom/tsuru/cmd"
 	"launchpad.net/gocheck"
 	"net/http"
 	"strings"
+	"time"
 )
+
+func (s *S) TestJsonWriter(c *gocheck.C) {
+	t := time.Now()
+	logs := []log{
+		{Date: t, Message: "Something happened", Source: "tsuru"},
+		{Date: t.Add(2 * time.Hour), Message: "Something happened again", Source: "tsuru"},
+	}
+	b, err := json.Marshal(logs)
+	c.Assert(err, gocheck.IsNil)
+	var buf bytes.Buffer
+	w := jsonWriter{&buf}
+	n, err := w.Write(b)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(n, gocheck.Equals, len(b))
+	tfmt := "2006-01-02 15:04:05"
+	expected := cmd.Colorfy(t.Format(tfmt)+" [tsuru]:", "blue", "", "") + " Something happened\n"
+	expected = expected + cmd.Colorfy(t.Add(2*time.Hour).Format(tfmt)+" [tsuru]:", "blue", "", "") + " Something happened again\n"
+	c.Assert(buf.String(), gocheck.Equals, expected)
+}
+
+func (s *S) TestJsonWriterInvalidJson(c *gocheck.C) {
+	var buf bytes.Buffer
+	w := jsonWriter{&buf}
+	n, err := w.Write([]byte("-----"))
+	c.Assert(n, gocheck.Equals, 0)
+	c.Assert(err, gocheck.NotNil)
+}
 
 func (s *S) TestAppLog(c *gocheck.C) {
 	var stdout, stderr bytes.Buffer

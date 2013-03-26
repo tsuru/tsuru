@@ -5,6 +5,7 @@
 package tsuru
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"github.com/globocom/tsuru/cmd"
@@ -30,6 +31,24 @@ func (c *AppLog) Info() *cmd.Info {
 If you don't provide the app name, tsuru will try to guess it. The default number of lines is 10.`,
 		MinArgs: 0,
 	}
+}
+
+type jsonWriter struct {
+	w io.Writer
+}
+
+func (j *jsonWriter) Write(b []byte) (int, error) {
+	var logs []log
+	err := json.Unmarshal(b, &logs)
+	if err != nil {
+		return 0, err
+	}
+	for _, l := range logs {
+		date := l.Date.Format("2006-01-02 15:04:05")
+		prefix := fmt.Sprintf("%s [%s]:", date, l.Source)
+		fmt.Fprintf(j.w, "%s %s\n", cmd.Colorfy(prefix, "blue", "", ""), l.Message)
+	}
+	return len(b), nil
 }
 
 type log struct {
