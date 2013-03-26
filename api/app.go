@@ -511,15 +511,28 @@ func appLog(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	}
 	w.Header().Set("Content-Type", "application/json")
 	appName := r.URL.Query().Get(":name")
-	app, err := getApp(appName, u)
+	a, err := getApp(appName, u)
 	if err != nil {
 		return err
 	}
-	logs, err := app.LastLogs(lines, r.URL.Query().Get("source"))
+	logs, err := a.LastLogs(lines, r.URL.Query().Get("source"))
 	if err != nil {
 		return err
 	}
-	return json.NewEncoder(w).Encode(logs)
+	encoder := json.NewEncoder(w)
+	err = encoder.Encode(logs)
+	if err != nil {
+		return err
+	}
+	// TODO(fss): write an automated test for this code.
+	if r.URL.Query().Get("follow") == "1" {
+		l := app.NewLogListener(&a)
+		defer l.Close()
+		for log := range l.C {
+			encoder.Encode(log)
+		}
+	}
+	return nil
 }
 
 func getServiceInstace(instanceName, appName string, u *auth.User) (service.ServiceInstance, app.App, error) {
