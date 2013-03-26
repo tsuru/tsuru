@@ -26,6 +26,7 @@ curl -sL https://s3.amazonaws.com/tsuru/dist-server/tsuru-api.tar.gz | sudo tar 
 
 echo "configuring tsuru"
 sudo mkdir /etc/tsuru
+curl -sL https://raw.github.com/globocom/tsuru/master/etc/tsuru-lxc.conf -o /etc/tsuru/tsuru.conf
 
 echo "starting mongodb"
 sudo service mongodb start
