@@ -1750,7 +1750,7 @@ func (s *S) TestSetCNameHandlerInvalidCName(c *gocheck.C) {
 	c.Assert(e.Message, gocheck.Equals, "Invalid cname")
 }
 
-func (s *S) TestLogShouldReturnNotFoundWhenAppDoesNotExist(c *gocheck.C) {
+func (s *S) TestAppLogShouldReturnNotFoundWhenAppDoesNotExist(c *gocheck.C) {
 	request, err := http.NewRequest("GET", "/apps/unknown/log/?:name=unknown&lines=10", nil)
 	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
@@ -1762,7 +1762,7 @@ func (s *S) TestLogShouldReturnNotFoundWhenAppDoesNotExist(c *gocheck.C) {
 	c.Assert(e, gocheck.ErrorMatches, "^App unknown not found.$")
 }
 
-func (s *S) TestLogReturnsForbiddenIfTheGivenUserDoesNotHaveAccessToTheApp(c *gocheck.C) {
+func (s *S) TestAppLogReturnsForbiddenIfTheGivenUserDoesNotHaveAccessToTheApp(c *gocheck.C) {
 	a := app.App{
 		Name:      "lost",
 		Framework: "vougan",
