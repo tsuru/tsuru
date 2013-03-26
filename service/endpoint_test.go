@@ -157,9 +157,10 @@ func (s *S) TestBindWithEndopintDown(c *gocheck.C) {
 		name: "her-app",
 		ip:   "10.0.10.1",
 	}
-	client := &Client{endpoint: ""}
+	client := &Client{endpoint: "http://naoexites.com"}
 	_, err := client.Bind(&instance, &a, a.GetUnits()[0])
 	c.Assert(err, gocheck.NotNil)
+	c.Assert(err, gocheck.ErrorMatches, "^her-redis api is down.$")
 }
 
 func (s *S) TestBindShouldSendAPOSTToTheResourceURL(c *gocheck.C) {

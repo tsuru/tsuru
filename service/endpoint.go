@@ -6,6 +6,7 @@ package service
 
 import (
 	"encoding/json"
+	"fmt"
 	"github.com/globocom/tsuru/app/bind"
 	"github.com/globocom/tsuru/errors"
 	"github.com/globocom/tsuru/log"
@@ -13,6 +14,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
+	"regexp"
 	"strings"
 )
 
@@ -99,6 +101,9 @@ func (c *Client) Bind(instance *ServiceInstance, app bind.App, unit bind.Unit) (
 	}
 	resp, err := c.issueRequest("/resources/"+instance.Name, "POST", params)
 	if err != nil {
+		if m, _ := regexp.MatchString("", err.Error()); m {
+			return nil, fmt.Errorf("%s api is down.", instance.Name)
+		}
 		return nil, err
 	}
 	if err == nil && resp.StatusCode < 300 {
@@ -165,7 +170,7 @@ func (c *Client) Status(instance *ServiceInstance) (string, error) {
 // GET /resources/<name>
 func (c *Client) Info(instance *ServiceInstance) ([]map[string]string, error) {
 	log.Print("Attempting to call info of service instance " + instance.Name + " at " + instance.ServiceName + " api")
-	url := "/resources/" + instance.Name
+	url := "/resources/" + instance.Name + "/status"
 	resp, err := c.issueRequest(url, "GET", nil)
 	if err != nil || resp.StatusCode != 200 {
 		return nil, err
