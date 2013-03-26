@@ -130,7 +130,7 @@ Now that you have ``api`` and ``collector`` properly installed, and you
 
 ::
 
-    $ sudo service mongodb  start
+    $ sudo service mongodb start
 
 2. Start beanstalkd
 
@@ -149,7 +149,7 @@ Now that you have ``api`` and ``collector`` properly installed, and you
     $ api &
     $ collector &
 
-One can see the logs in:
+You can see the logs in:
 
 .. highlight:: bash
 
