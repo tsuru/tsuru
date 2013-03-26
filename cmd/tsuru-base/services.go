@@ -276,7 +276,7 @@ func in(value string, list []string) bool {
 func (ServiceInfo) ExtraHeaders(instances []ServiceInstanceModel) []string {
 	var headers []string
 	for _, instance := range instances {
-		for key, _ := range instance.Info {
+		for key := range instance.Info {
 			if !in(key, headers) {
 				headers = append(headers, key)
 			}
