@@ -146,6 +146,17 @@ func (s *S) TestDestroyShouldReturnErrorIfTheRequestFails(c *gocheck.C) {
 	c.Assert(err, gocheck.ErrorMatches, "^Failed to destroy the instance "+instance.Name+": Server failed to do its job.$")
 }
 
+func (s *S) TestBindWithEndopintDown(c *gocheck.C) {
+	instance := ServiceInstance{Name: "her-redis", ServiceName: "redis"}
+	a := FakeApp{
+		name: "her-app",
+		ip:   "10.0.10.1",
+	}
+	client := &Client{endpoint: ""}
+	_, err := client.Bind(&instance, &a, a.GetUnits()[0])
+	c.Assert(err, gocheck.NotNil)
+}
+
 func (s *S) TestBindShouldSendAPOSTToTheResourceURL(c *gocheck.C) {
 	h := TestHandler{}
 	ts := httptest.NewServer(&h)

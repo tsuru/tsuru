@@ -98,6 +98,9 @@ func (c *Client) Bind(instance *ServiceInstance, app bind.App, unit bind.Unit) (
 		"app-host":  {app.GetIp()},
 	}
 	resp, err := c.issueRequest("/resources/"+instance.Name, "POST", params)
+	if err != nil {
+		return nil, err
+	}
 	if err == nil && resp.StatusCode < 300 {
 		var result map[string]string
 		err = c.jsonFromResponse(resp, &result)
