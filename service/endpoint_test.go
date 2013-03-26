@@ -64,7 +64,12 @@ func notFoundHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotFound)
 }
 
-func infoHandler(w http.ResponseWriter, r *http.Request) {
+type infoHandler struct {
+	r *http.Request
+}
+
+func (h *infoHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	h.r = r
 	content := `[{"label": "some label", "value": "some value"}, {"label": "label2.0", "value": "v2"}]`
 	w.Write([]byte(content))
 }
@@ -324,7 +329,8 @@ func (s *S) TestStatusShouldReturnPendingWhenApiReturns202(c *gocheck.C) {
 }
 
 func (s *S) TestInfo(c *gocheck.C) {
-	ts := httptest.NewServer(http.HandlerFunc(infoHandler))
+	h := infoHandler{}
+	ts := httptest.NewServer(&h)
 	defer ts.Close()
 	instance := ServiceInstance{Name: "my-redis", ServiceName: "redis"}
 	client := &Client{endpoint: ts.URL}
@@ -335,6 +341,7 @@ func (s *S) TestInfo(c *gocheck.C) {
 		{"label": "label2.0", "value": "v2"},
 	}
 	c.Assert(result, gocheck.DeepEquals, expected)
+	c.Assert(h.r.URL.Path, gocheck.Equals, "/resources/my-redis")
 }
 
 func (s *S) TestInfoNotFound(c *gocheck.C) {

@@ -165,7 +165,7 @@ func (c *Client) Status(instance *ServiceInstance) (string, error) {
 // GET /resources/<name>
 func (c *Client) Info(instance *ServiceInstance) ([]map[string]string, error) {
 	log.Print("Attempting to call info of service instance " + instance.Name + " at " + instance.ServiceName + " api")
-	url := "/resources/" + instance.Name + "/status"
+	url := "/resources/" + instance.Name
 	resp, err := c.issueRequest(url, "GET", nil)
 	if err != nil || resp.StatusCode != 200 {
 		return nil, err
