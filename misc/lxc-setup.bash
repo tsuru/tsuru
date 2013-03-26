@@ -28,6 +28,9 @@ echo "configuring tsuru"
 sudo mkdir /etc/tsuru
 sudo curl -sL https://raw.github.com/globocom/tsuru/master/etc/tsuru-lxc.conf -o /etc/tsuru/tsuru.conf
 
+echo "generating the ssh-key for root"
+sudo ssh-keygen -N "" -f /root/.ssh/id_rsa
+
 echo "starting mongodb"
 sudo service mongodb start
 
