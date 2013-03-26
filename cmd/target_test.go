@@ -256,12 +256,12 @@ Other commands related to target:
   - target-set: defines one of the targets in the list as the current target
   - target-remove: removes one target from the list`
 	expected := &Info{
-		Name:    "target",
-		Usage:   "target",
+		Name:    "target-list",
+		Usage:   "target-list",
 		Desc:    desc,
 		MinArgs: 0,
 	}
-	target := &target{}
+	target := &targetList{}
 	c.Assert(target.Info(), gocheck.DeepEquals, expected)
 }
 
@@ -283,7 +283,7 @@ other	http://other.tsuru.io`
 	expected := `  default (http://tsuru.google.com)
 * first (http://tsuru.io)
   other (http://other.tsuru.io)` + "\n"
-	target := &target{}
+	target := &targetList{}
 	context := &Context{[]string{""}, manager.stdout, manager.stderr, manager.stdin}
 	err := target.Run(context, nil)
 	c.Assert(err, gocheck.IsNil)

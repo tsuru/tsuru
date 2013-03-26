@@ -235,9 +235,9 @@ func getTargets() (map[string]string, error) {
 	return targets, nil
 }
 
-type target struct{}
+type targetList struct{}
 
-func (t *target) Info() *Info {
+func (t *targetList) Info() *Info {
 	desc := `Displays the list of targets, marking the current.
 
 Other commands related to target:
@@ -246,14 +246,14 @@ Other commands related to target:
   - target-set: defines one of the targets in the list as the current target
   - target-remove: removes one target from the list`
 	return &Info{
-		Name:    "target",
-		Usage:   "target",
+		Name:    "target-list",
+		Usage:   "target-list",
 		Desc:    desc,
 		MinArgs: 0,
 	}
 }
 
-func (t *target) Run(ctx *Context, client Doer) error {
+func (t *targetList) Run(ctx *Context, client Doer) error {
 	slice := newTargetSlice()
 	targets, err := getTargets()
 	if err != nil {
