@@ -32,9 +32,12 @@ type Unit interface {
 // tsuru server.
 func clone(u Unit) ([]byte, error) {
 	var buf bytes.Buffer
-	p, _ := GetPath()
+	p, err := GetPath()
+	if err != nil {
+		return nil, fmt.Errorf("Tsuru is misconfigured: %s", err)
+	}
 	cmd := fmt.Sprintf("git clone %s %s --depth 1", GetReadOnlyUrl(u.GetName()), p)
-	err := u.Command(&buf, &buf, cmd)
+	err = u.Command(&buf, &buf, cmd)
 	b := buf.Bytes()
 	log.Printf(`"git clone" output: %s`, b)
 	return b, err
@@ -45,9 +48,12 @@ func clone(u Unit) ([]byte, error) {
 // It works like Clone, pulling from the app bare repository.
 func pull(u Unit) ([]byte, error) {
 	var buf bytes.Buffer
-	p, _ := GetPath()
+	p, err := GetPath()
+	if err != nil {
+		return nil, fmt.Errorf("Tsuru is misconfigured: %s", err)
+	}
 	cmd := fmt.Sprintf("cd %s && git pull origin master", p)
-	err := u.Command(&buf, &buf, cmd)
+	err = u.Command(&buf, &buf, cmd)
 	b := buf.Bytes()
 	log.Printf(`"git pull" output: %s`, b)
 	return b, err

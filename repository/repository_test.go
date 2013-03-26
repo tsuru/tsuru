@@ -56,12 +56,32 @@ func (s *S) TestCloneRepository(c *gocheck.C) {
 	c.Assert(u.RanCommand(expectedCommand), gocheck.Equals, true)
 }
 
+func (s *S) TestCloneRepositoryUndefinedPath(c *gocheck.C) {
+	old, _ := config.Get("git:unit-repo")
+	config.Unset("git:unit-repo")
+	defer config.Set("git:unit-repo", old)
+	u := FakeUnit{name: "my-unit"}
+	_, err := clone(&u)
+	c.Assert(err, gocheck.NotNil)
+	c.Assert(err.Error(), gocheck.Equals, `Tsuru is misconfigured: key "git:unit-repo" not found`)
+}
+
 func (s *S) TestPullRepository(c *gocheck.C) {
 	u := FakeUnit{name: "your-unit"}
 	_, err := pull(&u)
 	c.Assert(err, gocheck.IsNil)
 	expectedCommand := fmt.Sprintf("cd /home/application/current && git pull origin master")
 	c.Assert(u.RanCommand(expectedCommand), gocheck.Equals, true)
+}
+
+func (s *S) TestPullRepositoryUndefinedPath(c *gocheck.C) {
+	old, _ := config.Get("git:unit-repo")
+	config.Unset("git:unit-repo")
+	defer config.Set("git:unit-repo", old)
+	u := FakeUnit{name: "my-unit"}
+	_, err := pull(&u)
+	c.Assert(err, gocheck.NotNil)
+	c.Assert(err.Error(), gocheck.Equals, `Tsuru is misconfigured: key "git:unit-repo" not found`)
 }
 
 func (s *S) TestCloneOrPullRepositoryRunsClone(c *gocheck.C) {
