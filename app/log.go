@@ -30,7 +30,7 @@ type LogListener struct {
 }
 
 func NewLogListener(a *App) *LogListener {
-	c := make(chan Applog)
+	c := make(chan Applog, 10)
 	l := LogListener{C: c, c: c, state: open, appname: a.Name}
 	listeners.Lock()
 	list := listeners.m[l.appname]
