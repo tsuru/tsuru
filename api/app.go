@@ -529,7 +529,7 @@ func appLog(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 		l := app.NewLogListener(&a)
 		defer l.Close()
 		for log := range l.C {
-			encoder.Encode(log)
+			encoder.Encode([]app.Applog{log})
 		}
 	}
 	return nil
