@@ -26,7 +26,7 @@ func (s *S) SetUpSuite(c *gocheck.C) {
 	if err == nil {
 		old := targetFile + ".old"
 		s.recover = []string{"mv", old, targetFile}
-		exec.Command("mv", targetFile, old)
+		exec.Command("mv", targetFile, old).Run()
 	} else {
 		s.recover = []string{"rm", targetFile}
 	}
