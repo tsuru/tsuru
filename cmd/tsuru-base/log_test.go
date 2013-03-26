@@ -116,7 +116,7 @@ func (s *S) TestAppLogBySource(c *gocheck.C) {
 	c.Assert(got, gocheck.Equals, expected)
 }
 
-func (s *S) TestAppLogWithLinces(c *gocheck.C) {
+func (s *S) TestAppLogWithLines(c *gocheck.C) {
 	var stdout, stderr bytes.Buffer
 	result := `[{"Source":"tsuru","Date":"2012-06-20T11:17:22.75-03:00","Message":"creating app lost"},{"Source":"tsuru","Date":"2012-06-20T11:17:22.753-03:00","Message":"app lost successfully created"}]`
 	expected := cmd.Colorfy("2012-06-20 11:17:22 [tsuru]:", "blue", "", "") + " creating app lost\n"
