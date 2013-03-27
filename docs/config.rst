@@ -131,8 +131,16 @@ Authentication configuration
 Tsuru has its own authentication mechanism, that hashes passwords brcypt.
 Tokens are generated during authentication, and are hashed using SHA512.
 
-This mechanism requires two settings to operate: ``auth:token-expire-days`` and
-``auth:token-key``. Each setting is described below:
+This mechanism requires three settings to operate: ``auth:hash-cost``,
+``auth:token-expire-days`` and ``auth:token-key``. Each setting is described
+below:
+
+auth:hash-cost
+++++++++++++++
+
+This number indicates how many CPU time you're willing to give to hashing
+calculation. It is an absolute number, between 4 and 31, where 4 is faster and
+less secure, while 31 is very secure and *very* slow.
 
 auth:token-expire-days
 ++++++++++++++++++++++

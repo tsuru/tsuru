@@ -6,6 +6,7 @@ package auth
 
 import (
 	"code.google.com/p/go.crypto/bcrypt"
+	"fmt"
 	"github.com/globocom/config"
 	"github.com/globocom/tsuru/errors"
 	"labix.org/v2/mgo/bson"
@@ -371,6 +372,45 @@ func (s *S) TestLoadConfigDontOverride(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(tokenKey, gocheck.Equals, "something")
 	c.Assert(salt, gocheck.Equals, "salt")
+}
+
+func (s *S) TestLoadConfigCost(c *gocheck.C) {
+	key := "auth:hash-cost"
+	oldConfig, err := config.Get(key)
+	c.Assert(err, gocheck.IsNil)
+	config.Set(key, bcrypt.MaxCost)
+	defer config.Set(key, oldConfig)
+	salt = ""
+	tokenKey = ""
+	err = loadConfig()
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(cost, gocheck.Equals, bcrypt.MaxCost)
+}
+
+func (s *S) TestLoadConfigCostUndefined(c *gocheck.C) {
+	key := "auth:hash-cost"
+	oldConfig, err := config.Get(key)
+	c.Assert(err, gocheck.IsNil)
+	config.Unset(key)
+	defer config.Set(key, oldConfig)
+	err = loadConfig()
+	c.Assert(err, gocheck.NotNil)
+}
+
+func (s *S) TestLoadConfigCostInvalid(c *gocheck.C) {
+	values := []int{bcrypt.MinCost - 1, bcrypt.MaxCost + 1}
+	key := "auth:hash-cost"
+	oldConfig, _ := config.Get(key)
+	defer config.Set(key, oldConfig)
+	for _, v := range values {
+		salt = ""
+		tokenKey = ""
+		config.Set(key, v)
+		err := loadConfig()
+		c.Assert(err, gocheck.NotNil)
+		msg := fmt.Sprintf("Invalid value for setting %q: it must be between %d and %d.", key, bcrypt.MinCost, bcrypt.MaxCost)
+		c.Assert(err.Error(), gocheck.Equals, msg)
+	}
 }
 
 func (s *S) TestTeams(c *gocheck.C) {

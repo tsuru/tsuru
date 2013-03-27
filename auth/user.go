@@ -28,7 +28,7 @@ const (
 
 var salt, tokenKey string
 var tokenExpire time.Duration
-var cost = bcrypt.DefaultCost + bcrypt.MinCost
+var cost int
 
 func loadConfig() error {
 	if salt == "" && tokenKey == "" {
@@ -44,6 +44,12 @@ func loadConfig() error {
 		}
 		if tokenKey, err = config.GetString("auth:token-key"); err != nil {
 			return stderr.New(`Setting "auth:token-key" is undefined.`)
+		}
+		if cost, err = config.GetInt("auth:hash-cost"); err != nil {
+			return stderr.New(`Setting "auth:hash-cost" is undefined.`)
+		}
+		if cost < bcrypt.MinCost || cost > bcrypt.MaxCost {
+			return fmt.Errorf("Invalid value for setting %q: it must be between %d and %d.", "auth:hash-cost", bcrypt.MinCost, bcrypt.MaxCost)
 		}
 	}
 	return nil

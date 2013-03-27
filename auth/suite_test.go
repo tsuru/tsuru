@@ -63,6 +63,7 @@ func (s *S) SetUpSuite(c *gocheck.C) {
 	config.Set("auth:salt", "tsuru-salt")
 	config.Set("auth:token-expire-days", 2)
 	config.Set("auth:token-key", "TSURU-KEY")
+	config.Set("auth:hash-cost", bcrypt.MinCost)
 	config.Set("admin-team", "admin")
 	s.hashed = hashPassword("123")
 	config.Set("database:url", "127.0.0.1:27017")
@@ -78,7 +79,6 @@ func (s *S) SetUpSuite(c *gocheck.C) {
 	s.gitHost, _ = config.GetString("git:host")
 	s.gitPort, _ = config.GetString("git:port")
 	s.gitProt, _ = config.GetString("git:protocol")
-	cost = bcrypt.MinCost
 }
 
 func (s *S) TearDownSuite(c *gocheck.C) {
