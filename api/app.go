@@ -189,7 +189,7 @@ func CreateAppHandler(w http.ResponseWriter, r *http.Request, u *auth.User) erro
 	err = app.CreateApp(&a, japp.Units, teams)
 	if err != nil {
 		log.Printf("Got error while creating app: %s", err)
-		if e, ok := err.(*app.ValidationError); ok {
+		if e, ok := err.(*errors.ValidationError); ok {
 			return &errors.Http{Code: http.StatusPreconditionFailed, Message: e.Message}
 		}
 		if strings.Contains(err.Error(), "key error") {
