@@ -197,9 +197,8 @@ func (si *ServiceInstance) BindApp(app bind.App) error {
 		}
 		return app.SetEnvs(envVars, false)
 	case err = <-errChan:
-		return err
 	}
-	return nil
+	return err
 }
 
 // BindUnit makes the bind between the binder and an unit.
