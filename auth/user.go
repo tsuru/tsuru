@@ -24,11 +24,11 @@ const (
 	passwordError     = "Password length should be least 6 characters and at most 50 characters."
 	passwordMinLen    = 6
 	passwordMaxLen    = 50
-	cost              = bcrypt.DefaultCost + bcrypt.MinCost
 )
 
 var salt, tokenKey string
 var tokenExpire time.Duration
+var cost = bcrypt.DefaultCost + bcrypt.MinCost
 
 func loadConfig() error {
 	if salt == "" && tokenKey == "" {

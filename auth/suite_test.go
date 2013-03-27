@@ -5,6 +5,7 @@
 package auth
 
 import (
+	"code.google.com/p/go.crypto/bcrypt"
 	"github.com/globocom/config"
 	"github.com/globocom/tsuru/db"
 	"io"
@@ -77,6 +78,7 @@ func (s *S) SetUpSuite(c *gocheck.C) {
 	s.gitHost, _ = config.GetString("git:host")
 	s.gitPort, _ = config.GetString("git:port")
 	s.gitProt, _ = config.GetString("git:protocol")
+	cost = bcrypt.MinCost
 }
 
 func (s *S) TearDownSuite(c *gocheck.C) {
