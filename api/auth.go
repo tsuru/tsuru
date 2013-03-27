@@ -77,7 +77,7 @@ func Login(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return &errors.Http{Code: http.StatusNotFound, Message: "User not found"}
 	}
-	if u.Login(password) {
+	if u.CheckPassword(password) {
 		t, _ := u.CreateToken()
 		fmt.Fprintf(w, `{"token":"%s"}`, t.Token)
 		return nil
@@ -111,7 +111,7 @@ func ChangePassword(w http.ResponseWriter, r *http.Request, u *auth.User) error 
 			Message: "Both the old and the new passwords are required.",
 		}
 	}
-	if !u.Login(body["old"]) {
+	if !u.CheckPassword(body["old"]) {
 		return &errors.Http{
 			Code:    http.StatusForbidden,
 			Message: "The given password didn't match the user's current password.",

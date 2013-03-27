@@ -117,7 +117,7 @@ func (u *User) Get() error {
 	return conn.Users().Find(bson.M{"email": u.Email}).One(&u)
 }
 
-func (u *User) Login(password string) bool {
+func (u *User) CheckPassword(password string) bool {
 	hashedPassword := hashPassword(password)
 	return u.Password == hashedPassword
 }
