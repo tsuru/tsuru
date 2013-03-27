@@ -1147,7 +1147,7 @@ func (s *S) TestDeployHookAbsPathAbsoluteCommands(c *gocheck.C) {
 func (s *S) TestLoadHooks(c *gocheck.C) {
 	output := `pre-restart:
   - testdata/pre.sh
-pos-restart:
+post-restart:
   - testdata/pos.sh
 `
 	s.provisioner.PrepareOutput([]byte(output))
@@ -1167,7 +1167,7 @@ func (s *S) TestLoadHooksWithListOfCommands(c *gocheck.C) {
   - testdata/pre.sh
   - ls -lh
   - sudo rm -rf /
-pos-restart:
+post-restart:
   - testdata/pos.sh
 `
 	s.provisioner.PrepareOutput([]byte(output))
@@ -1249,7 +1249,7 @@ func (s *S) TestPosRestart(c *gocheck.C) {
 		Units:     []Unit{{Name: "i-0800", State: "started"}},
 	}
 	w := new(bytes.Buffer)
-	err := a.posRestart(w)
+	err := a.postRestart(w)
 	c.Assert(err, gocheck.IsNil)
 	st := strings.Replace(w.String(), "\n", "###", -1)
 	c.Assert(st, gocheck.Matches, `.*restarted$`)
@@ -1260,10 +1260,10 @@ func (s *S) TestPosRestartWhenAppConfDoesNotExists(c *gocheck.C) {
 	w := new(bytes.Buffer)
 	l := stdlog.New(w, "", stdlog.LstdFlags)
 	log.SetLogger(l)
-	err := a.posRestart(w)
+	err := a.postRestart(w)
 	c.Assert(err, gocheck.IsNil)
 	st := strings.Split(w.String(), "\n")
-	c.Assert(st[0], gocheck.Matches, ".*Skipping pos-restart hooks...")
+	c.Assert(st[0], gocheck.Matches, ".*Skipping post-restart hooks...")
 }
 
 func (s *S) TestSkipsPosRestartWhenPosRestartSectionDoesNotExists(c *gocheck.C) {
@@ -1276,10 +1276,10 @@ func (s *S) TestSkipsPosRestartWhenPosRestartSectionDoesNotExists(c *gocheck.C) 
 	w := new(bytes.Buffer)
 	l := stdlog.New(w, "", stdlog.LstdFlags)
 	log.SetLogger(l)
-	err := a.posRestart(w)
+	err := a.postRestart(w)
 	c.Assert(err, gocheck.IsNil)
 	st := strings.Split(w.String(), "\n")
-	c.Assert(st[0], gocheck.Matches, ".*Skipping pos-restart hooks...")
+	c.Assert(st[0], gocheck.Matches, ".*Skipping post-restart hooks...")
 }
 
 func (s *S) TestInstallDeps(c *gocheck.C) {
@@ -1336,7 +1336,7 @@ func (s *S) TestRestartRunsPreRestartHook(c *gocheck.C) {
 }
 
 func (s *S) TestRestartRunsPosRestartHook(c *gocheck.C) {
-	s.provisioner.PrepareOutput([]byte("pos-restart-by-restart"))
+	s.provisioner.PrepareOutput([]byte("post-restart-by-restart"))
 	a := App{
 		Name:      "someApp",
 		Framework: "django",
@@ -1349,7 +1349,7 @@ func (s *S) TestRestartRunsPosRestartHook(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	content := buf.String()
 	content = strings.Replace(content, "\n", "###", -1)
-	c.Assert(content, gocheck.Matches, "^.*### ---> Running pos-restart###.*$")
+	c.Assert(content, gocheck.Matches, "^.*### ---> Running post-restart###.*$")
 }
 
 func (s *S) TestLog(c *gocheck.C) {

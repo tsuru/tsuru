@@ -76,7 +76,7 @@ type Applog struct {
 
 type conf struct {
 	PreRestart []string `yaml:"pre-restart"`
-	PosRestart []string `yaml:"pos-restart"`
+	PosRestart []string `yaml:"post-restart"`
 }
 
 // Get queries the database and fills the App object with data retrieved from
@@ -513,7 +513,7 @@ func (app *App) InstanceEnv(name string) map[string]bind.EnvVar {
 // loadHooks loads restart hooks from app.conf.
 //
 // app.conf uses YAML format, this function looks for two keys: pre-restart and
-// pos-restart.
+// post-restart.
 func (app *App) loadHooks() error {
 	if app.hooks != nil {
 		return nil
@@ -542,7 +542,7 @@ func (app *App) loadHooks() error {
 // runHook executes the given list of commands, as a hook identified by the
 // kind string. If the list is empty, it returns nil.
 //
-// The hook itself may be "pre-restart" or "pos-restart".
+// The hook itself may be "pre-restart" or "post-restart".
 func (app *App) runHook(w io.Writer, cmds []string, kind string) error {
 	if len(cmds) == 0 {
 		app.Log(fmt.Sprintf("Skipping %s hooks...", kind), "tsuru")
@@ -578,15 +578,15 @@ func (app *App) preRestart(w io.Writer) error {
 	return app.runHook(w, app.hooks.PreRestart, "pre-restart")
 }
 
-// posRestart is responsible for running user's pos-restart script.
+// posRestart is responsible for running user's post-restart script.
 //
 // The path to this script can be found at the app.conf file, at the root of
 // user's app repository.
-func (app *App) posRestart(w io.Writer) error {
+func (app *App) postRestart(w io.Writer) error {
 	if err := app.loadHooks(); err != nil {
 		return err
 	}
-	return app.runHook(w, app.hooks.PosRestart, "pos-restart")
+	return app.runHook(w, app.hooks.PosRestart, "post-restart")
 }
 
 // Run executes the command in app units, sourcing apprc before running the
@@ -626,7 +626,7 @@ func (app *App) Restart(w io.Writer) error {
 	if err != nil {
 		return err
 	}
-	return app.posRestart(w)
+	return app.postRestart(w)
 }
 
 // InstallDeps runs the dependencies hook for the app, writing its output to w.

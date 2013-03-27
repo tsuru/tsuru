@@ -94,7 +94,7 @@ func (s *S) TestAppIsAvailableHandlerShouldReturn200WhenAppUnitStatusIsStarted(c
 func (s *S) TestCloneRepositoryHandlerShouldAddLogs(c *gocheck.C) {
 	output := `pre-restart:
   - pre.sh
-pos-restart:
+post-restart:
   - pos.sh
 `
 	s.provisioner.PrepareOutput(nil)            // clone
@@ -102,7 +102,7 @@ pos-restart:
 	s.provisioner.PrepareOutput([]byte(output)) // loadHooks
 	s.provisioner.PrepareOutput(nil)            // pre-restart
 	s.provisioner.PrepareOutput(nil)            // restart
-	s.provisioner.PrepareOutput(nil)            // pos-restart
+	s.provisioner.PrepareOutput(nil)            // post-restart
 	a := app.App{
 		Name:      "someapp",
 		Framework: "django",
@@ -135,7 +135,7 @@ pos-restart:
 func (s *S) TestCloneRepositoryHandler(c *gocheck.C) {
 	output := `pre-restart:
   - pre.sh
-pos-restart:
+post-restart:
   - pos.sh
 `
 	s.provisioner.PrepareOutput(nil)            // clone
@@ -143,7 +143,7 @@ pos-restart:
 	s.provisioner.PrepareOutput([]byte(output)) // loadHooks
 	s.provisioner.PrepareOutput(nil)            // pre-restart
 	s.provisioner.PrepareOutput(nil)            // restart
-	s.provisioner.PrepareOutput(nil)            // pos-restart
+	s.provisioner.PrepareOutput(nil)            // post-restart
 	a := app.App{
 		Name:      "someapp",
 		Framework: "django",
@@ -165,7 +165,7 @@ pos-restart:
 # ---> Installing dependencies#.*
 # ---> Running pre-restart#.*
 # ---> Restarting your app#.*
-# ---> Running pos-restart#.*
+# ---> Running post-restart#.*
 # ---> Deploy done!##$
 `
 	c.Assert(strings.Replace(recorder.Body.String(), "\n", "#", -1), gocheck.Matches, strings.Replace(regexp, "\n", "", -1))
@@ -178,7 +178,7 @@ func (s *S) TestCloneRepositoryRunsCloneOrPullThenPreRestartThenRestartThenPosRe
 	log.SetLogger(l)
 	output := `pre-restart:
   - pre.sh
-pos-restart:
+post-restart:
   - pos.sh
 `
 	s.provisioner.PrepareOutput(nil)            // clone
@@ -186,7 +186,7 @@ pos-restart:
 	s.provisioner.PrepareOutput([]byte(output)) // loadHooks
 	s.provisioner.PrepareOutput(nil)            // pre-restart
 	s.provisioner.PrepareOutput(nil)            // restart
-	s.provisioner.PrepareOutput(nil)            // pos-restart
+	s.provisioner.PrepareOutput(nil)            // post-restart
 	a := app.App{
 		Name:      "someapp",
 		Framework: "django",
