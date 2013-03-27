@@ -121,7 +121,7 @@ post-restart:
 	c.Assert(recorder.Code, gocheck.Equals, http.StatusOK)
 	messages := []string{
 		" ---> Tsuru receiving push",
-		" ---> Cloning application repository in your machines",
+		" ---> Replicating the application repository across units",
 		" ---> Installing dependencies",
 		" ---> Deploy done!",
 	}
@@ -161,7 +161,7 @@ post-restart:
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(recorder.Code, gocheck.Equals, http.StatusOK)
 	regexp := `^# ---> Tsuru receiving push#.*
-# ---> Cloning application repository in your machines#.*
+# ---> Replicating the application repository across units#.*
 # ---> Installing dependencies#.*
 # ---> Running pre-restart#.*
 # ---> Restarting your app#.*

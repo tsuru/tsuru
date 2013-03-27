@@ -63,7 +63,7 @@ func CloneRepositoryHandler(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	err = write(&logWriter, []byte("\n ---> Cloning application repository in your machines\n"))
+	err = write(&logWriter, []byte("\n ---> Replicating the application repository across units\n"))
 	if err != nil {
 		return err
 	}
