@@ -38,6 +38,7 @@ func (s *AuthSuite) SetUpSuite(c *gocheck.C) {
 	config.Set("database:name", "tsuru_api_auth_test")
 	config.Set("auth:salt", "tsuru-salt")
 	config.Set("auth:token-key", "TSURU-KEY")
+	config.Set("auth:hash-cost", 4)
 	var err error
 	s.conn, err = db.Conn()
 	c.Assert(err, gocheck.IsNil)
