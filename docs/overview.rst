@@ -2,9 +2,9 @@ Tsuru Overview
 ==============
 
 
-Tsuru is an OpenSource PaaS. If you don't know what is a PaaS and what it does, see `wikipidia's description<http://en.wikipedia.org/wiki/PaaS>`_.
+Tsuru is an OpenSource PaaS. If you don't know what is a PaaS and what it does, see `wikipidia's description <http://en.wikipedia.org/wiki/PaaS>`_.
 
-It follows the principles described in the `The Twelve-Factor App<http://www.12factor.net/>`_ methodology.
+It follows the principles described in the `The Twelve-Factor App <http://www.12factor.net/>`_ methodology.
 
 
 Immediate Deploy
