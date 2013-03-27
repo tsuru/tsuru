@@ -69,15 +69,15 @@ func (s *S) TestGetUserByEmail(c *gocheck.C) {
 	err := u.Create()
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Users().Remove(bson.M{"email": u.Email})
-	u = User{Email: "wolverine@xmen.com"}
-	err = u.Get()
+	u2, err := GetUserByEmail(u.Email)
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(u.Email, gocheck.Equals, "wolverine@xmen.com")
+	c.Check(u2.Email, gocheck.Equals, u.Email)
+	c.Check(u2.Password, gocheck.Equals, u.Password)
 }
 
-func (s *S) TestGetUserReturnsErrorWhenNoUserIsFound(c *gocheck.C) {
-	u := User{Email: "unknown@globo.com"}
-	err := u.Get()
+func (s *S) TestGetUserByEmailReturnsErrorWhenNoUserIsFound(c *gocheck.C) {
+	u, err := GetUserByEmail("unknown@globo.com")
+	c.Assert(u, gocheck.IsNil)
 	c.Assert(err, gocheck.NotNil)
 }
 

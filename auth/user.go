@@ -60,6 +60,20 @@ type User struct {
 	Keys     []Key
 }
 
+func GetUserByEmail(email string) (*User, error) {
+	var u User
+	conn, err := db.Conn()
+	if err != nil {
+		return nil, err
+	}
+	defer conn.Close()
+	err = conn.Users().Find(bson.M{"email": email}).One(&u)
+	if err != nil {
+		return nil, err
+	}
+	return &u, nil
+}
+
 func GetUserByToken(token string) (*User, error) {
 	conn, err := db.Conn()
 	if err != nil {
