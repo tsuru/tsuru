@@ -7,11 +7,12 @@ package app
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
+	stderr "errors"
 	"fmt"
 	"github.com/globocom/config"
 	"github.com/globocom/tsuru/app/bind"
 	"github.com/globocom/tsuru/auth"
+	"github.com/globocom/tsuru/errors"
 	"github.com/globocom/tsuru/log"
 	"github.com/globocom/tsuru/provision"
 	"github.com/globocom/tsuru/queue"
@@ -274,7 +275,7 @@ func (s *S) TestCantCreateAppWithInvalidName(c *gocheck.C) {
 	}
 	err := CreateApp(&a, 1, []auth.Team{s.team})
 	c.Assert(err, gocheck.NotNil)
-	e, ok := err.(*ValidationError)
+	e, ok := err.(*errors.ValidationError)
 	c.Assert(ok, gocheck.Equals, true)
 	msg := "Invalid app name, your app should have at most 63 " +
 		"characters, containing only lower case letters or numbers, " +
@@ -286,7 +287,7 @@ func (s *S) TestDoesNotSaveTheAppInTheDatabaseIfProvisionerFail(c *gocheck.C) {
 	h := testHandler{}
 	ts := s.t.StartGandalfTestServer(&h)
 	defer ts.Close()
-	s.provisioner.PrepareFailure("Provision", errors.New("exit status 1"))
+	s.provisioner.PrepareFailure("Provision", stderr.New("exit status 1"))
 	a := App{
 		Name:      "theirapp",
 		Framework: "ruby",
@@ -309,7 +310,7 @@ func (s *S) TestDeletesIAMCredentialsAndS3BucketIfProvisionerFail(c *gocheck.C) 
 	h := testHandler{}
 	ts := s.t.StartGandalfTestServer(&h)
 	defer ts.Close()
-	s.provisioner.PrepareFailure("Provision", errors.New("exit status 1"))
+	s.provisioner.PrepareFailure("Provision", stderr.New("exit status 1"))
 	source := patchRandomReader()
 	defer unpatchRandomReader()
 	a := App{
@@ -610,7 +611,7 @@ func (s *S) TestRemoveUnitsInvalidValues(c *gocheck.C) {
 }
 
 func (s *S) TestRemoveUnitsFailureInProvisioner(c *gocheck.C) {
-	s.provisioner.PrepareFailure("RemoveUnit", errors.New("Cannot remove this unit."))
+	s.provisioner.PrepareFailure("RemoveUnit", stderr.New("Cannot remove this unit."))
 	app := App{
 		Name:      "paradisum",
 		Framework: "python",
@@ -1611,7 +1612,7 @@ func (s *S) TestSerializeEnvVarsErrorWithoutOutput(c *gocheck.C) {
 
 func (s *S) TestSerializeEnvVarsErrorWithOutput(c *gocheck.C) {
 	s.provisioner.PrepareOutput([]byte("This program has performed an illegal operation"))
-	s.provisioner.PrepareFailure("ExecuteCommand", errors.New("exit status 1"))
+	s.provisioner.PrepareFailure("ExecuteCommand", stderr.New("exit status 1"))
 	app := App{
 		Name: "intheend",
 		Env: map[string]bind.EnvVar{

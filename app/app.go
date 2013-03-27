@@ -7,7 +7,7 @@ package app
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
+	stderr "errors"
 	"fmt"
 	"github.com/globocom/config"
 	"github.com/globocom/go-gandalfclient"
@@ -15,6 +15,7 @@ import (
 	"github.com/globocom/tsuru/app/bind"
 	"github.com/globocom/tsuru/auth"
 	"github.com/globocom/tsuru/db"
+	"github.com/globocom/tsuru/errors"
 	"github.com/globocom/tsuru/log"
 	"github.com/globocom/tsuru/provision"
 	"github.com/globocom/tsuru/queue"
@@ -106,7 +107,7 @@ func (app *App) Get() error {
 //       5. Provision units within the provisioner
 func CreateApp(app *App, units uint, teams []auth.Team) error {
 	if units == 0 {
-		return &ValidationError{Message: "Cannot create app with 0 units."}
+		return &errors.ValidationError{Message: "Cannot create app with 0 units."}
 	}
 	if len(teams) == 0 {
 		return NoTeamsError{}
@@ -116,7 +117,7 @@ func CreateApp(app *App, units uint, teams []auth.Team) error {
 		msg := "Invalid app name, your app should have at most 63 " +
 			"characters, containing only lower case letters or numbers, " +
 			"starting with a letter."
-		return &ValidationError{Message: msg}
+		return &errors.ValidationError{Message: msg}
 	}
 	actions := []*action.Action{&insertApp}
 	useS3, _ := config.GetBool("bucket-support")
@@ -164,7 +165,7 @@ func (app *App) unbind() error {
 		}
 	}
 	if msg != "" {
-		return errors.New(msg)
+		return stderr.New(msg)
 	}
 	return nil
 }
@@ -215,7 +216,7 @@ func (app *App) AddUnit(u *Unit) {
 // database and enqueues the apprc serialization.
 func (app *App) AddUnits(n uint) error {
 	if n == 0 {
-		return errors.New("Cannot add zero units.")
+		return stderr.New("Cannot add zero units.")
 	}
 	units, err := Provisioner.AddUnits(app, n)
 	if err != nil {
@@ -274,7 +275,7 @@ func (app *App) RemoveUnit(id string) error {
 		}
 	}
 	if unit.GetName() == "" {
-		return errors.New("Unit not found.")
+		return stderr.New("Unit not found.")
 	}
 	if err := Provisioner.RemoveUnit(app, unit.GetName()); err != nil {
 		return err
@@ -332,9 +333,9 @@ func (app *App) removeUnits(indices []int) {
 //     4. Update the app in the database
 func (app *App) RemoveUnits(n uint) error {
 	if n == 0 {
-		return errors.New("Cannot remove zero units.")
+		return stderr.New("Cannot remove zero units.")
 	} else if l := uint(len(app.Units)); l == n {
-		return errors.New("Cannot remove all units from an app.")
+		return stderr.New("Cannot remove all units from an app.")
 	} else if n > l {
 		return fmt.Errorf("Cannot remove %d units from this app, it has only %d units.", n, l)
 	}
@@ -421,7 +422,7 @@ func (app *App) find(team *auth.Team) (int, bool) {
 func (app *App) Grant(team *auth.Team) error {
 	pos, found := app.find(team)
 	if found {
-		return errors.New("This team already has access to this app")
+		return stderr.New("This team already has access to this app")
 	}
 	app.Teams = append(app.Teams, "")
 	tmp := app.Teams[pos]
@@ -437,7 +438,7 @@ func (app *App) Grant(team *auth.Team) error {
 func (app *App) Revoke(team *auth.Team) error {
 	index, found := app.find(team)
 	if !found {
-		return errors.New("This team does not have access to this app")
+		return stderr.New("This team does not have access to this app")
 	}
 	copy(app.Teams[index:], app.Teams[index+1:])
 	app.Teams = app.Teams[:len(app.Teams)-1]
@@ -486,7 +487,7 @@ func (app *App) getEnv(name string) (bind.EnvVar, error) {
 		ok  bool
 	)
 	if env, ok = app.Env[name]; !ok {
-		err = errors.New("Environment variable not declared for this app.")
+		err = stderr.New("Environment variable not declared for this app.")
 	}
 	return env, err
 }
@@ -601,7 +602,7 @@ func (app *App) Run(cmd string, w io.Writer) error {
 
 func (app *App) run(cmd string, w io.Writer) error {
 	if !app.Available() {
-		return errors.New("App must be available to run commands")
+		return stderr.New("App must be available to run commands")
 	}
 	return Provisioner.ExecuteCommand(w, w, app, cmd)
 }
@@ -780,7 +781,7 @@ func (app *App) UnsetEnvs(variableNames []string, publicOnly bool) error {
 // in the database.
 func (app *App) SetCName(cname string) error {
 	if cname != "" && !cnameRegexp.MatchString(cname) {
-		return errors.New("Invalid cname")
+		return stderr.New("Invalid cname")
 	}
 	conn, err := db.Conn()
 	if err != nil {

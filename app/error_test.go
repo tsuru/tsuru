@@ -9,11 +9,6 @@ import (
 	"launchpad.net/gocheck"
 )
 
-func (s *S) TestValidationError(c *gocheck.C) {
-	e := ValidationError{Message: "something"}
-	c.Assert(e.Error(), gocheck.Equals, "something")
-}
-
 func (s *S) TestAppCreationError(c *gocheck.C) {
 	e := appCreationError{app: "myapp", err: errors.New("failure in app")}
 	expected := `Tsuru failed to create the app "myapp": failure in app`

@@ -17,16 +17,6 @@ func (e *appCreationError) Error() string {
 	return fmt.Sprintf("Tsuru failed to create the app %q: %s", e.app, e.err)
 }
 
-// ValidationError is an error implementation used whenever a ValidationError
-// occurs in the app.
-type ValidationError struct {
-	Message string
-}
-
-func (err *ValidationError) Error() string {
-	return err.Message
-}
-
 // NoTeamsError is the error returned when one tries to create an app without
 // any team.
 type NoTeamsError struct{}
