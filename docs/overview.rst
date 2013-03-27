@@ -23,11 +23,12 @@ Easily create testing, staging, and production versions of your app and deploy t
 Add-on Resources
 ----------------
 
-Instantly provision and integrate third party services with one command. It's so easy to create a service in Tsuru that you'll want to sell your own services.
-Tsuru provides the basic services your application will need. Databases, Search, Caching, Storage, FrontEnd, you can get all of that in a fashionable and really easy way.
+Instantly provision and integrate third party services with one command. Tsuru provides the basic services your application will need.
+Databases, Search, Caching, Storage, FrontEnd, you can get all of that in a fashionable and really easy way.
 
-Tsuru talks with services using a well defined API, you just have to implement four endpoints that implement the logic of provisioning your service to an application
-(like creating VMs, liberating access, etc) and register your service with a really simple yaml formatted manifest. It's really simple.
+It's so easy to create a service in Tsuru that you'll want to sell your own services. Tsuru talks with services using a well defined API,
+all you have to do is implement four endpoints that have the logic of provisioning your service to an application (like creating VMs, liberating access, etc),
+and register your service with a really simple yaml formatted manifest.
 
 Per-Deploy Config Variables
 ---------------------------
