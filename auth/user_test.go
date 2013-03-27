@@ -107,14 +107,14 @@ func (s *S) TestUpdateUser(c *gocheck.C) {
 func (s *S) TestUserCheckPasswordReturnsTrueIfThePasswordMatches(c *gocheck.C) {
 	u := User{Email: "wolverine@xmen.com", Password: "123456"}
 	u.HashPassword()
-	err := u.checkPassword("123456")
+	err := u.CheckPassword("123456")
 	c.Assert(err, gocheck.IsNil)
 }
 
 func (s *S) TestUserCheckPasswordReturnsFalseIfThePasswordDoesNotMatch(c *gocheck.C) {
 	u := User{Email: "wolverine@xmen.com", Password: "123456"}
 	u.HashPassword()
-	err := u.checkPassword("654321")
+	err := u.CheckPassword("654321")
 	c.Assert(err, gocheck.NotNil)
 	_, ok := err.(AuthenticationFailure)
 	c.Assert(ok, gocheck.Equals, true)
@@ -123,7 +123,7 @@ func (s *S) TestUserCheckPasswordReturnsFalseIfThePasswordDoesNotMatch(c *gochec
 func (s *S) TestUserCheckPasswordValidatesThePassword(c *gocheck.C) {
 	u := User{Email: "wolverine@xmen.com", Password: "123456"}
 	u.HashPassword()
-	err := u.checkPassword("123")
+	err := u.CheckPassword("123")
 	c.Check(err, gocheck.NotNil)
 	e, ok := err.(*errors.ValidationError)
 	c.Check(ok, gocheck.Equals, true)
@@ -131,7 +131,7 @@ func (s *S) TestUserCheckPasswordValidatesThePassword(c *gocheck.C) {
 	var p [51]byte
 	p[0] = 'a'
 	p[50] = 'z'
-	err = u.checkPassword(string(p[:]))
+	err = u.CheckPassword(string(p[:]))
 	c.Check(err, gocheck.NotNil)
 	e, ok = err.(*errors.ValidationError)
 	c.Check(ok, gocheck.Equals, true)

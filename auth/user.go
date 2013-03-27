@@ -133,7 +133,7 @@ func (u *User) HashPassword() {
 	u.Password = hashPassword(u.Password)
 }
 
-func (u *User) checkPassword(password string) error {
+func (u *User) CheckPassword(password string) error {
 	if !validation.ValidateLength(password, passwordMinLen, passwordMaxLen) {
 		return &errors.ValidationError{Message: passwordError}
 	}
@@ -148,7 +148,7 @@ func (u *User) CreateToken(password string) (*Token, error) {
 	if u.Email == "" {
 		return nil, stderr.New("User does not have an email")
 	}
-	if err := u.checkPassword(password); err != nil {
+	if err := u.CheckPassword(password); err != nil {
 		return nil, err
 	}
 	conn, err := db.Conn()
