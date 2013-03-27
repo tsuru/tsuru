@@ -30,6 +30,16 @@ The Tsuru PaaS is composed by multiple components:
 Installing
 ==========
 
+You can use the script bellow to quick install tsuru with lxc:
+
+.. highlight:: bash
+
+::
+
+    $ curl https://raw.github.com/globocom/tsuru/master/misc/lxc-setup.bash | bash
+
+Or follow this steps:
+
 lxc
 ---
 
