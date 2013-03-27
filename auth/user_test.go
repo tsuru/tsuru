@@ -104,16 +104,40 @@ func (s *S) TestUpdateUser(c *gocheck.C) {
 	c.Assert(u2.Password, gocheck.Equals, "1234")
 }
 
-func (s *S) TestUserLoginReturnsTrueIfThePasswordMatches(c *gocheck.C) {
-	u := User{Email: "wolverine@xmen.com", Password: "123"}
+func (s *S) TestUserCheckPasswordReturnsTrueIfThePasswordMatches(c *gocheck.C) {
+	u := User{Email: "wolverine@xmen.com", Password: "123456"}
 	u.HashPassword()
-	c.Assert(u.CheckPassword("123"), gocheck.Equals, true)
+	valid, err := u.CheckPassword("123456")
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(valid, gocheck.Equals, true)
 }
 
-func (s *S) TestUserLoginReturnsFalseIfThePasswordDoesNotMatch(c *gocheck.C) {
-	u := User{Email: "wolverine@xmen.com", Password: "123"}
+func (s *S) TestUserCheckPasswordReturnsFalseIfThePasswordDoesNotMatch(c *gocheck.C) {
+	u := User{Email: "wolverine@xmen.com", Password: "123456"}
 	u.HashPassword()
-	c.Assert(u.CheckPassword("1234"), gocheck.Equals, false)
+	valid, err := u.CheckPassword("654321")
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(valid, gocheck.Equals, false)
+}
+
+func (s *S) TestUserCheckPasswordValidatesThePassword(c *gocheck.C) {
+	u := User{Email: "wolverine@xmen.com", Password: "123456"}
+	u.HashPassword()
+	valid, err := u.CheckPassword("123")
+	c.Check(valid, gocheck.Equals, false)
+	c.Check(err, gocheck.NotNil)
+	e, ok := err.(*errors.ValidationError)
+	c.Check(ok, gocheck.Equals, true)
+	c.Check(e.Message, gocheck.Equals, passwordError)
+	var p [51]byte
+	p[0] = 'a'
+	p[50] = 'z'
+	valid, err = u.CheckPassword(string(p[:]))
+	c.Check(valid, gocheck.Equals, false)
+	c.Check(err, gocheck.NotNil)
+	e, ok = err.(*errors.ValidationError)
+	c.Check(ok, gocheck.Equals, true)
+	c.Check(e.Message, gocheck.Equals, passwordError)
 }
 
 func (s *S) TestNewTokenIsStoredInUser(c *gocheck.C) {

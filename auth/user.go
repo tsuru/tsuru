@@ -20,6 +20,9 @@ import (
 const (
 	defaultExpiration = 7 * 24 * time.Hour
 	emailError        = "Invalid email."
+	passwordError     = "Password length should be least 6 characters and at most 50 characters."
+	passwordMinLen    = 6
+	passwordMaxLen    = 50
 )
 
 var salt, tokenKey string
@@ -130,9 +133,12 @@ func (u *User) HashPassword() {
 	u.Password = hashPassword(u.Password)
 }
 
-func (u *User) CheckPassword(password string) bool {
+func (u *User) CheckPassword(password string) (bool, error) {
+	if !validation.ValidateLength(password, passwordMinLen, passwordMaxLen) {
+		return false, &errors.ValidationError{Message: passwordError}
+	}
 	hashedPassword := hashPassword(password)
-	return u.Password == hashedPassword
+	return u.Password == hashedPassword, nil
 }
 
 func (u *User) CreateToken() (*Token, error) {
