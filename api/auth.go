@@ -19,13 +19,16 @@ import (
 	"labix.org/v2/mgo/bson"
 	"net/http"
 	"strings"
+	"time"
 )
 
 const (
-	emailError     = "Invalid email."
-	passwordError  = "Password length should be least 6 characters and at most 50 characters."
-	passwordMinLen = 6
-	passwordMaxLen = 50
+	// TODO(fss): move code that depend on these constants to package auth.
+	defaultExpiration = 7 * 24 * time.Hour
+	emailError        = "Invalid email."
+	passwordError     = "Password length should be least 6 characters and at most 50 characters."
+	passwordMinLen    = 6
+	passwordMaxLen    = 50
 )
 
 func CreateUser(w http.ResponseWriter, r *http.Request) error {
@@ -49,7 +52,7 @@ func CreateUser(w http.ResponseWriter, r *http.Request) error {
 		w.WriteHeader(http.StatusCreated)
 		return nil
 	}
-	if u.Get() == nil {
+	if _, err = auth.GetUserByEmail(u.Email); err == nil {
 		err = &errors.Http{Code: http.StatusConflict, Message: "This email is already registered"}
 	}
 	return err
@@ -66,18 +69,18 @@ func Login(w http.ResponseWriter, r *http.Request) error {
 		msg := "You must provide a password to login"
 		return &errors.Http{Code: http.StatusBadRequest, Message: msg}
 	}
-	if !validation.ValidateLength(password, passwordMinLen, passwordMaxLen) {
-		return &errors.Http{Code: http.StatusPreconditionFailed, Message: passwordError}
-	}
-	u := auth.User{Email: r.URL.Query().Get(":email")}
-	if !validation.ValidateEmail(u.Email) {
-		return &errors.Http{Code: http.StatusPreconditionFailed, Message: emailError}
-	}
-	err = u.Get()
+	u, err := auth.GetUserByEmail(r.URL.Query().Get(":email"))
 	if err != nil {
+		if e, ok := err.(*errors.ValidationError); ok {
+			return &errors.Http{Code: http.StatusPreconditionFailed, Message: e.Message}
+		}
 		return &errors.Http{Code: http.StatusNotFound, Message: "User not found"}
 	}
-	if u.CheckPassword(password) {
+	valid, err := u.CheckPassword(password)
+	if err != nil {
+		return &errors.Http{Code: http.StatusPreconditionFailed, Message: err.Error()}
+	}
+	if valid {
 		t, _ := u.CreateToken()
 		fmt.Fprintf(w, `{"token":"%s"}`, t.Token)
 		return nil
@@ -111,7 +114,7 @@ func ChangePassword(w http.ResponseWriter, r *http.Request, u *auth.User) error 
 			Message: "Both the old and the new passwords are required.",
 		}
 	}
-	if !u.CheckPassword(body["old"]) {
+	if valid, _ := u.CheckPassword(body["old"]); !valid {
 		return &errors.Http{
 			Code:    http.StatusForbidden,
 			Message: "The given password didn't match the user's current password.",
@@ -296,16 +299,15 @@ func removeUserFromTeam(email, teamName string, u *auth.User) error {
 		msg := "You can not remove this user from this team, because it is the last user within the team, and a team can not be orphaned"
 		return &errors.Http{Code: http.StatusForbidden, Message: msg}
 	}
-	user := auth.User{Email: email}
-	err = user.Get()
+	user, err := auth.GetUserByEmail(email)
 	if err != nil {
 		return &errors.Http{Code: http.StatusNotFound, Message: err.Error()}
 	}
-	err = removeUserFromTeamInGandalf(&user, team.Name)
+	err = removeUserFromTeamInGandalf(user, team.Name)
 	if err != nil {
 		return nil
 	}
-	return removeUserFromTeamInDatabase(&user, team)
+	return removeUserFromTeamInDatabase(user, team)
 }
 
 func removeUserFromTeamInDatabase(u *auth.User, team *auth.Team) error {

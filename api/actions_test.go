@@ -92,7 +92,8 @@ func (s *ActionsSuite) TestAddKeyInDatabaseActionForward(c *gocheck.C) {
 	result, err := addKeyInDatabaseAction.Forward(ctx)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(result, gocheck.IsNil) // we do not need it
-	u.Get()
+	u, err = auth.GetUserByEmail(u.Email)
+	c.Assert(err, gocheck.IsNil)
 	c.Assert(u.Keys, gocheck.DeepEquals, []auth.Key{*key})
 }
 
@@ -108,7 +109,8 @@ func (s *ActionsSuite) TestAddKeyInDatabaseActionBackward(c *gocheck.C) {
 		Params: []interface{}{key, u},
 	}
 	addKeyInDatabaseAction.Backward(ctx)
-	u.Get()
+	u, err = auth.GetUserByEmail(u.Email)
+	c.Assert(err, gocheck.IsNil)
 	c.Assert(u.Keys, gocheck.DeepEquals, []auth.Key{})
 }
 
@@ -117,9 +119,12 @@ func (s *ActionsSuite) TestAddUserToTeamInGandalfActionForward(c *gocheck.C) {
 	ts := s.startGandalfTestServer(&h)
 	defer ts.Close()
 	u := &auth.User{Email: "nobody@gmail.com", Password: "123456"}
+	err := u.Create()
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Users().Remove(bson.M{"email": u.Email})
 	t := &auth.Team{Name: "myteam"}
 	ctx := action.FWContext{
-		Params: []interface{}{"me@gmail.com", u, t},
+		Params: []interface{}{u.Email, u, t},
 	}
 	result, err := addUserToTeamInGandalfAction.Forward(ctx)
 	c.Assert(err, gocheck.IsNil)
@@ -133,9 +138,12 @@ func (s *ActionsSuite) TestAddUserToTeamInGandalfActionBackward(c *gocheck.C) {
 	ts := s.startGandalfTestServer(&h)
 	defer ts.Close()
 	u := &auth.User{Email: "nobody@gmail.com", Password: "123456"}
+	err := u.Create()
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Users().Remove(bson.M{"email": u.Email})
 	t := &auth.Team{Name: "myteam"}
 	ctx := action.BWContext{
-		Params: []interface{}{"me@gmail.com", u, t},
+		Params: []interface{}{u.Email, u, t},
 	}
 	addUserToTeamInGandalfAction.Backward(ctx)
 	c.Assert(len(h.url), gocheck.Equals, 1)
@@ -167,17 +175,16 @@ func (s *ActionsSuite) TestAddUserToTeamInDatabaseActionBackward(c *gocheck.C) {
 	u := &auth.User{Email: "nobody@gmail.com", Password: "123456"}
 	err := u.Create()
 	c.Assert(err, gocheck.IsNil)
-	uEmail := "me@gmail.com"
-	t := &auth.Team{Name: "myteam", Users: []string{uEmail}}
+	defer s.conn.Users().Remove(bson.M{"email": u.Email})
+	t := &auth.Team{Name: "myteam", Users: []string{u.Email}}
 	err = s.conn.Teams().Insert(t)
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Teams().RemoveId(t.Name)
-	defer s.conn.Users().Remove(bson.M{"email": u.Email})
 	ctx := action.BWContext{
-		Params: []interface{}{uEmail, u, t},
+		Params: []interface{}{u.Email, u, t},
 	}
 	addUserToTeamInDatabaseAction.Backward(ctx)
 	err = s.conn.Teams().FindId(t.Name).One(&t)
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(t, gocheck.Not(ContainsUser), &auth.User{Email: uEmail})
+	c.Assert(t, gocheck.Not(ContainsUser), &auth.User{Email: u.Email})
 }

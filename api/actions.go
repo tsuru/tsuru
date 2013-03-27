@@ -48,8 +48,10 @@ var addUserToTeamInGandalfAction = action.Action{
 	},
 	Backward: func(ctx action.BWContext) {
 		email := ctx.Params[0].(string)
-		u := &auth.User{Email: email}
-		u.Get()
+		u, err := auth.GetUserByEmail(email)
+		if err != nil {
+			return
+		}
 		t := ctx.Params[2].(*auth.Team)
 		removeUserFromTeamInGandalf(u, t.Name)
 	},
@@ -58,8 +60,8 @@ var addUserToTeamInGandalfAction = action.Action{
 var addUserToTeamInDatabaseAction = action.Action{
 	Forward: func(ctx action.FWContext) (action.Result, error) {
 		email := ctx.Params[0].(string)
-		u := &auth.User{Email: email}
-		if err := u.Get(); err != nil {
+		u, err := auth.GetUserByEmail(email)
+		if err != nil {
 			return nil, err
 		}
 		t := ctx.Params[2].(*auth.Team)
@@ -67,8 +69,10 @@ var addUserToTeamInDatabaseAction = action.Action{
 	},
 	Backward: func(ctx action.BWContext) {
 		email := ctx.Params[0].(string)
-		u := &auth.User{Email: email}
-		u.Get()
+		u, err := auth.GetUserByEmail(email)
+		if err != nil {
+			return
+		}
 		t := ctx.Params[2].(*auth.Team)
 		removeUserFromTeamInDatabase(u, t)
 	},

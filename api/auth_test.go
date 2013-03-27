@@ -6,8 +6,6 @@ package main
 
 import (
 	"bytes"
-	"code.google.com/p/go.crypto/pbkdf2"
-	"crypto/sha512"
 	"encoding/json"
 	"fmt"
 	"github.com/globocom/config"
@@ -149,8 +147,7 @@ func (s *AuthSuite) TestCreateUserHandlerSavesTheUserInTheDatabase(c *gocheck.C)
 	recorder := httptest.NewRecorder()
 	err = CreateUser(recorder, request)
 	c.Assert(err, gocheck.IsNil)
-	u := auth.User{Email: "nobody@globo.com"}
-	err = u.Get()
+	_, err = auth.GetUserByEmail("nobody@globo.com")
 	c.Assert(err, gocheck.IsNil)
 }
 
@@ -365,11 +362,15 @@ func (s *AuthSuite) TestLoginShouldReturnPreconditionFailedIfEmailIsNotValid(c *
 	c.Assert(e.Message, gocheck.Equals, emailError)
 }
 
-func (s *AuthSuite) TestLoginShouldReturnPreconditionFailedIfPasswordIsLessesThan6CharactersOrGreaterThan50Characters(c *gocheck.C) {
+func (s *AuthSuite) TestLoginShouldReturnPreconditionFailedWhenPasswordIsInvalid(c *gocheck.C) {
 	passwords := []string{"123", strings.Join(make([]string, 52), "-")}
+	u := &auth.User{Email: "me@globo.com", Password: "123"}
+	err := u.Create()
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Users().Remove(bson.M{"email": u.Email})
 	for _, password := range passwords {
 		b := bytes.NewBufferString(`{"password":"` + password + `"}`)
-		request, err := http.NewRequest("POST", "/users/nobody@globo.com/token?:email=nobody@globo.com", b)
+		request, err := http.NewRequest("POST", "/users/me@globo.com/token?:email=me@globo.com", b)
 		c.Assert(err, gocheck.IsNil)
 		request.Header.Set("Content-type", "application/json")
 		recorder := httptest.NewRecorder()
@@ -649,8 +650,6 @@ func (s *AuthSuite) TestAddUserToTeamShoulGrantAccessInGandalf(c *gocheck.C) {
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	err = addKeyToUser("my-key", u)
 	c.Assert(err, gocheck.IsNil)
-	err = u.Get()
-	c.Assert(err, gocheck.IsNil)
 	err = addUserToTeam(u.Email, s.team.Name, s.user)
 	c.Assert(err, gocheck.IsNil)
 	c.Check(len(h.url), gocheck.Equals, 2)
@@ -811,8 +810,6 @@ func (s *AuthSuite) TestRemoveUserFromTeamRevokesAccessInGandalf(c *gocheck.C) {
 	defer s.conn.Users().Remove(bson.M{"email": u.Email})
 	err = addKeyToUser("my-key", u)
 	c.Assert(err, gocheck.IsNil)
-	err = u.Get()
-	c.Assert(err, gocheck.IsNil)
 	err = addUserToTeam("pomar@nando-reis.com", s.team.Name, s.user)
 	c.Assert(err, gocheck.IsNil)
 	a := struct {
@@ -869,8 +866,9 @@ func (s *AuthSuite) TestAddKeyToUserAddsAKeyToTheUser(c *gocheck.C) {
 	recorder := httptest.NewRecorder()
 	err = AddKeyToUser(recorder, request, s.user)
 	c.Assert(err, gocheck.IsNil)
-	s.user.Get()
-	c.Assert(s.user, HasKey, "my-key")
+	u2, err := auth.GetUserByEmail(s.user.Email)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(u2, HasKey, "my-key")
 }
 
 func (s *AuthSuite) TestAddKeyToUserReturnsErrorIfTheReadingOfTheBodyFails(c *gocheck.C) {
@@ -987,8 +985,9 @@ func (s *AuthSuite) TestAddKeyToUserShouldNotInsertKeyInDatabaseWhenGandalfAddit
 	defer func() {
 		s.conn.Users().RemoveAll(bson.M{"email": u.Email})
 	}()
-	u.Get()
-	c.Assert(u.Keys, gocheck.DeepEquals, []auth.Key{})
+	u2, err := auth.GetUserByEmail(u.Email)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(u2.Keys, gocheck.DeepEquals, []auth.Key{})
 }
 
 func (s *AuthSuite) TestAddKeyInDatabaseShouldStoreUsersKeyInDB(c *gocheck.C) {
@@ -999,8 +998,9 @@ func (s *AuthSuite) TestAddKeyInDatabaseShouldStoreUsersKeyInDB(c *gocheck.C) {
 	key := auth.Key{Content: "my-ssh-key", Name: "key1"}
 	err = addKeyInDatabase(&key, u)
 	c.Assert(err, gocheck.IsNil)
-	u.Get()
-	c.Assert(u.Keys, gocheck.DeepEquals, []auth.Key{key})
+	u2, err := auth.GetUserByEmail(u.Email)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(u2.Keys, gocheck.DeepEquals, []auth.Key{key})
 }
 
 func (s *AuthSuite) TestAddKeyInGandalfShouldCallGandalfApi(c *gocheck.C) {
@@ -1046,8 +1046,9 @@ func (s *AuthSuite) TestRemoveKeyFromDatabase(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	err = removeKeyFromDatabase(&key, u)
 	c.Assert(err, gocheck.IsNil)
-	u.Get()
-	c.Assert(u.Keys, gocheck.DeepEquals, []auth.Key{})
+	u2, err := auth.GetUserByEmail(u.Email)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(u2.Keys, gocheck.DeepEquals, []auth.Key{})
 }
 
 func (s *AuthSuite) TestRemoveKeyHandlerRemovesTheKeyFromTheUser(c *gocheck.C) {
@@ -1066,8 +1067,9 @@ func (s *AuthSuite) TestRemoveKeyHandlerRemovesTheKeyFromTheUser(c *gocheck.C) {
 	recorder := httptest.NewRecorder()
 	err = RemoveKeyFromUser(recorder, request, s.user)
 	c.Assert(err, gocheck.IsNil)
-	s.user.Get()
-	c.Assert(s.user, gocheck.Not(HasKey), "my-key")
+	u2, err := auth.GetUserByEmail(s.user.Email)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(u2, gocheck.Not(HasKey), "my-key")
 }
 
 func (s *AuthSuite) TestRemoveKeyHandlerCallsGandalfRemoveKey(c *gocheck.C) {
@@ -1256,34 +1258,35 @@ func (s *AuthSuite) TestRemoveUserRevokesAccessInGandalf(c *gocheck.C) {
 }
 
 func (s *AuthSuite) TestChangePasswordHandler(c *gocheck.C) {
-	body := bytes.NewBufferString(`{"old":"123","new":"123456"}`)
+	u := &auth.User{Email: "me@globo.com.com", Password: "123456"}
+	u.Create()
+	oldPassword := u.Password
+	defer s.conn.Users().Remove(bson.M{"email": u.Email})
+	body := bytes.NewBufferString(`{"old":"123456","new":"654321"}`)
 	request, err := http.NewRequest("PUT", "/users/password", body)
 	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
-	err = ChangePassword(recorder, request, s.user)
+	err = ChangePassword(recorder, request, u)
 	c.Assert(err, gocheck.IsNil)
-	otherUser := *s.user
-	err = otherUser.Get()
+	otherUser, err := auth.GetUserByEmail(s.user.Email)
 	c.Assert(err, gocheck.IsNil)
-	hashPassword := func(password string) string {
-		salt := []byte("tsuru-salt")
-		return fmt.Sprintf("%x", pbkdf2.Key([]byte(password), salt, 4096, len(salt)*8, sha512.New))
-	}
-	expectedPassword := hashPassword("123456")
-	c.Assert(otherUser.Password, gocheck.Equals, expectedPassword)
+	c.Assert(otherUser.Password, gocheck.Not(gocheck.Equals), oldPassword)
 }
 
 func (s *AuthSuite) TestChangePasswordReturns412IfNewPasswordIsInvalid(c *gocheck.C) {
-	body := bytes.NewBufferString(`{"old":"123","new":"1234"}`)
+	u := &auth.User{Email: "me@globo.com.com", Password: "123456"}
+	u.Create()
+	defer s.conn.Users().Remove(bson.M{"email": u.Email})
+	body := bytes.NewBufferString(`{"old":"123456","new":"1234"}`)
 	request, err := http.NewRequest("PUT", "/users/password", body)
 	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
-	err = ChangePassword(recorder, request, s.user)
+	err = ChangePassword(recorder, request, u)
 	c.Assert(err, gocheck.NotNil)
 	e, ok := err.(*errors.Http)
 	c.Assert(ok, gocheck.Equals, true)
-	c.Assert(e.Code, gocheck.Equals, http.StatusPreconditionFailed)
-	c.Assert(e.Message, gocheck.Equals, "Password length should be least 6 characters and at most 50 characters.")
+	c.Check(e.Code, gocheck.Equals, http.StatusPreconditionFailed)
+	c.Check(e.Message, gocheck.Equals, "Password length should be least 6 characters and at most 50 characters.")
 }
 
 func (s *AuthSuite) TestChangePasswordReturns404IfOldPasswordDidntMatch(c *gocheck.C) {
@@ -1295,8 +1298,8 @@ func (s *AuthSuite) TestChangePasswordReturns404IfOldPasswordDidntMatch(c *goche
 	c.Assert(err, gocheck.NotNil)
 	e, ok := err.(*errors.Http)
 	c.Assert(ok, gocheck.Equals, true)
-	c.Assert(e.Code, gocheck.Equals, http.StatusForbidden)
-	c.Assert(e.Message, gocheck.Equals, "The given password didn't match the user's current password.")
+	c.Check(e.Code, gocheck.Equals, http.StatusForbidden)
+	c.Check(e.Message, gocheck.Equals, "The given password didn't match the user's current password.")
 }
 
 func (s *AuthSuite) TestChangePasswordReturns400IfRequestBodyIsInvalidJSON(c *gocheck.C) {
