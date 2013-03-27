@@ -9,6 +9,7 @@ import (
 	"crypto/sha512"
 	"fmt"
 	"github.com/globocom/config"
+	"github.com/globocom/tsuru/errors"
 	"labix.org/v2/mgo/bson"
 	"launchpad.net/gocheck"
 	"time"
@@ -79,6 +80,15 @@ func (s *S) TestGetUserByEmailReturnsErrorWhenNoUserIsFound(c *gocheck.C) {
 	u, err := GetUserByEmail("unknown@globo.com")
 	c.Assert(u, gocheck.IsNil)
 	c.Assert(err, gocheck.NotNil)
+}
+
+func (s *S) TestGetUserByEmailWithInvalidEmail(c *gocheck.C) {
+	u, err := GetUserByEmail("unknown")
+	c.Assert(u, gocheck.IsNil)
+	c.Assert(err, gocheck.NotNil)
+	e, ok := err.(*errors.ValidationError)
+	c.Assert(ok, gocheck.Equals, true)
+	c.Assert(e.Message, gocheck.Equals, emailError)
 }
 
 func (s *S) TestUpdateUser(c *gocheck.C) {

@@ -7,15 +7,20 @@ package auth
 import (
 	"code.google.com/p/go.crypto/pbkdf2"
 	"crypto/sha512"
-	"errors"
+	stderr "errors"
 	"fmt"
 	"github.com/globocom/config"
 	"github.com/globocom/tsuru/db"
+	"github.com/globocom/tsuru/errors"
+	"github.com/globocom/tsuru/validation"
 	"labix.org/v2/mgo/bson"
 	"time"
 )
 
-const defaultExpiration = 7 * 24 * time.Hour
+const (
+	defaultExpiration = 7 * 24 * time.Hour
+	emailError        = "Invalid email."
+)
 
 var salt, tokenKey string
 var tokenExpire time.Duration
@@ -24,7 +29,7 @@ func loadConfig() error {
 	if salt == "" && tokenKey == "" {
 		var err error
 		if salt, err = config.GetString("auth:salt"); err != nil {
-			return errors.New(`Setting "auth:salt" is undefined.`)
+			return stderr.New(`Setting "auth:salt" is undefined.`)
 		}
 		if iface, err := config.Get("auth:token-expire-days"); err == nil {
 			day := int64(iface.(int))
@@ -33,7 +38,7 @@ func loadConfig() error {
 			tokenExpire = defaultExpiration
 		}
 		if tokenKey, err = config.GetString("auth:token-key"); err != nil {
-			return errors.New(`Setting "auth:token-key" is undefined.`)
+			return stderr.New(`Setting "auth:token-key" is undefined.`)
 		}
 	}
 	return nil
@@ -61,6 +66,9 @@ type User struct {
 }
 
 func GetUserByEmail(email string) (*User, error) {
+	if !validation.ValidateEmail(email) {
+		return nil, &errors.ValidationError{Message: emailError}
+	}
 	var u User
 	conn, err := db.Conn()
 	if err != nil {
@@ -84,7 +92,7 @@ func GetUserByToken(token string) (*User, error) {
 	query := bson.M{"tokens.token": token}
 	err = conn.Users().Find(query).One(&u)
 	if err != nil {
-		return nil, errors.New("Token not found")
+		return nil, stderr.New("Token not found")
 	}
 	var t Token
 	for _, tk := range u.Tokens {
@@ -94,7 +102,7 @@ func GetUserByToken(token string) (*User, error) {
 		}
 	}
 	if t.Token == "" || t.ValidUntil.Sub(time.Now()) < 1 {
-		return nil, errors.New("Token has expired")
+		return nil, stderr.New("Token has expired")
 	}
 	return u, nil
 }
@@ -138,7 +146,7 @@ func (u *User) CheckPassword(password string) bool {
 
 func (u *User) CreateToken() (*Token, error) {
 	if u.Email == "" {
-		return nil, errors.New("User does not have an email")
+		return nil, stderr.New("User does not have an email")
 	}
 	conn, err := db.Conn()
 	if err != nil {
@@ -252,10 +260,10 @@ type Token struct {
 
 func newToken(u *User) (*Token, error) {
 	if u == nil {
-		return nil, errors.New("User is nil")
+		return nil, stderr.New("User is nil")
 	}
 	if u.Email == "" {
-		return nil, errors.New("Impossible to generate tokens for users without email")
+		return nil, stderr.New("Impossible to generate tokens for users without email")
 	}
 	if err := loadConfig(); err != nil {
 		return nil, err
@@ -272,11 +280,11 @@ func newToken(u *User) (*Token, error) {
 
 func CheckToken(token string) (*User, error) {
 	if token == "" {
-		return nil, errors.New("You must provide the token")
+		return nil, stderr.New("You must provide the token")
 	}
 	u, err := GetUserByToken(token)
 	if err != nil {
-		return nil, errors.New("Invalid token")
+		return nil, stderr.New("Invalid token")
 	}
 	return u, nil
 }
