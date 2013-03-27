@@ -30,10 +30,40 @@ Ubuntu):
 Installing MongoDB
 ==================
 
-tsuru uses MongoDB, so you need to install it. For that, you can follow
+tsuru uses MongoDB (+2.2), so you need to install it. For that, you can follow
 instructions on MongoDB website and download binary distributions
 (http://www.mongodb.org/downloads). You can also use your preferred package
 installer:
+
+.. highlight:: bash
+
+::
+
+    $ sudo apt-key adv --keyserver keyserver.ubuntu.com --recv 7F0CEB10
+    $ sudo bash -c 'echo "deb http://downloads-distro.mongodb.org/repo/ubuntu-upstart dist 10gen" > /etc/apt/sources.list.d/10gen.list'
+    $ sudo apt-get update
+    $ sudo apt-get install mongodb-10gen -y
+
+    $ brew install mongodb
+
+Installing Beanstalkd
+=====================
+
+Tsuru uses `Beanstalkd <http://kr.github.com/beanstalkd/>`_ as a work queue.
+Install the latest version, by doing this:
+
+.. highlight:: bash
+
+::
+
+    $ sudo apt-get install -y beanstalkd
+
+    $ brew install beanstalkd
+
+libyaml
+=======
+
+To install libyaml you can use your package installer:
 
 .. highlight:: bash
 
@@ -43,11 +73,21 @@ installer:
 
     $ brew install libyaml
 
-Installing bzr and mercurial
-============================
+Installing git, bzr and mercurial
+=================================
 
-tsuru depends on go libs that use bazaar and mercurial, so you need to install
+tsuru depends on go libs that use git, bazaar and mercurial, so you need to install
 these two version control systems to get and compile tsuru from source.
+
+To install git, you can use your package installer:
+
+.. highlight:: bash
+
+::
+
+    $ sudo apt-get install git
+
+    $ brew install git
 
 To install bazaar, follow the instructions in bazaar's website
 (http://wiki.bazaar.canonical.com/Download), or use your package installer:
