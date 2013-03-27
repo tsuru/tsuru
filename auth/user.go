@@ -130,15 +130,6 @@ func (u *User) HashPassword() {
 	u.Password = hashPassword(u.Password)
 }
 
-func (u *User) Get() error {
-	conn, err := db.Conn()
-	if err != nil {
-		return err
-	}
-	defer conn.Close()
-	return conn.Users().Find(bson.M{"email": u.Email}).One(&u)
-}
-
 func (u *User) CheckPassword(password string) bool {
 	hashedPassword := hashPassword(password)
 	return u.Password == hashedPassword

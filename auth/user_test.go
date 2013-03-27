@@ -99,8 +99,9 @@ func (s *S) TestUpdateUser(c *gocheck.C) {
 	u.Password = "1234"
 	err = u.Update()
 	c.Assert(err, gocheck.IsNil)
-	err = u.Get()
-	c.Assert(u.Password, gocheck.Equals, "1234")
+	u2, err := GetUserByEmail("wolverine@xmen.com")
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(u2.Password, gocheck.Equals, "1234")
 }
 
 func (s *S) TestUserLoginReturnsTrueIfThePasswordMatches(c *gocheck.C) {
@@ -157,13 +158,10 @@ func (s *S) TestCreateTokenShouldSaveTheTokenInUserInTheDatabase(c *gocheck.C) {
 	err := u.Create()
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Users().Remove(bson.M{"email": u.Email})
-	err = u.Get()
-	c.Assert(err, gocheck.IsNil)
 	_, err = u.CreateToken()
 	c.Assert(err, gocheck.IsNil)
 	var result User
-	collection := s.conn.Users()
-	err = collection.Find(nil).One(&result)
+	err = s.conn.Users().Find(nil).One(&result)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(result.Tokens[0].Token, gocheck.NotNil)
 }
@@ -180,8 +178,6 @@ func (s *S) TestGetUserByToken(c *gocheck.C) {
 	err := u.Create()
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Users().Remove(bson.M{"email": u.Email})
-	err = u.Get()
-	c.Assert(err, gocheck.IsNil)
 	t, err := u.CreateToken()
 	c.Assert(err, gocheck.IsNil)
 	user, err := GetUserByToken(t.Token)
@@ -202,8 +198,6 @@ func (s *S) TestGetUserByTokenShouldReturnErrorWhenTheGivenTokenHasExpired(c *go
 	err := u.Create()
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Users().Remove(bson.M{"email": u.Email})
-	err = u.Get()
-	c.Assert(err, gocheck.IsNil)
 	t, err := u.CreateToken()
 	c.Assert(err, gocheck.IsNil)
 	u.Tokens[0].ValidUntil = time.Now().Add(-24 * time.Hour)
