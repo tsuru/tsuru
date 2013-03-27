@@ -67,9 +67,9 @@ func (s *S) SetUpSuite(c *gocheck.C) {
 	config.Set("database:url", "127.0.0.1:27017")
 	config.Set("database:name", "tsuru_auth_test")
 	s.conn, _ = db.Conn()
-	s.user = &User{Email: "timeredbull@globo.com", Password: "123"}
+	s.user = &User{Email: "timeredbull@globo.com", Password: "123456"}
 	s.user.Create()
-	s.token, _ = s.user.CreateToken()
+	s.token, _ = s.user.CreateToken("123456")
 	team := &Team{Name: "cobrateam", Users: []string{s.user.Email}}
 	err := s.conn.Teams().Insert(team)
 	c.Assert(err, gocheck.IsNil)

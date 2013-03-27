@@ -133,17 +133,23 @@ func (u *User) HashPassword() {
 	u.Password = hashPassword(u.Password)
 }
 
-func (u *User) CheckPassword(password string) (bool, error) {
+func (u *User) checkPassword(password string) error {
 	if !validation.ValidateLength(password, passwordMinLen, passwordMaxLen) {
-		return false, &errors.ValidationError{Message: passwordError}
+		return &errors.ValidationError{Message: passwordError}
 	}
 	hashedPassword := hashPassword(password)
-	return u.Password == hashedPassword, nil
+	if u.Password == hashedPassword {
+		return nil
+	}
+	return stderr.New("Wrong password.")
 }
 
-func (u *User) CreateToken() (*Token, error) {
+func (u *User) CreateToken(password string) (*Token, error) {
 	if u.Email == "" {
 		return nil, stderr.New("User does not have an email")
+	}
+	if err := u.checkPassword(password); err != nil {
+		return nil, err
 	}
 	conn, err := db.Conn()
 	if err != nil {
