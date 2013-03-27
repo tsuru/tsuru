@@ -141,7 +141,7 @@ func (u *User) checkPassword(password string) error {
 	if u.Password == hashedPassword {
 		return nil
 	}
-	return stderr.New("Wrong password.")
+	return AuthenticationFailure{}
 }
 
 func (u *User) CreateToken(password string) (*Token, error) {
@@ -290,4 +290,10 @@ func CheckToken(token string) (*User, error) {
 		return nil, stderr.New("Invalid token")
 	}
 	return u, nil
+}
+
+type AuthenticationFailure struct{}
+
+func (a AuthenticationFailure) Error() string {
+	return "Authentication failed, wrong password."
 }
