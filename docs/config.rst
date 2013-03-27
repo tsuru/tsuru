@@ -128,20 +128,11 @@ defaults to "http".
 Authentication configuration
 ----------------------------
 
-Tsuru has its own authentication mechanism, that hashes passwords using SHA512,
-PBKDF2 and salt. It also uses SHA512 for hashing tokens, generated during
-authentication.
+Tsuru has its own authentication mechanism, that hashes passwords brcypt.
+Tokens are generated during authentication, and are hashed using SHA512.
 
-This mechanism requires three settings to operate: ``auth:salt``,
-``auth:token-expire-days`` and ``auth:token-key``. Each setting is described
-below:
-
-auth:salt
-+++++++++
-
-``auth:salt`` is the salt used by tsuru when hashing password. This setting is
-required and has no default value. This value affects all passwords, so *if it
-change at anytime, all password must be regenerated*.
+This mechanism requires two settings to operate: ``auth:token-expire-days`` and
+``auth:token-key``. Each setting is described below:
 
 auth:token-expire-days
 ++++++++++++++++++++++
