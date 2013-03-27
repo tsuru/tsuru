@@ -112,7 +112,7 @@ Configuring
 ===========
 
 Before running tsuru, you must configure it. By default, tsuru will look for
-the configuration file in the ``/etc/tsuru/tsuru.cnf`` path. You can check a
+the configuration file in the ``/etc/tsuru/tsuru.conf`` path. You can check a
 sample configuration file and documentation for each tsuru setting in the
 :doc:`"Configuring tsuru" </config>` page.
 
