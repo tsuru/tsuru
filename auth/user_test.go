@@ -6,9 +6,6 @@ package auth
 
 import (
 	"code.google.com/p/go.crypto/bcrypt"
-	"code.google.com/p/go.crypto/pbkdf2"
-	"crypto/sha512"
-	"fmt"
 	"github.com/globocom/config"
 	"github.com/globocom/tsuru/errors"
 	"labix.org/v2/mgo/bson"
@@ -28,21 +25,6 @@ func (s *S) TestCreateUser(c *gocheck.C) {
 	c.Assert(result.Email, gocheck.Equals, u.Email)
 }
 
-func (s *S) TestCreateUserHashesThePasswordUsingPBKDF2SHA512AndSalt(c *gocheck.C) {
-	loadConfig()
-	salt := []byte(salt)
-	expectedPassword := fmt.Sprintf("%x", pbkdf2.Key([]byte("123456"), salt, 4096, len(salt)*8, sha512.New))
-	u := User{Email: "wolverine@xmen.com", Password: "123456"}
-	err := u.Create()
-	c.Assert(err, gocheck.IsNil)
-	defer s.conn.Users().Remove(bson.M{"email": u.Email})
-	var result User
-	collection := s.conn.Users()
-	err = collection.Find(bson.M{"email": u.Email}).One(&result)
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(result.Password, gocheck.Equals, expectedPassword)
-}
-
 func (s *S) TestCreateUserReturnsErrorWhenTryingToCreateAUserWithDuplicatedEmail(c *gocheck.C) {
 	u := User{Email: "wolverine@xmen.com", Password: "123"}
 	err := u.Create()
@@ -50,20 +32,6 @@ func (s *S) TestCreateUserReturnsErrorWhenTryingToCreateAUserWithDuplicatedEmail
 	defer s.conn.Users().Remove(bson.M{"email": u.Email})
 	err = u.Create()
 	c.Assert(err, gocheck.NotNil)
-}
-
-func (s *S) TestCreateUserUndefinedSaltPanics(c *gocheck.C) {
-	old, err := config.Get("auth:salt")
-	c.Assert(err, gocheck.IsNil)
-	defer config.Set("auth:salt", old)
-	err = config.Unset("auth:salt")
-	c.Assert(err, gocheck.IsNil)
-	u := User{Email: "wolverine@xmen.com", Password: "123"}
-	defer func() {
-		r := recover()
-		c.Assert(r, gocheck.NotNil)
-	}()
-	u.Create()
 }
 
 func (s *S) TestGetUserByEmail(c *gocheck.C) {
@@ -104,6 +72,13 @@ func (s *S) TestUpdateUser(c *gocheck.C) {
 	u2, err := GetUserByEmail("wolverine@xmen.com")
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(u2.Password, gocheck.Equals, "1234")
+}
+
+func (s *S) TestUserCheckPasswordUsesBcrypt(c *gocheck.C) {
+	u := User{Email: "paradisum", Password: "abcd1234"}
+	u.HashPassword()
+	err := bcrypt.CompareHashAndPassword([]byte(u.Password), []byte("abcd1234"))
+	c.Assert(err, gocheck.IsNil)
 }
 
 func (s *S) TestUserCheckPasswordRightPassword(c *gocheck.C) {

@@ -49,6 +49,10 @@ func loadConfig() error {
 	return nil
 }
 
+// hashPassword hashes a password using the old method (PBKDF2 + SHA512).
+//
+// BUG(fss): this function is deprecated, it's here for the migration phase
+// (whenever a user login with the old hash, the new hash will be generated).
 func hashPassword(password string) string {
 	err := loadConfig()
 	if err != nil {
@@ -132,7 +136,9 @@ func (u *User) Update() error {
 }
 
 func (u *User) HashPassword() {
-	u.Password = hashPassword(u.Password)
+	if passwd, err := bcrypt.GenerateFromPassword([]byte(u.Password), cost); err == nil {
+		u.Password = string(passwd)
+	}
 }
 
 func (u *User) CheckPassword(password string) error {
