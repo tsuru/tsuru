@@ -19,3 +19,13 @@ type Http struct {
 func (e *Http) Error() string {
 	return e.Message
 }
+
+// ValidationError is an error implementation used whenever a validation
+// failure occurs.
+type ValidationError struct {
+	Message string
+}
+
+func (err *ValidationError) Error() string {
+	return err.Message
+}
