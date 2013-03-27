@@ -5,6 +5,7 @@
 package auth
 
 import (
+	"code.google.com/p/go.crypto/bcrypt"
 	"code.google.com/p/go.crypto/pbkdf2"
 	"crypto/sha512"
 	"fmt"
@@ -105,10 +106,30 @@ func (s *S) TestUpdateUser(c *gocheck.C) {
 	c.Assert(u2.Password, gocheck.Equals, "1234")
 }
 
-func (s *S) TestUserCheckPasswordReturnsTrueIfThePasswordMatches(c *gocheck.C) {
+func (s *S) TestUserCheckPasswordRightPassword(c *gocheck.C) {
 	u := User{Email: "wolverine@xmen.com", Password: "123456"}
 	u.HashPassword()
 	err := u.CheckPassword("123456")
+	c.Assert(err, gocheck.IsNil)
+}
+
+func (s *S) TestUserCheckPasswordChecksBcryptPasswordFirst(c *gocheck.C) {
+	passwd, err := bcrypt.GenerateFromPassword([]byte("123456"), cost)
+	c.Assert(err, gocheck.IsNil)
+	u := User{Email: "wolverine@xmen", Password: string(passwd)}
+	err = u.CheckPassword("123456")
+	c.Assert(err, gocheck.IsNil)
+}
+
+func (s *S) TestUserCheckPasswordRehashesThePassword(c *gocheck.C) {
+	u := User{Email: "wolverine@xmen.com", Password: "123456"}
+	u.Create()
+	defer s.conn.Users().Remove(bson.M{"email": u.Email})
+	err := u.CheckPassword("123456")
+	c.Assert(err, gocheck.IsNil)
+	other, err := GetUserByEmail(u.Email)
+	c.Assert(err, gocheck.IsNil)
+	err = bcrypt.CompareHashAndPassword([]byte(other.Password), []byte("123456"))
 	c.Assert(err, gocheck.IsNil)
 }
 

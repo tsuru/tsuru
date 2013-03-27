@@ -5,6 +5,7 @@
 package auth
 
 import (
+	"code.google.com/p/go.crypto/bcrypt"
 	"code.google.com/p/go.crypto/pbkdf2"
 	"crypto/sha512"
 	stderr "errors"
@@ -23,6 +24,7 @@ const (
 	passwordError     = "Password length should be least 6 characters and at most 50 characters."
 	passwordMinLen    = 6
 	passwordMaxLen    = 50
+	cost              = bcrypt.DefaultCost + bcrypt.MinCost
 )
 
 var salt, tokenKey string
@@ -137,8 +139,19 @@ func (u *User) CheckPassword(password string) error {
 	if !validation.ValidateLength(password, passwordMinLen, passwordMaxLen) {
 		return &errors.ValidationError{Message: passwordError}
 	}
+	// BUG(fss): this is temporary code, for a migration phase in the
+	// hashing algorithm. In the future we should just use
+	// bcrypt.CompareHashAndPassword, and drop the old hash checking and
+	// update stuff.
+	if bcrypt.CompareHashAndPassword([]byte(u.Password), []byte(password)) == nil {
+		return nil
+	}
 	hashedPassword := hashPassword(password)
 	if u.Password == hashedPassword {
+		if bcryptPassword, err := bcrypt.GenerateFromPassword([]byte(password), cost); err == nil {
+			u.Password = string(bcryptPassword)
+			u.Update()
+		}
 		return nil
 	}
 	return AuthenticationFailure{}
