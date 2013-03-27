@@ -80,6 +80,7 @@ func (s *S) TestGetUserByEmailReturnsErrorWhenNoUserIsFound(c *gocheck.C) {
 	u, err := GetUserByEmail("unknown@globo.com")
 	c.Assert(u, gocheck.IsNil)
 	c.Assert(err, gocheck.NotNil)
+	c.Assert(err.Error(), gocheck.Equals, "User not found")
 }
 
 func (s *S) TestGetUserByEmailWithInvalidEmail(c *gocheck.C) {

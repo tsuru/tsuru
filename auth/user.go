@@ -80,7 +80,7 @@ func GetUserByEmail(email string) (*User, error) {
 	defer conn.Close()
 	err = conn.Users().Find(bson.M{"email": email}).One(&u)
 	if err != nil {
-		return nil, err
+		return nil, stderr.New("User not found")
 	}
 	return &u, nil
 }
