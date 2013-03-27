@@ -76,17 +76,25 @@ func Login(w http.ResponseWriter, r *http.Request) error {
 		}
 		return &errors.Http{Code: http.StatusNotFound, Message: "User not found"}
 	}
-	valid, err := u.CheckPassword(password)
+	t, err := u.CreateToken(password)
 	if err != nil {
-		return &errors.Http{Code: http.StatusPreconditionFailed, Message: err.Error()}
+		switch err.(type) {
+		case *errors.ValidationError:
+			return &errors.Http{
+				Code:    http.StatusPreconditionFailed,
+				Message: err.(*errors.ValidationError).Message,
+			}
+		case auth.AuthenticationFailure:
+			return &errors.Http{
+				Code:    http.StatusUnauthorized,
+				Message: err.Error(),
+			}
+		default:
+			return err
+		}
 	}
-	if valid {
-		t, _ := u.CreateToken()
-		fmt.Fprintf(w, `{"token":"%s"}`, t.Token)
-		return nil
-	}
-	msg := "Authentication failed, wrong password"
-	return &errors.Http{Code: http.StatusUnauthorized, Message: msg}
+	fmt.Fprintf(w, `{"token":"%s"}`, t.Token)
+	return nil
 }
 
 // ChangePassword changes the password from the logged in user.
@@ -114,7 +122,7 @@ func ChangePassword(w http.ResponseWriter, r *http.Request, u *auth.User) error 
 			Message: "Both the old and the new passwords are required.",
 		}
 	}
-	if valid, _ := u.CheckPassword(body["old"]); !valid {
+	if err := u.CheckPassword(body["old"]); err != nil {
 		return &errors.Http{
 			Code:    http.StatusForbidden,
 			Message: "The given password didn't match the user's current password.",

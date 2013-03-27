@@ -330,7 +330,7 @@ func (s *AuthSuite) TestLoginShouldreturnErrorIfThePasswordDoesNotMatch(c *goche
 	recorder := httptest.NewRecorder()
 	err = Login(recorder, request)
 	c.Assert(err, gocheck.NotNil)
-	c.Assert(err, gocheck.ErrorMatches, "^Authentication failed, wrong password$")
+	c.Assert(err, gocheck.ErrorMatches, "^Authentication failed, wrong password.$")
 	e, ok := err.(*errors.Http)
 	c.Assert(ok, gocheck.Equals, true)
 	c.Assert(e.Code, gocheck.Equals, http.StatusUnauthorized)

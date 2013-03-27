@@ -29,10 +29,10 @@ func (s *HandlerSuite) SetUpSuite(c *gocheck.C) {
 	config.Set("database:name", "tsuru_api_handler_test")
 	s.conn, err = db.Conn()
 	c.Assert(err, gocheck.IsNil)
-	user := &auth.User{Email: "whydidifall@thewho.com", Password: "123"}
+	user := &auth.User{Email: "whydidifall@thewho.com", Password: "123456"}
 	err = user.Create()
 	c.Assert(err, gocheck.IsNil)
-	s.token, _ = user.CreateToken()
+	s.token, _ = user.CreateToken("123456")
 }
 
 func (s *HandlerSuite) TearDownSuite(c *gocheck.C) {
