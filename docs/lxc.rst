@@ -74,6 +74,66 @@ Gandalf
 
 Tsuru uses `Gandalf <https://github.com/globocom/gandalf>`_ to manage git repositories, to get it installed `follow this steps <https://gandalf.readthedocs.org/en/latest/install.html>`_
 
+Creating git user
+~~~~~~~~~~~~~~~~~
+
+.. highlight:: bash
+
+::
+
+    $ sudo useradd git
+
+Creating directories for repositories and template
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Let's create the directory for bare repositories:
+
+.. highlight:: bash
+
+::
+
+    $ sudo mkdir -p /var/repositories
+    $ sudo chown -R git:git /var/repositories
+
+And the directory for template:
+
+.. highlight:: bash
+
+::
+
+    $ sudo mkdir -p /var/repositories
+    $ sudo chown -R git:git /var/repositories
+
+And add the tsuru hooks:
+
+.. highlight:: bash
+
+::
+
+    $ sudo mkdir -p /home/git/bare-template
+    $ sudo chown -R git:git /home/git/bare-template
+
+Configuring gandalf
+~~~~~~~~~~~~~~~~~~~
+
+.. highlight:: bash
+
+::
+
+    sudo bash -c 'echo "bin-path: /usr/bin
+    database:
+      url: 127.0.0.1:27017
+      name: gandalf
+    git:
+      bare:
+        location: /var/repositories
+        template: /home/git/bare-template
+      daemon:
+        export-all: true
+    host: localhost
+    webserver:
+      port: \":8000\"" > /etc/gandalf.conf'
+
 Tsuru api and collector
 -----------------------
 
