@@ -52,6 +52,17 @@ host: localhost
 webserver:
   port: \":8000\"" > /etc/gandalf.conf'
 
+echo "creating the git user"
+sudo useradd git
+
+echo "creating bare path"
+sudo mkdir -p /var/repositories
+sudo chown -R git:git /var/repositories
+
+echo "creating template path"
+sudo mkdir /home/git/bare-template/hooks
+sudo chown -R git:git /home/git/bare-template
+
 echo "generating the ssh-key for root"
 sudo ssh-keygen -N "" -f /root/.ssh/id_rsa
 
@@ -62,10 +73,10 @@ echo "starting beanstalkd"
 sudo service beanstalkd start
 
 echo "starting gandalf webserver"
-webserver &
+sudo -u git webserver &
 
 echo "starting git daemon"
-git daemon --base-path=/var/repositories --syslog --export-all &
+sudo -u git git daemon --base-path=/var/repositories --syslog --export-all &
 
 echo "starting tsuru-collector"
 collector &
