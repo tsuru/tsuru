@@ -15,7 +15,7 @@ the very basic workflow, add/commit/push and remote managing. Git allows really 
 the whole repository history of your application, there's no need to have that information in the application webserver.
 
 Tsuru will also take care of all the applications dependencies when you deploy. You can specify Operational System and language specific dependencies.
-For example, if you have a Python application, tsuru will search for the requirements.txt file, but first it will search for OS dependencies. in Ubuntu, for instance,
+For example, if you have a Python application, tsuru will search for the requirements.txt file, but first it will search for OS dependencies. In Ubuntu, for instance,
 Tsuru will search for a file called requirements.apt, after the installation of the packages listed there, it'll install the language dependencies, in this example
 running `pip instal` passing the requirements.txt file.
 
@@ -38,8 +38,8 @@ Per-Deploy Config Variables
 Configuration for an application should be stored in environment variables - and we know that. Tsuru lets you define your environment variables using the command line,
 so you can have the configuration flexibility your application need.
 
-Additionaly, when you bind a service with your application, Tsuru gives the service the hability to inject environment variables in your application environment.
-For instance, if you use our Mysql service, it will inject variables for you to create a connection with your application database.
+Tsuru also makes use of environment variables. When when you bind a service with your application, Tsuru gives the service the hability to inject environment variables
+in your application environment. For instance, if you use the default Mysql service, it will inject variables for you to establish a connection with your application database.
 
 Custom Services
 ---------------
@@ -48,16 +48,16 @@ Tsuru already has services for you to use, but you don't need to use them at all
 a Mysql server running on your infrastructure, all you need to do in order to use it is simply configure environment variables and use
 them in your application config.
 
-You can also create your own services and make them available for others to use it on Tsuru. It's so easy to do so that you'll want to sell
-your own services. Tsuru talks with services using a well defined API, all you have to do is implement four endpoints that knows how to
-provision your service to an application (like creating VMs, liberating access, etc), and register your service in Tsuru with a really simple
-`yaml manifest <https://github.com/globocom/varnishapi/blob/master/manifest.yaml>`_.
+You can also create your own services and make them available for you and others to use it on Tsuru. It's so easy to do so that you'll want to sell
+your own services. Tsuru talks with services using a well defined `API <https://tsuru.readthedocs.org/en/latest/services/api.html>`_, all you have
+to do is implement four endpoints that knows how to provision your service to an application (like creating VMs, liberating access, etc), and register
+your service in Tsuru with a really simple `yaml manifest <https://github.com/globocom/varnishapi/blob/master/manifest.yaml>`_.
 
 Logging and Visibility
 ----------------------
 
 Full visibility into your app's operations with real-time logging, process status inspection, and an audit trail of all releases.
-Tsuru will log everything related to your application, and you can check it out simply running `tsuru log` command. You can filter logs, for example,
+Tsuru will log everything related to your application, and you can check it out by simply running `tsuru log` command. You can also filter logs, for example,
 if you don't want to see the logs of developers activity (e.g.: a deploy action), you can specify the source as `app` and you'll get only the application webserver logs.
 
 Process Management
@@ -84,7 +84,7 @@ Scaling
 
 The Juju_ provisioner allows you to easily add and remove units, allowing one to scale an application painlessly. It will take care of the
 deploy of the application code to the new units and with the bind with the used services, there's nothing required to the developer to do in order
-to scale a application, just add a new unit and Tsuru will do the trick.
+to scale an application, just add a new unit and Tsuru will do the trick.
 
 You may also want to scale using the FrontEnd as a Service, powered by `Varnish <https://www.varnish-cache.org/>`_. One single application might have a whole farm of Varnish VMs in
 front of it receiving all the traffic.
@@ -98,17 +98,17 @@ One can be on various teams and control which applications the teams has permiss
 Easy Server Deployment
 ----------------------
 
-Tsuru itself is really easy to deploy, you can get it done by following `these simple steps <http://docs.tsuru.io/en/latest/build.html>`_.
+Tsuru itself is really easy to deploy and manage, you can get it done by following `these simple steps <http://docs.tsuru.io/en/latest/build.html>`_.
 
 Distributed and Extensible
 --------------------------
 
-Tsuru server is easily extensible and customizable. By default, it will deploy applications using the Juju_ provisioner, but you can easily implement your own
-provisioner and use whenever backend you wish.
+Tsuru server is easily extensible, distributed and customizable. It has the concept of Provisioners, a provisioner takes care of the orchestration (VM/container management)
+and provisioning. By default, it will deploy applications using the Juju_ provisioner, but you can easily implement your own provisioner and use whatever backend you wish.
 
-When you extend Tsuru, you are praticaly building a new PaaS, in terms of behavior when provisioning and , reusing Tsuru's structure. You change the whole Tsuru workflow by implementing a new provider.
-Tsuru allows it with the power of Golang, it uses interfaces, so you can just create your own provisioner respecting Tsuru's interface and plug in it, changing your PaaS
-behavior.
+When you extend Tsuru, you are able to praticaly build a new PaaS in terms of behavior of provision and orchestration, making use of the great Tsuru structure.
+You change the whole Tsuru workflow by implementing a new provider. Tsuru allows it with the power of Golang, it uses interfaces, so you can just
+create your own provisioner respecting Tsuru's interface and plug in it, changing your PaaS behavior.
 
 .. _Juju: https://juju.ubuntu.com/
 
