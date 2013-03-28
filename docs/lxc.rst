@@ -188,6 +188,16 @@ You can download the sample configuration file from Github:
 Make sure you define the required settings (database connection, authentication
 configuration, AWS credentials, etc.) before running tsuru.
 
+Downloading charms
+==================
+
+.. highlight:: bash
+
+::
+
+    $ git clone git://github.com/globocom/charms.git -b lxc /home/ubuntu/charms
+
+
 Running tsuru
 =============
 
