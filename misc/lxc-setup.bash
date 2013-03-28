@@ -66,6 +66,9 @@ sudo chown -R git:git /home/git/bare-template
 echo "generating the ssh-key for root"
 sudo ssh-keygen -N "" -f /root/.ssh/id_rsa
 
+echo "downloading charms"
+git clone git://github.com/globocom/charms.git -b lxc
+
 echo "starting mongodb"
 sudo service mongodb start
 
