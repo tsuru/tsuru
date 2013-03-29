@@ -26,6 +26,7 @@ The Tsuru PaaS is composed by multiple components:
 * charms
 * mongodb (database)
 * beanstalkd (queue server)
+* nginx (router)
 
 Installing
 ==========
@@ -133,6 +134,15 @@ Configuring gandalf
     host: localhost
     webserver:
       port: \":8000\"" > /etc/gandalf.conf'
+
+Nginx
+-----
+
+.. highlight:: bash
+
+::
+
+    $ sudo apt-get install -y nginx
 
 Tsuru api and collector
 -----------------------
