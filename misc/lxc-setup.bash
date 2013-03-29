@@ -59,13 +59,13 @@ sudo chown -R git:git /var/repositories
 
 echo "creating template path"
 sudo mkdir -p /home/git/bare-template/hooks
-sudo chown -R git:git /home/git/bare-template
+sudo chown -R git:git /home/git
 
 echo "generating the ssh-key for root"
 sudo ssh-keygen -N "" -f /root/.ssh/id_rsa
 
 echo "downloading charms"
-git clone git://github.com/globocom/charms.git -b lxc
+sudo su - git -c "git clone git://github.com/globocom/charms.git -b lxc /home/git/charms"
 
 echo "starting mongodb"
 sudo service mongodb start
