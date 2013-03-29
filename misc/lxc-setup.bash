@@ -57,7 +57,7 @@ sudo mkdir -p /var/repositories
 sudo chown -R git:git /var/repositories
 
 echo "creating template path"
-sudo mkdir /home/git/bare-template/hooks
+sudo mkdir -p /home/git/bare-template/hooks
 sudo chown -R git:git /home/git/bare-template
 
 echo "generating the ssh-key for root"
