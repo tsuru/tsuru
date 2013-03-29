@@ -12,6 +12,9 @@ sudo apt-get install lxc -y
 echo "installing beanstalkd"
 sudo apt-get install -y beanstalkd
 
+echo "install nginx"
+sudo apt-get install nginx -y
+
 echo "installing mongodb"
 sudo apt-key adv --keyserver keyserver.ubuntu.com --recv 7F0CEB10
 sudo bash -c 'echo "deb http://downloads-distro.mongodb.org/repo/ubuntu-upstart dist 10gen" > /etc/apt/sources.list.d/10gen.list'
