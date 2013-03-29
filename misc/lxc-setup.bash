@@ -11,6 +11,7 @@ sudo apt-get install lxc -y
 
 echo "installing beanstalkd"
 sudo apt-get install -y beanstalkd
+sudo sed -i s/#START=yes/START=yes/ /etc/default/beanstalkd
 
 echo "install nginx"
 sudo apt-get install nginx -y
@@ -82,10 +83,10 @@ echo "starting beanstalkd"
 sudo service beanstalkd start
 
 echo "starting gandalf webserver"
-sudo -u git gandalf-webserver &
+sudo su - git -c gandalf-webserver &
 
 echo "starting git daemon"
-sudo -u git git daemon --base-path=/var/repositories --syslog --export-all &
+sudo su - git -c "git daemon --base-path=/var/repositories --syslog --export-all "&
 
 echo "starting tsuru-collector"
 collector &
