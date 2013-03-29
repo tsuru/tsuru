@@ -41,7 +41,7 @@ sudo mkdir /etc/tsuru
 sudo curl -sL https://raw.github.com/globocom/tsuru/master/etc/tsuru-lxc.conf -o /etc/tsuru/tsuru.conf
 
 echo "configuring gandalf"
-sudo bash -c 'echo "bin-path: /home/ubuntu/gandalf-bin
+sudo bash -c 'echo "bin-path: /usr/bin/gandalf-bin
 database:
   url: 127.0.0.1:27017
   name: gandalf
@@ -82,7 +82,7 @@ echo "starting beanstalkd"
 sudo service beanstalkd start
 
 echo "starting gandalf webserver"
-sudo -u git webserver &
+sudo -u git gandalf-webserver &
 
 echo "starting git daemon"
 sudo -u git git daemon --base-path=/var/repositories --syslog --export-all &
