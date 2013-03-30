@@ -37,6 +37,10 @@ func GetInstance(name string) (ServiceInstance, error) {
 
 // DeleteInstance deletes the service instance from the database.
 func DeleteInstance(si *ServiceInstance) error {
+	if len(si.Apps) > 0 {
+		msg := "This service instance is bound to at least one app. Unbind them before removing it"
+		return stderrors.New(msg)
+	}
 	endpoint, err := si.Service().getClient("production")
 	if err == nil {
 		endpoint.Destroy(si)

@@ -384,6 +384,14 @@ func (s *S) TestDeleteInstance(c *gocheck.C) {
 	c.Assert(h.method, gocheck.Equals, "DELETE")
 }
 
+func (s *S) TestDeleteInstanceWithApps(c *gocheck.C) {
+	si := ServiceInstance{Name: "instance", Apps: []string{"foo"}}
+	err := s.conn.ServiceInstances().Insert(&si)
+	c.Assert(err, gocheck.IsNil)
+	err = DeleteInstance(&si)
+	c.Assert(err, gocheck.ErrorMatches, "^This service instance is bound to at least one app. Unbind them before removing it$")
+}
+
 func (s *S) TestCreateInstance(c *gocheck.C) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNoContent)
