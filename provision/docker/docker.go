@@ -40,7 +40,7 @@ func runCmd(cmd string, args ...string) error {
 
 // ip returns the ip for the container.
 func (c *container) ip() string {
-	timeout, err := config.GetInt("local:ip-timeout")
+	timeout, err := config.GetInt("docker:ip-timeout")
 	if err != nil {
 		timeout = 60
 	}
@@ -70,20 +70,24 @@ func (c *container) ip() string {
 
 // create creates a docker container with base template by default.
 func (c *container) create() error {
-	return runCmd("docker", "run", "-d", "base", "/bin/bash", c.name)
+	keyPath, err := config.GetString("docker:authorized-key-path")
+	if err != nil {
+		return err
+	}
+	return runCmd("sudo", "docker", "run", "-d", "base", "/bin/bash", c.name, keyPath)
 }
 
 // start starts a docker container.
 func (c *container) start() error {
-	return runCmd("docker", "start", c.name)
+	return runCmd("sudo", "docker", "start", c.name)
 }
 
 // stop stops a docker container.
 func (c *container) stop() error {
-	return runCmd("docker", "stop", c.name)
+	return runCmd("sudo", "docker", "stop", c.name)
 }
 
 // destroy destory a docker container.
 func (c *container) destroy() error {
-	return runCmd("docker", "rm", c.name)
+	return runCmd("sudo", "docker", "rm", c.name)
 }

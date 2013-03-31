@@ -20,13 +20,13 @@ import (
 )
 
 func (s *S) TestShouldBeRegistered(c *gocheck.C) {
-	p, err := provision.Get("local")
+	p, err := provision.Get("docker")
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(p, gocheck.FitsTypeOf, &LocalProvisioner{})
 }
 
 func (s *S) TestProvisionerProvision(c *gocheck.C) {
-	config.Set("local:authorized-key-path", "somepath")
+	config.Set("docker:authorized-key-path", "somepath")
 	rfs := &fstesting.RecordingFs{}
 	fsystem = rfs
 	defer func() {
@@ -73,8 +73,8 @@ func (s *S) TestProvisionerProvision(c *gocheck.C) {
 		c.Fatal("Timed out waiting for the container to be provisioned (10 seconds)")
 	}
 	c.Assert(commandmocker.Ran(tmpdir), gocheck.Equals, true)
-	expected := "lxc-create -t ubuntu -n myapp -- -S somepath"
-	expected += "lxc-start --daemon -n myapp"
+	expected := "docker run -d base /bin/bash myapp somepath"
+	expected += "docker start myapp"
 	expected += "service nginx restart"
 	c.Assert(commandmocker.Output(tmpdir), gocheck.Equals, expected)
 	var unit provision.Unit
@@ -114,7 +114,7 @@ func (s *S) TestProvisionerRestartFailure(c *gocheck.C) {
 }
 
 func (s *S) TestProvisionerDestroy(c *gocheck.C) {
-	config.Set("local:authorized-key-path", "somepath")
+	config.Set("docker:authorized-key-path", "somepath")
 	rfs := &fstesting.RecordingFs{}
 	fsystem = rfs
 	defer func() {
@@ -144,11 +144,11 @@ func (s *S) TestProvisionerDestroy(c *gocheck.C) {
 	c.Assert(p.Destroy(app), gocheck.IsNil)
 	time.Sleep(5 * time.Second)
 	c.Assert(commandmocker.Ran(tmpdir), gocheck.Equals, true)
-	expected := "lxc-create -t ubuntu -n myapp -- -S somepath"
-	expected += "lxc-start --daemon -n myapp"
+	expected := "docker run -d base /bin/bash myapp somepath"
+	expected += "docker start myapp"
 	expected += "service nginx restart"
-	expected += "lxc-stop -n myapp"
-	expected += "lxc-destroy -n myapp"
+	expected += "docker stop myapp"
+	expected += "docker rm myapp"
 	c.Assert(commandmocker.Output(tmpdir), gocheck.Equals, expected)
 	length, err := p.collection().Find(bson.M{"name": "myapp"}).Count()
 	c.Assert(err, gocheck.IsNil)
@@ -278,7 +278,7 @@ func (s *S) TestProvisionSetup(c *gocheck.C) {
 	defer commandmocker.Remove(sshTempDir)
 	p := LocalProvisioner{}
 	formulasPath := "/home/ubuntu/formulas"
-	config.Set("local:formulas-path", formulasPath)
+	config.Set("docker:formulas-path", formulasPath)
 	err = p.setup("10.10.10.10", "static")
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(commandmocker.Ran(tmpdir), gocheck.Equals, true)
