@@ -11,11 +11,11 @@ import (
 )
 
 func AddRoute(name, ip string) error {
-	domain, err := config.GetString("local:domain")
+	domain, err := config.GetString("docker:domain")
 	if err != nil {
 		return err
 	}
-	routesPath, err := config.GetString("local:routes-path")
+	routesPath, err := config.GetString("docker:routes-path")
 	if err != nil {
 		return err
 	}

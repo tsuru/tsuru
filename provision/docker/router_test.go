@@ -13,8 +13,8 @@ import (
 )
 
 func (s *S) TestAddRoute(c *gocheck.C) {
-	config.Set("local:domain", "andrewzito.com")
-	config.Set("local:routes-path", "testdata")
+	config.Set("docker:domain", "andrewzito.com")
+	config.Set("docker:routes-path", "testdata")
 	rfs := &testing.RecordingFs{}
 	fsystem = rfs
 	defer func() {

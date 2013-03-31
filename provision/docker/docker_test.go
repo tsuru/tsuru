@@ -22,7 +22,7 @@ func (s *S) TestLXCCreate(c *gocheck.C) {
 	err = container.create()
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(commandmocker.Ran(tmpdir), gocheck.Equals, true)
-	expected := "lxc-create -t ubuntu -n container -- -S somepath"
+	expected := "docker run -d base /bin/bash container somepath"
 	c.Assert(commandmocker.Output(tmpdir), gocheck.Equals, expected)
 }
 
@@ -34,7 +34,7 @@ func (s *S) TestLXCStart(c *gocheck.C) {
 	err = container.start()
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(commandmocker.Ran(tmpdir), gocheck.Equals, true)
-	expected := "lxc-start --daemon -n container"
+	expected := "docker start container"
 	c.Assert(commandmocker.Output(tmpdir), gocheck.Equals, expected)
 }
 
@@ -46,7 +46,7 @@ func (s *S) TestLXCStop(c *gocheck.C) {
 	err = container.stop()
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(commandmocker.Ran(tmpdir), gocheck.Equals, true)
-	expected := "lxc-stop -n container"
+	expected := "docker stop container"
 	c.Assert(commandmocker.Output(tmpdir), gocheck.Equals, expected)
 }
 
@@ -58,7 +58,7 @@ func (s *S) TestLXCDestroy(c *gocheck.C) {
 	err = container.destroy()
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(commandmocker.Ran(tmpdir), gocheck.Equals, true)
-	expected := "lxc-destroy -n container"
+	expected := "docker rm container"
 	c.Assert(commandmocker.Output(tmpdir), gocheck.Equals, expected)
 }
 
