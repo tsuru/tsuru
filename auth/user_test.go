@@ -186,6 +186,18 @@ func (s *S) TestCreateTokenShouldSaveTheTokenInUserInTheDatabase(c *gocheck.C) {
 	c.Assert(result.Tokens[0].Token, gocheck.NotNil)
 }
 
+func (s *S) TestCreateTokenReturnsErrorWhenHashCostIsUndefined(c *gocheck.C) {
+	err := config.Unset("auth:hash-cost")
+	c.Assert(err, gocheck.IsNil)
+	defer config.Set("auth:hash-cost", bcrypt.MinCost)
+	u := User{Email: "wolverine@xmen.com", Password: "123456"}
+	err = u.Create()
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Users().Remove(bson.M{"email": u.Email})
+	_, err = u.CreateToken("123456")
+	c.Assert(err, gocheck.NotNil)
+}
+
 func (s *S) TestCreateTokenShouldReturnErrorIfTheProvidedUserDoesNotHaveEmailDefined(c *gocheck.C) {
 	u := User{Password: "123"}
 	_, err := u.CreateToken("123")

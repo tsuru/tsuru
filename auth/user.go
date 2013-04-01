@@ -181,7 +181,10 @@ func (u *User) CreateToken(password string) (*Token, error) {
 		return nil, err
 	}
 	defer conn.Close()
-	t, _ := newToken(u)
+	t, err := newToken(u)
+	if err != nil {
+		return nil, err
+	}
 	u.Tokens = append(u.Tokens, *t)
 	err = conn.Users().Update(bson.M{"email": u.Email}, u)
 	return t, err
