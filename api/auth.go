@@ -58,7 +58,7 @@ func CreateUser(w http.ResponseWriter, r *http.Request) error {
 	return err
 }
 
-func Login(w http.ResponseWriter, r *http.Request) error {
+func login(w http.ResponseWriter, r *http.Request) error {
 	var pass map[string]string
 	err := json.NewDecoder(r.Body).Decode(&pass)
 	if err != nil {

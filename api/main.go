@@ -88,7 +88,7 @@ func main() {
 	m.Post("/apps/:name/log", Handler(AddLogHandler))
 
 	m.Post("/users", Handler(CreateUser))
-	m.Post("/users/:email/tokens", Handler(Login))
+	m.Post("/users/:email/tokens", Handler(login))
 	m.Put("/users/password", AuthorizationRequiredHandler(ChangePassword))
 	m.Del("/users", AuthorizationRequiredHandler(RemoveUser))
 	m.Post("/users/keys", AuthorizationRequiredHandler(AddKeyToUser))
