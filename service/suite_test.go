@@ -15,12 +15,11 @@ import (
 func Test(t *testing.T) { gocheck.TestingT(t) }
 
 type S struct {
-	conn            *db.Storage
-	service         *Service
-	serviceInstance *ServiceInstance
-	team            *auth.Team
-	user            *auth.User
-	tmpdir          string
+	conn    *db.Storage
+	service *Service
+	team    *auth.Team
+	user    *auth.User
+	tmpdir  string
 }
 
 var _ = gocheck.Suite(&S{})
@@ -73,7 +72,5 @@ func (s *S) TearDownSuite(c *gocheck.C) {
 
 func (s *S) TearDownTest(c *gocheck.C) {
 	_, err := s.conn.Services().RemoveAll(nil)
-	c.Assert(err, gocheck.IsNil)
-	_, err = s.conn.ServiceInstances().RemoveAll(nil)
 	c.Assert(err, gocheck.IsNil)
 }
