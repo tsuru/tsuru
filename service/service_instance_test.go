@@ -6,60 +6,79 @@ package service
 
 import (
 	"encoding/json"
+	"github.com/globocom/config"
 	"github.com/globocom/tsuru/app/bind"
 	"github.com/globocom/tsuru/auth"
+	"github.com/globocom/tsuru/db"
 	"labix.org/v2/mgo/bson"
 	"launchpad.net/gocheck"
 	"net/http"
 	"net/http/httptest"
 )
 
-func (s *S) createServiceInstance() {
-	s.service = &Service{Name: "MySQL"}
-	s.service.Create()
-	s.serviceInstance = &ServiceInstance{
-		Name: s.service.Name,
-	}
-	s.serviceInstance.Create()
+type InstanceSuite struct {
+	conn            *db.Storage
+	service         *Service
+	serviceInstance *ServiceInstance
+	team            *auth.Team
+	user            *auth.User
 }
 
-func (s *S) TestCreateServiceInstance(c *gocheck.C) {
-	s.createServiceInstance()
-	defer s.conn.Services().Remove(bson.M{"name": s.service.Name})
+var _ = gocheck.Suite(&InstanceSuite{})
+
+func (s *InstanceSuite) SetUpSuite(c *gocheck.C) {
+	var err error
+	config.Set("database:url", "127.0.0.1:27017")
+	config.Set("database:name", "tsuru_service_instance_test")
+	s.conn, err = db.Conn()
+	c.Assert(err, gocheck.IsNil)
+	s.user = &auth.User{Email: "cidade@raul.com", Password: "123"}
+	s.team = &auth.Team{Name: "Raul", Users: []string{s.user.Email}}
+}
+
+func (s *InstanceSuite) TearDownSuite(c *gocheck.C) {
+	s.conn.Apps().Database.DropDatabase()
+}
+
+func (s *InstanceSuite) TearDownTest(c *gocheck.C) {
+	_, err := s.conn.ServiceInstances().RemoveAll(nil)
+	c.Assert(err, gocheck.IsNil)
+}
+
+func (s *InstanceSuite) TestCreateServiceInstance(c *gocheck.C) {
+	si := &ServiceInstance{Name: "MySQL"}
+	s.conn.ServiceInstances().Insert(&si)
+	defer s.conn.ServiceInstances().RemoveId(si.Name)
 	var result ServiceInstance
-	query := bson.M{
-		"name": s.service.Name,
-	}
+	query := bson.M{"name": si.Name}
 	err := s.conn.ServiceInstances().Find(query).One(&result)
 	c.Check(err, gocheck.IsNil)
-	c.Assert(result.Name, gocheck.Equals, s.service.Name)
+	c.Assert(result.Name, gocheck.Equals, si.Name)
 }
 
-func (s *S) TestDeleteServiceInstance(c *gocheck.C) {
-	s.createServiceInstance()
-	defer s.conn.Services().Remove(bson.M{"name": s.service.Name})
-	DeleteInstance(s.serviceInstance)
-	query := bson.M{
-		"name": s.service.Name,
-	}
+func (s *InstanceSuite) TestDeleteServiceInstance(c *gocheck.C) {
+	si := &ServiceInstance{Name: "MySQL"}
+	s.conn.ServiceInstances().Insert(&si)
+	DeleteInstance(si)
+	query := bson.M{"name": si.Name}
 	qtd, err := s.conn.ServiceInstances().Find(query).Count()
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(qtd, gocheck.Equals, 0)
 }
 
-func (s *S) TestRetrieveAssociatedService(c *gocheck.C) {
+func (s *InstanceSuite) TestRetrieveAssociatedService(c *gocheck.C) {
 	service := Service{Name: "my_service"}
-	service.Create()
+	s.conn.Services().Insert(&service)
+	defer s.conn.Services().RemoveId(service.Name)
 	serviceInstance := &ServiceInstance{
 		Name:        service.Name,
 		ServiceName: service.Name,
 	}
-	serviceInstance.Create()
 	rService := serviceInstance.Service()
 	c.Assert(service.Name, gocheck.Equals, rService.Name)
 }
 
-func (s *S) TestAddApp(c *gocheck.C) {
+func (s *InstanceSuite) TestAddApp(c *gocheck.C) {
 	instance := ServiceInstance{
 		Name: "myinstance",
 		Apps: []string{},
@@ -69,7 +88,7 @@ func (s *S) TestAddApp(c *gocheck.C) {
 	c.Assert(instance.Apps, gocheck.DeepEquals, []string{"app1"})
 }
 
-func (s *S) TestAddAppReturnErrorIfTheAppIsAlreadyPresent(c *gocheck.C) {
+func (s *InstanceSuite) TestAddAppReturnErrorIfTheAppIsAlreadyPresent(c *gocheck.C) {
 	instance := ServiceInstance{
 		Name: "myinstance",
 		Apps: []string{"app1"},
@@ -79,7 +98,7 @@ func (s *S) TestAddAppReturnErrorIfTheAppIsAlreadyPresent(c *gocheck.C) {
 	c.Assert(err, gocheck.ErrorMatches, "^This instance already has this app.$")
 }
 
-func (s *S) TestFindApp(c *gocheck.C) {
+func (s *InstanceSuite) TestFindApp(c *gocheck.C) {
 	instance := ServiceInstance{
 		Name: "myinstance",
 		Apps: []string{"app1", "app2"},
@@ -89,7 +108,7 @@ func (s *S) TestFindApp(c *gocheck.C) {
 	c.Assert(instance.FindApp("what"), gocheck.Equals, -1)
 }
 
-func (s *S) TestRemoveApp(c *gocheck.C) {
+func (s *InstanceSuite) TestRemoveApp(c *gocheck.C) {
 	instance := ServiceInstance{
 		Name: "myinstance",
 		Apps: []string{"app1", "app2", "app3"},
@@ -102,7 +121,7 @@ func (s *S) TestRemoveApp(c *gocheck.C) {
 	c.Assert(instance.Apps, gocheck.DeepEquals, []string{"app1"})
 }
 
-func (s *S) TestRemoveAppReturnsErrorWhenTheAppIsNotBoundToTheInstance(c *gocheck.C) {
+func (s *InstanceSuite) TestRemoveAppReturnsErrorWhenTheAppIsNotBoundToTheInstance(c *gocheck.C) {
 	instance := ServiceInstance{
 		Name: "myinstance",
 		Apps: []string{"app1", "app2", "app3"},
@@ -112,57 +131,63 @@ func (s *S) TestRemoveAppReturnsErrorWhenTheAppIsNotBoundToTheInstance(c *gochec
 	c.Assert(err, gocheck.ErrorMatches, "^This app is not bound to this service instance.$")
 }
 
-func (s *S) TestServiceInstanceIsABinder(c *gocheck.C) {
+func (s *InstanceSuite) TestServiceInstanceIsABinder(c *gocheck.C) {
 	var _ bind.Binder = &ServiceInstance{}
 }
 
-func (s *S) TestGetServiceInstancesByServices(c *gocheck.C) {
+func (s *InstanceSuite) TestGetServiceInstancesByServices(c *gocheck.C) {
 	srvc := Service{Name: "mysql"}
-	err := srvc.Create()
+	err := s.conn.Services().Insert(&srvc)
 	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Services().RemoveId(srvc.Name)
 	sInstance := ServiceInstance{Name: "t3sql", ServiceName: "mysql", Teams: []string{s.team.Name}}
-	err = sInstance.Create()
+	err = s.conn.ServiceInstances().Insert(&sInstance)
 	c.Assert(err, gocheck.IsNil)
+	defer s.conn.ServiceInstances().RemoveId(sInstance.Name)
 	sInstance2 := ServiceInstance{Name: "s9sql", ServiceName: "mysql"}
-	err = sInstance2.Create()
+	err = s.conn.ServiceInstances().Insert(&sInstance2)
 	c.Assert(err, gocheck.IsNil)
+	defer s.conn.ServiceInstances().RemoveId(sInstance2.Name)
 	sInstances, err := GetServiceInstancesByServices([]Service{srvc})
 	c.Assert(err, gocheck.IsNil)
 	expected := []ServiceInstance{{Name: "t3sql", ServiceName: "mysql"}, sInstance2}
 	c.Assert(sInstances, gocheck.DeepEquals, expected)
 }
 
-func (s *S) TestGetServiceInstancesByServicesWithoutAnyExistingServiceInstances(c *gocheck.C) {
+func (s *InstanceSuite) TestGetServiceInstancesByServicesWithoutAnyExistingServiceInstances(c *gocheck.C) {
 	srvc := Service{Name: "mysql"}
-	err := srvc.Create()
+	err := s.conn.Services().Insert(&srvc)
 	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Services().RemoveId(srvc.Name)
 	sInstances, err := GetServiceInstancesByServices([]Service{srvc})
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(sInstances, gocheck.DeepEquals, []ServiceInstance(nil))
 }
 
-func (s *S) TestGetServiceInstancesByServicesWithTwoServices(c *gocheck.C) {
+func (s *InstanceSuite) TestGetServiceInstancesByServicesWithTwoServices(c *gocheck.C) {
 	srvc := Service{Name: "mysql"}
-	err := srvc.Create()
+	err := s.conn.Services().Insert(&srvc)
 	c.Assert(err, gocheck.IsNil)
-	defer srvc.Delete()
+	defer s.conn.Services().RemoveId(srvc.Name)
 	srvc2 := Service{Name: "mongodb"}
-	err = srvc2.Create()
+	err = s.conn.Services().Insert(&srvc2)
 	c.Assert(err, gocheck.IsNil)
-	defer srvc.Delete()
+	defer s.conn.Services().RemoveId(srvc2.Name)
 	sInstance := ServiceInstance{Name: "t3sql", ServiceName: "mysql", Teams: []string{s.team.Name}}
-	err = sInstance.Create()
+	err = s.conn.ServiceInstances().Insert(&sInstance)
 	c.Assert(err, gocheck.IsNil)
+	defer s.conn.ServiceInstances().RemoveId(sInstance.Name)
 	sInstance2 := ServiceInstance{Name: "s9nosql", ServiceName: "mongodb"}
-	err = sInstance2.Create()
+	err = s.conn.ServiceInstances().Insert(&sInstance2)
 	c.Assert(err, gocheck.IsNil)
+	defer s.conn.ServiceInstances().RemoveId(sInstance2.Name)
 	sInstances, err := GetServiceInstancesByServices([]Service{srvc, srvc2})
 	c.Assert(err, gocheck.IsNil)
 	expected := []ServiceInstance{{Name: "t3sql", ServiceName: "mysql"}, sInstance2}
 	c.Assert(sInstances, gocheck.DeepEquals, expected)
 }
 
-func (s *S) TestGenericServiceInstancesFilter(c *gocheck.C) {
+func (s *InstanceSuite) TestGenericServiceInstancesFilter(c *gocheck.C) {
 	srvc := Service{Name: "mysql"}
 	teams := []string{s.team.Name}
 	q, f := genericServiceInstancesFilter(srvc, teams)
@@ -170,7 +195,7 @@ func (s *S) TestGenericServiceInstancesFilter(c *gocheck.C) {
 	c.Assert(f, gocheck.DeepEquals, bson.M{"name": 1, "service_name": 1, "apps": 1})
 }
 
-func (s *S) TestGenericServiceInstancesFilterWithServiceSlice(c *gocheck.C) {
+func (s *InstanceSuite) TestGenericServiceInstancesFilterWithServiceSlice(c *gocheck.C) {
 	services := []Service{
 		{Name: "mysql"},
 		{Name: "mongodb"},
@@ -182,7 +207,7 @@ func (s *S) TestGenericServiceInstancesFilterWithServiceSlice(c *gocheck.C) {
 	c.Assert(f, gocheck.DeepEquals, bson.M{"name": 1, "service_name": 1, "apps": 1})
 }
 
-func (s *S) TestGenericServiceInstancesFilterWithoutSpecifingTeams(c *gocheck.C) {
+func (s *InstanceSuite) TestGenericServiceInstancesFilterWithoutSpecifingTeams(c *gocheck.C) {
 	services := []Service{
 		{Name: "mysql"},
 		{Name: "mongodb"},
@@ -194,33 +219,40 @@ func (s *S) TestGenericServiceInstancesFilterWithoutSpecifingTeams(c *gocheck.C)
 	c.Assert(f, gocheck.DeepEquals, bson.M{"name": 1, "service_name": 1, "apps": 1})
 }
 
-func (s *S) TestGetServiceInstancesByServicesAndTeams(c *gocheck.C) {
+func (s *InstanceSuite) TestGetServiceInstancesByServicesAndTeams(c *gocheck.C) {
+	err := s.conn.Teams().Insert(s.team)
+	c.Assert(err, gocheck.IsNil)
 	srvc := Service{Name: "mysql", Teams: []string{s.team.Name}, IsRestricted: true}
-	srvc.Create()
-	defer srvc.Delete()
+	err = s.conn.Services().Insert(&srvc)
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Services().RemoveId(srvc.Name)
 	srvc2 := Service{Name: "mongodb", Teams: []string{s.team.Name}, IsRestricted: false}
-	srvc2.Create()
-	defer srvc2.Delete()
+	err = s.conn.Services().Insert(&srvc2)
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Services().RemoveId(srvc2.Name)
 	sInstance := ServiceInstance{
 		Name:        "j4sql",
 		ServiceName: srvc.Name,
 		Teams:       []string{s.team.Name},
 	}
-	sInstance.Create()
-	defer DeleteInstance(&sInstance)
+	err = s.conn.ServiceInstances().Insert(&sInstance)
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.ServiceInstances().RemoveId(&sInstance.Name)
 	sInstance2 := ServiceInstance{
 		Name:        "j4nosql",
 		ServiceName: srvc2.Name,
 		Teams:       []string{s.team.Name},
 	}
-	sInstance2.Create()
-	defer DeleteInstance(&sInstance2)
+	err = s.conn.ServiceInstances().Insert(&sInstance2)
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.ServiceInstances().RemoveId(sInstance2.Name)
 	sInstance3 := ServiceInstance{
 		Name:        "f9nosql",
 		ServiceName: srvc2.Name,
 	}
-	sInstance3.Create()
-	defer DeleteInstance(&sInstance3)
+	err = s.conn.ServiceInstances().Insert(&sInstance3)
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.ServiceInstances().RemoveId(sInstance3.Name)
 	expected := []ServiceInstance{
 		{
 			Name:        sInstance.Name,
@@ -240,36 +272,36 @@ func (s *S) TestGetServiceInstancesByServicesAndTeams(c *gocheck.C) {
 	c.Assert(sInstances, gocheck.DeepEquals, expected)
 }
 
-func (s *S) TestGetServiceInstancesByServicesAndTeamsForUsersThatAreNotMembersOfAnyTeam(c *gocheck.C) {
+func (s *InstanceSuite) TestGetServiceInstancesByServicesAndTeamsForUsersThatAreNotMembersOfAnyTeam(c *gocheck.C) {
 	u := auth.User{Email: "noteamforme@globo.com", Password: "123"}
 	err := u.Create()
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Users().Remove(bson.M{"email": u.Email})
 	srvc := Service{Name: "mysql", Teams: []string{s.team.Name}, IsRestricted: true}
-	err = srvc.Create()
+	err = s.conn.Services().Insert(&srvc)
 	c.Assert(err, gocheck.IsNil)
-	defer srvc.Delete()
+	defer s.conn.Services().RemoveId(srvc.Name)
 	instance := ServiceInstance{
 		Name:        "j4sql",
 		ServiceName: srvc.Name,
 	}
-	err = instance.Create()
+	err = s.conn.ServiceInstances().Insert(&instance)
 	c.Assert(err, gocheck.IsNil)
-	defer DeleteInstance(&instance)
+	defer s.conn.ServiceInstances().RemoveId(instance.Name)
 	instances, err := GetServiceInstancesByServicesAndTeams([]Service{srvc}, &u)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(instances, gocheck.IsNil)
 }
 
-func (s *S) TestAdditionalInfo(c *gocheck.C) {
+func (s *InstanceSuite) TestAdditionalInfo(c *gocheck.C) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(`[{"label": "key", "value": "value"}, {"label": "key2", "value": "value2"}]`))
 	}))
 	defer ts.Close()
 	srvc := Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}}
-	err := srvc.Create()
+	err := s.conn.Services().Insert(&srvc)
 	c.Assert(err, gocheck.IsNil)
-	defer s.conn.Services().Remove(bson.M{"_id": "mysql"})
+	defer s.conn.Services().RemoveId(srvc.Name)
 	si := ServiceInstance{Name: "ql", ServiceName: srvc.Name}
 	info, err := si.Info()
 	c.Assert(err, gocheck.IsNil)
@@ -280,15 +312,15 @@ func (s *S) TestAdditionalInfo(c *gocheck.C) {
 	c.Assert(info, gocheck.DeepEquals, expected)
 }
 
-func (s *S) TestMarshalJSON(c *gocheck.C) {
+func (s *InstanceSuite) TestMarshalJSON(c *gocheck.C) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(`[{"label": "key", "value": "value"}]`))
 	}))
 	defer ts.Close()
 	srvc := Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}}
-	err := srvc.Create()
+	err := s.conn.Services().Insert(&srvc)
 	c.Assert(err, gocheck.IsNil)
-	defer s.conn.Services().Remove(bson.M{"_id": "mysql"})
+	defer s.conn.Services().RemoveId(srvc.Name)
 	si := ServiceInstance{Name: "ql", ServiceName: srvc.Name}
 	data, err := json.Marshal(&si)
 	c.Assert(err, gocheck.IsNil)
@@ -305,11 +337,11 @@ func (s *S) TestMarshalJSON(c *gocheck.C) {
 	c.Assert(result, gocheck.DeepEquals, expected)
 }
 
-func (s *S) TestMarshalJSONWithoutInfo(c *gocheck.C) {
+func (s *InstanceSuite) TestMarshalJSONWithoutInfo(c *gocheck.C) {
 	srvc := Service{Name: "mysql", Endpoint: map[string]string{"production": ""}}
-	err := srvc.Create()
+	err := s.conn.Services().Insert(&srvc)
 	c.Assert(err, gocheck.IsNil)
-	defer s.conn.Services().Remove(bson.M{"_id": "mysql"})
+	defer s.conn.Services().RemoveId(srvc.Name)
 	si := ServiceInstance{Name: "ql", ServiceName: srvc.Name}
 	data, err := json.Marshal(&si)
 	c.Assert(err, gocheck.IsNil)
@@ -326,11 +358,11 @@ func (s *S) TestMarshalJSONWithoutInfo(c *gocheck.C) {
 	c.Assert(result, gocheck.DeepEquals, expected)
 }
 
-func (s *S) TestMarshalJSONWithoutEndpoint(c *gocheck.C) {
+func (s *InstanceSuite) TestMarshalJSONWithoutEndpoint(c *gocheck.C) {
 	srvc := Service{Name: "mysql"}
-	err := srvc.Create()
+	err := s.conn.Services().Insert(&srvc)
 	c.Assert(err, gocheck.IsNil)
-	defer s.conn.Services().Remove(bson.M{"_id": "mysql"})
+	defer s.conn.Services().RemoveId(srvc.Name)
 	si := ServiceInstance{Name: "ql", ServiceName: srvc.Name}
 	data, err := json.Marshal(&si)
 	c.Assert(err, gocheck.IsNil)
@@ -347,29 +379,29 @@ func (s *S) TestMarshalJSONWithoutEndpoint(c *gocheck.C) {
 	c.Assert(result, gocheck.DeepEquals, expected)
 }
 
-func (s *S) TestGetInstance(c *gocheck.C) {
+func (s *InstanceSuite) TestGetInstance(c *gocheck.C) {
 	expected := ServiceInstance{Name: "instance", Apps: []string{}, Teams: []string{}}
 	err := s.conn.ServiceInstances().Insert(&expected)
 	c.Assert(err, gocheck.IsNil)
-	defer s.conn.ServiceInstances().Remove(bson.M{"name": expected.Name})
+	defer s.conn.ServiceInstances().RemoveId(expected.Name)
 	si, err := GetInstance(expected.Name)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(si, gocheck.DeepEquals, expected)
 }
 
-func (s *S) TestGetInstanceNotFound(c *gocheck.C) {
+func (s *InstanceSuite) TestGetInstanceNotFound(c *gocheck.C) {
 	_, err := GetInstance("name")
 	c.Assert(err, gocheck.NotNil)
 }
 
-func (s *S) TestDeleteInstance(c *gocheck.C) {
+func (s *InstanceSuite) TestDeleteInstance(c *gocheck.C) {
 	h := TestHandler{}
 	ts := httptest.NewServer(&h)
 	defer ts.Close()
 	srv := Service{Name: "mongodb", Endpoint: map[string]string{"production": ts.URL}}
-	err := srv.Create()
+	err := s.conn.Services().Insert(&srv)
 	c.Assert(err, gocheck.IsNil)
-	defer srv.Delete()
+	defer s.conn.Services().RemoveId(srv.Name)
 	si := ServiceInstance{Name: "instance", ServiceName: srv.Name}
 	err = s.conn.ServiceInstances().Insert(&si)
 	c.Assert(err, gocheck.IsNil)
@@ -384,7 +416,7 @@ func (s *S) TestDeleteInstance(c *gocheck.C) {
 	c.Assert(h.method, gocheck.Equals, "DELETE")
 }
 
-func (s *S) TestDeleteInstanceWithApps(c *gocheck.C) {
+func (s *InstanceSuite) TestDeleteInstanceWithApps(c *gocheck.C) {
 	si := ServiceInstance{Name: "instance", Apps: []string{"foo"}}
 	err := s.conn.ServiceInstances().Insert(&si)
 	c.Assert(err, gocheck.IsNil)
@@ -392,33 +424,33 @@ func (s *S) TestDeleteInstanceWithApps(c *gocheck.C) {
 	c.Assert(err, gocheck.ErrorMatches, "^This service instance is bound to at least one app. Unbind them before removing it$")
 }
 
-func (s *S) TestCreateInstance(c *gocheck.C) {
+func (s *InstanceSuite) TestCreateInstance(c *gocheck.C) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNoContent)
 	}))
 	defer ts.Close()
 	srv := Service{Name: "mongodb", Endpoint: map[string]string{"production": ts.URL}}
-	err := srv.Create()
+	err := s.conn.Services().Insert(&srv)
 	c.Assert(err, gocheck.IsNil)
-	defer srv.Delete()
+	defer s.conn.Services().RemoveId(srv.Name)
 	si := ServiceInstance{Name: "instance", Apps: []string{}, Teams: []string{}, ServiceName: srv.Name}
 	err = CreateInstance(&si)
 	c.Assert(err, gocheck.IsNil)
-	defer DeleteInstance(&si)
+	defer s.conn.ServiceInstances().RemoveId(si.Name)
 	expected, err := GetInstance(si.Name)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(si, gocheck.DeepEquals, expected)
 }
 
-func (s *S) TestStatus(c *gocheck.C) {
+func (s *InstanceSuite) TestStatus(c *gocheck.C) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNoContent)
 	}))
 	defer ts.Close()
 	srv := Service{Name: "mongodb", Endpoint: map[string]string{"production": ts.URL}}
-	err := srv.Create()
+	err := s.conn.Services().Insert(&srv)
 	c.Assert(err, gocheck.IsNil)
-	defer srv.Delete()
+	defer s.conn.Services().RemoveId(srv.Name)
 	si := ServiceInstance{Name: "instance", ServiceName: srv.Name}
 	status, err := si.Status()
 	c.Assert(err, gocheck.IsNil)
