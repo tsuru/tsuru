@@ -89,6 +89,21 @@ to scale an application, just add a new unit and Tsuru will do the trick.
 You may also want to scale using the FrontEnd as a Service, powered by `Varnish <https://www.varnish-cache.org/>`_. One single application might have a whole farm of Varnish VMs in
 front of it receiving all the traffic.
 
+
+Built-in Database Services
+--------------------------
+
+Tsuru already has a variety of database services available for setup on your cloud. It allows you to easily create a service instance for your application usage and bind with it.
+The service setup for your application is automatically by the use of environment variables, which are transparently exported on all your applications VMs, allowing your configuration
+to fit diverses environments (like development, staging, production, etc.)
+
+
+Extensible Service and Platform Support
+---------------------------------------
+
+Tsuru allows you to easily add support for new services and new platforms. For application platforms, it uses `Juju Charms <http://jujucharms.com/>`_, for services, it has
+a `API <docs.tsuru.io/en/latest/services/api.html>`_ that it uses to comunicate with them.
+
 Collaboration
 -------------
 
