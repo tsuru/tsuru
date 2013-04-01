@@ -169,7 +169,7 @@ func (s *S) TestBindCallTheServiceAPIAndSetsEnvironmentVariableReturnedFromTheCa
 }
 
 func (s *S) TestBindAppMultiUnits(c *gocheck.C) {
-	var calls int
+	var calls int32
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(`{"DATABASE_USER":"root","DATABASE_PASSWORD":"s3cr3t"}`))
 		calls++
@@ -194,18 +194,17 @@ func (s *S) TestBindAppMultiUnits(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	ok := make(chan bool)
 	go func() {
-		for {
-			if calls == 2 {
-				ok <- true
-			}
+		t := time.Tick(1)
+		for _ = <-t; atomic.LoadInt32(&calls) < 2; _ = <-t {
 		}
+		ok <- true
 	}()
 	select {
 	case <-ok:
 	case <-time.After(2e9):
 		c.Errorf("Did not bind all units afters 2s.")
 	}
-	c.Assert(calls, gocheck.Equals, 2)
+	c.Assert(calls, gocheck.Equals, int32(2))
 }
 
 func (s *S) TestBindReturnConflictIfTheAppIsAlreadyBound(c *gocheck.C) {
