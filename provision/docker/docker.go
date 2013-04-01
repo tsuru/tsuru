@@ -74,20 +74,36 @@ func (c *container) create() error {
 	if err != nil {
 		return err
 	}
-	return runCmd("sudo", "docker", "run", "-d", "base", "/bin/bash", c.name, keyPath)
+	docker, err := config.GetString("docker:binary")
+	if err != nil {
+		return err
+	}
+	return runCmd("sudo", docker, "run", "-d", "base", "/bin/bash", "-c", "while true;do echo bla;sleep 5;done", c.name, keyPath)
 }
 
 // start starts a docker container.
 func (c *container) start() error {
-	return runCmd("sudo", "docker", "start", c.name)
+	docker, err := config.GetString("docker:binary")
+	if err != nil {
+		return err
+	}
+	return runCmd("sudo", docker, "start", c.name)
 }
 
 // stop stops a docker container.
 func (c *container) stop() error {
-	return runCmd("sudo", "docker", "stop", c.name)
+	docker, err := config.GetString("docker:binary")
+	if err != nil {
+		return err
+	}
+	return runCmd("sudo", docker, "stop", c.name)
 }
 
 // destroy destory a docker container.
 func (c *container) destroy() error {
-	return runCmd("sudo", "docker", "rm", c.name)
+	docker, err := config.GetString("docker:binary")
+	if err != nil {
+		return err
+	}
+	return runCmd("sudo", docker, "rm", c.name)
 }
