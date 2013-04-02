@@ -91,4 +91,4 @@ echo "starting tsuru-collector"
 collector &
 
 echo "starting tsuru-api"
-api &
+sudo api &
