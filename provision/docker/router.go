@@ -7,6 +7,7 @@ package docker
 import (
 	"fmt"
 	"github.com/globocom/config"
+	"github.com/globocom/tsuru/log"
 	"os/exec"
 )
 
@@ -19,18 +20,13 @@ func AddRoute(name, ip string) error {
 	if err != nil {
 		return err
 	}
-	file, _ := filesystem().Create(routesPath + "/" + name)
-	defer file.Close()
-	template := `server {
-	listen 80;
-	%s.%s;
-	location / {
-		proxy_pass http://%s;
-	}
-}`
+    filename := routesPath + "/" + name
+	template := `server { listen 80; %s.%s; location / { proxy_pass http://%s; } }`
 	template = fmt.Sprintf(template, name, domain, ip)
-	data := []byte(template)
-	_, err = file.Write(data)
+    err, _ = runCmd("sudo", "echo", "\"", template, "\"", "|", "sudo tee", filename)
+    if err != nil {
+        log.Printf("error(%s) trying to write file: %s", filename)
+    }
 	return err
 }
 

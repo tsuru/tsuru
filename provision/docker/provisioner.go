@@ -70,7 +70,13 @@ func (p *LocalProvisioner) install(ip string) error {
 
 func (p *LocalProvisioner) start(ip string) error {
 	cmd := exec.Command("ssh", "-q", "-o", "StrictHostKeyChecking no", "-l", "ubuntu", ip, "sudo /var/lib/tsuru/hooks/start")
-	return cmd.Run()
+	err := cmd.Run()
+	if err != nil {
+		log.Printf("error on start for %s", ip)
+		log.Print(err)
+		return err
+	}
+	return nil
 }
 
 func (p *LocalProvisioner) Provision(app provision.App) error {
@@ -91,23 +97,26 @@ func (p *LocalProvisioner) Provision(app provision.App) error {
 		if err != nil {
 			log.Print(err)
 		}
-		err = c.create()
+        err, instance_id := c.create()
 		if err != nil {
 			log.Printf("error on create container %s", app.GetName())
 			log.Print(err)
-		}
+		} else {
+            c.instanceId = instance_id
+            u.InstanceId = instance_id
+        }
 		err = c.start()
 		if err != nil {
 			log.Printf("error on start container %s", app.GetName())
 			log.Print(err)
 		}
-		ip := c.ip()
+		err, ip := c.ip()
 		u.Ip = ip
 		u.Status = provision.StatusInstalling
 		err = p.collection().Update(bson.M{"name": u.Name}, u)
 		if err != nil {
 			log.Print(err)
-		}
+		} 
 		err = p.setup(ip, app.GetFramework())
 		if err != nil {
 			log.Printf("error on setup container %s", app.GetName())
@@ -119,11 +128,12 @@ func (p *LocalProvisioner) Provision(app provision.App) error {
 			log.Print(err)
 		}
 		err = p.start(ip)
+		log.Printf("running provisioning start() for container %s", c.instanceId)
 		if err != nil {
 			log.Printf("error on start app for container %s", app.GetName())
 			log.Print(err)
 		}
-		err = AddRoute(app.GetName(), ip)
+        err = AddRoute(app.GetName(), ip)
 		if err != nil {
 			log.Printf("error on add route for %s with ip %s", app.GetName(), ip)
 			log.Print(err)
@@ -137,7 +147,9 @@ func (p *LocalProvisioner) Provision(app provision.App) error {
 		err = p.collection().Update(bson.M{"name": u.Name}, u)
 		if err != nil {
 			log.Print(err)
-		}
+		} else {
+            log.Printf("Successfuly updated unit: %s", app.GetName())
+        }
 	}(p, app)
 	return nil
 }
@@ -154,17 +166,24 @@ func (p *LocalProvisioner) Restart(app provision.App) error {
 }
 
 func (p *LocalProvisioner) Destroy(app provision.App) error {
-	c := container{name: app.GetName()}
-	go func(c container) {
-		log.Printf("stoping container %s", c.name)
-		c.stop()
+    units := app.ProvisionUnits()
+    for _, u := range units {
+        go func(u provision.AppUnit) {
+            c := container{
+                name: app.GetName(),
+                // TODO: get actual c.instanceId
+                instanceId: u.GetInstanceId(),
+            }
+	    	log.Printf("stoping container %s", u.GetInstanceId())
+	    	c.stop()
 
-		log.Printf("destroying container %s", c.name)
-		c.destroy()
+	    	log.Printf("destroying container %s", u.GetInstanceId())
+	    	c.destroy()
 
-		log.Printf("removing container %s from the database", c.name)
-		p.collection().Remove(bson.M{"name": c.name})
-	}(c)
+	    	log.Printf("removing container %s from the database", u.GetName())
+	    	p.collection().Remove(bson.M{"name": u.GetName()})
+	    }(u)
+    } 
 	return nil
 }
 
