@@ -70,10 +70,33 @@ Install the latest version, by doing this:
 
     $ sudo apt-get install -y beanstalkd
 
+Configuring beanstalkd to start, edit the `/etc/default/beanstalkd` and uncomment this line:
+
+::
+
+    START=yes
+
+Then start beanstalkd:
+
+.. highlight:: bash
+
+::
+
+    $ sudo service beanstalkd start
+
 Gandalf
 -------
 
 Tsuru uses `Gandalf <https://github.com/globocom/gandalf>`_ to manage git repositories, to get it installed `follow this steps <https://gandalf.readthedocs.org/en/latest/install.html>`_
+
+Installing git
+~~~~~~~~~~~~~~
+
+.. highlight:: bash
+
+::
+
+    $ sudo apt-get install git -y
 
 Creating git user
 ~~~~~~~~~~~~~~~~~
@@ -216,13 +239,6 @@ Now that you have ``api`` and ``collector`` properly installed, and you
 
     $ sudo service mongodb start
 
-2. Start beanstalkd
-
-.. highlight:: bash
-
-::
-
-    $ sudo service beanstalkd start
 
 3. Start tsuru and collector
 
