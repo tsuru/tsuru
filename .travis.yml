@@ -3,7 +3,6 @@ before_install:
   - sudo apt-get update -qq > apt-get.out || (cat apt-get.out && exit 1)
   - sudo apt-get install bzr mercurial git libyaml-dev cmake -qq >> apt-get.out || (cat apt-get.out && exit 1)
 install:
-  - misc/check-license.sh
   - mkdir -p $GOPATH/src/github.com/globocom/tsuru
   - mv * $GOPATH/src/github.com/globocom/tsuru
   - pushd /tmp
