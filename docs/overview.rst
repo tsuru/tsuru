@@ -186,9 +186,9 @@ Dev/Ops Perspective
 -------------------
 
 Tsuru's components are distributed, it is composed by many pieces of software,
-each one made to be easily deployable and maintenable.
+each one made to be easily deployable and maintenable. #TODO link architecture overview.
 
 Application Developer Perspective
 ---------------------------------
 
-We aim to make developers life easier.
+We aim to make developers life easier. #TODO link development workflow.

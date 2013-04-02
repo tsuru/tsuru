@@ -11,6 +11,8 @@ What is Tsuru?
 
 Tsuru is an open source polyglot cloud application platform (paas). With tsuru, you don’t need to think about servers at all. You can write apps in the programming language of your choice, back it with add-on resources such as SQL and NoSQL databases, memcached, redis, and many others. You manage your app using the tsuru command-line tool and you deploy code using the Git revision control system, all running on the tsuru infrastructure.
 
+Learn more in :doc:`Tsuru's Overview </overview>`.
+
 :doc:`build your own paas with tsuru </build>`
 ------------------------------------------------
 
