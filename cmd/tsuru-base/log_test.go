@@ -29,7 +29,7 @@ func (s *S) TestJsonWriterBuffer(c *gocheck.C) {
 	l = len(data)
 	n, err = w.Write([]byte(data))
 	c.Assert(err, gocheck.IsNil)
-	n, err := w.Write([]byte(data))
+	n, err = w.Write([]byte(data))
 	expected := "\x1b[0;34;10m2013-03-21 18:27:02 []:\x1b[0m   mysql\n"
 	c.Assert(writer.String(), gocheck.Equals, expected)
 }
