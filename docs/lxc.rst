@@ -12,25 +12,6 @@ This document assumes that tsuru is being installed on a Ubuntu (12.10) machine.
 can use equivalent packages for beanstalkd, git, MongoDB and other tsuru
 dependencies. Please make sure you satisfy minimal version requirements.
 
-Overview
-========
-
-The Tsuru PaaS is composed by multiple components:
-
-* tsuru api server
-* tsuru collector
-* lxc
-* gandalf api server
-* gandalf wrapper
-* git daemon
-* charms
-* mongodb (database)
-* beanstalkd (queue server)
-* nginx (router)
-
-Installing
-==========
-
 You can use the script bellow to quick install tsuru with lxc:
 
 .. highlight:: bash
@@ -43,6 +24,7 @@ Or follow this steps:
 
 lxc
 ---
+
 
 Install the lxc, by doing this:
 
@@ -196,7 +178,7 @@ These commands will install ``collector`` and ``api`` commands in ``/usr/bin``
 commands somewhere else in your ``PATH``.
 
 Configuring
-===========
+~~~~~~~~~~~
 
 Before running tsuru, you must configure it. By default, tsuru will look for
 the configuration file in the ``/etc/tsuru/tsuru.conf`` path. You can check a
@@ -212,11 +194,8 @@ You can download the sample configuration file from Github:
     $ [sudo] mkdir /etc/tsuru
     $ [sudo] curl -sL https://raw.github.com/globocom/tsuru/master/etc/tsuru-lxc.conf -o /etc/tsuru/tsuru.conf
 
-Make sure you define the required settings (database connection, authentication
-configuration, AWS credentials, etc.) before running tsuru.
-
 Downloading charms
-==================
+~~~~~~~~~~~~~~~~~~
 
 .. highlight:: bash
 
@@ -225,29 +204,21 @@ Downloading charms
     $ git clone git://github.com/globocom/charms.git -b lxc /home/ubuntu/charms
 
 
-Running tsuru
-=============
+Running
+~~~~~~~
 
 Now that you have ``api`` and ``collector`` properly installed, and you
 :doc:`configured tsuru </config>`, you're three steps away from running it.
 
-1. Start mongodb
+
+Start tsuru and collector
 
 .. highlight:: bash
 
 ::
 
-    $ sudo service mongodb start
-
-
-3. Start tsuru and collector
-
-.. highlight:: bash
-
-::
-
-    $ api &
     $ collector &
+    $ sudo api &
 
 You can see the logs in:
 
