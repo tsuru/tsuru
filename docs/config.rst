@@ -50,7 +50,7 @@ use-tls
 optional, and defaults to "false".
 
 tls-cert-file
-+++++++++++
++++++++++++++
 
 ``tlscert-file`` is the path to the X.509 certificate file configured to serve
 the domain.  This setting is optional, unless ``use-tls`` is true.
