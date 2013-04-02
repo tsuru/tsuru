@@ -51,7 +51,7 @@ command, you will be asked for your password:
 
 
 Deploy an application
-++++++++++++++++++++
++++++++++++++++++++++
 
 Choose from the following getting started tutorials to learn how to deploy your
 first application using a supported language or framework:
