@@ -11,19 +11,19 @@ Overview
 
 This document is a hands-on guide to turning your existing cloud service into a Tsuru service.
 
-In order to create a service is you to implement a provisioning API for your service, which Tsuru will call using `HTTP protocol <http://en.wikipedia.org/wiki/Hypertext_Transfer_Protocol#Request_methods>`_ when a customer creates a new instance or binds a service instance with an app.
+In order to create a service you need to implement a provisioning API for your service, which Tsuru will call using `HTTP protocol <http://en.wikipedia.org/wiki/Hypertext_Transfer_Protocol#Request_methods>`_ when a customer creates a new instance or binds a service instance with an app.
 
 You will also need to create a YAML document that will serve as the service manifest. We provide a command-line tool to help you to create this manifest and manage your service.
 
 Creating your service api
 =========================
 
-To create your api you can use any programming language or framework. In this tutorial we will use `flask <http://flask.pocoo.org>`_.
+To create your service api you can use any programming language or framework. In this tutorial we will use `flask <http://flask.pocoo.org>`_.
 
 Prerequisites
 -------------
 
-First, let's be sure that Python and pip is already installed:
+First, let's be sure that Python and pip are already installed:
 
 .. highlight:: bash
 
@@ -37,7 +37,7 @@ First, let's be sure that Python and pip is already installed:
 
     pip: error: You must give a command (use "pip help" to see a list of commands)
 
-For more information on how to install python you can see the `Python download documentation <http://python.org/download/>`_ and on how to install pip you can see the `pip installation instructions <http://www.pip-installer.org/en/latest/installing.html>`_.
+For more information about how to install python you can see the `Python download documentation <http://python.org/download/>`_ and about how to install pip you can see the `pip installation instructions <http://www.pip-installer.org/en/latest/installing.html>`_.
 
 Now, with python and pip installed, you can use pip to install flask:
 
@@ -74,7 +74,7 @@ For run this app you can do:
 
 If you open your web browser and access the url "http://127.0.0.1:5000/" you will see the "Hello World!".
 
-You then need to implement the resources expected by the :doc:`Tsuru api workflow </services/api>`.
+Then, you need to implement the resources expected by the :doc:`Tsuru api workflow </services/api>`.
 
 Provisioning the resource for new instances
 -------------------------------------------
