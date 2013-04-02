@@ -64,6 +64,7 @@ func (c *container) ip() string {
 			time.Sleep(1 * time.Second)
 		}
 	}
+	return ""
 }
 
 // create creates a lxc container with ubuntu template by default.
