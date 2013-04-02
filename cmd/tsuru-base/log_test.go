@@ -14,6 +14,22 @@ import (
 	"time"
 )
 
+func (s *S) TestJsonWriterBuffer(c *gocheck.C) {
+	var (
+		writer bytes.Buffer
+		buf    bytes.Buffer
+	)
+	w := jsonWriter{&writer, buf}
+	data := `[{"Date":"2013-03-21T18:27:02.452-03:00","Message":"  mysq`
+	_, err := w.Write([]byte(data))
+	c.Assert(err, gocheck.IsNil)
+	data = `l"}]`
+	_, err = w.Write([]byte(data))
+	c.Assert(err, gocheck.IsNil)
+	expected := "\x1b[0;34;10m2013-03-21 18:27:02 []:\x1b[0m   mysql\n"
+	c.Assert(writer.String(), gocheck.Equals, expected)
+}
+
 func (s *S) TestJsonWriter(c *gocheck.C) {
 	t := time.Now()
 	logs := []log{

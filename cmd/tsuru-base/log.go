@@ -10,7 +10,6 @@ import (
 	"fmt"
 	"github.com/globocom/tsuru/cmd"
 	"io"
-	/* "io/ioutil" */
 	"launchpad.net/gnuflag"
 	"net/http"
 	"time"
