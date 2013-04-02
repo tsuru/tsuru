@@ -41,6 +41,7 @@ type jsonWriter struct {
 
 func (w *jsonWriter) Write(b []byte) (int, error) {
 	var logs []log
+	l := len(b)
 	if w.buff.Len() > 0 {
 		w.buff.Write(b)
 		b = w.buff.Bytes()
@@ -48,7 +49,7 @@ func (w *jsonWriter) Write(b []byte) (int, error) {
 	err := json.Unmarshal(b, &logs)
 	if err != nil {
 		w.buff.Write(b)
-		return len(b), nil
+		return l, nil
 	}
 	for _, l := range logs {
 		date := l.Date.Format("2006-01-02 15:04:05")
@@ -56,7 +57,7 @@ func (w *jsonWriter) Write(b []byte) (int, error) {
 		fmt.Fprintf(w.w, "%s %s\n", cmd.Colorfy(prefix, "blue", "", ""), l.Message)
 	}
 	w.buff.Reset()
-	return len(b), nil
+	return l, nil
 }
 
 type log struct {

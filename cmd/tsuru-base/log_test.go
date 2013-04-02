@@ -21,11 +21,15 @@ func (s *S) TestJsonWriterBuffer(c *gocheck.C) {
 	)
 	w := jsonWriter{&writer, buf}
 	data := `[{"Date":"2013-03-21T18:27:02.452-03:00","Message":"  mysq`
-	_, err := w.Write([]byte(data))
+	l := len(data)
+	n, err := w.Write([]byte(data))
 	c.Assert(err, gocheck.IsNil)
+	c.Assert(n, gocheck.Equals, l)
 	data = `l"}]`
-	_, err = w.Write([]byte(data))
+	l = len(data)
+	n, err = w.Write([]byte(data))
 	c.Assert(err, gocheck.IsNil)
+	n, err := w.Write([]byte(data))
 	expected := "\x1b[0;34;10m2013-03-21 18:27:02 []:\x1b[0m   mysql\n"
 	c.Assert(writer.String(), gocheck.Equals, expected)
 }
