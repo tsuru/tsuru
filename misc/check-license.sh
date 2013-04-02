@@ -4,7 +4,7 @@
 # Use of this source code is governed by a BSD-style
 # license that can be found in the LICENSE file.
 
-for f in `grep "Copyright 2012" -r . -l`
+for f in `grep "Copyright 2012" -r . -l | grep -v check-license.sh`
 do
 	date=`git log -1 --format="%ad" --date=short -- $f`
 	if [ `echo "$date" | grep ^2013` ]
