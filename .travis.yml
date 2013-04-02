@@ -20,6 +20,7 @@ install:
 before_script:
   - pushd $GOPATH/src/github.com/globocom/tsuru
   - ./check-fmt.sh
+  - misc/check-license.sh
   - make get-prod
 script:
   - pushd $GOPATH/src/github.com/globocom/tsuru
