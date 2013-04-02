@@ -21,6 +21,9 @@ sudo bash -c 'echo "deb http://downloads-distro.mongodb.org/repo/ubuntu-upstart 
 sudo apt-get update
 sudo apt-get install mongodb-10gen -y
 
+echo "installing git"
+sudo apt-get install git -y
+
 echo "installing gandalf-wrapper"
 curl -sL https://s3.amazonaws.com/tsuru/dist-server/gandalf-bin.tar.gz | sudo tar -xz -C /usr/bin
 
