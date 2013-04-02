@@ -36,7 +36,7 @@ If you don't provide the app name, tsuru will try to guess it. The default numbe
 }
 
 type jsonWriter struct {
-	w io.Writer
+	w    io.Writer
 	buff bytes.Buffer
 }
 
