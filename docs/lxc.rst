@@ -96,22 +96,16 @@ Let's create the directory for bare repositories:
     $ sudo mkdir -p /var/repositories
     $ sudo chown -R git:git /var/repositories
 
-And the directory for template:
+And the directory for template and add the tsuru hooks:
 
 .. highlight:: bash
 
 ::
 
-    $ sudo mkdir -p /var/repositories
-    $ sudo chown -R git:git /var/repositories
-
-And add the tsuru hooks:
-
-.. highlight:: bash
-
-::
-
-    $ sudo mkdir -p /home/git/bare-template
+    $ sudo mkdir -p /home/git/bare-template/hooks
+    $ curl https://raw.github.com/globocom/tsuru/master/misc/git-hooks/post-receive > /home/git/bare-template/hooks/post-receive
+    $ curl https://raw.github.com/globocom/tsuru/master/misc/git-hooks/pre-receive > /home/git/bare-template/hooks/pre-receive
+    $ curl https://raw.github.com/globocom/tsuru/master/misc/git-hooks/pre-receivei.py > /home/git/bare-template/hooks/pre-receive.py
     $ sudo chown -R git:git /home/git/bare-template
 
 Configuring gandalf
