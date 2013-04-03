@@ -42,7 +42,16 @@ func (c *EnvGet) Run(context *cmd.Context, client cmd.Doer) error {
 	if err != nil {
 		return err
 	}
-	fmt.Fprint(context.Stdout, string(b))
+	var variables map[string]string
+	err = json.Unmarshal(b, &variables)
+	if err != nil {
+		return err
+	}
+	formatted := make([]string, 0, len(variables))
+	for name, value := range variables {
+		formatted = append(formatted, name+"="+value)
+	}
+	fmt.Fprint(context.Stdout, strings.Join(formatted, "\n"))
 	return nil
 }
 
@@ -119,29 +128,29 @@ func (c *EnvUnset) Run(context *cmd.Context, client cmd.Doer) error {
 	return nil
 }
 
-func requestEnvUrl(method string, g GuessingCommand, args []string, client cmd.Doer) (string, error) {
+func requestEnvUrl(method string, g GuessingCommand, args []string, client cmd.Doer) ([]byte, error) {
 	appName, err := g.Guess()
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	url, err := cmd.GetUrl(fmt.Sprintf("/apps/%s/env", appName))
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	var buf bytes.Buffer
 	json.NewEncoder(&buf).Encode(args)
 	request, err := http.NewRequest(method, url, &buf)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	r, err := client.Do(request)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	defer r.Body.Close()
 	b, err := ioutil.ReadAll(r.Body)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
-	return string(b), nil
+	return b, nil
 }

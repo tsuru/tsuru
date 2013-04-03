@@ -27,13 +27,14 @@ If you don't provide the app name, tsuru will try to guess it.`
 
 func (s *S) TestEnvGetRun(c *gocheck.C) {
 	var stdout, stderr bytes.Buffer
-	result := "DATABASE_HOST=somehost\n"
+	jsonResult := `{"DATABASE_HOST":"somehost"}`
+	result := "DATABASE_HOST=somehost"
 	context := cmd.Context{
 		Args:   []string{"DATABASE_HOST"},
 		Stdout: &stdout,
 		Stderr: &stderr,
 	}
-	client := cmd.NewClient(&http.Client{Transport: &transport{msg: result, status: http.StatusOK}}, nil, manager)
+	client := cmd.NewClient(&http.Client{Transport: &transport{msg: jsonResult, status: http.StatusOK}}, nil, manager)
 	command := EnvGet{}
 	command.Flags().Parse(true, []string{"-a", "someapp"})
 	err := command.Run(&context, client)
@@ -43,6 +44,7 @@ func (s *S) TestEnvGetRun(c *gocheck.C) {
 
 func (s *S) TestEnvGetRunWithMultipleParams(c *gocheck.C) {
 	var stdout, stderr bytes.Buffer
+	jsonResult := `{"DATABASE_HOST":"somehost","DATABASE_USER":"someuser"}`
 	result := "DATABASE_HOST=somehost\nDATABASE_USER=someuser"
 	params := []string{"DATABASE_HOST", "DATABASE_USER"}
 	context := cmd.Context{
@@ -52,7 +54,7 @@ func (s *S) TestEnvGetRunWithMultipleParams(c *gocheck.C) {
 	}
 	trans := &conditionalTransport{
 		transport{
-			msg:    result,
+			msg:    jsonResult,
 			status: http.StatusOK,
 		},
 		func(req *http.Request) bool {
@@ -73,6 +75,7 @@ func (s *S) TestEnvGetRunWithMultipleParams(c *gocheck.C) {
 
 func (s *S) TestEnvGetWithoutTheFlag(c *gocheck.C) {
 	var stdout, stderr bytes.Buffer
+	jsonResult := `{"DATABASE_HOST":"somehost","DATABASE_USER":"someuser"}`
 	result := "DATABASE_HOST=somehost\nDATABASE_USER=someuser"
 	params := []string{"DATABASE_HOST", "DATABASE_USER"}
 	context := cmd.Context{
@@ -82,7 +85,7 @@ func (s *S) TestEnvGetWithoutTheFlag(c *gocheck.C) {
 	}
 	trans := &conditionalTransport{
 		transport{
-			msg:    result,
+			msg:    jsonResult,
 			status: http.StatusOK,
 		},
 		func(req *http.Request) bool {
@@ -301,5 +304,5 @@ func (s *S) TestRequestEnvUrl(c *gocheck.C) {
 	g := GuessingCommand{G: &FakeGuesser{name: "someapp"}, appName: "something"}
 	b, err := requestEnvUrl("GET", g, args, client)
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(b, gocheck.Equals, result)
+	c.Assert(b, gocheck.DeepEquals, []byte(result))
 }
