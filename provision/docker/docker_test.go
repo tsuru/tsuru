@@ -13,7 +13,7 @@ import (
 	"os"
 )
 
-func (s *S) TestLXCCreate(c *gocheck.C) {
+func (s *S) TestDockerCreate(c *gocheck.C) {
 	config.Set("docker:authorized-key-path", "somepath")
 	tmpdir, err := commandmocker.Add("sudo", "$*")
 	c.Assert(err, gocheck.IsNil)
@@ -26,7 +26,7 @@ func (s *S) TestLXCCreate(c *gocheck.C) {
 	c.Assert(commandmocker.Output(tmpdir), gocheck.Equals, expected)
 }
 
-func (s *S) TestLXCStart(c *gocheck.C) {
+func (s *S) TestDockerStart(c *gocheck.C) {
 	tmpdir, err := commandmocker.Add("sudo", "$*")
 	c.Assert(err, gocheck.IsNil)
 	defer commandmocker.Remove(tmpdir)
@@ -38,7 +38,7 @@ func (s *S) TestLXCStart(c *gocheck.C) {
 	c.Assert(commandmocker.Output(tmpdir), gocheck.Equals, expected)
 }
 
-func (s *S) TestLXCStop(c *gocheck.C) {
+func (s *S) TestDockerStop(c *gocheck.C) {
 	tmpdir, err := commandmocker.Add("sudo", "$*")
 	c.Assert(err, gocheck.IsNil)
 	defer commandmocker.Remove(tmpdir)
@@ -50,7 +50,7 @@ func (s *S) TestLXCStop(c *gocheck.C) {
 	c.Assert(commandmocker.Output(tmpdir), gocheck.Equals, expected)
 }
 
-func (s *S) TestLXCDestroy(c *gocheck.C) {
+func (s *S) TestDockerDestroy(c *gocheck.C) {
 	tmpdir, err := commandmocker.Add("sudo", "$*")
 	c.Assert(err, gocheck.IsNil)
 	defer commandmocker.Remove(tmpdir)
