@@ -45,7 +45,8 @@ func (c *container) ip() string {
 	}
 	quit := time.After(time.Duration(timeout) * time.Second)
 	tick := time.Tick(2 * time.Second)
-	for {
+	stop := false
+	for !stop {
 		select {
 		case <-tick:
 			file, _ := filesystem().Open("/var/lib/misc/dnsmasq.leases")
@@ -59,7 +60,7 @@ func (c *container) ip() string {
 				}
 			}
 		case <-quit:
-			return ""
+			stop = true
 		default:
 			time.Sleep(1 * time.Second)
 		}
