@@ -384,13 +384,11 @@ func RunCommand(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 }
 
 func getEnv(w http.ResponseWriter, r *http.Request, u *auth.User) error {
-	var (
-		variable []byte
-		err      error
-	)
+	var variables []string
 	if r.Body != nil {
-		variable, err = ioutil.ReadAll(r.Body)
-		if err != nil {
+		defer r.Body.Close()
+		err := json.NewDecoder(r.Body).Decode(&variables)
+		if err != nil && err != io.EOF {
 			return err
 		}
 	}
@@ -399,28 +397,24 @@ func getEnv(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	if err != nil {
 		return err
 	}
-	var write = func(v bind.EnvVar) error {
-		_, err := fmt.Fprintf(w, "%s\n", &v)
-		return err
+	l := len(variables)
+	if l == 0 {
+		l = len(app.Env)
 	}
-	if variables := strings.Fields(string(variable)); len(variables) > 0 {
+	result := make(map[string]string, l)
+	w.Header().Set("Content-Type", "application/json")
+	if len(variables) > 0 {
 		for _, variable := range variables {
 			if v, ok := app.Env[variable]; ok {
-				err = write(v)
-				if err != nil {
-					return err
-				}
+				result[variable] = v.String()
 			}
 		}
 	} else {
-		for _, v := range app.Env {
-			err = write(v)
-			if err != nil {
-				return err
-			}
+		for k, v := range app.Env {
+			result[k] = v.String()
 		}
 	}
-	return nil
+	return json.NewEncoder(w).Encode(result)
 }
 
 func setEnv(w http.ResponseWriter, r *http.Request, u *auth.User) error {

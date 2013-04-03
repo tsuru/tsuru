@@ -1165,12 +1165,15 @@ func (s *S) TestGetEnvHandlerGetsEnvironmentVariableFromApp(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	url := fmt.Sprintf("/apps/%s/env/?:name=%s", a.Name, a.Name)
-	request, err := http.NewRequest("GET", url, strings.NewReader("DATABASE_HOST"))
+	request, err := http.NewRequest("GET", url, strings.NewReader(`["DATABASE_HOST"]`))
+	request.Header.Set("Content-Type", "application/json")
 	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
 	err = getEnv(recorder, request, s.user)
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(recorder.Body.String(), gocheck.Equals, "DATABASE_HOST=localhost\n")
+	expected := `{"DATABASE_HOST":"localhost"}` + "\n"
+	c.Assert(recorder.Body.String(), gocheck.Equals, expected)
+	c.Assert(recorder.Header().Get("Content-Type"), gocheck.Equals, "application/json")
 }
 
 func (s *S) TestGetEnvHandlerShouldAcceptMultipleVariables(c *gocheck.C) {
@@ -1187,12 +1190,20 @@ func (s *S) TestGetEnvHandlerShouldAcceptMultipleVariables(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	url := fmt.Sprintf("/apps/%s/env/?:name=%s", a.Name, a.Name)
-	request, err := http.NewRequest("GET", url, strings.NewReader("DATABASE_HOST DATABASE_USER"))
+	request, err := http.NewRequest("GET", url, strings.NewReader(`["DATABASE_HOST", "DATABASE_USER"]`))
 	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
 	err = getEnv(recorder, request, s.user)
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(recorder.Body.String(), gocheck.Equals, "DATABASE_HOST=localhost\nDATABASE_USER=root\n")
+	c.Assert(recorder.Header().Get("Content-type"), gocheck.Equals, "application/json")
+	expected := map[string]string{
+		"DATABASE_HOST": "localhost",
+		"DATABASE_USER": "root",
+	}
+	var got map[string]string
+	err = json.Unmarshal(recorder.Body.Bytes(), &got)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(got, gocheck.DeepEquals, expected)
 }
 
 func (s *S) TestGetEnvHandlerReturnsAllVariablesIfEnvironmentVariablesAreMissingWithMaskOnPrivateVars(c *gocheck.C) {
@@ -1209,7 +1220,12 @@ func (s *S) TestGetEnvHandlerReturnsAllVariablesIfEnvironmentVariablesAreMissing
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
-	expected := []string{"", "DATABASE_HOST=localhost", "DATABASE_PASSWORD=*** (private variable)", "DATABASE_USER=root"}
+	expected := map[string]string{
+		"DATABASE_HOST":     "localhost",
+		"DATABASE_PASSWORD": "*** (private variable)",
+		"DATABASE_USER":     "root",
+	}
+	var got map[string]string
 	bodies := []io.Reader{nil, strings.NewReader("")}
 	for _, body := range bodies {
 		request, err := http.NewRequest("GET", "/apps/time/env/?:name=time", body)
@@ -1217,8 +1233,8 @@ func (s *S) TestGetEnvHandlerReturnsAllVariablesIfEnvironmentVariablesAreMissing
 		recorder := httptest.NewRecorder()
 		err = getEnv(recorder, request, s.user)
 		c.Assert(err, gocheck.IsNil)
-		got := strings.Split(recorder.Body.String(), "\n")
-		sort.Strings(got)
+		err = json.Unmarshal(recorder.Body.Bytes(), &got)
+		c.Assert(err, gocheck.IsNil)
 		c.Assert(got, gocheck.DeepEquals, expected)
 	}
 }
@@ -1234,7 +1250,7 @@ func (s *S) TestGetEnvHandlerReturnsInternalErrorIfReadAllFails(c *gocheck.C) {
 }
 
 func (s *S) TestGetEnvHandlerReturnsNotFoundIfTheAppDoesNotExist(c *gocheck.C) {
-	request, err := http.NewRequest("GET", "/apps/unknown/env/?:name=unknown", strings.NewReader("DATABASE_HOST"))
+	request, err := http.NewRequest("GET", "/apps/unknown/env/?:name=unknown", nil)
 	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
 	err = getEnv(recorder, request, s.user)
@@ -1254,7 +1270,7 @@ func (s *S) TestGetEnvHandlerReturnsForbiddenIfTheGivenUserDoesNotHaveAccessToTh
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	url := fmt.Sprintf("/apps/%s/env/?:name=%s", a.Name, a.Name)
-	request, err := http.NewRequest("GET", url, strings.NewReader("DATABASE_HOST"))
+	request, err := http.NewRequest("GET", url, strings.NewReader(`["DATABASE_HOST"]`))
 	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
 	err = getEnv(recorder, request, s.user)
