@@ -81,7 +81,7 @@ func main() {
 	m.Get("/apps", AuthorizationRequiredHandler(appList))
 	m.Post("/apps", AuthorizationRequiredHandler(createApp))
 	m.Put("/apps/:name/units", AuthorizationRequiredHandler(addUnits))
-	m.Del("/apps/:name/units", AuthorizationRequiredHandler(RemoveUnitsHandler))
+	m.Del("/apps/:name/units", AuthorizationRequiredHandler(removeUnits))
 	m.Put("/apps/:app/:team", AuthorizationRequiredHandler(GrantAccessToTeamHandler))
 	m.Del("/apps/:app/:team", AuthorizationRequiredHandler(RevokeAccessFromTeamHandler))
 	m.Get("/apps/:name/log", AuthorizationRequiredHandler(appLog))

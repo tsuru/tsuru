@@ -244,7 +244,7 @@ func addUnits(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	return app.AddUnits(n)
 }
 
-func RemoveUnitsHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
+func removeUnits(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	n, err := numberOfUnits(r)
 	if err != nil {
 		return err
