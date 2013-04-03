@@ -77,7 +77,7 @@ func main() {
 	m.Get("/apps/:name/restart", AuthorizationRequiredHandler(RestartHandler))
 	m.Get("/apps/:name/env", AuthorizationRequiredHandler(GetEnv))
 	m.Post("/apps/:name/env", AuthorizationRequiredHandler(setEnv))
-	m.Del("/apps/:name/env", AuthorizationRequiredHandler(UnsetEnv))
+	m.Del("/apps/:name/env", AuthorizationRequiredHandler(unsetEnv))
 	m.Get("/apps", AuthorizationRequiredHandler(AppList))
 	m.Post("/apps", AuthorizationRequiredHandler(CreateAppHandler))
 	m.Put("/apps/:name/units", AuthorizationRequiredHandler(AddUnitsHandler))

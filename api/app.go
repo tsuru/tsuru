@@ -450,7 +450,7 @@ func setEnv(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	return app.SetEnvs(envs, true)
 }
 
-func UnsetEnv(w http.ResponseWriter, r *http.Request, u *auth.User) error {
+func unsetEnv(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	msg := "You must provide the environment variables"
 	if r.Body == nil {
 		return &errors.Http{Code: http.StatusBadRequest, Message: msg}
