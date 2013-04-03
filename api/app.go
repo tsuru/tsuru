@@ -133,7 +133,7 @@ func getTeamNames(u *auth.User) ([]string, error) {
 	return auth.GetTeamsNames(teams), nil
 }
 
-func AppList(w http.ResponseWriter, r *http.Request, u *auth.User) error {
+func appList(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	apps, err := app.List(u)
 	if err != nil {
 		return err
