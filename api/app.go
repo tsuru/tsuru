@@ -439,15 +439,17 @@ func setEnv(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 }
 
 func unsetEnv(w http.ResponseWriter, r *http.Request, u *auth.User) error {
-	msg := "You must provide the environment variables"
+	msg := "You must provide the list of environment variables, in JSON format"
 	if r.Body == nil {
 		return &errors.Http{Code: http.StatusBadRequest, Message: msg}
 	}
-	body, err := ioutil.ReadAll(r.Body)
+	var variables []string
+	defer r.Body.Close()
+	err := json.NewDecoder(r.Body).Decode(&variables)
 	if err != nil {
-		return err
+		return &errors.Http{Code: http.StatusBadRequest, Message: msg}
 	}
-	if len(body) == 0 {
+	if len(variables) == 0 {
 		return &errors.Http{Code: http.StatusBadRequest, Message: msg}
 	}
 	appName := r.URL.Query().Get(":name")
@@ -455,7 +457,7 @@ func unsetEnv(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	if err != nil {
 		return err
 	}
-	return app.UnsetEnvs(strings.Fields(string(body)), true)
+	return app.UnsetEnvs(variables, true)
 }
 
 func setCName(w http.ResponseWriter, r *http.Request, u *auth.User) error {

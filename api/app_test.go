@@ -1427,8 +1427,9 @@ func (s *S) TestUnsetEnvHandlerRemovesTheEnvironmentVariablesFromTheApp(c *goche
 	expected := a.Env
 	delete(expected, "DATABASE_HOST")
 	url := fmt.Sprintf("/apps/%s/env/?:name=%s", a.Name, a.Name)
-	request, err := http.NewRequest("DELETE", url, strings.NewReader("DATABASE_HOST"))
+	request, err := http.NewRequest("DELETE", url, strings.NewReader(`["DATABASE_HOST"]`))
 	c.Assert(err, gocheck.IsNil)
+	request.Header.Set("Content-Type", "application/json")
 	recorder := httptest.NewRecorder()
 	err = unsetEnv(recorder, request, s.user)
 	c.Assert(err, gocheck.IsNil)
@@ -1452,7 +1453,7 @@ func (s *S) TestUnsetEnvHandlerRemovesAllGivenEnvironmentVariables(c *gocheck.C)
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	url := fmt.Sprintf("/apps/%s/env/?:name=%s", a.Name, a.Name)
-	request, err := http.NewRequest("DELETE", url, strings.NewReader("DATABASE_HOST DATABASE_USER"))
+	request, err := http.NewRequest("DELETE", url, strings.NewReader(`["DATABASE_HOST", "DATABASE_USER"]`))
 	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
 	err = unsetEnv(recorder, request, s.user)
@@ -1484,7 +1485,8 @@ func (s *S) TestUnsetHandlerDoesNotRemovePrivateVariables(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	url := fmt.Sprintf("/apps/%s/env/?:name=%s", a.Name, a.Name)
-	request, err := http.NewRequest("DELETE", url, strings.NewReader("DATABASE_HOST DATABASE_USER DATABASE_PASSWORD"))
+	b := strings.NewReader(`["DATABASE_HOST", "DATABASE_USER", "DATABASE_PASSWORD"]`)
+	request, err := http.NewRequest("DELETE", url, b)
 	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
 	err = unsetEnv(recorder, request, s.user)
@@ -1513,7 +1515,7 @@ func (s *S) TestUnsetEnvHandlerReturnsInternalErrorIfReadAllFails(c *gocheck.C) 
 }
 
 func (s *S) TestUnsetEnvHandlerReturnsBadRequestIfVariablesAreMissing(c *gocheck.C) {
-	bodies := []io.Reader{nil, strings.NewReader("")}
+	bodies := []io.Reader{nil, strings.NewReader(""), strings.NewReader("[]")}
 	for _, body := range bodies {
 		request, err := http.NewRequest("POST", "/apps/unknown/env/?:name=unkown", body)
 		c.Assert(err, gocheck.IsNil)
@@ -1523,12 +1525,12 @@ func (s *S) TestUnsetEnvHandlerReturnsBadRequestIfVariablesAreMissing(c *gocheck
 		e, ok := err.(*errors.Http)
 		c.Assert(ok, gocheck.Equals, true)
 		c.Assert(e.Code, gocheck.Equals, http.StatusBadRequest)
-		c.Assert(e, gocheck.ErrorMatches, "^You must provide the environment variables$")
+		c.Assert(e, gocheck.ErrorMatches, "^You must provide the list of environment variables, in JSON format$")
 	}
 }
 
 func (s *S) TestUnsetEnvHandlerReturnsNotFoundIfTheAppDoesNotExist(c *gocheck.C) {
-	b := strings.NewReader("DATABASE_HOST")
+	b := strings.NewReader(`["DATABASE_HOST"]`)
 	request, err := http.NewRequest("POST", "/apps/unknown/env/?:name=unknown", b)
 	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
@@ -1546,7 +1548,7 @@ func (s *S) TestUnsetEnvHandlerReturnsForbiddenIfTheGivenUserDoesNotHaveAccessTo
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	url := fmt.Sprintf("/apps/%s/env/?:name=%s", a.Name, a.Name)
-	request, err := http.NewRequest("POST", url, strings.NewReader("DATABASE_HOST=localhost"))
+	request, err := http.NewRequest("POST", url, strings.NewReader(`["DATABASE_HOST"]`))
 	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
 	err = unsetEnv(recorder, request, s.user)
