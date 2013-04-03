@@ -13,6 +13,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"regexp"
+	"sort"
 	"strings"
 )
 
@@ -51,6 +52,7 @@ func (c *EnvGet) Run(context *cmd.Context, client cmd.Doer) error {
 	for name, value := range variables {
 		formatted = append(formatted, name+"="+value)
 	}
+	sort.Strings(formatted)
 	fmt.Fprint(context.Stdout, strings.Join(formatted, "\n"))
 	return nil
 }

@@ -73,6 +73,24 @@ func (s *S) TestEnvGetRunWithMultipleParams(c *gocheck.C) {
 	c.Assert(stdout.String(), gocheck.Equals, result)
 }
 
+func (s *S) TestEnvGetAlwaysPrintInAlphabeticalOrder(c *gocheck.C) {
+	var stdout, stderr bytes.Buffer
+	jsonResult := `{"DATABASE_USER":"someuser","DATABASE_HOST":"somehost"}`
+	result := "DATABASE_HOST=somehost\nDATABASE_USER=someuser"
+	params := []string{"DATABASE_HOST", "DATABASE_USER"}
+	context := cmd.Context{
+		Args:   params,
+		Stdout: &stdout,
+		Stderr: &stderr,
+	}
+	client := cmd.NewClient(&http.Client{Transport: &transport{msg: jsonResult, status: http.StatusOK}}, nil, manager)
+	command := EnvGet{}
+	command.Flags().Parse(true, []string{"-a", "someapp"})
+	err := command.Run(&context, client)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(stdout.String(), gocheck.Equals, result)
+}
+
 func (s *S) TestEnvGetWithoutTheFlag(c *gocheck.C) {
 	var stdout, stderr bytes.Buffer
 	jsonResult := `{"DATABASE_HOST":"somehost","DATABASE_USER":"someuser"}`
