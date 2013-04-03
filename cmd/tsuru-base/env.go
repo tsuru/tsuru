@@ -53,7 +53,7 @@ func (c *EnvGet) Run(context *cmd.Context, client cmd.Doer) error {
 		formatted = append(formatted, name+"="+value)
 	}
 	sort.Strings(formatted)
-	fmt.Fprint(context.Stdout, strings.Join(formatted, "\n"))
+	fmt.Fprintln(context.Stdout, strings.Join(formatted, "\n"))
 	return nil
 }
 
