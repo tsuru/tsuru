@@ -383,7 +383,7 @@ func RunCommand(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	return app.Run(string(c), w)
 }
 
-func GetEnv(w http.ResponseWriter, r *http.Request, u *auth.User) (err error) {
+func getEnv(w http.ResponseWriter, r *http.Request, u *auth.User) (err error) {
 	var variable []byte
 	if r.Body != nil {
 		variable, err = ioutil.ReadAll(r.Body)
