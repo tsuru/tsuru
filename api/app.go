@@ -159,7 +159,7 @@ type jsonApp struct {
 	Units     uint
 }
 
-func CreateAppHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
+func createApp(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	var a app.App
 	var japp jsonApp
 	defer r.Body.Close()

@@ -79,7 +79,7 @@ func main() {
 	m.Post("/apps/:name/env", AuthorizationRequiredHandler(setEnv))
 	m.Del("/apps/:name/env", AuthorizationRequiredHandler(unsetEnv))
 	m.Get("/apps", AuthorizationRequiredHandler(appList))
-	m.Post("/apps", AuthorizationRequiredHandler(CreateAppHandler))
+	m.Post("/apps", AuthorizationRequiredHandler(createApp))
 	m.Put("/apps/:name/units", AuthorizationRequiredHandler(AddUnitsHandler))
 	m.Del("/apps/:name/units", AuthorizationRequiredHandler(RemoveUnitsHandler))
 	m.Put("/apps/:app/:team", AuthorizationRequiredHandler(GrantAccessToTeamHandler))
