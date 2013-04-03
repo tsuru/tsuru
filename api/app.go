@@ -231,7 +231,7 @@ func numberOfUnits(r *http.Request) (uint, error) {
 	return uint(n), nil
 }
 
-func AddUnitsHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
+func addUnits(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	n, err := numberOfUnits(r)
 	if err != nil {
 		return err
