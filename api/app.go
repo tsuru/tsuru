@@ -207,7 +207,7 @@ func createApp(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	return nil
 }
 
-func numberOfUnitsOrError(r *http.Request) (uint, error) {
+func numberOfUnits(r *http.Request) (uint, error) {
 	missingMsg := "You must provide the number of units."
 	if r.Body == nil {
 		return 0, &errors.Http{Code: http.StatusBadRequest, Message: missingMsg}
@@ -232,7 +232,7 @@ func numberOfUnitsOrError(r *http.Request) (uint, error) {
 }
 
 func AddUnitsHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
-	n, err := numberOfUnitsOrError(r)
+	n, err := numberOfUnits(r)
 	if err != nil {
 		return err
 	}
@@ -245,7 +245,7 @@ func AddUnitsHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error
 }
 
 func RemoveUnitsHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
-	n, err := numberOfUnitsOrError(r)
+	n, err := numberOfUnits(r)
 	if err != nil {
 		return err
 	}
