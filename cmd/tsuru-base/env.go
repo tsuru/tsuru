@@ -138,6 +138,7 @@ func requestEnvUrl(method string, g GuessingCommand, args []string, client cmd.D
 	if err != nil {
 		return "", err
 	}
+	defer r.Body.Close()
 	b, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		return "", err
