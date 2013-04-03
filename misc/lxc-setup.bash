@@ -11,6 +11,7 @@ sudo apt-get install lxc -y
 
 echo "installing beanstalkd"
 sudo apt-get install -y beanstalkd
+sudo sed -i s/#START=yes/START=yes/ /etc/default/beanstalkd
 
 echo "install nginx"
 sudo apt-get install nginx -y
@@ -41,7 +42,7 @@ sudo mkdir /etc/tsuru
 sudo curl -sL https://raw.github.com/globocom/tsuru/master/etc/tsuru-lxc.conf -o /etc/tsuru/tsuru.conf
 
 echo "configuring gandalf"
-sudo bash -c 'echo "bin-path: /home/ubuntu/gandalf-bin
+sudo bash -c 'echo "bin-path: /usr/bin/gandalf-bin
 database:
   url: 127.0.0.1:27017
   name: gandalf
@@ -63,7 +64,7 @@ sudo mkdir -p /var/repositories
 sudo chown -R git:git /var/repositories
 
 echo "creating template path"
-sudo mkdir -l /home/gi$://raw.github.com/globocom/tsuru/master/misc/git-hooks/pre-receivei.py > /home/git/bare-template/hooks/pre-receive.pyt/bare-template/hooks
+sudo mkdir -p /home/git/bare-template/hooks
 curl https://raw.github.com/globocom/tsuru/master/misc/git-hooks/post-receive > /home/git/bare-template/hooks/post-receive
 curl https://raw.github.com/globocom/tsuru/master/misc/git-hooks/pre-receive > /home/git/bare-template/hooks/pre-receive
 curl https://raw.github.com/globocom/tsuru/master/misc/git-hooks/pre-receivei.py > /home/git/bare-template/hooks/pre-receive.py
@@ -73,7 +74,7 @@ echo "generating the ssh-key for root"
 sudo ssh-keygen -N "" -f /root/.ssh/id_rsa
 
 echo "downloading charms"
-git clone git://github.com/globocom/charms.git -b lxc
+sudo su - git -c "git clone git://github.com/globocom/charms.git -b lxc /home/git/charms"
 
 echo "starting mongodb"
 sudo service mongodb start
@@ -82,10 +83,10 @@ echo "starting beanstalkd"
 sudo service beanstalkd start
 
 echo "starting gandalf webserver"
-sudo -u git webserver &
+sudo su - git -c gandalf-webserver &
 
 echo "starting git daemon"
-sudo -u git git daemon --base-path=/var/repositories --syslog --export-all &
+sudo su - git -c "git daemon --base-path=/var/repositories --syslog --export-all "&
 
 echo "starting tsuru-collector"
 collector &
