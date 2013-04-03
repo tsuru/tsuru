@@ -139,7 +139,7 @@ push to tsuru remote and your project will be deployed:
     remote:  ---> Restarting your app
     remote: /home/ubuntu
     remote:
-    remote:  ---> Running pos-restart
+    remote:  ---> Running post-restart
     remote:
     remote:  ---> Deploy done!
     remote:
@@ -398,7 +398,7 @@ another deploy:
     remote: /var/lib/tsuru/hooks/start: line 13: gunicorn: command not found
     remote: /home/ubuntu
     remote:
-    remote:  ---> Running pos-restart
+    remote:  ---> Running post-restart
     remote:
     remote:  ---> Deploy done!
     remote:
@@ -445,7 +445,7 @@ Now we commit the changes and run another deploy:
     remote: WARNING: python not running.
     remote: /home/ubuntu
     remote:
-    remote:  ---> Running pos-restart
+    remote:  ---> Running post-restart
     remote:
     remote:  ---> Deploy done!
     remote:
@@ -604,7 +604,7 @@ Now let's commit it and run another deploy:
     remote:  ---> Restarting your app
     remote: /home/ubuntu
     remote:
-    remote:  ---> Running pos-restart
+    remote:  ---> Running post-restart
     remote:
     remote:  ---> Deploy done!
     remote:
@@ -680,20 +680,20 @@ sections related to that hooks:
     remote:
     ######
     remote:
-    remote:  ---> Running pos-restart
+    remote:  ---> Running post-restart
     remote:
     ######
 
 So, tsuru parses a file called ``app.conf`` and runs ``pre-restart`` and
-``pos-restart`` hooks. app.conf is a YAML file, that contains a list of
-commands that should run in pre-restart and pos-restart hooks. Here is our
+``post-restart`` hooks. app.conf is a YAML file, that contains a list of
+commands that should run in pre-restart and post-restart hooks. Here is our
 example of app.conf:
 
 .. highlight:: yaml
 
 ::
 
-    pos-restart:
+    post-restart:
       - python manage.py syncdb --noinput
       - python manage.py migrate
 
@@ -743,7 +743,7 @@ It should be located in the root of the project. Let's commit and deploy it:
     remote:  ---> Restarting your app
     remote: /home/ubuntu
     remote:
-    remote:  ---> Running pos-restart
+    remote:  ---> Running post-restart
     remote: 2012-10-15 13:29:51,970 INFO Connecting to environment...
     remote: 2012-10-15 13:29:53,212 INFO Connected to environment.
     remote: 2012-10-15 13:29:53,293 INFO Connecting to machine 50 at ec2-23-22-196-207.compute-1.amazonaws.com
