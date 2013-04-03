@@ -1277,7 +1277,7 @@ func (s *S) TestSetEnvHandlerShouldSetAPublicEnvironmentVariableInTheApp(c *goch
 	request, err := http.NewRequest("POST", url, strings.NewReader("DATABASE_HOST=localhost"))
 	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
-	err = SetEnv(recorder, request, s.user)
+	err = setEnv(recorder, request, s.user)
 	c.Assert(err, gocheck.IsNil)
 	app := &app.App{Name: "black-dog"}
 	err = app.Get()
@@ -1299,7 +1299,7 @@ func (s *S) TestSetEnvHandlerShouldSetMultipleEnvironmentVariablesInTheApp(c *go
 	request, err := http.NewRequest("POST", url, strings.NewReader("DATABASE_HOST=localhost DATABASE_USER=root"))
 	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
-	err = SetEnv(recorder, request, s.user)
+	err = setEnv(recorder, request, s.user)
 	c.Assert(err, gocheck.IsNil)
 	app := &app.App{Name: "vigil"}
 	err = app.Get()
@@ -1323,7 +1323,7 @@ func (s *S) TestSetEnvHandlerShouldSupportSpacesInTheEnvironmentVariableValue(c 
 	request, err := http.NewRequest("POST", url, strings.NewReader("DATABASE_HOST=local host DATABASE_USER=root"))
 	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
-	err = SetEnv(recorder, request, s.user)
+	err = setEnv(recorder, request, s.user)
 	c.Assert(err, gocheck.IsNil)
 	app := &app.App{Name: "loser"}
 	err = app.Get()
@@ -1347,7 +1347,7 @@ func (s *S) TestSetEnvHandlerShouldSupportValuesWithDot(c *gocheck.C) {
 	request, err := http.NewRequest("POST", url, strings.NewReader("DATABASE_HOST=http://foo.com:8080"))
 	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
-	err = SetEnv(recorder, request, s.user)
+	err = setEnv(recorder, request, s.user)
 	c.Assert(err, gocheck.IsNil)
 	app := &app.App{Name: "losers"}
 	err = app.Get()
@@ -1369,7 +1369,7 @@ func (s *S) TestSetEnvHandlerShouldSupportNumbersOnVariableName(c *gocheck.C) {
 	request, err := http.NewRequest("POST", url, strings.NewReader("EC2_HOST=http://foo.com:8080"))
 	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
-	err = SetEnv(recorder, request, s.user)
+	err = setEnv(recorder, request, s.user)
 	c.Assert(err, gocheck.IsNil)
 	app := &app.App{Name: "blinded"}
 	err = app.Get()
@@ -1391,7 +1391,7 @@ func (s *S) TestSetEnvHandlerShouldSupportLowerCasedVariableName(c *gocheck.C) {
 	request, err := http.NewRequest("POST", url, strings.NewReader("http_proxy=http://my_proxy.com:3128"))
 	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
-	err = SetEnv(recorder, request, s.user)
+	err = setEnv(recorder, request, s.user)
 	c.Assert(err, gocheck.IsNil)
 	app := &app.App{Name: "fragments"}
 	err = app.Get()
@@ -1421,7 +1421,7 @@ func (s *S) TestSetEnvHandlerShouldNotChangeValueOfPrivateVariables(c *gocheck.C
 	request, err := http.NewRequest("POST", url, strings.NewReader("DATABASE_HOST=http://foo.com:8080"))
 	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
-	err = SetEnv(recorder, request, s.user)
+	err = setEnv(recorder, request, s.user)
 	c.Assert(err, gocheck.IsNil)
 	app := &app.App{Name: "losers"}
 	err = app.Get()
@@ -1435,7 +1435,7 @@ func (s *S) TestSetEnvHandlerReturnsInternalErrorIfReadAllFails(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	request.Body.Close()
 	recorder := httptest.NewRecorder()
-	err = SetEnv(recorder, request, s.user)
+	err = setEnv(recorder, request, s.user)
 	c.Assert(err, gocheck.NotNil)
 }
 
@@ -1445,7 +1445,7 @@ func (s *S) TestSetEnvHandlerReturnsBadRequestIfVariablesAreMissing(c *gocheck.C
 		request, err := http.NewRequest("POST", "/apps/unknown/env/?:name=unkown", body)
 		c.Assert(err, gocheck.IsNil)
 		recorder := httptest.NewRecorder()
-		err = SetEnv(recorder, request, s.user)
+		err = setEnv(recorder, request, s.user)
 		c.Assert(err, gocheck.NotNil)
 		e, ok := err.(*errors.Http)
 		c.Assert(ok, gocheck.Equals, true)
@@ -1459,7 +1459,7 @@ func (s *S) TestSetEnvHandlerReturnsNotFoundIfTheAppDoesNotExist(c *gocheck.C) {
 	request, err := http.NewRequest("POST", "/apps/unknown/env/?:name=unknown", b)
 	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
-	err = SetEnv(recorder, request, s.user)
+	err = setEnv(recorder, request, s.user)
 	c.Assert(err, gocheck.NotNil)
 	e, ok := err.(*errors.Http)
 	c.Assert(ok, gocheck.Equals, true)
@@ -1476,7 +1476,7 @@ func (s *S) TestSetEnvHandlerReturnsForbiddenIfTheGivenUserDoesNotHaveAccessToTh
 	request, err := http.NewRequest("POST", url, strings.NewReader("DATABASE_HOST=localhost"))
 	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
-	err = SetEnv(recorder, request, s.user)
+	err = setEnv(recorder, request, s.user)
 	c.Assert(err, gocheck.NotNil)
 	e, ok := err.(*errors.Http)
 	c.Assert(ok, gocheck.Equals, true)

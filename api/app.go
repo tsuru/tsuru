@@ -420,7 +420,7 @@ func GetEnv(w http.ResponseWriter, r *http.Request, u *auth.User) (err error) {
 	return nil
 }
 
-func SetEnv(w http.ResponseWriter, r *http.Request, u *auth.User) error {
+func setEnv(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	msg := "You must provide the environment variables"
 	if r.Body == nil {
 		return &errors.Http{Code: http.StatusBadRequest, Message: msg}
