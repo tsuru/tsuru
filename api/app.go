@@ -383,12 +383,15 @@ func RunCommand(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	return app.Run(string(c), w)
 }
 
-func getEnv(w http.ResponseWriter, r *http.Request, u *auth.User) (err error) {
-	var variable []byte
+func getEnv(w http.ResponseWriter, r *http.Request, u *auth.User) error {
+	var (
+		variable []byte
+		err      error
+	)
 	if r.Body != nil {
 		variable, err = ioutil.ReadAll(r.Body)
 		if err != nil {
-			return
+			return err
 		}
 	}
 	appName := r.URL.Query().Get(":name")
@@ -405,7 +408,7 @@ func getEnv(w http.ResponseWriter, r *http.Request, u *auth.User) (err error) {
 			if v, ok := app.Env[variable]; ok {
 				err = write(v)
 				if err != nil {
-					return
+					return err
 				}
 			}
 		}
@@ -413,7 +416,7 @@ func getEnv(w http.ResponseWriter, r *http.Request, u *auth.User) (err error) {
 		for _, v := range app.Env {
 			err = write(v)
 			if err != nil {
-				return
+				return err
 			}
 		}
 	}
