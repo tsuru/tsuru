@@ -19,7 +19,7 @@ func (s *S) TestLXCCreate(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	defer commandmocker.Remove(tmpdir)
 	container := container{name: "container"}
-	err = container.create()
+	err, _ = container.create()
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(commandmocker.Ran(tmpdir), gocheck.Equals, true)
 	expected := "docker run -d base /bin/bash container somepath"
@@ -76,7 +76,11 @@ func (s *S) TestContainerIP(c *gocheck.C) {
 	f.Write(data)
 	f.Close()
 	cont := container{name: "vm1"}
-	c.Assert(cont.ip(), gocheck.Equals, "10.10.10.10")
+	err, ip := cont.ip()
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(ip, gocheck.Equals, "10.10.10.10")
 	cont = container{name: "notfound"}
-	c.Assert(cont.ip(), gocheck.Equals, "")
+	err, ip = cont.ip()
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(ip, gocheck.Equals, "")
 }
