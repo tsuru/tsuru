@@ -145,7 +145,7 @@ func appList(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	return json.NewEncoder(w).Encode(apps)
 }
 
-func AppInfo(w http.ResponseWriter, r *http.Request, u *auth.User) error {
+func appInfo(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	app, err := getApp(r.URL.Query().Get(":name"), u)
 	if err != nil {
 		return err
