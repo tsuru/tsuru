@@ -5,11 +5,12 @@
 package tsuru
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
 	"github.com/globocom/tsuru/cmd"
 	"io/ioutil"
 	"net/http"
-	"strings"
 )
 
 type EnvGet struct {
@@ -93,9 +94,9 @@ func requestEnvUrl(method string, g GuessingCommand, args []string, client cmd.D
 	if err != nil {
 		return "", err
 	}
-	varsStr := strings.Join(args, " ")
-	body := strings.NewReader(varsStr)
-	request, err := http.NewRequest(method, url, body)
+	var buf bytes.Buffer
+	json.NewEncoder(&buf).Encode(args)
+	request, err := http.NewRequest(method, url, &buf)
 	if err != nil {
 		return "", err
 	}

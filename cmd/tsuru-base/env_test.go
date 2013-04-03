@@ -7,6 +7,7 @@ package tsuru
 import (
 	"bytes"
 	"github.com/globocom/tsuru/cmd"
+	"io/ioutil"
 	"launchpad.net/gocheck"
 	"net/http"
 )
@@ -48,7 +49,20 @@ func (s *S) TestEnvGetRunWithMultipleParams(c *gocheck.C) {
 		Stdout: &stdout,
 		Stderr: &stderr,
 	}
-	client := cmd.NewClient(&http.Client{Transport: &transport{msg: result, status: http.StatusOK}}, nil, manager)
+	trans := &conditionalTransport{
+		transport{
+			msg:    result,
+			status: http.StatusOK,
+		},
+		func(req *http.Request) bool {
+			want := `["DATABASE_HOST","DATABASE_USER"]` + "\n"
+			defer req.Body.Close()
+			got, err := ioutil.ReadAll(req.Body)
+			c.Assert(err, gocheck.IsNil)
+			return req.URL.Path == "/apps/someapp/env" && req.Method == "GET" && string(got) == want
+		},
+	}
+	client := cmd.NewClient(&http.Client{Transport: trans}, nil, manager)
 	command := EnvGet{}
 	command.Flags().Parse(true, []string{"-a", "someapp"})
 	err := command.Run(&context, client)
@@ -169,7 +183,20 @@ func (s *S) TestEnvUnsetRun(c *gocheck.C) {
 		Stdout: &stdout,
 		Stderr: &stderr,
 	}
-	client := cmd.NewClient(&http.Client{Transport: &transport{msg: result, status: http.StatusOK}}, nil, manager)
+	trans := &conditionalTransport{
+		transport{
+			msg:    result,
+			status: http.StatusOK,
+		},
+		func(req *http.Request) bool {
+			want := `["DATABASE_HOST"]` + "\n"
+			defer req.Body.Close()
+			got, err := ioutil.ReadAll(req.Body)
+			c.Assert(err, gocheck.IsNil)
+			return req.URL.Path == "/apps/someapp/env" && req.Method == "DELETE" && string(got) == want
+		},
+	}
+	client := cmd.NewClient(&http.Client{Transport: trans}, nil, manager)
 	command := EnvUnset{}
 	command.Flags().Parse(true, []string{"-a", "someapp"})
 	err := command.Run(&context, client)
