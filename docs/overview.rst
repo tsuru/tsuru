@@ -5,7 +5,7 @@ This document is in alpha state, to suggest improvements check out the
 `related github issue <https://github.com/globocom/tsuru/issues/367>`_.
 
 Tsuru is an open source PaaS. If you don't know what a PaaS is and what it
-does, see `wikipidia's description <http://en.wikipedia.org/wiki/PaaS>`_.
+does, see `wikipedia's description <http://en.wikipedia.org/wiki/PaaS>`_.
 
 It follows the principles described in the `The Twelve-Factor App
 <http://www.12factor.net/>`_ methodology.
@@ -59,7 +59,7 @@ command line, so you can have the configuration flexibility your application
 need.
 
 Tsuru also makes use of environment variables. When you bind a service with
-your application, Tsuru gives the service the hability to inject environment
+your application, Tsuru gives the service the ability to inject environment
 variables in your application environment. For instance, if you use the default
 MySQL service, it will inject variables for you to establish a connection with
 your application database.
@@ -143,7 +143,7 @@ Tsuru already has a variety of database services available for setup on your
 cloud. It allows you to easily create a service instance for your application
 usage and bind them together. The service setup for your application is
 transparent by the use of environment variables, which are exported in all
-instances of the application, allowing your configuration to fit diverses
+instances of the application, allowing your configuration to fit several
 environments (like development, staging, production, etc.)
 
 
@@ -178,7 +178,7 @@ orchestration (VM/container management) and provisioning. By default, it will
 deploy applications using the Juju_ provisioner, but you can easily implement
 your own provisioner and use whatever backend you wish.
 
-When you extend Tsuru, you are able to praticaly build a new PaaS in terms of
+When you extend Tsuru, you are able to pratically build a new PaaS in terms of
 behavior of provision and orchestration, making use of the great Tsuru
 structure. You change the whole Tsuru workflow by implementing a new
 provisioner.
