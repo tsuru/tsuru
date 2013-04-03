@@ -7,11 +7,20 @@ package tsuru
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/globocom/tsuru/cmd"
 	"io/ioutil"
 	"net/http"
+	"regexp"
+	"strings"
 )
+
+const envSetValidationMessage = `You must specify environment variables in the form "NAME=value".
+
+Example:
+
+  tsuru env-set NAME=value OTHER_NAME=value with spaces ANOTHER_NAME="using quotes"`
 
 type EnvGet struct {
 	GuessingCommand
@@ -53,7 +62,32 @@ If you don't provide the app name, tsuru will try to guess it.`,
 }
 
 func (c *EnvSet) Run(context *cmd.Context, client cmd.Doer) error {
-	_, err := requestEnvUrl("POST", c.GuessingCommand, context.Args, client)
+	appName, err := c.Guess()
+	if err != nil {
+		return err
+	}
+	raw := strings.Join(context.Args, " ")
+	regex := regexp.MustCompile(`(\w+=[^=]+)(\s|$)`)
+	decls := regex.FindAllStringSubmatch(raw, -1)
+	if len(decls) < 1 {
+		return errors.New(envSetValidationMessage)
+	}
+	variables := make(map[string]string, len(decls))
+	for _, v := range decls {
+		parts := strings.Split(v[1], "=")
+		variables[parts[0]] = parts[1]
+	}
+	var buf bytes.Buffer
+	json.NewEncoder(&buf).Encode(variables)
+	url, err := cmd.GetUrl(fmt.Sprintf("/apps/%s/env", appName))
+	if err != nil {
+		return err
+	}
+	request, err := http.NewRequest("POST", url, &buf)
+	if err != nil {
+		return err
+	}
+	_, err = client.Do(request)
 	if err != nil {
 		return err
 	}

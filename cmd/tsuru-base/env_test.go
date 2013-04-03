@@ -6,6 +6,7 @@ package tsuru
 
 import (
 	"bytes"
+	"encoding/json"
 	"github.com/globocom/tsuru/cmd"
 	"io/ioutil"
 	"launchpad.net/gocheck"
@@ -115,7 +116,20 @@ func (s *S) TestEnvSetRun(c *gocheck.C) {
 		Stdout: &stdout,
 		Stderr: &stderr,
 	}
-	client := cmd.NewClient(&http.Client{Transport: &transport{msg: result, status: http.StatusOK}}, nil, manager)
+	trans := &conditionalTransport{
+		transport{
+			msg:    result,
+			status: http.StatusOK,
+		},
+		func(req *http.Request) bool {
+			want := `{"DATABASE_HOST":"somehost"}` + "\n"
+			defer req.Body.Close()
+			got, err := ioutil.ReadAll(req.Body)
+			c.Assert(err, gocheck.IsNil)
+			return req.URL.Path == "/apps/someapp/env" && req.Method == "POST" && string(got) == want
+		},
+	}
+	client := cmd.NewClient(&http.Client{Transport: trans}, nil, manager)
 	command := EnvSet{}
 	command.Flags().Parse(true, []string{"-a", "someapp"})
 	err := command.Run(&context, client)
@@ -137,6 +151,45 @@ func (s *S) TestEnvSetRunWithMultipleParams(c *gocheck.C) {
 	err := command.Run(&context, client)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(stdout.String(), gocheck.Equals, result)
+}
+
+func (s *S) TestEnvSetValues(c *gocheck.C) {
+	var stdout, stderr bytes.Buffer
+	result := "variable(s) successfully exported\n"
+	context := cmd.Context{
+		Args: []string{
+			"DATABASE_HOST=some", "host",
+			"DATABASE_USER=root", "DATABASE_PASSWORD=.1234..abc",
+			"http_proxy=http://myproxy.com:3128/",
+		},
+		Stdout: &stdout,
+		Stderr: &stderr,
+	}
+	trans := &conditionalTransport{
+		transport{
+			msg:    result,
+			status: http.StatusOK,
+		},
+		func(req *http.Request) bool {
+			want := map[string]string{
+				"DATABASE_HOST":     "some host",
+				"DATABASE_USER":     "root",
+				"DATABASE_PASSWORD": ".1234..abc",
+				"http_proxy":        "http://myproxy.com:3128/",
+			}
+			defer req.Body.Close()
+			var got map[string]string
+			err := json.NewDecoder(req.Body).Decode(&got)
+			c.Assert(err, gocheck.IsNil)
+			c.Assert(got, gocheck.DeepEquals, want)
+			return req.URL.Path == "/apps/someapp/env" && req.Method == "POST"
+		},
+	}
+	client := cmd.NewClient(&http.Client{Transport: trans}, nil, manager)
+	command := EnvSet{}
+	command.Flags().Parse(true, []string{"-a", "someapp"})
+	err := command.Run(&context, client)
+	c.Assert(err, gocheck.IsNil)
 }
 
 func (s *S) TestEnvSetWithoutFlag(c *gocheck.C) {
@@ -161,6 +214,20 @@ func (s *S) TestEnvSetWithoutFlag(c *gocheck.C) {
 	err := (&EnvSet{GuessingCommand{G: fake}}).Run(&context, client)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(stdout.String(), gocheck.Equals, result)
+}
+
+func (s *S) TestEnvSetInvalidParameters(c *gocheck.C) {
+	var stdout, stderr bytes.Buffer
+	context := cmd.Context{
+		Args:   []string{"DATABASE_HOST", "somehost"},
+		Stdout: &stdout,
+		Stderr: &stderr,
+	}
+	command := EnvSet{}
+	command.Flags().Parse(true, []string{"-a", "someapp"})
+	err := command.Run(&context, nil)
+	c.Assert(err, gocheck.NotNil)
+	c.Assert(err.Error(), gocheck.Equals, envSetValidationMessage)
 }
 
 func (s *S) TestEnvUnsetInfo(c *gocheck.C) {
