@@ -1290,8 +1290,9 @@ func (s *S) TestSetEnvHandlerShouldSetAPublicEnvironmentVariableInTheApp(c *goch
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	url := fmt.Sprintf("/apps/%s/env?:name=%s", a.Name, a.Name)
-	request, err := http.NewRequest("POST", url, strings.NewReader("DATABASE_HOST=localhost"))
+	request, err := http.NewRequest("POST", url, strings.NewReader(`{"DATABASE_HOST":"localhost"}`))
 	c.Assert(err, gocheck.IsNil)
+	request.Header.Set("Content-Type", "application/json")
 	recorder := httptest.NewRecorder()
 	err = setEnv(recorder, request, s.user)
 	c.Assert(err, gocheck.IsNil)
@@ -1312,7 +1313,8 @@ func (s *S) TestSetEnvHandlerShouldSetMultipleEnvironmentVariablesInTheApp(c *go
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	url := fmt.Sprintf("/apps/%s/env?:name=%s", a.Name, a.Name)
-	request, err := http.NewRequest("POST", url, strings.NewReader("DATABASE_HOST=localhost DATABASE_USER=root"))
+	b := strings.NewReader(`{"DATABASE_HOST": "localhost", "DATABASE_USER": "root"}`)
+	request, err := http.NewRequest("POST", url, b)
 	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
 	err = setEnv(recorder, request, s.user)
@@ -1324,96 +1326,6 @@ func (s *S) TestSetEnvHandlerShouldSetMultipleEnvironmentVariablesInTheApp(c *go
 	expectedUser := bind.EnvVar{Name: "DATABASE_USER", Value: "root", Public: true}
 	c.Assert(app.Env["DATABASE_HOST"], gocheck.DeepEquals, expectedHost)
 	c.Assert(app.Env["DATABASE_USER"], gocheck.DeepEquals, expectedUser)
-}
-
-func (s *S) TestSetEnvHandlerShouldSupportSpacesInTheEnvironmentVariableValue(c *gocheck.C) {
-	a := app.App{
-		Name:  "loser",
-		Teams: []string{s.team.Name},
-		Units: []app.Unit{{Machine: 1}},
-	}
-	err := s.conn.Apps().Insert(a)
-	c.Assert(err, gocheck.IsNil)
-	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
-	url := fmt.Sprintf("/apps/%s/env?:name=%s", a.Name, a.Name)
-	request, err := http.NewRequest("POST", url, strings.NewReader("DATABASE_HOST=local host DATABASE_USER=root"))
-	c.Assert(err, gocheck.IsNil)
-	recorder := httptest.NewRecorder()
-	err = setEnv(recorder, request, s.user)
-	c.Assert(err, gocheck.IsNil)
-	app := &app.App{Name: "loser"}
-	err = app.Get()
-	c.Assert(err, gocheck.IsNil)
-	expectedHost := bind.EnvVar{Name: "DATABASE_HOST", Value: "local host", Public: true}
-	expectedUser := bind.EnvVar{Name: "DATABASE_USER", Value: "root", Public: true}
-	c.Assert(app.Env["DATABASE_HOST"], gocheck.DeepEquals, expectedHost)
-	c.Assert(app.Env["DATABASE_USER"], gocheck.DeepEquals, expectedUser)
-}
-
-func (s *S) TestSetEnvHandlerShouldSupportValuesWithDot(c *gocheck.C) {
-	a := app.App{
-		Name:  "losers",
-		Teams: []string{s.team.Name},
-		Units: []app.Unit{{Machine: 1}},
-	}
-	err := s.conn.Apps().Insert(a)
-	c.Assert(err, gocheck.IsNil)
-	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
-	url := fmt.Sprintf("/apps/%s/env?:name=%s", a.Name, a.Name)
-	request, err := http.NewRequest("POST", url, strings.NewReader("DATABASE_HOST=http://foo.com:8080"))
-	c.Assert(err, gocheck.IsNil)
-	recorder := httptest.NewRecorder()
-	err = setEnv(recorder, request, s.user)
-	c.Assert(err, gocheck.IsNil)
-	app := &app.App{Name: "losers"}
-	err = app.Get()
-	c.Assert(err, gocheck.IsNil)
-	expected := bind.EnvVar{Name: "DATABASE_HOST", Value: "http://foo.com:8080", Public: true}
-	c.Assert(app.Env["DATABASE_HOST"], gocheck.DeepEquals, expected)
-}
-
-func (s *S) TestSetEnvHandlerShouldSupportNumbersOnVariableName(c *gocheck.C) {
-	a := app.App{
-		Name:  "blinded",
-		Teams: []string{s.team.Name},
-		Units: []app.Unit{{Machine: 1}},
-	}
-	err := s.conn.Apps().Insert(a)
-	c.Assert(err, gocheck.IsNil)
-	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
-	url := fmt.Sprintf("/apps/%s/env?:name=%s", a.Name, a.Name)
-	request, err := http.NewRequest("POST", url, strings.NewReader("EC2_HOST=http://foo.com:8080"))
-	c.Assert(err, gocheck.IsNil)
-	recorder := httptest.NewRecorder()
-	err = setEnv(recorder, request, s.user)
-	c.Assert(err, gocheck.IsNil)
-	app := &app.App{Name: "blinded"}
-	err = app.Get()
-	c.Assert(err, gocheck.IsNil)
-	expected := bind.EnvVar{Name: "EC2_HOST", Value: "http://foo.com:8080", Public: true}
-	c.Assert(app.Env["EC2_HOST"], gocheck.DeepEquals, expected)
-}
-
-func (s *S) TestSetEnvHandlerShouldSupportLowerCasedVariableName(c *gocheck.C) {
-	a := app.App{
-		Name:  "fragments",
-		Teams: []string{s.team.Name},
-		Units: []app.Unit{{Machine: 1}},
-	}
-	err := s.conn.Apps().Insert(a)
-	c.Assert(err, gocheck.IsNil)
-	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
-	url := fmt.Sprintf("/apps/%s/env?:name=%s", a.Name, a.Name)
-	request, err := http.NewRequest("POST", url, strings.NewReader("http_proxy=http://my_proxy.com:3128"))
-	c.Assert(err, gocheck.IsNil)
-	recorder := httptest.NewRecorder()
-	err = setEnv(recorder, request, s.user)
-	c.Assert(err, gocheck.IsNil)
-	app := &app.App{Name: "fragments"}
-	err = app.Get()
-	c.Assert(err, gocheck.IsNil)
-	expected := bind.EnvVar{Name: "http_proxy", Value: "http://my_proxy.com:3128", Public: true}
-	c.Assert(app.Env["http_proxy"], gocheck.DeepEquals, expected)
 }
 
 func (s *S) TestSetEnvHandlerShouldNotChangeValueOfPrivateVariables(c *gocheck.C) {
@@ -1434,7 +1346,7 @@ func (s *S) TestSetEnvHandlerShouldNotChangeValueOfPrivateVariables(c *gocheck.C
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	url := fmt.Sprintf("/apps/%s/env?:name=%s", a.Name, a.Name)
-	request, err := http.NewRequest("POST", url, strings.NewReader("DATABASE_HOST=http://foo.com:8080"))
+	request, err := http.NewRequest("POST", url, strings.NewReader(`{"DATABASE_HOST":"http://foo.com:8080"}`))
 	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
 	err = setEnv(recorder, request, s.user)
@@ -1466,12 +1378,12 @@ func (s *S) TestSetEnvHandlerReturnsBadRequestIfVariablesAreMissing(c *gocheck.C
 		e, ok := err.(*errors.Http)
 		c.Assert(ok, gocheck.Equals, true)
 		c.Assert(e.Code, gocheck.Equals, http.StatusBadRequest)
-		c.Assert(e, gocheck.ErrorMatches, "^You must provide the environment variables$")
+		c.Assert(e, gocheck.ErrorMatches, "^You must provide the environment variables in a JSON object$")
 	}
 }
 
 func (s *S) TestSetEnvHandlerReturnsNotFoundIfTheAppDoesNotExist(c *gocheck.C) {
-	b := strings.NewReader("DATABASE_HOST=localhost")
+	b := strings.NewReader(`{"DATABASE_HOST":"localhost"}`)
 	request, err := http.NewRequest("POST", "/apps/unknown/env/?:name=unknown", b)
 	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
@@ -1489,7 +1401,7 @@ func (s *S) TestSetEnvHandlerReturnsForbiddenIfTheGivenUserDoesNotHaveAccessToTh
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	url := fmt.Sprintf("/apps/%s/env/?:name=%s", a.Name, a.Name)
-	request, err := http.NewRequest("POST", url, strings.NewReader("DATABASE_HOST=localhost"))
+	request, err := http.NewRequest("POST", url, strings.NewReader(`{"DATABASE_HOST":"localhost"}`))
 	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
 	err = setEnv(recorder, request, s.user)

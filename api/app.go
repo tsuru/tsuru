@@ -20,7 +20,6 @@ import (
 	"io/ioutil"
 	"labix.org/v2/mgo/bson"
 	"net/http"
-	"regexp"
 	"strconv"
 	"strings"
 )
@@ -418,15 +417,13 @@ func getEnv(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 }
 
 func setEnv(w http.ResponseWriter, r *http.Request, u *auth.User) error {
-	msg := "You must provide the environment variables"
+	msg := "You must provide the environment variables in a JSON object"
 	if r.Body == nil {
 		return &errors.Http{Code: http.StatusBadRequest, Message: msg}
 	}
-	body, err := ioutil.ReadAll(r.Body)
+	var variables map[string]string
+	err := json.NewDecoder(r.Body).Decode(&variables)
 	if err != nil {
-		return err
-	}
-	if len(body) == 0 {
 		return &errors.Http{Code: http.StatusBadRequest, Message: msg}
 	}
 	appName := r.URL.Query().Get(":name")
@@ -434,15 +431,9 @@ func setEnv(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	if err != nil {
 		return err
 	}
-	regex, err := regexp.Compile(`(\w+=[^=]+)(\s|$)`)
-	if err != nil {
-		return err
-	}
-	variables := regex.FindAllStringSubmatch(string(body), -1)
-	envs := make([]bind.EnvVar, len(variables))
-	for i, v := range variables {
-		parts := strings.Split(v[1], "=")
-		envs[i] = bind.EnvVar{Name: parts[0], Value: parts[1], Public: true}
+	envs := make([]bind.EnvVar, 0, len(variables))
+	for k, v := range variables {
+		envs = append(envs, bind.EnvVar{Name: k, Value: v, Public: true})
 	}
 	return app.SetEnvs(envs, true)
 }
