@@ -68,7 +68,7 @@ func (s *S) TestAppIsAvailableHandlerShouldReturnErrorWhenAppStatusIsnotStarted(
 	request, err := http.NewRequest("GET", url, nil)
 	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
-	err = AppIsAvailableHandler(recorder, request)
+	err = appIsAvailable(recorder, request)
 	c.Assert(err, gocheck.NotNil)
 }
 
@@ -86,7 +86,7 @@ func (s *S) TestAppIsAvailableHandlerShouldReturn200WhenAppUnitStatusIsStarted(c
 	request, err := http.NewRequest("GET", url, nil)
 	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
-	err = AppIsAvailableHandler(recorder, request)
+	err = appIsAvailable(recorder, request)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(recorder.Code, gocheck.Equals, http.StatusOK)
 }

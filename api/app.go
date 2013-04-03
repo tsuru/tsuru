@@ -89,9 +89,7 @@ func cloneRepository(w http.ResponseWriter, r *http.Request) error {
 	return write(&logWriter, []byte("\n ---> Deploy done!\n\n"))
 }
 
-// AppIsAvailableHandler verify if the app.Unit().State() is started. If is
-// started it returns 200 else returns 500 for status code.
-func AppIsAvailableHandler(w http.ResponseWriter, r *http.Request) error {
+func appIsAvailable(w http.ResponseWriter, r *http.Request) error {
 	app := app.App{Name: r.URL.Query().Get(":name")}
 	err := app.Get()
 	if err != nil {
