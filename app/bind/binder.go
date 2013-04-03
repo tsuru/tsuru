@@ -24,7 +24,7 @@ func (e *EnvVar) String() string {
 		value = "***"
 		suffix = " (private variable)"
 	}
-	return fmt.Sprintf("%s=%s%s", e.Name, value, suffix)
+	return fmt.Sprintf("%s%s", value, suffix)
 }
 
 type Unit interface {
