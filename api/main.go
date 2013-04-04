@@ -106,7 +106,7 @@ func main() {
 	if !*dry {
 		provisioner, err := config.GetString("provisioner")
 		if err != nil {
-			fmt.Printf("Warning: %q didn't declare a provisioner, using default provisioner.\n", configFile)
+			fmt.Printf("Warning: %q didn't declare a provisioner, using default provisioner.\n", *configFile)
 			provisioner = "juju"
 		}
 		app.Provisioner, err = provision.Get(provisioner)
