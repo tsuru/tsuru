@@ -64,6 +64,7 @@ func (s *S) TestAppIsAvailableHandlerShouldReturnErrorWhenAppStatusIsnotStarted(
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	defer s.conn.Logs().Remove(bson.M{"appname": a.Name})
 	url := fmt.Sprintf("/apps/%s/avaliable?:name=%s", a.Name, a.Name)
 	request, err := http.NewRequest("GET", url, nil)
 	c.Assert(err, gocheck.IsNil)
@@ -82,6 +83,7 @@ func (s *S) TestAppIsAvailableHandlerShouldReturn200WhenAppUnitStatusIsStarted(c
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	defer s.conn.Logs().Remove(bson.M{"appname": a.Name})
 	url := fmt.Sprintf("/apps/%s/repository/clone?:name=%s", a.Name, a.Name)
 	request, err := http.NewRequest("GET", url, nil)
 	c.Assert(err, gocheck.IsNil)
@@ -104,7 +106,7 @@ post-restart:
 	s.provisioner.PrepareOutput(nil)            // restart
 	s.provisioner.PrepareOutput(nil)            // post-restart
 	a := app.App{
-		Name:      "someapp",
+		Name:      "otherapp",
 		Framework: "django",
 		Teams:     []string{s.team.Name},
 		Units:     []app.Unit{{Name: "i-0800", State: "started"}},
@@ -112,6 +114,7 @@ post-restart:
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	defer s.conn.Logs().Remove(bson.M{"appname": a.Name})
 	url := fmt.Sprintf("/apps/%s/repository/clone?:name=%s", a.Name, a.Name)
 	request, err := http.NewRequest("GET", url, nil)
 	c.Assert(err, gocheck.IsNil)
@@ -126,9 +129,9 @@ post-restart:
 		" ---> Deploy done!",
 	}
 	for _, msg := range messages {
-		length, err := s.conn.Apps().Find(bson.M{"logs.message": msg}).Count()
-		c.Check(err, gocheck.IsNil)
-		c.Check(length, gocheck.Equals, 1)
+		count, err := s.conn.Logs().Find(bson.M{"message": msg, "appname": a.Name}).Count()
+		c.Assert(err, gocheck.IsNil)
+		c.Check(count, gocheck.Equals, 1)
 	}
 }
 
@@ -153,6 +156,7 @@ post-restart:
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	defer s.conn.Logs().Remove(bson.M{"appname": a.Name})
 	url := fmt.Sprintf("/apps/%s/repository/clone?:name=%s", a.Name, a.Name)
 	request, err := http.NewRequest("GET", url, nil)
 	c.Assert(err, gocheck.IsNil)
@@ -196,6 +200,7 @@ post-restart:
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	defer s.conn.Logs().Remove(bson.M{"appname": a.Name})
 	url := fmt.Sprintf("/apps/%s/repository/clone?:name=%s", a.Name, a.Name)
 	request, err := http.NewRequest("GET", url, nil)
 	c.Assert(err, gocheck.IsNil)
@@ -228,6 +233,7 @@ func (s *S) TestAppList(c *gocheck.C) {
 	err := s.conn.Apps().Insert(app1)
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": app1.Name})
+	defer s.conn.Logs().Remove(bson.M{"appname": app1.Name})
 	app2 := app.App{
 		Name:  "app2",
 		Teams: []string{s.team.Name},
@@ -236,6 +242,7 @@ func (s *S) TestAppList(c *gocheck.C) {
 	err = s.conn.Apps().Insert(app2)
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": app2.Name})
+	defer s.conn.Logs().Remove(bson.M{"appname": app2.Name})
 	expected := []app.App{app1, app2}
 	request, err := http.NewRequest("GET", "/apps/", nil)
 	c.Assert(err, gocheck.IsNil)
@@ -272,6 +279,7 @@ func (s *S) TestAppListShouldListAllAppsOfAllTeamsThatTheUserIsAMember(c *gochec
 	err = s.conn.Apps().Insert(app1)
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": app1.Name})
+	defer s.conn.Logs().Remove(bson.M{"appname": app1.Name})
 	request, err := http.NewRequest("GET", "/apps/", nil)
 	c.Assert(err, gocheck.IsNil)
 	request.Header.Set("Content-Type", "application/json")
@@ -358,6 +366,7 @@ func (s *S) TestDeleteShouldReturnForbiddenIfTheGivenUserDoesNotHaveAccesToTheAp
 	err := s.conn.Apps().Insert(myApp)
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": myApp.Name})
+	defer s.conn.Logs().Remove(bson.M{"appname": myApp.Name})
 	request, err := http.NewRequest("DELETE", "/apps/"+myApp.Name+"?:name="+myApp.Name, nil)
 	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
@@ -390,6 +399,7 @@ func (s *S) TestAppInfo(c *gocheck.C) {
 	err := s.conn.Apps().Insert(expectedApp)
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": expectedApp.Name})
+	defer s.conn.Logs().Remove(bson.M{"appname": expectedApp.Name})
 	var myApp map[string]interface{}
 	request, err := http.NewRequest("GET", "/apps/"+expectedApp.Name+"?:name="+expectedApp.Name, nil)
 	request.Header.Set("Content-Type", "application/json")
@@ -413,7 +423,8 @@ func (s *S) TestAppInfoReturnsForbiddenWhenTheUserDoesNotHaveAccessToTheApp(c *g
 	}
 	err := s.conn.Apps().Insert(expectedApp)
 	c.Assert(err, gocheck.IsNil)
-	defer s.conn.Apps().Remove(expectedApp)
+	defer s.conn.Apps().Remove(bson.M{"name": expectedApp.Name})
+	defer s.conn.Logs().Remove(bson.M{"appname": expectedApp.Name})
 	request, err := http.NewRequest("GET", "/apps/"+expectedApp.Name+"?:name="+expectedApp.Name, nil)
 	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
@@ -517,6 +528,7 @@ func (s *S) TestCreateAppReturnsConflictWithProperMessageWhenTheAppAlreadyExist(
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	defer s.conn.Logs().Remove(bson.M{"appname": a.Name})
 	b := strings.NewReader(`{"name":"plainsofdawn","framework":"django"}`)
 	request, err := http.NewRequest("POST", "/apps", b)
 	c.Assert(err, gocheck.IsNil)
@@ -536,6 +548,7 @@ func (s *S) TestAddUnits(c *gocheck.C) {
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	defer s.conn.Logs().Remove(bson.M{"appname": a.Name})
 	err = s.provisioner.Provision(&a)
 	c.Assert(err, gocheck.IsNil)
 	defer s.provisioner.Destroy(&a)
@@ -571,6 +584,7 @@ func (s *S) TestAddUnitsReturns403IfTheUserDoesNotHaveAccessToTheApp(c *gocheck.
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	defer s.conn.Logs().Remove(bson.M{"appname": a.Name})
 	body := strings.NewReader("1")
 	request, err := http.NewRequest("PUT", "/apps/armorandsword/units?:name=armorandsword", body)
 	c.Assert(err, gocheck.IsNil)
@@ -626,6 +640,7 @@ func (s *S) TestRemoveUnits(c *gocheck.C) {
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	defer s.conn.Logs().Remove(bson.M{"appname": a.Name})
 	err = s.provisioner.Provision(&a)
 	c.Assert(err, gocheck.IsNil)
 	defer s.provisioner.Destroy(&a)
@@ -664,6 +679,7 @@ func (s *S) TestRemoveUnitsReturns403IfTheUserDoesNotHaveAccessToTheApp(c *goche
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	defer s.conn.Logs().Remove(bson.M{"appname": a.Name})
 	body := strings.NewReader("1")
 	request, err := http.NewRequest("DELETE", "/apps/fetisha/units?:name=fetisha", body)
 	c.Assert(err, gocheck.IsNil)
@@ -723,6 +739,7 @@ func (s *S) TestAddTeamToTheApp(c *gocheck.C) {
 	err = s.conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	defer s.conn.Logs().Remove(bson.M{"appname": a.Name})
 	url := fmt.Sprintf("/apps/%s/%s?:app=%s&:team=%s", a.Name, s.team.Name, a.Name, s.team.Name)
 	request, err := http.NewRequest("PUT", url, nil)
 	c.Assert(err, gocheck.IsNil)
@@ -755,6 +772,7 @@ func (s *S) TestGrantAccessToTeamReturn403IfTheGivenUserDoesNotHasAccessToTheApp
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	defer s.conn.Logs().Remove(bson.M{"appname": a.Name})
 	url := fmt.Sprintf("/apps/%s/%s?:app=%s&:team=%s", a.Name, s.team.Name, a.Name, s.team.Name)
 	request, err := http.NewRequest("PUT", url, nil)
 	c.Assert(err, gocheck.IsNil)
@@ -776,6 +794,7 @@ func (s *S) TestGrantAccessToTeamReturn404IfTheTeamDoesNotExist(c *gocheck.C) {
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	defer s.conn.Logs().Remove(bson.M{"appname": a.Name})
 	url := fmt.Sprintf("/apps/%s/a?:app=%s&:team=a", a.Name, a.Name)
 	request, err := http.NewRequest("PUT", url, nil)
 	c.Assert(err, gocheck.IsNil)
@@ -797,6 +816,7 @@ func (s *S) TestGrantAccessToTeamReturn409IfTheTeamHasAlreadyAccessToTheApp(c *g
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	defer s.conn.Logs().Remove(bson.M{"appname": a.Name})
 	url := fmt.Sprintf("/apps/%s/%s?:app=%s&:team=%s", a.Name, s.team.Name, a.Name, s.team.Name)
 	request, err := http.NewRequest("PUT", url, nil)
 	c.Assert(err, gocheck.IsNil)
@@ -824,6 +844,7 @@ func (s *S) TestGrantAccessToTeamCallsGandalf(c *gocheck.C) {
 	err = s.conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	defer s.conn.Logs().Remove(bson.M{"appname": a.Name})
 	err = grantAccessToTeam(a.Name, s.team.Name, s.user)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(h.url[0], gocheck.Equals, "/repository/grant")
@@ -848,6 +869,7 @@ func (s *S) TestRevokeAccessFromTeam(c *gocheck.C) {
 	err = s.conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	defer s.conn.Logs().Remove(bson.M{"appname": a.Name})
 	url := fmt.Sprintf("/apps/%s/%s?:app=%s&:team=%s", a.Name, s.team.Name, a.Name, s.team.Name)
 	request, err := http.NewRequest("DELETE", url, nil)
 	c.Assert(err, gocheck.IsNil)
@@ -882,6 +904,7 @@ func (s *S) TestRevokeAccessFromTeamReturn401IfTheGivenUserDoesNotHavePermission
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	defer s.conn.Logs().Remove(bson.M{"appname": a.Name})
 	url := fmt.Sprintf("/apps/%s/%s?:app=%s&:team=%s", a.Name, s.team.Name, a.Name, s.team.Name)
 	request, err := http.NewRequest("DELETE", url, nil)
 	c.Assert(err, gocheck.IsNil)
@@ -903,6 +926,7 @@ func (s *S) TestRevokeAccessFromTeamReturn404IfTheTeamDoesNotExist(c *gocheck.C)
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	defer s.conn.Logs().Remove(bson.M{"appname": a.Name})
 	url := fmt.Sprintf("/apps/%s/x?:app=%s&:team=x", a.Name, a.Name)
 	request, err := http.NewRequest("DELETE", url, nil)
 	c.Assert(err, gocheck.IsNil)
@@ -931,6 +955,7 @@ func (s *S) TestRevokeAccessFromTeamReturn404IfTheTeamDoesNotHaveAccessToTheApp(
 	err = s.conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	defer s.conn.Logs().Remove(bson.M{"appname": a.Name})
 	url := fmt.Sprintf("/apps/%s/%s?:app=%s&:team=%s", a.Name, t.Name, a.Name, t.Name)
 	request, err := http.NewRequest("DELETE", url, nil)
 	c.Assert(err, gocheck.IsNil)
@@ -951,6 +976,7 @@ func (s *S) TestRevokeAccessFromTeamReturn403IfTheTeamIsTheLastWithAccessToTheAp
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	defer s.conn.Logs().Remove(bson.M{"appname": a.Name})
 	url := fmt.Sprintf("/apps/%s/%s?:app=%s&:team=%s", a.Name, s.team.Name, a.Name, s.team.Name)
 	request, err := http.NewRequest("DELETE", url, nil)
 	c.Assert(err, gocheck.IsNil)
@@ -983,6 +1009,7 @@ func (s *S) TestRevokeAccessFromTeamRemovesRepositoryFromGandalf(c *gocheck.C) {
 	err = s.conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	defer s.conn.Logs().Remove(bson.M{"appname": a.Name})
 	err = grantAccessToTeam(a.Name, s.team.Name, &u)
 	c.Assert(err, gocheck.IsNil)
 	err = revokeAccessFromTeam(a.Name, s.team.Name, &u)
@@ -1012,6 +1039,7 @@ func (s *S) TestRevokeAccessFromTeamDontRemoveTheUserIfItHasAccesToTheAppThrough
 	err = s.conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	defer s.conn.Logs().Remove(bson.M{"appname": a.Name})
 	err = grantAccessToTeam(a.Name, t.Name, s.user)
 	c.Assert(err, gocheck.IsNil)
 	err = revokeAccessFromTeam(a.Name, t.Name, s.user)
@@ -1038,6 +1066,7 @@ func (s *S) TestRevokeAccessFromTeamDontCallGandalfIfNoUserNeedToBeRevoked(c *go
 	err = s.conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	defer s.conn.Logs().Remove(bson.M{"appname": a.Name})
 	err = grantAccessToTeam(a.Name, t.Name, s.user)
 	c.Assert(err, gocheck.IsNil)
 	err = revokeAccessFromTeam(a.Name, t.Name, s.user)
@@ -1057,6 +1086,7 @@ func (s *S) TestRunHandlerShouldExecuteTheGivenCommandInTheGivenApp(c *gocheck.C
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	defer s.conn.Logs().Remove(bson.M{"appname": a.Name})
 	url := fmt.Sprintf("/apps/%s/run/?:name=%s", a.Name, a.Name)
 	request, err := http.NewRequest("POST", url, strings.NewReader("ls"))
 	c.Assert(err, gocheck.IsNil)
@@ -1084,6 +1114,7 @@ func (s *S) TestRunHandlerReturnsTheOutputOfTheCommandEvenIfItFails(c *gocheck.C
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	defer s.conn.Logs().Remove(bson.M{"appname": a.Name})
 	url := fmt.Sprintf("/apps/%s/run/?:name=%s", a.Name, a.Name)
 	request, err := http.NewRequest("POST", url, strings.NewReader("ls"))
 	c.Assert(err, gocheck.IsNil)
@@ -1139,6 +1170,7 @@ func (s *S) TestRunHandlerReturnsForbiddenIfTheGivenUserDoesNotHaveAccessToTheAp
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	defer s.conn.Logs().Remove(bson.M{"appname": a.Name})
 	url := fmt.Sprintf("/apps/%s/run/?:name=%s", a.Name, a.Name)
 	request, err := http.NewRequest("POST", url, strings.NewReader("ls"))
 	c.Assert(err, gocheck.IsNil)
@@ -1164,6 +1196,7 @@ func (s *S) TestGetEnvHandlerGetsEnvironmentVariableFromApp(c *gocheck.C) {
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	defer s.conn.Logs().Remove(bson.M{"appname": a.Name})
 	url := fmt.Sprintf("/apps/%s/env/?:name=%s", a.Name, a.Name)
 	request, err := http.NewRequest("GET", url, strings.NewReader(`["DATABASE_HOST"]`))
 	request.Header.Set("Content-Type", "application/json")
@@ -1189,6 +1222,7 @@ func (s *S) TestGetEnvHandlerShouldAcceptMultipleVariables(c *gocheck.C) {
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	defer s.conn.Logs().Remove(bson.M{"appname": a.Name})
 	url := fmt.Sprintf("/apps/%s/env/?:name=%s", a.Name, a.Name)
 	request, err := http.NewRequest("GET", url, strings.NewReader(`["DATABASE_HOST", "DATABASE_USER"]`))
 	c.Assert(err, gocheck.IsNil)
@@ -1220,6 +1254,7 @@ func (s *S) TestGetEnvHandlerReturnsAllVariablesIfEnvironmentVariablesAreMissing
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	defer s.conn.Logs().Remove(bson.M{"appname": a.Name})
 	expected := map[string]string{
 		"DATABASE_HOST":     "localhost",
 		"DATABASE_PASSWORD": "*** (private variable)",
@@ -1269,6 +1304,7 @@ func (s *S) TestGetEnvHandlerReturnsForbiddenIfTheGivenUserDoesNotHaveAccessToTh
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	defer s.conn.Logs().Remove(bson.M{"appname": a.Name})
 	url := fmt.Sprintf("/apps/%s/env/?:name=%s", a.Name, a.Name)
 	request, err := http.NewRequest("GET", url, strings.NewReader(`["DATABASE_HOST"]`))
 	c.Assert(err, gocheck.IsNil)
@@ -1289,6 +1325,7 @@ func (s *S) TestSetEnvHandlerShouldSetAPublicEnvironmentVariableInTheApp(c *goch
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	defer s.conn.Logs().Remove(bson.M{"appname": a.Name})
 	url := fmt.Sprintf("/apps/%s/env?:name=%s", a.Name, a.Name)
 	request, err := http.NewRequest("POST", url, strings.NewReader(`{"DATABASE_HOST":"localhost"}`))
 	c.Assert(err, gocheck.IsNil)
@@ -1312,6 +1349,7 @@ func (s *S) TestSetEnvHandlerShouldSetMultipleEnvironmentVariablesInTheApp(c *go
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	defer s.conn.Logs().Remove(bson.M{"appname": a.Name})
 	url := fmt.Sprintf("/apps/%s/env?:name=%s", a.Name, a.Name)
 	b := strings.NewReader(`{"DATABASE_HOST": "localhost", "DATABASE_USER": "root"}`)
 	request, err := http.NewRequest("POST", url, b)
@@ -1345,6 +1383,7 @@ func (s *S) TestSetEnvHandlerShouldNotChangeValueOfPrivateVariables(c *gocheck.C
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	defer s.conn.Logs().Remove(bson.M{"appname": a.Name})
 	url := fmt.Sprintf("/apps/%s/env?:name=%s", a.Name, a.Name)
 	request, err := http.NewRequest("POST", url, strings.NewReader(`{"DATABASE_HOST":"http://foo.com:8080"}`))
 	c.Assert(err, gocheck.IsNil)
@@ -1400,6 +1439,7 @@ func (s *S) TestSetEnvHandlerReturnsForbiddenIfTheGivenUserDoesNotHaveAccessToTh
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	defer s.conn.Logs().Remove(bson.M{"appname": a.Name})
 	url := fmt.Sprintf("/apps/%s/env/?:name=%s", a.Name, a.Name)
 	request, err := http.NewRequest("POST", url, strings.NewReader(`{"DATABASE_HOST":"localhost"}`))
 	c.Assert(err, gocheck.IsNil)
@@ -1424,6 +1464,7 @@ func (s *S) TestUnsetEnvHandlerRemovesTheEnvironmentVariablesFromTheApp(c *goche
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	defer s.conn.Logs().Remove(bson.M{"appname": a.Name})
 	expected := a.Env
 	delete(expected, "DATABASE_HOST")
 	url := fmt.Sprintf("/apps/%s/env/?:name=%s", a.Name, a.Name)
@@ -1452,6 +1493,7 @@ func (s *S) TestUnsetEnvHandlerRemovesAllGivenEnvironmentVariables(c *gocheck.C)
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	defer s.conn.Logs().Remove(bson.M{"appname": a.Name})
 	url := fmt.Sprintf("/apps/%s/env/?:name=%s", a.Name, a.Name)
 	request, err := http.NewRequest("DELETE", url, strings.NewReader(`["DATABASE_HOST", "DATABASE_USER"]`))
 	c.Assert(err, gocheck.IsNil)
@@ -1484,6 +1526,7 @@ func (s *S) TestUnsetHandlerDoesNotRemovePrivateVariables(c *gocheck.C) {
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	defer s.conn.Logs().Remove(bson.M{"appname": a.Name})
 	url := fmt.Sprintf("/apps/%s/env/?:name=%s", a.Name, a.Name)
 	b := strings.NewReader(`["DATABASE_HOST", "DATABASE_USER", "DATABASE_PASSWORD"]`)
 	request, err := http.NewRequest("DELETE", url, b)
@@ -1547,6 +1590,7 @@ func (s *S) TestUnsetEnvHandlerReturnsForbiddenIfTheGivenUserDoesNotHaveAccessTo
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	defer s.conn.Logs().Remove(bson.M{"appname": a.Name})
 	url := fmt.Sprintf("/apps/%s/env/?:name=%s", a.Name, a.Name)
 	request, err := http.NewRequest("POST", url, strings.NewReader(`["DATABASE_HOST"]`))
 	c.Assert(err, gocheck.IsNil)
@@ -1563,6 +1607,7 @@ func (s *S) TestSetCNameHandler(c *gocheck.C) {
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	defer s.conn.Logs().Remove(bson.M{"appname": a.Name})
 	url := fmt.Sprintf("/apps/%s?:name=%s", a.Name, a.Name)
 	b := strings.NewReader(`{"cname":"leper.secretcompany.com"}`)
 	request, err := http.NewRequest("POST", url, b)
@@ -1580,6 +1625,7 @@ func (s *S) TestSetCNameHandlerAcceptsEmptyCName(c *gocheck.C) {
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	defer s.conn.Logs().Remove(bson.M{"appname": a.Name})
 	url := fmt.Sprintf("/apps/%s?:name=%s", a.Name, a.Name)
 	b := strings.NewReader(`{"cname":""}`)
 	request, err := http.NewRequest("POST", url, b)
@@ -1650,6 +1696,7 @@ func (s *S) TestSetCNameHandlerUserWithoutAccessToTheApp(c *gocheck.C) {
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	defer s.conn.Logs().Remove(bson.M{"appname": a.Name})
 	url := fmt.Sprintf("/apps/%s?:name=%s", a.Name, a.Name)
 	b := strings.NewReader(`{"cname": "lost.secretcompany.com"}`)
 	request, err := http.NewRequest("POST", url, b)
@@ -1667,6 +1714,7 @@ func (s *S) TestSetCNameHandlerInvalidCName(c *gocheck.C) {
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	defer s.conn.Logs().Remove(bson.M{"appname": a.Name})
 	url := fmt.Sprintf("/apps/%s?:name=%s", a.Name, a.Name)
 	b := strings.NewReader(`{"cname": ".leper.secretcompany.com"}`)
 	request, err := http.NewRequest("POST", url, b)
@@ -1700,6 +1748,7 @@ func (s *S) TestAppLogReturnsForbiddenIfTheGivenUserDoesNotHaveAccessToTheApp(c 
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	defer s.conn.Logs().Remove(bson.M{"appname": a.Name})
 	url := fmt.Sprintf("/apps/%s/log/?:name=%s&lines=10", a.Name, a.Name)
 	request, err := http.NewRequest("GET", url, nil)
 	c.Assert(err, gocheck.IsNil)
@@ -1742,16 +1791,11 @@ func (s *S) TestAppLogShouldHaveContentType(c *gocheck.C) {
 		Name:      "lost",
 		Framework: "vougan",
 		Teams:     []string{s.team.Name},
-		Logs: []app.Applog{
-			{
-				Date:    time.Now(),
-				Message: "Something new",
-			},
-		},
 	}
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	defer s.conn.Logs().Remove(bson.M{"appname": a.Name})
 	url := fmt.Sprintf("/apps/%s/log/?:name=%s&lines=10", a.Name, a.Name)
 	request, err := http.NewRequest("GET", url, nil)
 	c.Assert(err, gocheck.IsNil)
@@ -1771,6 +1815,7 @@ func (s *S) TestAppLogSelectByLines(c *gocheck.C) {
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	defer s.conn.Logs().Remove(bson.M{"appname": a.Name})
 	for i := 0; i < 15; i++ {
 		a.Log(strconv.Itoa(i), "source")
 	}
@@ -1799,6 +1844,7 @@ func (s *S) TestAppLogSelectBySource(c *gocheck.C) {
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	defer s.conn.Logs().Remove(bson.M{"appname": a.Name})
 	a.Log("mars log", "mars")
 	a.Log("earth log", "earth")
 	url := fmt.Sprintf("/apps/%s/log/?:name=%s&source=mars&lines=10", a.Name, a.Name)
@@ -1828,18 +1874,19 @@ func (s *S) TestAppLogSelectByLinesShouldReturnTheLastestEntries(c *gocheck.C) {
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
-	logs := make([]app.Applog, 15)
+	defer s.conn.Logs().Remove(bson.M{"appname": a.Name})
 	now := time.Now()
+	coll := s.conn.Logs()
+	defer coll.Remove(bson.M{"appname": a.Name})
 	for i := 0; i < 15; i++ {
-		logs[i] = app.Applog{
+		l := app.Applog{
 			Date:    now.Add(time.Duration(i) * time.Hour),
 			Message: strconv.Itoa(i),
 			Source:  "source",
+			AppName: a.Name,
 		}
+		coll.Insert(l)
 	}
-	a.Logs = logs
-	err = s.conn.Apps().Update(bson.M{"name": a.Name}, a)
-	c.Assert(err, gocheck.IsNil)
 	url := fmt.Sprintf("/apps/%s/log/?:name=%s&lines=3", a.Name, a.Name)
 	request, err := http.NewRequest("GET", url, nil)
 	c.Assert(err, gocheck.IsNil)
@@ -1850,7 +1897,7 @@ func (s *S) TestAppLogSelectByLinesShouldReturnTheLastestEntries(c *gocheck.C) {
 	c.Assert(recorder.Code, gocheck.Equals, http.StatusOK)
 	body, err := ioutil.ReadAll(recorder.Body)
 	c.Assert(err, gocheck.IsNil)
-	logs = []app.Applog{}
+	var logs []app.Applog
 	err = json.Unmarshal(body, &logs)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(logs, gocheck.HasLen, 3)
@@ -1868,6 +1915,7 @@ func (s *S) TestAppLogShouldReturnLogByApp(c *gocheck.C) {
 	err := s.conn.Apps().Insert(app1)
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": app1.Name})
+	defer s.conn.Logs().Remove(bson.M{"appname": app1.Name})
 	app1.Log("app1 log", "source")
 	app2 := app.App{
 		Name:      "app2",
@@ -1877,6 +1925,7 @@ func (s *S) TestAppLogShouldReturnLogByApp(c *gocheck.C) {
 	err = s.conn.Apps().Insert(app2)
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": app2.Name})
+	defer s.conn.Logs().Remove(bson.M{"appname": app2.Name})
 	app2.Log("app2 log", "source")
 	app3 := app.App{
 		Name:      "app3",
@@ -1886,6 +1935,7 @@ func (s *S) TestAppLogShouldReturnLogByApp(c *gocheck.C) {
 	err = s.conn.Apps().Insert(app3)
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": app3.Name})
+	defer s.conn.Logs().Remove(bson.M{"appname": app3.Name})
 	app3.Log("app3 log", "tsuru")
 	url := fmt.Sprintf("/apps/%s/log/?:name=%s&lines=10", app3.Name, app3.Name)
 	request, err := http.NewRequest("GET", url, nil)
@@ -1953,6 +2003,7 @@ func (s *S) TestBindHandlerEndpointIsDown(c *gocheck.C) {
 	err = s.conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	defer s.conn.Logs().Remove(bson.M{"appname": a.Name})
 	url := fmt.Sprintf("/services/instances/%s/%s?:instance=%s&:app=%s", instance.Name, a.Name, instance.Name, a.Name)
 	request, err := http.NewRequest("PUT", url, nil)
 	c.Assert(err, gocheck.IsNil)
@@ -1987,6 +2038,7 @@ func (s *S) TestBindHandler(c *gocheck.C) {
 	err = s.conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	defer s.conn.Logs().Remove(bson.M{"appname": a.Name})
 	url := fmt.Sprintf("/services/instances/%s/%s?:instance=%s&:app=%s", instance.Name, a.Name, instance.Name, a.Name)
 	request, err := http.NewRequest("PUT", url, nil)
 	c.Assert(err, gocheck.IsNil)
@@ -2019,6 +2071,7 @@ func (s *S) TestBindHandlerReturns404IfTheInstanceDoesNotExist(c *gocheck.C) {
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	defer s.conn.Logs().Remove(bson.M{"appname": a.Name})
 	url := fmt.Sprintf("/services/instances/unknown/%s?:instance=unknown&:app=%s", a.Name, a.Name)
 	request, err := http.NewRequest("PUT", url, nil)
 	c.Assert(err, gocheck.IsNil)
@@ -2044,6 +2097,7 @@ func (s *S) TestBindHandlerReturns403IfTheUserDoesNotHaveAccessToTheInstance(c *
 	err = s.conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	defer s.conn.Logs().Remove(bson.M{"appname": a.Name})
 	url := fmt.Sprintf("/services/instances/%s/%s?:instance=%s&:app=%s", instance.Name, a.Name, instance.Name, a.Name)
 	request, err := http.NewRequest("PUT", url, nil)
 	c.Assert(err, gocheck.IsNil)
@@ -2085,6 +2139,7 @@ func (s *S) TestBindHandlerReturns403IfTheUserDoesNotHaveAccessToTheApp(c *goche
 	err = s.conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	defer s.conn.Logs().Remove(bson.M{"appname": a.Name})
 	url := fmt.Sprintf("/services/instances/%s/%s?:instance=%s&:app=%s", instance.Name, a.Name, instance.Name, a.Name)
 	request, err := http.NewRequest("PUT", url, nil)
 	c.Assert(err, gocheck.IsNil)
@@ -2182,6 +2237,7 @@ func (s *S) TestUnbindHandlerReturns404IfTheInstanceDoesNotExist(c *gocheck.C) {
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	defer s.conn.Logs().Remove(bson.M{"appname": a.Name})
 	url := fmt.Sprintf("/services/instances/unknown/%s?:instance=unknown&:app=%s", a.Name, a.Name)
 	request, err := http.NewRequest("PUT", url, nil)
 	c.Assert(err, gocheck.IsNil)
@@ -2207,6 +2263,7 @@ func (s *S) TestUnbindHandlerReturns403IfTheUserDoesNotHaveAccessToTheInstance(c
 	err = s.conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	defer s.conn.Logs().Remove(bson.M{"appname": a.Name})
 	url := fmt.Sprintf("/services/instances/%s/%s?:instance=%s&:app=%s", instance.Name, a.Name, instance.Name, a.Name)
 	request, err := http.NewRequest("PUT", url, nil)
 	c.Assert(err, gocheck.IsNil)
@@ -2248,6 +2305,7 @@ func (s *S) TestUnbindHandlerReturns403IfTheUserDoesNotHaveAccessToTheApp(c *goc
 	err = s.conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	defer s.conn.Logs().Remove(bson.M{"appname": a.Name})
 	url := fmt.Sprintf("/services/instances/%s/%s?:instance=%s&:app=%s", instance.Name, a.Name, instance.Name, a.Name)
 	request, err := http.NewRequest("PUT", url, nil)
 	c.Assert(err, gocheck.IsNil)
@@ -2271,6 +2329,7 @@ func (s *S) TestRestartHandler(c *gocheck.C) {
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	defer s.conn.Logs().Remove(bson.M{"appname": a.Name})
 	url := fmt.Sprintf("/apps/%s/restart?:name=%s", a.Name, a.Name)
 	request, err := http.NewRequest("GET", url, nil)
 	c.Assert(err, gocheck.IsNil)
@@ -2298,6 +2357,7 @@ func (s *S) TestRestartHandlerReturns403IfTheUserDoesNotHaveAccessToTheApp(c *go
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	defer s.conn.Logs().Remove(bson.M{"appname": a.Name})
 	url := fmt.Sprintf("/apps/%s/restart?:name=%s", a.Name, a.Name)
 	request, err := http.NewRequest("GET", url, nil)
 	c.Assert(err, gocheck.IsNil)
@@ -2317,6 +2377,7 @@ func (s *S) TestAddLogHandler(c *gocheck.C) {
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	defer s.conn.Logs().Remove(bson.M{"appname": a.Name})
 	b := strings.NewReader(`["message 1", "message 2", "message 3"]`)
 	request, err := http.NewRequest("POST", "/apps/myapp/log/?:name=myapp", b)
 	c.Assert(err, gocheck.IsNil)
@@ -2324,16 +2385,19 @@ func (s *S) TestAddLogHandler(c *gocheck.C) {
 	err = AddLogHandler(recorder, request)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(recorder.Code, gocheck.Equals, http.StatusOK)
-	messages := []string{
+	want := []string{
 		"message 1",
 		"message 2",
 		"message 3",
 	}
-	for _, msg := range messages {
-		length, err := s.conn.Apps().Find(bson.M{"name": a.Name, "logs.message": msg}).Count()
-		c.Check(err, gocheck.IsNil)
-		c.Check(length, gocheck.Equals, 1)
+	logs, err := a.LastLogs(3, "")
+	c.Assert(err, gocheck.IsNil)
+	got := make([]string, len(logs))
+	for i, l := range logs {
+		got[i] = l.Message
 	}
+	sort.Strings(got)
+	c.Assert(got, gocheck.DeepEquals, want)
 }
 
 func (s *S) TestgetAppOrErrorWhenUserIsAdmin(c *gocheck.C) {
@@ -2349,6 +2413,7 @@ func (s *S) TestgetAppOrErrorWhenUserIsAdmin(c *gocheck.C) {
 	err = s.conn.Apps().Insert(&a)
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	defer s.conn.Logs().Remove(bson.M{"appname": a.Name})
 	defer func(admin auth.User, adminTeam auth.Team) {
 		err := s.conn.Teams().RemoveId(adminTeam.Name)
 		c.Assert(err, gocheck.IsNil)
