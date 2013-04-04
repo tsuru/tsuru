@@ -12,7 +12,9 @@ env.user = 'ubuntu'
 env.tsuru_path = '/home/%s/tsuru' % env.user
 
 
-def build(flags=""):
+def build(flags="", tags=""):
+    if tags != "":
+        flags += " -tags '%s'" % tags
     goos = local("go env GOOS", capture=True)
     goarch = local("go env GOARCH", capture=True)
     if goos != "linux" or goarch != "amd64":
@@ -42,8 +44,8 @@ def restart():
     run('circusctl restart collector')
 
 
-def deploy(flags=""):
-    build(flags)
+def deploy(flags="", tags=""):
+    build(flags, tags)
     send()
     restart()
     clean()
