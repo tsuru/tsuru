@@ -73,7 +73,7 @@ type App interface {
 	// to the Unit `Type` field.
 	GetFramework() string
 
-	// GetUnits returns all units of the app, in a slice.
+	// ProvisionUnits returns all units of the app, in a slice.
 	ProvisionUnits() []AppUnit
 }
 
