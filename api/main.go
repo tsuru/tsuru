@@ -18,8 +18,11 @@ import (
 	"log/syslog"
 	"net"
 	"net/http"
+	"net/http/pprof"
 	"os"
 )
+
+var usePprof = false
 
 func fatal(err error) {
 	fmt.Fprintln(os.Stderr, err)
@@ -103,6 +106,14 @@ func main() {
 
 	m.Get("/healers", Handler(healers))
 	m.Get("/healers/:healer", Handler(healer))
+
+	if usePprof {
+		m.Get("/debug/pprof/", http.HandlerFunc(pprof.Index))
+		m.Get("/debug/pprof/cmdline", http.HandlerFunc(pprof.Cmdline))
+		m.Get("/debug/pprof/profile", http.HandlerFunc(pprof.Profile))
+		m.Get("/debug/pprof/symbol", http.HandlerFunc(pprof.Symbol))
+		m.Post("/debug/pprof/symbol", http.HandlerFunc(pprof.Symbol))
+	}
 
 	if !*dry {
 		provisioner, err := config.GetString("provisioner")
