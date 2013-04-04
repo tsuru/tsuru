@@ -12,3 +12,4 @@ api/api
 docs/_build/*
 .test
 .DS_Store
+*.test
