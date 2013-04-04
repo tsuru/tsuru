@@ -16,6 +16,7 @@ import (
 	_ "github.com/globocom/tsuru/provision/local"
 	stdlog "log"
 	"log/syslog"
+	"net"
 	"net/http"
 	"os"
 )
@@ -132,8 +133,12 @@ func main() {
 			fmt.Printf("tsuru HTTP/TLS server listening at %s...\n", listen)
 			fatal(http.ListenAndServeTLS(listen, certFile, keyFile, m))
 		} else {
+			listener, err := net.Listen("tcp", listen)
+			if err != nil {
+				fatal(err)
+			}
 			fmt.Printf("tsuru HTTP server listening at %s...\n", listen)
-			fatal(http.ListenAndServe(listen, m))
+			fatal(http.Serve(listener, m))
 		}
 	}
 }
