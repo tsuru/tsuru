@@ -45,7 +45,6 @@ var (
 type App struct {
 	Env       map[string]bind.EnvVar
 	Framework string
-	Logs      []Applog
 	Name      string
 	Ip        string
 	CName     string
@@ -73,6 +72,7 @@ type Applog struct {
 	Date    time.Time
 	Message string
 	Source  string
+	AppName string
 }
 
 type conf struct {
@@ -799,26 +799,26 @@ func (app *App) SetCName(cname string) error {
 // user can filter where the message come from.
 func (app *App) Log(message, source string) error {
 	messages := strings.Split(message, "\n")
-	logs := make([]Applog, 0, len(messages))
+	logs := make([]interface{}, 0, len(messages))
 	for _, msg := range messages {
 		if msg != "" {
 			l := Applog{
 				Date:    time.Now(),
 				Message: msg,
 				Source:  source,
+				AppName: app.Name,
 			}
 			logs = append(logs, l)
 		}
 	}
 	if len(logs) > 0 {
 		go notify(app.Name, logs)
-		app.Logs = append(app.Logs, logs...)
 		conn, err := db.Conn()
 		if err != nil {
 			return err
 		}
 		defer conn.Close()
-		return conn.Apps().Update(bson.M{"name": app.Name}, bson.M{"$set": bson.M{"logs": app.Logs}})
+		return conn.Logs().Insert(logs...)
 	}
 	return nil
 }
@@ -831,32 +831,18 @@ func (a *App) LastLogs(lines int, source string) ([]Applog, error) {
 		return nil, err
 	}
 	defer conn.Close()
-	match := bson.M{}
-	match["name"] = a.Name
+	var logs []Applog
+	q := bson.M{"appname": a.Name}
 	if source != "" {
-		match["logs.source"] = source
+		q["source"] = source
 	}
-	pipe := []bson.M{
-		{"$unwind": "$logs"},
-		{"$match": match},
-		{"$project": bson.M{"_id": 0, "logs": 1}},
-		{"$sort": bson.M{"logs.date": -1}},
-		{"$limit": lines},
-	}
-	var result []map[string]map[string]interface{}
-	err = conn.Apps().Pipe(pipe).All(&result)
+	err = conn.Logs().Find(q).Sort("-date").Limit(lines).All(&logs)
 	if err != nil {
 		return nil, err
 	}
-	n := len(result)
-	logs := make([]Applog, n)
-	for i, row := range result {
-		log := Applog{
-			Message: row["logs"]["message"].(string),
-			Source:  row["logs"]["source"].(string),
-			Date:    row["logs"]["date"].(time.Time),
-		}
-		logs[n-i-1] = log
+	l := len(logs)
+	for i := 0; i < l/2; i++ {
+		logs[i], logs[l-1-i] = logs[l-1-i], logs[i]
 	}
 	return logs, nil
 }

@@ -62,7 +62,7 @@ func (l *LogListener) Close() error {
 	return nil
 }
 
-func notify(appName string, messages []Applog) {
+func notify(appName string, messages []interface{}) {
 	var wg sync.WaitGroup
 	listeners.RLock()
 	ls := listeners.m[appName]
@@ -71,7 +71,7 @@ func notify(appName string, messages []Applog) {
 		wg.Add(1)
 		go func(l *LogListener) {
 			for _, msg := range messages {
-				l.c <- msg
+				l.c <- msg.(Applog)
 			}
 			wg.Done()
 		}(l)

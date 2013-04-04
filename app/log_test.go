@@ -48,7 +48,7 @@ func (s *S) TestLogListenerDoubleClose(c *gocheck.C) {
 
 func (s *S) TestNotify(c *gocheck.C) {
 	var logs struct {
-		l []Applog
+		l []interface{}
 		sync.Mutex
 	}
 	app := App{Name: "fade"}
@@ -61,9 +61,9 @@ func (s *S) TestNotify(c *gocheck.C) {
 			logs.Unlock()
 		}
 	}()
-	ms := []Applog{
-		{Date: time.Now(), Message: "Something went wrong. Check it out:", Source: "tsuru"},
-		{Date: time.Now(), Message: "This program has performed an illegal operation.", Source: "tsuru"},
+	ms := []interface{}{
+		Applog{Date: time.Now(), Message: "Something went wrong. Check it out:", Source: "tsuru"},
+		Applog{Date: time.Now(), Message: "This program has performed an illegal operation.", Source: "tsuru"},
 	}
 	notify(app.Name, ms)
 	done := make(chan bool, 1)

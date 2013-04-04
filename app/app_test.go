@@ -40,7 +40,6 @@ func (s *S) TestGet(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": newApp.Name})
 	newApp.Env = map[string]bind.EnvVar{}
-	newApp.Logs = []Applog{}
 	err = s.conn.Apps().Update(bson.M{"name": newApp.Name}, &newApp)
 	c.Assert(err, gocheck.IsNil)
 	myApp := App{Name: "myApp"}
@@ -1357,34 +1356,41 @@ func (s *S) TestLog(c *gocheck.C) {
 	a := App{Name: "newApp"}
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)
-	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	defer func() {
+		s.conn.Apps().Remove(bson.M{"name": a.Name})
+		s.conn.Logs().Remove(bson.M{"appname": a.Name})
+	}()
 	err = a.Log("last log msg", "tsuru")
 	c.Assert(err, gocheck.IsNil)
-	var instance App
-	err = s.conn.Apps().Find(bson.M{"name": a.Name}).One(&instance)
-	logLen := len(instance.Logs)
-	c.Assert(instance.Logs[logLen-1].Message, gocheck.Equals, "last log msg")
-	c.Assert(instance.Logs[logLen-1].Source, gocheck.Equals, "tsuru")
+	var logs []Applog
+	err = s.conn.Logs().Find(bson.M{"appname": a.Name}).All(&logs)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(logs, gocheck.HasLen, 1)
+	c.Assert(logs[0].Message, gocheck.Equals, "last log msg")
+	c.Assert(logs[0].Source, gocheck.Equals, "tsuru")
+	c.Assert(logs[0].AppName, gocheck.Equals, a.Name)
 }
 
 func (s *S) TestLogShouldAddOneRecordByLine(c *gocheck.C) {
 	a := App{Name: "newApp"}
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)
-	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	defer func() {
+		s.conn.Apps().Remove(bson.M{"name": a.Name})
+		s.conn.Logs().Remove(bson.M{"appname": a.Name})
+	}()
 	err = a.Log("last log msg\nfirst log", "source")
 	c.Assert(err, gocheck.IsNil)
-	instance := App{}
-	err = s.conn.Apps().Find(bson.M{"name": a.Name}).One(&instance)
-	logLen := len(instance.Logs)
-	c.Assert(instance.Logs[logLen-2].Message, gocheck.Equals, "last log msg")
-	c.Assert(instance.Logs[logLen-1].Message, gocheck.Equals, "first log")
+	var logs []Applog
+	err = s.conn.Logs().Find(bson.M{"appname": a.Name}).All(&logs)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(logs, gocheck.HasLen, 2)
+	c.Assert(logs[0].Message, gocheck.Equals, "last log msg")
+	c.Assert(logs[1].Message, gocheck.Equals, "first log")
 }
 
 func (s *S) TestLogShouldNotLogBlankLines(c *gocheck.C) {
-	a := App{
-		Name: "newApp",
-	}
+	a := App{Name: "ich"}
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
@@ -1392,10 +1398,9 @@ func (s *S) TestLogShouldNotLogBlankLines(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	err = a.Log("", "")
 	c.Assert(err, gocheck.IsNil)
-	var instance App
-	err = s.conn.Apps().Find(bson.M{"name": a.Name}).One(&instance)
-	logLen := len(instance.Logs)
-	c.Assert(instance.Logs[logLen-1].Message, gocheck.Not(gocheck.Equals), "")
+	count, err := s.conn.Logs().Find(bson.M{"appname": a.Name}).Count()
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(count, gocheck.Equals, 1)
 }
 
 func (s *S) TestLogWithListeners(c *gocheck.C) {
