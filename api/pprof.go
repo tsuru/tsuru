@@ -6,6 +6,4 @@
 
 package main
 
-func init() {
-	usePprof = true
-}
+import _ "net/http/pprof"
