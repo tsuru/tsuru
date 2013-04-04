@@ -19,8 +19,6 @@ import (
 	"net"
 	"net/http"
 	"os"
-	"runtime/pprof"
-	"time"
 )
 
 func fatal(err error) {
@@ -34,27 +32,9 @@ func main() {
 		stdlog.Fatal(err)
 	}
 	log.SetLogger(logger)
-	cpuprofile := flag.String("cpuprofile", "", "file to write CPU profile")
-	memprofile := flag.String("memprofile", "", "file to write memory profile")
-	runningtime := flag.String("rt", "1m", "time to run for profiling (1s, 1m, 1h, 1h45m20s, etc.)")
 	configFile := flag.String("config", "/etc/tsuru/tsuru.conf", "tsuru config file")
 	dry := flag.Bool("dry", false, "dry-run: does not start the server (for testing purpose)")
 	flag.Parse()
-	var rt time.Duration
-	if *cpuprofile != "" || *memprofile != "" {
-		rt, err = time.ParseDuration(*runningtime)
-		if err != nil {
-			fatal(err)
-		}
-		if *cpuprofile != "" {
-			f, err := os.Create(*cpuprofile)
-			if err != nil {
-				fatal(err)
-			}
-			defer f.Close()
-			pprof.StartCPUProfile(f)
-		}
-	}
 	err = config.ReadAndWatchConfigFile(*configFile)
 	if err != nil {
 		fatal(err)
@@ -158,27 +138,6 @@ func main() {
 				fatal(err)
 			}
 			fmt.Printf("tsuru HTTP server listening at %s...\n", listen)
-			if *cpuprofile != "" || *memprofile != "" {
-				fmt.Println("Starting the profiler...")
-				go func() {
-					time.Sleep(rt)
-					listener.Close()
-					if *memprofile != "" {
-						f, err := os.Create(*memprofile)
-						if err != nil {
-							fatal(err)
-						}
-						defer f.Close()
-						err = pprof.Lookup("heap").WriteTo(f, 0)
-						if err != nil {
-							fatal(err)
-						}
-					}
-					if *cpuprofile != "" {
-						pprof.StopCPUProfile()
-					}
-				}()
-			}
 			fatal(http.Serve(listener, m))
 		}
 	}
