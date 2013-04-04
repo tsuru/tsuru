@@ -187,6 +187,14 @@ func (s *S) TestApps(c *gocheck.C) {
 	c.Assert(apps, HasUniqueIndex, []string{"name"})
 }
 
+func (s *S) TestLogs(c *gocheck.C) {
+	storage, _ := Open("127.0.0.1:27017", "tsuru_storage_test")
+	defer storage.session.Close()
+	logs := storage.Logs()
+	logsc := storage.Collection("logs")
+	c.Assert(logs, gocheck.DeepEquals, logsc)
+}
+
 func (s *S) TestServices(c *gocheck.C) {
 	storage, _ := Open("127.0.0.1:27017", "tsuru_storage_test")
 	defer storage.session.Close()

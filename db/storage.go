@@ -125,6 +125,11 @@ func (s *Storage) Apps() *mgo.Collection {
 	return c
 }
 
+// Logs returns the logs collection from MongoDB.
+func (s *Storage) Logs() *mgo.Collection {
+	return s.Collection("logs")
+}
+
 // Services returns the services collection from MongoDB.
 func (s *Storage) Services() *mgo.Collection {
 	c := s.Collection("services")
