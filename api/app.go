@@ -257,7 +257,9 @@ func removeUnits(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	return app.RemoveUnits(uint(n))
 }
 
-func grantAccessToTeam(appName, teamName string, u *auth.User) error {
+func grantAccessToTeam(w http.ResponseWriter, r *http.Request, u *auth.User) error {
+	appName := r.URL.Query().Get(":app")
+	teamName := r.URL.Query().Get(":team")
 	t := new(auth.Team)
 	app, err := getApp(appName, u)
 	if err != nil {
@@ -286,12 +288,6 @@ func grantAccessToTeam(appName, teamName string, u *auth.User) error {
 		return fmt.Errorf("Failed to grant access in the git server: %s.", err)
 	}
 	return nil
-}
-
-func GrantAccessToTeamHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
-	appName := r.URL.Query().Get(":app")
-	teamName := r.URL.Query().Get(":team")
-	return grantAccessToTeam(appName, teamName, u)
 }
 
 func getEmailsForRevoking(app *app.App, t *auth.Team) []string {
