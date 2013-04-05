@@ -565,7 +565,7 @@ func bindServiceInstance(w http.ResponseWriter, r *http.Request, u *auth.User) e
 	return enc.Encode(envs)
 }
 
-func UnbindHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
+func unbindServiceInstance(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	instanceName, appName := r.URL.Query().Get(":instance"), r.URL.Query().Get(":app")
 	instance, a, err := getServiceInstace(instanceName, appName, u)
 	if err != nil {
