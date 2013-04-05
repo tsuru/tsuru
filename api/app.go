@@ -546,7 +546,7 @@ func getServiceInstace(instanceName, appName string, u *auth.User) (service.Serv
 	return instance, app, nil
 }
 
-func BindHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
+func bindServiceInstance(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	instanceName, appName := r.URL.Query().Get(":instance"), r.URL.Query().Get(":app")
 	instance, a, err := getServiceInstace(instanceName, appName, u)
 	if err != nil {
