@@ -583,7 +583,7 @@ func restart(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	return instance.Restart(w)
 }
 
-func AddLogHandler(w http.ResponseWriter, r *http.Request) error {
+func addLog(w http.ResponseWriter, r *http.Request) error {
 	app := app.App{Name: r.URL.Query().Get(":name")}
 	err := app.Get()
 	if err != nil {
