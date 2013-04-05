@@ -312,7 +312,9 @@ func getEmailsForRevoking(app *app.App, t *auth.Team) []string {
 	return users[:i]
 }
 
-func revokeAccessFromTeam(appName, teamName string, u *auth.User) error {
+func revokeAccessFromTeam(w http.ResponseWriter, r *http.Request, u *auth.User) error {
+	appName := r.URL.Query().Get(":app")
+	teamName := r.URL.Query().Get(":team")
 	t := new(auth.Team)
 	app, err := getApp(appName, u)
 	if err != nil {
@@ -347,12 +349,6 @@ func revokeAccessFromTeam(appName, teamName string, u *auth.User) error {
 		}
 	}
 	return nil
-}
-
-func RevokeAccessFromTeamHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
-	appName := r.URL.Query().Get(":app")
-	teamName := r.URL.Query().Get(":team")
-	return revokeAccessFromTeam(appName, teamName, u)
 }
 
 func RunCommand(w http.ResponseWriter, r *http.Request, u *auth.User) error {
