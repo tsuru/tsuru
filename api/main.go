@@ -74,7 +74,7 @@ func main() {
 	m.Get("/apps/:name/avaliable", Handler(appIsAvailable))
 	m.Get("/apps/:name", AuthorizationRequiredHandler(appInfo))
 	m.Post("/apps/:name", AuthorizationRequiredHandler(setCName))
-	m.Post("/apps/:name/run", AuthorizationRequiredHandler(RunCommand))
+	m.Post("/apps/:name/run", AuthorizationRequiredHandler(runCommand))
 	m.Get("/apps/:name/restart", AuthorizationRequiredHandler(RestartHandler))
 	m.Get("/apps/:name/env", AuthorizationRequiredHandler(getEnv))
 	m.Post("/apps/:name/env", AuthorizationRequiredHandler(setEnv))

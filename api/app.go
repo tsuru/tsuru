@@ -351,7 +351,7 @@ func revokeAccessFromTeam(w http.ResponseWriter, r *http.Request, u *auth.User) 
 	return nil
 }
 
-func RunCommand(w http.ResponseWriter, r *http.Request, u *auth.User) error {
+func runCommand(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	w.Header().Set("Content-Type", "text")
 	msg := "You must provide the command to run"
 	if r.Body == nil {
