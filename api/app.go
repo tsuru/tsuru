@@ -574,7 +574,7 @@ func unbindServiceInstance(w http.ResponseWriter, r *http.Request, u *auth.User)
 	return instance.UnbindApp(&a)
 }
 
-func RestartHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
+func restart(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	w.Header().Set("Content-Type", "text")
 	instance, err := getApp(r.URL.Query().Get(":name"), u)
 	if err != nil {
