@@ -15,11 +15,8 @@ import (
 )
 
 func (s *S) TestJsonWriterBuffer(c *gocheck.C) {
-	var (
-		writer bytes.Buffer
-		buf    bytes.Buffer
-	)
-	w := jsonWriter{&writer, buf}
+	var writer bytes.Buffer
+	w := jsonWriter{w: &writer}
 	data := `[{"Date":"2013-03-21T18:27:02.452-03:00","Message":"  mysq`
 	l := len(data)
 	n, err := w.Write([]byte(data))
@@ -42,11 +39,8 @@ func (s *S) TestJsonWriter(c *gocheck.C) {
 	}
 	b, err := json.Marshal(logs)
 	c.Assert(err, gocheck.IsNil)
-	var (
-		writer bytes.Buffer
-		buf    bytes.Buffer
-	)
-	w := jsonWriter{&writer, buf}
+	var writer bytes.Buffer
+	w := jsonWriter{w: &writer}
 	n, err := w.Write(b)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(n, gocheck.Equals, len(b))
@@ -57,11 +51,8 @@ func (s *S) TestJsonWriter(c *gocheck.C) {
 }
 
 func (s *S) TestJsonWriterInvalidJson(c *gocheck.C) {
-	var (
-		writer bytes.Buffer
-		buf    bytes.Buffer
-	)
-	w := jsonWriter{&writer, buf}
+	var writer bytes.Buffer
+	w := jsonWriter{w: &writer}
 	b := []byte("-----")
 	n, err := w.Write(b)
 	c.Assert(err, gocheck.IsNil)

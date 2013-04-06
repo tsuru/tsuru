@@ -5,7 +5,6 @@
 package tsuru
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"github.com/globocom/tsuru/cmd"
@@ -35,29 +34,24 @@ If you don't provide the app name, tsuru will try to guess it. The default numbe
 }
 
 type jsonWriter struct {
-	w    io.Writer
-	buff bytes.Buffer
+	w io.Writer
+	b []byte
 }
 
 func (w *jsonWriter) Write(b []byte) (int, error) {
 	var logs []log
-	l := len(b)
-	if w.buff.Len() > 0 {
-		w.buff.Write(b)
-		b = w.buff.Bytes()
-	}
-	err := json.Unmarshal(b, &logs)
+	w.b = append(w.b, b...)
+	err := json.Unmarshal(w.b, &logs)
 	if err != nil {
-		w.buff.Write(b)
-		return l, nil
+		return len(b), nil
 	}
 	for _, l := range logs {
 		date := l.Date.Format("2006-01-02 15:04:05")
 		prefix := fmt.Sprintf("%s [%s]:", date, l.Source)
 		fmt.Fprintf(w.w, "%s %s\n", cmd.Colorfy(prefix, "blue", "", ""), l.Message)
 	}
-	w.buff.Reset()
-	return l, nil
+	w.b = nil
+	return len(b), nil
 }
 
 type log struct {
@@ -93,8 +87,7 @@ func (c *AppLog) Run(context *cmd.Context, client cmd.Doer) error {
 		return nil
 	}
 	defer response.Body.Close()
-	var buff bytes.Buffer
-	w := jsonWriter{context.Stdout, buff}
+	w := jsonWriter{w: context.Stdout}
 	for n, err := io.Copy(&w, response.Body); n > 0 && err == nil; n, err = io.Copy(&w, response.Body) {
 	}
 	return nil
