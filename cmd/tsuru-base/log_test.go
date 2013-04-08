@@ -31,6 +31,34 @@ func (s *S) TestJsonWriterBuffer(c *gocheck.C) {
 	c.Assert(writer.String(), gocheck.Equals, expected)
 }
 
+func (s *S) TestJsonWriterChukedWrite(c *gocheck.C) {
+	t := time.Now()
+	logs := []log{
+		{Date: t, Message: "Something happened", Source: "tsuru"},
+		{Date: t.Add(2 * time.Hour), Message: "Something happened again", Source: "tsuru"},
+	}
+	data, err := json.Marshal(logs)
+	c.Assert(err, gocheck.IsNil)
+	l := len(data)
+	var buf bytes.Buffer
+	w := jsonWriter{w: &buf}
+	_, err = w.Write(data[:l/4])
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(buf.String(), gocheck.Equals, "")
+	_, err = w.Write(data[l/4 : l/2])
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(buf.String(), gocheck.Equals, "")
+	_, err = w.Write(data[l/2 : l/4*3])
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(buf.String(), gocheck.Equals, "")
+	_, err = w.Write(data[l/4*3:])
+	c.Assert(err, gocheck.IsNil)
+	tfmt := "2006-01-02 15:04:05"
+	expected := cmd.Colorfy(t.Format(tfmt)+" [tsuru]:", "blue", "", "") + " Something happened\n"
+	expected = expected + cmd.Colorfy(t.Add(2*time.Hour).Format(tfmt)+" [tsuru]:", "blue", "", "") + " Something happened again\n"
+	c.Assert(buf.String(), gocheck.Equals, expected)
+}
+
 func (s *S) TestJsonWriter(c *gocheck.C) {
 	t := time.Now()
 	logs := []log{
