@@ -74,8 +74,9 @@ func (s *S) TestCheckApplicationToken(c *gocheck.C) {
 	t, err := CreateApplicationToken("tsuru-healer")
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Tokens().Remove(bson.M{"token": t.Token})
-	err = CheckApplicationToken(t.Token)
+	t2, err := CheckApplicationToken(t.Token)
 	c.Assert(err, gocheck.IsNil)
+	c.Assert(t2.Token, gocheck.Equals, t.Token)
 }
 
 func (s *S) TestCheckApplicationTokenExpired(c *gocheck.C) {
@@ -84,13 +85,15 @@ func (s *S) TestCheckApplicationTokenExpired(c *gocheck.C) {
 	defer s.conn.Tokens().Remove(bson.M{"token": t.Token})
 	t.ValidUntil = time.Now().Add(-24 * time.Hour)
 	s.conn.Tokens().Update(bson.M{"token": t.Token}, t)
-	err = CheckApplicationToken(t.Token)
+	t2, err := CheckApplicationToken(t.Token)
+	c.Assert(t2, gocheck.IsNil)
 	c.Assert(err, gocheck.NotNil)
 	c.Assert(err.Error(), gocheck.Equals, "Invalid token.")
 }
 
 func (s *S) TestCheckApplicationTokenUnknown(c *gocheck.C) {
-	err := CheckApplicationToken("unknown")
+	t, err := CheckApplicationToken("unknown")
+	c.Assert(t, gocheck.IsNil)
 	c.Assert(err, gocheck.NotNil)
 	c.Assert(err.Error(), gocheck.Equals, "Invalid token.")
 }
@@ -103,7 +106,8 @@ func (s *S) TestCheckApplicationTokenUserToken(c *gocheck.C) {
 	}
 	s.conn.Tokens().Insert(t)
 	defer s.conn.Tokens().Remove(bson.M{"token": t.Token})
-	err := CheckApplicationToken(t.Token)
+	t2, err := CheckApplicationToken(t.Token)
+	c.Assert(t2, gocheck.IsNil)
 	c.Assert(err, gocheck.NotNil)
 	c.Assert(err.Error(), gocheck.Equals, "Invalid token.")
 }
