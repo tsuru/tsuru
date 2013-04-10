@@ -7,6 +7,7 @@ package tsuru
 import (
 	"bytes"
 	"github.com/globocom/tsuru/cmd"
+	"github.com/globocom/tsuru/testing"
 	"launchpad.net/gocheck"
 	"net/http"
 )
@@ -19,12 +20,12 @@ func (s *S) TestAppRun(c *gocheck.C) {
 		Stdout: &stdout,
 		Stderr: &stderr,
 	}
-	trans := &conditionalTransport{
-		transport{
-			msg: "http.go		http_test.go",
-			status: http.StatusOK,
+	trans := &testing.ConditionalTransport{
+		Transport: testing.Transport{
+			Message: "http.go		http_test.go",
+			Status: http.StatusOK,
 		},
-		func(req *http.Request) bool {
+		CondFunc: func(req *http.Request) bool {
 			b := make([]byte, 2)
 			req.Body.Read(b)
 			return req.URL.Path == "/apps/ble/run" && string(b) == "ls"
@@ -46,12 +47,12 @@ func (s *S) TestAppRunShouldUseAllSubsequentArgumentsAsArgumentsToTheGivenComman
 		Stdout: &stdout,
 		Stderr: &stderr,
 	}
-	trans := &conditionalTransport{
-		transport{
-			msg:    "-rw-r--r--  1 f  staff  119 Apr 26 18:23 http.go",
-			status: http.StatusOK,
+	trans := &testing.ConditionalTransport{
+		Transport: testing.Transport{
+			Message: "-rw-r--r--  1 f  staff  119 Apr 26 18:23 http.go",
+			Status:  http.StatusOK,
 		},
-		func(req *http.Request) bool {
+		CondFunc: func(req *http.Request) bool {
 			b := make([]byte, 5)
 			req.Body.Read(b)
 			return req.URL.Path == "/apps/ble/run" && string(b) == "ls -l"
@@ -73,12 +74,12 @@ func (s *S) TestAppRunWithoutTheFlag(c *gocheck.C) {
 		Stdout: &stdout,
 		Stderr: &stderr,
 	}
-	trans := &conditionalTransport{
-		transport{
-			msg:    "-rw-r--r--  1 f  staff  119 Apr 26 18:23 http.go",
-			status: http.StatusOK,
+	trans := &testing.ConditionalTransport{
+		Transport: testing.Transport{
+			Message: "-rw-r--r--  1 f  staff  119 Apr 26 18:23 http.go",
+			Status:  http.StatusOK,
 		},
-		func(req *http.Request) bool {
+		CondFunc: func(req *http.Request) bool {
 			b := make([]byte, 6)
 			req.Body.Read(b)
 			return req.URL.Path == "/apps/bla/run" && string(b) == "ls -lh"
