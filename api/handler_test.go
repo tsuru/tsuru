@@ -102,7 +102,7 @@ func (s *HandlerSuite) TestHandlerReturns500WhenInternalHandlerReturnsAnError(c 
 	recorder := httptest.NewRecorder()
 	request, err := http.NewRequest("GET", "/apps", nil)
 	c.Assert(err, gocheck.IsNil)
-	Handler(errorHandler).ServeHTTP(recorder, request)
+	handler(errorHandler).ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, gocheck.Equals, http.StatusInternalServerError)
 	c.Assert(recorder.Body.String(), gocheck.Equals, "some error\n")
 }
@@ -111,7 +111,7 @@ func (s *HandlerSuite) TestHandlerDontCallWriteHeaderIfItHasAlreadyBeenCalled(c 
 	recorder := recorder{httptest.NewRecorder(), 0}
 	request, err := http.NewRequest("GET", "/apps", nil)
 	c.Assert(err, gocheck.IsNil)
-	Handler(errorHandlerWriteHeader).ServeHTTP(&recorder, request)
+	handler(errorHandlerWriteHeader).ServeHTTP(&recorder, request)
 	c.Assert(recorder.Code, gocheck.Equals, http.StatusBadGateway)
 	c.Assert(recorder.Body.String(), gocheck.Equals, "some error\n")
 	c.Assert(recorder.headerWrites, gocheck.Equals, 1)
@@ -121,7 +121,7 @@ func (s *HandlerSuite) TestHandlerShouldPassAnHandlerWithoutError(c *gocheck.C) 
 	recorder := httptest.NewRecorder()
 	request, err := http.NewRequest("GET", "/apps", nil)
 	c.Assert(err, gocheck.IsNil)
-	Handler(simpleHandler).ServeHTTP(recorder, request)
+	handler(simpleHandler).ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, gocheck.Equals, http.StatusOK)
 	c.Assert(recorder.Body.String(), gocheck.Equals, "success")
 }
@@ -130,7 +130,7 @@ func (s *HandlerSuite) TestHandlerShouldSetVersionHeaders(c *gocheck.C) {
 	recorder := httptest.NewRecorder()
 	request, err := http.NewRequest("GET", "/apps", nil)
 	c.Assert(err, gocheck.IsNil)
-	Handler(simpleHandler).ServeHTTP(recorder, request)
+	handler(simpleHandler).ServeHTTP(recorder, request)
 	c.Assert(recorder.Header().Get("Supported-Tsuru"), gocheck.Equals, tsuruMin)
 	c.Assert(recorder.Header().Get("Supported-Crane"), gocheck.Equals, craneMin)
 }
@@ -139,7 +139,7 @@ func (s *HandlerSuite) TestHandlerShouldSetVersionHeadersEvenOnFail(c *gocheck.C
 	recorder := httptest.NewRecorder()
 	request, err := http.NewRequest("GET", "/apps", nil)
 	c.Assert(err, gocheck.IsNil)
-	Handler(errorHandler).ServeHTTP(recorder, request)
+	handler(errorHandler).ServeHTTP(recorder, request)
 	c.Assert(recorder.Header().Get("Supported-Tsuru"), gocheck.Equals, tsuruMin)
 	c.Assert(recorder.Header().Get("Supported-Crane"), gocheck.Equals, craneMin)
 }
@@ -149,7 +149,7 @@ func (s *HandlerSuite) TestAuthorizationRequiredHandlerShouldReturnUnauthorizedI
 	request, err := http.NewRequest("GET", "/apps", nil)
 	c.Assert(err, gocheck.IsNil)
 
-	AuthorizationRequiredHandler(authorizedSimpleHandler).ServeHTTP(recorder, request)
+	authorizationRequiredHandler(authorizedSimpleHandler).ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, gocheck.Equals, http.StatusUnauthorized)
 	c.Assert(recorder.Body.String(), gocheck.Equals, "You must provide the Authorization header\n")
 }
@@ -159,7 +159,7 @@ func (s *HandlerSuite) TestAuthorizationRequiredHandlerShouldReturnUnauthorizedI
 	request, err := http.NewRequest("GET", "/apps", nil)
 	c.Assert(err, gocheck.IsNil)
 	request.Header.Set("Authorization", "what the token?!")
-	AuthorizationRequiredHandler(authorizedSimpleHandler).ServeHTTP(recorder, request)
+	authorizationRequiredHandler(authorizedSimpleHandler).ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, gocheck.Equals, http.StatusUnauthorized)
 	c.Assert(recorder.Body.String(), gocheck.Equals, "Invalid token\n")
 }
@@ -169,7 +169,7 @@ func (s *HandlerSuite) TestAuthorizationRequiredHandlerShouldReturnTheHandlerRes
 	request, err := http.NewRequest("GET", "/apps", nil)
 	c.Assert(err, gocheck.IsNil)
 	request.Header.Set("Authorization", s.token.Token)
-	AuthorizationRequiredHandler(authorizedSimpleHandler).ServeHTTP(recorder, request)
+	authorizationRequiredHandler(authorizedSimpleHandler).ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, gocheck.Equals, http.StatusOK)
 	c.Assert(recorder.Body.String(), gocheck.Equals, "success")
 }
@@ -179,7 +179,7 @@ func (s *HandlerSuite) TestAuthorizationRequiredHandlerShouldSetVersionHeaders(c
 	request, err := http.NewRequest("GET", "/apps", nil)
 	c.Assert(err, gocheck.IsNil)
 	request.Header.Set("Authorization", s.token.Token)
-	AuthorizationRequiredHandler(authorizedSimpleHandler).ServeHTTP(recorder, request)
+	authorizationRequiredHandler(authorizedSimpleHandler).ServeHTTP(recorder, request)
 	c.Assert(recorder.Header().Get("Supported-Tsuru"), gocheck.Equals, tsuruMin)
 	c.Assert(recorder.Header().Get("Supported-Crane"), gocheck.Equals, craneMin)
 }
@@ -189,7 +189,7 @@ func (s *HandlerSuite) TestAuthorizationRequiredHandlerShouldSetVersionHeadersEv
 	request, err := http.NewRequest("GET", "/apps", nil)
 	c.Assert(err, gocheck.IsNil)
 	request.Header.Set("Authorization", "what the token?!")
-	AuthorizationRequiredHandler(authorizedSimpleHandler).ServeHTTP(recorder, request)
+	authorizationRequiredHandler(authorizedSimpleHandler).ServeHTTP(recorder, request)
 	c.Assert(recorder.Header().Get("Supported-Tsuru"), gocheck.Equals, tsuruMin)
 	c.Assert(recorder.Header().Get("Supported-Crane"), gocheck.Equals, craneMin)
 }
@@ -199,7 +199,7 @@ func (s *HandlerSuite) TestAuthorizationRequiredHandlerShouldReturnTheHandlerErr
 	request, err := http.NewRequest("GET", "/apps", nil)
 	c.Assert(err, gocheck.IsNil)
 	request.Header.Set("Authorization", s.token.Token)
-	AuthorizationRequiredHandler(authorizedErrorHandler).ServeHTTP(recorder, request)
+	authorizationRequiredHandler(authorizedErrorHandler).ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, gocheck.Equals, http.StatusInternalServerError)
 	c.Assert(recorder.Body.String(), gocheck.Equals, "some error\n")
 }
@@ -209,7 +209,7 @@ func (s *HandlerSuite) TestAuthorizetionRequiredHandlerDontCallWriteHeaderIfItHa
 	request, err := http.NewRequest("GET", "/apps", nil)
 	c.Assert(err, gocheck.IsNil)
 	request.Header.Set("Authorization", s.token.Token)
-	AuthorizationRequiredHandler(authorizedErrorHandlerWriteHeader).ServeHTTP(&recorder, request)
+	authorizationRequiredHandler(authorizedErrorHandlerWriteHeader).ServeHTTP(&recorder, request)
 	c.Assert(recorder.Code, gocheck.Equals, http.StatusBadGateway)
 	c.Assert(recorder.Body.String(), gocheck.Equals, "some error\n")
 	c.Assert(recorder.headerWrites, gocheck.Equals, 1)
@@ -220,7 +220,7 @@ func (s *HandlerSuite) TestAuthorizationRequiredHandlerShouldRespectTheHandlerSt
 	request, err := http.NewRequest("GET", "/apps", nil)
 	c.Assert(err, gocheck.IsNil)
 	request.Header.Set("Authorization", s.token.Token)
-	AuthorizationRequiredHandler(authorizedBadRequestHandler).ServeHTTP(recorder, request)
+	authorizationRequiredHandler(authorizedBadRequestHandler).ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, gocheck.Equals, http.StatusBadRequest)
 }
 

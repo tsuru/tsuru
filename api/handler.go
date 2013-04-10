@@ -22,9 +22,9 @@ func setVersionHeaders(w http.ResponseWriter) {
 	w.Header().Set("Supported-Crane", craneMin)
 }
 
-type Handler func(http.ResponseWriter, *http.Request) error
+type handler func(http.ResponseWriter, *http.Request) error
 
-func (fn Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (fn handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	setVersionHeaders(w)
 	defer func() {
 		if r.Body != nil {
@@ -42,9 +42,9 @@ func (fn Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-type AuthorizationRequiredHandler func(http.ResponseWriter, *http.Request, *auth.User) error
+type authorizationRequiredHandler func(http.ResponseWriter, *http.Request, *auth.User) error
 
-func (fn AuthorizationRequiredHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (fn authorizationRequiredHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	setVersionHeaders(w)
 	defer func() {
 		if r.Body != nil {
