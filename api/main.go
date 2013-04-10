@@ -95,6 +95,8 @@ func main() {
 	m.Post("/users/keys", authorizationRequiredHandler(AddKeyToUser))
 	m.Del("/users/keys", authorizationRequiredHandler(RemoveKeyFromUser))
 
+	m.Post("/tokens", adminRequiredHandler(generateAppToken))
+
 	m.Get("/teams", authorizationRequiredHandler(ListTeams))
 	m.Post("/teams", authorizationRequiredHandler(CreateTeam))
 	m.Del("/teams/:name", authorizationRequiredHandler(RemoveTeam))
