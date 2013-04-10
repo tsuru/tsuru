@@ -14,6 +14,7 @@ func (s *S) TestTransport(c *gocheck.C) {
 	var t http.RoundTripper = &Transport{
 		Message: "Ok",
 		Status:  http.StatusOK,
+		Headers: map[string][]string{"Authorization": {"something"}},
 	}
 	req, _ := http.NewRequest("GET", "/", nil)
 	r, err := t.RoundTrip(req)
@@ -22,6 +23,7 @@ func (s *S) TestTransport(c *gocheck.C) {
 	defer r.Body.Close()
 	b, _ := ioutil.ReadAll(r.Body)
 	c.Assert(string(b), gocheck.Equals, "Ok")
+	c.Assert(r.Header.Get("Authorization"), gocheck.Equals, "something")
 }
 
 func (s *S) TestConditionalTransport(c *gocheck.C) {

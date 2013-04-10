@@ -14,12 +14,14 @@ import (
 type Transport struct {
 	Message string
 	Status  int
+	Headers map[string][]string
 }
 
 func (t *Transport) RoundTrip(req *http.Request) (resp *http.Response, err error) {
 	resp = &http.Response{
 		Body:       ioutil.NopCloser(bytes.NewBufferString(t.Message)),
 		StatusCode: t.Status,
+		Header:     http.Header(t.Headers),
 	}
 	return resp, nil
 }
