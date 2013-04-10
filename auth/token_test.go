@@ -118,10 +118,11 @@ func (s *S) TestTokenMarshalJSON(c *gocheck.C) {
 		Token:      "12saii",
 		ValidUntil: valid,
 		UserEmail:  "something@something.com",
+		AppName:    "myapp",
 	}
 	b, err := json.Marshal(&t)
 	c.Assert(err, gocheck.IsNil)
-	want := fmt.Sprintf(`{"token":"12saii","valid-until":"%s","email":"something@something.com"}`,
+	want := fmt.Sprintf(`{"token":"12saii","valid-until":"%s","email":"something@something.com","app":"myapp"}`,
 		valid.Format(time.RFC3339Nano))
 	c.Assert(string(b), gocheck.Equals, want)
 }

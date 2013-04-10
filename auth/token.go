@@ -17,6 +17,7 @@ type Token struct {
 	Token      string    `json:"token"`
 	ValidUntil time.Time `json:"valid-until"`
 	UserEmail  string    `json:"email"`
+	AppName    string    `json:"app"`
 }
 
 func token(data string) string {
