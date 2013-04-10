@@ -1408,7 +1408,8 @@ func (s *AuthSuite) TestGenerateApplicationToken(c *gocheck.C) {
 	conn, _ := db.Conn()
 	defer conn.Close()
 	defer conn.Tokens().Remove(bson.M{"token": jsonToken["token"]})
-	c.Assert(auth.CheckApplicationToken(jsonToken["token"]), gocheck.IsNil)
+	_, err = auth.CheckApplicationToken(jsonToken["token"])
+	c.Assert(err, gocheck.IsNil)
 }
 
 func (s *AuthSuite) TestGenerateApplicationTokenInvalidJSON(c *gocheck.C) {
