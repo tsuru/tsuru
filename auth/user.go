@@ -102,13 +102,9 @@ func GetUserByToken(token string) (*User, error) {
 		return nil, err
 	}
 	defer conn.Close()
-	var t Token
-	err = conn.Tokens().Find(bson.M{"token": token}).One(&t)
+	t, err := getToken(token)
 	if err != nil {
-		return nil, stderr.New("Token not found")
-	}
-	if t.ValidUntil.Sub(time.Now()) < 1 {
-		return nil, stderr.New("Token has expired")
+		return nil, err
 	}
 	return GetUserByEmail(t.UserEmail)
 }

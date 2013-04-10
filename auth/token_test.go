@@ -8,6 +8,7 @@ import (
 	"github.com/globocom/config"
 	"labix.org/v2/mgo/bson"
 	"launchpad.net/gocheck"
+	"time"
 )
 
 func (s *S) TestNewTokenReturnsErroWhenUserReferenceDoesNotContainsEmail(c *gocheck.C) {
@@ -61,7 +62,33 @@ func (s *S) TestCreateApplicationToken(c *gocheck.C) {
 	t, err := CreateApplicationToken("tsuru-healer")
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(t, gocheck.NotNil)
+	defer s.conn.Tokens().Remove(bson.M{"token": t.Token})
 	n, err := s.conn.Tokens().Find(bson.M{"token": t.Token}).Count()
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(n, gocheck.Equals, 1)
+}
+
+func (s *S) TestCheckApplicationToken(c *gocheck.C) {
+	t, err := CreateApplicationToken("tsuru-healer")
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Tokens().Remove(bson.M{"token": t.Token})
+	err = CheckApplicationToken(t.Token)
+	c.Assert(err, gocheck.IsNil)
+}
+
+func (s *S) TestCheckApplicationTokenExpired(c *gocheck.C) {
+	t, err := CreateApplicationToken("tsuru-healer")
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Tokens().Remove(bson.M{"token": t.Token})
+	t.ValidUntil = time.Now().Add(-24 * time.Hour)
+	s.conn.Tokens().Update(bson.M{"token": t.Token}, t)
+	err = CheckApplicationToken(t.Token)
+	c.Assert(err, gocheck.NotNil)
+	c.Assert(err.Error(), gocheck.Equals, "Invalid token.")
+}
+
+func (s *S) TestCheckApplicationTokenUnknown(c *gocheck.C) {
+	err := CheckApplicationToken("unknown")
+	c.Assert(err, gocheck.NotNil)
+	c.Assert(err.Error(), gocheck.Equals, "Invalid token.")
 }

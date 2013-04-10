@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/globocom/tsuru/db"
+	"labix.org/v2/mgo/bson"
 	"time"
 )
 
@@ -43,6 +44,23 @@ func newUserToken(u *User) (*Token, error) {
 	return &t, nil
 }
 
+func getToken(token string) (*Token, error) {
+	conn, err := db.Conn()
+	if err != nil {
+		return nil, err
+	}
+	defer conn.Close()
+	var t Token
+	err = conn.Tokens().Find(bson.M{"token": token}).One(&t)
+	if err != nil {
+		return nil, errors.New("Token not found")
+	}
+	if t.ValidUntil.Sub(time.Now()) < 1 {
+		return nil, errors.New("Token has expired")
+	}
+	return &t, nil
+}
+
 func CheckToken(token string) (*User, error) {
 	if token == "" {
 		return nil, errors.New("You must provide the token")
@@ -69,4 +87,12 @@ func CreateApplicationToken(appName string) (*Token, error) {
 		return nil, err
 	}
 	return &t, nil
+}
+
+func CheckApplicationToken(token string) error {
+	_, err := getToken(token)
+	if err != nil {
+		return errors.New("Invalid token.")
+	}
+	return nil
 }
