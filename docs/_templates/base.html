@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="utf-8">
+	<title>{% block title %}Tsuru{% endblock %}</title>
+	<link href="{{url_for("static", filename="css/bootstrap.css")}}" media="all" rel="stylesheet" type="text/css">
+	<link href="{{url_for("static", filename="css/index.css")}}" media="all" rel="stylesheet" type="text/css">
+	<meta property="og:title" content="{% block ogtitle %}Tsuru{% endblock %}">
+	{% block ogurl %}
+	<meta property="og:url" content="http://tsuru.io">
+	{% endblock %}
+	{% block ogdesc %}
+	<meta property="og:description" content="{% trans %}Tsuru is an open source polyglot cloud application platform.{% endtrans %}">
+	{% endblock%}
+</head>
+<body>
+	<div class="header">
+		<div class="container">
+			<div class="row main">
+				<div class="span10">
+					<h1><a href="{{url_for("index")}}">TSURU</a></h1>
+					<p><a href="{{url_for("index")}}">{% trans %}open source platform as a service{% endtrans %}</a></p>
+				</div>
+			</div>
+		</div>
+		<div class="navegation">
+			<div class="container">
+				<div class="row">
+					<div class="navbar">
+						<div class="navbar-inner">
+							<ul class="nav">
+								<li><a href="{{url_for("try_tsuru")}}">{% trans %}Try{% endtrans %}</a></li>
+								<li><a href="{{url_for("community")}}">{% trans %}Community{% endtrans %}</a></li>
+								<li><a href="http://docs.tsuru.io/en/latest/">{% trans %}Documentation{% endtrans %}</a></li>
+								<li><a href="https://github.com/globocom/tsuru">{% trans %}Code{% endtrans %}</a></li>
+								<li><a href="{{url_for("about")}}">{% trans %}About{% endtrans %}</a></li>
+							</ul>
+						</div>
+					</div>
+					{% block langselect %}
+					<div class="language-select">
+						<a href="en"{% if language == "en" %} class="active"{% endif %}>Eng</a> 
+						&middot; 
+						<a href="pt"{% if language == "pt" %} class="active"{% endif %}>Port</a>
+					</div>
+					{% endblock %}
+				</div>
+			</div>
+		</div>
+	</div>
+	{% block content %}{% endblock %}
+	<div class="footer">
+		<div class="container">
+			<div class="row">
+				<div class="span12">Powered by <a href="http://www.globo.com">globo.com</a></div>
+			</div>
+		</div>
+	</div>
+<script type="text/javascript" src="http://code.jquery.com/jquery-1.9.1.min.js"></script>
+<script type="text/javascript" src="{{url_for("static", filename="js/facebook.js")}}"></script>
+<script type="text/javascript" src="{{url_for("static", filename="js/gplus.js")}}"></script>
+<script type="text/javascript" src="{{url_for("static", filename="js/init.menu.js")}}"></script>
+<script>
+
+(function(global) {
+	$(".language-select a").click(function(event){
+		event.preventDefault();
+		global.document.cookie = "language=" + $(this).attr('href');
+		global.location.reload();
+	});
+})(window);
+
+(function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+	(i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+	m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+})(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+ga('create', 'UA-6912161-11', 'tsuru.io');
+ga('send', 'pageview');
+</script>
+</body>
+</html>
