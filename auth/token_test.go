@@ -92,3 +92,16 @@ func (s *S) TestCheckApplicationTokenUnknown(c *gocheck.C) {
 	c.Assert(err, gocheck.NotNil)
 	c.Assert(err.Error(), gocheck.Equals, "Invalid token.")
 }
+
+func (s *S) TestCheckApplicationTokenUserToken(c *gocheck.C) {
+	t := Token{
+		UserEmail:  "something@something.com",
+		Token:      "12ghoasojad",
+		ValidUntil: time.Now().Add(time.Hour),
+	}
+	s.conn.Tokens().Insert(t)
+	defer s.conn.Tokens().Remove(bson.M{"token": t.Token})
+	err := CheckApplicationToken(t.Token)
+	c.Assert(err, gocheck.NotNil)
+	c.Assert(err.Error(), gocheck.Equals, "Invalid token.")
+}

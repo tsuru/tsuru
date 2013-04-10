@@ -90,8 +90,8 @@ func CreateApplicationToken(appName string) (*Token, error) {
 }
 
 func CheckApplicationToken(token string) error {
-	_, err := getToken(token)
-	if err != nil {
+	t, err := getToken(token)
+	if err != nil || t.UserEmail != "" {
 		return errors.New("Invalid token.")
 	}
 	return nil
