@@ -34,6 +34,12 @@ func (s *ActionsSuite) SetUpSuite(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 }
 
+func (s *ActionsSuite) TearDownSuite(c *gocheck.C) {
+	conn, _ := db.Conn()
+	defer conn.Close()
+	conn.Apps().Database.DropDatabase()
+}
+
 func (s *ActionsSuite) startGandalfTestServer(h http.Handler) *httptest.Server {
 	ts := httptest.NewServer(h)
 	pieces := strings.Split(ts.URL, "://")
