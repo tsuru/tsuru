@@ -68,6 +68,7 @@ func (s *S) TestCreateApplicationToken(c *gocheck.C) {
 	n, err := s.conn.Tokens().Find(bson.M{"token": t.Token}).Count()
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(n, gocheck.Equals, 1)
+	c.Assert(t.AppName, gocheck.Equals, "tsuru-healer")
 }
 
 func (s *S) TestCheckApplicationToken(c *gocheck.C) {

@@ -82,6 +82,7 @@ func CreateApplicationToken(appName string) (*Token, error) {
 	t := Token{
 		ValidUntil: time.Now().Add(365 * 24 * time.Hour),
 		Token:      token(appName),
+		AppName:    appName,
 	}
 	err = conn.Tokens().Insert(t)
 	if err != nil {
