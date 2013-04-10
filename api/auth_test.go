@@ -1418,3 +1418,15 @@ func (s *AuthSuite) TestGenerateApplicationTokenInvalidJSON(c *gocheck.C) {
 	err := generateAppToken(recorder, request, s.user)
 	c.Assert(err, gocheck.NotNil)
 }
+
+func (s *AuthSuite) TestGenerateApplicationTokenMissingClient(c *gocheck.C) {
+	body := bytes.NewBufferString(`{"client":""}`)
+	request, _ := http.NewRequest("POST", "/tokens", body)
+	recorder := httptest.NewRecorder()
+	err := generateAppToken(recorder, request, s.user)
+	c.Assert(err, gocheck.NotNil)
+	e, ok := err.(*errors.Http)
+	c.Assert(ok, gocheck.Equals, true)
+	c.Assert(e.Code, gocheck.Equals, http.StatusBadRequest)
+	c.Assert(e.Message, gocheck.Equals, "Missing client name in JSON body")
+}

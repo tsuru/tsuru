@@ -515,7 +515,14 @@ func generateAppToken(w http.ResponseWriter, r *http.Request, u *auth.User) erro
 	if err != nil {
 		return err
 	}
-	t, err := auth.CreateApplicationToken(body["client"])
+	client := body["client"]
+	if client == "" {
+		return &errors.Http{
+			Code:    http.StatusBadRequest,
+			Message: "Missing client name in JSON body",
+		}
+	}
+	t, err := auth.CreateApplicationToken(client)
 	if err != nil {
 		return err
 	}
