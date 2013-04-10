@@ -507,3 +507,17 @@ Please remove the team, them remove the user.`, team.Name)
 	}
 	return conn.Users().Remove(bson.M{"email": u.Email})
 }
+
+func generateAppToken(w http.ResponseWriter, r *http.Request, u *auth.User) error {
+	var body map[string]string
+	defer r.Body.Close()
+	err := json.NewDecoder(r.Body).Decode(&body)
+	if err != nil {
+		return err
+	}
+	t, err := auth.CreateApplicationToken(body["client"])
+	if err != nil {
+		return err
+	}
+	return json.NewEncoder(w).Encode(t)
+}

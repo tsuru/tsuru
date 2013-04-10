@@ -39,6 +39,7 @@ func (s *AuthSuite) SetUpSuite(c *gocheck.C) {
 	config.Set("auth:token-key", "TSURU-KEY")
 	config.Set("auth:hash-cost", 4)
 	s.createUserAndTeam(c)
+	config.Set("admin-team", s.team.Name)
 }
 
 func (s *AuthSuite) TearDownSuite(c *gocheck.C) {
@@ -1393,4 +1394,27 @@ func (s *AuthSuite) TestChangePasswordReturns400IfJSONDoesNotIncludeBothOldAndNe
 		c.Assert(e.Code, gocheck.Equals, http.StatusBadRequest)
 		c.Assert(e.Message, gocheck.Equals, "Both the old and the new passwords are required.")
 	}
+}
+
+func (s *AuthSuite) TestGenerateApplicationToken(c *gocheck.C) {
+	body := bytes.NewBufferString(`{"client":"tsuru-healer"}`)
+	request, _ := http.NewRequest("POST", "/tokens", body)
+	recorder := httptest.NewRecorder()
+	err := generateAppToken(recorder, request, s.user)
+	c.Assert(err, gocheck.IsNil)
+	var jsonToken map[string]string
+	err = json.NewDecoder(recorder.Body).Decode(&jsonToken)
+	c.Assert(err, gocheck.IsNil)
+	conn, _ := db.Conn()
+	defer conn.Close()
+	defer conn.Tokens().Remove(bson.M{"token": jsonToken["token"]})
+	c.Assert(auth.CheckApplicationToken(jsonToken["token"]), gocheck.IsNil)
+}
+
+func (s *AuthSuite) TestGenerateApplicationTokenInvalidJSON(c *gocheck.C) {
+	body := bytes.NewBufferString(`{"client":"tsuru-`)
+	request, _ := http.NewRequest("POST", "/tokens", body)
+	recorder := httptest.NewRecorder()
+	err := generateAppToken(recorder, request, s.user)
+	c.Assert(err, gocheck.NotNil)
 }
