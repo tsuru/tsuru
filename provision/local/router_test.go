@@ -38,6 +38,7 @@ func (s *S) TestAddRoute(c *gocheck.C) {
 func (s *S) TestRestartRouter(c *gocheck.C) {
 	tmpdir, err := commandmocker.Add("sudo", "$*")
 	c.Assert(err, gocheck.IsNil)
+	defer commandmocker.Remove(tmpdir)
 	err = RestartRouter()
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(commandmocker.Ran(tmpdir), gocheck.Equals, true)
