@@ -14,6 +14,7 @@ import (
 type Token struct {
 	Token      string
 	ValidUntil time.Time
+	UserEmail  string
 }
 
 func newUserToken(u *User) (*Token, error) {
@@ -33,6 +34,7 @@ func newUserToken(u *User) (*Token, error) {
 	t := Token{}
 	t.ValidUntil = time.Now().Add(tokenExpire)
 	t.Token = fmt.Sprintf("%x", h.Sum(nil))
+	t.UserEmail = u.Email
 	return &t, nil
 }
 

@@ -136,17 +136,17 @@ func (s *S) TestUserCheckPasswordValidatesThePassword(c *gocheck.C) {
 	c.Check(e.Message, gocheck.Equals, passwordError)
 }
 
-func (s *S) TestCreateTokenShouldSaveTheTokenInUserInTheDatabase(c *gocheck.C) {
+func (s *S) TestCreateTokenShouldSaveTheTokenInTheDatabase(c *gocheck.C) {
 	u := User{Email: "wolverine@xmen.com", Password: "123456"}
 	err := u.Create()
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Users().Remove(bson.M{"email": u.Email})
 	_, err = u.CreateToken("123456")
 	c.Assert(err, gocheck.IsNil)
-	var result User
-	err = s.conn.Users().Find(nil).One(&result)
+	var result Token
+	err = s.conn.Tokens().Find(bson.M{"useremail": u.Email}).One(&result)
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(result.Tokens[0].Token, gocheck.NotNil)
+	c.Assert(result.Token, gocheck.NotNil)
 }
 
 func (s *S) TestCreateTokenReturnsErrorWhenHashCostIsUndefined(c *gocheck.C) {
@@ -197,15 +197,14 @@ func (s *S) TestGetUserByTokenShouldReturnErrorWhenTheGivenTokenDoesNotExist(c *
 }
 
 func (s *S) TestGetUserByTokenShouldReturnErrorWhenTheGivenTokenHasExpired(c *gocheck.C) {
-	collection := s.conn.Users()
 	u := User{Email: "wolverine@xmen.com", Password: "123456"}
 	err := u.Create()
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Users().Remove(bson.M{"email": u.Email})
 	t, err := u.CreateToken("123456")
 	c.Assert(err, gocheck.IsNil)
-	u.Tokens[0].ValidUntil = time.Now().Add(-24 * time.Hour)
-	err = collection.Update(bson.M{"email": "wolverine@xmen.com"}, u)
+	t.ValidUntil = time.Now().Add(-24 * time.Hour)
+	err = s.conn.Tokens().Update(bson.M{"token": t.Token}, t)
 	user, err := GetUserByToken(t.Token)
 	c.Assert(user, gocheck.IsNil)
 	c.Assert(err, gocheck.NotNil)
@@ -216,12 +215,6 @@ func (s *S) TestGetUserByTokenDoesNotFailWhenTheTokenIsValid(c *gocheck.C) {
 	u := User{
 		Email:    "masterof@puppets.com",
 		Password: "123456",
-		Tokens: []Token{
-			{
-				Token:      "abcd",
-				ValidUntil: time.Now().Add(-24 * time.Hour),
-			},
-		},
 	}
 	err := u.Create()
 	c.Assert(err, gocheck.IsNil)

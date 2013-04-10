@@ -6,19 +6,8 @@ package auth
 
 import (
 	"github.com/globocom/config"
-	"labix.org/v2/mgo/bson"
 	"launchpad.net/gocheck"
 )
-
-func (s *S) TestNewTokenIsStoredInUser(c *gocheck.C) {
-	u := User{Email: "wolverine@xmen.com", Password: "123456"}
-	u.Create()
-	defer s.conn.Users().Remove(bson.M{"email": u.Email})
-	t, err := u.CreateToken("123456")
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(u.Email, gocheck.Equals, "wolverine@xmen.com")
-	c.Assert(u.Tokens[0].Token, gocheck.Equals, t.Token)
-}
 
 func (s *S) TestNewTokenReturnsErroWhenUserReferenceDoesNotContainsEmail(c *gocheck.C) {
 	u := User{}

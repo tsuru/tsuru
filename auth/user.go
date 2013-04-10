@@ -76,7 +76,6 @@ type Key struct {
 type User struct {
 	Email    string
 	Password string
-	Tokens   []Token
 	Keys     []Key
 }
 
@@ -103,23 +102,15 @@ func GetUserByToken(token string) (*User, error) {
 		return nil, err
 	}
 	defer conn.Close()
-	u := new(User)
-	query := bson.M{"tokens.token": token}
-	err = conn.Users().Find(query).One(&u)
+	var t Token
+	err = conn.Tokens().Find(bson.M{"token": token}).One(&t)
 	if err != nil {
 		return nil, stderr.New("Token not found")
 	}
-	var t Token
-	for _, tk := range u.Tokens {
-		if tk.Token == token {
-			t = tk
-			break
-		}
-	}
-	if t.Token == "" || t.ValidUntil.Sub(time.Now()) < 1 {
+	if t.ValidUntil.Sub(time.Now()) < 1 {
 		return nil, stderr.New("Token has expired")
 	}
-	return u, nil
+	return GetUserByEmail(t.UserEmail)
 }
 
 func (u *User) Create() error {
@@ -185,8 +176,7 @@ func (u *User) CreateToken(password string) (*Token, error) {
 	if err != nil {
 		return nil, err
 	}
-	u.Tokens = append(u.Tokens, *t)
-	err = conn.Users().Update(bson.M{"email": u.Email}, u)
+	err = conn.Tokens().Insert(t)
 	return t, err
 }
 
