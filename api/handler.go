@@ -70,3 +70,34 @@ func (fn authorizationRequiredHandler) ServeHTTP(w http.ResponseWriter, r *http.
 		log.Print(err)
 	}
 }
+
+type adminRequiredHandler func(http.ResponseWriter, *http.Request, *auth.User) error
+
+func (fn adminRequiredHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	setVersionHeaders(w)
+	defer func() {
+		if r.Body != nil {
+			r.Body.Close()
+		}
+	}()
+	fw := FlushingWriter{w, false}
+	token := r.Header.Get("Authorization")
+	if token == "" {
+		http.Error(&fw, "You must provide the Authorization header", http.StatusUnauthorized)
+	} else if user, err := auth.CheckToken(token); err != nil {
+		http.Error(&fw, "Invalid token", http.StatusUnauthorized)
+	} else if !user.IsAdmin() {
+		http.Error(&fw, "Forbidden", http.StatusForbidden)
+	} else if err = fn(&fw, r, user); err != nil {
+		code := http.StatusInternalServerError
+		if e, ok := err.(*errors.Http); ok {
+			code = e.Code
+		}
+		if fw.wrote {
+			fmt.Fprintln(&fw, err)
+		} else {
+			http.Error(&fw, err.Error(), code)
+		}
+		log.Print(err)
+	}
+}
