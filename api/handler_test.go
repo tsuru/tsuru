@@ -27,12 +27,16 @@ func (s *HandlerSuite) SetUpSuite(c *gocheck.C) {
 	var err error
 	config.Set("database:url", "127.0.0.1:27017")
 	config.Set("database:name", "tsuru_api_handler_test")
+	config.Set("auth:salt", "tsuru-salt")
+	config.Set("auth:token-key", "key")
+	config.Set("auth:hash-cost", 4)
 	s.conn, err = db.Conn()
 	c.Assert(err, gocheck.IsNil)
 	user := &auth.User{Email: "whydidifall@thewho.com", Password: "123456"}
 	err = user.Create()
 	c.Assert(err, gocheck.IsNil)
-	s.token, _ = user.CreateToken("123456")
+	s.token, err = user.CreateToken("123456")
+	c.Assert(err, gocheck.IsNil)
 }
 
 func (s *HandlerSuite) TearDownSuite(c *gocheck.C) {
