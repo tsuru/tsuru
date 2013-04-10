@@ -5,24 +5,8 @@
 package main
 
 import (
-	"github.com/globocom/tsuru/app"
-	"io"
 	"net/http"
 )
-
-type LogWriter struct {
-	app    *app.App
-	writer io.Writer
-}
-
-// Write writes and logs the data.
-func (w *LogWriter) Write(data []byte) (int, error) {
-	err := w.app.Log(string(data), "tsuru")
-	if err != nil {
-		return 0, err
-	}
-	return w.writer.Write(data)
-}
 
 // FlushingWriter is a custom writer that flushes after writing, if the
 // underlying ResponseWriter is also an http.Flusher.
