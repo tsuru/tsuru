@@ -22,14 +22,14 @@ func (s *S) TestNewTokenIsStoredInUser(c *gocheck.C) {
 
 func (s *S) TestNewTokenReturnsErroWhenUserReferenceDoesNotContainsEmail(c *gocheck.C) {
 	u := User{}
-	t, err := newToken(&u)
+	t, err := newUserToken(&u)
 	c.Assert(t, gocheck.IsNil)
 	c.Assert(err, gocheck.NotNil)
 	c.Assert(err, gocheck.ErrorMatches, "^Impossible to generate tokens for users without email$")
 }
 
 func (s *S) TestNewTokenReturnsErrorWhenUserIsNil(c *gocheck.C) {
-	t, err := newToken(nil)
+	t, err := newUserToken(nil)
 	c.Assert(t, gocheck.IsNil)
 	c.Assert(err, gocheck.NotNil)
 	c.Assert(err, gocheck.ErrorMatches, "^User is nil$")
@@ -41,7 +41,7 @@ func (s *S) TestNewTokenWithoutTokenKey(c *gocheck.C) {
 	defer config.Set("auth:token-key", old)
 	err = config.Unset("auth:token-key")
 	c.Assert(err, gocheck.IsNil)
-	t, err := newToken(&User{Email: "gopher@golang.org"})
+	t, err := newUserToken(&User{Email: "gopher@golang.org"})
 	c.Assert(t, gocheck.IsNil)
 	c.Assert(err, gocheck.NotNil)
 	c.Assert(err.Error(), gocheck.Equals, `Setting "auth:token-key" is undefined.`)

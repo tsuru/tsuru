@@ -181,7 +181,7 @@ func (u *User) CreateToken(password string) (*Token, error) {
 		return nil, err
 	}
 	defer conn.Close()
-	t, err := newToken(u)
+	t, err := newUserToken(u)
 	if err != nil {
 		return nil, err
 	}

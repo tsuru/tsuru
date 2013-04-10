@@ -16,7 +16,7 @@ type Token struct {
 	ValidUntil time.Time
 }
 
-func newToken(u *User) (*Token, error) {
+func newUserToken(u *User) (*Token, error) {
 	if u == nil {
 		return nil, errors.New("User is nil")
 	}
