@@ -281,7 +281,9 @@ func (s *AuthSuite) TestLoginShouldCreateTokenInTheDatabaseAndReturnItWithinTheR
 	var recorderJson map[string]string
 	r, _ := ioutil.ReadAll(recorder.Body)
 	json.Unmarshal(r, &recorderJson)
-	c.Assert(recorderJson["token"], gocheck.Equals, user.Tokens[0].Token)
+	n, err := conn.Tokens().Find(bson.M{"token": recorderJson["token"]}).Count()
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(n, gocheck.Equals, 1)
 }
 
 func (s *AuthSuite) TestLoginShouldReturnErrorAndBadRequestIfItReceivesAnInvalidJson(c *gocheck.C) {
