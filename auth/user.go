@@ -284,42 +284,6 @@ func (u *User) AllowedAppsByTeam(team string) ([]string, error) {
 	return appNames, nil
 }
 
-type Token struct {
-	Token      string
-	ValidUntil time.Time
-}
-
-func newToken(u *User) (*Token, error) {
-	if u == nil {
-		return nil, stderr.New("User is nil")
-	}
-	if u.Email == "" {
-		return nil, stderr.New("Impossible to generate tokens for users without email")
-	}
-	if err := loadConfig(); err != nil {
-		return nil, err
-	}
-	h := sha512.New()
-	h.Write([]byte(u.Email))
-	h.Write([]byte(tokenKey))
-	h.Write([]byte(time.Now().Format(time.UnixDate)))
-	t := Token{}
-	t.ValidUntil = time.Now().Add(tokenExpire)
-	t.Token = fmt.Sprintf("%x", h.Sum(nil))
-	return &t, nil
-}
-
-func CheckToken(token string) (*User, error) {
-	if token == "" {
-		return nil, stderr.New("You must provide the token")
-	}
-	u, err := GetUserByToken(token)
-	if err != nil {
-		return nil, stderr.New("Invalid token")
-	}
-	return u, nil
-}
-
 type AuthenticationFailure struct{}
 
 func (a AuthenticationFailure) Error() string {
