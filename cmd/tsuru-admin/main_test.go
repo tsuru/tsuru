@@ -31,6 +31,13 @@ func (s *S) TestUnsetCNameIsRegistered(c *gocheck.C) {
 	c.Assert(cname, gocheck.FitsTypeOf, &tsuru.UnsetCName{})
 }
 
+func (s *S) TestTokenGenIsRegistered(c *gocheck.C) {
+	manager := buildManager("tsuru-admin")
+	token, ok := manager.Commands["token-gen"]
+	c.Assert(ok, gocheck.Equals, true)
+	c.Assert(token, gocheck.FitsTypeOf, tokenGen{})
+}
+
 func (s *S) TestCommandsFromBaseManagerAreRegistered(c *gocheck.C) {
 	baseManager := cmd.BuildBaseManager("tsuru", version, header)
 	manager := buildManager("tsuru")

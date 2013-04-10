@@ -21,6 +21,7 @@ func buildManager(name string) *cmd.Manager {
 	m.Register(tsuru.AppList{})
 	m.Register(&tsuru.SetCName{})
 	m.Register(&tsuru.UnsetCName{})
+	m.Register(tokenGen{})
 	return m
 }
 
