@@ -5,6 +5,8 @@
 package auth
 
 import (
+	"encoding/json"
+	"fmt"
 	"github.com/globocom/config"
 	"labix.org/v2/mgo/bson"
 	"launchpad.net/gocheck"
@@ -104,4 +106,18 @@ func (s *S) TestCheckApplicationTokenUserToken(c *gocheck.C) {
 	err := CheckApplicationToken(t.Token)
 	c.Assert(err, gocheck.NotNil)
 	c.Assert(err.Error(), gocheck.Equals, "Invalid token.")
+}
+
+func (s *S) TestTokenMarshalJSON(c *gocheck.C) {
+	valid := time.Now()
+	t := Token{
+		Token:      "12saii",
+		ValidUntil: valid,
+		UserEmail:  "something@something.com",
+	}
+	b, err := json.Marshal(&t)
+	c.Assert(err, gocheck.IsNil)
+	want := fmt.Sprintf(`{"token":"12saii","valid-until":"%s","email":"something@something.com"}`,
+		valid.Format(time.RFC3339Nano))
+	c.Assert(string(b), gocheck.Equals, want)
 }

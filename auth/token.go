@@ -14,9 +14,9 @@ import (
 )
 
 type Token struct {
-	Token      string
-	ValidUntil time.Time
-	UserEmail  string
+	Token      string    `json:"token"`
+	ValidUntil time.Time `json:"valid-until"`
+	UserEmail  string    `json:"email"`
 }
 
 func token(data string) string {
