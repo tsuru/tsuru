@@ -139,10 +139,47 @@ func (s *S) TestProvisionerDestroy(c *gocheck.C) {
 	var p LocalProvisioner
 	app := testing.NewFakeApp("myapp", "python", 0)
 	err = p.Provision(app)
-	time.Sleep(5 * time.Second)
 	c.Assert(err, gocheck.IsNil)
+	ok := make(chan bool, 1)
+	go func() {
+		for {
+			coll := s.conn.Collection(s.collName)
+			ct, err := coll.Find(bson.M{"name": "myapp", "status": provision.StatusStarted}).Count()
+			if err != nil {
+				c.Fatal(err)
+			}
+			if ct > 0 {
+				ok <- true
+				return
+			}
+			time.Sleep(1e3)
+		}
+	}()
+	select {
+	case <-ok:
+	case <-time.After(10e9):
+		c.Fatal("Timed out waiting for the container to be provisioned (10 seconds)")
+	}
 	c.Assert(p.Destroy(app), gocheck.IsNil)
-	time.Sleep(5 * time.Second)
+	go func() {
+		for {
+			coll := s.conn.Collection(s.collName)
+			ct, err := coll.Find(bson.M{"name": "myapp", "status": provision.StatusStarted}).Count()
+			if err != nil {
+				c.Fatal(err)
+			}
+			if ct == 0 {
+				ok <- true
+				return
+			}
+			time.Sleep(1e3)
+		}
+	}()
+	select {
+	case <-ok:
+	case <-time.After(10e9):
+		c.Fatal("Timed out waiting for the container to be provisioned (10 seconds)")
+	}
 	c.Assert(commandmocker.Ran(tmpdir), gocheck.Equals, true)
 	expected := "lxc-create -t ubuntu -n myapp -- -S somepath"
 	expected += "lxc-start --daemon -n myapp"
