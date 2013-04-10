@@ -5,7 +5,7 @@
 package auth
 
 import (
-	"crypto/sha512"
+	"crypto/sha1"
 	"errors"
 	"fmt"
 	"github.com/globocom/tsuru/db"
@@ -21,7 +21,7 @@ type Token struct {
 }
 
 func token(data string) string {
-	h := sha512.New()
+	h := sha1.New()
 	h.Write([]byte(data))
 	h.Write([]byte(tokenKey))
 	h.Write([]byte(time.Now().Format(time.UnixDate)))
