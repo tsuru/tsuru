@@ -6,6 +6,7 @@ package auth
 
 import (
 	"github.com/globocom/config"
+	"labix.org/v2/mgo/bson"
 	"launchpad.net/gocheck"
 )
 
@@ -54,4 +55,13 @@ func (s *S) TestCheckTokenReturnTheUserIfTheTokenIsValid(c *gocheck.C) {
 	u, e := CheckToken(s.token.Token)
 	c.Assert(e, gocheck.IsNil)
 	c.Assert(u.Email, gocheck.Equals, s.user.Email)
+}
+
+func (s *S) TestCreateApplicationToken(c *gocheck.C) {
+	t, err := CreateApplicationToken("tsuru-healer")
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(t, gocheck.NotNil)
+	n, err := s.conn.Tokens().Find(bson.M{"token": t.Token}).Count()
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(n, gocheck.Equals, 1)
 }
