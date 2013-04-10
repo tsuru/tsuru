@@ -8,6 +8,7 @@ import (
 	"bytes"
 	"github.com/globocom/tsuru/cmd"
 	"github.com/globocom/tsuru/cmd/tsuru-base"
+	"github.com/globocom/tsuru/testing"
 	"io/ioutil"
 	"launchpad.net/gocheck"
 	"net/http"
@@ -35,9 +36,9 @@ Your repository for "ble" project is "git@tsuru.plataformas.glb.com:ble.git"` + 
 		Stdout: &stdout,
 		Stderr: &stderr,
 	}
-	transport := conditionalTransport{
-		transport{msg: result, status: http.StatusOK},
-		func(req *http.Request) bool {
+	trans := testing.ConditionalTransport{
+		Transport: testing.Transport{Message: result, Status: http.StatusOK},
+		CondFunc: func(req *http.Request) bool {
 			defer req.Body.Close()
 			body, err := ioutil.ReadAll(req.Body)
 			c.Assert(err, gocheck.IsNil)
@@ -45,7 +46,7 @@ Your repository for "ble" project is "git@tsuru.plataformas.glb.com:ble.git"` + 
 			return req.Method == "POST" && req.URL.Path == "/apps"
 		},
 	}
-	client := cmd.NewClient(&http.Client{Transport: &transport}, nil, manager)
+	client := cmd.NewClient(&http.Client{Transport: &trans}, nil, manager)
 	command := AppCreate{}
 	command.Flags().Parse(true, nil)
 	err := command.Run(&context, client)
@@ -64,9 +65,9 @@ Your repository for "ble" project is "git@tsuru.plataformas.glb.com:ble.git"` + 
 		Stdout: &stdout,
 		Stderr: &stderr,
 	}
-	transport := conditionalTransport{
-		transport{msg: result, status: http.StatusOK},
-		func(req *http.Request) bool {
+	trans := testing.ConditionalTransport{
+		Transport: testing.Transport{Message: result, Status: http.StatusOK},
+		CondFunc: func(req *http.Request) bool {
 			defer req.Body.Close()
 			body, err := ioutil.ReadAll(req.Body)
 			c.Assert(err, gocheck.IsNil)
@@ -74,7 +75,7 @@ Your repository for "ble" project is "git@tsuru.plataformas.glb.com:ble.git"` + 
 			return req.Method == "POST" && req.URL.Path == "/apps"
 		},
 	}
-	client := cmd.NewClient(&http.Client{Transport: &transport}, nil, manager)
+	client := cmd.NewClient(&http.Client{Transport: &trans}, nil, manager)
 	command := AppCreate{}
 	command.Flags().Parse(true, []string{"--units", "4"})
 	err := command.Run(&context, client)
@@ -97,7 +98,7 @@ func (s *S) TestAppCreateWithInvalidFramework(c *gocheck.C) {
 		Stdout: &stdout,
 		Stderr: &stderr,
 	}
-	client := cmd.NewClient(&http.Client{Transport: &transport{msg: "", status: http.StatusInternalServerError}}, nil, manager)
+	client := cmd.NewClient(&http.Client{Transport: &testing.Transport{Message: "", Status: http.StatusInternalServerError}}, nil, manager)
 	command := AppCreate{}
 	command.Flags().Parse(true, nil)
 	err := command.Run(&context, client)
@@ -133,7 +134,7 @@ func (s *S) TestAppRemove(c *gocheck.C) {
 		Stderr: &stderr,
 		Stdin:  strings.NewReader("y\n"),
 	}
-	client := cmd.NewClient(&http.Client{Transport: &transport{msg: "", status: http.StatusOK}}, nil, manager)
+	client := cmd.NewClient(&http.Client{Transport: &testing.Transport{Message: "", Status: http.StatusOK}}, nil, manager)
 	command := AppRemove{}
 	command.Flags().Parse(true, []string{"-a", "ble"})
 	err := command.Run(&context, client)
@@ -150,7 +151,7 @@ func (s *S) TestAppRemoveWithoutAsking(c *gocheck.C) {
 		Stderr: &stderr,
 		Stdin:  strings.NewReader("y\n"),
 	}
-	client := cmd.NewClient(&http.Client{Transport: &transport{msg: "", status: http.StatusOK}}, nil, manager)
+	client := cmd.NewClient(&http.Client{Transport: &testing.Transport{Message: "", Status: http.StatusOK}}, nil, manager)
 	command := AppRemove{}
 	command.Flags().Parse(true, []string{"-a", "ble", "-y"})
 	err := command.Run(&context, client)
@@ -218,12 +219,9 @@ func (s *S) TestAppRemoveWithoutArgs(c *gocheck.C) {
 		Stdin:  strings.NewReader("y\n"),
 	}
 	expected := `Are you sure you want to remove app "secret"? (y/n) App "secret" successfully removed!` + "\n"
-	trans := &conditionalTransport{
-		transport{
-			msg:    "",
-			status: http.StatusOK,
-		},
-		func(req *http.Request) bool {
+	trans := &testing.ConditionalTransport{
+		Transport: testing.Transport{Message: "", Status: http.StatusOK},
+		CondFunc: func(req *http.Request) bool {
 			return req.URL.Path == "/apps/secret" && req.Method == "DELETE"
 		},
 	}
@@ -271,12 +269,9 @@ func (s *S) TestUnitAdd(c *gocheck.C) {
 		Stdout: &stdout,
 		Stderr: &stderr,
 	}
-	trans := &conditionalTransport{
-		transport{
-			msg:    "",
-			status: http.StatusOK,
-		},
-		func(req *http.Request) bool {
+	trans := &testing.ConditionalTransport{
+		Transport: testing.Transport{Message: "", Status: http.StatusOK},
+		CondFunc: func(req *http.Request) bool {
 			called = true
 			b, err := ioutil.ReadAll(req.Body)
 			c.Assert(err, gocheck.IsNil)
@@ -301,7 +296,7 @@ func (s *S) TestUnitAddFailure(c *gocheck.C) {
 		Stdout: &stdout,
 		Stderr: &stderr,
 	}
-	client := cmd.NewClient(&http.Client{Transport: &transport{msg: "Failed to add.", status: 500}}, nil, manager)
+	client := cmd.NewClient(&http.Client{Transport: &testing.Transport{Message: "Failed to add.", Status: 500}}, nil, manager)
 	command := UnitAdd{}
 	command.Flags().Parse(true, []string{"-a", "radio"})
 	err := command.Run(&context, client)
@@ -331,12 +326,9 @@ func (s *S) TestUnitRemove(c *gocheck.C) {
 		Stdout: &stdout,
 		Stderr: &stderr,
 	}
-	trans := &conditionalTransport{
-		transport{
-			msg:    "",
-			status: http.StatusOK,
-		},
-		func(req *http.Request) bool {
+	trans := &testing.ConditionalTransport{
+		Transport: testing.Transport{Message: "", Status: http.StatusOK},
+		CondFunc: func(req *http.Request) bool {
 			called = true
 			b, err := ioutil.ReadAll(req.Body)
 			c.Assert(err, gocheck.IsNil)
@@ -362,7 +354,7 @@ func (s *S) TestUnitRemoveFailure(c *gocheck.C) {
 		Stderr: &stderr,
 	}
 	client := cmd.NewClient(&http.Client{
-		Transport: &transport{msg: "Failed to remove.", status: 500},
+		Transport: &testing.Transport{Message: "Failed to remove.", Status: 500},
 	}, nil, manager)
 	command := UnitRemove{}
 	command.Flags().Parse(true, []string{"-a", "vapor"})

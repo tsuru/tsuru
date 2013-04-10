@@ -8,6 +8,7 @@ import (
 	"bytes"
 	"github.com/globocom/tsuru/cmd"
 	fs_test "github.com/globocom/tsuru/fs/testing"
+	"github.com/globocom/tsuru/testing"
 	"launchpad.net/gocheck"
 	"net/http"
 	"os/user"
@@ -25,7 +26,7 @@ func (s *S) TestKeyAdd(c *gocheck.C) {
 		Stdout: &stdout,
 		Stderr: &stderr,
 	}
-	client := cmd.NewClient(&http.Client{Transport: &transport{msg: "success", status: http.StatusOK}}, nil, manager)
+	client := cmd.NewClient(&http.Client{Transport: &testing.Transport{Message: "success", Status: http.StatusOK}}, nil, manager)
 	fs := fs_test.RecordingFs{FileContent: "user-key"}
 	command := KeyAdd{keyReader{fsystem: &fs}}
 	err = command.Run(&context, client)
@@ -45,7 +46,7 @@ func (s *S) TestKeyAddSpecifyingKeyFile(c *gocheck.C) {
 		Stdout: &stdout,
 		Stderr: &stderr,
 	}
-	client := cmd.NewClient(&http.Client{Transport: &transport{msg: "success", status: http.StatusOK}}, nil, manager)
+	client := cmd.NewClient(&http.Client{Transport: &testing.Transport{Message: "success", Status: http.StatusOK}}, nil, manager)
 	fs := fs_test.RecordingFs{FileContent: "user-key"}
 	command := KeyAdd{keyReader{fsystem: &fs}}
 	err = command.Run(&context, client)
@@ -104,7 +105,7 @@ func (s *S) TestKeyRemove(c *gocheck.C) {
 		Stdout: &stdout,
 		Stderr: &stderr,
 	}
-	client := cmd.NewClient(&http.Client{Transport: &transport{msg: "success", status: http.StatusOK}}, nil, manager)
+	client := cmd.NewClient(&http.Client{Transport: &testing.Transport{Message: "success", Status: http.StatusOK}}, nil, manager)
 	fs := fs_test.RecordingFs{FileContent: "user-key"}
 	command := KeyRemove{keyReader{fsystem: &fs}}
 	err = command.Run(&context, client)
@@ -124,7 +125,7 @@ func (s *S) TestKeyRemoveSpecifyingKeyFile(c *gocheck.C) {
 		Stdout: &stdout,
 		Stderr: &stderr,
 	}
-	client := cmd.NewClient(&http.Client{Transport: &transport{msg: "success", status: http.StatusOK}}, nil, manager)
+	client := cmd.NewClient(&http.Client{Transport: &testing.Transport{Message: "success", Status: http.StatusOK}}, nil, manager)
 	fs := fs_test.RecordingFs{FileContent: "user-key"}
 	command := KeyRemove{keyReader{fsystem: &fs}}
 	err = command.Run(&context, client)
