@@ -387,9 +387,11 @@ func (s *S) TestSaveBootstrapMachine(c *gocheck.C) {
 		InstanceState: "state",
 	}
 	p.saveBootstrapMachine(m)
-	defer p.bootstrapCollection().Remove(m)
+	conn, collection := p.bootstrapCollection()
+	defer conn.Close()
+	defer collection.Remove(m)
 	var mach machine
-	p.bootstrapCollection().Find(nil).One(&mach)
+	collection.Find(nil).One(&mach)
 	c.Assert(mach, gocheck.DeepEquals, m)
 }
 
@@ -402,7 +404,9 @@ func (s *S) TestCollectStatusShouldNotAddBootstraTwice(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	_, err = p.CollectStatus()
 	c.Assert(err, gocheck.IsNil)
-	l, err := p.bootstrapCollection().Find(nil).Count()
+	conn, collection := p.bootstrapCollection()
+	defer conn.Close()
+	l, err := collection.Find(nil).Count()
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(l, gocheck.Equals, 1)
 }
@@ -471,7 +475,7 @@ func (s *S) TestCollectStatus(c *gocheck.C) {
 	c.Assert(instances[1].UnitName, gocheck.Equals, "the_infanta/0")
 	c.Assert(instances[1].InstanceId, gocheck.Equals, "i-0000043e")
 	var b machine
-	err = p.bootstrapCollection().Find(nil).One(&b)
+	err = collection.Find(nil).One(&b)
 	c.Assert(err, gocheck.IsNil)
 }
 

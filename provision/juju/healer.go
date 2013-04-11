@@ -316,7 +316,9 @@ type bootstrapMachineHealer struct{}
 func getBootstrapMachine() machine {
 	var b machine
 	p := JujuProvisioner{}
-	p.bootstrapCollection().Find(nil).One(&b)
+	conn, collection := p.bootstrapCollection()
+	defer conn.Close()
+	collection.Find(nil).One(&b)
 	return b
 }
 

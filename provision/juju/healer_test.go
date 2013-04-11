@@ -146,7 +146,9 @@ func (s *S) TestInstanceAgenstConfigHealerHeal(c *gocheck.C) {
 		InstanceState: "running",
 	}
 	p.saveBootstrapMachine(m)
-	defer p.bootstrapCollection().Remove(m)
+	conn, collection := p.bootstrapCollection()
+	defer conn.Close()
+	defer collection.Remove(m)
 	a := app.App{
 		Name:  "as_i_rise",
 		Units: []app.Unit{{Name: "as_i_rise/0", State: "down", Ip: "server-1081.novalocal"}},
@@ -219,7 +221,9 @@ func (s *S) TestInstanceAgenstConfigHealerHealAWSFailure(c *gocheck.C) {
 		InstanceState: "running",
 	}
 	p.saveBootstrapMachine(m)
-	defer p.bootstrapCollection().Remove(m)
+	conn, collection := p.bootstrapCollection()
+	defer conn.Close()
+	defer collection.Remove(m)
 	a := app.App{
 		Name:  "as_i_rise",
 		Units: []app.Unit{{Name: "as_i_rise/0", State: "down", Ip: "server-1081.novalocal"}},
@@ -251,7 +255,9 @@ func (s *S) TestBootstrapPrivateDns(c *gocheck.C) {
 		InstanceState: "running",
 	}
 	p.saveBootstrapMachine(m)
-	defer p.bootstrapCollection().Remove(m)
+	conn, collection := p.bootstrapCollection()
+	defer conn.Close()
+	defer collection.Remove(m)
 	dns, err := h.bootstrapPrivateDns()
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(dns, gocheck.Equals, instance.PrivateDNSName)
@@ -419,7 +425,9 @@ func (s *S) TestZookeeperNeedsHeal(c *gocheck.C) {
 		InstanceState: "running",
 	}
 	p.saveBootstrapMachine(m)
-	defer p.bootstrapCollection().Remove(m)
+	conn, collection := p.bootstrapCollection()
+	defer conn.Close()
+	defer collection.Remove(m)
 	h := zookeeperHealer{}
 	c.Assert(h.needsHeal(), gocheck.Equals, true)
 }
@@ -475,7 +483,9 @@ func (s *S) TestZookeeperHealerHeal(c *gocheck.C) {
 		InstanceState: "running",
 	}
 	p.saveBootstrapMachine(m)
-	defer p.bootstrapCollection().Remove(m)
+	conn, collection := p.bootstrapCollection()
+	defer conn.Close()
+	defer collection.Remove(m)
 	sshTmpdir, err := commandmocker.Add("ssh", "$*")
 	c.Assert(err, gocheck.IsNil)
 	defer commandmocker.Remove(sshTmpdir)
@@ -521,7 +531,9 @@ func (s *S) TestBootstrapProvisionHealerHeal(c *gocheck.C) {
 		InstanceState: "running",
 	}
 	p.saveBootstrapMachine(m)
-	defer p.bootstrapCollection().Remove(m)
+	conn, collection := p.bootstrapCollection()
+	defer conn.Close()
+	defer collection.Remove(m)
 	sshTmpdir, err := commandmocker.Add("ssh", "$*")
 	c.Assert(err, gocheck.IsNil)
 	defer commandmocker.Remove(sshTmpdir)
@@ -558,7 +570,9 @@ func (s *S) TestBootstrapMachineHealerNeedsHeal(c *gocheck.C) {
 		InstanceState: "running",
 	}
 	p.saveBootstrapMachine(m)
-	defer p.bootstrapCollection().Remove(m)
+	conn, collection := p.bootstrapCollection()
+	defer conn.Close()
+	defer collection.Remove(m)
 	h := bootstrapMachineHealer{}
 	c.Assert(h.needsHeal(), gocheck.Equals, true)
 }
@@ -580,7 +594,9 @@ func (s *S) TestBootstrapMachineHealerHeal(c *gocheck.C) {
 		InstanceState: "running",
 	}
 	p.saveBootstrapMachine(m)
-	defer p.bootstrapCollection().Remove(m)
+	conn, collection := p.bootstrapCollection()
+	defer conn.Close()
+	defer collection.Remove(m)
 	sshTmpdir, err := commandmocker.Add("ssh", "$*")
 	c.Assert(err, gocheck.IsNil)
 	defer commandmocker.Remove(sshTmpdir)
@@ -620,7 +636,9 @@ func (s *S) TestBootstrapMachineHealerOnlyHealsWhenItIsNeeded(c *gocheck.C) {
 		InstanceState: "running",
 	}
 	p.saveBootstrapMachine(m)
-	defer p.bootstrapCollection().Remove(m)
+	conn, collection := p.bootstrapCollection()
+	defer conn.Close()
+	defer collection.Remove(m)
 	h := bootstrapMachineHealer{}
 	err := h.Heal()
 	c.Assert(err, gocheck.IsNil)
