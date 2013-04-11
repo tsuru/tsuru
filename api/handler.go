@@ -42,7 +42,7 @@ func (fn handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-type authorizationRequiredHandler func(http.ResponseWriter, *http.Request, *auth.User) error
+type authorizationRequiredHandler func(http.ResponseWriter, *http.Request, *auth.Token) error
 
 func (fn authorizationRequiredHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	setVersionHeaders(w)
@@ -55,9 +55,9 @@ func (fn authorizationRequiredHandler) ServeHTTP(w http.ResponseWriter, r *http.
 	token := r.Header.Get("Authorization")
 	if token == "" {
 		http.Error(&fw, "You must provide the Authorization header", http.StatusUnauthorized)
-	} else if user, err := auth.CheckToken(token); err != nil {
+	} else if t, err := auth.GetToken(token); err != nil {
 		http.Error(&fw, "Invalid token", http.StatusUnauthorized)
-	} else if err = fn(&fw, r, user); err != nil {
+	} else if err = fn(&fw, r, t); err != nil {
 		code := http.StatusInternalServerError
 		if e, ok := err.(*errors.Http); ok {
 			code = e.Code
@@ -71,7 +71,7 @@ func (fn authorizationRequiredHandler) ServeHTTP(w http.ResponseWriter, r *http.
 	}
 }
 
-type adminRequiredHandler func(http.ResponseWriter, *http.Request, *auth.User) error
+type adminRequiredHandler authorizationRequiredHandler
 
 func (fn adminRequiredHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	setVersionHeaders(w)
@@ -84,11 +84,11 @@ func (fn adminRequiredHandler) ServeHTTP(w http.ResponseWriter, r *http.Request)
 	token := r.Header.Get("Authorization")
 	if token == "" {
 		http.Error(&fw, "You must provide the Authorization header", http.StatusUnauthorized)
-	} else if user, err := auth.CheckToken(token); err != nil {
+	} else if t, err := auth.GetToken(token); err != nil {
 		http.Error(&fw, "Invalid token", http.StatusUnauthorized)
-	} else if !user.IsAdmin() {
+	} else if user, err := t.User(); err != nil || !user.IsAdmin() {
 		http.Error(&fw, "Forbidden", http.StatusForbidden)
-	} else if err = fn(&fw, r, user); err != nil {
+	} else if err = fn(&fw, r, t); err != nil {
 		code := http.StatusInternalServerError
 		if e, ok := err.(*errors.Http); ok {
 			code = e.Code

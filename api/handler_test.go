@@ -75,23 +75,23 @@ func outputHandler(w http.ResponseWriter, r *http.Request) error {
 	return nil
 }
 
-func authorizedErrorHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
+func authorizedErrorHandler(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
 	return errorHandler(w, r)
 }
 
-func authorizedErrorHandlerWriteHeader(w http.ResponseWriter, r *http.Request, u *auth.User) error {
+func authorizedErrorHandlerWriteHeader(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
 	return errorHandlerWriteHeader(w, r)
 }
 
-func authorizedBadRequestHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
+func authorizedBadRequestHandler(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
 	return badRequestHandler(w, r)
 }
 
-func authorizedSimpleHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
+func authorizedSimpleHandler(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
 	return simpleHandler(w, r)
 }
 
-func authorizedOutputHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
+func authorizedOutputHandler(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
 	return outputHandler(w, r)
 }
 

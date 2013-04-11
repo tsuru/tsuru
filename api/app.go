@@ -102,7 +102,11 @@ func appIsAvailable(w http.ResponseWriter, r *http.Request) error {
 	return nil
 }
 
-func forceDeleteApp(w http.ResponseWriter, r *http.Request, u *auth.User) error {
+func forceDeleteApp(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
+	u, err := t.User()
+	if err != nil {
+		return err
+	}
 	a, err := getApp(r.URL.Query().Get(":name"), u)
 	if err != nil {
 		return err
@@ -112,7 +116,11 @@ func forceDeleteApp(w http.ResponseWriter, r *http.Request, u *auth.User) error 
 	return nil
 }
 
-func appDelete(w http.ResponseWriter, r *http.Request, u *auth.User) error {
+func appDelete(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
+	u, err := t.User()
+	if err != nil {
+		return err
+	}
 	a, err := getApp(r.URL.Query().Get(":name"), u)
 	if err != nil {
 		return err
@@ -133,7 +141,11 @@ func getTeamNames(u *auth.User) ([]string, error) {
 	return auth.GetTeamsNames(teams), nil
 }
 
-func appList(w http.ResponseWriter, r *http.Request, u *auth.User) error {
+func appList(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
+	u, err := t.User()
+	if err != nil {
+		return err
+	}
 	apps, err := app.List(u)
 	if err != nil {
 		return err
@@ -145,7 +157,11 @@ func appList(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	return json.NewEncoder(w).Encode(apps)
 }
 
-func appInfo(w http.ResponseWriter, r *http.Request, u *auth.User) error {
+func appInfo(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
+	u, err := t.User()
+	if err != nil {
+		return err
+	}
 	app, err := getApp(r.URL.Query().Get(":name"), u)
 	if err != nil {
 		return err
@@ -159,7 +175,7 @@ type jsonApp struct {
 	Units     uint
 }
 
-func createApp(w http.ResponseWriter, r *http.Request, u *auth.User) error {
+func createApp(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
 	var a app.App
 	var japp jsonApp
 	defer r.Body.Close()
@@ -174,6 +190,10 @@ func createApp(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	a.Framework = japp.Framework
 	if japp.Units == 0 {
 		japp.Units = 1
+	}
+	u, err := t.User()
+	if err != nil {
+		return err
 	}
 	teams, err := u.Teams()
 	if err != nil {
@@ -231,12 +251,16 @@ func numberOfUnits(r *http.Request) (uint, error) {
 	return uint(n), nil
 }
 
-func addUnits(w http.ResponseWriter, r *http.Request, u *auth.User) error {
+func addUnits(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
 	n, err := numberOfUnits(r)
 	if err != nil {
 		return err
 	}
 	appName := r.URL.Query().Get(":name")
+	u, err := t.User()
+	if err != nil {
+		return err
+	}
 	app, err := getApp(appName, u)
 	if err != nil {
 		return err
@@ -244,8 +268,12 @@ func addUnits(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	return app.AddUnits(n)
 }
 
-func removeUnits(w http.ResponseWriter, r *http.Request, u *auth.User) error {
+func removeUnits(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
 	n, err := numberOfUnits(r)
+	if err != nil {
+		return err
+	}
+	u, err := t.User()
 	if err != nil {
 		return err
 	}
@@ -257,10 +285,14 @@ func removeUnits(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	return app.RemoveUnits(uint(n))
 }
 
-func grantAccessToTeam(w http.ResponseWriter, r *http.Request, u *auth.User) error {
+func grantAccessToTeam(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
+	u, err := t.User()
+	if err != nil {
+		return err
+	}
 	appName := r.URL.Query().Get(":app")
 	teamName := r.URL.Query().Get(":team")
-	t := new(auth.Team)
+	team := new(auth.Team)
 	app, err := getApp(appName, u)
 	if err != nil {
 		return err
@@ -270,11 +302,11 @@ func grantAccessToTeam(w http.ResponseWriter, r *http.Request, u *auth.User) err
 		return err
 	}
 	defer conn.Close()
-	err = conn.Teams().Find(bson.M{"_id": teamName}).One(t)
+	err = conn.Teams().Find(bson.M{"_id": teamName}).One(team)
 	if err != nil {
 		return &errors.Http{Code: http.StatusNotFound, Message: "Team not found"}
 	}
-	err = app.Grant(t)
+	err = app.Grant(team)
 	if err != nil {
 		return &errors.Http{Code: http.StatusConflict, Message: err.Error()}
 	}
@@ -284,7 +316,7 @@ func grantAccessToTeam(w http.ResponseWriter, r *http.Request, u *auth.User) err
 	}
 	gUrl := repository.GitServerUri()
 	gClient := gandalf.Client{Endpoint: gUrl}
-	if err := gClient.GrantAccess([]string{app.Name}, t.Users); err != nil {
+	if err := gClient.GrantAccess([]string{app.Name}, team.Users); err != nil {
 		return fmt.Errorf("Failed to grant access in the git server: %s.", err)
 	}
 	return nil
@@ -312,10 +344,14 @@ func getEmailsForRevoking(app *app.App, t *auth.Team) []string {
 	return users[:i]
 }
 
-func revokeAccessFromTeam(w http.ResponseWriter, r *http.Request, u *auth.User) error {
+func revokeAccessFromTeam(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
+	u, err := t.User()
+	if err != nil {
+		return err
+	}
 	appName := r.URL.Query().Get(":app")
 	teamName := r.URL.Query().Get(":team")
-	t := new(auth.Team)
+	team := new(auth.Team)
 	app, err := getApp(appName, u)
 	if err != nil {
 		return err
@@ -325,7 +361,7 @@ func revokeAccessFromTeam(w http.ResponseWriter, r *http.Request, u *auth.User) 
 		return err
 	}
 	defer conn.Close()
-	err = conn.Teams().Find(bson.M{"_id": teamName}).One(t)
+	err = conn.Teams().Find(bson.M{"_id": teamName}).One(team)
 	if err != nil {
 		return &errors.Http{Code: http.StatusNotFound, Message: "Team not found"}
 	}
@@ -333,7 +369,7 @@ func revokeAccessFromTeam(w http.ResponseWriter, r *http.Request, u *auth.User) 
 		msg := "You can not revoke the access from this team, because it is the unique team with access to the app, and an app can not be orphaned"
 		return &errors.Http{Code: http.StatusForbidden, Message: msg}
 	}
-	err = app.Revoke(t)
+	err = app.Revoke(team)
 	if err != nil {
 		return &errors.Http{Code: http.StatusNotFound, Message: err.Error()}
 	}
@@ -341,7 +377,7 @@ func revokeAccessFromTeam(w http.ResponseWriter, r *http.Request, u *auth.User) 
 	if err != nil {
 		return err
 	}
-	users := getEmailsForRevoking(&app, t)
+	users := getEmailsForRevoking(&app, team)
 	if len(users) > 0 {
 		gUrl := repository.GitServerUri()
 		if err := (&gandalf.Client{Endpoint: gUrl}).RevokeAccess([]string{app.Name}, users); err != nil {
@@ -351,7 +387,7 @@ func revokeAccessFromTeam(w http.ResponseWriter, r *http.Request, u *auth.User) 
 	return nil
 }
 
-func runCommand(w http.ResponseWriter, r *http.Request, u *auth.User) error {
+func runCommand(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
 	w.Header().Set("Content-Type", "text")
 	msg := "You must provide the command to run"
 	if r.Body == nil {
@@ -364,6 +400,10 @@ func runCommand(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	if len(c) < 1 {
 		return &errors.Http{Code: http.StatusBadRequest, Message: msg}
 	}
+	u, err := t.User()
+	if err != nil {
+		return err
+	}
 	appName := r.URL.Query().Get(":name")
 	app, err := getApp(appName, u)
 	if err != nil {
@@ -372,7 +412,7 @@ func runCommand(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	return app.Run(string(c), w)
 }
 
-func getEnv(w http.ResponseWriter, r *http.Request, u *auth.User) error {
+func getEnv(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
 	var variables []string
 	if r.Body != nil {
 		defer r.Body.Close()
@@ -380,6 +420,10 @@ func getEnv(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 		if err != nil && err != io.EOF {
 			return err
 		}
+	}
+	u, err := t.User()
+	if err != nil {
+		return err
 	}
 	appName := r.URL.Query().Get(":name")
 	app, err := getApp(appName, u)
@@ -406,7 +450,7 @@ func getEnv(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	return json.NewEncoder(w).Encode(result)
 }
 
-func setEnv(w http.ResponseWriter, r *http.Request, u *auth.User) error {
+func setEnv(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
 	msg := "You must provide the environment variables in a JSON object"
 	if r.Body == nil {
 		return &errors.Http{Code: http.StatusBadRequest, Message: msg}
@@ -415,6 +459,10 @@ func setEnv(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	err := json.NewDecoder(r.Body).Decode(&variables)
 	if err != nil {
 		return &errors.Http{Code: http.StatusBadRequest, Message: msg}
+	}
+	u, err := t.User()
+	if err != nil {
+		return err
 	}
 	appName := r.URL.Query().Get(":name")
 	app, err := getApp(appName, u)
@@ -428,7 +476,7 @@ func setEnv(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	return app.SetEnvs(envs, true)
 }
 
-func unsetEnv(w http.ResponseWriter, r *http.Request, u *auth.User) error {
+func unsetEnv(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
 	msg := "You must provide the list of environment variables, in JSON format"
 	if r.Body == nil {
 		return &errors.Http{Code: http.StatusBadRequest, Message: msg}
@@ -443,6 +491,10 @@ func unsetEnv(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 		return &errors.Http{Code: http.StatusBadRequest, Message: msg}
 	}
 	appName := r.URL.Query().Get(":name")
+	u, err := t.User()
+	if err != nil {
+		return err
+	}
 	app, err := getApp(appName, u)
 	if err != nil {
 		return err
@@ -450,7 +502,7 @@ func unsetEnv(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	return app.UnsetEnvs(variables, true)
 }
 
-func setCName(w http.ResponseWriter, r *http.Request, u *auth.User) error {
+func setCName(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
 	msg := "You must provide the cname."
 	if r.Body == nil {
 		return &errors.Http{Code: http.StatusBadRequest, Message: msg}
@@ -462,6 +514,10 @@ func setCName(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	}
 	if _, ok := v["cname"]; !ok {
 		return &errors.Http{Code: http.StatusBadRequest, Message: msg}
+	}
+	u, err := t.User()
+	if err != nil {
+		return err
 	}
 	appName := r.URL.Query().Get(":name")
 	app, err := getApp(appName, u)
@@ -477,7 +533,7 @@ func setCName(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	return err
 }
 
-func appLog(w http.ResponseWriter, r *http.Request, u *auth.User) error {
+func appLog(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
 	var err error
 	var lines int
 	if l := r.URL.Query().Get("lines"); l != "" {
@@ -490,6 +546,10 @@ func appLog(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 		return &errors.Http{Code: http.StatusBadRequest, Message: `Parameter "lines" is mandatory.`}
 	}
 	w.Header().Set("Content-Type", "application/json")
+	u, err := t.User()
+	if err != nil {
+		return err
+	}
 	appName := r.URL.Query().Get(":name")
 	a, err := getApp(appName, u)
 	if err != nil {
@@ -546,8 +606,12 @@ func getServiceInstace(instanceName, appName string, u *auth.User) (service.Serv
 	return instance, app, nil
 }
 
-func bindServiceInstance(w http.ResponseWriter, r *http.Request, u *auth.User) error {
+func bindServiceInstance(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
 	instanceName, appName := r.URL.Query().Get(":instance"), r.URL.Query().Get(":app")
+	u, err := t.User()
+	if err != nil {
+		return err
+	}
 	instance, a, err := getServiceInstace(instanceName, appName, u)
 	if err != nil {
 		return err
@@ -565,8 +629,12 @@ func bindServiceInstance(w http.ResponseWriter, r *http.Request, u *auth.User) e
 	return enc.Encode(envs)
 }
 
-func unbindServiceInstance(w http.ResponseWriter, r *http.Request, u *auth.User) error {
+func unbindServiceInstance(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
 	instanceName, appName := r.URL.Query().Get(":instance"), r.URL.Query().Get(":app")
+	u, err := t.User()
+	if err != nil {
+		return err
+	}
 	instance, a, err := getServiceInstace(instanceName, appName, u)
 	if err != nil {
 		return err
@@ -574,8 +642,12 @@ func unbindServiceInstance(w http.ResponseWriter, r *http.Request, u *auth.User)
 	return instance.UnbindApp(&a)
 }
 
-func restart(w http.ResponseWriter, r *http.Request, u *auth.User) error {
+func restart(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
 	w.Header().Set("Content-Type", "text")
+	u, err := t.User()
+	if err != nil {
+		return err
+	}
 	instance, err := getApp(r.URL.Query().Get(":name"), u)
 	if err != nil {
 		return err

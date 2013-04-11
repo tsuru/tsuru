@@ -16,13 +16,17 @@ import (
 	"net/http"
 )
 
-func CreateInstanceHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
+func CreateInstanceHandler(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
 	b, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		return err
 	}
 	var sJson map[string]string
 	err = json.Unmarshal(b, &sJson)
+	if err != nil {
+		return err
+	}
+	u, err := t.User()
 	if err != nil {
 		return err
 	}
@@ -76,7 +80,11 @@ func validateInstanceForCreation(s *service.Service, sJson map[string]string, u 
 	return nil
 }
 
-func RemoveServiceInstanceHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
+func RemoveServiceInstanceHandler(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
+	u, err := t.User()
+	if err != nil {
+		return err
+	}
 	name := r.URL.Query().Get(":name")
 	si, err := getServiceInstanceOrError(name, u)
 	if err != nil {
@@ -90,7 +98,11 @@ func RemoveServiceInstanceHandler(w http.ResponseWriter, r *http.Request, u *aut
 	return nil
 }
 
-func ServicesInstancesHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
+func ServicesInstancesHandler(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
+	u, err := t.User()
+	if err != nil {
+		return err
+	}
 	response := serviceAndServiceInstancesByTeams(u)
 	body, err := json.Marshal(response)
 	if err != nil {
@@ -103,7 +115,7 @@ func ServicesInstancesHandler(w http.ResponseWriter, r *http.Request, u *auth.Us
 	return err
 }
 
-func ServiceInstanceStatusHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
+func ServiceInstanceStatusHandler(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
 	// #TODO (flaviamissi) should check if user has access to service
 	// just call GetServiceInstanceOrError should be enough
 	siName := r.URL.Query().Get(":instance")
@@ -128,9 +140,13 @@ func ServiceInstanceStatusHandler(w http.ResponseWriter, r *http.Request, u *aut
 	return nil
 }
 
-func ServiceInfoHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
+func ServiceInfoHandler(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
+	u, err := t.User()
+	if err != nil {
+		return err
+	}
 	serviceName := r.URL.Query().Get(":name")
-	_, err := getServiceOrError(serviceName, u)
+	_, err = getServiceOrError(serviceName, u)
 	if err != nil {
 		return err
 	}
@@ -158,7 +174,11 @@ func ServiceInfoHandler(w http.ResponseWriter, r *http.Request, u *auth.User) er
 	return nil
 }
 
-func Doc(w http.ResponseWriter, r *http.Request, u *auth.User) error {
+func Doc(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
+	u, err := t.User()
+	if err != nil {
+		return err
+	}
 	sName := r.URL.Query().Get(":name")
 	s, err := getServiceOrError(sName, u)
 	if err != nil {
