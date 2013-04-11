@@ -191,6 +191,13 @@ func (s *S) TestRemoveKeyRemovesAKeyFromTheUser(c *gocheck.C) {
 	c.Assert(u, gocheck.Not(HasKey), "my-key")
 }
 
+func (s *S) TestRemoveUnknownKey(c *gocheck.C) {
+	u := &User{Email: "shine@pinkfloyd.com", Keys: nil}
+	err := u.RemoveKey(Key{Content: "my-key"})
+	c.Assert(err, gocheck.NotNil)
+	c.Assert(err.Error(), gocheck.Equals, "Key not found")
+}
+
 func (s *S) TestLoadConfigSalt(c *gocheck.C) {
 	configuredSalt, err := config.GetString("auth:salt")
 	c.Assert(err, gocheck.IsNil)

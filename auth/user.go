@@ -8,7 +8,7 @@ import (
 	"code.google.com/p/go.crypto/bcrypt"
 	"code.google.com/p/go.crypto/pbkdf2"
 	"crypto/sha512"
-	stderr "errors"
+	stderrors "errors"
 	"fmt"
 	"github.com/globocom/config"
 	"github.com/globocom/tsuru/db"
@@ -34,7 +34,7 @@ func loadConfig() error {
 	if salt == "" && tokenKey == "" {
 		var err error
 		if salt, err = config.GetString("auth:salt"); err != nil {
-			return stderr.New(`Setting "auth:salt" is undefined.`)
+			return stderrors.New(`Setting "auth:salt" is undefined.`)
 		}
 		if iface, err := config.Get("auth:token-expire-days"); err == nil {
 			day := int64(iface.(int))
@@ -43,10 +43,10 @@ func loadConfig() error {
 			tokenExpire = defaultExpiration
 		}
 		if tokenKey, err = config.GetString("auth:token-key"); err != nil {
-			return stderr.New(`Setting "auth:token-key" is undefined.`)
+			return stderrors.New(`Setting "auth:token-key" is undefined.`)
 		}
 		if cost, err = config.GetInt("auth:hash-cost"); err != nil {
-			return stderr.New(`Setting "auth:hash-cost" is undefined.`)
+			return stderrors.New(`Setting "auth:hash-cost" is undefined.`)
 		}
 		if cost < bcrypt.MinCost || cost > bcrypt.MaxCost {
 			return fmt.Errorf("Invalid value for setting %q: it must be between %d and %d.", "auth:hash-cost", bcrypt.MinCost, bcrypt.MaxCost)
@@ -91,7 +91,7 @@ func GetUserByEmail(email string) (*User, error) {
 	defer conn.Close()
 	err = conn.Users().Find(bson.M{"email": email}).One(&u)
 	if err != nil {
-		return nil, stderr.New("User not found")
+		return nil, stderrors.New("User not found")
 	}
 	return &u, nil
 }
@@ -145,7 +145,7 @@ func (u *User) CheckPassword(password string) error {
 
 func (u *User) CreateToken(password string) (*Token, error) {
 	if u.Email == "" {
-		return nil, stderr.New("User does not have an email")
+		return nil, stderrors.New("User does not have an email")
 	}
 	if err := u.CheckPassword(password); err != nil {
 		return nil, err
@@ -195,6 +195,9 @@ func (u *User) AddKey(key Key) error {
 
 func (u *User) RemoveKey(key Key) error {
 	_, index := u.FindKey(key)
+	if index < 0 {
+		return stderrors.New("Key not found")
+	}
 	copy(u.Keys[index:], u.Keys[index+1:])
 	u.Keys = u.Keys[:len(u.Keys)-1]
 	return nil
