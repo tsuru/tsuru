@@ -103,7 +103,7 @@ func main() {
 	m.Put("/teams/:team/:user", authorizationRequiredHandler(AddUserToTeam))
 	m.Del("/teams/:team/:user", authorizationRequiredHandler(RemoveUserFromTeam))
 
-	m.Get("/healers", handler(healers))
+	m.Get("/healers", authorizationRequiredHandler(healers))
 	m.Get("/healers/:healer", handler(healer))
 
 	if !*dry {
