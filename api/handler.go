@@ -42,6 +42,31 @@ func (fn handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func validate(token string, r *http.Request) (*auth.Token, error) {
+	if token == "" {
+		return nil, &errors.Http{
+			Message: "You must provide the Authorization header",
+		}
+	}
+	invalid := &errors.Http{Message: "Invalid token"}
+	t, err := auth.GetToken(token)
+	if err != nil {
+		return nil, invalid
+	}
+	if t.AppName != "" {
+		if q := r.URL.Query().Get(":app"); q != "" && t.AppName != q {
+			return nil, invalid
+		} else if t.AppName == q {
+			return t, nil
+		}
+		if t.AppName == r.Header.Get("Token-Owner") {
+			return t, nil
+		}
+		return nil, invalid
+	}
+	return t, nil
+}
+
 type authorizationRequiredHandler func(http.ResponseWriter, *http.Request, *auth.Token) error
 
 func (fn authorizationRequiredHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -53,10 +78,8 @@ func (fn authorizationRequiredHandler) ServeHTTP(w http.ResponseWriter, r *http.
 	}()
 	fw := FlushingWriter{w, false}
 	token := r.Header.Get("Authorization")
-	if token == "" {
-		http.Error(&fw, "You must provide the Authorization header", http.StatusUnauthorized)
-	} else if t, err := auth.GetToken(token); err != nil {
-		http.Error(&fw, "Invalid token", http.StatusUnauthorized)
+	if t, err := validate(token, r); err != nil {
+		http.Error(&fw, err.Error(), http.StatusUnauthorized)
 	} else if err = fn(&fw, r, t); err != nil {
 		code := http.StatusInternalServerError
 		if e, ok := err.(*errors.Http); ok {
