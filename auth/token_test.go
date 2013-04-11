@@ -97,3 +97,16 @@ func (s *S) TestTokenMarshalJSON(c *gocheck.C) {
 		valid.Format(time.RFC3339Nano))
 	c.Assert(string(b), gocheck.Equals, want)
 }
+
+func (s *S) TestTokenGetUser(c *gocheck.C) {
+	u, err := s.token.User()
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(u.Email, gocheck.Equals, s.user.Email)
+}
+
+func (s *S) TestTokenGetUserUnknownEmail(c *gocheck.C) {
+	t := Token{UserEmail: "something@something.com"}
+	u, err := t.User()
+	c.Assert(u, gocheck.IsNil)
+	c.Assert(err, gocheck.NotNil)
+}

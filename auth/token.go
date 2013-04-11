@@ -20,6 +20,10 @@ type Token struct {
 	AppName    string    `json:"app"`
 }
 
+func (t *Token) User() (*User, error) {
+	return GetUserByEmail(t.UserEmail)
+}
+
 func token(data string) string {
 	h := sha1.New()
 	h.Write([]byte(data))
