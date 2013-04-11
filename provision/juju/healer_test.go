@@ -10,7 +10,6 @@ import (
 	"github.com/globocom/commandmocker"
 	"github.com/globocom/config"
 	"github.com/globocom/tsuru/app"
-	"github.com/globocom/tsuru/db"
 	"github.com/globocom/tsuru/heal"
 	"labix.org/v2/mgo/bson"
 	"launchpad.net/goamz/aws"
@@ -148,15 +147,13 @@ func (s *S) TestInstanceAgenstConfigHealerHeal(c *gocheck.C) {
 	}
 	p.saveBootstrapMachine(m)
 	defer p.bootstrapCollection().Remove(m)
-	conn, err := db.Conn()
-	c.Assert(err, gocheck.IsNil)
 	a := app.App{
 		Name:  "as_i_rise",
 		Units: []app.Unit{{Name: "as_i_rise/0", State: "down", Ip: "server-1081.novalocal"}},
 	}
-	err = conn.Apps().Insert(&a)
+	err = s.conn.Apps().Insert(&a)
 	c.Assert(err, gocheck.IsNil)
-	defer conn.Apps().Remove(bson.M{"name": "as_i_rise"})
+	defer s.conn.Apps().Remove(bson.M{"name": "as_i_rise"})
 	sshTmpdir, err := commandmocker.Error("ssh", "", 1)
 	c.Assert(err, gocheck.IsNil)
 	defer commandmocker.Remove(sshTmpdir)
@@ -223,15 +220,13 @@ func (s *S) TestInstanceAgenstConfigHealerHealAWSFailure(c *gocheck.C) {
 	}
 	p.saveBootstrapMachine(m)
 	defer p.bootstrapCollection().Remove(m)
-	conn, err := db.Conn()
-	c.Assert(err, gocheck.IsNil)
 	a := app.App{
 		Name:  "as_i_rise",
 		Units: []app.Unit{{Name: "as_i_rise/0", State: "down", Ip: "server-1081.novalocal"}},
 	}
-	err = conn.Apps().Insert(&a)
+	err := s.conn.Apps().Insert(&a)
 	c.Assert(err, gocheck.IsNil)
-	defer conn.Apps().Remove(bson.M{"name": "as_i_rise"})
+	defer s.conn.Apps().Remove(bson.M{"name": "as_i_rise"})
 	h := instanceAgentsConfigHealer{}
 	err = h.Heal()
 	c.Assert(err, gocheck.NotNil)
@@ -285,15 +280,13 @@ func (s *S) TestInstanceUnitShouldBeRegistered(c *gocheck.C) {
 }
 
 func (s *S) TestInstaceUnitHealWhenEverythingIsOk(c *gocheck.C) {
-	conn, err := db.Conn()
-	c.Assert(err, gocheck.IsNil)
 	a := []app.App{
 		{Name: "as_i_rise", Units: []app.Unit{{Name: "as_i_rise/0", State: "started", Ip: "server-1081.novalocal"}}},
 		{Name: "the_infanta", Units: []app.Unit{{Name: "the_infanta/0", State: "started", Ip: "server-1086.novalocal"}}},
 	}
-	err = conn.Apps().Insert(&a)
+	err := s.conn.Apps().Insert(&a)
 	c.Assert(err, gocheck.IsNil)
-	defer conn.Apps().RemoveAll(bson.M{"name": bson.M{"$in": []string{"as_i_rise", "the_infanta"}}})
+	defer s.conn.Apps().RemoveAll(bson.M{"name": bson.M{"$in": []string{"as_i_rise", "the_infanta"}}})
 	sshTmpdir, err := commandmocker.Add("ssh", "$*")
 	c.Assert(err, gocheck.IsNil)
 	defer commandmocker.Remove(sshTmpdir)
@@ -303,15 +296,13 @@ func (s *S) TestInstaceUnitHealWhenEverythingIsOk(c *gocheck.C) {
 }
 
 func (s *S) TestInstaceUnitHeal(c *gocheck.C) {
-	conn, err := db.Conn()
-	c.Assert(err, gocheck.IsNil)
 	a := app.App{
 		Name:  "as_i_rise",
 		Units: []app.Unit{{Name: "as_i_rise/0", State: "down", Ip: "server-1081.novalocal"}},
 	}
-	err = conn.Apps().Insert(&a)
+	err := s.conn.Apps().Insert(&a)
 	c.Assert(err, gocheck.IsNil)
-	defer conn.Apps().Remove(bson.M{"name": "as_i_rise"})
+	defer s.conn.Apps().Remove(bson.M{"name": "as_i_rise"})
 	sshTmpdir, err := commandmocker.Add("ssh", "$*")
 	c.Assert(err, gocheck.IsNil)
 	defer commandmocker.Remove(sshTmpdir)
@@ -649,8 +640,6 @@ func (s *S) TestELBInstanceHealerCheckInstancesDisabledELB(c *gocheck.C) {
 }
 
 func (s *ELBSuite) TestELBInstanceHealerGetUnhealthyApps(c *gocheck.C) {
-	conn, err := db.Conn()
-	c.Assert(err, gocheck.IsNil)
 	apps := []interface{}{
 		app.App{Name: "when", Units: []app.Unit{{Name: "when/0", State: "started"}}},
 		app.App{Name: "what", Units: []app.Unit{{Name: "what/0", State: "error"}}},
@@ -660,9 +649,9 @@ func (s *ELBSuite) TestELBInstanceHealerGetUnhealthyApps(c *gocheck.C) {
 			{Name: "how/1", State: "down"},
 		}},
 	}
-	err = conn.Apps().Insert(apps...)
+	err := s.conn.Apps().Insert(apps...)
 	c.Assert(err, gocheck.IsNil)
-	defer conn.Apps().RemoveAll(bson.M{"name": bson.M{"$in": []string{"what", "when", "why", "how"}}})
+	defer s.conn.Apps().RemoveAll(bson.M{"name": bson.M{"$in": []string{"what", "when", "why", "how"}}})
 	healer := elbInstanceHealer{}
 	unhealthy := healer.getUnhealthyApps()
 	expected := map[string]app.App{
