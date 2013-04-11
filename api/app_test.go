@@ -65,7 +65,7 @@ func (s *S) TestAppIsAvailableHandlerShouldReturnErrorWhenAppStatusIsnotStarted(
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	defer s.conn.Logs().Remove(bson.M{"appname": a.Name})
-	url := fmt.Sprintf("/apps/%s/avaliable?:name=%s", a.Name, a.Name)
+	url := fmt.Sprintf("/apps/%s/avaliable?:app=%s", a.Name, a.Name)
 	request, err := http.NewRequest("GET", url, nil)
 	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
@@ -84,7 +84,7 @@ func (s *S) TestAppIsAvailableHandlerShouldReturn200WhenAppUnitStatusIsStarted(c
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	defer s.conn.Logs().Remove(bson.M{"appname": a.Name})
-	url := fmt.Sprintf("/apps/%s/repository/clone?:name=%s", a.Name, a.Name)
+	url := fmt.Sprintf("/apps/%s/repository/clone?:app=%s", a.Name, a.Name)
 	request, err := http.NewRequest("GET", url, nil)
 	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
@@ -115,7 +115,7 @@ post-restart:
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	defer s.conn.Logs().Remove(bson.M{"appname": a.Name})
-	url := fmt.Sprintf("/apps/%s/repository/clone?:name=%s", a.Name, a.Name)
+	url := fmt.Sprintf("/apps/%s/repository/clone?:app=%s", a.Name, a.Name)
 	request, err := http.NewRequest("GET", url, nil)
 	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
@@ -157,7 +157,7 @@ post-restart:
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	defer s.conn.Logs().Remove(bson.M{"appname": a.Name})
-	url := fmt.Sprintf("/apps/%s/repository/clone?:name=%s", a.Name, a.Name)
+	url := fmt.Sprintf("/apps/%s/repository/clone?:app=%s", a.Name, a.Name)
 	request, err := http.NewRequest("GET", url, nil)
 	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
@@ -201,7 +201,7 @@ post-restart:
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	defer s.conn.Logs().Remove(bson.M{"appname": a.Name})
-	url := fmt.Sprintf("/apps/%s/repository/clone?:name=%s", a.Name, a.Name)
+	url := fmt.Sprintf("/apps/%s/repository/clone?:app=%s", a.Name, a.Name)
 	request, err := http.NewRequest("GET", url, nil)
 	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
@@ -213,7 +213,7 @@ post-restart:
 }
 
 func (s *S) TestCloneRepositoryShouldReturnNotFoundWhenAppDoesNotExist(c *gocheck.C) {
-	request, err := http.NewRequest("GET", "/apps/abc/repository/clone?:name=abc", nil)
+	request, err := http.NewRequest("GET", "/apps/abc/repository/clone?:app=abc", nil)
 	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
 	err = cloneRepository(recorder, request)
@@ -327,7 +327,7 @@ func (s *S) TestForceDeleteApp(c *gocheck.C) {
 	err := s.conn.Apps().Insert(&a)
 	c.Assert(err, gocheck.IsNil)
 	a.Get()
-	request, err := http.NewRequest("DELETE", "/apps/"+a.Name+"/force?:name="+a.Name, nil)
+	request, err := http.NewRequest("DELETE", "/apps/"+a.Name+"/force?:app="+a.Name, nil)
 	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
 	err = forceDeleteApp(recorder, request, s.token)
@@ -354,7 +354,7 @@ func (s *S) TestDelete(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	myApp.Get()
 	defer app.ForceDestroy(&myApp)
-	request, err := http.NewRequest("DELETE", "/apps/"+myApp.Name+"?:name="+myApp.Name, nil)
+	request, err := http.NewRequest("DELETE", "/apps/"+myApp.Name+"?:app="+myApp.Name, nil)
 	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
 	err = appDelete(recorder, request, s.token)
@@ -374,7 +374,7 @@ func (s *S) TestDeleteShouldReturnForbiddenIfTheGivenUserDoesNotHaveAccesToTheAp
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": myApp.Name})
 	defer s.conn.Logs().Remove(bson.M{"appname": myApp.Name})
-	request, err := http.NewRequest("DELETE", "/apps/"+myApp.Name+"?:name="+myApp.Name, nil)
+	request, err := http.NewRequest("DELETE", "/apps/"+myApp.Name+"?:app="+myApp.Name, nil)
 	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
 	err = appDelete(recorder, request, s.token)
@@ -386,7 +386,7 @@ func (s *S) TestDeleteShouldReturnForbiddenIfTheGivenUserDoesNotHaveAccesToTheAp
 }
 
 func (s *S) TestDeleteShouldReturnNotFoundIfTheAppDoesNotExist(c *gocheck.C) {
-	request, err := http.NewRequest("DELETE", "/apps/unkown?:name=unknown", nil)
+	request, err := http.NewRequest("DELETE", "/apps/unkown?:app=unknown", nil)
 	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
 	err = appDelete(recorder, request, s.token)
@@ -408,7 +408,7 @@ func (s *S) TestAppInfo(c *gocheck.C) {
 	defer s.conn.Apps().Remove(bson.M{"name": expectedApp.Name})
 	defer s.conn.Logs().Remove(bson.M{"appname": expectedApp.Name})
 	var myApp map[string]interface{}
-	request, err := http.NewRequest("GET", "/apps/"+expectedApp.Name+"?:name="+expectedApp.Name, nil)
+	request, err := http.NewRequest("GET", "/apps/"+expectedApp.Name+"?:app="+expectedApp.Name, nil)
 	request.Header.Set("Content-Type", "application/json")
 	recorder := httptest.NewRecorder()
 	c.Assert(err, gocheck.IsNil)
@@ -432,7 +432,7 @@ func (s *S) TestAppInfoReturnsForbiddenWhenTheUserDoesNotHaveAccessToTheApp(c *g
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": expectedApp.Name})
 	defer s.conn.Logs().Remove(bson.M{"appname": expectedApp.Name})
-	request, err := http.NewRequest("GET", "/apps/"+expectedApp.Name+"?:name="+expectedApp.Name, nil)
+	request, err := http.NewRequest("GET", "/apps/"+expectedApp.Name+"?:app="+expectedApp.Name, nil)
 	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
 	err = appInfo(recorder, request, s.token)
@@ -445,7 +445,7 @@ func (s *S) TestAppInfoReturnsForbiddenWhenTheUserDoesNotHaveAccessToTheApp(c *g
 
 func (s *S) TestAppInfoReturnsNotFoundWhenAppDoesNotExist(c *gocheck.C) {
 	myApp := app.App{Name: "SomeApp"}
-	request, err := http.NewRequest("GET", "/apps/"+myApp.Name+"?:name="+myApp.Name, nil)
+	request, err := http.NewRequest("GET", "/apps/"+myApp.Name+"?:app="+myApp.Name, nil)
 	c.Assert(err, gocheck.IsNil)
 	request.Header.Set("Content-Type", "application/json")
 	recorder := httptest.NewRecorder()
@@ -566,7 +566,7 @@ func (s *S) TestAddUnits(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	defer s.provisioner.Destroy(&a)
 	body := strings.NewReader("3")
-	request, err := http.NewRequest("PUT", "/apps/armorandsword/units?:name=armorandsword", body)
+	request, err := http.NewRequest("PUT", "/apps/armorandsword/units?:app=armorandsword", body)
 	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
 	err = addUnits(recorder, request, s.token)
@@ -578,7 +578,7 @@ func (s *S) TestAddUnits(c *gocheck.C) {
 
 func (s *S) TestAddUnitsReturns404IfAppDoesNotExist(c *gocheck.C) {
 	body := strings.NewReader("1")
-	request, err := http.NewRequest("PUT", "/apps/armorandsword/units?:name=armorandsword", body)
+	request, err := http.NewRequest("PUT", "/apps/armorandsword/units?:app=armorandsword", body)
 	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
 	err = addUnits(recorder, request, s.token)
@@ -599,7 +599,7 @@ func (s *S) TestAddUnitsReturns403IfTheUserDoesNotHaveAccessToTheApp(c *gocheck.
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	defer s.conn.Logs().Remove(bson.M{"appname": a.Name})
 	body := strings.NewReader("1")
-	request, err := http.NewRequest("PUT", "/apps/armorandsword/units?:name=armorandsword", body)
+	request, err := http.NewRequest("PUT", "/apps/armorandsword/units?:app=armorandsword", body)
 	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
 	err = addUnits(recorder, request, s.token)
@@ -613,7 +613,7 @@ func (s *S) TestAddUnitsReturns403IfTheUserDoesNotHaveAccessToTheApp(c *gocheck.
 func (s *S) TestAddUnitsReturns400IfNumberOfUnitsIsOmited(c *gocheck.C) {
 	bodies := []io.Reader{nil, strings.NewReader("")}
 	for _, body := range bodies {
-		request, err := http.NewRequest("PUT", "/apps/armorandsword/units?:name=armorandsword", body)
+		request, err := http.NewRequest("PUT", "/apps/armorandsword/units?:app=armorandsword", body)
 		c.Assert(err, gocheck.IsNil)
 		recorder := httptest.NewRecorder()
 		err = addUnits(recorder, request, s.token)
@@ -629,7 +629,7 @@ func (s *S) TestAddUnitsReturns400IfNumberIsInvalid(c *gocheck.C) {
 	values := []string{"-1", "0", "far cry", "12345678909876543"}
 	for _, value := range values {
 		body := strings.NewReader(value)
-		request, err := http.NewRequest("PUT", "/apps/armorandsword/units?:name=armorandsword", body)
+		request, err := http.NewRequest("PUT", "/apps/armorandsword/units?:app=armorandsword", body)
 		c.Assert(err, gocheck.IsNil)
 		recorder := httptest.NewRecorder()
 		err = addUnits(recorder, request, s.token)
@@ -659,7 +659,7 @@ func (s *S) TestRemoveUnits(c *gocheck.C) {
 	defer s.provisioner.Destroy(&a)
 	s.provisioner.AddUnits(&a, 3)
 	body := strings.NewReader("2")
-	request, err := http.NewRequest("DELETE", "/apps/velha/units?:name=velha", body)
+	request, err := http.NewRequest("DELETE", "/apps/velha/units?:app=velha", body)
 	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
 	err = removeUnits(recorder, request, s.token)
@@ -673,7 +673,7 @@ func (s *S) TestRemoveUnits(c *gocheck.C) {
 
 func (s *S) TestRemoveUnitsReturns404IfAppDoesNotExist(c *gocheck.C) {
 	body := strings.NewReader("1")
-	request, err := http.NewRequest("DELETE", "/apps/fetisha/units?:name=fetisha", body)
+	request, err := http.NewRequest("DELETE", "/apps/fetisha/units?:app=fetisha", body)
 	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
 	err = removeUnits(recorder, request, s.token)
@@ -694,7 +694,7 @@ func (s *S) TestRemoveUnitsReturns403IfTheUserDoesNotHaveAccessToTheApp(c *goche
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	defer s.conn.Logs().Remove(bson.M{"appname": a.Name})
 	body := strings.NewReader("1")
-	request, err := http.NewRequest("DELETE", "/apps/fetisha/units?:name=fetisha", body)
+	request, err := http.NewRequest("DELETE", "/apps/fetisha/units?:app=fetisha", body)
 	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
 	err = removeUnits(recorder, request, s.token)
@@ -708,7 +708,7 @@ func (s *S) TestRemoveUnitsReturns403IfTheUserDoesNotHaveAccessToTheApp(c *goche
 func (s *S) TestRemoveUnitsReturns400IfNumberOfUnitsIsOmited(c *gocheck.C) {
 	bodies := []io.Reader{nil, strings.NewReader("")}
 	for _, body := range bodies {
-		request, err := http.NewRequest("DELETE", "/apps/fetisha/units?:name=fetisha", body)
+		request, err := http.NewRequest("DELETE", "/apps/fetisha/units?:app=fetisha", body)
 		c.Assert(err, gocheck.IsNil)
 		recorder := httptest.NewRecorder()
 		err = removeUnits(recorder, request, s.token)
@@ -724,7 +724,7 @@ func (s *S) TestRemoveUnitsReturns400IfNumberIsInvalid(c *gocheck.C) {
 	values := []string{"-1", "0", "far cry", "12345678909876543"}
 	for _, value := range values {
 		body := strings.NewReader(value)
-		request, err := http.NewRequest("DELETE", "/apps/fiend/units?:name=fiend", body)
+		request, err := http.NewRequest("DELETE", "/apps/fiend/units?:app=fiend", body)
 		c.Assert(err, gocheck.IsNil)
 		recorder := httptest.NewRecorder()
 		err = removeUnits(recorder, request, s.token)
@@ -1129,7 +1129,7 @@ func (s *S) TestRunHandlerShouldExecuteTheGivenCommandInTheGivenApp(c *gocheck.C
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	defer s.conn.Logs().Remove(bson.M{"appname": a.Name})
-	url := fmt.Sprintf("/apps/%s/run/?:name=%s", a.Name, a.Name)
+	url := fmt.Sprintf("/apps/%s/run/?:app=%s", a.Name, a.Name)
 	request, err := http.NewRequest("POST", url, strings.NewReader("ls"))
 	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
@@ -1157,7 +1157,7 @@ func (s *S) TestRunHandlerReturnsTheOutputOfTheCommandEvenIfItFails(c *gocheck.C
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	defer s.conn.Logs().Remove(bson.M{"appname": a.Name})
-	url := fmt.Sprintf("/apps/%s/run/?:name=%s", a.Name, a.Name)
+	url := fmt.Sprintf("/apps/%s/run/?:app=%s", a.Name, a.Name)
 	request, err := http.NewRequest("POST", url, strings.NewReader("ls"))
 	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
@@ -1170,7 +1170,7 @@ func (s *S) TestRunHandlerReturnsTheOutputOfTheCommandEvenIfItFails(c *gocheck.C
 func (s *S) TestRunHandlerReturnsBadRequestIfTheCommandIsMissing(c *gocheck.C) {
 	bodies := []io.Reader{nil, strings.NewReader("")}
 	for _, body := range bodies {
-		request, err := http.NewRequest("POST", "/apps/unknown/run/?:name=unkown", body)
+		request, err := http.NewRequest("POST", "/apps/unknown/run/?:app=unkown", body)
 		c.Assert(err, gocheck.IsNil)
 		recorder := httptest.NewRecorder()
 		err = runCommand(recorder, request, s.token)
@@ -1193,7 +1193,7 @@ func (s *S) TestRunHandlerReturnsInternalErrorIfReadAllFails(c *gocheck.C) {
 }
 
 func (s *S) TestRunHandlerReturnsNotFoundIfTheAppDoesNotExist(c *gocheck.C) {
-	request, err := http.NewRequest("POST", "/apps/unknown/run/?:name=unknown", strings.NewReader("ls"))
+	request, err := http.NewRequest("POST", "/apps/unknown/run/?:app=unknown", strings.NewReader("ls"))
 	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
 	err = runCommand(recorder, request, s.token)
@@ -1213,7 +1213,7 @@ func (s *S) TestRunHandlerReturnsForbiddenIfTheGivenUserDoesNotHaveAccessToTheAp
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	defer s.conn.Logs().Remove(bson.M{"appname": a.Name})
-	url := fmt.Sprintf("/apps/%s/run/?:name=%s", a.Name, a.Name)
+	url := fmt.Sprintf("/apps/%s/run/?:app=%s", a.Name, a.Name)
 	request, err := http.NewRequest("POST", url, strings.NewReader("ls"))
 	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
@@ -1239,7 +1239,7 @@ func (s *S) TestGetEnvHandlerGetsEnvironmentVariableFromApp(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	defer s.conn.Logs().Remove(bson.M{"appname": a.Name})
-	url := fmt.Sprintf("/apps/%s/env/?:name=%s", a.Name, a.Name)
+	url := fmt.Sprintf("/apps/%s/env/?:app=%s", a.Name, a.Name)
 	request, err := http.NewRequest("GET", url, strings.NewReader(`["DATABASE_HOST"]`))
 	request.Header.Set("Content-Type", "application/json")
 	c.Assert(err, gocheck.IsNil)
@@ -1265,7 +1265,7 @@ func (s *S) TestGetEnvHandlerShouldAcceptMultipleVariables(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	defer s.conn.Logs().Remove(bson.M{"appname": a.Name})
-	url := fmt.Sprintf("/apps/%s/env/?:name=%s", a.Name, a.Name)
+	url := fmt.Sprintf("/apps/%s/env/?:app=%s", a.Name, a.Name)
 	request, err := http.NewRequest("GET", url, strings.NewReader(`["DATABASE_HOST", "DATABASE_USER"]`))
 	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
@@ -1305,7 +1305,7 @@ func (s *S) TestGetEnvHandlerReturnsAllVariablesIfEnvironmentVariablesAreMissing
 	var got map[string]string
 	bodies := []io.Reader{nil, strings.NewReader("")}
 	for _, body := range bodies {
-		request, err := http.NewRequest("GET", "/apps/time/env/?:name=time", body)
+		request, err := http.NewRequest("GET", "/apps/time/env/?:app=time", body)
 		c.Assert(err, gocheck.IsNil)
 		recorder := httptest.NewRecorder()
 		err = getEnv(recorder, request, s.token)
@@ -1318,7 +1318,7 @@ func (s *S) TestGetEnvHandlerReturnsAllVariablesIfEnvironmentVariablesAreMissing
 
 func (s *S) TestGetEnvHandlerReturnsInternalErrorIfReadAllFails(c *gocheck.C) {
 	b := s.getTestData("bodyToBeClosed.txt")
-	request, err := http.NewRequest("GET", "/apps/unkown/env/?:name=unknown", b)
+	request, err := http.NewRequest("GET", "/apps/unkown/env/?:app=unknown", b)
 	c.Assert(err, gocheck.IsNil)
 	request.Body.Close()
 	recorder := httptest.NewRecorder()
@@ -1327,7 +1327,7 @@ func (s *S) TestGetEnvHandlerReturnsInternalErrorIfReadAllFails(c *gocheck.C) {
 }
 
 func (s *S) TestGetEnvHandlerReturnsNotFoundIfTheAppDoesNotExist(c *gocheck.C) {
-	request, err := http.NewRequest("GET", "/apps/unknown/env/?:name=unknown", nil)
+	request, err := http.NewRequest("GET", "/apps/unknown/env/?:app=unknown", nil)
 	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
 	err = getEnv(recorder, request, s.token)
@@ -1347,7 +1347,7 @@ func (s *S) TestGetEnvHandlerReturnsForbiddenIfTheGivenUserDoesNotHaveAccessToTh
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	defer s.conn.Logs().Remove(bson.M{"appname": a.Name})
-	url := fmt.Sprintf("/apps/%s/env/?:name=%s", a.Name, a.Name)
+	url := fmt.Sprintf("/apps/%s/env/?:app=%s", a.Name, a.Name)
 	request, err := http.NewRequest("GET", url, strings.NewReader(`["DATABASE_HOST"]`))
 	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
@@ -1368,7 +1368,7 @@ func (s *S) TestSetEnvHandlerShouldSetAPublicEnvironmentVariableInTheApp(c *goch
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	defer s.conn.Logs().Remove(bson.M{"appname": a.Name})
-	url := fmt.Sprintf("/apps/%s/env?:name=%s", a.Name, a.Name)
+	url := fmt.Sprintf("/apps/%s/env?:app=%s", a.Name, a.Name)
 	request, err := http.NewRequest("POST", url, strings.NewReader(`{"DATABASE_HOST":"localhost"}`))
 	c.Assert(err, gocheck.IsNil)
 	request.Header.Set("Content-Type", "application/json")
@@ -1392,7 +1392,7 @@ func (s *S) TestSetEnvHandlerShouldSetMultipleEnvironmentVariablesInTheApp(c *go
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	defer s.conn.Logs().Remove(bson.M{"appname": a.Name})
-	url := fmt.Sprintf("/apps/%s/env?:name=%s", a.Name, a.Name)
+	url := fmt.Sprintf("/apps/%s/env?:app=%s", a.Name, a.Name)
 	b := strings.NewReader(`{"DATABASE_HOST": "localhost", "DATABASE_USER": "root"}`)
 	request, err := http.NewRequest("POST", url, b)
 	c.Assert(err, gocheck.IsNil)
@@ -1426,7 +1426,7 @@ func (s *S) TestSetEnvHandlerShouldNotChangeValueOfPrivateVariables(c *gocheck.C
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	defer s.conn.Logs().Remove(bson.M{"appname": a.Name})
-	url := fmt.Sprintf("/apps/%s/env?:name=%s", a.Name, a.Name)
+	url := fmt.Sprintf("/apps/%s/env?:app=%s", a.Name, a.Name)
 	request, err := http.NewRequest("POST", url, strings.NewReader(`{"DATABASE_HOST":"http://foo.com:8080"}`))
 	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
@@ -1440,7 +1440,7 @@ func (s *S) TestSetEnvHandlerShouldNotChangeValueOfPrivateVariables(c *gocheck.C
 
 func (s *S) TestSetEnvHandlerReturnsInternalErrorIfReadAllFails(c *gocheck.C) {
 	b := s.getTestData("bodyToBeClosed.txt")
-	request, err := http.NewRequest("POST", "/apps/unkown/env/?:name=unknown", b)
+	request, err := http.NewRequest("POST", "/apps/unkown/env/?:app=unknown", b)
 	c.Assert(err, gocheck.IsNil)
 	request.Body.Close()
 	recorder := httptest.NewRecorder()
@@ -1451,7 +1451,7 @@ func (s *S) TestSetEnvHandlerReturnsInternalErrorIfReadAllFails(c *gocheck.C) {
 func (s *S) TestSetEnvHandlerReturnsBadRequestIfVariablesAreMissing(c *gocheck.C) {
 	bodies := []io.Reader{nil, strings.NewReader("")}
 	for _, body := range bodies {
-		request, err := http.NewRequest("POST", "/apps/unknown/env/?:name=unkown", body)
+		request, err := http.NewRequest("POST", "/apps/unknown/env/?:app=unkown", body)
 		c.Assert(err, gocheck.IsNil)
 		recorder := httptest.NewRecorder()
 		err = setEnv(recorder, request, s.token)
@@ -1465,7 +1465,7 @@ func (s *S) TestSetEnvHandlerReturnsBadRequestIfVariablesAreMissing(c *gocheck.C
 
 func (s *S) TestSetEnvHandlerReturnsNotFoundIfTheAppDoesNotExist(c *gocheck.C) {
 	b := strings.NewReader(`{"DATABASE_HOST":"localhost"}`)
-	request, err := http.NewRequest("POST", "/apps/unknown/env/?:name=unknown", b)
+	request, err := http.NewRequest("POST", "/apps/unknown/env/?:app=unknown", b)
 	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
 	err = setEnv(recorder, request, s.token)
@@ -1482,7 +1482,7 @@ func (s *S) TestSetEnvHandlerReturnsForbiddenIfTheGivenUserDoesNotHaveAccessToTh
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	defer s.conn.Logs().Remove(bson.M{"appname": a.Name})
-	url := fmt.Sprintf("/apps/%s/env/?:name=%s", a.Name, a.Name)
+	url := fmt.Sprintf("/apps/%s/env/?:app=%s", a.Name, a.Name)
 	request, err := http.NewRequest("POST", url, strings.NewReader(`{"DATABASE_HOST":"localhost"}`))
 	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
@@ -1509,7 +1509,7 @@ func (s *S) TestUnsetEnvHandlerRemovesTheEnvironmentVariablesFromTheApp(c *goche
 	defer s.conn.Logs().Remove(bson.M{"appname": a.Name})
 	expected := a.Env
 	delete(expected, "DATABASE_HOST")
-	url := fmt.Sprintf("/apps/%s/env/?:name=%s", a.Name, a.Name)
+	url := fmt.Sprintf("/apps/%s/env/?:app=%s", a.Name, a.Name)
 	request, err := http.NewRequest("DELETE", url, strings.NewReader(`["DATABASE_HOST"]`))
 	c.Assert(err, gocheck.IsNil)
 	request.Header.Set("Content-Type", "application/json")
@@ -1536,7 +1536,7 @@ func (s *S) TestUnsetEnvHandlerRemovesAllGivenEnvironmentVariables(c *gocheck.C)
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	defer s.conn.Logs().Remove(bson.M{"appname": a.Name})
-	url := fmt.Sprintf("/apps/%s/env/?:name=%s", a.Name, a.Name)
+	url := fmt.Sprintf("/apps/%s/env/?:app=%s", a.Name, a.Name)
 	request, err := http.NewRequest("DELETE", url, strings.NewReader(`["DATABASE_HOST", "DATABASE_USER"]`))
 	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
@@ -1569,7 +1569,7 @@ func (s *S) TestUnsetHandlerDoesNotRemovePrivateVariables(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	defer s.conn.Logs().Remove(bson.M{"appname": a.Name})
-	url := fmt.Sprintf("/apps/%s/env/?:name=%s", a.Name, a.Name)
+	url := fmt.Sprintf("/apps/%s/env/?:app=%s", a.Name, a.Name)
 	b := strings.NewReader(`["DATABASE_HOST", "DATABASE_USER", "DATABASE_PASSWORD"]`)
 	request, err := http.NewRequest("DELETE", url, b)
 	c.Assert(err, gocheck.IsNil)
@@ -1591,7 +1591,7 @@ func (s *S) TestUnsetHandlerDoesNotRemovePrivateVariables(c *gocheck.C) {
 
 func (s *S) TestUnsetEnvHandlerReturnsInternalErrorIfReadAllFails(c *gocheck.C) {
 	b := s.getTestData("bodyToBeClosed.txt")
-	request, err := http.NewRequest("POST", "/apps/unkown/env/?:name=unknown", b)
+	request, err := http.NewRequest("POST", "/apps/unkown/env/?:app=unknown", b)
 	c.Assert(err, gocheck.IsNil)
 	request.Body.Close()
 	recorder := httptest.NewRecorder()
@@ -1602,7 +1602,7 @@ func (s *S) TestUnsetEnvHandlerReturnsInternalErrorIfReadAllFails(c *gocheck.C) 
 func (s *S) TestUnsetEnvHandlerReturnsBadRequestIfVariablesAreMissing(c *gocheck.C) {
 	bodies := []io.Reader{nil, strings.NewReader(""), strings.NewReader("[]")}
 	for _, body := range bodies {
-		request, err := http.NewRequest("POST", "/apps/unknown/env/?:name=unkown", body)
+		request, err := http.NewRequest("POST", "/apps/unknown/env/?:app=unkown", body)
 		c.Assert(err, gocheck.IsNil)
 		recorder := httptest.NewRecorder()
 		err = unsetEnv(recorder, request, s.token)
@@ -1616,7 +1616,7 @@ func (s *S) TestUnsetEnvHandlerReturnsBadRequestIfVariablesAreMissing(c *gocheck
 
 func (s *S) TestUnsetEnvHandlerReturnsNotFoundIfTheAppDoesNotExist(c *gocheck.C) {
 	b := strings.NewReader(`["DATABASE_HOST"]`)
-	request, err := http.NewRequest("POST", "/apps/unknown/env/?:name=unknown", b)
+	request, err := http.NewRequest("POST", "/apps/unknown/env/?:app=unknown", b)
 	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
 	err = unsetEnv(recorder, request, s.token)
@@ -1633,7 +1633,7 @@ func (s *S) TestUnsetEnvHandlerReturnsForbiddenIfTheGivenUserDoesNotHaveAccessTo
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	defer s.conn.Logs().Remove(bson.M{"appname": a.Name})
-	url := fmt.Sprintf("/apps/%s/env/?:name=%s", a.Name, a.Name)
+	url := fmt.Sprintf("/apps/%s/env/?:app=%s", a.Name, a.Name)
 	request, err := http.NewRequest("POST", url, strings.NewReader(`["DATABASE_HOST"]`))
 	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
@@ -1650,7 +1650,7 @@ func (s *S) TestSetCNameHandler(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	defer s.conn.Logs().Remove(bson.M{"appname": a.Name})
-	url := fmt.Sprintf("/apps/%s?:name=%s", a.Name, a.Name)
+	url := fmt.Sprintf("/apps/%s?:app=%s", a.Name, a.Name)
 	b := strings.NewReader(`{"cname":"leper.secretcompany.com"}`)
 	request, err := http.NewRequest("POST", url, b)
 	c.Assert(err, gocheck.IsNil)
@@ -1668,7 +1668,7 @@ func (s *S) TestSetCNameHandlerAcceptsEmptyCName(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	defer s.conn.Logs().Remove(bson.M{"appname": a.Name})
-	url := fmt.Sprintf("/apps/%s?:name=%s", a.Name, a.Name)
+	url := fmt.Sprintf("/apps/%s?:app=%s", a.Name, a.Name)
 	b := strings.NewReader(`{"cname":""}`)
 	request, err := http.NewRequest("POST", url, b)
 	c.Assert(err, gocheck.IsNil)
@@ -1682,7 +1682,7 @@ func (s *S) TestSetCNameHandlerAcceptsEmptyCName(c *gocheck.C) {
 
 func (s *S) TestSetCNameHandlerReturnsInternalErrorIfItFailsToReadTheBody(c *gocheck.C) {
 	b := s.getTestData("bodyToBeClosed.txt")
-	request, err := http.NewRequest("POST", "/apps/unkown?:name=unknown", b)
+	request, err := http.NewRequest("POST", "/apps/unkown?:app=unknown", b)
 	c.Assert(err, gocheck.IsNil)
 	request.Body.Close()
 	recorder := httptest.NewRecorder()
@@ -1693,7 +1693,7 @@ func (s *S) TestSetCNameHandlerReturnsInternalErrorIfItFailsToReadTheBody(c *goc
 func (s *S) TestSetCNameHandlerReturnsBadRequestWhenCNameIsMissingFromTheBody(c *gocheck.C) {
 	bodies := []io.Reader{nil, strings.NewReader(`{}`), strings.NewReader(`{"name":"something"}`)}
 	for _, b := range bodies {
-		request, err := http.NewRequest("POST", "/apps/unknown?:name=unknown", b)
+		request, err := http.NewRequest("POST", "/apps/unknown?:app=unknown", b)
 		c.Assert(err, gocheck.IsNil)
 		recorder := httptest.NewRecorder()
 		err = setCName(recorder, request, s.token)
@@ -1707,7 +1707,7 @@ func (s *S) TestSetCNameHandlerReturnsBadRequestWhenCNameIsMissingFromTheBody(c 
 
 func (s *S) TestSetCNameHandlerInvalidJSON(c *gocheck.C) {
 	b := strings.NewReader(`}"I'm invalid json"`)
-	request, err := http.NewRequest("POST", "/apps/unknown?:name=unknown", b)
+	request, err := http.NewRequest("POST", "/apps/unknown?:app=unknown", b)
 	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
 	err = setCName(recorder, request, s.token)
@@ -1720,7 +1720,7 @@ func (s *S) TestSetCNameHandlerInvalidJSON(c *gocheck.C) {
 
 func (s *S) TestSetCNameHandlerUnknownApp(c *gocheck.C) {
 	b := strings.NewReader(`{"cname": "leper.secretcompany.com"}`)
-	request, err := http.NewRequest("POST", "/apps/unknown?:name=unknown", b)
+	request, err := http.NewRequest("POST", "/apps/unknown?:app=unknown", b)
 	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
 	err = setCName(recorder, request, s.token)
@@ -1739,7 +1739,7 @@ func (s *S) TestSetCNameHandlerUserWithoutAccessToTheApp(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	defer s.conn.Logs().Remove(bson.M{"appname": a.Name})
-	url := fmt.Sprintf("/apps/%s?:name=%s", a.Name, a.Name)
+	url := fmt.Sprintf("/apps/%s?:app=%s", a.Name, a.Name)
 	b := strings.NewReader(`{"cname": "lost.secretcompany.com"}`)
 	request, err := http.NewRequest("POST", url, b)
 	c.Assert(err, gocheck.IsNil)
@@ -1757,7 +1757,7 @@ func (s *S) TestSetCNameHandlerInvalidCName(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	defer s.conn.Logs().Remove(bson.M{"appname": a.Name})
-	url := fmt.Sprintf("/apps/%s?:name=%s", a.Name, a.Name)
+	url := fmt.Sprintf("/apps/%s?:app=%s", a.Name, a.Name)
 	b := strings.NewReader(`{"cname": ".leper.secretcompany.com"}`)
 	request, err := http.NewRequest("POST", url, b)
 	c.Assert(err, gocheck.IsNil)
@@ -1771,7 +1771,7 @@ func (s *S) TestSetCNameHandlerInvalidCName(c *gocheck.C) {
 }
 
 func (s *S) TestAppLogShouldReturnNotFoundWhenAppDoesNotExist(c *gocheck.C) {
-	request, err := http.NewRequest("GET", "/apps/unknown/log/?:name=unknown&lines=10", nil)
+	request, err := http.NewRequest("GET", "/apps/unknown/log/?:app=unknown&lines=10", nil)
 	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
 	err = appLog(recorder, request, s.token)
@@ -1791,7 +1791,7 @@ func (s *S) TestAppLogReturnsForbiddenIfTheGivenUserDoesNotHaveAccessToTheApp(c 
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	defer s.conn.Logs().Remove(bson.M{"appname": a.Name})
-	url := fmt.Sprintf("/apps/%s/log/?:name=%s&lines=10", a.Name, a.Name)
+	url := fmt.Sprintf("/apps/%s/log/?:app=%s&lines=10", a.Name, a.Name)
 	request, err := http.NewRequest("GET", url, nil)
 	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
@@ -1803,7 +1803,7 @@ func (s *S) TestAppLogReturnsForbiddenIfTheGivenUserDoesNotHaveAccessToTheApp(c 
 }
 
 func (s *S) TestAppLogReturnsBadRequestIfNumberOfLinesIsMissing(c *gocheck.C) {
-	url := "/apps/something/log/?:name=doesntmatter"
+	url := "/apps/something/log/?:app=doesntmatter"
 	request, err := http.NewRequest("GET", url, nil)
 	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
@@ -1816,7 +1816,7 @@ func (s *S) TestAppLogReturnsBadRequestIfNumberOfLinesIsMissing(c *gocheck.C) {
 }
 
 func (s *S) TestAppLogReturnsBadRequestIfNumberOfLinesIsNotAnInteger(c *gocheck.C) {
-	url := "/apps/something/log/?:name=doesntmatter&lines=2.34"
+	url := "/apps/something/log/?:app=doesntmatter&lines=2.34"
 	request, err := http.NewRequest("GET", url, nil)
 	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
@@ -1838,7 +1838,7 @@ func (s *S) TestAppLogShouldHaveContentType(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	defer s.conn.Logs().Remove(bson.M{"appname": a.Name})
-	url := fmt.Sprintf("/apps/%s/log/?:name=%s&lines=10", a.Name, a.Name)
+	url := fmt.Sprintf("/apps/%s/log/?:app=%s&lines=10", a.Name, a.Name)
 	request, err := http.NewRequest("GET", url, nil)
 	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
@@ -1861,7 +1861,7 @@ func (s *S) TestAppLogSelectByLines(c *gocheck.C) {
 	for i := 0; i < 15; i++ {
 		a.Log(strconv.Itoa(i), "source")
 	}
-	url := fmt.Sprintf("/apps/%s/log/?:name=%s&lines=10", a.Name, a.Name)
+	url := fmt.Sprintf("/apps/%s/log/?:app=%s&lines=10", a.Name, a.Name)
 	request, err := http.NewRequest("GET", url, nil)
 	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
@@ -1889,7 +1889,7 @@ func (s *S) TestAppLogSelectBySource(c *gocheck.C) {
 	defer s.conn.Logs().Remove(bson.M{"appname": a.Name})
 	a.Log("mars log", "mars")
 	a.Log("earth log", "earth")
-	url := fmt.Sprintf("/apps/%s/log/?:name=%s&source=mars&lines=10", a.Name, a.Name)
+	url := fmt.Sprintf("/apps/%s/log/?:app=%s&source=mars&lines=10", a.Name, a.Name)
 	request, err := http.NewRequest("GET", url, nil)
 	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
@@ -1929,7 +1929,7 @@ func (s *S) TestAppLogSelectByLinesShouldReturnTheLastestEntries(c *gocheck.C) {
 		}
 		coll.Insert(l)
 	}
-	url := fmt.Sprintf("/apps/%s/log/?:name=%s&lines=3", a.Name, a.Name)
+	url := fmt.Sprintf("/apps/%s/log/?:app=%s&lines=3", a.Name, a.Name)
 	request, err := http.NewRequest("GET", url, nil)
 	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
@@ -1979,7 +1979,7 @@ func (s *S) TestAppLogShouldReturnLogByApp(c *gocheck.C) {
 	defer s.conn.Apps().Remove(bson.M{"name": app3.Name})
 	defer s.conn.Logs().Remove(bson.M{"appname": app3.Name})
 	app3.Log("app3 log", "tsuru")
-	url := fmt.Sprintf("/apps/%s/log/?:name=%s&lines=10", app3.Name, app3.Name)
+	url := fmt.Sprintf("/apps/%s/log/?:app=%s&lines=10", app3.Name, app3.Name)
 	request, err := http.NewRequest("GET", url, nil)
 	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
@@ -2372,7 +2372,7 @@ func (s *S) TestRestartHandler(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	defer s.conn.Logs().Remove(bson.M{"appname": a.Name})
-	url := fmt.Sprintf("/apps/%s/restart?:name=%s", a.Name, a.Name)
+	url := fmt.Sprintf("/apps/%s/restart?:app=%s", a.Name, a.Name)
 	request, err := http.NewRequest("GET", url, nil)
 	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
@@ -2384,7 +2384,7 @@ func (s *S) TestRestartHandler(c *gocheck.C) {
 }
 
 func (s *S) TestRestartHandlerReturns404IfTheAppDoesNotExist(c *gocheck.C) {
-	request, err := http.NewRequest("GET", "/apps/unknown/restart?:name=unknown", nil)
+	request, err := http.NewRequest("GET", "/apps/unknown/restart?:app=unknown", nil)
 	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
 	err = restart(recorder, request, s.token)
@@ -2400,7 +2400,7 @@ func (s *S) TestRestartHandlerReturns403IfTheUserDoesNotHaveAccessToTheApp(c *go
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	defer s.conn.Logs().Remove(bson.M{"appname": a.Name})
-	url := fmt.Sprintf("/apps/%s/restart?:name=%s", a.Name, a.Name)
+	url := fmt.Sprintf("/apps/%s/restart?:app=%s", a.Name, a.Name)
 	request, err := http.NewRequest("GET", url, nil)
 	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
@@ -2421,7 +2421,7 @@ func (s *S) TestAddLogHandler(c *gocheck.C) {
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	defer s.conn.Logs().Remove(bson.M{"appname": a.Name})
 	b := strings.NewReader(`["message 1", "message 2", "message 3"]`)
-	request, err := http.NewRequest("POST", "/apps/myapp/log/?:name=myapp", b)
+	request, err := http.NewRequest("POST", "/apps/myapp/log/?:app=myapp", b)
 	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
 	err = addLog(recorder, request)

@@ -52,7 +52,7 @@ func getApp(name string, u *auth.User) (app.App, error) {
 
 func cloneRepository(w http.ResponseWriter, r *http.Request) error {
 	w.Header().Set("Content-Type", "text")
-	instance := app.App{Name: r.URL.Query().Get(":name")}
+	instance := app.App{Name: r.URL.Query().Get(":app")}
 	err := instance.Get()
 	logWriter := app.LogWriter{App: &instance, Writer: w}
 	if err != nil {
@@ -90,7 +90,7 @@ func cloneRepository(w http.ResponseWriter, r *http.Request) error {
 }
 
 func appIsAvailable(w http.ResponseWriter, r *http.Request) error {
-	app := app.App{Name: r.URL.Query().Get(":name")}
+	app := app.App{Name: r.URL.Query().Get(":app")}
 	err := app.Get()
 	if err != nil {
 		return err
@@ -107,7 +107,7 @@ func forceDeleteApp(w http.ResponseWriter, r *http.Request, t *auth.Token) error
 	if err != nil {
 		return err
 	}
-	a, err := getApp(r.URL.Query().Get(":name"), u)
+	a, err := getApp(r.URL.Query().Get(":app"), u)
 	if err != nil {
 		return err
 	}
@@ -121,7 +121,7 @@ func appDelete(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
 	if err != nil {
 		return err
 	}
-	a, err := getApp(r.URL.Query().Get(":name"), u)
+	a, err := getApp(r.URL.Query().Get(":app"), u)
 	if err != nil {
 		return err
 	}
@@ -162,7 +162,7 @@ func appInfo(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
 	if err != nil {
 		return err
 	}
-	app, err := getApp(r.URL.Query().Get(":name"), u)
+	app, err := getApp(r.URL.Query().Get(":app"), u)
 	if err != nil {
 		return err
 	}
@@ -256,7 +256,7 @@ func addUnits(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
 	if err != nil {
 		return err
 	}
-	appName := r.URL.Query().Get(":name")
+	appName := r.URL.Query().Get(":app")
 	u, err := t.User()
 	if err != nil {
 		return err
@@ -277,7 +277,7 @@ func removeUnits(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
 	if err != nil {
 		return err
 	}
-	appName := r.URL.Query().Get(":name")
+	appName := r.URL.Query().Get(":app")
 	app, err := getApp(appName, u)
 	if err != nil {
 		return err
@@ -404,7 +404,7 @@ func runCommand(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
 	if err != nil {
 		return err
 	}
-	appName := r.URL.Query().Get(":name")
+	appName := r.URL.Query().Get(":app")
 	app, err := getApp(appName, u)
 	if err != nil {
 		return err
@@ -425,7 +425,7 @@ func getEnv(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
 	if err != nil {
 		return err
 	}
-	appName := r.URL.Query().Get(":name")
+	appName := r.URL.Query().Get(":app")
 	app, err := getApp(appName, u)
 	if err != nil {
 		return err
@@ -464,7 +464,7 @@ func setEnv(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
 	if err != nil {
 		return err
 	}
-	appName := r.URL.Query().Get(":name")
+	appName := r.URL.Query().Get(":app")
 	app, err := getApp(appName, u)
 	if err != nil {
 		return err
@@ -490,7 +490,7 @@ func unsetEnv(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
 	if len(variables) == 0 {
 		return &errors.Http{Code: http.StatusBadRequest, Message: msg}
 	}
-	appName := r.URL.Query().Get(":name")
+	appName := r.URL.Query().Get(":app")
 	u, err := t.User()
 	if err != nil {
 		return err
@@ -519,7 +519,7 @@ func setCName(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
 	if err != nil {
 		return err
 	}
-	appName := r.URL.Query().Get(":name")
+	appName := r.URL.Query().Get(":app")
 	app, err := getApp(appName, u)
 	if err != nil {
 		return err
@@ -550,7 +550,7 @@ func appLog(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
 	if err != nil {
 		return err
 	}
-	appName := r.URL.Query().Get(":name")
+	appName := r.URL.Query().Get(":app")
 	a, err := getApp(appName, u)
 	if err != nil {
 		return err
@@ -648,7 +648,7 @@ func restart(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
 	if err != nil {
 		return err
 	}
-	instance, err := getApp(r.URL.Query().Get(":name"), u)
+	instance, err := getApp(r.URL.Query().Get(":app"), u)
 	if err != nil {
 		return err
 	}
@@ -656,7 +656,7 @@ func restart(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
 }
 
 func addLog(w http.ResponseWriter, r *http.Request) error {
-	app := app.App{Name: r.URL.Query().Get(":name")}
+	app := app.App{Name: r.URL.Query().Get(":app")}
 	err := app.Get()
 	if err != nil {
 		return err
