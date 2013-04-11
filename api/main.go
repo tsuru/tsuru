@@ -104,7 +104,7 @@ func main() {
 	m.Del("/teams/:team/:user", authorizationRequiredHandler(RemoveUserFromTeam))
 
 	m.Get("/healers", authorizationRequiredHandler(healers))
-	m.Get("/healers/:healer", handler(healer))
+	m.Get("/healers/:healer", authorizationRequiredHandler(healer))
 
 	if !*dry {
 		provisioner, err := config.GetString("provisioner")

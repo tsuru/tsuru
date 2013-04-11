@@ -57,7 +57,7 @@ func (s *HealerSuite) TestHealer(c *gocheck.C) {
 	recorder := httptest.NewRecorder()
 	request, err := http.NewRequest("GET", "/healers/fake?:healer=fake", nil)
 	c.Assert(err, gocheck.IsNil)
-	err = healer(recorder, request)
+	err = healer(recorder, request, nil)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(recorder.Code, gocheck.Equals, http.StatusOK)
 	c.Assert(fake.called, gocheck.Equals, true)
