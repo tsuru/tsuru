@@ -7,12 +7,13 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/globocom/tsuru/auth"
 	"github.com/globocom/tsuru/heal"
 	"net/http"
 )
 
 // healers returns a json with all healers registered and yours endpoints.
-func healers(w http.ResponseWriter, r *http.Request) error {
+func healers(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
 	h := map[string]string{}
 	for healer := range heal.All() {
 		h[healer] = fmt.Sprintf("/healers/%s", healer)
