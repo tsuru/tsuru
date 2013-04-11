@@ -50,9 +50,28 @@ func (s *S) TestTokenGenInfo(c *gocheck.C) {
 		Usage:   "token-gen <app-name>",
 		Desc:    "Generates an authentication token for an app.",
 	}
-	c.Assert(tokenGen{}.Info(), gocheck.DeepEquals, expected)
+	c.Assert((&tokenGen{}).Info(), gocheck.DeepEquals, expected)
 }
 
-func (s *S) TestTokenGenIsACommand(c *gocheck.C) {
-	var _ cmd.Command = tokenGen{}
+func (s *S) TestTokenGetFlags(c *gocheck.C) {
+	command := tokenGen{}
+	fs := command.Flags()
+	fs.Parse(true, []string{"--export"})
+	export := fs.Lookup("export")
+	c.Assert(export, gocheck.NotNil)
+	c.Check(export.Name, gocheck.Equals, "export")
+	c.Check(export.Usage, gocheck.Equals, "Define the token as environment variable in the app")
+	c.Check(export.Value.String(), gocheck.Equals, "true")
+	c.Check(export.DefValue, gocheck.Equals, "false")
+	sexport := fs.Lookup("e")
+	c.Assert(sexport, gocheck.NotNil)
+	c.Check(sexport.Name, gocheck.Equals, "e")
+	c.Check(sexport.Usage, gocheck.Equals, "Define the token as environment variable in the app")
+	c.Check(sexport.Value.String(), gocheck.Equals, "true")
+	c.Check(sexport.DefValue, gocheck.Equals, "false")
+	c.Assert(command.export, gocheck.Equals, true)
+}
+
+func (s *S) TestTokenGenIsAFlaggedCommand(c *gocheck.C) {
+	var _ cmd.FlaggedCommand = &tokenGen{}
 }

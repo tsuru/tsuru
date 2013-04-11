@@ -8,13 +8,16 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/globocom/tsuru/cmd"
+	"launchpad.net/gnuflag"
 	"net/http"
 	"strings"
 )
 
-type tokenGen struct{}
+type tokenGen struct {
+	export bool
+}
 
-func (tokenGen) Run(ctx *cmd.Context, client cmd.Doer) error {
+func (c *tokenGen) Run(ctx *cmd.Context, client cmd.Doer) error {
 	app := ctx.Args[0]
 	url, err := cmd.GetUrl("/tokens")
 	if err != nil {
@@ -36,11 +39,18 @@ func (tokenGen) Run(ctx *cmd.Context, client cmd.Doer) error {
 	return nil
 }
 
-func (tokenGen) Info() *cmd.Info {
+func (c *tokenGen) Info() *cmd.Info {
 	return &cmd.Info{
 		Name:    "token-gen",
 		MinArgs: 1,
 		Usage:   "token-gen <app-name>",
 		Desc:    "Generates an authentication token for an app.",
 	}
+}
+
+func (c *tokenGen) Flags() *gnuflag.FlagSet {
+	fs := gnuflag.NewFlagSet("token-gen", gnuflag.ExitOnError)
+	fs.BoolVar(&c.export, "export", false, "Define the token as environment variable in the app")
+	fs.BoolVar(&c.export, "e", false, "Define the token as environment variable in the app")
+	return fs
 }
