@@ -35,7 +35,7 @@ func (s *S) TestTokenGenIsRegistered(c *gocheck.C) {
 	manager := buildManager("tsuru-admin")
 	token, ok := manager.Commands["token-gen"]
 	c.Assert(ok, gocheck.Equals, true)
-	c.Assert(token, gocheck.FitsTypeOf, tokenGen{})
+	c.Assert(token, gocheck.FitsTypeOf, &tokenGen{})
 }
 
 func (s *S) TestCommandsFromBaseManagerAreRegistered(c *gocheck.C) {
