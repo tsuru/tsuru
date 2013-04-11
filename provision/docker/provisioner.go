@@ -110,7 +110,7 @@ func (p *LocalProvisioner) Provision(app provision.App) error {
 			log.Printf("error on start container %s", app.GetName())
 			log.Print(err)
 		}
-		err, ip := c.ip()
+		ip, err := c.ip()
 		u.Ip = ip
 		u.Status = provision.StatusInstalling
 		err = p.collection().Update(bson.M{"name": u.Name}, u)

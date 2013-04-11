@@ -14,19 +14,26 @@ import (
 func AddRoute(name, ip string) error {
 	domain, err := config.GetString("docker:domain")
 	if err != nil {
+		log.Printf("Tsuru is misconfigured: %s.", err)
 		return err
 	}
 	routesPath, err := config.GetString("docker:routes-path")
 	if err != nil {
+		log.Printf("Tsuru is misconfigured: %s.", err)
 		return err
 	}
-	filename := routesPath + "/" + name
-	template := `server { listen 80; %s.%s; location / { proxy_pass http://%s; } }`
-	template = fmt.Sprintf(template, name, domain, ip)
-	err, _ = runCmd("sudo", "echo", "\"", template, "\"", "|", "sudo tee", filename)
-	if err != nil {
-		log.Printf("error(%s) trying to write file: %s", filename)
+	file, _ := filesystem().Create(routesPath + "/" + name)
+	defer file.Close()
+	template := `server {
+	listen 80;
+	%s.%s;
+	location / {
+		proxy_pass http://%s;
 	}
+}`
+	template = fmt.Sprintf(template, name, domain, ip)
+	data := []byte(template)
+	_, err = file.Write(data)
 	return err
 }
 

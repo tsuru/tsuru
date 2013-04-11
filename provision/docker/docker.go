@@ -39,30 +39,33 @@ func runCmd(cmd string, args ...string) (err error, output string) {
 }
 
 // ip returns the ip for the container.
-func (c *container) ip() (err error, ip string) {
+func (c *container) ip() (string, error) {
 	docker, err := config.GetString("docker:binary")
 	if err != nil {
-		return err, ""
+		return "", err
 	}
 	log.Printf("Getting ipaddress to instance %s", c.instanceId)
-	err, instance_json := runCmd("sudo", docker, "inspect", c.instanceId)
+	err, instanceJson := runCmd("sudo", docker, "inspect", c.instanceId)
 	if err != nil {
 		log.Printf("error(%s) trying to inspect docker instance(%s) to get ipaddress", err)
 	}
-	var jsonBlob = []byte(instance_json)
 	var result map[string]interface{}
-	err2 := json.Unmarshal(jsonBlob, &result)
-	NetworkSettings := result["NetworkSettings"].(map[string]interface{})
-	if err2 != nil {
-		log.Printf("error(%s) parsing jason from docker when trying to get ipaddress", err2)
+	if err := json.Unmarshal([]byte(instanceJson), &result); err != nil {
+		log.Printf("error(%s) parsing json from docker when trying to get ipaddress", err)
 	}
-	instance_ip := NetworkSettings["IpAddress"].(string)
-	if instance_ip != "" {
-		log.Printf("Instance IpAddress: %s", instance_ip)
-		return nil, instance_ip
+	if ns, ok := result["NetworkSettings"]; !ok || ns == nil {
+		msg := "Error when getting container information. NetworkSettings is missing."
+		log.Printf(msg)
+		return "", errors.New(msg)
 	}
-	log.Print("error: Can't get ipaddress...")
-	return errors.New("Can't get ipaddress..."), ""
+	networkSettings := result["NetworkSettings"].(map[string]interface{})
+	instanceIp := networkSettings["IpAddress"].(string)
+	if instanceIp == "" {
+		log.Print("error: Can't get ipaddress...")
+		return "", errors.New("Can't get ipaddress...")
+	}
+	log.Printf("Instance IpAddress: %s", instanceIp)
+	return instanceIp, nil
 }
 
 // create creates a docker container with base template by default.

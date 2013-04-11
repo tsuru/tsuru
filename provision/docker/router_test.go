@@ -22,7 +22,8 @@ func (s *S) TestAddRoute(c *gocheck.C) {
 	}()
 	err := AddRoute("name", "127.0.0.1")
 	c.Assert(err, gocheck.IsNil)
-	file, _ := rfs.Open("testdata/name")
+	file, err := rfs.Open("testdata/name")
+	c.Assert(err, gocheck.IsNil)
 	data, err := ioutil.ReadAll(file)
 	c.Assert(err, gocheck.IsNil)
 	expected := `server {
@@ -38,6 +39,7 @@ func (s *S) TestAddRoute(c *gocheck.C) {
 func (s *S) TestRestartRouter(c *gocheck.C) {
 	tmpdir, err := commandmocker.Add("sudo", "$*")
 	c.Assert(err, gocheck.IsNil)
+	defer commandmocker.Remove(tmpdir)
 	err = RestartRouter()
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(commandmocker.Ran(tmpdir), gocheck.Equals, true)

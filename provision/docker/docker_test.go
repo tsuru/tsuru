@@ -51,15 +51,33 @@ func (s *S) TestDockerDestroy(c *gocheck.C) {
 	c.Assert(commandmocker.Output(tmpdir), gocheck.Equals, expected)
 }
 
-func (s *S) TestContainerIP(c *gocheck.C) {
+func (s *S) TestContainerIPRunsDockerInspectCommand(c *gocheck.C) {
 	tmpdir, err := commandmocker.Add("sudo", "$*")
 	c.Assert(err, gocheck.IsNil)
 	defer commandmocker.Remove(tmpdir)
 	cont := container{name: "vm1", instanceId: "id"}
-	err, ip := cont.ip()
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(ip, gocheck.Equals, "10.10.10.10")
+	cont.ip()
 	c.Assert(commandmocker.Ran(tmpdir), gocheck.Equals, true)
 	expected := "docker inspect id"
 	c.Assert(commandmocker.Output(tmpdir), gocheck.Equals, expected)
+}
+
+func (s *S) TestContainerIPReturnsIpFromDockerInspect(c *gocheck.C) {
+	cmdReturn := `
+    {
+            \"NetworkSettings\": {
+            \"IpAddress\": \"10.10.10.10\",
+            \"IpPrefixLen\": 8,
+            \"Gateway\": \"10.65.41.1\",
+            \"PortMapping\": {}
+    }
+}`
+	tmpdir, err := commandmocker.Add("sudo", cmdReturn)
+	c.Assert(err, gocheck.IsNil)
+	defer commandmocker.Remove(tmpdir)
+	cont := container{name: "vm1", instanceId: "id"}
+	ip, err := cont.ip()
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(ip, gocheck.Equals, "10.10.10.10")
+	c.Assert(commandmocker.Ran(tmpdir), gocheck.Equals, true)
 }
