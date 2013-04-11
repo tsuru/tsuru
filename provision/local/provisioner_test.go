@@ -73,7 +73,7 @@ func (s *S) TestProvisionerProvision(c *gocheck.C) {
 		c.Fatal("Timed out waiting for the container to be provisioned (10 seconds)")
 	}
 	c.Assert(commandmocker.Ran(tmpdir), gocheck.Equals, true)
-	expected := "lxc-create -t ubuntu -n myapp -- -S somepath"
+	expected := "lxc-create -t ubuntu-cloud -n myapp -- -S somepath"
 	expected += "lxc-start --daemon -n myapp"
 	expected += "service nginx restart"
 	c.Assert(commandmocker.Output(tmpdir), gocheck.Equals, expected)
@@ -181,7 +181,7 @@ func (s *S) TestProvisionerDestroy(c *gocheck.C) {
 		c.Fatal("Timed out waiting for the container to be provisioned (10 seconds)")
 	}
 	c.Assert(commandmocker.Ran(tmpdir), gocheck.Equals, true)
-	expected := "lxc-create -t ubuntu -n myapp -- -S somepath"
+	expected := "lxc-create -t ubuntu-cloud -n myapp -- -S somepath"
 	expected += "lxc-start --daemon -n myapp"
 	expected += "service nginx restart"
 	expected += "lxc-stop -n myapp"
