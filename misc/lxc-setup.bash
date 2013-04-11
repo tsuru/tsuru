@@ -6,6 +6,11 @@
 
 # This script is used to install tsuru with lxc provisioner.
 
+
+echo "updating and upgrading"
+sudo apt-get update
+sudo apt-get upgrade -y
+
 echo "installing lxc"
 sudo apt-get install lxc -y
 
