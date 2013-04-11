@@ -1471,3 +1471,26 @@ func (s *AuthSuite) TestGenerateApplicationTokenMissingClient(c *gocheck.C) {
 	c.Assert(e.Code, gocheck.Equals, http.StatusBadRequest)
 	c.Assert(e.Message, gocheck.Equals, "Missing client name in JSON body")
 }
+
+func (s *AuthSuite) TestGenerateApplictionTokenExport(c *gocheck.C) {
+	conn, _ := db.Conn()
+	defer conn.Close()
+	a := app.App{Name: "myapp"}
+	err := conn.Apps().Insert(a)
+	c.Assert(err, gocheck.IsNil)
+	defer conn.Apps().Remove(bson.M{"name": a.Name})
+	body := bytes.NewBufferString(`{"client":"myapp","export":true}`)
+	request, _ := http.NewRequest("POST", "/tokens", body)
+	recorder := httptest.NewRecorder()
+	err = generateAppToken(recorder, request, s.token)
+	c.Assert(err, gocheck.IsNil)
+	var jsonToken map[string]string
+	err = json.NewDecoder(recorder.Body).Decode(&jsonToken)
+	err = a.Get()
+	c.Assert(err, gocheck.IsNil)
+	tokenVar := a.Env["TSURU_APP_TOKEN"]
+	c.Assert(tokenVar.Name, gocheck.Equals, "TSURU_APP_TOKEN")
+	c.Assert(tokenVar.Value, gocheck.Equals, jsonToken["token"])
+	c.Assert(tokenVar.Public, gocheck.Equals, false)
+	c.Assert(tokenVar.InstanceName, gocheck.Equals, "")
+}

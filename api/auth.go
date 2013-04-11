@@ -9,6 +9,8 @@ import (
 	"fmt"
 	"github.com/globocom/go-gandalfclient"
 	"github.com/globocom/tsuru/action"
+	"github.com/globocom/tsuru/app"
+	"github.com/globocom/tsuru/app/bind"
 	"github.com/globocom/tsuru/auth"
 	"github.com/globocom/tsuru/db"
 	"github.com/globocom/tsuru/errors"
@@ -540,23 +542,40 @@ Please remove the team, them remove the user.`, team.Name)
 	return conn.Users().Remove(bson.M{"email": u.Email})
 }
 
+type jToken struct {
+	Client string `json:"client"`
+	Export bool   `json:"export"`
+}
+
 func generateAppToken(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
-	var body map[string]string
+	var body jToken
 	defer r.Body.Close()
 	err := json.NewDecoder(r.Body).Decode(&body)
 	if err != nil {
 		return err
 	}
-	client := body["client"]
-	if client == "" {
+	if body.Client == "" {
 		return &errors.Http{
 			Code:    http.StatusBadRequest,
 			Message: "Missing client name in JSON body",
 		}
 	}
-	token, err := auth.CreateApplicationToken(client)
+	token, err := auth.CreateApplicationToken(body.Client)
 	if err != nil {
 		return err
+	}
+	if body.Export {
+		a := app.App{Name: body.Client}
+		if err := a.Get(); err == nil {
+			envs := []bind.EnvVar{
+				{
+					Name:   "TSURU_APP_TOKEN",
+					Value:  token.Token,
+					Public: false,
+				},
+			}
+			a.SetEnvs(envs, false)
+		}
 	}
 	return json.NewEncoder(w).Encode(token)
 }
