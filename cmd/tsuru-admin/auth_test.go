@@ -30,7 +30,7 @@ func (s *S) TestTokenGen(c *gocheck.C) {
 			defer req.Body.Close()
 			body, err := ioutil.ReadAll(req.Body)
 			c.Assert(err, gocheck.IsNil)
-			c.Assert(string(body), gocheck.Equals, `{"client":"myapp"}`)
+			c.Assert(string(body), gocheck.Equals, `{"client":"myapp","export":false}`)
 			return req.Method == "POST" && req.URL.Path == "/tokens"
 		},
 	}
@@ -41,6 +41,34 @@ func (s *S) TestTokenGen(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(stdout.String(), gocheck.Equals, expected)
 	c.Assert(called, gocheck.Equals, true)
+}
+
+func (s *S) TestTokenGenWithExportOn(c *gocheck.C) {
+	var stdout, stderr bytes.Buffer
+	context := cmd.Context{
+		Args:   []string{"myapp"},
+		Stdout: &stdout,
+		Stderr: &stderr,
+	}
+	manager := cmd.NewManager("glb", "0.2", "ad-ver", &stdout, &stderr, nil)
+	result := `{"token":"secret123"}`
+	trans := testing.ConditionalTransport{
+		Transport: testing.Transport{Message: result, Status: http.StatusOK},
+		CondFunc: func(req *http.Request) bool {
+			defer req.Body.Close()
+			body, err := ioutil.ReadAll(req.Body)
+			c.Assert(err, gocheck.IsNil)
+			c.Assert(string(body), gocheck.Equals, `{"client":"myapp","export":true}`)
+			return req.Method == "POST" && req.URL.Path == "/tokens"
+		},
+	}
+	expected := `Application token: "secret123".` + "\n"
+	client := cmd.NewClient(&http.Client{Transport: &trans}, nil, manager)
+	command := tokenGen{}
+	command.Flags().Parse(true, []string{"-e"})
+	err := command.Run(&context, client)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(stdout.String(), gocheck.Equals, expected)
 }
 
 func (s *S) TestTokenGenInfo(c *gocheck.C) {

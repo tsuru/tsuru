@@ -23,7 +23,7 @@ func (c *tokenGen) Run(ctx *cmd.Context, client cmd.Doer) error {
 	if err != nil {
 		return err
 	}
-	body := strings.NewReader(fmt.Sprintf(`{"client":"%s"}`, app))
+	body := strings.NewReader(fmt.Sprintf(`{"client":"%s","export":%v}`, app, c.export))
 	request, _ := http.NewRequest("POST", url, body)
 	resp, err := client.Do(request)
 	if err != nil {
