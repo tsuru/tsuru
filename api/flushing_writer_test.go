@@ -9,10 +9,9 @@ import (
 	"net/http/httptest"
 )
 
-type FlushingSuite struct {}
+type FlushingSuite struct{}
 
 var _ = gocheck.Suite(&FlushingSuite{})
-
 
 func (s *FlushingSuite) TestFlushingWriter(c *gocheck.C) {
 	recorder := httptest.NewRecorder()

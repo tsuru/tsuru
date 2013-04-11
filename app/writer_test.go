@@ -6,9 +6,9 @@ package app
 
 import (
 	"bytes"
+	"github.com/globocom/config"
 	"github.com/globocom/tsuru/db"
 	"labix.org/v2/mgo/bson"
-	"github.com/globocom/config"
 	"launchpad.net/gocheck"
 )
 

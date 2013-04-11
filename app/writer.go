@@ -5,7 +5,7 @@
 package app
 
 import (
-    "io"
+	"io"
 )
 
 type LogWriter struct {
