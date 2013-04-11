@@ -32,7 +32,7 @@ func (tokenGen) Run(ctx *cmd.Context, client cmd.Doer) error {
 	if err != nil {
 		return err
 	}
-	fmt.Fprintf(ctx.Stdout, "Application token: %q.", token["token"])
+	fmt.Fprintf(ctx.Stdout, "Application token: %q.\n", token["token"])
 	return nil
 }
 

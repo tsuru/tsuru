@@ -34,7 +34,7 @@ func (s *S) TestTokenGen(c *gocheck.C) {
 			return req.Method == "POST" && req.URL.Path == "/tokens"
 		},
 	}
-	expected := `Application token: "secret123".`
+	expected := `Application token: "secret123".` + "\n"
 	client := cmd.NewClient(&http.Client{Transport: &trans}, nil, manager)
 	command := tokenGen{}
 	err := command.Run(&context, client)
