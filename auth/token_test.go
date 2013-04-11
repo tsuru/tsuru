@@ -40,24 +40,36 @@ func (s *S) TestNewTokenWithoutTokenKey(c *gocheck.C) {
 	c.Assert(err.Error(), gocheck.Equals, `Setting "auth:token-key" is undefined.`)
 }
 
-func (s *S) TestCheckTokenReturnErrorIfTheTokenIsOmited(c *gocheck.C) {
-	u, err := CheckToken("")
-	c.Assert(u, gocheck.IsNil)
-	c.Assert(err, gocheck.NotNil)
-	c.Assert(err, gocheck.ErrorMatches, "^You must provide the token$")
+func (s *S) TestGetToken(c *gocheck.C) {
+	t, err := GetToken(s.token.Token)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(t.Token, gocheck.Equals, s.token.Token)
 }
 
-func (s *S) TestCheckTokenReturnErrorIfTheTokenIsInvalid(c *gocheck.C) {
-	u, err := CheckToken("invalid")
+func (s *S) TestGetTokenEmptyToken(c *gocheck.C) {
+	u, err := GetToken("")
 	c.Assert(u, gocheck.IsNil)
 	c.Assert(err, gocheck.NotNil)
-	c.Assert(err, gocheck.ErrorMatches, "^Invalid token$")
+	c.Assert(err.Error(), gocheck.Equals, "Token not found")
 }
 
-func (s *S) TestCheckTokenReturnTheUserIfTheTokenIsValid(c *gocheck.C) {
-	u, e := CheckToken(s.token.Token)
-	c.Assert(e, gocheck.IsNil)
-	c.Assert(u.Email, gocheck.Equals, s.user.Email)
+func (s *S) TestGetTokenNotFound(c *gocheck.C) {
+	t, err := GetToken("invalid")
+	c.Assert(t, gocheck.IsNil)
+	c.Assert(err, gocheck.NotNil)
+	c.Assert(err, gocheck.ErrorMatches, "Token not found")
+}
+
+func (s *S) TestGetExpiredToken(c *gocheck.C) {
+	t, err := CreateApplicationToken("tsuru-healer")
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Tokens().Remove(bson.M{"token": t.Token})
+	t.ValidUntil = time.Now().Add(-24 * time.Hour)
+	s.conn.Tokens().Update(bson.M{"token": t.Token}, t)
+	t2, err := GetToken(t.Token)
+	c.Assert(t2, gocheck.IsNil)
+	c.Assert(err, gocheck.NotNil)
+	c.Assert(err.Error(), gocheck.Equals, "Token has expired")
 }
 
 func (s *S) TestCreateApplicationToken(c *gocheck.C) {
@@ -69,48 +81,6 @@ func (s *S) TestCreateApplicationToken(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(n, gocheck.Equals, 1)
 	c.Assert(t.AppName, gocheck.Equals, "tsuru-healer")
-}
-
-func (s *S) TestCheckApplicationToken(c *gocheck.C) {
-	t, err := CreateApplicationToken("tsuru-healer")
-	c.Assert(err, gocheck.IsNil)
-	defer s.conn.Tokens().Remove(bson.M{"token": t.Token})
-	t2, err := CheckApplicationToken(t.Token)
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(t2.Token, gocheck.Equals, t.Token)
-}
-
-func (s *S) TestCheckApplicationTokenExpired(c *gocheck.C) {
-	t, err := CreateApplicationToken("tsuru-healer")
-	c.Assert(err, gocheck.IsNil)
-	defer s.conn.Tokens().Remove(bson.M{"token": t.Token})
-	t.ValidUntil = time.Now().Add(-24 * time.Hour)
-	s.conn.Tokens().Update(bson.M{"token": t.Token}, t)
-	t2, err := CheckApplicationToken(t.Token)
-	c.Assert(t2, gocheck.IsNil)
-	c.Assert(err, gocheck.NotNil)
-	c.Assert(err.Error(), gocheck.Equals, "Invalid token.")
-}
-
-func (s *S) TestCheckApplicationTokenUnknown(c *gocheck.C) {
-	t, err := CheckApplicationToken("unknown")
-	c.Assert(t, gocheck.IsNil)
-	c.Assert(err, gocheck.NotNil)
-	c.Assert(err.Error(), gocheck.Equals, "Invalid token.")
-}
-
-func (s *S) TestCheckApplicationTokenUserToken(c *gocheck.C) {
-	t := Token{
-		UserEmail:  "something@something.com",
-		Token:      "12ghoasojad",
-		ValidUntil: time.Now().Add(time.Hour),
-	}
-	s.conn.Tokens().Insert(t)
-	defer s.conn.Tokens().Remove(bson.M{"token": t.Token})
-	t2, err := CheckApplicationToken(t.Token)
-	c.Assert(t2, gocheck.IsNil)
-	c.Assert(err, gocheck.NotNil)
-	c.Assert(err.Error(), gocheck.Equals, "Invalid token.")
 }
 
 func (s *S) TestTokenMarshalJSON(c *gocheck.C) {

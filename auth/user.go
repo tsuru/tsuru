@@ -102,7 +102,7 @@ func GetUserByToken(token string) (*User, error) {
 		return nil, err
 	}
 	defer conn.Close()
-	t, err := getToken(token)
+	t, err := GetToken(token)
 	if err != nil {
 		return nil, err
 	}

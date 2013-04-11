@@ -45,7 +45,7 @@ func newUserToken(u *User) (*Token, error) {
 	return &t, nil
 }
 
-func getToken(token string) (*Token, error) {
+func GetToken(token string) (*Token, error) {
 	conn, err := db.Conn()
 	if err != nil {
 		return nil, err
@@ -60,17 +60,6 @@ func getToken(token string) (*Token, error) {
 		return nil, errors.New("Token has expired")
 	}
 	return &t, nil
-}
-
-func CheckToken(token string) (*User, error) {
-	if token == "" {
-		return nil, errors.New("You must provide the token")
-	}
-	u, err := GetUserByToken(token)
-	if err != nil {
-		return nil, errors.New("Invalid token")
-	}
-	return u, nil
 }
 
 func CreateApplicationToken(appName string) (*Token, error) {
@@ -89,12 +78,4 @@ func CreateApplicationToken(appName string) (*Token, error) {
 		return nil, err
 	}
 	return &t, nil
-}
-
-func CheckApplicationToken(token string) (*Token, error) {
-	t, err := getToken(token)
-	if err != nil || t.UserEmail != "" {
-		return nil, errors.New("Invalid token.")
-	}
-	return t, nil
 }
