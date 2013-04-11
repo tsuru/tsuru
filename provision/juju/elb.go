@@ -40,17 +40,16 @@ type ELBManager struct {
 	e *elb.ELB
 }
 
-func (m *ELBManager) collection() *mgo.Collection {
+func (m *ELBManager) collection() (*db.Storage, *mgo.Collection) {
 	name, err := config.GetString("juju:elb-collection")
 	if err != nil {
 		log.Fatal("juju:elb-collection is undefined on config file.")
 	}
 	conn, err := db.Conn()
 	if err != nil {
-		log.Printf("[juju] Failed to connect to the database: %s", err)
-		return nil
+		log.Fatalf("[juju] Failed to connect to the database: %s", err)
 	}
-	return conn.Collection(name)
+	return conn, conn.Collection(name)
 }
 
 func (m *ELBManager) elb() *elb.ELB {
@@ -101,7 +100,9 @@ func (m *ELBManager) Create(app provision.Named) error {
 		return err
 	}
 	lb := loadBalancer{Name: app.GetName(), DNSName: resp.DNSName}
-	return m.collection().Insert(lb)
+	conn, collection := m.collection()
+	defer conn.Close()
+	return collection.Insert(lb)
 }
 
 // Destroy destroys an Elastic Load Balancing instance from AWS. It matches the
@@ -111,7 +112,9 @@ func (m *ELBManager) Destroy(app provision.Named) error {
 	if err != nil {
 		return err
 	}
-	return m.collection().Remove(bson.M{"name": app.GetName()})
+	conn, collection := m.collection()
+	defer conn.Close()
+	return collection.Remove(bson.M{"name": app.GetName()})
 }
 
 // Register adds new EC2 instances (represented as units) to a load balancer.
@@ -139,7 +142,9 @@ func (m *ELBManager) Deregister(app provision.Named, units ...provision.Unit) er
 // the app.
 func (m *ELBManager) Addr(app provision.Named) (string, error) {
 	var lb loadBalancer
-	err := m.collection().Find(bson.M{"name": app.GetName()}).One(&lb)
+	conn, collection := m.collection()
+	defer conn.Close()
+	err := collection.Find(bson.M{"name": app.GetName()}).One(&lb)
 	return lb.DNSName, err
 }
 
