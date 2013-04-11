@@ -272,6 +272,6 @@ func (u *User) AllowedAppsByTeam(team string) ([]string, error) {
 
 type AuthenticationFailure struct{}
 
-func (a AuthenticationFailure) Error() string {
+func (AuthenticationFailure) Error() string {
 	return "Authentication failed, wrong password."
 }
