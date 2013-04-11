@@ -96,19 +96,6 @@ func GetUserByEmail(email string) (*User, error) {
 	return &u, nil
 }
 
-func GetUserByToken(token string) (*User, error) {
-	conn, err := db.Conn()
-	if err != nil {
-		return nil, err
-	}
-	defer conn.Close()
-	t, err := GetToken(token)
-	if err != nil {
-		return nil, err
-	}
-	return GetUserByEmail(t.UserEmail)
-}
-
 func (u *User) Create() error {
 	conn, err := db.Conn()
 	if err != nil {
