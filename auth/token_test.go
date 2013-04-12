@@ -110,3 +110,13 @@ func (s *S) TestTokenGetUserUnknownEmail(c *gocheck.C) {
 	c.Assert(u, gocheck.IsNil)
 	c.Assert(err, gocheck.NotNil)
 }
+
+func (s *S) TestDeleteToken(c *gocheck.C) {
+	t, err := CreateApplicationToken("tsuru-healer")
+	c.Assert(err, gocheck.IsNil)
+	err = DeleteToken(t.Token)
+	c.Assert(err, gocheck.IsNil)
+	_, err = GetToken(t.Token)
+	c.Assert(err, gocheck.NotNil)
+	c.Assert(err.Error(), gocheck.Equals, "Token not found")
+}

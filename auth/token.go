@@ -66,6 +66,15 @@ func GetToken(token string) (*Token, error) {
 	return &t, nil
 }
 
+func DeleteToken(token string) error {
+	conn, err := db.Conn()
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+	return conn.Tokens().Remove(bson.M{"token": token})
+}
+
 func CreateApplicationToken(appName string) (*Token, error) {
 	conn, err := db.Conn()
 	if err != nil {
