@@ -90,7 +90,7 @@ func cloneRepository(w http.ResponseWriter, r *http.Request) error {
 }
 
 func appIsAvailable(w http.ResponseWriter, r *http.Request) error {
-	app := app.App{Name: r.URL.Query().Get(":app")}
+	app := app.App{Name: r.URL.Query().Get(":appname")}
 	err := app.Get()
 	if err != nil {
 		return err

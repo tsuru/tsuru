@@ -71,7 +71,6 @@ func main() {
 
 	m.Del("/apps/:app", authorizationRequiredHandler(appDelete))
 	m.Get("/apps/:app/repository/clone", handler(cloneRepository))
-	m.Get("/apps/:app/avaliable", handler(appIsAvailable))
 	m.Get("/apps/:app", authorizationRequiredHandler(appInfo))
 	m.Post("/apps/:app", authorizationRequiredHandler(setCName))
 	m.Post("/apps/:app/run", authorizationRequiredHandler(runCommand))
@@ -87,6 +86,8 @@ func main() {
 	m.Del("/apps/:app/:team", authorizationRequiredHandler(revokeAccessFromTeam))
 	m.Get("/apps/:app/log", authorizationRequiredHandler(appLog))
 	m.Post("/apps/:app/log", authorizationRequiredHandler(addLog))
+
+	m.Get("/apps/:appname/avaliable", handler(appIsAvailable))
 
 	m.Post("/users", handler(CreateUser))
 	m.Post("/users/:email/tokens", handler(login))
