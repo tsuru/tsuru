@@ -191,9 +191,10 @@ var exportEnvironmentsAction = action.Action{
 	},
 	Backward: func(ctx action.BWContext) {
 		app := ctx.Params[0].(*App)
+		auth.DeleteToken(app.Env["TSURU_APP_TOKEN"].Value)
 		if app.Get() == nil {
 			s3Env := app.InstanceEnv(s3InstanceName)
-			vars := make([]string, len(s3Env)+2)
+			vars := make([]string, len(s3Env)+3)
 			i := 0
 			for k := range s3Env {
 				vars[i] = k
@@ -201,6 +202,7 @@ var exportEnvironmentsAction = action.Action{
 			}
 			vars[i] = "TSURU_HOST"
 			vars[i+1] = "TSURU_APPNAME"
+			vars[i+2] = "TSURU_APP_TOKEN"
 			app.UnsetEnvs(vars, false)
 		}
 	},

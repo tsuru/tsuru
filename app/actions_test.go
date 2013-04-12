@@ -340,6 +340,7 @@ func (s *S) TestExportEnvironmentsBackward(c *gocheck.C) {
 		"TSURU_S3_ACCESS_KEY_ID", "TSURU_S3_SECRET_KEY",
 		"TSURU_APPNAME", "TSURU_HOST", "TSURU_S3_ENDPOINT",
 		"TSURU_S3_LOCATIONCONSTRAINT", "TSURU_S3_BUCKET",
+		"TSURU_APP_TOKEN",
 	}
 	app := App{Name: "moon", Framework: "opeth", Env: make(map[string]bind.EnvVar)}
 	for _, name := range envNames {
@@ -349,7 +350,10 @@ func (s *S) TestExportEnvironmentsBackward(c *gocheck.C) {
 		}
 		app.Env[name] = envVar
 	}
-	err := s.conn.Apps().Insert(app)
+	token, err := auth.CreateApplicationToken(app.Name)
+	c.Assert(err, gocheck.IsNil)
+	app.Env["TSURU_APP_TOKEN"] = bind.EnvVar{Name: "TSURU_APP_NAME", Value: token.Token}
+	err = s.conn.Apps().Insert(app)
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": app.Name})
 	ctx := action.BWContext{Params: []interface{}{&app}}
@@ -362,6 +366,9 @@ func (s *S) TestExportEnvironmentsBackward(c *gocheck.C) {
 			c.Errorf("Variable %q should be unexported, but it's still exported.", name)
 		}
 	}
+	_, err = auth.GetToken(token.Token)
+	c.Assert(err, gocheck.NotNil)
+	c.Assert(err.Error(), gocheck.Equals, "Token not found")
 }
 
 func (s *S) TestExportEnvironmentsMinParams(c *gocheck.C) {
