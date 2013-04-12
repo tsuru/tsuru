@@ -16,7 +16,8 @@ Tsuru sends requests to your service to:
 Creating a new instance
 =======================
 
-This process begins when a Tsuru customer creates an instance of your service via command line tool:
+This process begins when a Tsuru customer creates an instance of your service
+via command line tool:
 
 .. highlight:: bash
 
@@ -24,7 +25,10 @@ This process begins when a Tsuru customer creates an instance of your service vi
 
     $ tsuru service-add mysql mysql_instance
 
-Tsuru calls your service to create a new instance of your service via POST on ``/resources``(please notice that tsuru does not include a trailing slash) with the "name" that represents the app name in the request body. Example of request:
+Tsuru calls your service to create a new instance of your service via POST on
+``/resources`` (please notice that tsuru does not include a trailing slash)
+with the "name" that represents the app name in the request body. Example of
+request:
 
 .. highlight:: text
 
