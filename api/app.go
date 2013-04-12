@@ -52,7 +52,7 @@ func getApp(name string, u *auth.User) (app.App, error) {
 
 func cloneRepository(w http.ResponseWriter, r *http.Request) error {
 	w.Header().Set("Content-Type", "text")
-	instance := app.App{Name: r.URL.Query().Get(":app")}
+	instance := app.App{Name: r.URL.Query().Get(":appname")}
 	err := instance.Get()
 	logWriter := app.LogWriter{App: &instance, Writer: w}
 	if err != nil {

@@ -115,7 +115,7 @@ post-restart:
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	defer s.conn.Logs().Remove(bson.M{"appname": a.Name})
-	url := fmt.Sprintf("/apps/%s/repository/clone?:app=%s", a.Name, a.Name)
+	url := fmt.Sprintf("/apps/%s/repository/clone?:appname=%s", a.Name, a.Name)
 	request, err := http.NewRequest("GET", url, nil)
 	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
@@ -157,7 +157,7 @@ post-restart:
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	defer s.conn.Logs().Remove(bson.M{"appname": a.Name})
-	url := fmt.Sprintf("/apps/%s/repository/clone?:app=%s", a.Name, a.Name)
+	url := fmt.Sprintf("/apps/%s/repository/clone?:appname=%s", a.Name, a.Name)
 	request, err := http.NewRequest("GET", url, nil)
 	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
@@ -201,7 +201,7 @@ post-restart:
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	defer s.conn.Logs().Remove(bson.M{"appname": a.Name})
-	url := fmt.Sprintf("/apps/%s/repository/clone?:app=%s", a.Name, a.Name)
+	url := fmt.Sprintf("/apps/%s/repository/clone?:appname=%s", a.Name, a.Name)
 	request, err := http.NewRequest("GET", url, nil)
 	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
@@ -213,7 +213,7 @@ post-restart:
 }
 
 func (s *S) TestCloneRepositoryShouldReturnNotFoundWhenAppDoesNotExist(c *gocheck.C) {
-	request, err := http.NewRequest("GET", "/apps/abc/repository/clone?:app=abc", nil)
+	request, err := http.NewRequest("GET", "/apps/abc/repository/clone?:appname=abc", nil)
 	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
 	err = cloneRepository(recorder, request)
