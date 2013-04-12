@@ -190,6 +190,8 @@ func ForceDestroy(app *App) error {
 		Provisioner.Destroy(app)
 		app.unbind()
 	}
+	token := app.Env["TSURU_APP_TOKEN"].Value
+	auth.DeleteToken(token)
 	conn, err := db.Conn()
 	if err != nil {
 		return err

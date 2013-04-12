@@ -86,6 +86,7 @@ func (s *S) TestDestroy(c *gocheck.C) {
 	err := CreateApp(&a, 1, []auth.Team{s.team})
 	c.Assert(err, gocheck.IsNil)
 	a.Get()
+	token := a.Env["TSURU_APP_TOKEN"].Value
 	err = ForceDestroy(&a)
 	c.Assert(err, gocheck.IsNil)
 	err = a.Get()
@@ -98,6 +99,9 @@ func (s *S) TestDestroy(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(msg.Args, gocheck.DeepEquals, []string{a.Name})
 	msg.Delete()
+	_, err = auth.GetToken(token)
+	c.Assert(err, gocheck.NotNil)
+	c.Assert(err.Error(), gocheck.Equals, "Token not found")
 }
 
 func (s *S) TestDestroyWithoutBucketSupport(c *gocheck.C) {
