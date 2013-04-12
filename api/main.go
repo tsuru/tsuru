@@ -90,7 +90,7 @@ func main() {
 	// the token generate for the given app is valid, but these handlers
 	// use a token generated for Gandalf.
 	m.Get("/apps/:appname/avaliable", authorizationRequiredHandler(appIsAvailable))
-	m.Get("/apps/:appname/repository/clone", handler(cloneRepository))
+	m.Get("/apps/:appname/repository/clone", authorizationRequiredHandler(cloneRepository))
 
 	m.Post("/users", handler(CreateUser))
 	m.Post("/users/:email/tokens", handler(login))
