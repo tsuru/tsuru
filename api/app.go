@@ -655,7 +655,7 @@ func restart(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
 	return instance.Restart(w)
 }
 
-func addLog(w http.ResponseWriter, r *http.Request) error {
+func addLog(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
 	app := app.App{Name: r.URL.Query().Get(":app")}
 	err := app.Get()
 	if err != nil {

@@ -2424,7 +2424,7 @@ func (s *S) TestAddLogHandler(c *gocheck.C) {
 	request, err := http.NewRequest("POST", "/apps/myapp/log/?:app=myapp", b)
 	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
-	err = addLog(recorder, request)
+	err = addLog(recorder, request, s.token)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(recorder.Code, gocheck.Equals, http.StatusOK)
 	want := []string{

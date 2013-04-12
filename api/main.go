@@ -86,7 +86,7 @@ func main() {
 	m.Put("/apps/:app/:team", authorizationRequiredHandler(grantAccessToTeam))
 	m.Del("/apps/:app/:team", authorizationRequiredHandler(revokeAccessFromTeam))
 	m.Get("/apps/:app/log", authorizationRequiredHandler(appLog))
-	m.Post("/apps/:app/log", handler(addLog))
+	m.Post("/apps/:app/log", authorizationRequiredHandler(addLog))
 
 	m.Post("/users", handler(CreateUser))
 	m.Post("/users/:email/tokens", handler(login))
