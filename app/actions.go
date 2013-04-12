@@ -11,6 +11,7 @@ import (
 	"github.com/globocom/go-gandalfclient"
 	"github.com/globocom/tsuru/action"
 	"github.com/globocom/tsuru/app/bind"
+	"github.com/globocom/tsuru/auth"
 	"github.com/globocom/tsuru/db"
 	"github.com/globocom/tsuru/log"
 	"github.com/globocom/tsuru/repository"
@@ -155,10 +156,15 @@ var exportEnvironmentsAction = action.Action{
 		if err != nil {
 			return nil, err
 		}
+		t, err := auth.CreateApplicationToken(app.Name)
+		if err != nil {
+			return nil, err
+		}
 		host, _ := config.GetString("host")
 		envVars := []bind.EnvVar{
 			{Name: "TSURU_APPNAME", Value: app.Name},
 			{Name: "TSURU_HOST", Value: host},
+			{Name: "TSURU_APP_TOKEN", Value: t.Token},
 		}
 		env, ok := ctx.Previous.(*s3Env)
 		if ok {

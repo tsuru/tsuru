@@ -9,6 +9,7 @@ import (
 	"github.com/globocom/config"
 	"github.com/globocom/tsuru/action"
 	"github.com/globocom/tsuru/app/bind"
+	"github.com/globocom/tsuru/auth"
 	"labix.org/v2/mgo/bson"
 	"launchpad.net/goamz/aws"
 	"launchpad.net/goamz/iam"
@@ -300,6 +301,11 @@ func (s *S) TestExportEnvironmentsForward(c *gocheck.C) {
 	c.Assert(appEnv["TSURU_APPNAME"].Public, gocheck.Equals, false)
 	c.Assert(appEnv["TSURU_HOST"].Value, gocheck.Equals, expectedHost)
 	c.Assert(appEnv["TSURU_HOST"].Public, gocheck.Equals, false)
+	c.Assert(appEnv["TSURU_APP_TOKEN"].Value, gocheck.Not(gocheck.Equals), "")
+	c.Assert(appEnv["TSURU_APP_TOKEN"].Public, gocheck.Equals, false)
+	t, err := auth.GetToken(appEnv["TSURU_APP_TOKEN"].Value)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(t.AppName, gocheck.Equals, app.Name)
 	message, err := aqueue().Get(2e9)
 	c.Assert(err, gocheck.IsNil)
 	defer message.Delete()
