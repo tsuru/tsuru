@@ -90,7 +90,7 @@ Creating git user
     $ sudo useradd git
 
 Creating directories for repositories and template
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Let's create the directory for bare repositories:
 
