@@ -6,15 +6,27 @@ package docker
 
 import (
 	"github.com/globocom/commandmocker"
+	"github.com/globocom/config"
 	"launchpad.net/gocheck"
 )
 
 func (s *S) TestDockerCreate(c *gocheck.C) {
+	config.Set("docker:authorized-key-path", "somepath")
+	config.Set("docker:image", "base-nginx-sshd-key")
+	config.Set("docker:cmd:bin", "/usr/sbin/sshd")
+	config.Set("docker:cmd:args", []string{"-D"})
+	defer func() {
+		config.Unset("docker:image")
+		config.Unset("docker:authorized-key-path")
+		config.Unset("docker:image")
+		config.Unset("docker:cmd:bin")
+		config.Unset("docker:cmd:args")
+	}()
 	tmpdir, err := commandmocker.Add("sudo", "$*")
 	c.Assert(err, gocheck.IsNil)
 	defer commandmocker.Remove(tmpdir)
 	container := container{name: "container"}
-	err, _ = container.create()
+	_, err = container.create()
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(commandmocker.Ran(tmpdir), gocheck.Equals, true)
 	expected := "docker run -d base-nginx-sshd-key /usr/sbin/sshd -D"

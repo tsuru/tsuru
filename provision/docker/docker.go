@@ -70,15 +70,28 @@ func (c *container) ip() (string, error) {
 
 // create creates a docker container with base template by default.
 // TODO: this template already have a public key, we need to manage to install some way.
-func (c *container) create() (err error, instance_id string) {
+func (c *container) create() (instance_id string, err error) {
 	docker, err := config.GetString("docker:binary")
 	if err != nil {
-		return err, ""
+		return "", err
 	}
-	err, instance_id = runCmd("sudo", docker, "run", "-d", "base-nginx-sshd-key", "/usr/sbin/sshd", "-D")
+	template, err := config.GetString("docker:image")
+	if err != nil {
+		return "", err
+	}
+	cmd, err := config.GetString("docker:cmd:bin")
+	if err != nil {
+		return "", err
+	}
+	args, err := config.GetList("docker:cmd:args")
+	if err != nil {
+		return "", err
+	}
+	args = append([]string{docker, "run", "-d", template, cmd}, args...)
+	err, instance_id = runCmd("sudo", args...)
 	instance_id = strings.Replace(instance_id, "\n", "", -1)
 	log.Printf("docker instance_id=%s", instance_id)
-	return err, instance_id
+	return instance_id, err
 }
 
 // start starts a docker container.
