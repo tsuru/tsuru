@@ -28,7 +28,7 @@ func (s *S) TestJsonWriterBuffer(c *gocheck.C) {
 	n, err = w.Write([]byte(data))
 	c.Assert(err, gocheck.IsNil)
 	n, err = w.Write([]byte(data))
-	expected := "\x1b[0;34;10m2013-03-21 18:27:02 []:\x1b[0m   mysql\n"
+	expected := "\x1b[0;34;10m2013-03-21 18:27:02 -0300 []:\x1b[0m   mysql\n"
 	c.Assert(writer.String(), gocheck.Equals, expected)
 }
 
@@ -54,7 +54,7 @@ func (s *S) TestJsonWriterChukedWrite(c *gocheck.C) {
 	c.Assert(buf.String(), gocheck.Equals, "")
 	_, err = w.Write(data[l/4*3:])
 	c.Assert(err, gocheck.IsNil)
-	tfmt := "2006-01-02 15:04:05"
+	tfmt := "2006-01-02 15:04:05 -0700"
 	expected := cmd.Colorfy(t.Format(tfmt)+" [tsuru]:", "blue", "", "") + " Something happened\n"
 	expected = expected + cmd.Colorfy(t.Add(2*time.Hour).Format(tfmt)+" [tsuru]:", "blue", "", "") + " Something happened again\n"
 	c.Assert(buf.String(), gocheck.Equals, expected)
@@ -73,7 +73,7 @@ func (s *S) TestJsonWriter(c *gocheck.C) {
 	n, err := w.Write(b)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(n, gocheck.Equals, len(b))
-	tfmt := "2006-01-02 15:04:05"
+	tfmt := "2006-01-02 15:04:05 -0700"
 	expected := cmd.Colorfy(t.Format(tfmt)+" [tsuru]:", "blue", "", "") + " Something happened\n"
 	expected = expected + cmd.Colorfy(t.Add(2*time.Hour).Format(tfmt)+" [tsuru]:", "blue", "", "") + " Something happened again\n"
 	c.Assert(writer.String(), gocheck.Equals, expected)
@@ -92,8 +92,8 @@ func (s *S) TestJsonWriterInvalidJson(c *gocheck.C) {
 func (s *S) TestAppLog(c *gocheck.C) {
 	var stdout, stderr bytes.Buffer
 	result := `[{"Source":"tsuru","Date":"2012-06-20T11:17:22.75-03:00","Message":"creating app lost"},{"Source":"app","Date":"2012-06-20T11:17:22.753-03:00","Message":"app lost successfully created"}]`
-	expected := cmd.Colorfy("2012-06-20 11:17:22 [tsuru]:", "blue", "", "") + " creating app lost\n"
-	expected = expected + cmd.Colorfy("2012-06-20 11:17:22 [app]:", "blue", "", "") + " app lost successfully created\n"
+	expected := cmd.Colorfy("2012-06-20 11:17:22 -0300 [tsuru]:", "blue", "", "") + " creating app lost\n"
+	expected = expected + cmd.Colorfy("2012-06-20 11:17:22 -0300 [app]:", "blue", "", "") + " app lost successfully created\n"
 	context := cmd.Context{
 		Stdout: &stdout,
 		Stderr: &stderr,
@@ -111,8 +111,8 @@ func (s *S) TestAppLog(c *gocheck.C) {
 func (s *S) TestAppLogWithoutTheFlag(c *gocheck.C) {
 	var stdout, stderr bytes.Buffer
 	result := `[{"Source":"tsuru","Date":"2012-06-20T11:17:22.75-03:00","Message":"creating app lost"},{"Source":"tsuru","Date":"2012-06-20T11:17:22.753-03:00","Message":"app lost successfully created"}]`
-	expected := cmd.Colorfy("2012-06-20 11:17:22 [tsuru]:", "blue", "", "") + " creating app lost\n"
-	expected = expected + cmd.Colorfy("2012-06-20 11:17:22 [tsuru]:", "blue", "", "") + " app lost successfully created\n"
+	expected := cmd.Colorfy("2012-06-20 11:17:22 -0300 [tsuru]:", "blue", "", "") + " creating app lost\n"
+	expected = expected + cmd.Colorfy("2012-06-20 11:17:22 -0300 [tsuru]:", "blue", "", "") + " app lost successfully created\n"
 	context := cmd.Context{
 		Stdout: &stdout,
 		Stderr: &stderr,
@@ -164,8 +164,8 @@ If you don't provide the app name, tsuru will try to guess it. The default numbe
 func (s *S) TestAppLogBySource(c *gocheck.C) {
 	var stdout, stderr bytes.Buffer
 	result := `[{"Source":"tsuru","Date":"2012-06-20T11:17:22.75-03:00","Message":"creating app lost"},{"Source":"tsuru","Date":"2012-06-20T11:17:22.753-03:00","Message":"app lost successfully created"}]`
-	expected := cmd.Colorfy("2012-06-20 11:17:22 [tsuru]:", "blue", "", "") + " creating app lost\n"
-	expected = expected + cmd.Colorfy("2012-06-20 11:17:22 [tsuru]:", "blue", "", "") + " app lost successfully created\n"
+	expected := cmd.Colorfy("2012-06-20 11:17:22 -0300 [tsuru]:", "blue", "", "") + " creating app lost\n"
+	expected = expected + cmd.Colorfy("2012-06-20 11:17:22 -0300 [tsuru]:", "blue", "", "") + " app lost successfully created\n"
 	context := cmd.Context{
 		Stdout: &stdout,
 		Stderr: &stderr,
@@ -190,8 +190,8 @@ func (s *S) TestAppLogBySource(c *gocheck.C) {
 func (s *S) TestAppLogWithLines(c *gocheck.C) {
 	var stdout, stderr bytes.Buffer
 	result := `[{"Source":"tsuru","Date":"2012-06-20T11:17:22.75-03:00","Message":"creating app lost"},{"Source":"tsuru","Date":"2012-06-20T11:17:22.753-03:00","Message":"app lost successfully created"}]`
-	expected := cmd.Colorfy("2012-06-20 11:17:22 [tsuru]:", "blue", "", "") + " creating app lost\n"
-	expected = expected + cmd.Colorfy("2012-06-20 11:17:22 [tsuru]:", "blue", "", "") + " app lost successfully created\n"
+	expected := cmd.Colorfy("2012-06-20 11:17:22 -0300 [tsuru]:", "blue", "", "") + " creating app lost\n"
+	expected = expected + cmd.Colorfy("2012-06-20 11:17:22 -0300 [tsuru]:", "blue", "", "") + " app lost successfully created\n"
 	context := cmd.Context{
 		Stdout: &stdout,
 		Stderr: &stderr,
@@ -216,8 +216,8 @@ func (s *S) TestAppLogWithLines(c *gocheck.C) {
 func (s *S) TestAppLogWithFollow(c *gocheck.C) {
 	var stdout, stderr bytes.Buffer
 	result := `[{"Source":"tsuru","Date":"2012-06-20T11:17:22.75-03:00","Message":"creating app lost"},{"Source":"tsuru","Date":"2012-06-20T11:17:22.753-03:00","Message":"app lost successfully created"}]`
-	expected := cmd.Colorfy("2012-06-20 11:17:22 [tsuru]:", "blue", "", "") + " creating app lost\n"
-	expected = expected + cmd.Colorfy("2012-06-20 11:17:22 [tsuru]:", "blue", "", "") + " app lost successfully created\n"
+	expected := cmd.Colorfy("2012-06-20 11:17:22 -0300 [tsuru]:", "blue", "", "") + " creating app lost\n"
+	expected = expected + cmd.Colorfy("2012-06-20 11:17:22 -0300 [tsuru]:", "blue", "", "") + " app lost successfully created\n"
 	context := cmd.Context{
 		Stdout: &stdout,
 		Stderr: &stderr,

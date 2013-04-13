@@ -46,7 +46,7 @@ func (w *jsonWriter) Write(b []byte) (int, error) {
 		return len(b), nil
 	}
 	for _, l := range logs {
-		date := l.Date.Format("2006-01-02 15:04:05")
+		date := l.Date.Format("2006-01-02 15:04:05 -0700")
 		prefix := fmt.Sprintf("%s [%s]:", date, l.Source)
 		fmt.Fprintf(w.w, "%s %s\n", cmd.Colorfy(prefix, "blue", "", ""), l.Message)
 	}
