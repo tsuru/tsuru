@@ -28,20 +28,10 @@ func (c *Counter) Val() int64 {
 
 // Increment increments the value of c by 1.
 func (c *Counter) Increment() {
-	old := atomic.LoadInt64(&c.v)
-	swapped := atomic.CompareAndSwapInt64(&c.v, old, old+1)
-	for !swapped {
-		old = atomic.LoadInt64(&c.v)
-		swapped = atomic.CompareAndSwapInt64(&c.v, old, old+1)
-	}
+	atomic.AddInt64(&c.v, 1)
 }
 
 // Decrement decrements the value of c by 1.
 func (c *Counter) Decrement() {
-	old := atomic.LoadInt64(&c.v)
-	swapped := atomic.CompareAndSwapInt64(&c.v, old, old-1)
-	for !swapped {
-		old = atomic.LoadInt64(&c.v)
-		swapped = atomic.CompareAndSwapInt64(&c.v, old, old-1)
-	}
+	atomic.AddInt64(&c.v, -1)
 }
