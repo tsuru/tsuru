@@ -11,7 +11,7 @@ Overview
 
 This document is a hands-on guide to deploying a simple Python application in
 Tsuru. The example application will be a very simple Django project associated
-to a MySQL service.
+to a MySQL service. It's applicable to any WSGI application.
 
 Creating the app within tsuru
 =============================
@@ -45,14 +45,14 @@ command:
 ::
 
     $ tsuru app-list
-    +-------------+-------------------------+----+
-    | Application | Units State Summary     | IP |
-    +-------------+-------------------------+----+
-    | blog        | 0 of 1 units in-service |    |
-    +-------------+-------------------------+----+
+    +-------------+-------------------------+---------+
+    | Application | Units State Summary     | Address |
+    +-------------+-------------------------+---------+
+    | blog        | 0 of 1 units in-service |         |
+    +-------------+-------------------------+---------+
 
-Once your app is ready, it will be displayed as "started" (along with its IP
-address or public host):
+Once your app is ready, it will show that at least one unit is in-service
+(along with its address):
 
 .. highlight:: bash
 
@@ -60,7 +60,7 @@ address or public host):
 
     $ tsuru app-list
     +-------------+-------------------------+-------------+
-    | Application | Units State Summary     | IP          |
+    | Application | Units State Summary     | Address     |
     +-------------+-------------------------+-------------+
     | blog        | 1 of 1 units in-service | 10.10.10.10 |
     +-------------+-------------------------+-------------+
@@ -69,7 +69,7 @@ Application code
 ================
 
 This document will not focus on how to write a Django blog, you can clone the
-entire source direct from Github:
+entire source direct from GitHub:
 https://github.com/globocom/tsuru-django-sample. Here is what we did for the
 project:
 
@@ -84,7 +84,7 @@ project:
 Git deployment
 ==============
 
-When you create a new app, tsuru will display the git remote that you should
+When you create a new app, tsuru will display the Git remote that you should
 use. You can always get it using `app-info
 <http://godoc.org/github.com/globocom/tsuru/cmd/tsuru#Display_information_about_an_app>`_
 command:
@@ -95,18 +95,18 @@ command:
 
     $ tsuru app-info --app blog
     Application: blog
-    State: started
     Repository: git@tsuruhost.com:blog.git
     Platform: python
-    Teams: elasticteam
+    Teams: tsuruteam
+    Address: 10.10.10.10
     Units:
-    +--------+-------------+---------+
-    | Unit   | Ip          | State   |
-    +--------+-------------+---------+
-    | blog/0 | 10.20.10.20 | started |
-    | blog/1 | 10.20.10.21 | started |
-    | blog/2 |             | pending |
-    +--------+-------------+---------+
+    +--------+---------+
+    | Unit   | State   |
+    +--------+---------+
+    | blog/0 | started |
+    | blog/1 | started |
+    | blog/2 | pending |
+    +--------+---------+
 
 The git remote will be used to deploy your application using git. You can just
 push to tsuru remote and your project will be deployed:
@@ -116,7 +116,6 @@ push to tsuru remote and your project will be deployed:
 ::
 
     $ git push git@tsuruhost.com:blog.git master
-    Initialized empty Git repository in /mnt/repositories/blog.git/
     Counting objects: 75, done.
     Delta compression using up to 4 threads.
     Compressing objects: 100% (70/70), done.
@@ -125,21 +124,19 @@ push to tsuru remote and your project will be deployed:
     remote:
     remote:  ---> Tsuru receiving push
     remote:
-    remote:  ---> Clonning your code in your machines
-    remote: Cloning into '/home/application/current'...
-    remote:
-    remote:  ---> Parsing app.conf
-    remote:
-    remote:  ---> Running pre-restart
+    remote:  ---> Replicating the application repository across units
+    remote: From git://tsuruhost.com/blog.git
+    remote:  * branch            master     -> FETCH_HEAD
     remote:
     remote:  ---> Installing dependencies
     #####################################
     #          OMIT (see below)         #
     #####################################
+    remote:  ---> Skipping pre-restart hooks...
+    remote
     remote:  ---> Restarting your app
-    remote: /home/ubuntu
     remote:
-    remote:  ---> Running post-restart
+    remote:  ---> Skipping post-restart hooks...
     remote:
     remote:  ---> Deploy done!
     remote:
@@ -183,18 +180,18 @@ And you will be also able to omit the ``--app`` flag from now on:
 
     $ tsuru app-info
     Application: blog
-    State: started
     Repository: git@tsuruhost.com:blog.git
     Platform: python
-    Teams: elasticteam
+    Teams: tsuruteam
+    Address: 10.10.10.10
     Units:
-    +--------+-------------+---------+
-    | Unit   | Ip          | State   |
-    +--------+-------------+---------+
-    | blog/0 | 10.20.10.20 | started |
-    | blog/1 | 10.20.10.21 | started |
-    | blog/2 |             | pending |
-    +--------+-------------+---------+
+    +--------+---------+
+    | Unit   | State   |
+    +--------+---------+
+    | blog/0 | started |
+    | blog/1 | started |
+    | blog/2 | pending |
+    +--------+---------+
 
 For more details on the ``--app`` flag, see `"Guessing app names"
 <http://godoc.org/github.com/globocom/tsuru/cmd/tsuru#Guessing_app_names>`_
@@ -346,7 +343,7 @@ how the Procfile should look like:
 
 ::
 
-    web: gunicorn -b 0.0.0.0:8888 blog.wsgi
+    web: gunicorn -b 127.0.0.1:8888 blog.wsgi
 
 Now that we commit the file and push the changes to tsuru git server, running
 another deploy:
@@ -366,7 +363,7 @@ another deploy:
     remote:
     remote:  ---> Tsuru receiving push
     remote:
-    remote:  ---> Clonning your code in your machines
+    remote:  ---> Replicating the application repository across units
     remote: From git://tsuruhost.com/blog
     remote:  * branch            master     -> FETCH_HEAD
     remote: Updating 81e884e..530c528
@@ -374,14 +371,7 @@ another deploy:
     remote:  Procfile |    2 +-
     remote:  1 file changed, 1 insertion(+), 1 deletion(-)
     remote:
-    remote:  ---> Parsing app.conf
-    remote:
-    remote:  ---> Running pre-restart
-    remote:
     remote:  ---> Installing dependencies
-    remote: 2012-10-10 13:47:29,999 INFO Connecting to environment...
-    remote: 2012-10-10 13:47:31,175 INFO Connected to environment.
-    remote: 2012-10-10 13:47:31,255 INFO Connecting to machine 50 at 10.20.10.20
     remote: Reading package lists...
     remote: Building dependency tree...
     remote: Reading state information...
@@ -393,12 +383,12 @@ another deploy:
     remote: Requirement already satisfied (use --upgrade to upgrade): South==0.7.6 in /usr/local/lib/python2.7/dist-packages (from -r /home/application/current/requirements.txt (line 3))
     remote: Cleaning up...
     remote:
-    remote:  ---> Restarting your app
-    remote: WARNING: python not running.
-    remote: /var/lib/tsuru/hooks/start: line 13: gunicorn: command not found
-    remote: /home/ubuntu
+    remote:  ---> Skipping pre-restart hooks...
     remote:
-    remote:  ---> Running post-restart
+    remote:  ---> Restarting your app
+    remote: /var/lib/tsuru/hooks/start: line 13: gunicorn: command not found
+    remote:
+    remote:  ---> Skipping post-restart hooks...
     remote:
     remote:  ---> Deploy done!
     remote:
@@ -414,7 +404,7 @@ add gunicorn to ``requirements.txt`` file:
 
     $ cat >> requirements.txt
     gunicorn==0.14.6
-    ^-D
+    ^D
 
 Now we commit the changes and run another deploy:
 
@@ -433,8 +423,8 @@ Now we commit the changes and run another deploy:
     remote:
     remote:  ---> Tsuru receiving push
     remote:
-    remote:  ---> Clonning your code in your machines
-    remote: From git://ec2-23-22-70-116.compute-1.amazonaws.com/blog
+    remote:  ---> Replicating the application repository across units
+    remote: From git://tsuruhost.com/blog.git
     remote:  * branch            master     -> FETCH_HEAD
     remote: Updating 530c528..542403a
     remote: Fast-forward
@@ -442,10 +432,8 @@ Now we commit the changes and run another deploy:
     remote:  1 file changed, 1 insertion(+)
     [...]
     remote:  ---> Restarting your app
-    remote: WARNING: python not running.
-    remote: /home/ubuntu
     remote:
-    remote:  ---> Running post-restart
+    remote:  ---> Skipping post-restart hooks...
     remote:
     remote:  ---> Deploy done!
     remote:
@@ -534,7 +522,7 @@ command:
 ::
 
     $ tsuru bind blogsql
-    Instance blogsql successfully binded to the app blog.
+    Instance blogsql is now bound to the app blog.
 
     The following environment variables are now available for use in your app:
 
@@ -584,31 +572,28 @@ Now let's commit it and run another deploy:
     remote:
     remote:  ---> Tsuru receiving push
     remote:
-    remote:  ---> Clonning your code in your machines
-    remote: From git://ec2-23-22-70-116.compute-1.amazonaws.com/blog
+    remote:  ---> Replicating the application repository across units
+    remote: From git://tsuruhost.com/blog
     remote:  * branch            master     -> FETCH_HEAD
     remote: Updating ab4e706..a780de9
     remote: Fast-forward
     remote:  blog/settings.py |   12 +++++++-----
     remote:  1 file changed, 7 insertions(+), 5 deletions(-)
     remote:
-    remote:  ---> Parsing app.conf
-    remote:
     remote:  ---> Installing dependencies
     #####################################
     #               OMIT                #
     #####################################
     remote:
-    remote:  ---> Running pre-restart
+    remote:  ---> Skipping pre-restart hooks...
     remote:
     remote:  ---> Restarting your app
-    remote: /home/ubuntu
     remote:
-    remote:  ---> Running post-restart
+    remote:  ---> Skipping post-restart hooks...
     remote:
     remote:  ---> Deploy done!
     remote:
-    To git@ec2-23-22-70-116.compute-1.amazonaws.com:blog.git
+    To git@tsuruhost.com:blog.git
        ab4e706..a780de9  master -> master
 
 Now if we try to access the admin again, we will get another error: `"Table
@@ -624,7 +609,7 @@ write:
 
 ::
 
-    $ tsuru run python manage.py syncdb --noinput
+    $ tsuru run -- python manage.py syncdb --noinput
     Syncing...
     Creating tables ...
     Creating table auth_permission
@@ -671,31 +656,28 @@ sections related to that hooks:
 ::
 
     $ git push tsuru master
-    ######
-    remote:  ---> Parsing app.conf
+    remote:
+    remote:  ---> Skipping pre-restart hooks...
     remote:
     ######
     remote:
-    remote:  ---> Running pre-restart
-    remote:
-    ######
-    remote:
-    remote:  ---> Running post-restart
+    remote:  ---> Skipping post-restart hooks...
     remote:
     ######
 
-So, tsuru parses a file called ``app.conf`` and runs ``pre-restart`` and
-``post-restart`` hooks. app.conf is a YAML file, that contains a list of
-commands that should run in pre-restart and post-restart hooks. Here is our
-example of app.conf:
+So, tsuru parses a file called ``app.yaml`` and runs ``pre-restart`` and
+``post-restart`` hooks. As the extension suggests, this is a YAML file, that
+contains a list of commands that should run in pre-restart and post-restart
+hooks. Here is our example of app.yaml:
 
 .. highlight:: yaml
 
 ::
 
-    post-restart:
-      - python manage.py syncdb --noinput
-      - python manage.py migrate
+    hooks:
+      post-restart:
+        - python manage.py syncdb --noinput
+        - python manage.py migrate
 
 It should be located in the root of the project. Let's commit and deploy it:
 
@@ -703,8 +685,8 @@ It should be located in the root of the project. Let's commit and deploy it:
 
 ::
 
-    $ git add app.conf
-    $ git commit -m "app.conf: added file"
+    $ git add app.yaml
+    $ git commit -m "app.yaml: added file"
     $ git push tsuru master
     Counting objects: 4, done.
     Delta compression using up to 4 threads.
@@ -715,15 +697,13 @@ It should be located in the root of the project. Let's commit and deploy it:
     remote:  ---> Tsuru receiving push
     remote:
     remote:  ---> Clonning your code in your machines
-    remote: From git://ec2-23-22-70-116.compute-1.amazonaws.com/blog
+    remote: From git://tsuruhost.com/blog
     remote:  * branch            master     -> FETCH_HEAD
     remote: Updating a780de9..1b675b8
     remote: Fast-forward
-    remote:  app.conf |    3 +++
+    remote:  app.yaml |    3 +++
     remote:  1 file changed, 3 insertions(+)
-    remote:  create mode 100644 app.conf
-    remote:
-    remote:  ---> Parsing app.conf
+    remote:  create mode 100644 app.yaml
     remote:
     remote:  ---> Installing dependencies
     remote: Reading package lists...
@@ -738,22 +718,15 @@ It should be located in the root of the project. Let's commit and deploy it:
     remote: Requirement already satisfied (use --upgrade to upgrade): gunicorn==0.14.6 in /usr/local/lib/python2.7/dist-packages (from -r /home/application/current/requirements.txt (line 4))
     remote: Cleaning up...
     remote:
-    remote:  ---> Running pre-restart
+    remote:  ---> Skipping pre-restart hooks...
     remote:
     remote:  ---> Restarting your app
-    remote: /home/ubuntu
     remote:
     remote:  ---> Running post-restart
-    remote: 2012-10-15 13:29:51,970 INFO Connecting to environment...
-    remote: 2012-10-15 13:29:53,212 INFO Connected to environment.
-    remote: 2012-10-15 13:29:53,293 INFO Connecting to machine 50 at ec2-23-22-196-207.compute-1.amazonaws.com
-    remote: 2012-10-15 13:29:55,013 INFO Connecting to environment...
-    remote: 2012-10-15 13:29:56,144 INFO Connected to environment.
-    remote: 2012-10-15 13:29:56,282 INFO Connecting to machine 50 at ec2-23-22-196-207.compute-1.amazonaws.com
     remote:
     remote:  ---> Deploy done!
     remote:
-    To git@ec2-23-22-70-116.compute-1.amazonaws.com:blog.git
+    To git@tsuruhost.com:blog.git
        a780de9..1b675b8  master -> master
 
 It's done! Now we have a Django project deployed on tsuru, using a MySQL
