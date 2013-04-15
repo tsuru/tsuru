@@ -18,7 +18,8 @@ func (s *S) TestShouldReturnBodyMessageOnError(c *gocheck.C) {
 
 	client := NewClient(&http.Client{Transport: &ttesting.Transport{Message: "You must be authenticated to execute this command.", Status: http.StatusUnauthorized}}, nil, manager)
 	response, err := client.Do(request)
-	c.Assert(response, gocheck.IsNil)
+	c.Assert(response, gocheck.NotNil)
+	c.Assert(err, gocheck.NotNil)
 	c.Assert(err.Error(), gocheck.Equals, "You must be authenticated to execute this command.")
 }
 

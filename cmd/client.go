@@ -78,7 +78,7 @@ download the last version.
 	if response.StatusCode > 399 {
 		defer response.Body.Close()
 		result, _ := ioutil.ReadAll(response.Body)
-		return nil, errors.New(string(result))
+		return response, errors.New(string(result))
 	}
 	return response, nil
 }
