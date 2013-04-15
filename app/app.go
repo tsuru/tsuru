@@ -50,7 +50,7 @@ type App struct {
 	CName     string
 	Units     []Unit
 	Teams     []string
-	hooks     *conf
+	conf      *conf
 }
 
 // MarshalJSON marshals the app in json format. It returns a JSON object with
@@ -75,9 +75,13 @@ type Applog struct {
 	AppName string
 }
 
+type hooks struct {
+	PreRestart  []string `yaml:"pre-restart"`
+	PostRestart []string `yaml:"post-restart"`
+}
+
 type conf struct {
-	PreRestart []string `yaml:"pre-restart"`
-	PosRestart []string `yaml:"post-restart"`
+	Hooks hooks
 }
 
 // Get queries the database and fills the App object with data retrieved from
@@ -518,10 +522,10 @@ func (app *App) InstanceEnv(name string) map[string]bind.EnvVar {
 // app.conf uses YAML format, this function looks for two keys: pre-restart and
 // post-restart.
 func (app *App) loadHooks() error {
-	if app.hooks != nil {
+	if app.conf != nil {
 		return nil
 	}
-	app.hooks = new(conf)
+	app.conf = new(conf)
 	uRepo, err := repository.GetPath()
 	if err != nil {
 		app.Log(fmt.Sprintf("Got error while getting repository path: %s", err), "tsuru")
@@ -534,7 +538,7 @@ func (app *App) loadHooks() error {
 		app.Log(fmt.Sprintf("Got error while executing command: %s... Skipping hooks execution", err), "tsuru")
 		return nil
 	}
-	err = goyaml.Unmarshal(buf.Bytes(), app.hooks)
+	err = goyaml.Unmarshal(buf.Bytes(), app.conf)
 	if err != nil {
 		app.Log(fmt.Sprintf("Got error while parsing yaml: %s", err), "tsuru")
 		return err
@@ -578,7 +582,7 @@ func (app *App) preRestart(w io.Writer) error {
 	if err := app.loadHooks(); err != nil {
 		return err
 	}
-	return app.runHook(w, app.hooks.PreRestart, "pre-restart")
+	return app.runHook(w, app.conf.Hooks.PreRestart, "pre-restart")
 }
 
 // posRestart is responsible for running user's post-restart script.
@@ -589,7 +593,7 @@ func (app *App) postRestart(w io.Writer) error {
 	if err := app.loadHooks(); err != nil {
 		return err
 	}
-	return app.runHook(w, app.hooks.PosRestart, "post-restart")
+	return app.runHook(w, app.conf.Hooks.PostRestart, "post-restart")
 }
 
 // Run executes the command in app units, sourcing apprc before running the
