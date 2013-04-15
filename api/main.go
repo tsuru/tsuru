@@ -92,7 +92,10 @@ func main() {
 	m.Get("/apps/:appname/avaliable", authorizationRequiredHandler(appIsAvailable))
 	m.Get("/apps/:appname/repository/clone", authorizationRequiredHandler(cloneRepository))
 
-	m.Post("/users", handler(CreateUser))
+	if registrationEnabled, _ := config.GetBool("auth:user-registration"); registrationEnabled {
+		m.Post("/users", handler(CreateUser))
+	}
+
 	m.Post("/users/:email/tokens", handler(login))
 	m.Put("/users/password", authorizationRequiredHandler(ChangePassword))
 	m.Del("/users", authorizationRequiredHandler(RemoveUser))
