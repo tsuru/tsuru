@@ -79,6 +79,9 @@ func (p *LocalProvisioner) start(ip string) error {
 	return nil
 }
 
+// Provision creates a container and install its dependencies
+//
+// TODO (flaviamissi): make this atomic
 func (p *LocalProvisioner) Provision(app provision.App) error {
 	go func(p *LocalProvisioner, app provision.App) {
 		c := container{name: app.GetName()}
@@ -93,63 +96,62 @@ func (p *LocalProvisioner) Provision(app provision.App) error {
 			Ip:         "",
 		}
 		log.Printf("inserting container unit %s in the database", app.GetName())
-		err := p.collection().Insert(u)
-		if err != nil {
+		if err := p.collection().Insert(u); err != nil {
 			log.Print(err)
+			return
 		}
-		err, instance_id := c.create()
+		instance_id, err := c.create()
 		if err != nil {
 			log.Printf("error on create container %s", app.GetName())
 			log.Print(err)
-		} else {
-			c.instanceId = instance_id
-			u.InstanceId = instance_id
+			return
 		}
-		err = c.start()
-		if err != nil {
+		c.instanceId = instance_id
+		u.InstanceId = instance_id
+		if err = c.start(); err != nil {
 			log.Printf("error on start container %s", app.GetName())
 			log.Print(err)
+			return
 		}
 		ip, err := c.ip()
 		u.Ip = ip
 		u.Status = provision.StatusInstalling
-		err = p.collection().Update(bson.M{"name": u.Name}, u)
-		if err != nil {
+		if err = p.collection().Update(bson.M{"name": u.Name}, u); err != nil {
 			log.Print(err)
+			return
 		}
-		err = p.setup(ip, app.GetFramework())
-		if err != nil {
+		if err = p.setup(ip, app.GetFramework()); err != nil {
 			log.Printf("error on setup container %s", app.GetName())
 			log.Print(err)
+			return
 		}
-		err = p.install(ip)
-		if err != nil {
+		if err = p.install(ip); err != nil {
 			log.Printf("error on install container %s", app.GetName())
 			log.Print(err)
+			return
 		}
-		err = p.start(ip)
 		log.Printf("running provisioning start() for container %s", c.instanceId)
-		if err != nil {
+		if err = p.start(ip); err != nil {
 			log.Printf("error on start app for container %s", app.GetName())
 			log.Print(err)
+			return
 		}
-		err = AddRoute(app.GetName(), ip)
-		if err != nil {
+		if err = AddRoute(app.GetName(), ip); err != nil {
 			log.Printf("error on add route for %s with ip %s", app.GetName(), ip)
 			log.Print(err)
+			return
 		}
-		err = RestartRouter()
-		if err != nil {
+		if err = RestartRouter(); err != nil {
 			log.Printf("error on restart router")
 			log.Print(err)
+			return
 		}
 		u.Status = provision.StatusStarted
-		err = p.collection().Update(bson.M{"name": u.Name}, u)
-		if err != nil {
+		if err = p.collection().Update(bson.M{"name": u.Name}, u); err != nil {
 			log.Print(err)
-		} else {
-			log.Printf("Successfuly updated unit: %s", app.GetName())
+			return
 		}
+		log.Printf("Successfuly updated unit: %s", app.GetName())
 	}(p, app)
 	return nil
 }

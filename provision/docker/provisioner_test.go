@@ -27,10 +27,18 @@ func (s *S) TestShouldBeRegistered(c *gocheck.C) {
 
 func (s *S) TestProvisionerProvision(c *gocheck.C) {
 	config.Set("docker:authorized-key-path", "somepath")
+	config.Set("docker:image", "base")
+	config.Set("docker:cmd:bin", "/bin/bash")
+	config.Set("docker:cmd:args", []string{"myapp", "somepath"})
 	rfs := &fstesting.RecordingFs{}
 	fsystem = rfs
 	defer func() {
 		fsystem = nil
+		config.Unset("docker:image")
+		config.Unset("docker:authorized-key-path")
+		config.Unset("docker:image")
+		config.Unset("docker:cmd:bin")
+		config.Unset("docker:cmd:args")
 	}()
 	f, _ := os.Open("testdata/dnsmasq.leases")
 	data, err := ioutil.ReadAll(f)
