@@ -531,11 +531,11 @@ func (app *App) loadHooks() error {
 		app.Log(fmt.Sprintf("Got error while getting repository path: %s", err), "tsuru")
 		return err
 	}
-	cmd := "cat " + path.Join(uRepo, "app.conf")
+	cmd := "cat " + path.Join(uRepo, "app.yaml")
 	var buf bytes.Buffer
 	err = app.run(cmd, &buf)
 	if err != nil {
-		app.Log(fmt.Sprintf("Got error while executing command: %s... Skipping hooks execution", err), "tsuru")
+		app.Log(fmt.Sprintf("Got error while reading app.yaml: %s...\nSkipping hooks execution", err), "tsuru")
 		return nil
 	}
 	err = goyaml.Unmarshal(buf.Bytes(), app.conf)

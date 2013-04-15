@@ -1165,6 +1165,8 @@ func (s *S) TestLoadHooks(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(a.conf.Hooks.PreRestart, gocheck.DeepEquals, []string{"testdata/pre.sh"})
 	c.Assert(a.conf.Hooks.PostRestart, gocheck.DeepEquals, []string{"testdata/pos.sh"})
+	cmds := s.provisioner.GetCmds("cat /home/application/current/app.yaml", &a)
+	c.Assert(cmds, gocheck.HasLen, 1)
 }
 
 func (s *S) TestLoadHooksWithListOfCommands(c *gocheck.C) {
