@@ -30,7 +30,7 @@ type container struct {
 }
 
 // runCmd executes commands and log the given stdout and stderror.
-func runCmd(cmd string, args ...string) (output string, err error) {
+func runCmd(cmd string, args ...string) (string, error) {
 	out, err := exec.Command(cmd, args...).CombinedOutput()
 	log.Printf("running the cmd: %s with the args: %s", cmd, args)
 	output = string(out)
@@ -74,7 +74,7 @@ func (c *container) ip() (string, error) {
 
 // create creates a docker container with base template by default.
 // TODO: this template already have a public key, we need to manage to install some way.
-func (c *container) create() (instance_id string, err error) {
+func (c *container) create() (string, error) {
 	docker, err := config.GetString("docker:binary")
 	if err != nil {
 		return "", err
@@ -92,10 +92,10 @@ func (c *container) create() (instance_id string, err error) {
 		return "", err
 	}
 	args = append([]string{docker, "run", "-d", template, cmd}, args...)
-	instance_id, err = runCmd("sudo", args...)
-	instance_id = strings.Replace(instance_id, "\n", "", -1)
-	log.Printf("docker instance_id=%s", instance_id)
-	return instance_id, err
+	instanceId, err = runCmd("sudo", args...)
+	instanceId = strings.Replace(instanceId, "\n", "", -1)
+	log.Printf("docker instanceId=%s", instanceId)
+	return instanceId, err
 }
 
 // start starts a docker container.
