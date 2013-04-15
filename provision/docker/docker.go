@@ -33,7 +33,7 @@ type container struct {
 func runCmd(cmd string, args ...string) (string, error) {
 	out, err := exec.Command(cmd, args...).CombinedOutput()
 	log.Printf("running the cmd: %s with the args: %s", cmd, args)
-	output = string(out)
+	output := string(out)
 	return output, err
 }
 
@@ -92,7 +92,7 @@ func (c *container) create() (string, error) {
 		return "", err
 	}
 	args = append([]string{docker, "run", "-d", template, cmd}, args...)
-	instanceId, err = runCmd("sudo", args...)
+	instanceId, err := runCmd("sudo", args...)
 	instanceId = strings.Replace(instanceId, "\n", "", -1)
 	log.Printf("docker instanceId=%s", instanceId)
 	return instanceId, err
