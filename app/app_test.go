@@ -1148,7 +1148,7 @@ func (s *S) TestDeployHookAbsPathAbsoluteCommands(c *gocheck.C) {
 	c.Assert(got, gocheck.Equals, expected)
 }
 
-func (s *S) TestLoadHooks(c *gocheck.C) {
+func (s *S) TestLoadConf(c *gocheck.C) {
 	output := `hooks:
   pre-restart:
     - testdata/pre.sh
@@ -1161,7 +1161,7 @@ func (s *S) TestLoadHooks(c *gocheck.C) {
 		Framework: "django",
 		Units:     []Unit{{Name: "i-0800", State: "started"}},
 	}
-	err := a.loadHooks()
+	err := a.loadConf()
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(a.conf.Hooks.PreRestart, gocheck.DeepEquals, []string{"testdata/pre.sh"})
 	c.Assert(a.conf.Hooks.PostRestart, gocheck.DeepEquals, []string{"testdata/pos.sh"})
@@ -1169,7 +1169,7 @@ func (s *S) TestLoadHooks(c *gocheck.C) {
 	c.Assert(cmds, gocheck.HasLen, 1)
 }
 
-func (s *S) TestLoadHooksWithListOfCommands(c *gocheck.C) {
+func (s *S) TestLoadConfWithListOfCommands(c *gocheck.C) {
 	output := `hooks:
   pre-restart:
     - testdata/pre.sh
@@ -1184,15 +1184,15 @@ func (s *S) TestLoadHooksWithListOfCommands(c *gocheck.C) {
 		Framework: "django",
 		Units:     []Unit{{Name: "i-0800", State: "started"}},
 	}
-	err := a.loadHooks()
+	err := a.loadConf()
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(a.conf.Hooks.PreRestart, gocheck.DeepEquals, []string{"testdata/pre.sh", "ls -lh", "sudo rm -rf /"})
 	c.Assert(a.conf.Hooks.PostRestart, gocheck.DeepEquals, []string{"testdata/pos.sh"})
 }
 
-func (s *S) TestLoadHooksWithError(c *gocheck.C) {
+func (s *S) TestLoadConfWithError(c *gocheck.C) {
 	a := App{Name: "something", Framework: "django"}
-	err := a.loadHooks()
+	err := a.loadConf()
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(a.conf.Hooks.PreRestart, gocheck.IsNil)
 	c.Assert(a.conf.Hooks.PostRestart, gocheck.IsNil)
@@ -1312,7 +1312,7 @@ func (s *S) TestInstallDeps(c *gocheck.C) {
 }
 
 func (s *S) TestRestart(c *gocheck.C) {
-	s.provisioner.PrepareOutput(nil) // loadHooks
+	s.provisioner.PrepareOutput(nil) // loadConf
 	a := App{
 		Name:      "someApp",
 		Framework: "django",

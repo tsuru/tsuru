@@ -517,11 +517,8 @@ func (app *App) InstanceEnv(name string) map[string]bind.EnvVar {
 	return envs
 }
 
-// loadHooks loads restart hooks from app.conf.
-//
-// app.conf uses YAML format, this function looks for two keys: pre-restart and
-// post-restart.
-func (app *App) loadHooks() error {
+// loadHooks loads app configuration from app.yaml.
+func (app *App) loadConf() error {
 	if app.conf != nil {
 		return nil
 	}
@@ -579,7 +576,7 @@ func (app *App) runHook(w io.Writer, cmds []string, kind string) error {
 //
 // The path to this script can be found at the app.conf file, at the root of user's app repository.
 func (app *App) preRestart(w io.Writer) error {
-	if err := app.loadHooks(); err != nil {
+	if err := app.loadConf(); err != nil {
 		return err
 	}
 	return app.runHook(w, app.conf.Hooks.PreRestart, "pre-restart")
@@ -590,7 +587,7 @@ func (app *App) preRestart(w io.Writer) error {
 // The path to this script can be found at the app.conf file, at the root of
 // user's app repository.
 func (app *App) postRestart(w io.Writer) error {
-	if err := app.loadHooks(); err != nil {
+	if err := app.loadConf(); err != nil {
 		return err
 	}
 	return app.runHook(w, app.conf.Hooks.PostRestart, "post-restart")
