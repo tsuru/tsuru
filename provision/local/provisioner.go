@@ -30,23 +30,25 @@ func (p *LocalProvisioner) setup(ip, framework string) error {
 	}
 	log.Printf("Creating hooks dir for %s", ip)
 	cmd := exec.Command("ssh", "-q", "-o", "StrictHostKeyChecking no", "-l", "ubuntu", ip, "sudo mkdir -p /var/lib/tsuru/hooks")
-	err = cmd.Run()
+	output, err := cmd.CombinedOutput()
 	if err != nil {
 		log.Printf("error on creating hooks dir for %s", ip)
+		log.Print(string(output))
 		log.Print(err)
 		return err
 	}
 	log.Printf("Permissons on hooks dir for %s", ip)
 	cmd = exec.Command("ssh", "-q", "-o", "StrictHostKeyChecking no", "-l", "ubuntu", ip, "sudo chown -R ubuntu /var/lib/tsuru/hooks")
-	err = cmd.Run()
+	output, err = cmd.CombinedOutput()
 	if err != nil {
 		log.Printf("error on permissions for %s", ip)
+		log.Print(string(output))
 		log.Print(err)
 		return err
 	}
 	log.Printf("coping hooks to %s", ip)
 	cmd = exec.Command("scp", "-q", "-o", "StrictHostKeyChecking no", "-r", formulasPath+"/"+framework+"/hooks", "ubuntu@"+ip+":/var/lib/tsuru")
-	output, err := cmd.CombinedOutput()
+	output, err = cmd.CombinedOutput()
 	if err != nil {
 		log.Printf("error on execute scp with the args: %#v", cmd.Args)
 		log.Print(string(output))
