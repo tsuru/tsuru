@@ -75,6 +75,7 @@ func (s *S) TestProvisionerProvision(c *gocheck.C) {
 	c.Assert(commandmocker.Ran(tmpdir), gocheck.Equals, true)
 	expected := "lxc-create -t ubuntu-cloud -n myapp -- -S somepath"
 	expected += "lxc-start --daemon -n myapp"
+	expected += "lxc-wait -n myapp -s RUNNING"
 	expected += "service nginx restart"
 	c.Assert(commandmocker.Output(tmpdir), gocheck.Equals, expected)
 	var unit provision.Unit
@@ -183,6 +184,7 @@ func (s *S) TestProvisionerDestroy(c *gocheck.C) {
 	c.Assert(commandmocker.Ran(tmpdir), gocheck.Equals, true)
 	expected := "lxc-create -t ubuntu-cloud -n myapp -- -S somepath"
 	expected += "lxc-start --daemon -n myapp"
+	expected += "lxc-wait -n myapp -s RUNNING"
 	expected += "service nginx restart"
 	expected += "lxc-stop -n myapp"
 	expected += "lxc-destroy -n myapp"
