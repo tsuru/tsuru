@@ -138,7 +138,7 @@ func (t *targetAdd) Info() *Info {
 `
 	return &Info{
 		Name:    "target-add",
-		Usage:   "target-add <label> <target> [--set-current]",
+		Usage:   "target-add <label> <target> [--set-current|-s]",
 		Desc:    desc,
 		MinArgs: 2,
 	}
