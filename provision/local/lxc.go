@@ -91,3 +91,8 @@ func (c *container) stop() error {
 func (c *container) destroy() error {
 	return runCmd("sudo", "lxc-destroy", "-n", c.name)
 }
+
+// waitUntil waits for a specific container state.
+func (c *container) waitUntil(state string) error {
+	return runCmd("sudo", "lxc-wait", "-n", c.name, "-s", state)
+}

@@ -80,3 +80,15 @@ func (s *S) TestContainerIP(c *gocheck.C) {
 	cont = container{name: "notfound"}
 	c.Assert(cont.ip(), gocheck.Equals, "")
 }
+
+func (s *S) TestLXCWaitUntil(c *gocheck.C) {
+	tmpdir, err := commandmocker.Add("sudo", "$*")
+	c.Assert(err, gocheck.IsNil)
+	defer commandmocker.Remove(tmpdir)
+	container := container{name: "container"}
+	err = container.waitUntil("RUNNING")
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(commandmocker.Ran(tmpdir), gocheck.Equals, true)
+	expected := "lxc-wait -n container -s RUNNING"
+	c.Assert(commandmocker.Output(tmpdir), gocheck.Equals, expected)
+}
