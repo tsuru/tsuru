@@ -108,7 +108,7 @@ func (p *LocalProvisioner) Provision(app provision.App) error {
 		}
 		c.instanceId = instance_id
 		u.InstanceId = instance_id
-		if err = c.start(); err != nil {
+		if err := c.start(); err != nil {
 			log.Printf("error on start container %s", app.GetName())
 			log.Print(err)
 			return
@@ -116,38 +116,38 @@ func (p *LocalProvisioner) Provision(app provision.App) error {
 		ip, err := c.ip()
 		u.Ip = ip
 		u.Status = provision.StatusInstalling
-		if err = p.collection().Update(bson.M{"name": u.Name}, u); err != nil {
+		if err := p.collection().Update(bson.M{"name": u.Name}, u); err != nil {
 			log.Print(err)
 			return
 		}
-		if err = p.setup(ip, app.GetFramework()); err != nil {
+		if err := p.setup(ip, app.GetFramework()); err != nil {
 			log.Printf("error on setup container %s", app.GetName())
 			log.Print(err)
 			return
 		}
-		if err = p.install(ip); err != nil {
+		if err := p.install(ip); err != nil {
 			log.Printf("error on install container %s", app.GetName())
 			log.Print(err)
 			return
 		}
 		log.Printf("running provisioning start() for container %s", c.instanceId)
-		if err = p.start(ip); err != nil {
+		if err := p.start(ip); err != nil {
 			log.Printf("error on start app for container %s", app.GetName())
 			log.Print(err)
 			return
 		}
-		if err = AddRoute(app.GetName(), ip); err != nil {
+		if err := AddRoute(app.GetName(), ip); err != nil {
 			log.Printf("error on add route for %s with ip %s", app.GetName(), ip)
 			log.Print(err)
 			return
 		}
-		if err = RestartRouter(); err != nil {
+		if err := RestartRouter(); err != nil {
 			log.Printf("error on restart router")
 			log.Print(err)
 			return
 		}
 		u.Status = provision.StatusStarted
-		if err = p.collection().Update(bson.M{"name": u.Name}, u); err != nil {
+		if err := p.collection().Update(bson.M{"name": u.Name}, u); err != nil {
 			log.Print(err)
 			return
 		}
@@ -177,13 +177,23 @@ func (p *LocalProvisioner) Destroy(app provision.App) error {
 				instanceId: u.GetInstanceId(),
 			}
 			log.Printf("stoping container %s", u.GetInstanceId())
-			c.stop()
+			if err := c.stop(); err != nil {
+				log.Print("Could not stop container. Trying to destroy anyway.")
+				log.Print(err.Error())
+			}
 
 			log.Printf("destroying container %s", u.GetInstanceId())
-			c.destroy()
+			if err = c.destroy(); err != nil {
+				log.Print("Could not destroy container. Aborting...")
+				log.Print(err.Error())
+				return
+			}
 
 			log.Printf("removing container %s from the database", u.GetName())
-			p.collection().Remove(bson.M{"name": u.GetName()})
+			if err = p.collection().Remove(bson.M{"name": u.GetName()}); err != nil {
+				log.Printf("Could not remove container from database. Error %s", err.Error())
+			}
+			log.Print("Units successfuly destroyed.")
 		}(u)
 	}
 	return nil
