@@ -12,16 +12,6 @@ import (
 
 func (s *S) TestDockerCreate(c *gocheck.C) {
 	config.Set("docker:authorized-key-path", "somepath")
-	config.Set("docker:image", "base-nginx-sshd-key")
-	config.Set("docker:cmd:bin", "/usr/sbin/sshd")
-	config.Set("docker:cmd:args", []string{"-D"})
-	defer func() {
-		config.Unset("docker:image")
-		config.Unset("docker:authorized-key-path")
-		config.Unset("docker:image")
-		config.Unset("docker:cmd:bin")
-		config.Unset("docker:cmd:args")
-	}()
 	tmpdir, err := commandmocker.Add("sudo", "$*")
 	c.Assert(err, gocheck.IsNil)
 	defer commandmocker.Remove(tmpdir)
@@ -29,7 +19,7 @@ func (s *S) TestDockerCreate(c *gocheck.C) {
 	_, err = container.create()
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(commandmocker.Ran(tmpdir), gocheck.Equals, true)
-	expected := "docker run -d base-nginx-sshd-key /usr/sbin/sshd -D"
+	expected := "docker run -d base /bin/bash myapp somepath"
 	c.Assert(commandmocker.Output(tmpdir), gocheck.Equals, expected)
 }
 
