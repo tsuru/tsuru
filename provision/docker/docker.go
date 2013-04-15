@@ -30,11 +30,11 @@ type container struct {
 }
 
 // runCmd executes commands and log the given stdout and stderror.
-func runCmd(cmd string, args ...string) (err error, output string) {
+func runCmd(cmd string, args ...string) (output string, err error) {
 	out, err := exec.Command(cmd, args...).CombinedOutput()
 	log.Printf("running the cmd: %s with the args: %s", cmd, args)
 	output = string(out)
-	return err, output
+	return output, err
 }
 
 // ip returns the ip for the container.
@@ -44,7 +44,7 @@ func (c *container) ip() (string, error) {
 		return "", err
 	}
 	log.Printf("Getting ipaddress to instance %s", c.instanceId)
-	err, instanceJson := runCmd("sudo", docker, "inspect", c.instanceId)
+	instanceJson, err := runCmd("sudo", docker, "inspect", c.instanceId)
 	if err != nil {
 		msg := "error(%s) trying to inspect docker instance(%s) to get ipaddress"
 		log.Printf(msg, err)
@@ -92,7 +92,7 @@ func (c *container) create() (instance_id string, err error) {
 		return "", err
 	}
 	args = append([]string{docker, "run", "-d", template, cmd}, args...)
-	err, instance_id = runCmd("sudo", args...)
+	instance_id, err = runCmd("sudo", args...)
 	instance_id = strings.Replace(instance_id, "\n", "", -1)
 	log.Printf("docker instance_id=%s", instance_id)
 	return instance_id, err
@@ -112,7 +112,7 @@ func (c *container) stop() error {
 	}
 	//TODO: better error handling
 	log.Printf("trying to stop instance %s", c.instanceId)
-	err, output := runCmd("sudo", docker, "stop", c.instanceId)
+	output, err := runCmd("sudo", docker, "stop", c.instanceId)
 	log.Printf("docker stop=%s", output)
 	return err
 }
@@ -126,6 +126,6 @@ func (c *container) destroy() error {
 	//TODO: better error handling
 	//TODO: Remove host's nginx route
 	log.Printf("trying to destroy instance %s", c.instanceId)
-	err, _ = runCmd("sudo", docker, "rm", c.instanceId)
+	_, err = runCmd("sudo", docker, "rm", c.instanceId)
 	return err
 }

@@ -183,14 +183,14 @@ func (p *LocalProvisioner) Destroy(app provision.App) error {
 			}
 
 			log.Printf("destroying container %s", u.GetInstanceId())
-			if err = c.destroy(); err != nil {
+			if err := c.destroy(); err != nil {
 				log.Print("Could not destroy container. Aborting...")
 				log.Print(err.Error())
 				return
 			}
 
 			log.Printf("removing container %s from the database", u.GetName())
-			if err = p.collection().Remove(bson.M{"name": u.GetName()}); err != nil {
+			if err := p.collection().Remove(bson.M{"name": u.GetName()}); err != nil {
 				log.Printf("Could not remove container from database. Error %s", err.Error())
 			}
 			log.Print("Units successfuly destroyed.")
