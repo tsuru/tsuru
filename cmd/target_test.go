@@ -171,7 +171,7 @@ func (s *S) TestTargetAddRun(c *gocheck.C) {
 	targetAdd := &targetAdd{}
 	err := targetAdd.Run(context, nil)
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(context.Stdout.(*bytes.Buffer).String(), gocheck.Equals, "New target default -> http://tsuru.google.com added to target-list\n")
+	c.Assert(context.Stdout.(*bytes.Buffer).String(), gocheck.Equals, "New target default -> http://tsuru.google.com added to target list\n")
 }
 
 func (s *S) TestTargetAddRunOnlyOneArg(c *gocheck.C) {
@@ -185,6 +185,23 @@ func (s *S) TestTargetAddRunOnlyOneArg(c *gocheck.C) {
 	err := targetAdd.Run(context, nil)
 	c.Assert(err, gocheck.NotNil)
 	c.Assert(err.Error(), gocheck.Equals, "Invalid arguments")
+}
+
+func (s *S) TestTargetAddWithSet(c *gocheck.C) {
+	rfs := &testing.RecordingFs{FileContent: "old\thttp://tsuru.io"}
+	fsystem = rfs
+	defer func() {
+		fsystem = nil
+	}()
+	context := &Context{[]string{"default", "http://tsuru.google.com"}, manager.stdout, manager.stderr, manager.stdin}
+	targetAdd := &targetAdd{}
+	targetAdd.Flags().Parse(true, []string{"-s"})
+	err := targetAdd.Run(context, nil)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(context.Stdout.(*bytes.Buffer).String(), gocheck.Equals, "New target default -> http://tsuru.google.com added to target list and defined as the current target\n")
+	t, err := readTarget()
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(t, gocheck.Equals, "http://tsuru.google.com")
 }
 
 func (s *S) TestTargetAddFlags(c *gocheck.C) {
