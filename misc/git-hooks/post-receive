@@ -2,4 +2,4 @@
 app_dir=${PWD##*/}
 app_name=${app_dir/.git/}
 url="${TSURU_HOST}/apps/${app_name}/repository/clone"
-curl -s -N --max-time 1800 $url
+curl -H "Authorization: ${TSURU_TOKEN}" -H "Token-Owner: ${TSURU_TOKEN_OWNER}" -s -N --max-time 1800 $url

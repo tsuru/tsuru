@@ -7,6 +7,7 @@ package main
 import (
 	"bytes"
 	"github.com/globocom/tsuru/cmd"
+	"github.com/globocom/tsuru/testing"
 	"io/ioutil"
 	"launchpad.net/gocheck"
 	"net/http"
@@ -31,7 +32,8 @@ func (s *S) TestServiceCreateRun(c *gocheck.C) {
 		Stdout: &stdout,
 		Stderr: &stderr,
 	}
-	client := cmd.NewClient(&http.Client{Transport: &transport{msg: "success", status: http.StatusOK}}, nil, manager)
+	trans := testing.Transport{Message: "success", Status: http.StatusOK}
+	client := cmd.NewClient(&http.Client{Transport: &trans}, nil, manager)
 	err := (&ServiceCreate{}).Run(&context, client)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(stdout.String(), gocheck.Equals, "success")
@@ -47,17 +49,17 @@ func (s *S) TestServiceRemoveRun(c *gocheck.C) {
 		Stdout: &stdout,
 		Stderr: &stderr,
 	}
-	trans := &conditionalTransport{
-		transport{
-			msg:    "",
-			status: http.StatusNoContent,
+	trans := testing.ConditionalTransport{
+		Transport: testing.Transport{
+			Message: "",
+			Status:  http.StatusNoContent,
 		},
-		func(req *http.Request) bool {
+		CondFunc: func(req *http.Request) bool {
 			called = true
 			return req.Method == "DELETE" && req.URL.Path == "/services/my-service"
 		},
 	}
-	client := cmd.NewClient(&http.Client{Transport: trans}, nil, manager)
+	client := cmd.NewClient(&http.Client{Transport: &trans}, nil, manager)
 	err := (&ServiceRemove{}).Run(&context, client)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(called, gocheck.Equals, true)
@@ -71,14 +73,14 @@ func (s *S) TestServiceRemoveRunWithRequestFailure(c *gocheck.C) {
 		Stdout: &stdout,
 		Stderr: &stderr,
 	}
-	trans := transport{
-		msg:    "This service cannot be removed because it has instances.\nPlease remove these instances before removing the service.",
-		status: http.StatusForbidden,
+	trans := testing.Transport{
+		Message: "This service cannot be removed because it has instances.\nPlease remove these instances before removing the service.",
+		Status:  http.StatusForbidden,
 	}
 	client := cmd.NewClient(&http.Client{Transport: &trans}, nil, manager)
 	err := (&ServiceRemove{}).Run(&context, client)
 	c.Assert(err, gocheck.NotNil)
-	c.Assert(err.Error(), gocheck.Equals, trans.msg)
+	c.Assert(err.Error(), gocheck.Equals, trans.Message)
 }
 
 func (s *S) TestServiceRemoveIsACommand(c *gocheck.C) {
@@ -112,7 +114,7 @@ func (s *S) TestServiceListRun(c *gocheck.C) {
 | mysql    | my_db     |
 +----------+-----------+
 `
-	trans := transport{msg: response, status: http.StatusOK}
+	trans := testing.Transport{Message: response, Status: http.StatusOK}
 	client := cmd.NewClient(&http.Client{Transport: &trans}, nil, manager)
 	context := cmd.Context{
 		Args:   []string{},
@@ -128,7 +130,7 @@ func (s *S) TestServiceListRunWithNoServicesReturned(c *gocheck.C) {
 	var stdout, stderr bytes.Buffer
 	response := `[]`
 	expected := ""
-	trans := transport{msg: response, status: http.StatusOK}
+	trans := testing.Transport{Message: response, Status: http.StatusOK}
 	client := cmd.NewClient(&http.Client{Transport: &trans}, nil, manager)
 	context := cmd.Context{
 		Args:   []string{},
@@ -145,12 +147,12 @@ func (s *S) TestServiceUpdate(c *gocheck.C) {
 		called         bool
 		stdout, stderr bytes.Buffer
 	)
-	trans := conditionalTransport{
-		transport{
-			msg:    "",
-			status: http.StatusNoContent,
+	trans := testing.ConditionalTransport{
+		Transport: testing.Transport{
+			Message: "",
+			Status:  http.StatusNoContent,
 		},
-		func(req *http.Request) bool {
+		CondFunc: func(req *http.Request) bool {
 			called = true
 			return req.Method == "PUT" && req.URL.Path == "/services"
 		},
@@ -186,12 +188,9 @@ func (s *S) TestServiceDocAdd(c *gocheck.C) {
 		called         bool
 		stdout, stderr bytes.Buffer
 	)
-	trans := conditionalTransport{
-		transport{
-			msg:    "",
-			status: http.StatusNoContent,
-		},
-		func(req *http.Request) bool {
+	trans := testing.ConditionalTransport{
+		Transport: testing.Transport{Message: "", Status: http.StatusNoContent},
+		CondFunc: func(req *http.Request) bool {
 			called = true
 			return req.Method == "PUT" && req.URL.Path == "/services/serv/doc"
 		},
@@ -223,12 +222,9 @@ func (s *S) TestServiceDocGet(c *gocheck.C) {
 		called         bool
 		stdout, stderr bytes.Buffer
 	)
-	trans := conditionalTransport{
-		transport{
-			msg:    "some doc",
-			status: http.StatusNoContent,
-		},
-		func(req *http.Request) bool {
+	trans := testing.ConditionalTransport{
+		Transport: testing.Transport{Message: "some doc", Status: http.StatusNoContent},
+		CondFunc: func(req *http.Request) bool {
 			called = true
 			return req.Method == "GET" && req.URL.Path == "/services/serv/doc"
 		},
@@ -269,7 +265,7 @@ e.g.: $ crane template`
 
 func (s *S) TestServiceTemplateRun(c *gocheck.C) {
 	var stdout, stderr bytes.Buffer
-	trans := transport{msg: "", status: http.StatusOK}
+	trans := testing.Transport{Message: "", Status: http.StatusOK}
 	client := cmd.NewClient(&http.Client{Transport: &trans}, nil, manager)
 	ctx := cmd.Context{
 		Args:   []string{},

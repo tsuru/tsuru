@@ -22,9 +22,9 @@ func setVersionHeaders(w http.ResponseWriter) {
 	w.Header().Set("Supported-Crane", craneMin)
 }
 
-type Handler func(http.ResponseWriter, *http.Request) error
+type handler func(http.ResponseWriter, *http.Request) error
 
-func (fn Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (fn handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	setVersionHeaders(w)
 	defer func() {
 		if r.Body != nil {
@@ -42,9 +42,61 @@ func (fn Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-type AuthorizationRequiredHandler func(http.ResponseWriter, *http.Request, *auth.User) error
+func validate(token string, r *http.Request) (*auth.Token, error) {
+	if token == "" {
+		return nil, &errors.Http{
+			Message: "You must provide the Authorization header",
+		}
+	}
+	invalid := &errors.Http{Message: "Invalid token"}
+	t, err := auth.GetToken(token)
+	if err != nil {
+		return nil, invalid
+	}
+	if t.AppName != "" {
+		if q := r.URL.Query().Get(":app"); q != "" && t.AppName != q {
+			return nil, invalid
+		} else if t.AppName == q {
+			return t, nil
+		}
+		if t.AppName == r.Header.Get("Token-Owner") {
+			return t, nil
+		}
+		return nil, invalid
+	}
+	return t, nil
+}
 
-func (fn AuthorizationRequiredHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+type authorizationRequiredHandler func(http.ResponseWriter, *http.Request, *auth.Token) error
+
+func (fn authorizationRequiredHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	setVersionHeaders(w)
+	defer func() {
+		if r.Body != nil {
+			r.Body.Close()
+		}
+	}()
+	fw := FlushingWriter{w, false}
+	token := r.Header.Get("Authorization")
+	if t, err := validate(token, r); err != nil {
+		http.Error(&fw, err.Error(), http.StatusUnauthorized)
+	} else if err = fn(&fw, r, t); err != nil {
+		code := http.StatusInternalServerError
+		if e, ok := err.(*errors.Http); ok {
+			code = e.Code
+		}
+		if fw.wrote {
+			fmt.Fprintln(&fw, err)
+		} else {
+			http.Error(&fw, err.Error(), code)
+		}
+		log.Print(err)
+	}
+}
+
+type adminRequiredHandler authorizationRequiredHandler
+
+func (fn adminRequiredHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	setVersionHeaders(w)
 	defer func() {
 		if r.Body != nil {
@@ -55,9 +107,11 @@ func (fn AuthorizationRequiredHandler) ServeHTTP(w http.ResponseWriter, r *http.
 	token := r.Header.Get("Authorization")
 	if token == "" {
 		http.Error(&fw, "You must provide the Authorization header", http.StatusUnauthorized)
-	} else if user, err := auth.CheckToken(token); err != nil {
+	} else if t, err := auth.GetToken(token); err != nil {
 		http.Error(&fw, "Invalid token", http.StatusUnauthorized)
-	} else if err = fn(&fw, r, user); err != nil {
+	} else if user, err := t.User(); err != nil || !user.IsAdmin() {
+		http.Error(&fw, "Forbidden", http.StatusForbidden)
+	} else if err = fn(&fw, r, t); err != nil {
 		code := http.StatusInternalServerError
 		if e, ok := err.(*errors.Http); ok {
 			code = e.Code

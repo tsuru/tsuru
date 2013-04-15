@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	version = "0.1"
+	version = "0.1.4"
 	header  = "Supported-Tsuru-Admin"
 )
 
@@ -21,6 +21,7 @@ func buildManager(name string) *cmd.Manager {
 	m.Register(tsuru.AppList{})
 	m.Register(&tsuru.SetCName{})
 	m.Register(&tsuru.UnsetCName{})
+	m.Register(&tokenGen{})
 	return m
 }
 

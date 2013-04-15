@@ -86,6 +86,7 @@ func (s *S) TestDestroy(c *gocheck.C) {
 	err := CreateApp(&a, 1, []auth.Team{s.team})
 	c.Assert(err, gocheck.IsNil)
 	a.Get()
+	token := a.Env["TSURU_APP_TOKEN"].Value
 	err = ForceDestroy(&a)
 	c.Assert(err, gocheck.IsNil)
 	err = a.Get()
@@ -98,6 +99,9 @@ func (s *S) TestDestroy(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(msg.Args, gocheck.DeepEquals, []string{a.Name})
 	msg.Delete()
+	_, err = auth.GetToken(token)
+	c.Assert(err, gocheck.NotNil)
+	c.Assert(err.Error(), gocheck.Equals, "Token not found")
 }
 
 func (s *S) TestDestroyWithoutBucketSupport(c *gocheck.C) {
@@ -1144,11 +1148,12 @@ func (s *S) TestDeployHookAbsPathAbsoluteCommands(c *gocheck.C) {
 	c.Assert(got, gocheck.Equals, expected)
 }
 
-func (s *S) TestLoadHooks(c *gocheck.C) {
-	output := `pre-restart:
-  - testdata/pre.sh
-post-restart:
-  - testdata/pos.sh
+func (s *S) TestLoadConf(c *gocheck.C) {
+	output := `hooks:
+  pre-restart:
+    - testdata/pre.sh
+  post-restart:
+    - testdata/pos.sh
 `
 	s.provisioner.PrepareOutput([]byte(output))
 	a := App{
@@ -1156,19 +1161,22 @@ post-restart:
 		Framework: "django",
 		Units:     []Unit{{Name: "i-0800", State: "started"}},
 	}
-	err := a.loadHooks()
+	err := a.loadConf()
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(a.hooks.PreRestart, gocheck.DeepEquals, []string{"testdata/pre.sh"})
-	c.Assert(a.hooks.PosRestart, gocheck.DeepEquals, []string{"testdata/pos.sh"})
+	c.Assert(a.conf.Hooks.PreRestart, gocheck.DeepEquals, []string{"testdata/pre.sh"})
+	c.Assert(a.conf.Hooks.PostRestart, gocheck.DeepEquals, []string{"testdata/pos.sh"})
+	cmds := s.provisioner.GetCmds("cat /home/application/current/app.yaml", &a)
+	c.Assert(cmds, gocheck.HasLen, 1)
 }
 
-func (s *S) TestLoadHooksWithListOfCommands(c *gocheck.C) {
-	output := `pre-restart:
-  - testdata/pre.sh
-  - ls -lh
-  - sudo rm -rf /
-post-restart:
-  - testdata/pos.sh
+func (s *S) TestLoadConfWithListOfCommands(c *gocheck.C) {
+	output := `hooks:
+  pre-restart:
+    - testdata/pre.sh
+    - ls -lh
+    - sudo rm -rf /
+  post-restart:
+    - testdata/pos.sh
 `
 	s.provisioner.PrepareOutput([]byte(output))
 	a := App{
@@ -1176,18 +1184,18 @@ post-restart:
 		Framework: "django",
 		Units:     []Unit{{Name: "i-0800", State: "started"}},
 	}
-	err := a.loadHooks()
+	err := a.loadConf()
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(a.hooks.PreRestart, gocheck.DeepEquals, []string{"testdata/pre.sh", "ls -lh", "sudo rm -rf /"})
-	c.Assert(a.hooks.PosRestart, gocheck.DeepEquals, []string{"testdata/pos.sh"})
+	c.Assert(a.conf.Hooks.PreRestart, gocheck.DeepEquals, []string{"testdata/pre.sh", "ls -lh", "sudo rm -rf /"})
+	c.Assert(a.conf.Hooks.PostRestart, gocheck.DeepEquals, []string{"testdata/pos.sh"})
 }
 
-func (s *S) TestLoadHooksWithError(c *gocheck.C) {
+func (s *S) TestLoadConfWithError(c *gocheck.C) {
 	a := App{Name: "something", Framework: "django"}
-	err := a.loadHooks()
+	err := a.loadConf()
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(a.hooks.PreRestart, gocheck.IsNil)
-	c.Assert(a.hooks.PosRestart, gocheck.IsNil)
+	c.Assert(a.conf.Hooks.PreRestart, gocheck.IsNil)
+	c.Assert(a.conf.Hooks.PostRestart, gocheck.IsNil)
 }
 
 func (s *S) TestPreRestart(c *gocheck.C) {
@@ -1195,9 +1203,11 @@ func (s *S) TestPreRestart(c *gocheck.C) {
 	a := App{
 		Name:      "something",
 		Framework: "django",
-		hooks: &conf{
-			PreRestart: []string{"pre.sh"},
-			PosRestart: []string{"pos.sh"},
+		conf: &conf{
+			Hooks: hooks{
+				PreRestart:  []string{"pre.sh"},
+				PostRestart: []string{"pos.sh"},
+			},
 		},
 		Units: []Unit{{Name: "i-0800", State: "started"}},
 	}
@@ -1229,7 +1239,7 @@ func (s *S) TestSkipsPreRestartWhenPreRestartSectionDoesNotExists(c *gocheck.C) 
 		Name:      "something",
 		Framework: "django",
 		Units:     []Unit{{State: string(provision.StatusStarted), Machine: 1}},
-		hooks:     &conf{PosRestart: []string{"somescript.sh"}},
+		conf:      &conf{Hooks: hooks{PostRestart: []string{"somescript.sh"}}},
 	}
 	w := new(bytes.Buffer)
 	l := stdlog.New(w, "", stdlog.LstdFlags)
@@ -1240,13 +1250,13 @@ func (s *S) TestSkipsPreRestartWhenPreRestartSectionDoesNotExists(c *gocheck.C) 
 	c.Assert(st[0], gocheck.Matches, ".*Skipping pre-restart hooks...")
 }
 
-func (s *S) TestPosRestart(c *gocheck.C) {
+func (s *S) TestPostRestart(c *gocheck.C) {
 	s.provisioner.PrepareOutput([]byte("restarted"))
 	a := App{
 		Name:      "something",
 		Framework: "django",
-		hooks:     &conf{PosRestart: []string{"pos.sh"}},
 		Units:     []Unit{{Name: "i-0800", State: "started"}},
+		conf:      &conf{Hooks: hooks{PostRestart: []string{"pos.sh"}}},
 	}
 	w := new(bytes.Buffer)
 	err := a.postRestart(w)
@@ -1255,7 +1265,7 @@ func (s *S) TestPosRestart(c *gocheck.C) {
 	c.Assert(st, gocheck.Matches, `.*restarted$`)
 }
 
-func (s *S) TestPosRestartWhenAppConfDoesNotExists(c *gocheck.C) {
+func (s *S) TestPostRestartWhenAppConfDoesNotExists(c *gocheck.C) {
 	a := App{Name: "something", Framework: "django"}
 	w := new(bytes.Buffer)
 	l := stdlog.New(w, "", stdlog.LstdFlags)
@@ -1266,12 +1276,12 @@ func (s *S) TestPosRestartWhenAppConfDoesNotExists(c *gocheck.C) {
 	c.Assert(st[0], gocheck.Matches, ".*Skipping post-restart hooks...")
 }
 
-func (s *S) TestSkipsPosRestartWhenPosRestartSectionDoesNotExists(c *gocheck.C) {
+func (s *S) TestSkipsPostRestartWhenPostRestartSectionDoesNotExists(c *gocheck.C) {
 	a := App{
 		Name:      "something",
 		Framework: "django",
 		Units:     []Unit{{State: string(provision.StatusStarted), Machine: 1}},
-		hooks:     &conf{PreRestart: []string{"somescript.sh"}},
+		conf:      &conf{Hooks: hooks{PreRestart: []string{"somescript.sh"}}},
 	}
 	w := new(bytes.Buffer)
 	l := stdlog.New(w, "", stdlog.LstdFlags)
@@ -1302,7 +1312,7 @@ func (s *S) TestInstallDeps(c *gocheck.C) {
 }
 
 func (s *S) TestRestart(c *gocheck.C) {
-	s.provisioner.PrepareOutput(nil) // loadHooks
+	s.provisioner.PrepareOutput(nil) // loadConf
 	a := App{
 		Name:      "someApp",
 		Framework: "django",
@@ -1324,8 +1334,8 @@ func (s *S) TestRestartRunsPreRestartHook(c *gocheck.C) {
 		Name:      "someApp",
 		Framework: "django",
 		Teams:     []string{s.team.Name},
-		hooks:     &conf{PreRestart: []string{"pre.sh"}},
 		Units:     []Unit{{Name: "i-0800", State: "started"}},
+		conf:      &conf{Hooks: hooks{PreRestart: []string{"pre.sh"}}},
 	}
 	var buf bytes.Buffer
 	err := a.Restart(&buf)
@@ -1335,14 +1345,14 @@ func (s *S) TestRestartRunsPreRestartHook(c *gocheck.C) {
 	c.Assert(content, gocheck.Matches, "^.*### ---> Running pre-restart###.*$")
 }
 
-func (s *S) TestRestartRunsPosRestartHook(c *gocheck.C) {
+func (s *S) TestRestartRunsPostRestartHook(c *gocheck.C) {
 	s.provisioner.PrepareOutput([]byte("post-restart-by-restart"))
 	a := App{
 		Name:      "someApp",
 		Framework: "django",
 		Teams:     []string{s.team.Name},
-		hooks:     &conf{PosRestart: []string{"pos.sh"}},
 		Units:     []Unit{{Name: "i-0800", State: "started"}},
+		conf:      &conf{Hooks: hooks{PostRestart: []string{"pos.sh"}}},
 	}
 	var buf bytes.Buffer
 	err := a.Restart(&buf)

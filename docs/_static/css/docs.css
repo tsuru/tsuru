@@ -1,0 +1,62 @@
+#documentation h1 {
+    border-bottom: 1px #e7e7e7 solid;
+    font-size: 31.5px;
+    padding: 50px 0;
+    text-align: center;
+}
+
+#documentation h2 {
+    margin: 30px 0 10px;
+    font-size: 25px;
+}
+
+.section p,
+#documentation ul > li > a > em {
+    font-size: 13px;
+    font-style: normal;
+    font-weight: lighter;
+    letter-spacing: .5px;
+}
+
+#what-is-tsuru ul {
+    margin-top: 20px;
+}
+
+#build-your-own-paas-with-tsuru {
+    margin-top: 30px;
+}
+
+#extend-tsuru-building-your-service {
+    margin-bottom: 40px;
+}
+
+#more-documentation {
+    margin: 30px 0 0;
+}
+
+#for-tsuru-users,
+#for-tsuru-ops {
+    margin-bottom: 30px;
+}
+
+#contributions-and-feedback {
+    margin: 30px 0 60px ;
+}
+
+a.headerlink {
+	color: #000;
+	font-size: 60%;
+	padding: 0 4px;
+	visibility: hidden;
+}
+
+h1:hover > a.headerlink,
+h2:hover > a.headerlink,
+h3:hover > a.headerlink,
+h4:hover > a.headerlink,
+h5:hover > a.headerlink,
+h6:hover > a.headerlink,
+dt:hover > a.headerlink {
+	color: #000;
+	visibility: visible;
+}

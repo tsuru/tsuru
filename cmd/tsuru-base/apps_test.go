@@ -8,6 +8,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"github.com/globocom/tsuru/cmd"
+	"github.com/globocom/tsuru/testing"
 	"launchpad.net/gnuflag"
 	"launchpad.net/gocheck"
 	"net/http"
@@ -49,7 +50,7 @@ Units:
 		Stdout: &stdout,
 		Stderr: &stderr,
 	}
-	client := cmd.NewClient(&http.Client{Transport: &transport{msg: result, status: http.StatusOK}}, nil, manager)
+	client := cmd.NewClient(&http.Client{Transport: &testing.Transport{Message: result, Status: http.StatusOK}}, nil, manager)
 	command := AppInfo{}
 	command.Flags().Parse(true, []string{"--app", "app1"})
 	err := command.Run(&context, client)
@@ -71,7 +72,7 @@ Address: app1.tsuru.io
 		Stdout: &stdout,
 		Stderr: &stderr,
 	}
-	client := cmd.NewClient(&http.Client{Transport: &transport{msg: result, status: http.StatusOK}}, nil, manager)
+	client := cmd.NewClient(&http.Client{Transport: &testing.Transport{Message: result, Status: http.StatusOK}}, nil, manager)
 	command := AppInfo{}
 	command.Flags().Parse(true, []string{"--app", "app1"})
 	err := command.Run(&context, client)
@@ -100,12 +101,9 @@ Units:
 		Stdout: &stdout,
 		Stderr: &stderr,
 	}
-	trans := &conditionalTransport{
-		transport{
-			msg:    result,
-			status: http.StatusOK,
-		},
-		func(req *http.Request) bool {
+	trans := &testing.ConditionalTransport{
+		Transport: testing.Transport{Message: result, Status: http.StatusOK},
+		CondFunc: func(req *http.Request) bool {
 			return req.URL.Path == "/apps/secret" && req.Method == "GET"
 		},
 	}
@@ -141,7 +139,7 @@ Units:
 		Stdout: &stdout,
 		Stderr: &stderr,
 	}
-	client := cmd.NewClient(&http.Client{Transport: &transport{msg: result, status: http.StatusOK}}, nil, manager)
+	client := cmd.NewClient(&http.Client{Transport: &testing.Transport{Message: result, Status: http.StatusOK}}, nil, manager)
 	command := AppInfo{}
 	command.Flags().Parse(true, []string{"--app", "app1"})
 	err := command.Run(&context, client)
@@ -179,7 +177,7 @@ func (s *S) TestAppGrant(c *gocheck.C) {
 	}
 	command := AppGrant{}
 	command.Flags().Parse(true, []string{"--app", "games"})
-	client := cmd.NewClient(&http.Client{Transport: &transport{msg: "", status: http.StatusOK}}, nil, manager)
+	client := cmd.NewClient(&http.Client{Transport: &testing.Transport{Message: "", Status: http.StatusOK}}, nil, manager)
 	err := command.Run(&context, client)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(stdout.String(), gocheck.Equals, expected)
@@ -196,7 +194,7 @@ func (s *S) TestAppGrantWithoutFlag(c *gocheck.C) {
 	fake := &FakeGuesser{name: "fights"}
 	command := AppGrant{GuessingCommand: GuessingCommand{G: fake}}
 	command.Flags().Parse(true, nil)
-	client := cmd.NewClient(&http.Client{Transport: &transport{msg: "", status: http.StatusOK}}, nil, manager)
+	client := cmd.NewClient(&http.Client{Transport: &testing.Transport{Message: "", Status: http.StatusOK}}, nil, manager)
 	err := command.Run(&context, client)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(stdout.String(), gocheck.Equals, expected)
@@ -224,7 +222,7 @@ func (s *S) TestAppRevoke(c *gocheck.C) {
 	}
 	command := AppRevoke{}
 	command.Flags().Parse(true, []string{"--app", "games"})
-	client := cmd.NewClient(&http.Client{Transport: &transport{msg: "", status: http.StatusOK}}, nil, manager)
+	client := cmd.NewClient(&http.Client{Transport: &testing.Transport{Message: "", Status: http.StatusOK}}, nil, manager)
 	err := command.Run(&context, client)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(stdout.String(), gocheck.Equals, expected)
@@ -241,7 +239,7 @@ func (s *S) TestAppRevokeWithoutFlag(c *gocheck.C) {
 	fake := &FakeGuesser{name: "fights"}
 	command := AppRevoke{GuessingCommand: GuessingCommand{G: fake}}
 	command.Flags().Parse(true, nil)
-	client := cmd.NewClient(&http.Client{Transport: &transport{msg: "", status: http.StatusOK}}, nil, manager)
+	client := cmd.NewClient(&http.Client{Transport: &testing.Transport{Message: "", Status: http.StatusOK}}, nil, manager)
 	err := command.Run(&context, client)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(stdout.String(), gocheck.Equals, expected)
@@ -273,7 +271,7 @@ func (s *S) TestAppList(c *gocheck.C) {
 		Stdout: &stdout,
 		Stderr: &stderr,
 	}
-	client := cmd.NewClient(&http.Client{Transport: &transport{msg: result, status: http.StatusOK}}, nil, manager)
+	client := cmd.NewClient(&http.Client{Transport: &testing.Transport{Message: result, Status: http.StatusOK}}, nil, manager)
 	command := AppList{}
 	err := command.Run(&context, client)
 	c.Assert(err, gocheck.IsNil)
@@ -295,7 +293,7 @@ func (s *S) TestAppListDisplayAppsInAlphabeticalOrder(c *gocheck.C) {
 		Stdout: &stdout,
 		Stderr: &stderr,
 	}
-	client := cmd.NewClient(&http.Client{Transport: &transport{msg: result, status: http.StatusOK}}, nil, manager)
+	client := cmd.NewClient(&http.Client{Transport: &testing.Transport{Message: result, Status: http.StatusOK}}, nil, manager)
 	command := AppList{}
 	err := command.Run(&context, client)
 	c.Assert(err, gocheck.IsNil)
@@ -316,7 +314,7 @@ func (s *S) TestAppListUnitIsntStarted(c *gocheck.C) {
 		Stdout: &stdout,
 		Stderr: &stderr,
 	}
-	client := cmd.NewClient(&http.Client{Transport: &transport{msg: result, status: http.StatusOK}}, nil, manager)
+	client := cmd.NewClient(&http.Client{Transport: &testing.Transport{Message: result, Status: http.StatusOK}}, nil, manager)
 	command := AppList{}
 	err := command.Run(&context, client)
 	c.Assert(err, gocheck.IsNil)
@@ -337,7 +335,7 @@ func (s *S) TestAppListCName(c *gocheck.C) {
 		Stdout: &stdout,
 		Stderr: &stderr,
 	}
-	client := cmd.NewClient(&http.Client{Transport: &transport{msg: result, status: http.StatusOK}}, nil, manager)
+	client := cmd.NewClient(&http.Client{Transport: &testing.Transport{Message: result, Status: http.StatusOK}}, nil, manager)
 	command := AppList{}
 	err := command.Run(&context, client)
 	c.Assert(err, gocheck.IsNil)
@@ -367,12 +365,9 @@ func (s *S) TestAppRestart(c *gocheck.C) {
 		Stdout: &stdout,
 		Stderr: &stderr,
 	}
-	trans := &conditionalTransport{
-		transport{
-			msg:    "Restarted",
-			status: http.StatusOK,
-		},
-		func(req *http.Request) bool {
+	trans := &testing.ConditionalTransport{
+		Transport: testing.Transport{Message: "Restarted", Status: http.StatusOK},
+		CondFunc: func(req *http.Request) bool {
 			called = true
 			return req.URL.Path == "/apps/handful_of_nothing/restart" && req.Method == "GET"
 		},
@@ -395,12 +390,9 @@ func (s *S) TestAppRestartWithoutTheFlag(c *gocheck.C) {
 		Stdout: &stdout,
 		Stderr: &stderr,
 	}
-	trans := &conditionalTransport{
-		transport{
-			msg:    "Restarted",
-			status: http.StatusOK,
-		},
-		func(req *http.Request) bool {
+	trans := &testing.ConditionalTransport{
+		Transport: testing.Transport{Message: "Restarted", Status: http.StatusOK},
+		CondFunc: func(req *http.Request) bool {
 			called = true
 			return req.URL.Path == "/apps/motorbreath/restart" && req.Method == "GET"
 		},
@@ -441,12 +433,9 @@ func (s *S) TestSetCName(c *gocheck.C) {
 		Stderr: &stderr,
 		Args:   []string{"death.evergrey.mycompany.com"},
 	}
-	trans := &conditionalTransport{
-		transport{
-			msg:    "Restarted",
-			status: http.StatusOK,
-		},
-		func(req *http.Request) bool {
+	trans := &testing.ConditionalTransport{
+		Transport: testing.Transport{Message: "Restarted", Status: http.StatusOK},
+		CondFunc: func(req *http.Request) bool {
 			called = true
 			var m map[string]string
 			err := json.NewDecoder(req.Body).Decode(&m)
@@ -476,12 +465,9 @@ func (s *S) TestSetCNameWithoutTheFlag(c *gocheck.C) {
 		Args:   []string{"corey.evergrey.mycompany.com"},
 	}
 	fake := &FakeGuesser{name: "corey"}
-	trans := &conditionalTransport{
-		transport{
-			msg:    "Restarted",
-			status: http.StatusOK,
-		},
-		func(req *http.Request) bool {
+	trans := &testing.ConditionalTransport{
+		Transport: testing.Transport{Message: "Restarted", Status: http.StatusOK},
+		CondFunc: func(req *http.Request) bool {
 			called = true
 			var m map[string]string
 			err := json.NewDecoder(req.Body).Decode(&m)
@@ -505,7 +491,7 @@ func (s *S) TestSetCNameFailure(c *gocheck.C) {
 		Stderr: &stderr,
 		Args:   []string{"masterplan.evergrey.mycompany.com"},
 	}
-	trans := &transport{msg: "Invalid cname", status: http.StatusPreconditionFailed}
+	trans := &testing.Transport{Message: "Invalid cname", Status: http.StatusPreconditionFailed}
 	client := cmd.NewClient(&http.Client{Transport: trans}, nil, manager)
 	command := SetCName{}
 	command.Flags().Parse(true, []string{"-a", "masterplan"})
@@ -537,12 +523,9 @@ func (s *S) TestUnsetCName(c *gocheck.C) {
 		Stdout: &stdout,
 		Stderr: &stderr,
 	}
-	trans := &conditionalTransport{
-		transport{
-			msg:    "Restarted",
-			status: http.StatusOK,
-		},
-		func(req *http.Request) bool {
+	trans := &testing.ConditionalTransport{
+		Transport: testing.Transport{Message: "Restarted", Status: http.StatusOK},
+		CondFunc: func(req *http.Request) bool {
 			called = true
 			var m map[string]string
 			err := json.NewDecoder(req.Body).Decode(&m)
@@ -571,12 +554,9 @@ func (s *S) TestUnsetCNameWithoutTheFlag(c *gocheck.C) {
 		Stderr: &stderr,
 	}
 	fake := &FakeGuesser{name: "corey"}
-	trans := &conditionalTransport{
-		transport{
-			msg:    "Restarted",
-			status: http.StatusOK,
-		},
-		func(req *http.Request) bool {
+	trans := &testing.ConditionalTransport{
+		Transport: testing.Transport{Message: "Restarted", Status: http.StatusOK},
+		CondFunc: func(req *http.Request) bool {
 			called = true
 			var m map[string]string
 			err := json.NewDecoder(req.Body).Decode(&m)

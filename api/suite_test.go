@@ -25,6 +25,7 @@ type S struct {
 	conn        *db.Storage
 	team        *auth.Team
 	user        *auth.User
+	token       *auth.Token
 	t           *tsuruTesting.T
 	provisioner *tsuruTesting.FakeProvisioner
 }
@@ -55,12 +56,13 @@ func (c *hasAccessToChecker) Check(params []interface{}, names []string) (bool, 
 var HasAccessTo gocheck.Checker = &hasAccessToChecker{}
 
 func (s *S) createUserAndTeam(c *gocheck.C) {
-	s.user = &auth.User{Email: "whydidifall@thewho.com", Password: "123"}
+	s.user = &auth.User{Email: "whydidifall@thewho.com", Password: "123456"}
 	err := s.user.Create()
 	c.Assert(err, gocheck.IsNil)
 	s.team = &auth.Team{Name: "tsuruteam", Users: []string{s.user.Email}}
 	err = s.conn.Teams().Insert(s.team)
 	c.Assert(err, gocheck.IsNil)
+	s.token, err = s.user.CreateToken("123456")
 }
 
 func (s *S) SetUpSuite(c *gocheck.C) {

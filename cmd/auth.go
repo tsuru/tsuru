@@ -52,7 +52,13 @@ func (c *userCreate) Run(context *Context, client Doer) error {
 	if err != nil {
 		return err
 	}
-	_, err = client.Do(request)
+	resp, err := client.Do(request)
+	if resp != nil {
+		if resp.StatusCode == http.StatusNotFound ||
+			resp.StatusCode == http.StatusMethodNotAllowed {
+			return errors.New("User creation is disabled.")
+		}
+	}
 	if err != nil {
 		return err
 	}

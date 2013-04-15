@@ -138,7 +138,7 @@ func (t *targetAdd) Info() *Info {
 `
 	return &Info{
 		Name:    "target-add",
-		Usage:   "target-add <label> <target> [--set-current]",
+		Usage:   "target-add <label> <target> [--set-current|-s]",
 		Desc:    desc,
 		MinArgs: 2,
 	}
@@ -156,7 +156,12 @@ func (t *targetAdd) Run(ctx *Context, client Doer) error {
 	if err != nil {
 		return err
 	}
-	fmt.Fprintf(ctx.Stdout, "New target %s -> %s added to target-list\n", label, target)
+	fmt.Fprintf(ctx.Stdout, "New target %s -> %s added to target list", label, target)
+	if t.set {
+		writeTarget(target)
+		fmt.Fprint(ctx.Stdout, " and defined as the current target")
+	}
+	fmt.Fprintln(ctx.Stdout)
 	return nil
 }
 

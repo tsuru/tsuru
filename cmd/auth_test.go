@@ -8,6 +8,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"github.com/globocom/tsuru/fs/testing"
+	ttesting "github.com/globocom/tsuru/testing"
 	"io"
 	"launchpad.net/gocheck"
 	"net/http"
@@ -25,7 +26,7 @@ func (s *S) TestLogin(c *gocheck.C) {
 	expected := "Password: \nSuccessfully logged in!\n"
 	reader := strings.NewReader("chico\n")
 	context := Context{[]string{"foo@foo.com"}, manager.stdout, manager.stderr, reader}
-	client := NewClient(&http.Client{Transport: &transport{msg: `{"token": "sometoken"}`, status: http.StatusOK}}, nil, manager)
+	client := NewClient(&http.Client{Transport: &ttesting.Transport{Message: `{"token": "sometoken"}`, Status: http.StatusOK}}, nil, manager)
 	command := login{}
 	err := command.Run(&context, client)
 	c.Assert(err, gocheck.IsNil)
@@ -47,7 +48,7 @@ func (s *S) TestLoginShouldNotDependOnTsuruTokenFile(c *gocheck.C) {
 	expected := "Password: \nSuccessfully logged in!\n"
 	reader := strings.NewReader("chico\n")
 	context := Context{[]string{"foo@foo.com"}, manager.stdout, manager.stderr, reader}
-	client := NewClient(&http.Client{Transport: &transport{msg: `{"token":"anothertoken"}`, status: http.StatusOK}}, nil, manager)
+	client := NewClient(&http.Client{Transport: &ttesting.Transport{Message: `{"token":"anothertoken"}`, Status: http.StatusOK}}, nil, manager)
 	command := login{}
 	err := command.Run(&context, client)
 	c.Assert(err, gocheck.IsNil)
@@ -93,7 +94,7 @@ func (s *S) TestTeamAddUser(c *gocheck.C) {
 	expected := `User "andorito" was added to the "cobrateam" team` + "\n"
 	context := Context{[]string{"cobrateam", "andorito"}, manager.stdout, manager.stderr, manager.stdin}
 	command := teamUserAdd{}
-	client := NewClient(&http.Client{Transport: &transport{msg: "", status: http.StatusOK}}, nil, manager)
+	client := NewClient(&http.Client{Transport: &ttesting.Transport{Message: "", Status: http.StatusOK}}, nil, manager)
 	err := command.Run(&context, client)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(manager.stdout.(*bytes.Buffer).String(), gocheck.Equals, expected)
@@ -113,7 +114,7 @@ func (s *S) TestTeamRemoveUser(c *gocheck.C) {
 	expected := `User "andorito" was removed from the "cobrateam" team` + "\n"
 	context := Context{[]string{"cobrateam", "andorito"}, manager.stdout, manager.stderr, manager.stdin}
 	command := teamUserRemove{}
-	client := NewClient(&http.Client{Transport: &transport{msg: "", status: http.StatusOK}}, nil, manager)
+	client := NewClient(&http.Client{Transport: &ttesting.Transport{Message: "", Status: http.StatusOK}}, nil, manager)
 	err := command.Run(&context, client)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(manager.stdout.(*bytes.Buffer).String(), gocheck.Equals, expected)
@@ -132,7 +133,7 @@ func (s *S) TestTeamRemoveUserInfo(c *gocheck.C) {
 func (s *S) TestTeamCreate(c *gocheck.C) {
 	expected := `Team "core" successfully created!` + "\n"
 	context := Context{[]string{"core"}, manager.stdout, manager.stderr, manager.stdin}
-	client := NewClient(&http.Client{Transport: &transport{msg: "", status: http.StatusCreated}}, nil, manager)
+	client := NewClient(&http.Client{Transport: &ttesting.Transport{Message: "", Status: http.StatusCreated}}, nil, manager)
 	command := teamCreate{}
 	err := command.Run(&context, client)
 	c.Assert(err, gocheck.IsNil)
@@ -159,12 +160,9 @@ func (s *S) TestTeamRemove(c *gocheck.C) {
 		Stdout: &buf,
 		Stdin:  strings.NewReader("y\n"),
 	}
-	trans := conditionalTransport{
-		transport{
-			msg:    "",
-			status: http.StatusOK,
-		},
-		func(req *http.Request) bool {
+	trans := ttesting.ConditionalTransport{
+		Transport: ttesting.Transport{Message: "", Status: http.StatusOK},
+		CondFunc: func(req *http.Request) bool {
 			called = true
 			return req.URL.Path == "/teams/evergrey" && req.Method == "DELETE"
 		},
@@ -196,7 +194,7 @@ func (s *S) TestTeamRemoveFailingRequest(c *gocheck.C) {
 		Stdout: new(bytes.Buffer),
 		Stdin:  strings.NewReader("y\n"),
 	}
-	client := NewClient(&http.Client{Transport: &transport{msg: "Team evergrey not found.", status: http.StatusNotFound}}, nil, manager)
+	client := NewClient(&http.Client{Transport: &ttesting.Transport{Message: "Team evergrey not found.", Status: http.StatusNotFound}}, nil, manager)
 	command := teamRemove{}
 	err := command.Run(&context, client)
 	c.Assert(err, gocheck.NotNil)
@@ -219,12 +217,9 @@ func (s *S) TestTeamRemoveIsACommand(c *gocheck.C) {
 
 func (s *S) TestTeamListRun(c *gocheck.C) {
 	var called bool
-	trans := &conditionalTransport{
-		transport{
-			msg:    `[{"name":"timeredbull"},{"name":"cobrateam"}]`,
-			status: http.StatusOK,
-		},
-		func(req *http.Request) bool {
+	trans := &ttesting.ConditionalTransport{
+		Transport: ttesting.Transport{Message: `[{"name":"timeredbull"},{"name":"cobrateam"}]`, Status: http.StatusOK},
+		CondFunc: func(req *http.Request) bool {
 			called = true
 			return req.Method == "GET" && req.URL.Path == "/teams"
 		},
@@ -242,7 +237,7 @@ func (s *S) TestTeamListRun(c *gocheck.C) {
 }
 
 func (s *S) TestTeamListRunWithNoContent(c *gocheck.C) {
-	client := NewClient(&http.Client{Transport: &transport{msg: "", status: http.StatusNoContent}}, nil, manager)
+	client := NewClient(&http.Client{Transport: &ttesting.Transport{Message: "", Status: http.StatusNoContent}}, nil, manager)
 	err := (&teamList{}).Run(&Context{[]string{}, manager.stdout, manager.stderr, manager.stdin}, client)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(manager.stdout.(*bytes.Buffer).String(), gocheck.Equals, "")
@@ -274,7 +269,7 @@ func (s *S) TestUserCreateShouldNotDependOnTsuruTokenFile(c *gocheck.C) {
 	expected := "Password: \nConfirm: \n" + `User "foo@foo.com" successfully created!` + "\n"
 	reader := strings.NewReader("foo123\nfoo123\n")
 	context := Context{[]string{"foo@foo.com"}, manager.stdout, manager.stderr, reader}
-	client := NewClient(&http.Client{Transport: &transport{msg: "", status: http.StatusCreated}}, nil, manager)
+	client := NewClient(&http.Client{Transport: &ttesting.Transport{Message: "", Status: http.StatusCreated}}, nil, manager)
 	command := userCreate{}
 	err := command.Run(&context, client)
 	c.Assert(err, gocheck.IsNil)
@@ -284,7 +279,7 @@ func (s *S) TestUserCreateShouldNotDependOnTsuruTokenFile(c *gocheck.C) {
 func (s *S) TestUserCreateReturnErrorIfPasswordsDontMatch(c *gocheck.C) {
 	reader := strings.NewReader("foo123\nfoo1234\n")
 	context := Context{[]string{"foo@foo.com"}, manager.stdout, manager.stderr, reader}
-	client := NewClient(&http.Client{Transport: &transport{msg: "", status: http.StatusCreated}}, nil, manager)
+	client := NewClient(&http.Client{Transport: &ttesting.Transport{Message: "", Status: http.StatusCreated}}, nil, manager)
 	command := userCreate{}
 	err := command.Run(&context, client)
 	c.Assert(err, gocheck.NotNil)
@@ -294,7 +289,7 @@ func (s *S) TestUserCreateReturnErrorIfPasswordsDontMatch(c *gocheck.C) {
 func (s *S) TestUserCreate(c *gocheck.C) {
 	expected := "Password: \nConfirm: \n" + `User "foo@foo.com" successfully created!` + "\n"
 	context := Context{[]string{"foo@foo.com"}, manager.stdout, manager.stderr, strings.NewReader("foo123\nfoo123\n")}
-	client := NewClient(&http.Client{Transport: &transport{msg: "", status: http.StatusCreated}}, nil, manager)
+	client := NewClient(&http.Client{Transport: &ttesting.Transport{Message: "", Status: http.StatusCreated}}, nil, manager)
 	command := userCreate{}
 	err := command.Run(&context, client)
 	c.Assert(err, gocheck.IsNil)
@@ -307,6 +302,34 @@ func (s *S) TestUserCreateShouldReturnErrorIfThePasswordIsNotGiven(c *gocheck.C)
 	err := command.Run(&context, nil)
 	c.Assert(err, gocheck.NotNil)
 	c.Assert(err, gocheck.ErrorMatches, "^You must provide the password!$")
+}
+
+func (s *S) TestUserCreateNotFound(c *gocheck.C) {
+	transport := ttesting.Transport{
+		Message: "Not found",
+		Status:  http.StatusNotFound,
+	}
+	reader := strings.NewReader("foo123\nfoo123\n")
+	context := Context{[]string{"foo@foo.com"}, manager.stdout, manager.stderr, reader}
+	client := NewClient(&http.Client{Transport: &transport}, nil, manager)
+	command := userCreate{}
+	err := command.Run(&context, client)
+	c.Assert(err, gocheck.NotNil)
+	c.Assert(err.Error(), gocheck.Equals, "User creation is disabled.")
+}
+
+func (s *S) TestUserCreateMethodNotAllowed(c *gocheck.C) {
+	transport := ttesting.Transport{
+		Message: "Not found",
+		Status:  http.StatusMethodNotAllowed,
+	}
+	reader := strings.NewReader("foo123\nfoo123\n")
+	context := Context{[]string{"foo@foo.com"}, manager.stdout, manager.stderr, reader}
+	client := NewClient(&http.Client{Transport: &transport}, nil, manager)
+	command := userCreate{}
+	err := command.Run(&context, client)
+	c.Assert(err, gocheck.NotNil)
+	c.Assert(err.Error(), gocheck.Equals, "User creation is disabled.")
 }
 
 func (s *S) TestUserCreateInfo(c *gocheck.C) {
@@ -336,12 +359,9 @@ func (s *S) TestUserRemove(c *gocheck.C) {
 		Stdout: &buf,
 		Stdin:  strings.NewReader("y\n"),
 	}
-	trans := conditionalTransport{
-		transport{
-			msg:    "",
-			status: http.StatusOK,
-		},
-		func(req *http.Request) bool {
+	trans := ttesting.ConditionalTransport{
+		Transport: ttesting.Transport{Message: "", Status: http.StatusOK},
+		CondFunc: func(req *http.Request) bool {
 			called = true
 			return req.Method == "DELETE" && req.URL.Path == "/users"
 		},
@@ -368,7 +388,7 @@ func (s *S) TestUserRemoveWithoutConfirmation(c *gocheck.C) {
 }
 
 func (s *S) TestUserRemoveWithRequestError(c *gocheck.C) {
-	client := NewClient(&http.Client{Transport: &transport{msg: "User not found.", status: http.StatusNotFound}}, nil, manager)
+	client := NewClient(&http.Client{Transport: &ttesting.Transport{Message: "User not found.", Status: http.StatusNotFound}}, nil, manager)
 	command := userRemove{}
 	err := command.Run(&Context{Stdout: new(bytes.Buffer), Stdin: strings.NewReader("y\n")}, client)
 	c.Assert(err, gocheck.NotNil)
@@ -400,12 +420,9 @@ func (s *S) TestChangePassword(c *gocheck.C) {
 		Stdout: &buf,
 		Stdin:  stdin,
 	}
-	trans := conditionalTransport{
-		transport{
-			msg:    "",
-			status: http.StatusOK,
-		},
-		func(req *http.Request) bool {
+	trans := ttesting.ConditionalTransport{
+		Transport: ttesting.Transport{Message: "", Status: http.StatusOK},
+		CondFunc: func(req *http.Request) bool {
 			var got map[string]string
 			called = true
 			if err := json.NewDecoder(req.Body).Decode(&got); err != nil {

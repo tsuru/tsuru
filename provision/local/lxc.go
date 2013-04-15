@@ -74,7 +74,7 @@ func (c *container) create() error {
 	if err != nil {
 		return err
 	}
-	return runCmd("sudo", "lxc-create", "-t", "ubuntu", "-n", c.name, "--", "-S", keyPath)
+	return runCmd("sudo", "lxc-create", "-t", "ubuntu-cloud", "-n", c.name, "--", "-S", keyPath)
 }
 
 // start starts a lxc container.

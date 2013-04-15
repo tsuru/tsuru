@@ -2,31 +2,26 @@
    Use of this source code is governed by a BSD-style
    license that can be found in the LICENSE file.
 
-+++++
-Tsuru
-+++++
++++++++++++++
+Documentation
++++++++++++++
 
 What is Tsuru?
-==============
+--------------
 
 Tsuru is an open source polyglot cloud application platform (paas). With tsuru, you don’t need to think about servers at all. You can write apps in the programming language of your choice, back it with add-on resources such as SQL and NoSQL databases, memcached, redis, and many others. You manage your app using the tsuru command-line tool and you deploy code using the Git revision control system, all running on the tsuru infrastructure.
 
 Learn more in :doc:`Tsuru's Overview </overview>`.
 
-:doc:`build your own paas with tsuru </build>`
-------------------------------------------------
-
-:doc:`deploy your application on tsuru </apps/quickstart>`
-------------------------------------------------------------
-
-:doc:`extend tsuru building your service </services/build>`
--------------------------------------------------------------
+* :doc:`Build your own PaaS with Tsuru </build>`
+* :doc:`Deploy your application on Tsuru </apps/quickstart>`
+* :doc:`Provide services on Tsuru </services/build>`
 
 More documentation
-==================
+------------------
 
 For tsuru users
----------------
++++++++++++++++
 
 * :doc:`clients installation guide </install/client>`
 * :doc:`tsuru client usage guide </apps/client/usage>`
@@ -34,7 +29,7 @@ For tsuru users
 * :doc:`building your application </apps/quickstart>`
 
 For tsuru ops
--------------
++++++++++++++
 
 * :doc:`build your own PaaS </build>`
 * :doc:`build your own PaaS using lxc </lxc>`
@@ -48,7 +43,7 @@ For tsuru ops
 
 
 Contributions and Feedback
-==========================
+--------------------------
 
 * :doc:`how to contribute </contribute>`
 * :doc:`coding style </contribute/coding-style>`

@@ -133,7 +133,17 @@ Tokens are generated during authentication, and are hashed using SHA512.
 
 This mechanism requires three settings to operate: ``auth:hash-cost``,
 ``auth:token-expire-days`` and ``auth:token-key``. Each setting is described
-below:
+below.
+
+The ``auth`` section also controls whether user registation is on or off. When
+user registration is off, the user creation URL is not registered in the
+server.
+
+auth:user-registration
+++++++++++++++++++++++
+
+This flag indicates whether user registration is enabled. This setting is
+optional, and defaults to false.
 
 auth:hash-cost
 ++++++++++++++

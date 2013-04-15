@@ -8,6 +8,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"github.com/globocom/tsuru/cmd"
+	"github.com/globocom/tsuru/testing"
 	"launchpad.net/gocheck"
 	"net/http"
 	"strings"
@@ -27,8 +28,36 @@ func (s *S) TestJsonWriterBuffer(c *gocheck.C) {
 	n, err = w.Write([]byte(data))
 	c.Assert(err, gocheck.IsNil)
 	n, err = w.Write([]byte(data))
-	expected := "\x1b[0;34;10m2013-03-21 18:27:02 []:\x1b[0m   mysql\n"
+	expected := "\x1b[0;34;10m2013-03-21 18:27:02 -0300 []:\x1b[0m   mysql\n"
 	c.Assert(writer.String(), gocheck.Equals, expected)
+}
+
+func (s *S) TestJsonWriterChukedWrite(c *gocheck.C) {
+	t := time.Now()
+	logs := []log{
+		{Date: t, Message: "Something happened", Source: "tsuru"},
+		{Date: t.Add(2 * time.Hour), Message: "Something happened again", Source: "tsuru"},
+	}
+	data, err := json.Marshal(logs)
+	c.Assert(err, gocheck.IsNil)
+	l := len(data)
+	var buf bytes.Buffer
+	w := jsonWriter{w: &buf}
+	_, err = w.Write(data[:l/4])
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(buf.String(), gocheck.Equals, "")
+	_, err = w.Write(data[l/4 : l/2])
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(buf.String(), gocheck.Equals, "")
+	_, err = w.Write(data[l/2 : l/4*3])
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(buf.String(), gocheck.Equals, "")
+	_, err = w.Write(data[l/4*3:])
+	c.Assert(err, gocheck.IsNil)
+	tfmt := "2006-01-02 15:04:05 -0700"
+	expected := cmd.Colorfy(t.Format(tfmt)+" [tsuru]:", "blue", "", "") + " Something happened\n"
+	expected = expected + cmd.Colorfy(t.Add(2*time.Hour).Format(tfmt)+" [tsuru]:", "blue", "", "") + " Something happened again\n"
+	c.Assert(buf.String(), gocheck.Equals, expected)
 }
 
 func (s *S) TestJsonWriter(c *gocheck.C) {
@@ -44,7 +73,7 @@ func (s *S) TestJsonWriter(c *gocheck.C) {
 	n, err := w.Write(b)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(n, gocheck.Equals, len(b))
-	tfmt := "2006-01-02 15:04:05"
+	tfmt := "2006-01-02 15:04:05 -0700"
 	expected := cmd.Colorfy(t.Format(tfmt)+" [tsuru]:", "blue", "", "") + " Something happened\n"
 	expected = expected + cmd.Colorfy(t.Add(2*time.Hour).Format(tfmt)+" [tsuru]:", "blue", "", "") + " Something happened again\n"
 	c.Assert(writer.String(), gocheck.Equals, expected)
@@ -63,14 +92,14 @@ func (s *S) TestJsonWriterInvalidJson(c *gocheck.C) {
 func (s *S) TestAppLog(c *gocheck.C) {
 	var stdout, stderr bytes.Buffer
 	result := `[{"Source":"tsuru","Date":"2012-06-20T11:17:22.75-03:00","Message":"creating app lost"},{"Source":"app","Date":"2012-06-20T11:17:22.753-03:00","Message":"app lost successfully created"}]`
-	expected := cmd.Colorfy("2012-06-20 11:17:22 [tsuru]:", "blue", "", "") + " creating app lost\n"
-	expected = expected + cmd.Colorfy("2012-06-20 11:17:22 [app]:", "blue", "", "") + " app lost successfully created\n"
+	expected := cmd.Colorfy("2012-06-20 11:17:22 -0300 [tsuru]:", "blue", "", "") + " creating app lost\n"
+	expected = expected + cmd.Colorfy("2012-06-20 11:17:22 -0300 [app]:", "blue", "", "") + " app lost successfully created\n"
 	context := cmd.Context{
 		Stdout: &stdout,
 		Stderr: &stderr,
 	}
 	command := AppLog{}
-	client := cmd.NewClient(&http.Client{Transport: &transport{msg: result, status: http.StatusOK}}, nil, manager)
+	client := cmd.NewClient(&http.Client{Transport: &testing.Transport{Message: result, Status: http.StatusOK}}, nil, manager)
 	command.Flags().Parse(true, []string{"--app", "appName"})
 	err := command.Run(&context, client)
 	c.Assert(err, gocheck.IsNil)
@@ -82,8 +111,8 @@ func (s *S) TestAppLog(c *gocheck.C) {
 func (s *S) TestAppLogWithoutTheFlag(c *gocheck.C) {
 	var stdout, stderr bytes.Buffer
 	result := `[{"Source":"tsuru","Date":"2012-06-20T11:17:22.75-03:00","Message":"creating app lost"},{"Source":"tsuru","Date":"2012-06-20T11:17:22.753-03:00","Message":"app lost successfully created"}]`
-	expected := cmd.Colorfy("2012-06-20 11:17:22 [tsuru]:", "blue", "", "") + " creating app lost\n"
-	expected = expected + cmd.Colorfy("2012-06-20 11:17:22 [tsuru]:", "blue", "", "") + " app lost successfully created\n"
+	expected := cmd.Colorfy("2012-06-20 11:17:22 -0300 [tsuru]:", "blue", "", "") + " creating app lost\n"
+	expected = expected + cmd.Colorfy("2012-06-20 11:17:22 -0300 [tsuru]:", "blue", "", "") + " app lost successfully created\n"
 	context := cmd.Context{
 		Stdout: &stdout,
 		Stderr: &stderr,
@@ -91,12 +120,9 @@ func (s *S) TestAppLogWithoutTheFlag(c *gocheck.C) {
 	fake := &FakeGuesser{name: "hitthelights"}
 	command := AppLog{GuessingCommand: GuessingCommand{G: fake}}
 	command.Flags().Parse(true, nil)
-	trans := &conditionalTransport{
-		transport{
-			msg:    result,
-			status: http.StatusOK,
-		},
-		func(req *http.Request) bool {
+	trans := &testing.ConditionalTransport{
+		Transport: testing.Transport{Message: result, Status: http.StatusOK},
+		CondFunc: func(req *http.Request) bool {
 			return req.URL.Path == "/apps/hitthelights/log" && req.Method == "GET" &&
 				req.URL.Query().Get("lines") == "10"
 		},
@@ -116,7 +142,7 @@ func (s *S) TestAppLogShouldReturnNilIfHasNoContent(c *gocheck.C) {
 		Stderr: &stderr,
 	}
 	command := AppLog{}
-	client := cmd.NewClient(&http.Client{Transport: &transport{msg: "", status: http.StatusNoContent}}, nil, manager)
+	client := cmd.NewClient(&http.Client{Transport: &testing.Transport{Message: "", Status: http.StatusNoContent}}, nil, manager)
 	command.Flags().Parse(true, []string{"--app", "appName"})
 	err := command.Run(&context, client)
 	c.Assert(err, gocheck.IsNil)
@@ -138,8 +164,8 @@ If you don't provide the app name, tsuru will try to guess it. The default numbe
 func (s *S) TestAppLogBySource(c *gocheck.C) {
 	var stdout, stderr bytes.Buffer
 	result := `[{"Source":"tsuru","Date":"2012-06-20T11:17:22.75-03:00","Message":"creating app lost"},{"Source":"tsuru","Date":"2012-06-20T11:17:22.753-03:00","Message":"app lost successfully created"}]`
-	expected := cmd.Colorfy("2012-06-20 11:17:22 [tsuru]:", "blue", "", "") + " creating app lost\n"
-	expected = expected + cmd.Colorfy("2012-06-20 11:17:22 [tsuru]:", "blue", "", "") + " app lost successfully created\n"
+	expected := cmd.Colorfy("2012-06-20 11:17:22 -0300 [tsuru]:", "blue", "", "") + " creating app lost\n"
+	expected = expected + cmd.Colorfy("2012-06-20 11:17:22 -0300 [tsuru]:", "blue", "", "") + " app lost successfully created\n"
 	context := cmd.Context{
 		Stdout: &stdout,
 		Stderr: &stderr,
@@ -147,12 +173,9 @@ func (s *S) TestAppLogBySource(c *gocheck.C) {
 	fake := &FakeGuesser{name: "hitthelights"}
 	command := AppLog{GuessingCommand: GuessingCommand{G: fake}}
 	command.Flags().Parse(true, []string{"--source", "mysource"})
-	trans := &conditionalTransport{
-		transport{
-			msg:    result,
-			status: http.StatusOK,
-		},
-		func(req *http.Request) bool {
+	trans := &testing.ConditionalTransport{
+		Transport: testing.Transport{Message: result, Status: http.StatusOK},
+		CondFunc: func(req *http.Request) bool {
 			return req.URL.Query().Get("source") == "mysource"
 		},
 	}
@@ -167,8 +190,8 @@ func (s *S) TestAppLogBySource(c *gocheck.C) {
 func (s *S) TestAppLogWithLines(c *gocheck.C) {
 	var stdout, stderr bytes.Buffer
 	result := `[{"Source":"tsuru","Date":"2012-06-20T11:17:22.75-03:00","Message":"creating app lost"},{"Source":"tsuru","Date":"2012-06-20T11:17:22.753-03:00","Message":"app lost successfully created"}]`
-	expected := cmd.Colorfy("2012-06-20 11:17:22 [tsuru]:", "blue", "", "") + " creating app lost\n"
-	expected = expected + cmd.Colorfy("2012-06-20 11:17:22 [tsuru]:", "blue", "", "") + " app lost successfully created\n"
+	expected := cmd.Colorfy("2012-06-20 11:17:22 -0300 [tsuru]:", "blue", "", "") + " creating app lost\n"
+	expected = expected + cmd.Colorfy("2012-06-20 11:17:22 -0300 [tsuru]:", "blue", "", "") + " app lost successfully created\n"
 	context := cmd.Context{
 		Stdout: &stdout,
 		Stderr: &stderr,
@@ -176,12 +199,9 @@ func (s *S) TestAppLogWithLines(c *gocheck.C) {
 	fake := &FakeGuesser{name: "hitthelights"}
 	command := AppLog{GuessingCommand: GuessingCommand{G: fake}}
 	command.Flags().Parse(true, []string{"--lines", "12"})
-	trans := &conditionalTransport{
-		transport{
-			msg:    result,
-			status: http.StatusOK,
-		},
-		func(req *http.Request) bool {
+	trans := &testing.ConditionalTransport{
+		Transport: testing.Transport{Message: result, Status: http.StatusOK},
+		CondFunc: func(req *http.Request) bool {
 			return req.URL.Query().Get("lines") == "12"
 		},
 	}
@@ -196,8 +216,8 @@ func (s *S) TestAppLogWithLines(c *gocheck.C) {
 func (s *S) TestAppLogWithFollow(c *gocheck.C) {
 	var stdout, stderr bytes.Buffer
 	result := `[{"Source":"tsuru","Date":"2012-06-20T11:17:22.75-03:00","Message":"creating app lost"},{"Source":"tsuru","Date":"2012-06-20T11:17:22.753-03:00","Message":"app lost successfully created"}]`
-	expected := cmd.Colorfy("2012-06-20 11:17:22 [tsuru]:", "blue", "", "") + " creating app lost\n"
-	expected = expected + cmd.Colorfy("2012-06-20 11:17:22 [tsuru]:", "blue", "", "") + " app lost successfully created\n"
+	expected := cmd.Colorfy("2012-06-20 11:17:22 -0300 [tsuru]:", "blue", "", "") + " creating app lost\n"
+	expected = expected + cmd.Colorfy("2012-06-20 11:17:22 -0300 [tsuru]:", "blue", "", "") + " app lost successfully created\n"
 	context := cmd.Context{
 		Stdout: &stdout,
 		Stderr: &stderr,
@@ -205,12 +225,9 @@ func (s *S) TestAppLogWithFollow(c *gocheck.C) {
 	fake := &FakeGuesser{name: "hitthelights"}
 	command := AppLog{GuessingCommand: GuessingCommand{G: fake}}
 	command.Flags().Parse(true, []string{"--lines", "12", "-f"})
-	trans := &conditionalTransport{
-		transport{
-			msg:    result,
-			status: http.StatusOK,
-		},
-		func(req *http.Request) bool {
+	trans := &testing.ConditionalTransport{
+		Transport: testing.Transport{Message: result, Status: http.StatusOK},
+		CondFunc: func(req *http.Request) bool {
 			return req.URL.Query().Get("lines") == "12" && req.URL.Query().Get("follow") == "1"
 		},
 	}

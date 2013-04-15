@@ -8,6 +8,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"github.com/globocom/tsuru/cmd"
+	"github.com/globocom/tsuru/testing"
 	"io/ioutil"
 	"launchpad.net/gocheck"
 	"net/http"
@@ -34,7 +35,7 @@ func (s *S) TestEnvGetRun(c *gocheck.C) {
 		Stdout: &stdout,
 		Stderr: &stderr,
 	}
-	client := cmd.NewClient(&http.Client{Transport: &transport{msg: jsonResult, status: http.StatusOK}}, nil, manager)
+	client := cmd.NewClient(&http.Client{Transport: &testing.Transport{Message: jsonResult, Status: http.StatusOK}}, nil, manager)
 	command := EnvGet{}
 	command.Flags().Parse(true, []string{"-a", "someapp"})
 	err := command.Run(&context, client)
@@ -52,12 +53,9 @@ func (s *S) TestEnvGetRunWithMultipleParams(c *gocheck.C) {
 		Stdout: &stdout,
 		Stderr: &stderr,
 	}
-	trans := &conditionalTransport{
-		transport{
-			msg:    jsonResult,
-			status: http.StatusOK,
-		},
-		func(req *http.Request) bool {
+	trans := &testing.ConditionalTransport{
+		Transport: testing.Transport{Message: jsonResult, Status: http.StatusOK},
+		CondFunc: func(req *http.Request) bool {
 			want := `["DATABASE_HOST","DATABASE_USER"]` + "\n"
 			defer req.Body.Close()
 			got, err := ioutil.ReadAll(req.Body)
@@ -83,7 +81,7 @@ func (s *S) TestEnvGetAlwaysPrintInAlphabeticalOrder(c *gocheck.C) {
 		Stdout: &stdout,
 		Stderr: &stderr,
 	}
-	client := cmd.NewClient(&http.Client{Transport: &transport{msg: jsonResult, status: http.StatusOK}}, nil, manager)
+	client := cmd.NewClient(&http.Client{Transport: &testing.Transport{Message: jsonResult, Status: http.StatusOK}}, nil, manager)
 	command := EnvGet{}
 	command.Flags().Parse(true, []string{"-a", "someapp"})
 	err := command.Run(&context, client)
@@ -101,12 +99,9 @@ func (s *S) TestEnvGetWithoutTheFlag(c *gocheck.C) {
 		Stdout: &stdout,
 		Stderr: &stderr,
 	}
-	trans := &conditionalTransport{
-		transport{
-			msg:    jsonResult,
-			status: http.StatusOK,
-		},
-		func(req *http.Request) bool {
+	trans := &testing.ConditionalTransport{
+		Transport: testing.Transport{Message: jsonResult, Status: http.StatusOK},
+		CondFunc: func(req *http.Request) bool {
 			return req.URL.Path == "/apps/seek/env" && req.Method == "GET"
 		},
 	}
@@ -137,12 +132,9 @@ func (s *S) TestEnvSetRun(c *gocheck.C) {
 		Stdout: &stdout,
 		Stderr: &stderr,
 	}
-	trans := &conditionalTransport{
-		transport{
-			msg:    result,
-			status: http.StatusOK,
-		},
-		func(req *http.Request) bool {
+	trans := &testing.ConditionalTransport{
+		Transport: testing.Transport{Message: result, Status: http.StatusOK},
+		CondFunc: func(req *http.Request) bool {
 			want := `{"DATABASE_HOST":"somehost"}` + "\n"
 			defer req.Body.Close()
 			got, err := ioutil.ReadAll(req.Body)
@@ -166,7 +158,7 @@ func (s *S) TestEnvSetRunWithMultipleParams(c *gocheck.C) {
 		Stdout: &stdout,
 		Stderr: &stderr,
 	}
-	client := cmd.NewClient(&http.Client{Transport: &transport{msg: result, status: http.StatusOK}}, nil, manager)
+	client := cmd.NewClient(&http.Client{Transport: &testing.Transport{Message: result, Status: http.StatusOK}}, nil, manager)
 	command := EnvSet{}
 	command.Flags().Parse(true, []string{"-a", "someapp"})
 	err := command.Run(&context, client)
@@ -186,12 +178,9 @@ func (s *S) TestEnvSetValues(c *gocheck.C) {
 		Stdout: &stdout,
 		Stderr: &stderr,
 	}
-	trans := &conditionalTransport{
-		transport{
-			msg:    result,
-			status: http.StatusOK,
-		},
-		func(req *http.Request) bool {
+	trans := &testing.ConditionalTransport{
+		Transport: testing.Transport{Message: result, Status: http.StatusOK},
+		CondFunc: func(req *http.Request) bool {
 			want := map[string]string{
 				"DATABASE_HOST":     "some host",
 				"DATABASE_USER":     "root",
@@ -221,12 +210,9 @@ func (s *S) TestEnvSetWithoutFlag(c *gocheck.C) {
 		Stdout: &stdout,
 		Stderr: &stderr,
 	}
-	trans := &conditionalTransport{
-		transport{
-			msg:    result,
-			status: http.StatusOK,
-		},
-		func(req *http.Request) bool {
+	trans := &testing.ConditionalTransport{
+		Transport: testing.Transport{Message: result, Status: http.StatusOK},
+		CondFunc: func(req *http.Request) bool {
 			return req.URL.Path == "/apps/otherapp/env" && req.Method == "POST"
 		},
 	}
@@ -271,12 +257,9 @@ func (s *S) TestEnvUnsetRun(c *gocheck.C) {
 		Stdout: &stdout,
 		Stderr: &stderr,
 	}
-	trans := &conditionalTransport{
-		transport{
-			msg:    result,
-			status: http.StatusOK,
-		},
-		func(req *http.Request) bool {
+	trans := &testing.ConditionalTransport{
+		Transport: testing.Transport{Message: result, Status: http.StatusOK},
+		CondFunc: func(req *http.Request) bool {
 			want := `["DATABASE_HOST"]` + "\n"
 			defer req.Body.Close()
 			got, err := ioutil.ReadAll(req.Body)
@@ -299,12 +282,9 @@ func (s *S) TestEnvUnsetWithoutFlag(c *gocheck.C) {
 		Stdout: &stdout,
 		Stderr: &stderr,
 	}
-	trans := &conditionalTransport{
-		transport{
-			msg:    result,
-			status: http.StatusOK,
-		},
-		func(req *http.Request) bool {
+	trans := &testing.ConditionalTransport{
+		Transport: testing.Transport{Message: result, Status: http.StatusOK},
+		CondFunc: func(req *http.Request) bool {
 			return req.URL.Path == "/apps/otherapp/env" && req.Method == "DELETE"
 		},
 	}
@@ -317,7 +297,7 @@ func (s *S) TestEnvUnsetWithoutFlag(c *gocheck.C) {
 
 func (s *S) TestRequestEnvUrl(c *gocheck.C) {
 	result := "DATABASE_HOST=somehost"
-	client := cmd.NewClient(&http.Client{Transport: &transport{msg: result, status: http.StatusOK}}, nil, manager)
+	client := cmd.NewClient(&http.Client{Transport: &testing.Transport{Message: result, Status: http.StatusOK}}, nil, manager)
 	args := []string{"DATABASE_HOST"}
 	g := GuessingCommand{G: &FakeGuesser{name: "someapp"}, appName: "something"}
 	b, err := requestEnvUrl("GET", g, args, client)

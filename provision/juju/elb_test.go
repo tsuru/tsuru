@@ -63,7 +63,8 @@ func (s *ELBSuite) TearDownSuite(c *gocheck.C) {
 
 func (s *ELBSuite) TestGetCollection(c *gocheck.C) {
 	manager := ELBManager{}
-	coll := manager.collection()
+	conn, coll := manager.collection()
+	defer conn.Close()
 	other := s.conn.Collection(s.cName)
 	c.Assert(coll.FullName, gocheck.Equals, other.FullName)
 }
@@ -81,7 +82,9 @@ func (s *ELBSuite) TestCreateELB(c *gocheck.C) {
 	err := manager.Create(app)
 	c.Assert(err, gocheck.IsNil)
 	defer s.client.DeleteLoadBalancer(app.GetName())
-	defer manager.collection().Remove(bson.M{"name": app.GetName()})
+	conn, coll := manager.collection()
+	defer conn.Close()
+	defer coll.Remove(bson.M{"name": app.GetName()})
 	resp, err := s.client.DescribeLoadBalancers("together")
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(resp.LoadBalancerDescriptions, gocheck.HasLen, 1)
@@ -116,7 +119,9 @@ func (s *ELBSuite) TestCreateELBUsingVPC(c *gocheck.C) {
 	err := manager.Create(app)
 	c.Assert(err, gocheck.IsNil)
 	defer s.client.DeleteLoadBalancer(app.GetName())
-	defer manager.collection().Remove(bson.M{"name": app.GetName()})
+	conn, coll := manager.collection()
+	defer conn.Close()
+	defer coll.Remove(bson.M{"name": app.GetName()})
 	resp, err := s.client.DescribeLoadBalancers(app.GetName())
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(resp.LoadBalancerDescriptions, gocheck.HasLen, 1)
@@ -133,14 +138,16 @@ func (s *ELBSuite) TestDestroyELB(c *gocheck.C) {
 	manager.e = s.client
 	err := manager.Create(app)
 	c.Assert(err, gocheck.IsNil)
-	defer s.client.DeleteLoadBalancer(app.GetName())                 // sanity
-	defer manager.collection().Remove(bson.M{"name": app.GetName()}) // sanity
+	defer s.client.DeleteLoadBalancer(app.GetName()) // sanity
+	conn, coll := manager.collection()
+	defer conn.Close()
+	defer coll.Remove(bson.M{"name": app.GetName()}) // sanity
 	err = manager.Destroy(app)
 	c.Assert(err, gocheck.IsNil)
 	_, err = s.client.DescribeLoadBalancers(app.GetName())
 	c.Assert(err, gocheck.NotNil)
 	c.Assert(err, gocheck.ErrorMatches, `^.*\(LoadBalancerNotFound\)$`)
-	n, err := manager.collection().Find(bson.M{"name": app.GetName()}).Count()
+	n, err := coll.Find(bson.M{"name": app.GetName()}).Count()
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(n, gocheck.Equals, 0)
 }
@@ -201,7 +208,9 @@ func (s *ELBSuite) TestAddr(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	defer manager.Destroy(app)
 	var lb loadBalancer
-	err = manager.collection().Find(bson.M{"name": app.GetName()}).One(&lb)
+	conn, coll := manager.collection()
+	defer conn.Close()
+	err = coll.Find(bson.M{"name": app.GetName()}).One(&lb)
 	c.Assert(err, gocheck.IsNil)
 	addr, err := manager.Addr(app)
 	c.Assert(err, gocheck.IsNil)

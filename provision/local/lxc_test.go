@@ -22,7 +22,7 @@ func (s *S) TestLXCCreate(c *gocheck.C) {
 	err = container.create()
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(commandmocker.Ran(tmpdir), gocheck.Equals, true)
-	expected := "lxc-create -t ubuntu -n container -- -S somepath"
+	expected := "lxc-create -t ubuntu-cloud -n container -- -S somepath"
 	c.Assert(commandmocker.Output(tmpdir), gocheck.Equals, expected)
 }
 

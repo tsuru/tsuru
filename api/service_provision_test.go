@@ -22,9 +22,10 @@ import (
 )
 
 type ProvisionSuite struct {
-	conn *db.Storage
-	team *auth.Team
-	user *auth.User
+	conn  *db.Storage
+	team  *auth.Team
+	user  *auth.User
+	token *auth.Token
 }
 
 var _ = gocheck.Suite(&ProvisionSuite{})
@@ -56,11 +57,13 @@ func (s *ProvisionSuite) makeRequestToServicesHandler(c *gocheck.C) (*httptest.R
 }
 
 func (s *ProvisionSuite) createUserAndTeam(c *gocheck.C) {
-	s.user = &auth.User{Email: "whydidifall@thewho.com", Password: "123"}
+	s.user = &auth.User{Email: "whydidifall@thewho.com", Password: "1234567"}
 	err := s.user.Create()
 	c.Assert(err, gocheck.IsNil)
 	s.team = &auth.Team{Name: "tsuruteam", Users: []string{s.user.Email}}
 	err = s.conn.Teams().Insert(s.team)
+	c.Assert(err, gocheck.IsNil)
+	s.token, err = s.user.CreateToken("1234567")
 	c.Assert(err, gocheck.IsNil)
 }
 
@@ -72,7 +75,7 @@ func (s *ProvisionSuite) TestServicesHandlerShoudGetAllServicesFromUsersTeam(c *
 	si.Create()
 	defer service.DeleteInstance(&si)
 	recorder, request := s.makeRequestToServicesHandler(c)
-	err := ServicesHandler(recorder, request, s.user)
+	err := ServicesHandler(recorder, request, s.token)
 	c.Assert(err, gocheck.IsNil)
 	b, err := ioutil.ReadAll(recorder.Body)
 	c.Assert(err, gocheck.IsNil)
@@ -99,7 +102,7 @@ endpoint:
 
 func (s *ProvisionSuite) TestCreateHandlerSavesNameFromManifestId(c *gocheck.C) {
 	recorder, request := makeRequestToCreateHandler(c)
-	err := CreateHandler(recorder, request, s.user)
+	err := CreateHandler(recorder, request, s.token)
 	c.Assert(err, gocheck.IsNil)
 	query := bson.M{"_id": "some_service"}
 	var rService service.Service
@@ -110,7 +113,7 @@ func (s *ProvisionSuite) TestCreateHandlerSavesNameFromManifestId(c *gocheck.C) 
 
 func (s *ProvisionSuite) TestCreateHandlerSavesEndpointServiceProperty(c *gocheck.C) {
 	recorder, request := makeRequestToCreateHandler(c)
-	err := CreateHandler(recorder, request, s.user)
+	err := CreateHandler(recorder, request, s.token)
 	c.Assert(err, gocheck.IsNil)
 	query := bson.M{"_id": "some_service"}
 	var rService service.Service
@@ -129,7 +132,7 @@ func (s *ProvisionSuite) TestCreateHandlerWithContentOfRealYaml(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	request.Header.Set("Content-Type", "application/json")
 	recorder := httptest.NewRecorder()
-	err = CreateHandler(recorder, request, s.user)
+	err = CreateHandler(recorder, request, s.token)
 	c.Assert(err, gocheck.IsNil)
 	query := bson.M{"_id": "mysqlapi"}
 	var rService service.Service
@@ -141,17 +144,17 @@ func (s *ProvisionSuite) TestCreateHandlerWithContentOfRealYaml(c *gocheck.C) {
 
 func (s *ProvisionSuite) TestCreateHandlerShouldReturnErrorWhenNameExists(c *gocheck.C) {
 	recorder, request := makeRequestToCreateHandler(c)
-	err := CreateHandler(recorder, request, s.user)
+	err := CreateHandler(recorder, request, s.token)
 	c.Assert(err, gocheck.IsNil)
 	recorder, request = makeRequestToCreateHandler(c)
-	err = CreateHandler(recorder, request, s.user)
+	err = CreateHandler(recorder, request, s.token)
 	c.Assert(err, gocheck.NotNil)
 	c.Assert(err, gocheck.ErrorMatches, "^Service with name some_service already exists.$")
 }
 
 func (s *ProvisionSuite) TestCreateHandlerSavesOwnerTeamsFromUserWhoCreated(c *gocheck.C) {
 	recorder, request := makeRequestToCreateHandler(c)
-	err := CreateHandler(recorder, request, s.user)
+	err := CreateHandler(recorder, request, s.token)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(recorder.Body.String(), gocheck.Equals, "success")
 	c.Assert(recorder.Code, gocheck.Equals, http.StatusOK)
@@ -164,11 +167,15 @@ func (s *ProvisionSuite) TestCreateHandlerSavesOwnerTeamsFromUserWhoCreated(c *g
 }
 
 func (s *ProvisionSuite) TestCreateHandlerReturnsForbiddenIfTheUserIsNotMemberOfAnyTeam(c *gocheck.C) {
-	u := &auth.User{Email: "enforce@queensryche.com", Password: "123"}
-	u.Create()
+	u := &auth.User{Email: "enforce@queensryche.com", Password: "123456"}
+	err := u.Create()
+	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Users().RemoveAll(bson.M{"email": u.Email})
+	token, err := u.CreateToken("123456")
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Tokens().Remove(bson.M{"token": token.Token})
 	recorder, request := makeRequestToCreateHandler(c)
-	err := CreateHandler(recorder, request, u)
+	err = CreateHandler(recorder, request, token)
 	c.Assert(err, gocheck.NotNil)
 	e, ok := err.(*errors.Http)
 	c.Assert(ok, gocheck.Equals, true)
@@ -185,7 +192,7 @@ func (s *ProvisionSuite) TestCreateHandlerReturnsBadRequestIfTheServiceDoesNotHa
 	c.Assert(err, gocheck.IsNil)
 	request.Header.Set("Content-Type", "application/json")
 	recorder := httptest.NewRecorder()
-	err = CreateHandler(recorder, request, s.user)
+	err = CreateHandler(recorder, request, s.token)
 	c.Assert(err, gocheck.NotNil)
 	e, ok := err.(*errors.Http)
 	c.Assert(ok, gocheck.Equals, true)
@@ -204,7 +211,7 @@ func (s *ProvisionSuite) TestUpdateHandlerShouldUpdateTheServiceWithDataFromMani
 	request, err := http.NewRequest("PUT", "/services", bytes.NewBuffer(manifest))
 	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
-	err = UpdateHandler(recorder, request, s.user)
+	err = UpdateHandler(recorder, request, s.token)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(recorder.Code, gocheck.Equals, http.StatusNoContent)
 	err = s.conn.Services().Find(bson.M{"_id": service.Name}).One(&service)
@@ -220,7 +227,7 @@ func (s *ProvisionSuite) TestUpdateHandlerReturns404WhenTheServiceDoesNotExist(c
 	request, err := http.NewRequest("PUT", "/services", bytes.NewBuffer(manifest))
 	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
-	err = UpdateHandler(recorder, request, s.user)
+	err = UpdateHandler(recorder, request, s.token)
 	c.Assert(err, gocheck.NotNil)
 	e, ok := err.(*errors.Http)
 	c.Assert(ok, gocheck.Equals, true)
@@ -240,7 +247,7 @@ func (s *ProvisionSuite) TestUpdateHandlerReturns404WhenTheServicesIsDeleted(c *
 	request, err := http.NewRequest("PUT", "/services", bytes.NewBuffer(manifest))
 	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
-	err = UpdateHandler(recorder, request, s.user)
+	err = UpdateHandler(recorder, request, s.token)
 	c.Assert(err, gocheck.NotNil)
 	e, ok := err.(*errors.Http)
 	c.Assert(ok, gocheck.Equals, true)
@@ -259,7 +266,7 @@ func (s *ProvisionSuite) TestUpdateHandlerReturns403WhenTheUserIsNotOwnerOfTheTe
 	request, err := http.NewRequest("PUT", "/services", bytes.NewBuffer(manifest))
 	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
-	err = UpdateHandler(recorder, request, s.user)
+	err = UpdateHandler(recorder, request, s.token)
 	c.Assert(err, gocheck.NotNil)
 	e, ok := err.(*errors.Http)
 	c.Assert(ok, gocheck.Equals, true)
@@ -274,7 +281,7 @@ func (s *ProvisionSuite) TestDeleteHandler(c *gocheck.C) {
 	request, err := http.NewRequest("DELETE", fmt.Sprintf("/services/%s?:name=%s", se.Name, se.Name), nil)
 	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
-	err = DeleteHandler(recorder, request, s.user)
+	err = DeleteHandler(recorder, request, s.token)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(recorder.Code, gocheck.Equals, http.StatusNoContent)
 	query := bson.M{"_id": "Mysql"}
@@ -287,7 +294,7 @@ func (s *ProvisionSuite) TestDeleteHandlerReturns404WhenTheServiceDoesNotExist(c
 	request, err := http.NewRequest("DELETE", fmt.Sprintf("/services/%s?:name=%s", "mongodb", "mongodb"), nil)
 	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
-	err = DeleteHandler(recorder, request, s.user)
+	err = DeleteHandler(recorder, request, s.token)
 	c.Assert(err, gocheck.NotNil)
 	e, ok := err.(*errors.Http)
 	c.Assert(ok, gocheck.Equals, true)
@@ -303,7 +310,7 @@ func (s *ProvisionSuite) TestDeleteHandlerReturns404WhenTheServicesIsDeleted(c *
 	request, err := http.NewRequest("DELETE", fmt.Sprintf("/services/%s?:name=%s", se.Name, se.Name), nil)
 	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
-	err = DeleteHandler(recorder, request, s.user)
+	err = DeleteHandler(recorder, request, s.token)
 	c.Assert(err, gocheck.NotNil)
 	e, ok := err.(*errors.Http)
 	c.Assert(ok, gocheck.Equals, true)
@@ -318,7 +325,7 @@ func (s *ProvisionSuite) TestDeleteHandlerReturns403WhenTheUserIsNotOwnerOfTheTe
 	request, err := http.NewRequest("DELETE", fmt.Sprintf("/services/%s?:name=%s", se.Name, se.Name), nil)
 	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
-	err = DeleteHandler(recorder, request, s.user)
+	err = DeleteHandler(recorder, request, s.token)
 	c.Assert(err, gocheck.NotNil)
 	e, ok := err.(*errors.Http)
 	c.Assert(ok, gocheck.Equals, true)
@@ -338,7 +345,7 @@ func (s *ProvisionSuite) TestDeleteHandlerReturns403WhenTheServiceHasInstance(c 
 	request, err := http.NewRequest("DELETE", fmt.Sprintf("/services/%s?:name=%s", se.Name, se.Name), nil)
 	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
-	err = DeleteHandler(recorder, request, s.user)
+	err = DeleteHandler(recorder, request, s.token)
 	c.Assert(err, gocheck.NotNil)
 	e, ok := err.(*errors.Http)
 	c.Assert(ok, gocheck.Equals, true)
@@ -358,7 +365,7 @@ func (s *ProvisionSuite) TestGrantServiceAccessToTeam(c *gocheck.C) {
 	request, err := http.NewRequest("PUT", url, nil)
 	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
-	err = GrantServiceAccessToTeamHandler(recorder, request, s.user)
+	err = GrantServiceAccessToTeamHandler(recorder, request, s.token)
 	c.Assert(err, gocheck.IsNil)
 	err = se.Get()
 	c.Assert(err, gocheck.IsNil)
@@ -370,7 +377,7 @@ func (s *ProvisionSuite) TestGrantAccesToTeamReturnNotFoundIfTheServiceDoesNotEx
 	request, err := http.NewRequest("PUT", url, nil)
 	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
-	err = GrantServiceAccessToTeamHandler(recorder, request, s.user)
+	err = GrantServiceAccessToTeamHandler(recorder, request, s.token)
 	c.Assert(err, gocheck.NotNil)
 	e, ok := err.(*errors.Http)
 	c.Assert(ok, gocheck.Equals, true)
@@ -387,7 +394,7 @@ func (s *ProvisionSuite) TestGrantServiceAccessToTeamReturnForbiddenIfTheGivenUs
 	request, err := http.NewRequest("PUT", url, nil)
 	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
-	err = GrantServiceAccessToTeamHandler(recorder, request, s.user)
+	err = GrantServiceAccessToTeamHandler(recorder, request, s.token)
 	c.Assert(err, gocheck.NotNil)
 	e, ok := err.(*errors.Http)
 	c.Assert(ok, gocheck.Equals, true)
@@ -404,7 +411,7 @@ func (s *ProvisionSuite) TestGrantServiceAccessToTeamReturnNotFoundIfTheTeamDoes
 	request, err := http.NewRequest("PUT", url, nil)
 	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
-	err = GrantServiceAccessToTeamHandler(recorder, request, s.user)
+	err = GrantServiceAccessToTeamHandler(recorder, request, s.token)
 	c.Assert(err, gocheck.NotNil)
 	e, ok := err.(*errors.Http)
 	c.Assert(ok, gocheck.Equals, true)
@@ -421,7 +428,7 @@ func (s *ProvisionSuite) TestGrantServiceAccessToTeamReturnConflictIfTheTeamAlre
 	request, err := http.NewRequest("PUT", url, nil)
 	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
-	err = GrantServiceAccessToTeamHandler(recorder, request, s.user)
+	err = GrantServiceAccessToTeamHandler(recorder, request, s.token)
 	c.Assert(err, gocheck.NotNil)
 	e, ok := err.(*errors.Http)
 	c.Assert(ok, gocheck.Equals, true)
@@ -438,7 +445,7 @@ func (s *ProvisionSuite) TestRevokeServiceAccessFromTeamRemovesTeamFromService(c
 	request, err := http.NewRequest("DELETE", url, nil)
 	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
-	err = RevokeServiceAccessFromTeamHandler(recorder, request, s.user)
+	err = RevokeServiceAccessFromTeamHandler(recorder, request, s.token)
 	c.Assert(err, gocheck.IsNil)
 	err = se.Get()
 	c.Assert(err, gocheck.IsNil)
@@ -450,7 +457,7 @@ func (s *ProvisionSuite) TestRevokeServiceAccessFromTeamReturnsNotFoundIfTheServ
 	request, err := http.NewRequest("DELETE", url, nil)
 	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
-	err = RevokeServiceAccessFromTeamHandler(recorder, request, s.user)
+	err = RevokeServiceAccessFromTeamHandler(recorder, request, s.token)
 	c.Assert(err, gocheck.NotNil)
 	e, ok := err.(*errors.Http)
 	c.Assert(ok, gocheck.Equals, true)
@@ -468,7 +475,7 @@ func (s *ProvisionSuite) TestRevokeAccesFromTeamReturnsForbiddenIfTheGivenUserDo
 	request, err := http.NewRequest("DELETE", url, nil)
 	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
-	err = RevokeServiceAccessFromTeamHandler(recorder, request, s.user)
+	err = RevokeServiceAccessFromTeamHandler(recorder, request, s.token)
 	c.Assert(err, gocheck.NotNil)
 	e, ok := err.(*errors.Http)
 	c.Assert(ok, gocheck.Equals, true)
@@ -485,7 +492,7 @@ func (s *ProvisionSuite) TestRevokeServiceAccessFromTeamReturnsNotFoundIfTheTeam
 	request, err := http.NewRequest("DELETE", url, nil)
 	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
-	err = RevokeServiceAccessFromTeamHandler(recorder, request, s.user)
+	err = RevokeServiceAccessFromTeamHandler(recorder, request, s.token)
 	c.Assert(err, gocheck.NotNil)
 	e, ok := err.(*errors.Http)
 	c.Assert(ok, gocheck.Equals, true)
@@ -502,7 +509,7 @@ func (s *ProvisionSuite) TestRevokeServiceAccessFromTeamReturnsForbiddenIfTheTea
 	request, err := http.NewRequest("DELETE", url, nil)
 	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
-	err = RevokeServiceAccessFromTeamHandler(recorder, request, s.user)
+	err = RevokeServiceAccessFromTeamHandler(recorder, request, s.token)
 	c.Assert(err, gocheck.NotNil)
 	e, ok := err.(*errors.Http)
 	c.Assert(ok, gocheck.Equals, true)
@@ -522,7 +529,7 @@ func (s *ProvisionSuite) TestRevokeServiceAccessFromTeamReturnNotFoundIfTheTeamD
 	request, err := http.NewRequest("DELETE", url, nil)
 	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
-	err = RevokeServiceAccessFromTeamHandler(recorder, request, s.user)
+	err = RevokeServiceAccessFromTeamHandler(recorder, request, s.token)
 	c.Assert(err, gocheck.NotNil)
 	e, ok := err.(*errors.Http)
 	c.Assert(ok, gocheck.Equals, true)
@@ -534,7 +541,7 @@ func (s *ProvisionSuite) TestAddDocHandlerReturns404WhenTheServiceDoesNotExist(c
 	request, err := http.NewRequest("PUT", fmt.Sprintf("/services/%s/doc?:name=%s", "mongodb", "mongodb"), b)
 	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
-	err = AddDocHandler(recorder, request, s.user)
+	err = AddDocHandler(recorder, request, s.token)
 	c.Assert(err, gocheck.NotNil)
 	e, ok := err.(*errors.Http)
 	c.Assert(ok, gocheck.Equals, true)
@@ -550,7 +557,7 @@ func (s *ProvisionSuite) TestAddDocHandler(c *gocheck.C) {
 	request, err := http.NewRequest("PUT", fmt.Sprintf("/services/%s/doc?:name=%s", se.Name, se.Name), b)
 	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
-	err = AddDocHandler(recorder, request, s.user)
+	err = AddDocHandler(recorder, request, s.token)
 	c.Assert(err, gocheck.IsNil)
 	query := bson.M{"_id": "some_service"}
 	var serv service.Service
@@ -567,7 +574,7 @@ func (s *ProvisionSuite) TestAddDocHandlerReturns403WhenTheUserDoesNotHaveAccess
 	request, err := http.NewRequest("PUT", fmt.Sprintf("/services/%s/doc?:name=%s", se.Name, se.Name), b)
 	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
-	err = AddDocHandler(recorder, request, s.user)
+	err = AddDocHandler(recorder, request, s.token)
 	c.Assert(err, gocheck.NotNil)
 	e, ok := err.(*errors.Http)
 	c.Assert(ok, gocheck.Equals, true)
@@ -582,7 +589,7 @@ func (s *ProvisionSuite) TestGetDocHandler(c *gocheck.C) {
 	request, err := http.NewRequest("GET", fmt.Sprintf("/services/%s/doc?:name=%s", se.Name, se.Name), nil)
 	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
-	err = GetDocHandler(recorder, request, s.user)
+	err = GetDocHandler(recorder, request, s.token)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(recorder.Body.String(), gocheck.Equals, "some doc")
 }
@@ -594,7 +601,7 @@ func (s *ProvisionSuite) TestGetDocHandlerReturns403WhenTheUserDoesNotHaveAccess
 	request, err := http.NewRequest("GET", fmt.Sprintf("/services/%s/doc?:name=%s", se.Name, se.Name), nil)
 	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
-	err = GetDocHandler(recorder, request, s.user)
+	err = GetDocHandler(recorder, request, s.token)
 	c.Assert(err, gocheck.NotNil)
 	e, ok := err.(*errors.Http)
 	c.Assert(ok, gocheck.Equals, true)
@@ -606,7 +613,7 @@ func (s *ProvisionSuite) TestGetDocHandlerReturns404WhenTheServiceDoesNotExist(c
 	request, err := http.NewRequest("GET", fmt.Sprintf("/services/%s/doc?:name=%s", "mongodb", "mongodb"), nil)
 	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
-	err = GetDocHandler(recorder, request, s.user)
+	err = GetDocHandler(recorder, request, s.token)
 	c.Assert(err, gocheck.NotNil)
 	e, ok := err.(*errors.Http)
 	c.Assert(ok, gocheck.Equals, true)

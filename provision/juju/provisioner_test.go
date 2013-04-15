@@ -43,7 +43,8 @@ func (s *S) TestELBSupport(c *gocheck.C) {
 
 func (s *S) TestUnitsCollection(c *gocheck.C) {
 	p := JujuProvisioner{}
-	collection := p.unitsCollection()
+	conn, collection := p.unitsCollection()
+	defer conn.Close()
 	c.Assert(collection.Name, gocheck.Equals, s.collName)
 }
 
@@ -126,7 +127,9 @@ func (s *S) TestDestroy(c *gocheck.C) {
 	defer commandmocker.Remove(tmpdir)
 	app := testing.NewFakeApp("cribcaged", "python", 3)
 	p := JujuProvisioner{}
-	err = p.unitsCollection().Insert(
+	conn, collection := p.unitsCollection()
+	defer conn.Close()
+	err = collection.Insert(
 		instance{UnitName: "cribcaged/0"},
 		instance{UnitName: "cribcaged/1"},
 		instance{UnitName: "cribcaged/2"},
@@ -150,7 +153,7 @@ func (s *S) TestDestroy(c *gocheck.C) {
 			time.Sleep(1e3)
 		}
 	}()
-	n, err := p.unitsCollection().Find(bson.M{
+	n, err := collection.Find(bson.M{
 		"_id": bson.M{
 			"$in": []string{"cribcaged/0", "cribcaged/1", "cribcaged/2"},
 		},
@@ -232,7 +235,9 @@ func (s *S) TestRemoveUnit(c *gocheck.C) {
 	defer commandmocker.Remove(tmpdir)
 	app := testing.NewFakeApp("two", "rush", 3)
 	p := JujuProvisioner{}
-	err = p.unitsCollection().Insert(instance{UnitName: "two/2", InstanceId: "i-00000439"})
+	conn, collection := p.unitsCollection()
+	defer conn.Close()
+	err = collection.Insert(instance{UnitName: "two/2", InstanceId: "i-00000439"})
 	c.Assert(err, gocheck.IsNil)
 	err = p.RemoveUnit(app, "two/2")
 	c.Assert(err, gocheck.IsNil)
@@ -247,7 +252,7 @@ func (s *S) TestRemoveUnit(c *gocheck.C) {
 			time.Sleep(1e3)
 		}
 	}()
-	n, err := p.unitsCollection().Find(bson.M{"_id": "two/2"}).Count()
+	n, err := collection.Find(bson.M{"_id": "two/2"}).Count()
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(n, gocheck.Equals, 0)
 	select {
@@ -382,9 +387,11 @@ func (s *S) TestSaveBootstrapMachine(c *gocheck.C) {
 		InstanceState: "state",
 	}
 	p.saveBootstrapMachine(m)
-	defer p.bootstrapCollection().Remove(m)
+	conn, collection := p.bootstrapCollection()
+	defer conn.Close()
+	defer collection.Remove(m)
 	var mach machine
-	p.bootstrapCollection().Find(nil).One(&mach)
+	collection.Find(nil).One(&mach)
 	c.Assert(mach, gocheck.DeepEquals, m)
 }
 
@@ -397,7 +404,9 @@ func (s *S) TestCollectStatusShouldNotAddBootstraTwice(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	_, err = p.CollectStatus()
 	c.Assert(err, gocheck.IsNil)
-	l, err := p.bootstrapCollection().Find(nil).Count()
+	conn, collection := p.bootstrapCollection()
+	defer conn.Close()
+	l, err := collection.Find(nil).Count()
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(l, gocheck.Equals, 1)
 }
@@ -407,9 +416,11 @@ func (s *S) TestCollectStatus(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	defer commandmocker.Remove(tmpdir)
 	p := JujuProvisioner{}
-	err = p.unitsCollection().Insert(instance{UnitName: "as_i_rise/0", InstanceId: "i-00000439"})
+	conn, collection := p.unitsCollection()
+	defer conn.Close()
+	err = collection.Insert(instance{UnitName: "as_i_rise/0", InstanceId: "i-00000439"})
 	c.Assert(err, gocheck.IsNil)
-	defer p.unitsCollection().Remove(bson.M{"_id": bson.M{"$in": []string{"as_i_rise/0", "the_infanta/0"}}})
+	defer collection.Remove(bson.M{"_id": bson.M{"$in": []string{"as_i_rise/0", "the_infanta/0"}}})
 	expected := []provision.Unit{
 		{
 			Name:       "as_i_rise/0",
@@ -442,7 +453,7 @@ func (s *S) TestCollectStatus(c *gocheck.C) {
 	done := make(chan int8)
 	go func() {
 		for {
-			ct, err := p.unitsCollection().Find(nil).Count()
+			ct, err := collection.Find(nil).Count()
 			c.Assert(err, gocheck.IsNil)
 			if ct == 2 {
 				done <- 1
@@ -456,7 +467,7 @@ func (s *S) TestCollectStatus(c *gocheck.C) {
 		c.Fatal("Did not save the unit after 5 seconds.")
 	}
 	var instances []instance
-	err = p.unitsCollection().Find(nil).Sort("_id").All(&instances)
+	err = collection.Find(nil).Sort("_id").All(&instances)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(instances, gocheck.HasLen, 2)
 	c.Assert(instances[0].UnitName, gocheck.Equals, "as_i_rise/0")
@@ -464,7 +475,7 @@ func (s *S) TestCollectStatus(c *gocheck.C) {
 	c.Assert(instances[1].UnitName, gocheck.Equals, "the_infanta/0")
 	c.Assert(instances[1].InstanceId, gocheck.Equals, "i-0000043e")
 	var b machine
-	err = p.bootstrapCollection().Find(nil).One(&b)
+	err = collection.Find(nil).One(&b)
 	c.Assert(err, gocheck.IsNil)
 }
 
@@ -504,15 +515,17 @@ func (s *S) TestCollectStatusDirtyOutput(c *gocheck.C) {
 	c.Assert(commandmocker.Ran(tmpdir), gocheck.Equals, true)
 	var wg sync.WaitGroup
 	wg.Add(1)
+	conn, collection := p.unitsCollection()
+	defer conn.Close()
 	go func() {
 		q := bson.M{"_id": bson.M{"$in": []string{"as_i_rise/0", "the_infanta/1"}}}
 		for {
-			if n, _ := p.unitsCollection().Find(q).Count(); n == 2 {
+			if n, _ := collection.Find(q).Count(); n == 2 {
 				break
 			}
 			time.Sleep(1e3)
 		}
-		p.unitsCollection().Remove(q)
+		collection.Remove(q)
 		wg.Done()
 	}()
 	wg.Wait()
@@ -523,16 +536,18 @@ func (s *S) TestCollectStatusIDChangeDisabledELB(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	defer commandmocker.Remove(tmpdir)
 	p := JujuProvisioner{}
-	err = p.unitsCollection().Insert(instance{UnitName: "as_i_rise/0", InstanceId: "i-00000239"})
+	conn, collection := p.unitsCollection()
+	defer conn.Close()
+	err = collection.Insert(instance{UnitName: "as_i_rise/0", InstanceId: "i-00000239"})
 	c.Assert(err, gocheck.IsNil)
-	defer p.unitsCollection().Remove(bson.M{"_id": bson.M{"$in": []string{"as_i_rise/0", "the_infanta/0"}}})
+	defer collection.Remove(bson.M{"_id": bson.M{"$in": []string{"as_i_rise/0", "the_infanta/0"}}})
 	_, err = p.CollectStatus()
 	c.Assert(err, gocheck.IsNil)
 	done := make(chan int8)
 	go func() {
 		for {
 			q := bson.M{"_id": "as_i_rise/0", "instanceid": "i-00000439"}
-			ct, err := p.unitsCollection().Find(q).Count()
+			ct, err := collection.Find(q).Count()
 			c.Assert(err, gocheck.IsNil)
 			if ct == 1 {
 				done <- 1
@@ -553,16 +568,18 @@ func (s *S) TestCollectStatusIDChangeFromPending(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	defer commandmocker.Remove(tmpdir)
 	p := JujuProvisioner{}
-	err = p.unitsCollection().Insert(instance{UnitName: "as_i_rise/0", InstanceId: "pending"})
+	conn, collection := p.unitsCollection()
+	defer conn.Close()
+	err = collection.Insert(instance{UnitName: "as_i_rise/0", InstanceId: "pending"})
 	c.Assert(err, gocheck.IsNil)
-	defer p.unitsCollection().Remove(bson.M{"_id": bson.M{"$in": []string{"as_i_rise/0", "the_infanta/0"}}})
+	defer collection.Remove(bson.M{"_id": bson.M{"$in": []string{"as_i_rise/0", "the_infanta/0"}}})
 	_, err = p.CollectStatus()
 	c.Assert(err, gocheck.IsNil)
 	done := make(chan int8)
 	go func() {
 		for {
 			q := bson.M{"_id": "as_i_rise/0", "instanceid": "i-00000439"}
-			ct, err := p.unitsCollection().Find(q).Count()
+			ct, err := collection.Find(q).Count()
 			c.Assert(err, gocheck.IsNil)
 			if ct == 1 {
 				done <- 1
@@ -821,11 +838,13 @@ func (s *ELBSuite) TestCollectStatusWithELBAndIDChange(c *gocheck.C) {
 	defer s.server.RemoveInstance(id2)
 	id3 := s.server.NewInstance()
 	defer s.server.RemoveInstance(id3)
-	err = p.unitsCollection().Insert(instance{UnitName: "symfonia/0", InstanceId: id3})
+	conn, collection := p.unitsCollection()
+	defer conn.Close()
+	err = collection.Insert(instance{UnitName: "symfonia/0", InstanceId: id3})
 	c.Assert(err, gocheck.IsNil)
 	err = lb.Register(a, provision.Unit{InstanceId: id3}, provision.Unit{InstanceId: id2})
 	q := bson.M{"_id": bson.M{"$in": []string{"symfonia/0", "symfonia/1", "symfonia/2", "raise/0"}}}
-	defer p.unitsCollection().Remove(q)
+	defer collection.Remove(q)
 	output := strings.Replace(simpleCollectOutput, "i-00004444", id1, 1)
 	output = strings.Replace(output, "i-00004445", id2, 1)
 	tmpdir, err := commandmocker.Add("juju", output)
@@ -837,7 +856,7 @@ func (s *ELBSuite) TestCollectStatusWithELBAndIDChange(c *gocheck.C) {
 	go func() {
 		for {
 			q := bson.M{"_id": "symfonia/0", "instanceid": id1}
-			ct, err := p.unitsCollection().Find(q).Count()
+			ct, err := collection.Find(q).Count()
 			c.Assert(err, gocheck.IsNil)
 			if ct == 1 {
 				done <- 1

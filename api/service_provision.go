@@ -22,7 +22,11 @@ type serviceYaml struct {
 	Endpoint map[string]string
 }
 
-func ServicesHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
+func ServicesHandler(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
+	u, err := t.User()
+	if err != nil {
+		return err
+	}
 	results := servicesAndInstancesByOwner(u)
 	b, err := json.Marshal(results)
 	if err != nil {
@@ -35,7 +39,7 @@ func ServicesHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error
 	return err
 }
 
-func CreateHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
+func CreateHandler(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
 	defer r.Body.Close()
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
@@ -54,6 +58,10 @@ func CreateHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 		return err
 	}
 	defer conn.Close()
+	u, err := t.User()
+	if err != nil {
+		return err
+	}
 	var teams []auth.Team
 	err = conn.Teams().Find(bson.M{"users": u.Email}).All(&teams)
 	if err != nil {
@@ -84,7 +92,7 @@ func CreateHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	return nil
 }
 
-func UpdateHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
+func UpdateHandler(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
 	defer r.Body.Close()
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
@@ -92,6 +100,10 @@ func UpdateHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	}
 	var yaml serviceYaml
 	goyaml.Unmarshal(body, &yaml)
+	u, err := t.User()
+	if err != nil {
+		return err
+	}
 	s, err := getServiceByOwner(yaml.Id, u)
 	if err != nil {
 		return err
@@ -104,7 +116,11 @@ func UpdateHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	return nil
 }
 
-func DeleteHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
+func DeleteHandler(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
+	u, err := t.User()
+	if err != nil {
+		return err
+	}
 	s, err := getServiceByOwner(r.URL.Query().Get(":name"), u)
 	if err != nil {
 		return err
@@ -151,12 +167,16 @@ func getServiceAndTeam(serviceName string, teamName string, u *auth.User) (*serv
 	return service, t, nil
 }
 
-func GrantServiceAccessToTeamHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
-	service, t, err := getServiceAndTeam(r.URL.Query().Get(":service"), r.URL.Query().Get(":team"), u)
+func GrantServiceAccessToTeamHandler(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
+	u, err := t.User()
 	if err != nil {
 		return err
 	}
-	err = service.GrantAccess(t)
+	service, team, err := getServiceAndTeam(r.URL.Query().Get(":service"), r.URL.Query().Get(":team"), u)
+	if err != nil {
+		return err
+	}
+	err = service.GrantAccess(team)
 	if err != nil {
 		return &errors.Http{Code: http.StatusConflict, Message: err.Error()}
 	}
@@ -167,8 +187,12 @@ func GrantServiceAccessToTeamHandler(w http.ResponseWriter, r *http.Request, u *
 	return conn.Services().Update(bson.M{"_id": service.Name}, service)
 }
 
-func RevokeServiceAccessFromTeamHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
-	service, t, err := getServiceAndTeam(r.URL.Query().Get(":service"), r.URL.Query().Get(":team"), u)
+func RevokeServiceAccessFromTeamHandler(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
+	u, err := t.User()
+	if err != nil {
+		return err
+	}
+	service, team, err := getServiceAndTeam(r.URL.Query().Get(":service"), r.URL.Query().Get(":team"), u)
 	if err != nil {
 		return err
 	}
@@ -176,7 +200,7 @@ func RevokeServiceAccessFromTeamHandler(w http.ResponseWriter, r *http.Request, 
 		msg := "You can not revoke the access from this team, because it is the unique team with access to this service, and a service can not be orphaned"
 		return &errors.Http{Code: http.StatusForbidden, Message: msg}
 	}
-	err = service.RevokeAccess(t)
+	err = service.RevokeAccess(team)
 	if err != nil {
 		return &errors.Http{Code: http.StatusNotFound, Message: err.Error()}
 	}
@@ -187,7 +211,11 @@ func RevokeServiceAccessFromTeamHandler(w http.ResponseWriter, r *http.Request, 
 	return conn.Services().Update(bson.M{"_id": service.Name}, service)
 }
 
-func AddDocHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
+func AddDocHandler(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
+	u, err := t.User()
+	if err != nil {
+		return err
+	}
 	s, err := getServiceByOwner(r.URL.Query().Get(":name"), u)
 	if err != nil {
 		return err
@@ -204,7 +232,11 @@ func AddDocHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
 	return nil
 }
 
-func GetDocHandler(w http.ResponseWriter, r *http.Request, u *auth.User) error {
+func GetDocHandler(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
+	u, err := t.User()
+	if err != nil {
+		return err
+	}
 	s, err := getServiceByOwner(r.URL.Query().Get(":name"), u)
 	if err != nil {
 		return err

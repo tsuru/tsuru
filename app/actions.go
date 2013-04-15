@@ -11,6 +11,7 @@ import (
 	"github.com/globocom/go-gandalfclient"
 	"github.com/globocom/tsuru/action"
 	"github.com/globocom/tsuru/app/bind"
+	"github.com/globocom/tsuru/auth"
 	"github.com/globocom/tsuru/db"
 	"github.com/globocom/tsuru/log"
 	"github.com/globocom/tsuru/repository"
@@ -155,10 +156,15 @@ var exportEnvironmentsAction = action.Action{
 		if err != nil {
 			return nil, err
 		}
+		t, err := auth.CreateApplicationToken(app.Name)
+		if err != nil {
+			return nil, err
+		}
 		host, _ := config.GetString("host")
 		envVars := []bind.EnvVar{
 			{Name: "TSURU_APPNAME", Value: app.Name},
 			{Name: "TSURU_HOST", Value: host},
+			{Name: "TSURU_APP_TOKEN", Value: t.Token},
 		}
 		env, ok := ctx.Previous.(*s3Env)
 		if ok {
@@ -185,9 +191,10 @@ var exportEnvironmentsAction = action.Action{
 	},
 	Backward: func(ctx action.BWContext) {
 		app := ctx.Params[0].(*App)
+		auth.DeleteToken(app.Env["TSURU_APP_TOKEN"].Value)
 		if app.Get() == nil {
 			s3Env := app.InstanceEnv(s3InstanceName)
-			vars := make([]string, len(s3Env)+2)
+			vars := make([]string, len(s3Env)+3)
 			i := 0
 			for k := range s3Env {
 				vars[i] = k
@@ -195,6 +202,7 @@ var exportEnvironmentsAction = action.Action{
 			}
 			vars[i] = "TSURU_HOST"
 			vars[i+1] = "TSURU_APPNAME"
+			vars[i+2] = "TSURU_APP_TOKEN"
 			app.UnsetEnvs(vars, false)
 		}
 	},

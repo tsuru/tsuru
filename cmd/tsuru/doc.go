@@ -384,7 +384,7 @@ commands is the root of the app. For example, in a Django app, "tsuru run" may
 show the following output:
 
 	% tsuru run polls ls
-	app.conf
+	app.yaml
 	brogui
 	deploy
 	foo

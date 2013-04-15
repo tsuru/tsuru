@@ -53,16 +53,16 @@ func (p *JujuProvisioner) elbSupport() bool {
 	return *p.elb
 }
 
-func (p *JujuProvisioner) unitsCollection() *mgo.Collection {
+func (p *JujuProvisioner) unitsCollection() (*db.Storage, *mgo.Collection) {
 	name, err := config.GetString("juju:units-collection")
 	if err != nil {
 		log.Fatalf("FATAL: %s.", err)
 	}
 	conn, err := db.Conn()
 	if err != nil {
-		log.Printf("Failed to connect to the database: %s", err)
+		log.Fatalf("Failed to connect to the database: %s", err)
 	}
-	return conn.Collection(name)
+	return conn, conn.Collection(name)
 }
 
 func (p *JujuProvisioner) enqueueUnits(app string, units ...string) {
@@ -167,7 +167,9 @@ func (p *JujuProvisioner) deleteUnits(app provision.App) {
 	for i, u := range units {
 		names[i] = u.GetName()
 	}
-	p.unitsCollection().RemoveAll(bson.M{"_id": bson.M{"$in": names}})
+	conn, collection := p.unitsCollection()
+	defer conn.Close()
+	collection.RemoveAll(bson.M{"_id": bson.M{"$in": names}})
 }
 
 func (p *JujuProvisioner) Destroy(app provision.App) error {
@@ -261,7 +263,9 @@ func (p *JujuProvisioner) removeUnit(app provision.App, unit provision.AppUnit) 
 		}
 		err = p.LoadBalancer().Deregister(app, pUnit)
 	}
-	p.unitsCollection().RemoveId(unit.GetName())
+	conn, collection := p.unitsCollection()
+	defer conn.Close()
+	collection.RemoveId(unit.GetName())
 	go p.terminateMachines(app, unit)
 	return err
 }
@@ -323,20 +327,22 @@ func (p *JujuProvisioner) getOutput() (jujuOutput, error) {
 }
 
 func (p *JujuProvisioner) saveBootstrapMachine(m machine) error {
-	_, err := p.bootstrapCollection().Upsert(nil, &m)
+	conn, collection := p.bootstrapCollection()
+	defer conn.Close()
+	_, err := collection.Upsert(nil, &m)
 	return err
 }
 
-func (p *JujuProvisioner) bootstrapCollection() *mgo.Collection {
+func (p *JujuProvisioner) bootstrapCollection() (*db.Storage, *mgo.Collection) {
 	name, err := config.GetString("juju:bootstrap-collection")
 	if err != nil {
 		log.Fatalf("FATAL: %s.", err)
 	}
 	conn, err := db.Conn()
 	if err != nil {
-		log.Printf("Failed to connect to the database: %s", err)
+		log.Fatalf("Failed to connect to the database: %s", err)
 	}
-	return conn.Collection(name)
+	return conn, conn.Collection(name)
 }
 
 func (p *JujuProvisioner) collectStatus() ([]provision.Unit, error) {
@@ -370,7 +376,8 @@ func (p *JujuProvisioner) collectStatus() ([]provision.Unit, error) {
 
 func (p *JujuProvisioner) heal(units []provision.Unit) {
 	var inst instance
-	coll := p.unitsCollection()
+	conn, coll := p.unitsCollection()
+	defer conn.Close()
 	for _, unit := range units {
 		err := coll.FindId(unit.Name).One(&inst)
 		if err != nil {

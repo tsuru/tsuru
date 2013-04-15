@@ -8,7 +8,7 @@ import (
 	"code.google.com/p/go.crypto/bcrypt"
 	"code.google.com/p/go.crypto/pbkdf2"
 	"crypto/sha512"
-	stderr "errors"
+	stderrors "errors"
 	"fmt"
 	"github.com/globocom/config"
 	"github.com/globocom/tsuru/db"
@@ -34,7 +34,7 @@ func loadConfig() error {
 	if salt == "" && tokenKey == "" {
 		var err error
 		if salt, err = config.GetString("auth:salt"); err != nil {
-			return stderr.New(`Setting "auth:salt" is undefined.`)
+			return stderrors.New(`Setting "auth:salt" is undefined.`)
 		}
 		if iface, err := config.Get("auth:token-expire-days"); err == nil {
 			day := int64(iface.(int))
@@ -43,10 +43,10 @@ func loadConfig() error {
 			tokenExpire = defaultExpiration
 		}
 		if tokenKey, err = config.GetString("auth:token-key"); err != nil {
-			return stderr.New(`Setting "auth:token-key" is undefined.`)
+			return stderrors.New(`Setting "auth:token-key" is undefined.`)
 		}
 		if cost, err = config.GetInt("auth:hash-cost"); err != nil {
-			return stderr.New(`Setting "auth:hash-cost" is undefined.`)
+			return stderrors.New(`Setting "auth:hash-cost" is undefined.`)
 		}
 		if cost < bcrypt.MinCost || cost > bcrypt.MaxCost {
 			return fmt.Errorf("Invalid value for setting %q: it must be between %d and %d.", "auth:hash-cost", bcrypt.MinCost, bcrypt.MaxCost)
@@ -76,7 +76,6 @@ type Key struct {
 type User struct {
 	Email    string
 	Password string
-	Tokens   []Token
 	Keys     []Key
 }
 
@@ -92,34 +91,9 @@ func GetUserByEmail(email string) (*User, error) {
 	defer conn.Close()
 	err = conn.Users().Find(bson.M{"email": email}).One(&u)
 	if err != nil {
-		return nil, stderr.New("User not found")
+		return nil, stderrors.New("User not found")
 	}
 	return &u, nil
-}
-
-func GetUserByToken(token string) (*User, error) {
-	conn, err := db.Conn()
-	if err != nil {
-		return nil, err
-	}
-	defer conn.Close()
-	u := new(User)
-	query := bson.M{"tokens.token": token}
-	err = conn.Users().Find(query).One(&u)
-	if err != nil {
-		return nil, stderr.New("Token not found")
-	}
-	var t Token
-	for _, tk := range u.Tokens {
-		if tk.Token == token {
-			t = tk
-			break
-		}
-	}
-	if t.Token == "" || t.ValidUntil.Sub(time.Now()) < 1 {
-		return nil, stderr.New("Token has expired")
-	}
-	return u, nil
 }
 
 func (u *User) Create() error {
@@ -171,7 +145,7 @@ func (u *User) CheckPassword(password string) error {
 
 func (u *User) CreateToken(password string) (*Token, error) {
 	if u.Email == "" {
-		return nil, stderr.New("User does not have an email")
+		return nil, stderrors.New("User does not have an email")
 	}
 	if err := u.CheckPassword(password); err != nil {
 		return nil, err
@@ -181,12 +155,11 @@ func (u *User) CreateToken(password string) (*Token, error) {
 		return nil, err
 	}
 	defer conn.Close()
-	t, err := newToken(u)
+	t, err := newUserToken(u)
 	if err != nil {
 		return nil, err
 	}
-	u.Tokens = append(u.Tokens, *t)
-	err = conn.Users().Update(bson.M{"email": u.Email}, u)
+	err = conn.Tokens().Insert(t)
 	return t, err
 }
 
@@ -222,6 +195,9 @@ func (u *User) AddKey(key Key) error {
 
 func (u *User) RemoveKey(key Key) error {
 	_, index := u.FindKey(key)
+	if index < 0 {
+		return stderrors.New("Key not found")
+	}
 	copy(u.Keys[index:], u.Keys[index+1:])
 	u.Keys = u.Keys[:len(u.Keys)-1]
 	return nil
@@ -284,44 +260,8 @@ func (u *User) AllowedAppsByTeam(team string) ([]string, error) {
 	return appNames, nil
 }
 
-type Token struct {
-	Token      string
-	ValidUntil time.Time
-}
-
-func newToken(u *User) (*Token, error) {
-	if u == nil {
-		return nil, stderr.New("User is nil")
-	}
-	if u.Email == "" {
-		return nil, stderr.New("Impossible to generate tokens for users without email")
-	}
-	if err := loadConfig(); err != nil {
-		return nil, err
-	}
-	h := sha512.New()
-	h.Write([]byte(u.Email))
-	h.Write([]byte(tokenKey))
-	h.Write([]byte(time.Now().Format(time.UnixDate)))
-	t := Token{}
-	t.ValidUntil = time.Now().Add(tokenExpire)
-	t.Token = fmt.Sprintf("%x", h.Sum(nil))
-	return &t, nil
-}
-
-func CheckToken(token string) (*User, error) {
-	if token == "" {
-		return nil, stderr.New("You must provide the token")
-	}
-	u, err := GetUserByToken(token)
-	if err != nil {
-		return nil, stderr.New("Invalid token")
-	}
-	return u, nil
-}
-
 type AuthenticationFailure struct{}
 
-func (a AuthenticationFailure) Error() string {
+func (AuthenticationFailure) Error() string {
 	return "Authentication failed, wrong password."
 }
