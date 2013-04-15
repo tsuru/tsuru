@@ -9,13 +9,15 @@ import (
 	"fmt"
 	"github.com/globocom/commandmocker"
 	"github.com/globocom/config"
-	"github.com/globocom/tsuru/testing"
-	//fstesting "github.com/globocom/tsuru/fs/testing"
+	fstesting "github.com/globocom/tsuru/fs/testing"
 	"github.com/globocom/tsuru/log"
 	"github.com/globocom/tsuru/provision"
+	"github.com/globocom/tsuru/testing"
+	"io/ioutil"
 	"labix.org/v2/mgo/bson"
 	"launchpad.net/gocheck"
 	stdlog "log"
+	"os"
 	"time"
 )
 
@@ -25,69 +27,122 @@ func (s *S) TestShouldBeRegistered(c *gocheck.C) {
 	c.Assert(p, gocheck.FitsTypeOf, &LocalProvisioner{})
 }
 
-//func (s *S) TestProvisionerProvision(c *gocheck.C) {
-//	config.Set("docker:authorized-key-path", "somepath")
-//	rfs := &fstesting.RecordingFs{}
-//	fsystem = rfs
-//	defer func() {
-//		fsystem = nil
-//		config.Unset("docker:image")
-//		config.Unset("docker:authorized-key-path")
-//		config.Unset("docker:image")
-//		config.Unset("docker:cmd:bin")
-//		config.Unset("docker:cmd:args")
-//	}()
-//	f, _ := os.Open("testdata/dnsmasq.leases")
-//	data, err := ioutil.ReadAll(f)
-//	c.Assert(err, gocheck.IsNil)
-//	file, err := rfs.Create("/var/lib/misc/dnsmasq.leases")
-//	c.Assert(err, gocheck.IsNil)
-//	_, err = file.Write(data)
-//	c.Assert(err, gocheck.IsNil)
-//	tmpdir, err := commandmocker.Add("sudo", "$*")
-//	c.Assert(err, gocheck.IsNil)
-//	defer commandmocker.Remove(tmpdir)
-//	sshTempDir, err := commandmocker.Add("ssh", "$*")
-//	c.Assert(err, gocheck.IsNil)
-//	defer commandmocker.Remove(sshTempDir)
-//	scpTempDir, err := commandmocker.Add("scp", "$*")
-//	c.Assert(err, gocheck.IsNil)
-//	defer commandmocker.Remove(scpTempDir)
-//	var p LocalProvisioner
-//	app := testing.NewFakeApp("myapp", "python", 0)
-//	defer p.collection().Remove(bson.M{"name": "myapp"})
-//	c.Assert(p.Provision(app), gocheck.IsNil)
-//	ok := make(chan bool, 1)
-//	go func() {
-//		for {
-//			coll := s.conn.Collection(s.collName)
-//			ct, err := coll.Find(bson.M{"name": "myapp", "status": provision.StatusStarted}).Count()
-//			if err != nil {
-//				c.Fatal(err)
-//			}
-//			if ct > 0 {
-//				ok <- true
-//				return
-//			}
-//			time.Sleep(1e3)
-//		}
-//	}()
-//	select {
-//	case <-ok:
-//	case <-time.After(10e9):
-//		c.Fatal("Timed out waiting for the container to be provisioned (10 seconds)")
-//	}
-//	c.Assert(commandmocker.Ran(tmpdir), gocheck.Equals, true)
-//	expected := "docker run -d base /bin/bash myapp somepath"
-//    expected += "docker inspect " // from ip call
-//	//expected += "docker start myapp"
-//	expected += "service nginx restart" // from RestartRoute call
-//	c.Assert(commandmocker.Output(tmpdir), gocheck.Equals, expected)
-//	var unit provision.Unit
-//	err = s.conn.Collection(s.collName).Find(bson.M{"name": "myapp"}).One(&unit)
-//	c.Assert(err, gocheck.IsNil)
-//	c.Assert(unit.Ip, gocheck.Equals, "10.10.10.15")
-//}
+func (s *S) TestProvisionerProvision(c *gocheck.C) {
+	config.Set("docker:authorized-key-path", "somepath")
+	rfs := &fstesting.RecordingFs{}
+	fsystem = rfs
+	defer func() {
+		fsystem = nil
+	}()
+	f, _ := os.Open("testdata/dnsmasq.leases")
+	data, err := ioutil.ReadAll(f)
+	c.Assert(err, gocheck.IsNil)
+	file, err := rfs.Create("/var/lib/misc/dnsmasq.leases")
+	c.Assert(err, gocheck.IsNil)
+	_, err = file.Write(data)
+	c.Assert(err, gocheck.IsNil)
+	sshTempDir, err := commandmocker.Add("ssh", "$*")
+	c.Assert(err, gocheck.IsNil)
+	defer commandmocker.Remove(sshTempDir)
+	scpTempDir, err := commandmocker.Add("scp", "$*")
+	c.Assert(err, gocheck.IsNil)
+	defer commandmocker.Remove(scpTempDir)
+	var p LocalProvisioner
+	app := testing.NewFakeApp("myapp", "python", 0)
+	tmpdir, err := commandmocker.Add("sudo", "$*")
+	c.Assert(err, gocheck.IsNil)
+	defer commandmocker.Remove(tmpdir)
+	c.Assert(p.Provision(app), gocheck.IsNil)
+	defer p.collection().Remove(bson.M{"name": "myapp"})
+	ok := make(chan bool, 1)
+	go func() {
+		for {
+			coll := s.conn.Collection(s.collName)
+			ct, err := coll.Find(bson.M{"name": "myapp", "status": provision.StatusStarted}).Count()
+			if err != nil {
+				c.Fatal(err)
+			}
+			if ct > 0 {
+				ok <- true
+				return
+			}
+			time.Sleep(1e3)
+		}
+	}()
+	select {
+	case <-ok:
+	case <-time.After(10e9):
+		c.Fatal("Timed out waiting for the container to be provisioned (10 seconds)")
+	}
+	c.Assert(commandmocker.Ran(tmpdir), gocheck.Equals, true)
+	expected := "docker run -d base /bin/bash myapp somepath"
+	expected += "docker inspect .*"     // from ip call, the instance id in the end of this command is actually wrong, so we ignore it
+	expected += "service nginx restart" // from RestartRoute call
+	c.Assert(commandmocker.Output(tmpdir), gocheck.Matches, expected)
+}
+
+func (s *S) TestProvisionerProvisionFillsUnitIp(c *gocheck.C) {
+	config.Set("docker:authorized-key-path", "somepath")
+	rfs := &fstesting.RecordingFs{}
+	fsystem = rfs
+	defer func() {
+		fsystem = nil
+	}()
+	f, _ := os.Open("testdata/dnsmasq.leases")
+	data, err := ioutil.ReadAll(f)
+	c.Assert(err, gocheck.IsNil)
+	file, err := rfs.Create("/var/lib/misc/dnsmasq.leases")
+	c.Assert(err, gocheck.IsNil)
+	_, err = file.Write(data)
+	c.Assert(err, gocheck.IsNil)
+	sshTempDir, err := commandmocker.Add("ssh", "$*")
+	c.Assert(err, gocheck.IsNil)
+	defer commandmocker.Remove(sshTempDir)
+	scpTempDir, err := commandmocker.Add("scp", "$*")
+	c.Assert(err, gocheck.IsNil)
+	defer commandmocker.Remove(scpTempDir)
+	var p LocalProvisioner
+	app := testing.NewFakeApp("myapp", "python", 0)
+	out := `
+    {
+            \"NetworkSettings\": {
+            \"IpAddress\": \"10.10.10.10\",
+            \"IpPrefixLen\": 8,
+            \"Gateway\": \"10.65.41.1\",
+            \"PortMapping\": {}
+    }
+}`
+	tmpdir, err := commandmocker.Add("sudo", out)
+	c.Assert(err, gocheck.IsNil)
+	defer commandmocker.Remove(tmpdir)
+	c.Assert(p.Provision(app), gocheck.IsNil)
+	defer p.collection().Remove(bson.M{"name": "myapp"})
+	ok := make(chan bool, 1)
+	go func() {
+		for {
+			coll := s.conn.Collection(s.collName)
+			ct, err := coll.Find(bson.M{"name": "myapp", "status": provision.StatusStarted}).Count()
+			if err != nil {
+				c.Fatal(err)
+			}
+			if ct > 0 {
+				ok <- true
+				return
+			}
+			time.Sleep(1e3)
+		}
+	}()
+	select {
+	case <-ok:
+	case <-time.After(10e9):
+		c.Fatal("Timed out waiting for the container to be provisioned (10 seconds)")
+	}
+	c.Assert(commandmocker.Ran(tmpdir), gocheck.Equals, true)
+	var unit provision.Unit
+	err = s.conn.Collection(s.collName).Find(bson.M{"name": "myapp"}).One(&unit)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(unit.Ip, gocheck.Equals, "10.10.10.10")
+}
 
 func (s *S) TestProvisionerRestart(c *gocheck.C) {
 	var p LocalProvisioner
