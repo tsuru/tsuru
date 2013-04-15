@@ -304,6 +304,34 @@ func (s *S) TestUserCreateShouldReturnErrorIfThePasswordIsNotGiven(c *gocheck.C)
 	c.Assert(err, gocheck.ErrorMatches, "^You must provide the password!$")
 }
 
+func (s *S) TestUserCreateNotFound(c *gocheck.C) {
+	transport := ttesting.Transport{
+		Message: "Not found",
+		Status:  http.StatusNotFound,
+	}
+	reader := strings.NewReader("foo123\nfoo123\n")
+	context := Context{[]string{"foo@foo.com"}, manager.stdout, manager.stderr, reader}
+	client := NewClient(&http.Client{Transport: &transport}, nil, manager)
+	command := userCreate{}
+	err := command.Run(&context, client)
+	c.Assert(err, gocheck.NotNil)
+	c.Assert(err.Error(), gocheck.Equals, "User creation is disabled.")
+}
+
+func (s *S) TestUserCreateMethodNotAllowed(c *gocheck.C) {
+	transport := ttesting.Transport{
+		Message: "Not found",
+		Status:  http.StatusMethodNotAllowed,
+	}
+	reader := strings.NewReader("foo123\nfoo123\n")
+	context := Context{[]string{"foo@foo.com"}, manager.stdout, manager.stderr, reader}
+	client := NewClient(&http.Client{Transport: &transport}, nil, manager)
+	command := userCreate{}
+	err := command.Run(&context, client)
+	c.Assert(err, gocheck.NotNil)
+	c.Assert(err.Error(), gocheck.Equals, "User creation is disabled.")
+}
+
 func (s *S) TestUserCreateInfo(c *gocheck.C) {
 	expected := &Info{
 		Name:    "user-create",
