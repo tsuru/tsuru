@@ -8,7 +8,7 @@ Build your own PaaS with tsuru and lxc
 
 This document describes how to create a private PaaS service using tsuru and lxc.
 
-This document assumes that tsuru is being installed on a Ubuntu (12.10) machine. You
+This document assumes that tsuru is being installed on a Ubuntu (12.04+) machine. You
 can use equivalent packages for beanstalkd, git, MongoDB and other tsuru
 dependencies. Please make sure you satisfy minimal version requirements.
 
