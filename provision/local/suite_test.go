@@ -21,7 +21,7 @@ type S struct {
 var _ = gocheck.Suite(&S{})
 
 func (s *S) SetUpSuite(c *gocheck.C) {
-	s.collName = "collName"
+	s.collName = "local_unit"
 	config.Set("local:collection", s.collName)
 	config.Set("database:url", "127.0.0.1:27017")
 	config.Set("database:name", "juju_provision_tests_s")
