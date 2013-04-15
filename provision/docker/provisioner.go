@@ -100,20 +100,20 @@ func (p *LocalProvisioner) Provision(app provision.App) error {
 			log.Print(err)
 			return
 		}
-		instance_id, err := c.create()
+		instanceId, err := c.create()
 		if err != nil {
 			log.Printf("error on create container %s", app.GetName())
 			log.Print(err)
 			return
 		}
-		c.instanceId = instance_id
-		u.InstanceId = instance_id
+		c.instanceId = instanceId
+		u.InstanceId = instanceId
 		if err := c.start(); err != nil {
 			log.Printf("error on start container %s", app.GetName())
 			log.Print(err)
 			return
 		}
-		ip, err := c.ip()
+		ip, err := c.ip() // handle this error
 		u.Ip = ip
 		u.Status = provision.StatusInstalling
 		if err := p.collection().Update(bson.M{"name": u.Name}, u); err != nil {
