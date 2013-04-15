@@ -94,10 +94,11 @@ func (s *S) TestAppIsAvailableHandlerShouldReturn200WhenAppUnitStatusIsStarted(c
 }
 
 func (s *S) TestCloneRepositoryHandlerShouldAddLogs(c *gocheck.C) {
-	output := `pre-restart:
-  - pre.sh
-post-restart:
-  - pos.sh
+	output := `hooks:
+  pre-restart:
+    - pre.sh
+  post-restart:
+    - pos.sh
 `
 	s.provisioner.PrepareOutput(nil)            // clone
 	s.provisioner.PrepareOutput(nil)            // install
@@ -136,10 +137,11 @@ post-restart:
 }
 
 func (s *S) TestCloneRepositoryHandler(c *gocheck.C) {
-	output := `pre-restart:
-  - pre.sh
-post-restart:
-  - pos.sh
+	output := `hooks:
+  pre-restart:
+    - pre.sh
+  post-restart:
+    - pos.sh
 `
 	s.provisioner.PrepareOutput(nil)            // clone
 	s.provisioner.PrepareOutput(nil)            // install
@@ -180,10 +182,11 @@ func (s *S) TestCloneRepositoryRunsCloneOrPullThenPreRestartThenRestartThenPosRe
 	var w safe.Buffer
 	l := stdlog.New(&w, "", stdlog.LstdFlags)
 	log.SetLogger(l)
-	output := `pre-restart:
-  - pre.sh
-post-restart:
-  - pos.sh
+	output := `hooks:
+  pre-restart:
+    - pre.sh
+  post-restart:
+    - pos.sh
 `
 	s.provisioner.PrepareOutput(nil)            // clone
 	s.provisioner.PrepareOutput(nil)            // install
