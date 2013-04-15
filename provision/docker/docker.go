@@ -31,8 +31,7 @@ type container struct {
 
 // runCmd executes commands and log the given stdout and stderror.
 func runCmd(cmd string, args ...string) (err error, output string) {
-	command := exec.Command(cmd, args...)
-	out, err := command.CombinedOutput()
+	out, err := exec.Command(cmd, args...).CombinedOutput()
 	log.Printf("running the cmd: %s with the args: %s", cmd, args)
 	output = string(out)
 	return err, output
@@ -47,11 +46,15 @@ func (c *container) ip() (string, error) {
 	log.Printf("Getting ipaddress to instance %s", c.instanceId)
 	err, instanceJson := runCmd("sudo", docker, "inspect", c.instanceId)
 	if err != nil {
-		log.Printf("error(%s) trying to inspect docker instance(%s) to get ipaddress", err)
+		msg := "error(%s) trying to inspect docker instance(%s) to get ipaddress"
+		log.Printf(msg, err)
+		return "", errors.New(msg)
 	}
 	var result map[string]interface{}
 	if err := json.Unmarshal([]byte(instanceJson), &result); err != nil {
-		log.Printf("error(%s) parsing json from docker when trying to get ipaddress", err)
+		msg := "error(%s) parsing json from docker when trying to get ipaddress"
+		log.Printf(msg, err)
+		return "", errors.New(msg)
 	}
 	if ns, ok := result["NetworkSettings"]; !ok || ns == nil {
 		msg := "Error when getting container information. NetworkSettings is missing."
@@ -61,8 +64,9 @@ func (c *container) ip() (string, error) {
 	networkSettings := result["NetworkSettings"].(map[string]interface{})
 	instanceIp := networkSettings["IpAddress"].(string)
 	if instanceIp == "" {
-		log.Print("error: Can't get ipaddress...")
-		return "", errors.New("Can't get ipaddress...")
+		msg := "error: Can't get ipaddress..."
+		log.Print(msg)
+		return "", errors.New(msg)
 	}
 	log.Printf("Instance IpAddress: %s", instanceIp)
 	return instanceIp, nil
