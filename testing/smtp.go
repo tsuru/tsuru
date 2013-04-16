@@ -11,18 +11,32 @@ import (
 	"sync"
 )
 
+// Mail represents an email message that has been sent to the fake server.
 type Mail struct {
 	From string
 	To   []string
 	Data []byte
 }
 
+// SMTPServer is a fake SMTP server implementation.
+//
+// This SMTP server does not support authentication and is supposed to be used
+// in tests only.
+//
+// Use NewSMTPServer create a new instance and start serving; SMTPServer.Addr()
+// will get you the address of the server and Stop will stop the server,
+// closing the listener. Every message that arrive at the server is stored in
+// the MailBox slice.
 type SMTPServer struct {
-	MailBox  []Mail
-	mutex    sync.Mutex
+	// MailBox is the slice that stores all messages that has arrived to
+	// the server while it's listening. Use the mutex to access it, or bad
+	// things can happen.
+	MailBox []Mail
+	sync.RWMutex
 	listener net.Listener
 }
 
+// NewSMTPServer creates a new SMTP server, for testing purposes.
 func NewSMTPServer() (*SMTPServer, error) {
 	l, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
@@ -41,10 +55,12 @@ func NewSMTPServer() (*SMTPServer, error) {
 	return &s, nil
 }
 
+// Addr returns the address of the server, in the form <host>:<port>.
 func (s *SMTPServer) Addr() string {
 	return s.listener.Addr().String()
 }
 
+// Stop stops the server. It's save to call this method multiple times.
 func (s *SMTPServer) Stop() {
 	s.listener.Close()
 }
@@ -77,9 +93,9 @@ func (e *fakeEnvelope) Write(line []byte) error {
 }
 
 func (e *fakeEnvelope) Close() error {
-	e.s.mutex.Lock()
+	e.s.Lock()
 	e.s.MailBox = append(e.s.MailBox, e.m)
-	e.s.mutex.Unlock()
+	e.s.Unlock()
 	return nil
 }
 
