@@ -164,10 +164,8 @@ func (p *LocalProvisioner) Destroy(app provision.App) error {
 	go func(c container) {
 		log.Printf("stoping container %s", c.name)
 		c.stop()
-
 		log.Printf("destroying container %s", c.name)
 		c.destroy()
-
 		log.Printf("removing container %s from the database", c.name)
 		p.collection().Remove(bson.M{"name": c.name})
 	}(c)

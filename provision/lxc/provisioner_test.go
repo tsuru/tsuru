@@ -120,58 +120,19 @@ func (s *S) TestProvisionerRestartFailure(c *gocheck.C) {
 }
 
 func (s *S) TestProvisionerDestroy(c *gocheck.C) {
-	ln, err := net.Listen("tcp", "127.0.0.1:2222")
-	c.Assert(err, gocheck.IsNil)
-	defer ln.Close()
-	config.Set("lxc:ip-timeout", 5)
-	config.Set("lxc:ssh-port", 2222)
-	config.Set("lxc:authorized-key-path", "somepath")
-	rfs := &fstesting.RecordingFs{}
-	fsystem = rfs
-	defer func() {
-		fsystem = nil
-	}()
-	f, _ := os.Open("testdata/dnsmasq.leases")
-	data, err := ioutil.ReadAll(f)
-	c.Assert(err, gocheck.IsNil)
-	file, err := rfs.Create("/var/lib/misc/dnsmasq.leases")
-	c.Assert(err, gocheck.IsNil)
-	_, err = file.Write(data)
-	c.Assert(err, gocheck.IsNil)
 	tmpdir, err := commandmocker.Add("sudo", "$*")
 	c.Assert(err, gocheck.IsNil)
 	defer commandmocker.Remove(tmpdir)
-	sshTempDir, err := commandmocker.Add("ssh", "$*")
-	c.Assert(err, gocheck.IsNil)
-	defer commandmocker.Remove(sshTempDir)
-	scpTempDir, err := commandmocker.Add("scp", "$*")
-	c.Assert(err, gocheck.IsNil)
-	defer commandmocker.Remove(scpTempDir)
 	var p LocalProvisioner
-	app := testing.NewFakeApp("myapp", "python", 0)
-	err = p.Provision(app)
-	c.Assert(err, gocheck.IsNil)
-	ok := make(chan bool, 1)
-	go func() {
-		for {
-			coll := s.conn.Collection(s.collName)
-			ct, err := coll.Find(bson.M{"name": "myapp", "status": provision.StatusStarted}).Count()
-			if err != nil {
-				c.Fatal(err)
-			}
-			if ct > 0 {
-				ok <- true
-				return
-			}
-			time.Sleep(1e3)
-		}
-	}()
-	select {
-	case <-ok:
-	case <-time.After(10e9):
-		c.Fatal("Timed out waiting for the container to be provisioned (10 seconds)")
+	app := testing.NewFakeApp("myapp", "python", 1)
+	u := provision.Unit{
+		Name:   "myapp",
+		Status: provision.StatusStarted,
 	}
+	err = s.conn.Collection(s.collName).Insert(&u)
+	c.Assert(err, gocheck.IsNil)
 	c.Assert(p.Destroy(app), gocheck.IsNil)
+	ok := make(chan bool, 1)
 	go func() {
 		for {
 			coll := s.conn.Collection(s.collName)
@@ -192,10 +153,7 @@ func (s *S) TestProvisionerDestroy(c *gocheck.C) {
 		c.Fatal("Timed out waiting for the container to be provisioned (10 seconds)")
 	}
 	c.Assert(commandmocker.Ran(tmpdir), gocheck.Equals, true)
-	expected := "lxc-create -t ubuntu-cloud -n myapp -- -S somepath"
-	expected += "lxc-start --daemon -n myapp"
-	expected += "service nginx restart"
-	expected += "lxc-stop -n myapp"
+	expected := "lxc-stop -n myapp"
 	expected += "lxc-destroy -n myapp"
 	c.Assert(commandmocker.Output(tmpdir), gocheck.Equals, expected)
 	length, err := p.collection().Find(bson.M{"name": "myapp"}).Count()
