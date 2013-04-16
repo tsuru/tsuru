@@ -79,7 +79,7 @@ echo "generating the ssh-key for root"
 sudo ssh-keygen -N "" -f /root/.ssh/id_rsa
 
 echo "downloading charms"
-sudo su - git -c "git clone git://github.com/globocom/charms.git -b lxc /home/git/charms"
+git clone git://github.com/globocom/charms.git -b lxc /home/ubuntu/charms
 
 echo "starting mongodb"
 sudo service mongodb start
