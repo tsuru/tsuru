@@ -125,7 +125,6 @@ func (c *container) waitForNetwork() error {
 	}(c)
 	select {
 	case <-done:
-		return nil
 	case <-timeout:
 		return errors.New("timeout")
 	}
