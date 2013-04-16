@@ -110,9 +110,8 @@ func (p *LocalProvisioner) Provision(app provision.App) error {
 		if err != nil {
 			log.Print(err)
 		}
-		err = c.waitUntil("RUNNING")
+		err = c.waitForNetwork()
 		if err != nil {
-			log.Printf("error on waiting container %s", c.name)
 			log.Print(err)
 		}
 		err = p.setup(ip, app.GetFramework())

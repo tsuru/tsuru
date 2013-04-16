@@ -5,10 +5,12 @@
 package local
 
 import (
+	"fmt"
 	"github.com/globocom/config"
 	"github.com/globocom/tsuru/fs"
 	"github.com/globocom/tsuru/log"
 	"io/ioutil"
+	"net"
 	"os/exec"
 	"strings"
 	"time"
@@ -92,7 +94,21 @@ func (c *container) destroy() error {
 	return runCmd("sudo", "lxc-destroy", "-n", c.name)
 }
 
-// waitUntil waits for a specific container state.
-func (c *container) waitUntil(state string) error {
-	return runCmd("sudo", "lxc-wait", "-n", c.name, "-s", state)
+// waitForNetwork waits the container network is up.
+func (c *container) waitForNetwork() error {
+	timeout, err := config.GetInt("local:ip-timeout")
+	if err != nil {
+		timeout = 60
+	}
+	port, err := config.GetInt("local:ssh-port")
+	if err != nil {
+		port = 22
+	}
+	addr := fmt.Sprintf("%s:%d", c.ip(), port)
+	conn, err := net.DialTimeout("tcp", addr, time.Duration(timeout)*time.Second)
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+	return nil
 }

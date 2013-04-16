@@ -15,6 +15,7 @@ import (
 	"io/ioutil"
 	"labix.org/v2/mgo/bson"
 	"launchpad.net/gocheck"
+	"net"
 	"os"
 	"time"
 )
@@ -26,6 +27,11 @@ func (s *S) TestShouldBeRegistered(c *gocheck.C) {
 }
 
 func (s *S) TestProvisionerProvision(c *gocheck.C) {
+	ln, err := net.Listen("tcp", "127.0.0.1:2222")
+	c.Assert(err, gocheck.IsNil)
+	defer ln.Close()
+	config.Set("local:ip-timeout", 5)
+	config.Set("local:ssh-port", 2222)
 	config.Set("local:authorized-key-path", "somepath")
 	rfs := &fstesting.RecordingFs{}
 	fsystem = rfs
@@ -69,13 +75,12 @@ func (s *S) TestProvisionerProvision(c *gocheck.C) {
 	}()
 	select {
 	case <-ok:
-	case <-time.After(10e9):
+	case <-time.After(45e9):
 		c.Fatal("Timed out waiting for the container to be provisioned (10 seconds)")
 	}
 	c.Assert(commandmocker.Ran(tmpdir), gocheck.Equals, true)
 	expected := "lxc-create -t ubuntu-cloud -n myapp -- -S somepath"
 	expected += "lxc-start --daemon -n myapp"
-	expected += "lxc-wait -n myapp -s RUNNING"
 	expected += "service nginx restart"
 	c.Assert(commandmocker.Output(tmpdir), gocheck.Equals, expected)
 	var unit provision.Unit
@@ -115,6 +120,11 @@ func (s *S) TestProvisionerRestartFailure(c *gocheck.C) {
 }
 
 func (s *S) TestProvisionerDestroy(c *gocheck.C) {
+	ln, err := net.Listen("tcp", "127.0.0.1:2222")
+	c.Assert(err, gocheck.IsNil)
+	defer ln.Close()
+	config.Set("local:ip-timeout", 5)
+	config.Set("local:ssh-port", 2222)
 	config.Set("local:authorized-key-path", "somepath")
 	rfs := &fstesting.RecordingFs{}
 	fsystem = rfs
@@ -184,7 +194,6 @@ func (s *S) TestProvisionerDestroy(c *gocheck.C) {
 	c.Assert(commandmocker.Ran(tmpdir), gocheck.Equals, true)
 	expected := "lxc-create -t ubuntu-cloud -n myapp -- -S somepath"
 	expected += "lxc-start --daemon -n myapp"
-	expected += "lxc-wait -n myapp -s RUNNING"
 	expected += "service nginx restart"
 	expected += "lxc-stop -n myapp"
 	expected += "lxc-destroy -n myapp"

@@ -10,6 +10,7 @@ import (
 	"github.com/globocom/tsuru/fs/testing"
 	"io/ioutil"
 	"launchpad.net/gocheck"
+	"net"
 	"os"
 )
 
@@ -81,14 +82,21 @@ func (s *S) TestContainerIP(c *gocheck.C) {
 	c.Assert(cont.ip(), gocheck.Equals, "")
 }
 
-func (s *S) TestLXCWaitUntil(c *gocheck.C) {
-	tmpdir, err := commandmocker.Add("sudo", "$*")
+func (s *S) TestWaitForNetwork(c *gocheck.C) {
+	ln, err := net.Listen("tcp", "127.0.0.1:2222")
 	c.Assert(err, gocheck.IsNil)
-	defer commandmocker.Remove(tmpdir)
-	container := container{name: "container"}
-	err = container.waitUntil("RUNNING")
+	defer ln.Close()
+	config.Set("local:ip-timeout", 5)
+	config.Set("local:ssh-port", 2222)
+	cont := container{name: "vm"}
+	err = cont.waitForNetwork()
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(commandmocker.Ran(tmpdir), gocheck.Equals, true)
-	expected := "lxc-wait -n container -s RUNNING"
-	c.Assert(commandmocker.Output(tmpdir), gocheck.Equals, expected)
+}
+
+func (s *S) TestWaitForNetworkTimeout(c *gocheck.C) {
+	config.Set("local:ip-timeout", 1)
+	config.Set("local:ssh-port", 2222)
+	cont := container{name: "vm"}
+	err := cont.waitForNetwork()
+	c.Assert(err, gocheck.NotNil)
 }
