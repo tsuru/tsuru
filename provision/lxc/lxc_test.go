@@ -77,18 +77,18 @@ func (s *S) TestContainerIP(c *gocheck.C) {
 	f.Write(data)
 	f.Close()
 	cont := container{name: "vm1"}
-	c.Assert(cont.ip(), gocheck.Equals, "10.10.10.10")
+	c.Assert(cont.Ip(), gocheck.Equals, "10.10.10.10")
 	cont = container{name: "notfound"}
-	c.Assert(cont.ip(), gocheck.Equals, "")
+	c.Assert(cont.Ip(), gocheck.Equals, "")
 }
 
 func (s *S) TestWaitForNetwork(c *gocheck.C) {
-	ln, err := net.Listen("tcp", ":2222")
+	ln, err := net.Listen("tcp", "127.0.0.1:2222")
 	c.Assert(err, gocheck.IsNil)
 	defer ln.Close()
 	config.Set("lxc:ip-timeout", 5)
 	config.Set("lxc:ssh-port", 2222)
-	cont := container{name: "vm"}
+	cont := container{name: "vm", ip: "127.0.0.1"}
 	err = cont.waitForNetwork()
 	c.Assert(err, gocheck.IsNil)
 }
@@ -96,7 +96,7 @@ func (s *S) TestWaitForNetwork(c *gocheck.C) {
 func (s *S) TestWaitForNetworkTimeout(c *gocheck.C) {
 	config.Set("lxc:ip-timeout", 1)
 	config.Set("lxc:ssh-port", 2222)
-	cont := container{name: "vm"}
+	cont := container{name: "vm", ip: "localhost"}
 	err := cont.waitForNetwork()
 	c.Assert(err, gocheck.NotNil)
 }

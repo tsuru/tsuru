@@ -29,6 +29,7 @@ func filesystem() fs.Fs {
 // container represents an lxc container with the given name.
 type container struct {
 	name string
+	ip   string
 }
 
 // runCmd executes commands and log the given stdout and stderror.
@@ -40,8 +41,11 @@ func runCmd(cmd string, args ...string) error {
 	return err
 }
 
-// ip returns the ip for the container.
-func (c *container) ip() string {
+// Ip returns the ip for the container.
+func (c *container) Ip() string {
+	if c.ip != "" {
+		return c.ip
+	}
 	timeout, err := config.GetInt("lxc:ip-timeout")
 	if err != nil {
 		timeout = 60
@@ -59,7 +63,8 @@ func (c *container) ip() string {
 			for _, line := range strings.Split(string(data), "\n") {
 				if strings.Index(line, c.name) != -1 {
 					log.Printf("ip in %s", line)
-					return strings.Split(line, " ")[2]
+					c.ip = strings.Split(line, " ")[2]
+					return c.ip
 				}
 			}
 		case <-quit:
@@ -109,7 +114,7 @@ func (c *container) waitForNetwork() error {
 			if err != nil {
 				port = 22
 			}
-			addr := fmt.Sprintf("%s:%d", c.ip(), port)
+			addr := fmt.Sprintf("%s:%d", c.Ip(), port)
 			conn, err := net.Dial("tcp", addr)
 			if err == nil {
 				conn.Close()

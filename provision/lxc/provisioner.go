@@ -103,8 +103,7 @@ func (p *LocalProvisioner) Provision(app provision.App) error {
 			log.Printf("error on start container %s", app.GetName())
 			log.Print(err)
 		}
-		ip := c.ip()
-		u.Ip = ip
+		u.Ip = c.Ip()
 		u.Status = provision.StatusInstalling
 		err = p.collection().Update(bson.M{"name": u.Name}, u)
 		if err != nil {
@@ -114,24 +113,24 @@ func (p *LocalProvisioner) Provision(app provision.App) error {
 		if err != nil {
 			log.Print(err)
 		}
-		err = p.setup(ip, app.GetFramework())
+		err = p.setup(c.Ip(), app.GetFramework())
 		if err != nil {
 			log.Printf("error on setup container %s", app.GetName())
 			log.Print(err)
 		}
-		err = p.install(ip)
+		err = p.install(c.Ip())
 		if err != nil {
 			log.Printf("error on install container %s", app.GetName())
 			log.Print(err)
 		}
-		err = p.start(ip)
+		err = p.start(c.Ip())
 		if err != nil {
 			log.Printf("error on start app for container %s", app.GetName())
 			log.Print(err)
 		}
-		err = AddRoute(app.GetName(), ip)
+		err = AddRoute(app.GetName(), c.Ip())
 		if err != nil {
-			log.Printf("error on add route for %s with ip %s", app.GetName(), ip)
+			log.Printf("error on add route for %s with ip %s", app.GetName(), c.Ip())
 			log.Print(err)
 		}
 		err = RestartRouter()
