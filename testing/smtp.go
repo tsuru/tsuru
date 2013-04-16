@@ -65,6 +65,13 @@ func (s *SMTPServer) Stop() {
 	s.listener.Close()
 }
 
+// Reset resets the server, cleaning up the mailbox.
+func (s *SMTPServer) Reset() {
+	s.Lock()
+	s.MailBox = nil
+	s.Unlock()
+}
+
 type fakeEnvelope struct {
 	s *SMTPServer
 	m Mail

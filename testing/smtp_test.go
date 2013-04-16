@@ -65,3 +65,15 @@ func (s *S) TestSMTPServerRecordsMailMessages(c *gocheck.C) {
 	}
 	c.Assert(server.MailBox[0], gocheck.DeepEquals, want)
 }
+
+func (s *S) TestSMTPServerReset(c *gocheck.C) {
+	server, err := NewSMTPServer()
+	c.Assert(err, gocheck.IsNil)
+	defer server.Stop()
+	to := []string{"gopher1@tsuru.io", "gopher2@tsuru.io"}
+	err = smtp.SendMail(server.Addr(), nil, "gopher@tsuru.io", to, []byte("Hello world!"))
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(server.MailBox, gocheck.HasLen, 1)
+	server.Reset()
+	c.Assert(server.MailBox, gocheck.HasLen, 0)
+}
