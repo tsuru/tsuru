@@ -83,7 +83,7 @@ func (s *S) TestContainerIP(c *gocheck.C) {
 }
 
 func (s *S) TestWaitForNetwork(c *gocheck.C) {
-	ln, err := net.Listen("tcp", "127.0.0.1:2222")
+	ln, err := net.Listen("tcp", ":2222")
 	c.Assert(err, gocheck.IsNil)
 	defer ln.Close()
 	config.Set("lxc:ip-timeout", 5)

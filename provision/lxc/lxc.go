@@ -5,6 +5,7 @@
 package lxc
 
 import (
+	"errors"
 	"fmt"
 	"github.com/globocom/config"
 	"github.com/globocom/tsuru/fs"
@@ -96,19 +97,32 @@ func (c *container) destroy() error {
 
 // waitForNetwork waits the container network is up.
 func (c *container) waitForNetwork() error {
-	timeout, err := config.GetInt("lxc:ip-timeout")
+	t, err := config.GetInt("lxc:ip-timeout")
 	if err != nil {
-		timeout = 60
+		t = 60
 	}
-	port, err := config.GetInt("lxc:ssh-port")
-	if err != nil {
-		port = 22
+	timeout := time.After(time.Duration(t) * time.Second)
+	done := make(chan bool)
+	go func(c *container) {
+		for {
+			port, err := config.GetInt("lxc:ssh-port")
+			if err != nil {
+				port = 22
+			}
+			addr := fmt.Sprintf("%s:%d", c.ip(), port)
+			conn, err := net.Dial("tcp", addr)
+			if err == nil {
+				conn.Close()
+				done <- true
+				break
+			}
+		}
+	}(c)
+	select {
+	case <-done:
+		return nil
+	case <-timeout:
+		return errors.New("timeout")
 	}
-	addr := fmt.Sprintf("%s:%d", c.ip(), port)
-	conn, err := net.DialTimeout("tcp", addr, time.Duration(timeout)*time.Second)
-	if err != nil {
-		return err
-	}
-	defer conn.Close()
 	return nil
 }
