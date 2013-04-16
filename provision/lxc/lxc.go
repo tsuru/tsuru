@@ -41,7 +41,7 @@ func runCmd(cmd string, args ...string) error {
 
 // ip returns the ip for the container.
 func (c *container) ip() string {
-	timeout, err := config.GetInt("local:ip-timeout")
+	timeout, err := config.GetInt("lxc:ip-timeout")
 	if err != nil {
 		timeout = 60
 	}
@@ -72,7 +72,7 @@ func (c *container) ip() string {
 
 // create creates a lxc container with ubuntu template by default.
 func (c *container) create() error {
-	keyPath, err := config.GetString("local:authorized-key-path")
+	keyPath, err := config.GetString("lxc:authorized-key-path")
 	if err != nil {
 		return err
 	}
@@ -96,11 +96,11 @@ func (c *container) destroy() error {
 
 // waitForNetwork waits the container network is up.
 func (c *container) waitForNetwork() error {
-	timeout, err := config.GetInt("local:ip-timeout")
+	timeout, err := config.GetInt("lxc:ip-timeout")
 	if err != nil {
 		timeout = 60
 	}
-	port, err := config.GetInt("local:ssh-port")
+	port, err := config.GetInt("lxc:ssh-port")
 	if err != nil {
 		port = 22
 	}

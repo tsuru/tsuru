@@ -15,7 +15,7 @@ import (
 )
 
 func (s *S) TestLXCCreate(c *gocheck.C) {
-	config.Set("local:authorized-key-path", "somepath")
+	config.Set("lxc:authorized-key-path", "somepath")
 	tmpdir, err := commandmocker.Add("sudo", "$*")
 	c.Assert(err, gocheck.IsNil)
 	defer commandmocker.Remove(tmpdir)
@@ -64,7 +64,7 @@ func (s *S) TestLXCDestroy(c *gocheck.C) {
 }
 
 func (s *S) TestContainerIP(c *gocheck.C) {
-	config.Set("local:ip-timeout", 10)
+	config.Set("lxc:ip-timeout", 10)
 	file, _ := os.Open("testdata/dnsmasq.leases")
 	data, err := ioutil.ReadAll(file)
 	c.Assert(err, gocheck.IsNil)
@@ -86,16 +86,16 @@ func (s *S) TestWaitForNetwork(c *gocheck.C) {
 	ln, err := net.Listen("tcp", "127.0.0.1:2222")
 	c.Assert(err, gocheck.IsNil)
 	defer ln.Close()
-	config.Set("local:ip-timeout", 5)
-	config.Set("local:ssh-port", 2222)
+	config.Set("lxc:ip-timeout", 5)
+	config.Set("lxc:ssh-port", 2222)
 	cont := container{name: "vm"}
 	err = cont.waitForNetwork()
 	c.Assert(err, gocheck.IsNil)
 }
 
 func (s *S) TestWaitForNetworkTimeout(c *gocheck.C) {
-	config.Set("local:ip-timeout", 1)
-	config.Set("local:ssh-port", 2222)
+	config.Set("lxc:ip-timeout", 1)
+	config.Set("lxc:ssh-port", 2222)
 	cont := container{name: "vm"}
 	err := cont.waitForNetwork()
 	c.Assert(err, gocheck.NotNil)

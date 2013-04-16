@@ -30,9 +30,9 @@ func (s *S) TestProvisionerProvision(c *gocheck.C) {
 	ln, err := net.Listen("tcp", "127.0.0.1:2222")
 	c.Assert(err, gocheck.IsNil)
 	defer ln.Close()
-	config.Set("local:ip-timeout", 5)
-	config.Set("local:ssh-port", 2222)
-	config.Set("local:authorized-key-path", "somepath")
+	config.Set("lxc:ip-timeout", 5)
+	config.Set("lxc:ssh-port", 2222)
+	config.Set("lxc:authorized-key-path", "somepath")
 	rfs := &fstesting.RecordingFs{}
 	fsystem = rfs
 	defer func() {
@@ -123,9 +123,9 @@ func (s *S) TestProvisionerDestroy(c *gocheck.C) {
 	ln, err := net.Listen("tcp", "127.0.0.1:2222")
 	c.Assert(err, gocheck.IsNil)
 	defer ln.Close()
-	config.Set("local:ip-timeout", 5)
-	config.Set("local:ssh-port", 2222)
-	config.Set("local:authorized-key-path", "somepath")
+	config.Set("lxc:ip-timeout", 5)
+	config.Set("lxc:ssh-port", 2222)
+	config.Set("lxc:authorized-key-path", "somepath")
 	rfs := &fstesting.RecordingFs{}
 	fsystem = rfs
 	defer func() {
@@ -326,7 +326,7 @@ func (s *S) TestProvisionSetup(c *gocheck.C) {
 	defer commandmocker.Remove(sshTempDir)
 	p := LocalProvisioner{}
 	formulasPath := "/home/ubuntu/formulas"
-	config.Set("local:formulas-path", formulasPath)
+	config.Set("lxc:formulas-path", formulasPath)
 	err = p.setup("10.10.10.10", "static")
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(commandmocker.Ran(tmpdir), gocheck.Equals, true)

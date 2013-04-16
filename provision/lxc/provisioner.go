@@ -24,7 +24,7 @@ func init() {
 type LocalProvisioner struct{}
 
 func (p *LocalProvisioner) setup(ip, framework string) error {
-	formulasPath, err := config.GetString("local:formulas-path")
+	formulasPath, err := config.GetString("lxc:formulas-path")
 	if err != nil {
 		return err
 	}
@@ -212,7 +212,7 @@ func (p *LocalProvisioner) CollectStatus() ([]provision.Unit, error) {
 }
 
 func (p *LocalProvisioner) collection() *mgo.Collection {
-	name, err := config.GetString("local:collection")
+	name, err := config.GetString("lxc:collection")
 	if err != nil {
 		log.Fatalf("FATAL: %s.", err)
 	}
