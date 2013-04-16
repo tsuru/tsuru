@@ -6,6 +6,8 @@
 // implement a new router on tsuru.
 package router
 
+import "fmt"
+
 // Router is the basic interface of this package.
 type Router interface {
 	// AddRoute addes a new route.
@@ -16,4 +18,20 @@ type Router interface {
 
 	// Restart restarts the router.
 	Restart() error
+}
+
+var routers = make(map[string]Router)
+
+// Register registers a new router.
+func Register(name string, r Router) {
+	routers[name] = r
+}
+
+// Get gets the named router from the registry.
+func Get(name string) (Router, error) {
+	r, ok := routers[name]
+	if !ok {
+		return nil, fmt.Errorf("Unknown router: %q.", name)
+	}
+	return r, nil
 }
