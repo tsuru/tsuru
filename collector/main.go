@@ -13,7 +13,7 @@ import (
 	"github.com/globocom/tsuru/provision"
 	_ "github.com/globocom/tsuru/provision/docker"
 	_ "github.com/globocom/tsuru/provision/juju"
-	_ "github.com/globocom/tsuru/provision/local"
+	_ "github.com/globocom/tsuru/provision/lxc"
 	stdlog "log"
 	"log/syslog"
 	"os"
