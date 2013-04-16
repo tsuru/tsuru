@@ -60,7 +60,7 @@ func (s *SMTPServer) Addr() string {
 	return s.listener.Addr().String()
 }
 
-// Stop stops the server. It's save to call this method multiple times.
+// Stop stops the server. It's safe to call this method multiple times.
 func (s *SMTPServer) Stop() {
 	s.listener.Close()
 }
