@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-package local
+package lxc
 
 import (
 	"bytes"
@@ -21,7 +21,7 @@ import (
 )
 
 func (s *S) TestShouldBeRegistered(c *gocheck.C) {
-	p, err := provision.Get("local")
+	p, err := provision.Get("lxc")
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(p, gocheck.FitsTypeOf, &LocalProvisioner{})
 }

@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-package local
+package lxc
 
 import (
 	"bytes"
@@ -18,7 +18,7 @@ import (
 )
 
 func init() {
-	provision.Register("local", &LocalProvisioner{})
+	provision.Register("lxc", &LocalProvisioner{})
 }
 
 type LocalProvisioner struct{}
