@@ -32,6 +32,29 @@ func (s *S) TestJsonWriterBuffer(c *gocheck.C) {
 	c.Assert(writer.String(), gocheck.Equals, expected)
 }
 
+func (s *S) TestJsonWriterUsesCurrentTimeZone(c *gocheck.C) {
+	t := time.Now()
+	logs := []log{
+		{Date: t, Message: "Something happened", Source: "tsuru"},
+		{Date: t.Add(2 * time.Hour), Message: "Something happened again", Source: "tsuru"},
+	}
+	data, err := json.Marshal(logs)
+	c.Assert(err, gocheck.IsNil)
+	var writer bytes.Buffer
+	w := jsonWriter{w: &writer}
+	old := time.Local
+	time.Local = time.UTC
+	defer func() {
+		time.Local = old
+	}()
+	w.Write(data)
+	tfmt := "2006-01-02 15:04:05 -0700"
+	t = t.In(time.UTC)
+	expected := cmd.Colorfy(t.Format(tfmt)+" [tsuru]:", "blue", "", "") + " Something happened\n"
+	expected = expected + cmd.Colorfy(t.Add(2*time.Hour).Format(tfmt)+" [tsuru]:", "blue", "", "") + " Something happened again\n"
+	c.Assert(writer.String(), gocheck.Equals, expected)
+}
+
 func (s *S) TestJsonWriterChukedWrite(c *gocheck.C) {
 	t := time.Now()
 	logs := []log{
