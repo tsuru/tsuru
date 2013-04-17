@@ -44,7 +44,7 @@ func (s *S) TestAddRoute(c *gocheck.C) {
 	c.Assert(string(data), gocheck.Equals, expected)
 }
 
-func (s *S) TestRestartRouter(c *gocheck.C) {
+func (s *S) TestRestart(c *gocheck.C) {
 	tmpdir, err := commandmocker.Add("sudo", "$*")
 	c.Assert(err, gocheck.IsNil)
 	defer commandmocker.Remove(tmpdir)
@@ -54,4 +54,17 @@ func (s *S) TestRestartRouter(c *gocheck.C) {
 	c.Assert(commandmocker.Ran(tmpdir), gocheck.Equals, true)
 	expected := "service nginx restart"
 	c.Assert(commandmocker.Output(tmpdir), gocheck.Equals, expected)
+}
+
+func (s *S) TestRemoveRoute(c *gocheck.C) {
+	config.Set("nginx:routes-path", "testdata")
+	rfs := &testing.RecordingFs{}
+	fsystem = rfs
+	defer func() {
+		fsystem = nil
+	}()
+	var r NginxRouter
+	err := r.RemoveRoute("name")
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(rfs.HasAction("remove testdata/name"), gocheck.Equals, true)
 }

@@ -52,7 +52,11 @@ func (NginxRouter) AddRoute(name, ip string) error {
 }
 
 func (NginxRouter) RemoveRoute(name string) error {
-	return nil
+	routesPath, err := config.GetString("nginx:routes-path")
+	if err != nil {
+		return err
+	}
+	return filesystem().Remove(routesPath + "/" + name)
 }
 
 func (NginxRouter) Restart() error {
