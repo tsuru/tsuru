@@ -131,9 +131,8 @@ Authentication configuration
 Tsuru has its own authentication mechanism, that hashes passwords brcypt.
 Tokens are generated during authentication, and are hashed using SHA512.
 
-This mechanism requires three settings to operate: ``auth:hash-cost``,
-``auth:token-expire-days`` and ``auth:token-key``. Each setting is described
-below.
+This mechanism requires two settings to operate: ``auth:hash-cost`` and
+``auth:token-expire-days``. Each setting is described below.
 
 The ``auth`` section also controls whether user registation is on or off. When
 user registration is off, the user creation URL is not registered in the
@@ -158,13 +157,6 @@ auth:token-expire-days
 Whenever a user logs in, tsuru generates a token for him/her, and the user may
 store the token. ``auth:token-expire-days`` setting defines the amount of days
 that the token will be valid. This setting is optional, and defaults to "7".
-
-auth:token-key
-++++++++++++++
-
-``auth:token-key`` is the key used for token hashing, during authentication
-process. If this value changes, all tokens will expire. This setting is
-required, and has no default value.
 
 Amazon Web Services (AWS) configuration
 ---------------------------------------
@@ -474,7 +466,6 @@ Here is a complete example, with S3, VPC, HTTP/TLS and load balacing enabled:
     auth:
       salt: salt
       token-expire-days: 14
-      token-key: key
     bucket-support: true
     aws:
       access-key-id: access-key

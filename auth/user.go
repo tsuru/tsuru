@@ -26,12 +26,12 @@ const (
 	passwordMaxLen    = 50
 )
 
-var salt, tokenKey string
+var salt string
 var tokenExpire time.Duration
 var cost int
 
 func loadConfig() error {
-	if salt == "" && tokenKey == "" {
+	if salt == "" {
 		var err error
 		if salt, err = config.GetString("auth:salt"); err != nil {
 			return stderrors.New(`Setting "auth:salt" is undefined.`)
@@ -41,9 +41,6 @@ func loadConfig() error {
 			tokenExpire = time.Duration(day * 24 * int64(time.Hour))
 		} else {
 			tokenExpire = defaultExpiration
-		}
-		if tokenKey, err = config.GetString("auth:token-key"); err != nil {
-			return stderrors.New(`Setting "auth:token-key" is undefined.`)
 		}
 		if cost, err = config.GetInt("auth:hash-cost"); err != nil {
 			return stderrors.New(`Setting "auth:hash-cost" is undefined.`)

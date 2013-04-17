@@ -7,7 +7,6 @@ package auth
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/globocom/config"
 	"labix.org/v2/mgo/bson"
 	"launchpad.net/gocheck"
 	"sync"
@@ -45,18 +44,6 @@ func (s *S) TestNewTokenReturnsErrorWhenUserIsNil(c *gocheck.C) {
 	c.Assert(t, gocheck.IsNil)
 	c.Assert(err, gocheck.NotNil)
 	c.Assert(err, gocheck.ErrorMatches, "^User is nil$")
-}
-
-func (s *S) TestNewTokenWithoutTokenKey(c *gocheck.C) {
-	old, err := config.Get("auth:token-key")
-	c.Assert(err, gocheck.IsNil)
-	defer config.Set("auth:token-key", old)
-	err = config.Unset("auth:token-key")
-	c.Assert(err, gocheck.IsNil)
-	t, err := newUserToken(&User{Email: "gopher@golang.org"})
-	c.Assert(t, gocheck.IsNil)
-	c.Assert(err, gocheck.NotNil)
-	c.Assert(err.Error(), gocheck.Equals, `Setting "auth:token-key" is undefined.`)
 }
 
 func (s *S) TestGetToken(c *gocheck.C) {

@@ -251,35 +251,6 @@ func (s *S) TestLoadConfigShouldPanicIfTheTokenExpireDaysIsNotInteger(c *gocheck
 	loadConfig()
 }
 
-func (s *S) TestLoadConfigTokenKey(c *gocheck.C) {
-	configuredKey, err := config.Get("auth:token-key")
-	c.Assert(err, gocheck.IsNil)
-	loadConfig()
-	c.Assert(tokenKey, gocheck.Equals, configuredKey)
-}
-
-func (s *S) TestLoadConfigUndefineTokenKey(c *gocheck.C) {
-	key := "auth:token-key"
-	oldConfig, err := config.Get(key)
-	c.Assert(err, gocheck.IsNil)
-	err = config.Unset(key)
-	c.Assert(err, gocheck.IsNil)
-	defer config.Set(key, oldConfig)
-	err = loadConfig()
-	c.Assert(err, gocheck.NotNil)
-	c.Assert(err.Error(), gocheck.Equals, `Setting "auth:token-key" is undefined.`)
-	c.Assert(tokenKey, gocheck.Equals, "")
-}
-
-func (s *S) TestLoadConfigDontOverride(c *gocheck.C) {
-	tokenKey = "something"
-	salt = "salt"
-	err := loadConfig()
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(tokenKey, gocheck.Equals, "something")
-	c.Assert(salt, gocheck.Equals, "salt")
-}
-
 func (s *S) TestLoadConfigCost(c *gocheck.C) {
 	key := "auth:hash-cost"
 	oldConfig, err := config.Get(key)
@@ -287,7 +258,6 @@ func (s *S) TestLoadConfigCost(c *gocheck.C) {
 	config.Set(key, bcrypt.MaxCost)
 	defer config.Set(key, oldConfig)
 	salt = ""
-	tokenKey = ""
 	err = loadConfig()
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(cost, gocheck.Equals, bcrypt.MaxCost)
@@ -310,7 +280,6 @@ func (s *S) TestLoadConfigCostInvalid(c *gocheck.C) {
 	defer config.Set(key, oldConfig)
 	for _, v := range values {
 		salt = ""
-		tokenKey = ""
 		config.Set(key, v)
 		err := loadConfig()
 		c.Assert(err, gocheck.NotNil)

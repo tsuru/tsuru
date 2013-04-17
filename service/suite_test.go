@@ -52,7 +52,6 @@ func (s *S) SetUpSuite(c *gocheck.C) {
 	config.Set("database:url", "127.0.0.1:27017")
 	config.Set("database:name", "tsuru_service_test")
 	config.Set("auth:salt", "tsuru-salt")
-	config.Set("auth:token-key", "TSURU-KEY")
 	s.conn, err = db.Conn()
 	c.Assert(err, gocheck.IsNil)
 	s.user = &auth.User{Email: "cidade@raul.com", Password: "123"}

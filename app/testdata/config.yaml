@@ -23,6 +23,5 @@ aws:
 auth:
   salt: tsuru-salt
   token-expire-days: 2
-  token-key: TSURU-KEY
 queue: fake
 admin-team: admin

@@ -37,7 +37,6 @@ func (s *AuthSuite) SetUpSuite(c *gocheck.C) {
 	config.Set("database:url", "127.0.0.1:27017")
 	config.Set("database:name", "tsuru_api_auth_test")
 	config.Set("auth:salt", "tsuru-salt")
-	config.Set("auth:token-key", "TSURU-KEY")
 	config.Set("auth:hash-cost", 4)
 	s.createUserAndTeam(c)
 	config.Set("admin-team", s.team.Name)
