@@ -153,6 +153,10 @@ func (s *Storage) Tokens() *mgo.Collection {
 	return s.Collection("tokens")
 }
 
+func (s *Storage) PasswordTokens() *mgo.Collection {
+	return s.Collection("password_tokens")
+}
+
 // Teams returns the teams collection from MongoDB.
 func (s *Storage) Teams() *mgo.Collection {
 	return s.Collection("teams")
