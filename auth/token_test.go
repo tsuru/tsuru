@@ -5,6 +5,7 @@
 package auth
 
 import (
+	"crypto/sha1"
 	"encoding/json"
 	"fmt"
 	"labix.org/v2/mgo/bson"
@@ -20,7 +21,7 @@ func (s *S) TestTokenCannotRepeat(c *gocheck.C) {
 	for i := range tokens {
 		wg.Add(1)
 		go func(i int) {
-			tokens[i] = token(input)
+			tokens[i] = token(input, sha1.New())
 			wg.Done()
 		}(i)
 	}

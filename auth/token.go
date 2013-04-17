@@ -10,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/globocom/tsuru/db"
+	"hash"
 	"labix.org/v2/mgo/bson"
 	"time"
 )
@@ -27,13 +28,12 @@ func (t *Token) User() (*User, error) {
 	return GetUserByEmail(t.UserEmail)
 }
 
-func token(data string) string {
+func token(data string, h hash.Hash) string {
 	var tokenKey [keySize]byte
 	n, err := rand.Read(tokenKey[:])
 	for n < keySize || err != nil {
 		n, err = rand.Read(tokenKey[:])
 	}
-	h := sha1.New()
 	h.Write([]byte(data))
 	h.Write(tokenKey[:])
 	h.Write([]byte(time.Now().Format(time.RFC3339Nano)))
@@ -52,7 +52,7 @@ func newUserToken(u *User) (*Token, error) {
 	}
 	t := Token{}
 	t.ValidUntil = time.Now().Add(tokenExpire)
-	t.Token = token(u.Email)
+	t.Token = token(u.Email, sha1.New())
 	t.UserEmail = u.Email
 	return &t, nil
 }
@@ -91,7 +91,7 @@ func CreateApplicationToken(appName string) (*Token, error) {
 	defer conn.Close()
 	t := Token{
 		ValidUntil: time.Now().Add(365 * 24 * time.Hour),
-		Token:      token(appName),
+		Token:      token(appName, sha1.New()),
 		AppName:    appName,
 	}
 	err = conn.Tokens().Insert(t)
