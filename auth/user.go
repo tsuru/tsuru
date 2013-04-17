@@ -5,6 +5,7 @@
 package auth
 
 import (
+	"bytes"
 	"code.google.com/p/go.crypto/bcrypt"
 	"code.google.com/p/go.crypto/pbkdf2"
 	"crypto/sha512"
@@ -13,8 +14,11 @@ import (
 	"github.com/globocom/config"
 	"github.com/globocom/tsuru/db"
 	"github.com/globocom/tsuru/errors"
+	"github.com/globocom/tsuru/log"
 	"github.com/globocom/tsuru/validation"
 	"labix.org/v2/mgo/bson"
+	"net/smtp"
+	"text/template"
 	"time"
 )
 
@@ -29,6 +33,16 @@ const (
 var salt string
 var tokenExpire time.Duration
 var cost int
+
+var resetEmailData = template.Must(template.New("reset").Parse(`Subject: [Tsuru] Password reset process
+To: {{.UserEmail}}
+
+Someone, hopefully you, requested to reset your password on tsuru. You will
+need to use the following token to finish this process
+
+{{.Token}}
+
+If you think this is email is wrong, just ignore it.`))
 
 func loadConfig() error {
 	if salt == "" {
@@ -160,15 +174,46 @@ func (u *User) CreateToken(password string) (*Token, error) {
 	return t, err
 }
 
+func (u *User) sendResetPassword(t *PasswordToken) {
+	var body bytes.Buffer
+	err := resetEmailData.Execute(&body, t)
+	if err != nil {
+		log.Printf("Failed to send password token to user %q: %s", u.Email, err)
+		return
+	}
+	err = sendEmail(u.Email, body.Bytes())
+	if err != nil {
+		log.Printf("Failed to send password token for user %q: %s", u.Email, err)
+	}
+}
+
+// StartPasswordReset starts the password reset process, creating a new token
+// and mailing it to the user.
+//
+// The token should then be used to finish the process, through the
+// ResetPassword function.
+func (u *User) StartPasswordReset() error {
+	t, err := createPasswordToken(u)
+	if err != nil {
+		return err
+	}
+	go u.sendResetPassword(t)
+	return nil
+}
+
 // Teams returns a slice containing all teams that the user is member of.
-func (u *User) Teams() (teams []Team, err error) {
+func (u *User) Teams() ([]Team, error) {
 	conn, err := db.Conn()
 	if err != nil {
 		return nil, err
 	}
 	defer conn.Close()
+	var teams []Team
 	err = conn.Teams().Find(bson.M{"users": u.Email}).All(&teams)
-	return
+	if err != nil {
+		return nil, err
+	}
+	return teams, nil
 }
 
 func (u *User) FindKey(key Key) (Key, int) {
@@ -261,4 +306,27 @@ type AuthenticationFailure struct{}
 
 func (AuthenticationFailure) Error() string {
 	return "Authentication failed, wrong password."
+}
+
+type UserNotFound struct{}
+
+func (UserNotFound) Error() string {
+	return "User not found"
+}
+
+func sendEmail(email string, data []byte) error {
+	addr, err := config.GetString("smtp:host")
+	if err != nil {
+		return stderrors.New(`Setting "smtp:host" is not defined`)
+	}
+	user, err := config.GetString("smtp:user")
+	if err != nil {
+		return stderrors.New(`Setting "smtp:user" is not defined`)
+	}
+	password, err := config.GetString("smtp:password")
+	if err != nil {
+		return stderrors.New(`Setting "smtp:password" is not defined`)
+	}
+	auth := smtp.PlainAuth("", user, password, addr)
+	return smtp.SendMail(addr, auth, user, []string{email}, data)
 }

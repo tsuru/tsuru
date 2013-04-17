@@ -5,12 +5,14 @@
 package auth
 
 import (
+	"bytes"
 	"code.google.com/p/go.crypto/bcrypt"
 	"fmt"
 	"github.com/globocom/config"
 	"github.com/globocom/tsuru/errors"
 	"labix.org/v2/mgo/bson"
 	"launchpad.net/gocheck"
+	"strings"
 	"time"
 )
 
@@ -134,6 +136,32 @@ func (s *S) TestUserCheckPasswordValidatesThePassword(c *gocheck.C) {
 	e, ok = err.(*errors.ValidationError)
 	c.Check(ok, gocheck.Equals, true)
 	c.Check(e.Message, gocheck.Equals, passwordError)
+}
+
+func (s *S) TestUserStartPasswordReset(c *gocheck.C) {
+	defer s.server.Reset()
+	u := User{Email: "thank@alanis.com", Password: "123456"}
+	err := u.Create()
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Users().Remove(bson.M{"email": u.Email})
+	err = u.StartPasswordReset()
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.PasswordTokens().Remove(bson.M{"useremail": u.Email})
+	var token PasswordToken
+	err = s.conn.PasswordTokens().Find(bson.M{"useremail": u.Email}).One(&token)
+	c.Assert(err, gocheck.IsNil)
+	time.Sleep(1e6) // Let the email flow.
+	s.server.Lock()
+	defer s.server.Unlock()
+	c.Assert(s.server.MailBox, gocheck.HasLen, 1)
+	m := s.server.MailBox[0]
+	c.Assert(m.From, gocheck.Equals, "root")
+	c.Assert(m.To, gocheck.DeepEquals, []string{u.Email})
+	var buf bytes.Buffer
+	err = resetEmailData.Execute(&buf, token)
+	c.Assert(err, gocheck.IsNil)
+	expected := strings.Replace(buf.String(), "\n", "\r\n", -1) + "\r\n"
+	c.Assert(string(m.Data), gocheck.Equals, expected)
 }
 
 func (s *S) TestCreateTokenShouldSaveTheTokenInTheDatabase(c *gocheck.C) {
@@ -375,4 +403,48 @@ func (s *S) TestAllowedAppsByTeam(c *gocheck.C) {
 	}()
 	alwdApps, err := s.user.AllowedAppsByTeam(team.Name)
 	c.Assert(alwdApps, gocheck.DeepEquals, []string{a2.Name})
+}
+
+func (s *S) TestUserNotFound(c *gocheck.C) {
+	var err error = UserNotFound{}
+	c.Assert(err.Error(), gocheck.Equals, "User not found")
+}
+
+func (s *S) TestSendEmail(c *gocheck.C) {
+	defer s.server.Reset()
+	err := sendEmail("something@tsuru.io", []byte("Hello world!"))
+	c.Assert(err, gocheck.IsNil)
+	s.server.Lock()
+	defer s.server.Unlock()
+	m := s.server.MailBox[0]
+	c.Assert(m.To, gocheck.DeepEquals, []string{"something@tsuru.io"})
+	c.Assert(m.From, gocheck.Equals, "root")
+	c.Assert(m.Data, gocheck.DeepEquals, []byte("Hello world!\r\n"))
+}
+
+func (s *S) TestSendEmailUndefinedSMTPServer(c *gocheck.C) {
+	old, _ := config.Get("smtp:host")
+	defer config.Set("smtp:host", old)
+	config.Unset("smtp:host")
+	err := sendEmail("something@tsuru.io", []byte("Hello world!"))
+	c.Assert(err, gocheck.NotNil)
+	c.Assert(err.Error(), gocheck.Equals, `Setting "smtp:host" is not defined`)
+}
+
+func (s *S) TestSendEmailUndefinedSMTPUser(c *gocheck.C) {
+	old, _ := config.Get("smtp:user")
+	defer config.Set("smtp:user", old)
+	config.Unset("smtp:user")
+	err := sendEmail("something@tsuru.io", []byte("Hello world!"))
+	c.Assert(err, gocheck.NotNil)
+	c.Assert(err.Error(), gocheck.Equals, `Setting "smtp:user" is not defined`)
+}
+
+func (s *S) TestSendEmailUndefinedSMTPPassword(c *gocheck.C) {
+	old, _ := config.Get("smtp:password")
+	defer config.Set("smtp:password", old)
+	config.Unset("smtp:password")
+	err := sendEmail("something@tsuru.io", []byte("Hello world!"))
+	c.Assert(err, gocheck.NotNil)
+	c.Assert(err.Error(), gocheck.Equals, `Setting "smtp:password" is not defined`)
 }

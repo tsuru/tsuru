@@ -8,6 +8,7 @@ import (
 	"code.google.com/p/go.crypto/bcrypt"
 	"github.com/globocom/config"
 	"github.com/globocom/tsuru/db"
+	ttesting "github.com/globocom/tsuru/testing"
 	"io"
 	"launchpad.net/gocheck"
 	"net/http"
@@ -51,6 +52,7 @@ type S struct {
 	user    *User
 	team    *Team
 	token   *Token
+	server  *ttesting.SMTPServer
 	gitRoot string
 	gitHost string
 	gitPort string
@@ -78,10 +80,16 @@ func (s *S) SetUpSuite(c *gocheck.C) {
 	s.gitHost, _ = config.GetString("git:host")
 	s.gitPort, _ = config.GetString("git:port")
 	s.gitProt, _ = config.GetString("git:protocol")
+	s.server, err = ttesting.NewSMTPServer()
+	c.Assert(err, gocheck.IsNil)
+	config.Set("smtp:host", s.server.Addr())
+	config.Set("smtp:user", "root")
+	config.Set("smtp:password", "123456")
 }
 
 func (s *S) TearDownSuite(c *gocheck.C) {
 	s.conn.Apps().Database.DropDatabase()
+	s.server.Stop()
 }
 
 func (s *S) TearDownTest(c *gocheck.C) {
