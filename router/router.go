@@ -18,6 +18,9 @@ type Router interface {
 
 	// Restart restarts the router.
 	Restart() error
+
+	// Addr returns the route address.
+	Addr(name string) string
 }
 
 var routers = make(map[string]Router)
