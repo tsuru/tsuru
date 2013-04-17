@@ -23,6 +23,7 @@ var _ = gocheck.Suite(&S{})
 func (s *S) SetUpSuite(c *gocheck.C) {
 	s.collName = "docker_unit"
 	config.Set("docker:binary", "docker")
+	config.Set("router", "fake")
 	config.Set("docker:collection", s.collName)
 	config.Set("database:url", "127.0.0.1:27017")
 	config.Set("database:name", "juju_provision_tests_s")

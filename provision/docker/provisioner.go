@@ -11,6 +11,9 @@ import (
 	"github.com/globocom/tsuru/db"
 	"github.com/globocom/tsuru/log"
 	"github.com/globocom/tsuru/provision"
+	"github.com/globocom/tsuru/router"
+	_ "github.com/globocom/tsuru/router/nginx"
+	_ "github.com/globocom/tsuru/router/testing"
 	"io"
 	"labix.org/v2/mgo"
 	"labix.org/v2/mgo/bson"
@@ -19,6 +22,14 @@ import (
 
 func init() {
 	provision.Register("docker", &LocalProvisioner{})
+}
+
+func (p *LocalProvisioner) router() (router.Router, error) {
+	r, err := config.GetString("router")
+	if err != nil {
+		return nil, err
+	}
+	return router.Get(r)
 }
 
 type LocalProvisioner struct{}
@@ -136,15 +147,20 @@ func (p *LocalProvisioner) Provision(app provision.App) error {
 			log.Print(err)
 			return
 		}
-		if err := AddRoute(app.GetName(), ip); err != nil {
-			log.Printf("error on add route for %s with ip %s", app.GetName(), ip)
+		r, err := p.router()
+		if err != nil {
 			log.Print(err)
 			return
 		}
-		if err := RestartRouter(); err != nil {
+		err = r.AddRoute(app.GetName(), ip)
+		if err != nil {
+			log.Printf("error on add route for %s with ip %s", app.GetName(), ip)
+			log.Print(err)
+		}
+		err = r.Restart()
+		if err != nil {
 			log.Printf("error on restart router")
 			log.Print(err)
-			return
 		}
 		u.Status = provision.StatusStarted
 		if err := p.collection().Update(bson.M{"name": u.Name}, u); err != nil {

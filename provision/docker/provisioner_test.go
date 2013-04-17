@@ -12,6 +12,7 @@ import (
 	fstesting "github.com/globocom/tsuru/fs/testing"
 	"github.com/globocom/tsuru/log"
 	"github.com/globocom/tsuru/provision"
+	rtesting "github.com/globocom/tsuru/router/testing"
 	"github.com/globocom/tsuru/testing"
 	"io/ioutil"
 	"labix.org/v2/mgo/bson"
@@ -76,9 +77,12 @@ func (s *S) TestProvisionerProvision(c *gocheck.C) {
 	}
 	c.Assert(commandmocker.Ran(tmpdir), gocheck.Equals, true)
 	expected := "docker run -d base /bin/bash myapp somepath"
-	expected += "docker inspect .*"     // from ip call, the instance id in the end of this command is actually wrong, so we ignore it
-	expected += "service nginx restart" // from RestartRoute call
+	expected += "docker inspect .*" // from ip call, the instance id in the end of this command is actually wrong, so we ignore it
 	c.Assert(commandmocker.Output(tmpdir), gocheck.Matches, expected)
+	r, err := p.router()
+	c.Assert(err, gocheck.IsNil)
+	fk := r.(*rtesting.FakeRouter)
+	c.Assert(fk.HasRoute("myapp"), gocheck.Equals, true)
 }
 
 func (s *S) TestProvisionerProvisionFillsUnitIp(c *gocheck.C) {
