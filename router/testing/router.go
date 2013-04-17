@@ -39,3 +39,7 @@ func (r *FakeRouter) HasRoute(name string) bool {
 	_, ok := r.routes[name]
 	return ok
 }
+
+func (r *FakeRouter) Addr(name string) string {
+	return r.routes[name]
+}
