@@ -187,9 +187,12 @@ func (p *LocalProvisioner) Destroy(app provision.App) error {
 	return nil
 }
 
-func (*LocalProvisioner) Addr(app provision.App) (string, error) {
-	units := app.ProvisionUnits()
-	return units[0].GetIp(), nil
+func (p *LocalProvisioner) Addr(app provision.App) (string, error) {
+	r, err := p.router()
+	if err != nil {
+		return "", err
+	}
+	return r.Addr(app.GetName()), nil
 }
 
 func (*LocalProvisioner) AddUnits(app provision.App, units uint) ([]provision.Unit, error) {

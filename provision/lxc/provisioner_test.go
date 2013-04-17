@@ -170,7 +170,9 @@ func (s *S) TestProvisionerAddr(c *gocheck.C) {
 	app := testing.NewFakeApp("myapp", "python", 1)
 	addr, err := p.Addr(app)
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(addr, gocheck.Equals, app.ProvisionUnits()[0].GetIp())
+	r, err := p.router()
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(addr, gocheck.Equals, r.Addr(app.GetName()))
 }
 
 func (s *S) TestProvisionerAddUnits(c *gocheck.C) {
