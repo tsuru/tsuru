@@ -5,7 +5,7 @@
 package auth
 
 import (
-	"crypto/sha1"
+	"crypto"
 	"encoding/json"
 	"fmt"
 	"labix.org/v2/mgo/bson"
@@ -21,7 +21,7 @@ func (s *S) TestTokenCannotRepeat(c *gocheck.C) {
 	for i := range tokens {
 		wg.Add(1)
 		go func(i int) {
-			tokens[i] = token(input, sha1.New())
+			tokens[i] = token(input, crypto.MD5)
 			wg.Done()
 		}(i)
 	}
@@ -126,4 +126,34 @@ func (s *S) TestDeleteToken(c *gocheck.C) {
 	_, err = GetToken(t.Token)
 	c.Assert(err, gocheck.NotNil)
 	c.Assert(err.Error(), gocheck.Equals, "Token not found")
+}
+
+func (s *S) TestCreatePasswordToken(c *gocheck.C) {
+	u := User{Email: "pure@alanis.com"}
+	t, err := createPasswordToken(&u)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(t.UserEmail, gocheck.Equals, u.Email)
+	c.Assert(t.Used, gocheck.Equals, false)
+	var dbToken PasswordToken
+	err = s.conn.PasswordTokens().Find(bson.M{"_id": t.Token}).One(&dbToken)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(dbToken.Token, gocheck.Equals, t.Token)
+	c.Assert(dbToken.UserEmail, gocheck.Equals, t.UserEmail)
+	c.Assert(dbToken.Used, gocheck.Equals, t.Used)
+}
+
+func (s *S) TestCreatePasswordTokenErrors(c *gocheck.C) {
+	var tests = []struct {
+		input *User
+		want  string
+	}{
+		{nil, "User is nil"},
+		{&User{}, "User email is empty"},
+	}
+	for _, t := range tests {
+		token, err := createPasswordToken(t.input)
+		c.Check(token, gocheck.IsNil)
+		c.Check(err, gocheck.NotNil)
+		c.Check(err.Error(), gocheck.Equals, t.want)
+	}
 }

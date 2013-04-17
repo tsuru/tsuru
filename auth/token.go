@@ -5,17 +5,19 @@
 package auth
 
 import (
+	"crypto"
 	"crypto/rand"
-	"crypto/sha1"
 	"errors"
 	"fmt"
 	"github.com/globocom/tsuru/db"
-	"hash"
 	"labix.org/v2/mgo/bson"
 	"time"
 )
 
-const keySize = 32 // size of the key, in bytes
+const (
+	keySize                 = 32
+	passwordTokenExpiration = 24 * time.Hour
+)
 
 type Token struct {
 	Token      string    `json:"token"`
@@ -28,33 +30,11 @@ func (t *Token) User() (*User, error) {
 	return GetUserByEmail(t.UserEmail)
 }
 
-func token(data string, h hash.Hash) string {
-	var tokenKey [keySize]byte
-	n, err := rand.Read(tokenKey[:])
-	for n < keySize || err != nil {
-		n, err = rand.Read(tokenKey[:])
-	}
-	h.Write([]byte(data))
-	h.Write(tokenKey[:])
-	h.Write([]byte(time.Now().Format(time.RFC3339Nano)))
-	return fmt.Sprintf("%x", h.Sum(nil))
-}
-
-func newUserToken(u *User) (*Token, error) {
-	if u == nil {
-		return nil, errors.New("User is nil")
-	}
-	if u.Email == "" {
-		return nil, errors.New("Impossible to generate tokens for users without email")
-	}
-	if err := loadConfig(); err != nil {
-		return nil, err
-	}
-	t := Token{}
-	t.ValidUntil = time.Now().Add(tokenExpire)
-	t.Token = token(u.Email, sha1.New())
-	t.UserEmail = u.Email
-	return &t, nil
+type PasswordToken struct {
+	Token     string `bson:"_id"`
+	UserEmail string
+	Creation  time.Time
+	Used      bool
 }
 
 func GetToken(token string) (*Token, error) {
@@ -91,7 +71,7 @@ func CreateApplicationToken(appName string) (*Token, error) {
 	defer conn.Close()
 	t := Token{
 		ValidUntil: time.Now().Add(365 * 24 * time.Hour),
-		Token:      token(appName, sha1.New()),
+		Token:      token(appName, crypto.SHA1),
 		AppName:    appName,
 	}
 	err = conn.Tokens().Insert(t)
@@ -99,4 +79,61 @@ func CreateApplicationToken(appName string) (*Token, error) {
 		return nil, err
 	}
 	return &t, nil
+}
+
+func token(data string, hash crypto.Hash) string {
+	var tokenKey [keySize]byte
+	n, err := rand.Read(tokenKey[:])
+	for n < keySize || err != nil {
+		n, err = rand.Read(tokenKey[:])
+	}
+	h := hash.New()
+	h.Write([]byte(data))
+	h.Write(tokenKey[:])
+	h.Write([]byte(time.Now().Format(time.RFC3339Nano)))
+	return fmt.Sprintf("%x", h.Sum(nil))
+}
+
+func newUserToken(u *User) (*Token, error) {
+	if u == nil {
+		return nil, errors.New("User is nil")
+	}
+	if u.Email == "" {
+		return nil, errors.New("Impossible to generate tokens for users without email")
+	}
+	if err := loadConfig(); err != nil {
+		return nil, err
+	}
+	t := Token{}
+	t.ValidUntil = time.Now().Add(tokenExpire)
+	t.Token = token(u.Email, crypto.SHA1)
+	t.UserEmail = u.Email
+	return &t, nil
+}
+
+func createPasswordToken(u *User) (*PasswordToken, error) {
+	if u == nil {
+		return nil, errors.New("User is nil")
+	}
+	if u.Email == "" {
+		return nil, errors.New("User email is empty")
+	}
+	t := PasswordToken{
+		Token:     token(u.Email, crypto.SHA256),
+		UserEmail: u.Email,
+		Creation:  time.Now(),
+	}
+	conn, err := db.Conn()
+	if err != nil {
+		return nil, err
+	}
+	err = conn.PasswordTokens().Insert(t)
+	if err != nil {
+		return nil, err
+	}
+	return &t, nil
+}
+
+func getPasswordToken(token string) (*PasswordToken, error) {
+	return nil, nil
 }
