@@ -63,3 +63,8 @@ func (NginxRouter) Restart() error {
 	cmd := exec.Command("sudo", "service", "nginx", "restart")
 	return cmd.Run()
 }
+
+func (NginxRouter) Addr(name string) string {
+	domain, _ := config.GetString("nginx:domain")
+	return fmt.Sprintf("%s.%s", name, domain)
+}
