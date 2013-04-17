@@ -11,6 +11,9 @@ import (
 	"github.com/globocom/tsuru/db"
 	"github.com/globocom/tsuru/log"
 	"github.com/globocom/tsuru/provision"
+	"github.com/globocom/tsuru/router"
+	_ "github.com/globocom/tsuru/router/nginx"
+	_ "github.com/globocom/tsuru/router/testing"
 	"io"
 	"labix.org/v2/mgo"
 	"labix.org/v2/mgo/bson"
@@ -22,6 +25,14 @@ func init() {
 }
 
 type LocalProvisioner struct{}
+
+func (p *LocalProvisioner) router() (router.Router, error) {
+	r, err := config.GetString("router")
+	if err != nil {
+		return nil, err
+	}
+	return router.Get(r)
+}
 
 func (p *LocalProvisioner) setup(ip, framework string) error {
 	formulasPath, err := config.GetString("lxc:formulas-path")
@@ -128,12 +139,17 @@ func (p *LocalProvisioner) Provision(app provision.App) error {
 			log.Printf("error on start app for container %s", app.GetName())
 			log.Print(err)
 		}
-		err = AddRoute(app.GetName(), c.Ip())
+		r, err := p.router()
+		if err != nil {
+			log.Print(err)
+			return
+		}
+		err = r.AddRoute(app.GetName(), c.Ip())
 		if err != nil {
 			log.Printf("error on add route for %s with ip %s", app.GetName(), c.Ip())
 			log.Print(err)
 		}
-		err = RestartRouter()
+		err = r.Restart()
 		if err != nil {
 			log.Printf("error on restart router")
 			log.Print(err)

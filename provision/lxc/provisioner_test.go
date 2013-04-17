@@ -11,6 +11,7 @@ import (
 	"github.com/globocom/config"
 	fstesting "github.com/globocom/tsuru/fs/testing"
 	"github.com/globocom/tsuru/provision"
+	rtesting "github.com/globocom/tsuru/router/testing"
 	"github.com/globocom/tsuru/testing"
 	"io/ioutil"
 	"labix.org/v2/mgo/bson"
@@ -81,7 +82,10 @@ func (s *S) TestProvisionerProvision(c *gocheck.C) {
 	c.Assert(commandmocker.Ran(tmpdir), gocheck.Equals, true)
 	expected := "lxc-create -t ubuntu-cloud -n myapp -- -S somepath"
 	expected += "lxc-start --daemon -n myapp"
-	expected += "service nginx restart"
+	r, err := p.router()
+	c.Assert(err, gocheck.IsNil)
+	fk := r.(*rtesting.FakeRouter)
+	c.Assert(fk.HasRoute("myapp"), gocheck.Equals, true)
 	c.Assert(commandmocker.Output(tmpdir), gocheck.Equals, expected)
 	var unit provision.Unit
 	err = s.conn.Collection(s.collName).Find(bson.M{"name": "myapp"}).One(&unit)
