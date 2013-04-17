@@ -150,7 +150,7 @@ func (s *S) TestUserStartPasswordReset(c *gocheck.C) {
 	var token PasswordToken
 	err = s.conn.PasswordTokens().Find(bson.M{"useremail": u.Email}).One(&token)
 	c.Assert(err, gocheck.IsNil)
-	time.Sleep(1e6) // Let the email flow.
+	time.Sleep(1e9) // Let the email flow.
 	s.server.Lock()
 	defer s.server.Unlock()
 	c.Assert(s.server.MailBox, gocheck.HasLen, 1)
