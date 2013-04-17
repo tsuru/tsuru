@@ -8,9 +8,16 @@ import (
 	"github.com/globocom/commandmocker"
 	"github.com/globocom/config"
 	"github.com/globocom/tsuru/fs/testing"
+	"github.com/globocom/tsuru/router"
 	"io/ioutil"
 	"launchpad.net/gocheck"
 )
+
+func (s *S) TestShouldBeRegistered(c *gocheck.C) {
+	r, err := router.Get("nginx")
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(r, gocheck.FitsTypeOf, &NginxRouter{})
+}
 
 func (s *S) TestAddRoute(c *gocheck.C) {
 	config.Set("nginx:domain", "andrewzito.com")
@@ -20,7 +27,8 @@ func (s *S) TestAddRoute(c *gocheck.C) {
 	defer func() {
 		fsystem = nil
 	}()
-	err := AddRoute("name", "127.0.0.1")
+	var r NginxRouter
+	err := r.AddRoute("name", "127.0.0.1")
 	c.Assert(err, gocheck.IsNil)
 	file, err := rfs.Open("testdata/name")
 	c.Assert(err, gocheck.IsNil)
@@ -40,7 +48,8 @@ func (s *S) TestRestartRouter(c *gocheck.C) {
 	tmpdir, err := commandmocker.Add("sudo", "$*")
 	c.Assert(err, gocheck.IsNil)
 	defer commandmocker.Remove(tmpdir)
-	err = RestartRouter()
+	var r NginxRouter
+	err = r.Restart()
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(commandmocker.Ran(tmpdir), gocheck.Equals, true)
 	expected := "service nginx restart"

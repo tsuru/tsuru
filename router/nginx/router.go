@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"github.com/globocom/config"
 	"github.com/globocom/tsuru/fs"
+	"github.com/globocom/tsuru/router"
 	"os/exec"
 )
 
@@ -20,7 +21,13 @@ func filesystem() fs.Fs {
 	return fsystem
 }
 
-func AddRoute(name, ip string) error {
+func init() {
+	router.Register("nginx", &NginxRouter{})
+}
+
+type NginxRouter struct{}
+
+func (NginxRouter) AddRoute(name, ip string) error {
 	domain, err := config.GetString("nginx:domain")
 	if err != nil {
 		return err
@@ -44,7 +51,11 @@ func AddRoute(name, ip string) error {
 	return err
 }
 
-func RestartRouter() error {
+func (NginxRouter) RemoveRoute(name string) error {
+	return nil
+}
+
+func (NginxRouter) Restart() error {
 	cmd := exec.Command("sudo", "service", "nginx", "restart")
 	return cmd.Run()
 }
