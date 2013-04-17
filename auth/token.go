@@ -5,6 +5,7 @@
 package auth
 
 import (
+	"crypto/rand"
 	"crypto/sha1"
 	"errors"
 	"fmt"
@@ -12,6 +13,8 @@ import (
 	"labix.org/v2/mgo/bson"
 	"time"
 )
+
+const keySize = 32 // size of the key, in bytes
 
 type Token struct {
 	Token      string    `json:"token"`
@@ -25,10 +28,15 @@ func (t *Token) User() (*User, error) {
 }
 
 func token(data string) string {
+	var tokenKey [keySize]byte
+	n, err := rand.Read(tokenKey[:])
+	for n < keySize || err != nil {
+		n, err = rand.Read(tokenKey[:])
+	}
 	h := sha1.New()
 	h.Write([]byte(data))
-	h.Write([]byte(tokenKey))
-	h.Write([]byte(time.Now().Format(time.UnixDate)))
+	h.Write(tokenKey[:])
+	h.Write([]byte(time.Now().Format(time.RFC3339Nano)))
 	return fmt.Sprintf("%x", h.Sum(nil))
 }
 

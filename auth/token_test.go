@@ -10,8 +10,27 @@ import (
 	"github.com/globocom/config"
 	"labix.org/v2/mgo/bson"
 	"launchpad.net/gocheck"
+	"sync"
 	"time"
 )
+
+func (s *S) TestTokenCannotRepeat(c *gocheck.C) {
+	input := "user-token"
+	tokens := make([]string, 10)
+	var wg sync.WaitGroup
+	for i := range tokens {
+		wg.Add(1)
+		go func(i int) {
+			tokens[i] = token(input)
+			wg.Done()
+		}(i)
+	}
+	wg.Wait()
+	reference := tokens[0]
+	for _, t := range tokens[1:] {
+		c.Check(t, gocheck.Not(gocheck.Equals), reference)
+	}
+}
 
 func (s *S) TestNewTokenReturnsErroWhenUserReferenceDoesNotContainsEmail(c *gocheck.C) {
 	u := User{}
