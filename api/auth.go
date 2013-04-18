@@ -75,8 +75,10 @@ func login(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		if e, ok := err.(*errors.ValidationError); ok {
 			return &errors.Http{Code: http.StatusPreconditionFailed, Message: e.Message}
+		} else if err == auth.ErrUserNotFound {
+			return &errors.Http{Code: http.StatusNotFound, Message: err.Error()}
 		}
-		return &errors.Http{Code: http.StatusNotFound, Message: "User not found"}
+		return err
 	}
 	t, err := u.CreateToken(password)
 	if err != nil {
