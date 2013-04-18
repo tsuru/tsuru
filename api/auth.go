@@ -149,6 +149,7 @@ func ChangePassword(w http.ResponseWriter, r *http.Request, t *auth.Token) error
 
 func resetPassword(w http.ResponseWriter, r *http.Request) error {
 	email := r.URL.Query().Get(":email")
+	token := r.URL.Query().Get("token")
 	u, err := auth.GetUserByEmail(email)
 	if err != nil {
 		if err == auth.ErrUserNotFound {
@@ -158,7 +159,10 @@ func resetPassword(w http.ResponseWriter, r *http.Request) error {
 		}
 		return err
 	}
-	return u.StartPasswordReset()
+	if token == "" {
+		return u.StartPasswordReset()
+	}
+	return u.ResetPassword(token)
 }
 
 // Creates a team and store it in mongodb.

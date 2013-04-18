@@ -1458,7 +1458,7 @@ func (s *AuthSuite) TestResetPasswordStep1(c *gocheck.C) {
 	var m map[string]interface{}
 	err = conn.PasswordTokens().Find(bson.M{"useremail": s.user.Email}).One(&m)
 	c.Assert(err, gocheck.IsNil)
-	defer conn.PasswordTokens().RemoveId(m["token"])
+	defer conn.PasswordTokens().RemoveId(m["_id"])
 	time.Sleep(1e9)
 	s.server.RLock()
 	defer s.server.RUnlock()
@@ -1490,6 +1490,30 @@ func (s *AuthSuite) TestResetPasswordInvalidEmail(c *gocheck.C) {
 	c.Assert(ok, gocheck.Equals, true)
 	c.Assert(e.Code, gocheck.Equals, http.StatusBadRequest)
 	c.Assert(e.Message, gocheck.Equals, "Invalid email.")
+}
+
+func (s *AuthSuite) TestResetPasswordStep2(c *gocheck.C) {
+	conn, err := db.Conn()
+	c.Assert(err, gocheck.IsNil)
+	defer conn.Close()
+	user := auth.User{Email: "uns@alanis.com", Password: "145678"}
+	err = user.Create()
+	c.Assert(err, gocheck.IsNil)
+	defer conn.Users().Remove(bson.M{"email": user.Email})
+	oldPassword := user.Password
+	err = user.StartPasswordReset()
+	c.Assert(err, gocheck.IsNil)
+	var t map[string]interface{}
+	err = conn.PasswordTokens().Find(bson.M{"useremail": user.Email}).One(&t)
+	c.Assert(err, gocheck.IsNil)
+	url := fmt.Sprintf("/users/%s/password?:email=%s&token=%s", user.Email, user.Email, t["_id"])
+	request, _ := http.NewRequest("POST", url, nil)
+	recorder := httptest.NewRecorder()
+	err = resetPassword(recorder, request)
+	c.Assert(err, gocheck.IsNil)
+	u2, err := auth.GetUserByEmail(user.Email)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(u2.Password, gocheck.Not(gocheck.Equals), oldPassword)
 }
 
 func (s *AuthSuite) TestGenerateApplicationToken(c *gocheck.C) {
