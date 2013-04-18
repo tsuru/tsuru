@@ -30,6 +30,8 @@ const (
 	passwordMaxLen    = 50
 )
 
+var ErrUserNotFound = stderrors.New("User not found")
+
 var salt string
 var tokenExpire time.Duration
 var cost int
@@ -92,7 +94,7 @@ func GetUserByEmail(email string) (*User, error) {
 	defer conn.Close()
 	err = conn.Users().Find(bson.M{"email": email}).One(&u)
 	if err != nil {
-		return nil, stderrors.New("User not found")
+		return nil, ErrUserNotFound
 	}
 	return &u, nil
 }
@@ -338,12 +340,6 @@ type AuthenticationFailure struct{}
 
 func (AuthenticationFailure) Error() string {
 	return "Authentication failed, wrong password."
-}
-
-type UserNotFound struct{}
-
-func (UserNotFound) Error() string {
-	return "User not found"
 }
 
 func generatePassword(length int) string {

@@ -53,8 +53,7 @@ func (s *S) TestGetUserByEmail(c *gocheck.C) {
 func (s *S) TestGetUserByEmailReturnsErrorWhenNoUserIsFound(c *gocheck.C) {
 	u, err := GetUserByEmail("unknown@globo.com")
 	c.Assert(u, gocheck.IsNil)
-	c.Assert(err, gocheck.NotNil)
-	c.Assert(err.Error(), gocheck.Equals, "User not found")
+	c.Assert(err, gocheck.Equals, ErrUserNotFound)
 }
 
 func (s *S) TestGetUserByEmailWithInvalidEmail(c *gocheck.C) {
@@ -438,11 +437,6 @@ func (s *S) TestAllowedAppsByTeam(c *gocheck.C) {
 	}()
 	alwdApps, err := s.user.AllowedAppsByTeam(team.Name)
 	c.Assert(alwdApps, gocheck.DeepEquals, []string{a2.Name})
-}
-
-func (s *S) TestUserNotFound(c *gocheck.C) {
-	var err error = UserNotFound{}
-	c.Assert(err.Error(), gocheck.Equals, "User not found")
 }
 
 func (s *S) TestSendEmail(c *gocheck.C) {
