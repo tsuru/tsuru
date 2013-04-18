@@ -12,7 +12,9 @@ import (
 	"github.com/globocom/tsuru/errors"
 	"labix.org/v2/mgo/bson"
 	"launchpad.net/gocheck"
+	"runtime"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -178,6 +180,7 @@ func (s *S) TestResetPassword(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	u2, _ := GetUserByEmail(u.Email)
 	c.Assert(u2.Password, gocheck.Not(gocheck.Equals), p)
+	time.Sleep(1e9) // Let the email flow
 	s.server.Lock()
 	defer s.server.Unlock()
 	c.Assert(s.server.MailBox, gocheck.HasLen, 2)
@@ -479,4 +482,22 @@ func (s *S) TestSendEmailUndefinedSMTPPassword(c *gocheck.C) {
 	err := sendEmail("something@tsuru.io", []byte("Hello world!"))
 	c.Assert(err, gocheck.NotNil)
 	c.Assert(err.Error(), gocheck.Equals, `Setting "smtp:password" is not defined`)
+}
+
+func (s *S) TestGeneratePassword(c *gocheck.C) {
+	go runtime.GOMAXPROCS(runtime.GOMAXPROCS(4))
+	passwords := make([]string, 1000)
+	var wg sync.WaitGroup
+	for i := range passwords {
+		wg.Add(1)
+		go func(i int) {
+			passwords[i] = generatePassword(8)
+			wg.Done()
+		}(i)
+	}
+	wg.Wait()
+	first := passwords[0]
+	for _, p := range passwords[1:] {
+		c.Check(p, gocheck.Not(gocheck.Equals), first)
+	}
 }
