@@ -279,7 +279,7 @@ func (u *User) StartPasswordReset() error {
 	return nil
 }
 
-func (u *User) sendResetPassword(t *PasswordToken) {
+func (u *User) sendResetPassword(t *passwordToken) {
 	var body bytes.Buffer
 	err := resetEmailData.Execute(&body, t)
 	if err != nil {

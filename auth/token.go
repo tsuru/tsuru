@@ -30,7 +30,7 @@ func (t *Token) User() (*User, error) {
 	return GetUserByEmail(t.UserEmail)
 }
 
-type PasswordToken struct {
+type passwordToken struct {
 	Token     string `bson:"_id"`
 	UserEmail string
 	Creation  time.Time
@@ -111,14 +111,14 @@ func newUserToken(u *User) (*Token, error) {
 	return &t, nil
 }
 
-func createPasswordToken(u *User) (*PasswordToken, error) {
+func createPasswordToken(u *User) (*passwordToken, error) {
 	if u == nil {
 		return nil, errors.New("User is nil")
 	}
 	if u.Email == "" {
 		return nil, errors.New("User email is empty")
 	}
-	t := PasswordToken{
+	t := passwordToken{
 		Token:     token(u.Email, crypto.SHA256),
 		UserEmail: u.Email,
 		Creation:  time.Now(),
@@ -135,17 +135,17 @@ func createPasswordToken(u *User) (*PasswordToken, error) {
 	return &t, nil
 }
 
-func (t *PasswordToken) user() (*User, error) {
+func (t *passwordToken) user() (*User, error) {
 	return GetUserByEmail(t.UserEmail)
 }
 
-func getPasswordToken(token string) (*PasswordToken, error) {
+func getPasswordToken(token string) (*passwordToken, error) {
 	conn, err := db.Conn()
 	if err != nil {
 		return nil, err
 	}
 	defer conn.Close()
-	var t PasswordToken
+	var t passwordToken
 	err = conn.PasswordTokens().FindId(token).One(&t)
 	if err != nil {
 		return nil, errors.New("Token not found")

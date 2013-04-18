@@ -146,7 +146,7 @@ func (s *S) TestUserStartPasswordReset(c *gocheck.C) {
 	err := u.StartPasswordReset()
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.PasswordTokens().Remove(bson.M{"useremail": u.Email})
-	var token PasswordToken
+	var token passwordToken
 	err = s.conn.PasswordTokens().Find(bson.M{"useremail": u.Email}).One(&token)
 	c.Assert(err, gocheck.IsNil)
 	time.Sleep(1e9) // Let the email flow.
@@ -172,7 +172,7 @@ func (s *S) TestResetPassword(c *gocheck.C) {
 	defer s.conn.Users().Remove(bson.M{"email": u.Email})
 	err = u.StartPasswordReset()
 	c.Assert(err, gocheck.IsNil)
-	var token PasswordToken
+	var token passwordToken
 	err = s.conn.PasswordTokens().Find(bson.M{"useremail": u.Email}).One(&token)
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.PasswordTokens().Remove(bson.M{"useremail": u.Email})

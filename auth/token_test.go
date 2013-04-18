@@ -134,7 +134,7 @@ func (s *S) TestCreatePasswordToken(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(t.UserEmail, gocheck.Equals, u.Email)
 	c.Assert(t.Used, gocheck.Equals, false)
-	var dbToken PasswordToken
+	var dbToken passwordToken
 	err = s.conn.PasswordTokens().Find(bson.M{"_id": t.Token}).One(&dbToken)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(dbToken.Token, gocheck.Equals, t.Token)
