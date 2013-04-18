@@ -37,7 +37,7 @@ func clone(u Unit) ([]byte, error) {
 		return nil, fmt.Errorf("Tsuru is misconfigured: %s", err)
 	}
 	cmd := fmt.Sprintf("git clone %s %s --depth 1", GetReadOnlyUrl(u.GetName()), p)
-	err = u.Command(&buf, &buf, cmd)
+	err = u.Command(&buf, &buf, cmd) // maybe we should call provisioner.ExecuteCommand directly
 	b := buf.Bytes()
 	log.Printf(`"git clone" output: %s`, b)
 	return b, err
@@ -53,7 +53,7 @@ func pull(u Unit) ([]byte, error) {
 		return nil, fmt.Errorf("Tsuru is misconfigured: %s", err)
 	}
 	cmd := fmt.Sprintf("cd %s && git pull origin master", p)
-	err = u.Command(&buf, &buf, cmd)
+	err = u.Command(&buf, &buf, cmd) // maybe we should call provisioner.ExecuteCommand directly
 	b := buf.Bytes()
 	log.Printf(`"git pull" output: %s`, b)
 	return b, err
