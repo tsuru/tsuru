@@ -121,6 +121,23 @@ func (s *S) TestRestartFailure(c *gocheck.C) {
 	c.Assert(pErr.Err.Error(), gocheck.Equals, "exit status 25")
 }
 
+func (s *S) TestDeploy(c *gocheck.C) {
+	config.Set("git:unit-repo", "test/dir")
+	defer func() {
+		config.Unset("git:unit-repo")
+	}()
+	app := testing.NewFakeApp("cribcaged", "python", 1)
+	w := &bytes.Buffer{}
+	p := JujuProvisioner{}
+	err := p.Deploy(app, w)
+	c.Assert(err, gocheck.IsNil)
+	expected := make([]string, 3)
+	expected[0] = "git clone git://tsuruhost.com/cribcaged.git test/dir --depth 1" // the command expected to run on the units
+	expected[1] = "install deps"
+	expected[2] = "restart"
+	c.Assert(app.Commands, gocheck.DeepEquals, expected)
+}
+
 func (s *S) TestDestroy(c *gocheck.C) {
 	tmpdir, err := commandmocker.Add("juju", "$*")
 	c.Assert(err, gocheck.IsNil)
