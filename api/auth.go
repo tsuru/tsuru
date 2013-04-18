@@ -147,6 +147,20 @@ func ChangePassword(w http.ResponseWriter, r *http.Request, t *auth.Token) error
 	return u.Update()
 }
 
+func resetPassword(w http.ResponseWriter, r *http.Request) error {
+	email := r.URL.Query().Get(":email")
+	u, err := auth.GetUserByEmail(email)
+	if err != nil {
+		if err == auth.ErrUserNotFound {
+			return &errors.Http{Code: http.StatusNotFound, Message: err.Error()}
+		} else if e, ok := err.(*errors.ValidationError); ok {
+			return &errors.Http{Code: http.StatusBadRequest, Message: e.Error()}
+		}
+		return err
+	}
+	return u.StartPasswordReset()
+}
+
 // Creates a team and store it in mongodb.
 //
 // Also communicates with git server (gandalf) in order to add the user into it

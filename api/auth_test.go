@@ -13,6 +13,7 @@ import (
 	"github.com/globocom/tsuru/auth"
 	"github.com/globocom/tsuru/db"
 	"github.com/globocom/tsuru/errors"
+	"github.com/globocom/tsuru/testing"
 	"io"
 	"io/ioutil"
 	"labix.org/v2/mgo/bson"
@@ -23,29 +24,38 @@ import (
 	"path"
 	"strconv"
 	"strings"
+	"time"
 )
 
 type AuthSuite struct {
-	team  *auth.Team
-	user  *auth.User
-	token *auth.Token
+	team   *auth.Team
+	user   *auth.User
+	token  *auth.Token
+	server *testing.SMTPServer
 }
 
 var _ = gocheck.Suite(&AuthSuite{})
 
 func (s *AuthSuite) SetUpSuite(c *gocheck.C) {
+	var err error
 	config.Set("database:url", "127.0.0.1:27017")
 	config.Set("database:name", "tsuru_api_auth_test")
 	config.Set("auth:salt", "tsuru-salt")
 	config.Set("auth:hash-cost", 4)
 	s.createUserAndTeam(c)
 	config.Set("admin-team", s.team.Name)
+	s.server, err = testing.NewSMTPServer()
+	c.Assert(err, gocheck.IsNil)
+	config.Set("smtp:host", s.server.Addr())
+	config.Set("smtp:user", "root")
+	config.Set("smtp:password", "123456")
 }
 
 func (s *AuthSuite) TearDownSuite(c *gocheck.C) {
 	conn, _ := db.Conn()
 	defer conn.Close()
 	conn.Apps().Database.DropDatabase()
+	s.server.Stop()
 }
 
 func (s *AuthSuite) TearDownTest(c *gocheck.C) {
@@ -1432,6 +1442,54 @@ func (s *AuthSuite) TestChangePasswordReturns400IfJSONDoesNotIncludeBothOldAndNe
 		c.Assert(e.Code, gocheck.Equals, http.StatusBadRequest)
 		c.Assert(e.Message, gocheck.Equals, "Both the old and the new passwords are required.")
 	}
+}
+
+func (s *AuthSuite) TestResetPasswordStep1(c *gocheck.C) {
+	defer s.server.Reset()
+	oldPassword := s.user.Password
+	url := fmt.Sprintf("/users/%s/password?:email=%s", s.user.Email, s.user.Email)
+	request, _ := http.NewRequest("POST", url, nil)
+	recorder := httptest.NewRecorder()
+	err := resetPassword(recorder, request)
+	c.Assert(err, gocheck.IsNil)
+	conn, err := db.Conn()
+	c.Assert(err, gocheck.IsNil)
+	defer conn.Close()
+	var m map[string]interface{}
+	err = conn.PasswordTokens().Find(bson.M{"useremail": s.user.Email}).One(&m)
+	c.Assert(err, gocheck.IsNil)
+	defer conn.PasswordTokens().RemoveId(m["token"])
+	time.Sleep(1e9)
+	s.server.RLock()
+	defer s.server.RUnlock()
+	c.Assert(s.server.MailBox, gocheck.HasLen, 1)
+	u, err := auth.GetUserByEmail(s.user.Email)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(u.Password, gocheck.Equals, oldPassword)
+}
+
+func (s *AuthSuite) TestResetPasswordUserNotFound(c *gocheck.C) {
+	url := "/users/unknown@tsuru.io/password?:email=unknown@tsuru.io"
+	request, _ := http.NewRequest("POST", url, nil)
+	recorder := httptest.NewRecorder()
+	err := resetPassword(recorder, request)
+	c.Assert(err, gocheck.NotNil)
+	e, ok := err.(*errors.Http)
+	c.Assert(ok, gocheck.Equals, true)
+	c.Assert(e.Code, gocheck.Equals, http.StatusNotFound)
+	c.Assert(e.Message, gocheck.Equals, "User not found")
+}
+
+func (s *AuthSuite) TestResetPasswordInvalidEmail(c *gocheck.C) {
+	url := "/users/unknown/password?:email=unknown"
+	request, _ := http.NewRequest("POST", url, nil)
+	recorder := httptest.NewRecorder()
+	err := resetPassword(recorder, request)
+	c.Assert(err, gocheck.NotNil)
+	e, ok := err.(*errors.Http)
+	c.Assert(ok, gocheck.Equals, true)
+	c.Assert(e.Code, gocheck.Equals, http.StatusBadRequest)
+	c.Assert(e.Message, gocheck.Equals, "Invalid email.")
 }
 
 func (s *AuthSuite) TestGenerateApplicationToken(c *gocheck.C) {
