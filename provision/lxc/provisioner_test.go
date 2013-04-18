@@ -18,6 +18,7 @@ import (
 	"launchpad.net/gocheck"
 	"net"
 	"os"
+	"runtime"
 	"time"
 )
 
@@ -71,7 +72,7 @@ func (s *S) TestProvisionerProvision(c *gocheck.C) {
 				ok <- true
 				return
 			}
-			time.Sleep(1e3)
+			runtime.Gosched()
 		}
 	}()
 	select {
@@ -148,7 +149,7 @@ func (s *S) TestProvisionerDestroy(c *gocheck.C) {
 				ok <- true
 				return
 			}
-			time.Sleep(1e3)
+			runtime.Gosched()
 		}
 	}()
 	select {
