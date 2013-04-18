@@ -70,10 +70,10 @@ sudo chown -R git:git /var/repositories
 
 echo "creating template path"
 sudo mkdir -p /home/git/bare-template/hooks
+sudo curl https://raw.github.com/globocom/tsuru/master/misc/git-hooks/post-receive > /home/git/bare-template/hooks/post-receive
+sudo curl https://raw.github.com/globocom/tsuru/master/misc/git-hooks/pre-receive > /home/git/bare-template/hooks/pre-receive
+sudo curl https://raw.github.com/globocom/tsuru/master/misc/git-hooks/pre-receive.py > /home/git/bare-template/hooks/pre-receive.py
 sudo chown -R git:git /home/git/bare-template
-curl https://raw.github.com/globocom/tsuru/master/misc/git-hooks/post-receive > /home/git/bare-template/hooks/post-receive
-curl https://raw.github.com/globocom/tsuru/master/misc/git-hooks/pre-receive > /home/git/bare-template/hooks/pre-receive
-curl https://raw.github.com/globocom/tsuru/master/misc/git-hooks/pre-receive.py > /home/git/bare-template/hooks/pre-receive.py
 
 echo "generating the ssh-key for root"
 sudo ssh-keygen -N "" -f /root/.ssh/id_rsa
