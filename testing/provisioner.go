@@ -99,6 +99,21 @@ func (a *FakeApp) SetUnitStatus(s provision.Status, index int) {
 	}
 }
 
+func (a *FakeApp) Command(stdout, stderr io.Writer, cmdArgs ...string) error {
+	a.Commands = append(a.Commands, strings.Join(cmdArgs, " "))
+	return nil
+}
+
+func (a *FakeApp) Restart(w io.Writer) error {
+	a.Commands = append(a.Commands, "restart")
+	return nil
+}
+
+func (a *FakeApp) InstallDeps(io.Writer) error {
+	a.Commands = append(a.Commands, "install deps")
+	return nil
+}
+
 type Cmd struct {
 	Cmd  string
 	Args []string
