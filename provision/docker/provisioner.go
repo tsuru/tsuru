@@ -178,6 +178,10 @@ func (p *LocalProvisioner) Restart(app provision.App) error {
 	return nil
 }
 
+func (p *LocalProvisioner) Deploy(app provision.App) error {
+    return nil
+}
+
 func (p *LocalProvisioner) Destroy(app provision.App) error {
 	units := app.ProvisionUnits()
 	for _, u := range units {

@@ -150,6 +150,10 @@ func (p *FakeProvisioner) Restarts(app provision.App) int {
 	return p.restarts[app.GetName()]
 }
 
+func (p *FakeProvisioner) Deploy(app provision.App) error {
+    return nil
+}
+
 // Returns the number of calls to restart.
 // GetCmds returns a list of commands executed in an app. If you don't specify
 // the command (an empty string), it will return all commands executed in the

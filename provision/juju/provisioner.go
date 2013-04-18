@@ -117,6 +117,10 @@ func (p *JujuProvisioner) Restart(app provision.App) error {
 	return nil
 }
 
+func (p *JujuProvisioner) Deploy(app provision.App) error {
+    return nil
+}
+
 func (p *JujuProvisioner) destroyService(app provision.App) error {
 	var (
 		err error

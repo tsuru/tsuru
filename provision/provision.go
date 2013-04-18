@@ -107,6 +107,9 @@ type Provisioner interface {
 	// Restart restarts the app.
 	Restart(App) error
 
+    // Deploy deploys an application into its units
+    Deploy(App) error
+
 	// CollectStatus returns information about all provisioned units. It's used
 	// by tsuru collector when updating the status of apps in the database.
 	CollectStatus() ([]Unit, error)
