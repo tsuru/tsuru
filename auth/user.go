@@ -298,6 +298,9 @@ func (u *User) sendResetPassword(t *passwordToken) {
 // string. The new password will be a random string, that will be then sent to
 // the user email.
 func (u *User) ResetPassword(token string) error {
+	if token == "" {
+		return ErrInvalidToken
+	}
 	conn, err := db.Conn()
 	if err != nil {
 		return err

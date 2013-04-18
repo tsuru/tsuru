@@ -211,6 +211,12 @@ func (s *S) TestResetPasswordThirdToken(c *gocheck.C) {
 	c.Assert(err, gocheck.Equals, ErrInvalidToken)
 }
 
+func (s *S) TestResetPasswordEmptyToken(c *gocheck.C) {
+	u := User{Email: "presto@rush.com"}
+	err := u.ResetPassword("")
+	c.Assert(err, gocheck.Equals, ErrInvalidToken)
+}
+
 func (s *S) TestCreateTokenShouldSaveTheTokenInTheDatabase(c *gocheck.C) {
 	u := User{Email: "wolverine@xmen.com", Password: "123456"}
 	err := u.Create()
