@@ -157,3 +157,16 @@ func (s *S) TestCreatePasswordTokenErrors(c *gocheck.C) {
 		c.Check(err.Error(), gocheck.Equals, t.want)
 	}
 }
+
+func (s *S) TestPasswordTokenUser(c *gocheck.C) {
+	u := User{Email: "need@who.com", Password: "123456"}
+	err := u.Create()
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Users().Remove(bson.M{"email": u.Email})
+	t, err := createPasswordToken(&u)
+	c.Assert(err, gocheck.IsNil)
+	u2, err := t.user()
+	u2.Keys = u.Keys
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(*u2, gocheck.DeepEquals, u)
+}

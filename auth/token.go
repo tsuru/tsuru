@@ -134,6 +134,10 @@ func createPasswordToken(u *User) (*PasswordToken, error) {
 	return &t, nil
 }
 
+func (t *PasswordToken) user() (*User, error) {
+	return GetUserByEmail(t.UserEmail)
+}
+
 func getPasswordToken(token string) (*PasswordToken, error) {
 	return nil, nil
 }
