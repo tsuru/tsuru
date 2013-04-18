@@ -36,7 +36,10 @@ func (NginxRouter) AddRoute(name, ip string) error {
 	if err != nil {
 		return err
 	}
-	file, _ := filesystem().Create(routesPath + "/" + name)
+	file, err := filesystem().Create(routesPath + "/" + name)
+	if err != nil {
+		return err
+	}
 	defer file.Close()
 	template := `server {
 	listen 80;
