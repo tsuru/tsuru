@@ -13,7 +13,6 @@ import (
 	"github.com/globocom/tsuru/provision"
 	"github.com/globocom/tsuru/router"
 	_ "github.com/globocom/tsuru/router/nginx"
-	_ "github.com/globocom/tsuru/router/testing"
 	"io"
 	"labix.org/v2/mgo"
 	"labix.org/v2/mgo/bson"
