@@ -1,5 +1,7 @@
 package provision
 
+import "io"
+
 type Deployer interface {
-    Deploy(App) error
+	Deploy(App, io.Writer) error
 }

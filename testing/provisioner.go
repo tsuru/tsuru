@@ -10,6 +10,7 @@ import (
 	"github.com/globocom/tsuru/provision"
 	"io"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 )
@@ -53,6 +54,7 @@ type FakeApp struct {
 	framework string
 	units     []provision.AppUnit
 	logs      []string
+	Commands  []string
 }
 
 func NewFakeApp(name, framework string, units int) *FakeApp {
@@ -150,8 +152,8 @@ func (p *FakeProvisioner) Restarts(app provision.App) int {
 	return p.restarts[app.GetName()]
 }
 
-func (p *FakeProvisioner) Deploy(app provision.App) error {
-    return nil
+func (p *FakeProvisioner) Deploy(app provision.App, w io.Writer) error {
+	return nil
 }
 
 // Returns the number of calls to restart.
