@@ -43,7 +43,7 @@ func (r *NginxRouter) AddRoute(name, ip string) error {
 	defer file.Close()
 	template := `server {
 	listen 80;
-	%s.%s;
+	server_name %s.%s;
 	location / {
 		proxy_pass http://%s;
 	}

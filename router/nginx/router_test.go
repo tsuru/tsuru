@@ -39,7 +39,7 @@ func (s *S) TestAddRoute(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	expected := `server {
 	listen 80;
-	name.andrewzito.com;
+	server_name name.andrewzito.com;
 	location / {
 		proxy_pass http://127.0.0.1;
 	}
