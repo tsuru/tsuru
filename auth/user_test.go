@@ -116,9 +116,7 @@ func (s *S) TestUserCheckPasswordReturnsFalseIfThePasswordDoesNotMatch(c *gochec
 	u := User{Email: "wolverine@xmen.com", Password: "123456"}
 	u.HashPassword()
 	err := u.CheckPassword("654321")
-	c.Assert(err, gocheck.NotNil)
-	_, ok := err.(AuthenticationFailure)
-	c.Assert(ok, gocheck.Equals, true)
+	c.Assert(err, gocheck.Equals, ErrAuthentication)
 }
 
 func (s *S) TestUserCheckPasswordValidatesThePassword(c *gocheck.C) {

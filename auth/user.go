@@ -30,7 +30,10 @@ const (
 	passwordMaxLen    = 50
 )
 
-var ErrUserNotFound = stderrors.New("User not found")
+var (
+	ErrUserNotFound   = stderrors.New("User not found")
+	ErrAuthentication = stderrors.New("Authentication failed, wrong password.")
+)
 
 var salt string
 var tokenExpire time.Duration
@@ -143,7 +146,7 @@ func (u *User) CheckPassword(password string) error {
 		}
 		return nil
 	}
-	return AuthenticationFailure{}
+	return ErrAuthentication
 }
 
 func (u *User) CreateToken(password string) (*Token, error) {
@@ -334,12 +337,6 @@ func (u *User) sendNewPassword(password string) {
 	if err != nil {
 		log.Printf("Failed to send new password to user %q: %s", u.Email, err)
 	}
-}
-
-type AuthenticationFailure struct{}
-
-func (AuthenticationFailure) Error() string {
-	return "Authentication failed, wrong password."
 }
 
 func generatePassword(length int) string {
