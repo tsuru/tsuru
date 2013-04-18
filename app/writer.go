@@ -8,8 +8,12 @@ import (
 	"io"
 )
 
+type Logger interface {
+	Log(string, string) error
+}
+
 type LogWriter struct {
-	App    *App
+	App    Logger
 	Writer io.Writer
 }
 
