@@ -73,6 +73,7 @@ sudo mkdir -p /home/git/bare-template/hooks
 sudo curl https://raw.github.com/globocom/tsuru/master/misc/git-hooks/post-receive > /home/git/bare-template/hooks/post-receive
 sudo curl https://raw.github.com/globocom/tsuru/master/misc/git-hooks/pre-receive > /home/git/bare-template/hooks/pre-receive
 sudo curl https://raw.github.com/globocom/tsuru/master/misc/git-hooks/pre-receive.py > /home/git/bare-template/hooks/pre-receive.py
+sudo chmod +x /home/git/bare-template/hooks/*
 sudo chown -R git:git /home/git/bare-template
 
 echo "generating the ssh-key for root"
