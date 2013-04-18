@@ -175,7 +175,7 @@ func (s *S) TestResetPassword(c *gocheck.C) {
 	err = s.conn.PasswordTokens().Find(bson.M{"useremail": u.Email}).One(&token)
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.PasswordTokens().Remove(bson.M{"useremail": u.Email})
-	err = ResetPassword(token.Token)
+	err = u.ResetPassword(token.Token)
 	c.Assert(err, gocheck.IsNil)
 	u2, _ := GetUserByEmail(u.Email)
 	c.Assert(u2.Password, gocheck.Not(gocheck.Equals), p)
@@ -196,6 +196,20 @@ func (s *S) TestResetPassword(c *gocheck.C) {
 	err = s.conn.PasswordTokens().Find(bson.M{"useremail": u.Email}).One(&token)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(token.Used, gocheck.Equals, true)
+}
+
+func (s *S) TestResetPasswordThirdToken(c *gocheck.C) {
+	u := User{Email: "profecia@raul.com", Password: "123456"}
+	err := u.Create()
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Users().Remove(bson.M{"email": u.Email})
+	t, err := createPasswordToken(&u)
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.PasswordTokens().Remove(bson.M{"_id": t.Token})
+	u2 := User{Email: "tsuru@globo.com"}
+	err = u2.ResetPassword(t.Token)
+	c.Assert(err, gocheck.NotNil)
+	c.Assert(err.Error(), gocheck.Equals, "Invalid token")
 }
 
 func (s *S) TestCreateTokenShouldSaveTheTokenInTheDatabase(c *gocheck.C) {

@@ -297,7 +297,7 @@ func (u *User) sendResetPassword(t *passwordToken) {
 // ResetPassword actually resets the password of the user. It needs the token
 // string. The new password will be a random string, that will be then sent to
 // the user email.
-func ResetPassword(token string) error {
+func (u *User) ResetPassword(token string) error {
 	conn, err := db.Conn()
 	if err != nil {
 		return err
@@ -306,9 +306,8 @@ func ResetPassword(token string) error {
 	if err != nil {
 		return err
 	}
-	u, err := t.user()
-	if err != nil {
-		return err
+	if t.UserEmail != u.Email {
+		return ErrInvalidToken
 	}
 	password := generatePassword(12)
 	u.Password = password

@@ -19,6 +19,8 @@ const (
 	passwordTokenExpiration = 24 * time.Hour
 )
 
+var ErrInvalidToken = errors.New("Invalid token")
+
 type Token struct {
 	Token      string    `json:"token"`
 	ValidUntil time.Time `json:"valid-until"`
@@ -151,7 +153,7 @@ func getPasswordToken(token string) (*passwordToken, error) {
 		return nil, errors.New("Token not found")
 	}
 	if t.Creation.Add(24*time.Hour).Sub(time.Now()) < time.Minute {
-		return nil, errors.New("Invalid token")
+		return nil, ErrInvalidToken
 	}
 	return &t, nil
 }
