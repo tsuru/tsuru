@@ -51,7 +51,7 @@ func GetToken(token string) (*Token, error) {
 		return nil, errors.New("Token not found")
 	}
 	if t.ValidUntil.Sub(time.Now()) < 1 {
-		return nil, errors.New("Token has expired")
+		return nil, ErrInvalidToken
 	}
 	return &t, nil
 }

@@ -75,8 +75,7 @@ func (s *S) TestGetExpiredToken(c *gocheck.C) {
 	s.conn.Tokens().Update(bson.M{"token": t.Token}, t)
 	t2, err := GetToken(t.Token)
 	c.Assert(t2, gocheck.IsNil)
-	c.Assert(err, gocheck.NotNil)
-	c.Assert(err.Error(), gocheck.Equals, "Token has expired")
+	c.Assert(err, gocheck.Equals, ErrInvalidToken)
 }
 
 func (s *S) TestCreateApplicationToken(c *gocheck.C) {

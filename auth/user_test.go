@@ -208,8 +208,7 @@ func (s *S) TestResetPasswordThirdToken(c *gocheck.C) {
 	defer s.conn.PasswordTokens().Remove(bson.M{"_id": t.Token})
 	u2 := User{Email: "tsuru@globo.com"}
 	err = u2.ResetPassword(t.Token)
-	c.Assert(err, gocheck.NotNil)
-	c.Assert(err.Error(), gocheck.Equals, "Invalid token")
+	c.Assert(err, gocheck.Equals, ErrInvalidToken)
 }
 
 func (s *S) TestCreateTokenShouldSaveTheTokenInTheDatabase(c *gocheck.C) {
