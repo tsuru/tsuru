@@ -17,8 +17,8 @@ import (
 	"github.com/globocom/tsuru/log"
 	"github.com/globocom/tsuru/validation"
 	"labix.org/v2/mgo/bson"
+	"math/rand"
 	"net/smtp"
-	"text/template"
 	"time"
 )
 
@@ -33,16 +33,6 @@ const (
 var salt string
 var tokenExpire time.Duration
 var cost int
-
-var resetEmailData = template.Must(template.New("reset").Parse(`Subject: [Tsuru] Password reset process
-To: {{.UserEmail}}
-
-Someone, hopefully you, requested to reset your password on tsuru. You will
-need to use the following token to finish this process
-
-{{.Token}}
-
-If you think this is email is wrong, just ignore it.`))
 
 func loadConfig() error {
 	if salt == "" {
@@ -174,33 +164,6 @@ func (u *User) CreateToken(password string) (*Token, error) {
 	return t, err
 }
 
-func (u *User) sendResetPassword(t *PasswordToken) {
-	var body bytes.Buffer
-	err := resetEmailData.Execute(&body, t)
-	if err != nil {
-		log.Printf("Failed to send password token to user %q: %s", u.Email, err)
-		return
-	}
-	err = sendEmail(u.Email, body.Bytes())
-	if err != nil {
-		log.Printf("Failed to send password token for user %q: %s", u.Email, err)
-	}
-}
-
-// StartPasswordReset starts the password reset process, creating a new token
-// and mailing it to the user.
-//
-// The token should then be used to finish the process, through the
-// ResetPassword function.
-func (u *User) StartPasswordReset() error {
-	t, err := createPasswordToken(u)
-	if err != nil {
-		return err
-	}
-	go u.sendResetPassword(t)
-	return nil
-}
-
 // Teams returns a slice containing all teams that the user is member of.
 func (u *User) Teams() ([]Team, error) {
 	conn, err := db.Conn()
@@ -302,6 +265,75 @@ func (u *User) AllowedAppsByTeam(team string) ([]string, error) {
 	return appNames, nil
 }
 
+// StartPasswordReset starts the password reset process, creating a new token
+// and mailing it to the user.
+//
+// The token should then be used to finish the process, through the
+// ResetPassword function.
+func (u *User) StartPasswordReset() error {
+	t, err := createPasswordToken(u)
+	if err != nil {
+		return err
+	}
+	go u.sendResetPassword(t)
+	return nil
+}
+
+func (u *User) sendResetPassword(t *PasswordToken) {
+	var body bytes.Buffer
+	err := resetEmailData.Execute(&body, t)
+	if err != nil {
+		log.Printf("Failed to send password token to user %q: %s", u.Email, err)
+		return
+	}
+	err = sendEmail(u.Email, body.Bytes())
+	if err != nil {
+		log.Printf("Failed to send password token for user %q: %s", u.Email, err)
+	}
+}
+
+// ResetPassword actually resets the password of the user. It needs the token
+// string. The new password will be a random string, that will be then sent to
+// the user email.
+func ResetPassword(token string) error {
+	conn, err := db.Conn()
+	if err != nil {
+		return err
+	}
+	t, err := getPasswordToken(token)
+	if err != nil {
+		return err
+	}
+	u, err := t.user()
+	if err != nil {
+		return err
+	}
+	password := generatePassword(12)
+	u.Password = password
+	u.HashPassword()
+	go u.sendNewPassword(password)
+	t.Used = true
+	conn.PasswordTokens().UpdateId(t.Token, t)
+	return u.Update()
+}
+
+func (u *User) sendNewPassword(password string) {
+	m := map[string]string{
+		"password": password,
+		"email":    u.Email,
+	}
+	var body bytes.Buffer
+	err := passwordResetConfirm.Execute(&body, m)
+	if err != nil {
+		log.Printf("Failed to send new password to user %q: %s", u.Email, err)
+		return
+	}
+	err = sendEmail(u.Email, body.Bytes())
+	if err != nil {
+		log.Printf("Failed to send new password to user %q: %s", u.Email, err)
+	}
+}
+
 type AuthenticationFailure struct{}
 
 func (AuthenticationFailure) Error() string {
@@ -312,6 +344,14 @@ type UserNotFound struct{}
 
 func (UserNotFound) Error() string {
 	return "User not found"
+}
+
+func generatePassword(length int) string {
+	password := make([]byte, length)
+	for i := range password {
+		password[i] = passwordChars[rand.Int()%len(passwordChars)]
+	}
+	return string(password)
 }
 
 func sendEmail(email string, data []byte) error {

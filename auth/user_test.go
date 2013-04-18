@@ -141,10 +141,7 @@ func (s *S) TestUserCheckPasswordValidatesThePassword(c *gocheck.C) {
 func (s *S) TestUserStartPasswordReset(c *gocheck.C) {
 	defer s.server.Reset()
 	u := User{Email: "thank@alanis.com", Password: "123456"}
-	err := u.Create()
-	c.Assert(err, gocheck.IsNil)
-	defer s.conn.Users().Remove(bson.M{"email": u.Email})
-	err = u.StartPasswordReset()
+	err := u.StartPasswordReset()
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.PasswordTokens().Remove(bson.M{"useremail": u.Email})
 	var token PasswordToken
@@ -162,6 +159,41 @@ func (s *S) TestUserStartPasswordReset(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	expected := strings.Replace(buf.String(), "\n", "\r\n", -1) + "\r\n"
 	c.Assert(string(m.Data), gocheck.Equals, expected)
+}
+
+func (s *S) TestResetPassword(c *gocheck.C) {
+	defer s.server.Reset()
+	u := User{Email: "blues@rush.com", Password: "123456"}
+	err := u.Create()
+	c.Assert(err, gocheck.IsNil)
+	p := u.Password
+	defer s.conn.Users().Remove(bson.M{"email": u.Email})
+	err = u.StartPasswordReset()
+	c.Assert(err, gocheck.IsNil)
+	var token PasswordToken
+	err = s.conn.PasswordTokens().Find(bson.M{"useremail": u.Email}).One(&token)
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.PasswordTokens().Remove(bson.M{"useremail": u.Email})
+	err = ResetPassword(token.Token)
+	c.Assert(err, gocheck.IsNil)
+	u2, _ := GetUserByEmail(u.Email)
+	c.Assert(u2.Password, gocheck.Not(gocheck.Equals), p)
+	s.server.Lock()
+	defer s.server.Unlock()
+	c.Assert(s.server.MailBox, gocheck.HasLen, 2)
+	m := s.server.MailBox[1]
+	c.Assert(m.From, gocheck.Equals, "root")
+	c.Assert(m.To, gocheck.DeepEquals, []string{u.Email})
+	var buf bytes.Buffer
+	err = passwordResetConfirm.Execute(&buf, map[string]string{"email": u.Email, "password": ""})
+	c.Assert(err, gocheck.IsNil)
+	expected := strings.Replace(buf.String(), "\n", "\r\n", -1) + "\r\n"
+	lines := strings.Split(string(m.Data), "\r\n")
+	lines[len(lines)-4] = ""
+	c.Assert(strings.Join(lines, "\r\n"), gocheck.Equals, expected)
+	err = s.conn.PasswordTokens().Find(bson.M{"useremail": u.Email}).One(&token)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(token.Used, gocheck.Equals, true)
 }
 
 func (s *S) TestCreateTokenShouldSaveTheTokenInTheDatabase(c *gocheck.C) {
