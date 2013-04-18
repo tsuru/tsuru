@@ -27,7 +27,7 @@ func init() {
 
 type NginxRouter struct{}
 
-func (NginxRouter) AddRoute(name, ip string) error {
+func (r *NginxRouter) AddRoute(name, ip string) error {
 	domain, err := config.GetString("nginx:domain")
 	if err != nil {
 		return err
@@ -51,18 +51,25 @@ func (NginxRouter) AddRoute(name, ip string) error {
 	template = fmt.Sprintf(template, name, domain, ip)
 	data := []byte(template)
 	_, err = file.Write(data)
-	return err
+	if err != nil {
+		return err
+	}
+	return r.restart()
 }
 
-func (NginxRouter) RemoveRoute(name string) error {
+func (r *NginxRouter) RemoveRoute(name string) error {
 	routesPath, err := config.GetString("nginx:routes-path")
 	if err != nil {
 		return err
 	}
-	return filesystem().Remove(routesPath + "/" + name)
+	err = filesystem().Remove(routesPath + "/" + name)
+	if err != nil {
+		return err
+	}
+	return r.restart()
 }
 
-func (NginxRouter) Restart() error {
+func (NginxRouter) restart() error {
 	cmd := exec.Command("sudo", "service", "nginx", "restart")
 	return cmd.Run()
 }

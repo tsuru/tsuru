@@ -31,10 +31,6 @@ func (r *FakeRouter) RemoveRoute(name string) error {
 	return nil
 }
 
-func (FakeRouter) Restart() error {
-	return nil
-}
-
 func (r *FakeRouter) HasRoute(name string) bool {
 	_, ok := r.routes[name]
 	return ok

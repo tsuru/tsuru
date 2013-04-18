@@ -29,12 +29,6 @@ func (s *S) TestAddRoute(c *gocheck.C) {
 	c.Assert(r.HasRoute("name"), gocheck.Equals, true)
 }
 
-func (s *S) TestRestart(c *gocheck.C) {
-	var r FakeRouter
-	err := r.Restart()
-	c.Assert(err, gocheck.IsNil)
-}
-
 func (s *S) TestRemoveRoute(c *gocheck.C) {
 	var r FakeRouter
 	err := r.AddRoute("name", "127.0.0.1")

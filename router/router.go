@@ -16,9 +16,6 @@ type Router interface {
 	//Remove removes a route.
 	RemoveRoute(name string) error
 
-	// Restart restarts the router.
-	Restart() error
-
 	// Addr returns the route address.
 	Addr(name string) string
 }

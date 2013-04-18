@@ -157,11 +157,6 @@ func (p *LocalProvisioner) Provision(app provision.App) error {
 			log.Printf("error on add route for %s with ip %s", app.GetName(), ip)
 			log.Print(err)
 		}
-		err = r.Restart()
-		if err != nil {
-			log.Printf("error on restart router")
-			log.Print(err)
-		}
 		u.Status = provision.StatusStarted
 		if err := p.collection().Update(bson.M{"name": u.Name}, u); err != nil {
 			log.Print(err)

@@ -20,6 +20,9 @@ func (s *S) TestShouldBeRegistered(c *gocheck.C) {
 }
 
 func (s *S) TestAddRoute(c *gocheck.C) {
+	tmpdir, err := commandmocker.Add("sudo", "$*")
+	c.Assert(err, gocheck.IsNil)
+	defer commandmocker.Remove(tmpdir)
 	config.Set("nginx:domain", "andrewzito.com")
 	config.Set("nginx:routes-path", "testdata")
 	rfs := &testing.RecordingFs{}
@@ -28,7 +31,7 @@ func (s *S) TestAddRoute(c *gocheck.C) {
 		fsystem = nil
 	}()
 	var r NginxRouter
-	err := r.AddRoute("name", "127.0.0.1")
+	err = r.AddRoute("name", "127.0.0.1")
 	c.Assert(err, gocheck.IsNil)
 	file, err := rfs.Open("testdata/name")
 	c.Assert(err, gocheck.IsNil)
@@ -42,6 +45,9 @@ func (s *S) TestAddRoute(c *gocheck.C) {
 	}
 }`
 	c.Assert(string(data), gocheck.Equals, expected)
+	c.Assert(commandmocker.Ran(tmpdir), gocheck.Equals, true)
+	expected = "service nginx restart"
+	c.Assert(commandmocker.Output(tmpdir), gocheck.Equals, expected)
 }
 
 func (s *S) TestRestart(c *gocheck.C) {
@@ -49,7 +55,7 @@ func (s *S) TestRestart(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	defer commandmocker.Remove(tmpdir)
 	var r NginxRouter
-	err = r.Restart()
+	err = r.restart()
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(commandmocker.Ran(tmpdir), gocheck.Equals, true)
 	expected := "service nginx restart"
@@ -57,6 +63,9 @@ func (s *S) TestRestart(c *gocheck.C) {
 }
 
 func (s *S) TestRemoveRoute(c *gocheck.C) {
+	tmpdir, err := commandmocker.Add("sudo", "$*")
+	c.Assert(err, gocheck.IsNil)
+	defer commandmocker.Remove(tmpdir)
 	config.Set("nginx:routes-path", "testdata")
 	rfs := &testing.RecordingFs{}
 	fsystem = rfs
@@ -64,9 +73,12 @@ func (s *S) TestRemoveRoute(c *gocheck.C) {
 		fsystem = nil
 	}()
 	var r NginxRouter
-	err := r.RemoveRoute("name")
+	err = r.RemoveRoute("name")
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(rfs.HasAction("remove testdata/name"), gocheck.Equals, true)
+	c.Assert(commandmocker.Ran(tmpdir), gocheck.Equals, true)
+	expected := "service nginx restart"
+	c.Assert(commandmocker.Output(tmpdir), gocheck.Equals, expected)
 }
 
 func (s *S) TestAddr(c *gocheck.C) {
