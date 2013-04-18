@@ -43,7 +43,7 @@ For tsuru ops
 
 
 Contributions and Feedback
---------------------------
+++++++++++++++++++++++++++
 
 * :doc:`how to contribute </contribute>`
 * :doc:`coding style </contribute/coding-style>`

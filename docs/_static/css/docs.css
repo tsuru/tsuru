@@ -1,46 +1,54 @@
-#documentation h1 {
+.section h1 {
     border-bottom: 1px #e7e7e7 solid;
-    font-size: 31.5px;
+    font-size: 38.5px;
+    margin-bottom: 50px;
     padding: 50px 0;
     text-align: center;
 }
 
-#documentation h2 {
-    margin: 30px 0 10px;
-    font-size: 25px;
+.section h2 {
+    margin: 30px 0;
+    font-size: 30.5px;
+}
+
+.section h3 {
+    font-size: 20.5px;
+    margin: 30px 0 5px;
+}
+
+.section h4 {
+    margin: 30px 0;
 }
 
 .section p,
-#documentation ul > li > a > em {
+.section em,
+.section li {
     font-size: 13px;
-    font-style: normal;
     font-weight: lighter;
     letter-spacing: .5px;
 }
 
-#what-is-tsuru ul {
-    margin-top: 20px;
+#build-your-own-paas-with-tsuru h2,
+#deploy-your-application-on-tsuru h2,
+#extend-tsuru-building-your-service h2 {
+    margin: 0;
 }
 
-#build-your-own-paas-with-tsuru {
-    margin-top: 30px;
+#build-your-own-paas-with-tsuru em,
+#deploy-your-application-on-tsuru em,
+#extend-tsuru-building-your-service em {
+    font-weight: bold;
 }
 
-#extend-tsuru-building-your-service {
-    margin-bottom: 40px;
+.highlight-bash,
+.highlight-yaml,
+.highlight-python,
+.highlight-text {
+    margin: 40px 0;
 }
 
-#more-documentation {
-    margin: 30px 0 0;
-}
-
-#for-tsuru-users,
-#for-tsuru-ops {
-    margin-bottom: 30px;
-}
-
-#contributions-and-feedback {
-    margin: 30px 0 60px ;
+.footer {
+    margin-top: 50px;
 }
 
 a.headerlink {
