@@ -31,7 +31,10 @@ const (
 )
 
 var (
-	ErrUserNotFound   = stderrors.New("User not found")
+	// Error returned when user is not found.
+	ErrUserNotFound = stderrors.New("User not found")
+
+	// Error returned for authentication failures.
 	ErrAuthentication = stderrors.New("Authentication failed, wrong password.")
 )
 
