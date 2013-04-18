@@ -170,3 +170,33 @@ func (s *S) TestPasswordTokenUser(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(*u2, gocheck.DeepEquals, u)
 }
+
+func (s *S) TestGetPasswordToken(c *gocheck.C) {
+	u := User{Email: "porcelain@opeth.com"}
+	t, err := createPasswordToken(&u)
+	c.Assert(err, gocheck.IsNil)
+	t2, err := getPasswordToken(t.Token)
+	t2.Creation = t.Creation
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(t2, gocheck.DeepEquals, t)
+}
+
+func (s *S) TestGetPasswordTokenUnknown(c *gocheck.C) {
+	t, err := getPasswordToken("what??")
+	c.Assert(t, gocheck.IsNil)
+	c.Assert(err, gocheck.NotNil)
+	c.Assert(err.Error(), gocheck.Equals, "Token not found")
+}
+
+func (s *S) TestPasswordTokensAreValidFor24Hours(c *gocheck.C) {
+	u := User{Email: "porcelain@opeth.com"}
+	t, err := createPasswordToken(&u)
+	c.Assert(err, gocheck.IsNil)
+	t.Creation = time.Now().Add(-24 * time.Hour)
+	err = s.conn.PasswordTokens().UpdateId(t.Token, t)
+	c.Assert(err, gocheck.IsNil)
+	t2, err := getPasswordToken(t.Token)
+	c.Assert(t2, gocheck.IsNil)
+	c.Assert(err, gocheck.NotNil)
+	c.Assert(err.Error(), gocheck.Equals, "Invalid token")
+}

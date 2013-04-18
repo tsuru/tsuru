@@ -127,6 +127,7 @@ func createPasswordToken(u *User) (*PasswordToken, error) {
 	if err != nil {
 		return nil, err
 	}
+	defer conn.Close()
 	err = conn.PasswordTokens().Insert(t)
 	if err != nil {
 		return nil, err
@@ -139,5 +140,18 @@ func (t *PasswordToken) user() (*User, error) {
 }
 
 func getPasswordToken(token string) (*PasswordToken, error) {
-	return nil, nil
+	conn, err := db.Conn()
+	if err != nil {
+		return nil, err
+	}
+	defer conn.Close()
+	var t PasswordToken
+	err = conn.PasswordTokens().FindId(token).One(&t)
+	if err != nil {
+		return nil, errors.New("Token not found")
+	}
+	if t.Creation.Add(24*time.Hour).Sub(time.Now()) < time.Minute {
+		return nil, errors.New("Invalid token")
+	}
+	return &t, nil
 }
