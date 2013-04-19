@@ -57,10 +57,11 @@ func cloneRepository(w http.ResponseWriter, r *http.Request, t *auth.Token) erro
 	w.Header().Set("Content-Type", "text")
 	instance := &app.App{Name: r.URL.Query().Get(":appname")}
 	err := instance.Get()
+	logWriter := app.LogWriter{App: instance, Writer: w}
 	if err != nil {
 		return &errors.Http{Code: http.StatusNotFound, Message: fmt.Sprintf("App %s not found.", instance.Name)}
 	}
-	return Provisioner.Deploy(instance, w)
+	return Provisioner.Deploy(instance, &logWriter)
 }
 
 func appIsAvailable(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
