@@ -26,8 +26,8 @@ func (c *AppCreate) Run(context *cmd.Context, client *cmd.Client) error {
 		return errors.New("Cannot create app with zero units.")
 	}
 	appName := context.Args[0]
-	framework := context.Args[1]
-	b := bytes.NewBufferString(fmt.Sprintf(`{"name":"%s","framework":"%s","units":%d}`, appName, framework, c.units))
+	platform := context.Args[1]
+	b := bytes.NewBufferString(fmt.Sprintf(`{"name":"%s","platform":"%s","units":%d}`, appName, platform, c.units))
 	url, err := cmd.GetUrl("/apps")
 	if err != nil {
 		return err
@@ -64,7 +64,7 @@ func (c *AppCreate) Run(context *cmd.Context, client *cmd.Client) error {
 func (c *AppCreate) Info() *cmd.Info {
 	return &cmd.Info{
 		Name:    "app-create",
-		Usage:   "app-create <appname> <framework> [--units 1]",
+		Usage:   "app-create <appname> <platform> [--units 1]",
 		Desc:    "create a new app.",
 		MinArgs: 2,
 	}

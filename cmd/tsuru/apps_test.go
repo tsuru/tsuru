@@ -18,7 +18,7 @@ import (
 func (s *S) TestAppCreateInfo(c *gocheck.C) {
 	expected := &cmd.Info{
 		Name:    "app-create",
-		Usage:   "app-create <appname> <framework> [--units 1]",
+		Usage:   "app-create <appname> <platform> [--units 1]",
 		Desc:    "create a new app.",
 		MinArgs: 2,
 	}
@@ -42,7 +42,7 @@ Your repository for "ble" project is "git@tsuru.plataformas.glb.com:ble.git"` + 
 			defer req.Body.Close()
 			body, err := ioutil.ReadAll(req.Body)
 			c.Assert(err, gocheck.IsNil)
-			c.Assert(string(body), gocheck.Equals, `{"name":"ble","framework":"django","units":1}`)
+			c.Assert(string(body), gocheck.Equals, `{"name":"ble","platform":"django","units":1}`)
 			return req.Method == "POST" && req.URL.Path == "/apps"
 		},
 	}
@@ -71,7 +71,7 @@ Your repository for "ble" project is "git@tsuru.plataformas.glb.com:ble.git"` + 
 			defer req.Body.Close()
 			body, err := ioutil.ReadAll(req.Body)
 			c.Assert(err, gocheck.IsNil)
-			c.Assert(string(body), gocheck.Equals, `{"name":"ble","framework":"django","units":4}`)
+			c.Assert(string(body), gocheck.Equals, `{"name":"ble","platform":"django","units":4}`)
 			return req.Method == "POST" && req.URL.Path == "/apps"
 		},
 	}
