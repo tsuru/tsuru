@@ -92,7 +92,7 @@ Managing remote tsuru server endpoints
 Usage:
 
 	% tsuru target
-	% tsuru target-add <label> <address> [--set-current]
+	% tsuru target-add <label> <address> [--set-current|-s]
 	% tsuru target-set <label>
 	% tsuru target-remove <label>
 
@@ -276,7 +276,7 @@ Create an app
 
 Usage:
 
-	% tsuru app-create <app-name> <platform> [--units 1]
+	% tsuru app-create <app-name> <platform> [--units|-n 1]
 
 app-create will create a new app using the given name and platform. For tsuru,
 a platform is a Juju charm. To check the available platforms/charms, check this
@@ -381,7 +381,7 @@ See app's logs
 
 Usage:
 
-	% tsuru log [--app appname] [--lines numberOfLines] [--source source]
+	% tsuru log [--app|-a appname] [--lines|-l numberOfLines] [--source|-s source] [--follow|-f]
 
 Log will show log entries for an app. These logs are not related to the code of
 the app itself, but to actions of the app in tsuru server (deployments,
