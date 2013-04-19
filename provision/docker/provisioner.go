@@ -10,6 +10,7 @@ import (
 	"github.com/globocom/config"
 	"github.com/globocom/tsuru/db"
 	"github.com/globocom/tsuru/exec"
+	"github.com/globocom/tsuru/deploy"
 	"github.com/globocom/tsuru/log"
 	"github.com/globocom/tsuru/provision"
 	"github.com/globocom/tsuru/router"
@@ -188,7 +189,7 @@ func (p *LocalProvisioner) Restart(app provision.App) error {
 	return nil
 }
 
-func (p *LocalProvisioner) Deploy(app provision.App, w io.Writer) error {
+func (p *LocalProvisioner) Deploy(app deploy.App, w io.Writer) error {
 	return nil
 }
 

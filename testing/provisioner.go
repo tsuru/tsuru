@@ -7,6 +7,7 @@ package testing
 import (
 	"errors"
 	"fmt"
+	"github.com/globocom/tsuru/deploy"
 	"github.com/globocom/tsuru/provision"
 	"io"
 	"strconv"
@@ -167,7 +168,7 @@ func (p *FakeProvisioner) Restarts(app provision.App) int {
 	return p.restarts[app.GetName()]
 }
 
-func (p *FakeProvisioner) Deploy(app provision.App, w io.Writer) error {
+func (p *FakeProvisioner) Deploy(app deploy.App, w io.Writer) error {
 	w.Write([]byte("Deploy called"))
 	return nil
 }

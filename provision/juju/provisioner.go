@@ -13,6 +13,7 @@ import (
 	"github.com/globocom/tsuru/app"
 	"github.com/globocom/tsuru/db"
 	"github.com/globocom/tsuru/exec"
+	"github.com/globocom/tsuru/deploy"
 	"github.com/globocom/tsuru/log"
 	"github.com/globocom/tsuru/provision"
 	"github.com/globocom/tsuru/queue"
@@ -127,7 +128,7 @@ func (p *JujuProvisioner) Restart(app provision.App) error {
 	return nil
 }
 
-func (p *JujuProvisioner) Deploy(a provision.App, w io.Writer) error {
+func (p *JujuProvisioner) Deploy(a deploy.App, w io.Writer) error {
 	if err := write(w, []byte("\n ---> Tsuru receiving push\n")); err != nil {
 		return err
 	}

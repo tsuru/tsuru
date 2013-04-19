@@ -9,6 +9,7 @@ package provision
 import (
 	"fmt"
 	"io"
+    "github.com/globocom/tsuru/deploy"
 )
 
 type Status string
@@ -75,15 +76,6 @@ type App interface {
 
 	// ProvisionUnits returns all units of the app, in a slice.
 	ProvisionUnits() []AppUnit
-
-	// Command executes a command in the application units
-	Command(io.Writer, io.Writer, ...string) error
-
-	// Restart restarts the application process
-	Restart(io.Writer) error
-
-	// InstallDeps run the dependencies installation hook
-	InstallDeps(io.Writer) error
 }
 
 // Provisioner is the basic interface of this package.
@@ -94,7 +86,7 @@ type App interface {
 // Tsuru comes with a default provisioner: juju. One can add other provisioners
 // by satisfying this interface and registering it using the function Register.
 type Provisioner interface {
-	Deployer
+	deploy.Deployer
 
 	// Provision is called when tsuru is creating the app.
 	Provision(App) error
