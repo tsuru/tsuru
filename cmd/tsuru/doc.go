@@ -35,6 +35,7 @@ The currently available commands are (grouped by subject):
 	team-user-add     adds a user to a team
 	team-user-remove  removes a user from a team
 
+	platform-list     list available platforms
 	app-create        creates an app
 	app-remove        removes an app
 	app-list          lists apps that the user has access (see app-grant and team-user-add)
@@ -272,6 +273,16 @@ A team can never have 0 users. If you are the last member of a team, you can't
 remove yourself from it.
 
 
+Display the list of available platforms
+
+Usage:
+
+	% tsuru platform-list
+
+platform-list lists the available platforms. All platforms displayed in this
+list may be used to create new apps (see app-create).
+
+
 Create an app
 
 Usage:
@@ -279,8 +290,8 @@ Usage:
 	% tsuru app-create <app-name> <platform> [--units|-n 1]
 
 app-create will create a new app using the given name and platform. For tsuru,
-a platform is a Juju charm. To check the available platforms/charms, check this
-URL: https://github.com/globocom/charms/tree/master/precise.
+a platform is a Juju charm. To check the available platforms, use the command
+"platform-list".
 
 The --units flag is optional, it indicates how many units will be added to the
 app when creating it. The default value is 1.
