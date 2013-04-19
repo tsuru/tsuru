@@ -10,5 +10,11 @@ import "io"
 
 type Executor interface {
 	// Execute executes the specified command.
-	Execute(cmds []string, in io.Reader, out, err io.Writer) error
+	Execute(cmds []string, stdin io.Reader, stdout, stderr io.Writer) error
+}
+
+type OsExecutor struct{}
+
+func (OsExecutor) Execute(cmds []string, stdin io.Reader, stdout, stderr io.Writer) error {
+	return nil
 }
