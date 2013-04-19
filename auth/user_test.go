@@ -471,12 +471,12 @@ func (s *S) TestSendEmail(c *gocheck.C) {
 }
 
 func (s *S) TestSendEmailUndefinedSMTPServer(c *gocheck.C) {
-	old, _ := config.Get("smtp:host")
-	defer config.Set("smtp:host", old)
-	config.Unset("smtp:host")
+	old, _ := config.Get("smtp:server")
+	defer config.Set("smtp:server", old)
+	config.Unset("smtp:server")
 	err := sendEmail("something@tsuru.io", []byte("Hello world!"))
 	c.Assert(err, gocheck.NotNil)
-	c.Assert(err.Error(), gocheck.Equals, `Setting "smtp:host" is not defined`)
+	c.Assert(err.Error(), gocheck.Equals, `Setting "smtp:server" is not defined`)
 }
 
 func (s *S) TestSendEmailUndefinedSMTPUser(c *gocheck.C) {

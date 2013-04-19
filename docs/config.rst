@@ -94,10 +94,10 @@ send those emails, Tsuru needs to be configured with some SMTP settings.
 Omiting these settings won't break Tsuru, but users would not be able to reset
 their password automattically.
 
-smtp:host
-+++++++++
+smtp:server
++++++++++++
 
-The SMTP host to connect to. It must be in the form <host>:<port>. Example:
+The SMTP server to connect to. It must be in the form <host>:<port>. Example:
 "smtp.gmail.com:587".
 
 smtp:user

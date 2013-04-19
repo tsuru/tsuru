@@ -82,7 +82,7 @@ func (s *S) SetUpSuite(c *gocheck.C) {
 	s.gitProt, _ = config.GetString("git:protocol")
 	s.server, err = ttesting.NewSMTPServer()
 	c.Assert(err, gocheck.IsNil)
-	config.Set("smtp:host", s.server.Addr())
+	config.Set("smtp:server", s.server.Addr())
 	config.Set("smtp:user", "root")
 	config.Set("smtp:password", "123456")
 }

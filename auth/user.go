@@ -353,9 +353,9 @@ func generatePassword(length int) string {
 }
 
 func sendEmail(email string, data []byte) error {
-	addr, err := config.GetString("smtp:host")
+	addr, err := config.GetString("smtp:server")
 	if err != nil {
-		return stderrors.New(`Setting "smtp:host" is not defined`)
+		return stderrors.New(`Setting "smtp:server" is not defined`)
 	}
 	user, err := config.GetString("smtp:user")
 	if err != nil {

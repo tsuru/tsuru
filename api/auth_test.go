@@ -46,7 +46,7 @@ func (s *AuthSuite) SetUpSuite(c *gocheck.C) {
 	config.Set("admin-team", s.team.Name)
 	s.server, err = testing.NewSMTPServer()
 	c.Assert(err, gocheck.IsNil)
-	config.Set("smtp:host", s.server.Addr())
+	config.Set("smtp:server", s.server.Addr())
 	config.Set("smtp:user", "root")
 	config.Set("smtp:password", "123456")
 }
