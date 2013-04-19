@@ -489,3 +489,106 @@ func (s *S) TestPasswordFromReaderUsingStringsReader(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(password, gocheck.Equals, "abcd")
 }
+
+func (s *S) TestResetPassword(c *gocheck.C) {
+	var (
+		buf    bytes.Buffer
+		called bool
+	)
+	context := Context{Args: []string{"user@tsuru.io"}, Stdout: &buf}
+	trans := ttesting.ConditionalTransport{
+		Transport: ttesting.Transport{
+			Status:  http.StatusOK,
+			Message: "",
+		},
+		CondFunc: func(r *http.Request) bool {
+			called = true
+			return r.Method == "POST" && r.URL.Path == "/users/user@tsuru.io/password" &&
+				r.URL.Query().Get("token") == ""
+		},
+	}
+	command := resetPassword{}
+	client := NewClient(&http.Client{Transport: &trans}, nil, manager)
+	err := command.Run(&context, client)
+	c.Assert(err, gocheck.IsNil)
+	expected := `You've successfully started the password reset process.
+
+Please check your email.` + "\n"
+	c.Assert(buf.String(), gocheck.Equals, expected)
+	c.Assert(called, gocheck.Equals, true)
+}
+
+func (s *S) TestResetPasswordStepTwo(c *gocheck.C) {
+	var (
+		buf    bytes.Buffer
+		called bool
+	)
+	context := Context{Args: []string{"user@tsuru.io"}, Stdout: &buf}
+	trans := ttesting.ConditionalTransport{
+		Transport: ttesting.Transport{
+			Status:  http.StatusOK,
+			Message: "",
+		},
+		CondFunc: func(r *http.Request) bool {
+			called = true
+			return r.Method == "POST" && r.URL.Path == "/users/user@tsuru.io/password" &&
+				r.URL.Query().Get("token") == "secret"
+		},
+	}
+	command := resetPassword{}
+	command.Flags().Parse(true, []string{"-t", "secret"})
+	client := NewClient(&http.Client{Transport: &trans}, nil, manager)
+	err := command.Run(&context, client)
+	c.Assert(err, gocheck.IsNil)
+	expected := `Your password has been redefined and mailed to you.
+
+Please check your email.` + "\n"
+	c.Assert(buf.String(), gocheck.Equals, expected)
+	c.Assert(called, gocheck.Equals, true)
+}
+
+func (s *S) TestResetPasswordInfo(c *gocheck.C) {
+	expected := &Info{
+		Name:  "reset-password",
+		Usage: "reset-password <email> [--token|-t <token>]",
+		Desc: `Redefines the user password.
+
+This process is composed by two steps:
+
+1. Generate a new token
+2. Reset the password using the token
+
+In order to generate the token, users should run this command without the --token flag.
+The token will be mailed to the user.
+
+With the token in hand, the user can finally reset the password using the --token flag.
+The new password will also be mailed to the user.`,
+		MinArgs: 1,
+	}
+	c.Assert((&resetPassword{}).Info(), gocheck.DeepEquals, expected)
+}
+
+func (s *S) TestResetPasswordFlags(c *gocheck.C) {
+	command := resetPassword{}
+	flagset := command.Flags()
+	c.Assert(flagset, gocheck.NotNil)
+	err := flagset.Parse(false, []string{"-t", "token123"})
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(command.token, gocheck.Equals, "token123")
+	token := flagset.Lookup("token")
+	c.Assert(token, gocheck.NotNil)
+	c.Check(token.Name, gocheck.Equals, "token")
+	c.Check(token.Usage, gocheck.Equals, "Token to reset the password")
+	c.Check(token.Value.String(), gocheck.Equals, "token123")
+	c.Check(token.DefValue, gocheck.Equals, "")
+	stoken := flagset.Lookup("t")
+	c.Assert(stoken, gocheck.NotNil)
+	c.Check(stoken.Name, gocheck.Equals, "t")
+	c.Check(stoken.Usage, gocheck.Equals, "Token to reset the password")
+	c.Check(stoken.Value.String(), gocheck.Equals, "token123")
+	c.Check(stoken.DefValue, gocheck.Equals, "")
+}
+
+func (s *S) TestResetPasswordIsAFlaggedCommand(c *gocheck.C) {
+	var _ FlaggedCommand = &resetPassword{}
+}

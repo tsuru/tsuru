@@ -12,6 +12,7 @@ import (
 	"github.com/globocom/tsuru/cmd/term"
 	"io"
 	"io/ioutil"
+	"launchpad.net/gnuflag"
 	"net/http"
 	"os"
 )
@@ -387,6 +388,66 @@ func (c *changePassword) Info() *Info {
 		Usage: "change-password",
 		Desc:  "Change your password.",
 	}
+}
+
+type resetPassword struct {
+	token string
+}
+
+func (c *resetPassword) Info() *Info {
+	return &Info{
+		Name:  "reset-password",
+		Usage: "reset-password <email> [--token|-t <token>]",
+		Desc: `Redefines the user password.
+
+This process is composed by two steps:
+
+1. Generate a new token
+2. Reset the password using the token
+
+In order to generate the token, users should run this command without the --token flag.
+The token will be mailed to the user.
+
+With the token in hand, the user can finally reset the password using the --token flag.
+The new password will also be mailed to the user.`,
+		MinArgs: 1,
+	}
+}
+
+func (c *resetPassword) msg() string {
+	if c.token == "" {
+		return `You've successfully started the password reset process.
+
+Please check your email.`
+	}
+	return `Your password has been redefined and mailed to you.
+
+Please check your email.`
+}
+
+func (c *resetPassword) Run(context *Context, client Doer) error {
+	url := fmt.Sprintf("/users/%s/password", context.Args[0])
+	if c.token != "" {
+		url += "?token=" + c.token
+	}
+	url, err := GetUrl(url)
+	if err != nil {
+		return err
+	}
+	request, _ := http.NewRequest("POST", url, nil)
+	_, err = client.Do(request)
+	if err != nil {
+		return err
+	}
+	fmt.Fprintln(context.Stdout, c.msg())
+	return nil
+}
+
+func (c *resetPassword) Flags() *gnuflag.FlagSet {
+	fs := gnuflag.NewFlagSet("reset-password", gnuflag.ExitOnError)
+	fs.StringVar(&c.token, "token", "", "Token to reset the password")
+	fs.StringVar(&c.token, "t", "", "Token to reset the password")
+	return fs
 }
 
 func passwordFromReader(reader io.Reader) (string, error) {
