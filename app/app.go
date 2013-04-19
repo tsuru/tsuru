@@ -615,6 +615,11 @@ func (app *App) Command(stdout, stderr io.Writer, cmdArgs ...string) error {
 	return Provisioner.ExecuteCommand(stdout, stderr, app, cmdArgs[0], cmdArgs[1:]...)
 }
 
+func (app *App) Deploy(w io.Writer) error {
+	logWriter := LogWriter{App: app, Writer: w}
+	return Provisioner.Deploy(app, &logWriter)
+}
+
 // Restart runs the restart hook for the app, writing its output to w.
 func (app *App) Restart(w io.Writer) error {
 	app.Log("executing hook to restart", "tsuru")

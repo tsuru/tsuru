@@ -1311,6 +1311,20 @@ func (s *S) TestInstallDeps(c *gocheck.C) {
 	c.Assert(cmds, gocheck.HasLen, 1)
 }
 
+func (s *S) TestDeployShouldCallProvisionerDeploy(c *gocheck.C) {
+	a := App{
+		Name:      "someApp",
+		Framework: "django",
+		Teams:     []string{s.team.Name},
+		Units:     []Unit{{Name: "i-0800", State: "started"}},
+	}
+	w := &bytes.Buffer{}
+	err := a.Deploy(w)
+	c.Assert(err, gocheck.IsNil)
+	logs := w.String()
+	c.Assert(logs, gocheck.Equals, "Deploy called")
+}
+
 func (s *S) TestRestart(c *gocheck.C) {
 	s.provisioner.PrepareOutput(nil) // loadConf
 	a := App{
