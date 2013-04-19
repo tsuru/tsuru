@@ -652,3 +652,11 @@ func addLog(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
 	w.WriteHeader(http.StatusOK)
 	return nil
 }
+
+func platformList(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
+	platforms, err := app.Platforms()
+	if err != nil {
+		return err
+	}
+	return json.NewEncoder(w).Encode(platforms)
+}

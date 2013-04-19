@@ -2345,6 +2345,28 @@ func (s *S) TestAddLogHandler(c *gocheck.C) {
 	c.Assert(got, gocheck.DeepEquals, want)
 }
 
+func (s *S) TestPlatformList(c *gocheck.C) {
+	want := []app.Platform{
+		{Name: "python"},
+		{Name: "java"},
+		{Name: "static"},
+		{Name: "ruby"},
+		{Name: "ruby20"},
+	}
+	for _, p := range want {
+		s.conn.Platforms().Insert(p)
+		defer s.conn.Platforms().Remove(p)
+	}
+	request, _ := http.NewRequest("GET", "/platforms", nil)
+	recorder := httptest.NewRecorder()
+	err := platformList(recorder, request, s.token)
+	c.Assert(err, gocheck.IsNil)
+	var got []app.Platform
+	err = json.NewDecoder(recorder.Body).Decode(&got)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(got, gocheck.DeepEquals, want)
+}
+
 func (s *S) TestgetAppOrErrorWhenUserIsAdmin(c *gocheck.C) {
 	admin := auth.User{Email: "superuser@gmail.com", Password: "123"}
 	err := s.conn.Users().Insert(&admin)
