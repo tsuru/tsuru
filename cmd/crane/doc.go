@@ -53,7 +53,7 @@ Managing remote crane server endpoints
 Usage:
 
 	% tsuru target
-	% tsuru target-add <label> <address> [--set-current]
+	% tsuru target-add <label> <address> [--set-current|-s]
 	% tsuru target-set <label>
 	% tsuru target-remove <label>
 
