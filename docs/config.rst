@@ -86,6 +86,31 @@ database:name
 ``database:name`` is the name of the database that tsuru uses. It is a
 mandatory setting and has no default value. An example of value is "tsuru".
 
+Email configuration
+-------------------
+
+Tsuru sends email to users when they request password recovery. In order to
+send those emails, Tsuru needs to be configured with some SMTP settings.
+Omiting these settings won't break Tsuru, but users would not be able to reset
+their password automattically.
+
+smtp:host
++++++++++
+
+The SMTP host to connect to. It must be in the form <host>:<port>. Example:
+"smtp.gmail.com:587".
+
+smtp:user
++++++++++
+
+The user to authenticate with the SMTP sever. Currently, Tsuru requires
+authenticated sessions.
+
+smtp:password
++++++++++++++
+
+The password for authentication within the SMTP server.
+
 Git configuration
 -----------------
 
