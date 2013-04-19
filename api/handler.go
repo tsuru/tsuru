@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	tsuruMin = "0.7.2"
+	tsuruMin = "0.7.9"
 	craneMin = "0.4"
 )
 
