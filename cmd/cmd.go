@@ -13,6 +13,7 @@ import (
 	"os"
 	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 )
 
@@ -240,6 +241,9 @@ func validateVersion(supported, current string) bool {
 		bigger bool
 		limit  int
 	)
+	if supported == "" {
+		return true
+	}
 	partsSupported := strings.Split(supported, ".")
 	partsCurrent := strings.Split(current, ".")
 	if len(partsSupported) > len(partsCurrent) {
@@ -249,7 +253,15 @@ func validateVersion(supported, current string) bool {
 		limit = len(partsSupported)
 	}
 	for i := 0; i < limit; i++ {
-		if partsCurrent[i] < partsSupported[i] {
+		current, err := strconv.Atoi(partsCurrent[i])
+		if err != nil {
+			return false
+		}
+		supported, err := strconv.Atoi(partsSupported[i])
+		if err != nil {
+			return false
+		}
+		if current < supported {
 			return false
 		}
 	}

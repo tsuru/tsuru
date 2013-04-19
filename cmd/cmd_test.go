@@ -416,8 +416,28 @@ func (s *S) TestValidateVersion(c *gocheck.C) {
 			support:  "0.3",
 			expected: false,
 		},
+		{
+			current:  "0.7.10",
+			support:  "0.7.2",
+			expected: true,
+		},
+		{
+			current:  "beta",
+			support:  "0.7.2",
+			expected: false,
+		},
+		{
+			current:  "0.7.10",
+			support:  "beta",
+			expected: false,
+		},
+		{
+			current:  "0.7.10",
+			support:  "",
+			expected: true,
+		},
 	}
 	for _, cs := range cases {
-		c.Assert(validateVersion(cs.support, cs.current), gocheck.Equals, cs.expected)
+		c.Check(validateVersion(cs.support, cs.current), gocheck.Equals, cs.expected)
 	}
 }
