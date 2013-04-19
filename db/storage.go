@@ -125,6 +125,11 @@ func (s *Storage) Apps() *mgo.Collection {
 	return c
 }
 
+// Platforms returns the platforms collection from MongoDB.
+func (s *Storage) Platforms() *mgo.Collection {
+	return s.Collection("platforms")
+}
+
 // Logs returns the logs collection from MongoDB.
 func (s *Storage) Logs() *mgo.Collection {
 	return s.Collection("logs")
