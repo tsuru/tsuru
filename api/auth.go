@@ -40,10 +40,10 @@ func CreateUser(w http.ResponseWriter, r *http.Request) error {
 		return &errors.Http{Code: http.StatusBadRequest, Message: err.Error()}
 	}
 	if !validation.ValidateEmail(u.Email) {
-		return &errors.Http{Code: http.StatusPreconditionFailed, Message: emailError}
+		return &errors.Http{Code: http.StatusBadRequest, Message: emailError}
 	}
 	if !validation.ValidateLength(u.Password, passwordMinLen, passwordMaxLen) {
-		return &errors.Http{Code: http.StatusPreconditionFailed, Message: passwordError}
+		return &errors.Http{Code: http.StatusBadRequest, Message: passwordError}
 	}
 	gUrl := repository.GitServerUri()
 	c := gandalf.Client{Endpoint: gUrl}
@@ -74,7 +74,7 @@ func login(w http.ResponseWriter, r *http.Request) error {
 	u, err := auth.GetUserByEmail(r.URL.Query().Get(":email"))
 	if err != nil {
 		if e, ok := err.(*errors.ValidationError); ok {
-			return &errors.Http{Code: http.StatusPreconditionFailed, Message: e.Message}
+			return &errors.Http{Code: http.StatusBadRequest, Message: e.Message}
 		} else if err == auth.ErrUserNotFound {
 			return &errors.Http{Code: http.StatusNotFound, Message: err.Error()}
 		}
@@ -85,7 +85,7 @@ func login(w http.ResponseWriter, r *http.Request) error {
 		switch err.(type) {
 		case *errors.ValidationError:
 			return &errors.Http{
-				Code:    http.StatusPreconditionFailed,
+				Code:    http.StatusBadRequest,
 				Message: err.(*errors.ValidationError).Message,
 			}
 		case auth.AuthenticationFailure:
@@ -138,7 +138,7 @@ func ChangePassword(w http.ResponseWriter, r *http.Request, t *auth.Token) error
 	}
 	if !validation.ValidateLength(body["new"], passwordMinLen, passwordMaxLen) {
 		return &errors.Http{
-			Code:    http.StatusPreconditionFailed,
+			Code:    http.StatusBadRequest,
 			Message: passwordError,
 		}
 	}

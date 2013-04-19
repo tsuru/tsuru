@@ -226,7 +226,7 @@ func (s *AuthSuite) TestCreateUserHandlerReturnErrorAndConflictIfItFailsToCreate
 	c.Assert(e.Code, gocheck.Equals, http.StatusConflict)
 }
 
-func (s *AuthSuite) TestCreateUserHandlerReturnsPreconditionFailedIfEmailIsNotValid(c *gocheck.C) {
+func (s *AuthSuite) TestCreateUserHandlerReturnsBadRequestIfEmailIsNotValid(c *gocheck.C) {
 	b := bytes.NewBufferString(`{"email":"nobody","password":"123456"}`)
 	request, err := http.NewRequest("POST", "/users", b)
 	c.Assert(err, gocheck.IsNil)
@@ -236,11 +236,11 @@ func (s *AuthSuite) TestCreateUserHandlerReturnsPreconditionFailedIfEmailIsNotVa
 	c.Assert(err, gocheck.NotNil)
 	e, ok := err.(*errors.Http)
 	c.Assert(ok, gocheck.Equals, true)
-	c.Assert(e.Code, gocheck.Equals, http.StatusPreconditionFailed)
+	c.Assert(e.Code, gocheck.Equals, http.StatusBadRequest)
 	c.Assert(e.Message, gocheck.Equals, "Invalid email.")
 }
 
-func (s *AuthSuite) TestCreateUserHandlerReturnsPreconditionFailedIfPasswordHasLessThan6CharactersOrMoreThan50Characters(c *gocheck.C) {
+func (s *AuthSuite) TestCreateUserHandlerReturnsBadRequestIfPasswordHasLessThan6CharactersOrMoreThan50Characters(c *gocheck.C) {
 	passwords := []string{"123", strings.Join(make([]string, 52), "-")}
 	for _, password := range passwords {
 		b := bytes.NewBufferString(`{"email":"nobody@globo.com","password":"` + password + `"}`)
@@ -252,7 +252,7 @@ func (s *AuthSuite) TestCreateUserHandlerReturnsPreconditionFailedIfPasswordHasL
 		c.Assert(err, gocheck.NotNil)
 		e, ok := err.(*errors.Http)
 		c.Assert(ok, gocheck.Equals, true)
-		c.Assert(e.Code, gocheck.Equals, http.StatusPreconditionFailed)
+		c.Assert(e.Code, gocheck.Equals, http.StatusBadRequest)
 		c.Assert(e.Message, gocheck.Equals, "Password length should be least 6 characters and at most 50 characters.")
 	}
 }
@@ -369,7 +369,7 @@ func (s *AuthSuite) TestLoginShouldReturnErrorAndInternalServerErrorIfReadAllFai
 	c.Assert(err, gocheck.NotNil)
 }
 
-func (s *AuthSuite) TestLoginShouldReturnPreconditionFailedIfEmailIsNotValid(c *gocheck.C) {
+func (s *AuthSuite) TestLoginShouldReturnBadRequestIfEmailIsNotValid(c *gocheck.C) {
 	b := bytes.NewBufferString(`{"password":"123456"}`)
 	request, err := http.NewRequest("POST", "/users/nobody/token?:email=nobody", b)
 	c.Assert(err, gocheck.IsNil)
@@ -379,11 +379,11 @@ func (s *AuthSuite) TestLoginShouldReturnPreconditionFailedIfEmailIsNotValid(c *
 	c.Assert(err, gocheck.NotNil)
 	e, ok := err.(*errors.Http)
 	c.Assert(ok, gocheck.Equals, true)
-	c.Assert(e.Code, gocheck.Equals, http.StatusPreconditionFailed)
+	c.Assert(e.Code, gocheck.Equals, http.StatusBadRequest)
 	c.Assert(e.Message, gocheck.Equals, emailError)
 }
 
-func (s *AuthSuite) TestLoginShouldReturnPreconditionFailedWhenPasswordIsInvalid(c *gocheck.C) {
+func (s *AuthSuite) TestLoginShouldReturnBadRequestWhenPasswordIsInvalid(c *gocheck.C) {
 	passwords := []string{"123", strings.Join(make([]string, 52), "-")}
 	u := &auth.User{Email: "me@globo.com", Password: "123"}
 	err := u.Create()
@@ -401,7 +401,7 @@ func (s *AuthSuite) TestLoginShouldReturnPreconditionFailedWhenPasswordIsInvalid
 		c.Assert(err, gocheck.NotNil)
 		e, ok := err.(*errors.Http)
 		c.Assert(ok, gocheck.Equals, true)
-		c.Assert(e.Code, gocheck.Equals, http.StatusPreconditionFailed)
+		c.Assert(e.Code, gocheck.Equals, http.StatusBadRequest)
 		c.Assert(e.Message, gocheck.Equals, passwordError)
 	}
 }
@@ -1398,7 +1398,7 @@ func (s *AuthSuite) TestChangePasswordReturns412IfNewPasswordIsInvalid(c *gochec
 	c.Assert(err, gocheck.NotNil)
 	e, ok := err.(*errors.Http)
 	c.Assert(ok, gocheck.Equals, true)
-	c.Check(e.Code, gocheck.Equals, http.StatusPreconditionFailed)
+	c.Check(e.Code, gocheck.Equals, http.StatusBadRequest)
 	c.Check(e.Message, gocheck.Equals, "Password length should be least 6 characters and at most 50 characters.")
 }
 
