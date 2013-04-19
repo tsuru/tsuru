@@ -97,6 +97,7 @@ func main() {
 		m.Post("/users", handler(CreateUser))
 	}
 
+	m.Post("/users/:email/password", handler(resetPassword))
 	m.Post("/users/:email/tokens", handler(login))
 	m.Put("/users/password", authorizationRequiredHandler(ChangePassword))
 	m.Del("/users", authorizationRequiredHandler(RemoveUser))
