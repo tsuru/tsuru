@@ -53,6 +53,7 @@ func (c *Client) Do(request *http.Request) (*http.Response, error) {
 	if token, err := readToken(); err == nil {
 		request.Header.Set("Authorization", token)
 	}
+	request.Close = true
 	response, err := c.HttpClient.Do(request)
 	err = c.detectClientError(err)
 	if err != nil {
