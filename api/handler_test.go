@@ -345,6 +345,18 @@ func (s *HandlerSuite) TestAuthorizationRequiredHandlerAppToken(c *gocheck.C) {
 	c.Assert(recorder.Code, gocheck.Equals, http.StatusOK)
 }
 
+func (s *HandlerSuite) TestAuthorizationRequiredHandlerWrongApp(c *gocheck.C) {
+	token, err := auth.CreateApplicationToken("my-app")
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Tokens().Remove(bson.M{"token": token.Token})
+	recorder := httptest.NewRecorder()
+	request, err := http.NewRequest("GET", "/?:app=your-app", nil)
+	c.Assert(err, gocheck.IsNil)
+	request.Header.Set("Authorization", token.Token)
+	authorizationRequiredHandler(authorizedOutputHandler).ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, gocheck.Equals, http.StatusUnauthorized)
+}
+
 func (s *HandlerSuite) TestAuthorizationRequiredHandlerAppMissng(c *gocheck.C) {
 	token, err := auth.CreateApplicationToken("my-app")
 	c.Assert(err, gocheck.IsNil)
@@ -354,31 +366,5 @@ func (s *HandlerSuite) TestAuthorizationRequiredHandlerAppMissng(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	request.Header.Set("Authorization", token.Token)
 	authorizationRequiredHandler(authorizedOutputHandler).ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, gocheck.Equals, http.StatusUnauthorized)
-}
-
-func (s *HandlerSuite) TestAuthorizationRequiredHandlerAppNameOnHeader(c *gocheck.C) {
-	token, err := auth.CreateApplicationToken("my-app")
-	c.Assert(err, gocheck.IsNil)
-	defer s.conn.Tokens().Remove(bson.M{"token": token.Token})
-	recorder := httptest.NewRecorder()
-	request, err := http.NewRequest("GET", "/", nil)
-	c.Assert(err, gocheck.IsNil)
-	request.Header.Set("Authorization", token.Token)
-	request.Header.Set("Token-Owner", "my-app")
-	authorizationRequiredHandler(authorizedOutputHandler).ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, gocheck.Equals, http.StatusOK)
-}
-
-func (s *HandlerSuite) TestAuthorizationRequiredHandlerAppTokenWrongApp(c *gocheck.C) {
-	token, err := auth.CreateApplicationToken("my-app")
-	c.Assert(err, gocheck.IsNil)
-	defer s.conn.Tokens().Remove(bson.M{"token": token.Token})
-	recorder := httptest.NewRecorder()
-	request, err := http.NewRequest("GET", "/?:app=his-app", nil)
-	c.Assert(err, gocheck.IsNil)
-	request.Header.Set("Authorization", token.Token)
-	request.Header.Set("Token-Owner", "my-app") // cannot matter
-	authorizationRequiredHandler(authorizedOutputHandler).ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, gocheck.Equals, http.StatusUnauthorized)
 }

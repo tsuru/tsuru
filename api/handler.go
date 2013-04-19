@@ -56,13 +56,7 @@ func validate(token string, r *http.Request) (*auth.Token, error) {
 	if t.AppName != "" {
 		if q := r.URL.Query().Get(":app"); q != "" && t.AppName != q {
 			return nil, invalid
-		} else if t.AppName == q {
-			return t, nil
 		}
-		if t.AppName == r.Header.Get("Token-Owner") {
-			return t, nil
-		}
-		return nil, invalid
 	}
 	return t, nil
 }
