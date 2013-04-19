@@ -54,7 +54,7 @@ func (h *testBadHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 func (s *S) TestAppIsAvailableHandlerShouldReturnErrorWhenAppStatusIsnotStarted(c *gocheck.C) {
 	a := app.App{
 		Name:     "someapp",
-		Platform: "python",
+		Platform: "zend",
 		Teams:    []string{s.team.Name},
 		Units:    []app.Unit{{Name: "someapp/0", Type: "django", State: string(provision.StatusPending)}},
 	}
@@ -73,7 +73,7 @@ func (s *S) TestAppIsAvailableHandlerShouldReturnErrorWhenAppStatusIsnotStarted(
 func (s *S) TestAppIsAvailableHandlerShouldReturn200WhenAppUnitStatusIsStarted(c *gocheck.C) {
 	a := app.App{
 		Name:     "someapp",
-		Platform: "python",
+		Platform: "zend",
 		Teams:    []string{s.team.Name},
 		Units:    []app.Unit{{Name: "someapp/0", Type: "django", State: string(provision.StatusStarted)}},
 	}
@@ -93,7 +93,7 @@ func (s *S) TestAppIsAvailableHandlerShouldReturn200WhenAppUnitStatusIsStarted(c
 func (s *S) TestCloneRepositoryHandlerShouldAddLogs(c *gocheck.C) {
 	a := app.App{
 		Name:     "otherapp",
-		Platform: "django",
+		Platform: "zend",
 		Teams:    []string{s.team.Name},
 		Units:    []app.Unit{{Name: "i-0800", State: "started"}},
 	}
@@ -219,7 +219,7 @@ func (s *S) TestForceDeleteApp(c *gocheck.C) {
 	defer ts.Close()
 	a := app.App{
 		Name:     "myapptodelete",
-		Platform: "django",
+		Platform: "zend",
 		Teams:    []string{s.team.Name},
 		Units: []app.Unit{
 			{Ip: "10.10.10.10", Machine: 1},
@@ -245,7 +245,7 @@ func (s *S) TestDelete(c *gocheck.C) {
 	defer ts.Close()
 	myApp := app.App{
 		Name:     "myapptodelete",
-		Platform: "django",
+		Platform: "zend",
 		Teams:    []string{s.team.Name},
 		Units: []app.Unit{
 			{Ip: "10.10.10.10", Machine: 1},
@@ -269,7 +269,7 @@ func (s *S) TestDelete(c *gocheck.C) {
 func (s *S) TestDeleteShouldReturnForbiddenIfTheGivenUserDoesNotHaveAccesToTheApp(c *gocheck.C) {
 	myApp := app.App{
 		Name:     "MyAppToDelete",
-		Platform: "django",
+		Platform: "zend",
 	}
 	err := s.conn.Apps().Insert(myApp)
 	c.Assert(err, gocheck.IsNil)
@@ -371,7 +371,7 @@ func (s *S) TestCreateAppHandler(c *gocheck.C) {
 		err = s.provisioner.Destroy(&a)
 		c.Assert(err, gocheck.IsNil)
 	}()
-	b := strings.NewReader(`{"name":"someapp","framework":"django","units":4}`)
+	b := strings.NewReader(`{"name":"someapp","platform":"zend","units":4}`)
 	request, err := http.NewRequest("POST", "/apps", b)
 	c.Assert(err, gocheck.IsNil)
 	request.Header.Set("Content-Type", "application/json")
@@ -397,7 +397,7 @@ func (s *S) TestCreateAppHandler(c *gocheck.C) {
 }
 
 func (s *S) TestCreateAppReturnsPreconditionFailedIfTheAppNameIsInvalid(c *gocheck.C) {
-	b := strings.NewReader(`{"name":"123myapp","framework":"django"}`)
+	b := strings.NewReader(`{"name":"123myapp","platform":"zend"}`)
 	request, err := http.NewRequest("POST", "/apps", b)
 	c.Assert(err, gocheck.IsNil)
 	request.Header.Set("Content-Type", "application/json")
@@ -421,7 +421,7 @@ func (s *S) TestCreateAppReturns403IfTheUserIsNotMemberOfAnyTeam(c *gocheck.C) {
 	token, err := u.CreateToken("123456")
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Tokens().Remove(bson.M{"token": token.Token})
-	b := strings.NewReader(`{"name":"someapp", "framework":"django"}`)
+	b := strings.NewReader(`{"name":"someapp", "platform":"django"}`)
 	request, err := http.NewRequest("POST", "/apps", b)
 	c.Assert(err, gocheck.IsNil)
 	request.Header.Set("Content-Type", "application/json")
@@ -443,7 +443,7 @@ func (s *S) TestCreateAppReturnsConflictWithProperMessageWhenTheAppAlreadyExist(
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	defer s.conn.Logs().Remove(bson.M{"appname": a.Name})
-	b := strings.NewReader(`{"name":"plainsofdawn","framework":"django"}`)
+	b := strings.NewReader(`{"name":"plainsofdawn","platform":"zend"}`)
 	request, err := http.NewRequest("POST", "/apps", b)
 	c.Assert(err, gocheck.IsNil)
 	request.Header.Set("Content-Type", "application/json")
@@ -2120,9 +2120,10 @@ func (s *S) TestUnbindHandler(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.ServiceInstances().Remove(bson.M{"name": "my-mysql"})
 	a := app.App{
-		Name:  "painkiller",
-		Teams: []string{s.team.Name},
-		Units: []app.Unit{{Machine: 1}},
+		Name:     "painkiller",
+		Platform: "zend",
+		Teams:    []string{s.team.Name},
+		Units:    []app.Unit{{Machine: 1}},
 	}
 	err = app.CreateApp(&a, 1, []auth.Team{*s.team})
 	c.Assert(err, gocheck.IsNil)
@@ -2174,7 +2175,7 @@ func (s *S) TestUnbindHandler(c *gocheck.C) {
 func (s *S) TestUnbindHandlerReturns404IfTheInstanceDoesNotExist(c *gocheck.C) {
 	a := app.App{
 		Name:     "serviceApp",
-		Platform: "django",
+		Platform: "zend",
 		Teams:    []string{s.team.Name},
 	}
 	err := s.conn.Apps().Insert(a)
@@ -2200,7 +2201,7 @@ func (s *S) TestUnbindHandlerReturns403IfTheUserDoesNotHaveAccessToTheInstance(c
 	defer s.conn.ServiceInstances().Remove(bson.M{"name": "my-mysql"})
 	a := app.App{
 		Name:     "serviceApp",
-		Platform: "django",
+		Platform: "zend",
 		Teams:    []string{s.team.Name},
 	}
 	err = s.conn.Apps().Insert(a)
@@ -2243,7 +2244,7 @@ func (s *S) TestUnbindHandlerReturns403IfTheUserDoesNotHaveAccessToTheApp(c *goc
 	defer s.conn.ServiceInstances().Remove(bson.M{"name": "my-mysql"})
 	a := app.App{
 		Name:     "serviceApp",
-		Platform: "django",
+		Platform: "zend",
 	}
 	err = s.conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)
@@ -2315,7 +2316,7 @@ func (s *S) TestRestartHandlerReturns403IfTheUserDoesNotHaveAccessToTheApp(c *go
 func (s *S) TestAddLogHandler(c *gocheck.C) {
 	a := app.App{
 		Name:     "myapp",
-		Platform: "python",
+		Platform: "zend",
 	}
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)
@@ -2344,17 +2345,19 @@ func (s *S) TestAddLogHandler(c *gocheck.C) {
 }
 
 func (s *S) TestPlatformList(c *gocheck.C) {
-	want := []app.Platform{
+	platforms := []app.Platform{
 		{Name: "python"},
 		{Name: "java"},
-		{Name: "static"},
-		{Name: "ruby"},
 		{Name: "ruby20"},
+		{Name: "static"},
 	}
-	for _, p := range want {
+	for _, p := range platforms {
 		s.conn.Platforms().Insert(p)
 		defer s.conn.Platforms().Remove(p)
 	}
+	want := make([]app.Platform, 1, len(platforms)+1)
+	want[0] = app.Platform{Name: "zend"}
+	want = append(want, platforms...)
 	request, _ := http.NewRequest("GET", "/platforms", nil)
 	recorder := httptest.NewRecorder()
 	err := platformList(recorder, request, s.token)

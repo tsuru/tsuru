@@ -75,6 +75,8 @@ func (s *S) SetUpSuite(c *gocheck.C) {
 	s.t.SetGitConfs(c)
 	s.provisioner = tsuruTesting.NewFakeProvisioner()
 	app.Provisioner = s.provisioner
+	p := app.Platform{Name: "zend"}
+	s.conn.Platforms().Insert(p)
 }
 
 func (s *S) TearDownSuite(c *gocheck.C) {
