@@ -43,7 +43,7 @@ echo "installing tsuru-collector"
 curl -sL https://s3.amazonaws.com/tsuru/dist-server/tsuru-collector.tar.gz | sudo tar -xz -C /usr/bin
 
 echo "configuring tsuru"
-sudo mkdir /etc/tsuru
+[ -d /etc/tsuru ] || sudo mkdir /etc/tsuru
 sudo curl -sL https://raw.github.com/globocom/tsuru/master/etc/tsuru-lxc.conf -o /etc/tsuru/tsuru.conf
 
 echo "configuring gandalf"
@@ -65,11 +65,11 @@ echo "creating the git user"
 sudo useradd git
 
 echo "creating bare path"
-sudo mkdir -p /var/repositories
+[ -d /var/repositories ] || sudo mkdir -p /var/repositories
 sudo chown -R git:git /var/repositories
 
 echo "creating template path"
-sudo mkdir -p /home/git/bare-template/hooks
+[ -d /home/git/bare-template/hooks ] || sudo mkdir -p /home/git/bare-template/hooks
 sudo curl https://raw.github.com/globocom/tsuru/master/misc/git-hooks/post-receive > /home/git/bare-template/hooks/post-receive
 sudo curl https://raw.github.com/globocom/tsuru/master/misc/git-hooks/pre-receive > /home/git/bare-template/hooks/pre-receive
 sudo curl https://raw.github.com/globocom/tsuru/master/misc/git-hooks/pre-receive.py > /home/git/bare-template/hooks/pre-receive.py
@@ -77,10 +77,10 @@ sudo chmod +x /home/git/bare-template/hooks/*
 sudo chown -R git:git /home/git/bare-template
 
 echo "generating the ssh-key for root"
-sudo ssh-keygen -N "" -f /root/.ssh/id_rsa
+[ -f /root/.ssh/id_rsa ] || sudo ssh-keygen -N "" -f /root/.ssh/id_rsa
 
 echo "downloading charms"
-git clone git://github.com/globocom/charms.git -b lxc /home/ubuntu/charms
+[ -d /home/ubuntu/charms ] || git clone git://github.com/globocom/charms.git -b lxc /home/ubuntu/charms
 
 echo "starting mongodb"
 sudo service mongodb start
