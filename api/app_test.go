@@ -12,16 +12,13 @@ import (
 	"github.com/globocom/tsuru/app/bind"
 	"github.com/globocom/tsuru/auth"
 	"github.com/globocom/tsuru/errors"
-	"github.com/globocom/tsuru/log"
 	"github.com/globocom/tsuru/provision"
 	"github.com/globocom/tsuru/repository"
-	"github.com/globocom/tsuru/safe"
 	"github.com/globocom/tsuru/service"
 	"io"
 	"io/ioutil"
 	"labix.org/v2/mgo/bson"
 	"launchpad.net/gocheck"
-	stdlog "log"
 	"net/http"
 	"net/http/httptest"
 	"sort"
@@ -94,18 +91,6 @@ func (s *S) TestAppIsAvailableHandlerShouldReturn200WhenAppUnitStatusIsStarted(c
 }
 
 func (s *S) TestCloneRepositoryHandlerShouldAddLogs(c *gocheck.C) {
-	output := `hooks:
-  pre-restart:
-    - pre.sh
-  post-restart:
-    - pos.sh
-`
-	s.provisioner.PrepareOutput(nil)            // clone
-	s.provisioner.PrepareOutput(nil)            // install
-	s.provisioner.PrepareOutput([]byte(output)) // loadHooks
-	s.provisioner.PrepareOutput(nil)            // pre-restart
-	s.provisioner.PrepareOutput(nil)            // restart
-	s.provisioner.PrepareOutput(nil)            // post-restart
 	a := app.App{
 		Name:      "otherapp",
 		Framework: "django",
@@ -115,110 +100,25 @@ func (s *S) TestCloneRepositoryHandlerShouldAddLogs(c *gocheck.C) {
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
-	defer s.conn.Logs().Remove(bson.M{"appname": a.Name})
 	url := fmt.Sprintf("/apps/%s/repository/clone?:appname=%s", a.Name, a.Name)
 	request, err := http.NewRequest("GET", url, nil)
 	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
+	Provisioner = s.provisioner
 	err = cloneRepository(recorder, request, s.token)
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(recorder.Code, gocheck.Equals, http.StatusOK)
-	messages := []string{
-		" ---> Tsuru receiving push",
-		" ---> Replicating the application repository across units",
-		" ---> Installing dependencies",
-		" ---> Deploy done!",
-	}
-	for _, msg := range messages {
-		count, err := s.conn.Logs().Find(bson.M{"message": msg, "appname": a.Name}).Count()
-		c.Assert(err, gocheck.IsNil)
-		c.Check(count, gocheck.Equals, 1)
-	}
-}
-
-func (s *S) TestCloneRepositoryHandler(c *gocheck.C) {
-	output := `hooks:
-  pre-restart:
-    - pre.sh
-  post-restart:
-    - pos.sh
-`
-	s.provisioner.PrepareOutput(nil)            // clone
-	s.provisioner.PrepareOutput(nil)            // install
-	s.provisioner.PrepareOutput([]byte(output)) // loadHooks
-	s.provisioner.PrepareOutput(nil)            // pre-restart
-	s.provisioner.PrepareOutput(nil)            // restart
-	s.provisioner.PrepareOutput(nil)            // post-restart
-	a := app.App{
-		Name:      "someapp",
-		Framework: "django",
-		Teams:     []string{s.team.Name},
-		Units:     []app.Unit{{Name: "i-0800", State: "started"}},
-	}
-	err := s.conn.Apps().Insert(a)
-	c.Assert(err, gocheck.IsNil)
-	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
-	defer s.conn.Logs().Remove(bson.M{"appname": a.Name})
-	url := fmt.Sprintf("/apps/%s/repository/clone?:appname=%s", a.Name, a.Name)
-	request, err := http.NewRequest("GET", url, nil)
-	c.Assert(err, gocheck.IsNil)
-	recorder := httptest.NewRecorder()
-	err = cloneRepository(recorder, request, s.token)
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(recorder.Code, gocheck.Equals, http.StatusOK)
-	regexp := `^# ---> Tsuru receiving push#.*
-# ---> Replicating the application repository across units#.*
-# ---> Installing dependencies#.*
-# ---> Running pre-restart#.*
-# ---> Restarting your app#.*
-# ---> Running post-restart#.*
-# ---> Deploy done!##$
-`
-	c.Assert(strings.Replace(recorder.Body.String(), "\n", "#", -1), gocheck.Matches, strings.Replace(regexp, "\n", "", -1))
 	c.Assert(recorder.Header().Get("Content-Type"), gocheck.Equals, "text")
-}
-
-func (s *S) TestCloneRepositoryRunsCloneOrPullThenPreRestartThenRestartThenPosRestartHooksInOrder(c *gocheck.C) {
-	var w safe.Buffer
-	l := stdlog.New(&w, "", stdlog.LstdFlags)
-	log.SetLogger(l)
-	output := `hooks:
-  pre-restart:
-    - pre.sh
-  post-restart:
-    - pos.sh
-`
-	s.provisioner.PrepareOutput(nil)            // clone
-	s.provisioner.PrepareOutput(nil)            // install
-	s.provisioner.PrepareOutput([]byte(output)) // loadHooks
-	s.provisioner.PrepareOutput(nil)            // pre-restart
-	s.provisioner.PrepareOutput(nil)            // restart
-	s.provisioner.PrepareOutput(nil)            // post-restart
-	a := app.App{
-		Name:      "someapp",
-		Framework: "django",
-		Teams:     []string{s.team.Name},
-		Units:     []app.Unit{{Name: "i-0800", State: "started"}},
-	}
-	err := s.conn.Apps().Insert(a)
-	c.Assert(err, gocheck.IsNil)
-	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
-	defer s.conn.Logs().Remove(bson.M{"appname": a.Name})
-	url := fmt.Sprintf("/apps/%s/repository/clone?:appname=%s", a.Name, a.Name)
-	request, err := http.NewRequest("GET", url, nil)
-	c.Assert(err, gocheck.IsNil)
-	recorder := httptest.NewRecorder()
-	err = cloneRepository(recorder, request, s.token)
-	c.Assert(err, gocheck.IsNil)
 	c.Assert(recorder.Code, gocheck.Equals, http.StatusOK)
-	str := strings.Replace(w.String(), "\n", "", -1)
-	c.Assert(str, gocheck.Matches, ".*\"git clone\" output.*")
+	b, err := ioutil.ReadAll(recorder.Body)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(string(b), gocheck.Equals, "Deploy called")
 }
 
 func (s *S) TestCloneRepositoryShouldReturnNotFoundWhenAppDoesNotExist(c *gocheck.C) {
 	request, err := http.NewRequest("GET", "/apps/abc/repository/clone?:appname=abc", nil)
 	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
+	Provisioner = s.provisioner
 	err = cloneRepository(recorder, request, s.token)
 	c.Assert(err, gocheck.NotNil)
 	e, ok := err.(*errors.Http)

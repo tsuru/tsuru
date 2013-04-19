@@ -14,6 +14,7 @@ import (
 	"github.com/globocom/tsuru/db"
 	"github.com/globocom/tsuru/errors"
 	"github.com/globocom/tsuru/log"
+	"github.com/globocom/tsuru/provision"
 	"github.com/globocom/tsuru/repository"
 	"github.com/globocom/tsuru/service"
 	"io"
@@ -23,6 +24,8 @@ import (
 	"strconv"
 	"strings"
 )
+
+var Provisioner provision.Provisioner
 
 func write(w io.Writer, content []byte) error {
 	n, err := w.Write(content)
@@ -52,41 +55,12 @@ func getApp(name string, u *auth.User) (app.App, error) {
 
 func cloneRepository(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
 	w.Header().Set("Content-Type", "text")
-	instance := app.App{Name: r.URL.Query().Get(":appname")}
+	instance := &app.App{Name: r.URL.Query().Get(":appname")}
 	err := instance.Get()
-	logWriter := app.LogWriter{App: &instance, Writer: w}
 	if err != nil {
 		return &errors.Http{Code: http.StatusNotFound, Message: fmt.Sprintf("App %s not found.", instance.Name)}
 	}
-	err = write(&logWriter, []byte("\n ---> Tsuru receiving push\n"))
-	if err != nil {
-		return err
-	}
-	err = write(&logWriter, []byte("\n ---> Replicating the application repository across units\n"))
-	if err != nil {
-		return err
-	}
-	out, err := repository.CloneOrPull(&instance) // should iterate over the machines
-	if err != nil {
-		return &errors.Http{Code: http.StatusInternalServerError, Message: string(out)}
-	}
-	err = write(&logWriter, out)
-	if err != nil {
-		return err
-	}
-	err = write(&logWriter, []byte("\n ---> Installing dependencies\n"))
-	if err != nil {
-		return err
-	}
-	err = instance.InstallDeps(&logWriter)
-	if err != nil {
-		return err
-	}
-	err = instance.Restart(&logWriter)
-	if err != nil {
-		return err
-	}
-	return write(&logWriter, []byte("\n ---> Deploy done!\n\n"))
+	return Provisioner.Deploy(instance, w)
 }
 
 func appIsAvailable(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
