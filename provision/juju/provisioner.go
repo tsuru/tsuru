@@ -118,11 +118,10 @@ func (p *JujuProvisioner) Restart(app provision.App) error {
 }
 
 func (p *JujuProvisioner) Deploy(a provision.App, w io.Writer) error {
-	logWriter := app.LogWriter{App: a, Writer: w}
-	if err := write(&logWriter, []byte("\n ---> Tsuru receiving push\n")); err != nil {
+	if err := write(w, []byte("\n ---> Tsuru receiving push\n")); err != nil {
 		return err
 	}
-	if err := write(&logWriter, []byte("\n ---> Replicating the application repository across units\n")); err != nil {
+	if err := write(w, []byte("\n ---> Replicating the application repository across units\n")); err != nil {
 		return err
 	}
 	out, err := repository.CloneOrPull(a) // should iterate over the machines (?)
@@ -130,19 +129,19 @@ func (p *JujuProvisioner) Deploy(a provision.App, w io.Writer) error {
 		msg := fmt.Sprintf("Got error while clonning/pulling repository: %s -- \n%s", err.Error(), string(out))
 		return errors.New(msg)
 	}
-	if err := write(&logWriter, out); err != nil {
+	if err := write(w, out); err != nil {
 		return err
 	}
-	if err := write(&logWriter, []byte("\n ---> Installing dependencies\n")); err != nil {
+	if err := write(w, []byte("\n ---> Installing dependencies\n")); err != nil {
 		return err
 	}
-	if err := a.InstallDeps(&logWriter); err != nil {
+	if err := a.InstallDeps(w); err != nil {
 		return err
 	}
-	if err := a.Restart(&logWriter); err != nil {
+	if err := a.Restart(w); err != nil {
 		return err
 	}
-	return write(&logWriter, []byte("\n ---> Deploy done!\n\n"))
+	return write(w, []byte("\n ---> Deploy done!\n\n"))
 }
 
 func (p *JujuProvisioner) destroyService(app provision.App) error {
