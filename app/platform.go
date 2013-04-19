@@ -6,6 +6,7 @@ package app
 
 import (
 	"github.com/globocom/tsuru/db"
+	"labix.org/v2/mgo/bson"
 )
 
 type Platform struct {
@@ -21,4 +22,23 @@ func Platforms() ([]Platform, error) {
 	}
 	err = conn.Platforms().Find(nil).All(&platforms)
 	return platforms, err
+}
+
+func getPlatform(name string) (*Platform, error) {
+	var p Platform
+	conn, err := db.Conn()
+	if err != nil {
+		return nil, err
+	}
+	err = conn.Platforms().Find(bson.M{"_id": name}).One(&p)
+	if err != nil {
+		return nil, InvalidPlatformError{}
+	}
+	return &p, nil
+}
+
+type InvalidPlatformError struct{}
+
+func (InvalidPlatformError) Error() string {
+	return "Invalid platform"
 }
