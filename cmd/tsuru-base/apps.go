@@ -67,7 +67,7 @@ type app struct {
 	Ip         string
 	CName      string
 	Name       string
-	Framework  string
+	Platform   string
 	Repository string
 	Teams      []string
 	Units      []unit
@@ -93,7 +93,7 @@ Address: %s
 	for _, unit := range a.Units {
 		units.AddRow(cmd.Row([]string{unit.Name, unit.State}))
 	}
-	args := []interface{}{a.Name, a.Repository, a.Framework, teams, a.Addr()}
+	args := []interface{}{a.Name, a.Repository, a.Platform, teams, a.Addr()}
 	if len(a.Units) > 0 {
 		format += "Units:\n%s"
 		args = append(args, units)

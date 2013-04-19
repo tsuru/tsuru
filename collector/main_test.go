@@ -42,8 +42,8 @@ func destroyApps(conn *db.Storage) {
 }
 
 func (s *S) TestJujuCollect(c *gocheck.C) {
-	app1 := app.App{Name: "as_i_rise", Framework: "python"}
-	app2 := app.App{Name: "the_infanta", Framework: "python"}
+	app1 := app.App{Name: "as_i_rise", Platform: "python"}
+	app2 := app.App{Name: "the_infanta", Platform: "python"}
 	s.provisioner.Provision(&app1)
 	defer s.provisioner.Destroy(&app1)
 	s.provisioner.Provision(&app2)

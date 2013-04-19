@@ -19,7 +19,7 @@ import (
 )
 
 func (s *S) TestInsertAppForward(c *gocheck.C) {
-	app := App{Name: "conviction", Framework: "evergrey"}
+	app := App{Name: "conviction", Platform: "evergrey"}
 	ctx := action.FWContext{
 		Params: []interface{}{app},
 	}
@@ -29,13 +29,13 @@ func (s *S) TestInsertAppForward(c *gocheck.C) {
 	a, ok := r.(*App)
 	c.Assert(ok, gocheck.Equals, true)
 	c.Assert(a.Name, gocheck.Equals, app.Name)
-	c.Assert(a.Framework, gocheck.Equals, app.Framework)
+	c.Assert(a.Platform, gocheck.Equals, app.Platform)
 	err = app.Get()
 	c.Assert(err, gocheck.IsNil)
 }
 
 func (s *S) TestInsertAppForwardAppPointer(c *gocheck.C) {
-	app := App{Name: "conviction", Framework: "evergrey"}
+	app := App{Name: "conviction", Platform: "evergrey"}
 	ctx := action.FWContext{
 		Params: []interface{}{&app},
 	}
@@ -45,7 +45,7 @@ func (s *S) TestInsertAppForwardAppPointer(c *gocheck.C) {
 	a, ok := r.(*App)
 	c.Assert(ok, gocheck.Equals, true)
 	c.Assert(a.Name, gocheck.Equals, app.Name)
-	c.Assert(a.Framework, gocheck.Equals, app.Framework)
+	c.Assert(a.Platform, gocheck.Equals, app.Platform)
 	err = app.Get()
 	c.Assert(err, gocheck.IsNil)
 }
@@ -61,7 +61,7 @@ func (s *S) TestInsertAppForwardInvalidValue(c *gocheck.C) {
 }
 
 func (s *S) TestInsertAppDuplication(c *gocheck.C) {
-	app := App{Name: "come", Framework: "gotthard"}
+	app := App{Name: "come", Platform: "gotthard"}
 	err := s.conn.Apps().Insert(app)
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": app.Name})
@@ -75,7 +75,7 @@ func (s *S) TestInsertAppDuplication(c *gocheck.C) {
 }
 
 func (s *S) TestInsertAppBackward(c *gocheck.C) {
-	app := App{Name: "conviction", Framework: "evergrey"}
+	app := App{Name: "conviction", Platform: "evergrey"}
 	ctx := action.BWContext{
 		Params:   []interface{}{app},
 		FWResult: &app,
@@ -269,7 +269,7 @@ func (s *S) TestCreateUsePolicyMinParams(c *gocheck.C) {
 func (s *S) TestExportEnvironmentsForward(c *gocheck.C) {
 	expectedHost := "localhost"
 	config.Set("host", expectedHost)
-	app := App{Name: "mist", Framework: "opeth"}
+	app := App{Name: "mist", Platform: "opeth"}
 	err := s.conn.Apps().Insert(app)
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": app.Name})
@@ -316,7 +316,7 @@ func (s *S) TestExportEnvironmentsForward(c *gocheck.C) {
 func (s *S) TestExportEnvironmentsForwardWithoutS3Env(c *gocheck.C) {
 	expectedHost := "localhost"
 	config.Set("host", expectedHost)
-	app := App{Name: "mist", Framework: "opeth"}
+	app := App{Name: "mist", Platform: "opeth"}
 	err := s.conn.Apps().Insert(app)
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": app.Name})
@@ -342,7 +342,7 @@ func (s *S) TestExportEnvironmentsBackward(c *gocheck.C) {
 		"TSURU_S3_LOCATIONCONSTRAINT", "TSURU_S3_BUCKET",
 		"TSURU_APP_TOKEN",
 	}
-	app := App{Name: "moon", Framework: "opeth", Env: make(map[string]bind.EnvVar)}
+	app := App{Name: "moon", Platform: "opeth", Env: make(map[string]bind.EnvVar)}
 	for _, name := range envNames {
 		envVar := bind.EnvVar{Name: name, Value: name, Public: false}
 		if strings.HasPrefix(name, "TSURU_S3_") {
@@ -434,9 +434,9 @@ func (s *S) TestCreateRepositoryMinParams(c *gocheck.C) {
 
 func (s *S) TestProvisionAppForward(c *gocheck.C) {
 	app := App{
-		Name:      "earthshine",
-		Framework: "django",
-		Units:     []Unit{{Machine: 3}},
+		Name:     "earthshine",
+		Platform: "django",
+		Units:    []Unit{{Machine: 3}},
 	}
 	err := s.conn.Apps().Insert(app)
 	c.Assert(err, gocheck.IsNil)
@@ -454,9 +454,9 @@ func (s *S) TestProvisionAppForward(c *gocheck.C) {
 
 func (s *S) TestProvisionAppForwardAppPointer(c *gocheck.C) {
 	app := App{
-		Name:      "earthshine",
-		Framework: "django",
-		Units:     []Unit{{Machine: 3}},
+		Name:     "earthshine",
+		Platform: "django",
+		Units:    []Unit{{Machine: 3}},
 	}
 	err := s.conn.Apps().Insert(app)
 	c.Assert(err, gocheck.IsNil)
@@ -480,9 +480,9 @@ func (s *S) TestProvisionAppForwardInvalidApp(c *gocheck.C) {
 
 func (s *S) TestProvisionAppBackward(c *gocheck.C) {
 	app := App{
-		Name:      "earthshine",
-		Framework: "django",
-		Units:     []Unit{{Machine: 3}},
+		Name:     "earthshine",
+		Platform: "django",
+		Units:    []Unit{{Machine: 3}},
 	}
 	err := s.conn.Apps().Insert(app)
 	c.Assert(err, gocheck.IsNil)
@@ -502,9 +502,9 @@ func (s *S) TestProvisionAppMinParams(c *gocheck.C) {
 
 func (s *S) TestProvisionAddUnitsForward(c *gocheck.C) {
 	app := App{
-		Name:      "castle",
-		Framework: "heavens",
-		Units:     []Unit{{Machine: 2}},
+		Name:     "castle",
+		Platform: "heavens",
+		Units:    []Unit{{Machine: 2}},
 	}
 	err := s.conn.Apps().Insert(app)
 	c.Assert(err, gocheck.IsNil)

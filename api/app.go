@@ -141,9 +141,9 @@ func appInfo(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
 }
 
 type jsonApp struct {
-	Name      string
-	Framework string
-	Units     uint
+	Name     string
+	Platform string
+	Units    uint
 }
 
 func createApp(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
@@ -158,7 +158,7 @@ func createApp(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
 		return err
 	}
 	a.Name = japp.Name
-	a.Framework = japp.Framework
+	a.Platform = japp.Platform
 	if japp.Units == 0 {
 		japp.Units = 1
 	}

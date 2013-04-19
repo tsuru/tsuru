@@ -138,9 +138,9 @@ func (s *S) TestDestroyBucket(c *gocheck.C) {
 	ts := s.t.StartGandalfTestServer(&h)
 	defer ts.Close()
 	app := App{
-		Name:      "battery",
-		Framework: "python",
-		Units:     []Unit{{Machine: 1}},
+		Name:     "battery",
+		Platform: "python",
+		Units:    []Unit{{Machine: 1}},
 	}
 	bucket := fmt.Sprintf("battery%x", patchRandomReader())
 	defer unpatchRandomReader()

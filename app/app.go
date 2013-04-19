@@ -43,14 +43,14 @@ var (
 // This struct holds information about the app: its name, address, list of
 // teams that have access to it, used platform, etc.
 type App struct {
-	Env       map[string]bind.EnvVar
-	Framework string
-	Name      string
-	Ip        string
-	CName     string
-	Units     []Unit
-	Teams     []string
-	conf      *conf
+	Env      map[string]bind.EnvVar
+	Platform string `bson:"framework"`
+	Name     string
+	Ip       string
+	CName    string
+	Units    []Unit
+	Teams    []string
+	conf     *conf
 }
 
 // MarshalJSON marshals the app in json format. It returns a JSON object with
@@ -58,7 +58,7 @@ type App struct {
 func (app *App) MarshalJSON() ([]byte, error) {
 	result := make(map[string]interface{})
 	result["Name"] = app.Name
-	result["Framework"] = app.Framework
+	result["Framework"] = app.Platform
 	result["Teams"] = app.Teams
 	result["Units"] = app.Units
 	result["Repository"] = repository.GetUrl(app.Name)
@@ -116,7 +116,7 @@ func CreateApp(app *App, units uint, teams []auth.Team) error {
 	if len(teams) == 0 {
 		return NoTeamsError{}
 	}
-	if _, err := getPlatform(app.Framework); err != nil {
+	if _, err := getPlatform(app.Platform); err != nil {
 		return err
 	}
 	app.SetTeams(teams)
@@ -668,7 +668,7 @@ func (app *App) GetIp() string {
 
 // GetFramework returns the framework of the app.
 func (app *App) GetFramework() string {
-	return app.Framework
+	return app.Platform
 }
 
 // ProvisionUnits returns the internal list of units converted to

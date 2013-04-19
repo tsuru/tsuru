@@ -53,10 +53,10 @@ func (h *testBadHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 func (s *S) TestAppIsAvailableHandlerShouldReturnErrorWhenAppStatusIsnotStarted(c *gocheck.C) {
 	a := app.App{
-		Name:      "someapp",
-		Framework: "python",
-		Teams:     []string{s.team.Name},
-		Units:     []app.Unit{{Name: "someapp/0", Type: "django", State: string(provision.StatusPending)}},
+		Name:     "someapp",
+		Platform: "python",
+		Teams:    []string{s.team.Name},
+		Units:    []app.Unit{{Name: "someapp/0", Type: "django", State: string(provision.StatusPending)}},
 	}
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)
@@ -72,10 +72,10 @@ func (s *S) TestAppIsAvailableHandlerShouldReturnErrorWhenAppStatusIsnotStarted(
 
 func (s *S) TestAppIsAvailableHandlerShouldReturn200WhenAppUnitStatusIsStarted(c *gocheck.C) {
 	a := app.App{
-		Name:      "someapp",
-		Framework: "python",
-		Teams:     []string{s.team.Name},
-		Units:     []app.Unit{{Name: "someapp/0", Type: "django", State: string(provision.StatusStarted)}},
+		Name:     "someapp",
+		Platform: "python",
+		Teams:    []string{s.team.Name},
+		Units:    []app.Unit{{Name: "someapp/0", Type: "django", State: string(provision.StatusStarted)}},
 	}
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)
@@ -92,10 +92,10 @@ func (s *S) TestAppIsAvailableHandlerShouldReturn200WhenAppUnitStatusIsStarted(c
 
 func (s *S) TestCloneRepositoryHandlerShouldAddLogs(c *gocheck.C) {
 	a := app.App{
-		Name:      "otherapp",
-		Framework: "django",
-		Teams:     []string{s.team.Name},
-		Units:     []app.Unit{{Name: "i-0800", State: "started"}},
+		Name:     "otherapp",
+		Platform: "django",
+		Teams:    []string{s.team.Name},
+		Units:    []app.Unit{{Name: "i-0800", State: "started"}},
 	}
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)
@@ -218,9 +218,9 @@ func (s *S) TestForceDeleteApp(c *gocheck.C) {
 	ts := s.t.StartGandalfTestServer(&h)
 	defer ts.Close()
 	a := app.App{
-		Name:      "myapptodelete",
-		Framework: "django",
-		Teams:     []string{s.team.Name},
+		Name:     "myapptodelete",
+		Platform: "django",
+		Teams:    []string{s.team.Name},
 		Units: []app.Unit{
 			{Ip: "10.10.10.10", Machine: 1},
 		},
@@ -244,9 +244,9 @@ func (s *S) TestDelete(c *gocheck.C) {
 	ts := s.t.StartGandalfTestServer(&h)
 	defer ts.Close()
 	myApp := app.App{
-		Name:      "myapptodelete",
-		Framework: "django",
-		Teams:     []string{s.team.Name},
+		Name:     "myapptodelete",
+		Platform: "django",
+		Teams:    []string{s.team.Name},
 		Units: []app.Unit{
 			{Ip: "10.10.10.10", Machine: 1},
 		},
@@ -268,8 +268,8 @@ func (s *S) TestDelete(c *gocheck.C) {
 
 func (s *S) TestDeleteShouldReturnForbiddenIfTheGivenUserDoesNotHaveAccesToTheApp(c *gocheck.C) {
 	myApp := app.App{
-		Name:      "MyAppToDelete",
-		Framework: "django",
+		Name:     "MyAppToDelete",
+		Platform: "django",
 	}
 	err := s.conn.Apps().Insert(myApp)
 	c.Assert(err, gocheck.IsNil)
@@ -300,9 +300,9 @@ func (s *S) TestDeleteShouldReturnNotFoundIfTheAppDoesNotExist(c *gocheck.C) {
 
 func (s *S) TestAppInfo(c *gocheck.C) {
 	expectedApp := app.App{
-		Name:      "NewApp",
-		Framework: "django",
-		Teams:     []string{s.team.Name},
+		Name:     "NewApp",
+		Platform: "django",
+		Teams:    []string{s.team.Name},
 	}
 	err := s.conn.Apps().Insert(expectedApp)
 	c.Assert(err, gocheck.IsNil)
@@ -326,8 +326,8 @@ func (s *S) TestAppInfo(c *gocheck.C) {
 
 func (s *S) TestAppInfoReturnsForbiddenWhenTheUserDoesNotHaveAccessToTheApp(c *gocheck.C) {
 	expectedApp := app.App{
-		Name:      "NewApp",
-		Framework: "django",
+		Name:     "NewApp",
+		Platform: "django",
 	}
 	err := s.conn.Apps().Insert(expectedApp)
 	c.Assert(err, gocheck.IsNil)
@@ -455,9 +455,9 @@ func (s *S) TestCreateAppReturnsConflictWithProperMessageWhenTheAppAlreadyExist(
 
 func (s *S) TestAddUnits(c *gocheck.C) {
 	a := app.App{
-		Name:      "armorandsword",
-		Framework: "python",
-		Teams:     []string{s.team.Name},
+		Name:     "armorandsword",
+		Platform: "python",
+		Teams:    []string{s.team.Name},
 	}
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)
@@ -492,8 +492,8 @@ func (s *S) TestAddUnitsReturns404IfAppDoesNotExist(c *gocheck.C) {
 
 func (s *S) TestAddUnitsReturns403IfTheUserDoesNotHaveAccessToTheApp(c *gocheck.C) {
 	a := app.App{
-		Name:      "armorandsword",
-		Framework: "python",
+		Name:     "armorandsword",
+		Platform: "python",
 	}
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)
@@ -544,9 +544,9 @@ func (s *S) TestAddUnitsReturns400IfNumberIsInvalid(c *gocheck.C) {
 
 func (s *S) TestRemoveUnits(c *gocheck.C) {
 	a := app.App{
-		Name:      "velha",
-		Framework: "python",
-		Teams:     []string{s.team.Name},
+		Name:     "velha",
+		Platform: "python",
+		Teams:    []string{s.team.Name},
 		Units: []app.Unit{
 			{Name: "velha/0"}, {Name: "velha/1"}, {Name: "velha/2"},
 		},
@@ -587,8 +587,8 @@ func (s *S) TestRemoveUnitsReturns404IfAppDoesNotExist(c *gocheck.C) {
 
 func (s *S) TestRemoveUnitsReturns403IfTheUserDoesNotHaveAccessToTheApp(c *gocheck.C) {
 	a := app.App{
-		Name:      "fetisha",
-		Framework: "python",
+		Name:     "fetisha",
+		Platform: "python",
 	}
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)
@@ -646,9 +646,9 @@ func (s *S) TestAddTeamToTheApp(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Teams().RemoveAll(bson.M{"_id": t.Name})
 	a := app.App{
-		Name:      "itshard",
-		Framework: "django",
-		Teams:     []string{t.Name},
+		Name:     "itshard",
+		Platform: "django",
+		Teams:    []string{t.Name},
 	}
 	err = s.conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)
@@ -680,8 +680,8 @@ func (s *S) TestGrantAccessToTeamReturn404IfTheAppDoesNotExist(c *gocheck.C) {
 
 func (s *S) TestGrantAccessToTeamReturn403IfTheGivenUserDoesNotHasAccessToTheApp(c *gocheck.C) {
 	a := app.App{
-		Name:      "itshard",
-		Framework: "django",
+		Name:     "itshard",
+		Platform: "django",
 	}
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)
@@ -701,9 +701,9 @@ func (s *S) TestGrantAccessToTeamReturn403IfTheGivenUserDoesNotHasAccessToTheApp
 
 func (s *S) TestGrantAccessToTeamReturn404IfTheTeamDoesNotExist(c *gocheck.C) {
 	a := app.App{
-		Name:      "itshard",
-		Framework: "django",
-		Teams:     []string{s.team.Name},
+		Name:     "itshard",
+		Platform: "django",
+		Teams:    []string{s.team.Name},
 	}
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)
@@ -723,9 +723,9 @@ func (s *S) TestGrantAccessToTeamReturn404IfTheTeamDoesNotExist(c *gocheck.C) {
 
 func (s *S) TestGrantAccessToTeamReturn409IfTheTeamHasAlreadyAccessToTheApp(c *gocheck.C) {
 	a := app.App{
-		Name:      "itshard",
-		Framework: "django",
-		Teams:     []string{s.team.Name},
+		Name:     "itshard",
+		Platform: "django",
+		Teams:    []string{s.team.Name},
 	}
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)
@@ -751,9 +751,9 @@ func (s *S) TestGrantAccessToTeamCallsGandalf(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Teams().Remove(bson.M{"_id": t.Name})
 	a := app.App{
-		Name:      "tsuru",
-		Framework: "golang",
-		Teams:     []string{t.Name},
+		Name:     "tsuru",
+		Platform: "golang",
+		Teams:    []string{t.Name},
 	}
 	err = s.conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)
@@ -780,9 +780,9 @@ func (s *S) TestRevokeAccessFromTeam(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Teams().Remove(bson.M{"_id": t.Name})
 	a := app.App{
-		Name:      "itshard",
-		Framework: "django",
-		Teams:     []string{"abcd", s.team.Name},
+		Name:     "itshard",
+		Platform: "django",
+		Teams:    []string{"abcd", s.team.Name},
 	}
 	err = s.conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)
@@ -816,8 +816,8 @@ func (s *S) TestRevokeAccessFromTeamReturn404IfTheAppDoesNotExist(c *gocheck.C) 
 
 func (s *S) TestRevokeAccessFromTeamReturn401IfTheGivenUserDoesNotHavePermissionInTheApp(c *gocheck.C) {
 	a := app.App{
-		Name:      "itshard",
-		Framework: "django",
+		Name:     "itshard",
+		Platform: "django",
 	}
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)
@@ -837,9 +837,9 @@ func (s *S) TestRevokeAccessFromTeamReturn401IfTheGivenUserDoesNotHavePermission
 
 func (s *S) TestRevokeAccessFromTeamReturn404IfTheTeamDoesNotExist(c *gocheck.C) {
 	a := app.App{
-		Name:      "itshard",
-		Framework: "django",
-		Teams:     []string{s.team.Name},
+		Name:     "itshard",
+		Platform: "django",
+		Teams:    []string{s.team.Name},
 	}
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)
@@ -866,9 +866,9 @@ func (s *S) TestRevokeAccessFromTeamReturn404IfTheTeamDoesNotHaveAccessToTheApp(
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Teams().Remove(bson.M{"_id": bson.M{"$in": []string{"blaaa", "team2"}}})
 	a := app.App{
-		Name:      "itshard",
-		Framework: "django",
-		Teams:     []string{s.team.Name, t2.Name},
+		Name:     "itshard",
+		Platform: "django",
+		Teams:    []string{s.team.Name, t2.Name},
 	}
 	err = s.conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)
@@ -887,9 +887,9 @@ func (s *S) TestRevokeAccessFromTeamReturn404IfTheTeamDoesNotHaveAccessToTheApp(
 
 func (s *S) TestRevokeAccessFromTeamReturn403IfTheTeamIsTheLastWithAccessToTheApp(c *gocheck.C) {
 	a := app.App{
-		Name:      "itshard",
-		Framework: "django",
-		Teams:     []string{s.team.Name},
+		Name:     "itshard",
+		Platform: "django",
+		Teams:    []string{s.team.Name},
 	}
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)
@@ -924,9 +924,9 @@ func (s *S) TestRevokeAccessFromTeamRemovesRepositoryFromGandalf(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Teams().Remove(bson.M{"_id": t.Name})
 	a := app.App{
-		Name:      "tsuru",
-		Framework: "golang",
-		Teams:     []string{t.Name},
+		Name:     "tsuru",
+		Platform: "golang",
+		Teams:    []string{t.Name},
 	}
 	err = s.conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)
@@ -961,9 +961,9 @@ func (s *S) TestRevokeAccessFromTeamDontRemoveTheUserIfItHasAccesToTheAppThrough
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Teams().Remove(bson.M{"_id": t.Name})
 	a := app.App{
-		Name:      "tsuru",
-		Framework: "golang",
-		Teams:     []string{s.team.Name},
+		Name:     "tsuru",
+		Platform: "golang",
+		Teams:    []string{s.team.Name},
 	}
 	err = s.conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)
@@ -995,9 +995,9 @@ func (s *S) TestRevokeAccessFromTeamDontCallGandalfIfNoUserNeedToBeRevoked(c *go
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Teams().Remove(bson.M{"_id": t.Name})
 	a := app.App{
-		Name:      "tsuru",
-		Framework: "golang",
-		Teams:     []string{s.team.Name},
+		Name:     "tsuru",
+		Platform: "golang",
+		Teams:    []string{s.team.Name},
 	}
 	err = s.conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)
@@ -1021,10 +1021,10 @@ func (s *S) TestRevokeAccessFromTeamDontCallGandalfIfNoUserNeedToBeRevoked(c *go
 func (s *S) TestRunHandlerShouldExecuteTheGivenCommandInTheGivenApp(c *gocheck.C) {
 	s.provisioner.PrepareOutput([]byte("lots of files"))
 	a := app.App{
-		Name:      "secrets",
-		Framework: "arch enemy",
-		Teams:     []string{s.team.Name},
-		Units:     []app.Unit{{Name: "i-0800", State: "started", Machine: 10}},
+		Name:     "secrets",
+		Platform: "arch enemy",
+		Teams:    []string{s.team.Name},
+		Units:    []app.Unit{{Name: "i-0800", State: "started", Machine: 10}},
 	}
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)
@@ -1049,10 +1049,10 @@ func (s *S) TestRunHandlerReturnsTheOutputOfTheCommandEvenIfItFails(c *gocheck.C
 	s.provisioner.PrepareFailure("ExecuteCommand", &errors.Http{Code: 500, Message: "something went wrong"})
 	s.provisioner.PrepareOutput([]byte("failure output"))
 	a := app.App{
-		Name:      "secrets",
-		Framework: "arch enemy",
-		Teams:     []string{s.team.Name},
-		Units:     []app.Unit{{Name: "i-0800", State: "started"}},
+		Name:     "secrets",
+		Platform: "arch enemy",
+		Teams:    []string{s.team.Name},
+		Units:    []app.Unit{{Name: "i-0800", State: "started"}},
 	}
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)
@@ -1107,8 +1107,8 @@ func (s *S) TestRunHandlerReturnsNotFoundIfTheAppDoesNotExist(c *gocheck.C) {
 
 func (s *S) TestRunHandlerReturnsForbiddenIfTheGivenUserDoesNotHaveAccessToTheApp(c *gocheck.C) {
 	a := app.App{
-		Name:      "secrets",
-		Framework: "arch enemy",
+		Name:     "secrets",
+		Platform: "arch enemy",
 	}
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)
@@ -1127,9 +1127,9 @@ func (s *S) TestRunHandlerReturnsForbiddenIfTheGivenUserDoesNotHaveAccessToTheAp
 
 func (s *S) TestGetEnvHandlerGetsEnvironmentVariableFromApp(c *gocheck.C) {
 	a := app.App{
-		Name:      "everything-i-want",
-		Framework: "gotthard",
-		Teams:     []string{s.team.Name},
+		Name:     "everything-i-want",
+		Platform: "gotthard",
+		Teams:    []string{s.team.Name},
 		Env: map[string]bind.EnvVar{
 			"DATABASE_HOST":     {Name: "DATABASE_HOST", Value: "localhost", Public: true},
 			"DATABASE_USER":     {Name: "DATABASE_USER", Value: "root", Public: true},
@@ -1185,9 +1185,9 @@ func (s *S) TestGetEnvHandlerShouldAcceptMultipleVariables(c *gocheck.C) {
 
 func (s *S) TestGetEnvHandlerReturnsAllVariablesIfEnvironmentVariablesAreMissingWithMaskOnPrivateVars(c *gocheck.C) {
 	a := app.App{
-		Name:      "time",
-		Framework: "pink-floyd",
-		Teams:     []string{s.team.Name},
+		Name:     "time",
+		Platform: "pink-floyd",
+		Teams:    []string{s.team.Name},
 		Env: map[string]bind.EnvVar{
 			"DATABASE_HOST":     {Name: "DATABASE_HOST", Value: "localhost", Public: true},
 			"DATABASE_USER":     {Name: "DATABASE_USER", Value: "root", Public: true},
@@ -1241,8 +1241,8 @@ func (s *S) TestGetEnvHandlerReturnsNotFoundIfTheAppDoesNotExist(c *gocheck.C) {
 
 func (s *S) TestGetEnvHandlerReturnsForbiddenIfTheGivenUserDoesNotHaveAccessToTheApp(c *gocheck.C) {
 	a := app.App{
-		Name:      "lost",
-		Framework: "vougan",
+		Name:     "lost",
+		Platform: "vougan",
 	}
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)
@@ -1633,8 +1633,8 @@ func (s *S) TestSetCNameHandlerUnknownApp(c *gocheck.C) {
 
 func (s *S) TestSetCNameHandlerUserWithoutAccessToTheApp(c *gocheck.C) {
 	a := app.App{
-		Name:      "lost",
-		Framework: "vougan",
+		Name:     "lost",
+		Platform: "vougan",
 	}
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)
@@ -1685,8 +1685,8 @@ func (s *S) TestAppLogShouldReturnNotFoundWhenAppDoesNotExist(c *gocheck.C) {
 
 func (s *S) TestAppLogReturnsForbiddenIfTheGivenUserDoesNotHaveAccessToTheApp(c *gocheck.C) {
 	a := app.App{
-		Name:      "lost",
-		Framework: "vougan",
+		Name:     "lost",
+		Platform: "vougan",
 	}
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)
@@ -1731,9 +1731,9 @@ func (s *S) TestAppLogReturnsBadRequestIfNumberOfLinesIsNotAnInteger(c *gocheck.
 
 func (s *S) TestAppLogShouldHaveContentType(c *gocheck.C) {
 	a := app.App{
-		Name:      "lost",
-		Framework: "vougan",
-		Teams:     []string{s.team.Name},
+		Name:     "lost",
+		Platform: "vougan",
+		Teams:    []string{s.team.Name},
 	}
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)
@@ -1751,9 +1751,9 @@ func (s *S) TestAppLogShouldHaveContentType(c *gocheck.C) {
 
 func (s *S) TestAppLogSelectByLines(c *gocheck.C) {
 	a := app.App{
-		Name:      "lost",
-		Framework: "vougan",
-		Teams:     []string{s.team.Name},
+		Name:     "lost",
+		Platform: "vougan",
+		Teams:    []string{s.team.Name},
 	}
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)
@@ -1780,9 +1780,9 @@ func (s *S) TestAppLogSelectByLines(c *gocheck.C) {
 
 func (s *S) TestAppLogSelectBySource(c *gocheck.C) {
 	a := app.App{
-		Name:      "lost",
-		Framework: "vougan",
-		Teams:     []string{s.team.Name},
+		Name:     "lost",
+		Platform: "vougan",
+		Teams:    []string{s.team.Name},
 	}
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)
@@ -1810,9 +1810,9 @@ func (s *S) TestAppLogSelectBySource(c *gocheck.C) {
 
 func (s *S) TestAppLogSelectByLinesShouldReturnTheLastestEntries(c *gocheck.C) {
 	a := app.App{
-		Name:      "lost",
-		Framework: "vougan",
-		Teams:     []string{s.team.Name},
+		Name:     "lost",
+		Platform: "vougan",
+		Teams:    []string{s.team.Name},
 	}
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)
@@ -1851,9 +1851,9 @@ func (s *S) TestAppLogSelectByLinesShouldReturnTheLastestEntries(c *gocheck.C) {
 
 func (s *S) TestAppLogShouldReturnLogByApp(c *gocheck.C) {
 	app1 := app.App{
-		Name:      "app1",
-		Framework: "vougan",
-		Teams:     []string{s.team.Name},
+		Name:     "app1",
+		Platform: "vougan",
+		Teams:    []string{s.team.Name},
 	}
 	err := s.conn.Apps().Insert(app1)
 	c.Assert(err, gocheck.IsNil)
@@ -1861,9 +1861,9 @@ func (s *S) TestAppLogShouldReturnLogByApp(c *gocheck.C) {
 	defer s.conn.Logs().Remove(bson.M{"appname": app1.Name})
 	app1.Log("app1 log", "source")
 	app2 := app.App{
-		Name:      "app2",
-		Framework: "vougan",
-		Teams:     []string{s.team.Name},
+		Name:     "app2",
+		Platform: "vougan",
+		Teams:    []string{s.team.Name},
 	}
 	err = s.conn.Apps().Insert(app2)
 	c.Assert(err, gocheck.IsNil)
@@ -1871,9 +1871,9 @@ func (s *S) TestAppLogShouldReturnLogByApp(c *gocheck.C) {
 	defer s.conn.Logs().Remove(bson.M{"appname": app2.Name})
 	app2.Log("app2 log", "source")
 	app3 := app.App{
-		Name:      "app3",
-		Framework: "vougan",
-		Teams:     []string{s.team.Name},
+		Name:     "app3",
+		Platform: "vougan",
+		Teams:    []string{s.team.Name},
 	}
 	err = s.conn.Apps().Insert(app3)
 	c.Assert(err, gocheck.IsNil)
@@ -2007,9 +2007,9 @@ func (s *S) TestBindHandler(c *gocheck.C) {
 
 func (s *S) TestBindHandlerReturns404IfTheInstanceDoesNotExist(c *gocheck.C) {
 	a := app.App{
-		Name:      "serviceApp",
-		Framework: "django",
-		Teams:     []string{s.team.Name},
+		Name:     "serviceApp",
+		Platform: "django",
+		Teams:    []string{s.team.Name},
 	}
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)
@@ -2033,9 +2033,9 @@ func (s *S) TestBindHandlerReturns403IfTheUserDoesNotHaveAccessToTheInstance(c *
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.ServiceInstances().Remove(bson.M{"name": "my-mysql"})
 	a := app.App{
-		Name:      "serviceApp",
-		Framework: "django",
-		Teams:     []string{s.team.Name},
+		Name:     "serviceApp",
+		Platform: "django",
+		Teams:    []string{s.team.Name},
 	}
 	err = s.conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)
@@ -2076,8 +2076,8 @@ func (s *S) TestBindHandlerReturns403IfTheUserDoesNotHaveAccessToTheApp(c *goche
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.ServiceInstances().Remove(bson.M{"name": "my-mysql"})
 	a := app.App{
-		Name:      "serviceApp",
-		Framework: "django",
+		Name:     "serviceApp",
+		Platform: "django",
 	}
 	err = s.conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)
@@ -2173,9 +2173,9 @@ func (s *S) TestUnbindHandler(c *gocheck.C) {
 
 func (s *S) TestUnbindHandlerReturns404IfTheInstanceDoesNotExist(c *gocheck.C) {
 	a := app.App{
-		Name:      "serviceApp",
-		Framework: "django",
-		Teams:     []string{s.team.Name},
+		Name:     "serviceApp",
+		Platform: "django",
+		Teams:    []string{s.team.Name},
 	}
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)
@@ -2199,9 +2199,9 @@ func (s *S) TestUnbindHandlerReturns403IfTheUserDoesNotHaveAccessToTheInstance(c
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.ServiceInstances().Remove(bson.M{"name": "my-mysql"})
 	a := app.App{
-		Name:      "serviceApp",
-		Framework: "django",
-		Teams:     []string{s.team.Name},
+		Name:     "serviceApp",
+		Platform: "django",
+		Teams:    []string{s.team.Name},
 	}
 	err = s.conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)
@@ -2242,8 +2242,8 @@ func (s *S) TestUnbindHandlerReturns403IfTheUserDoesNotHaveAccessToTheApp(c *goc
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.ServiceInstances().Remove(bson.M{"name": "my-mysql"})
 	a := app.App{
-		Name:      "serviceApp",
-		Framework: "django",
+		Name:     "serviceApp",
+		Platform: "django",
 	}
 	err = s.conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)
@@ -2314,8 +2314,8 @@ func (s *S) TestRestartHandlerReturns403IfTheUserDoesNotHaveAccessToTheApp(c *go
 
 func (s *S) TestAddLogHandler(c *gocheck.C) {
 	a := app.App{
-		Name:      "myapp",
-		Framework: "python",
+		Name:     "myapp",
+		Platform: "python",
 	}
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)

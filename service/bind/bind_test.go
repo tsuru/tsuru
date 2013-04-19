@@ -53,10 +53,10 @@ func (s *S) TearDownSuite(c *gocheck.C) {
 
 func createTestApp(conn *db.Storage, name, framework string, teams []string, units []app.Unit) (app.App, error) {
 	a := app.App{
-		Name:      name,
-		Framework: framework,
-		Teams:     teams,
-		Units:     units,
+		Name:     name,
+		Platform: framework,
+		Teams:    teams,
+		Units:    units,
 	}
 	err := conn.Apps().Insert(&a)
 	return a, err

@@ -35,9 +35,9 @@ func (s *S) TestDestroyShouldUnbindAppFromInstance(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.ServiceInstances().Remove(bson.M{"_id": instance.Name})
 	a := App{
-		Name:      "whichapp",
-		Framework: "python",
-		Teams:     []string{},
+		Name:     "whichapp",
+		Platform: "python",
+		Teams:    []string{},
 		Units: []Unit{
 			{Ip: "10.10.10.10", Machine: 1},
 		},

@@ -361,8 +361,8 @@ func (s *S) TestHandleBindServiceMessage(c *gocheck.C) {
 
 func (s *S) TestEnsureAppIsStartedUnknownUnits(c *gocheck.C) {
 	a := App{
-		Name:      "neon",
-		Framework: "symfonia",
+		Name:     "neon",
+		Platform: "symfonia",
 		Units: []Unit{
 			{Name: "neon/0", State: "started"},
 			{Name: "neon/1", State: "started"},
