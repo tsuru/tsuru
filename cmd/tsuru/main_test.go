@@ -201,3 +201,10 @@ func (s *S) TestUnsetCNameIsRegistered(c *gocheck.C) {
 	c.Assert(ok, gocheck.Equals, true)
 	c.Assert(cname, gocheck.FitsTypeOf, &tsuru.UnsetCName{})
 }
+
+func (s *S) TestPlatformListIsRegistered(c *gocheck.C) {
+	manager := buildManager("tsuru")
+	plat, ok := manager.Commands["platform-list"]
+	c.Assert(ok, gocheck.Equals, true)
+	c.Assert(plat, gocheck.FitsTypeOf, platformList{})
+}

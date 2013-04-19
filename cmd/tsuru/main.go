@@ -43,6 +43,7 @@ func buildManager(name string) *cmd.Manager {
 	m.Register(tsuru.ServiceInstanceStatus{})
 	m.Register(&tsuru.ServiceBind{})
 	m.Register(&tsuru.ServiceUnbind{})
+	m.Register(platformList{})
 	return m
 }
 
