@@ -132,6 +132,7 @@ func (s *S) TestDeploy(c *gocheck.C) {
 	err := p.Deploy(app, w)
 	c.Assert(err, gocheck.IsNil)
 	expected := make([]string, 3)
+	// also ensures execution order
 	expected[0] = "git clone git://tsuruhost.com/cribcaged.git test/dir --depth 1" // the command expected to run on the units
 	expected[1] = "install deps"
 	expected[2] = "restart"

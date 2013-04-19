@@ -168,6 +168,7 @@ func (p *FakeProvisioner) Restarts(app provision.App) int {
 }
 
 func (p *FakeProvisioner) Deploy(app provision.App, w io.Writer) error {
+	w.Write([]byte("Deploy called"))
 	return nil
 }
 
