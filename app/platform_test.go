@@ -5,10 +5,21 @@
 package app
 
 import (
+	"github.com/globocom/config"
+	"github.com/globocom/tsuru/db"
 	"launchpad.net/gocheck"
 )
 
-func (s *S) TestPlatforms(c *gocheck.C) {
+type PlatformSuite struct{}
+
+var _ = gocheck.Suite(&PlatformSuite{})
+
+func (s *PlatformSuite) SetUpSuite(c *gocheck.C) {
+	config.Set("database:url", "127.0.0.1:27017")
+	config.Set("database:name", "platform_tests")
+}
+
+func (s *PlatformSuite) TestPlatforms(c *gocheck.C) {
 	want := []Platform{
 		{Name: "dea"},
 		{Name: "pecuniae"},
@@ -16,25 +27,31 @@ func (s *S) TestPlatforms(c *gocheck.C) {
 		{Name: "raise"},
 		{Name: "glass"},
 	}
+	conn, err := db.Conn()
+	c.Assert(err, gocheck.IsNil)
+	defer conn.Close()
 	for _, p := range want {
-		s.conn.Platforms().Insert(p)
-		defer s.conn.Platforms().Remove(p)
+		conn.Platforms().Insert(p)
+		defer conn.Platforms().Remove(p)
 	}
 	got, err := Platforms()
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(got, gocheck.DeepEquals, want)
 }
 
-func (s *S) TestPlatformsEmpty(c *gocheck.C) {
+func (s *PlatformSuite) TestPlatformsEmpty(c *gocheck.C) {
 	got, err := Platforms()
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(got, gocheck.HasLen, 0)
 }
 
-func (s *S) TestGetPlatform(c *gocheck.C) {
+func (s *PlatformSuite) TestGetPlatform(c *gocheck.C) {
+	conn, err := db.Conn()
+	c.Assert(err, gocheck.IsNil)
+	defer conn.Close()
 	p := Platform{Name: "dea"}
-	s.conn.Platforms().Insert(p)
-	defer s.conn.Platforms().Remove(p)
+	conn.Platforms().Insert(p)
+	defer conn.Platforms().Remove(p)
 	got, err := getPlatform(p.Name)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(*got, gocheck.DeepEquals, p)
