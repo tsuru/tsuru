@@ -104,7 +104,6 @@ func (s *S) TestCloneRepositoryHandlerShouldAddLogs(c *gocheck.C) {
 	request, err := http.NewRequest("GET", url, nil)
 	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
-	Provisioner = s.provisioner
 	err = cloneRepository(recorder, request, s.token)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(recorder.Header().Get("Content-Type"), gocheck.Equals, "text")
@@ -118,7 +117,6 @@ func (s *S) TestCloneRepositoryShouldReturnNotFoundWhenAppDoesNotExist(c *gochec
 	request, err := http.NewRequest("GET", "/apps/abc/repository/clone?:appname=abc", nil)
 	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
-	Provisioner = s.provisioner
 	err = cloneRepository(recorder, request, s.token)
 	c.Assert(err, gocheck.NotNil)
 	e, ok := err.(*errors.Http)

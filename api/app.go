@@ -14,7 +14,6 @@ import (
 	"github.com/globocom/tsuru/db"
 	"github.com/globocom/tsuru/errors"
 	"github.com/globocom/tsuru/log"
-	"github.com/globocom/tsuru/provision"
 	"github.com/globocom/tsuru/repository"
 	"github.com/globocom/tsuru/service"
 	"io"
@@ -24,8 +23,6 @@ import (
 	"strconv"
 	"strings"
 )
-
-var Provisioner provision.Provisioner
 
 func write(w io.Writer, content []byte) error {
 	n, err := w.Write(content)
@@ -57,11 +54,10 @@ func cloneRepository(w http.ResponseWriter, r *http.Request, t *auth.Token) erro
 	w.Header().Set("Content-Type", "text")
 	instance := &app.App{Name: r.URL.Query().Get(":appname")}
 	err := instance.Get()
-	logWriter := app.LogWriter{App: instance, Writer: w}
 	if err != nil {
 		return &errors.Http{Code: http.StatusNotFound, Message: fmt.Sprintf("App %s not found.", instance.Name)}
 	}
-	return Provisioner.Deploy(instance, &logWriter)
+	return instance.Deploy(w)
 }
 
 func appIsAvailable(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
