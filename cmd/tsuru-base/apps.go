@@ -29,7 +29,7 @@ If you don't provide the app name, tsuru will try to guess it.`,
 	}
 }
 
-func (c *AppInfo) Run(context *cmd.Context, client cmd.Doer) error {
+func (c *AppInfo) Run(context *cmd.Context, client *cmd.Client) error {
 	appName, err := c.Guess()
 	if err != nil {
 		return err
@@ -126,7 +126,7 @@ If you don't provide the app name, tsuru will try to guess it.`,
 	}
 }
 
-func (c *AppGrant) Run(context *cmd.Context, client cmd.Doer) error {
+func (c *AppGrant) Run(context *cmd.Context, client *cmd.Client) error {
 	appName, err := c.Guess()
 	if err != nil {
 		return err
@@ -163,7 +163,7 @@ If you don't provide the app name, tsuru will try to guess it.`,
 	}
 }
 
-func (c *AppRevoke) Run(context *cmd.Context, client cmd.Doer) error {
+func (c *AppRevoke) Run(context *cmd.Context, client *cmd.Client) error {
 	appName, err := c.Guess()
 	if err != nil {
 		return err
@@ -187,7 +187,7 @@ func (c *AppRevoke) Run(context *cmd.Context, client cmd.Doer) error {
 
 type AppList struct{}
 
-func (c AppList) Run(context *cmd.Context, client cmd.Doer) error {
+func (c AppList) Run(context *cmd.Context, client *cmd.Client) error {
 	url, err := cmd.GetUrl("/apps")
 	if err != nil {
 		return err
@@ -246,7 +246,7 @@ type AppRestart struct {
 	GuessingCommand
 }
 
-func (c *AppRestart) Run(context *cmd.Context, client cmd.Doer) error {
+func (c *AppRestart) Run(context *cmd.Context, client *cmd.Client) error {
 	appName, err := c.Guess()
 	if err != nil {
 		return err
@@ -286,7 +286,7 @@ type SetCName struct {
 	GuessingCommand
 }
 
-func (c *SetCName) Run(context *cmd.Context, client cmd.Doer) error {
+func (c *SetCName) Run(context *cmd.Context, client *cmd.Client) error {
 	err := setCName(context.Args[0], c.GuessingCommand, client)
 	if err != nil {
 		return err
@@ -308,7 +308,7 @@ type UnsetCName struct {
 	GuessingCommand
 }
 
-func (c *UnsetCName) Run(context *cmd.Context, client cmd.Doer) error {
+func (c *UnsetCName) Run(context *cmd.Context, client *cmd.Client) error {
 	err := setCName("", c.GuessingCommand, client)
 	if err != nil {
 		return err
@@ -326,7 +326,7 @@ func (c *UnsetCName) Info() *cmd.Info {
 	}
 }
 
-func setCName(v string, g GuessingCommand, client cmd.Doer) error {
+func setCName(v string, g GuessingCommand, client *cmd.Client) error {
 	appName, err := g.Guess()
 	if err != nil {
 		return err

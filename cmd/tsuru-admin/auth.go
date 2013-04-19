@@ -17,7 +17,7 @@ type tokenGen struct {
 	export bool
 }
 
-func (c *tokenGen) Run(ctx *cmd.Context, client cmd.Doer) error {
+func (c *tokenGen) Run(ctx *cmd.Context, client *cmd.Client) error {
 	app := ctx.Args[0]
 	url, err := cmd.GetUrl("/tokens")
 	if err != nil {

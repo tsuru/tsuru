@@ -136,7 +136,7 @@ func (m *Manager) finisher() exiter {
 
 type Command interface {
 	Info() *Info
-	Run(context *Context, client Doer) error
+	Run(context *Context, client *Client) error
 }
 
 type FlaggedCommand interface {
@@ -169,7 +169,7 @@ func (c *help) Info() *Info {
 	}
 }
 
-func (c *help) Run(context *Context, client Doer) error {
+func (c *help) Run(context *Context, client *Client) error {
 	output := fmt.Sprintf("%s version %s.\n\n", c.manager.name, c.manager.version)
 	if c.manager.wrong {
 		output += fmt.Sprintf("ERROR: not enough arguments to call %s.\n\n", c.manager.original)
@@ -214,7 +214,7 @@ func (c *version) Info() *Info {
 	}
 }
 
-func (c *version) Run(context *Context, client Doer) error {
+func (c *version) Run(context *Context, client *Client) error {
 	fmt.Fprintf(context.Stdout, "%s version %s.\n", c.manager.name, c.manager.version)
 	return nil
 }

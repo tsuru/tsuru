@@ -31,7 +31,7 @@ If you don't provide the app name, tsuru will try to guess it.
 	}
 }
 
-func (c *AppRun) Run(context *cmd.Context, client cmd.Doer) error {
+func (c *AppRun) Run(context *cmd.Context, client *cmd.Client) error {
 	appName, err := c.Guess()
 	if err != nil {
 		return err

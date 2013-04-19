@@ -21,7 +21,7 @@ type AppCreate struct {
 	units uint
 }
 
-func (c *AppCreate) Run(context *cmd.Context, client cmd.Doer) error {
+func (c *AppCreate) Run(context *cmd.Context, client *cmd.Client) error {
 	if c.units == 0 {
 		return errors.New("Cannot create app with zero units.")
 	}
@@ -96,7 +96,7 @@ If you don't provide the app name, tsuru will try to guess it.`,
 	}
 }
 
-func (c *AppRemove) Run(context *cmd.Context, client cmd.Doer) error {
+func (c *AppRemove) Run(context *cmd.Context, client *cmd.Client) error {
 	appName, err := c.Guess()
 	if err != nil {
 		return err
@@ -148,7 +148,7 @@ func (c *UnitAdd) Info() *cmd.Info {
 	}
 }
 
-func (c *UnitAdd) Run(context *cmd.Context, client cmd.Doer) error {
+func (c *UnitAdd) Run(context *cmd.Context, client *cmd.Client) error {
 	appName, err := c.Guess()
 	if err != nil {
 		return err
@@ -182,7 +182,7 @@ func (c *UnitRemove) Info() *cmd.Info {
 	}
 }
 
-func (c *UnitRemove) Run(context *cmd.Context, client cmd.Doer) error {
+func (c *UnitRemove) Run(context *cmd.Context, client *cmd.Client) error {
 	appName, err := c.Guess()
 	if err != nil {
 		return err

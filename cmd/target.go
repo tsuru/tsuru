@@ -144,7 +144,7 @@ func (t *targetAdd) Info() *Info {
 	}
 }
 
-func (t *targetAdd) Run(ctx *Context, client Doer) error {
+func (t *targetAdd) Run(ctx *Context, client *Client) error {
 	var target string
 	var label string
 	if len(ctx.Args) != 2 {
@@ -258,7 +258,7 @@ Other commands related to target:
 	}
 }
 
-func (t *targetList) Run(ctx *Context, client Doer) error {
+func (t *targetList) Run(ctx *Context, client *Client) error {
 	slice := newTargetSlice()
 	targets, err := getTargets()
 	if err != nil {
@@ -287,7 +287,7 @@ func (t *targetRemove) Info() *Info {
 	}
 }
 
-func (t *targetRemove) Run(ctx *Context, client Doer) error {
+func (t *targetRemove) Run(ctx *Context, client *Client) error {
 	if len(ctx.Args) != 1 {
 		return errors.New("Invalid arguments")
 	}
@@ -331,7 +331,7 @@ func (t *targetSet) Info() *Info {
 	}
 }
 
-func (t *targetSet) Run(ctx *Context, client Doer) error {
+func (t *targetSet) Run(ctx *Context, client *Client) error {
 	if len(ctx.Args) != 1 {
 		return errors.New("Invalid arguments")
 	}

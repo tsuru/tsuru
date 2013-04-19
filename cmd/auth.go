@@ -28,7 +28,7 @@ func (c *userCreate) Info() *Info {
 	}
 }
 
-func (c *userCreate) Run(context *Context, client Doer) error {
+func (c *userCreate) Run(context *Context, client *Client) error {
 	url, err := GetUrl("/users")
 	if err != nil {
 		return err
@@ -69,7 +69,7 @@ func (c *userCreate) Run(context *Context, client Doer) error {
 
 type userRemove struct{}
 
-func (c *userRemove) Run(context *Context, client Doer) error {
+func (c *userRemove) Run(context *Context, client *Client) error {
 	var answer string
 	fmt.Fprint(context.Stdout, `Are you sure you want to remove your user from tsuru? (y/n) `)
 	fmt.Fscanf(context.Stdin, "%s", &answer)
@@ -105,7 +105,7 @@ func (c *userRemove) Info() *Info {
 
 type login struct{}
 
-func (c *login) Run(context *Context, client Doer) error {
+func (c *login) Run(context *Context, client *Client) error {
 	email := context.Args[0]
 	url, err := GetUrl("/users/" + email + "/tokens")
 	if err != nil {
@@ -159,7 +159,7 @@ func (c *logout) Info() *Info {
 	}
 }
 
-func (c *logout) Run(context *Context, client Doer) error {
+func (c *logout) Run(context *Context, client *Client) error {
 	err := filesystem().Remove(joinWithUserDir(".tsuru_token"))
 	if err != nil && os.IsNotExist(err) {
 		return errors.New("You're not logged in!")
@@ -179,7 +179,7 @@ func (c *teamCreate) Info() *Info {
 	}
 }
 
-func (c *teamCreate) Run(context *Context, client Doer) error {
+func (c *teamCreate) Run(context *Context, client *Client) error {
 	team := context.Args[0]
 	b := bytes.NewBufferString(fmt.Sprintf(`{"name":"%s"}`, team))
 	url, err := GetUrl("/teams")
@@ -200,7 +200,7 @@ func (c *teamCreate) Run(context *Context, client Doer) error {
 
 type teamRemove struct{}
 
-func (c *teamRemove) Run(context *Context, client Doer) error {
+func (c *teamRemove) Run(context *Context, client *Client) error {
 	team := context.Args[0]
 	var answer string
 	fmt.Fprintf(context.Stdout, `Are you sure you want to remove team "%s"? (y/n) `, team)
@@ -245,7 +245,7 @@ func (c *teamUserAdd) Info() *Info {
 	}
 }
 
-func (c *teamUserAdd) Run(context *Context, client Doer) error {
+func (c *teamUserAdd) Run(context *Context, client *Client) error {
 	teamName, userName := context.Args[0], context.Args[1]
 	url, err := GetUrl(fmt.Sprintf("/teams/%s/%s", teamName, userName))
 	if err != nil {
@@ -274,7 +274,7 @@ func (c *teamUserRemove) Info() *Info {
 	}
 }
 
-func (c *teamUserRemove) Run(context *Context, client Doer) error {
+func (c *teamUserRemove) Run(context *Context, client *Client) error {
 	teamName, userName := context.Args[0], context.Args[1]
 	url, err := GetUrl(fmt.Sprintf("/teams/%s/%s", teamName, userName))
 	if err != nil {
@@ -303,7 +303,7 @@ func (c *teamList) Info() *Info {
 	}
 }
 
-func (c *teamList) Run(context *Context, client Doer) error {
+func (c *teamList) Run(context *Context, client *Client) error {
 	url, err := GetUrl("/teams")
 	if err != nil {
 		return err
@@ -337,7 +337,7 @@ func (c *teamList) Run(context *Context, client Doer) error {
 
 type changePassword struct{}
 
-func (c *changePassword) Run(context *Context, client Doer) error {
+func (c *changePassword) Run(context *Context, client *Client) error {
 	url, err := GetUrl("/users/password")
 	if err != nil {
 		return err
@@ -425,7 +425,7 @@ Please check your email.`
 Please check your email.`
 }
 
-func (c *resetPassword) Run(context *Context, client Doer) error {
+func (c *resetPassword) Run(context *Context, client *Client) error {
 	url := fmt.Sprintf("/users/%s/password", context.Args[0])
 	if c.token != "" {
 		url += "?token=" + c.token

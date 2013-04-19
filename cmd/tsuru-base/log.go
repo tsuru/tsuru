@@ -60,7 +60,7 @@ type log struct {
 	Source  string
 }
 
-func (c *AppLog) Run(context *cmd.Context, client cmd.Doer) error {
+func (c *AppLog) Run(context *cmd.Context, client *cmd.Client) error {
 	appName, err := c.Guess()
 	if err != nil {
 		return err

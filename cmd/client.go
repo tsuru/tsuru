@@ -13,10 +13,6 @@ import (
 	"net/url"
 )
 
-type Doer interface {
-	Do(request *http.Request) (*http.Response, error)
-}
-
 type Client struct {
 	HttpClient     *http.Client
 	context        *Context

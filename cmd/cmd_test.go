@@ -35,7 +35,7 @@ func (c *TestCommand) Info() *Info {
 	}
 }
 
-func (c *TestCommand) Run(context *Context, client Doer) error {
+func (c *TestCommand) Run(context *Context, client *Client) error {
 	io.WriteString(context.Stdout, "Running TestCommand")
 	return nil
 }
@@ -48,7 +48,7 @@ func (c *ErrorCommand) Info() *Info {
 	return &Info{Name: "error"}
 }
 
-func (c *ErrorCommand) Run(context *Context, client Doer) error {
+func (c *ErrorCommand) Run(context *Context, client *Client) error {
 	return errors.New(c.msg)
 }
 
@@ -63,7 +63,7 @@ func (c *CommandWithFlags) Info() *Info {
 	return &Info{Name: "with-flags", MinArgs: c.minArgs}
 }
 
-func (c *CommandWithFlags) Run(context *Context, client Doer) error {
+func (c *CommandWithFlags) Run(context *Context, client *Client) error {
 	c.args = context.Args
 	return nil
 }
@@ -233,7 +233,7 @@ func (c *ArgCmd) Info() *Info {
 	}
 }
 
-func (cmd *ArgCmd) Run(ctx *Context, client Doer) error {
+func (cmd *ArgCmd) Run(ctx *Context, client *Client) error {
 	return nil
 }
 

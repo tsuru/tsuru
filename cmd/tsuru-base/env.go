@@ -38,7 +38,7 @@ If you don't provide the app name, tsuru will try to guess it.`,
 	}
 }
 
-func (c *EnvGet) Run(context *cmd.Context, client cmd.Doer) error {
+func (c *EnvGet) Run(context *cmd.Context, client *cmd.Client) error {
 	b, err := requestEnvUrl("GET", c.GuessingCommand, context.Args, client)
 	if err != nil {
 		return err
@@ -72,7 +72,7 @@ If you don't provide the app name, tsuru will try to guess it.`,
 	}
 }
 
-func (c *EnvSet) Run(context *cmd.Context, client cmd.Doer) error {
+func (c *EnvSet) Run(context *cmd.Context, client *cmd.Client) error {
 	appName, err := c.Guess()
 	if err != nil {
 		return err
@@ -121,7 +121,7 @@ If you don't provide the app name, tsuru will try to guess it.`,
 	}
 }
 
-func (c *EnvUnset) Run(context *cmd.Context, client cmd.Doer) error {
+func (c *EnvUnset) Run(context *cmd.Context, client *cmd.Client) error {
 	_, err := requestEnvUrl("DELETE", c.GuessingCommand, context.Args, client)
 	if err != nil {
 		return err
@@ -130,7 +130,7 @@ func (c *EnvUnset) Run(context *cmd.Context, client cmd.Doer) error {
 	return nil
 }
 
-func requestEnvUrl(method string, g GuessingCommand, args []string, client cmd.Doer) ([]byte, error) {
+func requestEnvUrl(method string, g GuessingCommand, args []string, client *cmd.Client) ([]byte, error) {
 	appName, err := g.Guess()
 	if err != nil {
 		return nil, err

@@ -68,7 +68,7 @@ func (c *KeyRemove) Info() *cmd.Info {
 	}
 }
 
-func (c *KeyRemove) Run(context *cmd.Context, client cmd.Doer) error {
+func (c *KeyRemove) Run(context *cmd.Context, client *cmd.Client) error {
 	keyPath, err := getKeyPath(context.Args)
 	if err != nil {
 		return err
@@ -106,7 +106,7 @@ func (c *KeyAdd) Info() *cmd.Info {
 	}
 }
 
-func (c *KeyAdd) Run(context *cmd.Context, client cmd.Doer) error {
+func (c *KeyAdd) Run(context *cmd.Context, client *cmd.Client) error {
 	keyPath, err := getKeyPath(context.Args)
 	if err != nil {
 		return err
