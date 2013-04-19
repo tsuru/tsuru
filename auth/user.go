@@ -37,7 +37,7 @@ func loadConfig() error {
 	if cost == 0 && tokenExpire == 0 {
 		var err error
 		if days, err := config.GetInt("auth:token-expire-days"); err == nil {
-			tokenExpire = time.Duration(days * 24 * int(time.Hour))
+			tokenExpire = time.Duration(int64(days) * 24 * int64(time.Hour))
 		} else {
 			tokenExpire = defaultExpiration
 		}
