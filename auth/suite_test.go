@@ -62,16 +62,15 @@ type S struct {
 var _ = gocheck.Suite(&S{})
 
 func (s *S) SetUpSuite(c *gocheck.C) {
-	config.Set("auth:salt", "tsuru-salt")
 	config.Set("auth:token-expire-days", 2)
 	config.Set("auth:hash-cost", bcrypt.MinCost)
 	config.Set("admin-team", "admin")
-	s.hashed = hashPassword("123")
 	config.Set("database:url", "127.0.0.1:27017")
 	config.Set("database:name", "tsuru_auth_test")
 	s.conn, _ = db.Conn()
 	s.user = &User{Email: "timeredbull@globo.com", Password: "123456"}
 	s.user.Create()
+	s.hashed = s.user.Password
 	s.token, _ = s.user.CreateToken("123456")
 	team := &Team{Name: "cobrateam", Users: []string{s.user.Email}}
 	err := s.conn.Teams().Insert(team)
@@ -101,7 +100,8 @@ func (s *S) TearDownTest(c *gocheck.C) {
 	config.Set("git:host", s.gitHost)
 	config.Set("git:port", s.gitPort)
 	config.Set("git:protocol", s.gitProt)
-	salt = ""
+	cost = 0
+	tokenExpire = 0
 }
 
 func (s *S) getTestData(path ...string) io.ReadCloser {

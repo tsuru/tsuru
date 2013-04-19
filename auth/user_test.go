@@ -100,18 +100,6 @@ func (s *S) TestUserCheckPasswordChecksBcryptPasswordFirst(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 }
 
-func (s *S) TestUserCheckPasswordRehashesThePassword(c *gocheck.C) {
-	u := User{Email: "wolverine@xmen.com", Password: "123456"}
-	u.Create()
-	defer s.conn.Users().Remove(bson.M{"email": u.Email})
-	err := u.CheckPassword("123456")
-	c.Assert(err, gocheck.IsNil)
-	other, err := GetUserByEmail(u.Email)
-	c.Assert(err, gocheck.IsNil)
-	err = bcrypt.CompareHashAndPassword([]byte(other.Password), []byte("123456"))
-	c.Assert(err, gocheck.IsNil)
-}
-
 func (s *S) TestUserCheckPasswordReturnsFalseIfThePasswordDoesNotMatch(c *gocheck.C) {
 	u := User{Email: "wolverine@xmen.com", Password: "123456"}
 	u.HashPassword()
@@ -238,6 +226,8 @@ func (s *S) TestCreateTokenReturnsErrorWhenHashCostIsUndefined(c *gocheck.C) {
 	err = u.Create()
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Users().Remove(bson.M{"email": u.Email})
+	cost = 0
+	tokenExpire = 0
 	_, err = u.CreateToken("123456")
 	c.Assert(err, gocheck.NotNil)
 }
@@ -279,36 +269,19 @@ func (s *S) TestRemoveUnknownKey(c *gocheck.C) {
 	c.Assert(err.Error(), gocheck.Equals, "Key not found")
 }
 
-func (s *S) TestLoadConfigSalt(c *gocheck.C) {
-	configuredSalt, err := config.GetString("auth:salt")
-	c.Assert(err, gocheck.IsNil)
-	loadConfig()
-	c.Assert(salt, gocheck.Equals, configuredSalt)
-}
-
-func (s *S) TestLoadConfigUndefinedSalt(c *gocheck.C) {
-	key := "auth:salt"
-	oldValue, err := config.Get(key)
-	c.Assert(err, gocheck.IsNil)
-	err = config.Unset(key)
-	c.Assert(err, gocheck.IsNil)
-	defer config.Set(key, oldValue)
-	err = loadConfig()
-	c.Assert(err, gocheck.NotNil)
-	c.Assert(err.Error(), gocheck.Equals, `Setting "auth:salt" is undefined.`)
-	c.Assert(salt, gocheck.Equals, "")
-}
-
 func (s *S) TestLoadConfigTokenExpire(c *gocheck.C) {
 	configuredToken, err := config.Get("auth:token-expire-days")
 	c.Assert(err, gocheck.IsNil)
 	expected := time.Duration(int64(configuredToken.(int)) * 24 * int64(time.Hour))
+	cost = 0
+	tokenExpire = 0
 	loadConfig()
 	c.Assert(tokenExpire, gocheck.Equals, expected)
 }
 
 func (s *S) TestLoadConfigUndefinedTokenExpire(c *gocheck.C) {
 	tokenExpire = 0
+	cost = 0
 	key := "auth:token-expire-days"
 	oldConfig, err := config.Get(key)
 	c.Assert(err, gocheck.IsNil)
@@ -320,16 +293,15 @@ func (s *S) TestLoadConfigUndefinedTokenExpire(c *gocheck.C) {
 	c.Assert(tokenExpire, gocheck.Equals, defaultExpiration)
 }
 
-func (s *S) TestLoadConfigShouldPanicIfTheTokenExpireDaysIsNotInteger(c *gocheck.C) {
+func (s *S) TestLoadConfigExpireDaysNotInteger(c *gocheck.C) {
+	cost = 0
+	tokenExpire = 0
 	oldValue, err := config.Get("auth:token-expire-days")
 	c.Assert(err, gocheck.IsNil)
 	config.Set("auth:token-expire-days", "abacaxi")
-	defer func() {
-		config.Set("auth:token-expire-days", oldValue)
-		r := recover()
-		c.Assert(r, gocheck.NotNil)
-	}()
-	loadConfig()
+	defer config.Set("auth:token-expire-days", oldValue)
+	err = loadConfig()
+	c.Assert(tokenExpire, gocheck.Equals, defaultExpiration)
 }
 
 func (s *S) TestLoadConfigCost(c *gocheck.C) {
@@ -338,13 +310,16 @@ func (s *S) TestLoadConfigCost(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	config.Set(key, bcrypt.MaxCost)
 	defer config.Set(key, oldConfig)
-	salt = ""
+	cost = 0
+	tokenExpire = 0
 	err = loadConfig()
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(cost, gocheck.Equals, bcrypt.MaxCost)
 }
 
 func (s *S) TestLoadConfigCostUndefined(c *gocheck.C) {
+	cost = 0
+	tokenExpire = 0
 	key := "auth:hash-cost"
 	oldConfig, err := config.Get(key)
 	c.Assert(err, gocheck.IsNil)
@@ -360,7 +335,8 @@ func (s *S) TestLoadConfigCostInvalid(c *gocheck.C) {
 	oldConfig, _ := config.Get(key)
 	defer config.Set(key, oldConfig)
 	for _, v := range values {
-		salt = ""
+		cost = 0
+		tokenExpire = 0
 		config.Set(key, v)
 		err := loadConfig()
 		c.Assert(err, gocheck.NotNil)

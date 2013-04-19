@@ -7,8 +7,6 @@ package auth
 import (
 	"bytes"
 	"code.google.com/p/go.crypto/bcrypt"
-	"code.google.com/p/go.crypto/pbkdf2"
-	"crypto/sha512"
 	stderrors "errors"
 	"fmt"
 	"github.com/globocom/config"
@@ -32,19 +30,14 @@ const (
 
 var ErrUserNotFound = stderrors.New("User not found")
 
-var salt string
 var tokenExpire time.Duration
 var cost int
 
 func loadConfig() error {
-	if salt == "" {
+	if cost == 0 && tokenExpire == 0 {
 		var err error
-		if salt, err = config.GetString("auth:salt"); err != nil {
-			return stderrors.New(`Setting "auth:salt" is undefined.`)
-		}
-		if iface, err := config.Get("auth:token-expire-days"); err == nil {
-			day := int64(iface.(int))
-			tokenExpire = time.Duration(day * 24 * int64(time.Hour))
+		if days, err := config.GetInt("auth:token-expire-days"); err == nil {
+			tokenExpire = time.Duration(days * 24 * int(time.Hour))
 		} else {
 			tokenExpire = defaultExpiration
 		}
@@ -56,19 +49,6 @@ func loadConfig() error {
 		}
 	}
 	return nil
-}
-
-// hashPassword hashes a password using the old method (PBKDF2 + SHA512).
-//
-// BUG(fss): this function is deprecated, it's here for the migration phase
-// (whenever a user login with the old hash, the new hash will be generated).
-func hashPassword(password string) string {
-	err := loadConfig()
-	if err != nil {
-		panic(err)
-	}
-	salt := []byte(salt)
-	return fmt.Sprintf("%x", pbkdf2.Key([]byte(password), salt, 4096, len(salt)*8, sha512.New))
 }
 
 type Key struct {
@@ -128,19 +108,7 @@ func (u *User) CheckPassword(password string) error {
 	if !validation.ValidateLength(password, passwordMinLen, passwordMaxLen) {
 		return &errors.ValidationError{Message: passwordError}
 	}
-	// BUG(fss): this is temporary code, for a migration phase in the
-	// hashing algorithm. In the future we should just use
-	// bcrypt.CompareHashAndPassword, and drop the old hash checking and
-	// update stuff.
 	if bcrypt.CompareHashAndPassword([]byte(u.Password), []byte(password)) == nil {
-		return nil
-	}
-	hashedPassword := hashPassword(password)
-	if u.Password == hashedPassword {
-		if bcryptPassword, err := bcrypt.GenerateFromPassword([]byte(password), cost); err == nil {
-			u.Password = string(bcryptPassword)
-			u.Update()
-		}
 		return nil
 	}
 	return AuthenticationFailure{}
