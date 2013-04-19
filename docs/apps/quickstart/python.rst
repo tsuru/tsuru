@@ -17,7 +17,7 @@ Creating the app within tsuru
 =============================
 
 To create an app, you use `app-create
-<http://godoc.org/github.com/globocom/tsuru/cmd/tsuru#Create_an_app>`_
+<http://godoc.org/github.com/globocom/tsuru/cmd/tsuru#hdr-Create_an_app>`_
 command:
 
 .. highlight:: bash
@@ -36,8 +36,12 @@ very creative, let's call it "blog":
 
     $ tsuru app-create blog python
 
+To list all available platforms, use `platform-list
+<http://godoc.org/github.com/globocom/tsuru/cmd/tsuru#hdr-Display_the_list_of_available_platforms>`_
+command.
+
 You can see all your applications using `app-list
-<http://godoc.org/github.com/globocom/tsuru/cmd/tsuru#List_apps_that_you_have_access_to>`_
+<http://godoc.org/github.com/globocom/tsuru/cmd/tsuru#hdr-List_apps_that_you_have_access_to>`_
 command:
 
 .. highlight:: bash
@@ -86,7 +90,7 @@ Git deployment
 
 When you create a new app, tsuru will display the Git remote that you should
 use. You can always get it using `app-info
-<http://godoc.org/github.com/globocom/tsuru/cmd/tsuru#Display_information_about_an_app>`_
+<http://godoc.org/github.com/globocom/tsuru/cmd/tsuru#hdr-Display_information_about_an_app>`_
 command:
 
 .. highlight:: bash
@@ -145,7 +149,7 @@ push to tsuru remote and your project will be deployed:
 
 If you get a "Permission denied (publickey).", make sure you're member of a
 team and have a public key added to tsuru. To add a key, use `key-add
-<http://godoc.org/github.com/globocom/tsuru/cmd/tsuru#Add_SSH_public_key_to_tsuru_s_git_server>`_
+<http://godoc.org/github.com/globocom/tsuru/cmd/tsuru#hdr-Add_SSH_public_key_to_tsuru_s_git_server>`_
 command:
 
 .. highlight:: bash
@@ -194,7 +198,7 @@ And you will be also able to omit the ``--app`` flag from now on:
     +--------+---------+
 
 For more details on the ``--app`` flag, see `"Guessing app names"
-<http://godoc.org/github.com/globocom/tsuru/cmd/tsuru#Guessing_app_names>`_
+<http://godoc.org/github.com/globocom/tsuru/cmd/tsuru#hdr-Guessing_app_names>`_
 section of tsuru command documentation.
 
 Listing dependencies
@@ -470,7 +474,7 @@ we must use a service. The service workflow can be resumed to two steps:
 #. Bind the service instance to the app
 
 But how can I see what services are available? Easy! Use `service-list
-<http://godoc.org/github.com/globocom/tsuru/cmd/tsuru#List_available_services_and_instances>`_
+<http://godoc.org/github.com/globocom/tsuru/cmd/tsuru#hdr-List_available_services_and_instances>`_
 command:
 
 .. highlight:: bash
@@ -488,7 +492,7 @@ command:
 The output from ``service-list`` above says that there are two available
 services: "elastic-search" and "mysql", and none instances. To create our MySQL
 instance, we should run the `service-add
-<http://godoc.org/github.com/globocom/tsuru/cmd/tsuru#Create_a_new_service_instance>`_
+<http://godoc.org/github.com/globocom/tsuru/cmd/tsuru#hdr-Create_a_new_service_instance>`_
 command:
 
 .. highlight:: bash
@@ -514,7 +518,7 @@ the list:
     +----------------+-----------+
 
 To bind the service instance to the application, we use the `bind
-<http://godoc.org/github.com/globocom/tsuru/cmd/tsuru#Bind_an_application_to_a_service_instance>`_
+<http://godoc.org/github.com/globocom/tsuru/cmd/tsuru#hdr-Bind_an_application_to_a_service_instance>`_
 command:
 
 .. highlight:: bash
@@ -601,7 +605,7 @@ Now if we try to access the admin again, we will get another error: `"Table
 to the database, so bind worked, but we did not set up the database yet. We
 need to run ``syncdb`` and ``migrate`` (if we're using South) in the remote
 server. We can use `run
-<http://godoc.org/github.com/globocom/tsuru/cmd/tsuru#Run_an_arbitrary_command_in_the_app_machine>`_
+<http://godoc.org/github.com/globocom/tsuru/cmd/tsuru#hdr-Run_an_arbitrary_command_in_the_app_machine>`_
 command to execute commands in the machine, so for running ``syncdb`` we could
 write:
 
