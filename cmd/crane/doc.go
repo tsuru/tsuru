@@ -26,6 +26,7 @@ The currently available commands are (grouped by subject):
 	login             authenticates the user with tsuru server
 	logout            finishes the session with tsuru server
 	change-password   changes your password
+	reset-password    redefines your password
 	key-add           adds a public key to tsuru deploy server
 	key-remove        removes a public key from tsuru deploy server
 
@@ -125,6 +126,24 @@ Usage:
 
 change-password will change the password of the logged in user. It will ask for
 the current password, the new and the confirmation.
+
+
+Redefine user's password
+
+Usage:
+
+	% tsuru reset-password <email> [--token|-k <token>]
+
+reset-password will redefine the user password. This process is composed by two steps:
+
+	1. Token generation
+	2. Password generation
+
+In order to generate the token, users should run this command without the --token flag.
+The token will be mailed to the user.
+
+With the token in hand, the user can finally reset the password using the --token flag.
+The new password will also be mailed to the user.`,
 
 
 Create a new team for the user
