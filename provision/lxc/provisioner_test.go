@@ -124,6 +124,52 @@ func (s *S) TestProvisionerRestartFailure(c *gocheck.C) {
 	c.Assert(pErr.Err.Error(), gocheck.Equals, "exit status 25")
 }
 
+func (s *S) TestDeploy(c *gocheck.C) {
+	config.Set("git:unit-repo", "test/dir")
+	config.Set("git:host", "gandalf.com")
+	defer func() {
+		config.Unset("git:unit-repo")
+		config.Unset("git:host")
+	}()
+	app := testing.NewFakeApp("cribcaged", "python", 1)
+	w := &bytes.Buffer{}
+	p := LocalProvisioner{}
+	err := p.Deploy(app, w)
+	c.Assert(err, gocheck.IsNil)
+	expected := make([]string, 3)
+	// also ensures execution order
+	expected[0] = "git clone git://gandalf.com/cribcaged.git test/dir --depth 1" // the command expected to run on the units
+	expected[1] = "install deps"
+	expected[2] = "restart"
+	c.Assert(app.Commands, gocheck.DeepEquals, expected)
+}
+
+func (s *S) TestDeployLogsActions(c *gocheck.C) {
+	config.Set("git:unit-repo", "test/dir")
+	config.Set("git:host", "gandalf.com")
+	defer func() {
+		config.Unset("git:unit-repo")
+		config.Unset("git:host")
+	}()
+	app := testing.NewFakeApp("cribcaged", "python", 1)
+	w := &bytes.Buffer{}
+	p := LocalProvisioner{}
+	err := p.Deploy(app, w)
+	c.Assert(err, gocheck.IsNil)
+	logs := w.String()
+	expected := `
+ ---> Tsuru receiving push
+
+ ---> Replicating the application repository across units
+
+ ---> Installing dependencies
+
+ ---> Deploy done!
+
+`
+	c.Assert(logs, gocheck.Equals, expected)
+}
+
 func (s *S) TestProvisionerDestroy(c *gocheck.C) {
 	tmpdir, err := commandmocker.Add("sudo", "$*")
 	c.Assert(err, gocheck.IsNil)
