@@ -40,8 +40,6 @@ func (platformList) Run(context *cmd.Context, client *cmd.Client) error {
 		fmt.Fprintln(context.Stdout, "No platforms available.")
 		return nil
 	}
-	fmt.Fprintln(context.Stdout, "Available platforms:")
-	fmt.Fprintln(context.Stdout)
 	for _, p := range platforms {
 		fmt.Fprintf(context.Stdout, "- %s\n", p.Name)
 	}

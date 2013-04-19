@@ -30,9 +30,7 @@ func (s *S) TestPlatformList(c *gocheck.C) {
 	err := platformList{}.Run(&context, client)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(called, gocheck.Equals, true)
-	expected := `Available platforms:
-
-- python
+	expected := `- python
 - ruby` + "\n"
 	c.Assert(buf.String(), gocheck.Equals, expected)
 }
