@@ -89,6 +89,8 @@ func (s *S) SetUpSuite(c *gocheck.C) {
 	s.t.SetGitConfs(c)
 	s.provisioner = ttesting.NewFakeProvisioner()
 	Provisioner = s.provisioner
+	platform := Platform{Name: "python"}
+	s.conn.Platforms().Insert(platform)
 }
 
 func (s *S) TearDownSuite(c *gocheck.C) {

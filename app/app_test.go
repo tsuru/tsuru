@@ -75,7 +75,7 @@ func (s *S) TestDestroy(c *gocheck.C) {
 	defer ts.Close()
 	a := App{
 		Name:      "ritual",
-		Framework: "ruby",
+		Framework: "python",
 		Units: []Unit{
 			{
 				Name:    "duvido",
@@ -112,7 +112,7 @@ func (s *S) TestDestroyWithoutBucketSupport(c *gocheck.C) {
 	defer ts.Close()
 	a := App{
 		Name:      "blinded",
-		Framework: "evergrey",
+		Framework: "python",
 		Units:     []Unit{{Name: "duvido", Machine: 3}},
 	}
 	err := CreateApp(&a, 1, []auth.Team{s.team})
@@ -136,7 +136,7 @@ func (s *S) TestDestroyWithoutUnits(c *gocheck.C) {
 	h := testHandler{}
 	ts := s.t.StartGandalfTestServer(&h)
 	defer ts.Close()
-	app := App{Name: "x4"}
+	app := App{Name: "x4", Framework: "python"}
 	err := CreateApp(&app, 1, []auth.Team{s.team})
 	c.Assert(err, gocheck.IsNil)
 	defer s.provisioner.Destroy(&app)
@@ -156,7 +156,7 @@ func (s *S) TestCreateApp(c *gocheck.C) {
 	defer ts.Close()
 	a := App{
 		Name:      "appname",
-		Framework: "django",
+		Framework: "python",
 		Units:     []Unit{{Machine: 3}},
 	}
 	expectedHost := "localhost"
@@ -212,7 +212,7 @@ func (s *S) TestCreateWithoutBucketSupport(c *gocheck.C) {
 	defer ts.Close()
 	a := App{
 		Name:      "sorry",
-		Framework: "evergrey",
+		Framework: "python",
 		Units:     []Unit{{Machine: 3}},
 	}
 	expectedHost := "localhost"
@@ -238,14 +238,21 @@ func (s *S) TestCreateWithoutBucketSupport(c *gocheck.C) {
 	c.Assert(s.provisioner.GetUnits(&a), gocheck.HasLen, 3)
 }
 
-func (s *S) TestCantCreateAppWithZeroUnits(c *gocheck.C) {
+func (s *S) TestCannotCreateAppWithUnknownPlatform(c *gocheck.C) {
+	a := App{Name: "paradisum", Framework: "unknown"}
+	err := CreateApp(&a, 1, []auth.Team{s.team})
+	_, ok := err.(InvalidPlatformError)
+	c.Assert(ok, gocheck.Equals, true)
+}
+
+func (s *S) TestCannotCreateAppWithZeroUnits(c *gocheck.C) {
 	a := App{Name: "paradisum"}
 	err := CreateApp(&a, 0, []auth.Team{s.team})
 	c.Assert(err, gocheck.NotNil)
 	c.Assert(err.Error(), gocheck.Equals, "Cannot create app with 0 units.")
 }
 
-func (s *S) TestCantCreateAppWithoutTeams(c *gocheck.C) {
+func (s *S) TestCannotCreateAppWithoutTeams(c *gocheck.C) {
 	input := [][]auth.Team{nil, {}}
 	a := App{Name: "beyond"}
 	for _, t := range input {
@@ -260,7 +267,7 @@ func (s *S) TestCantCreateTwoAppsWithTheSameName(c *gocheck.C) {
 	err := s.conn.Apps().Insert(bson.M{"name": "appname"})
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": "appname"})
-	a := App{Name: "appname"}
+	a := App{Name: "appname", Framework: "python"}
 	err = CreateApp(&a, 1, []auth.Team{s.team})
 	defer ForceDestroy(&a) // clean mess if test fail
 	c.Assert(err, gocheck.NotNil)
@@ -274,7 +281,7 @@ func (s *S) TestCantCreateTwoAppsWithTheSameName(c *gocheck.C) {
 func (s *S) TestCantCreateAppWithInvalidName(c *gocheck.C) {
 	a := App{
 		Name:      "1123app",
-		Framework: "ruby",
+		Framework: "python",
 	}
 	err := CreateApp(&a, 1, []auth.Team{s.team})
 	c.Assert(err, gocheck.NotNil)
@@ -293,7 +300,7 @@ func (s *S) TestDoesNotSaveTheAppInTheDatabaseIfProvisionerFail(c *gocheck.C) {
 	s.provisioner.PrepareFailure("Provision", stderr.New("exit status 1"))
 	a := App{
 		Name:      "theirapp",
-		Framework: "ruby",
+		Framework: "python",
 		Units:     []Unit{{Machine: 1}},
 	}
 	err := CreateApp(&a, 1, []auth.Team{s.team})
@@ -318,7 +325,7 @@ func (s *S) TestDeletesIAMCredentialsAndS3BucketIfProvisionerFail(c *gocheck.C) 
 	defer unpatchRandomReader()
 	a := App{
 		Name:      "theirapp",
-		Framework: "ruby",
+		Framework: "python",
 		Units:     []Unit{{Machine: 1}},
 	}
 	err := CreateApp(&a, 1, []auth.Team{s.team})
@@ -343,9 +350,10 @@ func (s *S) TestCreateAppCreatesRepositoryInGandalf(c *gocheck.C) {
 	ts := s.t.StartGandalfTestServer(&h)
 	defer ts.Close()
 	a := App{
-		Name:  "someapp",
-		Teams: []string{s.team.Name},
-		Units: []Unit{{Machine: 3}},
+		Name:      "someapp",
+		Framework: "python",
+		Teams:     []string{s.team.Name},
+		Units:     []Unit{{Machine: 3}},
 	}
 	err := CreateApp(&a, 1, []auth.Team{s.team})
 	c.Assert(err, gocheck.IsNil)
@@ -364,7 +372,7 @@ func (s *S) TestCreateAppCreatesRepositoryInGandalf(c *gocheck.C) {
 func (s *S) TestCreateAppDoesNotSaveTheAppWhenGandalfFailstoCreateTheRepository(c *gocheck.C) {
 	ts := s.t.StartGandalfTestServer(&testBadHandler{msg: "could not create the repository"})
 	defer ts.Close()
-	a := App{Name: "otherapp"}
+	a := App{Name: "otherapp", Framework: "python"}
 	err := CreateApp(&a, 1, []auth.Team{s.team})
 	c.Assert(err, gocheck.NotNil)
 	count, err := s.conn.Apps().Find(bson.M{"name": a.Name}).Count()

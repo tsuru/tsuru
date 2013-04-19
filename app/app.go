@@ -116,6 +116,9 @@ func CreateApp(app *App, units uint, teams []auth.Team) error {
 	if len(teams) == 0 {
 		return NoTeamsError{}
 	}
+	if _, err := getPlatform(app.Framework); err != nil {
+		return err
+	}
 	app.SetTeams(teams)
 	if !app.isValid() {
 		msg := "Invalid app name, your app should have at most 63 " +
