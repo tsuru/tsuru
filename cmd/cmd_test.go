@@ -374,6 +374,13 @@ func (s *S) TestChangePasswordIsRegistered(c *gocheck.C) {
 	c.Assert(chpass, gocheck.FitsTypeOf, &changePassword{})
 }
 
+func (s *S) TestResetPasswordIsRegistered(c *gocheck.C) {
+	manager := BuildBaseManager("tsuru", "1.0", "")
+	reset, ok := manager.Commands["reset-password"]
+	c.Assert(ok, gocheck.Equals, true)
+	c.Assert(reset, gocheck.FitsTypeOf, &resetPassword{})
+}
+
 func (s *S) TestVersionIsRegisteredByNewManager(c *gocheck.C) {
 	var stdout, stderr bytes.Buffer
 	manager := NewManager("tsuru", "1.0", "", &stdout, &stderr, os.Stdin)
