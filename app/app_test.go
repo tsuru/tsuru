@@ -1321,10 +1321,10 @@ func (s *S) TestInstallDeps(c *gocheck.C) {
 
 func (s *S) TestDeployShouldCallProvisionerDeploy(c *gocheck.C) {
 	a := App{
-		Name:      "someApp",
-		Framework: "django",
-		Teams:     []string{s.team.Name},
-		Units:     []Unit{{Name: "i-0800", State: "started"}},
+		Name:     "someApp",
+		Platform: "django",
+		Teams:    []string{s.team.Name},
+		Units:    []Unit{{Name: "i-0800", State: "started"}},
 	}
 	w := &bytes.Buffer{}
 	err := a.Deploy(w)
