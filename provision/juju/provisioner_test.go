@@ -138,6 +138,30 @@ func (s *S) TestDeploy(c *gocheck.C) {
 	c.Assert(app.Commands, gocheck.DeepEquals, expected)
 }
 
+func (s *S) TestDeployLogsActions(c *gocheck.C) {
+	config.Set("git:unit-repo", "test/dir")
+	defer func() {
+		config.Unset("git:unit-repo")
+	}()
+	app := testing.NewFakeApp("cribcaged", "python", 1)
+	w := &bytes.Buffer{}
+	p := JujuProvisioner{}
+	err := p.Deploy(app, w)
+	c.Assert(err, gocheck.IsNil)
+	logs := w.String()
+	expected := `
+ ---> Tsuru receiving push
+
+ ---> Replicating the application repository across units
+
+ ---> Installing dependencies
+
+ ---> Deploy done!
+
+`
+	c.Assert(logs, gocheck.Equals, expected)
+}
+
 func (s *S) TestDestroy(c *gocheck.C) {
 	tmpdir, err := commandmocker.Add("juju", "$*")
 	c.Assert(err, gocheck.IsNil)

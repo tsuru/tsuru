@@ -125,7 +125,7 @@ func (p *JujuProvisioner) Deploy(a provision.App, w io.Writer) error {
 	if err := write(&logWriter, []byte("\n ---> Replicating the application repository across units\n")); err != nil {
 		return err
 	}
-	out, err := repository.CloneOrPull(a) // should iterate over the machines
+	out, err := repository.CloneOrPull(a) // should iterate over the machines (?)
 	if err != nil {
 		msg := fmt.Sprintf("Got error while clonning/pulling repository: %s -- \n%s", err.Error(), string(out))
 		return errors.New(msg)
