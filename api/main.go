@@ -87,6 +87,8 @@ func main() {
 	m.Get("/apps/:app/log", authorizationRequiredHandler(appLog))
 	m.Post("/apps/:app/log", authorizationRequiredHandler(addLog))
 
+	m.Get("/platforms", authorizationRequiredHandler(platformList))
+
 	// These handlers don't use :app on purpose. Using :app means that only
 	// the token generate for the given app is valid, but these handlers
 	// use a token generated for Gandalf.
