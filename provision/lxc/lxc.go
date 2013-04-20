@@ -5,6 +5,7 @@
 package lxc
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"github.com/globocom/config"
@@ -12,7 +13,6 @@ import (
 	"github.com/globocom/tsuru/log"
 	"io/ioutil"
 	"net"
-	"os/exec"
 	"strings"
 	"time"
 )
@@ -34,10 +34,10 @@ type container struct {
 
 // runCmd executes commands and log the given stdout and stderror.
 func runCmd(cmd string, args ...string) error {
-	command := exec.Command(cmd, args...)
-	out, err := command.CombinedOutput()
+	output := bytes.Buffer{}
+	err := executor().Execute(cmd, args, nil, &output, &output)
 	log.Printf("running the cmd: %s with the args: %s", cmd, args)
-	log.Print(string(out))
+	log.Print(output.String())
 	return err
 }
 

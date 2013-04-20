@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"github.com/globocom/config"
 	"github.com/globocom/tsuru/db"
+	"github.com/globocom/tsuru/exec"
 	"github.com/globocom/tsuru/log"
 	"github.com/globocom/tsuru/provision"
 	"github.com/globocom/tsuru/repository"
@@ -18,11 +19,19 @@ import (
 	"io"
 	"labix.org/v2/mgo"
 	"labix.org/v2/mgo/bson"
-	"os/exec"
 )
 
 func init() {
 	provision.Register("lxc", &LocalProvisioner{})
+}
+
+var execut exec.Executor
+
+func executor() exec.Executor {
+	if execut == nil {
+		execut = exec.OsExecutor{}
+	}
+	return execut
 }
 
 type LocalProvisioner struct{}
@@ -41,29 +50,34 @@ func (p *LocalProvisioner) setup(ip, framework string) error {
 		return err
 	}
 	log.Printf("Creating hooks dir for %s", ip)
-	cmd := exec.Command("ssh", "-q", "-o", "StrictHostKeyChecking no", "-l", "ubuntu", ip, "sudo mkdir -p /var/lib/tsuru/hooks")
-	output, err := cmd.CombinedOutput()
+	output := bytes.Buffer{}
+	cmd := "ssh"
+	args := []string{"-q", "-o", "StrictHostKeyChecking no", "-l", "ubuntu", ip, "sudo mkdir -p /var/lib/tsuru/hooks"}
+	err = executor().Execute(cmd, args, nil, &output, &output)
 	if err != nil {
 		log.Printf("error on creating hooks dir for %s", ip)
-		log.Print(string(output))
+		log.Print(output.String())
 		log.Print(err)
 		return err
 	}
 	log.Printf("Permissons on hooks dir for %s", ip)
-	cmd = exec.Command("ssh", "-q", "-o", "StrictHostKeyChecking no", "-l", "ubuntu", ip, "sudo chown -R ubuntu /var/lib/tsuru/hooks")
-	output, err = cmd.CombinedOutput()
+	output = bytes.Buffer{}
+	args = []string{"-q", "-o", "StrictHostKeyChecking no", "-l", "ubuntu", ip, "sudo chown -R ubuntu /var/lib/tsuru/hooks"}
+	err = executor().Execute(cmd, args, nil, &output, &output)
 	if err != nil {
 		log.Printf("error on permissions for %s", ip)
-		log.Print(string(output))
+		log.Print(output.String())
 		log.Print(err)
 		return err
 	}
 	log.Printf("coping hooks to %s", ip)
-	cmd = exec.Command("scp", "-q", "-o", "StrictHostKeyChecking no", "-r", formulasPath+"/"+framework+"/hooks", "ubuntu@"+ip+":/var/lib/tsuru")
-	output, err = cmd.CombinedOutput()
+	output = bytes.Buffer{}
+	cmd = "scp"
+	args = []string{"-q", "-o", "StrictHostKeyChecking no", "-r", formulasPath+"/"+framework+"/hooks", "ubuntu@"+ip+":/var/lib/tsuru"}
+	err = executor().Execute(cmd, args, nil, &output, &output)
 	if err != nil {
-		log.Printf("error on execute scp with the args: %#v", cmd.Args)
-		log.Print(string(output))
+		log.Printf("error on execute scp with the args: %#v", args)
+		log.Print(output.String())
 		log.Print(err)
 		return err
 	}
@@ -72,8 +86,9 @@ func (p *LocalProvisioner) setup(ip, framework string) error {
 
 func (p *LocalProvisioner) install(ip string) error {
 	log.Printf("executing the install hook for %s", ip)
-	cmd := exec.Command("ssh", "-q", "-o", "StrictHostKeyChecking no", "-l", "ubuntu", ip, "sudo /var/lib/tsuru/hooks/install")
-	err := cmd.Run()
+	cmd := "ssh"
+	args := []string{"-q", "-o", "StrictHostKeyChecking no", "-l", "ubuntu", ip, "sudo /var/lib/tsuru/hooks/install"}
+	err := executor().Execute(cmd, args, nil, nil, nil)
 	if err != nil {
 		log.Printf("error on install for %s", ip)
 		log.Print(err)
@@ -83,8 +98,9 @@ func (p *LocalProvisioner) install(ip string) error {
 }
 
 func (p *LocalProvisioner) start(ip string) error {
-	cmd := exec.Command("ssh", "-q", "-o", "StrictHostKeyChecking no", "-l", "ubuntu", ip, "sudo /var/lib/tsuru/hooks/start")
-	return cmd.Run()
+	cmd := "ssh"
+	args := []string{"-q", "-o", "StrictHostKeyChecking no", "-l", "ubuntu", ip, "sudo /var/lib/tsuru/hooks/start"}
+	return executor().Execute(cmd, args, nil, nil, nil)
 }
 
 func (p *LocalProvisioner) Provision(app provision.App) error {
@@ -231,14 +247,7 @@ func (*LocalProvisioner) ExecuteCommand(stdout, stderr io.Writer, app provision.
 	arguments = append(arguments, app.ProvisionUnits()[0].GetIp())
 	arguments = append(arguments, cmd)
 	arguments = append(arguments, args...)
-	c := exec.Command("ssh", arguments...)
-	c.Stdout = stdout
-	c.Stderr = stderr
-	err := c.Run()
-	if err != nil {
-		return err
-	}
-	return nil
+	return executor().Execute("ssh", arguments, nil, stdout, stderr)
 }
 
 func (p *LocalProvisioner) CollectStatus() ([]provision.Unit, error) {

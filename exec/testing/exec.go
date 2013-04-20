@@ -12,21 +12,24 @@ import (
 	"reflect"
 )
 
+type command struct {
+	name string
+	args []string
+}
+
 type FakeExecutor struct {
-	cmds map[string][]string
+	cmds []command
 }
 
 func (e *FakeExecutor) Execute(cmd string, args []string, stdin io.Reader, stdout, stderr io.Writer) error {
-	if e.cmds == nil {
-		e.cmds = make(map[string][]string)
-	}
-	e.cmds[cmd] = args
+	c := command{name: cmd, args: args}
+	e.cmds = append(e.cmds, c)
 	return nil
 }
 
 func (e *FakeExecutor) ExecutedCmd(cmd string, args []string) bool {
-	for c, a := range e.cmds {
-		if cmd == c && reflect.DeepEqual(a, args) {
+	for _, c := range e.cmds {
+		if c.name == cmd && reflect.DeepEqual(c.args, args) {
 			return true
 		}
 	}

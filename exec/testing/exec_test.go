@@ -27,10 +27,16 @@ func (s *S) TestExecute(c *gocheck.C) {
 	cmd := "ls"
 	args := []string{"-lsa"}
 	err := e.Execute(cmd, args, nil, &b, &b)
+	c.Assert(err, gocheck.IsNil)
 	cmd = "ps"
 	args = []string{"aux"}
 	err = e.Execute(cmd, args, nil, &b, &b)
 	c.Assert(err, gocheck.IsNil)
+	cmd = "ps"
+	args = []string{"-ef"}
+	err = e.Execute(cmd, args, nil, &b, &b)
+	c.Assert(err, gocheck.IsNil)
 	c.Assert(e.ExecutedCmd("ls", []string{"-lsa"}), gocheck.Equals, true)
 	c.Assert(e.ExecutedCmd("ps", []string{"aux"}), gocheck.Equals, true)
+	c.Assert(e.ExecutedCmd("ps", []string{"-ef"}), gocheck.Equals, true)
 }
