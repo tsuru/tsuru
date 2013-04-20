@@ -13,16 +13,22 @@ import (
 )
 
 type FakeExecutor struct {
-	cmd  string
-	args []string
+	cmds map[string][]string
 }
 
 func (e *FakeExecutor) Execute(cmd string, args []string, stdin io.Reader, stdout, stderr io.Writer) error {
-	e.cmd = cmd
-	e.args = args
+	if e.cmds == nil {
+		e.cmds = make(map[string][]string)
+	}
+	e.cmds[cmd] = args
 	return nil
 }
 
 func (e *FakeExecutor) ExecutedCmd(cmd string, args []string) bool {
-	return cmd == e.cmd && reflect.DeepEqual(args, e.args)
+	for c, a := range e.cmds {
+		if cmd == c && reflect.DeepEqual(a, args) {
+			return true
+		}
+	}
+	return false
 }
