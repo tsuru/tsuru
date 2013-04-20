@@ -160,7 +160,6 @@ func (r *RecordingFs) OpenFile(name string, flag int, perm os.FileMode) (fs.File
 	r.actions = append(r.actions, fmt.Sprintf("openfile %s with mode %#o", name, perm))
 	read := flag&syscall.O_CREAT != syscall.O_CREAT &&
 		flag&syscall.O_APPEND != syscall.O_APPEND &&
-		flag&syscall.O_RDWR != syscall.O_RDWR &&
 		flag&syscall.O_TRUNC != syscall.O_TRUNC &&
 		flag&syscall.O_WRONLY != syscall.O_WRONLY
 	f, err := r.open(name, read)

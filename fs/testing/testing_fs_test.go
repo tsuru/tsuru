@@ -181,6 +181,13 @@ func (s *S) TestRecordingFsOpenFileTruncate(c *gocheck.C) {
 	c.Assert(f.(*FakeFile).content, gocheck.Equals, "")
 }
 
+func (s *S) TestRecordingFsOpenFileReadAndWriteENOENT(c *gocheck.C) {
+	fs := RecordingFs{}
+	f, err := fs.OpenFile("/my/file", syscall.O_RDWR, 0600)
+	c.Assert(f, gocheck.IsNil)
+	c.Assert(err, gocheck.Equals, syscall.ENOENT)
+}
+
 func (s *S) TestRecordingFsKeepFileInstances(c *gocheck.C) {
 	fs := RecordingFs{FileContent: "the content"}
 	f, err := fs.Create("/my/file")
