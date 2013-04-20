@@ -73,7 +73,7 @@ func (p *LocalProvisioner) setup(ip, framework string) error {
 	log.Printf("coping hooks to %s", ip)
 	output = bytes.Buffer{}
 	cmd = "scp"
-	args = []string{"-q", "-o", "StrictHostKeyChecking no", "-r", formulasPath+"/"+framework+"/hooks", "ubuntu@"+ip+":/var/lib/tsuru"}
+	args = []string{"-q", "-o", "StrictHostKeyChecking no", "-r", formulasPath + "/" + framework + "/hooks", "ubuntu@" + ip + ":/var/lib/tsuru"}
 	err = executor().Execute(cmd, args, nil, &output, &output)
 	if err != nil {
 		log.Printf("error on execute scp with the args: %#v", args)
