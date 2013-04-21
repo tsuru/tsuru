@@ -17,7 +17,6 @@ import (
 	"launchpad.net/goamz/ec2"
 	"launchpad.net/goamz/s3"
 	"net"
-	"os/exec"
 	"strings"
 )
 
@@ -197,20 +196,20 @@ func (h instanceAgentsConfigHealer) Heal() error {
 	}
 	for _, app := range apps {
 		for _, u := range app.ProvisionUnits() {
-			cmd := exec.Command("ssh", "-o", "StrictHostKeyChecking no", "-q", "-l", "ubuntu", u.GetIp(), "grep", dns, "/etc/init/juju-machine-agent.conf")
-			err := cmd.Run()
+			args := []string{"-o", "StrictHostKeyChecking no", "-q", "-l", "ubuntu", u.GetIp(), "grep", dns, "/etc/init/juju-machine-agent.conf"}
+			err := executor().Execute("ssh", args, nil, nil, nil)
 			if err != nil {
 				log.Printf("Injecting bootstrap private dns for machine %d", u.GetMachine())
-				cmd := exec.Command("ssh", "-o", "StrictHostKeyChecking no", "-q", "-l", "ubuntu", u.GetIp(), "sudo", "sed", "-i", "'s/env JUJU_ZOOKEEPER=.*/env JUJU_ZOOKEEPER=\""+dns+":2181\"/g'", "/etc/init/juju-machine-agent.conf")
-				cmd.Run()
+				args = []string{"-o", "StrictHostKeyChecking no", "-q", "-l", "ubuntu", u.GetIp(), "sudo", "sed", "-i", "'s/env JUJU_ZOOKEEPER=.*/env JUJU_ZOOKEEPER=\"" + dns + ":2181\"/g'", "/etc/init/juju-machine-agent.conf"}
+				executor().Execute("ssh", args, nil, nil, nil)
 			}
 			agent := fmt.Sprintf("/etc/init/juju-%s.conf", strings.Join(strings.Split(u.GetName(), "/"), "-"))
-			cmd = exec.Command("ssh", "-o", "StrictHostKeyChecking no", "-q", "-l", "ubuntu", u.GetIp(), "grep", dns, agent)
-			err = cmd.Run()
+			args = []string{"-o", "StrictHostKeyChecking no", "-q", "-l", "ubuntu", u.GetIp(), "grep", dns, agent}
+			err = executor().Execute("ssh", args, nil, nil, nil)
 			if err != nil {
 				log.Printf("Injecting bootstrap private dns for agent %s", agent)
-				cmd := exec.Command("ssh", "-o", "StrictHostKeyChecking no", "-q", "-l", "ubuntu", u.GetIp(), "sudo", "sed", "-i", "'s/env JUJU_ZOOKEEPER=.*/env JUJU_ZOOKEEPER=\""+dns+":2181\"/g'", agent)
-				cmd.Run()
+				args = []string{"-o", "StrictHostKeyChecking no", "-q", "-l", "ubuntu", u.GetIp(), "sudo", "sed", "-i", "'s/env JUJU_ZOOKEEPER=.*/env JUJU_ZOOKEEPER=\"" + dns + ":2181\"/g'", agent}
+				executor().Execute("ssh", args, nil, nil, nil)
 			}
 		}
 	}
@@ -341,8 +340,7 @@ func upStartCmd(cmd, daemon, machine string) error {
 		daemon,
 	}
 	log.Printf(strings.Join(args, " "))
-	c := exec.Command("ssh", args...)
-	return c.Run()
+	return executor().Execute("ssh", args, nil, nil, nil)
 }
 
 // Heal executes the action for heal the bootstrap machine agent.

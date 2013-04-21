@@ -12,6 +12,7 @@ import (
 	"github.com/globocom/config"
 	"github.com/globocom/tsuru/app"
 	"github.com/globocom/tsuru/db"
+	"github.com/globocom/tsuru/exec"
 	"github.com/globocom/tsuru/log"
 	"github.com/globocom/tsuru/provision"
 	"github.com/globocom/tsuru/queue"
@@ -21,7 +22,7 @@ import (
 	"labix.org/v2/mgo"
 	"labix.org/v2/mgo/bson"
 	"launchpad.net/goyaml"
-	"os/exec"
+	osexec "os/exec"
 	"regexp"
 	"strconv"
 	"strings"
@@ -30,6 +31,15 @@ import (
 
 func init() {
 	provision.Register("juju", &JujuProvisioner{})
+}
+
+var execut exec.Executor
+
+func executor() exec.Executor {
+	if execut == nil {
+		execut = exec.OsExecutor{}
+	}
+	return execut
 }
 
 // Sometimes juju gives the "no node" error when destroying a service or
@@ -494,15 +504,12 @@ type jujuOutput struct {
 	Machines map[int]machine
 }
 
-func runCmd(filter bool, stdout, stderr io.Writer, cmd ...string) error {
+func runCmd(filter bool, stdout, stderr io.Writer, args ...string) error {
 	if filter {
 		stdout = &Writer{stdout}
 		stderr = &Writer{stderr}
 	}
-	command := exec.Command("juju", cmd...)
-	command.Stdout = stdout
-	command.Stderr = stderr
-	return command.Run()
+	return executor().Execute("juju", args, nil, stdout, stderr)
 }
 
 func cmdError(output string, err error, cmd []string) error {
@@ -514,7 +521,7 @@ func execWithTimeout(timeout time.Duration, cmd string, args ...string) (output 
 	var buf safe.Buffer
 	ch := make(chan []byte, 1)
 	errCh := make(chan error, 1)
-	command := exec.Command(cmd, args...)
+	command := osexec.Command(cmd, args...)
 	command.Stdout = &Writer{&buf}
 	command.Stderr = &Writer{&buf}
 	if err = command.Start(); err != nil {
