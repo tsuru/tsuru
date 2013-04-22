@@ -138,7 +138,7 @@ func (s *S) TestProvisionerProvisionFillsUnitIp(c *gocheck.C) {
 				ok <- true
 				return
 			}
-			time.Sleep(1e3)
+			runtime.Gosched()
 		}
 	}()
 	select {
@@ -218,7 +218,7 @@ func (s *S) TestProvisionerDestroy(c *gocheck.C) {
 				ok <- true
 				return
 			}
-			time.Sleep(1e3)
+			runtime.Gosched()
 		}
 	}()
 	select {

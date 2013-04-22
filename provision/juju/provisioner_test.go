@@ -606,7 +606,7 @@ func (s *S) TestCollectStatusDirtyOutput(c *gocheck.C) {
 			if n, _ := collection.Find(q).Count(); n == 2 {
 				break
 			}
-			time.Sleep(1e3)
+			runtime.Gosched()
 		}
 		collection.Remove(q)
 		wg.Done()
@@ -636,7 +636,7 @@ func (s *S) TestCollectStatusIDChangeDisabledELB(c *gocheck.C) {
 				done <- 1
 				return
 			}
-			time.Sleep(1e3)
+			runtime.Gosched()
 		}
 	}()
 	select {
@@ -668,7 +668,7 @@ func (s *S) TestCollectStatusIDChangeFromPending(c *gocheck.C) {
 				done <- 1
 				return
 			}
-			time.Sleep(1e3)
+			runtime.Gosched()
 		}
 	}()
 	select {
@@ -955,7 +955,7 @@ func (s *ELBSuite) TestCollectStatusWithELBAndIDChange(c *gocheck.C) {
 				done <- 1
 				return
 			}
-			time.Sleep(1e3)
+			runtime.Gosched()
 		}
 	}()
 	select {
