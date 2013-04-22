@@ -25,7 +25,7 @@ import (
 func (s *S) TestShouldBeRegistered(c *gocheck.C) {
 	p, err := provision.Get("docker")
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(p, gocheck.FitsTypeOf, &LocalProvisioner{})
+	c.Assert(p, gocheck.FitsTypeOf, &DockerProvisioner{})
 }
 
 func (s *S) TestProvisionerProvision(c *gocheck.C) {
@@ -48,7 +48,7 @@ func (s *S) TestProvisionerProvision(c *gocheck.C) {
 	scpTempDir, err := commandmocker.Add("scp", "$*")
 	c.Assert(err, gocheck.IsNil)
 	defer commandmocker.Remove(scpTempDir)
-	var p LocalProvisioner
+	var p DockerProvisioner
 	app := testing.NewFakeApp("myapp", "python", 0)
 	tmpdir, err := commandmocker.Add("sudo", "$*")
 	c.Assert(err, gocheck.IsNil)
@@ -105,7 +105,7 @@ func (s *S) TestProvisionerProvisionFillsUnitIp(c *gocheck.C) {
 	scpTempDir, err := commandmocker.Add("scp", "$*")
 	c.Assert(err, gocheck.IsNil)
 	defer commandmocker.Remove(scpTempDir)
-	var p LocalProvisioner
+	var p DockerProvisioner
 	app := testing.NewFakeApp("myapp", "python", 0)
 	out := `
     {
@@ -149,7 +149,7 @@ func (s *S) TestProvisionerProvisionFillsUnitIp(c *gocheck.C) {
 }
 
 func (s *S) TestProvisionerRestart(c *gocheck.C) {
-	var p LocalProvisioner
+	var p DockerProvisioner
 	tmpdir, err := commandmocker.Add("ssh", "ok")
 	c.Assert(err, gocheck.IsNil)
 	defer commandmocker.Remove(tmpdir)
@@ -169,7 +169,7 @@ func (s *S) TestProvisionerRestartFailure(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	defer commandmocker.Remove(tmpdir)
 	app := testing.NewFakeApp("cribcaged", "python", 1)
-	p := LocalProvisioner{}
+	p := DockerProvisioner{}
 	err = p.Restart(app)
 	c.Assert(err, gocheck.NotNil)
 	pErr, ok := err.(*provision.Error)
@@ -196,7 +196,7 @@ func (s *S) TestProvisionerDestroy(c *gocheck.C) {
 	}
 	err = s.conn.Collection(s.collName).Insert(&u)
 	c.Assert(err, gocheck.IsNil)
-	var p LocalProvisioner
+	var p DockerProvisioner
 	c.Assert(p.Destroy(app), gocheck.IsNil)
 	ok := make(chan bool, 1)
 	go func() {
@@ -225,7 +225,7 @@ func (s *S) TestProvisionerDestroy(c *gocheck.C) {
 }
 
 func (s *S) TestProvisionerAddr(c *gocheck.C) {
-	var p LocalProvisioner
+	var p DockerProvisioner
 	app := testing.NewFakeApp("myapp", "python", 1)
 	addr, err := p.Addr(app)
 	c.Assert(err, gocheck.IsNil)
@@ -233,7 +233,7 @@ func (s *S) TestProvisionerAddr(c *gocheck.C) {
 }
 
 func (s *S) TestProvisionerAddUnits(c *gocheck.C) {
-	var p LocalProvisioner
+	var p DockerProvisioner
 	app := testing.NewFakeApp("myapp", "python", 0)
 	units, err := p.AddUnits(app, 2)
 	c.Assert(err, gocheck.IsNil)
@@ -241,14 +241,14 @@ func (s *S) TestProvisionerAddUnits(c *gocheck.C) {
 }
 
 func (s *S) TestProvisionerRemoveUnit(c *gocheck.C) {
-	var p LocalProvisioner
+	var p DockerProvisioner
 	app := testing.NewFakeApp("myapp", "python", 0)
 	err := p.RemoveUnit(app, "")
 	c.Assert(err, gocheck.IsNil)
 }
 
 func (s *S) TestProvisionerExecuteCommand(c *gocheck.C) {
-	var p LocalProvisioner
+	var p DockerProvisioner
 	var buf bytes.Buffer
 	tmpdir, err := commandmocker.Add("ssh", "$*")
 	c.Assert(err, gocheck.IsNil)
@@ -262,7 +262,7 @@ func (s *S) TestProvisionerExecuteCommand(c *gocheck.C) {
 }
 
 func (s *S) TestCollectStatus(c *gocheck.C) {
-	var p LocalProvisioner
+	var p DockerProvisioner
 	expected := []provision.Unit{
 		{
 			Name:       "vm1",
@@ -293,7 +293,7 @@ func (s *S) TestCollectStatus(c *gocheck.C) {
 }
 
 func (s *S) TestProvisionCollection(c *gocheck.C) {
-	var p LocalProvisioner
+	var p DockerProvisioner
 	collection := p.collection()
 	c.Assert(collection.Name, gocheck.Equals, s.collName)
 }
@@ -302,7 +302,7 @@ func (s *S) TestProvisionInstall(c *gocheck.C) {
 	tmpdir, err := commandmocker.Add("ssh", "$*")
 	c.Assert(err, gocheck.IsNil)
 	defer commandmocker.Remove(tmpdir)
-	p := LocalProvisioner{}
+	p := DockerProvisioner{}
 	err = p.install("10.10.10.10")
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(commandmocker.Ran(tmpdir), gocheck.Equals, true)
@@ -322,7 +322,7 @@ func (s *S) TestProvisionStart(c *gocheck.C) {
 	tmpdir, err := commandmocker.Add("ssh", "$*")
 	c.Assert(err, gocheck.IsNil)
 	defer commandmocker.Remove(tmpdir)
-	p := LocalProvisioner{}
+	p := DockerProvisioner{}
 	err = p.start("10.10.10.10")
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(commandmocker.Ran(tmpdir), gocheck.Equals, true)
@@ -345,7 +345,7 @@ func (s *S) TestProvisionSetup(c *gocheck.C) {
 	sshTempDir, err := commandmocker.Add("ssh", "$*")
 	c.Assert(err, gocheck.IsNil)
 	defer commandmocker.Remove(sshTempDir)
-	p := LocalProvisioner{}
+	p := DockerProvisioner{}
 	formulasPath := "/home/ubuntu/formulas"
 	config.Set("docker:formulas-path", formulasPath)
 	err = p.setup("10.10.10.10", "static")

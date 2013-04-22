@@ -9,8 +9,8 @@ import (
 	"fmt"
 	"github.com/globocom/config"
 	"github.com/globocom/tsuru/db"
-	"github.com/globocom/tsuru/exec"
 	"github.com/globocom/tsuru/deploy"
+	"github.com/globocom/tsuru/exec"
 	"github.com/globocom/tsuru/log"
 	"github.com/globocom/tsuru/provision"
 	"github.com/globocom/tsuru/router"
@@ -22,7 +22,7 @@ import (
 )
 
 func init() {
-	provision.Register("docker", &LocalProvisioner{})
+	provision.Register("docker", &DockerProvisioner{})
 }
 
 var execut exec.Executor
@@ -34,7 +34,7 @@ func executor() exec.Executor {
 	return execut
 }
 
-func (p *LocalProvisioner) router() (router.Router, error) {
+func (p *DockerProvisioner) router() (router.Router, error) {
 	r, err := config.GetString("router")
 	if err != nil {
 		return nil, err
@@ -42,9 +42,9 @@ func (p *LocalProvisioner) router() (router.Router, error) {
 	return router.Get(r)
 }
 
-type LocalProvisioner struct{}
+type DockerProvisioner struct{}
 
-func (p *LocalProvisioner) setup(ip, framework string) error {
+func (p *DockerProvisioner) setup(ip, framework string) error {
 	formulasPath, err := config.GetString("docker:formulas-path")
 	if err != nil {
 		return err
@@ -78,7 +78,7 @@ func (p *LocalProvisioner) setup(ip, framework string) error {
 	return nil
 }
 
-func (p *LocalProvisioner) install(ip string) error {
+func (p *DockerProvisioner) install(ip string) error {
 	log.Printf("executing the install hook for %s", ip)
 	args := []string{"-q", "-o", "StrictHostKeyChecking no", "-l", "ubuntu", ip, "sudo /var/lib/tsuru/hooks/install"}
 	err := executor().Execute("ssh", args, nil, nil, nil)
@@ -90,7 +90,7 @@ func (p *LocalProvisioner) install(ip string) error {
 	return nil
 }
 
-func (p *LocalProvisioner) start(ip string) error {
+func (p *DockerProvisioner) start(ip string) error {
 	args := []string{"-q", "-o", "StrictHostKeyChecking no", "-l", "ubuntu", ip, "sudo /var/lib/tsuru/hooks/start"}
 	err := executor().Execute("ssh", args, nil, nil, nil)
 	if err != nil {
@@ -104,8 +104,8 @@ func (p *LocalProvisioner) start(ip string) error {
 // Provision creates a container and install its dependencies
 //
 // TODO (flaviamissi): make this atomic
-func (p *LocalProvisioner) Provision(app provision.App) error {
-	go func(p *LocalProvisioner, app provision.App) {
+func (p *DockerProvisioner) Provision(app provision.App) error {
+	go func(p *DockerProvisioner, app provision.App) {
 		c := container{name: app.GetName()}
 		log.Printf("creating container %s", c.name)
 		u := provision.Unit{
@@ -178,7 +178,7 @@ func (p *LocalProvisioner) Provision(app provision.App) error {
 	return nil
 }
 
-func (p *LocalProvisioner) Restart(app provision.App) error {
+func (p *DockerProvisioner) Restart(app provision.App) error {
 	var buf bytes.Buffer
 	err := p.ExecuteCommand(&buf, &buf, app, "/var/lib/tsuru/hooks/restart")
 	if err != nil {
@@ -189,11 +189,11 @@ func (p *LocalProvisioner) Restart(app provision.App) error {
 	return nil
 }
 
-func (p *LocalProvisioner) Deploy(app deploy.App, w io.Writer) error {
+func (p *DockerProvisioner) Deploy(app deploy.App, w io.Writer) error {
 	return nil
 }
 
-func (p *LocalProvisioner) Destroy(app provision.App) error {
+func (p *DockerProvisioner) Destroy(app provision.App) error {
 	units := app.ProvisionUnits()
 	for _, u := range units {
 		go func(u provision.AppUnit) {
@@ -225,20 +225,20 @@ func (p *LocalProvisioner) Destroy(app provision.App) error {
 	return nil
 }
 
-func (*LocalProvisioner) Addr(app provision.App) (string, error) {
+func (*DockerProvisioner) Addr(app provision.App) (string, error) {
 	units := app.ProvisionUnits()
 	return units[0].GetIp(), nil
 }
 
-func (*LocalProvisioner) AddUnits(app provision.App, units uint) ([]provision.Unit, error) {
+func (*DockerProvisioner) AddUnits(app provision.App, units uint) ([]provision.Unit, error) {
 	return []provision.Unit{}, nil
 }
 
-func (*LocalProvisioner) RemoveUnit(app provision.App, unitName string) error {
+func (*DockerProvisioner) RemoveUnit(app provision.App, unitName string) error {
 	return nil
 }
 
-func (*LocalProvisioner) ExecuteCommand(stdout, stderr io.Writer, app provision.App, cmd string, args ...string) error {
+func (*DockerProvisioner) ExecuteCommand(stdout, stderr io.Writer, app provision.App, cmd string, args ...string) error {
 	arguments := []string{"-l", "ubuntu", "-q", "-o", "StrictHostKeyChecking no"}
 	arguments = append(arguments, app.ProvisionUnits()[0].GetIp())
 	arguments = append(arguments, cmd)
@@ -250,7 +250,7 @@ func (*LocalProvisioner) ExecuteCommand(stdout, stderr io.Writer, app provision.
 	return nil
 }
 
-func (p *LocalProvisioner) CollectStatus() ([]provision.Unit, error) {
+func (p *DockerProvisioner) CollectStatus() ([]provision.Unit, error) {
 	var units []provision.Unit
 	err := p.collection().Find(nil).All(&units)
 	if err != nil {
@@ -259,7 +259,7 @@ func (p *LocalProvisioner) CollectStatus() ([]provision.Unit, error) {
 	return units, nil
 }
 
-func (p *LocalProvisioner) collection() *mgo.Collection {
+func (p *DockerProvisioner) collection() *mgo.Collection {
 	name, err := config.GetString("docker:collection")
 	if err != nil {
 		log.Fatalf("FATAL: %s.", err)
