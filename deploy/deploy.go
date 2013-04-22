@@ -12,7 +12,7 @@ type App interface {
 	// InstallDeps run the dependencies installation hook
 	InstallDeps(io.Writer) error
 
-    GetName() string
+	GetName() string
 }
 
 type Deployer interface {
