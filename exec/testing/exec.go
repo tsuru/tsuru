@@ -20,7 +20,7 @@ type command struct {
 
 type FakeExecutor struct {
 	cmds []command
-	mut sync.RWMutex
+	mut  sync.RWMutex
 }
 
 func (e *FakeExecutor) Execute(cmd string, args []string, stdin io.Reader, stdout, stderr io.Writer) error {
