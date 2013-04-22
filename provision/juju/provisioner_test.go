@@ -281,6 +281,7 @@ func (s *S) TestRemoveUnit(c *gocheck.C) {
 	args := []string{"remove-unit", "two/2"}
 	c.Assert(fexec.ExecutedCmd("juju", args), gocheck.Equals, true)
 	args = []string{"terminate-machine", "3"}
+	time.Sleep(3 * time.Second)
 	c.Assert(fexec.ExecutedCmd("juju", args), gocheck.Equals, true)
 	n, err := collection.Find(bson.M{"_id": "two/2"}).Count()
 	c.Assert(err, gocheck.IsNil)
