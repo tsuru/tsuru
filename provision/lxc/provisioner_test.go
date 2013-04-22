@@ -24,7 +24,7 @@ import (
 func (s *S) TestShouldBeRegistered(c *gocheck.C) {
 	p, err := provision.Get("lxc")
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(p, gocheck.FitsTypeOf, &LocalProvisioner{})
+	c.Assert(p, gocheck.FitsTypeOf, &LXCProvisioner{})
 }
 
 func (s *S) TestProvisionerProvision(c *gocheck.C) {
@@ -51,7 +51,7 @@ func (s *S) TestProvisionerProvision(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	_, err = file.Write(data)
 	c.Assert(err, gocheck.IsNil)
-	var p LocalProvisioner
+	var p LXCProvisioner
 	app := testing.NewFakeApp("myapp", "python", 0)
 	defer p.collection().Remove(bson.M{"name": "myapp"})
 	c.Assert(p.Provision(app), gocheck.IsNil)
@@ -95,7 +95,7 @@ func (s *S) TestProvisionerRestart(c *gocheck.C) {
 	defer func() {
 		execut = nil
 	}()
-	var p LocalProvisioner
+	var p LXCProvisioner
 	app := testing.NewFakeApp("almah", "static", 1)
 	err := p.Restart(app)
 	c.Assert(err, gocheck.IsNil)
@@ -105,7 +105,7 @@ func (s *S) TestProvisionerRestart(c *gocheck.C) {
 
 // func (s *S) TestProvisionerRestartFailure(c *gocheck.C) {
 // 	app := testing.NewFakeApp("cribcaged", "python", 1)
-// 	p := LocalProvisioner{}
+// 	p := LXCProvisioner{}
 // 	err := p.Restart(app)
 // 	c.Assert(err, gocheck.NotNil)
 // 	_, ok := err.(*provision.Error)
@@ -121,7 +121,7 @@ func (s *S) TestDeploy(c *gocheck.C) {
 	}()
 	app := testing.NewFakeApp("cribcaged", "python", 1)
 	w := &bytes.Buffer{}
-	p := LocalProvisioner{}
+	p := LXCProvisioner{}
 	err := p.Deploy(app, w)
 	c.Assert(err, gocheck.IsNil)
 	expected := make([]string, 3)
@@ -141,7 +141,7 @@ func (s *S) TestDeployLogsActions(c *gocheck.C) {
 	}()
 	app := testing.NewFakeApp("cribcaged", "python", 1)
 	w := &bytes.Buffer{}
-	p := LocalProvisioner{}
+	p := LXCProvisioner{}
 	err := p.Deploy(app, w)
 	c.Assert(err, gocheck.IsNil)
 	logs := w.String()
@@ -164,7 +164,7 @@ func (s *S) TestProvisionerDestroy(c *gocheck.C) {
 	defer func() {
 		execut = nil
 	}()
-	var p LocalProvisioner
+	var p LXCProvisioner
 	app := testing.NewFakeApp("myapp", "python", 1)
 	u := provision.Unit{
 		Name:   "myapp",
@@ -205,7 +205,7 @@ func (s *S) TestProvisionerDestroy(c *gocheck.C) {
 
 func (s *S) TestProvisionerAddr(c *gocheck.C) {
 	config.Set("router", "fake")
-	var p LocalProvisioner
+	var p LXCProvisioner
 	app := testing.NewFakeApp("myapp", "python", 1)
 	addr, err := p.Addr(app)
 	c.Assert(err, gocheck.IsNil)
@@ -215,7 +215,7 @@ func (s *S) TestProvisionerAddr(c *gocheck.C) {
 }
 
 func (s *S) TestProvisionerAddUnits(c *gocheck.C) {
-	var p LocalProvisioner
+	var p LXCProvisioner
 	app := testing.NewFakeApp("myapp", "python", 0)
 	units, err := p.AddUnits(app, 2)
 	c.Assert(err, gocheck.IsNil)
@@ -223,7 +223,7 @@ func (s *S) TestProvisionerAddUnits(c *gocheck.C) {
 }
 
 func (s *S) TestProvisionerRemoveUnit(c *gocheck.C) {
-	var p LocalProvisioner
+	var p LXCProvisioner
 	app := testing.NewFakeApp("myapp", "python", 0)
 	err := p.RemoveUnit(app, "")
 	c.Assert(err, gocheck.IsNil)
@@ -235,7 +235,7 @@ func (s *S) TestProvisionerExecuteCommand(c *gocheck.C) {
 	defer func() {
 		execut = nil
 	}()
-	var p LocalProvisioner
+	var p LXCProvisioner
 	var buf bytes.Buffer
 	app := testing.NewFakeApp("almah", "static", 2)
 	err := p.ExecuteCommand(&buf, &buf, app, "ls", "-lh")
@@ -245,7 +245,7 @@ func (s *S) TestProvisionerExecuteCommand(c *gocheck.C) {
 }
 
 func (s *S) TestCollectStatus(c *gocheck.C) {
-	var p LocalProvisioner
+	var p LXCProvisioner
 	expected := []provision.Unit{
 		{
 			Name:       "vm1",
@@ -276,7 +276,7 @@ func (s *S) TestCollectStatus(c *gocheck.C) {
 }
 
 func (s *S) TestProvisionCollection(c *gocheck.C) {
-	var p LocalProvisioner
+	var p LXCProvisioner
 	collection := p.collection()
 	c.Assert(collection.Name, gocheck.Equals, s.collName)
 }
@@ -287,7 +287,7 @@ func (s *S) TestProvisionInstall(c *gocheck.C) {
 	defer func() {
 		execut = nil
 	}()
-	p := LocalProvisioner{}
+	p := LXCProvisioner{}
 	err := p.install("10.10.10.10")
 	c.Assert(err, gocheck.IsNil)
 	cmd := "ssh"
@@ -309,7 +309,7 @@ func (s *S) TestProvisionStart(c *gocheck.C) {
 	defer func() {
 		execut = nil
 	}()
-	p := LocalProvisioner{}
+	p := LXCProvisioner{}
 	err := p.start("10.10.10.10")
 	c.Assert(err, gocheck.IsNil)
 	cmd := "ssh"
@@ -331,7 +331,7 @@ func (s *S) TestProvisionSetup(c *gocheck.C) {
 	defer func() {
 		execut = nil
 	}()
-	p := LocalProvisioner{}
+	p := LXCProvisioner{}
 	formulasPath := "/home/ubuntu/formulas"
 	config.Set("lxc:formulas-path", formulasPath)
 	err := p.setup("10.10.10.10", "static")

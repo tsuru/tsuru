@@ -23,7 +23,7 @@ import (
 )
 
 func init() {
-	provision.Register("lxc", &LocalProvisioner{})
+	provision.Register("lxc", &LXCProvisioner{})
 }
 
 var execut exec.Executor
@@ -35,9 +35,9 @@ func executor() exec.Executor {
 	return execut
 }
 
-type LocalProvisioner struct{}
+type LXCProvisioner struct{}
 
-func (p *LocalProvisioner) router() (router.Router, error) {
+func (p *LXCProvisioner) router() (router.Router, error) {
 	r, err := config.GetString("router")
 	if err != nil {
 		return nil, err
@@ -45,7 +45,7 @@ func (p *LocalProvisioner) router() (router.Router, error) {
 	return router.Get(r)
 }
 
-func (p *LocalProvisioner) setup(ip, framework string) error {
+func (p *LXCProvisioner) setup(ip, framework string) error {
 	formulasPath, err := config.GetString("lxc:formulas-path")
 	if err != nil {
 		return err
@@ -85,7 +85,7 @@ func (p *LocalProvisioner) setup(ip, framework string) error {
 	return nil
 }
 
-func (p *LocalProvisioner) install(ip string) error {
+func (p *LXCProvisioner) install(ip string) error {
 	log.Printf("executing the install hook for %s", ip)
 	cmd := "ssh"
 	args := []string{"-q", "-o", "StrictHostKeyChecking no", "-l", "ubuntu", ip, "sudo /var/lib/tsuru/hooks/install"}
@@ -98,14 +98,14 @@ func (p *LocalProvisioner) install(ip string) error {
 	return nil
 }
 
-func (p *LocalProvisioner) start(ip string) error {
+func (p *LXCProvisioner) start(ip string) error {
 	cmd := "ssh"
 	args := []string{"-q", "-o", "StrictHostKeyChecking no", "-l", "ubuntu", ip, "sudo /var/lib/tsuru/hooks/start"}
 	return executor().Execute(cmd, args, nil, nil, nil)
 }
 
-func (p *LocalProvisioner) Provision(app provision.App) error {
-	go func(p *LocalProvisioner, app provision.App) {
+func (p *LXCProvisioner) Provision(app provision.App) error {
+	go func(p *LXCProvisioner, app provision.App) {
 		c := container{name: app.GetName()}
 		log.Printf("creating container %s", c.name)
 		u := provision.Unit{
@@ -176,7 +176,7 @@ func (p *LocalProvisioner) Provision(app provision.App) error {
 	return nil
 }
 
-func (p *LocalProvisioner) Restart(app provision.App) error {
+func (p *LXCProvisioner) Restart(app provision.App) error {
 	var buf bytes.Buffer
 	err := p.ExecuteCommand(&buf, &buf, app, "/var/lib/tsuru/hooks/restart")
 	if err != nil {
@@ -187,7 +187,7 @@ func (p *LocalProvisioner) Restart(app provision.App) error {
 	return nil
 }
 
-func (p *LocalProvisioner) Deploy(a deploy.App, w io.Writer) error {
+func (p *LXCProvisioner) Deploy(a deploy.App, w io.Writer) error {
 	if err := write(w, []byte("\n ---> Tsuru receiving push\n")); err != nil {
 		return err
 	}
@@ -214,7 +214,7 @@ func (p *LocalProvisioner) Deploy(a deploy.App, w io.Writer) error {
 	return write(w, []byte("\n ---> Deploy done!\n\n"))
 }
 
-func (p *LocalProvisioner) Destroy(app provision.App) error {
+func (p *LXCProvisioner) Destroy(app provision.App) error {
 	c := container{name: app.GetName()}
 	go func(c container) {
 		log.Printf("stoping container %s", c.name)
@@ -227,7 +227,7 @@ func (p *LocalProvisioner) Destroy(app provision.App) error {
 	return nil
 }
 
-func (p *LocalProvisioner) Addr(app provision.App) (string, error) {
+func (p *LXCProvisioner) Addr(app provision.App) (string, error) {
 	r, err := p.router()
 	if err != nil {
 		return "", err
@@ -235,15 +235,15 @@ func (p *LocalProvisioner) Addr(app provision.App) (string, error) {
 	return r.Addr(app.GetName()), nil
 }
 
-func (*LocalProvisioner) AddUnits(app provision.App, units uint) ([]provision.Unit, error) {
+func (*LXCProvisioner) AddUnits(app provision.App, units uint) ([]provision.Unit, error) {
 	return []provision.Unit{}, nil
 }
 
-func (*LocalProvisioner) RemoveUnit(app provision.App, unitName string) error {
+func (*LXCProvisioner) RemoveUnit(app provision.App, unitName string) error {
 	return nil
 }
 
-func (*LocalProvisioner) ExecuteCommand(stdout, stderr io.Writer, app provision.App, cmd string, args ...string) error {
+func (*LXCProvisioner) ExecuteCommand(stdout, stderr io.Writer, app provision.App, cmd string, args ...string) error {
 	arguments := []string{"-l", "ubuntu", "-q", "-o", "StrictHostKeyChecking no"}
 	arguments = append(arguments, app.ProvisionUnits()[0].GetIp())
 	arguments = append(arguments, cmd)
@@ -251,7 +251,7 @@ func (*LocalProvisioner) ExecuteCommand(stdout, stderr io.Writer, app provision.
 	return executor().Execute("ssh", arguments, nil, stdout, stderr)
 }
 
-func (p *LocalProvisioner) CollectStatus() ([]provision.Unit, error) {
+func (p *LXCProvisioner) CollectStatus() ([]provision.Unit, error) {
 	var units []provision.Unit
 	err := p.collection().Find(nil).All(&units)
 	if err != nil {
@@ -260,7 +260,7 @@ func (p *LocalProvisioner) CollectStatus() ([]provision.Unit, error) {
 	return units, nil
 }
 
-func (p *LocalProvisioner) collection() *mgo.Collection {
+func (p *LXCProvisioner) collection() *mgo.Collection {
 	name, err := config.GetString("lxc:collection")
 	if err != nil {
 		log.Fatalf("FATAL: %s.", err)
