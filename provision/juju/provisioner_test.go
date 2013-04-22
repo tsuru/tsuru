@@ -15,6 +15,7 @@ import (
 	"github.com/globocom/tsuru/testing"
 	"labix.org/v2/mgo/bson"
 	"launchpad.net/gocheck"
+	"runtime"
 	"strconv"
 	"strings"
 	"sync"
@@ -278,11 +279,22 @@ func (s *S) TestRemoveUnit(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	err = p.RemoveUnit(app, "two/2")
 	c.Assert(err, gocheck.IsNil)
-	args := []string{"remove-unit", "two/2"}
-	c.Assert(fexec.ExecutedCmd("juju", args), gocheck.Equals, true)
-	args = []string{"terminate-machine", "3"}
-	time.Sleep(3 * time.Second)
-	c.Assert(fexec.ExecutedCmd("juju", args), gocheck.Equals, true)
+	ran := make(chan bool, 1)
+	go func() {
+		for {
+			args1 := []string{"remove-unit", "two/2"}
+			args2 := []string{"terminate-machine", "3"}
+			if fexec.ExecutedCmd("juju", args1) && fexec.ExecutedCmd("juju", args2) {
+				ran <- true
+			}
+			runtime.Gosched()
+		}
+	}()
+	select {
+	case <-ran:
+	case <-time.After(2e9):
+		c.Errorf("Did not run terminate-machine command after 2 seconds.")
+	}
 	n, err := collection.Find(bson.M{"_id": "two/2"}).Count()
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(n, gocheck.Equals, 0)
@@ -878,8 +890,12 @@ func (s *ELBSuite) TestRemoveUnitWithELB(c *gocheck.C) {
 		}
 	}
 	fexec := &etesting.FakeExecutor{}
+	execMut.Lock()
 	execut = fexec
+	execMut.Unlock()
 	defer func() {
+		execMut.Lock()
+		defer execMut.Unlock()
 		execut = nil
 	}()
 	app := testing.NewFakeApp("radio", "rush", 4)

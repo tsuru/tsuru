@@ -27,6 +27,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -35,10 +36,17 @@ func init() {
 }
 
 var execut exec.Executor
+var execMut sync.RWMutex
 
 func executor() exec.Executor {
+	execMut.RLock()
+	defer execMut.RUnlock()
 	if execut == nil {
+		execMut.RUnlock()
+		execMut.Lock()
 		execut = exec.OsExecutor{}
+		execMut.Unlock()
+		execMut.RLock()
 	}
 	return execut
 }
