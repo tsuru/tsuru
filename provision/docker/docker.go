@@ -5,12 +5,12 @@
 package docker
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"github.com/globocom/config"
 	"github.com/globocom/tsuru/fs"
 	"github.com/globocom/tsuru/log"
-	"os/exec"
 	"strings"
 )
 
@@ -31,10 +31,10 @@ type container struct {
 
 // runCmd executes commands and log the given stdout and stderror.
 func runCmd(cmd string, args ...string) (string, error) {
-	out, err := exec.Command(cmd, args...).CombinedOutput()
+	out := bytes.Buffer{}
+	err := executor().Execute(cmd, args, nil, &out, &out)
 	log.Printf("running the cmd: %s with the args: %s", cmd, args)
-	output := string(out)
-	return output, err
+	return out.String(), err
 }
 
 // ip returns the ip for the container.

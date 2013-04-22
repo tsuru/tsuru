@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"github.com/globocom/config"
 	"github.com/globocom/tsuru/db"
+	"github.com/globocom/tsuru/exec"
 	"github.com/globocom/tsuru/log"
 	"github.com/globocom/tsuru/provision"
 	"github.com/globocom/tsuru/router"
@@ -17,11 +18,19 @@ import (
 	"io"
 	"labix.org/v2/mgo"
 	"labix.org/v2/mgo/bson"
-	"os/exec"
 )
 
 func init() {
 	provision.Register("docker", &LocalProvisioner{})
+}
+
+var execut exec.Executor
+
+func executor() exec.Executor {
+	if execut == nil {
+		execut = exec.OsExecutor{}
+	}
+	return execut
 }
 
 func (p *LocalProvisioner) router() (router.Router, error) {
@@ -40,27 +49,28 @@ func (p *LocalProvisioner) setup(ip, framework string) error {
 		return err
 	}
 	log.Printf("Creating hooks dir for %s", ip)
-	cmd := exec.Command("ssh", "-q", "-o", "StrictHostKeyChecking no", "-l", "ubuntu", ip, "sudo mkdir -p /var/lib/tsuru/hooks")
-	err = cmd.Run()
+	args := []string{"-q", "-o", "StrictHostKeyChecking no", "-l", "ubuntu", ip, "sudo mkdir -p /var/lib/tsuru/hooks"}
+	err = executor().Execute("ssh", args, nil, nil, nil)
 	if err != nil {
 		log.Printf("error on creating hooks dir for %s", ip)
 		log.Print(err)
 		return err
 	}
 	log.Printf("Permissons on hooks dir for %s", ip)
-	cmd = exec.Command("ssh", "-q", "-o", "StrictHostKeyChecking no", "-l", "ubuntu", ip, "sudo chown -R ubuntu /var/lib/tsuru/hooks")
-	err = cmd.Run()
+	args = []string{"-q", "-o", "StrictHostKeyChecking no", "-l", "ubuntu", ip, "sudo chown -R ubuntu /var/lib/tsuru/hooks"}
+	err = executor().Execute("ssh", args, nil, nil, nil)
 	if err != nil {
 		log.Printf("error on permissions for %s", ip)
 		log.Print(err)
 		return err
 	}
 	log.Printf("coping hooks to %s", ip)
-	cmd = exec.Command("scp", "-q", "-o", "StrictHostKeyChecking no", "-r", formulasPath+"/"+framework+"/hooks", "ubuntu@"+ip+":/var/lib/tsuru")
-	output, err := cmd.CombinedOutput()
+	output := bytes.Buffer{}
+	args = []string{"-q", "-o", "StrictHostKeyChecking no", "-r", formulasPath + "/" + framework + "/hooks", "ubuntu@" + ip + ":/var/lib/tsuru"}
+	err = executor().Execute("scp", args, nil, &output, &output)
 	if err != nil {
-		log.Printf("error on execute scp with the args: %#v", cmd.Args)
-		log.Print(string(output))
+		log.Printf("error on execute scp with the args: %#v", args)
+		log.Print(output.String())
 		log.Print(err)
 		return err
 	}
@@ -69,8 +79,8 @@ func (p *LocalProvisioner) setup(ip, framework string) error {
 
 func (p *LocalProvisioner) install(ip string) error {
 	log.Printf("executing the install hook for %s", ip)
-	cmd := exec.Command("ssh", "-q", "-o", "StrictHostKeyChecking no", "-l", "ubuntu", ip, "sudo /var/lib/tsuru/hooks/install")
-	err := cmd.Run()
+	args := []string{"-q", "-o", "StrictHostKeyChecking no", "-l", "ubuntu", ip, "sudo /var/lib/tsuru/hooks/install"}
+	err := executor().Execute("ssh", args, nil, nil, nil)
 	if err != nil {
 		log.Printf("error on install for %s", ip)
 		log.Print(err)
@@ -80,8 +90,8 @@ func (p *LocalProvisioner) install(ip string) error {
 }
 
 func (p *LocalProvisioner) start(ip string) error {
-	cmd := exec.Command("ssh", "-q", "-o", "StrictHostKeyChecking no", "-l", "ubuntu", ip, "sudo /var/lib/tsuru/hooks/start")
-	err := cmd.Run()
+	args := []string{"-q", "-o", "StrictHostKeyChecking no", "-l", "ubuntu", ip, "sudo /var/lib/tsuru/hooks/start"}
+	err := executor().Execute("ssh", args, nil, nil, nil)
 	if err != nil {
 		log.Printf("error on start for %s", ip)
 		log.Print(err)
@@ -232,10 +242,7 @@ func (*LocalProvisioner) ExecuteCommand(stdout, stderr io.Writer, app provision.
 	arguments = append(arguments, app.ProvisionUnits()[0].GetIp())
 	arguments = append(arguments, cmd)
 	arguments = append(arguments, args...)
-	c := exec.Command("ssh", arguments...)
-	c.Stdout = stdout
-	c.Stderr = stderr
-	err := c.Run()
+	err := executor().Execute("ssh", arguments, nil, stdout, stderr)
 	if err != nil {
 		return err
 	}
