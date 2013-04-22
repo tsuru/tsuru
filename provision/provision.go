@@ -8,8 +8,8 @@ package provision
 
 import (
 	"fmt"
+	"github.com/globocom/tsuru/deploy"
 	"io"
-    "github.com/globocom/tsuru/deploy"
 )
 
 type Status string
