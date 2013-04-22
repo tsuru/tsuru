@@ -166,6 +166,9 @@ func (r *RecordingFs) OpenFile(name string, flag int, perm os.FileMode) (fs.File
 	if flag&syscall.O_TRUNC == syscall.O_TRUNC {
 		f.Truncate(0)
 	}
+	if flag&syscall.O_APPEND == syscall.O_APPEND {
+		f.Seek(0, 2)
+	}
 	return f, err
 }
 

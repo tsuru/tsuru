@@ -6,6 +6,7 @@ package testing
 
 import (
 	"github.com/globocom/tsuru/fs"
+	"io/ioutil"
 	"launchpad.net/gocheck"
 	"os"
 	"syscall"
@@ -179,6 +180,24 @@ func (s *S) TestRecordingFsOpenFileTruncate(c *gocheck.C) {
 	c.Assert(fs.HasAction("openfile /my/file with mode 0600"), gocheck.Equals, true)
 	c.Assert(f, gocheck.FitsTypeOf, &FakeFile{})
 	c.Assert(f.(*FakeFile).content, gocheck.Equals, "")
+}
+
+func (s *S) TestRecordingFsOpenFileAppend(c *gocheck.C) {
+	fs := RecordingFs{}
+	f, err := fs.OpenFile("/my/file", syscall.O_APPEND|syscall.O_WRONLY, 0644)
+	c.Assert(err, gocheck.IsNil)
+	f.Write([]byte("Hi there!\n"))
+	f.Close()
+	f, err = fs.OpenFile("/my/file", syscall.O_APPEND|syscall.O_WRONLY, 0644)
+	c.Assert(err, gocheck.IsNil)
+	f.Write([]byte("Hi there!\n"))
+	f.Close()
+	f, err = fs.Open("/my/file")
+	c.Assert(err, gocheck.IsNil)
+	defer f.Close()
+	b, err := ioutil.ReadAll(f)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(string(b), gocheck.Equals, "Hi there!\nHi there!\n")
 }
 
 func (s *S) TestRecordingFsOpenFileReadAndWriteENOENT(c *gocheck.C) {
