@@ -6,9 +6,9 @@ package docker
 
 import (
 	"bytes"
-	"fmt"
 	"github.com/globocom/commandmocker"
 	"github.com/globocom/config"
+	etesting "github.com/globocom/tsuru/exec/testing"
 	fstesting "github.com/globocom/tsuru/fs/testing"
 	"github.com/globocom/tsuru/log"
 	"github.com/globocom/tsuru/provision"
@@ -19,6 +19,7 @@ import (
 	"launchpad.net/gocheck"
 	stdlog "log"
 	"os"
+	"runtime"
 	"time"
 )
 
@@ -29,7 +30,14 @@ func (s *S) TestShouldBeRegistered(c *gocheck.C) {
 }
 
 func (s *S) TestProvisionerProvision(c *gocheck.C) {
+	fexec := &etesting.FakeExecutor{}
+	execut = fexec
+	defer func() {
+		execut = nil
+	}()
 	config.Set("docker:authorized-key-path", "somepath")
+	formulasPath := "/home/ubuntu/formulas"
+	config.Set("docker:formulas-path", formulasPath)
 	rfs := &fstesting.RecordingFs{}
 	fsystem = rfs
 	defer func() {
@@ -50,9 +58,6 @@ func (s *S) TestProvisionerProvision(c *gocheck.C) {
 	defer commandmocker.Remove(scpTempDir)
 	var p DockerProvisioner
 	app := testing.NewFakeApp("myapp", "python", 0)
-	tmpdir, err := commandmocker.Add("sudo", "$*")
-	c.Assert(err, gocheck.IsNil)
-	defer commandmocker.Remove(tmpdir)
 	c.Assert(p.Provision(app), gocheck.IsNil)
 	defer p.collection().Remove(bson.M{"name": "myapp"})
 	ok := make(chan bool, 1)
@@ -67,7 +72,7 @@ func (s *S) TestProvisionerProvision(c *gocheck.C) {
 				ok <- true
 				return
 			}
-			time.Sleep(1e3)
+			runtime.Gosched()
 		}
 	}()
 	select {
@@ -75,10 +80,10 @@ func (s *S) TestProvisionerProvision(c *gocheck.C) {
 	case <-time.After(10e9):
 		c.Fatal("Timed out waiting for the container to be provisioned (10 seconds)")
 	}
-	c.Assert(commandmocker.Ran(tmpdir), gocheck.Equals, true)
-	expected := "docker run -d base /bin/bash myapp somepath"
-	expected += "docker inspect .*" // from ip call, the instance id in the end of this command is actually wrong, so we ignore it
-	c.Assert(commandmocker.Output(tmpdir), gocheck.Matches, expected)
+	args := []string{"docker", "run", "-d", "base", "/bin/bash", "myapp", "somepath"}
+	c.Assert(fexec.ExecutedCmd("sudo", args), gocheck.Equals, true)
+	args = []string{"docker", "inspect", ""}
+	c.Assert(fexec.ExecutedCmd("sudo", args), gocheck.Equals, true) // from ip call, the instance id in the end of this command is actually wrong, so we ignore it
 	r, err := p.router()
 	c.Assert(err, gocheck.IsNil)
 	fk := r.(*rtesting.FakeRouter)
@@ -149,19 +154,20 @@ func (s *S) TestProvisionerProvisionFillsUnitIp(c *gocheck.C) {
 }
 
 func (s *S) TestProvisionerRestart(c *gocheck.C) {
+	fexec := &etesting.FakeExecutor{}
+	execut = fexec
+	defer func() {
+		execut = nil
+	}()
 	var p DockerProvisioner
-	tmpdir, err := commandmocker.Add("ssh", "ok")
-	c.Assert(err, gocheck.IsNil)
-	defer commandmocker.Remove(tmpdir)
 	app := testing.NewFakeApp("almah", "static", 1)
-	err = p.Restart(app)
+	err := p.Restart(app)
 	c.Assert(err, gocheck.IsNil)
 	ip := app.ProvisionUnits()[0].GetIp()
-	expected := []string{
+	args := []string{
 		"-l", "ubuntu", "-q", "-o", "StrictHostKeyChecking no", ip, "/var/lib/tsuru/hooks/restart",
 	}
-	c.Assert(commandmocker.Ran(tmpdir), gocheck.Equals, true)
-	c.Assert(commandmocker.Parameters(tmpdir), gocheck.DeepEquals, expected)
+	c.Assert(fexec.ExecutedCmd("ssh", args), gocheck.Equals, true)
 }
 
 func (s *S) TestProvisionerRestartFailure(c *gocheck.C) {
@@ -179,10 +185,12 @@ func (s *S) TestProvisionerRestartFailure(c *gocheck.C) {
 }
 
 func (s *S) TestProvisionerDestroy(c *gocheck.C) {
+	fexec := &etesting.FakeExecutor{}
+	execut = fexec
+	defer func() {
+		execut = nil
+	}()
 	config.Set("docker:authorized-key-path", "somepath")
-	tmpdir, err := commandmocker.Add("sudo", "$*")
-	c.Assert(err, gocheck.IsNil)
-	defer commandmocker.Remove(tmpdir)
 	w := new(bytes.Buffer)
 	l := stdlog.New(w, "", stdlog.LstdFlags)
 	log.SetLogger(l)
@@ -194,7 +202,7 @@ func (s *S) TestProvisionerDestroy(c *gocheck.C) {
 		InstanceId: app.ProvisionUnits()[0].GetInstanceId(),
 		Status:     provision.StatusCreating,
 	}
-	err = s.conn.Collection(s.collName).Insert(&u)
+	err := s.conn.Collection(s.collName).Insert(&u)
 	c.Assert(err, gocheck.IsNil)
 	var p DockerProvisioner
 	c.Assert(p.Destroy(app), gocheck.IsNil)
@@ -218,10 +226,10 @@ func (s *S) TestProvisionerDestroy(c *gocheck.C) {
 	case <-time.After(10e9):
 		c.Error("Timed out waiting for the container to be destroyed (10 seconds)")
 	}
-	c.Assert(commandmocker.Ran(tmpdir), gocheck.Equals, true)
-	expected := "docker stop i-01"
-	expected += "docker rm i-01"
-	c.Assert(commandmocker.Output(tmpdir), gocheck.Equals, expected)
+	args := []string{"docker", "stop", "i-01"}
+	c.Assert(fexec.ExecutedCmd("sudo", args), gocheck.Equals, true)
+	args = []string{"docker", "rm", "i-01"}
+	c.Assert(fexec.ExecutedCmd("sudo", args), gocheck.Equals, true)
 }
 
 func (s *S) TestProvisionerAddr(c *gocheck.C) {
@@ -250,15 +258,17 @@ func (s *S) TestProvisionerRemoveUnit(c *gocheck.C) {
 func (s *S) TestProvisionerExecuteCommand(c *gocheck.C) {
 	var p DockerProvisioner
 	var buf bytes.Buffer
-	tmpdir, err := commandmocker.Add("ssh", "$*")
-	c.Assert(err, gocheck.IsNil)
-	defer commandmocker.Remove(tmpdir)
+	fexec := &etesting.FakeExecutor{}
+	execut = fexec
+	defer func() {
+		execut = nil
+	}()
 	app := testing.NewFakeApp("almah", "static", 2)
-	err = p.ExecuteCommand(&buf, &buf, app, "ls", "-lh")
+	err := p.ExecuteCommand(&buf, &buf, app, "ls", "-lh")
 	c.Assert(err, gocheck.IsNil)
-	cmdOutput := fmt.Sprintf("-l ubuntu -q -o StrictHostKeyChecking no %s ls -lh", app.ProvisionUnits()[0].GetIp())
-	c.Assert(commandmocker.Ran(tmpdir), gocheck.Equals, true)
-	c.Assert(commandmocker.Output(tmpdir), gocheck.Equals, cmdOutput)
+	ip := app.ProvisionUnits()[0].GetIp()
+	args := []string{"-l", "ubuntu", "-q", "-o", "StrictHostKeyChecking no", ip, "ls", "-lh"}
+	c.Assert(fexec.ExecutedCmd("ssh", args), gocheck.Equals, true)
 }
 
 func (s *S) TestCollectStatus(c *gocheck.C) {
@@ -299,14 +309,15 @@ func (s *S) TestProvisionCollection(c *gocheck.C) {
 }
 
 func (s *S) TestProvisionInstall(c *gocheck.C) {
-	tmpdir, err := commandmocker.Add("ssh", "$*")
-	c.Assert(err, gocheck.IsNil)
-	defer commandmocker.Remove(tmpdir)
+	fexec := &etesting.FakeExecutor{}
+	execut = fexec
+	defer func() {
+		execut = nil
+	}()
 	p := DockerProvisioner{}
-	err = p.install("10.10.10.10")
+	err := p.install("10.10.10.10")
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(commandmocker.Ran(tmpdir), gocheck.Equals, true)
-	cmds := []string{
+	args := []string{
 		"-q",
 		"-o",
 		"StrictHostKeyChecking no",
@@ -315,18 +326,19 @@ func (s *S) TestProvisionInstall(c *gocheck.C) {
 		"10.10.10.10",
 		"sudo /var/lib/tsuru/hooks/install",
 	}
-	c.Assert(commandmocker.Parameters(tmpdir), gocheck.DeepEquals, cmds)
+	c.Assert(fexec.ExecutedCmd("ssh", args), gocheck.Equals, true)
 }
 
 func (s *S) TestProvisionStart(c *gocheck.C) {
-	tmpdir, err := commandmocker.Add("ssh", "$*")
-	c.Assert(err, gocheck.IsNil)
-	defer commandmocker.Remove(tmpdir)
+	fexec := &etesting.FakeExecutor{}
+	execut = fexec
+	defer func() {
+		execut = nil
+	}()
 	p := DockerProvisioner{}
-	err = p.start("10.10.10.10")
+	err := p.start("10.10.10.10")
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(commandmocker.Ran(tmpdir), gocheck.Equals, true)
-	cmds := []string{
+	args := []string{
 		"-q",
 		"-o",
 		"StrictHostKeyChecking no",
@@ -335,23 +347,21 @@ func (s *S) TestProvisionStart(c *gocheck.C) {
 		"10.10.10.10",
 		"sudo /var/lib/tsuru/hooks/start",
 	}
-	c.Assert(commandmocker.Parameters(tmpdir), gocheck.DeepEquals, cmds)
+	c.Assert(fexec.ExecutedCmd("ssh", args), gocheck.Equals, true)
 }
 
 func (s *S) TestProvisionSetup(c *gocheck.C) {
-	tmpdir, err := commandmocker.Add("scp", "$*")
-	c.Assert(err, gocheck.IsNil)
-	defer commandmocker.Remove(tmpdir)
-	sshTempDir, err := commandmocker.Add("ssh", "$*")
-	c.Assert(err, gocheck.IsNil)
-	defer commandmocker.Remove(sshTempDir)
+	fexec := &etesting.FakeExecutor{}
+	execut = fexec
+	defer func() {
+		execut = nil
+	}()
 	p := DockerProvisioner{}
 	formulasPath := "/home/ubuntu/formulas"
 	config.Set("docker:formulas-path", formulasPath)
-	err = p.setup("10.10.10.10", "static")
+	err := p.setup("10.10.10.10", "static")
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(commandmocker.Ran(tmpdir), gocheck.Equals, true)
-	cmds := []string{
+	args := []string{
 		"-q",
 		"-o",
 		"StrictHostKeyChecking no",
@@ -359,9 +369,8 @@ func (s *S) TestProvisionSetup(c *gocheck.C) {
 		formulasPath + "/static/hooks",
 		"ubuntu@10.10.10.10:/var/lib/tsuru",
 	}
-	c.Assert(commandmocker.Parameters(tmpdir), gocheck.DeepEquals, cmds)
-	c.Assert(commandmocker.Ran(sshTempDir), gocheck.Equals, true)
-	cmds = []string{
+	c.Assert(fexec.ExecutedCmd("scp", args), gocheck.Equals, true)
+	args = []string{
 		"-q",
 		"-o",
 		"StrictHostKeyChecking no",
@@ -369,6 +378,9 @@ func (s *S) TestProvisionSetup(c *gocheck.C) {
 		"ubuntu",
 		"10.10.10.10",
 		"sudo mkdir -p /var/lib/tsuru/hooks",
+	}
+	c.Assert(fexec.ExecutedCmd("ssh", args), gocheck.Equals, true)
+	args = []string{
 		"-q",
 		"-o",
 		"StrictHostKeyChecking no",
@@ -377,5 +389,5 @@ func (s *S) TestProvisionSetup(c *gocheck.C) {
 		"10.10.10.10",
 		"sudo chown -R ubuntu /var/lib/tsuru/hooks",
 	}
-	c.Assert(commandmocker.Parameters(sshTempDir), gocheck.DeepEquals, cmds)
+	c.Assert(fexec.ExecutedCmd("ssh", args), gocheck.Equals, true)
 }

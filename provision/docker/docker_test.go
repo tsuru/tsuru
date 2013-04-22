@@ -7,20 +7,22 @@ package docker
 import (
 	"github.com/globocom/commandmocker"
 	"github.com/globocom/config"
+	etesting "github.com/globocom/tsuru/exec/testing"
 	"launchpad.net/gocheck"
 )
 
 func (s *S) TestDockerCreate(c *gocheck.C) {
+	fexec := &etesting.FakeExecutor{}
+	execut = fexec
+	defer func() {
+		execut = nil
+	}()
 	config.Set("docker:authorized-key-path", "somepath")
-	tmpdir, err := commandmocker.Add("sudo", "$*")
-	c.Assert(err, gocheck.IsNil)
-	defer commandmocker.Remove(tmpdir)
 	container := container{name: "container"}
-	_, err = container.create()
+	_, err := container.create()
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(commandmocker.Ran(tmpdir), gocheck.Equals, true)
-	expected := "docker run -d base /bin/bash myapp somepath"
-	c.Assert(commandmocker.Output(tmpdir), gocheck.Equals, expected)
+	args := []string{"docker", "run", "-d", "base", "/bin/bash", "myapp", "somepath"}
+	c.Assert(fexec.ExecutedCmd("sudo", args), gocheck.Equals, true)
 }
 
 func (s *S) TestDockerStart(c *gocheck.C) {
@@ -30,38 +32,41 @@ func (s *S) TestDockerStart(c *gocheck.C) {
 }
 
 func (s *S) TestDockerStop(c *gocheck.C) {
-	tmpdir, err := commandmocker.Add("sudo", "$*")
-	c.Assert(err, gocheck.IsNil)
-	defer commandmocker.Remove(tmpdir)
+	fexec := &etesting.FakeExecutor{}
+	execut = fexec
+	defer func() {
+		execut = nil
+	}()
 	container := container{name: "container", instanceId: "id"}
-	err = container.stop()
+	err := container.stop()
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(commandmocker.Ran(tmpdir), gocheck.Equals, true)
-	expected := "docker stop id"
-	c.Assert(commandmocker.Output(tmpdir), gocheck.Equals, expected)
+	args := []string{"docker", "stop", "id"}
+	c.Assert(fexec.ExecutedCmd("sudo", args), gocheck.Equals, true)
 }
 
 func (s *S) TestDockerDestroy(c *gocheck.C) {
-	tmpdir, err := commandmocker.Add("sudo", "$*")
-	c.Assert(err, gocheck.IsNil)
-	defer commandmocker.Remove(tmpdir)
+	fexec := &etesting.FakeExecutor{}
+	execut = fexec
+	defer func() {
+		execut = nil
+	}()
 	container := container{name: "container", instanceId: "id"}
-	err = container.destroy()
+	err := container.destroy()
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(commandmocker.Ran(tmpdir), gocheck.Equals, true)
-	expected := "docker rm id"
-	c.Assert(commandmocker.Output(tmpdir), gocheck.Equals, expected)
+	args := []string{"docker", "rm", "id"}
+	c.Assert(fexec.ExecutedCmd("sudo", args), gocheck.Equals, true)
 }
 
 func (s *S) TestContainerIPRunsDockerInspectCommand(c *gocheck.C) {
-	tmpdir, err := commandmocker.Add("sudo", "$*")
-	c.Assert(err, gocheck.IsNil)
-	defer commandmocker.Remove(tmpdir)
+	fexec := &etesting.FakeExecutor{}
+	execut = fexec
+	defer func() {
+		execut = nil
+	}()
 	cont := container{name: "vm1", instanceId: "id"}
 	cont.ip()
-	c.Assert(commandmocker.Ran(tmpdir), gocheck.Equals, true)
-	expected := "docker inspect id"
-	c.Assert(commandmocker.Output(tmpdir), gocheck.Equals, expected)
+	args := []string{"docker", "inspect", "id"}
+	c.Assert(fexec.ExecutedCmd("sudo", args), gocheck.Equals, true)
 }
 
 func (s *S) TestContainerIPReturnsIpFromDockerInspect(c *gocheck.C) {
