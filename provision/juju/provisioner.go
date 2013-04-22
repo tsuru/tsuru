@@ -129,10 +129,10 @@ func (p *JujuProvisioner) Restart(app provision.App) error {
 }
 
 func (p *JujuProvisioner) Deploy(a deploy.App, w io.Writer) error {
-	if err := write(w, []byte("\n ---> Tsuru receiving push\n")); err != nil {
+	if err := log.Write(w, []byte("\n ---> Tsuru receiving push\n")); err != nil {
 		return err
 	}
-	if err := write(w, []byte("\n ---> Replicating the application repository across units\n")); err != nil {
+	if err := log.Write(w, []byte("\n ---> Replicating the application repository across units\n")); err != nil {
 		return err
 	}
 	out, err := repository.CloneOrPull(a)
@@ -140,10 +140,10 @@ func (p *JujuProvisioner) Deploy(a deploy.App, w io.Writer) error {
 		msg := fmt.Sprintf("Got error while clonning/pulling repository: %s -- \n%s", err.Error(), string(out))
 		return errors.New(msg)
 	}
-	if err := write(w, out); err != nil {
+	if err := log.Write(w, out); err != nil {
 		return err
 	}
-	if err := write(w, []byte("\n ---> Installing dependencies\n")); err != nil {
+	if err := log.Write(w, []byte("\n ---> Installing dependencies\n")); err != nil {
 		return err
 	}
 	if err := a.InstallDeps(w); err != nil {
@@ -152,7 +152,7 @@ func (p *JujuProvisioner) Deploy(a deploy.App, w io.Writer) error {
 	if err := a.Restart(w); err != nil {
 		return err
 	}
-	return write(w, []byte("\n ---> Deploy done!\n\n"))
+	return log.Write(w, []byte("\n ---> Deploy done!\n\n"))
 }
 
 func (p *JujuProvisioner) destroyService(app provision.App) error {
@@ -588,18 +588,4 @@ func unitStatus(instanceState, agentState, machineAgentState string) provision.S
 		return provision.StatusStarted
 	}
 	return provision.StatusPending
-}
-
-// write writes the given content to the given writer, and handls short writes.
-//
-// TODO(flaviamissi): this is the third implementation of this function, let's make just one.
-func write(w io.Writer, content []byte) error {
-	n, err := w.Write(content)
-	if err != nil {
-		return err
-	}
-	if n != len(content) {
-		return io.ErrShortWrite
-	}
-	return nil
 }

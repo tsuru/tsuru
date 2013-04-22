@@ -557,7 +557,7 @@ func (app *App) runHook(w io.Writer, cmds []string, kind string) error {
 		return nil
 	}
 	app.Log(fmt.Sprintf("Executing %s hook...", kind), "tsuru")
-	err := write(w, []byte("\n ---> Running "+kind+"\n"))
+	err := log.Write(w, []byte("\n ---> Running "+kind+"\n"))
 	if err != nil {
 		return err
 	}
@@ -630,7 +630,7 @@ func (app *App) Restart(w io.Writer) error {
 	if err != nil {
 		return err
 	}
-	err = write(w, []byte("\n ---> Restarting your app\n"))
+	err = log.Write(w, []byte("\n ---> Restarting your app\n"))
 	if err != nil {
 		return err
 	}
@@ -884,18 +884,6 @@ func List(u *auth.User) ([]App, error) {
 		return []App{}, err
 	}
 	return apps, nil
-}
-
-// write writes the given content to the given writer, and handls short writes.
-func write(w io.Writer, content []byte) error {
-	n, err := w.Write(content)
-	if err != nil {
-		return err
-	}
-	if n != len(content) {
-		return io.ErrShortWrite
-	}
-	return nil
 }
 
 // deployHooksAbsPath returns the absolute path to execute the given command.

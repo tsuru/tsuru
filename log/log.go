@@ -10,6 +10,7 @@
 package log
 
 import (
+	"io"
 	"log"
 	"sync"
 )
@@ -119,4 +120,15 @@ func Panicf(format string, v ...interface{}) {
 // SetLogger is a wrapper for DefaultTarget.SetLogger.
 func SetLogger(logger *log.Logger) {
 	DefaultTarget.SetLogger(logger)
+}
+
+func Write(w io.Writer, content []byte) error {
+	n, err := w.Write(content)
+	if err != nil {
+		return err
+	}
+	if n != len(content) {
+		return io.ErrShortWrite
+	}
+	return nil
 }

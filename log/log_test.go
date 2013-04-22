@@ -85,6 +85,13 @@ func (s *S) TestLogPrintfWithoutTarget(c *gocheck.C) {
 	Printf("log anything %d", 1)
 }
 
+func (s *S) TestWrite(c *gocheck.C) {
+	w := &bytes.Buffer{}
+	err := Write(w, []byte("teeest"))
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(w.String(), gocheck.Equals, "teeest")
+}
+
 func BenchmarkLogging(b *testing.B) {
 	var buf bytes.Buffer
 	target := new(Target)

@@ -24,17 +24,6 @@ import (
 	"strings"
 )
 
-func write(w io.Writer, content []byte) error {
-	n, err := w.Write(content)
-	if err != nil {
-		return err
-	}
-	if n != len(content) {
-		return io.ErrShortWrite
-	}
-	return nil
-}
-
 func getApp(name string, u *auth.User) (app.App, error) {
 	app := app.App{Name: name}
 	err := app.Get()
