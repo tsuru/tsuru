@@ -9,12 +9,12 @@ import (
 	"errors"
 	"github.com/globocom/commandmocker"
 	"github.com/globocom/config"
+	etesting "github.com/globocom/tsuru/exec/testing"
 	"github.com/globocom/tsuru/provision"
 	"github.com/globocom/tsuru/repository"
 	"github.com/globocom/tsuru/testing"
 	"labix.org/v2/mgo/bson"
 	"launchpad.net/gocheck"
-	"reflect"
 	"strconv"
 	"strings"
 	"sync"
@@ -49,23 +49,27 @@ func (s *S) TestUnitsCollection(c *gocheck.C) {
 }
 
 func (s *S) TestProvision(c *gocheck.C) {
+	fexec := &etesting.FakeExecutor{}
+	execut = fexec
+	defer func() {
+		execut = nil
+	}()
 	config.Set("juju:charms-path", "/etc/juju/charms")
 	defer config.Unset("juju:charms-path")
 	config.Set("host", "somehost")
 	defer config.Unset("host")
-	tmpdir, err := commandmocker.Add("juju", "$*")
-	c.Assert(err, gocheck.IsNil)
-	defer commandmocker.Remove(tmpdir)
 	app := testing.NewFakeApp("trace", "python", 0)
 	p := JujuProvisioner{}
-	err = p.Provision(app)
+	err := p.Provision(app)
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(commandmocker.Ran(tmpdir), gocheck.Equals, true)
-	expectedParams := []string{
+	args := []string{
 		"deploy", "--repository", "/etc/juju/charms", "local:python", "trace",
+	}
+	c.Assert(fexec.ExecutedCmd("juju", args), gocheck.Equals, true)
+	args = []string{
 		"set", "trace", "app-repo=" + repository.GetReadOnlyUrl("trace"),
 	}
-	c.Assert(commandmocker.Parameters(tmpdir), gocheck.DeepEquals, expectedParams)
+	c.Assert(fexec.ExecutedCmd("juju", args), gocheck.Equals, true)
 }
 
 func (s *S) TestProvisionUndefinedCharmsPath(c *gocheck.C) {
@@ -93,18 +97,19 @@ func (s *S) TestProvisionFailure(c *gocheck.C) {
 }
 
 func (s *S) TestRestart(c *gocheck.C) {
-	tmpdir, err := commandmocker.Add("juju", "restart")
-	c.Assert(err, gocheck.IsNil)
-	defer commandmocker.Remove(tmpdir)
+	fexec := &etesting.FakeExecutor{}
+	execut = fexec
+	defer func() {
+		execut = nil
+	}()
 	app := testing.NewFakeApp("cribcaged", "python", 1)
 	p := JujuProvisioner{}
-	err = p.Restart(app)
+	err := p.Restart(app)
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(commandmocker.Ran(tmpdir), gocheck.Equals, true)
-	expected := []string{
+	args := []string{
 		"ssh", "-o", "StrictHostKeyChecking no", "-q", "1", "/var/lib/tsuru/hooks/restart",
 	}
-	c.Assert(commandmocker.Parameters(tmpdir), gocheck.DeepEquals, expected)
+	c.Assert(fexec.ExecutedCmd("juju", args), gocheck.Equals, true)
 }
 
 func (s *S) TestRestartFailure(c *gocheck.C) {
@@ -164,14 +169,16 @@ func (s *S) TestDeployLogsActions(c *gocheck.C) {
 }
 
 func (s *S) TestDestroy(c *gocheck.C) {
-	tmpdir, err := commandmocker.Add("juju", "$*")
-	c.Assert(err, gocheck.IsNil)
-	defer commandmocker.Remove(tmpdir)
+	fexec := &etesting.FakeExecutor{}
+	execut = fexec
+	defer func() {
+		execut = nil
+	}()
 	app := testing.NewFakeApp("cribcaged", "python", 3)
 	p := JujuProvisioner{}
 	conn, collection := p.unitsCollection()
 	defer conn.Close()
-	err = collection.Insert(
+	err := collection.Insert(
 		instance{UnitName: "cribcaged/0"},
 		instance{UnitName: "cribcaged/1"},
 		instance{UnitName: "cribcaged/2"},
@@ -179,22 +186,14 @@ func (s *S) TestDestroy(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	err = p.Destroy(app)
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(commandmocker.Ran(tmpdir), gocheck.Equals, true)
-	expected := []string{
-		"destroy-service", "cribcaged",
-		"terminate-machine", "1",
-		"terminate-machine", "2",
-		"terminate-machine", "3",
-	}
-	ran := make(chan bool, 1)
-	go func() {
-		for {
-			if reflect.DeepEqual(commandmocker.Parameters(tmpdir), expected) {
-				ran <- true
-			}
-			time.Sleep(1e3)
-		}
-	}()
+	args := []string{"destroy-service", "cribcaged"}
+	c.Assert(fexec.ExecutedCmd("juju", args), gocheck.Equals, true)
+	args = []string{"terminate-machine", "1"}
+	c.Assert(fexec.ExecutedCmd("juju", args), gocheck.Equals, true)
+	args = []string{"terminate-machine", "2"}
+	c.Assert(fexec.ExecutedCmd("juju", args), gocheck.Equals, true)
+	args = []string{"terminate-machine", "3"}
+	c.Assert(fexec.ExecutedCmd("juju", args), gocheck.Equals, true)
 	n, err := collection.Find(bson.M{
 		"_id": bson.M{
 			"$in": []string{"cribcaged/0", "cribcaged/1", "cribcaged/2"},
@@ -202,12 +201,7 @@ func (s *S) TestDestroy(c *gocheck.C) {
 	}).Count()
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(n, gocheck.Equals, 0)
-	select {
-	case <-ran:
-	case <-time.After(2e9):
-		c.Errorf("Did not run terminate-machine commands after 2 seconds.")
-	}
-	c.Assert(commandmocker.Parameters(tmpdir), gocheck.DeepEquals, expected)
+	c.Assert(fexec.ExecutedCmd("juju", args), gocheck.Equals, true)
 }
 
 func (s *S) TestDestroyFailure(c *gocheck.C) {
@@ -239,11 +233,10 @@ func (s *S) TestAddUnits(c *gocheck.C) {
 	}
 	expected := []string{"resist/3", "resist/4", "resist/5", "resist/6"}
 	c.Assert(names, gocheck.DeepEquals, expected)
-	c.Assert(commandmocker.Ran(tmpdir), gocheck.Equals, true)
-	expectedParams := []string{
+	args := []string{
 		"add-unit", "resist", "--num-units", "4",
 	}
-	c.Assert(commandmocker.Parameters(tmpdir), gocheck.DeepEquals, expectedParams)
+	c.Assert(commandmocker.Parameters(tmpdir), gocheck.DeepEquals, args)
 	_, err = getQueue(queueName).Get(1e6)
 	c.Assert(err, gocheck.NotNil)
 }
@@ -272,36 +265,26 @@ func (s *S) TestAddUnitsFailure(c *gocheck.C) {
 }
 
 func (s *S) TestRemoveUnit(c *gocheck.C) {
-	tmpdir, err := commandmocker.Add("juju", "removed")
-	c.Assert(err, gocheck.IsNil)
-	defer commandmocker.Remove(tmpdir)
+	fexec := &etesting.FakeExecutor{}
+	execut = fexec
+	defer func() {
+		execut = nil
+	}()
 	app := testing.NewFakeApp("two", "rush", 3)
 	p := JujuProvisioner{}
 	conn, collection := p.unitsCollection()
 	defer conn.Close()
-	err = collection.Insert(instance{UnitName: "two/2", InstanceId: "i-00000439"})
+	err := collection.Insert(instance{UnitName: "two/2", InstanceId: "i-00000439"})
 	c.Assert(err, gocheck.IsNil)
 	err = p.RemoveUnit(app, "two/2")
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(commandmocker.Ran(tmpdir), gocheck.Equals, true)
-	expected := []string{"remove-unit", "two/2", "terminate-machine", "3"}
-	ran := make(chan bool, 1)
-	go func() {
-		for {
-			if reflect.DeepEqual(commandmocker.Parameters(tmpdir), expected) {
-				ran <- true
-			}
-			time.Sleep(1e3)
-		}
-	}()
+	args := []string{"remove-unit", "two/2"}
+	c.Assert(fexec.ExecutedCmd("juju", args), gocheck.Equals, true)
+	args = []string{"terminate-machine", "3"}
+	c.Assert(fexec.ExecutedCmd("juju", args), gocheck.Equals, true)
 	n, err := collection.Find(bson.M{"_id": "two/2"}).Count()
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(n, gocheck.Equals, 0)
-	select {
-	case <-ran:
-	case <-time.After(2e9):
-		c.Errorf("Did not run terminate-machine command after 2 seconds.")
-	}
 }
 
 func (s *S) TestRemoveUnitUnknownByJuju(c *gocheck.C) {
@@ -340,30 +323,49 @@ func (s *S) TestRemoveUnitFailure(c *gocheck.C) {
 	c.Assert(e.Err.Error(), gocheck.Equals, "exit status 66")
 }
 
-func (s *S) TestExecuteCommand(c *gocheck.C) {
+func (s *S) TestExecutedCmd(c *gocheck.C) {
 	var buf bytes.Buffer
-	tmpdir, err := commandmocker.Add("juju", "$*")
-	c.Assert(err, gocheck.IsNil)
-	defer commandmocker.Remove(tmpdir)
+	fexec := &etesting.FakeExecutor{}
+	execut = fexec
+	defer func() {
+		execut = nil
+	}()
 	app := testing.NewFakeApp("almah", "static", 2)
 	p := JujuProvisioner{}
-	err = p.ExecuteCommand(&buf, &buf, app, "ls", "-lh")
+	err := p.ExecuteCommand(&buf, &buf, app, "ls", "-lh")
 	c.Assert(err, gocheck.IsNil)
 	bufOutput := `Output from unit "almah/0":
 
-ssh -o StrictHostKeyChecking no -q 1 ls -lh
+
 
 Output from unit "almah/1":
 
-ssh -o StrictHostKeyChecking no -q 2 ls -lh
+
 `
-	cmdOutput := "ssh -o StrictHostKeyChecking no -q 1 ls -lhssh -o StrictHostKeyChecking no -q 2 ls -lh"
-	c.Assert(commandmocker.Ran(tmpdir), gocheck.Equals, true)
-	c.Assert(commandmocker.Output(tmpdir), gocheck.Equals, cmdOutput)
+	args := []string{
+		"ssh",
+		"-o",
+		"StrictHostKeyChecking no",
+		"-q",
+		"1",
+		"ls",
+		"-lh",
+	}
+	c.Assert(fexec.ExecutedCmd("juju", args), gocheck.Equals, true)
+	args = []string{
+		"ssh",
+		"-o",
+		"StrictHostKeyChecking no",
+		"-q",
+		"2",
+		"ls",
+		"-lh",
+	}
+	c.Assert(fexec.ExecutedCmd("juju", args), gocheck.Equals, true)
 	c.Assert(buf.String(), gocheck.Equals, bufOutput)
 }
 
-func (s *S) TestExecuteCommandFailure(c *gocheck.C) {
+func (s *S) TestExecutedCmdFailure(c *gocheck.C) {
 	var buf bytes.Buffer
 	tmpdir, err := commandmocker.Error("juju", "failed", 2)
 	c.Assert(err, gocheck.IsNil)
@@ -376,36 +378,64 @@ func (s *S) TestExecuteCommandFailure(c *gocheck.C) {
 	c.Assert(buf.String(), gocheck.Equals, "failed\n")
 }
 
-func (s *S) TestExecuteCommandOneUnit(c *gocheck.C) {
+func (s *S) TestExecutedCmdOneUnit(c *gocheck.C) {
 	var buf bytes.Buffer
-	tmpdir, err := commandmocker.Add("juju", "$*")
-	c.Assert(err, gocheck.IsNil)
-	defer commandmocker.Remove(tmpdir)
+	fexec := &etesting.FakeExecutor{}
+	execut = fexec
+	defer func() {
+		execut = nil
+	}()
 	app := testing.NewFakeApp("almah", "static", 1)
 	p := JujuProvisioner{}
-	err = p.ExecuteCommand(&buf, &buf, app, "ls", "-lh")
+	err := p.ExecuteCommand(&buf, &buf, app, "ls", "-lh")
 	c.Assert(err, gocheck.IsNil)
-	output := "ssh -o StrictHostKeyChecking no -q 1 ls -lh"
-	c.Assert(commandmocker.Ran(tmpdir), gocheck.Equals, true)
-	c.Assert(commandmocker.Output(tmpdir), gocheck.Equals, output)
-	c.Assert(buf.String(), gocheck.Equals, output+"\n")
+	args := []string{
+		"ssh",
+		"-o",
+		"StrictHostKeyChecking no",
+		"-q",
+		"1",
+		"ls",
+		"-lh",
+	}
+	c.Assert(fexec.ExecutedCmd("juju", args), gocheck.Equals, true)
 }
 
-func (s *S) TestExecuteCommandUnitDown(c *gocheck.C) {
+func (s *S) TestExecutedCmdUnitDown(c *gocheck.C) {
 	var buf bytes.Buffer
-	tmpdir, err := commandmocker.Add("juju", "$*")
-	c.Assert(err, gocheck.IsNil)
-	defer commandmocker.Remove(tmpdir)
+	fexec := &etesting.FakeExecutor{}
+	execut = fexec
+	defer func() {
+		execut = nil
+	}()
 	app := testing.NewFakeApp("almah", "static", 3)
 	app.SetUnitStatus(provision.StatusDown, 1)
 	p := JujuProvisioner{}
-	err = p.ExecuteCommand(&buf, &buf, app, "ls", "-lha")
+	err := p.ExecuteCommand(&buf, &buf, app, "ls", "-lha")
 	c.Assert(err, gocheck.IsNil)
-	cmdOutput := "ssh -o StrictHostKeyChecking no -q 1 ls -lha"
-	cmdOutput += "ssh -o StrictHostKeyChecking no -q 3 ls -lha"
+	args := []string{
+		"ssh",
+		"-o",
+		"StrictHostKeyChecking no",
+		"-q",
+		"1",
+		"ls",
+		"-lha",
+	}
+	c.Assert(fexec.ExecutedCmd("juju", args), gocheck.Equals, true)
+	args = []string{
+		"ssh",
+		"-o",
+		"StrictHostKeyChecking no",
+		"-q",
+		"3",
+		"ls",
+		"-lha",
+	}
+	c.Assert(fexec.ExecutedCmd("juju", args), gocheck.Equals, true)
 	bufOutput := `Output from unit "almah/0":
 
-ssh -o StrictHostKeyChecking no -q 1 ls -lha
+
 
 Output from unit "almah/1":
 
@@ -413,10 +443,8 @@ Unit state is "down", it must be "started" for running commands.
 
 Output from unit "almah/2":
 
-ssh -o StrictHostKeyChecking no -q 3 ls -lha
+
 `
-	c.Assert(commandmocker.Ran(tmpdir), gocheck.Equals, true)
-	c.Assert(commandmocker.Output(tmpdir), gocheck.Equals, cmdOutput)
 	c.Assert(buf.String(), gocheck.Equals, bufOutput)
 }
 
@@ -764,14 +792,16 @@ func (s *S) TestAddrWithoutUnits(c *gocheck.C) {
 }
 
 func (s *ELBSuite) TestProvisionWithELB(c *gocheck.C) {
+	fexec := &etesting.FakeExecutor{}
+	execut = fexec
+	defer func() {
+		execut = nil
+	}()
 	config.Set("juju:charms-path", "/home/charms")
 	defer config.Unset("juju:charms-path")
-	tmpdir, err := commandmocker.Add("juju", "deployed")
-	c.Assert(err, gocheck.IsNil)
-	defer commandmocker.Remove(tmpdir)
 	app := testing.NewFakeApp("jimmy", "who", 0)
 	p := JujuProvisioner{}
-	err = p.Provision(app)
+	err := p.Provision(app)
 	c.Assert(err, gocheck.IsNil)
 	lb := p.LoadBalancer()
 	defer lb.Destroy(app)
@@ -788,12 +818,14 @@ func (s *ELBSuite) TestProvisionWithELB(c *gocheck.C) {
 func (s *ELBSuite) TestDestroyWithELB(c *gocheck.C) {
 	config.Set("juju:charms-path", "/home/charms")
 	defer config.Unset("juju:charms-path")
-	tmpdir, err := commandmocker.Add("juju", "deployed")
-	c.Assert(err, gocheck.IsNil)
-	defer commandmocker.Remove(tmpdir)
+	fexec := &etesting.FakeExecutor{}
+	execut = fexec
+	defer func() {
+		execut = nil
+	}()
 	app := testing.NewFakeApp("jimmy", "who", 0)
 	p := JujuProvisioner{}
-	err = p.Provision(app)
+	err := p.Provision(app)
 	c.Assert(err, gocheck.IsNil)
 	err = p.Destroy(app)
 	c.Assert(err, gocheck.IsNil)
@@ -844,13 +876,15 @@ func (s *ELBSuite) TestRemoveUnitWithELB(c *gocheck.C) {
 			InstanceId: id,
 		}
 	}
-	tmpdir, err := commandmocker.Add("juju", "unit removed")
-	c.Assert(err, gocheck.IsNil)
-	defer commandmocker.Remove(tmpdir)
+	fexec := &etesting.FakeExecutor{}
+	execut = fexec
+	defer func() {
+		execut = nil
+	}()
 	app := testing.NewFakeApp("radio", "rush", 4)
 	manager := ELBManager{}
 	manager.e = s.client
-	err = manager.Create(app)
+	err := manager.Create(app)
 	c.Assert(err, gocheck.IsNil)
 	defer manager.Destroy(app)
 	err = manager.Register(app, units...)
