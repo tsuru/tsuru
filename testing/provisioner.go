@@ -115,6 +115,11 @@ func (a *FakeApp) InstallDeps(io.Writer) error {
 	return nil
 }
 
+func (a *FakeApp) Run(cmd string, w io.Writer) error {
+	a.Commands = append(a.Commands, fmt.Sprintf("ran %s", cmd))
+	return nil
+}
+
 type Cmd struct {
 	Cmd  string
 	Args []string
@@ -419,4 +424,8 @@ func (p *FakeProvisioner) Addr(app provision.App) (string, error) {
 		return "", err
 	}
 	return fmt.Sprintf("%s.fake-lb.tsuru.io", app.GetName()), nil
+}
+
+func (p *FakeProvisioner) InstallDeps(app provision.App, w io.Writer) error {
+	return nil
 }

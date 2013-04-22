@@ -76,6 +76,10 @@ type App interface {
 
 	// ProvisionUnits returns all units of the app, in a slice.
 	ProvisionUnits() []AppUnit
+
+	// Run executes the command in app units, sourcing apprc before running the
+	// command.
+	Run(cmd string, w io.Writer) error
 }
 
 // Provisioner is the basic interface of this package.
@@ -121,6 +125,10 @@ type Provisioner interface {
 	// an actual IP, collector calls it "IP") of the app from the
 	// provisioner.
 	Addr(App) (string, error)
+
+	// InstallDeps installs the dependencies required for the application
+	// to run and writes the log in the received writer
+	InstallDeps(app App, w io.Writer) error
 }
 
 var provisioners = make(map[string]Provisioner)
