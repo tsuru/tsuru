@@ -231,6 +231,16 @@ func (s *S) TestProvisionerRemoveUnit(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 }
 
+func (s *S) TestProvisionerInstallDepsExecutesHook(c *gocheck.C) {
+	var p LXCProvisioner
+	app := testing.NewFakeApp("myapp", "python", 0)
+	w := &bytes.Buffer{}
+	err := p.InstallDeps(app, w)
+	c.Assert(err, gocheck.IsNil)
+	expected := []string{"ran /var/lib/tsuru/hooks/dependencies"}
+	c.Assert(app.Commands, gocheck.DeepEquals, expected)
+}
+
 func (s *S) TestProvisionerExecuteCommand(c *gocheck.C) {
 	fexec := &etesting.FakeExecutor{}
 	execut = fexec
