@@ -157,6 +157,7 @@ func (p *LXCProvisioner) Provision(app provision.App) error {
 			log.Printf("error on start app for container %s", app.GetName())
 			log.Print(err)
 		}
+		err = p.start(c.Ip())
 		r, err := p.router()
 		if err != nil {
 			log.Print(err)
