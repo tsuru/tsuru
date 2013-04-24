@@ -2,6 +2,15 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
+// Package hipache provides a router implementation that store routes in Redis,
+// as specified by Hipache (https://github.com/dotcloud/hipache).
+//
+// It does not provided any exported type, in order to use the router, you must
+// import this package and get the router intance using the function
+// router.Get.
+//
+// In order to use this router, you need to define the "hipache:domain"
+// setting.
 package hipache
 
 import (
