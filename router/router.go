@@ -10,7 +10,7 @@ import "fmt"
 
 // Router is the basic interface of this package.
 type Router interface {
-	// AddRoute addes a new route.
+	// AddRoute adds a new route.
 	AddRoute(name, ip string) error
 
 	//Remove removes a route.

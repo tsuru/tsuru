@@ -36,6 +36,8 @@ func (s *S) TestProvisionerProvision(c *gocheck.C) {
 	ln, err := net.Listen("tcp", ":2222")
 	c.Assert(err, gocheck.IsNil)
 	defer ln.Close()
+	formulasPath := "/home/ubuntu/formulas"
+	config.Set("lxc:formulas-path", formulasPath)
 	config.Set("lxc:ip-timeout", 5)
 	config.Set("lxc:ssh-port", 2222)
 	config.Set("lxc:authorized-key-path", "somepath")
@@ -72,7 +74,7 @@ func (s *S) TestProvisionerProvision(c *gocheck.C) {
 	}()
 	select {
 	case <-ok:
-	case <-time.After(45e9):
+	case <-time.After(10e9):
 		c.Fatal("Timed out waiting for the container to be provisioned (10 seconds)")
 	}
 	args := []string{"lxc-create", "-t", "ubuntu-cloud", "-n", "myapp", "--", "-S", "somepath"}
@@ -86,7 +88,7 @@ func (s *S) TestProvisionerProvision(c *gocheck.C) {
 	var unit provision.Unit
 	err = s.conn.Collection(s.collName).Find(bson.M{"name": "myapp"}).One(&unit)
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(unit.Ip, gocheck.Equals, "10.10.10.15")
+	c.Assert(unit.Ip, gocheck.Equals, "127.0.0.1")
 }
 
 func (s *S) TestProvisionerRestart(c *gocheck.C) {

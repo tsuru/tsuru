@@ -13,6 +13,7 @@ import (
 	"github.com/globocom/tsuru/log"
 	"io/ioutil"
 	"net"
+	"runtime"
 	"strings"
 	"time"
 )
@@ -107,7 +108,7 @@ func (c *container) waitForNetwork() error {
 		t = 60
 	}
 	timeout := time.After(time.Duration(t) * time.Second)
-	done := make(chan bool)
+	done := make(chan bool, 1)
 	go func(c *container) {
 		for {
 			port, err := config.GetInt("lxc:ssh-port")
@@ -121,6 +122,7 @@ func (c *container) waitForNetwork() error {
 				done <- true
 				break
 			}
+			runtime.Gosched()
 		}
 	}(c)
 	select {
