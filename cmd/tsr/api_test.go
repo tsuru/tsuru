@@ -20,7 +20,7 @@ func (s *S) TestApiCmdInfo(c *gocheck.C) {
 }
 
 func (s *S) TestApiCmdIsACommand(c *gocheck.C) {
-	var _ cmd.Command = &apiCmd{}
+	var _ cmd.FlaggedCommand = &apiCmd{}
 }
 
 func (s *S) TestApiCmdFlags(c *gocheck.C) {
