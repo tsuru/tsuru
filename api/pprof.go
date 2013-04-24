@@ -4,6 +4,6 @@
 
 // +build pprof
 
-package main
+package api
 
 import _ "net/http/pprof"
