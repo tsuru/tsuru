@@ -4,21 +4,15 @@
 # Use of this source code is governed by a BSD-style
 # license that can be found in the LICENSE file.
 
-# This script is used to build components from tsuru server (webserver and
-# collector).
+# This script is used to build tsr.
 
 destination_dir="dist-server"
-
-function build_and_package {
-	echo "Building $1... "
- 	go build -o $destination_dir/$1 github.com/globocom/tsuru/$1
-	tar -C $destination_dir -czf $destination_dir/tsuru-$1.tar.gz $1
-	rm $destination_dir/$1
-}
 
 echo -n "Creating \"$destination_dir\" directory... "
 mkdir -p $destination_dir
 echo "ok"
 
-build_and_package collector
-build_and_package api
+echo "Building tsr... "
+go build -o $destination_dir/tsr github.com/globocom/tsuru/cmd/tsr
+tar -C $destination_dir -czf $destination_dir/tsr.tar.gz tsr
+rm $destination_dir/tsr

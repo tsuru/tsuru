@@ -39,11 +39,8 @@ curl -sL https://s3.amazonaws.com/tsuru/dist-server/gandalf-bin.tar.gz | sudo ta
 echo "installing gandalf-webserver"
 curl -sL https://s3.amazonaws.com/tsuru/dist-server/gandalf-webserver.tar.gz | sudo tar -xz -C /usr/bin
 
-echo "installing tsuru-api"
-curl -sL https://s3.amazonaws.com/tsuru/dist-server/tsuru-api.tar.gz | sudo tar -xz -C /usr/bin
-
-echo "installing tsuru-collector"
-curl -sL https://s3.amazonaws.com/tsuru/dist-server/tsuru-collector.tar.gz | sudo tar -xz -C /usr/bin
+echo "installing tsr"
+curl -sL https://s3.amazonaws.com/tsuru/dist-server/tsr.tar.gz | sudo tar -xz -C /usr/bin
 
 echo "configuring tsuru"
 
@@ -106,7 +103,7 @@ echo "starting git daemon"
 sudo su - git -c "git daemon --base-path=/var/repositories --syslog --export-all "&
 
 echo "starting tsuru-collector"
-collector &
+tsr collector &
 
 echo "starting tsuru-api"
-sudo api &
+sudo tsr api &

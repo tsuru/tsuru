@@ -159,25 +159,17 @@ available only for Linux 64 bits, so make sure that ``uname -m`` prints
     $ uname -m
     x86_64
 
-Then download and install the binaries. First, collector:
+Then download and install the tsr binary:
 
 .. highlight:: bash
 
 ::
 
-    $ curl -sL https://s3.amazonaws.com/tsuru/dist-server/tsuru-collector.tar.gz | sudo tar -xz -C /usr/bin
+    $ curl -sL https://s3.amazonaws.com/tsuru/dist-server/tsr.tar.gz | sudo tar -xz -C /usr/bin
 
-Then the API server:
-
-.. highlight:: bash
-
-::
-
-    $ curl -sL https://s3.amazonaws.com/tsuru/dist-server/tsuru-tsr.tar.gz | sudo tar -xz -C /usr/bin
-
-These commands will install ``collector`` and ``tsr`` commands in ``/usr/bin``
-(you will need to be a sudoer and provide your password). You may install these
-commands somewhere else in your ``PATH``.
+These commands will install ``tsr`` command in ``/usr/bin``
+(you will need to be a sudoer and provide your password). You may install this
+command in your ``PATH``.
 
 Configuring
 ~~~~~~~~~~~
@@ -211,17 +203,17 @@ Downloading charms
 Running
 ~~~~~~~
 
-Now that you have ``tsr`` and ``collector`` properly installed, and you
+Now that you have ``tsr`` properly installed, and you
 :doc:`configured tsuru </config>`, you're three steps away from running it.
 
 
-Start tsuru and collector
+Start api and collector
 
 .. highlight:: bash
 
 ::
 
-    $ collector &
+    $ tsr collector &
     $ sudo tsr api &
 
 You can see the logs in:
