@@ -5,6 +5,7 @@
 package testing
 
 import (
+	"errors"
 	"github.com/globocom/tsuru/router"
 )
 
@@ -37,5 +38,8 @@ func (r *FakeRouter) HasRoute(name string) bool {
 }
 
 func (r *FakeRouter) Addr(name string) (string, error) {
-	return r.routes[name], nil
+	if v, ok := r.routes[name]; ok {
+		return v, nil
+	}
+	return "", errors.New("Route not found")
 }
