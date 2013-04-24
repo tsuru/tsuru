@@ -70,8 +70,9 @@ func (s *S) TestAddRouteNoDomainConfigured(c *gocheck.C) {
 	config.Unset("hipache:domain")
 	err := router{}.AddRoute("tip", "http://10.10.10.10:8080")
 	c.Assert(err, gocheck.NotNil)
-	_, ok := err.(*routeError)
+	e, ok := err.(*routeError)
 	c.Assert(ok, gocheck.Equals, true)
+	c.Assert(e.op, gocheck.Equals, "add")
 }
 
 func (s *S) TestAddRouteConnectFailure(c *gocheck.C) {
@@ -80,8 +81,9 @@ func (s *S) TestAddRouteConnectFailure(c *gocheck.C) {
 	conn = nil
 	err := router{}.AddRoute("tip", "http://www.tsuru.io")
 	c.Assert(err, gocheck.NotNil)
-	_, ok := err.(*routeError)
+	e, ok := err.(*routeError)
 	c.Assert(ok, gocheck.Equals, true)
+	c.Assert(e.op, gocheck.Equals, "add")
 }
 
 func (s *S) TestAddRouteCommandFailure(c *gocheck.C) {
@@ -91,6 +93,48 @@ func (s *S) TestAddRouteCommandFailure(c *gocheck.C) {
 	e, ok := err.(*routeError)
 	c.Assert(ok, gocheck.Equals, true)
 	c.Assert(e.err.Error(), gocheck.Equals, "I can't do that.")
+	c.Assert(e.op, gocheck.Equals, "add")
+}
+
+func (s *S) TestRemoveRoute(c *gocheck.C) {
+	err := router{}.RemoveRoute("tip")
+	c.Assert(err, gocheck.IsNil)
+	expected := []command{
+		{cmd: "DEL", args: []interface{}{"frontend:tip.golang.org"}},
+	}
+	c.Assert(s.conn.cmds, gocheck.DeepEquals, expected)
+}
+
+func (s *S) TestRemoveRouteNoDomainConfigured(c *gocheck.C) {
+	old, _ := config.Get("hipache:domain")
+	defer config.Set("hipache:domain", old)
+	config.Unset("hipache:domain")
+	err := router{}.RemoveRoute("tip")
+	c.Assert(err, gocheck.NotNil)
+	e, ok := err.(*routeError)
+	c.Assert(ok, gocheck.Equals, true)
+	c.Assert(e.op, gocheck.Equals, "remove")
+}
+
+func (s *S) TestRemoveRouteConnectFailure(c *gocheck.C) {
+	config.Set("hipache:redis-server", "127.0.0.1:6380")
+	defer config.Unset("hipache:redis-server")
+	conn = nil
+	err := router{}.RemoveRoute("tip")
+	c.Assert(err, gocheck.NotNil)
+	e, ok := err.(*routeError)
+	c.Assert(ok, gocheck.Equals, true)
+	c.Assert(e.op, gocheck.Equals, "remove")
+}
+
+func (s *S) TestRemoveRouteCommandFailure(c *gocheck.C) {
+	conn = &failingFakeConn{}
+	err := router{}.RemoveRoute("tip")
+	c.Assert(err, gocheck.NotNil)
+	e, ok := err.(*routeError)
+	c.Assert(ok, gocheck.Equals, true)
+	c.Assert(e.err.Error(), gocheck.Equals, "I can't do that.")
+	c.Assert(e.op, gocheck.Equals, "remove")
 }
 
 func (s *S) TestRouteError(c *gocheck.C) {

@@ -45,6 +45,23 @@ func (router) AddRoute(name, ip string) error {
 	return nil
 }
 
+func (router) RemoveRoute(name string) error {
+	domain, err := config.GetString("hipache:domain")
+	if err != nil {
+		return &routeError{"remove", err}
+	}
+	frontend := "frontend:" + name + "." + domain
+	conn, err := connect()
+	if err != nil {
+		return &routeError{"remove", err}
+	}
+	_, err = conn.Do("DEL", frontend)
+	if err != nil {
+		return &routeError{"remove", err}
+	}
+	return nil
+}
+
 type routeError struct {
 	op  string
 	err error
