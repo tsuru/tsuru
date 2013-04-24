@@ -336,6 +336,16 @@ func (s *S) TestRemoveUnitFailure(c *gocheck.C) {
 	c.Assert(e.Err.Error(), gocheck.Equals, "exit status 66")
 }
 
+func (s *S) TestInstallDepsRunRelatedHook(c *gocheck.C) {
+	p := &JujuProvisioner{}
+	app := testing.NewFakeApp("myapp", "python", 0)
+	w := &bytes.Buffer{}
+	err := p.InstallDeps(app, w)
+	c.Assert(err, gocheck.IsNil)
+	expected := []string{"ran /var/lib/tsuru/hooks/dependencies"}
+	c.Assert(app.Commands, gocheck.DeepEquals, expected)
+}
+
 func (s *S) TestExecutedCmd(c *gocheck.C) {
 	var buf bytes.Buffer
 	fexec := &etesting.FakeExecutor{}

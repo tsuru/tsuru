@@ -154,7 +154,7 @@ func (p *JujuProvisioner) Deploy(a deploy.App, w io.Writer) error {
 	if err := log.Write(w, []byte("\n ---> Installing dependencies\n")); err != nil {
 		return err
 	}
-	if err := a.InstallDeps(w); err != nil {
+	if err := a.InstallDeps(w); err != nil { // call provisioner.InstallDeps?
 		return err
 	}
 	if err := a.Restart(w); err != nil {
@@ -327,6 +327,10 @@ func (p *JujuProvisioner) RemoveUnit(app provision.App, name string) error {
 		return fmt.Errorf("App %q does not have a unit named %q.", app.GetName(), name)
 	}
 	return p.removeUnit(app, unit)
+}
+
+func (p *JujuProvisioner) InstallDeps(app provision.App, w io.Writer) error {
+	return app.Run("/var/lib/tsuru/hooks/dependencies", w)
 }
 
 func (p *JujuProvisioner) ExecuteCommand(stdout, stderr io.Writer, app provision.App, cmd string, args ...string) error {
