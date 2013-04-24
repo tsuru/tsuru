@@ -211,11 +211,12 @@ func (s *S) TestProvisionerAddr(c *gocheck.C) {
 	config.Set("router", "fake")
 	var p LXCProvisioner
 	app := testing.NewFakeApp("myapp", "python", 1)
-	addr, err := p.Addr(app)
-	c.Assert(err, gocheck.IsNil)
 	r, err := p.router()
 	c.Assert(err, gocheck.IsNil)
+	r.AddRoute("myapp", "http://10.10.10.10")
 	a, err := r.Addr(app.GetName())
+	c.Assert(err, gocheck.IsNil)
+	addr, err := p.Addr(app)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(addr, gocheck.Equals, a)
 }
