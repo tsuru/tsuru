@@ -26,8 +26,8 @@ func filesystem() fs.Fs {
 
 // container represents an docker container with the given name.
 type container struct {
-	name       string
-	instanceId string
+	name string
+	id   string
 }
 
 // runCmd executes commands and log the given stdout and stderror.
@@ -44,8 +44,8 @@ func (c *container) ip() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	log.Printf("Getting ipaddress to instance %s", c.instanceId)
-	instanceJson, err := runCmd(docker, "inspect", c.instanceId)
+	log.Printf("Getting ipaddress to instance %s", c.id)
+	instanceJson, err := runCmd(docker, "inspect", c.id)
 	if err != nil {
 		msg := "error(%s) trying to inspect docker instance(%s) to get ipaddress"
 		log.Printf(msg, err)
@@ -92,10 +92,10 @@ func (c *container) create() (string, error) {
 		return "", err
 	}
 	args = append([]string{"run", "-d", template, cmd}, args...)
-	instanceId, err := runCmd(docker, args...)
-	instanceId = strings.Replace(instanceId, "\n", "", -1)
-	log.Printf("docker instanceId=%s", instanceId)
-	return instanceId, err
+	id, err := runCmd(docker, args...)
+	id = strings.Replace(id, "\n", "", -1)
+	log.Printf("docker id=%s", id)
+	return id, err
 }
 
 // start starts a docker container.
@@ -111,8 +111,8 @@ func (c *container) stop() error {
 		return err
 	}
 	//TODO: better error handling
-	log.Printf("trying to stop instance %s", c.instanceId)
-	output, err := runCmd(docker, "stop", c.instanceId)
+	log.Printf("trying to stop instance %s", c.id)
+	output, err := runCmd(docker, "stop", c.id)
 	log.Printf("docker stop=%s", output)
 	return err
 }
@@ -125,8 +125,8 @@ func (c *container) remove() error {
 	}
 	//TODO: better error handling
 	//TODO: Remove host's nginx route
-	log.Printf("trying to remove container %s", c.instanceId)
-	_, err = runCmd(docker, "rm", c.instanceId)
+	log.Printf("trying to remove container %s", c.id)
+	_, err = runCmd(docker, "rm", c.id)
 	return err
 }
 
@@ -139,9 +139,9 @@ func (c *container) commit(imgName string) error {
 	if err != nil {
 		return err
 	}
-	log.Printf("attempting to commit image from container %s", c.instanceId)
+	log.Printf("attempting to commit image from container %s", c.id)
 	imgName = fmt.Sprintf("%s/%s", registryUser, imgName)
-	_, err = runCmd(docker, "commit", c.instanceId, imgName)
+	_, err = runCmd(docker, "commit", c.id, imgName)
 	if err != nil {
 		log.Printf("Could not commit docker image: %s", err.Error())
 		return err

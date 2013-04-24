@@ -121,14 +121,14 @@ func (p *DockerProvisioner) Provision(app provision.App) error {
 			log.Print(err)
 			return
 		}
-		instanceId, err := c.create()
+		id, err := c.create()
 		if err != nil {
 			log.Printf("error on create container %s", app.GetName())
 			log.Print(err)
 			return
 		}
-		c.instanceId = instanceId
-		u.InstanceId = instanceId
+		c.id = id
+		u.InstanceId = id
 		if err := c.start(); err != nil {
 			log.Printf("error on start container %s", app.GetName())
 			log.Print(err)
@@ -151,7 +151,7 @@ func (p *DockerProvisioner) Provision(app provision.App) error {
 			log.Print(err)
 			return
 		}
-		log.Printf("running provisioning start() for container %s", c.instanceId)
+		log.Printf("running provisioning start() for container %s", c.id)
 		if err := p.start(ip); err != nil {
 			log.Printf("error on start app for container %s", app.GetName())
 			log.Print(err)
@@ -198,8 +198,8 @@ func (p *DockerProvisioner) Destroy(app provision.App) error {
 		go func(u provision.AppUnit) {
 			c := container{
 				name: app.GetName(),
-				// TODO: get actual c.instanceId
-				instanceId: u.GetInstanceId(),
+				// TODO: get actual c.id
+				id: u.GetInstanceId(),
 			}
 			log.Printf("stoping container %s", u.GetInstanceId())
 			if err := c.stop(); err != nil {

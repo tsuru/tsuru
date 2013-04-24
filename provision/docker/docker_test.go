@@ -38,7 +38,7 @@ func (s *S) TestDockerStop(c *gocheck.C) {
 	defer func() {
 		execut = nil
 	}()
-	container := container{name: "container", instanceId: "id"}
+	container := container{name: "container", id: "id"}
 	err := container.stop()
 	c.Assert(err, gocheck.IsNil)
 	args := []string{"stop", "id"}
@@ -51,7 +51,7 @@ func (s *S) TestDockerDestroy(c *gocheck.C) {
 	defer func() {
 		execut = nil
 	}()
-	container := container{name: "container", instanceId: "id"}
+	container := container{name: "container", id: "id"}
 	err := container.remove()
 	c.Assert(err, gocheck.IsNil)
 	args := []string{"rm", "id"}
@@ -64,7 +64,7 @@ func (s *S) TestDockerCommit(c *gocheck.C) {
 	defer func() {
 		execut = nil
 	}()
-	ctnr := container{name: "container", instanceId: "id"}
+	ctnr := container{name: "container", id: "id"}
 	err := ctnr.commit("app-name")
 	c.Assert(err, gocheck.IsNil)
 	registryUser, err := config.GetString("docker:registry-user")
@@ -80,7 +80,7 @@ func (s *S) TestContainerIPRunsDockerInspectCommand(c *gocheck.C) {
 	defer func() {
 		execut = nil
 	}()
-	cont := container{name: "vm1", instanceId: "id"}
+	cont := container{name: "vm1", id: "id"}
 	cont.ip()
 	args := []string{"inspect", "id"}
 	c.Assert(fexec.ExecutedCmd("docker", args), gocheck.Equals, true)
@@ -99,7 +99,7 @@ func (s *S) TestContainerIPReturnsIpFromDockerInspect(c *gocheck.C) {
 	tmpdir, err := commandmocker.Add("docker", cmdReturn)
 	c.Assert(err, gocheck.IsNil)
 	defer commandmocker.Remove(tmpdir)
-	cont := container{name: "vm1", instanceId: "id"}
+	cont := container{name: "vm1", id: "id"}
 	ip, err := cont.ip()
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(ip, gocheck.Equals, "10.10.10.10")
