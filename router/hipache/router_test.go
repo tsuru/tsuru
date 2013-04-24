@@ -55,7 +55,7 @@ func (s *S) TestConnectWhenConnIsNilAndCannotConnect(c *gocheck.C) {
 }
 
 func (s *S) TestAddRoute(c *gocheck.C) {
-	router := Router{}
+	router := router{}
 	err := router.AddRoute("tip", "http://10.10.10.10:8080")
 	c.Assert(err, gocheck.IsNil)
 	expected := []command{
@@ -68,7 +68,7 @@ func (s *S) TestAddRouteNoDomainConfigured(c *gocheck.C) {
 	old, _ := config.Get("hipache:domain")
 	defer config.Set("hipache:domain", old)
 	config.Unset("hipache:domain")
-	err := Router{}.AddRoute("tip", "http://10.10.10.10:8080")
+	err := router{}.AddRoute("tip", "http://10.10.10.10:8080")
 	c.Assert(err, gocheck.NotNil)
 	_, ok := err.(*routeError)
 	c.Assert(ok, gocheck.Equals, true)
@@ -78,7 +78,7 @@ func (s *S) TestAddRouteConnectFailure(c *gocheck.C) {
 	config.Set("hipache:redis-server", "127.0.0.1:6380")
 	defer config.Unset("hipache:redis-server")
 	conn = nil
-	err := Router{}.AddRoute("tip", "http://www.tsuru.io")
+	err := router{}.AddRoute("tip", "http://www.tsuru.io")
 	c.Assert(err, gocheck.NotNil)
 	_, ok := err.(*routeError)
 	c.Assert(ok, gocheck.Equals, true)
@@ -86,7 +86,7 @@ func (s *S) TestAddRouteConnectFailure(c *gocheck.C) {
 
 func (s *S) TestAddRouteCommandFailure(c *gocheck.C) {
 	conn = &failingFakeConn{}
-	err := Router{}.AddRoute("tip", "http://www.tsuru.io")
+	err := router{}.AddRoute("tip", "http://www.tsuru.io")
 	c.Assert(err, gocheck.NotNil)
 	e, ok := err.(*routeError)
 	c.Assert(ok, gocheck.Equals, true)
