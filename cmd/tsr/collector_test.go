@@ -20,5 +20,39 @@ func (s *S) TestCollectorCmdInfo(c *gocheck.C) {
 }
 
 func (s *S) TestCollectorCmdIsACommand(c *gocheck.C) {
-	var _ cmd.Command = &collectorCmd{}
+	var _ cmd.FlaggedCommand = &collectorCmd{}
+}
+
+func (s *S) TestCollectorCmdFlags(c *gocheck.C) {
+	command := collectorCmd{}
+	flagset := command.Flags()
+	c.Assert(flagset, gocheck.NotNil)
+	flagset.Parse(true, []string{"--dry", "true"})
+	flag := flagset.Lookup("dry")
+	c.Assert(flag, gocheck.NotNil)
+	c.Assert(flag.Name, gocheck.Equals, "dry")
+	c.Assert(flag.Usage, gocheck.Equals, "dry-run: does not run the collector (for testing purpose)")
+	c.Assert(flag.Value.String(), gocheck.Equals, "true")
+	c.Assert(flag.DefValue, gocheck.Equals, "false")
+	flagset.Parse(true, []string{"--config", "../etc/tsuru.conf"})
+	flag = flagset.Lookup("config")
+	c.Assert(flag, gocheck.NotNil)
+	c.Assert(flag.Name, gocheck.Equals, "config")
+	c.Assert(flag.Usage, gocheck.Equals, "tsr collector config file.")
+	c.Assert(flag.Value.String(), gocheck.Equals, "../etc/tsuru.conf")
+	c.Assert(flag.DefValue, gocheck.Equals, "/etc/tsuru/tsuru.conf")
+	flagset.Parse(true, []string{"-d", "true"})
+	flag = flagset.Lookup("d")
+	c.Assert(flag, gocheck.NotNil)
+	c.Assert(flag.Name, gocheck.Equals, "d")
+	c.Assert(flag.Usage, gocheck.Equals, "dry-run: does not run the collector (for testing purpose)")
+	c.Assert(flag.Value.String(), gocheck.Equals, "true")
+	c.Assert(flag.DefValue, gocheck.Equals, "false")
+	flagset.Parse(true, []string{"-c", "../etc/tsuru.conf"})
+	flag = flagset.Lookup("c")
+	c.Assert(flag, gocheck.NotNil)
+	c.Assert(flag.Name, gocheck.Equals, "c")
+	c.Assert(flag.Usage, gocheck.Equals, "tsr collector config file.")
+	c.Assert(flag.Value.String(), gocheck.Equals, "../etc/tsuru.conf")
+	c.Assert(flag.DefValue, gocheck.Equals, "/etc/tsuru/tsuru.conf")
 }
