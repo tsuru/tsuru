@@ -59,4 +59,5 @@ func (s *S) TestPlatformListInfo(c *gocheck.C) {
 }
 
 func (s *S) TestPlatformListIsACommand(c *gocheck.C) {
+	var _ cmd.Command = platformList{}
 }
