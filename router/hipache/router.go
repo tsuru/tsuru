@@ -29,9 +29,9 @@ func connect() (redis.Conn, error) {
 	return conn, nil
 }
 
-type router struct{}
+type hipacheRouter struct{}
 
-func (router) AddRoute(name, ip string) error {
+func (hipacheRouter) AddRoute(name, ip string) error {
 	domain, err := config.GetString("hipache:domain")
 	if err != nil {
 		return &routeError{"add", err}
@@ -48,7 +48,7 @@ func (router) AddRoute(name, ip string) error {
 	return nil
 }
 
-func (router) RemoveRoute(name string) error {
+func (hipacheRouter) RemoveRoute(name string) error {
 	domain, err := config.GetString("hipache:domain")
 	if err != nil {
 		return &routeError{"remove", err}
@@ -65,7 +65,7 @@ func (router) RemoveRoute(name string) error {
 	return nil
 }
 
-func (router) Addr(name string) (string, error) {
+func (hipacheRouter) Addr(name string) (string, error) {
 	domain, err := config.GetString("hipache:domain")
 	if err != nil {
 		return "", &routeError{"get", err}

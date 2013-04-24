@@ -55,7 +55,7 @@ func (s *S) TestConnectWhenConnIsNilAndCannotConnect(c *gocheck.C) {
 }
 
 func (s *S) TestAddRoute(c *gocheck.C) {
-	router := router{}
+	router := hipacheRouter{}
 	err := router.AddRoute("tip", "http://10.10.10.10:8080")
 	c.Assert(err, gocheck.IsNil)
 	expected := []command{
@@ -68,7 +68,7 @@ func (s *S) TestAddRouteNoDomainConfigured(c *gocheck.C) {
 	old, _ := config.Get("hipache:domain")
 	defer config.Set("hipache:domain", old)
 	config.Unset("hipache:domain")
-	err := router{}.AddRoute("tip", "http://10.10.10.10:8080")
+	err := hipacheRouter{}.AddRoute("tip", "http://10.10.10.10:8080")
 	c.Assert(err, gocheck.NotNil)
 	e, ok := err.(*routeError)
 	c.Assert(ok, gocheck.Equals, true)
@@ -79,7 +79,7 @@ func (s *S) TestAddRouteConnectFailure(c *gocheck.C) {
 	config.Set("hipache:redis-server", "127.0.0.1:6380")
 	defer config.Unset("hipache:redis-server")
 	conn = nil
-	err := router{}.AddRoute("tip", "http://www.tsuru.io")
+	err := hipacheRouter{}.AddRoute("tip", "http://www.tsuru.io")
 	c.Assert(err, gocheck.NotNil)
 	e, ok := err.(*routeError)
 	c.Assert(ok, gocheck.Equals, true)
@@ -88,7 +88,7 @@ func (s *S) TestAddRouteConnectFailure(c *gocheck.C) {
 
 func (s *S) TestAddRouteCommandFailure(c *gocheck.C) {
 	conn = &failingFakeConn{}
-	err := router{}.AddRoute("tip", "http://www.tsuru.io")
+	err := hipacheRouter{}.AddRoute("tip", "http://www.tsuru.io")
 	c.Assert(err, gocheck.NotNil)
 	e, ok := err.(*routeError)
 	c.Assert(ok, gocheck.Equals, true)
@@ -97,7 +97,7 @@ func (s *S) TestAddRouteCommandFailure(c *gocheck.C) {
 }
 
 func (s *S) TestRemoveRoute(c *gocheck.C) {
-	err := router{}.RemoveRoute("tip")
+	err := hipacheRouter{}.RemoveRoute("tip")
 	c.Assert(err, gocheck.IsNil)
 	expected := []command{
 		{cmd: "DEL", args: []interface{}{"frontend:tip.golang.org"}},
@@ -109,7 +109,7 @@ func (s *S) TestRemoveRouteNoDomainConfigured(c *gocheck.C) {
 	old, _ := config.Get("hipache:domain")
 	defer config.Set("hipache:domain", old)
 	config.Unset("hipache:domain")
-	err := router{}.RemoveRoute("tip")
+	err := hipacheRouter{}.RemoveRoute("tip")
 	c.Assert(err, gocheck.NotNil)
 	e, ok := err.(*routeError)
 	c.Assert(ok, gocheck.Equals, true)
@@ -120,7 +120,7 @@ func (s *S) TestRemoveRouteConnectFailure(c *gocheck.C) {
 	config.Set("hipache:redis-server", "127.0.0.1:6380")
 	defer config.Unset("hipache:redis-server")
 	conn = nil
-	err := router{}.RemoveRoute("tip")
+	err := hipacheRouter{}.RemoveRoute("tip")
 	c.Assert(err, gocheck.NotNil)
 	e, ok := err.(*routeError)
 	c.Assert(ok, gocheck.Equals, true)
@@ -129,7 +129,7 @@ func (s *S) TestRemoveRouteConnectFailure(c *gocheck.C) {
 
 func (s *S) TestRemoveRouteCommandFailure(c *gocheck.C) {
 	conn = &failingFakeConn{}
-	err := router{}.RemoveRoute("tip")
+	err := hipacheRouter{}.RemoveRoute("tip")
 	c.Assert(err, gocheck.NotNil)
 	e, ok := err.(*routeError)
 	c.Assert(ok, gocheck.Equals, true)
@@ -139,7 +139,7 @@ func (s *S) TestRemoveRouteCommandFailure(c *gocheck.C) {
 
 func (s *S) TestAddr(c *gocheck.C) {
 	conn = &resultCommandConn{result: []interface{}{[]byte("10.10.10.10:8080")}, fakeConn: &s.conn}
-	addr, err := router{}.Addr("tip")
+	addr, err := hipacheRouter{}.Addr("tip")
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(addr, gocheck.Equals, "10.10.10.10:8080")
 	expected := []command{
@@ -152,7 +152,7 @@ func (s *S) TestAddrNoDomainConfigured(c *gocheck.C) {
 	old, _ := config.Get("hipache:domain")
 	defer config.Set("hipache:domain", old)
 	config.Unset("hipache:domain")
-	addr, err := router{}.Addr("tip")
+	addr, err := hipacheRouter{}.Addr("tip")
 	c.Assert(addr, gocheck.Equals, "")
 	e, ok := err.(*routeError)
 	c.Assert(ok, gocheck.Equals, true)
@@ -163,7 +163,7 @@ func (s *S) TestAddrConnectFailure(c *gocheck.C) {
 	config.Set("hipache:redis-server", "127.0.0.1:6380")
 	defer config.Unset("hipache:redis-server")
 	conn = nil
-	addr, err := router{}.Addr("tip")
+	addr, err := hipacheRouter{}.Addr("tip")
 	c.Assert(addr, gocheck.Equals, "")
 	e, ok := err.(*routeError)
 	c.Assert(ok, gocheck.Equals, true)
@@ -172,7 +172,7 @@ func (s *S) TestAddrConnectFailure(c *gocheck.C) {
 
 func (s *S) TestAddrCommandFailure(c *gocheck.C) {
 	conn = &failingFakeConn{}
-	addr, err := router{}.Addr("tip")
+	addr, err := hipacheRouter{}.Addr("tip")
 	c.Assert(addr, gocheck.Equals, "")
 	e, ok := err.(*routeError)
 	c.Assert(ok, gocheck.Equals, true)
@@ -182,7 +182,7 @@ func (s *S) TestAddrCommandFailure(c *gocheck.C) {
 
 func (s *S) TestAddrRouteNotFound(c *gocheck.C) {
 	conn = &resultCommandConn{result: []interface{}{}, fakeConn: &s.conn}
-	addr, err := router{}.Addr("tip")
+	addr, err := hipacheRouter{}.Addr("tip")
 	c.Assert(addr, gocheck.Equals, "")
 	c.Assert(err, gocheck.Equals, errRouteNotFound)
 }
