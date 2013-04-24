@@ -7,12 +7,20 @@ package main
 import (
 	"github.com/globocom/tsuru/api"
 	"github.com/globocom/tsuru/cmd"
+	"launchpad.net/gnuflag"
 )
 
-type apiCmd struct{}
+type apiCmd struct {
+	fs     *gnuflag.FlagSet
+	config string
+	dry    bool
+}
 
-func (apiCmd) Run(context *cmd.Context, client *cmd.Client) error {
-	api.RunServer()
+func (c *apiCmd) Run(context *cmd.Context, client *cmd.Client) error {
+	flags := map[string]interface{}{}
+	flags["dry"] = c.dry
+	flags["config"] = c.config
+	api.RunServer(flags)
 	return nil
 }
 
@@ -23,4 +31,15 @@ func (apiCmd) Info() *cmd.Info {
 		Desc:    "Starts the tsuru api webserver.",
 		MinArgs: 0,
 	}
+}
+
+func (c *apiCmd) Flags() *gnuflag.FlagSet {
+	if c.fs == nil {
+		c.fs = gnuflag.NewFlagSet("api", gnuflag.ExitOnError)
+		c.fs.BoolVar(&c.dry, "dry", false, "dry-run: does not start the server (for testing purpose)")
+		c.fs.BoolVar(&c.dry, "d", false, "dry-run: does not start the server (for testing purpose)")
+		c.fs.StringVar(&c.config, "config", "/etc/tsuru/tsuru.conf", "tsr api server config file.")
+		c.fs.StringVar(&c.config, "c", "/etc/tsuru/tsuru.conf", "tsr api server config file.")
+	}
+	return c.fs
 }

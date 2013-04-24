@@ -173,9 +173,9 @@ Then the API server:
 
 ::
 
-    $ curl -sL https://s3.amazonaws.com/tsuru/dist-server/tsuru-api.tar.gz | sudo tar -xz -C /usr/bin
+    $ curl -sL https://s3.amazonaws.com/tsuru/dist-server/tsuru-tsr.tar.gz | sudo tar -xz -C /usr/bin
 
-These commands will install ``collector`` and ``api`` commands in ``/usr/bin``
+These commands will install ``collector`` and ``tsr`` commands in ``/usr/bin``
 (you will need to be a sudoer and provide your password). You may install these
 commands somewhere else in your ``PATH``.
 
@@ -211,7 +211,7 @@ Downloading charms
 Running
 ~~~~~~~
 
-Now that you have ``api`` and ``collector`` properly installed, and you
+Now that you have ``tsr`` and ``collector`` properly installed, and you
 :doc:`configured tsuru </config>`, you're three steps away from running it.
 
 
@@ -222,7 +222,7 @@ Start tsuru and collector
 ::
 
     $ collector &
-    $ sudo api &
+    $ sudo tsr api &
 
 You can see the logs in:
 

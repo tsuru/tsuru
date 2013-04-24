@@ -140,9 +140,9 @@ Then the API server:
 
 ::
 
-    $ curl -sL https://s3.amazonaws.com/tsuru/dist-server/tsuru-api.tar.gz | sudo tar -xz -C /usr/bin
+    $ curl -sL https://s3.amazonaws.com/tsuru/dist-server/tsuru-tsr.tar.gz | sudo tar -xz -C /usr/bin
 
-These commands will install ``collector`` and ``api`` commands in ``/usr/bin``
+These commands will install ``collector`` and ``tsr`` commands in ``/usr/bin``
 (you will need to be a sudoer and provide your password). You may install these
 commands somewhere else in your ``PATH``.
 
@@ -159,7 +159,7 @@ To build tsuru from source you will need to install the following packages
 
     $ sudo apt-get install -y golang-go git mercurial bzr gcc
 
-1. Install the tsuru api
+1. Install the tsuru tsr
 
 Add the following lines to your ~/.bashrc:
 
@@ -177,7 +177,7 @@ Then execute:
 ::
 
     $ source ~/.bashrc
-    $ go get github.com/globocom/tsuru/api
+    $ go get github.com/globocom/tsuru/tsr
     $ go get github.com/globocom/tsuru/collector
 
 Configuring tsuru
@@ -203,7 +203,7 @@ configuration, AWS credentials, etc.) before running tsuru.
 Running tsuru
 =============
 
-Now that you have ``api`` and ``collector`` properly installed, and you
+Now that you have ``tsr`` and ``collector`` properly installed, and you
 :doc:`configured tsuru </config>`, you're three steps away from running it.
 
 1. Start mongodb
@@ -228,7 +228,7 @@ Now that you have ``api`` and ``collector`` properly installed, and you
 
 ::
 
-    $ api &
+    $ tsr api &
     $ collector &
 
 One can see the logs in:

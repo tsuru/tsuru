@@ -68,11 +68,11 @@ get-prod:
 test:
 	@go test -i ./...
 	@go test ./...
-	@go build -o websrv ./api
-	@./websrv -dry=true -config=$(PWD)/etc/tsuru.conf
+	@go build -o tsr ./cmd/tsr
+	@./tsr api --dry --config ./etc/tsuru.conf
 	@go build -o collect ./collector/
 	@./collect -dry=true -config=$(PWD)/etc/tsuru.conf
-	@rm -f collect websrv
+	@rm -f collect tsr
 	@cmd/term/test.sh
 
 race:
@@ -87,10 +87,10 @@ client:
 
 # TODO: find a better place to do this
 run-docker:
-	@go build -o websrv ./api
+	@go build -o tsr ./cmd/tsr
 	@go build -o collect ./collector/
 	@sudo service beanstalkd start
-	@./websrv -config=$(PWD)/etc/tsuru-docker.conf &
+	@./tsr api --dry --config ./etc/tsuru-docker.conf
 	@./collect -config=$(PWD)/etc/tsuru-docker.conf &
 	@sudo su - git -c gandalf-webserver &
 	@sudo su - git -c "git daemon --base-path=/var/repositories --syslog --export-all" &
@@ -101,4 +101,4 @@ stop:
 	@if ps ax|grep "[w]ebsrv -config"; then ps ax|grep "[w]ebsrv -config"|awk {'print $$1'}|xargs kill; fi
 	@if ps ax|grep "[c]ollect -config"; then ps ax|grep "[c]ollect -config"|awk {'print $$1'}|xargs kill; fi
 	@sudo service beanstalkd stop
-	@rm -f collect websrv
+	@rm -f collect tsr

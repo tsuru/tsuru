@@ -5,7 +5,6 @@
 package api
 
 import (
-	"flag"
 	"fmt"
 	"github.com/bmizerany/pat"
 	"github.com/globocom/config"
@@ -27,16 +26,21 @@ func fatal(err error) {
 	log.Fatal(err)
 }
 
-func RunServer() {
+func RunServer(flags map[string]interface{}) {
 	logger, err := syslog.NewLogger(syslog.LOG_INFO, stdlog.LstdFlags)
 	if err != nil {
 		stdlog.Fatal(err)
 	}
 	log.SetLogger(logger)
-	configFile := flag.String("config", "/etc/tsuru/tsuru.conf", "tsuru config file")
-	dry := flag.Bool("dry", false, "dry-run: does not start the server (for testing purpose)")
-	flag.Parse()
-	err = config.ReadAndWatchConfigFile(*configFile)
+	configFile, ok := flags["config"].(string)
+	if !ok {
+		configFile = "/etc/tsuru/tsuru.conf"
+	}
+	dry, ok := flags["dry"].(bool)
+	if !ok {
+		dry = false
+	}
+	err = config.ReadAndWatchConfigFile(configFile)
 	if err != nil {
 		fatal(err)
 	}
@@ -117,10 +121,10 @@ func RunServer() {
 	m.Get("/healers", authorizationRequiredHandler(healers))
 	m.Get("/healers/:healer", authorizationRequiredHandler(healer))
 
-	if !*dry {
+	if !dry {
 		provisioner, err := config.GetString("provisioner")
 		if err != nil {
-			fmt.Printf("Warning: %q didn't declare a provisioner, using default provisioner.\n", *configFile)
+			fmt.Printf("Warning: %q didn't declare a provisioner, using default provisioner.\n", configFile)
 			provisioner = "juju"
 		}
 		app.Provisioner, err = provision.Get(provisioner)
