@@ -12,6 +12,7 @@ import (
 func buildManager() *cmd.Manager {
 	m := cmd.NewManager("tsr", "0.1.0", "", os.Stdout, os.Stderr, os.Stdin)
 	m.Register(&apiCmd{})
+	m.Register(&collectorCmd{})
 	return m
 }
 

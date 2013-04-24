@@ -26,3 +26,10 @@ func (s *S) TestApiCmdIsRegistered(c *gocheck.C) {
 	c.Assert(ok, gocheck.Equals, true)
 	c.Assert(create, gocheck.FitsTypeOf, &apiCmd{})
 }
+
+func (s *S) TestCollectorCmdIsRegistered(c *gocheck.C) {
+	manager := buildManager()
+	create, ok := manager.Commands["collector"]
+	c.Assert(ok, gocheck.Equals, true)
+	c.Assert(create, gocheck.FitsTypeOf, &collectorCmd{})
+}
