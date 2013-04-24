@@ -163,6 +163,8 @@ func (s *S) TestDeployLogsActions(c *gocheck.C) {
 
  ---> Installing dependencies
 
+ ---> Restarting application
+
  ---> Deploy done!
 
 `

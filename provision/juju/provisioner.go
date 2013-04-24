@@ -136,31 +136,8 @@ func (p *JujuProvisioner) Restart(app provision.App) error {
 	return nil
 }
 
-func (p *JujuProvisioner) Deploy(a deploy.App, w io.Writer) error {
-	if err := log.Write(w, []byte("\n ---> Tsuru receiving push\n")); err != nil {
-		return err
-	}
-	if err := log.Write(w, []byte("\n ---> Replicating the application repository across units\n")); err != nil {
-		return err
-	}
-	out, err := repository.CloneOrPull(a)
-	if err != nil {
-		msg := fmt.Sprintf("Got error while clonning/pulling repository: %s -- \n%s", err.Error(), string(out))
-		return errors.New(msg)
-	}
-	if err := log.Write(w, out); err != nil {
-		return err
-	}
-	if err := log.Write(w, []byte("\n ---> Installing dependencies\n")); err != nil {
-		return err
-	}
-	if err := a.InstallDeps(w); err != nil { // call provisioner.InstallDeps?
-		return err
-	}
-	if err := a.Restart(w); err != nil {
-		return err
-	}
-	return log.Write(w, []byte("\n ---> Deploy done!\n\n"))
+func (p *JujuProvisioner) Deploy(a provision.App, w io.Writer) error {
+	return deploy.Git(a, w)
 }
 
 func (p *JujuProvisioner) destroyService(app provision.App) error {

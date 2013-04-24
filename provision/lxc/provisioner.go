@@ -6,7 +6,6 @@ package lxc
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 	"github.com/globocom/config"
 	"github.com/globocom/tsuru/db"
@@ -14,7 +13,6 @@ import (
 	"github.com/globocom/tsuru/exec"
 	"github.com/globocom/tsuru/log"
 	"github.com/globocom/tsuru/provision"
-	"github.com/globocom/tsuru/repository"
 	"github.com/globocom/tsuru/router"
 	_ "github.com/globocom/tsuru/router/nginx"
 	"io"
@@ -188,31 +186,8 @@ func (p *LXCProvisioner) Restart(app provision.App) error {
 	return nil
 }
 
-func (p *LXCProvisioner) Deploy(a deploy.App, w io.Writer) error {
-	if err := log.Write(w, []byte("\n ---> Tsuru receiving push\n")); err != nil {
-		return err
-	}
-	if err := log.Write(w, []byte("\n ---> Replicating the application repository across units\n")); err != nil {
-		return err
-	}
-	out, err := repository.CloneOrPull(a) // should iterate over the machines (?)
-	if err != nil {
-		msg := fmt.Sprintf("Got error while clonning/pulling repository: %s -- \n%s", err.Error(), string(out))
-		return errors.New(msg)
-	}
-	if err := log.Write(w, out); err != nil {
-		return err
-	}
-	if err := log.Write(w, []byte("\n ---> Installing dependencies\n")); err != nil {
-		return err
-	}
-	if err := a.InstallDeps(w); err != nil {
-		return err
-	}
-	if err := a.Restart(w); err != nil {
-		return err
-	}
-	return log.Write(w, []byte("\n ---> Deploy done!\n\n"))
+func (p *LXCProvisioner) Deploy(a provision.App, w io.Writer) error {
+	return deploy.Git(a, w)
 }
 
 func (p *LXCProvisioner) Destroy(app provision.App) error {
