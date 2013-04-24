@@ -33,6 +33,14 @@ func (s *S) TestFakeFileClose(c *gocheck.C) {
 	c.Assert(f.current, gocheck.Equals, int64(0))
 }
 
+func (s *S) TestFakeFileCloseInternalFilePointer(c *gocheck.C) {
+	f := &FakeFile{}
+	f.Fd()
+	c.Assert(f.f, gocheck.NotNil)
+	f.Close()
+	c.Assert(f.f, gocheck.IsNil)
+}
+
 func (s *S) TestFakeFileRead(c *gocheck.C) {
 	content := "all I am"
 	f := &FakeFile{content: content}
