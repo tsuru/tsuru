@@ -134,6 +134,8 @@ Configuring gandalf
     webserver:
       port: \":8000\"" > /etc/gandalf.conf'
 
+Change the 'host: localhost' to your base domain.
+
 Nginx
 -----
 
@@ -193,6 +195,8 @@ You can download the sample configuration file from Github:
 
     $ [sudo] mkdir /etc/tsuru
     $ [sudo] curl -sL https://raw.github.com/globocom/tsuru/master/etc/tsuru-lxc.conf -o /etc/tsuru/tsuru.conf
+
+Change the placeholder 'YOURDOMAIN_HERE' to your base domain. It will be used as wildcard for all apps (like <yourappname>.yourdomain.com)
 
 Downloading charms
 ~~~~~~~~~~~~~~~~~~
