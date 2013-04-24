@@ -215,6 +215,13 @@ func (s *S) TestRecordingFsOpenFileAppend(c *gocheck.C) {
 	c.Assert(string(b), gocheck.Equals, "Hi there!\nHi there!\n")
 }
 
+func (s *S) TestRecordingFsOpenFileCreateAndExclusive(c *gocheck.C) {
+	fs := RecordingFs{}
+	f, err := fs.OpenFile("/my/file", os.O_EXCL|os.O_CREATE, 0600)
+	c.Assert(err, gocheck.Equals, syscall.EALREADY)
+	c.Assert(f, gocheck.IsNil)
+}
+
 func (s *S) TestRecordingFsOpenFileReadAndWriteENOENT(c *gocheck.C) {
 	fs := RecordingFs{}
 	f, err := fs.OpenFile("/my/file", syscall.O_RDWR, 0600)

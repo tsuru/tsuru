@@ -176,6 +176,9 @@ func (r *RecordingFs) Open(name string) (fs.File, error) {
 // an instance of FakeFile and nil error.
 func (r *RecordingFs) OpenFile(name string, flag int, perm os.FileMode) (fs.File, error) {
 	r.actions = append(r.actions, fmt.Sprintf("openfile %s with mode %#o", name, perm))
+	if flag&os.O_EXCL == os.O_EXCL && flag&os.O_CREATE == os.O_CREATE {
+		return nil, syscall.EALREADY
+	}
 	read := flag&syscall.O_CREAT != syscall.O_CREAT &&
 		flag&syscall.O_APPEND != syscall.O_APPEND &&
 		flag&syscall.O_TRUNC != syscall.O_TRUNC &&
