@@ -208,7 +208,7 @@ func (p *LXCProvisioner) Addr(app provision.App) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return r.Addr(app.GetName()), nil
+	return r.Addr(app.GetName())
 }
 
 func (*LXCProvisioner) AddUnits(app provision.App, units uint) ([]provision.Unit, error) {

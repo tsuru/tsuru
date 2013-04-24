@@ -215,7 +215,9 @@ func (s *S) TestProvisionerAddr(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	r, err := p.router()
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(addr, gocheck.Equals, r.Addr(app.GetName()))
+	a, err := r.Addr(app.GetName())
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(addr, gocheck.Equals, a)
 }
 
 func (s *S) TestProvisionerAddUnits(c *gocheck.C) {
