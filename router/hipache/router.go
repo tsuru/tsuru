@@ -5,12 +5,15 @@
 package hipache
 
 import (
+	"errors"
 	"fmt"
 	"github.com/garyburd/redigo/redis"
 	"github.com/globocom/config"
 )
 
 var conn redis.Conn
+
+var errRouteNotFound = errors.New("Route not found")
 
 func connect() (redis.Conn, error) {
 	if conn == nil {
@@ -60,6 +63,27 @@ func (router) RemoveRoute(name string) error {
 		return &routeError{"remove", err}
 	}
 	return nil
+}
+
+func (router) Addr(name string) (string, error) {
+	domain, err := config.GetString("hipache:domain")
+	if err != nil {
+		return "", &routeError{"get", err}
+	}
+	frontend := "frontend:" + name + "." + domain
+	conn, err := connect()
+	if err != nil {
+		return "", &routeError{"get", err}
+	}
+	reply, err := conn.Do("LRANGE", frontend, 1, 2)
+	if err != nil {
+		return "", &routeError{"get", err}
+	}
+	backends := reply.([]interface{})
+	if len(backends) < 1 {
+		return "", errRouteNotFound
+	}
+	return string(backends[0].([]byte)), nil
 }
 
 type routeError struct {

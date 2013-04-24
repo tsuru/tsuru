@@ -47,3 +47,13 @@ type failingFakeConn struct {
 func (c *failingFakeConn) Do(cmd string, args ...interface{}) (interface{}, error) {
 	return nil, errors.New("I can't do that.")
 }
+
+type resultCommandConn struct {
+	*fakeConn
+	result []interface{}
+}
+
+func (c *resultCommandConn) Do(cmd string, args ...interface{}) (interface{}, error) {
+	c.fakeConn.Do(cmd, args...)
+	return c.result, nil
+}
