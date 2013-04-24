@@ -22,6 +22,7 @@ type File interface {
 	io.ReaderAt
 	io.Seeker
 	io.Writer
+	Fd() uintptr
 	Stat() (os.FileInfo, error)
 	WriteString(s string) (ret int, err error)
 	Truncate(size int64) error
