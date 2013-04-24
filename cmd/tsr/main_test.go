@@ -33,3 +33,10 @@ func (s *S) TestCollectorCmdIsRegistered(c *gocheck.C) {
 	c.Assert(ok, gocheck.Equals, true)
 	c.Assert(create, gocheck.FitsTypeOf, &collectorCmd{})
 }
+
+func (s *S) TestTokenCmdIsRegistered(c *gocheck.C) {
+	manager := buildManager()
+	create, ok := manager.Commands["token"]
+	c.Assert(ok, gocheck.Equals, true)
+	c.Assert(create, gocheck.FitsTypeOf, &tokenCmd{})
+}
