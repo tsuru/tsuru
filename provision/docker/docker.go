@@ -45,7 +45,7 @@ func (c *container) ip() (string, error) {
 		return "", err
 	}
 	log.Printf("Getting ipaddress to instance %s", c.instanceId)
-	instanceJson, err := runCmd("sudo", docker, "inspect", c.instanceId)
+	instanceJson, err := runCmd(docker, "inspect", c.instanceId)
 	if err != nil {
 		msg := "error(%s) trying to inspect docker instance(%s) to get ipaddress"
 		log.Printf(msg, err)
@@ -91,8 +91,8 @@ func (c *container) create() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	args = append([]string{docker, "run", "-d", template, cmd}, args...)
-	instanceId, err := runCmd("sudo", args...)
+	args = append([]string{"run", "-d", template, cmd}, args...)
+	instanceId, err := runCmd(docker, args...)
 	instanceId = strings.Replace(instanceId, "\n", "", -1)
 	log.Printf("docker instanceId=%s", instanceId)
 	return instanceId, err
@@ -112,7 +112,7 @@ func (c *container) stop() error {
 	}
 	//TODO: better error handling
 	log.Printf("trying to stop instance %s", c.instanceId)
-	output, err := runCmd("sudo", docker, "stop", c.instanceId)
+	output, err := runCmd(docker, "stop", c.instanceId)
 	log.Printf("docker stop=%s", output)
 	return err
 }
@@ -126,7 +126,7 @@ func (c *container) destroy() error {
 	//TODO: better error handling
 	//TODO: Remove host's nginx route
 	log.Printf("trying to destroy instance %s", c.instanceId)
-	_, err = runCmd("sudo", docker, "rm", c.instanceId)
+	_, err = runCmd(docker, "rm", c.instanceId)
 	return err
 }
 

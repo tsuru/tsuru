@@ -80,10 +80,10 @@ func (s *S) TestProvisionerProvision(c *gocheck.C) {
 	case <-time.After(10e9):
 		c.Fatal("Timed out waiting for the container to be provisioned (10 seconds)")
 	}
-	args := []string{"docker", "run", "-d", "base", "/bin/bash", "myapp", "somepath"}
-	c.Assert(fexec.ExecutedCmd("sudo", args), gocheck.Equals, true)
-	args = []string{"docker", "inspect", ""}
-	c.Assert(fexec.ExecutedCmd("sudo", args), gocheck.Equals, true) // from ip call, the instance id in the end of this command is actually wrong, so we ignore it
+	args := []string{"run", "-d", "base", "/bin/bash", "myapp", "somepath"}
+	c.Assert(fexec.ExecutedCmd("docker", args), gocheck.Equals, true)
+	args = []string{"inspect", ""}
+	c.Assert(fexec.ExecutedCmd("docker", args), gocheck.Equals, true) // from ip call, the instance id in the end of this command is actually wrong, so we ignore it
 	r, err := p.router()
 	c.Assert(err, gocheck.IsNil)
 	fk := r.(*rtesting.FakeRouter)
@@ -121,7 +121,7 @@ func (s *S) TestProvisionerProvisionFillsUnitIp(c *gocheck.C) {
             \"PortMapping\": {}
     }
 }`
-	tmpdir, err := commandmocker.Add("sudo", out)
+	tmpdir, err := commandmocker.Add("docker", out)
 	c.Assert(err, gocheck.IsNil)
 	defer commandmocker.Remove(tmpdir)
 	c.Assert(p.Provision(app), gocheck.IsNil)
@@ -226,10 +226,10 @@ func (s *S) TestProvisionerDestroy(c *gocheck.C) {
 	case <-time.After(10e9):
 		c.Error("Timed out waiting for the container to be destroyed (10 seconds)")
 	}
-	args := []string{"docker", "stop", "i-01"}
-	c.Assert(fexec.ExecutedCmd("sudo", args), gocheck.Equals, true)
-	args = []string{"docker", "rm", "i-01"}
-	c.Assert(fexec.ExecutedCmd("sudo", args), gocheck.Equals, true)
+	args := []string{"stop", "i-01"}
+	c.Assert(fexec.ExecutedCmd("docker", args), gocheck.Equals, true)
+	args = []string{"rm", "i-01"}
+	c.Assert(fexec.ExecutedCmd("docker", args), gocheck.Equals, true)
 }
 
 func (s *S) TestProvisionerAddr(c *gocheck.C) {

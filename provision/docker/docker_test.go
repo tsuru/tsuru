@@ -22,8 +22,8 @@ func (s *S) TestDockerCreate(c *gocheck.C) {
 	container := container{name: "container"}
 	_, err := container.create()
 	c.Assert(err, gocheck.IsNil)
-	args := []string{"docker", "run", "-d", "base", "/bin/bash", "myapp", "somepath"}
-	c.Assert(fexec.ExecutedCmd("sudo", args), gocheck.Equals, true)
+	args := []string{"run", "-d", "base", "/bin/bash", "myapp", "somepath"}
+	c.Assert(fexec.ExecutedCmd("docker", args), gocheck.Equals, true)
 }
 
 func (s *S) TestDockerStart(c *gocheck.C) {
@@ -41,8 +41,8 @@ func (s *S) TestDockerStop(c *gocheck.C) {
 	container := container{name: "container", instanceId: "id"}
 	err := container.stop()
 	c.Assert(err, gocheck.IsNil)
-	args := []string{"docker", "stop", "id"}
-	c.Assert(fexec.ExecutedCmd("sudo", args), gocheck.Equals, true)
+	args := []string{"stop", "id"}
+	c.Assert(fexec.ExecutedCmd("docker", args), gocheck.Equals, true)
 }
 
 func (s *S) TestDockerDestroy(c *gocheck.C) {
@@ -54,8 +54,8 @@ func (s *S) TestDockerDestroy(c *gocheck.C) {
 	container := container{name: "container", instanceId: "id"}
 	err := container.destroy()
 	c.Assert(err, gocheck.IsNil)
-	args := []string{"docker", "rm", "id"}
-	c.Assert(fexec.ExecutedCmd("sudo", args), gocheck.Equals, true)
+	args := []string{"rm", "id"}
+	c.Assert(fexec.ExecutedCmd("docker", args), gocheck.Equals, true)
 }
 
 func (s *S) TestDockerCommit(c *gocheck.C) {
@@ -82,8 +82,8 @@ func (s *S) TestContainerIPRunsDockerInspectCommand(c *gocheck.C) {
 	}()
 	cont := container{name: "vm1", instanceId: "id"}
 	cont.ip()
-	args := []string{"docker", "inspect", "id"}
-	c.Assert(fexec.ExecutedCmd("sudo", args), gocheck.Equals, true)
+	args := []string{"inspect", "id"}
+	c.Assert(fexec.ExecutedCmd("docker", args), gocheck.Equals, true)
 }
 
 func (s *S) TestContainerIPReturnsIpFromDockerInspect(c *gocheck.C) {
@@ -96,7 +96,7 @@ func (s *S) TestContainerIPReturnsIpFromDockerInspect(c *gocheck.C) {
             \"PortMapping\": {}
     }
 }`
-	tmpdir, err := commandmocker.Add("sudo", cmdReturn)
+	tmpdir, err := commandmocker.Add("docker", cmdReturn)
 	c.Assert(err, gocheck.IsNil)
 	defer commandmocker.Remove(tmpdir)
 	cont := container{name: "vm1", instanceId: "id"}
