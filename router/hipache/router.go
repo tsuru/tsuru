@@ -9,11 +9,16 @@ import (
 	"fmt"
 	"github.com/garyburd/redigo/redis"
 	"github.com/globocom/config"
+	"github.com/globocom/tsuru/router"
 )
 
 var conn redis.Conn
 
 var errRouteNotFound = errors.New("Route not found")
+
+func init() {
+	router.Register("hipache", hipacheRouter{})
+}
 
 func connect() (redis.Conn, error) {
 	if conn == nil {

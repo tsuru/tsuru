@@ -7,6 +7,7 @@ package hipache
 import (
 	"errors"
 	"github.com/globocom/config"
+	"github.com/globocom/tsuru/router"
 	"launchpad.net/gocheck"
 	"testing"
 )
@@ -52,6 +53,13 @@ func (s *S) TestConnectWhenConnIsNilAndCannotConnect(c *gocheck.C) {
 	c.Assert(got, gocheck.IsNil)
 	c.Assert(conn, gocheck.IsNil)
 	c.Assert(err, gocheck.NotNil)
+}
+
+func (s *S) TestShouldBeRegistered(c *gocheck.C) {
+	r, err := router.Get("hipache")
+	c.Assert(err, gocheck.IsNil)
+	_, ok := r.(hipacheRouter)
+	c.Assert(ok, gocheck.Equals, true)
 }
 
 func (s *S) TestAddRoute(c *gocheck.C) {
