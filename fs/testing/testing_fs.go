@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"github.com/globocom/tsuru/fs"
 	"os"
+	"path"
 	"strings"
 	"syscall"
 )
@@ -25,6 +26,7 @@ type FakeFile struct {
 	content string
 	current int64
 	r       *strings.Reader
+	f       *os.File
 }
 
 func (f *FakeFile) reader() *strings.Reader {
@@ -36,6 +38,10 @@ func (f *FakeFile) reader() *strings.Reader {
 
 func (f *FakeFile) Close() error {
 	f.current = 0
+	if f.f != nil {
+		f.f.Close()
+		f.f = nil
+	}
 	return nil
 }
 
@@ -55,6 +61,18 @@ func (f *FakeFile) Seek(offset int64, whence int) (int64, error) {
 	var err error
 	f.current, err = f.reader().Seek(offset, whence)
 	return f.current, err
+}
+
+func (f *FakeFile) Fd() uintptr {
+	if f.f == nil {
+		var err error
+		p := path.Join(os.TempDir(), "testing-fs-file.txt")
+		f.f, err = os.Create(p)
+		if err != nil {
+			panic(err)
+		}
+	}
+	return f.f.Fd()
 }
 
 func (f *FakeFile) Stat() (fi os.FileInfo, err error) {

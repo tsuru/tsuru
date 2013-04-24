@@ -68,6 +68,13 @@ func (s *S) TestFakeFileSeek(c *gocheck.C) {
 	c.Assert(string(buf), gocheck.Equals, "equal")
 }
 
+func (s *S) TestFakeFileFd(c *gocheck.C) {
+	f := &FakeFile{}
+	defer f.Close()
+	fd := f.Fd()
+	c.Assert(fd, gocheck.Equals, f.f.Fd())
+}
+
 func (s *S) TestFakeFileStat(c *gocheck.C) {
 	var empty os.FileInfo
 	f := &FakeFile{content: "doesn't matter"}
