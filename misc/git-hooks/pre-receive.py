@@ -12,7 +12,7 @@ timeout = 1800
 
 try:
     headers = {"Authorization": token}
-    url = "{0}/apps/{1}/avaliable".format(tsuru_host, app_name)
+    url = "{0}/apps/{1}/available".format(tsuru_host, app_name)
     request = urllib2.Request(url, headers=headers)
     f = urllib2.urlopen(request, timeout=timeout)
 except urllib2.HTTPError as e:

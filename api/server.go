@@ -96,7 +96,7 @@ func RunServer(flags map[string]interface{}) {
 	// These handlers don't use :app on purpose. Using :app means that only
 	// the token generate for the given app is valid, but these handlers
 	// use a token generated for Gandalf.
-	m.Get("/apps/:appname/avaliable", authorizationRequiredHandler(appIsAvailable))
+	m.Get("/apps/:appname/available", authorizationRequiredHandler(appIsAvailable))
 	m.Get("/apps/:appname/repository/clone", authorizationRequiredHandler(cloneRepository))
 
 	if registrationEnabled, _ := config.GetBool("auth:user-registration"); registrationEnabled {
