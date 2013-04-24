@@ -1301,22 +1301,19 @@ func (s *S) TestSkipsPostRestartWhenPostRestartSectionDoesNotExists(c *gocheck.C
 }
 
 func (s *S) TestInstallDeps(c *gocheck.C) {
-	s.provisioner.PrepareOutput([]byte("dependencies installed"))
 	a := App{
 		Name:     "someApp",
 		Platform: "django",
 		Teams:    []string{s.team.Name},
 		Units:    []Unit{{Name: "i-0800", State: "started"}},
 	}
-	err := s.conn.Apps().Insert(a)
-	c.Assert(err, gocheck.IsNil)
-	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	//err := s.conn.Apps().Insert(a)
+	//c.Assert(err, gocheck.IsNil)
+	//defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	var buf bytes.Buffer
-	err = a.InstallDeps(&buf)
+	err := a.InstallDeps(&buf)
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(buf.String(), gocheck.Equals, "dependencies installed")
-	cmds := s.provisioner.GetCmds("/var/lib/tsuru/hooks/dependencies", &a)
-	c.Assert(cmds, gocheck.HasLen, 1)
+	c.Assert(buf.String(), gocheck.Equals, "InstallDeps called")
 }
 
 func (s *S) TestDeployShouldCallProvisionerDeploy(c *gocheck.C) {

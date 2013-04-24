@@ -641,9 +641,9 @@ func (app *App) Restart(w io.Writer) error {
 	return app.postRestart(w)
 }
 
-// InstallDeps runs the dependencies hook for the app, writing its output to w.
+// InstallDeps calls provisioner's InstallDeps function
 func (app *App) InstallDeps(w io.Writer) error {
-	return app.run("/var/lib/tsuru/hooks/dependencies", w)
+	return Provisioner.InstallDeps(app, w)
 }
 
 // GetUnits returns the internal list of units converted to bind.Unit.
