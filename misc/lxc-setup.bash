@@ -11,6 +11,9 @@ echo "updating and upgrading"
 sudo apt-get update
 sudo apt-get upgrade -y
 
+echo "installing sed"
+sudo apt-get install sed -y
+
 echo "installing lxc"
 sudo apt-get install lxc -y
 
@@ -43,11 +46,19 @@ echo "installing tsuru-collector"
 curl -sL https://s3.amazonaws.com/tsuru/dist-server/tsuru-collector.tar.gz | sudo tar -xz -C /usr/bin
 
 echo "configuring tsuru"
+
+while [ "$TSURU_DOMAIN" = "" ]
+do
+    echo -en "input the primary domain: "; read TSURU_DOMAIN
+done
+
 [ -d /etc/tsuru ] || sudo mkdir /etc/tsuru
-sudo curl -sL https://raw.github.com/globocom/tsuru/master/etc/tsuru-lxc.conf -o /etc/tsuru/tsuru.conf
+curl -sL https://raw.github.com/globocom/tsuru/master/etc/tsuru-lxc.conf -o /tmp/tsuru.conf
+
+sudo bash -c "cat /tmp/tsuru.conf | sed -e \"s/YOURDOMAIN_HERE/$TSURU_DOMAIN/\" > /etc/tsuru/tsuru.conf"
 
 echo "configuring gandalf"
-sudo bash -c 'echo "bin-path: /usr/bin/gandalf-bin
+sudo bash -c "echo \"bin-path: /usr/bin/gandalf-bin
 database:
   url: 127.0.0.1:27017
   name: gandalf
@@ -57,9 +68,9 @@ git:
     template: /home/git/bare-template
   daemon:
     export-all: true
-host: localhost
+host: $TSURU_DOMAIN
 webserver:
-  port: \":8000\"" > /etc/gandalf.conf'
+  port: \":8000\"\" > /etc/gandalf.conf"
 
 echo "creating the git user"
 sudo useradd git
