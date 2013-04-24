@@ -1,0 +1,28 @@
+// Copyright 2013 tsuru authors. All rights reserved.
+// Use of this source code is governed by a BSD-style
+// license that can be found in the LICENSE file.
+
+package main
+
+import (
+	"github.com/globocom/tsuru/cmd"
+	"launchpad.net/gocheck"
+	"os"
+)
+
+func (s *S) TestCommandsFromBaseManagerAreRegistered(c *gocheck.C) {
+	baseManager := cmd.NewManager("tsr", "0.1.0", "", os.Stdout, os.Stderr, os.Stdin)
+	manager := buildManager()
+	for name, instance := range baseManager.Commands {
+		command, ok := manager.Commands[name]
+		c.Assert(ok, gocheck.Equals, true)
+		c.Assert(command, gocheck.FitsTypeOf, instance)
+	}
+}
+
+func (s *S) TestApiCmdIsRegistered(c *gocheck.C) {
+	manager := buildManager()
+	create, ok := manager.Commands["api"]
+	c.Assert(ok, gocheck.Equals, true)
+	c.Assert(create, gocheck.FitsTypeOf, &apiCmd{})
+}

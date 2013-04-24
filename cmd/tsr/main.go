@@ -9,7 +9,13 @@ import (
 	"os"
 )
 
-func main() {
+func buildManager() *cmd.Manager {
 	m := cmd.NewManager("tsr", "0.1.0", "", os.Stdout, os.Stderr, os.Stdin)
+	m.Register(&apiCmd{})
+	return m
+}
+
+func main() {
+	m := buildManager()
 	m.Run(os.Args[1:])
 }
