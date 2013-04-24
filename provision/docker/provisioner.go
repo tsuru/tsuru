@@ -238,6 +238,10 @@ func (*DockerProvisioner) RemoveUnit(app provision.App, unitName string) error {
 	return nil
 }
 
+func (*DockerProvisioner) InstallDeps(app provision.App, w io.Writer) error {
+	return nil
+}
+
 func (*DockerProvisioner) ExecuteCommand(stdout, stderr io.Writer, app provision.App, cmd string, args ...string) error {
 	arguments := []string{"-l", "ubuntu", "-q", "-o", "StrictHostKeyChecking no"}
 	arguments = append(arguments, app.ProvisionUnits()[0].GetIp())
