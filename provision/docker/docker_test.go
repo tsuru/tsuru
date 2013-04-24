@@ -5,6 +5,7 @@
 package docker
 
 import (
+	"fmt"
 	"github.com/globocom/commandmocker"
 	"github.com/globocom/config"
 	etesting "github.com/globocom/tsuru/exec/testing"
@@ -55,6 +56,22 @@ func (s *S) TestDockerDestroy(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	args := []string{"docker", "rm", "id"}
 	c.Assert(fexec.ExecutedCmd("sudo", args), gocheck.Equals, true)
+}
+
+func (s *S) TestDockerCommit(c *gocheck.C) {
+	fexec := &etesting.FakeExecutor{}
+	execut = fexec
+	defer func() {
+		execut = nil
+	}()
+	ctnr := container{name: "container", instanceId: "id"}
+	err := ctnr.commit("app-name")
+	c.Assert(err, gocheck.IsNil)
+	registryUser, err := config.GetString("docker:registry-user")
+	c.Assert(err, gocheck.IsNil)
+	imageName := fmt.Sprintf("%s/app-name", registryUser)
+	args := []string{"commit", "id", imageName}
+	c.Assert(fexec.ExecutedCmd("docker", args), gocheck.Equals, true)
 }
 
 func (s *S) TestContainerIPRunsDockerInspectCommand(c *gocheck.C) {

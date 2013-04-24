@@ -8,6 +8,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"github.com/globocom/config"
 	"github.com/globocom/tsuru/fs"
 	"github.com/globocom/tsuru/log"
@@ -73,7 +74,6 @@ func (c *container) ip() (string, error) {
 }
 
 // create creates a docker container with base template by default.
-// TODO: this template already have a public key, we need to manage to install some way.
 func (c *container) create() (string, error) {
 	docker, err := config.GetString("docker:binary")
 	if err != nil {
@@ -128,4 +128,23 @@ func (c *container) destroy() error {
 	log.Printf("trying to destroy instance %s", c.instanceId)
 	_, err = runCmd("sudo", docker, "rm", c.instanceId)
 	return err
+}
+
+func (c *container) commit(imgName string) error {
+	docker, err := config.GetString("docker:binary")
+	if err != nil {
+		return err
+	}
+	registryUser, err := config.GetString("docker:registry-user")
+	if err != nil {
+		return err
+	}
+	log.Printf("attempting to commit image from container %s", c.instanceId)
+	imgName = fmt.Sprintf("%s/%s", registryUser, imgName)
+	_, err = runCmd(docker, "commit", c.instanceId, imgName)
+	if err != nil {
+		log.Printf("Could not commit docker image: %s", err.Error())
+		return err
+	}
+	return nil
 }
