@@ -62,7 +62,7 @@ func (s *S) TestAppIsAvailableHandlerShouldReturnErrorWhenAppStatusIsnotStarted(
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	defer s.conn.Logs().Remove(bson.M{"appname": a.Name})
-	url := fmt.Sprintf("/apps/%s/avaliable?:appname=%s", a.Name, a.Name)
+	url := fmt.Sprintf("/apps/%s/available?:appname=%s", a.Name, a.Name)
 	request, err := http.NewRequest("GET", url, nil)
 	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()

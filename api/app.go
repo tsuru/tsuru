@@ -56,7 +56,7 @@ func appIsAvailable(w http.ResponseWriter, r *http.Request, t *auth.Token) error
 		return err
 	}
 	if !app.Available() {
-		return fmt.Errorf("App must be avaliable to receive pushs.")
+		return fmt.Errorf("App must be available to receive pushs.")
 	}
 	w.WriteHeader(http.StatusOK)
 	return nil
