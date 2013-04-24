@@ -5,8 +5,12 @@
 package main
 
 import (
+	"bytes"
+	"github.com/globocom/config"
 	"github.com/globocom/tsuru/cmd"
 	"launchpad.net/gocheck"
+	"net/http"
+	"os"
 )
 
 func (s *S) TestTokenCmdInfo(c *gocheck.C) {
@@ -21,4 +25,21 @@ func (s *S) TestTokenCmdInfo(c *gocheck.C) {
 
 func (s *S) TestTokenCmdIsACommand(c *gocheck.C) {
 	var _ cmd.Command = &tokenCmd{}
+}
+
+func (s *S) TestTokenRun(c *gocheck.C) {
+	config.Set("database:url", "127.0.0.1:27017")
+	config.Set("database:name", "tsuru_tsr_test")
+	var stdout, stderr bytes.Buffer
+	context := cmd.Context{
+		Args:   []string{},
+		Stdout: &stdout,
+		Stderr: &stderr,
+	}
+	manager := cmd.NewManager("glb", "", "", &stdout, &stderr, os.Stdin)
+	client := cmd.NewClient(&http.Client{}, nil, manager)
+	command := tokenCmd{}
+	err := command.Run(&context, client)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(stdout.String(), gocheck.Not(gocheck.Equals), "")
 }

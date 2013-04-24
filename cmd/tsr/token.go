@@ -5,12 +5,19 @@
 package main
 
 import (
+	"fmt"
+	"github.com/globocom/tsuru/auth"
 	"github.com/globocom/tsuru/cmd"
 )
 
 type tokenCmd struct{}
 
 func (c *tokenCmd) Run(context *cmd.Context, client *cmd.Client) error {
+	t, err := auth.CreateApplicationToken("tsr")
+	if err != nil {
+		return err
+	}
+	fmt.Fprintf(context.Stdout, t.Token)
 	return nil
 }
 
