@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"github.com/globocom/config"
 	"github.com/globocom/tsuru/db"
-	"github.com/globocom/tsuru/deploy"
 	"github.com/globocom/tsuru/exec"
 	"github.com/globocom/tsuru/log"
 	"github.com/globocom/tsuru/provision"
@@ -189,7 +188,7 @@ func (p *DockerProvisioner) Restart(app provision.App) error {
 	return nil
 }
 
-func (p *DockerProvisioner) Deploy(app deploy.App, w io.Writer) error {
+func (p *DockerProvisioner) Deploy(app provision.App, w io.Writer) error {
 	return nil
 }
 
