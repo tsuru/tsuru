@@ -52,7 +52,7 @@ func (s *S) TestDockerDestroy(c *gocheck.C) {
 		execut = nil
 	}()
 	container := container{name: "container", instanceId: "id"}
-	err := container.destroy()
+	err := container.remove()
 	c.Assert(err, gocheck.IsNil)
 	args := []string{"rm", "id"}
 	c.Assert(fexec.ExecutedCmd("docker", args), gocheck.Equals, true)

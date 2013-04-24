@@ -117,15 +117,15 @@ func (c *container) stop() error {
 	return err
 }
 
-// destroy destory a docker container.
-func (c *container) destroy() error {
+// remove removes a docker container.
+func (c *container) remove() error {
 	docker, err := config.GetString("docker:binary")
 	if err != nil {
 		return err
 	}
 	//TODO: better error handling
 	//TODO: Remove host's nginx route
-	log.Printf("trying to destroy instance %s", c.instanceId)
+	log.Printf("trying to remove container %s", c.instanceId)
 	_, err = runCmd(docker, "rm", c.instanceId)
 	return err
 }

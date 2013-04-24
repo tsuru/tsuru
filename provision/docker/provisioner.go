@@ -203,13 +203,13 @@ func (p *DockerProvisioner) Destroy(app provision.App) error {
 			}
 			log.Printf("stoping container %s", u.GetInstanceId())
 			if err := c.stop(); err != nil {
-				log.Print("Could not stop container. Trying to destroy anyway.")
+				log.Print("Could not stop container. Trying to remove it anyway.")
 				log.Print(err.Error())
 			}
 
-			log.Printf("destroying container %s", u.GetInstanceId())
-			if err := c.destroy(); err != nil {
-				log.Print("Could not destroy container. Aborting...")
+			log.Printf("removeing container %s", u.GetInstanceId())
+			if err := c.remove(); err != nil {
+				log.Print("Could not remove container. Aborting...")
 				log.Print(err.Error())
 				return
 			}
@@ -218,7 +218,7 @@ func (p *DockerProvisioner) Destroy(app provision.App) error {
 			if err := p.collection().Remove(bson.M{"name": u.GetName()}); err != nil {
 				log.Printf("Could not remove container from database. Error %s", err.Error())
 			}
-			log.Print("Units successfuly destroyed.")
+			log.Print("Units successfuly removed.")
 		}(u)
 	}
 	return nil
