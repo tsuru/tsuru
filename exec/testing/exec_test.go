@@ -86,3 +86,13 @@ func (s *S) TestErrorExecutorOutput(c *gocheck.C) {
 	c.Assert(e.ExecutedCmd("ls", []string{"-lsa"}), gocheck.Equals, true)
 	c.Assert(b.String(), gocheck.Equals, "ble")
 }
+
+func (s *S) TestGetCommands(c *gocheck.C) {
+	e := FakeExecutor{}
+	b := &bytes.Buffer{}
+	err := e.Execute("sudo", []string{"ifconfig", "-a"}, nil, b, b)
+	c.Assert(err, gocheck.IsNil)
+	cmds := e.GetCommands("sudo")
+	expected := []command{{name: "sudo", args: []string{"ifconfig", "-a"}}}
+	c.Assert(cmds, gocheck.DeepEquals, expected)
+}

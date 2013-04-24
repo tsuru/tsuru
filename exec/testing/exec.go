@@ -47,6 +47,16 @@ func (e *FakeExecutor) ExecutedCmd(cmd string, args []string) bool {
 	return false
 }
 
+func (e *FakeExecutor) GetCommands(cmdName string) []command {
+	var cmds []command
+	for _, cmd := range e.cmds {
+		if cmd.name == cmdName {
+			cmds = append(cmds, cmd)
+		}
+	}
+	return cmds
+}
+
 type ErrorExecutor struct {
 	cmds   []command
 	mut    sync.RWMutex
