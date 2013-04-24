@@ -427,5 +427,6 @@ func (p *FakeProvisioner) Addr(app provision.App) (string, error) {
 }
 
 func (p *FakeProvisioner) InstallDeps(app provision.App, w io.Writer) error {
+	w.Write([]byte("InstallDeps called"))
 	return nil
 }
