@@ -5,12 +5,14 @@
 package main
 
 import (
+	"github.com/globocom/tsuru/api"
 	"github.com/globocom/tsuru/cmd"
 )
 
 type apiCmd struct{}
 
 func (apiCmd) Run(context *cmd.Context, client *cmd.Client) error {
+	api.RunServer()
 	return nil
 }
 
