@@ -5,6 +5,7 @@
 package hipache
 
 import (
+	"fmt"
 	"github.com/garyburd/redigo/redis"
 	"github.com/globocom/config"
 )
@@ -30,24 +31,25 @@ type router struct{}
 func (router) AddRoute(name, ip string) error {
 	domain, err := config.GetString("hipache:domain")
 	if err != nil {
-		return &routeError{err}
+		return &routeError{"add", err}
 	}
 	frontend := "frontend:" + name + "." + domain
 	conn, err := connect()
 	if err != nil {
-		return &routeError{err}
+		return &routeError{"add", err}
 	}
 	_, err = conn.Do("RPUSH", frontend, ip)
 	if err != nil {
-		return &routeError{err}
+		return &routeError{"add", err}
 	}
 	return nil
 }
 
 type routeError struct {
+	op  string
 	err error
 }
 
 func (e *routeError) Error() string {
-	return "Could not add route: " + e.err.Error()
+	return fmt.Sprintf("Could not %s route: %s", e.op, e.err)
 }

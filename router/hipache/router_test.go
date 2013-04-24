@@ -94,6 +94,8 @@ func (s *S) TestAddRouteCommandFailure(c *gocheck.C) {
 }
 
 func (s *S) TestRouteError(c *gocheck.C) {
-	err := &routeError{errors.New("Fatal error.")}
+	err := &routeError{"add", errors.New("Fatal error.")}
 	c.Assert(err.Error(), gocheck.Equals, "Could not add route: Fatal error.")
+	err = &routeError{"del", errors.New("Fatal error.")}
+	c.Assert(err.Error(), gocheck.Equals, "Could not del route: Fatal error.")
 }
