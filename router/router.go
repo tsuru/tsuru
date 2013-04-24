@@ -17,7 +17,7 @@ type Router interface {
 	RemoveRoute(name string) error
 
 	// Addr returns the route address.
-	Addr(name string) string
+	Addr(name string) (string, error)
 }
 
 var routers = make(map[string]Router)

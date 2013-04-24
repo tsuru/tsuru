@@ -36,6 +36,6 @@ func (r *FakeRouter) HasRoute(name string) bool {
 	return ok
 }
 
-func (r *FakeRouter) Addr(name string) string {
-	return r.routes[name]
+func (r *FakeRouter) Addr(name string) (string, error) {
+	return r.routes[name], nil
 }

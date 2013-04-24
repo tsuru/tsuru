@@ -74,7 +74,7 @@ func (NginxRouter) restart() error {
 	return cmd.Run()
 }
 
-func (NginxRouter) Addr(name string) string {
+func (NginxRouter) Addr(name string) (string, error) {
 	domain, _ := config.GetString("nginx:domain")
-	return fmt.Sprintf("%s.%s", name, domain)
+	return fmt.Sprintf("%s.%s", name, domain), nil
 }

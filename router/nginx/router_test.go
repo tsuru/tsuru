@@ -84,6 +84,6 @@ func (s *S) TestRemoveRoute(c *gocheck.C) {
 func (s *S) TestAddr(c *gocheck.C) {
 	config.Set("nginx:domain", "andrewzito.com")
 	var r NginxRouter
-	addr := r.Addr("name")
+	addr, _ := r.Addr("name")
 	c.Assert(addr, gocheck.Equals, "name.andrewzito.com")
 }

@@ -42,6 +42,8 @@ func (s *S) TestAddr(c *gocheck.C) {
 	var r FakeRouter
 	err := r.AddRoute("name", "127.0.0.1")
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(r.Addr("name"), gocheck.Equals, "127.0.0.1")
+	addr, err := r.Addr("name")
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(addr, gocheck.Equals, "127.0.0.1")
 
 }
