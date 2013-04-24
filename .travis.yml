@@ -35,4 +35,6 @@ notifications:
       - tsuru@corp.globo.com
     on_success: change
     on_failure: always
-services: mongodb
+services:
+  - mongodb
+  - redis
