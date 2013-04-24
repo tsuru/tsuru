@@ -6,6 +6,7 @@ package main
 
 import (
 	"fmt"
+	"github.com/globocom/config"
 	"github.com/globocom/tsuru/auth"
 	"github.com/globocom/tsuru/cmd"
 	"launchpad.net/gnuflag"
@@ -17,6 +18,10 @@ type tokenCmd struct {
 }
 
 func (c *tokenCmd) Run(context *cmd.Context, client *cmd.Client) error {
+	err := config.ReadAndWatchConfigFile(c.config)
+	if err != nil {
+		return err
+	}
 	t, err := auth.CreateApplicationToken("tsr")
 	if err != nil {
 		return err

@@ -39,6 +39,7 @@ func (s *S) TestTokenRun(c *gocheck.C) {
 	manager := cmd.NewManager("glb", "", "", &stdout, &stderr, os.Stdin)
 	client := cmd.NewClient(&http.Client{}, nil, manager)
 	command := tokenCmd{}
+	command.Flags().Parse(true, []string{"--config", "../../etc/tsuru.conf"})
 	err := command.Run(&context, client)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(stdout.String(), gocheck.Not(gocheck.Equals), "")
