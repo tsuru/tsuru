@@ -6,6 +6,7 @@ package main
 
 import (
 	"github.com/globocom/tsuru/cmd"
+	"github.com/globocom/tsuru/collector"
 	"launchpad.net/gnuflag"
 )
 
@@ -15,7 +16,11 @@ type collectorCmd struct {
 	dry    bool
 }
 
-func (collectorCmd) Run(context *cmd.Context, client *cmd.Client) error {
+func (c *collectorCmd) Run(context *cmd.Context, client *cmd.Client) error {
+	flags := map[string]interface{}{}
+	flags["dry"] = c.dry
+	flags["config"] = c.config
+	collector.Run(flags)
 	return nil
 }
 
