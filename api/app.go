@@ -14,6 +14,7 @@ import (
 	"github.com/globocom/tsuru/db"
 	"github.com/globocom/tsuru/errors"
 	"github.com/globocom/tsuru/log"
+	"github.com/globocom/tsuru/rec"
 	"github.com/globocom/tsuru/repository"
 	"github.com/globocom/tsuru/service"
 	"io"
@@ -576,6 +577,7 @@ func bindServiceInstance(w http.ResponseWriter, r *http.Request, t *auth.Token) 
 	if err != nil {
 		return err
 	}
+	rec.Log(u.Email, "bind-app", "instance="+instanceName, "app="+appName)
 	err = instance.BindApp(&a)
 	if err != nil {
 		return err

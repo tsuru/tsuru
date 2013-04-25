@@ -15,6 +15,7 @@ import (
 	"github.com/globocom/tsuru/provision"
 	"github.com/globocom/tsuru/repository"
 	"github.com/globocom/tsuru/service"
+	"github.com/globocom/tsuru/testing"
 	"io"
 	"io/ioutil"
 	"labix.org/v2/mgo/bson"
@@ -2003,6 +2004,12 @@ func (s *S) TestBindHandler(c *gocheck.C) {
 	sort.Strings(envs)
 	c.Assert(envs, gocheck.DeepEquals, []string{"DATABASE_PASSWORD", "DATABASE_USER"})
 	c.Assert(recorder.Header().Get("Content-Type"), gocheck.Equals, "application/json")
+	action := testing.Action{
+		Action: "bind-app",
+		User:   s.user.Email,
+		Extra:  []interface{}{"instance=" + instance.Name, "app=" + a.Name},
+	}
+	c.Assert(action, testing.IsRecorded)
 }
 
 func (s *S) TestBindHandlerReturns404IfTheInstanceDoesNotExist(c *gocheck.C) {
