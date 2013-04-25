@@ -5,7 +5,7 @@
 package rec_test
 
 import (
-	"github.com/globocom/tsuru/auth/rec"
+	"github.com/globocom/tsuru/rec"
 )
 
 func ExampleLog() {
