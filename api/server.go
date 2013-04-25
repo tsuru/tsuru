@@ -67,7 +67,7 @@ func RunServer(flags map[string]interface{}) {
 	m.Post("/services", authorizationRequiredHandler(CreateHandler))
 	m.Put("/services", authorizationRequiredHandler(UpdateHandler))
 	m.Del("/services/:name", authorizationRequiredHandler(DeleteHandler))
-	m.Get("/services/:name", authorizationRequiredHandler(ServiceInfoHandler))
+	m.Get("/services/:name", authorizationRequiredHandler(serviceInfo))
 	m.Get("/services/c/:name/doc", authorizationRequiredHandler(Doc))
 	m.Get("/services/:name/doc", authorizationRequiredHandler(GetDocHandler))
 	m.Put("/services/:name/doc", authorizationRequiredHandler(AddDocHandler))

@@ -153,7 +153,7 @@ func serviceInstanceStatus(w http.ResponseWriter, r *http.Request, t *auth.Token
 	return nil
 }
 
-func ServiceInfoHandler(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
+func serviceInfo(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
 	u, err := t.User()
 	if err != nil {
 		return err
