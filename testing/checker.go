@@ -7,12 +7,18 @@ package testing
 import (
 	"github.com/globocom/tsuru/db"
 	"launchpad.net/gocheck"
+	"time"
 )
 
 type Action struct {
 	User   string
 	Action string
 	Extra  []interface{}
+}
+
+type action struct {
+	Action
+	Date time.Time
 }
 
 type isRecordedChecker struct{}
@@ -36,9 +42,21 @@ func (isRecordedChecker) Check(params []interface{}, names []string) (bool, stri
 		panic("Could not connect to the database: " + err.Error())
 	}
 	defer conn.Close()
-	ct, err := conn.UserActions().Find(a).Count()
-	if err != nil || ct == 0 {
+	query := map[string]interface{}{
+		"user":   a.User,
+		"action": a.Action,
+	}
+	if len(a.Extra) > 0 {
+		query["extra"] = a.Extra
+	}
+	var got action
+	err = conn.UserActions().Find(query).One(&got)
+	if err != nil {
 		return false, "Action not in the database"
+	}
+	var empty time.Time
+	if got.Date.Sub(empty.In(time.UTC)) == 0 {
+		return false, "Action was not recorded using rec.Log"
 	}
 	return true, ""
 }
