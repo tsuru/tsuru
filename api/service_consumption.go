@@ -194,6 +194,7 @@ func Doc(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
 		return err
 	}
 	sName := r.URL.Query().Get(":name")
+	rec.Log(u.Email, "service-doc", sName)
 	s, err := getServiceOrError(sName, u)
 	if err != nil {
 		return err

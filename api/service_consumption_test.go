@@ -557,6 +557,12 @@ Collnosql is a really really cool nosql`
 	b, err := ioutil.ReadAll(recorder.Body)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(string(b), gocheck.Equals, doc)
+	action := testing.Action{
+		Action: "service-doc",
+		User:   s.user.Email,
+		Extra:  []interface{}{"coolnosql"},
+	}
+	c.Assert(action, testing.IsRecorded)
 }
 
 func (s *ConsumptionSuite) TestDocHandlerReturns401WhenUserHasNoAccessToService(c *gocheck.C) {
