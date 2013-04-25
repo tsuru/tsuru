@@ -6,14 +6,34 @@
 // auditing and statistics.
 package rec
 
+import (
+	"github.com/globocom/tsuru/db"
+	"time"
+)
+
 type userAction struct {
 	User   string
 	Action string
 	Extra  []interface{}
+	Date   time.Time
 }
 
 // Log stores an action in the database. It launches a goroutine, and may
 // return an error in a channel.
 func Log(user string, action string, extra ...interface{}) <-chan error {
-	return nil
+	ch := make(chan error, 1)
+	go func() {
+		conn, err := db.Conn()
+		if err != nil {
+			ch <- err
+			return
+		}
+		defer conn.Close()
+		action := userAction{User: user, Action: action, Extra: extra, Date: time.Now().In(time.UTC)}
+		if err := conn.UserActions().Insert(action); err != nil {
+			ch <- err
+		}
+		close(ch)
+	}()
+	return ch
 }
