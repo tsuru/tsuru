@@ -10,6 +10,7 @@ import (
 	"github.com/globocom/tsuru/auth"
 	"github.com/globocom/tsuru/db"
 	"github.com/globocom/tsuru/errors"
+	"github.com/globocom/tsuru/rec"
 	"github.com/globocom/tsuru/service"
 	"io/ioutil"
 	"labix.org/v2/mgo/bson"
@@ -103,6 +104,7 @@ func ServicesInstancesHandler(w http.ResponseWriter, r *http.Request, t *auth.To
 	if err != nil {
 		return err
 	}
+	rec.Log(u.Email, "list-service-instances")
 	response := serviceAndServiceInstancesByTeams(u)
 	body, err := json.Marshal(response)
 	if err != nil {
@@ -116,7 +118,7 @@ func ServicesInstancesHandler(w http.ResponseWriter, r *http.Request, t *auth.To
 }
 
 func ServiceInstanceStatusHandler(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
-	// #TODO (flaviamissi) should check if user has access to service
+	// TODO(flaviamissi): should check if user has access to service
 	// just call GetServiceInstanceOrError should be enough
 	siName := r.URL.Query().Get(":instance")
 	if siName == "" {

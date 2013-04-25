@@ -13,6 +13,7 @@ import (
 	"github.com/globocom/tsuru/db"
 	"github.com/globocom/tsuru/errors"
 	"github.com/globocom/tsuru/service"
+	"github.com/globocom/tsuru/testing"
 	"io/ioutil"
 	"labix.org/v2/mgo/bson"
 	"launchpad.net/gocheck"
@@ -266,6 +267,8 @@ func (s *ConsumptionSuite) TestServicesInstancesHandler(c *gocheck.C) {
 		{Service: "redis", Instances: []string{"redis-globo"}},
 	}
 	c.Assert(instances, gocheck.DeepEquals, expected)
+	action := testing.Action{Action: "list-service-instances", User: s.user.Email}
+	c.Assert(action, testing.IsRecorded)
 }
 
 func (s *ConsumptionSuite) TestServicesInstancesHandlerReturnsOnlyServicesThatTheUserHasAccess(c *gocheck.C) {
