@@ -448,7 +448,7 @@ func (s *ConsumptionSuite) TestServiceInfoHandler(c *gocheck.C) {
 	err = si2.Create()
 	c.Assert(err, gocheck.IsNil)
 	defer service.DeleteInstance(&si2)
-	request, err := http.NewRequest("GET", fmt.Sprintf("/services/%s?:name=%s", "mongodb", "mongodb"), nil)
+	request, err := http.NewRequest("GET", "/services/mongodb?:name=mongodb", nil)
 	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
 	err = ServiceInfoHandler(recorder, request, s.token)
@@ -460,6 +460,12 @@ func (s *ConsumptionSuite) TestServiceInfoHandler(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	expected := []service.ServiceInstance{si1, si2}
 	c.Assert(instances, gocheck.DeepEquals, expected)
+	action := testing.Action{
+		Action: "service-info",
+		User:   s.user.Email,
+		Extra:  []interface{}{"mongodb"},
+	}
+	c.Assert(action, testing.IsRecorded)
 }
 
 func (s *ConsumptionSuite) TestServiceInfoHandlerShouldReturnOnlyInstancesOfTheSameTeamOfTheUser(c *gocheck.C) {

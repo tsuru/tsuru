@@ -159,6 +159,7 @@ func ServiceInfoHandler(w http.ResponseWriter, r *http.Request, t *auth.Token) e
 		return err
 	}
 	serviceName := r.URL.Query().Get(":name")
+	rec.Log(u.Email, "service-info", serviceName)
 	_, err = getServiceOrError(serviceName, u)
 	if err != nil {
 		return err
