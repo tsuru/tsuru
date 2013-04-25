@@ -84,7 +84,7 @@ func (s *ConsumptionSuite) TestCreateInstanceHandlerSavesServiceInstanceInDb(c *
 	se.Create()
 	defer s.conn.Services().Remove(bson.M{"_id": se.Name})
 	recorder, request := makeRequestToCreateInstanceHandler(c)
-	err := CreateInstanceHandler(recorder, request, s.token)
+	err := createServiceInstance(recorder, request, s.token)
 	c.Assert(err, gocheck.IsNil)
 	var si service.ServiceInstance
 	err = s.conn.ServiceInstances().Find(bson.M{"name": "brainSQL", "service_name": "mysql"}).One(&si)
@@ -112,7 +112,7 @@ func (s *ConsumptionSuite) TestCreateInstanceHandlerSavesAllTeamsThatTheGivenUse
 	err = srv.Create()
 	c.Assert(err, gocheck.IsNil)
 	recorder, request := makeRequestToCreateInstanceHandler(c)
-	err = CreateInstanceHandler(recorder, request, s.token)
+	err = createServiceInstance(recorder, request, s.token)
 	c.Assert(err, gocheck.IsNil)
 	var si service.ServiceInstance
 	err = s.conn.ServiceInstances().Find(bson.M{"name": "brainSQL"}).One(&si)
@@ -125,7 +125,7 @@ func (s *ConsumptionSuite) TestCreateInstanceHandlerReturnsErrorWhenUserCannotUs
 	service := service.Service{Name: "mysql", IsRestricted: true}
 	service.Create()
 	recorder, request := makeRequestToCreateInstanceHandler(c)
-	err := CreateInstanceHandler(recorder, request, s.token)
+	err := createServiceInstance(recorder, request, s.token)
 	c.Assert(err, gocheck.ErrorMatches, "^This user does not have access to this service$")
 }
 
@@ -139,7 +139,7 @@ func (s *ConsumptionSuite) TestCreateInstanceHandlerIgnoresTeamAuthIfServiceIsNo
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Services().Remove(bson.M{"_id": "mysql"})
 	recorder, request := makeRequestToCreateInstanceHandler(c)
-	err = CreateInstanceHandler(recorder, request, s.token)
+	err = createServiceInstance(recorder, request, s.token)
 	c.Assert(err, gocheck.IsNil)
 	var si service.ServiceInstance
 	err = s.conn.ServiceInstances().Find(bson.M{"name": "brainSQL"}).One(&si)
@@ -150,7 +150,7 @@ func (s *ConsumptionSuite) TestCreateInstanceHandlerIgnoresTeamAuthIfServiceIsNo
 
 func (s *ConsumptionSuite) TestCreateInstanceHandlerReturnsErrorWhenServiceDoesntExists(c *gocheck.C) {
 	recorder, request := makeRequestToCreateInstanceHandler(c)
-	err := CreateInstanceHandler(recorder, request, s.token)
+	err := createServiceInstance(recorder, request, s.token)
 	c.Assert(err, gocheck.ErrorMatches, "^Service mysql does not exist.$")
 }
 
@@ -164,7 +164,7 @@ func (s *ConsumptionSuite) TestCreateInstanceHandlerReturnErrorIfTheServiceAPICa
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Services().Remove(bson.M{"_id": "mysql"})
 	recorder, request := makeRequestToCreateInstanceHandler(c)
-	err = CreateInstanceHandler(recorder, request, s.token)
+	err = createServiceInstance(recorder, request, s.token)
 	c.Assert(err, gocheck.NotNil)
 }
 

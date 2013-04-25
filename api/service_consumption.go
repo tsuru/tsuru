@@ -17,7 +17,7 @@ import (
 	"net/http"
 )
 
-func CreateInstanceHandler(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
+func createServiceInstance(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
 	b, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		return err
