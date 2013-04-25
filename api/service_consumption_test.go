@@ -390,7 +390,7 @@ func (s *ConsumptionSuite) TestServiceInstanceStatusHandler(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	defer service.DeleteInstance(&si)
 	recorder, request := makeRequestToStatusHandler("my_nosql", c)
-	err = ServiceInstanceStatusHandler(recorder, request, s.token)
+	err = serviceInstanceStatus(recorder, request, s.token)
 	c.Assert(err, gocheck.IsNil)
 	b, err := ioutil.ReadAll(recorder.Body)
 	c.Assert(string(b), gocheck.Equals, "Service instance \"my_nosql\" is up")
@@ -404,7 +404,7 @@ func (s *ConsumptionSuite) TestServiceInstanceStatusHandler(c *gocheck.C) {
 
 func (s *ConsumptionSuite) TestServiceInstanceStatusHandlerShouldReturnErrorWhenServiceInstanceNotExists(c *gocheck.C) {
 	recorder, request := makeRequestToStatusHandler("inexistent-instance", c)
-	err := ServiceInstanceStatusHandler(recorder, request, s.token)
+	err := serviceInstanceStatus(recorder, request, s.token)
 	c.Assert(err, gocheck.ErrorMatches, "^Service instance not found$")
 }
 
@@ -418,7 +418,7 @@ func (s *ConsumptionSuite) TestServiceInstanceStatusHandlerShouldReturnForbidden
 	c.Assert(err, gocheck.IsNil)
 	defer service.DeleteInstance(&si)
 	recorder, request := makeRequestToStatusHandler("my_nosql", c)
-	err = ServiceInstanceStatusHandler(recorder, request, s.token)
+	err = serviceInstanceStatus(recorder, request, s.token)
 	c.Assert(err, gocheck.NotNil)
 	e, ok := err.(*errors.Http)
 	c.Assert(ok, gocheck.Equals, true)

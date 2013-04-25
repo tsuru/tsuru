@@ -129,7 +129,7 @@ func serviceInstances(w http.ResponseWriter, r *http.Request, t *auth.Token) err
 	return err
 }
 
-func ServiceInstanceStatusHandler(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
+func serviceInstanceStatus(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
 	u, err := t.User()
 	if err != nil {
 		return err
