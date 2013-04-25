@@ -2173,10 +2173,16 @@ func (s *S) TestUnbindHandler(c *gocheck.C) {
 	}()
 	select {
 	case <-ch:
-		c.SucceedNow()
+		c.Succeed()
 	case <-time.After(1e9):
 		c.Errorf("Failed to call API after 1 second.")
 	}
+	action := testing.Action{
+		Action: "unbind-app",
+		User:   s.user.Email,
+		Extra:  []interface{}{"instance=" + instance.Name, "app=" + a.Name},
+	}
+	c.Assert(action, testing.IsRecorded)
 }
 
 func (s *S) TestUnbindHandlerReturns404IfTheInstanceDoesNotExist(c *gocheck.C) {

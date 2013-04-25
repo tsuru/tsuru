@@ -601,6 +601,7 @@ func unbindServiceInstance(w http.ResponseWriter, r *http.Request, t *auth.Token
 	if err != nil {
 		return err
 	}
+	rec.Log(u.Email, "unbind-app", "instance="+instanceName, "app="+appName)
 	return instance.UnbindApp(&a)
 }
 
