@@ -136,6 +136,11 @@ func ServiceInstanceStatusHandler(w http.ResponseWriter, r *http.Request, t *aut
 	if siName == "" {
 		return &errors.Http{Code: http.StatusBadRequest, Message: "Service instance name not provided."}
 	}
+	u, err := t.User()
+	if err != nil {
+		return err
+	}
+	rec.Log(u.Email, "service-instance-status", siName)
 	si, err := service.GetInstance(siName)
 	if err != nil {
 		msg := fmt.Sprintf("Service instance does not exists, error: %s", err.Error())

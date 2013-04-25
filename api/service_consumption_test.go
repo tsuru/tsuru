@@ -394,6 +394,12 @@ func (s *ConsumptionSuite) TestServiceInstanceStatusHandler(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	b, err := ioutil.ReadAll(recorder.Body)
 	c.Assert(string(b), gocheck.Equals, "Service instance \"my_nosql\" is up")
+	action := testing.Action{
+		Action: "service-instance-status",
+		User:   s.user.Email,
+		Extra:  []interface{}{"my_nosql"},
+	}
+	c.Assert(action, testing.IsRecorded)
 }
 
 func (s *ConsumptionSuite) TestServiceInstanceStatusHandlerShouldReturnErrorWHenNameIsNotProvided(c *gocheck.C) {
