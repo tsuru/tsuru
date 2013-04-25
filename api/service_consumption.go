@@ -88,6 +88,7 @@ func RemoveServiceInstanceHandler(w http.ResponseWriter, r *http.Request, t *aut
 		return err
 	}
 	name := r.URL.Query().Get(":name")
+	rec.Log(u.Email, "remove-service-instance", name)
 	si, err := getServiceInstanceOrError(name, u)
 	if err != nil {
 		return err

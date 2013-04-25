@@ -198,6 +198,12 @@ func (s *ConsumptionSuite) TestRemoveServiceInstanceHandler(c *gocheck.C) {
 	n, err := s.conn.ServiceInstances().Find(bson.M{"name": "foo-instance"}).Count()
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(n, gocheck.Equals, 0)
+	action := testing.Action{
+		Action: "remove-service-instance",
+		User:   s.user.Email,
+		Extra:  []interface{}{"foo-instance"},
+	}
+	c.Assert(action, testing.IsRecorded)
 }
 
 func (s *ConsumptionSuite) TestRemoveServiceHandlerWithoutPermissionShouldReturn401(c *gocheck.C) {
