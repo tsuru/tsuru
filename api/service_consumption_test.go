@@ -190,7 +190,7 @@ func (s *ConsumptionSuite) TestRemoveServiceInstanceHandler(c *gocheck.C) {
 	err = si.Create()
 	c.Assert(err, gocheck.IsNil)
 	recorder, request := makeRequestToRemoveInstanceHandler("foo-instance", c)
-	err = RemoveServiceInstanceHandler(recorder, request, s.token)
+	err = removeServiceInstance(recorder, request, s.token)
 	c.Assert(err, gocheck.IsNil)
 	b, err := ioutil.ReadAll(recorder.Body)
 	c.Assert(err, gocheck.IsNil)
@@ -216,7 +216,7 @@ func (s *ConsumptionSuite) TestRemoveServiceHandlerWithoutPermissionShouldReturn
 	defer s.conn.ServiceInstances().Remove(bson.M{"name": si.Name})
 	c.Assert(err, gocheck.IsNil)
 	recorder, request := makeRequestToRemoveInstanceHandler("foo-instance", c)
-	err = RemoveServiceInstanceHandler(recorder, request, s.token)
+	err = removeServiceInstance(recorder, request, s.token)
 	c.Assert(err, gocheck.ErrorMatches, "^This user does not have access to this service instance$")
 }
 
@@ -230,7 +230,7 @@ func (s *ConsumptionSuite) TestRemoveServiceHandlerWIthAssociatedAppsShouldFailA
 	defer s.conn.ServiceInstances().Remove(bson.M{"name": si.Name})
 	c.Assert(err, gocheck.IsNil)
 	recorder, request := makeRequestToRemoveInstanceHandler("foo-instance", c)
-	err = RemoveServiceInstanceHandler(recorder, request, s.token)
+	err = removeServiceInstance(recorder, request, s.token)
 	c.Assert(err, gocheck.ErrorMatches, "^This service instance is bound to at least one app. Unbind them before removing it$")
 }
 
@@ -249,7 +249,7 @@ func (s *ConsumptionSuite) TestRemoveServiceShouldCallTheServiceAPI(c *gocheck.C
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.ServiceInstances().Remove(bson.M{"name": si.Name})
 	recorder, request := makeRequestToRemoveInstanceHandler("purity-instance", c)
-	err = RemoveServiceInstanceHandler(recorder, request, s.token)
+	err = removeServiceInstance(recorder, request, s.token)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(called, gocheck.Equals, true)
 }

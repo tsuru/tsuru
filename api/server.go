@@ -60,7 +60,7 @@ func RunServer(flags map[string]interface{}) {
 	m.Post("/services/instances", authorizationRequiredHandler(createServiceInstance))
 	m.Put("/services/instances/:instance/:app", authorizationRequiredHandler(bindServiceInstance))
 	m.Del("/services/instances/:instance/:app", authorizationRequiredHandler(unbindServiceInstance))
-	m.Del("/services/c/instances/:name", authorizationRequiredHandler(RemoveServiceInstanceHandler))
+	m.Del("/services/c/instances/:name", authorizationRequiredHandler(removeServiceInstance))
 	m.Get("/services/instances/:instance/status", authorizationRequiredHandler(ServiceInstanceStatusHandler))
 
 	m.Get("/services", authorizationRequiredHandler(ServicesHandler))

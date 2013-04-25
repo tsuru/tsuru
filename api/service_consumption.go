@@ -82,7 +82,7 @@ func validateInstanceForCreation(s *service.Service, sJson map[string]string, u 
 	return nil
 }
 
-func RemoveServiceInstanceHandler(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
+func removeServiceInstance(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
 	u, err := t.User()
 	if err != nil {
 		return err
