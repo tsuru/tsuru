@@ -552,7 +552,7 @@ Collnosql is a really really cool nosql`
 	err := srv.Create()
 	c.Assert(err, gocheck.IsNil)
 	recorder, request := s.makeRequestToGetDocHandler("coolnosql", c)
-	err = Doc(recorder, request, s.token)
+	err = serviceDoc(recorder, request, s.token)
 	c.Assert(err, gocheck.IsNil)
 	b, err := ioutil.ReadAll(recorder.Body)
 	c.Assert(err, gocheck.IsNil)
@@ -574,13 +574,13 @@ func (s *ConsumptionSuite) TestDocHandlerReturns401WhenUserHasNoAccessToService(
 	err := srv.Create()
 	c.Assert(err, gocheck.IsNil)
 	recorder, request := s.makeRequestToGetDocHandler("coolnosql", c)
-	err = Doc(recorder, request, s.token)
+	err = serviceDoc(recorder, request, s.token)
 	c.Assert(err, gocheck.ErrorMatches, "^This user does not have access to this service$")
 }
 
 func (s *ConsumptionSuite) TestDocHandlerReturns404WhenServiceDoesNotExists(c *gocheck.C) {
 	recorder, request := s.makeRequestToGetDocHandler("inexistentsql", c)
-	err := Doc(recorder, request, s.token)
+	err := serviceDoc(recorder, request, s.token)
 	c.Assert(err, gocheck.ErrorMatches, "^Service not found$")
 }
 

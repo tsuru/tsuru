@@ -188,7 +188,7 @@ func serviceInfo(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
 	return nil
 }
 
-func Doc(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
+func serviceDoc(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
 	u, err := t.User()
 	if err != nil {
 		return err
