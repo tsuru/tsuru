@@ -539,7 +539,7 @@ func appLog(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
 	return nil
 }
 
-func getServiceInstace(instanceName, appName string, u *auth.User) (service.ServiceInstance, app.App, error) {
+func getServiceInstance(instanceName, appName string, u *auth.User) (service.ServiceInstance, app.App, error) {
 	var app app.App
 	conn, err := db.Conn()
 	if err != nil {
@@ -573,7 +573,7 @@ func bindServiceInstance(w http.ResponseWriter, r *http.Request, t *auth.Token) 
 	if err != nil {
 		return err
 	}
-	instance, a, err := getServiceInstace(instanceName, appName, u)
+	instance, a, err := getServiceInstance(instanceName, appName, u)
 	if err != nil {
 		return err
 	}
@@ -597,7 +597,7 @@ func unbindServiceInstance(w http.ResponseWriter, r *http.Request, t *auth.Token
 	if err != nil {
 		return err
 	}
-	instance, a, err := getServiceInstace(instanceName, appName, u)
+	instance, a, err := getServiceInstance(instanceName, appName, u)
 	if err != nil {
 		return err
 	}
