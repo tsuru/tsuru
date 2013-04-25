@@ -256,7 +256,7 @@ func (s *ConsumptionSuite) TestServicesInstancesHandler(c *gocheck.C) {
 	request, err := http.NewRequest("GET", "/services/instances", nil)
 	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
-	err = ServicesInstancesHandler(recorder, request, s.token)
+	err = serviceInstances(recorder, request, s.token)
 	c.Assert(err, gocheck.IsNil)
 	body, err := ioutil.ReadAll(recorder.Body)
 	c.Assert(err, gocheck.IsNil)
@@ -293,7 +293,7 @@ func (s *ConsumptionSuite) TestServicesInstancesHandlerReturnsOnlyServicesThatTh
 	request, err := http.NewRequest("GET", "/services/instances", nil)
 	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
-	err = ServicesInstancesHandler(recorder, request, token)
+	err = serviceInstances(recorder, request, token)
 	c.Assert(err, gocheck.IsNil)
 	body, err := ioutil.ReadAll(recorder.Body)
 	c.Assert(err, gocheck.IsNil)
@@ -336,7 +336,7 @@ func (s *ConsumptionSuite) TestServicesInstancesHandlerFilterInstancesPerService
 	request, err := http.NewRequest("GET", "/services/instances", nil)
 	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
-	err = ServicesInstancesHandler(recorder, request, s.token)
+	err = serviceInstances(recorder, request, s.token)
 	c.Assert(err, gocheck.IsNil)
 	body, err := ioutil.ReadAll(recorder.Body)
 	c.Assert(err, gocheck.IsNil)
@@ -574,21 +574,4 @@ func (s *ConsumptionSuite) TestGetServiceInstanceOrError(c *gocheck.C) {
 	rSi, err := getServiceInstanceOrError("foo", s.user)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(rSi.Name, gocheck.Equals, si.Name)
-}
-
-func (s *ConsumptionSuite) TestServiceAndServiceInstancesByTeamsShouldReturnServiceInstancesByTeam(c *gocheck.C) {
-	srv := service.Service{Name: "mongodb"}
-	srv.Create()
-	defer srv.Delete()
-	si := service.ServiceInstance{Name: "my_nosql", ServiceName: srv.Name, Teams: []string{s.team.Name}}
-	si.Create()
-	defer service.DeleteInstance(&si)
-	si2 := service.ServiceInstance{Name: "some_nosql", ServiceName: srv.Name}
-	si2.Create()
-	defer service.DeleteInstance(&si2)
-	obtained := serviceAndServiceInstancesByTeams(s.user)
-	expected := []service.ServiceModel{
-		{Service: "mongodb", Instances: []string{"my_nosql"}},
-	}
-	c.Assert(obtained, gocheck.DeepEquals, expected)
 }

@@ -99,14 +99,24 @@ func RemoveServiceInstanceHandler(w http.ResponseWriter, r *http.Request, t *aut
 	return nil
 }
 
-func ServicesInstancesHandler(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
+func serviceInstances(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
 	u, err := t.User()
 	if err != nil {
 		return err
 	}
 	rec.Log(u.Email, "list-service-instances")
-	response := serviceAndServiceInstancesByTeams(u)
-	body, err := json.Marshal(response)
+	services, _ := service.GetServicesByTeamKindAndNoRestriction("teams", u)
+	sInstances, _ := service.GetServiceInstancesByServicesAndTeams(services, u)
+	result := make([]service.ServiceModel, len(services))
+	for i, s := range services {
+		result[i].Service = s.Name
+		for _, si := range sInstances {
+			if si.ServiceName == s.Name {
+				result[i].Instances = append(result[i].Instances, si.Name)
+			}
+		}
+	}
+	body, err := json.Marshal(result)
 	if err != nil {
 		return err
 	}
@@ -216,19 +226,4 @@ func getServiceInstanceOrError(name string, u *auth.User) (service.ServiceInstan
 		return si, &errors.Http{Code: http.StatusForbidden, Message: msg}
 	}
 	return si, nil
-}
-
-func serviceAndServiceInstancesByTeams(u *auth.User) []service.ServiceModel {
-	services, _ := service.GetServicesByTeamKindAndNoRestriction("teams", u)
-	sInstances, _ := service.GetServiceInstancesByServicesAndTeams(services, u)
-	results := make([]service.ServiceModel, len(services))
-	for i, s := range services {
-		results[i].Service = s.Name
-		for _, si := range sInstances {
-			if si.ServiceName == s.Name {
-				results[i].Instances = append(results[i].Instances, si.Name)
-			}
-		}
-	}
-	return results
 }

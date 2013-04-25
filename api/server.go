@@ -56,7 +56,7 @@ func RunServer(flags map[string]interface{}) {
 
 	m := pat.New()
 
-	m.Get("/services/instances", authorizationRequiredHandler(ServicesInstancesHandler))
+	m.Get("/services/instances", authorizationRequiredHandler(serviceInstances))
 	m.Post("/services/instances", authorizationRequiredHandler(CreateInstanceHandler))
 	m.Put("/services/instances/:instance/:app", authorizationRequiredHandler(bindServiceInstance))
 	m.Del("/services/instances/:instance/:app", authorizationRequiredHandler(unbindServiceInstance))
