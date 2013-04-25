@@ -133,9 +133,6 @@ func ServiceInstanceStatusHandler(w http.ResponseWriter, r *http.Request, t *aut
 	// TODO(flaviamissi): should check if user has access to service
 	// just call GetServiceInstanceOrError should be enough
 	siName := r.URL.Query().Get(":instance")
-	if siName == "" {
-		return &errors.Http{Code: http.StatusBadRequest, Message: "Service instance name not provided."}
-	}
 	u, err := t.User()
 	if err != nil {
 		return err

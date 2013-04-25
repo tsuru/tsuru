@@ -402,12 +402,6 @@ func (s *ConsumptionSuite) TestServiceInstanceStatusHandler(c *gocheck.C) {
 	c.Assert(action, testing.IsRecorded)
 }
 
-func (s *ConsumptionSuite) TestServiceInstanceStatusHandlerShouldReturnErrorWHenNameIsNotProvided(c *gocheck.C) {
-	recorder, request := makeRequestToStatusHandler("", c)
-	err := ServiceInstanceStatusHandler(recorder, request, s.token)
-	c.Assert(err, gocheck.ErrorMatches, "^Service instance name not provided.$")
-}
-
 func (s *ConsumptionSuite) TestServiceInstanceStatusHandlerShouldReturnErrorWhenServiceInstanceNotExists(c *gocheck.C) {
 	recorder, request := makeRequestToStatusHandler("inexistent-instance", c)
 	err := ServiceInstanceStatusHandler(recorder, request, s.token)
