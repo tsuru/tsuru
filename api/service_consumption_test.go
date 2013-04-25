@@ -34,6 +34,7 @@ func (s *ConsumptionSuite) SetUpSuite(c *gocheck.C) {
 	var err error
 	config.Set("database:url", "127.0.0.1:27017")
 	config.Set("database:name", "tsuru_api_consumption_test")
+	config.Set("auth:hash-cost", 4)
 	s.conn, err = db.Conn()
 	c.Assert(err, gocheck.IsNil)
 	s.createUserAndTeam(c)
@@ -62,7 +63,7 @@ func (s *ConsumptionSuite) createUserAndTeam(c *gocheck.C) {
 }
 
 func makeRequestToCreateInstanceHandler(c *gocheck.C) (*httptest.ResponseRecorder, *http.Request) {
-	b := bytes.NewBufferString(`{"name": "brainSQL", "service_name": "mysql", "app": "my_app"}`)
+	b := bytes.NewBufferString(`{"name":"brainSQL","service_name":"mysql"}`)
 	request, err := http.NewRequest("POST", "/services/instances", b)
 	c.Assert(err, gocheck.IsNil)
 	request.Header.Set("Content-Type", "application/json")
@@ -91,6 +92,12 @@ func (s *ConsumptionSuite) TestCreateInstanceHandlerSavesServiceInstanceInDb(c *
 	s.conn.ServiceInstances().Update(bson.M{"name": si.Name}, si)
 	c.Assert(si.Name, gocheck.Equals, "brainSQL")
 	c.Assert(si.ServiceName, gocheck.Equals, "mysql")
+	action := testing.Action{
+		Action: "create-service-instance",
+		User:   s.user.Email,
+		Extra:  []interface{}{`{"name":"brainSQL","service_name":"mysql"}`},
+	}
+	c.Assert(action, testing.IsRecorded)
 }
 
 func (s *ConsumptionSuite) TestCreateInstanceHandlerSavesAllTeamsThatTheGivenUserIsMemberAndHasAccessToTheServiceInTheInstance(c *gocheck.C) {

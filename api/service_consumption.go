@@ -31,6 +31,7 @@ func CreateInstanceHandler(w http.ResponseWriter, r *http.Request, t *auth.Token
 	if err != nil {
 		return err
 	}
+	rec.Log(u.Email, "create-service-instance", string(b))
 	var s service.Service
 	err = validateInstanceForCreation(&s, sJson, u)
 	if err != nil {
