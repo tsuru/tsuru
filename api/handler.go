@@ -98,10 +98,10 @@ func (fn adminRequiredHandler) ServeHTTP(w http.ResponseWriter, r *http.Request)
 		}
 	}()
 	fw := FlushingWriter{w, false}
-	token := r.Header.Get("Authorization")
-	if token == "" {
+	header := r.Header.Get("Authorization")
+	if header == "" {
 		http.Error(&fw, "You must provide the Authorization header", http.StatusUnauthorized)
-	} else if t, err := auth.GetToken(token); err != nil {
+	} else if t, err := auth.GetToken(header); err != nil {
 		http.Error(&fw, "Invalid token", http.StatusUnauthorized)
 	} else if user, err := t.User(); err != nil || !user.IsAdmin() {
 		http.Error(&fw, "Forbidden", http.StatusForbidden)
