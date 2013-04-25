@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"github.com/globocom/tsuru/db"
 	"labix.org/v2/mgo/bson"
+	"strings"
 	"time"
 )
 
@@ -39,13 +40,30 @@ type passwordToken struct {
 	Used      bool
 }
 
-func GetToken(token string) (*Token, error) {
+// parseToken extracs token from a header:
+// 'type token' or 'token'
+func parseToken(header string) (string, error) {
+	s := strings.Split(header, " ")
+	if len(s) == 1 && s[0] != "" {
+		return s[0], nil
+	}
+	if len(s) == 2 {
+		return s[1], nil
+	}
+	return "", errors.New("")
+}
+
+func GetToken(header string) (*Token, error) {
 	conn, err := db.Conn()
 	if err != nil {
 		return nil, err
 	}
 	defer conn.Close()
 	var t Token
+	token, err := parseToken(header)
+	if err != nil {
+		return nil, err
+	}
 	err = conn.Tokens().Find(bson.M{"token": token}).One(&t)
 	if err != nil {
 		return nil, errors.New("Token not found")

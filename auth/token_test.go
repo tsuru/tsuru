@@ -54,7 +54,7 @@ func (s *S) TestGetToken(c *gocheck.C) {
 }
 
 func (s *S) TestGetTokenEmptyToken(c *gocheck.C) {
-	u, err := GetToken("")
+	u, err := GetToken("tokenthatdoesnotexist")
 	c.Assert(u, gocheck.IsNil)
 	c.Assert(err, gocheck.NotNil)
 	c.Assert(err.Error(), gocheck.Equals, "Token not found")
@@ -198,4 +198,19 @@ func (s *S) TestPasswordTokensAreValidFor24Hours(c *gocheck.C) {
 	c.Assert(t2, gocheck.IsNil)
 	c.Assert(err, gocheck.NotNil)
 	c.Assert(err.Error(), gocheck.Equals, "Invalid token")
+}
+
+func (s *S) TestParseToken(c *gocheck.C) {
+	t, err := parseToken("type token")
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(t, gocheck.Equals, "token")
+	t, err = parseToken("token")
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(t, gocheck.Equals, "token")
+	t, err = parseToken("type ble ble")
+	c.Assert(err, gocheck.NotNil)
+	c.Assert(t, gocheck.Equals, "")
+	t, err = parseToken("")
+	c.Assert(err, gocheck.NotNil)
+	c.Assert(t, gocheck.Equals, "")
 }
