@@ -385,7 +385,7 @@ func (s *ConsumptionSuite) TestServiceInstanceStatusHandler(c *gocheck.C) {
 	err := srv.Create()
 	c.Assert(err, gocheck.IsNil)
 	defer srv.Delete()
-	si := service.ServiceInstance{Name: "my_nosql", ServiceName: srv.Name}
+	si := service.ServiceInstance{Name: "my_nosql", ServiceName: srv.Name, Teams: []string{s.team.Name}}
 	err = si.Create()
 	c.Assert(err, gocheck.IsNil)
 	defer service.DeleteInstance(&si)
@@ -405,7 +405,24 @@ func (s *ConsumptionSuite) TestServiceInstanceStatusHandler(c *gocheck.C) {
 func (s *ConsumptionSuite) TestServiceInstanceStatusHandlerShouldReturnErrorWhenServiceInstanceNotExists(c *gocheck.C) {
 	recorder, request := makeRequestToStatusHandler("inexistent-instance", c)
 	err := ServiceInstanceStatusHandler(recorder, request, s.token)
-	c.Assert(err, gocheck.ErrorMatches, "^Service instance does not exists, error: not found$")
+	c.Assert(err, gocheck.ErrorMatches, "^Service instance not found$")
+}
+
+func (s *ConsumptionSuite) TestServiceInstanceStatusHandlerShouldReturnForbiddenWhenUserDontHaveAccess(c *gocheck.C) {
+	srv := service.Service{Name: "mongodb", OwnerTeams: []string{s.team.Name}}
+	err := srv.Create()
+	c.Assert(err, gocheck.IsNil)
+	defer srv.Delete()
+	si := service.ServiceInstance{Name: "my_nosql", ServiceName: srv.Name}
+	err = si.Create()
+	c.Assert(err, gocheck.IsNil)
+	defer service.DeleteInstance(&si)
+	recorder, request := makeRequestToStatusHandler("my_nosql", c)
+	err = ServiceInstanceStatusHandler(recorder, request, s.token)
+	c.Assert(err, gocheck.NotNil)
+	e, ok := err.(*errors.Http)
+	c.Assert(ok, gocheck.Equals, true)
+	c.Assert(e.Code, gocheck.Equals, http.StatusForbidden)
 }
 
 func (s *ConsumptionSuite) TestServiceInfoHandler(c *gocheck.C) {

@@ -130,19 +130,16 @@ func serviceInstances(w http.ResponseWriter, r *http.Request, t *auth.Token) err
 }
 
 func ServiceInstanceStatusHandler(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
-	// TODO(flaviamissi): should check if user has access to service
-	// just call GetServiceInstanceOrError should be enough
-	siName := r.URL.Query().Get(":instance")
 	u, err := t.User()
 	if err != nil {
 		return err
 	}
-	rec.Log(u.Email, "service-instance-status", siName)
-	si, err := service.GetInstance(siName)
+	siName := r.URL.Query().Get(":instance")
+	si, err := getServiceInstanceOrError(siName, u)
 	if err != nil {
-		msg := fmt.Sprintf("Service instance does not exists, error: %s", err.Error())
-		return &errors.Http{Code: http.StatusInternalServerError, Message: msg}
+		return err
 	}
+	rec.Log(u.Email, "service-instance-status", siName)
 	var b string
 	if b, err = si.Status(); err != nil {
 		msg := fmt.Sprintf("Could not retrieve status of service instance, error: %s", err.Error())
