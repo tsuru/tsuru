@@ -22,7 +22,7 @@ var _ = gocheck.Suite(&S{})
 
 func (s *S) SetUpSuite(c *gocheck.C) {
 	s.collName = "docker_unit"
-	config.Set("docker:registry-user", "tsuru")
+	config.Set("docker:repository-namespace", "tsuru")
 	config.Set("docker:binary", "docker")
 	config.Set("router", "fake")
 	config.Set("docker:collection", s.collName)
