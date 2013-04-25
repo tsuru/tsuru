@@ -194,6 +194,14 @@ func (s *S) TestPasswordTokens(c *gocheck.C) {
 	c.Assert(tokens, gocheck.DeepEquals, tokensc)
 }
 
+func (s *S) TestUserActions(c *gocheck.C) {
+	storage, _ := Open("127.0.0.1:27017", "tsuru_storage_test")
+	defer storage.session.Close()
+	actions := storage.UserActions()
+	actionsc := storage.Collection("user_actions")
+	c.Assert(actions, gocheck.DeepEquals, actionsc)
+}
+
 func (s *S) TestApps(c *gocheck.C) {
 	storage, _ := Open("127.0.0.1:27017", "tsuru_storage_test")
 	defer storage.session.Close()

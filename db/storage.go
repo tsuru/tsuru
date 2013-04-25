@@ -162,6 +162,10 @@ func (s *Storage) PasswordTokens() *mgo.Collection {
 	return s.Collection("password_tokens")
 }
 
+func (s *Storage) UserActions() *mgo.Collection {
+	return s.Collection("user_actions")
+}
+
 // Teams returns the teams collection from MongoDB.
 func (s *Storage) Teams() *mgo.Collection {
 	return s.Collection("teams")
