@@ -105,3 +105,16 @@ func (s *S) TestImageCommit(c *gocheck.C) {
 	args := []string{"commit", "container-id", imageName}
 	c.Assert(fexec.ExecutedCmd("docker", args), gocheck.Equals, true)
 }
+
+func (s *S) TestImageRemove(c *gocheck.C) {
+	fexec := &etesting.FakeExecutor{}
+	execut = fexec
+	defer func() {
+		execut = nil
+	}()
+	img := image{name: "app-name", id: "image-id"}
+	err := img.remove()
+	c.Assert(err, gocheck.IsNil)
+	args := []string{"rmi", img.id}
+	c.Assert(fexec.ExecutedCmd("docker", args), gocheck.Equals, true)
+}

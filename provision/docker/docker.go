@@ -170,3 +170,19 @@ func (img *image) commit(cId string) error {
 	}
 	return nil
 }
+
+// remove removes an image from docker registry
+func (img *image) remove() error {
+	docker, err := config.GetString("docker:binary")
+	if err != nil {
+		log.Printf("Tsuru is misconfigured. docker:binary config is missing.")
+		return err
+	}
+	log.Printf("attempting to remove image %s from docker", img.repositoryName)
+	_, err = runCmd(docker, "rmi", img.id)
+	if err != nil {
+		log.Printf("Could not remove image %s from docker: %s", img.id, err.Error())
+		return err
+	}
+	return nil
+}
