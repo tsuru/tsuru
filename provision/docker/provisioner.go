@@ -207,7 +207,7 @@ func (p *DockerProvisioner) Destroy(app provision.App) error {
 				log.Print(err.Error())
 			}
 
-			log.Printf("removeing container %s", u.GetInstanceId())
+			log.Printf("removing container %s", u.GetInstanceId())
 			if err := c.remove(); err != nil {
 				log.Print("Could not remove container. Aborting...")
 				log.Print(err.Error())
