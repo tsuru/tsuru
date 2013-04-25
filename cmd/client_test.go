@@ -75,7 +75,7 @@ func (s *S) TestShouldIncludeTheHeaderAuthorizationWhenTsuruTokenFileExists(c *g
 	client := NewClient(&http.Client{Transport: &trans}, nil, manager)
 	_, err = client.Do(request)
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(request.Header.Get("Authorization"), gocheck.Equals, "mytoken")
+	c.Assert(request.Header.Get("Authorization"), gocheck.Equals, "bearer mytoken")
 }
 
 func (s *S) TestShouldValidateVersion(c *gocheck.C) {
