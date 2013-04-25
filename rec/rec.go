@@ -7,8 +7,17 @@
 package rec
 
 import (
+	"errors"
 	"github.com/globocom/tsuru/db"
 	"time"
+)
+
+var (
+	// Error returned when a user is not provided to the Log function.
+	ErrMissingUser = errors.New("Missing user")
+
+	// Error returned when an action is not provided to the Log function.
+	ErrMissingAction = errors.New("Missing action")
 )
 
 type userAction struct {
@@ -23,6 +32,14 @@ type userAction struct {
 func Log(user string, action string, extra ...interface{}) <-chan error {
 	ch := make(chan error, 1)
 	go func() {
+		if user == "" {
+			ch <- ErrMissingUser
+			return
+		}
+		if action == "" {
+			ch <- ErrMissingAction
+			return
+		}
 		conn, err := db.Conn()
 		if err != nil {
 			ch <- err

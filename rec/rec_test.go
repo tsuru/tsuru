@@ -70,3 +70,44 @@ func (RecSuite) TestLogConnError(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(count, gocheck.Equals, 0)
 }
+
+func (RecSuite) TestLogInvalidData(c *gocheck.C) {
+	var tests = []struct {
+		user     string
+		action   string
+		extra    []interface{}
+		expected error
+	}{
+		{
+			user:     "",
+			action:   "",
+			extra:    nil,
+			expected: ErrMissingUser,
+		},
+		{
+			user:     "gopher@golang.org",
+			action:   "",
+			extra:    nil,
+			expected: ErrMissingAction,
+		},
+		{
+			user:     "gopher@golang.org",
+			action:   "do-something",
+			extra:    nil,
+			expected: nil,
+		},
+	}
+	for _, t := range tests {
+		ch := Log(t.user, t.action, t.extra...)
+		err := <-ch
+		c.Check(err, gocheck.Equals, t.expected)
+	}
+	conn, err := db.Conn()
+	c.Assert(err, gocheck.IsNil)
+	defer conn.Close()
+	var action userAction
+	err = conn.UserActions().Find(nil).One(&action)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(action.User, gocheck.Equals, "gopher@golang.org")
+	c.Assert(action.Action, gocheck.Equals, "do-something")
+}
