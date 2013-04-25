@@ -58,22 +58,6 @@ func (s *S) TestDockerDestroy(c *gocheck.C) {
 	c.Assert(fexec.ExecutedCmd("docker", args), gocheck.Equals, true)
 }
 
-func (s *S) TestDockerCommit(c *gocheck.C) {
-	fexec := &etesting.FakeExecutor{}
-	execut = fexec
-	defer func() {
-		execut = nil
-	}()
-	ctnr := container{name: "container", id: "id"}
-	err := ctnr.commit("app-name")
-	c.Assert(err, gocheck.IsNil)
-	registryUser, err := config.GetString("docker:registry-user")
-	c.Assert(err, gocheck.IsNil)
-	imageName := fmt.Sprintf("%s/app-name", registryUser)
-	args := []string{"commit", "id", imageName}
-	c.Assert(fexec.ExecutedCmd("docker", args), gocheck.Equals, true)
-}
-
 func (s *S) TestContainerIPRunsDockerInspectCommand(c *gocheck.C) {
 	fexec := &etesting.FakeExecutor{}
 	execut = fexec
@@ -104,4 +88,20 @@ func (s *S) TestContainerIPReturnsIpFromDockerInspect(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(ip, gocheck.Equals, "10.10.10.10")
 	c.Assert(commandmocker.Ran(tmpdir), gocheck.Equals, true)
+}
+
+func (s *S) TestImageCommit(c *gocheck.C) {
+	fexec := &etesting.FakeExecutor{}
+	execut = fexec
+	defer func() {
+		execut = nil
+	}()
+	img := image{name: "app-name", id: "image-id"}
+	err := img.commit("container-id")
+	c.Assert(err, gocheck.IsNil)
+	registryUser, err := config.GetString("docker:registry-user")
+	c.Assert(err, gocheck.IsNil)
+	imageName := fmt.Sprintf("%s/app-name", registryUser)
+	args := []string{"commit", "container-id", imageName}
+	c.Assert(fexec.ExecutedCmd("docker", args), gocheck.Equals, true)
 }

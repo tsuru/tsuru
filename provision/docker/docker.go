@@ -130,18 +130,40 @@ func (c *container) remove() error {
 	return err
 }
 
-func (c *container) commit(imgName string) error {
-	docker, err := config.GetString("docker:binary")
-	if err != nil {
-		return err
-	}
+// image represents a docker image.
+type image struct {
+	name string
+	id   string
+}
+
+// repositoryName returns the image repository name for a given image.
+//
+// Repository is a docker concept, the image actually does not have a name,
+// it has a repository, that is a composed name, e.g.: tsuru/base.
+// Tsuru will always use a namespace, defined in tsuru.conf.
+// Additionally, tsuru will use the application's name to do that composition.
+func (img *image) repositoryName() string {
 	registryUser, err := config.GetString("docker:registry-user")
 	if err != nil {
+		log.Printf("Tsuru is misconfigured. docker:registry-user config is missing.")
+		return ""
+	}
+	return fmt.Sprintf("%s/%s", registryUser, img.name)
+}
+
+// commit commits an image in docker
+//
+// This is another docker concept, in order to generate an image from a container
+// one must commit it.
+func (img *image) commit(cId string) error {
+	docker, err := config.GetString("docker:binary")
+	if err != nil {
+		log.Printf("Tsuru is misconfigured. docker:binary config is missing.")
 		return err
 	}
-	log.Printf("attempting to commit image from container %s", c.id)
-	imgName = fmt.Sprintf("%s/%s", registryUser, imgName)
-	_, err = runCmd(docker, "commit", c.id, imgName)
+	log.Printf("attempting to commit image from container %s", cId)
+	rName := img.repositoryName()
+	_, err = runCmd(docker, "commit", cId, rName)
 	if err != nil {
 		log.Printf("Could not commit docker image: %s", err.Error())
 		return err
