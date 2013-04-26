@@ -195,7 +195,7 @@ func grantServiceAccess(w http.ResponseWriter, r *http.Request, t *auth.Token) e
 	return conn.Services().Update(bson.M{"_id": service.Name}, service)
 }
 
-func serviceRevokeAccess(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
+func revokeServiceAccess(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
 	u, err := t.User()
 	if err != nil {
 		return err
