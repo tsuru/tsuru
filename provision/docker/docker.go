@@ -12,6 +12,8 @@ import (
 	"github.com/globocom/config"
 	"github.com/globocom/tsuru/fs"
 	"github.com/globocom/tsuru/log"
+	"github.com/globocom/tsuru/provision"
+	"github.com/globocom/tsuru/repository"
 	"strings"
 )
 
@@ -24,18 +26,45 @@ func filesystem() fs.Fs {
 	return fsystem
 }
 
-// container represents an docker container with the given name.
-type container struct {
-	name string
-	id   string
-}
-
 // runCmd executes commands and log the given stdout and stderror.
 func runCmd(cmd string, args ...string) (string, error) {
 	out := bytes.Buffer{}
 	err := executor().Execute(cmd, args, nil, &out, &out)
 	log.Printf("running the cmd: %s with the args: %s", cmd, args)
 	return out.String(), err
+}
+
+// container represents an docker container with the given name.
+type container struct {
+	name string
+	id   string
+}
+
+// newContainer creates a new container in docker and stores it on database
+func newContainer(app provision.App) *container {
+	appName := app.GetName()
+	c := &container{name: appName}
+	id, err := c.create(app.GetPlatform(), repository.GetReadOnlyUrl(appName))
+	if err != nil {
+		log.Printf("Error creating container %s", appName)
+		log.Printf("Error was: %s", err.Error())
+		return c
+	}
+	c.id = id
+	u := provision.Unit{
+		Name:       app.GetName(),
+		AppName:    app.GetName(),
+		Type:       app.GetPlatform(),
+		Machine:    0,
+		InstanceId: app.GetName(),
+		Status:     provision.StatusCreating,
+		Ip:         "",
+	}
+	if err := collection().Insert(u); err != nil {
+		log.Print(err)
+		return c // should rollback
+	}
+	return c
 }
 
 // ip returns the ip for the container.
@@ -74,12 +103,16 @@ func (c *container) ip() (string, error) {
 }
 
 // create creates a docker container with base template by default.
-func (c *container) create() (string, error) {
+//
+// It receives the application's platform in order to choose the correct
+// docker image and the repository to pass to the script that will take
+// care of the deploy.
+func (c *container) create(platform, repository string) (string, error) {
 	docker, err := config.GetString("docker:binary")
 	if err != nil {
 		return "", err
 	}
-	template, err := config.GetString("docker:image")
+	repoNamespace, err := config.GetString("docker:repository-namespace")
 	if err != nil {
 		return "", err
 	}
@@ -87,11 +120,10 @@ func (c *container) create() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	args, err := config.GetList("docker:cmd:args")
-	if err != nil {
-		return "", err
-	}
-	args = append([]string{"run", "-d", template, cmd}, args...)
+	cmd = fmt.Sprintf("%s %s", cmd, repository)                //replace with app's repo url
+	args, _ := config.GetList("docker:cmd:args")               // optional config
+	imageName := fmt.Sprintf("%s/%s", repoNamespace, platform) // replace python with app's platform
+	args = append([]string{"run", "-d", imageName, cmd}, args...)
 	id, err := runCmd(docker, args...)
 	id = strings.Replace(id, "\n", "", -1)
 	log.Printf("docker id=%s", id)

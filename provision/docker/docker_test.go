@@ -5,12 +5,68 @@
 package docker
 
 import (
+	"bytes"
 	"fmt"
 	"github.com/globocom/commandmocker"
 	"github.com/globocom/config"
 	etesting "github.com/globocom/tsuru/exec/testing"
+	"github.com/globocom/tsuru/log"
+	"github.com/globocom/tsuru/provision"
+	"github.com/globocom/tsuru/testing"
+	"labix.org/v2/mgo/bson"
 	"launchpad.net/gocheck"
+	stdlog "log"
 )
+
+func (s *S) TestNewContainer(c *gocheck.C) {
+	id := "945132e7b4c9"
+	tmpdir, err := commandmocker.Add("docker", id)
+	c.Assert(err, gocheck.IsNil)
+	defer commandmocker.Remove(tmpdir)
+	app := testing.NewFakeApp("app-name", "python", 1)
+	container := newContainer(app)
+	c.Assert(container.name, gocheck.Equals, "app-name")
+	c.Assert(container.id, gocheck.Equals, id)
+}
+
+func (s *S) TestNewContainerCallsDockerCreate(c *gocheck.C) {
+	fexec := &etesting.FakeExecutor{}
+	execut = fexec
+	defer func() {
+		execut = nil
+	}()
+	app := testing.NewFakeApp("app-name", "python", 1)
+	newContainer(app)
+	args := []string{"run", "-d", fmt.Sprintf("%s/python", s.repoNamespace), fmt.Sprintf("/var/lib/tsuru/deploy git://%s/app-name.git", s.gitHost)}
+	c.Assert(fexec.ExecutedCmd("docker", args), gocheck.Equals, true)
+}
+
+func (s *S) TestNewContainerInsertContainerOnDatabase(c *gocheck.C) {
+	fexec := &etesting.FakeExecutor{}
+	execut = fexec
+	defer func() {
+		execut = nil
+	}()
+	app := testing.NewFakeApp("app-name", "python", 1)
+	newContainer(app)
+	u := provision.Unit{}
+	err := s.conn.Collection(s.collName).Find(bson.M{"name": "app-name"}).One(&u)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(u.Type, gocheck.Equals, "python")
+}
+
+func (s *S) TestNewContainerReturnsContainerWithoutIdAndLogsOnError(c *gocheck.C) {
+	w := new(bytes.Buffer)
+	l := stdlog.New(w, "", stdlog.LstdFlags)
+	log.SetLogger(l)
+	tmpdir, err := commandmocker.Error("docker", "cool error", 1)
+	c.Assert(err, gocheck.IsNil)
+	defer commandmocker.Remove(tmpdir)
+	app := testing.NewFakeApp("myapp", "python", 1)
+	container := newContainer(app)
+	c.Assert(container.id, gocheck.Equals, "")
+	c.Assert(w.String(), gocheck.Matches, "(?s).*Error creating container myapp.*")
+}
 
 func (s *S) TestDockerCreate(c *gocheck.C) {
 	fexec := &etesting.FakeExecutor{}
@@ -20,9 +76,9 @@ func (s *S) TestDockerCreate(c *gocheck.C) {
 	}()
 	config.Set("docker:authorized-key-path", "somepath")
 	container := container{name: "container"}
-	_, err := container.create()
+	_, err := container.create("python", fmt.Sprintf("git://%s/app-name.git", s.gitHost))
 	c.Assert(err, gocheck.IsNil)
-	args := []string{"run", "-d", "base", "/bin/bash", "myapp", "somepath"}
+	args := []string{"run", "-d", fmt.Sprintf("%s/python", s.repoNamespace), fmt.Sprintf("/var/lib/tsuru/deploy git://%s/app-name.git", s.gitHost)}
 	c.Assert(fexec.ExecutedCmd("docker", args), gocheck.Equals, true)
 }
 

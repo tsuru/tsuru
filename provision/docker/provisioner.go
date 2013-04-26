@@ -12,6 +12,7 @@ import (
 	"github.com/globocom/tsuru/exec"
 	"github.com/globocom/tsuru/log"
 	"github.com/globocom/tsuru/provision"
+	"github.com/globocom/tsuru/repository"
 	"github.com/globocom/tsuru/router"
 	_ "github.com/globocom/tsuru/router/nginx"
 	_ "github.com/globocom/tsuru/router/testing"
@@ -115,11 +116,11 @@ func (p *DockerProvisioner) Provision(app provision.App) error {
 			Ip:         "",
 		}
 		log.Printf("inserting container unit %s in the database", app.GetName())
-		if err := p.collection().Insert(u); err != nil {
+		if err := collection().Insert(u); err != nil {
 			log.Print(err)
 			return
 		}
-		id, err := c.create()
+		id, err := c.create(app.GetPlatform(), repository.GetReadOnlyUrl(app.GetName()))
 		if err != nil {
 			log.Printf("error on create container %s", app.GetName())
 			log.Print(err)
@@ -135,7 +136,7 @@ func (p *DockerProvisioner) Provision(app provision.App) error {
 		ip, err := c.ip() // handle this error
 		u.Ip = ip
 		u.Status = provision.StatusInstalling
-		if err := p.collection().Update(bson.M{"name": u.Name}, u); err != nil {
+		if err := collection().Update(bson.M{"name": u.Name}, u); err != nil {
 			log.Print(err)
 			return
 		}
@@ -166,7 +167,7 @@ func (p *DockerProvisioner) Provision(app provision.App) error {
 			log.Print(err)
 		}
 		u.Status = provision.StatusStarted
-		if err := p.collection().Update(bson.M{"name": u.Name}, u); err != nil {
+		if err := collection().Update(bson.M{"name": u.Name}, u); err != nil {
 			log.Print(err)
 			return
 		}
@@ -187,6 +188,7 @@ func (p *DockerProvisioner) Restart(app provision.App) error {
 }
 
 func (p *DockerProvisioner) Deploy(app provision.App, w io.Writer) error {
+	newContainer(app)
 	return nil
 }
 
@@ -213,7 +215,7 @@ func (p *DockerProvisioner) Destroy(app provision.App) error {
 			}
 
 			log.Printf("removing container %s from the database", u.GetName())
-			if err := p.collection().Remove(bson.M{"name": u.GetName()}); err != nil {
+			if err := collection().Remove(bson.M{"name": u.GetName()}); err != nil {
 				log.Printf("Could not remove container from database. Error %s", err.Error())
 			}
 			log.Print("Units successfuly removed.")
@@ -253,14 +255,14 @@ func (*DockerProvisioner) ExecuteCommand(stdout, stderr io.Writer, app provision
 
 func (p *DockerProvisioner) CollectStatus() ([]provision.Unit, error) {
 	var units []provision.Unit
-	err := p.collection().Find(nil).All(&units)
+	err := collection().Find(nil).All(&units)
 	if err != nil {
 		return []provision.Unit{}, err
 	}
 	return units, nil
 }
 
-func (p *DockerProvisioner) collection() *mgo.Collection {
+func collection() *mgo.Collection {
 	name, err := config.GetString("docker:collection")
 	if err != nil {
 		log.Fatalf("FATAL: %s.", err)

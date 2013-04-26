@@ -6,6 +6,7 @@ package docker
 
 import (
 	"bytes"
+	"fmt"
 	"github.com/globocom/commandmocker"
 	"github.com/globocom/config"
 	etesting "github.com/globocom/tsuru/exec/testing"
@@ -59,7 +60,7 @@ func (s *S) TestProvisionerProvision(c *gocheck.C) {
 	var p DockerProvisioner
 	app := testing.NewFakeApp("myapp", "python", 0)
 	c.Assert(p.Provision(app), gocheck.IsNil)
-	defer p.collection().Remove(bson.M{"name": "myapp"})
+	defer collection().Remove(bson.M{"name": "myapp"})
 	ok := make(chan bool, 1)
 	go func() {
 		for {
@@ -80,7 +81,7 @@ func (s *S) TestProvisionerProvision(c *gocheck.C) {
 	case <-time.After(10e9):
 		c.Fatal("Timed out waiting for the container to be provisioned (10 seconds)")
 	}
-	args := []string{"run", "-d", "base", "/bin/bash", "myapp", "somepath"}
+	args := []string{"run", "-d", fmt.Sprintf("%s/python", s.repoNamespace), fmt.Sprintf("/var/lib/tsuru/deploy git://%s/myapp.git", s.gitHost)}
 	c.Assert(fexec.ExecutedCmd("docker", args), gocheck.Equals, true)
 	args = []string{"inspect", ""}
 	c.Assert(fexec.ExecutedCmd("docker", args), gocheck.Equals, true) // from ip call, the instance id in the end of this command is actually wrong, so we ignore it
@@ -125,7 +126,7 @@ func (s *S) TestProvisionerProvisionFillsUnitIp(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	defer commandmocker.Remove(tmpdir)
 	c.Assert(p.Provision(app), gocheck.IsNil)
-	defer p.collection().Remove(bson.M{"name": "myapp"})
+	defer collection().Remove(bson.M{"name": "myapp"})
 	ok := make(chan bool, 1)
 	go func() {
 		for {
@@ -182,6 +183,21 @@ func (s *S) TestProvisionerRestartFailure(c *gocheck.C) {
 	c.Assert(ok, gocheck.Equals, true)
 	c.Assert(pErr.Reason, gocheck.Equals, "fatal unexpected failure")
 	c.Assert(pErr.Err.Error(), gocheck.Equals, "exit status 25")
+}
+
+func (s *S) TestDeployShouldCallDockerCreate(c *gocheck.C) {
+	fexec := &etesting.FakeExecutor{}
+	execut = fexec
+	defer func() {
+		execut = nil
+	}()
+	p := DockerProvisioner{}
+	app := testing.NewFakeApp("cribcaged", "python", 1)
+	w := &bytes.Buffer{}
+	err := p.Deploy(app, w)
+	c.Assert(err, gocheck.IsNil)
+	args := []string{"run", "-d", fmt.Sprintf("%s/python", s.repoNamespace), fmt.Sprintf("/var/lib/tsuru/deploy git://%s/cribcaged.git", s.gitHost)}
+	c.Assert(fexec.ExecutedCmd("docker", args), gocheck.Equals, true)
 }
 
 func (s *S) TestProvisionerDestroy(c *gocheck.C) {
@@ -294,7 +310,7 @@ func (s *S) TestCollectStatus(c *gocheck.C) {
 		},
 	}
 	for _, u := range expected {
-		err := p.collection().Insert(u)
+		err := collection().Insert(u)
 		c.Assert(err, gocheck.IsNil)
 	}
 	units, err := p.CollectStatus()
@@ -303,8 +319,7 @@ func (s *S) TestCollectStatus(c *gocheck.C) {
 }
 
 func (s *S) TestProvisionCollection(c *gocheck.C) {
-	var p DockerProvisioner
-	collection := p.collection()
+	collection := collection()
 	c.Assert(collection.Name, gocheck.Equals, s.collName)
 }
 
