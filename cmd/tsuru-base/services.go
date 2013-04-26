@@ -332,7 +332,7 @@ func (c ServiceInfo) Run(ctx *cmd.Context, client *cmd.Client) error {
 
 type ServiceDoc struct{}
 
-func (c ServiceDoc) Info() *cmd.Info {
+func (ServiceDoc) Info() *cmd.Info {
 	return &cmd.Info{
 		Name:    "service-doc",
 		Usage:   "service-doc <servicename>",
@@ -341,9 +341,9 @@ func (c ServiceDoc) Info() *cmd.Info {
 	}
 }
 
-func (c ServiceDoc) Run(ctx *cmd.Context, client *cmd.Client) error {
+func (ServiceDoc) Run(ctx *cmd.Context, client *cmd.Client) error {
 	sName := ctx.Args[0]
-	url := fmt.Sprintf("/services/c/%s/doc", sName)
+	url := fmt.Sprintf("/services/%s/doc", sName)
 	url, err := cmd.GetUrl(url)
 	if err != nil {
 		return err

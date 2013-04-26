@@ -403,7 +403,16 @@ Service test is foo bar.
 		Stdout: &stdout,
 		Stderr: &stderr,
 	}
-	client := cmd.NewClient(&http.Client{Transport: &testing.Transport{Message: result, Status: http.StatusOK}}, nil, manager)
+	transport := testing.ConditionalTransport{
+		Transport: testing.Transport{
+			Message: result,
+			Status:  http.StatusOK,
+		},
+		CondFunc: func(r *http.Request) bool {
+			return r.Method == "GET" && r.URL.Path == "/services/foo/doc"
+		},
+	}
+	client := cmd.NewClient(&http.Client{Transport: &transport}, nil, manager)
 	err := (&ServiceDoc{}).Run(&ctx, client)
 	c.Assert(err, gocheck.IsNil)
 	obtained := stdout.String()
