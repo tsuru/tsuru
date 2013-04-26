@@ -265,6 +265,7 @@ func grantAppAccess(w http.ResponseWriter, r *http.Request, t *auth.Token) error
 	}
 	appName := r.URL.Query().Get(":app")
 	teamName := r.URL.Query().Get(":team")
+	rec.Log(u.Email, "grant-app-access", "app="+appName, "team="+teamName)
 	team := new(auth.Team)
 	app, err := getApp(appName, u)
 	if err != nil {

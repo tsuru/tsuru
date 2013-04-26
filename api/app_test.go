@@ -699,6 +699,12 @@ func (s *S) TestAddTeamToTheApp(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(a.Teams, gocheck.HasLen, 2)
 	c.Assert(a.Teams[1], gocheck.Equals, s.team.Name)
+	action := testing.Action{
+		Action: "grant-app-access",
+		User:   s.user.Email,
+		Extra:  []interface{}{"app=" + a.Name, "team=" + s.team.Name},
+	}
+	c.Assert(action, testing.IsRecorded)
 }
 
 func (s *S) TestGrantAccessToTeamReturn404IfTheAppDoesNotExist(c *gocheck.C) {
