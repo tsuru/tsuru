@@ -1171,6 +1171,12 @@ func (s *S) TestGetEnvHandlerGetsEnvironmentVariableFromApp(c *gocheck.C) {
 	expected := `{"DATABASE_HOST":"localhost"}` + "\n"
 	c.Assert(recorder.Body.String(), gocheck.Equals, expected)
 	c.Assert(recorder.Header().Get("Content-Type"), gocheck.Equals, "application/json")
+	action := testing.Action{
+		Action: "get-env",
+		User:   s.user.Email,
+		Extra:  []interface{}{"app=" + a.Name, "envs=[DATABASE_HOST]"},
+	}
+	c.Assert(action, testing.IsRecorded)
 }
 
 func (s *S) TestGetEnvHandlerShouldAcceptMultipleVariables(c *gocheck.C) {
@@ -1202,6 +1208,12 @@ func (s *S) TestGetEnvHandlerShouldAcceptMultipleVariables(c *gocheck.C) {
 	err = json.Unmarshal(recorder.Body.Bytes(), &got)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(got, gocheck.DeepEquals, expected)
+	action := testing.Action{
+		Action: "get-env",
+		User:   s.user.Email,
+		Extra:  []interface{}{"app=" + a.Name, "envs=[DATABASE_HOST DATABASE_USER]"},
+	}
+	c.Assert(action, testing.IsRecorded)
 }
 
 func (s *S) TestGetEnvHandlerReturnsAllVariablesIfEnvironmentVariablesAreMissingWithMaskOnPrivateVars(c *gocheck.C) {
