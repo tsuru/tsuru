@@ -120,7 +120,7 @@ func serviceUpdate(w http.ResponseWriter, r *http.Request, t *auth.Token) error 
 	return nil
 }
 
-func DeleteHandler(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
+func serviceDelete(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
 	u, err := t.User()
 	if err != nil {
 		return err
