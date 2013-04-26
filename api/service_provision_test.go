@@ -402,6 +402,12 @@ func (s *ProvisionSuite) TestGrantServiceAccessToTeam(c *gocheck.C) {
 	err = se.Get()
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(*s.team, HasAccessTo, se)
+	action := testing.Action{
+		Action: "grant-service-access",
+		User:   s.user.Email,
+		Extra:  []interface{}{"service=" + se.Name, "team=" + t.Name},
+	}
+	c.Assert(action, testing.IsRecorded)
 }
 
 func (s *ProvisionSuite) TestGrantAccesToTeamReturnNotFoundIfTheServiceDoesNotExist(c *gocheck.C) {
