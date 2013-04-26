@@ -143,12 +143,12 @@ type image struct {
 // Tsuru will always use a namespace, defined in tsuru.conf.
 // Additionally, tsuru will use the application's name to do that composition.
 func (img *image) repositoryName() string {
-	registryUser, err := config.GetString("docker:repository-namespace")
+	repoNamespace, err := config.GetString("docker:repository-namespace")
 	if err != nil {
 		log.Printf("Tsuru is misconfigured. docker:repository-namespace config is missing.")
 		return ""
 	}
-	return fmt.Sprintf("%s/%s", registryUser, img.name)
+	return fmt.Sprintf("%s/%s", repoNamespace, img.name)
 }
 
 // commit commits an image in docker

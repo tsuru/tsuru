@@ -99,9 +99,9 @@ func (s *S) TestImageCommit(c *gocheck.C) {
 	img := image{name: "app-name", id: "image-id"}
 	err := img.commit("container-id")
 	c.Assert(err, gocheck.IsNil)
-	registryUser, err := config.GetString("docker:repository-namespace")
+	repoNamespace, err := config.GetString("docker:repository-namespace")
 	c.Assert(err, gocheck.IsNil)
-	imageName := fmt.Sprintf("%s/app-name", registryUser)
+	imageName := fmt.Sprintf("%s/app-name", repoNamespace)
 	args := []string{"commit", "container-id", imageName}
 	c.Assert(fexec.ExecutedCmd("docker", args), gocheck.Equals, true)
 }
