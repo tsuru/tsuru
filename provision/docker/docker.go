@@ -178,7 +178,7 @@ func (img *image) remove() error {
 		log.Printf("Tsuru is misconfigured. docker:binary config is missing.")
 		return err
 	}
-	log.Printf("attempting to remove image %s from docker", img.repositoryName)
+	log.Printf("attempting to remove image %s from docker", img.repositoryName())
 	_, err = runCmd(docker, "rmi", img.id)
 	if err != nil {
 		log.Printf("Could not remove image %s from docker: %s", img.id, err.Error())
