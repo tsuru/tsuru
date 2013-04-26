@@ -216,7 +216,11 @@ func (s *ProvisionSuite) TestCreateHandlerReturnsBadRequestIfTheServiceDoesNotHa
 }
 
 func (s *ProvisionSuite) TestUpdateHandlerShouldUpdateTheServiceWithDataFromManifest(c *gocheck.C) {
-	service := service.Service{Name: "mysqlapi", Endpoint: map[string]string{"production": "sqlapi.com"}, OwnerTeams: []string{s.team.Name}}
+	service := service.Service{
+		Name:       "mysqlapi",
+		Endpoint:   map[string]string{"production": "sqlapi.com"},
+		OwnerTeams: []string{s.team.Name},
+	}
 	err := service.Create()
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Services().Remove(bson.M{"_id": service.Name})
@@ -232,6 +236,13 @@ func (s *ProvisionSuite) TestUpdateHandlerShouldUpdateTheServiceWithDataFromMani
 	err = s.conn.Services().Find(bson.M{"_id": service.Name}).One(&service)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(service.Endpoint["production"], gocheck.Equals, "mysqlapi.com")
+	endpoints := map[string]string{"production": "mysqlapi.com", "test": "localhost:8000"}
+	action := testing.Action{
+		Action: "update-service",
+		User:   s.user.Email,
+		Extra:  []interface{}{service.Name, endpoints},
+	}
+	c.Assert(action, testing.IsRecorded)
 }
 
 func (s *ProvisionSuite) TestUpdateHandlerReturns404WhenTheServiceDoesNotExist(c *gocheck.C) {

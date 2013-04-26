@@ -107,6 +107,7 @@ func UpdateHandler(w http.ResponseWriter, r *http.Request, t *auth.Token) error 
 	if err != nil {
 		return err
 	}
+	rec.Log(u.Email, "update-service", yaml.Id, yaml.Endpoint)
 	s, err := getServiceByOwner(yaml.Id, u)
 	if err != nil {
 		return err
