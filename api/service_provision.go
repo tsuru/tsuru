@@ -23,7 +23,7 @@ type serviceYaml struct {
 	Endpoint map[string]string
 }
 
-func ServicesHandler(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
+func serviceList(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
 	u, err := t.User()
 	if err != nil {
 		return err

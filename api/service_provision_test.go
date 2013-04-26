@@ -78,7 +78,7 @@ func (s *ProvisionSuite) TestServicesHandlerShoudGetAllServicesFromUsersTeam(c *
 	si.Create()
 	defer service.DeleteInstance(&si)
 	recorder, request := s.makeRequestToServicesHandler(c)
-	err := ServicesHandler(recorder, request, s.token)
+	err := serviceList(recorder, request, s.token)
 	c.Assert(err, gocheck.IsNil)
 	b, err := ioutil.ReadAll(recorder.Body)
 	c.Assert(err, gocheck.IsNil)
