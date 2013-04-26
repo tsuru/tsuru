@@ -489,6 +489,7 @@ func setCName(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
 		return err
 	}
 	appName := r.URL.Query().Get(":app")
+	rec.Log(u.Email, "set-cname", appName, v["cname"])
 	app, err := getApp(appName, u)
 	if err != nil {
 		return err

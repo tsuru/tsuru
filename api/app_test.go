@@ -1576,6 +1576,12 @@ func (s *S) TestSetCNameHandler(c *gocheck.C) {
 	err = a.Get()
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(a.CName, gocheck.Equals, "leper.secretcompany.com")
+	action := testing.Action{
+		Action: "set-cname",
+		User:   s.user.Email,
+		Extra:  []interface{}{a.Name, "leper.secretcompany.com"},
+	}
+	c.Assert(action, testing.IsRecorded)
 }
 
 func (s *S) TestSetCNameHandlerAcceptsEmptyCName(c *gocheck.C) {
