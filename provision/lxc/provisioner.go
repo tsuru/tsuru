@@ -109,7 +109,7 @@ func (p *LXCProvisioner) Provision(app provision.App) error {
 		u := provision.Unit{
 			Name:       app.GetName(),
 			AppName:    app.GetName(),
-			Type:       app.GetFramework(),
+			Type:       app.GetPlatform(),
 			Machine:    0,
 			InstanceId: app.GetName(),
 			Status:     provision.StatusCreating,
@@ -140,7 +140,7 @@ func (p *LXCProvisioner) Provision(app provision.App) error {
 		if err != nil {
 			log.Print(err)
 		}
-		err = p.setup(c.Ip(), app.GetFramework())
+		err = p.setup(c.Ip(), app.GetPlatform())
 		if err != nil {
 			log.Printf("error on setup container %s", app.GetName())
 			log.Print(err)

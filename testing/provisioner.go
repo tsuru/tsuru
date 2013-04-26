@@ -50,18 +50,18 @@ func (u *FakeUnit) GetIp() string {
 
 // Fake implementation for provision.App.
 type FakeApp struct {
-	name      string
-	framework string
-	units     []provision.AppUnit
-	logs      []string
-	Commands  []string
+	name     string
+	platform string
+	units    []provision.AppUnit
+	logs     []string
+	Commands []string
 }
 
-func NewFakeApp(name, framework string, units int) *FakeApp {
+func NewFakeApp(name, platform string, units int) *FakeApp {
 	app := FakeApp{
-		name:      name,
-		framework: framework,
-		units:     make([]provision.AppUnit, units),
+		name:     name,
+		platform: platform,
+		units:    make([]provision.AppUnit, units),
 	}
 	namefmt := "%s/%d"
 	for i := 0; i < units; i++ {
@@ -85,8 +85,8 @@ func (a *FakeApp) GetName() string {
 	return a.name
 }
 
-func (a *FakeApp) GetFramework() string {
-	return a.framework
+func (a *FakeApp) GetPlatform() string {
+	return a.platform
 }
 
 func (a *FakeApp) ProvisionUnits() []provision.AppUnit {
@@ -253,7 +253,7 @@ func (p *FakeProvisioner) Provision(app provision.App) error {
 		{
 			Name:       app.GetName() + "/0",
 			AppName:    app.GetName(),
-			Type:       app.GetFramework(),
+			Type:       app.GetPlatform(),
 			Status:     provision.StatusStarted,
 			InstanceId: "i-080",
 			Ip:         "10.10.10.1",
@@ -309,7 +309,7 @@ func (p *FakeProvisioner) AddUnits(app provision.App, n uint) ([]provision.Unit,
 		return nil, errors.New("App is not provisioned.")
 	}
 	name := app.GetName()
-	framework := app.GetFramework()
+	platform := app.GetPlatform()
 	p.unitMut.Lock()
 	defer p.unitMut.Unlock()
 	length := uint(len(p.units[name]))
@@ -317,7 +317,7 @@ func (p *FakeProvisioner) AddUnits(app provision.App, n uint) ([]provision.Unit,
 		unit := provision.Unit{
 			Name:       fmt.Sprintf("%s/%d", name, p.unitLen),
 			AppName:    name,
-			Type:       framework,
+			Type:       platform,
 			Status:     provision.StatusStarted,
 			InstanceId: fmt.Sprintf("i-08%d", length+i),
 			Ip:         fmt.Sprintf("10.10.10.%d", length+i),
@@ -407,7 +407,7 @@ func (p *FakeProvisioner) CollectStatus() ([]provision.Unit, error) {
 		unit := provision.Unit{
 			Name:       app.GetName() + "/0",
 			AppName:    app.GetName(),
-			Type:       app.GetFramework(),
+			Type:       app.GetPlatform(),
 			Status:     "started",
 			InstanceId: fmt.Sprintf("i-0%d", 800+i+1),
 			Ip:         "10.10.10." + strconv.Itoa(i+1),

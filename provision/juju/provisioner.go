@@ -104,7 +104,7 @@ func (p *JujuProvisioner) Provision(app provision.App) error {
 	}
 	args := []string{
 		"deploy", "--repository", charms,
-		"local:" + app.GetFramework(), app.GetName(),
+		"local:" + app.GetPlatform(), app.GetName(),
 	}
 	err = runCmd(false, &buf, &buf, args...)
 	out := buf.String()

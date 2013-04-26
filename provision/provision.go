@@ -69,9 +69,9 @@ type App interface {
 	// Log should be used to log messages in the app.
 	Log(message, source string) error
 
-	// GetFramework returns the framework (type) of the app. It is equivalent
+	// GetPlatform returns the platform (type) of the app. It is equivalent
 	// to the Unit `Type` field.
-	GetFramework() string
+	GetPlatform() string
 
 	// ProvisionUnits returns all units of the app, in a slice.
 	ProvisionUnits() []AppUnit

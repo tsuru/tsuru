@@ -1715,9 +1715,9 @@ func (s *S) TestGetIp(c *gocheck.C) {
 	c.Assert(a.GetIp(), gocheck.Equals, a.Ip)
 }
 
-func (s *S) TestGetFramework(c *gocheck.C) {
+func (s *S) TestGetPlatform(c *gocheck.C) {
 	a := App{Platform: "django"}
-	c.Assert(a.GetFramework(), gocheck.Equals, a.Platform)
+	c.Assert(a.GetPlatform(), gocheck.Equals, a.Platform)
 }
 
 func (s *S) TestGetProvisionUnits(c *gocheck.C) {

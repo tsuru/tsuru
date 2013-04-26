@@ -666,8 +666,8 @@ func (app *App) GetIp() string {
 	return app.Ip
 }
 
-// GetFramework returns the framework of the app.
-func (app *App) GetFramework() string {
+// GetPlatform returns the platform of the app.
+func (app *App) GetPlatform() string {
 	return app.Platform
 }
 

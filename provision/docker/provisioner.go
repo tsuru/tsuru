@@ -101,8 +101,6 @@ func (p *DockerProvisioner) start(ip string) error {
 }
 
 // Provision creates a container and install its dependencies
-//
-// TODO (flaviamissi): make this atomic
 func (p *DockerProvisioner) Provision(app provision.App) error {
 	go func(p *DockerProvisioner, app provision.App) {
 		c := container{name: app.GetName()}
@@ -110,7 +108,7 @@ func (p *DockerProvisioner) Provision(app provision.App) error {
 		u := provision.Unit{
 			Name:       app.GetName(),
 			AppName:    app.GetName(),
-			Type:       app.GetFramework(),
+			Type:       app.GetPlatform(),
 			Machine:    0,
 			InstanceId: app.GetName(),
 			Status:     provision.StatusCreating,
@@ -141,7 +139,7 @@ func (p *DockerProvisioner) Provision(app provision.App) error {
 			log.Print(err)
 			return
 		}
-		if err := p.setup(ip, app.GetFramework()); err != nil {
+		if err := p.setup(ip, app.GetPlatform()); err != nil {
 			log.Printf("error on setup container %s", app.GetName())
 			log.Print(err)
 			return
