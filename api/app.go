@@ -317,7 +317,7 @@ func getEmailsForRevoking(app *app.App, t *auth.Team) []string {
 	return users[:i]
 }
 
-func revokeAccessFromTeam(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
+func revokeAppAccess(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
 	u, err := t.User()
 	if err != nil {
 		return err
