@@ -7,6 +7,7 @@ package testing
 import (
 	"github.com/globocom/tsuru/db"
 	"launchpad.net/gocheck"
+	"runtime"
 	"time"
 )
 
@@ -49,9 +50,28 @@ func (isRecordedChecker) Check(params []interface{}, names []string) (bool, stri
 	if len(a.Extra) > 0 {
 		query["extra"] = a.Extra
 	}
+	done := make(chan action, 1)
+	quit := make(chan int8)
+	defer close(quit)
+	go func() {
+		for {
+			select {
+			case <-quit:
+				runtime.Goexit()
+			default:
+				var a action
+				if err := conn.UserActions().Find(query).One(&a); err == nil {
+					done <- a
+					return
+				}
+				runtime.Gosched()
+			}
+		}
+	}()
 	var got action
-	err = conn.UserActions().Find(query).One(&got)
-	if err != nil {
+	select {
+	case got = <-done:
+	case <-time.After(2e9):
 		return false, "Action not in the database"
 	}
 	var empty time.Time
