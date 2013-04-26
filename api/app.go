@@ -258,7 +258,7 @@ func removeUnits(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
 	return app.RemoveUnits(uint(n))
 }
 
-func grantAccessToTeam(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
+func grantAppAccess(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
 	u, err := t.User()
 	if err != nil {
 		return err

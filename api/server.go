@@ -87,7 +87,7 @@ func RunServer(flags map[string]interface{}) {
 	m.Post("/apps", authorizationRequiredHandler(createApp))
 	m.Put("/apps/:app/units", authorizationRequiredHandler(addUnits))
 	m.Del("/apps/:app/units", authorizationRequiredHandler(removeUnits))
-	m.Put("/apps/:app/:team", authorizationRequiredHandler(grantAccessToTeam))
+	m.Put("/apps/:app/:team", authorizationRequiredHandler(grantAppAccess))
 	m.Del("/apps/:app/:team", authorizationRequiredHandler(revokeAccessFromTeam))
 	m.Get("/apps/:app/log", authorizationRequiredHandler(appLog))
 	m.Post("/apps/:app/log", authorizationRequiredHandler(addLog))
