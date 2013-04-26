@@ -125,6 +125,7 @@ func DeleteHandler(w http.ResponseWriter, r *http.Request, t *auth.Token) error 
 	if err != nil {
 		return err
 	}
+	rec.Log(u.Email, "delete-service", r.URL.Query().Get(":name"))
 	s, err := getServiceByOwner(r.URL.Query().Get(":name"), u)
 	if err != nil {
 		return err

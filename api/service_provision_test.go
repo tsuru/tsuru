@@ -310,10 +310,16 @@ func (s *ProvisionSuite) TestDeleteHandler(c *gocheck.C) {
 	err = DeleteHandler(recorder, request, s.token)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(recorder.Code, gocheck.Equals, http.StatusNoContent)
-	query := bson.M{"_id": "Mysql"}
+	query := bson.M{"_id": se.Name}
 	err = s.conn.Services().Find(query).One(&se)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(se.Status, gocheck.Equals, "deleted")
+	action := testing.Action{
+		Action: "delete-service",
+		User:   s.user.Email,
+		Extra:  []interface{}{se.Name},
+	}
+	c.Assert(action, testing.IsRecorded)
 }
 
 func (s *ProvisionSuite) TestDeleteHandlerReturns404WhenTheServiceDoesNotExist(c *gocheck.C) {
