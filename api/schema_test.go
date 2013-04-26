@@ -18,7 +18,7 @@ var _ = gocheck.Suite(&SchemaSuite{})
 
 func (s *SchemaSuite) TestSchemas(c *gocheck.C) {
 	recorder := httptest.NewRecorder()
-	request, err := http.NewRequest("GET", "/apps/schema", nil)
+	request, err := http.NewRequest("GET", "/schema/app", nil)
 	c.Assert(err, gocheck.IsNil)
 	err = appSchema(recorder, request, nil)
 	c.Assert(err, gocheck.IsNil)
