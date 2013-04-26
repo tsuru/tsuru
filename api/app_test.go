@@ -1878,6 +1878,12 @@ func (s *S) TestAppLogSelectByLines(c *gocheck.C) {
 	err = json.Unmarshal(body, &logs)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(logs, gocheck.HasLen, 10)
+	action := testing.Action{
+		Action: "app-log",
+		User:   s.user.Email,
+		Extra:  []interface{}{"app=" + a.Name, "lines=10"},
+	}
+	c.Assert(action, testing.IsRecorded)
 }
 
 func (s *S) TestAppLogSelectBySource(c *gocheck.C) {
@@ -1908,6 +1914,12 @@ func (s *S) TestAppLogSelectBySource(c *gocheck.C) {
 	c.Assert(logs, gocheck.HasLen, 1)
 	c.Assert(logs[0].Message, gocheck.Equals, "mars log")
 	c.Assert(logs[0].Source, gocheck.Equals, "mars")
+	action := testing.Action{
+		Action: "app-log",
+		User:   s.user.Email,
+		Extra:  []interface{}{"app=" + a.Name, "lines=10", "source=mars"},
+	}
+	c.Assert(action, testing.IsRecorded)
 }
 
 func (s *S) TestAppLogSelectByLinesShouldReturnTheLastestEntries(c *gocheck.C) {

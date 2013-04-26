@@ -526,16 +526,28 @@ func appLog(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
 		return &errors.Http{Code: http.StatusBadRequest, Message: `Parameter "lines" is mandatory.`}
 	}
 	w.Header().Set("Content-Type", "application/json")
+	source := r.URL.Query().Get("source")
 	u, err := t.User()
 	if err != nil {
 		return err
 	}
 	appName := r.URL.Query().Get(":app")
+	extra := []interface{}{
+		"app=" + appName,
+		fmt.Sprintf("lines=%d", lines),
+	}
+	if source != "" {
+		extra = append(extra, "source="+source)
+	}
+	if r.URL.Query().Get("follow") == "1" {
+		extra = append(extra, "follow=1")
+	}
+	rec.Log(u.Email, "app-log", extra...)
 	a, err := getApp(appName, u)
 	if err != nil {
 		return err
 	}
-	logs, err := a.LastLogs(lines, r.URL.Query().Get("source"))
+	logs, err := a.LastLogs(lines, source)
 	if err != nil {
 		return err
 	}
