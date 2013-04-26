@@ -599,6 +599,12 @@ func (s *S) TestRemoveUnits(c *gocheck.C) {
 	c.Assert(a.Units, gocheck.HasLen, 1)
 	c.Assert(a.Units[0].Name, gocheck.Equals, "velha/2")
 	c.Assert(s.provisioner.GetUnits(&a), gocheck.HasLen, 2)
+	action := testing.Action{
+		Action: "remove-units",
+		User:   s.user.Email,
+		Extra:  []interface{}{"app=velha", "units=2"},
+	}
+	c.Assert(action, testing.IsRecorded)
 }
 
 func (s *S) TestRemoveUnitsReturns404IfAppDoesNotExist(c *gocheck.C) {

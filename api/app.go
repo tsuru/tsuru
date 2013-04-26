@@ -250,6 +250,7 @@ func removeUnits(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
 		return err
 	}
 	appName := r.URL.Query().Get(":app")
+	rec.Log(u.Email, "remove-units", "app="+appName, fmt.Sprintf("units=%d", n))
 	app, err := getApp(appName, u)
 	if err != nil {
 		return err
