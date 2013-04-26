@@ -573,7 +573,7 @@ func (s *ProvisionSuite) TestAddDocHandlerReturns404WhenTheServiceDoesNotExist(c
 	request, err := http.NewRequest("PUT", fmt.Sprintf("/services/%s/doc?:name=%s", "mongodb", "mongodb"), b)
 	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
-	err = AddDocHandler(recorder, request, s.token)
+	err = serviceAddDoc(recorder, request, s.token)
 	c.Assert(err, gocheck.NotNil)
 	e, ok := err.(*errors.Http)
 	c.Assert(ok, gocheck.Equals, true)
@@ -589,7 +589,7 @@ func (s *ProvisionSuite) TestAddDocHandler(c *gocheck.C) {
 	request, err := http.NewRequest("PUT", fmt.Sprintf("/services/%s/doc?:name=%s", se.Name, se.Name), b)
 	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
-	err = AddDocHandler(recorder, request, s.token)
+	err = serviceAddDoc(recorder, request, s.token)
 	c.Assert(err, gocheck.IsNil)
 	query := bson.M{"_id": "some_service"}
 	var serv service.Service
@@ -612,7 +612,7 @@ func (s *ProvisionSuite) TestAddDocHandlerReturns403WhenTheUserDoesNotHaveAccess
 	request, err := http.NewRequest("PUT", fmt.Sprintf("/services/%s/doc?:name=%s", se.Name, se.Name), b)
 	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
-	err = AddDocHandler(recorder, request, s.token)
+	err = serviceAddDoc(recorder, request, s.token)
 	c.Assert(err, gocheck.NotNil)
 	e, ok := err.(*errors.Http)
 	c.Assert(ok, gocheck.Equals, true)

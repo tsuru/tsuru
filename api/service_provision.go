@@ -216,7 +216,7 @@ func RevokeServiceAccessFromTeamHandler(w http.ResponseWriter, r *http.Request, 
 	return conn.Services().Update(bson.M{"_id": service.Name}, service)
 }
 
-func AddDocHandler(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
+func serviceAddDoc(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
 	u, err := t.User()
 	if err != nil {
 		return err
