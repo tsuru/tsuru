@@ -44,9 +44,6 @@ type passwordToken struct {
 // 'type token' or 'token'
 func parseToken(header string) (string, error) {
 	s := strings.Split(header, " ")
-	if len(s) == 1 && s[0] != "" {
-		return s[0], nil
-	}
 	if len(s) == 2 {
 		return s[1], nil
 	}
