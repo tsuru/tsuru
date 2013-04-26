@@ -488,6 +488,12 @@ func (s *ProvisionSuite) TestRevokeServiceAccessFromTeamRemovesTeamFromService(c
 	err = se.Get()
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(*s.team, gocheck.Not(HasAccessTo), se)
+	action := testing.Action{
+		Action: "revoke-service-access",
+		User:   s.user.Email,
+		Extra:  []interface{}{"service=" + se.Name, "team=" + s.team.Name},
+	}
+	c.Assert(action, testing.IsRecorded)
 }
 
 func (s *ProvisionSuite) TestRevokeServiceAccessFromTeamReturnsNotFoundIfTheServiceDoesNotExist(c *gocheck.C) {

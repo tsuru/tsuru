@@ -200,7 +200,10 @@ func RevokeServiceAccessFromTeamHandler(w http.ResponseWriter, r *http.Request, 
 	if err != nil {
 		return err
 	}
-	service, team, err := getServiceAndTeam(r.URL.Query().Get(":service"), r.URL.Query().Get(":team"), u)
+	serviceName := r.URL.Query().Get(":service")
+	teamName := r.URL.Query().Get(":team")
+	rec.Log(u.Email, "revoke-service-access", "service="+serviceName, "team="+teamName)
+	service, team, err := getServiceAndTeam(serviceName, teamName, u)
 	if err != nil {
 		return err
 	}
