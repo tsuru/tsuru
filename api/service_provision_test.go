@@ -620,45 +620,6 @@ func (s *ProvisionSuite) TestAddDocHandlerReturns403WhenTheUserDoesNotHaveAccess
 	c.Assert(e, gocheck.ErrorMatches, "^This user does not have access to this service$")
 }
 
-func (s *ProvisionSuite) TestGetDocHandler(c *gocheck.C) {
-	se := service.Service{Name: "some_service", Doc: "some doc", OwnerTeams: []string{s.team.Name}}
-	se.Create()
-	defer s.conn.Services().Remove(bson.M{"_id": se.Name})
-	request, err := http.NewRequest("GET", fmt.Sprintf("/services/%s/doc?:name=%s", se.Name, se.Name), nil)
-	c.Assert(err, gocheck.IsNil)
-	recorder := httptest.NewRecorder()
-	err = GetDocHandler(recorder, request, s.token)
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(recorder.Body.String(), gocheck.Equals, "some doc")
-}
-
-func (s *ProvisionSuite) TestGetDocHandlerReturns403WhenTheUserDoesNotHaveAccessToTheService(c *gocheck.C) {
-	se := service.Service{Name: "Mysql"}
-	se.Create()
-	defer s.conn.Services().Remove(bson.M{"_id": se.Name})
-	request, err := http.NewRequest("GET", fmt.Sprintf("/services/%s/doc?:name=%s", se.Name, se.Name), nil)
-	c.Assert(err, gocheck.IsNil)
-	recorder := httptest.NewRecorder()
-	err = GetDocHandler(recorder, request, s.token)
-	c.Assert(err, gocheck.NotNil)
-	e, ok := err.(*errors.Http)
-	c.Assert(ok, gocheck.Equals, true)
-	c.Assert(e.Code, gocheck.Equals, http.StatusForbidden)
-	c.Assert(e, gocheck.ErrorMatches, "^This user does not have access to this service$")
-}
-
-func (s *ProvisionSuite) TestGetDocHandlerReturns404WhenTheServiceDoesNotExist(c *gocheck.C) {
-	request, err := http.NewRequest("GET", fmt.Sprintf("/services/%s/doc?:name=%s", "mongodb", "mongodb"), nil)
-	c.Assert(err, gocheck.IsNil)
-	recorder := httptest.NewRecorder()
-	err = GetDocHandler(recorder, request, s.token)
-	c.Assert(err, gocheck.NotNil)
-	e, ok := err.(*errors.Http)
-	c.Assert(ok, gocheck.Equals, true)
-	c.Assert(e.Code, gocheck.Equals, http.StatusNotFound)
-	c.Assert(e, gocheck.ErrorMatches, "^Service not found$")
-}
-
 func (s *ProvisionSuite) TestgetServiceByOwner(c *gocheck.C) {
 	srv := service.Service{Name: "foo", OwnerTeams: []string{s.team.Name}}
 	err := srv.Create()

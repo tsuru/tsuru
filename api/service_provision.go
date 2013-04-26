@@ -238,19 +238,6 @@ func serviceAddDoc(w http.ResponseWriter, r *http.Request, t *auth.Token) error 
 	return nil
 }
 
-func GetDocHandler(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
-	u, err := t.User()
-	if err != nil {
-		return err
-	}
-	s, err := getServiceByOwner(r.URL.Query().Get(":name"), u)
-	if err != nil {
-		return err
-	}
-	w.Write([]byte(s.Doc))
-	return nil
-}
-
 func getServiceByOwner(name string, u *auth.User) (service.Service, error) {
 	s := service.Service{Name: name}
 	err := s.Get()
