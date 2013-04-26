@@ -265,6 +265,12 @@ func (s *S) TestDelete(c *gocheck.C) {
 	c.Assert(h.url[1], gocheck.Equals, "/repository/myapptodelete") // increment the index because of CreateApp action
 	c.Assert(h.method[1], gocheck.Equals, "DELETE")
 	c.Assert(string(h.body[1]), gocheck.Equals, "null")
+	action := testing.Action{
+		Action: "app-delete",
+		User:   s.user.Email,
+		Extra:  []interface{}{myApp.Name},
+	}
+	c.Assert(action, testing.IsRecorded)
 }
 
 func (s *S) TestDeleteShouldReturnForbiddenIfTheGivenUserDoesNotHaveAccesToTheApp(c *gocheck.C) {
