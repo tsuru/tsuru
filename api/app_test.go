@@ -1058,6 +1058,12 @@ func (s *S) TestRunHandlerShouldExecuteTheGivenCommandInTheGivenApp(c *gocheck.C
 	expected += " ls"
 	cmds := s.provisioner.GetCmds(expected, &a)
 	c.Assert(cmds, gocheck.HasLen, 1)
+	action := testing.Action{
+		Action: "run-command",
+		User:   s.user.Email,
+		Extra:  []interface{}{"app=" + a.Name, "command=ls"},
+	}
+	c.Assert(action, testing.IsRecorded)
 }
 
 func (s *S) TestRunHandlerReturnsTheOutputOfTheCommandEvenIfItFails(c *gocheck.C) {

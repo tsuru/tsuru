@@ -374,6 +374,7 @@ func runCommand(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
 		return err
 	}
 	appName := r.URL.Query().Get(":app")
+	rec.Log(u.Email, "run-command", "app="+appName, "command="+string(c))
 	app, err := getApp(appName, u)
 	if err != nil {
 		return err
