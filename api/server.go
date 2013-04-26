@@ -70,7 +70,7 @@ func RunServer(flags map[string]interface{}) {
 	m.Put("/services", authorizationRequiredHandler(serviceUpdate))
 	m.Del("/services/:name", authorizationRequiredHandler(serviceDelete))
 	m.Get("/services/:name", authorizationRequiredHandler(serviceInfo))
-	m.Get("/services/c/:name/doc", authorizationRequiredHandler(serviceDoc))
+	m.Get("/services/:name/doc", authorizationRequiredHandler(serviceDoc))
 	m.Put("/services/:name/doc", authorizationRequiredHandler(serviceAddDoc))
 	m.Put("/services/:service/:team", authorizationRequiredHandler(GrantServiceAccessToTeamHandler))
 	m.Del("/services/:service/:team", authorizationRequiredHandler(RevokeServiceAccessFromTeamHandler))
