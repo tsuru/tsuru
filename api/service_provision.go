@@ -55,15 +55,16 @@ func CreateHandler(w http.ResponseWriter, r *http.Request, t *auth.Token) error 
 	if _, ok := sy.Endpoint["production"]; !ok {
 		return &errors.Http{Code: http.StatusBadRequest, Message: "You must provide a production endpoint in the manifest file."}
 	}
+	u, err := t.User()
+	if err != nil {
+		return err
+	}
+	rec.Log(u.Email, "create-service", sy.Id)
 	conn, err := db.Conn()
 	if err != nil {
 		return err
 	}
 	defer conn.Close()
-	u, err := t.User()
-	if err != nil {
-		return err
-	}
 	var teams []auth.Team
 	err = conn.Teams().Find(bson.M{"users": u.Email}).All(&teams)
 	if err != nil {

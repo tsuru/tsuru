@@ -114,6 +114,12 @@ func (s *ProvisionSuite) TestCreateHandlerSavesNameFromManifestId(c *gocheck.C) 
 	err = s.conn.Services().Find(query).One(&rService)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(rService.Name, gocheck.Equals, "some_service")
+	action := testing.Action{
+		Action: "create-service",
+		User:   s.user.Email,
+		Extra:  []interface{}{"some_service"},
+	}
+	c.Assert(action, testing.IsRecorded)
 }
 
 func (s *ProvisionSuite) TestCreateHandlerSavesEndpointServiceProperty(c *gocheck.C) {
