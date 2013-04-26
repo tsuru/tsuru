@@ -303,7 +303,7 @@ func (s *S) TestExportEnvironmentsForward(c *gocheck.C) {
 	c.Assert(appEnv["TSURU_HOST"].Public, gocheck.Equals, false)
 	c.Assert(appEnv["TSURU_APP_TOKEN"].Value, gocheck.Not(gocheck.Equals), "")
 	c.Assert(appEnv["TSURU_APP_TOKEN"].Public, gocheck.Equals, false)
-	t, err := auth.GetToken(appEnv["TSURU_APP_TOKEN"].Value)
+	t, err := auth.GetToken("bearer " + appEnv["TSURU_APP_TOKEN"].Value)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(t.AppName, gocheck.Equals, app.Name)
 	message, err := aqueue().Get(2e9)
@@ -366,7 +366,7 @@ func (s *S) TestExportEnvironmentsBackward(c *gocheck.C) {
 			c.Errorf("Variable %q should be unexported, but it's still exported.", name)
 		}
 	}
-	_, err = auth.GetToken(token.Token)
+	_, err = auth.GetToken("bearer " + token.Token)
 	c.Assert(err, gocheck.NotNil)
 	c.Assert(err.Error(), gocheck.Equals, "Token not found")
 }

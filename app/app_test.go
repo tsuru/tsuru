@@ -99,7 +99,7 @@ func (s *S) TestDestroy(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(msg.Args, gocheck.DeepEquals, []string{a.Name})
 	msg.Delete()
-	_, err = auth.GetToken(token)
+	_, err = auth.GetToken("bearer " + token)
 	c.Assert(err, gocheck.NotNil)
 	c.Assert(err.Error(), gocheck.Equals, "Token not found")
 }
