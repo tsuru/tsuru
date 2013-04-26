@@ -50,7 +50,7 @@ func parseToken(header string) (string, error) {
 	if len(s) == 2 {
 		return s[1], nil
 	}
-	return "", errors.New("")
+	return "", ErrInvalidToken
 }
 
 func GetToken(header string) (*Token, error) {

@@ -208,9 +208,9 @@ func (s *S) TestParseToken(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(t, gocheck.Equals, "token")
 	t, err = parseToken("type ble ble")
-	c.Assert(err, gocheck.NotNil)
+	c.Assert(err, gocheck.Equals, ErrInvalidToken)
 	c.Assert(t, gocheck.Equals, "")
 	t, err = parseToken("")
-	c.Assert(err, gocheck.NotNil)
+	c.Assert(err, gocheck.Equals, ErrInvalidToken)
 	c.Assert(t, gocheck.Equals, "")
 }
