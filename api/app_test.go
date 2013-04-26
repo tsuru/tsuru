@@ -2322,6 +2322,12 @@ func (s *S) TestRestartHandler(c *gocheck.C) {
 	result := strings.Replace(recorder.Body.String(), "\n", "#", -1)
 	c.Assert(result, gocheck.Matches, ".*# ---> Restarting your app#.*")
 	c.Assert(recorder.Header().Get("Content-Type"), gocheck.Equals, "text")
+	action := testing.Action{
+		Action: "restart",
+		User:   s.user.Email,
+		Extra:  []interface{}{a.Name},
+	}
+	c.Assert(action, testing.IsRecorded)
 }
 
 func (s *S) TestRestartHandlerReturns404IfTheAppDoesNotExist(c *gocheck.C) {

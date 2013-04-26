@@ -621,7 +621,9 @@ func restart(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
 	if err != nil {
 		return err
 	}
-	instance, err := getApp(r.URL.Query().Get(":app"), u)
+	appName := r.URL.Query().Get(":app")
+	rec.Log(u.Email, "restart", appName)
+	instance, err := getApp(appName, u)
 	if err != nil {
 		return err
 	}
