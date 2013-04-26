@@ -95,7 +95,7 @@ func serviceCreate(w http.ResponseWriter, r *http.Request, t *auth.Token) error 
 	return nil
 }
 
-func UpdateHandler(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
+func serviceUpdate(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
 	defer r.Body.Close()
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
