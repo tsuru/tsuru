@@ -1314,6 +1314,15 @@ func (s *S) TestSetEnvHandlerShouldSetAPublicEnvironmentVariableInTheApp(c *goch
 	c.Assert(err, gocheck.IsNil)
 	expected := bind.EnvVar{Name: "DATABASE_HOST", Value: "localhost", Public: true}
 	c.Assert(app.Env["DATABASE_HOST"], gocheck.DeepEquals, expected)
+	envs := map[string]string{
+		"DATABASE_HOST": "localhost",
+	}
+	action := testing.Action{
+		Action: "set-env",
+		User:   s.user.Email,
+		Extra:  []interface{}{"app=" + a.Name, envs},
+	}
+	c.Assert(action, testing.IsRecorded)
 }
 
 func (s *S) TestSetEnvHandlerShouldSetMultipleEnvironmentVariablesInTheApp(c *gocheck.C) {
@@ -1340,6 +1349,16 @@ func (s *S) TestSetEnvHandlerShouldSetMultipleEnvironmentVariablesInTheApp(c *go
 	expectedUser := bind.EnvVar{Name: "DATABASE_USER", Value: "root", Public: true}
 	c.Assert(app.Env["DATABASE_HOST"], gocheck.DeepEquals, expectedHost)
 	c.Assert(app.Env["DATABASE_USER"], gocheck.DeepEquals, expectedUser)
+	envs := map[string]string{
+		"DATABASE_HOST": "localhost",
+		"DATABASE_USER": "root",
+	}
+	action := testing.Action{
+		Action: "set-env",
+		User:   s.user.Email,
+		Extra:  []interface{}{"app=" + a.Name, envs},
+	}
+	c.Assert(action, testing.IsRecorded)
 }
 
 func (s *S) TestSetEnvHandlerShouldNotChangeValueOfPrivateVariables(c *gocheck.C) {
