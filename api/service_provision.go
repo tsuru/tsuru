@@ -172,7 +172,7 @@ func getServiceAndTeam(serviceName string, teamName string, u *auth.User) (*serv
 	return service, t, nil
 }
 
-func serviceGrantAccess(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
+func grantServiceAccess(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
 	u, err := t.User()
 	if err != nil {
 		return err
