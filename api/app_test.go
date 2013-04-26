@@ -165,6 +165,8 @@ func (s *S) TestAppList(c *gocheck.C) {
 			c.Assert(app.Units[0].Ip, gocheck.Equals, "10.10.10.10")
 		}
 	}
+	action := testing.Action{Action: "app-list", User: s.user.Email}
+	c.Assert(action, testing.IsRecorded)
 }
 
 // Issue #52.
