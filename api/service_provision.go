@@ -221,12 +221,13 @@ func AddDocHandler(w http.ResponseWriter, r *http.Request, t *auth.Token) error 
 	if err != nil {
 		return err
 	}
-	s, err := getServiceByOwner(r.URL.Query().Get(":name"), u)
+	defer r.Body.Close()
+	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		return err
 	}
-	defer r.Body.Close()
-	body, err := ioutil.ReadAll(r.Body)
+	rec.Log(u.Email, "service-add-doc", r.URL.Query().Get(":name"), string(body))
+	s, err := getServiceByOwner(r.URL.Query().Get(":name"), u)
 	if err != nil {
 		return err
 	}

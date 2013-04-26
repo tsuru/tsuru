@@ -596,6 +596,12 @@ func (s *ProvisionSuite) TestAddDocHandler(c *gocheck.C) {
 	err = s.conn.Services().Find(query).One(&serv)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(serv.Doc, gocheck.Equals, "doc")
+	action := testing.Action{
+		Action: "service-add-doc",
+		User:   s.user.Email,
+		Extra:  []interface{}{"some_service", "doc"},
+	}
+	c.Assert(action, testing.IsRecorded)
 }
 
 func (s *ProvisionSuite) TestAddDocHandlerReturns403WhenTheUserDoesNotHaveAccessToTheService(c *gocheck.C) {
