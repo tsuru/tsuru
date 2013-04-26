@@ -153,13 +153,23 @@ func (s *S) TestImageCommit(c *gocheck.C) {
 		execut = nil
 	}()
 	img := image{name: "app-name", id: "image-id"}
-	err := img.commit("container-id")
+	_, err := img.commit("container-id")
 	c.Assert(err, gocheck.IsNil)
 	repoNamespace, err := config.GetString("docker:repository-namespace")
 	c.Assert(err, gocheck.IsNil)
 	imageName := fmt.Sprintf("%s/app-name", repoNamespace)
 	args := []string{"commit", "container-id", imageName}
 	c.Assert(fexec.ExecutedCmd("docker", args), gocheck.Equals, true)
+}
+
+func (s *S) TestImageCommitReturnsImageId(c *gocheck.C) {
+	tmpdir, err := commandmocker.Add("docker", "945132e7b4c9\n")
+	c.Assert(err, gocheck.IsNil)
+	defer commandmocker.Remove(tmpdir)
+	img := image{name: "app-name", id: "image-id"}
+	id, err := img.commit("container-id")
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(id, gocheck.Equals, "945132e7b4c9")
 }
 
 func (s *S) TestImageRemove(c *gocheck.C) {

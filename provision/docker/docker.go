@@ -188,20 +188,21 @@ func (img *image) repositoryName() string {
 // This is another docker concept, in order to generate an image from a container
 // one must commit it.
 // TODO: should also return image id
-func (img *image) commit(cId string) error {
+func (img *image) commit(cId string) (string, error) {
 	docker, err := config.GetString("docker:binary")
 	if err != nil {
 		log.Printf("Tsuru is misconfigured. docker:binary config is missing.")
-		return err
+		return "", err
 	}
 	log.Printf("attempting to commit image from container %s", cId)
 	rName := img.repositoryName()
-	_, err = runCmd(docker, "commit", cId, rName)
+	id, err := runCmd(docker, "commit", cId, rName)
 	if err != nil {
 		log.Printf("Could not commit docker image: %s", err.Error())
-		return err
+		return "", err
 	}
-	return nil
+	id = strings.Replace(id, "\n", "", -1)
+	return id, nil
 }
 
 // remove removes an image from docker registry

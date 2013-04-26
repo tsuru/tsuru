@@ -190,7 +190,8 @@ func (p *DockerProvisioner) Restart(app provision.App) error {
 func (p *DockerProvisioner) Deploy(app provision.App, w io.Writer) error {
 	c := newContainer(app)
 	img := image{name: app.GetName()}
-	return img.commit(c.id)
+	_, err := img.commit(c.id)
+	return err
 }
 
 func (p *DockerProvisioner) Destroy(app provision.App) error {
