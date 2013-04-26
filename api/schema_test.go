@@ -25,6 +25,14 @@ func (s *SchemaSuite) TestSchemas(c *gocheck.C) {
 	c.Assert(recorder.Code, gocheck.Equals, http.StatusOK)
 	l := []link{
 		{"href": "/apps", "method": "POST", "rel": "create"},
+		{"href": "/apps/{name}/log", "method": "GET", "rel": "log"},
+		{"href": "/apps/{name}/env", "method": "GET", "rel": "get envs"},
+		{"href": "/apps/{name}/env", "method": "POST", "rel": "set envs"},
+		{"href": "/apps/{name}/env", "method": "DELETE", "rel": "unset envs"},
+		{"href": "/apps/{name}/restart", "method": "GET", "rel": "restart"},
+		{"href": "/apps/{name}", "method": "POST", "rel": "update"},
+		{"href": "/apps/{name}", "method": "DELETE", "rel": "delete"},
+		{"href": "/apps/{name}/run", "method": "POST", "rel": "run command"},
 	}
 	expected := schema{
 		Title:    "app schema",
