@@ -165,6 +165,7 @@ func createApp(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
 	if err != nil {
 		return err
 	}
+	rec.Log(u.Email, "create-app", "name="+japp.Name, "platform="+japp.Platform, fmt.Sprintf("units=%d", japp.Units))
 	teams, err := u.Teams()
 	if err != nil {
 		return err

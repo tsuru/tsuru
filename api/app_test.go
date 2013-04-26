@@ -411,6 +411,12 @@ func (s *S) TestCreateAppHandler(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(gotApp.Teams, gocheck.DeepEquals, []string{s.team.Name})
 	c.Assert(s.provisioner.GetUnits(&gotApp), gocheck.HasLen, 4)
+	action := testing.Action{
+		Action: "create-app",
+		User:   s.user.Email,
+		Extra:  []interface{}{"name=someapp", "platform=zend", "units=4"},
+	}
+	c.Assert(action, testing.IsRecorded)
 }
 
 func (s *S) TestCreateAppReturnsPreconditionFailedIfTheAppNameIsInvalid(c *gocheck.C) {
