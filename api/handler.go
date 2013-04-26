@@ -14,7 +14,7 @@ import (
 
 const (
 	tsuruMin = "0.7.11"
-	craneMin = "0.4"
+	craneMin = "0.4.4"
 )
 
 func setVersionHeaders(w http.ResponseWriter) {
