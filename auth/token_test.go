@@ -48,23 +48,29 @@ func (s *S) TestNewTokenReturnsErrorWhenUserIsNil(c *gocheck.C) {
 }
 
 func (s *S) TestGetToken(c *gocheck.C) {
-	t, err := GetToken(s.token.Token)
+	t, err := GetToken("bearer " + s.token.Token)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(t.Token, gocheck.Equals, s.token.Token)
 }
 
 func (s *S) TestGetTokenEmptyToken(c *gocheck.C) {
-	u, err := GetToken("tokenthatdoesnotexist")
+	u, err := GetToken("bearer tokenthatdoesnotexist")
 	c.Assert(u, gocheck.IsNil)
 	c.Assert(err, gocheck.NotNil)
 	c.Assert(err.Error(), gocheck.Equals, "Token not found")
 }
 
 func (s *S) TestGetTokenNotFound(c *gocheck.C) {
-	t, err := GetToken("invalid")
+	t, err := GetToken("bearer invalid")
 	c.Assert(t, gocheck.IsNil)
 	c.Assert(err, gocheck.NotNil)
 	c.Assert(err, gocheck.ErrorMatches, "Token not found")
+}
+
+func (s *S) TestGetTokenInvalid(c *gocheck.C) {
+	t, err := GetToken("invalid")
+	c.Assert(t, gocheck.IsNil)
+	c.Assert(err, gocheck.Equals, ErrInvalidToken)
 }
 
 func (s *S) TestGetExpiredToken(c *gocheck.C) {
@@ -122,7 +128,7 @@ func (s *S) TestDeleteToken(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	err = DeleteToken(t.Token)
 	c.Assert(err, gocheck.IsNil)
-	_, err = GetToken(t.Token)
+	_, err = GetToken("bearer " + t.Token)
 	c.Assert(err, gocheck.NotNil)
 	c.Assert(err.Error(), gocheck.Equals, "Token not found")
 }
