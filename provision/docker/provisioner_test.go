@@ -200,6 +200,22 @@ func (s *S) TestDeployShouldCallDockerCreate(c *gocheck.C) {
 	c.Assert(fexec.ExecutedCmd("docker", args), gocheck.Equals, true)
 }
 
+func (s *S) TestDeployShouldCommitImage(c *gocheck.C) {
+	id := "945132e7b4c9"
+	tmpdir, err := commandmocker.Add("docker", id)
+	c.Assert(err, gocheck.IsNil)
+	defer commandmocker.Remove(tmpdir)
+	p := DockerProvisioner{}
+	app := testing.NewFakeApp("cribcaged", "python", 1)
+	w := &bytes.Buffer{}
+	err = p.Deploy(app, w)
+	c.Assert(err, gocheck.IsNil)
+	args := []string{"commit", id, fmt.Sprintf("%s/cribcaged", s.repoNamespace)}
+	args = append([]string{"run", "-d", fmt.Sprintf("%s/python", s.repoNamespace), fmt.Sprintf("/var/lib/tsuru/deploy git://%s/cribcaged.git", s.gitHost)}, args...)
+	c.Assert(commandmocker.Ran(tmpdir), gocheck.Equals, true)
+	c.Assert(commandmocker.Parameters(tmpdir), gocheck.DeepEquals, args)
+}
+
 func (s *S) TestProvisionerDestroy(c *gocheck.C) {
 	fexec := &etesting.FakeExecutor{}
 	execut = fexec

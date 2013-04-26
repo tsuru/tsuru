@@ -187,6 +187,7 @@ func (img *image) repositoryName() string {
 //
 // This is another docker concept, in order to generate an image from a container
 // one must commit it.
+// TODO: should also return image id
 func (img *image) commit(cId string) error {
 	docker, err := config.GetString("docker:binary")
 	if err != nil {
