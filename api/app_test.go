@@ -498,6 +498,12 @@ func (s *S) TestAddUnits(c *gocheck.C) {
 	err = a.Get()
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(a.Units, gocheck.HasLen, 3)
+	action := testing.Action{
+		Action: "add-units",
+		User:   s.user.Email,
+		Extra:  []interface{}{"app=armorandsword", "units=3"},
+	}
+	c.Assert(action, testing.IsRecorded)
 }
 
 func (s *S) TestAddUnitsReturns404IfAppDoesNotExist(c *gocheck.C) {

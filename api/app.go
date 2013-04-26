@@ -232,6 +232,7 @@ func addUnits(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
 	if err != nil {
 		return err
 	}
+	rec.Log(u.Email, "add-units", "app="+appName, fmt.Sprintf("units=%d", n))
 	app, err := getApp(appName, u)
 	if err != nil {
 		return err
