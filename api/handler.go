@@ -13,13 +13,15 @@ import (
 )
 
 const (
-	tsuruMin = "0.7.11"
-	craneMin = "0.4.4"
+	tsuruMin      = "0.7.11"
+	craneMin      = "0.4.4"
+	tsuruAdminMin = "0.1.7"
 )
 
 func setVersionHeaders(w http.ResponseWriter) {
 	w.Header().Set("Supported-Tsuru", tsuruMin)
 	w.Header().Set("Supported-Crane", craneMin)
+	w.Header().Set("Supported-Tsuru-Admin", tsuruAdminMin)
 }
 
 type handler func(http.ResponseWriter, *http.Request) error
