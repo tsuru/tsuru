@@ -114,10 +114,14 @@ func (s *ProvisionSuite) TestCreateHandlerSavesNameFromManifestId(c *gocheck.C) 
 	err = s.conn.Services().Find(query).One(&rService)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(rService.Name, gocheck.Equals, "some_service")
+	endpoints := map[string]string{
+		"production": "someservice.com",
+		"test":       "test.someservice.com",
+	}
 	action := testing.Action{
 		Action: "create-service",
 		User:   s.user.Email,
-		Extra:  []interface{}{"some_service"},
+		Extra:  []interface{}{"some_service", endpoints},
 	}
 	c.Assert(action, testing.IsRecorded)
 }
