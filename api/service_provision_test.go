@@ -6,6 +6,7 @@ package api
 
 import (
 	"bytes"
+	"code.google.com/p/go.crypto/bcrypt"
 	"encoding/json"
 	"fmt"
 	"github.com/globocom/config"
@@ -13,6 +14,7 @@ import (
 	"github.com/globocom/tsuru/db"
 	"github.com/globocom/tsuru/errors"
 	"github.com/globocom/tsuru/service"
+	"github.com/globocom/tsuru/testing"
 	"io/ioutil"
 	"labix.org/v2/mgo/bson"
 	"launchpad.net/gocheck"
@@ -34,6 +36,7 @@ func (s *ProvisionSuite) SetUpSuite(c *gocheck.C) {
 	var err error
 	config.Set("database:url", "127.0.0.1:27017")
 	config.Set("database:name", "tsuru_api_provision_test")
+	config.Set("auth:hash-cost", bcrypt.MinCost)
 	s.conn, err = db.Conn()
 	c.Assert(err, gocheck.IsNil)
 	s.createUserAndTeam(c)
@@ -85,6 +88,8 @@ func (s *ProvisionSuite) TestServicesHandlerShoudGetAllServicesFromUsersTeam(c *
 		{Service: "mongodb", Instances: []string{"my_nosql"}},
 	}
 	c.Assert(services, gocheck.DeepEquals, expected)
+	action := testing.Action{Action: "list-services", User: s.user.Email}
+	c.Assert(action, testing.IsRecorded)
 }
 
 func makeRequestToCreateHandler(c *gocheck.C) (*httptest.ResponseRecorder, *http.Request) {

@@ -10,6 +10,7 @@ import (
 	"github.com/globocom/tsuru/auth"
 	"github.com/globocom/tsuru/db"
 	"github.com/globocom/tsuru/errors"
+	"github.com/globocom/tsuru/rec"
 	"github.com/globocom/tsuru/service"
 	"io/ioutil"
 	"labix.org/v2/mgo/bson"
@@ -27,6 +28,7 @@ func ServicesHandler(w http.ResponseWriter, r *http.Request, t *auth.Token) erro
 	if err != nil {
 		return err
 	}
+	rec.Log(u.Email, "list-services")
 	results := servicesAndInstancesByOwner(u)
 	b, err := json.Marshal(results)
 	if err != nil {
