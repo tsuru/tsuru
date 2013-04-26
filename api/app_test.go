@@ -2498,6 +2498,8 @@ func (s *S) TestPlatformList(c *gocheck.C) {
 	err = json.NewDecoder(recorder.Body).Decode(&got)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(got, gocheck.DeepEquals, want)
+	action := testing.Action{Action: "platform-list", User: s.user.Email}
+	c.Assert(action, testing.IsRecorded)
 }
 
 func (s *S) TestgetAppOrErrorWhenUserIsAdmin(c *gocheck.C) {

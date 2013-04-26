@@ -675,6 +675,11 @@ func addLog(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
 }
 
 func platformList(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
+	u, err := t.User()
+	if err != nil {
+		return err
+	}
+	rec.Log(u.Email, "platform-list")
 	platforms, err := app.Platforms()
 	if err != nil {
 		return err
