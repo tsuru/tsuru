@@ -325,6 +325,7 @@ func revokeAppAccess(w http.ResponseWriter, r *http.Request, t *auth.Token) erro
 	}
 	appName := r.URL.Query().Get(":app")
 	teamName := r.URL.Query().Get(":team")
+	rec.Log(u.Email, "revoke-app-access", "app="+appName, "team="+teamName)
 	team := new(auth.Team)
 	app, err := getApp(appName, u)
 	if err != nil {

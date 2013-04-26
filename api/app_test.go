@@ -838,6 +838,12 @@ func (s *S) TestRevokeAccessFromTeam(c *gocheck.C) {
 	a.Get()
 	c.Assert(a.Teams, gocheck.HasLen, 1)
 	c.Assert(a.Teams[0], gocheck.Equals, "abcd")
+	action := testing.Action{
+		Action: "revoke-app-access",
+		User:   s.user.Email,
+		Extra:  []interface{}{"app=" + a.Name, "team=" + s.team.Name},
+	}
+	c.Assert(action, testing.IsRecorded)
 }
 
 func (s *S) TestRevokeAccessFromTeamReturn404IfTheAppDoesNotExist(c *gocheck.C) {
