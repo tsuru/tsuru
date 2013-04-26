@@ -41,7 +41,7 @@ func serviceList(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
 	return err
 }
 
-func CreateHandler(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
+func createService(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
 	defer r.Body.Close()
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {

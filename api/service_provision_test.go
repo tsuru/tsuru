@@ -107,7 +107,7 @@ endpoint:
 
 func (s *ProvisionSuite) TestCreateHandlerSavesNameFromManifestId(c *gocheck.C) {
 	recorder, request := makeRequestToCreateHandler(c)
-	err := CreateHandler(recorder, request, s.token)
+	err := createService(recorder, request, s.token)
 	c.Assert(err, gocheck.IsNil)
 	query := bson.M{"_id": "some_service"}
 	var rService service.Service
@@ -124,7 +124,7 @@ func (s *ProvisionSuite) TestCreateHandlerSavesNameFromManifestId(c *gocheck.C) 
 
 func (s *ProvisionSuite) TestCreateHandlerSavesEndpointServiceProperty(c *gocheck.C) {
 	recorder, request := makeRequestToCreateHandler(c)
-	err := CreateHandler(recorder, request, s.token)
+	err := createService(recorder, request, s.token)
 	c.Assert(err, gocheck.IsNil)
 	query := bson.M{"_id": "some_service"}
 	var rService service.Service
@@ -143,7 +143,7 @@ func (s *ProvisionSuite) TestCreateHandlerWithContentOfRealYaml(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	request.Header.Set("Content-Type", "application/json")
 	recorder := httptest.NewRecorder()
-	err = CreateHandler(recorder, request, s.token)
+	err = createService(recorder, request, s.token)
 	c.Assert(err, gocheck.IsNil)
 	query := bson.M{"_id": "mysqlapi"}
 	var rService service.Service
@@ -155,17 +155,17 @@ func (s *ProvisionSuite) TestCreateHandlerWithContentOfRealYaml(c *gocheck.C) {
 
 func (s *ProvisionSuite) TestCreateHandlerShouldReturnErrorWhenNameExists(c *gocheck.C) {
 	recorder, request := makeRequestToCreateHandler(c)
-	err := CreateHandler(recorder, request, s.token)
+	err := createService(recorder, request, s.token)
 	c.Assert(err, gocheck.IsNil)
 	recorder, request = makeRequestToCreateHandler(c)
-	err = CreateHandler(recorder, request, s.token)
+	err = createService(recorder, request, s.token)
 	c.Assert(err, gocheck.NotNil)
 	c.Assert(err, gocheck.ErrorMatches, "^Service with name some_service already exists.$")
 }
 
 func (s *ProvisionSuite) TestCreateHandlerSavesOwnerTeamsFromUserWhoCreated(c *gocheck.C) {
 	recorder, request := makeRequestToCreateHandler(c)
-	err := CreateHandler(recorder, request, s.token)
+	err := createService(recorder, request, s.token)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(recorder.Body.String(), gocheck.Equals, "success")
 	c.Assert(recorder.Code, gocheck.Equals, http.StatusOK)
@@ -186,7 +186,7 @@ func (s *ProvisionSuite) TestCreateHandlerReturnsForbiddenIfTheUserIsNotMemberOf
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Tokens().Remove(bson.M{"token": token.Token})
 	recorder, request := makeRequestToCreateHandler(c)
-	err = CreateHandler(recorder, request, token)
+	err = createService(recorder, request, token)
 	c.Assert(err, gocheck.NotNil)
 	e, ok := err.(*errors.Http)
 	c.Assert(ok, gocheck.Equals, true)
@@ -203,7 +203,7 @@ func (s *ProvisionSuite) TestCreateHandlerReturnsBadRequestIfTheServiceDoesNotHa
 	c.Assert(err, gocheck.IsNil)
 	request.Header.Set("Content-Type", "application/json")
 	recorder := httptest.NewRecorder()
-	err = CreateHandler(recorder, request, s.token)
+	err = createService(recorder, request, s.token)
 	c.Assert(err, gocheck.NotNil)
 	e, ok := err.(*errors.Http)
 	c.Assert(ok, gocheck.Equals, true)
