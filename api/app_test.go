@@ -1454,6 +1454,12 @@ func (s *S) TestUnsetEnvHandlerRemovesTheEnvironmentVariablesFromTheApp(c *goche
 	err = app.Get()
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(app.Env, gocheck.DeepEquals, expected)
+	action := testing.Action{
+		Action: "unset-env",
+		User:   s.user.Email,
+		Extra:  []interface{}{"app=" + a.Name, "envs=[DATABASE_HOST]"},
+	}
+	c.Assert(action, testing.IsRecorded)
 }
 
 func (s *S) TestUnsetEnvHandlerRemovesAllGivenEnvironmentVariables(c *gocheck.C) {
@@ -1487,6 +1493,12 @@ func (s *S) TestUnsetEnvHandlerRemovesAllGivenEnvironmentVariables(c *gocheck.C)
 	}
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(app.Env, gocheck.DeepEquals, expected)
+	action := testing.Action{
+		Action: "unset-env",
+		User:   s.user.Email,
+		Extra:  []interface{}{"app=" + a.Name, "envs=[DATABASE_HOST DATABASE_USER]"},
+	}
+	c.Assert(action, testing.IsRecorded)
 }
 
 func (s *S) TestUnsetHandlerDoesNotRemovePrivateVariables(c *gocheck.C) {

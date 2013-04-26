@@ -466,6 +466,7 @@ func unsetEnv(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
 	if err != nil {
 		return err
 	}
+	rec.Log(u.Email, "unset-env", "app="+appName, fmt.Sprintf("envs=%s", variables))
 	app, err := getApp(appName, u)
 	if err != nil {
 		return err
