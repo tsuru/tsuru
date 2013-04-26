@@ -11,7 +11,7 @@ app_name = os.getcwd().split("/")[-1].replace(".git", "")
 timeout = 1800
 
 try:
-    headers = {"Authorization": token}
+    headers = {"Authorization": "bearer " + token}
     url = "{0}/apps/{1}/available".format(tsuru_host, app_name)
     request = urllib2.Request(url, headers=headers)
     f = urllib2.urlopen(request, timeout=timeout)
