@@ -331,6 +331,12 @@ func (s *S) TestAppInfo(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(myApp["Name"], gocheck.Equals, expectedApp.Name)
 	c.Assert(myApp["Repository"], gocheck.Equals, repository.GetUrl(expectedApp.Name))
+	action := testing.Action{
+		Action: "app-info",
+		User:   s.user.Email,
+		Extra:  []interface{}{expectedApp.Name},
+	}
+	c.Assert(action, testing.IsRecorded)
 }
 
 func (s *S) TestAppInfoReturnsForbiddenWhenTheUserDoesNotHaveAccessToTheApp(c *gocheck.C) {

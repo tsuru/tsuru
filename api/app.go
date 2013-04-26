@@ -125,6 +125,7 @@ func appInfo(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
 	if err != nil {
 		return err
 	}
+	rec.Log(u.Email, "app-info", r.URL.Query().Get(":app"))
 	app, err := getApp(r.URL.Query().Get(":app"), u)
 	if err != nil {
 		return err
