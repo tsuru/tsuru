@@ -7,6 +7,7 @@ package api
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/globocom/config"
 	"github.com/globocom/go-gandalfclient"
 	"github.com/globocom/tsuru/app"
 	"github.com/globocom/tsuru/app/bind"
@@ -127,6 +128,11 @@ func appInfo(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
 	if err != nil {
 		return err
 	}
+	host, err := config.GetString("host")
+	if err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json; profile="+host+"/schema/app")
 	return json.NewEncoder(w).Encode(&app)
 }
 

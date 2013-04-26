@@ -300,6 +300,7 @@ func (s *S) TestDeleteShouldReturnNotFoundIfTheAppDoesNotExist(c *gocheck.C) {
 }
 
 func (s *S) TestAppInfo(c *gocheck.C) {
+	config.Set("host", "http://myhost.com")
 	expectedApp := app.App{
 		Name:     "NewApp",
 		Platform: "django",
@@ -317,6 +318,7 @@ func (s *S) TestAppInfo(c *gocheck.C) {
 	err = appInfo(recorder, request, s.token)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(recorder.Code, gocheck.Equals, http.StatusOK)
+	c.Assert(recorder.Header().Get("Content-Type"), gocheck.Equals, "application/json; profile=http://myhost.com/schema/app")
 	body, err := ioutil.ReadAll(recorder.Body)
 	c.Assert(err, gocheck.IsNil)
 	err = json.Unmarshal(body, &myApp)
