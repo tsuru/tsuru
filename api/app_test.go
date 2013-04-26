@@ -1585,7 +1585,7 @@ func (s *S) TestSetCNameHandler(c *gocheck.C) {
 	action := testing.Action{
 		Action: "set-cname",
 		User:   s.user.Email,
-		Extra:  []interface{}{a.Name, "leper.secretcompany.com"},
+		Extra:  []interface{}{"app=" + a.Name, "cname=leper.secretcompany.com"},
 	}
 	c.Assert(action, testing.IsRecorded)
 }
