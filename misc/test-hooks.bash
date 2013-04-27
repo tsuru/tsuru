@@ -6,6 +6,10 @@
 
 # TODO(fss): this script is a hack. I should rewrite it :)
 
+function clean() {
+	rm tsr .copy.conf
+}
+
 echo "RUNNING GIT-HOOKS TESTS"
 mongo tsuru > /dev/null 2>.mongo.err <<END
 var today = new Date();
@@ -66,13 +70,20 @@ if [ $? != 0 ]
 then
 	echo "FAILURE: failed to build api server"
 	cat .api.out
-	rm .api.out tsr .copy.conf
+	rm .api.out
+	clean
 	exit 1
 fi
 rm .api.out
 
 sleep 1
 nc -z localhost 5000 > /dev/null
+if [ $? != 0 ]
+then
+	echo "FAILURE: did not start the API server"
+	clean
+	exit 1
+fi
 
 status=0
 
@@ -135,6 +146,5 @@ mongo tsuru > /dev/null 2>&1 <<END
 db.dropDatabase();
 END
 
-rm tsr .copy.conf
-
+clean
 exit $status
