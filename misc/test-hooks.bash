@@ -59,20 +59,20 @@ fi
 rm .mongo.err
 
 go build -o tsr ./cmd/tsr
-./tsr api --config ./etc/tsuru.conf > .api.out 2>&1 &
+sed -e 's/0.0.0.0:8080/0.0.0.0:5000/' etc/tsuru.conf > .copy.conf
+./tsr api --config .copy.conf > .api.out 2>&1 &
 
 if [ $? != 0 ]
 then
 	echo "FAILURE: failed to build api server"
 	cat .api.out
-	rm .api.out
-	rm tsr
+	rm .api.out tsr .copy.conf
 	exit 1
 fi
 rm .api.out
 
 sleep 1
-nc -z localhost 8080 > /dev/null
+nc -z localhost 5000 > /dev/null
 
 status=0
 
@@ -81,7 +81,7 @@ ln -s $PWD/misc/git-hooks /tmp/shell.git/hooks
 pushd /tmp/shell.git > /dev/null
 
 echo -n "pre-receive on available app... "
-out=`TSURU_HOST=http://127.0.0.1:8080 TSURU_TOKEN=000secret123 hooks/pre-receive`
+out=`TSURU_HOST=http://127.0.0.1:5000 TSURU_TOKEN=000secret123 hooks/pre-receive`
 
 if [ $? = 0 ]
 then
@@ -93,7 +93,7 @@ else
 fi
 
 echo -n "post-receive... "
-out=`TSURU_HOST=http://127.0.0.1:8080 TSURU_TOKEN=000secret123 hooks/post-receive`
+out=`TSURU_HOST=http://127.0.0.1:5000 TSURU_TOKEN=000secret123 hooks/post-receive`
 gout=`echo $out | grep "Tsuru receiving push"`
 
 if [ $? = 0 ]
@@ -114,7 +114,7 @@ mkdir /tmp/xeu.git
 ln -s $PWD/misc/git-hooks /tmp/xeu.git/hooks
 pushd /tmp/xeu.git > /dev/null
 
-TSURU_HOST=http://127.0.0.1:8080 TSURU_TOKEN=000secret123 hooks/pre-receive > .pre-receive.out 2>&1
+TSURU_HOST=http://127.0.0.1:5000 TSURU_TOKEN=000secret123 hooks/pre-receive > .pre-receive.out 2>&1
 
 if [ $? != 0 ]
 then
@@ -135,6 +135,6 @@ mongo tsuru > /dev/null 2>&1 <<END
 db.dropDatabase();
 END
 
-rm tsr
+rm tsr .copy.conf
 
 exit $status
