@@ -73,6 +73,7 @@ test:
 	@./tsr collector --dry --config ./etc/tsuru.conf
 	@rm -f tsr
 	@cmd/term/test.sh
+	@misc/test-hooks.bash
 
 race:
 	@for pkg in `go list ./...`; do go test -race -i $$pkg; go test -race $$pkg; done
