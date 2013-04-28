@@ -195,6 +195,7 @@ func (s *S) TestDeployShouldCallDockerCreate(c *gocheck.C) {
 	app := testing.NewFakeApp("cribcaged", "python", 1)
 	w := &bytes.Buffer{}
 	err := p.Deploy(app, w)
+	defer p.Destroy(app)
 	c.Assert(err, gocheck.IsNil)
 	args := []string{"run", "-d", fmt.Sprintf("%s/python", s.repoNamespace), fmt.Sprintf("/var/lib/tsuru/deploy git://%s/cribcaged.git", s.gitHost)}
 	c.Assert(fexec.ExecutedCmd("docker", args), gocheck.Equals, true)
@@ -209,6 +210,7 @@ func (s *S) TestDeployShouldCommitImage(c *gocheck.C) {
 	app := testing.NewFakeApp("cribcaged", "python", 1)
 	w := &bytes.Buffer{}
 	err = p.Deploy(app, w)
+	defer p.Destroy(app)
 	c.Assert(err, gocheck.IsNil)
 	args := []string{"commit", id, fmt.Sprintf("%s/cribcaged", s.repoNamespace)}
 	args = append([]string{"run", "-d", fmt.Sprintf("%s/python", s.repoNamespace), fmt.Sprintf("/var/lib/tsuru/deploy git://%s/cribcaged.git", s.gitHost)}, args...)
@@ -235,6 +237,9 @@ func (s *S) TestProvisionerDestroy(c *gocheck.C) {
 		Status:     provision.StatusCreating,
 	}
 	err := s.conn.Collection(s.collName).Insert(&u)
+	c.Assert(err, gocheck.IsNil)
+	img := image{Name: app.GetName()}
+	err = s.conn.Collection(s.imageCollName).Insert(&img)
 	c.Assert(err, gocheck.IsNil)
 	var p DockerProvisioner
 	c.Assert(p.Destroy(app), gocheck.IsNil)

@@ -14,6 +14,7 @@ import (
 	"github.com/globocom/tsuru/log"
 	"github.com/globocom/tsuru/provision"
 	"github.com/globocom/tsuru/repository"
+	"labix.org/v2/mgo/bson"
 	"strings"
 )
 
@@ -164,8 +165,8 @@ func (c *container) remove() error {
 
 // image represents a docker image.
 type image struct {
-	name string
-	id   string
+	Name string
+	Id   string
 }
 
 // repositoryName returns the image repository name for a given image.
@@ -180,7 +181,7 @@ func (img *image) repositoryName() string {
 		log.Printf("Tsuru is misconfigured. docker:repository-namespace config is missing.")
 		return ""
 	}
-	return fmt.Sprintf("%s/%s", repoNamespace, img.name)
+	return fmt.Sprintf("%s/%s", repoNamespace, img.Name)
 }
 
 // commit commits an image in docker
@@ -201,8 +202,12 @@ func (img *image) commit(cId string) (string, error) {
 		log.Printf("Could not commit docker image: %s", err.Error())
 		return "", err
 	}
-	id = strings.Replace(id, "\n", "", -1)
-	return id, nil
+	img.Id = strings.Replace(id, "\n", "", -1)
+	if err := imagesCollection().Insert(&img); err != nil {
+		log.Printf("Could not store image information %s", err.Error())
+		return "", err
+	}
+	return img.Id, nil
 }
 
 // remove removes an image from docker registry
@@ -213,9 +218,14 @@ func (img *image) remove() error {
 		return err
 	}
 	log.Printf("attempting to remove image %s from docker", img.repositoryName())
-	_, err = runCmd(docker, "rmi", img.id)
+	_, err = runCmd(docker, "rmi", img.Id)
 	if err != nil {
-		log.Printf("Could not remove image %s from docker: %s", img.id, err.Error())
+		log.Printf("Could not remove image %s from docker: %s", img.Id, err.Error())
+		return err
+	}
+	err = imagesCollection().Remove(bson.M{"name": img.Name})
+	if err != nil {
+		log.Printf("Could not remove image %s from mongo: %s", img.Id, err.Error())
 		return err
 	}
 	return nil

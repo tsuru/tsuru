@@ -15,6 +15,7 @@ func Test(t *testing.T) { gocheck.TestingT(t) }
 
 type S struct {
 	collName      string
+	imageCollName string
 	conn          *db.Storage
 	gitHost       string
 	repoNamespace string
@@ -24,6 +25,7 @@ var _ = gocheck.Suite(&S{})
 
 func (s *S) SetUpSuite(c *gocheck.C) {
 	s.collName = "docker_unit"
+	s.imageCollName = "docker_image"
 	s.gitHost = "my.gandalf.com"
 	s.repoNamespace = "tsuru"
 	config.Set("git:host", s.gitHost)

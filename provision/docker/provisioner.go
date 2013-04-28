@@ -189,7 +189,7 @@ func (p *DockerProvisioner) Restart(app provision.App) error {
 
 func (p *DockerProvisioner) Deploy(app provision.App, w io.Writer) error {
 	c := newContainer(app)
-	img := image{name: app.GetName()}
+	img := image{Name: app.GetName()}
 	_, err := img.commit(c.id)
 	return err
 }
@@ -222,6 +222,11 @@ func (p *DockerProvisioner) Destroy(app provision.App) error {
 			}
 			log.Print("Units successfuly removed.")
 		}(u)
+	}
+	img := &image{Name: app.GetName()}
+	log.Printf("removing image %s from the database", app.GetName())
+	if err := img.remove(); err != nil {
+		return err
 	}
 	return nil
 }
@@ -274,4 +279,15 @@ func collection() *mgo.Collection {
 		log.Printf("Failed to connect to the database: %s", err)
 	}
 	return conn.Collection(name)
+}
+
+func imagesCollection() *mgo.Collection {
+	nameIndex := mgo.Index{Key: []string{"name"}, Unique: true}
+	conn, err := db.Conn()
+	if err != nil {
+		log.Printf("Failed to connect to the database: %s", err)
+	}
+	c := conn.Collection("docker_image")
+	c.EnsureIndex(nameIndex)
+	return c
 }
