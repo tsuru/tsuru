@@ -152,8 +152,9 @@ func (s *S) TestImageCommit(c *gocheck.C) {
 	defer func() {
 		execut = nil
 	}()
-	img := image{name: "app-name", id: "image-id"}
+	img := image{Name: "app-name", Id: "image-id"}
 	_, err := img.commit("container-id")
+	defer img.remove()
 	c.Assert(err, gocheck.IsNil)
 	repoNamespace, err := config.GetString("docker:repository-namespace")
 	c.Assert(err, gocheck.IsNil)
@@ -166,10 +167,25 @@ func (s *S) TestImageCommitReturnsImageId(c *gocheck.C) {
 	tmpdir, err := commandmocker.Add("docker", "945132e7b4c9\n")
 	c.Assert(err, gocheck.IsNil)
 	defer commandmocker.Remove(tmpdir)
-	img := image{name: "app-name", id: "image-id"}
+	img := image{Name: "app-name", Id: "image-id"}
 	id, err := img.commit("container-id")
+	defer img.remove()
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(id, gocheck.Equals, "945132e7b4c9")
+}
+
+func (s *S) TestImageCommitInsertImageInformationToMongo(c *gocheck.C) {
+	tmpdir, err := commandmocker.Add("docker", "945132e7b4c9\n")
+	c.Assert(err, gocheck.IsNil)
+	img := image{Name: "app-name", Id: "image-id"}
+	_, err = img.commit("cid")
+	c.Assert(err, gocheck.IsNil)
+	defer commandmocker.Remove(tmpdir)
+	var imgMgo image
+	defer imgMgo.remove()
+	err = s.conn.Collection(s.imageCollName).Find(bson.M{"name": img.Name}).One(&imgMgo)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(imgMgo.Id, gocheck.Equals, img.Id)
 }
 
 func (s *S) TestImageRemove(c *gocheck.C) {
@@ -178,9 +194,14 @@ func (s *S) TestImageRemove(c *gocheck.C) {
 	defer func() {
 		execut = nil
 	}()
-	img := image{name: "app-name", id: "image-id"}
-	err := img.remove()
+	img := image{Name: "app-name", Id: "image-id"}
+	err := s.conn.Collection(s.imageCollName).Insert(&img)
 	c.Assert(err, gocheck.IsNil)
-	args := []string{"rmi", img.id}
+	err = img.remove()
+	c.Assert(err, gocheck.IsNil)
+	args := []string{"rmi", img.Id}
 	c.Assert(fexec.ExecutedCmd("docker", args), gocheck.Equals, true)
+	var imgMgo image
+	err = s.conn.Collection(s.imageCollName).Find(bson.M{"name": img.Name}).One(&imgMgo)
+	c.Assert(err.Error(), gocheck.Equals, "not found")
 }
