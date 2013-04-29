@@ -581,6 +581,11 @@ func (s *AuthSuite) TestListTeamsListsAllTeamsThatTheUserIsMember(c *gocheck.C) 
 	err = json.Unmarshal(b, &m)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(m, gocheck.DeepEquals, []map[string]string{{"name": s.team.Name}})
+	action := testing.Action{
+		Action: "list-teams",
+		User:   s.user.Email,
+	}
+	c.Assert(action, testing.IsRecorded)
 }
 
 func (s *AuthSuite) TestListTeamsReturns204IfTheUserHasNoTeam(c *gocheck.C) {

@@ -246,6 +246,7 @@ func ListTeams(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
 	if err != nil {
 		return err
 	}
+	rec.Log(u.Email, "list-teams")
 	teams, err := u.Teams()
 	if err != nil {
 		return err
