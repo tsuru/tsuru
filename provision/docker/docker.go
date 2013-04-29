@@ -121,8 +121,8 @@ func (c *container) create(platform, repository string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	cmd = fmt.Sprintf("%s %s", cmd, repository)                //replace with app's repo url
-	imageName := fmt.Sprintf("%s/%s", repoNamespace, platform) // replace python with app's platform
+	cmd = fmt.Sprintf("%s %s", cmd, repository)
+	imageName := fmt.Sprintf("%s/%s", repoNamespace, platform)
 	args := []string{"run", "-d", imageName, cmd}
 	id, err := runCmd(docker, args...)
 	id = strings.Replace(id, "\n", "", -1)
