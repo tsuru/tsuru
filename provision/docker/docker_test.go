@@ -24,7 +24,8 @@ func (s *S) TestNewContainer(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	defer commandmocker.Remove(tmpdir)
 	app := testing.NewFakeApp("app-name", "python", 1)
-	container := newContainer(app, deployContainerCmd)
+	container, err := newContainer(app, deployContainerCmd)
+	c.Assert(err, gocheck.IsNil)
 	c.Assert(container.name, gocheck.Equals, "app-name")
 	c.Assert(container.id, gocheck.Equals, id)
 }
@@ -63,7 +64,8 @@ func (s *S) TestNewContainerReturnsContainerWithoutIdAndLogsOnError(c *gocheck.C
 	c.Assert(err, gocheck.IsNil)
 	defer commandmocker.Remove(tmpdir)
 	app := testing.NewFakeApp("myapp", "python", 1)
-	container := newContainer(app, deployContainerCmd)
+	container, err := newContainer(app, deployContainerCmd)
+	c.Assert(err, gocheck.NotNil)
 	c.Assert(container.id, gocheck.Equals, "")
 	c.Assert(w.String(), gocheck.Matches, "(?s).*Error creating container myapp.*")
 }

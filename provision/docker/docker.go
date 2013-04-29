@@ -90,17 +90,18 @@ type container struct {
 }
 
 // newContainer creates a new container in docker and stores it on database.
+//
 // Receives the application to which the container is going to be generated
 // and the function to make the command that the container will execute on
 // startup.
-func newContainer(app provision.App, f func(provision.App) ([]string, error)) *container {
+func newContainer(app provision.App, f func(provision.App) ([]string, error)) (*container, error) {
 	appName := app.GetName()
 	c := &container{name: appName}
 	id, err := c.create(app, f)
 	if err != nil {
 		log.Printf("Error creating container %s", appName)
 		log.Printf("Error was: %s", err.Error())
-		return c
+		return c, err
 	}
 	c.id = id
 	u := provision.Unit{
@@ -114,9 +115,9 @@ func newContainer(app provision.App, f func(provision.App) ([]string, error)) *c
 	}
 	if err := collection().Insert(u); err != nil {
 		log.Print(err)
-		return c // should rollback
+		return c, err // should rollback
 	}
-	return c
+	return c, nil
 }
 
 // ip returns the ip for the container.
