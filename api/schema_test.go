@@ -6,6 +6,7 @@ package api
 
 import (
 	"encoding/json"
+	"github.com/globocom/config"
 	"io/ioutil"
 	"launchpad.net/gocheck"
 	"net/http"
@@ -17,6 +18,7 @@ type SchemaSuite struct{}
 var _ = gocheck.Suite(&SchemaSuite{})
 
 func (s *SchemaSuite) TestSchemas(c *gocheck.C) {
+	config.Set("host", "http://myhost.com")
 	recorder := httptest.NewRecorder()
 	request, err := http.NewRequest("GET", "/schema/app", nil)
 	c.Assert(err, gocheck.IsNil)
@@ -24,14 +26,14 @@ func (s *SchemaSuite) TestSchemas(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(recorder.Code, gocheck.Equals, http.StatusOK)
 	l := []link{
-		{"href": "/apps/{name}/log", "method": "GET", "rel": "log"},
-		{"href": "/apps/{name}/env", "method": "GET", "rel": "get_env"},
-		{"href": "/apps/{name}/env", "method": "POST", "rel": "set_env"},
-		{"href": "/apps/{name}/env", "method": "DELETE", "rel": "unset_env"},
-		{"href": "/apps/{name}/restart", "method": "GET", "rel": "restart"},
-		{"href": "/apps/{name}", "method": "POST", "rel": "update"},
-		{"href": "/apps/{name}", "method": "DELETE", "rel": "delete"},
-		{"href": "/apps/{name}/run", "method": "POST", "rel": "run"},
+		{"href": "http://myhost.com/apps/{name}/log", "method": "GET", "rel": "log"},
+		{"href": "http://myhost.com/apps/{name}/env", "method": "GET", "rel": "get_env"},
+		{"href": "http://myhost.com/apps/{name}/env", "method": "POST", "rel": "set_env"},
+		{"href": "http://myhost.com/apps/{name}/env", "method": "DELETE", "rel": "unset_env"},
+		{"href": "http://myhost.com/apps/{name}/restart", "method": "GET", "rel": "restart"},
+		{"href": "http://myhost.com/apps/{name}", "method": "POST", "rel": "update"},
+		{"href": "http://myhost.com/apps/{name}", "method": "DELETE", "rel": "delete"},
+		{"href": "http://myhost.com/apps/{name}/run", "method": "POST", "rel": "run"},
 	}
 	expected := schema{
 		Title:    "app schema",

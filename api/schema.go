@@ -6,7 +6,9 @@ package api
 
 import (
 	"encoding/json"
+	"github.com/globocom/config"
 	"github.com/globocom/tsuru/auth"
+	"net/http"
 	"net/http"
 )
 
@@ -26,15 +28,19 @@ type property map[string]interface{}
 
 // appSchema returns a json schema for app.
 func appSchema(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
+	host, err := config.GetString("host")
+	if err != nil {
+		return err
+	}
 	l := []link{
-		{"href": "/apps/{name}/log", "method": "GET", "rel": "log"},
-		{"href": "/apps/{name}/env", "method": "GET", "rel": "get_env"},
-		{"href": "/apps/{name}/env", "method": "POST", "rel": "set_env"},
-		{"href": "/apps/{name}/env", "method": "DELETE", "rel": "unset_env"},
-		{"href": "/apps/{name}/restart", "method": "GET", "rel": "restart"},
-		{"href": "/apps/{name}", "method": "POST", "rel": "update"},
-		{"href": "/apps/{name}", "method": "DELETE", "rel": "delete"},
-		{"href": "/apps/{name}/run", "method": "POST", "rel": "run"},
+		{"href": host + "/apps/{name}/log", "method": "GET", "rel": "log"},
+		{"href": host + "/apps/{name}/env", "method": "GET", "rel": "get_env"},
+		{"href": host + "/apps/{name}/env", "method": "POST", "rel": "set_env"},
+		{"href": host + "/apps/{name}/env", "method": "DELETE", "rel": "unset_env"},
+		{"href": host + "/apps/{name}/restart", "method": "GET", "rel": "restart"},
+		{"href": host + "/apps/{name}", "method": "POST", "rel": "update"},
+		{"href": host + "/apps/{name}", "method": "DELETE", "rel": "delete"},
+		{"href": host + "/apps/{name}/run", "method": "POST", "rel": "run"},
 	}
 	s := schema{
 		Title:    "app schema",
