@@ -949,6 +949,12 @@ func (s *AuthSuite) TestAddKeyToUserAddsAKeyToTheUser(c *gocheck.C) {
 	s.user, err = auth.GetUserByEmail(s.user.Email)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(s.user, HasKey, "my-key")
+	action := testing.Action{
+		Action: "add-key",
+		User:   s.user.Email,
+		Extra:  []interface{}{"my-key"},
+	}
+	c.Assert(action, testing.IsRecorded)
 }
 
 func (s *AuthSuite) TestAddKeyToUserReturnsErrorIfTheReadingOfTheBodyFails(c *gocheck.C) {

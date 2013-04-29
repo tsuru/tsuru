@@ -461,6 +461,7 @@ func AddKeyToUser(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
 	if err != nil {
 		return err
 	}
+	rec.Log(u.Email, "add-key", key)
 	return addKeyToUser(key, u)
 }
 
