@@ -56,15 +56,13 @@ func (s *S) TestGetToken(c *gocheck.C) {
 func (s *S) TestGetTokenEmptyToken(c *gocheck.C) {
 	u, err := GetToken("bearer tokenthatdoesnotexist")
 	c.Assert(u, gocheck.IsNil)
-	c.Assert(err, gocheck.NotNil)
-	c.Assert(err.Error(), gocheck.Equals, "Token not found")
+	c.Assert(err, gocheck.Equals, ErrInvalidToken)
 }
 
 func (s *S) TestGetTokenNotFound(c *gocheck.C) {
 	t, err := GetToken("bearer invalid")
 	c.Assert(t, gocheck.IsNil)
-	c.Assert(err, gocheck.NotNil)
-	c.Assert(err, gocheck.ErrorMatches, "Token not found")
+	c.Assert(err, gocheck.Equals, ErrInvalidToken)
 }
 
 func (s *S) TestGetTokenInvalid(c *gocheck.C) {
@@ -129,8 +127,7 @@ func (s *S) TestDeleteToken(c *gocheck.C) {
 	err = DeleteToken(t.Token)
 	c.Assert(err, gocheck.IsNil)
 	_, err = GetToken("bearer " + t.Token)
-	c.Assert(err, gocheck.NotNil)
-	c.Assert(err.Error(), gocheck.Equals, "Token not found")
+	c.Assert(err, gocheck.Equals, ErrInvalidToken)
 }
 
 func (s *S) TestCreatePasswordToken(c *gocheck.C) {

@@ -63,7 +63,7 @@ func GetToken(header string) (*Token, error) {
 	}
 	err = conn.Tokens().Find(bson.M{"token": token}).One(&t)
 	if err != nil {
-		return nil, errors.New("Token not found")
+		return nil, ErrInvalidToken
 	}
 	if t.ValidUntil.Sub(time.Now()) < 1 {
 		return nil, ErrInvalidToken
