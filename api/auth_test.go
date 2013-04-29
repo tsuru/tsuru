@@ -1524,6 +1524,11 @@ func (s *AuthSuite) TestResetPasswordStep2(c *gocheck.C) {
 	u2, err := auth.GetUserByEmail(user.Email)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(u2.Password, gocheck.Not(gocheck.Equals), oldPassword)
+	action := testing.Action{
+		Action: "reset-password",
+		User:   user.Email,
+	}
+	c.Assert(action, testing.IsRecorded)
 }
 
 func (s *AuthSuite) TestGenerateApplicationToken(c *gocheck.C) {
