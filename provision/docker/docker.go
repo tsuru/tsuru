@@ -35,17 +35,68 @@ func runCmd(cmd string, args ...string) (string, error) {
 	return out.String(), err
 }
 
+// DeployCmd combines settings and application attributes needed in
+// order to make a deploy command
+func deployContainerCmd(app provision.App) ([]string, error) {
+	docker, err := config.GetString("docker:binary")
+	if err != nil {
+		return []string{}, err
+	}
+	repoNamespace, err := config.GetString("docker:repository-namespace")
+	if err != nil {
+		return []string{}, err
+	}
+	cmd, err := config.GetString("docker:deploy-cmd")
+	if err != nil {
+		return []string{}, err
+	}
+	cmd = fmt.Sprintf("%s %s", cmd, repository.GetReadOnlyUrl(app.GetName()))
+	imageName := fmt.Sprintf("%s/%s", repoNamespace, app.GetPlatform()) // TODO (flaviamissi): should use same algorithm as image.repositoryName
+	wholeCmd := []string{docker, "run", "-d", imageName, cmd}
+	return wholeCmd, nil
+}
+
+func runContainerCmd(app provision.App) ([]string, error) {
+	docker, err := config.GetString("docker:binary")
+	if err != nil {
+		return []string{}, err
+	}
+	repoNamespace, err := config.GetString("docker:repository-namespace")
+	if err != nil {
+		return []string{}, err
+	}
+	runBin, err := config.GetString("docker:run-cmd:bin")
+	if err != nil {
+		return []string{}, err
+	}
+	runArgs, err := config.GetString("docker:run-cmd:args")
+	if err != nil {
+		return []string{}, err
+	}
+	port, err := config.GetString("docker:run-cmd:port")
+	if err != nil {
+		return []string{}, err
+	}
+	cmd := fmt.Sprintf("%s %s", runBin, runArgs)
+	imageName := fmt.Sprintf("%s/%s", repoNamespace, app.GetName()) // TODO (flaviamissi): should be external function
+	wholeCmd := []string{docker, "run", "-d", "-p", port, imageName, cmd}
+	return wholeCmd, nil
+}
+
 // container represents an docker container with the given name.
 type container struct {
 	name string
 	id   string
 }
 
-// newContainer creates a new container in docker and stores it on database
-func newContainer(app provision.App) *container {
+// newContainer creates a new container in docker and stores it on database.
+// Receives the application to which the container is going to be generated
+// and the function to make the command that the container will execute on
+// startup.
+func newContainer(app provision.App, f func(provision.App) ([]string, error)) *container {
 	appName := app.GetName()
 	c := &container{name: appName}
-	id, err := c.create(app.GetPlatform(), repository.GetReadOnlyUrl(appName))
+	id, err := c.create(app, f)
 	if err != nil {
 		log.Printf("Error creating container %s", appName)
 		log.Printf("Error was: %s", err.Error())
@@ -107,24 +158,15 @@ func (c *container) ip() (string, error) {
 //
 // It receives the application's platform in order to choose the correct
 // docker image and the repository to pass to the script that will take
-// care of the deploy.
-func (c *container) create(platform, repository string) (string, error) {
-	docker, err := config.GetString("docker:binary")
+// care of the deploy, and a function to generate the correct command ran by
+// docker, which might be to deploy a container or to run and expose a
+// container for an application.
+func (c *container) create(app provision.App, f func(provision.App) ([]string, error)) (string, error) {
+	cmd, err := f(app)
 	if err != nil {
 		return "", err
 	}
-	repoNamespace, err := config.GetString("docker:repository-namespace")
-	if err != nil {
-		return "", err
-	}
-	cmd, err := config.GetString("docker:deploy-cmd")
-	if err != nil {
-		return "", err
-	}
-	cmd = fmt.Sprintf("%s %s", cmd, repository)
-	imageName := fmt.Sprintf("%s/%s", repoNamespace, platform)
-	args := []string{"run", "-d", imageName, cmd}
-	id, err := runCmd(docker, args...)
+	id, err := runCmd(cmd[0], cmd[1:]...)
 	id = strings.Replace(id, "\n", "", -1)
 	log.Printf("docker id=%s", id)
 	return id, err
