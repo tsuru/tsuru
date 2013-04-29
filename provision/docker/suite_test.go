@@ -38,6 +38,9 @@ func (s *S) SetUpSuite(c *gocheck.C) {
 	config.Set("docker:authorized-key-path", "somepath")
 	config.Set("docker:image", "base")
 	config.Set("docker:deploy-cmd", "/var/lib/tsuru/deploy")
+	config.Set("docker:run-cmd:bin", "/usr/local/bin/circusd")
+	config.Set("docker:run-cmd:args", "/etc/circus/circus.ini")
+	config.Set("docker:run-cmd:port", "8888")
 	var err error
 	s.conn, err = db.Conn()
 	c.Assert(err, gocheck.IsNil)
