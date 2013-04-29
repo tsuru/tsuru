@@ -419,7 +419,7 @@ func (s *S) TestCreateAppHandler(c *gocheck.C) {
 	c.Assert(action, testing.IsRecorded)
 }
 
-func (s *S) TestCreateAppReturnsPreconditionFailedIfTheAppNameIsInvalid(c *gocheck.C) {
+func (s *S) TestCreateAppInvalidName(c *gocheck.C) {
 	b := strings.NewReader(`{"name":"123myapp","platform":"zend"}`)
 	request, err := http.NewRequest("POST", "/apps", b)
 	c.Assert(err, gocheck.IsNil)
@@ -429,7 +429,7 @@ func (s *S) TestCreateAppReturnsPreconditionFailedIfTheAppNameIsInvalid(c *goche
 	c.Assert(err, gocheck.NotNil)
 	e, ok := err.(*errors.Http)
 	c.Assert(ok, gocheck.Equals, true)
-	c.Assert(e.Code, gocheck.Equals, http.StatusPreconditionFailed)
+	c.Assert(e.Code, gocheck.Equals, http.StatusBadRequest)
 	msg := "Invalid app name, your app should have at most 63 " +
 		"characters, containing only lower case letters or numbers, " +
 		"starting with a letter."

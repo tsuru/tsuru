@@ -178,7 +178,7 @@ func createApp(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
 	if err != nil {
 		log.Printf("Got error while creating app: %s", err)
 		if e, ok := err.(*errors.ValidationError); ok {
-			return &errors.Http{Code: http.StatusPreconditionFailed, Message: e.Message}
+			return &errors.Http{Code: http.StatusBadRequest, Message: e.Message}
 		}
 		if strings.Contains(err.Error(), "key error") {
 			msg := fmt.Sprintf(`There is already an app named "%s".`, a.Name)
