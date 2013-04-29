@@ -189,6 +189,18 @@ func (s *S) TestGetPasswordTokenUnknown(c *gocheck.C) {
 	c.Assert(err, gocheck.Equals, ErrInvalidToken)
 }
 
+func (s *S) TestGetPasswordUsedToken(c *gocheck.C) {
+	u := User{Email: "porcelain@opeth.com"}
+	t, err := createPasswordToken(&u)
+	c.Assert(err, gocheck.IsNil)
+	t.Used = true
+	err = s.conn.PasswordTokens().UpdateId(t.Token, t)
+	c.Assert(err, gocheck.IsNil)
+	t2, err := getPasswordToken(t.Token)
+	c.Assert(t2, gocheck.IsNil)
+	c.Assert(err, gocheck.Equals, ErrInvalidToken)
+}
+
 func (s *S) TestPasswordTokensAreValidFor24Hours(c *gocheck.C) {
 	u := User{Email: "porcelain@opeth.com"}
 	t, err := createPasswordToken(&u)

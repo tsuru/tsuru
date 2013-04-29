@@ -163,7 +163,7 @@ func getPasswordToken(token string) (*passwordToken, error) {
 	}
 	defer conn.Close()
 	var t passwordToken
-	err = conn.PasswordTokens().FindId(token).One(&t)
+	err = conn.PasswordTokens().Find(bson.M{"_id": token, "used": false}).One(&t)
 	if err != nil {
 		return nil, ErrInvalidToken
 	}
