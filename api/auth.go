@@ -177,21 +177,6 @@ func resetPassword(w http.ResponseWriter, r *http.Request) error {
 // (gandalf does not have the team concept) This function makes use of the
 // git:host config at tsuru.conf You can find a configuration sample at
 // tsuru/etc/tsuru.conf.
-func createTeam(name string, u *auth.User) error {
-	conn, err := db.Conn()
-	if err != nil {
-		return err
-	}
-	defer conn.Close()
-	team := &auth.Team{Name: name, Users: []string{u.Email}}
-	if err := conn.Teams().Insert(team); err != nil &&
-		strings.Contains(err.Error(), "duplicate key error") {
-		msg := "This team already exists"
-		return &errors.Http{Code: http.StatusConflict, Message: msg}
-	}
-	return nil
-}
-
 // keyToMap converts a Key array into a map maybe we should store a map
 // directly instead of having a convertion
 func keyToMap(keys []auth.Key) map[string]string {
@@ -202,7 +187,7 @@ func keyToMap(keys []auth.Key) map[string]string {
 	return kMap
 }
 
-func CreateTeam(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
+func createTeam(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
 	var params map[string]string
 	err := json.NewDecoder(r.Body).Decode(&params)
 	if err != nil {
@@ -218,7 +203,18 @@ func CreateTeam(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
 		return err
 	}
 	rec.Log(u.Email, "create-team", name)
-	return createTeam(name, u)
+	conn, err := db.Conn()
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+	team := &auth.Team{Name: name, Users: []string{u.Email}}
+	if err := conn.Teams().Insert(team); err != nil &&
+		strings.Contains(err.Error(), "duplicate key error") {
+		msg := "This team already exists"
+		return &errors.Http{Code: http.StatusConflict, Message: msg}
+	}
+	return nil
 }
 
 // RemoveTeam removes a team document from the database.
