@@ -37,7 +37,7 @@ func (s *S) SetUpSuite(c *gocheck.C) {
 	config.Set("database:name", "juju_provision_tests_s")
 	config.Set("docker:authorized-key-path", "somepath")
 	config.Set("docker:image", "base")
-	config.Set("docker:cmd:bin", "/var/lib/tsuru/deploy")
+	config.Set("docker:deploy-cmd", "/var/lib/tsuru/deploy")
 	var err error
 	s.conn, err = db.Conn()
 	c.Assert(err, gocheck.IsNil)

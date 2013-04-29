@@ -117,14 +117,13 @@ func (c *container) create(platform, repository string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	cmd, err := config.GetString("docker:cmd:bin")
+	cmd, err := config.GetString("docker:deploy-cmd")
 	if err != nil {
 		return "", err
 	}
 	cmd = fmt.Sprintf("%s %s", cmd, repository)                //replace with app's repo url
-	args, _ := config.GetList("docker:cmd:args")               // optional config
 	imageName := fmt.Sprintf("%s/%s", repoNamespace, platform) // replace python with app's platform
-	args = append([]string{"run", "-d", imageName, cmd}, args...)
+	args := []string{"run", "-d", imageName, cmd}
 	id, err := runCmd(docker, args...)
 	id = strings.Replace(id, "\n", "", -1)
 	log.Printf("docker id=%s", id)
