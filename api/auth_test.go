@@ -431,6 +431,12 @@ func (s *AuthSuite) TestCreateTeamHandlerSavesTheTeamInTheDatabaseWithTheAuthent
 	defer conn.Teams().Remove(bson.M{"_id": "timeredbull"})
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(t, ContainsUser, s.user)
+	action := testing.Action{
+		Action: "create-team",
+		User:   s.user.Email,
+		Extra:  []interface{}{"timeredbull"},
+	}
+	c.Assert(action, testing.IsRecorded)
 }
 
 func (s *AuthSuite) TestCreateTeamHandlerReturnsBadRequestIfTheRequestBodyIsAnInvalidJSON(c *gocheck.C) {

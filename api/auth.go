@@ -217,6 +217,7 @@ func CreateTeam(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
 	if err != nil {
 		return err
 	}
+	rec.Log(u.Email, "create-team", name)
 	return createTeam(name, u)
 }
 
