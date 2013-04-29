@@ -23,7 +23,7 @@ import (
 	"github.com/globocom/tsuru/service"
 	"io"
 	"labix.org/v2/mgo/bson"
-	goyaml "launchpad.net/~niemeyer/goyaml/beta"
+	"launchpad.net/~niemeyer/goyaml/beta"
 	"os"
 	"path"
 	"regexp"
