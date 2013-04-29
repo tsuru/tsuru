@@ -241,7 +241,7 @@ Please remove the apps or revoke these accesses, and try again.`
 	return conn.Teams().Remove(query)
 }
 
-func ListTeams(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
+func teamList(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
 	u, err := t.User()
 	if err != nil {
 		return err

@@ -113,7 +113,7 @@ func RunServer(flags map[string]interface{}) {
 
 	m.Post("/tokens", adminRequiredHandler(generateAppToken))
 
-	m.Get("/teams", authorizationRequiredHandler(ListTeams))
+	m.Get("/teams", authorizationRequiredHandler(teamList))
 	m.Post("/teams", authorizationRequiredHandler(CreateTeam))
 	m.Del("/teams/:name", authorizationRequiredHandler(RemoveTeam))
 	m.Put("/teams/:team/:user", authorizationRequiredHandler(AddUserToTeam))
