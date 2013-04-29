@@ -520,7 +520,7 @@ func RemoveKeyFromUser(w http.ResponseWriter, r *http.Request, t *auth.Token) er
 //
 // In order to successfuly remove a user, it's need that he/she is not the only
 // one in a team, otherwise the function will return an error.
-func RemoveUser(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
+func removeUser(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
 	u, err := t.User()
 	if err != nil {
 		return err
