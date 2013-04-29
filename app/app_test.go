@@ -1542,13 +1542,13 @@ func (s *S) TestAppMarshalJson(c *gocheck.C) {
 		CName:    "name.mycompany.com",
 	}
 	expected := make(map[string]interface{})
-	expected["Name"] = "name"
-	expected["Framework"] = "Framework"
-	expected["Repository"] = repository.GetUrl(app.Name)
-	expected["Teams"] = []interface{}{"team1"}
-	expected["Units"] = nil
-	expected["Ip"] = "10.10.10.1"
-	expected["CName"] = "name.mycompany.com"
+	expected["name"] = "name"
+	expected["framework"] = "Framework"
+	expected["repository"] = repository.GetUrl(app.Name)
+	expected["teams"] = []interface{}{"team1"}
+	expected["units"] = nil
+	expected["ip"] = "10.10.10.1"
+	expected["cname"] = "name.mycompany.com"
 	data, err := app.MarshalJSON()
 	c.Assert(err, gocheck.IsNil)
 	result := make(map[string]interface{})

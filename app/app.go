@@ -57,13 +57,13 @@ type App struct {
 // the following keys: Name, Framework, Teams, Units, Repository and Ip.
 func (app *App) MarshalJSON() ([]byte, error) {
 	result := make(map[string]interface{})
-	result["Name"] = app.Name
-	result["Framework"] = app.Platform
-	result["Teams"] = app.Teams
-	result["Units"] = app.Units
-	result["Repository"] = repository.GetUrl(app.Name)
-	result["Ip"] = app.Ip
-	result["CName"] = app.CName
+	result["name"] = app.Name
+	result["framework"] = app.Platform
+	result["teams"] = app.Teams
+	result["units"] = app.Units
+	result["repository"] = repository.GetUrl(app.Name)
+	result["ip"] = app.Ip
+	result["cname"] = app.CName
 	return json.Marshal(&result)
 }
 
