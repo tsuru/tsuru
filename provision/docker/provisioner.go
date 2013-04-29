@@ -12,7 +12,6 @@ import (
 	"github.com/globocom/tsuru/exec"
 	"github.com/globocom/tsuru/log"
 	"github.com/globocom/tsuru/provision"
-	"github.com/globocom/tsuru/repository"
 	"github.com/globocom/tsuru/router"
 	_ "github.com/globocom/tsuru/router/nginx"
 	_ "github.com/globocom/tsuru/router/testing"
@@ -120,7 +119,7 @@ func (p *DockerProvisioner) Provision(app provision.App) error {
 			log.Print(err)
 			return
 		}
-		id, err := c.create(app.GetPlatform(), repository.GetReadOnlyUrl(app.GetName()))
+		id, err := c.create(app, deployContainerCmd)
 		if err != nil {
 			log.Printf("error on create container %s", app.GetName())
 			log.Print(err)
@@ -188,7 +187,7 @@ func (p *DockerProvisioner) Restart(app provision.App) error {
 }
 
 func (p *DockerProvisioner) Deploy(app provision.App, w io.Writer) error {
-	c := newContainer(app)
+	c := newContainer(app, deployContainerCmd)
 	img := image{Name: app.GetName()}
 	_, err := img.commit(c.id)
 	return err
