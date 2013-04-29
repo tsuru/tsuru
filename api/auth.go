@@ -34,7 +34,7 @@ const (
 	passwordMaxLen    = 50
 )
 
-func CreateUser(w http.ResponseWriter, r *http.Request) error {
+func createUser(w http.ResponseWriter, r *http.Request) error {
 	var u auth.User
 	err := json.NewDecoder(r.Body).Decode(&u)
 	if err != nil {

@@ -101,7 +101,7 @@ func RunServer(flags map[string]interface{}) {
 	m.Get("/apps/:appname/repository/clone", authorizationRequiredHandler(cloneRepository))
 
 	if registrationEnabled, _ := config.GetBool("auth:user-registration"); registrationEnabled {
-		m.Post("/users", handler(CreateUser))
+		m.Post("/users", handler(createUser))
 	}
 
 	m.Post("/users/:email/password", handler(resetPassword))
