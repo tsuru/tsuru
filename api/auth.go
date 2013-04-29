@@ -409,25 +409,6 @@ func getKeyFromBody(b io.Reader) (string, error) {
 	return key, nil
 }
 
-// addKeyToUser adds a key to a user in mongodb and send the key to the git server
-// in order to allow ssh-ing into git server.
-func addKeyToUser(content string, u *auth.User) error {
-	key := auth.Key{Content: content}
-	if u.HasKey(key) {
-		return &errors.Http{Code: http.StatusConflict, Message: "User already has this key"}
-	}
-	actions := []*action.Action{
-		&addKeyInGandalfAction,
-		&addKeyInDatabaseAction,
-	}
-	pipeline := action.NewPipeline(actions...)
-	err := pipeline.Execute(&key, u)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
 func addKeyInDatabase(key *auth.Key, u *auth.User) error {
 	conn, err := db.Conn()
 	if err != nil {
@@ -452,8 +433,8 @@ func addKeyInGandalf(key *auth.Key, u *auth.User) error {
 // This function is just an http wrapper around addKeyToUser. The latter function
 // exists to be used in other places in the package without the http stuff (request and
 // response).
-func AddKeyToUser(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
-	key, err := getKeyFromBody(r.Body)
+func addKeyToUser(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
+	content, err := getKeyFromBody(r.Body)
 	if err != nil {
 		return err
 	}
@@ -461,11 +442,20 @@ func AddKeyToUser(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
 	if err != nil {
 		return err
 	}
-	rec.Log(u.Email, "add-key", key)
-	return addKeyToUser(key, u)
+	rec.Log(u.Email, "add-key", content)
+	key := auth.Key{Content: content}
+	if u.HasKey(key) {
+		return &errors.Http{Code: http.StatusConflict, Message: "User already has this key"}
+	}
+	actions := []*action.Action{
+		&addKeyInGandalfAction,
+		&addKeyInDatabaseAction,
+	}
+	pipeline := action.NewPipeline(actions...)
+	return pipeline.Execute(&key, u)
 }
 
-// revomeKeyFromUser removes a key from the given user's document
+// removeKeyFromUser removes a key from the given user's document
 //
 // Also removes the key from gandalf.
 //
