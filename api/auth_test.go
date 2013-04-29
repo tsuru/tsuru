@@ -638,6 +638,12 @@ func (s *AuthSuite) TestAddUserToTeam(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(t, ContainsUser, s.user)
 	c.Assert(t, ContainsUser, u)
+	action := testing.Action{
+		Action: "add-user-to-team",
+		User:   s.user.Email,
+		Extra:  []interface{}{"team=tsuruteam", "user=" + u.Email},
+	}
+	c.Assert(action, testing.IsRecorded)
 }
 
 func (s *AuthSuite) TestAddUserToTeamShouldReturnNotFoundIfThereIsNoTeamWithTheGivenName(c *gocheck.C) {

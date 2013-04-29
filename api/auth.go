@@ -328,6 +328,7 @@ func AddUserToTeam(w http.ResponseWriter, r *http.Request, t *auth.Token) error 
 	if err != nil {
 		return err
 	}
+	rec.Log(u.Email, "add-user-to-team", "team="+team, "user="+email)
 	return addUserToTeam(email, team, u)
 }
 
