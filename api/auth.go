@@ -393,6 +393,7 @@ func RemoveUserFromTeam(w http.ResponseWriter, r *http.Request, t *auth.Token) e
 	if err != nil {
 		return err
 	}
+	rec.Log(u.Email, "remove-user-from-team", "team="+team, "user="+email)
 	return removeUserFromTeam(email, team, u)
 }
 

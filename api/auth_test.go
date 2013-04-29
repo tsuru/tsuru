@@ -792,6 +792,12 @@ func (s *AuthSuite) TestRemoveUserFromTeamShouldRemoveAUserFromATeamIfTheTeamExi
 	err = conn.Teams().Find(bson.M{"_id": s.team.Name}).One(s.team)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(s.team, gocheck.Not(ContainsUser), &u)
+	action := testing.Action{
+		Action: "remove-user-from-team",
+		User:   s.user.Email,
+		Extra:  []interface{}{"team=tsuruteam", "user=" + u.Email},
+	}
+	c.Assert(action, testing.IsRecorded)
 }
 
 func (s *AuthSuite) TestRemoveUserFromTeamShouldRemoveOnlyAppsInThatTeamInGandalfWhenUserIsInMoreThanOneTeam(c *gocheck.C) {
