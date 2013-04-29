@@ -117,7 +117,7 @@ func logout(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
 // - old: the old password
 // - new: the new password
 //
-// This handler will return 403 if the password didn't match the user, or 412
+// This handler will return 403 if the password didn't match the user, or 400
 // if the new password is invalid.
 func changePassword(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
 	var body map[string]string
