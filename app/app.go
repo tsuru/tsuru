@@ -836,14 +836,14 @@ func (app *App) Log(message, source string) error {
 
 // LastLogs returns a list of the last `lines` log of the app, matching the
 // given source.
-func (a *App) LastLogs(lines int, source string) ([]Applog, error) {
+func (app *App) LastLogs(lines int, source string) ([]Applog, error) {
 	conn, err := db.Conn()
 	if err != nil {
 		return nil, err
 	}
 	defer conn.Close()
 	var logs []Applog
-	q := bson.M{"appname": a.Name}
+	q := bson.M{"appname": app.Name}
 	if source != "" {
 		q["source"] = source
 	}
