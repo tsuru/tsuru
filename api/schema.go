@@ -9,7 +9,6 @@ import (
 	"github.com/globocom/config"
 	"github.com/globocom/tsuru/auth"
 	"net/http"
-	"net/http"
 )
 
 // schema represents a json schema.
