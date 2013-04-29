@@ -160,6 +160,10 @@ func (c *logout) Info() *Info {
 }
 
 func (c *logout) Run(context *Context, client *Client) error {
+	if url, err := GetUrl("/users/tokens"); err == nil {
+		request, _ := http.NewRequest("DELETE", url, nil)
+		client.Do(request)
+	}
 	err := filesystem().Remove(joinWithUserDir(".tsuru_token"))
 	if err != nil && os.IsNotExist(err) {
 		return errors.New("You're not logged in!")

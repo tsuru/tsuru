@@ -64,18 +64,34 @@ func (s *S) TestLoginShouldReturnErrorIfThePasswordIsNotGiven(c *gocheck.C) {
 }
 
 func (s *S) TestLogout(c *gocheck.C) {
+	var called bool
 	rfs := &testing.RecordingFs{}
 	fsystem = rfs
 	defer func() {
 		fsystem = nil
 	}()
+	writeToken("mytoken")
+	writeTarget("localhost:8080")
 	expected := "Successfully logged out!\n"
 	context := Context{[]string{}, manager.stdout, manager.stderr, manager.stdin}
 	command := logout{}
-	err := command.Run(&context, nil)
+	transport := ttesting.ConditionalTransport{
+		Transport: ttesting.Transport{
+			Message: "",
+			Status:  http.StatusOK,
+		},
+		CondFunc: func(req *http.Request) bool {
+			called = true
+			return req.Method == "DELETE" && req.URL.Path == "/users/tokens" &&
+				req.Header.Get("Authorization") == "bearer mytoken"
+		},
+	}
+	client := NewClient(&http.Client{Transport: &transport}, nil, manager)
+	err := command.Run(&context, client)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(manager.stdout.(*bytes.Buffer).String(), gocheck.Equals, expected)
 	c.Assert(rfs.HasAction("remove "+joinWithUserDir(".tsuru_token")), gocheck.Equals, true)
+	c.Assert(called, gocheck.Equals, true)
 }
 
 func (s *S) TestLogoutWhenNotLoggedIn(c *gocheck.C) {
@@ -88,6 +104,24 @@ func (s *S) TestLogoutWhenNotLoggedIn(c *gocheck.C) {
 	err := command.Run(&context, nil)
 	c.Assert(err, gocheck.NotNil)
 	c.Assert(err.Error(), gocheck.Equals, "You're not logged in!")
+}
+
+func (s *S) TestLogoutNoTarget(c *gocheck.C) {
+	rfs := &testing.RecordingFs{}
+	fsystem = rfs
+	defer func() {
+		fsystem = nil
+	}()
+	writeToken("mytoken")
+	expected := "Successfully logged out!\n"
+	context := Context{[]string{}, manager.stdout, manager.stderr, manager.stdin}
+	command := logout{}
+	transport := ttesting.Transport{Message: "", Status: http.StatusOK}
+	client := NewClient(&http.Client{Transport: &transport}, nil, manager)
+	err := command.Run(&context, client)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(manager.stdout.(*bytes.Buffer).String(), gocheck.Equals, expected)
+	c.Assert(rfs.HasAction("remove "+joinWithUserDir(".tsuru_token")), gocheck.Equals, true)
 }
 
 func (s *S) TestTeamAddUser(c *gocheck.C) {
