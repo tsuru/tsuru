@@ -27,15 +27,14 @@ type property map[string]interface{}
 // appSchema returns a json schema for app.
 func appSchema(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
 	l := []link{
-		{"href": "/apps", "method": "POST", "rel": "create"},
 		{"href": "/apps/{name}/log", "method": "GET", "rel": "log"},
-		{"href": "/apps/{name}/env", "method": "GET", "rel": "get envs"},
-		{"href": "/apps/{name}/env", "method": "POST", "rel": "set envs"},
-		{"href": "/apps/{name}/env", "method": "DELETE", "rel": "unset envs"},
+		{"href": "/apps/{name}/env", "method": "GET", "rel": "get_env"},
+		{"href": "/apps/{name}/env", "method": "POST", "rel": "set_env"},
+		{"href": "/apps/{name}/env", "method": "DELETE", "rel": "unset_env"},
 		{"href": "/apps/{name}/restart", "method": "GET", "rel": "restart"},
 		{"href": "/apps/{name}", "method": "POST", "rel": "update"},
 		{"href": "/apps/{name}", "method": "DELETE", "rel": "delete"},
-		{"href": "/apps/{name}/run", "method": "POST", "rel": "run command"},
+		{"href": "/apps/{name}/run", "method": "POST", "rel": "run"},
 	}
 	s := schema{
 		Title:    "app schema",
