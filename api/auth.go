@@ -15,6 +15,7 @@ import (
 	"github.com/globocom/tsuru/db"
 	"github.com/globocom/tsuru/errors"
 	"github.com/globocom/tsuru/log"
+	"github.com/globocom/tsuru/rec"
 	"github.com/globocom/tsuru/repository"
 	"github.com/globocom/tsuru/validation"
 	"io"
@@ -51,6 +52,7 @@ func CreateUser(w http.ResponseWriter, r *http.Request) error {
 		return fmt.Errorf("Failed to create user in the git server: %s", err)
 	}
 	if err := u.Create(); err == nil {
+		rec.Log(u.Email, "create-user")
 		w.WriteHeader(http.StatusCreated)
 		return nil
 	}

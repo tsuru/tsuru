@@ -165,6 +165,11 @@ func (s *AuthSuite) TestCreateUserHandlerSavesTheUserInTheDatabase(c *gocheck.C)
 	c.Assert(err, gocheck.IsNil)
 	_, err = auth.GetUserByEmail("nobody@globo.com")
 	c.Assert(err, gocheck.IsNil)
+	action := testing.Action{
+		Action: "create-user",
+		User:   "nobody@globo.com",
+	}
+	c.Assert(action, testing.IsRecorded)
 }
 
 func (s *AuthSuite) TestCreateUserHandlerReturnsStatus201AfterCreateTheUser(c *gocheck.C) {
