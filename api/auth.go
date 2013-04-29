@@ -114,7 +114,7 @@ func login(w http.ResponseWriter, r *http.Request) error {
 //
 // This handler will return 403 if the password didn't match the user, or 412
 // if the new password is invalid.
-func ChangePassword(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
+func changePassword(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
 	var body map[string]string
 	err := json.NewDecoder(r.Body).Decode(&body)
 	if err != nil {

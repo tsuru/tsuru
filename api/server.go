@@ -106,7 +106,7 @@ func RunServer(flags map[string]interface{}) {
 
 	m.Post("/users/:email/password", handler(resetPassword))
 	m.Post("/users/:email/tokens", handler(login))
-	m.Put("/users/password", authorizationRequiredHandler(ChangePassword))
+	m.Put("/users/password", authorizationRequiredHandler(changePassword))
 	m.Del("/users", authorizationRequiredHandler(RemoveUser))
 	m.Post("/users/keys", authorizationRequiredHandler(AddKeyToUser))
 	m.Del("/users/keys", authorizationRequiredHandler(RemoveKeyFromUser))
