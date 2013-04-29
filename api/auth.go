@@ -82,6 +82,7 @@ func login(w http.ResponseWriter, r *http.Request) error {
 		}
 		return err
 	}
+	rec.Log(u.Email, "login")
 	t, err := u.CreateToken(password)
 	if err != nil {
 		switch err.(type) {

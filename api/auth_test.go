@@ -302,6 +302,11 @@ func (s *AuthSuite) TestLoginShouldCreateTokenInTheDatabaseAndReturnItWithinTheR
 	n, err := conn.Tokens().Find(bson.M{"token": recorderJson["token"]}).Count()
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(n, gocheck.Equals, 1)
+	action := testing.Action{
+		Action: "login",
+		User:   u.Email,
+	}
+	c.Assert(action, testing.IsRecorded)
 }
 
 func (s *AuthSuite) TestLoginShouldReturnErrorAndBadRequestIfItReceivesAnInvalidJson(c *gocheck.C) {
