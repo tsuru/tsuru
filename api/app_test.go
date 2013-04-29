@@ -1769,7 +1769,7 @@ func (s *S) TestSetCNameHandlerInvalidCName(c *gocheck.C) {
 	c.Assert(err, gocheck.NotNil)
 	e, ok := err.(*errors.Http)
 	c.Assert(ok, gocheck.Equals, true)
-	c.Assert(e.Code, gocheck.Equals, http.StatusPreconditionFailed)
+	c.Assert(e.Code, gocheck.Equals, http.StatusBadRequest)
 	c.Assert(e.Message, gocheck.Equals, "Invalid cname")
 }
 

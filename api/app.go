@@ -508,7 +508,7 @@ func setCName(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
 		return nil
 	}
 	if err.Error() == "Invalid cname" {
-		return &errors.Http{Code: http.StatusPreconditionFailed, Message: err.Error()}
+		return &errors.Http{Code: http.StatusBadRequest, Message: err.Error()}
 	}
 	return err
 }
