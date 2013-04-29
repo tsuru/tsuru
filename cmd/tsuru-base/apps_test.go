@@ -30,7 +30,7 @@ var appshortflag = &gnuflag.Flag{
 
 func (s *S) TestAppInfo(c *gocheck.C) {
 	var stdout, stderr bytes.Buffer
-	result := `{"Name":"app1","CName":"","Ip":"myapp.tsuru.io","Platform":"php","Repository":"git@git.com:php.git","State":"dead", "Units":[{"Ip":"10.10.10.10","Name":"app1/0","State":"started"}, {"Ip":"9.9.9.9","Name":"app1/1","State":"started"}, {"Ip":"","Name":"app1/2","State":"pending"}],"Teams":["tsuruteam","crane"]}`
+	result := `{"name":"app1","cname":"","ip":"myapp.tsuru.io","platform":"php","repository":"git@git.com:php.git","state":"dead", "units":[{"Ip":"10.10.10.10","Name":"app1/0","State":"started"}, {"Ip":"9.9.9.9","Name":"app1/1","State":"started"}, {"Ip":"","Name":"app1/2","State":"pending"}],"teams":["tsuruteam","crane"]}`
 	expected := `Application: app1
 Repository: git@git.com:php.git
 Platform: php
@@ -60,7 +60,7 @@ Units:
 
 func (s *S) TestAppInfoNoUnits(c *gocheck.C) {
 	var stdout, stderr bytes.Buffer
-	result := `{"Name":"app1","Ip":"app1.tsuru.io","Platform":"php","Repository":"git@git.com:php.git","State":"dead", "Units":[],"Teams":["tsuruteam","crane"]}`
+	result := `{"name":"app1","ip":"app1.tsuru.io","platform":"php","repository":"git@git.com:php.git","state":"dead","units":[],"teams":["tsuruteam","crane"]}`
 	expected := `Application: app1
 Repository: git@git.com:php.git
 Platform: php
@@ -82,7 +82,7 @@ Address: app1.tsuru.io
 
 func (s *S) TestAppInfoWithoutArgs(c *gocheck.C) {
 	var stdout, stderr bytes.Buffer
-	result := `{"Name":"secret","Ip":"secret.tsuru.io","Platform":"ruby","Repository":"git@git.com:php.git","State":"dead", "Units":[{"Ip":"10.10.10.10","Name":"secret/0","State":"started"}, {"Ip":"9.9.9.9","Name":"secret/1","State":"pending"}],"Teams":["tsuruteam","crane"]}`
+	result := `{"name":"secret","ip":"secret.tsuru.io","platform":"ruby","repository":"git@git.com:php.git","state":"dead","units":[{"Ip":"10.10.10.10","Name":"secret/0","State":"started"}, {"Ip":"9.9.9.9","Name":"secret/1","State":"pending"}],"Teams":["tsuruteam","crane"]}`
 	expected := `Application: secret
 Repository: git@git.com:php.git
 Platform: ruby
@@ -119,7 +119,7 @@ Units:
 
 func (s *S) TestAppInfoCName(c *gocheck.C) {
 	var stdout, stderr bytes.Buffer
-	result := `{"Name":"app1","Ip":"myapp.tsuru.io","CName":"yourapp.tsuru.io","Platform":"php","Repository":"git@git.com:php.git","State":"dead", "Units":[{"Ip":"10.10.10.10","Name":"app1/0","State":"started"}, {"Ip":"9.9.9.9","Name":"app1/1","State":"started"}, {"Ip":"","Name":"app1/2","State":"pending"}],"Teams":["tsuruteam","crane"]}`
+	result := `{"name":"app1","ip":"myapp.tsuru.io","cname":"yourapp.tsuru.io","platform":"php","repository":"git@git.com:php.git","state":"dead","units":[{"Ip":"10.10.10.10","Name":"app1/0","State":"started"}, {"Ip":"9.9.9.9","Name":"app1/1","State":"started"}, {"Ip":"","Name":"app1/2","State":"pending"}],"Teams":["tsuruteam","crane"]}`
 	expected := `Application: app1
 Repository: git@git.com:php.git
 Platform: php
@@ -259,7 +259,7 @@ If you don't provide the app name, tsuru will try to guess it.`,
 
 func (s *S) TestAppList(c *gocheck.C) {
 	var stdout, stderr bytes.Buffer
-	result := `[{"Ip":"10.10.10.10","Name":"app1","Units":[{"Name":"app1/0","State":"started"}]}]`
+	result := `[{"ip":"10.10.10.10","name":"app1","units":[{"Name":"app1/0","State":"started"}]}]`
 	expected := `+-------------+-------------------------+-------------+
 | Application | Units State Summary     | Address     |
 +-------------+-------------------------+-------------+
@@ -280,7 +280,7 @@ func (s *S) TestAppList(c *gocheck.C) {
 
 func (s *S) TestAppListDisplayAppsInAlphabeticalOrder(c *gocheck.C) {
 	var stdout, stderr bytes.Buffer
-	result := `[{"Ip":"10.10.10.11","Name":"sapp","Units":[{"Name":"sapp1/0","State":"started"}]},{"Ip":"10.10.10.10","Name":"app1","Units":[{"Name":"app1/0","State":"started"}]}]`
+	result := `[{"ip":"10.10.10.11","name":"sapp","units":[{"Name":"sapp1/0","State":"started"}]},{"Ip":"10.10.10.10","Name":"app1","Units":[{"Name":"app1/0","State":"started"}]}]`
 	expected := `+-------------+-------------------------+-------------+
 | Application | Units State Summary     | Address     |
 +-------------+-------------------------+-------------+
@@ -302,7 +302,7 @@ func (s *S) TestAppListDisplayAppsInAlphabeticalOrder(c *gocheck.C) {
 
 func (s *S) TestAppListUnitIsntStarted(c *gocheck.C) {
 	var stdout, stderr bytes.Buffer
-	result := `[{"Ip":"10.10.10.10","Name":"app1","Units":[{"Name":"app1/0","State":"pending"}]}]`
+	result := `[{"ip":"10.10.10.10","name":"app1","units":[{"Name":"app1/0","State":"pending"}]}]`
 	expected := `+-------------+-------------------------+-------------+
 | Application | Units State Summary     | Address     |
 +-------------+-------------------------+-------------+
@@ -323,7 +323,7 @@ func (s *S) TestAppListUnitIsntStarted(c *gocheck.C) {
 
 func (s *S) TestAppListCName(c *gocheck.C) {
 	var stdout, stderr bytes.Buffer
-	result := `[{"Ip":"10.10.10.10","CName":"app1.tsuru.io","Name":"app1","Units":[{"Name":"app1/0","State":"started"}]}]`
+	result := `[{"ip":"10.10.10.10","cname":"app1.tsuru.io","name":"app1","units":[{"Name":"app1/0","State":"started"}]}]`
 	expected := `+-------------+-------------------------+---------------+
 | Application | Units State Summary     | Address       |
 +-------------+-------------------------+---------------+
