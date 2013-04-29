@@ -145,6 +145,7 @@ func ChangePassword(w http.ResponseWriter, r *http.Request, t *auth.Token) error
 			Message: passwordError,
 		}
 	}
+	rec.Log(u.Email, "change-password")
 	u.Password = body["new"]
 	u.HashPassword()
 	return u.Update()

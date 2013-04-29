@@ -1389,6 +1389,11 @@ func (s *AuthSuite) TestChangePasswordHandler(c *gocheck.C) {
 	otherUser, err := auth.GetUserByEmail(s.user.Email)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(otherUser.Password, gocheck.Not(gocheck.Equals), oldPassword)
+	action := testing.Action{
+		Action: "change-password",
+		User:   u.Email,
+	}
+	c.Assert(action, testing.IsRecorded)
 }
 
 func (s *AuthSuite) TestChangePasswordReturns412IfNewPasswordIsInvalid(c *gocheck.C) {
