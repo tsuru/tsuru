@@ -117,7 +117,7 @@ func RunServer(flags map[string]interface{}) {
 	m.Post("/teams", authorizationRequiredHandler(createTeam))
 	m.Del("/teams/:name", authorizationRequiredHandler(removeTeam))
 	m.Put("/teams/:team/:user", authorizationRequiredHandler(AddUserToTeam))
-	m.Del("/teams/:team/:user", authorizationRequiredHandler(RemoveUserFromTeam))
+	m.Del("/teams/:team/:user", authorizationRequiredHandler(removeUserFromTeam))
 
 	m.Get("/healers", authorizationRequiredHandler(healers))
 	m.Get("/healers/:healer", authorizationRequiredHandler(healer))

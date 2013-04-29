@@ -332,7 +332,38 @@ func AddUserToTeam(w http.ResponseWriter, r *http.Request, t *auth.Token) error 
 	return addUserToTeam(email, team, u)
 }
 
-func removeUserFromTeam(email, teamName string, u *auth.User) error {
+func removeUserFromTeamInDatabase(u *auth.User, team *auth.Team) error {
+	conn, err := db.Conn()
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+	if err = team.RemoveUser(u); err != nil {
+		return &errors.Http{Code: http.StatusNotFound, Message: err.Error()}
+	}
+	return conn.Teams().UpdateId(team.Name, team)
+}
+
+func removeUserFromTeamInGandalf(u *auth.User, team string) error {
+	gUrl := repository.GitServerUri()
+	alwdApps, err := u.AllowedAppsByTeam(team)
+	if err != nil {
+		return err
+	}
+	if err := (&gandalf.Client{Endpoint: gUrl}).RevokeAccess(alwdApps, []string{u.Email}); err != nil {
+		return fmt.Errorf("Failed to revoke access from git repositories: %s", err)
+	}
+	return nil
+}
+
+func removeUserFromTeam(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
+	email := r.URL.Query().Get(":user")
+	teamName := r.URL.Query().Get(":team")
+	u, err := t.User()
+	if err != nil {
+		return err
+	}
+	rec.Log(u.Email, "remove-user-from-team", "team="+teamName, "user="+email)
 	conn, err := db.Conn()
 	if err != nil {
 		return err
@@ -360,41 +391,6 @@ func removeUserFromTeam(email, teamName string, u *auth.User) error {
 		return nil
 	}
 	return removeUserFromTeamInDatabase(user, team)
-}
-
-func removeUserFromTeamInDatabase(u *auth.User, team *auth.Team) error {
-	conn, err := db.Conn()
-	if err != nil {
-		return err
-	}
-	defer conn.Close()
-	if err = team.RemoveUser(u); err != nil {
-		return &errors.Http{Code: http.StatusNotFound, Message: err.Error()}
-	}
-	return conn.Teams().UpdateId(team.Name, team)
-}
-
-func removeUserFromTeamInGandalf(u *auth.User, team string) error {
-	gUrl := repository.GitServerUri()
-	alwdApps, err := u.AllowedAppsByTeam(team)
-	if err != nil {
-		return err
-	}
-	if err := (&gandalf.Client{Endpoint: gUrl}).RevokeAccess(alwdApps, []string{u.Email}); err != nil {
-		return fmt.Errorf("Failed to revoke access from git repositories: %s", err)
-	}
-	return nil
-}
-
-func RemoveUserFromTeam(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
-	email := r.URL.Query().Get(":user")
-	team := r.URL.Query().Get(":team")
-	u, err := t.User()
-	if err != nil {
-		return err
-	}
-	rec.Log(u.Email, "remove-user-from-team", "team="+team, "user="+email)
-	return removeUserFromTeam(email, team, u)
 }
 
 func getKeyFromBody(b io.Reader) (string, error) {
