@@ -218,7 +218,7 @@ func createTeam(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
 }
 
 // RemoveTeam removes a team document from the database.
-func RemoveTeam(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
+func removeTeam(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
 	conn, err := db.Conn()
 	if err != nil {
 		return err
