@@ -162,6 +162,7 @@ func resetPassword(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	if token == "" {
+		rec.Log(email, "reset-password-gen-token")
 		return u.StartPasswordReset()
 	}
 	return u.ResetPassword(token)

@@ -1471,6 +1471,11 @@ func (s *AuthSuite) TestResetPasswordStep1(c *gocheck.C) {
 	u, err := auth.GetUserByEmail(s.user.Email)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(u.Password, gocheck.Equals, oldPassword)
+	action := testing.Action{
+		Action: "reset-password-gen-token",
+		User:   s.user.Email,
+	}
+	c.Assert(action, testing.IsRecorded)
 }
 
 func (s *AuthSuite) TestResetPasswordUserNotFound(c *gocheck.C) {
