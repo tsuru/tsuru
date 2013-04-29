@@ -104,6 +104,11 @@ func login(w http.ResponseWriter, r *http.Request) error {
 	return nil
 }
 
+func logout(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
+	auth.DeleteToken(t.Token)
+	return nil
+}
+
 // ChangePassword changes the password from the logged in user.
 //
 // It reads the request body in JSON format. The JSON in the request body

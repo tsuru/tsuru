@@ -65,7 +65,7 @@ func (s *AuthSuite) TearDownTest(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	_, err = conn.Teams().RemoveAll(bson.M{"_id": bson.M{"$ne": s.team.Name}})
 	c.Assert(err, gocheck.IsNil)
-	s.user.Password = "123"
+	s.user.Password = "123456"
 	s.user.HashPassword()
 	err = s.user.Update()
 	c.Assert(err, gocheck.IsNil)
@@ -414,6 +414,18 @@ func (s *AuthSuite) TestLoginShouldReturnBadRequestWhenPasswordIsInvalid(c *goch
 		c.Assert(e.Code, gocheck.Equals, http.StatusBadRequest)
 		c.Assert(e.Message, gocheck.Equals, passwordError)
 	}
+}
+
+func (s *AuthSuite) TestLogout(c *gocheck.C) {
+	token, err := s.user.CreateToken("123456")
+	c.Assert(err, gocheck.IsNil)
+	request, err := http.NewRequest("DELETE", "/users/tokens", nil)
+	c.Assert(err, gocheck.IsNil)
+	recorder := httptest.NewRecorder()
+	err = logout(recorder, request, token)
+	c.Assert(err, gocheck.IsNil)
+	_, err = auth.GetToken("bearer " + token.Token)
+	c.Assert(err, gocheck.Equals, auth.ErrInvalidToken)
 }
 
 func (s *AuthSuite) TestCreateTeamHandlerSavesTheTeamInTheDatabaseWithTheAuthenticatedUser(c *gocheck.C) {
