@@ -36,7 +36,7 @@ func (s *SchemaSuite) TestSchemas(c *gocheck.C) {
 	expected := schema{
 		Title:    "app schema",
 		Links:    l,
-		Required: []string{"platform", "name"},
+		Required: []string{"framework", "name"},
 		Properties: map[string]property{
 			"name": {
 				"type": "string",
