@@ -271,32 +271,6 @@ func teamList(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
 	return nil
 }
 
-func addUserToTeam(email, teamName string, u *auth.User) error {
-	conn, err := db.Conn()
-	if err != nil {
-		return err
-	}
-	defer conn.Close()
-	team, user := new(auth.Team), new(auth.User)
-	selector := bson.M{"_id": teamName}
-	if err := conn.Teams().Find(selector).One(team); err != nil {
-		return &errors.Http{Code: http.StatusNotFound, Message: "Team not found"}
-	}
-	if !team.ContainsUser(u) {
-		msg := fmt.Sprintf("You are not authorized to add new users to the team %s", team.Name)
-		return &errors.Http{Code: http.StatusUnauthorized, Message: msg}
-	}
-	if err := conn.Users().Find(bson.M{"email": email}).One(user); err != nil {
-		return &errors.Http{Code: http.StatusNotFound, Message: "User not found"}
-	}
-	actions := []*action.Action{
-		&addUserToTeamInGandalfAction,
-		&addUserToTeamInDatabaseAction,
-	}
-	pipeline := action.NewPipeline(actions...)
-	return pipeline.Execute(user.Email, u, team)
-}
-
 func addUserToTeamInDatabase(user *auth.User, team *auth.Team) error {
 	if err := team.AddUser(user); err != nil {
 		return &errors.Http{Code: http.StatusConflict, Message: err.Error()}
@@ -321,15 +295,37 @@ func addUserToTeamInGandalf(email string, u *auth.User, t *auth.Team) error {
 	return nil
 }
 
-func AddUserToTeam(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
-	team := r.URL.Query().Get(":team")
+func addUserToTeam(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
+	teamName := r.URL.Query().Get(":team")
 	email := r.URL.Query().Get(":user")
 	u, err := t.User()
 	if err != nil {
 		return err
 	}
-	rec.Log(u.Email, "add-user-to-team", "team="+team, "user="+email)
-	return addUserToTeam(email, team, u)
+	rec.Log(u.Email, "add-user-to-team", "team="+teamName, "user="+email)
+	conn, err := db.Conn()
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+	team, user := new(auth.Team), new(auth.User)
+	selector := bson.M{"_id": teamName}
+	if err := conn.Teams().Find(selector).One(team); err != nil {
+		return &errors.Http{Code: http.StatusNotFound, Message: "Team not found"}
+	}
+	if !team.ContainsUser(u) {
+		msg := fmt.Sprintf("You are not authorized to add new users to the team %s", team.Name)
+		return &errors.Http{Code: http.StatusUnauthorized, Message: msg}
+	}
+	if err := conn.Users().Find(bson.M{"email": email}).One(user); err != nil {
+		return &errors.Http{Code: http.StatusNotFound, Message: "User not found"}
+	}
+	actions := []*action.Action{
+		&addUserToTeamInGandalfAction,
+		&addUserToTeamInDatabaseAction,
+	}
+	pipeline := action.NewPipeline(actions...)
+	return pipeline.Execute(user.Email, u, team)
 }
 
 func removeUserFromTeamInDatabase(u *auth.User, team *auth.Team) error {
