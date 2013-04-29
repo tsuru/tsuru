@@ -367,8 +367,7 @@ func (s *S) TestExportEnvironmentsBackward(c *gocheck.C) {
 		}
 	}
 	_, err = auth.GetToken("bearer " + token.Token)
-	c.Assert(err, gocheck.NotNil)
-	c.Assert(err.Error(), gocheck.Equals, "Token not found")
+	c.Assert(err, gocheck.Equals, auth.ErrInvalidToken)
 }
 
 func (s *S) TestExportEnvironmentsMinParams(c *gocheck.C) {

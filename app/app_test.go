@@ -100,8 +100,7 @@ func (s *S) TestDestroy(c *gocheck.C) {
 	c.Assert(msg.Args, gocheck.DeepEquals, []string{a.Name})
 	msg.Delete()
 	_, err = auth.GetToken("bearer " + token)
-	c.Assert(err, gocheck.NotNil)
-	c.Assert(err.Error(), gocheck.Equals, "Token not found")
+	c.Assert(err, gocheck.Equals, auth.ErrInvalidToken)
 }
 
 func (s *S) TestDestroyWithoutBucketSupport(c *gocheck.C) {
