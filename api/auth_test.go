@@ -1202,6 +1202,12 @@ func (s *AuthSuite) TestRemoveKeyHandlerRemovesTheKeyFromTheUser(c *gocheck.C) {
 	u2, err := auth.GetUserByEmail(s.user.Email)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(u2, gocheck.Not(HasKey), "my-key")
+	action := testing.Action{
+		Action: "remove-key",
+		User:   s.user.Email,
+		Extra:  []interface{}{"my-key"},
+	}
+	c.Assert(action, testing.IsRecorded)
 }
 
 func (s *AuthSuite) TestRemoveKeyHandlerCallsGandalfRemoveKey(c *gocheck.C) {

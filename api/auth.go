@@ -504,6 +504,7 @@ func RemoveKeyFromUser(w http.ResponseWriter, r *http.Request, t *auth.Token) er
 	if err != nil {
 		return err
 	}
+	rec.Log(u.Email, "remove-key", key)
 	return removeKeyFromUser(key, u)
 }
 
