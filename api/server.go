@@ -109,7 +109,7 @@ func RunServer(flags map[string]interface{}) {
 	m.Put("/users/password", authorizationRequiredHandler(changePassword))
 	m.Del("/users", authorizationRequiredHandler(removeUser))
 	m.Post("/users/keys", authorizationRequiredHandler(addKeyToUser))
-	m.Del("/users/keys", authorizationRequiredHandler(RemoveKeyFromUser))
+	m.Del("/users/keys", authorizationRequiredHandler(removeKeyFromUser))
 
 	m.Post("/tokens", adminRequiredHandler(generateAppToken))
 

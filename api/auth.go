@@ -455,23 +455,6 @@ func addKeyToUser(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
 	return pipeline.Execute(&key, u)
 }
 
-// removeKeyFromUser removes a key from the given user's document
-//
-// Also removes the key from gandalf.
-//
-// This functions makes uses of git:host, git:protocol and optionaly git:port configurations
-func removeKeyFromUser(content string, u *auth.User) error {
-	key, index := u.FindKey(auth.Key{Content: content})
-	if index < 0 {
-		return &errors.Http{Code: http.StatusNotFound, Message: "User does not have this key"}
-	}
-	err := removeKeyFromGandalf(&key, u)
-	if err != nil {
-		return err
-	}
-	return removeKeyFromDatabase(&key, u)
-}
-
 func removeKeyFromDatabase(key *auth.Key, u *auth.User) error {
 	conn, err := db.Conn()
 	if err != nil {
@@ -495,8 +478,8 @@ func removeKeyFromGandalf(key *auth.Key, u *auth.User) error {
 // This function is just an http wrapper around removeKeyFromUser. The latter function
 // exists to be used in other places in the package without the http stuff (request and
 // response).
-func RemoveKeyFromUser(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
-	key, err := getKeyFromBody(r.Body)
+func removeKeyFromUser(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
+	content, err := getKeyFromBody(r.Body)
 	if err != nil {
 		return err
 	}
@@ -504,8 +487,16 @@ func RemoveKeyFromUser(w http.ResponseWriter, r *http.Request, t *auth.Token) er
 	if err != nil {
 		return err
 	}
-	rec.Log(u.Email, "remove-key", key)
-	return removeKeyFromUser(key, u)
+	rec.Log(u.Email, "remove-key", content)
+	key, index := u.FindKey(auth.Key{Content: content})
+	if index < 0 {
+		return &errors.Http{Code: http.StatusNotFound, Message: "User does not have this key"}
+	}
+	err = removeKeyFromGandalf(&key, u)
+	if err != nil {
+		return err
+	}
+	return removeKeyFromDatabase(&key, u)
 }
 
 // RemoveUser removes the user from the database and from gandalf server

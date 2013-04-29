@@ -1077,7 +1077,7 @@ func (s *AuthSuite) TestAddKeyAddKeyToUserInGandalf(c *gocheck.C) {
 	u, err = auth.GetUserByEmail(u.Email)
 	c.Assert(err, gocheck.IsNil)
 	defer func() {
-		removeKeyFromUser("my-key", u)
+		removeKeyFromGandalf(&u.Keys[0], u)
 		conn.Users().RemoveAll(bson.M{"email": u.Email})
 	}()
 	c.Assert(u.Keys[0].Name, gocheck.Not(gocheck.Matches), "\\.pub$")
@@ -1188,16 +1188,11 @@ func (s *AuthSuite) TestRemoveKeyHandlerRemovesTheKeyFromTheUser(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
 	addKeyToUser(recorder, request, s.token)
-	defer func() {
-		if s.user.HasKey(auth.Key{Content: "my-key"}) {
-			removeKeyFromUser("my-key", s.user)
-		}
-	}()
 	b = bytes.NewBufferString(`{"key":"my-key"}`)
 	request, err = http.NewRequest("DELETE", "/users/key", b)
 	c.Assert(err, gocheck.IsNil)
 	recorder = httptest.NewRecorder()
-	err = RemoveKeyFromUser(recorder, request, s.token)
+	err = removeKeyFromUser(recorder, request, s.token)
 	c.Assert(err, gocheck.IsNil)
 	u2, err := auth.GetUserByEmail(s.user.Email)
 	c.Assert(err, gocheck.IsNil)
@@ -1220,16 +1215,11 @@ func (s *AuthSuite) TestRemoveKeyHandlerCallsGandalfRemoveKey(c *gocheck.C) {
 	recorder := httptest.NewRecorder()
 	err = addKeyToUser(recorder, request, s.token) //fills the first position in h properties
 	c.Assert(err, gocheck.IsNil)
-	defer func() {
-		if s.user.HasKey(auth.Key{Content: "my-key"}) {
-			removeKeyFromUser("my-key", s.user)
-		}
-	}()
 	b = bytes.NewBufferString(`{"key":"my-key"}`)
 	request, err = http.NewRequest("DELETE", "/users/key", b)
 	c.Assert(err, gocheck.IsNil)
 	recorder = httptest.NewRecorder()
-	err = RemoveKeyFromUser(recorder, request, s.token)
+	err = removeKeyFromUser(recorder, request, s.token)
 	c.Assert(err, gocheck.IsNil)
 	s.user, _ = auth.GetUserByEmail(s.user.Email)
 	c.Assert(h.url[1], gocheck.Equals, fmt.Sprintf("/user/%s/key/%s-%d", s.user.Email, s.user.Email, len(s.user.Keys)+1))
@@ -1243,7 +1233,7 @@ func (s *AuthSuite) TestRemoveKeyHandlerReturnsErrorInCaseOfAnyIOFailure(c *goch
 	request, err := http.NewRequest("DELETE", "/users/key", b)
 	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
-	err = RemoveKeyFromUser(recorder, request, s.token)
+	err = removeKeyFromUser(recorder, request, s.token)
 	c.Assert(err, gocheck.NotNil)
 }
 
@@ -1252,7 +1242,7 @@ func (s *AuthSuite) TestRemoveKeyHandlerReturnsBadRequestIfTheJSONIsInvalid(c *g
 	request, err := http.NewRequest("DELETE", "/users/key", b)
 	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
-	err = RemoveKeyFromUser(recorder, request, s.token)
+	err = removeKeyFromUser(recorder, request, s.token)
 	c.Assert(err, gocheck.NotNil)
 	e, ok := err.(*errors.Http)
 	c.Assert(ok, gocheck.Equals, true)
@@ -1265,7 +1255,7 @@ func (s *AuthSuite) TestRemoveKeyHandlerReturnsBadRequestIfTheKeyIsNotPresent(c 
 	request, err := http.NewRequest("DELETE", "/users/key", b)
 	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
-	err = RemoveKeyFromUser(recorder, request, s.token)
+	err = removeKeyFromUser(recorder, request, s.token)
 	c.Assert(err, gocheck.NotNil)
 	e, ok := err.(*errors.Http)
 	c.Assert(ok, gocheck.Equals, true)
@@ -1278,7 +1268,7 @@ func (s *AuthSuite) TestRemoveKeyHandlerReturnsBadRequestIfTheKeyIsEmpty(c *goch
 	request, err := http.NewRequest("DELETE", "/users/key", b)
 	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
-	err = RemoveKeyFromUser(recorder, request, s.token)
+	err = removeKeyFromUser(recorder, request, s.token)
 	c.Assert(err, gocheck.NotNil)
 	e, ok := err.(*errors.Http)
 	c.Assert(ok, gocheck.Equals, true)
@@ -1291,7 +1281,7 @@ func (s *AuthSuite) TestRemoveKeyHandlerReturnsNotFoundIfTheUserDoesNotHaveTheKe
 	request, err := http.NewRequest("DELETE", "/users/key", b)
 	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
-	err = RemoveKeyFromUser(recorder, request, s.token)
+	err = removeKeyFromUser(recorder, request, s.token)
 	c.Assert(err, gocheck.NotNil)
 	e, ok := err.(*errors.Http)
 	c.Assert(ok, gocheck.Equals, true)
