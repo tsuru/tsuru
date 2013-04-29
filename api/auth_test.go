@@ -1269,6 +1269,8 @@ func (s *AuthSuite) TestRemoveUser(c *gocheck.C) {
 	n, err := conn.Users().Find(bson.M{"email": u.Email}).Count()
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(n, gocheck.Equals, 0)
+	action := testing.Action{Action: "remove-user", User: u.Email}
+	c.Assert(action, testing.IsRecorded)
 }
 
 func (s *AuthSuite) TestRemoveUserWithTheUserBeingLastMemberOfATeam(c *gocheck.C) {

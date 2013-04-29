@@ -561,6 +561,7 @@ Please remove the team, them remove the user.`, team.Name)
 			return err
 		}
 	}
+	rec.Log(u.Email, "remove-user")
 	if err := c.RemoveUser(u.Email); err != nil {
 		log.Printf("Failed to remove user from gandalf: %s", err)
 		return fmt.Errorf("Failed to remove the user from the git server: %s", err)
