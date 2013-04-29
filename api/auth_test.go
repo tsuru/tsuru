@@ -518,6 +518,12 @@ func (s *AuthSuite) TestRemoveTeam(c *gocheck.C) {
 	n, err := conn.Teams().Find(bson.M{"name": team.Name}).Count()
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(n, gocheck.Equals, 0)
+	action := testing.Action{
+		Action: "remove-team",
+		User:   s.user.Email,
+		Extra:  []interface{}{team.Name},
+	}
+	c.Assert(action, testing.IsRecorded)
 }
 
 func (s *AuthSuite) TestRemoveTeamGives404WhenTeamDoesNotExist(c *gocheck.C) {

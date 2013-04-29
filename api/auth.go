@@ -225,6 +225,7 @@ func RemoveTeam(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
 	}
 	defer conn.Close()
 	name := r.URL.Query().Get(":name")
+	rec.Log(t.UserEmail, "remove-team", name)
 	if n, err := conn.Apps().Find(bson.M{"teams": name}).Count(); err != nil || n > 0 {
 		msg := `This team cannot be removed because it have access to apps.
 
