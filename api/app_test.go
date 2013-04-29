@@ -331,8 +331,8 @@ func (s *S) TestAppInfo(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	err = json.Unmarshal(body, &myApp)
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(myApp["Name"], gocheck.Equals, expectedApp.Name)
-	c.Assert(myApp["Repository"], gocheck.Equals, repository.GetUrl(expectedApp.Name))
+	c.Assert(myApp["name"], gocheck.Equals, expectedApp.Name)
+	c.Assert(myApp["repository"], gocheck.Equals, repository.GetUrl(expectedApp.Name))
 	action := testing.Action{
 		Action: "app-info",
 		User:   s.user.Email,
