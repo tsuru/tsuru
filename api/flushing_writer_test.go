@@ -15,7 +15,7 @@ var _ = gocheck.Suite(&FlushingSuite{})
 
 func (s *FlushingSuite) TestFlushingWriter(c *gocheck.C) {
 	recorder := httptest.NewRecorder()
-	writer := FlushingWriter{recorder, false}
+	writer := flushingWriter{recorder, false}
 	data := []byte("ble")
 	_, err := writer.Write(data)
 	c.Assert(err, gocheck.IsNil)
@@ -25,7 +25,7 @@ func (s *FlushingSuite) TestFlushingWriter(c *gocheck.C) {
 
 func (s *FlushingSuite) TestFlushingWriterShouldReturnTheDataSize(c *gocheck.C) {
 	recorder := httptest.NewRecorder()
-	writer := FlushingWriter{recorder, false}
+	writer := flushingWriter{recorder, false}
 	data := []byte("ble")
 	n, err := writer.Write(data)
 	c.Assert(err, gocheck.IsNil)
@@ -34,14 +34,14 @@ func (s *FlushingSuite) TestFlushingWriterShouldReturnTheDataSize(c *gocheck.C) 
 
 func (s *FlushingSuite) TestFlushingWriterHeader(c *gocheck.C) {
 	recorder := httptest.NewRecorder()
-	writer := FlushingWriter{recorder, false}
+	writer := flushingWriter{recorder, false}
 	writer.Header().Set("Content-Type", "application/xml")
 	c.Assert(recorder.Header().Get("Content-Type"), gocheck.Equals, "application/xml")
 }
 
 func (s *FlushingSuite) TestFlushingWriterWriteHeader(c *gocheck.C) {
 	recorder := httptest.NewRecorder()
-	writer := FlushingWriter{recorder, false}
+	writer := flushingWriter{recorder, false}
 	expectedCode := 333
 	writer.WriteHeader(expectedCode)
 	c.Assert(recorder.Code, gocheck.Equals, expectedCode)
