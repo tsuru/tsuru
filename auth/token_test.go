@@ -186,8 +186,7 @@ func (s *S) TestGetPasswordToken(c *gocheck.C) {
 func (s *S) TestGetPasswordTokenUnknown(c *gocheck.C) {
 	t, err := getPasswordToken("what??")
 	c.Assert(t, gocheck.IsNil)
-	c.Assert(err, gocheck.NotNil)
-	c.Assert(err.Error(), gocheck.Equals, "Token not found")
+	c.Assert(err, gocheck.Equals, ErrInvalidToken)
 }
 
 func (s *S) TestPasswordTokensAreValidFor24Hours(c *gocheck.C) {

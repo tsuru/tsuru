@@ -165,7 +165,7 @@ func getPasswordToken(token string) (*passwordToken, error) {
 	var t passwordToken
 	err = conn.PasswordTokens().FindId(token).One(&t)
 	if err != nil {
-		return nil, errors.New("Token not found")
+		return nil, ErrInvalidToken
 	}
 	if t.Creation.Add(24*time.Hour).Sub(time.Now()) < time.Minute {
 		return nil, ErrInvalidToken
