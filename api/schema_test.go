@@ -26,7 +26,7 @@ func (s *SchemaSuite) TestSchemas(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(recorder.Code, gocheck.Equals, http.StatusOK)
 	l := []link{
-		{"href": "http://myhost.com/apps/{name}/log?lines=10", "method": "GET", "rel": "log"},
+		{"href": "http://myhost.com/apps/{name}/log", "method": "GET", "rel": "log"},
 		{"href": "http://myhost.com/apps/{name}/env", "method": "GET", "rel": "get_env"},
 		{"href": "http://myhost.com/apps/{name}/env", "method": "POST", "rel": "set_env"},
 		{"href": "http://myhost.com/apps/{name}/env", "method": "DELETE", "rel": "unset_env"},
