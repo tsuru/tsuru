@@ -22,7 +22,7 @@ type command struct {
 type FakeExecutor struct {
 	cmds   []command
 	mut    sync.RWMutex
-	output []byte
+	Output []byte
 }
 
 func (e *FakeExecutor) Execute(cmd string, args []string, stdin io.Reader, stdout, stderr io.Writer) error {
@@ -30,8 +30,8 @@ func (e *FakeExecutor) Execute(cmd string, args []string, stdin io.Reader, stdou
 	e.mut.Lock()
 	e.cmds = append(e.cmds, c)
 	e.mut.Unlock()
-	if e.output != nil {
-		stdout.Write(e.output)
+	if e.Output != nil {
+		stdout.Write(e.Output)
 	}
 	return nil
 }
@@ -60,7 +60,7 @@ func (e *FakeExecutor) GetCommands(cmdName string) []command {
 type ErrorExecutor struct {
 	cmds   []command
 	mut    sync.RWMutex
-	output []byte
+	Output []byte
 }
 
 func (e *ErrorExecutor) Execute(cmd string, args []string, stdin io.Reader, stdout, stderr io.Writer) error {
@@ -68,8 +68,8 @@ func (e *ErrorExecutor) Execute(cmd string, args []string, stdin io.Reader, stdo
 	e.mut.Lock()
 	e.cmds = append(e.cmds, c)
 	e.mut.Unlock()
-	if e.output != nil {
-		stderr.Write(e.output)
+	if e.Output != nil {
+		stderr.Write(e.Output)
 	}
 	return errors.New("")
 }

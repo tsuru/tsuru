@@ -42,7 +42,7 @@ func (s *S) TestExecute(c *gocheck.C) {
 }
 
 func (s *S) TestFakeExecutorOutput(c *gocheck.C) {
-	e := FakeExecutor{output: []byte("ble")}
+	e := FakeExecutor{Output: []byte("ble")}
 	var b bytes.Buffer
 	cmd := "ls"
 	args := []string{"-lsa"}
@@ -77,7 +77,7 @@ func (s *S) TestErrorExecute(c *gocheck.C) {
 }
 
 func (s *S) TestErrorExecutorOutput(c *gocheck.C) {
-	e := ErrorExecutor{output: []byte("ble")}
+	e := ErrorExecutor{Output: []byte("ble")}
 	var b bytes.Buffer
 	cmd := "ls"
 	args := []string{"-lsa"}
