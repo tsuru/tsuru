@@ -5,10 +5,13 @@
 package quota
 
 import (
+	"fmt"
 	"github.com/globocom/config"
 	"github.com/globocom/tsuru/db"
 	"labix.org/v2/mgo/bson"
 	"launchpad.net/gocheck"
+	"runtime"
+	"sync"
 	"testing"
 )
 
@@ -88,4 +91,66 @@ func (Suite) TestGet(c *gocheck.C) {
 func (Suite) TestGetNotFound(c *gocheck.C) {
 	err := Delete("home@dreamtheater.com")
 	c.Assert(err, gocheck.Equals, ErrQuotaNotFound)
+}
+
+func (Suite) TestReserve(c *gocheck.C) {
+	err := Create("last@dreamtheater.com", 3)
+	c.Assert(err, gocheck.IsNil)
+	defer Delete("last@dreamtheater.com")
+	u, err := Get("last@dreamtheater.com")
+	c.Assert(err, gocheck.IsNil)
+	err = Reserve("last@dreamtheater.com", "dt/1")
+	c.Assert(err, gocheck.IsNil)
+	err = Reserve("last@dreamtheater.com", "dt/0")
+	c.Assert(err, gocheck.IsNil)
+	u, err = Get("last@dreamtheater.com")
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(u.Items, gocheck.DeepEquals, []string{"dt/1", "dt/0"})
+}
+
+func (Suite) TestReserveIsSafe(c *gocheck.C) {
+	items := 300
+	err := Create("spirit@dreamtheater.com", uint(items-items/2))
+	c.Assert(err, gocheck.IsNil)
+	defer Delete("spirit@dreamtheater.com")
+	u, err := Get("spirit@dreamtheater.com")
+	c.Assert(err, gocheck.IsNil)
+	defer runtime.GOMAXPROCS(runtime.GOMAXPROCS(24))
+	var wg sync.WaitGroup
+	wg.Add(items)
+	for i := 0; i < items; i++ {
+		go func(i int) {
+			Reserve("spirit@dreamtheater.com", fmt.Sprintf("spirit/%d", i))
+			wg.Done()
+		}(i)
+	}
+	wg.Wait()
+	u, err = Get("spirit@dreamtheater.com")
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(u.Items, gocheck.HasLen, items-items/2)
+}
+
+func (Suite) TestReserveRepeatedItems(c *gocheck.C) {
+	err := Create("spirit@dreamtheater.com", 500)
+	c.Assert(err, gocheck.IsNil)
+	defer Delete("spirit@dreamtheater.com")
+	u, err := Get("spirit@dreamtheater.com")
+	c.Assert(err, gocheck.IsNil)
+	err = Reserve("spirit@dreamtheater.com", "spirit/0")
+	c.Assert(err, gocheck.IsNil)
+	err = Reserve("spirit@dreamtheater.com", "spirit/0")
+	c.Assert(err, gocheck.IsNil)
+	u, err = Get("spirit@dreamtheater.com")
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(u.Items, gocheck.HasLen, 1)
+}
+
+func (Suite) TestReserveQuotaExceeded(c *gocheck.C) {
+	err := Create("change@dreamtheater.com", 1)
+	c.Assert(err, gocheck.IsNil)
+	defer Delete("change@dreamtheater.com")
+	err = Reserve("change@dreamtheater.com", "change/0")
+	c.Assert(err, gocheck.IsNil)
+	err = Reserve("change@dreamtheater.com", "change/1")
+	c.Assert(err, gocheck.Equals, ErrQuotaExceeded)
 }

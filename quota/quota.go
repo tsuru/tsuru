@@ -12,10 +12,13 @@ import (
 	"errors"
 	"github.com/globocom/tsuru/db"
 	"labix.org/v2/mgo"
+	"labix.org/v2/mgo/bson"
+	"sync"
 )
 
 var (
 	ErrQuotaAlreadyExists = errors.New("Quota already exists")
+	ErrQuotaExceeded      = errors.New("Quota exceeded")
 	ErrQuotaNotFound      = errors.New("Quota not found")
 )
 
@@ -30,6 +33,7 @@ type Usage struct {
 	Items []string
 	// Maximum length of Items.
 	Limit uint
+	mut   sync.Mutex
 }
 
 // Create stores a new quota in the database.
@@ -75,4 +79,25 @@ func Get(user string) (*Usage, error) {
 		return nil, ErrQuotaNotFound
 	}
 	return &usage, err
+}
+
+// Reserve increases the number of items in use for the user.
+func Reserve(user, item string) error {
+	conn, err := db.Conn()
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+	locker.Lock(user)
+	defer locker.Unlock(user)
+	var usage Usage
+	err = conn.Quota().Find(bson.M{"user": user}).One(&usage)
+	if err != nil {
+		return ErrQuotaNotFound
+	}
+	if uint(len(usage.Items)) == usage.Limit {
+		return ErrQuotaExceeded
+	}
+	update := bson.M{"$addToSet": bson.M{"items": item}}
+	return conn.Quota().Update(bson.M{"user": user}, update)
 }
