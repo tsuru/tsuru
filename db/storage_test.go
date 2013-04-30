@@ -251,6 +251,21 @@ func (s *S) TestMethodTeamsShouldReturnTeamsCollection(c *gocheck.C) {
 	c.Assert(teams, gocheck.DeepEquals, teamsc)
 }
 
+func (s *S) TestQuota(c *gocheck.C) {
+	storage, _ := Open("127.0.0.1", "tsuru_storage_test")
+	defer storage.session.Close()
+	quota := storage.Quota()
+	quotac := storage.Collection("quota")
+	c.Assert(quota, gocheck.DeepEquals, quotac)
+}
+
+func (s *S) TestQuotaUserIsUnique(c *gocheck.C) {
+	storage, _ := Open("127.0.0.1", "tsuru_storage_test")
+	defer storage.session.Close()
+	quota := storage.Quota()
+	c.Assert(quota, HasUniqueIndex, []string{"user"})
+}
+
 func (s *S) TestRetire(c *gocheck.C) {
 	defer func() {
 		if r := recover(); !c.Failed() && r == nil {

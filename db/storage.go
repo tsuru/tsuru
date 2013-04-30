@@ -171,6 +171,14 @@ func (s *Storage) Teams() *mgo.Collection {
 	return s.Collection("teams")
 }
 
+// Quota returns the quota collection from MongoDB.
+func (s *Storage) Quota() *mgo.Collection {
+	userIndex := mgo.Index{Key: []string{"user"}, Unique: true}
+	c := s.Collection("quota")
+	c.EnsureIndex(userIndex)
+	return c
+}
+
 func init() {
 	ticker = time.NewTicker(time.Hour)
 	go retire(ticker)
