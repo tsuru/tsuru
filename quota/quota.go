@@ -14,7 +14,10 @@ import (
 	"labix.org/v2/mgo"
 )
 
-var ErrQuotaAlreadyExists = errors.New("Quota already exists")
+var (
+	ErrQuotaAlreadyExists = errors.New("Quota already exists")
+	ErrQuotaNotFound      = errors.New("Quota not found")
+)
 
 // Usage represents the usage of a user. It contains information about the
 // limit of items, and the current amount of items in use by the user.
@@ -39,6 +42,21 @@ func Create(user string, quota uint) error {
 	err = conn.Quota().Insert(usage{User: user, Limit: quota})
 	if e, ok := err.(*mgo.LastError); ok && e.Code == 11000 {
 		return ErrQuotaAlreadyExists
+	}
+	return err
+}
+
+// Delete destroys the quota allocated for the user.
+func Delete(user string) error {
+	conn, err := db.Conn()
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+	q := map[string]interface{}{"user": user}
+	err = conn.Quota().Remove(q)
+	if err != nil && err.Error() == "not found" {
+		return ErrQuotaNotFound
 	}
 	return err
 }

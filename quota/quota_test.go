@@ -55,3 +55,21 @@ func (Suite) TestDuplicateQuota(c *gocheck.C) {
 	err = Create("user@tsuru.io", 50)
 	c.Assert(err, gocheck.Equals, ErrQuotaAlreadyExists)
 }
+
+func (Suite) TestDelete(c *gocheck.C) {
+	err := Create("home@dreamtheater.com", 3)
+	c.Assert(err, gocheck.IsNil)
+	err = Delete("home@dreamtheater.com")
+	c.Assert(err, gocheck.IsNil)
+	conn, err := db.Conn()
+	c.Assert(err, gocheck.IsNil)
+	defer conn.Close()
+	count, err := conn.Quota().Find(bson.M{"user": "home@dreamtheater.com"}).Count()
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(count, gocheck.Equals, 0)
+}
+
+func (Suite) TestDeleteQuotaNotFound(c *gocheck.C) {
+	err := Delete("home@dreamtheater.com")
+	c.Assert(err, gocheck.Equals, ErrQuotaNotFound)
+}
