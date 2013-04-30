@@ -19,12 +19,12 @@ func Test(t *testing.T) { gocheck.TestingT(t) }
 
 func (s *S) TestCommandGetName(c *gocheck.C) {
 	cmd := command{name: "docker", args: []string{"run", "some/img"}}
-	c.Assert(cmd.GetName(), gochec.Equals, cmd.name)
+	c.Assert(cmd.GetName(), gocheck.Equals, cmd.name)
 }
 
 func (s *S) TestCommandGetArgs(c *gocheck.C) {
 	cmd := command{name: "docker", args: []string{"run", "some/img"}}
-	c.Assert(cmd.GetArgs(), gochec.Equals, cmd.args)
+	c.Assert(cmd.GetArgs(), gocheck.DeepEquals, cmd.args)
 }
 
 func (s *S) TestFakeExecutorImplementsExecutor(c *gocheck.C) {
