@@ -39,7 +39,7 @@ func (Suite) TestCreate(c *gocheck.C) {
 	conn, err := db.Conn()
 	c.Assert(err, gocheck.IsNil)
 	defer conn.Close()
-	var u Usage
+	var u usage
 	err = conn.Quota().Find(bson.M{"user": "user@tsuru.io"}).One(&u)
 	c.Assert(err, gocheck.IsNil)
 	defer conn.Quota().Remove(bson.M{"user": "user@tsuru.io"})
@@ -77,33 +77,19 @@ func (Suite) TestDeleteQuotaNotFound(c *gocheck.C) {
 	c.Assert(err, gocheck.Equals, ErrQuotaNotFound)
 }
 
-func (Suite) TestGet(c *gocheck.C) {
-	err := Create("seasons@dreamtheater.com", 3)
-	c.Assert(err, gocheck.IsNil)
-	defer Delete("seasons@dreamtheater.com")
-	usage, err := Get("seasons@dreamtheater.com")
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(usage.User, gocheck.Equals, "seasons@dreamtheater.com")
-	c.Assert(usage.Limit, gocheck.Equals, uint(3))
-	c.Assert(usage.Items, gocheck.HasLen, 0)
-}
-
-func (Suite) TestGetNotFound(c *gocheck.C) {
-	err := Delete("home@dreamtheater.com")
-	c.Assert(err, gocheck.Equals, ErrQuotaNotFound)
-}
-
 func (Suite) TestReserve(c *gocheck.C) {
 	err := Create("last@dreamtheater.com", 3)
 	c.Assert(err, gocheck.IsNil)
 	defer Delete("last@dreamtheater.com")
-	u, err := Get("last@dreamtheater.com")
-	c.Assert(err, gocheck.IsNil)
 	err = Reserve("last@dreamtheater.com", "dt/1")
 	c.Assert(err, gocheck.IsNil)
 	err = Reserve("last@dreamtheater.com", "dt/0")
 	c.Assert(err, gocheck.IsNil)
-	u, err = Get("last@dreamtheater.com")
+	conn, err := db.Conn()
+	c.Assert(err, gocheck.IsNil)
+	defer conn.Close()
+	var u usage
+	err = conn.Quota().Find(bson.M{"user": "last@dreamtheater.com"}).One(&u)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(u.Items, gocheck.DeepEquals, []string{"dt/1", "dt/0"})
 }
@@ -113,8 +99,6 @@ func (Suite) TestReserveIsSafe(c *gocheck.C) {
 	err := Create("spirit@dreamtheater.com", uint(items-items/2))
 	c.Assert(err, gocheck.IsNil)
 	defer Delete("spirit@dreamtheater.com")
-	u, err := Get("spirit@dreamtheater.com")
-	c.Assert(err, gocheck.IsNil)
 	defer runtime.GOMAXPROCS(runtime.GOMAXPROCS(24))
 	var wg sync.WaitGroup
 	wg.Add(items)
@@ -125,7 +109,11 @@ func (Suite) TestReserveIsSafe(c *gocheck.C) {
 		}(i)
 	}
 	wg.Wait()
-	u, err = Get("spirit@dreamtheater.com")
+	conn, err := db.Conn()
+	c.Assert(err, gocheck.IsNil)
+	defer conn.Close()
+	var u usage
+	err = conn.Quota().Find(bson.M{"user": "spirit@dreamtheater.com"}).One(&u)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(u.Items, gocheck.HasLen, items-items/2)
 }
@@ -134,13 +122,15 @@ func (Suite) TestReserveRepeatedItems(c *gocheck.C) {
 	err := Create("spirit@dreamtheater.com", 500)
 	c.Assert(err, gocheck.IsNil)
 	defer Delete("spirit@dreamtheater.com")
-	u, err := Get("spirit@dreamtheater.com")
-	c.Assert(err, gocheck.IsNil)
 	err = Reserve("spirit@dreamtheater.com", "spirit/0")
 	c.Assert(err, gocheck.IsNil)
 	err = Reserve("spirit@dreamtheater.com", "spirit/0")
 	c.Assert(err, gocheck.IsNil)
-	u, err = Get("spirit@dreamtheater.com")
+	conn, err := db.Conn()
+	c.Assert(err, gocheck.IsNil)
+	defer conn.Close()
+	var u usage
+	err = conn.Quota().Find(bson.M{"user": "spirit@dreamtheater.com"}).One(&u)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(u.Items, gocheck.HasLen, 1)
 }
