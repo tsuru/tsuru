@@ -6,6 +6,7 @@ package quota
 
 import (
 	"launchpad.net/gocheck"
+	"runtime"
 	"sync"
 )
 
@@ -37,6 +38,7 @@ func (Suite) TestMultiLockerUsage(c *gocheck.C) {
 		locker.Unlock("user@tsuru.io")
 		wg.Done()
 	}()
+	runtime.Gosched()
 	c.Assert(count, gocheck.Equals, 0)
 	locker.Unlock("user@tsuru.io")
 	wg.Wait()

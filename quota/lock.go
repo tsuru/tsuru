@@ -13,12 +13,13 @@ type multiLocker struct {
 
 func (l *multiLocker) Lock(name string) {
 	l.mut.Lock()
-	defer l.mut.Unlock()
-	_, ok := l.m[name]
+	mutex, ok := l.m[name]
 	if !ok {
-		l.m[name] = new(sync.Mutex)
+		mutex = new(sync.Mutex)
+		l.m[name] = mutex
 	}
-	l.m[name].Lock()
+	l.mut.Unlock()
+	mutex.Lock()
 }
 
 func (l *multiLocker) Unlock(name string) {
