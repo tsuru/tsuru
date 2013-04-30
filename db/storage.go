@@ -184,7 +184,7 @@ func init() {
 	go retire(ticker)
 }
 
-// retire retires old connections :-)
+// retire retires old connections
 func retire(t *time.Ticker) {
 	for _ = range t.C {
 		now := time.Now()
