@@ -154,3 +154,8 @@ func (Suite) TestReserveQuotaExceeded(c *gocheck.C) {
 	err = Reserve("change@dreamtheater.com", "change/1")
 	c.Assert(err, gocheck.Equals, ErrQuotaExceeded)
 }
+
+func (Suite) TestReserveQuotaNotFound(c *gocheck.C) {
+	err := Reserve("home@dreamtheater.com", "something")
+	c.Assert(err, gocheck.Equals, ErrQuotaNotFound)
+}
