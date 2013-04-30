@@ -33,7 +33,7 @@ func executor() exec.Executor {
 	return execut
 }
 
-func (p *DockerProvisioner) router() (router.Router, error) {
+func getRouter() (router.Router, error) {
 	r, err := config.GetString("router")
 	if err != nil {
 		return nil, err
@@ -155,7 +155,7 @@ func (p *DockerProvisioner) Provision(app provision.App) error {
 			log.Print(err)
 			return
 		}
-		r, err := p.router()
+		r, err := getRouter()
 		if err != nil {
 			log.Print(err)
 			return

@@ -85,7 +85,7 @@ func (s *S) TestProvisionerProvision(c *gocheck.C) {
 	c.Assert(fexec.ExecutedCmd("docker", args), gocheck.Equals, true)
 	args = []string{"inspect", ""}
 	c.Assert(fexec.ExecutedCmd("docker", args), gocheck.Equals, true) // from ip call, the instance id in the end of this command is actually wrong, so we ignore it
-	r, err := p.router()
+	r, err := getRouter()
 	c.Assert(err, gocheck.IsNil)
 	fk := r.(*rtesting.FakeRouter)
 	c.Assert(fk.HasRoute("myapp"), gocheck.Equals, true)
@@ -186,7 +186,16 @@ func (s *S) TestProvisionerRestartFailure(c *gocheck.C) {
 }
 
 func (s *S) TestDeployShouldCallDockerCreate(c *gocheck.C) {
-	fexec := &etesting.FakeExecutor{}
+	out := `
+    {
+            "NetworkSettings": {
+            "IpAddress": "10.10.10.10",
+            "IpPrefixLen": 8,
+            "Gateway": "10.65.41.1",
+            "PortMapping": {}
+    }
+}`
+	fexec := &etesting.FakeExecutor{Output: []byte(out)}
 	execut = fexec
 	defer func() {
 		execut = nil
@@ -202,27 +211,46 @@ func (s *S) TestDeployShouldCallDockerCreate(c *gocheck.C) {
 }
 
 func (s *S) TestDeployShouldCommitImageAndRemoveContainerAfterIt(c *gocheck.C) {
-	id := "945132e7b4c9"
-	tmpdir, err := commandmocker.Add("docker", id)
-	c.Assert(err, gocheck.IsNil)
-	defer commandmocker.Remove(tmpdir)
+	out := `
+    {
+            "NetworkSettings": {
+            "IpAddress": "10.10.10.10",
+            "IpPrefixLen": 8,
+            "Gateway": "10.65.41.1",
+            "PortMapping": {}
+    }
+}`
+	fexec := &etesting.FakeExecutor{Output: []byte(out)}
+	execut = fexec
+	defer func() {
+		execut = nil
+	}()
 	p := DockerProvisioner{}
 	app := testing.NewFakeApp("cribcaged", "python", 1)
 	w := &bytes.Buffer{}
-	err = p.Deploy(app, w)
+	err := p.Deploy(app, w)
 	defer p.Destroy(app)
 	c.Assert(err, gocheck.IsNil)
-	args := []string{"rm", id} // reverse execution order
-	args = append([]string{"commit", id, fmt.Sprintf("%s/cribcaged", s.repoNamespace)}, args...)
-	args = append([]string{"run", "-d", fmt.Sprintf("%s/python", s.repoNamespace), fmt.Sprintf("/var/lib/tsuru/deploy git://%s/cribcaged.git", s.gitHost)}, args...)
-	c.Assert(commandmocker.Ran(tmpdir), gocheck.Equals, true)
-	got := commandmocker.Parameters(tmpdir)
-	got = got[:len(got)-6] //removes the last docker run executed
-	c.Assert(got, gocheck.DeepEquals, args)
+	got := fexec.GetCommands("docker")
+	args := []string{"run", "-d", fmt.Sprintf("%s/python", s.repoNamespace), fmt.Sprintf("/var/lib/tsuru/deploy git://%s/cribcaged.git", s.gitHost)}
+	c.Assert(got[0].GetArgs(), gocheck.DeepEquals, args)
+	c.Assert(got[1].GetArgs()[0], gocheck.Equals, "inspect") // from container.ip call
+	c.Assert(got[2].GetArgs()[0], gocheck.Equals, "commit")
+	c.Assert(got[2].GetArgs()[2], gocheck.Equals, fmt.Sprintf("%s/cribcaged", s.repoNamespace))
+	c.Assert(got[3].GetArgs()[0], gocheck.Equals, "rm")
 }
 
 func (s *S) TestDeployShouldCreateContainerForRunningWithGeneratedImage(c *gocheck.C) {
-	fexec := &etesting.FakeExecutor{}
+	out := `
+    {
+            "NetworkSettings": {
+            "IpAddress": "10.10.10.10",
+            "IpPrefixLen": 8,
+            "Gateway": "10.65.41.1",
+            "PortMapping": {}
+    }
+}`
+	fexec := &etesting.FakeExecutor{Output: []byte(out)}
 	execut = fexec
 	defer func() {
 		execut = nil
