@@ -32,7 +32,7 @@ func appSchema(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
 		return err
 	}
 	l := []link{
-		{"href": host + "/apps/{name}/log", "method": "GET", "rel": "log"},
+		{"href": host + "/apps/{name}/log?lines=10", "method": "GET", "rel": "log"},
 		{"href": host + "/apps/{name}/env", "method": "GET", "rel": "get_env"},
 		{"href": host + "/apps/{name}/env", "method": "POST", "rel": "set_env"},
 		{"href": host + "/apps/{name}/env", "method": "DELETE", "rel": "unset_env"},
