@@ -19,6 +19,14 @@ type command struct {
 	args []string
 }
 
+func (c *command) GetName() string {
+	return c.name
+}
+
+func (c *command) GetArgs() []string {
+	return c.args
+}
+
 type FakeExecutor struct {
 	cmds   []command
 	mut    sync.RWMutex

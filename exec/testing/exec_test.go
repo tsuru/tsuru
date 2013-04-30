@@ -17,6 +17,16 @@ var _ = gocheck.Suite(&S{})
 
 func Test(t *testing.T) { gocheck.TestingT(t) }
 
+func (s *S) TestCommandGetName(c *gocheck.C) {
+	cmd := command{name: "docker", args: []string{"run", "some/img"}}
+	c.Assert(cmd.GetName(), gochec.Equals, cmd.name)
+}
+
+func (s *S) TestCommandGetArgs(c *gocheck.C) {
+	cmd := command{name: "docker", args: []string{"run", "some/img"}}
+	c.Assert(cmd.GetArgs(), gochec.Equals, cmd.args)
+}
+
 func (s *S) TestFakeExecutorImplementsExecutor(c *gocheck.C) {
 	var _ exec.Executor = &FakeExecutor{}
 }
