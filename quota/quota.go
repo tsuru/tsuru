@@ -19,6 +19,8 @@ var (
 	ErrQuotaNotFound      = errors.New("Quota not found")
 )
 
+var locker = multiLocker{m: make(map[string]*sync.Mutex)}
+
 // Usage represents the usage of a user. It contains information about the
 // limit of items, and the current amount of items in use by the user.
 type Usage struct {

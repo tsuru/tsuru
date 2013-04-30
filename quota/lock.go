@@ -26,5 +26,3 @@ func (l *multiLocker) Unlock(name string) {
 	defer l.mut.Unlock()
 	l.m[name].Unlock()
 }
-
-var locker = multiLocker{m: make(map[string]*sync.Mutex)}
