@@ -7,6 +7,7 @@ package docker
 import (
 	"bytes"
 	"fmt"
+	"github.com/garyburd/redigo/redis"
 	"github.com/globocom/commandmocker"
 	"github.com/globocom/config"
 	etesting "github.com/globocom/tsuru/exec/testing"
@@ -24,8 +25,7 @@ func (s *S) TestNewContainer(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	defer commandmocker.Remove(tmpdir)
 	app := testing.NewFakeApp("app-name", "python", 1)
-	container, err := newContainer(app, deployContainerCmd)
-	c.Assert(err, gocheck.IsNil)
+	container, _ := newContainer(app, deployContainerCmd)
 	c.Assert(container.name, gocheck.Equals, "app-name")
 	c.Assert(container.id, gocheck.Equals, id)
 }
@@ -68,6 +68,34 @@ func (s *S) TestNewContainerReturnsContainerWithoutIdAndLogsOnError(c *gocheck.C
 	c.Assert(err, gocheck.NotNil)
 	c.Assert(container.id, gocheck.Equals, "")
 	c.Assert(w.String(), gocheck.Matches, "(?s).*Error creating container myapp.*")
+}
+
+func (s *S) TestNewContainerAddsRoute(c *gocheck.C) {
+	out := `
+    {
+            "NetworkSettings": {
+            "IpAddress": "10.10.10.10",
+            "IpPrefixLen": 8,
+            "Gateway": "10.65.41.1",
+            "PortMapping": {}
+    }
+}`
+	fexec := &etesting.FakeExecutor{Output: []byte(out)}
+	execut = fexec
+	defer func() {
+		execut = nil
+	}()
+	app := testing.NewFakeApp("myapp", "python", 1)
+	_, err := newContainer(app, runContainerCmd)
+	c.Assert(err, gocheck.IsNil)
+	conn, err := redis.Dial("tcp", "localhost:6379")
+	c.Assert(err, gocheck.IsNil)
+	hipachDomain, err := config.GetString("hipach:domain")
+	c.Assert(err, gocheck.IsNil)
+	frontend := fmt.Sprintf("frontend:%s.%s", app.GetName(), hipachDomain)
+	reply, err := conn.Do("LRANGE", frontend, 0, 0)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(reply, gocheck.Not(gocheck.DeepEquals), []interface{}{})
 }
 
 func (s *S) TestDeployContainerCmdReturnsCommandToDeployContainer(c *gocheck.C) {

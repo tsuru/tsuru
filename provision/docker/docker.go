@@ -94,6 +94,7 @@ type container struct {
 // Receives the application to which the container is going to be generated
 // and the function to make the command that the container will execute on
 // startup.
+// TODO (flaviamissi): make it atomic
 func newContainer(app provision.App, f func(provision.App) ([]string, error)) (*container, error) {
 	appName := app.GetName()
 	c := &container{name: appName}
@@ -115,8 +116,17 @@ func newContainer(app provision.App, f func(provision.App) ([]string, error)) (*
 	}
 	if err := collection().Insert(u); err != nil {
 		log.Print(err)
-		return c, err // should rollback
+		return c, err
 	}
+	r, err := getRouter()
+	if err != nil {
+		return c, err
+	}
+	ip, err := c.ip()
+	if err != nil {
+		return c, err
+	}
+	r.AddRoute(app.GetName(), ip)
 	return c, nil
 }
 

@@ -41,6 +41,7 @@ func (s *S) SetUpSuite(c *gocheck.C) {
 	config.Set("docker:run-cmd:bin", "/usr/local/bin/circusd")
 	config.Set("docker:run-cmd:args", "/etc/circus/circus.ini")
 	config.Set("docker:run-cmd:port", "8888")
+	config.Set("hipach:domain", "tsuruapp.com")
 	var err error
 	s.conn, err = db.Conn()
 	c.Assert(err, gocheck.IsNil)
