@@ -7,7 +7,6 @@ package docker
 import (
 	"bytes"
 	"fmt"
-	"github.com/garyburd/redigo/redis"
 	"github.com/globocom/commandmocker"
 	"github.com/globocom/config"
 	etesting "github.com/globocom/tsuru/exec/testing"
@@ -88,14 +87,11 @@ func (s *S) TestNewContainerAddsRoute(c *gocheck.C) {
 	app := testing.NewFakeApp("myapp", "python", 1)
 	_, err := newContainer(app, runContainerCmd)
 	c.Assert(err, gocheck.IsNil)
-	conn, err := redis.Dial("tcp", "localhost:6379")
+	r, err := getRouter()
 	c.Assert(err, gocheck.IsNil)
-	hipachDomain, err := config.GetString("hipach:domain")
+	addr, err := r.Addr(app.GetName())
 	c.Assert(err, gocheck.IsNil)
-	frontend := fmt.Sprintf("frontend:%s.%s", app.GetName(), hipachDomain)
-	reply, err := conn.Do("LRANGE", frontend, 0, 0)
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(reply, gocheck.Not(gocheck.DeepEquals), []interface{}{})
+	c.Assert(addr, gocheck.Equals, "10.10.10.10")
 }
 
 func (s *S) TestDeployContainerCmdReturnsCommandToDeployContainer(c *gocheck.C) {

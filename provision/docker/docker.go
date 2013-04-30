@@ -118,6 +118,9 @@ func newContainer(app provision.App, f func(provision.App) ([]string, error)) (*
 		log.Print(err)
 		return c, err
 	}
+	// adding a route to a container that only installs the dependencies
+	// (deployContainerCmd) is a waste of processing, since this container is
+	// not going to be used, we should improve it
 	r, err := getRouter()
 	if err != nil {
 		return c, err
@@ -126,8 +129,7 @@ func newContainer(app provision.App, f func(provision.App) ([]string, error)) (*
 	if err != nil {
 		return c, err
 	}
-	r.AddRoute(app.GetName(), ip)
-	return c, nil
+	return c, r.AddRoute(app.GetName(), ip)
 }
 
 // ip returns the ip for the container.
