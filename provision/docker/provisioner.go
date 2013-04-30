@@ -5,8 +5,6 @@
 package docker
 
 import (
-	"bytes"
-	"fmt"
 	"github.com/globocom/config"
 	"github.com/globocom/tsuru/db"
 	"github.com/globocom/tsuru/exec"
@@ -43,146 +41,12 @@ func getRouter() (router.Router, error) {
 
 type DockerProvisioner struct{}
 
-func (p *DockerProvisioner) setup(ip, framework string) error {
-	formulasPath, err := config.GetString("docker:formulas-path")
-	if err != nil {
-		return err
-	}
-	log.Printf("Creating hooks dir for %s", ip)
-	args := []string{"-q", "-o", "StrictHostKeyChecking no", "-l", "ubuntu", ip, "sudo mkdir -p /var/lib/tsuru/hooks"}
-	err = executor().Execute("ssh", args, nil, nil, nil)
-	if err != nil {
-		log.Printf("error on creating hooks dir for %s", ip)
-		log.Print(err)
-		return err
-	}
-	log.Printf("Permissons on hooks dir for %s", ip)
-	args = []string{"-q", "-o", "StrictHostKeyChecking no", "-l", "ubuntu", ip, "sudo chown -R ubuntu /var/lib/tsuru/hooks"}
-	err = executor().Execute("ssh", args, nil, nil, nil)
-	if err != nil {
-		log.Printf("error on permissions for %s", ip)
-		log.Print(err)
-		return err
-	}
-	log.Printf("coping hooks to %s", ip)
-	output := bytes.Buffer{}
-	args = []string{"-q", "-o", "StrictHostKeyChecking no", "-r", formulasPath + "/" + framework + "/hooks", "ubuntu@" + ip + ":/var/lib/tsuru"}
-	err = executor().Execute("scp", args, nil, &output, &output)
-	if err != nil {
-		log.Printf("error on execute scp with the args: %#v", args)
-		log.Print(output.String())
-		log.Print(err)
-		return err
-	}
-	return nil
-}
-
-func (p *DockerProvisioner) install(ip string) error {
-	log.Printf("executing the install hook for %s", ip)
-	args := []string{"-q", "-o", "StrictHostKeyChecking no", "-l", "ubuntu", ip, "sudo /var/lib/tsuru/hooks/install"}
-	err := executor().Execute("ssh", args, nil, nil, nil)
-	if err != nil {
-		log.Printf("error on install for %s", ip)
-		log.Print(err)
-		return err
-	}
-	return nil
-}
-
-func (p *DockerProvisioner) start(ip string) error {
-	args := []string{"-q", "-o", "StrictHostKeyChecking no", "-l", "ubuntu", ip, "sudo /var/lib/tsuru/hooks/start"}
-	err := executor().Execute("ssh", args, nil, nil, nil)
-	if err != nil {
-		log.Printf("error on start for %s", ip)
-		log.Print(err)
-		return err
-	}
-	return nil
-}
-
 // Provision creates a container and install its dependencies
 func (p *DockerProvisioner) Provision(app provision.App) error {
-	go func(p *DockerProvisioner, app provision.App) {
-		c := container{name: app.GetName()}
-		log.Printf("creating container %s", c.name)
-		u := provision.Unit{
-			Name:       app.GetName(),
-			AppName:    app.GetName(),
-			Type:       app.GetPlatform(),
-			Machine:    0,
-			InstanceId: app.GetName(),
-			Status:     provision.StatusCreating,
-			Ip:         "",
-		}
-		log.Printf("inserting container unit %s in the database", app.GetName())
-		if err := collection().Insert(u); err != nil {
-			log.Print(err)
-			return
-		}
-		id, err := c.create(app, deployContainerCmd)
-		if err != nil {
-			log.Printf("error on create container %s", app.GetName())
-			log.Print(err)
-			return
-		}
-		c.id = id
-		u.InstanceId = id
-		if err := c.start(); err != nil {
-			log.Printf("error on start container %s", app.GetName())
-			log.Print(err)
-			return
-		}
-		ip, err := c.ip() // handle this error
-		u.Ip = ip
-		u.Status = provision.StatusInstalling
-		if err := collection().Update(bson.M{"name": u.Name}, u); err != nil {
-			log.Print(err)
-			return
-		}
-		if err := p.setup(ip, app.GetPlatform()); err != nil {
-			log.Printf("error on setup container %s", app.GetName())
-			log.Print(err)
-			return
-		}
-		if err := p.install(ip); err != nil {
-			log.Printf("error on install container %s", app.GetName())
-			log.Print(err)
-			return
-		}
-		log.Printf("running provisioning start() for container %s", c.id)
-		if err := p.start(ip); err != nil {
-			log.Printf("error on start app for container %s", app.GetName())
-			log.Print(err)
-			return
-		}
-		r, err := getRouter()
-		if err != nil {
-			log.Print(err)
-			return
-		}
-		err = r.AddRoute(app.GetName(), ip)
-		if err != nil {
-			log.Printf("error on add route for %s with ip %s", app.GetName(), ip)
-			log.Print(err)
-		}
-		u.Status = provision.StatusStarted
-		if err := collection().Update(bson.M{"name": u.Name}, u); err != nil {
-			log.Print(err)
-			return
-		}
-		log.Printf("Successfuly updated unit: %s", app.GetName())
-	}(p, app)
 	return nil
 }
 
 func (p *DockerProvisioner) Restart(app provision.App) error {
-	var buf bytes.Buffer
-	err := p.ExecuteCommand(&buf, &buf, app, "/var/lib/tsuru/hooks/restart")
-	if err != nil {
-		msg := fmt.Sprintf("Failed to restart the app (%s): %s", err, buf.String())
-		app.Log(msg, "tsuru-provisioner")
-		return &provision.Error{Reason: buf.String(), Err: err}
-	}
 	return nil
 }
 
@@ -257,14 +121,6 @@ func (*DockerProvisioner) InstallDeps(app provision.App, w io.Writer) error {
 }
 
 func (*DockerProvisioner) ExecuteCommand(stdout, stderr io.Writer, app provision.App, cmd string, args ...string) error {
-	arguments := []string{"-l", "ubuntu", "-q", "-o", "StrictHostKeyChecking no"}
-	arguments = append(arguments, app.ProvisionUnits()[0].GetIp())
-	arguments = append(arguments, cmd)
-	arguments = append(arguments, args...)
-	err := executor().Execute("ssh", arguments, nil, stdout, stderr)
-	if err != nil {
-		return err
-	}
 	return nil
 }
 
