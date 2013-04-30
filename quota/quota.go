@@ -27,13 +27,11 @@ var locker = multiLocker{m: make(map[string]*sync.Mutex)}
 // Usage represents the usage of a user. It contains information about the
 // limit of items, and the current amount of items in use by the user.
 type usage struct {
-	// A unique identifier for the user (e.g.: the email).
+	// User identifier (e.g.: the email).
 	User string
-
-	// The slice of items, each identified by a string.
+	// Slice of items, each identified by a string.
 	Items []string
-
-	// The maximum length of Items.
+	// Maximum length of Items.
 	Limit uint
 	mut   sync.Mutex
 }
