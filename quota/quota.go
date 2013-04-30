@@ -21,14 +21,12 @@ var (
 
 // Usage represents the usage of a user. It contains information about the
 // limit of items, and the current amount of items in use by the user.
-type usage struct {
-	// A unique identifier for the user (e.g.: the email).
+type Usage struct {
+	// Identifier for the user (e.g.: the email).
 	User string
-
-	// The slice of items, each identified by a string.
+	// Slice of items, each identified by a string.
 	Items []string
-
-	// The maximum length of Items.
+	// Maximum length of Items.
 	Limit uint
 }
 
@@ -39,7 +37,7 @@ func Create(user string, quota uint) error {
 		return err
 	}
 	defer conn.Close()
-	err = conn.Quota().Insert(usage{User: user, Limit: quota})
+	err = conn.Quota().Insert(Usage{User: user, Limit: quota})
 	if e, ok := err.(*mgo.LastError); ok && e.Code == 11000 {
 		return ErrQuotaAlreadyExists
 	}
@@ -59,4 +57,20 @@ func Delete(user string) error {
 		return ErrQuotaNotFound
 	}
 	return err
+}
+
+// Get returns the quota instance of the given user.
+func Get(user string) (*Usage, error) {
+	var usage Usage
+	conn, err := db.Conn()
+	if err != nil {
+		return nil, err
+	}
+	defer conn.Close()
+	q := map[string]interface{}{"user": user}
+	err = conn.Quota().Find(q).One(&usage)
+	if err != nil && err.Error() == "not found" {
+		return nil, ErrQuotaNotFound
+	}
+	return &usage, err
 }

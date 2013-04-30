@@ -36,7 +36,7 @@ func (Suite) TestCreate(c *gocheck.C) {
 	conn, err := db.Conn()
 	c.Assert(err, gocheck.IsNil)
 	defer conn.Close()
-	var u usage
+	var u Usage
 	err = conn.Quota().Find(bson.M{"user": "user@tsuru.io"}).One(&u)
 	c.Assert(err, gocheck.IsNil)
 	defer conn.Quota().Remove(bson.M{"user": "user@tsuru.io"})
@@ -70,6 +70,22 @@ func (Suite) TestDelete(c *gocheck.C) {
 }
 
 func (Suite) TestDeleteQuotaNotFound(c *gocheck.C) {
+	err := Delete("home@dreamtheater.com")
+	c.Assert(err, gocheck.Equals, ErrQuotaNotFound)
+}
+
+func (Suite) TestGet(c *gocheck.C) {
+	err := Create("seasons@dreamtheater.com", 3)
+	c.Assert(err, gocheck.IsNil)
+	defer Delete("seasons@dreamtheater.com")
+	usage, err := Get("seasons@dreamtheater.com")
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(usage.User, gocheck.Equals, "seasons@dreamtheater.com")
+	c.Assert(usage.Limit, gocheck.Equals, uint(3))
+	c.Assert(usage.Items, gocheck.HasLen, 0)
+}
+
+func (Suite) TestGetNotFound(c *gocheck.C) {
 	err := Delete("home@dreamtheater.com")
 	c.Assert(err, gocheck.Equals, ErrQuotaNotFound)
 }
