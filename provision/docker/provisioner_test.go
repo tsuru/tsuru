@@ -7,7 +7,6 @@ package docker
 import (
 	"bytes"
 	"fmt"
-	"github.com/globocom/config"
 	etesting "github.com/globocom/tsuru/exec/testing"
 	"github.com/globocom/tsuru/log"
 	"github.com/globocom/tsuru/provision"
@@ -126,7 +125,6 @@ func (s *S) TestProvisionerDestroy(c *gocheck.C) {
 	defer func() {
 		execut = nil
 	}()
-	config.Set("docker:authorized-key-path", "somepath")
 	w := new(bytes.Buffer)
 	l := stdlog.New(w, "", stdlog.LstdFlags)
 	log.SetLogger(l)

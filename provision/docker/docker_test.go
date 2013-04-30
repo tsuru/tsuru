@@ -126,7 +126,6 @@ func (s *S) TestDockerCreate(c *gocheck.C) {
 	defer func() {
 		execut = nil
 	}()
-	config.Set("docker:authorized-key-path", "somepath")
 	container := container{name: "container"}
 	app := testing.NewFakeApp("app-name", "python", 1)
 	_, err := container.create(app, deployContainerCmd)

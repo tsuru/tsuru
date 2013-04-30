@@ -35,8 +35,6 @@ func (s *S) SetUpSuite(c *gocheck.C) {
 	config.Set("docker:collection", s.collName)
 	config.Set("database:url", "127.0.0.1:27017")
 	config.Set("database:name", "juju_provision_tests_s")
-	config.Set("docker:authorized-key-path", "somepath")
-	config.Set("docker:image", "base")
 	config.Set("docker:deploy-cmd", "/var/lib/tsuru/deploy")
 	config.Set("docker:run-cmd:bin", "/usr/local/bin/circusd")
 	config.Set("docker:run-cmd:args", "/etc/circus/circus.ini")
