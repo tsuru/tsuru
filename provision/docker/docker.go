@@ -92,7 +92,7 @@ type container struct {
 // newContainer creates a new container in docker and stores it on database.
 //
 // Receives the application to which the container is going to be generated
-// and the function to make the command that the container will execute on
+// and the function to assemble the command that the container will execute on
 // startup.
 // TODO (flaviamissi): make it atomic
 func newContainer(app provision.App, f func(provision.App) ([]string, error)) (*container, error) {
