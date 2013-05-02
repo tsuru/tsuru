@@ -46,6 +46,7 @@ func appSchema(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
 	}
 	s := schema{
 		Title:    "app schema",
+		Type:     "object",
 		Links:    l,
 		Required: []string{"framework", "name"},
 		Properties: map[string]property{
@@ -70,6 +71,7 @@ func appSchema(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
 func serviceSchema(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
 	s := schema{
 		Title:    "service",
+		Type:     "object",
 		Required: []string{"name"},
 		Properties: map[string]property{
 			"name": {

@@ -37,6 +37,7 @@ func (s *SchemaSuite) TestAppSchema(c *gocheck.C) {
 	}
 	expected := schema{
 		Title:    "app schema",
+		Type:     "object",
 		Links:    l,
 		Required: []string{"framework", "name"},
 		Properties: map[string]property{
@@ -71,6 +72,7 @@ func (s *SchemaSuite) TestServiceSchema(c *gocheck.C) {
 	c.Assert(recorder.Code, gocheck.Equals, http.StatusOK)
 	expected := schema{
 		Title:    "service",
+		Type:     "object",
 		Required: []string{"name"},
 		Properties: map[string]property{
 			"name": {
