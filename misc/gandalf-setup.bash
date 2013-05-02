@@ -26,18 +26,18 @@ function install_gandalf() {
 function configure_gandalf() {
     echo "Configuring gandalf"
     sudo bash -c "echo \"bin-path: /usr/bin/gandalf-bin
-    database:
-      url: 127.0.0.1:27017
-      name: gandalf
-    git:
-      bare:
-        location: /var/repositories
-        template: /home/git/bare-template
-      daemon:
-        export-all: true
-    host: $TSURU_DOMAIN
-    webserver:
-      port: \":8000\"\" > /etc/gandalf.conf"
+database:
+  url: 127.0.0.1:27017
+  name: gandalf
+git:
+  bare:
+    location: /var/repositories
+    template: /home/git/bare-template
+  daemon:
+    export-all: true
+host: $TSURU_DOMAIN
+webserver:
+  port: \":8000\"\" > /etc/gandalf.conf"
     echo "Creating git user"
     sudo useradd git
     echo "Creating bare path"
