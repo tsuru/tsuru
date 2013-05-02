@@ -140,7 +140,7 @@ func CreateApp(app *App, units uint, user *auth.User) error {
 	actions = append(actions, &exportEnvironmentsAction,
 		&createRepository, &provisionApp, &provisionAddUnits)
 	pipeline := action.NewPipeline(actions...)
-	err = pipeline.Execute(app, units)
+	err = pipeline.Execute(app, units, user)
 	if err != nil {
 		return &appCreationError{app: app.Name, err: err}
 	}
