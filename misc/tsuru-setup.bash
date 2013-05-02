@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash -e
 
 # Copyright 2013 tsuru authors. All rights reserved.
 # Use of this source code is governed by a BSD-style
@@ -18,13 +18,13 @@ function install_mongodb() {
     echo "Installing mongodb"
     sudo apt-key adv --keyserver keyserver.ubuntu.com --recv 7F0CEB10
     sudo bash -c 'echo "deb http://downloads-distro.mongodb.org/repo/ubuntu-upstart dist 10gen" > /etc/apt/sources.list.d/10gen.list'
-    sudo apt-get update
-    sudo apt-get install mongodb-10gen -y
+    sudo apt-get update -y
+    sudo apt-get install mongodb-10gen -y --force-yes
 }
 
 function install_beanstalkd() {
     echo "Installing beanstalkd"
-    sudo apt-get install -y beanstalkd
+    sudo apt-get install -y beanstalkd --force-yes
     sudo sed -i s/#START=yes/START=yes/ /etc/default/beanstalkd
 }
 

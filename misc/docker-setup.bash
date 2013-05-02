@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash -e
 
 # Copyright 2013 tsuru authors. All rights reserved.
 # Use of this source code is governed by a BSD-style
