@@ -33,6 +33,13 @@ function start_tsuru() {
     sudo tsr api &
 }
 
+function remove_git_hooks() {
+    # this hooks checks if the application is available before receiving a push
+    # since docker has nothing before a push, these hooks are not needed
+    sudo rm -rf /home/git/bare-template/hooks/pre-receive
+    sudo rm -rf /home/git/bare-template/hooks/pre-receive.py
+}
+
 function main() {
     source tsuru-setup.bash
     source gandalf-setup.bash
