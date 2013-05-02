@@ -634,6 +634,28 @@ func (s *S) TestReserveUserAppForwardQuotaNotFound(c *gocheck.C) {
 	}
 	expected := map[string]string{"app": app.Name, "user": user.Email}
 	previous, err := reserveUserApp.Forward(action.FWContext{Params: []interface{}{app, 4, user}})
+	c.Assert(err, gocheck.IsNil)
 	c.Assert(previous, gocheck.DeepEquals, expected)
+}
+
+func (s *S) TestReserveUserAppBackward(c *gocheck.C) {
+	user := auth.User{Email: "clap@yes.com"}
+	err := quota.Create(user.Email, 1)
+	c.Assert(err, gocheck.IsNil)
+	defer quota.Delete(user.Email)
+	app := App{
+		Name:     "clap",
+		Platform: "django",
+	}
+	err = quota.Reserve(user.Email, app.Name)
+	c.Assert(err, gocheck.IsNil)
+	ctx := action.BWContext{
+		FWResult: map[string]string{
+			"app":  app.Name,
+			"user": user.Email,
+		},
+	}
+	reserveUserApp.Backward(ctx)
+	err = quota.Reserve(user.Email, app.Name)
 	c.Assert(err, gocheck.IsNil)
 }

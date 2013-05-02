@@ -51,6 +51,10 @@ var reserveUserApp = action.Action{
 		}
 		return map[string]string{"app": app.Name, "user": user.Email}, nil
 	},
+	Backward: func(ctx action.BWContext) {
+		m := ctx.FWResult.(map[string]string)
+		quota.Release(m["user"], m["app"])
+	},
 }
 
 // insertApp is an action that inserts an app in the database in Forward and
