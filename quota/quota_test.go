@@ -194,3 +194,20 @@ func (Suite) TestReleaseIsSafe(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(u.Items, gocheck.HasLen, 0)
 }
+
+func (Suite) TestSetQuota(c *gocheck.C) {
+	err := Create("survival@yes.com", 1)
+	c.Assert(err, gocheck.IsNil)
+	defer Delete("survival@yes.com")
+	err = Reserve("survival@yes.com", "survival/0")
+	c.Assert(err, gocheck.IsNil)
+	err = Set("survival@yes.com", 10)
+	c.Assert(err, gocheck.IsNil)
+	err = Reserve("survival@yes.com", "survival/1")
+	c.Assert(err, gocheck.IsNil)
+}
+
+func (Suite) TestSetQuotaNotFound(c *gocheck.C) {
+	err := Set("everydays@yes.com", 10)
+	c.Assert(err, gocheck.Equals, ErrQuotaNotFound)
+}
