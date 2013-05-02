@@ -42,3 +42,5 @@ function main() {
     configure_tsuru
     start_tsuru
 }
+
+main
