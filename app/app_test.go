@@ -69,6 +69,7 @@ func (s *S) TestForceDestroy(c *gocheck.C) {
 	c.Assert(qt, gocheck.Equals, 0)
 	c.Assert(s.provisioner.FindApp(&a), gocheck.Equals, -1)
 }
+
 func (s *S) TestDestroy(c *gocheck.C) {
 	h := testHandler{}
 	ts := s.t.StartGandalfTestServer(&h)
