@@ -55,6 +55,7 @@ var reserveUserApp = action.Action{
 		m := ctx.FWResult.(map[string]string)
 		quota.Release(m["user"], m["app"])
 	},
+	MinParams: 3,
 }
 
 // insertApp is an action that inserts an app in the database in Forward and

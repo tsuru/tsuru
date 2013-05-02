@@ -659,3 +659,7 @@ func (s *S) TestReserveUserAppBackward(c *gocheck.C) {
 	err = quota.Reserve(user.Email, app.Name)
 	c.Assert(err, gocheck.IsNil)
 }
+
+func (s *S) TestReserveUserAppMinParams(c *gocheck.C) {
+	c.Assert(reserveUserApp.MinParams, gocheck.Equals, 3)
+}
