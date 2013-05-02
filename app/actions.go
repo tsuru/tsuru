@@ -25,7 +25,7 @@ import (
 
 // reserveUserApp reserves the app for the user, only if the user has a quota
 // of apps. If the user does not have a quota, meaning that it's unlimited,
-// reserveUserApp just return nil.
+// reserveUserApp.Forward just return nil.
 var reserveUserApp = action.Action{
 	Forward: func(ctx action.FWContext) (action.Result, error) {
 		var app App
