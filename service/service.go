@@ -5,7 +5,6 @@
 package service
 
 import (
-	"encoding/json"
 	"errors"
 	"github.com/globocom/tsuru/auth"
 	"github.com/globocom/tsuru/db"
@@ -21,20 +20,6 @@ type Service struct {
 	Status       string
 	Doc          string
 	IsRestricted bool `bson:"is_restricted"`
-}
-
-// MarshalJSON marshals the service in json format. It returns a JSON object with
-// the following keys: name, endpoint, ownerTeams, teams, status, doc, isRestricted.
-func (s *Service) MarshalJSON() ([]byte, error) {
-	result := make(map[string]interface{})
-	result["name"] = s.Name
-	result["endpoint"] = s.Endpoint
-	result["ownerTeams"] = s.OwnerTeams
-	result["teams"] = s.Teams
-	result["status"] = s.Status
-	result["doc"] = s.Doc
-	result["isRestricted"] = s.IsRestricted
-	return json.Marshal(&result)
 }
 
 func (s *Service) Get() error {

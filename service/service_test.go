@@ -5,7 +5,6 @@
 package service
 
 import (
-	"encoding/json"
 	"labix.org/v2/mgo/bson"
 	"launchpad.net/gocheck"
 )
@@ -222,23 +221,4 @@ func (s *S) TestGetServicesByOwnerTeamsShouldNotReturnsDeletedServices(c *gochec
 	services, err := GetServicesByOwnerTeams("owner_teams", s.user)
 	expected := []Service{service}
 	c.Assert(services, gocheck.DeepEquals, expected)
-}
-
-func (s *S) TestMarshalJSON(c *gocheck.C) {
-	srvc := Service{Name: "mysql"}
-	data, err := json.Marshal(&srvc)
-	c.Assert(err, gocheck.IsNil)
-	var result map[string]interface{}
-	err = json.Unmarshal(data, &result)
-	c.Assert(err, gocheck.IsNil)
-	expected := map[string]interface{}{
-		"name":         "mysql",
-		"endpoint":     nil,
-		"ownerTeams":   nil,
-		"teams":        nil,
-		"status":       "",
-		"doc":          "",
-		"isRestricted": false,
-	}
-	c.Assert(result, gocheck.DeepEquals, expected)
 }
