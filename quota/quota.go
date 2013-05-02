@@ -106,7 +106,7 @@ func Release(user, item string) error {
 
 // Set defines a new value for the quota of the given user.
 //
-// It allows the database to become in an inconsistent states: a user may be
+// It allows the database to become in an inconsistent state: a user may be
 // able to have 8 items, and a limit of 7. See the example for more details.
 func Set(user string, value uint) error {
 	conn, err := db.Conn()
