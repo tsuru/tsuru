@@ -297,6 +297,37 @@ admin-team
 installation. All members of the administration team is able to use the
 ``tsuru-admin`` command.
 
+Quota management
+----------------
+
+Tsuru can, optionally, manage quotas. Currently, there are two available
+quotas: apps per user and units per app.
+
+Tsuru administrators can control the default quota for new users and new apps
+in the configuration file, and use ``tsuru-admin`` command to change quotas for
+users or apps. To disable quota management, just set ``quota:enabled`` to false
+(or don't declare it).
+
+quota:enabled
++++++++++++++
+
+``quota:enabled`` defines whether Tsuru should manage quotas. This setting is
+optional, and defaults to "false".
+
+quota:units-per-app
++++++++++++++++++++
+
+``quota:units-per-app`` is the default value for units per-app quota. All new
+apps will have at most the number of units specified by this setting. This
+setting is optional, and defaults to "unlimited".
+
+quota:apps-per-user
++++++++++++++++++++
+
+``quota:apps-per-user`` is the default value for apps per-user quota. All new
+users will have at most the number of apps specified by this setting. This
+setting is optional, and defaults to "unlimited".
+
 Defining the provisioner
 ------------------------
 
