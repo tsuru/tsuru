@@ -8,6 +8,7 @@
 
 function install_npm() {
     sudo apt-get install npm -y --force-yes
+    sudo ln -s /usr/bin/nodejs /usr/bin/node
 }
 
 function install_redis() {
