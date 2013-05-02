@@ -16,6 +16,7 @@ import (
 	"github.com/globocom/tsuru/log"
 	"github.com/globocom/tsuru/provision"
 	"github.com/globocom/tsuru/queue"
+	"github.com/globocom/tsuru/quota"
 	"github.com/globocom/tsuru/repository"
 	"github.com/globocom/tsuru/service"
 	"labix.org/v2/mgo/bson"
@@ -161,8 +162,11 @@ func (s *S) TestCreateApp(c *gocheck.C) {
 	}
 	expectedHost := "localhost"
 	config.Set("host", expectedHost)
+	err := quota.Create(s.user.Email, 1)
+	c.Assert(err, gocheck.IsNil)
+	defer quota.Delete(s.user.Email)
 
-	err := CreateApp(&a, 3, s.user)
+	err = CreateApp(&a, 3, s.user)
 	c.Assert(err, gocheck.IsNil)
 	defer ForceDestroy(&a)
 	err = a.Get()
@@ -202,6 +206,21 @@ func (s *S) TestCreateApp(c *gocheck.C) {
 	c.Assert(message.Action, gocheck.Equals, expectedMessage.Action)
 	c.Assert(message.Args, gocheck.DeepEquals, expectedMessage.Args)
 	c.Assert(s.provisioner.GetUnits(&a), gocheck.HasLen, 3)
+	err = quota.Reserve(s.user.Email, a.Name)
+	c.Assert(err, gocheck.Equals, quota.ErrQuotaExceeded)
+}
+
+func (s *S) TestCreateAppUserQuotaExceeded(c *gocheck.C) {
+	app := App{Name: "america", Platform: "python"}
+	err := quota.Create(s.user.Email, 1)
+	c.Assert(err, gocheck.IsNil)
+	defer quota.Delete(s.user.Email)
+	err = quota.Reserve(s.user.Email, app.Name)
+	c.Assert(err, gocheck.IsNil)
+	err = CreateApp(&app, 1, s.user)
+	e, ok := err.(*appCreationError)
+	c.Assert(ok, gocheck.Equals, true)
+	c.Assert(e.err, gocheck.Equals, quota.ErrQuotaExceeded)
 }
 
 func (s *S) TestCreateWithoutBucketSupport(c *gocheck.C) {
