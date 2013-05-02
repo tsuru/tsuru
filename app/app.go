@@ -54,7 +54,7 @@ type App struct {
 }
 
 // MarshalJSON marshals the app in json format. It returns a JSON object with
-// the following keys: Name, Framework, Teams, Units, Repository and Ip.
+// the following keys: name, framework, teams, units, repository and ip.
 func (app *App) MarshalJSON() ([]byte, error) {
 	result := make(map[string]interface{})
 	result["name"] = app.Name
