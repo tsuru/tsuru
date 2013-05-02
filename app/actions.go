@@ -14,6 +14,7 @@ import (
 	"github.com/globocom/tsuru/auth"
 	"github.com/globocom/tsuru/db"
 	"github.com/globocom/tsuru/log"
+	"github.com/globocom/tsuru/quota"
 	"github.com/globocom/tsuru/repository"
 	"labix.org/v2/mgo/bson"
 	"launchpad.net/goamz/aws"
@@ -21,6 +22,36 @@ import (
 	"strconv"
 	"strings"
 )
+
+// reserveUserApp reserves the app for the user, only if the user has a quota
+// of apps. If the user does not have a quota, meaning that it's unlimited,
+// reserveUserApp just return nil.
+var reserveUserApp = action.Action{
+	Forward: func(ctx action.FWContext) (action.Result, error) {
+		var app App
+		switch ctx.Params[0].(type) {
+		case App:
+			app = ctx.Params[0].(App)
+		case *App:
+			app = *ctx.Params[0].(*App)
+		default:
+			return nil, errors.New("First parameter must be App or *App.")
+		}
+		var user auth.User
+		switch ctx.Params[2].(type) {
+		case auth.User:
+			user = ctx.Params[2].(auth.User)
+		case *auth.User:
+			user = *ctx.Params[2].(*auth.User)
+		default:
+			return nil, errors.New("Third parameter must be auth.User or *auth.User.")
+		}
+		if err := quota.Reserve(user.Email, app.Name); err == quota.ErrQuotaExceeded {
+			return nil, err
+		}
+		return nil, nil
+	},
+}
 
 // insertApp is an action that inserts an app in the database in Forward and
 // removes it in the Backward.

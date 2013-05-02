@@ -10,6 +10,7 @@ import (
 	"github.com/globocom/tsuru/action"
 	"github.com/globocom/tsuru/app/bind"
 	"github.com/globocom/tsuru/auth"
+	"github.com/globocom/tsuru/quota"
 	"labix.org/v2/mgo/bson"
 	"launchpad.net/goamz/aws"
 	"launchpad.net/goamz/iam"
@@ -525,4 +526,110 @@ func (s *S) TestProvisionAddUnitsBackward(c *gocheck.C) {
 
 func (s *S) TestProvisionAddUnitsMinParams(c *gocheck.C) {
 	c.Assert(provisionAddUnits.MinParams, gocheck.Equals, 2)
+}
+
+func (s *S) TestReserveUserAppForward(c *gocheck.C) {
+	user := auth.User{Email: "clap@yes.com"}
+	err := quota.Create(user.Email, 1)
+	c.Assert(err, gocheck.IsNil)
+	defer quota.Delete(user.Email)
+	app := App{
+		Name:     "clap",
+		Platform: "django",
+	}
+	previous, err := reserveUserApp.Forward(action.FWContext{Params: []interface{}{&app, 4, &user}})
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(previous, gocheck.IsNil) // Does not matter
+	err = quota.Reserve(user.Email, "another-app")
+	c.Assert(err, gocheck.Equals, quota.ErrQuotaExceeded)
+	err = quota.Release(user.Email, app.Name)
+	c.Assert(err, gocheck.IsNil)
+	err = quota.Reserve(user.Email, "another-app")
+	c.Assert(err, gocheck.IsNil)
+}
+
+func (s *S) TestReserveUserAppForwardNonPointer(c *gocheck.C) {
+	user := auth.User{Email: "clap@yes.com"}
+	err := quota.Create(user.Email, 1)
+	c.Assert(err, gocheck.IsNil)
+	defer quota.Delete(user.Email)
+	app := App{
+		Name:     "clap",
+		Platform: "django",
+	}
+	previous, err := reserveUserApp.Forward(action.FWContext{Params: []interface{}{&app, 4, user}})
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(previous, gocheck.IsNil) // Does not matter
+	err = quota.Reserve(user.Email, "another-app")
+	c.Assert(err, gocheck.Equals, quota.ErrQuotaExceeded)
+	err = quota.Release(user.Email, app.Name)
+	c.Assert(err, gocheck.IsNil)
+	err = quota.Reserve(user.Email, "another-app")
+	c.Assert(err, gocheck.IsNil)
+}
+
+func (s *S) TestReserveUserAppForwardAppNotPointer(c *gocheck.C) {
+	user := auth.User{Email: "clap@yes.com"}
+	err := quota.Create(user.Email, 1)
+	c.Assert(err, gocheck.IsNil)
+	defer quota.Delete(user.Email)
+	app := App{
+		Name:     "clap",
+		Platform: "django",
+	}
+	previous, err := reserveUserApp.Forward(action.FWContext{Params: []interface{}{app, 4, user}})
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(previous, gocheck.IsNil) // Does not matter
+	err = quota.Reserve(user.Email, "another-app")
+	c.Assert(err, gocheck.Equals, quota.ErrQuotaExceeded)
+	err = quota.Release(user.Email, app.Name)
+	c.Assert(err, gocheck.IsNil)
+	err = quota.Reserve(user.Email, "another-app")
+	c.Assert(err, gocheck.IsNil)
+}
+
+func (s *S) TestReserveUserAppForwardInvalidApp(c *gocheck.C) {
+	user := auth.User{Email: "clap@yes.com"}
+	previous, err := reserveUserApp.Forward(action.FWContext{Params: []interface{}{"something", 4, user}})
+	c.Assert(previous, gocheck.IsNil)
+	c.Assert(err, gocheck.NotNil)
+	c.Assert(err.Error(), gocheck.Equals, "First parameter must be App or *App.")
+}
+
+func (s *S) TestReserveUserAppForwardInvalidUser(c *gocheck.C) {
+	app := App{
+		Name:     "clap",
+		Platform: "django",
+	}
+	previous, err := reserveUserApp.Forward(action.FWContext{Params: []interface{}{app, 4, "something"}})
+	c.Assert(previous, gocheck.IsNil)
+	c.Assert(err, gocheck.NotNil)
+	c.Assert(err.Error(), gocheck.Equals, "Third parameter must be auth.User or *auth.User.")
+}
+
+func (s *S) TestReserveUserAppForwardQuotaExceeded(c *gocheck.C) {
+	user := auth.User{Email: "clap@yes.com"}
+	err := quota.Create(user.Email, 1)
+	c.Assert(err, gocheck.IsNil)
+	defer quota.Delete(user.Email)
+	err = quota.Reserve(user.Email, "anything")
+	c.Assert(err, gocheck.IsNil)
+	app := App{
+		Name:     "clap",
+		Platform: "django",
+	}
+	previous, err := reserveUserApp.Forward(action.FWContext{Params: []interface{}{app, 4, user}})
+	c.Assert(previous, gocheck.IsNil)
+	c.Assert(err, gocheck.Equals, quota.ErrQuotaExceeded)
+}
+
+func (s *S) TestReserveUserAppForwardQuotaNotFound(c *gocheck.C) {
+	user := auth.User{Email: "south@yes.com"}
+	app := App{
+		Name:     "clap",
+		Platform: "django",
+	}
+	previous, err := reserveUserApp.Forward(action.FWContext{Params: []interface{}{app, 4, user}})
+	c.Assert(previous, gocheck.IsNil)
+	c.Assert(err, gocheck.IsNil)
 }
