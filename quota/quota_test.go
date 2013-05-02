@@ -211,3 +211,19 @@ func (Suite) TestSetQuotaNotFound(c *gocheck.C) {
 	err := Set("everydays@yes.com", 10)
 	c.Assert(err, gocheck.Equals, ErrQuotaNotFound)
 }
+
+func (Suite) TestItemsGreaterThanLimit(c *gocheck.C) {
+	err := Create("coming@yes.com", 3)
+	c.Assert(err, gocheck.IsNil)
+	defer Delete("coming@yes.com")
+	err = Reserve("coming@yes.com", "coming/0")
+	c.Assert(err, gocheck.IsNil)
+	err = Reserve("coming@yes.com", "coming/1")
+	c.Assert(err, gocheck.IsNil)
+	err = Reserve("coming@yes.com", "coming/2")
+	c.Assert(err, gocheck.IsNil)
+	err = Set("coming@yes.com", 2)
+	c.Assert(err, gocheck.IsNil)
+	err = Reserve("coming@yes.com", "coming/3")
+	c.Assert(err, gocheck.Equals, ErrQuotaExceeded)
+}

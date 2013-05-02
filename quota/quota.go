@@ -79,7 +79,7 @@ func Reserve(owner, item string) error {
 	if err != nil {
 		return ErrQuotaNotFound
 	}
-	if uint(len(u.Items)) == u.Limit {
+	if uint(len(u.Items)) >= u.Limit {
 		return ErrQuotaExceeded
 	}
 	update := bson.M{"$addToSet": bson.M{"items": item}}
