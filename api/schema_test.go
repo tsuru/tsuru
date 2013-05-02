@@ -94,3 +94,26 @@ func (s *SchemaSuite) TestServiceSchema(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(result, gocheck.DeepEquals, expected)
 }
+
+func (s *SchemaSuite) TestServicesSchema(c *gocheck.C) {
+	config.Set("host", "http://myhost.com")
+	recorder := httptest.NewRecorder()
+	request, err := http.NewRequest("GET", "/schema/services", nil)
+	c.Assert(err, gocheck.IsNil)
+	err = servicesSchema(recorder, request, nil)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(recorder.Code, gocheck.Equals, http.StatusOK)
+	expected := schema{
+		Title: "service collection",
+		Type:  "array",
+		Items: &schema{
+			Ref: "http://myhost.com/schema/service",
+		},
+	}
+	body, err := ioutil.ReadAll(recorder.Body)
+	c.Assert(err, gocheck.IsNil)
+	result := schema{}
+	err = json.Unmarshal(body, &result)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(result, gocheck.DeepEquals, expected)
+}

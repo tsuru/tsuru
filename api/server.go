@@ -57,6 +57,8 @@ func RunServer(flags map[string]interface{}) {
 	m := pat.New()
 
 	m.Get("/schema/app", authorizationRequiredHandler(appSchema))
+	m.Get("/schema/service", authorizationRequiredHandler(serviceSchema))
+	m.Get("/schema/services", authorizationRequiredHandler(servicesSchema))
 
 	m.Get("/services/instances", authorizationRequiredHandler(serviceInstances))
 	m.Post("/services/instances", authorizationRequiredHandler(createServiceInstance))

@@ -17,6 +17,9 @@ type schema struct {
 	Properties map[string]property `json:"properties"`
 	Required   []string            `json:"required"`
 	Links      []link              `json:"links"`
+	Type       string              `json:"type"`
+	Items      *schema             `json:"items"`
+	Ref        string              `json:"$ref"`
 }
 
 // link represents a json schema link.
@@ -81,6 +84,18 @@ func serviceSchema(w http.ResponseWriter, r *http.Request, t *auth.Token) error 
 			"doc": {
 				"type": "string",
 			},
+		},
+	}
+	return json.NewEncoder(w).Encode(s)
+}
+
+// servicesSchema returns a json schema for services.
+func servicesSchema(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
+	s := schema{
+		Title: "service collection",
+		Type:  "array",
+		Items: &schema{
+			Ref: "http://myhost.com/schema/service",
 		},
 	}
 	return json.NewEncoder(w).Encode(s)
