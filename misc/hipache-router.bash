@@ -20,27 +20,28 @@ function install_hipache() {
 }
 
 function configure_hipache() {
-    sudo bash -c "echo \"
+# enable later
+#\"https\": {
+#    \"port\": 443,
+#    \"key\": \"/etc/ssl/ssl.key\",
+#    \"cert\": \"/etc/ssl/ssl.crt\"
+#}
+    sudo bash -c 'echo "
 {
     \"server\": {
         \"accessLog\": \"/var/log/hipache_access.log\",
         \"port\": 80,
         \"workers\": 5,
         \"maxSockets\": 100,
-        \"deadBackendTTL\": 30,
-        \"https\": {
-            \"port\": 443,
-            \"key\": \"/etc/ssl/ssl.key\",
-            \"cert\": \"/etc/ssl/ssl.crt\"
-        }
+        \"deadBackendTTL\": 30
     },
     \"redisHost\": \"127.0.0.1\",
     \"redisPort\": 6379
-}\" > /etc/hipache.conf.json"
+}" > /etc/hipache.conf.json'
 }
 
 function start_hipache() {
-    sudo hipache --config /etc/hipache.conf.json
+    sudo hipache --config /etc/hipache.conf.json &
 }
 
 function main() {
