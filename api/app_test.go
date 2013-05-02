@@ -254,7 +254,7 @@ func (s *S) TestDelete(c *gocheck.C) {
 			{Ip: "10.10.10.10", Machine: 1},
 		},
 	}
-	err := app.CreateApp(&myApp, 1, []auth.Team{*s.team})
+	err := app.CreateApp(&myApp, 1, s.user)
 	c.Assert(err, gocheck.IsNil)
 	myApp.Get()
 	defer app.ForceDestroy(&myApp)
@@ -436,7 +436,7 @@ func (s *S) TestCreateAppInvalidName(c *gocheck.C) {
 	c.Assert(e.Error(), gocheck.Equals, msg)
 }
 
-func (s *S) TestCreateAppReturns403IfTheUserIsNotMemberOfAnyTeam(c *gocheck.C) {
+func (s *S) TestCreateAppReturns400IfTheUserIsNotMemberOfAnyTeam(c *gocheck.C) {
 	u := &auth.User{Email: "thetrees@rush.com", Password: "123456"}
 	err := u.Create()
 	c.Assert(err, gocheck.IsNil)
@@ -453,7 +453,7 @@ func (s *S) TestCreateAppReturns403IfTheUserIsNotMemberOfAnyTeam(c *gocheck.C) {
 	c.Assert(err, gocheck.NotNil)
 	e, ok := err.(*errors.Http)
 	c.Assert(ok, gocheck.Equals, true)
-	c.Assert(e.Code, gocheck.Equals, http.StatusForbidden)
+	c.Assert(e.Code, gocheck.Equals, http.StatusBadGateway)
 	c.Assert(e, gocheck.ErrorMatches, "^In order to create an app, you should be member of at least one team$")
 }
 
@@ -2245,7 +2245,7 @@ func (s *S) TestUnbindHandler(c *gocheck.C) {
 		Teams:    []string{s.team.Name},
 		Units:    []app.Unit{{Machine: 1}},
 	}
-	err = app.CreateApp(&a, 1, []auth.Team{*s.team})
+	err = app.CreateApp(&a, 1, s.user)
 	c.Assert(err, gocheck.IsNil)
 	a.Get()
 	defer app.ForceDestroy(&a)

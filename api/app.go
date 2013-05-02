@@ -166,19 +166,17 @@ func createApp(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
 		return err
 	}
 	rec.Log(u.Email, "create-app", "name="+japp.Name, "platform="+japp.Platform, fmt.Sprintf("units=%d", japp.Units))
-	teams, err := u.Teams()
-	if err != nil {
-		return err
-	}
-	if len(teams) < 1 {
-		msg := "In order to create an app, you should be member of at least one team"
-		return &errors.Http{Code: http.StatusForbidden, Message: msg}
-	}
-	err = app.CreateApp(&a, japp.Units, teams)
+	err = app.CreateApp(&a, japp.Units, u)
 	if err != nil {
 		log.Printf("Got error while creating app: %s", err)
 		if e, ok := err.(*errors.ValidationError); ok {
 			return &errors.Http{Code: http.StatusBadRequest, Message: e.Message}
+		}
+		if _, ok := err.(app.NoTeamsError); ok {
+			return &errors.Http{
+				Code:    http.StatusBadGateway,
+				Message: "In order to create an app, you should be member of at least one team",
+			}
 		}
 		if strings.Contains(err.Error(), "key error") {
 			msg := fmt.Sprintf(`There is already an app named "%s".`, a.Name)
