@@ -47,6 +47,7 @@ function main() {
     install_redis
     install_hipache
     configure_hipache
+    start_hipache
 }
 
 main
