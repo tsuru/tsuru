@@ -85,3 +85,18 @@ func Reserve(user, item string) error {
 	update := bson.M{"$addToSet": bson.M{"items": item}}
 	return conn.Quota().Update(bson.M{"user": user}, update)
 }
+
+// Release releases the given item from the user.
+func Release(user, item string) error {
+	conn, err := db.Conn()
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+	update := bson.M{"$pull": bson.M{"items": item}}
+	err = conn.Quota().Update(bson.M{"user": user}, update)
+	if err != nil && err.Error() == "not found" {
+		return ErrQuotaNotFound
+	}
+	return err
+}

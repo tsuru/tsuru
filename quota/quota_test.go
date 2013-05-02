@@ -149,3 +149,20 @@ func (Suite) TestReserveQuotaNotFound(c *gocheck.C) {
 	err := Reserve("home@dreamtheater.com", "something")
 	c.Assert(err, gocheck.Equals, ErrQuotaNotFound)
 }
+
+func (Suite) TestRelease(c *gocheck.C) {
+	err := Create("beyond@yes.com", 1)
+	c.Assert(err, gocheck.IsNil)
+	defer Delete("beyond@yes.com")
+	err = Reserve("beyond@yes.com", "beyond/0")
+	c.Assert(err, gocheck.IsNil)
+	err = Release("beyond@yes.com", "beyond/0")
+	c.Assert(err, gocheck.IsNil)
+	err = Reserve("beyond@yes.com", "beyond/1")
+	c.Assert(err, gocheck.IsNil)
+}
+
+func (Suite) TestReleaseQuotaNotFound(c *gocheck.C) {
+	err := Release("see@yes.com", "see/0")
+	c.Assert(err, gocheck.Equals, ErrQuotaNotFound)
+}
