@@ -65,3 +65,5 @@ function main() {
     configure_gandalf
     start_gandalf
 }
+
+main
