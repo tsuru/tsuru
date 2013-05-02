@@ -537,9 +537,10 @@ func (s *S) TestReserveUserAppForward(c *gocheck.C) {
 		Name:     "clap",
 		Platform: "django",
 	}
+	expected := map[string]string{"user": user.Email, "app": app.Name}
 	previous, err := reserveUserApp.Forward(action.FWContext{Params: []interface{}{&app, 4, &user}})
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(previous, gocheck.IsNil) // Does not matter
+	c.Assert(previous, gocheck.DeepEquals, expected)
 	err = quota.Reserve(user.Email, "another-app")
 	c.Assert(err, gocheck.Equals, quota.ErrQuotaExceeded)
 	err = quota.Release(user.Email, app.Name)
@@ -557,9 +558,10 @@ func (s *S) TestReserveUserAppForwardNonPointer(c *gocheck.C) {
 		Name:     "clap",
 		Platform: "django",
 	}
+	expected := map[string]string{"user": user.Email, "app": app.Name}
 	previous, err := reserveUserApp.Forward(action.FWContext{Params: []interface{}{&app, 4, user}})
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(previous, gocheck.IsNil) // Does not matter
+	c.Assert(previous, gocheck.DeepEquals, expected)
 	err = quota.Reserve(user.Email, "another-app")
 	c.Assert(err, gocheck.Equals, quota.ErrQuotaExceeded)
 	err = quota.Release(user.Email, app.Name)
@@ -577,9 +579,10 @@ func (s *S) TestReserveUserAppForwardAppNotPointer(c *gocheck.C) {
 		Name:     "clap",
 		Platform: "django",
 	}
+	expected := map[string]string{"user": user.Email, "app": app.Name}
 	previous, err := reserveUserApp.Forward(action.FWContext{Params: []interface{}{app, 4, user}})
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(previous, gocheck.IsNil) // Does not matter
+	c.Assert(previous, gocheck.DeepEquals, expected)
 	err = quota.Reserve(user.Email, "another-app")
 	c.Assert(err, gocheck.Equals, quota.ErrQuotaExceeded)
 	err = quota.Release(user.Email, app.Name)
@@ -629,7 +632,8 @@ func (s *S) TestReserveUserAppForwardQuotaNotFound(c *gocheck.C) {
 		Name:     "clap",
 		Platform: "django",
 	}
+	expected := map[string]string{"app": app.Name, "user": user.Email}
 	previous, err := reserveUserApp.Forward(action.FWContext{Params: []interface{}{app, 4, user}})
-	c.Assert(previous, gocheck.IsNil)
+	c.Assert(previous, gocheck.DeepEquals, expected)
 	c.Assert(err, gocheck.IsNil)
 }

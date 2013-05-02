@@ -49,7 +49,7 @@ var reserveUserApp = action.Action{
 		if err := quota.Reserve(user.Email, app.Name); err == quota.ErrQuotaExceeded {
 			return nil, err
 		}
-		return nil, nil
+		return map[string]string{"app": app.Name, "user": user.Email}, nil
 	},
 }
 
