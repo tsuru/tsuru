@@ -7,6 +7,7 @@ package api
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/globocom/config"
 	"github.com/globocom/go-gandalfclient"
 	"github.com/globocom/tsuru/action"
 	"github.com/globocom/tsuru/app"
@@ -15,6 +16,7 @@ import (
 	"github.com/globocom/tsuru/db"
 	"github.com/globocom/tsuru/errors"
 	"github.com/globocom/tsuru/log"
+	"github.com/globocom/tsuru/quota"
 	"github.com/globocom/tsuru/rec"
 	"github.com/globocom/tsuru/repository"
 	"github.com/globocom/tsuru/validation"
@@ -53,6 +55,9 @@ func createUser(w http.ResponseWriter, r *http.Request) error {
 	}
 	if err := u.Create(); err == nil {
 		rec.Log(u.Email, "create-user")
+		if limit, err := config.GetUint("quota:apps-per-user"); err == nil {
+			quota.Create(u.Email, uint(limit))
+		}
 		w.WriteHeader(http.StatusCreated)
 		return nil
 	}
