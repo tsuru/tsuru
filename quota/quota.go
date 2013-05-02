@@ -87,6 +87,9 @@ func Reserve(user, item string) error {
 }
 
 // Release releases the given item from the user.
+//
+// It returns an error when the given user does not exist, and does nothing
+// when the given item does not belong to the user.
 func Release(user, item string) error {
 	conn, err := db.Conn()
 	if err != nil {
