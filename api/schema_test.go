@@ -17,7 +17,7 @@ type SchemaSuite struct{}
 
 var _ = gocheck.Suite(&SchemaSuite{})
 
-func (s *SchemaSuite) TestSchemas(c *gocheck.C) {
+func (s *SchemaSuite) TestAppSchema(c *gocheck.C) {
 	config.Set("host", "http://myhost.com")
 	recorder := httptest.NewRecorder()
 	request, err := http.NewRequest("GET", "/schema/app", nil)
@@ -50,6 +50,39 @@ func (s *SchemaSuite) TestSchemas(c *gocheck.C) {
 				"type": "string",
 			},
 			"cname": {
+				"type": "string",
+			},
+		},
+	}
+	body, err := ioutil.ReadAll(recorder.Body)
+	c.Assert(err, gocheck.IsNil)
+	result := schema{}
+	err = json.Unmarshal(body, &result)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(result, gocheck.DeepEquals, expected)
+}
+
+func (s *SchemaSuite) TestServiceSchema(c *gocheck.C) {
+	recorder := httptest.NewRecorder()
+	request, err := http.NewRequest("GET", "/schema/service", nil)
+	c.Assert(err, gocheck.IsNil)
+	err = serviceSchema(recorder, request, nil)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(recorder.Code, gocheck.Equals, http.StatusOK)
+	expected := schema{
+		Title:    "service",
+		Required: []string{"name"},
+		Properties: map[string]property{
+			"name": {
+				"type": "string",
+			},
+			"endpoint": {
+				"type": "string",
+			},
+			"status": {
+				"type": "string",
+			},
+			"doc": {
 				"type": "string",
 			},
 		},

@@ -62,3 +62,26 @@ func appSchema(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
 	}
 	return json.NewEncoder(w).Encode(s)
 }
+
+// serviceSchema returns a json schema for service.
+func serviceSchema(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
+	s := schema{
+		Title:    "service",
+		Required: []string{"name"},
+		Properties: map[string]property{
+			"name": {
+				"type": "string",
+			},
+			"endpoint": {
+				"type": "string",
+			},
+			"status": {
+				"type": "string",
+			},
+			"doc": {
+				"type": "string",
+			},
+		},
+	}
+	return json.NewEncoder(w).Encode(s)
+}
