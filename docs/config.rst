@@ -305,14 +305,8 @@ quotas: apps per user and units per app.
 
 Tsuru administrators can control the default quota for new users and new apps
 in the configuration file, and use ``tsuru-admin`` command to change quotas for
-users or apps. To disable quota management, just set ``quota:enabled`` to false
-(or don't declare it).
-
-quota:enabled
-+++++++++++++
-
-``quota:enabled`` defines whether Tsuru should manage quotas. This setting is
-optional, and defaults to "false".
+users or apps. Quota management is disabled by default, to enable it, just set
+the desired quota to a positive integer.
 
 quota:units-per-app
 +++++++++++++++++++
