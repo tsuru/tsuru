@@ -552,6 +552,7 @@ Please remove the team, them remove the user.`, team.Name)
 		log.Printf("Failed to remove user from gandalf: %s", err)
 		return fmt.Errorf("Failed to remove the user from the git server: %s", err)
 	}
+	quota.Delete(u.Email)
 	return conn.Users().Remove(bson.M{"email": u.Email})
 }
 
