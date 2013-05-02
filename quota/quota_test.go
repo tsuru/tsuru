@@ -40,10 +40,10 @@ func (Suite) TestCreate(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	defer conn.Close()
 	var u usage
-	err = conn.Quota().Find(bson.M{"user": "user@tsuru.io"}).One(&u)
+	err = conn.Quota().Find(bson.M{"owner": "user@tsuru.io"}).One(&u)
 	c.Assert(err, gocheck.IsNil)
-	defer conn.Quota().Remove(bson.M{"user": "user@tsuru.io"})
-	c.Assert(u.User, gocheck.Equals, "user@tsuru.io")
+	defer conn.Quota().Remove(bson.M{"owner": "user@tsuru.io"})
+	c.Assert(u.Owner, gocheck.Equals, "user@tsuru.io")
 	c.Assert(u.Limit, gocheck.Equals, uint(10))
 	c.Assert(u.Items, gocheck.HasLen, 0)
 }
@@ -54,7 +54,7 @@ func (Suite) TestDuplicateQuota(c *gocheck.C) {
 	conn, err := db.Conn()
 	c.Assert(err, gocheck.IsNil)
 	defer conn.Close()
-	defer conn.Quota().Remove(bson.M{"user": "user@tsuru.io"})
+	defer conn.Quota().Remove(bson.M{"owner": "user@tsuru.io"})
 	err = Create("user@tsuru.io", 50)
 	c.Assert(err, gocheck.Equals, ErrQuotaAlreadyExists)
 }
@@ -67,7 +67,7 @@ func (Suite) TestDelete(c *gocheck.C) {
 	conn, err := db.Conn()
 	c.Assert(err, gocheck.IsNil)
 	defer conn.Close()
-	count, err := conn.Quota().Find(bson.M{"user": "home@dreamtheater.com"}).Count()
+	count, err := conn.Quota().Find(bson.M{"owner": "home@dreamtheater.com"}).Count()
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(count, gocheck.Equals, 0)
 }
@@ -89,7 +89,7 @@ func (Suite) TestReserve(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	defer conn.Close()
 	var u usage
-	err = conn.Quota().Find(bson.M{"user": "last@dreamtheater.com"}).One(&u)
+	err = conn.Quota().Find(bson.M{"owner": "last@dreamtheater.com"}).One(&u)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(u.Items, gocheck.DeepEquals, []string{"dt/1", "dt/0"})
 }
@@ -113,7 +113,7 @@ func (Suite) TestReserveIsSafe(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	defer conn.Close()
 	var u usage
-	err = conn.Quota().Find(bson.M{"user": "spirit@dreamtheater.com"}).One(&u)
+	err = conn.Quota().Find(bson.M{"owner": "spirit@dreamtheater.com"}).One(&u)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(u.Items, gocheck.HasLen, items-items/2)
 }
@@ -130,7 +130,7 @@ func (Suite) TestReserveRepeatedItems(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	defer conn.Close()
 	var u usage
-	err = conn.Quota().Find(bson.M{"user": "spirit@dreamtheater.com"}).One(&u)
+	err = conn.Quota().Find(bson.M{"owner": "spirit@dreamtheater.com"}).One(&u)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(u.Items, gocheck.HasLen, 1)
 }
@@ -190,7 +190,7 @@ func (Suite) TestReleaseIsSafe(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	defer conn.Close()
 	var u usage
-	err = conn.Quota().Find(bson.M{"user": "looking@yes.com"}).One(&u)
+	err = conn.Quota().Find(bson.M{"owner": "looking@yes.com"}).One(&u)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(u.Items, gocheck.HasLen, 0)
 }
