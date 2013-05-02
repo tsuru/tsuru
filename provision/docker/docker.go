@@ -50,9 +50,9 @@ func deployContainerCmd(app provision.App) ([]string, error) {
 	if err != nil {
 		return []string{}, err
 	}
-	cmd = fmt.Sprintf("%s %s", cmd, repository.GetReadOnlyUrl(app.GetName()))
+	appRepo := repository.GetReadOnlyUrl(app.GetName())
 	imageName := fmt.Sprintf("%s/%s", repoNamespace, app.GetPlatform()) // TODO (flaviamissi): should use same algorithm as image.repositoryName
-	wholeCmd := []string{docker, "run", "-d", imageName, cmd}
+	wholeCmd := []string{docker, "run", "-d", imageName, cmd, appRepo}
 	return wholeCmd, nil
 }
 

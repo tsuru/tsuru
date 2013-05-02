@@ -59,7 +59,7 @@ func (s *S) TestDeployShouldCallDockerCreate(c *gocheck.C) {
 	err := p.Deploy(app, w)
 	defer p.Destroy(app)
 	c.Assert(err, gocheck.IsNil)
-	args := []string{"run", "-d", fmt.Sprintf("%s/python", s.repoNamespace), fmt.Sprintf("/var/lib/tsuru/deploy git://%s/cribcaged.git", s.gitHost)}
+	args := []string{"run", "-d", fmt.Sprintf("%s/python", s.repoNamespace), "/var/lib/tsuru/deploy", fmt.Sprintf("git://%s/cribcaged.git", s.gitHost)}
 	c.Assert(fexec.ExecutedCmd("docker", args), gocheck.Equals, true)
 }
 
@@ -85,7 +85,7 @@ func (s *S) TestDeployShouldCommitImageAndRemoveContainerAfterIt(c *gocheck.C) {
 	defer p.Destroy(app)
 	c.Assert(err, gocheck.IsNil)
 	got := fexec.GetCommands("docker")
-	args := []string{"run", "-d", fmt.Sprintf("%s/python", s.repoNamespace), fmt.Sprintf("/var/lib/tsuru/deploy git://%s/cribcaged.git", s.gitHost)}
+	args := []string{"run", "-d", fmt.Sprintf("%s/python", s.repoNamespace), "/var/lib/tsuru/deploy", fmt.Sprintf("git://%s/cribcaged.git", s.gitHost)}
 	c.Assert(got[0].GetArgs(), gocheck.DeepEquals, args)
 	c.Assert(got[1].GetArgs()[0], gocheck.Equals, "inspect") // from container.ip call
 	c.Assert(got[2].GetArgs()[0], gocheck.Equals, "commit")
