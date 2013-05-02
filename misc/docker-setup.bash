@@ -9,7 +9,7 @@
 function configure_tsuru() {
     echo "Configuring tsuru"
     [ -d /etc/tsuru ] || sudo mkdir /etc/tsuru
-    curl -sL https://raw.github.com/globocom/tsuru/master/etc/tsuru-docker.conf -o /etc/tsuru/tsuru.conf
+    sudo curl -sL https://raw.github.com/globocom/tsuru/master/etc/tsuru-docker.conf -o /etc/tsuru/tsuru.conf
 }
 
 function install_docker() {
