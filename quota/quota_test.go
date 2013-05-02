@@ -99,7 +99,7 @@ func (Suite) TestReserveIsSafe(c *gocheck.C) {
 	err := Create("spirit@dreamtheater.com", uint(items-items/2))
 	c.Assert(err, gocheck.IsNil)
 	defer Delete("spirit@dreamtheater.com")
-	defer runtime.GOMAXPROCS(runtime.GOMAXPROCS(24))
+	defer runtime.GOMAXPROCS(runtime.GOMAXPROCS(8))
 	var wg sync.WaitGroup
 	wg.Add(items)
 	for i := 0; i < items; i++ {
@@ -175,7 +175,7 @@ func (Suite) TestReleaseIsSafe(c *gocheck.C) {
 	for i := 0; i < items; i++ {
 		Reserve("looking@yes.com", fmt.Sprintf("looking/%d", i))
 	}
-	defer runtime.GOMAXPROCS(runtime.GOMAXPROCS(16))
+	defer runtime.GOMAXPROCS(runtime.GOMAXPROCS(8))
 	var wg sync.WaitGroup
 	for i := 0; i < items+items/2; i++ {
 		wg.Add(1)
