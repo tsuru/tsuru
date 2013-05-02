@@ -9,7 +9,6 @@ import (
 	"crypto/rand"
 	"fmt"
 	"github.com/globocom/config"
-	"github.com/globocom/tsuru/auth"
 	"labix.org/v2/mgo/bson"
 	"launchpad.net/goamz/aws"
 	"launchpad.net/goamz/iam"
@@ -144,7 +143,7 @@ func (s *S) TestDestroyBucket(c *gocheck.C) {
 	}
 	bucket := fmt.Sprintf("battery%x", patchRandomReader())
 	defer unpatchRandomReader()
-	err := CreateApp(&app, 1, []auth.Team{s.team})
+	err := CreateApp(&app, 1, s.user)
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": app.Name})
 	defer s.provisioner.Destroy(&app)

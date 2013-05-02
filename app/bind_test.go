@@ -6,7 +6,6 @@ package app
 
 import (
 	"github.com/globocom/tsuru/app/bind"
-	"github.com/globocom/tsuru/auth"
 	"github.com/globocom/tsuru/service"
 	"labix.org/v2/mgo/bson"
 	"launchpad.net/gocheck"
@@ -42,7 +41,7 @@ func (s *S) TestDestroyShouldUnbindAppFromInstance(c *gocheck.C) {
 			{Ip: "10.10.10.10", Machine: 1},
 		},
 	}
-	err = CreateApp(&a, 1, []auth.Team{s.team})
+	err = CreateApp(&a, 1, s.user)
 	c.Assert(err, gocheck.IsNil)
 	a.Get()
 	err = ForceDestroy(&a)
