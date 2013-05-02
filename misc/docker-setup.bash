@@ -25,8 +25,6 @@ function install_docker() {
 }
 
 function start_tsuru() {
-    echo "starting mongodb"
-    sudo service mongodb start
     echo "starting beanstalkd"
     sudo service beanstalkd start
     echo "starting tsuru-collector"
