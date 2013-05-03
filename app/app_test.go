@@ -246,7 +246,7 @@ func (s *S) TestCreateAppUserQuotaExceeded(c *gocheck.C) {
 	err = CreateApp(&app, 1, s.user)
 	e, ok := err.(*AppCreationError)
 	c.Assert(ok, gocheck.Equals, true)
-	c.Assert(e.err, gocheck.Equals, quota.ErrQuotaExceeded)
+	c.Assert(e.Err, gocheck.Equals, quota.ErrQuotaExceeded)
 }
 
 func (s *S) TestCreateWithoutBucketSupport(c *gocheck.C) {
@@ -329,8 +329,8 @@ func (s *S) TestCantCreateTwoAppsWithTheSameName(c *gocheck.C) {
 	e, ok := err.(*AppCreationError)
 	c.Assert(ok, gocheck.Equals, true)
 	c.Assert(e.app, gocheck.Equals, "appname")
-	c.Assert(e.err, gocheck.NotNil)
-	c.Assert(e.err.Error(), gocheck.Equals, "there is already an app with this name.")
+	c.Assert(e.Err, gocheck.NotNil)
+	c.Assert(e.Err.Error(), gocheck.Equals, "there is already an app with this name.")
 }
 
 func (s *S) TestCantCreateAppWithInvalidName(c *gocheck.C) {

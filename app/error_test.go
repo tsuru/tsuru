@@ -10,7 +10,7 @@ import (
 )
 
 func (s *S) TestAppCreationError(c *gocheck.C) {
-	e := AppCreationError{app: "myapp", err: errors.New("failure in app")}
+	e := AppCreationError{app: "myapp", Err: errors.New("failure in app")}
 	expected := `Tsuru failed to create the app "myapp": failure in app`
 	c.Assert(e.Error(), gocheck.Equals, expected)
 }

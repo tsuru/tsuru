@@ -10,11 +10,11 @@ import (
 
 type AppCreationError struct {
 	app string
-	err error
+	Err error
 }
 
 func (e *AppCreationError) Error() string {
-	return fmt.Sprintf("Tsuru failed to create the app %q: %s", e.app, e.err)
+	return fmt.Sprintf("Tsuru failed to create the app %q: %s", e.app, e.Err)
 }
 
 // NoTeamsError is the error returned when one tries to create an app without
