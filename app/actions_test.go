@@ -730,3 +730,16 @@ func (s *S) TestCreateAppQuotaForwardPointerInvalidApp(c *gocheck.C) {
 	c.Assert(previous, gocheck.IsNil)
 	c.Assert(err, gocheck.NotNil)
 }
+
+func (s *S) TestCreateAppQuotaBackward(c *gocheck.C) {
+	app := App{
+		Name:     "damned",
+		Platform: "django",
+	}
+	err := quota.Create(app.Name, 1)
+	c.Assert(err, gocheck.IsNil)
+	defer quota.Delete(app.Name)
+	createAppQuota.Backward(action.BWContext{FWResult: app.Name})
+	err = quota.Reserve(app.Name, "something")
+	c.Assert(err, gocheck.Equals, quota.ErrQuotaNotFound)
+}
