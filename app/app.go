@@ -212,6 +212,7 @@ func ForceDestroy(app *App) error {
 		return err
 	}
 	defer conn.Close()
+	quota.Delete(app.Name)
 	return conn.Apps().Remove(bson.M{"name": app.Name})
 }
 

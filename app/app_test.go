@@ -66,6 +66,8 @@ func (s *S) TestForceDestroy(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	err = quota.Reserve(s.user.Email, a.Name)
 	c.Assert(err, gocheck.IsNil)
+	err = quota.Create(a.Name, 1)
+	c.Assert(err, gocheck.IsNil)
 	a.Get()
 	err = ForceDestroy(&a)
 	c.Assert(err, gocheck.IsNil)
@@ -77,6 +79,8 @@ func (s *S) TestForceDestroy(c *gocheck.C) {
 	c.Assert(s.provisioner.FindApp(&a), gocheck.Equals, -1)
 	err = quota.Reserve(s.user.Email, a.Name)
 	c.Assert(err, gocheck.IsNil)
+	err = quota.Reserve(a.Name, "something")
+	c.Assert(err, gocheck.Equals, quota.ErrQuotaNotFound)
 }
 
 func (s *S) TestDestroy(c *gocheck.C) {
