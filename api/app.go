@@ -174,7 +174,7 @@ func createApp(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
 		}
 		if _, ok := err.(app.NoTeamsError); ok {
 			return &errors.Http{
-				Code:    http.StatusBadGateway,
+				Code:    http.StatusBadRequest,
 				Message: "In order to create an app, you should be member of at least one team",
 			}
 		}

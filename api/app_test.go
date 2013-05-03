@@ -451,7 +451,7 @@ func (s *S) TestCreateAppReturns400IfTheUserIsNotMemberOfAnyTeam(c *gocheck.C) {
 	c.Assert(err, gocheck.NotNil)
 	e, ok := err.(*errors.Http)
 	c.Assert(ok, gocheck.Equals, true)
-	c.Assert(e.Code, gocheck.Equals, http.StatusBadGateway)
+	c.Assert(e.Code, gocheck.Equals, http.StatusBadRequest)
 	c.Assert(e, gocheck.ErrorMatches, "^In order to create an app, you should be member of at least one team$")
 }
 
