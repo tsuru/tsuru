@@ -173,7 +173,7 @@ func (s *Storage) Teams() *mgo.Collection {
 
 // Quota returns the quota collection from MongoDB.
 func (s *Storage) Quota() *mgo.Collection {
-	userIndex := mgo.Index{Key: []string{"user"}, Unique: true}
+	userIndex := mgo.Index{Key: []string{"owner"}, Unique: true}
 	c := s.Collection("quota")
 	c.EnsureIndex(userIndex)
 	return c

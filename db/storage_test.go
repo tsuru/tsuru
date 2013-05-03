@@ -259,11 +259,11 @@ func (s *S) TestQuota(c *gocheck.C) {
 	c.Assert(quota, gocheck.DeepEquals, quotac)
 }
 
-func (s *S) TestQuotaUserIsUnique(c *gocheck.C) {
+func (s *S) TestQuotaOwnerIsUnique(c *gocheck.C) {
 	storage, _ := Open("127.0.0.1", "tsuru_storage_test")
 	defer storage.session.Close()
 	quota := storage.Quota()
-	c.Assert(quota, HasUniqueIndex, []string{"user"})
+	c.Assert(quota, HasUniqueIndex, []string{"owner"})
 }
 
 func (s *S) TestRetire(c *gocheck.C) {
