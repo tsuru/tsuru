@@ -385,8 +385,6 @@ func (s *S) TestCreateAppHandler(c *gocheck.C) {
 		c.Assert(err, gocheck.IsNil)
 		err = app.ForceDestroy(&a)
 		c.Assert(err, gocheck.IsNil)
-		err = s.provisioner.Destroy(&a)
-		c.Assert(err, gocheck.IsNil)
 	}()
 	b := strings.NewReader(`{"name":"someapp","platform":"zend","units":4}`)
 	request, err := http.NewRequest("POST", "/apps", b)
