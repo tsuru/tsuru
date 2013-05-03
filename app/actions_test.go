@@ -518,6 +518,11 @@ func (s *S) TestProvisionAddUnitsForward(c *gocheck.C) {
 	c.Assert(result, gocheck.IsNil)
 	units := s.provisioner.GetUnits(&app)
 	c.Assert(units, gocheck.HasLen, 4)
+	for i := 0; i < len(units); i++ {
+		message, err := aqueue().Get(2e9)
+		c.Check(err, gocheck.IsNil)
+		message.Delete()
+	}
 }
 
 func (s *S) TestProvisionAddUnitsBackward(c *gocheck.C) {

@@ -215,6 +215,15 @@ func (s *S) TestCreateApp(c *gocheck.C) {
 	c.Assert(message.Action, gocheck.Equals, expectedMessage.Action)
 	c.Assert(message.Args, gocheck.DeepEquals, expectedMessage.Args)
 	c.Assert(s.provisioner.GetUnits(&a), gocheck.HasLen, 3)
+	for i := 0; i < 2; i++ {
+		message, err := aqueue().Get(1e6)
+		c.Assert(err, gocheck.IsNil)
+		message.Delete()
+		c.Assert(message.Action, gocheck.Equals, RegenerateApprcAndStart)
+		message, err = aqueue().Get(1e6)
+		c.Assert(err, gocheck.IsNil)
+		c.Assert(message.Action, gocheck.Equals, bindService)
+	}
 	err = quota.Reserve(s.user.Email, a.Name)
 	c.Assert(err, gocheck.Equals, quota.ErrQuotaExceeded)
 }
@@ -264,6 +273,15 @@ func (s *S) TestCreateWithoutBucketSupport(c *gocheck.C) {
 	c.Assert(message.Action, gocheck.Equals, regenerateApprc)
 	c.Assert(message.Args, gocheck.DeepEquals, []string{a.Name})
 	c.Assert(s.provisioner.GetUnits(&a), gocheck.HasLen, 3)
+	for i := 0; i < 2; i++ {
+		message, err := aqueue().Get(1e9)
+		c.Check(err, gocheck.IsNil)
+		message.Delete()
+		c.Check(message.Action, gocheck.Equals, RegenerateApprcAndStart)
+		message, err = aqueue().Get(1e6)
+		c.Assert(err, gocheck.IsNil)
+		c.Assert(message.Action, gocheck.Equals, bindService)
+	}
 }
 
 func (s *S) TestCannotCreateAppWithUnknownPlatform(c *gocheck.C) {

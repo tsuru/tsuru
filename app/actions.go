@@ -325,8 +325,7 @@ var provisionAddUnits = action.Action{
 			units = 1
 		}
 		if units > 1 {
-			_, err := Provisioner.AddUnits(app, units-1)
-			return nil, err
+			return nil, app.AddUnits(units - 1)
 		}
 		return nil, nil
 	},
