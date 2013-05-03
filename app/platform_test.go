@@ -19,6 +19,13 @@ func (s *PlatformSuite) SetUpSuite(c *gocheck.C) {
 	config.Set("database:name", "platform_tests")
 }
 
+func (s *PlatformSuite) TearDownSuite(c *gocheck.C) {
+	conn, err := db.Conn()
+	c.Assert(err, gocheck.IsNil)
+	conn.Apps().Database.DropDatabase()
+	conn.Close()
+}
+
 func (s *PlatformSuite) TestPlatforms(c *gocheck.C) {
 	want := []Platform{
 		{Name: "dea"},
