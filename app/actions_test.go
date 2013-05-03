@@ -668,3 +668,65 @@ func (s *S) TestReserveUserAppBackward(c *gocheck.C) {
 func (s *S) TestReserveUserAppMinParams(c *gocheck.C) {
 	c.Assert(reserveUserApp.MinParams, gocheck.Equals, 3)
 }
+
+func (s *S) TestCreateAppQuotaForward(c *gocheck.C) {
+	config.Set("quota:units-per-app", 1)
+	defer config.Unset("quota:units-per-app")
+	app := App{
+		Name:     "visions",
+		Platform: "django",
+	}
+	defer quota.Delete(app.Name)
+	previous, err := createAppQuota.Forward(action.FWContext{Params: []interface{}{app, 4}})
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(previous, gocheck.Equals, app.Name)
+	err = quota.Reserve(app.Name, "visions/0")
+	c.Assert(err, gocheck.IsNil)
+}
+
+func (s *S) TestCreateAppQuotaForwardPointer(c *gocheck.C) {
+	config.Set("quota:units-per-app", 1)
+	defer config.Unset("quota:units-per-app")
+	app := App{
+		Name:     "visions",
+		Platform: "django",
+	}
+	defer quota.Delete(app.Name)
+	previous, err := createAppQuota.Forward(action.FWContext{Params: []interface{}{&app, 4}})
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(previous, gocheck.Equals, app.Name)
+	err = quota.Reserve(app.Name, "visions/0")
+	c.Assert(err, gocheck.IsNil)
+}
+
+func (s *S) TestCreateAppForwardWithoutSetting(c *gocheck.C) {
+	app := App{
+		Name:     "visions",
+		Platform: "django",
+	}
+	previous, err := createAppQuota.Forward(action.FWContext{Params: []interface{}{&app, 4}})
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(previous, gocheck.Equals, app.Name)
+	err = quota.Reserve(app.Name, "visions/0")
+	c.Assert(err, gocheck.Equals, quota.ErrQuotaNotFound)
+}
+
+func (s *S) TestCreateAppForwardZeroUnits(c *gocheck.C) {
+	config.Set("quota:units-per-app", 0)
+	app := App{
+		Name:     "visions",
+		Platform: "django",
+	}
+	previous, err := createAppQuota.Forward(action.FWContext{Params: []interface{}{&app, 4}})
+	c.Assert(previous, gocheck.IsNil)
+	c.Assert(err, gocheck.NotNil)
+	c.Assert(err.Error(), gocheck.Equals, "app creation is disallowed")
+	err = quota.Reserve(app.Name, "visions/0")
+	c.Assert(err, gocheck.Equals, quota.ErrQuotaNotFound)
+}
+
+func (s *S) TestCreateAppQuotaForwardPointerInvalidApp(c *gocheck.C) {
+	previous, err := createAppQuota.Forward(action.FWContext{Params: []interface{}{"something"}})
+	c.Assert(previous, gocheck.IsNil)
+	c.Assert(err, gocheck.NotNil)
+}
