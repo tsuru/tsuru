@@ -32,7 +32,7 @@ func executor() exec.Executor {
 }
 
 func getRouter() (router.Router, error) {
-	r, err := config.GetString("router")
+	r, err := config.GetString("docker:router")
 	if err != nil {
 		return nil, err
 	}
