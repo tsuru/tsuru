@@ -152,6 +152,6 @@ func GetServicesByOwnerTeams(teamKind string, u *auth.User) ([]Service, error) {
 }
 
 type ServiceModel struct {
-	Service   string
-	Instances []string
+	Service   string   `json:"service"`
+	Instances []string `json:"instances"`
 }
