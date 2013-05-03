@@ -133,7 +133,7 @@ func CreateApp(app *App, units uint, user *auth.User) error {
 			"starting with a letter."
 		return &errors.ValidationError{Message: msg}
 	}
-	actions := []*action.Action{&reserveUserApp, &insertApp}
+	actions := []*action.Action{&reserveUserApp, &createAppQuota, &insertApp}
 	useS3, _ := config.GetBool("bucket-support")
 	if useS3 {
 		actions = append(actions, &createIAMUserAction,

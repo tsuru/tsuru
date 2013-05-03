@@ -173,6 +173,8 @@ func (s *S) TestCreateApp(c *gocheck.C) {
 	err := quota.Create(s.user.Email, 1)
 	c.Assert(err, gocheck.IsNil)
 	defer quota.Delete(s.user.Email)
+	config.Set("quota:units-per-app", 3)
+	defer config.Unset("quota:units-per-app")
 
 	err = CreateApp(&a, 3, s.user)
 	c.Assert(err, gocheck.IsNil)
@@ -226,6 +228,8 @@ func (s *S) TestCreateApp(c *gocheck.C) {
 	}
 	err = quota.Reserve(s.user.Email, a.Name)
 	c.Assert(err, gocheck.Equals, quota.ErrQuotaExceeded)
+	_, err = quota.Items(retrievedApp.Name)
+	c.Assert(err, gocheck.IsNil)
 }
 
 func (s *S) TestCreateAppUserQuotaExceeded(c *gocheck.C) {
