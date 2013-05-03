@@ -71,8 +71,7 @@ func (s *S) TestInsertAppDuplication(c *gocheck.C) {
 	}
 	r, err := insertApp.Forward(ctx)
 	c.Assert(r, gocheck.IsNil)
-	c.Assert(err, gocheck.NotNil)
-	c.Assert(err.Error(), gocheck.Equals, "there is already an app with this name.")
+	c.Assert(err, gocheck.Equals, ErrAppAlreadyExists)
 }
 
 func (s *S) TestInsertAppBackward(c *gocheck.C) {

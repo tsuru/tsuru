@@ -23,6 +23,8 @@ import (
 	"strings"
 )
 
+var ErrAppAlreadyExists = errors.New("there is already an app with this name.")
+
 // reserveUserApp reserves the app for the user, only if the user has a quota
 // of apps. If the user does not have a quota, meaning that it's unlimited,
 // reserveUserApp.Forward just return nil.
@@ -105,7 +107,7 @@ var insertApp = action.Action{
 		defer conn.Close()
 		err = conn.Apps().Insert(app)
 		if err != nil && strings.HasPrefix(err.Error(), "E11000") {
-			return nil, errors.New("there is already an app with this name.")
+			return nil, ErrAppAlreadyExists
 		}
 		return &app, err
 	},
