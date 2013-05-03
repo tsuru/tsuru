@@ -13,6 +13,7 @@ import (
 	"github.com/globocom/tsuru/auth"
 	"github.com/globocom/tsuru/errors"
 	"github.com/globocom/tsuru/provision"
+	"github.com/globocom/tsuru/quota"
 	"github.com/globocom/tsuru/repository"
 	"github.com/globocom/tsuru/service"
 	"github.com/globocom/tsuru/testing"
@@ -417,6 +418,23 @@ func (s *S) TestCreateAppHandler(c *gocheck.C) {
 	c.Assert(action, testing.IsRecorded)
 }
 
+func (s *S) TestCreateAppQuotaExceeded(c *gocheck.C) {
+	err := quota.Create(s.user.Email, 0)
+	c.Assert(err, gocheck.IsNil)
+	defer quota.Delete(s.user.Email)
+	b := strings.NewReader(`{"name":"someapp","platform":"zend","units":4}`)
+	request, err := http.NewRequest("POST", "/apps", b)
+	c.Assert(err, gocheck.IsNil)
+	request.Header.Set("Content-Type", "application/json")
+	recorder := httptest.NewRecorder()
+	err = createApp(recorder, request, s.token)
+	c.Assert(err, gocheck.NotNil)
+	e, ok := err.(*errors.Http)
+	c.Assert(ok, gocheck.Equals, true)
+	c.Assert(e.Code, gocheck.Equals, http.StatusForbidden)
+	c.Assert(e.Message, gocheck.Matches, "^.*"+quota.ErrQuotaExceeded.Error()+"$")
+}
+
 func (s *S) TestCreateAppInvalidName(c *gocheck.C) {
 	b := strings.NewReader(`{"name":"123myapp","platform":"zend"}`)
 	request, err := http.NewRequest("POST", "/apps", b)
@@ -472,6 +490,9 @@ func (s *S) TestCreateAppReturnsConflictWithProperMessageWhenTheAppAlreadyExist(
 	err = createApp(recorder, request, s.token)
 	c.Assert(err, gocheck.NotNil)
 	c.Assert(err, gocheck.ErrorMatches, ".*there is already an app with this name.*")
+	e, ok := err.(*errors.Http)
+	c.Assert(ok, gocheck.Equals, true)
+	c.Assert(e.Code, gocheck.Equals, http.StatusConflict)
 }
 
 func (s *S) TestAddUnits(c *gocheck.C) {

@@ -15,6 +15,7 @@ import (
 	"github.com/globocom/tsuru/db"
 	"github.com/globocom/tsuru/errors"
 	"github.com/globocom/tsuru/log"
+	"github.com/globocom/tsuru/quota"
 	"github.com/globocom/tsuru/rec"
 	"github.com/globocom/tsuru/repository"
 	"github.com/globocom/tsuru/service"
@@ -23,7 +24,6 @@ import (
 	"labix.org/v2/mgo/bson"
 	"net/http"
 	"strconv"
-	"strings"
 )
 
 func getApp(name string, u *auth.User) (app.App, error) {
@@ -178,9 +178,13 @@ func createApp(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
 				Message: "In order to create an app, you should be member of at least one team",
 			}
 		}
-		if strings.Contains(err.Error(), "key error") {
-			msg := fmt.Sprintf(`There is already an app named "%s".`, a.Name)
-			return &errors.Http{Code: http.StatusConflict, Message: msg}
+		if e, ok := err.(*app.AppCreationError); ok {
+			switch e.Err {
+			case app.ErrAppAlreadyExists:
+				return &errors.Http{Code: http.StatusConflict, Message: e.Error()}
+			case quota.ErrQuotaExceeded:
+				return &errors.Http{Code: http.StatusForbidden, Message: e.Error()}
+			}
 		}
 		return err
 	}
