@@ -8,12 +8,12 @@ import (
 	"fmt"
 )
 
-type appCreationError struct {
+type AppCreationError struct {
 	app string
 	err error
 }
 
-func (e *appCreationError) Error() string {
+func (e *AppCreationError) Error() string {
 	return fmt.Sprintf("Tsuru failed to create the app %q: %s", e.app, e.err)
 }
 

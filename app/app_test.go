@@ -244,7 +244,7 @@ func (s *S) TestCreateAppUserQuotaExceeded(c *gocheck.C) {
 	err = quota.Reserve(s.user.Email, app.Name)
 	c.Assert(err, gocheck.IsNil)
 	err = CreateApp(&app, 1, s.user)
-	e, ok := err.(*appCreationError)
+	e, ok := err.(*AppCreationError)
 	c.Assert(ok, gocheck.Equals, true)
 	c.Assert(e.err, gocheck.Equals, quota.ErrQuotaExceeded)
 }
@@ -326,7 +326,7 @@ func (s *S) TestCantCreateTwoAppsWithTheSameName(c *gocheck.C) {
 	err = CreateApp(&a, 1, s.user)
 	defer ForceDestroy(&a) // clean mess if test fail
 	c.Assert(err, gocheck.NotNil)
-	e, ok := err.(*appCreationError)
+	e, ok := err.(*AppCreationError)
 	c.Assert(ok, gocheck.Equals, true)
 	c.Assert(e.app, gocheck.Equals, "appname")
 	c.Assert(e.err, gocheck.NotNil)
