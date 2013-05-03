@@ -177,6 +177,7 @@ func (s *S) TestCreateApp(c *gocheck.C) {
 	c.Assert(retrievedApp.Name, gocheck.Equals, a.Name)
 	c.Assert(retrievedApp.Platform, gocheck.Equals, a.Platform)
 	c.Assert(retrievedApp.Teams, gocheck.DeepEquals, []string{s.team.Name})
+	c.Assert(retrievedApp.Owner, gocheck.Equals, s.user.Email)
 	env := a.InstanceEnv(s3InstanceName)
 	c.Assert(env["TSURU_S3_ENDPOINT"].Value, gocheck.Equals, s.t.S3Server.URL())
 	c.Assert(env["TSURU_S3_ENDPOINT"].Public, gocheck.Equals, false)

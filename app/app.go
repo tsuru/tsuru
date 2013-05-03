@@ -50,6 +50,7 @@ type App struct {
 	CName    string
 	Units    []Unit
 	Teams    []string
+	Owner    string
 	conf     *conf
 }
 
@@ -124,6 +125,7 @@ func CreateApp(app *App, units uint, user *auth.User) error {
 		return err
 	}
 	app.SetTeams(teams)
+	app.Owner = user.Email
 	if !app.isValid() {
 		msg := "Invalid app name, your app should have at most 63 " +
 			"characters, containing only lower case letters or numbers, " +
