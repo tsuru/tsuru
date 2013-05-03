@@ -19,6 +19,7 @@ import (
 	"github.com/globocom/tsuru/log"
 	"github.com/globocom/tsuru/provision"
 	"github.com/globocom/tsuru/queue"
+	"github.com/globocom/tsuru/quota"
 	"github.com/globocom/tsuru/repository"
 	"github.com/globocom/tsuru/service"
 	"io"
@@ -205,6 +206,7 @@ func ForceDestroy(app *App) error {
 	}
 	token := app.Env["TSURU_APP_TOKEN"].Value
 	auth.DeleteToken(token)
+	quota.Release(app.Owner, app.Name)
 	conn, err := db.Conn()
 	if err != nil {
 		return err
