@@ -121,3 +121,18 @@ func Set(owner string, value uint) error {
 	}
 	return err
 }
+
+// Items returns a slice containing all items allocated to the given owner.
+func Items(owner string) ([]string, error) {
+	conn, err := db.Conn()
+	if err != nil {
+		return nil, err
+	}
+	defer conn.Close()
+	var u usage
+	err = conn.Quota().Find(bson.M{"owner": owner}).One(&u)
+	if err != nil {
+		return nil, ErrQuotaNotFound
+	}
+	return u.Items, nil
+}

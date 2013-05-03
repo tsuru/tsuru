@@ -227,3 +227,32 @@ func (Suite) TestItemsGreaterThanLimit(c *gocheck.C) {
 	err = Reserve("coming@yes.com", "coming/3")
 	c.Assert(err, gocheck.Equals, ErrQuotaExceeded)
 }
+
+func (Suite) TestItems(c *gocheck.C) {
+	err := Create("sorry@evergrey.com", 4)
+	c.Assert(err, gocheck.IsNil)
+	defer Delete("sorry@evergrey.com")
+	items, err := Items("sorry@evergrey.com")
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(items, gocheck.HasLen, 0)
+	err = Reserve("sorry@evergrey.com", "sorry/0")
+	c.Assert(err, gocheck.IsNil)
+	err = Reserve("sorry@evergrey.com", "sorry/1")
+	c.Assert(err, gocheck.IsNil)
+	items, err = Items("sorry@evergrey.com")
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(items, gocheck.DeepEquals, []string{"sorry/0", "sorry/1"})
+	err = Reserve("sorry@evergrey.com", "sorry/2")
+	c.Assert(err, gocheck.IsNil)
+	err = Reserve("sorry@evergrey.com", "sorry/3")
+	c.Assert(err, gocheck.IsNil)
+	items, err = Items("sorry@evergrey.com")
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(items, gocheck.DeepEquals, []string{"sorry/0", "sorry/1", "sorry/2", "sorry/3"})
+}
+
+func (Suite) TestItemsQuotaNotFound(c *gocheck.C) {
+	items, err := Items("blinded@evergrey.com")
+	c.Assert(items, gocheck.IsNil)
+	c.Assert(err, gocheck.Equals, ErrQuotaNotFound)
+}
