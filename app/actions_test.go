@@ -743,3 +743,7 @@ func (s *S) TestCreateAppQuotaBackward(c *gocheck.C) {
 	err = quota.Reserve(app.Name, "something")
 	c.Assert(err, gocheck.Equals, quota.ErrQuotaNotFound)
 }
+
+func (s *S) TestCreateAppQuotaMinParams(c *gocheck.C) {
+	c.Assert(createAppQuota.MinParams, gocheck.Equals, 1)
+}

@@ -80,6 +80,7 @@ var createAppQuota = action.Action{
 	Backward: func(ctx action.BWContext) {
 		quota.Delete(ctx.FWResult.(string))
 	},
+	MinParams: 1,
 }
 
 // insertApp is an action that inserts an app in the database in Forward and
