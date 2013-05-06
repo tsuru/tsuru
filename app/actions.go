@@ -75,7 +75,7 @@ var createAppQuota = action.Action{
 			if limit == 0 {
 				return nil, errors.New("app creation is disallowed")
 			}
-			quota.Create(app.Name, uint(limit))
+			quota.Create(app.Name, uint(limit-1))
 		}
 		return app.Name, nil
 	},

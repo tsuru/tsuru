@@ -673,7 +673,7 @@ func (s *S) TestReserveUserAppMinParams(c *gocheck.C) {
 }
 
 func (s *S) TestCreateAppQuotaForward(c *gocheck.C) {
-	config.Set("quota:units-per-app", 1)
+	config.Set("quota:units-per-app", 2)
 	defer config.Unset("quota:units-per-app")
 	app := App{
 		Name:     "visions",
@@ -685,10 +685,13 @@ func (s *S) TestCreateAppQuotaForward(c *gocheck.C) {
 	c.Assert(previous, gocheck.Equals, app.Name)
 	err = quota.Reserve(app.Name, "visions/0")
 	c.Assert(err, gocheck.IsNil)
+	err = quota.Reserve(app.Name, "visions/1")
+	_, ok := err.(*quota.QuotaExceededError)
+	c.Assert(ok, gocheck.Equals, true)
 }
 
 func (s *S) TestCreateAppQuotaForwardPointer(c *gocheck.C) {
-	config.Set("quota:units-per-app", 1)
+	config.Set("quota:units-per-app", 2)
 	defer config.Unset("quota:units-per-app")
 	app := App{
 		Name:     "visions",
