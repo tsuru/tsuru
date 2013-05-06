@@ -237,6 +237,11 @@ func (app *App) AddUnits(n uint) error {
 	if n == 0 {
 		return stderr.New("Cannot add zero units.")
 	}
+	ids := generateUnitQuotaItems(app, int(n))
+	_, err := quota.Reserve(app.Name, ids...)
+	if err != nil && err != quota.ErrQuotaNotFound {
+		return err
+	}
 	units, err := Provisioner.AddUnits(app, n)
 	if err != nil {
 		return err
@@ -259,6 +264,7 @@ func (app *App) AddUnits(n uint) error {
 			Machine:    unit.Machine,
 			State:      provision.StatusPending.String(),
 			InstanceId: unit.InstanceId,
+			QuotaItem:  ids[i],
 		}
 		messages[mCount] = queue.Message{Action: RegenerateApprcAndStart, Args: []string{app.Name, unit.Name}}
 		messages[mCount+1] = queue.Message{Action: bindService, Args: []string{app.Name, unit.Name}}

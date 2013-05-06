@@ -481,8 +481,10 @@ func (s *S) TestAddUnits(c *gocheck.C) {
 	c.Assert(app.Platform, gocheck.Equals, "python")
 	var expectedMessages MessageList
 	for i, unit := range app.Units {
-		expected := fmt.Sprintf("%s/%d", app.Name, i+1)
-		c.Assert(unit.Name, gocheck.Equals, expected)
+		expectedName := fmt.Sprintf("%s/%d", app.Name, i+1)
+		c.Assert(unit.Name, gocheck.Equals, expectedName)
+		expectedItem := fmt.Sprintf("%s-%d", app.Name, i)
+		c.Assert(unit.QuotaItem, gocheck.Equals, expectedItem)
 		messages := []queue.Message{
 			{Action: RegenerateApprcAndStart, Args: []string{app.Name, unit.Name}},
 			{Action: bindService, Args: []string{app.Name, unit.Name}},
@@ -502,6 +504,79 @@ func (s *S) TestAddUnits(c *gocheck.C) {
 	sort.Sort(expectedMessages)
 	sort.Sort(gotMessages)
 	c.Assert(gotMessages, gocheck.DeepEquals, expectedMessages)
+}
+
+func (s *S) TestAddUnitsQuota(c *gocheck.C) {
+	err := quota.Create("warpaint", 7)
+	c.Assert(err, gocheck.IsNil)
+	defer quota.Delete("warpaint")
+	app := App{Name: "warpaint", Platform: "python"}
+	err = s.conn.Apps().Insert(app)
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": app.Name})
+	s.provisioner.Provision(&app)
+	defer s.provisioner.Destroy(&app)
+	otherApp := App{Name: "warpaint"}
+	err = otherApp.AddUnits(5)
+	c.Assert(err, gocheck.IsNil)
+	units := s.provisioner.GetUnits(&app)
+	c.Assert(units, gocheck.HasLen, 6)
+	err = otherApp.AddUnits(2)
+	c.Assert(err, gocheck.IsNil)
+	units = s.provisioner.GetUnits(&app)
+	c.Assert(units, gocheck.HasLen, 8)
+	for _, unit := range units {
+		c.Assert(unit.AppName, gocheck.Equals, app.Name)
+	}
+	err = app.Get()
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(app.Units, gocheck.HasLen, 7)
+	c.Assert(app.Platform, gocheck.Equals, "python")
+	var expectedMessages MessageList
+	for i, unit := range app.Units {
+		expectedName := fmt.Sprintf("%s/%d", app.Name, i+1)
+		c.Assert(unit.Name, gocheck.Equals, expectedName)
+		expectedItem := fmt.Sprintf("%s-%d", app.Name, i)
+		c.Assert(unit.QuotaItem, gocheck.Equals, expectedItem)
+		messages := []queue.Message{
+			{Action: RegenerateApprcAndStart, Args: []string{app.Name, unit.Name}},
+			{Action: bindService, Args: []string{app.Name, unit.Name}},
+		}
+		expectedMessages = append(expectedMessages, messages...)
+	}
+	gotMessages := make(MessageList, expectedMessages.Len())
+	for i := range expectedMessages {
+		message, err := aqueue().Get(1e6)
+		c.Assert(err, gocheck.IsNil)
+		defer message.Delete()
+		gotMessages[i] = queue.Message{
+			Action: message.Action,
+			Args:   message.Args,
+		}
+	}
+	sort.Sort(expectedMessages)
+	sort.Sort(gotMessages)
+	c.Assert(gotMessages, gocheck.DeepEquals, expectedMessages)
+	_, err = quota.Reserve("warpaint", "war/0")
+	c.Assert(err, gocheck.Equals, quota.ErrQuotaExceeded)
+	items, err := quota.Items("warpaint")
+	c.Assert(err, gocheck.IsNil)
+	expected := []string{
+		"warpaint-0", "warpaint-1", "warpaint-2", "warpaint-3",
+		"warpaint-4", "warpaint-5", "warpaint-6",
+	}
+	c.Assert(items, gocheck.DeepEquals, expected)
+}
+
+func (s *S) TestAddUnitsQuotaExceeded(c *gocheck.C) {
+	err := quota.Create("warpaint", 0)
+	c.Assert(err, gocheck.IsNil)
+	defer quota.Delete("warpaint")
+	app := App{Name: "warpaint", Platform: "ruby"}
+	err = app.AddUnits(1)
+	c.Assert(err, gocheck.Equals, quota.ErrQuotaExceeded)
+	units := s.provisioner.GetUnits(&app)
+	c.Assert(units, gocheck.HasLen, 0)
 }
 
 func (s *S) TestAddZeroUnits(c *gocheck.C) {
