@@ -72,19 +72,19 @@ func (u UnitSlice) Swap(i, j int) {
 
 func generateUnitQuotaItems(app *App, n int) []string {
 	l := len(app.Units)
-	if l < 1 {
-		return []string{fmt.Sprintf("%s-0", app.Name)}
-	}
-	last := app.Units[l-1]
-	re := regexp.MustCompile(app.Name + `-(\d+)`)
-	parts := re.FindStringSubmatch(last.QuotaItem)
-	if len(parts) < 2 {
-		return []string{fmt.Sprintf("%s-0", app.Name)}
-	}
-	initial, _ := strconv.Atoi(parts[1])
+	initial := 0
 	names := make([]string, n)
+	if l > 0 {
+		last := app.Units[l-1]
+		re := regexp.MustCompile(app.Name + `-(\d+)`)
+		parts := re.FindStringSubmatch(last.QuotaItem)
+		if len(parts) > 1 {
+			initial, _ = strconv.Atoi(parts[1])
+			initial++
+		}
+	}
 	for i := 0; i < n; i++ {
-		names[i] = fmt.Sprintf("%s-%d", app.Name, initial+1+i)
+		names[i] = fmt.Sprintf("%s-%d", app.Name, initial+i)
 	}
 	return names
 }
