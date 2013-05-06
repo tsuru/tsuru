@@ -4,7 +4,12 @@
 
 package app
 
-import "github.com/globocom/tsuru/provision"
+import (
+	"fmt"
+	"github.com/globocom/tsuru/provision"
+	"regexp"
+	"strconv"
+)
 
 // Unit is the smaller bit in tsuru. Each app is composed of one or more units.
 //
@@ -18,6 +23,7 @@ type Unit struct {
 	InstanceId string
 	Ip         string
 	State      string
+	QuotaItem  string
 	app        *App
 }
 
@@ -62,4 +68,19 @@ func (u UnitSlice) Less(i, j int) bool {
 
 func (u UnitSlice) Swap(i, j int) {
 	u[i], u[j] = u[j], u[i]
+}
+
+func generateUnitQuotaItem(app *App) string {
+	l := len(app.Units)
+	if l < 1 {
+		return fmt.Sprintf("%s-0", app.Name)
+	}
+	last := app.Units[l-1]
+	re := regexp.MustCompile(app.Name + `-(\d+)`)
+	parts := re.FindStringSubmatch(last.QuotaItem)
+	if len(parts) < 2 {
+		return fmt.Sprintf("%s-0", app.Name)
+	}
+	n, _ := strconv.Atoi(parts[1])
+	return fmt.Sprintf("%s-%d", app.Name, n+1)
 }
