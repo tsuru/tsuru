@@ -432,7 +432,7 @@ func (s *S) TestCreateAppQuotaExceeded(c *gocheck.C) {
 	e, ok := err.(*errors.Http)
 	c.Assert(ok, gocheck.Equals, true)
 	c.Assert(e.Code, gocheck.Equals, http.StatusForbidden)
-	c.Assert(e.Message, gocheck.Matches, "^.*"+quota.ErrQuotaExceeded.Error()+"$")
+	c.Assert(e.Message, gocheck.Matches, "^.*Quota exceeded$")
 }
 
 func (s *S) TestCreateAppInvalidName(c *gocheck.C) {

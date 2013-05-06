@@ -179,11 +179,14 @@ func createApp(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
 			}
 		}
 		if e, ok := err.(*app.AppCreationError); ok {
-			switch e.Err {
-			case app.ErrAppAlreadyExists:
+			if e.Err == app.ErrAppAlreadyExists {
 				return &errors.Http{Code: http.StatusConflict, Message: e.Error()}
-			case quota.ErrQuotaExceeded:
-				return &errors.Http{Code: http.StatusForbidden, Message: e.Error()}
+			}
+			if _, ok := e.Err.(*quota.QuotaExceededError); ok {
+				return &errors.Http{
+					Code:    http.StatusForbidden,
+					Message: "Quota exceeded",
+				}
 			}
 		}
 		return err
