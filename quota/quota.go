@@ -65,7 +65,10 @@ func Delete(owner string) error {
 	return err
 }
 
-// Reserve increases the number of items in use for the owner.
+// Reserve reserves the given items to the owner.
+//
+// It may allocate part of the items before exceeding the quota. See the
+// example for more details.
 func Reserve(owner string, items ...string) (int, error) {
 	conn, err := db.Conn()
 	if err != nil {

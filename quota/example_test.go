@@ -8,6 +8,21 @@ import (
 	"github.com/globocom/tsuru/quota"
 )
 
+func ExampleReserve() {
+	err := quota.Create("me@tsuru.io", 4)
+	if err != nil {
+		panic(err)
+	}
+	n, err := quota.Reserve("me@tsuru.io", "me/0", "me/1", "me/2") // err == <nil>
+	if n != 3 {
+		panic("wrong value for n")
+	}
+	n, err = quota.Reserve("me@tsuru.io", "me/3", "me/4", "me/5") // n == 1 && err == ErrQuotaExceeded
+	if n != 1 {
+		panic("wrong value for n")
+	}
+}
+
 func ExampleSet() {
 	err := quota.Create("me@tsuru.io", 3)
 	if err != nil {
