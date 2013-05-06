@@ -225,6 +225,10 @@ func (app *App) AddUnit(u *Unit) {
 		if unt.Name == u.Name {
 			app.Units[i] = *u
 			return
+		} else if unt.Name == "" && unt.QuotaItem == app.Name+"-0" {
+			u.QuotaItem = unt.QuotaItem
+			app.Units[i] = *u
+			return
 		}
 	}
 	u.QuotaItem = generateUnitQuotaItems(app, 1)[0]

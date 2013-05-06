@@ -458,6 +458,18 @@ func (s *S) TestAppendOrUpdate(c *gocheck.C) {
 	c.Assert(a.Units[0], gocheck.DeepEquals, u)
 }
 
+func (s *S) TestAddUnitPlaceHolder(c *gocheck.C) {
+	a := App{
+		Name:     "appName",
+		Platform: "django",
+		Units:    []Unit{{QuotaItem: "appName-0"}},
+	}
+	u := Unit{Name: "i-000000zzz8", Machine: 1}
+	a.AddUnit(&u)
+	c.Assert(len(a.Units), gocheck.Equals, 1)
+	c.Assert(u.QuotaItem, gocheck.Equals, "appName-0")
+}
+
 func (s *S) TestAddUnits(c *gocheck.C) {
 	app := App{Name: "warpaint", Platform: "python"}
 	err := s.conn.Apps().Insert(app)
