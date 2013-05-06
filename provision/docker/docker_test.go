@@ -38,7 +38,7 @@ func (s *S) TestNewContainerCallsDockerCreate(c *gocheck.C) {
 	app := testing.NewFakeApp("app-name", "python", 1)
 	newContainer(app, runContainerCmd)
 	appRepo := fmt.Sprintf("git://%s/app-name.git", s.gitHost)
-	containerCmd := fmt.Sprintf("'/var/lib/tsuru/deploy %s && %s %s'", appRepo, s.runBin, s.runArgs)
+	containerCmd := fmt.Sprintf("/var/lib/tsuru/deploy %s && %s %s", appRepo, s.runBin, s.runArgs)
 	args := []string{
 		"run", "-d", "-t", "-p", s.port, "tsuru/python",
 		"/bin/bash", "-c",
@@ -105,7 +105,7 @@ func (s *S) TestRunContainerCmdReturnsCommandToRunContainer(c *gocheck.C) {
 	cmd, err := runContainerCmd(app)
 	c.Assert(err, gocheck.IsNil)
 	appRepo := fmt.Sprintf("git://%s/myapp.git", s.gitHost)
-	containerCmd := fmt.Sprintf("'%s %s && %s %s'", s.deployCmd, appRepo, s.runBin, s.runArgs)
+	containerCmd := fmt.Sprintf("%s %s && %s %s", s.deployCmd, appRepo, s.runBin, s.runArgs)
 	expected := []string{"docker", "run", "-d", "-t", "-p", s.port, fmt.Sprintf("%s/python", s.repoNamespace), "/bin/bash", "-c", containerCmd}
 	c.Assert(cmd, gocheck.DeepEquals, expected)
 }
@@ -121,7 +121,7 @@ func (s *S) TestDockerCreate(c *gocheck.C) {
 	_, err := container.create(app, runContainerCmd)
 	c.Assert(err, gocheck.IsNil)
 	appRepo := fmt.Sprintf("git://%s/app-name.git", s.gitHost)
-	containerCmd := fmt.Sprintf("'/var/lib/tsuru/deploy %s && %s %s'", appRepo, s.runBin, s.runArgs)
+	containerCmd := fmt.Sprintf("/var/lib/tsuru/deploy %s && %s %s", appRepo, s.runBin, s.runArgs)
 	args := []string{
 		"run", "-d", "-t", "-p", s.port, "tsuru/python",
 		"/bin/bash", "-c",

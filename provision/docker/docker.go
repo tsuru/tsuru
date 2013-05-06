@@ -62,7 +62,7 @@ func runContainerCmd(app provision.App) ([]string, error) {
 		return []string{}, err
 	}
 	imageName := fmt.Sprintf("%s/%s", repoNamespace, app.GetPlatform()) // TODO (flaviamissi): should use same algorithm as image.repositoryName
-	containerCmd := fmt.Sprintf("'%s %s && %s %s'", deployCmd, appRepo, runBin, runArgs)
+	containerCmd := fmt.Sprintf("%s %s && %s %s", deployCmd, appRepo, runBin, runArgs)
 	wholeCmd := []string{docker, "run", "-d", "-t", "-p", port, imageName, "/bin/bash", "-c", containerCmd}
 	return wholeCmd, nil
 }
