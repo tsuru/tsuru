@@ -19,7 +19,6 @@ import (
 
 var (
 	ErrQuotaAlreadyExists = errors.New("Quota already exists")
-	ErrQuotaExceeded      = errors.New("Quota exceeded")
 	ErrQuotaNotFound      = errors.New("Quota not found")
 )
 
@@ -83,8 +82,12 @@ func Reserve(owner string, items ...string) error {
 	if err != nil {
 		return ErrQuotaNotFound
 	}
-	if uint(len(u.Items)+len(items)) > u.Limit {
-		return ErrQuotaExceeded
+	available := int(u.Limit) - len(u.Items)
+	if available < 0 {
+		available = 0
+	}
+	if available < len(items) {
+		return &QuotaExceededError{Requested: uint(len(items)), Available: uint(available)}
 	}
 	update := bson.M{"$addToSet": bson.M{"items": bson.M{"$each": items}}}
 	err = conn.Quota().Update(bson.M{"owner": owner}, update)

@@ -149,7 +149,10 @@ func (Suite) TestReserveMultipleExceed(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	defer Delete("pebble@elp.com")
 	err = Reserve("pebble@elp.com", "p/0", "p/1", "p/2")
-	c.Assert(err, gocheck.Equals, ErrQuotaExceeded)
+	e, ok := err.(*QuotaExceededError)
+	c.Assert(ok, gocheck.Equals, true)
+	c.Assert(e.Available, gocheck.Equals, uint(2))
+	c.Assert(e.Requested, gocheck.Equals, uint(3))
 }
 
 func (Suite) TestReserveQuotaExceeded(c *gocheck.C) {
@@ -159,7 +162,10 @@ func (Suite) TestReserveQuotaExceeded(c *gocheck.C) {
 	err = Reserve("change@dreamtheater.com", "change/0")
 	c.Assert(err, gocheck.IsNil)
 	err = Reserve("change@dreamtheater.com", "change/1")
-	c.Assert(err, gocheck.Equals, ErrQuotaExceeded)
+	e, ok := err.(*QuotaExceededError)
+	c.Assert(ok, gocheck.Equals, true)
+	c.Assert(e.Available, gocheck.Equals, uint(0))
+	c.Assert(e.Requested, gocheck.Equals, uint(1))
 }
 
 func (Suite) TestReserveQuotaNotFound(c *gocheck.C) {
@@ -254,7 +260,10 @@ func (Suite) TestItemsGreaterThanLimit(c *gocheck.C) {
 	err = Set("coming@yes.com", 2)
 	c.Assert(err, gocheck.IsNil)
 	err = Reserve("coming@yes.com", "coming/3")
-	c.Assert(err, gocheck.Equals, ErrQuotaExceeded)
+	e, ok := err.(*QuotaExceededError)
+	c.Assert(ok, gocheck.Equals, true)
+	c.Assert(e.Available, gocheck.Equals, uint(0))
+	c.Assert(e.Requested, gocheck.Equals, uint(1))
 }
 
 func (Suite) TestItems(c *gocheck.C) {
