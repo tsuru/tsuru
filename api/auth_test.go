@@ -187,9 +187,9 @@ func (s *AuthSuite) TestCreateUserQuota(c *gocheck.C) {
 	err = createUser(recorder, request)
 	c.Assert(err, gocheck.IsNil)
 	defer quota.Delete("nobody@globo.com")
-	err = quota.Reserve("nobody@globo.com", "something/0")
+	_, err = quota.Reserve("nobody@globo.com", "something/0")
 	c.Assert(err, gocheck.IsNil)
-	err = quota.Reserve("nobody@globo.com", "something/1")
+	_, err = quota.Reserve("nobody@globo.com", "something/1")
 	c.Assert(err, gocheck.Equals, quota.ErrQuotaExceeded)
 }
 
@@ -204,7 +204,7 @@ func (s *AuthSuite) TestCreateUserUnlimitedQuota(c *gocheck.C) {
 	recorder := httptest.NewRecorder()
 	err = createUser(recorder, request)
 	c.Assert(err, gocheck.IsNil)
-	err = quota.Reserve("nobody@globo.com", "something/0")
+	_, err = quota.Reserve("nobody@globo.com", "something/0")
 	c.Assert(err, gocheck.Equals, quota.ErrQuotaNotFound)
 }
 
@@ -221,7 +221,7 @@ func (s *AuthSuite) TestCreateUserNegativeQuota(c *gocheck.C) {
 	recorder := httptest.NewRecorder()
 	err = createUser(recorder, request)
 	c.Assert(err, gocheck.IsNil)
-	err = quota.Reserve("nobody@globo.com", "something/0")
+	_, err = quota.Reserve("nobody@globo.com", "something/0")
 	c.Assert(err, gocheck.Equals, quota.ErrQuotaNotFound)
 }
 
@@ -1444,7 +1444,7 @@ func (s *AuthSuite) TestRemoveUserWithQuota(c *gocheck.C) {
 	recorder := httptest.NewRecorder()
 	err = removeUser(recorder, request, token)
 	c.Assert(err, gocheck.IsNil)
-	err = quota.Reserve("clap@yes.com", "something")
+	_, err = quota.Reserve("clap@yes.com", "something")
 	c.Assert(err, gocheck.Equals, quota.ErrQuotaNotFound)
 }
 
