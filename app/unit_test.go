@@ -95,20 +95,22 @@ func (s *S) TestUnitSliceSort(c *gocheck.C) {
 	c.Assert(sort.IsSorted(units), gocheck.Equals, true)
 }
 
-func (s *S) TestGenerateUnitQuotaItem(c *gocheck.C) {
+func (s *S) TestGenerateUnitQuotaItems(c *gocheck.C) {
 	var tests = []struct {
 		app  *App
-		want string
+		want []string
+		n    int
 	}{
-		{&App{Name: "black"}, "black-0"},
-		{&App{Name: "black", Units: []Unit{{QuotaItem: "black-1"}, {QuotaItem: "black-5"}}}, "black-6"},
-		{&App{Name: "white", Units: []Unit{{QuotaItem: "white-9"}}}, "white-10"},
-		{&App{}, "-0"},
-		{&App{Name: "white", Units: []Unit{{Name: "white/0"}}}, "white-0"},
-		{&App{Name: "white", Units: []Unit{{QuotaItem: "white-w"}}}, "white-0"},
+		{&App{Name: "black"}, []string{"black-0"}, 1},
+		{&App{Name: "black", Units: []Unit{{QuotaItem: "black-1"}, {QuotaItem: "black-5"}}}, []string{"black-6"}, 1},
+		{&App{Name: "white", Units: []Unit{{QuotaItem: "white-9"}}}, []string{"white-10"}, 1},
+		{&App{}, []string{"-0"}, 1},
+		{&App{Name: "white", Units: []Unit{{Name: "white/0"}}}, []string{"white-0"}, 1},
+		{&App{Name: "white", Units: []Unit{{QuotaItem: "white-w"}}}, []string{"white-0"}, 1},
+		{&App{Name: "white", Units: []Unit{{QuotaItem: "white-4"}}}, []string{"white-5", "white-6", "white-7"}, 3},
 	}
 	for _, t := range tests {
-		got := generateUnitQuotaItem(t.app)
-		c.Check(got, gocheck.Equals, t.want)
+		got := generateUnitQuotaItems(t.app, t.n)
+		c.Check(got, gocheck.DeepEquals, t.want)
 	}
 }
