@@ -64,7 +64,7 @@ func (s *S) TestForceDestroy(c *gocheck.C) {
 	}
 	err = s.conn.Apps().Insert(&a)
 	c.Assert(err, gocheck.IsNil)
-	_, err = quota.Reserve(s.user.Email, a.Name)
+	err = quota.Reserve(s.user.Email, a.Name)
 	c.Assert(err, gocheck.IsNil)
 	err = quota.Create(a.Name, 1)
 	c.Assert(err, gocheck.IsNil)
@@ -77,9 +77,9 @@ func (s *S) TestForceDestroy(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(qt, gocheck.Equals, 0)
 	c.Assert(s.provisioner.FindApp(&a), gocheck.Equals, -1)
-	_, err = quota.Reserve(s.user.Email, a.Name)
+	err = quota.Reserve(s.user.Email, a.Name)
 	c.Assert(err, gocheck.IsNil)
-	_, err = quota.Reserve(a.Name, "something")
+	err = quota.Reserve(a.Name, "something")
 	c.Assert(err, gocheck.Equals, quota.ErrQuotaNotFound)
 }
 
@@ -230,8 +230,9 @@ func (s *S) TestCreateApp(c *gocheck.C) {
 		c.Assert(err, gocheck.IsNil)
 		c.Assert(message.Action, gocheck.Equals, bindService)
 	}
-	_, err = quota.Reserve(s.user.Email, a.Name)
-	c.Assert(err, gocheck.Equals, quota.ErrQuotaExceeded)
+	err = quota.Reserve(s.user.Email, a.Name)
+	_, ok = err.(*quota.QuotaExceededError)
+	c.Assert(ok, gocheck.Equals, true)
 	_, err = quota.Items(retrievedApp.Name)
 	c.Assert(err, gocheck.IsNil)
 }
@@ -241,12 +242,13 @@ func (s *S) TestCreateAppUserQuotaExceeded(c *gocheck.C) {
 	err := quota.Create(s.user.Email, 1)
 	c.Assert(err, gocheck.IsNil)
 	defer quota.Delete(s.user.Email)
-	_, err = quota.Reserve(s.user.Email, app.Name)
+	err = quota.Reserve(s.user.Email, app.Name)
 	c.Assert(err, gocheck.IsNil)
 	err = CreateApp(&app, 1, s.user)
 	e, ok := err.(*AppCreationError)
 	c.Assert(ok, gocheck.Equals, true)
-	c.Assert(e.Err, gocheck.Equals, quota.ErrQuotaExceeded)
+	_, ok = e.Err.(*quota.QuotaExceededError)
+	c.Assert(ok, gocheck.Equals, true)
 }
 
 func (s *S) TestCreateWithoutBucketSupport(c *gocheck.C) {
@@ -557,8 +559,9 @@ func (s *S) TestAddUnitsQuota(c *gocheck.C) {
 	sort.Sort(expectedMessages)
 	sort.Sort(gotMessages)
 	c.Assert(gotMessages, gocheck.DeepEquals, expectedMessages)
-	_, err = quota.Reserve("warpaint", "war/0")
-	c.Assert(err, gocheck.Equals, quota.ErrQuotaExceeded)
+	err = quota.Reserve("warpaint", "war/0")
+	_, ok := err.(*quota.QuotaExceededError)
+	c.Assert(ok, gocheck.Equals, true)
 	items, err := quota.Items("warpaint")
 	c.Assert(err, gocheck.IsNil)
 	expected := []string{
@@ -574,9 +577,24 @@ func (s *S) TestAddUnitsQuotaExceeded(c *gocheck.C) {
 	defer quota.Delete("warpaint")
 	app := App{Name: "warpaint", Platform: "ruby"}
 	err = app.AddUnits(1)
-	c.Assert(err, gocheck.Equals, quota.ErrQuotaExceeded)
+	e, ok := err.(*quota.QuotaExceededError)
+	c.Assert(ok, gocheck.Equals, true)
+	c.Assert(e.Available, gocheck.Equals, uint(0))
+	c.Assert(e.Requested, gocheck.Equals, uint(1))
 	units := s.provisioner.GetUnits(&app)
 	c.Assert(units, gocheck.HasLen, 0)
+}
+
+func (s *S) TestAddUnitsMultiple(c *gocheck.C) {
+	err := quota.Create("warpaint", 10)
+	c.Assert(err, gocheck.IsNil)
+	defer quota.Delete("warpaint")
+	app := App{Name: "warpaint", Platform: "ruby"}
+	err = app.AddUnits(11)
+	e, ok := err.(*quota.QuotaExceededError)
+	c.Assert(ok, gocheck.Equals, true)
+	c.Assert(e.Available, gocheck.Equals, uint(10))
+	c.Assert(e.Requested, gocheck.Equals, uint(11))
 }
 
 func (s *S) TestAddZeroUnits(c *gocheck.C) {

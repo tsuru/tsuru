@@ -48,7 +48,7 @@ var reserveUserApp = action.Action{
 		default:
 			return nil, errors.New("Third parameter must be auth.User or *auth.User.")
 		}
-		if _, err := quota.Reserve(user.Email, app.Name); err == quota.ErrQuotaExceeded {
+		if err := quota.Reserve(user.Email, app.Name); err != nil && err != quota.ErrQuotaNotFound {
 			return nil, err
 		}
 		return map[string]string{"app": app.Name, "user": user.Email}, nil

@@ -238,7 +238,7 @@ func (app *App) AddUnits(n uint) error {
 		return stderr.New("Cannot add zero units.")
 	}
 	ids := generateUnitQuotaItems(app, int(n))
-	_, err := quota.Reserve(app.Name, ids...)
+	err := quota.Reserve(app.Name, ids...)
 	if err != nil && err != quota.ErrQuotaNotFound {
 		return err
 	}
