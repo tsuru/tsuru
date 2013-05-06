@@ -102,9 +102,6 @@ func newContainer(app provision.App, f func(provision.App) ([]string, error)) (*
 		log.Print(err)
 		return c, err
 	}
-	// adding a route to a container that only installs the dependencies
-	// (deployContainerCmd) is a waste of processing, since this container is
-	// not going to be used, we should improve it
 	r, err := getRouter()
 	if err != nil {
 		return c, err
