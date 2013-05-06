@@ -185,7 +185,7 @@ func (Suite) TestReleaseQuotaNotFound(c *gocheck.C) {
 }
 
 func (Suite) TestReleaseIsSafe(c *gocheck.C) {
-	items := 100
+	items := 50
 	err := Create("looking@yes.com", uint(items))
 	c.Assert(err, gocheck.IsNil)
 	defer Delete("looking@yes.com")
