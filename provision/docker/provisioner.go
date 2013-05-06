@@ -51,18 +51,7 @@ func (p *DockerProvisioner) Restart(app provision.App) error {
 }
 
 func (p *DockerProvisioner) Deploy(app provision.App, w io.Writer) error {
-	c, err := newContainer(app, deployContainerCmd)
-	if err != nil {
-		return err
-	}
-	img := image{Name: app.GetName()}
-	if _, err := img.commit(c.id); err != nil {
-		return err
-	}
-	if err := c.remove(); err != nil {
-		return err
-	}
-	_, err = newContainer(app, runContainerCmd)
+	_, err := newContainer(app, runContainerCmd)
 	return err
 }
 

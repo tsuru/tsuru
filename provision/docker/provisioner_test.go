@@ -59,64 +59,11 @@ func (s *S) TestDeployShouldCallDockerCreate(c *gocheck.C) {
 	err := p.Deploy(app, w)
 	defer p.Destroy(app)
 	c.Assert(err, gocheck.IsNil)
-	args := []string{"run", "-d", "-t", fmt.Sprintf("%s/python", s.repoNamespace), "/var/lib/tsuru/deploy", fmt.Sprintf("git://%s/cribcaged.git", s.gitHost)}
+	image := fmt.Sprintf("%s/python", s.repoNamespace)
+	appRepo := fmt.Sprintf("git://%s/cribcaged.git", s.gitHost)
+	containerCmd := fmt.Sprintf("\"/var/lib/tsuru/deploy %s && %s %s\"", appRepo, s.runBin, s.runArgs)
+	args := []string{"run", "-d", "-t", "-p", s.port, image, "/bin/bash", "-c", containerCmd}
 	c.Assert(fexec.ExecutedCmd("docker", args), gocheck.Equals, true)
-}
-
-func (s *S) TestDeployShouldCommitImageAndRemoveContainerAfterIt(c *gocheck.C) {
-	out := `
-    {
-            "NetworkSettings": {
-            "IpAddress": "10.10.10.10",
-            "IpPrefixLen": 8,
-            "Gateway": "10.65.41.1",
-            "PortMapping": {}
-    }
-}`
-	fexec := &etesting.FakeExecutor{Output: []byte(out)}
-	execut = fexec
-	defer func() {
-		execut = nil
-	}()
-	p := DockerProvisioner{}
-	app := testing.NewFakeApp("cribcaged", "python", 1)
-	w := &bytes.Buffer{}
-	err := p.Deploy(app, w)
-	defer p.Destroy(app)
-	c.Assert(err, gocheck.IsNil)
-	got := fexec.GetCommands("docker")
-	args := []string{"run", "-d", "-t", fmt.Sprintf("%s/python", s.repoNamespace), "/var/lib/tsuru/deploy", fmt.Sprintf("git://%s/cribcaged.git", s.gitHost)}
-	c.Assert(got[0].GetArgs(), gocheck.DeepEquals, args)
-	c.Assert(got[1].GetArgs()[0], gocheck.Equals, "inspect") // from container.ip call
-	c.Assert(got[2].GetArgs()[0], gocheck.Equals, "commit")
-	c.Assert(got[2].GetArgs()[2], gocheck.Equals, fmt.Sprintf("%s/cribcaged", s.repoNamespace))
-	c.Assert(got[3].GetArgs()[0], gocheck.Equals, "rm")
-}
-
-func (s *S) TestDeployShouldCreateContainerForRunningWithGeneratedImage(c *gocheck.C) {
-	out := `
-    {
-            "NetworkSettings": {
-            "IpAddress": "10.10.10.10",
-            "IpPrefixLen": 8,
-            "Gateway": "10.65.41.1",
-            "PortMapping": {}
-    }
-}`
-	fexec := &etesting.FakeExecutor{Output: []byte(out)}
-	execut = fexec
-	defer func() {
-		execut = nil
-	}()
-	p := DockerProvisioner{}
-	app := testing.NewFakeApp("cribcaged", "python", 1)
-	w := &bytes.Buffer{}
-	err := p.Deploy(app, w)
-	defer p.Destroy(app)
-	c.Assert(err, gocheck.IsNil)
-	expected, err := runContainerCmd(app)
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(fexec.ExecutedCmd(expected[0], expected[1:]), gocheck.Equals, true)
 }
 
 func (s *S) TestProvisionerDestroy(c *gocheck.C) {
