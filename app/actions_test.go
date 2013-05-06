@@ -31,8 +31,14 @@ func (s *S) TestInsertAppForward(c *gocheck.C) {
 	c.Assert(ok, gocheck.Equals, true)
 	c.Assert(a.Name, gocheck.Equals, app.Name)
 	c.Assert(a.Platform, gocheck.Equals, app.Platform)
+	c.Assert(a.Units, gocheck.HasLen, 1)
+	c.Assert(a.Units[0].Name, gocheck.Equals, "")
+	c.Assert(a.Units[0].QuotaItem, gocheck.Equals, a.Name+"-0")
 	err = app.Get()
 	c.Assert(err, gocheck.IsNil)
+	c.Assert(app.Units, gocheck.HasLen, 1)
+	c.Assert(app.Units[0].Name, gocheck.Equals, "")
+	c.Assert(app.Units[0].QuotaItem, gocheck.Equals, a.Name+"-0")
 }
 
 func (s *S) TestInsertAppForwardAppPointer(c *gocheck.C) {
