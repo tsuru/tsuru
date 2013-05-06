@@ -374,12 +374,14 @@ func (app *App) RemoveUnits(n uint) error {
 	)
 	units := UnitSlice(app.Units)
 	sort.Sort(units)
+	items := make([]string, int(n))
 	for i := 0; i < int(n); i++ {
 		err = Provisioner.RemoveUnit(app, units[i].GetName())
 		if err == nil {
 			removed = append(removed, i)
 		}
 		app.unbindUnit(&units[i])
+		items[i] = units[i].QuotaItem
 	}
 	if len(removed) == 0 {
 		return err
@@ -394,6 +396,7 @@ func (app *App) RemoveUnits(n uint) error {
 		bson.M{"name": app.Name},
 		bson.M{"$set": bson.M{"units": app.Units}},
 	)
+	quota.Release(app.Name, items...)
 	if err == nil {
 		return dbErr
 	}

@@ -689,6 +689,34 @@ func (s *S) TestRemoveUnitsPriority(c *gocheck.C) {
 	c.Assert(a.ProvisionUnits(), gocheck.HasLen, 1)
 }
 
+func (s *S) TestRemoveUnitsWithQuota(c *gocheck.C) {
+	err := quota.Create("ble", 6)
+	c.Assert(err, gocheck.IsNil)
+	defer quota.Delete("ble")
+	err = quota.Reserve("ble", "ble-0", "ble-1", "ble-2", "ble-3", "ble-4", "ble-5")
+	c.Assert(err, gocheck.IsNil)
+	units := []Unit{
+		{Name: "ble/0", State: string(provision.StatusStarted), QuotaItem: "ble-0"},
+		{Name: "ble/1", State: string(provision.StatusDown), QuotaItem: "ble-1"},
+		{Name: "ble/2", State: string(provision.StatusCreating), QuotaItem: "ble-2"},
+		{Name: "ble/3", State: string(provision.StatusPending), QuotaItem: "ble-3"},
+		{Name: "ble/4", State: string(provision.StatusStarted), QuotaItem: "ble-4"},
+		{Name: "ble/5", State: string(provision.StatusInstalling), QuotaItem: "ble-5"},
+	}
+	a := App{Name: "ble", Units: units}
+	err = s.conn.Apps().Insert(a)
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	s.provisioner.Provision(&a)
+	s.provisioner.AddUnits(&a, 6)
+	defer s.provisioner.Destroy(&a)
+	err = a.RemoveUnits(4)
+	c.Assert(err, gocheck.IsNil)
+	items, err := quota.Items(a.Name)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(items, gocheck.DeepEquals, []string{"ble-0", "ble-4"})
+}
+
 func (s *S) TestRemoveUnits(c *gocheck.C) {
 	var calls int32
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
