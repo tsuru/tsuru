@@ -101,17 +101,17 @@ func Reserve(owner string, items ...string) (int, error) {
 	return len(items), err
 }
 
-// Release releases the given item from the owner.
+// Release releases the given items from the owner.
 //
-// It returns an error when the given owner does not exist, and does nothing
-// when the given item does not belong to the owner.
-func Release(owner, item string) error {
+// It returns an error when the given owner does not exist, but returns nil
+// when any of the given items do not not belong to the owner.
+func Release(owner string, items ...string) error {
 	conn, err := db.Conn()
 	if err != nil {
 		return err
 	}
 	defer conn.Close()
-	update := bson.M{"$pull": bson.M{"items": item}}
+	update := bson.M{"$pullAll": bson.M{"items": items}}
 	err = conn.Quota().Update(bson.M{"owner": owner}, update)
 	if err != nil && err.Error() == "not found" {
 		return ErrQuotaNotFound

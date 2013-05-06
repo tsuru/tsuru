@@ -221,6 +221,19 @@ func (Suite) TestReleaseIsSafe(c *gocheck.C) {
 	c.Assert(u.Items, gocheck.HasLen, 0)
 }
 
+func (Suite) TestReleaseMultiple(c *gocheck.C) {
+	err := Create("tank@elp.com", 3)
+	c.Assert(err, gocheck.IsNil)
+	n, err := Reserve("tank@elp.com", "tank/0", "tank/1", "tank/2")
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(n, gocheck.Equals, 3)
+	err = Release("tank@elp.com", "tank/0", "tank/2")
+	c.Assert(err, gocheck.IsNil)
+	items, err := Items("tank@elp.com")
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(items, gocheck.DeepEquals, []string{"tank/1"})
+}
+
 func (Suite) TestSetQuota(c *gocheck.C) {
 	err := Create("survival@yes.com", 1)
 	c.Assert(err, gocheck.IsNil)
