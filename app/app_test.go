@@ -446,6 +446,7 @@ func (s *S) TestAppendOrUpdate(c *gocheck.C) {
 	u := Unit{Name: "i-00000zz8", Ip: "", Machine: 1}
 	a.AddUnit(&u)
 	c.Assert(len(a.Units), gocheck.Equals, 1)
+	c.Assert(u.QuotaItem, gocheck.Equals, "appName-0")
 	u = Unit{
 		Name: "i-00000zz8",
 		Ip:   "192.168.0.12",
