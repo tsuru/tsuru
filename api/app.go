@@ -242,7 +242,14 @@ func addUnits(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
 	if err != nil {
 		return err
 	}
-	return app.AddUnits(n)
+	err = app.AddUnits(n)
+	if _, ok := err.(*quota.QuotaExceededError); ok {
+		return &errors.Http{
+			Code:    http.StatusForbidden,
+			Message: err.Error(),
+		}
+	}
+	return err
 }
 
 func removeUnits(w http.ResponseWriter, r *http.Request, t *auth.Token) error {

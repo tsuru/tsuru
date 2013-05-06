@@ -590,6 +590,33 @@ func (s *S) TestAddUnitsReturns400IfNumberIsInvalid(c *gocheck.C) {
 	}
 }
 
+func (s *S) TestAddUnitsQuotaExceeded(c *gocheck.C) {
+	a := app.App{
+		Name:     "armorandsword",
+		Platform: "python",
+		Teams:    []string{s.team.Name},
+	}
+	err := s.conn.Apps().Insert(a)
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	err = quota.Create(a.Name, 2)
+	c.Assert(err, gocheck.IsNil)
+	defer quota.Delete(a.Name)
+	err = s.provisioner.Provision(&a)
+	c.Assert(err, gocheck.IsNil)
+	defer s.provisioner.Destroy(&a)
+	body := strings.NewReader("3")
+	request, err := http.NewRequest("PUT", "/apps/armorandsword/units?:app=armorandsword", body)
+	c.Assert(err, gocheck.IsNil)
+	recorder := httptest.NewRecorder()
+	err = addUnits(recorder, request, s.token)
+	c.Assert(err, gocheck.NotNil)
+	e, ok := err.(*errors.Http)
+	c.Assert(ok, gocheck.Equals, true)
+	c.Assert(e.Code, gocheck.Equals, http.StatusForbidden)
+	c.Assert(e.Message, gocheck.Equals, "Quota exceeded. Available: 2. Requested: 3.")
+}
+
 func (s *S) TestRemoveUnits(c *gocheck.C) {
 	a := app.App{
 		Name:     "velha",
