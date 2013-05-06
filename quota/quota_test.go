@@ -285,3 +285,8 @@ func (Suite) TestItemsQuotaNotFound(c *gocheck.C) {
 	c.Assert(items, gocheck.IsNil)
 	c.Assert(err, gocheck.Equals, ErrQuotaNotFound)
 }
+
+func (Suite) TestQuotaExceededError(c *gocheck.C) {
+	err := QuotaExceededError{Requested: 10, Available: 9}
+	c.Assert(err.Error(), gocheck.Equals, "Quota exceeded. Available: 9. Requested: 10.")
+}

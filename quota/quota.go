@@ -10,6 +10,7 @@ package quota
 
 import (
 	"errors"
+	"fmt"
 	"github.com/globocom/tsuru/db"
 	"labix.org/v2/mgo"
 	"labix.org/v2/mgo/bson"
@@ -142,4 +143,13 @@ func Items(owner string) ([]string, error) {
 		return nil, ErrQuotaNotFound
 	}
 	return u.Items, nil
+}
+
+type QuotaExceededError struct {
+	Requested uint
+	Available uint
+}
+
+func (err *QuotaExceededError) Error() string {
+	return fmt.Sprintf("Quota exceeded. Available: %d. Requested: %d.", err.Available, err.Requested)
 }
