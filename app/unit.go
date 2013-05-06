@@ -4,9 +4,7 @@
 
 package app
 
-import (
-	"github.com/globocom/tsuru/provision"
-)
+import "github.com/globocom/tsuru/provision"
 
 // Unit is the smaller bit in tsuru. Each app is composed of one or more units.
 //
