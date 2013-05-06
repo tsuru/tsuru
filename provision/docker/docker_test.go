@@ -24,7 +24,7 @@ func (s *S) TestNewContainer(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	defer commandmocker.Remove(tmpdir)
 	app := testing.NewFakeApp("app-name", "python", 1)
-	container, _ := newContainer(app, deployContainerCmd)
+	container, _ := newContainer(app, runContainerCmd)
 	c.Assert(container.name, gocheck.Equals, "app-name")
 	c.Assert(container.id, gocheck.Equals, id)
 }
@@ -36,8 +36,14 @@ func (s *S) TestNewContainerCallsDockerCreate(c *gocheck.C) {
 		execut = nil
 	}()
 	app := testing.NewFakeApp("app-name", "python", 1)
-	newContainer(app, deployContainerCmd)
-	args := []string{"run", "-d", "-t", fmt.Sprintf("%s/python", s.repoNamespace), "/var/lib/tsuru/deploy", fmt.Sprintf("git://%s/app-name.git", s.gitHost)}
+	newContainer(app, runContainerCmd)
+	appRepo := fmt.Sprintf("git://%s/app-name.git", s.gitHost)
+	containerCmd := fmt.Sprintf("\"/var/lib/tsuru/deploy %s && %s %s\"", appRepo, s.runBin, s.runArgs)
+	args := []string{
+		"run", "-d", "-t", "-p", s.port, "tsuru/python",
+		"/bin/bash", "-c",
+		containerCmd,
+	}
 	c.Assert(fexec.ExecutedCmd("docker", args), gocheck.Equals, true)
 }
 
@@ -48,7 +54,7 @@ func (s *S) TestNewContainerInsertContainerOnDatabase(c *gocheck.C) {
 		execut = nil
 	}()
 	app := testing.NewFakeApp("app-name", "python", 1)
-	newContainer(app, deployContainerCmd)
+	newContainer(app, runContainerCmd)
 	u := provision.Unit{}
 	err := s.conn.Collection(s.collName).Find(bson.M{"name": "app-name"}).One(&u)
 	c.Assert(err, gocheck.IsNil)
@@ -63,7 +69,7 @@ func (s *S) TestNewContainerReturnsContainerWithoutIdAndLogsOnError(c *gocheck.C
 	c.Assert(err, gocheck.IsNil)
 	defer commandmocker.Remove(tmpdir)
 	app := testing.NewFakeApp("myapp", "python", 1)
-	container, err := newContainer(app, deployContainerCmd)
+	container, err := newContainer(app, runContainerCmd)
 	c.Assert(err, gocheck.NotNil)
 	c.Assert(container.id, gocheck.Equals, "")
 	c.Assert(w.String(), gocheck.Matches, "(?s).*Error creating container myapp.*")
@@ -94,28 +100,13 @@ func (s *S) TestNewContainerAddsRoute(c *gocheck.C) {
 	c.Assert(addr, gocheck.Equals, "10.10.10.10")
 }
 
-func (s *S) TestDeployContainerCmdReturnsCommandToDeployContainer(c *gocheck.C) {
-	app := testing.NewFakeApp("myapp", "python", 1)
-	cmd, err := deployContainerCmd(app)
-	c.Assert(err, gocheck.IsNil)
-	deployCmd, err := config.GetString("docker:deploy-cmd")
-	c.Assert(err, gocheck.IsNil)
-	appRepo := fmt.Sprintf("git://%s/myapp.git", s.gitHost)
-	expected := []string{"docker", "run", "-d", "-t", fmt.Sprintf("%s/python", s.repoNamespace), deployCmd, appRepo}
-	c.Assert(cmd, gocheck.DeepEquals, expected)
-}
-
 func (s *S) TestRunContainerCmdReturnsCommandToRunContainer(c *gocheck.C) {
 	app := testing.NewFakeApp("myapp", "python", 1)
 	cmd, err := runContainerCmd(app)
 	c.Assert(err, gocheck.IsNil)
-	runBin, err := config.GetString("docker:run-cmd:bin")
-	c.Assert(err, gocheck.IsNil)
-	runArgs, err := config.GetString("docker:run-cmd:args")
-	c.Assert(err, gocheck.IsNil)
-	port, err := config.GetString("docker:run-cmd:port")
-	c.Assert(err, gocheck.IsNil)
-	expected := []string{"docker", "run", "-d", "-p", port, fmt.Sprintf("%s/myapp", s.repoNamespace), runBin, runArgs}
+	appRepo := fmt.Sprintf("git://%s/myapp.git", s.gitHost)
+	containerCmd := fmt.Sprintf("\"%s %s && %s %s\"", s.deployCmd, appRepo, s.runBin, s.runArgs)
+	expected := []string{"docker", "run", "-d", "-t", "-p", s.port, fmt.Sprintf("%s/python", s.repoNamespace), "/bin/bash", "-c", containerCmd}
 	c.Assert(cmd, gocheck.DeepEquals, expected)
 }
 
@@ -127,9 +118,15 @@ func (s *S) TestDockerCreate(c *gocheck.C) {
 	}()
 	container := container{name: "container"}
 	app := testing.NewFakeApp("app-name", "python", 1)
-	_, err := container.create(app, deployContainerCmd)
+	_, err := container.create(app, runContainerCmd)
 	c.Assert(err, gocheck.IsNil)
-	args := []string{"run", "-d", "-t", fmt.Sprintf("%s/python", s.repoNamespace), "/var/lib/tsuru/deploy", fmt.Sprintf("git://%s/app-name.git", s.gitHost)}
+	appRepo := fmt.Sprintf("git://%s/app-name.git", s.gitHost)
+	containerCmd := fmt.Sprintf("\"/var/lib/tsuru/deploy %s && %s %s\"", appRepo, s.runBin, s.runArgs)
+	args := []string{
+		"run", "-d", "-t", "-p", s.port, "tsuru/python",
+		"/bin/bash", "-c",
+		containerCmd,
+	}
 	c.Assert(fexec.ExecutedCmd("docker", args), gocheck.Equals, true)
 }
 

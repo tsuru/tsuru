@@ -35,27 +35,6 @@ func runCmd(cmd string, args ...string) (string, error) {
 	return out.String(), err
 }
 
-// DeployCmd combines settings and application attributes needed in
-// order to make a deploy command
-func deployContainerCmd(app provision.App) ([]string, error) {
-	docker, err := config.GetString("docker:binary")
-	if err != nil {
-		return []string{}, err
-	}
-	repoNamespace, err := config.GetString("docker:repository-namespace")
-	if err != nil {
-		return []string{}, err
-	}
-	cmd, err := config.GetString("docker:deploy-cmd")
-	if err != nil {
-		return []string{}, err
-	}
-	appRepo := repository.GetReadOnlyUrl(app.GetName())
-	imageName := fmt.Sprintf("%s/%s", repoNamespace, app.GetPlatform()) // TODO (flaviamissi): should use same algorithm as image.repositoryName
-	wholeCmd := []string{docker, "run", "-d", "-t", imageName, cmd, appRepo}
-	return wholeCmd, nil
-}
-
 func runContainerCmd(app provision.App) ([]string, error) {
 	docker, err := config.GetString("docker:binary")
 	if err != nil {
@@ -65,6 +44,11 @@ func runContainerCmd(app provision.App) ([]string, error) {
 	if err != nil {
 		return []string{}, err
 	}
+	deployCmd, err := config.GetString("docker:deploy-cmd")
+	if err != nil {
+		return []string{}, err
+	}
+	appRepo := repository.GetReadOnlyUrl(app.GetName())
 	runBin, err := config.GetString("docker:run-cmd:bin")
 	if err != nil {
 		return []string{}, err
@@ -77,8 +61,9 @@ func runContainerCmd(app provision.App) ([]string, error) {
 	if err != nil {
 		return []string{}, err
 	}
-	imageName := fmt.Sprintf("%s/%s", repoNamespace, app.GetName()) // TODO (flaviamissi): should be external function
-	wholeCmd := []string{docker, "run", "-d", "-p", port, imageName, runBin, runArgs}
+	imageName := fmt.Sprintf("%s/%s", repoNamespace, app.GetPlatform()) // TODO (flaviamissi): should use same algorithm as image.repositoryName
+	containerCmd := fmt.Sprintf("\"%s %s && %s %s\"", deployCmd, appRepo, runBin, runArgs)
+	wholeCmd := []string{docker, "run", "-d", "-t", "-p", port, imageName, "/bin/bash", "-c", containerCmd}
 	return wholeCmd, nil
 }
 
