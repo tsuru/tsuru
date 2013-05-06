@@ -66,10 +66,10 @@ func Delete(owner string) error {
 }
 
 // Reserve increases the number of items in use for the owner.
-func Reserve(owner, item string) error {
+func Reserve(owner string, items ...string) (int, error) {
 	conn, err := db.Conn()
 	if err != nil {
-		return err
+		return 0, err
 	}
 	defer conn.Close()
 	locker.Lock(owner)
@@ -77,13 +77,25 @@ func Reserve(owner, item string) error {
 	var u usage
 	err = conn.Quota().Find(bson.M{"owner": owner}).One(&u)
 	if err != nil {
-		return ErrQuotaNotFound
+		return 0, ErrQuotaNotFound
 	}
-	if uint(len(u.Items)) >= u.Limit {
-		return ErrQuotaExceeded
+	length := len(items)
+	cut := int(u.Limit) - len(u.Items)
+	if cut < 1 {
+		return 0, ErrQuotaExceeded
 	}
-	update := bson.M{"$addToSet": bson.M{"items": item}}
-	return conn.Quota().Update(bson.M{"owner": owner}, update)
+	if cut < length {
+		items = items[:cut]
+	}
+	update := bson.M{"$addToSet": bson.M{"items": bson.M{"$each": items}}}
+	err = conn.Quota().Update(bson.M{"owner": owner}, update)
+	if err != nil {
+		return 0, err
+	}
+	if cut < length {
+		err = ErrQuotaExceeded
+	}
+	return len(items), err
 }
 
 // Release releases the given item from the owner.
