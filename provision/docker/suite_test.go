@@ -19,6 +19,10 @@ type S struct {
 	conn          *db.Storage
 	gitHost       string
 	repoNamespace string
+	deployCmd     string
+	runBin        string
+	runArgs       string
+	port          string
 }
 
 var _ = gocheck.Suite(&S{})
@@ -39,6 +43,10 @@ func (s *S) SetUpSuite(c *gocheck.C) {
 	config.Set("docker:run-cmd:bin", "/usr/local/bin/circusd")
 	config.Set("docker:run-cmd:args", "/etc/circus/circus.ini")
 	config.Set("docker:run-cmd:port", "8888")
+	s.deployCmd = "/var/lib/tsuru/deploy"
+	s.runBin = "/usr/local/bin/circusd"
+	s.runArgs = "/etc/circus/circus.ini"
+	s.port = "8888"
 	var err error
 	s.conn, err = db.Conn()
 	c.Assert(err, gocheck.IsNil)
