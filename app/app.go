@@ -837,7 +837,7 @@ func (app *App) Log(message, source string) error {
 	for _, msg := range messages {
 		if msg != "" {
 			l := Applog{
-				Date:    time.Now(),
+				Date:    time.Now().In(time.UTC),
 				Message: msg,
 				Source:  source,
 				AppName: app.Name,
