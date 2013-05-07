@@ -8,6 +8,7 @@ import (
 	"crypto"
 	"encoding/json"
 	"fmt"
+	"github.com/globocom/config"
 	"labix.org/v2/mgo/bson"
 	"launchpad.net/gocheck"
 	"sync"
@@ -237,4 +238,62 @@ func (s *S) TestParseToken(c *gocheck.C) {
 	t, err = parseToken("")
 	c.Assert(err, gocheck.Equals, ErrInvalidToken)
 	c.Assert(t, gocheck.Equals, "")
+}
+
+func (s *S) TestRemoveOld(c *gocheck.C) {
+	config.Set("auth:max-simultaneous-sessions", 6)
+	defer config.Unset("auth:max-simultaneous-sessions")
+	user := "removeme@tsuru.io"
+	defer s.conn.Tokens().RemoveAll(bson.M{"useremail": user})
+	initial := time.Now().Add(-48 * time.Hour)
+	for i := 0; i < 30; i++ {
+		token := Token{
+			Token:     fmt.Sprintf("blastoise-%d", i),
+			Expires:   100 * 24 * time.Hour,
+			Creation:  initial.Add(time.Duration(i) * time.Hour),
+			UserEmail: user,
+		}
+		err := s.conn.Tokens().Insert(token)
+		c.Check(err, gocheck.IsNil)
+	}
+	err := removeOldTokens(user)
+	c.Assert(err, gocheck.IsNil)
+	var tokens []Token
+	err = s.conn.Tokens().Find(bson.M{"useremail": user}).All(&tokens)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(tokens, gocheck.HasLen, 6)
+	names := make([]string, len(tokens))
+	for i := range tokens {
+		names[i] = tokens[i].Token
+	}
+	expected := []string{
+		"blastoise-24", "blastoise-25", "blastoise-26",
+		"blastoise-27", "blastoise-28", "blastoise-29",
+	}
+	c.Assert(names, gocheck.DeepEquals, expected)
+}
+
+func (s *S) TestRemoveOldNothingToRemove(c *gocheck.C) {
+	config.Set("auth:max-simultaneous-sessions", 6)
+	defer config.Unset("auth:max-simultaneous-sessions")
+	user := "removeme@tsuru.io"
+	defer s.conn.Tokens().RemoveAll(bson.M{"useremail": user})
+	t := Token{
+		Token:     "blablabla",
+		UserEmail: user,
+		Creation:  time.Now(),
+		Expires:   time.Hour,
+	}
+	err := s.conn.Tokens().Insert(t)
+	c.Assert(err, gocheck.IsNil)
+	err = removeOldTokens(user)
+	c.Assert(err, gocheck.IsNil)
+	count, err := s.conn.Tokens().Find(bson.M{"useremail": user}).Count()
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(count, gocheck.Equals, 1)
+}
+
+func (s *S) TestRemoveOldWithoutSetting(c *gocheck.C) {
+	err := removeOldTokens("something@tsuru.io")
+	c.Assert(err, gocheck.NotNil)
 }

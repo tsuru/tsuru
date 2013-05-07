@@ -9,6 +9,7 @@ import (
 	"crypto/rand"
 	"errors"
 	"fmt"
+	"github.com/globocom/config"
 	"github.com/globocom/tsuru/db"
 	"labix.org/v2/mgo/bson"
 	"strings"
@@ -174,4 +175,35 @@ func getPasswordToken(token string) (*passwordToken, error) {
 		return nil, ErrInvalidToken
 	}
 	return &t, nil
+}
+
+func removeOldTokens(userEmail string) error {
+	conn, err := db.Conn()
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+	var limit int
+	if limit, err = config.GetInt("auth:max-simultaneous-sessions"); err != nil {
+		return err
+	}
+	count, err := conn.Tokens().Find(bson.M{"useremail": userEmail}).Count()
+	if err != nil {
+		return err
+	}
+	diff := count - limit
+	if diff < 1 {
+		return nil
+	}
+	var tokens []map[string]interface{}
+	err = conn.Tokens().Find(bson.M{"useremail": userEmail}).Select(bson.M{"_id": 1}).Limit(diff).All(&tokens)
+	if err != nil {
+		return nil
+	}
+	ids := make([]interface{}, 0, len(tokens))
+	for _, token := range tokens {
+		ids = append(ids, token["_id"])
+	}
+	_, err = conn.Tokens().RemoveAll(bson.M{"_id": bson.M{"$in": ids}})
+	return err
 }
