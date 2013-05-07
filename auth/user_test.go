@@ -219,6 +219,38 @@ func (s *S) TestCreateTokenShouldSaveTheTokenInTheDatabase(c *gocheck.C) {
 	c.Assert(result.Token, gocheck.NotNil)
 }
 
+func (s *S) TestCreateTokenRemoveOldTokens(c *gocheck.C) {
+	config.Set("auth:max-simultaneous-sessions", 2)
+	u := User{Email: "para@xmen.com", Password: "123456"}
+	err := u.Create()
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Users().Remove(bson.M{"email": u.Email})
+	defer s.conn.Tokens().RemoveAll(bson.M{"useremail": u.Email})
+	_, err = u.CreateToken("123456")
+	c.Assert(err, gocheck.IsNil)
+	_, err = u.CreateToken("123456")
+	c.Assert(err, gocheck.IsNil)
+	_, err = u.CreateToken("123456")
+	c.Assert(err, gocheck.IsNil)
+	ok := make(chan bool, 1)
+	go func() {
+		for {
+			ct, err := s.conn.Tokens().Find(bson.M{"useremail": u.Email}).Count()
+			c.Assert(err, gocheck.IsNil)
+			if ct == 2 {
+				ok <- true
+				return
+			}
+			runtime.Gosched()
+		}
+	}()
+	select {
+	case <-ok:
+	case <-time.After(2e9):
+		c.Fatal("Did not remove old tokens after 2 seconds")
+	}
+}
+
 func (s *S) TestCreateTokenReturnsErrorWhenHashCostIsUndefined(c *gocheck.C) {
 	err := config.Unset("auth:hash-cost")
 	c.Assert(err, gocheck.IsNil)

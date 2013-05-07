@@ -131,6 +131,7 @@ func (u *User) CreateToken(password string) (*Token, error) {
 		return nil, err
 	}
 	err = conn.Tokens().Insert(t)
+	go removeOldTokens(u.Email)
 	return t, err
 }
 
