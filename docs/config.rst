@@ -183,6 +183,12 @@ Whenever a user logs in, tsuru generates a token for him/her, and the user may
 store the token. ``auth:token-expire-days`` setting defines the amount of days
 that the token will be valid. This setting is optional, and defaults to "7".
 
+auth:max-simultaneous-sessions
+++++++++++++++++++++++++++++++
+
+Tsuru can limit the number of simultaneous sessions per user. This setting is
+optional, and defaults to "unlimited".
+
 Amazon Web Services (AWS) configuration
 ---------------------------------------
 
