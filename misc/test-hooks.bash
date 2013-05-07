@@ -13,10 +13,9 @@ function clean() {
 echo "RUNNING GIT-HOOKS TESTS"
 mongo tsuru > /dev/null 2>.mongo.err <<END
 var today = new Date();
-var tomorrow = new Date(today.getTime() + 24 * 60 * 60 * 1000);
 db.users.insert({"email": "test@shellscript", "password": "irrelevant"});
 db.teams.insert({"_id": "test", "users": ["test@shellscript"]})
-db.tokens.insert({"token": "000secret123", "validuntil": tomorrow, "useremail": "test@shellscript"})
+db.tokens.insert({"token": "000secret123", "creation": today, "expires": 24 * 60 * 60 * 1e9, "useremail": "test@shellscript"})
 var app1 = {
 	"name": "shell",
 	"framework": "bash",
