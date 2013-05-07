@@ -32,6 +32,14 @@ func (s *S) TestTokenCannotRepeat(c *gocheck.C) {
 	}
 }
 
+func (s *S) TestNewUserToken(c *gocheck.C) {
+	u := User{Email: "girl@mj.com"}
+	t, err := newUserToken(&u)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(t.Expires, gocheck.Equals, tokenExpire)
+	c.Assert(t.UserEmail, gocheck.Equals, u.Email)
+}
+
 func (s *S) TestNewTokenReturnsErroWhenUserReferenceDoesNotContainsEmail(c *gocheck.C) {
 	u := User{}
 	t, err := newUserToken(&u)
