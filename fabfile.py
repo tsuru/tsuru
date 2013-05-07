@@ -50,7 +50,7 @@ def deploy(flags="", tags=""):
     clean()
 
 
-def deploy_hooks(path, user="git", group="git"):
+def deploy_hooks(path, template_path, user="git", group="git"):
     run("mkdir -p /tmp/git-hooks")
     put("misc/git-hooks/*", "/tmp/git-hooks")
     sudo("chown -R %s:%s /tmp/git-hooks" % (user, group))
@@ -59,5 +59,6 @@ def deploy_hooks(path, user="git", group="git"):
     paths = [p.strip() for p in out.split("\n")]
     for path in paths:
         sudo("cp -p /tmp/git-hooks/* %s/hooks" % path)
+    sudo("cp -p /tmp/git-hooks/* %s/hooks" % template_path)
     sudo("rm /tmp/git-hooks/*")
     sudo("rmdir /tmp/git-hooks")
