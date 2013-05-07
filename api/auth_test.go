@@ -1725,13 +1725,13 @@ func (s *AuthSuite) TestGenerateApplicationToken(c *gocheck.C) {
 	recorder := httptest.NewRecorder()
 	err := generateAppToken(recorder, request, s.token)
 	c.Assert(err, gocheck.IsNil)
-	var jsonToken map[string]string
+	var jsonToken map[string]interface{}
 	err = json.NewDecoder(recorder.Body).Decode(&jsonToken)
 	c.Assert(err, gocheck.IsNil)
 	conn, _ := db.Conn()
 	defer conn.Close()
 	defer conn.Tokens().Remove(bson.M{"token": jsonToken["token"]})
-	t, err := auth.GetToken("bearer " + jsonToken["token"])
+	t, err := auth.GetToken("bearer " + jsonToken["token"].(string))
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(t.AppName, gocheck.Equals, "tsuru-healer")
 }
