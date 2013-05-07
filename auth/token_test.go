@@ -40,7 +40,7 @@ func (s *S) TestNewUserToken(c *gocheck.C) {
 	c.Assert(t.UserEmail, gocheck.Equals, u.Email)
 }
 
-func (s *S) TestNewTokenReturnsErroWhenUserReferenceDoesNotContainsEmail(c *gocheck.C) {
+func (s *S) TestNewTokenReturnsErrorWhenUserReferenceDoesNotContainsEmail(c *gocheck.C) {
 	u := User{}
 	t, err := newUserToken(&u)
 	c.Assert(t, gocheck.IsNil)
