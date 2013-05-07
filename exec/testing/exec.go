@@ -11,6 +11,7 @@ import (
 	"errors"
 	"io"
 	"reflect"
+	"strings"
 	"sync"
 )
 
@@ -30,7 +31,24 @@ func (c *command) GetArgs() []string {
 type FakeExecutor struct {
 	cmds   []command
 	mut    sync.RWMutex
-	Output []byte
+	Output map[string][]byte
+}
+
+// hasOutputForArgs checks if a slice of args have a specific outout assigned to it
+// and returns a boolean indicating that, if the args does have an assigned output,
+// returns it.
+func hasOutputForArgs(out map[string][]byte, args []string) (bool, []byte) {
+	sArgs := strings.Join(args, " ")
+	for k, v := range out {
+		if k == sArgs || k == "*" {
+			return true, v
+		}
+	}
+	return false, []byte{}
+}
+
+func (e *FakeExecutor) hasOutputForArgs(args []string) (bool, []byte) {
+	return hasOutputForArgs(e.Output, args)
 }
 
 func (e *FakeExecutor) Execute(cmd string, args []string, stdin io.Reader, stdout, stderr io.Writer) error {
@@ -38,8 +56,9 @@ func (e *FakeExecutor) Execute(cmd string, args []string, stdin io.Reader, stdou
 	e.mut.Lock()
 	e.cmds = append(e.cmds, c)
 	e.mut.Unlock()
-	if e.Output != nil {
-		stdout.Write(e.Output)
+	has, out := e.hasOutputForArgs(args)
+	if has {
+		stdout.Write(out)
 	}
 	return nil
 }
@@ -68,7 +87,11 @@ func (e *FakeExecutor) GetCommands(cmdName string) []command {
 type ErrorExecutor struct {
 	cmds   []command
 	mut    sync.RWMutex
-	Output []byte
+	Output map[string][]byte
+}
+
+func (e *ErrorExecutor) hasOutputForArgs(args []string) (bool, []byte) {
+	return hasOutputForArgs(e.Output, args)
 }
 
 func (e *ErrorExecutor) Execute(cmd string, args []string, stdin io.Reader, stdout, stderr io.Writer) error {
@@ -76,8 +99,9 @@ func (e *ErrorExecutor) Execute(cmd string, args []string, stdin io.Reader, stdo
 	e.mut.Lock()
 	e.cmds = append(e.cmds, c)
 	e.mut.Unlock()
-	if e.Output != nil {
-		stderr.Write(e.Output)
+	has, out := e.hasOutputForArgs(args)
+	if has {
+		stderr.Write(out)
 	}
 	return errors.New("")
 }

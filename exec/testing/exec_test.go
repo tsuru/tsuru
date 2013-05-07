@@ -52,7 +52,7 @@ func (s *S) TestExecute(c *gocheck.C) {
 }
 
 func (s *S) TestFakeExecutorOutput(c *gocheck.C) {
-	e := FakeExecutor{Output: []byte("ble")}
+	e := FakeExecutor{Output: map[string][]byte{"*": []byte("ble")}}
 	var b bytes.Buffer
 	cmd := "ls"
 	args := []string{"-lsa"}
@@ -60,6 +60,27 @@ func (s *S) TestFakeExecutorOutput(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(e.ExecutedCmd("ls", []string{"-lsa"}), gocheck.Equals, true)
 	c.Assert(b.String(), gocheck.Equals, "ble")
+}
+
+func (s *S) TestFakeExecutorHasOutputForAnyArgsUsingWildCard(c *gocheck.C) {
+	e := FakeExecutor{Output: map[string][]byte{"*": []byte("ble")}}
+	args := []string{"-i", "-t"}
+	has, _ := e.hasOutputForArgs(args)
+	c.Assert(has, gocheck.Equals, true)
+}
+
+func (s *S) TestFakeExecutorHasOutputForArgsSpecifyingArgs(c *gocheck.C) {
+	e := FakeExecutor{Output: map[string][]byte{"-i -t": []byte("ble")}}
+	args := []string{"-i", "-t"}
+	has, _ := e.hasOutputForArgs(args)
+	c.Assert(has, gocheck.Equals, true)
+}
+
+func (s *S) TestFakeExecutorDoesNotHasOutputForNoMatchingArgs(c *gocheck.C) {
+	e := FakeExecutor{Output: map[string][]byte{"-t -i": []byte("ble")}}
+	args := []string{"-d", "-f"}
+	has, _ := e.hasOutputForArgs(args)
+	c.Assert(has, gocheck.Equals, false)
 }
 
 func (s *S) TestErrorExecutorImplementsExecutor(c *gocheck.C) {
@@ -87,7 +108,7 @@ func (s *S) TestErrorExecute(c *gocheck.C) {
 }
 
 func (s *S) TestErrorExecutorOutput(c *gocheck.C) {
-	e := ErrorExecutor{Output: []byte("ble")}
+	e := ErrorExecutor{Output: map[string][]byte{"*": []byte("ble")}}
 	var b bytes.Buffer
 	cmd := "ls"
 	args := []string{"-lsa"}
@@ -95,6 +116,27 @@ func (s *S) TestErrorExecutorOutput(c *gocheck.C) {
 	c.Assert(err, gocheck.NotNil)
 	c.Assert(e.ExecutedCmd("ls", []string{"-lsa"}), gocheck.Equals, true)
 	c.Assert(b.String(), gocheck.Equals, "ble")
+}
+
+func (s *S) TestErrorExecutorHasOutputForAnyArgsUsingWildCard(c *gocheck.C) {
+	e := ErrorExecutor{Output: map[string][]byte{"*": []byte("ble")}}
+	args := []string{"-i", "-t"}
+	has, _ := e.hasOutputForArgs(args)
+	c.Assert(has, gocheck.Equals, true)
+}
+
+func (s *S) TestErrorExecutorHasOutputForArgsSpecifyingArgs(c *gocheck.C) {
+	e := ErrorExecutor{Output: map[string][]byte{"-i -t": []byte("ble")}}
+	args := []string{"-i", "-t"}
+	has, _ := e.hasOutputForArgs(args)
+	c.Assert(has, gocheck.Equals, true)
+}
+
+func (s *S) TestErrorExecutorDoesNotHasOutputForNoMatchingArgs(c *gocheck.C) {
+	e := ErrorExecutor{Output: map[string][]byte{"-t -i": []byte("ble")}}
+	args := []string{"-d", "-f"}
+	has, _ := e.hasOutputForArgs(args)
+	c.Assert(has, gocheck.Equals, false)
 }
 
 func (s *S) TestGetCommands(c *gocheck.C) {
