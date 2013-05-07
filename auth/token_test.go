@@ -75,7 +75,8 @@ func (s *S) TestGetExpiredToken(c *gocheck.C) {
 	t, err := CreateApplicationToken("tsuru-healer")
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Tokens().Remove(bson.M{"token": t.Token})
-	t.ValidUntil = time.Now().Add(-24 * time.Hour)
+	t.Creation = time.Now().Add(-24 * time.Hour)
+	t.Expires = time.Hour
 	s.conn.Tokens().Update(bson.M{"token": t.Token}, t)
 	t2, err := GetToken(t.Token)
 	c.Assert(t2, gocheck.IsNil)
@@ -96,15 +97,16 @@ func (s *S) TestCreateApplicationToken(c *gocheck.C) {
 func (s *S) TestTokenMarshalJSON(c *gocheck.C) {
 	valid := time.Now()
 	t := Token{
-		Token:      "12saii",
-		ValidUntil: valid,
-		UserEmail:  "something@something.com",
-		AppName:    "myapp",
+		Token:     "12saii",
+		Creation:  valid,
+		Expires:   time.Hour,
+		UserEmail: "something@something.com",
+		AppName:   "myapp",
 	}
 	b, err := json.Marshal(&t)
 	c.Assert(err, gocheck.IsNil)
-	want := fmt.Sprintf(`{"token":"12saii","valid-until":"%s","email":"something@something.com","app":"myapp"}`,
-		valid.Format(time.RFC3339Nano))
+	want := fmt.Sprintf(`{"token":"12saii","creation":%q,"expires":%d,"email":"something@something.com","app":"myapp"}`,
+		valid.Format(time.RFC3339Nano), time.Hour)
 	c.Assert(string(b), gocheck.Equals, want)
 }
 

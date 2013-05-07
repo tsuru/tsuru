@@ -23,10 +23,11 @@ const (
 var ErrInvalidToken = errors.New("Invalid token")
 
 type Token struct {
-	Token      string    `json:"token"`
-	ValidUntil time.Time `json:"valid-until"`
-	UserEmail  string    `json:"email"`
-	AppName    string    `json:"app"`
+	Token     string        `json:"token"`
+	Creation  time.Time     `json:"creation"`
+	Expires   time.Duration `json:"expires"`
+	UserEmail string        `json:"email"`
+	AppName   string        `json:"app"`
 }
 
 func (t *Token) User() (*User, error) {
@@ -65,7 +66,7 @@ func GetToken(header string) (*Token, error) {
 	if err != nil {
 		return nil, ErrInvalidToken
 	}
-	if t.ValidUntil.Sub(time.Now()) < 1 {
+	if t.Creation.Add(t.Expires).Sub(time.Now()) < 1 {
 		return nil, ErrInvalidToken
 	}
 	return &t, nil
@@ -87,9 +88,10 @@ func CreateApplicationToken(appName string) (*Token, error) {
 	}
 	defer conn.Close()
 	t := Token{
-		ValidUntil: time.Now().Add(365 * 24 * time.Hour),
-		Token:      token(appName, crypto.SHA1),
-		AppName:    appName,
+		Token:    token(appName, crypto.SHA1),
+		Creation: time.Now(),
+		Expires:  365 * 24 * time.Hour,
+		AppName:  appName,
 	}
 	err = conn.Tokens().Insert(t)
 	if err != nil {
@@ -122,7 +124,8 @@ func newUserToken(u *User) (*Token, error) {
 		return nil, err
 	}
 	t := Token{}
-	t.ValidUntil = time.Now().Add(tokenExpire)
+	t.Creation = time.Now()
+	t.Expires = tokenExpire
 	t.Token = token(u.Email, crypto.SHA1)
 	t.UserEmail = u.Email
 	return &t, nil
