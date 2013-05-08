@@ -61,6 +61,7 @@ func RunServer(flags map[string]interface{}) {
 	m.Get("/schema/services", authorizationRequiredHandler(servicesSchema))
 
 	m.Get("/services/instances", authorizationRequiredHandler(serviceInstances))
+	m.Get("/services/instances/:name", authorizationRequiredHandler(serviceInstance))
 	m.Post("/services/instances", authorizationRequiredHandler(createServiceInstance))
 	m.Put("/services/instances/:instance/:app", authorizationRequiredHandler(bindServiceInstance))
 	m.Del("/services/instances/:instance/:app", authorizationRequiredHandler(unbindServiceInstance))
