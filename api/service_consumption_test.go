@@ -217,7 +217,7 @@ func (s *ConsumptionSuite) TestRemoveServiceHandlerWithoutPermissionShouldReturn
 	c.Assert(err, gocheck.IsNil)
 	recorder, request := makeRequestToRemoveInstanceHandler("foo-instance", c)
 	err = removeServiceInstance(recorder, request, s.token)
-	c.Assert(err, gocheck.ErrorMatches, "^This user does not have access to this service instance$")
+	c.Assert(err.Error(), gocheck.Equals, service.ErrAccessNotAllowed.Error())
 }
 
 func (s *ConsumptionSuite) TestRemoveServiceHandlerWIthAssociatedAppsShouldFailAndReturnError(c *gocheck.C) {

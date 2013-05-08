@@ -582,32 +582,27 @@ func appLog(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
 	return nil
 }
 
-func getServiceInstance(instanceName, appName string, u *auth.User) (service.ServiceInstance, app.App, error) {
+func getServiceInstance(instanceName, appName string, u *auth.User) (*service.ServiceInstance, *app.App, error) {
 	var app app.App
 	conn, err := db.Conn()
 	if err != nil {
-		return service.ServiceInstance{}, app, err
+		return nil, nil, err
 	}
 	defer conn.Close()
-	instance, err := service.GetInstance(instanceName)
+	instance, err := getServiceInstanceOrError(instanceName, u)
 	if err != nil {
-		err = &errors.Http{Code: http.StatusNotFound, Message: "Instance not found"}
-		return instance, app, err
-	}
-	if !auth.CheckUserAccess(instance.Teams, u) {
-		err = &errors.Http{Code: http.StatusForbidden, Message: "This user does not have access to this instance"}
-		return instance, app, err
+		return nil, nil, err
 	}
 	err = conn.Apps().Find(bson.M{"name": appName}).One(&app)
 	if err != nil {
 		err = &errors.Http{Code: http.StatusNotFound, Message: fmt.Sprintf("App %s not found.", appName)}
-		return instance, app, err
+		return nil, nil, err
 	}
 	if !auth.CheckUserAccess(app.Teams, u) {
 		err = &errors.Http{Code: http.StatusForbidden, Message: "This user does not have access to this app"}
-		return instance, app, err
+		return nil, nil, err
 	}
-	return instance, app, nil
+	return instance, &app, nil
 }
 
 func bindServiceInstance(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
@@ -621,7 +616,7 @@ func bindServiceInstance(w http.ResponseWriter, r *http.Request, t *auth.Token) 
 		return err
 	}
 	rec.Log(u.Email, "bind-app", "instance="+instanceName, "app="+appName)
-	err = instance.BindApp(&a)
+	err = instance.BindApp(a)
 	if err != nil {
 		return err
 	}
@@ -645,7 +640,7 @@ func unbindServiceInstance(w http.ResponseWriter, r *http.Request, t *auth.Token
 		return err
 	}
 	rec.Log(u.Email, "unbind-app", "instance="+instanceName, "app="+appName)
-	return instance.UnbindApp(&a)
+	return instance.UnbindApp(a)
 }
 
 func restart(w http.ResponseWriter, r *http.Request, t *auth.Token) error {

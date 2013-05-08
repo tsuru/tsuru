@@ -2190,7 +2190,7 @@ func (s *S) TestBindHandlerReturns404IfTheInstanceDoesNotExist(c *gocheck.C) {
 	e, ok := err.(*errors.Http)
 	c.Assert(ok, gocheck.Equals, true)
 	c.Assert(e.Code, gocheck.Equals, http.StatusNotFound)
-	c.Assert(e, gocheck.ErrorMatches, "^Instance not found$")
+	c.Assert(e.Message, gocheck.Equals, service.ErrServiceInstanceNotFound.Error())
 }
 
 func (s *S) TestBindHandlerReturns403IfTheUserDoesNotHaveAccessToTheInstance(c *gocheck.C) {
@@ -2216,7 +2216,7 @@ func (s *S) TestBindHandlerReturns403IfTheUserDoesNotHaveAccessToTheInstance(c *
 	e, ok := err.(*errors.Http)
 	c.Assert(ok, gocheck.Equals, true)
 	c.Assert(e.Code, gocheck.Equals, http.StatusForbidden)
-	c.Assert(e, gocheck.ErrorMatches, "^This user does not have access to this instance$")
+	c.Assert(e.Message, gocheck.Equals, service.ErrAccessNotAllowed.Error())
 }
 
 func (s *S) TestBindHandlerReturns404IfTheAppDoesNotExist(c *gocheck.C) {
@@ -2363,7 +2363,7 @@ func (s *S) TestUnbindHandlerReturns404IfTheInstanceDoesNotExist(c *gocheck.C) {
 	e, ok := err.(*errors.Http)
 	c.Assert(ok, gocheck.Equals, true)
 	c.Assert(e.Code, gocheck.Equals, http.StatusNotFound)
-	c.Assert(e, gocheck.ErrorMatches, "^Instance not found$")
+	c.Assert(e.Message, gocheck.Equals, service.ErrServiceInstanceNotFound.Error())
 }
 
 func (s *S) TestUnbindHandlerReturns403IfTheUserDoesNotHaveAccessToTheInstance(c *gocheck.C) {
@@ -2389,7 +2389,7 @@ func (s *S) TestUnbindHandlerReturns403IfTheUserDoesNotHaveAccessToTheInstance(c
 	e, ok := err.(*errors.Http)
 	c.Assert(ok, gocheck.Equals, true)
 	c.Assert(e.Code, gocheck.Equals, http.StatusForbidden)
-	c.Assert(e, gocheck.ErrorMatches, "^This user does not have access to this instance$")
+	c.Assert(e.Message, gocheck.Equals, service.ErrAccessNotAllowed.Error())
 }
 
 func (s *S) TestUnbindHandlerReturns404IfTheAppDoesNotExist(c *gocheck.C) {

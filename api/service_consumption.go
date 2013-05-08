@@ -93,7 +93,7 @@ func removeServiceInstance(w http.ResponseWriter, r *http.Request, t *auth.Token
 	if err != nil {
 		return err
 	}
-	err = service.DeleteInstance(&si)
+	err = service.DeleteInstance(si)
 	if err != nil {
 		return err
 	}
@@ -134,22 +134,9 @@ func serviceInstance(w http.ResponseWriter, r *http.Request, t *auth.Token) erro
 	if err != nil {
 		return err
 	}
-	instance, err := service.GetServiceInstance(r.URL.Query().Get(":name"), u)
+	instance, err := getServiceInstanceOrError(r.URL.Query().Get(":name"), u)
 	if err != nil {
-		switch err {
-		case service.ErrServiceInstanceNotFound:
-			return &errors.Http{
-				Code:    http.StatusNotFound,
-				Message: err.Error(),
-			}
-		case service.ErrAccessNotAllowed:
-			return &errors.Http{
-				Code:    http.StatusForbidden,
-				Message: err.Error(),
-			}
-		default:
-			return err
-		}
+		return err
 	}
 	return json.NewEncoder(w).Encode(instance)
 }
@@ -244,14 +231,23 @@ func getServiceOrError(name string, u *auth.User) (service.Service, error) {
 	return s, err
 }
 
-func getServiceInstanceOrError(name string, u *auth.User) (service.ServiceInstance, error) {
-	si, err := service.GetInstance(name)
+func getServiceInstanceOrError(name string, u *auth.User) (*service.ServiceInstance, error) {
+	si, err := service.GetServiceInstance(name, u)
 	if err != nil {
-		return si, &errors.Http{Code: http.StatusNotFound, Message: "Service instance not found"}
-	}
-	if !auth.CheckUserAccess(si.Teams, u) {
-		msg := "This user does not have access to this service instance"
-		return si, &errors.Http{Code: http.StatusForbidden, Message: msg}
+		switch err {
+		case service.ErrServiceInstanceNotFound:
+			return nil, &errors.Http{
+				Code:    http.StatusNotFound,
+				Message: err.Error(),
+			}
+		case service.ErrAccessNotAllowed:
+			return nil, &errors.Http{
+				Code:    http.StatusForbidden,
+				Message: err.Error(),
+			}
+		default:
+			return nil, err
+		}
 	}
 	return si, nil
 }
