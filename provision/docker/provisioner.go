@@ -47,6 +47,28 @@ func (p *DockerProvisioner) Provision(app provision.App) error {
 }
 
 func (p *DockerProvisioner) Restart(app provision.App) error {
+	var (
+		units []provision.Unit
+		c     container
+	)
+	err := collection().Find(bson.M{"appname": app.GetName()}).All(&units)
+	if err != nil {
+		log.Printf("Got error while getting app units: %s", err.Error())
+		return err
+	}
+	for _, u := range units {
+		c.id = u.Name
+		err = c.stop()
+		if err != nil {
+			log.Printf("Error while stopping container %s", c.id)
+			return err
+		}
+		err = c.start()
+		if err != nil {
+			log.Printf("Error while starting container %s", c.id)
+			return err
+		}
+	}
 	return nil
 }
 

@@ -31,11 +31,24 @@ func (s *S) TestProvisionerProvision(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 }
 
-func (s *S) TestProvisionerRestart(c *gocheck.C) {
+func (s *S) TestProvisionerRestartCallsDockerStopAndDockerStart(c *gocheck.C) {
+	id := "caad7bbd5411"
+	fexec := &etesting.FakeExecutor{Output: map[string][]byte{"*": []byte(id)}}
+	execut = fexec
+	defer func() {
+		execut = nil
+	}()
 	var p DockerProvisioner
 	app := testing.NewFakeApp("almah", "static", 1)
-	err := p.Restart(app)
+	u := provision.Unit{Name: id, AppName: app.GetName(), Type: app.GetPlatform(), Status: provision.StatusInstalling}
+	err := collection().Insert(u)
 	c.Assert(err, gocheck.IsNil)
+	err = p.Restart(app)
+	c.Assert(err, gocheck.IsNil)
+	args := []string{"stop", id}
+	c.Assert(fexec.ExecutedCmd("docker", args), gocheck.Equals, true)
+	args = []string{"start", id}
+	c.Assert(fexec.ExecutedCmd("docker", args), gocheck.Equals, true)
 }
 
 func (s *S) TestDeployShouldCallDockerCreate(c *gocheck.C) {
