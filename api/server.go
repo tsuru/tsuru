@@ -62,10 +62,10 @@ func RunServer(flags map[string]interface{}) {
 
 	m.Get("/services/instances", authorizationRequiredHandler(serviceInstances))
 	m.Get("/services/instances/:name", authorizationRequiredHandler(serviceInstance))
+	m.Del("/services/instances/:name", authorizationRequiredHandler(removeServiceInstance))
 	m.Post("/services/instances", authorizationRequiredHandler(createServiceInstance))
 	m.Put("/services/instances/:instance/:app", authorizationRequiredHandler(bindServiceInstance))
 	m.Del("/services/instances/:instance/:app", authorizationRequiredHandler(unbindServiceInstance))
-	m.Del("/services/c/instances/:name", authorizationRequiredHandler(removeServiceInstance))
 	m.Get("/services/instances/:instance/status", authorizationRequiredHandler(serviceInstanceStatus))
 
 	m.Get("/services", authorizationRequiredHandler(serviceList))
