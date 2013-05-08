@@ -115,8 +115,7 @@ func (*DockerProvisioner) ExecuteCommand(stdout, stderr io.Writer, app provision
 
 func (p *DockerProvisioner) CollectStatus() ([]provision.Unit, error) {
 	var units []provision.Unit
-	err := collection().Find(nil).All(&units)
-	if err != nil {
+	if err := collection().Find(nil).All(&units); err != nil {
 		return []provision.Unit{}, err
 	}
 	return units, nil

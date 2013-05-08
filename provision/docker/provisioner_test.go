@@ -48,7 +48,7 @@ func (s *S) TestDeployShouldCallDockerCreate(c *gocheck.C) {
             "PortMapping": {}
     }
 }`
-	fexec := &etesting.FakeExecutor{Output: []byte(out)}
+	fexec := &etesting.FakeExecutor{Output: map[string][]byte{"*": []byte(out)}}
 	execut = fexec
 	defer func() {
 		execut = nil

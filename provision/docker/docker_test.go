@@ -19,14 +19,63 @@ import (
 )
 
 func (s *S) TestNewContainer(c *gocheck.C) {
+	inspectOut := `
+    {
+            "NetworkSettings": {
+            "IpAddress": "10.10.10.10",
+            "IpPrefixLen": 8,
+            "Gateway": "10.65.41.1",
+            "PortMapping": {}
+    }
+}`
 	id := "945132e7b4c9"
-	tmpdir, err := commandmocker.Add("docker", id)
-	c.Assert(err, gocheck.IsNil)
-	defer commandmocker.Remove(tmpdir)
+	runCmd := fmt.Sprintf("run -d -t -p %s tsuru/python /bin/bash -c /var/lib/tsuru/deploy git://%s/app-name.git && %s %s", s.port, s.gitHost, s.runBin, s.runArgs)
+	inspectCmd := fmt.Sprintf("inspect %s", id)
+	out := map[string][]byte{runCmd: []byte(id), inspectCmd: []byte(inspectOut)}
+	fexec := &etesting.FakeExecutor{Output: out}
+	execut = fexec
+	defer func() {
+		execut = nil
+	}()
 	app := testing.NewFakeApp("app-name", "python", 1)
-	container, _ := newContainer(app, runContainerCmd)
-	c.Assert(container.name, gocheck.Equals, "app-name")
-	c.Assert(container.id, gocheck.Equals, id)
+	_, err := newContainer(app, runContainerCmd)
+	c.Assert(err, gocheck.IsNil)
+	u := provision.Unit{}
+	err = s.conn.Collection(s.collName).Find(bson.M{"name": id}).One(&u)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(u.Name, gocheck.Equals, id)
+	c.Assert(u.AppName, gocheck.Equals, "app-name")
+	c.Assert(u.InstanceId, gocheck.Equals, "")
+}
+
+func (s *S) TestNewContainerAddsContainerIpOnDatabase(c *gocheck.C) {
+	inspectOut := `
+    {
+            "NetworkSettings": {
+            "IpAddress": "10.10.10.10",
+            "IpPrefixLen": 8,
+            "Gateway": "10.65.41.1",
+            "PortMapping": {}
+    }
+}`
+	id := "945132e7b4c9"
+	runCmd := fmt.Sprintf("run -d -t -p %s tsuru/python /bin/bash -c /var/lib/tsuru/deploy git://%s/app-name.git && %s %s", s.port, s.gitHost, s.runBin, s.runArgs)
+	inspectCmd := fmt.Sprintf("inspect %s", id)
+	out := map[string][]byte{runCmd: []byte(id), inspectCmd: []byte(inspectOut)}
+	fexec := &etesting.FakeExecutor{Output: out}
+	execut = fexec
+	defer func() {
+		execut = nil
+	}()
+	app := testing.NewFakeApp("app-name", "python", 1)
+	_, err := newContainer(app, runContainerCmd)
+	c.Assert(err, gocheck.IsNil)
+	u := provision.Unit{}
+	err = s.conn.Collection(s.collName).Find(bson.M{"name": id}).One(&u)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(u.Name, gocheck.Equals, id)
+	c.Assert(u.AppName, gocheck.Equals, "app-name")
+	c.Assert(u.Ip, gocheck.Equals, "10.10.10.10")
 }
 
 func (s *S) TestNewContainerCallsDockerCreate(c *gocheck.C) {
@@ -48,15 +97,29 @@ func (s *S) TestNewContainerCallsDockerCreate(c *gocheck.C) {
 }
 
 func (s *S) TestNewContainerInsertContainerOnDatabase(c *gocheck.C) {
-	fexec := &etesting.FakeExecutor{}
+	inspectOut := `
+    {
+            "NetworkSettings": {
+            "IpAddress": "10.10.10.10",
+            "IpPrefixLen": 8,
+            "Gateway": "10.65.41.1",
+            "PortMapping": {}
+    }
+}`
+	id := "945132e7b4c9"
+	runCmd := fmt.Sprintf("run -d -t -p %s tsuru/python /bin/bash -c /var/lib/tsuru/deploy git://%s/app-name.git && %s %s", s.port, s.gitHost, s.runBin, s.runArgs)
+	inspectCmd := fmt.Sprintf("inspect %s", id)
+	out := map[string][]byte{runCmd: []byte(id), inspectCmd: []byte(inspectOut)}
+	fexec := &etesting.FakeExecutor{Output: out}
 	execut = fexec
 	defer func() {
 		execut = nil
 	}()
 	app := testing.NewFakeApp("app-name", "python", 1)
-	newContainer(app, runContainerCmd)
+	_, err := newContainer(app, runContainerCmd)
+	c.Assert(err, gocheck.IsNil)
 	u := provision.Unit{}
-	err := s.conn.Collection(s.collName).Find(bson.M{"name": "app-name"}).One(&u)
+	err = s.conn.Collection(s.collName).Find(bson.M{"name": id}).One(&u)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(u.Type, gocheck.Equals, "python")
 }
@@ -85,7 +148,7 @@ func (s *S) TestNewContainerAddsRoute(c *gocheck.C) {
             "PortMapping": {}
     }
 }`
-	fexec := &etesting.FakeExecutor{Output: []byte(out)}
+	fexec := &etesting.FakeExecutor{Output: map[string][]byte{"*": []byte(out)}}
 	execut = fexec
 	defer func() {
 		execut = nil

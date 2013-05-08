@@ -90,17 +90,12 @@ func newContainer(app provision.App, f func(provision.App) ([]string, error)) (*
 	}
 	c.id = id
 	u := provision.Unit{
-		Name:       app.GetName(),
-		AppName:    app.GetName(),
-		Type:       app.GetPlatform(),
-		Machine:    0,
-		InstanceId: app.GetName(),
-		Status:     provision.StatusCreating,
-		Ip:         "",
-	}
-	if err := collection().Insert(u); err != nil {
-		log.Print(err)
-		return c, err
+		Name:    id,
+		AppName: app.GetName(),
+		Type:    app.GetPlatform(),
+		Machine: 0,
+		Status:  provision.StatusInstalling,
+		Ip:      "",
 	}
 	r, err := getRouter()
 	if err != nil {
@@ -108,6 +103,11 @@ func newContainer(app provision.App, f func(provision.App) ([]string, error)) (*
 	}
 	ip, err := c.ip()
 	if err != nil {
+		return c, err
+	}
+	u.Ip = ip
+	if err := collection().Insert(u); err != nil {
+		log.Print(err)
 		return c, err
 	}
 	return c, r.AddRoute(app.GetName(), ip)
