@@ -378,7 +378,7 @@ func (c ServiceRemove) Info() *cmd.Info {
 
 func (c ServiceRemove) Run(ctx *cmd.Context, client *cmd.Client) error {
 	name := ctx.Args[0]
-	url := fmt.Sprintf("/services/c/instances/%s", name)
+	url := fmt.Sprintf("/services/instances/%s", name)
 	url, err := cmd.GetUrl(url)
 	if err != nil {
 		return err

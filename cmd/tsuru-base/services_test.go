@@ -438,7 +438,17 @@ func (s *S) TestServiceRemoveRun(c *gocheck.C) {
 		Stderr: &stderr,
 	}
 	result := "service instance successfuly removed"
-	client := cmd.NewClient(&http.Client{Transport: &testing.Transport{Message: result, Status: http.StatusOK}}, nil, manager)
+	transport := testing.ConditionalTransport{
+		Transport: testing.Transport{
+			Message: result,
+			Status:  http.StatusOK,
+		},
+		CondFunc: func(r *http.Request) bool {
+			return r.URL.Path == "/services/instances/some-service-instance" &&
+				r.Method == "DELETE"
+		},
+	}
+	client := cmd.NewClient(&http.Client{Transport: &transport}, nil, manager)
 	err := (&ServiceRemove{}).Run(&ctx, client)
 	c.Assert(err, gocheck.IsNil)
 	obtained := stdout.String()
