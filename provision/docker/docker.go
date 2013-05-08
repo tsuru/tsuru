@@ -93,9 +93,6 @@ func newContainer(app provision.App, f func(provision.App) ([]string, error)) (*
 		Name:    id,
 		AppName: app.GetName(),
 		Type:    app.GetPlatform(),
-		Machine: 0,
-		Status:  provision.StatusInstalling,
-		Ip:      "",
 	}
 	r, err := getRouter()
 	if err != nil {
