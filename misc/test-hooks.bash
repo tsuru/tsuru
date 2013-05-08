@@ -4,8 +4,6 @@
 # Use of this source code is governed by a BSD-style
 # license that can be found in the LICENSE file.
 
-# TODO(fss): this script is a hack. I should rewrite it :)
-
 function clean() {
 	rm tsr .copy.conf
 }
