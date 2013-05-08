@@ -323,3 +323,19 @@ func (s *S) TestImageRemove(c *gocheck.C) {
 	err = s.conn.Collection(s.imageCollName).Find(bson.M{"name": img.Name}).One(&imgMgo)
 	c.Assert(err.Error(), gocheck.Equals, "not found")
 }
+
+func (s *S) TestGetContainer(c *gocheck.C) {
+	collection().Insert(
+		provision.Unit{Name: "abcdef", Type: "python"},
+		provision.Unit{Name: "fedajs", Type: "ruby"},
+		provision.Unit{Name: "wat", Type: "java"},
+	)
+	defer collection().RemoveAll(bson.M{"name": bson.M{"$in": []string{"abcdef", "fedajs", "wat"}}})
+	unit, err := getContainer("abcdef")
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(unit.Name, gocheck.Equals, "abcdef")
+	c.Assert(unit.Type, gocheck.Equals, "python")
+	unit, err = getContainer("wut")
+	c.Assert(unit, gocheck.IsNil)
+	c.Assert(err.Error(), gocheck.Equals, "not found")
+}

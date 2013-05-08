@@ -267,3 +267,14 @@ func (img *image) remove() error {
 	}
 	return nil
 }
+
+func getContainer(id string) (*provision.Unit, error) {
+	var u provision.Unit
+	coll := collection()
+	defer coll.Database.Session.Close()
+	err := coll.Find(bson.M{"name": id}).One(&u)
+	if err != nil {
+		return nil, err
+	}
+	return &u, nil
+}
