@@ -376,21 +376,6 @@ func (s *InstanceSuite) TestMarshalJSONWithoutEndpoint(c *gocheck.C) {
 	c.Assert(result, gocheck.DeepEquals, expected)
 }
 
-func (s *InstanceSuite) TestGetInstance(c *gocheck.C) {
-	expected := ServiceInstance{Name: "instance", Apps: []string{}, Teams: []string{}}
-	err := s.conn.ServiceInstances().Insert(&expected)
-	c.Assert(err, gocheck.IsNil)
-	defer s.conn.ServiceInstances().Remove(bson.M{"name": expected.Name})
-	si, err := GetInstance(expected.Name)
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(si, gocheck.DeepEquals, expected)
-}
-
-func (s *InstanceSuite) TestGetInstanceNotFound(c *gocheck.C) {
-	_, err := GetInstance("name")
-	c.Assert(err, gocheck.NotNil)
-}
-
 func (s *InstanceSuite) TestDeleteInstance(c *gocheck.C) {
 	h := TestHandler{}
 	ts := httptest.NewServer(&h)
@@ -431,13 +416,13 @@ func (s *InstanceSuite) TestCreateInstance(c *gocheck.C) {
 	err := s.conn.Services().Insert(&srv)
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Services().RemoveId(srv.Name)
-	si := ServiceInstance{Name: "instance", Apps: []string{}, Teams: []string{}, ServiceName: srv.Name}
+	si := ServiceInstance{Name: "instance", Apps: []string{}, Teams: []string{s.team.Name}, ServiceName: srv.Name}
 	err = CreateInstance(&si)
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.ServiceInstances().Remove(bson.M{"name": si.Name})
-	expected, err := GetInstance(si.Name)
+	expected, err := GetServiceInstance(si.Name, s.user)
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(si, gocheck.DeepEquals, expected)
+	c.Assert(si, gocheck.DeepEquals, *expected)
 }
 
 func (s *InstanceSuite) TestStatus(c *gocheck.C) {

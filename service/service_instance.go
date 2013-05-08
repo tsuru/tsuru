@@ -29,18 +29,6 @@ type ServiceInstance struct {
 	Teams       []string
 }
 
-// GetInstance gets the service instance by name from database.
-func GetInstance(name string) (ServiceInstance, error) {
-	conn, err := db.Conn()
-	if err != nil {
-		return ServiceInstance{}, err
-	}
-	defer conn.Close()
-	var si ServiceInstance
-	err = conn.ServiceInstances().Find(bson.M{"name": name}).One(&si)
-	return si, err
-}
-
 // DeleteInstance deletes the service instance from the database.
 func DeleteInstance(si *ServiceInstance) error {
 	if len(si.Apps) > 0 {
