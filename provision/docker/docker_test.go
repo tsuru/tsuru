@@ -194,9 +194,16 @@ func (s *S) TestDockerCreate(c *gocheck.C) {
 }
 
 func (s *S) TestDockerStart(c *gocheck.C) {
-	container := container{name: "container"}
+	fexec := &etesting.FakeExecutor{}
+	execut = fexec
+	defer func() {
+		execut = nil
+	}()
+	container := container{name: "container", id: "123"}
 	err := container.start()
 	c.Assert(err, gocheck.IsNil)
+	args := []string{"start", "123"}
+	c.Assert(fexec.ExecutedCmd("docker", args), gocheck.Equals, true)
 }
 
 func (s *S) TestDockerStop(c *gocheck.C) {

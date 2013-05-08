@@ -168,8 +168,14 @@ func (c *container) create(app provision.App, f func(provision.App) ([]string, e
 
 // start starts a docker container.
 func (c *container) start() error {
-	// it isn't necessary to start a docker container after docker run.
-	return nil
+	docker, err := config.GetString("docker:binary")
+	if err != nil {
+		return err
+	}
+	log.Printf("Stating container %s", c.id)
+	out, err := runCmd(docker, "start", c.id)
+	log.Printf("docker start output: %s", out)
+	return err
 }
 
 // stop stops a docker container.
@@ -179,9 +185,9 @@ func (c *container) stop() error {
 		return err
 	}
 	//TODO: better error handling
-	log.Printf("trying to stop instance %s", c.id)
+	log.Printf("Stopping container %s", c.id)
 	output, err := runCmd(docker, "stop", c.id)
-	log.Printf("docker stop=%s", output)
+	log.Printf("docker stop output: %s", output)
 	return err
 }
 
