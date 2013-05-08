@@ -5,6 +5,8 @@
 package docker
 
 import (
+	"encoding/json"
+	"fmt"
 	"github.com/globocom/config"
 	"github.com/globocom/tsuru/db"
 	"github.com/globocom/tsuru/exec"
@@ -16,6 +18,9 @@ import (
 	"io"
 	"labix.org/v2/mgo"
 	"labix.org/v2/mgo/bson"
+	"net"
+	"strings"
+	"sync"
 )
 
 func init() {
@@ -136,11 +141,73 @@ func (*DockerProvisioner) ExecuteCommand(stdout, stderr io.Writer, app provision
 }
 
 func (p *DockerProvisioner) CollectStatus() ([]provision.Unit, error) {
-	var units []provision.Unit
-	if err := collection().Find(nil).All(&units); err != nil {
-		return []provision.Unit{}, err
+	docker, err := config.GetString("docker:binary")
+	if err != nil {
+		return nil, err
 	}
-	return units, nil
+	out, err := runCmd(docker, "ps", "-q")
+	if err != nil {
+		return nil, err
+	}
+	var linesGroup sync.WaitGroup
+	lines := strings.Split(strings.TrimSpace(out), "\n")
+	units := make(chan provision.Unit, len(lines))
+	errs := make(chan error, 1)
+	for _, line := range lines {
+		linesGroup.Add(1)
+		go func(id string) {
+			defer linesGroup.Done()
+			unit, err := getContainer(id)
+			if err != nil {
+				log.Printf("Container %q not in the database. Skipping...", id)
+				return
+			}
+			out, err := runCmd(docker, "inspect", id)
+			if err != nil {
+				errs <- err
+				return
+			}
+			var c map[string]interface{}
+			err = json.Unmarshal([]byte(out), &c)
+			if err != nil {
+				errs <- err
+				return
+			}
+			unit.Ip = c["NetworkSettings"].(map[string]interface{})["IpAddress"].(string)
+			portMapping := c["NetworkSettings"].(map[string]interface{})["PortMapping"].(map[string]interface{})
+			var port string
+			for k := range portMapping {
+				port = k
+				break
+			}
+			addr := fmt.Sprintf("%s:%s", unit.Ip, port)
+			conn, err := net.Dial("tcp", addr)
+			if err != nil {
+				unit.Status = provision.StatusInstalling
+			} else {
+				conn.Close()
+				unit.Status = provision.StatusStarted
+			}
+			units <- *unit
+		}(line)
+	}
+	var resultGroup sync.WaitGroup
+	resultGroup.Add(1)
+	result := make([]provision.Unit, 0, len(lines))
+	go func() {
+		defer resultGroup.Done()
+		for unit := range units {
+			result = append(result, unit)
+		}
+	}()
+	linesGroup.Wait()
+	close(errs)
+	close(units)
+	if err, ok := <-errs; ok {
+		return nil, err
+	}
+	resultGroup.Wait()
+	return result, nil
 }
 
 func collection() *mgo.Collection {

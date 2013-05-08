@@ -14,7 +14,9 @@ import (
 	"labix.org/v2/mgo/bson"
 	"launchpad.net/gocheck"
 	stdlog "log"
+	"net"
 	"runtime"
+	"strings"
 	"time"
 )
 
@@ -161,33 +163,73 @@ func (s *S) TestProvisionerExecuteCommand(c *gocheck.C) {
 }
 
 func (s *S) TestCollectStatus(c *gocheck.C) {
-	var p DockerProvisioner
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	c.Assert(err, gocheck.IsNil)
+	defer listener.Close()
+	err = collection().Insert(
+		provision.Unit{Name: "9930c24f1c5f", AppName: "ashamed", Type: "python"},
+		provision.Unit{Name: "9930c24f1c4f", AppName: "make-up", Type: "python"},
+	)
+	c.Assert(err, gocheck.IsNil)
+	defer collection().RemoveAll(bson.M{"name": bson.M{"$in": []string{"9930c24f1c5f", "9930c24f1c4f"}}})
+	psOutput := `9930c24f1c5f
+9930c24f1c4f
+9930c24f1c3f
+`
+	c1Output := fmt.Sprintf(`{
+	"NetworkSettings": {
+		"IpAddress": "127.0.0.1",
+		"IpPrefixLen": 8,
+		"Gateway": "10.65.41.1",
+		"PortMapping": {
+			"%s": "90293"
+		}
+	}
+}`, strings.Split(listener.Addr().String(), ":")[1])
+	c2Output := `{
+	"NetworkSettings": {
+		"IpAddress": "127.0.0.1",
+		"IpPrefixLen": 8,
+		"Gateway": "10.65.41.1",
+		"PortMapping": {
+			"8889": "90294"
+		}
+	}
+}`
 	expected := []provision.Unit{
 		{
-			Name:       "vm1",
-			AppName:    "vm1",
-			Type:       "django",
-			Machine:    0,
-			InstanceId: "vm1",
-			Ip:         "10.10.10.9",
-			Status:     provision.StatusStarted,
+			Name:    "9930c24f1c5f",
+			AppName: "ashamed",
+			Type:    "python",
+			Machine: 0,
+			Ip:      "127.0.0.1",
+			Status:  provision.StatusStarted,
 		},
 		{
-			Name:       "vm2",
-			AppName:    "vm2",
-			Type:       "gunicorn",
-			Machine:    0,
-			InstanceId: "vm2",
-			Ip:         "10.10.10.10",
-			Status:     provision.StatusInstalling,
+			Name:    "9930c24f1c4f",
+			AppName: "make-up",
+			Type:    "python",
+			Machine: 0,
+			Ip:      "127.0.0.1",
+			Status:  provision.StatusInstalling,
 		},
 	}
-	for _, u := range expected {
-		err := collection().Insert(u)
-		c.Assert(err, gocheck.IsNil)
+	output := map[string][]byte{
+		"ps -q":                []byte(psOutput),
+		"inspect 9930c24f1c5f": []byte(c1Output),
+		"inspect 9930c24f1c4f": []byte(c2Output),
 	}
+	fexec := &etesting.FakeExecutor{Output: output}
+	execut = fexec
+	defer func() {
+		execut = nil
+	}()
+	var p DockerProvisioner
 	units, err := p.CollectStatus()
 	c.Assert(err, gocheck.IsNil)
+	if units[0].Name != expected[0].Name {
+		units[0], units[1] = units[1], units[0]
+	}
 	c.Assert(units, gocheck.DeepEquals, expected)
 }
 
