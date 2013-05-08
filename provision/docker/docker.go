@@ -35,79 +35,80 @@ func runCmd(cmd string, args ...string) (string, error) {
 	return out.String(), err
 }
 
-func runContainerCmd(app provision.App) ([]string, error) {
+func runContainerCmd(app provision.App) ([]string, string, error) {
 	docker, err := config.GetString("docker:binary")
 	if err != nil {
-		return []string{}, err
+		return nil, "", err
 	}
 	repoNamespace, err := config.GetString("docker:repository-namespace")
 	if err != nil {
-		return []string{}, err
+		return nil, "", err
 	}
 	deployCmd, err := config.GetString("docker:deploy-cmd")
 	if err != nil {
-		return []string{}, err
+		return nil, "", err
 	}
 	appRepo := repository.GetReadOnlyUrl(app.GetName())
 	runBin, err := config.GetString("docker:run-cmd:bin")
 	if err != nil {
-		return []string{}, err
+		return nil, "", err
 	}
 	runArgs, err := config.GetString("docker:run-cmd:args")
 	if err != nil {
-		return []string{}, err
+		return nil, "", err
 	}
 	port, err := config.GetString("docker:run-cmd:port")
 	if err != nil {
-		return []string{}, err
+		return nil, "", err
 	}
 	imageName := fmt.Sprintf("%s/%s", repoNamespace, app.GetPlatform()) // TODO (flaviamissi): should use same algorithm as image.repositoryName
 	containerCmd := fmt.Sprintf("%s %s && %s %s", deployCmd, appRepo, runBin, runArgs)
 	wholeCmd := []string{docker, "run", "-d", "-t", "-p", port, imageName, "/bin/bash", "-c", containerCmd}
-	return wholeCmd, nil
+	return wholeCmd, port, nil
 }
 
-// container represents an docker container with the given name.
 type container struct {
-	name string
-	id   string
+	Id      string `bson:"_id"`
+	AppName string
+	Type    string
+	Ip      string
+	Port    string
 }
 
-// newContainer creates a new container in docker and stores it on database.
+// newContainer creates a new container in Docker and stores it in the database.
 //
 // Receives the application to which the container is going to be generated
 // and the function to assemble the command that the container will execute on
 // startup.
 // TODO (flaviamissi): make it atomic
-func newContainer(app provision.App, f func(provision.App) ([]string, error)) (*container, error) {
+func newContainer(app provision.App, f func(provision.App) ([]string, string, error)) (*container, error) {
 	appName := app.GetName()
-	c := &container{name: appName}
-	id, err := c.create(app, f)
+	c := container{
+		AppName: appName,
+		Type:    app.GetPlatform(),
+	}
+	err := c.create(app, f)
 	if err != nil {
 		log.Printf("Error creating container %s", appName)
 		log.Printf("Error was: %s", err.Error())
-		return c, err
-	}
-	c.id = id
-	u := provision.Unit{
-		Name:    id,
-		AppName: app.GetName(),
-		Type:    app.GetPlatform(),
+		return nil, err
 	}
 	r, err := getRouter()
 	if err != nil {
-		return c, err
+		return nil, err
 	}
 	ip, err := c.ip()
 	if err != nil {
-		return c, err
+		return nil, err
 	}
-	u.Ip = ip
-	if err := collection().Insert(u); err != nil {
+	c.Ip = ip
+	coll := collection()
+	defer coll.Database.Session.Close()
+	if err := coll.Insert(c); err != nil {
 		log.Print(err)
-		return c, err
+		return nil, err
 	}
-	return c, r.AddRoute(app.GetName(), ip)
+	return &c, r.AddRoute(app.GetName(), ip)
 }
 
 // ip returns the ip for the container.
@@ -116,22 +117,22 @@ func (c *container) ip() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	log.Printf("Getting ipaddress to instance %s", c.id)
-	instanceJson, err := runCmd(docker, "inspect", c.id)
+	log.Printf("Getting ipaddress to instance %s", c.Id)
+	instanceJson, err := runCmd(docker, "inspect", c.Id)
 	if err != nil {
-		msg := "error(%s) trying to inspect docker instance(%s) to get ipaddress"
-		log.Printf(msg, err)
+		msg := fmt.Sprintf("error(%s) trying to inspect docker instance(%s) to get ipaddress", err, c.Id)
+		log.Print(msg)
 		return "", errors.New(msg)
 	}
 	var result map[string]interface{}
 	if err := json.Unmarshal([]byte(instanceJson), &result); err != nil {
-		msg := "error(%s) parsing json from docker when trying to get ipaddress"
-		log.Printf(msg, err)
+		msg := fmt.Sprintf("error(%s) parsing json from docker when trying to get ipaddress", err)
+		log.Print(msg)
 		return "", errors.New(msg)
 	}
 	if ns, ok := result["NetworkSettings"]; !ok || ns == nil {
 		msg := "Error when getting container information. NetworkSettings is missing."
-		log.Printf(msg)
+		log.Print(msg)
 		return "", errors.New(msg)
 	}
 	networkSettings := result["NetworkSettings"].(map[string]interface{})
@@ -152,15 +153,20 @@ func (c *container) ip() (string, error) {
 // care of the deploy, and a function to generate the correct command ran by
 // docker, which might be to deploy a container or to run and expose a
 // container for an application.
-func (c *container) create(app provision.App, f func(provision.App) ([]string, error)) (string, error) {
-	cmd, err := f(app)
+func (c *container) create(app provision.App, f func(provision.App) ([]string, string, error)) error {
+	cmd, port, err := f(app)
 	if err != nil {
-		return "", err
+		return err
 	}
 	id, err := runCmd(cmd[0], cmd[1:]...)
+	if err != nil {
+		return err
+	}
 	id = strings.Replace(id, "\n", "", -1)
 	log.Printf("docker id=%s", id)
-	return id, err
+	c.Id = strings.TrimSpace(id)
+	c.Port = port
+	return err
 }
 
 // start starts a docker container.
@@ -169,8 +175,8 @@ func (c *container) start() error {
 	if err != nil {
 		return err
 	}
-	log.Printf("Stating container %s", c.id)
-	out, err := runCmd(docker, "start", c.id)
+	log.Printf("Stating container %s", c.Id)
+	out, err := runCmd(docker, "start", c.Id)
 	log.Printf("docker start output: %s", out)
 	return err
 }
@@ -182,8 +188,8 @@ func (c *container) stop() error {
 		return err
 	}
 	//TODO: better error handling
-	log.Printf("Stopping container %s", c.id)
-	output, err := runCmd(docker, "stop", c.id)
+	log.Printf("Stopping container %s", c.Id)
+	output, err := runCmd(docker, "stop", c.Id)
 	log.Printf("docker stop output: %s", output)
 	return err
 }
@@ -196,8 +202,8 @@ func (c *container) remove() error {
 	}
 	//TODO: better error handling
 	//TODO: Remove host's nginx route
-	log.Printf("trying to remove container %s", c.id)
-	_, err = runCmd(docker, "rm", c.id)
+	log.Printf("trying to remove container %s", c.Id)
+	_, err = runCmd(docker, "rm", c.Id)
 	return err
 }
 
@@ -268,13 +274,13 @@ func (img *image) remove() error {
 	return nil
 }
 
-func getContainer(id string) (*provision.Unit, error) {
-	var u provision.Unit
+func getContainer(id string) (*container, error) {
+	var c container
 	coll := collection()
 	defer coll.Database.Session.Close()
-	err := coll.Find(bson.M{"name": id}).One(&u)
+	err := coll.Find(bson.M{"_id": id}).One(&c)
 	if err != nil {
 		return nil, err
 	}
-	return &u, nil
+	return &c, nil
 }

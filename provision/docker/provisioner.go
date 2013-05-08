@@ -52,25 +52,21 @@ func (p *DockerProvisioner) Provision(app provision.App) error {
 }
 
 func (p *DockerProvisioner) Restart(app provision.App) error {
-	var (
-		units []provision.Unit
-		c     container
-	)
-	err := collection().Find(bson.M{"appname": app.GetName()}).All(&units)
+	var containers []container
+	err := collection().Find(bson.M{"appname": app.GetName()}).All(&containers)
 	if err != nil {
-		log.Printf("Got error while getting app units: %s", err.Error())
+		log.Printf("Got error while getting app containers: %s", err)
 		return err
 	}
-	for _, u := range units {
-		c.id = u.Name
+	for _, c := range containers {
 		err = c.stop()
 		if err != nil {
-			log.Printf("Error while stopping container %s", c.id)
+			log.Printf("Error while stopping container %s", c.Id)
 			return err
 		}
 		err = c.start()
 		if err != nil {
-			log.Printf("Error while starting container %s", c.id)
+			log.Printf("Error while starting container %s", c.Id)
 			return err
 		}
 	}
@@ -86,26 +82,20 @@ func (p *DockerProvisioner) Destroy(app provision.App) error {
 	units := app.ProvisionUnits()
 	for _, u := range units {
 		go func(u provision.AppUnit) {
-			c := container{
-				name: app.GetName(),
-				// TODO: get actual c.id
-				id: u.GetInstanceId(),
-			}
-			log.Printf("stoping container %s", u.GetInstanceId())
+			c := container{Id: u.GetName()}
+			log.Printf("stoping container %s", u.GetName())
 			if err := c.stop(); err != nil {
 				log.Print("Could not stop container. Trying to remove it anyway.")
-				log.Print(err.Error())
+				log.Print(err)
 			}
-
 			log.Printf("removing container %s", u.GetInstanceId())
 			if err := c.remove(); err != nil {
 				log.Print("Could not remove container. Aborting...")
-				log.Print(err.Error())
+				log.Print(err)
 				return
 			}
-
 			log.Printf("removing container %s from the database", u.GetName())
-			if err := collection().Remove(bson.M{"name": u.GetName()}); err != nil {
+			if err := collection().Remove(bson.M{"_id": c.Id}); err != nil {
 				log.Printf("Could not remove container from database. Error %s", err.Error())
 			}
 			log.Print("Units successfuly removed.")
@@ -170,7 +160,7 @@ func (p *DockerProvisioner) CollectStatus() ([]provision.Unit, error) {
 func collectUnit(id string, units chan<- provision.Unit, errs chan<- error, wg *sync.WaitGroup) {
 	defer wg.Done()
 	docker, _ := config.GetString("docker:binary")
-	unit, err := getContainer(id)
+	container, err := getContainer(id)
 	if err != nil {
 		log.Printf("Container %q not in the database. Skipping...", id)
 		return
@@ -186,10 +176,13 @@ func collectUnit(id string, units chan<- provision.Unit, errs chan<- error, wg *
 		errs <- err
 		return
 	}
+	unit := provision.Unit{
+		Name:    container.Id,
+		AppName: container.AppName,
+		Type:    container.Type,
+	}
 	unit.Ip = c["NetworkSettings"].(map[string]interface{})["IpAddress"].(string)
-	portMapping := c["NetworkSettings"].(map[string]interface{})["PortMapping"].(map[string]interface{})
-	port := getPort(portMapping)
-	addr := fmt.Sprintf("%s:%s", unit.Ip, port)
+	addr := fmt.Sprintf("%s:%s", unit.Ip, container.Port)
 	conn, err := net.Dial("tcp", addr)
 	if err != nil {
 		unit.Status = provision.StatusInstalling
@@ -197,7 +190,7 @@ func collectUnit(id string, units chan<- provision.Unit, errs chan<- error, wg *
 		conn.Close()
 		unit.Status = provision.StatusStarted
 	}
-	units <- *unit
+	units <- unit
 }
 
 func buildResult(maxSize int, units chan provision.Unit) <-chan []provision.Unit {

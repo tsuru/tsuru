@@ -42,9 +42,14 @@ func (s *S) TestProvisionerRestartCallsDockerStopAndDockerStart(c *gocheck.C) {
 	}()
 	var p DockerProvisioner
 	app := testing.NewFakeApp("almah", "static", 1)
-	u := provision.Unit{Name: id, AppName: app.GetName(), Type: app.GetPlatform(), Status: provision.StatusInstalling}
-	err := collection().Insert(u)
+	cont := container{
+		Id:      id,
+		AppName: app.GetName(),
+		Type:    app.GetPlatform(),
+	}
+	err := collection().Insert(cont)
 	c.Assert(err, gocheck.IsNil)
+	defer collection().RemoveId(cont.Id)
 	err = p.Restart(app)
 	c.Assert(err, gocheck.IsNil)
 	args := []string{"stop", id}
@@ -54,14 +59,13 @@ func (s *S) TestProvisionerRestartCallsDockerStopAndDockerStart(c *gocheck.C) {
 }
 
 func (s *S) TestDeployShouldCallDockerCreate(c *gocheck.C) {
-	out := `
-    {
-            "NetworkSettings": {
-            "IpAddress": "10.10.10.10",
-            "IpPrefixLen": 8,
-            "Gateway": "10.65.41.1",
-            "PortMapping": {}
-    }
+	out := `{
+	"NetworkSettings": {
+		"IpAddress": "10.10.10.10",
+		"IpPrefixLen": 8,
+		"Gateway": "10.65.41.1",
+		"PortMapping": {}
+	}
 }`
 	fexec := &etesting.FakeExecutor{Output: map[string][]byte{"*": []byte(out)}}
 	execut = fexec
@@ -73,6 +77,7 @@ func (s *S) TestDeployShouldCallDockerCreate(c *gocheck.C) {
 	w := &bytes.Buffer{}
 	err := p.Deploy(app, w)
 	defer p.Destroy(app)
+	defer s.conn.Collection(s.collName).RemoveId(out)
 	c.Assert(err, gocheck.IsNil)
 	image := fmt.Sprintf("%s/python", s.repoNamespace)
 	appRepo := fmt.Sprintf("git://%s/cribcaged.git", s.gitHost)
@@ -91,15 +96,13 @@ func (s *S) TestProvisionerDestroy(c *gocheck.C) {
 	l := stdlog.New(w, "", stdlog.LstdFlags)
 	log.SetLogger(l)
 	app := testing.NewFakeApp("myapp", "python", 1)
-	u := provision.Unit{
-		Name:       app.ProvisionUnits()[0].GetName(),
-		AppName:    app.GetName(),
-		Machine:    app.ProvisionUnits()[0].GetMachine(),
-		InstanceId: app.ProvisionUnits()[0].GetInstanceId(),
-		Status:     provision.StatusCreating,
+	cont := container{
+		Id:      app.ProvisionUnits()[0].GetName(),
+		AppName: app.GetName(),
 	}
-	err := s.conn.Collection(s.collName).Insert(&u)
+	err := s.conn.Collection(s.collName).Insert(cont)
 	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Collection(s.collName).RemoveId(cont.Id)
 	img := image{Name: app.GetName()}
 	err = s.conn.Collection(s.imageCollName).Insert(&img)
 	c.Assert(err, gocheck.IsNil)
@@ -107,9 +110,9 @@ func (s *S) TestProvisionerDestroy(c *gocheck.C) {
 	c.Assert(p.Destroy(app), gocheck.IsNil)
 	ok := make(chan bool, 1)
 	go func() {
+		coll := s.conn.Collection(s.collName)
 		for {
-			coll := s.conn.Collection(s.collName)
-			ct, err := coll.Find(bson.M{"name": u.Name}).Count()
+			ct, err := coll.Find(bson.M{"_id": cont.Id}).Count()
 			if err != nil {
 				c.Fatal(err)
 			}
@@ -123,11 +126,11 @@ func (s *S) TestProvisionerDestroy(c *gocheck.C) {
 	select {
 	case <-ok:
 	case <-time.After(10e9):
-		c.Error("Timed out waiting for the container to be destroyed (10 seconds)")
+		c.Fatal("Timed out waiting for the container to be destroyed (10 seconds)")
 	}
-	args := []string{"stop", "i-01"}
+	args := []string{"stop", "myapp/0"}
 	c.Assert(fexec.ExecutedCmd("docker", args), gocheck.Equals, true)
-	args = []string{"rm", "i-01"}
+	args = []string{"rm", "myapp/0"}
 	c.Assert(fexec.ExecutedCmd("docker", args), gocheck.Equals, true)
 }
 
@@ -167,25 +170,25 @@ func (s *S) TestCollectStatus(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	defer listener.Close()
 	err = collection().Insert(
-		provision.Unit{Name: "9930c24f1c5f", AppName: "ashamed", Type: "python"},
-		provision.Unit{Name: "9930c24f1c4f", AppName: "make-up", Type: "python"},
+		container{Id: "9930c24f1c5f", AppName: "ashamed", Type: "python", Port: strings.Split(listener.Addr().String(), ":")[1]},
+		container{Id: "9930c24f1c4f", AppName: "make-up", Type: "python", Port: "8889"},
 	)
 	c.Assert(err, gocheck.IsNil)
-	defer collection().RemoveAll(bson.M{"name": bson.M{"$in": []string{"9930c24f1c5f", "9930c24f1c4f"}}})
+	defer collection().RemoveAll(bson.M{"_id": bson.M{"$in": []string{"9930c24f1c5f", "9930c24f1c4f"}}})
 	psOutput := `9930c24f1c5f
 9930c24f1c4f
 9930c24f1c3f
 `
-	c1Output := fmt.Sprintf(`{
+	c1Output := `{
 	"NetworkSettings": {
 		"IpAddress": "127.0.0.1",
 		"IpPrefixLen": 8,
 		"Gateway": "10.65.41.1",
 		"PortMapping": {
-			"%s": "90293"
+			"8888": "90293"
 		}
 	}
-}`, strings.Split(listener.Addr().String(), ":")[1])
+}`
 	c2Output := `{
 	"NetworkSettings": {
 		"IpAddress": "127.0.0.1",
