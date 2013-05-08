@@ -74,7 +74,7 @@ func (p *DockerProvisioner) Restart(app provision.App) error {
 }
 
 func (p *DockerProvisioner) Deploy(app provision.App, w io.Writer) error {
-	_, err := newContainer(app, runContainerCmd)
+	_, err := newContainer(app)
 	return err
 }
 

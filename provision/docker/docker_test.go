@@ -37,7 +37,7 @@ func (s *S) TestNewContainer(c *gocheck.C) {
 		execut = nil
 	}()
 	app := testing.NewFakeApp("app-name", "python", 1)
-	_, err := newContainer(app, runContainerCmd)
+	_, err := newContainer(app)
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Collection(s.collName).RemoveId(id)
 	var cont container
@@ -56,7 +56,7 @@ func (s *S) TestNewContainerCallsDockerCreate(c *gocheck.C) {
 		execut = nil
 	}()
 	app := testing.NewFakeApp("app-name", "python", 1)
-	newContainer(app, runContainerCmd)
+	newContainer(app)
 	appRepo := fmt.Sprintf("git://%s/app-name.git", s.gitHost)
 	containerCmd := fmt.Sprintf("/var/lib/tsuru/deploy %s && %s %s", appRepo, s.runBin, s.runArgs)
 	args := []string{
@@ -75,7 +75,7 @@ func (s *S) TestNewContainerReturnsNilAndLogsOnError(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	defer commandmocker.Remove(tmpdir)
 	app := testing.NewFakeApp("myapp", "python", 1)
-	container, err := newContainer(app, runContainerCmd)
+	container, err := newContainer(app)
 	c.Assert(err, gocheck.NotNil)
 	c.Assert(container, gocheck.IsNil)
 	c.Assert(w.String(), gocheck.Matches, "(?s).*Error creating container myapp.*")
@@ -97,7 +97,7 @@ func (s *S) TestNewContainerAddsRoute(c *gocheck.C) {
 		execut = nil
 	}()
 	app := testing.NewFakeApp("myapp", "python", 1)
-	cont, err := newContainer(app, runContainerCmd)
+	cont, err := newContainer(app)
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Collection(s.collName).RemoveId(cont.Id)
 	r, err := getRouter()
@@ -126,7 +126,7 @@ func (s *S) TestDockerCreate(c *gocheck.C) {
 	}()
 	container := container{AppName: "app-name", Type: "python"}
 	app := testing.NewFakeApp("app-name", "python", 1)
-	err := container.create(app, runContainerCmd)
+	err := container.create(app)
 	c.Assert(err, gocheck.IsNil)
 	appRepo := fmt.Sprintf("git://%s/app-name.git", s.gitHost)
 	containerCmd := fmt.Sprintf("/var/lib/tsuru/deploy %s && %s %s", appRepo, s.runBin, s.runArgs)

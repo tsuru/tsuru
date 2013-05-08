@@ -77,17 +77,14 @@ type container struct {
 
 // newContainer creates a new container in Docker and stores it in the database.
 //
-// Receives the application to which the container is going to be generated
-// and the function to assemble the command that the container will execute on
-// startup.
 // TODO (flaviamissi): make it atomic
-func newContainer(app provision.App, f func(provision.App) ([]string, string, error)) (*container, error) {
+func newContainer(app provision.App) (*container, error) {
 	appName := app.GetName()
 	c := container{
 		AppName: appName,
 		Type:    app.GetPlatform(),
 	}
-	err := c.create(app, f)
+	err := c.create(app)
 	if err != nil {
 		log.Printf("Error creating container %s", appName)
 		log.Printf("Error was: %s", err.Error())
@@ -153,8 +150,8 @@ func (c *container) ip() (string, error) {
 // care of the deploy, and a function to generate the correct command ran by
 // docker, which might be to deploy a container or to run and expose a
 // container for an application.
-func (c *container) create(app provision.App, f func(provision.App) ([]string, string, error)) error {
-	cmd, port, err := f(app)
+func (c *container) create(app provision.App) error {
+	cmd, port, err := runContainerCmd(app)
 	if err != nil {
 		return err
 	}
