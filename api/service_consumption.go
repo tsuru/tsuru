@@ -129,6 +129,31 @@ func serviceInstances(w http.ResponseWriter, r *http.Request, t *auth.Token) err
 	return err
 }
 
+func serviceInstance(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
+	u, err := t.User()
+	if err != nil {
+		return err
+	}
+	instance, err := service.GetServiceInstance(r.URL.Query().Get(":name"), u)
+	if err != nil {
+		switch err {
+		case service.ErrServiceInstanceNotFound:
+			return &errors.Http{
+				Code:    http.StatusNotFound,
+				Message: err.Error(),
+			}
+		case service.ErrAccessNotAllowed:
+			return &errors.Http{
+				Code:    http.StatusForbidden,
+				Message: err.Error(),
+			}
+		default:
+			return err
+		}
+	}
+	return json.NewEncoder(w).Encode(instance)
+}
+
 func serviceInstanceStatus(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
 	u, err := t.User()
 	if err != nil {

@@ -532,6 +532,54 @@ func (s *ConsumptionSuite) TestServiceInfoHandlerReturns403WhenTheUserDoesNotHav
 	c.Assert(e, gocheck.ErrorMatches, "^This user does not have access to this service$")
 }
 
+func (s *ConsumptionSuite) TestGetServiceInstance(c *gocheck.C) {
+	instance := service.ServiceInstance{
+		Name:        "mongo-1",
+		ServiceName: "mongodb",
+		Teams:       []string{s.team.Name},
+		Apps:        []string{"myapp"},
+	}
+	s.conn.ServiceInstances().Insert(instance)
+	defer s.conn.ServiceInstances().Remove(instance)
+	request, _ := http.NewRequest("GET", "/services/instances/mongo-1?:name=mongo-1", nil)
+	recorder := httptest.NewRecorder()
+	err := serviceInstance(recorder, request, s.token)
+	c.Assert(err, gocheck.IsNil)
+	var got service.ServiceInstance
+	err = json.NewDecoder(recorder.Body).Decode(&got)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(got, gocheck.DeepEquals, instance)
+}
+
+func (s *ConsumptionSuite) TestGetServiceInstanceNotFound(c *gocheck.C) {
+	request, _ := http.NewRequest("GET", "/services/instances/mongo-1?:name=mongo-1", nil)
+	recorder := httptest.NewRecorder()
+	err := serviceInstance(recorder, request, s.token)
+	c.Assert(err, gocheck.NotNil)
+	e, ok := err.(*errors.Http)
+	c.Assert(ok, gocheck.Equals, true)
+	c.Assert(e.Code, gocheck.Equals, http.StatusNotFound)
+	c.Assert(e.Message, gocheck.Equals, service.ErrServiceInstanceNotFound.Error())
+}
+
+func (s *ConsumptionSuite) TestGetServiceInstanceForbidden(c *gocheck.C) {
+	instance := service.ServiceInstance{
+		Name:        "mongo-1",
+		ServiceName: "mongodb",
+		Apps:        []string{"myapp"},
+	}
+	s.conn.ServiceInstances().Insert(instance)
+	defer s.conn.ServiceInstances().Remove(instance)
+	request, _ := http.NewRequest("GET", "/services/instances/mongo-1?:name=mongo-1", nil)
+	recorder := httptest.NewRecorder()
+	err := serviceInstance(recorder, request, s.token)
+	c.Assert(err, gocheck.NotNil)
+	e, ok := err.(*errors.Http)
+	c.Assert(ok, gocheck.Equals, true)
+	c.Assert(e.Code, gocheck.Equals, http.StatusForbidden)
+	c.Assert(e.Message, gocheck.Equals, service.ErrAccessNotAllowed.Error())
+}
+
 func (s *ConsumptionSuite) makeRequestToGetDocHandler(name string, c *gocheck.C) (*httptest.ResponseRecorder, *http.Request) {
 	url := fmt.Sprintf("/services/%s/doc/?:name=%s", name, name)
 	request, err := http.NewRequest("GET", url, nil)
