@@ -284,3 +284,24 @@ func (s *S) TestGetContainer(c *gocheck.C) {
 	c.Assert(container, gocheck.IsNil)
 	c.Assert(err.Error(), gocheck.Equals, "not found")
 }
+
+func (s *S) TestGetContainers(c *gocheck.C) {
+	collection().Insert(
+		container{Id: "abcdef", Type: "python", AppName: "something"},
+		container{Id: "fedajs", Type: "python", AppName: "something"},
+		container{Id: "wat", Type: "java", AppName: "otherthing"},
+	)
+	defer collection().RemoveAll(bson.M{"_id": bson.M{"$in": []string{"abcdef", "fedajs", "wat"}}})
+	containers, err := getContainers("something")
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(containers, gocheck.HasLen, 2)
+	c.Assert(containers[0].Id, gocheck.Equals, "abcdef")
+	c.Assert(containers[1].Id, gocheck.Equals, "fedajs")
+	containers, err = getContainers("otherthing")
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(containers, gocheck.HasLen, 1)
+	c.Assert(containers[0].Id, gocheck.Equals, "wat")
+	containers, err = getContainers("unknown")
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(containers, gocheck.HasLen, 0)
+}

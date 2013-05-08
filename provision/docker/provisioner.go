@@ -52,8 +52,7 @@ func (p *DockerProvisioner) Provision(app provision.App) error {
 }
 
 func (p *DockerProvisioner) Restart(app provision.App) error {
-	var containers []container
-	err := collection().Find(bson.M{"appname": app.GetName()}).All(&containers)
+	containers, err := getContainers(app.GetName())
 	if err != nil {
 		log.Printf("Got error while getting app containers: %s", err)
 		return err
