@@ -69,7 +69,7 @@ func CheckUserAccess(teamNames []string, u *User) bool {
 	defer conn.Close()
 	conn.Teams().Find(q).All(&teams)
 	var wg sync.WaitGroup
-	found := make(chan bool)
+	found := make(chan bool, len(teams)+1)
 	for _, team := range teams {
 		wg.Add(1)
 		go func(t Team) {
