@@ -128,9 +128,7 @@ func (s *S) TestProvisionerDestroy(c *gocheck.C) {
 	case <-time.After(10e9):
 		c.Fatal("Timed out waiting for the container to be destroyed (10 seconds)")
 	}
-	args := []string{"stop", "myapp/0"}
-	c.Assert(fexec.ExecutedCmd("docker", args), gocheck.Equals, true)
-	args = []string{"rm", "myapp/0"}
+	args := []string{"rm", "myapp/0"}
 	c.Assert(fexec.ExecutedCmd("docker", args), gocheck.Equals, true)
 }
 

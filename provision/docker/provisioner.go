@@ -83,11 +83,6 @@ func (p *DockerProvisioner) Destroy(app provision.App) error {
 	for _, u := range units {
 		go func(u provision.AppUnit) {
 			c := container{Id: u.GetName()}
-			log.Printf("stoping container %s", u.GetName())
-			if err := c.stop(); err != nil {
-				log.Print("Could not stop container. Trying to remove it anyway.")
-				log.Print(err)
-			}
 			log.Printf("removing container %s", u.GetInstanceId())
 			if err := c.remove(); err != nil {
 				log.Print("Could not remove container. Aborting...")
