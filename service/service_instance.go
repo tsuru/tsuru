@@ -12,8 +12,14 @@ import (
 	"github.com/globocom/tsuru/db"
 	"github.com/globocom/tsuru/errors"
 	"github.com/globocom/tsuru/log"
+	"github.com/globocom/tsuru/rec"
 	"labix.org/v2/mgo/bson"
 	"net/http"
+)
+
+var (
+	ErrServiceInstanceNotFound = stderrors.New("Service instance not found")
+	ErrAccessNotAllowed        = stderrors.New("User does not have access to this service instance")
 )
 
 type ServiceInstance struct {
@@ -300,4 +306,22 @@ func GetServiceInstancesByServicesAndTeams(services []Service, u *auth.User) ([]
 	q, f := genericServiceInstancesFilter(services, auth.GetTeamsNames(teams))
 	err = conn.ServiceInstances().Find(q).Select(f).All(&instances)
 	return instances, err
+}
+
+func GetServiceInstance(name string, u *auth.User) (*ServiceInstance, error) {
+	conn, err := db.Conn()
+	if err != nil {
+		return nil, err
+	}
+	defer conn.Close()
+	rec.Log(u.Email, "get-service-instance", name)
+	var instance ServiceInstance
+	err = conn.ServiceInstances().Find(bson.M{"name": name}).One(&instance)
+	if err != nil {
+		return nil, ErrServiceInstanceNotFound
+	}
+	if !auth.CheckUserAccess(instance.Teams, u) {
+		return nil, ErrAccessNotAllowed
+	}
+	return &instance, nil
 }

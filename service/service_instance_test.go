@@ -10,6 +10,7 @@ import (
 	"github.com/globocom/tsuru/app/bind"
 	"github.com/globocom/tsuru/auth"
 	"github.com/globocom/tsuru/db"
+	"github.com/globocom/tsuru/testing"
 	"labix.org/v2/mgo/bson"
 	"launchpad.net/gocheck"
 	"net/http"
@@ -34,10 +35,13 @@ func (s *InstanceSuite) SetUpSuite(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	s.user = &auth.User{Email: "cidade@raul.com", Password: "123"}
 	s.team = &auth.Team{Name: "Raul", Users: []string{s.user.Email}}
+	s.conn.Users().Insert(s.user)
+	s.conn.Teams().Insert(s.team)
 }
 
 func (s *InstanceSuite) TearDownSuite(c *gocheck.C) {
 	s.conn.Apps().Database.DropDatabase()
+	s.conn.Close()
 }
 
 func (s *InstanceSuite) TestCreateServiceInstance(c *gocheck.C) {
@@ -215,10 +219,8 @@ func (s *InstanceSuite) TestGenericServiceInstancesFilterWithoutSpecifingTeams(c
 }
 
 func (s *InstanceSuite) TestGetServiceInstancesByServicesAndTeams(c *gocheck.C) {
-	err := s.conn.Teams().Insert(s.team)
-	c.Assert(err, gocheck.IsNil)
 	srvc := Service{Name: "mysql", Teams: []string{s.team.Name}, IsRestricted: true}
-	err = s.conn.Services().Insert(&srvc)
+	err := s.conn.Services().Insert(&srvc)
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Services().RemoveId(srvc.Name)
 	srvc2 := Service{Name: "mongodb", Teams: []string{s.team.Name}, IsRestricted: false}
@@ -451,4 +453,32 @@ func (s *InstanceSuite) TestStatus(c *gocheck.C) {
 	status, err := si.Status()
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(status, gocheck.Equals, "up")
+}
+
+func (s *InstanceSuite) TestGetServiceInstance(c *gocheck.C) {
+	s.conn.ServiceInstances().Insert(
+		ServiceInstance{Name: "mongo-1", ServiceName: "mongodb", Teams: []string{s.team.Name}},
+		ServiceInstance{Name: "mongo-2", ServiceName: "mongodb", Teams: []string{s.team.Name}},
+		ServiceInstance{Name: "mongo-3", ServiceName: "mongodb", Teams: []string{s.team.Name}},
+		ServiceInstance{Name: "mongo-4", ServiceName: "mongodb", Teams: []string{s.team.Name}},
+		ServiceInstance{Name: "mongo-5", ServiceName: "mongodb"},
+	)
+	defer s.conn.ServiceInstances().RemoveAll(bson.M{"service_name": "mongodb"})
+	instance, err := GetServiceInstance("mongo-1", s.user)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(instance.Name, gocheck.Equals, "mongo-1")
+	c.Assert(instance.ServiceName, gocheck.Equals, "mongodb")
+	c.Assert(instance.Teams, gocheck.DeepEquals, []string{s.team.Name})
+	action := testing.Action{
+		User:   s.user.Email,
+		Action: "get-service-instance",
+		Extra:  []interface{}{"mongo-1"},
+	}
+	c.Assert(action, testing.IsRecorded)
+	instance, err = GetServiceInstance("mongo-6", s.user)
+	c.Assert(instance, gocheck.IsNil)
+	c.Assert(err, gocheck.Equals, ErrServiceInstanceNotFound)
+	instance, err = GetServiceInstance("mongo-5", s.user)
+	c.Assert(instance, gocheck.IsNil)
+	c.Assert(err, gocheck.Equals, ErrAccessNotAllowed)
 }
