@@ -26,6 +26,7 @@ type S struct {
 	runArgs       string
 	port          string
 	hostAddr      string
+	sshUser       string
 }
 
 var _ = gocheck.Suite(&S{})
@@ -36,6 +37,7 @@ func (s *S) SetUpSuite(c *gocheck.C) {
 	s.gitHost = "my.gandalf.com"
 	s.repoNamespace = "tsuru"
 	s.hostAddr = "10.0.0.4"
+	s.sshUser = "root"
 	config.Set("git:host", s.gitHost)
 	config.Set("database:url", "127.0.0.1:27017")
 	config.Set("database:name", "docker_provision_tests_s")
@@ -49,6 +51,7 @@ func (s *S) SetUpSuite(c *gocheck.C) {
 	config.Set("docker:run-cmd:args", "/etc/circus/circus.ini")
 	config.Set("docker:run-cmd:port", "8888")
 	config.Set("docker:ssh:add-key-cmd", "/var/lib/tsuru/add-key")
+	config.Set("docker:ssh:user", s.sshUser)
 	s.deployCmd = "/var/lib/tsuru/deploy"
 	s.runBin = "/usr/local/bin/circusd"
 	s.runArgs = "/etc/circus/circus.ini"
