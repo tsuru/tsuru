@@ -291,6 +291,107 @@ func (s *S) TestContainerIPReturnsIpFromDockerInspect(c *gocheck.C) {
 	c.Assert(commandmocker.Ran(tmpdir), gocheck.Equals, true)
 }
 
+func (s *S) TestContainerHostPortReturnsPortFromDockerInspect(c *gocheck.C) {
+	container := container{Id: "c-01", Port: "8888"}
+	output := `{
+	"NetworkSettings": {
+		"IpAddress": "10.10.10.10",
+		"IpPrefixLen": 8,
+		"Gateway": "10.65.41.1",
+		"PortMapping": {
+			"8888": "59322"
+		}
+	}
+}`
+	out := map[string][]byte{
+		"inspect c-01": []byte(output),
+	}
+	fexec := &etesting.FakeExecutor{Output: out}
+	execut = fexec
+	defer func() {
+		execut = nil
+	}()
+	port, err := container.hostPort()
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(port, gocheck.Equals, "59322")
+}
+
+func (s *S) TestContainerHostPortNoPort(c *gocheck.C) {
+	container := container{Id: "c-01"}
+	port, err := container.hostPort()
+	c.Assert(port, gocheck.Equals, "")
+	c.Assert(err, gocheck.NotNil)
+	c.Assert(err.Error(), gocheck.Equals, "Container does not contain any mapped port")
+}
+
+func (s *S) TestContainerHostPortNotFound(c *gocheck.C) {
+	container := container{Id: "c-01", Port: "8888"}
+	output := `{
+	"NetworkSettings": {
+		"IpAddress": "10.10.10.10",
+		"IpPrefixLen": 8,
+		"Gateway": "10.65.41.1",
+		"PortMapping": {
+			"8889": "59322"
+		}
+	}
+}`
+	out := map[string][]byte{
+		"inspect c-01": []byte(output),
+	}
+	fexec := &etesting.FakeExecutor{Output: out}
+	execut = fexec
+	defer func() {
+		execut = nil
+	}()
+	port, err := container.hostPort()
+	c.Assert(port, gocheck.Equals, "")
+	c.Assert(err, gocheck.NotNil)
+	c.Assert(err.Error(), gocheck.Equals, "Container port 8888 is not mapped to any host port")
+}
+
+func (s *S) TestContainerInspect(c *gocheck.C) {
+	container := container{Id: "c-01", Port: "8888"}
+	output := `{"NetworkSettings": null}`
+	out := map[string][]byte{
+		"inspect c-01": []byte(output),
+	}
+	fexec := &etesting.FakeExecutor{Output: out}
+	execut = fexec
+	defer func() {
+		execut = nil
+	}()
+	expected := map[string]interface{}{"NetworkSettings": nil}
+	got, err := container.inspect()
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(got, gocheck.DeepEquals, expected)
+}
+
+func (s *S) TestContainerInspectNoBinary(c *gocheck.C) {
+	old, _ := config.Get("docker:binary")
+	defer config.Set("docker:binary", old)
+	config.Unset("docker:binary")
+	container := container{Id: "something"}
+	got, err := container.inspect()
+	c.Assert(got, gocheck.IsNil)
+	c.Assert(err, gocheck.NotNil)
+}
+
+func (s *S) TestContainerInspectInvalidJSON(c *gocheck.C) {
+	container := container{Id: "c-01", Port: "8888"}
+	out := map[string][]byte{
+		"inspect c-01": []byte("somethinginvalid}"),
+	}
+	fexec := &etesting.FakeExecutor{Output: out}
+	execut = fexec
+	defer func() {
+		execut = nil
+	}()
+	got, err := container.inspect()
+	c.Assert(got, gocheck.IsNil)
+	c.Assert(err, gocheck.NotNil)
+}
+
 func (s *S) TestImageCommit(c *gocheck.C) {
 	fexec := &etesting.FakeExecutor{}
 	execut = fexec

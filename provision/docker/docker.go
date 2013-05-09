@@ -149,21 +149,43 @@ func newContainer(app provision.App) (*container, error) {
 	return &c, r.AddRoute(app.GetName(), ip)
 }
 
-// ip returns the ip for the container.
-func (c *container) ip() (string, error) {
+func (c *container) inspect() (map[string]interface{}, error) {
 	docker, err := config.GetString("docker:binary")
 	if err != nil {
-		return "", err
+		return nil, err
 	}
-	log.Printf("Getting ipaddress to instance %s", c.Id)
-	instanceJson, err := runCmd(docker, "inspect", c.Id)
+	out, err := runCmd(docker, "inspect", c.Id)
 	if err != nil {
-		msg := fmt.Sprintf("error(%s) trying to inspect docker instance(%s) to get ipaddress", err, c.Id)
-		log.Print(msg)
-		return "", errors.New(msg)
+		return nil, err
 	}
-	var result map[string]interface{}
-	if err := json.Unmarshal([]byte(instanceJson), &result); err != nil {
+	var r map[string]interface{}
+	err = json.Unmarshal([]byte(out), &r)
+	if err != nil {
+		return nil, err
+	}
+	return r, nil
+}
+
+// hostPort returns the host port mapped for the container.
+func (c *container) hostPort() (string, error) {
+	if c.Port == "" {
+		return "", errors.New("Container does not contain any mapped port")
+	}
+	data, err := c.inspect()
+	if err != nil {
+		return "", nil
+	}
+	mappedPorts := data["NetworkSettings"].(map[string]interface{})["PortMapping"].(map[string]interface{})
+	if port, ok := mappedPorts[c.Port]; ok {
+		return port.(string), nil
+	}
+	return "", fmt.Errorf("Container port %s is not mapped to any host port", c.Port)
+}
+
+// ip returns the ip for the container.
+func (c *container) ip() (string, error) {
+	result, err := c.inspect()
+	if err != nil {
 		msg := fmt.Sprintf("error(%s) parsing json from docker when trying to get ipaddress", err)
 		log.Print(msg)
 		return "", errors.New(msg)
