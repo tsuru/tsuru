@@ -533,6 +533,18 @@ func (s *S) TestContainerSSHWithoutUserConfigured(c *gocheck.C) {
 	c.Assert(err, gocheck.NotNil)
 }
 
+func (s *S) TestContainerSSHCommandFailure(c *gocheck.C) {
+	fexec := &etesting.ErrorExecutor{Output: map[string][]byte{"*": []byte("failed")}}
+	execut = fexec
+	defer func() {
+		execut = nil
+	}()
+	container := container{Id: "c-01", Ip: "10.10.10.10"}
+	got, err := container.ssh("ls", "-a")
+	c.Assert(err, gocheck.NotNil)
+	c.Assert(got, gocheck.Equals, "failed")
+}
+
 func (s *S) TestImageCommit(c *gocheck.C) {
 	fexec := &etesting.FakeExecutor{}
 	execut = fexec
