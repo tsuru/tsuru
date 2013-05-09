@@ -14,7 +14,11 @@ import (
 	"github.com/globocom/tsuru/log"
 	"github.com/globocom/tsuru/provision"
 	"github.com/globocom/tsuru/repository"
+	"io/ioutil"
 	"labix.org/v2/mgo/bson"
+	"os"
+	"os/user"
+	"path"
 	"strings"
 )
 
@@ -33,6 +37,38 @@ func runCmd(cmd string, args ...string) (string, error) {
 	err := executor().Execute(cmd, args, nil, &out, &out)
 	log.Printf("running the cmd: %s with the args: %s", cmd, args)
 	return out.String(), err
+}
+
+func getSSHCommands() ([]string, error) {
+	addKeyCommand, err := config.GetString("docker:ssh:add-key-cmd")
+	if err != nil {
+		return nil, err
+	}
+	keyFile, err := config.GetString("docker:ssh:public-key")
+	if err != nil {
+		if u, err := user.Current(); err == nil {
+			keyFile = path.Join(u.HomeDir, ".ssh", "id_rsa.pub")
+		} else {
+			keyFile = os.ExpandEnv("${HOME}/.ssh/id_rsa.pub")
+		}
+	}
+	f, err := filesystem().Open(keyFile)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+	keyContent, err := ioutil.ReadAll(f)
+	if err != nil {
+		return nil, err
+	}
+	sshdPath, err := config.GetString("docker:ssh:sshd-path")
+	if err != nil {
+		sshdPath = "/usr/sbin/sshd"
+	}
+	return []string{
+		fmt.Sprintf("%s %s", addKeyCommand, keyContent),
+		sshdPath,
+	}, nil
 }
 
 func runContainerCmd(app provision.App) ([]string, string, error) {
@@ -61,8 +97,13 @@ func runContainerCmd(app provision.App) ([]string, string, error) {
 	if err != nil {
 		return nil, "", err
 	}
+	commands, err := getSSHCommands()
+	if err != nil {
+		return nil, "", err
+	}
+	commands = append(commands, fmt.Sprintf("%s %s", deployCmd, appRepo), fmt.Sprintf("%s %s", runBin, runArgs))
 	imageName := fmt.Sprintf("%s/%s", repoNamespace, app.GetPlatform()) // TODO (flaviamissi): should use same algorithm as image.repositoryName
-	containerCmd := fmt.Sprintf("%s %s && %s %s", deployCmd, appRepo, runBin, runArgs)
+	containerCmd := strings.Join(commands, " && ")
 	wholeCmd := []string{docker, "run", "-d", "-t", "-p", port, imageName, "/bin/bash", "-c", containerCmd}
 	return wholeCmd, port, nil
 }

@@ -81,8 +81,12 @@ func (s *S) TestDeployShouldCallDockerCreate(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	image := fmt.Sprintf("%s/python", s.repoNamespace)
 	appRepo := fmt.Sprintf("git://%s/cribcaged.git", s.gitHost)
+	sshCmd := "/var/lib/tsuru/add-key key-content && /usr/sbin/sshd"
 	containerCmd := fmt.Sprintf("/var/lib/tsuru/deploy %s && %s %s", appRepo, s.runBin, s.runArgs)
-	args := []string{"run", "-d", "-t", "-p", s.port, image, "/bin/bash", "-c", containerCmd}
+	args := []string{
+		"run", "-d", "-t", "-p", s.port, image,
+		"/bin/bash", "-c", fmt.Sprintf("%s && %s", sshCmd, containerCmd),
+	}
 	c.Assert(fexec.ExecutedCmd("docker", args), gocheck.Equals, true)
 }
 
