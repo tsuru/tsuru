@@ -480,6 +480,49 @@ func (s *S) TestContainerInspectInvalidJSON(c *gocheck.C) {
 	c.Assert(err, gocheck.NotNil)
 }
 
+func (s *S) TestContainerSSH(c *gocheck.C) {
+	output := []byte(". ..")
+	out := map[string][]byte{"*": output}
+	fexec := &etesting.FakeExecutor{Output: out}
+	execut = fexec
+	defer func() {
+		execut = nil
+	}()
+	container := container{Id: "c-01", Ip: "10.10.10.10"}
+	got, err := container.ssh("ls", "-a")
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(got, gocheck.Equals, string(output))
+	args := []string{
+		"10.10.10.10", "-l", "ubuntu",
+		"-o", "StrictHostKeyChecking no",
+		"--", "ls", "-a",
+	}
+	c.Assert(fexec.ExecutedCmd("ssh", args), gocheck.Equals, true)
+}
+
+func (s *S) TestContainerSSHWithPrivateKey(c *gocheck.C) {
+	config.Set("docker:ssh:private-key", "/opt/me/id_dsa")
+	defer config.Unset("docker:ssh:private-key")
+	output := []byte(". ..")
+	out := map[string][]byte{"*": output}
+	fexec := &etesting.FakeExecutor{Output: out}
+	execut = fexec
+	defer func() {
+		execut = nil
+	}()
+	container := container{Id: "c-01", Ip: "10.10.10.13"}
+	got, err := container.ssh("ls", "-a")
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(got, gocheck.Equals, string(output))
+	args := []string{
+		"10.10.10.13", "-l", "ubuntu",
+		"-o", "StrictHostKeyChecking no",
+		"-i", "/opt/me/id_dsa",
+		"--", "ls", "-a",
+	}
+	c.Assert(fexec.ExecutedCmd("ssh", args), gocheck.Equals, true)
+}
+
 func (s *S) TestImageCommit(c *gocheck.C) {
 	fexec := &etesting.FakeExecutor{}
 	execut = fexec

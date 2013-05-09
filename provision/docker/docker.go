@@ -294,6 +294,16 @@ func (c *container) remove() error {
 	return nil
 }
 
+func (c *container) ssh(cmd string, args ...string) (string, error) {
+	sshArgs := []string{c.Ip, "-l", "ubuntu", "-o", "StrictHostKeyChecking no"}
+	if keyFile, err := config.GetString("docker:ssh:private-key"); err == nil {
+		sshArgs = append(sshArgs, "-i", keyFile)
+	}
+	sshArgs = append(sshArgs, "--", cmd)
+	sshArgs = append(sshArgs, args...)
+	return runCmd("ssh", sshArgs...)
+}
+
 // image represents a docker image.
 type image struct {
 	Name string
