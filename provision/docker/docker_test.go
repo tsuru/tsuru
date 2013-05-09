@@ -493,7 +493,7 @@ func (s *S) TestContainerSSH(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(got, gocheck.Equals, string(output))
 	args := []string{
-		"10.10.10.10", "-l", "ubuntu",
+		"10.10.10.10", "-l", s.sshUser,
 		"-o", "StrictHostKeyChecking no",
 		"--", "ls", "-a",
 	}
@@ -515,12 +515,22 @@ func (s *S) TestContainerSSHWithPrivateKey(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(got, gocheck.Equals, string(output))
 	args := []string{
-		"10.10.10.13", "-l", "ubuntu",
+		"10.10.10.13", "-l", s.sshUser,
 		"-o", "StrictHostKeyChecking no",
 		"-i", "/opt/me/id_dsa",
 		"--", "ls", "-a",
 	}
 	c.Assert(fexec.ExecutedCmd("ssh", args), gocheck.Equals, true)
+}
+
+func (s *S) TestContainerSSHWithoutUserConfigured(c *gocheck.C) {
+	old, _ := config.Get("docker:ssh:user")
+	defer config.Set("docker:ssh:user", old)
+	config.Unset("docker:ssh:user")
+	container := container{Id: "c-01", Ip: "127.0.0.1"}
+	out, err := container.ssh("ls", "-a")
+	c.Assert(out, gocheck.Equals, "")
+	c.Assert(err, gocheck.NotNil)
 }
 
 func (s *S) TestImageCommit(c *gocheck.C) {

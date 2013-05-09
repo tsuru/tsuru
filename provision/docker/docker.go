@@ -295,7 +295,11 @@ func (c *container) remove() error {
 }
 
 func (c *container) ssh(cmd string, args ...string) (string, error) {
-	sshArgs := []string{c.Ip, "-l", "ubuntu", "-o", "StrictHostKeyChecking no"}
+	user, err := config.GetString("docker:ssh:user")
+	if err != nil {
+		return "", err
+	}
+	sshArgs := []string{c.Ip, "-l", user, "-o", "StrictHostKeyChecking no"}
 	if keyFile, err := config.GetString("docker:ssh:private-key"); err == nil {
 		sshArgs = append(sshArgs, "-i", keyFile)
 	}
