@@ -49,3 +49,11 @@ Contributions and Feedback
 * :doc:`coding style </contribute/coding-style>`
 * :doc:`setting up your tsuru development environment </contribute/setting-up-your-tsuru-development-environment>`
 * :doc:`community </community>`
+
+.. toctree::
+    :hidden:
+    :glob:
+
+    *
+    */*
+    */*/*
