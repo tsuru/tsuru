@@ -131,10 +131,6 @@ func newContainer(app provision.App) (*container, error) {
 		log.Printf("Error was: %s", err.Error())
 		return nil, err
 	}
-	r, err := getRouter()
-	if err != nil {
-		return nil, err
-	}
 	ip, err := c.ip()
 	if err != nil {
 		return nil, err
@@ -144,6 +140,10 @@ func newContainer(app provision.App) (*container, error) {
 	defer coll.Database.Session.Close()
 	if err := coll.Insert(c); err != nil {
 		log.Print(err)
+		return nil, err
+	}
+	r, err := getRouter()
+	if err != nil {
 		return nil, err
 	}
 	return &c, r.AddRoute(app.GetName(), ip)
