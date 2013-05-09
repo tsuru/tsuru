@@ -282,6 +282,8 @@ func (c *container) remove() error {
 		log.Printf("Failed to remove container from database: %s", err.Error())
 		return err
 	}
+	r, err := getRouter()
+	r.RemoveRoute(c.AppName)
 	return nil
 }
 

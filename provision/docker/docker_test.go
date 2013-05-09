@@ -326,6 +326,27 @@ func (s *S) TestDockerRemoveRemovesContainerFromDatabase(c *gocheck.C) {
 	c.Assert(err.Error(), gocheck.Equals, "not found")
 }
 
+func (s *S) TestDockerRemoveRemovesRoute(c *gocheck.C) {
+	fexec := &etesting.FakeExecutor{}
+	execut = fexec
+	defer func() {
+		execut = nil
+	}()
+	app := testing.NewFakeApp("myapp", "python", 1)
+	cntnr := container{AppName: "myapp", Id: "id", Ip: "10.10.10.10"}
+	err := s.conn.Collection(s.collName).Insert(&cntnr)
+	r, err := getRouter()
+	c.Assert(err, gocheck.IsNil)
+	r.AddRoute(app.GetName(), "10.10.10.10")
+	c.Assert(err, gocheck.IsNil)
+	err = cntnr.remove()
+	c.Assert(err, gocheck.IsNil)
+	addr, err := r.Addr(app.GetName())
+	c.Assert(err, gocheck.NotNil)
+	fmt.Println(err.Error())
+	c.Assert(addr, gocheck.Equals, "")
+}
+
 func (s *S) TestContainerIPRunsDockerInspectCommand(c *gocheck.C) {
 	fexec := &etesting.FakeExecutor{}
 	execut = fexec
