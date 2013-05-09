@@ -79,7 +79,7 @@ race:
 	@for pkg in `go list ./...`; do go test -race -i $$pkg; go test -race $$pkg; done
 
 doc:
-	@cd docs && make html SPHINXOPTS=-N
+	@cd docs && make html SPHINXOPTS="-N -W"
 
 client:
 	@go build -o tsuru ./cmd/tsuru
