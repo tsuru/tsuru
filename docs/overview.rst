@@ -152,8 +152,8 @@ Extensible Service and Platform Support
 
 Tsuru allows you to easily add support for new services and new platforms. For
 application platforms, it uses `Juju Charms <http://jujucharms.com/>`_, for
-services, it has a `API <docs.tsuru.io/en/latest/services/api.html>`_ that it
-uses to comunicate with them.
+services, it has an :doc:`API </services/api>` that it uses to comunicate with
+them.
 
 Collaboration
 -------------
