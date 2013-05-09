@@ -38,13 +38,17 @@ type FakeExecutor struct {
 // and returns a boolean indicating that, if the args does have an assigned output,
 // returns it.
 func hasOutputForArgs(out map[string][]byte, args []string) (bool, []byte) {
+	var generic []byte
 	sArgs := strings.Join(args, " ")
 	for k, v := range out {
 		if k == sArgs || k == "*" {
-			return true, v
+			generic = v
 		}
 	}
-	return false, []byte{}
+	if generic != nil {
+		return true, generic
+	}
+	return false, nil
 }
 
 func (e *FakeExecutor) hasOutputForArgs(args []string) (bool, []byte) {

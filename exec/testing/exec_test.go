@@ -83,6 +83,17 @@ func (s *S) TestFakeExecutorDoesNotHasOutputForNoMatchingArgs(c *gocheck.C) {
 	c.Assert(has, gocheck.Equals, false)
 }
 
+func (s *S) TestFakeExecutorWithArgsAndWildCard(c *gocheck.C) {
+	e := FakeExecutor{Output: map[string][]byte{"*": []byte("ble"), "-i -t": []byte("bla")}}
+	args := []string{"-i", "-t"}
+	has, out := e.hasOutputForArgs(args)
+	c.Assert(has, gocheck.Equals, true)
+	c.Assert(string(out), gocheck.Equals, "bla")
+	has, out = e.hasOutputForArgs([]string{"-i", "-x"})
+	c.Assert(has, gocheck.Equals, true)
+	c.Assert(string(out), gocheck.Equals, "ble")
+}
+
 func (s *S) TestErrorExecutorImplementsExecutor(c *gocheck.C) {
 	var _ exec.Executor = &ErrorExecutor{}
 }
