@@ -25,6 +25,7 @@ type S struct {
 	runBin        string
 	runArgs       string
 	port          string
+	hostAddr      string
 }
 
 var _ = gocheck.Suite(&S{})
@@ -34,6 +35,7 @@ func (s *S) SetUpSuite(c *gocheck.C) {
 	s.imageCollName = "docker_image"
 	s.gitHost = "my.gandalf.com"
 	s.repoNamespace = "tsuru"
+	s.hostAddr = "10.0.0.4"
 	config.Set("git:host", s.gitHost)
 	config.Set("database:url", "127.0.0.1:27017")
 	config.Set("database:name", "docker_provision_tests_s")
@@ -41,6 +43,7 @@ func (s *S) SetUpSuite(c *gocheck.C) {
 	config.Set("docker:binary", "docker")
 	config.Set("docker:router", "fake")
 	config.Set("docker:collection", s.collName)
+	config.Set("docker:host-address", hostAddr)
 	config.Set("docker:deploy-cmd", "/var/lib/tsuru/deploy")
 	config.Set("docker:run-cmd:bin", "/usr/local/bin/circusd")
 	config.Set("docker:run-cmd:args", "/etc/circus/circus.ini")
