@@ -293,17 +293,37 @@ func (s *S) TestDockerStop(c *gocheck.C) {
 	c.Assert(fexec.ExecutedCmd("docker", args), gocheck.Equals, true)
 }
 
-func (s *S) TestDockerDestroy(c *gocheck.C) {
+func (s *S) TestDockerRemove(c *gocheck.C) {
 	fexec := &etesting.FakeExecutor{}
 	execut = fexec
 	defer func() {
 		execut = nil
 	}()
 	container := container{AppName: "container", Id: "id"}
-	err := container.remove()
+	err := s.conn.Collection(s.collName).Insert(&container)
+	c.Assert(err, gocheck.IsNil)
+	err = container.remove()
 	c.Assert(err, gocheck.IsNil)
 	args := []string{"rm", "id"}
 	c.Assert(fexec.ExecutedCmd("docker", args), gocheck.Equals, true)
+}
+
+func (s *S) TestDockerRemoveRemovesContainerFromDatabase(c *gocheck.C) {
+	fexec := &etesting.FakeExecutor{}
+	execut = fexec
+	defer func() {
+		execut = nil
+	}()
+	cntnr := container{AppName: "container", Id: "id"}
+	err := s.conn.Collection(s.collName).Insert(&cntnr)
+	c.Assert(err, gocheck.IsNil)
+	err = cntnr.remove()
+	c.Assert(err, gocheck.IsNil)
+	coll := s.conn.Collection(s.collName)
+	coll.FindId("id")
+	err = coll.FindId(cntnr.Id).One(&cntnr)
+	c.Assert(err, gocheck.NotNil)
+	c.Assert(err.Error(), gocheck.Equals, "not found")
 }
 
 func (s *S) TestContainerIPRunsDockerInspectCommand(c *gocheck.C) {

@@ -268,11 +268,21 @@ func (c *container) remove() error {
 	if err != nil {
 		return err
 	}
-	//TODO: better error handling
-	//TODO: Remove host's nginx route
-	log.Printf("trying to remove container %s", c.Id)
-	_, err = runCmd(docker, "rm", c.Id)
-	return err
+	log.Printf("Removing container %s from docker", c.Id)
+	out, err := runCmd(docker, "rm", c.Id)
+	if err != nil {
+		log.Printf("Failed to remove container from docker: %s", err.Error())
+		log.Printf("Command output: %s", out)
+		return err
+	}
+	log.Printf("Removing container %s from database", c.Id)
+	coll := collection()
+	defer coll.Database.Session.Close()
+	if err := coll.RemoveId(c.Id); err != nil {
+		log.Printf("Failed to remove container from database: %s", err.Error())
+		return err
+	}
+	return nil
 }
 
 // image represents a docker image.
