@@ -141,7 +141,7 @@ func (s *S) TestRunContainerCmdReturnsCommandToRunContainer(c *gocheck.C) {
 	rfs := ftesting.RecordingFs{}
 	f, err := rfs.Create("/opt/me/id_dsa.pub")
 	c.Assert(err, gocheck.IsNil)
-	f.Write([]byte("ssh-rsa ohwait! me@machine"))
+	f.Write([]byte("ssh-rsa ohwait! me@machine\n"))
 	f.Close()
 	fsystem = &rfs
 	defer func() {

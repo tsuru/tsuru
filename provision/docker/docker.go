@@ -66,7 +66,7 @@ func getSSHCommands() ([]string, error) {
 		sshdPath = "/usr/sbin/sshd"
 	}
 	return []string{
-		fmt.Sprintf("%s %s", addKeyCommand, keyContent),
+		fmt.Sprintf("%s %s", addKeyCommand, bytes.TrimSpace(keyContent)),
 		sshdPath,
 	}, nil
 }
