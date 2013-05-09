@@ -192,9 +192,9 @@ func (c *container) ip() (string, error) {
 	return instanceIp, nil
 }
 
-// create creates a docker container with base template by default.
+// create creates a docker container, stores it on the database and adds a route to it.
 //
-// It receives the application's platform in order to choose the correct
+// It receives the related application in order to choose the correct
 // docker image and the repository to pass to the script that will take
 // care of the deploy, and a function to generate the correct command ran by
 // docker, which might be to deploy a container or to run and expose a
