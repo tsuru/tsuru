@@ -41,7 +41,10 @@ func hasOutputForArgs(out map[string][]byte, args []string) (bool, []byte) {
 	var generic []byte
 	sArgs := strings.Join(args, " ")
 	for k, v := range out {
-		if k == sArgs || k == "*" {
+		switch k {
+		case sArgs:
+			return true, v
+		case "*":
 			generic = v
 		}
 	}
