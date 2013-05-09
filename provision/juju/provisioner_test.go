@@ -746,13 +746,13 @@ func (s *S) TestExecWithTimeout(c *gocheck.C) {
 			err:     errors.New(`"sleep 2" ran for more than 1ms.`),
 		},
 		{
-			cmd:     []string{"python", "-c", "import time; time.sleep(1); print 'hello world!'"},
+			cmd:     []string{"python", "-c", "import time; time.sleep(1); print('hello world!')"},
 			timeout: 5e9,
 			out:     "hello world!\n",
 			err:     nil,
 		},
 		{
-			cmd:     []string{"python", "-c", "import sys; print 'hello world!'; exit(1)"},
+			cmd:     []string{"python", "-c", "import sys; print('hello world!'); exit(1)"},
 			timeout: 5e9,
 			out:     "hello world!\n",
 			err:     errors.New("exit status 1"),
