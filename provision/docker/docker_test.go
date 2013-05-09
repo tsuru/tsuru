@@ -112,15 +112,6 @@ func (s *S) TestNewContainerAddsRoute(c *gocheck.C) {
 	c.Assert(addr, gocheck.Equals, s.hostAddr+":30000")
 }
 
-func (s *S) TestNewContainerWithoutHostAddr(c *gocheck.C) {
-	old, _ := config.Get("docker:host-address")
-	defer config.Set("docker:host-address", old)
-	config.Unset("docker:host-address")
-	container, err := newContainer(testing.NewFakeApp("myapp", "python", 1))
-	c.Assert(container, gocheck.IsNil)
-	c.Assert(err, gocheck.NotNil)
-}
-
 func (s *S) TestNewContainerRouteNoMappedPort(c *gocheck.C) {
 	out := `{
 	"NetworkSettings": {
@@ -240,6 +231,18 @@ func (s *S) TestDockerCreate(c *gocheck.C) {
 	defer func() {
 		execut = nil
 	}()
+	output := `{
+	"NetworkSettings": {
+		"IpAddress": "10.10.10.10",
+		"IpPrefixLen": 8,
+		"Gateway": "10.65.41.1",
+		"PortMapping": {}
+	}
+}`
+	fexec.Output = map[string][]byte{
+		"inspect c-01": []byte(output),
+		"*":            []byte("c-01"),
+	}
 	container := container{AppName: "app-name", Type: "python"}
 	app := testing.NewFakeApp("app-name", "python", 1)
 	err := container.create(app)
@@ -253,6 +256,15 @@ func (s *S) TestDockerCreate(c *gocheck.C) {
 		fmt.Sprintf("%s && %s", sshCmd, containerCmd),
 	}
 	c.Assert(fexec.ExecutedCmd("docker", args), gocheck.Equals, true)
+}
+
+func (s *S) TestContainerCreateWithoutHostAddr(c *gocheck.C) {
+	old, _ := config.Get("docker:host-address")
+	defer config.Set("docker:host-address", old)
+	config.Unset("docker:host-address")
+	container := container{AppName: "myapp", Type: "python"}
+	err := container.create(testing.NewFakeApp("myapp", "python", 1))
+	c.Assert(err, gocheck.NotNil)
 }
 
 func (s *S) TestDockerStart(c *gocheck.C) {

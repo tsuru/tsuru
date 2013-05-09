@@ -120,41 +120,18 @@ type container struct {
 //
 // TODO (flaviamissi): make it atomic
 func newContainer(app provision.App) (*container, error) {
-	hostAddr, err := config.Get("docker:host-address")
-	if err != nil {
-		return nil, err
-	}
 	appName := app.GetName()
 	c := container{
 		AppName: appName,
 		Type:    app.GetPlatform(),
 	}
-	err = c.create(app)
+	err := c.create(app)
 	if err != nil {
 		log.Printf("Error creating container %s", appName)
 		log.Printf("Error was: %s", err.Error())
 		return nil, err
 	}
-	ip, err := c.ip()
-	if err != nil {
-		return nil, err
-	}
-	c.Ip = ip
-	coll := collection()
-	defer coll.Database.Session.Close()
-	if err := coll.Insert(c); err != nil {
-		log.Print(err)
-		return nil, err
-	}
-	r, err := getRouter()
-	if err != nil {
-		return nil, err
-	}
-	port, err := c.hostPort()
-	if err != nil {
-		port = c.Port
-	}
-	return &c, r.AddRoute(app.GetName(), fmt.Sprintf("%s:%s", hostAddr, port))
+	return &c, nil
 }
 
 func (c *container) inspect() (map[string]interface{}, error) {
@@ -181,7 +158,7 @@ func (c *container) hostPort() (string, error) {
 	}
 	data, err := c.inspect()
 	if err != nil {
-		return "", nil
+		return "", err
 	}
 	mappedPorts := data["NetworkSettings"].(map[string]interface{})["PortMapping"].(map[string]interface{})
 	if port, ok := mappedPorts[c.Port]; ok {
@@ -222,6 +199,10 @@ func (c *container) ip() (string, error) {
 // docker, which might be to deploy a container or to run and expose a
 // container for an application.
 func (c *container) create(app provision.App) error {
+	hostAddr, err := config.Get("docker:host-address")
+	if err != nil {
+		return err
+	}
 	cmd, port, err := runContainerCmd(app)
 	if err != nil {
 		return err
@@ -234,7 +215,26 @@ func (c *container) create(app provision.App) error {
 	log.Printf("docker id=%s", id)
 	c.Id = strings.TrimSpace(id)
 	c.Port = port
-	return err
+	ip, err := c.ip()
+	if err != nil {
+		return err
+	}
+	c.Ip = ip
+	coll := collection()
+	defer coll.Database.Session.Close()
+	if err := coll.Insert(c); err != nil {
+		log.Print(err)
+		return err
+	}
+	r, err := getRouter()
+	if err != nil {
+		return err
+	}
+	hostPort, err := c.hostPort()
+	if err != nil {
+		hostPort = c.Port
+	}
+	return r.AddRoute(app.GetName(), fmt.Sprintf("%s:%s", hostAddr, hostPort))
 }
 
 // start starts a docker container.
