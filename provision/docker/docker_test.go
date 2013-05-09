@@ -86,14 +86,49 @@ func (s *S) TestNewContainerReturnsNilAndLogsOnError(c *gocheck.C) {
 }
 
 func (s *S) TestNewContainerAddsRoute(c *gocheck.C) {
-	out := `
-    {
-            "NetworkSettings": {
-            "IpAddress": "10.10.10.10",
-            "IpPrefixLen": 8,
-            "Gateway": "10.65.41.1",
-            "PortMapping": {}
-    }
+	out := fmt.Sprintf(`{
+	"NetworkSettings": {
+		"IpAddress": "10.10.10.10",
+		"IpPrefixLen": 8,
+		"Gateway": "10.65.41.1",
+		"PortMapping": {
+			"%s": "30000"
+		}
+	}
+}`, s.port)
+	fexec := &etesting.FakeExecutor{Output: map[string][]byte{"*": []byte(out)}}
+	execut = fexec
+	defer func() {
+		execut = nil
+	}()
+	app := testing.NewFakeApp("myapp", "python", 1)
+	_, err := newContainer(app)
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Collection(s.collName).RemoveId(out)
+	r, err := getRouter()
+	c.Assert(err, gocheck.IsNil)
+	addr, err := r.Addr(app.GetName())
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(addr, gocheck.Equals, s.hostAddr+":30000")
+}
+
+func (s *S) TestNewContainerWithoutHostAddr(c *gocheck.C) {
+	old, _ := config.Get("docker:host-address")
+	defer config.Set("docker:host-address", old)
+	config.Unset("docker:host-address")
+	container, err := newContainer(testing.NewFakeApp("myapp", "python", 1))
+	c.Assert(container, gocheck.IsNil)
+	c.Assert(err, gocheck.NotNil)
+}
+
+func (s *S) TestNewContainerRouteNoMappedPort(c *gocheck.C) {
+	out := `{
+	"NetworkSettings": {
+		"IpAddress": "10.10.10.1",
+		"IpPrefixLen": 8,
+		"Gateway": "10.65.41.1",
+		"PortMapping": {}
+	}
 }`
 	fexec := &etesting.FakeExecutor{Output: map[string][]byte{"*": []byte(out)}}
 	execut = fexec
@@ -101,14 +136,14 @@ func (s *S) TestNewContainerAddsRoute(c *gocheck.C) {
 		execut = nil
 	}()
 	app := testing.NewFakeApp("myapp", "python", 1)
-	cont, err := newContainer(app)
+	_, err := newContainer(app)
 	c.Assert(err, gocheck.IsNil)
-	defer s.conn.Collection(s.collName).RemoveId(cont.Id)
+	defer s.conn.Collection(s.collName).RemoveId(out)
 	r, err := getRouter()
 	c.Assert(err, gocheck.IsNil)
 	addr, err := r.Addr(app.GetName())
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(addr, gocheck.Equals, "10.10.10.10")
+	c.Assert(addr, gocheck.Equals, s.hostAddr+":"+s.port)
 }
 
 func (s *S) TestRunContainerCmdReturnsCommandToRunContainer(c *gocheck.C) {

@@ -120,12 +120,16 @@ type container struct {
 //
 // TODO (flaviamissi): make it atomic
 func newContainer(app provision.App) (*container, error) {
+	hostAddr, err := config.Get("docker:host-address")
+	if err != nil {
+		return nil, err
+	}
 	appName := app.GetName()
 	c := container{
 		AppName: appName,
 		Type:    app.GetPlatform(),
 	}
-	err := c.create(app)
+	err = c.create(app)
 	if err != nil {
 		log.Printf("Error creating container %s", appName)
 		log.Printf("Error was: %s", err.Error())
@@ -146,7 +150,11 @@ func newContainer(app provision.App) (*container, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &c, r.AddRoute(app.GetName(), ip)
+	port, err := c.hostPort()
+	if err != nil {
+		port = c.Port
+	}
+	return &c, r.AddRoute(app.GetName(), fmt.Sprintf("%s:%s", hostAddr, port))
 }
 
 func (c *container) inspect() (map[string]interface{}, error) {
