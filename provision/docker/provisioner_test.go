@@ -160,11 +160,94 @@ func (s *S) TestProvisionerRemoveUnit(c *gocheck.C) {
 }
 
 func (s *S) TestProvisionerExecuteCommand(c *gocheck.C) {
+	fexec := &etesting.FakeExecutor{
+		Output: map[string][]byte{"*": []byte(". ..")},
+	}
+	execut = fexec
+	defer func() {
+		execut = nil
+	}()
+	app := testing.NewFakeApp("starbreaker", "python", 1)
+	container := container{Id: "c-036", AppName: "starbreaker", Type: "python", Ip: "10.10.10.1"}
+	err := s.conn.Collection(s.collName).Insert(container)
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Collection(s.collName).Remove(bson.M{"_id": container.Id})
+	var stdout, stderr bytes.Buffer
+	var p DockerProvisioner
+	err = p.ExecuteCommand(&stdout, &stderr, app, "ls", "-ar")
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(stderr.Bytes(), gocheck.IsNil)
+	c.Assert(stdout.String(), gocheck.Equals, ". ..")
+	args := []string{
+		"10.10.10.1", "-l", s.sshUser,
+		"-o", "StrictHostKeyChecking no",
+		"--", "ls", "-ar",
+	}
+	c.Assert(fexec.ExecutedCmd("ssh", args), gocheck.Equals, true)
+}
+
+func (s *S) TestProvisionerExecuteCommandMultipleContainers(c *gocheck.C) {
+	fexec := &etesting.FakeExecutor{
+		Output: map[string][]byte{"*": []byte(". ..")},
+	}
+	execut = fexec
+	defer func() {
+		execut = nil
+	}()
+	app := testing.NewFakeApp("starbreaker", "python", 1)
+	err := s.conn.Collection(s.collName).Insert(
+		container{Id: "c-036", AppName: "starbreaker", Type: "python", Ip: "10.10.10.1"},
+		container{Id: "c-037", AppName: "starbreaker", Type: "python", Ip: "10.10.10.2"},
+	)
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Collection(s.collName).RemoveAll(bson.M{"_id": bson.M{"$in": []string{"c-036", "c-037"}}})
+	var stdout, stderr bytes.Buffer
+	var p DockerProvisioner
+	err = p.ExecuteCommand(&stdout, &stderr, app, "ls", "-ar")
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(stderr.Bytes(), gocheck.IsNil)
+	args1 := []string{
+		"10.10.10.1", "-l", s.sshUser,
+		"-o", "StrictHostKeyChecking no",
+		"--", "ls", "-ar",
+	}
+	args2 := []string{
+		"10.10.10.1", "-l", s.sshUser,
+		"-o", "StrictHostKeyChecking no",
+		"--", "ls", "-ar",
+	}
+	c.Assert(fexec.ExecutedCmd("ssh", args1), gocheck.Equals, true)
+	c.Assert(fexec.ExecutedCmd("ssh", args2), gocheck.Equals, true)
+}
+
+func (s *S) TestProvisionerExecuteCommandFailure(c *gocheck.C) {
+	fexec := &etesting.ErrorExecutor{
+		Output: map[string][]byte{"*": []byte("permission denied")},
+	}
+	execut = fexec
+	defer func() {
+		execut = nil
+	}()
+	app := testing.NewFakeApp("starbreaker", "python", 1)
+	container := container{Id: "c-036", AppName: "starbreaker", Type: "python", Ip: "10.10.10.1"}
+	err := s.conn.Collection(s.collName).Insert(container)
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Collection(s.collName).Remove(bson.M{"_id": container.Id})
+	var stdout, stderr bytes.Buffer
+	var p DockerProvisioner
+	err = p.ExecuteCommand(&stdout, &stderr, app, "ls", "-ar")
+	c.Assert(err, gocheck.NotNil)
+	c.Assert(stdout.Bytes(), gocheck.IsNil)
+	c.Assert(stderr.String(), gocheck.Equals, "permission denied")
+}
+
+func (s *S) TestProvisionerExecuteCommandNoContainers(c *gocheck.C) {
 	var p DockerProvisioner
 	app := testing.NewFakeApp("almah", "static", 2)
 	var buf bytes.Buffer
 	err := p.ExecuteCommand(&buf, &buf, app, "ls", "-lh")
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, gocheck.NotNil)
+	c.Assert(err.Error(), gocheck.Equals, "No containers for this app")
 }
 
 func (s *S) TestCollectStatus(c *gocheck.C) {

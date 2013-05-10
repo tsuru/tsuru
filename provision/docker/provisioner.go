@@ -6,6 +6,7 @@ package docker
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/globocom/config"
 	"github.com/globocom/tsuru/db"
@@ -122,6 +123,19 @@ func (*DockerProvisioner) InstallDeps(app provision.App, w io.Writer) error {
 }
 
 func (*DockerProvisioner) ExecuteCommand(stdout, stderr io.Writer, app provision.App, cmd string, args ...string) error {
+	containers, err := getContainers(app.GetName())
+	if err != nil {
+		return err
+	}
+	if len(containers) == 0 {
+		return errors.New("No containers for this app")
+	}
+	for _, c := range containers {
+		err = c.ssh(stdout, stderr, cmd, args...)
+		if err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
