@@ -166,7 +166,7 @@ func (s *S) TestAddr(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(addr, gocheck.Equals, "tip.golang.org")
 	expected := []command{
-		{cmd: "LRANGE", args: []interface{}{"frontend:tip.golang.org", 1, 2}},
+		{cmd: "LRANGE", args: []interface{}{"frontend:tip.golang.org", 0, 0}},
 	}
 	c.Assert(s.conn.cmds, gocheck.DeepEquals, expected)
 }

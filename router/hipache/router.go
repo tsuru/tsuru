@@ -100,7 +100,7 @@ func (hipacheRouter) Addr(name string) (string, error) {
 	if err != nil {
 		return "", &routeError{"get", err}
 	}
-	reply, err := conn.Do("LRANGE", frontend, 1, 2)
+	reply, err := conn.Do("LRANGE", frontend, 0, 0)
 	if err != nil {
 		return "", &routeError{"get", err}
 	}
