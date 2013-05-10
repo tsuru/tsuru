@@ -164,7 +164,7 @@ func (s *S) TestAddr(c *gocheck.C) {
 	conn = &resultCommandConn{result: []interface{}{[]byte("10.10.10.10:8080")}, fakeConn: &s.conn}
 	addr, err := hipacheRouter{}.Addr("tip")
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(addr, gocheck.Equals, "10.10.10.10:8080")
+	c.Assert(addr, gocheck.Equals, "tip.golang.org")
 	expected := []command{
 		{cmd: "LRANGE", args: []interface{}{"frontend:tip.golang.org", 1, 2}},
 	}

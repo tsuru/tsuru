@@ -108,7 +108,7 @@ func (hipacheRouter) Addr(name string) (string, error) {
 	if len(backends) < 1 {
 		return "", errRouteNotFound
 	}
-	return string(backends[0].([]byte)), nil
+	return fmt.Sprintf("%s.%s", name, domain), nil
 }
 
 type routeError struct {
