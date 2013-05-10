@@ -76,6 +76,9 @@ type App interface {
 	// ProvisionUnits returns all units of the app, in a slice.
 	ProvisionUnits() []AppUnit
 
+	// RemoveUnit removes the given unit from the app.
+	RemoveUnit(id string) error
+
 	// Run executes the command in app units, sourcing apprc before running the
 	// command.
 	Run(cmd string, w io.Writer) error
