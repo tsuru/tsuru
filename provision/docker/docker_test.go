@@ -109,7 +109,7 @@ func (s *S) TestNewContainerAddsRoute(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	addr, err := r.Addr(app.GetName())
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(addr, gocheck.Equals, s.hostAddr+":30000")
+	c.Assert(addr, gocheck.Equals, "http://"+s.hostAddr+":30000")
 }
 
 func (s *S) TestNewContainerRouteNoMappedPort(c *gocheck.C) {
@@ -134,7 +134,7 @@ func (s *S) TestNewContainerRouteNoMappedPort(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	addr, err := r.Addr(app.GetName())
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(addr, gocheck.Equals, s.hostAddr+":"+s.port)
+	c.Assert(addr, gocheck.Equals, "http://"+s.hostAddr+":"+s.port)
 }
 
 func (s *S) TestRunContainerCmdReturnsCommandToRunContainer(c *gocheck.C) {

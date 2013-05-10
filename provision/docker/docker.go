@@ -235,7 +235,7 @@ func (c *container) create(app provision.App) error {
 	if err != nil {
 		hostPort = c.Port
 	}
-	return r.AddRoute(app.GetName(), fmt.Sprintf("%s:%s", hostAddr, hostPort))
+	return r.AddRoute(app.GetName(), fmt.Sprintf("http://%s:%s", hostAddr, hostPort))
 }
 
 // start starts a docker container.
