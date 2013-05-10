@@ -43,8 +43,10 @@ function remove_git_hooks() {
 function main() {
     source tsuru-setup.bash
     source gandalf-setup.bash
+    source hipache-router.bash
     install_docker
     configure_tsuru
+    remove_git_hooks
     start_tsuru
 }
 
