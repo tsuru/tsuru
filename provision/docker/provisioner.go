@@ -99,8 +99,17 @@ func (p *DockerProvisioner) Destroy(app provision.App) error {
 }
 
 func (*DockerProvisioner) Addr(app provision.App) (string, error) {
-	units := app.ProvisionUnits()
-	return units[0].GetIp(), nil
+	r, err := getRouter()
+	if err != nil {
+		log.Printf("Failed to get router: %s", err.Error())
+		return "", err
+	}
+	addr, err := r.Addr(app.GetName())
+	if err != nil {
+		log.Printf("Failed to obtain app %s address: %s", app.GetName(), err.Error())
+		return "", err
+	}
+	return addr, nil
 }
 
 func (*DockerProvisioner) AddUnits(app provision.App, units uint) ([]provision.Unit, error) {

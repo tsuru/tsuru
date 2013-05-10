@@ -152,11 +152,35 @@ func (s *S) TestProvisionerDestroyEmptyUnit(c *gocheck.C) {
 }
 
 func (s *S) TestProvisionerAddr(c *gocheck.C) {
+	out := `{
+	"NetworkSettings": {
+		"IpAddress": "10.10.10.10",
+		"IpPrefixLen": 8,
+		"Gateway": "10.65.41.1",
+		"PortMapping": {}
+	}
+}`
+	id := "123"
+	runCmd := "run -d -t -p 8888 tsuru/python /bin/bash -c /var/lib/tsuru/add-key key-content && /usr/sbin/sshd && /var/lib/tsuru/deploy git://my.gandalf.com/myapp.git && /usr/local/bin/circusd /etc/circus/circus.ini"
+	fexec := &etesting.FakeExecutor{Output: map[string][]byte{runCmd: []byte(id), "inspect " + id: []byte(out)}}
+	execut = fexec
+	defer func() {
+		execut = nil
+	}()
 	var p DockerProvisioner
 	app := testing.NewFakeApp("myapp", "python", 1)
+	w := &bytes.Buffer{}
+	err := p.Deploy(app, w)
+	c.Assert(err, gocheck.IsNil)
+	defer p.Destroy(app)
+	defer s.conn.Collection(s.collName).RemoveId(id)
 	addr, err := p.Addr(app)
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(addr, gocheck.Equals, app.ProvisionUnits()[0].GetIp())
+	r, err := getRouter()
+	c.Assert(err, gocheck.IsNil)
+	expected, err := r.Addr("myapp")
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(addr, gocheck.Equals, expected)
 }
 
 func (s *S) TestProvisionerAddUnits(c *gocheck.C) {
