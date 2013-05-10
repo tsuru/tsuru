@@ -190,9 +190,70 @@ func (s *S) TestProvisionerAddUnits(c *gocheck.C) {
 }
 
 func (s *S) TestProvisionerRemoveUnit(c *gocheck.C) {
-	var p DockerProvisioner
+	out := `{
+	"NetworkSettings": {
+		"IpAddress": "127.0.0.1",
+		"IpPrefixLen": 8,
+		"Gateway": "10.65.41.1",
+		"PortMapping": {
+			"8888": "90293"
+		}
+	}
+}`
 	app := testing.NewFakeApp("myapp", "python", 0)
-	err := p.RemoveUnit(app, "")
+	fexec := &etesting.FakeExecutor{
+		Output: map[string][]byte{
+			"*":            []byte("c-10"),
+			"inspect c-10": []byte(out),
+		},
+	}
+	setExecut(fexec)
+	defer setExecut(nil)
+	container, err := newContainer(app)
+	c.Assert(err, gocheck.IsNil)
+	defer container.remove()
+	var p DockerProvisioner
+	err = p.RemoveUnit(app, container.Id)
+	c.Assert(err, gocheck.IsNil)
+	_, err = getContainer(container.Id)
+	c.Assert(err, gocheck.NotNil)
+}
+
+func (s *S) TestProvisionerRemoveUnitNotFound(c *gocheck.C) {
+	var p DockerProvisioner
+	err := p.RemoveUnit(nil, "not-found")
+	c.Assert(err, gocheck.NotNil)
+	c.Assert(err.Error(), gocheck.Equals, "not found")
+}
+
+func (s *S) TestProvisionerRemoveUnitNotInApp(c *gocheck.C) {
+	out := `{
+	"NetworkSettings": {
+		"IpAddress": "127.0.0.1",
+		"IpPrefixLen": 8,
+		"Gateway": "10.65.41.1",
+		"PortMapping": {
+			"8888": "90293"
+		}
+	}
+}`
+	app := testing.NewFakeApp("myapp", "python", 0)
+	fexec := &etesting.FakeExecutor{
+		Output: map[string][]byte{
+			"*":            []byte("c-10"),
+			"inspect c-10": []byte(out),
+		},
+	}
+	setExecut(fexec)
+	defer setExecut(nil)
+	container, err := newContainer(app)
+	c.Assert(err, gocheck.IsNil)
+	defer container.remove()
+	var p DockerProvisioner
+	err = p.RemoveUnit(testing.NewFakeApp("hisapp", "python", 1), container.Id)
+	c.Assert(err, gocheck.NotNil)
+	c.Assert(err.Error(), gocheck.Equals, "Unit does not belong to this app")
+	_, err = getContainer(container.Id)
 	c.Assert(err, gocheck.IsNil)
 }
 

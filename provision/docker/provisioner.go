@@ -117,7 +117,14 @@ func (*DockerProvisioner) AddUnits(app provision.App, units uint) ([]provision.U
 }
 
 func (*DockerProvisioner) RemoveUnit(app provision.App, unitName string) error {
-	return nil
+	container, err := getContainer(unitName)
+	if err != nil {
+		return err
+	}
+	if container.AppName != app.GetName() {
+		return errors.New("Unit does not belong to this app")
+	}
+	return container.remove()
 }
 
 func (*DockerProvisioner) InstallDeps(app provision.App, w io.Writer) error {
