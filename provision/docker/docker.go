@@ -212,7 +212,7 @@ func (c *container) create(app provision.App) error {
 	if err != nil {
 		return err
 	}
-	id = strings.Replace(id, "\n", "", -1)
+	id = strings.TrimSpace(id)
 	log.Printf("docker id=%s", id)
 	c.Id = strings.TrimSpace(id)
 	c.Port = port
