@@ -208,7 +208,7 @@ func collectUnit(id string, units chan<- provision.Unit, errs chan<- error, wg *
 	units <- unit
 }
 
-func buildResult(maxSize int, units chan provision.Unit) <-chan []provision.Unit {
+func buildResult(maxSize int, units <-chan provision.Unit) <-chan []provision.Unit {
 	ch := make(chan []provision.Unit, 1)
 	go func() {
 		result := make([]provision.Unit, 0, maxSize)
