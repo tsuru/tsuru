@@ -135,7 +135,11 @@ func (p *DockerProvisioner) CollectStatus() ([]provision.Unit, error) {
 		return nil, err
 	}
 	var linesGroup sync.WaitGroup
-	lines := strings.Split(strings.TrimSpace(out), "\n")
+	out = strings.TrimSpace(out)
+	if out == "" {
+		return nil, nil
+	}
+	lines := strings.Split(out, "\n")
 	units := make(chan provision.Unit, len(lines))
 	result := buildResult(len(lines), units)
 	errs := make(chan error, 1)

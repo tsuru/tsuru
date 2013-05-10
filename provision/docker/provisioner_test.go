@@ -321,6 +321,19 @@ func (s *S) TestCollectStatus(c *gocheck.C) {
 	c.Assert(units, gocheck.DeepEquals, expected)
 }
 
+func (s *S) TestProvisionCollectStatusEmpty(c *gocheck.C) {
+	output := map[string][]byte{"ps -q": []byte("")}
+	fexec := &etesting.FakeExecutor{Output: output}
+	execut = fexec
+	defer func() {
+		execut = nil
+	}()
+	var p DockerProvisioner
+	units, err := p.CollectStatus()
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(units, gocheck.HasLen, 0)
+}
+
 func (s *S) TestProvisionCollection(c *gocheck.C) {
 	collection := collection()
 	c.Assert(collection.Name, gocheck.Equals, s.collName)
