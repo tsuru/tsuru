@@ -91,10 +91,12 @@ Address: %s
 	units := cmd.NewTable()
 	units.Headers = cmd.Row([]string{"Unit", "State"})
 	for _, unit := range a.Units {
-		units.AddRow(cmd.Row([]string{unit.Name, unit.State}))
+		if unit.Name != "" {
+			units.AddRow(cmd.Row([]string{unit.Name, unit.State}))
+		}
 	}
 	args := []interface{}{a.Name, a.Repository, a.Platform, teams, a.Addr()}
-	if len(a.Units) > 0 {
+	if units.Rows() > 0 {
 		format += "Units:\n%s"
 		args = append(args, units)
 	}
