@@ -137,7 +137,7 @@ func (p *JujuProvisioner) Restart(app provision.App) error {
 }
 
 func (p *JujuProvisioner) Deploy(a provision.App, w io.Writer) error {
-	return deploy.Git(a, w)
+	return deploy.Git(p, a, w)
 }
 
 func (p *JujuProvisioner) destroyService(app provision.App) error {
