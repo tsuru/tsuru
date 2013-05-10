@@ -507,7 +507,9 @@ func (app *App) setEnv(env bind.EnvVar) {
 		app.Env = make(map[string]bind.EnvVar)
 	}
 	app.Env[env.Name] = env
-	app.Log(fmt.Sprintf("setting env %s with value %s", env.Name, env.Value), "tsuru")
+	if env.Public {
+		app.Log(fmt.Sprintf("setting env %s with value %s", env.Name, env.Value), "tsuru")
+	}
 }
 
 // getEnv returns the environment variable if it's declared in the app. It will
