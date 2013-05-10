@@ -132,16 +132,18 @@ type failure struct {
 
 // Fake implementation for provision.Provisioner.
 type FakeProvisioner struct {
-	apps     []provision.App
-	units    map[string][]provision.Unit
-	unitLen  uint
-	cmds     []Cmd
-	outputs  chan []byte
-	failures chan failure
-	cmdMut   sync.Mutex
-	unitMut  sync.Mutex
-	restarts map[string]int
-	restMut  sync.Mutex
+	apps        []provision.App
+	units       map[string][]provision.Unit
+	unitLen     uint
+	cmds        []Cmd
+	outputs     chan []byte
+	failures    chan failure
+	cmdMut      sync.Mutex
+	unitMut     sync.Mutex
+	restarts    map[string]int
+	restMut     sync.Mutex
+	installDeps map[string]int
+	depsMut     sync.Mutex
 }
 
 func NewFakeProvisioner() *FakeProvisioner {
@@ -150,6 +152,7 @@ func NewFakeProvisioner() *FakeProvisioner {
 	p.failures = make(chan failure, 8)
 	p.units = make(map[string][]provision.Unit)
 	p.restarts = make(map[string]int)
+	p.installDeps = make(map[string]int)
 	p.unitLen = 0
 	return &p
 }
@@ -170,6 +173,12 @@ func (p *FakeProvisioner) Restarts(app provision.App) int {
 	p.restMut.Lock()
 	defer p.restMut.Unlock()
 	return p.restarts[app.GetName()]
+}
+
+func (p *FakeProvisioner) InstalledDeps(app provision.App) int {
+	p.depsMut.Lock()
+	defer p.depsMut.Unlock()
+	return p.installDeps[app.GetName()]
 }
 
 func (p *FakeProvisioner) Deploy(app provision.App, w io.Writer) error {
@@ -426,6 +435,13 @@ func (p *FakeProvisioner) Addr(app provision.App) (string, error) {
 }
 
 func (p *FakeProvisioner) InstallDeps(app provision.App, w io.Writer) error {
-	w.Write([]byte("InstallDeps called"))
+	if err := p.getError("InstallDeps"); err != nil {
+		return err
+	}
+	p.depsMut.Lock()
+	v := p.installDeps[app.GetName()]
+	v++
+	p.installDeps[app.GetName()] = v
+	p.depsMut.Unlock()
 	return nil
 }
