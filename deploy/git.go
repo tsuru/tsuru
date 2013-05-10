@@ -13,7 +13,7 @@ import (
 	"io"
 )
 
-func Git(app provision.App, w io.Writer) error {
+func Git(provisioner provision.Provisioner, app provision.App, w io.Writer) error {
 	log.Write(w, []byte("\n ---> Tsuru receiving push\n"))
 	log.Write(w, []byte("\n ---> Replicating the application repository across units\n"))
 	out, err := repository.CloneOrPull(app)
@@ -24,7 +24,7 @@ func Git(app provision.App, w io.Writer) error {
 	}
 	log.Write(w, out)
 	log.Write(w, []byte("\n ---> Installing dependencies\n"))
-	if err := app.InstallDeps(w); err != nil {
+	if err := provisioner.InstallDeps(app, w); err != nil {
 		log.Write(w, []byte(err.Error()))
 		return err
 	}

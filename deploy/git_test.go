@@ -11,22 +11,24 @@ import (
 )
 
 func (s *S) TestDeploy(c *gocheck.C) {
+	provisioner := testing.NewFakeProvisioner()
 	app := testing.NewFakeApp("cribcaged", "python", 1)
 	w := &bytes.Buffer{}
-	err := Git(app, w)
+	err := Git(provisioner, app, w)
 	c.Assert(err, gocheck.IsNil)
-	expected := make([]string, 3)
-	// also ensures execution order
-	expected[0] = "git clone git://tsuruhost.com/cribcaged.git test/dir --depth 1" // the command expected to run on the units
-	expected[1] = "install deps"
-	expected[2] = "restart"
+	expected := []string{
+		"git clone git://tsuruhost.com/cribcaged.git test/dir --depth 1",
+		"restart",
+	}
 	c.Assert(app.Commands, gocheck.DeepEquals, expected)
+	c.Assert(provisioner.InstalledDeps(app), gocheck.Equals, 1)
 }
 
 func (s *S) TestDeployLogsActions(c *gocheck.C) {
+	provisioner := testing.NewFakeProvisioner()
 	app := testing.NewFakeApp("cribcaged", "python", 1)
 	w := &bytes.Buffer{}
-	err := Git(app, w)
+	err := Git(provisioner, app, w)
 	c.Assert(err, gocheck.IsNil)
 	logs := w.String()
 	expected := `
