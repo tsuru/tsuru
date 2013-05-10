@@ -93,6 +93,36 @@ func (s *S) TestDeployShouldCallDockerCreate(c *gocheck.C) {
 	c.Assert(fexec.ExecutedCmd("docker", args), gocheck.Equals, true)
 }
 
+func (s *S) TestDeployShouldRemoveOldContainers(c *gocheck.C) {
+	s.conn.Collection(s.collName).Insert(container{Id: "app/0", AppName: "app"})
+	defer s.conn.Collection(s.collName).Remove(bson.M{"_id": "app/0"})
+	app := testing.NewFakeApp("app", "python", 0)
+	app.AddUnit(&testing.FakeUnit{Name: "app/0"})
+	out := `{
+	"NetworkSettings": {
+		"IpAddress": "10.10.10.10",
+		"IpPrefixLen": 8,
+		"Gateway": "10.65.41.1",
+		"PortMapping": {}
+	}
+}`
+	fexec := &etesting.FakeExecutor{
+		Output: map[string][]byte{
+			"*":            []byte("c-60"),
+			"inspect c-60": []byte(out),
+		},
+	}
+	setExecut(fexec)
+	defer setExecut(nil)
+	var p DockerProvisioner
+	var w bytes.Buffer
+	err := p.Deploy(app, &w)
+	defer p.Destroy(app)
+	defer s.conn.Collection(s.collName).RemoveId(out)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(app.ProvisionUnits(), gocheck.HasLen, 0)
+}
+
 func (s *S) TestProvisionerDestroy(c *gocheck.C) {
 	fexec := &etesting.FakeExecutor{}
 	setExecut(fexec)

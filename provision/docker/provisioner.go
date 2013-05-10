@@ -79,6 +79,11 @@ func (p *DockerProvisioner) Restart(app provision.App) error {
 }
 
 func (p *DockerProvisioner) Deploy(app provision.App, w io.Writer) error {
+	if containers, err := getContainers(app.GetName()); err == nil {
+		for _, c := range containers {
+			app.RemoveUnit(c.Id)
+		}
+	}
 	_, err := newContainer(app)
 	return err
 }
