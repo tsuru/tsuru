@@ -20,6 +20,12 @@ type S struct{}
 
 var _ = gocheck.Suite(&S{})
 
+func (s *S) TestFakeAppAddUnit(c *gocheck.C) {
+	app := NewFakeApp("jean", "mj", 0)
+	app.AddUnit(&FakeUnit{Name: "jean/0"})
+	c.Assert(app.units, gocheck.HasLen, 1)
+}
+
 func (s *S) TestFindApp(c *gocheck.C) {
 	app := NewFakeApp("red-sector", "rush", 1)
 	p := NewFakeProvisioner()

@@ -92,6 +92,10 @@ func (a *FakeApp) ProvisionUnits() []provision.AppUnit {
 	return a.units
 }
 
+func (a *FakeApp) AddUnit(u *FakeUnit) {
+	a.units = append(a.units, u)
+}
+
 func (a *FakeApp) SetUnitStatus(s provision.Status, index int) {
 	if index < len(a.units) {
 		a.units[index].(*FakeUnit).Status = s
