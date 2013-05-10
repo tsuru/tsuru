@@ -1489,22 +1489,6 @@ func (s *S) TestSkipsPostRestartWhenPostRestartSectionDoesNotExists(c *gocheck.C
 	c.Assert(st[0], gocheck.Matches, ".*Skipping post-restart hooks...")
 }
 
-func (s *S) TestInstallDeps(c *gocheck.C) {
-	a := App{
-		Name:     "someApp",
-		Platform: "django",
-		Teams:    []string{s.team.Name},
-		Units:    []Unit{{Name: "i-0800", State: "started"}},
-	}
-	//err := s.conn.Apps().Insert(a)
-	//c.Assert(err, gocheck.IsNil)
-	//defer s.conn.Apps().Remove(bson.M{"name": a.Name})
-	var buf bytes.Buffer
-	err := a.InstallDeps(&buf)
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(buf.String(), gocheck.Equals, "InstallDeps called")
-}
-
 func (s *S) TestDeployShouldCallProvisionerDeploy(c *gocheck.C) {
 	a := App{
 		Name:     "someApp",

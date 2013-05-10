@@ -664,11 +664,6 @@ func (app *App) Restart(w io.Writer) error {
 	return app.postRestart(w)
 }
 
-// InstallDeps calls provisioner's InstallDeps function
-func (app *App) InstallDeps(w io.Writer) error {
-	return Provisioner.InstallDeps(app, w)
-}
-
 // GetUnits returns the internal list of units converted to bind.Unit.
 func (app *App) GetUnits() []bind.Unit {
 	var units []bind.Unit

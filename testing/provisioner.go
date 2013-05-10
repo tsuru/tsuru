@@ -109,11 +109,6 @@ func (a *FakeApp) Restart(w io.Writer) error {
 	return nil
 }
 
-func (a *FakeApp) InstallDeps(io.Writer) error {
-	a.Commands = append(a.Commands, "install deps")
-	return nil
-}
-
 func (a *FakeApp) Run(cmd string, w io.Writer) error {
 	a.Commands = append(a.Commands, fmt.Sprintf("ran %s", cmd))
 	return nil

@@ -85,9 +85,6 @@ type App interface {
 
 	// Restart restarts the application process
 	Restart(io.Writer) error
-
-	// InstallDeps run the dependencies installation hook
-	InstallDeps(io.Writer) error
 }
 
 // Provisioner is the basic interface of this package.
