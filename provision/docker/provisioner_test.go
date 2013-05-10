@@ -163,10 +163,8 @@ func (s *S) TestProvisionerAddr(c *gocheck.C) {
 	id := "123"
 	runCmd := "run -d -t -p 8888 tsuru/python /bin/bash -c /var/lib/tsuru/add-key key-content && /usr/sbin/sshd && /var/lib/tsuru/deploy git://my.gandalf.com/myapp.git && /usr/local/bin/circusd /etc/circus/circus.ini"
 	fexec := &etesting.FakeExecutor{Output: map[string][]byte{runCmd: []byte(id), "inspect " + id: []byte(out)}}
-	execut = fexec
-	defer func() {
-		execut = nil
-	}()
+	setExecut(fexec)
+	defer setExecut(nil)
 	var p DockerProvisioner
 	app := testing.NewFakeApp("myapp", "python", 1)
 	w := &bytes.Buffer{}
