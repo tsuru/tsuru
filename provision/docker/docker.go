@@ -14,6 +14,7 @@ import (
 	"github.com/globocom/tsuru/log"
 	"github.com/globocom/tsuru/provision"
 	"github.com/globocom/tsuru/repository"
+	"io"
 	"io/ioutil"
 	"labix.org/v2/mgo/bson"
 	"os"
@@ -294,10 +295,10 @@ func (c *container) remove() error {
 	return nil
 }
 
-func (c *container) ssh(cmd string, args ...string) (string, error) {
+func (c *container) ssh(stdout, stderr io.Writer, cmd string, args ...string) error {
 	user, err := config.GetString("docker:ssh:user")
 	if err != nil {
-		return "", err
+		return err
 	}
 	sshArgs := []string{c.Ip, "-l", user, "-o", "StrictHostKeyChecking no"}
 	if keyFile, err := config.GetString("docker:ssh:private-key"); err == nil {
@@ -305,7 +306,7 @@ func (c *container) ssh(cmd string, args ...string) (string, error) {
 	}
 	sshArgs = append(sshArgs, "--", cmd)
 	sshArgs = append(sshArgs, args...)
-	return runCmd("ssh", sshArgs...)
+	return executor().Execute("ssh", sshArgs, nil, stdout, stderr)
 }
 
 // image represents a docker image.

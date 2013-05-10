@@ -481,6 +481,7 @@ func (s *S) TestContainerInspectInvalidJSON(c *gocheck.C) {
 }
 
 func (s *S) TestContainerSSH(c *gocheck.C) {
+	var stdout, stderr bytes.Buffer
 	output := []byte(". ..")
 	out := map[string][]byte{"*": output}
 	fexec := &etesting.FakeExecutor{Output: out}
@@ -489,9 +490,9 @@ func (s *S) TestContainerSSH(c *gocheck.C) {
 		execut = nil
 	}()
 	container := container{Id: "c-01", Ip: "10.10.10.10"}
-	got, err := container.ssh("ls", "-a")
+	err := container.ssh(&stdout, &stderr, "ls", "-a")
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(got, gocheck.Equals, string(output))
+	c.Assert(stdout.String(), gocheck.Equals, string(output))
 	args := []string{
 		"10.10.10.10", "-l", s.sshUser,
 		"-o", "StrictHostKeyChecking no",
@@ -501,6 +502,7 @@ func (s *S) TestContainerSSH(c *gocheck.C) {
 }
 
 func (s *S) TestContainerSSHWithPrivateKey(c *gocheck.C) {
+	var stdout, stderr bytes.Buffer
 	config.Set("docker:ssh:private-key", "/opt/me/id_dsa")
 	defer config.Unset("docker:ssh:private-key")
 	output := []byte(". ..")
@@ -511,9 +513,9 @@ func (s *S) TestContainerSSHWithPrivateKey(c *gocheck.C) {
 		execut = nil
 	}()
 	container := container{Id: "c-01", Ip: "10.10.10.13"}
-	got, err := container.ssh("ls", "-a")
+	err := container.ssh(&stdout, &stderr, "ls", "-a")
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(got, gocheck.Equals, string(output))
+	c.Assert(stdout.String(), gocheck.Equals, string(output))
 	args := []string{
 		"10.10.10.13", "-l", s.sshUser,
 		"-o", "StrictHostKeyChecking no",
@@ -528,21 +530,22 @@ func (s *S) TestContainerSSHWithoutUserConfigured(c *gocheck.C) {
 	defer config.Set("docker:ssh:user", old)
 	config.Unset("docker:ssh:user")
 	container := container{Id: "c-01", Ip: "127.0.0.1"}
-	out, err := container.ssh("ls", "-a")
-	c.Assert(out, gocheck.Equals, "")
+	err := container.ssh(nil, nil, "ls", "-a")
 	c.Assert(err, gocheck.NotNil)
 }
 
 func (s *S) TestContainerSSHCommandFailure(c *gocheck.C) {
+	var stdout, stderr bytes.Buffer
 	fexec := &etesting.ErrorExecutor{Output: map[string][]byte{"*": []byte("failed")}}
 	execut = fexec
 	defer func() {
 		execut = nil
 	}()
 	container := container{Id: "c-01", Ip: "10.10.10.10"}
-	got, err := container.ssh("ls", "-a")
+	err := container.ssh(&stdout, &stderr, "ls", "-a")
 	c.Assert(err, gocheck.NotNil)
-	c.Assert(got, gocheck.Equals, "failed")
+	c.Assert(stdout.Bytes(), gocheck.IsNil)
+	c.Assert(stderr.String(), gocheck.Equals, "failed")
 }
 
 func (s *S) TestImageCommit(c *gocheck.C) {
