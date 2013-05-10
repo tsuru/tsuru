@@ -58,6 +58,10 @@ func (t *Table) AddRow(row Row) {
 	t.rows.add(row)
 }
 
+func (t *Table) Rows() int {
+	return t.rows.Len()
+}
+
 func (t *Table) columnsSize() []int {
 	var columns int
 	if t.Headers != nil {

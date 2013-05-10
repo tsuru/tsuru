@@ -29,6 +29,19 @@ func (s *S) TestAddRows(c *gocheck.C) {
 	c.Assert(table.String(), gocheck.Equals, expected)
 }
 
+func (s *S) TestRows(c *gocheck.C) {
+	table := NewTable()
+	c.Assert(table.Rows(), gocheck.Equals, 0)
+	table.AddRow(Row{"One", "1"})
+	c.Assert(table.Rows(), gocheck.Equals, 1)
+	table.AddRow(Row{"One", "1"})
+	c.Assert(table.Rows(), gocheck.Equals, 2)
+	table.AddRow(Row{"One", "1"})
+	table.AddRow(Row{"One", "1"})
+	table.AddRow(Row{"One", "1"})
+	c.Assert(table.Rows(), gocheck.Equals, 5)
+}
+
 func (s *S) TestSort(c *gocheck.C) {
 	table := NewTable()
 	table.AddRow(Row{"Three", "3"})
