@@ -19,7 +19,6 @@ import (
 	_ "github.com/globocom/tsuru/router/testing"
 	"io"
 	"labix.org/v2/mgo"
-	"labix.org/v2/mgo/bson"
 	"net"
 	"strings"
 	"sync"
@@ -84,23 +83,10 @@ func (p *DockerProvisioner) Destroy(app provision.App) error {
 	for _, u := range units {
 		go func(u provision.AppUnit) {
 			c := container{Id: u.GetName()}
-			log.Printf("removing container %s", u.GetInstanceId())
 			if err := c.remove(); err != nil {
-				log.Print("Could not remove container. Aborting...")
-				log.Print(err)
 				return
 			}
-			log.Printf("removing container %s from the database", u.GetName())
-			if err := collection().Remove(bson.M{"_id": c.Id}); err != nil {
-				log.Printf("Could not remove container from database. Error %s", err.Error())
-			}
-			log.Print("Units successfuly removed.")
 		}(u)
-	}
-	img := &image{Name: app.GetName()}
-	log.Printf("removing image %s from the database", app.GetName())
-	if err := img.remove(); err != nil {
-		return err
 	}
 	return nil
 }
