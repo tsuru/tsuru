@@ -54,7 +54,7 @@ webserver:
 
 function start_gandalf() {
     echo "starting gandalf webserver"
-    sudo su -u git gandalf-webserver &
+    sudo su - git -c gandalf-webserver &
     echo "starting git daemon"
     sudo su - git -c "git daemon --base-path=/var/repositories --syslog --export-all" &
 }
