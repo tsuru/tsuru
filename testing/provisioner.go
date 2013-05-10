@@ -96,6 +96,24 @@ func (a *FakeApp) AddUnit(u *FakeUnit) {
 	a.units = append(a.units, u)
 }
 
+func (a *FakeApp) RemoveUnit(id string) error {
+	index := -1
+	for i, u := range a.units {
+		if u.GetName() == id {
+			index = i
+			break
+		}
+	}
+	if index < 0 {
+		return errors.New("Unit not found")
+	}
+	if index < len(a.units)-1 {
+		a.units[index] = a.units[len(a.units)-1]
+	}
+	a.units = a.units[:len(a.units)-1]
+	return nil
+}
+
 func (a *FakeApp) SetUnitStatus(s provision.Status, index int) {
 	if index < len(a.units) {
 		a.units[index].(*FakeUnit).Status = s

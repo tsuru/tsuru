@@ -26,6 +26,16 @@ func (s *S) TestFakeAppAddUnit(c *gocheck.C) {
 	c.Assert(app.units, gocheck.HasLen, 1)
 }
 
+func (s *S) TestFakeAppRemoveUnit(c *gocheck.C) {
+	app := NewFakeApp("jean", "mk", 0)
+	app.AddUnit(&FakeUnit{Name: "jean/0"})
+	err := app.RemoveUnit("jean/0")
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(app.units, gocheck.HasLen, 0)
+	err = app.RemoveUnit("jean/0")
+	c.Assert(err, gocheck.NotNil)
+}
+
 func (s *S) TestFindApp(c *gocheck.C) {
 	app := NewFakeApp("red-sector", "rush", 1)
 	p := NewFakeProvisioner()

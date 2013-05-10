@@ -298,7 +298,7 @@ func (app *App) RemoveUnit(id string) error {
 		u    Unit
 	)
 	for i, u = range app.Units {
-		if u.InstanceId == id || u.GetName() == id {
+		if u.InstanceId == id || u.Name == id {
 			unit = u
 			break
 		}
