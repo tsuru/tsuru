@@ -7,71 +7,10 @@
 package repository
 
 import (
-	"bytes"
 	"fmt"
 	"github.com/globocom/config"
 	"github.com/globocom/tsuru/log"
-	"io"
 )
-
-// Unit interface represents a unit of execution.
-//
-// It must provide two methods:
-//
-//   * GetName: returns the name of the unit.
-//   * Command: runs a command in the unit.
-//
-// Whatever that has a name and is able to run commands, is a unit.
-type Unit interface {
-	GetName() string
-	Command(stdout, stderr io.Writer, cmd ...string) error
-}
-
-// Clone runs a git clone to clone the app repository in a unit.
-//
-// Given a machine id (from juju), it runs a git clone into this machine,
-// cloning from the bare repository that is being served by git-daemon in the
-// tsuru server.
-func clone(u Unit) ([]byte, error) {
-	var buf bytes.Buffer
-	p, err := GetPath()
-	if err != nil {
-		return nil, fmt.Errorf("Tsuru is misconfigured: %s", err)
-	}
-	cmd := fmt.Sprintf("git clone %s %s --depth 1", GetReadOnlyUrl(u.GetName()), p)
-	err = u.Command(&buf, &buf, cmd) // maybe we should call provisioner.ExecuteCommand directly
-	b := buf.Bytes()
-	log.Printf(`"git clone" output: %s`, b)
-	return b, err
-}
-
-// Pull runs a git pull to update the code in a unit.
-//
-// It works like Clone, pulling from the app bare repository.
-func pull(u Unit) ([]byte, error) {
-	var buf bytes.Buffer
-	p, err := GetPath()
-	if err != nil {
-		return nil, fmt.Errorf("Tsuru is misconfigured: %s", err)
-	}
-	cmd := fmt.Sprintf("cd %s && git pull origin master", p)
-	err = u.Command(&buf, &buf, cmd) // maybe we should call provisioner.ExecuteCommand directly
-	b := buf.Bytes()
-	log.Printf(`"git pull" output: %s`, b)
-	return b, err
-}
-
-// CloneOrPull runs a git clone or a git pull in a unit of the app.
-//
-// First it tries to clone, and if the clone fail (meaning that the repository
-// is already cloned), it pulls changes from the bare repository.
-func CloneOrPull(u Unit) ([]byte, error) {
-	b, err := clone(u)
-	if err != nil {
-		b, err = pull(u)
-	}
-	return b, err
-}
 
 // getGitServer returns the git server defined in the tsuru.conf file.
 //

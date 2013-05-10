@@ -5,104 +5,10 @@
 package repository
 
 import (
-	"errors"
 	"fmt"
 	"github.com/globocom/config"
-	"io"
 	"launchpad.net/gocheck"
-	"strings"
 )
-
-type FakeUnit struct {
-	name     string
-	commands []string
-}
-
-func (u *FakeUnit) RanCommand(cmd string) bool {
-	for _, c := range u.commands {
-		if c == cmd {
-			return true
-		}
-	}
-	return false
-}
-
-func (u *FakeUnit) GetName() string {
-	return u.name
-}
-
-func (u *FakeUnit) Command(stdout, stderr io.Writer, cmd ...string) error {
-	u.commands = append(u.commands, cmd[0])
-	return nil
-}
-
-type FailingCloneUnit struct {
-	FakeUnit
-}
-
-func (u *FailingCloneUnit) Command(stdout, stderr io.Writer, cmd ...string) error {
-	if strings.HasPrefix(cmd[0], "git clone") {
-		u.commands = append(u.commands, cmd[0])
-		return errors.New("Failed to clone repository, it already exists!")
-	}
-	return u.FakeUnit.Command(nil, nil, cmd...)
-}
-
-func (s *S) TestCloneRepository(c *gocheck.C) {
-	u := FakeUnit{name: "my-unit"}
-	_, err := clone(&u)
-	c.Assert(err, gocheck.IsNil)
-	expectedCommand := fmt.Sprintf("git clone %s /home/application/current --depth 1", GetReadOnlyUrl(u.GetName()))
-	c.Assert(u.RanCommand(expectedCommand), gocheck.Equals, true)
-}
-
-func (s *S) TestCloneRepositoryUndefinedPath(c *gocheck.C) {
-	old, _ := config.Get("git:unit-repo")
-	config.Unset("git:unit-repo")
-	defer config.Set("git:unit-repo", old)
-	u := FakeUnit{name: "my-unit"}
-	_, err := clone(&u)
-	c.Assert(err, gocheck.NotNil)
-	c.Assert(err.Error(), gocheck.Equals, `Tsuru is misconfigured: key "git:unit-repo" not found`)
-}
-
-func (s *S) TestPullRepository(c *gocheck.C) {
-	u := FakeUnit{name: "your-unit"}
-	_, err := pull(&u)
-	c.Assert(err, gocheck.IsNil)
-	expectedCommand := fmt.Sprintf("cd /home/application/current && git pull origin master")
-	c.Assert(u.RanCommand(expectedCommand), gocheck.Equals, true)
-}
-
-func (s *S) TestPullRepositoryUndefinedPath(c *gocheck.C) {
-	old, _ := config.Get("git:unit-repo")
-	config.Unset("git:unit-repo")
-	defer config.Set("git:unit-repo", old)
-	u := FakeUnit{name: "my-unit"}
-	_, err := pull(&u)
-	c.Assert(err, gocheck.NotNil)
-	c.Assert(err.Error(), gocheck.Equals, `Tsuru is misconfigured: key "git:unit-repo" not found`)
-}
-
-func (s *S) TestCloneOrPullRepositoryRunsClone(c *gocheck.C) {
-	u := FakeUnit{name: "my-unit"}
-	_, err := CloneOrPull(&u)
-	c.Assert(err, gocheck.IsNil)
-	clone := fmt.Sprintf("git clone %s /home/application/current --depth 1", GetReadOnlyUrl(u.GetName()))
-	pull := fmt.Sprintf("cd /home/application/current && git pull origin master")
-	c.Assert(u.RanCommand(clone), gocheck.Equals, true)
-	c.Assert(u.RanCommand(pull), gocheck.Equals, false)
-}
-
-func (s *S) TestCloneOrPullRepositoryRunsPullIfCloneFail(c *gocheck.C) {
-	u := FailingCloneUnit{FakeUnit{name: "my-unit"}}
-	_, err := CloneOrPull(&u)
-	c.Assert(err, gocheck.IsNil)
-	clone := fmt.Sprintf("git clone %s /home/application/current --depth 1", GetReadOnlyUrl(u.GetName()))
-	pull := fmt.Sprintf("cd /home/application/current && git pull origin master")
-	c.Assert(u.RanCommand(clone), gocheck.Equals, true)
-	c.Assert(u.RanCommand(pull), gocheck.Equals, true)
-}
 
 func (s *S) TestGetRepositoryUrl(c *gocheck.C) {
 	url := GetUrl("foobar")
