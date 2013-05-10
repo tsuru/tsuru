@@ -106,15 +106,6 @@ func (s *S) TestProvisionerRestart(c *gocheck.C) {
 	c.Assert(fexec.ExecutedCmd("ssh", args), gocheck.Equals, true)
 }
 
-// func (s *S) TestProvisionerRestartFailure(c *gocheck.C) {
-// 	app := testing.NewFakeApp("cribcaged", "python", 1)
-// 	p := LXCProvisioner{}
-// 	err := p.Restart(app)
-// 	c.Assert(err, gocheck.NotNil)
-// 	_, ok := err.(*provision.Error)
-// 	c.Assert(ok, gocheck.Equals, true)
-// }
-
 func (s *S) TestDeploy(c *gocheck.C) {
 	tmpdir, err := commandmocker.Add("ssh", "")
 	c.Assert(err, gocheck.IsNil)
