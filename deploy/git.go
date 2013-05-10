@@ -5,6 +5,7 @@
 package deploy
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"github.com/globocom/tsuru/log"
@@ -13,10 +14,43 @@ import (
 	"io"
 )
 
+// Clone runs a git clone to clone the app repository in an ap.
+func clone(p provision.Provisioner, app provision.App) ([]byte, error) {
+	var buf bytes.Buffer
+	path, err := repository.GetPath()
+	if err != nil {
+		return nil, fmt.Errorf("Tsuru is misconfigured: %s", err)
+	}
+	cmd := fmt.Sprintf("git clone %s %s --depth 1", repository.GetReadOnlyUrl(app.GetName()), path)
+	err = p.ExecuteCommand(&buf, &buf, app, cmd)
+	b := buf.Bytes()
+	log.Printf(`"git clone" output: %s`, b)
+	return b, err
+}
+
+// Pull runs a git pull to update the code in an app
+//
+// It works like Clone, pulling from the app bare repository.
+func pull(p provision.Provisioner, app provision.App) ([]byte, error) {
+	var buf bytes.Buffer
+	path, err := repository.GetPath()
+	if err != nil {
+		return nil, fmt.Errorf("Tsuru is misconfigured: %s", err)
+	}
+	cmd := fmt.Sprintf("cd %s && git pull origin master", path)
+	err = p.ExecuteCommand(&buf, &buf, app, cmd)
+	b := buf.Bytes()
+	log.Printf(`"git pull" output: %s`, b)
+	return b, err
+}
+
 func Git(provisioner provision.Provisioner, app provision.App, w io.Writer) error {
 	log.Write(w, []byte("\n ---> Tsuru receiving push\n"))
 	log.Write(w, []byte("\n ---> Replicating the application repository across units\n"))
-	out, err := repository.CloneOrPull(app)
+	out, err := clone(provisioner, app)
+	if err != nil {
+		out, err = pull(provisioner, app)
+	}
 	if err != nil {
 		msg := fmt.Sprintf("Got error while clonning/pulling repository: %s -- \n%s", err.Error(), string(out))
 		log.Write(w, []byte(msg))
