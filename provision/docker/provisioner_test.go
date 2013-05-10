@@ -7,6 +7,7 @@ package docker
 import (
 	"bytes"
 	"fmt"
+	"github.com/globocom/tsuru/exec"
 	etesting "github.com/globocom/tsuru/exec/testing"
 	"github.com/globocom/tsuru/log"
 	"github.com/globocom/tsuru/provision"
@@ -19,6 +20,12 @@ import (
 	"strings"
 	"time"
 )
+
+func setExecut(e exec.Executor) {
+	emutex.Lock()
+	execut = e
+	emutex.Unlock()
+}
 
 func (s *S) TestShouldBeRegistered(c *gocheck.C) {
 	p, err := provision.Get("docker")
@@ -36,10 +43,8 @@ func (s *S) TestProvisionerProvision(c *gocheck.C) {
 func (s *S) TestProvisionerRestartCallsDockerStopAndDockerStart(c *gocheck.C) {
 	id := "caad7bbd5411"
 	fexec := &etesting.FakeExecutor{Output: map[string][]byte{"*": []byte(id)}}
-	execut = fexec
-	defer func() {
-		execut = nil
-	}()
+	setExecut(fexec)
+	defer setExecut(nil)
 	var p DockerProvisioner
 	app := testing.NewFakeApp("almah", "static", 1)
 	cont := container{
@@ -68,10 +73,8 @@ func (s *S) TestDeployShouldCallDockerCreate(c *gocheck.C) {
 	}
 }`
 	fexec := &etesting.FakeExecutor{Output: map[string][]byte{"*": []byte(out)}}
-	execut = fexec
-	defer func() {
-		execut = nil
-	}()
+	setExecut(fexec)
+	defer setExecut(nil)
 	p := DockerProvisioner{}
 	app := testing.NewFakeApp("cribcaged", "python", 1)
 	w := &bytes.Buffer{}
@@ -92,10 +95,8 @@ func (s *S) TestDeployShouldCallDockerCreate(c *gocheck.C) {
 
 func (s *S) TestProvisionerDestroy(c *gocheck.C) {
 	fexec := &etesting.FakeExecutor{}
-	execut = fexec
-	defer func() {
-		execut = nil
-	}()
+	setExecut(fexec)
+	defer setExecut(nil)
 	w := new(bytes.Buffer)
 	l := stdlog.New(w, "", stdlog.LstdFlags)
 	log.SetLogger(l)
@@ -138,10 +139,8 @@ func (s *S) TestProvisionerDestroy(c *gocheck.C) {
 
 func (s *S) TestProvisionerDestroyEmptyUnit(c *gocheck.C) {
 	fexec := &etesting.FakeExecutor{}
-	execut = fexec
-	defer func() {
-		execut = nil
-	}()
+	setExecut(fexec)
+	defer setExecut(nil)
 	w := new(bytes.Buffer)
 	l := stdlog.New(w, "", stdlog.LstdFlags)
 	log.SetLogger(l)
@@ -179,10 +178,8 @@ func (s *S) TestProvisionerExecuteCommand(c *gocheck.C) {
 	fexec := &etesting.FakeExecutor{
 		Output: map[string][]byte{"*": []byte(". ..")},
 	}
-	execut = fexec
-	defer func() {
-		execut = nil
-	}()
+	setExecut(fexec)
+	defer setExecut(nil)
 	app := testing.NewFakeApp("starbreaker", "python", 1)
 	container := container{Id: "c-036", AppName: "starbreaker", Type: "python", Ip: "10.10.10.1"}
 	err := s.conn.Collection(s.collName).Insert(container)
@@ -206,10 +203,8 @@ func (s *S) TestProvisionerExecuteCommandMultipleContainers(c *gocheck.C) {
 	fexec := &etesting.FakeExecutor{
 		Output: map[string][]byte{"*": []byte(". ..")},
 	}
-	execut = fexec
-	defer func() {
-		execut = nil
-	}()
+	setExecut(fexec)
+	defer setExecut(nil)
 	app := testing.NewFakeApp("starbreaker", "python", 1)
 	err := s.conn.Collection(s.collName).Insert(
 		container{Id: "c-036", AppName: "starbreaker", Type: "python", Ip: "10.10.10.1"},
@@ -240,10 +235,8 @@ func (s *S) TestProvisionerExecuteCommandFailure(c *gocheck.C) {
 	fexec := &etesting.ErrorExecutor{
 		Output: map[string][]byte{"*": []byte("permission denied")},
 	}
-	execut = fexec
-	defer func() {
-		execut = nil
-	}()
+	setExecut(fexec)
+	defer setExecut(nil)
 	app := testing.NewFakeApp("starbreaker", "python", 1)
 	container := container{Id: "c-036", AppName: "starbreaker", Type: "python", Ip: "10.10.10.1"}
 	err := s.conn.Collection(s.collName).Insert(container)
@@ -324,10 +317,8 @@ func (s *S) TestCollectStatus(c *gocheck.C) {
 		"inspect 9930c24f1c4f": []byte(c2Output),
 	}
 	fexec := &etesting.FakeExecutor{Output: output}
-	execut = fexec
-	defer func() {
-		execut = nil
-	}()
+	setExecut(fexec)
+	defer setExecut(nil)
 	var p DockerProvisioner
 	units, err := p.CollectStatus()
 	c.Assert(err, gocheck.IsNil)
@@ -340,10 +331,8 @@ func (s *S) TestCollectStatus(c *gocheck.C) {
 func (s *S) TestProvisionCollectStatusEmpty(c *gocheck.C) {
 	output := map[string][]byte{"ps -q": []byte("")}
 	fexec := &etesting.FakeExecutor{Output: output}
-	execut = fexec
-	defer func() {
-		execut = nil
-	}()
+	setExecut(fexec)
+	defer setExecut(nil)
 	var p DockerProvisioner
 	units, err := p.CollectStatus()
 	c.Assert(err, gocheck.IsNil)

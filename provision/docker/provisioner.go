@@ -28,9 +28,14 @@ func init() {
 	provision.Register("docker", &DockerProvisioner{})
 }
 
-var execut exec.Executor
+var (
+	execut exec.Executor
+	emutex sync.Mutex
+)
 
 func executor() exec.Executor {
+	emutex.Lock()
+	defer emutex.Unlock()
 	if execut == nil {
 		execut = exec.OsExecutor{}
 	}
