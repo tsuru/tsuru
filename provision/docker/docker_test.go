@@ -325,7 +325,6 @@ func (s *S) TestDockerRemoveRemovesRoute(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	addr, err := r.Addr(app.GetName())
 	c.Assert(err, gocheck.NotNil)
-	fmt.Println(err.Error())
 	c.Assert(addr, gocheck.Equals, "")
 }
 
