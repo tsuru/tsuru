@@ -81,12 +81,14 @@ func (p *DockerProvisioner) Deploy(app provision.App, w io.Writer) error {
 func (p *DockerProvisioner) Destroy(app provision.App) error {
 	units := app.ProvisionUnits()
 	for _, u := range units {
-		go func(u provision.AppUnit) {
-			c := container{Id: u.GetName()}
-			if err := c.remove(); err != nil {
-				return
-			}
-		}(u)
+		if u.GetName() != "" {
+			go func(u provision.AppUnit) {
+				c := container{Id: u.GetName()}
+				if err := c.remove(); err != nil {
+					return
+				}
+			}(u)
+		}
 	}
 	return nil
 }

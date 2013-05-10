@@ -136,6 +136,22 @@ func (s *S) TestProvisionerDestroy(c *gocheck.C) {
 	c.Assert(fexec.ExecutedCmd("docker", args), gocheck.Equals, true)
 }
 
+func (s *S) TestProvisionerDestroyEmptyUnit(c *gocheck.C) {
+	fexec := &etesting.FakeExecutor{}
+	execut = fexec
+	defer func() {
+		execut = nil
+	}()
+	w := new(bytes.Buffer)
+	l := stdlog.New(w, "", stdlog.LstdFlags)
+	log.SetLogger(l)
+	app := testing.NewFakeApp("myapp", "python", 0)
+	app.AddUnit(&testing.FakeUnit{})
+	var p DockerProvisioner
+	err := p.Destroy(app)
+	c.Assert(err, gocheck.IsNil)
+}
+
 func (s *S) TestProvisionerAddr(c *gocheck.C) {
 	var p DockerProvisioner
 	app := testing.NewFakeApp("myapp", "python", 1)
