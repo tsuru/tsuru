@@ -63,11 +63,26 @@ func (s *S) TestShouldBeRegistered(c *gocheck.C) {
 }
 
 func (s *S) TestAddRoute(c *gocheck.C) {
+	conn = &resultCommandConn{result: []interface{}{}, fakeConn: &s.conn}
 	router := hipacheRouter{}
 	err := router.AddRoute("tip", "http://10.10.10.10:8080")
 	c.Assert(err, gocheck.IsNil)
 	expected := []command{
+		{cmd: "LRANGE", args: []interface{}{"frontend:tip.golang.org", 0, 0}},
+		{cmd: "RPUSH", args: []interface{}{"frontend:tip.golang.org", "tip"}},
 		{cmd: "RPUSH", args: []interface{}{"frontend:tip.golang.org", "http://10.10.10.10:8080"}},
+	}
+	c.Assert(s.conn.cmds, gocheck.DeepEquals, expected)
+}
+
+func (s *S) TestAddTwoRoutes(c *gocheck.C) {
+	conn = &resultCommandConn{result: []interface{}{[]byte("tip")}, fakeConn: &s.conn}
+	router := hipacheRouter{}
+	err := router.AddRoute("tip", "http://10.10.10.10:8081")
+	c.Assert(err, gocheck.IsNil)
+	expected := []command{
+		{cmd: "LRANGE", args: []interface{}{"frontend:tip.golang.org", 0, 0}},
+		{cmd: "RPUSH", args: []interface{}{"frontend:tip.golang.org", "http://10.10.10.10:8081"}},
 	}
 	c.Assert(s.conn.cmds, gocheck.DeepEquals, expected)
 }

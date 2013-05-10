@@ -55,6 +55,17 @@ func (hipacheRouter) AddRoute(name, ip string) error {
 	if err != nil {
 		return &routeError{"add", err}
 	}
+	reply, err := conn.Do("LRANGE", frontend, 0, 0)
+	if err != nil {
+		return &routeError{"add", err}
+	}
+	route := reply.([]interface{})
+	if len(route) < 1 {
+		_, err = conn.Do("RPUSH", frontend, name)
+		if err != nil {
+			return &routeError{"add", err}
+		}
+	}
 	_, err = conn.Do("RPUSH", frontend, ip)
 	if err != nil {
 		return &routeError{"add", err}
