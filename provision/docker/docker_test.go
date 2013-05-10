@@ -57,6 +57,7 @@ func (s *S) TestNewContainerCallsDockerCreate(c *gocheck.C) {
 	defer setExecut(nil)
 	app := testing.NewFakeApp("app-name", "python", 1)
 	newContainer(app)
+	defer s.conn.Collection(s.collName).Remove(bson.M{"appname": app.GetName()})
 	appRepo := fmt.Sprintf("git://%s/app-name.git", s.gitHost)
 	sshCmd := "/var/lib/tsuru/add-key key-content && /usr/sbin/sshd"
 	containerCmd := fmt.Sprintf("/var/lib/tsuru/deploy %s && %s %s", appRepo, s.runBin, s.runArgs)
@@ -77,6 +78,7 @@ func (s *S) TestNewContainerReturnsNilAndLogsOnError(c *gocheck.C) {
 	app := testing.NewFakeApp("myapp", "python", 1)
 	container, err := newContainer(app)
 	c.Assert(err, gocheck.NotNil)
+	defer s.conn.Collection(s.collName).Remove(bson.M{"appname": app.GetName()})
 	c.Assert(container, gocheck.IsNil)
 	c.Assert(w.String(), gocheck.Matches, "(?s).*Error creating container myapp.*")
 }
