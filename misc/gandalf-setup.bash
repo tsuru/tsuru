@@ -39,7 +39,7 @@ host: $TSURU_DOMAIN
 webserver:
   port: \":8000\"\" > /etc/gandalf.conf"
     echo "Creating git user"
-    sudo useradd git
+    sudo useradd -m git
     echo "Creating bare path"
     [ -d /var/repositories ] || sudo mkdir -p /var/repositories
     sudo chown -R git:git /var/repositories
