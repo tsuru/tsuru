@@ -7,8 +7,7 @@
 # This script is used to install the hipache router.
 
 function install_npm() {
-    sudo apt-get install npm -y --force-yes
-    sudo ln -s /usr/bin/nodejs /usr/bin/node
+    curl http://nodejs.org/dist/v0.8.23/node-v0.8.23-linux-x64.tar.gz | sudo tar -C /usr/local/ --strip-components=1 -zxv
 }
 
 function install_redis() {
