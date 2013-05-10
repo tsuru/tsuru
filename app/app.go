@@ -636,11 +636,6 @@ func (app *App) run(cmd string, w io.Writer) error {
 	return Provisioner.ExecuteCommand(w, w, app, cmd)
 }
 
-// Command is declared just to satisfy repository.Unit interface.
-func (app *App) Command(stdout, stderr io.Writer, cmdArgs ...string) error {
-	return Provisioner.ExecuteCommand(stdout, stderr, app, cmdArgs[0], cmdArgs[1:]...)
-}
-
 func (app *App) Deploy(w io.Writer) error {
 	logWriter := LogWriter{App: app, Writer: w}
 	return Provisioner.Deploy(app, &logWriter)

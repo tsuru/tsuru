@@ -10,7 +10,6 @@ import (
 	"github.com/globocom/tsuru/provision"
 	"io"
 	"strconv"
-	"strings"
 	"sync"
 	"time"
 )
@@ -97,11 +96,6 @@ func (a *FakeApp) SetUnitStatus(s provision.Status, index int) {
 	if index < len(a.units) {
 		a.units[index].(*FakeUnit).Status = s
 	}
-}
-
-func (a *FakeApp) Command(stdout, stderr io.Writer, cmdArgs ...string) error {
-	a.Commands = append(a.Commands, strings.Join(cmdArgs, " "))
-	return nil
 }
 
 func (a *FakeApp) Restart(w io.Writer) error {

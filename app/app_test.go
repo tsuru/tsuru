@@ -1762,21 +1762,6 @@ func (s *S) TestRunWithoutEnv(c *gocheck.C) {
 	c.Assert(cmds, gocheck.HasLen, 1)
 }
 
-func (s *S) TestCommand(c *gocheck.C) {
-	s.provisioner.PrepareOutput([]byte("lots of files"))
-	app := App{Name: "myapp"}
-	var buf bytes.Buffer
-	err := app.Command(&buf, &buf, "ls -lh")
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(buf.String(), gocheck.Equals, "lots of files")
-	cmds := s.provisioner.GetCmds("ls -lh", &app)
-	c.Assert(cmds, gocheck.HasLen, 1)
-}
-
-func (s *S) TestAppShouldBeARepositoryUnit(c *gocheck.C) {
-	var _ repository.Unit = &App{}
-}
-
 func (s *S) TestSerializeEnvVars(c *gocheck.C) {
 	s.provisioner.PrepareOutput([]byte("exported"))
 	app := App{

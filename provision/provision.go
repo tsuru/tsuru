@@ -80,9 +80,6 @@ type App interface {
 	// command.
 	Run(cmd string, w io.Writer) error
 
-	// Command executes a command in the application units
-	Command(io.Writer, io.Writer, ...string) error
-
 	// Restart restarts the application process
 	Restart(io.Writer) error
 }
