@@ -24,16 +24,14 @@ import (
 	"labix.org/v2/mgo/bson"
 	"net/http"
 	"strings"
-	"time"
 )
 
 const (
 	// TODO(fss): move code that depend on these constants to package auth.
-	defaultExpiration = 7 * 24 * time.Hour
-	emailError        = "Invalid email."
-	passwordError     = "Password length should be least 6 characters and at most 50 characters."
-	passwordMinLen    = 6
-	passwordMaxLen    = 50
+	emailError     = "Invalid email."
+	passwordError  = "Password length should be least 6 characters and at most 50 characters."
+	passwordMinLen = 6
+	passwordMaxLen = 50
 )
 
 func createUser(w http.ResponseWriter, r *http.Request) error {
