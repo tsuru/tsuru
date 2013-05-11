@@ -64,20 +64,6 @@ func appIsAvailable(w http.ResponseWriter, r *http.Request, t *auth.Token) error
 	return nil
 }
 
-func forceDeleteApp(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
-	u, err := t.User()
-	if err != nil {
-		return err
-	}
-	a, err := getApp(r.URL.Query().Get(":app"), u)
-	if err != nil {
-		return err
-	}
-	app.ForceDestroy(&a)
-	fmt.Fprint(w, "success")
-	return nil
-}
-
 func appDelete(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
 	u, err := t.User()
 	if err != nil {
@@ -91,17 +77,6 @@ func appDelete(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
 	app.ForceDestroy(&a)
 	fmt.Fprint(w, "success")
 	return nil
-}
-
-func getTeamNames(u *auth.User) ([]string, error) {
-	var (
-		teams []auth.Team
-		err   error
-	)
-	if teams, err = u.Teams(); err != nil {
-		return nil, err
-	}
-	return auth.GetTeamsNames(teams), nil
 }
 
 func appList(w http.ResponseWriter, r *http.Request, t *auth.Token) error {

@@ -217,32 +217,6 @@ func (s *S) TestListShouldReturnStatusNoContentWhenAppListIsNil(c *gocheck.C) {
 	c.Assert(recorder.Code, gocheck.Equals, http.StatusNoContent)
 }
 
-func (s *S) TestForceDeleteApp(c *gocheck.C) {
-	h := testHandler{}
-	ts := s.t.StartGandalfTestServer(&h)
-	defer ts.Close()
-	a := app.App{
-		Name:     "myapptodelete",
-		Platform: "zend",
-		Teams:    []string{s.team.Name},
-		Units: []app.Unit{
-			{Ip: "10.10.10.10", Machine: 1},
-		},
-	}
-	err := s.conn.Apps().Insert(&a)
-	c.Assert(err, gocheck.IsNil)
-	a.Get()
-	request, err := http.NewRequest("DELETE", "/apps/"+a.Name+"/force?:app="+a.Name, nil)
-	c.Assert(err, gocheck.IsNil)
-	recorder := httptest.NewRecorder()
-	err = forceDeleteApp(recorder, request, s.token)
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(recorder.Code, gocheck.Equals, http.StatusOK)
-	qt, err := s.conn.Apps().Find(bson.M{"name": a.Name}).Count()
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(qt, gocheck.Equals, 0)
-}
-
 func (s *S) TestDelete(c *gocheck.C) {
 	h := testHandler{}
 	ts := s.t.StartGandalfTestServer(&h)
@@ -2065,23 +2039,6 @@ func (s *S) TestAppLogShouldReturnLogByApp(c *gocheck.C) {
 	}
 	// Should show the app3 log
 	c.Assert(logged, gocheck.Equals, true)
-}
-
-func (s *S) TestGetTeamNamesReturnTheNameOfTeamsThatTheUserIsMember(c *gocheck.C) {
-	one := &auth.User{Email: "imone@thewho.com", Password: "123"}
-	who := auth.Team{Name: "TheWho", Users: []string{one.Email}}
-	err := s.conn.Teams().Insert(who)
-	what := auth.Team{Name: "TheWhat", Users: []string{one.Email}}
-	err = s.conn.Teams().Insert(what)
-	c.Assert(err, gocheck.IsNil)
-	where := auth.Team{Name: "TheWhere", Users: []string{one.Email}}
-	err = s.conn.Teams().Insert(where)
-	c.Assert(err, gocheck.IsNil)
-	teams := []string{who.Name, what.Name, where.Name}
-	defer s.conn.Teams().RemoveAll(bson.M{"_id": bson.M{"$in": teams}})
-	names, err := getTeamNames(one)
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(names, gocheck.DeepEquals, teams)
 }
 
 func (s *S) TestBindHandlerEndpointIsDown(c *gocheck.C) {
