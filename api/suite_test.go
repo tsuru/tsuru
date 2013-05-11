@@ -84,7 +84,6 @@ func (s *S) TearDownSuite(c *gocheck.C) {
 	defer s.t.IamServer.Quit()
 	queue.Preempt()
 	s.conn.Apps().Database.DropDatabase()
-	fsystem = nil
 }
 
 func (s *S) TearDownTest(c *gocheck.C) {
