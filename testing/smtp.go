@@ -7,7 +7,6 @@ package testing
 import (
 	"github.com/bradfitz/go-smtpd/smtpd"
 	"net"
-	"strings"
 	"sync"
 )
 
@@ -104,18 +103,4 @@ func (e *fakeEnvelope) Close() error {
 	e.s.MailBox = append(e.s.MailBox, e.m)
 	e.s.Unlock()
 	return nil
-}
-
-type fakeMailAddress string
-
-func (m fakeMailAddress) Email() string {
-	return string(m)
-}
-
-func (m fakeMailAddress) Hostname() string {
-	s := string(m)
-	if p := strings.Index(s, "@"); p > -1 {
-		return s[p+1:]
-	}
-	return ""
 }

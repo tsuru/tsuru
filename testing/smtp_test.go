@@ -8,7 +8,22 @@ import (
 	"launchpad.net/gocheck"
 	"net"
 	"net/smtp"
+	"strings"
 )
+
+type fakeMailAddress string
+
+func (m fakeMailAddress) Email() string {
+	return string(m)
+}
+
+func (m fakeMailAddress) Hostname() string {
+	s := string(m)
+	if p := strings.Index(s, "@"); p > -1 {
+		return s[p+1:]
+	}
+	return ""
+}
 
 func (s *S) TestFakeMailAddress(c *gocheck.C) {
 	fake := fakeMailAddress("gopher@tsuru.io")
