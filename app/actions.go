@@ -126,11 +126,6 @@ var insertApp = action.Action{
 	MinParams: 1,
 }
 
-type createBucketResult struct {
-	app *App
-	env *s3Env
-}
-
 // createIAMUserAction creates a user in IAM. It requires that the first
 // parameter is the a pointer to an App instance.
 var createIAMUserAction = action.Action{

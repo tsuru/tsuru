@@ -17,15 +17,3 @@ func (s *S) TestFileSystem(c *gocheck.C) {
 	c.Assert(filesystem(), gocheck.DeepEquals, fs.OsFs{})
 	fsystem = s.rfs
 }
-
-func (s *S) TestRandomBytes(c *gocheck.C) {
-	rfs := &testing.RecordingFs{FileContent: string([]byte{16, 17})}
-	fsystem = rfs
-	defer func() {
-		fsystem = s.rfs
-	}()
-	b, err := randomBytes(2)
-	c.Assert(err, gocheck.IsNil)
-	expected := "\x10\x11"
-	c.Assert(string(b), gocheck.Equals, expected)
-}
