@@ -16,10 +16,7 @@ import (
 	"time"
 )
 
-const (
-	keySize                 = 32
-	passwordTokenExpiration = 24 * time.Hour
-)
+const keySize = 32
 
 var ErrInvalidToken = errors.New("Invalid token")
 
