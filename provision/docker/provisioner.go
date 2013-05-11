@@ -232,15 +232,6 @@ func buildResult(maxSize int, units <-chan provision.Unit) <-chan []provision.Un
 	return ch
 }
 
-func getPort(portMapping map[string]interface{}) string {
-	var port string
-	for k := range portMapping {
-		port = k
-		break
-	}
-	return port
-}
-
 func collection() *mgo.Collection {
 	name, err := config.GetString("docker:collection")
 	if err != nil {
