@@ -9,7 +9,6 @@ import (
 	"github.com/globocom/config"
 	"github.com/globocom/tsuru/auth"
 	"github.com/globocom/tsuru/db"
-	ftesting "github.com/globocom/tsuru/fs/testing"
 	"github.com/globocom/tsuru/queue"
 	ttesting "github.com/globocom/tsuru/testing"
 	"io"
@@ -30,7 +29,6 @@ type S struct {
 	user        *auth.User
 	adminTeam   auth.Team
 	admin       *auth.User
-	rfs         *ftesting.RecordingFs
 	t           *ttesting.T
 	provisioner *ttesting.FakeProvisioner
 }
@@ -78,11 +76,6 @@ func (s *S) SetUpSuite(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	s.conn, err = db.Conn()
 	c.Assert(err, gocheck.IsNil)
-	s.rfs = &ftesting.RecordingFs{}
-	file, err := s.rfs.Create("/dev/urandom")
-	c.Assert(err, gocheck.IsNil)
-	file.Write([]byte{16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31})
-	fsystem = s.rfs
 	s.t = &ttesting.T{}
 	s.createUserAndTeam(c)
 	s.t.StartAmzS3AndIAM(c)
@@ -97,7 +90,6 @@ func (s *S) TearDownSuite(c *gocheck.C) {
 	defer s.t.S3Server.Quit()
 	defer s.t.IamServer.Quit()
 	s.conn.Apps().Database.DropDatabase()
-	fsystem = nil
 	queue.Preempt()
 }
 
