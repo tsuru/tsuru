@@ -149,6 +149,8 @@ func (s *S) TestProvisionerDestroy(c *gocheck.C) {
 	err := s.conn.Collection(s.collName).Insert(cont)
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Collection(s.collName).RemoveId(cont.Id)
+	s.conn.Collection(s.collName).Insert(container{Id: "something-01", AppName: app.GetName()})
+	defer s.conn.Collection(s.collName).RemoveId("something-01")
 	img := image{Name: app.GetName()}
 	err = s.conn.Collection(s.imageCollName).Insert(&img)
 	c.Assert(err, gocheck.IsNil)
@@ -158,7 +160,7 @@ func (s *S) TestProvisionerDestroy(c *gocheck.C) {
 	go func() {
 		coll := s.conn.Collection(s.collName)
 		for {
-			ct, err := coll.Find(bson.M{"_id": cont.Id}).Count()
+			ct, err := coll.Find(bson.M{"appname": cont.AppName}).Count()
 			if err != nil {
 				c.Fatal(err)
 			}
