@@ -5,6 +5,7 @@
 package docker
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -65,17 +66,14 @@ func (p *dockerProvisioner) Restart(app provision.App) error {
 		log.Printf("Got error while getting app containers: %s", err)
 		return err
 	}
+	var buf bytes.Buffer
 	for _, c := range containers {
-		err = c.stop()
+		err = c.ssh(&buf, &buf, "/var/lib/tsuru/restart")
 		if err != nil {
-			log.Printf("Error while stopping container %s", c.Id)
+			log.Printf("Failed to restart %q: %s.", app.GetName(), err)
 			return err
 		}
-		err = c.start()
-		if err != nil {
-			log.Printf("Error while starting container %s", c.Id)
-			return err
-		}
+		buf.Reset()
 	}
 	return nil
 }

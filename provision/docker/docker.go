@@ -258,31 +258,6 @@ func (c *container) deploy(w io.Writer) error {
 	return c.ssh(w, w, runBin, strings.Fields(runArgs)...)
 }
 
-// start starts a docker container.
-func (c *container) start() error {
-	docker, err := config.GetString("docker:binary")
-	if err != nil {
-		return err
-	}
-	log.Printf("Stating container %s", c.Id)
-	out, err := runCmd(docker, "start", c.Id)
-	log.Printf("docker start output: %s", out)
-	return err
-}
-
-// stop stops a docker container.
-func (c *container) stop() error {
-	docker, err := config.GetString("docker:binary")
-	if err != nil {
-		return err
-	}
-	//TODO: better error handling
-	log.Printf("Stopping container %s", c.Id)
-	output, err := runCmd(docker, "stop", c.Id)
-	log.Printf("docker stop output: %s", output)
-	return err
-}
-
 // remove removes a docker container.
 func (c *container) remove() error {
 	docker, err := config.GetString("docker:binary")

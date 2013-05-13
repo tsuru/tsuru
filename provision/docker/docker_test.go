@@ -353,28 +353,6 @@ func (s *S) TestDockerDeployCommandFailure(c *gocheck.C) {
 	c.Assert(buf.String(), gocheck.Equals, "failed\nfailed\nfailed\nfailed\nfailed\n")
 }
 
-func (s *S) TestDockerStart(c *gocheck.C) {
-	fexec := &etesting.FakeExecutor{}
-	setExecut(fexec)
-	defer setExecut(nil)
-	container := container{AppName: "container", Id: "123"}
-	err := container.start()
-	c.Assert(err, gocheck.IsNil)
-	args := []string{"start", "123"}
-	c.Assert(fexec.ExecutedCmd("docker", args), gocheck.Equals, true)
-}
-
-func (s *S) TestDockerStop(c *gocheck.C) {
-	fexec := &etesting.FakeExecutor{}
-	setExecut(fexec)
-	defer setExecut(nil)
-	container := container{AppName: "container", Id: "id"}
-	err := container.stop()
-	c.Assert(err, gocheck.IsNil)
-	args := []string{"stop", "id"}
-	c.Assert(fexec.ExecutedCmd("docker", args), gocheck.Equals, true)
-}
-
 func (s *S) TestDockerRemove(c *gocheck.C) {
 	fexec := &etesting.FakeExecutor{}
 	setExecut(fexec)

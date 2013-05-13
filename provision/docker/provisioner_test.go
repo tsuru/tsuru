@@ -42,7 +42,7 @@ func (s *S) TestProvisionerProvision(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 }
 
-func (s *S) TestProvisionerRestartCallsDockerStopAndDockerStart(c *gocheck.C) {
+func (s *S) TestProvisionerRestartCallsTheRestartHook(c *gocheck.C) {
 	id := "caad7bbd5411"
 	fexec := &etesting.FakeExecutor{Output: map[string][]byte{"*": []byte(id)}}
 	setExecut(fexec)
@@ -53,16 +53,18 @@ func (s *S) TestProvisionerRestartCallsDockerStopAndDockerStart(c *gocheck.C) {
 		Id:      id,
 		AppName: app.GetName(),
 		Type:    app.GetPlatform(),
+		Ip:      "10.10.10.10",
 	}
 	err := collection().Insert(cont)
 	c.Assert(err, gocheck.IsNil)
 	defer collection().RemoveId(cont.Id)
 	err = p.Restart(app)
 	c.Assert(err, gocheck.IsNil)
-	args := []string{"stop", id}
-	c.Assert(fexec.ExecutedCmd("docker", args), gocheck.Equals, true)
-	args = []string{"start", id}
-	c.Assert(fexec.ExecutedCmd("docker", args), gocheck.Equals, true)
+	args := []string{
+		cont.Ip, "-l", s.sshUser, "-o", "StrictHostKeyChecking no",
+		"--", "/var/lib/tsuru/restart",
+	}
+	c.Assert(fexec.ExecutedCmd("ssh", args), gocheck.Equals, true)
 }
 
 func (s *S) TestDeployShouldCallDockerCreate(c *gocheck.C) {
