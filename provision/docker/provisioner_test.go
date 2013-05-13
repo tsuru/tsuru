@@ -362,7 +362,9 @@ func (s *S) TestProvisionerExecuteCommandMultipleContainers(c *gocheck.C) {
 
 func (s *S) TestProvisionerExecuteCommandFailure(c *gocheck.C) {
 	fexec := &etesting.ErrorExecutor{
-		Output: map[string][]byte{"*": []byte("permission denied")},
+		FakeExecutor: etesting.FakeExecutor{
+			Output: map[string][]byte{"*": []byte("permission denied")},
+		},
 	}
 	setExecut(fexec)
 	defer setExecut(nil)

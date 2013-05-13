@@ -311,7 +311,11 @@ func (s *S) TestDockerDeployNoBinaryToRun(c *gocheck.C) {
 
 func (s *S) TestDockerDeployCommandFailure(c *gocheck.C) {
 	var buf bytes.Buffer
-	fexec := etesting.ErrorExecutor{Output: map[string][]byte{"*": []byte("failed")}}
+	fexec := etesting.ErrorExecutor{
+		FakeExecutor: etesting.FakeExecutor{
+			Output: map[string][]byte{"*": []byte("failed")},
+		},
+	}
 	setExecut(&fexec)
 	defer setExecut(nil)
 	container := container{AppName: "myapp", Ip: "127.0.0.1"}
@@ -564,7 +568,11 @@ func (s *S) TestContainerSSHWithoutUserConfigured(c *gocheck.C) {
 
 func (s *S) TestContainerSSHCommandFailure(c *gocheck.C) {
 	var stdout, stderr bytes.Buffer
-	fexec := &etesting.ErrorExecutor{Output: map[string][]byte{"*": []byte("failed")}}
+	fexec := &etesting.ErrorExecutor{
+		FakeExecutor: etesting.FakeExecutor{
+			Output: map[string][]byte{"*": []byte("failed")},
+		},
+	}
 	setExecut(fexec)
 	defer setExecut(nil)
 	container := container{Id: "c-01", Ip: "10.10.10.10"}
