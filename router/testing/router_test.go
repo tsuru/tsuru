@@ -48,5 +48,4 @@ func (s *S) TestAddr(c *gocheck.C) {
 	addr, err = r.Addr("unknown")
 	c.Assert(addr, gocheck.Equals, "")
 	c.Assert(err.Error(), gocheck.Equals, "Route not found")
-
 }
