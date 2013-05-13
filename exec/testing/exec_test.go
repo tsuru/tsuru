@@ -159,3 +159,31 @@ func (s *S) TestGetCommands(c *gocheck.C) {
 	expected := []command{{name: "sudo", args: []string{"ifconfig", "-a"}}}
 	c.Assert(cmds, gocheck.DeepEquals, expected)
 }
+
+func (s *S) TestRetryExecutor(c *gocheck.C) {
+	e := RetryExecutor{
+		Failures:     2,
+		FakeExecutor: FakeExecutor{Output: map[string][]byte{"*": []byte("hello")}},
+	}
+	var stdout, stderr bytes.Buffer
+	args := []string{"-la"}
+	err := e.Execute("ls", args, nil, &stdout, &stderr)
+	c.Assert(err, gocheck.NotNil)
+	c.Assert(stderr.String(), gocheck.Equals, "hello")
+	c.Assert(stdout.String(), gocheck.Equals, "")
+	stderr.Reset()
+	err = e.Execute("ls", args, nil, &stdout, &stderr)
+	c.Assert(err, gocheck.NotNil)
+	c.Assert(stderr.String(), gocheck.Equals, "hello")
+	c.Assert(stdout.String(), gocheck.Equals, "")
+	stderr.Reset()
+	err = e.Execute("ls", args, nil, &stdout, &stderr)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(stdout.String(), gocheck.Equals, "hello")
+	c.Assert(stderr.String(), gocheck.Equals, "")
+	stdout.Reset()
+	err = e.Execute("ls", args, nil, &stdout, &stderr)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(stdout.String(), gocheck.Equals, "hello")
+	c.Assert(stderr.String(), gocheck.Equals, "")
+}

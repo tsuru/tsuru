@@ -9,6 +9,7 @@ package testing
 
 import (
 	"errors"
+	"github.com/globocom/tsuru/safe"
 	"io"
 	"reflect"
 	"strings"
@@ -95,4 +96,25 @@ func (e *ErrorExecutor) Execute(cmd string, args []string, stdin io.Reader, stdo
 
 func (e *ErrorExecutor) ExecutedCmd(cmd string, args []string) bool {
 	return e.FakeExecutor.ExecutedCmd(cmd, args)
+}
+
+// RetryExecutor succeeds after N failures.
+type RetryExecutor struct {
+	FakeExecutor
+
+	// How many times will it fail before succeeding?
+	Failures int64
+	calls    safe.Counter
+}
+
+func (e *RetryExecutor) Execute(cmd string, args []string, stdin io.Reader, stdout, stderr io.Writer) error {
+	defer e.calls.Increment()
+	var err error
+	succeed := e.Failures <= e.calls.Val()
+	if !succeed {
+		stdout = stderr
+		err = errors.New("")
+	}
+	e.FakeExecutor.Execute(cmd, args, stdin, stdout, stderr)
+	return err
 }
