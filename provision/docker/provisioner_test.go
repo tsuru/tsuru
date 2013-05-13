@@ -18,9 +18,7 @@ import (
 	"launchpad.net/gocheck"
 	stdlog "log"
 	"net"
-	"runtime"
 	"strings"
-	"time"
 )
 
 func setExecut(e exec.Executor) {
@@ -156,28 +154,11 @@ func (s *S) TestProvisionerDestroy(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	var p DockerProvisioner
 	c.Assert(p.Destroy(app), gocheck.IsNil)
-	ok := make(chan bool, 1)
-	go func() {
-		coll := s.conn.Collection(s.collName)
-		for {
-			ct, err := coll.Find(bson.M{"appname": cont.AppName}).Count()
-			if err != nil {
-				c.Fatal(err)
-			}
-			if ct == 0 {
-				ok <- true
-				return
-			}
-			runtime.Gosched()
-		}
-	}()
-	select {
-	case <-ok:
-	case <-time.After(10e9):
-		c.Fatal("Timed out waiting for the container to be destroyed (10 seconds)")
-	}
-	args := []string{"rm", "myapp/0"}
-	c.Assert(fexec.ExecutedCmd("docker", args), gocheck.Equals, true)
+	ct, err := s.conn.Collection(s.collName).Find(bson.M{"appname": cont.AppName}).Count()
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(ct, gocheck.Equals, 0)
+	c.Assert(fexec.ExecutedCmd("docker", []string{"rm", "myapp/0"}), gocheck.Equals, true)
+	c.Assert(fexec.ExecutedCmd("docker", []string{"rm", "something-01"}), gocheck.Equals, true)
 	r, err := router.Get("fake")
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(r.(*rtesting.FakeRouter).HasRoute("myapp"), gocheck.Equals, false)
