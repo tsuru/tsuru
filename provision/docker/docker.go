@@ -241,10 +241,7 @@ func (c *container) deploy(w io.Writer) error {
 	if err != nil {
 		return err
 	}
-	runArgs, err := config.GetString("docker:run-cmd:args")
-	if err != nil {
-		return err
-	}
+	runArgs, _ := config.GetString("docker:run-cmd:args")
 	err = c.ssh(w, w, deployCmd, repository.GetReadOnlyUrl(c.AppName))
 	if err != nil {
 		return err
