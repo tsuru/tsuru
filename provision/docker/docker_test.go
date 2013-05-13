@@ -12,6 +12,7 @@ import (
 	etesting "github.com/globocom/tsuru/exec/testing"
 	ftesting "github.com/globocom/tsuru/fs/testing"
 	"github.com/globocom/tsuru/log"
+	"github.com/globocom/tsuru/repository"
 	"github.com/globocom/tsuru/testing"
 	"labix.org/v2/mgo/bson"
 	"launchpad.net/gocheck"
@@ -31,8 +32,8 @@ func (s *S) TestNewContainer(c *gocheck.C) {
 }`
 	id := "945132e7b4c9"
 	sshCmd := "/var/lib/tsuru/add-key key-content && /usr/sbin/sshd"
-	runCmd := fmt.Sprintf("run -d -t -p %s tsuru/python /bin/bash -c %s && /var/lib/tsuru/deploy git://%s/app-name.git && %s %s",
-		s.port, sshCmd, s.gitHost, s.runBin, s.runArgs)
+	runCmd := fmt.Sprintf("run -d -t -p %s tsuru/python /bin/bash -c %s",
+		s.port, sshCmd)
 	inspectCmd := fmt.Sprintf("inspect %s", id)
 	out := map[string][]byte{runCmd: []byte(id), inspectCmd: []byte(inspectOut)}
 	fexec := &etesting.FakeExecutor{Output: out}
@@ -58,12 +59,10 @@ func (s *S) TestNewContainerCallsDockerCreate(c *gocheck.C) {
 	app := testing.NewFakeApp("app-name", "python", 1)
 	newContainer(app)
 	defer s.conn.Collection(s.collName).Remove(bson.M{"appname": app.GetName()})
-	appRepo := fmt.Sprintf("git://%s/app-name.git", s.gitHost)
 	sshCmd := "/var/lib/tsuru/add-key key-content && /usr/sbin/sshd"
-	containerCmd := fmt.Sprintf("/var/lib/tsuru/deploy %s && %s %s", appRepo, s.runBin, s.runArgs)
 	args := []string{
 		"run", "-d", "-t", "-p", s.port, "tsuru/python",
-		"/bin/bash", "-c", fmt.Sprintf("%s && %s", sshCmd, containerCmd),
+		"/bin/bash", "-c", sshCmd,
 	}
 	c.Assert(fexec.ExecutedCmd("docker", args), gocheck.Equals, true)
 }
@@ -131,34 +130,30 @@ func (s *S) TestNewContainerRouteNoMappedPort(c *gocheck.C) {
 	c.Assert(addr, gocheck.Equals, "http://"+s.hostAddr+":"+s.port)
 }
 
-func (s *S) TestRunContainerCmdReturnsCommandToRunContainer(c *gocheck.C) {
+func (s *S) TestCommandsToRun(c *gocheck.C) {
 	rfs := ftesting.RecordingFs{}
 	f, err := rfs.Create("/opt/me/id_dsa.pub")
 	c.Assert(err, gocheck.IsNil)
 	f.Write([]byte("ssh-rsa ohwait! me@machine\n"))
 	f.Close()
+	old := fsystem
 	fsystem = &rfs
 	defer func() {
-		fsystem = nil
+		fsystem = old
 	}()
 	config.Set("docker:ssh:sshd-path", "/opt/bin/sshd")
 	config.Set("docker:ssh:public-key", "/opt/me/id_dsa.pub")
 	config.Set("docker:ssh:private-key", "/opt/me/id_dsa")
-	config.Set("docker:ssh:add-key-cmd", "/var/lib/tsuru/add-key")
 	defer config.Unset("docker:ssh:sshd-path")
 	defer config.Unset("docker:ssh:public-key")
 	defer config.Unset("docker:ssh:private-key")
-	defer config.Unset("docker:ssh:add-key-cmd")
 	app := testing.NewFakeApp("myapp", "python", 1)
-	cmd, port, err := runContainerCmd(app)
+	cmd, err := commandToRun(app)
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(port, gocheck.Equals, s.port)
-	appRepo := fmt.Sprintf("git://%s/myapp.git", s.gitHost)
 	sshCmd := "/var/lib/tsuru/add-key ssh-rsa ohwait! me@machine && /opt/bin/sshd"
-	containerCmd := fmt.Sprintf("%s && %s %s && %s %s", sshCmd, s.deployCmd, appRepo, s.runBin, s.runArgs)
 	expected := []string{
 		"docker", "run", "-d", "-t", "-p", s.port, fmt.Sprintf("%s/python", s.repoNamespace),
-		"/bin/bash", "-c", containerCmd,
+		"/bin/bash", "-c", sshCmd,
 	}
 	c.Assert(cmd, gocheck.DeepEquals, expected)
 }
@@ -212,11 +207,25 @@ func (s *S) TestGetSSHCommandsKeyFileNotFound(c *gocheck.C) {
 	defer func() {
 		fsystem = old
 	}()
-	config.Set("docker:ssh:add-key-cmd", "/var/lib/tsuru/add-key")
 	commands, err := getSSHCommands()
 	c.Assert(commands, gocheck.IsNil)
 	c.Assert(err, gocheck.NotNil)
 	c.Assert(os.IsNotExist(err), gocheck.Equals, true)
+}
+
+func (s *S) TestGetPort(c *gocheck.C) {
+	port, err := getPort()
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(port, gocheck.Equals, s.port)
+}
+
+func (s *S) TestGetPortUndefined(c *gocheck.C) {
+	old, _ := config.Get("docker:run-cmd:port")
+	defer config.Set("docker:run-cmd:port", old)
+	config.Unset("docker:run-cmd:port")
+	port, err := getPort()
+	c.Assert(port, gocheck.Equals, "")
+	c.Assert(err, gocheck.NotNil)
 }
 
 func (s *S) TestDockerCreate(c *gocheck.C) {
@@ -239,13 +248,10 @@ func (s *S) TestDockerCreate(c *gocheck.C) {
 	app := testing.NewFakeApp("app-name", "python", 1)
 	err := container.create(app)
 	c.Assert(err, gocheck.IsNil)
-	appRepo := fmt.Sprintf("git://%s/app-name.git", s.gitHost)
 	sshCmd := "/var/lib/tsuru/add-key key-content && /usr/sbin/sshd"
-	containerCmd := fmt.Sprintf("/var/lib/tsuru/deploy %s && %s %s", appRepo, s.runBin, s.runArgs)
 	args := []string{
 		"run", "-d", "-t", "-p", s.port, "tsuru/python",
-		"/bin/bash", "-c",
-		fmt.Sprintf("%s && %s", sshCmd, containerCmd),
+		"/bin/bash", "-c", sshCmd,
 	}
 	c.Assert(fexec.ExecutedCmd("docker", args), gocheck.Equals, true)
 }
@@ -257,6 +263,30 @@ func (s *S) TestContainerCreateWithoutHostAddr(c *gocheck.C) {
 	container := container{AppName: "myapp", Type: "python"}
 	err := container.create(testing.NewFakeApp("myapp", "python", 1))
 	c.Assert(err, gocheck.NotNil)
+}
+
+func (s *S) TestDockerDeploy(c *gocheck.C) {
+	var buf bytes.Buffer
+	fexec := &etesting.FakeExecutor{
+		Output: map[string][]byte{"*": []byte("success\n")},
+	}
+	setExecut(fexec)
+	defer setExecut(nil)
+	container := container{Id: "c-01", Ip: "10.10.10.10", AppName: "myapp"}
+	err := container.deploy(&buf)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(buf.String(), gocheck.Equals, "success\nsuccess\n")
+	appRepo := repository.GetReadOnlyUrl(container.AppName)
+	deployArgs := []string{
+		"10.10.10.10", "-l", s.sshUser, "-o", "StrictHostKeyChecking no",
+		"--", s.deployCmd, appRepo,
+	}
+	runArgs := []string{
+		"10.10.10.10", "-l", s.sshUser, "-o", "StrictHostKeyChecking no",
+		"--", s.runBin, s.runArgs,
+	}
+	c.Assert(fexec.ExecutedCmd("ssh", deployArgs), gocheck.Equals, true)
+	c.Assert(fexec.ExecutedCmd("ssh", runArgs), gocheck.Equals, true)
 }
 
 func (s *S) TestDockerStart(c *gocheck.C) {

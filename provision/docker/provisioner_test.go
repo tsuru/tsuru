@@ -87,12 +87,21 @@ func (s *S) TestDeployShouldCallDockerCreate(c *gocheck.C) {
 	image := fmt.Sprintf("%s/python", s.repoNamespace)
 	appRepo := fmt.Sprintf("git://%s/cribcaged.git", s.gitHost)
 	sshCmd := "/var/lib/tsuru/add-key key-content && /usr/sbin/sshd"
-	containerCmd := fmt.Sprintf("/var/lib/tsuru/deploy %s && %s %s", appRepo, s.runBin, s.runArgs)
 	args := []string{
 		"run", "-d", "-t", "-p", s.port, image,
-		"/bin/bash", "-c", fmt.Sprintf("%s && %s", sshCmd, containerCmd),
+		"/bin/bash", "-c", sshCmd,
 	}
 	c.Assert(fexec.ExecutedCmd("docker", args), gocheck.Equals, true)
+	deployArgs := []string{
+		"10.10.10.10", "-l", s.sshUser, "-o", "StrictHostKeyChecking no",
+		"--", "/var/lib/tsuru/deploy", appRepo,
+	}
+	c.Assert(fexec.ExecutedCmd("ssh", deployArgs), gocheck.Equals, true)
+	runArgs := []string{
+		"10.10.10.10", "-l", s.sshUser, "-o", "StrictHostKeyChecking no",
+		"--", s.runBin, s.runArgs,
+	}
+	c.Assert(fexec.ExecutedCmd("ssh", runArgs), gocheck.Equals, true)
 }
 
 func (s *S) TestDeployShouldRemoveOldContainers(c *gocheck.C) {
@@ -196,7 +205,7 @@ func (s *S) TestProvisionerAddr(c *gocheck.C) {
 	}
 }`
 	id := "123"
-	runCmd := "run -d -t -p 8888 tsuru/python /bin/bash -c /var/lib/tsuru/add-key key-content && /usr/sbin/sshd && /var/lib/tsuru/deploy git://my.gandalf.com/myapp.git && /usr/local/bin/circusd /etc/circus/circus.ini"
+	runCmd := "run -d -t -p 8888 tsuru/python /bin/bash -c /var/lib/tsuru/add-key key-content && /usr/sbin/sshd"
 	fexec := &etesting.FakeExecutor{Output: map[string][]byte{runCmd: []byte(id), "inspect " + id: []byte(out)}}
 	setExecut(fexec)
 	defer setExecut(nil)

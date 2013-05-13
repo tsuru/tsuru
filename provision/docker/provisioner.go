@@ -84,7 +84,8 @@ func (p *DockerProvisioner) Deploy(app provision.App, w io.Writer) error {
 			app.RemoveUnit(c.Id)
 		}
 	}
-	_, err := newContainer(app)
+	c, err := newContainer(app)
+	c.deploy(w)
 	return err
 }
 

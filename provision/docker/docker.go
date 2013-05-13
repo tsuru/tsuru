@@ -72,41 +72,31 @@ func getSSHCommands() ([]string, error) {
 	}, nil
 }
 
-func runContainerCmd(app provision.App) ([]string, string, error) {
+func commandToRun(app provision.App) ([]string, error) {
 	docker, err := config.GetString("docker:binary")
 	if err != nil {
-		return nil, "", err
+		return nil, err
 	}
 	repoNamespace, err := config.GetString("docker:repository-namespace")
 	if err != nil {
-		return nil, "", err
-	}
-	deployCmd, err := config.GetString("docker:deploy-cmd")
-	if err != nil {
-		return nil, "", err
-	}
-	appRepo := repository.GetReadOnlyUrl(app.GetName())
-	runBin, err := config.GetString("docker:run-cmd:bin")
-	if err != nil {
-		return nil, "", err
-	}
-	runArgs, err := config.GetString("docker:run-cmd:args")
-	if err != nil {
-		return nil, "", err
+		return nil, err
 	}
 	port, err := config.GetString("docker:run-cmd:port")
 	if err != nil {
-		return nil, "", err
+		return nil, err
 	}
 	commands, err := getSSHCommands()
 	if err != nil {
-		return nil, "", err
+		return nil, err
 	}
-	commands = append(commands, fmt.Sprintf("%s %s", deployCmd, appRepo), fmt.Sprintf("%s %s", runBin, runArgs))
 	imageName := fmt.Sprintf("%s/%s", repoNamespace, app.GetPlatform()) // TODO (flaviamissi): should use same algorithm as image.repositoryName
 	containerCmd := strings.Join(commands, " && ")
 	wholeCmd := []string{docker, "run", "-d", "-t", "-p", port, imageName, "/bin/bash", "-c", containerCmd}
-	return wholeCmd, port, nil
+	return wholeCmd, nil
+}
+
+func getPort() (string, error) {
+	return config.GetString("docker:run-cmd:port")
 }
 
 type container struct {
@@ -204,7 +194,11 @@ func (c *container) create(app provision.App) error {
 	if err != nil {
 		return err
 	}
-	cmd, port, err := runContainerCmd(app)
+	cmd, err := commandToRun(app)
+	if err != nil {
+		return err
+	}
+	port, err := getPort()
 	if err != nil {
 		return err
 	}
@@ -236,6 +230,26 @@ func (c *container) create(app provision.App) error {
 		hostPort = c.Port
 	}
 	return r.AddRoute(app.GetName(), fmt.Sprintf("http://%s:%s", hostAddr, hostPort))
+}
+
+func (c *container) deploy(w io.Writer) error {
+	deployCmd, err := config.GetString("docker:deploy-cmd")
+	if err != nil {
+		return err
+	}
+	runBin, err := config.GetString("docker:run-cmd:bin")
+	if err != nil {
+		return err
+	}
+	runArgs, err := config.GetString("docker:run-cmd:args")
+	if err != nil {
+		return err
+	}
+	err = c.ssh(w, w, deployCmd, repository.GetReadOnlyUrl(c.AppName))
+	if err != nil {
+		return err
+	}
+	return c.ssh(w, w, runBin, strings.Fields(runArgs)...)
 }
 
 // start starts a docker container.
