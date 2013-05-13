@@ -407,7 +407,7 @@ func getContainer(id string) (*container, error) {
 	return &c, nil
 }
 
-func getContainers(appName string) ([]container, error) {
+func listAppContainers(appName string) ([]container, error) {
 	var containers []container
 	err := collection().Find(bson.M{"appname": appName}).All(&containers)
 	return containers, err

@@ -60,7 +60,7 @@ func (p *DockerProvisioner) Provision(app provision.App) error {
 }
 
 func (p *DockerProvisioner) Restart(app provision.App) error {
-	containers, err := getContainers(app.GetName())
+	containers, err := listAppContainers(app.GetName())
 	if err != nil {
 		log.Printf("Got error while getting app containers: %s", err)
 		return err
@@ -81,7 +81,7 @@ func (p *DockerProvisioner) Restart(app provision.App) error {
 }
 
 func (p *DockerProvisioner) Deploy(a provision.App, w io.Writer) error {
-	if containers, err := getContainers(a.GetName()); err == nil {
+	if containers, err := listAppContainers(a.GetName()); err == nil {
 		for _, c := range containers {
 			a.RemoveUnit(c.Id)
 		}
@@ -96,7 +96,7 @@ func (p *DockerProvisioner) Deploy(a provision.App, w io.Writer) error {
 }
 
 func (p *DockerProvisioner) Destroy(app provision.App) error {
-	containers, _ := getContainers(app.GetName())
+	containers, _ := listAppContainers(app.GetName())
 	for _, c := range containers {
 		go func(c container) {
 			c.remove()
@@ -139,7 +139,7 @@ func (*DockerProvisioner) InstallDeps(app provision.App, w io.Writer) error {
 }
 
 func (*DockerProvisioner) ExecuteCommand(stdout, stderr io.Writer, app provision.App, cmd string, args ...string) error {
-	containers, err := getContainers(app.GetName())
+	containers, err := listAppContainers(app.GetName())
 	if err != nil {
 		return err
 	}
