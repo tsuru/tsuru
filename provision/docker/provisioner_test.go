@@ -32,12 +32,12 @@ func setExecut(e exec.Executor) {
 func (s *S) TestShouldBeRegistered(c *gocheck.C) {
 	p, err := provision.Get("docker")
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(p, gocheck.FitsTypeOf, &DockerProvisioner{})
+	c.Assert(p, gocheck.FitsTypeOf, &dockerProvisioner{})
 }
 
 func (s *S) TestProvisionerProvision(c *gocheck.C) {
 	app := testing.NewFakeApp("myapp", "python", 1)
-	var p DockerProvisioner
+	var p dockerProvisioner
 	err := p.Provision(app)
 	c.Assert(err, gocheck.IsNil)
 }
@@ -47,7 +47,7 @@ func (s *S) TestProvisionerRestartCallsDockerStopAndDockerStart(c *gocheck.C) {
 	fexec := &etesting.FakeExecutor{Output: map[string][]byte{"*": []byte(id)}}
 	setExecut(fexec)
 	defer setExecut(nil)
-	var p DockerProvisioner
+	var p dockerProvisioner
 	app := testing.NewFakeApp("almah", "static", 1)
 	cont := container{
 		Id:      id,
@@ -77,7 +77,7 @@ func (s *S) TestDeployShouldCallDockerCreate(c *gocheck.C) {
 	fexec := &etesting.FakeExecutor{Output: map[string][]byte{"*": []byte(out)}}
 	setExecut(fexec)
 	defer setExecut(nil)
-	p := DockerProvisioner{}
+	p := dockerProvisioner{}
 	app := testing.NewFakeApp("cribcaged", "python", 1)
 	w := &bytes.Buffer{}
 	err := p.Deploy(app, w)
@@ -125,7 +125,7 @@ func (s *S) TestDeployShouldRemoveOldContainers(c *gocheck.C) {
 	}
 	setExecut(fexec)
 	defer setExecut(nil)
-	var p DockerProvisioner
+	var p dockerProvisioner
 	var w bytes.Buffer
 	err := p.Deploy(app, &w)
 	defer p.Destroy(app)
@@ -154,7 +154,7 @@ func (s *S) TestProvisionerDestroy(c *gocheck.C) {
 	img := image{Name: app.GetName()}
 	err = s.conn.Collection(s.imageCollName).Insert(&img)
 	c.Assert(err, gocheck.IsNil)
-	var p DockerProvisioner
+	var p dockerProvisioner
 	c.Assert(p.Destroy(app), gocheck.IsNil)
 	ok := make(chan bool, 1)
 	go func() {
@@ -192,7 +192,7 @@ func (s *S) TestProvisionerDestroyEmptyUnit(c *gocheck.C) {
 	log.SetLogger(l)
 	app := testing.NewFakeApp("myapp", "python", 0)
 	app.AddUnit(&testing.FakeUnit{})
-	var p DockerProvisioner
+	var p dockerProvisioner
 	err := p.Destroy(app)
 	c.Assert(err, gocheck.IsNil)
 }
@@ -211,7 +211,7 @@ func (s *S) TestProvisionerAddr(c *gocheck.C) {
 	fexec := &etesting.FakeExecutor{Output: map[string][]byte{runCmd: []byte(id), "inspect " + id: []byte(out)}}
 	setExecut(fexec)
 	defer setExecut(nil)
-	var p DockerProvisioner
+	var p dockerProvisioner
 	app := testing.NewFakeApp("myapp", "python", 1)
 	w := &bytes.Buffer{}
 	err := p.Deploy(app, w)
@@ -228,7 +228,7 @@ func (s *S) TestProvisionerAddr(c *gocheck.C) {
 }
 
 func (s *S) TestProvisionerAddUnits(c *gocheck.C) {
-	var p DockerProvisioner
+	var p dockerProvisioner
 	app := testing.NewFakeApp("myapp", "python", 0)
 	units, err := p.AddUnits(app, 2)
 	c.Assert(err, gocheck.IsNil)
@@ -258,7 +258,7 @@ func (s *S) TestProvisionerRemoveUnit(c *gocheck.C) {
 	container, err := newContainer(app)
 	c.Assert(err, gocheck.IsNil)
 	defer container.remove()
-	var p DockerProvisioner
+	var p dockerProvisioner
 	err = p.RemoveUnit(app, container.Id)
 	c.Assert(err, gocheck.IsNil)
 	_, err = getContainer(container.Id)
@@ -266,7 +266,7 @@ func (s *S) TestProvisionerRemoveUnit(c *gocheck.C) {
 }
 
 func (s *S) TestProvisionerRemoveUnitNotFound(c *gocheck.C) {
-	var p DockerProvisioner
+	var p dockerProvisioner
 	err := p.RemoveUnit(nil, "not-found")
 	c.Assert(err, gocheck.NotNil)
 	c.Assert(err.Error(), gocheck.Equals, "not found")
@@ -295,7 +295,7 @@ func (s *S) TestProvisionerRemoveUnitNotInApp(c *gocheck.C) {
 	container, err := newContainer(app)
 	c.Assert(err, gocheck.IsNil)
 	defer container.remove()
-	var p DockerProvisioner
+	var p dockerProvisioner
 	err = p.RemoveUnit(testing.NewFakeApp("hisapp", "python", 1), container.Id)
 	c.Assert(err, gocheck.NotNil)
 	c.Assert(err.Error(), gocheck.Equals, "Unit does not belong to this app")
@@ -315,7 +315,7 @@ func (s *S) TestProvisionerExecuteCommand(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Collection(s.collName).Remove(bson.M{"_id": container.Id})
 	var stdout, stderr bytes.Buffer
-	var p DockerProvisioner
+	var p dockerProvisioner
 	err = p.ExecuteCommand(&stdout, &stderr, app, "ls", "-ar")
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(stderr.Bytes(), gocheck.IsNil)
@@ -342,7 +342,7 @@ func (s *S) TestProvisionerExecuteCommandMultipleContainers(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Collection(s.collName).RemoveAll(bson.M{"_id": bson.M{"$in": []string{"c-036", "c-037"}}})
 	var stdout, stderr bytes.Buffer
-	var p DockerProvisioner
+	var p dockerProvisioner
 	err = p.ExecuteCommand(&stdout, &stderr, app, "ls", "-ar")
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(stderr.Bytes(), gocheck.IsNil)
@@ -374,7 +374,7 @@ func (s *S) TestProvisionerExecuteCommandFailure(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Collection(s.collName).Remove(bson.M{"_id": container.Id})
 	var stdout, stderr bytes.Buffer
-	var p DockerProvisioner
+	var p dockerProvisioner
 	err = p.ExecuteCommand(&stdout, &stderr, app, "ls", "-ar")
 	c.Assert(err, gocheck.NotNil)
 	c.Assert(stdout.Bytes(), gocheck.IsNil)
@@ -382,7 +382,7 @@ func (s *S) TestProvisionerExecuteCommandFailure(c *gocheck.C) {
 }
 
 func (s *S) TestProvisionerExecuteCommandNoContainers(c *gocheck.C) {
-	var p DockerProvisioner
+	var p dockerProvisioner
 	app := testing.NewFakeApp("almah", "static", 2)
 	var buf bytes.Buffer
 	err := p.ExecuteCommand(&buf, &buf, app, "ls", "-lh")
@@ -450,7 +450,7 @@ func (s *S) TestCollectStatus(c *gocheck.C) {
 	fexec := &etesting.FakeExecutor{Output: output}
 	setExecut(fexec)
 	defer setExecut(nil)
-	var p DockerProvisioner
+	var p dockerProvisioner
 	units, err := p.CollectStatus()
 	c.Assert(err, gocheck.IsNil)
 	if units[0].Name != expected[0].Name {
@@ -464,7 +464,7 @@ func (s *S) TestProvisionCollectStatusEmpty(c *gocheck.C) {
 	fexec := &etesting.FakeExecutor{Output: output}
 	setExecut(fexec)
 	defer setExecut(nil)
-	var p DockerProvisioner
+	var p dockerProvisioner
 	units, err := p.CollectStatus()
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(units, gocheck.HasLen, 0)

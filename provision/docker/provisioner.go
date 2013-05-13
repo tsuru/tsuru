@@ -27,7 +27,7 @@ import (
 )
 
 func init() {
-	provision.Register("docker", &DockerProvisioner{})
+	provision.Register("docker", &dockerProvisioner{})
 }
 
 var (
@@ -52,14 +52,14 @@ func getRouter() (router.Router, error) {
 	return router.Get(r)
 }
 
-type DockerProvisioner struct{}
+type dockerProvisioner struct{}
 
 // Provision creates a container and install its dependencies
-func (p *DockerProvisioner) Provision(app provision.App) error {
+func (p *dockerProvisioner) Provision(app provision.App) error {
 	return nil
 }
 
-func (p *DockerProvisioner) Restart(app provision.App) error {
+func (p *dockerProvisioner) Restart(app provision.App) error {
 	containers, err := listAppContainers(app.GetName())
 	if err != nil {
 		log.Printf("Got error while getting app containers: %s", err)
@@ -80,7 +80,7 @@ func (p *DockerProvisioner) Restart(app provision.App) error {
 	return nil
 }
 
-func (p *DockerProvisioner) Deploy(a provision.App, w io.Writer) error {
+func (p *dockerProvisioner) Deploy(a provision.App, w io.Writer) error {
 	if containers, err := listAppContainers(a.GetName()); err == nil {
 		for _, c := range containers {
 			a.RemoveUnit(c.Id)
@@ -95,7 +95,7 @@ func (p *DockerProvisioner) Deploy(a provision.App, w io.Writer) error {
 	return err
 }
 
-func (p *DockerProvisioner) Destroy(app provision.App) error {
+func (p *dockerProvisioner) Destroy(app provision.App) error {
 	containers, _ := listAppContainers(app.GetName())
 	for _, c := range containers {
 		go func(c container) {
@@ -105,7 +105,7 @@ func (p *DockerProvisioner) Destroy(app provision.App) error {
 	return nil
 }
 
-func (*DockerProvisioner) Addr(app provision.App) (string, error) {
+func (*dockerProvisioner) Addr(app provision.App) (string, error) {
 	r, err := getRouter()
 	if err != nil {
 		log.Printf("Failed to get router: %s", err.Error())
@@ -119,11 +119,11 @@ func (*DockerProvisioner) Addr(app provision.App) (string, error) {
 	return addr, nil
 }
 
-func (*DockerProvisioner) AddUnits(app provision.App, units uint) ([]provision.Unit, error) {
+func (*dockerProvisioner) AddUnits(app provision.App, units uint) ([]provision.Unit, error) {
 	return []provision.Unit{}, nil
 }
 
-func (*DockerProvisioner) RemoveUnit(app provision.App, unitName string) error {
+func (*dockerProvisioner) RemoveUnit(app provision.App, unitName string) error {
 	container, err := getContainer(unitName)
 	if err != nil {
 		return err
@@ -134,11 +134,11 @@ func (*DockerProvisioner) RemoveUnit(app provision.App, unitName string) error {
 	return container.remove()
 }
 
-func (*DockerProvisioner) InstallDeps(app provision.App, w io.Writer) error {
+func (*dockerProvisioner) InstallDeps(app provision.App, w io.Writer) error {
 	return nil
 }
 
-func (*DockerProvisioner) ExecuteCommand(stdout, stderr io.Writer, app provision.App, cmd string, args ...string) error {
+func (*dockerProvisioner) ExecuteCommand(stdout, stderr io.Writer, app provision.App, cmd string, args ...string) error {
 	containers, err := listAppContainers(app.GetName())
 	if err != nil {
 		return err
@@ -155,7 +155,7 @@ func (*DockerProvisioner) ExecuteCommand(stdout, stderr io.Writer, app provision
 	return nil
 }
 
-func (p *DockerProvisioner) CollectStatus() ([]provision.Unit, error) {
+func (p *dockerProvisioner) CollectStatus() ([]provision.Unit, error) {
 	docker, err := config.GetString("docker:binary")
 	if err != nil {
 		return nil, err
