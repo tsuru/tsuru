@@ -12,7 +12,7 @@ This document assumes that tsuru is being installed on a Ubuntu (12.04+) machine
 can use equivalent packages for beanstalkd, git, MongoDB and other tsuru
 dependencies. Please make sure you satisfy minimal version requirements.
 
-You can use the script bellow to quick install tsuru with lxc:
+You can use the scripts bellow to quick install tsuru with lxc:
 
 .. highlight:: bash
 
