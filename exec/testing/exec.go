@@ -94,10 +94,6 @@ func (e *ErrorExecutor) Execute(cmd string, args []string, stdin io.Reader, stdo
 	return errors.New("")
 }
 
-func (e *ErrorExecutor) ExecutedCmd(cmd string, args []string) bool {
-	return e.FakeExecutor.ExecutedCmd(cmd, args)
-}
-
 // RetryExecutor succeeds after N failures.
 type RetryExecutor struct {
 	FakeExecutor
