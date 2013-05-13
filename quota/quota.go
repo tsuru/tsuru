@@ -133,19 +133,24 @@ func Set(owner string, value uint) error {
 	return err
 }
 
-// Items returns a slice containing all items allocated to the given owner.
-func Items(owner string) ([]string, error) {
+// Items returns a slice containing all items allocated to the given owner, and
+// an unsigned integer indicating how many items are still available.
+func Items(owner string) ([]string, uint, error) {
 	conn, err := db.Conn()
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 	defer conn.Close()
 	var u usage
 	err = conn.Quota().Find(bson.M{"owner": owner}).One(&u)
 	if err != nil {
-		return nil, ErrQuotaNotFound
+		return nil, 0, ErrQuotaNotFound
 	}
-	return u.Items, nil
+	available := int(u.Limit) - len(u.Items)
+	if available < 0 {
+		available = 0
+	}
+	return u.Items, uint(available), nil
 }
 
 type QuotaExceededError struct {

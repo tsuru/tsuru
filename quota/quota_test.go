@@ -225,9 +225,10 @@ func (Suite) TestReleaseMultiple(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	err = Release("tank@elp.com", "tank/0", "tank/2")
 	c.Assert(err, gocheck.IsNil)
-	items, err := Items("tank@elp.com")
+	items, available, err := Items("tank@elp.com")
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(items, gocheck.DeepEquals, []string{"tank/1"})
+	c.Assert(available, gocheck.Equals, uint(2))
 }
 
 func (Suite) TestSetQuota(c *gocheck.C) {
@@ -270,28 +271,45 @@ func (Suite) TestItems(c *gocheck.C) {
 	err := Create("sorry@evergrey.com", 4)
 	c.Assert(err, gocheck.IsNil)
 	defer Delete("sorry@evergrey.com")
-	items, err := Items("sorry@evergrey.com")
+	items, available, err := Items("sorry@evergrey.com")
 	c.Assert(err, gocheck.IsNil)
+	c.Assert(available, gocheck.Equals, uint(4))
 	c.Assert(items, gocheck.HasLen, 0)
 	err = Reserve("sorry@evergrey.com", "sorry/0")
 	c.Assert(err, gocheck.IsNil)
 	err = Reserve("sorry@evergrey.com", "sorry/1")
 	c.Assert(err, gocheck.IsNil)
-	items, err = Items("sorry@evergrey.com")
+	items, available, err = Items("sorry@evergrey.com")
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(items, gocheck.DeepEquals, []string{"sorry/0", "sorry/1"})
+	c.Assert(available, gocheck.Equals, uint(2))
 	err = Reserve("sorry@evergrey.com", "sorry/2")
 	c.Assert(err, gocheck.IsNil)
 	err = Reserve("sorry@evergrey.com", "sorry/3")
 	c.Assert(err, gocheck.IsNil)
-	items, err = Items("sorry@evergrey.com")
+	items, available, err = Items("sorry@evergrey.com")
 	c.Assert(err, gocheck.IsNil)
+	c.Assert(available, gocheck.Equals, uint(0))
 	c.Assert(items, gocheck.DeepEquals, []string{"sorry/0", "sorry/1", "sorry/2", "sorry/3"})
 }
 
+func (Suite) TestItemsAvailableNegative(c *gocheck.C) {
+	err := Create("lie@evergrey.com", 1)
+	c.Assert(err, gocheck.IsNil)
+	defer Delete("lie@evergrey.com")
+	err = Reserve("lie@evergrey.com", "lie/0")
+	c.Assert(err, gocheck.IsNil)
+	err = Set("lie@evergrey.com", 0)
+	c.Assert(err, gocheck.IsNil)
+	_, available, err := Items("lie@evergrey.com")
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(available, gocheck.Equals, uint(0))
+}
+
 func (Suite) TestItemsQuotaNotFound(c *gocheck.C) {
-	items, err := Items("blinded@evergrey.com")
+	items, available, err := Items("blinded@evergrey.com")
 	c.Assert(items, gocheck.IsNil)
+	c.Assert(available, gocheck.Equals, uint(0))
 	c.Assert(err, gocheck.Equals, ErrQuotaNotFound)
 }
 
