@@ -8,6 +8,7 @@ import (
 	"github.com/globocom/config"
 	"github.com/globocom/tsuru/db"
 	ftesting "github.com/globocom/tsuru/fs/testing"
+	_ "github.com/globocom/tsuru/testing"
 	"launchpad.net/gocheck"
 	"os"
 	"testing"
@@ -52,6 +53,7 @@ func (s *S) SetUpSuite(c *gocheck.C) {
 	config.Set("docker:run-cmd:port", "8888")
 	config.Set("docker:ssh:add-key-cmd", "/var/lib/tsuru/add-key")
 	config.Set("docker:ssh:user", s.sshUser)
+	config.Set("queue", "fake")
 	s.deployCmd = "/var/lib/tsuru/deploy"
 	s.runBin = "/usr/local/bin/circusd"
 	s.runArgs = "/etc/circus/circus.ini"

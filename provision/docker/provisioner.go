@@ -9,10 +9,12 @@ import (
 	"errors"
 	"fmt"
 	"github.com/globocom/config"
+	"github.com/globocom/tsuru/app"
 	"github.com/globocom/tsuru/db"
 	"github.com/globocom/tsuru/exec"
 	"github.com/globocom/tsuru/log"
 	"github.com/globocom/tsuru/provision"
+	"github.com/globocom/tsuru/queue"
 	"github.com/globocom/tsuru/router"
 	_ "github.com/globocom/tsuru/router/hipache"
 	_ "github.com/globocom/tsuru/router/nginx"
@@ -78,14 +80,18 @@ func (p *DockerProvisioner) Restart(app provision.App) error {
 	return nil
 }
 
-func (p *DockerProvisioner) Deploy(app provision.App, w io.Writer) error {
-	if containers, err := getContainers(app.GetName()); err == nil {
+func (p *DockerProvisioner) Deploy(a provision.App, w io.Writer) error {
+	if containers, err := getContainers(a.GetName()); err == nil {
 		for _, c := range containers {
-			app.RemoveUnit(c.Id)
+			a.RemoveUnit(c.Id)
 		}
 	}
-	c, err := newContainer(app)
+	c, err := newContainer(a)
 	c.deploy(w)
+	app.Enqueue(queue.Message{
+		Action: app.RegenerateApprcAndStart,
+		Args:   []string{a.GetName(), c.Id},
+	})
 	return err
 }
 
