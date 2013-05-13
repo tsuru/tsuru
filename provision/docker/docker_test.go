@@ -289,6 +289,37 @@ func (s *S) TestDockerDeploy(c *gocheck.C) {
 	c.Assert(fexec.ExecutedCmd("ssh", runArgs), gocheck.Equals, true)
 }
 
+func (s *S) TestDockerDeployNoDeployCommand(c *gocheck.C) {
+	old, _ := config.Get("docker:deploy-cmd")
+	defer config.Set("docker:deploy-cmd", old)
+	config.Unset("docker:deploy-cmd")
+	var container container
+	err := container.deploy(nil)
+	c.Assert(err, gocheck.NotNil)
+	c.Assert(err.Error(), gocheck.Equals, `key "docker:deploy-cmd" not found`)
+}
+
+func (s *S) TestDockerDeployNoBinaryToRun(c *gocheck.C) {
+	old, _ := config.Get("docker:run-cmd:bin")
+	defer config.Set("docker:run-cmd:bin", old)
+	config.Unset("docker:run-cmd:bin")
+	var container container
+	err := container.deploy(nil)
+	c.Assert(err, gocheck.NotNil)
+	c.Assert(err.Error(), gocheck.Equals, `key "docker:run-cmd:bin" not found`)
+}
+
+func (s *S) TestDockerDeployCommandFailure(c *gocheck.C) {
+	var buf bytes.Buffer
+	fexec := etesting.ErrorExecutor{Output: map[string][]byte{"*": []byte("failed")}}
+	setExecut(&fexec)
+	defer setExecut(nil)
+	container := container{AppName: "myapp", Ip: "127.0.0.1"}
+	err := container.deploy(&buf)
+	c.Assert(err, gocheck.NotNil)
+	c.Assert(buf.String(), gocheck.Equals, "failed")
+}
+
 func (s *S) TestDockerStart(c *gocheck.C) {
 	fexec := &etesting.FakeExecutor{}
 	setExecut(fexec)
