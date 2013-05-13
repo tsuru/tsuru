@@ -31,7 +31,7 @@ func (s *S) TestNewContainer(c *gocheck.C) {
     }
 }`
 	id := "945132e7b4c9"
-	sshCmd := "/var/lib/tsuru/add-key key-content && /usr/sbin/sshd"
+	sshCmd := "/var/lib/tsuru/add-key key-content && /usr/sbin/sshd -D"
 	runCmd := fmt.Sprintf("run -d -t -p %s tsuru/python /bin/bash -c %s",
 		s.port, sshCmd)
 	inspectCmd := fmt.Sprintf("inspect %s", id)
@@ -59,7 +59,7 @@ func (s *S) TestNewContainerCallsDockerCreate(c *gocheck.C) {
 	app := testing.NewFakeApp("app-name", "python", 1)
 	newContainer(app)
 	defer s.conn.Collection(s.collName).Remove(bson.M{"appname": app.GetName()})
-	sshCmd := "/var/lib/tsuru/add-key key-content && /usr/sbin/sshd"
+	sshCmd := "/var/lib/tsuru/add-key key-content && /usr/sbin/sshd -D"
 	args := []string{
 		"run", "-d", "-t", "-p", s.port, "tsuru/python",
 		"/bin/bash", "-c", sshCmd,
@@ -150,7 +150,7 @@ func (s *S) TestCommandsToRun(c *gocheck.C) {
 	app := testing.NewFakeApp("myapp", "python", 1)
 	cmd, err := commandToRun(app)
 	c.Assert(err, gocheck.IsNil)
-	sshCmd := "/var/lib/tsuru/add-key ssh-rsa ohwait! me@machine && /opt/bin/sshd"
+	sshCmd := "/var/lib/tsuru/add-key ssh-rsa ohwait! me@machine && /opt/bin/sshd -D"
 	expected := []string{
 		"docker", "run", "-d", "-t", "-p", s.port, fmt.Sprintf("%s/python", s.repoNamespace),
 		"/bin/bash", "-c", sshCmd,
@@ -173,7 +173,7 @@ func (s *S) TestGetSSHCommandsDefaultSSHDPath(c *gocheck.C) {
 	defer config.Unset("docker:ssh:public-key")
 	commands, err := getSSHCommands()
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(commands[1], gocheck.Equals, "/usr/sbin/sshd")
+	c.Assert(commands[1], gocheck.Equals, "/usr/sbin/sshd -D")
 }
 
 func (s *S) TestGetSSHCommandsDefaultKeyFile(c *gocheck.C) {
@@ -248,7 +248,7 @@ func (s *S) TestDockerCreate(c *gocheck.C) {
 	app := testing.NewFakeApp("app-name", "python", 1)
 	err := container.create(app)
 	c.Assert(err, gocheck.IsNil)
-	sshCmd := "/var/lib/tsuru/add-key key-content && /usr/sbin/sshd"
+	sshCmd := "/var/lib/tsuru/add-key key-content && /usr/sbin/sshd -D"
 	args := []string{
 		"run", "-d", "-t", "-p", s.port, "tsuru/python",
 		"/bin/bash", "-c", sshCmd,

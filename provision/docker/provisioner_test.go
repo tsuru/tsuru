@@ -86,7 +86,7 @@ func (s *S) TestDeployShouldCallDockerCreate(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	image := fmt.Sprintf("%s/python", s.repoNamespace)
 	appRepo := fmt.Sprintf("git://%s/cribcaged.git", s.gitHost)
-	sshCmd := "/var/lib/tsuru/add-key key-content && /usr/sbin/sshd"
+	sshCmd := "/var/lib/tsuru/add-key key-content && /usr/sbin/sshd -D"
 	args := []string{
 		"run", "-d", "-t", "-p", s.port, image,
 		"/bin/bash", "-c", sshCmd,
@@ -205,7 +205,7 @@ func (s *S) TestProvisionerAddr(c *gocheck.C) {
 	}
 }`
 	id := "123"
-	runCmd := "run -d -t -p 8888 tsuru/python /bin/bash -c /var/lib/tsuru/add-key key-content && /usr/sbin/sshd"
+	runCmd := "run -d -t -p 8888 tsuru/python /bin/bash -c /var/lib/tsuru/add-key key-content && /usr/sbin/sshd -D"
 	fexec := &etesting.FakeExecutor{Output: map[string][]byte{runCmd: []byte(id), "inspect " + id: []byte(out)}}
 	setExecut(fexec)
 	defer setExecut(nil)

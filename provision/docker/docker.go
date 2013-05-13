@@ -68,7 +68,7 @@ func getSSHCommands() ([]string, error) {
 	}
 	return []string{
 		fmt.Sprintf("%s %s", addKeyCommand, bytes.TrimSpace(keyContent)),
-		sshdPath,
+		sshdPath + " -D",
 	}, nil
 }
 
