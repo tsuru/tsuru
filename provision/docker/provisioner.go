@@ -92,7 +92,9 @@ func (p *DockerProvisioner) Deploy(app provision.App, w io.Writer) error {
 func (p *DockerProvisioner) Destroy(app provision.App) error {
 	containers, _ := getContainers(app.GetName())
 	for _, c := range containers {
-		c.remove()
+		go func(c container) {
+			c.remove()
+		}(c)
 	}
 	return nil
 }
