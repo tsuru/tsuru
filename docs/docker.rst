@@ -18,8 +18,9 @@ You can use the scripts bellow to quick install tsuru with docker:
 
 ::
 
-    $ curl https://raw.github.com/globocom/tsuru/master/misc/tsuru-setup.bash
-    $ curl https://raw.github.com/globocom/tsuru/master/misc/gandalf-setup.bash
+    $ curl -O https://raw.github.com/globocom/tsuru/master/misc/tsuru-setup.bash
+    $ curl -O https://raw.github.com/globocom/tsuru/master/misc/gandalf-setup.bash
+    $ curl -O https://raw.github.com/globocom/tsuru/master/misc/hipache-router.bash
     $ curl https://raw.github.com/globocom/tsuru/master/misc/docker-setup.bash | bash
 
 Or follow this steps:
