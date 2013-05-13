@@ -21,6 +21,7 @@ import (
 	"os/user"
 	"path"
 	"strings"
+	"time"
 )
 
 var fsystem fs.Fs
@@ -242,7 +243,15 @@ func (c *container) deploy(w io.Writer) error {
 		return err
 	}
 	runArgs, _ := config.GetString("docker:run-cmd:args")
-	err = c.ssh(w, w, deployCmd, repository.GetReadOnlyUrl(c.AppName))
+	appRepo := repository.GetReadOnlyUrl(c.AppName)
+	for i := 0; i < 5; i++ {
+		err = c.ssh(w, w, deployCmd, appRepo)
+		if err == nil {
+			break
+		}
+		log.Printf("SSH to the container %q failed. Will retry.", c.Id)
+		time.Sleep(100e6)
+	}
 	if err != nil {
 		return err
 	}

@@ -289,6 +289,35 @@ func (s *S) TestDockerDeploy(c *gocheck.C) {
 	c.Assert(fexec.ExecutedCmd("ssh", runArgs), gocheck.Equals, true)
 }
 
+func (s *S) TestDockerDeployRetries(c *gocheck.C) {
+	var buf bytes.Buffer
+	fexec := etesting.RetryExecutor{
+		Failures: 3,
+		FakeExecutor: etesting.FakeExecutor{
+			Output: map[string][]byte{"*": []byte("connection refused")},
+		},
+	}
+	setExecut(&fexec)
+	defer setExecut(nil)
+	container := container{Id: "c-01", Ip: "10.10.10.10", AppName: "myapp"}
+	err := container.deploy(&buf)
+	c.Assert(err, gocheck.IsNil)
+	commands := fexec.GetCommands("ssh")
+	c.Assert(commands, gocheck.HasLen, 5)
+	deployArgs := []string{
+		"10.10.10.10", "-l", s.sshUser, "-o", "StrictHostKeyChecking no",
+		"--", s.deployCmd, repository.GetReadOnlyUrl(container.AppName),
+	}
+	for _, cmd := range commands[:4] {
+		c.Check(cmd.GetArgs(), gocheck.DeepEquals, deployArgs)
+	}
+	runArgs := []string{
+		"10.10.10.10", "-l", s.sshUser, "-o", "StrictHostKeyChecking no",
+		"--", s.runBin, s.runArgs,
+	}
+	c.Assert(commands[4].GetArgs(), gocheck.DeepEquals, runArgs)
+}
+
 func (s *S) TestDockerDeployNoDeployCommand(c *gocheck.C) {
 	old, _ := config.Get("docker:deploy-cmd")
 	defer config.Set("docker:deploy-cmd", old)
@@ -313,7 +342,7 @@ func (s *S) TestDockerDeployCommandFailure(c *gocheck.C) {
 	var buf bytes.Buffer
 	fexec := etesting.ErrorExecutor{
 		FakeExecutor: etesting.FakeExecutor{
-			Output: map[string][]byte{"*": []byte("failed")},
+			Output: map[string][]byte{"*": []byte("failed\n")},
 		},
 	}
 	setExecut(&fexec)
@@ -321,7 +350,7 @@ func (s *S) TestDockerDeployCommandFailure(c *gocheck.C) {
 	container := container{AppName: "myapp", Ip: "127.0.0.1"}
 	err := container.deploy(&buf)
 	c.Assert(err, gocheck.NotNil)
-	c.Assert(buf.String(), gocheck.Equals, "failed")
+	c.Assert(buf.String(), gocheck.Equals, "failed\nfailed\nfailed\nfailed\nfailed\n")
 }
 
 func (s *S) TestDockerStart(c *gocheck.C) {
