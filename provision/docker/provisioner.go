@@ -93,7 +93,7 @@ func (p *DockerProvisioner) Destroy(app provision.App) error {
 	for _, u := range units {
 		if u.GetName() != "" {
 			go func(u provision.AppUnit) {
-				c := container{Id: u.GetName()}
+				c := container{Id: u.GetName(), AppName: app.GetName()}
 				if err := c.remove(); err != nil {
 					return
 				}

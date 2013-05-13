@@ -11,6 +11,8 @@ import (
 	etesting "github.com/globocom/tsuru/exec/testing"
 	"github.com/globocom/tsuru/log"
 	"github.com/globocom/tsuru/provision"
+	"github.com/globocom/tsuru/router"
+	rtesting "github.com/globocom/tsuru/router/testing"
 	"github.com/globocom/tsuru/testing"
 	"labix.org/v2/mgo/bson"
 	"launchpad.net/gocheck"
@@ -165,6 +167,9 @@ func (s *S) TestProvisionerDestroy(c *gocheck.C) {
 	}
 	args := []string{"rm", "myapp/0"}
 	c.Assert(fexec.ExecutedCmd("docker", args), gocheck.Equals, true)
+	r, err := router.Get("fake")
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(r.(*rtesting.FakeRouter).HasRoute("myapp"), gocheck.Equals, false)
 }
 
 func (s *S) TestProvisionerDestroyEmptyUnit(c *gocheck.C) {
