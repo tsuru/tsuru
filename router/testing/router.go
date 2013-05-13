@@ -7,6 +7,7 @@ package testing
 import (
 	"errors"
 	"github.com/globocom/tsuru/router"
+	"sync"
 )
 
 func init() {
@@ -15,9 +16,12 @@ func init() {
 
 type FakeRouter struct {
 	routes map[string]string
+	mutex  sync.Mutex
 }
 
 func (r *FakeRouter) AddRoute(name, ip string) error {
+	r.mutex.Lock()
+	defer r.mutex.Unlock()
 	if r.routes == nil {
 		r.routes = make(map[string]string)
 	}
@@ -26,6 +30,8 @@ func (r *FakeRouter) AddRoute(name, ip string) error {
 }
 
 func (r *FakeRouter) RemoveRoute(name string) error {
+	r.mutex.Lock()
+	defer r.mutex.Unlock()
 	if r.routes != nil {
 		delete(r.routes, name)
 	}
@@ -33,11 +39,15 @@ func (r *FakeRouter) RemoveRoute(name string) error {
 }
 
 func (r *FakeRouter) HasRoute(name string) bool {
+	r.mutex.Lock()
+	defer r.mutex.Unlock()
 	_, ok := r.routes[name]
 	return ok
 }
 
 func (r *FakeRouter) Addr(name string) (string, error) {
+	r.mutex.Lock()
+	defer r.mutex.Unlock()
 	if v, ok := r.routes[name]; ok {
 		return v, nil
 	}
