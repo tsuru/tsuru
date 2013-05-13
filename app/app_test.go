@@ -233,7 +233,7 @@ func (s *S) TestCreateApp(c *gocheck.C) {
 	err = quota.Reserve(s.user.Email, a.Name)
 	_, ok = err.(*quota.QuotaExceededError)
 	c.Assert(ok, gocheck.Equals, true)
-	_, err = quota.Items(retrievedApp.Name)
+	_, _, err = quota.Items(retrievedApp.Name)
 	c.Assert(err, gocheck.IsNil)
 }
 
@@ -574,13 +574,14 @@ func (s *S) TestAddUnitsQuota(c *gocheck.C) {
 	err = quota.Reserve("warpaint", "war/0")
 	_, ok := err.(*quota.QuotaExceededError)
 	c.Assert(ok, gocheck.Equals, true)
-	items, err := quota.Items("warpaint")
+	items, available, err := quota.Items("warpaint")
 	c.Assert(err, gocheck.IsNil)
 	expected := []string{
 		"warpaint-0", "warpaint-1", "warpaint-2", "warpaint-3",
 		"warpaint-4", "warpaint-5", "warpaint-6",
 	}
 	c.Assert(items, gocheck.DeepEquals, expected)
+	c.Assert(available, gocheck.Equals, uint(0))
 }
 
 func (s *S) TestAddUnitsQuotaExceeded(c *gocheck.C) {
@@ -712,9 +713,10 @@ func (s *S) TestRemoveUnitsWithQuota(c *gocheck.C) {
 	defer s.provisioner.Destroy(&a)
 	err = a.RemoveUnits(4)
 	c.Assert(err, gocheck.IsNil)
-	items, err := quota.Items(a.Name)
+	items, available, err := quota.Items(a.Name)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(items, gocheck.DeepEquals, []string{"ble-0", "ble-4"})
+	c.Assert(available, gocheck.Equals, uint(4))
 }
 
 func (s *S) TestRemoveUnits(c *gocheck.C) {
