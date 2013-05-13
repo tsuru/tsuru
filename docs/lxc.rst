@@ -18,6 +18,8 @@ You can use the script bellow to quick install tsuru with lxc:
 
 ::
 
+    $ curl https://raw.github.com/globocom/tsuru/master/misc/tsuru-setup.bash
+    $ curl https://raw.github.com/globocom/tsuru/master/misc/gandalf-setup.bash
     $ curl https://raw.github.com/globocom/tsuru/master/misc/lxc-setup.bash | bash
 
 Or follow this steps:
