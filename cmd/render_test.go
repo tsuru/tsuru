@@ -185,7 +185,7 @@ func (s *S) TestColorBoldWhite(c *gocheck.C) {
 	c.Assert(output, gocheck.Equals, "\033[1;37;10mmust return a bold white font pattern\033[0m")
 }
 
-func (s *S) TesaColortBoldYellowGreenBG(c *gocheck.C) {
+func (s *S) TestColorBoldYellowGreenBG(c *gocheck.C) {
 	output := Colorfy("must return a bold yellow with green background", "yellow", "green", "bold")
 	c.Assert(output, gocheck.Equals, "\033[1;33;42mmust return a bold yellow with green background\033[0m")
 }
