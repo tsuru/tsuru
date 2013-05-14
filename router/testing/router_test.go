@@ -22,6 +22,18 @@ func (s *S) TestShouldBeRegistered(c *gocheck.C) {
 	c.Assert(r, gocheck.FitsTypeOf, &FakeRouter{})
 }
 
+func (s *S) TestAddBackend(c *gocheck.C) {
+	var r FakeRouter
+	err := r.AddBackend("name")
+	c.Assert(err, gocheck.IsNil)
+}
+
+func (s *S) TestRemoveBackend(c *gocheck.C) {
+	var r FakeRouter
+	err := r.RemoveBackend("name")
+	c.Assert(err, gocheck.IsNil)
+}
+
 func (s *S) TestAddRoute(c *gocheck.C) {
 	var r FakeRouter
 	err := r.AddRoute("name", "127.0.0.1")
@@ -33,7 +45,7 @@ func (s *S) TestRemoveRoute(c *gocheck.C) {
 	var r FakeRouter
 	err := r.AddRoute("name", "127.0.0.1")
 	c.Assert(err, gocheck.IsNil)
-	err = r.RemoveRoute("name")
+	err = r.RemoveRoute("name", "127.0.0.1")
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(r.HasRoute("name"), gocheck.Equals, false)
 }

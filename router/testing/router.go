@@ -19,6 +19,14 @@ type FakeRouter struct {
 	mutex  sync.Mutex
 }
 
+func (r *FakeRouter) AddBackend(name string) error {
+	return nil
+}
+
+func (r *FakeRouter) RemoveBackend(name string) error {
+	return nil
+}
+
 func (r *FakeRouter) AddRoute(name, ip string) error {
 	r.mutex.Lock()
 	defer r.mutex.Unlock()
@@ -29,7 +37,7 @@ func (r *FakeRouter) AddRoute(name, ip string) error {
 	return nil
 }
 
-func (r *FakeRouter) RemoveRoute(name string) error {
+func (r *FakeRouter) RemoveRoute(name, ip string) error {
 	r.mutex.Lock()
 	defer r.mutex.Unlock()
 	if r.routes != nil {
