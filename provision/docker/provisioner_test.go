@@ -236,11 +236,85 @@ func (s *S) TestProvisionerAddr(c *gocheck.C) {
 }
 
 func (s *S) TestProvisionerAddUnits(c *gocheck.C) {
+	sshCmd := "/var/lib/tsuru/add-key key-content && /usr/sbin/sshd -D"
+	runCmd := fmt.Sprintf("run -d -t -p %s tsuru/python /bin/bash -c %s", s.port, sshCmd)
+	out := `{
+	"NetworkSettings": {
+		"IpAddress": "10.10.10.%d",
+		"IpPrefixLen": 8,
+		"Gateway": "10.65.41.1",
+		"PortMapping": {}
+	}
+}`
+	fexec := etesting.FakeExecutor{
+		Output: map[string][][]byte{
+			runCmd:          {[]byte("c-300"), []byte("c-301"), []byte("c-302")},
+			"inspect c-300": {[]byte(fmt.Sprintf(out, 1))},
+			"inspect c-301": {[]byte(fmt.Sprintf(out, 2))},
+			"inspect c-302": {[]byte(fmt.Sprintf(out, 3))},
+			"*":             {[]byte("ok sir")},
+		},
+	}
+	setExecut(&fexec)
+	defer setExecut(nil)
 	var p dockerProvisioner
 	app := testing.NewFakeApp("myapp", "python", 0)
-	units, err := p.AddUnits(app, 2)
+	expected := []provision.Unit{
+		{Name: "c-300", AppName: app.GetName(),
+			Type: app.GetPlatform(), Ip: "10.10.10.1",
+			Status: provision.StatusInstalling},
+		{Name: "c-301", AppName: app.GetName(),
+			Type: app.GetPlatform(), Ip: "10.10.10.2",
+			Status: provision.StatusInstalling},
+		{Name: "c-302", AppName: app.GetName(),
+			Type: app.GetPlatform(), Ip: "10.10.10.3",
+			Status: provision.StatusInstalling},
+	}
+	units, err := p.AddUnits(app, 3)
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(units, gocheck.DeepEquals, []provision.Unit{})
+	defer s.conn.Collection(s.collName).RemoveAll(bson.M{"appname": app.GetName()})
+	c.Assert(units, gocheck.DeepEquals, expected)
+	c.Assert(fexec.ExecutedCmd("docker", []string{"inspect", "c-300"}), gocheck.Equals, true)
+	c.Assert(fexec.ExecutedCmd("docker", []string{"inspect", "c-301"}), gocheck.Equals, true)
+	c.Assert(fexec.ExecutedCmd("docker", []string{"inspect", "c-302"}), gocheck.Equals, true)
+	count, err := s.conn.Collection(s.collName).Find(bson.M{"appname": app.GetName()}).Count()
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(count, gocheck.Equals, 3)
+	ok := make(chan bool, 1)
+	go func() {
+		for {
+			commands := fexec.GetCommands("ssh")
+			if len(commands) == 6 {
+				ok <- true
+				return
+			}
+			runtime.Gosched()
+		}
+	}()
+	select {
+	case <-ok:
+	case <-time.After(5e9):
+		c.Fatal("Did not run deploy script on containers after 5 seconds.")
+	}
+}
+
+func (s *S) TestProvisionerAddZeroUnits(c *gocheck.C) {
+	var p dockerProvisioner
+	units, err := p.AddUnits(nil, 0)
+	c.Assert(units, gocheck.IsNil)
+	c.Assert(err, gocheck.NotNil)
+	c.Assert(err.Error(), gocheck.Equals, "Cannot add 0 units")
+}
+
+func (s *S) TestProvisionerAddUnitsFailure(c *gocheck.C) {
+	fexec := etesting.ErrorExecutor{}
+	setExecut(&fexec)
+	defer setExecut(nil)
+	app := testing.NewFakeApp("myapp", "python", 1)
+	var p dockerProvisioner
+	units, err := p.AddUnits(app, 1)
+	c.Assert(units, gocheck.IsNil)
+	c.Assert(err, gocheck.NotNil)
 }
 
 func (s *S) TestProvisionerRemoveUnit(c *gocheck.C) {

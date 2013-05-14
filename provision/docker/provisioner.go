@@ -21,6 +21,7 @@ import (
 	_ "github.com/globocom/tsuru/router/nginx"
 	_ "github.com/globocom/tsuru/router/testing"
 	"io"
+	"io/ioutil"
 	"labix.org/v2/mgo"
 	"net"
 	"strings"
@@ -120,8 +121,27 @@ func (*dockerProvisioner) Addr(app provision.App) (string, error) {
 	return addr, nil
 }
 
-func (*dockerProvisioner) AddUnits(app provision.App, units uint) ([]provision.Unit, error) {
-	return []provision.Unit{}, nil
+func (*dockerProvisioner) AddUnits(a provision.App, units uint) ([]provision.Unit, error) {
+	if units == 0 {
+		return nil, errors.New("Cannot add 0 units")
+	}
+	writer := app.LogWriter{App: a, Writer: ioutil.Discard}
+	result := make([]provision.Unit, int(units))
+	for i := uint(0); i < units; i++ {
+		container, err := newContainer(a)
+		if err != nil {
+			return nil, err
+		}
+		go container.deploy(&writer)
+		result[i] = provision.Unit{
+			Name:    container.Id,
+			AppName: a.GetName(),
+			Type:    a.GetPlatform(),
+			Ip:      container.Ip,
+			Status:  provision.StatusInstalling,
+		}
+	}
+	return result, nil
 }
 
 func (*dockerProvisioner) RemoveUnit(app provision.App, unitName string) error {
