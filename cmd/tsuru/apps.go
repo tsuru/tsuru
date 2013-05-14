@@ -7,7 +7,6 @@ package main
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"github.com/globocom/tsuru/cmd"
 	"github.com/globocom/tsuru/cmd/tsuru-base"
@@ -16,18 +15,12 @@ import (
 	"net/http"
 )
 
-type AppCreate struct {
-	fs    *gnuflag.FlagSet
-	units uint
-}
+type AppCreate struct{}
 
-func (c *AppCreate) Run(context *cmd.Context, client *cmd.Client) error {
-	if c.units == 0 {
-		return errors.New("Cannot create app with zero units.")
-	}
+func (AppCreate) Run(context *cmd.Context, client *cmd.Client) error {
 	appName := context.Args[0]
 	platform := context.Args[1]
-	b := bytes.NewBufferString(fmt.Sprintf(`{"name":"%s","platform":"%s","units":%d}`, appName, platform, c.units))
+	b := bytes.NewBufferString(fmt.Sprintf(`{"name":"%s","platform":"%s"}`, appName, platform))
 	url, err := cmd.GetUrl("/apps")
 	if err != nil {
 		return err
@@ -51,32 +44,19 @@ func (c *AppCreate) Run(context *cmd.Context, client *cmd.Client) error {
 	if err != nil {
 		return err
 	}
-	var plural string
-	if c.units > 1 {
-		plural = "s"
-	}
-	fmt.Fprintf(context.Stdout, "App %q is being created with %d unit%s!\n", appName, c.units, plural)
+	fmt.Fprintf(context.Stdout, "App %q is being created!\n", appName)
 	fmt.Fprintln(context.Stdout, "Use app-info to check the status of the app and its units.")
 	fmt.Fprintf(context.Stdout, "Your repository for %q project is %q\n", appName, out["repository_url"])
 	return nil
 }
 
-func (c *AppCreate) Info() *cmd.Info {
+func (AppCreate) Info() *cmd.Info {
 	return &cmd.Info{
 		Name:    "app-create",
-		Usage:   "app-create <appname> <platform> [--units 1]",
+		Usage:   "app-create <appname> <platform>",
 		Desc:    "create a new app.",
 		MinArgs: 2,
 	}
-}
-
-func (c *AppCreate) Flags() *gnuflag.FlagSet {
-	if c.fs == nil {
-		c.fs = gnuflag.NewFlagSet("app-create", gnuflag.ExitOnError)
-		c.fs.UintVar(&c.units, "units", 1, "How many units should be created with the app.")
-		c.fs.UintVar(&c.units, "n", 1, "How many units should be created with the app.")
-	}
-	return c.fs
 }
 
 type AppRemove struct {

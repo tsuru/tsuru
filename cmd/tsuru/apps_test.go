@@ -18,7 +18,7 @@ import (
 func (s *S) TestAppCreateInfo(c *gocheck.C) {
 	expected := &cmd.Info{
 		Name:    "app-create",
-		Usage:   "app-create <appname> <platform> [--units 1]",
+		Usage:   "app-create <appname> <platform>",
 		Desc:    "create a new app.",
 		MinArgs: 2,
 	}
@@ -28,7 +28,7 @@ func (s *S) TestAppCreateInfo(c *gocheck.C) {
 func (s *S) TestAppCreate(c *gocheck.C) {
 	var stdout, stderr bytes.Buffer
 	result := `{"status":"success", "repository_url":"git@tsuru.plataformas.glb.com:ble.git"}`
-	expected := `App "ble" is being created with 1 unit!
+	expected := `App "ble" is being created!
 Use app-info to check the status of the app and its units.
 Your repository for "ble" project is "git@tsuru.plataformas.glb.com:ble.git"` + "\n"
 	context := cmd.Context{
@@ -42,53 +42,15 @@ Your repository for "ble" project is "git@tsuru.plataformas.glb.com:ble.git"` + 
 			defer req.Body.Close()
 			body, err := ioutil.ReadAll(req.Body)
 			c.Assert(err, gocheck.IsNil)
-			c.Assert(string(body), gocheck.Equals, `{"name":"ble","platform":"django","units":1}`)
+			c.Assert(string(body), gocheck.Equals, `{"name":"ble","platform":"django"}`)
 			return req.Method == "POST" && req.URL.Path == "/apps"
 		},
 	}
 	client := cmd.NewClient(&http.Client{Transport: &trans}, nil, manager)
 	command := AppCreate{}
-	command.Flags().Parse(true, nil)
 	err := command.Run(&context, client)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(stdout.String(), gocheck.Equals, expected)
-}
-
-func (s *S) TestAppCreateMoreThanOneUnit(c *gocheck.C) {
-	var stdout, stderr bytes.Buffer
-	result := `{"status":"success", "repository_url":"git@tsuru.plataformas.glb.com:ble.git"}`
-	expected := `App "ble" is being created with 4 units!
-Use app-info to check the status of the app and its units.
-Your repository for "ble" project is "git@tsuru.plataformas.glb.com:ble.git"` + "\n"
-	context := cmd.Context{
-		Args:   []string{"ble", "django"},
-		Stdout: &stdout,
-		Stderr: &stderr,
-	}
-	trans := testing.ConditionalTransport{
-		Transport: testing.Transport{Message: result, Status: http.StatusOK},
-		CondFunc: func(req *http.Request) bool {
-			defer req.Body.Close()
-			body, err := ioutil.ReadAll(req.Body)
-			c.Assert(err, gocheck.IsNil)
-			c.Assert(string(body), gocheck.Equals, `{"name":"ble","platform":"django","units":4}`)
-			return req.Method == "POST" && req.URL.Path == "/apps"
-		},
-	}
-	client := cmd.NewClient(&http.Client{Transport: &trans}, nil, manager)
-	command := AppCreate{}
-	command.Flags().Parse(true, []string{"--units", "4"})
-	err := command.Run(&context, client)
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(stdout.String(), gocheck.Equals, expected)
-}
-
-func (s *S) TestAppCreateZeroUnits(c *gocheck.C) {
-	command := AppCreate{}
-	command.Flags().Parse(true, []string{"--units", "0"})
-	err := command.Run(nil, nil)
-	c.Assert(err, gocheck.NotNil)
-	c.Assert(err.Error(), gocheck.Equals, "Cannot create app with zero units.")
 }
 
 func (s *S) TestAppCreateWithInvalidFramework(c *gocheck.C) {
@@ -100,29 +62,9 @@ func (s *S) TestAppCreateWithInvalidFramework(c *gocheck.C) {
 	}
 	client := cmd.NewClient(&http.Client{Transport: &testing.Transport{Message: "", Status: http.StatusInternalServerError}}, nil, manager)
 	command := AppCreate{}
-	command.Flags().Parse(true, nil)
 	err := command.Run(&context, client)
 	c.Assert(err, gocheck.NotNil)
 	c.Assert(stdout.String(), gocheck.Equals, "")
-}
-
-func (s *S) TestAppCreateFlags(c *gocheck.C) {
-	command := AppCreate{}
-	flagset := command.Flags()
-	c.Assert(flagset, gocheck.NotNil)
-	flagset.Parse(true, []string{"--units", "10"})
-	flag := flagset.Lookup("units")
-	c.Assert(flag, gocheck.NotNil)
-	c.Assert(flag.Name, gocheck.Equals, "units")
-	c.Assert(flag.Usage, gocheck.Equals, "How many units should be created with the app.")
-	c.Assert(flag.Value.String(), gocheck.Equals, "10")
-	c.Assert(flag.DefValue, gocheck.Equals, "1")
-	sflag := flagset.Lookup("n")
-	c.Assert(sflag, gocheck.NotNil)
-	c.Assert(sflag.Name, gocheck.Equals, "n")
-	c.Assert(sflag.Usage, gocheck.Equals, "How many units should be created with the app.")
-	c.Assert(sflag.Value.String(), gocheck.Equals, "10")
-	c.Assert(sflag.DefValue, gocheck.Equals, "1")
 }
 
 func (s *S) TestAppRemove(c *gocheck.C) {
