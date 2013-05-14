@@ -346,6 +346,13 @@ func (s *S) TestTeamRemoveUserIsRegistered(c *gocheck.C) {
 	c.Assert(removeuser, gocheck.FitsTypeOf, &teamUserRemove{})
 }
 
+func (s *S) TestTeamUserListIsRegistered(c *gocheck.C) {
+	manager := BuildBaseManager("tsuru", "1.0", "")
+	listuser, ok := manager.Commands["team-user-list"]
+	c.Assert(ok, gocheck.Equals, true)
+	c.Assert(listuser, gocheck.FitsTypeOf, teamUserList{})
+}
+
 func (s *S) TestTargetIsRegistered(c *gocheck.C) {
 	manager := BuildBaseManager("tsuru", "1.0", "")
 	tgt, ok := manager.Commands["target-list"]
