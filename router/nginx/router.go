@@ -27,7 +27,7 @@ func init() {
 
 type NginxRouter struct{}
 
-func (r *NginxRouter) AddRoute(name, ip string) error {
+func (r *NginxRouter) AddRoute(name, address string) error {
 	domain, err := config.GetString("nginx:domain")
 	if err != nil {
 		return err
@@ -48,7 +48,7 @@ func (r *NginxRouter) AddRoute(name, ip string) error {
 		proxy_pass http://%s;
 	}
 }`
-	template = fmt.Sprintf(template, name, domain, ip)
+	template = fmt.Sprintf(template, name, domain, address)
 	data := []byte(template)
 	_, err = file.Write(data)
 	if err != nil {
@@ -57,7 +57,15 @@ func (r *NginxRouter) AddRoute(name, ip string) error {
 	return r.restart()
 }
 
-func (r *NginxRouter) RemoveRoute(name string) error {
+func (r *NginxRouter) RemoveRoute(name, address string) error {
+	return nil
+}
+
+func (r *NginxRouter) AddBackend(name string) error {
+	return nil
+}
+
+func (r *NginxRouter) RemoveBackend(name string) error {
 	routesPath, err := config.GetString("nginx:routes-path")
 	if err != nil {
 		return err
