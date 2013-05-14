@@ -249,6 +249,56 @@ func (s *S) TestTeamRemoveIsACommand(c *gocheck.C) {
 	var _ Command = &teamRemove{}
 }
 
+func (s *S) TestTeamUserList(c *gocheck.C) {
+	var called bool
+	var buf bytes.Buffer
+	context := Context{Args: []string{"symfonia"}, Stdout: &buf}
+	command := teamUserList{}
+	transport := ttesting.ConditionalTransport{
+		Transport: ttesting.Transport{
+			Status:  http.StatusOK,
+			Message: `{"name":"symfonia","users":["somebody@tsuru.io","otherbody@tsuru.io","me@tsuru.io"]}`,
+		},
+		CondFunc: func(r *http.Request) bool {
+			called = true
+			return r.Method == "GET" && r.URL.Path == "/teams/symfonia"
+		},
+	}
+	client := NewClient(&http.Client{Transport: &transport}, nil, manager)
+	err := command.Run(&context, client)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(called, gocheck.Equals, true)
+	expected := `- me@tsuru.io
+- otherbody@tsuru.io
+- somebody@tsuru.io` + "\n"
+	c.Assert(buf.String(), gocheck.Equals, expected)
+}
+
+func (s *S) TestTeamUserListError(c *gocheck.C) {
+	var buf bytes.Buffer
+	context := Context{Args: []string{"symfonia"}, Stdout: &buf}
+	transport := ttesting.Transport{Status: http.StatusNotFound, Message: "Team not found"}
+	client := NewClient(&http.Client{Transport: &transport}, nil, manager)
+	command := teamUserList{}
+	err := command.Run(&context, client)
+	c.Assert(err, gocheck.NotNil)
+	c.Assert(err.Error(), gocheck.Equals, "Team not found")
+}
+
+func (s *S) TestTeamUserListInfo(c *gocheck.C) {
+	expected := &Info{
+		Name:    "team-user-list",
+		Usage:   "team-user-list",
+		Desc:    "List members of a team.",
+		MinArgs: 1,
+	}
+	c.Assert(teamUserList{}.Info(), gocheck.DeepEquals, expected)
+}
+
+func (s *S) TestTeamUserListIsACommand(c *gocheck.C) {
+	var _ Command = teamUserList{}
+}
+
 func (s *S) TestTeamListRun(c *gocheck.C) {
 	var called bool
 	trans := &ttesting.ConditionalTransport{

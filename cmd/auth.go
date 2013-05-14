@@ -15,6 +15,7 @@ import (
 	"launchpad.net/gnuflag"
 	"net/http"
 	"os"
+	"sort"
 )
 
 type userCreate struct{}
@@ -294,6 +295,44 @@ func (c *teamUserRemove) Run(context *Context, client *Client) error {
 	}
 	fmt.Fprintf(context.Stdout, `User "%s" was removed from the "%s" team`+"\n", userName, teamName)
 	return nil
+}
+
+type teamUserList struct{}
+
+func (teamUserList) Run(context *Context, client *Client) error {
+	teamName := context.Args[0]
+	url, err := GetUrl("/teams/" + teamName)
+	if err != nil {
+		return err
+	}
+	request, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return err
+	}
+	resp, err := client.Do(request)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	var t struct{ Users []string }
+	err = json.NewDecoder(resp.Body).Decode(&t)
+	if err != nil {
+		return err
+	}
+	sort.Strings(t.Users)
+	for _, user := range t.Users {
+		fmt.Fprintf(context.Stdout, "- %s\n", user)
+	}
+	return nil
+}
+
+func (teamUserList) Info() *Info {
+	return &Info{
+		Name:    "team-user-list",
+		Usage:   "team-user-list",
+		Desc:    "List members of a team.",
+		MinArgs: 1,
+	}
 }
 
 type teamList struct{}
