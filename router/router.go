@@ -10,11 +10,17 @@ import "fmt"
 
 // Router is the basic interface of this package.
 type Router interface {
+	// AddBackend adds a new backend.
+	AddBackend(name string) error
+
+	// RemoveBackend removes a backend.
+	RemoveBackend(name string) error
+
 	// AddRoute adds a new route.
-	AddRoute(name, ip string) error
+	AddRoute(name, address string) error
 
 	//Remove removes a route.
-	RemoveRoute(name string) error
+	RemoveRoute(name, address string) error
 
 	// Addr returns the route address.
 	Addr(name string) (string, error)
