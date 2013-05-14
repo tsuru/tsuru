@@ -241,10 +241,11 @@ Please remove the apps or revoke these accesses, and try again.`
 		return &errors.Http{Code: http.StatusForbidden, Message: msg}
 	}
 	query := bson.M{"_id": name, "users": t.UserEmail}
-	if n, err := conn.Teams().Find(query).Count(); err != nil || n != 1 {
+	err = conn.Teams().Remove(query)
+	if err != nil && err.Error() == "not found" {
 		return &errors.Http{Code: http.StatusNotFound, Message: fmt.Sprintf(`Team "%s" not found.`, name)}
 	}
-	return conn.Teams().Remove(query)
+	return err
 }
 
 func teamList(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
@@ -316,16 +317,16 @@ func addUserToTeam(w http.ResponseWriter, r *http.Request, t *auth.Token) error 
 		return err
 	}
 	defer conn.Close()
-	team, user := new(auth.Team), new(auth.User)
-	selector := bson.M{"_id": teamName}
-	if err := conn.Teams().Find(selector).One(team); err != nil {
+	team, err := auth.GetTeam(teamName)
+	if err != nil {
 		return &errors.Http{Code: http.StatusNotFound, Message: "Team not found"}
 	}
 	if !team.ContainsUser(u) {
 		msg := fmt.Sprintf("You are not authorized to add new users to the team %s", team.Name)
 		return &errors.Http{Code: http.StatusUnauthorized, Message: msg}
 	}
-	if err := conn.Users().Find(bson.M{"email": email}).One(user); err != nil {
+	user, err := auth.GetUserByEmail(email)
+	if err != nil {
 		return &errors.Http{Code: http.StatusNotFound, Message: "User not found"}
 	}
 	actions := []*action.Action{
@@ -373,8 +374,7 @@ func removeUserFromTeam(w http.ResponseWriter, r *http.Request, t *auth.Token) e
 		return err
 	}
 	defer conn.Close()
-	team := new(auth.Team)
-	err = conn.Teams().FindId(teamName).One(team)
+	team, err := auth.GetTeam(teamName)
 	if err != nil {
 		return &errors.Http{Code: http.StatusNotFound, Message: "Team not found"}
 	}
