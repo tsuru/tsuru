@@ -40,6 +40,10 @@ func (s *S) TestProvisionerProvision(c *gocheck.C) {
 	var p dockerProvisioner
 	err := p.Provision(app)
 	c.Assert(err, gocheck.IsNil)
+	r, err := getRouter()
+	c.Assert(err, gocheck.IsNil)
+	fk := r.(*rtesting.FakeRouter)
+	c.Assert(fk.HasBackend("myapp"), gocheck.Equals, true)
 }
 
 func (s *S) TestProvisionerRestartCallsTheRestartHook(c *gocheck.C) {
@@ -203,6 +207,22 @@ func (s *S) TestProvisionerDestroyEmptyUnit(c *gocheck.C) {
 	var p dockerProvisioner
 	err := p.Destroy(app)
 	c.Assert(err, gocheck.IsNil)
+}
+
+func (s *S) TestProvisionerDestroyRemovesRouterBackend(c *gocheck.C) {
+	fexec := &etesting.FakeExecutor{}
+	setExecut(fexec)
+	defer setExecut(nil)
+	app := testing.NewFakeApp("myapp", "python", 0)
+	var p dockerProvisioner
+	err := p.Provision(app)
+	c.Assert(err, gocheck.IsNil)
+	err = p.Destroy(app)
+	c.Assert(err, gocheck.IsNil)
+	r, err := getRouter()
+	c.Assert(err, gocheck.IsNil)
+	fk := r.(*rtesting.FakeRouter)
+	c.Assert(fk.HasBackend("myapp"), gocheck.Equals, false)
 }
 
 func (s *S) TestProvisionerAddr(c *gocheck.C) {

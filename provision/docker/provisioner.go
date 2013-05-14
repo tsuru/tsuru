@@ -56,9 +56,14 @@ func getRouter() (router.Router, error) {
 
 type dockerProvisioner struct{}
 
-// Provision creates a container and install its dependencies
+// Provision creates a route for the container
 func (p *dockerProvisioner) Provision(app provision.App) error {
-	return nil
+	r, err := getRouter()
+	if err != nil {
+		log.Printf("Failed to get router: %s", err.Error())
+		return err
+	}
+	return r.AddBackend(app.GetName())
 }
 
 func (p *dockerProvisioner) Restart(app provision.App) error {
@@ -104,7 +109,12 @@ func (p *dockerProvisioner) Destroy(app provision.App) error {
 			c.remove()
 		}(c)
 	}
-	return nil
+	r, err := getRouter()
+	if err != nil {
+		log.Printf("Failed to get router: %s", err.Error())
+		return err
+	}
+	return r.RemoveBackend(app.GetName())
 }
 
 func (*dockerProvisioner) Addr(app provision.App) (string, error) {
