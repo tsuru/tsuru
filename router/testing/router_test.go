@@ -24,14 +24,19 @@ func (s *S) TestShouldBeRegistered(c *gocheck.C) {
 
 func (s *S) TestAddBackend(c *gocheck.C) {
 	var r FakeRouter
-	err := r.AddBackend("name")
+	err := r.AddBackend("foo")
 	c.Assert(err, gocheck.IsNil)
+	defer r.RemoveBackend("foo")
+	c.Assert(r.HasBackend("foo"), gocheck.Equals, true)
 }
 
 func (s *S) TestRemoveBackend(c *gocheck.C) {
 	var r FakeRouter
-	err := r.RemoveBackend("name")
+	err := r.AddBackend("bar")
 	c.Assert(err, gocheck.IsNil)
+	err = r.RemoveBackend("bar")
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(r.HasBackend("bar"), gocheck.Equals, false)
 }
 
 func (s *S) TestAddRoute(c *gocheck.C) {

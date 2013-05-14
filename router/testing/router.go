@@ -15,16 +15,37 @@ func init() {
 }
 
 type FakeRouter struct {
-	routes map[string]string
-	mutex  sync.Mutex
+	routes   map[string]string
+	backends []string
+	mutex    sync.Mutex
 }
 
 func (r *FakeRouter) AddBackend(name string) error {
+	r.mutex.Lock()
+	defer r.mutex.Unlock()
+	r.backends = append(r.backends, name)
 	return nil
 }
 
 func (r *FakeRouter) RemoveBackend(name string) error {
+	r.mutex.Lock()
+	defer r.mutex.Unlock()
+	for i, b := range r.backends {
+		if name == b {
+			r.backends[i], r.backends = r.backends[len(r.backends)-1], r.backends[:len(r.backends)-1]
+			break
+		}
+	}
 	return nil
+}
+
+func (r *FakeRouter) HasBackend(name string) bool {
+	for _, b := range r.backends {
+		if name == b {
+			return true
+		}
+	}
+	return false
 }
 
 func (r *FakeRouter) AddRoute(name, ip string) error {
