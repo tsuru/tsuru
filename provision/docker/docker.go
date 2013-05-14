@@ -205,10 +205,6 @@ func (c *container) ip() (string, error) {
 // docker, which might be to deploy a container or to run and expose a
 // container for an application.
 func (c *container) create(app provision.App) error {
-	hostAddr, err := config.Get("docker:host-address")
-	if err != nil {
-		return err
-	}
 	cmd, err := commandToRun(app)
 	if err != nil {
 		return err
@@ -240,11 +236,7 @@ func (c *container) create(app provision.App) error {
 	if err != nil {
 		return err
 	}
-	hostPort, err := c.hostPort()
-	if err != nil {
-		hostPort = c.Port
-	}
-	return r.AddRoute(app.GetName(), fmt.Sprintf("http://%s:%s", hostAddr, hostPort))
+	return r.AddRoute(app.GetName(), c.getAddress())
 }
 
 func (c *container) deploy(w io.Writer) error {
@@ -297,7 +289,7 @@ func (c *container) remove() error {
 		log.Printf("Failed to obtain router: %s", err.Error())
 		return err
 	}
-	if err := r.RemoveRoute(c.AppName, c.Ip); err != nil {
+	if err := r.RemoveRoute(c.AppName, c.getAddress()); err != nil {
 		log.Printf("Failed to remove route: %s", err.Error())
 		return err
 	}

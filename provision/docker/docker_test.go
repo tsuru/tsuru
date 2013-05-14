@@ -135,7 +135,9 @@ func (s *S) TestNewContainerRouteNoMappedPort(c *gocheck.C) {
 		"IpAddress": "10.10.10.1",
 		"IpPrefixLen": 8,
 		"Gateway": "10.65.41.1",
-		"PortMapping": {}
+        "PortMapping": {
+            "8888": "49153"
+        }
 	}
 }`
 	fexec := &etesting.FakeExecutor{Output: map[string][][]byte{"*": {[]byte(out)}}}
@@ -149,7 +151,7 @@ func (s *S) TestNewContainerRouteNoMappedPort(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	addr, err := r.Addr(app.GetName())
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(addr, gocheck.Equals, "http://"+s.hostAddr+":"+s.port)
+	c.Assert(addr, gocheck.Equals, "http://"+s.hostAddr+":49153")
 }
 
 func (s *S) TestCommandsToRun(c *gocheck.C) {
