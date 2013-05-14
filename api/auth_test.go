@@ -1055,6 +1055,60 @@ func (s *AuthSuite) TestRemoveUserFromTeamInGandalf(c *gocheck.C) {
 	c.Assert(h.url[0], gocheck.Equals, "/repository/revoke")
 }
 
+func (s *AuthSuite) TestGetTeam(c *gocheck.C) {
+	team, err := auth.GetTeam(s.team.Name)
+	c.Assert(err, gocheck.IsNil)
+	url := fmt.Sprintf("/teams/%s?:name=%s", team.Name, team.Name)
+	request, err := http.NewRequest("GET", url, nil)
+	c.Assert(err, gocheck.IsNil)
+	recorder := httptest.NewRecorder()
+	err = getTeam(recorder, request, s.token)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(recorder.Header().Get("Content-Type"), gocheck.Equals, "application/json")
+	var got auth.Team
+	err = json.NewDecoder(recorder.Body).Decode(&got)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(got, gocheck.DeepEquals, *team)
+	action := testing.Action{
+		User:   s.user.Email,
+		Action: "get-team",
+		Extra:  []interface{}{team.Name},
+	}
+	c.Assert(action, testing.IsRecorded)
+}
+
+func (s *AuthSuite) TestGetTeamNotFound(c *gocheck.C) {
+	url := "/teams/unknown?:name=unknown"
+	request, err := http.NewRequest("GET", url, nil)
+	c.Assert(err, gocheck.IsNil)
+	recorder := httptest.NewRecorder()
+	err = getTeam(recorder, request, s.token)
+	c.Assert(err, gocheck.NotNil)
+	e, ok := err.(*errors.Http)
+	c.Assert(ok, gocheck.Equals, true)
+	c.Assert(e.Code, gocheck.Equals, http.StatusNotFound)
+	c.Assert(e.Message, gocheck.Equals, "Team not found")
+}
+
+func (s *AuthSuite) TestGetTeamForbidden(c *gocheck.C) {
+	conn, err := db.Conn()
+	c.Assert(err, gocheck.IsNil)
+	defer conn.Close()
+	team := auth.Team{Name: "paradisum", Users: []string{"someuser@me.com"}}
+	conn.Teams().Insert(team)
+	defer conn.Teams().RemoveId(team.Name)
+	url := fmt.Sprintf("/teams/%s?:name=%s", team.Name, team.Name)
+	request, err := http.NewRequest("GET", url, nil)
+	c.Assert(err, gocheck.IsNil)
+	recorder := httptest.NewRecorder()
+	err = getTeam(recorder, request, s.token)
+	c.Assert(err, gocheck.NotNil)
+	e, ok := err.(*errors.Http)
+	c.Assert(ok, gocheck.Equals, true)
+	c.Assert(e.Code, gocheck.Equals, http.StatusForbidden)
+	c.Assert(e.Message, gocheck.Equals, "User is not member of this team")
+}
+
 func (s *AuthSuite) TestAddKeyToUserAddsAKeyToTheUser(c *gocheck.C) {
 	h := testHandler{}
 	ts := s.startGandalfTestServer(&h)

@@ -397,6 +397,24 @@ func removeUserFromTeam(w http.ResponseWriter, r *http.Request, t *auth.Token) e
 	return removeUserFromTeamInDatabase(user, team)
 }
 
+func getTeam(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
+	teamName := r.URL.Query().Get(":name")
+	user, err := t.User()
+	if err != nil {
+		return err
+	}
+	rec.Log(user.Email, "get-team", teamName)
+	team, err := auth.GetTeam(teamName)
+	if err != nil {
+		return &errors.Http{Code: http.StatusNotFound, Message: "Team not found"}
+	}
+	if !team.ContainsUser(user) {
+		return &errors.Http{Code: http.StatusForbidden, Message: "User is not member of this team"}
+	}
+	w.Header().Set("Content-Type", "application/json")
+	return json.NewEncoder(w).Encode(team)
+}
+
 func getKeyFromBody(b io.Reader) (string, error) {
 	var body map[string]string
 	err := json.NewDecoder(b).Decode(&body)
