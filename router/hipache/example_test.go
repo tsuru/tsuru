@@ -15,13 +15,21 @@ func Example() {
 	if err != nil {
 		panic(err)
 	}
+	err = router.AddBackend("myapp")
+	if err != nil {
+		panic(err)
+	}
 	err = router.AddRoute("myapp", "http://10.10.10.10:8080")
 	if err != nil {
 		panic(err)
 	}
 	addr, _ := router.Addr("myapp")
 	fmt.Println("Please access:", addr)
-	err = router.RemoveRoute("myapp")
+	err = router.RemoveRoute("myapp", "http://10.10.10.10:8080")
+	if err != nil {
+		panic(err)
+	}
+	err = router.RemoveBackend("myapp")
 	if err != nil {
 		panic(err)
 	}

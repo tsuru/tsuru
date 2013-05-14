@@ -62,14 +62,34 @@ func (s *S) TestShouldBeRegistered(c *gocheck.C) {
 	c.Assert(ok, gocheck.Equals, true)
 }
 
+func (s *S) TestAddBackend(c *gocheck.C) {
+	conn = &resultCommandConn{result: []interface{}{}, fakeConn: &s.conn}
+	router := hipacheRouter{}
+	err := router.AddBackend("tip")
+	c.Assert(err, gocheck.IsNil)
+	expected := []command{
+		{cmd: "RPUSH", args: []interface{}{"frontend:tip.golang.org", "tip"}},
+	}
+	c.Assert(s.conn.cmds, gocheck.DeepEquals, expected)
+}
+
+func (s *S) TestRemoveBackend(c *gocheck.C) {
+	conn = &resultCommandConn{result: []interface{}{}, fakeConn: &s.conn}
+	router := hipacheRouter{}
+	err := router.RemoveBackend("tip")
+	c.Assert(err, gocheck.IsNil)
+	expected := []command{
+		{cmd: "DEL", args: []interface{}{"frontend:tip.golang.org"}},
+	}
+	c.Assert(s.conn.cmds, gocheck.DeepEquals, expected)
+}
+
 func (s *S) TestAddRoute(c *gocheck.C) {
 	conn = &resultCommandConn{result: []interface{}{}, fakeConn: &s.conn}
 	router := hipacheRouter{}
 	err := router.AddRoute("tip", "http://10.10.10.10:8080")
 	c.Assert(err, gocheck.IsNil)
 	expected := []command{
-		{cmd: "LRANGE", args: []interface{}{"frontend:tip.golang.org", 0, 0}},
-		{cmd: "RPUSH", args: []interface{}{"frontend:tip.golang.org", "tip"}},
 		{cmd: "RPUSH", args: []interface{}{"frontend:tip.golang.org", "http://10.10.10.10:8080"}},
 	}
 	c.Assert(s.conn.cmds, gocheck.DeepEquals, expected)
@@ -81,7 +101,6 @@ func (s *S) TestAddTwoRoutes(c *gocheck.C) {
 	err := router.AddRoute("tip", "http://10.10.10.10:8081")
 	c.Assert(err, gocheck.IsNil)
 	expected := []command{
-		{cmd: "LRANGE", args: []interface{}{"frontend:tip.golang.org", 0, 0}},
 		{cmd: "RPUSH", args: []interface{}{"frontend:tip.golang.org", "http://10.10.10.10:8081"}},
 	}
 	c.Assert(s.conn.cmds, gocheck.DeepEquals, expected)
@@ -120,10 +139,10 @@ func (s *S) TestAddRouteCommandFailure(c *gocheck.C) {
 }
 
 func (s *S) TestRemoveRoute(c *gocheck.C) {
-	err := hipacheRouter{}.RemoveRoute("tip")
+	err := hipacheRouter{}.RemoveRoute("tip", "tip.golang.org")
 	c.Assert(err, gocheck.IsNil)
 	expected := []command{
-		{cmd: "DEL", args: []interface{}{"frontend:tip.golang.org"}},
+		{cmd: "LREM", args: []interface{}{"frontend:tip.golang.org", 0, "tip.golang.org"}},
 	}
 	c.Assert(s.conn.cmds, gocheck.DeepEquals, expected)
 }
@@ -132,7 +151,7 @@ func (s *S) TestRemoveRouteNoDomainConfigured(c *gocheck.C) {
 	old, _ := config.Get("hipache:domain")
 	defer config.Set("hipache:domain", old)
 	config.Unset("hipache:domain")
-	err := hipacheRouter{}.RemoveRoute("tip")
+	err := hipacheRouter{}.RemoveRoute("tip", "tip.golang.org")
 	c.Assert(err, gocheck.NotNil)
 	e, ok := err.(*routeError)
 	c.Assert(ok, gocheck.Equals, true)
@@ -143,7 +162,7 @@ func (s *S) TestRemoveRouteConnectFailure(c *gocheck.C) {
 	config.Set("hipache:redis-server", "127.0.0.1:6380")
 	defer config.Unset("hipache:redis-server")
 	conn = nil
-	err := hipacheRouter{}.RemoveRoute("tip")
+	err := hipacheRouter{}.RemoveRoute("tip", "tip.golang.org")
 	c.Assert(err, gocheck.NotNil)
 	e, ok := err.(*routeError)
 	c.Assert(ok, gocheck.Equals, true)
@@ -152,7 +171,7 @@ func (s *S) TestRemoveRouteConnectFailure(c *gocheck.C) {
 
 func (s *S) TestRemoveRouteCommandFailure(c *gocheck.C) {
 	conn = &failingFakeConn{}
-	err := hipacheRouter{}.RemoveRoute("tip")
+	err := hipacheRouter{}.RemoveRoute("tip", "tip.golang.org")
 	c.Assert(err, gocheck.NotNil)
 	e, ok := err.(*routeError)
 	c.Assert(ok, gocheck.Equals, true)

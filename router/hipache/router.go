@@ -45,7 +45,7 @@ func connect() (redis.Conn, error) {
 
 type hipacheRouter struct{}
 
-func (hipacheRouter) AddRoute(name, ip string) error {
+func (hipacheRouter) AddBackend(name string) error {
 	domain, err := config.GetString("hipache:domain")
 	if err != nil {
 		return &routeError{"add", err}
@@ -55,25 +55,14 @@ func (hipacheRouter) AddRoute(name, ip string) error {
 	if err != nil {
 		return &routeError{"add", err}
 	}
-	reply, err := conn.Do("LRANGE", frontend, 0, 0)
-	if err != nil {
-		return &routeError{"add", err}
-	}
-	route := reply.([]interface{})
-	if len(route) < 1 {
-		_, err = conn.Do("RPUSH", frontend, name)
-		if err != nil {
-			return &routeError{"add", err}
-		}
-	}
-	_, err = conn.Do("RPUSH", frontend, ip)
+	_, err = conn.Do("RPUSH", frontend, name)
 	if err != nil {
 		return &routeError{"add", err}
 	}
 	return nil
 }
 
-func (hipacheRouter) RemoveRoute(name string) error {
+func (hipacheRouter) RemoveBackend(name string) error {
 	domain, err := config.GetString("hipache:domain")
 	if err != nil {
 		return &routeError{"remove", err}
@@ -84,6 +73,40 @@ func (hipacheRouter) RemoveRoute(name string) error {
 		return &routeError{"remove", err}
 	}
 	_, err = conn.Do("DEL", frontend)
+	if err != nil {
+		return &routeError{"remove", err}
+	}
+	return nil
+}
+
+func (hipacheRouter) AddRoute(name, address string) error {
+	domain, err := config.GetString("hipache:domain")
+	if err != nil {
+		return &routeError{"add", err}
+	}
+	frontend := "frontend:" + name + "." + domain
+	conn, err := connect()
+	if err != nil {
+		return &routeError{"add", err}
+	}
+	_, err = conn.Do("RPUSH", frontend, address)
+	if err != nil {
+		return &routeError{"add", err}
+	}
+	return nil
+}
+
+func (hipacheRouter) RemoveRoute(name, address string) error {
+	domain, err := config.GetString("hipache:domain")
+	if err != nil {
+		return &routeError{"remove", err}
+	}
+	frontend := "frontend:" + name + "." + domain
+	conn, err := connect()
+	if err != nil {
+		return &routeError{"remove", err}
+	}
+	_, err = conn.Do("LREM", frontend, 0, address)
 	if err != nil {
 		return &routeError{"remove", err}
 	}
