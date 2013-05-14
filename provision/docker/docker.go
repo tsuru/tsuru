@@ -108,6 +108,20 @@ type container struct {
 	Port    string
 }
 
+func (c *container) getAddress() string {
+	hostAddr, err := config.Get("docker:host-address")
+	if err != nil {
+		log.Printf("Failed to obtain container address: %s", err.Error())
+		return ""
+	}
+	hostPort, err := c.hostPort()
+	if err != nil {
+		log.Printf("Failed to obtain container port: %s", err.Error())
+		return ""
+	}
+	return fmt.Sprintf("http://%s:%s", hostAddr, hostPort)
+}
+
 // newContainer creates a new container in Docker and stores it in the database.
 //
 // TODO (flaviamissi): make it atomic
