@@ -80,17 +80,20 @@ func (p *dockerProvisioner) Restart(app provision.App) error {
 
 func (p *dockerProvisioner) Deploy(a provision.App, w io.Writer) error {
 	if containers, err := listAppContainers(a.GetName()); err == nil {
+		c, err := newContainer(a)
+		if err != nil {
+			return err
+		}
+		c.deploy(w)
 		for _, c := range containers {
 			a.RemoveUnit(c.Id)
 		}
 	}
-	c, err := newContainer(a)
-	c.deploy(w)
 	app.Enqueue(queue.Message{
 		Action: app.RegenerateApprcAndStart,
 		Args:   []string{a.GetName()},
 	})
-	return err
+	return nil
 }
 
 func (p *dockerProvisioner) Destroy(app provision.App) error {

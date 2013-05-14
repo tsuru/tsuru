@@ -106,11 +106,15 @@ func (s *S) TestDeployShouldCallDockerCreate(c *gocheck.C) {
 	c.Assert(fexec.ExecutedCmd("ssh", runArgs), gocheck.Equals, true)
 }
 
-func (s *S) TestDeployShouldRemoveOldContainers(c *gocheck.C) {
-	s.conn.Collection(s.collName).Insert(container{Id: "app/0", AppName: "app"})
-	defer s.conn.Collection(s.collName).Remove(bson.M{"_id": "app/0"})
+func (s *S) TestDeployShouldReplaceAllContainers(c *gocheck.C) {
+	s.conn.Collection(s.collName).Insert(
+		container{Id: "app/0", AppName: "app"},
+		container{Id: "app/1", AppName: "app"},
+	)
+	defer s.conn.Collection(s.collName).RemoveAll(bson.M{"appname": "app"})
 	app := testing.NewFakeApp("app", "python", 0)
 	app.AddUnit(&testing.FakeUnit{Name: "app/0"})
+	app.AddUnit(&testing.FakeUnit{Name: "app/1"})
 	out := `{
 	"NetworkSettings": {
 		"IpAddress": "10.10.10.10",
@@ -134,6 +138,8 @@ func (s *S) TestDeployShouldRemoveOldContainers(c *gocheck.C) {
 	defer s.conn.Collection(s.collName).RemoveId(out)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(app.ProvisionUnits(), gocheck.HasLen, 0)
+	commands := fexec.GetCommands("ssh")
+	c.Assert(commands, gocheck.HasLen, 2)
 }
 
 func (s *S) TestProvisionerDestroy(c *gocheck.C) {
