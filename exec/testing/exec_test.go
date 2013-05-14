@@ -86,6 +86,27 @@ func (s *S) TestFakeExecutorMultipleOutputs(c *gocheck.C) {
 	c.Assert(b.String(), gocheck.Equals, "bla")
 }
 
+func (s *S) TestFakeExecutorMultipleOutputsDifferentCalls(c *gocheck.C) {
+	e := FakeExecutor{
+		Output: map[string][][]byte{
+			"*":  {[]byte("bla"), []byte("ble")},
+			"-l": {[]byte("hello")},
+		},
+	}
+	var b bytes.Buffer
+	err := e.Execute("ls", []string{"-l"}, nil, &b, &b)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(b.String(), gocheck.Equals, "hello")
+	b.Reset()
+	err = e.Execute("ls", nil, nil, &b, &b)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(b.String(), gocheck.Equals, "bla")
+	b.Reset()
+	err = e.Execute("ls", nil, nil, &b, &b)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(b.String(), gocheck.Equals, "ble")
+}
+
 func (s *S) TestFakeExecutorHasOutputForAnyArgsUsingWildCard(c *gocheck.C) {
 	e := FakeExecutor{
 		Output: map[string][][]byte{

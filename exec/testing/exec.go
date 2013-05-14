@@ -30,31 +30,40 @@ func (c *command) GetArgs() []string {
 }
 
 type FakeExecutor struct {
-	cmds   []command
-	mut    sync.RWMutex
-	calls  safe.Counter
-	Output map[string][][]byte
+	cmds    []command
+	mut     sync.RWMutex
+	callMut sync.Mutex
+	calls   map[string]int
+	Output  map[string][][]byte
 }
 
 func (e *FakeExecutor) hasOutputForArgs(args []string) (bool, []byte) {
+	e.callMut.Lock()
+	defer e.callMut.Unlock()
+	if e.calls == nil {
+		e.calls = make(map[string]int)
+	}
 	var generic []byte
 	sArgs := strings.Join(args, " ")
 	for k, v := range e.Output {
 		switch k {
 		case sArgs:
-			return true, v[e.calls.Val()%int64(len(v))]
+			counter := e.calls[sArgs]
+			out := v[counter%len(v)]
+			e.calls[sArgs] = counter + 1
+			return true, out
 		case "*":
-			generic = v[e.calls.Val()%int64(len(v))]
+			generic = v[e.calls["*"]%len(v)]
 		}
 	}
 	if generic != nil {
+		e.calls["*"]++
 		return true, generic
 	}
 	return false, nil
 }
 
 func (e *FakeExecutor) Execute(cmd string, args []string, stdin io.Reader, stdout, stderr io.Writer) error {
-	defer e.calls.Increment()
 	c := command{name: cmd, args: args}
 	e.mut.Lock()
 	e.cmds = append(e.cmds, c)
