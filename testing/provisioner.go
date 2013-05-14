@@ -54,6 +54,7 @@ type FakeApp struct {
 	units    []provision.AppUnit
 	logs     []string
 	Commands []string
+	logMut   sync.Mutex
 }
 
 func NewFakeApp(name, platform string, units int) *FakeApp {
@@ -76,7 +77,9 @@ func NewFakeApp(name, platform string, units int) *FakeApp {
 }
 
 func (a *FakeApp) Log(message, source string) error {
+	a.logMut.Lock()
 	a.logs = append(a.logs, source+message)
+	a.logMut.Unlock()
 	return nil
 }
 
