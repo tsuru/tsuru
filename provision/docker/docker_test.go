@@ -35,7 +35,7 @@ func (s *S) TestNewContainer(c *gocheck.C) {
 	runCmd := fmt.Sprintf("run -d -t -p %s tsuru/python /bin/bash -c %s",
 		s.port, sshCmd)
 	inspectCmd := fmt.Sprintf("inspect %s", id)
-	out := map[string][]byte{runCmd: []byte(id), inspectCmd: []byte(inspectOut)}
+	out := map[string][][]byte{runCmd: {[]byte(id)}, inspectCmd: {[]byte(inspectOut)}}
 	fexec := &etesting.FakeExecutor{Output: out}
 	setExecut(fexec)
 	defer setExecut(nil)
@@ -93,7 +93,7 @@ func (s *S) TestNewContainerAddsRoute(c *gocheck.C) {
 		}
 	}
 }`, s.port)
-	fexec := &etesting.FakeExecutor{Output: map[string][]byte{"*": []byte(out)}}
+	fexec := &etesting.FakeExecutor{Output: map[string][][]byte{"*": {[]byte(out)}}}
 	setExecut(fexec)
 	defer setExecut(nil)
 	app := testing.NewFakeApp("myapp", "python", 1)
@@ -116,7 +116,7 @@ func (s *S) TestNewContainerRouteNoMappedPort(c *gocheck.C) {
 		"PortMapping": {}
 	}
 }`
-	fexec := &etesting.FakeExecutor{Output: map[string][]byte{"*": []byte(out)}}
+	fexec := &etesting.FakeExecutor{Output: map[string][][]byte{"*": {[]byte(out)}}}
 	setExecut(fexec)
 	defer setExecut(nil)
 	app := testing.NewFakeApp("myapp", "python", 1)
@@ -240,9 +240,9 @@ func (s *S) TestDockerCreate(c *gocheck.C) {
 		"PortMapping": {}
 	}
 }`
-	fexec.Output = map[string][]byte{
-		"inspect c-01": []byte(output),
-		"*":            []byte("c-01"),
+	fexec.Output = map[string][][]byte{
+		"inspect c-01": {[]byte(output)},
+		"*":            {[]byte("c-01")},
 	}
 	container := container{AppName: "app-name", Type: "python"}
 	app := testing.NewFakeApp("app-name", "python", 1)
@@ -268,7 +268,7 @@ func (s *S) TestContainerCreateWithoutHostAddr(c *gocheck.C) {
 func (s *S) TestDockerDeploy(c *gocheck.C) {
 	var buf bytes.Buffer
 	fexec := &etesting.FakeExecutor{
-		Output: map[string][]byte{"*": []byte("success\n")},
+		Output: map[string][][]byte{"*": {[]byte("success\n")}},
 	}
 	setExecut(fexec)
 	defer setExecut(nil)
@@ -294,7 +294,7 @@ func (s *S) TestDockerDeployRetries(c *gocheck.C) {
 	fexec := etesting.RetryExecutor{
 		Failures: 3,
 		FakeExecutor: etesting.FakeExecutor{
-			Output: map[string][]byte{"*": []byte("connection refused")},
+			Output: map[string][][]byte{"*": {[]byte("connection refused")}},
 		},
 	}
 	setExecut(&fexec)
@@ -342,7 +342,7 @@ func (s *S) TestDockerDeployCommandFailure(c *gocheck.C) {
 	var buf bytes.Buffer
 	fexec := etesting.ErrorExecutor{
 		FakeExecutor: etesting.FakeExecutor{
-			Output: map[string][]byte{"*": []byte("failed\n")},
+			Output: map[string][][]byte{"*": {[]byte("failed\n")}},
 		},
 	}
 	setExecut(&fexec)
@@ -442,8 +442,8 @@ func (s *S) TestContainerHostPortReturnsPortFromDockerInspect(c *gocheck.C) {
 		}
 	}
 }`
-	out := map[string][]byte{
-		"inspect c-01": []byte(output),
+	out := map[string][][]byte{
+		"inspect c-01": {[]byte(output)},
 	}
 	fexec := &etesting.FakeExecutor{Output: out}
 	setExecut(fexec)
@@ -473,8 +473,8 @@ func (s *S) TestContainerHostPortNotFound(c *gocheck.C) {
 		}
 	}
 }`
-	out := map[string][]byte{
-		"inspect c-01": []byte(output),
+	out := map[string][][]byte{
+		"inspect c-01": {[]byte(output)},
 	}
 	fexec := &etesting.FakeExecutor{Output: out}
 	setExecut(fexec)
@@ -488,8 +488,8 @@ func (s *S) TestContainerHostPortNotFound(c *gocheck.C) {
 func (s *S) TestContainerInspect(c *gocheck.C) {
 	container := container{Id: "c-01", Port: "8888"}
 	output := `{"NetworkSettings": null}`
-	out := map[string][]byte{
-		"inspect c-01": []byte(output),
+	out := map[string][][]byte{
+		"inspect c-01": {[]byte(output)},
 	}
 	fexec := &etesting.FakeExecutor{Output: out}
 	setExecut(fexec)
@@ -512,8 +512,8 @@ func (s *S) TestContainerInspectNoBinary(c *gocheck.C) {
 
 func (s *S) TestContainerInspectInvalidJSON(c *gocheck.C) {
 	container := container{Id: "c-01", Port: "8888"}
-	out := map[string][]byte{
-		"inspect c-01": []byte("somethinginvalid}"),
+	out := map[string][][]byte{
+		"inspect c-01": {[]byte("somethinginvalid}")},
 	}
 	fexec := &etesting.FakeExecutor{Output: out}
 	setExecut(fexec)
@@ -526,7 +526,7 @@ func (s *S) TestContainerInspectInvalidJSON(c *gocheck.C) {
 func (s *S) TestContainerSSH(c *gocheck.C) {
 	var stdout, stderr bytes.Buffer
 	output := []byte(". ..")
-	out := map[string][]byte{"*": output}
+	out := map[string][][]byte{"*": {output}}
 	fexec := &etesting.FakeExecutor{Output: out}
 	setExecut(fexec)
 	defer setExecut(nil)
@@ -547,7 +547,7 @@ func (s *S) TestContainerSSHWithPrivateKey(c *gocheck.C) {
 	config.Set("docker:ssh:private-key", "/opt/me/id_dsa")
 	defer config.Unset("docker:ssh:private-key")
 	output := []byte(". ..")
-	out := map[string][]byte{"*": output}
+	out := map[string][][]byte{"*": {output}}
 	fexec := &etesting.FakeExecutor{Output: out}
 	setExecut(fexec)
 	defer setExecut(nil)
@@ -577,7 +577,7 @@ func (s *S) TestContainerSSHCommandFailure(c *gocheck.C) {
 	var stdout, stderr bytes.Buffer
 	fexec := &etesting.ErrorExecutor{
 		FakeExecutor: etesting.FakeExecutor{
-			Output: map[string][]byte{"*": []byte("failed")},
+			Output: map[string][][]byte{"*": {[]byte("failed")}},
 		},
 	}
 	setExecut(fexec)

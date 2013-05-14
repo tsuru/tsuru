@@ -44,7 +44,7 @@ func (s *S) TestProvisionerProvision(c *gocheck.C) {
 
 func (s *S) TestProvisionerRestartCallsTheRestartHook(c *gocheck.C) {
 	id := "caad7bbd5411"
-	fexec := &etesting.FakeExecutor{Output: map[string][]byte{"*": []byte(id)}}
+	fexec := &etesting.FakeExecutor{Output: map[string][][]byte{"*": {[]byte(id)}}}
 	setExecut(fexec)
 	defer setExecut(nil)
 	var p dockerProvisioner
@@ -76,7 +76,7 @@ func (s *S) TestDeployShouldCallDockerCreate(c *gocheck.C) {
 		"PortMapping": {}
 	}
 }`
-	fexec := &etesting.FakeExecutor{Output: map[string][]byte{"*": []byte(out)}}
+	fexec := &etesting.FakeExecutor{Output: map[string][][]byte{"*": {[]byte(out)}}}
 	setExecut(fexec)
 	defer setExecut(nil)
 	p := dockerProvisioner{}
@@ -124,9 +124,9 @@ func (s *S) TestDeployShouldReplaceAllContainers(c *gocheck.C) {
 	}
 }`
 	fexec := &etesting.FakeExecutor{
-		Output: map[string][]byte{
-			"*":            []byte("c-60"),
-			"inspect c-60": []byte(out),
+		Output: map[string][][]byte{
+			"*":            {[]byte("c-60")},
+			"inspect c-60": {[]byte(out)},
 		},
 	}
 	setExecut(fexec)
@@ -216,7 +216,7 @@ func (s *S) TestProvisionerAddr(c *gocheck.C) {
 }`
 	id := "123"
 	runCmd := "run -d -t -p 8888 tsuru/python /bin/bash -c /var/lib/tsuru/add-key key-content && /usr/sbin/sshd -D"
-	fexec := &etesting.FakeExecutor{Output: map[string][]byte{runCmd: []byte(id), "inspect " + id: []byte(out)}}
+	fexec := &etesting.FakeExecutor{Output: map[string][][]byte{runCmd: {[]byte(id)}, "inspect " + id: {[]byte(out)}}}
 	setExecut(fexec)
 	defer setExecut(nil)
 	var p dockerProvisioner
@@ -256,9 +256,9 @@ func (s *S) TestProvisionerRemoveUnit(c *gocheck.C) {
 }`
 	app := testing.NewFakeApp("myapp", "python", 0)
 	fexec := &etesting.FakeExecutor{
-		Output: map[string][]byte{
-			"*":            []byte("c-10"),
-			"inspect c-10": []byte(out),
+		Output: map[string][][]byte{
+			"*":            {[]byte("c-10")},
+			"inspect c-10": {[]byte(out)},
 		},
 	}
 	setExecut(fexec)
@@ -293,9 +293,9 @@ func (s *S) TestProvisionerRemoveUnitNotInApp(c *gocheck.C) {
 }`
 	app := testing.NewFakeApp("myapp", "python", 0)
 	fexec := &etesting.FakeExecutor{
-		Output: map[string][]byte{
-			"*":            []byte("c-10"),
-			"inspect c-10": []byte(out),
+		Output: map[string][][]byte{
+			"*":            {[]byte("c-10")},
+			"inspect c-10": {[]byte(out)},
 		},
 	}
 	setExecut(fexec)
@@ -313,7 +313,7 @@ func (s *S) TestProvisionerRemoveUnitNotInApp(c *gocheck.C) {
 
 func (s *S) TestProvisionerExecuteCommand(c *gocheck.C) {
 	fexec := &etesting.FakeExecutor{
-		Output: map[string][]byte{"*": []byte(". ..")},
+		Output: map[string][][]byte{"*": {[]byte(". ..")}},
 	}
 	setExecut(fexec)
 	defer setExecut(nil)
@@ -338,7 +338,7 @@ func (s *S) TestProvisionerExecuteCommand(c *gocheck.C) {
 
 func (s *S) TestProvisionerExecuteCommandMultipleContainers(c *gocheck.C) {
 	fexec := &etesting.FakeExecutor{
-		Output: map[string][]byte{"*": []byte(". ..")},
+		Output: map[string][][]byte{"*": {[]byte(". ..")}},
 	}
 	setExecut(fexec)
 	defer setExecut(nil)
@@ -371,7 +371,7 @@ func (s *S) TestProvisionerExecuteCommandMultipleContainers(c *gocheck.C) {
 func (s *S) TestProvisionerExecuteCommandFailure(c *gocheck.C) {
 	fexec := &etesting.ErrorExecutor{
 		FakeExecutor: etesting.FakeExecutor{
-			Output: map[string][]byte{"*": []byte("permission denied")},
+			Output: map[string][][]byte{"*": {[]byte("permission denied")}},
 		},
 	}
 	setExecut(fexec)
@@ -450,10 +450,10 @@ func (s *S) TestCollectStatus(c *gocheck.C) {
 			Status:  provision.StatusInstalling,
 		},
 	}
-	output := map[string][]byte{
-		"ps -q":                []byte(psOutput),
-		"inspect 9930c24f1c5f": []byte(c1Output),
-		"inspect 9930c24f1c4f": []byte(c2Output),
+	output := map[string][][]byte{
+		"ps -q":                {[]byte(psOutput)},
+		"inspect 9930c24f1c5f": {[]byte(c1Output)},
+		"inspect 9930c24f1c4f": {[]byte(c2Output)},
 	}
 	fexec := &etesting.FakeExecutor{Output: output}
 	setExecut(fexec)
@@ -468,7 +468,7 @@ func (s *S) TestCollectStatus(c *gocheck.C) {
 }
 
 func (s *S) TestProvisionCollectStatusEmpty(c *gocheck.C) {
-	output := map[string][]byte{"ps -q": []byte("")}
+	output := map[string][][]byte{"ps -q": {[]byte("")}}
 	fexec := &etesting.FakeExecutor{Output: output}
 	setExecut(fexec)
 	defer setExecut(nil)
