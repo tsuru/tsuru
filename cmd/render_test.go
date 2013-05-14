@@ -169,3 +169,23 @@ func (s *S) TestRowListSwap(c *gocheck.C) {
 func (s *S) TestRowListIsSortable(c *gocheck.C) {
 	var _ sort.Interface = rowSlice{}
 }
+
+func (s *S) TestColorRed(c *gocheck.C) {
+	output := Colorfy("must return a red font pattern", "red", "", "")
+	c.Assert(output, gocheck.Equals, "\033[0;31;10mmust return a red font pattern\033[0m")
+}
+
+func (s *S) TestColorGreen(c *gocheck.C) {
+	output := Colorfy("must return a green font pattern", "green", "", "")
+	c.Assert(output, gocheck.Equals, "\033[0;32;10mmust return a green font pattern\033[0m")
+}
+
+func (s *S) TestColorBoldWhite(c *gocheck.C) {
+	output := Colorfy("must return a bold white font pattern", "white", "", "bold")
+	c.Assert(output, gocheck.Equals, "\033[1;37;10mmust return a bold white font pattern\033[0m")
+}
+
+func (s *S) TesaColortBoldYellowGreenBG(c *gocheck.C) {
+	output := Colorfy("must return a bold yellow with green background", "yellow", "green", "bold")
+	c.Assert(output, gocheck.Equals, "\033[1;33;42mmust return a bold yellow with green background\033[0m")
+}

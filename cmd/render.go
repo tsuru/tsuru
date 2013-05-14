@@ -5,9 +5,32 @@
 package cmd
 
 import (
+	"fmt"
 	"sort"
 	"strings"
 )
+
+const (
+	pattern   = "\033[%d;%d;%dm%s\033[0m"
+	bg_factor = 10
+)
+
+var fontColors = map[string]int{
+	"black":   30,
+	"red":     31,
+	"green":   32,
+	"yellow":  33,
+	"blue":    34,
+	"magenta": 35,
+	"cyan":    36,
+	"white":   37,
+}
+
+var fontEffects = map[string]int{
+	"reset":   0,
+	"bold":    1,
+	"inverse": 7,
+}
 
 type Table struct {
 	Headers Row
@@ -113,4 +136,8 @@ func (l rowSlice) Less(i, j int) bool {
 
 func (l rowSlice) Swap(i, j int) {
 	l[i], l[j] = l[j], l[i]
+}
+
+func Colorfy(msg string, fontcolor string, background string, effect string) string {
+	return fmt.Sprintf(pattern, fontEffects[effect], fontColors[fontcolor], fontColors[background]+bg_factor, msg)
 }
