@@ -88,7 +88,7 @@ func (p *dockerProvisioner) Deploy(a provision.App, w io.Writer) error {
 	c.deploy(w)
 	app.Enqueue(queue.Message{
 		Action: app.RegenerateApprcAndStart,
-		Args:   []string{a.GetName(), c.Id},
+		Args:   []string{a.GetName()},
 	})
 	return err
 }
