@@ -41,7 +41,7 @@ func (s *S) TestDestroyShouldUnbindAppFromInstance(c *gocheck.C) {
 			{Ip: "10.10.10.10", Machine: 1},
 		},
 	}
-	err = CreateApp(&a, 1, s.user)
+	err = CreateApp(&a, s.user)
 	c.Assert(err, gocheck.IsNil)
 	a.Get()
 	err = ForceDestroy(&a)

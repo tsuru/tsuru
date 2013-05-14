@@ -40,11 +40,11 @@ var reserveUserApp = action.Action{
 			return nil, errors.New("First parameter must be App or *App.")
 		}
 		var user auth.User
-		switch ctx.Params[2].(type) {
+		switch ctx.Params[1].(type) {
 		case auth.User:
-			user = ctx.Params[2].(auth.User)
+			user = ctx.Params[1].(auth.User)
 		case *auth.User:
-			user = *ctx.Params[2].(*auth.User)
+			user = *ctx.Params[1].(*auth.User)
 		default:
 			return nil, errors.New("Third parameter must be auth.User or *auth.User.")
 		}
@@ -57,7 +57,7 @@ var reserveUserApp = action.Action{
 		m := ctx.FWResult.(map[string]string)
 		quota.Release(m["user"], m["app"])
 	},
-	MinParams: 3,
+	MinParams: 2,
 }
 
 var createAppQuota = action.Action{
@@ -323,35 +323,5 @@ var provisionApp = action.Action{
 		app := ctx.FWResult.(*App)
 		Provisioner.Destroy(app)
 	},
-	MinParams: 2,
-}
-
-// provisionAddUnits adds n-1 units to the app. It receives two arguments: the
-// app and the total number of the units that the app must have. It assumes
-// that the app already have one unit, so it adds n-1 units to the app.
-//
-// It reads the app from the Previos result in the context, so this action
-// cannot be the first in a pipeline.
-var provisionAddUnits = action.Action{
-	Forward: func(ctx action.FWContext) (action.Result, error) {
-		app := ctx.Previous.(*App)
-		var units uint
-		switch ctx.Params[1].(type) {
-		case int:
-			units = uint(ctx.Params[1].(int))
-		case int64:
-			units = uint(ctx.Params[1].(int64))
-		case uint:
-			units = ctx.Params[1].(uint)
-		case uint64:
-			units = uint(ctx.Params[1].(uint64))
-		default:
-			units = 1
-		}
-		if units > 1 {
-			return nil, app.AddUnits(units - 1)
-		}
-		return nil, nil
-	},
-	MinParams: 2,
+	MinParams: 1,
 }

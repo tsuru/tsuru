@@ -502,40 +502,7 @@ func (s *S) TestProvisionAppBackward(c *gocheck.C) {
 }
 
 func (s *S) TestProvisionAppMinParams(c *gocheck.C) {
-	c.Assert(provisionApp.MinParams, gocheck.Equals, 2)
-}
-
-func (s *S) TestProvisionAddUnitsForward(c *gocheck.C) {
-	app := App{
-		Name:     "castle",
-		Platform: "heavens",
-		Units:    []Unit{{Machine: 2}},
-	}
-	err := s.conn.Apps().Insert(app)
-	c.Assert(err, gocheck.IsNil)
-	defer s.conn.Apps().Remove(bson.M{"name": app.Name})
-	previous, err := provisionApp.Forward(action.FWContext{Params: []interface{}{&app, 4}})
-	c.Assert(err, gocheck.IsNil)
-	defer provisionApp.Backward(action.BWContext{Params: []interface{}{&app, 4}, FWResult: previous})
-	ctx := action.FWContext{Params: []interface{}{&app, 4}, Previous: previous}
-	result, err := provisionAddUnits.Forward(ctx)
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(result, gocheck.IsNil)
-	units := s.provisioner.GetUnits(&app)
-	c.Assert(units, gocheck.HasLen, 4)
-	for i := 0; i < len(units); i++ {
-		message, err := aqueue().Get(2e9)
-		c.Check(err, gocheck.IsNil)
-		message.Delete()
-	}
-}
-
-func (s *S) TestProvisionAddUnitsBackward(c *gocheck.C) {
-	c.Assert(provisionAddUnits.Backward, gocheck.IsNil)
-}
-
-func (s *S) TestProvisionAddUnitsMinParams(c *gocheck.C) {
-	c.Assert(provisionAddUnits.MinParams, gocheck.Equals, 2)
+	c.Assert(provisionApp.MinParams, gocheck.Equals, 1)
 }
 
 func (s *S) TestReserveUserAppForward(c *gocheck.C) {
@@ -548,7 +515,7 @@ func (s *S) TestReserveUserAppForward(c *gocheck.C) {
 		Platform: "django",
 	}
 	expected := map[string]string{"user": user.Email, "app": app.Name}
-	previous, err := reserveUserApp.Forward(action.FWContext{Params: []interface{}{&app, 4, &user}})
+	previous, err := reserveUserApp.Forward(action.FWContext{Params: []interface{}{&app, &user}})
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(previous, gocheck.DeepEquals, expected)
 	err = quota.Reserve(user.Email, "another-app")
@@ -570,7 +537,7 @@ func (s *S) TestReserveUserAppForwardNonPointer(c *gocheck.C) {
 		Platform: "django",
 	}
 	expected := map[string]string{"user": user.Email, "app": app.Name}
-	previous, err := reserveUserApp.Forward(action.FWContext{Params: []interface{}{&app, 4, user}})
+	previous, err := reserveUserApp.Forward(action.FWContext{Params: []interface{}{&app, user}})
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(previous, gocheck.DeepEquals, expected)
 	err = quota.Reserve(user.Email, "another-app")
@@ -592,7 +559,7 @@ func (s *S) TestReserveUserAppForwardAppNotPointer(c *gocheck.C) {
 		Platform: "django",
 	}
 	expected := map[string]string{"user": user.Email, "app": app.Name}
-	previous, err := reserveUserApp.Forward(action.FWContext{Params: []interface{}{app, 4, user}})
+	previous, err := reserveUserApp.Forward(action.FWContext{Params: []interface{}{app, user}})
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(previous, gocheck.DeepEquals, expected)
 	err = quota.Reserve(user.Email, "another-app")
@@ -606,7 +573,7 @@ func (s *S) TestReserveUserAppForwardAppNotPointer(c *gocheck.C) {
 
 func (s *S) TestReserveUserAppForwardInvalidApp(c *gocheck.C) {
 	user := auth.User{Email: "clap@yes.com"}
-	previous, err := reserveUserApp.Forward(action.FWContext{Params: []interface{}{"something", 4, user}})
+	previous, err := reserveUserApp.Forward(action.FWContext{Params: []interface{}{"something", user}})
 	c.Assert(previous, gocheck.IsNil)
 	c.Assert(err, gocheck.NotNil)
 	c.Assert(err.Error(), gocheck.Equals, "First parameter must be App or *App.")
@@ -617,7 +584,7 @@ func (s *S) TestReserveUserAppForwardInvalidUser(c *gocheck.C) {
 		Name:     "clap",
 		Platform: "django",
 	}
-	previous, err := reserveUserApp.Forward(action.FWContext{Params: []interface{}{app, 4, "something"}})
+	previous, err := reserveUserApp.Forward(action.FWContext{Params: []interface{}{app, "something"}})
 	c.Assert(previous, gocheck.IsNil)
 	c.Assert(err, gocheck.NotNil)
 	c.Assert(err.Error(), gocheck.Equals, "Third parameter must be auth.User or *auth.User.")
@@ -634,7 +601,7 @@ func (s *S) TestReserveUserAppForwardQuotaExceeded(c *gocheck.C) {
 		Name:     "clap",
 		Platform: "django",
 	}
-	previous, err := reserveUserApp.Forward(action.FWContext{Params: []interface{}{app, 4, user}})
+	previous, err := reserveUserApp.Forward(action.FWContext{Params: []interface{}{app, user}})
 	c.Assert(previous, gocheck.IsNil)
 	_, ok := err.(*quota.QuotaExceededError)
 	c.Assert(ok, gocheck.Equals, true)
@@ -647,7 +614,7 @@ func (s *S) TestReserveUserAppForwardQuotaNotFound(c *gocheck.C) {
 		Platform: "django",
 	}
 	expected := map[string]string{"app": app.Name, "user": user.Email}
-	previous, err := reserveUserApp.Forward(action.FWContext{Params: []interface{}{app, 4, user}})
+	previous, err := reserveUserApp.Forward(action.FWContext{Params: []interface{}{app, user}})
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(previous, gocheck.DeepEquals, expected)
 }
@@ -675,7 +642,7 @@ func (s *S) TestReserveUserAppBackward(c *gocheck.C) {
 }
 
 func (s *S) TestReserveUserAppMinParams(c *gocheck.C) {
-	c.Assert(reserveUserApp.MinParams, gocheck.Equals, 3)
+	c.Assert(reserveUserApp.MinParams, gocheck.Equals, 2)
 }
 
 func (s *S) TestCreateAppQuotaForward(c *gocheck.C) {
@@ -686,7 +653,7 @@ func (s *S) TestCreateAppQuotaForward(c *gocheck.C) {
 		Platform: "django",
 	}
 	defer quota.Delete(app.Name)
-	previous, err := createAppQuota.Forward(action.FWContext{Params: []interface{}{app, 4}})
+	previous, err := createAppQuota.Forward(action.FWContext{Params: []interface{}{app}})
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(previous, gocheck.Equals, app.Name)
 	items, available, err := quota.Items(app.Name)
@@ -708,7 +675,7 @@ func (s *S) TestCreateAppQuotaForwardPointer(c *gocheck.C) {
 		Platform: "django",
 	}
 	defer quota.Delete(app.Name)
-	previous, err := createAppQuota.Forward(action.FWContext{Params: []interface{}{&app, 4}})
+	previous, err := createAppQuota.Forward(action.FWContext{Params: []interface{}{&app}})
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(previous, gocheck.Equals, app.Name)
 	err = quota.Reserve(app.Name, "visions/0")
@@ -720,7 +687,7 @@ func (s *S) TestCreateAppForwardWithoutSetting(c *gocheck.C) {
 		Name:     "visions",
 		Platform: "django",
 	}
-	previous, err := createAppQuota.Forward(action.FWContext{Params: []interface{}{&app, 4}})
+	previous, err := createAppQuota.Forward(action.FWContext{Params: []interface{}{&app}})
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(previous, gocheck.Equals, app.Name)
 	err = quota.Reserve(app.Name, "visions/0")
@@ -733,7 +700,7 @@ func (s *S) TestCreateAppForwardZeroUnits(c *gocheck.C) {
 		Name:     "visions",
 		Platform: "django",
 	}
-	previous, err := createAppQuota.Forward(action.FWContext{Params: []interface{}{&app, 4}})
+	previous, err := createAppQuota.Forward(action.FWContext{Params: []interface{}{&app}})
 	c.Assert(previous, gocheck.IsNil)
 	c.Assert(err, gocheck.NotNil)
 	c.Assert(err.Error(), gocheck.Equals, "app creation is disallowed")

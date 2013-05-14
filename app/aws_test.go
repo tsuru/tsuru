@@ -143,7 +143,7 @@ func (s *S) TestDestroyBucket(c *gocheck.C) {
 	}
 	bucket := fmt.Sprintf("battery%x", patchRandomReader())
 	defer unpatchRandomReader()
-	err := CreateApp(&app, 1, s.user)
+	err := CreateApp(&app, s.user)
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": app.Name})
 	defer s.provisioner.Destroy(&app)

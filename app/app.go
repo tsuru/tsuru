@@ -111,10 +111,7 @@ func (app *App) Get() error {
 //       3. Create S3 bucket for the app (if the bucket support is enabled)
 //       4. Create the git repository using gandalf
 //       5. Provision units within the provisioner
-func CreateApp(app *App, units uint, user *auth.User) error {
-	if units == 0 {
-		return &errors.ValidationError{Message: "Cannot create app with 0 units."}
-	}
+func CreateApp(app *App, user *auth.User) error {
 	teams, err := user.Teams()
 	if err != nil {
 		return err
@@ -141,9 +138,9 @@ func CreateApp(app *App, units uint, user *auth.User) error {
 			&createBucketAction, &createUserPolicyAction)
 	}
 	actions = append(actions, &exportEnvironmentsAction,
-		&createRepository, &provisionApp, &provisionAddUnits)
+		&createRepository, &provisionApp)
 	pipeline := action.NewPipeline(actions...)
-	err = pipeline.Execute(app, units, user)
+	err = pipeline.Execute(app, user)
 	if err != nil {
 		return &AppCreationError{app: app.Name, Err: err}
 	}

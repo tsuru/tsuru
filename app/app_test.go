@@ -97,7 +97,7 @@ func (s *S) TestDestroy(c *gocheck.C) {
 			},
 		},
 	}
-	err := CreateApp(&a, 1, s.user)
+	err := CreateApp(&a, s.user)
 	c.Assert(err, gocheck.IsNil)
 	a.Get()
 	token := a.Env["TSURU_APP_TOKEN"].Value
@@ -128,7 +128,7 @@ func (s *S) TestDestroyWithoutBucketSupport(c *gocheck.C) {
 		Platform: "python",
 		Units:    []Unit{{Name: "duvido", Machine: 3}},
 	}
-	err := CreateApp(&a, 1, s.user)
+	err := CreateApp(&a, s.user)
 	c.Assert(err, gocheck.IsNil)
 	a.Get()
 	err = ForceDestroy(&a)
@@ -150,7 +150,7 @@ func (s *S) TestDestroyWithoutUnits(c *gocheck.C) {
 	ts := s.t.StartGandalfTestServer(&h)
 	defer ts.Close()
 	app := App{Name: "x4", Platform: "python"}
-	err := CreateApp(&app, 1, s.user)
+	err := CreateApp(&app, s.user)
 	c.Assert(err, gocheck.IsNil)
 	defer s.provisioner.Destroy(&app)
 	app.Get()
@@ -180,7 +180,7 @@ func (s *S) TestCreateApp(c *gocheck.C) {
 	config.Set("quota:units-per-app", 3)
 	defer config.Unset("quota:units-per-app")
 
-	err = CreateApp(&a, 3, s.user)
+	err = CreateApp(&a, s.user)
 	c.Assert(err, gocheck.IsNil)
 	defer ForceDestroy(&a)
 	err = a.Get()
@@ -220,16 +220,7 @@ func (s *S) TestCreateApp(c *gocheck.C) {
 	defer message.Delete()
 	c.Assert(message.Action, gocheck.Equals, expectedMessage.Action)
 	c.Assert(message.Args, gocheck.DeepEquals, expectedMessage.Args)
-	c.Assert(s.provisioner.GetUnits(&a), gocheck.HasLen, 3)
-	for i := 0; i < 2; i++ {
-		message, err := aqueue().Get(1e6)
-		c.Assert(err, gocheck.IsNil)
-		message.Delete()
-		c.Assert(message.Action, gocheck.Equals, RegenerateApprcAndStart)
-		message, err = aqueue().Get(1e6)
-		c.Assert(err, gocheck.IsNil)
-		c.Assert(message.Action, gocheck.Equals, bindService)
-	}
+	c.Assert(s.provisioner.GetUnits(&a), gocheck.HasLen, 1)
 	err = quota.Reserve(s.user.Email, a.Name)
 	_, ok = err.(*quota.QuotaExceededError)
 	c.Assert(ok, gocheck.Equals, true)
@@ -244,7 +235,7 @@ func (s *S) TestCreateAppUserQuotaExceeded(c *gocheck.C) {
 	defer quota.Delete(s.user.Email)
 	err = quota.Reserve(s.user.Email, app.Name)
 	c.Assert(err, gocheck.IsNil)
-	err = CreateApp(&app, 1, s.user)
+	err = CreateApp(&app, s.user)
 	e, ok := err.(*AppCreationError)
 	c.Assert(ok, gocheck.Equals, true)
 	_, ok = e.Err.(*quota.QuotaExceededError)
@@ -264,7 +255,7 @@ func (s *S) TestCreateWithoutBucketSupport(c *gocheck.C) {
 	}
 	expectedHost := "localhost"
 	config.Set("host", expectedHost)
-	err := CreateApp(&a, 3, s.user)
+	err := CreateApp(&a, s.user)
 	c.Assert(err, gocheck.IsNil)
 	defer ForceDestroy(&a)
 	err = a.Get()
@@ -282,30 +273,14 @@ func (s *S) TestCreateWithoutBucketSupport(c *gocheck.C) {
 	defer message.Delete()
 	c.Assert(message.Action, gocheck.Equals, regenerateApprc)
 	c.Assert(message.Args, gocheck.DeepEquals, []string{a.Name})
-	c.Assert(s.provisioner.GetUnits(&a), gocheck.HasLen, 3)
-	for i := 0; i < 2; i++ {
-		message, err := aqueue().Get(1e9)
-		c.Check(err, gocheck.IsNil)
-		message.Delete()
-		c.Check(message.Action, gocheck.Equals, RegenerateApprcAndStart)
-		message, err = aqueue().Get(1e6)
-		c.Assert(err, gocheck.IsNil)
-		c.Assert(message.Action, gocheck.Equals, bindService)
-	}
+	c.Assert(s.provisioner.GetUnits(&a), gocheck.HasLen, 1)
 }
 
 func (s *S) TestCannotCreateAppWithUnknownPlatform(c *gocheck.C) {
 	a := App{Name: "paradisum", Platform: "unknown"}
-	err := CreateApp(&a, 1, s.user)
+	err := CreateApp(&a, s.user)
 	_, ok := err.(InvalidPlatformError)
 	c.Assert(ok, gocheck.Equals, true)
-}
-
-func (s *S) TestCannotCreateAppWithZeroUnits(c *gocheck.C) {
-	a := App{Name: "paradisum"}
-	err := CreateApp(&a, 0, s.user)
-	c.Assert(err, gocheck.NotNil)
-	c.Assert(err.Error(), gocheck.Equals, "Cannot create app with 0 units.")
 }
 
 func (s *S) TestCannotCreateAppWithoutTeams(c *gocheck.C) {
@@ -314,7 +289,7 @@ func (s *S) TestCannotCreateAppWithoutTeams(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Users().Remove(bson.M{"email": u.Email})
 	a := App{Name: "beyond"}
-	err = CreateApp(&a, 1, &u)
+	err = CreateApp(&a, &u)
 	c.Check(err, gocheck.NotNil)
 	_, ok := err.(NoTeamsError)
 	c.Check(ok, gocheck.Equals, true)
@@ -325,7 +300,7 @@ func (s *S) TestCantCreateTwoAppsWithTheSameName(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": "appname"})
 	a := App{Name: "appname", Platform: "python"}
-	err = CreateApp(&a, 1, s.user)
+	err = CreateApp(&a, s.user)
 	defer ForceDestroy(&a) // clean mess if test fail
 	c.Assert(err, gocheck.NotNil)
 	e, ok := err.(*AppCreationError)
@@ -340,7 +315,7 @@ func (s *S) TestCantCreateAppWithInvalidName(c *gocheck.C) {
 		Name:     "1123app",
 		Platform: "python",
 	}
-	err := CreateApp(&a, 1, s.user)
+	err := CreateApp(&a, s.user)
 	c.Assert(err, gocheck.NotNil)
 	e, ok := err.(*errors.ValidationError)
 	c.Assert(ok, gocheck.Equals, true)
@@ -360,7 +335,7 @@ func (s *S) TestDoesNotSaveTheAppInTheDatabaseIfProvisionerFail(c *gocheck.C) {
 		Platform: "python",
 		Units:    []Unit{{Machine: 1}},
 	}
-	err := CreateApp(&a, 1, s.user)
+	err := CreateApp(&a, s.user)
 	defer ForceDestroy(&a) // clean mess if test fail
 	c.Assert(err, gocheck.NotNil)
 	expected := `Tsuru failed to create the app "theirapp": exit status 1`
@@ -385,7 +360,7 @@ func (s *S) TestDeletesIAMCredentialsAndS3BucketIfProvisionerFail(c *gocheck.C) 
 		Platform: "python",
 		Units:    []Unit{{Machine: 1}},
 	}
-	err := CreateApp(&a, 1, s.user)
+	err := CreateApp(&a, s.user)
 	defer ForceDestroy(&a) // clean mess if test fail
 	c.Assert(err, gocheck.NotNil)
 	iam := getIAMEndpoint()
@@ -412,7 +387,7 @@ func (s *S) TestCreateAppCreatesRepositoryInGandalf(c *gocheck.C) {
 		Teams:    []string{s.team.Name},
 		Units:    []Unit{{Machine: 3}},
 	}
-	err := CreateApp(&a, 1, s.user)
+	err := CreateApp(&a, s.user)
 	c.Assert(err, gocheck.IsNil)
 	err = a.Get()
 	c.Assert(err, gocheck.IsNil)
@@ -430,7 +405,7 @@ func (s *S) TestCreateAppDoesNotSaveTheAppWhenGandalfFailstoCreateTheRepository(
 	ts := s.t.StartGandalfTestServer(&testBadHandler{msg: "could not create the repository"})
 	defer ts.Close()
 	a := App{Name: "otherapp", Platform: "python"}
-	err := CreateApp(&a, 1, s.user)
+	err := CreateApp(&a, s.user)
 	c.Assert(err, gocheck.NotNil)
 	count, err := s.conn.Apps().Find(bson.M{"name": a.Name}).Count()
 	c.Assert(err, gocheck.IsNil)
