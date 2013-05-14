@@ -114,3 +114,16 @@ func (s *S) TestCheckUserAccessWithMultipleUsersOnMultipleTeams(c *gocheck.C) {
 	c.Assert(CheckUserAccess(teams, &punk), gocheck.Equals, true)
 	c.Assert(CheckUserAccess(teams, &one), gocheck.Equals, true)
 }
+
+func (s *S) TestGetTeam(c *gocheck.C) {
+	team := Team{Name: "symfonia"}
+	s.conn.Teams().Insert(team)
+	defer s.conn.Teams().RemoveId(team.Name)
+	t, err := GetTeam("symfonia")
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(t.Name, gocheck.Equals, team.Name)
+	c.Assert(t.Users, gocheck.HasLen, 0)
+	t, err = GetTeam("wat")
+	c.Assert(err, gocheck.NotNil)
+	c.Assert(t, gocheck.IsNil)
+}

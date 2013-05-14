@@ -13,8 +13,8 @@ import (
 )
 
 type Team struct {
-	Name  string `bson:"_id"`
-	Users []string
+	Name  string   `bson:"_id" json:"name"`
+	Users []string `json:"users"`
 }
 
 func (t *Team) ContainsUser(u *User) bool {
@@ -48,6 +48,19 @@ func (t *Team) RemoveUser(u *User) error {
 	copy(t.Users[index:], t.Users[index+1:])
 	t.Users = t.Users[:len(t.Users)-1]
 	return nil
+}
+
+func GetTeam(name string) (*Team, error) {
+	var t Team
+	conn, err := db.Conn()
+	if err != nil {
+		return nil, err
+	}
+	err = conn.Teams().FindId(name).One(&t)
+	if err != nil {
+		return nil, err
+	}
+	return &t, nil
 }
 
 func GetTeamsNames(teams []Team) []string {
