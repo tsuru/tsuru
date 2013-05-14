@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"github.com/globocom/config"
 	"github.com/globocom/tsuru/db"
+	"github.com/globocom/tsuru/errors"
 	"github.com/globocom/tsuru/quota"
 	"io/ioutil"
 	"launchpad.net/gocheck"
@@ -49,4 +50,16 @@ func (QuotaSuite) TestQuotaByOwner(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(result["available"], gocheck.Equals, float64(2))
 	c.Assert(result["items"], gocheck.DeepEquals, []interface{}{"tank/1"})
+}
+
+func (QuotaSuite) TestQuotaNotFound(c *gocheck.C) {
+	recorder := httptest.NewRecorder()
+	request, err := http.NewRequest("GET", "/quota/raul@seixas.com?:owner=raul@seixas.com", nil)
+	c.Assert(err, gocheck.IsNil)
+	err = quotaByOwner(recorder, request, nil)
+	c.Assert(err, gocheck.NotNil)
+	e, ok := err.(*errors.Http)
+	c.Assert(ok, gocheck.Equals, true)
+	c.Assert(e.Code, gocheck.Equals, http.StatusNotFound)
+	c.Assert(e, gocheck.ErrorMatches, "^Quota not found$")
 }

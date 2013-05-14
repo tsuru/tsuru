@@ -7,6 +7,7 @@ package api
 import (
 	"encoding/json"
 	"github.com/globocom/tsuru/auth"
+	"github.com/globocom/tsuru/errors"
 	"github.com/globocom/tsuru/quota"
 	"net/http"
 )
@@ -16,7 +17,7 @@ func quotaByOwner(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
 	owner := r.URL.Query().Get(":owner")
 	items, available, err := quota.Items(owner)
 	if err != nil {
-		return err
+		return &errors.Http{Code: http.StatusNotFound, Message: err.Error()}
 	}
 	result["items"] = items
 	result["available"] = available
