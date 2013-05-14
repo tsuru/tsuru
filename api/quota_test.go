@@ -31,15 +31,15 @@ func (QuotaSuite) TearDownSuite(c *gocheck.C) {
 	conn.Apps().Database.DropDatabase()
 }
 
-func (QuotaSuite) TestQuotaByUser(c *gocheck.C) {
+func (QuotaSuite) TestQuotaByOwner(c *gocheck.C) {
 	err := quota.Create("tank@elp.com", 3)
 	c.Assert(err, gocheck.IsNil)
 	err = quota.Reserve("tank@elp.com", "tank/1")
 	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
-	request, err := http.NewRequest("GET", "/quota/?:user=tank@elp.com", nil)
+	request, err := http.NewRequest("GET", "/quota/tank@elp.com?:owner=tank@elp.com", nil)
 	c.Assert(err, gocheck.IsNil)
-	err = quotaByUser(recorder, request, nil)
+	err = quotaByOwner(recorder, request, nil)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(recorder.Code, gocheck.Equals, http.StatusOK)
 	body, err := ioutil.ReadAll(recorder.Body)

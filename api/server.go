@@ -60,6 +60,8 @@ func RunServer(flags map[string]interface{}) {
 	m.Get("/schema/service", authorizationRequiredHandler(serviceSchema))
 	m.Get("/schema/services", authorizationRequiredHandler(servicesSchema))
 
+	m.Get("/quota/:owner", authorizationRequiredHandler(quotaByOwner))
+
 	m.Get("/services/instances", authorizationRequiredHandler(serviceInstances))
 	m.Get("/services/instances/:name", authorizationRequiredHandler(serviceInstance))
 	m.Del("/services/instances/:name", authorizationRequiredHandler(removeServiceInstance))

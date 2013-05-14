@@ -11,10 +11,10 @@ import (
 	"net/http"
 )
 
-func quotaByUser(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
+func quotaByOwner(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
 	result := map[string]interface{}{}
-	user := r.URL.Query().Get(":user")
-	items, available, err := quota.Items(user)
+	owner := r.URL.Query().Get(":owner")
+	items, available, err := quota.Items(owner)
 	if err != nil {
 		return err
 	}
