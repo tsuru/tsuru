@@ -283,7 +283,7 @@ func (c *container) remove() error {
 		log.Printf("Failed to obtain router: %s", err.Error())
 		return err
 	}
-	if err := r.RemoveRoute(c.AppName); err != nil {
+	if err := r.RemoveRoute(c.AppName, c.Ip); err != nil {
 		log.Printf("Failed to remove route: %s", err.Error())
 		return err
 	}
