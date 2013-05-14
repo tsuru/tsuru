@@ -268,6 +268,7 @@ func (c *container) remove() error {
 		return err
 	}
 	log.Printf("Removing container %s from docker", c.Id)
+	address := c.getAddress()
 	out, err := runCmd(docker, "rm", c.Id)
 	if err != nil {
 		log.Printf("Failed to remove container from docker: %s", err.Error())
@@ -286,7 +287,7 @@ func (c *container) remove() error {
 		log.Printf("Failed to obtain router: %s", err.Error())
 		return err
 	}
-	if err := r.RemoveRoute(c.AppName, c.getAddress()); err != nil {
+	if err := r.RemoveRoute(c.AppName, address); err != nil {
 		log.Printf("Failed to remove route: %s", err.Error())
 		return err
 	}
