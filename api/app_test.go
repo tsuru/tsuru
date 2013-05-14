@@ -229,7 +229,7 @@ func (s *S) TestDelete(c *gocheck.C) {
 			{Ip: "10.10.10.10", Machine: 1},
 		},
 	}
-	err := app.CreateApp(&myApp, 1, s.user)
+	err := app.CreateApp(&myApp, s.user)
 	c.Assert(err, gocheck.IsNil)
 	myApp.Get()
 	defer app.ForceDestroy(&myApp)
@@ -361,7 +361,7 @@ func (s *S) TestCreateAppHandler(c *gocheck.C) {
 		err = app.ForceDestroy(&a)
 		c.Assert(err, gocheck.IsNil)
 	}()
-	b := strings.NewReader(`{"name":"someapp","platform":"zend","units":4}`)
+	b := strings.NewReader(`{"name":"someapp","platform":"zend"}`)
 	request, err := http.NewRequest("POST", "/apps", b)
 	c.Assert(err, gocheck.IsNil)
 	request.Header.Set("Content-Type", "application/json")
@@ -383,11 +383,11 @@ func (s *S) TestCreateAppHandler(c *gocheck.C) {
 	err = s.conn.Apps().Find(bson.M{"name": "someapp"}).One(&gotApp)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(gotApp.Teams, gocheck.DeepEquals, []string{s.team.Name})
-	c.Assert(s.provisioner.GetUnits(&gotApp), gocheck.HasLen, 4)
+	c.Assert(s.provisioner.GetUnits(&gotApp), gocheck.HasLen, 1)
 	action := testing.Action{
 		Action: "create-app",
 		User:   s.user.Email,
-		Extra:  []interface{}{"name=someapp", "platform=zend", "units=4"},
+		Extra:  []interface{}{"name=someapp", "platform=zend"},
 	}
 	c.Assert(action, testing.IsRecorded)
 }
@@ -396,7 +396,7 @@ func (s *S) TestCreateAppQuotaExceeded(c *gocheck.C) {
 	err := quota.Create(s.user.Email, 0)
 	c.Assert(err, gocheck.IsNil)
 	defer quota.Delete(s.user.Email)
-	b := strings.NewReader(`{"name":"someapp","platform":"zend","units":4}`)
+	b := strings.NewReader(`{"name":"someapp","platform":"zend"}`)
 	request, err := http.NewRequest("POST", "/apps", b)
 	c.Assert(err, gocheck.IsNil)
 	request.Header.Set("Content-Type", "application/json")
@@ -2248,7 +2248,7 @@ func (s *S) TestUnbindHandler(c *gocheck.C) {
 		Teams:    []string{s.team.Name},
 		Units:    []app.Unit{{Machine: 1}},
 	}
-	err = app.CreateApp(&a, 1, s.user)
+	err = app.CreateApp(&a, s.user)
 	c.Assert(err, gocheck.IsNil)
 	a.Get()
 	defer app.ForceDestroy(&a)

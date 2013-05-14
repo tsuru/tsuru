@@ -114,34 +114,22 @@ func appInfo(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
 	return json.NewEncoder(w).Encode(&app)
 }
 
-type jsonApp struct {
-	Name     string
-	Platform string
-	Units    uint
-}
-
 func createApp(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
 	var a app.App
-	var japp jsonApp
 	defer r.Body.Close()
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		return err
 	}
-	if err = json.Unmarshal(body, &japp); err != nil {
+	if err = json.Unmarshal(body, &a); err != nil {
 		return err
-	}
-	a.Name = japp.Name
-	a.Platform = japp.Platform
-	if japp.Units == 0 {
-		japp.Units = 1
 	}
 	u, err := t.User()
 	if err != nil {
 		return err
 	}
-	rec.Log(u.Email, "create-app", "name="+japp.Name, "platform="+japp.Platform, fmt.Sprintf("units=%d", japp.Units))
-	err = app.CreateApp(&a, japp.Units, u)
+	rec.Log(u.Email, "create-app", "name="+a.Name, "platform="+a.Platform)
+	err = app.CreateApp(&a, u)
 	if err != nil {
 		log.Printf("Got error while creating app: %s", err)
 		if e, ok := err.(*errors.ValidationError); ok {
