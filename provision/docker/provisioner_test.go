@@ -121,7 +121,7 @@ func (s *S) TestDeployShouldReplaceAllContainers(c *gocheck.C) {
 	app.AddUnit(&testing.FakeUnit{Name: "app/1"})
 	out := `{
 	"NetworkSettings": {
-		"IpAddress": "10.10.10.10",
+		"IpAddress": "10.10.10.%d",
 		"IpPrefixLen": 8,
 		"Gateway": "10.65.41.1",
 		"PortMapping": {}
@@ -129,8 +129,9 @@ func (s *S) TestDeployShouldReplaceAllContainers(c *gocheck.C) {
 }`
 	fexec := &etesting.FakeExecutor{
 		Output: map[string][][]byte{
-			"*":            {[]byte("c-60")},
-			"inspect c-60": {[]byte(out)},
+			"*":            {[]byte("c-60"), []byte("c-61")},
+			"inspect c-60": {[]byte(fmt.Sprintf(out, 1))},
+			"inspect c-61": {[]byte(fmt.Sprintf(out, 2))},
 		},
 	}
 	setExecut(fexec)
@@ -143,7 +144,7 @@ func (s *S) TestDeployShouldReplaceAllContainers(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(app.ProvisionUnits(), gocheck.HasLen, 0)
 	commands := fexec.GetCommands("ssh")
-	c.Assert(commands, gocheck.HasLen, 2)
+	c.Assert(commands, gocheck.HasLen, 4)
 }
 
 func (s *S) TestProvisionerDestroy(c *gocheck.C) {

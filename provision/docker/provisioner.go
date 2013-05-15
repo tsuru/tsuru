@@ -85,15 +85,24 @@ func (p *dockerProvisioner) Restart(app provision.App) error {
 }
 
 func (p *dockerProvisioner) Deploy(a provision.App, w io.Writer) error {
-	if containers, err := listAppContainers(a.GetName()); err == nil {
+	var deploy = func() error {
 		c, err := newContainer(a)
 		if err != nil {
 			return err
 		}
 		c.deploy(w)
+		return nil
+	}
+	if containers, err := listAppContainers(a.GetName()); err == nil && len(containers) > 0 {
 		for _, c := range containers {
+			err = deploy()
+			if err != nil {
+				return err
+			}
 			a.RemoveUnit(c.Id)
 		}
+	} else if err := deploy(); err != nil {
+		return err
 	}
 	app.Enqueue(queue.Message{
 		Action: app.RegenerateApprcAndStart,
