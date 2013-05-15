@@ -729,7 +729,7 @@ func (s *S) TestRemoveUnits(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	ts.Close()
 	units := s.provisioner.GetUnits(&app)
-	c.Assert(units, gocheck.HasLen, 3) // when you provision you already have one, so it's 4+1-2 (in provisioner, in app struct we have 2)
+	c.Assert(units, gocheck.HasLen, 3)
 	c.Assert(units[0].Name, gocheck.Equals, "chemistry/0")
 	c.Assert(units[1].Name, gocheck.Equals, "chemistry/3")
 	c.Assert(units[2].Name, gocheck.Equals, "chemistry/4")
