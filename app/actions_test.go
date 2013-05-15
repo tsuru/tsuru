@@ -730,3 +730,74 @@ func (s *S) TestCreateAppQuotaBackward(c *gocheck.C) {
 func (s *S) TestCreateAppQuotaMinParams(c *gocheck.C) {
 	c.Assert(createAppQuota.MinParams, gocheck.Equals, 1)
 }
+
+func (s *S) TestReserveUnitsToAddForward(c *gocheck.C) {
+	app := App{
+		Name:     "visions",
+		Platform: "django",
+	}
+	err := quota.Create(app.Name, 5)
+	c.Assert(err, gocheck.IsNil)
+	defer quota.Delete(app.Name)
+	result, err := reserveUnitsToAdd.Forward(action.FWContext{Params: []interface{}{&app, 3}})
+	c.Assert(err, gocheck.IsNil)
+	ids, ok := result.([]string)
+	c.Assert(ok, gocheck.Equals, true)
+	c.Assert(ids, gocheck.DeepEquals, []string{"visions-0", "visions-1", "visions-2"})
+	items, avail, err := quota.Items(app.Name)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(avail, gocheck.Equals, uint(2))
+	c.Assert(items, gocheck.DeepEquals, []string{"visions-0", "visions-1", "visions-2"})
+}
+
+func (s *S) TestReserveUnitsToAddForwardUint(c *gocheck.C) {
+	app := App{
+		Name:     "visions",
+		Platform: "django",
+	}
+	err := quota.Create(app.Name, 5)
+	c.Assert(err, gocheck.IsNil)
+	defer quota.Delete(app.Name)
+	result, err := reserveUnitsToAdd.Forward(action.FWContext{Params: []interface{}{&app, uint(3)}})
+	c.Assert(err, gocheck.IsNil)
+	ids, ok := result.([]string)
+	c.Assert(ok, gocheck.Equals, true)
+	c.Assert(ids, gocheck.DeepEquals, []string{"visions-0", "visions-1", "visions-2"})
+	items, avail, err := quota.Items(app.Name)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(avail, gocheck.Equals, uint(2))
+	c.Assert(items, gocheck.DeepEquals, []string{"visions-0", "visions-1", "visions-2"})
+}
+
+func (s *S) TestReserveUnitsToAddForwardNoPointer(c *gocheck.C) {
+	app := App{
+		Name:     "visions",
+		Platform: "django",
+	}
+	err := quota.Create(app.Name, 5)
+	c.Assert(err, gocheck.IsNil)
+	defer quota.Delete(app.Name)
+	result, err := reserveUnitsToAdd.Forward(action.FWContext{Params: []interface{}{app, 3}})
+	c.Assert(err, gocheck.IsNil)
+	ids, ok := result.([]string)
+	c.Assert(ok, gocheck.Equals, true)
+	c.Assert(ids, gocheck.DeepEquals, []string{"visions-0", "visions-1", "visions-2"})
+	items, avail, err := quota.Items(app.Name)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(avail, gocheck.Equals, uint(2))
+	c.Assert(items, gocheck.DeepEquals, []string{"visions-0", "visions-1", "visions-2"})
+}
+
+func (s *S) TestReserveUnitsToAddForwardInvalidApp(c *gocheck.C) {
+	result, err := reserveUnitsToAdd.Forward(action.FWContext{Params: []interface{}{"something", 3}})
+	c.Assert(result, gocheck.IsNil)
+	c.Assert(err, gocheck.NotNil)
+	c.Assert(err.Error(), gocheck.Equals, "First parameter must be App or *App.")
+}
+
+func (s *S) TestReserveUnitsToAddForwardInvalidNumber(c *gocheck.C) {
+	result, err := reserveUnitsToAdd.Forward(action.FWContext{Params: []interface{}{App{}, "what"}})
+	c.Assert(result, gocheck.IsNil)
+	c.Assert(err, gocheck.NotNil)
+	c.Assert(err.Error(), gocheck.Equals, "Second parameter must be int or uint.")
+}

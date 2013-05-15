@@ -325,3 +325,32 @@ var provisionApp = action.Action{
 	},
 	MinParams: 1,
 }
+
+var reserveUnitsToAdd = action.Action{
+	Forward: func(ctx action.FWContext) (action.Result, error) {
+		var app App
+		switch ctx.Params[0].(type) {
+		case App:
+			app = ctx.Params[0].(App)
+		case *App:
+			app = *ctx.Params[0].(*App)
+		default:
+			return nil, errors.New("First parameter must be App or *App.")
+		}
+		var n uint
+		switch ctx.Params[1].(type) {
+		case int:
+			n = uint(ctx.Params[1].(int))
+		case uint:
+			n = ctx.Params[1].(uint)
+		default:
+			return nil, errors.New("Second parameter must be int or uint.")
+		}
+		ids := generateUnitQuotaItems(&app, int(n))
+		err := quota.Reserve(app.Name, ids...)
+		if err != nil && err != quota.ErrQuotaNotFound {
+			return nil, err
+		}
+		return ids, nil
+	},
+}
