@@ -1039,3 +1039,7 @@ func (s *S) TestSaveNewUnitsInDatabaseForwardInvalidApp(c *gocheck.C) {
 	c.Assert(result, gocheck.IsNil)
 	c.Assert(err, gocheck.NotNil)
 }
+
+func (s *S) TestSaveNewUnitsInDatabaseBackward(c *gocheck.C) {
+	c.Assert(saveNewUnitsInDatabase.Backward, gocheck.IsNil)
+}
