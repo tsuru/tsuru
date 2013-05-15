@@ -238,48 +238,11 @@ func (app *App) AddUnits(n uint) error {
 	if n == 0 {
 		return stderr.New("Cannot add zero units.")
 	}
-	ids := generateUnitQuotaItems(app, int(n))
-	err := quota.Reserve(app.Name, ids...)
-	if err != nil && err != quota.ErrQuotaNotFound {
-		return err
-	}
-	units, err := Provisioner.AddUnits(app, n)
-	if err != nil {
-		return err
-	}
-	conn, err := db.Conn()
-	if err != nil {
-		return err
-	}
-	defer conn.Close()
-	length := len(app.Units)
-	appUnits := make([]Unit, len(units))
-	app.Units = append(app.Units, appUnits...)
-	messages := make([]queue.Message, len(units)*2)
-	mCount := 0
-	for i, unit := range units {
-		app.Units[i+length] = Unit{
-			Name:       unit.Name,
-			Type:       unit.Type,
-			Ip:         unit.Ip,
-			Machine:    unit.Machine,
-			State:      provision.StatusPending.String(),
-			InstanceId: unit.InstanceId,
-			QuotaItem:  ids[i],
-		}
-		messages[mCount] = queue.Message{Action: RegenerateApprcAndStart, Args: []string{app.Name, unit.Name}}
-		messages[mCount+1] = queue.Message{Action: bindService, Args: []string{app.Name, unit.Name}}
-		mCount += 2
-	}
-	err = conn.Apps().Update(
-		bson.M{"name": app.Name},
-		bson.M{"$set": bson.M{"units": app.Units}},
-	)
-	if err != nil {
-		return err
-	}
-	go Enqueue(messages...)
-	return nil
+	return action.NewPipeline(
+		&reserveUnitsToAdd,
+		&provisionAddUnits,
+		&saveNewUnitsInDatabase,
+	).Execute(app, n)
 }
 
 // RemoveUnit removes a unit by its InstanceId or Name.

@@ -472,9 +472,9 @@ func (s *S) TestAddUnits(c *gocheck.C) {
 	var expectedMessages MessageList
 	for i, unit := range app.Units {
 		expectedName := fmt.Sprintf("%s/%d", app.Name, i+1)
-		c.Assert(unit.Name, gocheck.Equals, expectedName)
+		c.Check(unit.Name, gocheck.Equals, expectedName)
 		expectedItem := fmt.Sprintf("%s-%d", app.Name, i)
-		c.Assert(unit.QuotaItem, gocheck.Equals, expectedItem)
+		c.Check(unit.QuotaItem, gocheck.Equals, expectedItem)
 		messages := []queue.Message{
 			{Action: RegenerateApprcAndStart, Args: []string{app.Name, unit.Name}},
 			{Action: bindService, Args: []string{app.Name, unit.Name}},
@@ -484,7 +484,7 @@ func (s *S) TestAddUnits(c *gocheck.C) {
 	gotMessages := make(MessageList, expectedMessages.Len())
 	for i := range expectedMessages {
 		message, err := aqueue().Get(1e6)
-		c.Assert(err, gocheck.IsNil)
+		c.Check(err, gocheck.IsNil)
 		defer message.Delete()
 		gotMessages[i] = queue.Message{
 			Action: message.Action,
@@ -565,6 +565,8 @@ func (s *S) TestAddUnitsQuotaExceeded(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	defer quota.Delete("warpaint")
 	app := App{Name: "warpaint", Platform: "ruby"}
+	s.conn.Apps().Insert(app)
+	defer s.conn.Apps().Remove(bson.M{"name": app.Name})
 	err = app.AddUnits(1)
 	e, ok := err.(*quota.QuotaExceededError)
 	c.Assert(ok, gocheck.Equals, true)
@@ -579,6 +581,8 @@ func (s *S) TestAddUnitsMultiple(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	defer quota.Delete("warpaint")
 	app := App{Name: "warpaint", Platform: "ruby"}
+	s.conn.Apps().Insert(app)
+	defer s.conn.Apps().Remove(bson.M{"name": app.Name})
 	err = app.AddUnits(11)
 	e, ok := err.(*quota.QuotaExceededError)
 	c.Assert(ok, gocheck.Equals, true)
@@ -595,9 +599,23 @@ func (s *S) TestAddZeroUnits(c *gocheck.C) {
 
 func (s *S) TestAddUnitsFailureInProvisioner(c *gocheck.C) {
 	app := App{Name: "scars", Platform: "golang"}
+	s.conn.Apps().Insert(app)
+	defer s.conn.Apps().Remove(bson.M{"name": app.Name})
 	err := app.AddUnits(2)
 	c.Assert(err, gocheck.NotNil)
 	c.Assert(err.Error(), gocheck.Equals, "App is not provisioned.")
+}
+
+func (s *S) TestAddUnitsIsAtomic(c *gocheck.C) {
+	err := quota.Create("warpaint", 7)
+	c.Assert(err, gocheck.IsNil)
+	defer quota.Delete("warpaint")
+	app := App{Name: "warpaint", Platform: "golang"}
+	err = app.AddUnits(2)
+	c.Assert(err, gocheck.NotNil)
+	_, avail, err := quota.Items("warpaint")
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(avail, gocheck.Equals, uint(7))
 }
 
 type hasUnitChecker struct{}
@@ -726,6 +744,7 @@ func (s *S) TestRemoveUnits(c *gocheck.C) {
 	defer s.provisioner.Destroy(&app)
 	app.AddUnits(4)
 	defer testing.CleanQ(queueName)
+	app.Get()
 	otherApp := App{Name: app.Name, Units: app.Units}
 	err = otherApp.RemoveUnits(2)
 	c.Assert(err, gocheck.IsNil)
@@ -838,8 +857,7 @@ func (s *S) TestRemoveUnitsFromIndicesSlice(c *gocheck.C) {
 func (s *S) TestRemoveUnitByNameOrInstanceId(c *gocheck.C) {
 	var calls int32
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		v := atomic.LoadInt32(&calls)
-		atomic.StoreInt32(&calls, v+1)
+		atomic.AddInt32(&calls, 1)
 		w.WriteHeader(http.StatusNoContent)
 	}))
 	defer ts.Close()
@@ -867,28 +885,29 @@ func (s *S) TestRemoveUnitByNameOrInstanceId(c *gocheck.C) {
 	err = s.provisioner.Provision(&app)
 	c.Assert(err, gocheck.IsNil)
 	err = app.AddUnits(4)
-	defer testing.CleanQ(queueName)
 	c.Assert(err, gocheck.IsNil)
+	defer testing.CleanQ(queueName)
 	defer func() {
 		s.provisioner.Destroy(&app)
 		s.conn.Apps().Remove(bson.M{"name": app.Name})
 	}()
+	err = app.Get()
+	c.Assert(err, gocheck.IsNil)
 	otherApp := App{Name: app.Name, Units: app.Units}
 	err = otherApp.RemoveUnit(app.Units[0].Name)
 	c.Assert(err, gocheck.IsNil)
-	err = app.Get()
-	c.Assert(err, gocheck.IsNil)
 	c.Assert(app.Platform, gocheck.Equals, "python")
-	c.Assert(app.Units, gocheck.HasLen, 4)
-	c.Assert(app.Units[0].Name, gocheck.Equals, "physics/1")
-	c.Assert(app.Units[1].Name, gocheck.Equals, "physics/2")
-	c.Assert(app.Units[2].Name, gocheck.Equals, "physics/3")
-	c.Assert(app.Units[3].Name, gocheck.Equals, "physics/4")
+	c.Assert(app.Units, gocheck.HasLen, 5)
+	c.Assert(app.Units[0].Name, gocheck.Equals, "physics/0")
+	c.Assert(app.Units[1].Name, gocheck.Equals, "physics/1")
+	c.Assert(app.Units[2].Name, gocheck.Equals, "physics/2")
+	c.Assert(app.Units[3].Name, gocheck.Equals, "physics/3")
+	c.Assert(app.Units[4].Name, gocheck.Equals, "physics/4")
 	err = app.RemoveUnit(app.Units[1].InstanceId)
 	c.Assert(err, gocheck.IsNil)
 	units := s.provisioner.GetUnits(&app)
 	c.Assert(units, gocheck.HasLen, 3)
-	c.Assert(units[0].Name, gocheck.Equals, "physics/1")
+	c.Assert(units[0].Name, gocheck.Equals, "physics/2")
 	c.Assert(units[1].Name, gocheck.Equals, "physics/3")
 	c.Assert(units[2].Name, gocheck.Equals, "physics/4")
 	ok := make(chan int8)
