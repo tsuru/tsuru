@@ -14,6 +14,7 @@ import (
 	"github.com/globocom/tsuru/auth"
 	"github.com/globocom/tsuru/db"
 	"github.com/globocom/tsuru/log"
+	"github.com/globocom/tsuru/provision"
 	"github.com/globocom/tsuru/quota"
 	"github.com/globocom/tsuru/repository"
 	"labix.org/v2/mgo/bson"
@@ -365,4 +366,31 @@ var reserveUnitsToAdd = action.Action{
 		quota.Release(app.Name, ids...)
 	},
 	MinParams: 2,
+}
+
+type addUnitsActionResult struct {
+	units []provision.Unit
+	ids   []string
+}
+
+var provisionAddUnits = action.Action{
+	Forward: func(ctx action.FWContext) (action.Result, error) {
+		var app App
+		switch ctx.Params[0].(type) {
+		case App:
+			app = ctx.Params[0].(App)
+		case *App:
+			app = *ctx.Params[0].(*App)
+		default:
+			return nil, errors.New("First parameter must be App or *App.")
+		}
+		result := addUnitsActionResult{ids: ctx.Previous.([]string)}
+		n := uint(len(result.ids))
+		units, err := Provisioner.AddUnits(&app, n)
+		if err != nil {
+			return nil, err
+		}
+		result.units = units
+		return &result, nil
+	},
 }

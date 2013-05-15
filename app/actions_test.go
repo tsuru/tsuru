@@ -5,6 +5,7 @@
 package app
 
 import (
+	"errors"
 	"fmt"
 	"github.com/globocom/config"
 	"github.com/globocom/tsuru/action"
@@ -840,4 +841,67 @@ func (s *S) TestReserveUnitsToAddBackwardNoPointer(c *gocheck.C) {
 
 func (s *S) TestReserveUnitsMinParams(c *gocheck.C) {
 	c.Assert(reserveUnitsToAdd.MinParams, gocheck.Equals, 2)
+}
+
+func (s *S) TestProvisionAddUnits(c *gocheck.C) {
+	app := App{
+		Name:     "visions",
+		Platform: "django",
+	}
+	s.provisioner.Provision(&app)
+	defer s.provisioner.Destroy(&app)
+	ctx := action.FWContext{
+		Previous: []string{"visions-0", "visions-1", "visions-2"},
+		Params:   []interface{}{&app},
+	}
+	fwresult, err := provisionAddUnits.Forward(ctx)
+	c.Assert(err, gocheck.IsNil)
+	result, ok := fwresult.(*addUnitsActionResult)
+	c.Assert(ok, gocheck.Equals, true)
+	c.Assert(result.ids, gocheck.DeepEquals, ctx.Previous)
+	c.Assert(result.units, gocheck.HasLen, 3)
+	c.Assert(result.units, gocheck.DeepEquals, s.provisioner.GetUnits(&app)[1:])
+}
+
+func (s *S) TestProvisionAddUnitsNoPointer(c *gocheck.C) {
+	app := App{
+		Name:     "visions",
+		Platform: "django",
+	}
+	s.provisioner.Provision(&app)
+	defer s.provisioner.Destroy(&app)
+	ctx := action.FWContext{
+		Previous: []string{"visions-0", "visions-1", "visions-2"},
+		Params:   []interface{}{app},
+	}
+	fwresult, err := provisionAddUnits.Forward(ctx)
+	c.Assert(err, gocheck.IsNil)
+	result, ok := fwresult.(*addUnitsActionResult)
+	c.Assert(ok, gocheck.Equals, true)
+	c.Assert(result.ids, gocheck.DeepEquals, ctx.Previous)
+	c.Assert(result.units, gocheck.HasLen, 3)
+	c.Assert(result.units, gocheck.DeepEquals, s.provisioner.GetUnits(&app)[1:])
+}
+
+func (s *S) TestProvisionAddUnitsProvisionFailure(c *gocheck.C) {
+	s.provisioner.PrepareFailure("AddUnits", errors.New("Failed to add units"))
+	app := App{
+		Name:     "visions",
+		Platform: "django",
+	}
+	ctx := action.FWContext{
+		Previous: []string{"visions-0", "visions-1", "visions-2"},
+		Params:   []interface{}{app},
+	}
+	result, err := provisionAddUnits.Forward(ctx)
+	c.Assert(result, gocheck.IsNil)
+	c.Assert(err, gocheck.NotNil)
+	c.Assert(err.Error(), gocheck.Equals, "Failed to add units")
+}
+
+func (s *S) TestProvisionAddUnitsInvalidApp(c *gocheck.C) {
+	result, err := provisionAddUnits.Forward(action.FWContext{Params: []interface{}{"something"}})
+	c.Assert(result, gocheck.IsNil)
+	c.Assert(err, gocheck.NotNil)
+	c.Assert(err.Error(), gocheck.Equals, "First parameter must be App or *App.")
 }
