@@ -349,7 +349,9 @@ func (p *FakeProvisioner) AddUnits(app provision.App, n uint) ([]provision.Unit,
 		p.units[name] = append(p.units[name], unit)
 		p.unitLen++
 	}
-	return p.units[name][length:], nil
+	result := make([]provision.Unit, int(n))
+	copy(result, p.units[name][length:])
+	return result, nil
 }
 
 func (p *FakeProvisioner) RemoveUnit(app provision.App, name string) error {

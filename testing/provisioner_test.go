@@ -200,6 +200,17 @@ func (s *S) TestAddUnits(c *gocheck.C) {
 	c.Assert(units, gocheck.HasLen, 2)
 }
 
+func (s *S) TestAddUnitsCopiesTheUnitsSlice(c *gocheck.C) {
+	app := NewFakeApp("fiction", "python", 0)
+	p := NewFakeProvisioner()
+	p.Provision(app)
+	defer p.Destroy(app)
+	units, err := p.AddUnits(app, 3)
+	c.Assert(err, gocheck.IsNil)
+	units[0].Name = "something-else"
+	c.Assert(units[0].Name, gocheck.Not(gocheck.Equals), p.units[app.GetName()][1].Name)
+}
+
 func (s *S) TestAddZeroUnits(c *gocheck.C) {
 	p := NewFakeProvisioner()
 	units, err := p.AddUnits(nil, 0)
