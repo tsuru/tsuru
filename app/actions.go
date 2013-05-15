@@ -456,4 +456,5 @@ var saveNewUnitsInDatabase = action.Action{
 		go Enqueue(messages...)
 		return nil, nil
 	},
+	MinParams: 1,
 }
