@@ -1040,6 +1040,15 @@ func (s *S) TestSaveNewUnitsInDatabaseForwardInvalidApp(c *gocheck.C) {
 	c.Assert(err, gocheck.NotNil)
 }
 
+func (s *S) TestSaveNewUnitsInDatabaseAppNotFound(c *gocheck.C) {
+	app := App{Name: "something"}
+	fwresult := addUnitsActionResult{}
+	ctx := action.FWContext{Previous: &fwresult, Params: []interface{}{app}}
+	result, err := saveNewUnitsInDatabase.Forward(ctx)
+	c.Assert(result, gocheck.IsNil)
+	c.Assert(err.Error(), gocheck.Equals, "App not found")
+}
+
 func (s *S) TestSaveNewUnitsInDatabaseBackward(c *gocheck.C) {
 	c.Assert(saveNewUnitsInDatabase.Backward, gocheck.IsNil)
 }

@@ -427,6 +427,10 @@ var saveNewUnitsInDatabase = action.Action{
 			return nil, err
 		}
 		defer conn.Close()
+		err = app.Get()
+		if err != nil {
+			return nil, errors.New("App not found")
+		}
 		length := len(app.Units)
 		appUnits := make([]Unit, len(prev.units))
 		app.Units = append(app.Units, appUnits...)
