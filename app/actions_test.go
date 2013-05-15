@@ -801,3 +801,39 @@ func (s *S) TestReserveUnitsToAddForwardInvalidNumber(c *gocheck.C) {
 	c.Assert(err, gocheck.NotNil)
 	c.Assert(err.Error(), gocheck.Equals, "Second parameter must be int or uint.")
 }
+
+func (s *S) TestReserveUnitsToAddBackward(c *gocheck.C) {
+	app := App{
+		Name:     "visions",
+		Platform: "django",
+	}
+	err := quota.Create(app.Name, 5)
+	c.Assert(err, gocheck.IsNil)
+	defer quota.Delete(app.Name)
+	ids := []string{"visions-0", "visions-1", "visions-2", "visions-3"}
+	err = quota.Reserve(app.Name, ids...)
+	c.Assert(err, gocheck.IsNil)
+	reserveUnitsToAdd.Backward(action.BWContext{Params: []interface{}{&app, 3}, FWResult: ids})
+	items, avail, err := quota.Items(app.Name)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(avail, gocheck.Equals, uint(5))
+	c.Assert(items, gocheck.HasLen, 0)
+}
+
+func (s *S) TestReserveUnitsToAddBackwardNoPointer(c *gocheck.C) {
+	app := App{
+		Name:     "visions",
+		Platform: "django",
+	}
+	err := quota.Create(app.Name, 5)
+	c.Assert(err, gocheck.IsNil)
+	defer quota.Delete(app.Name)
+	ids := []string{"visions-0", "visions-1", "visions-2", "visions-3"}
+	err = quota.Reserve(app.Name, ids...)
+	c.Assert(err, gocheck.IsNil)
+	reserveUnitsToAdd.Backward(action.BWContext{Params: []interface{}{app, 3}, FWResult: ids})
+	items, avail, err := quota.Items(app.Name)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(avail, gocheck.Equals, uint(5))
+	c.Assert(items, gocheck.HasLen, 0)
+}

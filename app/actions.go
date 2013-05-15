@@ -353,4 +353,15 @@ var reserveUnitsToAdd = action.Action{
 		}
 		return ids, nil
 	},
+	Backward: func(ctx action.BWContext) {
+		var app App
+		switch ctx.Params[0].(type) {
+		case App:
+			app = ctx.Params[0].(App)
+		case *App:
+			app = *ctx.Params[0].(*App)
+		}
+		ids := ctx.FWResult.([]string)
+		quota.Release(app.Name, ids...)
+	},
 }
