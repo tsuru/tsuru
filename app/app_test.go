@@ -19,6 +19,7 @@ import (
 	"github.com/globocom/tsuru/quota"
 	"github.com/globocom/tsuru/repository"
 	"github.com/globocom/tsuru/service"
+	"github.com/globocom/tsuru/testing"
 	"labix.org/v2/mgo/bson"
 	"launchpad.net/gocheck"
 	stdlog "log"
@@ -724,6 +725,7 @@ func (s *S) TestRemoveUnits(c *gocheck.C) {
 	s.provisioner.Provision(&app)
 	defer s.provisioner.Destroy(&app)
 	app.AddUnits(4)
+	defer testing.CleanQ(queueName)
 	otherApp := App{Name: app.Name, Units: app.Units}
 	err = otherApp.RemoveUnits(2)
 	c.Assert(err, gocheck.IsNil)
@@ -865,6 +867,7 @@ func (s *S) TestRemoveUnitByNameOrInstanceId(c *gocheck.C) {
 	err = s.provisioner.Provision(&app)
 	c.Assert(err, gocheck.IsNil)
 	err = app.AddUnits(4)
+	defer testing.CleanQ(queueName)
 	c.Assert(err, gocheck.IsNil)
 	defer func() {
 		s.provisioner.Destroy(&app)
