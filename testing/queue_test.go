@@ -113,3 +113,27 @@ func (s *S) TestFakeQFactoryHandler(c *gocheck.C) {
 	_, ok := h.(*fakeHandler)
 	c.Assert(ok, gocheck.Equals, true)
 }
+
+func (s *S) TestCleanQ(c *gocheck.C) {
+	msg := queue.Message{Action: "do-something", Args: []string{"wat"}}
+	q, err := factory.Get("firedance")
+	c.Assert(err, gocheck.IsNil)
+	err = q.Put(&msg, 0)
+	c.Assert(err, gocheck.IsNil)
+	q2, err := factory.Get("hush")
+	c.Assert(err, gocheck.IsNil)
+	err = q2.Put(&msg, 0)
+	c.Assert(err, gocheck.IsNil)
+	q3, err := factory.Get("rocket")
+	c.Assert(err, gocheck.IsNil)
+	err = q3.Put(&msg, 0)
+	c.Assert(err, gocheck.IsNil)
+	CleanQ("firedance", "hush")
+	_, err = q.Get(1e6)
+	c.Assert(err, gocheck.NotNil)
+	_, err = q2.Get(1e6)
+	c.Assert(err, gocheck.NotNil)
+	m, err := q3.Get(1e6)
+	c.Assert(err, gocheck.IsNil)
+	q3.Delete(m)
+}

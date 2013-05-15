@@ -12,8 +12,10 @@ import (
 	"time"
 )
 
+var factory = NewFakeQFactory()
+
 func init() {
-	queue.Register("fake", NewFakeQFactory())
+	queue.Register("fake", factory)
 }
 
 type fakeHandler struct {
@@ -151,4 +153,24 @@ func (q *messageQueue) dequeue() *queue.Message {
 		q.last = q.first
 	}
 	return msg
+}
+
+// CleanQ deletes all messages from queues identified by the given names.
+func CleanQ(names ...string) {
+	var wg sync.WaitGroup
+	for _, name := range names {
+		wg.Add(1)
+		go func(name string) {
+			defer wg.Done()
+			q, _ := factory.Get(name)
+			for {
+				msg, err := q.Get(1e6)
+				if err != nil {
+					break
+				}
+				q.Delete(msg)
+			}
+		}(name)
+	}
+	wg.Wait()
 }
