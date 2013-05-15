@@ -905,3 +905,33 @@ func (s *S) TestProvisionAddUnitsInvalidApp(c *gocheck.C) {
 	c.Assert(err, gocheck.NotNil)
 	c.Assert(err.Error(), gocheck.Equals, "First parameter must be App or *App.")
 }
+
+func (s *S) TestProvisionAddUnitsBackward(c *gocheck.C) {
+	app := App{
+		Name:     "fiction",
+		Platform: "django",
+	}
+	s.provisioner.Provision(&app)
+	defer s.provisioner.Destroy(&app)
+	units, err := s.provisioner.AddUnits(&app, 3)
+	c.Assert(err, gocheck.IsNil)
+	result := addUnitsActionResult{ids: []string{"unit-0", "unit-1"}, units: units}
+	ctx := action.BWContext{Params: []interface{}{&app}, FWResult: &result}
+	provisionAddUnits.Backward(ctx)
+	c.Assert(s.provisioner.GetUnits(&app), gocheck.HasLen, 1)
+}
+
+func (s *S) TestProvisionAddUnitsBackwardNoPointer(c *gocheck.C) {
+	app := App{
+		Name:     "fiction",
+		Platform: "django",
+	}
+	s.provisioner.Provision(&app)
+	defer s.provisioner.Destroy(&app)
+	units, err := s.provisioner.AddUnits(&app, 3)
+	c.Assert(err, gocheck.IsNil)
+	result := addUnitsActionResult{ids: []string{"unit-0", "unit-1"}, units: units}
+	ctx := action.BWContext{Params: []interface{}{app}, FWResult: &result}
+	provisionAddUnits.Backward(ctx)
+	c.Assert(s.provisioner.GetUnits(&app), gocheck.HasLen, 1)
+}
