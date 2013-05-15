@@ -220,6 +220,7 @@ func ForceDestroy(app *App) error {
 func (app *App) AddUnit(u *Unit) {
 	for i, unt := range app.Units {
 		if unt.Name == u.Name {
+			u.QuotaItem = unt.QuotaItem
 			app.Units[i] = *u
 			return
 		} else if unt.Name == "" && unt.QuotaItem == app.Name+"-0" {

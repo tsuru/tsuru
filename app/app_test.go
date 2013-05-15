@@ -446,6 +446,14 @@ func (s *S) TestAddUnitPlaceHolder(c *gocheck.C) {
 	c.Assert(u.QuotaItem, gocheck.Equals, "appName-0")
 }
 
+func (s *S) TestAddUnitKeepsQuotaItem(c *gocheck.C) {
+	a := App{Name: "myapp", Units: []Unit{{Name: "myapp/0", QuotaItem: "myapp-1"}}}
+	u := Unit{Name: "myapp/0", Machine: 1}
+	a.AddUnit(&u)
+	c.Assert(len(a.Units), gocheck.Equals, 1)
+	c.Assert(u.QuotaItem, gocheck.Equals, "myapp-1")
+}
+
 func (s *S) TestAddUnits(c *gocheck.C) {
 	app := App{Name: "warpaint", Platform: "python"}
 	err := s.conn.Apps().Insert(app)
