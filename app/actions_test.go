@@ -11,12 +11,14 @@ import (
 	"github.com/globocom/tsuru/action"
 	"github.com/globocom/tsuru/app/bind"
 	"github.com/globocom/tsuru/auth"
+	"github.com/globocom/tsuru/queue"
 	"github.com/globocom/tsuru/quota"
 	"labix.org/v2/mgo/bson"
 	"launchpad.net/goamz/aws"
 	"launchpad.net/goamz/iam"
 	"launchpad.net/goamz/s3"
 	"launchpad.net/gocheck"
+	"sort"
 	"strings"
 )
 
@@ -938,4 +940,102 @@ func (s *S) TestProvisionAddUnitsBackwardNoPointer(c *gocheck.C) {
 
 func (s *S) TestProvisionAddUnitsMinParams(c *gocheck.C) {
 	c.Assert(provisionAddUnits.MinParams, gocheck.Equals, 1)
+}
+
+func (s *S) TestSaveNewUnitsInDatabaseForward(c *gocheck.C) {
+	app := App{
+		Name:     "visions",
+		Platform: "django",
+	}
+	s.conn.Apps().Insert(app)
+	defer s.conn.Apps().Remove(bson.M{"name": app.Name})
+	s.provisioner.Provision(&app)
+	defer s.provisioner.Destroy(&app)
+	units, err := s.provisioner.AddUnits(&app, 3)
+	c.Assert(err, gocheck.IsNil)
+	ids := []string{"unit-0", "unit-1", "unit-2"}
+	result := addUnitsActionResult{ids: ids, units: units}
+	ctx := action.FWContext{Previous: &result, Params: []interface{}{&app}}
+	fwresult, err := saveNewUnitsInDatabase.Forward(ctx)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(fwresult, gocheck.IsNil)
+	err = app.Get()
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(app.Units, gocheck.HasLen, 3)
+	var expectedMessages MessageList
+	for i, unit := range app.Units {
+		c.Assert(unit.Name, gocheck.Equals, units[i].Name)
+		c.Assert(unit.QuotaItem, gocheck.Equals, ids[i])
+		messages := []queue.Message{
+			{Action: RegenerateApprcAndStart, Args: []string{app.Name, unit.Name}},
+			{Action: bindService, Args: []string{app.Name, unit.Name}},
+		}
+		expectedMessages = append(expectedMessages, messages...)
+	}
+	gotMessages := make(MessageList, expectedMessages.Len())
+	for i := range expectedMessages {
+		message, err := aqueue().Get(1e6)
+		c.Assert(err, gocheck.IsNil)
+		defer message.Delete()
+		gotMessages[i] = queue.Message{
+			Action: message.Action,
+			Args:   message.Args,
+		}
+	}
+	sort.Sort(expectedMessages)
+	sort.Sort(gotMessages)
+	c.Assert(gotMessages, gocheck.DeepEquals, expectedMessages)
+}
+
+func (s *S) TestSaveNewUnitsInDatabaseForwardNoPointer(c *gocheck.C) {
+	app := App{
+		Name:     "visions",
+		Platform: "django",
+	}
+	s.conn.Apps().Insert(app)
+	defer s.conn.Apps().Remove(bson.M{"name": app.Name})
+	s.provisioner.Provision(&app)
+	defer s.provisioner.Destroy(&app)
+	units, err := s.provisioner.AddUnits(&app, 3)
+	c.Assert(err, gocheck.IsNil)
+	ids := []string{"unit-0", "unit-1", "unit-2"}
+	result := addUnitsActionResult{ids: ids, units: units}
+	ctx := action.FWContext{Previous: &result, Params: []interface{}{app}}
+	fwresult, err := saveNewUnitsInDatabase.Forward(ctx)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(fwresult, gocheck.IsNil)
+	err = app.Get()
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(app.Units, gocheck.HasLen, 3)
+	var expectedMessages MessageList
+	for i, unit := range app.Units {
+		c.Assert(unit.Name, gocheck.Equals, units[i].Name)
+		c.Assert(unit.QuotaItem, gocheck.Equals, ids[i])
+		messages := []queue.Message{
+			{Action: RegenerateApprcAndStart, Args: []string{app.Name, unit.Name}},
+			{Action: bindService, Args: []string{app.Name, unit.Name}},
+		}
+		expectedMessages = append(expectedMessages, messages...)
+	}
+	gotMessages := make(MessageList, expectedMessages.Len())
+	for i := range expectedMessages {
+		message, err := aqueue().Get(1e6)
+		c.Assert(err, gocheck.IsNil)
+		defer message.Delete()
+		gotMessages[i] = queue.Message{
+			Action: message.Action,
+			Args:   message.Args,
+		}
+	}
+	sort.Sort(expectedMessages)
+	sort.Sort(gotMessages)
+	c.Assert(gotMessages, gocheck.DeepEquals, expectedMessages)
+}
+
+func (s *S) TestSaveNewUnitsInDatabaseForwardInvalidApp(c *gocheck.C) {
+	result, err := saveNewUnitsInDatabase.Forward(action.FWContext{Params: []interface{}{"something"}})
+	c.Assert(result, gocheck.IsNil)
+	c.Assert(err, gocheck.NotNil)
 }

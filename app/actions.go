@@ -15,6 +15,7 @@ import (
 	"github.com/globocom/tsuru/db"
 	"github.com/globocom/tsuru/log"
 	"github.com/globocom/tsuru/provision"
+	"github.com/globocom/tsuru/queue"
 	"github.com/globocom/tsuru/quota"
 	"github.com/globocom/tsuru/repository"
 	"labix.org/v2/mgo/bson"
@@ -407,4 +408,52 @@ var provisionAddUnits = action.Action{
 		}
 	},
 	MinParams: 1,
+}
+
+var saveNewUnitsInDatabase = action.Action{
+	Forward: func(ctx action.FWContext) (action.Result, error) {
+		var app App
+		switch ctx.Params[0].(type) {
+		case App:
+			app = ctx.Params[0].(App)
+		case *App:
+			app = *ctx.Params[0].(*App)
+		default:
+			return nil, errors.New("First parameter must be App or *App.")
+		}
+		prev := ctx.Previous.(*addUnitsActionResult)
+		conn, err := db.Conn()
+		if err != nil {
+			return nil, err
+		}
+		defer conn.Close()
+		length := len(app.Units)
+		appUnits := make([]Unit, len(prev.units))
+		app.Units = append(app.Units, appUnits...)
+		messages := make([]queue.Message, len(prev.units)*2)
+		mCount := 0
+		for i, unit := range prev.units {
+			app.Units[i+length] = Unit{
+				Name:       unit.Name,
+				Type:       unit.Type,
+				Ip:         unit.Ip,
+				Machine:    unit.Machine,
+				State:      provision.StatusPending.String(),
+				InstanceId: unit.InstanceId,
+				QuotaItem:  prev.ids[i],
+			}
+			messages[mCount] = queue.Message{Action: RegenerateApprcAndStart, Args: []string{app.Name, unit.Name}}
+			messages[mCount+1] = queue.Message{Action: bindService, Args: []string{app.Name, unit.Name}}
+			mCount += 2
+		}
+		err = conn.Apps().Update(
+			bson.M{"name": app.Name},
+			bson.M{"$set": bson.M{"units": app.Units}},
+		)
+		if err != nil {
+			return nil, err
+		}
+		go Enqueue(messages...)
+		return nil, nil
+	},
 }
