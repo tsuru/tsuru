@@ -6,6 +6,9 @@ package main
 
 import (
 	"github.com/globocom/tsuru/cmd"
+	_ "github.com/globocom/tsuru/provision/docker"
+	_ "github.com/globocom/tsuru/provision/juju"
+	_ "github.com/globocom/tsuru/provision/lxc"
 	"os"
 )
 
