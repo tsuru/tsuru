@@ -406,4 +406,5 @@ var provisionAddUnits = action.Action{
 			Provisioner.RemoveUnit(&app, unit.Name)
 		}
 	},
+	MinParams: 1,
 }

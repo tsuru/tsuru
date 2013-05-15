@@ -935,3 +935,7 @@ func (s *S) TestProvisionAddUnitsBackwardNoPointer(c *gocheck.C) {
 	provisionAddUnits.Backward(ctx)
 	c.Assert(s.provisioner.GetUnits(&app), gocheck.HasLen, 1)
 }
+
+func (s *S) TestProvisionAddUnitsMinParams(c *gocheck.C) {
+	c.Assert(provisionAddUnits.MinParams, gocheck.Equals, 1)
+}
