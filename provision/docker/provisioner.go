@@ -135,6 +135,13 @@ func (*dockerProvisioner) AddUnits(a provision.App, units uint) ([]provision.Uni
 	if units == 0 {
 		return nil, errors.New("Cannot add 0 units")
 	}
+	containers, err := listAppContainers(a.GetName())
+	if err != nil {
+		return nil, err
+	}
+	if len(containers) < 1 {
+		return nil, errors.New("New units can only be added after the first deployment")
+	}
 	writer := app.LogWriter{App: a, Writer: ioutil.Discard}
 	result := make([]provision.Unit, int(units))
 	for i := uint(0); i < units; i++ {

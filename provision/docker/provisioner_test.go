@@ -279,6 +279,8 @@ func (s *S) TestProvisionerAddUnits(c *gocheck.C) {
 	defer setExecut(nil)
 	var p dockerProvisioner
 	app := testing.NewFakeApp("myapp", "python", 0)
+	s.conn.Collection(s.collName).Insert(container{Id: "c-89320", AppName: app.GetName()})
+	defer s.conn.Collection(s.collName).RemoveId("c-89320")
 	expected := []provision.Unit{
 		{Name: "c-300", AppName: app.GetName(),
 			Type: app.GetPlatform(), Ip: "10.10.10.1",
@@ -299,7 +301,7 @@ func (s *S) TestProvisionerAddUnits(c *gocheck.C) {
 	c.Assert(fexec.ExecutedCmd("docker", []string{"inspect", "c-302"}), gocheck.Equals, true)
 	count, err := s.conn.Collection(s.collName).Find(bson.M{"appname": app.GetName()}).Count()
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(count, gocheck.Equals, 3)
+	c.Assert(count, gocheck.Equals, 4)
 	ok := make(chan bool, 1)
 	go func() {
 		for {
@@ -331,10 +333,21 @@ func (s *S) TestProvisionerAddUnitsFailure(c *gocheck.C) {
 	setExecut(&fexec)
 	defer setExecut(nil)
 	app := testing.NewFakeApp("myapp", "python", 1)
+	s.conn.Collection(s.collName).Insert(container{Id: "c-89320", AppName: app.GetName()})
+	defer s.conn.Collection(s.collName).RemoveId("c-89320")
 	var p dockerProvisioner
 	units, err := p.AddUnits(app, 1)
 	c.Assert(units, gocheck.IsNil)
 	c.Assert(err, gocheck.NotNil)
+}
+
+func (s *S) TestProvisionerAddUnitsWithoutContainers(c *gocheck.C) {
+	app := testing.NewFakeApp("myapp", "python", 1)
+	var p dockerProvisioner
+	units, err := p.AddUnits(app, 1)
+	c.Assert(units, gocheck.IsNil)
+	c.Assert(err, gocheck.NotNil)
+	c.Assert(err.Error(), gocheck.Equals, "New units can only be added after the first deployment")
 }
 
 func (s *S) TestProvisionerRemoveUnit(c *gocheck.C) {
