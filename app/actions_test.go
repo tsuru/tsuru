@@ -739,6 +739,8 @@ func (s *S) TestReserveUnitsToAddForward(c *gocheck.C) {
 		Name:     "visions",
 		Platform: "django",
 	}
+	s.conn.Apps().Insert(app)
+	defer s.conn.Apps().Remove(bson.M{"name": app.Name})
 	err := quota.Create(app.Name, 5)
 	c.Assert(err, gocheck.IsNil)
 	defer quota.Delete(app.Name)
@@ -758,6 +760,8 @@ func (s *S) TestReserveUnitsToAddForwardUint(c *gocheck.C) {
 		Name:     "visions",
 		Platform: "django",
 	}
+	s.conn.Apps().Insert(app)
+	defer s.conn.Apps().Remove(bson.M{"name": app.Name})
 	err := quota.Create(app.Name, 5)
 	c.Assert(err, gocheck.IsNil)
 	defer quota.Delete(app.Name)
@@ -777,6 +781,8 @@ func (s *S) TestReserveUnitsToAddForwardNoPointer(c *gocheck.C) {
 		Name:     "visions",
 		Platform: "django",
 	}
+	s.conn.Apps().Insert(app)
+	defer s.conn.Apps().Remove(bson.M{"name": app.Name})
 	err := quota.Create(app.Name, 5)
 	c.Assert(err, gocheck.IsNil)
 	defer quota.Delete(app.Name)
@@ -796,6 +802,14 @@ func (s *S) TestReserveUnitsToAddForwardInvalidApp(c *gocheck.C) {
 	c.Assert(result, gocheck.IsNil)
 	c.Assert(err, gocheck.NotNil)
 	c.Assert(err.Error(), gocheck.Equals, "First parameter must be App or *App.")
+}
+
+func (s *S) TestReserveUnitsToAddAppNotFound(c *gocheck.C) {
+	app := App{Name: "something"}
+	result, err := reserveUnitsToAdd.Forward(action.FWContext{Params: []interface{}{&app, 3}})
+	c.Assert(result, gocheck.IsNil)
+	c.Assert(err, gocheck.NotNil)
+	c.Assert(err.Error(), gocheck.Equals, "App not found")
 }
 
 func (s *S) TestReserveUnitsToAddForwardInvalidNumber(c *gocheck.C) {

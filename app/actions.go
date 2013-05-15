@@ -348,8 +348,17 @@ var reserveUnitsToAdd = action.Action{
 		default:
 			return nil, errors.New("Second parameter must be int or uint.")
 		}
+		conn, err := db.Conn()
+		if err != nil {
+			return nil, err
+		}
+		defer conn.Close()
+		err = app.Get()
+		if err != nil {
+			return nil, errors.New("App not found")
+		}
 		ids := generateUnitQuotaItems(&app, int(n))
-		err := quota.Reserve(app.Name, ids...)
+		err = quota.Reserve(app.Name, ids...)
 		if err != nil && err != quota.ErrQuotaNotFound {
 			return nil, err
 		}
