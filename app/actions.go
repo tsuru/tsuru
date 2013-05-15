@@ -364,4 +364,5 @@ var reserveUnitsToAdd = action.Action{
 		ids := ctx.FWResult.([]string)
 		quota.Release(app.Name, ids...)
 	},
+	MinParams: 2,
 }

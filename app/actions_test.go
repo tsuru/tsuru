@@ -837,3 +837,7 @@ func (s *S) TestReserveUnitsToAddBackwardNoPointer(c *gocheck.C) {
 	c.Assert(avail, gocheck.Equals, uint(5))
 	c.Assert(items, gocheck.HasLen, 0)
 }
+
+func (s *S) TestReserveUnitsMinParams(c *gocheck.C) {
+	c.Assert(reserveUnitsToAdd.MinParams, gocheck.Equals, 2)
+}
