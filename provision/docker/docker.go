@@ -259,7 +259,6 @@ func (c *container) deploy(w io.Writer) error {
 		c.setStatus("error")
 		return err
 	}
-	c.setStatus("deploying")
 	runArgs, _ := config.GetString("docker:run-cmd:args")
 	appRepo := repository.GetReadOnlyUrl(c.AppName)
 	filter := filter{w: w, content: []byte("connection refused")}
