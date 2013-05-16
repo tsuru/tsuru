@@ -147,6 +147,60 @@ func (s *S) TestDeployShouldReplaceAllContainers(c *gocheck.C) {
 	c.Assert(commands, gocheck.HasLen, 4)
 }
 
+func (s *S) TestDeployFailureFirstStep(c *gocheck.C) {
+	var (
+		p   dockerProvisioner
+		buf bytes.Buffer
+	)
+	app := testing.NewFakeApp("app", "python", 0)
+	app.AddUnit(&testing.FakeUnit{Name: "app/0"})
+	fexec := etesting.ErrorExecutor{
+		FakeExecutor: etesting.FakeExecutor{
+			Output: map[string][][]byte{
+				"*": {[]byte("failed to start container")},
+			},
+		},
+	}
+	setExecut(&fexec)
+	defer setExecut(nil)
+	err := p.Deploy(app, &buf)
+	c.Assert(err, gocheck.NotNil)
+}
+
+func (s *S) TestDeployFailureSecondStep(c *gocheck.C) {
+	var (
+		p   dockerProvisioner
+		buf bytes.Buffer
+	)
+	app := testing.NewFakeApp("app", "python", 0)
+	app.AddUnit(&testing.FakeUnit{Name: "app/0"})
+	defer s.conn.Collection(s.collName).RemoveAll(bson.M{"appname": app.GetName()})
+	output := `{
+	"NetworkSettings": {
+		"IpAddress": "10.10.10.%d",
+		"IpPrefixLen": 8,
+		"Gateway": "10.65.41.1",
+		"PortMapping": {}
+	}
+}`
+	fexec := etesting.FailLaterExecutor{
+		Succeeds: 2,
+		FakeExecutor: etesting.FakeExecutor{
+			Output: map[string][][]byte{
+				"*":              {[]byte("c-0955")},
+				"inspect c-0955": {[]byte(output)},
+			},
+		},
+	}
+	setExecut(&fexec)
+	defer setExecut(nil)
+	err := p.Deploy(app, &buf)
+	c.Assert(err, gocheck.NotNil)
+	c.Assert(buf.String(), gocheck.Equals, "c-0955")
+	c.Assert(fexec.ExecutedCmd("docker", []string{"rm", "c-0955"}), gocheck.Equals, true)
+	c.Assert(app.ProvisionUnits(), gocheck.HasLen, 1)
+}
+
 func (s *S) TestProvisionerDestroy(c *gocheck.C) {
 	fexec := &etesting.FakeExecutor{}
 	setExecut(fexec)
