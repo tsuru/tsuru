@@ -565,14 +565,21 @@ func (s *S) TestCollectStatus(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	defer listener.Close()
 	err = collection().Insert(
-		container{Id: "9930c24f1c5f", AppName: "ashamed", Type: "python", Port: strings.Split(listener.Addr().String(), ":")[1]},
-		container{Id: "9930c24f1c4f", AppName: "make-up", Type: "python", Port: "8889"},
+		container{
+			Id: "9930c24f1c5f", AppName: "ashamed", Type: "python",
+			Port: strings.Split(listener.Addr().String(), ":")[1], Status: "running",
+		},
+		container{Id: "9930c24f1c4f", AppName: "make-up", Type: "python", Port: "8889", Status: "running"},
+		container{Id: "9930c24f1c6f", AppName: "make-up", Type: "python", Port: "9090", Status: "error"},
+		container{Id: "9930c24f1c7f", AppName: "make-up", Type: "python", Port: "9090", Status: "created"},
 	)
 	c.Assert(err, gocheck.IsNil)
-	defer collection().RemoveAll(bson.M{"_id": bson.M{"$in": []string{"9930c24f1c5f", "9930c24f1c4f"}}})
+	defer collection().RemoveAll(bson.M{"appname": "make-up"})
 	psOutput := `9930c24f1c5f
 9930c24f1c4f
 9930c24f1c3f
+9930c24f1c6f
+9930c24f1c7f
 `
 	c1Output := `{
 	"NetworkSettings": {
@@ -610,6 +617,12 @@ func (s *S) TestCollectStatus(c *gocheck.C) {
 			Machine: 0,
 			Ip:      "127.0.0.1",
 			Status:  provision.StatusInstalling,
+		},
+		{
+			Name:    "9930c24f1c6f",
+			AppName: "make-up",
+			Type:    "python",
+			Status:  provision.StatusError,
 		},
 	}
 	output := map[string][][]byte{

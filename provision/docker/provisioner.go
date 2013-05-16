@@ -244,6 +244,19 @@ func collectUnit(id string, units chan<- provision.Unit, errs chan<- error, wg *
 		log.Printf("Container %q not in the database. Skipping...", id)
 		return
 	}
+	unit := provision.Unit{
+		Name:    container.Id,
+		AppName: container.AppName,
+		Type:    container.Type,
+	}
+	switch container.Status {
+	case "error":
+		unit.Status = provision.StatusError
+		units <- unit
+		return
+	case "created":
+		return
+	}
 	out, err := runCmd(docker, "inspect", id)
 	if err != nil {
 		errs <- err
@@ -254,11 +267,6 @@ func collectUnit(id string, units chan<- provision.Unit, errs chan<- error, wg *
 	if err != nil {
 		errs <- err
 		return
-	}
-	unit := provision.Unit{
-		Name:    container.Id,
-		AppName: container.AppName,
-		Type:    container.Type,
 	}
 	unit.Ip = c["NetworkSettings"].(map[string]interface{})["IpAddress"].(string)
 	addr := fmt.Sprintf("%s:%s", unit.Ip, container.Port)
