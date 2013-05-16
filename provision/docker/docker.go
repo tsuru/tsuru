@@ -261,6 +261,7 @@ func (c *container) deploy(w io.Writer) error {
 		}
 		log.Printf("SSH to the container %q failed. Will retry.", c.Id)
 		time.Sleep(100e6)
+		filter.filtered = false
 	}
 	return c.ssh(w, w, runBin, strings.Fields(runArgs)...)
 }
