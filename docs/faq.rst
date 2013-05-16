@@ -5,15 +5,15 @@
 Tsuru Frequently Asked Questions
 --------------------------------
 
-* What is Tsuru?
-* What is an application?
-* What is a unit?
-* What is a platform?
-* What is a service?
-* How does environment variables works?
-* How does the quota system works?
-* How routing works?
-* How are repositories managed?
+* `What is Tsuru?`_
+* `What is an application?`_
+* `What is a unit?`_
+* `What is a platform?`_
+* `What is a service?`_
+* `How does environment variables works?`_
+* `How does the quota system works?`_
+* `How routing works?`_
+* `How are repositories managed?`_
 
 This document is an attempt to explain concepts you'll face when deploying and managing applications using Tsuru.
 To request additional explanations you can open an issue on our issue tracker, talk to us at #tsuru @ freenode.net
@@ -59,6 +59,8 @@ services are MySQL, Redis, MongoDB, etc. Tsuru has built-in services, but it is 
 Services aren't managed by Tsuru, but by it's creators. Althought you can host your service api on Tsuru as an application, Tsuru does
 not give enough flexibility (like sshing the application units, although you can run commands) to properly manage a service. You can do it,
 but it's a bit harder.
+Check the :doc:`service usage documentation </apps/client/services>` for more on using services and the :doc:`building your own service tutorial </services/build>`
+for a quick start on how to extend Tsuru by creating new services.
 
 How does environment variables work?
 ====================================
@@ -70,6 +72,9 @@ Whenever you (or a service, we'll get there soon) export environment variables i
 it writes the variables and its values on a file on the application's unit, called apprc. This file watched by a circus plugin, writen by Tsuru developers.
 When circus finds a change in that file, it reloads the application environment variables, adding the recently added envvars. But you don't need to know
 that to use environment variables on Tsuru, everything is transparent for the end user, as you'll experience.
+When you bind your application into a service, most likely you'll need to communicate with that service in some way. Services can export environment variables
+by telling Tsuru what they need, so whenever you bind your application with a service, its api can return environment variables for Tsuru to export on your
+application's units.
 
 How does the quota system works?
 ================================
@@ -81,12 +86,13 @@ the maximum number of units an application may have.
 How routing works?
 ==================
 
-Tsuru has a router interface, which makes extremely easy to change the way routing works with any provisioner. There are two ready-to-go routers: one using hipache
-and another with nginx.
+Tsuru has a router interface, which makes extremely easy to change the way routing works with any provisioner. There are two ready-to-go routers: one using
+`hipache <https://github.com/dotcloud/hipache>`_ and another with `nginx <http://wiki.nginx.org/>`_.
 
 How are repositories managed?
 =============================
 
-Tsuru uses Gandalf to manage git repositories. Every time you create an application Tsuru will ask Gandalf to create a related git bare repository for you to push in.
-This is the remote Tsuru gives you when you create a new app. Everytime you perform a git push, Gandalf intercepts it, check if you have the required authorization
+Tsuru uses `Gandalf <https://github.com/globocom/gandalf>`_ to manage git repositories. Every time you create an application
+Tsuru will ask Gandalf to create a related git bare repository for you to push in.  This is the remote Tsuru gives you when
+you create a new app. Everytime you perform a git push, Gandalf intercepts it, check if you have the required authorization
 to write into the application's repository, and then lets the push proceeds or returns an error message.
