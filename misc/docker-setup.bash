@@ -13,7 +13,7 @@ function configure_tsuru() {
 }
 
 function install_docker() {
-    sudo apt-get install lxc wget bsdtar curl
+    sudo apt-get install lxc wget bsdtar curl -y --force-yes
     # are you on AWS? if so, uncomment the line below
     # sudo apt-get install linux-image-extra-`uname -r`
     wget http://get.docker.io/builds/$(uname -s)/$(uname -m)/docker-master.tgz
