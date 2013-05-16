@@ -299,6 +299,7 @@ func (c *container) remove() error {
 }
 
 func (c *container) ssh(stdout, stderr io.Writer, cmd string, args ...string) error {
+	stderr = &filter{w: stderr, content: []byte("unable to resolve host")}
 	user, err := config.GetString("docker:ssh:user")
 	if err != nil {
 		return err

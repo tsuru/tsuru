@@ -613,6 +613,22 @@ func (s *S) TestContainerSSHCommandFailure(c *gocheck.C) {
 	c.Assert(stderr.String(), gocheck.Equals, "failed")
 }
 
+func (s *S) TestContainerSSHFiltersStderr(c *gocheck.C) {
+	var stdout, stderr bytes.Buffer
+	fexec := &etesting.ErrorExecutor{
+		FakeExecutor: etesting.FakeExecutor{
+			Output: map[string][][]byte{"*": {[]byte("failed\nunable to resolve host abcdef")}},
+		},
+	}
+	setExecut(fexec)
+	defer setExecut(nil)
+	container := container{Id: "c-01", Ip: "10.10.10.10"}
+	err := container.ssh(&stdout, &stderr, "ls", "-a")
+	c.Assert(err, gocheck.NotNil)
+	c.Assert(stdout.Bytes(), gocheck.IsNil)
+	c.Assert(stderr.String(), gocheck.Equals, "failed\n")
+}
+
 func (s *S) TestImageCommit(c *gocheck.C) {
 	fexec := &etesting.FakeExecutor{}
 	setExecut(fexec)
