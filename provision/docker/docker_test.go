@@ -362,6 +362,21 @@ func (s *S) TestDockerDeployNoBinaryToRun(c *gocheck.C) {
 	c.Assert(err.Error(), gocheck.Equals, `key "docker:run-cmd:bin" not found`)
 }
 
+func (s *S) TestDockerDeployFailure(c *gocheck.C) {
+	var buf bytes.Buffer
+	fexec := etesting.ErrorExecutor{
+		FakeExecutor: etesting.FakeExecutor{
+			Output: map[string][][]byte{"*": {[]byte("deploy failed")}},
+		},
+	}
+	setExecut(&fexec)
+	defer setExecut(nil)
+	container := container{Id: "c-01", Ip: "10.10.10.10", AppName: "myapp"}
+	err := container.deploy(&buf)
+	c.Assert(err, gocheck.NotNil)
+	c.Assert(buf.String(), gocheck.Equals, "deploy failed")
+}
+
 func (s *S) TestDockerRemove(c *gocheck.C) {
 	fexec := &etesting.FakeExecutor{}
 	setExecut(fexec)

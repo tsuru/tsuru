@@ -250,10 +250,14 @@ func (c *container) deploy(w io.Writer) error {
 	}
 	runArgs, _ := config.GetString("docker:run-cmd:args")
 	appRepo := repository.GetReadOnlyUrl(c.AppName)
+	filter := filter{w: w, content: []byte("connection refused")}
 	for {
-		err = c.ssh(w, w, deployCmd, appRepo)
+		err = c.ssh(w, &filter, deployCmd, appRepo)
 		if err == nil {
 			break
+		}
+		if !filter.filtered {
+			return err
 		}
 		log.Printf("SSH to the container %q failed. Will retry.", c.Id)
 		time.Sleep(100e6)
