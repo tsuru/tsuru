@@ -133,8 +133,10 @@ func (s *Storage) Platforms() *mgo.Collection {
 // Logs returns the logs collection from MongoDB.
 func (s *Storage) Logs() *mgo.Collection {
 	appNameIndex := mgo.Index{Key: []string{"appname"}}
+	sourceIndex := mgo.Index{Key: []string{"source"}}
 	c := s.Collection("logs")
 	c.EnsureIndex(appNameIndex)
+	c.EnsureIndex(sourceIndex)
 	return c
 }
 

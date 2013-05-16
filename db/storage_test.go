@@ -295,11 +295,18 @@ func (s *S) TestQuotaOwnerIsUnique(c *gocheck.C) {
 	c.Assert(quota, HasUniqueIndex, []string{"owner"})
 }
 
-func (s *S) TestLogAppNameIsUnique(c *gocheck.C) {
+func (s *S) TestLogAppNameIndex(c *gocheck.C) {
 	storage, _ := Open("127.0.0.1", "tsuru_storage_test")
 	defer storage.session.Close()
 	logs := storage.Logs()
 	c.Assert(logs, HasIndex, []string{"appname"})
+}
+
+func (s *S) TestLogSourceIndex(c *gocheck.C) {
+	storage, _ := Open("127.0.0.1", "tsuru_storage_test")
+	defer storage.session.Close()
+	logs := storage.Logs()
+	c.Assert(logs, HasIndex, []string{"source"})
 }
 
 func (s *S) TestRetire(c *gocheck.C) {
