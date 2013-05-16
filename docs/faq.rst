@@ -10,7 +10,7 @@ Tsuru Frequently Asked Questions
 * `What is a unit?`_
 * `What is a platform?`_
 * `What is a service?`_
-* `How does environment variables works?`_
+* `How does environment variables work?`_
 * `How does the quota system works?`_
 * `How routing works?`_
 * `How are repositories managed?`_
