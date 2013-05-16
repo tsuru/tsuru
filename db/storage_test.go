@@ -14,6 +14,35 @@ import (
 	"time"
 )
 
+type hasIndexChecker struct{}
+
+func (c *hasIndexChecker) Info() *gocheck.CheckerInfo {
+	return &gocheck.CheckerInfo{Name: "HasIndexChecker", Params: []string{"collection", "key"}}
+}
+
+func (c *hasIndexChecker) Check(params []interface{}, names []string) (bool, string) {
+	collection, ok := params[0].(*mgo.Collection)
+	if !ok {
+		return false, "first parameter should be a mgo collection"
+	}
+	key, ok := params[1].([]string)
+	if !ok {
+		return false, "second parameter should be the key, as used for mgo index declaration (slice of strings)"
+	}
+	indexes, err := collection.Indexes()
+	if err != nil {
+		return false, "failed to get collection indexes: " + err.Error()
+	}
+	for _, index := range indexes {
+		if reflect.DeepEqual(index.Key, key) {
+			return true, ""
+		}
+	}
+	return false, ""
+}
+
+var HasIndex gocheck.Checker = &hasIndexChecker{}
+
 type hasUniqueIndexChecker struct{}
 
 func (c *hasUniqueIndexChecker) Info() *gocheck.CheckerInfo {
@@ -264,6 +293,13 @@ func (s *S) TestQuotaOwnerIsUnique(c *gocheck.C) {
 	defer storage.session.Close()
 	quota := storage.Quota()
 	c.Assert(quota, HasUniqueIndex, []string{"owner"})
+}
+
+func (s *S) TestLogAppNameIsUnique(c *gocheck.C) {
+	storage, _ := Open("127.0.0.1", "tsuru_storage_test")
+	defer storage.session.Close()
+	logs := storage.Logs()
+	c.Assert(logs, HasIndex, []string{"appname"})
 }
 
 func (s *S) TestRetire(c *gocheck.C) {
