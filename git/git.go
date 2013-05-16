@@ -1,4 +1,4 @@
-// Copyright 2012 tsuru authors. All rights reserved.
+// Copyright 2013 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -67,18 +67,16 @@ func (r *Repository) GetRemoteUrl(name string) (string, error) {
 		return "", err
 	}
 	defer config.Close()
-	line := fmt.Sprintf("[remote %q]\n", name)
-	reader := bufio.NewReader(config)
-	l, err := reader.ReadString('\n')
-	for err == nil {
+	line := fmt.Sprintf("[remote %q]", name)
+	scanner := bufio.NewScanner(config)
+	scanner.Split(bufio.ScanLines)
+	for scanner.Scan() {
 		if next {
-			url := strings.Split(l, " = ")[1]
-			return strings.TrimSpace(url), nil
 		}
-		if l == line {
-			next = true
+		if scanner.Text() == line {
+			scanner.Scan()
+			return strings.Split(scanner.Text(), " = ")[1], nil
 		}
-		l, err = reader.ReadString('\n')
 	}
 	return "", fmt.Errorf("Remote %q not found.", name)
 }
