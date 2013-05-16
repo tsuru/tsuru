@@ -24,17 +24,6 @@ before_script:
 script:
   - pushd $GOPATH/src/github.com/globocom/tsuru
   - make test
-notifications:
-  irc:
-    channels:
-      - "irc.freenode.net#tsuru"
-    on_success: change
-    on_failure: always
-  email:
-    recipients:
-      - tsuru@corp.globo.com
-    on_success: change
-    on_failure: always
 services:
   - mongodb
   - redis
