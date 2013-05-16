@@ -30,7 +30,7 @@ function start_tsuru() {
     echo "starting tsuru-collector"
     tsr collector &
     echo "starting tsuru-api"
-    sudo tsr api &
+    tsr api &
 }
 
 function remove_git_hooks() {
