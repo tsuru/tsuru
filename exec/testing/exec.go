@@ -127,3 +127,24 @@ func (e *RetryExecutor) Execute(cmd string, args []string, stdin io.Reader, stdo
 	e.FakeExecutor.Execute(cmd, args, stdin, stdout, stderr)
 	return err
 }
+
+// FailLaterExecutor is the opposite of RetryExecutor. It fails after N
+// Succeeds.
+type FailLaterExecutor struct {
+	FakeExecutor
+
+	Succeeds int64
+	calls    safe.Counter
+}
+
+func (e *FailLaterExecutor) Execute(cmd string, args []string, stdin io.Reader, stdout, stderr io.Writer) error {
+	defer e.calls.Increment()
+	var err error
+	fail := e.Succeeds <= e.calls.Val()
+	if fail {
+		stdout = stderr
+		err = errors.New("")
+	}
+	e.FakeExecutor.Execute(cmd, args, stdin, stdout, stderr)
+	return err
+}

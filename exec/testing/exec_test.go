@@ -277,3 +277,35 @@ func (s *S) TestRetryExecutor(c *gocheck.C) {
 	c.Assert(stdout.String(), gocheck.Equals, "hello")
 	c.Assert(stderr.String(), gocheck.Equals, "")
 }
+
+func (s *S) TestFailLaterExecutor(c *gocheck.C) {
+	e := FailLaterExecutor{
+		Succeeds: 2,
+		FakeExecutor: FakeExecutor{
+			Output: map[string][][]byte{
+				"*": {[]byte("hello!")},
+			},
+		},
+	}
+	var stdout, stderr bytes.Buffer
+	args := []string{"-la"}
+	err := e.Execute("ls", args, nil, &stdout, &stderr)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(stdout.String(), gocheck.Equals, "hello!")
+	c.Assert(stderr.String(), gocheck.Equals, "")
+	stdout.Reset()
+	err = e.Execute("ls", args, nil, &stdout, &stderr)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(stdout.String(), gocheck.Equals, "hello!")
+	c.Assert(stderr.String(), gocheck.Equals, "")
+	stdout.Reset()
+	err = e.Execute("ls", args, nil, &stdout, &stderr)
+	c.Assert(err, gocheck.NotNil)
+	c.Assert(stdout.String(), gocheck.Equals, "")
+	c.Assert(stderr.String(), gocheck.Equals, "hello!")
+	stderr.Reset()
+	err = e.Execute("ls", args, nil, &stdout, &stderr)
+	c.Assert(err, gocheck.NotNil)
+	c.Assert(stdout.String(), gocheck.Equals, "")
+	c.Assert(stderr.String(), gocheck.Equals, "hello!")
+}
