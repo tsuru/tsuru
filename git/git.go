@@ -61,7 +61,6 @@ func OpenRepository(p string) (*Repository, error) {
 // GetRemoteUrl returns the URL of a remote by its name. Or an error, if the
 // remote is not declared.
 func (r *Repository) GetRemoteUrl(name string) (string, error) {
-	var next bool
 	config, err := os.Open(path.Join(r.path, "config"))
 	if err != nil {
 		return "", err
@@ -71,8 +70,6 @@ func (r *Repository) GetRemoteUrl(name string) (string, error) {
 	scanner := bufio.NewScanner(config)
 	scanner.Split(bufio.ScanLines)
 	for scanner.Scan() {
-		if next {
-		}
 		if scanner.Text() == line {
 			scanner.Scan()
 			return strings.Split(scanner.Text(), " = ")[1], nil
