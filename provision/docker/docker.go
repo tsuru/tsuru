@@ -150,6 +150,7 @@ func (c *container) inspect() (map[string]interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
+	log.Printf("docker inspect output: %s", out)
 	var r map[string]interface{}
 	err = json.Unmarshal([]byte(out), &r)
 	if err != nil {
@@ -289,8 +290,8 @@ func (c *container) remove() error {
 	if err != nil {
 		return err
 	}
-	log.Printf("Removing container %s from docker", c.Id)
 	address := c.getAddress()
+	log.Printf("Removing container %s from docker", c.Id)
 	out, err := runCmd(docker, "rm", c.Id)
 	if err != nil {
 		log.Printf("Failed to remove container from docker: %s", err.Error())
