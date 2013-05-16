@@ -278,6 +278,7 @@ func (s *S) TestDockerCreate(c *gocheck.C) {
 		"/bin/bash", "-c", sshCmd,
 	}
 	c.Assert(fexec.ExecutedCmd("docker", args), gocheck.Equals, true)
+	c.Assert(container.Status, gocheck.Equals, "created")
 }
 
 func (s *S) TestContainerCreateWithoutHostAddr(c *gocheck.C) {

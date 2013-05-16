@@ -227,6 +227,7 @@ func (c *container) create(app provision.App) error {
 		return err
 	}
 	c.Ip = ip
+	c.Status = "created"
 	coll := collection()
 	defer coll.Database.Session.Close()
 	if err := coll.Insert(c); err != nil {
