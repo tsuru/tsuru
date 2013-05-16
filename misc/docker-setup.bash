@@ -10,6 +10,7 @@ function configure_tsuru() {
     echo "Configuring tsuru"
     sudo mkdir -p /etc/tsuru
     sudo curl -sL https://raw.github.com/globocom/tsuru/master/etc/tsuru-docker.conf -o /etc/tsuru/tsuru.conf
+    ssh-keygen -t rsa -f /home/ubuntu/.ssh/id_rsa.pub -N ""
 }
 
 function install_docker() {
