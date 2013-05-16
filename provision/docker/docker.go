@@ -106,6 +106,7 @@ type container struct {
 	Type    string
 	Ip      string
 	Port    string
+	Status  string
 }
 
 func (c *container) getAddress() string {
