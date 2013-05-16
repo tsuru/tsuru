@@ -241,6 +241,13 @@ func (c *container) create(app provision.App) error {
 	return r.AddRoute(app.GetName(), c.getAddress())
 }
 
+func (c *container) setStatus(status string) error {
+	c.Status = status
+	coll := collection()
+	defer coll.Database.Session.Close()
+	return coll.UpdateId(c.Id, c)
+}
+
 func (c *container) deploy(w io.Writer) error {
 	deployCmd, err := config.GetString("docker:deploy-cmd")
 	if err != nil {

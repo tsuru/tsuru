@@ -290,6 +290,16 @@ func (s *S) TestContainerCreateWithoutHostAddr(c *gocheck.C) {
 	c.Assert(err, gocheck.NotNil)
 }
 
+func (s *S) TestContainerSetStatus(c *gocheck.C) {
+	container := container{Id: "something-300"}
+	s.conn.Collection(s.collName).Insert(container)
+	defer s.conn.Collection(s.collName).RemoveId(container.Id)
+	container.setStatus("what?!")
+	c2, err := getContainer(container.Id)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(c2.Status, gocheck.Equals, "what?!")
+}
+
 func (s *S) TestDockerDeploy(c *gocheck.C) {
 	var buf bytes.Buffer
 	fexec := &etesting.FakeExecutor{
