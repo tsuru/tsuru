@@ -8,9 +8,11 @@ import (
 	"github.com/globocom/config"
 	"github.com/globocom/tsuru/db"
 	ftesting "github.com/globocom/tsuru/fs/testing"
+	"github.com/globocom/tsuru/provision"
 	_ "github.com/globocom/tsuru/testing"
 	"launchpad.net/gocheck"
 	"os"
+	"sort"
 	"testing"
 )
 
@@ -71,4 +73,22 @@ func (s *S) SetUpSuite(c *gocheck.C) {
 func (s *S) TearDownSuite(c *gocheck.C) {
 	s.conn.Collection(s.collName).Database.DropDatabase()
 	fsystem = nil
+}
+
+type unitSlice []provision.Unit
+
+func (s unitSlice) Len() int {
+	return len(s)
+}
+
+func (s unitSlice) Less(i, j int) bool {
+	return s[i].Name < s[j].Name
+}
+
+func (s unitSlice) Swap(i, j int) {
+	s[i], s[j] = s[j], s[i]
+}
+
+func sortUnits(units []provision.Unit) {
+	sort.Sort(unitSlice(units))
 }

@@ -636,9 +636,8 @@ func (s *S) TestCollectStatus(c *gocheck.C) {
 	var p dockerProvisioner
 	units, err := p.CollectStatus()
 	c.Assert(err, gocheck.IsNil)
-	if units[0].Name != expected[0].Name {
-		units[0], units[1] = units[1], units[0]
-	}
+	sortUnits(units)
+	sortUnits(expected)
 	c.Assert(units, gocheck.DeepEquals, expected)
 }
 
