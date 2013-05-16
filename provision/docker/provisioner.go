@@ -253,7 +253,7 @@ func collectUnit(id string, units chan<- provision.Unit, errs chan<- error, wg *
 	case "error":
 		unit.Status = provision.StatusError
 		units <- unit
-		return
+		fallthrough
 	case "created":
 		return
 	}
