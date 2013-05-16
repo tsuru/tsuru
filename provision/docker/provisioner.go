@@ -90,8 +90,7 @@ func (p *dockerProvisioner) Deploy(a provision.App, w io.Writer) error {
 		if err != nil {
 			return err
 		}
-		c.deploy(w)
-		return nil
+		return c.deploy(w)
 	}
 	if containers, err := listAppContainers(a.GetName()); err == nil && len(containers) > 0 {
 		for _, c := range containers {
