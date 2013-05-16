@@ -92,7 +92,9 @@ func (p *dockerProvisioner) Deploy(a provision.App, w io.Writer) error {
 		}
 		err = c.deploy(w)
 		if err != nil {
-			c.remove()
+			if err := a.RemoveUnit(c.Id); err != nil {
+				c.remove()
+			}
 		}
 		return err
 	}
