@@ -322,6 +322,9 @@ func (s *S) TestDockerDeploy(c *gocheck.C) {
 	}
 	c.Assert(fexec.ExecutedCmd("ssh", deployArgs), gocheck.Equals, true)
 	c.Assert(fexec.ExecutedCmd("ssh", runArgs), gocheck.Equals, true)
+	cont, err := getContainer(container.Id)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(cont.Status, gocheck.Equals, "running")
 }
 
 func (s *S) TestDockerDeployRetries(c *gocheck.C) {
@@ -386,6 +389,9 @@ func (s *S) TestDockerDeployFailure(c *gocheck.C) {
 	err := container.deploy(&buf)
 	c.Assert(err, gocheck.NotNil)
 	c.Assert(buf.String(), gocheck.Equals, "deploy failed")
+	c2, err := getContainer(container.Id)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(c2.Status, gocheck.Equals, "error")
 }
 
 func (s *S) TestDockerRemove(c *gocheck.C) {

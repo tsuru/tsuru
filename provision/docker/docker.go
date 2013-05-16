@@ -251,10 +251,12 @@ func (c *container) setStatus(status string) error {
 func (c *container) deploy(w io.Writer) error {
 	deployCmd, err := config.GetString("docker:deploy-cmd")
 	if err != nil {
+		c.setStatus("error")
 		return err
 	}
 	runBin, err := config.GetString("docker:run-cmd:bin")
 	if err != nil {
+		c.setStatus("error")
 		return err
 	}
 	runArgs, _ := config.GetString("docker:run-cmd:args")
@@ -266,13 +268,19 @@ func (c *container) deploy(w io.Writer) error {
 			break
 		}
 		if !filter.filtered {
+			c.setStatus("error")
 			return err
 		}
 		log.Printf("SSH to the container %q failed. Will retry.", c.Id)
 		time.Sleep(100e6)
 		filter.filtered = false
 	}
-	return c.ssh(w, w, runBin, strings.Fields(runArgs)...)
+	err = c.ssh(w, w, runBin, strings.Fields(runArgs)...)
+	if err != nil {
+		c.setStatus("error")
+	}
+	c.setStatus("running")
+	return nil
 }
 
 // remove removes a docker container.
