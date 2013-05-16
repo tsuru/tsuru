@@ -234,21 +234,20 @@ func (p *JujuProvisioner) AddUnits(app provision.App, n uint) ([]provision.Unit,
 	unitRe := regexp.MustCompile(fmt.Sprintf(
 		`Unit '(%s/\d+)' added to service '%s'`, app.GetName(), app.GetName()),
 	)
-	reader := bufio.NewReader(&buf)
-	line, err := reader.ReadString('\n')
+	scanner := bufio.NewScanner(&buf)
+	scanner.Split(bufio.ScanLines)
 	names := make([]string, n)
 	units = make([]provision.Unit, n)
 	i := 0
-	for err == nil {
-		matches := unitRe.FindStringSubmatch(line)
+	for scanner.Scan() {
+		matches := unitRe.FindStringSubmatch(scanner.Text())
 		if len(matches) > 1 {
 			units[i] = provision.Unit{Name: matches[1]}
 			names[i] = matches[1]
 			i++
 		}
-		line, err = reader.ReadString('\n')
 	}
-	if err != io.EOF {
+	if err := scanner.Err(); err != nil {
 		return nil, &provision.Error{Reason: buf.String(), Err: err}
 	}
 	if p.elbSupport() {
