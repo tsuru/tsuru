@@ -1725,7 +1725,7 @@ func (s *S) TestAppMarshalJson(c *gocheck.C) {
 	expected := make(map[string]interface{})
 	expected["name"] = "name"
 	expected["framework"] = "Framework"
-	expected["repository"] = repository.GetUrl(app.Name)
+	expected["repository"] = repository.ReadWriteURL(app.Name)
 	expected["teams"] = []interface{}{"team1"}
 	expected["units"] = nil
 	expected["ip"] = "10.10.10.1"

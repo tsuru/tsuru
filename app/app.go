@@ -63,7 +63,7 @@ func (app *App) MarshalJSON() ([]byte, error) {
 	result["framework"] = app.Platform
 	result["teams"] = app.Teams
 	result["units"] = app.Units
-	result["repository"] = repository.GetUrl(app.Name)
+	result["repository"] = repository.ReadWriteURL(app.Name)
 	result["ip"] = app.Ip
 	result["cname"] = app.CName
 	return json.Marshal(&result)
@@ -191,7 +191,7 @@ func (app *App) unbind() error {
 //       3. Unbind all service instances from the app
 //       4. Remove the app from the database
 func ForceDestroy(app *App) error {
-	gUrl := repository.GitServerUri()
+	gUrl := repository.ServerURL()
 	(&gandalf.Client{Endpoint: gUrl}).RemoveRepository(app.Name)
 	useS3, _ := config.GetBool("bucket-support")
 	if useS3 {
