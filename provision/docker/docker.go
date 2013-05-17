@@ -261,7 +261,7 @@ func (c *container) deploy(w io.Writer) error {
 		return err
 	}
 	runArgs, _ := config.GetString("docker:run-cmd:args")
-	appRepo := repository.GetReadOnlyUrl(c.AppName)
+	appRepo := repository.ReadOnlyURL(c.AppName)
 	filter := filter{w: w, content: []byte("connection refused")}
 	for {
 		err = c.ssh(w, &filter, deployCmd, appRepo)

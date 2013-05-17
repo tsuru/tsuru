@@ -41,7 +41,7 @@ func (s *S) SetUpSuite(c *gocheck.C) {
 	s.repoNamespace = "tsuru"
 	s.hostAddr = "10.0.0.4"
 	s.sshUser = "root"
-	config.Set("git:host", s.gitHost)
+	config.Set("git:ro-host", s.gitHost)
 	config.Set("database:url", "127.0.0.1:27017")
 	config.Set("database:name", "docker_provision_tests_s")
 	config.Set("docker:repository-namespace", s.repoNamespace)

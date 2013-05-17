@@ -311,7 +311,7 @@ func (s *S) TestDockerDeploy(c *gocheck.C) {
 	err := container.deploy(&buf)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(buf.String(), gocheck.Equals, "success\nsuccess\n")
-	appRepo := repository.GetReadOnlyUrl(container.AppName)
+	appRepo := repository.ReadOnlyURL(container.AppName)
 	deployArgs := []string{
 		"10.10.10.10", "-l", s.sshUser, "-o", "StrictHostKeyChecking no",
 		"--", s.deployCmd, appRepo,
@@ -344,7 +344,7 @@ func (s *S) TestDockerDeployRetries(c *gocheck.C) {
 	c.Assert(commands, gocheck.HasLen, 5)
 	deployArgs := []string{
 		"10.10.10.10", "-l", s.sshUser, "-o", "StrictHostKeyChecking no",
-		"--", s.deployCmd, repository.GetReadOnlyUrl(container.AppName),
+		"--", s.deployCmd, repository.ReadOnlyURL(container.AppName),
 	}
 	for _, cmd := range commands[:4] {
 		c.Check(cmd.GetArgs(), gocheck.DeepEquals, deployArgs)
