@@ -12,8 +12,8 @@ import (
 	"github.com/globocom/tsuru/log"
 )
 
-// GitServerUri returns the URL to Gandalf API.
-func GitServerUri() string {
+// ServerURL returns the URL to Gandalf API.
+func ServerURL() string {
 	server, err := config.GetString("git:api-server")
 	if err != nil {
 		log.Print("git:api-server config not found")

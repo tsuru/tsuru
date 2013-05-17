@@ -53,7 +53,7 @@ func (s *S) TestGetPath(c *gocheck.C) {
 func (s *S) TestGetServerUri(c *gocheck.C) {
 	server, err := config.GetString("git:api-server")
 	c.Assert(err, gocheck.IsNil)
-	uri := GitServerUri()
+	uri := ServerURL()
 	c.Assert(uri, gocheck.Equals, server)
 }
 
@@ -65,5 +65,5 @@ func (s *S) TestGetServerUriWithoutSetting(c *gocheck.C) {
 		r := recover()
 		c.Assert(r, gocheck.NotNil)
 	}()
-	GitServerUri()
+	ServerURL()
 }
