@@ -24,9 +24,9 @@ func GitServerUri() string {
 
 // GetUrl returns the ssh clone-url from an app.
 func GetUrl(app string) string {
-	publicHost, err := config.GetString("git:public-host")
+	publicHost, err := config.GetString("git:rw-host")
 	if err != nil {
-		log.Print("git:public-host config not found")
+		log.Print("git:rw-host config not found")
 		panic(err)
 	}
 	return fmt.Sprintf("git@%s:%s.git", publicHost, app)

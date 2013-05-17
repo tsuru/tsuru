@@ -16,9 +16,9 @@ func (s *S) TestGetRepositoryUrl(c *gocheck.C) {
 }
 
 func (s *S) TestGetRepositoryUrlWithoutSetting(c *gocheck.C) {
-	old, _ := config.Get("git:public-host")
-	defer config.Set("git:public-host", old)
-	config.Unset("git:public-host")
+	old, _ := config.Get("git:rw-host")
+	defer config.Set("git:rw-host", old)
+	config.Unset("git:rw-host")
 	defer func() {
 		r := recover()
 		c.Assert(r, gocheck.NotNil)
