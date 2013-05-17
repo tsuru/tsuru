@@ -116,7 +116,8 @@ Git configuration
 
 Tsuru uses `Gandalf <https://github.com/globocom/gandalf>`_ to manage git
 repositories. Gandalf exposes a REST API for repositories management, and tsuru
-uses it. So tsuru requires information about the Gandalf HTTP server.
+uses it. So tsuru requires information about the Gandalf HTTP server, and also
+its git-daemon and SSH service.
 
 Tsuru also needs to know where the git repository will be cloned and stored in
 units storage. Here are all options related to git repositories:
@@ -130,25 +131,27 @@ applications will be stored in their units. Example of value:
 ``/home/application/current``.
 
 
-git:host
-++++++++
+git:api-server
+++++++++++++++
 
-``git:host`` is the host for the Gandalf API. It should include the host name
-only, not the schema nor the port. This setting is mandatory and has no default
-value. Examples of value: ``localhost`` and ``gandalf.tsuru.io``.
+``git:api-server`` is the address of the Gandalf API. It should define the
+entire address, including protocol and port. Examples of value:
+``http://localhost:9090`` and ``https://gandalf.tsuru.io:9595``.
 
-git:port
-++++++++
+git:rw-host
++++++++++++
 
-``git:port`` is the port for the Gandalf API. Its value must be a positive
-integer. This setting is optional and defaults to "80".
+``git:rw-host`` is the host that will be used to build the push URL. For
+example, when the value is "tsuruhost.com", the push URL will be something like
+git@tsuruhost.com:<app-name>.git.
 
-git:protocol
-++++++++++++
+git:ro-host
++++++++++++
 
-``git:protocol`` is the protocol to communicate with Gandalf API. The value may
-be ``http`` or ``https``, all lower cased. This setting is optional and
-defaults to "http".
+``git:ro-host`` is the host that units will use to clone code from users
+applications. It's used to build the read only URL of the repository. For
+example, when the value is "tsuruhost.com", the read-only URL will be something
+like git://tsuruhost.com/<app-name>.git.
 
 Authentication configuration
 ----------------------------
