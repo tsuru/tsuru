@@ -3,9 +3,9 @@ database:
   name: tsuru_app_test
 git:
   unit-repo: /home/application/current
-  host: gitserver.tsuru.io
-  protocol: http
-  port: 8080
+  api-server: http://127.0.0.1:8000
+  rw-host: my.gandalf.domain
+  ro-host: 10.10.10.10
 bucket-support: true
 aws:
   access-key-id: access-id-here
