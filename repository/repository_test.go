@@ -10,7 +10,7 @@ import (
 )
 
 func (s *S) TestGetRepositoryUrl(c *gocheck.C) {
-	url := GetUrl("foobar")
+	url := ReadWriteURL("foobar")
 	expected := "git@public.mygithost:foobar.git"
 	c.Assert(url, gocheck.Equals, expected)
 }
@@ -23,7 +23,7 @@ func (s *S) TestGetRepositoryUrlWithoutSetting(c *gocheck.C) {
 		r := recover()
 		c.Assert(r, gocheck.NotNil)
 	}()
-	GetUrl("foobar")
+	ReadWriteURL("foobar")
 }
 
 func (s *S) TestGetReadOnlyUrl(c *gocheck.C) {

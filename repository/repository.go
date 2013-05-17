@@ -22,8 +22,8 @@ func ServerURL() string {
 	return server
 }
 
-// GetUrl returns the ssh clone-url from an app.
-func GetUrl(app string) string {
+// ReadWriteURL returns the SSH URL, for writing and reading operations.
+func ReadWriteURL(app string) string {
 	publicHost, err := config.GetString("git:rw-host")
 	if err != nil {
 		log.Print("git:rw-host config not found")
