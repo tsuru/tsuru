@@ -49,16 +49,16 @@ use-tls
 ``use-tls`` indicates whether tsuru should use TLS or not. This setting is
 optional, and defaults to "false".
 
-tls-cert-file
+tls:cert-file
 +++++++++++++
 
-``tlscert-file`` is the path to the X.509 certificate file configured to serve
+``tls:cert-file`` is the path to the X.509 certificate file configured to serve
 the domain.  This setting is optional, unless ``use-tls`` is true.
 
-tls-key-file
+tls:key-file
 ++++++++++++
 
-``tls-key-file`` is the path to private key file configured to serve the
+``tls:key-file`` is the path to private key file configured to serve the
 domain. This setting is optional, unless ``use-tls`` is true.
 
 Database access
@@ -508,8 +508,9 @@ Here is a complete example, with S3, VPC, HTTP/TLS and load balacing enabled:
 
     listen: ":8080"
     use-tls: true
-    tls-cert-file: /etc/tsuru/tls/cert.pem
-    tls-key-file: /etc/tsuru/tls/key.pem
+    tls:
+      cert-file: /etc/tsuru/tls/cert.pem
+      key-file: /etc/tsuru/tls/key.pem
     host: http://10.19.2.238:8080
     database:
       url: 127.0.0.1:27017
