@@ -68,7 +68,7 @@ func (s *S) TestProvision(c *gocheck.C) {
 	}
 	c.Assert(fexec.ExecutedCmd("juju", args), gocheck.Equals, true)
 	args = []string{
-		"set", "trace", "app-repo=" + repository.GetReadOnlyUrl("trace"),
+		"set", "trace", "app-repo=" + repository.ReadOnlyURL("trace"),
 	}
 	c.Assert(fexec.ExecutedCmd("juju", args), gocheck.Equals, true)
 }

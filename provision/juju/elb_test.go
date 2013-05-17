@@ -47,7 +47,7 @@ func (s *ELBSuite) SetUpSuite(c *gocheck.C) {
 	config.Set("juju:elb-avail-zones", []interface{}{"my-zone-1a", "my-zone-1b"})
 	config.Set("aws:access-key-id", "access")
 	config.Set("aws:secret-access-key", "s3cr3t")
-	config.Set("git:host", "git.tsuru.io")
+	config.Set("git:ro-host", "git.tsuru.io")
 	config.Set("queue", "fake")
 	config.Set("juju:units-collection", "juju_units_test_elb")
 	s.provisioner = testing.NewFakeProvisioner()

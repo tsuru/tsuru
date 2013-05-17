@@ -113,7 +113,7 @@ func (p *JujuProvisioner) Provision(app provision.App) error {
 		return cmdError(out, err, args)
 	}
 	setOption := []string{
-		"set", app.GetName(), "app-repo=" + repository.GetReadOnlyUrl(app.GetName()),
+		"set", app.GetName(), "app-repo=" + repository.ReadOnlyURL(app.GetName()),
 	}
 	runCmd(true, &buf, &buf, setOption...)
 	if p.elbSupport() {
