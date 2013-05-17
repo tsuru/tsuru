@@ -307,7 +307,7 @@ func (s *S) TestAppInfo(c *gocheck.C) {
 	err = json.Unmarshal(body, &myApp)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(myApp["name"], gocheck.Equals, expectedApp.Name)
-	c.Assert(myApp["repository"], gocheck.Equals, repository.GetUrl(expectedApp.Name))
+	c.Assert(myApp["repository"], gocheck.Equals, repository.ReadWriteURL(expectedApp.Name))
 	action := testing.Action{
 		Action: "app-info",
 		User:   s.user.Email,
@@ -370,7 +370,7 @@ func (s *S) TestCreateAppHandler(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	body, err := ioutil.ReadAll(recorder.Body)
 	c.Assert(err, gocheck.IsNil)
-	repoUrl := repository.GetUrl(a.Name)
+	repoUrl := repository.ReadWriteURL(a.Name)
 	var obtained map[string]string
 	expected := map[string]string{
 		"status":         "success",

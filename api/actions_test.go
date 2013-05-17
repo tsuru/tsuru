@@ -14,8 +14,6 @@ import (
 	"launchpad.net/gocheck"
 	"net/http"
 	"net/http/httptest"
-	"strconv"
-	"strings"
 )
 
 type ActionsSuite struct {
@@ -41,15 +39,7 @@ func (s *ActionsSuite) TearDownSuite(c *gocheck.C) {
 
 func (s *ActionsSuite) startGandalfTestServer(h http.Handler) *httptest.Server {
 	ts := httptest.NewServer(h)
-	pieces := strings.Split(ts.URL, "://")
-	protocol := pieces[0]
-	hostPart := strings.Split(pieces[1], ":")
-	port := hostPart[1]
-	host := hostPart[0]
-	config.Set("git:host", host)
-	portInt, _ := strconv.ParseInt(port, 10, 0)
-	config.Set("git:port", portInt)
-	config.Set("git:protocol", protocol)
+	config.Set("git:api-server", ts.URL)
 	return ts
 }
 

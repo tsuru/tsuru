@@ -46,7 +46,7 @@ func createUser(w http.ResponseWriter, r *http.Request) error {
 	if !validation.ValidateLength(u.Password, passwordMinLen, passwordMaxLen) {
 		return &errors.Http{Code: http.StatusBadRequest, Message: passwordError}
 	}
-	gUrl := repository.GitServerUri()
+	gUrl := repository.ServerURL()
 	c := gandalf.Client{Endpoint: gUrl}
 	if _, err := c.NewUser(u.Email, keyToMap(u.Keys)); err != nil {
 		return fmt.Errorf("Failed to create user in the git server: %s", err)
@@ -179,12 +179,6 @@ func resetPassword(w http.ResponseWriter, r *http.Request) error {
 	return u.ResetPassword(token)
 }
 
-// Creates a team and store it in mongodb.
-//
-// Also communicates with git server (gandalf) in order to add the user into it
-// (gandalf does not have the team concept) This function makes use of the
-// git:host config at tsuru.conf You can find a configuration sample at
-// tsuru/etc/tsuru.conf.
 // keyToMap converts a Key array into a map maybe we should store a map
 // directly instead of having a convertion
 func keyToMap(keys []auth.Key) map[string]string {
@@ -293,7 +287,7 @@ func addUserToTeamInDatabase(user *auth.User, team *auth.Team) error {
 }
 
 func addUserToTeamInGandalf(email string, u *auth.User, t *auth.Team) error {
-	gUrl := repository.GitServerUri()
+	gUrl := repository.ServerURL()
 	alwdApps, err := u.AllowedApps()
 	if err != nil {
 		return fmt.Errorf("Failed to obtain allowed apps to grant: %s", err.Error())
@@ -350,7 +344,7 @@ func removeUserFromTeamInDatabase(u *auth.User, team *auth.Team) error {
 }
 
 func removeUserFromTeamInGandalf(u *auth.User, team string) error {
-	gUrl := repository.GitServerUri()
+	gUrl := repository.ServerURL()
 	alwdApps, err := u.AllowedAppsByTeam(team)
 	if err != nil {
 		return err
@@ -440,7 +434,7 @@ func addKeyInDatabase(key *auth.Key, u *auth.User) error {
 
 func addKeyInGandalf(key *auth.Key, u *auth.User) error {
 	key.Name = fmt.Sprintf("%s-%d", u.Email, len(u.Keys)+1)
-	gUrl := repository.GitServerUri()
+	gUrl := repository.ServerURL()
 	if err := (&gandalf.Client{Endpoint: gUrl}).AddKey(u.Email, keyToMap([]auth.Key{*key})); err != nil {
 		return fmt.Errorf("Failed to add key to git server: %s", err)
 	}
@@ -485,7 +479,7 @@ func removeKeyFromDatabase(key *auth.Key, u *auth.User) error {
 }
 
 func removeKeyFromGandalf(key *auth.Key, u *auth.User) error {
-	gUrl := repository.GitServerUri()
+	gUrl := repository.ServerURL()
 	if err := (&gandalf.Client{Endpoint: gUrl}).RemoveKey(u.Email, key.Name); err != nil {
 		return fmt.Errorf("Failed to remove the key from git server: %s", err)
 	}
@@ -527,7 +521,7 @@ func removeUser(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
 	if err != nil {
 		return err
 	}
-	gUrl := repository.GitServerUri()
+	gUrl := repository.ServerURL()
 	c := gandalf.Client{Endpoint: gUrl}
 	alwdApps, err := u.AllowedApps()
 	if err != nil {

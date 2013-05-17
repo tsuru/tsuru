@@ -156,7 +156,7 @@ func createApp(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
 	}
 	msg := map[string]string{
 		"status":         "success",
-		"repository_url": repository.GetUrl(a.Name),
+		"repository_url": repository.ReadWriteURL(a.Name),
 	}
 	jsonMsg, err := json.Marshal(msg)
 	if err != nil {
@@ -263,7 +263,7 @@ func grantAppAccess(w http.ResponseWriter, r *http.Request, t *auth.Token) error
 	if err != nil {
 		return err
 	}
-	gUrl := repository.GitServerUri()
+	gUrl := repository.ServerURL()
 	gClient := gandalf.Client{Endpoint: gUrl}
 	if err := gClient.GrantAccess([]string{app.Name}, team.Users); err != nil {
 		return fmt.Errorf("Failed to grant access in the git server: %s.", err)
@@ -329,7 +329,7 @@ func revokeAppAccess(w http.ResponseWriter, r *http.Request, t *auth.Token) erro
 	}
 	users := getEmailsForRevoking(&app, team)
 	if len(users) > 0 {
-		gUrl := repository.GitServerUri()
+		gUrl := repository.ServerURL()
 		if err := (&gandalf.Client{Endpoint: gUrl}).RevokeAccess([]string{app.Name}, users); err != nil {
 			return fmt.Errorf("Failed to revoke access in the git server: %s", err)
 		}
