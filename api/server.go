@@ -144,11 +144,11 @@ func RunServer(flags map[string]interface{}) {
 		}
 		tls, _ := config.GetBool("use-tls")
 		if tls {
-			certFile, err := config.GetString("tls-cert-file")
+			certFile, err := config.GetString("tls:cert-file")
 			if err != nil {
 				fatal(err)
 			}
-			keyFile, err := config.GetString("tls-key-file")
+			keyFile, err := config.GetString("tls:key-file")
 			if err != nil {
 				fatal(err)
 			}
