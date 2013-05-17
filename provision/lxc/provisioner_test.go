@@ -111,10 +111,10 @@ func (s *S) TestDeploy(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	defer commandmocker.Remove(tmpdir)
 	config.Set("git:unit-repo", "test/dir")
-	config.Set("git:host", "gandalf.com")
+	config.Set("git:ro-host", "gandalf.com")
 	defer func() {
 		config.Unset("git:unit-repo")
-		config.Unset("git:host")
+		config.Unset("git:ro-host")
 	}()
 	app := testing.NewFakeApp("cribcaged", "python", 1)
 	w := &bytes.Buffer{}
