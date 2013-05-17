@@ -126,7 +126,7 @@ func CreateApp(app *App, user *auth.User) error {
 	app.Owner = user.Email
 	if !app.isValid() {
 		msg := "Invalid app name, your app should have at most 63 " +
-			"characters, containing only lower case letters or numbers, " +
+			"characters, containing only lower case letters, numbers or dashes, " +
 			"starting with a letter."
 		return &errors.ValidationError{Message: msg}
 	}
