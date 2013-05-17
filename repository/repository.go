@@ -32,8 +32,8 @@ func GetUrl(app string) string {
 	return fmt.Sprintf("git@%s:%s.git", publicHost, app)
 }
 
-// GetReadOnlyUrl returns the url for communication with git-daemon.
-func GetReadOnlyUrl(app string) string {
+// ReadOnlyURL returns the url for communication with git-daemon.
+func ReadOnlyURL(app string) string {
 	roHost, err := config.GetString("git:ro-host")
 	if err != nil {
 		log.Print("git:ro-host config not found")

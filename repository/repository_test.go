@@ -27,7 +27,7 @@ func (s *S) TestGetRepositoryUrlWithoutSetting(c *gocheck.C) {
 }
 
 func (s *S) TestGetReadOnlyUrl(c *gocheck.C) {
-	url := GetReadOnlyUrl("foobar")
+	url := ReadOnlyURL("foobar")
 	expected := "git://private.mygithost/foobar.git"
 	c.Assert(url, gocheck.Equals, expected)
 }
@@ -40,7 +40,7 @@ func (s *S) TestGetReadOnlyURLNoSetting(c *gocheck.C) {
 		r := recover()
 		c.Assert(r, gocheck.NotNil)
 	}()
-	GetReadOnlyUrl("foobar")
+	ReadOnlyURL("foobar")
 }
 
 func (s *S) TestGetPath(c *gocheck.C) {
