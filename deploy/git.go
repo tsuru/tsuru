@@ -21,7 +21,7 @@ func clone(p provision.Provisioner, app provision.App) ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("Tsuru is misconfigured: %s", err)
 	}
-	cmd := fmt.Sprintf("git clone %s %s --depth 1", repository.GetReadOnlyUrl(app.GetName()), path)
+	cmd := fmt.Sprintf("git clone %s %s --depth 1", repository.ReadOnlyURL(app.GetName()), path)
 	err = p.ExecuteCommand(&buf, &buf, app, cmd)
 	b := buf.Bytes()
 	log.Printf(`"git clone" output: %s`, b)

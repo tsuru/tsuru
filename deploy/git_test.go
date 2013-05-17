@@ -56,7 +56,7 @@ func (s *S) TestCloneRepository(c *gocheck.C) {
 	out, err := clone(p, app)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(string(out), gocheck.Equals, "something")
-	url := repository.GetReadOnlyUrl(app.GetName())
+	url := repository.ReadOnlyURL(app.GetName())
 	path, _ := repository.GetPath()
 	expectedCommand := fmt.Sprintf("git clone %s %s --depth 1", url, path)
 	c.Assert(p.GetCmds(expectedCommand, app), gocheck.HasLen, 1)
