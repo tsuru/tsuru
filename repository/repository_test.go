@@ -5,21 +5,42 @@
 package repository
 
 import (
-	"fmt"
 	"github.com/globocom/config"
 	"launchpad.net/gocheck"
 )
 
 func (s *S) TestGetRepositoryUrl(c *gocheck.C) {
 	url := GetUrl("foobar")
-	expected := "git@mygithost:foobar.git"
+	expected := "git@public.mygithost:foobar.git"
 	c.Assert(url, gocheck.Equals, expected)
+}
+
+func (s *S) TestGetRepositoryUrlWithoutSetting(c *gocheck.C) {
+	old, _ := config.Get("git:public-host")
+	defer config.Set("git:public-host", old)
+	config.Unset("git:public-host")
+	defer func() {
+		r := recover()
+		c.Assert(r, gocheck.NotNil)
+	}()
+	GetUrl("foobar")
 }
 
 func (s *S) TestGetReadOnlyUrl(c *gocheck.C) {
 	url := GetReadOnlyUrl("foobar")
-	expected := "git://mygithost/foobar.git"
+	expected := "git://private.mygithost/foobar.git"
 	c.Assert(url, gocheck.Equals, expected)
+}
+
+func (s *S) TestGetReadOnlyURLNoSetting(c *gocheck.C) {
+	old, _ := config.Get("git:ro-host")
+	defer config.Set("git:ro-host", old)
+	config.Unset("git:ro-host")
+	defer func() {
+		r := recover()
+		c.Assert(r, gocheck.NotNil)
+	}()
+	GetReadOnlyUrl("foobar")
 }
 
 func (s *S) TestGetPath(c *gocheck.C) {
@@ -29,47 +50,17 @@ func (s *S) TestGetPath(c *gocheck.C) {
 	c.Assert(path, gocheck.Equals, expected)
 }
 
-func (s *S) TestGetGitServer(c *gocheck.C) {
-	gitServer, err := config.GetString("git:host")
-	c.Assert(err, gocheck.IsNil)
-	defer config.Set("git:host", gitServer)
-	config.Set("git:host", "gandalf-host.com")
-	uri := getGitServer()
-	c.Assert(uri, gocheck.Equals, "gandalf-host.com")
-}
-
 func (s *S) TestGetServerUri(c *gocheck.C) {
-	server, err := config.GetString("git:host")
-	c.Assert(err, gocheck.IsNil)
-	protocol, err := config.GetString("git:protocol")
-	port, err := config.Get("git:port")
-	uri := GitServerUri()
-	c.Assert(uri, gocheck.Equals, fmt.Sprintf("%s://%s:%d", protocol, server, port))
-}
-
-func (s *S) TestGetServerUriWithoutPort(c *gocheck.C) {
-	config.Unset("git:port")
-	defer config.Set("git:port", 8080)
-	server, err := config.GetString("git:host")
-	c.Assert(err, gocheck.IsNil)
-	protocol, err := config.GetString("git:protocol")
-	uri := GitServerUri()
-	c.Assert(uri, gocheck.Equals, fmt.Sprintf("%s://%s", protocol, server))
-}
-
-func (s *S) TestGetServerUriWithoutProtocol(c *gocheck.C) {
-	config.Unset("git:protocol")
-	defer config.Set("git:protocol", "http")
-	server, err := config.GetString("git:host")
+	server, err := config.GetString("git:api-server")
 	c.Assert(err, gocheck.IsNil)
 	uri := GitServerUri()
-	c.Assert(uri, gocheck.Equals, "http://"+server+":8080")
+	c.Assert(uri, gocheck.Equals, server)
 }
 
-func (s *S) TestGetServerUriWithoutHost(c *gocheck.C) {
-	old, _ := config.Get("git:host")
-	defer config.Set("git:host", old)
-	config.Unset("git:host")
+func (s *S) TestGetServerUriWithoutSetting(c *gocheck.C) {
+	old, _ := config.Get("git:api-server")
+	defer config.Set("git:api-server", old)
+	config.Unset("git:api-server")
 	defer func() {
 		r := recover()
 		c.Assert(r, gocheck.NotNil)

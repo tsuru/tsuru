@@ -17,17 +17,8 @@ type S struct{}
 var _ = gocheck.Suite(&S{})
 
 func (s *S) SetUpSuite(c *gocheck.C) {
-	config.Set("git:host", "mygithost")
-	config.Set("git:protocol", "http")
-	config.Set("git:port", "8090")
+	config.Set("git:api-server", "http://mygihost:8090")
+	config.Set("git:public-host", "public.mygithost")
+	config.Set("git:ro-host", "private.mygithost")
 	config.Set("git:unit-repo", "/home/application/current")
-}
-
-func (s *S) TestGetGitServerPanicsIfTheConfigFileHasNoServer(c *gocheck.C) {
-	oldConfig, err := config.Get("git")
-	c.Assert(err, gocheck.IsNil)
-	err = config.Unset("git")
-	c.Assert(err, gocheck.IsNil)
-	defer config.Set("git", oldConfig)
-	c.Assert(getGitServer, gocheck.PanicMatches, `key "git:host" not found`)
 }

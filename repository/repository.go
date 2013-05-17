@@ -12,51 +12,34 @@ import (
 	"github.com/globocom/tsuru/log"
 )
 
-// getGitServer returns the git server defined in the tsuru.conf file.
-//
-// If git:host configuration is not defined, this function panics.
-func getGitServer() string {
-	gitServer, err := config.GetString("git:host")
-	if err != nil {
-		log.Print("git:host config not found")
-		panic(err)
-	}
-	return gitServer
-}
-
-//  joins the protocol, server and port together and returns.
-//
-// This functions makes uses of three configurations:
-//   - git:host
-//   - git:protocol
-//   - git:port (optional)
-//
-// If some of the required configuration is not found, this function panics.
+// GitServerUri returns the URL to Gandalf API.
 func GitServerUri() string {
-	server, err := config.GetString("git:host")
+	server, err := config.GetString("git:api-server")
 	if err != nil {
-		log.Print("git:host config not found")
+		log.Print("git:api-server config not found")
 		panic(err)
 	}
-	protocol, _ := config.GetString("git:protocol")
-	if protocol == "" {
-		protocol = "http"
-	}
-	uri := fmt.Sprintf("%s://%s", protocol, server)
-	if port, err := config.Get("git:port"); err == nil {
-		uri = fmt.Sprintf("%s:%d", uri, port)
-	}
-	return uri
+	return server
 }
 
 // GetUrl returns the ssh clone-url from an app.
 func GetUrl(app string) string {
-	return fmt.Sprintf("git@%s:%s.git", getGitServer(), app)
+	publicHost, err := config.GetString("git:public-host")
+	if err != nil {
+		log.Print("git:public-host config not found")
+		panic(err)
+	}
+	return fmt.Sprintf("git@%s:%s.git", publicHost, app)
 }
 
 // GetReadOnlyUrl returns the url for communication with git-daemon.
 func GetReadOnlyUrl(app string) string {
-	return fmt.Sprintf("git://%s/%s.git", getGitServer(), app)
+	roHost, err := config.GetString("git:ro-host")
+	if err != nil {
+		log.Print("git:ro-host config not found")
+		panic(err)
+	}
+	return fmt.Sprintf("git://%s/%s.git", roHost, app)
 }
 
 // GetPath returns the path to the repository where the app code is in its
