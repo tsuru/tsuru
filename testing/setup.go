@@ -12,18 +12,16 @@ import (
 	"launchpad.net/gocheck"
 	"net/http"
 	"net/http/httptest"
-	"strconv"
-	"strings"
 )
 
 type T struct {
-	Admin     user
-	AdminTeam team
-	S3Server  *s3test.Server
-	IamServer *iamtest.Server
-	GitHost   string
-	GitPort   string
-	GitProt   string
+	Admin        user
+	AdminTeam    team
+	S3Server     *s3test.Server
+	IamServer    *iamtest.Server
+	GitAPIServer string
+	GitRWHost    string
+	GitROHost    string
 }
 
 type user struct {
@@ -48,29 +46,21 @@ func (t *T) StartAmzS3AndIAM(c *gocheck.C) {
 }
 
 func (t *T) SetGitConfs(c *gocheck.C) {
-	t.GitHost, _ = config.GetString("git:host")
-	t.GitPort, _ = config.GetString("git:port")
-	t.GitProt, _ = config.GetString("git:protocol")
+	t.GitAPIServer, _ = config.GetString("git:api-server")
+	t.GitROHost, _ = config.GetString("git:ro-host")
+	t.GitRWHost, _ = config.GetString("git:rw-host")
 }
 
 func (t *T) RollbackGitConfs(c *gocheck.C) {
-	config.Set("git:host", t.GitHost)
-	config.Set("git:port", t.GitPort)
-	config.Set("git:protocol", t.GitProt)
+	config.Set("git:api-server", t.GitAPIServer)
+	config.Set("git:ro-host", t.GitROHost)
+	config.Set("git:rw-host", t.GitRWHost)
 }
 
 // starts a new httptest.Server and returns it
 // Also changes git:host, git:port and git:protocol to match the server's url
 func (t *T) StartGandalfTestServer(h http.Handler) *httptest.Server {
 	ts := httptest.NewServer(h)
-	pieces := strings.Split(ts.URL, "://")
-	protocol := pieces[0]
-	hostPart := strings.Split(pieces[1], ":")
-	port := hostPart[1]
-	host := hostPart[0]
-	config.Set("git:host", host)
-	portInt, _ := strconv.ParseInt(port, 10, 0)
-	config.Set("git:port", portInt)
-	config.Set("git:protocol", protocol)
+	config.Set("git:api-server", ts.URL)
 	return ts
 }
