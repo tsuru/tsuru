@@ -147,6 +147,33 @@ func (s *S) TestDeployShouldReplaceAllContainers(c *gocheck.C) {
 	c.Assert(commands, gocheck.HasLen, 4)
 }
 
+func (s *S) TestDeployShouldRestart(c *gocheck.C) {
+	out := `{
+	"NetworkSettings": {
+		"IpAddress": "10.10.10.10",
+		"IpPrefixLen": 8,
+		"Gateway": "10.65.41.1",
+		"PortMapping": {}
+	}
+}`
+	fexec := &etesting.FakeExecutor{
+		Output: map[string][][]byte{
+			"*": {[]byte("8yasfiajfias")},
+			"inspect 8yasfiajfias": {[]byte(out)},
+		},
+	}
+	setExecut(fexec)
+	defer setExecut(nil)
+	p := dockerProvisioner{}
+	app := testing.NewFakeApp("cribcaged", "python", 1)
+	w := &bytes.Buffer{}
+	err := p.Deploy(app, w)
+	defer p.Destroy(app)
+	defer s.conn.Collection(s.collName).RemoveId(out)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(app.Commands, gocheck.DeepEquals, []string{"restart"})
+}
+
 func (s *S) TestDeployFailureFirstStep(c *gocheck.C) {
 	var (
 		p   dockerProvisioner
