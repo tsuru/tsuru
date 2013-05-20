@@ -186,7 +186,7 @@ Adding hooks
 
 By default, the commands are run from inside the app root directory, which is
 /home/application. If you have more complicated deploy related commands, you
-should use the app.yaml pre-restart and post-restart scripts, these are run
+should use the app.yaml pre-restart and post-restart scripts, these will run
 before and after the restart of your app, which is triggered everytime you push
 code or call `restart
 <http://godoc.org/github.com/globocom/tsuru/cmd/tsuru#hdr-Restart_the_app_s_application_server>`_.
