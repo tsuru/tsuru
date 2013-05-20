@@ -25,8 +25,6 @@ import (
 	stdlog "log"
 	"net/http"
 	"net/http/httptest"
-	"os"
-	"path"
 	"reflect"
 	"sort"
 	"strconv"
@@ -1328,28 +1326,6 @@ func (s *S) TestIsValid(c *gocheck.C) {
 			c.Errorf("Is %q a valid app name? Expected: %v. Got: %v.", d.name, d.expected, valid)
 		}
 	}
-}
-
-func (s *S) TestDeployHookAbsPath(c *gocheck.C) {
-	pwd, err := os.Getwd()
-	c.Assert(err, gocheck.IsNil)
-	old, err := config.Get("git:unit-repo")
-	c.Assert(err, gocheck.IsNil)
-	config.Set("git:unit-repo", pwd)
-	defer config.Set("git:unit-repo", old)
-	expected := path.Join(pwd, "testdata", "pre.sh")
-	command := "testdata/pre.sh"
-	got, err := deployHookAbsPath(command)
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(got, gocheck.Equals, expected)
-}
-
-func (s *S) TestDeployHookAbsPathAbsoluteCommands(c *gocheck.C) {
-	command := "python manage.py syncdb --noinput"
-	expected := "python manage.py syncdb --noinput"
-	got, err := deployHookAbsPath(command)
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(got, gocheck.Equals, expected)
 }
 
 func (s *S) TestLoadConf(c *gocheck.C) {

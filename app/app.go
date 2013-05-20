@@ -25,7 +25,6 @@ import (
 	"io"
 	"labix.org/v2/mgo/bson"
 	"launchpad.net/~niemeyer/goyaml/beta"
-	"os"
 	"path"
 	"regexp"
 	"sort"
@@ -548,12 +547,7 @@ func (app *App) runHook(w io.Writer, cmds []string, kind string) error {
 		return err
 	}
 	for _, cmd := range cmds {
-		p, err := deployHookAbsPath(cmd)
-		if err != nil {
-			app.Log(fmt.Sprintf("Error obtaining absolute path to hook: %s.", err), "tsuru")
-			continue
-		}
-		err = app.Run(p, w)
+		err = app.Run(cmd, w)
 		if err != nil {
 			return err
 		}
@@ -860,26 +854,4 @@ func List(u *auth.User) ([]App, error) {
 		return []App{}, err
 	}
 	return apps, nil
-}
-
-// deployHooksAbsPath returns the absolute path to execute the given command.
-// It first try to use the given path as a relative path from the app root,
-// then uses it as an absolute path.
-//
-// For example, deployHooksAbsPath("python") will return
-// "/home/application/current/python" if this file exist, otherwise, will
-// return just "python".
-func deployHookAbsPath(p string) (string, error) {
-	repoPath, err := config.GetString("git:unit-repo")
-	if err != nil {
-		return "", nil
-	}
-	cmdArgs := strings.Fields(p)
-	abs := path.Join(repoPath, cmdArgs[0])
-	_, err = os.Stat(abs)
-	if os.IsNotExist(err) {
-		return p, nil
-	}
-	cmdArgs[0] = abs
-	return strings.Join(cmdArgs, " "), nil
 }
