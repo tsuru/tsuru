@@ -24,7 +24,6 @@ import (
 	"io/ioutil"
 	"labix.org/v2/mgo"
 	"net"
-	"strings"
 	"sync"
 )
 
@@ -207,28 +206,23 @@ func (*dockerProvisioner) ExecuteCommand(stdout, stderr io.Writer, app provision
 }
 
 func (p *dockerProvisioner) CollectStatus() ([]provision.Unit, error) {
-	docker, err := config.GetString("docker:binary")
+	var containersGroup sync.WaitGroup
+	var containers []container
+	err := collection().Find(nil).All(&containers)
 	if err != nil {
 		return nil, err
 	}
-	out, err := runCmd(docker, "ps", "-q")
-	if err != nil {
-		return nil, err
-	}
-	var linesGroup sync.WaitGroup
-	out = strings.TrimSpace(out)
-	if out == "" {
+	if len(containers) == 0 {
 		return nil, nil
 	}
-	lines := strings.Split(out, "\n")
-	units := make(chan provision.Unit, len(lines))
-	result := buildResult(len(lines), units)
+	units := make(chan provision.Unit, len(containers))
+	result := buildResult(len(containers), units)
 	errs := make(chan error, 1)
-	for _, line := range lines {
-		linesGroup.Add(1)
-		go collectUnit(line, units, errs, &linesGroup)
+	for _, container := range containers {
+		containersGroup.Add(1)
+		go collectUnit(container, units, errs, &containersGroup)
 	}
-	linesGroup.Wait()
+	containersGroup.Wait()
 	close(errs)
 	close(units)
 	if err, ok := <-errs; ok {
@@ -237,14 +231,9 @@ func (p *dockerProvisioner) CollectStatus() ([]provision.Unit, error) {
 	return <-result, nil
 }
 
-func collectUnit(id string, units chan<- provision.Unit, errs chan<- error, wg *sync.WaitGroup) {
+func collectUnit(container container, units chan<- provision.Unit, errs chan<- error, wg *sync.WaitGroup) {
 	defer wg.Done()
 	docker, _ := config.GetString("docker:binary")
-	container, err := getContainer(id)
-	if err != nil {
-		log.Printf("Container %q not in the database. Skipping...", id)
-		return
-	}
 	unit := provision.Unit{
 		Name:    container.Id,
 		AppName: container.AppName,
@@ -258,7 +247,7 @@ func collectUnit(id string, units chan<- provision.Unit, errs chan<- error, wg *
 	case "created":
 		return
 	}
-	out, err := runCmd(docker, "inspect", id)
+	out, err := runCmd(docker, "inspect", container.Id)
 	if err != nil {
 		errs <- err
 		return

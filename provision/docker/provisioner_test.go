@@ -669,6 +669,7 @@ func (s *S) TestCollectStatus(c *gocheck.C) {
 }
 
 func (s *S) TestProvisionCollectStatusEmpty(c *gocheck.C) {
+	s.conn.Collection(s.collName).RemoveAll(nil)
 	output := map[string][][]byte{"ps -q": {[]byte("")}}
 	fexec := &etesting.FakeExecutor{Output: output}
 	setExecut(fexec)
