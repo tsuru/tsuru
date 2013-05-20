@@ -217,7 +217,7 @@ func (p *dockerProvisioner) CollectStatus() ([]provision.Unit, error) {
 	}
 	units := make(chan provision.Unit, len(containers))
 	result := buildResult(len(containers), units)
-	errs := make(chan error, 1)
+	errs := make(chan error, len(containers))
 	for _, container := range containers {
 		containersGroup.Add(1)
 		go collectUnit(container, units, errs, &containersGroup)
