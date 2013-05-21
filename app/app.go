@@ -533,6 +533,27 @@ func (app *App) loadConf() error {
 	return nil
 }
 
+// preRestart is responsible for running user's pre-restart script.
+//
+// The path to this script can be found at the app.conf file, at the root of user's app repository.
+func (app *App) preRestart(w io.Writer) error {
+	if err := app.loadConf(); err != nil {
+		return err
+	}
+	return app.runHook(w, app.conf.Hooks.PreRestart, "pre-restart")
+}
+
+// posRestart is responsible for running user's post-restart script.
+//
+// The path to this script can be found at the app.conf file, at the root of
+// user's app repository.
+func (app *App) postRestart(w io.Writer) error {
+	if err := app.loadConf(); err != nil {
+		return err
+	}
+	return app.runHook(w, app.conf.Hooks.PostRestart, "post-restart")
+}
+
 // runHook executes the given list of commands, as a hook identified by the
 // kind string. If the list is empty, it returns nil.
 //
@@ -557,31 +578,17 @@ func (app *App) runHook(w io.Writer, cmds []string, kind string) error {
 	return err
 }
 
-// preRestart is responsible for running user's pre-restart script.
-//
-// The path to this script can be found at the app.conf file, at the root of user's app repository.
-func (app *App) preRestart(w io.Writer) error {
-	if err := app.loadConf(); err != nil {
-		return err
-	}
-	return app.runHook(w, app.conf.Hooks.PreRestart, "pre-restart")
-}
-
-// posRestart is responsible for running user's post-restart script.
-//
-// The path to this script can be found at the app.conf file, at the root of
-// user's app repository.
-func (app *App) postRestart(w io.Writer) error {
-	if err := app.loadConf(); err != nil {
-		return err
-	}
-	return app.runHook(w, app.conf.Hooks.PostRestart, "post-restart")
-}
-
 // Run executes the command in app units, sourcing apprc before running the
 // command.
 func (app *App) Run(cmd string, w io.Writer) error {
+	if !app.Available() {
+		return stderr.New("App must be available to run commands")
+	}
 	app.Log(fmt.Sprintf("running '%s'", cmd), "tsuru")
+	return app.sourced(cmd, w)
+}
+
+func (app *App) sourced(cmd string, w io.Writer) error {
 	source := "[ -f /home/application/apprc ] && source /home/application/apprc"
 	cd := "[ -d /home/application/current ] && cd /home/application/current"
 	cmd = fmt.Sprintf("%s; %s; %s", source, cd, cmd)
@@ -589,9 +596,6 @@ func (app *App) Run(cmd string, w io.Writer) error {
 }
 
 func (app *App) run(cmd string, w io.Writer) error {
-	if !app.Available() {
-		return stderr.New("App must be available to run commands")
-	}
 	return Provisioner.ExecuteCommand(w, w, app, cmd)
 }
 

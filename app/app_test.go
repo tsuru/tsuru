@@ -1810,6 +1810,7 @@ func (s *S) TestSerializeEnvVars(c *gocheck.C) {
 }
 
 func (s *S) TestSerializeEnvVarsErrorWithoutOutput(c *gocheck.C) {
+	s.provisioner.PrepareFailure("ExecuteCommand", stderr.New("Failed to run commands"))
 	app := App{
 		Name: "intheend",
 		Env: map[string]bind.EnvVar{
@@ -1822,7 +1823,7 @@ func (s *S) TestSerializeEnvVarsErrorWithoutOutput(c *gocheck.C) {
 	}
 	err := app.serializeEnvVars()
 	c.Assert(err, gocheck.NotNil)
-	c.Assert(err.Error(), gocheck.Equals, "Failed to write env vars: App must be available to run commands.")
+	c.Assert(err.Error(), gocheck.Equals, "Failed to write env vars: Failed to run commands.")
 }
 
 func (s *S) TestSerializeEnvVarsErrorWithOutput(c *gocheck.C) {
