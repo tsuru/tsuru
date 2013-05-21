@@ -12,6 +12,7 @@ import (
 	"github.com/globocom/tsuru/db"
 	"github.com/globocom/tsuru/errors"
 	"github.com/globocom/tsuru/service"
+	ttesting "github.com/globocom/tsuru/testing"
 	"labix.org/v2/mgo/bson"
 	"launchpad.net/gocheck"
 	"net/http"
@@ -45,6 +46,7 @@ func (s *S) SetUpSuite(c *gocheck.C) {
 	s.user.Create()
 	s.team = auth.Team{Name: "metallica", Users: []string{s.user.Email}}
 	s.conn.Teams().Insert(s.team)
+	app.Provisioner = ttesting.NewFakeProvisioner()
 }
 
 func (s *S) TearDownSuite(c *gocheck.C) {
