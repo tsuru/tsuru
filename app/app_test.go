@@ -1389,7 +1389,7 @@ func (s *S) TestPreRestart(c *gocheck.C) {
 				PostRestart: []string{"pos.sh"},
 			},
 		},
-		Units: []Unit{{Name: "i-0800", State: "started"}},
+		Units: []Unit{{Name: "i-0800", State: "pending"}},
 	}
 	w := new(bytes.Buffer)
 	err := a.preRestart(w)

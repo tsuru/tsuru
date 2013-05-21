@@ -570,7 +570,7 @@ func (app *App) runHook(w io.Writer, cmds []string, kind string) error {
 		return err
 	}
 	for _, cmd := range cmds {
-		err = app.Run(cmd, w)
+		err = app.sourced(cmd, w)
 		if err != nil {
 			return err
 		}
