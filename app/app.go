@@ -59,7 +59,7 @@ type App struct {
 func (app *App) MarshalJSON() ([]byte, error) {
 	result := make(map[string]interface{})
 	result["name"] = app.Name
-	result["framework"] = app.Platform
+	result["platform"] = app.Platform
 	result["teams"] = app.Teams
 	result["units"] = app.Units
 	result["repository"] = repository.ReadWriteURL(app.Name)

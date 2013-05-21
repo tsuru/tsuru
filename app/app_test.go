@@ -1700,7 +1700,7 @@ func (s *S) TestAppMarshalJson(c *gocheck.C) {
 	}
 	expected := make(map[string]interface{})
 	expected["name"] = "name"
-	expected["framework"] = "Framework"
+	expected["platform"] = "Framework"
 	expected["repository"] = repository.ReadWriteURL(app.Name)
 	expected["teams"] = []interface{}{"team1"}
 	expected["units"] = nil
