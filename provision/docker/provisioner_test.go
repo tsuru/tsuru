@@ -44,6 +44,7 @@ func (s *S) TestProvisionerProvision(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	fk := r.(*rtesting.FakeRouter)
 	c.Assert(fk.HasBackend("myapp"), gocheck.Equals, true)
+	c.Assert(app.IsReady(), gocheck.Equals, true)
 }
 
 func (s *S) TestProvisionerRestartCallsTheRestartHook(c *gocheck.C) {

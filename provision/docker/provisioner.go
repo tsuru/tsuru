@@ -62,6 +62,10 @@ func (p *dockerProvisioner) Provision(app provision.App) error {
 		log.Printf("Failed to get router: %s", err.Error())
 		return err
 	}
+	err = app.Ready()
+	if err != nil {
+		return err
+	}
 	return r.AddBackend(app.GetName())
 }
 
