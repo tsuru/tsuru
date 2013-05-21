@@ -85,6 +85,10 @@ type App interface {
 
 	// Restart restarts the application process
 	Restart(io.Writer) error
+
+	// Ready marks the app as ready, meaning that user can deploy code to
+	// it.
+	Ready() error
 }
 
 // Provisioner is the basic interface of this package.
