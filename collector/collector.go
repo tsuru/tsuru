@@ -58,6 +58,9 @@ func update(units []provision.Unit) {
 		u.Machine = unit.Machine
 		u.InstanceId = unit.InstanceId
 		u.Ip = unit.Ip
+		if unit.Status == provision.StatusStarted && a.State == "" {
+			a.State = "ready"
+		}
 		u.State = string(unit.Status)
 		a.AddUnit(&u)
 	}

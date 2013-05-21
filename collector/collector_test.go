@@ -78,6 +78,7 @@ func (s *S) TestUpdateWithMultipleUnits(c *gocheck.C) {
 	c.Assert(unit.State, gocheck.Equals, provision.StatusStarted.String())
 	addr, _ := s.provisioner.Addr(a)
 	c.Assert(a.Ip, gocheck.Equals, addr)
+	c.Assert(a.State, gocheck.Equals, "ready")
 }
 
 func (s *S) TestUpdateWithDownMachine(c *gocheck.C) {
