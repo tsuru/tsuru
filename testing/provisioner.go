@@ -55,6 +55,7 @@ type FakeApp struct {
 	logs     []string
 	Commands []string
 	logMut   sync.Mutex
+	ready    bool
 }
 
 func NewFakeApp(name, platform string, units int) *FakeApp {
@@ -74,6 +75,15 @@ func NewFakeApp(name, platform string, units int) *FakeApp {
 		}
 	}
 	return &app
+}
+
+func (a *FakeApp) IsReady() bool {
+	return a.ready
+}
+
+func (a *FakeApp) Ready() error {
+	a.ready = true
+	return nil
 }
 
 func (a *FakeApp) Log(message, source string) error {

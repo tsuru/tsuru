@@ -36,6 +36,14 @@ func (s *S) TestFakeAppRemoveUnit(c *gocheck.C) {
 	c.Assert(err, gocheck.NotNil)
 }
 
+func (s *S) TestFakeAppReady(c *gocheck.C) {
+	app := NewFakeApp("sou", "otm", 0)
+	c.Assert(app.IsReady(), gocheck.Equals, false)
+	err := app.Ready()
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(app.IsReady(), gocheck.Equals, true)
+}
+
 func (s *S) TestFindApp(c *gocheck.C) {
 	app := NewFakeApp("red-sector", "rush", 1)
 	p := NewFakeProvisioner()
