@@ -1703,7 +1703,7 @@ func (s *S) TestGetUnits(c *gocheck.C) {
 	c.Assert(app.GetUnits(), gocheck.DeepEquals, expected)
 }
 
-func (s *S) TestAppMarshalJson(c *gocheck.C) {
+func (s *S) TestAppMarshalJSON(c *gocheck.C) {
 	app := App{
 		Name:     "name",
 		Platform: "Framework",
@@ -1719,6 +1719,33 @@ func (s *S) TestAppMarshalJson(c *gocheck.C) {
 	expected["units"] = nil
 	expected["ip"] = "10.10.10.1"
 	expected["cname"] = "name.mycompany.com"
+	expected["ready"] = false
+	data, err := app.MarshalJSON()
+	c.Assert(err, gocheck.IsNil)
+	result := make(map[string]interface{})
+	err = json.Unmarshal(data, &result)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(result, gocheck.DeepEquals, expected)
+}
+
+func (s *S) TestAppMarshalJSONReady(c *gocheck.C) {
+	app := App{
+		Name:     "name",
+		Platform: "Framework",
+		Teams:    []string{"team1"},
+		Ip:       "10.10.10.1",
+		CName:    "name.mycompany.com",
+		State:    "ready",
+	}
+	expected := make(map[string]interface{})
+	expected["name"] = "name"
+	expected["platform"] = "Framework"
+	expected["repository"] = repository.ReadWriteURL(app.Name)
+	expected["teams"] = []interface{}{"team1"}
+	expected["units"] = nil
+	expected["ip"] = "10.10.10.1"
+	expected["cname"] = "name.mycompany.com"
+	expected["ready"] = true
 	data, err := app.MarshalJSON()
 	c.Assert(err, gocheck.IsNil)
 	result := make(map[string]interface{})

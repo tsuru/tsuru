@@ -66,6 +66,7 @@ func (app *App) MarshalJSON() ([]byte, error) {
 	result["repository"] = repository.ReadWriteURL(app.Name)
 	result["ip"] = app.Ip
 	result["cname"] = app.CName
+	result["ready"] = app.State == "ready"
 	return json.Marshal(&result)
 }
 
