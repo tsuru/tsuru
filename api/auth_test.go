@@ -49,6 +49,7 @@ func (s *AuthSuite) SetUpSuite(c *gocheck.C) {
 	config.Set("smtp:server", s.server.Addr())
 	config.Set("smtp:user", "root")
 	config.Set("smtp:password", "123456")
+	app.Provisioner = testing.NewFakeProvisioner()
 }
 
 func (s *AuthSuite) TearDownSuite(c *gocheck.C) {
