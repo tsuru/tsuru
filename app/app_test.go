@@ -1472,6 +1472,19 @@ func (s *S) TestSkipsPostRestartWhenPostRestartSectionDoesNotExists(c *gocheck.C
 	c.Assert(st[0], gocheck.Matches, ".*Skipping post-restart hooks...")
 }
 
+func (s *S) TestReady(c *gocheck.C) {
+	a := App{Name: "twisted"}
+	s.conn.Apps().Insert(a)
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	err := a.Ready()
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(a.State, gocheck.Equals, "ready")
+	other := App{Name: a.Name}
+	err = other.Get()
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(other.State, gocheck.Equals, "ready")
+}
+
 func (s *S) TestDeployShouldCallProvisionerDeploy(c *gocheck.C) {
 	a := App{
 		Name:     "someApp",

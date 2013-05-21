@@ -51,6 +51,7 @@ type App struct {
 	Units    []Unit
 	Teams    []string
 	Owner    string
+	State    string
 	conf     *conf
 }
 
@@ -614,6 +615,16 @@ func (app *App) Restart(w io.Writer) error {
 		return err
 	}
 	return app.postRestart(w)
+}
+
+func (app *App) Ready() error {
+	app.State = "ready"
+	conn, err := db.Conn()
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+	return conn.Apps().Update(bson.M{"name": app.Name}, bson.M{"$set": bson.M{"state": "ready"}})
 }
 
 // GetUnits returns the internal list of units converted to bind.Unit.
