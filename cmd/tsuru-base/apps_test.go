@@ -281,12 +281,12 @@ If you don't provide the app name, tsuru will try to guess it.`,
 
 func (s *S) TestAppList(c *gocheck.C) {
 	var stdout, stderr bytes.Buffer
-	result := `[{"ip":"10.10.10.10","name":"app1","units":[{"Name":"app1/0","State":"started"}]}]`
-	expected := `+-------------+-------------------------+-------------+
-| Application | Units State Summary     | Address     |
-+-------------+-------------------------+-------------+
-| app1        | 1 of 1 units in-service | 10.10.10.10 |
-+-------------+-------------------------+-------------+
+	result := `[{"ip":"10.10.10.10","name":"app1","ready":true,"units":[{"Name":"app1/0","State":"started"}]}]`
+	expected := `+-------------+-------------------------+-------------+--------+
+| Application | Units State Summary     | Address     | Ready? |
++-------------+-------------------------+-------------+--------+
+| app1        | 1 of 1 units in-service | 10.10.10.10 | Yes    |
++-------------+-------------------------+-------------+--------+
 `
 	context := cmd.Context{
 		Args:   []string{},
@@ -302,13 +302,13 @@ func (s *S) TestAppList(c *gocheck.C) {
 
 func (s *S) TestAppListDisplayAppsInAlphabeticalOrder(c *gocheck.C) {
 	var stdout, stderr bytes.Buffer
-	result := `[{"ip":"10.10.10.11","name":"sapp","units":[{"Name":"sapp1/0","State":"started"}]},{"Ip":"10.10.10.10","Name":"app1","Units":[{"Name":"app1/0","State":"started"}]}]`
-	expected := `+-------------+-------------------------+-------------+
-| Application | Units State Summary     | Address     |
-+-------------+-------------------------+-------------+
-| app1        | 1 of 1 units in-service | 10.10.10.10 |
-| sapp        | 1 of 1 units in-service | 10.10.10.11 |
-+-------------+-------------------------+-------------+
+	result := `[{"ip":"10.10.10.11","name":"sapp","ready":true,"units":[{"Name":"sapp1/0","State":"started"}]},{"ip":"10.10.10.10","name":"app1","ready":true,"units":[{"Name":"app1/0","State":"started"}]}]`
+	expected := `+-------------+-------------------------+-------------+--------+
+| Application | Units State Summary     | Address     | Ready? |
++-------------+-------------------------+-------------+--------+
+| app1        | 1 of 1 units in-service | 10.10.10.10 | Yes    |
+| sapp        | 1 of 1 units in-service | 10.10.10.11 | Yes    |
++-------------+-------------------------+-------------+--------+
 `
 	context := cmd.Context{
 		Args:   []string{},
@@ -324,12 +324,12 @@ func (s *S) TestAppListDisplayAppsInAlphabeticalOrder(c *gocheck.C) {
 
 func (s *S) TestAppListUnitIsntStarted(c *gocheck.C) {
 	var stdout, stderr bytes.Buffer
-	result := `[{"ip":"10.10.10.10","name":"app1","units":[{"Name":"app1/0","State":"pending"}]}]`
-	expected := `+-------------+-------------------------+-------------+
-| Application | Units State Summary     | Address     |
-+-------------+-------------------------+-------------+
-| app1        | 0 of 1 units in-service | 10.10.10.10 |
-+-------------+-------------------------+-------------+
+	result := `[{"ip":"10.10.10.10","name":"app1","ready":true,"units":[{"Name":"app1/0","State":"pending"}]}]`
+	expected := `+-------------+-------------------------+-------------+--------+
+| Application | Units State Summary     | Address     | Ready? |
++-------------+-------------------------+-------------+--------+
+| app1        | 0 of 1 units in-service | 10.10.10.10 | Yes    |
++-------------+-------------------------+-------------+--------+
 `
 	context := cmd.Context{
 		Args:   []string{},
@@ -345,12 +345,33 @@ func (s *S) TestAppListUnitIsntStarted(c *gocheck.C) {
 
 func (s *S) TestAppListUnitWithoutName(c *gocheck.C) {
 	var stdout, stderr bytes.Buffer
-	result := `[{"ip":"10.10.10.10","name":"app1","units":[{"Name":"","State":"pending"}]}]`
-	expected := `+-------------+-------------------------+-------------+
-| Application | Units State Summary     | Address     |
-+-------------+-------------------------+-------------+
-| app1        | 0 of 0 units in-service | 10.10.10.10 |
-+-------------+-------------------------+-------------+
+	result := `[{"ip":"10.10.10.10","name":"app1","ready":true,"units":[{"Name":"","State":"pending"}]}]`
+	expected := `+-------------+-------------------------+-------------+--------+
+| Application | Units State Summary     | Address     | Ready? |
++-------------+-------------------------+-------------+--------+
+| app1        | 0 of 0 units in-service | 10.10.10.10 | Yes    |
++-------------+-------------------------+-------------+--------+
+`
+	context := cmd.Context{
+		Args:   []string{},
+		Stdout: &stdout,
+		Stderr: &stderr,
+	}
+	client := cmd.NewClient(&http.Client{Transport: &testing.Transport{Message: result, Status: http.StatusOK}}, nil, manager)
+	command := AppList{}
+	err := command.Run(&context, client)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(stdout.String(), gocheck.Equals, expected)
+}
+
+func (s *S) TestAppListNotReady(c *gocheck.C) {
+	var stdout, stderr bytes.Buffer
+	result := `[{"ip":"10.10.10.10","name":"app1","ready":false,"units":[{"Name":"","State":"pending"}]}]`
+	expected := `+-------------+-------------------------+-------------+--------+
+| Application | Units State Summary     | Address     | Ready? |
++-------------+-------------------------+-------------+--------+
+| app1        | 0 of 0 units in-service | 10.10.10.10 | No     |
++-------------+-------------------------+-------------+--------+
 `
 	context := cmd.Context{
 		Args:   []string{},
@@ -366,12 +387,12 @@ func (s *S) TestAppListUnitWithoutName(c *gocheck.C) {
 
 func (s *S) TestAppListCName(c *gocheck.C) {
 	var stdout, stderr bytes.Buffer
-	result := `[{"ip":"10.10.10.10","cname":"app1.tsuru.io","name":"app1","units":[{"Name":"app1/0","State":"started"}]}]`
-	expected := `+-------------+-------------------------+---------------+
-| Application | Units State Summary     | Address       |
-+-------------+-------------------------+---------------+
-| app1        | 1 of 1 units in-service | app1.tsuru.io |
-+-------------+-------------------------+---------------+
+	result := `[{"ip":"10.10.10.10","cname":"app1.tsuru.io","name":"app1","ready":true,"units":[{"Name":"app1/0","State":"started"}]}]`
+	expected := `+-------------+-------------------------+---------------+--------+
+| Application | Units State Summary     | Address       | Ready? |
++-------------+-------------------------+---------------+--------+
+| app1        | 1 of 1 units in-service | app1.tsuru.io | Yes    |
++-------------+-------------------------+---------------+--------+
 `
 	context := cmd.Context{
 		Args:   []string{},

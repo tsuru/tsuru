@@ -71,6 +71,7 @@ type app struct {
 	Repository string
 	Teams      []string
 	Units      []unit
+	Ready      bool
 }
 
 func (a *app) Addr() string {
@@ -78,6 +79,13 @@ func (a *app) Addr() string {
 		return a.CName
 	}
 	return a.Ip
+}
+
+func (a *app) IsReady() string {
+	if a.Ready {
+		return "Yes"
+	}
+	return "No"
 }
 
 func (a *app) String() string {
@@ -220,7 +228,7 @@ func (c AppList) Show(result []byte, context *cmd.Context) error {
 		return err
 	}
 	table := cmd.NewTable()
-	table.Headers = cmd.Row([]string{"Application", "Units State Summary", "Address"})
+	table.Headers = cmd.Row([]string{"Application", "Units State Summary", "Address", "Ready?"})
 	for _, app := range apps {
 		var units_started int
 		var total int
@@ -233,7 +241,7 @@ func (c AppList) Show(result []byte, context *cmd.Context) error {
 			}
 		}
 		summary := fmt.Sprintf("%d of %d units in-service", units_started, total)
-		table.AddRow(cmd.Row([]string{app.Name, summary, app.Addr()}))
+		table.AddRow(cmd.Row([]string{app.Name, summary, app.Addr(), app.IsReady()}))
 	}
 	table.Sort()
 	context.Stdout.Write(table.Bytes())
