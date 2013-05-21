@@ -343,6 +343,27 @@ func (s *S) TestAppListUnitIsntStarted(c *gocheck.C) {
 	c.Assert(stdout.String(), gocheck.Equals, expected)
 }
 
+func (s *S) TestAppListUnitWithoutName(c *gocheck.C) {
+	var stdout, stderr bytes.Buffer
+	result := `[{"ip":"10.10.10.10","name":"app1","units":[{"Name":"","State":"pending"}]}]`
+	expected := `+-------------+-------------------------+-------------+
+| Application | Units State Summary     | Address     |
++-------------+-------------------------+-------------+
+| app1        | 0 of 0 units in-service | 10.10.10.10 |
++-------------+-------------------------+-------------+
+`
+	context := cmd.Context{
+		Args:   []string{},
+		Stdout: &stdout,
+		Stderr: &stderr,
+	}
+	client := cmd.NewClient(&http.Client{Transport: &testing.Transport{Message: result, Status: http.StatusOK}}, nil, manager)
+	command := AppList{}
+	err := command.Run(&context, client)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(stdout.String(), gocheck.Equals, expected)
+}
+
 func (s *S) TestAppListCName(c *gocheck.C) {
 	var stdout, stderr bytes.Buffer
 	result := `[{"ip":"10.10.10.10","cname":"app1.tsuru.io","name":"app1","units":[{"Name":"app1/0","State":"started"}]}]`

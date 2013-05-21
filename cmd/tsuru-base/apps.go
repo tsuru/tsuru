@@ -223,12 +223,16 @@ func (c AppList) Show(result []byte, context *cmd.Context) error {
 	table.Headers = cmd.Row([]string{"Application", "Units State Summary", "Address"})
 	for _, app := range apps {
 		var units_started int
+		var total int
 		for _, unit := range app.Units {
-			if unit.State == "started" {
-				units_started += 1
+			if unit.Name != "" {
+				total++
+				if unit.State == "started" {
+					units_started += 1
+				}
 			}
 		}
-		summary := fmt.Sprintf("%d of %d units in-service", units_started, len(app.Units))
+		summary := fmt.Sprintf("%d of %d units in-service", units_started, total)
 		table.AddRow(cmd.Row([]string{app.Name, summary, app.Addr()}))
 	}
 	table.Sort()
