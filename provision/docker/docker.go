@@ -134,8 +134,7 @@ func newContainer(app provision.App) (*container, error) {
 	}
 	err := c.create(app)
 	if err != nil {
-		log.Printf("Error creating container %s", appName)
-		log.Printf("Error was: %s", err.Error())
+		log.Printf("Error creating container for the app %q: %s", appName, err)
 		return nil, err
 	}
 	return &c, nil

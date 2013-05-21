@@ -101,7 +101,7 @@ func (s *S) TestNewContainerReturnsNilAndLogsOnError(c *gocheck.C) {
 	c.Assert(err, gocheck.NotNil)
 	defer s.conn.Collection(s.collName).Remove(bson.M{"appname": app.GetName()})
 	c.Assert(container, gocheck.IsNil)
-	c.Assert(w.String(), gocheck.Matches, "(?s).*Error creating container myapp.*")
+	c.Assert(w.String(), gocheck.Matches, `(?s).*Error creating container for the app "myapp".*`)
 }
 
 func (s *S) TestNewContainerAddsRoute(c *gocheck.C) {
