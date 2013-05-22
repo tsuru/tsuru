@@ -310,7 +310,7 @@ func (s *S) TestDockerDeploy(c *gocheck.C) {
 	container := container{Id: "c-01", Ip: "10.10.10.10", AppName: "myapp"}
 	err := container.deploy(&buf)
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(buf.String(), gocheck.Equals, "success\nsuccess\n")
+	c.Assert(buf.String(), gocheck.Equals, "success\n")
 	appRepo := repository.ReadOnlyURL(container.AppName)
 	deployArgs := []string{
 		"10.10.10.10", "-l", s.sshUser, "-o", "StrictHostKeyChecking no",

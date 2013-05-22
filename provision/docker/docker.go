@@ -275,9 +275,13 @@ func (c *container) deploy(w io.Writer) error {
 		time.Sleep(100e6)
 		filter.filtered = false
 	}
-	err = c.ssh(w, w, runBin, strings.Fields(runArgs)...)
+	var buf bytes.Buffer
+	err = c.ssh(&buf, &buf, runBin, strings.Fields(runArgs)...)
 	if err != nil {
+		log.Printf("Failed to start container: %s", err)
+		log.Printf("Output of the command: %s", buf.String())
 		c.setStatus("error")
+		return err
 	}
 	c.setStatus("running")
 	return nil
