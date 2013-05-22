@@ -398,13 +398,15 @@ func (s *S) TestDockerRemove(c *gocheck.C) {
 	fexec := &etesting.FakeExecutor{}
 	setExecut(fexec)
 	defer setExecut(nil)
-	container := container{AppName: "container", Id: "id"}
+	container := container{AppName: "container", Id: "id", Ip: "10.10.10.10"}
 	err := s.conn.Collection(s.collName).Insert(&container)
 	c.Assert(err, gocheck.IsNil)
 	err = container.remove()
 	c.Assert(err, gocheck.IsNil)
-	args := []string{"rm", "id"}
+	args := []string{"rm", container.Id}
 	c.Assert(fexec.ExecutedCmd("docker", args), gocheck.Equals, true)
+	args = []string{"-R", container.Ip}
+	c.Assert(fexec.ExecutedCmd("ssh-keygen", args), gocheck.Equals, true)
 }
 
 func (s *S) TestDockerRemoveRemovesContainerFromDatabase(c *gocheck.C) {

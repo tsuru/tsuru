@@ -297,6 +297,7 @@ func (c *container) remove() error {
 		log.Printf("Command output: %s", out)
 		return err
 	}
+	runCmd("ssh-keygen", "-R", c.Ip)
 	log.Printf("Removing container %s from database", c.Id)
 	coll := collection()
 	defer coll.Database.Session.Close()
