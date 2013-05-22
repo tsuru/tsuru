@@ -19,8 +19,14 @@ type Router interface {
 	// AddRoute adds a new route.
 	AddRoute(name, address string) error
 
-	//Remove removes a route.
+	// Remove removes a route.
 	RemoveRoute(name, address string) error
+
+	// AddCNAME adds a CNAME
+	AddCNAME(cname, name, address string) error
+
+	// RemoveCNAME removes a CNAME
+	RemoveCNAME(cname, address string) error
 
 	// Addr returns the route address.
 	Addr(name string) (string, error)

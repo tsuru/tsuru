@@ -113,6 +113,14 @@ func (hipacheRouter) RemoveRoute(name, address string) error {
 	return nil
 }
 
+func (hipacheRouter) AddCNAME(cname, name, address string) error {
+	return nil
+}
+
+func (hipacheRouter) RemoveCNAME(cname, address string) error {
+	return nil
+}
+
 func (hipacheRouter) Addr(name string) (string, error) {
 	domain, err := config.GetString("hipache:domain")
 	if err != nil {

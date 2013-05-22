@@ -179,6 +179,16 @@ func (s *S) TestRemoveRouteCommandFailure(c *gocheck.C) {
 	c.Assert(e.op, gocheck.Equals, "remove")
 }
 
+func (s *S) TestAddCNAME(c *gocheck.C) {
+	err := hipacheRouter{}.AddCNAME("myapp.com", "myapp", "10.10.10.10")
+	c.Assert(err, gocheck.IsNil)
+}
+
+func (s *S) TestRemoveCNAME(c *gocheck.C) {
+	err := hipacheRouter{}.RemoveCNAME("myapp.com", "10.10.10.10")
+	c.Assert(err, gocheck.IsNil)
+}
+
 func (s *S) TestAddr(c *gocheck.C) {
 	conn = &resultCommandConn{result: []interface{}{[]byte("10.10.10.10:8080")}, fakeConn: &s.conn}
 	addr, err := hipacheRouter{}.Addr("tip")

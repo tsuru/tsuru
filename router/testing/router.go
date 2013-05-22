@@ -67,6 +67,14 @@ func (r *FakeRouter) RemoveRoute(name, ip string) error {
 	return nil
 }
 
+func (FakeRouter) AddCNAME(cname, name, address string) error {
+	return nil
+}
+
+func (FakeRouter) RemoveCNAME(cname, address string) error {
+	return nil
+}
+
 func (r *FakeRouter) HasRoute(name string) bool {
 	r.mutex.Lock()
 	defer r.mutex.Unlock()

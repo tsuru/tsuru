@@ -61,6 +61,14 @@ func (r *NginxRouter) RemoveRoute(name, address string) error {
 	return nil
 }
 
+func (NginxRouter) AddCNAME(cname, name, address string) error {
+	return nil
+}
+
+func (NginxRouter) RemoveCNAME(cname, address string) error {
+	return nil
+}
+
 func (r *NginxRouter) AddBackend(name string) error {
 	return nil
 }
