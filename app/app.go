@@ -560,8 +560,6 @@ func (app *App) postRestart(w io.Writer) error {
 // The hook itself may be "pre-restart" or "post-restart".
 func (app *App) runHook(w io.Writer, cmds []string, kind string) error {
 	if len(cmds) == 0 {
-		app.Log(fmt.Sprintf("Skipping %s hooks...", kind), "tsuru")
-		fmt.Fprintf(w, "Skipping %s hooks...", kind)
 		return nil
 	}
 	app.Log(fmt.Sprintf("Executing %s hook...", kind), "tsuru")

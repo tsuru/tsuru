@@ -1409,9 +1409,6 @@ func (s *S) TestPreRestartWhenAppConfDoesNotExist(c *gocheck.C) {
 	log.SetLogger(l)
 	err := a.preRestart(w)
 	c.Assert(err, gocheck.IsNil)
-	st := strings.Split(w.String(), "\n")
-	regexp := ".*Skipping pre-restart hooks..."
-	c.Assert(st[0], gocheck.Matches, regexp)
 }
 
 func (s *S) TestSkipsPreRestartWhenPreRestartSectionDoesNotExists(c *gocheck.C) {
@@ -1426,8 +1423,6 @@ func (s *S) TestSkipsPreRestartWhenPreRestartSectionDoesNotExists(c *gocheck.C) 
 	log.SetLogger(l)
 	err := a.preRestart(w)
 	c.Assert(err, gocheck.IsNil)
-	st := strings.Split(w.String(), "\n")
-	c.Assert(st[0], gocheck.Matches, ".*Skipping pre-restart hooks...")
 }
 
 func (s *S) TestPostRestart(c *gocheck.C) {
@@ -1452,8 +1447,6 @@ func (s *S) TestPostRestartWhenAppConfDoesNotExists(c *gocheck.C) {
 	log.SetLogger(l)
 	err := a.postRestart(w)
 	c.Assert(err, gocheck.IsNil)
-	st := strings.Split(w.String(), "\n")
-	c.Assert(st[0], gocheck.Matches, ".*Skipping post-restart hooks...")
 }
 
 func (s *S) TestSkipsPostRestartWhenPostRestartSectionDoesNotExists(c *gocheck.C) {
@@ -1468,8 +1461,6 @@ func (s *S) TestSkipsPostRestartWhenPostRestartSectionDoesNotExists(c *gocheck.C
 	log.SetLogger(l)
 	err := a.postRestart(w)
 	c.Assert(err, gocheck.IsNil)
-	st := strings.Split(w.String(), "\n")
-	c.Assert(st[0], gocheck.Matches, ".*Skipping post-restart hooks...")
 }
 
 func (s *S) TestReady(c *gocheck.C) {
