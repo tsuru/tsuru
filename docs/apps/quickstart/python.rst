@@ -136,11 +136,7 @@ push to tsuru remote and your project will be deployed:
     #####################################
     #          OMIT (see below)         #
     #####################################
-    remote:  ---> Skipping pre-restart hooks...
-    remote
     remote:  ---> Restarting your app
-    remote:
-    remote:  ---> Skipping post-restart hooks...
     remote:
     remote:  ---> Deploy done!
     remote:
@@ -387,12 +383,8 @@ another deploy:
     remote: Requirement already satisfied (use --upgrade to upgrade): South==0.7.6 in /usr/local/lib/python2.7/dist-packages (from -r /home/application/current/requirements.txt (line 3))
     remote: Cleaning up...
     remote:
-    remote:  ---> Skipping pre-restart hooks...
-    remote:
     remote:  ---> Restarting your app
     remote: /var/lib/tsuru/hooks/start: line 13: gunicorn: command not found
-    remote:
-    remote:  ---> Skipping post-restart hooks...
     remote:
     remote:  ---> Deploy done!
     remote:
@@ -436,8 +428,6 @@ Now we commit the changes and run another deploy:
     remote:  1 file changed, 1 insertion(+)
     [...]
     remote:  ---> Restarting your app
-    remote:
-    remote:  ---> Skipping post-restart hooks...
     remote:
     remote:  ---> Deploy done!
     remote:
@@ -589,11 +579,7 @@ Now let's commit it and run another deploy:
     #               OMIT                #
     #####################################
     remote:
-    remote:  ---> Skipping pre-restart hooks...
-    remote:
     remote:  ---> Restarting your app
-    remote:
-    remote:  ---> Skipping post-restart hooks...
     remote:
     remote:  ---> Deploy done!
     remote:
@@ -652,24 +638,9 @@ Deployment hooks
 
 It would be boring to manually run ``syncdb`` and/or ``migrate`` after every
 deployment. So we can configure an automatic hook to always run before or after
-the app restarts. As you can see in the deploy output, there are three key
-sections related to that hooks:
+the app restarts.
 
-.. highlight:: bash
-
-::
-
-    $ git push tsuru master
-    remote:
-    remote:  ---> Skipping pre-restart hooks...
-    remote:
-    ######
-    remote:
-    remote:  ---> Skipping post-restart hooks...
-    remote:
-    ######
-
-So, tsuru parses a file called ``app.yaml`` and runs ``pre-restart`` and
+Tsuru parses a file called ``app.yaml`` and runs ``pre-restart`` and
 ``post-restart`` hooks. As the extension suggests, this is a YAML file, that
 contains a list of commands that should run in pre-restart and post-restart
 hooks. Here is our example of app.yaml:
@@ -721,8 +692,6 @@ It should be located in the root of the project. Let's commit and deploy it:
     remote: Requirement already satisfied (use --upgrade to upgrade): South==0.7.6 in /usr/local/lib/python2.7/dist-packages (from -r /home/application/current/requirements.txt (line 3))
     remote: Requirement already satisfied (use --upgrade to upgrade): gunicorn==0.14.6 in /usr/local/lib/python2.7/dist-packages (from -r /home/application/current/requirements.txt (line 4))
     remote: Cleaning up...
-    remote:
-    remote:  ---> Skipping pre-restart hooks...
     remote:
     remote:  ---> Restarting your app
     remote:
