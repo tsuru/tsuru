@@ -263,6 +263,13 @@ func collectUnit(container container, units chan<- provision.Unit, errs chan<- e
 		return
 	}
 	unit.Ip = c["NetworkSettings"].(map[string]interface{})["IpAddress"].(string)
+	if hostPort, err := container.hostPort(); err == nil && hostPort != container.HostPort {
+		err = fixContainer(&container, unit.Ip, hostPort)
+		if err != nil {
+			errs <- err
+			return
+		}
+	}
 	addr := fmt.Sprintf("%s:%s", unit.Ip, container.Port)
 	conn, err := net.Dial("tcp", addr)
 	if err != nil {
@@ -284,6 +291,19 @@ func buildResult(maxSize int, units <-chan provision.Unit) <-chan []provision.Un
 		ch <- result
 	}()
 	return ch
+}
+
+func fixContainer(container *container, ip, port string) error {
+	router, err := getRouter()
+	if err != nil {
+		return err
+	}
+	router.RemoveRoute(container.AppName, container.getAddress())
+	runCmd("ssh-keygen", "-R", container.Ip)
+	container.Ip = ip
+	container.HostPort = port
+	router.AddRoute(container.AppName, container.getAddress())
+	return collection().UpdateId(container.Id, container)
 }
 
 func collection() *mgo.Collection {
