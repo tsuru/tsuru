@@ -54,18 +54,20 @@ get-test:
 	@/bin/echo -n "Installing test dependencies... "
 	@go list -f '{{range .TestImports}}{{.}} {{end}}' ./... | tr ' ' '\n' |\
 		grep '^.*\..*/.*$$' | grep -v 'github.com/globocom/tsuru' |\
-		sort | uniq | xargs go get -u >/dev/null
+		sort | uniq | xargs go get -u >/tmp/.get-test 2>&1 || (cat /tmp/.get-test && exit 1)
 	@go list -f '{{range .XTestImports}}{{.}} {{end}}' ./... | tr ' ' '\n' |\
 		grep '^.*\..*/.*$$' | grep -v 'github.com/globocom/tsuru' |\
-		sort | uniq | xargs go get -u >/dev/null
+		sort | uniq | xargs go get -u >/tmp/.get-test 2>&1 || (cat /tmp/.get-test && exit 1)
 	@/bin/echo "ok"
+	@rm -f /tmp/.get-test
 
 get-prod:
 	@/bin/echo -n "Installing production dependencies... "
 	@go list -f '{{range .Imports}}{{.}} {{end}}' ./... | tr ' ' '\n' |\
 		grep '^.*\..*/.*$$' | grep -v 'github.com/globocom/tsuru' |\
-		sort | uniq | xargs go get -u >/dev/null
+		sort | uniq | xargs go get -u >/tmp/.get-prod 2>&1 || (cat /tmp/.get-prod && exit 1)
 	@/bin/echo "ok"
+	@rm -f /tmp/.get-prod
 
 test:
 	@go test -i ./...
