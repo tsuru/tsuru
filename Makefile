@@ -86,20 +86,3 @@ doc:
 client:
 	@go build -o tsuru ./cmd/tsuru
 	@echo "Copy tsuru to your binary path"
-
-# TODO: find a better place to do this
-run-docker:
-	@go build -o tsr ./cmd/tsr
-	@sudo service beanstalkd start
-	@./tsr api --dry --config ./etc/tsuru-docker.conf
-	@./tsr collector --dry --config ./etc/tsuru-docker.conf
-	@sudo su - git -c gandalf-webserver &
-	@sudo su - git -c "git daemon --base-path=/var/repositories --syslog --export-all" &
-
-stop:
-	@if ps ax|grep "[s]udo su - git -c gandalf-webserver"; then ps ax|grep "[s]udo su - git -c gandalf-webserver"|awk {'print $$1'}|xargs sudo kill; fi
-	@if ps ax|grep "[g]it-daemon"; then ps ax|grep "[g]it-daemon"|awk {'print $$1'}|xargs sudo kill; fi
-	@if ps ax|grep "[w]ebsrv -config"; then ps ax|grep "[w]ebsrv -config"|awk {'print $$1'}|xargs kill; fi
-	@if ps ax|grep "[c]ollect -config"; then ps ax|grep "[c]ollect -config"|awk {'print $$1'}|xargs kill; fi
-	@sudo service beanstalkd stop
-	@rm -f tsr
