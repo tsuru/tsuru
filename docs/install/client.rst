@@ -23,6 +23,12 @@ tsuru contains three clients: ``tsuru``, ``tsuru-admin`` and ``crane``.
 This document describes how you can install those clients, using pre-compiled
 binaries or building them from source.
 
+`Using homebrew (Mac OS X only)`_
+
+`Pre-built binaries (Linux and Mac OS X)`_
+
+`Build from source (any platform supported by Go)`_
+
 Using homebrew (Mac OS X only)
 ==============================
 
