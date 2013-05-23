@@ -78,7 +78,7 @@ func (s *S) TestDeployShouldCallDockerCreate(c *gocheck.C) {
 		"IpAddress": "10.10.10.10",
 		"IpPrefixLen": 8,
 		"Gateway": "10.65.41.1",
-		"PortMapping": {}
+		"PortMapping": {"8888": "37574"}
 	}
 }`
 	fexec := &etesting.FakeExecutor{Output: map[string][][]byte{"*": {[]byte(out)}}}
@@ -125,7 +125,7 @@ func (s *S) TestDeployShouldReplaceAllContainers(c *gocheck.C) {
 		"IpAddress": "10.10.10.%d",
 		"IpPrefixLen": 8,
 		"Gateway": "10.65.41.1",
-		"PortMapping": {}
+		"PortMapping": {"8888": "37574"}
 	}
 }`
 	fexec := &etesting.FakeExecutor{
@@ -154,7 +154,7 @@ func (s *S) TestDeployShouldRestart(c *gocheck.C) {
 		"IpAddress": "10.10.10.10",
 		"IpPrefixLen": 8,
 		"Gateway": "10.65.41.1",
-		"PortMapping": {}
+		"PortMapping": {"8888": "37574"}
 	}
 }`
 	fexec := &etesting.FakeExecutor{
@@ -208,11 +208,11 @@ func (s *S) TestDeployFailureSecondStep(c *gocheck.C) {
 		"IpAddress": "10.10.10.%d",
 		"IpPrefixLen": 8,
 		"Gateway": "10.65.41.1",
-		"PortMapping": {}
+		"PortMapping": {"8888": "37574"}
 	}
 }`
 	fexec := etesting.FailLaterExecutor{
-		Succeeds: 2,
+		Succeeds: 3,
 		FakeExecutor: etesting.FakeExecutor{
 			Output: map[string][][]byte{
 				"*":              {[]byte("c-0955")},
@@ -314,7 +314,7 @@ func (s *S) TestProvisionerAddr(c *gocheck.C) {
 		"IpAddress": "10.10.10.10",
 		"IpPrefixLen": 8,
 		"Gateway": "10.65.41.1",
-		"PortMapping": {}
+		"PortMapping": {"8888": "37574"}
 	}
 }`
 	id := "123"
@@ -346,7 +346,7 @@ func (s *S) TestProvisionerAddUnits(c *gocheck.C) {
 		"IpAddress": "10.10.10.%d",
 		"IpPrefixLen": 8,
 		"Gateway": "10.65.41.1",
-		"PortMapping": {}
+		"PortMapping": {"8888": "37574"}
 	}
 }`
 	fexec := etesting.FakeExecutor{
