@@ -11,7 +11,6 @@ import (
 	etesting "github.com/globocom/tsuru/exec/testing"
 	"github.com/globocom/tsuru/log"
 	"github.com/globocom/tsuru/provision"
-	"github.com/globocom/tsuru/router"
 	rtesting "github.com/globocom/tsuru/router/testing"
 	"github.com/globocom/tsuru/testing"
 	"labix.org/v2/mgo/bson"
@@ -40,10 +39,7 @@ func (s *S) TestProvisionerProvision(c *gocheck.C) {
 	var p dockerProvisioner
 	err := p.Provision(app)
 	c.Assert(err, gocheck.IsNil)
-	r, err := getRouter()
-	c.Assert(err, gocheck.IsNil)
-	fk := r.(*rtesting.FakeRouter)
-	c.Assert(fk.HasBackend("myapp"), gocheck.Equals, true)
+	c.Assert(rtesting.FakeRouter.HasBackend("myapp"), gocheck.Equals, true)
 	c.Assert(app.IsReady(), gocheck.Equals, true)
 }
 
@@ -273,9 +269,7 @@ func (s *S) TestProvisionerDestroy(c *gocheck.C) {
 	}
 	args := []string{"rm", "myapp/0"}
 	c.Assert(fexec.ExecutedCmd("docker", args), gocheck.Equals, true)
-	r, err := router.Get("fake")
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(r.(*rtesting.FakeRouter).HasRoute("myapp"), gocheck.Equals, false)
+	c.Assert(rtesting.FakeRouter.HasBackend("myapp"), gocheck.Equals, false)
 }
 
 func (s *S) TestProvisionerDestroyEmptyUnit(c *gocheck.C) {
@@ -302,10 +296,7 @@ func (s *S) TestProvisionerDestroyRemovesRouterBackend(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	err = p.Destroy(app)
 	c.Assert(err, gocheck.IsNil)
-	r, err := getRouter()
-	c.Assert(err, gocheck.IsNil)
-	fk := r.(*rtesting.FakeRouter)
-	c.Assert(fk.HasBackend("myapp"), gocheck.Equals, false)
+	c.Assert(rtesting.FakeRouter.HasBackend("myapp"), gocheck.Equals, false)
 }
 
 func (s *S) TestProvisionerAddr(c *gocheck.C) {
