@@ -20,6 +20,8 @@ FATAL: you need bazaar (bzr) to download tsuru dependencies.
        Check INSTALL.md for details
 endef
 
+.PHONY: all check-path get hg git bzr get-test get-prod test race client
+
 all: check-path get test
 
 # It does not support GOPATH with multiple paths.
