@@ -49,7 +49,7 @@ func (s *S) TestNewContainer(c *gocheck.C) {
             "IpAddress": "10.10.10.10",
             "IpPrefixLen": 8,
             "Gateway": "10.65.41.1",
-            "PortMapping": {}
+	    "PortMapping": {"8888": "34233"}
     }
 }`
 	id := "945132e7b4c9"
@@ -71,6 +71,7 @@ func (s *S) TestNewContainer(c *gocheck.C) {
 	c.Assert(cont.Id, gocheck.Equals, id)
 	c.Assert(cont.AppName, gocheck.Equals, "app-name")
 	c.Assert(cont.Ip, gocheck.Equals, "10.10.10.10")
+	c.Assert(cont.HostPort, gocheck.Equals, "34233")
 	c.Assert(cont.Port, gocheck.Equals, s.port)
 }
 
@@ -261,7 +262,7 @@ func (s *S) TestDockerCreate(c *gocheck.C) {
 		"IpAddress": "10.10.10.10",
 		"IpPrefixLen": 8,
 		"Gateway": "10.65.41.1",
-		"PortMapping": {}
+		"PortMapping": {"8888": "37457"}
 	}
 }`
 	fexec.Output = map[string][][]byte{
@@ -279,6 +280,7 @@ func (s *S) TestDockerCreate(c *gocheck.C) {
 	}
 	c.Assert(fexec.ExecutedCmd("docker", args), gocheck.Equals, true)
 	c.Assert(container.Status, gocheck.Equals, "created")
+	c.Assert(container.HostPort, gocheck.Equals, "37457")
 }
 
 func (s *S) TestContainerCreateWithoutHostAddr(c *gocheck.C) {

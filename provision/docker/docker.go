@@ -101,12 +101,13 @@ func getPort() (string, error) {
 }
 
 type container struct {
-	Id      string `bson:"_id"`
-	AppName string
-	Type    string
-	Ip      string
-	Port    string
-	Status  string
+	Id       string `bson:"_id"`
+	AppName  string
+	Type     string
+	Ip       string
+	Port     string
+	HostPort string
+	Status   string
 }
 
 func (c *container) getAddress() string {
@@ -227,6 +228,11 @@ func (c *container) create(app provision.App) error {
 		return err
 	}
 	c.Ip = ip
+	hostPort, err := c.hostPort()
+	if err != nil {
+		return err
+	}
+	c.HostPort = hostPort
 	c.Status = "created"
 	coll := collection()
 	defer coll.Database.Session.Close()
