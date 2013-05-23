@@ -83,6 +83,7 @@ func (s *S) TestProvisionerProvision(c *gocheck.C) {
 	args = []string{"lxc-start", "--daemon", "-n", "myapp"}
 	c.Assert(fexec.ExecutedCmd("sudo", args), gocheck.Equals, true)
 	c.Assert(rtesting.FakeRouter.HasBackend("myapp"), gocheck.Equals, true)
+	c.Assert(rtesting.FakeRouter.HasRoute("myapp", "127.0.0.1"), gocheck.Equals, true)
 	var unit provision.Unit
 	err = s.conn.Collection(s.collName).Find(bson.M{"name": "myapp"}).One(&unit)
 	c.Assert(err, gocheck.IsNil)
@@ -169,14 +170,12 @@ func (s *S) TestProvisionerAddr(c *gocheck.C) {
 	config.Set("router", "fake")
 	var p LXCProvisioner
 	app := testing.NewFakeApp("myapp", "python", 1)
-	r, err := p.router()
-	c.Assert(err, gocheck.IsNil)
-	r.AddRoute("myapp", "http://10.10.10.10")
-	a, err := r.Addr(app.GetName())
-	c.Assert(err, gocheck.IsNil)
+	rtesting.FakeRouter.AddBackend(app.GetName())
+	defer rtesting.FakeRouter.RemoveBackend(app.GetName())
+	rtesting.FakeRouter.AddRoute(app.GetName(), "http://10.10.10.10")
 	addr, err := p.Addr(app)
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(addr, gocheck.Equals, a)
+	c.Assert(addr, gocheck.Equals, "http://10.10.10.10")
 }
 
 func (s *S) TestProvisionerAddUnits(c *gocheck.C) {

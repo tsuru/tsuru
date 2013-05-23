@@ -161,6 +161,12 @@ func (p *LXCProvisioner) Provision(app provision.App) error {
 			log.Print(err)
 			return
 		}
+		err = r.AddBackend(app.GetName())
+		if err != nil {
+			log.Printf("error on add backend for %s", app.GetName())
+			log.Print(err)
+			return
+		}
 		err = r.AddRoute(app.GetName(), c.Ip())
 		if err != nil {
 			log.Printf("error on add route for %s with ip %s", app.GetName(), c.Ip())
