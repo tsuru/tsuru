@@ -1,4 +1,4 @@
-// Copyright 2012 tsuru authors. All rights reserved.
+// Copyright 2013 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -9,7 +9,6 @@ import (
 	"regexp"
 )
 
-// ValidateEmail checks whether a given email is valid.
 func ValidateEmail(email string) bool {
 	re := regexp.MustCompile(`^([^@\s]+)@((?:[-a-z0-9]+\.)+[a-z]{2,})$`)
 	return re.MatchString(email)
