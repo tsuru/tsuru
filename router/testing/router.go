@@ -90,3 +90,9 @@ func (r *FakeRouter) Addr(name string) (string, error) {
 	}
 	return "", errors.New("Route not found")
 }
+
+func (r *fakeRouter) Reset() {
+	r.mutex.Lock()
+	defer r.mutex.Unlock()
+	r.backends = make(map[string][]string)
+}

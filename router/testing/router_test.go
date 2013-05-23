@@ -78,3 +78,13 @@ func (s *S) TestAddr(c *gocheck.C) {
 	c.Assert(addr, gocheck.Equals, "")
 	c.Assert(err.Error(), gocheck.Equals, "Route not found")
 }
+
+func (s *S) TestReset(c *gocheck.C) {
+	r := fakeRouter{backends: make(map[string][]string)}
+	err := r.AddBackend("name")
+	c.Assert(err, gocheck.IsNil)
+	err = r.AddRoute("name", "127.0.0.1")
+	c.Assert(err, gocheck.IsNil)
+	r.Reset()
+	c.Assert(r.HasBackend("name"), gocheck.Equals, false)
+}
