@@ -46,17 +46,9 @@ type Named interface {
 // AppUnit represents a unit in an app.
 type AppUnit interface {
 	Named
-
-	// Returns the number of the unit.
 	GetMachine() int
-
-	// Returns the status of the unit.
 	GetStatus() Status
-
-	// Returns the IP of the unit.
 	GetIp() string
-
-	// Returns the instance id of the unit.
 	GetInstanceId() string
 }
 
@@ -65,7 +57,6 @@ type AppUnit interface {
 // It contains only relevant information for provisioning.
 type App interface {
 	Named
-
 	// Log should be used to log messages in the app.
 	Log(message, source string) error
 
@@ -73,21 +64,16 @@ type App interface {
 	// to the Unit `Type` field.
 	GetPlatform() string
 
-	// ProvisionUnits returns all units of the app, in a slice.
 	ProvisionUnits() []AppUnit
-
-	// RemoveUnit removes the given unit from the app.
 	RemoveUnit(id string) error
 
 	// Run executes the command in app units, sourcing apprc before running the
 	// command.
 	Run(cmd string, w io.Writer) error
 
-	// Restart restarts the application process
 	Restart(io.Writer) error
 
-	// Ready marks the app as ready, meaning that user can deploy code to
-	// it.
+	// Ready marks the app as ready for deployment.
 	Ready() error
 }
 
@@ -120,15 +106,13 @@ type Provisioner interface {
 	// ExecuteCommand runs a command in all units of the app.
 	ExecuteCommand(stdout, stderr io.Writer, app App, cmd string, args ...string) error
 
-	// Restart restarts the app.
 	Restart(App) error
 
 	// CollectStatus returns information about all provisioned units. It's used
 	// by tsuru collector when updating the status of apps in the database.
 	CollectStatus() ([]Unit, error)
 
-	// Addr returns the address for an app. It will probably be a DNS name
-	// or IP address.
+	// Addr returns the address for an app.
 	//
 	// Tsuru will use this method to get the IP (althought it might not be
 	// an actual IP, collector calls it "IP") of the app from the
@@ -136,7 +120,7 @@ type Provisioner interface {
 	Addr(App) (string, error)
 
 	// InstallDeps installs the dependencies required for the application
-	// to run and writes the log in the received writer
+	// to run and writes the log in the received writer.
 	InstallDeps(app App, w io.Writer) error
 }
 
