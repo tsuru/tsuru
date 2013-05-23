@@ -19,11 +19,11 @@ var _ = gocheck.Suite(&S{})
 func (s *S) TestShouldBeRegistered(c *gocheck.C) {
 	r, err := router.Get("fake")
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(r, gocheck.FitsTypeOf, &fakeRouter{})
+	c.Assert(r, gocheck.FitsTypeOf, &FakeRouter{})
 }
 
 func (s *S) TestAddBackend(c *gocheck.C) {
-	r := fakeRouter{backends: make(map[string][]string)}
+	r := FakeRouter{backends: make(map[string][]string)}
 	err := r.AddBackend("foo")
 	c.Assert(err, gocheck.IsNil)
 	defer r.RemoveBackend("foo")
@@ -31,7 +31,7 @@ func (s *S) TestAddBackend(c *gocheck.C) {
 }
 
 func (s *S) TestAddDuplicateBackend(c *gocheck.C) {
-	r := fakeRouter{backends: make(map[string][]string)}
+	r := FakeRouter{backends: make(map[string][]string)}
 	err := r.AddBackend("foo")
 	c.Assert(err, gocheck.IsNil)
 	err = r.AddBackend("foo")
@@ -40,7 +40,7 @@ func (s *S) TestAddDuplicateBackend(c *gocheck.C) {
 }
 
 func (s *S) TestRemoveBackend(c *gocheck.C) {
-	r := fakeRouter{backends: make(map[string][]string)}
+	r := FakeRouter{backends: make(map[string][]string)}
 	err := r.AddBackend("bar")
 	c.Assert(err, gocheck.IsNil)
 	err = r.RemoveBackend("bar")
@@ -49,13 +49,13 @@ func (s *S) TestRemoveBackend(c *gocheck.C) {
 }
 
 func (s *S) TestRemoveUnknownBackend(c *gocheck.C) {
-	r := fakeRouter{backends: make(map[string][]string)}
+	r := FakeRouter{backends: make(map[string][]string)}
 	err := r.RemoveBackend("bar")
 	c.Assert(err, gocheck.Equals, ErrBackendNotFound)
 }
 
 func (s *S) TestAddRoute(c *gocheck.C) {
-	r := fakeRouter{backends: make(map[string][]string)}
+	r := FakeRouter{backends: make(map[string][]string)}
 	err := r.AddBackend("name")
 	c.Assert(err, gocheck.IsNil)
 	err = r.AddRoute("name", "127.0.0.1")
@@ -64,13 +64,13 @@ func (s *S) TestAddRoute(c *gocheck.C) {
 }
 
 func (s *S) TestAddRouteBackendNotFound(c *gocheck.C) {
-	r := fakeRouter{backends: make(map[string][]string)}
+	r := FakeRouter{backends: make(map[string][]string)}
 	err := r.AddRoute("name", "127.0.0.1")
 	c.Assert(err, gocheck.Equals, ErrBackendNotFound)
 }
 
 func (s *S) TestRemoveRoute(c *gocheck.C) {
-	r := fakeRouter{backends: make(map[string][]string)}
+	r := FakeRouter{backends: make(map[string][]string)}
 	err := r.AddBackend("name")
 	c.Assert(err, gocheck.IsNil)
 	err = r.AddRoute("name", "127.0.0.1")
@@ -81,13 +81,13 @@ func (s *S) TestRemoveRoute(c *gocheck.C) {
 }
 
 func (s *S) TestRemoveRouteBackendNotFound(c *gocheck.C) {
-	r := fakeRouter{backends: make(map[string][]string)}
+	r := FakeRouter{backends: make(map[string][]string)}
 	err := r.RemoveRoute("name", "127.0.0.1")
 	c.Assert(err, gocheck.Equals, ErrBackendNotFound)
 }
 
 func (s *S) TestRemoveUnknownRoute(c *gocheck.C) {
-	r := fakeRouter{backends: make(map[string][]string)}
+	r := FakeRouter{backends: make(map[string][]string)}
 	err := r.AddBackend("name")
 	c.Assert(err, gocheck.IsNil)
 	err = r.RemoveRoute("name", "127.0.0.1")
@@ -96,19 +96,19 @@ func (s *S) TestRemoveUnknownRoute(c *gocheck.C) {
 }
 
 func (s *S) TestAddCNAME(c *gocheck.C) {
-	var r fakeRouter
+	var r FakeRouter
 	err := r.AddCNAME("myapp.com", "name", "127.0.0.1")
 	c.Assert(err, gocheck.IsNil)
 }
 
 func (s *S) TestRemoveCNAME(c *gocheck.C) {
-	var r fakeRouter
+	var r FakeRouter
 	err := r.RemoveCNAME("myapp.com", "127.0.0.1")
 	c.Assert(err, gocheck.IsNil)
 }
 
 func (s *S) TestAddr(c *gocheck.C) {
-	r := fakeRouter{backends: make(map[string][]string)}
+	r := FakeRouter{backends: make(map[string][]string)}
 	err := r.AddBackend("name")
 	c.Assert(err, gocheck.IsNil)
 	err = r.AddRoute("name", "127.0.0.1")
