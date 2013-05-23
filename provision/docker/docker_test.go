@@ -21,22 +21,7 @@ import (
 )
 
 func (s *S) TestContainerGetAddress(c *gocheck.C) {
-	cmdOut := `
-{
-    "NetworkSettings": {
-        "IpAddress": "10.10.10.10",
-        "IpPrefixLen": 8,
-        "Gateway": "10.65.41.1",
-        "PortMapping": {
-            "8888": "49153"
-        }
-    }
-}`
-	out := map[string][][]byte{"*": {[]byte(cmdOut)}}
-	fexec := &etesting.FakeExecutor{Output: out}
-	setExecut(fexec)
-	defer setExecut(nil)
-	container := container{Id: "id123", Port: "8888"}
+	container := container{Id: "id123", Port: "8888", HostPort: "49153"}
 	address := container.getAddress()
 	expected := fmt.Sprintf("http://%s:49153", s.hostAddr)
 	c.Assert(address, gocheck.Equals, expected)
