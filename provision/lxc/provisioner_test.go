@@ -82,10 +82,7 @@ func (s *S) TestProvisionerProvision(c *gocheck.C) {
 	c.Assert(fexec.ExecutedCmd("sudo", args), gocheck.Equals, true)
 	args = []string{"lxc-start", "--daemon", "-n", "myapp"}
 	c.Assert(fexec.ExecutedCmd("sudo", args), gocheck.Equals, true)
-	r, err := p.router()
-	c.Assert(err, gocheck.IsNil)
-	fk := r.(*rtesting.FakeRouter)
-	c.Assert(fk.HasRoute("myapp"), gocheck.Equals, true)
+	c.Assert(rtesting.FakeRouter.HasBackend("myapp"), gocheck.Equals, true)
 	var unit provision.Unit
 	err = s.conn.Collection(s.collName).Find(bson.M{"name": "myapp"}).One(&unit)
 	c.Assert(err, gocheck.IsNil)
