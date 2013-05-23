@@ -114,6 +114,15 @@ func (hipacheRouter) RemoveRoute(name, address string) error {
 }
 
 func (hipacheRouter) AddCNAME(cname, name, address string) error {
+	frontend := "frontend:" + cname
+	conn, err := connect()
+	if err != nil {
+		return &routeError{"add", err}
+	}
+	_, err = conn.Do("RPUSH", frontend, address)
+	if err != nil {
+		return &routeError{"add", err}
+	}
 	return nil
 }
 
