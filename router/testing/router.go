@@ -10,12 +10,12 @@ import (
 	"sync"
 )
 
-var Instance = fakeRouter{backends: make(map[string][]string)}
+var FakeRouter = fakeRouter{backends: make(map[string][]string)}
 
 var ErrBackendNotFound = errors.New("Backend not found")
 
 func init() {
-	router.Register("fake", &Instance)
+	router.Register("fake", &FakeRouter)
 }
 
 type fakeRouter struct {
