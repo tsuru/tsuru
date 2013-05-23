@@ -8,27 +8,15 @@ package router
 
 import "fmt"
 
-// Router is the basic interface of this package.
+// Router is the basic interface of this package. It provides methods for
+// managing backends and routes. Each backend can have multiple routes.
 type Router interface {
-	// AddBackend adds a new backend.
 	AddBackend(name string) error
-
-	// RemoveBackend removes a backend.
 	RemoveBackend(name string) error
-
-	// AddRoute adds a new route.
 	AddRoute(name, address string) error
-
-	// Remove removes a route.
 	RemoveRoute(name, address string) error
-
-	// AddCNAME adds a CNAME
 	AddCNAME(cname, name, address string) error
-
-	// RemoveCNAME removes a CNAME
 	RemoveCNAME(cname, address string) error
-
-	// Addr returns the route address.
 	Addr(name string) (string, error)
 }
 
