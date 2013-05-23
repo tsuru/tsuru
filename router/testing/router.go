@@ -10,7 +10,7 @@ import (
 	"sync"
 )
 
-var Instance = FakeRouter{backends: make(map[string][]string)}
+var Instance = fakeRouter{backends: make(map[string][]string)}
 
 var ErrBackendNotFound = errors.New("Backend not found")
 
@@ -18,19 +18,19 @@ func init() {
 	router.Register("fake", &Instance)
 }
 
-type FakeRouter struct {
+type fakeRouter struct {
 	backends map[string][]string
 	mutex    sync.Mutex
 }
 
-func (r *FakeRouter) HasBackend(name string) bool {
+func (r *fakeRouter) HasBackend(name string) bool {
 	r.mutex.Lock()
 	defer r.mutex.Unlock()
 	_, ok := r.backends[name]
 	return ok
 }
 
-func (r *FakeRouter) HasRoute(name, address string) bool {
+func (r *fakeRouter) HasRoute(name, address string) bool {
 	r.mutex.Lock()
 	defer r.mutex.Unlock()
 	routes, ok := r.backends[name]
@@ -45,7 +45,7 @@ func (r *FakeRouter) HasRoute(name, address string) bool {
 	return false
 }
 
-func (r *FakeRouter) AddBackend(name string) error {
+func (r *fakeRouter) AddBackend(name string) error {
 	if r.HasBackend(name) {
 		return errors.New("Backend already exists")
 	}
@@ -55,7 +55,7 @@ func (r *FakeRouter) AddBackend(name string) error {
 	return nil
 }
 
-func (r *FakeRouter) RemoveBackend(name string) error {
+func (r *fakeRouter) RemoveBackend(name string) error {
 	if !r.HasBackend(name) {
 		return ErrBackendNotFound
 	}
@@ -65,7 +65,7 @@ func (r *FakeRouter) RemoveBackend(name string) error {
 	return nil
 }
 
-func (r *FakeRouter) AddRoute(name, ip string) error {
+func (r *fakeRouter) AddRoute(name, ip string) error {
 	if !r.HasBackend(name) {
 		return ErrBackendNotFound
 	}
@@ -77,7 +77,7 @@ func (r *FakeRouter) AddRoute(name, ip string) error {
 	return nil
 }
 
-func (r *FakeRouter) RemoveRoute(name, ip string) error {
+func (r *fakeRouter) RemoveRoute(name, ip string) error {
 	if !r.HasBackend(name) {
 		return ErrBackendNotFound
 	}
@@ -99,15 +99,15 @@ func (r *FakeRouter) RemoveRoute(name, ip string) error {
 	return nil
 }
 
-func (FakeRouter) AddCNAME(cname, name, address string) error {
+func (fakeRouter) AddCNAME(cname, name, address string) error {
 	return nil
 }
 
-func (FakeRouter) RemoveCNAME(cname, address string) error {
+func (fakeRouter) RemoveCNAME(cname, address string) error {
 	return nil
 }
 
-func (r *FakeRouter) Addr(name string) (string, error) {
+func (r *fakeRouter) Addr(name string) (string, error) {
 	r.mutex.Lock()
 	defer r.mutex.Unlock()
 	if v, ok := r.backends[name]; ok {
