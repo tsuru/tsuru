@@ -97,7 +97,7 @@ func (s *S) TestRemoveUnknownRoute(c *gocheck.C) {
 
 func (s *S) TestAddCNAME(c *gocheck.C) {
 	var r fakeRouter
-	err := r.AddCNAME("myapp.com", "name", "127.0.0.1")
+	err := r.AddCNAME("myapp.com", "name")
 	c.Assert(err, gocheck.IsNil)
 }
 

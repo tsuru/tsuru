@@ -52,7 +52,7 @@ func (s *S) TestAddRoute(c *gocheck.C) {
 
 func (s *S) TestAddCNAME(c *gocheck.C) {
 	var r NginxRouter
-	err := r.AddCNAME("myapp.com", "myapp", "10.10.10.10")
+	err := r.AddCNAME("myapp.com", "myapp")
 	c.Assert(err, gocheck.IsNil)
 }
 

@@ -99,7 +99,7 @@ func (r *fakeRouter) RemoveRoute(name, ip string) error {
 	return nil
 }
 
-func (fakeRouter) AddCNAME(cname, name, address string) error {
+func (fakeRouter) AddCNAME(cname, name string) error {
 	return nil
 }
 

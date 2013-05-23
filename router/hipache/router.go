@@ -113,13 +113,13 @@ func (hipacheRouter) RemoveRoute(name, address string) error {
 	return nil
 }
 
-func (hipacheRouter) AddCNAME(cname, name, address string) error {
+func (hipacheRouter) AddCNAME(cname, name string) error {
 	frontend := "frontend:" + cname
 	conn, err := connect()
 	if err != nil {
 		return &routeError{"add", err}
 	}
-	_, err = conn.Do("RPUSH", frontend, address)
+	_, err = conn.Do("RPUSH", frontend, "")
 	if err != nil {
 		return &routeError{"add", err}
 	}
