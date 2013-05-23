@@ -82,6 +82,8 @@ func (s *S) TestDeployShouldCallDockerCreate(c *gocheck.C) {
 	defer setExecut(nil)
 	p := dockerProvisioner{}
 	app := testing.NewFakeApp("cribcaged", "python", 1)
+	p.Provision(app)
+	defer p.Destroy(app)
 	w := &bytes.Buffer{}
 	err := p.Deploy(app, w)
 	defer p.Destroy(app)
@@ -108,12 +110,15 @@ func (s *S) TestDeployShouldCallDockerCreate(c *gocheck.C) {
 }
 
 func (s *S) TestDeployShouldReplaceAllContainers(c *gocheck.C) {
+	var p dockerProvisioner
 	s.conn.Collection(s.collName).Insert(
 		container{Id: "app/0", AppName: "app"},
 		container{Id: "app/1", AppName: "app"},
 	)
 	defer s.conn.Collection(s.collName).RemoveAll(bson.M{"appname": "app"})
 	app := testing.NewFakeApp("app", "python", 0)
+	p.Provision(app)
+	defer p.Destroy(app)
 	app.AddUnit(&testing.FakeUnit{Name: "app/0"})
 	app.AddUnit(&testing.FakeUnit{Name: "app/1"})
 	out := `{
@@ -133,7 +138,6 @@ func (s *S) TestDeployShouldReplaceAllContainers(c *gocheck.C) {
 	}
 	setExecut(fexec)
 	defer setExecut(nil)
-	var p dockerProvisioner
 	var w bytes.Buffer
 	err := p.Deploy(app, &w)
 	defer p.Destroy(app)
@@ -163,6 +167,8 @@ func (s *S) TestDeployShouldRestart(c *gocheck.C) {
 	defer setExecut(nil)
 	p := dockerProvisioner{}
 	app := testing.NewFakeApp("cribcaged", "python", 1)
+	p.Provision(app)
+	defer p.Destroy(app)
 	w := &bytes.Buffer{}
 	err := p.Deploy(app, w)
 	defer p.Destroy(app)
@@ -198,6 +204,8 @@ func (s *S) TestDeployFailureSecondStep(c *gocheck.C) {
 	)
 	app := testing.NewFakeApp("app", "python", 0)
 	app.AddUnit(&testing.FakeUnit{Name: "app/0"})
+	p.Provision(app)
+	defer p.Destroy(app)
 	defer s.conn.Collection(s.collName).RemoveAll(bson.M{"appname": app.GetName()})
 	output := `{
 	"NetworkSettings": {
@@ -246,6 +254,7 @@ func (s *S) TestProvisionerDestroy(c *gocheck.C) {
 	err = s.conn.Collection(s.imageCollName).Insert(&img)
 	c.Assert(err, gocheck.IsNil)
 	var p dockerProvisioner
+	p.Provision(app)
 	c.Assert(p.Destroy(app), gocheck.IsNil)
 	ok := make(chan bool, 1)
 	go func() {
@@ -282,6 +291,7 @@ func (s *S) TestProvisionerDestroyEmptyUnit(c *gocheck.C) {
 	app := testing.NewFakeApp("myapp", "python", 0)
 	app.AddUnit(&testing.FakeUnit{})
 	var p dockerProvisioner
+	p.Provision(app)
 	err := p.Destroy(app)
 	c.Assert(err, gocheck.IsNil)
 }
@@ -315,6 +325,8 @@ func (s *S) TestProvisionerAddr(c *gocheck.C) {
 	defer setExecut(nil)
 	var p dockerProvisioner
 	app := testing.NewFakeApp("myapp", "python", 1)
+	p.Provision(app)
+	defer p.Destroy(app)
 	w := &bytes.Buffer{}
 	err := p.Deploy(app, w)
 	c.Assert(err, gocheck.IsNil)
@@ -353,6 +365,8 @@ func (s *S) TestProvisionerAddUnits(c *gocheck.C) {
 	defer setExecut(nil)
 	var p dockerProvisioner
 	app := testing.NewFakeApp("myapp", "python", 0)
+	p.Provision(app)
+	defer p.Destroy(app)
 	s.conn.Collection(s.collName).Insert(container{Id: "c-89320", AppName: app.GetName()})
 	defer s.conn.Collection(s.collName).RemoveId("c-89320")
 	expected := []provision.Unit{
@@ -418,6 +432,8 @@ func (s *S) TestProvisionerAddUnitsFailure(c *gocheck.C) {
 func (s *S) TestProvisionerAddUnitsWithoutContainers(c *gocheck.C) {
 	app := testing.NewFakeApp("myapp", "python", 1)
 	var p dockerProvisioner
+	p.Provision(app)
+	defer p.Destroy(app)
 	units, err := p.AddUnits(app, 1)
 	c.Assert(units, gocheck.IsNil)
 	c.Assert(err, gocheck.NotNil)

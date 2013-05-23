@@ -13,6 +13,7 @@ import (
 	ftesting "github.com/globocom/tsuru/fs/testing"
 	"github.com/globocom/tsuru/log"
 	"github.com/globocom/tsuru/repository"
+	rtesting "github.com/globocom/tsuru/router/testing"
 	"github.com/globocom/tsuru/testing"
 	"labix.org/v2/mgo/bson"
 	"launchpad.net/gocheck"
@@ -47,6 +48,8 @@ func (s *S) TestNewContainer(c *gocheck.C) {
 	setExecut(fexec)
 	defer setExecut(nil)
 	app := testing.NewFakeApp("app-name", "python", 1)
+	rtesting.FakeRouter.AddBackend(app.GetName())
+	defer rtesting.FakeRouter.RemoveBackend(app.GetName())
 	_, err := newContainer(app)
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Collection(s.collName).RemoveId(id)
@@ -105,39 +108,12 @@ func (s *S) TestNewContainerAddsRoute(c *gocheck.C) {
 	setExecut(fexec)
 	defer setExecut(nil)
 	app := testing.NewFakeApp("myapp", "python", 1)
-	_, err := newContainer(app)
+	rtesting.FakeRouter.AddBackend(app.GetName())
+	defer rtesting.FakeRouter.RemoveBackend(app.GetName())
+	container, err := newContainer(app)
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Collection(s.collName).RemoveId(out)
-	r, err := getRouter()
-	c.Assert(err, gocheck.IsNil)
-	addr, err := r.Addr(app.GetName())
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(addr, gocheck.Equals, "http://"+s.hostAddr+":30000")
-}
-
-func (s *S) TestNewContainerRouteNoMappedPort(c *gocheck.C) {
-	out := `{
-	"NetworkSettings": {
-		"IpAddress": "10.10.10.1",
-		"IpPrefixLen": 8,
-		"Gateway": "10.65.41.1",
-        "PortMapping": {
-            "8888": "49153"
-        }
-	}
-}`
-	fexec := &etesting.FakeExecutor{Output: map[string][][]byte{"*": {[]byte(out)}}}
-	setExecut(fexec)
-	defer setExecut(nil)
-	app := testing.NewFakeApp("myapp", "python", 1)
-	_, err := newContainer(app)
-	c.Assert(err, gocheck.IsNil)
-	defer s.conn.Collection(s.collName).RemoveId(out)
-	r, err := getRouter()
-	c.Assert(err, gocheck.IsNil)
-	addr, err := r.Addr(app.GetName())
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(addr, gocheck.Equals, "http://"+s.hostAddr+":49153")
+	c.Assert(rtesting.FakeRouter.HasRoute(app.GetName(), container.getAddress()), gocheck.Equals, true)
 }
 
 func (s *S) TestCommandsToRun(c *gocheck.C) {
@@ -256,6 +232,8 @@ func (s *S) TestDockerCreate(c *gocheck.C) {
 	}
 	container := container{AppName: "app-name", Type: "python"}
 	app := testing.NewFakeApp("app-name", "python", 1)
+	rtesting.FakeRouter.AddBackend(app.GetName())
+	defer rtesting.FakeRouter.RemoveBackend(app.GetName())
 	err := container.create(app)
 	c.Assert(err, gocheck.IsNil)
 	sshCmd := "/var/lib/tsuru/add-key key-content && /usr/sbin/sshd -D"
@@ -385,9 +363,12 @@ func (s *S) TestDockerRemove(c *gocheck.C) {
 	fexec := &etesting.FakeExecutor{}
 	setExecut(fexec)
 	defer setExecut(nil)
-	container := container{AppName: "container", Id: "id", Ip: "10.10.10.10"}
+	container := container{AppName: "container", Id: "id", Ip: "10.10.10.10", HostPort: "3333"}
 	err := s.conn.Collection(s.collName).Insert(&container)
 	c.Assert(err, gocheck.IsNil)
+	rtesting.FakeRouter.AddBackend(container.AppName)
+	defer rtesting.FakeRouter.RemoveBackend(container.AppName)
+	rtesting.FakeRouter.AddRoute(container.AppName, container.getAddress())
 	err = container.remove()
 	c.Assert(err, gocheck.IsNil)
 	args := []string{"rm", container.Id}
@@ -400,7 +381,10 @@ func (s *S) TestDockerRemoveRemovesContainerFromDatabase(c *gocheck.C) {
 	fexec := &etesting.FakeExecutor{}
 	setExecut(fexec)
 	defer setExecut(nil)
-	cntnr := container{AppName: "container", Id: "id"}
+	cntnr := container{AppName: "container", Id: "id", HostPort: "3456"}
+	rtesting.FakeRouter.AddBackend(cntnr.AppName)
+	defer rtesting.FakeRouter.RemoveBackend(cntnr.AppName)
+	rtesting.FakeRouter.AddRoute(cntnr.AppName, cntnr.getAddress())
 	err := s.conn.Collection(s.collName).Insert(&cntnr)
 	c.Assert(err, gocheck.IsNil)
 	err = cntnr.remove()
@@ -417,17 +401,14 @@ func (s *S) TestDockerRemoveRemovesRoute(c *gocheck.C) {
 	setExecut(fexec)
 	defer setExecut(nil)
 	app := testing.NewFakeApp("myapp", "python", 1)
-	cntnr := container{AppName: "myapp", Id: "id", Ip: "10.10.10.10"}
+	cntnr := container{AppName: app.GetName(), Id: "id", Ip: "10.10.10.10", HostPort: "3456"}
+	rtesting.FakeRouter.AddBackend(app.GetName())
+	defer rtesting.FakeRouter.RemoveBackend(app.GetName())
+	rtesting.FakeRouter.AddRoute(app.GetName(), cntnr.getAddress())
 	err := s.conn.Collection(s.collName).Insert(&cntnr)
-	r, err := getRouter()
-	c.Assert(err, gocheck.IsNil)
-	r.AddRoute(app.GetName(), "10.10.10.10")
-	c.Assert(err, gocheck.IsNil)
 	err = cntnr.remove()
 	c.Assert(err, gocheck.IsNil)
-	addr, err := r.Addr(app.GetName())
-	c.Assert(err, gocheck.NotNil)
-	c.Assert(addr, gocheck.Equals, "")
+	c.Assert(rtesting.FakeRouter.HasRoute(app.GetName(), cntnr.getAddress()), gocheck.Equals, false)
 }
 
 func (s *S) TestContainerIPRunsDockerInspectCommand(c *gocheck.C) {
