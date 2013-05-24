@@ -80,6 +80,9 @@ func (p *dockerProvisioner) Restart(app provision.App) error {
 		err = c.ssh(&buf, &buf, "/var/lib/tsuru/restart")
 		if err != nil {
 			log.Printf("Failed to restart %q: %s.", app.GetName(), err)
+			log.Printf("Command outputs:")
+			log.Printf("out: %s", buf)
+			log.Printf("err: %s", buf)
 			return err
 		}
 		buf.Reset()
