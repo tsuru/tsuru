@@ -210,8 +210,13 @@ func (s *S) TestAddCNAMEWithPreviousRoutes(c *gocheck.C) {
 }
 
 func (s *S) TestRemoveCNAME(c *gocheck.C) {
+	conn = &resultCommandConn{result: []interface{}{}, fakeConn: &s.conn}
 	err := hipacheRouter{}.RemoveCNAME("myapp.com", "10.10.10.10")
 	c.Assert(err, gocheck.IsNil)
+	expected := []command{
+		{cmd: "LREM", args: []interface{}{"frontend:myapp.com", 0, "10.10.10.10"}},
+	}
+	c.Assert(s.conn.cmds, gocheck.DeepEquals, expected)
 }
 
 func (s *S) TestAddr(c *gocheck.C) {
@@ -269,4 +274,13 @@ func (s *S) TestRouteError(c *gocheck.C) {
 	c.Assert(err.Error(), gocheck.Equals, "Could not add route: Fatal error.")
 	err = &routeError{"del", errors.New("Fatal error.")}
 	c.Assert(err.Error(), gocheck.Equals, "Could not del route: Fatal error.")
+}
+
+func (s *S) TestRemoveElement(c *gocheck.C) {
+	err := hipacheRouter{}.removeElement("frontend:myapp.com", "10.10.10.10")
+	c.Assert(err, gocheck.IsNil)
+	cmds := []command{
+		{cmd: "LREM", args: []interface{}{"frontend:myapp.com", 0, "10.10.10.10"}},
+	}
+	c.Assert(s.conn.cmds, gocheck.DeepEquals, cmds)
 }

@@ -96,21 +96,13 @@ func (hipacheRouter) AddRoute(name, address string) error {
 	return nil
 }
 
-func (hipacheRouter) RemoveRoute(name, address string) error {
+func (r hipacheRouter) RemoveRoute(name, address string) error {
 	domain, err := config.GetString("hipache:domain")
 	if err != nil {
 		return &routeError{"remove", err}
 	}
 	frontend := "frontend:" + name + "." + domain
-	conn, err := connect()
-	if err != nil {
-		return &routeError{"remove", err}
-	}
-	_, err = conn.Do("LREM", frontend, 0, address)
-	if err != nil {
-		return &routeError{"remove", err}
-	}
-	return nil
+	return r.removeElement(frontend, address)
 }
 
 func (hipacheRouter) AddCNAME(cname, name string) error {
@@ -137,8 +129,8 @@ func (hipacheRouter) AddCNAME(cname, name string) error {
 	return nil
 }
 
-func (hipacheRouter) RemoveCNAME(cname, address string) error {
-	return nil
+func (r hipacheRouter) RemoveCNAME(cname, address string) error {
+	return r.removeElement("frontend:"+cname, address)
 }
 
 func (hipacheRouter) Addr(name string) (string, error) {
@@ -160,6 +152,18 @@ func (hipacheRouter) Addr(name string) (string, error) {
 		return "", errRouteNotFound
 	}
 	return fmt.Sprintf("%s.%s", name, domain), nil
+}
+
+func (hipacheRouter) removeElement(name, address string) error {
+	conn, err := connect()
+	if err != nil {
+		return &routeError{"remove", err}
+	}
+	_, err = conn.Do("LREM", name, 0, address)
+	if err != nil {
+		return &routeError{"remove", err}
+	}
+	return nil
 }
 
 type routeError struct {
