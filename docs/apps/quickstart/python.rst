@@ -49,11 +49,11 @@ command:
 ::
 
     $ tsuru app-list
-    +-------------+-------------------------+---------+
-    | Application | Units State Summary     | Address |
-    +-------------+-------------------------+---------+
-    | blog        | 0 of 1 units in-service |         |
-    +-------------+-------------------------+---------+
+    +-------------+-------------------------+---------+--------+
+    | Application | Units State Summary     | Address | Ready? |
+    +-------------+-------------------------+---------+--------+
+    | blog        | 0 of 1 units in-service |         | No     |
+    +-------------+-------------------------+---------+--------+
 
 Once your app is ready, it will show that at least one unit is in-service
 (along with its address):
@@ -63,11 +63,11 @@ Once your app is ready, it will show that at least one unit is in-service
 ::
 
     $ tsuru app-list
-    +-------------+-------------------------+-------------+
-    | Application | Units State Summary     | Address     |
-    +-------------+-------------------------+-------------+
-    | blog        | 1 of 1 units in-service | 10.10.10.10 |
-    +-------------+-------------------------+-------------+
+    +-------------+-------------------------+-------------+--------+
+    | Application | Units State Summary     | Address     | Ready? |
+    +-------------+-------------------------+-------------+--------+
+    | blog        | 1 of 1 units in-service | 10.10.10.10 | Yes    |
+    +-------------+-------------------------+-------------+--------+
 
 Application code
 ================
@@ -443,11 +443,11 @@ in the list below:
 ::
 
     $ tsuru app-list
-    +-------------+---------+-------------+
-    | Application | State   | Ip          |
-    +-------------+---------+-------------+
-    | blog        | started | 10.20.10.20 |
-    +-------------+---------+-------------+
+    +-------------+-------------------------+---------------------+--------+
+    | Application | Units State Summary     | Address             | Ready? |
+    +-------------+-------------------------+---------------------+--------+
+    | blog        | 1 of 1 units in-service | blog.cloud.tsuru.io | Yes    |
+    +-------------+-------------------------+---------------------+--------+
 
 We can access the admin of the app in the URL http://10.20.10.20/admin/.
 
