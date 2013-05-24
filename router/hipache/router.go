@@ -114,14 +114,25 @@ func (hipacheRouter) RemoveRoute(name, address string) error {
 }
 
 func (hipacheRouter) AddCNAME(cname, name string) error {
-	frontend := "frontend:" + cname
+	domain, err := config.GetString("hipache:domain")
+	if err != nil {
+		return &routeError{"addCNAME", err}
+	}
+	frontend := "frontend:" + name + "." + domain
 	conn, err := connect()
 	if err != nil {
-		return &routeError{"add", err}
+		return &routeError{"addCNAME", err}
 	}
-	_, err = conn.Do("RPUSH", frontend, "")
+	addresses, err := redis.Strings(conn.Do("LRANGE", frontend, 0, -1))
 	if err != nil {
-		return &routeError{"add", err}
+		return &routeError{"get", err}
+	}
+	for _, r := range addresses {
+		frontend := "frontend:" + cname
+		_, err := conn.Do("RPUSH", frontend, r)
+		if err != nil {
+			return &routeError{"addCNAME", err}
+		}
 	}
 	return nil
 }
