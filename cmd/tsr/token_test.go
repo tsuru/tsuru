@@ -6,7 +6,6 @@ package main
 
 import (
 	"bytes"
-	"github.com/globocom/config"
 	"github.com/globocom/tsuru/cmd"
 	"launchpad.net/gocheck"
 	"net/http"
@@ -28,8 +27,6 @@ func (s *S) TestTokenCmdIsACommand(c *gocheck.C) {
 }
 
 func (s *S) TestTokenRun(c *gocheck.C) {
-	config.Set("database:url", "127.0.0.1:27017")
-	config.Set("database:name", "tsuru_tsr_test")
 	var stdout, stderr bytes.Buffer
 	context := cmd.Context{
 		Args:   []string{},
