@@ -211,13 +211,14 @@ func (c *help) Run(context *Context, client *Client) error {
 		for _, command := range commands {
 			output += fmt.Sprintf("  %s\n", command)
 		}
+		output += fmt.Sprintf("\nUse %s help <commandname> to get more information about a command.\n", c.manager.name)
 		if len(c.manager.topics) > 0 {
 			output += fmt.Sprintln("\nAvailable topics:")
 			for topic := range c.manager.topics {
 				output += fmt.Sprintf("  %s\n", topic)
 			}
+			output += fmt.Sprintf("\nUse %s help <topicname> to get more information about a topic.\n", c.manager.name)
 		}
-		output += fmt.Sprintf("\nRun %s help <commandname> or %s help <topicname> to get more information\nabout a specific command or topic.\n", c.manager.name, c.manager.name)
 	}
 	io.WriteString(context.Stdout, output)
 	return nil

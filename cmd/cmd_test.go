@@ -178,8 +178,7 @@ Available commands:
   user-create
   version
 
-Run glb help <commandname> or glb help <topicname> to get more information
-about a specific command or topic.
+Use glb help <commandname> to get more information about a command.
 `
 	manager.Register(&userCreate{})
 	context := Context{[]string{}, manager.stdout, manager.stderr, manager.stdin}
@@ -199,11 +198,12 @@ Available commands:
   user-create
   version
 
+Use glb help <commandname> to get more information about a command.
+
 Available topics:
   target
 
-Run glb help <commandname> or glb help <topicname> to get more information
-about a specific command or topic.
+Use glb help <topicname> to get more information about a topic.
 `
 	manager.Register(&userCreate{})
 	manager.RegisterTopic("target", "something")
@@ -253,8 +253,7 @@ Available commands:
   help
   version
 
-Run glb help <commandname> or glb help <topicname> to get more information
-about a specific command or topic.
+Use glb help <commandname> to get more information about a command.
 `
 	manager.Run([]string{})
 	c.Assert(manager.stdout.(*bytes.Buffer).String(), gocheck.Equals, expected)
