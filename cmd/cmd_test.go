@@ -178,9 +178,35 @@ Available commands:
   user-create
   version
 
-Run glb help <commandname> to get more information about a specific command.
+Run glb help <commandname> or glb help <topicname> to get more information
+about a specific command or topic.
 `
 	manager.Register(&userCreate{})
+	context := Context{[]string{}, manager.stdout, manager.stderr, manager.stdin}
+	command := help{manager: manager}
+	err := command.Run(&context, nil)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(manager.stdout.(*bytes.Buffer).String(), gocheck.Equals, expected)
+}
+
+func (s *S) TestHelpWithTopics(c *gocheck.C) {
+	expected := `glb version 1.0.
+
+Usage: glb command [args]
+
+Available commands:
+  help
+  user-create
+  version
+
+Available topics:
+  target
+
+Run glb help <commandname> or glb help <topicname> to get more information
+about a specific command or topic.
+`
+	manager.Register(&userCreate{})
+	manager.RegisterTopic("target", "something")
 	context := Context{[]string{}, manager.stdout, manager.stderr, manager.stdin}
 	command := help{manager: manager}
 	err := command.Run(&context, nil)
@@ -218,7 +244,7 @@ func (s *S) TestHelpReturnErrorIfTheGivenCommandDoesNotExist(c *gocheck.C) {
 	c.Assert(err, gocheck.ErrorMatches, `^command "user-create" does not exist.$`)
 }
 
-func (s *S) TestRunWithoutArgsShouldRunsHelp(c *gocheck.C) {
+func (s *S) TestRunWithoutArgsShouldRunHelp(c *gocheck.C) {
 	expected := `glb version 1.0.
 
 Usage: glb command [args]
@@ -227,7 +253,8 @@ Available commands:
   help
   version
 
-Run glb help <commandname> to get more information about a specific command.
+Run glb help <commandname> or glb help <topicname> to get more information
+about a specific command or topic.
 `
 	manager.Run([]string{})
 	c.Assert(manager.stdout.(*bytes.Buffer).String(), gocheck.Equals, expected)
