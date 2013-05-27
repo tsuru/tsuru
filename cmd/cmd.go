@@ -191,7 +191,7 @@ func (c *help) Run(context *Context, client *Client) error {
 	if len(context.Args) > 0 {
 		cmd, ok := c.manager.Commands[context.Args[0]]
 		if !ok {
-			return fmt.Errorf("Error: command %q does not exist.", context.Args[0])
+			return fmt.Errorf("command %q does not exist.", context.Args[0])
 		}
 		info := cmd.Info()
 		output += fmt.Sprintf("Usage: %s %s\n", c.manager.name, info.Usage)

@@ -199,7 +199,7 @@ func (s *S) TestHelpReturnErrorIfTheGivenCommandDoesNotExist(c *gocheck.C) {
 	context := Context{[]string{"user-create"}, manager.stdout, manager.stderr, manager.stdin}
 	err := command.Run(&context, nil)
 	c.Assert(err, gocheck.NotNil)
-	c.Assert(err, gocheck.ErrorMatches, `^Error: command "user-create" does not exist.$`)
+	c.Assert(err, gocheck.ErrorMatches, `^command "user-create" does not exist.$`)
 }
 
 func (s *S) TestRunWithoutArgsShouldRunsHelp(c *gocheck.C) {
