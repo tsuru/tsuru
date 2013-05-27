@@ -119,7 +119,7 @@ authorization to write into the application's repository, and then lets the
 push proceeds or returns an error message.
 
 Client installation fails with "undefined: bufio.Scanner". What does it mean?
-============================================================================
+=============================================================================
 
 Tsuru clients require Go 1.1 or later. The message ``undefined: bufio.Scanner``
 means that you're using an old version of Go. You'll have to `install
