@@ -13,7 +13,7 @@ Tsuru Frequently Asked Questions
 * `How does environment variables work?`_
 * `How does the quota system works?`_
 * `How routing works?`_
-* `How are repositories managed?`_
+* `How are Git repositories managed?`_
 
 This document is an attempt to explain concepts you'll face when deploying and
 managing applications using Tsuru.  To request additional explanations you can
