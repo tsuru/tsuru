@@ -66,6 +66,7 @@ func BuildBaseManager(name, version, versionHeader string) *Manager {
 	m.Register(&targetAdd{})
 	m.Register(&targetRemove{})
 	m.Register(&targetSet{})
+	m.RegisterTopic("target", fmt.Sprintf(targetTopic, name))
 	return m
 }
 

@@ -7,6 +7,7 @@ package cmd
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"github.com/globocom/tsuru/fs"
 	"github.com/globocom/tsuru/fs/testing"
 	"io"
@@ -422,11 +423,17 @@ func (s *S) TestTeamUserListIsRegistered(c *gocheck.C) {
 	c.Assert(listuser, gocheck.FitsTypeOf, teamUserList{})
 }
 
-func (s *S) TestTargetIsRegistered(c *gocheck.C) {
+func (s *S) TestTargetListIsRegistered(c *gocheck.C) {
 	manager := BuildBaseManager("tsuru", "1.0", "")
 	tgt, ok := manager.Commands["target-list"]
 	c.Assert(ok, gocheck.Equals, true)
 	c.Assert(tgt, gocheck.FitsTypeOf, &targetList{})
+}
+
+func (s *S) TestTargetTopicIsRegistered(c *gocheck.C) {
+	manager := BuildBaseManager("tsuru", "1.0", "")
+	expected := fmt.Sprintf(targetTopic, "tsuru")
+	c.Assert(manager.topics["target"], gocheck.Equals, expected)
 }
 
 func (s *S) TestUserRemoveIsRegistered(c *gocheck.C) {
