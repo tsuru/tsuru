@@ -134,12 +134,10 @@ type targetAdd struct {
 }
 
 func (t *targetAdd) Info() *Info {
-	desc := `Add a new target on target-list (tsuru server)
-`
 	return &Info{
 		Name:    "target-add",
 		Usage:   "target-add <label> <target> [--set-current|-s]",
-		Desc:    desc,
+		Desc:    "Adds a new entry to the list of available targets",
 		MinArgs: 2,
 	}
 }
@@ -361,5 +359,5 @@ type undefinedTargetError struct{}
 func (t undefinedTargetError) Error() string {
 	return `No target defined. Please use target-add/target-set to define a target.
 
-For more details, please run "tsuru help target".`
+For more details, please run "tsuru help target-add".`
 }

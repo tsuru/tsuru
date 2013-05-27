@@ -149,12 +149,10 @@ func (s *S) TestGetUrlUndefinedTarget(c *gocheck.C) {
 }
 
 func (s *S) TestTargetAddInfo(c *gocheck.C) {
-	desc := `Add a new target on target-list (tsuru server)
-`
 	expected := &Info{
 		Name:    "target-add",
 		Usage:   "target-add <label> <target> [--set-current|-s]",
-		Desc:    desc,
+		Desc:    "Adds a new entry to the list of available targets",
 		MinArgs: 2,
 	}
 	targetAdd := &targetAdd{}
@@ -435,7 +433,7 @@ func (s *S) TestTargetSetRunUnknowTarget(c *gocheck.C) {
 func (s *S) TestUndefinedTarget(c *gocheck.C) {
 	expectedMsg := `No target defined. Please use target-add/target-set to define a target.
 
-For more details, please run "tsuru help target".`
+For more details, please run "tsuru help target-add".`
 	var e error = undefinedTargetError{}
 	c.Assert(e.Error(), gocheck.Equals, expectedMsg)
 }
