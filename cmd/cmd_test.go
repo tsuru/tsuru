@@ -82,6 +82,33 @@ func (s *S) TestRegister(c *gocheck.C) {
 	c.Assert(badCall, gocheck.PanicMatches, "command already registered: foo")
 }
 
+func (s *S) TestRegisterTopic(c *gocheck.C) {
+	manager := Manager{}
+	manager.RegisterTopic("target", "targetting everything!")
+	c.Assert(manager.topics["target"], gocheck.Equals, "targetting everything!")
+}
+
+func (s *S) TestRegisterTopicDuplicated(c *gocheck.C) {
+	manager := Manager{}
+	manager.RegisterTopic("target", "targetting everything!")
+	defer func() {
+		r := recover()
+		c.Assert(r, gocheck.NotNil)
+	}()
+	manager.RegisterTopic("target", "wat")
+}
+
+func (s *S) TestRegisterTopicMultiple(c *gocheck.C) {
+	manager := Manager{}
+	manager.RegisterTopic("target", "targetted")
+	manager.RegisterTopic("app", "what's an app?")
+	expected := map[string]string{
+		"target": "targetted",
+		"app":    "what's an app?",
+	}
+	c.Assert(manager.topics, gocheck.DeepEquals, expected)
+}
+
 func (s *S) TestManagerRunShouldWriteErrorsOnStderr(c *gocheck.C) {
 	manager.Register(&ErrorCommand{msg: "You are wrong\n"})
 	manager.Run([]string{"error"})

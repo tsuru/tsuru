@@ -29,6 +29,7 @@ func (e osExiter) Exit(code int) {
 
 type Manager struct {
 	Commands      map[string]Command
+	topics        map[string]string
 	name          string
 	stdout        io.Writer
 	stderr        io.Writer
@@ -78,6 +79,17 @@ func (m *Manager) Register(command Command) {
 		panic(fmt.Sprintf("command already registered: %s", name))
 	}
 	m.Commands[name] = command
+}
+
+func (m *Manager) RegisterTopic(name, content string) {
+	if m.topics == nil {
+		m.topics = make(map[string]string)
+	}
+	_, found := m.topics[name]
+	if found {
+		panic(fmt.Sprintf("topic already registered: %s", name))
+	}
+	m.topics[name] = content
 }
 
 func (m *Manager) Run(args []string) {
