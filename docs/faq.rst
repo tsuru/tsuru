@@ -96,3 +96,19 @@ Tsuru uses `Gandalf <https://github.com/globocom/gandalf>`_ to manage git reposi
 Tsuru will ask Gandalf to create a related git bare repository for you to push in.  This is the remote Tsuru gives you when
 you create a new app. Everytime you perform a git push, Gandalf intercepts it, check if you have the required authorization
 to write into the application's repository, and then lets the push proceeds or returns an error message.
+
+Client installation fails with "undefined: bufio.Scanner". What does it mean?
+============================================================================
+
+Tsuru clients require Go 1.1 or later. The message ``undefined: bufio.Scanner``
+means that you're using an old version of Go. You'll have to `install
+<http://golang.org/doc/install>`_ the last verson.
+
+If you're using Homebrew on Mac OS, just run:
+
+.. highlight: bash
+
+::
+
+    % brew update
+    % brew upgrade go
