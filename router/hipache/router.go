@@ -119,8 +119,8 @@ func (hipacheRouter) AddCNAME(cname, name string) error {
 	if err != nil {
 		return &routeError{"get", err}
 	}
+	frontend = "frontend:" + cname
 	for _, r := range addresses {
-		frontend := "frontend:" + cname
 		_, err := conn.Do("RPUSH", frontend, r)
 		if err != nil {
 			return &routeError{"addCNAME", err}
