@@ -64,6 +64,9 @@ Whenever a new version of any of tsuru's clients is out, you can just run:
 For more details on taps, check `homebrew documentation
 <https://github.com/mxcl/homebrew/wiki>`_.
 
+**NOTE:** Tsuru requires Go 1.1 or higher. Make sure you have the last version
+of Go installed in your system.
+
 Pre-built binaries (Linux and Mac OS X)
 =======================================
 
