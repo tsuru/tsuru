@@ -189,15 +189,17 @@ func (c *help) Run(context *Context, client *Client) error {
 		output += fmt.Sprintf("ERROR: not enough arguments to call %s.\n\n", c.manager.original)
 	}
 	if len(context.Args) > 0 {
-		cmd, ok := c.manager.Commands[context.Args[0]]
-		if !ok {
+		if cmd, ok := c.manager.Commands[context.Args[0]]; ok {
+			info := cmd.Info()
+			output += fmt.Sprintf("Usage: %s %s\n", c.manager.name, info.Usage)
+			output += fmt.Sprintf("\n%s\n", info.Desc)
+			if info.MinArgs > 0 {
+				output += fmt.Sprintf("\nMinimum arguments: %d\n", info.MinArgs)
+			}
+		} else if topic, ok := c.manager.topics[context.Args[0]]; ok {
+			output += topic
+		} else {
 			return fmt.Errorf("command %q does not exist.", context.Args[0])
-		}
-		info := cmd.Info()
-		output += fmt.Sprintf("Usage: %s %s\n", c.manager.name, info.Usage)
-		output += fmt.Sprintf("\n%s\n", info.Desc)
-		if info.MinArgs > 0 {
-			output += fmt.Sprintf("\nMinimum arguments: %d\n", info.MinArgs)
 		}
 	} else {
 		output += fmt.Sprintf("Usage: %s %s\n\nAvailable commands:\n", c.manager.name, c.Info().Usage)

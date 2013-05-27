@@ -167,6 +167,7 @@ func (s *S) TestRunCommandThatDoesNotExist(c *gocheck.C) {
 	c.Assert(manager.stderr.(*bytes.Buffer).String(), gocheck.Equals, `Error: command "bar" does not exist`+"\n")
 	c.Assert(manager.e.(*recordingExiter).value(), gocheck.Equals, 1)
 }
+
 func (s *S) TestHelp(c *gocheck.C) {
 	expected := `glb version 1.0.
 
@@ -181,6 +182,21 @@ Run glb help <commandname> to get more information about a specific command.
 `
 	manager.Register(&userCreate{})
 	context := Context{[]string{}, manager.stdout, manager.stderr, manager.stdin}
+	command := help{manager: manager}
+	err := command.Run(&context, nil)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(manager.stdout.(*bytes.Buffer).String(), gocheck.Equals, expected)
+}
+
+func (s *S) TestHelpFromTopic(c *gocheck.C) {
+	expected := `glb version 1.0.
+
+Targets
+
+Tsuru likes to manage targets
+`
+	manager.RegisterTopic("target", "Targets\n\nTsuru likes to manage targets\n")
+	context := Context{[]string{"target"}, manager.stdout, manager.stderr, manager.stdin}
 	command := help{manager: manager}
 	err := command.Run(&context, nil)
 	c.Assert(err, gocheck.IsNil)
