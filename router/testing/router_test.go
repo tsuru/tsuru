@@ -95,15 +95,15 @@ func (s *S) TestRemoveUnknownRoute(c *gocheck.C) {
 	c.Assert(err.Error(), gocheck.Equals, "Route not found")
 }
 
-func (s *S) TestAddCNAME(c *gocheck.C) {
+func (s *S) TestAddCName(c *gocheck.C) {
 	var r fakeRouter
-	err := r.AddCNAME("myapp.com", "name")
+	err := r.AddCName("myapp.com", "name")
 	c.Assert(err, gocheck.IsNil)
 }
 
-func (s *S) TestRemoveCNAME(c *gocheck.C) {
+func (s *S) TestRemoveCName(c *gocheck.C) {
 	var r fakeRouter
-	err := r.RemoveCNAME("myapp.com", "127.0.0.1")
+	err := r.RemoveCName("myapp.com", "127.0.0.1")
 	c.Assert(err, gocheck.IsNil)
 }
 

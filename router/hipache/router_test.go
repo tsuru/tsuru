@@ -179,9 +179,9 @@ func (s *S) TestRemoveRouteCommandFailure(c *gocheck.C) {
 	c.Assert(e.op, gocheck.Equals, "remove")
 }
 
-func (s *S) TestAddCNAME(c *gocheck.C) {
+func (s *S) TestAddCName(c *gocheck.C) {
 	conn = &resultCommandConn{result: []interface{}{[]byte("10.10.10.10")}, fakeConn: &s.conn}
-	err := hipacheRouter{}.AddCNAME("myapp.com", "myapp")
+	err := hipacheRouter{}.AddCName("myapp.com", "myapp")
 	c.Assert(err, gocheck.IsNil)
 	expected := []command{
 		{cmd: "LRANGE", args: []interface{}{"frontend:myapp.golang.org", 0, -1}},
@@ -190,14 +190,14 @@ func (s *S) TestAddCNAME(c *gocheck.C) {
 	c.Assert(s.conn.cmds, gocheck.DeepEquals, expected)
 }
 
-func (s *S) TestAddCNAMEWithPreviousRoutes(c *gocheck.C) {
+func (s *S) TestAddCNameWithPreviousRoutes(c *gocheck.C) {
 	conn = &resultCommandConn{result: []interface{}{[]byte("10.10.10.10"), []byte("10.10.10.11")}, fakeConn: &s.conn}
 	router := hipacheRouter{}
 	err := router.AddRoute("myapp", "10.10.10.10")
 	c.Assert(err, gocheck.IsNil)
 	err = router.AddRoute("myapp", "10.10.10.11")
 	c.Assert(err, gocheck.IsNil)
-	err = router.AddCNAME("mycname.com", "myapp")
+	err = router.AddCName("mycname.com", "myapp")
 	c.Assert(err, gocheck.IsNil)
 	expected := []command{
 		{cmd: "RPUSH", args: []interface{}{"frontend:myapp.golang.org", "10.10.10.10"}}, // AddRoute call
@@ -209,9 +209,9 @@ func (s *S) TestAddCNAMEWithPreviousRoutes(c *gocheck.C) {
 	c.Assert(s.conn.cmds, gocheck.DeepEquals, expected)
 }
 
-func (s *S) TestRemoveCNAME(c *gocheck.C) {
+func (s *S) TestRemoveCName(c *gocheck.C) {
 	conn = &resultCommandConn{result: []interface{}{}, fakeConn: &s.conn}
-	err := hipacheRouter{}.RemoveCNAME("myapp.com", "10.10.10.10")
+	err := hipacheRouter{}.RemoveCName("myapp.com", "10.10.10.10")
 	c.Assert(err, gocheck.IsNil)
 	expected := []command{
 		{cmd: "LREM", args: []interface{}{"frontend:myapp.com", 0, "10.10.10.10"}},

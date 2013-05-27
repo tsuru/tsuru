@@ -105,15 +105,15 @@ func (r hipacheRouter) RemoveRoute(name, address string) error {
 	return r.removeElement(frontend, address)
 }
 
-func (hipacheRouter) AddCNAME(cname, name string) error {
+func (hipacheRouter) AddCName(cname, name string) error {
 	domain, err := config.GetString("hipache:domain")
 	if err != nil {
-		return &routeError{"addCNAME", err}
+		return &routeError{"addCName", err}
 	}
 	frontend := "frontend:" + name + "." + domain
 	conn, err := connect()
 	if err != nil {
-		return &routeError{"addCNAME", err}
+		return &routeError{"addCName", err}
 	}
 	addresses, err := redis.Strings(conn.Do("LRANGE", frontend, 0, -1))
 	if err != nil {
@@ -123,13 +123,13 @@ func (hipacheRouter) AddCNAME(cname, name string) error {
 	for _, r := range addresses {
 		_, err := conn.Do("RPUSH", frontend, r)
 		if err != nil {
-			return &routeError{"addCNAME", err}
+			return &routeError{"addCName", err}
 		}
 	}
 	return nil
 }
 
-func (r hipacheRouter) RemoveCNAME(cname, address string) error {
+func (r hipacheRouter) RemoveCName(cname, address string) error {
 	return r.removeElement("frontend:"+cname, address)
 }
 

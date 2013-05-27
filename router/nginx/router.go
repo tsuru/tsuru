@@ -61,11 +61,11 @@ func (r *NginxRouter) RemoveRoute(name, address string) error {
 	return nil
 }
 
-func (NginxRouter) AddCNAME(cname, name string) error {
+func (NginxRouter) AddCName(cname, name string) error {
 	return nil
 }
 
-func (NginxRouter) RemoveCNAME(cname, address string) error {
+func (NginxRouter) RemoveCName(cname, address string) error {
 	return nil
 }
 
