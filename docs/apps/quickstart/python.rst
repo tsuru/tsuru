@@ -71,25 +71,18 @@ Once your app is ready, you will be able to deploy your code, e.g.:
 Application code
 ================
 
-This document will ``not`` focus on how to write a Django blog, you can clone the
+This document will not focus on how to write a Django blog, you can clone the
 entire source direct from GitHub:
-https://github.com/globocom/tsuru-django-sample.
+https://github.com/globocom/tsuru-django-sample. Here is what we did for the
+project:
 
-.. highlight:: bash
-
-::
-
-    $ git clone git@github.com:globocom/tsuru-django-sample.git
-
-Here is what we did for the project (you do not have to follow these steps again):
-
-#. Created the project (``django-admin.py startproject``)
-#. Enabled django-admin
-#. Installed South
-#. Created a "posts" app (``django-admin.py startapp posts``)
-#. Added a "Post" model to the app
-#. Registered the model in django-admin
-#. Generated the migration using South
+#. Create the project (``django-admin.py startproject``)
+#. Enable django-admin
+#. Install South
+#. Create a "posts" app (``django-admin.py startapp posts``)
+#. Add a "Post" model to the app
+#. Register the model in django-admin
+#. Generate the migration using South
 
 Git deployment
 ==============
@@ -330,7 +323,7 @@ how the Procfile should look like:
 
 ::
 
-    web: gunicorn -b 0.0.0.0:8888 blog.wsgi
+    web: gunicorn -b 0.0.0.0:$PORT blog.wsgi
 
 Now that we commit the file and push the changes to tsuru git server, running
 another deploy:
