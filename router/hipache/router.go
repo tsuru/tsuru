@@ -79,17 +79,32 @@ func (hipacheRouter) RemoveBackend(name string) error {
 	return nil
 }
 
-func (hipacheRouter) AddRoute(name, address string) error {
+func (r hipacheRouter) AddRoute(name, address string) error {
 	domain, err := config.GetString("hipache:domain")
 	if err != nil {
 		return &routeError{"add", err}
 	}
 	frontend := "frontend:" + name + "." + domain
+	if err := r.addRoute(frontend, address); err != nil {
+		return &routeError{"add", err}
+	}
+	cname, err := redis.String(conn.Do("GET", "cname:"+name))
+	if err != nil {
+		return &routeError{"add", err}
+	}
+	if cname == "" {
+		return nil
+	}
+	return r.addRoute("frontend:"+cname, address)
+}
+
+// TEST ME!!
+func (hipacheRouter) addRoute(name, address string) error {
 	conn, err := connect()
 	if err != nil {
 		return &routeError{"add", err}
 	}
-	_, err = conn.Do("RPUSH", frontend, address)
+	_, err = conn.Do("RPUSH", name, address)
 	if err != nil {
 		return &routeError{"add", err}
 	}

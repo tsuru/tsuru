@@ -63,7 +63,7 @@ func (s *S) TestShouldBeRegistered(c *gocheck.C) {
 }
 
 func (s *S) TestAddBackend(c *gocheck.C) {
-	conn = &resultCommandConn{result: []interface{}{}, fakeConn: &s.conn}
+	conn = &resultCommandConn{defaultReply: []interface{}{}, fakeConn: &s.conn}
 	router := hipacheRouter{}
 	err := router.AddBackend("tip")
 	c.Assert(err, gocheck.IsNil)
@@ -74,7 +74,7 @@ func (s *S) TestAddBackend(c *gocheck.C) {
 }
 
 func (s *S) TestRemoveBackend(c *gocheck.C) {
-	conn = &resultCommandConn{result: []interface{}{}, fakeConn: &s.conn}
+	conn = &resultCommandConn{defaultReply: []interface{}{}, fakeConn: &s.conn}
 	router := hipacheRouter{}
 	err := router.RemoveBackend("tip")
 	c.Assert(err, gocheck.IsNil)
@@ -85,23 +85,26 @@ func (s *S) TestRemoveBackend(c *gocheck.C) {
 }
 
 func (s *S) TestAddRoute(c *gocheck.C) {
-	conn = &resultCommandConn{result: []interface{}{}, fakeConn: &s.conn}
+	conn = &resultCommandConn{defaultReply: "", fakeConn: &s.conn}
 	router := hipacheRouter{}
 	err := router.AddRoute("tip", "http://10.10.10.10:8080")
 	c.Assert(err, gocheck.IsNil)
 	expected := []command{
 		{cmd: "RPUSH", args: []interface{}{"frontend:tip.golang.org", "http://10.10.10.10:8080"}},
+		{cmd: "GET", args: []interface{}{"cname:tip"}},
 	}
 	c.Assert(s.conn.cmds, gocheck.DeepEquals, expected)
 }
 
 func (s *S) TestAddTwoRoutes(c *gocheck.C) {
-	conn = &resultCommandConn{result: []interface{}{[]byte("tip")}, fakeConn: &s.conn}
+	reply := map[string]interface{}{"GET": "", "SET": "", "LRANGE": []interface{}{[]byte("tip")}, "RPUSH": []interface{}{[]byte{}}}
+	conn = &resultCommandConn{reply: reply, fakeConn: &s.conn}
 	router := hipacheRouter{}
 	err := router.AddRoute("tip", "http://10.10.10.10:8081")
 	c.Assert(err, gocheck.IsNil)
 	expected := []command{
 		{cmd: "RPUSH", args: []interface{}{"frontend:tip.golang.org", "http://10.10.10.10:8081"}},
+		{cmd: "GET", args: []interface{}{"cname:tip"}},
 	}
 	c.Assert(s.conn.cmds, gocheck.DeepEquals, expected)
 }
@@ -134,8 +137,32 @@ func (s *S) TestAddRouteCommandFailure(c *gocheck.C) {
 	c.Assert(err, gocheck.NotNil)
 	e, ok := err.(*routeError)
 	c.Assert(ok, gocheck.Equals, true)
-	c.Assert(e.err.Error(), gocheck.Equals, "I can't do that.")
+	c.Assert(e.err.Error(), gocheck.Equals, "Could not add route: I can't do that.")
 	c.Assert(e.op, gocheck.Equals, "add")
+}
+
+func (s *S) TestAddRouteAlsoUpdatesCNameRecordsWhenExists(c *gocheck.C) {
+	reply := map[string]interface{}{"GET": "mycname.com", "SET": "", "LRANGE": []interface{}{[]byte("http://10.10.10.10:8080")}, "RPUSH": []interface{}{[]byte{}}}
+	conn = &resultCommandConn{reply: reply, fakeConn: &s.conn}
+	router := hipacheRouter{}
+	err := router.AddRoute("tip", "http://10.10.10.10:8080")
+	c.Assert(err, gocheck.IsNil)
+	err = router.SetCName("mycname.com", "tip")
+	c.Assert(err, gocheck.IsNil)
+	err = router.AddRoute("tip", "http://10.10.10.11:8080")
+	c.Assert(err, gocheck.IsNil)
+	expected := []command{
+		{cmd: "RPUSH", args: []interface{}{"frontend:tip.golang.org", "http://10.10.10.10:8080"}}, // AddRoute
+		{cmd: "GET", args: []interface{}{"cname:tip"}},                                            // AddRoute
+		{cmd: "RPUSH", args: []interface{}{"frontend:mycname.com", "http://10.10.10.10:8080"}},    // AddRoute, collateral due to fixed redis GET output
+		{cmd: "LRANGE", args: []interface{}{"frontend:tip.golang.org", 0, -1}},                    // SetCName
+		{cmd: "SET", args: []interface{}{"cname:tip", "mycname.com"}},                             // SetCName
+		{cmd: "RPUSH", args: []interface{}{"frontend:mycname.com", "http://10.10.10.10:8080"}},    // SetCName
+		{cmd: "RPUSH", args: []interface{}{"frontend:tip.golang.org", "http://10.10.10.11:8080"}}, // AddRoute
+		{cmd: "GET", args: []interface{}{"cname:tip"}},                                            // AddRoute
+		{cmd: "RPUSH", args: []interface{}{"frontend:mycname.com", "http://10.10.10.11:8080"}},    // AddRoute
+	}
+	c.Assert(s.conn.cmds, gocheck.DeepEquals, expected)
 }
 
 func (s *S) TestRemoveRoute(c *gocheck.C) {
@@ -180,7 +207,7 @@ func (s *S) TestRemoveRouteCommandFailure(c *gocheck.C) {
 }
 
 func (s *S) TestSetCName(c *gocheck.C) {
-	conn = &resultCommandConn{result: []interface{}{[]byte("10.10.10.10")}, fakeConn: &s.conn}
+	conn = &resultCommandConn{defaultReply: []interface{}{[]byte("10.10.10.10")}, fakeConn: &s.conn}
 	err := hipacheRouter{}.SetCName("myapp.com", "myapp")
 	c.Assert(err, gocheck.IsNil)
 	expected := []command{
@@ -192,7 +219,8 @@ func (s *S) TestSetCName(c *gocheck.C) {
 }
 
 func (s *S) TestSetCNameWithPreviousRoutes(c *gocheck.C) {
-	conn = &resultCommandConn{result: []interface{}{[]byte("10.10.10.10"), []byte("10.10.10.11")}, fakeConn: &s.conn}
+	reply := map[string]interface{}{"GET": "", "SET": "", "LRANGE": []interface{}{[]byte("10.10.10.10"), []byte("10.10.10.11")}, "RPUSH": []interface{}{[]byte{}}}
+	conn = &resultCommandConn{reply: reply, fakeConn: &s.conn}
 	router := hipacheRouter{}
 	err := router.AddRoute("myapp", "10.10.10.10")
 	c.Assert(err, gocheck.IsNil)
@@ -202,7 +230,9 @@ func (s *S) TestSetCNameWithPreviousRoutes(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	expected := []command{
 		{cmd: "RPUSH", args: []interface{}{"frontend:myapp.golang.org", "10.10.10.10"}}, // AddRoute call
+		{cmd: "GET", args: []interface{}{"cname:myapp"}},                                // AddRoute call
 		{cmd: "RPUSH", args: []interface{}{"frontend:myapp.golang.org", "10.10.10.11"}}, // AddRoute call
+		{cmd: "GET", args: []interface{}{"cname:myapp"}},                                // AddRoute call
 		{cmd: "LRANGE", args: []interface{}{"frontend:myapp.golang.org", 0, -1}},
 		{cmd: "SET", args: []interface{}{"cname:myapp", "mycname.com"}},
 		{cmd: "RPUSH", args: []interface{}{"frontend:mycname.com", "10.10.10.10"}},
@@ -212,7 +242,7 @@ func (s *S) TestSetCNameWithPreviousRoutes(c *gocheck.C) {
 }
 
 func (s *S) TestSetCNameShouldRecordAppAndCNameOnRedis(c *gocheck.C) {
-	conn = &resultCommandConn{result: []interface{}{[]byte("mycname.com")}, fakeConn: &s.conn}
+	conn = &resultCommandConn{defaultReply: []interface{}{[]byte("mycname.com")}, fakeConn: &s.conn}
 	router := hipacheRouter{}
 	err := router.SetCName("mycname.com", "myapp")
 	c.Assert(err, gocheck.IsNil)
@@ -221,7 +251,7 @@ func (s *S) TestSetCNameShouldRecordAppAndCNameOnRedis(c *gocheck.C) {
 }
 
 func (s *S) TestUnsetCName(c *gocheck.C) {
-	conn = &resultCommandConn{result: []interface{}{}, fakeConn: &s.conn}
+	conn = &resultCommandConn{defaultReply: []interface{}{}, fakeConn: &s.conn}
 	err := hipacheRouter{}.UnsetCName("myapp.com", "myapp")
 	c.Assert(err, gocheck.IsNil)
 	expected := []command{
@@ -232,7 +262,7 @@ func (s *S) TestUnsetCName(c *gocheck.C) {
 }
 
 func (s *S) TestAddr(c *gocheck.C) {
-	conn = &resultCommandConn{result: []interface{}{[]byte("10.10.10.10:8080")}, fakeConn: &s.conn}
+	conn = &resultCommandConn{defaultReply: []interface{}{[]byte("10.10.10.10:8080")}, fakeConn: &s.conn}
 	addr, err := hipacheRouter{}.Addr("tip")
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(addr, gocheck.Equals, "tip.golang.org")
@@ -275,7 +305,7 @@ func (s *S) TestAddrCommandFailure(c *gocheck.C) {
 }
 
 func (s *S) TestAddrRouteNotFound(c *gocheck.C) {
-	conn = &resultCommandConn{result: []interface{}{}, fakeConn: &s.conn}
+	conn = &resultCommandConn{defaultReply: []interface{}{}, fakeConn: &s.conn}
 	addr, err := hipacheRouter{}.Addr("tip")
 	c.Assert(addr, gocheck.Equals, "")
 	c.Assert(err, gocheck.Equals, errRouteNotFound)
