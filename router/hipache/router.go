@@ -119,6 +119,10 @@ func (hipacheRouter) SetCName(cname, name string) error {
 	if err != nil {
 		return &routeError{"get", err}
 	}
+	_, err = conn.Do("SET", "cname:"+name, cname)
+	if err != nil {
+		return &routeError{"set", err}
+	}
 	frontend = "frontend:" + cname
 	for _, r := range addresses {
 		_, err := conn.Do("RPUSH", frontend, r)
@@ -129,8 +133,12 @@ func (hipacheRouter) SetCName(cname, name string) error {
 	return nil
 }
 
-func (r hipacheRouter) UnsetCName(cname string) error {
+func (r hipacheRouter) UnsetCName(cname, name string) error {
 	conn, err := connect()
+	if err != nil {
+		return &routeError{"removeCName", err}
+	}
+	_, err = conn.Do("DEL", "cname:"+name)
 	if err != nil {
 		return &routeError{"removeCName", err}
 	}

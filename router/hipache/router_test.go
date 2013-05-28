@@ -185,6 +185,7 @@ func (s *S) TestSetCName(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	expected := []command{
 		{cmd: "LRANGE", args: []interface{}{"frontend:myapp.golang.org", 0, -1}},
+		{cmd: "SET", args: []interface{}{"cname:myapp", "myapp.com"}},
 		{cmd: "RPUSH", args: []interface{}{"frontend:myapp.com", "10.10.10.10"}},
 	}
 	c.Assert(s.conn.cmds, gocheck.DeepEquals, expected)
@@ -203,17 +204,28 @@ func (s *S) TestSetCNameWithPreviousRoutes(c *gocheck.C) {
 		{cmd: "RPUSH", args: []interface{}{"frontend:myapp.golang.org", "10.10.10.10"}}, // AddRoute call
 		{cmd: "RPUSH", args: []interface{}{"frontend:myapp.golang.org", "10.10.10.11"}}, // AddRoute call
 		{cmd: "LRANGE", args: []interface{}{"frontend:myapp.golang.org", 0, -1}},
+		{cmd: "SET", args: []interface{}{"cname:myapp", "mycname.com"}},
 		{cmd: "RPUSH", args: []interface{}{"frontend:mycname.com", "10.10.10.10"}},
 		{cmd: "RPUSH", args: []interface{}{"frontend:mycname.com", "10.10.10.11"}},
 	}
 	c.Assert(s.conn.cmds, gocheck.DeepEquals, expected)
 }
 
+func (s *S) TestSetCNameShouldRecordAppAndCNameOnRedis(c *gocheck.C) {
+	conn = &resultCommandConn{result: []interface{}{[]byte("mycname.com")}, fakeConn: &s.conn}
+	router := hipacheRouter{}
+	err := router.SetCName("mycname.com", "myapp")
+	c.Assert(err, gocheck.IsNil)
+	expected := command{cmd: "SET", args: []interface{}{"cname:myapp", "mycname.com"}}
+	c.Assert(s.conn.cmds[1], gocheck.DeepEquals, expected)
+}
+
 func (s *S) TestUnsetCName(c *gocheck.C) {
 	conn = &resultCommandConn{result: []interface{}{}, fakeConn: &s.conn}
-	err := hipacheRouter{}.UnsetCName("myapp.com")
+	err := hipacheRouter{}.UnsetCName("myapp.com", "myapp")
 	c.Assert(err, gocheck.IsNil)
 	expected := []command{
+		{cmd: "DEL", args: []interface{}{"cname:myapp"}},
 		{cmd: "DEL", args: []interface{}{"frontend:myapp.com"}},
 	}
 	c.Assert(s.conn.cmds, gocheck.DeepEquals, expected)
