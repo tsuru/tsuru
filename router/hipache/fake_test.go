@@ -50,10 +50,14 @@ func (c *failingFakeConn) Do(cmd string, args ...interface{}) (interface{}, erro
 
 type resultCommandConn struct {
 	*fakeConn
-	result []interface{}
+	reply        map[string]interface{}
+	defaultReply interface{}
 }
 
 func (c *resultCommandConn) Do(cmd string, args ...interface{}) (interface{}, error) {
 	c.fakeConn.Do(cmd, args...)
-	return c.result, nil
+	if c.defaultReply != nil {
+		return c.defaultReply, nil
+	}
+	return c.reply[cmd], nil
 }
