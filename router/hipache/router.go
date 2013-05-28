@@ -129,8 +129,16 @@ func (hipacheRouter) AddCName(cname, name string) error {
 	return nil
 }
 
-func (r hipacheRouter) UnsetCName(cname, address string) error {
-	return r.removeElement("frontend:"+cname, address)
+func (r hipacheRouter) UnsetCName(cname string) error {
+	conn, err := connect()
+	if err != nil {
+		return &routeError{"removeCName", err}
+	}
+	_, err = conn.Do("DEL", "frontend:"+cname)
+	if err != nil {
+		return &routeError{"removeCName", err}
+	}
+	return nil
 }
 
 func (hipacheRouter) Addr(name string) (string, error) {
