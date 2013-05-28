@@ -287,6 +287,9 @@ func validateVersion(supported, current string) bool {
 		if current < supported {
 			return false
 		}
+		if current > supported {
+			return true
+		}
 	}
 	if bigger {
 		return false
