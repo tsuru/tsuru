@@ -77,6 +77,11 @@ type App interface {
 	Ready() error
 }
 
+type CNameManager interface {
+	SetCName(app App, cname string) error
+	UnsetCName(app App, cname string) error
+}
+
 // Provisioner is the basic interface of this package.
 //
 // Any tsuru provisioner must implement this interface in order to provision
