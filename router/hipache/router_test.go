@@ -209,9 +209,9 @@ func (s *S) TestAddCNameWithPreviousRoutes(c *gocheck.C) {
 	c.Assert(s.conn.cmds, gocheck.DeepEquals, expected)
 }
 
-func (s *S) TestRemoveCName(c *gocheck.C) {
+func (s *S) TestUnsetCName(c *gocheck.C) {
 	conn = &resultCommandConn{result: []interface{}{}, fakeConn: &s.conn}
-	err := hipacheRouter{}.RemoveCName("myapp.com", "10.10.10.10")
+	err := hipacheRouter{}.UnsetCName("myapp.com", "10.10.10.10")
 	c.Assert(err, gocheck.IsNil)
 	expected := []command{
 		{cmd: "LREM", args: []interface{}{"frontend:myapp.com", 0, "10.10.10.10"}},

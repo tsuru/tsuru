@@ -106,14 +106,14 @@ func (s *S) TestAddCName(c *gocheck.C) {
 	c.Assert(r.HasRoute("myapp.com", "127.0.0.1"), gocheck.Equals, true)
 }
 
-func (s *S) TestRemoveCName(c *gocheck.C) {
+func (s *S) TestUnsetCName(c *gocheck.C) {
 	r := fakeRouter{backends: make(map[string][]string)}
 	err := r.AddBackend("name")
 	c.Assert(err, gocheck.IsNil)
 	err = r.AddRoute("name", "127.0.0.1")
 	err = r.AddCName("myapp.com", "name")
 	c.Assert(err, gocheck.IsNil)
-	err = r.RemoveCName("myapp.com", "127.0.0.1")
+	err = r.UnsetCName("myapp.com", "127.0.0.1")
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(r.HasRoute("myapp.com", "127.0.0.1"), gocheck.Equals, false)
 }

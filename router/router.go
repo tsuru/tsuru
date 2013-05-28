@@ -16,7 +16,7 @@ type Router interface {
 	AddRoute(name, address string) error
 	RemoveRoute(name, address string) error
 	AddCName(cname, name string) error
-	RemoveCName(cname, address string) error
+	UnsetCName(cname, address string) error
 	Addr(name string) (string, error)
 }
 

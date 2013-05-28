@@ -129,7 +129,7 @@ func (hipacheRouter) AddCName(cname, name string) error {
 	return nil
 }
 
-func (r hipacheRouter) RemoveCName(cname, address string) error {
+func (r hipacheRouter) UnsetCName(cname, address string) error {
 	return r.removeElement("frontend:"+cname, address)
 }
 

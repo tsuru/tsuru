@@ -56,9 +56,9 @@ func (s *S) TestAddCName(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 }
 
-func (s *S) TestRemoveCName(c *gocheck.C) {
+func (s *S) TestUnsetCName(c *gocheck.C) {
 	var r NginxRouter
-	err := r.RemoveCName("myapp.com", "10.10.10.10")
+	err := r.UnsetCName("myapp.com", "10.10.10.10")
 	c.Assert(err, gocheck.IsNil)
 }
 
