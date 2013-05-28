@@ -243,7 +243,15 @@ func (p *dockerProvisioner) SetCName(app provision.App, cname string) error {
 	if err != nil {
 		return err
 	}
-	return r.AddCName(cname, app.GetName())
+	return r.SetCName(cname, app.GetName())
+}
+
+func (p *dockerProvisioner) UnsetCName(app provision.App, cname string) error {
+	r, err := getRouter()
+	if err != nil {
+		return err
+	}
+	return r.UnsetCName(cname)
 }
 
 func collectUnit(container container, units chan<- provision.Unit, errs chan<- error, wg *sync.WaitGroup) {
