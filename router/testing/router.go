@@ -110,7 +110,7 @@ func (r *fakeRouter) SetCName(cname, name string) error {
 	return nil
 }
 
-func (r *fakeRouter) UnsetCName(cname string) error {
+func (r *fakeRouter) UnsetCName(cname, name string) error {
 	return r.RemoveBackend(cname)
 }
 

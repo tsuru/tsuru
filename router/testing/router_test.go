@@ -113,7 +113,7 @@ func (s *S) TestUnsetCName(c *gocheck.C) {
 	err = r.AddRoute("name", "127.0.0.1")
 	err = r.SetCName("myapp.com", "name")
 	c.Assert(err, gocheck.IsNil)
-	err = r.UnsetCName("myapp.com")
+	err = r.UnsetCName("myapp.com", "name")
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(r.HasBackend("myapp.com"), gocheck.Equals, false)
 }
