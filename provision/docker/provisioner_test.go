@@ -726,3 +726,15 @@ func (s *S) TestProvisionCollection(c *gocheck.C) {
 	collection := collection()
 	c.Assert(collection.Name, gocheck.Equals, s.collName)
 }
+
+func (s *S) TestProvisionSetCName(c *gocheck.C) {
+	var p dockerProvisioner
+	app := testing.NewFakeApp("myapp", "python", 1)
+	rtesting.FakeRouter.AddBackend("myapp")
+	rtesting.FakeRouter.AddRoute("myapp", "127.0.0.1")
+	cname := "mycname.com"
+	err := p.SetCName(app, cname)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(rtesting.FakeRouter.HasBackend(cname), gocheck.Equals, true)
+	c.Assert(rtesting.FakeRouter.HasRoute(cname, "127.0.0.1"), gocheck.Equals, true)
+}

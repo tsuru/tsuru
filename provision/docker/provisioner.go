@@ -238,6 +238,14 @@ func (p *dockerProvisioner) CollectStatus() ([]provision.Unit, error) {
 	return <-result, nil
 }
 
+func (p *dockerProvisioner) SetCName(app provision.App, cname string) error {
+	r, err := getRouter()
+	if err != nil {
+		return err
+	}
+	return r.AddCName(cname, app.GetName())
+}
+
 func collectUnit(container container, units chan<- provision.Unit, errs chan<- error, wg *sync.WaitGroup) {
 	defer wg.Done()
 	docker, _ := config.GetString("docker:binary")
