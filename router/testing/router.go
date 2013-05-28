@@ -104,6 +104,8 @@ func (r *fakeRouter) AddCName(cname, name string) error {
 		return nil
 	}
 	r.AddBackend(cname)
+	r.mutex.Lock()
+	defer r.mutex.Unlock()
 	r.backends[cname] = append(r.backends[name])
 	return nil
 }
