@@ -99,12 +99,17 @@ func (r *fakeRouter) RemoveRoute(name, ip string) error {
 	return nil
 }
 
-func (fakeRouter) AddCName(cname, name string) error {
+func (r *fakeRouter) AddCName(cname, name string) error {
+	if !r.HasBackend(name) {
+		return nil
+	}
+	r.AddBackend(cname)
+	r.backends[cname] = append(r.backends[name])
 	return nil
 }
 
-func (fakeRouter) RemoveCName(cname, address string) error {
-	return nil
+func (r *fakeRouter) RemoveCName(cname, address string) error {
+	return r.RemoveRoute(cname, address)
 }
 
 func (r *fakeRouter) Addr(name string) (string, error) {
