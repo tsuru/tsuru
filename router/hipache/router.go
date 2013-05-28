@@ -105,7 +105,7 @@ func (r hipacheRouter) RemoveRoute(name, address string) error {
 	return r.removeElement(frontend, address)
 }
 
-func (hipacheRouter) AddCName(cname, name string) error {
+func (hipacheRouter) SetCName(cname, name string) error {
 	domain, err := config.GetString("hipache:domain")
 	if err != nil {
 		return &routeError{"addCName", err}

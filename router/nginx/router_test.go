@@ -50,9 +50,9 @@ func (s *S) TestAddRoute(c *gocheck.C) {
 	c.Assert(commandmocker.Output(tmpdir), gocheck.Equals, expected)
 }
 
-func (s *S) TestAddCName(c *gocheck.C) {
+func (s *S) TestSetCName(c *gocheck.C) {
 	var r NginxRouter
-	err := r.AddCName("myapp.com", "myapp")
+	err := r.SetCName("myapp.com", "myapp")
 	c.Assert(err, gocheck.IsNil)
 }
 

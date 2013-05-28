@@ -95,12 +95,12 @@ func (s *S) TestRemoveUnknownRoute(c *gocheck.C) {
 	c.Assert(err.Error(), gocheck.Equals, "Route not found")
 }
 
-func (s *S) TestAddCName(c *gocheck.C) {
+func (s *S) TestSetCName(c *gocheck.C) {
 	r := fakeRouter{backends: make(map[string][]string)}
 	err := r.AddBackend("name")
 	c.Assert(err, gocheck.IsNil)
 	err = r.AddRoute("name", "127.0.0.1")
-	err = r.AddCName("myapp.com", "name")
+	err = r.SetCName("myapp.com", "name")
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(r.HasBackend("myapp.com"), gocheck.Equals, true)
 	c.Assert(r.HasRoute("myapp.com", "127.0.0.1"), gocheck.Equals, true)
@@ -111,7 +111,7 @@ func (s *S) TestUnsetCName(c *gocheck.C) {
 	err := r.AddBackend("name")
 	c.Assert(err, gocheck.IsNil)
 	err = r.AddRoute("name", "127.0.0.1")
-	err = r.AddCName("myapp.com", "name")
+	err = r.SetCName("myapp.com", "name")
 	c.Assert(err, gocheck.IsNil)
 	err = r.UnsetCName("myapp.com")
 	c.Assert(err, gocheck.IsNil)

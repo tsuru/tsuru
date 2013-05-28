@@ -99,7 +99,7 @@ func (r *fakeRouter) RemoveRoute(name, ip string) error {
 	return nil
 }
 
-func (r *fakeRouter) AddCName(cname, name string) error {
+func (r *fakeRouter) SetCName(cname, name string) error {
 	if !r.HasBackend(name) {
 		return nil
 	}
