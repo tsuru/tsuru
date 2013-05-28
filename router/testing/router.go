@@ -110,8 +110,8 @@ func (r *fakeRouter) AddCName(cname, name string) error {
 	return nil
 }
 
-func (r *fakeRouter) UnsetCName(cname, address string) error {
-	return r.RemoveRoute(cname, address)
+func (r *fakeRouter) UnsetCName(cname string) error {
+	return r.RemoveBackend(cname)
 }
 
 func (r *fakeRouter) Addr(name string) (string, error) {

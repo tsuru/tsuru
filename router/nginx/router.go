@@ -65,7 +65,7 @@ func (NginxRouter) AddCName(cname, name string) error {
 	return nil
 }
 
-func (NginxRouter) UnsetCName(cname, address string) error {
+func (NginxRouter) UnsetCName(cname string) error {
 	return nil
 }
 

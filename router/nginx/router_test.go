@@ -58,7 +58,7 @@ func (s *S) TestAddCName(c *gocheck.C) {
 
 func (s *S) TestUnsetCName(c *gocheck.C) {
 	var r NginxRouter
-	err := r.UnsetCName("myapp.com", "10.10.10.10")
+	err := r.UnsetCName("myapp.com")
 	c.Assert(err, gocheck.IsNil)
 }
 
