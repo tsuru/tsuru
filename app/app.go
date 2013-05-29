@@ -507,7 +507,7 @@ func (app *App) InstanceEnv(name string) map[string]bind.EnvVar {
 	return envs
 }
 
-// loadHooks loads app configuration from app.yaml.
+// loadConf loads app configuration from app.yaml.
 func (app *App) loadConf() error {
 	if app.conf != nil {
 		return nil
