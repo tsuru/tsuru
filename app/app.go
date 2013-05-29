@@ -24,7 +24,7 @@ import (
 	"github.com/globocom/tsuru/service"
 	"io"
 	"labix.org/v2/mgo/bson"
-	"launchpad.net/~niemeyer/goyaml/beta"
+	"launchpad.net/goyaml"
 	"path"
 	"regexp"
 	"sort"
