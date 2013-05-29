@@ -520,9 +520,7 @@ func (app *App) loadConf() error {
 	}
 	cmd := "cat " + path.Join(uRepo, "app.yaml")
 	var buf bytes.Buffer
-	err = app.run(cmd, &buf)
-	if err != nil {
-		app.Log(fmt.Sprintf("Got error while reading app.yaml: %s...\nSkipping hooks execution", err), "tsuru")
+	if err := app.run(cmd, &buf); err != nil {
 		return nil
 	}
 	err = goyaml.Unmarshal(buf.Bytes(), app.conf)
