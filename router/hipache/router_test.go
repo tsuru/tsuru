@@ -84,6 +84,13 @@ func (s *S) TestRemoveBackend(c *gocheck.C) {
 	c.Assert(s.conn.cmds, gocheck.DeepEquals, expected)
 }
 
+func (s *S) TestAddRouteWithoutAssemblingFrontend(c *gocheck.C) {
+	err := hipacheRouter{}.addRoute("test.com", "10.10.10.10")
+	c.Assert(err, gocheck.IsNil)
+	expected := []command{{cmd: "RPUSH", args: []interface{}{"test.com", "10.10.10.10"}}}
+	c.Assert(s.conn.cmds, gocheck.DeepEquals, expected)
+}
+
 func (s *S) TestAddRoute(c *gocheck.C) {
 	conn = &resultCommandConn{defaultReply: "", fakeConn: &s.conn}
 	router := hipacheRouter{}

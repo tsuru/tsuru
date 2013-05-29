@@ -98,7 +98,6 @@ func (r hipacheRouter) AddRoute(name, address string) error {
 	return r.addRoute("frontend:"+cname, address)
 }
 
-// TEST ME!!
 func (hipacheRouter) addRoute(name, address string) error {
 	conn, err := connect()
 	if err != nil {
