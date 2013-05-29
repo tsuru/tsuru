@@ -22,7 +22,7 @@ import (
 	"io"
 	"labix.org/v2/mgo"
 	"labix.org/v2/mgo/bson"
-	"launchpad.net/~niemeyer/goyaml/beta"
+	"launchpad.net/goyaml"
 	osexec "os/exec"
 	"regexp"
 	"strconv"
