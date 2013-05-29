@@ -14,7 +14,7 @@ import (
 	"github.com/globocom/tsuru/service"
 	"io/ioutil"
 	"labix.org/v2/mgo/bson"
-	"launchpad.net/~niemeyer/goyaml/beta"
+	"launchpad.net/goyaml"
 	"net/http"
 )
 
