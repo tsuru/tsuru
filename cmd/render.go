@@ -11,8 +11,8 @@ import (
 )
 
 const (
-	pattern   = "\033[%d;%d;%dm%s\033[0m"
-	bg_factor = 10
+	pattern  = "\033[%d;%d;%dm%s\033[0m"
+	bgFactor = 10
 )
 
 var fontColors = map[string]int{
@@ -139,5 +139,5 @@ func (l rowSlice) Swap(i, j int) {
 }
 
 func Colorfy(msg string, fontcolor string, background string, effect string) string {
-	return fmt.Sprintf(pattern, fontEffects[effect], fontColors[fontcolor], fontColors[background]+bg_factor, msg)
+	return fmt.Sprintf(pattern, fontEffects[effect], fontColors[fontcolor], fontColors[background]+bgFactor, msg)
 }
