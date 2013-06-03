@@ -9,13 +9,13 @@ import (
 	"launchpad.net/gocheck"
 )
 
-func (s *S) TestGetRepositoryUrl(c *gocheck.C) {
+func (s *S) TestGetRepositoryURL(c *gocheck.C) {
 	url := ReadWriteURL("foobar")
 	expected := "git@public.mygithost:foobar.git"
 	c.Assert(url, gocheck.Equals, expected)
 }
 
-func (s *S) TestGetRepositoryUrlWithoutSetting(c *gocheck.C) {
+func (s *S) TestGetRepositoryURLWithoutSetting(c *gocheck.C) {
 	old, _ := config.Get("git:rw-host")
 	defer config.Set("git:rw-host", old)
 	config.Unset("git:rw-host")
@@ -26,7 +26,7 @@ func (s *S) TestGetRepositoryUrlWithoutSetting(c *gocheck.C) {
 	ReadWriteURL("foobar")
 }
 
-func (s *S) TestGetReadOnlyUrl(c *gocheck.C) {
+func (s *S) TestGetReadOnlyURL(c *gocheck.C) {
 	url := ReadOnlyURL("foobar")
 	expected := "git://private.mygithost/foobar.git"
 	c.Assert(url, gocheck.Equals, expected)
