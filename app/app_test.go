@@ -25,6 +25,7 @@ import (
 	stdlog "log"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"reflect"
 	"sort"
 	"strconv"
@@ -1425,6 +1426,26 @@ func (s *S) TestSkipsPreRestartWhenPreRestartSectionDoesNotExists(c *gocheck.C) 
 	c.Assert(err, gocheck.IsNil)
 }
 
+func (s *S) TestPreRestartExpandsEnvironmentVariables(c *gocheck.C) {
+	s.provisioner.PrepareOutput([]byte("pre-restarted"))
+	path := os.Getenv("PATH")
+	a := App{
+		Name:     "something",
+		Platform: "django",
+		Units:    []Unit{{State: string(provision.StatusStarted), Machine: 1}},
+		Env: map[string]bind.EnvVar{
+			"DATABASE_NAME": {Name: "DATABASE_NAME", Value: "myappdb"},
+		},
+		conf: &conf{Hooks: hooks{PreRestart: []string{"echo $PATH $DATABASE_NAME $KEEP_ME"}}},
+	}
+	var buf bytes.Buffer
+	err := a.preRestart(&buf)
+	c.Assert(err, gocheck.IsNil)
+	cmds := s.provisioner.GetCmds("", &a)
+	c.Assert(cmds, gocheck.HasLen, 1)
+	c.Assert(cmds[0].Cmd, gocheck.Matches, `^\[ -f /home/application/apprc \] && source /home/application/apprc; \[ -d /home/application/current \] && cd /home/application/current; echo `+path+` myappdb \${KEEP_ME}$`)
+}
+
 func (s *S) TestPostRestart(c *gocheck.C) {
 	s.provisioner.PrepareOutput([]byte("restarted"))
 	a := App{
@@ -1461,6 +1482,26 @@ func (s *S) TestSkipsPostRestartWhenPostRestartSectionDoesNotExists(c *gocheck.C
 	log.SetLogger(l)
 	err := a.postRestart(w)
 	c.Assert(err, gocheck.IsNil)
+}
+
+func (s *S) TestPostRestartExpandsEnvironmentVariables(c *gocheck.C) {
+	s.provisioner.PrepareOutput([]byte("post-restarted"))
+	path := os.Getenv("PATH")
+	a := App{
+		Name:     "something",
+		Platform: "django",
+		Units:    []Unit{{State: string(provision.StatusStarted), Machine: 1}},
+		Env: map[string]bind.EnvVar{
+			"DATABASE_NAME": {Name: "DATABASE_NAME", Value: "myappdb"},
+		},
+		conf: &conf{Hooks: hooks{PostRestart: []string{"echo $PATH $DATABASE_NAME $KEEP_ME"}}},
+	}
+	var buf bytes.Buffer
+	err := a.postRestart(&buf)
+	c.Assert(err, gocheck.IsNil)
+	cmds := s.provisioner.GetCmds("", &a)
+	c.Assert(cmds, gocheck.HasLen, 1)
+	c.Assert(cmds[0].Cmd, gocheck.Matches, `^\[ -f /home/application/apprc \] && source /home/application/apprc; \[ -d /home/application/current \] && cd /home/application/current; echo `+path+` myappdb \${KEEP_ME}$`)
 }
 
 func (s *S) TestReady(c *gocheck.C) {

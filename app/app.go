@@ -25,6 +25,7 @@ import (
 	"io"
 	"labix.org/v2/mgo/bson"
 	"launchpad.net/goyaml"
+	"os"
 	"path"
 	"regexp"
 	"sort"
@@ -585,9 +586,18 @@ func (app *App) Run(cmd string, w io.Writer) error {
 }
 
 func (app *App) sourced(cmd string, w io.Writer) error {
+	var mapEnv = func(name string) string {
+		if e, ok := app.Env[name]; ok {
+			return e.Value
+		}
+		if e := os.Getenv(name); e != "" {
+			return e
+		}
+		return "${" + name + "}"
+	}
 	source := "[ -f /home/application/apprc ] && source /home/application/apprc"
 	cd := "[ -d /home/application/current ] && cd /home/application/current"
-	cmd = fmt.Sprintf("%s; %s; %s", source, cd, cmd)
+	cmd = fmt.Sprintf("%s; %s; %s", source, cd, os.Expand(cmd, mapEnv))
 	return app.run(cmd, w)
 }
 
