@@ -130,7 +130,7 @@ func (p *LXCProvisioner) Provision(app provision.App) error {
 			log.Printf("error on start container %s", app.GetName())
 			log.Print(err)
 		}
-		u.Ip = c.Ip()
+		u.Ip = c.IP()
 		u.Status = provision.StatusInstalling
 		err = p.collection().Update(bson.M{"name": u.Name}, u)
 		if err != nil {
@@ -140,22 +140,22 @@ func (p *LXCProvisioner) Provision(app provision.App) error {
 		if err != nil {
 			log.Print(err)
 		}
-		err = p.setup(c.Ip(), app.GetPlatform())
+		err = p.setup(c.IP(), app.GetPlatform())
 		if err != nil {
 			log.Printf("error on setup container %s", app.GetName())
 			log.Print(err)
 		}
-		err = p.install(c.Ip())
+		err = p.install(c.IP())
 		if err != nil {
 			log.Printf("error on install container %s", app.GetName())
 			log.Print(err)
 		}
-		err = p.start(c.Ip())
+		err = p.start(c.IP())
 		if err != nil {
 			log.Printf("error on start app for container %s", app.GetName())
 			log.Print(err)
 		}
-		err = p.start(c.Ip())
+		err = p.start(c.IP())
 		r, err := p.router()
 		if err != nil {
 			log.Print(err)
@@ -167,9 +167,9 @@ func (p *LXCProvisioner) Provision(app provision.App) error {
 			log.Print(err)
 			return
 		}
-		err = r.AddRoute(app.GetName(), c.Ip())
+		err = r.AddRoute(app.GetName(), c.IP())
 		if err != nil {
-			log.Printf("error on add route for %s with ip %s", app.GetName(), c.Ip())
+			log.Printf("error on add route for %s with ip %s", app.GetName(), c.IP())
 			log.Print(err)
 		}
 		u.Status = provision.StatusStarted

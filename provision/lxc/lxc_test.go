@@ -85,9 +85,9 @@ func (s *S) TestContainerIP(c *gocheck.C) {
 	f.Write(data)
 	f.Close()
 	cont := container{name: "vm1"}
-	c.Assert(cont.Ip(), gocheck.Equals, "10.10.10.10")
+	c.Assert(cont.IP(), gocheck.Equals, "10.10.10.10")
 	cont = container{name: "notfound"}
-	c.Assert(cont.Ip(), gocheck.Equals, "")
+	c.Assert(cont.IP(), gocheck.Equals, "")
 }
 
 func (s *S) TestWaitForNetwork(c *gocheck.C) {

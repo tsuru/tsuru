@@ -43,7 +43,7 @@ func runCmd(cmd string, args ...string) error {
 }
 
 // Ip returns the ip for the container.
-func (c *container) Ip() string {
+func (c *container) IP() string {
 	if c.ip != "" {
 		return c.ip
 	}
@@ -115,7 +115,7 @@ func (c *container) waitForNetwork() error {
 			if err != nil {
 				port = 22
 			}
-			addr := fmt.Sprintf("%s:%d", c.Ip(), port)
+			addr := fmt.Sprintf("%s:%d", c.IP(), port)
 			conn, err := net.Dial("tcp", addr)
 			if err == nil {
 				conn.Close()
