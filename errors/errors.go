@@ -5,10 +5,10 @@
 // Package errors provides facilities with error handling.
 package errors
 
-// Http represents an HTTP error. It implements the error interface.
+// HTTP represents an HTTP error. It implements the error interface.
 //
 // Each HTTP error has a Code and a message explaining what went wrong.
-type Http struct {
+type HTTP struct {
 	// Status code.
 	Code int
 
@@ -16,7 +16,7 @@ type Http struct {
 	Message string
 }
 
-func (e *Http) Error() string {
+func (e *HTTP) Error() string {
 	return e.Message
 }
 
