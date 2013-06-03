@@ -774,12 +774,18 @@ func (app *App) UnsetEnvs(variableNames []string, publicOnly bool) error {
 	return nil
 }
 
-// SetCName defines the CName of the app. It updates the attribute and saves
+// SetCName defines the CName of the app. It updates the attribute,
+// calls the SetCName function on the provisioner and saves
 // the app in the database, returning an error when it cannot save the change
-// in the database.
+// in the database or set the CName on the provisioner.
 func (app *App) SetCName(cname string) error {
 	if cname != "" && !cnameRegexp.MatchString(cname) {
 		return stderr.New("Invalid cname")
+	}
+	if s, ok := Provisioner.(provision.CNameManager); ok {
+		if err := s.SetCName(app, cname); err != nil {
+			return err
+		}
 	}
 	conn, err := db.Conn()
 	if err != nil {

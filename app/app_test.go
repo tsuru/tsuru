@@ -1303,6 +1303,17 @@ func (s *S) TestSetCNameValidatesTheCName(c *gocheck.C) {
 	}
 }
 
+func (s *S) TestSetCNameCallsProvisionerSetCName(c *gocheck.C) {
+	a := App{Name: "ktulu"}
+	err := s.conn.Apps().Insert(a)
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	err = a.SetCName("ktulu.mycompany.com")
+	c.Assert(err, gocheck.IsNil)
+	hasCName := s.provisioner.HasCName(&a, "ktulu.mycompany.com")
+	c.Assert(hasCName, gocheck.Equals, true)
+}
+
 func (s *S) TestIsValid(c *gocheck.C) {
 	var data = []struct {
 		name     string
