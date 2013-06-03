@@ -34,7 +34,7 @@ func (g GitGuesser) GuessName(path string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	remoteURL, err := repo.GetRemoteUrl("tsuru")
+	remoteURL, err := repo.RemoteURL("tsuru")
 	if err != nil {
 		return "", errors.New("tsuru remote not declared.")
 	}
