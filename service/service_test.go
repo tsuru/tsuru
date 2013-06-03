@@ -75,7 +75,7 @@ func (s *S) TestGetClient(c *gocheck.C) {
 	c.Assert(cli, gocheck.DeepEquals, &Client{endpoint: endpoints["production"]})
 }
 
-func (s *S) TestGetClientWithouHttp(c *gocheck.C) {
+func (s *S) TestGetClientWithouHTTP(c *gocheck.C) {
 	endpoints := map[string]string{
 		"production": "mysql.api.com",
 		"test":       "localhost:9090",
@@ -186,10 +186,10 @@ func (s *S) TestServiceByTeamKindShouldNotReturnsDeletedServices(c *gocheck.C) {
 	service := Service{Name: "mysql", Teams: []string{s.team.Name}}
 	err := service.Create()
 	c.Assert(err, gocheck.IsNil)
-	deleted_service := Service{Name: "firebird", Teams: []string{s.team.Name}}
-	err = deleted_service.Create()
+	deletedService := Service{Name: "firebird", Teams: []string{s.team.Name}}
+	err = deletedService.Create()
 	c.Assert(err, gocheck.IsNil)
-	err = deleted_service.Delete()
+	err = deletedService.Delete()
 	c.Assert(err, gocheck.IsNil)
 	result, err := GetServicesByTeamKindAndNoRestriction("teams", s.user)
 	c.Assert(err, gocheck.IsNil)
@@ -215,16 +215,16 @@ func (s *S) TestGetServicesByOwnerTeamsShouldNotReturnsDeletedServices(c *gochec
 	service := Service{Name: "mysql", OwnerTeams: []string{s.team.Name}, Endpoint: map[string]string{}, Teams: []string{}}
 	err := service.Create()
 	c.Assert(err, gocheck.IsNil)
-	deleted_service := Service{Name: "mongodb", OwnerTeams: []string{s.team.Name}}
-	err = deleted_service.Create()
+	deletedService := Service{Name: "mongodb", OwnerTeams: []string{s.team.Name}}
+	err = deletedService.Create()
 	c.Assert(err, gocheck.IsNil)
-	err = deleted_service.Delete()
+	err = deletedService.Delete()
 	services, err := GetServicesByOwnerTeams("owner_teams", s.user)
 	expected := []Service{service}
 	c.Assert(services, gocheck.DeepEquals, expected)
 }
 
-func (s *S) TestServiceModelMarshalJson(c *gocheck.C) {
+func (s *S) TestServiceModelMarshalJSON(c *gocheck.C) {
 	sm := []ServiceModel{
 		{Service: "mysql"},
 		{Service: "mongo"},

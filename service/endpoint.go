@@ -73,12 +73,10 @@ func (c *Client) Create(instance *ServiceInstance) error {
 	}
 	if resp, err = c.issueRequest("/resources", "POST", params); err == nil && resp.StatusCode < 300 {
 		return nil
-	} else {
-		msg := "Failed to create the instance " + instance.Name + ": " + c.buildErrorMessage(err, resp)
-		log.Print(msg)
-		err = &errors.Http{Code: http.StatusInternalServerError, Message: msg}
 	}
-	return err
+	msg := "Failed to create the instance " + instance.Name + ": " + c.buildErrorMessage(err, resp)
+	log.Print(msg)
+	return &errors.Http{Code: http.StatusInternalServerError, Message: msg}
 }
 
 func (c *Client) Destroy(instance *ServiceInstance) error {

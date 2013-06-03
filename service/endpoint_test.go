@@ -106,10 +106,10 @@ func (s *S) TestCreateShouldSendTheNameOfTheResourceToTheEndpoint(c *gocheck.C) 
 	client := &Client{endpoint: ts.URL}
 	err := client.Create(&instance)
 	c.Assert(err, gocheck.IsNil)
-	expectedUrl := "/resources"
+	expectedURL := "/resources"
 	h.Lock()
 	defer h.Unlock()
-	c.Assert(h.url, gocheck.Equals, expectedUrl)
+	c.Assert(h.url, gocheck.Equals, expectedURL)
 	c.Assert(h.method, gocheck.Equals, "POST")
 	v, err := url.ParseQuery(string(h.body))
 	c.Assert(err, gocheck.IsNil)
@@ -306,7 +306,7 @@ func (s *S) TestStatusShouldSendTheNameAndHostOfTheService(c *gocheck.C) {
 	c.Assert(state, gocheck.Equals, "up")
 }
 
-func (s *S) TestStatusShouldReturnDownWhenApiReturns500(c *gocheck.C) {
+func (s *S) TestStatusShouldReturnDownWhenAPIReturns500(c *gocheck.C) {
 	ts := httptest.NewServer(http.HandlerFunc(failHandler))
 	defer ts.Close()
 	instance := ServiceInstance{Name: "my-redis", ServiceName: "redis"}
@@ -316,7 +316,7 @@ func (s *S) TestStatusShouldReturnDownWhenApiReturns500(c *gocheck.C) {
 	c.Assert(state, gocheck.Equals, "down")
 }
 
-func (s *S) TestStatusShouldReturnPendingWhenApiReturns202(c *gocheck.C) {
+func (s *S) TestStatusShouldReturnPendingWhenAPIReturns202(c *gocheck.C) {
 	h := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusAccepted)
 	})
