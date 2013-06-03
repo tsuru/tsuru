@@ -65,7 +65,7 @@ func (c *AppLog) Run(context *cmd.Context, client *cmd.Client) error {
 	if err != nil {
 		return err
 	}
-	url, err := cmd.GetUrl(fmt.Sprintf("/apps/%s/log?lines=%d", appName, c.lines))
+	url, err := cmd.GetURL(fmt.Sprintf("/apps/%s/log?lines=%d", appName, c.lines))
 	if err != nil {
 		return err
 	}

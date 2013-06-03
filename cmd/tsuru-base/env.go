@@ -90,7 +90,7 @@ func (c *EnvSet) Run(context *cmd.Context, client *cmd.Client) error {
 	}
 	var buf bytes.Buffer
 	json.NewEncoder(&buf).Encode(variables)
-	url, err := cmd.GetUrl(fmt.Sprintf("/apps/%s/env", appName))
+	url, err := cmd.GetURL(fmt.Sprintf("/apps/%s/env", appName))
 	if err != nil {
 		return err
 	}
@@ -135,7 +135,7 @@ func requestEnvUrl(method string, g GuessingCommand, args []string, client *cmd.
 	if err != nil {
 		return nil, err
 	}
-	url, err := cmd.GetUrl(fmt.Sprintf("/apps/%s/env", appName))
+	url, err := cmd.GetURL(fmt.Sprintf("/apps/%s/env", appName))
 	if err != nil {
 		return nil, err
 	}

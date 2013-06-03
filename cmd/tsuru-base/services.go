@@ -28,7 +28,7 @@ func (s ServiceList) Info() *cmd.Info {
 }
 
 func (s ServiceList) Run(ctx *cmd.Context, client *cmd.Client) error {
-	url, err := cmd.GetUrl("/services/instances")
+	url, err := cmd.GetURL("/services/instances")
 	if err != nil {
 		return err
 	}
@@ -77,7 +77,7 @@ func (sa ServiceAdd) Run(ctx *cmd.Context, client *cmd.Client) error {
 	srvName, instName := ctx.Args[0], ctx.Args[1]
 	fmtBody := fmt.Sprintf(`{"name": "%s", "service_name": "%s"}`, instName, srvName)
 	b := bytes.NewBufferString(fmtBody)
-	url, err := cmd.GetUrl("/services/instances")
+	url, err := cmd.GetURL("/services/instances")
 	if err != nil {
 		return err
 	}
@@ -104,7 +104,7 @@ func (sb *ServiceBind) Run(ctx *cmd.Context, client *cmd.Client) error {
 		return err
 	}
 	instanceName := ctx.Args[0]
-	url, err := cmd.GetUrl("/services/instances/" + instanceName + "/" + appName)
+	url, err := cmd.GetURL("/services/instances/" + instanceName + "/" + appName)
 	if err != nil {
 		return err
 	}
@@ -161,7 +161,7 @@ func (su *ServiceUnbind) Run(ctx *cmd.Context, client *cmd.Client) error {
 		return err
 	}
 	instanceName := ctx.Args[0]
-	url, err := cmd.GetUrl("/services/instances/" + instanceName + "/" + appName)
+	url, err := cmd.GetURL("/services/instances/" + instanceName + "/" + appName)
 	if err != nil {
 		return err
 	}
@@ -213,7 +213,7 @@ e.g.:
 
 func (c ServiceInstanceStatus) Run(ctx *cmd.Context, client *cmd.Client) error {
 	instName := ctx.Args[0]
-	url, err := cmd.GetUrl("/services/instances/" + instName + "/status")
+	url, err := cmd.GetURL("/services/instances/" + instName + "/status")
 	if err != nil {
 		return err
 	}
@@ -288,7 +288,7 @@ func (ServiceInfo) ExtraHeaders(instances []ServiceInstanceModel) []string {
 
 func (c ServiceInfo) Run(ctx *cmd.Context, client *cmd.Client) error {
 	serviceName := ctx.Args[0]
-	url, err := cmd.GetUrl("/services/" + serviceName)
+	url, err := cmd.GetURL("/services/" + serviceName)
 	if err != nil {
 		return err
 	}
@@ -344,7 +344,7 @@ func (ServiceDoc) Info() *cmd.Info {
 func (ServiceDoc) Run(ctx *cmd.Context, client *cmd.Client) error {
 	sName := ctx.Args[0]
 	url := fmt.Sprintf("/services/%s/doc", sName)
-	url, err := cmd.GetUrl(url)
+	url, err := cmd.GetURL(url)
 	if err != nil {
 		return err
 	}
@@ -379,7 +379,7 @@ func (c ServiceRemove) Info() *cmd.Info {
 func (c ServiceRemove) Run(ctx *cmd.Context, client *cmd.Client) error {
 	name := ctx.Args[0]
 	url := fmt.Sprintf("/services/instances/%s", name)
-	url, err := cmd.GetUrl(url)
+	url, err := cmd.GetURL(url)
 	if err != nil {
 		return err
 	}

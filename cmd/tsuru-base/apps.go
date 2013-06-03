@@ -34,7 +34,7 @@ func (c *AppInfo) Run(context *cmd.Context, client *cmd.Client) error {
 	if err != nil {
 		return err
 	}
-	url, err := cmd.GetUrl(fmt.Sprintf("/apps/%s", appName))
+	url, err := cmd.GetURL(fmt.Sprintf("/apps/%s", appName))
 	if err != nil {
 		return err
 	}
@@ -142,7 +142,7 @@ func (c *AppGrant) Run(context *cmd.Context, client *cmd.Client) error {
 		return err
 	}
 	teamName := context.Args[0]
-	url, err := cmd.GetUrl(fmt.Sprintf("/apps/%s/%s", appName, teamName))
+	url, err := cmd.GetURL(fmt.Sprintf("/apps/%s/%s", appName, teamName))
 	if err != nil {
 		return err
 	}
@@ -179,7 +179,7 @@ func (c *AppRevoke) Run(context *cmd.Context, client *cmd.Client) error {
 		return err
 	}
 	teamName := context.Args[0]
-	url, err := cmd.GetUrl(fmt.Sprintf("/apps/%s/%s", appName, teamName))
+	url, err := cmd.GetURL(fmt.Sprintf("/apps/%s/%s", appName, teamName))
 	if err != nil {
 		return err
 	}
@@ -198,7 +198,7 @@ func (c *AppRevoke) Run(context *cmd.Context, client *cmd.Client) error {
 type AppList struct{}
 
 func (c AppList) Run(context *cmd.Context, client *cmd.Client) error {
-	url, err := cmd.GetUrl("/apps")
+	url, err := cmd.GetURL("/apps")
 	if err != nil {
 		return err
 	}
@@ -265,7 +265,7 @@ func (c *AppRestart) Run(context *cmd.Context, client *cmd.Client) error {
 	if err != nil {
 		return err
 	}
-	url, err := cmd.GetUrl(fmt.Sprintf("/apps/%s/restart", appName))
+	url, err := cmd.GetURL(fmt.Sprintf("/apps/%s/restart", appName))
 	if err != nil {
 		return err
 	}
@@ -345,7 +345,7 @@ func setCName(v string, g GuessingCommand, client *cmd.Client) error {
 	if err != nil {
 		return err
 	}
-	url, err := cmd.GetUrl(fmt.Sprintf("/apps/%s", appName))
+	url, err := cmd.GetURL(fmt.Sprintf("/apps/%s", appName))
 	if err != nil {
 		return err
 	}
