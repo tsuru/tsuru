@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-// Package exec/testing provides fake implementations of the exec package.
+// Package testing provides fake implementations of the exec package.
 //
 // These implementations can be used to mock out the Executor in tests.
 package testing
