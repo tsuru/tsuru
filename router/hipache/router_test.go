@@ -173,10 +173,13 @@ func (s *S) TestAddRouteAlsoUpdatesCNameRecordsWhenExists(c *gocheck.C) {
 }
 
 func (s *S) TestRemoveRoute(c *gocheck.C) {
+	reply := map[string]interface{}{"GET": "", "LRANGE": []interface{}{[]byte("10.10.10.11")}}
+	conn = &resultCommandConn{reply: reply, fakeConn: &s.conn}
 	err := hipacheRouter{}.RemoveRoute("tip", "tip.golang.org")
 	c.Assert(err, gocheck.IsNil)
 	expected := []command{
 		{cmd: "LREM", args: []interface{}{"frontend:tip.golang.org", 0, "tip.golang.org"}},
+		{cmd: "GET", args: []interface{}{"cname:tip"}},
 	}
 	c.Assert(s.conn.cmds, gocheck.DeepEquals, expected)
 }
@@ -211,6 +214,30 @@ func (s *S) TestRemoveRouteCommandFailure(c *gocheck.C) {
 	c.Assert(ok, gocheck.Equals, true)
 	c.Assert(e.err.Error(), gocheck.Equals, "I can't do that.")
 	c.Assert(e.op, gocheck.Equals, "remove")
+}
+
+func (s *S) TestRemoveRouteAlsoRemovesRespectiveCNameRecord(c *gocheck.C) {
+	reply := map[string]interface{}{"GET": "tip.cname.com", "LRANGE": []interface{}{[]byte("10.10.10.11")}}
+	conn = &resultCommandConn{reply: reply, fakeConn: &s.conn}
+	err := hipacheRouter{}.RemoveRoute("tip", "tip.golang.org")
+	c.Assert(err, gocheck.IsNil)
+	expected := []command{
+		{cmd: "LREM", args: []interface{}{"frontend:tip.golang.org", 0, "tip.golang.org"}},
+		{cmd: "GET", args: []interface{}{"cname:tip"}},
+		{cmd: "LREM", args: []interface{}{"frontend:tip.cname.com", 0, "tip.golang.org"}},
+	}
+	c.Assert(s.conn.cmds, gocheck.DeepEquals, expected)
+}
+
+func (s *S) TestGetCName(c *gocheck.C) {
+	conn = &resultCommandConn{defaultReply: "coolcname.com", fakeConn: &s.conn}
+	cname, err := hipacheRouter{}.getCName("myapp")
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(cname, gocheck.Equals, "coolcname.com")
+	expected := []command{
+		{cmd: "GET", args: []interface{}{"cname:myapp"}},
+	}
+	c.Assert(s.conn.cmds, gocheck.DeepEquals, expected)
 }
 
 func (s *S) TestSetCName(c *gocheck.C) {

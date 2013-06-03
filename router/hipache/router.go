@@ -116,7 +116,30 @@ func (r hipacheRouter) RemoveRoute(name, address string) error {
 		return &routeError{"remove", err}
 	}
 	frontend := "frontend:" + name + "." + domain
-	return r.removeElement(frontend, address)
+	if err := r.removeElement(frontend, address); err != nil {
+		return err
+	}
+	cname, err := r.getCName(name)
+	if err != nil {
+		return &routeError{"remove", err}
+	}
+	if cname == "" {
+		return nil
+	}
+	return r.removeElement("frontend:"+cname, address)
+}
+
+func (hipacheRouter) getCName(name string) (string, error) {
+	conn, err := connect()
+	if err != nil {
+		return "", &routeError{"getCName", err}
+	}
+	defer conn.Close()
+	cname, err := redis.String(conn.Do("GET", "cname:"+name))
+	if err != nil {
+		return "", &routeError{"getCName", err}
+	}
+	return cname, nil
 }
 
 func (hipacheRouter) SetCName(cname, name string) error {
