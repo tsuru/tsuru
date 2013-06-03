@@ -410,9 +410,8 @@ func (p *FakeProvisioner) ExecuteCommand(stdout, stderr io.Writer, app provision
 			if fail.method == "ExecuteCommand" {
 				stderr.Write(output)
 				return fail.err
-			} else {
-				p.failures <- fail
 			}
+			p.failures <- fail
 		case <-time.After(1e6):
 			stdout.Write(output)
 		}
