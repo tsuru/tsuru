@@ -85,7 +85,7 @@ func (t *Target) Panicf(format string, v ...interface{}) {
 	}
 }
 
-var DefaultTarget *Target = new(Target)
+var DefaultTarget = new(Target)
 
 // Fatal is a wrapper for DefaultTarget.Fatal.
 func Fatal(v ...interface{}) {
