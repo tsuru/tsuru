@@ -206,7 +206,7 @@ func (s *BeanstalkSuite) TestReleaseWithDelay(c *gocheck.C) {
 	c.Assert(id, gocheck.Equals, copy.id)
 }
 
-func (s *BeanstalkSuite) TestReleaseMessageWithoutId(c *gocheck.C) {
+func (s *BeanstalkSuite) TestReleaseMessageWithoutID(c *gocheck.C) {
 	msg := Message{Action: "do-something"}
 	q := beanstalkdQ{name: "default"}
 	err := q.Release(&msg, 0)
@@ -247,7 +247,7 @@ func (s *BeanstalkSuite) TestDeleteUnknownMessage(c *gocheck.C) {
 	c.Assert(err.Error(), gocheck.Equals, "Message not found.")
 }
 
-func (s *BeanstalkSuite) TestDeleteMessageWithoutId(c *gocheck.C) {
+func (s *BeanstalkSuite) TestDeleteMessageWithoutID(c *gocheck.C) {
 	msg := Message{
 		Action: "create-app",
 		Args:   []string{"something"},

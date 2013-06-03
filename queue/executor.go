@@ -87,7 +87,7 @@ func (r *registry) remove(e *executor) {
 	}
 }
 
-var r *registry = newRegistry()
+var r = newRegistry()
 
 // Preempt calls Stop and Wait for each running handler.
 func Preempt() {
