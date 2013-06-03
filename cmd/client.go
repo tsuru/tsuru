@@ -14,7 +14,7 @@ import (
 )
 
 type Client struct {
-	HttpClient     *http.Client
+	HTTPClient     *http.Client
 	context        *Context
 	progname       string
 	currentVersion string
@@ -23,7 +23,7 @@ type Client struct {
 
 func NewClient(client *http.Client, context *Context, manager *Manager) *Client {
 	return &Client{
-		HttpClient:     client,
+		HTTPClient:     client,
 		context:        context,
 		progname:       manager.name,
 		currentVersion: manager.version,
@@ -50,7 +50,7 @@ func (c *Client) Do(request *http.Request) (*http.Response, error) {
 		request.Header.Set("Authorization", "bearer "+token)
 	}
 	request.Close = true
-	response, err := c.HttpClient.Do(request)
+	response, err := c.HTTPClient.Do(request)
 	err = c.detectClientError(err)
 	if err != nil {
 		return nil, err

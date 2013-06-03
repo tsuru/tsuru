@@ -30,7 +30,7 @@ func (c *userCreate) Info() *Info {
 }
 
 func (c *userCreate) Run(context *Context, client *Client) error {
-	url, err := GetUrl("/users")
+	url, err := GetURL("/users")
 	if err != nil {
 		return err
 	}
@@ -78,7 +78,7 @@ func (c *userRemove) Run(context *Context, client *Client) error {
 		fmt.Fprintln(context.Stdout, "Abort.")
 		return nil
 	}
-	url, err := GetUrl("/users")
+	url, err := GetURL("/users")
 	if err != nil {
 		return err
 	}
@@ -108,7 +108,7 @@ type login struct{}
 
 func (c *login) Run(context *Context, client *Client) error {
 	email := context.Args[0]
-	url, err := GetUrl("/users/" + email + "/tokens")
+	url, err := GetURL("/users/" + email + "/tokens")
 	if err != nil {
 		return err
 	}
@@ -161,7 +161,7 @@ func (c *logout) Info() *Info {
 }
 
 func (c *logout) Run(context *Context, client *Client) error {
-	if url, err := GetUrl("/users/tokens"); err == nil {
+	if url, err := GetURL("/users/tokens"); err == nil {
 		request, _ := http.NewRequest("DELETE", url, nil)
 		client.Do(request)
 	}
@@ -187,7 +187,7 @@ func (c *teamCreate) Info() *Info {
 func (c *teamCreate) Run(context *Context, client *Client) error {
 	team := context.Args[0]
 	b := bytes.NewBufferString(fmt.Sprintf(`{"name":"%s"}`, team))
-	url, err := GetUrl("/teams")
+	url, err := GetURL("/teams")
 	if err != nil {
 		return err
 	}
@@ -214,7 +214,7 @@ func (c *teamRemove) Run(context *Context, client *Client) error {
 		fmt.Fprintln(context.Stdout, "Abort.")
 		return nil
 	}
-	url, err := GetUrl(fmt.Sprintf("/teams/%s", team))
+	url, err := GetURL(fmt.Sprintf("/teams/%s", team))
 	if err != nil {
 		return err
 	}
@@ -252,7 +252,7 @@ func (c *teamUserAdd) Info() *Info {
 
 func (c *teamUserAdd) Run(context *Context, client *Client) error {
 	teamName, userName := context.Args[0], context.Args[1]
-	url, err := GetUrl(fmt.Sprintf("/teams/%s/%s", teamName, userName))
+	url, err := GetURL(fmt.Sprintf("/teams/%s/%s", teamName, userName))
 	if err != nil {
 		return err
 	}
@@ -281,7 +281,7 @@ func (c *teamUserRemove) Info() *Info {
 
 func (c *teamUserRemove) Run(context *Context, client *Client) error {
 	teamName, userName := context.Args[0], context.Args[1]
-	url, err := GetUrl(fmt.Sprintf("/teams/%s/%s", teamName, userName))
+	url, err := GetURL(fmt.Sprintf("/teams/%s/%s", teamName, userName))
 	if err != nil {
 		return err
 	}
@@ -301,7 +301,7 @@ type teamUserList struct{}
 
 func (teamUserList) Run(context *Context, client *Client) error {
 	teamName := context.Args[0]
-	url, err := GetUrl("/teams/" + teamName)
+	url, err := GetURL("/teams/" + teamName)
 	if err != nil {
 		return err
 	}
@@ -347,7 +347,7 @@ func (c *teamList) Info() *Info {
 }
 
 func (c *teamList) Run(context *Context, client *Client) error {
-	url, err := GetUrl("/teams")
+	url, err := GetURL("/teams")
 	if err != nil {
 		return err
 	}
@@ -381,7 +381,7 @@ func (c *teamList) Run(context *Context, client *Client) error {
 type changePassword struct{}
 
 func (c *changePassword) Run(context *Context, client *Client) error {
-	url, err := GetUrl("/users/password")
+	url, err := GetURL("/users/password")
 	if err != nil {
 		return err
 	}
@@ -473,7 +473,7 @@ func (c *resetPassword) Run(context *Context, client *Client) error {
 	if c.token != "" {
 		url += "?token=" + c.token
 	}
-	url, err := GetUrl(url)
+	url, err := GetURL(url)
 	if err != nil {
 		return err
 	}

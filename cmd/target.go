@@ -100,7 +100,7 @@ func deleteTargetFile() {
 	filesystem().Remove(joinWithUserDir(".tsuru_target"))
 }
 
-func GetUrl(path string) (string, error) {
+func GetURL(path string) (string, error) {
 	var prefix string
 	target, err := readTarget()
 	if err != nil {

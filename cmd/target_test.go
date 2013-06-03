@@ -101,47 +101,47 @@ func (s *S) TestDeleteTargetFile(c *gocheck.C) {
 	c.Assert(rfs.HasAction("remove "+targetFile), gocheck.Equals, true)
 }
 
-func (s *S) TestGetUrl(c *gocheck.C) {
+func (s *S) TestGetURL(c *gocheck.C) {
 	fsystem = &testing.RecordingFs{FileContent: "http://localhost"}
 	defer func() {
 		fsystem = nil
 	}()
 	expected := "http://localhost/apps"
-	got, err := GetUrl("/apps")
+	got, err := GetURL("/apps")
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(got, gocheck.Equals, expected)
 }
 
-func (s *S) TestGetUrlPutsHttpIfItIsNotPresent(c *gocheck.C) {
+func (s *S) TestGetURLPutsHTTPIfItIsNotPresent(c *gocheck.C) {
 	rfs := &testing.RecordingFs{FileContent: "remotehost"}
 	fsystem = rfs
 	defer func() {
 		fsystem = nil
 	}()
 	expected := "http://remotehost/apps"
-	got, err := GetUrl("/apps")
+	got, err := GetURL("/apps")
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(got, gocheck.Equals, expected)
 }
 
-func (s *S) TestGetUrlShouldNotPrependHttpIfTheTargetIsHttps(c *gocheck.C) {
+func (s *S) TestGetURLShouldNotPrependHTTPIfTheTargetIsHTTPs(c *gocheck.C) {
 	rfs := &testing.RecordingFs{FileContent: "https://localhost"}
 	fsystem = rfs
 	defer func() {
 		fsystem = nil
 	}()
-	got, err := GetUrl("/apps")
+	got, err := GetURL("/apps")
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(got, gocheck.Equals, "https://localhost/apps")
 }
 
-func (s *S) TestGetUrlUndefinedTarget(c *gocheck.C) {
+func (s *S) TestGetURLUndefinedTarget(c *gocheck.C) {
 	rfs := &testing.FailureFs{}
 	fsystem = rfs
 	defer func() {
 		fsystem = nil
 	}()
-	got, err := GetUrl("/apps")
+	got, err := GetURL("/apps")
 	c.Assert(got, gocheck.Equals, "")
 	c.Assert(err, gocheck.NotNil)
 	_, ok := err.(undefinedTargetError)
@@ -439,7 +439,7 @@ For more details, please run "tsuru help target".`
 }
 
 func (s *S) TestNewTargetSlice(c *gocheck.C) {
-	var t *targetSlice = newTargetSlice()
+	t := newTargetSlice()
 	c.Assert(t.sorted, gocheck.Equals, false)
 	c.Assert(t.current, gocheck.Equals, -1)
 	c.Assert(t.targets, gocheck.IsNil)
