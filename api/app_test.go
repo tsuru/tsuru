@@ -370,11 +370,11 @@ func (s *S) TestCreateAppHandler(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	body, err := ioutil.ReadAll(recorder.Body)
 	c.Assert(err, gocheck.IsNil)
-	repoUrl := repository.ReadWriteURL(a.Name)
+	repoURL := repository.ReadWriteURL(a.Name)
 	var obtained map[string]string
 	expected := map[string]string{
 		"status":         "success",
-		"repository_url": repoUrl,
+		"repository_url": repoURL,
 	}
 	err = json.Unmarshal(body, &obtained)
 	c.Assert(obtained, gocheck.DeepEquals, expected)

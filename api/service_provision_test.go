@@ -105,7 +105,7 @@ endpoint:
 	return recorder, request
 }
 
-func (s *ProvisionSuite) TestCreateHandlerSavesNameFromManifestId(c *gocheck.C) {
+func (s *ProvisionSuite) TestCreateHandlerSavesNameFromManifestID(c *gocheck.C) {
 	recorder, request := makeRequestToCreateHandler(c)
 	err := serviceCreate(recorder, request, s.token)
 	c.Assert(err, gocheck.IsNil)

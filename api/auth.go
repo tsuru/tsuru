@@ -46,8 +46,8 @@ func createUser(w http.ResponseWriter, r *http.Request) error {
 	if !validation.ValidateLength(u.Password, passwordMinLen, passwordMaxLen) {
 		return &errors.Http{Code: http.StatusBadRequest, Message: passwordError}
 	}
-	gUrl := repository.ServerURL()
-	c := gandalf.Client{Endpoint: gUrl}
+	gURL := repository.ServerURL()
+	c := gandalf.Client{Endpoint: gURL}
 	if _, err := c.NewUser(u.Email, keyToMap(u.Keys)); err != nil {
 		return fmt.Errorf("Failed to create user in the git server: %s", err)
 	}
@@ -287,12 +287,12 @@ func addUserToTeamInDatabase(user *auth.User, team *auth.Team) error {
 }
 
 func addUserToTeamInGandalf(email string, u *auth.User, t *auth.Team) error {
-	gUrl := repository.ServerURL()
+	gURL := repository.ServerURL()
 	alwdApps, err := u.AllowedApps()
 	if err != nil {
 		return fmt.Errorf("Failed to obtain allowed apps to grant: %s", err.Error())
 	}
-	if err := (&gandalf.Client{Endpoint: gUrl}).GrantAccess(alwdApps, []string{email}); err != nil {
+	if err := (&gandalf.Client{Endpoint: gURL}).GrantAccess(alwdApps, []string{email}); err != nil {
 		return fmt.Errorf("Failed to grant access to git repositories: %s", err)
 	}
 	return nil
@@ -344,12 +344,12 @@ func removeUserFromTeamInDatabase(u *auth.User, team *auth.Team) error {
 }
 
 func removeUserFromTeamInGandalf(u *auth.User, team string) error {
-	gUrl := repository.ServerURL()
+	gURL := repository.ServerURL()
 	alwdApps, err := u.AllowedAppsByTeam(team)
 	if err != nil {
 		return err
 	}
-	if err := (&gandalf.Client{Endpoint: gUrl}).RevokeAccess(alwdApps, []string{u.Email}); err != nil {
+	if err := (&gandalf.Client{Endpoint: gURL}).RevokeAccess(alwdApps, []string{u.Email}); err != nil {
 		return fmt.Errorf("Failed to revoke access from git repositories: %s", err)
 	}
 	return nil
@@ -434,8 +434,8 @@ func addKeyInDatabase(key *auth.Key, u *auth.User) error {
 
 func addKeyInGandalf(key *auth.Key, u *auth.User) error {
 	key.Name = fmt.Sprintf("%s-%d", u.Email, len(u.Keys)+1)
-	gUrl := repository.ServerURL()
-	if err := (&gandalf.Client{Endpoint: gUrl}).AddKey(u.Email, keyToMap([]auth.Key{*key})); err != nil {
+	gURL := repository.ServerURL()
+	if err := (&gandalf.Client{Endpoint: gURL}).AddKey(u.Email, keyToMap([]auth.Key{*key})); err != nil {
 		return fmt.Errorf("Failed to add key to git server: %s", err)
 	}
 	return nil
@@ -479,8 +479,8 @@ func removeKeyFromDatabase(key *auth.Key, u *auth.User) error {
 }
 
 func removeKeyFromGandalf(key *auth.Key, u *auth.User) error {
-	gUrl := repository.ServerURL()
-	if err := (&gandalf.Client{Endpoint: gUrl}).RemoveKey(u.Email, key.Name); err != nil {
+	gURL := repository.ServerURL()
+	if err := (&gandalf.Client{Endpoint: gURL}).RemoveKey(u.Email, key.Name); err != nil {
 		return fmt.Errorf("Failed to remove the key from git server: %s", err)
 	}
 	return nil
@@ -521,8 +521,8 @@ func removeUser(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
 	if err != nil {
 		return err
 	}
-	gUrl := repository.ServerURL()
-	c := gandalf.Client{Endpoint: gUrl}
+	gURL := repository.ServerURL()
+	c := gandalf.Client{Endpoint: gURL}
 	alwdApps, err := u.AllowedApps()
 	if err != nil {
 		return err

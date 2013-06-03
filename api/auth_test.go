@@ -341,10 +341,10 @@ func (s *AuthSuite) TestLoginShouldCreateTokenInTheDatabaseAndReturnItWithinTheR
 	conn, _ := db.Conn()
 	defer conn.Close()
 	err = conn.Users().Find(bson.M{"email": "nobody@globo.com"}).One(&user)
-	var recorderJson map[string]string
+	var recorderJSON map[string]string
 	r, _ := ioutil.ReadAll(recorder.Body)
-	json.Unmarshal(r, &recorderJson)
-	n, err := conn.Tokens().Find(bson.M{"token": recorderJson["token"]}).Count()
+	json.Unmarshal(r, &recorderJSON)
+	n, err := conn.Tokens().Find(bson.M{"token": recorderJSON["token"]}).Count()
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(n, gocheck.Equals, 1)
 	action := testing.Action{
@@ -354,7 +354,7 @@ func (s *AuthSuite) TestLoginShouldCreateTokenInTheDatabaseAndReturnItWithinTheR
 	c.Assert(action, testing.IsRecorded)
 }
 
-func (s *AuthSuite) TestLoginShouldReturnErrorAndBadRequestIfItReceivesAnInvalidJson(c *gocheck.C) {
+func (s *AuthSuite) TestLoginShouldReturnErrorAndBadRequestIfItReceivesAnInvalidJSON(c *gocheck.C) {
 	b := bytes.NewBufferString(`"invalid":"json"]`)
 	request, err := http.NewRequest("POST", "/users/nobody@globo.com/tokens?:email=nobody@globo.com", b)
 	c.Assert(err, gocheck.IsNil)
@@ -822,7 +822,7 @@ func (s *AuthSuite) TestAddUserToTeamInDatabase(c *gocheck.C) {
 	c.Assert(team.Users, gocheck.DeepEquals, []string{user.Email})
 }
 
-func (s *AuthSuite) TestAddUserToTeamInGandalfShouldCallGandalfApi(c *gocheck.C) {
+func (s *AuthSuite) TestAddUserToTeamInGandalfShouldCallGandalfAPI(c *gocheck.C) {
 	h := testHandler{}
 	ts := s.startGandalfTestServer(&h)
 	defer ts.Close()
@@ -1140,7 +1140,7 @@ func (s *AuthSuite) TestAddKeyToUserReturnsErrorIfTheReadingOfTheBodyFails(c *go
 	c.Assert(err, gocheck.NotNil)
 }
 
-func (s *AuthSuite) TestAddKeyToUserReturnsBadRequestIfTheJsonIsInvalid(c *gocheck.C) {
+func (s *AuthSuite) TestAddKeyToUserReturnsBadRequestIfTheJSONIsInvalid(c *gocheck.C) {
 	h := testHandler{}
 	ts := s.startGandalfTestServer(&h)
 	defer ts.Close()
@@ -1237,8 +1237,8 @@ func (s *AuthSuite) TestAddKeyAddKeyToUserInGandalf(c *gocheck.C) {
 		conn.Users().RemoveAll(bson.M{"email": u.Email})
 	}()
 	c.Assert(u.Keys[0].Name, gocheck.Not(gocheck.Matches), "\\.pub$")
-	expectedUrl := fmt.Sprintf("/user/%s/key", u.Email)
-	c.Assert(h.url[0], gocheck.Equals, expectedUrl)
+	expectedURL := fmt.Sprintf("/user/%s/key", u.Email)
+	c.Assert(h.url[0], gocheck.Equals, expectedURL)
 	c.Assert(h.method[0], gocheck.Equals, "POST")
 	expected := fmt.Sprintf(`{"%s-1":"my-key"}`, u.Email)
 	c.Assert(string(h.body[0]), gocheck.Equals, expected)
@@ -1281,7 +1281,7 @@ func (s *AuthSuite) TestAddKeyInDatabaseShouldStoreUsersKeyInDB(c *gocheck.C) {
 	c.Assert(u2.Keys, gocheck.DeepEquals, []auth.Key{key})
 }
 
-func (s *AuthSuite) TestAddKeyInGandalfShouldCallGandalfApi(c *gocheck.C) {
+func (s *AuthSuite) TestAddKeyInGandalfShouldCallGandalfAPI(c *gocheck.C) {
 	h := testHandler{}
 	ts := s.startGandalfTestServer(&h)
 	defer ts.Close()
@@ -1298,7 +1298,7 @@ func (s *AuthSuite) TestAddKeyInGandalfShouldCallGandalfApi(c *gocheck.C) {
 	c.Assert(h.url[0], gocheck.Equals, "/user/me@gmail.com/key")
 }
 
-func (s *AuthSuite) TestRemoveKeyFromGandalfCallsGandalfApi(c *gocheck.C) {
+func (s *AuthSuite) TestRemoveKeyFromGandalfCallsGandalfAPI(c *gocheck.C) {
 	conn, _ := db.Conn()
 	defer conn.Close()
 	u := &auth.User{Email: "me@gmail.com", Password: "123456"}
