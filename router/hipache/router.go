@@ -88,9 +88,9 @@ func (r hipacheRouter) AddRoute(name, address string) error {
 	if err := r.addRoute(frontend, address); err != nil {
 		return &routeError{"add", err}
 	}
-	cname, err := redis.String(conn.Do("GET", "cname:"+name))
+	cname, err := r.getCName(name)
 	if err != nil {
-		return &routeError{"add", err}
+		return err
 	}
 	if cname == "" {
 		return nil
