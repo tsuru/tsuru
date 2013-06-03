@@ -175,7 +175,7 @@ func (s *S) TestConn(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 }
 
-func (s *S) TestConnMissingDatabaseUrl(c *gocheck.C) {
+func (s *S) TestConnMissingDatabaseURL(c *gocheck.C) {
 	storage, err := Conn()
 	c.Assert(storage, gocheck.IsNil)
 	c.Assert(err, gocheck.NotNil)
