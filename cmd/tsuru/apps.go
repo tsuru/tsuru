@@ -21,7 +21,7 @@ func (AppCreate) Run(context *cmd.Context, client *cmd.Client) error {
 	appName := context.Args[0]
 	platform := context.Args[1]
 	b := bytes.NewBufferString(fmt.Sprintf(`{"name":"%s","platform":"%s"}`, appName, platform))
-	url, err := cmd.GetUrl("/apps")
+	url, err := cmd.GetURL("/apps")
 	if err != nil {
 		return err
 	}
@@ -90,7 +90,7 @@ func (c *AppRemove) Run(context *cmd.Context, client *cmd.Client) error {
 			return nil
 		}
 	}
-	url, err := cmd.GetUrl(fmt.Sprintf("/apps/%s", appName))
+	url, err := cmd.GetURL(fmt.Sprintf("/apps/%s", appName))
 	if err != nil {
 		return err
 	}
@@ -133,7 +133,7 @@ func (c *UnitAdd) Run(context *cmd.Context, client *cmd.Client) error {
 	if err != nil {
 		return err
 	}
-	url, err := cmd.GetUrl(fmt.Sprintf("/apps/%s/units", appName))
+	url, err := cmd.GetURL(fmt.Sprintf("/apps/%s/units", appName))
 	if err != nil {
 		return err
 	}
@@ -167,7 +167,7 @@ func (c *UnitRemove) Run(context *cmd.Context, client *cmd.Client) error {
 	if err != nil {
 		return err
 	}
-	url, err := cmd.GetUrl(fmt.Sprintf("/apps/%s/units", appName))
+	url, err := cmd.GetURL(fmt.Sprintf("/apps/%s/units", appName))
 	if err != nil {
 		return err
 	}

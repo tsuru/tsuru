@@ -18,7 +18,7 @@ type platform struct {
 type platformList struct{}
 
 func (platformList) Run(context *cmd.Context, client *cmd.Client) error {
-	url, err := cmd.GetUrl("/platforms")
+	url, err := cmd.GetURL("/platforms")
 	if err != nil {
 		return err
 	}
