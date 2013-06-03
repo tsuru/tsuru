@@ -28,7 +28,7 @@ func (c *ServiceCreate) Info() *cmd.Info {
 
 func (c *ServiceCreate) Run(context *cmd.Context, client *cmd.Client) error {
 	manifest := context.Args[0]
-	url, err := cmd.GetUrl("/services")
+	url, err := cmd.GetURL("/services")
 	if err != nil {
 		return err
 	}
@@ -56,7 +56,7 @@ type ServiceRemove struct{}
 
 func (c *ServiceRemove) Run(context *cmd.Context, client *cmd.Client) error {
 	serviceName := context.Args[0]
-	url, err := cmd.GetUrl("/services/" + serviceName)
+	url, err := cmd.GetURL("/services/" + serviceName)
 	if err != nil {
 		return err
 	}
@@ -92,7 +92,7 @@ func (c *ServiceList) Info() *cmd.Info {
 }
 
 func (c *ServiceList) Run(ctx *cmd.Context, client *cmd.Client) error {
-	url, err := cmd.GetUrl("/services")
+	url, err := cmd.GetURL("/services")
 	if err != nil {
 		return err
 	}
@@ -134,7 +134,7 @@ func (c *ServiceUpdate) Run(ctx *cmd.Context, client *cmd.Client) error {
 	if err != nil {
 		return err
 	}
-	url, err := cmd.GetUrl("/services")
+	url, err := cmd.GetURL("/services")
 	if err != nil {
 		return err
 	}
@@ -165,7 +165,7 @@ func (c *ServiceDocAdd) Info() *cmd.Info {
 
 func (c *ServiceDocAdd) Run(ctx *cmd.Context, client *cmd.Client) error {
 	serviceName := ctx.Args[0]
-	url, err := cmd.GetUrl("/services/" + serviceName + "/doc")
+	url, err := cmd.GetURL("/services/" + serviceName + "/doc")
 	if err != nil {
 		return err
 	}
@@ -187,7 +187,7 @@ type ServiceDocGet struct{}
 
 func (c *ServiceDocGet) Run(ctx *cmd.Context, client *cmd.Client) error {
 	serviceName := ctx.Args[0]
-	url, err := cmd.GetUrl("/services/" + serviceName + "/doc")
+	url, err := cmd.GetURL("/services/" + serviceName + "/doc")
 	if err != nil {
 		return err
 	}
