@@ -19,7 +19,7 @@ type tokenGen struct {
 
 func (c *tokenGen) Run(ctx *cmd.Context, client *cmd.Client) error {
 	app := ctx.Args[0]
-	url, err := cmd.GetUrl("/tokens")
+	url, err := cmd.GetURL("/tokens")
 	if err != nil {
 		return err
 	}
