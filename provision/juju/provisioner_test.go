@@ -787,6 +787,25 @@ func (s *S) TestAddrWithoutUnits(c *gocheck.C) {
 	c.Assert(err.Error(), gocheck.Equals, `App "squeeze" has no units.`)
 }
 
+func (s *S) TestSetCName(c *gocheck.C) {
+	app := testing.NewFakeApp("squeeze", "who", 0)
+	err := (&JujuProvisioner{}).SetCName(app, "somecname.com")
+	c.Assert(err, gocheck.IsNil)
+}
+
+func (s *S) TestUnsetCName(c *gocheck.C) {
+	app := testing.NewFakeApp("squeeze", "who", 0)
+	err := (&JujuProvisioner{}).UnsetCName(app, "somecname.com")
+	c.Assert(err, gocheck.IsNil)
+}
+
+func (s *S) TestProvisionerIsCNameManager(c *gocheck.C) {
+	var p interface{}
+	p = &JujuProvisioner{}
+	_, ok := p.(provision.CNameManager)
+	c.Assert(ok, gocheck.Equals, true)
+}
+
 func (s *ELBSuite) TestProvisionWithELB(c *gocheck.C) {
 	fexec := &etesting.FakeExecutor{}
 	execut = fexec

@@ -753,3 +753,10 @@ func (s *S) TestProvisionUnsetCName(c *gocheck.C) {
 	c.Assert(rtesting.FakeRouter.HasBackend(cname), gocheck.Equals, false)
 	c.Assert(rtesting.FakeRouter.HasRoute(cname, "127.0.0.1"), gocheck.Equals, false)
 }
+
+func (s *S) TestProvisionerIsCNameManager(c *gocheck.C) {
+	var p interface{}
+	p = &dockerProvisioner{}
+	_, ok := p.(provision.CNameManager)
+	c.Assert(ok, gocheck.Equals, true)
+}

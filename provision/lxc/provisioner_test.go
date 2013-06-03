@@ -342,3 +342,22 @@ func (s *S) TestProvisionSetup(c *gocheck.C) {
 	}
 	c.Assert(fexec.ExecutedCmd(cmd, args), gocheck.Equals, true)
 }
+
+func (s *S) TestSetCName(c *gocheck.C) {
+	app := testing.NewFakeApp("myapp", "python", 0)
+	err := (&LXCProvisioner{}).SetCName(app, "cname.myapp.com")
+	c.Assert(err, gocheck.IsNil)
+}
+
+func (s *S) TestUnsetCName(c *gocheck.C) {
+	app := testing.NewFakeApp("myapp", "python", 0)
+	err := (&LXCProvisioner{}).UnsetCName(app, "cname.myapp.com")
+	c.Assert(err, gocheck.IsNil)
+}
+
+func (s *S) TestProvisionerIsCNameManager(c *gocheck.C) {
+	var p interface{}
+	p = &LXCProvisioner{}
+	_, ok := p.(provision.CNameManager)
+	c.Assert(ok, gocheck.Equals, true)
+}
