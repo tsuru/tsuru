@@ -15,7 +15,7 @@ type S struct{}
 
 var _ = gocheck.Suite(&S{})
 
-func (s *S) TestHttpError(c *gocheck.C) {
+func (s *S) TestHTTPError(c *gocheck.C) {
 	e := Http{500, "Internal server error"}
 	c.Assert(e.Error(), gocheck.Equals, e.Message)
 }
