@@ -28,15 +28,15 @@ func init() {
 	heal.Register("instance-unit", instanceUnitHealer{})
 	heal.Register("zookeeper", zookeeperHealer{})
 	heal.Register("elb-instance", elbInstanceHealer{})
-	heal.Register("bootstrap-instanceid", bootstrapInstanceIdHealer{})
+	heal.Register("bootstrap-instanceid", bootstrapInstanceIDHealer{})
 }
 
-type bootstrapInstanceIdHealer struct {
+type bootstrapInstanceIDHealer struct {
 	s *s3.S3
 	e *ec2.EC2
 }
 
-func (h bootstrapInstanceIdHealer) Heal() error {
+func (h bootstrapInstanceIDHealer) Heal() error {
 	if h.needsHeal() {
 		log.Print("healing bootstrap instance id")
 		jujuBucket, err := config.GetString("juju:bucket")
@@ -44,45 +44,45 @@ func (h bootstrapInstanceIdHealer) Heal() error {
 			return err
 		}
 		bucket := h.s3().Bucket(jujuBucket)
-		ec2InstanceId, err := h.bootstrapInstanceId()
+		ec2InstanceID, err := h.bootstrapInstanceID()
 		if err != nil {
 			return err
 		}
-		return bucket.Put("provider-state", []byte("zookeeper-instances: ["+ec2InstanceId+"]"), "binary/octet-stream", s3.BucketOwnerFull)
+		return bucket.Put("provider-state", []byte("zookeeper-instances: ["+ec2InstanceID+"]"), "binary/octet-stream", s3.BucketOwnerFull)
 	}
 	return nil
 }
 
-func (h *bootstrapInstanceIdHealer) needsHeal() bool {
-	s3InstanceId, err := h.bootstrapInstanceIdFromBucket()
+func (h *bootstrapInstanceIDHealer) needsHeal() bool {
+	s3InstanceID, err := h.bootstrapInstanceIDFromBucket()
 	if err != nil {
 		return false
 	}
-	ec2InstanceId, err := h.bootstrapInstanceId()
+	ec2InstanceID, err := h.bootstrapInstanceID()
 	if err != nil {
 		return false
 	}
-	if s3InstanceId != ec2InstanceId {
+	if s3InstanceID != ec2InstanceID {
 		return true
 	}
 	return false
 }
 
-func (h *bootstrapInstanceIdHealer) ec2() *ec2.EC2 {
+func (h *bootstrapInstanceIDHealer) ec2() *ec2.EC2 {
 	if h.e == nil {
 		h.e = getEC2Endpoint()
 	}
 	return h.e
 }
 
-func (h *bootstrapInstanceIdHealer) s3() *s3.S3 {
+func (h *bootstrapInstanceIDHealer) s3() *s3.S3 {
 	if h.s == nil {
 		h.s = h.getS3Endpoint()
 	}
 	return h.s
 }
 
-func (bootstrapInstanceIdHealer) getS3Endpoint() *s3.S3 {
+func (bootstrapInstanceIDHealer) getS3Endpoint() *s3.S3 {
 	access, err := config.GetString("aws:access-key-id")
 	if err != nil {
 		log.Fatal(err)
@@ -95,7 +95,7 @@ func (bootstrapInstanceIdHealer) getS3Endpoint() *s3.S3 {
 	return s3.New(auth, aws.USEast)
 }
 
-func (h *bootstrapInstanceIdHealer) bootstrapInstanceIdFromBucket() (string, error) {
+func (h *bootstrapInstanceIDHealer) bootstrapInstanceIDFromBucket() (string, error) {
 	jujuBucket, err := config.GetString("juju:bucket")
 	if err != nil {
 		return "", err
@@ -110,7 +110,7 @@ func (h *bootstrapInstanceIdHealer) bootstrapInstanceIdFromBucket() (string, err
 	return s, nil
 }
 
-func (h *bootstrapInstanceIdHealer) bootstrapInstanceId() (string, error) {
+func (h *bootstrapInstanceIDHealer) bootstrapInstanceID() (string, error) {
 	resp, err := h.ec2().Instances(nil, nil)
 	if err != nil {
 		return "", err
@@ -173,7 +173,7 @@ func (h *instanceAgentsConfigHealer) getPrivateDns(instanceId string) (string, e
 // bootstrapProvisionHealer returns the bootstrap private dns.
 func (h *instanceAgentsConfigHealer) bootstrapPrivateDns() (string, error) {
 	machine := getBootstrapMachine()
-	return h.getPrivateDns(machine.InstanceId)
+	return h.getPrivateDns(machine.InstanceID)
 }
 
 // Heal verifies if the bootstrap private dns is different of the bootstrap
@@ -257,11 +257,11 @@ func (h instanceMachineHealer) Heal() error {
 	output, _ := p.getOutput()
 	for _, machine := range output.Machines {
 		if machine.AgentState == "down" {
-			log.Printf("Healing juju-machine-agent in machine %s", machine.InstanceId)
-			upStartCmd("stop", "juju-machine-agent", machine.IpAddress)
-			upStartCmd("start", "juju-machine-agent", machine.IpAddress)
+			log.Printf("Healing juju-machine-agent in machine %s", machine.InstanceID)
+			upStartCmd("stop", "juju-machine-agent", machine.IPAddress)
+			upStartCmd("start", "juju-machine-agent", machine.IPAddress)
 		} else {
-			log.Printf("juju-machine-agent for machine %s needs no cure, skipping...", machine.InstanceId)
+			log.Printf("juju-machine-agent for machine %s needs no cure, skipping...", machine.InstanceID)
 		}
 	}
 	return nil
@@ -274,7 +274,7 @@ type zookeeperHealer struct{}
 // needsHeal verifies if zookeeper is ok using 'ruok' command.
 func (h zookeeperHealer) needsHeal() bool {
 	bootstrapMachine := getBootstrapMachine()
-	conn, err := net.Dial("tcp", fmt.Sprintf("%s:2181", bootstrapMachine.IpAddress))
+	conn, err := net.Dial("tcp", fmt.Sprintf("%s:2181", bootstrapMachine.IPAddress))
 	if err != nil {
 		return true
 	}
@@ -289,8 +289,8 @@ func (h zookeeperHealer) Heal() error {
 	if h.needsHeal() {
 		bootstrapMachine := getBootstrapMachine()
 		log.Printf("Healing zookeeper")
-		upStartCmd("stop", "zookeeper", bootstrapMachine.IpAddress)
-		return upStartCmd("start", "zookeeper", bootstrapMachine.IpAddress)
+		upStartCmd("stop", "zookeeper", bootstrapMachine.IPAddress)
+		return upStartCmd("start", "zookeeper", bootstrapMachine.IPAddress)
 	}
 	log.Printf("Zookeeper needs no cure, skipping...")
 	return nil
@@ -304,7 +304,7 @@ type bootstrapProvisionHealer struct{}
 func (h bootstrapProvisionHealer) Heal() error {
 	bootstrapMachine := getBootstrapMachine()
 	log.Printf("Healing bootstrap juju-provision-agent")
-	return upStartCmd("start", "juju-provision-agent", bootstrapMachine.IpAddress)
+	return upStartCmd("start", "juju-provision-agent", bootstrapMachine.IPAddress)
 }
 
 // BootstrapMachineHealer is an implementation for the Healer interface. For more
@@ -348,8 +348,8 @@ func (h bootstrapMachineHealer) Heal() error {
 	if h.needsHeal() {
 		bootstrapMachine := getBootstrapMachine()
 		log.Printf("Healing bootstrap juju-machine-agent")
-		upStartCmd("stop", "juju-machine-agent", bootstrapMachine.IpAddress)
-		return upStartCmd("start", "juju-machine-agent", bootstrapMachine.IpAddress)
+		upStartCmd("stop", "juju-machine-agent", bootstrapMachine.IPAddress)
+		return upStartCmd("start", "juju-machine-agent", bootstrapMachine.IPAddress)
 	}
 	log.Printf("Bootstrap juju-machine-agent needs no cure, skipping...")
 	return nil

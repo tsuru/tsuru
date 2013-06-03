@@ -56,24 +56,24 @@ func handle(msg *queue.Message) {
 			msg.Delete()
 			return
 		}
-		var noId []string
+		var noID []string
 		var ok []provision.Unit
 		for _, u := range units {
 			if u.InstanceId == "pending" || u.InstanceId == "" {
-				noId = append(noId, u.Name)
+				noID = append(noID, u.Name)
 			} else {
 				ok = append(ok, u)
 			}
 		}
-		if len(noId) == len(units) {
+		if len(noID) == len(units) {
 			getQueue(queueName).Release(msg, 0)
 		} else {
 			manager := ELBManager{}
 			manager.Register(&a, ok...)
 			msg.Delete()
-			if len(noId) > 0 {
+			if len(noID) > 0 {
 				args := []string{a.name}
-				args = append(args, noId...)
+				args = append(args, noID...)
 				msg := queue.Message{
 					Action: msg.Action,
 					Args:   args,

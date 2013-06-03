@@ -207,7 +207,7 @@ services:
         machine: 1
         public-address: server-1097.novalocal`
 
-var collectOutputNoInstanceId = `machines:
+var collectOutputNoInstanceID = `machines:
   0:
     agent-state: running
     dns-name: 10.10.10.96

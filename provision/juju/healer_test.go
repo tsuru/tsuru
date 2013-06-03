@@ -22,20 +22,20 @@ import (
 	"net"
 )
 
-func (s *S) TestBootstrapInstanceIdHealerShouldBeRegistered(c *gocheck.C) {
+func (s *S) TestBootstrapInstanceIDHealerShouldBeRegistered(c *gocheck.C) {
 	h, err := heal.Get("bootstrap-instanceid")
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(h, gocheck.FitsTypeOf, bootstrapInstanceIdHealer{})
+	c.Assert(h, gocheck.FitsTypeOf, bootstrapInstanceIDHealer{})
 }
 
-func (s *S) TestBootstrapInstanceIdHealerNeedsHeal(c *gocheck.C) {
+func (s *S) TestBootstrapInstanceIDHealerNeedsHeal(c *gocheck.C) {
 	ec2Server, err := ec2test.NewServer()
 	c.Assert(err, gocheck.IsNil)
 	defer ec2Server.Quit()
 	s3Server, err := s3test.NewServer(nil)
 	c.Assert(err, gocheck.IsNil)
 	defer s3Server.Quit()
-	h := bootstrapInstanceIdHealer{}
+	h := bootstrapInstanceIDHealer{}
 	region := aws.SAEast
 	region.EC2Endpoint = ec2Server.URL()
 	region.S3Endpoint = s3Server.URL()
@@ -51,14 +51,14 @@ func (s *S) TestBootstrapInstanceIdHealerNeedsHeal(c *gocheck.C) {
 	c.Assert(h.needsHeal(), gocheck.Equals, true)
 }
 
-func (s *S) TestBootstrapInstanceIdHealerNotNeedsHeal(c *gocheck.C) {
+func (s *S) TestBootstrapInstanceIDHealerNotNeedsHeal(c *gocheck.C) {
 	ec2Server, err := ec2test.NewServer()
 	c.Assert(err, gocheck.IsNil)
 	defer ec2Server.Quit()
 	s3Server, err := s3test.NewServer(nil)
 	c.Assert(err, gocheck.IsNil)
 	defer s3Server.Quit()
-	h := bootstrapInstanceIdHealer{}
+	h := bootstrapInstanceIDHealer{}
 	region := aws.SAEast
 	region.EC2Endpoint = ec2Server.URL()
 	region.S3Endpoint = s3Server.URL()
@@ -78,14 +78,14 @@ func (s *S) TestBootstrapInstanceIdHealerNotNeedsHeal(c *gocheck.C) {
 	c.Assert(h.needsHeal(), gocheck.Equals, false)
 }
 
-func (s *S) TestBootstrapInstanceIdHealerHeal(c *gocheck.C) {
+func (s *S) TestBootstrapInstanceIDHealerHeal(c *gocheck.C) {
 	ec2Server, err := ec2test.NewServer()
 	c.Assert(err, gocheck.IsNil)
 	defer ec2Server.Quit()
 	s3Server, err := s3test.NewServer(nil)
 	c.Assert(err, gocheck.IsNil)
 	defer s3Server.Quit()
-	h := bootstrapInstanceIdHealer{}
+	h := bootstrapInstanceIDHealer{}
 	region := aws.SAEast
 	region.EC2Endpoint = ec2Server.URL()
 	region.S3Endpoint = s3Server.URL()
@@ -110,14 +110,14 @@ func (s *S) TestBootstrapInstanceIdHealerHeal(c *gocheck.C) {
 	c.Assert(string(data), gocheck.Equals, expected)
 }
 
-func (s *S) TestBootstrapInstanceIdHealerEC2(c *gocheck.C) {
-	h := bootstrapInstanceIdHealer{}
+func (s *S) TestBootstrapInstanceIDHealerEC2(c *gocheck.C) {
+	h := bootstrapInstanceIDHealer{}
 	ec2 := h.ec2()
 	c.Assert(ec2.EC2Endpoint, gocheck.Equals, "")
 }
 
-func (s *S) TestBootstrapInstanceIdHealerS3(c *gocheck.C) {
-	h := bootstrapInstanceIdHealer{}
+func (s *S) TestBootstrapInstanceIDHealerS3(c *gocheck.C) {
+	h := bootstrapInstanceIDHealer{}
 	s3 := h.s3()
 	c.Assert(s3.Region, gocheck.DeepEquals, aws.USEast)
 }
@@ -142,8 +142,8 @@ func (s *S) TestInstanceAgenstConfigHealerHeal(c *gocheck.C) {
 	p := JujuProvisioner{}
 	m := machine{
 		AgentState:    "not-started",
-		IpAddress:     "localhost",
-		InstanceId:    id,
+		IPAddress:     "localhost",
+		InstanceID:    id,
 		InstanceState: "running",
 	}
 	p.saveBootstrapMachine(m)
@@ -217,8 +217,8 @@ func (s *S) TestInstanceAgenstConfigHealerHealAWSFailure(c *gocheck.C) {
 	p := JujuProvisioner{}
 	m := machine{
 		AgentState:    "not-started",
-		IpAddress:     "localhost",
-		InstanceId:    "i-0800",
+		IPAddress:     "localhost",
+		InstanceID:    "i-0800",
 		InstanceState: "running",
 	}
 	p.saveBootstrapMachine(m)
@@ -251,8 +251,8 @@ func (s *S) TestBootstrapPrivateDns(c *gocheck.C) {
 	p := JujuProvisioner{}
 	m := machine{
 		AgentState:    "running",
-		IpAddress:     "localhost",
-		InstanceId:    instance.InstanceId,
+		IPAddress:     "localhost",
+		InstanceID:    instance.InstanceId,
 		InstanceState: "running",
 	}
 	p.saveBootstrapMachine(m)
@@ -432,8 +432,8 @@ func (s *S) TestZookeeperNeedsHeal(c *gocheck.C) {
 	p := JujuProvisioner{}
 	m := machine{
 		AgentState:    "not-started",
-		IpAddress:     "localhost",
-		InstanceId:    "i-00000376",
+		IPAddress:     "localhost",
+		InstanceID:    "i-00000376",
 		InstanceState: "running",
 	}
 	p.saveBootstrapMachine(m)
@@ -448,8 +448,8 @@ func (s *S) TestZookeeperNeedsHealConnectionRefused(c *gocheck.C) {
 	p := JujuProvisioner{}
 	m := machine{
 		AgentState:    "not-started",
-		IpAddress:     "localhost",
-		InstanceId:    "i-00000376",
+		IPAddress:     "localhost",
+		InstanceID:    "i-00000376",
 		InstanceState: "running",
 	}
 	p.saveBootstrapMachine(m)
@@ -469,8 +469,8 @@ func (s *S) TestZookeeperNotNeedsHeal(c *gocheck.C) {
 	p := JujuProvisioner{}
 	m := machine{
 		AgentState:    "not-started",
-		IpAddress:     "localhost",
-		InstanceId:    "i-00000376",
+		IPAddress:     "localhost",
+		InstanceID:    "i-00000376",
 		InstanceState: "running",
 	}
 	p.saveBootstrapMachine(m)
@@ -495,8 +495,8 @@ func (s *S) TestZookeeperHealerHeal(c *gocheck.C) {
 	p := JujuProvisioner{}
 	m := machine{
 		AgentState:    "not-started",
-		IpAddress:     "localhost",
-		InstanceId:    "i-00000376",
+		IPAddress:     "localhost",
+		InstanceID:    "i-00000376",
 		InstanceState: "running",
 	}
 	p.saveBootstrapMachine(m)
@@ -547,8 +547,8 @@ func (s *S) TestBootstrapProvisionHealerHeal(c *gocheck.C) {
 	p := JujuProvisioner{}
 	m := machine{
 		AgentState:    "not-started",
-		IpAddress:     "localhost",
-		InstanceId:    "i-00000376",
+		IPAddress:     "localhost",
+		InstanceID:    "i-00000376",
 		InstanceState: "running",
 	}
 	p.saveBootstrapMachine(m)
@@ -582,8 +582,8 @@ func (s *S) TestBootstrapMachineHealerNeedsHeal(c *gocheck.C) {
 	p := JujuProvisioner{}
 	m := machine{
 		AgentState:    "not-started",
-		IpAddress:     "localhost",
-		InstanceId:    "i-00000376",
+		IPAddress:     "localhost",
+		InstanceID:    "i-00000376",
 		InstanceState: "running",
 	}
 	p.saveBootstrapMachine(m)
@@ -611,8 +611,8 @@ func (s *S) TestBootstrapMachineHealerHeal(c *gocheck.C) {
 	p := JujuProvisioner{}
 	m := machine{
 		AgentState:    "not-started",
-		IpAddress:     "localhost",
-		InstanceId:    "i-00000376",
+		IPAddress:     "localhost",
+		InstanceID:    "i-00000376",
 		InstanceState: "running",
 	}
 	p.saveBootstrapMachine(m)
@@ -652,8 +652,8 @@ func (s *S) TestBootstrapMachineHealerOnlyHealsWhenItIsNeeded(c *gocheck.C) {
 	p := JujuProvisioner{}
 	m := machine{
 		AgentState:    "running",
-		IpAddress:     "10.10.10.96",
-		InstanceId:    "i-00000376",
+		IPAddress:     "10.10.10.96",
+		InstanceID:    "i-00000376",
 		InstanceState: "running",
 	}
 	p.saveBootstrapMachine(m)

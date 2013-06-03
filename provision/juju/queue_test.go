@@ -89,7 +89,7 @@ func (s *ELBSuite) TestHandleMessagesWithPendingUnits(c *gocheck.C) {
 	err := manager.Create(app)
 	c.Assert(err, gocheck.IsNil)
 	defer manager.Destroy(app)
-	output := strings.Replace(collectOutputNoInstanceId, "i-00004444", id, 1)
+	output := strings.Replace(collectOutputNoInstanceID, "i-00004444", id, 1)
 	tmpdir, err := commandmocker.Add("juju", output)
 	c.Assert(err, gocheck.IsNil)
 	defer commandmocker.Remove(tmpdir)

@@ -248,7 +248,7 @@ func (s *S) TestRemoveUnit(c *gocheck.C) {
 	p := JujuProvisioner{}
 	conn, collection := p.unitsCollection()
 	defer conn.Close()
-	err := collection.Insert(instance{UnitName: "two/2", InstanceId: "i-00000439"})
+	err := collection.Insert(instance{UnitName: "two/2", InstanceID: "i-00000439"})
 	c.Assert(err, gocheck.IsNil)
 	err = p.RemoveUnit(app, "two/2")
 	c.Assert(err, gocheck.IsNil)
@@ -448,8 +448,8 @@ func (s *S) TestSaveBootstrapMachine(c *gocheck.C) {
 	p := JujuProvisioner{}
 	m := machine{
 		AgentState:    "state",
-		IpAddress:     "ip",
-		InstanceId:    "id",
+		IPAddress:     "ip",
+		InstanceID:    "id",
 		InstanceState: "state",
 	}
 	p.saveBootstrapMachine(m)
@@ -484,7 +484,7 @@ func (s *S) TestCollectStatus(c *gocheck.C) {
 	p := JujuProvisioner{}
 	conn, collection := p.unitsCollection()
 	defer conn.Close()
-	err = collection.Insert(instance{UnitName: "as_i_rise/0", InstanceId: "i-00000439"})
+	err = collection.Insert(instance{UnitName: "as_i_rise/0", InstanceID: "i-00000439"})
 	c.Assert(err, gocheck.IsNil)
 	defer collection.Remove(bson.M{"_id": bson.M{"$in": []string{"as_i_rise/0", "the_infanta/0"}}})
 	expected := []provision.Unit{
@@ -537,9 +537,9 @@ func (s *S) TestCollectStatus(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(instances, gocheck.HasLen, 2)
 	c.Assert(instances[0].UnitName, gocheck.Equals, "as_i_rise/0")
-	c.Assert(instances[0].InstanceId, gocheck.Equals, "i-00000439")
+	c.Assert(instances[0].InstanceID, gocheck.Equals, "i-00000439")
 	c.Assert(instances[1].UnitName, gocheck.Equals, "the_infanta/0")
-	c.Assert(instances[1].InstanceId, gocheck.Equals, "i-0000043e")
+	c.Assert(instances[1].InstanceID, gocheck.Equals, "i-0000043e")
 	var b machine
 	err = collection.Find(nil).One(&b)
 	c.Assert(err, gocheck.IsNil)
@@ -604,7 +604,7 @@ func (s *S) TestCollectStatusIDChangeDisabledELB(c *gocheck.C) {
 	p := JujuProvisioner{}
 	conn, collection := p.unitsCollection()
 	defer conn.Close()
-	err = collection.Insert(instance{UnitName: "as_i_rise/0", InstanceId: "i-00000239"})
+	err = collection.Insert(instance{UnitName: "as_i_rise/0", InstanceID: "i-00000239"})
 	c.Assert(err, gocheck.IsNil)
 	defer collection.Remove(bson.M{"_id": bson.M{"$in": []string{"as_i_rise/0", "the_infanta/0"}}})
 	_, err = p.CollectStatus()
@@ -636,7 +636,7 @@ func (s *S) TestCollectStatusIDChangeFromPending(c *gocheck.C) {
 	p := JujuProvisioner{}
 	conn, collection := p.unitsCollection()
 	defer conn.Close()
-	err = collection.Insert(instance{UnitName: "as_i_rise/0", InstanceId: "pending"})
+	err = collection.Insert(instance{UnitName: "as_i_rise/0", InstanceID: "pending"})
 	c.Assert(err, gocheck.IsNil)
 	defer collection.Remove(bson.M{"_id": bson.M{"$in": []string{"as_i_rise/0", "the_infanta/0"}}})
 	_, err = p.CollectStatus()
@@ -935,7 +935,7 @@ func (s *ELBSuite) TestCollectStatusWithELBAndIDChange(c *gocheck.C) {
 	defer s.server.RemoveInstance(id3)
 	conn, collection := p.unitsCollection()
 	defer conn.Close()
-	err = collection.Insert(instance{UnitName: "symfonia/0", InstanceId: id3})
+	err = collection.Insert(instance{UnitName: "symfonia/0", InstanceID: id3})
 	c.Assert(err, gocheck.IsNil)
 	err = lb.Register(a, provision.Unit{InstanceId: id3}, provision.Unit{InstanceId: id2})
 	q := bson.M{"_id": bson.M{"$in": []string{"symfonia/0", "symfonia/1", "symfonia/2", "raise/0"}}}

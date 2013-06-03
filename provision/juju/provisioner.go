@@ -384,8 +384,8 @@ func (p *JujuProvisioner) collectStatus() ([]provision.Unit, error) {
 				Name:       unitName,
 				AppName:    name,
 				Machine:    u.Machine,
-				InstanceId: machine.InstanceId,
-				Ip:         machine.IpAddress,
+				InstanceId: machine.InstanceID,
+				Ip:         machine.IPAddress,
 			}
 			typeRegexp := regexp.MustCompile(`^(local:)?(\w+)/(\w+)-\d+$`)
 			matchs := typeRegexp.FindStringSubmatch(service.Charm)
@@ -407,16 +407,16 @@ func (p *JujuProvisioner) heal(units []provision.Unit) {
 	for _, unit := range units {
 		err := coll.FindId(unit.Name).One(&inst)
 		if err != nil {
-			coll.Insert(instance{UnitName: unit.Name, InstanceId: unit.InstanceId})
-		} else if unit.InstanceId == inst.InstanceId {
+			coll.Insert(instance{UnitName: unit.Name, InstanceID: unit.InstanceId})
+		} else if unit.InstanceId == inst.InstanceID {
 			continue
 		} else {
 			format := "[juju] instance-id of unit %q changed from %q to %q. Healing."
-			log.Printf(format, unit.Name, inst.InstanceId, unit.InstanceId)
+			log.Printf(format, unit.Name, inst.InstanceID, unit.InstanceId)
 			if p.elbSupport() {
 				a := qApp{unit.AppName}
 				manager := p.LoadBalancer()
-				manager.Deregister(&a, provision.Unit{InstanceId: inst.InstanceId})
+				manager.Deregister(&a, provision.Unit{InstanceId: inst.InstanceID})
 				err := manager.Register(&a, provision.Unit{InstanceId: unit.InstanceId})
 				if err != nil {
 					format := "[juju] Could not register instance %q in the load balancer: %s."
@@ -424,14 +424,14 @@ func (p *JujuProvisioner) heal(units []provision.Unit) {
 					continue
 				}
 			}
-			if inst.InstanceId != "pending" {
+			if inst.InstanceID != "pending" {
 				msg := queue.Message{
 					Action: app.RegenerateApprcAndStart,
 					Args:   []string{unit.AppName, unit.Name},
 				}
 				app.Enqueue(msg)
 			}
-			inst.InstanceId = unit.InstanceId
+			inst.InstanceID = unit.InstanceId
 			coll.UpdateId(unit.Name, inst)
 		}
 	}
@@ -475,7 +475,7 @@ func (p *JujuProvisioner) UnsetCName(app provision.App, cname string) error {
 // instance represents a unit in the database.
 type instance struct {
 	UnitName   string `bson:"_id"`
-	InstanceId string
+	InstanceID string
 }
 
 type unit struct {
@@ -491,8 +491,8 @@ type service struct {
 
 type machine struct {
 	AgentState    string `yaml:"agent-state"`
-	IpAddress     string `yaml:"dns-name"`
-	InstanceId    string `yaml:"instance-id"`
+	IPAddress     string `yaml:"dns-name"`
+	InstanceID    string `yaml:"instance-id"`
 	InstanceState string `yaml:"instance-state"`
 }
 
