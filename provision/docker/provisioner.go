@@ -108,7 +108,7 @@ func (p *dockerProvisioner) Deploy(a provision.App, w io.Writer) error {
 			if err != nil {
 				return err
 			}
-			a.RemoveUnit(c.Id)
+			a.RemoveUnit(c.ID)
 		}
 	} else if err := deploy(); err != nil {
 		return err
@@ -170,10 +170,10 @@ func (*dockerProvisioner) AddUnits(a provision.App, units uint) ([]provision.Uni
 		}
 		go container.deploy(&writer)
 		result[i] = provision.Unit{
-			Name:    container.Id,
+			Name:    container.ID,
 			AppName: a.GetName(),
 			Type:    a.GetPlatform(),
-			Ip:      container.Ip,
+			Ip:      container.IP,
 			Status:  provision.StatusInstalling,
 		}
 	}
@@ -258,7 +258,7 @@ func collectUnit(container container, units chan<- provision.Unit, errs chan<- e
 	defer wg.Done()
 	docker, _ := config.GetString("docker:binary")
 	unit := provision.Unit{
-		Name:    container.Id,
+		Name:    container.ID,
 		AppName: container.AppName,
 		Type:    container.Type,
 	}
@@ -270,7 +270,7 @@ func collectUnit(container container, units chan<- provision.Unit, errs chan<- e
 	case "created":
 		return
 	}
-	out, err := runCmd(docker, "inspect", container.Id)
+	out, err := runCmd(docker, "inspect", container.ID)
 	if err != nil {
 		errs <- err
 		return
@@ -318,11 +318,11 @@ func fixContainer(container *container, ip, port string) error {
 		return err
 	}
 	router.RemoveRoute(container.AppName, container.getAddress())
-	runCmd("ssh-keygen", "-R", container.Ip)
-	container.Ip = ip
+	runCmd("ssh-keygen", "-R", container.IP)
+	container.IP = ip
 	container.HostPort = port
 	router.AddRoute(container.AppName, container.getAddress())
-	return collection().UpdateId(container.Id, container)
+	return collection().UpdateId(container.ID, container)
 }
 
 func collection() *mgo.Collection {

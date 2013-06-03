@@ -22,7 +22,7 @@ import (
 )
 
 func (s *S) TestContainerGetAddress(c *gocheck.C) {
-	container := container{Id: "id123", Port: "8888", HostPort: "49153"}
+	container := container{ID: "id123", Port: "8888", HostPort: "49153"}
 	address := container.getAddress()
 	expected := fmt.Sprintf("http://%s:49153", s.hostAddr)
 	c.Assert(address, gocheck.Equals, expected)
@@ -56,9 +56,9 @@ func (s *S) TestNewContainer(c *gocheck.C) {
 	var cont container
 	err = s.conn.Collection(s.collName).FindId(id).One(&cont)
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(cont.Id, gocheck.Equals, id)
+	c.Assert(cont.ID, gocheck.Equals, id)
 	c.Assert(cont.AppName, gocheck.Equals, "app-name")
-	c.Assert(cont.Ip, gocheck.Equals, "10.10.10.10")
+	c.Assert(cont.IP, gocheck.Equals, "10.10.10.10")
 	c.Assert(cont.HostPort, gocheck.Equals, "34233")
 	c.Assert(cont.Port, gocheck.Equals, s.port)
 }
@@ -256,11 +256,11 @@ func (s *S) TestContainerCreateWithoutHostAddr(c *gocheck.C) {
 }
 
 func (s *S) TestContainerSetStatus(c *gocheck.C) {
-	container := container{Id: "something-300"}
+	container := container{ID: "something-300"}
 	s.conn.Collection(s.collName).Insert(container)
-	defer s.conn.Collection(s.collName).RemoveId(container.Id)
+	defer s.conn.Collection(s.collName).RemoveId(container.ID)
 	container.setStatus("what?!")
-	c2, err := getContainer(container.Id)
+	c2, err := getContainer(container.ID)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(c2.Status, gocheck.Equals, "what?!")
 }
@@ -272,7 +272,7 @@ func (s *S) TestDockerDeploy(c *gocheck.C) {
 	}
 	setExecut(fexec)
 	defer setExecut(nil)
-	container := container{Id: "c-01", Ip: "10.10.10.10", AppName: "myapp"}
+	container := container{ID: "c-01", IP: "10.10.10.10", AppName: "myapp"}
 	err := container.deploy(&buf)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(buf.String(), gocheck.Equals, "success\n")
@@ -287,7 +287,7 @@ func (s *S) TestDockerDeploy(c *gocheck.C) {
 	}
 	c.Assert(fexec.ExecutedCmd("ssh", deployArgs), gocheck.Equals, true)
 	c.Assert(fexec.ExecutedCmd("ssh", runArgs), gocheck.Equals, true)
-	cont, err := getContainer(container.Id)
+	cont, err := getContainer(container.ID)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(cont.Status, gocheck.Equals, "running")
 }
@@ -302,7 +302,7 @@ func (s *S) TestDockerDeployRetries(c *gocheck.C) {
 	}
 	setExecut(&fexec)
 	defer setExecut(nil)
-	container := container{Id: "c-01", Ip: "10.10.10.10", AppName: "myapp"}
+	container := container{ID: "c-01", IP: "10.10.10.10", AppName: "myapp"}
 	err := container.deploy(&buf)
 	c.Assert(err, gocheck.IsNil)
 	commands := fexec.GetCommands("ssh")
@@ -350,11 +350,11 @@ func (s *S) TestDockerDeployFailure(c *gocheck.C) {
 	}
 	setExecut(&fexec)
 	defer setExecut(nil)
-	container := container{Id: "c-01", Ip: "10.10.10.10", AppName: "myapp"}
+	container := container{ID: "c-01", IP: "10.10.10.10", AppName: "myapp"}
 	err := container.deploy(&buf)
 	c.Assert(err, gocheck.NotNil)
 	c.Assert(buf.String(), gocheck.Equals, "deploy failed")
-	c2, err := getContainer(container.Id)
+	c2, err := getContainer(container.ID)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(c2.Status, gocheck.Equals, "error")
 }
@@ -363,7 +363,7 @@ func (s *S) TestDockerRemove(c *gocheck.C) {
 	fexec := &etesting.FakeExecutor{}
 	setExecut(fexec)
 	defer setExecut(nil)
-	container := container{AppName: "container", Id: "id", Ip: "10.10.10.10", HostPort: "3333"}
+	container := container{AppName: "container", ID: "id", IP: "10.10.10.10", HostPort: "3333"}
 	err := s.conn.Collection(s.collName).Insert(&container)
 	c.Assert(err, gocheck.IsNil)
 	rtesting.FakeRouter.AddBackend(container.AppName)
@@ -371,9 +371,9 @@ func (s *S) TestDockerRemove(c *gocheck.C) {
 	rtesting.FakeRouter.AddRoute(container.AppName, container.getAddress())
 	err = container.remove()
 	c.Assert(err, gocheck.IsNil)
-	args := []string{"rm", container.Id}
+	args := []string{"rm", container.ID}
 	c.Assert(fexec.ExecutedCmd("docker", args), gocheck.Equals, true)
-	args = []string{"-R", container.Ip}
+	args = []string{"-R", container.IP}
 	c.Assert(fexec.ExecutedCmd("ssh-keygen", args), gocheck.Equals, true)
 }
 
@@ -381,7 +381,7 @@ func (s *S) TestDockerRemoveRemovesContainerFromDatabase(c *gocheck.C) {
 	fexec := &etesting.FakeExecutor{}
 	setExecut(fexec)
 	defer setExecut(nil)
-	cntnr := container{AppName: "container", Id: "id", HostPort: "3456"}
+	cntnr := container{AppName: "container", ID: "id", HostPort: "3456"}
 	rtesting.FakeRouter.AddBackend(cntnr.AppName)
 	defer rtesting.FakeRouter.RemoveBackend(cntnr.AppName)
 	rtesting.FakeRouter.AddRoute(cntnr.AppName, cntnr.getAddress())
@@ -391,7 +391,7 @@ func (s *S) TestDockerRemoveRemovesContainerFromDatabase(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	coll := s.conn.Collection(s.collName)
 	coll.FindId("id")
-	err = coll.FindId(cntnr.Id).One(&cntnr)
+	err = coll.FindId(cntnr.ID).One(&cntnr)
 	c.Assert(err, gocheck.NotNil)
 	c.Assert(err.Error(), gocheck.Equals, "not found")
 }
@@ -401,7 +401,7 @@ func (s *S) TestDockerRemoveRemovesRoute(c *gocheck.C) {
 	setExecut(fexec)
 	defer setExecut(nil)
 	app := testing.NewFakeApp("myapp", "python", 1)
-	cntnr := container{AppName: app.GetName(), Id: "id", Ip: "10.10.10.10", HostPort: "3456"}
+	cntnr := container{AppName: app.GetName(), ID: "id", IP: "10.10.10.10", HostPort: "3456"}
 	rtesting.FakeRouter.AddBackend(app.GetName())
 	defer rtesting.FakeRouter.RemoveBackend(app.GetName())
 	rtesting.FakeRouter.AddRoute(app.GetName(), cntnr.getAddress())
@@ -415,13 +415,13 @@ func (s *S) TestContainerIPRunsDockerInspectCommand(c *gocheck.C) {
 	fexec := &etesting.FakeExecutor{}
 	setExecut(fexec)
 	defer setExecut(nil)
-	cont := container{AppName: "vm1", Id: "id"}
+	cont := container{AppName: "vm1", ID: "id"}
 	cont.ip()
 	args := []string{"inspect", "id"}
 	c.Assert(fexec.ExecutedCmd("docker", args), gocheck.Equals, true)
 }
 
-func (s *S) TestContainerIPReturnsIpFromDockerInspect(c *gocheck.C) {
+func (s *S) TestContainerIPReturnsIPFromDockerInspect(c *gocheck.C) {
 	cmdReturn := `
     {
             \"NetworkSettings\": {
@@ -434,7 +434,7 @@ func (s *S) TestContainerIPReturnsIpFromDockerInspect(c *gocheck.C) {
 	tmpdir, err := commandmocker.Add("docker", cmdReturn)
 	c.Assert(err, gocheck.IsNil)
 	defer commandmocker.Remove(tmpdir)
-	cont := container{AppName: "vm1", Id: "id"}
+	cont := container{AppName: "vm1", ID: "id"}
 	ip, err := cont.ip()
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(ip, gocheck.Equals, "10.10.10.10")
@@ -442,7 +442,7 @@ func (s *S) TestContainerIPReturnsIpFromDockerInspect(c *gocheck.C) {
 }
 
 func (s *S) TestContainerHostPortReturnsPortFromDockerInspect(c *gocheck.C) {
-	container := container{Id: "c-01", Port: "8888"}
+	container := container{ID: "c-01", Port: "8888"}
 	output := `{
 	"NetworkSettings": {
 		"IpAddress": "10.10.10.10",
@@ -465,7 +465,7 @@ func (s *S) TestContainerHostPortReturnsPortFromDockerInspect(c *gocheck.C) {
 }
 
 func (s *S) TestContainerHostPortNoPort(c *gocheck.C) {
-	container := container{Id: "c-01"}
+	container := container{ID: "c-01"}
 	port, err := container.hostPort()
 	c.Assert(port, gocheck.Equals, "")
 	c.Assert(err, gocheck.NotNil)
@@ -473,7 +473,7 @@ func (s *S) TestContainerHostPortNoPort(c *gocheck.C) {
 }
 
 func (s *S) TestContainerHostPortNotFound(c *gocheck.C) {
-	container := container{Id: "c-01", Port: "8888"}
+	container := container{ID: "c-01", Port: "8888"}
 	output := `{
 	"NetworkSettings": {
 		"IpAddress": "10.10.10.10",
@@ -497,7 +497,7 @@ func (s *S) TestContainerHostPortNotFound(c *gocheck.C) {
 }
 
 func (s *S) TestContainerInspect(c *gocheck.C) {
-	container := container{Id: "c-01", Port: "8888"}
+	container := container{ID: "c-01", Port: "8888"}
 	output := `{"NetworkSettings": null}`
 	out := map[string][][]byte{
 		"inspect c-01": {[]byte(output)},
@@ -515,14 +515,14 @@ func (s *S) TestContainerInspectNoBinary(c *gocheck.C) {
 	old, _ := config.Get("docker:binary")
 	defer config.Set("docker:binary", old)
 	config.Unset("docker:binary")
-	container := container{Id: "something"}
+	container := container{ID: "something"}
 	got, err := container.inspect()
 	c.Assert(got, gocheck.IsNil)
 	c.Assert(err, gocheck.NotNil)
 }
 
 func (s *S) TestContainerInspectInvalidJSON(c *gocheck.C) {
-	container := container{Id: "c-01", Port: "8888"}
+	container := container{ID: "c-01", Port: "8888"}
 	out := map[string][][]byte{
 		"inspect c-01": {[]byte("somethinginvalid}")},
 	}
@@ -541,7 +541,7 @@ func (s *S) TestContainerSSH(c *gocheck.C) {
 	fexec := &etesting.FakeExecutor{Output: out}
 	setExecut(fexec)
 	defer setExecut(nil)
-	container := container{Id: "c-01", Ip: "10.10.10.10"}
+	container := container{ID: "c-01", IP: "10.10.10.10"}
 	err := container.ssh(&stdout, &stderr, "ls", "-a")
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(stdout.String(), gocheck.Equals, string(output))
@@ -562,7 +562,7 @@ func (s *S) TestContainerSSHWithPrivateKey(c *gocheck.C) {
 	fexec := &etesting.FakeExecutor{Output: out}
 	setExecut(fexec)
 	defer setExecut(nil)
-	container := container{Id: "c-01", Ip: "10.10.10.13"}
+	container := container{ID: "c-01", IP: "10.10.10.13"}
 	err := container.ssh(&stdout, &stderr, "ls", "-a")
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(stdout.String(), gocheck.Equals, string(output))
@@ -579,7 +579,7 @@ func (s *S) TestContainerSSHWithoutUserConfigured(c *gocheck.C) {
 	old, _ := config.Get("docker:ssh:user")
 	defer config.Set("docker:ssh:user", old)
 	config.Unset("docker:ssh:user")
-	container := container{Id: "c-01", Ip: "127.0.0.1"}
+	container := container{ID: "c-01", IP: "127.0.0.1"}
 	err := container.ssh(nil, nil, "ls", "-a")
 	c.Assert(err, gocheck.NotNil)
 }
@@ -593,7 +593,7 @@ func (s *S) TestContainerSSHCommandFailure(c *gocheck.C) {
 	}
 	setExecut(fexec)
 	defer setExecut(nil)
-	container := container{Id: "c-01", Ip: "10.10.10.10"}
+	container := container{ID: "c-01", IP: "10.10.10.10"}
 	err := container.ssh(&stdout, &stderr, "ls", "-a")
 	c.Assert(err, gocheck.NotNil)
 	c.Assert(stdout.Bytes(), gocheck.IsNil)
@@ -609,7 +609,7 @@ func (s *S) TestContainerSSHFiltersStderr(c *gocheck.C) {
 	}
 	setExecut(fexec)
 	defer setExecut(nil)
-	container := container{Id: "c-01", Ip: "10.10.10.10"}
+	container := container{ID: "c-01", IP: "10.10.10.10"}
 	err := container.ssh(&stdout, &stderr, "ls", "-a")
 	c.Assert(err, gocheck.NotNil)
 	c.Assert(stdout.Bytes(), gocheck.IsNil)
@@ -620,7 +620,7 @@ func (s *S) TestImageCommit(c *gocheck.C) {
 	fexec := &etesting.FakeExecutor{}
 	setExecut(fexec)
 	defer setExecut(nil)
-	img := image{Name: "app-name", Id: "image-id"}
+	img := image{Name: "app-name", ID: "image-id"}
 	_, err := img.commit("container-id")
 	defer img.remove()
 	c.Assert(err, gocheck.IsNil)
@@ -631,11 +631,11 @@ func (s *S) TestImageCommit(c *gocheck.C) {
 	c.Assert(fexec.ExecutedCmd("docker", args), gocheck.Equals, true)
 }
 
-func (s *S) TestImageCommitReturnsImageId(c *gocheck.C) {
+func (s *S) TestImageCommitReturnsImageID(c *gocheck.C) {
 	tmpdir, err := commandmocker.Add("docker", "945132e7b4c9\n")
 	c.Assert(err, gocheck.IsNil)
 	defer commandmocker.Remove(tmpdir)
-	img := image{Name: "app-name", Id: "image-id"}
+	img := image{Name: "app-name", ID: "image-id"}
 	id, err := img.commit("container-id")
 	defer img.remove()
 	c.Assert(err, gocheck.IsNil)
@@ -645,7 +645,7 @@ func (s *S) TestImageCommitReturnsImageId(c *gocheck.C) {
 func (s *S) TestImageCommitInsertImageInformationToMongo(c *gocheck.C) {
 	tmpdir, err := commandmocker.Add("docker", "945132e7b4c9\n")
 	c.Assert(err, gocheck.IsNil)
-	img := image{Name: "app-name", Id: "image-id"}
+	img := image{Name: "app-name", ID: "image-id"}
 	_, err = img.commit("cid")
 	c.Assert(err, gocheck.IsNil)
 	defer commandmocker.Remove(tmpdir)
@@ -653,19 +653,19 @@ func (s *S) TestImageCommitInsertImageInformationToMongo(c *gocheck.C) {
 	defer imgMgo.remove()
 	err = s.conn.Collection(s.imageCollName).Find(bson.M{"name": img.Name}).One(&imgMgo)
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(imgMgo.Id, gocheck.Equals, img.Id)
+	c.Assert(imgMgo.ID, gocheck.Equals, img.ID)
 }
 
 func (s *S) TestImageRemove(c *gocheck.C) {
 	fexec := &etesting.FakeExecutor{}
 	setExecut(fexec)
 	defer setExecut(nil)
-	img := image{Name: "app-name", Id: "image-id"}
+	img := image{Name: "app-name", ID: "image-id"}
 	err := s.conn.Collection(s.imageCollName).Insert(&img)
 	c.Assert(err, gocheck.IsNil)
 	err = img.remove()
 	c.Assert(err, gocheck.IsNil)
-	args := []string{"rmi", img.Id}
+	args := []string{"rmi", img.ID}
 	c.Assert(fexec.ExecutedCmd("docker", args), gocheck.Equals, true)
 	var imgMgo image
 	err = s.conn.Collection(s.imageCollName).Find(bson.M{"name": img.Name}).One(&imgMgo)
@@ -674,14 +674,14 @@ func (s *S) TestImageRemove(c *gocheck.C) {
 
 func (s *S) TestGetContainer(c *gocheck.C) {
 	collection().Insert(
-		container{Id: "abcdef", Type: "python"},
-		container{Id: "fedajs", Type: "ruby"},
-		container{Id: "wat", Type: "java"},
+		container{ID: "abcdef", Type: "python"},
+		container{ID: "fedajs", Type: "ruby"},
+		container{ID: "wat", Type: "java"},
 	)
 	defer collection().RemoveAll(bson.M{"_id": bson.M{"$in": []string{"abcdef", "fedajs", "wat"}}})
 	container, err := getContainer("abcdef")
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(container.Id, gocheck.Equals, "abcdef")
+	c.Assert(container.ID, gocheck.Equals, "abcdef")
 	c.Assert(container.Type, gocheck.Equals, "python")
 	container, err = getContainer("wut")
 	c.Assert(container, gocheck.IsNil)
@@ -690,20 +690,20 @@ func (s *S) TestGetContainer(c *gocheck.C) {
 
 func (s *S) TestGetContainers(c *gocheck.C) {
 	collection().Insert(
-		container{Id: "abcdef", Type: "python", AppName: "something"},
-		container{Id: "fedajs", Type: "python", AppName: "something"},
-		container{Id: "wat", Type: "java", AppName: "otherthing"},
+		container{ID: "abcdef", Type: "python", AppName: "something"},
+		container{ID: "fedajs", Type: "python", AppName: "something"},
+		container{ID: "wat", Type: "java", AppName: "otherthing"},
 	)
 	defer collection().RemoveAll(bson.M{"_id": bson.M{"$in": []string{"abcdef", "fedajs", "wat"}}})
 	containers, err := listAppContainers("something")
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(containers, gocheck.HasLen, 2)
-	c.Assert(containers[0].Id, gocheck.Equals, "abcdef")
-	c.Assert(containers[1].Id, gocheck.Equals, "fedajs")
+	c.Assert(containers[0].ID, gocheck.Equals, "abcdef")
+	c.Assert(containers[1].ID, gocheck.Equals, "fedajs")
 	containers, err = listAppContainers("otherthing")
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(containers, gocheck.HasLen, 1)
-	c.Assert(containers[0].Id, gocheck.Equals, "wat")
+	c.Assert(containers[0].ID, gocheck.Equals, "wat")
 	containers, err = listAppContainers("unknown")
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(containers, gocheck.HasLen, 0)

@@ -51,18 +51,18 @@ func (s *S) TestProvisionerRestartCallsTheRestartHook(c *gocheck.C) {
 	var p dockerProvisioner
 	app := testing.NewFakeApp("almah", "static", 1)
 	cont := container{
-		Id:      id,
+		ID:      id,
 		AppName: app.GetName(),
 		Type:    app.GetPlatform(),
-		Ip:      "10.10.10.10",
+		IP:      "10.10.10.10",
 	}
 	err := collection().Insert(cont)
 	c.Assert(err, gocheck.IsNil)
-	defer collection().RemoveId(cont.Id)
+	defer collection().RemoveId(cont.ID)
 	err = p.Restart(app)
 	c.Assert(err, gocheck.IsNil)
 	args := []string{
-		cont.Ip, "-l", s.sshUser, "-o", "StrictHostKeyChecking no",
+		cont.IP, "-l", s.sshUser, "-o", "StrictHostKeyChecking no",
 		"--", "/var/lib/tsuru/restart",
 	}
 	c.Assert(fexec.ExecutedCmd("ssh", args), gocheck.Equals, true)
@@ -112,8 +112,8 @@ func (s *S) TestDeployShouldCallDockerCreate(c *gocheck.C) {
 func (s *S) TestDeployShouldReplaceAllContainers(c *gocheck.C) {
 	var p dockerProvisioner
 	s.conn.Collection(s.collName).Insert(
-		container{Id: "app/0", AppName: "app"},
-		container{Id: "app/1", AppName: "app"},
+		container{ID: "app/0", AppName: "app"},
+		container{ID: "app/1", AppName: "app"},
 	)
 	defer s.conn.Collection(s.collName).RemoveAll(bson.M{"appname": "app"})
 	app := testing.NewFakeApp("app", "python", 0)
@@ -242,13 +242,13 @@ func (s *S) TestProvisionerDestroy(c *gocheck.C) {
 	log.SetLogger(l)
 	app := testing.NewFakeApp("myapp", "python", 1)
 	cont := container{
-		Id:      app.ProvisionUnits()[0].GetName(),
+		ID:      app.ProvisionUnits()[0].GetName(),
 		AppName: app.GetName(),
 	}
 	err := s.conn.Collection(s.collName).Insert(cont)
 	c.Assert(err, gocheck.IsNil)
-	defer s.conn.Collection(s.collName).RemoveId(cont.Id)
-	s.conn.Collection(s.collName).Insert(container{Id: "something-01", AppName: app.GetName()})
+	defer s.conn.Collection(s.collName).RemoveId(cont.ID)
+	s.conn.Collection(s.collName).Insert(container{ID: "something-01", AppName: app.GetName()})
 	defer s.conn.Collection(s.collName).RemoveId("something-01")
 	img := image{Name: app.GetName()}
 	err = s.conn.Collection(s.imageCollName).Insert(&img)
@@ -367,7 +367,7 @@ func (s *S) TestProvisionerAddUnits(c *gocheck.C) {
 	app := testing.NewFakeApp("myapp", "python", 0)
 	p.Provision(app)
 	defer p.Destroy(app)
-	s.conn.Collection(s.collName).Insert(container{Id: "c-89320", AppName: app.GetName()})
+	s.conn.Collection(s.collName).Insert(container{ID: "c-89320", AppName: app.GetName()})
 	defer s.conn.Collection(s.collName).RemoveId("c-89320")
 	expected := []provision.Unit{
 		{Name: "c-300", AppName: app.GetName(),
@@ -421,7 +421,7 @@ func (s *S) TestProvisionerAddUnitsFailure(c *gocheck.C) {
 	setExecut(&fexec)
 	defer setExecut(nil)
 	app := testing.NewFakeApp("myapp", "python", 1)
-	s.conn.Collection(s.collName).Insert(container{Id: "c-89320", AppName: app.GetName()})
+	s.conn.Collection(s.collName).Insert(container{ID: "c-89320", AppName: app.GetName()})
 	defer s.conn.Collection(s.collName).RemoveId("c-89320")
 	var p dockerProvisioner
 	units, err := p.AddUnits(app, 1)
@@ -464,9 +464,9 @@ func (s *S) TestProvisionerRemoveUnit(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	defer container.remove()
 	var p dockerProvisioner
-	err = p.RemoveUnit(app, container.Id)
+	err = p.RemoveUnit(app, container.ID)
 	c.Assert(err, gocheck.IsNil)
-	_, err = getContainer(container.Id)
+	_, err = getContainer(container.ID)
 	c.Assert(err, gocheck.NotNil)
 }
 
@@ -501,10 +501,10 @@ func (s *S) TestProvisionerRemoveUnitNotInApp(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	defer container.remove()
 	var p dockerProvisioner
-	err = p.RemoveUnit(testing.NewFakeApp("hisapp", "python", 1), container.Id)
+	err = p.RemoveUnit(testing.NewFakeApp("hisapp", "python", 1), container.ID)
 	c.Assert(err, gocheck.NotNil)
 	c.Assert(err.Error(), gocheck.Equals, "Unit does not belong to this app")
-	_, err = getContainer(container.Id)
+	_, err = getContainer(container.ID)
 	c.Assert(err, gocheck.IsNil)
 }
 
@@ -515,10 +515,10 @@ func (s *S) TestProvisionerExecuteCommand(c *gocheck.C) {
 	setExecut(fexec)
 	defer setExecut(nil)
 	app := testing.NewFakeApp("starbreaker", "python", 1)
-	container := container{Id: "c-036", AppName: "starbreaker", Type: "python", Ip: "10.10.10.1"}
+	container := container{ID: "c-036", AppName: "starbreaker", Type: "python", IP: "10.10.10.1"}
 	err := s.conn.Collection(s.collName).Insert(container)
 	c.Assert(err, gocheck.IsNil)
-	defer s.conn.Collection(s.collName).Remove(bson.M{"_id": container.Id})
+	defer s.conn.Collection(s.collName).Remove(bson.M{"_id": container.ID})
 	var stdout, stderr bytes.Buffer
 	var p dockerProvisioner
 	err = p.ExecuteCommand(&stdout, &stderr, app, "ls", "-ar")
@@ -541,8 +541,8 @@ func (s *S) TestProvisionerExecuteCommandMultipleContainers(c *gocheck.C) {
 	defer setExecut(nil)
 	app := testing.NewFakeApp("starbreaker", "python", 1)
 	err := s.conn.Collection(s.collName).Insert(
-		container{Id: "c-036", AppName: "starbreaker", Type: "python", Ip: "10.10.10.1"},
-		container{Id: "c-037", AppName: "starbreaker", Type: "python", Ip: "10.10.10.2"},
+		container{ID: "c-036", AppName: "starbreaker", Type: "python", IP: "10.10.10.1"},
+		container{ID: "c-037", AppName: "starbreaker", Type: "python", IP: "10.10.10.2"},
 	)
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Collection(s.collName).RemoveAll(bson.M{"_id": bson.M{"$in": []string{"c-036", "c-037"}}})
@@ -574,10 +574,10 @@ func (s *S) TestProvisionerExecuteCommandFailure(c *gocheck.C) {
 	setExecut(fexec)
 	defer setExecut(nil)
 	app := testing.NewFakeApp("starbreaker", "python", 1)
-	container := container{Id: "c-036", AppName: "starbreaker", Type: "python", Ip: "10.10.10.1"}
+	container := container{ID: "c-036", AppName: "starbreaker", Type: "python", IP: "10.10.10.1"}
 	err := s.conn.Collection(s.collName).Insert(container)
 	c.Assert(err, gocheck.IsNil)
-	defer s.conn.Collection(s.collName).Remove(bson.M{"_id": container.Id})
+	defer s.conn.Collection(s.collName).Remove(bson.M{"_id": container.ID})
 	var stdout, stderr bytes.Buffer
 	var p dockerProvisioner
 	err = p.ExecuteCommand(&stdout, &stderr, app, "ls", "-ar")
@@ -606,17 +606,17 @@ func (s *S) TestCollectStatus(c *gocheck.C) {
 	listenPort := strings.Split(listener.Addr().String(), ":")[1]
 	err = collection().Insert(
 		container{
-			Id: "9930c24f1c5f", AppName: "ashamed", Type: "python",
-			Port: listenPort, Status: "running", Ip: "127.0.0.1",
+			ID: "9930c24f1c5f", AppName: "ashamed", Type: "python",
+			Port: listenPort, Status: "running", IP: "127.0.0.1",
 			HostPort: "90293",
 		},
 		container{
-			Id: "9930c24f1c4f", AppName: "make-up", Type: "python",
-			Port: "8889", Status: "running", Ip: "127.0.0.4",
+			ID: "9930c24f1c4f", AppName: "make-up", Type: "python",
+			Port: "8889", Status: "running", IP: "127.0.0.4",
 			HostPort: "90295",
 		},
-		container{Id: "9930c24f1c6f", AppName: "make-up", Type: "python", Port: "9090", Status: "error"},
-		container{Id: "9930c24f1c7f", AppName: "make-up", Type: "python", Port: "9090", Status: "created"},
+		container{ID: "9930c24f1c6f", AppName: "make-up", Type: "python", Port: "9090", Status: "error"},
+		container{ID: "9930c24f1c7f", AppName: "make-up", Type: "python", Port: "9090", Status: "created"},
 	)
 	rtesting.FakeRouter.AddRoute("ashamed", "http://"+s.hostAddr+":90293")
 	rtesting.FakeRouter.AddRoute("make-up", "http://"+s.hostAddr+":90295")
@@ -688,7 +688,7 @@ func (s *S) TestCollectStatus(c *gocheck.C) {
 	c.Assert(units, gocheck.DeepEquals, expected)
 	cont, err := getContainer("9930c24f1c4f")
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(cont.Ip, gocheck.Equals, "127.0.0.1")
+	c.Assert(cont.IP, gocheck.Equals, "127.0.0.1")
 	c.Assert(cont.HostPort, gocheck.Equals, "90294")
 	c.Assert(fexec.ExecutedCmd("ssh-keygen", []string{"-R", "127.0.0.4"}), gocheck.Equals, true)
 	c.Assert(rtesting.FakeRouter.HasRoute("make-up", "http://"+s.hostAddr+":90295"), gocheck.Equals, false)
@@ -710,10 +710,10 @@ func (s *S) TestProvisionCollectStatusEmpty(c *gocheck.C) {
 // There was a dead lock in the error handling. This test prevents regression.
 func (s *S) TestProvisionCollectStatusMultipleErrors(c *gocheck.C) {
 	s.conn.Collection(s.collName).Insert(
-		container{Id: "abcdef-800"},
-		container{Id: "abcdef-801"},
-		container{Id: "abcdef-802"},
-		container{Id: "abcdef-802"},
+		container{ID: "abcdef-800"},
+		container{ID: "abcdef-801"},
+		container{ID: "abcdef-802"},
+		container{ID: "abcdef-802"},
 	)
 	defer s.conn.Collection(s.collName).RemoveAll(nil)
 	var p dockerProvisioner

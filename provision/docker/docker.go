@@ -101,10 +101,10 @@ func getPort() (string, error) {
 }
 
 type container struct {
-	Id       string `bson:"_id"`
+	ID       string `bson:"_id"`
 	AppName  string
 	Type     string
-	Ip       string
+	IP       string
 	Port     string
 	HostPort string
 	Status   string
@@ -141,7 +141,7 @@ func (c *container) inspect() (map[string]interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
-	out, err := runCmd(docker, "inspect", c.Id)
+	out, err := runCmd(docker, "inspect", c.ID)
 	if err != nil {
 		return nil, err
 	}
@@ -184,14 +184,14 @@ func (c *container) ip() (string, error) {
 		return "", errors.New(msg)
 	}
 	networkSettings := result["NetworkSettings"].(map[string]interface{})
-	instanceIp := networkSettings["IpAddress"].(string)
-	if instanceIp == "" {
+	instanceIP := networkSettings["IpAddress"].(string)
+	if instanceIP == "" {
 		msg := "error: Can't get ipaddress..."
 		log.Print(msg)
 		return "", errors.New(msg)
 	}
-	log.Printf("Instance IpAddress: %s", instanceIp)
-	return instanceIp, nil
+	log.Printf("Instance IpAddress: %s", instanceIP)
+	return instanceIP, nil
 }
 
 // create creates a docker container, stores it on the database and adds a route to it.
@@ -216,13 +216,13 @@ func (c *container) create(app provision.App) error {
 	}
 	id = strings.TrimSpace(id)
 	log.Printf("docker id=%s", id)
-	c.Id = strings.TrimSpace(id)
+	c.ID = strings.TrimSpace(id)
 	c.Port = port
 	ip, err := c.ip()
 	if err != nil {
 		return err
 	}
-	c.Ip = ip
+	c.IP = ip
 	hostPort, err := c.hostPort()
 	if err != nil {
 		return err
@@ -246,7 +246,7 @@ func (c *container) setStatus(status string) error {
 	c.Status = status
 	coll := collection()
 	defer coll.Database.Session.Close()
-	return coll.UpdateId(c.Id, c)
+	return coll.UpdateId(c.ID, c)
 }
 
 func (c *container) deploy(w io.Writer) error {
@@ -272,7 +272,7 @@ func (c *container) deploy(w io.Writer) error {
 			c.setStatus("error")
 			return err
 		}
-		log.Printf("SSH to the container %q failed. Will retry.", c.Id)
+		log.Printf("SSH to the container %q failed. Will retry.", c.ID)
 		time.Sleep(100e6)
 		filter.filtered = false
 	}
@@ -295,18 +295,18 @@ func (c *container) remove() error {
 		return err
 	}
 	address := c.getAddress()
-	log.Printf("Removing container %s from docker", c.Id)
-	out, err := runCmd(docker, "rm", c.Id)
+	log.Printf("Removing container %s from docker", c.ID)
+	out, err := runCmd(docker, "rm", c.ID)
 	if err != nil {
 		log.Printf("Failed to remove container from docker: %s", err.Error())
 		log.Printf("Command output: %s", out)
 		return err
 	}
-	runCmd("ssh-keygen", "-R", c.Ip)
-	log.Printf("Removing container %s from database", c.Id)
+	runCmd("ssh-keygen", "-R", c.IP)
+	log.Printf("Removing container %s from database", c.ID)
 	coll := collection()
 	defer coll.Database.Session.Close()
-	if err := coll.RemoveId(c.Id); err != nil {
+	if err := coll.RemoveId(c.ID); err != nil {
 		log.Printf("Failed to remove container from database: %s", err.Error())
 		return err
 	}
@@ -328,7 +328,7 @@ func (c *container) ssh(stdout, stderr io.Writer, cmd string, args ...string) er
 	if err != nil {
 		return err
 	}
-	sshArgs := []string{c.Ip, "-l", user, "-o", "StrictHostKeyChecking no"}
+	sshArgs := []string{c.IP, "-l", user, "-o", "StrictHostKeyChecking no"}
 	if keyFile, err := config.GetString("docker:ssh:private-key"); err == nil {
 		sshArgs = append(sshArgs, "-i", keyFile)
 	}
@@ -340,7 +340,7 @@ func (c *container) ssh(stdout, stderr io.Writer, cmd string, args ...string) er
 // image represents a docker image.
 type image struct {
 	Name string
-	Id   string
+	ID   string
 }
 
 // repositoryName returns the image repository name for a given image.
@@ -375,12 +375,12 @@ func (img *image) commit(cId string) (string, error) {
 		log.Printf("Could not commit docker image: %s", err.Error())
 		return "", err
 	}
-	img.Id = strings.Replace(id, "\n", "", -1)
+	img.ID = strings.Replace(id, "\n", "", -1)
 	if err := imagesCollection().Insert(&img); err != nil {
 		log.Printf("Could not store image information %s", err.Error())
 		return "", err
 	}
-	return img.Id, nil
+	return img.ID, nil
 }
 
 // remove removes an image from docker registry
@@ -391,14 +391,14 @@ func (img *image) remove() error {
 		return err
 	}
 	log.Printf("attempting to remove image %s from docker", img.repositoryName())
-	_, err = runCmd(docker, "rmi", img.Id)
+	_, err = runCmd(docker, "rmi", img.ID)
 	if err != nil {
-		log.Printf("Could not remove image %s from docker: %s", img.Id, err.Error())
+		log.Printf("Could not remove image %s from docker: %s", img.ID, err.Error())
 		return err
 	}
 	err = imagesCollection().Remove(bson.M{"name": img.Name})
 	if err != nil {
-		log.Printf("Could not remove image %s from mongo: %s", img.Id, err.Error())
+		log.Printf("Could not remove image %s from mongo: %s", img.ID, err.Error())
 		return err
 	}
 	return nil
