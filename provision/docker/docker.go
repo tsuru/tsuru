@@ -376,7 +376,9 @@ func (img *image) commit(cId string) (string, error) {
 		return "", err
 	}
 	img.ID = strings.Replace(id, "\n", "", -1)
-	if err := imagesCollection().Insert(&img); err != nil {
+	coll := imagesCollection()
+	defer coll.Database.Session.Close()
+	if err := coll.Insert(&img); err != nil {
 		log.Printf("Could not store image information %s", err.Error())
 		return "", err
 	}
@@ -396,7 +398,9 @@ func (img *image) remove() error {
 		log.Printf("Could not remove image %s from docker: %s", img.ID, err.Error())
 		return err
 	}
-	err = imagesCollection().Remove(bson.M{"name": img.Name})
+	coll := imagesCollection()
+	defer coll.Database.Session.Close()
+	err = coll.Remove(bson.M{"name": img.Name})
 	if err != nil {
 		log.Printf("Could not remove image %s from mongo: %s", img.ID, err.Error())
 		return err

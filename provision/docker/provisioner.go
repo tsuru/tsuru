@@ -215,7 +215,9 @@ func (*dockerProvisioner) ExecuteCommand(stdout, stderr io.Writer, app provision
 func (p *dockerProvisioner) CollectStatus() ([]provision.Unit, error) {
 	var containersGroup sync.WaitGroup
 	var containers []container
-	err := collection().Find(nil).All(&containers)
+	coll := collection()
+	defer coll.Database.Session.Close()
+	err := coll.Find(nil).All(&containers)
 	if err != nil {
 		return nil, err
 	}
@@ -322,7 +324,9 @@ func fixContainer(container *container, ip, port string) error {
 	container.IP = ip
 	container.HostPort = port
 	router.AddRoute(container.AppName, container.getAddress())
-	return collection().UpdateId(container.ID, container)
+	coll := collection()
+	defer coll.Database.Session.Close()
+	return coll.UpdateId(container.ID, container)
 }
 
 func collection() *mgo.Collection {
