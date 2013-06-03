@@ -141,7 +141,7 @@ func (s *S) TestOpenRepository(c *gocheck.C) {
 	}
 }
 
-func (s *S) TestGetRemoteUrl(c *gocheck.C) {
+func (s *S) TestGetRemoteURL(c *gocheck.C) {
 	var data = []struct {
 		name     string
 		expected string
@@ -164,7 +164,7 @@ func (s *S) TestGetRemoteUrl(c *gocheck.C) {
 	}
 }
 
-func BenchmarkGetRemoteUrl(b *testing.B) {
+func BenchmarkGetRemoteURL(b *testing.B) {
 	tmpdir, err := filepath.EvalSymlinks(os.TempDir())
 	if err != nil {
 		b.Fatal(err)
