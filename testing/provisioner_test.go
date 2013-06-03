@@ -416,3 +416,14 @@ func (s *S) TestUnsetCname(c *gocheck.C) {
 	_, ok := p.cnames[app.GetName()]
 	c.Assert(ok, gocheck.Equals, false)
 }
+
+func (s *S) TestHasCName(c *gocheck.C) {
+	app := NewFakeApp("jean", "mj", 0)
+	p := NewFakeProvisioner()
+	err := p.SetCName(app, "cname.com")
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(p.HasCName(app, "cname.com"), gocheck.Equals, true)
+	err = p.UnsetCName(app, "cname.com")
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(p.HasCName(app, "cname.com"), gocheck.Equals, false)
+}

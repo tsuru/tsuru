@@ -482,3 +482,11 @@ func (p *FakeProvisioner) UnsetCName(app provision.App, cname string) error {
 	delete(p.cnames, app.GetName())
 	return nil
 }
+
+func (p *FakeProvisioner) HasCName(app provision.App, cname string) bool {
+	got, ok := p.cnames[app.GetName()]
+	if !ok {
+		return false
+	}
+	return got == cname
+}
