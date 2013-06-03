@@ -17,7 +17,7 @@ func quotaByOwner(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
 	owner := r.URL.Query().Get(":owner")
 	items, available, err := quota.Items(owner)
 	if err != nil {
-		return &errors.Http{Code: http.StatusNotFound, Message: err.Error()}
+		return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
 	}
 	result["items"] = items
 	result["available"] = available

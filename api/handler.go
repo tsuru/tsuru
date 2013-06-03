@@ -46,11 +46,11 @@ func (fn handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 func validate(token string, r *http.Request) (*auth.Token, error) {
 	if token == "" {
-		return nil, &errors.Http{
+		return nil, &errors.HTTP{
 			Message: "You must provide the Authorization header",
 		}
 	}
-	invalid := &errors.Http{Message: "Invalid token"}
+	invalid := &errors.HTTP{Message: "Invalid token"}
 	t, err := auth.GetToken(token)
 	if err != nil {
 		return nil, invalid
@@ -78,7 +78,7 @@ func (fn authorizationRequiredHandler) ServeHTTP(w http.ResponseWriter, r *http.
 		http.Error(&fw, err.Error(), http.StatusUnauthorized)
 	} else if err = fn(&fw, r, t); err != nil {
 		code := http.StatusInternalServerError
-		if e, ok := err.(*errors.Http); ok {
+		if e, ok := err.(*errors.HTTP); ok {
 			code = e.Code
 		}
 		if fw.wrote {
@@ -109,7 +109,7 @@ func (fn adminRequiredHandler) ServeHTTP(w http.ResponseWriter, r *http.Request)
 		http.Error(&fw, "Forbidden", http.StatusForbidden)
 	} else if err = fn(&fw, r, t); err != nil {
 		code := http.StatusInternalServerError
-		if e, ok := err.(*errors.Http); ok {
+		if e, ok := err.(*errors.HTTP); ok {
 			code = e.Code
 		}
 		if fw.wrote {

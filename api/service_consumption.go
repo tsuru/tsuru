@@ -73,7 +73,7 @@ func validateInstanceForCreation(s *service.Service, sJson map[string]string, u 
 		if msg == "not found" {
 			msg = fmt.Sprintf("Service %s does not exist.", sJson["service_name"])
 		}
-		return &errors.Http{Code: http.StatusNotFound, Message: msg}
+		return &errors.HTTP{Code: http.StatusNotFound, Message: msg}
 	}
 	_, err = getServiceOrError(sJson["service_name"], u)
 	if err != nil {
@@ -124,7 +124,7 @@ func serviceInstances(w http.ResponseWriter, r *http.Request, t *auth.Token) err
 	}
 	n, err := w.Write(body)
 	if n != len(body) {
-		return &errors.Http{Code: http.StatusInternalServerError, Message: "Failed to write the response body."}
+		return &errors.HTTP{Code: http.StatusInternalServerError, Message: "Failed to write the response body."}
 	}
 	return err
 }
@@ -155,12 +155,12 @@ func serviceInstanceStatus(w http.ResponseWriter, r *http.Request, t *auth.Token
 	var b string
 	if b, err = si.Status(); err != nil {
 		msg := fmt.Sprintf("Could not retrieve status of service instance, error: %s", err.Error())
-		return &errors.Http{Code: http.StatusInternalServerError, Message: msg}
+		return &errors.HTTP{Code: http.StatusInternalServerError, Message: msg}
 	}
 	b = fmt.Sprintf(`Service instance "%s" is %s`, siName, b)
 	n, err := w.Write([]byte(b))
 	if n != len(b) {
-		return &errors.Http{Code: http.StatusInternalServerError, Message: "Failed to write response body"}
+		return &errors.HTTP{Code: http.StatusInternalServerError, Message: "Failed to write response body"}
 	}
 	return nil
 }
@@ -219,14 +219,14 @@ func getServiceOrError(name string, u *auth.User) (service.Service, error) {
 	s := service.Service{Name: name}
 	err := s.Get()
 	if err != nil {
-		return s, &errors.Http{Code: http.StatusNotFound, Message: "Service not found"}
+		return s, &errors.HTTP{Code: http.StatusNotFound, Message: "Service not found"}
 	}
 	if !s.IsRestricted {
 		return s, nil
 	}
 	if !auth.CheckUserAccess(s.Teams, u) {
 		msg := "This user does not have access to this service"
-		return s, &errors.Http{Code: http.StatusForbidden, Message: msg}
+		return s, &errors.HTTP{Code: http.StatusForbidden, Message: msg}
 	}
 	return s, err
 }
@@ -236,12 +236,12 @@ func getServiceInstanceOrError(name string, u *auth.User) (*service.ServiceInsta
 	if err != nil {
 		switch err {
 		case service.ErrServiceInstanceNotFound:
-			return nil, &errors.Http{
+			return nil, &errors.HTTP{
 				Code:    http.StatusNotFound,
 				Message: err.Error(),
 			}
 		case service.ErrAccessNotAllowed:
-			return nil, &errors.Http{
+			return nil, &errors.HTTP{
 				Code:    http.StatusForbidden,
 				Message: err.Error(),
 			}

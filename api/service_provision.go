@@ -32,11 +32,11 @@ func serviceList(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
 	results := servicesAndInstancesByOwner(u)
 	b, err := json.Marshal(results)
 	if err != nil {
-		return &errors.Http{Code: http.StatusInternalServerError, Message: err.Error()}
+		return &errors.HTTP{Code: http.StatusInternalServerError, Message: err.Error()}
 	}
 	n, err := w.Write(b)
 	if n != len(b) {
-		return &errors.Http{Code: http.StatusInternalServerError, Message: "Failed to write response body"}
+		return &errors.HTTP{Code: http.StatusInternalServerError, Message: "Failed to write response body"}
 	}
 	return err
 }
@@ -53,7 +53,7 @@ func serviceCreate(w http.ResponseWriter, r *http.Request, t *auth.Token) error 
 		return err
 	}
 	if _, ok := sy.Endpoint["production"]; !ok {
-		return &errors.Http{Code: http.StatusBadRequest, Message: "You must provide a production endpoint in the manifest file."}
+		return &errors.HTTP{Code: http.StatusBadRequest, Message: "You must provide a production endpoint in the manifest file."}
 	}
 	u, err := t.User()
 	if err != nil {
@@ -72,15 +72,15 @@ func serviceCreate(w http.ResponseWriter, r *http.Request, t *auth.Token) error 
 	}
 	if len(teams) == 0 {
 		msg := "In order to create a service, you should be member of at least one team"
-		return &errors.Http{Code: http.StatusForbidden, Message: msg}
+		return &errors.HTTP{Code: http.StatusForbidden, Message: msg}
 	}
 	n, err := conn.Services().Find(bson.M{"_id": sy.Id}).Count()
 	if err != nil {
-		return &errors.Http{Code: http.StatusInternalServerError, Message: err.Error()}
+		return &errors.HTTP{Code: http.StatusInternalServerError, Message: err.Error()}
 	}
 	if n != 0 {
 		msg := fmt.Sprintf("Service with name %s already exists.", sy.Id)
-		return &errors.Http{Code: http.StatusInternalServerError, Message: msg}
+		return &errors.HTTP{Code: http.StatusInternalServerError, Message: msg}
 	}
 	s := service.Service{
 		Name:       sy.Id,
@@ -140,7 +140,7 @@ func serviceDelete(w http.ResponseWriter, r *http.Request, t *auth.Token) error 
 	}
 	if n > 0 {
 		msg := "This service cannot be removed because it has instances.\nPlease remove these instances before removing the service."
-		return &errors.Http{Code: http.StatusForbidden, Message: msg}
+		return &errors.HTTP{Code: http.StatusForbidden, Message: msg}
 	}
 	err = s.Delete()
 	if err != nil {
@@ -154,11 +154,11 @@ func getServiceAndTeam(serviceName string, teamName string, u *auth.User) (*serv
 	service := &service.Service{Name: serviceName}
 	err := service.Get()
 	if err != nil {
-		return nil, nil, &errors.Http{Code: http.StatusNotFound, Message: "Service not found"}
+		return nil, nil, &errors.HTTP{Code: http.StatusNotFound, Message: "Service not found"}
 	}
 	if !auth.CheckUserAccess(service.Teams, u) {
 		msg := "This user does not have access to this service"
-		return nil, nil, &errors.Http{Code: http.StatusForbidden, Message: msg}
+		return nil, nil, &errors.HTTP{Code: http.StatusForbidden, Message: msg}
 	}
 	t := new(auth.Team)
 	conn, err := db.Conn()
@@ -167,7 +167,7 @@ func getServiceAndTeam(serviceName string, teamName string, u *auth.User) (*serv
 	}
 	err = conn.Teams().Find(bson.M{"_id": teamName}).One(t)
 	if err != nil {
-		return nil, nil, &errors.Http{Code: http.StatusNotFound, Message: "Team not found"}
+		return nil, nil, &errors.HTTP{Code: http.StatusNotFound, Message: "Team not found"}
 	}
 	return service, t, nil
 }
@@ -186,7 +186,7 @@ func grantServiceAccess(w http.ResponseWriter, r *http.Request, t *auth.Token) e
 	}
 	err = service.GrantAccess(team)
 	if err != nil {
-		return &errors.Http{Code: http.StatusConflict, Message: err.Error()}
+		return &errors.HTTP{Code: http.StatusConflict, Message: err.Error()}
 	}
 	conn, err := db.Conn()
 	if err != nil {
@@ -209,11 +209,11 @@ func revokeServiceAccess(w http.ResponseWriter, r *http.Request, t *auth.Token) 
 	}
 	if len(service.Teams) < 2 {
 		msg := "You can not revoke the access from this team, because it is the unique team with access to this service, and a service can not be orphaned"
-		return &errors.Http{Code: http.StatusForbidden, Message: msg}
+		return &errors.HTTP{Code: http.StatusForbidden, Message: msg}
 	}
 	err = service.RevokeAccess(team)
 	if err != nil {
-		return &errors.Http{Code: http.StatusNotFound, Message: err.Error()}
+		return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
 	}
 	conn, err := db.Conn()
 	if err != nil {
@@ -248,11 +248,11 @@ func getServiceByOwner(name string, u *auth.User) (service.Service, error) {
 	s := service.Service{Name: name}
 	err := s.Get()
 	if err != nil {
-		return s, &errors.Http{Code: http.StatusNotFound, Message: "Service not found"}
+		return s, &errors.HTTP{Code: http.StatusNotFound, Message: "Service not found"}
 	}
 	if !auth.CheckUserAccess(s.OwnerTeams, u) {
 		msg := "This user does not have access to this service"
-		return s, &errors.Http{Code: http.StatusForbidden, Message: msg}
+		return s, &errors.HTTP{Code: http.StatusForbidden, Message: msg}
 	}
 	return s, err
 }

@@ -58,7 +58,7 @@ func (QuotaSuite) TestQuotaNotFound(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	err = quotaByOwner(recorder, request, nil)
 	c.Assert(err, gocheck.NotNil)
-	e, ok := err.(*errors.Http)
+	e, ok := err.(*errors.HTTP)
 	c.Assert(ok, gocheck.Equals, true)
 	c.Assert(e.Code, gocheck.Equals, http.StatusNotFound)
 	c.Assert(e, gocheck.ErrorMatches, "^Quota not found$")

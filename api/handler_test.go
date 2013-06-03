@@ -59,7 +59,7 @@ func errorHandlerWriteHeader(w http.ResponseWriter, r *http.Request) error {
 }
 
 func badRequestHandler(w http.ResponseWriter, r *http.Request) error {
-	return &errors.Http{Code: http.StatusBadRequest, Message: "some error"}
+	return &errors.HTTP{Code: http.StatusBadRequest, Message: "some error"}
 }
 
 func simpleHandler(w http.ResponseWriter, r *http.Request) error {

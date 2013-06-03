@@ -38,13 +38,13 @@ func createUser(w http.ResponseWriter, r *http.Request) error {
 	var u auth.User
 	err := json.NewDecoder(r.Body).Decode(&u)
 	if err != nil {
-		return &errors.Http{Code: http.StatusBadRequest, Message: err.Error()}
+		return &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
 	}
 	if !validation.ValidateEmail(u.Email) {
-		return &errors.Http{Code: http.StatusBadRequest, Message: emailError}
+		return &errors.HTTP{Code: http.StatusBadRequest, Message: emailError}
 	}
 	if !validation.ValidateLength(u.Password, passwordMinLen, passwordMaxLen) {
-		return &errors.Http{Code: http.StatusBadRequest, Message: passwordError}
+		return &errors.HTTP{Code: http.StatusBadRequest, Message: passwordError}
 	}
 	gURL := repository.ServerURL()
 	c := gandalf.Client{Endpoint: gURL}
@@ -60,7 +60,7 @@ func createUser(w http.ResponseWriter, r *http.Request) error {
 		return nil
 	}
 	if _, err = auth.GetUserByEmail(u.Email); err == nil {
-		err = &errors.Http{Code: http.StatusConflict, Message: "This email is already registered"}
+		err = &errors.HTTP{Code: http.StatusConflict, Message: "This email is already registered"}
 	}
 	return err
 }
@@ -69,19 +69,19 @@ func login(w http.ResponseWriter, r *http.Request) error {
 	var pass map[string]string
 	err := json.NewDecoder(r.Body).Decode(&pass)
 	if err != nil {
-		return &errors.Http{Code: http.StatusBadRequest, Message: "Invalid JSON"}
+		return &errors.HTTP{Code: http.StatusBadRequest, Message: "Invalid JSON"}
 	}
 	password, ok := pass["password"]
 	if !ok {
 		msg := "You must provide a password to login"
-		return &errors.Http{Code: http.StatusBadRequest, Message: msg}
+		return &errors.HTTP{Code: http.StatusBadRequest, Message: msg}
 	}
 	u, err := auth.GetUserByEmail(r.URL.Query().Get(":email"))
 	if err != nil {
 		if e, ok := err.(*errors.ValidationError); ok {
-			return &errors.Http{Code: http.StatusBadRequest, Message: e.Message}
+			return &errors.HTTP{Code: http.StatusBadRequest, Message: e.Message}
 		} else if err == auth.ErrUserNotFound {
-			return &errors.Http{Code: http.StatusNotFound, Message: err.Error()}
+			return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
 		}
 		return err
 	}
@@ -90,12 +90,12 @@ func login(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		switch err.(type) {
 		case *errors.ValidationError:
-			return &errors.Http{
+			return &errors.HTTP{
 				Code:    http.StatusBadRequest,
 				Message: err.(*errors.ValidationError).Message,
 			}
 		case auth.AuthenticationFailure:
-			return &errors.Http{
+			return &errors.HTTP{
 				Code:    http.StatusUnauthorized,
 				Message: err.Error(),
 			}
@@ -126,13 +126,13 @@ func changePassword(w http.ResponseWriter, r *http.Request, t *auth.Token) error
 	var body map[string]string
 	err := json.NewDecoder(r.Body).Decode(&body)
 	if err != nil {
-		return &errors.Http{
+		return &errors.HTTP{
 			Code:    http.StatusBadRequest,
 			Message: "Invalid JSON.",
 		}
 	}
 	if body["old"] == "" || body["new"] == "" {
-		return &errors.Http{
+		return &errors.HTTP{
 			Code:    http.StatusBadRequest,
 			Message: "Both the old and the new passwords are required.",
 		}
@@ -142,13 +142,13 @@ func changePassword(w http.ResponseWriter, r *http.Request, t *auth.Token) error
 		return err
 	}
 	if err := u.CheckPassword(body["old"]); err != nil {
-		return &errors.Http{
+		return &errors.HTTP{
 			Code:    http.StatusForbidden,
 			Message: "The given password didn't match the user's current password.",
 		}
 	}
 	if !validation.ValidateLength(body["new"], passwordMinLen, passwordMaxLen) {
-		return &errors.Http{
+		return &errors.HTTP{
 			Code:    http.StatusBadRequest,
 			Message: passwordError,
 		}
@@ -165,9 +165,9 @@ func resetPassword(w http.ResponseWriter, r *http.Request) error {
 	u, err := auth.GetUserByEmail(email)
 	if err != nil {
 		if err == auth.ErrUserNotFound {
-			return &errors.Http{Code: http.StatusNotFound, Message: err.Error()}
+			return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
 		} else if e, ok := err.(*errors.ValidationError); ok {
-			return &errors.Http{Code: http.StatusBadRequest, Message: e.Error()}
+			return &errors.HTTP{Code: http.StatusBadRequest, Message: e.Error()}
 		}
 		return err
 	}
@@ -193,12 +193,12 @@ func createTeam(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
 	var params map[string]string
 	err := json.NewDecoder(r.Body).Decode(&params)
 	if err != nil {
-		return &errors.Http{Code: http.StatusBadRequest, Message: err.Error()}
+		return &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
 	}
 	name, ok := params["name"]
 	if !ok {
 		msg := "You must provide the team name"
-		return &errors.Http{Code: http.StatusBadRequest, Message: msg}
+		return &errors.HTTP{Code: http.StatusBadRequest, Message: msg}
 	}
 	u, err := t.User()
 	if err != nil {
@@ -214,7 +214,7 @@ func createTeam(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
 	if err := conn.Teams().Insert(team); err != nil &&
 		strings.Contains(err.Error(), "duplicate key error") {
 		msg := "This team already exists"
-		return &errors.Http{Code: http.StatusConflict, Message: msg}
+		return &errors.HTTP{Code: http.StatusConflict, Message: msg}
 	}
 	return nil
 }
@@ -232,12 +232,12 @@ func removeTeam(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
 		msg := `This team cannot be removed because it have access to apps.
 
 Please remove the apps or revoke these accesses, and try again.`
-		return &errors.Http{Code: http.StatusForbidden, Message: msg}
+		return &errors.HTTP{Code: http.StatusForbidden, Message: msg}
 	}
 	query := bson.M{"_id": name, "users": t.UserEmail}
 	err = conn.Teams().Remove(query)
 	if err != nil && err.Error() == "not found" {
-		return &errors.Http{Code: http.StatusNotFound, Message: fmt.Sprintf(`Team "%s" not found.`, name)}
+		return &errors.HTTP{Code: http.StatusNotFound, Message: fmt.Sprintf(`Team "%s" not found.`, name)}
 	}
 	return err
 }
@@ -266,7 +266,7 @@ func teamList(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
 			return err
 		}
 		if n != len(b) {
-			return &errors.Http{Code: http.StatusInternalServerError, Message: "Failed to write response body."}
+			return &errors.HTTP{Code: http.StatusInternalServerError, Message: "Failed to write response body."}
 		}
 	} else {
 		w.WriteHeader(http.StatusNoContent)
@@ -276,7 +276,7 @@ func teamList(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
 
 func addUserToTeamInDatabase(user *auth.User, team *auth.Team) error {
 	if err := team.AddUser(user); err != nil {
-		return &errors.Http{Code: http.StatusConflict, Message: err.Error()}
+		return &errors.HTTP{Code: http.StatusConflict, Message: err.Error()}
 	}
 	conn, err := db.Conn()
 	if err != nil {
@@ -313,15 +313,15 @@ func addUserToTeam(w http.ResponseWriter, r *http.Request, t *auth.Token) error 
 	defer conn.Close()
 	team, err := auth.GetTeam(teamName)
 	if err != nil {
-		return &errors.Http{Code: http.StatusNotFound, Message: "Team not found"}
+		return &errors.HTTP{Code: http.StatusNotFound, Message: "Team not found"}
 	}
 	if !team.ContainsUser(u) {
 		msg := fmt.Sprintf("You are not authorized to add new users to the team %s", team.Name)
-		return &errors.Http{Code: http.StatusUnauthorized, Message: msg}
+		return &errors.HTTP{Code: http.StatusUnauthorized, Message: msg}
 	}
 	user, err := auth.GetUserByEmail(email)
 	if err != nil {
-		return &errors.Http{Code: http.StatusNotFound, Message: "User not found"}
+		return &errors.HTTP{Code: http.StatusNotFound, Message: "User not found"}
 	}
 	actions := []*action.Action{
 		&addUserToTeamInGandalfAction,
@@ -338,7 +338,7 @@ func removeUserFromTeamInDatabase(u *auth.User, team *auth.Team) error {
 	}
 	defer conn.Close()
 	if err = team.RemoveUser(u); err != nil {
-		return &errors.Http{Code: http.StatusNotFound, Message: err.Error()}
+		return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
 	}
 	return conn.Teams().UpdateId(team.Name, team)
 }
@@ -370,19 +370,19 @@ func removeUserFromTeam(w http.ResponseWriter, r *http.Request, t *auth.Token) e
 	defer conn.Close()
 	team, err := auth.GetTeam(teamName)
 	if err != nil {
-		return &errors.Http{Code: http.StatusNotFound, Message: "Team not found"}
+		return &errors.HTTP{Code: http.StatusNotFound, Message: "Team not found"}
 	}
 	if !team.ContainsUser(u) {
 		msg := fmt.Sprintf("You are not authorized to remove a member from the team %s", team.Name)
-		return &errors.Http{Code: http.StatusUnauthorized, Message: msg}
+		return &errors.HTTP{Code: http.StatusUnauthorized, Message: msg}
 	}
 	if len(team.Users) == 1 {
 		msg := "You can not remove this user from this team, because it is the last user within the team, and a team can not be orphaned"
-		return &errors.Http{Code: http.StatusForbidden, Message: msg}
+		return &errors.HTTP{Code: http.StatusForbidden, Message: msg}
 	}
 	user, err := auth.GetUserByEmail(email)
 	if err != nil {
-		return &errors.Http{Code: http.StatusNotFound, Message: err.Error()}
+		return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
 	}
 	err = removeUserFromTeamInGandalf(user, team.Name)
 	if err != nil {
@@ -400,10 +400,10 @@ func getTeam(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
 	rec.Log(user.Email, "get-team", teamName)
 	team, err := auth.GetTeam(teamName)
 	if err != nil {
-		return &errors.Http{Code: http.StatusNotFound, Message: "Team not found"}
+		return &errors.HTTP{Code: http.StatusNotFound, Message: "Team not found"}
 	}
 	if !team.ContainsUser(user) {
-		return &errors.Http{Code: http.StatusForbidden, Message: "User is not member of this team"}
+		return &errors.HTTP{Code: http.StatusForbidden, Message: "User is not member of this team"}
 	}
 	w.Header().Set("Content-Type", "application/json")
 	return json.NewEncoder(w).Encode(team)
@@ -413,11 +413,11 @@ func getKeyFromBody(b io.Reader) (string, error) {
 	var body map[string]string
 	err := json.NewDecoder(b).Decode(&body)
 	if err != nil {
-		return "", &errors.Http{Code: http.StatusBadRequest, Message: "Invalid JSON"}
+		return "", &errors.HTTP{Code: http.StatusBadRequest, Message: "Invalid JSON"}
 	}
 	key, ok := body["key"]
 	if !ok || key == "" {
-		return "", &errors.Http{Code: http.StatusBadRequest, Message: "Missing key"}
+		return "", &errors.HTTP{Code: http.StatusBadRequest, Message: "Missing key"}
 	}
 	return key, nil
 }
@@ -458,7 +458,7 @@ func addKeyToUser(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
 	rec.Log(u.Email, "add-key", content)
 	key := auth.Key{Content: content}
 	if u.HasKey(key) {
-		return &errors.Http{Code: http.StatusConflict, Message: "User already has this key"}
+		return &errors.HTTP{Code: http.StatusConflict, Message: "User already has this key"}
 	}
 	actions := []*action.Action{
 		&addKeyInGandalfAction,
@@ -503,7 +503,7 @@ func removeKeyFromUser(w http.ResponseWriter, r *http.Request, t *auth.Token) er
 	rec.Log(u.Email, "remove-key", content)
 	key, index := u.FindKey(auth.Key{Content: content})
 	if index < 0 {
-		return &errors.Http{Code: http.StatusNotFound, Message: "User does not have this key"}
+		return &errors.HTTP{Code: http.StatusNotFound, Message: "User does not have this key"}
 	}
 	err = removeKeyFromGandalf(&key, u)
 	if err != nil {
@@ -545,7 +545,7 @@ func removeUser(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
 			msg := fmt.Sprintf(`This user is the last member of the team "%s", so it cannot be removed.
 
 Please remove the team, them remove the user.`, team.Name)
-			return &errors.Http{Code: http.StatusForbidden, Message: msg}
+			return &errors.HTTP{Code: http.StatusForbidden, Message: msg}
 		}
 		err = team.RemoveUser(u)
 		if err != nil {
@@ -579,7 +579,7 @@ func generateAppToken(w http.ResponseWriter, r *http.Request, t *auth.Token) err
 		return err
 	}
 	if body.Client == "" {
-		return &errors.Http{
+		return &errors.HTTP{
 			Code:    http.StatusBadRequest,
 			Message: "Missing client name in JSON body",
 		}
