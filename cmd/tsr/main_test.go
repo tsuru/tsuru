@@ -20,7 +20,7 @@ func (s *S) TestCommandsFromBaseManagerAreRegistered(c *gocheck.C) {
 	}
 }
 
-func (s *S) TestApiCmdIsRegistered(c *gocheck.C) {
+func (s *S) TestAPICmdIsRegistered(c *gocheck.C) {
 	manager := buildManager()
 	create, ok := manager.Commands["api"]
 	c.Assert(ok, gocheck.Equals, true)

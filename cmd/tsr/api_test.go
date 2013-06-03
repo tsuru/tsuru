@@ -9,7 +9,7 @@ import (
 	"launchpad.net/gocheck"
 )
 
-func (s *S) TestApiCmdInfo(c *gocheck.C) {
+func (s *S) TestAPICmdInfo(c *gocheck.C) {
 	expected := &cmd.Info{
 		Name:    "api",
 		Usage:   "api",
@@ -19,11 +19,11 @@ func (s *S) TestApiCmdInfo(c *gocheck.C) {
 	c.Assert(apiCmd{}.Info(), gocheck.DeepEquals, expected)
 }
 
-func (s *S) TestApiCmdIsACommand(c *gocheck.C) {
+func (s *S) TestAPICmdIsACommand(c *gocheck.C) {
 	var _ cmd.FlaggedCommand = &apiCmd{}
 }
 
-func (s *S) TestApiCmdFlags(c *gocheck.C) {
+func (s *S) TestAPICmdFlags(c *gocheck.C) {
 	command := apiCmd{}
 	flagset := command.Flags()
 	c.Assert(flagset, gocheck.NotNil)
