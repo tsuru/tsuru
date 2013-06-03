@@ -283,20 +283,20 @@ var createRepository = action.Action{
 		default:
 			return nil, errors.New("First parameter must be App or *App.")
 		}
-		gUrl := repository.ServerURL()
+		gURL := repository.ServerURL()
 		var users []string
 		for _, t := range app.GetTeams() {
 			users = append(users, t.Users...)
 		}
-		c := gandalf.Client{Endpoint: gUrl}
+		c := gandalf.Client{Endpoint: gURL}
 		_, err := c.NewRepository(app.Name, users, false)
 		return &app, err
 	},
 	Backward: func(ctx action.BWContext) {
 		app := ctx.FWResult.(*App)
 		app.Get()
-		gUrl := repository.ServerURL()
-		c := gandalf.Client{Endpoint: gUrl}
+		gURL := repository.ServerURL()
+		c := gandalf.Client{Endpoint: gURL}
 		c.RemoveRepository(app.Name)
 	},
 	MinParams: 1,

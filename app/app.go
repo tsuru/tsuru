@@ -193,8 +193,8 @@ func (app *App) unbind() error {
 //       3. Unbind all service instances from the app
 //       4. Remove the app from the database
 func ForceDestroy(app *App) error {
-	gUrl := repository.ServerURL()
-	(&gandalf.Client{Endpoint: gUrl}).RemoveRepository(app.Name)
+	gURL := repository.ServerURL()
+	(&gandalf.Client{Endpoint: gURL}).RemoveRepository(app.Name)
 	useS3, _ := config.GetBool("bucket-support")
 	if useS3 {
 		destroyBucket(app)

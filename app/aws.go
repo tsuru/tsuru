@@ -191,7 +191,7 @@ func createIAMUserPolicy(user *iam.User, appName, bucketName string) (*iam.UserP
 func destroyBucket(app *App) error {
 	appName := strings.ToLower(app.Name)
 	env := app.InstanceEnv(s3InstanceName)
-	accessKeyId := env["TSURU_S3_ACCESS_KEY_ID"].Value
+	accessKeyID := env["TSURU_S3_ACCESS_KEY_ID"].Value
 	bucketName := env["TSURU_S3_BUCKET"].Value
 	policyName := fmt.Sprintf("app-%s-bucket", appName)
 	s3Endpoint := getS3Endpoint()
@@ -203,7 +203,7 @@ func destroyBucket(app *App) error {
 	if err := bucket.DelBucket(); err != nil {
 		return err
 	}
-	if _, err := iamEndpoint.DeleteAccessKey(accessKeyId, appName); err != nil {
+	if _, err := iamEndpoint.DeleteAccessKey(accessKeyID, appName); err != nil {
 		return err
 	}
 	_, err := iamEndpoint.DeleteUser(appName)

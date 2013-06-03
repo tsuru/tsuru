@@ -861,7 +861,7 @@ func (s *S) TestRemoveUnitsFromIndicesSlice(c *gocheck.C) {
 	}
 }
 
-func (s *S) TestRemoveUnitByNameOrInstanceId(c *gocheck.C) {
+func (s *S) TestRemoveUnitByNameOrInstanceID(c *gocheck.C) {
 	var calls int32
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		atomic.AddInt32(&calls, 1)
@@ -953,10 +953,10 @@ func (s *S) TestRemoveAbsentUnit(c *gocheck.C) {
 	}()
 	err = app.Get()
 	c.Assert(err, gocheck.IsNil)
-	instId := app.Units[1].InstanceId
-	err = app.RemoveUnit(instId)
+	instID := app.Units[1].InstanceId
+	err = app.RemoveUnit(instID)
 	c.Assert(err, gocheck.IsNil)
-	err = app.RemoveUnit(instId)
+	err = app.RemoveUnit(instID)
 	c.Assert(err, gocheck.NotNil)
 	c.Assert(err, gocheck.ErrorMatches, "Unit not found.")
 	err = app.Get()
@@ -1924,7 +1924,7 @@ func (s *S) TestGetName(c *gocheck.C) {
 	c.Assert(a.GetName(), gocheck.Equals, a.Name)
 }
 
-func (s *S) TestGetIp(c *gocheck.C) {
+func (s *S) TestGetIP(c *gocheck.C) {
 	a := App{Ip: "10.10.10.10"}
 	c.Assert(a.GetIp(), gocheck.Equals, a.Ip)
 }
