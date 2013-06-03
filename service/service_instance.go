@@ -161,14 +161,14 @@ func (si *ServiceInstance) update() error {
 func (si *ServiceInstance) BindApp(app bind.App) error {
 	err := si.AddApp(app.GetName())
 	if err != nil {
-		return &errors.Http{Code: http.StatusConflict, Message: "This app is already bound to this service instance."}
+		return &errors.HTTP{Code: http.StatusConflict, Message: "This app is already bound to this service instance."}
 	}
 	err = si.update()
 	if err != nil {
 		return err
 	}
 	if len(app.GetUnits()) == 0 {
-		return &errors.Http{Code: http.StatusPreconditionFailed, Message: "This app does not have an IP yet."}
+		return &errors.HTTP{Code: http.StatusPreconditionFailed, Message: "This app does not have an IP yet."}
 	}
 	envsChan := make(chan map[string]string, len(app.GetUnits())+1)
 	errChan := make(chan error, len(app.GetUnits())+1)
@@ -212,7 +212,7 @@ func (si *ServiceInstance) BindUnit(app bind.App, unit bind.Unit) (map[string]st
 func (si *ServiceInstance) UnbindApp(app bind.App) error {
 	err := si.RemoveApp(app.GetName())
 	if err != nil {
-		return &errors.Http{Code: http.StatusPreconditionFailed, Message: "This app is not bound to this service instance."}
+		return &errors.HTTP{Code: http.StatusPreconditionFailed, Message: "This app is not bound to this service instance."}
 	}
 	err = si.update()
 	if err != nil {

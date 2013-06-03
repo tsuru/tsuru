@@ -76,7 +76,7 @@ func (c *Client) Create(instance *ServiceInstance) error {
 	}
 	msg := "Failed to create the instance " + instance.Name + ": " + c.buildErrorMessage(err, resp)
 	log.Print(msg)
-	return &errors.Http{Code: http.StatusInternalServerError, Message: msg}
+	return &errors.HTTP{Code: http.StatusInternalServerError, Message: msg}
 }
 
 func (c *Client) Destroy(instance *ServiceInstance) error {
@@ -85,7 +85,7 @@ func (c *Client) Destroy(instance *ServiceInstance) error {
 	if err == nil && resp.StatusCode > 299 {
 		msg := "Failed to destroy the instance " + instance.Name + ": " + c.buildErrorMessage(err, resp)
 		log.Print(msg)
-		return &errors.Http{Code: http.StatusInternalServerError, Message: msg}
+		return &errors.HTTP{Code: http.StatusInternalServerError, Message: msg}
 	}
 	return err
 }
@@ -113,11 +113,11 @@ func (c *Client) Bind(instance *ServiceInstance, app bind.App, unit bind.Unit) (
 		return result, nil
 	}
 	if resp.StatusCode == http.StatusPreconditionFailed {
-		return nil, &errors.Http{Code: resp.StatusCode, Message: "You cannot bind any app to this service instance because it is not ready yet."}
+		return nil, &errors.HTTP{Code: resp.StatusCode, Message: "You cannot bind any app to this service instance because it is not ready yet."}
 	}
 	msg := "Failed to bind instance " + instance.Name + " to the unit " + unit.GetIp() + ": " + c.buildErrorMessage(err, resp)
 	log.Print(msg)
-	return nil, &errors.Http{Code: http.StatusInternalServerError, Message: msg}
+	return nil, &errors.HTTP{Code: http.StatusInternalServerError, Message: msg}
 }
 
 func (c *Client) Unbind(instance *ServiceInstance, unit bind.Unit) error {
@@ -128,7 +128,7 @@ func (c *Client) Unbind(instance *ServiceInstance, unit bind.Unit) error {
 	if err == nil && resp.StatusCode > 299 {
 		msg := "Failed to unbind instance " + instance.Name + " from the unit " + unit.GetIp() + ": " + c.buildErrorMessage(err, resp)
 		log.Print(msg)
-		return &errors.Http{Code: http.StatusInternalServerError, Message: msg}
+		return &errors.HTTP{Code: http.StatusInternalServerError, Message: msg}
 	}
 	return err
 }
@@ -158,7 +158,7 @@ func (c *Client) Status(instance *ServiceInstance) (string, error) {
 	}
 	msg := "Failed to get status of instance " + instance.Name + ": " + c.buildErrorMessage(err, resp)
 	log.Print(msg)
-	err = &errors.Http{Code: http.StatusInternalServerError, Message: msg}
+	err = &errors.HTTP{Code: http.StatusInternalServerError, Message: msg}
 	return "", err
 }
 

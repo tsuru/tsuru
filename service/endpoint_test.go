@@ -233,7 +233,7 @@ func (s *S) TestBindShouldReturnPreconditionFailedIfServiceAPIReturnPrecondition
 	client := &Client{endpoint: ts.URL}
 	_, err := client.Bind(&instance, &a, a.GetUnits()[0])
 	c.Assert(err, gocheck.NotNil)
-	e, ok := err.(*errors.Http)
+	e, ok := err.(*errors.HTTP)
 	c.Assert(ok, gocheck.Equals, true)
 	c.Assert(e.Message, gocheck.Equals, "You cannot bind any app to this service instance because it is not ready yet.")
 }
