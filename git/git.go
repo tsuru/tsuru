@@ -58,9 +58,9 @@ func OpenRepository(p string) (*Repository, error) {
 	return nil, errors.New("Repository not found.")
 }
 
-// GetRemoteUrl returns the URL of a remote by its name. Or an error, if the
+// RemoteURL returns the URL of a remote by its name. Or an error, if the
 // remote is not declared.
-func (r *Repository) GetRemoteUrl(name string) (string, error) {
+func (r *Repository) RemoteURL(name string) (string, error) {
 	config, err := os.Open(path.Join(r.path, "config"))
 	if err != nil {
 		return "", err
