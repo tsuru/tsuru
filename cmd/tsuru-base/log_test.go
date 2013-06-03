@@ -14,7 +14,7 @@ import (
 	"time"
 )
 
-func (s *S) TestJsonWriterUsesCurrentTimeZone(c *gocheck.C) {
+func (s *S) TestJSONWriterUsesCurrentTimeZone(c *gocheck.C) {
 	t := time.Now()
 	logs := []log{
 		{Date: t, Message: "Something happened", Source: "tsuru"},
@@ -37,7 +37,7 @@ func (s *S) TestJsonWriterUsesCurrentTimeZone(c *gocheck.C) {
 	c.Assert(writer.String(), gocheck.Equals, expected)
 }
 
-func (s *S) TestJsonWriterChukedWrite(c *gocheck.C) {
+func (s *S) TestJSONWriterChukedWrite(c *gocheck.C) {
 	t := time.Now()
 	logs := []log{
 		{Date: t, Message: "Something happened", Source: "tsuru"},
@@ -65,7 +65,7 @@ func (s *S) TestJsonWriterChukedWrite(c *gocheck.C) {
 	c.Assert(buf.String(), gocheck.Equals, expected)
 }
 
-func (s *S) TestJsonWriter(c *gocheck.C) {
+func (s *S) TestJSONWriter(c *gocheck.C) {
 	t := time.Now()
 	logs := []log{
 		{Date: t, Message: "Something happened", Source: "tsuru"},
@@ -84,7 +84,7 @@ func (s *S) TestJsonWriter(c *gocheck.C) {
 	c.Assert(writer.String(), gocheck.Equals, expected)
 }
 
-func (s *S) TestJsonWriterInvalidJson(c *gocheck.C) {
+func (s *S) TestJSONWriterInvalidJSON(c *gocheck.C) {
 	var writer bytes.Buffer
 	w := jsonWriter{w: &writer}
 	b := []byte("-----")

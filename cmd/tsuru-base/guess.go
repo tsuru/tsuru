@@ -34,14 +34,14 @@ func (g GitGuesser) GuessName(path string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	remoteUrl, err := repo.GetRemoteUrl("tsuru")
+	remoteURL, err := repo.GetRemoteUrl("tsuru")
 	if err != nil {
 		return "", errors.New("tsuru remote not declared.")
 	}
 	re := regexp.MustCompile(`^git@.*:(.*)\.git$`)
-	matches := re.FindStringSubmatch(remoteUrl)
+	matches := re.FindStringSubmatch(remoteURL)
 	if len(matches) < 2 {
-		return "", fmt.Errorf(`"tsuru" remote did not match the pattern. Want something like git@<host>:<app-name>.git, got %s`, remoteUrl)
+		return "", fmt.Errorf(`"tsuru" remote did not match the pattern. Want something like git@<host>:<app-name>.git, got %s`, remoteURL)
 	}
 	return matches[1], nil
 }

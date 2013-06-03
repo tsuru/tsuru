@@ -295,12 +295,12 @@ func (s *S) TestEnvUnsetWithoutFlag(c *gocheck.C) {
 	c.Assert(stdout.String(), gocheck.Equals, result)
 }
 
-func (s *S) TestRequestEnvUrl(c *gocheck.C) {
+func (s *S) TestRequestEnvURL(c *gocheck.C) {
 	result := "DATABASE_HOST=somehost"
 	client := cmd.NewClient(&http.Client{Transport: &testing.Transport{Message: result, Status: http.StatusOK}}, nil, manager)
 	args := []string{"DATABASE_HOST"}
 	g := GuessingCommand{G: &FakeGuesser{name: "someapp"}, appName: "something"}
-	b, err := requestEnvUrl("GET", g, args, client)
+	b, err := requestEnvURL("GET", g, args, client)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(b, gocheck.DeepEquals, []byte(result))
 }

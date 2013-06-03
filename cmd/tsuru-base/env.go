@@ -39,7 +39,7 @@ If you don't provide the app name, tsuru will try to guess it.`,
 }
 
 func (c *EnvGet) Run(context *cmd.Context, client *cmd.Client) error {
-	b, err := requestEnvUrl("GET", c.GuessingCommand, context.Args, client)
+	b, err := requestEnvURL("GET", c.GuessingCommand, context.Args, client)
 	if err != nil {
 		return err
 	}
@@ -122,7 +122,7 @@ If you don't provide the app name, tsuru will try to guess it.`,
 }
 
 func (c *EnvUnset) Run(context *cmd.Context, client *cmd.Client) error {
-	_, err := requestEnvUrl("DELETE", c.GuessingCommand, context.Args, client)
+	_, err := requestEnvURL("DELETE", c.GuessingCommand, context.Args, client)
 	if err != nil {
 		return err
 	}
@@ -130,7 +130,7 @@ func (c *EnvUnset) Run(context *cmd.Context, client *cmd.Client) error {
 	return nil
 }
 
-func requestEnvUrl(method string, g GuessingCommand, args []string, client *cmd.Client) ([]byte, error) {
+func requestEnvURL(method string, g GuessingCommand, args []string, client *cmd.Client) ([]byte, error) {
 	appName, err := g.Guess()
 	if err != nil {
 		return nil, err
