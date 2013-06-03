@@ -168,6 +168,7 @@ type FakeProvisioner struct {
 	restMut     sync.Mutex
 	installDeps map[string]int
 	depsMut     sync.Mutex
+	cnames      map[string]string
 }
 
 func NewFakeProvisioner() *FakeProvisioner {
@@ -177,6 +178,7 @@ func NewFakeProvisioner() *FakeProvisioner {
 	p.units = make(map[string][]provision.Unit)
 	p.restarts = make(map[string]int)
 	p.installDeps = make(map[string]int)
+	p.cnames = make(map[string]string)
 	p.unitLen = 0
 	return &p
 }
@@ -468,5 +470,15 @@ func (p *FakeProvisioner) InstallDeps(app provision.App, w io.Writer) error {
 	v++
 	p.installDeps[app.GetName()] = v
 	p.depsMut.Unlock()
+	return nil
+}
+
+func (p *FakeProvisioner) SetCName(app provision.App, cname string) error {
+	p.cnames[app.GetName()] = cname
+	return nil
+}
+
+func (p *FakeProvisioner) UnsetCName(app provision.App, cname string) error {
+	delete(p.cnames, app.GetName())
 	return nil
 }

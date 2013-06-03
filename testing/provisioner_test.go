@@ -396,3 +396,23 @@ func (s *S) TestInstallDepsFailure(c *gocheck.C) {
 	c.Assert(err, gocheck.NotNil)
 	c.Assert(err.Error(), gocheck.Equals, "Failed to install")
 }
+
+func (s *S) TestSetCName(c *gocheck.C) {
+	app := NewFakeApp("jean", "mj", 0)
+	p := NewFakeProvisioner()
+	err := p.SetCName(app, "cname.com")
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(p.cnames[app.GetName()], gocheck.Equals, "cname.com")
+}
+
+func (s *S) TestUnsetCname(c *gocheck.C) {
+	app := NewFakeApp("jean", "mj", 0)
+	p := NewFakeProvisioner()
+	err := p.SetCName(app, "cname.com")
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(p.cnames[app.GetName()], gocheck.Equals, "cname.com")
+	err = p.UnsetCName(app, "cname.com")
+	c.Assert(err, gocheck.IsNil)
+	_, ok := p.cnames[app.GetName()]
+	c.Assert(ok, gocheck.Equals, false)
+}
