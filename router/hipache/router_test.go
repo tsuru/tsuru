@@ -74,12 +74,28 @@ func (s *S) TestAddBackend(c *gocheck.C) {
 }
 
 func (s *S) TestRemoveBackend(c *gocheck.C) {
-	conn = &resultCommandConn{defaultReply: []interface{}{}, fakeConn: &s.conn}
+	reply := map[string]interface{}{"GET": ""}
+	conn = &resultCommandConn{reply: reply, fakeConn: &s.conn}
 	router := hipacheRouter{}
 	err := router.RemoveBackend("tip")
 	c.Assert(err, gocheck.IsNil)
 	expected := []command{
 		{cmd: "DEL", args: []interface{}{"frontend:tip.golang.org"}},
+		{cmd: "GET", args: []interface{}{"cname:tip"}},
+	}
+	c.Assert(s.conn.cmds, gocheck.DeepEquals, expected)
+}
+
+func (s *S) TestRemoveBackendAlsoRemovesRelatedCNameBackendAndControlRecord(c *gocheck.C) {
+	reply := map[string]interface{}{"GET": "mycname.com"}
+	conn = &resultCommandConn{reply: reply, fakeConn: &s.conn}
+	err := hipacheRouter{}.RemoveBackend("tip")
+	c.Assert(err, gocheck.IsNil)
+	expected := []command{
+		{cmd: "DEL", args: []interface{}{"frontend:tip.golang.org"}},
+		{cmd: "GET", args: []interface{}{"cname:tip"}},
+		{cmd: "DEL", args: []interface{}{"frontend:mycname.com"}},
+		{cmd: "DEL", args: []interface{}{"cname:tip"}},
 	}
 	c.Assert(s.conn.cmds, gocheck.DeepEquals, expected)
 }

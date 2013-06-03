@@ -63,7 +63,7 @@ func (hipacheRouter) AddBackend(name string) error {
 	return nil
 }
 
-func (hipacheRouter) RemoveBackend(name string) error {
+func (r hipacheRouter) RemoveBackend(name string) error {
 	domain, err := config.GetString("hipache:domain")
 	if err != nil {
 		return &routeError{"remove", err}
@@ -75,6 +75,21 @@ func (hipacheRouter) RemoveBackend(name string) error {
 	}
 	defer conn.Close()
 	_, err = conn.Do("DEL", frontend)
+	if err != nil {
+		return &routeError{"remove", err}
+	}
+	cname, err := r.getCName(name)
+	if err != nil {
+		return err
+	}
+	if cname == "" {
+		return nil
+	}
+	_, err = conn.Do("DEL", "frontend:"+cname)
+	if err != nil {
+		return &routeError{"remove", err}
+	}
+	_, err = conn.Do("DEL", "cname:"+name)
 	if err != nil {
 		return &routeError{"remove", err}
 	}
