@@ -799,6 +799,24 @@ func (app *App) SetCName(cname string) error {
 	)
 }
 
+func (app *App) UnsetCName() error {
+	if s, ok := Provisioner.(provision.CNameManager); ok {
+		if err := s.UnsetCName(app, app.CName); err != nil {
+			return err
+		}
+	}
+	conn, err := db.Conn()
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+	app.CName = ""
+	return conn.Apps().Update(
+		bson.M{"name": app.Name},
+		bson.M{"$set": bson.M{"cname": app.CName}},
+	)
+}
+
 // Log adds a log message to the app. Specifying a good source is good so the
 // user can filter where the message come from.
 func (app *App) Log(message, source string) error {

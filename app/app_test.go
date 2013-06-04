@@ -1322,6 +1322,33 @@ func (s *S) TestSetCNameCallsProvisionerSetCName(c *gocheck.C) {
 	c.Assert(hasCName, gocheck.Equals, true)
 }
 
+func (s *S) TestUnsetCNameRemovesFromDatabase(c *gocheck.C) {
+	a := App{Name: "ktulu"}
+	err := s.conn.Apps().Insert(a)
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	err = a.SetCName("ktulu.mycompany.com")
+	c.Assert(err, gocheck.IsNil)
+	err = a.UnsetCName()
+	c.Assert(err, gocheck.IsNil)
+	err = a.Get()
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(a.CName, gocheck.Equals, "")
+}
+
+func (s *S) TestUnsetCNameRemovesFromRouter(c *gocheck.C) {
+	a := App{Name: "ktulu"}
+	err := s.conn.Apps().Insert(a)
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	err = a.SetCName("ktulu.mycompany.com")
+	c.Assert(err, gocheck.IsNil)
+	err = a.UnsetCName()
+	c.Assert(err, gocheck.IsNil)
+	hasCName := s.provisioner.HasCName(&a, "ktulu.mycompany.com")
+	c.Assert(hasCName, gocheck.Equals, false)
+}
+
 func (s *S) TestIsValid(c *gocheck.C) {
 	var data = []struct {
 		name     string
