@@ -181,7 +181,7 @@ func (p *FakeProvisioner) getError(method string) error {
 			return fail.err
 		}
 		p.failures <- fail
-	case <-time.After(1e6):
+	default:
 	}
 	return nil
 }
@@ -437,7 +437,7 @@ func (p *FakeProvisioner) ExecuteCommand(stdout, stderr io.Writer, app provision
 				return fail.err
 			}
 			p.failures <- fail
-		case <-time.After(1e6):
+		default:
 			stdout.Write(output)
 		}
 	case fail := <-p.failures:
@@ -446,7 +446,7 @@ func (p *FakeProvisioner) ExecuteCommand(stdout, stderr io.Writer, app provision
 			select {
 			case output = <-p.outputs:
 				stderr.Write(output)
-			case <-time.After(1e6):
+			default:
 			}
 		} else {
 			p.failures <- fail
