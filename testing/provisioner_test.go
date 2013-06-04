@@ -112,6 +112,37 @@ func (s *S) TestPrepareFailure(c *gocheck.C) {
 	c.Assert(got.err.Error(), gocheck.Equals, "the body eletric")
 }
 
+func (s *S) TestDeploy(c *gocheck.C) {
+	var buf bytes.Buffer
+	app := NewFakeApp("soul", "arch", 1)
+	p := NewFakeProvisioner()
+	p.Provision(app)
+	err := p.Deploy(app, "1.0", &buf)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(buf.String(), gocheck.Equals, "Deploy called")
+	c.Assert(p.versions[app.GetName()], gocheck.Equals, "1.0")
+}
+
+func (s *S) TestDeployUnknownApp(c *gocheck.C) {
+	var buf bytes.Buffer
+	app := NewFakeApp("soul", "arch", 1)
+	p := NewFakeProvisioner()
+	err := p.Deploy(app, "1.0", &buf)
+	c.Assert(err, gocheck.NotNil)
+	c.Assert(err.Error(), gocheck.Equals, "App is not provisioned.")
+}
+
+func (s *S) TestDeployWithPreparedFailure(c *gocheck.C) {
+	var buf bytes.Buffer
+	err := errors.New("not really")
+	app := NewFakeApp("soul", "arch", 1)
+	p := NewFakeProvisioner()
+	p.PrepareFailure("Deploy", err)
+	e := p.Deploy(app, "1.0", &buf)
+	c.Assert(e, gocheck.NotNil)
+	c.Assert(e, gocheck.Equals, err)
+}
+
 func (s *S) TestProvision(c *gocheck.C) {
 	app := NewFakeApp("kid-gloves", "rush", 1)
 	p := NewFakeProvisioner()

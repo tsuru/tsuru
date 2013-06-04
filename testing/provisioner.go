@@ -168,6 +168,7 @@ type FakeProvisioner struct {
 	restMut     sync.Mutex
 	installDeps map[string]int
 	depsMut     sync.Mutex
+	versions    map[string]string
 	cnames      map[string]string
 }
 
@@ -179,6 +180,7 @@ func NewFakeProvisioner() *FakeProvisioner {
 	p.restarts = make(map[string]int)
 	p.installDeps = make(map[string]int)
 	p.cnames = make(map[string]string)
+	p.versions = make(map[string]string)
 	p.unitLen = 0
 	return &p
 }
@@ -205,11 +207,6 @@ func (p *FakeProvisioner) InstalledDeps(app provision.App) int {
 	p.depsMut.Lock()
 	defer p.depsMut.Unlock()
 	return p.installDeps[app.GetName()]
-}
-
-func (p *FakeProvisioner) Deploy(app provision.App, w io.Writer) error {
-	w.Write([]byte("Deploy called"))
-	return nil
 }
 
 // Returns the number of calls to restart.
@@ -272,6 +269,19 @@ func (p *FakeProvisioner) Reset() {
 			return
 		}
 	}
+}
+
+func (p *FakeProvisioner) Deploy(app provision.App, version string, w io.Writer) error {
+	if err := p.getError("Deploy"); err != nil {
+		return err
+	}
+	index := p.FindApp(app)
+	if index < 0 {
+		return &provision.Error{Reason: "App is not provisioned."}
+	}
+	w.Write([]byte("Deploy called"))
+	p.versions[app.GetName()] = version
+	return nil
 }
 
 func (p *FakeProvisioner) Provision(app provision.App) error {
