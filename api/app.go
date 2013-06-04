@@ -49,7 +49,7 @@ func cloneRepository(w http.ResponseWriter, r *http.Request, t *auth.Token) erro
 		return &errors.HTTP{Code: http.StatusNotFound, Message: fmt.Sprintf("App %s not found.", instance.Name)}
 	}
 	logger := app.LogWriter{App: instance, Writer: w}
-	return app.Provisioner.Deploy(instance, &logger)
+	return app.Provisioner.Deploy(instance, "master", &logger)
 }
 
 func appIsAvailable(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
