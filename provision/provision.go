@@ -90,7 +90,9 @@ type CNameManager interface {
 // Tsuru comes with a default provisioner: juju. One can add other provisioners
 // by satisfying this interface and registering it using the function Register.
 type Provisioner interface {
-	Deploy(App, io.Writer) error
+	// Deploy updates the code of the app in units to match the given
+	// version, logging progress in the given writer.
+	Deploy(app App, version string, w io.Writer) error
 
 	// Provision is called when tsuru is creating the app.
 	Provision(App) error
