@@ -85,7 +85,7 @@ func (s *S) TestDeployShouldCallDockerCreate(c *gocheck.C) {
 	p.Provision(app)
 	defer p.Destroy(app)
 	w := &bytes.Buffer{}
-	err := p.Deploy(app, w)
+	err := p.Deploy(app, "master", w)
 	defer p.Destroy(app)
 	defer s.conn.Collection(s.collName).RemoveId(out)
 	c.Assert(err, gocheck.IsNil)
@@ -139,7 +139,7 @@ func (s *S) TestDeployShouldReplaceAllContainers(c *gocheck.C) {
 	setExecut(fexec)
 	defer setExecut(nil)
 	var w bytes.Buffer
-	err := p.Deploy(app, &w)
+	err := p.Deploy(app, "master", &w)
 	defer p.Destroy(app)
 	defer s.conn.Collection(s.collName).RemoveId(out)
 	c.Assert(err, gocheck.IsNil)
@@ -170,7 +170,7 @@ func (s *S) TestDeployShouldRestart(c *gocheck.C) {
 	p.Provision(app)
 	defer p.Destroy(app)
 	w := &bytes.Buffer{}
-	err := p.Deploy(app, w)
+	err := p.Deploy(app, "master", w)
 	defer p.Destroy(app)
 	defer s.conn.Collection(s.collName).RemoveId(out)
 	c.Assert(err, gocheck.IsNil)
@@ -193,7 +193,7 @@ func (s *S) TestDeployFailureFirstStep(c *gocheck.C) {
 	}
 	setExecut(&fexec)
 	defer setExecut(nil)
-	err := p.Deploy(app, &buf)
+	err := p.Deploy(app, "master", &buf)
 	c.Assert(err, gocheck.NotNil)
 }
 
@@ -226,7 +226,7 @@ func (s *S) TestDeployFailureSecondStep(c *gocheck.C) {
 	}
 	setExecut(&fexec)
 	defer setExecut(nil)
-	err := p.Deploy(app, &buf)
+	err := p.Deploy(app, "master", &buf)
 	c.Assert(err, gocheck.NotNil)
 	c.Assert(buf.String(), gocheck.Equals, "c-0955")
 	c.Assert(fexec.ExecutedCmd("docker", []string{"rm", "c-0955"}), gocheck.Equals, true)
@@ -328,7 +328,7 @@ func (s *S) TestProvisionerAddr(c *gocheck.C) {
 	p.Provision(app)
 	defer p.Destroy(app)
 	w := &bytes.Buffer{}
-	err := p.Deploy(app, w)
+	err := p.Deploy(app, "master", w)
 	c.Assert(err, gocheck.IsNil)
 	defer p.Destroy(app)
 	defer s.conn.Collection(s.collName).RemoveId(id)
