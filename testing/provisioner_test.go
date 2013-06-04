@@ -443,14 +443,32 @@ func (s *S) TestInstallDepsFailure(c *gocheck.C) {
 func (s *S) TestSetCName(c *gocheck.C) {
 	app := NewFakeApp("jean", "mj", 0)
 	p := NewFakeProvisioner()
+	p.Provision(app)
 	err := p.SetCName(app, "cname.com")
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(p.apps[app.GetName()].cname, gocheck.Equals, "cname.com")
 }
 
-func (s *S) TestUnsetCname(c *gocheck.C) {
+func (s *S) TestSetCNameNotProvisioned(c *gocheck.C) {
 	app := NewFakeApp("jean", "mj", 0)
 	p := NewFakeProvisioner()
+	err := p.SetCName(app, "cname.com")
+	c.Assert(err, gocheck.Equals, errNotProvisioned)
+}
+
+func (s *S) TestSetCNameFailure(c *gocheck.C) {
+	app := NewFakeApp("jean", "mj", 0)
+	p := NewFakeProvisioner()
+	p.PrepareFailure("SetCName", errors.New("wut"))
+	err := p.SetCName(app, "cname.com")
+	c.Assert(err, gocheck.NotNil)
+	c.Assert(err.Error(), gocheck.Equals, "wut")
+}
+
+func (s *S) TestUnsetCName(c *gocheck.C) {
+	app := NewFakeApp("jean", "mj", 0)
+	p := NewFakeProvisioner()
+	p.Provision(app)
 	err := p.SetCName(app, "cname.com")
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(p.apps[app.GetName()].cname, gocheck.Equals, "cname.com")
@@ -462,6 +480,7 @@ func (s *S) TestUnsetCname(c *gocheck.C) {
 func (s *S) TestHasCName(c *gocheck.C) {
 	app := NewFakeApp("jean", "mj", 0)
 	p := NewFakeProvisioner()
+	p.Provision(app)
 	err := p.SetCName(app, "cname.com")
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(p.HasCName(app, "cname.com"), gocheck.Equals, true)
