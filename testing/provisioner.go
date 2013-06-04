@@ -231,6 +231,13 @@ func (p *FakeProvisioner) GetUnits(app provision.App) []provision.Unit {
 	return pApp.units
 }
 
+// Version returns the last deployed for a given app.
+func (p *FakeProvisioner) Version(app provision.App) string {
+	p.mut.RLock()
+	defer p.mut.RUnlock()
+	return p.apps[app.GetName()].version
+}
+
 // PrepareOutput sends the given slice of bytes to a queue of outputs.
 //
 // Each prepared output will be used in the ExecuteCommand. It might be sent to

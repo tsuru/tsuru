@@ -97,6 +97,19 @@ func (s *S) TestGetUnits(c *gocheck.C) {
 	c.Assert(units, gocheck.DeepEquals, list)
 }
 
+func (s *S) TestVersion(c *gocheck.C) {
+	var buf bytes.Buffer
+	app := NewFakeApp("free", "matos", 1)
+	p := NewFakeProvisioner()
+	p.Provision(app)
+	err := p.Deploy(app, "master", &buf)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(p.Version(app), gocheck.Equals, "master")
+	err = p.Deploy(app, "1.0", &buf)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(p.Version(app), gocheck.Equals, "1.0")
+}
+
 func (s *S) TestPrepareOutput(c *gocheck.C) {
 	output := []byte("the body eletric")
 	p := NewFakeProvisioner()
