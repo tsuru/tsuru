@@ -519,9 +519,15 @@ func (p *FakeProvisioner) SetCName(app provision.App, cname string) error {
 }
 
 func (p *FakeProvisioner) UnsetCName(app provision.App, cname string) error {
+	if err := p.getError("UnsetCName"); err != nil {
+		return err
+	}
 	p.mut.Lock()
 	defer p.mut.Unlock()
-	pApp, _ := p.apps[app.GetName()]
+	pApp, ok := p.apps[app.GetName()]
+	if !ok {
+		return errNotProvisioned
+	}
 	pApp.cname = ""
 	p.apps[app.GetName()] = pApp
 	return nil

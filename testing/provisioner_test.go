@@ -477,6 +477,22 @@ func (s *S) TestUnsetCName(c *gocheck.C) {
 	c.Assert(p.HasCName(app, "cname.com"), gocheck.Equals, false)
 }
 
+func (s *S) TestUnsetCNameNotProvisioned(c *gocheck.C) {
+	app := NewFakeApp("jean", "mj", 0)
+	p := NewFakeProvisioner()
+	err := p.UnsetCName(app, "cname.com")
+	c.Assert(err, gocheck.Equals, errNotProvisioned)
+}
+
+func (s *S) TestUnsetCNameFailure(c *gocheck.C) {
+	app := NewFakeApp("jean", "mj", 0)
+	p := NewFakeProvisioner()
+	p.PrepareFailure("UnsetCName", errors.New("wut"))
+	err := p.UnsetCName(app, "cname.com")
+	c.Assert(err, gocheck.NotNil)
+	c.Assert(err.Error(), gocheck.Equals, "wut")
+}
+
 func (s *S) TestHasCName(c *gocheck.C) {
 	app := NewFakeApp("jean", "mj", 0)
 	p := NewFakeProvisioner()
