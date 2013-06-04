@@ -136,7 +136,7 @@ func (p *JujuProvisioner) Restart(app provision.App) error {
 	return nil
 }
 
-func (p *JujuProvisioner) Deploy(a provision.App, w io.Writer) error {
+func (p *JujuProvisioner) Deploy(a provision.App, version string, w io.Writer) error {
 	return deploy.Git(p, a, w)
 }
 
