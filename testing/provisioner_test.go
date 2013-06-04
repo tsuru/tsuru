@@ -130,8 +130,7 @@ func (s *S) TestDeployUnknownApp(c *gocheck.C) {
 	app := NewFakeApp("soul", "arch", 1)
 	p := NewFakeProvisioner()
 	err := p.Deploy(app, "1.0", &buf)
-	c.Assert(err, gocheck.NotNil)
-	c.Assert(err.Error(), gocheck.Equals, "App is not provisioned.")
+	c.Assert(err, gocheck.Equals, errNotProvisioned)
 }
 
 func (s *S) TestDeployWithPreparedFailure(c *gocheck.C) {
@@ -188,9 +187,17 @@ func (s *S) TestDoubleProvision(c *gocheck.C) {
 func (s *S) TestRestart(c *gocheck.C) {
 	app := NewFakeApp("kid-gloves", "rush", 1)
 	p := NewFakeProvisioner()
+	p.Provision(app)
 	err := p.Restart(app)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(p.Restarts(app), gocheck.Equals, 1)
+}
+
+func (s *S) TestRestartNotProvisioned(c *gocheck.C) {
+	app := NewFakeApp("kid-gloves", "rush", 1)
+	p := NewFakeProvisioner()
+	err := p.Restart(app)
+	c.Assert(err, gocheck.Equals, errNotProvisioned)
 }
 
 func (s *S) TestRestartWithPreparedFailure(c *gocheck.C) {
@@ -224,8 +231,7 @@ func (s *S) TestDestroyNotProvisionedApp(c *gocheck.C) {
 	app := NewFakeApp("red-lenses", "rush", 1)
 	p := NewFakeProvisioner()
 	err := p.Destroy(app)
-	c.Assert(err, gocheck.NotNil)
-	c.Assert(err.Error(), gocheck.Equals, "App is not provisioned.")
+	c.Assert(err, gocheck.Equals, errNotProvisioned)
 }
 
 func (s *S) TestAddUnits(c *gocheck.C) {
@@ -262,8 +268,7 @@ func (s *S) TestAddUnitsUnprovisionedApp(c *gocheck.C) {
 	p := NewFakeProvisioner()
 	units, err := p.AddUnits(app, 1)
 	c.Assert(units, gocheck.IsNil)
-	c.Assert(err, gocheck.NotNil)
-	c.Assert(err.Error(), gocheck.Equals, "App is not provisioned.")
+	c.Assert(err, gocheck.Equals, errNotProvisioned)
 }
 
 func (s *S) TestAddUnitsFailure(c *gocheck.C) {
@@ -291,8 +296,7 @@ func (s *S) TestRemoveUnitFromUnprivisionedApp(c *gocheck.C) {
 	app := NewFakeApp("hemispheres", "rush", 0)
 	p := NewFakeProvisioner()
 	err := p.RemoveUnit(app, "hemispheres/1")
-	c.Assert(err, gocheck.NotNil)
-	c.Assert(err.Error(), gocheck.Equals, "App is not provisioned.")
+	c.Assert(err, gocheck.Equals, errNotProvisioned)
 }
 
 func (s *S) TestRemoveUnknownUnit(c *gocheck.C) {

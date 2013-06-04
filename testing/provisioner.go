@@ -14,6 +14,8 @@ import (
 	"time"
 )
 
+var errNotProvisioned = &provision.Error{Reason: "App is not provisioned."}
+
 func init() {
 	provision.Register("fake", &FakeProvisioner{})
 }
@@ -278,7 +280,7 @@ func (p *FakeProvisioner) Deploy(app provision.App, version string, w io.Writer)
 	defer p.mut.Unlock()
 	pApp, ok := p.apps[app.GetName()]
 	if !ok {
-		return &provision.Error{Reason: "App is not provisioned."}
+		return errNotProvisioned
 	}
 	w.Write([]byte("Deploy called"))
 	pApp.version = version
@@ -319,7 +321,10 @@ func (p *FakeProvisioner) Restart(app provision.App) error {
 	}
 	p.mut.Lock()
 	defer p.mut.Unlock()
-	pApp, _ := p.apps[app.GetName()]
+	pApp, ok := p.apps[app.GetName()]
+	if !ok {
+		return errNotProvisioned
+	}
 	pApp.restarts++
 	p.apps[app.GetName()] = pApp
 	return nil
@@ -330,7 +335,7 @@ func (p *FakeProvisioner) Destroy(app provision.App) error {
 		return err
 	}
 	if !p.Provisioned(app) {
-		return &provision.Error{Reason: "App is not provisioned."}
+		return errNotProvisioned
 	}
 	p.mut.Lock()
 	defer p.mut.Unlock()
@@ -349,7 +354,7 @@ func (p *FakeProvisioner) AddUnits(app provision.App, n uint) ([]provision.Unit,
 	defer p.mut.Unlock()
 	pApp, ok := p.apps[app.GetName()]
 	if !ok {
-		return nil, errors.New("App is not provisioned.")
+		return nil, errNotProvisioned
 	}
 	name := app.GetName()
 	platform := app.GetPlatform()
@@ -382,7 +387,7 @@ func (p *FakeProvisioner) RemoveUnit(app provision.App, name string) error {
 	defer p.mut.Unlock()
 	pApp, ok := p.apps[app.GetName()]
 	if !ok {
-		return errors.New("App is not provisioned.")
+		return errNotProvisioned
 	}
 	for i, unit := range pApp.units {
 		if unit.Name == name {
