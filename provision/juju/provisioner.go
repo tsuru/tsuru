@@ -464,14 +464,6 @@ func (p *JujuProvisioner) LoadBalancer() *ELBManager {
 	return nil
 }
 
-func (p *JujuProvisioner) SetCName(app provision.App, cname string) error {
-	return nil
-}
-
-func (p *JujuProvisioner) UnsetCName(app provision.App, cname string) error {
-	return nil
-}
-
 // instance represents a unit in the database.
 type instance struct {
 	UnitName   string `bson:"_id"`

@@ -229,14 +229,6 @@ func (*LXCProvisioner) InstallDeps(app provision.App, w io.Writer) error {
 	return app.Run("/var/lib/tsuru/hooks/dependencies", w)
 }
 
-func (*LXCProvisioner) SetCName(app provision.App, cname string) error {
-	return nil
-}
-
-func (*LXCProvisioner) UnsetCName(app provision.App, cname string) error {
-	return nil
-}
-
 func (*LXCProvisioner) ExecuteCommand(stdout, stderr io.Writer, app provision.App, cmd string, args ...string) error {
 	arguments := []string{"-l", "ubuntu", "-q", "-o", "StrictHostKeyChecking no"}
 	arguments = append(arguments, app.ProvisionUnits()[0].GetIp())
