@@ -55,7 +55,6 @@ func (hipacheRouter) AddBackend(name string) error {
 	if err != nil {
 		return &routeError{"add", err}
 	}
-	defer conn.Close()
 	_, err = conn.Do("RPUSH", frontend, name)
 	if err != nil {
 		return &routeError{"add", err}
@@ -73,7 +72,6 @@ func (r hipacheRouter) RemoveBackend(name string) error {
 	if err != nil {
 		return &routeError{"remove", err}
 	}
-	defer conn.Close()
 	_, err = conn.Do("DEL", frontend)
 	if err != nil {
 		return &routeError{"remove", err}
@@ -120,7 +118,6 @@ func (hipacheRouter) addRoute(name, address string) error {
 	if err != nil {
 		return &routeError{"add", err}
 	}
-	defer conn.Close()
 	_, err = conn.Do("RPUSH", name, address)
 	if err != nil {
 		return &routeError{"add", err}
@@ -170,7 +167,6 @@ func (hipacheRouter) SetCName(cname, name string) error {
 	if err != nil {
 		return &routeError{"addCName", err}
 	}
-	defer conn.Close()
 	addresses, err := redis.Strings(conn.Do("LRANGE", frontend, 0, -1))
 	if err != nil {
 		return &routeError{"get", err}
@@ -194,7 +190,6 @@ func (r hipacheRouter) UnsetCName(cname, name string) error {
 	if err != nil {
 		return &routeError{"removeCName", err}
 	}
-	defer conn.Close()
 	_, err = conn.Do("DEL", "cname:"+name)
 	if err != nil {
 		return &routeError{"removeCName", err}
@@ -216,7 +211,6 @@ func (hipacheRouter) Addr(name string) (string, error) {
 	if err != nil {
 		return "", &routeError{"get", err}
 	}
-	defer conn.Close()
 	reply, err := conn.Do("LRANGE", frontend, 0, 0)
 	if err != nil {
 		return "", &routeError{"get", err}
@@ -233,7 +227,6 @@ func (hipacheRouter) removeElement(name, address string) error {
 	if err != nil {
 		return &routeError{"remove", err}
 	}
-	defer conn.Close()
 	_, err = conn.Do("LREM", name, 0, address)
 	if err != nil {
 		return &routeError{"remove", err}
