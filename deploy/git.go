@@ -58,7 +58,7 @@ func checkout(p provision.Provisioner, app provision.App, version string) ([]byt
 	return nil, nil
 }
 
-func Git(provisioner provision.Provisioner, app provision.App, w io.Writer) error {
+func Git(provisioner provision.Provisioner, app provision.App, objID string, w io.Writer) error {
 	log.Write(w, []byte("\n ---> Tsuru receiving push\n"))
 	log.Write(w, []byte("\n ---> Replicating the application repository across units\n"))
 	out, err := clone(provisioner, app)
@@ -66,11 +66,16 @@ func Git(provisioner provision.Provisioner, app provision.App, w io.Writer) erro
 		out, err = pull(provisioner, app)
 	}
 	if err != nil {
-		msg := fmt.Sprintf("Got error while clonning/pulling repository: %s -- \n%s", err.Error(), string(out))
+		msg := fmt.Sprintf("Got error while cloning/fetching repository: %s -- \n%s", err.Error(), string(out))
 		log.Write(w, []byte(msg))
 		return errors.New(msg)
 	}
-	log.Write(w, out)
+	out, err = checkout(provisioner, app, objID)
+	if err != nil {
+		msg := fmt.Sprintf("Failed to checkout Git repository: %s -- \n%s", err, string(out))
+		log.Write(w, []byte(msg))
+		return errors.New(msg)
+	}
 	log.Write(w, []byte("\n ---> Installing dependencies\n"))
 	if err := provisioner.InstallDeps(app, w); err != nil {
 		log.Write(w, []byte(err.Error()))
