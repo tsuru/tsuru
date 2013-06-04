@@ -197,12 +197,14 @@ func (p *FakeProvisioner) getError(method string) error {
 	return nil
 }
 
+// Restarts returns the number of restarts for a given app.
 func (p *FakeProvisioner) Restarts(app provision.App) int {
 	p.restMut.Lock()
 	defer p.restMut.Unlock()
 	return p.restarts[app.GetName()]
 }
 
+// InstalledDeps returns the number of InstallDeps calls for the given app.
 func (p *FakeProvisioner) InstalledDeps(app provision.App) int {
 	p.depsMut.Lock()
 	defer p.depsMut.Unlock()
@@ -225,7 +227,12 @@ func (p *FakeProvisioner) GetCmds(cmd string, app provision.App) []Cmd {
 	return cmds
 }
 
-func (p *FakeProvisioner) FindApp(app provision.App) int {
+// Provisioned checks whether the given app has been provisioned.
+func (p *FakeProvisioner) Provisioned(app provision.App) bool {
+	return p.findApp(app) > -1
+}
+
+func (p *FakeProvisioner) findApp(app provision.App) int {
 	for i, a := range p.apps {
 		if a.GetName() == app.GetName() {
 			return i
@@ -240,14 +247,28 @@ func (p *FakeProvisioner) GetUnits(app provision.App) []provision.Unit {
 	return p.units[app.GetName()]
 }
 
+// PrepareOutput sends the given slice of bytes to a queue of outputs.
+//
+// Each prepared output will be used in the ExecuteCommand. It might be sent to
+// the standard output or standard error. See ExecuteCommand docs for more
+// details.
 func (p *FakeProvisioner) PrepareOutput(b []byte) {
 	p.outputs <- b
 }
 
+// PrepareFailure prepares a failure for the given method name.
+//
+// For instance, PrepareFailure("Deploy", errors.New("Deploy failed")) will
+// cause next Deploy call to return the given error. Multiple calls to this
+// method will enqueue failures, i.e. three calls to
+// PrepareFailure("Deploy"...) means that the three next Deploy call will fail.
 func (p *FakeProvisioner) PrepareFailure(method string, err error) {
 	p.failures <- failure{method, err}
 }
 
+// Reset cleans up the FakeProvisioner, deleting all apps and their data. It
+// also deletes prepared failures and output. It's like calling
+// NewFakeProvisioner again, without all the allocations.
 func (p *FakeProvisioner) Reset() {
 	p.unitMut.Lock()
 	p.units = make(map[string][]provision.Unit)
@@ -275,7 +296,7 @@ func (p *FakeProvisioner) Deploy(app provision.App, version string, w io.Writer)
 	if err := p.getError("Deploy"); err != nil {
 		return err
 	}
-	index := p.FindApp(app)
+	index := p.findApp(app)
 	if index < 0 {
 		return &provision.Error{Reason: "App is not provisioned."}
 	}
@@ -288,7 +309,7 @@ func (p *FakeProvisioner) Provision(app provision.App) error {
 	if err := p.getError("Provision"); err != nil {
 		return err
 	}
-	index := p.FindApp(app)
+	index := p.findApp(app)
 	if index > -1 {
 		return &provision.Error{Reason: "App already provisioned."}
 	}
@@ -326,7 +347,7 @@ func (p *FakeProvisioner) Destroy(app provision.App) error {
 	if err := p.getError("Destroy"); err != nil {
 		return err
 	}
-	index := p.FindApp(app)
+	index := p.findApp(app)
 	if index == -1 {
 		return &provision.Error{Reason: "App is not provisioned."}
 	}
@@ -349,7 +370,7 @@ func (p *FakeProvisioner) AddUnits(app provision.App, n uint) ([]provision.Unit,
 	if n == 0 {
 		return nil, errors.New("Cannot add 0 units.")
 	}
-	index := p.FindApp(app)
+	index := p.findApp(app)
 	if index < 0 {
 		return nil, errors.New("App is not provisioned.")
 	}
@@ -382,7 +403,7 @@ func (p *FakeProvisioner) RemoveUnit(app provision.App, name string) error {
 	}
 	index := -1
 	appName := app.GetName()
-	if index := p.FindApp(app); index < 0 {
+	if index := p.findApp(app); index < 0 {
 		return errors.New("App is not provisioned.")
 	}
 	p.unitMut.Lock()
@@ -402,6 +423,16 @@ func (p *FakeProvisioner) RemoveUnit(app provision.App, name string) error {
 	return nil
 }
 
+// ExecuteCommand will pretend to execute the given command, recording data
+// about it.
+//
+// The output of the command must be prepared with PrepareOutput, and failures
+// must be prepared with PrepareFailure. In case of failure, the prepared
+// output will be sent to the standard error stream, otherwise, it will be sent
+// to the standard error stream.
+//
+// When there is no output nor failure prepared, ExecuteCommand will return a
+// timeout error.
 func (p *FakeProvisioner) ExecuteCommand(stdout, stderr io.Writer, app provision.App, cmd string, args ...string) error {
 	var (
 		output []byte

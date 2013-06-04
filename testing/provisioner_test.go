@@ -44,14 +44,24 @@ func (s *S) TestFakeAppReady(c *gocheck.C) {
 	c.Assert(app.IsReady(), gocheck.Equals, true)
 }
 
+func (s *S) TestProvisioned(c *gocheck.C) {
+	app := NewFakeApp("red-sector", "rush", 1)
+	p := NewFakeProvisioner()
+	p.apps = []provision.App{app}
+	c.Assert(p.Provisioned(app), gocheck.Equals, true)
+	otherapp := *app
+	otherapp.name = "blue-sector"
+	c.Assert(p.Provisioned(&otherapp), gocheck.Equals, false)
+}
+
 func (s *S) TestFindApp(c *gocheck.C) {
 	app := NewFakeApp("red-sector", "rush", 1)
 	p := NewFakeProvisioner()
 	p.apps = []provision.App{app}
-	c.Assert(p.FindApp(app), gocheck.Equals, 0)
+	c.Assert(p.findApp(app), gocheck.Equals, 0)
 	otherapp := *app
 	otherapp.name = "blue-sector"
-	c.Assert(p.FindApp(&otherapp), gocheck.Equals, -1)
+	c.Assert(p.findApp(&otherapp), gocheck.Equals, -1)
 }
 
 func (s *S) TestRestarts(c *gocheck.C) {
@@ -206,7 +216,7 @@ func (s *S) TestDestroy(c *gocheck.C) {
 	p.restarts = map[string]int{app.GetName(): 2}
 	err := p.Destroy(app)
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(p.FindApp(app), gocheck.Equals, -1)
+	c.Assert(p.findApp(app), gocheck.Equals, -1)
 	c.Assert(p.apps, gocheck.DeepEquals, []provision.App{})
 	_, ok := p.restarts[app.GetName()]
 	c.Assert(ok, gocheck.Equals, false)
