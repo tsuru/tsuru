@@ -192,7 +192,7 @@ func (p *LXCProvisioner) Restart(app provision.App) error {
 	return nil
 }
 
-func (p *LXCProvisioner) Deploy(a provision.App, w io.Writer) error {
+func (p *LXCProvisioner) Deploy(a provision.App, version string, w io.Writer) error {
 	return deploy.Git(p, a, w)
 }
 

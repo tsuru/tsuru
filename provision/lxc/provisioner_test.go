@@ -117,7 +117,7 @@ func (s *S) TestDeploy(c *gocheck.C) {
 	app := testing.NewFakeApp("cribcaged", "python", 1)
 	w := &bytes.Buffer{}
 	p := LXCProvisioner{}
-	err = p.Deploy(app, w)
+	err = p.Deploy(app, "master", w)
 	c.Assert(err, gocheck.IsNil)
 }
 
