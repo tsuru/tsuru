@@ -17,6 +17,7 @@ func (s *S) TestDeploy(c *gocheck.C) {
 	provisioner := testing.NewFakeProvisioner()
 	provisioner.PrepareOutput([]byte("cloned"))
 	app := testing.NewFakeApp("cribcaged", "python", 1)
+	provisioner.Provision(app)
 	w := &bytes.Buffer{}
 	err := Git(provisioner, app, w)
 	c.Assert(err, gocheck.IsNil)
@@ -30,6 +31,7 @@ func (s *S) TestDeployLogsActions(c *gocheck.C) {
 	provisioner := testing.NewFakeProvisioner()
 	provisioner.PrepareOutput([]byte(""))
 	app := testing.NewFakeApp("cribcaged", "python", 1)
+	provisioner.Provision(app)
 	w := &bytes.Buffer{}
 	err := Git(provisioner, app, w)
 	c.Assert(err, gocheck.IsNil)
