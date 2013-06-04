@@ -6,6 +6,7 @@ package deploy
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"github.com/globocom/config"
 	"github.com/globocom/tsuru/repository"
@@ -92,4 +93,36 @@ func (s *S) TestPullRepositoryUndefinedPath(c *gocheck.C) {
 	_, err := pull(nil, nil)
 	c.Assert(err, gocheck.NotNil)
 	c.Assert(err.Error(), gocheck.Equals, `Tsuru is misconfigured: key "git:unit-repo" not found`)
+}
+
+func (s *S) TestCheckout(c *gocheck.C) {
+	p := testing.NewFakeProvisioner()
+	p.PrepareOutput([]byte("updated"))
+	app := testing.NewFakeApp("moon", "python", 1)
+	out, err := checkout(p, app, "5734f0042844fdeb5bbc1b72b18f2dc1779cade7")
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(out, gocheck.IsNil)
+	path, _ := repository.GetPath()
+	expectedCommand := fmt.Sprintf("cd %s && git checkout 5734f0042844fdeb5bbc1b72b18f2dc1779cade7", path)
+	c.Assert(p.GetCmds(expectedCommand, app), gocheck.HasLen, 1)
+}
+
+func (s *S) TestCheckoutUndefinedPath(c *gocheck.C) {
+	old, _ := config.Get("git:unit-repo")
+	config.Unset("git:unit-repo")
+	defer config.Set("git:unit-repo", old)
+	_, err := checkout(nil, nil, "")
+	c.Assert(err, gocheck.NotNil)
+	c.Assert(err.Error(), gocheck.Equals, `Tsuru is misconfigured: key "git:unit-repo" not found`)
+}
+
+func (s *S) TestCheckoutFailure(c *gocheck.C) {
+	p := testing.NewFakeProvisioner()
+	p.PrepareOutput([]byte("failed to update"))
+	p.PrepareFailure("ExecuteCommand", errors.New("exit status 128"))
+	app := testing.NewFakeApp("moon", "python", 1)
+	out, err := checkout(p, app, "5734f0042844fdeb5bbc1b72b18f2dc1779cade7")
+	c.Assert(err, gocheck.NotNil)
+	c.Assert(err.Error(), gocheck.Equals, "exit status 128")
+	c.Assert(string(out), gocheck.Equals, "failed to update")
 }

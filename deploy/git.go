@@ -14,7 +14,7 @@ import (
 	"io"
 )
 
-// Clone runs a git clone to clone the app repository in an ap.
+// Clone runs a git clone to clone the app repository in an app.
 func clone(p provision.Provisioner, app provision.App) ([]byte, error) {
 	var buf bytes.Buffer
 	path, err := repository.GetPath()
@@ -28,7 +28,7 @@ func clone(p provision.Provisioner, app provision.App) ([]byte, error) {
 	return b, err
 }
 
-// Pull runs a git pull to update the code in an app
+// fetch runs a git fetch to update the code in the app.
 //
 // It works like Clone, pulling from the app bare repository.
 func pull(p provision.Provisioner, app provision.App) ([]byte, error) {
@@ -42,6 +42,20 @@ func pull(p provision.Provisioner, app provision.App) ([]byte, error) {
 	b := buf.Bytes()
 	log.Printf(`"git pull" output: %s`, b)
 	return b, err
+}
+
+// checkout updates the Git repository of the app to the given version.
+func checkout(p provision.Provisioner, app provision.App, version string) ([]byte, error) {
+	var buf bytes.Buffer
+	path, err := repository.GetPath()
+	if err != nil {
+		return nil, fmt.Errorf("Tsuru is misconfigured: %s", err)
+	}
+	cmd := fmt.Sprintf("cd %s && git checkout %s", path, version)
+	if err := p.ExecuteCommand(&buf, &buf, app, cmd); err != nil {
+		return buf.Bytes(), err
+	}
+	return nil, nil
 }
 
 func Git(provisioner provision.Provisioner, app provision.App, w io.Writer) error {
