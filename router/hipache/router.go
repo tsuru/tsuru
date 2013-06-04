@@ -147,15 +147,6 @@ func (hipacheRouter) getCName(name string) (string, error) {
 	return cname, nil
 }
 
-// TEST ME!
-func (hipacheRouter) getRoutes(frontend string) ([]string, error) {
-	conn, err := connect()
-	if err != nil {
-		return []string{}, err
-	}
-	return redis.Strings(conn.Do("LRANGE", frontend, 0, -1))
-}
-
 func (r hipacheRouter) SetCName(cname, name string) error {
 	domain, err := config.GetString("hipache:domain")
 	if err != nil {
