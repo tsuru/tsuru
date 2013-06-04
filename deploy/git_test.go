@@ -83,11 +83,11 @@ func (s *S) TestPullRepository(c *gocheck.C) {
 	p := testing.NewFakeProvisioner()
 	p.PrepareOutput([]byte("pulled"))
 	app := testing.NewFakeApp("your", "python", 1)
-	out, err := pull(p, app)
+	out, err := fetch(p, app)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(string(out), gocheck.Equals, "pulled")
 	path, _ := repository.GetPath()
-	expectedCommand := fmt.Sprintf("cd %s && git pull origin master", path)
+	expectedCommand := fmt.Sprintf("cd %s && git fetch origin", path)
 	c.Assert(p.GetCmds(expectedCommand, app), gocheck.HasLen, 1)
 }
 
@@ -95,7 +95,7 @@ func (s *S) TestPullRepositoryUndefinedPath(c *gocheck.C) {
 	old, _ := config.Get("git:unit-repo")
 	config.Unset("git:unit-repo")
 	defer config.Set("git:unit-repo", old)
-	_, err := pull(nil, nil)
+	_, err := fetch(nil, nil)
 	c.Assert(err, gocheck.NotNil)
 	c.Assert(err.Error(), gocheck.Equals, `Tsuru is misconfigured: key "git:unit-repo" not found`)
 }

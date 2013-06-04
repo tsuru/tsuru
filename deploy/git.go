@@ -31,13 +31,13 @@ func clone(p provision.Provisioner, app provision.App) ([]byte, error) {
 // fetch runs a git fetch to update the code in the app.
 //
 // It works like Clone, pulling from the app bare repository.
-func pull(p provision.Provisioner, app provision.App) ([]byte, error) {
+func fetch(p provision.Provisioner, app provision.App) ([]byte, error) {
 	var buf bytes.Buffer
 	path, err := repository.GetPath()
 	if err != nil {
 		return nil, fmt.Errorf("Tsuru is misconfigured: %s", err)
 	}
-	cmd := fmt.Sprintf("cd %s && git pull origin master", path)
+	cmd := fmt.Sprintf("cd %s && git fetch origin", path)
 	err = p.ExecuteCommand(&buf, &buf, app, cmd)
 	b := buf.Bytes()
 	log.Printf(`"git pull" output: %s`, b)
@@ -63,7 +63,7 @@ func Git(provisioner provision.Provisioner, app provision.App, objID string, w i
 	log.Write(w, []byte("\n ---> Replicating the application repository across units\n"))
 	out, err := clone(provisioner, app)
 	if err != nil {
-		out, err = pull(provisioner, app)
+		out, err = fetch(provisioner, app)
 	}
 	if err != nil {
 		msg := fmt.Sprintf("Got error while cloning/fetching repository: %s -- \n%s", err.Error(), string(out))
