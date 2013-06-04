@@ -120,6 +120,11 @@ func (s *S) TestFakeFileWriteString(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(ret, gocheck.Equals, len("break"))
 	c.Assert(f.content, gocheck.Equals, "break")
+	f.current = int64(ret)
+	ret, err = f.WriteString("break")
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(ret, gocheck.Equals, len("break"))
+	c.Assert(f.content, gocheck.Equals, "breakbreak")
 }
 
 func (s *S) TestFakeFileTruncateDoesNotChangeCurrent(c *gocheck.C) {

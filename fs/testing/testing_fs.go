@@ -91,9 +91,7 @@ func (f *FakeFile) Write(p []byte) (n int, err error) {
 }
 
 func (f *FakeFile) WriteString(s string) (ret int, err error) {
-	ret = len(s)
-	f.content = s
-	return
+	return f.Write([]byte(s))
 }
 
 func (f *FakeFile) Truncate(size int64) error {
