@@ -156,32 +156,19 @@ type failure struct {
 
 // Fake implementation for provision.Provisioner.
 type FakeProvisioner struct {
-	apps        []provision.App
-	units       map[string][]provision.Unit
-	unitLen     uint
-	cmds        []Cmd
-	outputs     chan []byte
-	failures    chan failure
-	cmdMut      sync.Mutex
-	unitMut     sync.Mutex
-	restarts    map[string]int
-	restMut     sync.Mutex
-	installDeps map[string]int
-	depsMut     sync.Mutex
-	versions    map[string]string
-	cnames      map[string]string
+	cmds     []Cmd
+	cmdMut   sync.Mutex
+	outputs  chan []byte
+	failures chan failure
+	apps     map[string]provisionedApp
+	mut      sync.RWMutex
 }
 
 func NewFakeProvisioner() *FakeProvisioner {
 	p := FakeProvisioner{}
 	p.outputs = make(chan []byte, 8)
 	p.failures = make(chan failure, 8)
-	p.units = make(map[string][]provision.Unit)
-	p.restarts = make(map[string]int)
-	p.installDeps = make(map[string]int)
-	p.cnames = make(map[string]string)
-	p.versions = make(map[string]string)
-	p.unitLen = 0
+	p.apps = make(map[string]provisionedApp)
 	return &p
 }
 
@@ -199,16 +186,16 @@ func (p *FakeProvisioner) getError(method string) error {
 
 // Restarts returns the number of restarts for a given app.
 func (p *FakeProvisioner) Restarts(app provision.App) int {
-	p.restMut.Lock()
-	defer p.restMut.Unlock()
-	return p.restarts[app.GetName()]
+	p.mut.RLock()
+	defer p.mut.RUnlock()
+	return p.apps[app.GetName()].restarts
 }
 
 // InstalledDeps returns the number of InstallDeps calls for the given app.
 func (p *FakeProvisioner) InstalledDeps(app provision.App) int {
-	p.depsMut.Lock()
-	defer p.depsMut.Unlock()
-	return p.installDeps[app.GetName()]
+	p.mut.RLock()
+	defer p.mut.RUnlock()
+	return p.apps[app.GetName()].installDeps
 }
 
 // Returns the number of calls to restart.
@@ -229,22 +216,17 @@ func (p *FakeProvisioner) GetCmds(cmd string, app provision.App) []Cmd {
 
 // Provisioned checks whether the given app has been provisioned.
 func (p *FakeProvisioner) Provisioned(app provision.App) bool {
-	return p.findApp(app) > -1
-}
-
-func (p *FakeProvisioner) findApp(app provision.App) int {
-	for i, a := range p.apps {
-		if a.GetName() == app.GetName() {
-			return i
-		}
-	}
-	return -1
+	p.mut.RLock()
+	defer p.mut.RUnlock()
+	_, ok := p.apps[app.GetName()]
+	return ok
 }
 
 func (p *FakeProvisioner) GetUnits(app provision.App) []provision.Unit {
-	p.unitMut.Lock()
-	defer p.unitMut.Unlock()
-	return p.units[app.GetName()]
+	p.mut.RLock()
+	pApp, _ := p.apps[app.GetName()]
+	p.mut.RUnlock()
+	return pApp.units
 }
 
 // PrepareOutput sends the given slice of bytes to a queue of outputs.
@@ -270,17 +252,13 @@ func (p *FakeProvisioner) PrepareFailure(method string, err error) {
 // also deletes prepared failures and output. It's like calling
 // NewFakeProvisioner again, without all the allocations.
 func (p *FakeProvisioner) Reset() {
-	p.unitMut.Lock()
-	p.units = make(map[string][]provision.Unit)
-	p.unitMut.Unlock()
-
 	p.cmdMut.Lock()
 	p.cmds = nil
 	p.cmdMut.Unlock()
 
-	p.restMut.Lock()
-	p.restarts = make(map[string]int)
-	p.restMut.Unlock()
+	p.mut.Lock()
+	p.apps = make(map[string]provisionedApp)
+	p.mut.Unlock()
 
 	for {
 		select {
@@ -296,12 +274,15 @@ func (p *FakeProvisioner) Deploy(app provision.App, version string, w io.Writer)
 	if err := p.getError("Deploy"); err != nil {
 		return err
 	}
-	index := p.findApp(app)
-	if index < 0 {
+	p.mut.Lock()
+	defer p.mut.Unlock()
+	pApp, ok := p.apps[app.GetName()]
+	if !ok {
 		return &provision.Error{Reason: "App is not provisioned."}
 	}
 	w.Write([]byte("Deploy called"))
-	p.versions[app.GetName()] = version
+	pApp.version = version
+	p.apps[app.GetName()] = pApp
 	return nil
 }
 
@@ -309,25 +290,26 @@ func (p *FakeProvisioner) Provision(app provision.App) error {
 	if err := p.getError("Provision"); err != nil {
 		return err
 	}
-	index := p.findApp(app)
-	if index > -1 {
+	if p.Provisioned(app) {
 		return &provision.Error{Reason: "App already provisioned."}
 	}
-	p.apps = append(p.apps, app)
-	p.unitMut.Lock()
-	p.units[app.GetName()] = []provision.Unit{
-		{
-			Name:       app.GetName() + "/0",
-			AppName:    app.GetName(),
-			Type:       app.GetPlatform(),
-			Status:     provision.StatusStarted,
-			InstanceId: "i-080",
-			Ip:         "10.10.10.1",
-			Machine:    1,
+	p.mut.Lock()
+	defer p.mut.Unlock()
+	p.apps[app.GetName()] = provisionedApp{
+		app:     app,
+		unitLen: 1,
+		units: []provision.Unit{
+			{
+				Name:       app.GetName() + "/0",
+				AppName:    app.GetName(),
+				Type:       app.GetPlatform(),
+				Status:     provision.StatusStarted,
+				InstanceId: "i-080",
+				Ip:         "10.10.10.1",
+				Machine:    1,
+			},
 		},
 	}
-	p.unitLen++
-	p.unitMut.Unlock()
 	return nil
 }
 
@@ -335,11 +317,11 @@ func (p *FakeProvisioner) Restart(app provision.App) error {
 	if err := p.getError("Restart"); err != nil {
 		return err
 	}
-	p.restMut.Lock()
-	v := p.restarts[app.GetName()]
-	v++
-	p.restarts[app.GetName()] = v
-	p.restMut.Unlock()
+	p.mut.Lock()
+	defer p.mut.Unlock()
+	pApp, _ := p.apps[app.GetName()]
+	pApp.restarts++
+	p.apps[app.GetName()] = pApp
 	return nil
 }
 
@@ -347,19 +329,12 @@ func (p *FakeProvisioner) Destroy(app provision.App) error {
 	if err := p.getError("Destroy"); err != nil {
 		return err
 	}
-	index := p.findApp(app)
-	if index == -1 {
+	if !p.Provisioned(app) {
 		return &provision.Error{Reason: "App is not provisioned."}
 	}
-	copy(p.apps[index:], p.apps[index+1:])
-	p.apps = p.apps[:len(p.apps)-1]
-	p.unitMut.Lock()
-	delete(p.units, app.GetName())
-	p.unitLen = 0
-	p.unitMut.Unlock()
-	p.restMut.Lock()
-	delete(p.restarts, app.GetName())
-	p.restMut.Unlock()
+	p.mut.Lock()
+	defer p.mut.Unlock()
+	delete(p.apps, app.GetName())
 	return nil
 }
 
@@ -370,18 +345,18 @@ func (p *FakeProvisioner) AddUnits(app provision.App, n uint) ([]provision.Unit,
 	if n == 0 {
 		return nil, errors.New("Cannot add 0 units.")
 	}
-	index := p.findApp(app)
-	if index < 0 {
+	p.mut.Lock()
+	defer p.mut.Unlock()
+	pApp, ok := p.apps[app.GetName()]
+	if !ok {
 		return nil, errors.New("App is not provisioned.")
 	}
 	name := app.GetName()
 	platform := app.GetPlatform()
-	p.unitMut.Lock()
-	defer p.unitMut.Unlock()
-	length := uint(len(p.units[name]))
+	length := uint(len(pApp.units))
 	for i := uint(0); i < n; i++ {
 		unit := provision.Unit{
-			Name:       fmt.Sprintf("%s/%d", name, p.unitLen),
+			Name:       fmt.Sprintf("%s/%d", name, pApp.unitLen),
 			AppName:    name,
 			Type:       platform,
 			Status:     provision.StatusStarted,
@@ -389,11 +364,12 @@ func (p *FakeProvisioner) AddUnits(app provision.App, n uint) ([]provision.Unit,
 			Ip:         fmt.Sprintf("10.10.10.%d", length+i),
 			Machine:    int(length + i),
 		}
-		p.units[name] = append(p.units[name], unit)
-		p.unitLen++
+		pApp.units = append(pApp.units, unit)
+		pApp.unitLen++
 	}
 	result := make([]provision.Unit, int(n))
-	copy(result, p.units[name][length:])
+	copy(result, pApp.units[length:])
+	p.apps[app.GetName()] = pApp
 	return result, nil
 }
 
@@ -402,13 +378,13 @@ func (p *FakeProvisioner) RemoveUnit(app provision.App, name string) error {
 		return err
 	}
 	index := -1
-	appName := app.GetName()
-	if index := p.findApp(app); index < 0 {
+	p.mut.Lock()
+	defer p.mut.Unlock()
+	pApp, ok := p.apps[app.GetName()]
+	if !ok {
 		return errors.New("App is not provisioned.")
 	}
-	p.unitMut.Lock()
-	defer p.unitMut.Unlock()
-	for i, unit := range p.units[appName] {
+	for i, unit := range pApp.units {
 		if unit.Name == name {
 			index = i
 			break
@@ -417,9 +393,10 @@ func (p *FakeProvisioner) RemoveUnit(app provision.App, name string) error {
 	if index == -1 {
 		return errors.New("Unit not found.")
 	}
-	copy(p.units[appName][index:], p.units[appName][index+1:])
-	p.units[appName] = p.units[appName][:len(p.units[appName])-1]
-	p.unitLen--
+	copy(pApp.units[index:], pApp.units[index+1:])
+	pApp.units = pApp.units[:len(pApp.units)-1]
+	pApp.unitLen--
+	p.apps[app.GetName()] = pApp
 	return nil
 }
 
@@ -480,17 +457,21 @@ func (p *FakeProvisioner) CollectStatus() ([]provision.Unit, error) {
 		return nil, err
 	}
 	units := make([]provision.Unit, len(p.apps))
-	for i, app := range p.apps {
+	i := 0
+	p.mut.RLock()
+	defer p.mut.RUnlock()
+	for name, a := range p.apps {
 		unit := provision.Unit{
-			Name:       app.GetName() + "/0",
-			AppName:    app.GetName(),
-			Type:       app.GetPlatform(),
+			Name:       name + "/0",
+			AppName:    name,
+			Type:       a.app.GetPlatform(),
 			Status:     "started",
 			InstanceId: fmt.Sprintf("i-0%d", 800+i+1),
 			Ip:         "10.10.10." + strconv.Itoa(i+1),
 			Machine:    i + 1,
 		}
 		units[i] = unit
+		i++
 	}
 	return units, nil
 }
@@ -506,28 +487,45 @@ func (p *FakeProvisioner) InstallDeps(app provision.App, w io.Writer) error {
 	if err := p.getError("InstallDeps"); err != nil {
 		return err
 	}
-	p.depsMut.Lock()
-	v := p.installDeps[app.GetName()]
-	v++
-	p.installDeps[app.GetName()] = v
-	p.depsMut.Unlock()
+	p.mut.Lock()
+	defer p.mut.Unlock()
+	pApp, _ := p.apps[app.GetName()]
+	pApp.installDeps++
+	p.apps[app.GetName()] = pApp
 	return nil
 }
 
 func (p *FakeProvisioner) SetCName(app provision.App, cname string) error {
-	p.cnames[app.GetName()] = cname
+	p.mut.Lock()
+	defer p.mut.Unlock()
+	pApp, _ := p.apps[app.GetName()]
+	pApp.cname = cname
+	p.apps[app.GetName()] = pApp
 	return nil
 }
 
 func (p *FakeProvisioner) UnsetCName(app provision.App, cname string) error {
-	delete(p.cnames, app.GetName())
+	p.mut.Lock()
+	defer p.mut.Unlock()
+	pApp, _ := p.apps[app.GetName()]
+	pApp.cname = ""
+	p.apps[app.GetName()] = pApp
 	return nil
 }
 
 func (p *FakeProvisioner) HasCName(app provision.App, cname string) bool {
-	got, ok := p.cnames[app.GetName()]
-	if !ok {
-		return false
-	}
-	return got == cname
+	p.mut.RLock()
+	pApp, ok := p.apps[app.GetName()]
+	p.mut.RUnlock()
+	return ok && pApp.cname == cname
+}
+
+type provisionedApp struct {
+	units       []provision.Unit
+	app         provision.App
+	restarts    int
+	installDeps int
+	version     string
+	cname       string
+	unitLen     int
 }

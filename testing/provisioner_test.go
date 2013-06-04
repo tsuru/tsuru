@@ -47,30 +47,20 @@ func (s *S) TestFakeAppReady(c *gocheck.C) {
 func (s *S) TestProvisioned(c *gocheck.C) {
 	app := NewFakeApp("red-sector", "rush", 1)
 	p := NewFakeProvisioner()
-	p.apps = []provision.App{app}
+	p.Provision(app)
 	c.Assert(p.Provisioned(app), gocheck.Equals, true)
 	otherapp := *app
 	otherapp.name = "blue-sector"
 	c.Assert(p.Provisioned(&otherapp), gocheck.Equals, false)
 }
 
-func (s *S) TestFindApp(c *gocheck.C) {
-	app := NewFakeApp("red-sector", "rush", 1)
-	p := NewFakeProvisioner()
-	p.apps = []provision.App{app}
-	c.Assert(p.findApp(app), gocheck.Equals, 0)
-	otherapp := *app
-	otherapp.name = "blue-sector"
-	c.Assert(p.findApp(&otherapp), gocheck.Equals, -1)
-}
-
 func (s *S) TestRestarts(c *gocheck.C) {
 	app1 := NewFakeApp("fairy-tale", "shaman", 1)
 	app2 := NewFakeApp("unfairy-tale", "shaman", 1)
 	p := NewFakeProvisioner()
-	p.restarts = map[string]int{
-		app1.GetName(): 10,
-		app2.GetName(): 0,
+	p.apps = map[string]provisionedApp{
+		app1.GetName(): {app: app1, restarts: 10},
+		app2.GetName(): {app: app1, restarts: 0},
 	}
 	c.Assert(p.Restarts(app1), gocheck.Equals, 10)
 	c.Assert(p.Restarts(app2), gocheck.Equals, 0)
@@ -100,7 +90,9 @@ func (s *S) TestGetUnits(c *gocheck.C) {
 	}
 	app := NewFakeApp("chain-lighting", "rush", 1)
 	p := NewFakeProvisioner()
-	p.units["chain-lighting"] = list
+	p.apps = map[string]provisionedApp{
+		app.GetName(): {app: app, units: list},
+	}
 	units := p.GetUnits(app)
 	c.Assert(units, gocheck.DeepEquals, list)
 }
@@ -130,7 +122,7 @@ func (s *S) TestDeploy(c *gocheck.C) {
 	err := p.Deploy(app, "1.0", &buf)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(buf.String(), gocheck.Equals, "Deploy called")
-	c.Assert(p.versions[app.GetName()], gocheck.Equals, "1.0")
+	c.Assert(p.apps[app.GetName()].version, gocheck.Equals, "1.0")
 }
 
 func (s *S) TestDeployUnknownApp(c *gocheck.C) {
@@ -158,8 +150,9 @@ func (s *S) TestProvision(c *gocheck.C) {
 	p := NewFakeProvisioner()
 	err := p.Provision(app)
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(p.apps, gocheck.DeepEquals, []provision.App{app})
-	c.Assert(p.units["kid-gloves"], gocheck.HasLen, 1)
+	pApp := p.apps[app.GetName()]
+	c.Assert(pApp.app, gocheck.DeepEquals, app)
+	c.Assert(pApp.units, gocheck.HasLen, 1)
 	expected := provision.Unit{
 		Name:       "kid-gloves/0",
 		AppName:    "kid-gloves",
@@ -169,7 +162,7 @@ func (s *S) TestProvision(c *gocheck.C) {
 		Ip:         "10.10.10.1",
 		Machine:    1,
 	}
-	unit := p.units["kid-gloves"][0]
+	unit := pApp.units[0]
 	c.Assert(unit, gocheck.DeepEquals, expected)
 }
 
@@ -197,7 +190,7 @@ func (s *S) TestRestart(c *gocheck.C) {
 	p := NewFakeProvisioner()
 	err := p.Restart(app)
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(p.restarts[app.GetName()], gocheck.Equals, 1)
+	c.Assert(p.Restarts(app), gocheck.Equals, 1)
 }
 
 func (s *S) TestRestartWithPreparedFailure(c *gocheck.C) {
@@ -212,14 +205,10 @@ func (s *S) TestRestartWithPreparedFailure(c *gocheck.C) {
 func (s *S) TestDestroy(c *gocheck.C) {
 	app := NewFakeApp("kid-gloves", "rush", 1)
 	p := NewFakeProvisioner()
-	p.apps = []provision.App{app}
-	p.restarts = map[string]int{app.GetName(): 2}
+	p.Provision(app)
 	err := p.Destroy(app)
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(p.findApp(app), gocheck.Equals, -1)
-	c.Assert(p.apps, gocheck.DeepEquals, []provision.App{})
-	_, ok := p.restarts[app.GetName()]
-	c.Assert(ok, gocheck.Equals, false)
+	c.Assert(p.Provisioned(app), gocheck.Equals, false)
 }
 
 func (s *S) TestDestroyWithPreparedFailure(c *gocheck.C) {
@@ -245,7 +234,7 @@ func (s *S) TestAddUnits(c *gocheck.C) {
 	p.Provision(app)
 	units, err := p.AddUnits(app, 2)
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(p.units["mystic-rhythms"], gocheck.HasLen, 3)
+	c.Assert(p.GetUnits(app), gocheck.HasLen, 3)
 	c.Assert(units, gocheck.HasLen, 2)
 }
 
@@ -257,7 +246,7 @@ func (s *S) TestAddUnitsCopiesTheUnitsSlice(c *gocheck.C) {
 	units, err := p.AddUnits(app, 3)
 	c.Assert(err, gocheck.IsNil)
 	units[0].Name = "something-else"
-	c.Assert(units[0].Name, gocheck.Not(gocheck.Equals), p.units[app.GetName()][1].Name)
+	c.Assert(units[0].Name, gocheck.Not(gocheck.Equals), p.GetUnits(app)[1].Name)
 }
 
 func (s *S) TestAddZeroUnits(c *gocheck.C) {
@@ -294,8 +283,8 @@ func (s *S) TestRemoveUnit(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	err = p.RemoveUnit(app, "hemispheres/1")
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(p.units["hemispheres"], gocheck.HasLen, 2)
-	c.Assert(p.units["hemispheres"][0].Name, gocheck.Equals, "hemispheres/0")
+	c.Assert(p.GetUnits(app), gocheck.HasLen, 2)
+	c.Assert(p.GetUnits(app)[0].Name, gocheck.Equals, "hemispheres/0")
 }
 
 func (s *S) TestRemoveUnitFromUnprivisionedApp(c *gocheck.C) {
@@ -369,11 +358,11 @@ func (s *S) TestExecuteComandTimeout(c *gocheck.C) {
 
 func (s *S) TestCollectStatus(c *gocheck.C) {
 	p := NewFakeProvisioner()
-	p.apps = []provision.App{
-		NewFakeApp("red-lenses", "rush", 1),
-		NewFakeApp("between-the-wheels", "rush", 1),
-		NewFakeApp("the-big-money", "rush", 1),
-		NewFakeApp("grand-designs", "rush", 1),
+	p.apps = map[string]provisionedApp{
+		"red-lenses":         {app: NewFakeApp("red-lenses", "rush", 1)},
+		"between-the-wheels": {app: NewFakeApp("between-the-wheels", "rush", 1)},
+		"the-big-money":      {app: NewFakeApp("the-big-money", "rush", 1)},
+		"grand-designs":      {app: NewFakeApp("grand-designs", "rush", 1)},
 	}
 	expected := []provision.Unit{
 		{"red-lenses/0", "red-lenses", "rush", "i-0801", 1, "10.10.10.1", "started"},
@@ -443,7 +432,7 @@ func (s *S) TestSetCName(c *gocheck.C) {
 	p := NewFakeProvisioner()
 	err := p.SetCName(app, "cname.com")
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(p.cnames[app.GetName()], gocheck.Equals, "cname.com")
+	c.Assert(p.apps[app.GetName()].cname, gocheck.Equals, "cname.com")
 }
 
 func (s *S) TestUnsetCname(c *gocheck.C) {
@@ -451,11 +440,10 @@ func (s *S) TestUnsetCname(c *gocheck.C) {
 	p := NewFakeProvisioner()
 	err := p.SetCName(app, "cname.com")
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(p.cnames[app.GetName()], gocheck.Equals, "cname.com")
+	c.Assert(p.apps[app.GetName()].cname, gocheck.Equals, "cname.com")
 	err = p.UnsetCName(app, "cname.com")
 	c.Assert(err, gocheck.IsNil)
-	_, ok := p.cnames[app.GetName()]
-	c.Assert(ok, gocheck.Equals, false)
+	c.Assert(p.HasCName(app, "cname.com"), gocheck.Equals, false)
 }
 
 func (s *S) TestHasCName(c *gocheck.C) {
