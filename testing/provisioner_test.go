@@ -415,12 +415,21 @@ func (s *S) TestInstallDeps(c *gocheck.C) {
 	var buf bytes.Buffer
 	app := NewFakeApp("alcool", "raul", 1)
 	p := NewFakeProvisioner()
+	p.Provision(app)
 	err := p.InstallDeps(app, &buf)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(p.InstalledDeps(app), gocheck.Equals, 1)
 	err = p.InstallDeps(app, &buf)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(p.InstalledDeps(app), gocheck.Equals, 2)
+}
+
+func (s *S) TestInstallDepsNotProvisioned(c *gocheck.C) {
+	var buf bytes.Buffer
+	app := NewFakeApp("alcool", "raul", 1)
+	p := NewFakeProvisioner()
+	err := p.InstallDeps(app, &buf)
+	c.Assert(err, gocheck.Equals, errNotProvisioned)
 }
 
 func (s *S) TestInstallDepsFailure(c *gocheck.C) {

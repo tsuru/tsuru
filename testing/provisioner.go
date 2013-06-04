@@ -494,7 +494,10 @@ func (p *FakeProvisioner) InstallDeps(app provision.App, w io.Writer) error {
 	}
 	p.mut.Lock()
 	defer p.mut.Unlock()
-	pApp, _ := p.apps[app.GetName()]
+	pApp, ok := p.apps[app.GetName()]
+	if !ok {
+		return errNotProvisioned
+	}
 	pApp.installDeps++
 	p.apps[app.GetName()] = pApp
 	return nil
