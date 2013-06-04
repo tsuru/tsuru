@@ -81,7 +81,12 @@ func (f *FakeFile) Stat() (fi os.FileInfo, err error) {
 
 func (f *FakeFile) Write(p []byte) (n int, err error) {
 	n = len(p)
-	f.content = f.content[:f.current] + string(p)
+	diff := f.current - int64(len(f.content))
+	if diff > 0 {
+		f.content += strings.Repeat("\x00", int(diff)) + string(p)
+	} else {
+		f.content = f.content[:f.current] + string(p)
+	}
 	return
 }
 

@@ -9,6 +9,7 @@ import (
 	"io/ioutil"
 	"launchpad.net/gocheck"
 	"os"
+	"strings"
 	"syscall"
 	"testing"
 )
@@ -121,12 +122,14 @@ func (s *S) TestFakeFileWriteString(c *gocheck.C) {
 	c.Assert(f.content, gocheck.Equals, "break")
 }
 
-func (s *S) TestFakeFileTruncateSetsCurrentToZero(c *gocheck.C) {
+func (s *S) TestFakeFileTruncateDoesNotChangeCurrent(c *gocheck.C) {
 	content := "Guardian"
 	f := &FakeFile{content: content}
+	f.current = 4
+	cur := f.current
 	err := f.Truncate(0)
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(f.current, gocheck.Equals, int64(0))
+	c.Assert(f.current, gocheck.Equals, cur)
 }
 
 func (s *S) TestFakeFileTruncateStripsContentWithN(c *gocheck.C) {
@@ -135,6 +138,20 @@ func (s *S) TestFakeFileTruncateStripsContentWithN(c *gocheck.C) {
 	err := f.Truncate(4)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(f.content, gocheck.Equals, "Guar")
+}
+
+func (s *S) TestFakeFileTruncateWithoutSeek(c *gocheck.C) {
+	content := "Guardian"
+	f := &FakeFile{content: content}
+	f.current = int64(len(content))
+	err := f.Truncate(0)
+	c.Assert(err, gocheck.IsNil)
+	tow := []byte("otherthing")
+	n, err := f.Write(tow)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(n, gocheck.Equals, len(tow))
+	nulls := strings.Repeat("\x00", int(f.current))
+	c.Assert(f.content, gocheck.Equals, nulls+string(tow))
 }
 
 func (s *S) TestRecordingFsPointerShouldImplementFsInterface(c *gocheck.C) {
