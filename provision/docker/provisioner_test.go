@@ -148,6 +148,41 @@ func (s *S) TestDeployShouldReplaceAllContainers(c *gocheck.C) {
 	c.Assert(commands, gocheck.HasLen, 4)
 }
 
+func (s *S) TestDeployRemoveContainersEvenWhenTheyreNotInTheAppsCollection(c *gocheck.C) {
+	var p dockerProvisioner
+	s.conn.Collection(s.collName).Insert(
+		container{ID: "app/0", AppName: "app"},
+		container{ID: "app/1", AppName: "app"},
+	)
+	defer s.conn.Collection(s.collName).RemoveAll(bson.M{"appname": "app"})
+	app := testing.NewFakeApp("app", "python", 0)
+	p.Provision(app)
+	defer p.Destroy(app)
+	out := `{
+	"NetworkSettings": {
+		"IpAddress": "10.10.10.%d",
+		"IpPrefixLen": 8,
+		"Gateway": "10.65.41.1",
+		"PortMapping": {"8888": "37574"}
+	}
+}`
+	fexec := &etesting.FakeExecutor{
+		Output: map[string][][]byte{
+			"*":            {[]byte("c-60"), []byte("c-61")},
+			"inspect c-60": {[]byte(fmt.Sprintf(out, 1))},
+			"inspect c-61": {[]byte(fmt.Sprintf(out, 2))},
+		},
+	}
+	setExecut(fexec)
+	defer setExecut(nil)
+	var w bytes.Buffer
+	err := p.Deploy(app, "master", &w)
+	defer p.Destroy(app)
+	n, err := s.conn.Collection(s.collName).Find(bson.M{"appname": "app"}).Count()
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(n, gocheck.Equals, 2)
+}
+
 func (s *S) TestDeployShouldRestart(c *gocheck.C) {
 	out := `{
 	"NetworkSettings": {

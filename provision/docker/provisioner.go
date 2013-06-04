@@ -108,7 +108,9 @@ func (p *dockerProvisioner) Deploy(a provision.App, version string, w io.Writer)
 			if err != nil {
 				return err
 			}
-			a.RemoveUnit(c.ID)
+			if a.RemoveUnit(c.ID) != nil {
+				c.remove()
+			}
 		}
 	} else if err := deploy(); err != nil {
 		return err
