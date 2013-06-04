@@ -456,8 +456,7 @@ func (s *S) TestProvisionAppForward(c *gocheck.C) {
 	a, ok := result.(*App)
 	c.Assert(ok, gocheck.Equals, true)
 	c.Assert(a.Name, gocheck.Equals, app.Name)
-	index := s.provisioner.FindApp(&app)
-	c.Assert(index, gocheck.Equals, 0)
+	c.Assert(s.provisioner.Provisioned(&app), gocheck.Equals, true)
 }
 
 func (s *S) TestProvisionAppForwardAppPointer(c *gocheck.C) {
@@ -476,8 +475,7 @@ func (s *S) TestProvisionAppForwardAppPointer(c *gocheck.C) {
 	a, ok := result.(*App)
 	c.Assert(ok, gocheck.Equals, true)
 	c.Assert(a.Name, gocheck.Equals, app.Name)
-	index := s.provisioner.FindApp(&app)
-	c.Assert(index, gocheck.Equals, 0)
+	c.Assert(s.provisioner.Provisioned(&app), gocheck.Equals, true)
 }
 
 func (s *S) TestProvisionAppForwardInvalidApp(c *gocheck.C) {
@@ -500,8 +498,7 @@ func (s *S) TestProvisionAppBackward(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	bwctx := action.BWContext{Params: []interface{}{&app, 4}, FWResult: result}
 	provisionApp.Backward(bwctx)
-	index := s.provisioner.FindApp(&app)
-	c.Assert(index, gocheck.Equals, -1)
+	c.Assert(s.provisioner.Provisioned(&app), gocheck.Equals, false)
 }
 
 func (s *S) TestProvisionAppMinParams(c *gocheck.C) {

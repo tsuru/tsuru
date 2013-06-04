@@ -76,7 +76,7 @@ func (s *S) TestForceDestroy(c *gocheck.C) {
 	qt, err := s.conn.Apps().Find(bson.M{"name": a.Name}).Count()
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(qt, gocheck.Equals, 0)
-	c.Assert(s.provisioner.FindApp(&a), gocheck.Equals, -1)
+	c.Assert(s.provisioner.Provisioned(&a), gocheck.Equals, false)
 	err = quota.Reserve(s.user.Email, a.Name)
 	c.Assert(err, gocheck.IsNil)
 	err = quota.Reserve(a.Name, "something")
@@ -108,7 +108,7 @@ func (s *S) TestDestroy(c *gocheck.C) {
 	qt, err := s.conn.Apps().Find(bson.M{"name": a.Name}).Count()
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(qt, gocheck.Equals, 0)
-	c.Assert(s.provisioner.FindApp(&a), gocheck.Equals, -1)
+	c.Assert(s.provisioner.Provisioned(&a), gocheck.Equals, false)
 	msg, err := aqueue().Get(1e6)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(msg.Args, gocheck.DeepEquals, []string{a.Name})
@@ -138,7 +138,7 @@ func (s *S) TestDestroyWithoutBucketSupport(c *gocheck.C) {
 	qt, err := s.conn.Apps().Find(bson.M{"name": a.Name}).Count()
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(qt, gocheck.Equals, 0)
-	c.Assert(s.provisioner.FindApp(&a), gocheck.Equals, -1)
+	c.Assert(s.provisioner.Provisioned(&a), gocheck.Equals, false)
 	msg, err := aqueue().Get(1e6)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(msg.Args, gocheck.DeepEquals, []string{a.Name})
@@ -1243,6 +1243,8 @@ func (s *S) TestSetCName(c *gocheck.C) {
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	s.provisioner.Provision(&a)
+	defer s.provisioner.Destroy(&a)
 	err = a.SetCName("ktulu.mycompany.com")
 	c.Assert(err, gocheck.IsNil)
 	err = a.Get()
@@ -1255,6 +1257,8 @@ func (s *S) TestSetCNamePartialUpdate(c *gocheck.C) {
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	s.provisioner.Provision(&a)
+	defer s.provisioner.Destroy(&a)
 	other := App{Name: a.Name}
 	err = other.SetCName("ktulu.mycompany.com")
 	c.Assert(err, gocheck.IsNil)
@@ -1293,6 +1297,8 @@ func (s *S) TestSetCNameValidatesTheCName(c *gocheck.C) {
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	s.provisioner.Provision(&a)
+	defer s.provisioner.Destroy(&a)
 	for _, t := range data {
 		err := a.SetCName(t.input)
 		if !t.valid {
@@ -1308,6 +1314,8 @@ func (s *S) TestSetCNameCallsProvisionerSetCName(c *gocheck.C) {
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	s.provisioner.Provision(&a)
+	defer s.provisioner.Destroy(&a)
 	err = a.SetCName("ktulu.mycompany.com")
 	c.Assert(err, gocheck.IsNil)
 	hasCName := s.provisioner.HasCName(&a, "ktulu.mycompany.com")
@@ -1536,6 +1544,8 @@ func (s *S) TestRestart(c *gocheck.C) {
 		Teams:    []string{s.team.Name},
 		Units:    []Unit{{Name: "i-0800", State: "started"}},
 	}
+	s.provisioner.Provision(&a)
+	defer s.provisioner.Destroy(&a)
 	var b bytes.Buffer
 	err := a.Restart(&b)
 	c.Assert(err, gocheck.IsNil)
@@ -1554,6 +1564,8 @@ func (s *S) TestRestartRunsPreRestartHook(c *gocheck.C) {
 		Units:    []Unit{{Name: "i-0800", State: "started"}},
 		conf:     &conf{Hooks: hooks{PreRestart: []string{"pre.sh"}}},
 	}
+	s.provisioner.Provision(&a)
+	defer s.provisioner.Destroy(&a)
 	var buf bytes.Buffer
 	err := a.Restart(&buf)
 	c.Assert(err, gocheck.IsNil)
@@ -1571,6 +1583,8 @@ func (s *S) TestRestartRunsPostRestartHook(c *gocheck.C) {
 		Units:    []Unit{{Name: "i-0800", State: "started"}},
 		conf:     &conf{Hooks: hooks{PostRestart: []string{"pos.sh"}}},
 	}
+	s.provisioner.Provision(&a)
+	defer s.provisioner.Destroy(&a)
 	var buf bytes.Buffer
 	err := a.Restart(&buf)
 	c.Assert(err, gocheck.IsNil)

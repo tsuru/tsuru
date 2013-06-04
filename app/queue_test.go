@@ -213,6 +213,8 @@ func (s *S) TestHandleRestartAppMessage(c *gocheck.C) {
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	s.provisioner.Provision(&a)
+	defer s.provisioner.Destroy(&a)
 	message := queue.Message{Action: startApp, Args: []string{a.Name}}
 	handle(&message)
 	restarts := s.provisioner.Restarts(&a)
@@ -242,6 +244,8 @@ func (s *S) TestHandleRegenerateAndRestart(c *gocheck.C) {
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	s.provisioner.Provision(&a)
+	defer s.provisioner.Destroy(&a)
 	msg := queue.Message{Action: RegenerateApprcAndStart, Args: []string{a.Name}}
 	handle(&msg)
 	cmds := s.provisioner.GetCmds("", &a)
