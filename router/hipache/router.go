@@ -147,27 +147,42 @@ func (hipacheRouter) getCName(name string) (string, error) {
 	return cname, nil
 }
 
-func (hipacheRouter) SetCName(cname, name string) error {
+// TEST ME!
+func (hipacheRouter) getRoutes(frontend string) ([]string, error) {
+	conn, err := connect()
+	if err != nil {
+		return []string{}, err
+	}
+	return redis.Strings(conn.Do("LRANGE", frontend, 0, -1))
+}
+
+func (r hipacheRouter) SetCName(cname, name string) error {
 	domain, err := config.GetString("hipache:domain")
 	if err != nil {
-		return &routeError{"addCName", err}
+		return &routeError{"setCName", err}
 	}
 	frontend := "frontend:" + name + "." + domain
 	conn := connect()
 	defer conn.Close()
-	addresses, err := redis.Strings(conn.Do("LRANGE", frontend, 0, -1))
+	routes, err := redis.Strings(conn.Do("LRANGE", frontend, 0, -1))
 	if err != nil {
 		return &routeError{"get", err}
+	}
+	if oldCName, err := redis.String(conn.Do("GET", "cname:"+name)); err == nil && oldCName != "" {
+		err = r.UnsetCName(oldCName, name)
+		if err != nil {
+			return &routeError{"setCName", err}
+		}
 	}
 	_, err = conn.Do("SET", "cname:"+name, cname)
 	if err != nil {
 		return &routeError{"set", err}
 	}
 	frontend = "frontend:" + cname
-	for _, r := range addresses {
+	for _, r := range routes {
 		_, err := conn.Do("RPUSH", frontend, r)
 		if err != nil {
-			return &routeError{"addCName", err}
+			return &routeError{"setCName", err}
 		}
 	}
 	return nil
@@ -178,11 +193,11 @@ func (r hipacheRouter) UnsetCName(cname, name string) error {
 	defer conn.Close()
 	_, err := conn.Do("DEL", "cname:"+name)
 	if err != nil {
-		return &routeError{"removeCName", err}
+		return &routeError{"unsetCName", err}
 	}
 	_, err = conn.Do("DEL", "frontend:"+cname)
 	if err != nil {
-		return &routeError{"removeCName", err}
+		return &routeError{"unsetCName", err}
 	}
 	return nil
 }

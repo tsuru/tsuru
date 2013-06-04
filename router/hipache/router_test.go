@@ -186,6 +186,9 @@ func (s *S) TestAddRouteAlsoUpdatesCNameRecordsWhenExists(c *gocheck.C) {
 		{cmd: "GET", args: []interface{}{"cname:tip"}},                                            // AddRoute
 		{cmd: "RPUSH", args: []interface{}{"frontend:mycname.com", "http://10.10.10.10:8080"}},    // AddRoute, collateral due to fixed redis GET output
 		{cmd: "LRANGE", args: []interface{}{"frontend:tip.golang.org", 0, -1}},                    // SetCName
+		{cmd: "GET", args: []interface{}{"cname:tip"}},                                            // SetCName, collateral effect due to GET mock
+		{cmd: "DEL", args: []interface{}{"cname:tip"}},                                            // SetCName
+		{cmd: "DEL", args: []interface{}{"frontend:mycname.com"}},                                 // SetCName, collateral effect due to GET mock
 		{cmd: "SET", args: []interface{}{"cname:tip", "mycname.com"}},                             // SetCName
 		{cmd: "RPUSH", args: []interface{}{"frontend:mycname.com", "http://10.10.10.10:8080"}},    // SetCName
 		{cmd: "RPUSH", args: []interface{}{"frontend:tip.golang.org", "http://10.10.10.11:8080"}}, // AddRoute
@@ -269,6 +272,7 @@ func (s *S) TestSetCName(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	expected := []command{
 		{cmd: "LRANGE", args: []interface{}{"frontend:myapp.golang.org", 0, -1}},
+		{cmd: "GET", args: []interface{}{"cname:myapp"}},
 		{cmd: "SET", args: []interface{}{"cname:myapp", "myapp.com"}},
 		{cmd: "RPUSH", args: []interface{}{"frontend:myapp.com", "10.10.10.10"}},
 	}
@@ -291,6 +295,7 @@ func (s *S) TestSetCNameWithPreviousRoutes(c *gocheck.C) {
 		{cmd: "RPUSH", args: []interface{}{"frontend:myapp.golang.org", "10.10.10.11"}}, // AddRoute call
 		{cmd: "GET", args: []interface{}{"cname:myapp"}},                                // AddRoute call
 		{cmd: "LRANGE", args: []interface{}{"frontend:myapp.golang.org", 0, -1}},
+		{cmd: "GET", args: []interface{}{"cname:myapp"}},
 		{cmd: "SET", args: []interface{}{"cname:myapp", "mycname.com"}},
 		{cmd: "RPUSH", args: []interface{}{"frontend:mycname.com", "10.10.10.10"}},
 		{cmd: "RPUSH", args: []interface{}{"frontend:mycname.com", "10.10.10.11"}},
@@ -304,7 +309,40 @@ func (s *S) TestSetCNameShouldRecordAppAndCNameOnRedis(c *gocheck.C) {
 	err := router.SetCName("mycname.com", "myapp")
 	c.Assert(err, gocheck.IsNil)
 	expected := command{cmd: "SET", args: []interface{}{"cname:myapp", "mycname.com"}}
-	c.Assert(s.fake.cmds[1], gocheck.DeepEquals, expected)
+	c.Assert(s.conn.cmds[2], gocheck.DeepEquals, expected)
+}
+
+func (s *S) TestSetCNameRemovesPreviousDefinedCNamesAndKeepItsRoutes(c *gocheck.C) {
+	reply := map[string]interface{}{"GET": "mycname.com", "SET": "", "LRANGE": []interface{}{[]byte("10.10.10.10")}, "RPUSH": []interface{}{[]byte{}}}
+	conn = &resultCommandConn{reply: reply, fakeConn: &s.conn}
+	router := hipacheRouter{}
+	err := router.AddRoute("myapp", "10.10.10.10")
+	c.Assert(err, gocheck.IsNil)
+	err = router.SetCName("mycname.com", "myapp")
+	c.Assert(err, gocheck.IsNil)
+	err = router.SetCName("myothercname.com", "myapp")
+	expected := []command{
+		// addroute
+		{cmd: "RPUSH", args: []interface{}{"frontend:myapp.golang.org", "10.10.10.10"}},
+		{cmd: "GET", args: []interface{}{"cname:myapp"}},
+		{cmd: "RPUSH", args: []interface{}{"frontend:mycname.com", "10.10.10.10"}}, // collateral effect due to GET mock
+		// first setcname
+		{cmd: "LRANGE", args: []interface{}{"frontend:myapp.golang.org", 0, -1}},
+		{cmd: "GET", args: []interface{}{"cname:myapp"}},
+		{cmd: "DEL", args: []interface{}{"cname:myapp"}},          // collateral effect due to GET mock
+		{cmd: "DEL", args: []interface{}{"frontend:mycname.com"}}, // collateral effect due to GET mock
+		{cmd: "SET", args: []interface{}{"cname:myapp", "mycname.com"}},
+		{cmd: "RPUSH", args: []interface{}{"frontend:mycname.com", "10.10.10.10"}},
+		// second setcname
+		{cmd: "LRANGE", args: []interface{}{"frontend:myapp.golang.org", 0, -1}},
+		{cmd: "GET", args: []interface{}{"cname:myapp"}},
+		{cmd: "DEL", args: []interface{}{"cname:myapp"}},
+		{cmd: "DEL", args: []interface{}{"frontend:mycname.com"}},
+		{cmd: "SET", args: []interface{}{"cname:myapp", "myothercname.com"}},
+		{cmd: "RPUSH", args: []interface{}{"frontend:myothercname.com", "10.10.10.10"}},
+	}
+	c.Assert(s.conn.cmds, gocheck.DeepEquals, expected)
+>>>>>>> router/hipache: changing SetCName to remove old CName record from redis
 }
 
 func (s *S) TestUnsetCName(c *gocheck.C) {
