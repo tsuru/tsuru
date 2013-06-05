@@ -22,6 +22,58 @@ import (
 	"strings"
 )
 
+func (s *S) TestReserveUserAppName(c *gocheck.C) {
+	c.Assert(reserveUserApp.Name, gocheck.Equals, "reserve-user-app")
+}
+
+func (s *S) TestCreateAppQuotaName(c *gocheck.C) {
+	c.Assert(createAppQuota.Name, gocheck.Equals, "create-app-quota")
+}
+
+func (s *S) TestCreateIAMUserName(c *gocheck.C) {
+	c.Assert(createIAMUserAction.Name, gocheck.Equals, "create-iam-user")
+}
+
+func (s *S) TestCreateIAMAccessKeyName(c *gocheck.C) {
+	c.Assert(createIAMAccessKeyAction.Name, gocheck.Equals, "create-iam-access-key")
+}
+
+func (s *S) TestInsertAppName(c *gocheck.C) {
+	c.Assert(insertApp.Name, gocheck.Equals, "insert-app")
+}
+
+func (s *S) TestCreateBucketName(c *gocheck.C) {
+	c.Assert(createBucketAction.Name, gocheck.Equals, "create-bucket")
+}
+
+func (s *S) TestCreateUserPolicyName(c *gocheck.C) {
+	c.Assert(createUserPolicyAction.Name, gocheck.Equals, "create-user-policy")
+}
+
+func (s *S) TestExportEnvironmentsName(c *gocheck.C) {
+	c.Assert(exportEnvironmentsAction.Name, gocheck.Equals, "export-environments")
+}
+
+func (s *S) TestCreateRepositoryName(c *gocheck.C) {
+	c.Assert(createRepository.Name, gocheck.Equals, "create-repository")
+}
+
+func (s *S) TestProvisionAppName(c *gocheck.C) {
+	c.Assert(provisionApp.Name, gocheck.Equals, "provision-app")
+}
+
+func (s *S) TestReserveUnitsToAddName(c *gocheck.C) {
+	c.Assert(reserveUnitsToAdd.Name, gocheck.Equals, "reserve-units-to-add")
+}
+
+func (s *S) TestProvisionAddUnitsName(c *gocheck.C) {
+	c.Assert(provisionAddUnits.Name, gocheck.Equals, "provision-add-units")
+}
+
+func (s *S) TestSaveNewUnitsInDatabaseName(c *gocheck.C) {
+	c.Assert(saveNewUnitsInDatabase.Name, gocheck.Equals, "save-new-units-in-database")
+}
+
 func (s *S) TestInsertAppForward(c *gocheck.C) {
 	app := App{Name: "conviction", Platform: "evergrey"}
 	ctx := action.FWContext{

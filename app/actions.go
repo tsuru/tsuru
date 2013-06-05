@@ -31,6 +31,7 @@ var ErrAppAlreadyExists = errors.New("there is already an app with this name.")
 // of apps. If the user does not have a quota, meaning that it's unlimited,
 // reserveUserApp.Forward just return nil.
 var reserveUserApp = action.Action{
+	Name: "reserve-user-app",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
 		var app App
 		switch ctx.Params[0].(type) {
@@ -63,6 +64,7 @@ var reserveUserApp = action.Action{
 }
 
 var createAppQuota = action.Action{
+	Name: "create-app-quota",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
 		var app App
 		switch ctx.Params[0].(type) {
@@ -93,6 +95,7 @@ var createAppQuota = action.Action{
 //
 // The first argument in the context must be an App or a pointer to an App.
 var insertApp = action.Action{
+	Name: "insert-app",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
 		var app App
 		switch ctx.Params[0].(type) {
@@ -131,6 +134,7 @@ var insertApp = action.Action{
 // createIAMUserAction creates a user in IAM. It requires that the first
 // parameter is the a pointer to an App instance.
 var createIAMUserAction = action.Action{
+	Name: "create-iam-user",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
 		app := ctx.Previous.(*App)
 		return createIAMUser(app.Name)
@@ -145,6 +149,7 @@ var createIAMUserAction = action.Action{
 // createIAMAccessKeyAction creates an access key in IAM. It uses the result
 // returned by createIAMUserAction, so it must come after this action.
 var createIAMAccessKeyAction = action.Action{
+	Name: "create-iam-access-key",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
 		user := ctx.Previous.(*iam.User)
 		return createIAMAccessKey(user)
@@ -161,6 +166,7 @@ var createIAMAccessKeyAction = action.Action{
 // parameter to generate the name of the bucket. It must run after
 // createIAMAccessKey.
 var createBucketAction = action.Action{
+	Name: "create-bucket",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
 		app := ctx.Params[0].(*App)
 		key := ctx.Previous.(*iam.AccessKey)
@@ -190,6 +196,7 @@ var createBucketAction = action.Action{
 // pointer to an App instance as the first parameter, and the previous result
 // to be a *s3Env (it should be used after createBucketAction).
 var createUserPolicyAction = action.Action{
+	Name: "create-user-policy",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
 		app := ctx.Params[0].(*App)
 		env := ctx.Previous.(*s3Env)
@@ -212,6 +219,7 @@ var createUserPolicyAction = action.Action{
 // and the previous result to be a *s3Env (it should be used after
 // createUserPolicyAction or createBucketAction).
 var exportEnvironmentsAction = action.Action{
+	Name: "export-environments",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
 		app := ctx.Params[0].(*App)
 		err := app.Get()
@@ -273,6 +281,7 @@ var exportEnvironmentsAction = action.Action{
 
 // createRepository creates a repository for the app in Gandalf.
 var createRepository = action.Action{
+	Name: "create-repository",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
 		var app App
 		switch ctx.Params[0].(type) {
@@ -305,6 +314,7 @@ var createRepository = action.Action{
 // provisionApp provisions the app in the provisioner. It takes two arguments:
 // the app, and the number of units to create (an unsigned integer).
 var provisionApp = action.Action{
+	Name: "provision-app",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
 		var app App
 		switch ctx.Params[0].(type) {
@@ -329,6 +339,7 @@ var provisionApp = action.Action{
 }
 
 var reserveUnitsToAdd = action.Action{
+	Name: "reserve-units-to-add",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
 		var app App
 		switch ctx.Params[0].(type) {
@@ -384,6 +395,7 @@ type addUnitsActionResult struct {
 }
 
 var provisionAddUnits = action.Action{
+	Name: "provision-add-units",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
 		var app App
 		switch ctx.Params[0].(type) {
@@ -420,6 +432,7 @@ var provisionAddUnits = action.Action{
 }
 
 var saveNewUnitsInDatabase = action.Action{
+	Name: "save-new-units-in-database",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
 		var app App
 		switch ctx.Params[0].(type) {
