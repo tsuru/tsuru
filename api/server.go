@@ -23,12 +23,16 @@ func fatal(err error) {
 	log.Fatal(err)
 }
 
-func RunServer(flags map[string]interface{}) {
+func logInit() {
 	logger, err := syslog.NewLogger(syslog.LOG_INFO, stdlog.LstdFlags)
 	if err != nil {
 		stdlog.Fatal(err)
 	}
 	log.SetLogger(logger)
+}
+
+func RunServer(flags map[string]interface{}) {
+	logInit()
 	configFile, ok := flags["config"].(string)
 	if !ok {
 		configFile = "/etc/tsuru/tsuru.conf"
@@ -37,7 +41,7 @@ func RunServer(flags map[string]interface{}) {
 	if !ok {
 		dry = false
 	}
-	err = config.ReadAndWatchConfigFile(configFile)
+	err := config.ReadAndWatchConfigFile(configFile)
 	if err != nil {
 		fatal(err)
 	}
