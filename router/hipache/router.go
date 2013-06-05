@@ -21,7 +21,7 @@ import (
 	"github.com/globocom/tsuru/router"
 )
 
-var conn redis.Conn
+var pool *redis.Pool
 
 var errRouteNotFound = errors.New("Route not found")
 
@@ -29,18 +29,17 @@ func init() {
 	router.Register("hipache", hipacheRouter{})
 }
 
-func connect() (redis.Conn, error) {
-	if conn == nil {
+func connect() redis.Conn {
+	if pool == nil {
 		srv, err := config.GetString("hipache:redis-server")
 		if err != nil {
 			srv = "localhost:6379"
 		}
-		conn, err = redis.Dial("tcp", srv)
-		if err != nil {
-			return nil, err
-		}
+		pool = redis.NewPool(func() (redis.Conn, error) {
+			return redis.Dial("tcp", srv)
+		}, 10)
 	}
-	return conn, nil
+	return pool.Get()
 }
 
 type hipacheRouter struct{}
@@ -51,10 +50,7 @@ func (hipacheRouter) AddBackend(name string) error {
 		return &routeError{"add", err}
 	}
 	frontend := "frontend:" + name + "." + domain
-	conn, err := connect()
-	if err != nil {
-		return &routeError{"add", err}
-	}
+	conn := connect()
 	defer conn.Close()
 	_, err = conn.Do("RPUSH", frontend, name)
 	if err != nil {
@@ -69,10 +65,7 @@ func (r hipacheRouter) RemoveBackend(name string) error {
 		return &routeError{"remove", err}
 	}
 	frontend := "frontend:" + name + "." + domain
-	conn, err := connect()
-	if err != nil {
-		return &routeError{"remove", err}
-	}
+	conn := connect()
 	defer conn.Close()
 	_, err = conn.Do("DEL", frontend)
 	if err != nil {
@@ -116,12 +109,9 @@ func (r hipacheRouter) AddRoute(name, address string) error {
 }
 
 func (hipacheRouter) addRoute(name, address string) error {
-	conn, err := connect()
-	if err != nil {
-		return &routeError{"add", err}
-	}
+	conn := connect()
 	defer conn.Close()
-	_, err = conn.Do("RPUSH", name, address)
+	_, err := conn.Do("RPUSH", name, address)
 	if err != nil {
 		return &routeError{"add", err}
 	}
@@ -148,10 +138,7 @@ func (r hipacheRouter) RemoveRoute(name, address string) error {
 }
 
 func (hipacheRouter) getCName(name string) (string, error) {
-	conn, err := connect()
-	if err != nil {
-		return "", &routeError{"getCName", err}
-	}
+	conn := connect()
 	defer conn.Close()
 	cname, err := redis.String(conn.Do("GET", "cname:"+name))
 	if err != nil {
@@ -166,10 +153,7 @@ func (hipacheRouter) SetCName(cname, name string) error {
 		return &routeError{"addCName", err}
 	}
 	frontend := "frontend:" + name + "." + domain
-	conn, err := connect()
-	if err != nil {
-		return &routeError{"addCName", err}
-	}
+	conn := connect()
 	defer conn.Close()
 	addresses, err := redis.Strings(conn.Do("LRANGE", frontend, 0, -1))
 	if err != nil {
@@ -190,12 +174,9 @@ func (hipacheRouter) SetCName(cname, name string) error {
 }
 
 func (r hipacheRouter) UnsetCName(cname, name string) error {
-	conn, err := connect()
-	if err != nil {
-		return &routeError{"removeCName", err}
-	}
+	conn := connect()
 	defer conn.Close()
-	_, err = conn.Do("DEL", "cname:"+name)
+	_, err := conn.Do("DEL", "cname:"+name)
 	if err != nil {
 		return &routeError{"removeCName", err}
 	}
@@ -212,10 +193,7 @@ func (hipacheRouter) Addr(name string) (string, error) {
 		return "", &routeError{"get", err}
 	}
 	frontend := "frontend:" + name + "." + domain
-	conn, err := connect()
-	if err != nil {
-		return "", &routeError{"get", err}
-	}
+	conn := connect()
 	defer conn.Close()
 	reply, err := conn.Do("LRANGE", frontend, 0, 0)
 	if err != nil {
@@ -229,12 +207,9 @@ func (hipacheRouter) Addr(name string) (string, error) {
 }
 
 func (hipacheRouter) removeElement(name, address string) error {
-	conn, err := connect()
-	if err != nil {
-		return &routeError{"remove", err}
-	}
+	conn := connect()
 	defer conn.Close()
-	_, err = conn.Do("LREM", name, 0, address)
+	_, err := conn.Do("LREM", name, 0, address)
 	if err != nil {
 		return &routeError{"remove", err}
 	}

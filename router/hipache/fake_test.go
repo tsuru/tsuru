@@ -4,11 +4,20 @@
 
 package hipache
 
-import "errors"
+import (
+	"errors"
+	"github.com/garyburd/redigo/redis"
+)
+
+var conn redis.Conn = &fakeConn{}
 
 type command struct {
 	cmd  string
 	args []interface{}
+}
+
+func fakeConnect() (redis.Conn, error) {
+	return conn, nil
 }
 
 type fakeConn struct {
@@ -24,7 +33,9 @@ func (c *fakeConn) Err() error {
 }
 
 func (c *fakeConn) Do(cmd string, args ...interface{}) (interface{}, error) {
-	c.cmds = append(c.cmds, command{cmd: cmd, args: args})
+	if cmd != "" {
+		c.cmds = append(c.cmds, command{cmd: cmd, args: args})
+	}
 	return nil, nil
 }
 
