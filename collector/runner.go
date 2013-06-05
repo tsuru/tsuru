@@ -10,8 +10,6 @@ import (
 	"github.com/globocom/tsuru/app"
 	"github.com/globocom/tsuru/log"
 	"github.com/globocom/tsuru/provision"
-	stdlog "log"
-	"log/syslog"
 	"os"
 	"time"
 )
@@ -34,20 +32,16 @@ func fatal(err error) {
 }
 
 func Run(flags map[string]interface{}) {
-	logger, err := syslog.NewLogger(syslog.LOG_INFO, stdlog.LstdFlags)
-	if err != nil {
-		stdlog.Fatal(err)
-	}
-	log.SetLogger(logger)
 	configFile, ok := flags["config"].(string)
 	if !ok {
 		configFile = "/etc/tsuru/tsuru.conf"
 	}
+	log.Init()
 	dry, ok := flags["dry"].(bool)
 	if !ok {
 		dry = false
 	}
-	err = config.ReadAndWatchConfigFile(configFile)
+	err := config.ReadAndWatchConfigFile(configFile)
 	if err != nil {
 		fatal(err)
 	}
