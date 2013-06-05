@@ -12,6 +12,7 @@ import (
 // addKeyToUserAction creates a user in gandalf server.
 // It expects a *auth.Key and a *auth.User from the executor.
 var addKeyInGandalfAction = action.Action{
+	Name: "add-key-in-gandalf",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
 		key := ctx.Params[0].(*auth.Key)
 		u := ctx.Params[1].(*auth.User)
@@ -27,6 +28,7 @@ var addKeyInGandalfAction = action.Action{
 // addKeyInDatabaseAction adds a key to a user in the database.
 // It expects a *auth.Key and a *auth.User from the executor.
 var addKeyInDatabaseAction = action.Action{
+	Name: "add-key-in-database",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
 		key := ctx.Params[0].(*auth.Key)
 		u := ctx.Params[1].(*auth.User)
@@ -40,6 +42,7 @@ var addKeyInDatabaseAction = action.Action{
 }
 
 var addUserToTeamInGandalfAction = action.Action{
+	Name: "add-user-to-team-in-gandalf",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
 		email := ctx.Params[0].(string)
 		u := ctx.Params[1].(*auth.User)
@@ -58,6 +61,7 @@ var addUserToTeamInGandalfAction = action.Action{
 }
 
 var addUserToTeamInDatabaseAction = action.Action{
+	Name: "add-user-to-team-in-database",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
 		email := ctx.Params[0].(string)
 		u, err := auth.GetUserByEmail(email)

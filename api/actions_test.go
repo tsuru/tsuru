@@ -43,6 +43,22 @@ func (s *ActionsSuite) startGandalfTestServer(h http.Handler) *httptest.Server {
 	return ts
 }
 
+func (s *ActionsSuite) TestAddKeyInGandalf(c *gocheck.C) {
+	c.Assert(addKeyInGandalfAction.Name, gocheck.Equals, "add-key-in-gandalf")
+}
+
+func (s *ActionsSuite) TestAddKeyInDatatabase(c *gocheck.C) {
+	c.Assert(addKeyInDatabaseAction.Name, gocheck.Equals, "add-key-in-database")
+}
+
+func (s *ActionsSuite) TestAddUserToTeamInGandalf(c *gocheck.C) {
+	c.Assert(addUserToTeamInGandalfAction.Name, gocheck.Equals, "add-user-to-team-in-gandalf")
+}
+
+func (s *ActionsSuite) TestAddUserToTeamInDatabase(c *gocheck.C) {
+	c.Assert(addUserToTeamInDatabaseAction.Name, gocheck.Equals, "add-user-to-team-in-database")
+}
+
 func (s *ActionsSuite) TestAddKeyInGandalfActionForward(c *gocheck.C) {
 	h := testHandler{}
 	ts := s.startGandalfTestServer(&h)
