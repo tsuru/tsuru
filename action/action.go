@@ -124,7 +124,7 @@ func (p *Pipeline) Execute(params ...interface{}) error {
 func (p *Pipeline) rollback(index int, params []interface{}) {
 	bwCtx := BWContext{Params: params}
 	for i := index; i >= 0; i-- {
-		log.Printf("[pipeline] running the Backward for the %s action", p.actions[i].Name)
+		log.Printf("[pipeline] running Backward for %s action", p.actions[i].Name)
 		if p.actions[i].Backward != nil {
 			bwCtx.FWResult = p.actions[i].result
 			p.actions[i].Backward(bwCtx)
