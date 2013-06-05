@@ -10,16 +10,37 @@
 package log
 
 import (
+	"github.com/globocom/config"
 	"io"
 	"log"
 	"log/syslog"
+	"os"
 	"sync"
 )
 
-func Init() {
+func getSysLogger() *log.Logger {
 	logger, err := syslog.NewLogger(syslog.LOG_INFO, log.LstdFlags)
 	if err != nil {
 		log.Fatal(err)
+	}
+	return logger
+}
+
+func getFileLogger(fileName string) *log.Logger {
+	file, err := os.OpenFile(fileName, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0644)
+	if err != nil {
+		log.Fatal(err)
+	}
+	return log.New(file, "", log.LstdFlags)
+}
+
+func Init() {
+	logFileName, err := config.GetString("log:file")
+	var logger *log.Logger
+	if err != nil {
+		logger = getSysLogger()
+	} else {
+		logger = getFileLogger(logFileName)
 	}
 	SetLogger(logger)
 }
