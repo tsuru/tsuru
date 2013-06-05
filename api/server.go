@@ -31,19 +31,24 @@ func logInit() {
 	log.SetLogger(logger)
 }
 
-func RunServer(flags map[string]interface{}) {
-	logInit()
+func loadConfig(flags map[string]interface{}) string {
 	configFile, ok := flags["config"].(string)
 	if !ok {
 		configFile = "/etc/tsuru/tsuru.conf"
 	}
-	dry, ok := flags["dry"].(bool)
-	if !ok {
-		dry = false
-	}
 	err := config.ReadAndWatchConfigFile(configFile)
 	if err != nil {
 		fatal(err)
+	}
+	return configFile
+}
+
+func RunServer(flags map[string]interface{}) {
+	logInit()
+	configFile := loadConfig(flags)
+	dry, ok := flags["dry"].(bool)
+	if !ok {
+		dry = false
 	}
 	connString, err := config.GetString("database:url")
 	if err != nil {
