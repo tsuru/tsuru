@@ -344,6 +344,16 @@ func (s *S) TestSetCNameRemovesPreviousDefinedCNamesAndKeepItsRoutes(c *gocheck.
 	c.Assert(s.fake.cmds, gocheck.DeepEquals, expected)
 }
 
+func (s *S) TestSetCNameValidatesCNameAccordingToDomainConfig(c *gocheck.C) {
+	reply := map[string]interface{}{"GET": "", "SET": "", "LRANGE": []interface{}{[]byte{}}, "RPUSH": []interface{}{[]byte{}}}
+	conn = &resultCommandConn{reply: reply, fakeConn: s.fake}
+	router := hipacheRouter{}
+	err := router.SetCName("mycname.golang.org", "myapp")
+	c.Assert(err, gocheck.NotNil)
+	expected := "Could not setCName route: Invalid CNAME mycname.golang.org. You can't use Tsuru's application domain."
+	c.Assert(err.Error(), gocheck.Equals, expected)
+}
+
 func (s *S) TestUnsetCName(c *gocheck.C) {
 	conn = &resultCommandConn{defaultReply: []interface{}{}, fakeConn: s.fake}
 	err := hipacheRouter{}.UnsetCName("myapp.com", "myapp")

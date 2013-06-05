@@ -19,6 +19,7 @@ import (
 	"github.com/garyburd/redigo/redis"
 	"github.com/globocom/config"
 	"github.com/globocom/tsuru/router"
+	"strings"
 )
 
 var pool *redis.Pool
@@ -147,9 +148,23 @@ func (hipacheRouter) getCName(name string) (string, error) {
 	return cname, nil
 }
 
+// validCName returns true if the cname is not a subdomain of
+// hipache:domain conf, false otherwise
+func (hipacheRouter) validCName(cname string) bool {
+	domain, err := config.GetString("hipache:domain")
+	if err != nil {
+		return false
+	}
+	return !strings.Contains(cname, domain)
+}
+
 func (r hipacheRouter) SetCName(cname, name string) error {
 	domain, err := config.GetString("hipache:domain")
 	if err != nil {
+		return &routeError{"setCName", err}
+	}
+	if !r.validCName(cname) {
+		err := errors.New(fmt.Sprintf("Invalid CNAME %s. You can't use Tsuru's application domain.", cname))
 		return &routeError{"setCName", err}
 	}
 	frontend := "frontend:" + name + "." + domain
