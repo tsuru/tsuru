@@ -31,19 +31,24 @@ func fatal(err error) {
 	log.Fatal(err)
 }
 
-func Run(flags map[string]interface{}) {
+func loadConfig(flags map[string]interface{}) string {
 	configFile, ok := flags["config"].(string)
 	if !ok {
 		configFile = "/etc/tsuru/tsuru.conf"
 	}
+	err := config.ReadAndWatchConfigFile(configFile)
+	if err != nil {
+		fatal(err)
+	}
+	return configFile
+}
+
+func Run(flags map[string]interface{}) {
+	configFile := loadConfig(flags)
 	log.Init()
 	dry, ok := flags["dry"].(bool)
 	if !ok {
 		dry = false
-	}
-	err := config.ReadAndWatchConfigFile(configFile)
-	if err != nil {
-		fatal(err)
 	}
 	connString, err := config.GetString("database:url")
 	if err != nil {
