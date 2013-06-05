@@ -269,7 +269,7 @@ func collectUnit(container container, units chan<- provision.Unit, errs chan<- e
 		errs <- err
 		return
 	}
-	unit.Ip = c["NetworkSettings"].(map[string]interface{})["IpAddress"].(string)
+	unit.Ip = c["NetworkSettings"].(map[string]interface{})["IPAddress"].(string)
 	if hostPort, err := container.hostPort(); err == nil && hostPort != container.HostPort {
 		err = fixContainer(&container, unit.Ip, hostPort)
 		if err != nil {

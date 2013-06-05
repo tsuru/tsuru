@@ -184,13 +184,13 @@ func (c *container) ip() (string, error) {
 		return "", errors.New(msg)
 	}
 	networkSettings := result["NetworkSettings"].(map[string]interface{})
-	instanceIP := networkSettings["IpAddress"].(string)
+	instanceIP := networkSettings["IPAddress"].(string)
 	if instanceIP == "" {
 		msg := "error: Can't get ipaddress..."
 		log.Print(msg)
 		return "", errors.New(msg)
 	}
-	log.Printf("Instance IpAddress: %s", instanceIP)
+	log.Printf("Instance IPAddress: %s", instanceIP)
 	return instanceIP, nil
 }
 
