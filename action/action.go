@@ -48,6 +48,9 @@ type BWContext struct {
 // Each action should do only one thing, and do it well. All information that
 // is needed to undo the action should be returned by the Forward function.
 type Action struct {
+	// Name is the action name. Used by the log.
+	Name string
+
 	// Function that will be invoked in the forward phase. This value
 	// cannot be nil.
 	Forward Forward
