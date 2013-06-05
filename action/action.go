@@ -4,7 +4,10 @@
 
 package action
 
-import "errors"
+import (
+	"errors"
+	"github.com/globocom/tsuru/log"
+)
 
 // Result is the value returned by Forward. It is used in the call of the next
 // action, and also when rolling back the actions.
@@ -100,6 +103,7 @@ func (p *Pipeline) Execute(params ...interface{}) error {
 	}
 	fwCtx := FWContext{Params: params}
 	for i, a := range p.actions {
+		log.Printf("[pipeline] running the Forward for the %s action", a.Name)
 		if a.Forward == nil {
 			err = errors.New("All actions must define the forward function.")
 		} else if len(fwCtx.Params) < a.MinParams {
