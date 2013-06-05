@@ -266,6 +266,14 @@ func (s *S) TestGetCName(c *gocheck.C) {
 	c.Assert(s.fake.cmds, gocheck.DeepEquals, expected)
 }
 
+func (s *S) TestGetCNameIgnoresErrNil(c *gocheck.C) {
+	reply := map[string]interface{}{"GET": nil}
+	conn = &resultCommandConn{reply: reply, fakeConn: s.fake}
+	cname, err := hipacheRouter{}.getCName("myapp")
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(cname, gocheck.Equals, "")
+}
+
 func (s *S) TestSetCName(c *gocheck.C) {
 	conn = &resultCommandConn{defaultReply: []interface{}{[]byte("10.10.10.10")}, fakeConn: s.fake}
 	err := hipacheRouter{}.SetCName("myapp.com", "myapp")

@@ -142,7 +142,7 @@ func (hipacheRouter) getCName(name string) (string, error) {
 	conn := connect()
 	defer conn.Close()
 	cname, err := redis.String(conn.Do("GET", "cname:"+name))
-	if err != nil {
+	if err != nil && err != redis.ErrNil {
 		return "", &routeError{"getCName", err}
 	}
 	return cname, nil
