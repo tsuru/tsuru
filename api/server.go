@@ -11,8 +11,6 @@ import (
 	"github.com/globocom/tsuru/app"
 	"github.com/globocom/tsuru/log"
 	"github.com/globocom/tsuru/provision"
-	stdlog "log"
-	"log/syslog"
 	"net"
 	"net/http"
 	"os"
@@ -21,14 +19,6 @@ import (
 func fatal(err error) {
 	fmt.Fprintln(os.Stderr, err)
 	log.Fatal(err)
-}
-
-func logInit() {
-	logger, err := syslog.NewLogger(syslog.LOG_INFO, stdlog.LstdFlags)
-	if err != nil {
-		stdlog.Fatal(err)
-	}
-	log.SetLogger(logger)
 }
 
 func loadConfig(flags map[string]interface{}) string {
@@ -44,8 +34,8 @@ func loadConfig(flags map[string]interface{}) string {
 }
 
 func RunServer(flags map[string]interface{}) {
-	logInit()
 	configFile := loadConfig(flags)
+	log.Init()
 	dry, ok := flags["dry"].(bool)
 	if !ok {
 		dry = false
