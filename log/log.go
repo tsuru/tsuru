@@ -12,8 +12,17 @@ package log
 import (
 	"io"
 	"log"
+	"log/syslog"
 	"sync"
 )
+
+func Init() {
+	logger, err := syslog.NewLogger(syslog.LOG_INFO, log.LstdFlags)
+	if err != nil {
+		log.Fatal(err)
+	}
+	SetLogger(logger)
+}
 
 // Target is the current target for the log package.
 type Target struct {
