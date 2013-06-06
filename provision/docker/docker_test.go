@@ -273,6 +273,8 @@ func (s *S) TestDockerDeploy(c *gocheck.C) {
 	setExecut(fexec)
 	defer setExecut(nil)
 	container := container{ID: "c-01", IP: "10.10.10.10", AppName: "myapp"}
+	s.conn.Collection(s.collName).Insert(container)
+	defer s.conn.Collection(s.collName).RemoveId(container.ID)
 	err := container.deploy("ff13e", &buf)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(buf.String(), gocheck.Equals, "success\n")
@@ -290,6 +292,7 @@ func (s *S) TestDockerDeploy(c *gocheck.C) {
 	cont, err := getContainer(container.ID)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(cont.Status, gocheck.Equals, "running")
+	c.Assert(cont.Version, gocheck.Equals, "ff13e")
 }
 
 func (s *S) TestDockerDeployRetries(c *gocheck.C) {
@@ -303,6 +306,8 @@ func (s *S) TestDockerDeployRetries(c *gocheck.C) {
 	setExecut(&fexec)
 	defer setExecut(nil)
 	container := container{ID: "c-01", IP: "10.10.10.10", AppName: "myapp"}
+	s.conn.Collection(s.collName).Insert(container)
+	defer s.conn.Collection(s.collName).RemoveId(container.ID)
 	err := container.deploy("origin/master", &buf)
 	c.Assert(err, gocheck.IsNil)
 	commands := fexec.GetCommands("ssh")
@@ -351,6 +356,8 @@ func (s *S) TestDockerDeployFailure(c *gocheck.C) {
 	setExecut(&fexec)
 	defer setExecut(nil)
 	container := container{ID: "c-01", IP: "10.10.10.10", AppName: "myapp"}
+	s.conn.Collection(s.collName).Insert(container)
+	defer s.conn.Collection(s.collName).RemoveId(container.ID)
 	err := container.deploy("origin/master", &buf)
 	c.Assert(err, gocheck.NotNil)
 	c.Assert(buf.String(), gocheck.Equals, "deploy failed")

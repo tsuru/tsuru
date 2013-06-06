@@ -108,6 +108,7 @@ type container struct {
 	Port     string
 	HostPort string
 	Status   string
+	Version  string
 }
 
 func (c *container) getAddress() string {
@@ -260,6 +261,7 @@ func (c *container) deploy(version string, w io.Writer) error {
 		c.setStatus("error")
 		return err
 	}
+	c.Version = version
 	runArgs, _ := config.GetString("docker:run-cmd:args")
 	appRepo := repository.ReadOnlyURL(c.AppName)
 	filter := filter{w: w, content: []byte("connection refused")}
