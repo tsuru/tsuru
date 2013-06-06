@@ -99,7 +99,7 @@ func (s *S) TestDeployShouldCallDockerCreate(c *gocheck.C) {
 	c.Assert(fexec.ExecutedCmd("docker", args), gocheck.Equals, true)
 	deployArgs := []string{
 		"10.10.10.10", "-l", s.sshUser, "-o", "StrictHostKeyChecking no",
-		"--", "/var/lib/tsuru/deploy", appRepo,
+		"--", "/var/lib/tsuru/deploy", appRepo, "master",
 	}
 	c.Assert(fexec.ExecutedCmd("ssh", deployArgs), gocheck.Equals, true)
 	runArgs := []string{

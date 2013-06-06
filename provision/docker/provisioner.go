@@ -96,7 +96,7 @@ func (p *dockerProvisioner) Deploy(a provision.App, version string, w io.Writer)
 		if err != nil {
 			return err
 		}
-		err = c.deploy(w)
+		err = c.deploy(version, w)
 		if err != nil {
 			c.remove()
 		}
@@ -170,7 +170,7 @@ func (*dockerProvisioner) AddUnits(a provision.App, units uint) ([]provision.Uni
 		if err != nil {
 			return nil, err
 		}
-		go container.deploy(&writer)
+		go container.deploy("origin/master", &writer)
 		result[i] = provision.Unit{
 			Name:    container.ID,
 			AppName: a.GetName(),

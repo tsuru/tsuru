@@ -249,7 +249,7 @@ func (c *container) setStatus(status string) error {
 	return coll.UpdateId(c.ID, c)
 }
 
-func (c *container) deploy(w io.Writer) error {
+func (c *container) deploy(version string, w io.Writer) error {
 	deployCmd, err := config.GetString("docker:deploy-cmd")
 	if err != nil {
 		c.setStatus("error")
@@ -264,7 +264,7 @@ func (c *container) deploy(w io.Writer) error {
 	appRepo := repository.ReadOnlyURL(c.AppName)
 	filter := filter{w: w, content: []byte("connection refused")}
 	for {
-		err = c.ssh(w, &filter, deployCmd, appRepo)
+		err = c.ssh(w, &filter, deployCmd, appRepo, version)
 		if err == nil {
 			break
 		}

@@ -273,13 +273,13 @@ func (s *S) TestDockerDeploy(c *gocheck.C) {
 	setExecut(fexec)
 	defer setExecut(nil)
 	container := container{ID: "c-01", IP: "10.10.10.10", AppName: "myapp"}
-	err := container.deploy(&buf)
+	err := container.deploy("ff13e", &buf)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(buf.String(), gocheck.Equals, "success\n")
 	appRepo := repository.ReadOnlyURL(container.AppName)
 	deployArgs := []string{
 		"10.10.10.10", "-l", s.sshUser, "-o", "StrictHostKeyChecking no",
-		"--", s.deployCmd, appRepo,
+		"--", s.deployCmd, appRepo, "ff13e",
 	}
 	runArgs := []string{
 		"10.10.10.10", "-l", s.sshUser, "-o", "StrictHostKeyChecking no",
@@ -303,13 +303,13 @@ func (s *S) TestDockerDeployRetries(c *gocheck.C) {
 	setExecut(&fexec)
 	defer setExecut(nil)
 	container := container{ID: "c-01", IP: "10.10.10.10", AppName: "myapp"}
-	err := container.deploy(&buf)
+	err := container.deploy("origin/master", &buf)
 	c.Assert(err, gocheck.IsNil)
 	commands := fexec.GetCommands("ssh")
 	c.Assert(commands, gocheck.HasLen, 5)
 	deployArgs := []string{
 		"10.10.10.10", "-l", s.sshUser, "-o", "StrictHostKeyChecking no",
-		"--", s.deployCmd, repository.ReadOnlyURL(container.AppName),
+		"--", s.deployCmd, repository.ReadOnlyURL(container.AppName), "origin/master",
 	}
 	for _, cmd := range commands[:4] {
 		c.Check(cmd.GetArgs(), gocheck.DeepEquals, deployArgs)
@@ -326,7 +326,7 @@ func (s *S) TestDockerDeployNoDeployCommand(c *gocheck.C) {
 	defer config.Set("docker:deploy-cmd", old)
 	config.Unset("docker:deploy-cmd")
 	var container container
-	err := container.deploy(nil)
+	err := container.deploy("origin/master", nil)
 	c.Assert(err, gocheck.NotNil)
 	c.Assert(err.Error(), gocheck.Equals, `key "docker:deploy-cmd" not found`)
 }
@@ -336,7 +336,7 @@ func (s *S) TestDockerDeployNoBinaryToRun(c *gocheck.C) {
 	defer config.Set("docker:run-cmd:bin", old)
 	config.Unset("docker:run-cmd:bin")
 	var container container
-	err := container.deploy(nil)
+	err := container.deploy("origin/master", nil)
 	c.Assert(err, gocheck.NotNil)
 	c.Assert(err.Error(), gocheck.Equals, `key "docker:run-cmd:bin" not found`)
 }
@@ -351,7 +351,7 @@ func (s *S) TestDockerDeployFailure(c *gocheck.C) {
 	setExecut(&fexec)
 	defer setExecut(nil)
 	container := container{ID: "c-01", IP: "10.10.10.10", AppName: "myapp"}
-	err := container.deploy(&buf)
+	err := container.deploy("origin/master", &buf)
 	c.Assert(err, gocheck.NotNil)
 	c.Assert(buf.String(), gocheck.Equals, "deploy failed")
 	c2, err := getContainer(container.ID)
