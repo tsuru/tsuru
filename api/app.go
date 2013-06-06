@@ -42,6 +42,10 @@ func getApp(name string, u *auth.User) (app.App, error) {
 }
 
 func cloneRepository(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
+	version := r.PostFormValue("version")
+	if version == "" {
+		return &errors.HTTP{Code: http.StatusBadRequest, Message: "Missing parameter version"}
+	}
 	w.Header().Set("Content-Type", "text")
 	instance := &app.App{Name: r.URL.Query().Get(":appname")}
 	err := instance.Get()
@@ -49,7 +53,7 @@ func cloneRepository(w http.ResponseWriter, r *http.Request, t *auth.Token) erro
 		return &errors.HTTP{Code: http.StatusNotFound, Message: fmt.Sprintf("App %s not found.", instance.Name)}
 	}
 	logger := app.LogWriter{App: instance, Writer: w}
-	return app.Provisioner.Deploy(instance, "origin/master", &logger)
+	return app.Provisioner.Deploy(instance, version, &logger)
 }
 
 func appIsAvailable(w http.ResponseWriter, r *http.Request, t *auth.Token) error {

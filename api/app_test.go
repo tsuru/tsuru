@@ -92,7 +92,7 @@ func (s *S) TestAppIsAvailableHandlerShouldReturn200WhenAppUnitStatusIsStarted(c
 	c.Assert(recorder.Code, gocheck.Equals, http.StatusOK)
 }
 
-func (s *S) TestCloneRepositoryHandlerShouldAddLogs(c *gocheck.C) {
+func (s *S) TestCloneRepositoryHandler(c *gocheck.C) {
 	a := app.App{
 		Name:     "otherapp",
 		Platform: "zend",
@@ -105,8 +105,9 @@ func (s *S) TestCloneRepositoryHandlerShouldAddLogs(c *gocheck.C) {
 	s.provisioner.Provision(&a)
 	defer s.provisioner.Destroy(&a)
 	url := fmt.Sprintf("/apps/%s/repository/clone?:appname=%s", a.Name, a.Name)
-	request, err := http.NewRequest("GET", url, nil)
+	request, err := http.NewRequest("POST", url, strings.NewReader("version=a345f3e"))
 	c.Assert(err, gocheck.IsNil)
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	recorder := httptest.NewRecorder()
 	err = cloneRepository(recorder, request, s.token)
 	c.Assert(err, gocheck.IsNil)
@@ -115,11 +116,13 @@ func (s *S) TestCloneRepositoryHandlerShouldAddLogs(c *gocheck.C) {
 	b, err := ioutil.ReadAll(recorder.Body)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(string(b), gocheck.Equals, "Deploy called")
+	c.Assert(s.provisioner.Version(&a), gocheck.Equals, "a345f3e")
 }
 
 func (s *S) TestCloneRepositoryShouldReturnNotFoundWhenAppDoesNotExist(c *gocheck.C) {
-	request, err := http.NewRequest("GET", "/apps/abc/repository/clone?:appname=abc", nil)
+	request, err := http.NewRequest("POST", "/apps/abc/repository/clone?:appname=abc", strings.NewReader("version=abcdef"))
 	c.Assert(err, gocheck.IsNil)
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	recorder := httptest.NewRecorder()
 	err = cloneRepository(recorder, request, s.token)
 	c.Assert(err, gocheck.NotNil)
@@ -127,6 +130,19 @@ func (s *S) TestCloneRepositoryShouldReturnNotFoundWhenAppDoesNotExist(c *gochec
 	c.Assert(ok, gocheck.Equals, true)
 	c.Assert(e.Code, gocheck.Equals, http.StatusNotFound)
 	c.Assert(e, gocheck.ErrorMatches, "^App abc not found.$")
+}
+
+func (s *S) TestCloneRepositoryWithoutVersion(c *gocheck.C) {
+	request, err := http.NewRequest("POST", "/apps/abc/repository/clone?:appname=abc", nil)
+	c.Assert(err, gocheck.IsNil)
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	recorder := httptest.NewRecorder()
+	err = cloneRepository(recorder, request, s.token)
+	c.Assert(err, gocheck.NotNil)
+	e, ok := err.(*errors.HTTP)
+	c.Assert(ok, gocheck.Equals, true)
+	c.Assert(e.Code, gocheck.Equals, http.StatusBadRequest)
+	c.Assert(e.Message, gocheck.Equals, "Missing parameter version")
 }
 
 func (s *S) TestAppList(c *gocheck.C) {
