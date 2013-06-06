@@ -1671,7 +1671,7 @@ func (s *S) TestSetCNameHandler(c *gocheck.C) {
 	defer s.conn.Logs().Remove(bson.M{"appname": a.Name})
 	s.provisioner.Provision(&a)
 	defer s.provisioner.Destroy(&a)
-	url := fmt.Sprintf("/apps/%s?:app=%s", a.Name, a.Name)
+	url := fmt.Sprintf("/apps/%s/cname?:app=%s", a.Name, a.Name)
 	b := strings.NewReader(`{"cname":"leper.secretcompany.com"}`)
 	request, err := http.NewRequest("POST", url, b)
 	c.Assert(err, gocheck.IsNil)
@@ -1697,7 +1697,7 @@ func (s *S) TestSetCNameHandlerAcceptsEmptyCName(c *gocheck.C) {
 	defer s.conn.Logs().Remove(bson.M{"appname": a.Name})
 	s.provisioner.Provision(&a)
 	defer s.provisioner.Destroy(&a)
-	url := fmt.Sprintf("/apps/%s?:app=%s", a.Name, a.Name)
+	url := fmt.Sprintf("/apps/%s/cname?:app=%s", a.Name, a.Name)
 	b := strings.NewReader(`{"cname":""}`)
 	request, err := http.NewRequest("POST", url, b)
 	c.Assert(err, gocheck.IsNil)
@@ -1711,7 +1711,7 @@ func (s *S) TestSetCNameHandlerAcceptsEmptyCName(c *gocheck.C) {
 
 func (s *S) TestSetCNameHandlerReturnsInternalErrorIfItFailsToReadTheBody(c *gocheck.C) {
 	b := s.getTestData("bodyToBeClosed.txt")
-	request, err := http.NewRequest("POST", "/apps/unkown?:app=unknown", b)
+	request, err := http.NewRequest("POST", "/apps/unkown/cname?:app=unknown", b)
 	c.Assert(err, gocheck.IsNil)
 	request.Body.Close()
 	recorder := httptest.NewRecorder()
@@ -1722,7 +1722,7 @@ func (s *S) TestSetCNameHandlerReturnsInternalErrorIfItFailsToReadTheBody(c *goc
 func (s *S) TestSetCNameHandlerReturnsBadRequestWhenCNameIsMissingFromTheBody(c *gocheck.C) {
 	bodies := []io.Reader{nil, strings.NewReader(`{}`), strings.NewReader(`{"name":"something"}`)}
 	for _, b := range bodies {
-		request, err := http.NewRequest("POST", "/apps/unknown?:app=unknown", b)
+		request, err := http.NewRequest("POST", "/apps/unknown/cname?:app=unknown", b)
 		c.Assert(err, gocheck.IsNil)
 		recorder := httptest.NewRecorder()
 		err = setCName(recorder, request, s.token)
@@ -1736,7 +1736,7 @@ func (s *S) TestSetCNameHandlerReturnsBadRequestWhenCNameIsMissingFromTheBody(c 
 
 func (s *S) TestSetCNameHandlerInvalidJSON(c *gocheck.C) {
 	b := strings.NewReader(`}"I'm invalid json"`)
-	request, err := http.NewRequest("POST", "/apps/unknown?:app=unknown", b)
+	request, err := http.NewRequest("POST", "/apps/unknown/cname?:app=unknown", b)
 	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
 	err = setCName(recorder, request, s.token)
@@ -1749,7 +1749,7 @@ func (s *S) TestSetCNameHandlerInvalidJSON(c *gocheck.C) {
 
 func (s *S) TestSetCNameHandlerUnknownApp(c *gocheck.C) {
 	b := strings.NewReader(`{"cname": "leper.secretcompany.com"}`)
-	request, err := http.NewRequest("POST", "/apps/unknown?:app=unknown", b)
+	request, err := http.NewRequest("POST", "/apps/unknown/cname?:app=unknown", b)
 	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
 	err = setCName(recorder, request, s.token)
@@ -1768,7 +1768,7 @@ func (s *S) TestSetCNameHandlerUserWithoutAccessToTheApp(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	defer s.conn.Logs().Remove(bson.M{"appname": a.Name})
-	url := fmt.Sprintf("/apps/%s?:app=%s", a.Name, a.Name)
+	url := fmt.Sprintf("/apps/%s/cname?:app=%s", a.Name, a.Name)
 	b := strings.NewReader(`{"cname": "lost.secretcompany.com"}`)
 	request, err := http.NewRequest("POST", url, b)
 	c.Assert(err, gocheck.IsNil)
@@ -1786,7 +1786,7 @@ func (s *S) TestSetCNameHandlerInvalidCName(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	defer s.conn.Logs().Remove(bson.M{"appname": a.Name})
-	url := fmt.Sprintf("/apps/%s?:app=%s", a.Name, a.Name)
+	url := fmt.Sprintf("/apps/%s/cname?:app=%s", a.Name, a.Name)
 	b := strings.NewReader(`{"cname": ".leper.secretcompany.com"}`)
 	request, err := http.NewRequest("POST", url, b)
 	c.Assert(err, gocheck.IsNil)
@@ -1797,6 +1797,62 @@ func (s *S) TestSetCNameHandlerInvalidCName(c *gocheck.C) {
 	c.Assert(ok, gocheck.Equals, true)
 	c.Assert(e.Code, gocheck.Equals, http.StatusBadRequest)
 	c.Assert(e.Message, gocheck.Equals, "Invalid cname")
+}
+
+func (s *S) TestUnsetCNameHandler(c *gocheck.C) {
+	a := app.App{Name: "leper", Teams: []string{s.team.Name}, CName: "foo.bar.com"}
+	err := s.conn.Apps().Insert(a)
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	defer s.conn.Logs().Remove(bson.M{"appname": a.Name})
+	s.provisioner.Provision(&a)
+	defer s.provisioner.Destroy(&a)
+	url := fmt.Sprintf("/apps/%s/cname?:app=%s", a.Name, a.Name)
+	request, err := http.NewRequest("DELETE", url, nil)
+	c.Assert(err, gocheck.IsNil)
+	recorder := httptest.NewRecorder()
+	err = unsetCName(recorder, request, s.token)
+	c.Assert(err, gocheck.IsNil)
+	err = a.Get()
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(a.CName, gocheck.Equals, "")
+	action := testing.Action{
+		Action: "unset-cname",
+		User:   s.user.Email,
+		Extra:  []interface{}{"app=" + a.Name},
+	}
+	c.Assert(action, testing.IsRecorded)
+}
+
+func (s *S) TestUnsetCNameHandlerUnknownApp(c *gocheck.C) {
+	request, err := http.NewRequest("DELETE", "/apps/unknown/cname?:app=unknown", nil)
+	c.Assert(err, gocheck.IsNil)
+	recorder := httptest.NewRecorder()
+	err = unsetCName(recorder, request, s.token)
+	c.Assert(err, gocheck.NotNil)
+	e, ok := err.(*errors.HTTP)
+	c.Assert(ok, gocheck.Equals, true)
+	c.Assert(e.Code, gocheck.Equals, http.StatusNotFound)
+}
+
+func (s *S) TestUnsetCNameHandlerUserWithoutAccessToTheApp(c *gocheck.C) {
+	a := app.App{
+		Name:     "lost",
+		Platform: "vougan",
+	}
+	err := s.conn.Apps().Insert(a)
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	defer s.conn.Logs().Remove(bson.M{"appname": a.Name})
+	url := fmt.Sprintf("/apps/%s/cname?:app=%s", a.Name, a.Name)
+	request, err := http.NewRequest("DELETE", url, nil)
+	c.Assert(err, gocheck.IsNil)
+	recorder := httptest.NewRecorder()
+	err = unsetCName(recorder, request, s.token)
+	c.Assert(err, gocheck.NotNil)
+	e, ok := err.(*errors.HTTP)
+	c.Assert(ok, gocheck.Equals, true)
+	c.Assert(e.Code, gocheck.Equals, http.StatusForbidden)
 }
 
 func (s *S) TestAppLogShouldReturnNotFoundWhenAppDoesNotExist(c *gocheck.C) {

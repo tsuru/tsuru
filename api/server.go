@@ -78,7 +78,8 @@ func RunServer(flags map[string]interface{}) {
 
 	m.Del("/apps/:app", authorizationRequiredHandler(appDelete))
 	m.Get("/apps/:app", authorizationRequiredHandler(appInfo))
-	m.Post("/apps/:app", authorizationRequiredHandler(setCName))
+	m.Post("/apps/:app/cname", authorizationRequiredHandler(setCName))
+	m.Del("/apps/:app/cname", authorizationRequiredHandler(unsetCName))
 	m.Post("/apps/:app/run", authorizationRequiredHandler(runCommand))
 	m.Get("/apps/:app/restart", authorizationRequiredHandler(restart))
 	m.Get("/apps/:app/env", authorizationRequiredHandler(getEnv))

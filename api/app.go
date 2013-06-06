@@ -489,6 +489,20 @@ func setCName(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
 	return err
 }
 
+func unsetCName(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
+	u, err := t.User()
+	if err != nil {
+		return err
+	}
+	appName := r.URL.Query().Get(":app")
+	app, err := getApp(appName, u)
+	if err != nil {
+		return err
+	}
+	rec.Log(u.Email, "unset-cname", "app="+appName)
+	return app.UnsetCName()
+}
+
 func appLog(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
 	var err error
 	var lines int
