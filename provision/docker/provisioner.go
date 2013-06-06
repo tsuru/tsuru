@@ -163,6 +163,7 @@ func (*dockerProvisioner) AddUnits(a provision.App, units uint) ([]provision.Uni
 	if len(containers) < 1 {
 		return nil, errors.New("New units can only be added after the first deployment")
 	}
+	version := containers[0].Version
 	writer := app.LogWriter{App: a, Writer: ioutil.Discard}
 	result := make([]provision.Unit, int(units))
 	for i := uint(0); i < units; i++ {
@@ -170,7 +171,7 @@ func (*dockerProvisioner) AddUnits(a provision.App, units uint) ([]provision.Uni
 		if err != nil {
 			return nil, err
 		}
-		go container.deploy("origin/master", &writer)
+		go container.deploy(version, &writer)
 		result[i] = provision.Unit{
 			Name:    container.ID,
 			AppName: a.GetName(),

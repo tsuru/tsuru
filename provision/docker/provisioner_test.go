@@ -11,6 +11,7 @@ import (
 	etesting "github.com/globocom/tsuru/exec/testing"
 	"github.com/globocom/tsuru/log"
 	"github.com/globocom/tsuru/provision"
+	"github.com/globocom/tsuru/repository"
 	rtesting "github.com/globocom/tsuru/router/testing"
 	"github.com/globocom/tsuru/testing"
 	"labix.org/v2/mgo/bson"
@@ -402,7 +403,7 @@ func (s *S) TestProvisionerAddUnits(c *gocheck.C) {
 	app := testing.NewFakeApp("myapp", "python", 0)
 	p.Provision(app)
 	defer p.Destroy(app)
-	s.conn.Collection(s.collName).Insert(container{ID: "c-89320", AppName: app.GetName()})
+	s.conn.Collection(s.collName).Insert(container{ID: "c-89320", AppName: app.GetName(), Version: "a345fe"})
 	defer s.conn.Collection(s.collName).RemoveId("c-89320")
 	expected := []provision.Unit{
 		{Name: "c-300", AppName: app.GetName(),
@@ -441,6 +442,12 @@ func (s *S) TestProvisionerAddUnits(c *gocheck.C) {
 	case <-time.After(5e9):
 		c.Fatal("Did not run deploy script on containers after 5 seconds.")
 	}
+	args := []string{
+		"10.10.10.3", "-l", s.sshUser, "-o", "StrictHostKeyChecking no",
+		"--", s.deployCmd, repository.ReadOnlyURL(app.GetName()), "a345fe",
+	}
+	executed := fexec.ExecutedCmd("ssh", args)
+	c.Assert(executed, gocheck.Equals, true)
 }
 
 func (s *S) TestProvisionerAddZeroUnits(c *gocheck.C) {
