@@ -138,8 +138,10 @@ func (s *S) TestDeploy(c *gocheck.C) {
 	app := testing.NewFakeApp("cribcaged", "python", 1)
 	w := &bytes.Buffer{}
 	p := JujuProvisioner{}
-	err = p.Deploy(app, "master", w)
+	err = p.Deploy(app, "f83ac40", w)
 	c.Assert(err, gocheck.IsNil)
+	expected := []string{"set", app.GetName(), "app-version=f83ac40"}
+	c.Assert(commandmocker.Parameters(tmpdir)[:3], gocheck.DeepEquals, expected)
 }
 
 func (s *S) TestDestroy(c *gocheck.C) {
