@@ -255,7 +255,7 @@ func collectUnit(container container, units chan<- provision.Unit, errs chan<- e
 	case "error":
 		unit.Status = provision.StatusError
 		units <- unit
-		fallthrough
+		return
 	case "created":
 		return
 	}
