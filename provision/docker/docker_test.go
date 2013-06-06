@@ -32,8 +32,8 @@ func (s *S) TestNewContainer(c *gocheck.C) {
 	inspectOut := `
     {
             "NetworkSettings": {
-            "IPAddress": "10.10.10.10",
-            "IPPrefixLen": 8,
+            "IpAddress": "10.10.10.10",
+            "IpPrefixLen": 8,
             "Gateway": "10.65.41.1",
 	    "PortMapping": {"8888": "34233"}
     }
@@ -96,8 +96,8 @@ func (s *S) TestNewContainerReturnsNilAndLogsOnError(c *gocheck.C) {
 func (s *S) TestNewContainerAddsRoute(c *gocheck.C) {
 	out := fmt.Sprintf(`{
 	"NetworkSettings": {
-		"IPAddress": "10.10.10.10",
-		"IPPrefixLen": 8,
+		"IpAddress": "10.10.10.10",
+		"IpPrefixLen": 8,
 		"Gateway": "10.65.41.1",
 		"PortMapping": {
 			"%s": "30000"
@@ -220,8 +220,8 @@ func (s *S) TestDockerCreate(c *gocheck.C) {
 	defer setExecut(nil)
 	output := `{
 	"NetworkSettings": {
-		"IPAddress": "10.10.10.10",
-		"IPPrefixLen": 8,
+		"IpAddress": "10.10.10.10",
+		"IpPrefixLen": 8,
 		"Gateway": "10.65.41.1",
 		"PortMapping": {"8888": "37457"}
 	}
@@ -425,8 +425,8 @@ func (s *S) TestContainerIPReturnsIPFromDockerInspect(c *gocheck.C) {
 	cmdReturn := `
     {
             \"NetworkSettings\": {
-            \"IPAddress\": \"10.10.10.10\",
-            \"IPPrefixLen\": 8,
+            \"IpAddress\": \"10.10.10.10\",
+            \"IpPrefixLen\": 8,
             \"Gateway\": \"10.65.41.1\",
             \"PortMapping\": {}
     }
@@ -445,8 +445,8 @@ func (s *S) TestContainerHostPortReturnsPortFromDockerInspect(c *gocheck.C) {
 	container := container{ID: "c-01", Port: "8888"}
 	output := `{
 	"NetworkSettings": {
-		"IPAddress": "10.10.10.10",
-		"IPPrefixLen": 8,
+		"IpAddress": "10.10.10.10",
+		"IpPrefixLen": 8,
 		"Gateway": "10.65.41.1",
 		"PortMapping": {
 			"8888": "59322"
@@ -476,8 +476,8 @@ func (s *S) TestContainerHostPortNotFound(c *gocheck.C) {
 	container := container{ID: "c-01", Port: "8888"}
 	output := `{
 	"NetworkSettings": {
-		"IPAddress": "10.10.10.10",
-		"IPPrefixLen": 8,
+		"IpAddress": "10.10.10.10",
+		"IpPrefixLen": 8,
 		"Gateway": "10.65.41.1",
 		"PortMapping": {
 			"8889": "59322"

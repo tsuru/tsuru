@@ -71,8 +71,8 @@ func (s *S) TestProvisionerRestartCallsTheRestartHook(c *gocheck.C) {
 func (s *S) TestDeployShouldCallDockerCreate(c *gocheck.C) {
 	out := `{
 	"NetworkSettings": {
-		"IPAddress": "10.10.10.10",
-		"IPPrefixLen": 8,
+		"IpAddress": "10.10.10.10",
+		"IpPrefixLen": 8,
 		"Gateway": "10.65.41.1",
 		"PortMapping": {"8888": "37574"}
 	}
@@ -123,8 +123,8 @@ func (s *S) TestDeployShouldReplaceAllContainers(c *gocheck.C) {
 	app.AddUnit(&testing.FakeUnit{Name: "app/1"})
 	out := `{
 	"NetworkSettings": {
-		"IPAddress": "10.10.10.%d",
-		"IPPrefixLen": 8,
+		"IpAddress": "10.10.10.%d",
+		"IpPrefixLen": 8,
 		"Gateway": "10.65.41.1",
 		"PortMapping": {"8888": "37574"}
 	}
@@ -160,8 +160,8 @@ func (s *S) TestDeployRemoveContainersEvenWhenTheyreNotInTheAppsCollection(c *go
 	defer p.Destroy(app)
 	out := `{
 	"NetworkSettings": {
-		"IPAddress": "10.10.10.%d",
-		"IPPrefixLen": 8,
+		"IpAddress": "10.10.10.%d",
+		"IpPrefixLen": 8,
 		"Gateway": "10.65.41.1",
 		"PortMapping": {"8888": "37574"}
 	}
@@ -186,8 +186,8 @@ func (s *S) TestDeployRemoveContainersEvenWhenTheyreNotInTheAppsCollection(c *go
 func (s *S) TestDeployShouldRestart(c *gocheck.C) {
 	out := `{
 	"NetworkSettings": {
-		"IPAddress": "10.10.10.10",
-		"IPPrefixLen": 8,
+		"IpAddress": "10.10.10.10",
+		"IpPrefixLen": 8,
 		"Gateway": "10.65.41.1",
 		"PortMapping": {"8888": "37574"}
 	}
@@ -244,8 +244,8 @@ func (s *S) TestDeployFailureSecondStep(c *gocheck.C) {
 	defer s.conn.Collection(s.collName).RemoveAll(bson.M{"appname": app.GetName()})
 	output := `{
 	"NetworkSettings": {
-		"IPAddress": "10.10.10.%d",
-		"IPPrefixLen": 8,
+		"IpAddress": "10.10.10.%d",
+		"IpPrefixLen": 8,
 		"Gateway": "10.65.41.1",
 		"PortMapping": {"8888": "37574"}
 	}
@@ -347,8 +347,8 @@ func (s *S) TestProvisionerDestroyRemovesRouterBackend(c *gocheck.C) {
 func (s *S) TestProvisionerAddr(c *gocheck.C) {
 	out := `{
 	"NetworkSettings": {
-		"IPAddress": "10.10.10.10",
-		"IPPrefixLen": 8,
+		"IpAddress": "10.10.10.10",
+		"IpPrefixLen": 8,
 		"Gateway": "10.65.41.1",
 		"PortMapping": {"8888": "37574"}
 	}
@@ -381,8 +381,8 @@ func (s *S) TestProvisionerAddUnits(c *gocheck.C) {
 	runCmd := fmt.Sprintf("run -d -t -p %s tsuru/python /bin/bash -c %s", s.port, sshCmd)
 	out := `{
 	"NetworkSettings": {
-		"IPAddress": "10.10.10.%d",
-		"IPPrefixLen": 8,
+		"IpAddress": "10.10.10.%d",
+		"IpPrefixLen": 8,
 		"Gateway": "10.65.41.1",
 		"PortMapping": {"8888": "37574"}
 	}
@@ -478,8 +478,8 @@ func (s *S) TestProvisionerAddUnitsWithoutContainers(c *gocheck.C) {
 func (s *S) TestProvisionerRemoveUnit(c *gocheck.C) {
 	out := `{
 	"NetworkSettings": {
-		"IPAddress": "127.0.0.1",
-		"IPPrefixLen": 8,
+		"IpAddress": "127.0.0.1",
+		"IpPrefixLen": 8,
 		"Gateway": "10.65.41.1",
 		"PortMapping": {
 			"8888": "90293"
@@ -515,8 +515,8 @@ func (s *S) TestProvisionerRemoveUnitNotFound(c *gocheck.C) {
 func (s *S) TestProvisionerRemoveUnitNotInApp(c *gocheck.C) {
 	out := `{
 	"NetworkSettings": {
-		"IPAddress": "127.0.0.1",
-		"IPPrefixLen": 8,
+		"IpAddress": "127.0.0.1",
+		"IpPrefixLen": 8,
 		"Gateway": "10.65.41.1",
 		"PortMapping": {
 			"8888": "90293"
@@ -665,8 +665,8 @@ func (s *S) TestCollectStatus(c *gocheck.C) {
 `
 	c1Output := fmt.Sprintf(`{
 	"NetworkSettings": {
-		"IPAddress": "127.0.0.1",
-		"IPPrefixLen": 8,
+		"IpAddress": "127.0.0.1",
+		"IpPrefixLen": 8,
 		"Gateway": "10.65.41.1",
 		"PortMapping": {
 			"%s": "90293"
@@ -675,8 +675,8 @@ func (s *S) TestCollectStatus(c *gocheck.C) {
 }`, listenPort)
 	c2Output := `{
 	"NetworkSettings": {
-		"IPAddress": "127.0.0.1",
-		"IPPrefixLen": 8,
+		"IpAddress": "127.0.0.1",
+		"IpPrefixLen": 8,
 		"Gateway": "10.65.41.1",
 		"PortMapping": {
 			"8889": "90294"
