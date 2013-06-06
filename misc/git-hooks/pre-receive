@@ -1,29 +1,3 @@
-#!/bin/bash -l
+#!/bin/bash -le
 
 python hooks/pre-receive.py
-status=$?
-if [ $status != 0 ]
-then
-	exit $status
-fi
-
-while read line
-do
-	echo $line | grep -q master
-	if [ $? = 0 ]
-	then
-		hash=`echo $line | awk '{print $2}'`
-	fi
-done
-
-if [ "x${hash}" = "x" ]
-then
-	echo "FATAL: not pushing to master"
-	exit 1
-fi
-
-app_dir=${PWD##*/}
-app_name=${app_dir/.git/}
-url="${TSURU_HOST}/apps/${app_name}/repository/clone"
-curl -H "Authorization: bearer ${TSURU_TOKEN}" -d "version=${hash}" -s -N --max-time 1800 $url
-exit $?
