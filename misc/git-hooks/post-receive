@@ -1,0 +1,5 @@
+#!/bin/bash -el
+app_dir=${PWD##*/}
+app_name=${app_dir/.git/}
+url="${TSURU_HOST}/apps/${app_name}/repository/clone"
+curl -H "Authorization: bearer ${TSURU_TOKEN}" -s -N --max-time 1800 $url
