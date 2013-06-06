@@ -89,7 +89,7 @@ ln -s $PWD/misc/git-hooks /tmp/shell.git/hooks
 pushd /tmp/shell.git > /dev/null
 
 echo -n "pre-receive on available app... "
-out=`echo "28c844c9b996e35a205962ed93ca7436c4369aa9 6fde9a33ab9e1e509e6be022ee4ab03347b85a90 refs/heads/master" | TSURU_HOST=http://127.0.0.1:5000 TSURU_TOKEN=000secret123 hooks/pre-receive`
+out=`TSURU_HOST=http://127.0.0.1:5000 TSURU_TOKEN=000secret123 hooks/pre-receive`
 
 if [ $? = 0 ]
 then
@@ -100,27 +100,16 @@ else
 	status=1
 fi
 
-echo -n "pre-receive deploy... "
+echo -n "post-receive... "
+out=`TSURU_HOST=http://127.0.0.1:5000 TSURU_TOKEN=000secret123 hooks/post-receive`
 gout=`echo $out | grep "Tsuru receiving push"`
 
 if [ $? = 0 ]
 then
 	echo "PASS"
 else
-	echo "FAILURE: wrong output from pre-receive command."
+	echo "FAILURE: wrong output from post-receive command."
 	echo "$out"
-	status=1
-fi
-
-echo -n "pre-receive without master... "
-out=`echo "28c844c9b996e35a205962ed93ca7436c4369aa9 6fde9a33ab9e1e509e6be022ee4ab03347b85a90 refs/heads/mybranch" | TSURU_HOST=http://127.0.0.1:5000 TSURU_TOKEN=000secret123 hooks/pre-receive`
-
-if [ $? != 0 ]
-then
-	echo "PASS"
-else
-	echo "FAILURE: got wrong status from pre-receive hook without master branch"
-	echo $out
 	status=1
 fi
 
@@ -133,7 +122,7 @@ mkdir /tmp/xeu.git
 ln -s $PWD/misc/git-hooks /tmp/xeu.git/hooks
 pushd /tmp/xeu.git > /dev/null
 
-echo "28c844c9b996e35a205962ed93ca7436c4369aa9 6fde9a33ab9e1e509e6be022ee4ab03347b85a90 refs/heads/master" | TSURU_HOST=http://127.0.0.1:5000 TSURU_TOKEN=000secret123 hooks/pre-receive > .pre-receive.out 2>&1
+TSURU_HOST=http://127.0.0.1:5000 TSURU_TOKEN=000secret123 hooks/pre-receive > .pre-receive.out 2>&1
 
 if [ $? != 0 ]
 then
