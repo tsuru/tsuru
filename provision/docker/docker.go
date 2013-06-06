@@ -109,6 +109,7 @@ type container struct {
 	HostPort string
 	Status   string
 	Version  string
+	Image    string
 }
 
 func (c *container) getAddress() string {
@@ -427,6 +428,12 @@ func listAppContainers(appName string) ([]container, error) {
 	return containers, err
 }
 
-func getImage(app provision.App) *image {
-	return &image{Name: app.GetPlatform()}
+// getImage returns the image name or id from an app.
+func getImage(app provision.App) string {
+	var c container
+	collection().Find(bson.M{"appname": app.GetName()}).One(&c)
+	if c.Image != "" {
+		return c.Image
+	}
+	return app.GetPlatform()
 }

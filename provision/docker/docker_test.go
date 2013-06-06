@@ -235,6 +235,7 @@ func (s *S) TestDockerCreate(c *gocheck.C) {
 	rtesting.FakeRouter.AddBackend(app.GetName())
 	defer rtesting.FakeRouter.RemoveBackend(app.GetName())
 	err := container.create(app)
+	defer container.remove()
 	c.Assert(err, gocheck.IsNil)
 	sshCmd := "/var/lib/tsuru/add-key key-content && /usr/sbin/sshd -D"
 	args := []string{
@@ -273,9 +274,10 @@ func (s *S) TestDockerDeploy(c *gocheck.C) {
 	setExecut(fexec)
 	defer setExecut(nil)
 	container := container{ID: "c-01", IP: "10.10.10.10", AppName: "myapp"}
-	s.conn.Collection(s.collName).Insert(container)
+	err := s.conn.Collection(s.collName).Insert(container)
+	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Collection(s.collName).RemoveId(container.ID)
-	err := container.deploy("ff13e", &buf)
+	err = container.deploy("ff13e", &buf)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(buf.String(), gocheck.Equals, "success\n")
 	appRepo := repository.ReadOnlyURL(container.AppName)
@@ -356,9 +358,9 @@ func (s *S) TestDockerDeployFailure(c *gocheck.C) {
 	setExecut(&fexec)
 	defer setExecut(nil)
 	container := container{ID: "c-01", IP: "10.10.10.10", AppName: "myapp"}
-	s.conn.Collection(s.collName).Insert(container)
+	err := s.conn.Collection(s.collName).Insert(container)
 	defer s.conn.Collection(s.collName).RemoveId(container.ID)
-	err := container.deploy("origin/master", &buf)
+	err = container.deploy("origin/master", &buf)
 	c.Assert(err, gocheck.NotNil)
 	c.Assert(buf.String(), gocheck.Equals, "deploy failed")
 	c2, err := getContainer(container.ID)
@@ -716,9 +718,18 @@ func (s *S) TestGetContainers(c *gocheck.C) {
 	c.Assert(containers, gocheck.HasLen, 0)
 }
 
-func (s *S) TestGetImage(c *gocheck.C) {
+func (s *S) TestGetImageFromAppPlatform(c *gocheck.C) {
 	app := testing.NewFakeApp("myapp", "python", 1)
 	img := getImage(app)
-	c.Assert(img.ID, gocheck.Equals, "")
-	c.Assert(img.Name, gocheck.Equals, "python")
+	c.Assert(img, gocheck.Equals, "python")
+}
+
+func (s *S) TestGetImageFromDatabase(c *gocheck.C) {
+	cont := container{ID: "bleble", Type: "python", AppName: "myapp", Image: "someimageid"}
+	err := collection().Insert(cont)
+	c.Assert(err, gocheck.IsNil)
+	defer collection().RemoveAll(bson.M{"_id": "bleble"})
+	app := testing.NewFakeApp("myapp", "python", 1)
+	img := getImage(app)
+	c.Assert(img, gocheck.Equals, "someimageid")
 }
