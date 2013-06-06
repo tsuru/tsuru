@@ -100,7 +100,7 @@ func RunServer(flags map[string]interface{}) {
 	// the token generate for the given app is valid, but these handlers
 	// use a token generated for Gandalf.
 	m.Get("/apps/:appname/available", authorizationRequiredHandler(appIsAvailable))
-	m.Get("/apps/:appname/repository/clone", authorizationRequiredHandler(cloneRepository))
+	m.Post("/apps/:appname/repository/clone", authorizationRequiredHandler(cloneRepository))
 
 	if registrationEnabled, _ := config.GetBool("auth:user-registration"); registrationEnabled {
 		m.Post("/users", handler(createUser))
