@@ -708,3 +708,10 @@ func (s *S) TestGetContainers(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(containers, gocheck.HasLen, 0)
 }
+
+func (s *S) TestGetImage(c *gocheck.C) {
+	app := testing.NewFakeApp("myapp", "python", 1)
+	img := getImage(app)
+	c.Assert(img.ID, gocheck.Equals, "")
+	c.Assert(img.Name, gocheck.Equals, "python")
+}

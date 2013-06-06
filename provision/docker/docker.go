@@ -424,3 +424,7 @@ func listAppContainers(appName string) ([]container, error) {
 	err := collection().Find(bson.M{"appname": appName}).All(&containers)
 	return containers, err
 }
+
+func getImage(app provision.App) *image {
+	return &image{Name: app.GetPlatform()}
+}
