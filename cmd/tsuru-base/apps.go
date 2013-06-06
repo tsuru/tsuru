@@ -323,7 +323,7 @@ type UnsetCName struct {
 }
 
 func (c *UnsetCName) Run(context *cmd.Context, client *cmd.Client) error {
-	err := setCName("", c.GuessingCommand, client)
+	err := unsetCName(c.GuessingCommand, client)
 	if err != nil {
 		return err
 	}
@@ -340,12 +340,32 @@ func (c *UnsetCName) Info() *cmd.Info {
 	}
 }
 
+func unsetCName(g GuessingCommand, client *cmd.Client) error {
+	appName, err := g.Guess()
+	if err != nil {
+		return err
+	}
+	url, err := cmd.GetURL(fmt.Sprintf("/apps/%s/cname", appName))
+	if err != nil {
+		return err
+	}
+	request, err := http.NewRequest("DELETE", url, nil)
+	if err != nil {
+		return err
+	}
+	_, err = client.Do(request)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 func setCName(v string, g GuessingCommand, client *cmd.Client) error {
 	appName, err := g.Guess()
 	if err != nil {
 		return err
 	}
-	url, err := cmd.GetURL(fmt.Sprintf("/apps/%s", appName))
+	url, err := cmd.GetURL(fmt.Sprintf("/apps/%s/cname", appName))
 	if err != nil {
 		return err
 	}

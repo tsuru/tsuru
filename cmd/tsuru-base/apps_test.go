@@ -504,7 +504,7 @@ func (s *S) TestSetCName(c *gocheck.C) {
 			var m map[string]string
 			err := json.NewDecoder(req.Body).Decode(&m)
 			c.Assert(err, gocheck.IsNil)
-			return req.URL.Path == "/apps/death" &&
+			return req.URL.Path == "/apps/death/cname" &&
 				req.Method == "POST" &&
 				m["cname"] == "death.evergrey.mycompany.com"
 		},
@@ -536,7 +536,7 @@ func (s *S) TestSetCNameWithoutTheFlag(c *gocheck.C) {
 			var m map[string]string
 			err := json.NewDecoder(req.Body).Decode(&m)
 			c.Assert(err, gocheck.IsNil)
-			return req.URL.Path == "/apps/corey" &&
+			return req.URL.Path == "/apps/corey/cname" &&
 				req.Method == "POST" &&
 				m["cname"] == "corey.evergrey.mycompany.com"
 		},
@@ -591,12 +591,7 @@ func (s *S) TestUnsetCName(c *gocheck.C) {
 		Transport: testing.Transport{Message: "Restarted", Status: http.StatusOK},
 		CondFunc: func(req *http.Request) bool {
 			called = true
-			var m map[string]string
-			err := json.NewDecoder(req.Body).Decode(&m)
-			c.Assert(err, gocheck.IsNil)
-			return req.URL.Path == "/apps/death" &&
-				req.Method == "POST" &&
-				m["cname"] == ""
+			return req.URL.Path == "/apps/death/cname" && req.Method == "DELETE"
 		},
 	}
 	client := cmd.NewClient(&http.Client{Transport: trans}, nil, manager)
@@ -622,12 +617,7 @@ func (s *S) TestUnsetCNameWithoutTheFlag(c *gocheck.C) {
 		Transport: testing.Transport{Message: "Restarted", Status: http.StatusOK},
 		CondFunc: func(req *http.Request) bool {
 			called = true
-			var m map[string]string
-			err := json.NewDecoder(req.Body).Decode(&m)
-			c.Assert(err, gocheck.IsNil)
-			return req.URL.Path == "/apps/corey" &&
-				req.Method == "POST" &&
-				m["cname"] == ""
+			return req.URL.Path == "/apps/corey/cname" && req.Method == "DELETE"
 		},
 	}
 	client := cmd.NewClient(&http.Client{Transport: trans}, nil, manager)
