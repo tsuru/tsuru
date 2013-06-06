@@ -87,7 +87,7 @@ func (e *FakeExecutor) ExecutedCmd(cmd string, args []string) bool {
 }
 
 func (e *FakeExecutor) GetCommands(cmdName string) []command {
-	e.mut.Lock()
+	e.mut.RLock()
 	defer e.mut.RUnlock()
 	var cmds []command
 	for _, cmd := range e.cmds {
