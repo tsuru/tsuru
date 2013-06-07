@@ -742,3 +742,19 @@ func (s *S) TestBinary(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(binary, gocheck.Equals, bin)
 }
+
+func (s *S) TestContainerCommit(c *gocheck.C) {
+	fexec := &etesting.FakeExecutor{
+		Output: map[string][][]byte{
+			"*": {[]byte("imageid\n")},
+		},
+	}
+	setExecut(fexec)
+	defer setExecut(nil)
+	cont := container{ID: "someid", Type: "python", AppName: "myapp"}
+	imageId, err := cont.commit()
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(imageId, gocheck.Equals, "imageid")
+	args := []string{"commit", "someid"}
+	c.Assert(fexec.ExecutedCmd("docker", args), gocheck.Equals, true)
+}
