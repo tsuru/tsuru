@@ -78,10 +78,6 @@ func commandToRun(app provision.App) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	repoNamespace, err := config.GetString("docker:repository-namespace")
-	if err != nil {
-		return nil, err
-	}
 	port, err := config.GetString("docker:run-cmd:port")
 	if err != nil {
 		return nil, err
@@ -90,7 +86,7 @@ func commandToRun(app provision.App) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	imageName := fmt.Sprintf("%s/%s", repoNamespace, app.GetPlatform()) // TODO (flaviamissi): should use same algorithm as image.repositoryName
+	imageName := getImage(app)
 	containerCmd := strings.Join(commands, " && ")
 	wholeCmd := []string{docker, "run", "-d", "-t", "-p", port, imageName, "/bin/bash", "-c", containerCmd}
 	return wholeCmd, nil
