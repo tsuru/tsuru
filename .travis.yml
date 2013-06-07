@@ -4,15 +4,12 @@ before_install:
   - sudo apt-get update -qq > apt-get.out || (cat apt-get.out && exit 1)
   - sudo apt-get install bzr mercurial git libyaml-dev -qq >> apt-get.out || (cat apt-get.out && exit 1)
 install:
-  - pushd /tmp
-  - curl -sLO https://github.com/kr/beanstalkd/archive/v1.9.tar.gz
-  - tar -xzf v1.9.tar.gz
-  - pushd beanstalkd-1.9
+  - curl -sL https://github.com/kr/beanstalkd/archive/v1.9.tar.gz | tar -xzC /tmp -
+  - pushd /tmp/beanstalkd-1.9
   - make -j4 > make.out || (cat make.out && exit 1)
   - ./beanstalkd -l 127.0.0.1 -p 11300 &
-  - sleep 3
+  - sleep 1
   - nc -z 127.0.0.1 11300
-  - popd
   - popd
   - make get-test
 before_script:
