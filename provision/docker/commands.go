@@ -9,6 +9,8 @@ import (
 	"github.com/globocom/tsuru/provision"
 )
 
+// deployCmds returns the commands that is used when provisioner
+// deploy an unit.
 func deployCmds(app provision.App) ([]string, error) {
 	docker, err := config.GetString("docker:binary")
 	if err != nil {

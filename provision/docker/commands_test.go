@@ -12,14 +12,14 @@ import (
 
 func (s *S) TestDeployCmds(c *gocheck.C) {
 	app := testing.NewFakeApp("app-name", "python", 1)
-	cmds, err := deployCmds(app)
-	c.Assert(err, gocheck.IsNil)
 	docker, err := config.GetString("docker:binary")
 	c.Assert(err, gocheck.IsNil)
 	deployCmd, err := config.GetString("docker:deploy-cmd")
 	c.Assert(err, gocheck.IsNil)
 	imageName := getImage(app)
 	expected := []string{docker, "run", imageName, deployCmd}
+	cmds, err := deployCmds(app)
+	c.Assert(err, gocheck.IsNil)
 	c.Assert(cmds, gocheck.DeepEquals, expected)
 }
 
