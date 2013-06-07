@@ -1,7 +1,7 @@
 language: go
 go: 1.1
 before_install:
-  - sudo apt-get update -qq > 2>&1 apt-get.out || (cat apt-get.out && exit 1)
+  - sudo apt-get update -qq > apt-get.out 2>&1  || (cat apt-get.out && exit 1)
   - sudo apt-get install bzr mercurial git libyaml-dev -qq >> apt-get.out 2>>&1 || (cat apt-get.out && exit 1)
 install:
   - curl -sL https://github.com/kr/beanstalkd/archive/v1.9.tar.gz | tar -xzC /tmp -
