@@ -126,7 +126,11 @@ func newContainer(app provision.App, commands []string) (*container, error) {
 		AppName: appName,
 		Type:    app.GetPlatform(),
 	}
-	err := c.create(app, commands)
+	commands, err := commandToRun(app)
+	if err != nil {
+		return nil, err
+	}
+	err = c.create(app, commands)
 	if err != nil {
 		log.Printf("Error creating container for the app %q: %s", appName, err)
 		return nil, err
@@ -200,15 +204,11 @@ func (c *container) ip() (string, error) {
 // docker, which might be to deploy a container or to run and expose a
 // container for an application.
 func (c *container) create(app provision.App, commands []string) error {
-	cmd, err := commandToRun(app)
-	if err != nil {
-		return err
-	}
 	port, err := getPort()
 	if err != nil {
 		return err
 	}
-	id, err := runCmd(cmd[0], cmd[1:]...)
+	id, err := runCmd(commands[0], commands[1:]...)
 	if err != nil {
 		return err
 	}
