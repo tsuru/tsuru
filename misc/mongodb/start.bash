@@ -10,5 +10,5 @@
 #
 #    ./start.bash <db-path>
 
-mongod --repair --dbpath $1
+mongod --repair --syslog --dbpath $1
 exec mongod --syslog --dbpath $1
