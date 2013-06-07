@@ -234,7 +234,7 @@ func (s *S) TestDockerCreate(c *gocheck.C) {
 	app := testing.NewFakeApp("app-name", "python", 1)
 	rtesting.FakeRouter.AddBackend(app.GetName())
 	defer rtesting.FakeRouter.RemoveBackend(app.GetName())
-	err := container.create(app)
+	err := container.create(app, []string{})
 	defer container.remove()
 	c.Assert(err, gocheck.IsNil)
 	sshCmd := "/var/lib/tsuru/add-key key-content && /usr/sbin/sshd -D"
@@ -252,7 +252,7 @@ func (s *S) TestContainerCreateWithoutHostAddr(c *gocheck.C) {
 	defer config.Set("docker:host-address", old)
 	config.Unset("docker:host-address")
 	container := container{AppName: "myapp", Type: "python"}
-	err := container.create(testing.NewFakeApp("myapp", "python", 1))
+	err := container.create(testing.NewFakeApp("myapp", "python", 1), []string{})
 	c.Assert(err, gocheck.NotNil)
 }
 
