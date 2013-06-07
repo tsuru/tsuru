@@ -12,7 +12,7 @@ import (
 )
 
 func ReadPassword(fd uintptr) (string, error) {
-	var termios, oldState Termios
+	var termios, oldState syscall.Termios
 	if _, _, e := syscall.Syscall6(syscall.SYS_IOCTL, fd, TCGETS,
 		uintptr(unsafe.Pointer(&termios)), 0, 0, 0); e == 0 {
 		oldState = termios
@@ -24,7 +24,7 @@ func ReadPassword(fd uintptr) (string, error) {
 		defer syscall.Syscall6(syscall.SYS_IOCTL, fd, TCSETS, uintptr(unsafe.Pointer(&oldState)), 0, 0, 0)
 		// Restoring on SIGINT
 		sigChan := make(chan os.Signal, 1)
-		go func(c chan os.Signal, t Termios, fd uintptr) {
+		go func(c chan os.Signal, t syscall.Termios, fd uintptr) {
 			if _, ok := <-c; ok {
 				syscall.Syscall6(syscall.SYS_IOCTL, fd, TCSETS, uintptr(unsafe.Pointer(&oldState)), 0, 0, 0)
 				os.Exit(1)
