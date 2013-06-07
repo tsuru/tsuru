@@ -721,7 +721,9 @@ func (s *S) TestGetContainers(c *gocheck.C) {
 func (s *S) TestGetImageFromAppPlatform(c *gocheck.C) {
 	app := testing.NewFakeApp("myapp", "python", 1)
 	img := getImage(app)
-	c.Assert(img, gocheck.Equals, "python")
+	repoNamespace, err := config.GetString("docker:repository-namespace")
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(img, gocheck.Equals, fmt.Sprintf("%s/python", repoNamespace))
 }
 
 func (s *S) TestGetImageFromDatabase(c *gocheck.C) {

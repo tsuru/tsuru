@@ -435,5 +435,9 @@ func getImage(app provision.App) string {
 	if c.Image != "" {
 		return c.Image
 	}
-	return app.GetPlatform()
+	repoNamespace, err := config.GetString("docker:repository-namespace")
+	if err != nil {
+		return ""
+	}
+	return fmt.Sprintf("%s/%s", repoNamespace, app.GetPlatform())
 }
