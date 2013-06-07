@@ -735,3 +735,10 @@ func (s *S) TestGetImageFromDatabase(c *gocheck.C) {
 	img := getImage(app)
 	c.Assert(img, gocheck.Equals, "someimageid")
 }
+
+func (s *S) TestBinary(c *gocheck.C) {
+	bin, _ := config.Get("docker:binary")
+	binary, err := binary()
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(binary, gocheck.Equals, bin)
+}

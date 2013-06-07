@@ -437,3 +437,13 @@ func getImage(app provision.App) string {
 	}
 	return fmt.Sprintf("%s/%s", repoNamespace, app.GetPlatform())
 }
+
+// binary returns de docker binary from docker:binary config.
+func binary() (string, error) {
+	docker, err := config.GetString("docker:binary")
+	if err != nil {
+		log.Printf("Tsuru is misconfigured. docker:binary config is missing.")
+		return "", err
+	}
+	return docker, nil
+}
