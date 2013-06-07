@@ -14,14 +14,11 @@ install:
   - nc -z 127.0.0.1 11300
   - popd
   - popd
-  - pushd $GOPATH/src/github.com/globocom/tsuru
   - make get-test
 before_script:
-  - pushd $GOPATH/src/github.com/globocom/tsuru
   - ./check-fmt.sh
   - make get-prod
 script:
-  - pushd $GOPATH/src/github.com/globocom/tsuru
   - make test
 services:
   - mongodb
