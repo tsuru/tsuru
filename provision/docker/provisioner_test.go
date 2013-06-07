@@ -286,9 +286,6 @@ func (s *S) TestProvisionerDestroy(c *gocheck.C) {
 	defer s.conn.Collection(s.collName).RemoveId(cont.ID)
 	s.conn.Collection(s.collName).Insert(container{ID: "something-01", AppName: app.GetName()})
 	defer s.conn.Collection(s.collName).RemoveId("something-01")
-	img := image{Name: app.GetName()}
-	err = s.conn.Collection(s.imageCollName).Insert(&img)
-	c.Assert(err, gocheck.IsNil)
 	var p dockerProvisioner
 	p.Provision(app)
 	c.Assert(p.Destroy(app), gocheck.IsNil)

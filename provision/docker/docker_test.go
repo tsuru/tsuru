@@ -625,62 +625,6 @@ func (s *S) TestContainerSSHFiltersStderr(c *gocheck.C) {
 	c.Assert(stderr.String(), gocheck.Equals, "failed\n")
 }
 
-func (s *S) TestImageCommit(c *gocheck.C) {
-	fexec := &etesting.FakeExecutor{}
-	setExecut(fexec)
-	defer setExecut(nil)
-	img := image{Name: "app-name", ID: "image-id"}
-	_, err := img.commit("container-id")
-	defer img.remove()
-	c.Assert(err, gocheck.IsNil)
-	repoNamespace, err := config.GetString("docker:repository-namespace")
-	c.Assert(err, gocheck.IsNil)
-	imageName := fmt.Sprintf("%s/app-name", repoNamespace)
-	args := []string{"commit", "container-id", imageName}
-	c.Assert(fexec.ExecutedCmd("docker", args), gocheck.Equals, true)
-}
-
-func (s *S) TestImageCommitReturnsImageID(c *gocheck.C) {
-	tmpdir, err := commandmocker.Add("docker", "945132e7b4c9\n")
-	c.Assert(err, gocheck.IsNil)
-	defer commandmocker.Remove(tmpdir)
-	img := image{Name: "app-name", ID: "image-id"}
-	id, err := img.commit("container-id")
-	defer img.remove()
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(id, gocheck.Equals, "945132e7b4c9")
-}
-
-func (s *S) TestImageCommitInsertImageInformationToMongo(c *gocheck.C) {
-	tmpdir, err := commandmocker.Add("docker", "945132e7b4c9\n")
-	c.Assert(err, gocheck.IsNil)
-	img := image{Name: "app-name", ID: "image-id"}
-	_, err = img.commit("cid")
-	c.Assert(err, gocheck.IsNil)
-	defer commandmocker.Remove(tmpdir)
-	var imgMgo image
-	defer imgMgo.remove()
-	err = s.conn.Collection(s.imageCollName).Find(bson.M{"name": img.Name}).One(&imgMgo)
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(imgMgo.ID, gocheck.Equals, img.ID)
-}
-
-func (s *S) TestImageRemove(c *gocheck.C) {
-	fexec := &etesting.FakeExecutor{}
-	setExecut(fexec)
-	defer setExecut(nil)
-	img := image{Name: "app-name", ID: "image-id"}
-	err := s.conn.Collection(s.imageCollName).Insert(&img)
-	c.Assert(err, gocheck.IsNil)
-	err = img.remove()
-	c.Assert(err, gocheck.IsNil)
-	args := []string{"rmi", img.ID}
-	c.Assert(fexec.ExecutedCmd("docker", args), gocheck.Equals, true)
-	var imgMgo image
-	err = s.conn.Collection(s.imageCollName).Find(bson.M{"name": img.Name}).One(&imgMgo)
-	c.Assert(err.Error(), gocheck.Equals, "not found")
-}
-
 func (s *S) TestGetContainer(c *gocheck.C) {
 	collection().Insert(
 		container{ID: "abcdef", Type: "python"},
