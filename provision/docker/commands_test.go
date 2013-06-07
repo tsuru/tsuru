@@ -22,3 +22,18 @@ func (s *S) TestDeployCmds(c *gocheck.C) {
 	expected := []string{docker, "run", imageName, deployCmd}
 	c.Assert(cmds, gocheck.DeepEquals, expected)
 }
+
+func (s *S) TestRunCmds(c *gocheck.C) {
+	app := testing.NewFakeApp("app-name", "python", 1)
+	docker, err := config.GetString("docker:binary")
+	c.Assert(err, gocheck.IsNil)
+	runCmd, err := config.GetString("docker:run-cmd:bin")
+	c.Assert(err, gocheck.IsNil)
+	imageName := getImage(app)
+	port, err := config.GetString("docker:run-cmd:port")
+	c.Assert(err, gocheck.IsNil)
+	expected := []string{docker, "run", "-d", "-t", "-p", port, imageName, "/bin/bash", "-c", runCmd}
+	cmds, err := runCmds(app)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(cmds, gocheck.DeepEquals, expected)
+}
