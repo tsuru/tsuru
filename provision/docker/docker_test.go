@@ -157,7 +157,7 @@ func (s *S) TestGetSSHCommandsDefaultSSHDPath(c *gocheck.C) {
 	}()
 	config.Set("docker:ssh:public-key", "/opt/me/id_dsa.pub")
 	defer config.Unset("docker:ssh:public-key")
-	commands, err := getSSHCommands()
+	commands, err := sshCmds()
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(commands[1], gocheck.Equals, "/usr/sbin/sshd -D")
 }
@@ -173,7 +173,7 @@ func (s *S) TestGetSSHCommandsDefaultKeyFile(c *gocheck.C) {
 	defer func() {
 		fsystem = old
 	}()
-	commands, err := getSSHCommands()
+	commands, err := sshCmds()
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(commands[0], gocheck.Equals, "/var/lib/tsuru/add-key ssh-rsa ohwait! me@machine")
 }
@@ -182,7 +182,7 @@ func (s *S) TestGetSSHCommandsMissingAddKeyCommand(c *gocheck.C) {
 	old, _ := config.Get("docker:ssh:add-key-cmd")
 	defer config.Set("docker:ssh:add-key-cmd", old)
 	config.Unset("docker:ssh:add-key-cmd")
-	commands, err := getSSHCommands()
+	commands, err := sshCmds()
 	c.Assert(commands, gocheck.IsNil)
 	c.Assert(err, gocheck.NotNil)
 }
@@ -193,7 +193,7 @@ func (s *S) TestGetSSHCommandsKeyFileNotFound(c *gocheck.C) {
 	defer func() {
 		fsystem = old
 	}()
-	commands, err := getSSHCommands()
+	commands, err := sshCmds()
 	c.Assert(commands, gocheck.IsNil)
 	c.Assert(err, gocheck.NotNil)
 	c.Assert(os.IsNotExist(err), gocheck.Equals, true)

@@ -82,7 +82,7 @@ func commandToRun(app provision.App) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	commands, err := getSSHCommands()
+	commands, err := sshCmds()
 	if err != nil {
 		return nil, err
 	}
