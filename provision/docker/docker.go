@@ -120,7 +120,7 @@ func (c *container) getAddress() string {
 // newContainer creates a new container in Docker and stores it in the database.
 //
 // TODO (flaviamissi): make it atomic
-func newContainer(app provision.App) (*container, error) {
+func newContainer(app provision.App, commands []string) (*container, error) {
 	appName := app.GetName()
 	c := container{
 		AppName: appName,

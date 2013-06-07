@@ -50,7 +50,7 @@ func (s *S) TestNewContainer(c *gocheck.C) {
 	app := testing.NewFakeApp("app-name", "python", 1)
 	rtesting.FakeRouter.AddBackend(app.GetName())
 	defer rtesting.FakeRouter.RemoveBackend(app.GetName())
-	_, err := newContainer(app)
+	_, err := newContainer(app, []string{})
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Collection(s.collName).RemoveId(id)
 	var cont container
@@ -68,7 +68,7 @@ func (s *S) TestNewContainerCallsDockerCreate(c *gocheck.C) {
 	setExecut(fexec)
 	defer setExecut(nil)
 	app := testing.NewFakeApp("app-name", "python", 1)
-	newContainer(app)
+	newContainer(app, []string{})
 	defer s.conn.Collection(s.collName).Remove(bson.M{"appname": app.GetName()})
 	sshCmd := "/var/lib/tsuru/add-key key-content && /usr/sbin/sshd -D"
 	args := []string{
@@ -86,7 +86,7 @@ func (s *S) TestNewContainerReturnsNilAndLogsOnError(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	defer commandmocker.Remove(tmpdir)
 	app := testing.NewFakeApp("myapp", "python", 1)
-	container, err := newContainer(app)
+	container, err := newContainer(app, []string{})
 	c.Assert(err, gocheck.NotNil)
 	defer s.conn.Collection(s.collName).Remove(bson.M{"appname": app.GetName()})
 	c.Assert(container, gocheck.IsNil)
@@ -110,7 +110,7 @@ func (s *S) TestNewContainerAddsRoute(c *gocheck.C) {
 	app := testing.NewFakeApp("myapp", "python", 1)
 	rtesting.FakeRouter.AddBackend(app.GetName())
 	defer rtesting.FakeRouter.RemoveBackend(app.GetName())
-	container, err := newContainer(app)
+	container, err := newContainer(app, []string{})
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Collection(s.collName).RemoveId(out)
 	c.Assert(rtesting.FakeRouter.HasRoute(app.GetName(), container.getAddress()), gocheck.Equals, true)
