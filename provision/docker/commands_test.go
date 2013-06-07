@@ -5,6 +5,7 @@
 package docker
 
 import (
+	"fmt"
 	"github.com/globocom/config"
 	"github.com/globocom/tsuru/testing"
 	"launchpad.net/gocheck"
@@ -34,6 +35,20 @@ func (s *S) TestRunCmds(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	expected := []string{docker, "run", "-d", "-t", "-p", port, imageName, "/bin/bash", "-c", runCmd}
 	cmds, err := runCmds(app)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(cmds, gocheck.DeepEquals, expected)
+}
+
+func (s *S) TestSSHCmds(c *gocheck.C) {
+	addKeyCommand, err := config.GetString("docker:ssh:add-key-cmd")
+	c.Assert(err, gocheck.IsNil)
+	keyContent := "key-content"
+	sshdPath := "/usr/sbin/sshd"
+	expected := []string{
+		fmt.Sprintf("%s %s", addKeyCommand, keyContent),
+		sshdPath + " -D",
+	}
+	cmds, err := sshCmds()
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(cmds, gocheck.DeepEquals, expected)
 }
