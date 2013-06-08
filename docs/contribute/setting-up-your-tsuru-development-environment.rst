@@ -60,18 +60,19 @@ Install the latest version, by doing this:
 
     $ brew install beanstalkd
 
-libyaml
-=======
+Installing Redis
+================
 
-To install libyaml you can use your package installer:
+One of Tsuru routing providers uses `Redis <http://redis.io>`_ to store
+information about frontends and backends. You will also need to install it:
 
 .. highlight:: bash
 
 ::
 
-    $ sudo apt-get install libyaml-dev
+    $ sudo apt-get install -y redis-server
 
-    $ brew install libyaml
+    $ brew install redis
 
 Installing git, bzr and mercurial
 =================================
