@@ -271,7 +271,7 @@ func (s *S) TestContainerSetStatus(c *gocheck.C) {
 	c.Assert(c2.Status, gocheck.Equals, "what?!")
 }
 
-func (s *S) TestDockerDeploy(c *gocheck.C) {
+func (s *S) TestDockerOldDeploy(c *gocheck.C) {
 	var buf bytes.Buffer
 	fexec := &etesting.FakeExecutor{
 		Output: map[string][][]byte{"*": {[]byte("success\n")}},
@@ -282,7 +282,7 @@ func (s *S) TestDockerDeploy(c *gocheck.C) {
 	err := s.conn.Collection(s.collName).Insert(container)
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Collection(s.collName).RemoveId(container.ID)
-	err = container.deploy("ff13e", &buf)
+	err = container.oldDeploy("ff13e", &buf)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(buf.String(), gocheck.Equals, "success\n")
 	appRepo := repository.ReadOnlyURL(container.AppName)
@@ -302,7 +302,7 @@ func (s *S) TestDockerDeploy(c *gocheck.C) {
 	c.Assert(cont.Version, gocheck.Equals, "ff13e")
 }
 
-func (s *S) TestDockerDeployRetries(c *gocheck.C) {
+func (s *S) TestDockerOldDeployRetries(c *gocheck.C) {
 	var buf bytes.Buffer
 	fexec := etesting.RetryExecutor{
 		Failures: 3,
@@ -315,7 +315,7 @@ func (s *S) TestDockerDeployRetries(c *gocheck.C) {
 	container := container{ID: "c-01", IP: "10.10.10.10", AppName: "myapp"}
 	s.conn.Collection(s.collName).Insert(container)
 	defer s.conn.Collection(s.collName).RemoveId(container.ID)
-	err := container.deploy("origin/master", &buf)
+	err := container.oldDeploy("origin/master", &buf)
 	c.Assert(err, gocheck.IsNil)
 	commands := fexec.GetCommands("ssh")
 	c.Assert(commands, gocheck.HasLen, 5)
@@ -333,27 +333,27 @@ func (s *S) TestDockerDeployRetries(c *gocheck.C) {
 	c.Assert(commands[4].GetArgs(), gocheck.DeepEquals, runArgs)
 }
 
-func (s *S) TestDockerDeployNoDeployCommand(c *gocheck.C) {
+func (s *S) TestDockerOldDeployNoDeployCommand(c *gocheck.C) {
 	old, _ := config.Get("docker:deploy-cmd")
 	defer config.Set("docker:deploy-cmd", old)
 	config.Unset("docker:deploy-cmd")
 	var container container
-	err := container.deploy("origin/master", nil)
+	err := container.oldDeploy("origin/master", nil)
 	c.Assert(err, gocheck.NotNil)
 	c.Assert(err.Error(), gocheck.Equals, `key "docker:deploy-cmd" not found`)
 }
 
-func (s *S) TestDockerDeployNoBinaryToRun(c *gocheck.C) {
+func (s *S) TestDockerOldDeployNoBinaryToRun(c *gocheck.C) {
 	old, _ := config.Get("docker:run-cmd:bin")
 	defer config.Set("docker:run-cmd:bin", old)
 	config.Unset("docker:run-cmd:bin")
 	var container container
-	err := container.deploy("origin/master", nil)
+	err := container.oldDeploy("origin/master", nil)
 	c.Assert(err, gocheck.NotNil)
 	c.Assert(err.Error(), gocheck.Equals, `key "docker:run-cmd:bin" not found`)
 }
 
-func (s *S) TestDockerDeployFailure(c *gocheck.C) {
+func (s *S) TestDockerOldDeployFailure(c *gocheck.C) {
 	var buf bytes.Buffer
 	fexec := etesting.ErrorExecutor{
 		FakeExecutor: etesting.FakeExecutor{
@@ -365,7 +365,7 @@ func (s *S) TestDockerDeployFailure(c *gocheck.C) {
 	container := container{ID: "c-01", IP: "10.10.10.10", AppName: "myapp"}
 	err := s.conn.Collection(s.collName).Insert(container)
 	defer s.conn.Collection(s.collName).RemoveId(container.ID)
-	err = container.deploy("origin/master", &buf)
+	err = container.oldDeploy("origin/master", &buf)
 	c.Assert(err, gocheck.NotNil)
 	c.Assert(buf.String(), gocheck.Equals, "deploy failed")
 	c2, err := getContainer(container.ID)
