@@ -94,7 +94,7 @@ func newContainer(app provision.App, commands []string) (*container, error) {
 	if err != nil {
 		return nil, err
 	}
-	err = c.create(app, commands)
+	err = c.create(commands)
 	if err != nil {
 		log.Printf("Error creating container for the app %q: %s", appName, err)
 		return nil, err
@@ -167,7 +167,7 @@ func (c *container) ip() (string, error) {
 // care of the deploy, and a function to generate the correct command ran by
 // docker, which might be to deploy a container or to run and expose a
 // container for an application.
-func (c *container) create(app provision.App, commands []string) error {
+func (c *container) create(commands []string) error {
 	port, err := getPort()
 	if err != nil {
 		return err
@@ -201,7 +201,7 @@ func (c *container) create(app provision.App, commands []string) error {
 	if err != nil {
 		return err
 	}
-	return r.AddRoute(app.GetName(), c.getAddress())
+	return r.AddRoute(c.AppName, c.getAddress())
 }
 
 func (c *container) setStatus(status string) error {
