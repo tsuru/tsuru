@@ -718,3 +718,13 @@ func (s *S) TestRemoveImage(c *gocheck.C) {
 	args := []string{"rmi", imageId}
 	c.Assert(fexec.ExecutedCmd("docker", args), gocheck.Equals, true)
 }
+
+func (s *S) TestContainerDeploy(c *gocheck.C) {
+	container := container{ID: "c-01", IP: "10.10.10.10", AppName: "myapp"}
+	err := s.conn.Collection(s.collName).Insert(container)
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Collection(s.collName).RemoveId(container.ID)
+	var buf bytes.Buffer
+	err = container.deploy("ff13e", &buf)
+	c.Assert(err, gocheck.IsNil)
+}

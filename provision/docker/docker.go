@@ -211,6 +211,10 @@ func (c *container) setStatus(status string) error {
 	return coll.UpdateId(c.ID, c)
 }
 
+func (c *container) deploy(version string, w io.Writer) error {
+	return nil
+}
+
 func (c *container) oldDeploy(version string, w io.Writer) error {
 	deployCmd, err := config.GetString("docker:deploy-cmd")
 	if err != nil {
