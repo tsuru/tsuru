@@ -224,7 +224,6 @@ func deploy(app provision.App, version string, w io.Writer) error {
 	coll := collection()
 	defer coll.Database.Session.Close()
 	return coll.UpdateId(c.ID, c)
-	return nil
 }
 
 func start(app provision.App, w io.Writer) error {
