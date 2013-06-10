@@ -211,7 +211,15 @@ func (c *container) setStatus(status string) error {
 	return coll.UpdateId(c.ID, c)
 }
 
-func (c *container) deploy(version string, w io.Writer) error {
+func deploy(app provision.App, version string, w io.Writer) error {
+	commands, err := deployCmds(app)
+	if err != nil {
+		return err
+	}
+	_, err = newContainer(app, commands)
+	if err != nil {
+		return err
+	}
 	return nil
 }
 

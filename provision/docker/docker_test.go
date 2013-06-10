@@ -720,11 +720,33 @@ func (s *S) TestRemoveImage(c *gocheck.C) {
 }
 
 func (s *S) TestContainerDeploy(c *gocheck.C) {
-	container := container{ID: "c-01", IP: "10.10.10.10", AppName: "myapp"}
-	err := s.conn.Collection(s.collName).Insert(container)
+	inspectOut := `
+    {
+            "NetworkSettings": {
+            "IpAddress": "10.10.10.10",
+            "IpPrefixLen": 8,
+            "Gateway": "10.65.41.1",
+	    "PortMapping": {"8888": "34233"}
+    }
+}`
+	id := "945132e7b4c9"
+	sshCmd := "/var/lib/tsuru/add-key key-content && /usr/sbin/sshd -D"
+	runCmd := fmt.Sprintf("run -d -t -p %s tsuru/python /bin/bash -c %s",
+		s.port, sshCmd)
+	deployCmd, err := config.GetString("docker:deploy-cmd")
 	c.Assert(err, gocheck.IsNil)
-	defer s.conn.Collection(s.collName).RemoveId(container.ID)
+	app := testing.NewFakeApp("myapp", "python", 1)
+	imageId := getImage(app)
+	deployCmds := fmt.Sprintf("run %s %s", imageId, deployCmd)
+	inspectCmd := fmt.Sprintf("inspect %s", id)
+	out := map[string][][]byte{runCmd: {[]byte(id)}, deployCmds: {[]byte(id)}, inspectCmd: {[]byte(inspectOut)}}
+	fexec := &etesting.FakeExecutor{Output: out}
+	setExecut(fexec)
+	defer setExecut(nil)
+	defer s.conn.Collection(s.collName).RemoveId(id)
+	rtesting.FakeRouter.AddBackend(app.GetName())
+	defer rtesting.FakeRouter.RemoveBackend(app.GetName())
 	var buf bytes.Buffer
-	err = container.deploy("ff13e", &buf)
+	err = deploy(app, "ff13e", &buf)
 	c.Assert(err, gocheck.IsNil)
 }
