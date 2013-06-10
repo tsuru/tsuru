@@ -747,7 +747,14 @@ func (s *S) TestContainerDeploy(c *gocheck.C) {
 	imageId := getImage(app)
 	deployCmds := fmt.Sprintf("run %s %s", imageId, deployCmd)
 	inspectCmd := fmt.Sprintf("inspect %s", id)
-	out := map[string][][]byte{runCmd: {[]byte(id)}, deployCmds: {[]byte(id)}, inspectCmd: {[]byte(inspectOut)}}
+	commitCmd := fmt.Sprintf("commit %s", id)
+	commitOut := "someimageid"
+	out := map[string][][]byte{
+		runCmd:     {[]byte(id)},
+		deployCmds: {[]byte(id)},
+		inspectCmd: {[]byte(inspectOut)},
+		commitCmd:  {[]byte(commitOut)},
+	}
 	fexec := &etesting.FakeExecutor{Output: out}
 	setExecut(fexec)
 	defer setExecut(nil)
@@ -759,6 +766,10 @@ func (s *S) TestContainerDeploy(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	args := []string{"commit", id}
 	c.Assert(fexec.ExecutedCmd("docker", args), gocheck.Equals, true)
+	var cont container
+	err = s.conn.Collection(s.collName).Find(bson.M{"appname": app.GetName()}).One(&cont)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(cont.Image, gocheck.Equals, commitOut)
 }
 
 func (s *S) TestStart(c *gocheck.C) {

@@ -216,10 +216,14 @@ func deploy(app provision.App, version string, w io.Writer) error {
 	if err != nil {
 		return err
 	}
-	_, err = c.commit()
+	imageId, err := c.commit()
 	if err != nil {
 		return err
 	}
+	c.Image = imageId
+	coll := collection()
+	defer coll.Database.Session.Close()
+	return coll.UpdateId(c.ID, c)
 	return nil
 }
 
