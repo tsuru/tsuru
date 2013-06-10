@@ -757,6 +757,8 @@ func (s *S) TestContainerDeploy(c *gocheck.C) {
 	var buf bytes.Buffer
 	err = deploy(app, "ff13e", &buf)
 	c.Assert(err, gocheck.IsNil)
+	args := []string{"commit", id}
+	c.Assert(fexec.ExecutedCmd("docker", args), gocheck.Equals, true)
 }
 
 func (s *S) TestStart(c *gocheck.C) {
