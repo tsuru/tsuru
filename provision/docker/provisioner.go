@@ -92,7 +92,11 @@ func (p *dockerProvisioner) Restart(app provision.App) error {
 
 func (p *dockerProvisioner) Deploy(a provision.App, version string, w io.Writer) error {
 	var deploy = func() error {
-		c, err := newContainer(a, []string{})
+		cmds, err := commandToRun(a)
+		if err != nil {
+			return err
+		}
+		c, err := newContainer(a, cmds)
 		if err != nil {
 			return err
 		}
@@ -167,7 +171,11 @@ func (*dockerProvisioner) AddUnits(a provision.App, units uint) ([]provision.Uni
 	writer := app.LogWriter{App: a, Writer: ioutil.Discard}
 	result := make([]provision.Unit, int(units))
 	for i := uint(0); i < units; i++ {
-		container, err := newContainer(a, []string{})
+		cmds, err := commandToRun(a)
+		if err != nil {
+			return nil, err
+		}
+		container, err := newContainer(a, cmds)
 		if err != nil {
 			return nil, err
 		}

@@ -499,7 +499,9 @@ func (s *S) TestProvisionerRemoveUnit(c *gocheck.C) {
 	}
 	setExecut(fexec)
 	defer setExecut(nil)
-	container, err := newContainer(app, []string{})
+	cmds, err := commandToRun(app)
+	c.Assert(err, gocheck.IsNil)
+	container, err := newContainer(app, cmds)
 	c.Assert(err, gocheck.IsNil)
 	defer container.remove()
 	var p dockerProvisioner
@@ -536,7 +538,9 @@ func (s *S) TestProvisionerRemoveUnitNotInApp(c *gocheck.C) {
 	}
 	setExecut(fexec)
 	defer setExecut(nil)
-	container, err := newContainer(app, []string{})
+	cmds, err := commandToRun(app)
+	c.Assert(err, gocheck.IsNil)
+	container, err := newContainer(app, cmds)
 	c.Assert(err, gocheck.IsNil)
 	defer container.remove()
 	var p dockerProvisioner

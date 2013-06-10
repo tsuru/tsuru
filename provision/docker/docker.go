@@ -90,11 +90,7 @@ func newContainer(app provision.App, commands []string) (*container, error) {
 		AppName: appName,
 		Type:    app.GetPlatform(),
 	}
-	commands, err := commandToRun(app)
-	if err != nil {
-		return nil, err
-	}
-	err = c.create(commands)
+	err := c.create(commands)
 	if err != nil {
 		log.Printf("Error creating container for the app %q: %s", appName, err)
 		return nil, err
