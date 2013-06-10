@@ -219,6 +219,18 @@ func deploy(app provision.App, version string, w io.Writer) error {
 	return nil
 }
 
+func start(app provision.App, w io.Writer) error {
+	commands, err := runCmds(app)
+	if err != nil {
+		return err
+	}
+	_, err = newContainer(app, commands)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 func (c *container) oldDeploy(version string, w io.Writer) error {
 	deployCmd, err := config.GetString("docker:deploy-cmd")
 	if err != nil {

@@ -758,3 +758,29 @@ func (s *S) TestContainerDeploy(c *gocheck.C) {
 	err = deploy(app, "ff13e", &buf)
 	c.Assert(err, gocheck.IsNil)
 }
+
+func (s *S) TestStart(c *gocheck.C) {
+	inspectOut := `
+    {
+            "NetworkSettings": {
+            "IpAddress": "10.10.10.10",
+            "IpPrefixLen": 8,
+            "Gateway": "10.65.41.1",
+	    "PortMapping": {"8888": "34233"}
+    }
+}`
+	id := "945132e7b4c9"
+	app := testing.NewFakeApp("myapp", "python", 1)
+	runCmds := "run -d -t -p 8888 tsuru/python /bin/bash -c /usr/local/bin/circusd"
+	inspectCmd := fmt.Sprintf("inspect %s", id)
+	out := map[string][][]byte{runCmds: {[]byte(id)}, inspectCmd: {[]byte(inspectOut)}}
+	fexec := &etesting.FakeExecutor{Output: out}
+	setExecut(fexec)
+	defer setExecut(nil)
+	defer s.conn.Collection(s.collName).RemoveId(id)
+	rtesting.FakeRouter.AddBackend(app.GetName())
+	defer rtesting.FakeRouter.RemoveBackend(app.GetName())
+	var buf bytes.Buffer
+	err := start(app, &buf)
+	c.Assert(err, gocheck.IsNil)
+}
