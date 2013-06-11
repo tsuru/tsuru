@@ -3,7 +3,7 @@ Why Tsuru?
 
 This document aims to compare Tsuru PaaS with others on the market.
 
-If you have anything to consider, or want to ask us to add another PaaS on the comparison list,
+If you have anything to consider, or want to ask us to add another PaaS on the list
 contact us in #tsuru @ freenode.net or at our `mailing list <https://groups.google.com/d/forum/tsuru-users>`_
 
 +-------------------------+------------------------+--------------------+----------------------+
