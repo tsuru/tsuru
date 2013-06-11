@@ -156,19 +156,14 @@ func (*dockerProvisioner) AddUnits(a provision.App, units uint) ([]provision.Uni
 	if len(containers) < 1 {
 		return nil, errors.New("New units can only be added after the first deployment")
 	}
-	version := containers[0].Version
 	writer := app.LogWriter{App: a, Writer: ioutil.Discard}
 	result := make([]provision.Unit, int(units))
+	imageId := getImage(a)
 	for i := uint(0); i < units; i++ {
-		cmds, err := commandToRun(a)
+		container, err := start(a, imageId, &writer)
 		if err != nil {
 			return nil, err
 		}
-		container, err := newContainer(a, cmds)
-		if err != nil {
-			return nil, err
-		}
-		go container.oldDeploy(version, &writer)
 		result[i] = provision.Unit{
 			Name:    container.ID,
 			AppName: a.GetName(),
