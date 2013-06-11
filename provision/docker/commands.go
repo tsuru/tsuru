@@ -13,6 +13,7 @@ import (
 	"os"
 	"os/user"
 	"path"
+	"strings"
 )
 
 // deployCmds returns the commands that is used when provisioner
@@ -46,7 +47,12 @@ func runCmds(app provision.App, imageId string) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	cmds := []string{docker, "run", "-d", "-t", "-p", port, imageId, "/bin/bash", "-c", runCmd}
+	ssh, err := sshCmds()
+	if err != nil {
+		return nil, err
+	}
+	sshCmd := strings.Join(ssh, " && ")
+	cmds := []string{docker, "run", "-d", "-t", "-p", port, imageId, "/bin/bash", "-c", runCmd, "&&", sshCmd}
 	return cmds, nil
 }
 

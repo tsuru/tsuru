@@ -678,7 +678,8 @@ func (s *S) TestStart(c *gocheck.C) {
 }`
 	id := "945132e7b4c9"
 	app := testing.NewFakeApp("myapp", "python", 1)
-	runCmds := "run -d -t -p 8888 someid /bin/bash -c /usr/local/bin/circusd"
+	sshCmd := "/var/lib/tsuru/add-key key-content && /usr/sbin/sshd -D"
+	runCmds := fmt.Sprintf("run -d -t -p 8888 someid /bin/bash -c /usr/local/bin/circusd && %s", sshCmd)
 	inspectCmd := fmt.Sprintf("inspect %s", id)
 	out := map[string][][]byte{runCmds: {[]byte(id)}, inspectCmd: {[]byte(inspectOut)}}
 	fexec := &etesting.FakeExecutor{Output: out}

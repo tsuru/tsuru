@@ -99,8 +99,9 @@ func (s *S) TestDeployShouldCallDockerCreate(c *gocheck.C) {
 	defer s.conn.Collection(s.collName).RemoveId("c-2")
 	c.Assert(err, gocheck.IsNil)
 	args := []string{
-		"run", "-d", "-t", "-p", s.port, "i-1",
+		"run", "-d", "-t", "-p", "8888", "i-1",
 		"/bin/bash", "-c", "/usr/local/bin/circusd",
+		"&&", "/var/lib/tsuru/add-key key-content && /usr/sbin/sshd -D",
 	}
 	c.Assert(fexec.ExecutedCmd("docker", args), gocheck.Equals, true)
 }
@@ -203,7 +204,8 @@ func (s *S) TestDeployShouldRestart(c *gocheck.C) {
 	commitOut := "someimageid"
 	inspectDeployCmd := fmt.Sprintf("inspect %s", idDeploy)
 	inspectStartCmd := fmt.Sprintf("inspect %s", idStart)
-	startCmds := "run -d -t -p 8888 someimageid /bin/bash -c /usr/local/bin/circusd"
+	sshCmd := "/var/lib/tsuru/add-key key-content && /usr/sbin/sshd -D"
+	startCmds := fmt.Sprintf("run -d -t -p 8888 someimageid /bin/bash -c /usr/local/bin/circusd && %s", sshCmd)
 	out := map[string][][]byte{
 		inspectDeployCmd: {inspectOut},
 		inspectStartCmd:  {inspectOut},
@@ -375,7 +377,8 @@ func (s *S) TestProvisionerAddr(c *gocheck.C) {
 	commitOut := "someimageid"
 	inspectDeployCmd := fmt.Sprintf("inspect %s", idDeploy)
 	inspectStartCmd := fmt.Sprintf("inspect %s", idStart)
-	startCmds := "run -d -t -p 8888 someimageid /bin/bash -c /usr/local/bin/circusd"
+	sshCmd := "/var/lib/tsuru/add-key key-content && /usr/sbin/sshd -D"
+	startCmds := fmt.Sprintf("run -d -t -p 8888 someimageid /bin/bash -c /usr/local/bin/circusd && %s", sshCmd)
 	out := map[string][][]byte{
 		inspectDeployCmd: {inspectOut},
 		inspectStartCmd:  {inspectOut},
@@ -405,7 +408,8 @@ func (s *S) TestProvisionerAddr(c *gocheck.C) {
 }
 
 func (s *S) TestProvisionerAddUnits(c *gocheck.C) {
-	runCmd := "run -d -t -p 8888 tsuru/python /bin/bash -c /usr/local/bin/circusd"
+	sshCmd := "/var/lib/tsuru/add-key key-content && /usr/sbin/sshd -D"
+	runCmd := fmt.Sprintf("run -d -t -p 8888 tsuru/python /bin/bash -c /usr/local/bin/circusd && %s", sshCmd)
 	out := `{
 	"NetworkSettings": {
 		"IpAddress": "10.10.10.%d",
