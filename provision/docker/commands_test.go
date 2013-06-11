@@ -27,7 +27,6 @@ func (s *S) TestDeployCmds(c *gocheck.C) {
 }
 
 func (s *S) TestRunCmds(c *gocheck.C) {
-	app := testing.NewFakeApp("app-name", "python", 1)
 	docker, err := config.GetString("docker:binary")
 	c.Assert(err, gocheck.IsNil)
 	runCmd, err := config.GetString("docker:run-cmd:bin")
@@ -36,7 +35,7 @@ func (s *S) TestRunCmds(c *gocheck.C) {
 	port, err := config.GetString("docker:run-cmd:port")
 	c.Assert(err, gocheck.IsNil)
 	expected := []string{docker, "run", "-d", "-t", "-p", port, imageName, "/bin/bash", "-c", runCmd, "&&", "/var/lib/tsuru/add-key key-content && /usr/sbin/sshd -D"}
-	cmds, err := runCmds(app, imageName)
+	cmds, err := runCmds(imageName)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(cmds, gocheck.DeepEquals, expected)
 }

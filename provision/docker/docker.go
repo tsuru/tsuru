@@ -214,7 +214,7 @@ func deploy(app provision.App, version string, w io.Writer) (string, error) {
 }
 
 func start(app provision.App, imageId string, w io.Writer) (*container, error) {
-	commands, err := runCmds(app, imageId)
+	commands, err := runCmds(imageId)
 	if err != nil {
 		return nil, err
 	}
