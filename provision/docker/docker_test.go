@@ -795,6 +795,6 @@ func (s *S) TestStart(c *gocheck.C) {
 	rtesting.FakeRouter.AddBackend(app.GetName())
 	defer rtesting.FakeRouter.RemoveBackend(app.GetName())
 	var buf bytes.Buffer
-	err := start(app, &buf)
+	err := start(app, "someid", &buf)
 	c.Assert(err, gocheck.IsNil)
 }

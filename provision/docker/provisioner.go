@@ -91,13 +91,13 @@ func (p *dockerProvisioner) Restart(app provision.App) error {
 }
 
 func (p *dockerProvisioner) Deploy(a provision.App, version string, w io.Writer) error {
-	_, err := deploy(a, version, w)
+	imageId, err := deploy(a, version, w)
 	if err != nil {
 		return err
 	}
 	if containers, err := listAppContainers(a.GetName()); err == nil && len(containers) > 0 {
 		for _, c := range containers {
-			err = start(a, w)
+			err = start(a, imageId, w)
 			if err != nil {
 				return err
 			}
@@ -105,7 +105,7 @@ func (p *dockerProvisioner) Deploy(a provision.App, version string, w io.Writer)
 				c.remove()
 			}
 		}
-	} else if err := start(a, w); err != nil {
+	} else if err := start(a, imageId, w); err != nil {
 		return err
 	}
 	a.Restart(w)
