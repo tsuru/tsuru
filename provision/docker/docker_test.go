@@ -235,6 +235,16 @@ func (s *S) TestContainerSetStatus(c *gocheck.C) {
 	c.Assert(c2.Status, gocheck.Equals, "what?!")
 }
 
+func (s *S) TestContainerSetImage(c *gocheck.C) {
+	container := container{ID: "something-300"}
+	s.conn.Collection(s.collName).Insert(container)
+	defer s.conn.Collection(s.collName).RemoveId(container.ID)
+	container.setImage("newimage")
+	c2, err := getContainer(container.ID)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(c2.Image, gocheck.Equals, "newimage")
+}
+
 func (s *S) TestDockerRemove(c *gocheck.C) {
 	fexec := &etesting.FakeExecutor{}
 	setExecut(fexec)

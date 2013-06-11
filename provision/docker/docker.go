@@ -186,6 +186,13 @@ func (c *container) setStatus(status string) error {
 	return coll.UpdateId(c.ID, c)
 }
 
+func (c *container) setImage(imageId string) error {
+	c.Image = imageId
+	coll := collection()
+	defer coll.Database.Session.Close()
+	return coll.UpdateId(c.ID, c)
+}
+
 func deploy(app provision.App, version string, w io.Writer) (string, error) {
 	commands, err := deployCmds(app)
 	if err != nil {
