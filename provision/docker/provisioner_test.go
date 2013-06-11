@@ -199,7 +199,7 @@ func (s *S) TestDeployShouldRestart(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	app := testing.NewFakeApp("myapp", "python", 1)
 	imageId := getImage(app)
-	deployCmds := fmt.Sprintf("run %s %s", imageId, deployCmd)
+	deployCmds := fmt.Sprintf("run %s %s master", imageId, deployCmd)
 	commitCmd := fmt.Sprintf("commit %s", idDeploy)
 	commitOut := "someimageid"
 	inspectDeployCmd := fmt.Sprintf("inspect %s", idDeploy)
@@ -372,7 +372,7 @@ func (s *S) TestProvisionerAddr(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	app := testing.NewFakeApp("myapp", "python", 1)
 	imageId := getImage(app)
-	deployCmds := fmt.Sprintf("run %s %s", imageId, deployCmd)
+	deployCmds := fmt.Sprintf("run %s %s master", imageId, deployCmd)
 	commitCmd := fmt.Sprintf("commit %s", idDeploy)
 	commitOut := "someimageid"
 	inspectDeployCmd := fmt.Sprintf("inspect %s", idDeploy)
@@ -532,7 +532,7 @@ func (s *S) TestProvisionerRemoveUnit(c *gocheck.C) {
 	}
 	setExecut(fexec)
 	defer setExecut(nil)
-	cmds, err := deployCmds(app)
+	cmds, err := deployCmds(app, "version")
 	c.Assert(err, gocheck.IsNil)
 	container, err := newContainer(app, cmds)
 	c.Assert(err, gocheck.IsNil)
@@ -571,7 +571,7 @@ func (s *S) TestProvisionerRemoveUnitNotInApp(c *gocheck.C) {
 	}
 	setExecut(fexec)
 	defer setExecut(nil)
-	cmds, err := deployCmds(app)
+	cmds, err := deployCmds(app, "version")
 	c.Assert(err, gocheck.IsNil)
 	container, err := newContainer(app, cmds)
 	c.Assert(err, gocheck.IsNil)

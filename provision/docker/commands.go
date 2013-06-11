@@ -18,7 +18,7 @@ import (
 
 // deployCmds returns the commands that is used when provisioner
 // deploy an unit.
-func deployCmds(app provision.App) ([]string, error) {
+func deployCmds(app provision.App, version string) ([]string, error) {
 	docker, err := config.GetString("docker:binary")
 	if err != nil {
 		return nil, err
@@ -28,7 +28,7 @@ func deployCmds(app provision.App) ([]string, error) {
 		return nil, err
 	}
 	imageName := getImage(app)
-	cmds := []string{docker, "run", imageName, deployCmd}
+	cmds := []string{docker, "run", imageName, deployCmd, version}
 	return cmds, nil
 }
 

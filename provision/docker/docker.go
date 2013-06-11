@@ -194,7 +194,7 @@ func (c *container) setImage(imageId string) error {
 }
 
 func deploy(app provision.App, version string, w io.Writer) (string, error) {
-	commands, err := deployCmds(app)
+	commands, err := deployCmds(app, version)
 	if err != nil {
 		return "", err
 	}

@@ -20,8 +20,9 @@ func (s *S) TestDeployCmds(c *gocheck.C) {
 	deployCmd, err := config.GetString("docker:deploy-cmd")
 	c.Assert(err, gocheck.IsNil)
 	imageName := getImage(app)
-	expected := []string{docker, "run", imageName, deployCmd}
-	cmds, err := deployCmds(app)
+	version := "version"
+	expected := []string{docker, "run", imageName, deployCmd, version}
+	cmds, err := deployCmds(app, version)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(cmds, gocheck.DeepEquals, expected)
 }
