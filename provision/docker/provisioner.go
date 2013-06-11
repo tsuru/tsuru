@@ -97,7 +97,7 @@ func (p *dockerProvisioner) Deploy(a provision.App, version string, w io.Writer)
 	}
 	if containers, err := listAppContainers(a.GetName()); err == nil && len(containers) > 0 {
 		for _, c := range containers {
-			err = start(a, imageId, w)
+			_, err = start(a, imageId, w)
 			if err != nil {
 				return err
 			}
@@ -105,7 +105,7 @@ func (p *dockerProvisioner) Deploy(a provision.App, version string, w io.Writer)
 				c.remove()
 			}
 		}
-	} else if err := start(a, imageId, w); err != nil {
+	} else if _, err := start(a, imageId, w); err != nil {
 		return err
 	}
 	a.Restart(w)

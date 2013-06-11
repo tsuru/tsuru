@@ -227,16 +227,16 @@ func deploy(app provision.App, version string, w io.Writer) (string, error) {
 	return imageId, nil
 }
 
-func start(app provision.App, imageId string, w io.Writer) error {
+func start(app provision.App, imageId string, w io.Writer) (*container, error) {
 	commands, err := runCmds(app, imageId)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	_, err = newContainer(app, commands)
+	c, err := newContainer(app, commands)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	return nil
+	return c, nil
 }
 
 func (c *container) oldDeploy(version string, w io.Writer) error {
