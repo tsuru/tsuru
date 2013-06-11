@@ -181,7 +181,7 @@ func (s *S) TestDeployRemoveContainersEvenWhenTheyreNotInTheAppsCollection(c *go
 	defer p.Destroy(app)
 	n, err := s.conn.Collection(s.collName).Find(bson.M{"appname": "app"}).Count()
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(n, gocheck.Equals, 3) //+1 for the deploy extra container
+	c.Assert(n, gocheck.Equals, 2)
 }
 
 func (s *S) TestDeployShouldRestart(c *gocheck.C) {

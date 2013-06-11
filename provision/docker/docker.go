@@ -220,6 +220,10 @@ func deploy(app provision.App, version string, w io.Writer) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	err = c.remove()
+	if err != nil {
+		return "", err
+	}
 	return imageId, nil
 }
 
