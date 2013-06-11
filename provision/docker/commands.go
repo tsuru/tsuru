@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"github.com/globocom/config"
 	"github.com/globocom/tsuru/provision"
+	"github.com/globocom/tsuru/repository"
 	"io/ioutil"
 	"os"
 	"os/user"
@@ -28,7 +29,8 @@ func deployCmds(app provision.App, version string) ([]string, error) {
 		return nil, err
 	}
 	imageName := getImage(app)
-	cmds := []string{docker, "run", imageName, deployCmd, version}
+	appRepo := repository.ReadOnlyURL(app.GetName())
+	cmds := []string{docker, "run", imageName, deployCmd, appRepo, version}
 	return cmds, nil
 }
 

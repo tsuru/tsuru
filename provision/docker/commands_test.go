@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"github.com/globocom/config"
 	ftesting "github.com/globocom/tsuru/fs/testing"
+	"github.com/globocom/tsuru/repository"
 	"github.com/globocom/tsuru/testing"
 	"launchpad.net/gocheck"
 	"os"
@@ -21,7 +22,8 @@ func (s *S) TestDeployCmds(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	imageName := getImage(app)
 	version := "version"
-	expected := []string{docker, "run", imageName, deployCmd, version}
+	appRepo := repository.ReadOnlyURL(app.GetName())
+	expected := []string{docker, "run", imageName, deployCmd, appRepo, version}
 	cmds, err := deployCmds(app, version)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(cmds, gocheck.DeepEquals, expected)

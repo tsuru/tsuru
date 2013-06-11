@@ -7,7 +7,6 @@ package docker
 import (
 	"bytes"
 	"fmt"
-	"github.com/globocom/config"
 	"github.com/globocom/tsuru/exec"
 	etesting "github.com/globocom/tsuru/exec/testing"
 	"github.com/globocom/tsuru/log"
@@ -195,11 +194,10 @@ func (s *S) TestDeployShouldRestart(c *gocheck.C) {
 }`)
 	idDeploy := "123"
 	idStart := "456"
-	deployCmd, err := config.GetString("docker:deploy-cmd")
-	c.Assert(err, gocheck.IsNil)
 	app := testing.NewFakeApp("myapp", "python", 1)
-	imageId := getImage(app)
-	deployCmds := fmt.Sprintf("run %s %s master", imageId, deployCmd)
+	cmds, err := deployCmds(app, "master")
+	c.Assert(err, gocheck.IsNil)
+	deployCmds := strings.Join(cmds[1:], " ")
 	commitCmd := fmt.Sprintf("commit %s", idDeploy)
 	commitOut := "someimageid"
 	inspectDeployCmd := fmt.Sprintf("inspect %s", idDeploy)
@@ -368,11 +366,10 @@ func (s *S) TestProvisionerAddr(c *gocheck.C) {
 }`)
 	idDeploy := "123"
 	idStart := "456"
-	deployCmd, err := config.GetString("docker:deploy-cmd")
-	c.Assert(err, gocheck.IsNil)
 	app := testing.NewFakeApp("myapp", "python", 1)
-	imageId := getImage(app)
-	deployCmds := fmt.Sprintf("run %s %s master", imageId, deployCmd)
+	cmds, err := deployCmds(app, "master")
+	c.Assert(err, gocheck.IsNil)
+	deployCmds := strings.Join(cmds[1:], " ")
 	commitCmd := fmt.Sprintf("commit %s", idDeploy)
 	commitOut := "someimageid"
 	inspectDeployCmd := fmt.Sprintf("inspect %s", idDeploy)

@@ -17,6 +17,7 @@ import (
 	"launchpad.net/gocheck"
 	stdlog "log"
 	"os"
+	"strings"
 )
 
 func (s *S) TestContainerGetAddress(c *gocheck.C) {
@@ -606,11 +607,11 @@ func (s *S) TestContainerDeploy(c *gocheck.C) {
 	sshCmd := "/var/lib/tsuru/add-key key-content && /usr/sbin/sshd -D"
 	runCmd := fmt.Sprintf("run -d -t -p %s tsuru/python /bin/bash -c %s",
 		s.port, sshCmd)
-	deployCmd, err := config.GetString("docker:deploy-cmd")
-	c.Assert(err, gocheck.IsNil)
 	app := testing.NewFakeApp("myapp", "python", 1)
 	imageId := getImage(app)
-	deployCmds := fmt.Sprintf("run %s %s ff13e", imageId, deployCmd)
+	cmds, err := deployCmds(app, "ff13e")
+	c.Assert(err, gocheck.IsNil)
+	deployCmds := strings.Join(cmds[1:], " ")
 	inspectCmd := fmt.Sprintf("inspect %s", id)
 	commitCmd := fmt.Sprintf("commit %s", id)
 	commitOut := "someimageid"
