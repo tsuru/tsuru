@@ -220,13 +220,6 @@ func deploy(app provision.App, version string, w io.Writer) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	c.Image = imageId
-	coll := collection()
-	defer coll.Database.Session.Close()
-	err = coll.UpdateId(c.ID, c)
-	if err != nil {
-		return "", err
-	}
 	return imageId, nil
 }
 
