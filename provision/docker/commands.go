@@ -30,7 +30,7 @@ func deployCmds(app provision.App, version string) ([]string, error) {
 	}
 	imageName := getImage(app)
 	appRepo := repository.ReadOnlyURL(app.GetName())
-	cmds := []string{docker, "run", imageName, deployCmd, appRepo, version}
+	cmds := []string{docker, "run", imageName, deployCmd, appRepo}
 	return cmds, nil
 }
 
