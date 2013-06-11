@@ -35,25 +35,6 @@ func runCmd(cmd string, args ...string) (string, error) {
 	return out.String(), err
 }
 
-func commandToRun(app provision.App) ([]string, error) {
-	docker, err := config.GetString("docker:binary")
-	if err != nil {
-		return nil, err
-	}
-	port, err := config.GetString("docker:run-cmd:port")
-	if err != nil {
-		return nil, err
-	}
-	commands, err := sshCmds()
-	if err != nil {
-		return nil, err
-	}
-	imageName := getImage(app)
-	containerCmd := strings.Join(commands, " && ")
-	wholeCmd := []string{docker, "run", "-d", "-t", "-p", port, imageName, "/bin/bash", "-c", containerCmd}
-	return wholeCmd, nil
-}
-
 func getPort() (string, error) {
 	return config.GetString("docker:run-cmd:port")
 }

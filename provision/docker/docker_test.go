@@ -38,20 +38,18 @@ func (s *S) TestNewContainer(c *gocheck.C) {
     }
 }`
 	id := "945132e7b4c9"
-	sshCmd := "/var/lib/tsuru/add-key key-content && /usr/sbin/sshd -D"
-	runCmd := fmt.Sprintf("run -d -t -p %s tsuru/python /bin/bash -c %s",
-		s.port, sshCmd)
 	inspectCmd := fmt.Sprintf("inspect %s", id)
-	out := map[string][][]byte{runCmd: {[]byte(id)}, inspectCmd: {[]byte(inspectOut)}}
+	out := map[string][][]byte{
+		inspectCmd: {[]byte(inspectOut)},
+		"run":      {[]byte(id)},
+	}
 	fexec := &etesting.FakeExecutor{Output: out}
 	setExecut(fexec)
 	defer setExecut(nil)
 	app := testing.NewFakeApp("app-name", "python", 1)
 	rtesting.FakeRouter.AddBackend(app.GetName())
 	defer rtesting.FakeRouter.RemoveBackend(app.GetName())
-	cmds, err := commandToRun(app)
-	c.Assert(err, gocheck.IsNil)
-	_, err = newContainer(app, cmds)
+	_, err := newContainer(app, []string{"docker", "run"})
 	defer s.conn.Collection(s.collName).RemoveId(id)
 	var cont container
 	err = s.conn.Collection(s.collName).FindId(id).One(&cont)
@@ -68,17 +66,10 @@ func (s *S) TestNewContainerCallsDockerCreate(c *gocheck.C) {
 	setExecut(fexec)
 	defer setExecut(nil)
 	app := testing.NewFakeApp("app-name", "python", 1)
-	cmds, err := commandToRun(app)
-	c.Assert(err, gocheck.IsNil)
+	cmds := []string{"docker", "run"}
 	newContainer(app, cmds)
-	/* c.Assert(err, gocheck.IsNil) */
 	defer s.conn.Collection(s.collName).Remove(bson.M{"appname": app.GetName()})
-	sshCmd := "/var/lib/tsuru/add-key key-content && /usr/sbin/sshd -D"
-	args := []string{
-		"run", "-d", "-t", "-p", s.port, "tsuru/python",
-		"/bin/bash", "-c", sshCmd,
-	}
-	c.Assert(fexec.ExecutedCmd("docker", args), gocheck.Equals, true)
+	c.Assert(fexec.ExecutedCmd("docker", cmds[1:]), gocheck.Equals, true)
 }
 
 func (s *S) TestNewContainerReturnsNilAndLogsOnError(c *gocheck.C) {
@@ -89,7 +80,7 @@ func (s *S) TestNewContainerReturnsNilAndLogsOnError(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	defer commandmocker.Remove(tmpdir)
 	app := testing.NewFakeApp("myapp", "python", 1)
-	cmds, err := commandToRun(app)
+	cmds, err := deployCmds(app)
 	c.Assert(err, gocheck.IsNil)
 	container, err := newContainer(app, cmds)
 	c.Assert(err, gocheck.NotNil)
@@ -115,40 +106,12 @@ func (s *S) TestNewContainerAddsRoute(c *gocheck.C) {
 	app := testing.NewFakeApp("myapp", "python", 1)
 	rtesting.FakeRouter.AddBackend(app.GetName())
 	defer rtesting.FakeRouter.RemoveBackend(app.GetName())
-	cmds, err := commandToRun(app)
+	cmds, err := deployCmds(app)
 	c.Assert(err, gocheck.IsNil)
 	container, err := newContainer(app, cmds)
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Collection(s.collName).RemoveId(out)
 	c.Assert(rtesting.FakeRouter.HasRoute(app.GetName(), container.getAddress()), gocheck.Equals, true)
-}
-
-func (s *S) TestCommandsToRun(c *gocheck.C) {
-	rfs := ftesting.RecordingFs{}
-	f, err := rfs.Create("/opt/me/id_dsa.pub")
-	c.Assert(err, gocheck.IsNil)
-	f.Write([]byte("ssh-rsa ohwait! me@machine\n"))
-	f.Close()
-	old := fsystem
-	fsystem = &rfs
-	defer func() {
-		fsystem = old
-	}()
-	config.Set("docker:ssh:sshd-path", "/opt/bin/sshd")
-	config.Set("docker:ssh:public-key", "/opt/me/id_dsa.pub")
-	config.Set("docker:ssh:private-key", "/opt/me/id_dsa")
-	defer config.Unset("docker:ssh:sshd-path")
-	defer config.Unset("docker:ssh:public-key")
-	defer config.Unset("docker:ssh:private-key")
-	app := testing.NewFakeApp("myapp", "python", 1)
-	cmd, err := commandToRun(app)
-	c.Assert(err, gocheck.IsNil)
-	sshCmd := "/var/lib/tsuru/add-key ssh-rsa ohwait! me@machine && /opt/bin/sshd -D"
-	expected := []string{
-		"docker", "run", "-d", "-t", "-p", s.port, fmt.Sprintf("%s/python", s.repoNamespace),
-		"/bin/bash", "-c", sshCmd,
-	}
-	c.Assert(cmd, gocheck.DeepEquals, expected)
 }
 
 func (s *S) TestGetSSHCommandsDefaultSSHDPath(c *gocheck.C) {
@@ -241,17 +204,11 @@ func (s *S) TestDockerCreate(c *gocheck.C) {
 	app := testing.NewFakeApp("app-name", "python", 1)
 	rtesting.FakeRouter.AddBackend(app.GetName())
 	defer rtesting.FakeRouter.RemoveBackend(app.GetName())
-	commands, err := commandToRun(app)
-	c.Assert(err, gocheck.IsNil)
-	err = container.create(commands)
+	commands := []string{"docker", "run"}
+	err := container.create(commands)
 	defer container.remove()
 	c.Assert(err, gocheck.IsNil)
-	sshCmd := "/var/lib/tsuru/add-key key-content && /usr/sbin/sshd -D"
-	args := []string{
-		"run", "-d", "-t", "-p", s.port, "tsuru/python",
-		"/bin/bash", "-c", sshCmd,
-	}
-	c.Assert(fexec.ExecutedCmd("docker", args), gocheck.Equals, true)
+	c.Assert(fexec.ExecutedCmd("docker", commands[1:]), gocheck.Equals, true)
 	c.Assert(container.Status, gocheck.Equals, "created")
 	c.Assert(container.HostPort, gocheck.Equals, "37457")
 }
@@ -262,7 +219,7 @@ func (s *S) TestContainerCreateWithoutHostAddr(c *gocheck.C) {
 	config.Unset("docker:host-address")
 	container := container{AppName: "myapp", Type: "python"}
 	app := testing.NewFakeApp("myapp", "python", 1)
-	commands, err := commandToRun(app)
+	commands, err := deployCmds(app)
 	c.Assert(err, gocheck.IsNil)
 	err = container.create(commands)
 	c.Assert(err, gocheck.NotNil)
