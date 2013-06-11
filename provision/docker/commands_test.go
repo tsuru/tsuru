@@ -23,7 +23,9 @@ func (s *S) TestDeployCmds(c *gocheck.C) {
 	imageName := getImage(app)
 	version := "version"
 	appRepo := repository.ReadOnlyURL(app.GetName())
-	expected := []string{docker, "run", "-d", imageName, deployCmd, appRepo}
+	port, err := getPort()
+	c.Assert(err, gocheck.IsNil)
+	expected := []string{docker, "run", "-p", port, "-d", imageName, deployCmd, appRepo}
 	cmds, err := deployCmds(app, version)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(cmds, gocheck.DeepEquals, expected)
