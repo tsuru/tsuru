@@ -33,7 +33,7 @@ func deployCmds(app provision.App) ([]string, error) {
 
 // runCmds returns the commands that should be passed when the
 // provisioner will run an unit.
-func runCmds(app provision.App) ([]string, error) {
+func runCmds(app provision.App, imageId string) ([]string, error) {
 	docker, err := config.GetString("docker:binary")
 	if err != nil {
 		return nil, err
@@ -46,8 +46,7 @@ func runCmds(app provision.App) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	imageName := getImage(app)
-	cmds := []string{docker, "run", "-d", "-t", "-p", port, imageName, "/bin/bash", "-c", runCmd}
+	cmds := []string{docker, "run", "-d", "-t", "-p", port, imageId, "/bin/bash", "-c", runCmd}
 	return cmds, nil
 }
 

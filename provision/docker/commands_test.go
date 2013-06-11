@@ -32,11 +32,11 @@ func (s *S) TestRunCmds(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	runCmd, err := config.GetString("docker:run-cmd:bin")
 	c.Assert(err, gocheck.IsNil)
-	imageName := getImage(app)
+	imageName := "imageId"
 	port, err := config.GetString("docker:run-cmd:port")
 	c.Assert(err, gocheck.IsNil)
 	expected := []string{docker, "run", "-d", "-t", "-p", port, imageName, "/bin/bash", "-c", runCmd}
-	cmds, err := runCmds(app)
+	cmds, err := runCmds(app, imageName)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(cmds, gocheck.DeepEquals, expected)
 }
