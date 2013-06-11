@@ -91,7 +91,7 @@ func (p *dockerProvisioner) Restart(app provision.App) error {
 }
 
 func (p *dockerProvisioner) Deploy(a provision.App, version string, w io.Writer) error {
-	err := deploy(a, version, w)
+	_, err := deploy(a, version, w)
 	if err != nil {
 		return err
 	}

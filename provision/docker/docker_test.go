@@ -762,8 +762,9 @@ func (s *S) TestContainerDeploy(c *gocheck.C) {
 	rtesting.FakeRouter.AddBackend(app.GetName())
 	defer rtesting.FakeRouter.RemoveBackend(app.GetName())
 	var buf bytes.Buffer
-	err = deploy(app, "ff13e", &buf)
+	imageId, err = deploy(app, "ff13e", &buf)
 	c.Assert(err, gocheck.IsNil)
+	c.Assert(imageId, gocheck.Equals, commitOut)
 	args := []string{"commit", id}
 	c.Assert(fexec.ExecutedCmd("docker", args), gocheck.Equals, true)
 	var cont container

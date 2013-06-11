@@ -207,23 +207,27 @@ func (c *container) setStatus(status string) error {
 	return coll.UpdateId(c.ID, c)
 }
 
-func deploy(app provision.App, version string, w io.Writer) error {
+func deploy(app provision.App, version string, w io.Writer) (string, error) {
 	commands, err := deployCmds(app)
 	if err != nil {
-		return err
+		return "", err
 	}
 	c, err := newContainer(app, commands)
 	if err != nil {
-		return err
+		return "", err
 	}
 	imageId, err := c.commit()
 	if err != nil {
-		return err
+		return "", err
 	}
 	c.Image = imageId
 	coll := collection()
 	defer coll.Database.Session.Close()
-	return coll.UpdateId(c.ID, c)
+	err = coll.UpdateId(c.ID, c)
+	if err != nil {
+		return "", err
+	}
+	return imageId, nil
 }
 
 func start(app provision.App, w io.Writer) error {
