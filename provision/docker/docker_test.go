@@ -659,4 +659,7 @@ func (s *S) TestStart(c *gocheck.C) {
 	cont, err := start(app, "someid", &buf)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(cont.ID, gocheck.Equals, id)
+	cont2, err := getContainer(cont.ID)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(cont2.Image, gocheck.Equals, "someid")
 }
