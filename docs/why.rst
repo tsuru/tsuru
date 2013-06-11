@@ -8,9 +8,9 @@ IaaS's and Provisioners
 -----------------------
 
 Tsuru provides an easy way to change the application unit provisioning system. Tsuru already has three
-working provisioners, `Juju <>`_, `Docker <>`_ and `LXC <>`. But the main advantage is the
-ease of extending the provisioning system. One can simply implement the Provision interface Tsuru provides,
-configure it on a Tsuru installation and start using it.
+working provisioners, `Juju <https://juju.ubuntu.com/>`_, `Docker <http://www.docker.io/>`_ and `LXC <http://lxc.sourceforge.net/>`_.
+But the main advantage is the ease of extending the provisioning system. One can simply implement
+the Provision interface Tsuru provides, configure it on a Tsuru installation and start using it.
 
 Routers
 -------
