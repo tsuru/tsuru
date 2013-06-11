@@ -13,11 +13,9 @@ import (
 	"github.com/globocom/tsuru/fs"
 	"github.com/globocom/tsuru/log"
 	"github.com/globocom/tsuru/provision"
-	"github.com/globocom/tsuru/repository"
 	"io"
 	"labix.org/v2/mgo/bson"
 	"strings"
-	"time"
 )
 
 var fsystem fs.Fs
@@ -237,46 +235,6 @@ func start(app provision.App, imageId string, w io.Writer) (*container, error) {
 		return nil, err
 	}
 	return c, nil
-}
-
-func (c *container) oldDeploy(version string, w io.Writer) error {
-	deployCmd, err := config.GetString("docker:deploy-cmd")
-	if err != nil {
-		c.setStatus("error")
-		return err
-	}
-	runBin, err := config.GetString("docker:run-cmd:bin")
-	if err != nil {
-		c.setStatus("error")
-		return err
-	}
-	c.Version = version
-	runArgs, _ := config.GetString("docker:run-cmd:args")
-	appRepo := repository.ReadOnlyURL(c.AppName)
-	filter := filter{w: w, content: []byte("connection refused")}
-	for {
-		err = c.ssh(w, &filter, deployCmd, appRepo, version)
-		if err == nil {
-			break
-		}
-		if !filter.filtered {
-			c.setStatus("error")
-			return err
-		}
-		log.Printf("SSH to the container %q failed. Will retry.", c.ID)
-		time.Sleep(100e6)
-		filter.filtered = false
-	}
-	var buf bytes.Buffer
-	err = c.ssh(&buf, &buf, runBin, strings.Fields(runArgs)...)
-	if err != nil {
-		log.Printf("Failed to start container: %s", err)
-		log.Printf("Output of the command: %s", buf.String())
-		c.setStatus("error")
-		return err
-	}
-	c.setStatus("running")
-	return nil
 }
 
 // remove removes a docker container.
