@@ -7,7 +7,6 @@ package docker
 import (
 	"bytes"
 	"fmt"
-	"github.com/globocom/commandmocker"
 	"github.com/globocom/config"
 	etesting "github.com/globocom/tsuru/exec/testing"
 	ftesting "github.com/globocom/tsuru/fs/testing"
@@ -76,9 +75,9 @@ func (s *S) TestNewContainerReturnsNilAndLogsOnError(c *gocheck.C) {
 	w := new(bytes.Buffer)
 	l := stdlog.New(w, "", stdlog.LstdFlags)
 	log.SetLogger(l)
-	tmpdir, err := commandmocker.Error("docker", "cool error", 1)
-	c.Assert(err, gocheck.IsNil)
-	defer commandmocker.Remove(tmpdir)
+	fexec := &etesting.ErrorExecutor{}
+	setExecut(fexec)
+	defer setExecut(nil)
 	app := testing.NewFakeApp("myapp", "python", 1)
 	cmds, err := deployCmds(app)
 	c.Assert(err, gocheck.IsNil)
@@ -308,23 +307,25 @@ func (s *S) TestContainerIPRunsDockerInspectCommand(c *gocheck.C) {
 }
 
 func (s *S) TestContainerIPReturnsIPFromDockerInspect(c *gocheck.C) {
-	cmdReturn := `
-    {
-            \"NetworkSettings\": {
-            \"IpAddress\": \"10.10.10.10\",
-            \"IpPrefixLen\": 8,
-            \"Gateway\": \"10.65.41.1\",
-            \"PortMapping\": {}
-    }
+	output := `{
+	"NetworkSettings": {
+		"IpAddress": "10.10.10.10",
+		"IpPrefixLen": 8,
+		"Gateway": "10.65.41.1",
+		"PortMapping": {}
+	}
 }`
-	tmpdir, err := commandmocker.Add("docker", cmdReturn)
-	c.Assert(err, gocheck.IsNil)
-	defer commandmocker.Remove(tmpdir)
+	out := map[string][][]byte{
+		"inspect id": {[]byte(output)},
+	}
+	fexec := &etesting.FakeExecutor{Output: out}
+	setExecut(fexec)
+	defer setExecut(nil)
 	cont := container{AppName: "vm1", ID: "id"}
 	ip, err := cont.ip()
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(ip, gocheck.Equals, "10.10.10.10")
-	c.Assert(commandmocker.Ran(tmpdir), gocheck.Equals, true)
+	c.Assert(fexec.ExecutedCmd("docker", []string{"inspect", "id"}), gocheck.Equals, true)
 }
 
 func (s *S) TestContainerHostPortReturnsPortFromDockerInspect(c *gocheck.C) {
