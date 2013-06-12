@@ -41,9 +41,9 @@ func (s *S) TestRunCmds(c *gocheck.C) {
 	port, err := config.GetString("docker:run-cmd:port")
 	c.Assert(err, gocheck.IsNil)
 	ssh, err := sshCmds()
-	sshCmd := strings.Join(ssh, " ")
+	sshCmd := strings.Join(ssh, " && ")
 	c.Assert(err, gocheck.IsNil)
-	cmd := fmt.Sprintf("'%s && %s'", runCmd, sshCmd)
+	cmd := fmt.Sprintf("%s && %s", runCmd, sshCmd)
 	expected := []string{docker, "run", "-d", "-t", "-p", port, imageName, "/bin/bash", "-c", cmd}
 	cmds, err := runCmds(imageName)
 	c.Assert(err, gocheck.IsNil)
