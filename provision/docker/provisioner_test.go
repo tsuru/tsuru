@@ -97,11 +97,8 @@ func (s *S) TestDeployShouldCallDockerCreate(c *gocheck.C) {
 	defer s.conn.Collection(s.collName).RemoveId("c-1")
 	defer s.conn.Collection(s.collName).RemoveId("c-2")
 	c.Assert(err, gocheck.IsNil)
-	args := []string{
-		"run", "-d", "-t", "-p", "8888", "i-1",
-		"/bin/bash", "-c", "/usr/local/bin/circusd",
-		"&&", "/var/lib/tsuru/add-key key-content && /usr/sbin/sshd -D",
-	}
+	runCmds, err := runCmds("i-1")
+	args := runCmds[1:]
 	c.Assert(fexec.ExecutedCmd("docker", args), gocheck.Equals, true)
 }
 
@@ -202,8 +199,9 @@ func (s *S) TestDeployShouldRestart(c *gocheck.C) {
 	commitOut := "someimageid"
 	inspectDeployCmd := fmt.Sprintf("inspect %s", idDeploy)
 	inspectStartCmd := fmt.Sprintf("inspect %s", idStart)
-	sshCmd := "/var/lib/tsuru/add-key key-content && /usr/sbin/sshd -D"
-	startCmds := fmt.Sprintf("run -d -t -p 8888 someimageid /bin/bash -c /usr/local/bin/circusd && %s", sshCmd)
+	runCmds, err := runCmds(commitOut)
+	c.Assert(err, gocheck.IsNil)
+	startCmds := strings.Join(runCmds[1:], " ")
 	out := map[string][][]byte{
 		inspectDeployCmd: {inspectOut},
 		inspectStartCmd:  {inspectOut},
@@ -374,8 +372,9 @@ func (s *S) TestProvisionerAddr(c *gocheck.C) {
 	commitOut := "someimageid"
 	inspectDeployCmd := fmt.Sprintf("inspect %s", idDeploy)
 	inspectStartCmd := fmt.Sprintf("inspect %s", idStart)
-	sshCmd := "/var/lib/tsuru/add-key key-content && /usr/sbin/sshd -D"
-	startCmds := fmt.Sprintf("run -d -t -p 8888 someimageid /bin/bash -c /usr/local/bin/circusd && %s", sshCmd)
+	runCmd, err := runCmds(commitOut)
+	c.Assert(err, gocheck.IsNil)
+	startCmds := strings.Join(runCmd[1:], " ")
 	out := map[string][][]byte{
 		inspectDeployCmd: {inspectOut},
 		inspectStartCmd:  {inspectOut},
@@ -405,8 +404,9 @@ func (s *S) TestProvisionerAddr(c *gocheck.C) {
 }
 
 func (s *S) TestProvisionerAddUnits(c *gocheck.C) {
-	sshCmd := "/var/lib/tsuru/add-key key-content && /usr/sbin/sshd -D"
-	runCmd := fmt.Sprintf("run -d -t -p 8888 tsuru/python /bin/bash -c /usr/local/bin/circusd && %s", sshCmd)
+	runCmds, err := runCmds("tsuru/python")
+	c.Assert(err, gocheck.IsNil)
+	runCmd := strings.Join(runCmds[1:], " ")
 	out := `{
 	"NetworkSettings": {
 		"IpAddress": "10.10.10.%d",

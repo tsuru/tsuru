@@ -647,8 +647,10 @@ func (s *S) TestStart(c *gocheck.C) {
 }`
 	id := "945132e7b4c9"
 	app := testing.NewFakeApp("myapp", "python", 1)
-	sshCmd := "/var/lib/tsuru/add-key key-content && /usr/sbin/sshd -D"
-	runCmds := fmt.Sprintf("run -d -t -p 8888 someid /bin/bash -c /usr/local/bin/circusd && %s", sshCmd)
+	imageId := getImage(app)
+	cmds, err := runCmds(imageId)
+	c.Assert(err, gocheck.IsNil)
+	runCmds := strings.Join(cmds[1:], " ")
 	inspectCmd := fmt.Sprintf("inspect %s", id)
 	out := map[string][][]byte{runCmds: {[]byte(id)}, inspectCmd: {[]byte(inspectOut)}}
 	fexec := &etesting.FakeExecutor{Output: out}
@@ -658,10 +660,10 @@ func (s *S) TestStart(c *gocheck.C) {
 	rtesting.FakeRouter.AddBackend(app.GetName())
 	defer rtesting.FakeRouter.RemoveBackend(app.GetName())
 	var buf bytes.Buffer
-	cont, err := start(app, "someid", &buf)
+	cont, err := start(app, imageId, &buf)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(cont.ID, gocheck.Equals, id)
 	cont2, err := getContainer(cont.ID)
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(cont2.Image, gocheck.Equals, "someid")
+	c.Assert(cont2.Image, gocheck.Equals, imageId)
 }
