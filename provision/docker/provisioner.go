@@ -70,25 +70,24 @@ func (p *dockerProvisioner) Provision(app provision.App) error {
 }
 
 func (p *dockerProvisioner) Restart(app provision.App) error {
+	containers, err := listAppContainers(app.GetName())
+	if err != nil {
+		log.Printf("Got error while getting app containers: %s", err)
+		return err
+	}
+	var buf bytes.Buffer
+	for _, c := range containers {
+		err = c.ssh(&buf, &buf, "/var/lib/tsuru/restart")
+		if err != nil {
+			log.Printf("Failed to restart %q: %s.", app.GetName(), err)
+			log.Printf("Command outputs:")
+			log.Printf("out: %s", buf)
+			log.Printf("err: %s", buf)
+			return err
+		}
+		buf.Reset()
+	}
 	return nil
-	// containers, err := listAppContainers(app.GetName())
-	// if err != nil {
-	// 	log.Printf("Got error while getting app containers: %s", err)
-	// 	return err
-	// }
-	// var buf bytes.Buffer
-	// for _, c := range containers {
-	// 	err = c.ssh(&buf, &buf, "/var/lib/tsuru/restart")
-	// 	if err != nil {
-	// 		log.Printf("Failed to restart %q: %s.", app.GetName(), err)
-	// 		log.Printf("Command outputs:")
-	// 		log.Printf("out: %s", buf)
-	// 		log.Printf("err: %s", buf)
-	// 		return err
-	// 	}
-	// 	buf.Reset()
-	// }
-	// return nil
 }
 
 func (p *dockerProvisioner) Deploy(a provision.App, version string, w io.Writer) error {
