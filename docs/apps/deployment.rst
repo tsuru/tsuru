@@ -1,7 +1,7 @@
 Application Deployment
 ======================
 
-This document covers how application deployment works on Tsuru.
+This document provides a high-level description on how application deployment works on Tsuru.
 
 Preparing Your Application
 --------------------------
