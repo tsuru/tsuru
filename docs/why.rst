@@ -32,23 +32,23 @@ Services Creation and Extension
 -------------------------------
 
 Most applications need a service to work properly, like a database service. Tsuru provides an interface API to communicate
-with services APIs, but it doesn't manage services directly. We made this decision so service managers could freely
-manage everything about their services without Tsuru interfering with it.
+with services APIs, but it doesn't manage services directly, this provides more control over the service and its management.
 
-In order to create a new service one should write an API implementing the predefined endpoints that Tsuru will call when
-a user performs an action using the client, read more on the `Building your service tutorial <http://docs.tsuru.io/en/latest/services/build.html>`_.
+In order to create a new service you simply write an API implementing the predefined endpoints. Tsuru will call when
+a user performs an action using the client, read more on the `building your service tutorial <http://docs.tsuru.io/en/latest/services/build.html>`_.
 
-One may also change an existing service, if its source is open. All services APIs made by Tsuru team are open and you can
-fork them and make any changes one want. For example, the mongoDB api shares one database installation with everyone that is using it,
+You can either create a new service or modify an existing one, if its source is open. All services APIs made by Tsuru team are open and
+contributions are very welcome.
+For example, the mongoDB api shares one database installation with everyone that is using it,
 if you don't like it and want to change it, you can do it and create a new service on Tsuru with your own implementation.
 
 IaaS's and Provisioners
 -----------------------
 
-Tsuru provides an easy way to change the application unit provisioning system. Tsuru already has three
+Tsuru provides an easy way to change the application unit provisioning system and it already has three
 working provisioners, Juju, Docker and LXC.
 But the main advantage is the ease of extending the provisioning system. One can simply implement
-the Provision interface Tsuru provides, configure it on a Tsuru installation and start using it.
+the Provision interface Tsuru provides, configure it on your installation and start using it.
 
 Routers
 -------
@@ -66,53 +66,57 @@ The following table compares Tsuru with OpenShift and Stackato PaaS's.
 If you have anything to consider, or want to ask us to add another PaaS on the list
 contact us in #tsuru @ freenode.net or at our `mailing list <https://groups.google.com/d/forum/tsuru-users>`_
 
-+-------------------------+------------------------+--------------------+----------------------+
-|                         | Tsuru                  | OpenShift          | Stackato             |
-+=========================+========================+====================+======================+
-| Built-in Platforms      | Node.js, PHP,          | Java, PHP,         | Java, Node.Js,       |
-|                         | HTML, Python, Ruby,    | Ruby, Node.js,     | Perl, PHP,           |
-|                         | Golang, Java           | Python             | Python, Ruby         |
-+-------------------------+------------------------+--------------------+----------------------+
-| End-user web UI         | Yes (Abyss)            | Yes                | Yes                  |
-+-------------------------+------------------------+--------------------+----------------------+
-| CLI                     | Yes                    | Yes                | Yes                  |
-+-------------------------+------------------------+--------------------+----------------------+
-| Deployment hooks        | Yes                    | No                 | Yes                  |
-+-------------------------+------------------------+--------------------+----------------------+
-| SSH Access              | No                     | Yes                | Yes                  |
-+-------------------------+------------------------+--------------------+----------------------+
-| Run Commands Remotely   | Yes                    | No                 | No                   |
-+-------------------------+------------------------+--------------------+----------------------+
-| Application Monitoring  | Yes                    | Yes                | Yes                  |
-+-------------------------+------------------------+--------------------+----------------------+
-| SQL Databases           | MySQL                  | MySQL, PostgreSQL  | MySQL, PostgreSQL    |
-+-------------------------+------------------------+--------------------+----------------------+
-| NoSQL Databases         | MongoDB, Cassandra     | MongoDB            | MongoDB, Redis       |
-|                         | Memcached, Redis       |                    |                      |
-+-------------------------+------------------------+--------------------+----------------------+
-| Log Streaming           | Yes                    | Yes (not built-in) | Yes                  |
-+-------------------------+------------------------+--------------------+----------------------+
-| Metering/Billing API    | No                     | No                 | Yes                  |
-+-------------------------+------------------------+--------------------+----------------------+
-| Quota System            | Yes                    | Yes                | Yes                  |
-+-------------------------+------------------------+--------------------+----------------------+
-| Container Based Apps    | Yes                    | Yes                | Yes                  |
-+-------------------------+------------------------+--------------------+----------------------+
-| VMs Based Apps          | Yes                    | No                 | No                   |
-+-------------------------+------------------------+--------------------+----------------------+
-| Open Source             | Yes                    | Yes                | No                   |
-+-------------------------+------------------------+--------------------+----------------------+
-| Free                    | Yes                    | Yes                | Yes                  |
-+-------------------------+------------------------+--------------------+----------------------+
-| Paid/Closed Version     | No                     | Yes                | Yes                  |
-+-------------------------+------------------------+--------------------+----------------------+
-| PaaS Healing            | Yes                    | No                 | No                   |
-+-------------------------+------------------------+--------------------+----------------------+
-| App Healing             | Yes                    | No                 | No                   |
-+-------------------------+------------------------+--------------------+----------------------+
-| App Fault Tolerance     | Yes                    | Yes (by cartridge) | Yes                  |
-+-------------------------+------------------------+--------------------+----------------------+
-| Auto Scaling            | No                     | Yes                | Yes (for some IaaSs) |
-+-------------------------+------------------------+--------------------+----------------------+
-| Manual Scaling          | Yes                    | No                 | Yes                  |
-+-------------------------+------------------------+--------------------+----------------------+
++-------------------------+------------------------+--------------------+-----------------------+
+|                         | Tsuru                  | OpenShift          | Stackato              |
++=========================+========================+====================+=======================+
+| Built-in Platforms      | Node.js, PHP,          | Java, PHP,         | Java, Node.Js,        |
+|                         | HTML, Python, Ruby,    | Ruby, Node.js,     | Perl, PHP,            |
+|                         | Golang, Java           | Python             | Python, Ruby          |
++-------------------------+------------------------+--------------------+-----------------------+
+| End-user web UI         | Yes (Abyss_)           | Yes                | Yes                   |
++-------------------------+------------------------+--------------------+-----------------------+
+| CLI                     | Yes                    | Yes                | Yes                   |
++-------------------------+------------------------+--------------------+-----------------------+
+| Deployment hooks        | Yes                    | No                 | Yes                   |
++-------------------------+------------------------+--------------------+-----------------------+
+| SSH Access              | Yes (management-only)  | Yes                | Yes                   |
++-------------------------+------------------------+--------------------+-----------------------+
+| Run Commands Remotely   | Yes                    | No                 | No                    |
++-------------------------+------------------------+--------------------+-----------------------+
+| Application Monitoring  | Yes                    | Yes                | Yes                   |
++-------------------------+------------------------+--------------------+-----------------------+
+| SQL Databases           | MySQL                  | MySQL, PostgreSQL  | MySQL, PostgreSQL     |
++-------------------------+------------------------+--------------------+-----------------------+
+| NoSQL Databases         | MongoDB, Cassandra     | MongoDB            | MongoDB, Redis        |
+|                         | Memcached, Redis       |                    |                       |
++-------------------------+------------------------+--------------------+-----------------------+
+| Log Streaming           | Yes                    | Yes (not built-in) | Yes                   |
++-------------------------+------------------------+--------------------+-----------------------+
+| Metering/Billing API    | No (issue 466_)        | No                 | Yes                   |
++-------------------------+------------------------+--------------------+-----------------------+
+| Quota System            | Yes                    | Yes                | Yes                   |
++-------------------------+------------------------+--------------------+-----------------------+
+| Container Based Apps    | Yes                    | Yes                | Yes                   |
++-------------------------+------------------------+--------------------+-----------------------+
+| VMs Based Apps          | Yes                    | No                 | No                    |
++-------------------------+------------------------+--------------------+-----------------------+
+| Open Source             | Yes                    | Yes                | No                    |
++-------------------------+------------------------+--------------------+-----------------------+
+| Free                    | Yes                    | Yes                | Yes                   |
++-------------------------+------------------------+--------------------+-----------------------+
+| Paid/Closed Version     | No                     | Yes                | Yes                   |
++-------------------------+------------------------+--------------------+-----------------------+
+| PaaS Healing            | Yes                    | No                 | No                    |
++-------------------------+------------------------+--------------------+-----------------------+
+| App Healing             | Yes                    | No                 | No                    |
++-------------------------+------------------------+--------------------+-----------------------+
+| App Fault Tolerance     | Yes                    | Yes (by cartridge) | Yes                   |
++-------------------------+------------------------+--------------------+-----------------------+
+| Auto Scaling            | No (issue 154_)        | Yes                | Yes (for some IaaS's) |
++-------------------------+------------------------+--------------------+-----------------------+
+| Manual Scaling          | Yes                    | No                 | Yes                   |
++-------------------------+------------------------+--------------------+-----------------------+
+
+.. _154: https://github.com/globocom/tsuru/issues/154
+.. _466: https://github.com/globocom/tsuru/issues/466
+.. _Abyss: https://github.com/globocom/abyss
