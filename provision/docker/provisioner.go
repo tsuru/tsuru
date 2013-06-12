@@ -5,7 +5,7 @@
 package docker
 
 import (
-	/* "bytes" */
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
