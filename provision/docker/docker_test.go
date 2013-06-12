@@ -666,4 +666,5 @@ func (s *S) TestStart(c *gocheck.C) {
 	cont2, err := getContainer(cont.ID)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(cont2.Image, gocheck.Equals, imageId)
+	c.Assert(cont2.Status, gocheck.Equals, "running")
 }

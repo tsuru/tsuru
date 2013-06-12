@@ -226,6 +226,10 @@ func start(app provision.App, imageId string, w io.Writer) (*container, error) {
 	if err != nil {
 		return nil, err
 	}
+	err = c.setStatus("running")
+	if err != nil {
+		return nil, err
+	}
 	return c, nil
 }
 
