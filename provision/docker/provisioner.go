@@ -277,6 +277,7 @@ func collectUnit(container container, units chan<- provision.Unit, errs chan<- e
 		conn.Close()
 		unit.Status = provision.StatusStarted
 	}
+	log.Printf("collected data for [container %s] - [app %s]", container.ID, container.AppName)
 	units <- unit
 }
 
@@ -286,6 +287,7 @@ func buildResult(maxSize int, units <-chan provision.Unit) <-chan []provision.Un
 		result := make([]provision.Unit, 0, maxSize)
 		for unit := range units {
 			result = append(result, unit)
+			log.Printf("result for [container %s] - [app %s]", container.ID, container.AppName)
 		}
 		ch <- result
 	}()
