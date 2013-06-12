@@ -11,6 +11,7 @@ your application in order to deploy it on Tsuru. Here is what an application nee
 
  1. Well defined requirements, both, on language level and operational system level
  2. Configuration of external resources using environment variables
+ 3. A Procfile to tell how your process should be run
 
 Let's go a little deeper through each of those topics.
 
