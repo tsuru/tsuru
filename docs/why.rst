@@ -4,6 +4,43 @@ Why Tsuru?
 This document aims to show Tsuru's most killing features. Additionally, provides a comparison of Tsuru
 with others PaaS's on the market.
 
+Easy Server Installation
+------------------------
+
+It's really easy to have a running PaaS with Tsuru. We provide a serie of scripts, each one built to install
+and configure the required components for each Tsuru provisioner, you can check our scripts on
+`Tsuru repository <https://github.com/globocom/tsuru/tree/master/misc>`_, there are separeted scripts to install each
+component, so it's easy to create your own script to configure a new provisioner or to change the configuration of
+an existing one.
+
+But it's okay if you want more control and do not want to use our scripts, or want to better understand the interaction
+between Tsuru components, we built `a guide <http://docs.tsuru.io/en/latest/build.html>`_ only for you.
+
+Platforms Extensibility
+-----------------------
+
+One of Tsuru main goals is to be easily extensible. The platform is one great example of accomplishment on that.
+Tsuru platforms works slightly different for each provisioner. Juju and LXC provisioners have exactly the same scripts
+for platform provisioning (except for logging, the juju charms use juju-log commands, the LXC don't), you can find
+the scripts on `our charms repository <https://github.com/globocom/charms>`_, Juju charms are on branch master and LXC
+on the lxc branch. The Docker provisioner is a bit different, it has an specific image for each platform, if one wants
+to create a new platform, just extend tsuru/base image and follow the directory tree structure, the scripts and
+Dockerfile for our existing platforms images can be found on our `images repository <https://github.com/flaviamissi/basebuilder>`_
+
+Services Creation and Extension
+-------------------------------
+
+Most applications need a service to work properly, like a database service. Tsuru provides an interface API to communicate
+with services APIs, but it doesn't manage services directly. We made this decision so service managers could freely
+manage everything about their services without Tsuru interfering with it.
+
+In order to create a new service one should write an API implementing the predefined endpoints that Tsuru will call when
+a user performs an action using the client, read more on the `Building your service tutorial <http://docs.tsuru.io/en/latest/services/build.html>`_.
+
+One may also change an existing service, if its source is open. All services APIs made by Tsuru team are open and you can
+fork them and make any changes one want. For example, the mongoDB api shares one database installation with everyone that is using it,
+if you don't like it and want to change it, you can do it and create a new service on Tsuru with your own implementation.
+
 IaaS's and Provisioners
 -----------------------
 
