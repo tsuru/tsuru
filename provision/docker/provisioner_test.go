@@ -180,50 +180,6 @@ func (s *S) TestDeployRemoveContainersEvenWhenTheyreNotInTheAppsCollection(c *go
 	c.Assert(n, gocheck.Equals, 2)
 }
 
-func (s *S) TestDeployShouldRestart(c *gocheck.C) {
-	inspectOut := []byte(`{
-	"NetworkSettings": {
-		"IpAddress": "10.10.10.10",
-		"IpPrefixLen": 8,
-		"Gateway": "10.65.41.1",
-		"PortMapping": {"8888": "37574"}
-	}
-}`)
-	idDeploy := "123"
-	idStart := "456"
-	app := testing.NewFakeApp("myapp", "python", 1)
-	cmds, err := deployCmds(app, "master")
-	c.Assert(err, gocheck.IsNil)
-	deployCmds := strings.Join(cmds[1:], " ")
-	commitCmd := fmt.Sprintf("commit %s", idDeploy)
-	commitOut := "someimageid"
-	inspectDeployCmd := fmt.Sprintf("inspect %s", idDeploy)
-	inspectStartCmd := fmt.Sprintf("inspect %s", idStart)
-	runCmds, err := runCmds(commitOut)
-	c.Assert(err, gocheck.IsNil)
-	startCmds := strings.Join(runCmds[1:], " ")
-	out := map[string][][]byte{
-		inspectDeployCmd: {inspectOut},
-		inspectStartCmd:  {inspectOut},
-		deployCmds:       {[]byte(idDeploy)},
-		commitCmd:        {[]byte(commitOut)},
-		startCmds:        {[]byte(idStart)},
-	}
-	fexec := &etesting.FakeExecutor{Output: out}
-	setExecut(fexec)
-	defer setExecut(nil)
-	p := dockerProvisioner{}
-	p.Provision(app)
-	defer p.Destroy(app)
-	w := &bytes.Buffer{}
-	err = p.Deploy(app, "master", w)
-	c.Assert(err, gocheck.IsNil)
-	defer p.Destroy(app)
-	defer s.conn.Collection(s.collName).RemoveId(idDeploy)
-	defer s.conn.Collection(s.collName).RemoveId(idStart)
-	c.Assert(app.Commands, gocheck.DeepEquals, []string{"restart"})
-}
-
 func (s *S) TestDeployFailureFirstStep(c *gocheck.C) {
 	var (
 		p   dockerProvisioner

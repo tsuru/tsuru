@@ -108,7 +108,6 @@ func (p *dockerProvisioner) Deploy(a provision.App, version string, w io.Writer)
 	} else if _, err := start(a, imageId, w); err != nil {
 		return err
 	}
-	a.Restart(w)
 	app.Enqueue(queue.Message{
 		Action: app.RegenerateApprcAndStart,
 		Args:   []string{a.GetName()},
