@@ -685,3 +685,21 @@ func (s *S) TestContainerRunCmdError(c *gocheck.C) {
 	c.Assert(e.cmd, gocheck.Equals, "ls")
 	c.Assert(e.args, gocheck.DeepEquals, []string{"-a"})
 }
+
+func (s *S) TestContainerAttach(c *gocheck.C) {
+	expected := []byte("something")
+	fexec := &etesting.FakeExecutor{
+		Output: map[string][][]byte{
+			"*": {expected},
+		},
+	}
+	setExecut(fexec)
+	defer setExecut(nil)
+	var buf bytes.Buffer
+	container := container{ID: "id123", Port: "8888", HostPort: "49153"}
+	err := container.attach(&buf)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(buf.Bytes(), gocheck.DeepEquals, expected)
+	args := []string{"attach", container.ID}
+	c.Assert(fexec.ExecutedCmd("docker", args), gocheck.Equals, true)
+}

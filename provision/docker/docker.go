@@ -301,6 +301,21 @@ func (c *container) commit() (string, error) {
 	return imageId, nil
 }
 
+// attach attaches the container
+func (c *container) attach(w io.Writer) error {
+	docker, err := binary()
+	if err != nil {
+		return err
+	}
+	log.Printf("attempting to attach to container %s", c.ID)
+	out, err := runCmd(docker, "attach", c.ID)
+	fmt.Fprint(w, out)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 func getContainer(id string) (*container, error) {
 	var c container
 	coll := collection()
