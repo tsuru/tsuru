@@ -682,4 +682,6 @@ func (s *S) TestContainerRunCmdError(c *gocheck.C) {
 	c.Assert(ok, gocheck.Equals, true)
 	c.Assert(e.err, gocheck.NotNil)
 	c.Assert(e.out, gocheck.Equals, "f1 f2 f3")
+	c.Assert(e.cmd, gocheck.Equals, "ls")
+	c.Assert(e.args, gocheck.DeepEquals, []string{"-a"})
 }

@@ -33,7 +33,7 @@ func runCmd(cmd string, args ...string) (string, error) {
 	err := executor().Execute(cmd, args, nil, &out, &out)
 	log.Printf("running the cmd: %s with the args: %s", cmd, args)
 	if err != nil {
-		return "", &cmdError{err: err, out: out.String()}
+		return "", &cmdError{cmd: cmd, args: args, err: err, out: out.String()}
 	}
 	return out.String(), nil
 }
@@ -358,8 +358,10 @@ func removeImage(imageId string) error {
 }
 
 type cmdError struct {
-	err error
-	out string
+	cmd  string
+	args []string
+	err  error
+	out  string
 }
 
 func (e *cmdError) Error() string {
