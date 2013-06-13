@@ -365,5 +365,6 @@ type cmdError struct {
 }
 
 func (e *cmdError) Error() string {
-	return fmt.Sprintf("Command error (%s): %s.", e.err, e.out)
+	command := e.cmd + " " + strings.Join(e.args, " ")
+	return fmt.Sprintf("Failed to run command %q (%s): %s.", command, e.err, e.out)
 }
