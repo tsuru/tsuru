@@ -2,6 +2,24 @@
 # Use of this source code is governed by a BSD-style
 # license that can be found in the LICENSE file.
 
+define MONGO_RUN_ERR
+
+FATAL: Expected to find MongoDB running on port 27017
+
+endef
+
+define REDIS_RUN_ERR
+
+FATAL: Expected to find Redis running on port 6379
+
+endef
+
+define BEANSTALK
+
+FATAL: Expected to find Beanstalk running on port 11300
+
+endef
+
 define HG_ERROR
 
 FATAL: you need mercurial (hg) to download tsuru dependencies.
@@ -69,7 +87,12 @@ get-prod:
 	@/bin/echo "ok"
 	@rm -f /tmp/.get-prod
 
-test:
+check-test-services:
+	$(if $(shell nc -z localhost 27017), , $(error $(MONGO_RUN_ERR)))
+	$(if $(shell nc -z localhost 6379), , $(error $(REDIS_RUN_ERR)))
+	$(if $(shell nc -z localhost 11300), , $(error $(BEANSTALK_RUN_ERR)))
+
+test: check-test-services
 	@go test -i ./...
 	@go test ./...
 	@go build -o tsr ./cmd/tsr
