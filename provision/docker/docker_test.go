@@ -685,3 +685,35 @@ func (s *S) TestContainerRunCmdError(c *gocheck.C) {
 	c.Assert(e.cmd, gocheck.Equals, "ls")
 	c.Assert(e.args, gocheck.DeepEquals, []string{"-a"})
 }
+
+func (s *S) TestContainerStopped(c *gocheck.C) {
+	inspectOut := `
+    {
+	"State": {
+		"Running": false,
+		"Pid": 0,
+		"ExitCode": 0,
+		"StartedAt": "2013-06-13T20:59:31.699407Z",
+		"Ghost": false
+	},
+	"NetworkSettings": {
+		"IpAddress": "10.10.10.10",
+		"IpPrefixLen": 8,
+		"Gateway": "10.65.41.1",
+		"PortMapping": {"8888": "34233"}
+	}
+}`
+	fexec := &etesting.FakeExecutor{
+		Output: map[string][][]byte{
+			"inspect someid": {[]byte(inspectOut)},
+		},
+	}
+	setExecut(fexec)
+	defer setExecut(nil)
+	cont := container{ID: "someid", Type: "python", AppName: "myapp"}
+	result, err := cont.stopped()
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(result, gocheck.Equals, true)
+	args := []string{"inspect", "someid"}
+	c.Assert(fexec.ExecutedCmd("docker", args), gocheck.Equals, true)
+}

@@ -301,6 +301,17 @@ func (c *container) commit() (string, error) {
 	return imageId, nil
 }
 
+// stopped returns true if the container is stopped.
+func (c *container) stopped() (bool, error) {
+	result, err := c.inspect()
+	if err != nil {
+		return true, err
+	}
+	state := result["State"].(map[string]interface{})
+	running := state["Running"].(bool)
+	return !running, nil
+}
+
 func getContainer(id string) (*container, error) {
 	var c container
 	coll := collection()
