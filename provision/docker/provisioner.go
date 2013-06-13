@@ -247,20 +247,20 @@ func collectUnit(container container, units chan<- provision.Unit, wg *sync.Wait
 	}
 	out, err := runCmd(docker, "inspect", container.ID)
 	if err != nil {
-		log.Printf("error on inspecting [container %s] for collect data", container.ID, container.AppName)
+		log.Printf("error on inspecting [container %s] for collect data", container.ID)
 		return
 	}
 	var c map[string]interface{}
 	err = json.Unmarshal([]byte(out), &c)
 	if err != nil {
-		log.Printf("error on marshal for collect data for [container %s]", container.ID, container.AppName)
+		log.Printf("error on marshal for collect data for [container %s]", container.ID)
 		return
 	}
 	unit.Ip = c["NetworkSettings"].(map[string]interface{})["IpAddress"].(string)
 	if hostPort, err := container.hostPort(); err == nil && hostPort != container.HostPort {
 		err = fixContainer(&container, unit.Ip, hostPort)
 		if err != nil {
-			log.Printf("error on fix container hostport for [container %s]", container.ID, container.AppName)
+			log.Printf("error on fix container hostport for [container %s]", container.ID)
 			return
 		}
 	}
