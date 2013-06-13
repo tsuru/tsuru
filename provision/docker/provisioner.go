@@ -287,7 +287,7 @@ func buildResult(maxSize int, units <-chan provision.Unit) <-chan []provision.Un
 		result := make([]provision.Unit, 0, maxSize)
 		for unit := range units {
 			result = append(result, unit)
-			log.Printf("result for [container %s] - [app %s]", container.ID, container.AppName)
+			log.Printf("result for [container %s] - [app %s]", unit.Name, unit.AppName)
 		}
 		ch <- result
 	}()
