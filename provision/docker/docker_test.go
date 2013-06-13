@@ -633,6 +633,8 @@ func (s *S) TestContainerDeploy(c *gocheck.C) {
 	c.Assert(imageId, gocheck.Equals, commitOut)
 	args := []string{"commit", id}
 	c.Assert(fexec.ExecutedCmd("docker", args), gocheck.Equals, true)
+	args = []string{"attach", id}
+	c.Assert(fexec.ExecutedCmd("docker", args), gocheck.Equals, true)
 }
 
 func (s *S) TestStart(c *gocheck.C) {
