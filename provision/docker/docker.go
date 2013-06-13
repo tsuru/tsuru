@@ -205,10 +205,6 @@ func deploy(app provision.App, version string, w io.Writer) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	err = c.attach(w)
-	if err != nil {
-		return "", err
-	}
 	imageId, err := c.commit()
 	if err != nil {
 		return "", err
@@ -226,10 +222,6 @@ func start(app provision.App, imageId string, w io.Writer) (*container, error) {
 		return nil, err
 	}
 	c, err := newContainer(app, commands)
-	if err != nil {
-		return nil, err
-	}
-	err = c.attach(w)
 	if err != nil {
 		return nil, err
 	}
@@ -307,21 +299,6 @@ func (c *container) commit() (string, error) {
 	}
 	imageId = strings.Replace(imageId, "\n", "", -1)
 	return imageId, nil
-}
-
-// attach attaches the container
-func (c *container) attach(w io.Writer) error {
-	docker, err := binary()
-	if err != nil {
-		return err
-	}
-	log.Printf("attempting to attach to container %s", c.ID)
-	out, err := runCmd(docker, "attach", c.ID)
-	fmt.Fprint(w, out)
-	if err != nil {
-		return err
-	}
-	return nil
 }
 
 func getContainer(id string) (*container, error) {
