@@ -92,7 +92,7 @@ check-test-services:
 	$(if $(shell nc -z localhost 6379), , $(error $(REDIS_RUN_ERR)))
 	$(if $(shell nc -z localhost 11300), , $(error $(BEANSTALK_RUN_ERR)))
 
-test: check-test-services
+test:
 	@go test -i ./...
 	@go test ./...
 	@go build -o tsr ./cmd/tsr
