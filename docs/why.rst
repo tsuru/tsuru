@@ -71,7 +71,7 @@ contact us in #tsuru @ freenode.net or at our `mailing list <https://groups.goog
 +=========================+========================+====================+=======================+
 | Built-in Platforms      | Node.js, PHP,          | Java, PHP,         | Java, Node.Js,        |
 |                         | HTML, Python, Ruby,    | Ruby, Node.js,     | Perl, PHP,            |
-|                         | Golang, Java           | Python             | Python, Ruby          |
+|                         | Go, Java               | Python             | Python, Ruby          |
 +-------------------------+------------------------+--------------------+-----------------------+
 | End-user web UI         | Yes (Abyss_)           | Yes                | Yes                   |
 +-------------------------+------------------------+--------------------+-----------------------+
