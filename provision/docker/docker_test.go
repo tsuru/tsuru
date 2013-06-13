@@ -594,15 +594,6 @@ func (s *S) TestRemoveImage(c *gocheck.C) {
 }
 
 func (s *S) TestContainerDeploy(c *gocheck.C) {
-	inspectOut := `
-    {
-            "NetworkSettings": {
-            "IpAddress": "10.10.10.10",
-            "IpPrefixLen": 8,
-            "Gateway": "10.65.41.1",
-	    "PortMapping": {"8888": "34233"}
-    }
-}`
 	id := "945132e7b4c9"
 	sshCmd := "/var/lib/tsuru/add-key key-content && /usr/sbin/sshd -D"
 	runCmd := fmt.Sprintf("run -d -t -p %s tsuru/python /bin/bash -c %s",

@@ -205,6 +205,15 @@ func deploy(app provision.App, version string, w io.Writer) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	for {
+		result, err := c.stopped()
+		if err != nil {
+			return "", err
+		}
+		if result {
+			break
+		}
+	}
 	imageId, err := c.commit()
 	if err != nil {
 		return "", err

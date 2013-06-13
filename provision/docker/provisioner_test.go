@@ -69,20 +69,12 @@ func (s *S) TestProvisionerRestartCallsTheRestartHook(c *gocheck.C) {
 }
 
 func (s *S) TestDeployShouldCallDockerCreate(c *gocheck.C) {
-	out := `{
-	"NetworkSettings": {
-		"IpAddress": "10.10.10.10",
-		"IpPrefixLen": 8,
-		"Gateway": "10.65.41.1",
-		"PortMapping": {"8888": "37574"}
-	}
-}`
 	fexec := &etesting.FakeExecutor{
 		Output: map[string][][]byte{
 			"*":           {[]byte("c-1"), []byte("c-2")},
 			"commit c-1":  {[]byte("i-1")},
-			"inspect c-1": {[]byte(out)},
-			"inspect c-2": {[]byte(out)},
+			"inspect c-1": {[]byte(inspectOut)},
+			"inspect c-2": {[]byte(inspectOut)},
 		},
 	}
 	setExecut(fexec)
@@ -156,6 +148,13 @@ func (s *S) TestDeployRemoveContainersEvenWhenTheyreNotInTheAppsCollection(c *go
 	p.Provision(app)
 	defer p.Destroy(app)
 	out := `{
+	"State": {
+		"Running": false,
+		"Pid": 0,
+		"ExitCode": 0,
+		"StartedAt": "2013-06-13T20:59:31.699407Z",
+		"Ghost": false
+	},
 	"NetworkSettings": {
 		"IpAddress": "10.10.10.%d",
 		"IpPrefixLen": 8,
@@ -310,14 +309,6 @@ func (s *S) TestProvisionerDestroyRemovesRouterBackend(c *gocheck.C) {
 }
 
 func (s *S) TestProvisionerAddr(c *gocheck.C) {
-	inspectOut := []byte(`{
-	"NetworkSettings": {
-		"IpAddress": "10.10.10.10",
-		"IpPrefixLen": 8,
-		"Gateway": "10.65.41.1",
-		"PortMapping": {"8888": "37574"}
-	}
-}`)
 	idDeploy := "123"
 	idStart := "456"
 	app := testing.NewFakeApp("myapp", "python", 1)
@@ -332,8 +323,8 @@ func (s *S) TestProvisionerAddr(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	startCmds := strings.Join(runCmd[1:], " ")
 	out := map[string][][]byte{
-		inspectDeployCmd: {inspectOut},
-		inspectStartCmd:  {inspectOut},
+		inspectDeployCmd: {[]byte(inspectOut)},
+		inspectStartCmd:  {[]byte(inspectOut)},
 		deployCmds:       {[]byte(idDeploy)},
 		commitCmd:        {[]byte(commitOut)},
 		startCmds:        {[]byte(idStart)},
