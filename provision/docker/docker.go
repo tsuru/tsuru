@@ -225,6 +225,10 @@ func start(app provision.App, imageId string, w io.Writer) (*container, error) {
 	if err != nil {
 		return nil, err
 	}
+	err = c.attach(w)
+	if err != nil {
+		return nil, err
+	}
 	err = c.setImage(imageId)
 	if err != nil {
 		return nil, err

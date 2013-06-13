@@ -667,6 +667,8 @@ func (s *S) TestStart(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(cont2.Image, gocheck.Equals, imageId)
 	c.Assert(cont2.Status, gocheck.Equals, "running")
+	args := []string{"attach", id}
+	c.Assert(fexec.ExecutedCmd("docker", args), gocheck.Equals, true)
 }
 
 func (s *S) TestContainerRunCmdError(c *gocheck.C) {
