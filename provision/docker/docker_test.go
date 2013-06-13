@@ -668,3 +668,18 @@ func (s *S) TestStart(c *gocheck.C) {
 	c.Assert(cont2.Image, gocheck.Equals, imageId)
 	c.Assert(cont2.Status, gocheck.Equals, "running")
 }
+
+func (s *S) TestContainerRunCmdError(c *gocheck.C) {
+	fexec := etesting.ErrorExecutor{
+		FakeExecutor: etesting.FakeExecutor{
+			Output: map[string][][]byte{"*": {[]byte("f1 f2 f3")}},
+		},
+	}
+	setExecut(&fexec)
+	defer setExecut(nil)
+	_, err := runCmd("ls", "-a")
+	e, ok := err.(*cmdError)
+	c.Assert(ok, gocheck.Equals, true)
+	c.Assert(e.err, gocheck.NotNil)
+	c.Assert(e.out, gocheck.Equals, "f1 f2 f3")
+}

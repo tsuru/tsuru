@@ -32,7 +32,10 @@ func runCmd(cmd string, args ...string) (string, error) {
 	out := bytes.Buffer{}
 	err := executor().Execute(cmd, args, nil, &out, &out)
 	log.Printf("running the cmd: %s with the args: %s", cmd, args)
-	return out.String(), err
+	if err != nil {
+		return "", &cmdError{err: err, out: out.String()}
+	}
+	return out.String(), nil
 }
 
 func getPort() (string, error) {
@@ -241,10 +244,9 @@ func (c *container) remove() error {
 	}
 	address := c.getAddress()
 	log.Printf("Removing container %s from docker", c.ID)
-	out, err := runCmd(docker, "rm", c.ID)
+	_, err = runCmd(docker, "rm", c.ID)
 	if err != nil {
-		log.Printf("Failed to remove container from docker: %s", err.Error())
-		log.Printf("Command output: %s", out)
+		log.Printf("Failed to remove container from docker: %s", err)
 		return err
 	}
 	runCmd("ssh-keygen", "-R", c.IP)
@@ -353,4 +355,13 @@ func removeImage(imageId string) error {
 		return err
 	}
 	return nil
+}
+
+type cmdError struct {
+	err error
+	out string
+}
+
+func (e *cmdError) Error() string {
+	return fmt.Sprintf("Command error (%s): %s.", e.err, e.out)
 }
