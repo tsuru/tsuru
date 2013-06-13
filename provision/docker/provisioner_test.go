@@ -736,21 +736,6 @@ func (s *S) TestProvisionCollectStatusEmpty(c *gocheck.C) {
 	c.Assert(units, gocheck.HasLen, 0)
 }
 
-// There was a dead lock in the error handling. This test prevents regression.
-func (s *S) TestProvisionCollectStatusMultipleErrors(c *gocheck.C) {
-	s.conn.Collection(s.collName).Insert(
-		container{ID: "abcdef-800"},
-		container{ID: "abcdef-801"},
-		container{ID: "abcdef-802"},
-		container{ID: "abcdef-802"},
-	)
-	defer s.conn.Collection(s.collName).RemoveAll(nil)
-	var p dockerProvisioner
-	units, err := p.CollectStatus()
-	c.Assert(units, gocheck.HasLen, 0)
-	c.Assert(err, gocheck.NotNil)
-}
-
 func (s *S) TestProvisionCollection(c *gocheck.C) {
 	collection := collection()
 	c.Assert(collection.Name, gocheck.Equals, s.collName)
