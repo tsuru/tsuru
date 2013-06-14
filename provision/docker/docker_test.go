@@ -8,6 +8,7 @@ import (
 	"bytes"
 	"fmt"
 	"github.com/globocom/config"
+	"github.com/globocom/docker-cluster/cluster"
 	etesting "github.com/globocom/tsuru/exec/testing"
 	ftesting "github.com/globocom/tsuru/fs/testing"
 	"github.com/globocom/tsuru/log"
@@ -729,4 +730,12 @@ func (s *S) TestContainerLogs(c *gocheck.C) {
 	c.Assert(result, gocheck.Equals, "some logs")
 	args := []string{"logs", "someid"}
 	c.Assert(fexec.ExecutedCmd("docker", args), gocheck.Equals, true)
+}
+
+func (s *S) TestDockerCluster(c *gocheck.C) {
+	expected, err := cluster.New(
+		cluster.Node{ID: "server", Address: "http://localhost:4243"},
+	)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(dockerCluster, gocheck.DeepEquals, expected)
 }

@@ -10,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/globocom/config"
+	"github.com/globocom/docker-cluster/cluster"
 	"github.com/globocom/tsuru/fs"
 	"github.com/globocom/tsuru/log"
 	"github.com/globocom/tsuru/provision"
@@ -17,6 +18,14 @@ import (
 	"labix.org/v2/mgo/bson"
 	"strings"
 )
+
+var dockerCluster *cluster.Cluster
+
+func init() {
+	dockerCluster, _ = cluster.New(
+		cluster.Node{ID: "server", Address: "http://localhost:4243"},
+	)
+}
 
 var fsystem fs.Fs
 
