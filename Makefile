@@ -86,7 +86,7 @@ check-test-services:
 	$(call check-service,Redis,6379)
 	$(call check-service,Beanstalk,27017)
 
-test: check-test-services
+test:
 	@go test -i ./...
 	@go test ./...
 	@go build -o tsr ./cmd/tsr
