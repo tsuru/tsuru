@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	dclient "github.com/fsouza/go-dockerclient"
 	"github.com/globocom/config"
 	"github.com/globocom/docker-cluster/cluster"
 	"github.com/globocom/tsuru/fs"
@@ -309,19 +310,13 @@ func (c *container) ssh(stdout, stderr io.Writer, cmd string, args ...string) er
 
 // commit commits an image in docker based in the container
 func (c *container) commit() (string, error) {
-	docker, err := config.GetString("docker:binary")
-	if err != nil {
-		log.Printf("Tsuru is misconfigured. docker:binary config is missing.")
-		return "", err
-	}
-	log.Printf("attempting to commit image from container %s", c.ID)
-	imageId, err := runCmd(docker, "commit", c.ID)
+	opts := dclient.CommitContainerOptions{Container: c.ID}
+	image, err := dockerCluster.CommitContainer(opts)
 	if err != nil {
 		log.Printf("Could not commit docker image: %s", err.Error())
 		return "", err
 	}
-	imageId = strings.Replace(imageId, "\n", "", -1)
-	return imageId, nil
+	return image.ID, nil
 }
 
 // stopped returns true if the container is stopped.

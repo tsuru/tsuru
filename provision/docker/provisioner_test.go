@@ -7,6 +7,7 @@ package docker
 import (
 	"bytes"
 	"fmt"
+	"github.com/globocom/docker-cluster/cluster"
 	"github.com/globocom/tsuru/exec"
 	etesting "github.com/globocom/tsuru/exec/testing"
 	"github.com/globocom/tsuru/log"
@@ -17,6 +18,8 @@ import (
 	"launchpad.net/gocheck"
 	stdlog "log"
 	"net"
+	"net/http"
+	"net/http/httptest"
 	"runtime"
 	"strings"
 	"time"
@@ -69,10 +72,24 @@ func (s *S) TestProvisionerRestartCallsTheRestartHook(c *gocheck.C) {
 }
 
 func (s *S) TestDeployShouldCallDockerCreate(c *gocheck.C) {
+	var called bool
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		called = true
+		w.Write([]byte(`{"Id":"i-1"}`))
+	}))
+	defer server.Close()
+	oldCluster := dockerCluster
+	var err error
+	dockerCluster, err = cluster.New(
+		cluster.Node{ID: "server", Address: server.URL},
+	)
+	c.Assert(err, gocheck.IsNil)
+	defer func() {
+		dockerCluster = oldCluster
+	}()
 	fexec := &etesting.FakeExecutor{
 		Output: map[string][][]byte{
 			"*":           {[]byte("c-1"), []byte("c-2")},
-			"commit c-1":  {[]byte("i-1")},
 			"inspect c-1": {[]byte(inspectOut)},
 			"inspect c-2": {[]byte(inspectOut)},
 		},
@@ -84,7 +101,7 @@ func (s *S) TestDeployShouldCallDockerCreate(c *gocheck.C) {
 	p.Provision(app)
 	defer p.Destroy(app)
 	w := &bytes.Buffer{}
-	err := p.Deploy(app, "master", w)
+	err = p.Deploy(app, "master", w)
 	defer p.Destroy(app)
 	defer s.conn.Collection(s.collName).RemoveId("c-1")
 	defer s.conn.Collection(s.collName).RemoveId("c-2")
@@ -92,6 +109,7 @@ func (s *S) TestDeployShouldCallDockerCreate(c *gocheck.C) {
 	runCmds, err := runCmds("i-1")
 	args := runCmds[1:]
 	c.Assert(fexec.ExecutedCmd("docker", args), gocheck.Equals, true)
+	c.Assert(called, gocheck.Equals, true)
 }
 
 // func (s *S) TestDeployShouldReplaceAllContainers(c *gocheck.C) {
@@ -138,6 +156,21 @@ func (s *S) TestDeployShouldCallDockerCreate(c *gocheck.C) {
 // }
 
 func (s *S) TestDeployRemoveContainersEvenWhenTheyreNotInTheAppsCollection(c *gocheck.C) {
+	var called bool
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		called = true
+		w.Write([]byte(`{"Id":"someimageid"}`))
+	}))
+	defer server.Close()
+	oldCluster := dockerCluster
+	var err error
+	dockerCluster, err = cluster.New(
+		cluster.Node{ID: "server", Address: server.URL},
+	)
+	c.Assert(err, gocheck.IsNil)
+	defer func() {
+		dockerCluster = oldCluster
+	}()
 	var p dockerProvisioner
 	s.conn.Collection(s.collName).Insert(
 		container{ID: "app/0", AppName: "app"},
@@ -172,7 +205,7 @@ func (s *S) TestDeployRemoveContainersEvenWhenTheyreNotInTheAppsCollection(c *go
 	setExecut(fexec)
 	defer setExecut(nil)
 	var w bytes.Buffer
-	err := p.Deploy(app, "master", &w)
+	err = p.Deploy(app, "master", &w)
 	defer p.Destroy(app)
 	n, err := s.conn.Collection(s.collName).Find(bson.M{"appname": "app"}).Count()
 	c.Assert(err, gocheck.IsNil)
@@ -309,24 +342,36 @@ func (s *S) TestProvisionerDestroyRemovesRouterBackend(c *gocheck.C) {
 }
 
 func (s *S) TestProvisionerAddr(c *gocheck.C) {
+	var called bool
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		called = true
+		w.Write([]byte(`{"Id":"someimageid"}`))
+	}))
+	defer server.Close()
+	oldCluster := dockerCluster
+	var err error
+	dockerCluster, err = cluster.New(
+		cluster.Node{ID: "server", Address: server.URL},
+	)
+	c.Assert(err, gocheck.IsNil)
+	defer func() {
+		dockerCluster = oldCluster
+	}()
 	idDeploy := "123"
 	idStart := "456"
 	app := testing.NewFakeApp("myapp", "python", 1)
 	cmds, err := deployCmds(app, "master")
 	c.Assert(err, gocheck.IsNil)
 	deployCmds := strings.Join(cmds[1:], " ")
-	commitCmd := fmt.Sprintf("commit %s", idDeploy)
-	commitOut := "someimageid"
 	inspectDeployCmd := fmt.Sprintf("inspect %s", idDeploy)
 	inspectStartCmd := fmt.Sprintf("inspect %s", idStart)
-	runCmd, err := runCmds(commitOut)
+	runCmd, err := runCmds("someimageid")
 	c.Assert(err, gocheck.IsNil)
 	startCmds := strings.Join(runCmd[1:], " ")
 	out := map[string][][]byte{
 		inspectDeployCmd: {[]byte(inspectOut)},
 		inspectStartCmd:  {[]byte(inspectOut)},
 		deployCmds:       {[]byte(idDeploy)},
-		commitCmd:        {[]byte(commitOut)},
 		startCmds:        {[]byte(idStart)},
 	}
 	fexec := &etesting.FakeExecutor{Output: out}

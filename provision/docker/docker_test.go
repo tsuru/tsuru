@@ -17,6 +17,8 @@ import (
 	"labix.org/v2/mgo/bson"
 	"launchpad.net/gocheck"
 	stdlog "log"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"strings"
 )
@@ -568,19 +570,26 @@ func (s *S) TestBinary(c *gocheck.C) {
 }
 
 func (s *S) TestContainerCommit(c *gocheck.C) {
-	fexec := &etesting.FakeExecutor{
-		Output: map[string][][]byte{
-			"*": {[]byte("imageid\n")},
-		},
-	}
-	setExecut(fexec)
-	defer setExecut(nil)
+	var called bool
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		called = true
+		w.Write([]byte(`{"Id":"imageid"}`))
+	}))
+	defer server.Close()
+	oldCluster := dockerCluster
+	var err error
+	dockerCluster, err = cluster.New(
+		cluster.Node{ID: "server", Address: server.URL},
+	)
+	c.Assert(err, gocheck.IsNil)
+	defer func() {
+		dockerCluster = oldCluster
+	}()
 	cont := container{ID: "someid", Type: "python", AppName: "myapp"}
 	imageId, err := cont.commit()
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(imageId, gocheck.Equals, "imageid")
-	args := []string{"commit", "someid"}
-	c.Assert(fexec.ExecutedCmd("docker", args), gocheck.Equals, true)
+	c.Assert(called, gocheck.Equals, true)
 }
 
 func (s *S) TestRemoveImage(c *gocheck.C) {
@@ -595,6 +604,21 @@ func (s *S) TestRemoveImage(c *gocheck.C) {
 }
 
 func (s *S) TestContainerDeploy(c *gocheck.C) {
+	var called bool
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		called = true
+		w.Write([]byte(`{"Id":"someimageid"}`))
+	}))
+	defer server.Close()
+	oldCluster := dockerCluster
+	var err error
+	dockerCluster, err = cluster.New(
+		cluster.Node{ID: "server", Address: server.URL},
+	)
+	c.Assert(err, gocheck.IsNil)
+	defer func() {
+		dockerCluster = oldCluster
+	}()
 	id := "945132e7b4c9"
 	sshCmd := "/var/lib/tsuru/add-key key-content && /usr/sbin/sshd -D"
 	runCmd := fmt.Sprintf("run -d -t -p %s tsuru/python /bin/bash -c %s",
@@ -605,15 +629,12 @@ func (s *S) TestContainerDeploy(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	deployCmds := strings.Join(cmds[1:], " ")
 	inspectCmd := fmt.Sprintf("inspect %s", id)
-	commitCmd := fmt.Sprintf("commit %s", id)
-	commitOut := "someimageid"
 	logCmd := fmt.Sprintf("logs %s", id)
 	logOut := "log out"
 	out := map[string][][]byte{
 		runCmd:     {[]byte(id)},
 		deployCmds: {[]byte(id)},
 		inspectCmd: {[]byte(inspectOut)},
-		commitCmd:  {[]byte(commitOut)},
 		logCmd:     {[]byte(logOut)},
 	}
 	fexec := &etesting.FakeExecutor{Output: out}
@@ -625,12 +646,11 @@ func (s *S) TestContainerDeploy(c *gocheck.C) {
 	var buf bytes.Buffer
 	imageId, err = deploy(app, "ff13e", &buf)
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(imageId, gocheck.Equals, commitOut)
+	c.Assert(imageId, gocheck.Equals, "someimageid")
 	c.Assert(buf.String(), gocheck.Equals, logOut)
-	args := []string{"commit", id}
+	args := []string{"logs", id}
 	c.Assert(fexec.ExecutedCmd("docker", args), gocheck.Equals, true)
-	args = []string{"logs", id}
-	c.Assert(fexec.ExecutedCmd("docker", args), gocheck.Equals, true)
+	c.Assert(called, gocheck.Equals, true)
 }
 
 func (s *S) TestStart(c *gocheck.C) {
