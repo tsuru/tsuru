@@ -214,6 +214,11 @@ func deploy(app provision.App, version string, w io.Writer) (string, error) {
 			break
 		}
 	}
+	l, err := c.logs()
+	if err != nil {
+		return "", err
+	}
+	fmt.Fprint(w, l)
 	imageId, err := c.commit()
 	if err != nil {
 		return "", err

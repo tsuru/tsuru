@@ -606,11 +606,14 @@ func (s *S) TestContainerDeploy(c *gocheck.C) {
 	inspectCmd := fmt.Sprintf("inspect %s", id)
 	commitCmd := fmt.Sprintf("commit %s", id)
 	commitOut := "someimageid"
+	logCmd := fmt.Sprintf("logs %s", id)
+	logOut := "log out"
 	out := map[string][][]byte{
 		runCmd:     {[]byte(id)},
 		deployCmds: {[]byte(id)},
 		inspectCmd: {[]byte(inspectOut)},
 		commitCmd:  {[]byte(commitOut)},
+		logCmd:     {[]byte(logOut)},
 	}
 	fexec := &etesting.FakeExecutor{Output: out}
 	setExecut(fexec)
@@ -622,7 +625,10 @@ func (s *S) TestContainerDeploy(c *gocheck.C) {
 	imageId, err = deploy(app, "ff13e", &buf)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(imageId, gocheck.Equals, commitOut)
+	c.Assert(buf.String(), gocheck.Equals, logOut)
 	args := []string{"commit", id}
+	c.Assert(fexec.ExecutedCmd("docker", args), gocheck.Equals, true)
+	args = []string{"logs", id}
 	c.Assert(fexec.ExecutedCmd("docker", args), gocheck.Equals, true)
 }
 
