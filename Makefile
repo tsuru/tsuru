@@ -2,21 +2,15 @@
 # Use of this source code is governed by a BSD-style
 # license that can be found in the LICENSE file.
 
-define MONGO_RUN_ERR
+define NO_SERVICE_ERR
 
-FATAL: Expected to find MongoDB running on port 27017
-
-endef
-
-define REDIS_RUN_ERR
-
-FATAL: Expected to find Redis running on port 6379
+FATAL: Expected to find $1 running on port $2
 
 endef
 
-define BEANSTALK
+define check-service
 
-FATAL: Expected to find Beanstalk running on port 11300
+$(if $(shell nc -v -z localhost $2), , $(error $(NO_SERVICE_ERR)))
 
 endef
 
@@ -88,11 +82,11 @@ get-prod:
 	@rm -f /tmp/.get-prod
 
 check-test-services:
-	$(if $(shell nc -z localhost 27017), , $(error $(MONGO_RUN_ERR)))
-	$(if $(shell nc -z localhost 6379), , $(error $(REDIS_RUN_ERR)))
-	$(if $(shell nc -z localhost 11300), , $(error $(BEANSTALK_RUN_ERR)))
+	$(call check-service,MongoDB,27017)
+	$(call check-service,Redis,6379)
+	$(call check-service,Beanstalk,27017)
 
-test:
+test: check-test-services
 	@go test -i ./...
 	@go test ./...
 	@go build -o tsr ./cmd/tsr
