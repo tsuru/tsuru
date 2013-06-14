@@ -708,3 +708,19 @@ func (s *S) TestContainerStopped(c *gocheck.C) {
 	args := []string{"inspect", "someid"}
 	c.Assert(fexec.ExecutedCmd("docker", args), gocheck.Equals, true)
 }
+
+func (s *S) TestContainerLogs(c *gocheck.C) {
+	fexec := &etesting.FakeExecutor{
+		Output: map[string][][]byte{
+			"*": {[]byte("some logs")},
+		},
+	}
+	setExecut(fexec)
+	defer setExecut(nil)
+	cont := container{ID: "someid", Type: "python", AppName: "myapp"}
+	result, err := cont.logs()
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(result, gocheck.Equals, "some logs")
+	args := []string{"logs", "someid"}
+	c.Assert(fexec.ExecutedCmd("docker", args), gocheck.Equals, true)
+}

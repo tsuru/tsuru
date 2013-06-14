@@ -321,6 +321,19 @@ func (c *container) stopped() (bool, error) {
 	return !running, nil
 }
 
+// logs returns logs for the container.
+func (c *container) logs() (string, error) {
+	docker, err := binary()
+	if err != nil {
+		return "", err
+	}
+	result, err := runCmd(docker, "logs", c.ID)
+	if err != nil {
+		return "", err
+	}
+	return result, nil
+}
+
 func getContainer(id string) (*container, error) {
 	var c container
 	coll := collection()
