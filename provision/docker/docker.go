@@ -6,7 +6,6 @@ package docker
 
 import (
 	"bytes"
-	"encoding/json"
 	"errors"
 	"fmt"
 	dclient "github.com/fsouza/go-dockerclient"
@@ -90,55 +89,36 @@ func newContainer(app provision.App, commands []string) (*container, error) {
 	return &c, nil
 }
 
-func (c *container) inspect() (map[string]interface{}, error) {
-	docker, err := config.GetString("docker:binary")
-	if err != nil {
-		return nil, err
-	}
-	out, err := runCmd(docker, "inspect", c.ID)
-	if err != nil {
-		return nil, err
-	}
-	log.Printf("docker inspect output: %s", out)
-	var r map[string]interface{}
-	err = json.Unmarshal([]byte(out), &r)
-	if err != nil {
-		return nil, err
-	}
-	return r, nil
-}
-
 // hostPort returns the host port mapped for the container.
 func (c *container) hostPort() (string, error) {
 	if c.Port == "" {
 		return "", errors.New("Container does not contain any mapped port")
 	}
-	data, err := c.inspect()
+	dockerContainer, err := dockerCluster.InspectContainer(c.ID)
 	if err != nil {
 		return "", err
 	}
-	mappedPorts := data["NetworkSettings"].(map[string]interface{})["PortMapping"].(map[string]interface{})
-	if port, ok := mappedPorts[c.Port]; ok {
-		return port.(string), nil
+	if dockerContainer.NetworkSettings != nil {
+		mappedPorts := dockerContainer.NetworkSettings.PortMapping
+		if port, ok := mappedPorts[c.Port]; ok {
+			return port, nil
+		}
 	}
 	return "", fmt.Errorf("Container port %s is not mapped to any host port", c.Port)
 }
 
 // ip returns the ip for the container.
 func (c *container) ip() (string, error) {
-	result, err := c.inspect()
+	dockerContainer, err := dockerCluster.InspectContainer(c.ID)
 	if err != nil {
-		msg := fmt.Sprintf("error(%s) parsing json from docker when trying to get ipaddress", err)
-		log.Print(msg)
-		return "", errors.New(msg)
+		return "", err
 	}
-	if ns, ok := result["NetworkSettings"]; !ok || ns == nil {
+	if dockerContainer.NetworkSettings == nil {
 		msg := "Error when getting container information. NetworkSettings is missing."
 		log.Print(msg)
 		return "", errors.New(msg)
 	}
-	networkSettings := result["NetworkSettings"].(map[string]interface{})
-	instanceIP := networkSettings["IpAddress"].(string)
+	instanceIP := dockerContainer.NetworkSettings.IPAddress
 	if instanceIP == "" {
 		msg := "error: Can't get ipaddress..."
 		log.Print(msg)
@@ -321,12 +301,11 @@ func (c *container) commit() (string, error) {
 
 // stopped returns true if the container is stopped.
 func (c *container) stopped() (bool, error) {
-	result, err := c.inspect()
+	dockerContainer, err := dockerCluster.InspectContainer(c.ID)
 	if err != nil {
 		return true, err
 	}
-	state := result["State"].(map[string]interface{})
-	running := state["Running"].(bool)
+	running := dockerContainer.State.Running
 	return !running, nil
 }
 

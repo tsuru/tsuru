@@ -5,7 +5,7 @@
 package docker
 
 var inspectOut = `
-    {
+{
 	"State": {
 		"Running": false,
 		"Pid": 0,

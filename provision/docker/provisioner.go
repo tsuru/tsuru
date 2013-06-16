@@ -6,7 +6,6 @@ package docker
 
 import (
 	"bytes"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/globocom/config"
@@ -231,7 +230,6 @@ func (p *dockerProvisioner) CollectStatus() ([]provision.Unit, error) {
 
 func collectUnit(container container, units chan<- provision.Unit, wg *sync.WaitGroup) {
 	defer wg.Done()
-	docker, _ := config.GetString("docker:binary")
 	unit := provision.Unit{
 		Name:    container.ID,
 		AppName: container.AppName,
@@ -245,18 +243,12 @@ func collectUnit(container container, units chan<- provision.Unit, wg *sync.Wait
 	case "created":
 		return
 	}
-	out, err := runCmd(docker, "inspect", container.ID)
+	dockerContainer, err := dockerCluster.InspectContainer(container.ID)
 	if err != nil {
 		log.Printf("error on inspecting [container %s] for collect data", container.ID)
 		return
 	}
-	var c map[string]interface{}
-	err = json.Unmarshal([]byte(out), &c)
-	if err != nil {
-		log.Printf("error on marshal for collect data for [container %s]", container.ID)
-		return
-	}
-	unit.Ip = c["NetworkSettings"].(map[string]interface{})["IpAddress"].(string)
+	unit.Ip = dockerContainer.NetworkSettings.IPAddress
 	if hostPort, err := container.hostPort(); err == nil && hostPort != container.HostPort {
 		err = fixContainer(&container, unit.Ip, hostPort)
 		if err != nil {
