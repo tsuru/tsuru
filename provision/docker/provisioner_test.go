@@ -183,26 +183,9 @@ func (s *S) TestDeployRemoveContainersEvenWhenTheyreNotInTheAppsCollection(c *go
 	app := testing.NewFakeApp("app", "python", 0)
 	p.Provision(app)
 	defer p.Destroy(app)
-	out := `{
-	"State": {
-		"Running": false,
-		"Pid": 0,
-		"ExitCode": 0,
-		"StartedAt": "2013-06-13T20:59:31.699407Z",
-		"Ghost": false
-	},
-	"NetworkSettings": {
-		"IpAddress": "10.10.10.%d",
-		"IpPrefixLen": 8,
-		"Gateway": "10.65.41.1",
-		"PortMapping": {"8888": "37574"}
-	}
-}`
 	fexec := &etesting.FakeExecutor{
 		Output: map[string][][]byte{
-			"*":            {[]byte("c-60"), []byte("c-61")},
-			"inspect c-60": {[]byte(fmt.Sprintf(out, 1))},
-			"inspect c-61": {[]byte(fmt.Sprintf(out, 2))},
+			"*": {[]byte("c-60"), []byte("c-61")},
 		},
 	}
 	setExecut(fexec)
@@ -528,21 +511,10 @@ func (s *S) TestProvisionerRemoveUnit(c *gocheck.C) {
 	defer func() {
 		dockerCluster = oldCluster
 	}()
-	// 	out := `{
-	// 	"NetworkSettings": {
-	// 		"IpAddress": "127.0.0.1",
-	// 		"IpPrefixLen": 8,
-	// 		"Gateway": "10.65.41.1",
-	// 		"PortMapping": {
-	// 			"8888": "90293"
-	// 		}
-	// 	}
-	// }`
 	app := testing.NewFakeApp("myapp", "python", 0)
 	fexec := &etesting.FakeExecutor{
 		Output: map[string][][]byte{
 			"*": {[]byte("c-10")},
-			/* "inspect c-10": {[]byte(out)}, */
 		},
 	}
 	setExecut(fexec)
@@ -584,21 +556,10 @@ func (s *S) TestProvisionerRemoveUnitNotInApp(c *gocheck.C) {
 	defer func() {
 		dockerCluster = oldCluster
 	}()
-	out := `{
-	"NetworkSettings": {
-		"IpAddress": "127.0.0.1",
-		"IpPrefixLen": 8,
-		"Gateway": "10.65.41.1",
-		"PortMapping": {
-			"8888": "90293"
-		}
-	}
-}`
 	app := testing.NewFakeApp("myapp", "python", 0)
 	fexec := &etesting.FakeExecutor{
 		Output: map[string][][]byte{
-			"*":            {[]byte("c-10")},
-			"inspect c-10": {[]byte(out)},
+			"*": {[]byte("c-10")},
 		},
 	}
 	setExecut(fexec)

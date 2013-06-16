@@ -683,8 +683,7 @@ func (s *S) TestStart(c *gocheck.C) {
 	cmds, err := runCmds(imageId)
 	c.Assert(err, gocheck.IsNil)
 	runCmds := strings.Join(cmds[1:], " ")
-	inspectCmd := fmt.Sprintf("inspect %s", id)
-	out := map[string][][]byte{runCmds: {[]byte(id)}, inspectCmd: {[]byte(inspectOut)}}
+	out := map[string][][]byte{runCmds: {[]byte(id)}}
 	fexec := &etesting.FakeExecutor{Output: out}
 	setExecut(fexec)
 	defer setExecut(nil)
