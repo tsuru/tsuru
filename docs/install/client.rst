@@ -27,7 +27,7 @@ binaries or building them from source.
 
 `Pre-built binaries (Linux and Mac OS X)`_
 
-`Build from source (any platform supported by Go)`_
+`Build from source (Linux and Mac OS X)`_
 
 Using homebrew (Mac OS X only)
 ==============================
