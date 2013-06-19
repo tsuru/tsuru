@@ -717,44 +717,13 @@ func (s *S) TestContainerRunCmdError(c *gocheck.C) {
 }
 
 func (s *S) TestContainerStopped(c *gocheck.C) {
-	inspectOut := `
-    {
-	"State": {
-		"Running": false,
-		"Pid": 0,
-		"ExitCode": 0,
-		"StartedAt": "2013-06-13T20:59:31.699407Z",
-		"Ghost": false
-	},
-	"NetworkSettings": {
-		"IpAddress": "10.10.10.10",
-		"IpPrefixLen": 8,
-		"Gateway": "10.65.41.1",
-		"PortMapping": {"8888": "34233"}
-	}
-}`
-	var called int
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		called++
-		if strings.Contains(r.URL.Path, "/containers/") {
-			w.Write([]byte(inspectOut))
-		}
-	}))
-	defer server.Close()
-	oldCluster := dockerCluster
-	var err error
-	dockerCluster, err = cluster.New(
-		cluster.Node{ID: "server", Address: server.URL},
-	)
+	err := s.newImage()
 	c.Assert(err, gocheck.IsNil)
-	defer func() {
-		dockerCluster = oldCluster
-	}()
-	cont := container{ID: "someid", Type: "python", AppName: "myapp"}
+	cont, err := s.newContainer()
+	c.Assert(err, gocheck.IsNil)
 	result, err := cont.stopped()
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(result, gocheck.Equals, true)
-	c.Assert(called, gocheck.Equals, 1)
 }
 
 func (s *S) TestContainerLogs(c *gocheck.C) {
