@@ -574,26 +574,12 @@ func (s *S) TestBinary(c *gocheck.C) {
 }
 
 func (s *S) TestContainerCommit(c *gocheck.C) {
-	var called bool
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		called = true
-		w.Write([]byte(`{"Id":"imageid"}`))
-	}))
-	defer server.Close()
-	oldCluster := dockerCluster
-	var err error
-	dockerCluster, err = cluster.New(
-		cluster.Node{ID: "server", Address: server.URL},
-	)
+	err := s.newImage()
 	c.Assert(err, gocheck.IsNil)
-	defer func() {
-		dockerCluster = oldCluster
-	}()
-	cont := container{ID: "someid", Type: "python", AppName: "myapp"}
+	cont, err := s.newContainer()
 	imageId, err := cont.commit()
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(imageId, gocheck.Equals, "imageid")
-	c.Assert(called, gocheck.Equals, true)
+	c.Assert(imageId, gocheck.Not(gocheck.Equals), "")
 }
 
 func (s *S) TestRemoveImage(c *gocheck.C) {
