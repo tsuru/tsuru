@@ -347,6 +347,12 @@ func (s *S) TestRecordingFsRename(c *gocheck.C) {
 	c.Assert(fs.HasAction("rename /my/file /your/file"), gocheck.Equals, true)
 }
 
+func (s *S) TestRecordingFsCold(c *gocheck.C) {
+	fs := RecordingFs{}
+	err := fs.Rename("/my/file", "/your/file")
+	c.Assert(err, gocheck.IsNil)
+}
+
 func (s *S) TestRecordingFsStat(c *gocheck.C) {
 	fs := RecordingFs{}
 	fi, err := fs.Stat("/my/file")

@@ -218,6 +218,9 @@ func (r *RecordingFs) RemoveAll(path string) error {
 
 // Rename records the action "rename <old> <new>" and returns nil.
 func (r *RecordingFs) Rename(oldname, newname string) error {
+	if r.files == nil {
+		r.files = make(map[string]*FakeFile)
+	}
 	r.actions = append(r.actions, "rename "+oldname+" "+newname)
 	r.files[newname] = r.files[oldname]
 	r.deleteFile(oldname)
