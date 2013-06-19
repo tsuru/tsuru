@@ -17,7 +17,7 @@ function install_docker() {
     sudo apt-get install lxc wget bsdtar curl -y --force-yes
     # are you on AWS? if so, uncomment the line below
     # sudo apt-get install linux-image-extra-`uname -r`
-    wget http://get.docker.io/builds/$(uname -s)/$(uname -m)/docker-master.tgz
+    wget http://get.docker.io/builds/Linux/x86_64/docker-latest.tgz
     tar -xf docker-master.tgz
     cd docker-master
     sudo cp docker /usr/local/bin
