@@ -10,5 +10,5 @@
 
 var platforms = ["nodejs", "php", "python", "ruby", "static"];
 for(var i = 0; i < platforms.length; i++) {
-	db.platforms.insert({id: platforms[i]});
+	db.platforms.insert({_id: platforms[i]});
 }
