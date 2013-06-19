@@ -242,13 +242,9 @@ func start(app provision.App, imageId string, w io.Writer) (*container, error) {
 
 // remove removes a docker container.
 func (c *container) remove() error {
-	docker, err := config.GetString("docker:binary")
-	if err != nil {
-		return err
-	}
 	address := c.getAddress()
 	log.Printf("Removing container %s from docker", c.ID)
-	_, err = runCmd(docker, "rm", c.ID)
+	err := dockerCluster.RemoveContainer(c.ID)
 	if err != nil {
 		log.Printf("Failed to remove container from docker: %s", err)
 		return err

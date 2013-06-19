@@ -72,9 +72,7 @@ func (s *S) TestProvisionerRestartCallsTheRestartHook(c *gocheck.C) {
 }
 
 func (s *S) TestDeployShouldCallDockerCreate(c *gocheck.C) {
-	var calls int
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		calls++
 		if strings.Contains(r.URL.Path, "/containers/") {
 			w.Write([]byte(inspectOut))
 		}
@@ -112,7 +110,6 @@ func (s *S) TestDeployShouldCallDockerCreate(c *gocheck.C) {
 	runCmds, err := runCmds("i-1")
 	args := runCmds[1:]
 	c.Assert(fexec.ExecutedCmd("docker", args), gocheck.Equals, true)
-	c.Assert(calls, gocheck.Equals, 6)
 }
 
 // func (s *S) TestDeployShouldReplaceAllContainers(c *gocheck.C) {
@@ -255,22 +252,11 @@ func (s *S) TestDeployFailureFirstStep(c *gocheck.C) {
 // }
 
 func (s *S) TestProvisionerDestroy(c *gocheck.C) {
-	fexec := &etesting.FakeExecutor{}
-	setExecut(fexec)
-	defer setExecut(nil)
-	w := new(bytes.Buffer)
-	l := stdlog.New(w, "", stdlog.LstdFlags)
-	log.SetLogger(l)
-	app := testing.NewFakeApp("myapp", "python", 1)
-	cont := container{
-		ID:      app.ProvisionUnits()[0].GetName(),
-		AppName: app.GetName(),
-	}
-	err := s.conn.Collection(s.collName).Insert(cont)
+	err := s.newImage()
 	c.Assert(err, gocheck.IsNil)
-	defer s.conn.Collection(s.collName).RemoveId(cont.ID)
-	s.conn.Collection(s.collName).Insert(container{ID: "something-01", AppName: app.GetName()})
-	defer s.conn.Collection(s.collName).RemoveId("something-01")
+	cont, err := s.newContainer()
+	c.Assert(err, gocheck.IsNil)
+	app := testing.NewFakeApp(cont.AppName, "python", 1)
 	var p dockerProvisioner
 	p.Provision(app)
 	c.Assert(p.Destroy(app), gocheck.IsNil)
@@ -294,8 +280,6 @@ func (s *S) TestProvisionerDestroy(c *gocheck.C) {
 	case <-time.After(10e9):
 		c.Fatal("Timed out waiting for the container to be destroyed (10 seconds)")
 	}
-	args := []string{"rm", "myapp/0"}
-	c.Assert(fexec.ExecutedCmd("docker", args), gocheck.Equals, true)
 	c.Assert(rtesting.FakeRouter.HasBackend("myapp"), gocheck.Equals, false)
 }
 
@@ -328,9 +312,7 @@ func (s *S) TestProvisionerDestroyRemovesRouterBackend(c *gocheck.C) {
 }
 
 func (s *S) TestProvisionerAddr(c *gocheck.C) {
-	var calls int
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		calls++
 		if strings.Contains(r.URL.Path, "/containers/") {
 			w.Write([]byte(inspectOut))
 		}
@@ -380,7 +362,6 @@ func (s *S) TestProvisionerAddr(c *gocheck.C) {
 	expected, err := r.Addr("myapp")
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(addr, gocheck.Equals, expected)
-	c.Assert(calls, gocheck.Equals, 6)
 }
 
 func (s *S) TestProvisionerAddUnits(c *gocheck.C) {

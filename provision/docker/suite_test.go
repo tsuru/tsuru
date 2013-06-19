@@ -5,7 +5,9 @@
 package docker
 
 import (
+	dtesting "github.com/fsouza/go-dockerclient/testing"
 	"github.com/globocom/config"
+	"github.com/globocom/docker-cluster/cluster"
 	"github.com/globocom/tsuru/db"
 	ftesting "github.com/globocom/tsuru/fs/testing"
 	"github.com/globocom/tsuru/provision"
@@ -30,6 +32,7 @@ type S struct {
 	port          string
 	hostAddr      string
 	sshUser       string
+	server        *dtesting.DockerServer
 }
 
 var _ = gocheck.Suite(&S{})
@@ -68,6 +71,12 @@ func (s *S) SetUpSuite(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	f.Write([]byte("key-content"))
 	f.Close()
+	s.server, err = dtesting.NewServer()
+	c.Assert(err, gocheck.IsNil)
+	dockerCluster, _ = cluster.New(
+		cluster.Node{ID: "server", Address: s.server.URL()},
+	)
+
 }
 
 func (s *S) TearDownSuite(c *gocheck.C) {
