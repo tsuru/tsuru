@@ -216,6 +216,18 @@ func (r *RecordingFs) RemoveAll(path string) error {
 	return nil
 }
 
+// Rename records the action "rename <old> <new>" and returns nil.
+func (r *RecordingFs) Rename(oldname, newname string) error {
+	_, ok := r.files[oldname]
+	if !ok {
+		return syscall.ENOENT
+	}
+	r.actions = append(r.actions, "rename "+oldname+" "+newname)
+	r.files[newname] = r.files[oldname]
+	r.deleteFile(oldname)
+	return nil
+}
+
 // Stat records the action "stat <name>" and returns nil, nil.
 func (r *RecordingFs) Stat(name string) (os.FileInfo, error) {
 	r.actions = append(r.actions, "stat "+name)

@@ -330,6 +330,29 @@ func (s *S) TestRecordingFsRemoveAllDeletesState(c *gocheck.C) {
 	c.Assert(string(buf), gocheck.Equals, "hi")
 }
 
+func (s *S) TestRecordingFsRename(c *gocheck.C) {
+	fs := RecordingFs{}
+	f, _ := fs.Create("/my/file")
+	f.Write([]byte("hello, hello!"))
+	f.Close()
+	err := fs.Rename("/my/file", "/your/file")
+	c.Assert(err, gocheck.IsNil)
+	_, err = fs.Open("/my/file")
+	c.Assert(err, gocheck.NotNil)
+	f, err = fs.Open("/your/file")
+	c.Assert(err, gocheck.IsNil)
+	defer f.Close()
+	b, _ := ioutil.ReadAll(f)
+	c.Assert(string(b), gocheck.Equals, "hello, hello!")
+	c.Assert(fs.HasAction("rename /my/file /your/file"), gocheck.Equals, true)
+}
+
+func (s *S) TestRecordingFsRenameENOENT(c *gocheck.C) {
+	fs := RecordingFs{}
+	err := fs.Rename("/my/file", "/your/file")
+	c.Assert(os.IsNotExist(err), gocheck.Equals, true)
+}
+
 func (s *S) TestRecordingFsStat(c *gocheck.C) {
 	fs := RecordingFs{}
 	fi, err := fs.Stat("/my/file")
