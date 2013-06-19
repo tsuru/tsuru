@@ -58,6 +58,9 @@ type Fs interface {
 	// does not fail if the path does not exist (return nil).
 	RemoveAll(path string) error
 
+	// Rename renames a file.
+	Rename(oldname, newname string) error
+
 	// Stat returns a FileInfo describing the named file, or an error, if any
 	// happens.
 	Stat(name string) (os.FileInfo, error)
@@ -95,6 +98,10 @@ func (fs OsFs) Remove(name string) error {
 
 func (fs OsFs) RemoveAll(path string) error {
 	return os.RemoveAll(path)
+}
+
+func (OsFs) Rename(oldname, newname string) error {
+	return os.Rename(oldname, newname)
 }
 
 func (fs OsFs) Stat(name string) (os.FileInfo, error) {

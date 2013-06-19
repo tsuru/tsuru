@@ -125,6 +125,20 @@ func (s *S) TestOsFsRemoveAllDeletesDirectoryFromDisc(c *gocheck.C) {
 	c.Assert(os.IsNotExist(err), gocheck.Equals, true)
 }
 
+func (s *S) TestOsFsRename(c *gocheck.C) {
+	path := "/tmp/tsuru/test-fs-tsuru"
+	err := os.MkdirAll(path, 0755)
+	c.Assert(err, gocheck.IsNil)
+	defer os.RemoveAll(path + ".old")
+	fs := OsFs{}
+	err = fs.Rename(path, path+".old")
+	c.Assert(err, gocheck.IsNil)
+	_, err = os.Stat(path)
+	c.Assert(os.IsNotExist(err), gocheck.Equals, true)
+	_, err = os.Stat(path + ".old")
+	c.Assert(err, gocheck.IsNil)
+}
+
 func (s *S) TestOsFsStatChecksTheFileInTheDisc(c *gocheck.C) {
 	path := "/tmp/test-fs-tsuru"
 	unknownPath := "/tmp/test-fs-tsuru-unknown"
