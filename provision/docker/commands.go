@@ -20,16 +20,12 @@ import (
 // deployCmds returns the commands that is used when provisioner
 // deploy an unit.
 func deployCmds(app provision.App, version string) ([]string, error) {
-	docker, err := config.GetString("docker:binary")
-	if err != nil {
-		return nil, err
-	}
 	deployCmd, err := config.GetString("docker:deploy-cmd")
 	if err != nil {
 		return nil, err
 	}
 	appRepo := repository.ReadOnlyURL(app.GetName())
-	cmds := []string{docker, "run", "-d", deployCmd, appRepo}
+	cmds := []string{deployCmd, appRepo}
 	return cmds, nil
 }
 

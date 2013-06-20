@@ -17,13 +17,11 @@ import (
 
 func (s *S) TestDeployCmds(c *gocheck.C) {
 	app := testing.NewFakeApp("app-name", "python", 1)
-	docker, err := config.GetString("docker:binary")
-	c.Assert(err, gocheck.IsNil)
 	deployCmd, err := config.GetString("docker:deploy-cmd")
 	c.Assert(err, gocheck.IsNil)
 	version := "version"
 	appRepo := repository.ReadOnlyURL(app.GetName())
-	expected := []string{docker, "run", "-d", deployCmd, appRepo}
+	expected := []string{deployCmd, appRepo}
 	cmds, err := deployCmds(app, version)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(cmds, gocheck.DeepEquals, expected)
