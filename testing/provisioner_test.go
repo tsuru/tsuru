@@ -44,6 +44,13 @@ func (s *S) TestFakeAppReady(c *gocheck.C) {
 	c.Assert(app.IsReady(), gocheck.Equals, true)
 }
 
+func (s *S) TestFakeAppSerializeEnvVars(c *gocheck.C) {
+	app := NewFakeApp("sou", "otm", 0)
+	err := app.SerializeEnvVars()
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(app.Commands, gocheck.DeepEquals, []string{"serialize"})
+}
+
 func (s *S) TestProvisioned(c *gocheck.C) {
 	app := NewFakeApp("red-sector", "rush", 1)
 	p := NewFakeProvisioner()

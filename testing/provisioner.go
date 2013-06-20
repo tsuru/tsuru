@@ -135,6 +135,11 @@ func (a *FakeApp) SetUnitStatus(s provision.Status, index int) {
 	}
 }
 
+func (a *FakeApp) SerializeEnvVars() error {
+	a.Commands = append(a.Commands, "serialize")
+	return nil
+}
+
 func (a *FakeApp) Restart(w io.Writer) error {
 	a.Commands = append(a.Commands, "restart")
 	return nil
