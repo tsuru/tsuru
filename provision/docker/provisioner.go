@@ -23,6 +23,7 @@ import (
 	"labix.org/v2/mgo"
 	"net"
 	"sync"
+	"time"
 )
 
 func init() {
@@ -107,6 +108,7 @@ func (p *dockerProvisioner) Deploy(a provision.App, version string, w io.Writer)
 		return err
 	}
 	go func() {
+		time.Sleep(5e9)
 		err := a.SerializeEnvVars()
 		if err != nil {
 			log.Printf("Failed to serialize env vars: %s.", err)

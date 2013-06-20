@@ -110,8 +110,6 @@ func (s *S) TestDeployShouldCallDockerCreate(c *gocheck.C) {
 	runCmds, err := runCmds("i-1")
 	args := runCmds[1:]
 	c.Assert(fexec.ExecutedCmd("docker", args), gocheck.Equals, true)
-	time.Sleep(100e6)
-	c.Assert(app.GetCommands(), gocheck.DeepEquals, []string{"serialize"})
 }
 
 // func (s *S) TestDeployShouldReplaceAllContainers(c *gocheck.C) {
