@@ -1873,7 +1873,7 @@ func (s *S) TestSerializeEnvVars(c *gocheck.C) {
 		},
 		Units: []Unit{{Name: "i-0800", State: "started"}},
 	}
-	err := app.serializeEnvVars()
+	err := app.SerializeEnvVars()
 	c.Assert(err, gocheck.IsNil)
 	cmds := s.provisioner.GetCmds("", &app)
 	c.Assert(cmds, gocheck.HasLen, 1)
@@ -1895,7 +1895,7 @@ func (s *S) TestSerializeEnvVarsErrorWithoutOutput(c *gocheck.C) {
 			},
 		},
 	}
-	err := app.serializeEnvVars()
+	err := app.SerializeEnvVars()
 	c.Assert(err, gocheck.NotNil)
 	c.Assert(err.Error(), gocheck.Equals, "Failed to write env vars: Failed to run commands.")
 }
@@ -1914,7 +1914,7 @@ func (s *S) TestSerializeEnvVarsErrorWithOutput(c *gocheck.C) {
 		},
 		Units: []Unit{{Name: "i-0800", State: "started"}},
 	}
-	err := app.serializeEnvVars()
+	err := app.SerializeEnvVars()
 	c.Assert(err, gocheck.NotNil)
 	expected := "Failed to write env vars (exit status 1): This program has performed an illegal operation."
 	c.Assert(err.Error(), gocheck.Equals, expected)
