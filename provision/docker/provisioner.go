@@ -106,7 +106,12 @@ func (p *dockerProvisioner) Deploy(a provision.App, version string, w io.Writer)
 	} else if _, err := start(a, imageId, w); err != nil {
 		return err
 	}
-	go a.SerializeEnvVars()
+	go func() {
+		err := a.SerializeEnvVars()
+		if err != nil {
+			log.Printf("Failed to serialize env vars: %s.", err)
+		}
+	}()
 	return nil
 }
 
