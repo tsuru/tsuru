@@ -55,8 +55,9 @@ type FakeApp struct {
 	platform string
 	units    []provision.AppUnit
 	logs     []string
-	Commands []string
 	logMut   sync.Mutex
+	Commands []string
+	commMut  sync.Mutex
 	ready    bool
 }
 
@@ -77,6 +78,12 @@ func NewFakeApp(name, platform string, units int) *FakeApp {
 		}
 	}
 	return &app
+}
+
+func (a *FakeApp) GetCommands() []string {
+	a.commMut.Lock()
+	defer a.commMut.Unlock()
+	return a.Commands
 }
 
 func (a *FakeApp) IsReady() bool {
@@ -136,17 +143,23 @@ func (a *FakeApp) SetUnitStatus(s provision.Status, index int) {
 }
 
 func (a *FakeApp) SerializeEnvVars() error {
+	a.commMut.Lock()
 	a.Commands = append(a.Commands, "serialize")
+	a.commMut.Unlock()
 	return nil
 }
 
 func (a *FakeApp) Restart(w io.Writer) error {
+	a.commMut.Lock()
 	a.Commands = append(a.Commands, "restart")
+	a.commMut.Unlock()
 	return nil
 }
 
 func (a *FakeApp) Run(cmd string, w io.Writer) error {
+	a.commMut.Lock()
 	a.Commands = append(a.Commands, fmt.Sprintf("ran %s", cmd))
+	a.commMut.Unlock()
 	return nil
 }
 
