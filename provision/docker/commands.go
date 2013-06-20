@@ -30,11 +30,7 @@ func deployCmds(app provision.App, version string) ([]string, error) {
 	}
 	imageName := getImage(app)
 	appRepo := repository.ReadOnlyURL(app.GetName())
-	user, err := config.GetString("docker:ssh:user")
-	if err != nil {
-		return nil, err
-	}
-	cmds := []string{docker, "run", "-u", user, "-d", imageName, deployCmd, appRepo}
+	cmds := []string{docker, "run", "-d", imageName, deployCmd, appRepo}
 	return cmds, nil
 }
 
