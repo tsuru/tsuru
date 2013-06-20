@@ -14,7 +14,6 @@ import (
 	"github.com/globocom/tsuru/exec"
 	"github.com/globocom/tsuru/log"
 	"github.com/globocom/tsuru/provision"
-	"github.com/globocom/tsuru/queue"
 	"github.com/globocom/tsuru/router"
 	_ "github.com/globocom/tsuru/router/hipache"
 	_ "github.com/globocom/tsuru/router/nginx"
@@ -107,10 +106,6 @@ func (p *dockerProvisioner) Deploy(a provision.App, version string, w io.Writer)
 	} else if _, err := start(a, imageId, w); err != nil {
 		return err
 	}
-	app.Enqueue(queue.Message{
-		Action: app.RegenerateApprcAndStart,
-		Args:   []string{a.GetName()},
-	})
 	return nil
 }
 
