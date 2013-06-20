@@ -141,7 +141,16 @@ func (c *container) create(commands []string) error {
 	if err != nil {
 		return err
 	}
-	config := docker.Config{Image: "tsuru/python", Cmd: commands, PortSpecs: []string{port}}
+	user, err := config.GetString("docker:ssh:user")
+	if err != nil {
+		return err
+	}
+	config := docker.Config{
+		Image:     "tsuru/python",
+		Cmd:       commands,
+		PortSpecs: []string{port},
+		User:      user,
+	}
 	_, cont, err := dockerCluster.CreateContainer(&config)
 	if err != nil {
 		return err
