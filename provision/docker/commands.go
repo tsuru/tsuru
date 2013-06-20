@@ -49,17 +49,13 @@ func runCmds(imageId string) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	port, err := config.GetString("docker:run-cmd:port")
-	if err != nil {
-		return nil, err
-	}
 	ssh, err := sshCmds()
 	if err != nil {
 		return nil, err
 	}
 	sshCmd := strings.Join(ssh, " && ")
 	cmd := fmt.Sprintf("%s && %s", runCmd, sshCmd)
-	cmds := []string{docker, "run", "-d", "-t", "-p", port, imageId, "/bin/bash", "-c", cmd}
+	cmds := []string{docker, "run", "-d", "-t", imageId, "/bin/bash", "-c", cmd}
 	return cmds, nil
 }
 
