@@ -46,7 +46,7 @@ func runCmds(imageId string) ([]string, error) {
 	}
 	sshCmd := strings.Join(ssh, " && ")
 	cmd := fmt.Sprintf("%s && %s", runCmd, sshCmd)
-	cmds := []string{docker, "run", "-d", "-t", "/bin/bash", "-c", cmd}
+	cmds := []string{"/bin/bash", "-c", cmd}
 	return cmds, nil
 }
 

@@ -36,7 +36,7 @@ func (s *S) TestRunCmds(c *gocheck.C) {
 	sshCmd := strings.Join(ssh, " && ")
 	c.Assert(err, gocheck.IsNil)
 	cmd := fmt.Sprintf("%s && %s", runCmd, sshCmd)
-	expected := []string{docker, "run", "-d", "-t", "/bin/bash", "-c", cmd}
+	expected := []string{"/bin/bash", "-c", cmd}
 	cmds, err := runCmds("")
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(cmds, gocheck.DeepEquals, expected)
