@@ -142,7 +142,6 @@ func (c *container) create(commands []string) error {
 	}
 	id, err := runCmd(commands[0], commands[1:]...)
 	if err != nil {
-		fmt.Println("2", err.Error())
 		return err
 	}
 	id = strings.TrimSpace(id)
@@ -151,7 +150,6 @@ func (c *container) create(commands []string) error {
 	c.Port = port
 	ip, err := c.ip()
 	if err != nil {
-		fmt.Println("3", err.Error())
 		return err
 	}
 	c.IP = ip
