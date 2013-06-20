@@ -24,11 +24,9 @@ func (s *S) TestDeployCmds(c *gocheck.C) {
 	imageName := getImage(app)
 	version := "version"
 	appRepo := repository.ReadOnlyURL(app.GetName())
-	port, err := getPort()
-	c.Assert(err, gocheck.IsNil)
 	user, err := config.GetString("docker:ssh:user")
 	c.Assert(err, gocheck.IsNil)
-	expected := []string{docker, "run", "-p", port, "-u", user, "-d", imageName, deployCmd, appRepo}
+	expected := []string{docker, "run", "-u", user, "-d", imageName, deployCmd, appRepo}
 	cmds, err := deployCmds(app, version)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(cmds, gocheck.DeepEquals, expected)
