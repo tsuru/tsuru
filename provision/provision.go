@@ -73,6 +73,8 @@ type App interface {
 
 	Restart(io.Writer) error
 
+	SerializeEnvVars() error
+
 	// Ready marks the app as ready for deployment.
 	Ready() error
 }
