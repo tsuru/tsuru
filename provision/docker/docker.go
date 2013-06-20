@@ -76,7 +76,7 @@ func (c *container) getAddress() string {
 // newContainer creates a new container in Docker and stores it in the database.
 //
 // TODO (flaviamissi): make it atomic
-func newContainer(app provision.App, commands []string) (*container, error) {
+func newContainer(app provision.App, imageId string, commands []string) (*container, error) {
 	appName := app.GetName()
 	c := container{
 		AppName: appName,
@@ -200,7 +200,8 @@ func deploy(app provision.App, version string, w io.Writer) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	c, err := newContainer(app, commands)
+	imageId := getImage(app)
+	c, err := newContainer(app, imageId, commands)
 	if err != nil {
 		return "", err
 	}
@@ -217,7 +218,7 @@ func deploy(app provision.App, version string, w io.Writer) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	imageId, err := c.commit()
+	imageId, err = c.commit()
 	if err != nil {
 		return "", err
 	}
@@ -233,7 +234,7 @@ func start(app provision.App, imageId string, w io.Writer) (*container, error) {
 	if err != nil {
 		return nil, err
 	}
-	c, err := newContainer(app, commands)
+	c, err := newContainer(app, imageId, commands)
 	if err != nil {
 		return nil, err
 	}

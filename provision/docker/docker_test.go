@@ -38,7 +38,7 @@ func (s *S) TestNewContainer(c *gocheck.C) {
 	app := testing.NewFakeApp("app-name", "python", 1)
 	rtesting.FakeRouter.AddBackend(app.GetName())
 	defer rtesting.FakeRouter.RemoveBackend(app.GetName())
-	cont, err := newContainer(app, []string{"docker", "run"})
+	cont, err := newContainer(app, getImage(app), []string{"docker", "run"})
 	c.Assert(err, gocheck.IsNil)
 	defer cont.remove()
 	var retrieved container
@@ -59,7 +59,7 @@ func (s *S) TestNewContainerReturnsNilAndLogsOnError(c *gocheck.C) {
 	defer setExecut(nil)
 	app := testing.NewFakeApp("myapp", "python", 1)
 	cmds := []string{"ls"}
-	container, err := newContainer(app, cmds)
+	container, err := newContainer(app, getImage(app), cmds)
 	c.Assert(err, gocheck.NotNil)
 	defer s.conn.Collection(s.collName).Remove(bson.M{"appname": app.GetName()})
 	c.Assert(container, gocheck.IsNil)
@@ -74,7 +74,7 @@ func (s *S) TestNewContainerAddsRoute(c *gocheck.C) {
 	defer rtesting.FakeRouter.RemoveBackend(app.GetName())
 	cmds, err := deployCmds(app, "version")
 	c.Assert(err, gocheck.IsNil)
-	container, err := newContainer(app, cmds)
+	container, err := newContainer(app, getImage(app), cmds)
 	c.Assert(err, gocheck.IsNil)
 	defer container.remove()
 	c.Assert(rtesting.FakeRouter.HasRoute(app.GetName(), container.getAddress()), gocheck.Equals, true)
