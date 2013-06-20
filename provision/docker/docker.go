@@ -8,6 +8,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"github.com/dotcloud/docker"
 	dclient "github.com/fsouza/go-dockerclient"
 	"github.com/globocom/config"
 	"github.com/globocom/docker-cluster/cluster"
@@ -140,13 +141,12 @@ func (c *container) create(commands []string) error {
 	if err != nil {
 		return err
 	}
-	id, err := runCmd(commands[0], commands[1:]...)
+	config := docker.Config{Image: "tsuru/python", Cmd: commands, PortSpecs: []string{port}}
+	_, cont, err := dockerCluster.CreateContainer(&config)
 	if err != nil {
 		return err
 	}
-	id = strings.TrimSpace(id)
-	log.Printf("docker id=%s", id)
-	c.ID = strings.TrimSpace(id)
+	c.ID = cont.ID
 	c.Port = port
 	ip, err := c.ip()
 	if err != nil {
