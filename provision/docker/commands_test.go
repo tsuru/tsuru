@@ -28,8 +28,6 @@ func (s *S) TestDeployCmds(c *gocheck.C) {
 }
 
 func (s *S) TestRunCmds(c *gocheck.C) {
-	docker, err := config.GetString("docker:binary")
-	c.Assert(err, gocheck.IsNil)
 	runCmd, err := config.GetString("docker:run-cmd:bin")
 	c.Assert(err, gocheck.IsNil)
 	ssh, err := sshCmds()
