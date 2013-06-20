@@ -92,8 +92,7 @@ func (s *S) TestNewContainerReturnsNilAndLogsOnError(c *gocheck.C) {
 	setExecut(fexec)
 	defer setExecut(nil)
 	app := testing.NewFakeApp("myapp", "python", 1)
-	cmds, err := deployCmds(app, "version")
-	c.Assert(err, gocheck.IsNil)
+	cmds := []string{"ls"}
 	container, err := newContainer(app, cmds)
 	c.Assert(err, gocheck.NotNil)
 	defer s.conn.Collection(s.collName).Remove(bson.M{"appname": app.GetName()})
@@ -577,6 +576,7 @@ func (s *S) TestContainerCommit(c *gocheck.C) {
 	err := s.newImage()
 	c.Assert(err, gocheck.IsNil)
 	cont, err := s.newContainer()
+	defer rtesting.FakeRouter.RemoveBackend(cont.AppName)
 	imageId, err := cont.commit()
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(imageId, gocheck.Not(gocheck.Equals), "")
