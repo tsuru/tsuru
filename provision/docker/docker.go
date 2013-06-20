@@ -204,11 +204,10 @@ func deploy(app provision.App, version string, w io.Writer) (string, error) {
 			break
 		}
 	}
-	l, err := c.logs()
+	err = c.logs(w)
 	if err != nil {
 		return "", err
 	}
-	fmt.Fprint(w, l)
 	imageId, err := c.commit()
 	if err != nil {
 		return "", err
@@ -306,16 +305,13 @@ func (c *container) stopped() (bool, error) {
 }
 
 // logs returns logs for the container.
-func (c *container) logs() (string, error) {
-	docker, err := binary()
-	if err != nil {
-		return "", err
+func (c *container) logs(w io.Writer) error {
+	opts := dclient.AttachToContainerOptions{
+		Container:    c.ID,
+		Logs:         true,
+		OutputStream: w,
 	}
-	result, err := runCmd(docker, "logs", c.ID)
-	if err != nil {
-		return "", err
-	}
-	return result, nil
+	return dockerCluster.AttachToContainer(opts)
 }
 
 func getContainer(id string) (*container, error) {

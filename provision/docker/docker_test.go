@@ -481,19 +481,11 @@ func (s *S) TestContainerDeploy(c *gocheck.C) {
 	err := s.newImage()
 	c.Assert(err, gocheck.IsNil)
 	app := testing.NewFakeApp("myapp", "python", 1)
-	logOut := "log out"
-	out := map[string][][]byte{
-		"*": {[]byte(logOut)},
-	}
-	fexec := &etesting.FakeExecutor{Output: out}
-	setExecut(fexec)
-	defer setExecut(nil)
 	rtesting.FakeRouter.AddBackend(app.GetName())
 	defer rtesting.FakeRouter.RemoveBackend(app.GetName())
 	var buf bytes.Buffer
 	_, err = deploy(app, "ff13e", &buf)
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(buf.String(), gocheck.Equals, logOut)
 }
 
 func (s *S) TestStart(c *gocheck.C) {
@@ -544,17 +536,14 @@ func (s *S) TestContainerStopped(c *gocheck.C) {
 }
 
 func (s *S) TestContainerLogs(c *gocheck.C) {
-	fexec := &etesting.FakeExecutor{
-		Output: map[string][][]byte{
-			"*": {[]byte("some logs")},
-		},
-	}
-	setExecut(fexec)
-	defer setExecut(nil)
-	cont := container{ID: "someid", Type: "python", AppName: "myapp"}
-	result, err := cont.logs()
+	err := s.newImage()
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(result, gocheck.Equals, "some logs")
-	args := []string{"logs", "someid"}
-	c.Assert(fexec.ExecutedCmd("docker", args), gocheck.Equals, true)
+	cont, err := s.newContainer()
+	c.Assert(err, gocheck.IsNil)
+	defer cont.remove()
+	defer rtesting.FakeRouter.RemoveBackend(cont.AppName)
+	var buff bytes.Buffer
+	err = cont.logs(&buff)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(buff.String(), gocheck.Not(gocheck.Equals), "")
 }
