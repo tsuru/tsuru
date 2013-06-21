@@ -83,8 +83,8 @@ func (s *S) TestDeployShouldCallDockerCreate(c *gocheck.C) {
 	defer p.Destroy(app)
 	w := &bytes.Buffer{}
 	err = p.Deploy(app, "master", w)
-	defer p.Destroy(app)
 	c.Assert(err, gocheck.IsNil)
+	defer p.Destroy(app)
 }
 
 // func (s *S) TestDeployShouldReplaceAllContainers(c *gocheck.C) {

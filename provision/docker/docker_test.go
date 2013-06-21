@@ -158,7 +158,7 @@ func (s *S) TestContainerCreate(c *gocheck.C) {
 	rtesting.FakeRouter.AddBackend(app.GetName())
 	defer rtesting.FakeRouter.RemoveBackend(app.GetName())
 	commands := []string{"docker", "run"}
-	err = container.create(commands)
+	err = container.create(getImage(app), commands)
 	defer container.remove()
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(container.Status, gocheck.Equals, "created")

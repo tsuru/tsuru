@@ -82,7 +82,7 @@ func newContainer(app provision.App, imageId string, commands []string) (*contai
 		AppName: appName,
 		Type:    app.GetPlatform(),
 	}
-	err := c.create(commands)
+	err := c.create(imageId, commands)
 	if err != nil {
 		log.Printf("Error creating container for the app %q: %s", appName, err)
 		return nil, err
@@ -136,7 +136,7 @@ func (c *container) ip() (string, error) {
 // care of the deploy, and a function to generate the correct command ran by
 // docker, which might be to deploy a container or to run and expose a
 // container for an application.
-func (c *container) create(commands []string) error {
+func (c *container) create(imageId string, commands []string) error {
 	port, err := getPort()
 	if err != nil {
 		return err
@@ -146,7 +146,7 @@ func (c *container) create(commands []string) error {
 		return err
 	}
 	config := docker.Config{
-		Image:     "tsuru/python",
+		Image:     imageId,
 		Cmd:       commands,
 		PortSpecs: []string{port},
 		User:      user,

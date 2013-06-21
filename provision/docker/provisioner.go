@@ -105,6 +105,7 @@ func (p *dockerProvisioner) Deploy(a provision.App, version string, w io.Writer)
 			}
 		}
 	} else if _, err := start(a, imageId, w); err != nil {
+		fmt.Println("y")
 		return err
 	}
 	go func() {
