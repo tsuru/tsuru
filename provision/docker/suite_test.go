@@ -48,7 +48,6 @@ func (s *S) SetUpSuite(c *gocheck.C) {
 	config.Set("database:url", "127.0.0.1:27017")
 	config.Set("database:name", "docker_provision_tests_s")
 	config.Set("docker:repository-namespace", s.repoNamespace)
-	config.Set("docker:binary", "docker")
 	config.Set("docker:router", "fake")
 	config.Set("docker:collection", s.collName)
 	config.Set("docker:host-address", s.hostAddr)
