@@ -460,14 +460,14 @@ func (s *S) TestContainerCommit(c *gocheck.C) {
 }
 
 func (s *S) TestRemoveImage(c *gocheck.C) {
-	fexec := &etesting.FakeExecutor{}
-	setExecut(fexec)
-	defer setExecut(nil)
-	imageId := "image-id"
-	err := removeImage(imageId)
+	err := s.newImage()
 	c.Assert(err, gocheck.IsNil)
-	args := []string{"rmi", imageId}
-	c.Assert(fexec.ExecutedCmd("docker", args), gocheck.Equals, true)
+	client, err := dockerClient.NewClient(s.server.URL())
+	c.Assert(err, gocheck.IsNil)
+	images, err := client.ListImages(true)
+	c.Assert(err, gocheck.IsNil)
+	err = removeImage(images[0].ID)
+	c.Assert(err, gocheck.IsNil)
 }
 
 func (s *S) TestContainerDeploy(c *gocheck.C) {
