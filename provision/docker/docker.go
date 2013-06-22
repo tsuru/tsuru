@@ -146,10 +146,13 @@ func (c *container) create(imageId string, commands []string) error {
 		return err
 	}
 	config := docker.Config{
-		Image:     imageId,
-		Cmd:       commands,
-		PortSpecs: []string{port},
-		User:      user,
+		Image:        imageId,
+		Cmd:          commands,
+		PortSpecs:    []string{port},
+		User:         user,
+		AttachStdin:  false,
+		AttachStdout: false,
+		AttachStderr: false,
 	}
 	_, cont, err := dockerCluster.CreateContainer(&config)
 	if err != nil {
