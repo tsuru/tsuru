@@ -23,9 +23,14 @@ import (
 var dockerCluster *cluster.Cluster
 
 func init() {
-	dockerCluster, _ = cluster.New(
+	dockerCluster = getDockerCluster()
+}
+
+func getDockerCluster() *cluster.Cluster {
+	dockerCluster, _ := cluster.New(
 		cluster.Node{ID: "server", Address: "http://localhost:4243"},
 	)
+	return dockerCluster
 }
 
 var fsystem fs.Fs
