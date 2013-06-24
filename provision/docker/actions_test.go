@@ -7,6 +7,8 @@ package docker
 import (
 	dockerClient "github.com/fsouza/go-dockerclient"
 	"github.com/globocom/tsuru/action"
+	rtesting "github.com/globocom/tsuru/router/testing"
+	"github.com/globocom/tsuru/testing"
 	"launchpad.net/gocheck"
 )
 
@@ -69,4 +71,17 @@ func (s *S) TestInsertContainerBackward(c *gocheck.C) {
 
 func (s *S) TestAddRouteName(c *gocheck.C) {
 	c.Assert(addRoute.Name, gocheck.Equals, "add-route")
+}
+
+func (s *S) TestAddRouteForward(c *gocheck.C) {
+	app := testing.NewFakeApp("myapp", "python", 1)
+	rtesting.FakeRouter.AddBackend(app.GetName())
+	defer rtesting.FakeRouter.RemoveBackend(app.GetName())
+	cont := container{ID: "ble", AppName: app.GetName()}
+	context := action.FWContext{Params: []interface{}{cont}}
+	r, err := addRoute.Forward(context)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(r, gocheck.IsNil)
+	hasRoute := rtesting.FakeRouter.HasRoute(app.GetName(), cont.getAddress())
+	c.Assert(hasRoute, gocheck.Equals, true)
 }

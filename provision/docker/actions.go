@@ -61,7 +61,6 @@ var insertContainer = action.Action{
 	},
 	Backward: func(ctx action.BWContext) {
 		c := ctx.Params[0].(container)
-		log.Printf("Removing container %s from database", c.ID)
 		coll := collection()
 		defer coll.Database.Session.Close()
 		coll.RemoveId(c.ID)
@@ -71,7 +70,13 @@ var insertContainer = action.Action{
 var addRoute = action.Action{
 	Name: "add-route",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
-		return nil, nil
+		c := ctx.Params[0].(container)
+		r, err := getRouter()
+		if err != nil {
+			return nil, err
+		}
+		err = r.AddRoute(c.AppName, c.getAddress())
+		return nil, err
 	},
 	Backward: func(ctx action.BWContext) {
 	},
