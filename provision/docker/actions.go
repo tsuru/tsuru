@@ -64,7 +64,13 @@ var setIp = action.Action{
 var setHostPort = action.Action{
 	Name: "set-host-port",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
-		return nil, nil
+		c := ctx.Params[0].(container)
+		hostPort, err := c.hostPort()
+		if err != nil {
+			return nil, err
+		}
+		c.HostPort = hostPort
+		return c, nil
 	},
 	Backward: func(ctx action.BWContext) {
 	},
