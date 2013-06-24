@@ -87,20 +87,35 @@ func (c *container) getAddress() string {
 }
 
 // newContainer creates a new container in Docker and stores it in the database.
-//
-// TODO (flaviamissi): make it atomic
-func newContainer(app provision.App, imageId string, commands []string) (*container, error) {
-	appName := app.GetName()
-	c := container{
-		AppName: appName,
+func newContainer(app provision.App, imageId string, cmds []string) (container, error) {
+	cont := container{
+		AppName: app.GetName(),
 		Type:    app.GetPlatform(),
 	}
-	err := c.create(imageId, commands)
+	port, err := getPort()
 	if err != nil {
-		log.Printf("Error creating container for the app %q: %s", appName, err)
-		return nil, err
+		return container{}, err
 	}
-	return &c, nil
+	user, err := config.GetString("docker:ssh:user")
+	if err != nil {
+		return container{}, err
+	}
+	config := docker.Config{
+		Image:        imageId,
+		Cmd:          cmds,
+		PortSpecs:    []string{port},
+		User:         user,
+		AttachStdin:  false,
+		AttachStdout: false,
+		AttachStderr: false,
+	}
+	_, c, err := dockerCluster.CreateContainer(&config)
+	if err != nil {
+		return container{}, err
+	}
+	cont.ID = c.ID
+	cont.Port = port
+	return cont, nil
 }
 
 // hostPort returns the host port mapped for the container.

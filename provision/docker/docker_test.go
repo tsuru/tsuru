@@ -13,12 +13,10 @@ import (
 	"github.com/globocom/docker-cluster/cluster"
 	etesting "github.com/globocom/tsuru/exec/testing"
 	ftesting "github.com/globocom/tsuru/fs/testing"
-	"github.com/globocom/tsuru/log"
 	rtesting "github.com/globocom/tsuru/router/testing"
 	"github.com/globocom/tsuru/testing"
 	"labix.org/v2/mgo/bson"
 	"launchpad.net/gocheck"
-	stdlog "log"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -41,43 +39,13 @@ func (s *S) TestNewContainer(c *gocheck.C) {
 	cont, err := newContainer(app, getImage(app), []string{"docker", "run"})
 	c.Assert(err, gocheck.IsNil)
 	defer cont.remove()
-	var retrieved container
-	err = s.conn.Collection(s.collName).FindId(cont.ID).One(&retrieved)
-	c.Assert(retrieved.ID, gocheck.Not(gocheck.Equals), "")
-	c.Assert(retrieved.AppName, gocheck.Equals, "app-name")
-	c.Assert(retrieved.IP, gocheck.Not(gocheck.Equals), "")
-	c.Assert(retrieved.HostPort, gocheck.Not(gocheck.Equals), "")
-	c.Assert(retrieved.Port, gocheck.Equals, s.port)
-}
-
-func (s *S) TestNewContainerReturnsNilAndLogsOnError(c *gocheck.C) {
-	w := new(bytes.Buffer)
-	l := stdlog.New(w, "", stdlog.LstdFlags)
-	log.SetLogger(l)
-	fexec := &etesting.ErrorExecutor{}
-	setExecut(fexec)
-	defer setExecut(nil)
-	app := testing.NewFakeApp("myapp", "python", 1)
-	cmds := []string{"ls"}
-	container, err := newContainer(app, getImage(app), cmds)
-	c.Assert(err, gocheck.NotNil)
-	defer s.conn.Collection(s.collName).Remove(bson.M{"appname": app.GetName()})
-	c.Assert(container, gocheck.IsNil)
-	c.Assert(w.String(), gocheck.Matches, `(?s).*Error creating container for the app "myapp".*`)
-}
-
-func (s *S) TestNewContainerAddsRoute(c *gocheck.C) {
-	err := s.newImage()
+	c.Assert(cont.ID, gocheck.Not(gocheck.Equals), "")
+	c.Assert(cont, gocheck.FitsTypeOf, container{})
+	c.Assert(cont.AppName, gocheck.Equals, app.GetName())
+	c.Assert(cont.Type, gocheck.Equals, app.GetPlatform())
+	port, err := getPort()
 	c.Assert(err, gocheck.IsNil)
-	app := testing.NewFakeApp("myapp", "python", 1)
-	rtesting.FakeRouter.AddBackend(app.GetName())
-	defer rtesting.FakeRouter.RemoveBackend(app.GetName())
-	cmds, err := deployCmds(app, "version")
-	c.Assert(err, gocheck.IsNil)
-	container, err := newContainer(app, getImage(app), cmds)
-	c.Assert(err, gocheck.IsNil)
-	defer container.remove()
-	c.Assert(rtesting.FakeRouter.HasRoute(app.GetName(), container.getAddress()), gocheck.Equals, true)
+	c.Assert(cont.Port, gocheck.Equals, port)
 }
 
 func (s *S) TestGetSSHCommandsDefaultSSHDPath(c *gocheck.C) {
