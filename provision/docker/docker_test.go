@@ -118,21 +118,6 @@ func (s *S) TestGetPortUndefined(c *gocheck.C) {
 	c.Assert(err, gocheck.NotNil)
 }
 
-func (s *S) TestContainerCreate(c *gocheck.C) {
-	err := s.newImage()
-	c.Assert(err, gocheck.IsNil)
-	container := container{AppName: "app-name", Type: "python"}
-	app := testing.NewFakeApp("app-name", "python", 1)
-	rtesting.FakeRouter.AddBackend(app.GetName())
-	defer rtesting.FakeRouter.RemoveBackend(app.GetName())
-	commands := []string{"docker", "run"}
-	err = container.create(getImage(app), commands)
-	defer container.remove()
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(container.Status, gocheck.Equals, "created")
-	c.Assert(container.HostPort, gocheck.Not(gocheck.Equals), "")
-}
-
 func (s *S) TestContainerSetStatus(c *gocheck.C) {
 	container := container{ID: "something-300"}
 	s.conn.Collection(s.collName).Insert(container)

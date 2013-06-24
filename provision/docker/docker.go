@@ -157,61 +157,6 @@ func (c *container) ip() (string, error) {
 	return instanceIP, nil
 }
 
-// create creates a docker container, stores it on the database and adds a route to it.
-//
-// It receives the related application in order to choose the correct
-// docker image and the repository to pass to the script that will take
-// care of the deploy, and a function to generate the correct command ran by
-// docker, which might be to deploy a container or to run and expose a
-// container for an application.
-func (c *container) create(imageId string, commands []string) error {
-	port, err := getPort()
-	if err != nil {
-		return err
-	}
-	user, err := config.GetString("docker:ssh:user")
-	if err != nil {
-		return err
-	}
-	config := docker.Config{
-		Image:        imageId,
-		Cmd:          commands,
-		PortSpecs:    []string{port},
-		User:         user,
-		AttachStdin:  false,
-		AttachStdout: false,
-		AttachStderr: false,
-	}
-	_, cont, err := dockerCluster.CreateContainer(&config)
-	if err != nil {
-		return err
-	}
-	c.ID = cont.ID
-	c.Port = port
-	ip, _ := c.ip()
-	// if err != nil {
-	// 	return err
-	// }
-	c.IP = ip
-	hostPort, _ := c.hostPort()
-	// if err != nil {
-	// 	return err
-	// }
-	c.HostPort = hostPort
-	c.Status = "created"
-	coll := collection()
-	defer coll.Database.Session.Close()
-	if err := coll.Insert(c); err != nil {
-		log.Print(err)
-		return err
-	}
-	r, err := getRouter()
-	if err != nil {
-		return err
-	}
-	return r.AddRoute(c.AppName, c.getAddress())
-}
-
 func (c *container) setStatus(status string) error {
 	c.Status = status
 	coll := collection()

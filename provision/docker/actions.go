@@ -5,8 +5,6 @@
 package docker
 
 import (
-	"github.com/dotcloud/docker"
-	"github.com/globocom/config"
 	"github.com/globocom/tsuru/action"
 	"github.com/globocom/tsuru/log"
 	"github.com/globocom/tsuru/provision"
@@ -16,35 +14,12 @@ var createContainer = action.Action{
 	Name: "create-container",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
 		app := ctx.Params[0].(provision.App)
-		cont := container{
-			AppName: app.GetName(),
-			Type:    app.GetPlatform(),
-		}
-		port, err := getPort()
-		if err != nil {
-			return nil, err
-		}
-		user, err := config.GetString("docker:ssh:user")
-		if err != nil {
-			return nil, err
-		}
 		imageId := ctx.Params[1].(string)
 		cmds := ctx.Params[2].([]string)
-		config := docker.Config{
-			Image:        imageId,
-			Cmd:          cmds,
-			PortSpecs:    []string{port},
-			User:         user,
-			AttachStdin:  false,
-			AttachStdout: false,
-			AttachStderr: false,
-		}
-		_, c, err := dockerCluster.CreateContainer(&config)
+		cont, err := newContainer(app, imageId, cmds)
 		if err != nil {
 			return nil, err
 		}
-		cont.ID = c.ID
-		cont.Port = port
 		return cont, nil
 	},
 	Backward: func(ctx action.BWContext) {
