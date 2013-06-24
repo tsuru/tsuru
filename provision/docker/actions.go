@@ -60,6 +60,16 @@ var setIp = action.Action{
 	Backward: func(ctx action.BWContext) {
 	},
 }
+
+var setHostPort = action.Action{
+	Name: "set-host-port",
+	Forward: func(ctx action.FWContext) (action.Result, error) {
+		return nil, nil
+	},
+	Backward: func(ctx action.BWContext) {
+	},
+}
+
 var insertContainer = action.Action{
 	Name: "insert-container",
 	Forward: func(ctx action.FWContext) (action.Result, error) {

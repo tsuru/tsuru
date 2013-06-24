@@ -104,3 +104,7 @@ func (s *S) TestSetIp(c *gocheck.C) {
 	c.Assert(cont, gocheck.FitsTypeOf, container{})
 	c.Assert(cont.ip, gocheck.Not(gocheck.Equals), "")
 }
+
+func (s *S) TestSetHostPortName(c *gocheck.C) {
+	c.Assert(setHostPort.Name, gocheck.Equals, "set-host-port")
+}
