@@ -86,6 +86,10 @@ func (s *S) TestAddRouteForward(c *gocheck.C) {
 	c.Assert(hasRoute, gocheck.Equals, true)
 }
 
+func (s *S) TestSetIpName(c *gocheck.C) {
+	c.Assert(setIp.Name, gocheck.Equals, "set-ip")
+}
+
 func (s *S) TestSetIp(c *gocheck.C) {
 	err := s.newImage()
 	c.Assert(err, gocheck.IsNil)
