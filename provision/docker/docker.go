@@ -172,12 +172,12 @@ func (c *container) create(imageId string, commands []string) error {
 	}
 	c.ID = cont.ID
 	c.Port = port
-	ip, err := c.ip()
+	ip, _ := c.ip()
 	// if err != nil {
 	// 	return err
 	// }
 	c.IP = ip
-	hostPort, err := c.hostPort()
+	hostPort, _ := c.hostPort()
 	// if err != nil {
 	// 	return err
 	// }
