@@ -36,16 +36,37 @@ func (s *S) TestCreateContainerBackward(c *gocheck.C) {
 	createContainer.Backward(context)
 }
 
-func (s *S) TestInsertContainer(c *gocheck.C) {
+func (s *S) TestInsertContainerName(c *gocheck.C) {
+	c.Assert(insertContainer.Name, gocheck.Equals, "insert-container")
+}
+
+func (s *S) TestInsertContainerForward(c *gocheck.C) {
 	cont := container{ID: "someid"}
 	context := action.FWContext{Params: []interface{}{cont}}
 	r, err := insertContainer.Forward(context)
 	c.Assert(err, gocheck.IsNil)
+	coll := s.conn.Collection(s.collName)
+	defer coll.RemoveId(cont.ID)
 	cont = r.(container)
-	defer cont.remove()
 	var retrieved container
-	err = s.conn.Collection(s.collName).FindId(cont.ID).One(&retrieved)
+	err = coll.FindId(cont.ID).One(&retrieved)
 	c.Assert(retrieved.ID, gocheck.Equals, cont.ID)
 	c.Assert(retrieved.Status, gocheck.Equals, "created")
 	c.Assert(cont, gocheck.FitsTypeOf, container{})
+}
+
+func (s *S) TestInsertContainerBackward(c *gocheck.C) {
+	cont := container{ID: "someid"}
+	coll := s.conn.Collection(s.collName)
+	err := coll.Insert(&cont)
+	c.Assert(err, gocheck.IsNil)
+	context := action.BWContext{Params: []interface{}{cont}}
+	insertContainer.Backward(context)
+	err = coll.FindId(cont.ID).One(&cont)
+	c.Assert(err, gocheck.NotNil)
+	c.Assert(err.Error(), gocheck.Equals, "not found")
+}
+
+func (s *S) TestAddRouteName(c *gocheck.C) {
+	c.Assert(addRoute.Name, gocheck.Equals, "add-route")
 }
