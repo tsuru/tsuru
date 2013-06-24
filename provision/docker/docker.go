@@ -161,14 +161,14 @@ func (c *container) create(imageId string, commands []string) error {
 	c.ID = cont.ID
 	c.Port = port
 	ip, err := c.ip()
-	if err != nil {
-		return err
-	}
+	// if err != nil {
+	// 	return err
+	// }
 	c.IP = ip
 	hostPort, err := c.hostPort()
-	if err != nil {
-		return err
-	}
+	// if err != nil {
+	// 	return err
+	// }
 	c.HostPort = hostPort
 	c.Status = "created"
 	coll := collection()
