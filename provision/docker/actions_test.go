@@ -33,6 +33,9 @@ func (s *S) TestCreateContainerForward(c *gocheck.C) {
 	c.Assert(cont, gocheck.FitsTypeOf, container{})
 	c.Assert(cont.AppName, gocheck.Equals, app.GetName())
 	c.Assert(cont.Type, gocheck.Equals, app.GetPlatform())
+	port, err := getPort()
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(cont.Port, gocheck.Equals, port)
 }
 
 func (s *S) TestCreateContainerBackward(c *gocheck.C) {

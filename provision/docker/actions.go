@@ -44,6 +44,7 @@ var createContainer = action.Action{
 			return nil, err
 		}
 		cont.ID = c.ID
+		cont.Port = port
 		return cont, nil
 	},
 	Backward: func(ctx action.BWContext) {
