@@ -253,10 +253,13 @@ func start(app provision.App, imageId string, w io.Writer) (*container, error) {
 	if err != nil {
 		return nil, err
 	}
-	c, err := newContainer(app, imageId, commands)
+	actions := []*action.Action{&createContainer, &setIp, &setHostPort, &insertContainer, &addRoute}
+	pipeline := action.NewPipeline(actions...)
+	err = pipeline.Execute(app, imageId, commands)
 	if err != nil {
 		return nil, err
 	}
+	c := pipeline.Result().(container)
 	err = c.setImage(imageId)
 	if err != nil {
 		return nil, err
@@ -265,7 +268,7 @@ func start(app provision.App, imageId string, w io.Writer) (*container, error) {
 	if err != nil {
 		return nil, err
 	}
-	return c, nil
+	return &c, nil
 }
 
 // remove removes a docker container.
