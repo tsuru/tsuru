@@ -8,6 +8,7 @@ import (
 	"github.com/dotcloud/docker"
 	"github.com/globocom/config"
 	"github.com/globocom/tsuru/action"
+	"github.com/globocom/tsuru/log"
 )
 
 var createContainer = action.Action{
@@ -42,5 +43,22 @@ var createContainer = action.Action{
 	Backward: func(ctx action.BWContext) {
 		c := ctx.Params[0].(container)
 		dockerCluster.RemoveContainer(c.ID)
+	},
+}
+
+var insertContainer = action.Action{
+	Name: "insert-container",
+	Forward: func(ctx action.FWContext) (action.Result, error) {
+		c := ctx.Params[0].(container)
+		c.Status = "created"
+		coll := collection()
+		defer coll.Database.Session.Close()
+		if err := coll.Insert(c); err != nil {
+			log.Print(err)
+			return nil, err
+		}
+		return c, nil
+	},
+	Backward: func(ctx action.BWContext) {
 	},
 }

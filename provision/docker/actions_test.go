@@ -35,3 +35,17 @@ func (s *S) TestCreateContainerBackward(c *gocheck.C) {
 	context := action.BWContext{Params: []interface{}{cont}}
 	createContainer.Backward(context)
 }
+
+func (s *S) TestInsertContainer(c *gocheck.C) {
+	cont := container{ID: "someid"}
+	context := action.FWContext{Params: []interface{}{cont}}
+	r, err := insertContainer.Forward(context)
+	c.Assert(err, gocheck.IsNil)
+	cont = r.(container)
+	defer cont.remove()
+	var retrieved container
+	err = s.conn.Collection(s.collName).FindId(cont.ID).One(&retrieved)
+	c.Assert(retrieved.ID, gocheck.Equals, cont.ID)
+	c.Assert(retrieved.Status, gocheck.Equals, "created")
+	c.Assert(cont, gocheck.FitsTypeOf, container{})
+}
