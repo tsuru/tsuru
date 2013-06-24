@@ -23,7 +23,9 @@ func (s *S) TestCreateContainerForward(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	cmds := []string{"ps", "-ef"}
 	context := action.FWContext{Params: []interface{}{images[0].ID, cmds}}
-	cont, err := createContainer.Forward(context)
+	r, err := createContainer.Forward(context)
 	c.Assert(err, gocheck.IsNil)
+	cont := r.(container)
+	defer cont.remove()
 	c.Assert(cont, gocheck.FitsTypeOf, container{})
 }
