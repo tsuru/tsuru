@@ -117,3 +117,20 @@ func (s *S) TestExecuteMinParams(c *gocheck.C) {
 	c.Assert(err.Error(), gocheck.Equals, "Not enough parameters to call Action.Forward.")
 	c.Assert(executed, gocheck.Equals, true)
 }
+
+func (s *S) TestResult(c *gocheck.C) {
+	actions := []*Action{
+		{
+			Forward: func(ctx FWContext) (Result, error) {
+				return "ok", nil
+			},
+			Backward: func(ctx BWContext) {
+			},
+		},
+	}
+	pipeline := NewPipeline(actions...)
+	err := pipeline.Execute()
+	c.Assert(err, gocheck.IsNil)
+	r := pipeline.Result()
+	c.Assert(r, gocheck.Equals, "ok")
+}

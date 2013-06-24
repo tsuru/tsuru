@@ -81,6 +81,10 @@ func NewPipeline(actions ...*Action) *Pipeline {
 	return &Pipeline{actions: actions}
 }
 
+func (p *Pipeline) Result() Result {
+	return p.actions[len(p.actions)-1].result
+}
+
 // Execute executes the pipeline.
 //
 // The execution starts in the forward phase, calling the Forward function of
