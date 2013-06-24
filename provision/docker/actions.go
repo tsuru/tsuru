@@ -55,7 +55,7 @@ var createContainer = action.Action{
 var setIp = action.Action{
 	Name: "set-ip",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
-		c := ctx.Params[0].(container)
+		c := ctx.Previous.(container)
 		ip, err := c.ip()
 		if err != nil {
 			return nil, err
@@ -70,7 +70,7 @@ var setIp = action.Action{
 var setHostPort = action.Action{
 	Name: "set-host-port",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
-		c := ctx.Params[0].(container)
+		c := ctx.Previous.(container)
 		hostPort, err := c.hostPort()
 		if err != nil {
 			return nil, err
@@ -85,7 +85,7 @@ var setHostPort = action.Action{
 var insertContainer = action.Action{
 	Name: "insert-container",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
-		c := ctx.Params[0].(container)
+		c := ctx.Previous.(container)
 		c.Status = "created"
 		coll := collection()
 		defer coll.Database.Session.Close()
@@ -106,7 +106,7 @@ var insertContainer = action.Action{
 var addRoute = action.Action{
 	Name: "add-route",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
-		c := ctx.Params[0].(container)
+		c := ctx.Previous.(container)
 		r, err := getRouter()
 		if err != nil {
 			return nil, err

@@ -12,6 +12,7 @@ import (
 	dclient "github.com/fsouza/go-dockerclient"
 	"github.com/globocom/config"
 	"github.com/globocom/docker-cluster/cluster"
+	"github.com/globocom/tsuru/action"
 	"github.com/globocom/tsuru/fs"
 	"github.com/globocom/tsuru/log"
 	"github.com/globocom/tsuru/provision"
@@ -216,10 +217,13 @@ func deploy(app provision.App, version string, w io.Writer) (string, error) {
 		return "", err
 	}
 	imageId := getImage(app)
-	c, err := newContainer(app, imageId, commands)
+	actions := []*action.Action{&createContainer, &insertContainer}
+	pipeline := action.NewPipeline(actions...)
+	err = pipeline.Execute(app, imageId, commands)
 	if err != nil {
 		return "", err
 	}
+	c := pipeline.Result().(container)
 	for {
 		result, err := c.stopped()
 		if err != nil {
@@ -237,10 +241,10 @@ func deploy(app provision.App, version string, w io.Writer) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	err = c.remove()
-	if err != nil {
-		return "", err
-	}
+	c.remove()
+	// if err != nil {
+	// 	return "", err
+	// }
 	return imageId, nil
 }
 

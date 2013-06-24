@@ -47,7 +47,7 @@ func (s *S) TestInsertContainerName(c *gocheck.C) {
 
 func (s *S) TestInsertContainerForward(c *gocheck.C) {
 	cont := container{ID: "someid"}
-	context := action.FWContext{Params: []interface{}{cont}}
+	context := action.FWContext{Previous: cont}
 	r, err := insertContainer.Forward(context)
 	c.Assert(err, gocheck.IsNil)
 	coll := s.conn.Collection(s.collName)
@@ -81,7 +81,7 @@ func (s *S) TestAddRouteForward(c *gocheck.C) {
 	rtesting.FakeRouter.AddBackend(app.GetName())
 	defer rtesting.FakeRouter.RemoveBackend(app.GetName())
 	cont := container{ID: "ble", AppName: app.GetName()}
-	context := action.FWContext{Params: []interface{}{cont}}
+	context := action.FWContext{Previous: cont}
 	r, err := addRoute.Forward(context)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(r, gocheck.IsNil)
@@ -100,7 +100,7 @@ func (s *S) TestSetIpForward(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	defer rtesting.FakeRouter.RemoveBackend(conta.AppName)
 	cont := *conta
-	context := action.FWContext{Params: []interface{}{cont}}
+	context := action.FWContext{Previous: cont}
 	r, err := setIp.Forward(context)
 	c.Assert(err, gocheck.IsNil)
 	cont = r.(container)
@@ -119,7 +119,7 @@ func (s *S) TestSetHostPortForward(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	defer rtesting.FakeRouter.RemoveBackend(conta.AppName)
 	cont := *conta
-	context := action.FWContext{Params: []interface{}{cont}}
+	context := action.FWContext{Previous: cont}
 	r, err := setHostPort.Forward(context)
 	c.Assert(err, gocheck.IsNil)
 	cont = r.(container)
