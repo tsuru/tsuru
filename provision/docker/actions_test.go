@@ -90,7 +90,7 @@ func (s *S) TestSetIpName(c *gocheck.C) {
 	c.Assert(setIp.Name, gocheck.Equals, "set-ip")
 }
 
-func (s *S) TestSetIp(c *gocheck.C) {
+func (s *S) TestSetIpForward(c *gocheck.C) {
 	err := s.newImage()
 	c.Assert(err, gocheck.IsNil)
 	conta, err := s.newContainer()
