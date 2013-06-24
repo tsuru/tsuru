@@ -29,3 +29,9 @@ func (s *S) TestCreateContainerForward(c *gocheck.C) {
 	defer cont.remove()
 	c.Assert(cont, gocheck.FitsTypeOf, container{})
 }
+
+func (s *S) TestCreateContainerBackward(c *gocheck.C) {
+	cont := container{ID: "ble"}
+	context := action.BWContext{Params: []interface{}{cont}}
+	createContainer.Backward(context)
+}
