@@ -5,9 +5,25 @@
 package docker
 
 import (
+	dockerClient "github.com/fsouza/go-dockerclient"
+	"github.com/globocom/tsuru/action"
 	"launchpad.net/gocheck"
 )
 
 func (s *S) TestCreateContainerName(c *gocheck.C) {
 	c.Assert(createContainer.Name, gocheck.Equals, "create-container")
+}
+
+func (s *S) TestCreateContainerForward(c *gocheck.C) {
+	err := s.newImage()
+	c.Assert(err, gocheck.IsNil)
+	client, err := dockerClient.NewClient(s.server.URL())
+	c.Assert(err, gocheck.IsNil)
+	images, err := client.ListImages(true)
+	c.Assert(err, gocheck.IsNil)
+	cmds := []string{"ps", "-ef"}
+	context := action.FWContext{Params: []interface{}{images[0].ID, cmds}}
+	cont, err := createContainer.Forward(context)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(cont, gocheck.FitsTypeOf, container{})
 }
