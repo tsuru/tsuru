@@ -24,12 +24,15 @@ func (s *S) TestCreateContainerForward(c *gocheck.C) {
 	images, err := client.ListImages(true)
 	c.Assert(err, gocheck.IsNil)
 	cmds := []string{"ps", "-ef"}
-	context := action.FWContext{Params: []interface{}{images[0].ID, cmds}}
+	app := testing.NewFakeApp("myapp", "python", 1)
+	context := action.FWContext{Params: []interface{}{app, images[0].ID, cmds}}
 	r, err := createContainer.Forward(context)
 	c.Assert(err, gocheck.IsNil)
 	cont := r.(container)
 	defer cont.remove()
 	c.Assert(cont, gocheck.FitsTypeOf, container{})
+	c.Assert(cont.AppName, gocheck.Equals, app.GetName())
+	c.Assert(cont.Type, gocheck.Equals, app.GetPlatform())
 }
 
 func (s *S) TestCreateContainerBackward(c *gocheck.C) {
