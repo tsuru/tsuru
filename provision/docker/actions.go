@@ -113,7 +113,7 @@ var addRoute = action.Action{
 			return nil, err
 		}
 		err = r.AddRoute(c.AppName, c.getAddress())
-		return nil, err
+		return c, err
 	},
 	Backward: func(ctx action.BWContext) {
 	},

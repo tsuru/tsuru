@@ -87,9 +87,10 @@ func (s *S) TestAddRouteForward(c *gocheck.C) {
 	context := action.FWContext{Previous: cont}
 	r, err := addRoute.Forward(context)
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(r, gocheck.IsNil)
+	cont = r.(container)
 	hasRoute := rtesting.FakeRouter.HasRoute(app.GetName(), cont.getAddress())
 	c.Assert(hasRoute, gocheck.Equals, true)
+	c.Assert(cont, gocheck.FitsTypeOf, container{})
 }
 
 func (s *S) TestSetIpName(c *gocheck.C) {
