@@ -27,9 +27,16 @@ func init() {
 }
 
 func getDockerCluster() *cluster.Cluster {
-	dockerCluster, _ := cluster.New(
-		cluster.Node{ID: "server", Address: "http://localhost:4243"},
-	)
+	servers, _ := config.GetList("docker:servers")
+	nodes := []cluster.Node{}
+	for index, server := range servers {
+		node := cluster.Node{
+			ID:      fmt.Sprintf("server%d", index),
+			Address: server,
+		}
+		nodes = append(nodes, node)
+	}
+	dockerCluster, _ := cluster.New(nodes...)
 	return dockerCluster
 }
 

@@ -542,8 +542,10 @@ func (s *S) TestContainerLogs(c *gocheck.C) {
 }
 
 func (s *S) TestDockerCluster(c *gocheck.C) {
+	config.Set("docker:servers", []string{"http://localhost:4243", "http://10.10.10.10:4243"})
 	expected, _ := cluster.New(
-		cluster.Node{ID: "server", Address: "http://localhost:4243"},
+		cluster.Node{ID: "server0", Address: "http://localhost:4243"},
+		cluster.Node{ID: "server1", Address: "http://10.10.10.10:4243"},
 	)
 	cluster := getDockerCluster()
 	c.Assert(cluster, gocheck.DeepEquals, expected)
