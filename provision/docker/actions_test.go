@@ -102,7 +102,7 @@ func (s *S) TestSetIpForward(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	cont = r.(container)
 	c.Assert(cont, gocheck.FitsTypeOf, container{})
-	c.Assert(cont.ip, gocheck.Not(gocheck.Equals), "")
+	c.Assert(cont.IP, gocheck.Not(gocheck.Equals), "")
 }
 
 func (s *S) TestSetHostPortName(c *gocheck.C) {
