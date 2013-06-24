@@ -47,7 +47,7 @@ var createContainer = action.Action{
 		return cont, nil
 	},
 	Backward: func(ctx action.BWContext) {
-		c := ctx.Params[0].(container)
+		c := ctx.FWResult.(container)
 		dockerCluster.RemoveContainer(c.ID)
 	},
 }
@@ -96,7 +96,7 @@ var insertContainer = action.Action{
 		return c, nil
 	},
 	Backward: func(ctx action.BWContext) {
-		c := ctx.Params[0].(container)
+		c := ctx.FWResult.(container)
 		coll := collection()
 		defer coll.Database.Session.Close()
 		coll.RemoveId(c.ID)

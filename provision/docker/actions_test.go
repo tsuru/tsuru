@@ -37,7 +37,7 @@ func (s *S) TestCreateContainerForward(c *gocheck.C) {
 
 func (s *S) TestCreateContainerBackward(c *gocheck.C) {
 	cont := container{ID: "ble"}
-	context := action.BWContext{Params: []interface{}{cont}}
+	context := action.BWContext{FWResult: cont}
 	createContainer.Backward(context)
 }
 
@@ -65,7 +65,7 @@ func (s *S) TestInsertContainerBackward(c *gocheck.C) {
 	coll := s.conn.Collection(s.collName)
 	err := coll.Insert(&cont)
 	c.Assert(err, gocheck.IsNil)
-	context := action.BWContext{Params: []interface{}{cont}}
+	context := action.BWContext{FWResult: cont}
 	insertContainer.Backward(context)
 	err = coll.FindId(cont.ID).One(&cont)
 	c.Assert(err, gocheck.NotNil)
