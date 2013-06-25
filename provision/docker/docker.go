@@ -194,6 +194,7 @@ func deploy(app provision.App, version string, w io.Writer) (string, error) {
 	for {
 		result, err := c.stopped()
 		if err != nil {
+			log.Printf("error on stopped for container %s - %s", c.ID, err.Error())
 			return "", err
 		}
 		if result {
@@ -202,10 +203,12 @@ func deploy(app provision.App, version string, w io.Writer) (string, error) {
 	}
 	err = c.logs(w)
 	if err != nil {
+		log.Printf("error on get logs for container %s - %s", c.ID, err.Error())
 		return "", err
 	}
 	imageId, err = c.commit()
 	if err != nil {
+		log.Printf("error on commit container %s - %s", c.ID, err.Error())
 		return "", err
 	}
 	c.remove()
