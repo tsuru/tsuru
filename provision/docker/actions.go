@@ -18,6 +18,7 @@ var createContainer = action.Action{
 		cmds := ctx.Params[2].([]string)
 		cont, err := newContainer(app, imageId, cmds)
 		if err != nil {
+			log.Printf("error on create container for app %s - %s", app.GetName(), err.Error())
 			return nil, err
 		}
 		return cont, nil
