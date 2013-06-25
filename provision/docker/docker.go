@@ -94,10 +94,12 @@ func newContainer(app provision.App, imageId string, cmds []string) (container, 
 	}
 	port, err := getPort()
 	if err != nil {
+		log.Printf("error on getting port for container %s - %s", cont.AppName, port)
 		return container{}, err
 	}
 	user, err := config.GetString("docker:ssh:user")
 	if err != nil {
+		log.Printf("error on getting user for container %s - %s", cont.AppName, user)
 		return container{}, err
 	}
 	config := docker.Config{
@@ -111,6 +113,7 @@ func newContainer(app provision.App, imageId string, cmds []string) (container, 
 	}
 	_, c, err := dockerCluster.CreateContainer(&config)
 	if err != nil {
+		log.Printf("error on creating container in docker %s - %s", cont.AppName, err.Error())
 		return container{}, err
 	}
 	cont.ID = c.ID
