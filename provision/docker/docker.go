@@ -301,7 +301,8 @@ func (c *container) commit() (string, error) {
 func (c *container) stopped() (bool, error) {
 	dockerContainer, err := dockerCluster().InspectContainer(c.ID)
 	if err != nil {
-		return true, err
+		log.Printf("error on get log for container %s", c.ID)
+		return false, err
 	}
 	running := dockerContainer.State.Running
 	return !running, nil
