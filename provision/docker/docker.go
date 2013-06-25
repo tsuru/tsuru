@@ -183,7 +183,7 @@ func deploy(app provision.App, version string, w io.Writer) (string, error) {
 		return "", err
 	}
 	imageId := getImage(app)
-	actions := []*action.Action{&createContainer, &insertContainer}
+	actions := []*action.Action{&createContainer, &startContainer, &insertContainer}
 	pipeline := action.NewPipeline(actions...)
 	err = pipeline.Execute(app, imageId, commands)
 	if err != nil {
