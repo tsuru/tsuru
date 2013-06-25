@@ -306,8 +306,7 @@ func (c *container) stopped() (bool, error) {
 		log.Printf("error on get log for container %s", c.ID)
 		return false, err
 	}
-	running := dockerContainer.State.Running
-	return !running, nil
+	return !dockerContainer.State.Running, nil
 }
 
 // logs returns logs for the container.
