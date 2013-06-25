@@ -184,6 +184,7 @@ func deploy(app provision.App, version string, w io.Writer) (string, error) {
 	pipeline := action.NewPipeline(actions...)
 	err = pipeline.Execute(app, imageId, commands)
 	if err != nil {
+		log.Printf("error on execute deploy pipeline for app %s - %s", app.GetName(), err.Error())
 		return "", err
 	}
 	c := pipeline.Result().(container)
