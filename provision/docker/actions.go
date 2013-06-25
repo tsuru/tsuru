@@ -94,3 +94,17 @@ var addRoute = action.Action{
 	Backward: func(ctx action.BWContext) {
 	},
 }
+
+var startContainer = action.Action{
+	Name: "start-container",
+	Forward: func(ctx action.FWContext) (action.Result, error) {
+		c := ctx.Previous.(container)
+		err := dockerCluster().StartContainer(c.ID)
+		if err != nil {
+			return nil, err
+		}
+		return c, nil
+	},
+	Backward: func(ctx action.BWContext) {
+	},
+}
