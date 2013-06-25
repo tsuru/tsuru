@@ -21,24 +21,22 @@ import (
 	"strings"
 )
 
-var dockerCluster *cluster.Cluster
+var dCluster *cluster.Cluster
 
-func init() {
-	dockerCluster = getDockerCluster()
-}
-
-func getDockerCluster() *cluster.Cluster {
-	servers, _ := config.GetList("docker:servers")
-	nodes := []cluster.Node{}
-	for index, server := range servers {
-		node := cluster.Node{
-			ID:      fmt.Sprintf("server%d", index),
-			Address: server,
+func dockerCluster() *cluster.Cluster {
+	if dCluster == nil {
+		servers, _ := config.GetList("docker:servers")
+		nodes := []cluster.Node{}
+		for index, server := range servers {
+			node := cluster.Node{
+				ID:      fmt.Sprintf("server%d", index),
+				Address: server,
+			}
+			nodes = append(nodes, node)
 		}
-		nodes = append(nodes, node)
+		dCluster, _ = cluster.New(nodes...)
 	}
-	dockerCluster, _ := cluster.New(nodes...)
-	return dockerCluster
+	return dCluster
 }
 
 var fsystem fs.Fs
@@ -111,7 +109,7 @@ func newContainer(app provision.App, imageId string, cmds []string) (container, 
 		AttachStdout: false,
 		AttachStderr: false,
 	}
-	_, c, err := dockerCluster.CreateContainer(&config)
+	_, c, err := dockerCluster().CreateContainer(&config)
 	if err != nil {
 		log.Printf("error on creating container in docker %s - %s", cont.AppName, err.Error())
 		return container{}, err
@@ -126,7 +124,7 @@ func (c *container) hostPort() (string, error) {
 	if c.Port == "" {
 		return "", errors.New("Container does not contain any mapped port")
 	}
-	dockerContainer, err := dockerCluster.InspectContainer(c.ID)
+	dockerContainer, err := dockerCluster().InspectContainer(c.ID)
 	if err != nil {
 		return "", err
 	}
@@ -141,7 +139,7 @@ func (c *container) hostPort() (string, error) {
 
 // ip returns the ip for the container.
 func (c *container) ip() (string, error) {
-	dockerContainer, err := dockerCluster.InspectContainer(c.ID)
+	dockerContainer, err := dockerCluster().InspectContainer(c.ID)
 	if err != nil {
 		return "", err
 	}
@@ -239,7 +237,7 @@ func start(app provision.App, imageId string, w io.Writer) (*container, error) {
 func (c *container) remove() error {
 	address := c.getAddress()
 	log.Printf("Removing container %s from docker", c.ID)
-	err := dockerCluster.RemoveContainer(c.ID)
+	err := dockerCluster().RemoveContainer(c.ID)
 	if err != nil {
 		log.Printf("Failed to remove container from docker: %s", err)
 		return err
@@ -282,7 +280,7 @@ func (c *container) ssh(stdout, stderr io.Writer, cmd string, args ...string) er
 // commit commits an image in docker based in the container
 func (c *container) commit() (string, error) {
 	opts := dclient.CommitContainerOptions{Container: c.ID}
-	image, err := dockerCluster.CommitContainer(opts)
+	image, err := dockerCluster().CommitContainer(opts)
 	if err != nil {
 		log.Printf("Could not commit docker image: %s", err.Error())
 		return "", err
@@ -292,7 +290,7 @@ func (c *container) commit() (string, error) {
 
 // stopped returns true if the container is stopped.
 func (c *container) stopped() (bool, error) {
-	dockerContainer, err := dockerCluster.InspectContainer(c.ID)
+	dockerContainer, err := dockerCluster().InspectContainer(c.ID)
 	if err != nil {
 		return true, err
 	}
@@ -307,7 +305,7 @@ func (c *container) logs(w io.Writer) error {
 		Logs:         true,
 		OutputStream: w,
 	}
-	return dockerCluster.AttachToContainer(opts)
+	return dockerCluster().AttachToContainer(opts)
 }
 
 func getContainer(id string) (*container, error) {
@@ -343,7 +341,7 @@ func getImage(app provision.App) string {
 
 // removeImage removes an image from docker registry
 func removeImage(imageId string) error {
-	return dockerCluster.RemoveImage(imageId)
+	return dockerCluster().RemoveImage(imageId)
 }
 
 type cmdError struct {

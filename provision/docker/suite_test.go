@@ -72,7 +72,7 @@ func (s *S) SetUpSuite(c *gocheck.C) {
 	f.Close()
 	s.server, err = dtesting.NewServer()
 	c.Assert(err, gocheck.IsNil)
-	dockerCluster, _ = cluster.New(
+	dCluster, _ = cluster.New(
 		cluster.Node{ID: "server", Address: s.server.URL()},
 	)
 

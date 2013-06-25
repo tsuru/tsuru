@@ -494,13 +494,13 @@ func (s *S) TestCollectStatus(c *gocheck.C) {
 		}
 	}))
 	defer server.Close()
-	oldCluster := dockerCluster
-	dockerCluster, err = cluster.New(
+	oldCluster := dockerCluster()
+	dCluster, err = cluster.New(
 		cluster.Node{ID: "server", Address: server.URL},
 	)
 	c.Assert(err, gocheck.IsNil)
 	defer func() {
-		dockerCluster = oldCluster
+		dCluster = oldCluster
 	}()
 	err = collection().Insert(
 		container{

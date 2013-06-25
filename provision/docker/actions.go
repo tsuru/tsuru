@@ -25,7 +25,7 @@ var createContainer = action.Action{
 	},
 	Backward: func(ctx action.BWContext) {
 		c := ctx.FWResult.(container)
-		dockerCluster.RemoveContainer(c.ID)
+		dockerCluster().RemoveContainer(c.ID)
 	},
 }
 

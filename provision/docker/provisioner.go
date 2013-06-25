@@ -246,7 +246,7 @@ func collectUnit(container container, units chan<- provision.Unit, wg *sync.Wait
 	case "created":
 		return
 	}
-	dockerContainer, err := dockerCluster.InspectContainer(container.ID)
+	dockerContainer, err := dockerCluster().InspectContainer(container.ID)
 	if err != nil {
 		log.Printf("error on inspecting [container %s] for collect data", container.ID)
 		return

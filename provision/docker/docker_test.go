@@ -247,14 +247,14 @@ func (s *S) TestContainerHostPortNotFound(c *gocheck.C) {
 		}
 	}))
 	defer server.Close()
-	oldCluster := dockerCluster
+	oldCluster := dockerCluster()
 	var err error
-	dockerCluster, err = cluster.New(
+	dCluster, err = cluster.New(
 		cluster.Node{ID: "server", Address: server.URL},
 	)
 	c.Assert(err, gocheck.IsNil)
 	defer func() {
-		dockerCluster = oldCluster
+		dCluster = oldCluster
 	}()
 	container := container{ID: "c-01", Port: "8888"}
 	port, err := container.hostPort()
@@ -500,6 +500,11 @@ func (s *S) TestDockerCluster(c *gocheck.C) {
 		cluster.Node{ID: "server0", Address: "http://localhost:4243"},
 		cluster.Node{ID: "server1", Address: "http://10.10.10.10:4243"},
 	)
-	cluster := getDockerCluster()
+	oldDockerCluster := dCluster
+	dCluster = nil
+	defer func() {
+		dCluster = oldDockerCluster
+	}()
+	cluster := dockerCluster()
 	c.Assert(cluster, gocheck.DeepEquals, expected)
 }
