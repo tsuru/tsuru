@@ -288,7 +288,8 @@ func (c *container) ssh(stdout, stderr io.Writer, cmd string, args ...string) er
 // commit commits an image in docker based in the container
 func (c *container) commit() (string, error) {
 	log.Printf("commiting container %s", c.ID)
-	opts := dclient.CommitContainerOptions{Container: c.ID}
+	repoNamespace, _ := config.GetString("docker:repository-namespace")
+	opts := dclient.CommitContainerOptions{Container: c.ID, Repository: repoNamespace + "/" + c.AppName}
 	image, err := dockerCluster().CommitContainer(opts)
 	if err != nil {
 		log.Printf("Could not commit docker image: %s", err.Error())
