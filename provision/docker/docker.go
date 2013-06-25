@@ -228,7 +228,7 @@ func start(app provision.App, imageId string, w io.Writer) (*container, error) {
 	if err != nil {
 		return nil, err
 	}
-	actions := []*action.Action{&createContainer, &setIp, &setHostPort, &insertContainer, &addRoute}
+	actions := []*action.Action{&createContainer, &startContainer, &setIp, &setHostPort, &insertContainer, &addRoute}
 	pipeline := action.NewPipeline(actions...)
 	err = pipeline.Execute(app, imageId, commands)
 	if err != nil {
