@@ -191,6 +191,7 @@ func deploy(app provision.App, version string, w io.Writer) (string, error) {
 		return "", err
 	}
 	c := pipeline.Result().(container)
+	log.Printf("pipeline succefully executed - %s", c.ID)
 	for {
 		result, err := c.stopped()
 		if err != nil {

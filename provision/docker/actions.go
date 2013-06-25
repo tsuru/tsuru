@@ -67,7 +67,7 @@ var insertContainer = action.Action{
 		coll := collection()
 		defer coll.Database.Session.Close()
 		if err := coll.Insert(c); err != nil {
-			log.Print(err)
+			log.Printf("error on inserting container into database %s - %s", c.ID, err.Error())
 			return nil, err
 		}
 		return c, nil
