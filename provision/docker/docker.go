@@ -193,6 +193,7 @@ func deploy(app provision.App, version string, w io.Writer) (string, error) {
 	c := pipeline.Result().(container)
 	log.Printf("pipeline succefully executed - %s", c.ID)
 	for {
+		log.Printf("waiting the container be stopped - %s", c.ID)
 		result, err := c.stopped()
 		if err != nil {
 			log.Printf("error on stopped for container %s - %s", c.ID, err.Error())
@@ -202,16 +203,19 @@ func deploy(app provision.App, version string, w io.Writer) (string, error) {
 			break
 		}
 	}
+	log.Printf("getting container logs - %s", c.ID)
 	err = c.logs(w)
 	if err != nil {
 		log.Printf("error on get logs for container %s - %s", c.ID, err.Error())
 		return "", err
 	}
+	log.Printf("commiting container - %s", c.ID)
 	imageId, err = c.commit()
 	if err != nil {
 		log.Printf("error on commit container %s - %s", c.ID, err.Error())
 		return "", err
 	}
+	log.Printf("removing container - %s", c.ID)
 	c.remove()
 	// if err != nil {
 	// 	return "", err
