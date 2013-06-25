@@ -21,7 +21,9 @@ func (s *S) TestDeployCmds(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	version := "version"
 	appRepo := repository.ReadOnlyURL(app.GetName())
-	expected := []string{deployCmd, appRepo}
+	user, err := config.GetString("docker:ssh:user")
+	c.Assert(err, gocheck.IsNil)
+	expected := []string{"sudo", "-u", user, deployCmd, appRepo}
 	cmds, err := deployCmds(app, version)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(cmds, gocheck.DeepEquals, expected)
