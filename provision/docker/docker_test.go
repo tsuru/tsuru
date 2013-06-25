@@ -501,8 +501,12 @@ func (s *S) TestDockerCluster(c *gocheck.C) {
 		cluster.Node{ID: "server1", Address: "http://10.10.10.10:4243"},
 	)
 	oldDockerCluster := dCluster
+	cmutext.Lock()
 	dCluster = nil
+	cmutext.Unlock()
 	defer func() {
+		cmutext.Lock()
+		defer cmutext.Unlock()
 		dCluster = oldDockerCluster
 	}()
 	cluster := dockerCluster()

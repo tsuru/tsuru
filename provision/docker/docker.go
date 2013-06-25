@@ -19,11 +19,18 @@ import (
 	"io"
 	"labix.org/v2/mgo/bson"
 	"strings"
+	"sync"
 )
 
-var dCluster *cluster.Cluster
+var (
+	dCluster *cluster.Cluster
+	cmutext  sync.Mutex
+	fsystem  fs.Fs
+)
 
 func dockerCluster() *cluster.Cluster {
+	cmutext.Lock()
+	defer cmutext.Unlock()
 	if dCluster == nil {
 		servers, _ := config.GetList("docker:servers")
 		nodes := []cluster.Node{}
@@ -38,8 +45,6 @@ func dockerCluster() *cluster.Cluster {
 	}
 	return dCluster
 }
-
-var fsystem fs.Fs
 
 func filesystem() fs.Fs {
 	if fsystem == nil {
