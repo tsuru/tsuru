@@ -203,12 +203,12 @@ func deploy(app provision.App, version string, w io.Writer) (string, error) {
 			break
 		}
 	}
-	log.Printf("getting container logs - %s", c.ID)
-	err = c.logs(w)
-	if err != nil {
-		log.Printf("error on get logs for container %s - %s", c.ID, err.Error())
-		return "", err
-	}
+	// log.Printf("getting container logs - %s", c.ID)
+	// err = c.logs(w)
+	// if err != nil {
+	// 	log.Printf("error on get logs for container %s - %s", c.ID, err.Error())
+	// 	return "", err
+	// }
 	log.Printf("commiting container - %s", c.ID)
 	imageId, err = c.commit()
 	if err != nil {
