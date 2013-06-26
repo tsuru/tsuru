@@ -296,6 +296,7 @@ func (c *container) commit() (string, error) {
 		return "", err
 	}
 	log.Printf("image %s gerenated from container %s", image.ID, c.ID)
+	replicateImage(opts.Repository)
 	return image.ID, nil
 }
 
