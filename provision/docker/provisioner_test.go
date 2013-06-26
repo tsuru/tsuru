@@ -150,7 +150,6 @@ func (s *S) TestDeployRemoveContainersEvenWhenTheyreNotInTheAppsCollection(c *go
 }
 
 func (s *S) TestDeployFailureFirstStep(c *gocheck.C) {
-	fmt.Println("xxx")
 	go func() {
 		client, err := dockerClient.NewClient(s.server.URL())
 		if err != nil {
