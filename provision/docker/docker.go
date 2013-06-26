@@ -366,3 +366,24 @@ func (e *cmdError) Error() string {
 	command := e.cmd + " " + strings.Join(e.args, " ")
 	return fmt.Sprintf("Failed to run command %q (%s): %s.", command, e.err, e.out)
 }
+
+// replicateImage replicates the given image through all nodes in the cluster.
+func replicateImage(name string) error {
+	var buf bytes.Buffer
+	if registry, err := config.GetString("docker:registry"); err == nil {
+		pushOpts := dclient.PushImageOptions{Name: name, Registry: registry}
+		err := dockerCluster().PushImage(pushOpts, &buf)
+		if err != nil {
+			log.Printf("[docker] Failed to push image %q (%s): %s", name, err, buf.String())
+			return err
+		}
+		buf.Reset()
+		pullOpts := dclient.PullImageOptions{Repository: name, Registry: registry}
+		err = dockerCluster().PullImage(pullOpts, &buf)
+		if err != nil {
+			log.Printf("[docker] Failed to replicate image %q through nodes (%s): %s", name, err, buf.String())
+			return err
+		}
+	}
+	return nil
+}

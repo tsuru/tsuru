@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"github.com/dotcloud/docker"
 	dockerClient "github.com/fsouza/go-dockerclient"
+	dtesting "github.com/fsouza/go-dockerclient/testing"
 	"github.com/globocom/config"
 	"github.com/globocom/docker-cluster/cluster"
 	etesting "github.com/globocom/tsuru/exec/testing"
@@ -21,6 +22,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"strings"
+	"sync/atomic"
 )
 
 func (s *S) TestContainerGetAddress(c *gocheck.C) {
@@ -530,4 +532,51 @@ func (s *S) TestDockerCluster(c *gocheck.C) {
 	}()
 	cluster := dockerCluster()
 	c.Assert(cluster, gocheck.DeepEquals, expected)
+}
+
+func (s *S) TestReplicateImage(c *gocheck.C) {
+	var requests int32
+	server, err := dtesting.NewServer(func(*http.Request) {
+		atomic.AddInt32(&requests, 1)
+	})
+	c.Assert(err, gocheck.IsNil)
+	defer server.Stop()
+	config.Set("docker:registry", "http://localhost:3030")
+	defer config.Unset("docker:registry")
+	cmutext.Lock()
+	oldDockerCluster := dCluster
+	dCluster, _ = cluster.New(cluster.Node{ID: "server0", Address: server.URL()})
+	cmutext.Unlock()
+	defer func() {
+		cmutext.Lock()
+		defer cmutext.Unlock()
+		dCluster = oldDockerCluster
+	}()
+	var buf bytes.Buffer
+	err = dCluster.PullImage(dockerClient.PullImageOptions{Repository: "base", Registry: "http://index.docker.io"}, &buf)
+	c.Assert(err, gocheck.IsNil)
+	err = replicateImage("base")
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(atomic.LoadInt32(&requests), gocheck.Equals, int32(3))
+}
+
+func (s *S) TestReplicateImageNoRegistry(c *gocheck.C) {
+	var requests int32
+	server, err := dtesting.NewServer(func(*http.Request) {
+		atomic.AddInt32(&requests, 1)
+	})
+	c.Assert(err, gocheck.IsNil)
+	defer server.Stop()
+	cmutext.Lock()
+	oldDockerCluster := dCluster
+	dCluster, _ = cluster.New(cluster.Node{ID: "server0", Address: server.URL()})
+	cmutext.Unlock()
+	defer func() {
+		cmutext.Lock()
+		defer cmutext.Unlock()
+		dCluster = oldDockerCluster
+	}()
+	err = replicateImage("tsuru/python")
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(atomic.LoadInt32(&requests), gocheck.Equals, int32(0))
 }
