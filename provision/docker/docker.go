@@ -101,9 +101,9 @@ func newContainer(app provision.App, imageId string, cmds []string) (container, 
 		return container{}, err
 	}
 	config := docker.Config{
-		Image:     imageId,
-		Cmd:       cmds,
-		PortSpecs: []string{port},
+		Image:        imageId,
+		Cmd:          cmds,
+		PortSpecs:    []string{port},
 		AttachStdin:  false,
 		AttachStdout: false,
 		AttachStderr: false,
