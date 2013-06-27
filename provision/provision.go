@@ -67,8 +67,9 @@ type App interface {
 	ProvisionUnits() []AppUnit
 	RemoveUnit(id string) error
 
-	// Run executes the command in app units, sourcing apprc before running the
-	// command.
+	// Run executes the command in app units. Commands executed with this
+	// method should have access to environment variables defined in the
+	// app.
 	Run(cmd string, w io.Writer) error
 
 	Restart(io.Writer) error
