@@ -101,25 +101,37 @@ func injectEnvsAndRestart(a provision.App, w io.Writer) {
 	}
 }
 
+func startInBackground(a provision.App, c container, imageId string, w io.Writer, started chan bool) {
+	_, err := start(a, imageId, w)
+	if err != nil {
+		log.Printf("error on start the app %s - %s", a, err)
+	}
+	if c.ID != "" {
+		if a.RemoveUnit(c.ID) != nil {
+			c.remove()
+		}
+	}
+	started <- true
+}
+
 func (p *dockerProvisioner) Deploy(a provision.App, version string, w io.Writer) error {
 	imageId, err := deploy(a, version, w)
 	if err != nil {
 		return err
 	}
-	if containers, err := listAppContainers(a.GetName()); err == nil && len(containers) > 0 {
+	containers, err := listAppContainers(a.GetName())
+	started := make(chan bool, len(containers))
+	if err == nil && len(containers) > 0 {
+		/* if containers, err := listAppContainers(a.GetName()); err == nil && len(containers) > 0 { */
 		for _, c := range containers {
-			_, err = start(a, imageId, w)
-			if err != nil {
-				return err
-			}
-			if a.RemoveUnit(c.ID) != nil {
-				c.remove()
-			}
+			go startInBackground(a, c, imageId, w, started)
 		}
-	} else if _, err := start(a, imageId, w); err != nil {
-		return err
+	} else {
+		go startInBackground(a, container{}, imageId, w, started)
 	}
-	go injectEnvsAndRestart(a, w)
+	if <-started {
+		go injectEnvsAndRestart(a, w)
+	}
 	return nil
 }
 

@@ -135,27 +135,6 @@ func (s *S) TestDeployRemoveContainersEvenWhenTheyreNotInTheAppsCollection(c *go
 	c.Assert(n, gocheck.Equals, 2)
 }
 
-func (s *S) TestDeployFailureFirstStep(c *gocheck.C) {
-	go s.stopContainers()
-	var (
-		p   dockerProvisioner
-		buf bytes.Buffer
-	)
-	app := testing.NewFakeApp("app", "python", 0)
-	app.AddUnit(&testing.FakeUnit{Name: "app/0"})
-	fexec := etesting.ErrorExecutor{
-		FakeExecutor: etesting.FakeExecutor{
-			Output: map[string][][]byte{
-				"*": {[]byte("failed to start container")},
-			},
-		},
-	}
-	setExecut(&fexec)
-	defer setExecut(nil)
-	err := p.Deploy(app, "master", &buf)
-	c.Assert(err, gocheck.NotNil)
-}
-
 func (s *S) TestProvisionerDestroy(c *gocheck.C) {
 	err := s.newImage()
 	c.Assert(err, gocheck.IsNil)
