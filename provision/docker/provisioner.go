@@ -122,7 +122,6 @@ func (p *dockerProvisioner) Deploy(a provision.App, version string, w io.Writer)
 	containers, err := listAppContainers(a.GetName())
 	started := make(chan bool, len(containers))
 	if err == nil && len(containers) > 0 {
-		/* if containers, err := listAppContainers(a.GetName()); err == nil && len(containers) > 0 { */
 		for _, c := range containers {
 			go startInBackground(a, c, imageId, w, started)
 		}
