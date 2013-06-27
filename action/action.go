@@ -7,6 +7,7 @@ package action
 import (
 	"errors"
 	"github.com/globocom/tsuru/log"
+	"sync"
 )
 
 // Result is the value returned by Forward. It is used in the call of the next
@@ -67,6 +68,9 @@ type Action struct {
 
 	// Result of the action. Stored for use in the backward phase.
 	result Result
+
+	// mutex for the result
+	rMutex sync.Mutex
 }
 
 // Pipeline is a list of actions. Each pipeline is atomic: either all actions
@@ -82,7 +86,10 @@ func NewPipeline(actions ...*Action) *Pipeline {
 }
 
 func (p *Pipeline) Result() Result {
-	return p.actions[len(p.actions)-1].result
+	action := p.actions[len(p.actions)-1]
+	action.rMutex.Lock()
+	defer action.rMutex.Unlock()
+	return action.result
 }
 
 // Execute executes the pipeline.
@@ -114,7 +121,9 @@ func (p *Pipeline) Execute(params ...interface{}) error {
 			err = errors.New("Not enough parameters to call Action.Forward.")
 		} else {
 			r, err = a.Forward(fwCtx)
+			a.rMutex.Lock()
 			a.result = r
+			a.rMutex.Unlock()
 			fwCtx.Previous = r
 		}
 		if err != nil {
