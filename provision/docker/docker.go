@@ -315,6 +315,17 @@ func (c *container) logs(w io.Writer) error {
 	opts := dclient.AttachToContainerOptions{
 		Container:    c.ID,
 		Logs:         true,
+		Stdout:       true,
+		OutputStream: w,
+	}
+	err := dockerCluster().AttachToContainer(opts)
+	if err != nil {
+		return err
+	}
+	opts = dclient.AttachToContainerOptions{
+		Container:    c.ID,
+		Logs:         true,
+		Stderr:       true,
 		OutputStream: w,
 	}
 	return dockerCluster().AttachToContainer(opts)
