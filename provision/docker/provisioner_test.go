@@ -72,26 +72,28 @@ func (s *S) TestProvisionerRestartCallsTheRestartHook(c *gocheck.C) {
 	c.Assert(fexec.ExecutedCmd("ssh", args), gocheck.Equals, true)
 }
 
-func (s *S) TestDeploy(c *gocheck.C) {
-	go func() {
-		client, err := dockerClient.NewClient(s.server.URL())
+func (s *S) stopContainers() {
+	client, err := dockerClient.NewClient(s.server.URL())
+	if err != nil {
+		return
+	}
+	for {
+		opts := dockerClient.ListContainersOptions{All: true}
+		containers, err := client.ListContainers(opts)
 		if err != nil {
 			return
 		}
-		for {
-			opts := dockerClient.ListContainersOptions{All: true}
-			containers, err := client.ListContainers(opts)
-			if err != nil {
-				return
+		if len(containers) > 0 {
+			for _, cont := range containers {
+				client.StopContainer(cont.ID, 1)
 			}
-			if len(containers) > 0 {
-				for _, cont := range containers {
-					client.StopContainer(cont.ID, 1)
-				}
-				return
-			}
+			return
 		}
-	}()
+	}
+}
+
+func (s *S) TestDeploy(c *gocheck.C) {
+	go s.stopContainers()
 	err := s.newImage()
 	c.Assert(err, gocheck.IsNil)
 	fexec := &etesting.FakeExecutor{}
