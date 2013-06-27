@@ -87,7 +87,6 @@ func (s *S) stopContainers() {
 			for _, cont := range containers {
 				client.StopContainer(cont.ID, 1)
 			}
-			return
 		}
 	}
 }
@@ -108,28 +107,11 @@ func (s *S) TestDeploy(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	defer p.Destroy(app)
 	time.Sleep(6e9)
-	c.Assert(app.Commands, gocheck.DeepEquals, []string{"serialize", "restart"})
+	c.Assert(app.GetCommands(), gocheck.DeepEquals, []string{"serialize", "restart"})
 }
 
 func (s *S) TestDeployRemoveContainersEvenWhenTheyreNotInTheAppsCollection(c *gocheck.C) {
-	go func() {
-		client, err := dockerClient.NewClient(s.server.URL())
-		if err != nil {
-			return
-		}
-		for {
-			opts := dockerClient.ListContainersOptions{All: true}
-			containers, err := client.ListContainers(opts)
-			if err != nil {
-				return
-			}
-			if len(containers) > 0 {
-				for _, cont := range containers {
-					client.StopContainer(cont.ID, 1)
-				}
-			}
-		}
-	}()
+	go s.stopContainers()
 	err := s.newImage()
 	c.Assert(err, gocheck.IsNil)
 	cont1, err := s.newContainer()
