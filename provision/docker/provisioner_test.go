@@ -129,6 +129,7 @@ func (s *S) TestDeployRemoveContainersEvenWhenTheyreNotInTheAppsCollection(c *go
 	var w bytes.Buffer
 	err = p.Deploy(app, "master", &w)
 	c.Assert(err, gocheck.IsNil)
+	time.Sleep(1e9)
 	defer p.Destroy(app)
 	n, err := s.conn.Collection(s.collName).Find(bson.M{"appname": cont1.AppName}).Count()
 	c.Assert(err, gocheck.IsNil)
