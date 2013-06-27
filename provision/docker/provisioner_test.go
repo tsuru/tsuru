@@ -72,7 +72,7 @@ func (s *S) TestProvisionerRestartCallsTheRestartHook(c *gocheck.C) {
 	c.Assert(fexec.ExecutedCmd("ssh", args), gocheck.Equals, true)
 }
 
-func (s *S) TestDeployShouldCallDockerCreate(c *gocheck.C) {
+func (s *S) TestDeploy(c *gocheck.C) {
 	go func() {
 		client, err := dockerClient.NewClient(s.server.URL())
 		if err != nil {
@@ -105,6 +105,8 @@ func (s *S) TestDeployShouldCallDockerCreate(c *gocheck.C) {
 	err = p.Deploy(app, "master", w)
 	c.Assert(err, gocheck.IsNil)
 	defer p.Destroy(app)
+	time.Sleep(6e9)
+	c.Assert(app.Commands, gocheck.DeepEquals, []string{"serialize", "restart"})
 }
 
 func (s *S) TestDeployRemoveContainersEvenWhenTheyreNotInTheAppsCollection(c *gocheck.C) {

@@ -113,6 +113,10 @@ func (p *dockerProvisioner) Deploy(a provision.App, version string, w io.Writer)
 		if err != nil {
 			log.Printf("Failed to serialize env vars: %s.", err)
 		}
+		err = a.Restart(w)
+		if err != nil {
+			log.Printf("Failed to restart app %s - %s.", a.GetName(), err)
+		}
 	}()
 	return nil
 }
