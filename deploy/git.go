@@ -30,7 +30,7 @@ func clone(p provision.Provisioner, app provision.App) ([]byte, error) {
 
 // fetch runs a git fetch to update the code in the app.
 //
-// It works like Clone, pulling from the app bare repository.
+// It works like Clone, fetching from the app remote repository.
 func fetch(p provision.Provisioner, app provision.App) ([]byte, error) {
 	var buf bytes.Buffer
 	path, err := repository.GetPath()
@@ -40,7 +40,7 @@ func fetch(p provision.Provisioner, app provision.App) ([]byte, error) {
 	cmd := fmt.Sprintf("cd %s && git fetch origin", path)
 	err = p.ExecuteCommand(&buf, &buf, app, cmd)
 	b := buf.Bytes()
-	log.Printf(`"git pull" output: %s`, b)
+	log.Printf(`"git fetch" output: %s`, b)
 	return b, err
 }
 
