@@ -19,7 +19,7 @@ import (
 )
 
 func getSysLogger() *log.Logger {
-	logger, err := syslog.NewLogger(syslog.LOG_INFO, log.LstdFlags)
+	logger, err := syslog.NewLogger(syslog.LOG_INFO, log.Llongfile|log.LstdFlags)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -31,7 +31,7 @@ func getFileLogger(fileName string) *log.Logger {
 	if err != nil {
 		log.Fatal(err)
 	}
-	return log.New(file, "", log.LstdFlags)
+	return log.New(file, "", log.Llongfile|log.LstdFlags)
 }
 
 func Init() {
