@@ -136,25 +136,7 @@ func (s *S) TestDeployRemoveContainersEvenWhenTheyreNotInTheAppsCollection(c *go
 }
 
 func (s *S) TestDeployFailureFirstStep(c *gocheck.C) {
-	go func() {
-		client, err := dockerClient.NewClient(s.server.URL())
-		if err != nil {
-			return
-		}
-		for {
-			opts := dockerClient.ListContainersOptions{All: true}
-			containers, err := client.ListContainers(opts)
-			if err != nil {
-				return
-			}
-			if len(containers) > 0 {
-				for _, cont := range containers {
-					client.StopContainer(cont.ID, 1)
-				}
-				return
-			}
-		}
-	}()
+	go s.stopContainers()
 	var (
 		p   dockerProvisioner
 		buf bytes.Buffer
