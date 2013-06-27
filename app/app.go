@@ -520,11 +520,11 @@ func (app *App) loadConf() error {
 		return err
 	}
 	cmd := "cat " + path.Join(uRepo, "app.yaml")
-	var buf bytes.Buffer
-	if err := app.run(cmd, &buf); err != nil {
+	var outStream, errStream bytes.Buffer
+	if err := Provisioner.ExecuteCommand(&outStream, &errStream, app, cmd); err != nil {
 		return nil
 	}
-	err = goyaml.Unmarshal(buf.Bytes(), app.conf)
+	err = goyaml.Unmarshal(outStream.Bytes(), app.conf)
 	if err != nil {
 		app.Log(fmt.Sprintf("Got error while parsing yaml: %s", err), "tsuru")
 		return err
