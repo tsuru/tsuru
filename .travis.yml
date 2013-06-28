@@ -15,6 +15,7 @@ install:
 before_script:
   - ./check-fmt.sh
   - make get-prod
+  - echo http://localhost > $HOME/.tsuru_target
 script:
   - make test
 notifications:
