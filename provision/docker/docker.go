@@ -33,6 +33,9 @@ func dockerCluster() *cluster.Cluster {
 	defer cmutext.Unlock()
 	if dCluster == nil {
 		servers, _ := config.GetList("docker:servers")
+		if len(servers) < 1 {
+			log.Fatal(`Tsuru is misconfigured. Setting "docker:servers" is mandatory`)
+		}
 		nodes := []cluster.Node{}
 		for index, server := range servers {
 			node := cluster.Node{
