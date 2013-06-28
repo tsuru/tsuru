@@ -102,12 +102,24 @@ func (s *S) TestDeploy(c *gocheck.C) {
 	app := testing.NewFakeApp("cribcaged", "python", 1)
 	p.Provision(app)
 	defer p.Destroy(app)
-	w := &bytes.Buffer{}
-	err = p.Deploy(app, "master", w)
+	w := writer{b: make([]byte, 2048)}
+	err = p.Deploy(app, "master", &w)
 	c.Assert(err, gocheck.IsNil)
+	w.b = nil
 	defer p.Destroy(app)
 	time.Sleep(6e9)
 	c.Assert(app.GetCommands(), gocheck.DeepEquals, []string{"serialize", "restart"})
+}
+
+type writer struct {
+	b   []byte
+	cur int
+}
+
+func (w *writer) Write(c []byte) (int, error) {
+	copy(w.b[w.cur:], c)
+	w.cur += len(c)
+	return len(c), nil
 }
 
 func (s *S) TestDeployRemoveContainersEvenWhenTheyreNotInTheAppsCollection(c *gocheck.C) {

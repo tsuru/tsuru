@@ -89,15 +89,16 @@ func (p *dockerProvisioner) Restart(app provision.App) error {
 	return nil
 }
 
-func injectEnvsAndRestart(a provision.App, w io.Writer) {
+func injectEnvsAndRestart(a provision.App) {
 	time.Sleep(5e9)
 	err := a.SerializeEnvVars()
 	if err != nil {
 		log.Printf("Failed to serialize env vars: %s.", err)
 	}
-	err = a.Restart(w)
+	var buf bytes.Buffer
+	err = a.Restart(&buf)
 	if err != nil {
-		log.Printf("Failed to restart app %s - %s.", a.GetName(), err)
+		log.Printf("Failed to restart app %q (%s): %s.", a.GetName(), err, buf.String())
 	}
 }
 
@@ -129,7 +130,8 @@ func (p *dockerProvisioner) Deploy(a provision.App, version string, w io.Writer)
 		go startInBackground(a, container{}, imageId, w, started)
 	}
 	if <-started {
-		go injectEnvsAndRestart(a, w)
+		fmt.Fprintln(w, "--> App will be restarted, please check its logs for more details...")
+		go injectEnvsAndRestart(a)
 	}
 	return nil
 }
