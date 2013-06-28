@@ -50,7 +50,7 @@ func (s *S) TestDeployLogsActions(c *gocheck.C) {
  ---> Installing dependencies
 
  ---> Restarting application
-
+Restarting app...
  ---> Deploy done!
 
 `
