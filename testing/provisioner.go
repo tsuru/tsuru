@@ -80,6 +80,14 @@ func NewFakeApp(name, platform string, units int) *FakeApp {
 	return &app
 }
 
+func (a *FakeApp) Logs() []string {
+	a.logMut.Lock()
+	defer a.logMut.Unlock()
+	logs := make([]string, len(a.logs))
+	copy(logs, a.logs)
+	return logs
+}
+
 func (a *FakeApp) GetCommands() []string {
 	a.commMut.Lock()
 	defer a.commMut.Unlock()
