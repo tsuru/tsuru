@@ -130,7 +130,7 @@ func (p *dockerProvisioner) Deploy(a provision.App, version string, w io.Writer)
 		go startInBackground(a, container{}, imageId, w, started)
 	}
 	if <-started {
-		fmt.Fprintln(w, "--> App will be restarted, please check its logs for more details...")
+		fmt.Fprintln(w, " ---> App will be restarted, please check its log for more details...")
 		go injectEnvsAndRestart(a)
 	}
 	return nil
