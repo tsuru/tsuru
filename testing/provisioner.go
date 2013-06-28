@@ -88,6 +88,18 @@ func (a *FakeApp) Logs() []string {
 	return logs
 }
 
+func (a *FakeApp) HasLog(source, message string) bool {
+	log := source + message
+	a.logMut.Lock()
+	defer a.logMut.Unlock()
+	for _, l := range a.logs {
+		if l == log {
+			return true
+		}
+	}
+	return false
+}
+
 func (a *FakeApp) GetCommands() []string {
 	a.commMut.Lock()
 	defer a.commMut.Unlock()

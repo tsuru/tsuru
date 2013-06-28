@@ -65,6 +65,13 @@ func (s *S) TestFakeAppLogs(c *gocheck.C) {
 	c.Assert(app.Logs(), gocheck.DeepEquals, []string{"[tsuru]something happened"})
 }
 
+func (s *S) TestFakeAppHasLog(c *gocheck.C) {
+	app := NewFakeApp("sou", "otm", 0)
+	app.Log("something happened", "[tsuru]")
+	c.Assert(app.HasLog("[tsuru]", "something happened"), gocheck.Equals, true)
+	c.Assert(app.HasLog("tsuru", "something happened"), gocheck.Equals, false)
+}
+
 func (s *S) TestProvisioned(c *gocheck.C) {
 	app := NewFakeApp("red-sector", "rush", 1)
 	p := NewFakeProvisioner()
