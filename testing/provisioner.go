@@ -153,6 +153,7 @@ func (a *FakeApp) Restart(w io.Writer) error {
 	a.commMut.Lock()
 	a.Commands = append(a.Commands, "restart")
 	a.commMut.Unlock()
+	w.Write([]byte("Restarting app..."))
 	return nil
 }
 

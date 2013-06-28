@@ -44,6 +44,14 @@ func (s *S) TestFakeAppReady(c *gocheck.C) {
 	c.Assert(app.IsReady(), gocheck.Equals, true)
 }
 
+func (s *S) TestFakeAppRestart(c *gocheck.C) {
+	var buf bytes.Buffer
+	app := NewFakeApp("sou", "otm", 0)
+	err := app.Restart(&buf)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(buf.String(), gocheck.Equals, "Restarting app...")
+}
+
 func (s *S) TestFakeAppSerializeEnvVars(c *gocheck.C) {
 	app := NewFakeApp("sou", "otm", 0)
 	err := app.SerializeEnvVars()
