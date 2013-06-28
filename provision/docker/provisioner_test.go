@@ -109,6 +109,7 @@ func (s *S) TestDeploy(c *gocheck.C) {
 	defer p.Destroy(app)
 	time.Sleep(6e9)
 	c.Assert(app.GetCommands(), gocheck.DeepEquals, []string{"serialize", "restart"})
+	c.Assert(app.HasLog("tsuru", "Restarting app..."), gocheck.Equals, true)
 }
 
 type writer struct {

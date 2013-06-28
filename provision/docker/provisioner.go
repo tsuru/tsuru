@@ -96,7 +96,8 @@ func injectEnvsAndRestart(a provision.App) {
 		log.Printf("Failed to serialize env vars: %s.", err)
 	}
 	var buf bytes.Buffer
-	err = a.Restart(&buf)
+	w := app.LogWriter{App: a, Writer: &buf}
+	err = a.Restart(&w)
 	if err != nil {
 		log.Printf("Failed to restart app %q (%s): %s.", a.GetName(), err, buf.String())
 	}
