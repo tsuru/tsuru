@@ -523,3 +523,32 @@ func (s *S) TestGeneratePassword(c *gocheck.C) {
 		c.Check(p, gocheck.Not(gocheck.Equals), first)
 	}
 }
+
+func (s *S) TestListKeysShouldCallGandalfAPI(c *gocheck.C) {
+	h := testHandler{content: `{"mypckey":"ssh-rsa keystuff keycomment"}`}
+	ts := s.startGandalfTestServer(&h)
+	defer ts.Close()
+	u := User{Email: "wolverine@xmen.com", Password: "123456"}
+	err := u.Create()
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Users().Remove(bson.M{"email": u.Email})
+	keys, err := u.ListKeys()
+	c.Assert(err, gocheck.IsNil)
+	expected := map[string]string{"mypckey": "ssh-rsa keystuff keycomment"}
+	c.Assert(expected, gocheck.DeepEquals, keys)
+	c.Assert(h.url[0], gocheck.Equals, "/user/wolverine@xmen.com/keys")
+	c.Assert(h.method[0], gocheck.Equals, "GET")
+}
+
+func (s *S) TestListKeysGandalfAPIError(c *gocheck.C) {
+	h := testBadHandler{content: "some terrible error"}
+	ts := s.startGandalfTestServer(&h)
+	defer ts.Close()
+	u := User{Email: "wolverine@xmen.com", Password: "123456"}
+	err := u.Create()
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Users().Remove(bson.M{"email": u.Email})
+	keys, err := u.ListKeys()
+	c.Assert(keys, gocheck.DeepEquals, map[string]string(nil))
+	c.Assert(err.Error(), gocheck.Equals, "some terrible error\n")
+}

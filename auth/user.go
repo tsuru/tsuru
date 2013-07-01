@@ -10,9 +10,11 @@ import (
 	stderrors "errors"
 	"fmt"
 	"github.com/globocom/config"
+	"github.com/globocom/go-gandalfclient"
 	"github.com/globocom/tsuru/db"
 	"github.com/globocom/tsuru/errors"
 	"github.com/globocom/tsuru/log"
+	"github.com/globocom/tsuru/repository"
 	"github.com/globocom/tsuru/validation"
 	"labix.org/v2/mgo/bson"
 	"math/rand"
@@ -305,6 +307,12 @@ func (u *User) sendNewPassword(password string) {
 	if err != nil {
 		log.Printf("Failed to send new password to user %q: %s", u.Email, err)
 	}
+}
+
+func (u *User) ListKeys() (map[string]string, error) {
+	gURL := repository.ServerURL()
+	c := gandalf.Client{Endpoint: gURL}
+	return c.ListKeys(u.Email)
 }
 
 type AuthenticationFailure struct{}

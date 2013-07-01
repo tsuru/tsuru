@@ -10,13 +10,12 @@ import (
 	"github.com/globocom/tsuru/db"
 	ttesting "github.com/globocom/tsuru/testing"
 	"io"
+	"io/ioutil"
 	"launchpad.net/gocheck"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
-	"strconv"
-	"strings"
 	"testing"
 )
 
@@ -112,17 +111,34 @@ func (s *S) getTestData(path ...string) io.ReadCloser {
 }
 
 // starts a new httptest.Server and returns it
-// Also changes git:host, git:port and git:protocol to match the server's url
+// Also changes git:api-server to match the server's url
 func (s *S) startGandalfTestServer(h http.Handler) *httptest.Server {
 	ts := httptest.NewServer(h)
-	pieces := strings.Split(ts.URL, "://")
-	protocol := pieces[0]
-	hostPart := strings.Split(pieces[1], ":")
-	port := hostPart[1]
-	host := hostPart[0]
-	config.Set("git:host", host)
-	portInt, _ := strconv.ParseInt(port, 10, 0)
-	config.Set("git:port", portInt)
-	config.Set("git:protocol", protocol)
+	config.Set("git:api-server", ts.URL)
 	return ts
+}
+
+type testHandler struct {
+	body    [][]byte
+	method  []string
+	url     []string
+	content string
+	header  []http.Header
+}
+
+func (h *testHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	h.method = append(h.method, r.Method)
+	h.url = append(h.url, r.URL.String())
+	b, _ := ioutil.ReadAll(r.Body)
+	h.body = append(h.body, b)
+	h.header = append(h.header, r.Header)
+	w.Write([]byte(h.content))
+}
+
+type testBadHandler struct {
+	content string
+}
+
+func (h *testBadHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	http.Error(w, h.content, http.StatusInternalServerError)
 }
