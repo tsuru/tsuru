@@ -514,8 +514,7 @@ func removeKeyFromUser(w http.ResponseWriter, r *http.Request, t *auth.Token) er
 
 // RemoveUser removes the user from the database and from gandalf server
 //
-// In order to successfuly remove a user, it's need that he/she is not the only
-// one in a team, otherwise the function will return an error.
+// If the user is the only one in a team an error will be returned.
 func removeUser(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
 	u, err := t.User()
 	if err != nil {
