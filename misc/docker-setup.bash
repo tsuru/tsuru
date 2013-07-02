@@ -41,6 +41,10 @@ function remove_git_hooks() {
     sudo rm -rf /home/git/bare-template/hooks/pre-receive.py
 }
 
+function use_https_in_git() {
+    sudo git config --system url.https://.insteadOf git://
+}
+
 function main() {
     source tsuru-setup.bash
     source gandalf-setup.bash
@@ -48,6 +52,7 @@ function main() {
     install_docker
     configure_tsuru
     remove_git_hooks
+    use_https_in_git
     start_tsuru
 }
 
