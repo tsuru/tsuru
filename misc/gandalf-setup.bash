@@ -50,6 +50,7 @@ webserver:
     sudo -E curl https://raw.github.com/globocom/tsuru/master/misc/git-hooks/pre-receive.py -o /home/git/bare-template/hooks/pre-receive.py
     sudo chmod +x /home/git/bare-template/hooks/*
     sudo chown -R git:git /home/git/bare-template
+    sudo -u git mkdir -p /home/git/.ssh/
 }
 
 function start_gandalf() {
