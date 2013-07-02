@@ -16,6 +16,7 @@ var createContainer = action.Action{
 		app := ctx.Params[0].(provision.App)
 		imageId := ctx.Params[1].(string)
 		cmds := ctx.Params[2].([]string)
+		log.Printf("create container for app %s, based on image %s, with cmds %s", app.GetName(), imageId, cmds)
 		cont, err := newContainer(app, imageId, cmds)
 		if err != nil {
 			log.Printf("error on create container for app %s - %s", app.GetName(), err.Error())
@@ -99,8 +100,10 @@ var startContainer = action.Action{
 	Name: "start-container",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
 		c := ctx.Previous.(container)
+		log.Printf("starting container %s", c.ID)
 		err := dockerCluster().StartContainer(c.ID)
 		if err != nil {
+			log.Printf("error on start container %s - %s", c.ID, err)
 			return nil, err
 		}
 		return c, nil
