@@ -42,12 +42,16 @@ function remove_git_hooks() {
 }
 
 function use_https_in_git() {
+    # this enables npm to work properly
+    # npm installs packages using the git readonly url,
+    # which won't work behind a proxy
     sudo git config --system url.https://.insteadOf git://
 }
 
 function main() {
     source tsuru-setup.bash
     source gandalf-setup.bash
+    source proxy-setup.bash
     source hipache-router.bash
     install_docker
     configure_tsuru
