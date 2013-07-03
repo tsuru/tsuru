@@ -9,7 +9,7 @@
 function configure_tsuru() {
     echo "Configuring tsuru"
     sudo mkdir -p /etc/tsuru
-    sudo curl -sL https://raw.github.com/globocom/tsuru/master/etc/tsuru-docker.conf -o /etc/tsuru/tsuru.conf
+    sudo -E curl -sL https://raw.github.com/globocom/tsuru/master/etc/tsuru-docker.conf -o /etc/tsuru/tsuru.conf
     ssh-keygen -t rsa -f /home/ubuntu/.ssh/id_rsa.pub -N ""
 }
 
@@ -67,6 +67,13 @@ function download_scripts() {
     fi
 }
 
+function echo_conf_warning() {
+    echo "=================================================================================================================="
+    echo "        Tsuru is now ready to be started, but first you need to manually set the following configurations"
+    echo "        On /etc/tsuru/tsuru.conf set the git:rw-host and git:ro-host to gandalf's public address"
+    echo "=================================================================================================================="
+}
+
 function main() {
     download_scripts
     source proxy-setup.bash
@@ -77,7 +84,8 @@ function main() {
     configure_tsuru
     remove_git_hooks
     use_https_in_git
-    start_tsuru
+    #start_tsuru
+    echo_conf_warning
 }
 
 main
