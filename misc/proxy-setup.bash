@@ -13,7 +13,7 @@ function ask() {
     if [ "$https_proxy" == "" ]; then
         https_proxy=${http_proxy}
     fi
-    set $http_proxy $https_proxy
+    write_proxy_confs $http_proxy $https_proxy
 }
 
 function set_apt() {
@@ -36,7 +36,7 @@ EOF
     echo "${profile_template}" | sudo tee -a /etc/profile
 }
 
-function set() {
+function write_proxy_confs() {
     set_apt $1 $2
     set_profile $1 $2
     echo "Proxy configurations have been saved."
