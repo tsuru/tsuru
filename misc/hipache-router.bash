@@ -15,7 +15,7 @@ function install_redis() {
 }
 
 function install_hipache() {
-    sudo npm install hipache -g
+    sudo -E npm install hipache -g
 }
 
 function configure_hipache() {
