@@ -49,9 +49,9 @@ function use_https_in_git() {
 }
 
 function main() {
+    source proxy-setup.bash
     source tsuru-setup.bash
     source gandalf-setup.bash
-    source proxy-setup.bash
     source hipache-router.bash
     install_docker
     configure_tsuru

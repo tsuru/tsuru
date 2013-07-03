@@ -36,15 +36,9 @@ EOF
     echo "${profile_template}" | sudo tee -a /etc/profile
 }
 
-function set_npm() {
-    npm config set proxy $1
-    npm config set https-proxy $2
-}
-
 function set() {
     set_apt $1 $2
     set_profile $1 $2
-    set_npm $1 $2
     echo "Proxy configurations have been saved."
 }
 
