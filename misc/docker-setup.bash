@@ -72,7 +72,7 @@ function main() {
     source proxy-setup.bash
     source tsuru-setup.bash
     source gandalf-setup.bash
-    source hipache-router.bash
+    source hipache-setup.bash
     install_docker
     configure_tsuru
     remove_git_hooks
