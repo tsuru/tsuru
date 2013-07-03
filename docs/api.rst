@@ -179,12 +179,30 @@ Example:
     Content-Legth: 67
     [{Name: "python"},{Name: "java"},{Name: "ruby20"},{Name: "static"}]
 
-
 1.x Users
 ---------
 
 1.x Teams
 ---------
+
+List teams
+**********
+
+    * Method: GET
+    * URI: /teams
+    * Format: json
+
+Returns 200 in case of success, and json in the body with a list of teams.
+
+Example:
+
+.. highlight:: bash
+
+::
+
+    GET /teams HTTP/1.1
+    Content-Legth: 22
+    [{"name": "teamname"}]
 
 1.x Tokens
 ----------
