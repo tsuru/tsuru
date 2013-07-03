@@ -96,6 +96,23 @@ Example:
 
     GET /apps/myapp/restart HTTP/1.1
 
+Get app enviroment variables
+****************************
+
+    * Method: GET
+    * URI: /apps/<appname>/env
+
+Returns 200 in case of success, and json in the body returning a dictionary with enviroment names and values..
+
+Example:
+
+.. highlight:: bash
+
+::
+
+    GET /apps/myapp/env HTTP/1.1
+    {"DATABASE_HOST":"localhost"}
+
 1.2 Services
 ------------
 
