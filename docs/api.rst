@@ -167,7 +167,7 @@ List platforms
     * URI: /platforms
     * Format: json
 
-Returns 200 in case of success, and json in the body with a list of plataforms.
+Returns 200 in case of success, and json in the body with a list of platforms.
 
 Example:
 
