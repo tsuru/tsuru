@@ -2,10 +2,14 @@
 API reference
 +++++++++++++
 
-App list
-========
+1. Endpoints
+===========
 
-Returns the app list.
+1.1 Apps
+--------
+
+List apps
+*********
 
     * Method: GET
     * URI: /apps
@@ -23,16 +27,14 @@ Example:
     Content-Legth: 82
     [{"Ip":"10.10.10.10","Name":"app1","Units":[{"Name":"app1/0","State":"started"}]}]
 
-App detail
-==========
-
-Returns an app.
+Info about an app
+*****************
 
     * Method: GET
     * URI: /apps/:appname
     * Format: json
 
-Returns 200 in case of success, ando json in the body of the response containing the app.
+Returns 200 in case of success, and a json in the body of the response containing the app content.
 
 Example:
 
@@ -44,10 +46,8 @@ Example:
     Content-Legth: 284
     {"Name":"app1","Framework":"php","Repository":"git@git.com:php.git","State":"dead", "Units":[{"Ip":"10.10.10    .10","Name":"app1/0","State":"started"}, {"Ip":"9.9.9.9","Name":"app1/1","State":"started"}, {"Ip":"","Name":"app1/2","Stat    e":"pending"}],"Teams":["tsuruteam","crane"]}
 
-App remove
-==========
-
-Removes an app.
+Remove an app
+*************
 
     * Method: DELETE
     * URI: /apps/:appname
@@ -62,10 +62,8 @@ Example:
 
     DELETE /apps/myapp HTTP/1.1
 
-App create
-==========
-
-Creates an app.
+Create an app
+*************
 
     * Method: POST
     * URI: /apps
