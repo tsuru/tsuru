@@ -160,6 +160,26 @@ Example:
 1.x Platforms
 -------------
 
+List platforms
+**************
+
+    * Method: GET
+    * URI: /platforms
+    * Format: json
+
+Returns 200 in case of success, and json in the body with a list of plataforms.
+
+Example:
+
+.. highlight:: bash
+
+::
+
+    GET /platforms HTTP/1.1
+    Content-Legth: 67
+    [{Name: "python"},{Name: "java"},{Name: "ruby20"},{Name: "static"}]
+
+
 1.x Users
 ---------
 
