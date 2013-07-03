@@ -48,7 +48,23 @@ function use_https_in_git() {
     sudo git config --system url.https://.insteadOf git://
 }
 
+function download_scripts() {
+    if [ ! -f proxy-setup.bash ]; then
+        curl -O https://raw.github.com/globocom/tsuru/master/misc/proxy-setup.bash
+    fi
+    if [ ! -f tsuru-setup.bash ]; then
+        curl -O https://raw.github.com/globocom/tsuru/master/misc/tsuru-setup.bash
+    fi
+    if [ ! -f gandalf-setup.bash ]; then
+        curl -O https://raw.github.com/globocom/tsuru/master/misc/gandalf-setup.bash
+    fi
+    if [ ! -f hipache-setup.bash ]; then
+        curl -O https://raw.github.com/globocom/tsuru/master/misc/hipache-setup.bash
+    fi
+}
+
 function main() {
+    download_scripts
     source proxy-setup.bash
     source tsuru-setup.bash
     source gandalf-setup.bash
