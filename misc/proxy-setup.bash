@@ -23,7 +23,7 @@ Acquire::https::Proxy "s2";
 EOF
     apt_template="${apt_template/s1/$1}"
     apt_template="${apt_template/s2/$2}"
-    echo "${apt_template}" | sudo tee -a /etc/apt/apt.conf.d/08proxy #check this cmd
+    echo "${apt_template}" | sudo tee -a /etc/apt/apt.conf.d/08proxy
 }
 
 function set_profile() {
