@@ -80,6 +80,22 @@ Example:
     POST /apps HTTP/1.1
     {"status":"success", "repository_url":"git@tsuru.plataformas.glb.com:ble.git"}
 
+Restart an app
+**************
+
+    * Method: GET
+    * URI: /apps/<appname>/restart
+
+Returns 200 in case of success.
+
+Example:
+
+.. highlight:: bash
+
+::
+
+    GET /apps/myapp/restart HTTP/1.1
+
 1.2 Services
 ------------
 
