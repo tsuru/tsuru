@@ -113,6 +113,22 @@ Example:
     GET /apps/myapp/env HTTP/1.1
     {"DATABASE_HOST":"localhost"}
 
+Set an app enviroment
+*********************
+
+    * Method: POST
+    * URI: /apps/<appname>/env
+
+Returns 200 in case of success.
+
+Example:
+
+.. highlight:: bash
+
+::
+
+    POST /apps/myapp/env HTTP/1.1
+
 1.2 Services
 ------------
 
