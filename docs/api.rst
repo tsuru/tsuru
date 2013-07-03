@@ -79,3 +79,27 @@ Example:
 
     POST /apps HTTP/1.1
     {"status":"success", "repository_url":"git@tsuru.plataformas.glb.com:ble.git"}
+
+1.2 Services
+------------
+
+1.3 Service instances
+---------------------
+
+1.x Quotas
+----------
+
+1.x Healers
+-----------
+
+1.x Platforms
+-------------
+
+1.x Users
+---------
+
+1.x Teams
+---------
+
+1.x Tokens
+----------
