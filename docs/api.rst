@@ -129,6 +129,22 @@ Example:
 
     POST /apps/myapp/env HTTP/1.1
 
+Delete an app enviroment
+************************
+
+    * Method: DELETE
+    * URI: /apps/<appname>/env
+
+Returns 200 in case of success.
+
+Example:
+
+.. highlight:: bash
+
+::
+
+    DELETE /apps/myapp/env HTTP/1.1
+
 1.2 Services
 ------------
 
