@@ -34,6 +34,7 @@ EOF
     profile_template="${profile_template/s1/$1}"
     profile_template="${profile_template/s2/$2}"
     echo "${profile_template}" | sudo tee -a /etc/profile
+    source /etc/profile
 }
 
 function write_proxy_confs() {
