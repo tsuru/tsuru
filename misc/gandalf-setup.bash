@@ -50,13 +50,14 @@ webserver:
     sudo -E curl https://raw.github.com/globocom/tsuru/master/misc/git-hooks/pre-receive.py -o /home/git/bare-template/hooks/pre-receive.py
     sudo chmod +x /home/git/bare-template/hooks/*
     sudo chown -R git:git /home/git/bare-template
+    sudo -u git mkdir -p /home/git/.ssh/
 }
 
 function start_gandalf() {
     echo "starting gandalf webserver"
-    sudo su - git -c gandalf-webserver &
+    sudo -u git -i gandalf-webserver &
     echo "starting git daemon"
-    sudo su - git -c "git daemon --base-path=/var/repositories --syslog --export-all" &
+    sudo -u git -i git daemon --base-path=/var/repositories --syslog --export-all &
 }
 
 function main() {
