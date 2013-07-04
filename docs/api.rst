@@ -176,6 +176,22 @@ Example:
     Content-Legth: 35
     [{"app-heal": "http://healer.com"}]
 
+Execute healer
+**************
+
+    * Method: GET
+    * URI: /healers/<healer>
+
+Returns 200 in case of success.
+
+Example:
+
+.. highlight:: bash
+
+::
+
+    GET /healers/app-heal HTTP/1.1
+
 1.x Platforms
 -------------
 
