@@ -271,8 +271,8 @@ Example:
 
     DELELE /teams/myteam HTTP/1.1
 
-Add a user to team
-******************
+Add user to team
+****************
 
     * Method: PUT
     * URI: /teams/<teanmaname>/<username>
@@ -287,8 +287,8 @@ Example:
 
     PUT /teams/myteam/myuser HTTP/1.1
 
-Remove an user from team
-************************
+Remove user from team
+*********************
 
     * Method: DELETE
     * URI: /teams/<teanmaname>/<username>
