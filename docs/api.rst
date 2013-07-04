@@ -305,3 +305,26 @@ Example:
 
 1.x Tokens
 ----------
+
+Generate app token
+******************
+
+    * Method: POST
+    * URI: /tokens
+    * Format: json
+
+Returns 200 in case of success, with the token in the body.
+
+Example:
+
+.. highlight:: bash
+
+::
+
+    POST /tokens HTTP/1.1
+	{
+		"Token": "sometoken",
+		"Creation": "2001/01/01",
+		"Expires": 1000,
+		"AppName": "appname",
+	}
