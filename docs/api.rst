@@ -244,7 +244,6 @@ Add a team
 
     * Method: POST
     * URI: /teams
-    * Format: json
 
 Returns 200 in case of success.
 
