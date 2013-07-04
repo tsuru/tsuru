@@ -287,5 +287,21 @@ Example:
 
     PUT /teams/myteam/myuser HTTP/1.1
 
+Remove an user from team
+************************
+
+    * Method: DELETE
+    * URI: /teams/<teanmaname>/<username>
+
+Returns 200 in case of success.
+
+Example:
+
+.. highlight:: bash
+
+::
+
+    DELETE /teams/myteam/myuser HTTP/1.1
+
 1.x Tokens
 ----------
