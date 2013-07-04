@@ -22,6 +22,13 @@ function install_mongodb() {
     sudo apt-get install mongodb-10gen -y --force-yes
 }
 
+function setup_platforms() {
+    if [ ! -f platforms-setup.js ]; then
+        curl -O https://raw.github.com/globocom/tsuru/master/misc/platforms-setup.js
+    fi
+    mongo tsuru platforms-setup.js
+}
+
 function install_beanstalkd() {
     echo "Installing beanstalkd"
     sudo apt-get install -y beanstalkd --force-yes
@@ -37,6 +44,7 @@ function install_tsuru() {
 function main() {
     update_ubuntu
     install_mongodb
+    setup_platforms
     install_beanstalkd
     install_tsuru
 }
