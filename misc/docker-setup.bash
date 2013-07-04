@@ -48,22 +48,18 @@ function use_https_in_git() {
 
 function download_scripts() {
     url=https://raw.github.com/globocom/tsuru/master/misc
-    if [ ! -f proxy-setup.bash ]; then
-        curl -O ${url}/proxy-setup.bash
-        chmod +x proxy-setup.bash
-    fi
-    if [ ! -f tsuru-setup.bash ]; then
-        curl -O ${url}/tsuru-setup.bash
-        chmod +x tsuru-setup.bash
-    fi
-    if [ ! -f gandalf-setup.bash ]; then
-        curl -O ${url}/gandalf-setup.bash
-        chmod +x gandalf-setup.bash
-    fi
-    if [ ! -f hipache-setup.bash ]; then
-        curl -O ${url}/hipache-setup.bash
-        chmod +x hipache-setup.bash
-    fi
+
+    for setup in \
+        gandalf-setup.bash \
+        hipache-setup.bash \
+        proxy-setup.bash \
+        tsuru-setup.bash \
+        ; do
+        if [ ! -f $setup  ]; then
+            curl -O ${url}/$setup
+            chmod +x $setup
+        fi
+    done
 }
 
 function echo_conf_warning() {
