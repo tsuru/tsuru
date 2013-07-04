@@ -204,5 +204,22 @@ Example:
     Content-Legth: 22
     [{"name": "teamname"}]
 
+Add a team
+**********
+
+    * Method: POST
+    * URI: /teams
+    * Format: json
+
+Returns 200 in case of success.
+
+Example:
+
+.. highlight:: bash
+
+::
+
+    POST /teams HTTP/1.1
+
 1.x Tokens
 ----------
