@@ -157,6 +157,25 @@ Example:
 1.x Healers
 -----------
 
+List healers
+************
+
+    * Method: GET
+    * URI: /healers
+    * Format: json
+
+Returns 200 in case of success, and json in the body with a list of healers.
+
+Example:
+
+.. highlight:: bash
+
+::
+
+    GET /healers HTTP/1.1
+    Content-Legth: 35
+    [{"app-heal": "http://healer.com"}]
+
 1.x Platforms
 -------------
 
