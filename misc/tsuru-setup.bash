@@ -33,6 +33,8 @@ function install_beanstalkd() {
     echo "Installing beanstalkd"
     sudo apt-get install -y beanstalkd --force-yes
     sudo sed -i s/#START=yes/START=yes/ /etc/default/beanstalkd
+    echo "starting beanstalkd"
+    sudo service beanstalkd start
 }
 
 function install_tsuru() {
