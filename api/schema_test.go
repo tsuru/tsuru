@@ -39,7 +39,7 @@ func (s *SchemaSuite) TestAppSchema(c *gocheck.C) {
 		Title:    "app schema",
 		Type:     "object",
 		Links:    l,
-		Required: []string{"framework", "name"},
+		Required: []string{"platform", "name"},
 		Properties: map[string]property{
 			"name": {
 				"type": "string",

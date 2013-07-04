@@ -48,7 +48,7 @@ func appSchema(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
 		Title:    "app schema",
 		Type:     "object",
 		Links:    l,
-		Required: []string{"framework", "name"},
+		Required: []string{"platform", "name"},
 		Properties: map[string]property{
 			"name": {
 				"type": "string",
