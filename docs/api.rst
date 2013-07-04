@@ -255,5 +255,37 @@ Example:
 
     POST /teams HTTP/1.1
 
+Remove a team
+*************
+
+    * Method: DELETE
+    * URI: /teams/<teamname>
+
+Returns 200 in case of success.
+
+Example:
+
+.. highlight:: bash
+
+::
+
+    DELELE /teams/myteam HTTP/1.1
+
+Add a user to team
+******************
+
+    * Method: PUT
+    * URI: /teams/<teanmaname>/<username>
+
+Returns 200 in case of success.
+
+Example:
+
+.. highlight:: bash
+
+::
+
+    PUT /teams/myteam/myuser HTTP/1.1
+
 1.x Tokens
 ----------
