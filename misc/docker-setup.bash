@@ -22,7 +22,7 @@ function install_docker() {
     cd docker-latest
     sudo cp docker /usr/local/bin
     # runs docker daemon, it must be running in order to tsuru work
-    sudo docker -d &
+    sudo -E docker -d &
 }
 
 function start_tsuru() {
