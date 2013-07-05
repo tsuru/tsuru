@@ -60,6 +60,7 @@ func (s *S) TestAddBackend(c *gocheck.C) {
 	router := elbRouter{}
 	err := router.AddBackend("tip")
 	c.Assert(err, gocheck.IsNil)
+	defer router.RemoveBackend("tip")
 	resp, err := s.client.DescribeLoadBalancers("tip")
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(resp.LoadBalancerDescriptions, gocheck.HasLen, 1)
