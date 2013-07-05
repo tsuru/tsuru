@@ -61,7 +61,8 @@ func (elbRouter) AddBackend(name string) error {
 }
 
 func (elbRouter) RemoveBackend(name string) error {
-	return nil
+	_, err := getELBEndpoint().DeleteLoadBalancer(name)
+	return err
 }
 
 func (elbRouter) AddRoute(name, address string) error {

@@ -10,8 +10,6 @@ import (
 	"github.com/flaviamissi/go-elb/elb/elbtest"
 	"github.com/globocom/config"
 	"github.com/globocom/tsuru/app"
-	"github.com/globocom/tsuru/db"
-	"github.com/globocom/tsuru/queue"
 	"github.com/globocom/tsuru/router"
 	"github.com/globocom/tsuru/testing"
 	"launchpad.net/gocheck"
@@ -72,4 +70,14 @@ func (s *S) TestAddBackend(c *gocheck.C) {
 	c.Assert(listener.InstanceProtocol, gocheck.Equals, "HTTP")
 	c.Assert(listener.Protocol, gocheck.Equals, "HTTP")
 	c.Assert(listener.SSLCertificateId, gocheck.Equals, "")
+}
+
+func (s *S) TestRemoveBackend(c *gocheck.C) {
+	router := elbRouter{}
+	err := router.AddBackend("tip")
+	c.Assert(err, gocheck.IsNil)
+	err = router.RemoveBackend("tip")
+	c.Assert(err, gocheck.IsNil)
+	_, err = s.client.DescribeLoadBalancers("tip")
+	c.Assert(err, gocheck.NotNil)
 }
