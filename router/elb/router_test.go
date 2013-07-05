@@ -18,17 +18,19 @@ import (
 	goTesting "testing"
 )
 
-type ELBSuite struct {
+func Test(t *goTesting.T) {
+	gocheck.TestingT(t)
+}
+
+type S struct {
 	server      *elbtest.Server
 	client      *elb.ELB
-	conn        *db.Storage
-	cName       string
 	provisioner *testing.FakeProvisioner
 }
 
-var _ = gocheck.Suite(&ELBSuite{})
+var _ = gocheck.Suite(&S{})
 
-func (s *ELBSuite) SetUpSuite(c *gocheck.C) {
+func (s *S) SetUpSuite(c *gocheck.C) {
 	var err error
 	s.server, err = elbtest.NewServer()
 	c.Assert(err, gocheck.IsNil)
@@ -38,32 +40,16 @@ func (s *ELBSuite) SetUpSuite(c *gocheck.C) {
 	region.ELBEndpoint = s.server.URL()
 	s.client = elb.New(aws.Auth{AccessKey: "some", SecretKey: "thing"}, region)
 	c.Assert(err, gocheck.IsNil)
-	s.cName = "juju_test_elbs"
-	config.Set("juju:elb-collection", s.cName)
 	config.Set("juju:elb-avail-zones", []interface{}{"my-zone-1a", "my-zone-1b"})
 	config.Set("aws:access-key-id", "access")
 	config.Set("aws:secret-access-key", "s3cr3t")
-	config.Set("git:ro-host", "git.tsuru.io")
-	config.Set("queue", "fake")
-	config.Set("juju:units-collection", "juju_units_test_elb")
 	s.provisioner = testing.NewFakeProvisioner()
 	app.Provisioner = s.provisioner
 }
 
-func (s *ELBSuite) TearDownSuite(c *gocheck.C) {
-	config.Unset("juju:use-elb")
-	s.conn.Collection("juju_units_test_elb").Database.DropDatabase()
+func (s *S) TearDownSuite(c *gocheck.C) {
 	s.server.Quit()
-	queue.Preempt()
 }
-
-func Test(t *goTesting.T) {
-	gocheck.TestingT(t)
-}
-
-type S struct{}
-
-var _ = gocheck.Suite(&S{})
 
 func (s *S) TestShouldBeRegistered(c *gocheck.C) {
 	r, err := router.Get("elb")
@@ -73,17 +59,10 @@ func (s *S) TestShouldBeRegistered(c *gocheck.C) {
 }
 
 func (s *S) TestAddBackend(c *gocheck.C) {
-	server, err := elbtest.NewServer()
-	c.Assert(err, gocheck.IsNil)
-	config.Set("juju:elb-endpoint", server.URL())
-	config.Set("juju:elb-avail-zones", []interface{}{"my-zone-1a", "my-zone-1b"})
-	region := aws.SAEast
-	region.ELBEndpoint = server.URL()
 	router := elbRouter{}
-	err = router.AddBackend("tip")
+	err := router.AddBackend("tip")
 	c.Assert(err, gocheck.IsNil)
-	client := elb.New(aws.Auth{AccessKey: "some", SecretKey: "thing"}, region)
-	resp, err := client.DescribeLoadBalancers("tip")
+	resp, err := s.client.DescribeLoadBalancers("tip")
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(resp.LoadBalancerDescriptions, gocheck.HasLen, 1)
 	c.Assert(resp.LoadBalancerDescriptions[0].ListenerDescriptions, gocheck.HasLen, 1)
