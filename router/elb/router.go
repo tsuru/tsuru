@@ -54,10 +54,7 @@ func (elbRouter) AddBackend(name string) error {
 		AvailZones: zone,
 	}
 	_, err = getELBEndpoint().CreateLoadBalancer(&options)
-	if err != nil {
-		return err
-	}
-	return nil
+	return err
 }
 
 func (elbRouter) RemoveBackend(name string) error {
