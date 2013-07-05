@@ -113,3 +113,15 @@ func (s *S) TestRemoveRoute(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(resp.LoadBalancerDescriptions[0].Instances, gocheck.HasLen, 0)
 }
+
+func (s *S) TestAddr(c *gocheck.C) {
+	router := elbRouter{}
+	err := router.AddBackend("tip")
+	c.Assert(err, gocheck.IsNil)
+	defer router.RemoveBackend("tip")
+	addr, err := router.Addr("tip")
+	c.Assert(err, gocheck.IsNil)
+	resp, err := s.client.DescribeLoadBalancers("tip")
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(resp.LoadBalancerDescriptions[0].DNSName, gocheck.Equals, addr)
+}

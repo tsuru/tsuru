@@ -81,5 +81,9 @@ func (elbRouter) UnsetCName(cname, name string) error {
 }
 
 func (elbRouter) Addr(name string) (string, error) {
-	return "", nil
+	resp, err := getELBEndpoint().DescribeLoadBalancers(name)
+	if err != nil {
+		return "", err
+	}
+	return resp.LoadBalancerDescriptions[0].DNSName, nil
 }
