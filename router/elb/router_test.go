@@ -98,3 +98,18 @@ func (s *S) TestAddRoute(c *gocheck.C) {
 	instance := resp.LoadBalancerDescriptions[0].Instances[0]
 	c.Assert(instance.InstanceId, gocheck.DeepEquals, instanceId)
 }
+
+func (s *S) TestRemoveRoute(c *gocheck.C) {
+	instanceId := s.server.NewInstance()
+	defer s.server.RemoveInstance(instanceId)
+	router := elbRouter{}
+	err := router.AddBackend("tip")
+	c.Assert(err, gocheck.IsNil)
+	defer router.RemoveBackend("tip")
+	err = router.AddRoute("tip", instanceId)
+	c.Assert(err, gocheck.IsNil)
+	err = router.RemoveRoute("tip", instanceId)
+	resp, err := s.client.DescribeLoadBalancers("tip")
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(resp.LoadBalancerDescriptions[0].Instances, gocheck.HasLen, 0)
+}
