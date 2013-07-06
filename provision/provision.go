@@ -64,7 +64,7 @@ type App interface {
 	// to the Unit `Type` field.
 	GetPlatform() string
 
-	ProvisionUnits() []AppUnit
+	ProvisionedUnits() []AppUnit
 	RemoveUnit(id string) error
 
 	// Run executes the command in app units. Commands executed with this

@@ -195,7 +195,7 @@ func (h instanceAgentsConfigHealer) Heal() error {
 		return err
 	}
 	for _, app := range apps {
-		for _, u := range app.ProvisionUnits() {
+		for _, u := range app.ProvisionedUnits() {
 			args := []string{"-o", "StrictHostKeyChecking no", "-q", "-l", "ubuntu", u.GetIp(), "grep", dns, "/etc/init/juju-machine-agent.conf"}
 			err := executor().Execute("ssh", args, nil, nil, nil)
 			if err != nil {
@@ -234,7 +234,7 @@ func (h instanceUnitHealer) Heal() error {
 		return err
 	}
 	for _, app := range apps {
-		for _, u := range app.ProvisionUnits() {
+		for _, u := range app.ProvisionedUnits() {
 			agent := fmt.Sprintf("juju-%s", strings.Join(strings.Split(u.GetName(), "/"), "-"))
 			if u.GetStatus() == provision.StatusDown {
 				log.Printf("Healing %s", agent)
@@ -426,7 +426,7 @@ func (h elbInstanceHealer) getUnhealthyApps() map[string]app.App {
 		return nil
 	}
 	for _, a := range all {
-		for _, u := range a.ProvisionUnits() {
+		for _, u := range a.ProvisionedUnits() {
 			if u.GetStatus() == provision.StatusDown ||
 				u.GetStatus() == provision.StatusError {
 				apps[a.Name] = a
