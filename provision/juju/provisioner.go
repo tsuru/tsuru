@@ -433,10 +433,12 @@ func (p *JujuProvisioner) heal(units []provision.Unit) {
 			format := "[juju] instance-id of unit %q changed from %q to %q. Healing."
 			log.Printf(format, unit.Name, inst.InstanceID, unit.InstanceId)
 			if p.elbSupport() {
-				a := qApp{unit.AppName}
-				manager := p.LoadBalancer()
-				manager.Deregister(&a, provision.Unit{InstanceId: inst.InstanceID})
-				err := manager.Register(&a, provision.Unit{InstanceId: unit.InstanceId})
+				router, err := getRouter()
+				if err != nil {
+					continue
+				}
+				router.RemoveRoute(unit.AppName, inst.InstanceID)
+				err = router.AddRoute(unit.AppName, unit.InstanceId)
 				if err != nil {
 					format := "[juju] Could not register instance %q in the load balancer: %s."
 					log.Printf(format, unit.InstanceId, err)
