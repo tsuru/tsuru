@@ -979,5 +979,5 @@ func (s *ELBSuite) TestAddrWithUnknownELB(c *gocheck.C) {
 	addr, err := p.Addr(app)
 	c.Assert(addr, gocheck.Equals, "")
 	c.Assert(err, gocheck.NotNil)
-	c.Assert(err.Error(), gocheck.Equals, "not found")
+	c.Assert(err, gocheck.ErrorMatches, "^There is no ACTIVE Load Balancer named.*")
 }

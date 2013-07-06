@@ -467,7 +467,11 @@ func (p *JujuProvisioner) CollectStatus() ([]provision.Unit, error) {
 
 func (p *JujuProvisioner) Addr(app provision.App) (string, error) {
 	if p.elbSupport() {
-		return p.LoadBalancer().Addr(app)
+		router, err := getRouter()
+		if err != nil {
+			return "", err
+		}
+		return router.Addr(app.GetName())
 	}
 	units := app.ProvisionedUnits()
 	if len(units) < 1 {
