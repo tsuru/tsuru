@@ -19,6 +19,7 @@ import (
 	"github.com/globocom/tsuru/queue"
 	"github.com/globocom/tsuru/repository"
 	"github.com/globocom/tsuru/router"
+	_ "github.com/globocom/tsuru/router/elb"
 	"github.com/globocom/tsuru/safe"
 	"io"
 	"labix.org/v2/mgo"
@@ -122,7 +123,11 @@ func (p *JujuProvisioner) Provision(app provision.App) error {
 	}
 	runCmd(true, &buf, &buf, setOption...)
 	if p.elbSupport() {
-		if err = p.LoadBalancer().Create(app); err != nil {
+		router, err := getRouter()
+		if err != nil {
+			return err
+		}
+		if err = router.AddBackend(app.GetName()); err != nil {
 			return err
 		}
 		p.enqueueUnits(app.GetName())
@@ -211,7 +216,11 @@ func (p *JujuProvisioner) Destroy(app provision.App) error {
 		return err
 	}
 	if p.elbSupport() {
-		err = p.LoadBalancer().Destroy(app)
+		router, err := getRouter()
+		if err != nil {
+			return err
+		}
+		err = router.RemoveBackend(app.GetName())
 	}
 	go p.terminateMachines(app)
 	p.deleteUnits(app)
