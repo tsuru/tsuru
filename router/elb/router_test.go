@@ -73,6 +73,32 @@ func (s *S) TestAddBackend(c *gocheck.C) {
 	c.Assert(listener.SSLCertificateId, gocheck.Equals, "")
 }
 
+func (s *S) TestAddBackendWithVpc(c *gocheck.C) {
+	old, _ := config.Get("juju:elb-avail-zones")
+	config.Unset("juju:elb-avail-zones")
+	config.Set("juju:elb-use-vpc", true)
+	config.Set("juju:elb-vpc-subnets", []string{"subnet-a4a3a2a1", "subnet-002200"})
+	config.Set("juju:elb-vpc-secgroups", []string{"sg-0900"})
+	defer func() {
+		config.Set("juju:elb-avail-zones", old)
+		config.Unset("juju:elb-use-vpc")
+		config.Unset("juju:elb-vpc-subnets")
+		config.Unset("juju:elb-vpc-secgroups")
+	}()
+	router := elbRouter{}
+	err := router.AddBackend("tip")
+	c.Assert(err, gocheck.IsNil)
+	defer router.RemoveBackend("tip")
+	resp, err := s.client.DescribeLoadBalancers("tip")
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(resp.LoadBalancerDescriptions, gocheck.HasLen, 1)
+	lbd := resp.LoadBalancerDescriptions[0]
+	c.Assert(lbd.Subnets, gocheck.DeepEquals, []string{"subnet-a4a3a2a1", "subnet-002200"})
+	c.Assert(lbd.SecurityGroups, gocheck.DeepEquals, []string{"sg-0900"})
+	c.Assert(lbd.Scheme, gocheck.Equals, "internal")
+	c.Assert(lbd.AvailZones, gocheck.HasLen, 0)
+}
+
 func (s *S) TestRemoveBackend(c *gocheck.C) {
 	router := elbRouter{}
 	err := router.AddBackend("tip")

@@ -37,10 +37,7 @@ func getELBEndpoint() *elb.ELB {
 }
 
 func (elbRouter) AddBackend(name string) error {
-	zone, err := config.GetList("juju:elb-avail-zones")
-	if err != nil {
-		return err
-	}
+	var err error
 	options := elb.CreateLoadBalancer{
 		Name: name,
 		Listeners: []elb.Listener{
@@ -51,7 +48,23 @@ func (elbRouter) AddBackend(name string) error {
 				Protocol:         "HTTP",
 			},
 		},
-		AvailZones: zone,
+	}
+	vpc, _ := config.GetBool("juju:elb-use-vpc")
+	if vpc {
+		options.Subnets, err = config.GetList("juju:elb-vpc-subnets")
+		if err != nil {
+			return err
+		}
+		options.SecurityGroups, err = config.GetList("juju:elb-vpc-secgroups")
+		if err != nil {
+			return err
+		}
+		options.Scheme = "internal"
+	} else {
+		options.AvailZones, err = config.GetList("juju:elb-avail-zones")
+		if err != nil {
+			return err
+		}
 	}
 	_, err = getELBEndpoint().CreateLoadBalancer(&options)
 	return err
