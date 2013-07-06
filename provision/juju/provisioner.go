@@ -18,6 +18,7 @@ import (
 	"github.com/globocom/tsuru/provision"
 	"github.com/globocom/tsuru/queue"
 	"github.com/globocom/tsuru/repository"
+	"github.com/globocom/tsuru/router"
 	"github.com/globocom/tsuru/safe"
 	"io"
 	"labix.org/v2/mgo"
@@ -70,6 +71,10 @@ func (p *JujuProvisioner) elbSupport() bool {
 		p.elb = &elb
 	}
 	return *p.elb
+}
+
+func getRouter() (router.Router, error) {
+	return router.Get("elb")
 }
 
 func (p *JujuProvisioner) unitsCollection() (*db.Storage, *mgo.Collection) {
