@@ -173,7 +173,7 @@ func (p *JujuProvisioner) destroyService(app provision.App) error {
 func (p *JujuProvisioner) terminateMachines(app provision.App, units ...provision.AppUnit) error {
 	var buf bytes.Buffer
 	if len(units) < 1 {
-		units = app.ProvisionUnits()
+		units = app.ProvisionedUnits()
 	}
 	for _, u := range units {
 		buf.Reset()
@@ -190,7 +190,7 @@ func (p *JujuProvisioner) terminateMachines(app provision.App, units ...provisio
 }
 
 func (p *JujuProvisioner) deleteUnits(app provision.App) {
-	units := app.ProvisionUnits()
+	units := app.ProvisionedUnits()
 	names := make([]string, len(units))
 	for i, u := range units {
 		names[i] = u.GetName()
@@ -299,7 +299,7 @@ func (p *JujuProvisioner) removeUnit(app provision.App, unit provision.AppUnit) 
 
 func (p *JujuProvisioner) RemoveUnit(app provision.App, name string) error {
 	var unit provision.AppUnit
-	for _, unit = range app.ProvisionUnits() {
+	for _, unit = range app.ProvisionedUnits() {
 		if unit.GetName() == name {
 			break
 		}
@@ -316,7 +316,7 @@ func (p *JujuProvisioner) InstallDeps(app provision.App, w io.Writer) error {
 
 func (p *JujuProvisioner) ExecuteCommand(stdout, stderr io.Writer, app provision.App, cmd string, args ...string) error {
 	arguments := []string{"ssh", "-o", "StrictHostKeyChecking no", "-q"}
-	units := app.ProvisionUnits()
+	units := app.ProvisionedUnits()
 	length := len(units)
 	for i, unit := range units {
 		if length > 1 {
@@ -455,7 +455,7 @@ func (p *JujuProvisioner) Addr(app provision.App) (string, error) {
 	if p.elbSupport() {
 		return p.LoadBalancer().Addr(app)
 	}
-	units := app.ProvisionUnits()
+	units := app.ProvisionedUnits()
 	if len(units) < 1 {
 		return "", fmt.Errorf("App %q has no units.", app.GetName())
 	}

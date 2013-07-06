@@ -130,7 +130,7 @@ func (a *FakeApp) GetPlatform() string {
 	return a.platform
 }
 
-func (a *FakeApp) ProvisionUnits() []provision.AppUnit {
+func (a *FakeApp) ProvisionedUnits() []provision.AppUnit {
 	return a.units
 }
 
