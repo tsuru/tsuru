@@ -140,7 +140,7 @@ func (p *JujuProvisioner) Deploy(a provision.App, version string, w io.Writer) e
 	var buf bytes.Buffer
 	setOption := []string{"set", a.GetName(), "app-version=" + version}
 	if err := runCmd(true, &buf, &buf, setOption...); err != nil {
-		log.Printf("juju: Failed to set app-repo. Error: %s.\nCommand output: %s", err, &buf)
+		log.Printf("juju: Failed to set app-version. Error: %s.\nCommand output: %s", err, &buf)
 	}
 	return deploy.Git(p, a, version, w)
 }
