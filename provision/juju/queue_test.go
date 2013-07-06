@@ -29,10 +29,11 @@ func (s *ELBSuite) TestHandleMessageWithoutUnits(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	defer commandmocker.Remove(tmpdir)
 	app := testing.NewFakeApp("symfonia", "python", 1)
-	manager := ELBManager{}
-	err = manager.Create(app)
+	router, err := getRouter()
 	c.Assert(err, gocheck.IsNil)
-	defer manager.Destroy(app)
+	err = router.AddBackend(app.GetName())
+	c.Assert(err, gocheck.IsNil)
+	defer router.RemoveBackend(app.GetName())
 	handle(&queue.Message{
 		Action: addUnitToLoadBalancer,
 		Args:   []string{"symfonia"},
@@ -54,10 +55,11 @@ func (s *ELBSuite) TestHandleMessageWithUnits(c *gocheck.C) {
 	defer s.server.RemoveInstance(id1)
 	defer s.server.RemoveInstance(id2)
 	app := testing.NewFakeApp("symfonia", "python", 1)
-	manager := ELBManager{}
-	err := manager.Create(app)
+	router, err := getRouter()
 	c.Assert(err, gocheck.IsNil)
-	defer manager.Destroy(app)
+	router.AddBackend(app.GetName())
+	c.Assert(err, gocheck.IsNil)
+	defer router.RemoveBackend(app.GetName())
 	output := strings.Replace(simpleCollectOutput, "i-00004444", id1, -1)
 	output = strings.Replace(output, "i-00004445", id2, -1)
 	tmpdir, err := commandmocker.Add("juju", output)
@@ -85,10 +87,10 @@ func (s *ELBSuite) TestHandleMessagesWithPendingUnits(c *gocheck.C) {
 	id := s.server.NewInstance()
 	defer s.server.RemoveInstance(id)
 	app := testing.NewFakeApp("2112", "python", 1)
-	manager := ELBManager{}
-	err := manager.Create(app)
+	router, err := getRouter()
 	c.Assert(err, gocheck.IsNil)
-	defer manager.Destroy(app)
+	err = router.AddBackend(app.GetName())
+	defer router.RemoveBackend(app.GetName())
 	output := strings.Replace(collectOutputNoInstanceID, "i-00004444", id, 1)
 	tmpdir, err := commandmocker.Add("juju", output)
 	c.Assert(err, gocheck.IsNil)
@@ -112,10 +114,11 @@ func (s *ELBSuite) TestHandleMessagesWithPendingUnits(c *gocheck.C) {
 
 func (s *ELBSuite) TestHandleMessagesAllPendingUnits(c *gocheck.C) {
 	app := testing.NewFakeApp("2112", "python", 1)
-	manager := ELBManager{}
-	err := manager.Create(app)
+	router, err := getRouter()
 	c.Assert(err, gocheck.IsNil)
-	defer manager.Destroy(app)
+	err = router.AddBackend(app.GetName())
+	c.Assert(err, gocheck.IsNil)
+	defer router.RemoveBackend(app.GetName())
 	tmpdir, err := commandmocker.Add("juju", collectOutputAllPending)
 	c.Assert(err, gocheck.IsNil)
 	defer commandmocker.Remove(tmpdir)
