@@ -68,8 +68,10 @@ func handle(msg *queue.Message) {
 		if len(noID) == len(units) {
 			getQueue(queueName).Release(msg, 0)
 		} else {
-			manager := ELBManager{}
-			manager.Register(&a, ok...)
+			router, _ := getRouter()
+			for _, u := range units {
+				router.AddRoute(a.GetName(), u.InstanceId)
+			}
 			msg.Delete()
 			if len(noID) > 0 {
 				args := []string{a.name}
