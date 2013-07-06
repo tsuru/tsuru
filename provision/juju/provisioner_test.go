@@ -777,7 +777,7 @@ func (s *S) TestAddr(c *gocheck.C) {
 	p := JujuProvisioner{}
 	addr, err := p.Addr(app)
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(addr, gocheck.Equals, app.ProvisionUnits()[0].GetIp())
+	c.Assert(addr, gocheck.Equals, app.ProvisionedUnits()[0].GetIp())
 }
 
 func (s *S) TestAddrWithoutUnits(c *gocheck.C) {

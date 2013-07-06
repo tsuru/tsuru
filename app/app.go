@@ -391,7 +391,7 @@ func (app *App) unbindUnit(unit provision.AppUnit) error {
 
 // Available returns true if at least one of N units is started.
 func (app *App) Available() bool {
-	for _, unit := range app.ProvisionUnits() {
+	for _, unit := range app.ProvisionedUnits() {
 		if unit.GetStatus() == provision.StatusStarted {
 			return true
 		}
@@ -658,9 +658,9 @@ func (app *App) GetPlatform() string {
 	return app.Platform
 }
 
-// ProvisionUnits returns the internal list of units converted to
+// ProvisionedUnits returns the internal list of units converted to
 // provision.AppUnit.
-func (app *App) ProvisionUnits() []provision.AppUnit {
+func (app *App) ProvisionedUnits() []provision.AppUnit {
 	units := make([]provision.AppUnit, len(app.Units))
 	for i, u := range app.Units {
 		other := u
