@@ -298,11 +298,11 @@ func (p *JujuProvisioner) removeUnit(app provision.App, unit provision.AppUnit) 
 		return cmdError(buf.String(), err, cmd)
 	}
 	if p.elbSupport() {
-		pUnit := provision.Unit{
-			Name:       unit.GetName(),
-			InstanceId: unit.GetInstanceId(),
+		router, err := getRouter()
+		if err != nil {
+			return err
 		}
-		err = p.LoadBalancer().Deregister(app, pUnit)
+		err = router.RemoveRoute(app.GetName(), unit.GetInstanceId())
 	}
 	conn, collection := p.unitsCollection()
 	defer conn.Close()
