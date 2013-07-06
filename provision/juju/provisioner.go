@@ -482,13 +482,6 @@ func (p *JujuProvisioner) Addr(app provision.App) (string, error) {
 	return units[0].GetIp(), nil
 }
 
-func (p *JujuProvisioner) LoadBalancer() *ELBManager {
-	if p.elbSupport() {
-		return &ELBManager{}
-	}
-	return nil
-}
-
 // instance represents a unit in the database.
 type instance struct {
 	UnitName   string `bson:"_id"`
