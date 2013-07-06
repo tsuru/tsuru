@@ -871,13 +871,15 @@ func (s *ELBSuite) TestRemoveUnitWithELB(c *gocheck.C) {
 		execut = nil
 	}()
 	app := testing.NewFakeApp("radio", "rush", 4)
-	manager := ELBManager{}
-	manager.e = s.client
-	err := manager.Create(app)
+	router, err := getRouter()
 	c.Assert(err, gocheck.IsNil)
-	defer manager.Destroy(app)
-	err = manager.Register(app, units...)
+	err = router.AddBackend(app.GetName())
 	c.Assert(err, gocheck.IsNil)
+	defer router.RemoveBackend(app.GetName())
+	for _, unit := range units {
+		err = router.AddRoute(app.GetName(), unit.InstanceId)
+		c.Assert(err, gocheck.IsNil)
+	}
 	p := JujuProvisioner{}
 	fUnit := testing.FakeUnit{Name: units[0].Name, InstanceId: units[0].InstanceId}
 	err = p.removeUnit(app, &fUnit)
