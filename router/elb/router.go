@@ -16,7 +16,16 @@ func init() {
 	router.Register("elb", elbRouter{})
 }
 
-type elbRouter struct{}
+type elbRouter struct{
+	e *elb.ELB
+}
+
+func (r *elbRouter) elb() *elb.ELB {
+	if r.e == nil {
+		r.e = getELBEndpoint()
+	}
+	return r.e
+}
 
 func getELBEndpoint() *elb.ELB {
 	access, err := config.GetString("aws:access-key-id")
@@ -36,7 +45,7 @@ func getELBEndpoint() *elb.ELB {
 	return elb.New(auth, region)
 }
 
-func (elbRouter) AddBackend(name string) error {
+func (r elbRouter) AddBackend(name string) error {
 	var err error
 	options := elb.CreateLoadBalancer{
 		Name: name,
@@ -66,22 +75,22 @@ func (elbRouter) AddBackend(name string) error {
 			return err
 		}
 	}
-	_, err = getELBEndpoint().CreateLoadBalancer(&options)
+	_, err = r.elb().CreateLoadBalancer(&options)
 	return err
 }
 
-func (elbRouter) RemoveBackend(name string) error {
-	_, err := getELBEndpoint().DeleteLoadBalancer(name)
+func (r elbRouter) RemoveBackend(name string) error {
+	_, err := r.elb().DeleteLoadBalancer(name)
 	return err
 }
 
-func (elbRouter) AddRoute(name, address string) error {
-	_, err := getELBEndpoint().RegisterInstancesWithLoadBalancer([]string{address}, name)
+func (r elbRouter) AddRoute(name, address string) error {
+	_, err := r.elb().RegisterInstancesWithLoadBalancer([]string{address}, name)
 	return err
 }
 
-func (elbRouter) RemoveRoute(name, address string) error {
-	_, err := getELBEndpoint().DeregisterInstancesFromLoadBalancer([]string{address}, name)
+func (r elbRouter) RemoveRoute(name, address string) error {
+	_, err := r.elb().DeregisterInstancesFromLoadBalancer([]string{address}, name)
 	return err
 }
 
@@ -93,8 +102,8 @@ func (elbRouter) UnsetCName(cname, name string) error {
 	return nil
 }
 
-func (elbRouter) Addr(name string) (string, error) {
-	resp, err := getELBEndpoint().DescribeLoadBalancers(name)
+func (r elbRouter) Addr(name string) (string, error) {
+	resp, err := r.elb().DescribeLoadBalancers(name)
 	if err != nil {
 		return "", err
 	}
