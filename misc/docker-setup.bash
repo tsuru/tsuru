@@ -40,11 +40,16 @@ function start_tsuru() {
     tsr api &
 }
 
-function remove_git_hooks() {
+function configure_git_hooks() {
+
     # this hooks checks if the application is available before receiving a push
     # since docker has nothing before a push, these hooks are not needed
     sudo rm -rf /home/git/bare-template/hooks/pre-receive
     sudo rm -rf /home/git/bare-template/hooks/pre-receive.py
+
+    # the post-receive hook requires some environment variables to be set
+    token=$(/usr/bin/tsr token)
+    echo -e "export TSURU_TOKEN=$token\nexport TSURU_HOST=http://127.0.0.1:8080" |sudo -u git tee -a ~git/.bash_profile
 }
 
 function use_https_in_git() {
@@ -85,7 +90,7 @@ function main() {
     source hipache-setup.bash
     install_docker
     configure_tsuru
-    remove_git_hooks
+    configure_git_hooks
     use_https_in_git
     #start_tsuru
     echo_conf_warning
