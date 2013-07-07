@@ -29,7 +29,7 @@ func deployCmds(app provision.App, version string) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	cmds := []string{"sudo", "-u", user, deployCmd, appRepo}
+	cmds := []string{"sudo", "-u", user, deployCmd, appRepo, version}
 	return cmds, nil
 }
 
