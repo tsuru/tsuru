@@ -90,7 +90,6 @@ function main() {
     source hipache-setup.bash
     install_docker
     configure_tsuru
-    remove_git_hooks
     configure_git_hooks
     use_https_in_git
     #start_tsuru
