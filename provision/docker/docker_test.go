@@ -174,6 +174,7 @@ func (s *S) newContainer() (*container, error) {
 		return nil, err
 	}
 	container.ID = c.ID
+	container.Image = "tsuru/python"
 	err = s.conn.Collection(s.collName).Insert(&container)
 	if err != nil {
 		return nil, err

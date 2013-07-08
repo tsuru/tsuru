@@ -280,6 +280,11 @@ func (s *S) TestProvisionerRemoveUnit(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	_, err = getContainer(container.ID)
 	c.Assert(err, gocheck.NotNil)
+	images, err := client.ListImages(true)
+	c.Assert(err, gocheck.IsNil)
+	for _, image := range images {
+		c.Assert(image.Repository, gocheck.Not(gocheck.Equals), "tsuru/python")
+	}
 }
 
 func (s *S) TestProvisionerRemoveUnitNotFound(c *gocheck.C) {

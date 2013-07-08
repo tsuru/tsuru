@@ -110,8 +110,7 @@ func startInBackground(a provision.App, c container, imageId string, w io.Writer
 	}
 	if c.ID != "" {
 		if a.RemoveUnit(c.ID) != nil {
-			c.stop()
-			c.remove()
+			removeContainer(&c)
 		}
 	}
 	started <- true
@@ -142,8 +141,7 @@ func (p *dockerProvisioner) Destroy(app provision.App) error {
 	containers, _ := listAppContainers(app.GetName())
 	for _, c := range containers {
 		go func(c container) {
-			c.stop()
-			c.remove()
+			removeContainer(&c)
 		}(c)
 	}
 	r, err := getRouter()
@@ -206,11 +204,22 @@ func (*dockerProvisioner) RemoveUnit(app provision.App, unitName string) error {
 	if container.AppName != app.GetName() {
 		return errors.New("Unit does not belong to this app")
 	}
-	err = container.stop()
+	return removeContainer(container)
+}
+
+func removeContainer(c *container) error {
+	err := c.stop()
 	if err != nil {
-		log.Printf("error on stop unit %s - %s", unitName, err)
+		log.Printf("error on stop unit %s - %s", c.ID, err)
 	}
-	return container.remove()
+	err = c.remove()
+	if err != nil {
+		log.Printf("error on remove container %s - %s", c.ID, err)
+	}
+	if c.Image != "" {
+		removeImage(c.Image)
+	}
+	return err
 }
 
 func (*dockerProvisioner) InstallDeps(app provision.App, w io.Writer) error {
