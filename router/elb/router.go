@@ -16,7 +16,7 @@ func init() {
 	router.Register("elb", elbRouter{})
 }
 
-type elbRouter struct{
+type elbRouter struct {
 	e *elb.ELB
 }
 
