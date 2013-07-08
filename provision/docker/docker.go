@@ -307,6 +307,15 @@ func (c *container) stopped() (bool, error) {
 	return !dockerContainer.State.Running, nil
 }
 
+// stop stops the container.
+func (c *container) stop() error {
+	err := dockerCluster().StopContainer(c.ID, 10)
+	if err != nil {
+		log.Printf("error on stop container %s: %s", c.ID, err)
+	}
+	return err
+}
+
 // logs returns logs for the container.
 func (c *container) logs(w io.Writer) error {
 	opts := dclient.AttachToContainerOptions{

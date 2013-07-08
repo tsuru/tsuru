@@ -484,6 +484,24 @@ func (s *S) TestContainerStopped(c *gocheck.C) {
 	c.Assert(result, gocheck.Equals, true)
 }
 
+func (s *S) TestContainerStop(c *gocheck.C) {
+	err := s.newImage()
+	c.Assert(err, gocheck.IsNil)
+	cont, err := s.newContainer()
+	c.Assert(err, gocheck.IsNil)
+	defer cont.remove()
+	defer rtesting.FakeRouter.RemoveBackend(cont.AppName)
+	client, err := dockerClient.NewClient(s.server.URL())
+	c.Assert(err, gocheck.IsNil)
+	err = client.StartContainer(cont.ID)
+	c.Assert(err, gocheck.IsNil)
+	err = cont.stop()
+	c.Assert(err, gocheck.IsNil)
+	result, err := cont.stopped()
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(result, gocheck.Equals, true)
+}
+
 func (s *S) TestContainerLogs(c *gocheck.C) {
 	err := s.newImage()
 	c.Assert(err, gocheck.IsNil)
