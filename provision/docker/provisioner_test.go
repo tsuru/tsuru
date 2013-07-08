@@ -72,27 +72,31 @@ func (s *S) TestProvisionerRestartCallsTheRestartHook(c *gocheck.C) {
 	c.Assert(fexec.ExecutedCmd("ssh", args), gocheck.Equals, true)
 }
 
-func (s *S) stopContainers() {
+func (s *S) stopContainers(n uint) {
 	client, err := dockerClient.NewClient(s.server.URL())
 	if err != nil {
 		return
 	}
-	for {
-		opts := dockerClient.ListContainersOptions{All: true}
+	for n > 0 {
+		opts := dockerClient.ListContainersOptions{All: false}
 		containers, err := client.ListContainers(opts)
 		if err != nil {
 			return
 		}
 		if len(containers) > 0 {
 			for _, cont := range containers {
-				client.StopContainer(cont.ID, 1)
+				if cont.ID != "" {
+					client.StopContainer(cont.ID, 1)
+					n--
+				}
 			}
 		}
+		time.Sleep(100 * time.Millisecond)
 	}
 }
 
 func (s *S) TestDeploy(c *gocheck.C) {
-	go s.stopContainers()
+	go s.stopContainers(1)
 	err := s.newImage()
 	c.Assert(err, gocheck.IsNil)
 	fexec := &etesting.FakeExecutor{}
@@ -124,7 +128,7 @@ func (w *writer) Write(c []byte) (int, error) {
 }
 
 func (s *S) TestDeployRemoveContainersEvenWhenTheyreNotInTheAppsCollection(c *gocheck.C) {
-	go s.stopContainers()
+	go s.stopContainers(3)
 	err := s.newImage()
 	c.Assert(err, gocheck.IsNil)
 	cont1, err := s.newContainer()
