@@ -280,10 +280,12 @@ func (c *container) ssh(stdout, stderr io.Writer, cmd string, args ...string) er
 }
 
 // commit commits an image in docker based in the container
+// and returns the image repository.
 func (c *container) commit() (string, error) {
 	log.Printf("commiting container %s", c.ID)
 	repoNamespace, _ := config.GetString("docker:repository-namespace")
-	opts := dclient.CommitContainerOptions{Container: c.ID, Repository: repoNamespace + "/" + c.AppName}
+	repository := repoNamespace + "/" + c.AppName
+	opts := dclient.CommitContainerOptions{Container: c.ID, Repository: repository}
 	image, err := dockerCluster().CommitContainer(opts)
 	if err != nil {
 		log.Printf("Could not commit docker image: %s", err.Error())
@@ -291,7 +293,7 @@ func (c *container) commit() (string, error) {
 	}
 	log.Printf("image %s gerenated from container %s", image.ID, c.ID)
 	replicateImage(opts.Repository)
-	return image.ID, nil
+	return repository, nil
 }
 
 // stopped returns true if the container is stopped.

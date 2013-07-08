@@ -411,7 +411,9 @@ func (s *S) TestContainerCommit(c *gocheck.C) {
 	defer rtesting.FakeRouter.RemoveBackend(cont.AppName)
 	imageId, err := cont.commit()
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(imageId, gocheck.Not(gocheck.Equals), "")
+	repoNamespace, _ := config.GetString("docker:repository-namespace")
+	repository := repoNamespace + "/" + cont.AppName
+	c.Assert(imageId, gocheck.Equals, repository)
 }
 
 func (s *S) TestRemoveImage(c *gocheck.C) {
