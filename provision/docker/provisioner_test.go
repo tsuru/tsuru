@@ -270,7 +270,10 @@ func (s *S) TestProvisionerRemoveUnit(c *gocheck.C) {
 	container, err := s.newContainer()
 	c.Assert(err, gocheck.IsNil)
 	defer rtesting.FakeRouter.RemoveBackend(container.AppName)
-	defer container.remove()
+	client, err := dockerClient.NewClient(s.server.URL())
+	c.Assert(err, gocheck.IsNil)
+	err = client.StartContainer(container.ID)
+	c.Assert(err, gocheck.IsNil)
 	app := testing.NewFakeApp(container.AppName, "python", 0)
 	var p dockerProvisioner
 	err = p.RemoveUnit(app, container.ID)

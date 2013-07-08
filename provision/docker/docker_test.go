@@ -497,8 +497,7 @@ func (s *S) TestContainerStop(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	err = cont.stop()
 	c.Assert(err, gocheck.IsNil)
-	result, err := cont.stopped()
-	c.Assert(err, gocheck.IsNil)
+	result, _ := cont.stopped()
 	c.Assert(result, gocheck.Equals, true)
 }
 

@@ -110,6 +110,7 @@ func startInBackground(a provision.App, c container, imageId string, w io.Writer
 	}
 	if c.ID != "" {
 		if a.RemoveUnit(c.ID) != nil {
+			c.stop()
 			c.remove()
 		}
 	}
@@ -141,6 +142,7 @@ func (p *dockerProvisioner) Destroy(app provision.App) error {
 	containers, _ := listAppContainers(app.GetName())
 	for _, c := range containers {
 		go func(c container) {
+			c.stop()
 			c.remove()
 		}(c)
 	}
@@ -203,6 +205,10 @@ func (*dockerProvisioner) RemoveUnit(app provision.App, unitName string) error {
 	}
 	if container.AppName != app.GetName() {
 		return errors.New("Unit does not belong to this app")
+	}
+	err = container.stop()
+	if err != nil {
+		log.Printf("error on stop unit %s - %s", unitName, err)
 	}
 	return container.remove()
 }
