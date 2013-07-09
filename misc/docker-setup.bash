@@ -18,7 +18,7 @@ function configure_tsuru() {
         sudo useradd -m ubuntu
         sudo -u ubuntu mkdir -p /home/ubuntu/.ssh
     fi
-    sudo -u ubuntu ssh-keygen -t rsa -f /home/ubuntu/.ssh/id_rsa.pub -N ""
+    sudo -u ubuntu ssh-keygen -t rsa -f /home/ubuntu/.ssh/id_rsa -N ""
 }
 
 function install_docker() {
