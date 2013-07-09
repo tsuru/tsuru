@@ -111,6 +111,7 @@ func RunServer(flags map[string]interface{}) {
 	m.Del("/users/tokens", authorizationRequiredHandler(logout))
 	m.Put("/users/password", authorizationRequiredHandler(changePassword))
 	m.Del("/users", authorizationRequiredHandler(removeUser))
+	m.Get("/users/:email/keys", authorizationRequiredHandler(listKeys))
 	m.Post("/users/keys", authorizationRequiredHandler(addKeyToUser))
 	m.Del("/users/keys", authorizationRequiredHandler(removeKeyFromUser))
 
