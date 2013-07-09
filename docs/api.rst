@@ -230,6 +230,25 @@ Example:
     GET /services/mongodb HTTP/1.1
     [{"Name": "my-mongo", "Teams": ["myteam"], "Apps": ["myapp"], "ServiceName": "mongodb"}]
 
+Get service documentation
+*************************
+
+    * Method: GET
+    * URI: /services/<servicename>/doc
+    * Format: text
+
+Returns 200 in case of success.
+Returns 404 if the service does not exists.
+
+Example:
+
+.. highlight:: bash
+
+::
+
+    GET /services/mongodb/doc HTTP/1.1
+    Mongodb exports the ...
+
 1.3 Service instances
 ---------------------
 
