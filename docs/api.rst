@@ -217,6 +217,26 @@ Example:
 1.x Users
 ---------
 
+Login
+******
+
+    * Method: POST
+    * URI: /users/<email>/tokens
+    * Body: `{"password":"123456"}`
+
+Returns 200 in case of success.
+Returns 400 if the json is invalid.
+Returns 400 if the password is empty or nil.
+Returns 404 if the user is not found.
+
+Example:
+
+.. highlight:: bash
+
+::
+
+    POST /users/user@email.com/tokens HTTP/1.1
+
 Logout
 ******
 
