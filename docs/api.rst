@@ -217,6 +217,24 @@ Example:
 1.x Users
 ---------
 
+Add public key to user
+**********************
+
+    * Method: POST
+    * URI: /users/keys
+    * Body: `{"key":"my-key"}`
+
+Returns 200 in case of success.
+
+Example:
+
+.. highlight:: bash
+
+::
+
+    POST /users/keys HTTP/1.1
+    Body: `{"key":"my-key"}`
+
 Remove public key from user
 ***************************
 
