@@ -189,8 +189,8 @@ Example:
     POST/services HTTP/1.1
     Body:
 	`id: some_service
-endpoint:
-    production: someservice.com`
+    endpoint:
+        production: someservice.com`
 
 Remove a service
 ****************
