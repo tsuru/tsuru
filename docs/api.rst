@@ -217,6 +217,28 @@ Example:
 1.x Users
 ---------
 
+Create an user
+**************
+
+    * Method: POST
+    * URI: /users
+    * Body: `{"email":"nobody@globo.com","password":"123456"}`
+
+Returns 200 in case of success.
+Returns 400 if the json is invalid.
+Returns 400 if the email is invalid.
+Returns 400 if the password characters length is less than 6 and greater than 50.
+Returns 409 if the email already exists.
+
+Example:
+
+.. highlight:: bash
+
+::
+
+    POST /users HTTP/1.1
+    Body: `{"email":"nobody@globo.com","password":"123456"}`
+
 Reset password
 **************
 
@@ -282,7 +304,6 @@ Change password
 Returns 200 in case of success.
 Returns 400 if the json is invalid.
 Returns 400 if the old or new password is empty or nil.
-Returns 400 if the new password characters length is less than 6 and greater than 50.
 Returns 400 if the new password characters length is less than 6 and greater than 50.
 Returns 403 if the old password does not match with the current password.
 
