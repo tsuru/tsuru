@@ -239,6 +239,24 @@ Example:
     Content-Legth: 22
     [{"name": "teamname"}]
 
+Info about a team
+*****************
+
+    * Method: GET
+    * URI: /teams/<teamname>
+    * Format: json
+
+Returns 200 in case of success, and json in the body with the info about a team.
+
+Example:
+
+.. highlight:: bash
+
+::
+
+    GET /teams/teamname HTTP/1.1
+    [{"name": "teamname", "users": ["user@email.com"]}]
+
 Add a team
 **********
 
