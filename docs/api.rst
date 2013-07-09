@@ -163,9 +163,34 @@ Example:
 
 ::
 
-    GET /servicesHTTP/1.1
+    GET /services HTTP/1.1
     Content-Legth: 67
     {"service": "mongodb", "instances": ["my_nosql", "other-instance"]}
+
+Create a new service
+********************
+
+    * Method: POST
+    * URI: /services
+    * Format: yaml
+    * Body: a yaml with the service metadata.
+
+Returns 200 in case of success.
+Returns 500 if the yaml is invalid.
+Returns 500 if the service name already exists.
+Returns 403 if the user is not a member of a team.
+
+Example:
+
+.. highlight:: bash
+
+::
+
+    GET /services HTTP/1.1
+    Body:
+	`id: some_service
+endpoint:
+    production: someservice.com`
 
 1.3 Service instances
 ---------------------
