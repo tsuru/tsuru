@@ -233,6 +233,24 @@ Example:
 
     DELETE /users/tokens HTTP/1.1
 
+Change password
+***************
+
+    * Method: PUT
+    * URI: /users/password
+    * Body: `{"old":"123456","new":"654321"}`
+
+Returns 200 in case of success.
+
+Example:
+
+.. highlight:: bash
+
+::
+
+    PUT /users/password HTTP/1.1
+    Body: `{"old":"123456","new":"654321"}`
+
 Remove an user
 **************
 
