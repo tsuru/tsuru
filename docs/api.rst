@@ -148,6 +148,25 @@ Example:
 1.2 Services
 ------------
 
+List services
+*************
+
+    * Method: GET
+    * URI: /services
+    * Format: json
+
+Returns 200 in case of success.
+
+Example:
+
+.. highlight:: bash
+
+::
+
+    GET /servicesHTTP/1.1
+    Content-Legth: 67
+    {"service": "mongodb", "instances": ["my_nosql", "other-instance"]}
+
 1.3 Service instances
 ---------------------
 
