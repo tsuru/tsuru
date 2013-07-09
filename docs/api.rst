@@ -154,6 +154,25 @@ Example:
 1.x Quotas
 ----------
 
+Get quota info of an user
+*************************
+
+    * Method: GET
+    * URI: /quota/<user>
+    * Format: json
+
+Returns 200 in case of success, and json with the quota info.
+
+Example:
+
+.. highlight:: bash
+
+::
+
+    GET /quota/wolverine HTTP/1.1
+    Content-Legth: 29
+    {"items": 10, "available": 2}
+
 1.x Healers
 -----------
 
