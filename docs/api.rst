@@ -217,6 +217,25 @@ Example:
 1.x Users
 ---------
 
+Reset password
+**************
+
+    * Method: POST
+    * URI: /users/<email>/password?token=token
+
+Returns 200 in case of success.
+Returns 404 if the user is not found.
+
+The token parameter is optional.
+
+Example:
+
+.. highlight:: bash
+
+::
+
+    POST /users/user@email.com/password?token=1234 HTTP/1.1
+
 Login
 ******
 
