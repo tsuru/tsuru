@@ -211,6 +211,25 @@ Example:
 
     DELETE /services/mongodb HTTP/1.1
 
+Get info about a service
+************************
+
+    * Method: GET
+    * URI: /services/<servicename>
+    * Format: json
+
+Returns 200 in case of success.
+Returns 404 if the service does not exists.
+
+Example:
+
+.. highlight:: bash
+
+::
+
+    GET /services/mongodb HTTP/1.1
+    [{"Name": "my-mongo", "Teams": ["myteam"], "Apps": ["myapp"], "ServiceName": "mongodb"}]
+
 1.3 Service instances
 ---------------------
 
