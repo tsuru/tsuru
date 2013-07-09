@@ -241,6 +241,11 @@ Change password
     * Body: `{"old":"123456","new":"654321"}`
 
 Returns 200 in case of success.
+Returns 400 if the json is invalid.
+Returns 400 if the old or new password is empty or nil.
+Returns 400 if the new password characters length is less than 6 and greater than 50.
+Returns 400 if the new password characters length is less than 6 and greater than 50.
+Returns 403 if the old password does not match with the current password.
 
 Example:
 
