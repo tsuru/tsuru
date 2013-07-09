@@ -217,6 +217,24 @@ Example:
 1.x Users
 ---------
 
+Remove public key from user
+***************************
+
+    * Method: DELETE
+    * URI: /users/keys
+    * Body: `{"key":"my-key"}`
+
+Returns 200 in case of success.
+
+Example:
+
+.. highlight:: bash
+
+::
+
+    DELETE /users/keys HTTP/1.1
+    Body: `{"key":"my-key"}`
+
 1.x Teams
 ---------
 
@@ -255,7 +273,7 @@ Example:
 ::
 
     GET /teams/teamname HTTP/1.1
-    [{"name": "teamname", "users": ["user@email.com"]}]
+    {"name": "teamname", "users": ["user@email.com"]}
 
 Add a team
 **********
