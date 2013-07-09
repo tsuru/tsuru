@@ -217,6 +217,22 @@ Example:
 1.x Users
 ---------
 
+Remove an user
+**************
+
+    * Method: DELETE
+    * URI: /users
+
+Returns 200 in case of success.
+
+Example:
+
+.. highlight:: bash
+
+::
+
+    DELETE /users HTTP/1.1
+
 Add public key to user
 **********************
 
