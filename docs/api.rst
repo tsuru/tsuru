@@ -269,6 +269,23 @@ Example:
     PUT /services/mongodb/doc HTTP/1.1
     Body: Mongodb exports the ...
 
+Grant access to a service
+*************************
+
+    * Method: PUT
+    * URI: /services/<servicename>/<teamname>
+
+Returns 200 in case of success.
+Returns 404 if the service does not exists.
+
+Example:
+
+.. highlight:: bash
+
+::
+
+    PUT /services/mongodb/cobrateam HTTP/1.1
+
 1.3 Service instances
 ---------------------
 
