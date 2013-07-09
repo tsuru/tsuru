@@ -44,7 +44,7 @@ func dockerCluster() *cluster.Cluster {
 			}
 			nodes = append(nodes, node)
 		}
-		dCluster, _ = cluster.New(nodes...)
+		dCluster, _ = cluster.New(nil, nodes...)
 	}
 	return dCluster
 }
@@ -111,7 +111,7 @@ func newContainer(app provision.App, imageId string, cmds []string) (container, 
 		AttachStdout: false,
 		AttachStderr: false,
 	}
-	_, c, err := dockerCluster().CreateContainer(&config)
+	c, err := dockerCluster().CreateContainer(&config)
 	if err != nil {
 		log.Printf("error on creating container in docker %s - %s", cont.AppName, err.Error())
 		return container{}, err

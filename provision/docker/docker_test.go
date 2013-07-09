@@ -252,7 +252,7 @@ func (s *S) TestContainerHostPortNotFound(c *gocheck.C) {
 	defer server.Close()
 	oldCluster := dockerCluster()
 	var err error
-	dCluster, err = cluster.New(
+	dCluster, err = cluster.New(nil,
 		cluster.Node{ID: "server", Address: server.URL},
 	)
 	c.Assert(err, gocheck.IsNil)
@@ -519,7 +519,7 @@ func (s *S) TestContainerLogs(c *gocheck.C) {
 
 func (s *S) TestDockerCluster(c *gocheck.C) {
 	config.Set("docker:servers", []string{"http://localhost:4243", "http://10.10.10.10:4243"})
-	expected, _ := cluster.New(
+	expected, _ := cluster.New(nil,
 		cluster.Node{ID: "server0", Address: "http://localhost:4243"},
 		cluster.Node{ID: "server1", Address: "http://10.10.10.10:4243"},
 	)
@@ -547,7 +547,7 @@ func (s *S) TestReplicateImage(c *gocheck.C) {
 	defer config.Unset("docker:registry")
 	cmutext.Lock()
 	oldDockerCluster := dCluster
-	dCluster, _ = cluster.New(cluster.Node{ID: "server0", Address: server.URL()})
+	dCluster, _ = cluster.New(nil, cluster.Node{ID: "server0", Address: server.URL()})
 	cmutext.Unlock()
 	defer func() {
 		cmutext.Lock()
@@ -571,7 +571,7 @@ func (s *S) TestReplicateImageNoRegistry(c *gocheck.C) {
 	defer server.Stop()
 	cmutext.Lock()
 	oldDockerCluster := dCluster
-	dCluster, _ = cluster.New(cluster.Node{ID: "server0", Address: server.URL()})
+	dCluster, _ = cluster.New(nil, cluster.Node{ID: "server0", Address: server.URL()})
 	cmutext.Unlock()
 	defer func() {
 		cmutext.Lock()

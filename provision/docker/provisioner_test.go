@@ -446,7 +446,7 @@ func (s *S) TestCollectStatus(c *gocheck.C) {
 	}))
 	defer server.Close()
 	oldCluster := dockerCluster()
-	dCluster, err = cluster.New(
+	dCluster, err = cluster.New(nil,
 		cluster.Node{ID: "server", Address: server.URL},
 	)
 	c.Assert(err, gocheck.IsNil)
