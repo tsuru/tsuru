@@ -176,9 +176,9 @@ Create a new service
     * Body: a yaml with the service metadata.
 
 Returns 200 in case of success.
+Returns 403 if the user is not a member of a team.
 Returns 500 if the yaml is invalid.
 Returns 500 if the service name already exists.
-Returns 403 if the user is not a member of a team.
 
 Example:
 
@@ -186,7 +186,7 @@ Example:
 
 ::
 
-    GET /services HTTP/1.1
+    POST/services HTTP/1.1
     Body:
 	`id: some_service
 endpoint:
