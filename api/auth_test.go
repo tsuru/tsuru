@@ -1444,6 +1444,37 @@ func (s *AuthSuite) TestRemoveKeyHandlerReturnsNotFoundIfTheUserDoesNotHaveTheKe
 	c.Assert(e.Code, gocheck.Equals, http.StatusNotFound)
 }
 
+func (s *AuthSuite) TestListKeysHandler(c *gocheck.C) {
+	h := testHandler{
+		content: `{"homekey": "lol somekey somecomment", "workkey": "lol someotherkey someothercomment"}`,
+	}
+	ts := s.startGandalfTestServer(&h)
+	defer ts.Close()
+	recorder := httptest.NewRecorder()
+	request, err := http.NewRequest("GET", "/users/cartman@south.park/keys?email=cartman@south.park", nil)
+	c.Assert(err, gocheck.IsNil)
+	err = listKeys(recorder, request, s.token)
+	c.Assert(err, gocheck.IsNil)
+	got := map[string]string{}
+	err = json.NewDecoder(recorder.Body).Decode(&got)
+	c.Assert(err, gocheck.IsNil)
+	expected := map[string]string{
+		"homekey": "lol somekey somecomment",
+		"workkey": "lol someotherkey someothercomment",
+	}
+	c.Assert(expected, gocheck.DeepEquals, got)
+}
+
+func (s *AuthSuite) TestListKeysRepassesGandalfsErrors(c *gocheck.C) {
+	h := testBadHandler{}
+	ts := s.startGandalfTestServer(&h)
+	defer ts.Close()
+	recorder := httptest.NewRecorder()
+	request, err := http.NewRequest("GET", "/users/cartman@south.park/keys?email=cartman@south.park", nil)
+	err = listKeys(recorder, request, s.token)
+	c.Assert(err.Error(), gocheck.Equals, "some error\n")
+}
+
 func (s *AuthSuite) TestRemoveUser(c *gocheck.C) {
 	h := testHandler{}
 	ts := s.startGandalfTestServer(&h)

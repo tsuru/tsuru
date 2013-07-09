@@ -512,7 +512,31 @@ func removeKeyFromUser(w http.ResponseWriter, r *http.Request, t *auth.Token) er
 	return removeKeyFromDatabase(&key, u)
 }
 
-// RemoveUser removes the user from the database and from gandalf server
+// listKeys list user's keys
+func listKeys(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
+	u, err := t.User()
+	if err != nil {
+		return err
+	}
+	keys, err := u.ListKeys()
+	if err != nil {
+		return err
+	}
+	b, err := json.Marshal(keys)
+	if err != nil {
+		return fmt.Errorf("Failed to marshal keys into json: %s", err.Error())
+	}
+	n, err := w.Write(b)
+	if err != nil {
+		return err
+	}
+	if n != len(b) {
+		return &errors.HTTP{Code: http.StatusInternalServerError, Message: "Failed to write response body."}
+	}
+	return nil
+}
+
+// removeUser removes the user from the database and from gandalf server
 //
 // If the user is the only one in a team an error will be returned.
 func removeUser(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
