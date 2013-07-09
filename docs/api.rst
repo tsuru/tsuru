@@ -192,6 +192,25 @@ Example:
 endpoint:
     production: someservice.com`
 
+Remove a service
+****************
+
+    * Method: DELETE
+    * URI: /services/<servicename>
+
+Returns 204 in case of success.
+Returns 403 if user has not access to the server.
+Returns 403 if service has instances.
+Returns 404 if service is not found.
+
+Example:
+
+.. highlight:: bash
+
+::
+
+    DELETE /services/mongodb HTTP/1.1
+
 1.3 Service instances
 ---------------------
 
