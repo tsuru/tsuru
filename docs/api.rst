@@ -217,6 +217,22 @@ Example:
 1.x Users
 ---------
 
+Logout
+******
+
+    * Method: DELETE
+    * URI: /users/tokens
+
+Returns 200 in case of success.
+
+Example:
+
+.. highlight:: bash
+
+::
+
+    DELETE /users/tokens HTTP/1.1
+
 Remove an user
 **************
 
