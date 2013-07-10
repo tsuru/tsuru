@@ -132,7 +132,7 @@ func (c *container) hostPort() (string, error) {
 	}
 	if dockerContainer.NetworkSettings != nil {
 		mappedPorts := dockerContainer.NetworkSettings.PortMapping
-		if port, ok := mappedPorts[c.Port]; ok {
+		if port, ok := mappedPorts["Tcp"][c.Port]; ok {
 			return port, nil
 		}
 	}

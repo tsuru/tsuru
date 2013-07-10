@@ -416,7 +416,7 @@ func (s *S) TestCollectStatus(c *gocheck.C) {
 		"IpPrefixLen": 8,
 		"Gateway": "10.65.41.1",
 		"PortMapping": {
-			"%s": "90293"
+			"Tcp": {"%s": "90293"}
 		}
 	}
 }`, listenPort)
@@ -426,7 +426,7 @@ func (s *S) TestCollectStatus(c *gocheck.C) {
 		"IpPrefixLen": 8,
 		"Gateway": "10.65.41.1",
 		"PortMapping": {
-			"8889": "90294"
+			"Tcp": {"8889": "90294"}
 		}
 	}
 }`

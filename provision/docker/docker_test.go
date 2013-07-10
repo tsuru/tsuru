@@ -240,7 +240,7 @@ func (s *S) TestContainerHostPortNotFound(c *gocheck.C) {
 		"IpPrefixLen": 8,
 		"Gateway": "10.65.41.1",
 		"PortMapping": {
-			"8889": "59322"
+			"Tcp": {"8889": "59322"}
 		}
 	}
 }`
