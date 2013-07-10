@@ -286,6 +286,23 @@ Example:
 
     PUT /services/mongodb/cobrateam HTTP/1.1
 
+Revoke access from a service
+****************************
+
+    * Method: DELETE
+    * URI: /services/<servicename>/<teamname>
+
+Returns 200 in case of success.
+Returns 404 if the service does not exists.
+
+Example:
+
+.. highlight:: bash
+
+::
+
+    DELETE /services/mongodb/cobrateam HTTP/1.1
+
 1.3 Service instances
 ---------------------
 
