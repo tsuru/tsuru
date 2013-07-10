@@ -5,15 +5,17 @@
 # license that can be found in the LICENSE file.
 
 function ask() {
-    read -p "Enter http proxy [leave blank for none]: " http_proxy
-    if [ "$http_proxy" == "" ]; then
+    read -p "Enter http proxy [leave blank for none]: " http
+    if [ "$http" == "" ]; then
         return
     fi
-    read -p "Enter https proxy [${http_proxy}]: " https_proxy
-    if [ "$https_proxy" == "" ]; then
-        https_proxy=${http_proxy}
+    read -p "Enter https proxy [${http}]: " https
+    if [ "$https" == "" ]; then
+        https=${http}
     fi
-    write_proxy_confs $http_proxy $https_proxy
+    export http_proxy=${http}
+    export https_proxy=${https}
+    write_proxy_confs $http $https
 }
 
 function set_apt() {
@@ -34,7 +36,6 @@ EOF
     profile_template="${profile_template/s1/$1}"
     profile_template="${profile_template/s2/$2}"
     echo "${profile_template}" | sudo tee -a /etc/profile
-    source /etc/profile
 }
 
 function write_proxy_confs() {
