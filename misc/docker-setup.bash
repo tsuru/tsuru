@@ -87,11 +87,11 @@ function main() {
     source proxy-setup.bash
     source tsuru-setup.bash
     source gandalf-setup.bash
+    use_https_in_git
     source hipache-setup.bash
     install_docker
     configure_tsuru
     configure_git_hooks
-    use_https_in_git
     #start_tsuru
     echo_conf_warning
 }
