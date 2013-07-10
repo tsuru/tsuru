@@ -45,9 +45,9 @@ function install_tsuru() {
 function main() {
     update_ubuntu
     install_mongodb
-    setup_platforms
     install_beanstalkd
     install_tsuru
+    setup_platforms
 }
 
 main
