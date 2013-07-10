@@ -38,7 +38,6 @@ function install_beanstalkd() {
 }
 
 function install_tsuru() {
-    install_mongodb
     echo "Downloading tsuru binary and copying to /usr/bin"
     curl -sL https://s3.amazonaws.com/tsuru/dist-server/tsr.tar.gz | sudo tar -xz -C /usr/bin
 }
