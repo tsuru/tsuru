@@ -74,7 +74,7 @@ func (p *JujuProvisioner) elbSupport() bool {
 	return *p.elb
 }
 
-func getRouter() (router.Router, error) {
+func Router() (router.Router, error) {
 	return router.Get("elb")
 }
 
@@ -123,7 +123,7 @@ func (p *JujuProvisioner) Provision(app provision.App) error {
 	}
 	runCmd(true, &buf, &buf, setOption...)
 	if p.elbSupport() {
-		router, err := getRouter()
+		router, err := Router()
 		if err != nil {
 			return err
 		}
@@ -216,7 +216,7 @@ func (p *JujuProvisioner) Destroy(app provision.App) error {
 		return err
 	}
 	if p.elbSupport() {
-		router, err := getRouter()
+		router, err := Router()
 		if err != nil {
 			return err
 		}
@@ -298,7 +298,7 @@ func (p *JujuProvisioner) removeUnit(app provision.App, unit provision.AppUnit) 
 		return cmdError(buf.String(), err, cmd)
 	}
 	if p.elbSupport() {
-		router, err := getRouter()
+		router, err := Router()
 		if err != nil {
 			return err
 		}
@@ -433,7 +433,7 @@ func (p *JujuProvisioner) heal(units []provision.Unit) {
 			format := "[juju] instance-id of unit %q changed from %q to %q. Healing."
 			log.Printf(format, unit.Name, inst.InstanceID, unit.InstanceId)
 			if p.elbSupport() {
-				router, err := getRouter()
+				router, err := Router()
 				if err != nil {
 					continue
 				}
@@ -469,7 +469,7 @@ func (p *JujuProvisioner) CollectStatus() ([]provision.Unit, error) {
 
 func (p *JujuProvisioner) Addr(app provision.App) (string, error) {
 	if p.elbSupport() {
-		router, err := getRouter()
+		router, err := Router()
 		if err != nil {
 			return "", err
 		}

@@ -786,7 +786,7 @@ func (s *ELBSuite) TestProvisionWithELB(c *gocheck.C) {
 	p := JujuProvisioner{}
 	err := p.Provision(app)
 	c.Assert(err, gocheck.IsNil)
-	router, err := getRouter()
+	router, err := Router()
 	c.Assert(err, gocheck.IsNil)
 	defer router.RemoveBackend(app.GetName())
 	addr, err := router.Addr(app.GetName())
@@ -813,7 +813,7 @@ func (s *ELBSuite) TestDestroyWithELB(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	err = p.Destroy(app)
 	c.Assert(err, gocheck.IsNil)
-	router, err := getRouter()
+	router, err := Router()
 	c.Assert(err, gocheck.IsNil)
 	defer router.RemoveBackend(app.GetName())
 	addr, err := router.Addr(app.GetName())
@@ -871,7 +871,7 @@ func (s *ELBSuite) TestRemoveUnitWithELB(c *gocheck.C) {
 		execut = nil
 	}()
 	app := testing.NewFakeApp("radio", "rush", 4)
-	router, err := getRouter()
+	router, err := Router()
 	c.Assert(err, gocheck.IsNil)
 	err = router.AddBackend(app.GetName())
 	c.Assert(err, gocheck.IsNil)
@@ -895,7 +895,7 @@ func (s *ELBSuite) TestRemoveUnitWithELB(c *gocheck.C) {
 func (s *ELBSuite) TestCollectStatusWithELBAndIDChange(c *gocheck.C) {
 	a := testing.NewFakeApp("symfonia", "symfonia", 0)
 	p := JujuProvisioner{}
-	router, err := getRouter()
+	router, err := Router()
 	c.Assert(err, gocheck.IsNil)
 	err = router.AddBackend(a.GetName())
 	c.Assert(err, gocheck.IsNil)
@@ -953,7 +953,7 @@ func (s *ELBSuite) TestCollectStatusWithELBAndIDChange(c *gocheck.C) {
 func (s *ELBSuite) TestAddrWithELB(c *gocheck.C) {
 	app := testing.NewFakeApp("jimmy", "who", 0)
 	p := JujuProvisioner{}
-	router, err := getRouter()
+	router, err := Router()
 	c.Assert(err, gocheck.IsNil)
 	router.AddBackend(app.GetName())
 	defer router.RemoveBackend(app.GetName())

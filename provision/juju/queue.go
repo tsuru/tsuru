@@ -68,7 +68,7 @@ func handle(msg *queue.Message) {
 		if len(noID) == len(units) {
 			getQueue(queueName).Release(msg, 0)
 		} else {
-			router, _ := getRouter()
+			router, _ := Router()
 			for _, u := range units {
 				router.AddRoute(a.GetName(), u.InstanceId)
 			}
