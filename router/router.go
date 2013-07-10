@@ -22,7 +22,7 @@ type Router interface {
 
 // Routable interface provides a method that returns a router.
 type Routable interface {
-	Router() Router
+	Router() (Router, error)
 }
 
 var routers = make(map[string]Router)
