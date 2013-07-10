@@ -23,8 +23,8 @@ function configure_tsuru() {
 
 function install_docker() {
     sudo apt-get install lxc wget bsdtar curl -y --force-yes
-    # are you on AWS? if so, uncomment the line below
-    # sudo apt-get install linux-image-extra-`uname -r`
+    # are you on AWS? if not, comment the line below or get an extra pkg
+    sudo apt-get install linux-image-extra-`uname -r` -y --force-yes
     wget -q http://get.docker.io/builds/Linux/x86_64/docker-latest.tgz
     tar -xf docker-latest.tgz
     cd docker-latest
