@@ -53,8 +53,8 @@ function start_hipache() {
 }
 
 function main() {
-    set_npm_proxy
     install_npm
+    set_npm_proxy
     install_redis
     install_hipache
     configure_hipache
