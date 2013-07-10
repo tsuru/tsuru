@@ -224,7 +224,7 @@ func (s *S) TestProvisionerAddr(c *gocheck.C) {
 	var p dockerProvisioner
 	addr, err := p.Addr(app)
 	c.Assert(err, gocheck.IsNil)
-	r, err := getRouter()
+	r, err := Router()
 	c.Assert(err, gocheck.IsNil)
 	expected, err := r.Addr(cont.AppName)
 	c.Assert(err, gocheck.IsNil)

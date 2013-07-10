@@ -85,7 +85,7 @@ var addRoute = action.Action{
 	Name: "add-route",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
 		c := ctx.Previous.(container)
-		r, err := getRouter()
+		r, err := Router()
 		if err != nil {
 			return nil, err
 		}

@@ -252,7 +252,7 @@ func (c *container) remove() error {
 		log.Printf("Failed to remove container from database: %s", err.Error())
 		return err
 	}
-	r, err := getRouter()
+	r, err := Router()
 	if err != nil {
 		log.Printf("Failed to obtain router: %s", err.Error())
 		return err
