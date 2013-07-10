@@ -93,6 +93,7 @@ function main() {
     configure_tsuru
     configure_git_hooks
     #start_tsuru
+    setup_platforms
     echo_conf_warning
 }
 

@@ -23,6 +23,9 @@ function install_mongodb() {
 }
 
 function setup_platforms() {
+    # this function should be called in the provisioner specific installation script
+    # because mongo usually takes some time to startup, and it's not safe to call it from here
+    # so call it after everything runs
     if [ ! -f platforms-setup.js ]; then
         curl -O https://raw.github.com/globocom/tsuru/master/misc/platforms-setup.js
     fi
@@ -47,7 +50,6 @@ function main() {
     install_mongodb
     install_beanstalkd
     install_tsuru
-    setup_platforms
 }
 
 main
