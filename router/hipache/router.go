@@ -233,7 +233,18 @@ func (hipacheRouter) Addr(name string) (string, error) {
 }
 
 func (hipacheRouter) Routes(name string) ([]string, error) {
-	return nil, nil
+	domain, err := config.GetString("hipache:domain")
+	if err != nil {
+		return nil, &routeError{"routes", err}
+	}
+	frontend := "frontend:" + name + "." + domain
+	conn := connect()
+	defer conn.Close()
+	routes, err := redis.Strings(conn.Do("LRANGE", frontend, 0, -1))
+	if err != nil {
+		return nil, &routeError{"routes", err}
+	}
+	return routes, nil
 }
 
 func (hipacheRouter) removeElement(name, address string) error {

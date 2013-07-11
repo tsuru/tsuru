@@ -438,3 +438,14 @@ func (s *S) TestRemoveElement(c *gocheck.C) {
 	}
 	c.Assert(s.fake.cmds, gocheck.DeepEquals, cmds)
 }
+
+func (s *S) TestRoutes(c *gocheck.C) {
+	reply := map[string]interface{}{"GET": "tip", "SET": "", "LRANGE": []interface{}{[]byte("http://10.10.10.10:8080")}}
+	conn = &resultCommandConn{reply: reply, fakeConn: s.fake}
+	router := hipacheRouter{}
+	err := router.AddRoute("tip", "http://10.10.10.10:8080")
+	c.Assert(err, gocheck.IsNil)
+	routes, err := router.Routes("tip")
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(routes, gocheck.DeepEquals, []string{"http://10.10.10.10:8080"})
+}
