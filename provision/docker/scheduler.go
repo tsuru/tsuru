@@ -6,7 +6,6 @@ package docker
 
 import (
 	"github.com/dotcloud/docker"
-	dcli "github.com/fsouza/go-dockerclient"
 	"github.com/globocom/docker-cluster/cluster"
 	"github.com/globocom/tsuru/db"
 )
