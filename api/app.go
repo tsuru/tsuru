@@ -675,3 +675,22 @@ func platformList(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
 	}
 	return json.NewEncoder(w).Encode(platforms)
 }
+
+func swap(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
+	u, err := t.User()
+	if err != nil {
+		return err
+	}
+	app1Name := r.URL.Query().Get("app1")
+	app2Name := r.URL.Query().Get("app2")
+	app1, err := getApp(app1Name, u)
+	if err != nil {
+		return err
+	}
+	app2, err := getApp(app2Name, u)
+	if err != nil {
+		return err
+	}
+	rec.Log(u.Email, "swap", app1Name, app2Name)
+	return app.Swap(&app1, &app2)
+}
