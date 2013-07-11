@@ -5,10 +5,21 @@
 package docker
 
 import (
+	"errors"
 	"github.com/dotcloud/docker"
+	dcli "github.com/fsouza/go-dockerclient"
+	"github.com/globocom/config"
 	"github.com/globocom/docker-cluster/cluster"
+	"github.com/globocom/tsuru/app"
 	"github.com/globocom/tsuru/db"
+	"labix.org/v2/mgo/bson"
+	"math/rand"
+	"strings"
 )
+
+// errNoFallback is the error returned when no fallback hosts are configured in
+// the segregated scheduler.
+var errNoFallback = errors.New("No fallback configured in the scheduler")
 
 const schedulerCollection = "docker_scheduler"
 
@@ -20,8 +31,56 @@ type node struct {
 
 type segregatedScheduler struct{}
 
-func (segregatedScheduler) Schedule(config *docker.Config) (string, *docker.Container, error) {
-	return "", nil, nil
+func (s segregatedScheduler) Schedule(cfg *docker.Config) (string, *docker.Container, error) {
+	image := cfg.Image
+	namespace, err := config.GetString("docker:repository-namespace")
+	if err != nil {
+		return "", nil, err
+	}
+	conn, err := db.Conn()
+	if err != nil {
+		return "", nil, err
+	}
+	defer conn.Close()
+	appname := strings.Replace(image, namespace+"/", "", -1)
+	app := app.App{Name: appname}
+	err = app.Get()
+	if err != nil {
+		return s.fallback(cfg)
+	}
+	if len(app.Teams) == 1 {
+		var nodes []node
+		err = conn.Collection(schedulerCollection).Find(bson.M{"team": app.Teams[0]}).All(&nodes)
+		if err != nil || len(nodes) < 1 {
+			return s.fallback(cfg)
+		}
+		return s.handle(cfg, nodes)
+	}
+	return s.fallback(cfg)
+}
+
+func (s segregatedScheduler) fallback(cfg *docker.Config) (string, *docker.Container, error) {
+	conn, err := db.Conn()
+	if err != nil {
+		return "", nil, err
+	}
+	defer conn.Close()
+	var nodes []node
+	err = conn.Collection(schedulerCollection).Find(bson.M{"team": ""}).All(&nodes)
+	if err != nil || len(nodes) < 1 {
+		return "", nil, errNoFallback
+	}
+	return s.handle(cfg, nodes)
+}
+
+func (segregatedScheduler) handle(cfg *docker.Config, nodes []node) (string, *docker.Container, error) {
+	node := nodes[rand.Intn(len(nodes))]
+	client, err := dcli.NewClient(node.Address)
+	if err != nil {
+		return node.ID, nil, err
+	}
+	container, err := client.CreateContainer(cfg)
+	return node.ID, container, err
 }
 
 func (segregatedScheduler) Nodes() ([]cluster.Node, error) {
