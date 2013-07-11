@@ -145,6 +145,22 @@ Example:
 
     DELETE /apps/myapp/env HTTP/1.1
 
+Swapping two apps
+*****************
+
+    * Method: PUT
+    * URI: /swap?app1=appname&app2=anotherapp
+
+Returns 200 in case of success.
+
+Example:
+
+.. highlight:: bash
+
+::
+
+    PUT /swap?app1=myapp&app2=anotherapp
+
 1.2 Services
 ------------
 
