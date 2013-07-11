@@ -25,9 +25,9 @@ function install_docker() {
     sudo apt-get install lxc wget bsdtar curl -y --force-yes
     # are you on AWS? if not, comment the line below or get an extra pkg
     sudo apt-get install linux-image-extra-`uname -r` -y --force-yes
-    wget -q http://get.docker.io/builds/Linux/x86_64/docker-latest.tgz
-    tar -xf docker-latest.tgz
-    cd docker-latest
+    wget -q http://get.docker.io/builds/Linux/x86_64/docker-master.tgz
+    tar -xf docker-master.tgz
+    cd docker-master
     sudo cp docker /usr/local/bin
     # runs docker daemon, it must be running in order to tsuru work
     sudo -E docker -d &
