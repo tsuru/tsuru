@@ -18,6 +18,9 @@ type Router interface {
 	SetCName(cname, name string) error
 	UnsetCName(cname, name string) error
 	Addr(name string) (string, error)
+
+	// Routes returns a list of routes of a backend.
+	Routes(name string) ([]string, error)
 }
 
 var routers = make(map[string]Router)

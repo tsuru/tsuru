@@ -141,3 +141,14 @@ func (s *S) TestReset(c *gocheck.C) {
 	r.Reset()
 	c.Assert(r.HasBackend("name"), gocheck.Equals, false)
 }
+
+func (s *S) TestRoutes(c *gocheck.C) {
+	r := fakeRouter{backends: make(map[string][]string)}
+	err := r.AddBackend("name")
+	c.Assert(err, gocheck.IsNil)
+	err = r.AddRoute("name", "127.0.0.1")
+	c.Assert(err, gocheck.IsNil)
+	routes, err := r.Routes("name")
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(routes, gocheck.DeepEquals, []string{"127.0.0.1"})
+}

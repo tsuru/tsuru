@@ -94,3 +94,7 @@ func (NginxRouter) Addr(name string) (string, error) {
 	domain, _ := config.GetString("nginx:domain")
 	return fmt.Sprintf("%s.%s", name, domain), nil
 }
+
+func (NginxRouter) Routes(name string) ([]string, error) {
+	return nil, nil
+}

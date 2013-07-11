@@ -232,6 +232,10 @@ func (hipacheRouter) Addr(name string) (string, error) {
 	return fmt.Sprintf("%s.%s", name, domain), nil
 }
 
+func (hipacheRouter) Routes(name string) ([]string, error) {
+	return nil, nil
+}
+
 func (hipacheRouter) removeElement(name, address string) error {
 	conn := connect()
 	defer conn.Close()

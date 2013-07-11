@@ -128,3 +128,10 @@ func (r *fakeRouter) Reset() {
 	defer r.mutex.Unlock()
 	r.backends = make(map[string][]string)
 }
+
+func (r *fakeRouter) Routes(name string) ([]string, error) {
+	r.mutex.Lock()
+	defer r.mutex.Unlock()
+	routes := r.backends[name]
+	return routes, nil
+}

@@ -102,6 +102,10 @@ func (elbRouter) UnsetCName(cname, name string) error {
 	return nil
 }
 
+func (elbRouter) Routes(name string) ([]string, error) {
+	return nil, nil
+}
+
 func (r elbRouter) Addr(name string) (string, error) {
 	resp, err := r.elb().DescribeLoadBalancers(name)
 	if err != nil {
