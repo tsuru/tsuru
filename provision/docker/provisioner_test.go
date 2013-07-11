@@ -574,3 +574,19 @@ func (s *S) TestProvisionerIsCNameManager(c *gocheck.C) {
 	_, ok := p.(provision.CNameManager)
 	c.Assert(ok, gocheck.Equals, true)
 }
+
+func (s *S) TestSwap(c *gocheck.C) {
+	var p dockerProvisioner
+	app1 := testing.NewFakeApp("app1", "python", 1)
+	app2 := testing.NewFakeApp("app2", "python", 1)
+	rtesting.FakeRouter.AddBackend(app1.GetName())
+	rtesting.FakeRouter.AddRoute(app1.GetName(), "127.0.0.1")
+	rtesting.FakeRouter.AddBackend(app2.GetName())
+	rtesting.FakeRouter.AddRoute(app2.GetName(), "127.0.0.2")
+	err := p.Swap(app1, app2)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(rtesting.FakeRouter.HasBackend(app1.GetName()), gocheck.Equals, true)
+	c.Assert(rtesting.FakeRouter.HasBackend(app2.GetName()), gocheck.Equals, true)
+	c.Assert(rtesting.FakeRouter.HasRoute(app2.GetName(), "127.0.0.1"), gocheck.Equals, true)
+	c.Assert(rtesting.FakeRouter.HasRoute(app1.GetName(), "127.0.0.2"), gocheck.Equals, true)
+}
