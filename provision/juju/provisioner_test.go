@@ -972,3 +972,31 @@ func (s *ELBSuite) TestAddrWithUnknownELB(c *gocheck.C) {
 	c.Assert(err, gocheck.NotNil)
 	c.Assert(err, gocheck.ErrorMatches, "^There is no ACTIVE Load Balancer named.*")
 }
+
+func (s *ELBSuite) TestSwap(c *gocheck.C) {
+	var p JujuProvisioner
+	app1 := testing.NewFakeApp("app1", "python", 1)
+	app2 := testing.NewFakeApp("app2", "python", 1)
+	id1 := s.server.NewInstance()
+	defer s.server.RemoveInstance(id1)
+	id2 := s.server.NewInstance()
+	defer s.server.RemoveInstance(id2)
+	router, err := Router()
+	c.Assert(err, gocheck.IsNil)
+	err = router.AddBackend(app1.GetName())
+	c.Assert(err, gocheck.IsNil)
+	err = router.AddRoute(app1.GetName(), id1)
+	c.Assert(err, gocheck.IsNil)
+	err = router.AddBackend(app2.GetName())
+	c.Assert(err, gocheck.IsNil)
+	err = router.AddRoute(app2.GetName(), id2)
+	c.Assert(err, gocheck.IsNil)
+	err = p.Swap(app1, app2)
+	c.Assert(err, gocheck.IsNil)
+	app2Routes, err := router.Routes(app2.GetName())
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(app2Routes, gocheck.DeepEquals, []string{id1})
+	app1Routes, err := router.Routes(app1.GetName())
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(app1Routes, gocheck.DeepEquals, []string{id2})
+}
