@@ -127,6 +127,8 @@ func RunServer(flags map[string]interface{}) {
 	m.Get("/healers", authorizationRequiredHandler(healers))
 	m.Get("/healers/:healer", authorizationRequiredHandler(healer))
 
+	m.Get("/swap", authorizationRequiredHandler(healers))
+
 	if !dry {
 		provisioner, err := config.GetString("provisioner")
 		if err != nil {
