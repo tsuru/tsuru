@@ -361,14 +361,3 @@ func collection() *mgo.Collection {
 	}
 	return conn.Collection(name)
 }
-
-func imagesCollection() *mgo.Collection {
-	nameIndex := mgo.Index{Key: []string{"name"}, Unique: true}
-	conn, err := db.Conn()
-	if err != nil {
-		log.Printf("Failed to connect to the database: %s", err)
-	}
-	c := conn.Collection("docker_image")
-	c.EnsureIndex(nameIndex)
-	return c
-}
