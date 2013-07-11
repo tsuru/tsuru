@@ -115,7 +115,7 @@ func (s *SchedulerSuite) TestSchedulerNoFallback(c *gocheck.C) {
 func (s *SchedulerSuite) TestSchedulerNoNamespace(c *gocheck.C) {
 	old, _ := config.Get("docker:repository-namespace")
 	defer config.Set("docker:repository-namespace", old)
-	config.Unset("docker:repository-name")
+	config.Unset("docker:repository-namespace")
 	config := docker.Config{Cmd: []string{"/usr/sbin/sshd", "-D"}, Image: "tsuru/python"}
 	var scheduler segregatedScheduler
 	node, container, err := scheduler.Schedule(&config)
