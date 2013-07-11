@@ -896,3 +896,8 @@ func List(u *auth.User) ([]App, error) {
 	}
 	return apps, nil
 }
+
+// Swap calls the Provisioner.Swap.
+func Swap(app1, app2 *App) error {
+	return Provisioner.Swap(app1, app2)
+}

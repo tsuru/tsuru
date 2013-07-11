@@ -1997,3 +1997,10 @@ func (s *S) TestAppAvailableShouldReturnsTrueWhenOneUnitIsStarted(c *gocheck.C) 
 	}
 	c.Assert(a.Available(), gocheck.Equals, true)
 }
+
+func (s *S) TestSwap(c *gocheck.C) {
+	app1 := &App{}
+	app2 := &App{}
+	err := Swap(app1, app2)
+	c.Assert(err, gocheck.IsNil)
+}
