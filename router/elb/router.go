@@ -102,8 +102,16 @@ func (elbRouter) UnsetCName(cname, name string) error {
 	return nil
 }
 
-func (elbRouter) Routes(name string) ([]string, error) {
-	return nil, nil
+func (r elbRouter) Routes(name string) ([]string, error) {
+	var routes []string
+	resp, err := r.elb().DescribeLoadBalancers(name)
+	if err != nil {
+		return nil, err
+	}
+	for _, instance := range resp.LoadBalancerDescriptions[0].Instances {
+		routes = append(routes, instance.InstanceId)
+	}
+	return routes, nil
 }
 
 func (r elbRouter) Addr(name string) (string, error) {
