@@ -19,8 +19,6 @@ type node struct {
 	Team    string
 }
 
-type pool []dcli.Client
-
 type segregatedScheduler struct{}
 
 func (segregatedScheduler) Schedule(config *docker.Config) (string, *docker.Container, error) {
