@@ -132,6 +132,9 @@ type Provisioner interface {
 	// InstallDeps installs the dependencies required for the application
 	// to run and writes the log in the received writer.
 	InstallDeps(app App, w io.Writer) error
+
+	// Swap change the router between two apps.
+	Swap(App, App) error
 }
 
 var provisioners = make(map[string]Provisioner)

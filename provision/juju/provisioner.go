@@ -146,6 +146,10 @@ func (p *JujuProvisioner) Restart(app provision.App) error {
 	return nil
 }
 
+func (JujuProvisioner) Swap(app1, app2 provision.App) error {
+	return nil
+}
+
 func (p *JujuProvisioner) Deploy(a provision.App, version string, w io.Writer) error {
 	var buf bytes.Buffer
 	setOption := []string{"set", a.GetName(), "app-version=" + version}

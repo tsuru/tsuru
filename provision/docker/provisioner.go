@@ -116,6 +116,10 @@ func startInBackground(a provision.App, c container, imageId string, w io.Writer
 	started <- true
 }
 
+func (dockerProvisioner) Swap(app1, app2 provision.App) error {
+	return nil
+}
+
 func (p *dockerProvisioner) Deploy(a provision.App, version string, w io.Writer) error {
 	imageId, err := deploy(a, version, w)
 	if err != nil {
