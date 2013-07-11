@@ -20,11 +20,6 @@ type Router interface {
 	Addr(name string) (string, error)
 }
 
-// Routable interface provides a method that returns a router.
-type Routable interface {
-	Router() (Router, error)
-}
-
 var routers = make(map[string]Router)
 
 // Register registers a new router.
