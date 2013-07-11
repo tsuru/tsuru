@@ -133,10 +133,10 @@ func (s *SchedulerSuite) TestSchedulerInvalidEndpoint(c *gocheck.C) {
 	err = coll.Insert(node{ID: "server0", Address: "", Team: "jean"})
 	c.Assert(err, gocheck.IsNil)
 	defer coll.Remove(bson.M{"_id": "server0"})
-	config := docker.Config{Cmd: []string{"/usr/sbin/sshd", "-D"}, Image: "tsuru/python"}
+	config := docker.Config{Cmd: []string{"/usr/sbin/sshd", "-D"}, Image: "tsuru/bill"}
 	var scheduler segregatedScheduler
 	node, container, err := scheduler.Schedule(&config)
-	c.Assert(node, gocheck.Equals, "")
+	c.Assert(node, gocheck.Equals, "server0")
 	c.Assert(container, gocheck.IsNil)
 	c.Assert(err, gocheck.NotNil)
 }
