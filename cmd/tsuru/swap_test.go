@@ -33,7 +33,7 @@ func (s *S) TestSwap(c *gocheck.C) {
 		},
 	}
 	context := cmd.Context{
-		Args: []string{"app1", "app2"},
+		Args:   []string{"app1", "app2"},
 		Stdout: &buf,
 	}
 	client := cmd.NewClient(&http.Client{Transport: &transport}, nil, manager)
