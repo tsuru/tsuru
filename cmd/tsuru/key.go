@@ -90,7 +90,7 @@ func (c *KeyRemove) Run(context *cmd.Context, client *cmd.Client) error {
 	if err != nil {
 		return err
 	}
-	fmt.Fprint(context.Stdout, "Key successfully removed!\n")
+	fmt.Fprintf(context.Stdout, "Key %q successfully removed!\n", keyPath)
 	return nil
 }
 

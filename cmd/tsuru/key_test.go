@@ -100,7 +100,7 @@ func (s *S) TestKeyRemove(c *gocheck.C) {
 	u, err := user.Current()
 	c.Assert(err, gocheck.IsNil)
 	p := path.Join(u.HomeDir, ".ssh", "id_rsa.pub")
-	expected := "Key successfully removed!\n"
+	expected := fmt.Sprintf("Key %q successfully removed!\n", p)
 	context := cmd.Context{
 		Args:   []string{},
 		Stdout: &stdout,
@@ -120,7 +120,7 @@ func (s *S) TestKeyRemoveSpecifyingKeyFile(c *gocheck.C) {
 	u, err := user.Current()
 	c.Assert(err, gocheck.IsNil)
 	p := path.Join(u.HomeDir, ".ssh", "id_dsa.pub")
-	expected := "Key successfully removed!\n"
+	expected := fmt.Sprintf("Key %q successfully removed!\n", p)
 	context := cmd.Context{
 		Args:   []string{p},
 		Stdout: &stdout,
