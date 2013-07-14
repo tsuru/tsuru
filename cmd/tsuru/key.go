@@ -128,6 +128,6 @@ func (c *KeyAdd) Run(context *cmd.Context, client *cmd.Client) error {
 	if err != nil {
 		return err
 	}
-	fmt.Fprint(context.Stdout, "Key successfully added!\n")
+	fmt.Fprintf(context.Stdout, "Key %q successfully added!\n", keyPath)
 	return nil
 }
