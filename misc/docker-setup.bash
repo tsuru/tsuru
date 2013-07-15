@@ -27,8 +27,7 @@ function install_docker() {
     sudo apt-get install linux-image-extra-`uname -r` -y --force-yes
     wget -q http://get.docker.io/builds/Linux/x86_64/docker-master.tgz
     tar -xf docker-master.tgz
-    cd docker-master
-    sudo cp docker /usr/local/bin
+    sudo cp docker-master/docker /usr/local/bin
     # runs docker daemon, it must be running in order to tsuru work
     sudo -E docker -d &
 }
