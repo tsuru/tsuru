@@ -20,13 +20,7 @@ Platforms Extensibility
 -----------------------
 
 One of Tsuru main goals is to be easily extensible. The platform is one great example of accomplishment on that.
-Tsuru platforms works slightly different for each provisioner. `Juju <https://juju.ubuntu.com/>`_ and `LXC <http://lxc.sourceforge.net/>`_
-provisioners have exactly the same scripts for platform provisioning (except for logging, the juju charms use juju-log
-commands, the LXC don't), you can find the scripts on our `charms repository <https://github.com/globocom/charms>`_,
-Juju charms are on branch master and LXC on the lxc branch. The `Docker <http://www.docker.io/>`_ provisioner is
-a bit different, it has an specific image for each platform, if one wants to create a new platform, just extend
-tsuru/base image and follow the directory tree structure, the scripts and Dockerfile for our existing
-platforms images can be found on our `images repository <https://github.com/flaviamissi/basebuilder>`_
+Tsuru platforms works slightly different for each provisioner. `Juju <https://juju.ubuntu.com/>`_ use `charms` for platform provisioning you can find the scripts on our `charms repository <https://github.com/globocom/charms>`_. The `Docker <http://www.docker.io/>`_ provisioner is a bit different, it has an specific image for each platform, if one wants to create a new platform, just extend tsuru/base image and follow the directory tree structure, the scripts and Dockerfile for our existing platforms images can be found on our `images repository <https://github.com/flaviamissi/basebuilder>`_
 
 Services Creation and Extension
 -------------------------------
@@ -45,8 +39,8 @@ if you don't like it and want to change it, you can do it and create a new servi
 IaaS's and Provisioners
 -----------------------
 
-Tsuru provides an easy way to change the application unit provisioning system and it already has three
-working provisioners, Juju, Docker and LXC.
+Tsuru provides an easy way to change the application unit provisioning system and it already has two
+working provisioners, Juju, Docker.
 But the main advantage is the ease of extending the provisioning system. One can simply implement
 the Provision interface Tsuru provides, configure it on your installation and start using it.
 
