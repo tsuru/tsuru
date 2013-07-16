@@ -103,8 +103,8 @@ How routing works?
 
 Tsuru has a router interface, which makes extremely easy to change the way
 routing works with any provisioner. There are two ready-to-go routers: one
-using `hipache <https://github.com/dotcloud/hipache>`_ and another with `nginx
-<http://wiki.nginx.org/>`_.
+using `hipache <https://github.com/dotcloud/hipache>`_ and another with `elb
+<http://http://aws.amazon.com/elasticloadbalancing/>`_.
 
 How are Git repositories managed?
 =================================
