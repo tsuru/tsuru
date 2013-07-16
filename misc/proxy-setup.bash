@@ -32,7 +32,8 @@ function set_profile() {
     read -d '' profile_template <<"EOF"
 export http_proxy=s1
 export https_proxy=s2
-export NO_PROXY=127.0.0.1
+export no_proxy=127.0.0.1
+export NO_PROXY=$no_proxy
 EOF
     profile_template="${profile_template/s1/$1}"
     profile_template="${profile_template/s2/$2}"
