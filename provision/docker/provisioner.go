@@ -16,7 +16,6 @@ import (
 	"github.com/globocom/tsuru/provision"
 	"github.com/globocom/tsuru/router"
 	_ "github.com/globocom/tsuru/router/hipache"
-	_ "github.com/globocom/tsuru/router/nginx"
 	_ "github.com/globocom/tsuru/router/testing"
 	"io"
 	"io/ioutil"
