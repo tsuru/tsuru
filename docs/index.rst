@@ -31,8 +31,8 @@ For tsuru users
 For tsuru ops
 +++++++++++++
 
-* :doc:`build your own PaaS </build>`
-* :doc:`build your own PaaS using lxc </lxc>`
+* :doc:`build your own PaaS using juju </build>`
+* :doc:`build your own PaaS using docker </docker>`
 * :doc:`tsuru configuration </config>`
 * :doc:`backing up tsuru </server/backup>`
 * :doc:`tsuru api reference </api>`
