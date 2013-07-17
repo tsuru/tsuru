@@ -291,7 +291,7 @@ func (c *container) commit() (string, error) {
 		log.Printf("Could not commit docker image: %s", err.Error())
 		return "", err
 	}
-	log.Printf("image %s gerenated from container %s", image.ID, c.ID)
+	log.Printf("image %s generated from container %s", image.ID, c.ID)
 	replicateImage(opts.Repository)
 	return repository, nil
 }
