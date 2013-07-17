@@ -177,6 +177,7 @@ func (p *dockerProvisioner) Destroy(app provision.App) error {
 	containers, _ := listAppContainers(app.GetName())
 	for _, c := range containers {
 		go func(c container) {
+			removeImage(c.Image)
 			removeContainer(&c)
 		}(c)
 	}
@@ -240,6 +241,7 @@ func (*dockerProvisioner) RemoveUnit(app provision.App, unitName string) error {
 	if container.AppName != app.GetName() {
 		return errors.New("Unit does not belong to this app")
 	}
+	removeImage(container.Image)
 	return removeContainer(container)
 }
 
@@ -251,9 +253,6 @@ func removeContainer(c *container) error {
 	err = c.remove()
 	if err != nil {
 		log.Printf("error on remove container %s - %s", c.ID, err)
-	}
-	if c.Image != "" {
-		removeImage(c.Image)
 	}
 	return err
 }
