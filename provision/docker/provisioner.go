@@ -241,7 +241,6 @@ func (*dockerProvisioner) RemoveUnit(app provision.App, unitName string) error {
 	if container.AppName != app.GetName() {
 		return errors.New("Unit does not belong to this app")
 	}
-	removeImage(container.Image)
 	return removeContainer(container)
 }
 
