@@ -8,7 +8,6 @@ import os
 from fabric.api import abort, cd, env, local, put, run, sudo
 
 current_dir = os.path.abspath(os.path.dirname(__file__))
-env.user = 'ubuntu'
 env.tsuru_path = '/home/%s/tsuru' % env.user
 
 
