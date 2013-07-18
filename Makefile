@@ -97,7 +97,7 @@ _sh_tests:
 	@cmd/term/test.sh
 	@misc/test-hooks.bash
 
-test: _go_test _tsr_try _sh_tests
+test: _go_test _tsr_dry _sh_tests
 
 race:
 	@for pkg in `go list ./...`; do go test -race -i $$pkg; go test -race $$pkg; done
