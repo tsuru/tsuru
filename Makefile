@@ -83,15 +83,21 @@ check-test-services:
 	$(call check-service,Redis,6379)
 	$(call check-service,Beanstalk,11300)
 
-test:
+_go_test:
 	@go test -i ./...
 	@go test ./...
+
+_tsr_dry:
 	@go build -o tsr ./cmd/tsr
 	@./tsr api --dry --config ./etc/tsuru.conf
 	@./tsr collector --dry --config ./etc/tsuru.conf
 	@rm -f tsr
+
+_sh_tests:
 	@cmd/term/test.sh
 	@misc/test-hooks.bash
+
+test: _go_test _tsr_try _sh_tests
 
 race:
 	@for pkg in `go list ./...`; do go test -race -i $$pkg; go test -race $$pkg; done
