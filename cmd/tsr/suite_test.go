@@ -14,7 +14,3 @@ type S struct{}
 var _ = gocheck.Suite(&S{})
 
 func Test(t *testing.T) { gocheck.TestingT(t) }
-
-func (s *S) SetUpTest(c *gocheck.C) {
-	configFile = "testdata/tsuru.conf"
-}

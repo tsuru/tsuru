@@ -5,7 +5,6 @@
 package main
 
 import (
-	"github.com/globocom/config"
 	"github.com/globocom/tsuru/cmd"
 	"launchpad.net/gocheck"
 	"os"
@@ -19,14 +18,6 @@ func (s *S) TestCommandsFromBaseManagerAreRegistered(c *gocheck.C) {
 		c.Assert(ok, gocheck.Equals, true)
 		c.Assert(command, gocheck.FitsTypeOf, instance)
 	}
-}
-
-func (s *S) TestBuildManagerLoadsConfig(c *gocheck.C) {
-	buildManager()
-	// As defined in testdata/tsuru.conf.
-	listen, err := config.GetString("listen")
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(listen, gocheck.Equals, "0.0.0.0:8080")
 }
 
 func (s *S) TestAPICmdIsRegistered(c *gocheck.C) {
