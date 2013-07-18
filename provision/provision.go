@@ -8,6 +8,7 @@ package provision
 
 import (
 	"fmt"
+	"github.com/globocom/tsuru/cmd"
 	"io"
 )
 
@@ -135,6 +136,12 @@ type Provisioner interface {
 
 	// Swap change the router between two apps.
 	Swap(App, App) error
+}
+
+// Commandable is a provisioner that provides commands to extend the tsr
+// command line interface.
+type Commandable interface {
+	Commands() []cmd.Command
 }
 
 var provisioners = make(map[string]Provisioner)
