@@ -7,7 +7,7 @@ package tsuru
 import (
 	"bytes"
 	"github.com/globocom/tsuru/cmd"
-	"github.com/globocom/tsuru/testing"
+	"github.com/globocom/tsuru/cmd/testing"
 	"launchpad.net/gocheck"
 	"net/http"
 )

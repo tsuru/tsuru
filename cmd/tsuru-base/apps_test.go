@@ -8,7 +8,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"github.com/globocom/tsuru/cmd"
-	"github.com/globocom/tsuru/testing"
+	"github.com/globocom/tsuru/cmd/testing"
 	"launchpad.net/gnuflag"
 	"launchpad.net/gocheck"
 	"net/http"
