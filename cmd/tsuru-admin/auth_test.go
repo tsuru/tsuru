@@ -7,7 +7,7 @@ package main
 import (
 	"bytes"
 	"github.com/globocom/tsuru/cmd"
-	"github.com/globocom/tsuru/testing"
+	"github.com/globocom/tsuru/cmd/testing"
 	"io/ioutil"
 	"launchpad.net/gocheck"
 	"net/http"
