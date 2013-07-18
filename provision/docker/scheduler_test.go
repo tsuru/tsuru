@@ -174,3 +174,13 @@ func (s *SchedulerSuite) TestAddNodeToScheduler(c *gocheck.C) {
 	c.Check(n.Team, gocheck.Equals, "team1")
 	c.Check(n.Address, gocheck.Equals, "http://localhost:8080")
 }
+
+func (s *SchedulerSuite) TestAddNodeDuplicated(c *gocheck.C) {
+	coll := s.storage.Collection(schedulerCollection)
+	nd := cluster.Node{ID: "server0", Address: "http://localhost:8080"}
+	err := AddNodeToScheduler(nd, "team1")
+	c.Assert(err, gocheck.IsNil)
+	defer coll.RemoveAll(bson.M{"_id": "server0"})
+	err = AddNodeToScheduler(nd, "team2")
+	c.Assert(err, gocheck.Equals, ErrNodeAlreadyRegistered)
+}

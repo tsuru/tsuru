@@ -12,6 +12,7 @@ import (
 	"github.com/globocom/docker-cluster/cluster"
 	"github.com/globocom/tsuru/app"
 	"github.com/globocom/tsuru/db"
+	"labix.org/v2/mgo"
 	"labix.org/v2/mgo/bson"
 	"math/rand"
 	"strings"
@@ -20,6 +21,8 @@ import (
 // errNoFallback is the error returned when no fallback hosts are configured in
 // the segregated scheduler.
 var errNoFallback = errors.New("No fallback configured in the scheduler")
+
+var ErrNodeAlreadyRegistered = errors.New("This node is already registered")
 
 const schedulerCollection = "docker_scheduler"
 
@@ -111,5 +114,9 @@ func AddNodeToScheduler(n cluster.Node, team string) error {
 	}
 	defer conn.Close()
 	node := node{ID: n.ID, Address: n.Address, Team: team}
-	return conn.Collection(schedulerCollection).Insert(node)
+	err = conn.Collection(schedulerCollection).Insert(node)
+	if mgo.IsDup(err) {
+		return ErrNodeAlreadyRegistered
+	}
+	return err
 }
