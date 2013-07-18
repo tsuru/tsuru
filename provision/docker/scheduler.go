@@ -22,7 +22,10 @@ import (
 // the segregated scheduler.
 var errNoFallback = errors.New("No fallback configured in the scheduler")
 
-var ErrNodeAlreadyRegistered = errors.New("This node is already registered")
+var (
+	ErrNodeAlreadyRegistered = errors.New("This node is already registered")
+	ErrNodeNotFound          = errors.New("Node not found")
+)
 
 const schedulerCollection = "docker_scheduler"
 
@@ -117,6 +120,20 @@ func AddNodeToScheduler(n cluster.Node, team string) error {
 	err = conn.Collection(schedulerCollection).Insert(node)
 	if mgo.IsDup(err) {
 		return ErrNodeAlreadyRegistered
+	}
+	return err
+}
+
+// RemoveNodeFromScheduler removes a node from the scheduler.
+func RemoveNodeFromScheduler(n cluster.Node) error {
+	conn, err := db.Conn()
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+	err = conn.Collection(schedulerCollection).RemoveId(n.ID)
+	if err != nil && err.Error() == "not found" {
+		return ErrNodeNotFound
 	}
 	return err
 }
