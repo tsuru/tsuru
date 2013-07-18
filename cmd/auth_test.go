@@ -7,8 +7,8 @@ package cmd
 import (
 	"bytes"
 	"encoding/json"
+	ttesting "github.com/globocom/tsuru/cmd/testing"
 	"github.com/globocom/tsuru/fs/testing"
-	ttesting "github.com/globocom/tsuru/testing"
 	"io"
 	"launchpad.net/gocheck"
 	"net/http"
