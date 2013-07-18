@@ -160,3 +160,17 @@ func (s *SchedulerSuite) TestSchedulerNodes(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(nodes, gocheck.DeepEquals, expected)
 }
+
+func (s *SchedulerSuite) TestAddNodeToScheduler(c *gocheck.C) {
+	coll := s.storage.Collection(schedulerCollection)
+	nd := cluster.Node{ID: "server0", Address: "http://localhost:8080"}
+	err := AddNodeToScheduler(nd, "team1")
+	c.Assert(err, gocheck.IsNil)
+	defer coll.RemoveAll(bson.M{"_id": "server0"})
+	var n node
+	err = coll.Find(bson.M{"_id": "server0"}).One(&n)
+	c.Assert(err, gocheck.IsNil)
+	c.Check(n.ID, gocheck.Equals, "server0")
+	c.Check(n.Team, gocheck.Equals, "team1")
+	c.Check(n.Address, gocheck.Equals, "http://localhost:8080")
+}

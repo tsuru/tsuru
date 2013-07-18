@@ -100,3 +100,16 @@ func (segregatedScheduler) Nodes() ([]cluster.Node, error) {
 	}
 	return result, nil
 }
+
+// AddNodeToScheduler adds a new node to the scheduler, registering for use in
+// the given team. The team parameter is optional, when set to "", the node
+// will be used as a fallback node.
+func AddNodeToScheduler(n cluster.Node, team string) error {
+	conn, err := db.Conn()
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+	node := node{ID: n.ID, Address: n.Address, Team: team}
+	return conn.Collection(schedulerCollection).Insert(node)
+}
