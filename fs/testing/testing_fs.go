@@ -13,6 +13,7 @@ import (
 	"os"
 	"path"
 	"strings"
+	"sync"
 	"syscall"
 )
 
@@ -106,8 +107,11 @@ func (f *FakeFile) Truncate(size int64) error {
 //
 // All methods from RecordingFs never return errors.
 type RecordingFs struct {
-	actions []string
-	files   map[string]*FakeFile
+	actions      []string
+	actionsMutex sync.Mutex
+
+	files      map[string]*FakeFile
+	filesMutex sync.Mutex
 
 	// FileContent is used to provide content for files opened using
 	// RecordingFs.
@@ -123,6 +127,8 @@ type RecordingFs struct {
 //     rfs.Open("/tmp/file.txt")
 //     rfs.HasAction("open /tmp/file.txt") // true
 func (r *RecordingFs) HasAction(action string) bool {
+	r.actionsMutex.Lock()
+	defer r.actionsMutex.Unlock()
 	for _, a := range r.actions {
 		if action == a {
 			return true
@@ -132,6 +138,8 @@ func (r *RecordingFs) HasAction(action string) bool {
 }
 
 func (r *RecordingFs) open(name string, read bool) (fs.File, error) {
+	r.filesMutex.Lock()
+	defer r.filesMutex.Unlock()
 	if r.files == nil {
 		r.files = make(map[string]*FakeFile)
 		if r.FileContent == "" && read {
@@ -151,12 +159,16 @@ func (r *RecordingFs) open(name string, read bool) (fs.File, error) {
 // Create records the action "create <name>" and returns an instance of
 // FakeFile and nil error.
 func (r *RecordingFs) Create(name string) (fs.File, error) {
+	r.actionsMutex.Lock()
 	r.actions = append(r.actions, "create "+name)
+	r.actionsMutex.Unlock()
 	return r.open(name, false)
 }
 
 // Mkdir records the action "mkdir <name> with mode <perm>" and returns nil.
 func (r *RecordingFs) Mkdir(name string, perm os.FileMode) error {
+	r.actionsMutex.Lock()
+	defer r.actionsMutex.Unlock()
 	r.actions = append(r.actions, fmt.Sprintf("mkdir %s with mode %#o", name, perm))
 	return nil
 }
@@ -164,6 +176,8 @@ func (r *RecordingFs) Mkdir(name string, perm os.FileMode) error {
 // MkdirAll records the action "mkdirall <path> with mode <perm>" and returns
 // nil.
 func (r *RecordingFs) MkdirAll(path string, perm os.FileMode) error {
+	r.actionsMutex.Lock()
+	defer r.actionsMutex.Unlock()
 	r.actions = append(r.actions, fmt.Sprintf("mkdirall %s with mode %#o", path, perm))
 	return nil
 }
@@ -171,14 +185,18 @@ func (r *RecordingFs) MkdirAll(path string, perm os.FileMode) error {
 // Open records the action "open <name>" and returns an instance of FakeFile
 // and nil error.
 func (r *RecordingFs) Open(name string) (fs.File, error) {
+	r.actionsMutex.Lock()
 	r.actions = append(r.actions, "open "+name)
+	r.actionsMutex.Unlock()
 	return r.open(name, true)
 }
 
 // OpenFile records the action "openfile <name> with mode <perm>" and returns
 // an instance of FakeFile and nil error.
 func (r *RecordingFs) OpenFile(name string, flag int, perm os.FileMode) (fs.File, error) {
+	r.actionsMutex.Lock()
 	r.actions = append(r.actions, fmt.Sprintf("openfile %s with mode %#o", name, perm))
+	r.actionsMutex.Unlock()
 	if flag&os.O_EXCL == os.O_EXCL && flag&os.O_CREATE == os.O_CREATE {
 		return nil, syscall.EALREADY
 	}
@@ -197,6 +215,8 @@ func (r *RecordingFs) OpenFile(name string, flag int, perm os.FileMode) (fs.File
 }
 
 func (r *RecordingFs) deleteFile(name string) {
+	r.filesMutex.Lock()
+	defer r.filesMutex.Unlock()
 	if r.files != nil {
 		delete(r.files, name)
 	}
@@ -204,31 +224,41 @@ func (r *RecordingFs) deleteFile(name string) {
 
 // Remove records the action "remove <name>" and returns nil.
 func (r *RecordingFs) Remove(name string) error {
+	r.actionsMutex.Lock()
 	r.actions = append(r.actions, "remove "+name)
+	r.actionsMutex.Unlock()
 	r.deleteFile(name)
 	return nil
 }
 
 // RemoveAll records the action "removeall <path>" and returns nil.
 func (r *RecordingFs) RemoveAll(path string) error {
+	r.actionsMutex.Lock()
 	r.actions = append(r.actions, "removeall "+path)
+	r.actionsMutex.Unlock()
 	r.deleteFile(path)
 	return nil
 }
 
 // Rename records the action "rename <old> <new>" and returns nil.
 func (r *RecordingFs) Rename(oldname, newname string) error {
+	r.actionsMutex.Lock()
+	r.actions = append(r.actions, "rename "+oldname+" "+newname)
+	r.actionsMutex.Unlock()
+	r.filesMutex.Lock()
+	defer r.filesMutex.Unlock()
 	if r.files == nil {
 		r.files = make(map[string]*FakeFile)
 	}
-	r.actions = append(r.actions, "rename "+oldname+" "+newname)
 	r.files[newname] = r.files[oldname]
-	r.deleteFile(oldname)
+	delete(r.files, oldname)
 	return nil
 }
 
 // Stat records the action "stat <name>" and returns nil, nil.
 func (r *RecordingFs) Stat(name string) (os.FileInfo, error) {
+	r.actionsMutex.Lock()
+	defer r.actionsMutex.Unlock()
 	r.actions = append(r.actions, "stat "+name)
 	return nil, nil
 }
