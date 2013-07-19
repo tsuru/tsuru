@@ -8,15 +8,11 @@ import (
 	"fmt"
 	"github.com/globocom/tsuru/auth"
 	"github.com/globocom/tsuru/cmd"
-	"launchpad.net/gnuflag"
 )
 
-type tokenCmd struct {
-	fs     *gnuflag.FlagSet
-	config string
-}
+type tokenCmd struct{}
 
-func (c *tokenCmd) Run(context *cmd.Context, client *cmd.Client) error {
+func (tokenCmd) Run(context *cmd.Context, client *cmd.Client) error {
 	t, err := auth.CreateApplicationToken("tsr")
 	if err != nil {
 		return err
