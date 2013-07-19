@@ -125,7 +125,7 @@ func addNodeToScheduler(n cluster.Node, team string) error {
 }
 
 // RemoveNodeFromScheduler removes a node from the scheduler.
-func RemoveNodeFromScheduler(n cluster.Node) error {
+func removeNodeFromScheduler(n cluster.Node) error {
 	conn, err := db.Conn()
 	if err != nil {
 		return err
