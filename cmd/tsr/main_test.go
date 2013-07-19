@@ -7,6 +7,8 @@ package main
 import (
 	"github.com/globocom/config"
 	"github.com/globocom/tsuru/cmd"
+	"github.com/globocom/tsuru/provision"
+	"github.com/globocom/tsuru/testing"
 	"launchpad.net/gocheck"
 	"os"
 )
@@ -54,4 +56,16 @@ func (s *S) TestTokenCmdIsRegistered(c *gocheck.C) {
 	tsrToken, ok := token.(*tsrCommand)
 	c.Assert(ok, gocheck.Equals, true)
 	c.Assert(tsrToken.Command, gocheck.FitsTypeOf, tokenCmd{})
+}
+
+func (s *S) TestShouldRegisterAllCommandsFromProvisioners(c *gocheck.C) {
+	fp := testing.NewFakeProvisioner()
+	p := testing.CommandableProvisioner{FakeProvisioner: *fp}
+	provision.Register("comm", &p)
+	manager := buildManager()
+	fake, ok := manager.Commands["fake"]
+	c.Assert(ok, gocheck.Equals, true)
+	tsrFake, ok := fake.(*tsrCommand)
+	c.Assert(ok, gocheck.Equals, true)
+	c.Assert(tsrFake.Command, gocheck.FitsTypeOf, &testing.FakeCommand{})
 }
