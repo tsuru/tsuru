@@ -30,6 +30,18 @@ func TestRegisterAndGetProvisioner(t *testing.T) {
 	}
 }
 
+func TestRegistry(t *testing.T) {
+	var p1, p2 Provisioner
+	Register("my-provisioner", p1)
+	Register("your-provisioner", p2)
+	provisioners := Registry()
+	alt1 := []Provisioner{p1, p2}
+	alt2 := []Provisioner{p2, p1}
+	if !reflect.DeepEqual(provisioners, alt1) && !reflect.DeepEqual(provisioners, alt2) {
+		t.Errorf("Registry(): Expected %#v. Got %#v.", alt1, provisioners)
+	}
+}
+
 func TestError(t *testing.T) {
 	errs := []*Error{
 		{Reason: "something", Err: errors.New("went wrong")},

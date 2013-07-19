@@ -160,6 +160,15 @@ func Get(name string) (Provisioner, error) {
 	return p, nil
 }
 
+// Registry returns the list of registered provisioners.
+func Registry() []Provisioner {
+	registry := make([]Provisioner, 0, len(provisioners))
+	for _, p := range provisioners {
+		registry = append(registry, p)
+	}
+	return registry
+}
+
 type Error struct {
 	Reason string
 	Err    error
