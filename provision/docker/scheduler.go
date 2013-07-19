@@ -137,3 +137,17 @@ func removeNodeFromScheduler(n cluster.Node) error {
 	}
 	return err
 }
+
+func listNodesInTheScheduler() ([]node, error) {
+	conn, err := db.Conn()
+	if err != nil {
+		return nil, err
+	}
+	defer conn.Close()
+	var nodes []node
+	err = conn.Collection(schedulerCollection).Find(nil).All(&nodes)
+	if err != nil {
+		return nil, err
+	}
+	return nodes, nil
+}

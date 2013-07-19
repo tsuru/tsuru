@@ -203,3 +203,25 @@ func (s *SchedulerSuite) TesteRemoveUnknownNodeFromScheduler(c *gocheck.C) {
 	err := removeNodeFromScheduler(nd)
 	c.Assert(err, gocheck.Equals, ErrNodeNotFound)
 }
+
+func (s *SchedulerSuite) TestListNodesInTheScheduler(c *gocheck.C) {
+	coll := s.storage.Collection(schedulerCollection)
+	nd1 := cluster.Node{ID: "server0", Address: "http://localhost:8080"}
+	nd2 := cluster.Node{ID: "server1", Address: "http://localhost:9090"}
+	nd3 := cluster.Node{ID: "server2", Address: "http://localhost:9090"}
+	err := addNodeToScheduler(nd1, "team1")
+	c.Assert(err, gocheck.IsNil)
+	err = addNodeToScheduler(nd2, "team1")
+	c.Assert(err, gocheck.IsNil)
+	err = addNodeToScheduler(nd3, "team1")
+	c.Assert(err, gocheck.IsNil)
+	defer coll.RemoveAll(bson.M{"_id": bson.M{"$in": []string{"server0", "server1", "server2"}}})
+	nodes, err := listNodesInTheScheduler()
+	c.Assert(err, gocheck.IsNil)
+	expected := []node{
+		{ID: "server0", Address: "http://localhost:8080", Team: "team1"},
+		{ID: "server1", Address: "http://localhost:9090", Team: "team1"},
+		{ID: "server2", Address: "http://localhost:9090", Team: "team1"},
+	}
+	c.Assert(nodes, gocheck.DeepEquals, expected)
+}
