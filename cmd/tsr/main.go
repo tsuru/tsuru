@@ -13,9 +13,9 @@ import (
 
 func buildManager() *cmd.Manager {
 	m := cmd.NewManager("tsr", "0.1.0", "", os.Stdout, os.Stderr, os.Stdin)
-	m.Register(&apiCmd{})
-	m.Register(&collectorCmd{})
-	m.Register(&tokenCmd{})
+	m.Register(&tsrCommand{Command: &apiCmd{}})
+	m.Register(&tsrCommand{Command: &collectorCmd{}})
+	m.Register(&tsrCommand{Command: tokenCmd{}})
 	return m
 }
 
