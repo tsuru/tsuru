@@ -21,25 +21,10 @@ func fatal(err error) {
 	log.Fatal(err)
 }
 
-func loadConfig(flags map[string]interface{}) string {
-	configFile, ok := flags["config"].(string)
-	if !ok {
-		configFile = "/etc/tsuru/tsuru.conf"
-	}
-	err := config.ReadAndWatchConfigFile(configFile)
-	if err != nil {
-		fatal(err)
-	}
-	return configFile
-}
-
-func RunServer(flags map[string]interface{}) {
-	configFile := loadConfig(flags)
-	log.Init()
-	dry, ok := flags["dry"].(bool)
-	if !ok {
-		dry = false
-	}
+// RunServer starts Tsuru API server. The dry parameter indicates whether the
+// server should run in dry mode, not starting the HTTP listener (for testing
+// purposes).
+func RunServer(dry bool) {
 	connString, err := config.GetString("database:url")
 	if err != nil {
 		fatal(err)
@@ -132,7 +117,7 @@ func RunServer(flags map[string]interface{}) {
 	if !dry {
 		provisioner, err := config.GetString("provisioner")
 		if err != nil {
-			fmt.Printf("Warning: %q didn't declare a provisioner, using default provisioner.\n", configFile)
+			fmt.Printf("Warning: configuration didn't declare a provisioner, using default provisioner.\n")
 			provisioner = "juju"
 		}
 		app.Provisioner, err = provision.Get(provisioner)
