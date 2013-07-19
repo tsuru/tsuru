@@ -5,12 +5,15 @@
 package main
 
 import (
+	"github.com/globocom/config"
 	"github.com/globocom/tsuru/cmd"
 	"github.com/globocom/tsuru/provision"
 	_ "github.com/globocom/tsuru/provision/docker"
 	_ "github.com/globocom/tsuru/provision/juju"
 	"os"
 )
+
+const defaultConfigPath = "/etc/tsuru/tsuru.conf"
 
 func buildManager() *cmd.Manager {
 	m := cmd.NewManager("tsr", "0.1.0", "", os.Stdout, os.Stderr, os.Stdin)
@@ -34,6 +37,7 @@ func registerProvisionersCommands(m *cmd.Manager) {
 }
 
 func main() {
+	config.ReadConfigFile(defaultConfigPath)
 	m := buildManager()
 	m.Run(os.Args[1:])
 }
