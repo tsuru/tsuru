@@ -10,7 +10,7 @@ import (
 	"github.com/globocom/tsuru/app"
 	"github.com/globocom/tsuru/log"
 	"github.com/globocom/tsuru/provision"
-	"os"
+	stdlog "log"
 	"time"
 )
 
@@ -27,8 +27,7 @@ func collect(ticker <-chan time.Time) {
 }
 
 func fatal(err error) {
-	fmt.Fprintln(os.Stderr, err)
-	log.Fatal(err)
+	stdlog.Fatal(err)
 }
 
 // Run is the function that starts the collector. The dryMode parameter
