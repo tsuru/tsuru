@@ -7,10 +7,12 @@ package testing
 import (
 	"errors"
 	"fmt"
+	"github.com/globocom/tsuru/cmd"
 	"github.com/globocom/tsuru/provision"
 	"io"
 	"strconv"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -598,4 +600,37 @@ type provisionedApp struct {
 	version     string
 	cname       string
 	unitLen     int
+}
+
+type CommandableProvisioner struct {
+	FakeProvisioner
+	cmd *FakeCommand
+}
+
+func (p *CommandableProvisioner) Commands() []cmd.Command {
+	if p.cmd == nil {
+		p.cmd = &FakeCommand{}
+	}
+	return []cmd.Command{p.cmd}
+}
+
+type FakeCommand struct {
+	calls int32
+}
+
+func (c *FakeCommand) Calls() int32 {
+	return atomic.LoadInt32(&c.calls)
+}
+
+func (c *FakeCommand) Info() *cmd.Info {
+	return &cmd.Info{
+		Name:  "fake",
+		Usage: "fake fake",
+		Desc:  "do nothing",
+	}
+}
+
+func (c *FakeCommand) Run(*cmd.Context, *cmd.Client) error {
+	atomic.AddInt32(&c.calls, 1)
+	return nil
 }

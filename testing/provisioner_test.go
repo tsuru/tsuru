@@ -545,3 +545,11 @@ func (s *S) TestHasCName(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(p.HasCName(app, "cname.com"), gocheck.Equals, false)
 }
+
+func (s *S) TestCommandableProvisioner(c *gocheck.C) {
+	var p CommandableProvisioner
+	commands := p.Commands()
+	c.Assert(commands, gocheck.HasLen, 1)
+	commands2 := p.Commands()
+	c.Assert(commands[0], gocheck.Equals, commands2[0])
+}
