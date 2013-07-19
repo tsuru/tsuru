@@ -9,15 +9,13 @@ import (
 	"github.com/bmizerany/pat"
 	"github.com/globocom/config"
 	"github.com/globocom/tsuru/app"
-	"github.com/globocom/tsuru/log"
 	"github.com/globocom/tsuru/provision"
+	"log"
 	"net"
 	"net/http"
-	"os"
 )
 
 func fatal(err error) {
-	fmt.Fprintln(os.Stderr, err)
 	log.Fatal(err)
 }
 
