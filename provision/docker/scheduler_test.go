@@ -164,7 +164,7 @@ func (s *SchedulerSuite) TestSchedulerNodes(c *gocheck.C) {
 func (s *SchedulerSuite) TestAddNodeToScheduler(c *gocheck.C) {
 	coll := s.storage.Collection(schedulerCollection)
 	nd := cluster.Node{ID: "server0", Address: "http://localhost:8080"}
-	err := AddNodeToScheduler(nd, "team1")
+	err := addNodeToScheduler(nd, "team1")
 	c.Assert(err, gocheck.IsNil)
 	defer coll.RemoveAll(bson.M{"_id": "server0"})
 	var n node
@@ -178,17 +178,17 @@ func (s *SchedulerSuite) TestAddNodeToScheduler(c *gocheck.C) {
 func (s *SchedulerSuite) TestAddNodeDuplicated(c *gocheck.C) {
 	coll := s.storage.Collection(schedulerCollection)
 	nd := cluster.Node{ID: "server0", Address: "http://localhost:8080"}
-	err := AddNodeToScheduler(nd, "team1")
+	err := addNodeToScheduler(nd, "team1")
 	c.Assert(err, gocheck.IsNil)
 	defer coll.RemoveAll(bson.M{"_id": "server0"})
-	err = AddNodeToScheduler(nd, "team2")
+	err = addNodeToScheduler(nd, "team2")
 	c.Assert(err, gocheck.Equals, ErrNodeAlreadyRegistered)
 }
 
 func (s *SchedulerSuite) TestRemoveNodeFromScheduler(c *gocheck.C) {
 	coll := s.storage.Collection(schedulerCollection)
 	nd := cluster.Node{ID: "server0", Address: "http://localhost:8080"}
-	err := AddNodeToScheduler(nd, "team1")
+	err := addNodeToScheduler(nd, "team1")
 	c.Assert(err, gocheck.IsNil)
 	defer coll.RemoveAll(bson.M{"_id": "server0"})
 	err = RemoveNodeFromScheduler(nd)
