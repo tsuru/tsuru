@@ -40,8 +40,8 @@ func (c *tsrCommand) Flags() *gnuflag.FlagSet {
 		} else {
 			c.fs = gnuflag.NewFlagSet("tsr", gnuflag.ExitOnError)
 		}
-		c.fs.Var(&c.file, "config", "Path to configuration file")
-		c.fs.Var(&c.file, "c", "Path to configuration file")
+		c.fs.Var(&c.file, "config", "Path to configuration file (default to /etc/tsuru/tsuru.conf)")
+		c.fs.Var(&c.file, "c", "Path to configuration file (default to /etc/tsuru/tsuru.conf)")
 	}
 	return c.fs
 }
