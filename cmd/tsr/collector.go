@@ -11,16 +11,12 @@ import (
 )
 
 type collectorCmd struct {
-	fs     *gnuflag.FlagSet
-	config string
-	dry    bool
+	fs  *gnuflag.FlagSet
+	dry bool
 }
 
 func (c *collectorCmd) Run(context *cmd.Context, client *cmd.Client) error {
-	flags := map[string]interface{}{}
-	flags["dry"] = c.dry
-	flags["config"] = c.config
-	collector.Run(flags)
+	collector.Run(c.dry)
 	return nil
 }
 
@@ -38,8 +34,6 @@ func (c *collectorCmd) Flags() *gnuflag.FlagSet {
 		c.fs = gnuflag.NewFlagSet("api", gnuflag.ExitOnError)
 		c.fs.BoolVar(&c.dry, "dry", false, "dry-run: does not run the collector (for testing purpose)")
 		c.fs.BoolVar(&c.dry, "d", false, "dry-run: does not run the collector (for testing purpose)")
-		c.fs.StringVar(&c.config, "config", "/etc/tsuru/tsuru.conf", "tsr collector config file.")
-		c.fs.StringVar(&c.config, "c", "/etc/tsuru/tsuru.conf", "tsr collector config file.")
 	}
 	return c.fs
 }
