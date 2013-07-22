@@ -183,7 +183,7 @@ func (s *SchedulerSuite) TestAddNodeDuplicated(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	defer coll.RemoveAll(bson.M{"_id": "server0"})
 	err = addNodeToScheduler(nd, "team2")
-	c.Assert(err, gocheck.Equals, ErrNodeAlreadyRegistered)
+	c.Assert(err, gocheck.Equals, errNodeAlreadyRegister)
 }
 
 func (s *SchedulerSuite) TestRemoveNodeFromScheduler(c *gocheck.C) {
@@ -202,7 +202,7 @@ func (s *SchedulerSuite) TestRemoveNodeFromScheduler(c *gocheck.C) {
 func (s *SchedulerSuite) TesteRemoveUnknownNodeFromScheduler(c *gocheck.C) {
 	nd := cluster.Node{ID: "server0", Address: "http://localhost:8080"}
 	err := removeNodeFromScheduler(nd)
-	c.Assert(err, gocheck.Equals, ErrNodeNotFound)
+	c.Assert(err, gocheck.Equals, errNodeNotFound)
 }
 
 func (s *SchedulerSuite) TestListNodesInTheScheduler(c *gocheck.C) {

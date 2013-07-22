@@ -24,8 +24,8 @@ import (
 var errNoFallback = errors.New("No fallback configured in the scheduler")
 
 var (
-	ErrNodeAlreadyRegistered = errors.New("This node is already registered")
-	ErrNodeNotFound          = errors.New("Node not found")
+	errNodeAlreadyRegister = errors.New("This node is already registered")
+	errNodeNotFound        = errors.New("Node not found")
 )
 
 const schedulerCollection = "docker_scheduler"
@@ -120,7 +120,7 @@ func addNodeToScheduler(n cluster.Node, team string) error {
 	node := node{ID: n.ID, Address: n.Address, Team: team}
 	err = conn.Collection(schedulerCollection).Insert(node)
 	if mgo.IsDup(err) {
-		return ErrNodeAlreadyRegistered
+		return errNodeAlreadyRegister
 	}
 	return err
 }
@@ -134,7 +134,7 @@ func removeNodeFromScheduler(n cluster.Node) error {
 	defer conn.Close()
 	err = conn.Collection(schedulerCollection).RemoveId(n.ID)
 	if err != nil && err.Error() == "not found" {
-		return ErrNodeNotFound
+		return errNodeNotFound
 	}
 	return err
 }
