@@ -99,6 +99,12 @@ _sh_tests:
 
 test: _go_test _tsr_dry _sh_tests
 
+_install_deadcode: git
+	@go get github.com/remyoudompheng/go-misc/deadcode
+
+deadcode: _install_deadcode
+	@go list ./... | sed -e 's;github.com/globocom/tsuru/;;' | xargs deadcode
+
 race:
 	@for pkg in `go list ./...`; do go test -race -i $$pkg; go test -race $$pkg; done
 
