@@ -44,7 +44,12 @@ func dockerCluster() *cluster.Cluster {
 			}
 			nodes = append(nodes, node)
 		}
-		dCluster, _ = cluster.New(nil, nodes...)
+		if segregate, _ := config.GetBool("docker:segregate"); segregate {
+			var scheduler segregatedScheduler
+			dCluster, _ = cluster.New(&scheduler, nodes...)
+		} else {
+			dCluster, _ = cluster.New(nil, nodes...)
+		}
 	}
 	return dCluster
 }
