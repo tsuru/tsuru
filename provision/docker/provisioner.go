@@ -386,7 +386,10 @@ func (p *dockerProvisioner) UnsetCName(app provision.App, cname string) error {
 }
 
 func (p *dockerProvisioner) Commands() []cmd.Command {
-	return []cmd.Command{addNodeToSchedulerCmd{}}
+	return []cmd.Command{
+		addNodeToSchedulerCmd{},
+		removeNodeFromSchedulerCmd{},
+	}
 }
 
 func collection() *mgo.Collection {
