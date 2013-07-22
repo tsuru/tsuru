@@ -12,6 +12,7 @@ import (
 	dclient "github.com/fsouza/go-dockerclient"
 	"github.com/globocom/config"
 	"github.com/globocom/docker-cluster/cluster"
+	"github.com/globocom/docker-cluster/storage"
 	"github.com/globocom/tsuru/action"
 	"github.com/globocom/tsuru/fs"
 	"github.com/globocom/tsuru/log"
@@ -49,6 +50,13 @@ func dockerCluster() *cluster.Cluster {
 			dCluster, _ = cluster.New(&scheduler, nodes...)
 		} else {
 			dCluster, _ = cluster.New(nil, nodes...)
+		}
+		if redisServer, err := config.GetString("docker:scheduler:redis-server"); err == nil {
+			if password, err := config.GetString("docker:scheduler:redis-password"); err == nil {
+				dCluster.SetStorage(storage.AuthenticatedRedis(redisServer, password))
+			} else {
+				dCluster.SetStorage(storage.Redis(redisServer))
+			}
 		}
 	}
 	return dCluster
