@@ -389,6 +389,7 @@ func (p *dockerProvisioner) Commands() []cmd.Command {
 	return []cmd.Command{
 		addNodeToSchedulerCmd{},
 		removeNodeFromSchedulerCmd{},
+		listNodesInTheSchedulerCmd{},
 	}
 }
 

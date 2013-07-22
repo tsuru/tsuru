@@ -575,7 +575,11 @@ func (s *S) TestProvisionerIsCNameManager(c *gocheck.C) {
 
 func (s *S) TestCommands(c *gocheck.C) {
 	var p dockerProvisioner
-	expected := []cmd.Command{addNodeToSchedulerCmd{}, removeNodeFromSchedulerCmd{}}
+	expected := []cmd.Command{
+		addNodeToSchedulerCmd{},
+		removeNodeFromSchedulerCmd{},
+		listNodesInTheSchedulerCmd{},
+	}
 	c.Assert(p.Commands(), gocheck.DeepEquals, expected)
 }
 
