@@ -44,7 +44,7 @@ func executor() exec.Executor {
 	return execut
 }
 
-func Router() (router.Router, error) {
+func getRouter() (router.Router, error) {
 	r, err := config.GetString("docker:router")
 	if err != nil {
 		return nil, err
@@ -56,7 +56,7 @@ type dockerProvisioner struct{}
 
 // Provision creates a route for the container
 func (p *dockerProvisioner) Provision(app provision.App) error {
-	r, err := Router()
+	r, err := getRouter()
 	if err != nil {
 		log.Printf("Failed to get router: %s", err.Error())
 		return err
@@ -117,7 +117,7 @@ func startInBackground(a provision.App, c container, imageId string, w io.Writer
 }
 
 func (dockerProvisioner) Swap(app1, app2 provision.App) error {
-	r, err := Router()
+	r, err := getRouter()
 	if err != nil {
 		log.Printf("Failed to get router: %s", err.Error())
 		return err
@@ -182,7 +182,7 @@ func (p *dockerProvisioner) Destroy(app provision.App) error {
 			removeContainer(&c)
 		}(c)
 	}
-	r, err := Router()
+	r, err := getRouter()
 	if err != nil {
 		log.Printf("Failed to get router: %s", err.Error())
 		return err
@@ -191,7 +191,7 @@ func (p *dockerProvisioner) Destroy(app provision.App) error {
 }
 
 func (*dockerProvisioner) Addr(app provision.App) (string, error) {
-	r, err := Router()
+	r, err := getRouter()
 	if err != nil {
 		log.Printf("Failed to get router: %s", err.Error())
 		return "", err
@@ -355,7 +355,7 @@ func buildResult(maxSize int, units <-chan provision.Unit) <-chan []provision.Un
 }
 
 func fixContainer(container *container, ip, port string) error {
-	router, err := Router()
+	router, err := getRouter()
 	if err != nil {
 		return err
 	}
@@ -370,7 +370,7 @@ func fixContainer(container *container, ip, port string) error {
 }
 
 func (p *dockerProvisioner) SetCName(app provision.App, cname string) error {
-	r, err := Router()
+	r, err := getRouter()
 	if err != nil {
 		return err
 	}
@@ -378,7 +378,7 @@ func (p *dockerProvisioner) SetCName(app provision.App, cname string) error {
 }
 
 func (p *dockerProvisioner) UnsetCName(app provision.App, cname string) error {
-	r, err := Router()
+	r, err := getRouter()
 	if err != nil {
 		return err
 	}
