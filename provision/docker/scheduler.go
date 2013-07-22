@@ -11,6 +11,7 @@ import (
 	"github.com/globocom/config"
 	"github.com/globocom/docker-cluster/cluster"
 	"github.com/globocom/tsuru/app"
+	"github.com/globocom/tsuru/cmd"
 	"github.com/globocom/tsuru/db"
 	"labix.org/v2/mgo"
 	"labix.org/v2/mgo/bson"
@@ -150,4 +151,29 @@ func listNodesInTheScheduler() ([]node, error) {
 		return nil, err
 	}
 	return nodes, nil
+}
+
+type addNodeToSchedulerCmd struct{}
+
+func (addNodeToSchedulerCmd) Info() *cmd.Info {
+	return &cmd.Info{
+		Name:    "docker-add-node",
+		Usage:   "docker-add-node <id> <address> [team]",
+		Desc:    "Registers a new node in the cluster, optionally assigning it to a team",
+		MinArgs: 2,
+	}
+}
+
+func (addNodeToSchedulerCmd) Run(ctx *cmd.Context, client *cmd.Client) error {
+	var team string
+	nd := cluster.Node{ID: ctx.Args[0], Address: ctx.Args[1]}
+	if len(ctx.Args) > 2 {
+		team = ctx.Args[2]
+	}
+	err := addNodeToScheduler(nd, team)
+	if err != nil {
+		return err
+	}
+	ctx.Stdout.Write([]byte("Node successfully registered.\n"))
+	return nil
 }

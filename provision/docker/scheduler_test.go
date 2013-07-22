@@ -12,6 +12,7 @@ import (
 	"github.com/globocom/config"
 	"github.com/globocom/docker-cluster/cluster"
 	"github.com/globocom/tsuru/app"
+	"github.com/globocom/tsuru/cmd"
 	"github.com/globocom/tsuru/db"
 	"labix.org/v2/mgo/bson"
 	"launchpad.net/gocheck"
@@ -224,4 +225,61 @@ func (s *SchedulerSuite) TestListNodesInTheScheduler(c *gocheck.C) {
 		{ID: "server2", Address: "http://localhost:9090", Team: "team1"},
 	}
 	c.Assert(nodes, gocheck.DeepEquals, expected)
+}
+
+func (s *SchedulerSuite) TestAddNodeToTheSchedulerCmdInfo(c *gocheck.C) {
+	expected := cmd.Info{
+		Name:    "docker-add-node",
+		Usage:   "docker-add-node <id> <address> [team]",
+		Desc:    "Registers a new node in the cluster, optionally assigning it to a team",
+		MinArgs: 2,
+	}
+	cmd := addNodeToSchedulerCmd{}
+	c.Assert(cmd.Info(), gocheck.DeepEquals, &expected)
+}
+
+func (s *SchedulerSuite) TestAddNodeToTheSchedulerCmdRun(c *gocheck.C) {
+	var buf bytes.Buffer
+	coll := s.storage.Collection(schedulerCollection)
+	context := cmd.Context{Args: []string{"server0", "http://localhost:8080"}, Stdout: &buf}
+	cmd := addNodeToSchedulerCmd{}
+	err := cmd.Run(&context, nil)
+	c.Assert(err, gocheck.IsNil)
+	defer coll.Remove(bson.M{"_id": "server0"})
+	var n node
+	err = coll.Find(bson.M{"_id": "server0"}).One(&n)
+	c.Assert(err, gocheck.IsNil)
+	c.Check(n.ID, gocheck.Equals, "server0")
+	c.Check(n.Team, gocheck.Equals, "")
+	c.Check(n.Address, gocheck.Equals, "http://localhost:8080")
+	c.Assert(buf.String(), gocheck.Equals, "Node successfully registered.\n")
+}
+
+func (s *SchedulerSuite) TestAddNodeToTheSchedulerCmdRunWithTeam(c *gocheck.C) {
+	var buf bytes.Buffer
+	coll := s.storage.Collection(schedulerCollection)
+	context := cmd.Context{Args: []string{"server0", "http://localhost:8080", "team1"}, Stdout: &buf}
+	cmd := addNodeToSchedulerCmd{}
+	err := cmd.Run(&context, nil)
+	c.Assert(err, gocheck.IsNil)
+	defer coll.Remove(bson.M{"_id": "server0"})
+	var n node
+	err = coll.Find(bson.M{"_id": "server0"}).One(&n)
+	c.Assert(err, gocheck.IsNil)
+	c.Check(n.ID, gocheck.Equals, "server0")
+	c.Check(n.Team, gocheck.Equals, "team1")
+	c.Check(n.Address, gocheck.Equals, "http://localhost:8080")
+	c.Assert(buf.String(), gocheck.Equals, "Node successfully registered.\n")
+}
+
+func (s *SchedulerSuite) TestAddNodeToTheSchedulerCmdFailure(c *gocheck.C) {
+	var buf bytes.Buffer
+	coll := s.storage.Collection(schedulerCollection)
+	err := addNodeToScheduler(cluster.Node{ID: "server0", Address: "http://localhost:4243"}, "")
+	c.Assert(err, gocheck.IsNil)
+	defer coll.Remove(bson.M{"_id": "server0"})
+	context := cmd.Context{Args: []string{"server0", "http://localhost:8080", "team1"}, Stdout: &buf}
+	cmd := addNodeToSchedulerCmd{}
+	err = cmd.Run(&context, nil)
+	c.Assert(err, gocheck.NotNil)
 }
