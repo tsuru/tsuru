@@ -9,6 +9,7 @@ import (
 	"fmt"
 	dockerClient "github.com/fsouza/go-dockerclient"
 	"github.com/globocom/docker-cluster/cluster"
+	"github.com/globocom/tsuru/cmd"
 	"github.com/globocom/tsuru/exec"
 	etesting "github.com/globocom/tsuru/exec/testing"
 	"github.com/globocom/tsuru/log"
@@ -570,6 +571,16 @@ func (s *S) TestProvisionUnsetCName(c *gocheck.C) {
 
 func (s *S) TestProvisionerIsCNameManager(c *gocheck.C) {
 	var _ provision.CNameManager = &dockerProvisioner{}
+}
+
+func (s *S) TestCommands(c *gocheck.C) {
+	var p dockerProvisioner
+	expected := []cmd.Command{addNodeToSchedulerCmd{}}
+	c.Assert(p.Commands(), gocheck.DeepEquals, expected)
+}
+
+func (s *S) TestProvisionerIsCommandable(c *gocheck.C) {
+	var _ provision.Commandable = &dockerProvisioner{}
 }
 
 func (s *S) TestSwap(c *gocheck.C) {

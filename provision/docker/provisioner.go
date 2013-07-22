@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"github.com/globocom/config"
 	"github.com/globocom/tsuru/app"
+	"github.com/globocom/tsuru/cmd"
 	"github.com/globocom/tsuru/db"
 	"github.com/globocom/tsuru/exec"
 	"github.com/globocom/tsuru/log"
@@ -382,6 +383,10 @@ func (p *dockerProvisioner) UnsetCName(app provision.App, cname string) error {
 		return err
 	}
 	return r.UnsetCName(cname, app.GetName())
+}
+
+func (p *dockerProvisioner) Commands() []cmd.Command {
+	return []cmd.Command{addNodeToSchedulerCmd{}}
 }
 
 func collection() *mgo.Collection {
