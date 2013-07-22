@@ -317,3 +317,40 @@ func (s *SchedulerSuite) TestRemoveNodeFromTheSchedulerCmdRunFailure(c *gocheck.
 	err := removeNodeFromSchedulerCmd{}.Run(&context, nil)
 	c.Assert(err, gocheck.NotNil)
 }
+
+func (s *SchedulerSuite) TestListNodesInTheSchedulerCmdInfo(c *gocheck.C) {
+	expected := cmd.Info{
+		Name:  "docker-list-nodes",
+		Usage: "docker-list-nodes",
+		Desc:  "List available nodes in the cluster",
+	}
+	cmd := listNodesInTheSchedulerCmd{}
+	c.Assert(cmd.Info(), gocheck.DeepEquals, &expected)
+}
+
+func (s *SchedulerSuite) TestListNodesInTheSchedulerCmdRun(c *gocheck.C) {
+	coll := s.storage.Collection(schedulerCollection)
+	nd1 := cluster.Node{ID: "server0", Address: "http://localhost:8080"}
+	nd2 := cluster.Node{ID: "server1", Address: "http://localhost:9090"}
+	nd3 := cluster.Node{ID: "server2", Address: "http://localhost:9090"}
+	err := addNodeToScheduler(nd1, "team1")
+	c.Assert(err, gocheck.IsNil)
+	err = addNodeToScheduler(nd3, "")
+	c.Assert(err, gocheck.IsNil)
+	err = addNodeToScheduler(nd2, "team1")
+	c.Assert(err, gocheck.IsNil)
+	defer coll.RemoveAll(bson.M{"_id": bson.M{"$in": []string{"server0", "server1", "server2"}}})
+	var buf bytes.Buffer
+	ctx := cmd.Context{Stdout: &buf}
+	err = listNodesInTheSchedulerCmd{}.Run(&ctx, nil)
+	c.Assert(err, gocheck.IsNil)
+	expected := `+---------+-----------------------+-------+
+| ID      | Address               | Team  |
++---------+-----------------------+-------+
+| server0 | http://localhost:8080 | team1 |
+| server1 | http://localhost:9090 | team1 |
+| server2 | http://localhost:9090 |       |
++---------+-----------------------+-------+
+`
+	c.Assert(buf.String(), gocheck.Equals, expected)
+}

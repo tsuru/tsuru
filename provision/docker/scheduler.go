@@ -198,3 +198,27 @@ func (removeNodeFromSchedulerCmd) Run(ctx *cmd.Context, client *cmd.Client) erro
 	ctx.Stdout.Write([]byte("Node successfully removed.\n"))
 	return nil
 }
+
+type listNodesInTheSchedulerCmd struct{}
+
+func (listNodesInTheSchedulerCmd) Info() *cmd.Info {
+	return &cmd.Info{
+		Name:  "docker-list-nodes",
+		Usage: "docker-list-nodes",
+		Desc:  "List available nodes in the cluster",
+	}
+}
+
+func (listNodesInTheSchedulerCmd) Run(ctx *cmd.Context, client *cmd.Client) error {
+	t := cmd.Table{Headers: cmd.Row([]string{"ID", "Address", "Team"})}
+	nodes, err := listNodesInTheScheduler()
+	if err != nil {
+		return err
+	}
+	for _, n := range nodes {
+		t.AddRow(cmd.Row([]string{n.ID, n.Address, n.Team}))
+	}
+	t.Sort()
+	ctx.Stdout.Write(t.Bytes())
+	return nil
+}
