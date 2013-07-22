@@ -177,3 +177,24 @@ func (addNodeToSchedulerCmd) Run(ctx *cmd.Context, client *cmd.Client) error {
 	ctx.Stdout.Write([]byte("Node successfully registered.\n"))
 	return nil
 }
+
+type removeNodeFromSchedulerCmd struct{}
+
+func (removeNodeFromSchedulerCmd) Info() *cmd.Info {
+	return &cmd.Info{
+		Name:    "docker-rm-node",
+		Usage:   "docker-rm-node <id>",
+		Desc:    "Removes a node from the cluster",
+		MinArgs: 1,
+	}
+}
+
+func (removeNodeFromSchedulerCmd) Run(ctx *cmd.Context, client *cmd.Client) error {
+	nd := cluster.Node{ID: ctx.Args[0]}
+	err := removeNodeFromScheduler(nd)
+	if err != nil {
+		return err
+	}
+	ctx.Stdout.Write([]byte("Node successfully removed.\n"))
+	return nil
+}
