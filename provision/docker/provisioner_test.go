@@ -569,10 +569,7 @@ func (s *S) TestProvisionUnsetCName(c *gocheck.C) {
 }
 
 func (s *S) TestProvisionerIsCNameManager(c *gocheck.C) {
-	var p interface{}
-	p = &dockerProvisioner{}
-	_, ok := p.(provision.CNameManager)
-	c.Assert(ok, gocheck.Equals, true)
+	var _ provision.CNameManager = &dockerProvisioner{}
 }
 
 func (s *S) TestSwap(c *gocheck.C) {
