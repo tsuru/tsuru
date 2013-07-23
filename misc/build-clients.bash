@@ -25,7 +25,7 @@ function build_and_package {
 	echo -n "Building $2 for $1... "
 	os=`echo $1 | cut -d '_' -f1`
 	arch=`echo $1 | cut -d '_' -f2`
- 	GOOS=$os GOARCH=$arch CGO_ENABLED=0 go build -ldflags '-s' -o $destination_dir/$2 github.com/globocom/tsuru/$3
+ 	GOOS=$os GOARCH=$arch CGO_ENABLED=0 go build -o $destination_dir/$2 github.com/globocom/tsuru/$3
 	tar -C $destination_dir -czf $destination_dir/$2-$os-$arch.tar.gz $2
 	rm $destination_dir/$2
 	echo "ok"
