@@ -43,3 +43,7 @@ func (s *S) TestSwap(c *gocheck.C) {
 	expected := "Apps successfully swapped!\n"
 	c.Assert(buf.String(), gocheck.Equals, expected)
 }
+
+func (s *S) TestSwapIsACommand(c *gocheck.C) {
+	var _ cmd.Command = swap{}
+}
