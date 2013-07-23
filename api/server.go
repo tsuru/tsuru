@@ -110,7 +110,7 @@ func RunServer(dry bool) {
 	m.Get("/healers", authorizationRequiredHandler(healers))
 	m.Get("/healers/:healer", authorizationRequiredHandler(healer))
 
-	m.Put("/swap", authorizationRequiredHandler(healers))
+	m.Put("/swap", authorizationRequiredHandler(swap))
 
 	if !dry {
 		provisioner, err := config.GetString("provisioner")
