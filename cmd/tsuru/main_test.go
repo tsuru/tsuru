@@ -208,3 +208,10 @@ func (s *S) TestPlatformListIsRegistered(c *gocheck.C) {
 	c.Assert(ok, gocheck.Equals, true)
 	c.Assert(plat, gocheck.FitsTypeOf, platformList{})
 }
+
+func (s *S) TestSwapIsRegistered(c *gocheck.C) {
+	manager := buildManager("tsuru")
+	cmd, ok := manager.Commands["swap"]
+	c.Assert(ok, gocheck.Equals, true)
+	c.Assert(cmd, gocheck.FitsTypeOf, swap{})
+}
