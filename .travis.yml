@@ -17,7 +17,7 @@ before_script:
   - make get-prod
   - echo http://localhost > $HOME/.tsuru_target
 script:
-  - make test
+  - make test deadcode
 notifications:
   irc:
     channels:
