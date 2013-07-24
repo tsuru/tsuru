@@ -207,6 +207,29 @@ func (s *S) TestContainerRemove(c *gocheck.C) {
 	c.Assert(ok, gocheck.Equals, true)
 }
 
+func (s *S) TestRemoveContainerIgnoreErrors(c *gocheck.C) {
+	fexec := &etesting.FakeExecutor{}
+	setExecut(fexec)
+	defer setExecut(nil)
+	err := s.newImage()
+	c.Assert(err, gocheck.IsNil)
+	container, err := s.newContainer()
+	c.Assert(err, gocheck.IsNil)
+	defer rtesting.FakeRouter.RemoveBackend(container.AppName)
+	client, _ := dockerClient.NewClient(s.server.URL())
+	err = client.RemoveContainer(container.ID)
+	c.Assert(err, gocheck.IsNil)
+	err = container.remove()
+	c.Assert(err, gocheck.IsNil)
+	args := []string{"-R", container.IP}
+	c.Assert(fexec.ExecutedCmd("ssh-keygen", args), gocheck.Equals, true)
+	coll := s.conn.Collection(s.collName)
+	err = coll.FindId(container.ID).One(&container)
+	c.Assert(err, gocheck.NotNil)
+	c.Assert(err.Error(), gocheck.Equals, "not found")
+	c.Assert(rtesting.FakeRouter.HasRoute(container.AppName, container.getAddress()), gocheck.Equals, false)
+}
+
 func (s *S) TestContainerIP(c *gocheck.C) {
 	err := s.newImage()
 	c.Assert(err, gocheck.IsNil)

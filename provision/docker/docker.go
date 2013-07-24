@@ -255,24 +255,20 @@ func (c *container) remove() error {
 	err := dockerCluster().RemoveContainer(c.ID)
 	if err != nil {
 		log.Printf("Failed to remove container from docker: %s", err)
-		return err
 	}
 	runCmd("ssh-keygen", "-R", c.IP)
 	log.Printf("Removing container %s from database", c.ID)
 	coll := collection()
 	defer coll.Database.Session.Close()
 	if err := coll.RemoveId(c.ID); err != nil {
-		log.Printf("Failed to remove container from database: %s", err.Error())
-		return err
+		log.Printf("Failed to remove container from database: %s", err)
 	}
 	r, err := getRouter()
 	if err != nil {
-		log.Printf("Failed to obtain router: %s", err.Error())
-		return err
+		log.Printf("Failed to obtain router: %s", err)
 	}
 	if err := r.RemoveRoute(c.AppName, address); err != nil {
-		log.Printf("Failed to remove route: %s", err.Error())
-		return err
+		log.Printf("Failed to remove route: %s", err)
 	}
 	return nil
 }
