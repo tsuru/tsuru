@@ -9,8 +9,8 @@ import (
 	"github.com/bmizerany/pat"
 	"github.com/globocom/config"
 	"github.com/globocom/tsuru/app"
+	"github.com/globocom/tsuru/log"
 	"github.com/globocom/tsuru/provision"
-	"log"
 	"net"
 	"net/http"
 )
@@ -23,6 +23,7 @@ func fatal(err error) {
 // server should run in dry mode, not starting the HTTP listener (for testing
 // purposes).
 func RunServer(dry bool) {
+	log.Init()
 	connString, err := config.GetString("database:url")
 	if err != nil {
 		fatal(err)

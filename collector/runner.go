@@ -36,6 +36,7 @@ func fatal(err error) {
 // It assumes the configuration has already been defined (from a config file or
 // memory).
 func Run(dryMode bool) {
+	log.Init()
 	connString, err := config.GetString("database:url")
 	if err != nil {
 		fatal(err)
