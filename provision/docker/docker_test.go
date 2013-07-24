@@ -200,6 +200,11 @@ func (s *S) TestContainerRemove(c *gocheck.C) {
 	c.Assert(err, gocheck.NotNil)
 	c.Assert(err.Error(), gocheck.Equals, "not found")
 	c.Assert(rtesting.FakeRouter.HasRoute(container.AppName, container.getAddress()), gocheck.Equals, false)
+	client, _ := dockerClient.NewClient(s.server.URL())
+	_, err = client.InspectContainer(container.ID)
+	c.Assert(err, gocheck.NotNil)
+	_, ok := err.(*dockerClient.NoSuchContainer)
+	c.Assert(ok, gocheck.Equals, true)
 }
 
 func (s *S) TestContainerIP(c *gocheck.C) {
