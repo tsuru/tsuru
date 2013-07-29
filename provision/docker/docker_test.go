@@ -565,13 +565,17 @@ func (s *S) TestDockerCluster(c *gocheck.C) {
 }
 
 func (s *S) TestReplicateImage(c *gocheck.C) {
+	var request *http.Request
 	var requests int32
-	server, err := dtesting.NewServer(func(*http.Request) {
-		atomic.AddInt32(&requests, 1)
+	server, err := dtesting.NewServer(func(r *http.Request) {
+		v := atomic.AddInt32(&requests, 1)
+		if v == 2 {
+			request = r
+		}
 	})
 	c.Assert(err, gocheck.IsNil)
 	defer server.Stop()
-	config.Set("docker:registry", "http://localhost:3030")
+	config.Set("docker:registry", "localhost:3030")
 	defer config.Unset("docker:registry")
 	cmutext.Lock()
 	oldDockerCluster := dCluster
@@ -583,11 +587,51 @@ func (s *S) TestReplicateImage(c *gocheck.C) {
 		dCluster = oldDockerCluster
 	}()
 	var buf bytes.Buffer
-	err = dCluster.PullImage(dockerClient.PullImageOptions{Repository: "base", Registry: "http://index.docker.io"}, &buf)
+	opts := dockerClient.PullImageOptions{
+		Repository: "localhost:3030/base",
+		Registry:   "http://index.docker.io",
+	}
+	err = dCluster.PullImage(opts, &buf)
+	c.Assert(err, gocheck.IsNil)
+	err = replicateImage("localhost:3030/base")
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(atomic.LoadInt32(&requests), gocheck.Equals, int32(3))
+	c.Assert(request.URL.Path, gocheck.Matches, ".*/images/localhost:3030/base/push$")
+}
+
+func (s *S) TestReplicateImageWithoutRegistryInTheImageName(c *gocheck.C) {
+	var request *http.Request
+	var requests int32
+	server, err := dtesting.NewServer(func(r *http.Request) {
+		v := atomic.AddInt32(&requests, 1)
+		if v == 2 {
+			request = r
+		}
+	})
+	c.Assert(err, gocheck.IsNil)
+	defer server.Stop()
+	config.Set("docker:registry", "localhost:3030")
+	defer config.Unset("docker:registry")
+	cmutext.Lock()
+	oldDockerCluster := dCluster
+	dCluster, _ = cluster.New(nil, cluster.Node{ID: "server0", Address: server.URL()})
+	cmutext.Unlock()
+	defer func() {
+		cmutext.Lock()
+		defer cmutext.Unlock()
+		dCluster = oldDockerCluster
+	}()
+	var buf bytes.Buffer
+	opts := dockerClient.PullImageOptions{
+		Repository: "localhost:3030/base",
+		Registry:   "http://index.docker.io",
+	}
+	err = dCluster.PullImage(opts, &buf)
 	c.Assert(err, gocheck.IsNil)
 	err = replicateImage("base")
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(atomic.LoadInt32(&requests), gocheck.Equals, int32(3))
+	c.Assert(request.URL.Path, gocheck.Matches, ".*/images/localhost:3030/base/push$")
 }
 
 func (s *S) TestReplicateImageNoRegistry(c *gocheck.C) {
@@ -609,4 +653,17 @@ func (s *S) TestReplicateImageNoRegistry(c *gocheck.C) {
 	err = replicateImage("tsuru/python")
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(atomic.LoadInt32(&requests), gocheck.Equals, int32(0))
+}
+
+func (s *S) TestBuildImageName(c *gocheck.C) {
+	repository := buildImageName("raising")
+	c.Assert(repository, gocheck.Equals, s.repoNamespace+"/raising")
+}
+
+func (s *S) TestBuildImageNameWithRegistry(c *gocheck.C) {
+	config.Set("docker:registry", "localhost:3030")
+	defer config.Unset("docker:registry")
+	repository := buildImageName("raising")
+	expected := "localhost:3030/" + s.repoNamespace + "/raising"
+	c.Assert(repository, gocheck.Equals, expected)
 }
