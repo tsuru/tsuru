@@ -106,7 +106,7 @@ func injectEnvsAndRestart(a provision.App) {
 func startInBackground(a provision.App, c container, imageId string, w io.Writer, started chan bool) {
 	_, err := start(a, imageId, w)
 	if err != nil {
-		log.Printf("error on start the app %s - %s", a.Name, err)
+		log.Printf("error on start the app %s - %s", a.GetName(), err)
 	}
 	if c.ID != "" {
 		if a.RemoveUnit(c.ID) != nil {
