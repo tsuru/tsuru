@@ -29,6 +29,8 @@ var (
 	fsystem  fs.Fs
 )
 
+const pushTries = 5
+
 func dockerCluster() *cluster.Cluster {
 	cmutext.Lock()
 	defer cmutext.Unlock()
@@ -400,13 +402,16 @@ func replicateImage(name string) error {
 			name = registry + "/" + name
 		}
 		pushOpts := dclient.PushImageOptions{Name: name}
-		err := dockerCluster().PushImage(pushOpts, &buf)
-		if err != nil {
+		for i := 0; i < pushMaxTry; i++ {
+			err := dockerCluster().PushImage(pushOpts, &buf)
+			if err == nil {
+				buf.Reset()
+				break
+			}
 			log.Printf("[docker] Failed to push image %q (%s): %s", name, err, buf.String())
-			return err
+			buf.Reset()
 		}
-		buf.Reset()
-		pullOpts := dclient.PullImageOptions{Repository: name, Registry: registry}
+		pullOpts := dclient.PullImageOptions{Repository: name}
 		err = dockerCluster().PullImage(pullOpts, &buf)
 		if err != nil {
 			log.Printf("[docker] Failed to replicate image %q through nodes (%s): %s", name, err, buf.String())
