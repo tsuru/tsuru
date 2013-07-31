@@ -29,7 +29,7 @@ var (
 	fsystem  fs.Fs
 )
 
-const pushTries = 5
+const pushMaxTry = 5
 
 func dockerCluster() *cluster.Cluster {
 	cmutext.Lock()
@@ -410,6 +410,9 @@ func replicateImage(name string) error {
 			}
 			log.Printf("[docker] Failed to push image %q (%s): %s", name, err, buf.String())
 			buf.Reset()
+		}
+		if err != nil {
+			return err
 		}
 		pullOpts := dclient.PullImageOptions{Repository: name}
 		err = dockerCluster().PullImage(pullOpts, &buf)
