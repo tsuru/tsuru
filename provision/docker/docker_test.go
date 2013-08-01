@@ -28,9 +28,9 @@ import (
 )
 
 func (s *S) TestContainerGetAddress(c *gocheck.C) {
-	container := container{ID: "id123", Port: "8888", HostPort: "49153"}
+	container := container{ID: "id123", Port: "8888", HostAddr: "10.10.10.10", HostPort: "49153"}
 	address := container.getAddress()
-	expected := fmt.Sprintf("http://%s:49153", s.hostAddr)
+	expected := "http://10.10.10.10:49153"
 	c.Assert(address, gocheck.Equals, expected)
 }
 

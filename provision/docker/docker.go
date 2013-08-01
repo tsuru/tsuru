@@ -115,12 +115,7 @@ type container struct {
 }
 
 func (c *container) getAddress() string {
-	hostAddr, err := config.Get("docker:host-address")
-	if err != nil {
-		log.Printf("Failed to obtain container address: %s", err.Error())
-		return ""
-	}
-	return fmt.Sprintf("http://%s:%s", hostAddr, c.HostPort)
+	return fmt.Sprintf("http://%s:%s", c.HostAddr, c.HostPort)
 }
 
 // newContainer creates a new container in Docker and stores it in the database.
