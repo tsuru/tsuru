@@ -31,9 +31,12 @@ var (
 
 const pushMaxTry = 5
 
+var clusterNodes map[string]string
+
 func dockerCluster() *cluster.Cluster {
 	cmutext.Lock()
 	defer cmutext.Unlock()
+	clusterNodes = make(map[string]string)
 	if dCluster == nil {
 		servers, _ := config.GetList("docker:servers")
 		if len(servers) < 1 {
@@ -41,11 +44,13 @@ func dockerCluster() *cluster.Cluster {
 		}
 		nodes := []cluster.Node{}
 		for index, server := range servers {
+			id := fmt.Sprintf("server%d", index)
 			node := cluster.Node{
-				ID:      fmt.Sprintf("server%d", index),
+				ID:      id,
 				Address: server,
 			}
 			nodes = append(nodes, node)
+			clusterNodes[id] = server
 		}
 		if segregate, _ := config.GetBool("docker:segregate"); segregate {
 			var scheduler segregatedScheduler
@@ -127,7 +132,7 @@ func newContainer(app provision.App, imageId string, cmds []string) (container, 
 		AttachStdout: false,
 		AttachStderr: false,
 	}
-	c, err := dockerCluster().CreateContainer(&config)
+	_, c, err := dockerCluster().CreateContainer(&config)
 	if err != nil {
 		log.Printf("error on creating container in docker %s - %s", cont.AppName, err.Error())
 		return container{}, err
