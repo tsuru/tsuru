@@ -524,7 +524,6 @@ Here is a complete example, with S3, VPC, HTTP/TLS and load balacing enabled:
       port: 8000
       protocol: http
     auth:
-      salt: salt
       token-expire-days: 14
     bucket-support: true
     aws:
