@@ -18,8 +18,10 @@ import (
 	"github.com/globocom/tsuru/testing"
 	"labix.org/v2/mgo/bson"
 	"launchpad.net/gocheck"
+	"net"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"os"
 	"strings"
 	"sync/atomic"
@@ -33,6 +35,9 @@ func (s *S) TestContainerGetAddress(c *gocheck.C) {
 }
 
 func (s *S) TestNewContainer(c *gocheck.C) {
+	oldClusterNodes := clusterNodes
+	clusterNodes = map[string]string{"server": s.server.URL()}
+	defer func() { clusterNodes = oldClusterNodes }()
 	err := s.newImage()
 	c.Assert(err, gocheck.IsNil)
 	app := testing.NewFakeApp("app-name", "python", 1)
@@ -45,6 +50,9 @@ func (s *S) TestNewContainer(c *gocheck.C) {
 	c.Assert(cont, gocheck.FitsTypeOf, container{})
 	c.Assert(cont.AppName, gocheck.Equals, app.GetName())
 	c.Assert(cont.Type, gocheck.Equals, app.GetPlatform())
+	u, _ := url.Parse(s.server.URL())
+	host, _, _ := net.SplitHostPort(u.Host)
+	c.Assert(cont.HostAddr, gocheck.Equals, host)
 	port, err := getPort()
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(cont.Port, gocheck.Equals, port)

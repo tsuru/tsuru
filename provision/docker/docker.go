@@ -19,6 +19,8 @@ import (
 	"github.com/globocom/tsuru/provision"
 	"io"
 	"labix.org/v2/mgo/bson"
+	"net"
+	"net/url"
 	"strings"
 	"sync"
 )
@@ -36,8 +38,8 @@ var clusterNodes map[string]string
 func dockerCluster() *cluster.Cluster {
 	cmutext.Lock()
 	defer cmutext.Unlock()
-	clusterNodes = make(map[string]string)
 	if dCluster == nil {
+		clusterNodes = make(map[string]string)
 		servers, _ := config.GetList("docker:servers")
 		if len(servers) < 1 {
 			log.Fatal(`Tsuru is misconfigured. Setting "docker:servers" is mandatory`)
@@ -92,12 +94,20 @@ func getPort() (string, error) {
 	return config.GetString("docker:run-cmd:port")
 }
 
+func getHostAddr(hostID string) string {
+	fullAddress := clusterNodes[hostID]
+	url, _ := url.Parse(fullAddress)
+	host, _, _ := net.SplitHostPort(url.Host)
+	return host
+}
+
 type container struct {
 	ID       string `bson:"_id"`
 	AppName  string
 	Type     string
 	IP       string
 	Port     string
+	HostAddr string
 	HostPort string
 	Status   string
 	Version  string
@@ -132,13 +142,14 @@ func newContainer(app provision.App, imageId string, cmds []string) (container, 
 		AttachStdout: false,
 		AttachStderr: false,
 	}
-	_, c, err := dockerCluster().CreateContainer(&config)
+	hostID, c, err := dockerCluster().CreateContainer(&config)
 	if err != nil {
 		log.Printf("error on creating container in docker %s - %s", cont.AppName, err.Error())
 		return container{}, err
 	}
 	cont.ID = c.ID
 	cont.Port = port
+	cont.HostAddr = getHostAddr(hostID)
 	return cont, nil
 }
 

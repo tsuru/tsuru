@@ -74,12 +74,15 @@ func (s *S) SetUpSuite(c *gocheck.C) {
 	dCluster, _ = cluster.New(nil,
 		cluster.Node{ID: "server", Address: s.server.URL()},
 	)
-
 }
 
 func (s *S) TearDownSuite(c *gocheck.C) {
 	s.conn.Collection(s.collName).Database.DropDatabase()
 	fsystem = nil
+}
+
+func (s *S) TestSetUp(c *gocheck.C) {
+	clusterNodes = map[string]string{"server": s.server.URL()}
 }
 
 type unitSlice []provision.Unit
