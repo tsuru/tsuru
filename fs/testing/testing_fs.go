@@ -10,6 +10,7 @@ package testing
 import (
 	"fmt"
 	"github.com/globocom/tsuru/fs"
+	"github.com/globocom/tsuru/safe"
 	"os"
 	"path"
 	"strings"
@@ -26,13 +27,13 @@ import (
 type FakeFile struct {
 	content string
 	current int64
-	r       *strings.Reader
+	r       *safe.Reader
 	f       *os.File
 }
 
-func (f *FakeFile) reader() *strings.Reader {
+func (f *FakeFile) reader() *safe.Reader {
 	if f.r == nil {
-		f.r = strings.NewReader(f.content)
+		f.r = safe.NewReader([]byte(f.content))
 	}
 	return f.r
 }
