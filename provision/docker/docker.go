@@ -54,10 +54,11 @@ func dockerCluster() *cluster.Cluster {
 			dCluster, _ = cluster.New(nil, nodes...)
 		}
 		if redisServer, err := config.GetString("docker:scheduler:redis-server"); err == nil {
+			prefix, _ := config.GetString("docker:scheduler:redis-prefix")
 			if password, err := config.GetString("docker:scheduler:redis-password"); err == nil {
-				dCluster.SetStorage(storage.AuthenticatedRedis(redisServer, password))
+				dCluster.SetStorage(storage.AuthenticatedRedis(redisServer, password, prefix))
 			} else {
-				dCluster.SetStorage(storage.Redis(redisServer))
+				dCluster.SetStorage(storage.Redis(redisServer, prefix))
 			}
 		}
 	}
