@@ -49,6 +49,7 @@ The currently available commands are (grouped by subject):
 	restart           restarts the app's application server
 	set-cname         defines a cname for an app
 	unset-cname       unsets the cname from an app
+	swap              swaps the router between two apps
 
 	env-get           display environment variables for an app
 	env-set           set environment variable(s) to an app
@@ -577,6 +578,14 @@ service-list will retrieve and display a list of services that the user has
 access to. If the user has any instance of services, it will be displayed by
 this command too.
 
+
+Swap the routing between two apps
+
+Usage:
+
+	% tsuru swap <app1> <app2>
+
+swap will swap the routing between two apps enabling blue/green deploy, zero downtime and make the rollbacks easier.
 
 Create a new service instance
 
