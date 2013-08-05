@@ -65,13 +65,13 @@ Once your app is ready, you will be able to deploy your code, e.g.:
     +-------------+-------------------------+-------------+--------+
     | Application | Units State Summary     | Address     | Ready? |
     +-------------+-------------------------+-------------+--------+
-    | blog        | 0 of 1 units in-service |             | Yes    |
+    | blog        | 0 of 0 units in-service |             | Yes    |
     +-------------+-------------------------+-------------+--------+
 
 Application code
 ================
 
-This document will not focus on how to write a Rails blog, you can clone the
+This document will not focus on how to write a blog with Rails, you can clone the
 entire source direct from GitHub:
 https://github.com/globocom/tsuru-ruby-sample. Here is what we did for the
 project:
@@ -204,7 +204,6 @@ looks like:
 ::
 
     libmysqlclient-dev
-    ruby-dev
 
 And here is ``Gemfile``:
 
