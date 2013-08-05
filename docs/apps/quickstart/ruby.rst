@@ -73,7 +73,7 @@ Application code
 
 This document will not focus on how to write a Rails blog, you can clone the
 entire source direct from GitHub:
-https://github.com/globocom/tsuru-rails-sample. Here is what we did for the
+https://github.com/globocom/tsuru-ruby-sample. Here is what we did for the
 project:
 
 #. Create the project (``rails new blog``)
