@@ -78,8 +78,9 @@ func (s *S) TearDownSuite(c *gocheck.C) {
 	fsystem = nil
 }
 
-func (s *S) TestSetUp(c *gocheck.C) {
+func (s *S) SetUp(c *gocheck.C) {
 	clusterNodes = map[string]string{"server": s.server.URL()}
+	config.Unset("docker:registry")
 }
 
 type unitSlice []provision.Unit

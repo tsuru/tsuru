@@ -439,6 +439,16 @@ func (s *S) TestGetImageFromDatabase(c *gocheck.C) {
 	c.Assert(img, gocheck.Equals, "someimageid")
 }
 
+func (s *S) TestGetImageWithRegistry(c *gocheck.C) {
+	config.Set("docker:registry", "localhost:3030")
+	defer config.Unset("docker:registry")
+	app := testing.NewFakeApp("myapp", "python", 1)
+	img := getImage(app)
+	repoNamespace, _ := config.GetString("docker:repository-namespace")
+	expected := fmt.Sprintf("localhost:3030/%s/python", repoNamespace)
+	c.Assert(img, gocheck.Equals, expected)
+}
+
 func (s *S) TestContainerCommit(c *gocheck.C) {
 	err := s.newImage()
 	c.Assert(err, gocheck.IsNil)

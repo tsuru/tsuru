@@ -382,11 +382,7 @@ func getImage(app provision.App) string {
 	if c.Image != "" {
 		return c.Image
 	}
-	repoNamespace, err := config.GetString("docker:repository-namespace")
-	if err != nil {
-		return ""
-	}
-	return fmt.Sprintf("%s/%s", repoNamespace, app.GetPlatform())
+	return buildImageName(app.GetPlatform())
 }
 
 // removeImage removes an image from docker registry
