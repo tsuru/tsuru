@@ -319,7 +319,7 @@ how your application should be started. Here is how the Procfile should look lik
 
 ::
 
-    web: bundle exec rails server -p 8888 -e production
+    web: bundle exec rails server -p $PORT -e production
 
 Now that we commit the file and push the changes to tsuru git server, running
 another deploy:
