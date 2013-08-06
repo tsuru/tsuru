@@ -519,8 +519,8 @@ write:
 Deployment hooks
 ================
 
-It would be boring to manually run ``syncdb`` and/or ``migrate`` after every
-deployment. So we can configure an automatic hook to always run before or after
+It would be boring to manually run ``rake db:migrate`` after every deployment.
+So we can configure an automatic hook to always run before or after
 the app restarts.
 
 Tsuru parses a file called ``app.yaml`` and runs ``pre-restart`` and
@@ -534,8 +534,7 @@ hooks. Here is our example of app.yaml:
 
     hooks:
       post-restart:
-        - python manage.py syncdb --noinput
-        - python manage.py migrate
+        - RAILS_ENV=production bundle exec rake db:migrate
 
 It should be located in the root of the project. Let's commit and deploy it:
 
@@ -576,7 +575,7 @@ It should be located in the root of the project. Let's commit and deploy it:
     To git@cloud.tsuru.io:blog.git
        a780de9..1b675b8  master -> master
 
-It's done! Now we have a Django project deployed on tsuru, using a MySQL
+It's done! Now we have a Rails project deployed on tsuru, using a MySQL
 service.
 
 Going further
