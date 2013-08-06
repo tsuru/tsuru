@@ -501,49 +501,20 @@ Now let's commit it and run another deploy:
 Now if we try to access the admin again, we will get another error: `"Table
 'blogsql.django_session' doesn't exist"`. Well, that means that we have access
 to the database, so bind worked, but we did not set up the database yet. We
-need to run ``syncdb`` and ``migrate`` (if we're using South) in the remote
-server. We can use `run
+need to run ``rake db:migrate`` in the remote server. We can use `run
 <http://godoc.org/github.com/globocom/tsuru/cmd/tsuru#hdr-Run_an_arbitrary_command_in_the_app_machine>`_
-command to execute commands in the machine, so for running ``syncdb`` we could
+command to execute commands in the machine, so for running ``rake db:migrate`` we could
 write:
 
 .. highlight:: bash
 
 ::
 
-    $ tsuru run -- python manage.py syncdb --noinput
+    $ tsuru run -- RAILS_ENV=production bundle exec rake db:migrate
     Syncing...
-    Creating tables ...
-    Creating table auth_permission
-    Creating table auth_group_permissions
-    Creating table auth_group
-    Creating table auth_user_user_permissions
-    Creating table auth_user_groups
-    Creating table auth_user
-    Creating table django_content_type
-    Creating table django_session
-    Creating table django_site
-    Creating table django_admin_log
-    Creating table south_migrationhistory
     Installing custom SQL ...
     Installing indexes ...
     Installed 0 object(s) from 0 fixture(s)
-
-    Synced:
-     > django.contrib.auth
-     > django.contrib.contenttypes
-     > django.contrib.sessions
-     > django.contrib.sites
-     > django.contrib.messages
-     > django.contrib.staticfiles
-     > django.contrib.admin
-     > south
-
-    Not synced (use migrations):
-     - blog.posts
-    (use ./manage.py migrate to migrate these)
-
-The same applies for ``migrate``.
 
 Deployment hooks
 ================
