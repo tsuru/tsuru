@@ -179,10 +179,10 @@ func (p *dockerProvisioner) Destroy(app provision.App) error {
 	containers, _ := listAppContainers(app.GetName())
 	for _, c := range containers {
 		go func(c container) {
-			removeImage(c.Image)
 			removeContainer(&c)
 		}(c)
 	}
+	go removeImage(buildImageName(app.GetName()))
 	r, err := getRouter()
 	if err != nil {
 		log.Printf("Failed to get router: %s", err.Error())
