@@ -313,15 +313,13 @@ As you can see, in the deploy output there is a step described as "Restarting
 your app". In this step, tsuru will restart your app if it's running, or start
 it if it's not. But how does tsuru start an application? That's very simple, it
 uses a Procfile (a concept stolen from Foreman). In this Procfile, you describe
-how your application should be started. We can use `gunicorn
-<http://gunicorn.org/>`_, for example, to start our Django application. Here is
-how the Procfile should look like:
+how your application should be started. Here is how the Procfile should look like:
 
 .. highlight:: text
 
 ::
 
-    web: -b 0.0.0.0:$PORT blog.wsgi
+    web: bundle exec rails server -p 8888 -e production
 
 Now that we commit the file and push the changes to tsuru git server, running
 another deploy:
@@ -361,41 +359,6 @@ another deploy:
     To git@cloud.tsuru.io:blog.git
        81e884e..530c528  master -> master
 
-Now we get an error: ``gunicorn: command not found``. It means that we need to
-add gunicorn to ``Gemfile`` file:
-
-.. highlight:: bash
-
-::
-
-    ...
-    ^D
-
-Now we commit the changes and run another deploy:
-
-.. highlight:: bash
-
-::
-
-    $ git add requirements.txt
-    $ git commit -m "requirements.txt: added gunicorn"
-    $ git push tsuru master
-    Counting objects: 5, done.
-    Delta compression using up to 4 threads.
-    Compressing objects: 100% (3/3), done.
-    Writing objects: 100% (3/3), 325 bytes, done.
-    Total 3 (delta 1), reused 0 (delta 0)
-    remote:
-    remote:  ---> Tsuru receiving push
-    remote:
-    [...]
-    remote:  ---> Restarting your app
-    remote:
-    remote:  ---> Deploy done!
-    remote:
-    To git@cloud.tsuru.io:blog.git
-       530c528..542403a  master -> master
-
 Now that the app is deployed, you can access it from your browser, getting the
 IP or host listed in ``app-list`` and opening it. For example,
 in the list below:
@@ -410,7 +373,7 @@ in the list below:
     +-------------+-------------------------+---------------------+--------+
 
 
-We can access the admin of the app in the URL http://blog.cloud.tsuru.io/admin/.
+We can access the admin of the app in the URL http://blog.cloud.tsuru.io/posts/.
 
 Using services
 ==============
