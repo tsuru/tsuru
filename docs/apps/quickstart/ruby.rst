@@ -189,14 +189,14 @@ application can have two kinds of dependencies:
 * **Operating system dependencies**, represented by packages in the package manager
   of the underlying operating system (e.g.: ``yum`` and ``apt-get``);
 * **Platform dependencies**, represented by packages in the package manager of the
-  platform/language (in Python, ``pip``).
+  platform/language (in Ruby, ``bundler``).
 
-All ``apt-get`` dependencies must be specified in a ``Gemfile`` file,
+All ``apt-get`` dependencies must be specified in a ``requirements.apt`` file,
 located in the root of your application, and ruby dependencies must be located
 in a file called ``Gemfile``, also in the root of the application.
-Since we will use MySQL with Rails, we need to install ``mysql-ruby??``
-package using ``gem``, and this package depends on two ``apt-get`` packages:
-``ruby-dev??`` and ``libmysqlclient-dev``, so here is how ``requirements.apt``
+Since we will use MySQL with Rails, we need to install ``mysql``
+package using ``gem``, and this package depends on an ``apt-get`` package:
+``libmysqlclient-dev``, so here is how ``requirements.apt``
 looks like:
 
 .. highlight:: text
@@ -211,7 +211,15 @@ And here is ``Gemfile``:
 
 ::
 
-    ...
+    source 'https://rubygems.org'
+
+    gem 'rails', '3.2.13'
+    gem 'mysql'
+    gem 'sass-rails',   '~> 3.2.3'
+    gem 'coffee-rails', '~> 3.2.1'
+    gem 'therubyracer', :platforms => :ruby
+    gem 'uglifier', '>= 1.0.3'
+    gem 'jquery-rails'
 
 You can see the complete output of installing these dependencies bellow:
 
