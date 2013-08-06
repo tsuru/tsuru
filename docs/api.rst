@@ -347,7 +347,7 @@ Example:
 1.3 Service instances
 ---------------------
 
-1.x Quotas
+1.4 Quotas
 ----------
 
 Get quota info of an user
@@ -369,7 +369,7 @@ Example:
     Content-Legth: 29
     {"items": 10, "available": 2}
 
-1.x Healers
+1.5 Healers
 -----------
 
 List healers
@@ -407,7 +407,7 @@ Example:
 
     GET /healers/app-heal HTTP/1.1
 
-1.x Platforms
+1.6 Platforms
 -------------
 
 List platforms
@@ -429,7 +429,7 @@ Example:
     Content-Legth: 67
     [{Name: "python"},{Name: "java"},{Name: "ruby20"},{Name: "static"}]
 
-1.x Users
+1.7 Users
 ---------
 
 Create an user
@@ -583,7 +583,7 @@ Example:
     DELETE /users/keys HTTP/1.1
     Body: `{"key":"my-key"}`
 
-1.x Teams
+1.8 Teams
 ---------
 
 List teams
@@ -687,7 +687,7 @@ Example:
 
     DELETE /teams/myteam/myuser HTTP/1.1
 
-1.x Tokens
+1.9 Tokens
 ----------
 
 Generate app token
