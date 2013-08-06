@@ -575,6 +575,55 @@ It should be located in the root of the project. Let's commit and deploy it:
     To git@cloud.tsuru.io:blog.git
        a780de9..1b675b8  master -> master
 
+It's need to compile de assets before the app restart. To do it we can use
+the `rake assets:precompile` command. Then let's add the command to compile
+the assets in app.yaml:
+
+.. highlight:: yaml
+
+::
+
+    hooks:
+      pre-restart:
+        - RAILS_ENV=production bundle exec rake assets:precompile
+
+.. highlight:: bash
+
+::
+
+    $ git add app.yaml
+    $ git commit -m "app.yaml: added file"
+    $ git push tsuru master
+    Counting objects: 4, done.
+    Delta compression using up to 4 threads.
+    Compressing objects: 100% (3/3), done.
+    Writing objects: 100% (3/3), 338 bytes, done.
+    Total 3 (delta 1), reused 0 (delta 0)
+    remote:
+    remote:  ---> Tsuru receiving push
+    remote:
+    remote:  ---> Installing dependencies
+    remote: Reading package lists...
+    remote: Building dependency tree...
+    remote: Reading state information...
+    remote: python-dev is already the newest version.
+    remote: libmysqlclient-dev is already the newest version.
+    remote: 0 upgraded, 0 newly installed, 0 to remove and 15 not upgraded.
+    remote: Requirement already satisfied (use --upgrade to upgrade): Django==1.4.1 in /usr/local/lib/python2.7/dist-packages (from -r /home/application/current/requirements.txt (line 1))
+    remote: Requirement already satisfied (use --upgrade to upgrade): MySQL-python==1.2.3 in /usr/local/lib/python2.7/dist-packages (from -r /home/application/current/requirements.txt (line 2))
+    remote: Requirement already satisfied (use --upgrade to upgrade): South==0.7.6 in /usr/local/lib/python2.7/dist-packages (from -r /home/application/current/requirements.txt (line 3))
+    remote: Requirement already satisfied (use --upgrade to upgrade): gunicorn==0.14.6 in /usr/local/lib/python2.7/dist-packages (from -r /home/application/current/requirements.txt (line 4))
+    remote: Cleaning up...
+    remote:
+    remote:  ---> Restarting your app
+    remote:
+    remote:  ---> Running post-restart
+    remote:
+    remote:  ---> Deploy done!
+    remote:
+    To git@cloud.tsuru.io:blog.git
+       a780de9..1b675b8  master -> master
+
 It's done! Now we have a Rails project deployed on tsuru, using a MySQL
 service.
 
