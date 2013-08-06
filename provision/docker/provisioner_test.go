@@ -417,7 +417,7 @@ func (s *S) TestCollectStatus(c *gocheck.C) {
 		"IpPrefixLen": 8,
 		"Gateway": "10.65.41.1",
 		"PortMapping": {
-			"Tcp": {"%s": "90293"}
+			"Tcp": {"8888": "%s"}
 		}
 	}
 }`, listenPort)
@@ -427,7 +427,7 @@ func (s *S) TestCollectStatus(c *gocheck.C) {
 		"IpPrefixLen": 8,
 		"Gateway": "10.65.41.1",
 		"PortMapping": {
-			"Tcp": {"8889": "90294"}
+			"Tcp": {"8889": "9024"}
 		}
 	}
 }`
@@ -457,19 +457,19 @@ func (s *S) TestCollectStatus(c *gocheck.C) {
 	err = collection().Insert(
 		container{
 			ID: "9930c24f1c5f", AppName: "ashamed", Type: "python",
-			Port: listenPort, Status: "running", IP: "127.0.0.1",
-			HostPort: "90293", HostAddr: "10.10.10.10",
+			Port: "8888", Status: "running", IP: "127.0.0.1",
+			HostPort: "9023", HostAddr: "127.0.0.1",
 		},
 		container{
 			ID: "9930c24f1c4f", AppName: "make-up", Type: "python",
 			Port: "8889", Status: "running", IP: "127.0.0.4",
-			HostPort: "90295", HostAddr: "10.10.10.10",
+			HostPort: "9025", HostAddr: "127.0.0.1",
 		},
-		container{ID: "9930c24f1c6f", AppName: "make-up", Type: "python", Port: "9090", Status: "error", HostAddr: "10.10.10.10"},
-		container{ID: "9930c24f1c7f", AppName: "make-up", Type: "python", Port: "9090", Status: "created", HostAddr: "10.10.10.10"},
+		container{ID: "9930c24f1c6f", AppName: "make-up", Type: "python", Port: "9090", Status: "error", HostAddr: "127.0.0.1"},
+		container{ID: "9930c24f1c7f", AppName: "make-up", Type: "python", Port: "9090", Status: "created", HostAddr: "127.0.0.1"},
 	)
-	rtesting.FakeRouter.AddRoute("ashamed", "http://10.10.10.10:90293")
-	rtesting.FakeRouter.AddRoute("make-up", "http://10.10.10.10:90295")
+	rtesting.FakeRouter.AddRoute("ashamed", fmt.Sprintf("http://127.0.0.1:%s", listenPort))
+	rtesting.FakeRouter.AddRoute("make-up", "http://127.0.0.1:9025")
 	c.Assert(err, gocheck.IsNil)
 	defer collection().RemoveAll(bson.M{"appname": "make-up"})
 	defer collection().RemoveAll(bson.M{"appname": "ashamed"})
@@ -518,10 +518,10 @@ func (s *S) TestCollectStatus(c *gocheck.C) {
 	cont, err := getContainer("9930c24f1c4f")
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(cont.IP, gocheck.Equals, "127.0.0.1")
-	c.Assert(cont.HostPort, gocheck.Equals, "90294")
-	c.Assert(fexec.ExecutedCmd("ssh-keygen", []string{"-R", "127.0.0.4"}), gocheck.Equals, true)
-	c.Assert(rtesting.FakeRouter.HasRoute("make-up", "http://10.10.10.10:90295"), gocheck.Equals, false)
-	c.Assert(rtesting.FakeRouter.HasRoute("make-up", "http://10.10.10.10:90294"), gocheck.Equals, true)
+	c.Assert(cont.HostPort, gocheck.Equals, "9024")
+	c.Assert(fexec.ExecutedCmd("ssh-keygen", []string{"-R", "127.0.0.1"}), gocheck.Equals, true)
+	c.Assert(rtesting.FakeRouter.HasRoute("make-up", "http://127.0.0.1:9025"), gocheck.Equals, false)
+	c.Assert(rtesting.FakeRouter.HasRoute("make-up", "http://127.0.0.1:9024"), gocheck.Equals, true)
 	c.Assert(calls, gocheck.Equals, 4)
 }
 

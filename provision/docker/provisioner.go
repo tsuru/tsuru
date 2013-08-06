@@ -22,6 +22,7 @@ import (
 	"io/ioutil"
 	"labix.org/v2/mgo"
 	"net"
+	"strings"
 	"sync"
 	"time"
 )
@@ -329,7 +330,7 @@ func collectUnit(container container, units chan<- provision.Unit, wg *sync.Wait
 			return
 		}
 	}
-	addr := fmt.Sprintf("%s:%s", unit.Ip, container.Port)
+	addr := strings.Replace(container.getAddress(), "http://", "", 1)
 	conn, err := net.Dial("tcp", addr)
 	if err != nil {
 		unit.Status = provision.StatusInstalling
@@ -360,7 +361,7 @@ func fixContainer(container *container, ip, port string) error {
 		return err
 	}
 	router.RemoveRoute(container.AppName, container.getAddress())
-	runCmd("ssh-keygen", "-R", container.IP)
+	runCmd("ssh-keygen", "-R", container.HostAddr)
 	container.IP = ip
 	container.HostPort = port
 	router.AddRoute(container.AppName, container.getAddress())
