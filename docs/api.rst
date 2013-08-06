@@ -347,6 +347,25 @@ Example:
 1.3 Service instances
 ---------------------
 
+Add a new service instance
+**************************
+
+    * Method: POST
+    * URI: /services/instances
+    * Body: `{"name": "mymysql": "service_name": "mysql"}`
+
+Returns 200 in case of success.
+Returns 404 if the service does not exists.
+
+Example:
+
+.. highlight:: bash
+
+::
+
+    POST /services/instances HTTP/1.1
+    {"name": "mymysql": "service_name": "mysql"}
+
 Bind a service instance with an app
 ***********************************
 
