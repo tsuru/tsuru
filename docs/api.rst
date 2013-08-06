@@ -347,6 +347,29 @@ Example:
 1.3 Service instances
 ---------------------
 
+Bind a service instance with an app
+***********************************
+
+    * Method: PUT
+    * URI: /services/instances/<serviceinstancename>/<appname>
+    * Format: json
+
+Returns 200 in case of success, and json with the enviroment variables to be exported
+in the app environ.
+Returns 403 if the user has not access to the app.
+Returns 404 if the application does not exists.
+Returns 404 if the service instance does not exists.
+
+Example:
+
+.. highlight:: bash
+
+::
+
+    PUT /services/instances/mymysql/myapp HTTP/1.1
+    Content-Legth: 29
+    {"DATABASE_HOST":"localhost"}
+
 1.4 Quotas
 ----------
 
