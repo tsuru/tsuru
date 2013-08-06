@@ -370,6 +370,25 @@ Example:
     Content-Legth: 29
     {"DATABASE_HOST":"localhost"}
 
+Unbind a service instance with an app
+*************************************
+
+    * Method: DELETE
+    * URI: /services/instances/<serviceinstancename>/<appname>
+
+Returns 200 in case of success.
+Returns 403 if the user has not access to the app.
+Returns 404 if the application does not exists.
+Returns 404 if the service instance does not exists.
+
+Example:
+
+.. highlight:: bash
+
+::
+
+    DELETE /services/instances/mymysql/myapp HTTP/1.1
+
 1.4 Quotas
 ----------
 
