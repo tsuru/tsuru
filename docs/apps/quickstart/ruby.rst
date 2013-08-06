@@ -378,8 +378,8 @@ We can access the admin of the app in the URL http://blog.cloud.tsuru.io/posts/.
 Using services
 ==============
 
-Now that gunicorn is running, we can accesss the application in the browser,
-but we get a Django error: `"Can't connect to local MySQL server through socket
+Now that your app is running, we can accesss the application in the browser,
+but we get an error: `"Can't connect to local MySQL server through socket
 '/var/run/mysqld/mysqld.sock' (2)"`. This error means that we can't connect to
 MySQL on localhost. That's because we should not connect to MySQL on localhost,
 we must use a service. The service workflow can be resumed to two steps:
@@ -453,25 +453,21 @@ command:
     For more details, please check the documentation for the service, using service-doc command.
 
 As you can see from bind output, we use environment variable to connect to the
-MySQL server. Next step is update ``settings.py`` to use these variables to
+MySQL server. Next step is update ``conf/database.yml`` to use these variables to
 connect in the database:
 
-.. highlight:: python
+.. highlight:: yaml
 
 ::
 
-    import os
-
-    DATABASES = {
-        'default': {
-            'ENGINE': 'django.db.backends.mysql',
-            'NAME': os.environ.get('MYSQL_DATABASE_NAME', 'blog'),
-            'USER': os.environ.get('MYSQL_USER', 'root'),
-            'PASSWORD': os.environ.get('MYSQL_PASSWORD', ''),
-            'HOST': os.environ.get('MYSQL_HOST', ''),
-            'PORT': os.environ.get('MYSQL_PORT', ''),
-        }
-    }
+    production:
+      adapter: mysql
+      encoding: utf8
+      database: <%= ENV["MYSQL_DATABASE_NAME"] %>
+      pool: 5
+      username: <%= ENV["MYSQL_USER"] %>
+      password: <%= ENV["MYSQL_PASSWORD"] %>
+      host: <%= ENV["MYSQL_HOST"] %>
 
 Now let's commit it and run another deploy:
 
@@ -479,8 +475,8 @@ Now let's commit it and run another deploy:
 
 ::
 
-    $ git add blog/settings.py
-    $ git commit -m "settings: using environment variables to connect to MySQL"
+    $ git add conf/database.yml
+    $ git commit -m "database.yml: using environment variables to connect to MySQL"
     $ git push tsuru master
     Counting objects: 7, done.
     Delta compression using up to 4 threads.
