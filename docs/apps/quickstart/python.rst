@@ -52,7 +52,7 @@ command:
     +-------------+-------------------------+---------+--------+
     | Application | Units State Summary     | Address | Ready? |
     +-------------+-------------------------+---------+--------+
-    | blog        | 0 of 1 units in-service |         | No     |
+    | blog        | 0 of 0 units in-service |         | No     |
     +-------------+-------------------------+---------+--------+
 
 Once your app is ready, you will be able to deploy your code, e.g.:
@@ -325,7 +325,7 @@ how the Procfile should look like:
 
     web: gunicorn -b 0.0.0.0:$PORT blog.wsgi
 
-Now that we commit the file and push the changes to tsuru git server, running
+Now we commit the file and push the changes to tsuru git server, running
 another deploy:
 
 .. highlight:: bash
@@ -444,7 +444,7 @@ command:
     +----------------+-----------+
 
 The output from ``service-list`` above says that there are two available
-services: "elastic-search" and "mysql", and none instances. To create our MySQL
+services: "elastic-search" and "mysql", and no instances. To create our MySQL
 instance, we should run the `service-add
 <http://godoc.org/github.com/globocom/tsuru/cmd/tsuru#hdr-Create_a_new_service_instance>`_
 command:
@@ -492,7 +492,7 @@ command:
 
     For more details, please check the documentation for the service, using service-doc command.
 
-As you can see from bind output, we use environment variable to connect to the
+As you can see from bind output, we use environment variables to connect to the
 MySQL server. Next step is update ``settings.py`` to use these variables to
 connect in the database:
 
