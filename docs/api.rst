@@ -366,6 +366,23 @@ Example:
     POST /services/instances HTTP/1.1
     {"name": "mymysql": "service_name": "mysql"}
 
+Remove a service instance
+*************************
+
+    * Method: DELETE
+    * URI: /services/instances/<serviceinstancename>
+
+Returns 200 in case of success.
+Returns 404 if the service does not exists.
+
+Example:
+
+.. highlight:: bash
+
+::
+
+    DELETE /services/instances/mymysql HTTP/1.1
+
 Bind a service instance with an app
 ***********************************
 
