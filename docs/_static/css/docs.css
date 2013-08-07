@@ -24,7 +24,7 @@
 .section em,
 .section li {
     font-size: 13px;
-    font-weight: lighter;
+    font-weight: normal;
     letter-spacing: .5px;
 }
 
