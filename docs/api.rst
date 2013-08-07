@@ -466,6 +466,23 @@ Example:
     Content-Length: 71
     {"name": "mongo-1", "servicename": "mongodb", "teams": [], "apps": []}
 
+service instance status
+***********************
+
+    * Method: GET
+    * URI: /services/instances/<serviceinstancename>/status
+
+Returns 200 in case of success.
+
+
+Example:
+
+.. highlight:: bash
+
+::
+
+    GET /services/instances/mymysql/status HTTP/1.1
+
 
 1.4 Quotas
 ----------
