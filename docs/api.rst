@@ -445,6 +445,27 @@ Example:
     Content-Length: 52
     [{"service": "redis", "instances": ["redis-globo"]}]
 
+Get an info about a service instance
+************************************
+
+    * Method: GET
+    * URI: /services/instances/<serviceinstancename>
+    * Format: json
+
+Returns 200 in case of success and a json with the service instance data.
+Returns 404 if the service instance does not exists.
+
+
+Example:
+
+.. highlight:: bash
+
+::
+
+    GET /services/instances/mymysql HTTP/1.1
+    Content-Length: 71
+    {"name": "mongo-1", "servicename": "mongodb", "teams": [], "apps": []}
+
 
 1.4 Quotas
 ----------
