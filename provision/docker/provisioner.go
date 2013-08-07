@@ -361,7 +361,7 @@ func fixContainer(container *container, ip, port string) error {
 		return err
 	}
 	router.RemoveRoute(container.AppName, container.getAddress())
-	runCmd("ssh-keygen", "-R", container.HostAddr)
+	runCmd("ssh-keygen", "-R", container.IP)
 	container.IP = ip
 	container.HostPort = port
 	router.AddRoute(container.AppName, container.getAddress())
