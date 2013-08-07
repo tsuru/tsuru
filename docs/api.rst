@@ -24,7 +24,7 @@ Example:
 ::
 
     GET /apps HTTP/1.1
-    Content-Legth: 82
+    Content-Length: 82
     [{"Ip":"10.10.10.10","Name":"app1","Units":[{"Name":"app1/0","State":"started"}]}]
 
 Info about an app
@@ -43,7 +43,7 @@ Example:
 ::
 
     GET /apps/myapp HTTP/1.1
-    Content-Legth: 284
+    Content-Length: 284
     {"Name":"app1","Framework":"php","Repository":"git@git.com:php.git","State":"dead", "Units":[{"Ip":"10.10.10    .10","Name":"app1/0","State":"started"}, {"Ip":"9.9.9.9","Name":"app1/1","State":"started"}, {"Ip":"","Name":"app1/2","Stat    e":"pending"}],"Teams":["tsuruteam","crane"]}
 
 Remove an app
@@ -180,7 +180,7 @@ Example:
 ::
 
     GET /services HTTP/1.1
-    Content-Legth: 67
+    Content-Length: 67
     {"service": "mongodb", "instances": ["my_nosql", "other-instance"]}
 
 Create a new service
@@ -403,7 +403,7 @@ Example:
 ::
 
     PUT /services/instances/mymysql/myapp HTTP/1.1
-    Content-Legth: 29
+    Content-Length: 29
     {"DATABASE_HOST":"localhost"}
 
 Unbind a service instance with an app
@@ -425,6 +425,27 @@ Example:
 
     DELETE /services/instances/mymysql/myapp HTTP/1.1
 
+List all services and your instances
+************************************
+
+    * Method: GET
+    * URI: /services/instances
+    * Format: json
+
+Returns 200 in case of success and a json with the service list.
+
+
+Example:
+
+.. highlight:: bash
+
+::
+
+    GET /services/instances HTTP/1.1
+    Content-Length: 52
+    [{"service": "redis", "instances": ["redis-globo"]}]
+
+
 1.4 Quotas
 ----------
 
@@ -444,7 +465,7 @@ Example:
 ::
 
     GET /quota/wolverine HTTP/1.1
-    Content-Legth: 29
+    Content-Length: 29
     {"items": 10, "available": 2}
 
 1.5 Healers
@@ -466,7 +487,7 @@ Example:
 ::
 
     GET /healers HTTP/1.1
-    Content-Legth: 35
+    Content-Length: 35
     [{"app-heal": "http://healer.com"}]
 
 Execute healer
@@ -504,7 +525,7 @@ Example:
 ::
 
     GET /platforms HTTP/1.1
-    Content-Legth: 67
+    Content-Length: 67
     [{Name: "python"},{Name: "java"},{Name: "ruby20"},{Name: "static"}]
 
 1.7 Users
@@ -680,7 +701,7 @@ Example:
 ::
 
     GET /teams HTTP/1.1
-    Content-Legth: 22
+    Content-Length: 22
     [{"name": "teamname"}]
 
 Info about a team
