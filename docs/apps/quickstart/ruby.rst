@@ -52,7 +52,7 @@ command:
     +-------------+-------------------------+---------+--------+
     | Application | Units State Summary     | Address | Ready? |
     +-------------+-------------------------+---------+--------+
-    | blog        | 0 of 1 units in-service |         | No     |
+    | blog        | 0 of 0 units in-service |         | No     |
     +-------------+-------------------------+---------+--------+
 
 Once your app is ready, you will be able to deploy your code, e.g.:
@@ -324,7 +324,7 @@ how your application should be started. Here is how the Procfile should look lik
 
     web: bundle exec rails server -p $PORT -e production
 
-Now that we commit the file and push the changes to tsuru git server, running
+Now we commit the file and push the changes to tsuru git server, running
 another deploy:
 
 .. highlight:: bash
@@ -361,7 +361,7 @@ Using services
 ==============
 
 Now that your app is not running with success because the rails can't connect to
-MySQL. That's because we add a relation between your rails app and a mysql insatance.
+MySQL. That's because we add a relation between your rails app and a mysql instance.
 To do it we must use a service. The service workflow can be resumed to two steps:
 
 #. Create a service instance
@@ -384,7 +384,7 @@ command:
     +----------------+-----------+
 
 The output from ``service-list`` above says that there are two available
-services: "elastic-search" and "mysql", and none instances. To create our MySQL
+services: "elastic-search" and "mysql", and no instances. To create our MySQL
 instance, we should run the `service-add
 <http://godoc.org/github.com/globocom/tsuru/cmd/tsuru#hdr-Create_a_new_service_instance>`_
 command:
@@ -432,7 +432,7 @@ command:
 
     For more details, please check the documentation for the service, using service-doc command.
 
-As you can see from bind output, we use environment variable to connect to the
+As you can see from bind output, we use environment variables to connect to the
 MySQL server. Next step is update ``conf/database.yml`` to use these variables to
 connect in the database:
 
