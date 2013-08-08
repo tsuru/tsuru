@@ -423,7 +423,13 @@ func replicateImage(name string) error {
 			return err
 		}
 		pullOpts := dclient.PullImageOptions{Repository: name}
-		err = dockerCluster().PullImage(pullOpts, &buf)
+		for i := 0; i < pushMaxTry; i++ {
+			err = dockerCluster().PullImage(pullOpts, &buf)
+			if err == nil {
+				break
+			}
+			buf.Reset()
+		}
 		if err != nil {
 			log.Printf("[docker] Failed to replicate image %q through nodes (%s): %s", name, err, buf.String())
 			return err
