@@ -182,7 +182,7 @@ func (p *dockerProvisioner) Destroy(app provision.App) error {
 			removeContainer(&c)
 		}(c)
 	}
-	go removeImage(buildImageName(app.GetName()))
+	go removeImage(assembleImageName(app.GetName()))
 	r, err := getRouter()
 	if err != nil {
 		log.Printf("Failed to get router: %s", err.Error())

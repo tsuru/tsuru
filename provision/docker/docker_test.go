@@ -674,14 +674,14 @@ func (s *S) TestReplicateImageNoRegistry(c *gocheck.C) {
 }
 
 func (s *S) TestBuildImageName(c *gocheck.C) {
-	repository := buildImageName("raising")
+	repository := assembleImageName("raising")
 	c.Assert(repository, gocheck.Equals, s.repoNamespace+"/raising")
 }
 
 func (s *S) TestBuildImageNameWithRegistry(c *gocheck.C) {
 	config.Set("docker:registry", "localhost:3030")
 	defer config.Unset("docker:registry")
-	repository := buildImageName("raising")
+	repository := assembleImageName("raising")
 	expected := "localhost:3030/" + s.repoNamespace + "/raising"
 	c.Assert(repository, gocheck.Equals, expected)
 }

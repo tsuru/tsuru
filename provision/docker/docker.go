@@ -306,7 +306,7 @@ func (c *container) ssh(stdout, stderr io.Writer, cmd string, args ...string) er
 // and returns the image repository.
 func (c *container) commit() (string, error) {
 	log.Printf("commiting container %s", c.ID)
-	repository := buildImageName(c.AppName)
+	repository := assembleImageName(c.AppName)
 	opts := dclient.CommitContainerOptions{Container: c.ID, Repository: repository}
 	image, err := dockerCluster().CommitContainer(opts)
 	if err != nil {
@@ -382,7 +382,7 @@ func getImage(app provision.App) string {
 	if c.Image != "" {
 		return c.Image
 	}
-	return buildImageName(app.GetPlatform())
+	return assembleImageName(app.GetPlatform())
 }
 
 // removeImage removes an image from docker registry
@@ -438,7 +438,7 @@ func replicateImage(name string) error {
 	return nil
 }
 
-func buildImageName(appName string) string {
+func assembleImageName(appName string) string {
 	parts := make([]string, 0, 3)
 	registry, _ := config.GetString("docker:registry")
 	if registry != "" {
