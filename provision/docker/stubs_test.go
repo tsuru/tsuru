@@ -105,7 +105,7 @@ func insertContainers(containerPort string) func() {
 	err := collection().Insert(
 		container{
 			ID: "9930c24f1c5f", AppName: "ashamed", Type: "python",
-			Port: "8888", Status: "running", IP: "127.0.0.1",
+			Port: "8888", Status: "running", IP: "127.0.0.3",
 			HostPort: "9023", HostAddr: "127.0.0.1",
 		},
 		container{
@@ -128,16 +128,7 @@ func insertContainers(containerPort string) func() {
 }
 
 func mockExecutor() (*etesting.FakeExecutor, func()) {
-	psOutput := `9930c24f1c5f
-9930c24f1c4f
-9930c24f1c3f
-9930c24f1c6f
-9930c24f1c7f
-`
-	output := map[string][][]byte{
-		"ps -q": {[]byte(psOutput)},
-	}
-	fexec := &etesting.FakeExecutor{Output: output}
+	fexec := &etesting.FakeExecutor{Output: map[string][][]byte{}}
 	setExecut(fexec)
 	return fexec, func() {
 		setExecut(nil)
