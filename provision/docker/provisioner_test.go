@@ -6,9 +6,7 @@ package docker
 
 import (
 	"bytes"
-	"fmt"
 	dockerClient "github.com/fsouza/go-dockerclient"
-	"github.com/globocom/docker-cluster/cluster"
 	"github.com/globocom/tsuru/cmd"
 	"github.com/globocom/tsuru/exec"
 	etesting "github.com/globocom/tsuru/exec/testing"
@@ -19,9 +17,6 @@ import (
 	"labix.org/v2/mgo/bson"
 	"launchpad.net/gocheck"
 	stdlog "log"
-	"net"
-	"net/http"
-	"net/http/httptest"
 	"runtime"
 	"strings"
 	"time"
@@ -402,83 +397,16 @@ func (s *S) TestProvisionerExecuteCommandNoContainers(c *gocheck.C) {
 }
 
 func (s *S) TestCollectStatus(c *gocheck.C) {
-	rtesting.FakeRouter.AddBackend("ashamed")
-	defer rtesting.FakeRouter.RemoveBackend("ashamed")
-	rtesting.FakeRouter.AddBackend("make-up")
-	defer rtesting.FakeRouter.RemoveBackend("make-up")
-	listener, err := net.Listen("tcp", "127.0.0.1:0")
-	c.Assert(err, gocheck.IsNil)
+	defer createTestRoutes("ashamed", "make-up")()
+	listener := startTestListener("127.0.0.1:0")
 	defer listener.Close()
 	listenPort := strings.Split(listener.Addr().String(), ":")[1]
 	var calls int
-	c1Output := fmt.Sprintf(`{
-	"NetworkSettings": {
-		"IpAddress": "127.0.0.1",
-		"IpPrefixLen": 8,
-		"Gateway": "10.65.41.1",
-		"PortMapping": {
-			"Tcp": {"8888": "%s"}
-		}
-	}
-}`, listenPort)
-	c2Output := `{
-	"NetworkSettings": {
-		"IpAddress": "127.0.0.1",
-		"IpPrefixLen": 8,
-		"Gateway": "10.65.41.1",
-		"PortMapping": {
-			"Tcp": {"8889": "9024"}
-		}
-	}
-}`
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		calls++
-		if strings.Contains(r.URL.Path, "/containers/") {
-			if strings.Contains(r.URL.Path, "/containers/9930c24f1c4f") {
-				w.Write([]byte(c2Output))
-			}
-			if strings.Contains(r.URL.Path, "/containers/9930c24f1c5f") {
-				w.Write([]byte(c1Output))
-			}
-		}
-		if strings.Contains(r.URL.Path, "/commit") {
-			w.Write([]byte(`{"Id":"i-1"}`))
-		}
-	}))
-	defer server.Close()
-	oldCluster := dockerCluster()
-	dCluster, err = cluster.New(nil,
-		cluster.Node{ID: "server", Address: server.URL},
-	)
-	c.Assert(err, gocheck.IsNil)
-	defer func() {
-		dCluster = oldCluster
-	}()
-	err = collection().Insert(
-		container{
-			ID: "9930c24f1c5f", AppName: "ashamed", Type: "python",
-			Port: "8888", Status: "running", IP: "127.0.0.1",
-			HostPort: "9023", HostAddr: "127.0.0.1",
-		},
-		container{
-			ID: "9930c24f1c4f", AppName: "make-up", Type: "python",
-			Port: "8889", Status: "running", IP: "127.0.0.4",
-			HostPort: "9025", HostAddr: "127.0.0.1",
-		},
-		container{ID: "9930c24f1c6f", AppName: "make-up", Type: "python", Port: "9090", Status: "error", HostAddr: "127.0.0.1"},
-		container{ID: "9930c24f1c7f", AppName: "make-up", Type: "python", Port: "9090", Status: "created", HostAddr: "127.0.0.1"},
-	)
-	rtesting.FakeRouter.AddRoute("ashamed", fmt.Sprintf("http://127.0.0.1:%s", listenPort))
-	rtesting.FakeRouter.AddRoute("make-up", "http://127.0.0.1:9025")
-	c.Assert(err, gocheck.IsNil)
-	defer collection().RemoveAll(bson.M{"appname": "make-up"})
-	defer collection().RemoveAll(bson.M{"appname": "ashamed"})
-	psOutput := `9930c24f1c5f
-9930c24f1c4f
-9930c24f1c3f
-9930c24f1c6f
-9930c24f1c7f
-`
+	var err error
+	defer startTestDockerServer(listenPort, &calls)()
+	defer insertContainers(listenPort)()
+	fexec, restore := mockExecutor()
+	defer restore()
 	expected := []provision.Unit{
 		{
 			Name:    "9930c24f1c5f",
@@ -503,12 +431,6 @@ func (s *S) TestCollectStatus(c *gocheck.C) {
 			Status:  provision.StatusError,
 		},
 	}
-	output := map[string][][]byte{
-		"ps -q": {[]byte(psOutput)},
-	}
-	fexec := &etesting.FakeExecutor{Output: output}
-	setExecut(fexec)
-	defer setExecut(nil)
 	var p dockerProvisioner
 	units, err := p.CollectStatus()
 	c.Assert(err, gocheck.IsNil)
