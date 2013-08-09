@@ -317,12 +317,7 @@ func collectUnit(container container, units chan<- provision.Unit, wg *sync.Wait
 	case "created":
 		return
 	}
-	dockerContainer, err := dockerCluster().InspectContainer(container.ID)
-	if err != nil {
-		log.Printf("error on inspecting [container %s] for collect data", container.ID)
-		return
-	}
-	unit.Ip = dockerContainer.NetworkSettings.IPAddress
+	unit.Ip = container.HostAddr
 	if hostPort, err := container.hostPort(); err == nil && hostPort != container.HostPort {
 		err = fixContainer(&container, unit.Ip, hostPort)
 		if err != nil {

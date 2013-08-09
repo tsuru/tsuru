@@ -444,7 +444,7 @@ func (s *S) TestCollectStatus(c *gocheck.C) {
 	c.Assert(fexec.ExecutedCmd("ssh-keygen", []string{"-R", "127.0.0.4"}), gocheck.Equals, true)
 	c.Assert(rtesting.FakeRouter.HasRoute("make-up", "http://127.0.0.1:9025"), gocheck.Equals, false)
 	c.Assert(rtesting.FakeRouter.HasRoute("make-up", "http://127.0.0.1:9024"), gocheck.Equals, true)
-	c.Assert(calls, gocheck.Equals, 4)
+	c.Assert(calls, gocheck.Equals, 2)
 }
 
 func (s *S) TestProvisionCollectStatusEmpty(c *gocheck.C) {

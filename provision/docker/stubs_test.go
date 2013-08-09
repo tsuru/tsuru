@@ -55,7 +55,7 @@ func startTestListener(addr string) net.Listener {
 func startTestDockerServer(containerPort string, calls *int) func() {
 	c1Output := fmt.Sprintf(`{
 	"NetworkSettings": {
-		"IpAddress": "127.0.0.1",
+		"IpAddress": "127.0.0.4",
 		"IpPrefixLen": 8,
 		"Gateway": "10.65.41.1",
 		"PortMapping": {
