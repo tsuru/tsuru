@@ -31,7 +31,7 @@ var (
 	fsystem  fs.Fs
 )
 
-const pushMaxTry = 5
+const maxTry = 5
 
 var clusterNodes map[string]string
 
@@ -410,7 +410,7 @@ func replicateImage(name string) error {
 			name = registry + "/" + name
 		}
 		pushOpts := dclient.PushImageOptions{Name: name}
-		for i := 0; i < pushMaxTry; i++ {
+		for i := 0; i < maxTry; i++ {
 			err := dockerCluster().PushImage(pushOpts, &buf)
 			if err == nil {
 				buf.Reset()
@@ -423,7 +423,7 @@ func replicateImage(name string) error {
 			return err
 		}
 		pullOpts := dclient.PullImageOptions{Repository: name}
-		for i := 0; i < pushMaxTry; i++ {
+		for i := 0; i < maxTry; i++ {
 			err = dockerCluster().PullImage(pullOpts, &buf)
 			if err == nil {
 				break
