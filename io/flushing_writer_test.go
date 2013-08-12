@@ -52,3 +52,10 @@ func (s *FlushingSuite) TestFlushingWriterWriteHeader(c *gocheck.C) {
 	c.Assert(recorder.Code, gocheck.Equals, expectedCode)
 	c.Assert(writer.wrote, gocheck.Equals, true)
 }
+
+func (s *FlushingSuite) TestFlushingWriterWrote(c *gocheck.C) {
+	writer := FlushingWriter{nil, false}
+	c.Assert(writer.Wrote(), gocheck.Equals, false)
+	writer.wrote = true
+	c.Assert(writer.Wrote(), gocheck.Equals, true)
+}

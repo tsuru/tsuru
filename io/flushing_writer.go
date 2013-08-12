@@ -29,3 +29,8 @@ func (w *FlushingWriter) Write(data []byte) (int, error) {
 	}
 	return n, err
 }
+
+// Wrote returns whether the method WriteHeader has been called or not.
+func (w *FlushingWriter) Wrote() bool {
+	return w.wrote
+}
