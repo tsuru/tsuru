@@ -358,7 +358,7 @@ func (s *S) TestHandleBindServiceMessage(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	err = s.conn.ServiceInstances().Update(bson.M{"name": instance.Name}, instance)
 	c.Assert(err, gocheck.IsNil)
-	message := queue.Message{Action: bindService, Args: []string{a.Name, a.Units[0].Name}}
+	message := queue.Message{Action: BindService, Args: []string{a.Name, a.Units[0].Name}}
 	handle(&message)
 	c.Assert(called, gocheck.Equals, true)
 }

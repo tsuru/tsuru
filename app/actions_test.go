@@ -1032,7 +1032,7 @@ func (s *S) TestSaveNewUnitsInDatabaseForward(c *gocheck.C) {
 		c.Assert(unit.QuotaItem, gocheck.Equals, ids[i])
 		messages := []queue.Message{
 			{Action: RegenerateApprcAndStart, Args: []string{app.Name, unit.Name}},
-			{Action: bindService, Args: []string{app.Name, unit.Name}},
+			{Action: BindService, Args: []string{app.Name, unit.Name}},
 		}
 		expectedMessages = append(expectedMessages, messages...)
 	}
@@ -1078,7 +1078,7 @@ func (s *S) TestSaveNewUnitsInDatabaseForwardNoPointer(c *gocheck.C) {
 		c.Assert(unit.QuotaItem, gocheck.Equals, ids[i])
 		messages := []queue.Message{
 			{Action: RegenerateApprcAndStart, Args: []string{app.Name, unit.Name}},
-			{Action: bindService, Args: []string{app.Name, unit.Name}},
+			{Action: BindService, Args: []string{app.Name, unit.Name}},
 		}
 		expectedMessages = append(expectedMessages, messages...)
 	}

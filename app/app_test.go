@@ -484,7 +484,7 @@ func (s *S) TestAddUnits(c *gocheck.C) {
 		c.Check(unit.QuotaItem, gocheck.Equals, expectedItem)
 		messages := []queue.Message{
 			{Action: RegenerateApprcAndStart, Args: []string{app.Name, unit.Name}},
-			{Action: bindService, Args: []string{app.Name, unit.Name}},
+			{Action: BindService, Args: []string{app.Name, unit.Name}},
 		}
 		expectedMessages = append(expectedMessages, messages...)
 	}
@@ -537,7 +537,7 @@ func (s *S) TestAddUnitsQuota(c *gocheck.C) {
 		c.Assert(unit.QuotaItem, gocheck.Equals, expectedItem)
 		messages := []queue.Message{
 			{Action: RegenerateApprcAndStart, Args: []string{app.Name, unit.Name}},
-			{Action: bindService, Args: []string{app.Name, unit.Name}},
+			{Action: BindService, Args: []string{app.Name, unit.Name}},
 		}
 		expectedMessages = append(expectedMessages, messages...)
 	}

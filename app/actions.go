@@ -469,7 +469,7 @@ var saveNewUnitsInDatabase = action.Action{
 				QuotaItem:  prev.ids[i],
 			}
 			messages[mCount] = queue.Message{Action: RegenerateApprcAndStart, Args: []string{app.Name, unit.Name}}
-			messages[mCount+1] = queue.Message{Action: bindService, Args: []string{app.Name, unit.Name}}
+			messages[mCount+1] = queue.Message{Action: BindService, Args: []string{app.Name, unit.Name}}
 			mCount += 2
 		}
 		err = conn.Apps().Update(
