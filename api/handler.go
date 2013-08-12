@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"github.com/globocom/tsuru/auth"
 	"github.com/globocom/tsuru/errors"
+	"github.com/globocom/tsuru/io"
 	"github.com/globocom/tsuru/log"
 	"net/http"
 )
@@ -33,9 +34,9 @@ func (fn handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			r.Body.Close()
 		}
 	}()
-	fw := flushingWriter{w, false}
+	fw := io.FlushingWriter{ResponseWriter: w}
 	if err := fn(&fw, r); err != nil {
-		if fw.wrote {
+		if fw.Wrote() {
 			fmt.Fprintln(&fw, err)
 		} else {
 			http.Error(&fw, err.Error(), http.StatusInternalServerError)
@@ -72,7 +73,7 @@ func (fn authorizationRequiredHandler) ServeHTTP(w http.ResponseWriter, r *http.
 			r.Body.Close()
 		}
 	}()
-	fw := flushingWriter{w, false}
+	fw := io.FlushingWriter{ResponseWriter: w}
 	token := r.Header.Get("Authorization")
 	if t, err := validate(token, r); err != nil {
 		http.Error(&fw, err.Error(), http.StatusUnauthorized)
@@ -81,7 +82,7 @@ func (fn authorizationRequiredHandler) ServeHTTP(w http.ResponseWriter, r *http.
 		if e, ok := err.(*errors.HTTP); ok {
 			code = e.Code
 		}
-		if fw.wrote {
+		if fw.Wrote() {
 			fmt.Fprintln(&fw, err)
 		} else {
 			http.Error(&fw, err.Error(), code)
@@ -99,7 +100,7 @@ func (fn adminRequiredHandler) ServeHTTP(w http.ResponseWriter, r *http.Request)
 			r.Body.Close()
 		}
 	}()
-	fw := flushingWriter{w, false}
+	fw := io.FlushingWriter{ResponseWriter: w}
 	header := r.Header.Get("Authorization")
 	if header == "" {
 		http.Error(&fw, "You must provide the Authorization header", http.StatusUnauthorized)
@@ -112,7 +113,7 @@ func (fn adminRequiredHandler) ServeHTTP(w http.ResponseWriter, r *http.Request)
 		if e, ok := err.(*errors.HTTP); ok {
 			code = e.Code
 		}
-		if fw.wrote {
+		if fw.Wrote() {
 			fmt.Fprintln(&fw, err)
 		} else {
 			http.Error(&fw, err.Error(), code)
