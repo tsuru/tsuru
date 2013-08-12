@@ -17,7 +17,7 @@ Setting a target
 
 ::
 
-    $ tsuru target-add default tsuru.myhost.com
+    $ tsuru target-add default tsuru.myhost.com:8080
     $ tsuru target-set default
 
 Authentication
