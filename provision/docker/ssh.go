@@ -6,9 +6,11 @@ package docker
 
 import (
 	"encoding/json"
+	"github.com/bmizerany/pat"
 	"github.com/globocom/tsuru/cmd"
 	"github.com/globocom/tsuru/io"
 	"launchpad.net/gnuflag"
+	"net"
 	"net/http"
 )
 
@@ -49,7 +51,14 @@ specify the address to listen on.
 }
 
 func (cmd *sshAgentCmd) Run(ctx *cmd.Context, client *cmd.Client) error {
-	return nil
+	m := pat.New()
+	m.Post("/container/:ip/cmd", http.HandlerFunc(sshHandler))
+	listener, err := net.Listen("tcp", cmd.listen)
+	if err != nil {
+		return err
+	}
+	defer listener.Close()
+	return http.Serve(listener, m)
 }
 
 func (cmd *sshAgentCmd) Flags() *gnuflag.FlagSet {
