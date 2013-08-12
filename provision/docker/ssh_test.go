@@ -5,6 +5,7 @@
 package docker
 
 import (
+	"github.com/globocom/tsuru/cmd"
 	"github.com/globocom/tsuru/exec/testing"
 	"launchpad.net/gocheck"
 	"net/http"
@@ -47,4 +48,33 @@ func (SSHSuite) TestExecuteCommandHandlerInvalidJSON(c *gocheck.C) {
 	sshHandler(recorder, request)
 	c.Assert(recorder.Code, gocheck.Equals, http.StatusBadRequest)
 	c.Assert(recorder.Body.String(), gocheck.Equals, "Invalid JSON\n")
+}
+
+func (SSHSuite) TestSSHAgentCmdInfo(c *gocheck.C) {
+	desc := `Start HTTP agent for running commands on Docker via SSH.
+
+By default, the agent will listen on 0.0.0.0:4545. Use --listen or -l to
+specify the address to listen on.
+`
+	expected := &cmd.Info{
+		Name:  "docker-ssh-agent",
+		Usage: "docker-ssh-agent",
+		Desc:  desc,
+	}
+	c.Assert((&sshAgentCmd{}).Info(), gocheck.DeepEquals, expected)
+}
+
+func (SSHSuite) TestSSHAgentCmdFlags(c *gocheck.C) {
+	cmd := sshAgentCmd{}
+	flags := cmd.Flags()
+	flags.Parse(true, []string{})
+	flag := flags.Lookup("l")
+	c.Check(flag.Name, gocheck.Equals, "l")
+	c.Check(flag.DefValue, gocheck.Equals, "0.0.0.0:4545")
+	c.Check(flag.Usage, gocheck.Equals, "Address to listen on")
+	flag = flags.Lookup("listen")
+	c.Check(flag.Name, gocheck.Equals, "listen")
+	c.Check(flag.DefValue, gocheck.Equals, "0.0.0.0:4545")
+	c.Check(flag.Usage, gocheck.Equals, "Address to listen on")
+	c.Check(cmd.listen, gocheck.Equals, "0.0.0.0:4545")
 }

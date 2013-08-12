@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"github.com/globocom/tsuru/cmd"
 	"github.com/globocom/tsuru/io"
+	"launchpad.net/gnuflag"
 	"net/http"
 )
 
@@ -31,12 +32,29 @@ func sshHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 type sshAgentCmd struct {
+	listen string
 }
 
-func (sshAgentCmd) Info() *cmd.Info {
+func (*sshAgentCmd) Info() *cmd.Info {
+	desc := `Start HTTP agent for running commands on Docker via SSH.
+
+By default, the agent will listen on 0.0.0.0:4545. Use --listen or -l to
+specify the address to listen on.
+`
+	return &cmd.Info{
+		Name:  "docker-ssh-agent",
+		Usage: "docker-ssh-agent",
+		Desc:  desc,
+	}
+}
+
+func (cmd *sshAgentCmd) Run(ctx *cmd.Context, client *cmd.Client) error {
 	return nil
 }
 
-func (sshAgentCmd) Run(ctx *cmd.Context, client *cmd.Client) error {
-	return nil
+func (cmd *sshAgentCmd) Flags() *gnuflag.FlagSet {
+	flags := gnuflag.NewFlagSet("docker-ssh-agent", gnuflag.ExitOnError)
+	flags.StringVar(&cmd.listen, "listen", "0.0.0.0:4545", "Address to listen on")
+	flags.StringVar(&cmd.listen, "l", "0.0.0.0:4545", "Address to listen on")
+	return flags
 }
