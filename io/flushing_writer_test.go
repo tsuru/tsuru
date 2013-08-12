@@ -2,16 +2,21 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-package api
+package io
 
 import (
 	"launchpad.net/gocheck"
 	"net/http/httptest"
+	"testing"
 )
 
 type FlushingSuite struct{}
 
 var _ = gocheck.Suite(&FlushingSuite{})
+
+func Test(t *testing.T) {
+	gocheck.TestingT(t)
+}
 
 func (s *FlushingSuite) TestFlushingWriter(c *gocheck.C) {
 	recorder := httptest.NewRecorder()
