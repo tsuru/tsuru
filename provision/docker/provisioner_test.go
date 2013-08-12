@@ -501,6 +501,7 @@ func (s *S) TestCommands(c *gocheck.C) {
 		addNodeToSchedulerCmd{},
 		removeNodeFromSchedulerCmd{},
 		listNodesInTheSchedulerCmd{},
+		&sshAgentCmd{},
 	}
 	c.Assert(p.Commands(), gocheck.DeepEquals, expected)
 }

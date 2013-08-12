@@ -386,6 +386,7 @@ func (p *dockerProvisioner) Commands() []cmd.Command {
 		addNodeToSchedulerCmd{},
 		removeNodeFromSchedulerCmd{},
 		listNodesInTheSchedulerCmd{},
+		&sshAgentCmd{},
 	}
 }
 
