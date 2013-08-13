@@ -15,6 +15,7 @@ import (
 	"github.com/globocom/tsuru/exec"
 	"github.com/globocom/tsuru/log"
 	"github.com/globocom/tsuru/provision"
+	"github.com/globocom/tsuru/queue"
 	"github.com/globocom/tsuru/router"
 	_ "github.com/globocom/tsuru/router/hipache"
 	_ "github.com/globocom/tsuru/router/testing"
@@ -105,10 +106,12 @@ func injectEnvsAndRestart(a provision.App) {
 }
 
 func startInBackground(a provision.App, c container, imageId string, w io.Writer, started chan bool) {
-	_, err := start(a, imageId, w)
+	newC, err := start(a, imageId, w)
 	if err != nil {
 		log.Printf("error on start the app %s - %s", a.GetName(), err)
 	}
+	msg := queue.Message{Action: app.BindService, Args: []string{a.GetName(), newC.ID}}
+	go app.Enqueue(msg)
 	if c.ID != "" {
 		if a.RemoveUnit(c.ID) != nil {
 			removeContainer(&c)

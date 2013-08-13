@@ -7,11 +7,13 @@ package docker
 import (
 	"bytes"
 	dockerClient "github.com/fsouza/go-dockerclient"
+	"github.com/globocom/tsuru/app"
 	"github.com/globocom/tsuru/cmd"
 	"github.com/globocom/tsuru/exec"
 	etesting "github.com/globocom/tsuru/exec/testing"
 	"github.com/globocom/tsuru/log"
 	"github.com/globocom/tsuru/provision"
+	"github.com/globocom/tsuru/queue"
 	rtesting "github.com/globocom/tsuru/router/testing"
 	"github.com/globocom/tsuru/testing"
 	"labix.org/v2/mgo/bson"
@@ -110,6 +112,38 @@ func (s *S) TestDeploy(c *gocheck.C) {
 	time.Sleep(6e9)
 	c.Assert(app.GetCommands(), gocheck.DeepEquals, []string{"serialize", "restart"})
 	c.Assert(app.HasLog("tsuru", "Restarting app..."), gocheck.Equals, true)
+}
+
+func getQueue() (queue.Q, error) {
+	queueName := "tsuru-app"
+	qfactory, err := queue.Factory()
+	if err != nil {
+		return nil, err
+	}
+	return qfactory.Get(queueName)
+}
+
+func (s *S) TestDeployEnqueuesBindService(c *gocheck.C) {
+	go s.stopContainers(1)
+	err := s.newImage()
+	c.Assert(err, gocheck.IsNil)
+	setExecut(&etesting.FakeExecutor{})
+	defer setExecut(nil)
+	p := dockerProvisioner{}
+	a := testing.NewFakeApp("cribcaged", "python", 1)
+	p.Provision(a)
+	defer p.Destroy(a)
+	w := writer{b: make([]byte, 2048)}
+	err = p.Deploy(a, "master", &w)
+	c.Assert(err, gocheck.IsNil)
+	defer p.Destroy(a)
+	q, err := getQueue()
+	c.Assert(err, gocheck.IsNil)
+	message, err := q.Get(1e6)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(message.Action, gocheck.Equals, app.BindService)
+	c.Assert(message.Args[0], gocheck.Equals, a.GetName())
+	c.Assert(message.Args[1], gocheck.Not(gocheck.Equals), "")
 }
 
 type writer struct {
