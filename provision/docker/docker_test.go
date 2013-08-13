@@ -165,6 +165,7 @@ func (s *S) newContainer() (*container, error) {
 		IP:       "10.10.10.10",
 		HostPort: "3333",
 		Port:     "8888",
+		HostAddr: "10.10.10.12",
 	}
 	rtesting.FakeRouter.AddBackend(container.AppName)
 	rtesting.FakeRouter.AddRoute(container.AppName, container.getAddress())

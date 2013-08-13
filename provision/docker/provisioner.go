@@ -238,15 +238,36 @@ func (*dockerProvisioner) AddUnits(a provision.App, units uint) ([]provision.Uni
 	return result, nil
 }
 
-func (*dockerProvisioner) RemoveUnit(app provision.App, unitName string) error {
+func (*dockerProvisioner) RemoveUnit(a provision.App, unitName string) error {
 	container, err := getContainer(unitName)
 	if err != nil {
 		return err
 	}
-	if container.AppName != app.GetName() {
+	if container.AppName != a.GetName() {
 		return errors.New("Unit does not belong to this app")
 	}
-	return removeContainer(container)
+	if err := removeContainer(container); err != nil {
+		return err
+	}
+	return rebindWhenNeed(a.GetName(), container)
+}
+
+// rebindIfNeed rebinds a unit to the app's services when it finds
+// that the unit being removed has the same host that any
+// of the units that still being used
+func rebindWhenNeed(appName string, container *container) error {
+	containers, err := listAppContainers(appName)
+	if err != nil {
+		return err
+	}
+	for _, c := range containers {
+		if c.HostAddr == container.HostAddr && c.ID != container.ID {
+			msg := queue.Message{Action: app.BindService, Args: []string{appName, c.ID}}
+			go app.Enqueue(msg)
+			break
+		}
+	}
+	return nil
 }
 
 func removeContainer(c *container) error {
