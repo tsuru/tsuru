@@ -20,6 +20,7 @@ type cmdInput struct {
 }
 
 func sshHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "text")
 	var input cmdInput
 	defer r.Body.Close()
 	err := json.NewDecoder(r.Body).Decode(&input)

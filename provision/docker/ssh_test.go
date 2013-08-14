@@ -31,6 +31,7 @@ func (SSHSuite) TestExecuteCommandHandler(c *gocheck.C) {
 	sshHandler(recorder, request)
 	c.Assert(recorder.Code, gocheck.Equals, http.StatusOK)
 	c.Assert(recorder.Body.String(), gocheck.Equals, string(output))
+	c.Assert(recorder.Header().Get("Content-Type"), gocheck.Equals, "text")
 	args := []string{
 		"10.10.10.10", "-l", "ubuntu",
 		"-o", "StrictHostKeyChecking no",
