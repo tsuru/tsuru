@@ -71,7 +71,10 @@ func update(units []provision.Unit) {
 	}
 	defer conn.Close()
 	for _, a := range l {
-		a.Ip, _ = app.Provisioner.Addr(a)
+		a.Ip, err = app.Provisioner.Addr(a)
+		if err != nil {
+			log.Printf("collector failed to get app (%q) address: %s", a.Name, err)
+		}
 		conn.Apps().Update(bson.M{"name": a.Name}, a)
 	}
 }
