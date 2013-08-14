@@ -5,6 +5,7 @@
 package docker
 
 import (
+	"encoding/json"
 	"github.com/globocom/tsuru/cmd"
 	"github.com/globocom/tsuru/exec/testing"
 	"launchpad.net/gocheck"
@@ -78,4 +79,22 @@ func (SSHSuite) TestSSHAgentCmdFlags(c *gocheck.C) {
 	c.Check(flag.DefValue, gocheck.Equals, "0.0.0.0:4545")
 	c.Check(flag.Usage, gocheck.Equals, "Address to listen on")
 	c.Check(cmd.listen, gocheck.Equals, "0.0.0.0:4545")
+}
+
+type FakeSSHServer struct {
+	requests []*http.Request
+	bodies   []cmdInput
+	output   string
+}
+
+func (h *FakeSSHServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	var input cmdInput
+	defer r.Body.Close()
+	err := json.NewDecoder(r.Body).Decode(&input)
+	if err != nil {
+		panic(err)
+	}
+	h.requests = append(h.requests, r)
+	h.bodies = append(h.bodies, input)
+	w.Write([]byte(h.output))
 }
