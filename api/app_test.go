@@ -2505,6 +2505,11 @@ func (s *S) TestRestartHandlerReturns403IfTheUserDoesNotHaveAccessToTheApp(c *go
 	c.Assert(e.Code, gocheck.Equals, http.StatusForbidden)
 }
 
+type LogList []app.Applog
+
+func (l LogList) Len() int           { return len(l) }
+func (l LogList) Swap(i, j int)      { l[i], l[j] = l[j], l[i] }
+func (l LogList) Less(i, j int) bool { return l[i].Message < l[j].Message }
 func (s *S) TestAddLogHandler(c *gocheck.C) {
 	a := app.App{
 		Name:     "myapp",
@@ -2514,26 +2519,49 @@ func (s *S) TestAddLogHandler(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	defer s.conn.Logs().Remove(bson.M{"appname": a.Name})
-	b := strings.NewReader(`["message 1", "message 2", "message 3"]`)
-	request, err := http.NewRequest("POST", "/apps/myapp/log/?:app=myapp", b)
+	body := strings.NewReader(`["message 1", "message 2", "message 3"]`)
+	body2 := strings.NewReader(`["message 4", "message 5"]`)
+	request, err := http.NewRequest("POST", "/apps/myapp/log/?:app=myapp", body)
 	c.Assert(err, gocheck.IsNil)
+	withSourceRequest, err := http.NewRequest("POST", "/apps/myapp/log/?:app=myapp&source=mysource", body2)
+	c.Assert(err, gocheck.IsNil)
+
 	recorder := httptest.NewRecorder()
 	err = addLog(recorder, request, s.token)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(recorder.Code, gocheck.Equals, http.StatusOK)
+
+	recorder = httptest.NewRecorder()
+	err = addLog(recorder, withSourceRequest, s.token)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(recorder.Code, gocheck.Equals, http.StatusOK)
+
 	want := []string{
 		"message 1",
 		"message 2",
 		"message 3",
+		"message 4",
+		"message 5",
 	}
-	logs, err := a.LastLogs(3, "")
+	wantSource := []string{
+		"app",
+		"app",
+		"app",
+		"mysource",
+		"mysource",
+	}
+	logs, err := a.LastLogs(5, "")
 	c.Assert(err, gocheck.IsNil)
 	got := make([]string, len(logs))
+	gotSource := make([]string, len(logs))
+
+	sort.Sort(LogList(logs))
 	for i, l := range logs {
 		got[i] = l.Message
+		gotSource[i] = l.Source
 	}
-	sort.Strings(got)
 	c.Assert(got, gocheck.DeepEquals, want)
+	c.Assert(gotSource, gocheck.DeepEquals, wantSource)
 }
 
 func (s *S) TestPlatformList(c *gocheck.C) {
