@@ -641,7 +641,8 @@ func restart(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
 }
 
 func addLog(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
-	app := app.App{Name: r.URL.Query().Get(":app")}
+	queryValues := r.URL.Query()
+	app := app.App{Name: queryValues.Get(":app")}
 	err := app.Get()
 	if err != nil {
 		return err
@@ -653,8 +654,12 @@ func addLog(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
 	}
 	var logs []string
 	err = json.Unmarshal(body, &logs)
+	source := queryValues.Get("source")
+	if len(source) == 0 {
+		source = "app"
+	}
 	for _, log := range logs {
-		err := app.Log(log, "app")
+		err := app.Log(log, source)
 		if err != nil {
 			return err
 		}
