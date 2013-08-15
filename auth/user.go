@@ -18,6 +18,7 @@ import (
 	"github.com/globocom/tsuru/validation"
 	"labix.org/v2/mgo/bson"
 	"math/rand"
+	"net"
 	"net/smtp"
 	"time"
 )
@@ -342,6 +343,7 @@ func sendEmail(email string, data []byte) error {
 	if err != nil {
 		return stderrors.New(`Setting "smtp:password" is not defined`)
 	}
-	auth := smtp.PlainAuth("", user, password, addr)
+	host, _, _ := net.SplitHostPort(addr)
+	auth := smtp.PlainAuth("", user, password, host)
 	return smtp.SendMail(addr, auth, user, []string{email}, data)
 }
