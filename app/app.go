@@ -610,17 +610,25 @@ func (app *App) Restart(w io.Writer) error {
 	app.Log("executing hook to restart", "tsuru")
 	err := app.preRestart(w)
 	if err != nil {
+		log.Printf("[restart] error on pre-restart the app %s - %s", app.Name, err)
 		return err
 	}
 	err = log.Write(w, []byte("\n ---> Restarting your app\n"))
 	if err != nil {
+		log.Printf("[restart] error on write app log for the app %s - %s", app.Name, err)
 		return err
 	}
 	err = Provisioner.Restart(app)
 	if err != nil {
+		log.Printf("[restart] error on restart the app %s - %s", app.Name, err)
 		return err
 	}
-	return app.postRestart(w)
+	err = app.postRestart(w)
+	if err != nil {
+		log.Printf("[restart] error on post-restart the app %s - %s", app.Name, err)
+		return err
+	}
+	return nil
 }
 
 func (app *App) Ready() error {
