@@ -30,6 +30,20 @@ var createContainer = action.Action{
 	},
 }
 
+var setNetworkInfo = action.Action{
+	Name: "set-network-info",
+	Forward: func(ctx action.FWContext) (action.Result, error) {
+		c := ctx.Previous.(container)
+		ip, hostPort, err := c.networkInfo()
+		if err != nil {
+			return nil, err
+		}
+		c.IP = ip
+		c.HostPort = hostPort
+		return c, nil
+	},
+}
+
 var setIp = action.Action{
 	Name: "set-ip",
 	Forward: func(ctx action.FWContext) (action.Result, error) {

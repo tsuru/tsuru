@@ -93,6 +93,26 @@ func (s *S) TestAddRouteForward(c *gocheck.C) {
 	c.Assert(cont, gocheck.FitsTypeOf, container{})
 }
 
+func (s *S) TestSetNetworkInfoName(c *gocheck.C) {
+	c.Assert(setNetworkInfo.Name, gocheck.Equals, "set-network-info")
+}
+
+func (s *S) TestSetNetworkInfoForward(c *gocheck.C) {
+	err := s.newImage()
+	c.Assert(err, gocheck.IsNil)
+	conta, err := s.newContainer()
+	c.Assert(err, gocheck.IsNil)
+	defer rtesting.FakeRouter.RemoveBackend(conta.AppName)
+	cont := *conta
+	context := action.FWContext{Previous: cont}
+	r, err := setNetworkInfo.Forward(context)
+	c.Assert(err, gocheck.IsNil)
+	cont = r.(container)
+	c.Assert(cont, gocheck.FitsTypeOf, container{})
+	c.Assert(cont.IP, gocheck.Not(gocheck.Equals), "")
+	c.Assert(cont.HostPort, gocheck.Not(gocheck.Equals), "")
+}
+
 func (s *S) TestSetIpName(c *gocheck.C) {
 	c.Assert(setIp.Name, gocheck.Equals, "set-ip")
 }
