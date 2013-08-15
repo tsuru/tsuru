@@ -6,6 +6,7 @@ package docker
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/dotcloud/docker"
@@ -20,6 +21,7 @@ import (
 	"io"
 	"labix.org/v2/mgo/bson"
 	"net"
+	"net/http"
 	"net/url"
 	"strings"
 	"sync"
@@ -288,18 +290,25 @@ func (c *container) remove() error {
 }
 
 func (c *container) ssh(stdout, stderr io.Writer, cmd string, args ...string) error {
-	stderr = &filter{w: stderr, content: []byte("unable to resolve host")}
-	user, err := config.GetString("docker:ssh:user")
+	port, _ := config.GetInt("docker:ssh-agent-port")
+	if port == 0 {
+		port = 4545
+	}
+	stdout = &filter{w: stdout, content: []byte("unable to resolve host")}
+	url := fmt.Sprintf("http://%s:%d/container/%s/cmd", c.HostAddr, port, c.IP)
+	input := cmdInput{Cmd: cmd, Args: args}
+	var buf bytes.Buffer
+	err := json.NewEncoder(&buf).Encode(input)
 	if err != nil {
 		return err
 	}
-	sshArgs := []string{c.IP, "-l", user, "-o", "StrictHostKeyChecking no"}
-	if keyFile, err := config.GetString("docker:ssh:private-key"); err == nil {
-		sshArgs = append(sshArgs, "-i", keyFile)
+	resp, err := http.Post(url, "application/json", &buf)
+	if err != nil {
+		return err
 	}
-	sshArgs = append(sshArgs, "--", cmd)
-	sshArgs = append(sshArgs, args...)
-	return executor().Execute("ssh", sshArgs, nil, stdout, stderr)
+	defer resp.Body.Close()
+	_, err = io.Copy(stdout, resp.Body)
+	return err
 }
 
 // commit commits an image in docker based in the container

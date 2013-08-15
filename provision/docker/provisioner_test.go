@@ -7,6 +7,7 @@ package docker
 import (
 	"bytes"
 	dockerClient "github.com/fsouza/go-dockerclient"
+	"github.com/globocom/config"
 	"github.com/globocom/tsuru/app"
 	"github.com/globocom/tsuru/cmd"
 	"github.com/globocom/tsuru/exec"
@@ -19,7 +20,10 @@ import (
 	"labix.org/v2/mgo/bson"
 	"launchpad.net/gocheck"
 	stdlog "log"
+	"net"
+	"net/http/httptest"
 	"runtime"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -46,28 +50,33 @@ func (s *S) TestProvisionerProvision(c *gocheck.C) {
 }
 
 func (s *S) TestProvisionerRestartCallsTheRestartHook(c *gocheck.C) {
-	id := "caad7bbd5411"
-	fexec := &etesting.FakeExecutor{Output: map[string][][]byte{"*": {[]byte(id)}}}
-	setExecut(fexec)
-	defer setExecut(nil)
+	var handler FakeSSHServer
+	handler.output = "caad7bbd5411"
+	server := httptest.NewServer(&handler)
+	defer server.Close()
+	host, port, _ := net.SplitHostPort(server.Listener.Addr().String())
+	portNumber, _ := strconv.Atoi(port)
+	config.Set("docker:ssh-agent-port", portNumber)
+	defer config.Unset("docker:ssh-agent-port")
 	var p dockerProvisioner
 	app := testing.NewFakeApp("almah", "static", 1)
 	cont := container{
-		ID:      id,
-		AppName: app.GetName(),
-		Type:    app.GetPlatform(),
-		IP:      "10.10.10.10",
+		ID:       handler.output,
+		AppName:  app.GetName(),
+		Type:     app.GetPlatform(),
+		IP:       "10.10.10.10",
+		HostAddr: host,
 	}
 	err := collection().Insert(cont)
 	c.Assert(err, gocheck.IsNil)
 	defer collection().RemoveId(cont.ID)
 	err = p.Restart(app)
 	c.Assert(err, gocheck.IsNil)
-	args := []string{
-		cont.IP, "-l", s.sshUser, "-o", "StrictHostKeyChecking no",
-		"--", "/var/lib/tsuru/restart",
-	}
-	c.Assert(fexec.ExecutedCmd("ssh", args), gocheck.Equals, true)
+	input := cmdInput{Cmd: "/var/lib/tsuru/restart"}
+	body := handler.bodies[0]
+	c.Assert(body, gocheck.DeepEquals, input)
+	path := "/container/10.10.10.10/cmd"
+	c.Assert(handler.requests[0].URL.Path, gocheck.DeepEquals, path)
 }
 
 func (s *S) stopContainers(n uint) {
@@ -384,13 +393,16 @@ func (s *S) TestRemoveUnitInSameHostAsAnotherUnitShouldEnqueueAnotherBind(c *goc
 }
 
 func (s *S) TestProvisionerExecuteCommand(c *gocheck.C) {
-	fexec := &etesting.FakeExecutor{
-		Output: map[string][][]byte{"*": {[]byte(". ..")}},
-	}
-	setExecut(fexec)
-	defer setExecut(nil)
+	var handler FakeSSHServer
+	handler.output = ". .."
+	server := httptest.NewServer(&handler)
+	defer server.Close()
+	host, port, _ := net.SplitHostPort(server.Listener.Addr().String())
+	portNumber, _ := strconv.Atoi(port)
+	config.Set("docker:ssh-agent-port", portNumber)
+	defer config.Unset("docker:ssh-agent-port")
 	app := testing.NewFakeApp("starbreaker", "python", 1)
-	container := container{ID: "c-036", AppName: "starbreaker", Type: "python", IP: "10.10.10.1"}
+	container := container{ID: "c-036", AppName: "starbreaker", Type: "python", IP: "10.10.10.1", HostAddr: host}
 	err := s.conn.Collection(s.collName).Insert(container)
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Collection(s.collName).Remove(bson.M{"_id": container.ID})
@@ -400,24 +412,26 @@ func (s *S) TestProvisionerExecuteCommand(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(stderr.Bytes(), gocheck.IsNil)
 	c.Assert(stdout.String(), gocheck.Equals, ". ..")
-	args := []string{
-		"10.10.10.1", "-l", s.sshUser,
-		"-o", "StrictHostKeyChecking no",
-		"--", "ls", "-ar",
-	}
-	c.Assert(fexec.ExecutedCmd("ssh", args), gocheck.Equals, true)
+	body := handler.bodies[0]
+	input := cmdInput{Cmd: "ls", Args: []string{"-ar"}}
+	c.Assert(body, gocheck.DeepEquals, input)
+	path := "/container/10.10.10.1/cmd"
+	c.Assert(handler.requests[0].URL.Path, gocheck.DeepEquals, path)
 }
 
 func (s *S) TestProvisionerExecuteCommandMultipleContainers(c *gocheck.C) {
-	fexec := &etesting.FakeExecutor{
-		Output: map[string][][]byte{"*": {[]byte(". ..")}},
-	}
-	setExecut(fexec)
-	defer setExecut(nil)
+	var handler FakeSSHServer
+	handler.output = ". .."
+	server := httptest.NewServer(&handler)
+	defer server.Close()
+	host, port, _ := net.SplitHostPort(server.Listener.Addr().String())
+	portNumber, _ := strconv.Atoi(port)
+	config.Set("docker:ssh-agent-port", portNumber)
+	defer config.Unset("docker:ssh-agent-port")
 	app := testing.NewFakeApp("starbreaker", "python", 1)
 	err := s.conn.Collection(s.collName).Insert(
-		container{ID: "c-036", AppName: "starbreaker", Type: "python", IP: "10.10.10.1"},
-		container{ID: "c-037", AppName: "starbreaker", Type: "python", IP: "10.10.10.2"},
+		container{ID: "c-036", AppName: "starbreaker", Type: "python", IP: "10.10.10.1", HostAddr: host},
+		container{ID: "c-037", AppName: "starbreaker", Type: "python", IP: "10.10.10.2", HostAddr: host},
 	)
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Collection(s.collName).RemoveAll(bson.M{"_id": bson.M{"$in": []string{"c-036", "c-037"}}})
@@ -426,39 +440,12 @@ func (s *S) TestProvisionerExecuteCommandMultipleContainers(c *gocheck.C) {
 	err = p.ExecuteCommand(&stdout, &stderr, app, "ls", "-ar")
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(stderr.Bytes(), gocheck.IsNil)
-	args1 := []string{
-		"10.10.10.1", "-l", s.sshUser,
-		"-o", "StrictHostKeyChecking no",
-		"--", "ls", "-ar",
-	}
-	args2 := []string{
-		"10.10.10.1", "-l", s.sshUser,
-		"-o", "StrictHostKeyChecking no",
-		"--", "ls", "-ar",
-	}
-	c.Assert(fexec.ExecutedCmd("ssh", args1), gocheck.Equals, true)
-	c.Assert(fexec.ExecutedCmd("ssh", args2), gocheck.Equals, true)
-}
-
-func (s *S) TestProvisionerExecuteCommandFailure(c *gocheck.C) {
-	fexec := &etesting.ErrorExecutor{
-		FakeExecutor: etesting.FakeExecutor{
-			Output: map[string][][]byte{"*": {[]byte("permission denied")}},
-		},
-	}
-	setExecut(fexec)
-	defer setExecut(nil)
-	app := testing.NewFakeApp("starbreaker", "python", 1)
-	container := container{ID: "c-036", AppName: "starbreaker", Type: "python", IP: "10.10.10.1"}
-	err := s.conn.Collection(s.collName).Insert(container)
-	c.Assert(err, gocheck.IsNil)
-	defer s.conn.Collection(s.collName).Remove(bson.M{"_id": container.ID})
-	var stdout, stderr bytes.Buffer
-	var p dockerProvisioner
-	err = p.ExecuteCommand(&stdout, &stderr, app, "ls", "-ar")
-	c.Assert(err, gocheck.NotNil)
-	c.Assert(stdout.Bytes(), gocheck.IsNil)
-	c.Assert(stderr.String(), gocheck.Equals, "permission denied")
+	input := cmdInput{Cmd: "ls", Args: []string{"-ar"}}
+	c.Assert(handler.bodies, gocheck.DeepEquals, []cmdInput{input, input})
+	path1 := "/container/10.10.10.1/cmd"
+	path2 := "/container/10.10.10.2/cmd"
+	c.Assert(handler.requests[0].URL.Path, gocheck.Equals, path1)
+	c.Assert(handler.requests[1].URL.Path, gocheck.Equals, path2)
 }
 
 func (s *S) TestProvisionerExecuteCommandNoContainers(c *gocheck.C) {

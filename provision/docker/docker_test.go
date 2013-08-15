@@ -23,6 +23,7 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"os"
+	"strconv"
 	"strings"
 	"sync/atomic"
 )
@@ -304,85 +305,38 @@ func (s *S) TestContainerHostPortNotFound(c *gocheck.C) {
 }
 
 func (s *S) TestContainerSSH(c *gocheck.C) {
+	var handler FakeSSHServer
+	handler.output = ". .."
+	server := httptest.NewServer(&handler)
+	defer server.Close()
+	host, port, _ := net.SplitHostPort(server.Listener.Addr().String())
+	portNumber, _ := strconv.Atoi(port)
+	config.Set("docker:ssh-agent-port", portNumber)
+	defer config.Unset("docker:ssh-agent-port")
 	var stdout, stderr bytes.Buffer
-	output := []byte(". ..")
-	out := map[string][][]byte{"*": {output}}
-	fexec := &etesting.FakeExecutor{Output: out}
-	setExecut(fexec)
-	defer setExecut(nil)
-	container := container{ID: "c-01", IP: "10.10.10.10"}
+	container := container{ID: "c-01", IP: "10.10.10.10", HostAddr: host}
 	err := container.ssh(&stdout, &stderr, "ls", "-a")
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(stdout.String(), gocheck.Equals, string(output))
-	args := []string{
-		"10.10.10.10", "-l", s.sshUser,
-		"-o", "StrictHostKeyChecking no",
-		"--", "ls", "-a",
-	}
-	c.Assert(fexec.ExecutedCmd("ssh", args), gocheck.Equals, true)
+	c.Assert(stdout.String(), gocheck.Equals, handler.output)
+	body := handler.bodies[0]
+	input := cmdInput{Cmd: "ls", Args: []string{"-a"}}
+	c.Assert(body, gocheck.DeepEquals, input)
 }
 
-func (s *S) TestContainerSSHWithPrivateKey(c *gocheck.C) {
+func (s *S) TestContainerSSHFiltersStdout(c *gocheck.C) {
+	var handler FakeSSHServer
+	handler.output = "failed\nunable to resolve host abcdef"
+	server := httptest.NewServer(&handler)
+	defer server.Close()
+	host, port, _ := net.SplitHostPort(server.Listener.Addr().String())
+	portNumber, _ := strconv.Atoi(port)
+	config.Set("docker:ssh-agent-port", portNumber)
+	defer config.Unset("docker:ssh-agent-port")
 	var stdout, stderr bytes.Buffer
-	config.Set("docker:ssh:private-key", "/opt/me/id_dsa")
-	defer config.Unset("docker:ssh:private-key")
-	output := []byte(". ..")
-	out := map[string][][]byte{"*": {output}}
-	fexec := &etesting.FakeExecutor{Output: out}
-	setExecut(fexec)
-	defer setExecut(nil)
-	container := container{ID: "c-01", IP: "10.10.10.13"}
+	container := container{ID: "c-01", IP: "10.10.10.10", HostPort: host}
 	err := container.ssh(&stdout, &stderr, "ls", "-a")
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(stdout.String(), gocheck.Equals, string(output))
-	args := []string{
-		"10.10.10.13", "-l", s.sshUser,
-		"-o", "StrictHostKeyChecking no",
-		"-i", "/opt/me/id_dsa",
-		"--", "ls", "-a",
-	}
-	c.Assert(fexec.ExecutedCmd("ssh", args), gocheck.Equals, true)
-}
-
-func (s *S) TestContainerSSHWithoutUserConfigured(c *gocheck.C) {
-	old, _ := config.Get("docker:ssh:user")
-	defer config.Set("docker:ssh:user", old)
-	config.Unset("docker:ssh:user")
-	container := container{ID: "c-01", IP: "127.0.0.1"}
-	err := container.ssh(nil, nil, "ls", "-a")
-	c.Assert(err, gocheck.NotNil)
-}
-
-func (s *S) TestContainerSSHCommandFailure(c *gocheck.C) {
-	var stdout, stderr bytes.Buffer
-	fexec := &etesting.ErrorExecutor{
-		FakeExecutor: etesting.FakeExecutor{
-			Output: map[string][][]byte{"*": {[]byte("failed")}},
-		},
-	}
-	setExecut(fexec)
-	defer setExecut(nil)
-	container := container{ID: "c-01", IP: "10.10.10.10"}
-	err := container.ssh(&stdout, &stderr, "ls", "-a")
-	c.Assert(err, gocheck.NotNil)
-	c.Assert(stdout.Bytes(), gocheck.IsNil)
-	c.Assert(stderr.String(), gocheck.Equals, "failed")
-}
-
-func (s *S) TestContainerSSHFiltersStderr(c *gocheck.C) {
-	var stdout, stderr bytes.Buffer
-	fexec := &etesting.ErrorExecutor{
-		FakeExecutor: etesting.FakeExecutor{
-			Output: map[string][][]byte{"*": {[]byte("failed\nunable to resolve host abcdef")}},
-		},
-	}
-	setExecut(fexec)
-	defer setExecut(nil)
-	container := container{ID: "c-01", IP: "10.10.10.10"}
-	err := container.ssh(&stdout, &stderr, "ls", "-a")
-	c.Assert(err, gocheck.NotNil)
-	c.Assert(stdout.Bytes(), gocheck.IsNil)
-	c.Assert(stderr.String(), gocheck.Equals, "failed\n")
+	c.Assert(stdout.String(), gocheck.Equals, "failed\n")
 }
 
 func (s *S) TestGetContainer(c *gocheck.C) {
