@@ -53,7 +53,46 @@ func startTestListener(addr string) net.Listener {
 }
 
 func startDockerTestServer(containerPort string, calls *int) func() {
+	listAllOutput := `[
+    {
+        "Id": "8dfafdbc3a40",
+        "Image": "base:latest",
+        "Command": "echo 1",
+        "Created": 1367854155,
+        "Status":"Ghost",
+        "Ports":"",
+        "SizeRw":12288,
+        "SizeRootFs":0
+    },
+    {
+        "Id": "dca19cd9bb9e",
+        "Image": "tsuru/python:latest",
+        "Command": "echo 1",
+        "Created": 1376319760,
+        "Status": "Exit 0",
+        "Ports": "",
+        "SizeRw": 0,
+        "SizeRootFs": 0
+    },
+    {
+        "Id": "3fd99cd9bb84",
+        "Image": "tsuru/python:latest",
+        "Command": "echo 1",
+        "Created": 1376319760,
+        "Status": "Up 7 seconds",
+        "Ports": "",
+        "SizeRw": 0,
+        "SizeRootFs": 0
+    }
+]`
 	c1Output := fmt.Sprintf(`{
+    "State": {
+        "Running": true,
+        "Pid": 2785,
+        "ExitCode": 0,
+        "StartedAt": "2013-08-15T03:38:45.709874216-03:00",
+        "Ghost": false
+    },
 	"NetworkSettings": {
 		"IpAddress": "127.0.0.4",
 		"IpPrefixLen": 8,
@@ -64,6 +103,14 @@ func startDockerTestServer(containerPort string, calls *int) func() {
 	}
 }`, containerPort)
 	c2Output := `{
+    "State": {
+        "Running": true,
+        "Pid": 2785,
+        "ExitCode": 0,
+        "StartedAt": "2013-08-15T03:38:45.709874216-03:00",
+        "Ghost": false
+    },
+    "Image": "b750fe79269d2ec9a3c593ef05b4332b1d1a02a62b4accb2c21d589ff2f5f2dc",
 	"NetworkSettings": {
 		"IpAddress": "127.0.0.1",
 		"IpPrefixLen": 8,
@@ -81,6 +128,9 @@ func startDockerTestServer(containerPort string, calls *int) func() {
 			}
 			if strings.Contains(r.URL.Path, "/containers/9930c24f1c5f") {
 				w.Write([]byte(c1Output))
+			}
+			if strings.Contains(r.URL.Path, "/containers/json") {
+				w.Write([]byte(listAllOutput))
 			}
 		}
 		if strings.Contains(r.URL.Path, "/commit") {
