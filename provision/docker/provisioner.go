@@ -342,8 +342,8 @@ func collectUnit(container container, units chan<- provision.Unit, wg *sync.Wait
 		return
 	}
 	unit.Ip = container.HostAddr
-	if hostPort, err := container.hostPort(); err == nil && hostPort != container.HostPort {
-		err = fixContainer(&container, unit.Ip, hostPort)
+	if ip, hostPort, err := container.networkInfo(); err == nil && hostPort != container.HostPort {
+		err = fixContainer(&container, ip, hostPort)
 		if err != nil {
 			log.Printf("error on fix container hostport for [container %s]", container.ID)
 			return

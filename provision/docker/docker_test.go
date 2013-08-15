@@ -240,17 +240,6 @@ func (s *S) TestRemoveContainerIgnoreErrors(c *gocheck.C) {
 	c.Assert(rtesting.FakeRouter.HasRoute(container.AppName, container.getAddress()), gocheck.Equals, false)
 }
 
-func (s *S) TestContainerIP(c *gocheck.C) {
-	err := s.newImage()
-	c.Assert(err, gocheck.IsNil)
-	cont, err := s.newContainer()
-	c.Assert(err, gocheck.IsNil)
-	defer cont.remove()
-	ip, err := cont.ip()
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(ip, gocheck.Not(gocheck.Equals), "")
-}
-
 func (s *S) TestContainerNetworkInfo(c *gocheck.C) {
 	err := s.newImage()
 	c.Assert(err, gocheck.IsNil)

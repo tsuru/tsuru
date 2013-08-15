@@ -169,45 +169,6 @@ func (c *container) networkInfo() (string, string, error) {
 	return "", "", fmt.Errorf("Container port %s is not mapped to any host port", c.Port)
 }
 
-// hostPort returns the host port mapped for the container.
-func (c *container) hostPort() (string, error) {
-	if c.Port == "" {
-		return "", errors.New("Container does not contain any mapped port")
-	}
-	dockerContainer, err := dockerCluster().InspectContainer(c.ID)
-	if err != nil {
-		return "", err
-	}
-	if dockerContainer.NetworkSettings != nil {
-		mappedPorts := dockerContainer.NetworkSettings.PortMapping
-		if port, ok := mappedPorts["Tcp"][c.Port]; ok {
-			return port, nil
-		}
-	}
-	return "", fmt.Errorf("Container port %s is not mapped to any host port", c.Port)
-}
-
-// ip returns the ip for the container.
-func (c *container) ip() (string, error) {
-	dockerContainer, err := dockerCluster().InspectContainer(c.ID)
-	if err != nil {
-		return "", err
-	}
-	if dockerContainer.NetworkSettings == nil {
-		msg := "Error when getting container information. NetworkSettings is missing."
-		log.Print(msg)
-		return "", errors.New(msg)
-	}
-	instanceIP := dockerContainer.NetworkSettings.IPAddress
-	if instanceIP == "" {
-		msg := "error: Can't get ipaddress..."
-		log.Print(msg)
-		return "", errors.New(msg)
-	}
-	log.Printf("Instance IpAddress: %s", instanceIP)
-	return instanceIP, nil
-}
-
 func (c *container) setStatus(status string) error {
 	c.Status = status
 	coll := collection()
@@ -265,7 +226,7 @@ func start(app provision.App, imageId string, w io.Writer) (*container, error) {
 	if err != nil {
 		return nil, err
 	}
-	actions := []*action.Action{&createContainer, &startContainer, &setIp, &setHostPort, &insertContainer, &addRoute}
+	actions := []*action.Action{&createContainer, &startContainer, &setNetworkInfo, &insertContainer, &addRoute}
 	pipeline := action.NewPipeline(actions...)
 	err = pipeline.Execute(app, imageId, commands)
 	if err != nil {
