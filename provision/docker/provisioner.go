@@ -252,7 +252,7 @@ func (*dockerProvisioner) RemoveUnit(a provision.App, unitName string) error {
 	return rebindWhenNeed(a.GetName(), container)
 }
 
-// rebindIfNeed rebinds a unit to the app's services when it finds
+// rebindWhenNeed rebinds a unit to the app's services when it finds
 // that the unit being removed has the same host that any
 // of the units that still being used
 func rebindWhenNeed(appName string, container *container) error {
