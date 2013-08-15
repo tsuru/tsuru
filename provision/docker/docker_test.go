@@ -251,27 +251,28 @@ func (s *S) TestContainerIP(c *gocheck.C) {
 	c.Assert(ip, gocheck.Not(gocheck.Equals), "")
 }
 
-func (s *S) TestContainerHostPort(c *gocheck.C) {
+func (s *S) TestContainerNetworkInfo(c *gocheck.C) {
 	err := s.newImage()
 	c.Assert(err, gocheck.IsNil)
 	cont, err := s.newContainer()
 	c.Assert(err, gocheck.IsNil)
-	defer rtesting.FakeRouter.RemoveBackend(cont.AppName)
 	defer cont.remove()
-	port, err := cont.hostPort()
+	ip, port, err := cont.networkInfo()
 	c.Assert(err, gocheck.IsNil)
+	c.Assert(ip, gocheck.Not(gocheck.Equals), "")
 	c.Assert(port, gocheck.Not(gocheck.Equals), "")
 }
 
-func (s *S) TestContainerHostPortNoPort(c *gocheck.C) {
+func (s *S) TestContainerNetworkInfoNoPort(c *gocheck.C) {
 	container := container{ID: "c-01"}
-	port, err := container.hostPort()
+	ip, port, err := container.networkInfo()
+	c.Assert(ip, gocheck.Equals, "")
 	c.Assert(port, gocheck.Equals, "")
 	c.Assert(err, gocheck.NotNil)
 	c.Assert(err.Error(), gocheck.Equals, "Container does not contain any mapped port")
 }
 
-func (s *S) TestContainerHostPortNotFound(c *gocheck.C) {
+func (s *S) TestContainerNetworkInfoNotFound(c *gocheck.C) {
 	inspectOut := `{
 	"NetworkSettings": {
 		"IpAddress": "10.10.10.10",
@@ -298,7 +299,8 @@ func (s *S) TestContainerHostPortNotFound(c *gocheck.C) {
 		dCluster = oldCluster
 	}()
 	container := container{ID: "c-01", Port: "8888"}
-	port, err := container.hostPort()
+	ip, port, err := container.networkInfo()
+	c.Assert(ip, gocheck.Equals, "")
 	c.Assert(port, gocheck.Equals, "")
 	c.Assert(err, gocheck.NotNil)
 	c.Assert(err.Error(), gocheck.Equals, "Container port 8888 is not mapped to any host port")

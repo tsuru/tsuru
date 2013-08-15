@@ -150,6 +150,25 @@ func newContainer(app provision.App, imageId string, cmds []string) (container, 
 	return cont, nil
 }
 
+// networkInfo returns the IP and the host port for the container.
+func (c *container) networkInfo() (string, string, error) {
+	if c.Port == "" {
+		return "", "", errors.New("Container does not contain any mapped port")
+	}
+	dockerContainer, err := dockerCluster().InspectContainer(c.ID)
+	if err != nil {
+		return "", "", err
+	}
+	if dockerContainer.NetworkSettings != nil {
+		ip := dockerContainer.NetworkSettings.IPAddress
+		mappedPorts := dockerContainer.NetworkSettings.PortMapping
+		if port, ok := mappedPorts["Tcp"][c.Port]; ok {
+			return ip, port, nil
+		}
+	}
+	return "", "", fmt.Errorf("Container port %s is not mapped to any host port", c.Port)
+}
+
 // hostPort returns the host port mapped for the container.
 func (c *container) hostPort() (string, error) {
 	if c.Port == "" {
