@@ -52,7 +52,7 @@ func (h *ContainerHealer) isRunning(c *container) bool {
 	return !strings.Contains(c.Status, "Exit")
 }
 
-// unhealthyContainers returns a list of unhealthy containers.
+// unhealthyRunningContainers returns a list of unhealthy containers.
 // It uses ContainerHealer.isHealthy method to filter containers.
 func (h *ContainerHealer) unhealthyRunningContainers(containers []container) []container {
 	unhealthy := []container{}
