@@ -13,6 +13,20 @@ import (
 type ContainerHealer struct{}
 
 func (h *ContainerHealer) Heal() error {
+	containers, err := h.collectContainers()
+	if err != nil {
+		return err
+	}
+	unhealthy := h.unhealthyRunningContainers(containers)
+	for _, c := range unhealthy {
+		if err := dCluster.KillContainer(c.ID); err != nil {
+			log.Printf("Caught error while killing container %s for healing: %s", c.ID, err.Error())
+			continue
+		}
+		if err := dCluster.StartContainer(c.ID); err != nil {
+			log.Printf("Caught error while starting container %s for healing: %s", c.ID, err.Error())
+		}
+	}
 	return nil
 }
 

@@ -19,13 +19,20 @@ func (s *HealerSuite) SetUpSuite(c *gocheck.C) {
 	s.healer = &ContainerHealer{}
 }
 
-//func (s *HealerSuite) TestContainerHealCallsKillOnApi
-
 func (s *HealerSuite) TestContainerHealerImplementsHealInterface(c *gocheck.C) {
 	var h interface{}
 	h = &ContainerHealer{}
 	_, ok := h.(heal.Healer)
 	c.Assert(ok, gocheck.Equals, true)
+}
+
+func (s *HealerSuite) TestContainerHealPerformListContainersKillAndStartOnUnhealthyContainers(c *gocheck.C) {
+	var calls int
+	restore := startDockerTestServer("4567", &calls)
+	defer restore()
+	err := s.healer.Heal()
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(calls, gocheck.Equals, 3)
 }
 
 func (s *HealerSuite) TestCollectContainersCallsDockerApi(c *gocheck.C) {
