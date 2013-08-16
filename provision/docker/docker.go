@@ -269,13 +269,20 @@ func (c *container) remove() error {
 	return nil
 }
 
-func (c *container) ssh(stdout, stderr io.Writer, cmd string, args ...string) error {
-	port, _ := config.GetInt("docker:ssh-agent-port")
-	if port == 0 {
-		port = 4545
+func (c *container) removeHost() error {
+	url := fmt.Sprintf("http://%s:%d/container/%s", c.HostAddr, c.agentPort(), c.IP)
+	request, _ := http.NewRequest("DELETE", url, nil)
+	resp, err := http.DefaultClient.Do(request)
+	if err != nil {
+		return err
 	}
+	resp.Body.Close()
+	return nil
+}
+
+func (c *container) ssh(stdout, stderr io.Writer, cmd string, args ...string) error {
 	stdout = &filter{w: stdout, content: []byte("unable to resolve host")}
-	url := fmt.Sprintf("http://%s:%d/container/%s/cmd", c.HostAddr, port, c.IP)
+	url := fmt.Sprintf("http://%s:%d/container/%s/cmd", c.HostAddr, c.agentPort(), c.IP)
 	input := cmdInput{Cmd: cmd, Args: args}
 	var buf bytes.Buffer
 	err := json.NewEncoder(&buf).Encode(input)
@@ -289,6 +296,14 @@ func (c *container) ssh(stdout, stderr io.Writer, cmd string, args ...string) er
 	defer resp.Body.Close()
 	_, err = io.Copy(stdout, resp.Body)
 	return err
+}
+
+func (c *container) agentPort() int {
+	port, _ := config.GetInt("docker:ssh-agent-port")
+	if port == 0 {
+		port = 4545
+	}
+	return port
 }
 
 // commit commits an image in docker based in the container

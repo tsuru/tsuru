@@ -240,6 +240,23 @@ func (s *S) TestRemoveContainerIgnoreErrors(c *gocheck.C) {
 	c.Assert(rtesting.FakeRouter.HasRoute(container.AppName, container.getAddress()), gocheck.Equals, false)
 }
 
+func (s *S) TestContainerRemoveHost(c *gocheck.C) {
+	var handler FakeSSHServer
+	handler.output = ". .."
+	server := httptest.NewServer(&handler)
+	defer server.Close()
+	host, port, _ := net.SplitHostPort(server.Listener.Addr().String())
+	portNumber, _ := strconv.Atoi(port)
+	config.Set("docker:ssh-agent-port", portNumber)
+	defer config.Unset("docker:ssh-agent-port")
+	container := container{ID: "c-036", AppName: "starbreaker", Type: "python", IP: "10.10.10.1", HostAddr: host}
+	err := container.removeHost()
+	c.Assert(err, gocheck.IsNil)
+	request := handler.requests[0]
+	c.Assert(request.Method, gocheck.Equals, "DELETE")
+	c.Assert(request.URL.Path, gocheck.Equals, "/container/10.10.10.1")
+}
+
 func (s *S) TestContainerNetworkInfo(c *gocheck.C) {
 	err := s.newImage()
 	c.Assert(err, gocheck.IsNil)

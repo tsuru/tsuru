@@ -103,13 +103,15 @@ type FakeSSHServer struct {
 }
 
 func (h *FakeSSHServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	var input cmdInput
-	defer r.Body.Close()
-	err := json.NewDecoder(r.Body).Decode(&input)
-	if err != nil {
-		panic(err)
+	if strings.HasSuffix(r.URL.Path, "/cmd") {
+		var input cmdInput
+		defer r.Body.Close()
+		err := json.NewDecoder(r.Body).Decode(&input)
+		if err != nil {
+			panic(err)
+		}
+		h.bodies = append(h.bodies, input)
 	}
 	h.requests = append(h.requests, r)
-	h.bodies = append(h.bodies, input)
 	w.Write([]byte(h.output))
 }
