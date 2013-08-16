@@ -34,6 +34,11 @@ func sshHandler(w http.ResponseWriter, r *http.Request) {
 	executor().Execute("ssh", sshArgs, nil, w, w)
 }
 
+func removeHostHandler(w http.ResponseWriter, r *http.Request) {
+	w = &io.FlushingWriter{ResponseWriter: w}
+	executor().Execute("ssh-keygen", []string{"-R", r.URL.Query().Get(":ip")}, nil, w, w)
+}
+
 type sshAgentCmd struct {
 	listen string
 }
@@ -54,6 +59,7 @@ specify the address to listen on.
 func (cmd *sshAgentCmd) Run(ctx *cmd.Context, client *cmd.Client) error {
 	m := pat.New()
 	m.Post("/container/:ip/cmd", http.HandlerFunc(sshHandler))
+	m.Del("/container/:ip", http.HandlerFunc(removeHostHandler))
 	listener, err := net.Listen("tcp", cmd.listen)
 	if err != nil {
 		return err

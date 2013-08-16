@@ -52,6 +52,21 @@ func (SSHSuite) TestExecuteCommandHandlerInvalidJSON(c *gocheck.C) {
 	c.Assert(recorder.Body.String(), gocheck.Equals, "Invalid JSON\n")
 }
 
+func (SSHSuite) TestRemoveHostHandler(c *gocheck.C) {
+	output := []byte(". ..")
+	out := map[string][][]byte{"*": {output}}
+	fexec := &testing.FakeExecutor{Output: out}
+	setExecut(fexec)
+	defer setExecut(nil)
+	request, _ := http.NewRequest("DELETE", "/container/10.10.10.10?:ip=10.10.10.10", nil)
+	recorder := httptest.NewRecorder()
+	removeHostHandler(recorder, request)
+	c.Assert(recorder.Code, gocheck.Equals, http.StatusOK)
+	args := []string{"-R", "10.10.10.10"}
+	c.Assert(fexec.ExecutedCmd("ssh-keygen", args), gocheck.Equals, true)
+	c.Assert(recorder.Body.String(), gocheck.Equals, ". ..")
+}
+
 func (SSHSuite) TestSSHAgentCmdInfo(c *gocheck.C) {
 	desc := `Start HTTP agent for running commands on Docker via SSH.
 
