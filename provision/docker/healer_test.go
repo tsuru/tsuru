@@ -10,13 +10,24 @@ import (
 )
 
 type HealerSuite struct {
-	healer *ContainerHealer
+	healer  *ContainerHealer
+	calls   int
+	cleanup func()
 }
 
 var _ = gocheck.Suite(&HealerSuite{})
 
 func (s *HealerSuite) SetUpSuite(c *gocheck.C) {
 	s.healer = &ContainerHealer{}
+	s.cleanup = startDockerTestServer("4567", &s.calls)
+}
+
+func (s *HealerSuite) TearDownTest(c *gocheck.C) {
+	s.calls = 0
+}
+
+func (s *HealerSuite) TearDownSuite(c *gocheck.C) {
+	defer s.cleanup()
 }
 
 func (s *HealerSuite) TestContainerHealerShouldBeRegistered(c *gocheck.C) {
@@ -33,27 +44,18 @@ func (s *HealerSuite) TestContainerHealerImplementsHealInterface(c *gocheck.C) {
 }
 
 func (s *HealerSuite) TestContainerHealPerformListContainersKillAndStartOnUnhealthyContainers(c *gocheck.C) {
-	var calls int
-	restore := startDockerTestServer("4567", &calls)
-	defer restore()
 	err := s.healer.Heal()
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(calls, gocheck.Equals, 3)
+	c.Assert(s.calls, gocheck.Equals, 3)
 }
 
 func (s *HealerSuite) TestCollectContainersCallsDockerApi(c *gocheck.C) {
-	var calls int
-	restore := startDockerTestServer("4567", &calls)
-	defer restore()
 	_, err := s.healer.collectContainers()
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(calls, gocheck.Equals, 1)
+	c.Assert(s.calls, gocheck.Equals, 1)
 }
 
 func (s *HealerSuite) TestCollectContainerReturnsCollectedContainers(c *gocheck.C) {
-	var calls int
-	restore := startDockerTestServer("4567", &calls)
-	defer restore()
 	containers, err := s.healer.collectContainers()
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(len(containers), gocheck.Equals, 3)
