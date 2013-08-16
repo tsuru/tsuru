@@ -46,14 +46,14 @@ func dockerCluster() *cluster.Cluster {
 		if len(servers) < 1 {
 			log.Fatal(`Tsuru is misconfigured. Setting "docker:servers" is mandatory`)
 		}
-		nodes := []cluster.Node{}
+		nodes := make([]cluster.Node, len(servers))
 		for index, server := range servers {
 			id := fmt.Sprintf("server%d", index)
 			node := cluster.Node{
 				ID:      id,
 				Address: server,
 			}
-			nodes = append(nodes, node)
+			nodes[index] = node
 			clusterNodes[id] = server
 		}
 		if segregate, _ := config.GetBool("docker:segregate"); segregate {
