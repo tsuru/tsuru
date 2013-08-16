@@ -19,6 +19,12 @@ func (s *HealerSuite) SetUpSuite(c *gocheck.C) {
 	s.healer = &ContainerHealer{}
 }
 
+func (s *HealerSuite) TestContainerHealerShouldBeRegistered(c *gocheck.C) {
+	h, err := heal.Get("docker-container")
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(h, gocheck.FitsTypeOf, ContainerHealer{})
+}
+
 func (s *HealerSuite) TestContainerHealerImplementsHealInterface(c *gocheck.C) {
 	var h interface{}
 	h = &ContainerHealer{}
