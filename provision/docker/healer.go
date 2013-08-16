@@ -57,7 +57,7 @@ func (h *ContainerHealer) isRunning(c *container) bool {
 func (h *ContainerHealer) unhealthyRunningContainers(containers []container) []container {
 	unhealthy := []container{}
 	for _, c := range containers {
-		if !h.isHealthy(&c) {
+		if !h.isHealthy(&c) && h.isRunning(&c) {
 			unhealthy = append(unhealthy, c)
 		}
 	}

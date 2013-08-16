@@ -88,7 +88,7 @@ func (s *HealerSuite) TestIsRunningReturnsTrueForGhostContainers(c *gocheck.C) {
 	c.Assert(running, gocheck.Equals, true)
 }
 
-func (s *HealerSuite) TestUnhealthyContainers(c *gocheck.C) {
+func (s *HealerSuite) TestUnhealthyRunningContainers(c *gocheck.C) {
 	containers := []container{
 		{ID: "8dfafdbc3a40", Image: "base:latest", Status: "Ghost"},
 		{ID: "dca19cd9bb9e", Image: "tsuru/python:latest", Status: "Exit 0"},
@@ -97,7 +97,6 @@ func (s *HealerSuite) TestUnhealthyContainers(c *gocheck.C) {
 	}
 	expected := []container{
 		{ID: "8dfafdbc3a40", Image: "base:latest", Status: "Ghost"},
-		{ID: "3fd99cd9bb84", Image: "tsuru/python:latest", Status: "Exit 127"},
 	}
 	unhealthy := s.healer.unhealthyRunningContainers(containers)
 	c.Assert(unhealthy, gocheck.DeepEquals, expected)
