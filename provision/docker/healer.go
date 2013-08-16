@@ -7,6 +7,7 @@ package docker
 import (
 	dockerClient "github.com/fsouza/go-dockerclient"
 	"github.com/globocom/tsuru/log"
+	"strings"
 )
 
 type ContainerHealer struct{}
@@ -34,4 +35,31 @@ func (h *ContainerHealer) collectContainers() ([]container, error) {
 		containers[i] = c
 	}
 	return containers, nil
+}
+
+// isHealthy analyses the health of a given container.
+// It considers the container.Status field, if it is not up
+// it will return false, otherwise it returns true.
+func (h *ContainerHealer) isHealthy(c *container) bool {
+	return strings.Contains(c.Status, "Up") || c.Status == "Exit 0"
+}
+
+// isRunning checks whether a container is up or not and returns
+// a boolean indicating the result.
+// It analyses the container.Status field, returning false when it is exited
+// and true otherwise.
+func (h *ContainerHealer) isRunning(c *container) bool {
+	return !strings.Contains(c.Status, "Exit")
+}
+
+// unhealthyContainers returns a list of unhealthy containers.
+// It uses ContainerHealer.isHealthy method to filter containers.
+func (h *ContainerHealer) unhealthyRunningContainers(containers []container) []container {
+	unhealthy := []container{}
+	for _, c := range containers {
+		if !h.isHealthy(&c) {
+			unhealthy = append(unhealthy, c)
+		}
+	}
+	return unhealthy
 }
