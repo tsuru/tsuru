@@ -15,7 +15,7 @@ func (h *ContainerHealer) Heal() error {
 	return nil
 }
 
-// collectContainers collect containers running in docker.
+// collectContainers collect and returns all containers running in docker.
 // It calls docker http api to accomplish the task.
 func (h *ContainerHealer) collectContainers() ([]container, error) {
 	opts := dockerClient.ListContainersOptions{All: true}
