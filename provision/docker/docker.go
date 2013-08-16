@@ -252,7 +252,7 @@ func (c *container) remove() error {
 	if err != nil {
 		log.Printf("Failed to remove container from docker: %s", err)
 	}
-	runCmd("ssh-keygen", "-R", c.IP)
+	c.removeHost()
 	log.Printf("Removing container %s from database", c.ID)
 	coll := collection()
 	defer coll.Database.Session.Close()

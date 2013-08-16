@@ -166,7 +166,7 @@ func (s *S) newContainer() (*container, error) {
 		IP:       "10.10.10.10",
 		HostPort: "3333",
 		Port:     "8888",
-		HostAddr: "10.10.10.12",
+		HostAddr: "127.0.0.1",
 	}
 	rtesting.FakeRouter.AddBackend(container.AppName)
 	rtesting.FakeRouter.AddRoute(container.AppName, container.getAddress())
@@ -193,6 +193,8 @@ func (s *S) newContainer() (*container, error) {
 }
 
 func (s *S) TestContainerRemove(c *gocheck.C) {
+	handler, cleanup := startSSHAgentServer("")
+	defer cleanup()
 	fexec := &etesting.FakeExecutor{}
 	setExecut(fexec)
 	defer setExecut(nil)
@@ -203,8 +205,8 @@ func (s *S) TestContainerRemove(c *gocheck.C) {
 	defer rtesting.FakeRouter.RemoveBackend(container.AppName)
 	err = container.remove()
 	c.Assert(err, gocheck.IsNil)
-	args := []string{"-R", container.IP}
-	c.Assert(fexec.ExecutedCmd("ssh-keygen", args), gocheck.Equals, true)
+	c.Assert(handler.requests[0].Method, gocheck.Equals, "DELETE")
+	c.Assert(handler.requests[0].URL.Path, gocheck.Equals, "/container/"+container.IP)
 	coll := s.conn.Collection(s.collName)
 	err = coll.FindId(container.ID).One(&container)
 	c.Assert(err, gocheck.NotNil)
@@ -218,6 +220,8 @@ func (s *S) TestContainerRemove(c *gocheck.C) {
 }
 
 func (s *S) TestRemoveContainerIgnoreErrors(c *gocheck.C) {
+	handler, cleanup := startSSHAgentServer("")
+	defer cleanup()
 	fexec := &etesting.FakeExecutor{}
 	setExecut(fexec)
 	defer setExecut(nil)
@@ -231,8 +235,8 @@ func (s *S) TestRemoveContainerIgnoreErrors(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	err = container.remove()
 	c.Assert(err, gocheck.IsNil)
-	args := []string{"-R", container.IP}
-	c.Assert(fexec.ExecutedCmd("ssh-keygen", args), gocheck.Equals, true)
+	c.Assert(handler.requests[0].Method, gocheck.Equals, "DELETE")
+	c.Assert(handler.requests[0].URL.Path, gocheck.Equals, "/container/"+container.IP)
 	coll := s.conn.Collection(s.collName)
 	err = coll.FindId(container.ID).One(&container)
 	c.Assert(err, gocheck.NotNil)
@@ -258,6 +262,8 @@ func (s *S) TestContainerRemoveHost(c *gocheck.C) {
 }
 
 func (s *S) TestContainerNetworkInfo(c *gocheck.C) {
+	_, cleanup := startSSHAgentServer("")
+	defer cleanup()
 	err := s.newImage()
 	c.Assert(err, gocheck.IsNil)
 	cont, err := s.newContainer()
@@ -413,6 +419,8 @@ func (s *S) TestGetImageWithRegistry(c *gocheck.C) {
 }
 
 func (s *S) TestContainerCommit(c *gocheck.C) {
+	_, cleanup := startSSHAgentServer("")
+	defer cleanup()
 	err := s.newImage()
 	c.Assert(err, gocheck.IsNil)
 	cont, err := s.newContainer()
@@ -514,6 +522,8 @@ func (s *S) TestContainerStop(c *gocheck.C) {
 }
 
 func (s *S) TestContainerLogs(c *gocheck.C) {
+	_, cleanup := startSSHAgentServer("")
+	defer cleanup()
 	err := s.newImage()
 	c.Assert(err, gocheck.IsNil)
 	cont, err := s.newContainer()

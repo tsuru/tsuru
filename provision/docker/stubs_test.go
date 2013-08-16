@@ -6,6 +6,7 @@ package docker
 
 import (
 	"fmt"
+	"github.com/globocom/config"
 	"github.com/globocom/docker-cluster/cluster"
 	etesting "github.com/globocom/tsuru/exec/testing"
 	rtesting "github.com/globocom/tsuru/router/testing"
@@ -13,6 +14,7 @@ import (
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"strings"
 )
 
@@ -148,6 +150,19 @@ func startDockerTestServer(containerPort string, calls *int) func() {
 	return func() {
 		server.Close()
 		dCluster = oldCluster
+	}
+}
+
+func startSSHAgentServer(output string) (*FakeSSHServer, func()) {
+	var handler FakeSSHServer
+	handler.output = output
+	server := httptest.NewServer(&handler)
+	_, port, _ := net.SplitHostPort(server.Listener.Addr().String())
+	portNumber, _ := strconv.Atoi(port)
+	config.Set("docker:ssh-agent-port", portNumber)
+	return &handler, func() {
+		server.Close()
+		config.Unset("docker:ssh-agent-port")
 	}
 }
 

@@ -465,9 +465,9 @@ func (s *S) TestCollectStatus(c *gocheck.C) {
 	var calls int
 	var err error
 	defer startDockerTestServer(listenPort, &calls)()
+	sshHandler, cleanup := startSSHAgentServer("")
+	defer cleanup()
 	defer insertContainers(listenPort)()
-	fexec, restore := mockExecutor()
-	defer restore()
 	expected := []provision.Unit{
 		{
 			Name:    "9930c24f1c5f",
@@ -502,7 +502,13 @@ func (s *S) TestCollectStatus(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(cont.IP, gocheck.Equals, "127.0.0.1")
 	c.Assert(cont.HostPort, gocheck.Equals, "9024")
-	c.Assert(fexec.ExecutedCmd("ssh-keygen", []string{"-R", "127.0.0.4"}), gocheck.Equals, true)
+	if sshHandler.requests[0].URL.Path == "/container/127.0.0.4" {
+		sshHandler.requests[0], sshHandler.requests[1] = sshHandler.requests[1], sshHandler.requests[0]
+	}
+	c.Assert(sshHandler.requests[0].URL.Path, gocheck.Equals, "/container/127.0.0.3")
+	c.Assert(sshHandler.requests[0].Method, gocheck.Equals, "DELETE")
+	c.Assert(sshHandler.requests[1].URL.Path, gocheck.Equals, "/container/127.0.0.4")
+	c.Assert(sshHandler.requests[1].Method, gocheck.Equals, "DELETE")
 	c.Assert(rtesting.FakeRouter.HasRoute("make-up", "http://127.0.0.1:9025"), gocheck.Equals, false)
 	c.Assert(rtesting.FakeRouter.HasRoute("make-up", "http://127.0.0.1:9024"), gocheck.Equals, true)
 	c.Assert(calls, gocheck.Equals, 2)
