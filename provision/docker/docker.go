@@ -415,7 +415,7 @@ func replicateImage(name string) error {
 		}
 		pushOpts := dclient.PushImageOptions{Name: name}
 		for i := 0; i < maxTry; i++ {
-			err = dockerCluster().PushImage(pushOpts, &buf)
+			err = dockerCluster().PushImage(pushOpts, dclient.AuthConfiguration{}, &buf)
 			if err == nil {
 				buf.Reset()
 				break
