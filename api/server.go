@@ -114,10 +114,9 @@ func RunServer(dry bool) {
 	m.Put("/swap", authorizationRequiredHandler(swap))
 
 	if !dry {
-		provisioner, err := config.GetString("provisioner")
+		provisioner, err := getProvisioner()
 		if err != nil {
 			fmt.Printf("Warning: configuration didn't declare a provisioner, using default provisioner.\n")
-			provisioner = "juju"
 		}
 		app.Provisioner, err = provision.Get(provisioner)
 		if err != nil {

@@ -45,7 +45,8 @@ func (s *HealerSuite) TestHealers(c *gocheck.C) {
 	err = json.Unmarshal(body, &h)
 	c.Assert(err, gocheck.IsNil)
 	expected := map[string]string{}
-	for healer := range heal.All() {
+	p, _ := getProvisioner()
+	for healer := range heal.All(p) {
 		expected[healer] = fmt.Sprintf("/healers/%s", healer)
 	}
 	c.Assert(h, gocheck.DeepEquals, expected)
@@ -53,7 +54,8 @@ func (s *HealerSuite) TestHealers(c *gocheck.C) {
 
 func (s *HealerSuite) TestHealer(c *gocheck.C) {
 	fake := &FakeHealer{}
-	heal.Register("fake", fake)
+	p, _ := getProvisioner()
+	heal.Register(p, "fake", fake)
 	recorder := httptest.NewRecorder()
 	request, err := http.NewRequest("GET", "/healers/fake?:healer=fake", nil)
 	c.Assert(err, gocheck.IsNil)
