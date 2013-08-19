@@ -13,7 +13,6 @@ import (
 	"net/http"
 )
 
-// this might be duplicated logic, check it out before commiting
 func getProvisioner() (string, error) {
 	provisioner, err := config.GetString("provisioner")
 	if provisioner == "" {
