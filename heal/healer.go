@@ -13,22 +13,26 @@ type Healer interface {
 	Heal() error
 }
 
-var healers = make(map[string]Healer)
+var healers = make(map[string]map[string]Healer)
 
 // Register registers a new healer in the Healer registry.
-func Register(name string, h Healer) {
-	healers[name] = h
+func Register(provisioner, name string, h Healer) {
+	if _, ok := healers[provisioner]; !ok {
+		healers[provisioner] = map[string]Healer{name: h}
+	} else {
+		healers[provisioner][name] = h
+	}
 }
 
 // Get gets the named healer from the registry.
-func Get(name string) (Healer, error) {
-	h, ok := healers[name]
+func Get(provisioner, name string) (Healer, error) {
+	h, ok := healers[provisioner][name]
 	if !ok {
-		return nil, fmt.Errorf("Unknown healer: %q.", name)
+		return nil, fmt.Errorf("Unknown healer %q for provisioner %q.", name, provisioner)
 	}
 	return h, nil
 }
 
-func All() map[string]Healer {
-	return healers
+func All(provisioner string) map[string]Healer {
+	return healers[provisioner]
 }
