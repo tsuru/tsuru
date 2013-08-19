@@ -21,14 +21,14 @@ import (
 )
 
 func init() {
-	heal.Register("bootstrap", bootstrapMachineHealer{})
-	heal.Register("bootstrap-provision", bootstrapProvisionHealer{})
-	heal.Register("instance-machine", instanceMachineHealer{})
-	heal.Register("instance-agents-config", instanceAgentsConfigHealer{})
-	heal.Register("instance-unit", instanceUnitHealer{})
-	heal.Register("zookeeper", zookeeperHealer{})
-	heal.Register("elb-instance", elbInstanceHealer{})
-	heal.Register("bootstrap-instanceid", bootstrapInstanceIDHealer{})
+	heal.Register("juju", "bootstrap", bootstrapMachineHealer{})
+	heal.Register("juju", "bootstrap-provision", bootstrapProvisionHealer{})
+	heal.Register("juju", "instance-machine", instanceMachineHealer{})
+	heal.Register("juju", "instance-agents-config", instanceAgentsConfigHealer{})
+	heal.Register("juju", "instance-unit", instanceUnitHealer{})
+	heal.Register("juju", "zookeeper", zookeeperHealer{})
+	heal.Register("juju", "elb-instance", elbInstanceHealer{})
+	heal.Register("juju", "bootstrap-instanceid", bootstrapInstanceIDHealer{})
 }
 
 type bootstrapInstanceIDHealer struct {

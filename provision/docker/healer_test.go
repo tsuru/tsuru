@@ -31,7 +31,7 @@ func (s *HealerSuite) TearDownSuite(c *gocheck.C) {
 }
 
 func (s *HealerSuite) TestContainerHealerShouldBeRegistered(c *gocheck.C) {
-	h, err := heal.Get("docker-container")
+	h, err := heal.Get("docker", "container")
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(h, gocheck.FitsTypeOf, ContainerHealer{})
 }

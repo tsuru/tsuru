@@ -23,7 +23,7 @@ import (
 )
 
 func (s *S) TestBootstrapInstanceIDHealerShouldBeRegistered(c *gocheck.C) {
-	h, err := heal.Get("bootstrap-instanceid")
+	h, err := heal.Get("juju", "bootstrap-instanceid")
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(h, gocheck.FitsTypeOf, bootstrapInstanceIDHealer{})
 }
@@ -123,7 +123,7 @@ func (s *S) TestBootstrapInstanceIDHealerS3(c *gocheck.C) {
 }
 
 func (s *S) TestInstanceAgentsConfigHealerShouldBeRegistered(c *gocheck.C) {
-	h, err := heal.Get("instance-agents-config")
+	h, err := heal.Get("juju", "instance-agents-config")
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(h, gocheck.FitsTypeOf, instanceAgentsConfigHealer{})
 }
@@ -281,7 +281,7 @@ func (s *S) TestGetPrivateDns(c *gocheck.C) {
 }
 
 func (s *S) TestInstanceUnitShouldBeRegistered(c *gocheck.C) {
-	h, err := heal.Get("instance-unit")
+	h, err := heal.Get("juju", "instance-unit")
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(h, gocheck.FitsTypeOf, instanceUnitHealer{})
 }
@@ -347,7 +347,7 @@ func (s *S) TestInstaceUnitHeal(c *gocheck.C) {
 }
 
 func (s *S) TestInstanceMachineShouldBeRegistered(c *gocheck.C) {
-	h, err := heal.Get("instance-machine")
+	h, err := heal.Get("juju", "instance-machine")
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(h, gocheck.FitsTypeOf, instanceMachineHealer{})
 }
@@ -415,7 +415,7 @@ func (s *S) TestInstanceMachineHeal(c *gocheck.C) {
 }
 
 func (s *S) TestZookeeperHealerShouldBeRegistered(c *gocheck.C) {
-	h, err := heal.Get("zookeeper")
+	h, err := heal.Get("juju", "zookeeper")
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(h, gocheck.FitsTypeOf, zookeeperHealer{})
 }
@@ -533,7 +533,7 @@ func (s *S) TestZookeeperHealerHeal(c *gocheck.C) {
 }
 
 func (s *S) TestBootstrapProvisionHealerShouldBeRegistered(c *gocheck.C) {
-	h, err := heal.Get("bootstrap-provision")
+	h, err := heal.Get("juju", "bootstrap-provision")
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(h, gocheck.FitsTypeOf, bootstrapProvisionHealer{})
 }
@@ -573,7 +573,7 @@ func (s *S) TestBootstrapProvisionHealerHeal(c *gocheck.C) {
 }
 
 func (s *S) TestBootstrapMachineHealerShouldBeRegistered(c *gocheck.C) {
-	h, err := heal.Get("bootstrap")
+	h, err := heal.Get("juju", "bootstrap")
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(h, gocheck.FitsTypeOf, bootstrapMachineHealer{})
 }
@@ -666,7 +666,7 @@ func (s *S) TestBootstrapMachineHealerOnlyHealsWhenItIsNeeded(c *gocheck.C) {
 }
 
 func (s *S) TestELBInstanceHealerShouldBeRegistered(c *gocheck.C) {
-	h, err := heal.Get("elb-instance")
+	h, err := heal.Get("juju", "elb-instance")
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(h, gocheck.FitsTypeOf, elbInstanceHealer{})
 }

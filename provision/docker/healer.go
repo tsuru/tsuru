@@ -12,7 +12,7 @@ import (
 )
 
 func init() {
-	heal.Register("docker-container", ContainerHealer{})
+	heal.Register("docker", "container", ContainerHealer{})
 }
 
 type ContainerHealer struct{}
