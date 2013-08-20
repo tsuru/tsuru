@@ -13,7 +13,6 @@ import (
 	"github.com/globocom/tsuru/app/bind"
 	"github.com/globocom/tsuru/auth"
 	"github.com/globocom/tsuru/errors"
-	"github.com/globocom/tsuru/log"
 	"github.com/globocom/tsuru/provision"
 	"github.com/globocom/tsuru/queue"
 	"github.com/globocom/tsuru/quota"
@@ -22,10 +21,8 @@ import (
 	"github.com/globocom/tsuru/testing"
 	"labix.org/v2/mgo/bson"
 	"launchpad.net/gocheck"
-	stdlog "log"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"reflect"
 	"sort"
 	"strconv"
@@ -1379,181 +1376,6 @@ func (s *S) TestIsValid(c *gocheck.C) {
 	}
 }
 
-func (s *S) TestLoadConf(c *gocheck.C) {
-	output := `hooks:
-  pre-restart:
-    - testdata/pre.sh
-  post-restart:
-    - testdata/pos.sh
-`
-	s.provisioner.PrepareOutput([]byte(output))
-	a := App{
-		Name:     "something",
-		Platform: "django",
-		Units:    []Unit{{Name: "i-0800", State: "started"}},
-	}
-	err := a.loadConf()
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(a.conf.Hooks.PreRestart, gocheck.DeepEquals, []string{"testdata/pre.sh"})
-	c.Assert(a.conf.Hooks.PostRestart, gocheck.DeepEquals, []string{"testdata/pos.sh"})
-	cmds := s.provisioner.GetCmds("cat /home/application/current/app.yaml", &a)
-	c.Assert(cmds, gocheck.HasLen, 1)
-}
-
-func (s *S) TestLoadConfWithListOfCommands(c *gocheck.C) {
-	output := `hooks:
-  pre-restart:
-    - testdata/pre.sh
-    - ls -lh
-    - sudo rm -rf /
-  post-restart:
-    - testdata/pos.sh
-`
-	s.provisioner.PrepareOutput([]byte(output))
-	a := App{
-		Name:     "something",
-		Platform: "django",
-		Units:    []Unit{{Name: "i-0800", State: "started"}},
-	}
-	err := a.loadConf()
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(a.conf.Hooks.PreRestart, gocheck.DeepEquals, []string{"testdata/pre.sh", "ls -lh", "sudo rm -rf /"})
-	c.Assert(a.conf.Hooks.PostRestart, gocheck.DeepEquals, []string{"testdata/pos.sh"})
-}
-
-func (s *S) TestLoadConfWithError(c *gocheck.C) {
-	a := App{Name: "something", Platform: "django"}
-	err := a.loadConf()
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(a.conf.Hooks.PreRestart, gocheck.IsNil)
-	c.Assert(a.conf.Hooks.PostRestart, gocheck.IsNil)
-}
-
-func (s *S) TestPreRestart(c *gocheck.C) {
-	s.provisioner.PrepareOutput([]byte("pre-restarted"))
-	a := App{
-		Name:     "something",
-		Platform: "django",
-		conf: &conf{
-			Hooks: hooks{
-				PreRestart:  []string{"pre.sh"},
-				PostRestart: []string{"pos.sh"},
-			},
-		},
-		Units: []Unit{{Name: "i-0800", State: "pending"}},
-	}
-	w := new(bytes.Buffer)
-	err := a.preRestart(w)
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(err, gocheck.IsNil)
-	st := strings.Replace(w.String(), "\n", "###", -1)
-	c.Assert(st, gocheck.Matches, `.*### ---> Running pre-restart###.*pre-restarted$`)
-	cmds := s.provisioner.GetCmds("", &a)
-	c.Assert(cmds, gocheck.HasLen, 1)
-	c.Assert(cmds[0].Cmd, gocheck.Matches, `^\[ -f /home/application/apprc \] && source /home/application/apprc; \[ -d /home/application/current \] && cd /home/application/current;.*pre.sh$`)
-}
-
-func (s *S) TestPreRestartWhenAppConfDoesNotExist(c *gocheck.C) {
-	a := App{Name: "something", Platform: "django"}
-	w := new(bytes.Buffer)
-	l := stdlog.New(w, "", stdlog.LstdFlags)
-	log.SetLogger(l)
-	err := a.preRestart(w)
-	c.Assert(err, gocheck.IsNil)
-}
-
-func (s *S) TestSkipsPreRestartWhenPreRestartSectionDoesNotExists(c *gocheck.C) {
-	a := App{
-		Name:     "something",
-		Platform: "django",
-		Units:    []Unit{{State: string(provision.StatusStarted), Machine: 1}},
-		conf:     &conf{Hooks: hooks{PostRestart: []string{"somescript.sh"}}},
-	}
-	w := new(bytes.Buffer)
-	l := stdlog.New(w, "", stdlog.LstdFlags)
-	log.SetLogger(l)
-	err := a.preRestart(w)
-	c.Assert(err, gocheck.IsNil)
-}
-
-func (s *S) TestPreRestartExpandsEnvironmentVariables(c *gocheck.C) {
-	s.provisioner.PrepareOutput([]byte("pre-restarted"))
-	path := os.Getenv("PATH")
-	a := App{
-		Name:     "something",
-		Platform: "django",
-		Units:    []Unit{{State: string(provision.StatusStarted), Machine: 1}},
-		Env: map[string]bind.EnvVar{
-			"DATABASE_NAME": {Name: "DATABASE_NAME", Value: "myappdb"},
-		},
-		conf: &conf{Hooks: hooks{PreRestart: []string{"echo $PATH $DATABASE_NAME $KEEP_ME"}}},
-	}
-	var buf bytes.Buffer
-	err := a.preRestart(&buf)
-	c.Assert(err, gocheck.IsNil)
-	cmds := s.provisioner.GetCmds("", &a)
-	c.Assert(cmds, gocheck.HasLen, 1)
-	c.Assert(cmds[0].Cmd, gocheck.Matches, `^\[ -f /home/application/apprc \] && source /home/application/apprc; \[ -d /home/application/current \] && cd /home/application/current; echo `+path+` myappdb \${KEEP_ME}$`)
-}
-
-func (s *S) TestPostRestart(c *gocheck.C) {
-	s.provisioner.PrepareOutput([]byte("restarted"))
-	a := App{
-		Name:     "something",
-		Platform: "django",
-		Units:    []Unit{{Name: "i-0800", State: "started"}},
-		conf:     &conf{Hooks: hooks{PostRestart: []string{"pos.sh"}}},
-	}
-	w := new(bytes.Buffer)
-	err := a.postRestart(w)
-	c.Assert(err, gocheck.IsNil)
-	st := strings.Replace(w.String(), "\n", "###", -1)
-	c.Assert(st, gocheck.Matches, `.*restarted$`)
-}
-
-func (s *S) TestPostRestartWhenAppConfDoesNotExists(c *gocheck.C) {
-	a := App{Name: "something", Platform: "django"}
-	w := new(bytes.Buffer)
-	l := stdlog.New(w, "", stdlog.LstdFlags)
-	log.SetLogger(l)
-	err := a.postRestart(w)
-	c.Assert(err, gocheck.IsNil)
-}
-
-func (s *S) TestSkipsPostRestartWhenPostRestartSectionDoesNotExists(c *gocheck.C) {
-	a := App{
-		Name:     "something",
-		Platform: "django",
-		Units:    []Unit{{State: string(provision.StatusStarted), Machine: 1}},
-		conf:     &conf{Hooks: hooks{PreRestart: []string{"somescript.sh"}}},
-	}
-	w := new(bytes.Buffer)
-	l := stdlog.New(w, "", stdlog.LstdFlags)
-	log.SetLogger(l)
-	err := a.postRestart(w)
-	c.Assert(err, gocheck.IsNil)
-}
-
-func (s *S) TestPostRestartExpandsEnvironmentVariables(c *gocheck.C) {
-	s.provisioner.PrepareOutput([]byte("post-restarted"))
-	path := os.Getenv("PATH")
-	a := App{
-		Name:     "something",
-		Platform: "django",
-		Units:    []Unit{{State: string(provision.StatusStarted), Machine: 1}},
-		Env: map[string]bind.EnvVar{
-			"DATABASE_NAME": {Name: "DATABASE_NAME", Value: "myappdb"},
-		},
-		conf: &conf{Hooks: hooks{PostRestart: []string{"echo $PATH $DATABASE_NAME $KEEP_ME"}}},
-	}
-	var buf bytes.Buffer
-	err := a.postRestart(&buf)
-	c.Assert(err, gocheck.IsNil)
-	cmds := s.provisioner.GetCmds("", &a)
-	c.Assert(cmds, gocheck.HasLen, 1)
-	c.Assert(cmds[0].Cmd, gocheck.Matches, `^\[ -f /home/application/apprc \] && source /home/application/apprc; \[ -d /home/application/current \] && cd /home/application/current; echo `+path+` myappdb \${KEEP_ME}$`)
-}
-
 func (s *S) TestReady(c *gocheck.C) {
 	a := App{Name: "twisted"}
 	s.conn.Apps().Insert(a)
@@ -1584,44 +1406,6 @@ func (s *S) TestRestart(c *gocheck.C) {
 	c.Assert(result, gocheck.Matches, ".*# ---> Restarting your app#.*")
 	restarts := s.provisioner.Restarts(&a)
 	c.Assert(restarts, gocheck.Equals, 1)
-}
-
-func (s *S) TestRestartRunsPreRestartHook(c *gocheck.C) {
-	s.provisioner.PrepareOutput([]byte("pre-restart-by-restart"))
-	a := App{
-		Name:     "someApp",
-		Platform: "django",
-		Teams:    []string{s.team.Name},
-		Units:    []Unit{{Name: "i-0800", State: "started"}},
-		conf:     &conf{Hooks: hooks{PreRestart: []string{"pre.sh"}}},
-	}
-	s.provisioner.Provision(&a)
-	defer s.provisioner.Destroy(&a)
-	var buf bytes.Buffer
-	err := a.Restart(&buf)
-	c.Assert(err, gocheck.IsNil)
-	content := buf.String()
-	content = strings.Replace(content, "\n", "###", -1)
-	c.Assert(content, gocheck.Matches, "^.*### ---> Running pre-restart###.*$")
-}
-
-func (s *S) TestRestartRunsPostRestartHook(c *gocheck.C) {
-	s.provisioner.PrepareOutput([]byte("post-restart-by-restart"))
-	a := App{
-		Name:     "someApp",
-		Platform: "django",
-		Teams:    []string{s.team.Name},
-		Units:    []Unit{{Name: "i-0800", State: "started"}},
-		conf:     &conf{Hooks: hooks{PostRestart: []string{"pos.sh"}}},
-	}
-	s.provisioner.Provision(&a)
-	defer s.provisioner.Destroy(&a)
-	var buf bytes.Buffer
-	err := a.Restart(&buf)
-	c.Assert(err, gocheck.IsNil)
-	content := buf.String()
-	content = strings.Replace(content, "\n", "###", -1)
-	c.Assert(content, gocheck.Matches, "^.*### ---> Running post-restart###.*$")
 }
 
 func (s *S) TestLog(c *gocheck.C) {

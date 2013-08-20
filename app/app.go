@@ -24,9 +24,7 @@ import (
 	"github.com/globocom/tsuru/service"
 	"io"
 	"labix.org/v2/mgo/bson"
-	"launchpad.net/goyaml"
 	"os"
-	"path"
 	"regexp"
 	"sort"
 	"strings"
@@ -53,7 +51,6 @@ type App struct {
 	Teams    []string
 	Owner    string
 	State    string
-	conf     *conf
 }
 
 // MarshalJSON marshals the app in json format. It returns a JSON object with
@@ -77,15 +74,6 @@ type Applog struct {
 	Message string
 	Source  string
 	AppName string
-}
-
-type hooks struct {
-	PreRestart  []string `yaml:"pre-restart"`
-	PostRestart []string `yaml:"post-restart"`
-}
-
-type conf struct {
-	Hooks hooks
 }
 
 // Get queries the database and fills the App object with data retrieved from
@@ -508,73 +496,6 @@ func (app *App) InstanceEnv(name string) map[string]bind.EnvVar {
 	return envs
 }
 
-// loadConf loads app configuration from app.yaml.
-func (app *App) loadConf() error {
-	if app.conf != nil {
-		return nil
-	}
-	app.conf = new(conf)
-	uRepo, err := repository.GetPath()
-	if err != nil {
-		app.Log(fmt.Sprintf("Got error while getting repository path: %s", err), "tsuru")
-		return err
-	}
-	cmd := "cat " + path.Join(uRepo, "app.yaml")
-	var outStream, errStream bytes.Buffer
-	if err := Provisioner.ExecuteCommand(&outStream, &errStream, app, cmd); err != nil {
-		return nil
-	}
-	err = goyaml.Unmarshal(outStream.Bytes(), app.conf)
-	if err != nil {
-		app.Log(fmt.Sprintf("Got error while parsing yaml: %s", err), "tsuru")
-		return err
-	}
-	return nil
-}
-
-// preRestart is responsible for running user's pre-restart script.
-//
-// The path to this script can be found at the app.conf file, at the root of user's app repository.
-func (app *App) preRestart(w io.Writer) error {
-	if err := app.loadConf(); err != nil {
-		return err
-	}
-	return app.runHook(w, app.conf.Hooks.PreRestart, "pre-restart")
-}
-
-// posRestart is responsible for running user's post-restart script.
-//
-// The path to this script can be found at the app.conf file, at the root of
-// user's app repository.
-func (app *App) postRestart(w io.Writer) error {
-	if err := app.loadConf(); err != nil {
-		return err
-	}
-	return app.runHook(w, app.conf.Hooks.PostRestart, "post-restart")
-}
-
-// runHook executes the given list of commands, as a hook identified by the
-// kind string. If the list is empty, it returns nil.
-//
-// The hook itself may be "pre-restart" or "post-restart".
-func (app *App) runHook(w io.Writer, cmds []string, kind string) error {
-	if len(cmds) == 0 {
-		return nil
-	}
-	app.Log(fmt.Sprintf("Executing %s hook...", kind), "tsuru")
-	err := log.Write(w, []byte("\n ---> Running "+kind+"\n"))
-	if err != nil {
-		return err
-	}
-	for _, cmd := range cmds {
-		err = app.sourced(cmd, w)
-		if err != nil {
-			return err
-		}
-	}
-	return err
-}
-
 // Run executes the command in app units, sourcing apprc before running the
 // command.
 func (app *App) Run(cmd string, w io.Writer) error {
@@ -607,13 +528,7 @@ func (app *App) run(cmd string, w io.Writer) error {
 
 // Restart runs the restart hook for the app, writing its output to w.
 func (app *App) Restart(w io.Writer) error {
-	app.Log("executing hook to restart", "tsuru")
-	err := app.preRestart(w)
-	if err != nil {
-		log.Printf("[restart] error on pre-restart the app %s - %s", app.Name, err)
-		return err
-	}
-	err = log.Write(w, []byte("\n ---> Restarting your app\n"))
+	err := log.Write(w, []byte("\n ---> Restarting your app\n"))
 	if err != nil {
 		log.Printf("[restart] error on write app log for the app %s - %s", app.Name, err)
 		return err
@@ -621,11 +536,6 @@ func (app *App) Restart(w io.Writer) error {
 	err = Provisioner.Restart(app)
 	if err != nil {
 		log.Printf("[restart] error on restart the app %s - %s", app.Name, err)
-		return err
-	}
-	err = app.postRestart(w)
-	if err != nil {
-		log.Printf("[restart] error on post-restart the app %s - %s", app.Name, err)
 		return err
 	}
 	return nil
