@@ -5,7 +5,6 @@
 package heal
 
 import (
-	//"github.com/globocom/tsuru/provision"
 	"launchpad.net/gocheck"
 	"testing"
 )
