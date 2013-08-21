@@ -378,17 +378,9 @@ func (*JujuProvisioner) startedUnits(app provision.App) []provision.AppUnit {
 
 func (p *JujuProvisioner) ExecuteCommandOnce(stdout, stderr io.Writer, app provision.App, cmd string, args ...string) error {
 	arguments := []string{"ssh", "-o", "StrictHostKeyChecking no", "-q"}
-	units := app.ProvisionedUnits()
-	length := len(units)
-	for _, unit := range units {
-		if length > 1 {
-			fmt.Fprintf(stdout, "Output from unit %q:\n\n", unit.GetName())
-			if status := unit.GetStatus(); status != provision.StatusStarted {
-				fmt.Fprintf(stdout, "Unit state is %q, it must be %q for running commands.\n",
-					status, provision.StatusStarted)
-				continue
-			}
-		}
+	units := p.startedUnits(app)
+	if len(units) > 0 {
+		unit := units[0]
 		var cmdargs []string
 		cmdargs = append(cmdargs, arguments...)
 		cmdargs = append(cmdargs, strconv.Itoa(unit.GetMachine()), cmd)
@@ -400,7 +392,6 @@ func (p *JujuProvisioner) ExecuteCommandOnce(stdout, stderr io.Writer, app provi
 			log.Printf("error on execute cmd %s on machine %s", cmd, strconv.Itoa(unit.GetMachine()))
 			return err
 		}
-		return nil
 	}
 	return nil
 }
