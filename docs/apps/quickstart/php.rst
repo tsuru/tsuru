@@ -79,6 +79,7 @@ project:
 .. highlight:: bash
 
 ::
+
     # Download and unpack wordpress    
     $ wget http://wordpress.org/latest.zip
     $ unzip latest.zip
