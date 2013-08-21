@@ -17,7 +17,7 @@ func (s *S) TestCreateContainerName(c *gocheck.C) {
 }
 
 func (s *S) TestCreateContainerForward(c *gocheck.C) {
-	err := s.newImage()
+	err := s.newImage("tsuru/python")
 	c.Assert(err, gocheck.IsNil)
 	client, err := dockerClient.NewClient(s.server.URL())
 	c.Assert(err, gocheck.IsNil)
@@ -98,7 +98,7 @@ func (s *S) TestSetNetworkInfoName(c *gocheck.C) {
 }
 
 func (s *S) TestSetNetworkInfoForward(c *gocheck.C) {
-	err := s.newImage()
+	err := s.newImage("tsuru/python")
 	c.Assert(err, gocheck.IsNil)
 	conta, err := s.newContainer()
 	c.Assert(err, gocheck.IsNil)
@@ -114,7 +114,7 @@ func (s *S) TestSetNetworkInfoForward(c *gocheck.C) {
 }
 
 func (s *S) TestSetImage(c *gocheck.C) {
-	err := s.newImage()
+	err := s.newImage("tsuru/python")
 	c.Assert(err, gocheck.IsNil)
 	conta, err := s.newContainer()
 	c.Assert(err, gocheck.IsNil)
@@ -129,7 +129,7 @@ func (s *S) TestSetImage(c *gocheck.C) {
 }
 
 func (s *S) TestStartContainer(c *gocheck.C) {
-	err := s.newImage()
+	err := s.newImage("tsuru/python")
 	c.Assert(err, gocheck.IsNil)
 	conta, err := s.newContainer()
 	c.Assert(err, gocheck.IsNil)

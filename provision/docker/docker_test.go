@@ -39,7 +39,7 @@ func (s *S) TestNewContainer(c *gocheck.C) {
 	oldClusterNodes := clusterNodes
 	clusterNodes = map[string]string{"server": s.server.URL()}
 	defer func() { clusterNodes = oldClusterNodes }()
-	err := s.newImage()
+	err := s.newImage("tsuru/python")
 	c.Assert(err, gocheck.IsNil)
 	app := testing.NewFakeApp("app-name", "python", 1)
 	rtesting.FakeRouter.AddBackend(app.GetName())
@@ -149,8 +149,8 @@ func (s *S) TestContainerSetImage(c *gocheck.C) {
 	c.Assert(c2.Image, gocheck.Equals, "newimage")
 }
 
-func (s *S) newImage() error {
-	opts := dockerClient.PullImageOptions{Repository: "tsuru/python"}
+func (s *S) newImage(repo string) error {
+	opts := dockerClient.PullImageOptions{Repository: repo}
 	client, err := dockerClient.NewClient(s.server.URL())
 	if err != nil {
 		return err
@@ -198,7 +198,7 @@ func (s *S) TestContainerRemove(c *gocheck.C) {
 	fexec := &etesting.FakeExecutor{}
 	setExecut(fexec)
 	defer setExecut(nil)
-	err := s.newImage()
+	err := s.newImage("tsuru/python")
 	c.Assert(err, gocheck.IsNil)
 	container, err := s.newContainer()
 	c.Assert(err, gocheck.IsNil)
@@ -225,7 +225,7 @@ func (s *S) TestRemoveContainerIgnoreErrors(c *gocheck.C) {
 	fexec := &etesting.FakeExecutor{}
 	setExecut(fexec)
 	defer setExecut(nil)
-	err := s.newImage()
+	err := s.newImage("tsuru/python")
 	c.Assert(err, gocheck.IsNil)
 	container, err := s.newContainer()
 	c.Assert(err, gocheck.IsNil)
@@ -264,7 +264,7 @@ func (s *S) TestContainerRemoveHost(c *gocheck.C) {
 func (s *S) TestContainerNetworkInfo(c *gocheck.C) {
 	_, cleanup := startSSHAgentServer("")
 	defer cleanup()
-	err := s.newImage()
+	err := s.newImage("tsuru/python")
 	c.Assert(err, gocheck.IsNil)
 	cont, err := s.newContainer()
 	c.Assert(err, gocheck.IsNil)
@@ -421,7 +421,7 @@ func (s *S) TestGetImageWithRegistry(c *gocheck.C) {
 func (s *S) TestContainerCommit(c *gocheck.C) {
 	_, cleanup := startSSHAgentServer("")
 	defer cleanup()
-	err := s.newImage()
+	err := s.newImage("tsuru/python")
 	c.Assert(err, gocheck.IsNil)
 	cont, err := s.newContainer()
 	c.Assert(err, gocheck.IsNil)
@@ -435,7 +435,7 @@ func (s *S) TestContainerCommit(c *gocheck.C) {
 }
 
 func (s *S) TestRemoveImage(c *gocheck.C) {
-	err := s.newImage()
+	err := s.newImage("tsuru/python")
 	c.Assert(err, gocheck.IsNil)
 	client, err := dockerClient.NewClient(s.server.URL())
 	c.Assert(err, gocheck.IsNil)
@@ -445,9 +445,27 @@ func (s *S) TestRemoveImage(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 }
 
+func (s *S) TestRemoveImageCallsRegistry(c *gocheck.C) {
+	var request http.Request
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		request = *r
+		w.Write([]byte("true"))
+	}))
+	defer server.Close()
+	u, _ := url.Parse(server.URL)
+	imageRepo := u.Host + "/tsuru/python"
+	err := s.newImage(imageRepo)
+	c.Assert(err, gocheck.IsNil)
+	err = removeImage(imageRepo)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(request.Method, gocheck.Equals, "DELETE")
+	path := "/v1/repositories/tsuru/python/tags"
+	c.Assert(request.URL.Path, gocheck.Equals, path)
+}
+
 func (s *S) TestContainerDeploy(c *gocheck.C) {
 	go s.stopContainers(1)
-	err := s.newImage()
+	err := s.newImage("tsuru/python")
 	c.Assert(err, gocheck.IsNil)
 	app := testing.NewFakeApp("myapp", "python", 1)
 	rtesting.FakeRouter.AddBackend(app.GetName())
@@ -458,7 +476,7 @@ func (s *S) TestContainerDeploy(c *gocheck.C) {
 }
 
 func (s *S) TestStart(c *gocheck.C) {
-	err := s.newImage()
+	err := s.newImage("tsuru/python")
 	c.Assert(err, gocheck.IsNil)
 	app := testing.NewFakeApp("myapp", "python", 1)
 	imageId := getImage(app)
@@ -493,7 +511,7 @@ func (s *S) TestContainerRunCmdError(c *gocheck.C) {
 }
 
 func (s *S) TestContainerStopped(c *gocheck.C) {
-	err := s.newImage()
+	err := s.newImage("tsuru/python")
 	c.Assert(err, gocheck.IsNil)
 	cont, err := s.newContainer()
 	c.Assert(err, gocheck.IsNil)
@@ -505,7 +523,7 @@ func (s *S) TestContainerStopped(c *gocheck.C) {
 }
 
 func (s *S) TestContainerStop(c *gocheck.C) {
-	err := s.newImage()
+	err := s.newImage("tsuru/python")
 	c.Assert(err, gocheck.IsNil)
 	cont, err := s.newContainer()
 	c.Assert(err, gocheck.IsNil)
@@ -524,7 +542,7 @@ func (s *S) TestContainerStop(c *gocheck.C) {
 func (s *S) TestContainerLogs(c *gocheck.C) {
 	_, cleanup := startSSHAgentServer("")
 	defer cleanup()
-	err := s.newImage()
+	err := s.newImage("tsuru/python")
 	c.Assert(err, gocheck.IsNil)
 	cont, err := s.newContainer()
 	c.Assert(err, gocheck.IsNil)
