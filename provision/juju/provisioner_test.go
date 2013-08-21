@@ -1028,3 +1028,11 @@ func (s *S) TestExecutedCommandOnce(c *gocheck.C) {
 	c.Assert(fexec.ExecutedCmd("juju", args), gocheck.Equals, true)
 	c.Assert(buf.String(), gocheck.Equals, bufOutput)
 }
+
+func (s *S) TestStartedUnits(c *gocheck.C) {
+	app := testing.NewFakeApp("almah", "static", 2)
+	app.SetUnitStatus(provision.StatusDown, 1)
+	p := JujuProvisioner{}
+	units := p.startedUnits(app)
+	c.Assert(units, gocheck.HasLen, 1)
+}
