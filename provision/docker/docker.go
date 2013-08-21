@@ -391,6 +391,16 @@ func getImage(app provision.App) string {
 
 // removeImage removes an image from docker registry
 func removeImage(imageId string) error {
+	parts := strings.SplitN(imageId, "/", 3)
+	if len(parts) > 2 {
+		registryServer := parts[0]
+		url := fmt.Sprintf("http://%s/v1/repositories/%s/tags", registryServer,
+			strings.Join(parts[1:], "/"))
+		request, err := http.NewRequest("DELETE", url, nil)
+		if err == nil {
+			http.DefaultClient.Do(request)
+		}
+	}
 	return dockerCluster().RemoveImage(imageId)
 }
 

@@ -104,7 +104,7 @@ func (s *S) stopContainers(n uint) {
 
 func (s *S) TestDeploy(c *gocheck.C) {
 	go s.stopContainers(1)
-	err := s.newImage()
+	err := s.newImage("tsuru/python")
 	c.Assert(err, gocheck.IsNil)
 	fexec := &etesting.FakeExecutor{}
 	setExecut(fexec)
@@ -138,7 +138,7 @@ func getQueue() (queue.Q, error) {
 
 func (s *S) TestDeployEnqueuesBindService(c *gocheck.C) {
 	go s.stopContainers(1)
-	err := s.newImage()
+	err := s.newImage("tsuru/python")
 	c.Assert(err, gocheck.IsNil)
 	setExecut(&etesting.FakeExecutor{})
 	defer setExecut(nil)
@@ -173,7 +173,7 @@ func (w *writer) Write(c []byte) (int, error) {
 
 func (s *S) TestDeployRemoveContainersEvenWhenTheyreNotInTheAppsCollection(c *gocheck.C) {
 	go s.stopContainers(3)
-	err := s.newImage()
+	err := s.newImage("tsuru/python")
 	c.Assert(err, gocheck.IsNil)
 	cont1, err := s.newContainer()
 	c.Assert(err, gocheck.IsNil)
@@ -205,7 +205,7 @@ func (s *S) TestDeployRemoveContainersEvenWhenTheyreNotInTheAppsCollection(c *go
 }
 
 func (s *S) TestProvisionerDestroy(c *gocheck.C) {
-	err := s.newImage()
+	err := s.newImage("tsuru/python")
 	c.Assert(err, gocheck.IsNil)
 	cont, err := s.newContainer()
 	c.Assert(err, gocheck.IsNil)
@@ -265,7 +265,7 @@ func (s *S) TestProvisionerDestroyRemovesRouterBackend(c *gocheck.C) {
 }
 
 func (s *S) TestProvisionerAddr(c *gocheck.C) {
-	err := s.newImage()
+	err := s.newImage("tsuru/python")
 	c.Assert(err, gocheck.IsNil)
 	cont, err := s.newContainer()
 	c.Assert(err, gocheck.IsNil)
@@ -283,7 +283,7 @@ func (s *S) TestProvisionerAddr(c *gocheck.C) {
 }
 
 func (s *S) TestProvisionerAddUnits(c *gocheck.C) {
-	err := s.newImage()
+	err := s.newImage("tsuru/python")
 	c.Assert(err, gocheck.IsNil)
 	var p dockerProvisioner
 	app := testing.NewFakeApp("myapp", "python", 0)
@@ -320,7 +320,7 @@ func (s *S) TestProvisionerAddUnitsWithoutContainers(c *gocheck.C) {
 }
 
 func (s *S) TestProvisionerRemoveUnit(c *gocheck.C) {
-	err := s.newImage()
+	err := s.newImage("tsuru/python")
 	c.Assert(err, gocheck.IsNil)
 	container, err := s.newContainer()
 	c.Assert(err, gocheck.IsNil)
@@ -350,7 +350,7 @@ func (s *S) TestProvisionerRemoveUnitNotFound(c *gocheck.C) {
 }
 
 func (s *S) TestProvisionerRemoveUnitNotInApp(c *gocheck.C) {
-	err := s.newImage()
+	err := s.newImage("tsuru/python")
 	c.Assert(err, gocheck.IsNil)
 	container, err := s.newContainer()
 	c.Assert(err, gocheck.IsNil)
@@ -365,7 +365,7 @@ func (s *S) TestProvisionerRemoveUnitNotInApp(c *gocheck.C) {
 }
 
 func (s *S) TestRemoveUnitInSameHostAsAnotherUnitShouldEnqueueAnotherBind(c *gocheck.C) {
-	err := s.newImage()
+	err := s.newImage("tsuru/python")
 	c.Assert(err, gocheck.IsNil)
 	c1, err := s.newContainer()
 	c.Assert(err, gocheck.IsNil)
