@@ -435,10 +435,6 @@ func (s *S) TestExecutedCmdUnitDown(c *gocheck.C) {
 
 
 
-Output from unit "almah/1":
-
-Unit state is "down", it must be "started" for running commands.
-
 Output from unit "almah/2":
 
 
@@ -1012,10 +1008,6 @@ func (s *S) TestExecutedCommandOnce(c *gocheck.C) {
 	p := JujuProvisioner{}
 	err := p.ExecuteCommandOnce(&buf, &buf, app, "ls", "-lh")
 	c.Assert(err, gocheck.IsNil)
-	bufOutput := `Output from unit "almah/0":
-
-
-`
 	args := []string{
 		"ssh",
 		"-o",
@@ -1026,7 +1018,7 @@ func (s *S) TestExecutedCommandOnce(c *gocheck.C) {
 		"-lh",
 	}
 	c.Assert(fexec.ExecutedCmd("juju", args), gocheck.Equals, true)
-	c.Assert(buf.String(), gocheck.Equals, bufOutput)
+	c.Assert(buf.String(), gocheck.Equals, "\n")
 }
 
 func (s *S) TestStartedUnits(c *gocheck.C) {

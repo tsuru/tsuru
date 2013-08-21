@@ -376,29 +376,30 @@ func (*JujuProvisioner) startedUnits(app provision.App) []provision.AppUnit {
 	return units
 }
 
-func (p *JujuProvisioner) ExecuteCommandOnce(stdout, stderr io.Writer, app provision.App, cmd string, args ...string) error {
+func (*JujuProvisioner) executeCommandViaSSH(stdout, stderr io.Writer, machine int, cmd string, args ...string) error {
 	arguments := []string{"ssh", "-o", "StrictHostKeyChecking no", "-q"}
+	arguments = append(arguments, strconv.Itoa(machine), cmd)
+	arguments = append(arguments, args...)
+	err := runCmd(true, stdout, stderr, arguments...)
+	fmt.Fprintln(stdout)
+	if err != nil {
+		log.Printf("error on execute cmd %s on machine %d", cmd, machine)
+		return err
+	}
+	return nil
+}
+
+func (p *JujuProvisioner) ExecuteCommandOnce(stdout, stderr io.Writer, app provision.App, cmd string, args ...string) error {
 	units := p.startedUnits(app)
 	if len(units) > 0 {
 		unit := units[0]
-		var cmdargs []string
-		cmdargs = append(cmdargs, arguments...)
-		cmdargs = append(cmdargs, strconv.Itoa(unit.GetMachine()), cmd)
-		cmdargs = append(cmdargs, args...)
-		log.Printf("[execute cmd] - running cmd %s on machine %s", cmd, strconv.Itoa(unit.GetMachine()))
-		err := runCmd(true, stdout, stderr, cmdargs...)
-		fmt.Fprintln(stdout)
-		if err != nil {
-			log.Printf("error on execute cmd %s on machine %s", cmd, strconv.Itoa(unit.GetMachine()))
-			return err
-		}
+		return p.executeCommandViaSSH(stdout, stderr, unit.GetMachine(), cmd, args...)
 	}
 	return nil
 }
 
 func (p *JujuProvisioner) ExecuteCommand(stdout, stderr io.Writer, app provision.App, cmd string, args ...string) error {
-	arguments := []string{"ssh", "-o", "StrictHostKeyChecking no", "-q"}
-	units := app.ProvisionedUnits()
+	units := p.startedUnits(app)
 	log.Printf("[execute cmd] - provisioned unit %#v", units)
 	length := len(units)
 	for i, unit := range units {
@@ -407,21 +408,9 @@ func (p *JujuProvisioner) ExecuteCommand(stdout, stderr io.Writer, app provision
 				fmt.Fprintln(stdout)
 			}
 			fmt.Fprintf(stdout, "Output from unit %q:\n\n", unit.GetName())
-			if status := unit.GetStatus(); status != provision.StatusStarted {
-				fmt.Fprintf(stdout, "Unit state is %q, it must be %q for running commands.\n",
-					status, provision.StatusStarted)
-				continue
-			}
 		}
-		var cmdargs []string
-		cmdargs = append(cmdargs, arguments...)
-		cmdargs = append(cmdargs, strconv.Itoa(unit.GetMachine()), cmd)
-		cmdargs = append(cmdargs, args...)
-		log.Printf("[execute cmd] - running cmd %s on machine %s", cmd, strconv.Itoa(unit.GetMachine()))
-		err := runCmd(true, stdout, stderr, cmdargs...)
-		fmt.Fprintln(stdout)
+		err := p.executeCommandViaSSH(stdout, stderr, unit.GetMachine(), cmd, args...)
 		if err != nil {
-			log.Printf("error on execute cmd %s on machine %s", cmd, strconv.Itoa(unit.GetMachine()))
 			return err
 		}
 	}
