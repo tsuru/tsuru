@@ -365,6 +365,10 @@ func (p *JujuProvisioner) InstallDeps(app provision.App, w io.Writer) error {
 	return app.Run("/var/lib/tsuru/hooks/dependencies", w)
 }
 
+func (p *JujuProvisioner) ExecuteCommandOnce(stdout, stderr io.Writer, app provision.App, cmd string, args ...string) error {
+	return nil
+}
+
 func (p *JujuProvisioner) ExecuteCommand(stdout, stderr io.Writer, app provision.App, cmd string, args ...string) error {
 	arguments := []string{"ssh", "-o", "StrictHostKeyChecking no", "-q"}
 	units := app.ProvisionedUnits()

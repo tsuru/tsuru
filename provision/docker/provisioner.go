@@ -286,6 +286,10 @@ func (*dockerProvisioner) InstallDeps(app provision.App, w io.Writer) error {
 	return nil
 }
 
+func (*dockerProvisioner) ExecuteCommandOnce(stdout, stderr io.Writer, app provision.App, cmd string, args ...string) error {
+	return nil
+}
+
 func (*dockerProvisioner) ExecuteCommand(stdout, stderr io.Writer, app provision.App, cmd string, args ...string) error {
 	containers, err := listAppContainers(app.GetName())
 	if err != nil {

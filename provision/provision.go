@@ -117,6 +117,9 @@ type Provisioner interface {
 	// ExecuteCommand runs a command in all units of the app.
 	ExecuteCommand(stdout, stderr io.Writer, app App, cmd string, args ...string) error
 
+	// ExecuteCommandOnce runs a command in one unit of the app.
+	ExecuteCommandOnce(stdout, stderr io.Writer, app App, cmd string, args ...string) error
+
 	Restart(App) error
 
 	// CollectStatus returns information about all provisioned units. It's used

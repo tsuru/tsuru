@@ -509,6 +509,10 @@ func (p *FakeProvisioner) ExecuteCommand(stdout, stderr io.Writer, app provision
 	return err
 }
 
+func (p *FakeProvisioner) ExecuteCommandOnce(stdout, stderr io.Writer, app provision.App, cmd string, args ...string) error {
+	return nil
+}
+
 func (p *FakeProvisioner) CollectStatus() ([]provision.Unit, error) {
 	if err := p.getError("CollectStatus"); err != nil {
 		return nil, err
