@@ -51,6 +51,7 @@ type App struct {
 	Teams    []string
 	Owner    string
 	State    string
+	Deploys  uint
 }
 
 // MarshalJSON marshals the app in json format. It returns a JSON object with
