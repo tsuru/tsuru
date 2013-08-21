@@ -1026,15 +1026,5 @@ func (s *S) TestExecutedCommandOnce(c *gocheck.C) {
 		"-lh",
 	}
 	c.Assert(fexec.ExecutedCmd("juju", args), gocheck.Equals, true)
-	// args = []string{
-	// 	"ssh",
-	// 	"-o",
-	// 	"StrictHostKeyChecking no",
-	// 	"-q",
-	// 	"2",
-	// 	"ls",
-	// 	"-lh",
-	// }
-	// c.Assert(fexec.ExecutedCmd("juju", args), gocheck.Equals, true)
 	c.Assert(buf.String(), gocheck.Equals, bufOutput)
 }
