@@ -1000,3 +1000,41 @@ func (s *ELBSuite) TestSwap(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(app1Routes, gocheck.DeepEquals, []string{id2})
 }
+
+func (s *S) TestExecutedCommandOnce(c *gocheck.C) {
+	var buf bytes.Buffer
+	fexec := &etesting.FakeExecutor{}
+	execut = fexec
+	defer func() {
+		execut = nil
+	}()
+	app := testing.NewFakeApp("almah", "static", 2)
+	p := JujuProvisioner{}
+	err := p.ExecuteCommandOnce(&buf, &buf, app, "ls", "-lh")
+	c.Assert(err, gocheck.IsNil)
+	bufOutput := `Output from unit "almah/0":
+
+
+`
+	args := []string{
+		"ssh",
+		"-o",
+		"StrictHostKeyChecking no",
+		"-q",
+		"1",
+		"ls",
+		"-lh",
+	}
+	c.Assert(fexec.ExecutedCmd("juju", args), gocheck.Equals, true)
+	// args = []string{
+	// 	"ssh",
+	// 	"-o",
+	// 	"StrictHostKeyChecking no",
+	// 	"-q",
+	// 	"2",
+	// 	"ls",
+	// 	"-lh",
+	// }
+	// c.Assert(fexec.ExecutedCmd("juju", args), gocheck.Equals, true)
+	c.Assert(buf.String(), gocheck.Equals, bufOutput)
+}
