@@ -93,7 +93,7 @@ project:
                 s/'localhost'/getenv('MYSQL_HOST')/; \
                 s/'password_here'/getenv('MYSQL_PASSWORD')/" \
                 wp-config-sample.php  > wp-config.php
-    $ Creating a local git repository
+    # Creating a local git repository
     $ git init
     $ git add .
     $ git commit -m 'initial project version'
