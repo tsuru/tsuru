@@ -222,6 +222,7 @@ looks like:
 .. highlight:: text
 
 ::
+
     php5-mysql
 
 
