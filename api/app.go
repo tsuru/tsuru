@@ -52,8 +52,23 @@ func cloneRepository(w http.ResponseWriter, r *http.Request, t *auth.Token) erro
 	if err != nil {
 		return &errors.HTTP{Code: http.StatusNotFound, Message: fmt.Sprintf("App %s not found.", instance.Name)}
 	}
+	if err := incrementAppDeploy(instance); err != nil {
+		return err
+	}
 	logger := app.LogWriter{App: instance, Writer: w}
 	return app.Provisioner.Deploy(instance, version, &logger)
+}
+
+func incrementAppDeploy(instance *app.App) error {
+	conn, err := db.Conn()
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+	if err := conn.Apps().Update(bson.M{"name": instance.Name}, bson.M{"$inc": bson.M{"deploys": 1}}); err != nil {
+		return err
+	}
+	return nil
 }
 
 func appIsAvailable(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
