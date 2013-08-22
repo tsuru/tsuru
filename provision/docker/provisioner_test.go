@@ -592,3 +592,37 @@ func (s *S) TestSwap(c *gocheck.C) {
 	c.Assert(rtesting.FakeRouter.HasRoute(app2.GetName(), "127.0.0.1"), gocheck.Equals, true)
 	c.Assert(rtesting.FakeRouter.HasRoute(app1.GetName(), "127.0.0.2"), gocheck.Equals, true)
 }
+
+func (s *S) TestExecuteCommandOnce(c *gocheck.C) {
+	var handler FakeSSHServer
+	handler.output = ". .."
+	server := httptest.NewServer(&handler)
+	defer server.Close()
+	host, port, _ := net.SplitHostPort(server.Listener.Addr().String())
+	portNumber, _ := strconv.Atoi(port)
+	config.Set("docker:ssh-agent-port", portNumber)
+	defer config.Unset("docker:ssh-agent-port")
+	app := testing.NewFakeApp("almah", "static", 1)
+	p := dockerProvisioner{}
+	container := container{ID: "c-036", AppName: app.GetName(), Type: "python", IP: "10.10.10.1", HostAddr: host}
+	err := s.conn.Collection(s.collName).Insert(container)
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Collection(s.collName).Remove(bson.M{"_id": container.ID})
+	var stdout, stderr bytes.Buffer
+	err = p.ExecuteCommandOnce(&stdout, &stderr, app, "ls", "-lh")
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(stderr.Bytes(), gocheck.IsNil)
+	c.Assert(stdout.String(), gocheck.Equals, ". ..")
+	body := handler.bodies[0]
+	input := cmdInput{Cmd: "ls", Args: []string{"-lh"}}
+	c.Assert(body, gocheck.DeepEquals, input)
+}
+
+func (s *S) TestExecuteCommandOnceWithoutContainers(c *gocheck.C) {
+	app := testing.NewFakeApp("almah", "static", 2)
+	p := dockerProvisioner{}
+	var stdout, stderr bytes.Buffer
+	err := p.ExecuteCommandOnce(&stdout, &stderr, app, "ls", "-lh")
+	c.Assert(err, gocheck.Not(gocheck.IsNil))
+}
