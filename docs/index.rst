@@ -17,6 +17,7 @@ Learn more in :doc:`Tsuru's Overview </overview>` or check out our :doc:`FAQ </f
 * :doc:`Deploy your application on Tsuru </apps/quickstart>`
     * :doc:`python/django </apps/quickstart/python>`
     * :doc:`ruby/rails </apps/quickstart/ruby>`
+    * :doc:`php </apps/quickstart/php>`
 * :doc:`Provide services on Tsuru </services/build>`
 
 More documentation
@@ -31,6 +32,7 @@ For tsuru users
 * :doc:`building your application </apps/quickstart>`
     * :doc:`python/django </apps/quickstart/python>`
     * :doc:`ruby/rails </apps/quickstart/ruby>`
+    * :doc:`php </apps/quickstart/php>`
 
 For tsuru ops
 +++++++++++++
