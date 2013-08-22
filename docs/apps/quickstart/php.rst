@@ -402,7 +402,7 @@ As you can see from bind output, we use environment variables to connect to the
 MySQL server. Next step would be update the ``wp-config.php`` to use these variables to
 connect in the database:
 
-.. highlight:: bsah
+.. highlight:: bash
 
 ::
 
