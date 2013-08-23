@@ -480,11 +480,55 @@ func (p *FakeProvisioner) ExecuteCommand(stdout, stderr io.Writer, app provision
 	p.cmdMut.Lock()
 	p.cmds = append(p.cmds, command)
 	p.cmdMut.Unlock()
+	for _ = range app.ProvisionedUnits() {
+		select {
+		case output = <-p.outputs:
+			select {
+			case fail := <-p.failures:
+				if fail.method == "ExecuteCommand" {
+					stderr.Write(output)
+					return fail.err
+				}
+				p.failures <- fail
+			default:
+				stdout.Write(output)
+			}
+		case fail := <-p.failures:
+			if fail.method == "ExecuteCommand" {
+				err = fail.err
+				select {
+				case output = <-p.outputs:
+					stderr.Write(output)
+				default:
+				}
+			} else {
+				p.failures <- fail
+			}
+		case <-time.After(2e9):
+			return errors.New("FakeProvisioner timed out waiting for output.")
+		}
+	}
+	return err
+}
+
+func (p *FakeProvisioner) ExecuteCommandOnce(stdout, stderr io.Writer, app provision.App, cmd string, args ...string) error {
+	var (
+		output []byte
+		err    error
+	)
+	command := Cmd{
+		Cmd:  cmd,
+		Args: args,
+		App:  app,
+	}
+	p.cmdMut.Lock()
+	p.cmds = append(p.cmds, command)
+	p.cmdMut.Unlock()
 	select {
 	case output = <-p.outputs:
 		select {
 		case fail := <-p.failures:
-			if fail.method == "ExecuteCommand" {
+			if fail.method == "ExecuteCommandOnce" {
 				stderr.Write(output)
 				return fail.err
 			}
@@ -493,7 +537,7 @@ func (p *FakeProvisioner) ExecuteCommand(stdout, stderr io.Writer, app provision
 			stdout.Write(output)
 		}
 	case fail := <-p.failures:
-		if fail.method == "ExecuteCommand" {
+		if fail.method == "ExecuteCommandOnce" {
 			err = fail.err
 			select {
 			case output = <-p.outputs:
@@ -507,10 +551,6 @@ func (p *FakeProvisioner) ExecuteCommand(stdout, stderr io.Writer, app provision
 		return errors.New("FakeProvisioner timed out waiting for output.")
 	}
 	return err
-}
-
-func (p *FakeProvisioner) ExecuteCommandOnce(stdout, stderr io.Writer, app provision.App, cmd string, args ...string) error {
-	return nil
 }
 
 func (p *FakeProvisioner) CollectStatus() ([]provision.Unit, error) {

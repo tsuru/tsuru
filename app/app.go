@@ -504,7 +504,7 @@ func (app *App) Run(cmd string, w io.Writer, once bool) error {
 		return stderr.New("App must be available to run commands")
 	}
 	app.Log(fmt.Sprintf("running '%s'", cmd), "tsuru")
-	return app.sourced(cmd, w, false)
+	return app.sourced(cmd, w, once)
 }
 
 func (app *App) sourced(cmd string, w io.Writer, once bool) error {
@@ -524,6 +524,9 @@ func (app *App) sourced(cmd string, w io.Writer, once bool) error {
 }
 
 func (app *App) run(cmd string, w io.Writer, once bool) error {
+	if once {
+		return Provisioner.ExecuteCommandOnce(w, w, app, cmd)
+	}
 	return Provisioner.ExecuteCommand(w, w, app, cmd)
 }
 
