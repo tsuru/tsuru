@@ -1103,7 +1103,43 @@ func (s *S) TestRevokeAccessFromTeamDontCallGandalfIfNoUserNeedToBeRevoked(c *go
 	c.Assert(h.url[0], gocheck.Equals, "/repository/grant")
 }
 
-func (s *S) TestRunHandlerShouldExecuteTheGivenCommandInTheGivenApp(c *gocheck.C) {
+func (s *S) TestRunOnceHandler(c *gocheck.C) {
+	s.provisioner.PrepareOutput([]byte("lots of files"))
+	a := app.App{
+		Name:     "secrets",
+		Platform: "arch enemy",
+		Teams:    []string{s.team.Name},
+		Units:    []app.Unit{
+			{Name: "i-0800", State: "started", Machine: 10},
+			{Name: "i-0801", State: "started", Machine: 11},
+		},
+	}
+	err := s.conn.Apps().Insert(a)
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	defer s.conn.Logs().Remove(bson.M{"appname": a.Name})
+	url := fmt.Sprintf("/apps/%s/run/?:app=%s&once=true", a.Name, a.Name)
+	request, err := http.NewRequest("POST", url, strings.NewReader("ls"))
+	c.Assert(err, gocheck.IsNil)
+	recorder := httptest.NewRecorder()
+	err = runCommand(recorder, request, s.token)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(recorder.Body.String(), gocheck.Equals, "lots of files")
+	c.Assert(recorder.Header().Get("Content-Type"), gocheck.Equals, "text")
+	expected := "[ -f /home/application/apprc ] && source /home/application/apprc;"
+	expected += " [ -d /home/application/current ] && cd /home/application/current;"
+	expected += " ls"
+	cmds := s.provisioner.GetCmds(expected, &a)
+	c.Assert(cmds, gocheck.HasLen, 1)
+	action := testing.Action{
+		Action: "run-command",
+		User:   s.user.Email,
+		Extra:  []interface{}{"app=" + a.Name, "command=ls"},
+	}
+	c.Assert(action, testing.IsRecorded)
+}
+
+func (s *S) TestRunHandler(c *gocheck.C) {
 	s.provisioner.PrepareOutput([]byte("lots of files"))
 	a := app.App{
 		Name:     "secrets",
