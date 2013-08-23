@@ -5,26 +5,26 @@
 package router
 
 import (
-	"reflect"
+	"launchpad.net/gocheck"
 	"testing"
 )
 
-func TestRegisterAndGet(t *testing.T) {
+func Test(t *testing.T) {
+	gocheck.TestingT(t)
+}
+
+type S struct{}
+
+var _ = gocheck.Suite(&S{})
+
+func (s *S) TestRegisterAndGet(c *gocheck.C) {
 	var r Router
 	Register("router", r)
 	got, err := Get("router")
-	if err != nil {
-		t.Fatalf("Got unexpected error when getting router: %q", err)
-	}
-	if !reflect.DeepEqual(r, got) {
-		t.Errorf("Get: Want %#v. Got %#v.", r, got)
-	}
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(r, gocheck.DeepEquals, got)
 	_, err = Get("unknown-router")
-	if err == nil {
-		t.Errorf("Expected non-nil error when getting unknown router, got <nil>.")
-	}
+	c.Assert(err, gocheck.Not(gocheck.IsNil))
 	expectedMessage := `Unknown router: "unknown-router".`
-	if err.Error() != expectedMessage {
-		t.Errorf("Expected error %q. Got %q.", expectedMessage, err.Error())
-	}
+	c.Assert(expectedMessage, gocheck.Equals, err.Error())
 }
