@@ -179,7 +179,7 @@ func (a *FakeApp) Restart(w io.Writer) error {
 	return nil
 }
 
-func (a *FakeApp) Run(cmd string, w io.Writer) error {
+func (a *FakeApp) Run(cmd string, w io.Writer, once bool) error {
 	a.commMut.Lock()
 	a.Commands = append(a.Commands, fmt.Sprintf("ran %s", cmd))
 	a.commMut.Unlock()

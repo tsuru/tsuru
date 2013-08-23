@@ -1619,7 +1619,7 @@ func (s *S) TestRun(c *gocheck.C) {
 		Units: []Unit{{Name: "i-0800", State: "started"}},
 	}
 	var buf bytes.Buffer
-	err := app.Run("ls -lh", &buf)
+	err := app.Run("ls -lh", &buf, false)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(buf.String(), gocheck.Equals, "a lot of files")
 	expected := "[ -f /home/application/apprc ] && source /home/application/apprc;"

@@ -499,7 +499,7 @@ func (app *App) InstanceEnv(name string) map[string]bind.EnvVar {
 
 // Run executes the command in app units, sourcing apprc before running the
 // command.
-func (app *App) Run(cmd string, w io.Writer) error {
+func (app *App) Run(cmd string, w io.Writer, once bool) error {
 	if !app.Available() {
 		return stderr.New("App must be available to run commands")
 	}

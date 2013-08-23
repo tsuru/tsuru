@@ -362,7 +362,7 @@ func (p *JujuProvisioner) RemoveUnit(app provision.App, name string) error {
 }
 
 func (p *JujuProvisioner) InstallDeps(app provision.App, w io.Writer) error {
-	return app.Run("/var/lib/tsuru/hooks/dependencies", w)
+	return app.Run("/var/lib/tsuru/hooks/dependencies", w, false)
 }
 
 func (*JujuProvisioner) startedUnits(app provision.App) []provision.AppUnit {

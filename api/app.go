@@ -380,7 +380,7 @@ func runCommand(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
 	if err != nil {
 		return err
 	}
-	return app.Run(string(c), w)
+	return app.Run(string(c), w, false)
 }
 
 func getEnv(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
