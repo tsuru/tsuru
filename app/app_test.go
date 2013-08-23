@@ -1636,7 +1636,7 @@ func (s *S) TestRunWithoutEnv(c *gocheck.C) {
 		Units: []Unit{{Name: "i-0800", State: "started"}},
 	}
 	var buf bytes.Buffer
-	err := app.run("ls -lh", &buf)
+	err := app.run("ls -lh", &buf, false)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(buf.String(), gocheck.Equals, "a lot of files")
 	cmds := s.provisioner.GetCmds("ls -lh", &app)
