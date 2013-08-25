@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"github.com/globocom/tsuru/db"
 	"labix.org/v2/mgo"
+	"labix.org/v2/mgo/bson"
 )
 
 var routers = make(map[string]Router)
@@ -63,4 +64,12 @@ func Store(appName, routerName string) error {
 		"router": routerName,
 	}
 	return coll.Insert(&data)
+}
+
+func Remove(appName string) error {
+	coll, err := collection()
+	if err != nil {
+		return err
+	}
+	return coll.Remove(bson.M{"app": appName})
 }
