@@ -6,7 +6,27 @@
 // implement a new router on tsuru.
 package router
 
-import "fmt"
+import (
+	"fmt"
+	"github.com/globocom/tsuru/db"
+	"labix.org/v2/mgo"
+)
+
+var routers = make(map[string]Router)
+
+// Register registers a new router.
+func Register(name string, r Router) {
+	routers[name] = r
+}
+
+// Get gets the named router from the registry.
+func Get(name string) (Router, error) {
+	r, ok := routers[name]
+	if !ok {
+		return nil, fmt.Errorf("Unknown router: %q.", name)
+	}
+	return r, nil
+}
 
 // Router is the basic interface of this package. It provides methods for
 // managing backends and routes. Each backend can have multiple routes.
@@ -23,18 +43,24 @@ type Router interface {
 	Routes(name string) ([]string, error)
 }
 
-var routers = make(map[string]Router)
-
-// Register registers a new router.
-func Register(name string, r Router) {
-	routers[name] = r
+func collection() (*mgo.Collection, error) {
+	conn, err := db.Conn()
+	if err != nil {
+		return nil, err
+	}
+	return conn.Collection("routers"), nil
 }
 
-// Get gets the named router from the registry.
-func Get(name string) (Router, error) {
-	r, ok := routers[name]
-	if !ok {
-		return nil, fmt.Errorf("Unknown router: %q.", name)
+// Store stores the app name related with the
+// router name.
+func Store(appName, routerName string) error {
+	coll, err := collection()
+	if err != nil {
+		return err
 	}
-	return r, nil
+	data := map[string]string{
+		"app":    appName,
+		"router": routerName,
+	}
+	return coll.Insert(&data)
 }

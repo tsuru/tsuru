@@ -6,16 +6,7 @@ package router
 
 import (
 	"launchpad.net/gocheck"
-	"testing"
 )
-
-func Test(t *testing.T) {
-	gocheck.TestingT(t)
-}
-
-type S struct{}
-
-var _ = gocheck.Suite(&S{})
 
 func (s *S) TestRegisterAndGet(c *gocheck.C) {
 	var r Router
@@ -27,4 +18,9 @@ func (s *S) TestRegisterAndGet(c *gocheck.C) {
 	c.Assert(err, gocheck.Not(gocheck.IsNil))
 	expectedMessage := `Unknown router: "unknown-router".`
 	c.Assert(expectedMessage, gocheck.Equals, err.Error())
+}
+
+func (s *S) TestStore(c *gocheck.C) {
+	err := Store("appname", "routername")
+	c.Assert(err, gocheck.IsNil)
 }
