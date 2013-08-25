@@ -1109,7 +1109,7 @@ func (s *S) TestRunOnceHandler(c *gocheck.C) {
 		Name:     "secrets",
 		Platform: "arch enemy",
 		Teams:    []string{s.team.Name},
-		Units:    []app.Unit{
+		Units: []app.Unit{
 			{Name: "i-0800", State: "started", Machine: 10},
 			{Name: "i-0801", State: "started", Machine: 11},
 		},
