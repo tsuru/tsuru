@@ -23,6 +23,9 @@ func (s *S) TestRegisterAndGet(c *gocheck.C) {
 func (s *S) TestStore(c *gocheck.C) {
 	err := Store("appname", "routername")
 	c.Assert(err, gocheck.IsNil)
+	name, err := Retrieve("appname")
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(name, gocheck.Equals, "routername")
 	err = Remove("appname")
 	c.Assert(err, gocheck.IsNil)
 }

@@ -66,6 +66,16 @@ func Store(appName, routerName string) error {
 	return coll.Insert(&data)
 }
 
+func Retrieve(appName string) (string, error) {
+	coll, err := collection()
+	if err != nil {
+		return "", err
+	}
+	data := map[string]string{}
+	coll.Find(bson.M{"app": appName}).One(&data)
+	return data["router"], nil
+}
+
 func Remove(appName string) error {
 	coll, err := collection()
 	if err != nil {
