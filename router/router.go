@@ -40,6 +40,9 @@ type Router interface {
 	UnsetCName(cname, name string) error
 	Addr(name string) (string, error)
 
+	// Swap change the router between two backends.
+	Swap(string, string) error
+
 	// Routes returns a list of routes of a backend.
 	Routes(name string) ([]string, error)
 }
