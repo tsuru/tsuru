@@ -38,7 +38,7 @@ func (c *AppRun) Run(context *cmd.Context, client *cmd.Client) error {
 	if err != nil {
 		return err
 	}
-	url, err := cmd.GetURL(fmt.Sprintf("/apps/%s/run?once=%s", appName, c.once))
+	url, err := cmd.GetURL(fmt.Sprintf("/apps/%s/run?once=%t", appName, c.once))
 	if err != nil {
 		return err
 	}
