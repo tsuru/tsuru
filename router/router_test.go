@@ -4,9 +4,7 @@
 
 package router
 
-import (
-	"launchpad.net/gocheck"
-)
+import "launchpad.net/gocheck"
 
 func (s *S) TestRegisterAndGet(c *gocheck.C) {
 	var r Router
