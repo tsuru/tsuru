@@ -166,3 +166,23 @@ func (s *S) TestRoutes(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(routes, gocheck.DeepEquals, []string{instanceId})
 }
+
+func (s *S) TestSwap(c *gocheck.C) {
+	instance1 := s.server.NewInstance()
+	defer s.server.RemoveInstance(instance1)
+	instance2 := s.server.NewInstance()
+	defer s.server.RemoveInstance(instance2)
+	backend1 := "b1"
+	backend2 := "b2"
+	router := elbRouter{}
+	router.AddBackend(backend1)
+	router.AddRoute(backend1, instance1)
+	router.AddBackend(backend2)
+	router.AddRoute(backend2, instance2)
+	err := router.Swap(backend1, backend2)
+	c.Assert(err, gocheck.IsNil)
+	routes, err := router.Routes(backend2)
+	c.Assert(routes, gocheck.DeepEquals, []string{instance1})
+	routes, err = router.Routes(backend1)
+	c.Assert(routes, gocheck.DeepEquals, []string{instance2})
+}
