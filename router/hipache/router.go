@@ -258,35 +258,7 @@ func (hipacheRouter) removeElement(name, address string) error {
 }
 
 func (r hipacheRouter) Swap(backend1, backend2 string) error {
-	routes1, err := r.Routes(backend1)
-	if err != nil {
-		return err
-	}
-	routes2, err := r.Routes(backend2)
-	if err != nil {
-		return err
-	}
-	for _, route := range routes1 {
-		err = r.AddRoute(backend2, route)
-		if err != nil {
-			return err
-		}
-		err = r.RemoveRoute(backend1, route)
-		if err != nil {
-			return err
-		}
-	}
-	for _, route := range routes2 {
-		err = r.AddRoute(backend1, route)
-		if err != nil {
-			return err
-		}
-		err = r.RemoveRoute(backend2, route)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
+	return router.Swap(r, backend1, backend2)
 }
 
 type routeError struct {
