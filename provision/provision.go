@@ -71,7 +71,7 @@ type App interface {
 	// Run executes the command in app units. Commands executed with this
 	// method should have access to environment variables defined in the
 	// app.
-	Run(cmd string, w io.Writer) error
+	Run(cmd string, w io.Writer, once bool) error
 
 	Restart(io.Writer) error
 

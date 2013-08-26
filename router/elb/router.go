@@ -121,3 +121,7 @@ func (r elbRouter) Addr(name string) (string, error) {
 	}
 	return resp.LoadBalancerDescriptions[0].DNSName, nil
 }
+
+func (r elbRouter) Swap(backend1, backend2 string) error {
+	return router.Swap(r, backend1, backend2)
+}

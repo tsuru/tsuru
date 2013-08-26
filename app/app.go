@@ -499,15 +499,15 @@ func (app *App) InstanceEnv(name string) map[string]bind.EnvVar {
 
 // Run executes the command in app units, sourcing apprc before running the
 // command.
-func (app *App) Run(cmd string, w io.Writer) error {
+func (app *App) Run(cmd string, w io.Writer, once bool) error {
 	if !app.Available() {
 		return stderr.New("App must be available to run commands")
 	}
 	app.Log(fmt.Sprintf("running '%s'", cmd), "tsuru")
-	return app.sourced(cmd, w)
+	return app.sourced(cmd, w, once)
 }
 
-func (app *App) sourced(cmd string, w io.Writer) error {
+func (app *App) sourced(cmd string, w io.Writer, once bool) error {
 	var mapEnv = func(name string) string {
 		if e, ok := app.Env[name]; ok {
 			return e.Value
@@ -520,10 +520,13 @@ func (app *App) sourced(cmd string, w io.Writer) error {
 	source := "[ -f /home/application/apprc ] && source /home/application/apprc"
 	cd := "[ -d /home/application/current ] && cd /home/application/current"
 	cmd = fmt.Sprintf("%s; %s; %s", source, cd, os.Expand(cmd, mapEnv))
-	return app.run(cmd, w)
+	return app.run(cmd, w, once)
 }
 
-func (app *App) run(cmd string, w io.Writer) error {
+func (app *App) run(cmd string, w io.Writer, once bool) error {
+	if once {
+		return Provisioner.ExecuteCommandOnce(w, w, app, cmd)
+	}
 	return Provisioner.ExecuteCommand(w, w, app, cmd)
 }
 
@@ -600,7 +603,7 @@ func (app *App) SerializeEnvVars() error {
 		cmd += fmt.Sprintf(`export %s="%s"`+"\n", k, v.Value)
 	}
 	cmd += "END\n"
-	err := app.run(cmd, &buf)
+	err := app.run(cmd, &buf, false)
 	if err != nil {
 		output := buf.Bytes()
 		if output == nil {
@@ -772,7 +775,7 @@ func (app *App) LastLogs(lines int, source string) ([]Applog, error) {
 		return nil, err
 	}
 	defer conn.Close()
-	var logs []Applog
+	logs := []Applog{}
 	q := bson.M{"appname": app.Name}
 	if source != "" {
 		q["source"] = source

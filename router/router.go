@@ -6,22 +6,12 @@
 // implement a new router on tsuru.
 package router
 
-import "fmt"
-
-// Router is the basic interface of this package. It provides methods for
-// managing backends and routes. Each backend can have multiple routes.
-type Router interface {
-	AddBackend(name string) error
-	RemoveBackend(name string) error
-	AddRoute(name, address string) error
-	RemoveRoute(name, address string) error
-	SetCName(cname, name string) error
-	UnsetCName(cname, name string) error
-	Addr(name string) (string, error)
-
-	// Routes returns a list of routes of a backend.
-	Routes(name string) ([]string, error)
-}
+import (
+	"fmt"
+	"github.com/globocom/tsuru/db"
+	"labix.org/v2/mgo"
+	"labix.org/v2/mgo/bson"
+)
 
 var routers = make(map[string]Router)
 
@@ -37,4 +27,94 @@ func Get(name string) (Router, error) {
 		return nil, fmt.Errorf("Unknown router: %q.", name)
 	}
 	return r, nil
+}
+
+// Router is the basic interface of this package. It provides methods for
+// managing backends and routes. Each backend can have multiple routes.
+type Router interface {
+	AddBackend(name string) error
+	RemoveBackend(name string) error
+	AddRoute(name, address string) error
+	RemoveRoute(name, address string) error
+	SetCName(cname, name string) error
+	UnsetCName(cname, name string) error
+	Addr(name string) (string, error)
+
+	// Swap change the router between two backends.
+	Swap(string, string) error
+
+	// Routes returns a list of routes of a backend.
+	Routes(name string) ([]string, error)
+}
+
+func collection() (*mgo.Collection, error) {
+	conn, err := db.Conn()
+	if err != nil {
+		return nil, err
+	}
+	return conn.Collection("routers"), nil
+}
+
+// Store stores the app name related with the
+// router name.
+func Store(appName, routerName string) error {
+	coll, err := collection()
+	if err != nil {
+		return err
+	}
+	data := map[string]string{
+		"app":    appName,
+		"router": routerName,
+	}
+	return coll.Insert(&data)
+}
+
+func Retrieve(appName string) (string, error) {
+	coll, err := collection()
+	if err != nil {
+		return "", err
+	}
+	data := map[string]string{}
+	coll.Find(bson.M{"app": appName}).One(&data)
+	return data["router"], nil
+}
+
+func Remove(appName string) error {
+	coll, err := collection()
+	if err != nil {
+		return err
+	}
+	return coll.Remove(bson.M{"app": appName})
+}
+
+func Swap(r Router, backend1, backend2 string) error {
+	routes1, err := r.Routes(backend1)
+	if err != nil {
+		return err
+	}
+	routes2, err := r.Routes(backend2)
+	if err != nil {
+		return err
+	}
+	for _, route := range routes1 {
+		err = r.AddRoute(backend2, route)
+		if err != nil {
+			return err
+		}
+		err = r.RemoveRoute(backend1, route)
+		if err != nil {
+			return err
+		}
+	}
+	for _, route := range routes2 {
+		err = r.AddRoute(backend1, route)
+		if err != nil {
+			return err
+		}
+		err = r.RemoveRoute(backend2, route)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }

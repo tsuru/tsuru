@@ -435,10 +435,6 @@ func (s *S) TestExecutedCmdUnitDown(c *gocheck.C) {
 
 
 
-Output from unit "almah/1":
-
-Unit state is "down", it must be "started" for running commands.
-
 Output from unit "almah/2":
 
 
@@ -999,4 +995,36 @@ func (s *ELBSuite) TestSwap(c *gocheck.C) {
 	app1Routes, err := router.Routes(app1.GetName())
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(app1Routes, gocheck.DeepEquals, []string{id2})
+}
+
+func (s *S) TestExecutedCommandOnce(c *gocheck.C) {
+	var buf bytes.Buffer
+	fexec := &etesting.FakeExecutor{}
+	execut = fexec
+	defer func() {
+		execut = nil
+	}()
+	app := testing.NewFakeApp("almah", "static", 2)
+	p := JujuProvisioner{}
+	err := p.ExecuteCommandOnce(&buf, &buf, app, "ls", "-lh")
+	c.Assert(err, gocheck.IsNil)
+	args := []string{
+		"ssh",
+		"-o",
+		"StrictHostKeyChecking no",
+		"-q",
+		"1",
+		"ls",
+		"-lh",
+	}
+	c.Assert(fexec.ExecutedCmd("juju", args), gocheck.Equals, true)
+	c.Assert(buf.String(), gocheck.Equals, "\n")
+}
+
+func (s *S) TestStartedUnits(c *gocheck.C) {
+	app := testing.NewFakeApp("almah", "static", 2)
+	app.SetUnitStatus(provision.StatusDown, 1)
+	p := JujuProvisioner{}
+	units := p.startedUnits(app)
+	c.Assert(units, gocheck.HasLen, 1)
 }

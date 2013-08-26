@@ -15,6 +15,7 @@ import (
 	"path"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"syscall"
 )
 
@@ -39,7 +40,7 @@ func (f *FakeFile) reader() *safe.Reader {
 }
 
 func (f *FakeFile) Close() error {
-	f.current = 0
+	atomic.StoreInt64(&f.current, 0)
 	if f.f != nil {
 		f.f.Close()
 		f.f = nil
@@ -49,20 +50,23 @@ func (f *FakeFile) Close() error {
 
 func (f *FakeFile) Read(p []byte) (n int, err error) {
 	n, err = f.reader().Read(p)
-	f.current += int64(n)
+	atomic.AddInt64(&f.current, int64(n))
 	return
 }
 
 func (f *FakeFile) ReadAt(p []byte, off int64) (n int, err error) {
 	n, err = f.reader().ReadAt(p, off)
-	f.current += off + int64(n)
+	atomic.AddInt64(&f.current, off+int64(n))
 	return
 }
 
 func (f *FakeFile) Seek(offset int64, whence int) (int64, error) {
-	var err error
-	f.current, err = f.reader().Seek(offset, whence)
-	return f.current, err
+	ncurrent, err := f.reader().Seek(offset, whence)
+	old := atomic.LoadInt64(&f.current)
+	for !atomic.CompareAndSwapInt64(&f.current, old, ncurrent) {
+		old = atomic.LoadInt64(&f.current)
+	}
+	return ncurrent, err
 }
 
 func (f *FakeFile) Fd() uintptr {
@@ -83,11 +87,12 @@ func (f *FakeFile) Stat() (fi os.FileInfo, err error) {
 
 func (f *FakeFile) Write(p []byte) (n int, err error) {
 	n = len(p)
-	diff := f.current - int64(len(f.content))
+	cur := atomic.LoadInt64(&f.current)
+	diff := cur - int64(len(f.content))
 	if diff > 0 {
 		f.content += strings.Repeat("\x00", int(diff)) + string(p)
 	} else {
-		f.content = f.content[:f.current] + string(p)
+		f.content = f.content[:cur] + string(p)
 	}
 	return
 }

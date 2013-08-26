@@ -375,12 +375,13 @@ func runCommand(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
 		return err
 	}
 	appName := r.URL.Query().Get(":app")
+	once := r.URL.Query().Get("once")
 	rec.Log(u.Email, "run-command", "app="+appName, "command="+string(c))
 	app, err := getApp(appName, u)
 	if err != nil {
 		return err
 	}
-	return app.Run(string(c), w)
+	return app.Run(string(c), w, once == "true")
 }
 
 func getEnv(w http.ResponseWriter, r *http.Request, t *auth.Token) error {

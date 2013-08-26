@@ -96,14 +96,14 @@ func (s *S) TestAppRunWithoutTheFlag(c *gocheck.C) {
 
 func (s *S) TestAppRunInfo(c *gocheck.C) {
 	desc := `run a command in all instances of the app, and prints the output.
-Notice that you may need quotes to run your command if you want to deal with
-input and outputs redirects, and pipes.
+
+If you use the '--once' flag tsuru will run the command only in one unit.
 
 If you don't provide the app name, tsuru will try to guess it.
 `
 	expected := &cmd.Info{
 		Name:    "run",
-		Usage:   `run <command> [commandarg1] [commandarg2] ... [commandargn] [--app appname]`,
+		Usage:   `run <command> [commandarg1] [commandarg2] ... [commandargn] [--app appname] [--once]`,
 		Desc:    desc,
 		MinArgs: 1,
 	}

@@ -257,6 +257,10 @@ func (hipacheRouter) removeElement(name, address string) error {
 	return nil
 }
 
+func (r hipacheRouter) Swap(backend1, backend2 string) error {
+	return router.Swap(r, backend1, backend2)
+}
+
 type routeError struct {
 	op  string
 	err error

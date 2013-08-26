@@ -1536,6 +1536,20 @@ func (s *S) TestLastLogs(c *gocheck.C) {
 	}
 }
 
+func (s *S) TestLastLogsEmpty(c *gocheck.C) {
+	app := App{
+		Name:     "app33",
+		Platform: "vougan",
+		Teams:    []string{s.team.Name},
+	}
+	err := s.conn.Apps().Insert(app)
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": app.Name})
+	logs, err := app.LastLogs(10, "tsuru")
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(logs, gocheck.DeepEquals, []Applog{})
+}
+
 func (s *S) TestGetTeams(c *gocheck.C) {
 	app := App{Name: "app", Teams: []string{s.team.Name}}
 	teams := app.GetTeams()
@@ -1619,7 +1633,27 @@ func (s *S) TestRun(c *gocheck.C) {
 		Units: []Unit{{Name: "i-0800", State: "started"}},
 	}
 	var buf bytes.Buffer
-	err := app.Run("ls -lh", &buf)
+	err := app.Run("ls -lh", &buf, false)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(buf.String(), gocheck.Equals, "a lot of files")
+	expected := "[ -f /home/application/apprc ] && source /home/application/apprc;"
+	expected += " [ -d /home/application/current ] && cd /home/application/current;"
+	expected += " ls -lh"
+	cmds := s.provisioner.GetCmds(expected, &app)
+	c.Assert(cmds, gocheck.HasLen, 1)
+}
+
+func (s *S) TestRunOnce(c *gocheck.C) {
+	s.provisioner.PrepareOutput([]byte("a lot of files"))
+	app := App{
+		Name: "myapp",
+		Units: []Unit{
+			{Name: "i-0800", State: "started"},
+			{Name: "i-0801", State: "started"},
+		},
+	}
+	var buf bytes.Buffer
+	err := app.Run("ls -lh", &buf, true)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(buf.String(), gocheck.Equals, "a lot of files")
 	expected := "[ -f /home/application/apprc ] && source /home/application/apprc;"
@@ -1636,7 +1670,7 @@ func (s *S) TestRunWithoutEnv(c *gocheck.C) {
 		Units: []Unit{{Name: "i-0800", State: "started"}},
 	}
 	var buf bytes.Buffer
-	err := app.run("ls -lh", &buf)
+	err := app.run("ls -lh", &buf, false)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(buf.String(), gocheck.Equals, "a lot of files")
 	cmds := s.provisioner.GetCmds("ls -lh", &app)
@@ -1677,6 +1711,9 @@ func (s *S) TestSerializeEnvVarsErrorWithoutOutput(c *gocheck.C) {
 				Value:  "https://secureproxy.com:3128/",
 				Public: true,
 			},
+		},
+		Units: []Unit{
+			{Name: "i-0801", State: "started"},
 		},
 	}
 	err := app.SerializeEnvVars()

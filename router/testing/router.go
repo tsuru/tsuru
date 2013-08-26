@@ -135,3 +135,7 @@ func (r *fakeRouter) Routes(name string) ([]string, error) {
 	routes := r.backends[name]
 	return routes, nil
 }
+
+func (*fakeRouter) Swap(backend1, backend2 string) error {
+	return nil
+}

@@ -362,14 +362,16 @@ func (s *S) TestRemoveUnitFailure(c *gocheck.C) {
 func (s *S) TestExecuteCommand(c *gocheck.C) {
 	var buf bytes.Buffer
 	output := []byte("myoutput!")
-	app := NewFakeApp("grand-designs", "rush", 0)
+	app := NewFakeApp("grand-designs", "rush", 2)
 	p := NewFakeProvisioner()
+	p.PrepareOutput(output)
 	p.PrepareOutput(output)
 	err := p.ExecuteCommand(&buf, nil, app, "ls", "-l")
 	c.Assert(err, gocheck.IsNil)
 	cmds := p.GetCmds("ls", app)
 	c.Assert(cmds, gocheck.HasLen, 1)
-	c.Assert(buf.String(), gocheck.Equals, string(output))
+	expected := string(output) + string(output)
+	c.Assert(buf.String(), gocheck.Equals, expected)
 }
 
 func (s *S) TestExecuteCommandFailureNoOutput(c *gocheck.C) {
@@ -552,4 +554,17 @@ func (s *S) TestCommandableProvisioner(c *gocheck.C) {
 	c.Assert(commands, gocheck.HasLen, 1)
 	commands2 := p.Commands()
 	c.Assert(commands[0], gocheck.Equals, commands2[0])
+}
+
+func (s *S) TestExecuteCommandOnce(c *gocheck.C) {
+	var buf bytes.Buffer
+	output := []byte("myoutput!")
+	app := NewFakeApp("grand-designs", "rush", 1)
+	p := NewFakeProvisioner()
+	p.PrepareOutput(output)
+	err := p.ExecuteCommandOnce(&buf, nil, app, "ls", "-l")
+	c.Assert(err, gocheck.IsNil)
+	cmds := p.GetCmds("ls", app)
+	c.Assert(cmds, gocheck.HasLen, 1)
+	c.Assert(buf.String(), gocheck.Equals, string(output))
 }
