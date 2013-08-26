@@ -413,8 +413,26 @@ connect in the database:
     define('DB_HOST', getenv('MYSQL_HOST'));
 
 
+You can extend your wordpress installing plugins into your repository. In the example bellow, we
+are installing the W3 Total Cache, adding the Amazon S3 capability to wordpress
+
+.. highlight:: bash
+
+::
+
+    $ cd wp-content/plugins/
+    $ wget http://downloads.wordpress.org/plugin/w3-total-cache.0.9.3.zip
+    $ unzip w3-total-cache.0.9.3.zip
+    $ rm w3-total-cache.0.9.3.zip
+    $ git add w3-total-cache/
+    $ git commit -m 'adding plugin for caching and S3'
+    $ git push tsuru master
+
 It's done! Now we have a PHP project deployed on tsuru, using a MySQL
 service.
+
+
+
 
 Going further
 =============
