@@ -87,6 +87,28 @@ func Remove(appName string) error {
 	return coll.Remove(bson.M{"app": appName})
 }
 
+func swapBackendName(backend1, backend2 string) error {
+	coll, err := collection()
+	if err != nil {
+		return err
+	}
+	router1, err := Retrieve(backend1)
+	if err != nil {
+		return err
+	}
+	router2, err := Retrieve(backend2)
+	if err != nil {
+		return err
+	}
+	update := bson.M{"$set": bson.M{"router": router2}}
+	err = coll.Update(bson.M{"app": backend1}, update)
+	if err != nil {
+		return err
+	}
+	update = bson.M{"$set": bson.M{"router": router1}}
+	return coll.Update(bson.M{"app": backend2}, update)
+}
+
 func Swap(r Router, backend1, backend2 string) error {
 	routes1, err := r.Routes(backend1)
 	if err != nil {

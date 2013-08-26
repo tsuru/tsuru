@@ -27,3 +27,19 @@ func (s *S) TestStore(c *gocheck.C) {
 	err = Remove("appname")
 	c.Assert(err, gocheck.IsNil)
 }
+
+func (s *S) TestSwapBackendName(c *gocheck.C) {
+	err := Store("appname", "routername")
+	c.Assert(err, gocheck.IsNil)
+	defer Remove("appname")
+	err = Store("appname2", "routername2")
+	c.Assert(err, gocheck.IsNil)
+	defer Remove("appname2")
+	err = swapBackendName("appname", "appname2")
+	name, err := Retrieve("appname")
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(name, gocheck.Equals, "routername2")
+	name, err = Retrieve("appname2")
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(name, gocheck.Equals, "routername")
+}
