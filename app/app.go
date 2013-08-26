@@ -775,7 +775,7 @@ func (app *App) LastLogs(lines int, source string) ([]Applog, error) {
 		return nil, err
 	}
 	defer conn.Close()
-	var logs []Applog
+	logs := []Applog{}
 	q := bson.M{"appname": app.Name}
 	if source != "" {
 		q["source"] = source

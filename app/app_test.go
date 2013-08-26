@@ -1536,6 +1536,20 @@ func (s *S) TestLastLogs(c *gocheck.C) {
 	}
 }
 
+func (s *S) TestLastLogsEmpty(c *gocheck.C) {
+	app := App{
+		Name:     "app33",
+		Platform: "vougan",
+		Teams:    []string{s.team.Name},
+	}
+	err := s.conn.Apps().Insert(app)
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": app.Name})
+	logs, err := app.LastLogs(10, "tsuru")
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(logs, gocheck.DeepEquals, []Applog{})
+}
+
 func (s *S) TestGetTeams(c *gocheck.C) {
 	app := App{Name: "app", Teams: []string{s.team.Name}}
 	teams := app.GetTeams()
