@@ -449,3 +449,38 @@ func (s *S) TestRoutes(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(routes, gocheck.DeepEquals, []string{"http://10.10.10.10:8080"})
 }
+
+func (s *S) TestSwap(c *gocheck.C) {
+	reply := map[string]interface{}{
+		"LRANGE": []interface{}{[]byte("http://127.0.0.1")},
+	}
+	conn = &resultCommandConn{reply: reply, fakeConn: s.fake}
+	backend1 := "b1"
+	backend2 := "b2"
+	router := hipacheRouter{}
+	router.AddBackend(backend1)
+	router.AddRoute(backend1, "http://127.0.0.1")
+	router.AddBackend(backend2)
+	router.AddRoute(backend2, "http://10.10.10.10")
+	err := router.Swap(backend1, backend2)
+	c.Assert(err, gocheck.IsNil)
+	cmds := []command{
+		{cmd: "RPUSH", args: []interface{}{"frontend:b1.golang.org", "b1"}},
+		{cmd: "RPUSH", args: []interface{}{"frontend:b1.golang.org", "http://127.0.0.1"}},
+		{cmd: "GET", args: []interface{}{"cname:b1"}},
+		{cmd: "RPUSH", args: []interface{}{"frontend:b2.golang.org", "b2"}},
+		{cmd: "RPUSH", args: []interface{}{"frontend:b2.golang.org", "http://10.10.10.10"}},
+		{cmd: "GET", args: []interface{}{"cname:b2"}},
+		{cmd: "LRANGE", args: []interface{}{"frontend:b1.golang.org", 0, -1}},
+		{cmd: "LRANGE", args: []interface{}{"frontend:b2.golang.org", 0, -1}},
+		{cmd: "RPUSH", args: []interface{}{"frontend:b2.golang.org", "http://127.0.0.1"}},
+		{cmd: "GET", args: []interface{}{"cname:b2"}},
+		{cmd: "LREM", args: []interface{}{"frontend:b1.golang.org", 0, "http://127.0.0.1"}},
+		{cmd: "GET", args: []interface{}{"cname:b1"}},
+		{cmd: "RPUSH", args: []interface{}{"frontend:b1.golang.org", "http://127.0.0.1"}},
+		{cmd: "GET", args: []interface{}{"cname:b1"}},
+		{cmd: "LREM", args: []interface{}{"frontend:b2.golang.org", 0, "http://127.0.0.1"}},
+		{cmd: "GET", args: []interface{}{"cname:b2"}},
+	}
+	c.Assert(s.fake.cmds, gocheck.DeepEquals, cmds)
+}
