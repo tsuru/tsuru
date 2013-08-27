@@ -815,7 +815,7 @@ func (s *ELBSuite) TestDestroyWithELB(c *gocheck.C) {
 	addr, err := router.Addr(app.GetName())
 	c.Assert(addr, gocheck.Equals, "")
 	c.Assert(err, gocheck.NotNil)
-	c.Assert(err, gocheck.ErrorMatches, "^There is no ACTIVE Load Balancer named.*")
+	c.Assert(err, gocheck.ErrorMatches, "not found")
 	q := getQueue(queueName)
 	msg, err := q.Get(1e9)
 	c.Assert(err, gocheck.IsNil)
@@ -961,7 +961,7 @@ func (s *ELBSuite) TestAddrWithELB(c *gocheck.C) {
 }
 
 func (s *ELBSuite) TestAddrWithUnknownELB(c *gocheck.C) {
-	app := testing.NewFakeApp("jimmy", "who", 0)
+	app := testing.NewFakeApp("jimmi", "who", 0)
 	p := JujuProvisioner{}
 	addr, err := p.Addr(app)
 	c.Assert(addr, gocheck.Equals, "")
@@ -981,20 +981,28 @@ func (s *ELBSuite) TestSwap(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	err = router.AddBackend(app1.GetName())
 	c.Assert(err, gocheck.IsNil)
+	defer router.RemoveBackend(app1.GetName())
 	err = router.AddRoute(app1.GetName(), id1)
 	c.Assert(err, gocheck.IsNil)
 	err = router.AddBackend(app2.GetName())
 	c.Assert(err, gocheck.IsNil)
+	defer router.RemoveBackend(app2.GetName())
 	err = router.AddRoute(app2.GetName(), id2)
 	c.Assert(err, gocheck.IsNil)
 	err = p.Swap(app1, app2)
 	c.Assert(err, gocheck.IsNil)
 	app2Routes, err := router.Routes(app2.GetName())
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(app2Routes, gocheck.DeepEquals, []string{id1})
+	c.Assert(app2Routes, gocheck.DeepEquals, []string{id2})
 	app1Routes, err := router.Routes(app1.GetName())
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(app1Routes, gocheck.DeepEquals, []string{id2})
+	c.Assert(app1Routes, gocheck.DeepEquals, []string{id1})
+	addr, err := router.Addr(app1.GetName())
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(addr, gocheck.Equals, "app2-some-aws-stuff.us-east-1.elb.amazonaws.com")
+	addr, err = router.Addr(app2.GetName())
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(addr, gocheck.Equals, "app1-some-aws-stuff.us-east-1.elb.amazonaws.com")
 }
 
 func (s *S) TestExecutedCommandOnce(c *gocheck.C) {

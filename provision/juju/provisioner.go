@@ -149,38 +149,9 @@ func (p *JujuProvisioner) Restart(app provision.App) error {
 func (JujuProvisioner) Swap(app1, app2 provision.App) error {
 	r, err := Router()
 	if err != nil {
-		log.Printf("Failed to get router: %s", err.Error())
 		return err
 	}
-	app1Routes, err := r.Routes(app1.GetName())
-	if err != nil {
-		return err
-	}
-	app2Routes, err := r.Routes(app2.GetName())
-	if err != nil {
-		return err
-	}
-	for _, route := range app1Routes {
-		err = r.AddRoute(app2.GetName(), route)
-		if err != nil {
-			return err
-		}
-		err = r.RemoveRoute(app1.GetName(), route)
-		if err != nil {
-			return err
-		}
-	}
-	for _, route := range app2Routes {
-		err = r.AddRoute(app1.GetName(), route)
-		if err != nil {
-			return err
-		}
-		err = r.RemoveRoute(app2.GetName(), route)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
+	return r.Swap(app1.GetName(), app2.GetName())
 }
 
 func (p *JujuProvisioner) Deploy(a provision.App, version string, w io.Writer) error {
@@ -533,7 +504,11 @@ func (p *JujuProvisioner) Addr(app provision.App) (string, error) {
 		if err != nil {
 			return "", err
 		}
-		return router.Addr(app.GetName())
+		addr, err := router.Addr(app.GetName())
+		if err != nil {
+			return "", fmt.Errorf("There is no ACTIVE Load Balancer named %s", app.GetName())
+		}
+		return addr, nil
 	}
 	units := app.ProvisionedUnits()
 	if len(units) < 1 {
