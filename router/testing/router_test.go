@@ -5,6 +5,8 @@
 package testing
 
 import (
+	"github.com/globocom/config"
+	"github.com/globocom/tsuru/db"
 	"github.com/globocom/tsuru/router"
 	"launchpad.net/gocheck"
 	"testing"
@@ -12,9 +14,23 @@ import (
 
 func Test(t *testing.T) { gocheck.TestingT(t) }
 
-type S struct{}
+type S struct {
+	conn *db.Storage
+}
 
 var _ = gocheck.Suite(&S{})
+
+func (s *S) SetUpSuite(c *gocheck.C) {
+	var err error
+	config.Set("database:url", "127.0.0.1:27017")
+	config.Set("database:name", "router_fake_tests")
+	s.conn, err = db.Conn()
+	c.Assert(err, gocheck.IsNil)
+}
+
+func (s *S) TearDownSuite(c *gocheck.C) {
+	s.conn.Collection("router_fake_tests").Database.DropDatabase()
+}
 
 func (s *S) TestShouldBeRegistered(c *gocheck.C) {
 	r, err := router.Get("fake")
@@ -151,4 +167,46 @@ func (s *S) TestRoutes(c *gocheck.C) {
 	routes, err := r.Routes("name")
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(routes, gocheck.DeepEquals, []string{"127.0.0.1"})
+}
+
+func (s *S) TestSwap(c *gocheck.C) {
+	instance1 := "127.0.0.1"
+	instance2 := "127.0.0.2"
+	backend1 := "b1"
+	backend2 := "b2"
+	r := fakeRouter{backends: make(map[string][]string)}
+	err := r.AddBackend(backend1)
+	c.Assert(err, gocheck.IsNil)
+	err = r.AddRoute(backend1, instance1)
+	c.Assert(err, gocheck.IsNil)
+	err = r.AddBackend(backend2)
+	c.Assert(err, gocheck.IsNil)
+	err = r.AddRoute(backend2, instance2)
+	c.Assert(err, gocheck.IsNil)
+	retrieved1, err := router.Retrieve(backend1)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(retrieved1, gocheck.Equals, backend1)
+	retrieved2, err := router.Retrieve(backend2)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(retrieved2, gocheck.Equals, backend2)
+	err = r.Swap(backend1, backend2)
+	c.Assert(err, gocheck.IsNil)
+	routes, err := r.Routes(backend2)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(routes, gocheck.DeepEquals, []string{instance2})
+	routes, err = r.Routes(backend1)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(routes, gocheck.DeepEquals, []string{instance1})
+	retrieved1, err = router.Retrieve(backend1)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(retrieved1, gocheck.Equals, backend2)
+	retrieved2, err = router.Retrieve(backend2)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(retrieved2, gocheck.Equals, backend1)
+	addr, err := r.Addr(backend1)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(addr, gocheck.Equals, "127.0.0.2")
+	addr, err = r.Addr(backend2)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(addr, gocheck.Equals, "127.0.0.1")
 }

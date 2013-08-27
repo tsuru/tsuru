@@ -52,39 +52,51 @@ func (r *fakeRouter) AddBackend(name string) error {
 	r.mutex.Lock()
 	defer r.mutex.Unlock()
 	r.backends[name] = nil
-	return nil
+	return router.Store(name, name)
 }
 
 func (r *fakeRouter) RemoveBackend(name string) error {
-	if !r.HasBackend(name) {
+	backendName, err := router.Retrieve(name)
+	if err != nil {
+		return err
+	}
+	if !r.HasBackend(backendName) {
 		return ErrBackendNotFound
 	}
 	r.mutex.Lock()
 	defer r.mutex.Unlock()
-	delete(r.backends, name)
+	delete(r.backends, backendName)
 	return nil
 }
 
 func (r *fakeRouter) AddRoute(name, ip string) error {
-	if !r.HasBackend(name) {
+	backendName, err := router.Retrieve(name)
+	if err != nil {
+		return err
+	}
+	if !r.HasBackend(backendName) {
 		return ErrBackendNotFound
 	}
 	r.mutex.Lock()
 	defer r.mutex.Unlock()
-	routes := r.backends[name]
+	routes := r.backends[backendName]
 	routes = append(routes, ip)
-	r.backends[name] = routes
+	r.backends[backendName] = routes
 	return nil
 }
 
 func (r *fakeRouter) RemoveRoute(name, ip string) error {
-	if !r.HasBackend(name) {
+	backendName, err := router.Retrieve(name)
+	if err != nil {
+		return err
+	}
+	if !r.HasBackend(backendName) {
 		return ErrBackendNotFound
 	}
 	r.mutex.Lock()
 	defer r.mutex.Unlock()
 	index := -1
-	routes := r.backends[name]
+	routes := r.backends[backendName]
 	for i := range routes {
 		if routes[i] == ip {
 			index = i
@@ -95,18 +107,22 @@ func (r *fakeRouter) RemoveRoute(name, ip string) error {
 		return errors.New("Route not found")
 	}
 	routes[index] = routes[len(routes)-1]
-	r.backends[name] = routes[:len(routes)-1]
+	r.backends[backendName] = routes[:len(routes)-1]
 	return nil
 }
 
 func (r *fakeRouter) SetCName(cname, name string) error {
-	if !r.HasBackend(name) {
+	backendName, err := router.Retrieve(name)
+	if err != nil {
+		return err
+	}
+	if !r.HasBackend(backendName) {
 		return nil
 	}
 	r.AddBackend(cname)
 	r.mutex.Lock()
 	defer r.mutex.Unlock()
-	r.backends[cname] = append(r.backends[name])
+	r.backends[cname] = append(r.backends[backendName])
 	return nil
 }
 
@@ -130,12 +146,16 @@ func (r *fakeRouter) Reset() {
 }
 
 func (r *fakeRouter) Routes(name string) ([]string, error) {
+	backendName, err := router.Retrieve(name)
+	if err != nil {
+		return nil, err
+	}
 	r.mutex.Lock()
 	defer r.mutex.Unlock()
-	routes := r.backends[name]
+	routes := r.backends[backendName]
 	return routes, nil
 }
 
-func (*fakeRouter) Swap(backend1, backend2 string) error {
-	return nil
+func (r *fakeRouter) Swap(backend1, backend2 string) error {
+	return router.Swap(r, backend1, backend2)
 }
