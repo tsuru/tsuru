@@ -8,6 +8,7 @@ import (
 	"errors"
 	"github.com/garyburd/redigo/redis"
 	"github.com/globocom/config"
+	"github.com/globocom/tsuru/db"
 	"github.com/globocom/tsuru/router"
 	"launchpad.net/gocheck"
 	"testing"
@@ -20,12 +21,22 @@ func Test(t *testing.T) {
 type S struct {
 	pool *redis.Pool
 	fake *fakeConn
+	conn *db.Storage
 }
 
 var _ = gocheck.Suite(&S{})
 
 func (s *S) SetUpSuite(c *gocheck.C) {
 	config.Set("hipache:domain", "golang.org")
+	config.Set("database:url", "127.0.0.1:27017")
+	config.Set("database:name", "router_hipache_tests")
+	var err error
+	s.conn, err = db.Conn()
+	c.Assert(err, gocheck.IsNil)
+}
+
+func (s *S) TearDownSuite(c *gocheck.C) {
+	s.conn.Collection("router_hipache_tests").Database.DropDatabase()
 }
 
 func (s *S) SetUpTest(c *gocheck.C) {
@@ -96,9 +107,13 @@ func (s *S) TestRemoveBackend(c *gocheck.C) {
 func (s *S) TestRemoveBackendAlsoRemovesRelatedCNameBackendAndControlRecord(c *gocheck.C) {
 	reply := map[string]interface{}{"GET": "mycname.com"}
 	conn = &resultCommandConn{reply: reply, fakeConn: s.fake}
-	err := hipacheRouter{}.RemoveBackend("tip")
+	router := hipacheRouter{}
+	err := router.AddBackend("tip")
+	c.Assert(err, gocheck.IsNil)
+	err = router.RemoveBackend("tip")
 	c.Assert(err, gocheck.IsNil)
 	expected := []command{
+		{cmd: "RPUSH", args: []interface{}{"frontend:tip.golang.org", "tip"}},
 		{cmd: "DEL", args: []interface{}{"frontend:tip.golang.org"}},
 		{cmd: "GET", args: []interface{}{"cname:tip"}},
 		{cmd: "DEL", args: []interface{}{"frontend:mycname.com"}},
@@ -201,9 +216,13 @@ func (s *S) TestAddRouteAlsoUpdatesCNameRecordsWhenExists(c *gocheck.C) {
 func (s *S) TestRemoveRoute(c *gocheck.C) {
 	reply := map[string]interface{}{"GET": "", "LRANGE": []interface{}{[]byte("10.10.10.11")}}
 	conn = &resultCommandConn{reply: reply, fakeConn: s.fake}
-	err := hipacheRouter{}.RemoveRoute("tip", "tip.golang.org")
+	router := hipacheRouter{}
+	err := router.AddBackend("tip")
+	c.Assert(err, gocheck.IsNil)
+	err = router.RemoveRoute("tip", "tip.golang.org")
 	c.Assert(err, gocheck.IsNil)
 	expected := []command{
+		{cmd: "RPUSH", args: []interface{}{"frontend:tip.golang.org", "tip"}},
 		{cmd: "LREM", args: []interface{}{"frontend:tip.golang.org", 0, "tip.golang.org"}},
 		{cmd: "GET", args: []interface{}{"cname:tip"}},
 	}
@@ -245,9 +264,13 @@ func (s *S) TestRemoveRouteCommandFailure(c *gocheck.C) {
 func (s *S) TestRemoveRouteAlsoRemovesRespectiveCNameRecord(c *gocheck.C) {
 	reply := map[string]interface{}{"GET": "tip.cname.com", "LRANGE": []interface{}{[]byte("10.10.10.11")}}
 	conn = &resultCommandConn{reply: reply, fakeConn: s.fake}
-	err := hipacheRouter{}.RemoveRoute("tip", "tip.golang.org")
+	router := hipacheRouter{}
+	err := router.AddBackend("tip")
+	c.Assert(err, gocheck.IsNil)
+	err = router.RemoveRoute("tip", "tip.golang.org")
 	c.Assert(err, gocheck.IsNil)
 	expected := []command{
+		{cmd: "RPUSH", args: []interface{}{"frontend:tip.golang.org", "tip"}},
 		{cmd: "LREM", args: []interface{}{"frontend:tip.golang.org", 0, "tip.golang.org"}},
 		{cmd: "GET", args: []interface{}{"cname:tip"}},
 		{cmd: "LREM", args: []interface{}{"frontend:tip.cname.com", 0, "tip.golang.org"}},
@@ -276,9 +299,13 @@ func (s *S) TestGetCNameIgnoresErrNil(c *gocheck.C) {
 
 func (s *S) TestSetCName(c *gocheck.C) {
 	conn = &resultCommandConn{defaultReply: []interface{}{[]byte("10.10.10.10")}, fakeConn: s.fake}
-	err := hipacheRouter{}.SetCName("myapp.com", "myapp")
+	router := hipacheRouter{}
+	err := router.AddBackend("myapp")
+	c.Assert(err, gocheck.IsNil)
+	err = router.SetCName("myapp.com", "myapp")
 	c.Assert(err, gocheck.IsNil)
 	expected := []command{
+		{cmd: "RPUSH", args: []interface{}{"frontend:myapp.golang.org", "myapp"}},
 		{cmd: "LRANGE", args: []interface{}{"frontend:myapp.golang.org", 0, -1}},
 		{cmd: "GET", args: []interface{}{"cname:myapp"}},
 		{cmd: "SET", args: []interface{}{"cname:myapp", "myapp.com"}},
@@ -291,13 +318,16 @@ func (s *S) TestSetCNameWithPreviousRoutes(c *gocheck.C) {
 	reply := map[string]interface{}{"GET": "", "SET": "", "LRANGE": []interface{}{[]byte("10.10.10.10"), []byte("10.10.10.11")}, "RPUSH": []interface{}{[]byte{}}}
 	conn = &resultCommandConn{reply: reply, fakeConn: s.fake}
 	router := hipacheRouter{}
-	err := router.AddRoute("myapp", "10.10.10.10")
+	err := router.AddBackend("myapp")
+	c.Assert(err, gocheck.IsNil)
+	err = router.AddRoute("myapp", "10.10.10.10")
 	c.Assert(err, gocheck.IsNil)
 	err = router.AddRoute("myapp", "10.10.10.11")
 	c.Assert(err, gocheck.IsNil)
 	err = router.SetCName("mycname.com", "myapp")
 	c.Assert(err, gocheck.IsNil)
 	expected := []command{
+		{cmd: "RPUSH", args: []interface{}{"frontend:myapp.golang.org", "myapp"}},       // AddBackend call
 		{cmd: "RPUSH", args: []interface{}{"frontend:myapp.golang.org", "10.10.10.10"}}, // AddRoute call
 		{cmd: "GET", args: []interface{}{"cname:myapp"}},                                // AddRoute call
 		{cmd: "RPUSH", args: []interface{}{"frontend:myapp.golang.org", "10.10.10.11"}}, // AddRoute call
@@ -314,22 +344,27 @@ func (s *S) TestSetCNameWithPreviousRoutes(c *gocheck.C) {
 func (s *S) TestSetCNameShouldRecordAppAndCNameOnRedis(c *gocheck.C) {
 	conn = &resultCommandConn{defaultReply: []interface{}{[]byte("mycname.com")}, fakeConn: s.fake}
 	router := hipacheRouter{}
-	err := router.SetCName("mycname.com", "myapp")
+	err := router.AddBackend("myapp")
+	c.Assert(err, gocheck.IsNil)
+	err = router.SetCName("mycname.com", "myapp")
 	c.Assert(err, gocheck.IsNil)
 	expected := command{cmd: "SET", args: []interface{}{"cname:myapp", "mycname.com"}}
-	c.Assert(s.fake.cmds[2], gocheck.DeepEquals, expected)
+	c.Assert(s.fake.cmds[3], gocheck.DeepEquals, expected)
 }
 
 func (s *S) TestSetCNameRemovesPreviousDefinedCNamesAndKeepItsRoutes(c *gocheck.C) {
 	reply := map[string]interface{}{"GET": "mycname.com", "SET": "", "LRANGE": []interface{}{[]byte("10.10.10.10")}, "RPUSH": []interface{}{[]byte{}}}
 	conn = &resultCommandConn{reply: reply, fakeConn: s.fake}
 	router := hipacheRouter{}
-	err := router.AddRoute("myapp", "10.10.10.10")
+	err := router.AddBackend("myapp")
+	c.Assert(err, gocheck.IsNil)
+	err = router.AddRoute("myapp", "10.10.10.10")
 	c.Assert(err, gocheck.IsNil)
 	err = router.SetCName("mycname.com", "myapp")
 	c.Assert(err, gocheck.IsNil)
 	err = router.SetCName("myothercname.com", "myapp")
 	expected := []command{
+		{cmd: "RPUSH", args: []interface{}{"frontend:myapp.golang.org", "myapp"}},
 		// addroute
 		{cmd: "RPUSH", args: []interface{}{"frontend:myapp.golang.org", "10.10.10.10"}},
 		{cmd: "GET", args: []interface{}{"cname:myapp"}},

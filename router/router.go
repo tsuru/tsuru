@@ -106,7 +106,10 @@ func swapBackendName(backend1, backend2 string) error {
 		return err
 	}
 	update = bson.M{"$set": bson.M{"router": router1}}
-	return coll.Update(bson.M{"app": backend2}, update)
+	err = coll.Update(bson.M{"app": backend2}, update)
+	var result []interface{}
+	coll.Find(nil).All(&result)
+	return err
 }
 
 func Swap(r Router, backend1, backend2 string) error {
@@ -138,5 +141,5 @@ func Swap(r Router, backend1, backend2 string) error {
 			return err
 		}
 	}
-	return nil
+	return swapBackendName(backend1, backend2)
 }

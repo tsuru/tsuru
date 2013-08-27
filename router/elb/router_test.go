@@ -10,6 +10,7 @@ import (
 	"github.com/flaviamissi/go-elb/elb/elbtest"
 	"github.com/globocom/config"
 	"github.com/globocom/tsuru/app"
+	"github.com/globocom/tsuru/db"
 	"github.com/globocom/tsuru/router"
 	"github.com/globocom/tsuru/testing"
 	"launchpad.net/gocheck"
@@ -24,6 +25,7 @@ type S struct {
 	server      *elbtest.Server
 	client      *elb.ELB
 	provisioner *testing.FakeProvisioner
+	conn        *db.Storage
 }
 
 var _ = gocheck.Suite(&S{})
@@ -43,9 +45,14 @@ func (s *S) SetUpSuite(c *gocheck.C) {
 	config.Set("aws:secret-access-key", "s3cr3t")
 	s.provisioner = testing.NewFakeProvisioner()
 	app.Provisioner = s.provisioner
+	config.Set("database:url", "127.0.0.1:27017")
+	config.Set("database:name", "router_elb_tests")
+	s.conn, err = db.Conn()
+	c.Assert(err, gocheck.IsNil)
 }
 
 func (s *S) TearDownSuite(c *gocheck.C) {
+	s.conn.Collection("router_elb_tests").Database.DropDatabase()
 	s.server.Quit()
 }
 
@@ -174,15 +181,39 @@ func (s *S) TestSwap(c *gocheck.C) {
 	defer s.server.RemoveInstance(instance2)
 	backend1 := "b1"
 	backend2 := "b2"
-	router := elbRouter{}
-	router.AddBackend(backend1)
-	router.AddRoute(backend1, instance1)
-	router.AddBackend(backend2)
-	router.AddRoute(backend2, instance2)
-	err := router.Swap(backend1, backend2)
+	elb := elbRouter{}
+	err := elb.AddBackend(backend1)
 	c.Assert(err, gocheck.IsNil)
-	routes, err := router.Routes(backend2)
-	c.Assert(routes, gocheck.DeepEquals, []string{instance1})
-	routes, err = router.Routes(backend1)
+	err = elb.AddRoute(backend1, instance1)
+	c.Assert(err, gocheck.IsNil)
+	err = elb.AddBackend(backend2)
+	c.Assert(err, gocheck.IsNil)
+	err = elb.AddRoute(backend2, instance2)
+	c.Assert(err, gocheck.IsNil)
+	retrieved1, err := router.Retrieve(backend1)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(retrieved1, gocheck.Equals, backend1)
+	retrieved2, err := router.Retrieve(backend2)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(retrieved2, gocheck.Equals, backend2)
+	err = elb.Swap(backend1, backend2)
+	c.Assert(err, gocheck.IsNil)
+	routes, err := elb.Routes(backend2)
+	c.Assert(err, gocheck.IsNil)
 	c.Assert(routes, gocheck.DeepEquals, []string{instance2})
+	routes, err = elb.Routes(backend1)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(routes, gocheck.DeepEquals, []string{instance1})
+	retrieved1, err = router.Retrieve(backend1)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(retrieved1, gocheck.Equals, backend2)
+	retrieved2, err = router.Retrieve(backend2)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(retrieved2, gocheck.Equals, backend1)
+	addr, err := elb.Addr(backend1)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(addr, gocheck.Equals, "b2-some-aws-stuff.us-east-1.elb.amazonaws.com")
+	addr, err = elb.Addr(backend2)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(addr, gocheck.Equals, "b1-some-aws-stuff.us-east-1.elb.amazonaws.com")
 }

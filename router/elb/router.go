@@ -76,21 +76,36 @@ func (r elbRouter) AddBackend(name string) error {
 		}
 	}
 	_, err = r.elb().CreateLoadBalancer(&options)
-	return err
+	return router.Store(name, name)
 }
 
 func (r elbRouter) RemoveBackend(name string) error {
-	_, err := r.elb().DeleteLoadBalancer(name)
-	return err
+	backendName, err := router.Retrieve(name)
+	if err != nil {
+		return err
+	}
+	_, err = r.elb().DeleteLoadBalancer(backendName)
+	if err != nil {
+		return err
+	}
+	return router.Remove(backendName)
 }
 
 func (r elbRouter) AddRoute(name, address string) error {
-	_, err := r.elb().RegisterInstancesWithLoadBalancer([]string{address}, name)
+	backendName, err := router.Retrieve(name)
+	if err != nil {
+		return err
+	}
+	_, err = r.elb().RegisterInstancesWithLoadBalancer([]string{address}, backendName)
 	return err
 }
 
 func (r elbRouter) RemoveRoute(name, address string) error {
-	_, err := r.elb().DeregisterInstancesFromLoadBalancer([]string{address}, name)
+	backendName, err := router.Retrieve(name)
+	if err != nil {
+		return err
+	}
+	_, err = r.elb().DeregisterInstancesFromLoadBalancer([]string{address}, backendName)
 	return err
 }
 
@@ -103,8 +118,12 @@ func (elbRouter) UnsetCName(cname, name string) error {
 }
 
 func (r elbRouter) Routes(name string) ([]string, error) {
+	backendName, err := router.Retrieve(name)
+	if err != nil {
+		return nil, err
+	}
 	var routes []string
-	resp, err := r.elb().DescribeLoadBalancers(name)
+	resp, err := r.elb().DescribeLoadBalancers(backendName)
 	if err != nil {
 		return nil, err
 	}
@@ -115,7 +134,11 @@ func (r elbRouter) Routes(name string) ([]string, error) {
 }
 
 func (r elbRouter) Addr(name string) (string, error) {
-	resp, err := r.elb().DescribeLoadBalancers(name)
+	backendName, err := router.Retrieve(name)
+	if err != nil {
+		return "", err
+	}
+	resp, err := r.elb().DescribeLoadBalancers(backendName)
 	if err != nil {
 		return "", err
 	}

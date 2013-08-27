@@ -58,22 +58,30 @@ func (hipacheRouter) AddBackend(name string) error {
 	if err != nil {
 		return &routeError{"add", err}
 	}
-	return nil
+	return router.Store(name, name)
 }
 
 func (r hipacheRouter) RemoveBackend(name string) error {
+	backendName, err := router.Retrieve(name)
+	if err != nil {
+		return err
+	}
 	domain, err := config.GetString("hipache:domain")
 	if err != nil {
 		return &routeError{"remove", err}
 	}
-	frontend := "frontend:" + name + "." + domain
+	frontend := "frontend:" + backendName + "." + domain
 	conn := connect()
 	defer conn.Close()
 	_, err = conn.Do("DEL", frontend)
 	if err != nil {
 		return &routeError{"remove", err}
 	}
-	cname, err := r.getCName(name)
+	err = router.Remove(backendName)
+	if err != nil {
+		return &routeError{"remove", err}
+	}
+	cname, err := r.getCName(backendName)
 	if err != nil {
 		return err
 	}
@@ -84,7 +92,7 @@ func (r hipacheRouter) RemoveBackend(name string) error {
 	if err != nil {
 		return &routeError{"remove", err}
 	}
-	_, err = conn.Do("DEL", "cname:"+name)
+	_, err = conn.Do("DEL", "cname:"+backendName)
 	if err != nil {
 		return &routeError{"remove", err}
 	}
@@ -92,19 +100,23 @@ func (r hipacheRouter) RemoveBackend(name string) error {
 }
 
 func (r hipacheRouter) AddRoute(name, address string) error {
+	backendName, err := router.Retrieve(name)
+	if err != nil {
+		return err
+	}
 	domain, err := config.GetString("hipache:domain")
 	if err != nil {
-		log.Printf("error on getting hipache domin in add route for %s - %s", name, address)
+		log.Printf("error on getting hipache domin in add route for %s - %s", backendName, address)
 		return &routeError{"add", err}
 	}
-	frontend := "frontend:" + name + "." + domain
+	frontend := "frontend:" + backendName + "." + domain
 	if err := r.addRoute(frontend, address); err != nil {
-		log.Printf("error on add route for %s - %s", name, address)
+		log.Printf("error on add route for %s - %s", backendName, address)
 		return &routeError{"add", err}
 	}
-	cname, err := r.getCName(name)
+	cname, err := r.getCName(backendName)
 	if err != nil {
-		log.Printf("error on get cname in add route for %s - %s", name, address)
+		log.Printf("error on get cname in add route for %s - %s", backendName, address)
 		return err
 	}
 	if cname == "" {
@@ -125,15 +137,19 @@ func (hipacheRouter) addRoute(name, address string) error {
 }
 
 func (r hipacheRouter) RemoveRoute(name, address string) error {
+	backendName, err := router.Retrieve(name)
+	if err != nil {
+		return err
+	}
 	domain, err := config.GetString("hipache:domain")
 	if err != nil {
 		return &routeError{"remove", err}
 	}
-	frontend := "frontend:" + name + "." + domain
+	frontend := "frontend:" + backendName + "." + domain
 	if err := r.removeElement(frontend, address); err != nil {
 		return err
 	}
-	cname, err := r.getCName(name)
+	cname, err := r.getCName(backendName)
 	if err != nil {
 		return &routeError{"remove", err}
 	}
@@ -164,6 +180,10 @@ func (hipacheRouter) validCName(cname string) bool {
 }
 
 func (r hipacheRouter) SetCName(cname, name string) error {
+	backendName, err := router.Retrieve(name)
+	if err != nil {
+		return err
+	}
 	domain, err := config.GetString("hipache:domain")
 	if err != nil {
 		return &routeError{"setCName", err}
@@ -172,20 +192,20 @@ func (r hipacheRouter) SetCName(cname, name string) error {
 		err := errors.New(fmt.Sprintf("Invalid CNAME %s. You can't use Tsuru's application domain.", cname))
 		return &routeError{"setCName", err}
 	}
-	frontend := "frontend:" + name + "." + domain
+	frontend := "frontend:" + backendName + "." + domain
 	conn := connect()
 	defer conn.Close()
 	routes, err := redis.Strings(conn.Do("LRANGE", frontend, 0, -1))
 	if err != nil {
 		return &routeError{"get", err}
 	}
-	if oldCName, err := redis.String(conn.Do("GET", "cname:"+name)); err == nil && oldCName != "" {
-		err = r.UnsetCName(oldCName, name)
+	if oldCName, err := redis.String(conn.Do("GET", "cname:"+backendName)); err == nil && oldCName != "" {
+		err = r.UnsetCName(oldCName, backendName)
 		if err != nil {
 			return &routeError{"setCName", err}
 		}
 	}
-	_, err = conn.Do("SET", "cname:"+name, cname)
+	_, err = conn.Do("SET", "cname:"+backendName, cname)
 	if err != nil {
 		return &routeError{"set", err}
 	}
@@ -200,9 +220,13 @@ func (r hipacheRouter) SetCName(cname, name string) error {
 }
 
 func (r hipacheRouter) UnsetCName(cname, name string) error {
+	backendName, err := router.Retrieve(name)
+	if err != nil {
+		return err
+	}
 	conn := connect()
 	defer conn.Close()
-	_, err := conn.Do("DEL", "cname:"+name)
+	_, err = conn.Do("DEL", "cname:"+backendName)
 	if err != nil {
 		return &routeError{"unsetCName", err}
 	}
@@ -214,11 +238,15 @@ func (r hipacheRouter) UnsetCName(cname, name string) error {
 }
 
 func (hipacheRouter) Addr(name string) (string, error) {
+	backendName, err := router.Retrieve(name)
+	if err != nil {
+		return "", err
+	}
 	domain, err := config.GetString("hipache:domain")
 	if err != nil {
 		return "", &routeError{"get", err}
 	}
-	frontend := "frontend:" + name + "." + domain
+	frontend := "frontend:" + backendName + "." + domain
 	conn := connect()
 	defer conn.Close()
 	reply, err := conn.Do("LRANGE", frontend, 0, 0)
@@ -229,15 +257,19 @@ func (hipacheRouter) Addr(name string) (string, error) {
 	if len(backends) < 1 {
 		return "", errRouteNotFound
 	}
-	return fmt.Sprintf("%s.%s", name, domain), nil
+	return fmt.Sprintf("%s.%s", backendName, domain), nil
 }
 
 func (hipacheRouter) Routes(name string) ([]string, error) {
+	backendName, err := router.Retrieve(name)
+	if err != nil {
+		return nil, err
+	}
 	domain, err := config.GetString("hipache:domain")
 	if err != nil {
 		return nil, &routeError{"routes", err}
 	}
-	frontend := "frontend:" + name + "." + domain
+	frontend := "frontend:" + backendName + "." + domain
 	conn := connect()
 	defer conn.Close()
 	routes, err := redis.Strings(conn.Do("LRANGE", frontend, 0, -1))
