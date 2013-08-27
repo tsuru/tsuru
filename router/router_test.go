@@ -28,6 +28,12 @@ func (s *S) TestStore(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 }
 
+func (s *S) TestRetireveNotFound(c *gocheck.C) {
+	name, err := Retrieve("notfound")
+	c.Assert(err, gocheck.Not(gocheck.IsNil))
+	c.Assert("", gocheck.Equals, name)
+}
+
 func (s *S) TestSwapBackendName(c *gocheck.C) {
 	err := Store("appname", "routername")
 	c.Assert(err, gocheck.IsNil)

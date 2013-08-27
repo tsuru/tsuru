@@ -75,7 +75,10 @@ func Retrieve(appName string) (string, error) {
 		return "", err
 	}
 	data := map[string]string{}
-	coll.Find(bson.M{"app": appName}).One(&data)
+	err = coll.Find(bson.M{"app": appName}).One(&data)
+	if err != nil {
+		return "", err
+	}
 	return data["router"], nil
 }
 
