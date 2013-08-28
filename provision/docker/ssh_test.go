@@ -36,6 +36,7 @@ func (SSHSuite) TestExecuteCommandHandler(c *gocheck.C) {
 	args := []string{
 		"10.10.10.10", "-l", "ubuntu",
 		"-o", "StrictHostKeyChecking no",
+		"-o", "UserKnownHostsFile /dev/null",
 		"--", "ls", "-l", "-a",
 	}
 	c.Assert(fexec.ExecutedCmd("ssh", args), gocheck.Equals, true)
