@@ -31,9 +31,8 @@ func sshHandler(w http.ResponseWriter, r *http.Request) {
 	w = &io.FlushingWriter{ResponseWriter: w}
 	sshArgs := []string{
 		r.URL.Query().Get(":ip"),
-		"-l", "ubuntu",
+		"-l", "ubuntu", "-q",
 		"-o", "StrictHostKeyChecking no",
-		"-o", "UserKnownHostsFile /dev/null",
 		"--", input.Cmd,
 	}
 	sshArgs = append(sshArgs, input.Args...)
