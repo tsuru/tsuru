@@ -6,6 +6,7 @@ package app
 
 import (
 	"errors"
+	"github.com/globocom/tsuru/db"
 	"sync"
 	"sync/atomic"
 )
@@ -86,4 +87,12 @@ func notify(appName string, messages []interface{}) {
 		}(l)
 	}
 	wg.Wait()
+}
+
+func LogRemove() error {
+	conn, err := db.Conn()
+	if err != nil {
+		return err
+	}
+	return conn.Logs().Remove(nil)
 }

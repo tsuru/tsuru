@@ -5,6 +5,7 @@
 package app
 
 import (
+	"labix.org/v2/mgo/bson"
 	"launchpad.net/gocheck"
 	"sync"
 	"time"
@@ -93,4 +94,17 @@ func (s *S) TestNotify(c *gocheck.C) {
 	logs.Lock()
 	defer logs.Unlock()
 	c.Assert(logs.l, gocheck.DeepEquals, ms)
+}
+
+func (s *S) TestLogRemove(c *gocheck.C) {
+	a := App{Name: "newApp"}
+	err := s.conn.Apps().Insert(a)
+	c.Assert(err, gocheck.IsNil)
+	err = a.Log("last log msg", "tsuru")
+	c.Assert(err, gocheck.IsNil)
+	err = LogRemove()
+	c.Assert(err, gocheck.IsNil)
+	count, err := s.conn.Logs().Find(bson.M{"appname": a.Name}).Count()
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(count, gocheck.Equals, 0)
 }
