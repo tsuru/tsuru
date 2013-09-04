@@ -96,6 +96,7 @@ func (s *S) TearDownSuite(c *gocheck.C) {
 func (s *S) TearDownTest(c *gocheck.C) {
 	s.t.RollbackGitConfs(c)
 	s.provisioner.Reset()
+	s.conn.Logs().RemoveAll(nil)
 }
 
 func (s *S) getTestData(p ...string) io.ReadCloser {

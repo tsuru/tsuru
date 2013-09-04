@@ -7,6 +7,7 @@ package app
 import (
 	"errors"
 	"github.com/globocom/tsuru/db"
+	"labix.org/v2/mgo/bson"
 	"sync"
 	"sync/atomic"
 )
@@ -89,10 +90,16 @@ func notify(appName string, messages []interface{}) {
 	wg.Wait()
 }
 
-func LogRemove() error {
+// LogRemove removes the app log.
+func LogRemove(a *App) error {
 	conn, err := db.Conn()
 	if err != nil {
 		return err
 	}
-	return conn.Logs().Remove(nil)
+	if a != nil {
+		_, err = conn.Logs().RemoveAll(bson.M{"appname": a.Name})
+	} else {
+		_, err = conn.Logs().RemoveAll(nil)
+	}
+	return err
 }

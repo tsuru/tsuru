@@ -1438,7 +1438,7 @@ func (s *S) TestLogShouldAddOneRecordByLine(c *gocheck.C) {
 	err = a.Log("last log msg\nfirst log", "source")
 	c.Assert(err, gocheck.IsNil)
 	var logs []Applog
-	err = s.conn.Logs().Find(bson.M{"appname": a.Name}).All(&logs)
+	err = s.conn.Logs().Find(bson.M{"appname": a.Name}).Sort("$natural").All(&logs)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(logs, gocheck.HasLen, 2)
 	c.Assert(logs[0].Message, gocheck.Equals, "last log msg")
@@ -1481,6 +1481,7 @@ func (s *S) TestLogWithListeners(c *gocheck.C) {
 	}()
 	err = a.Log("last log msg", "tsuru")
 	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Logs().Remove(bson.M{"appname": a.Name})
 	done := make(chan bool, 1)
 	q := make(chan bool)
 	go func(quit chan bool) {

@@ -100,11 +100,35 @@ func (s *S) TestLogRemove(c *gocheck.C) {
 	a := App{Name: "newApp"}
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	err = a.Log("last log msg", "tsuru")
 	c.Assert(err, gocheck.IsNil)
-	err = LogRemove()
+	err = LogRemove(nil)
 	c.Assert(err, gocheck.IsNil)
-	count, err := s.conn.Logs().Find(bson.M{"appname": a.Name}).Count()
+	count, err := s.conn.Logs().Find(nil).Count()
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(count, gocheck.Equals, 0)
+}
+
+func (s *S) TestLogRemoveByApp(c *gocheck.C) {
+	a := App{Name: "newApp"}
+	err := s.conn.Apps().Insert(a)
+	c.Assert(err, gocheck.IsNil)
+	err = a.Log("last log msg", "tsuru")
+	c.Assert(err, gocheck.IsNil)
+	a2 := App{Name: "oldApp"}
+	err = s.conn.Apps().Insert(a2)
+	c.Assert(err, gocheck.IsNil)
+	defer func() {
+		s.conn.Apps().Remove(bson.M{"name": a.Name})
+		s.conn.Apps().Remove(bson.M{"name": a2.Name})
+		s.conn.Logs().RemoveAll(nil)
+	}()
+	err = a2.Log("last log msg", "tsuru")
+	c.Assert(err, gocheck.IsNil)
+	err = LogRemove(&a)
+	c.Assert(err, gocheck.IsNil)
+	count, err := s.conn.Logs().Find(nil).Count()
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(count, gocheck.Equals, 1)
 }
