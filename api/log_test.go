@@ -52,7 +52,7 @@ func (s *LogSuite) TearDownSuite(c *gocheck.C) {
 
 func (s *LogSuite) TestLogRemoveAll(c *gocheck.C) {
 	a := app.App{Name: "words"}
-	request, err := http.NewRequest("DELETE", "/log", nil)
+	request, err := http.NewRequest("DELETE", "/logs", nil)
 	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
 	err = s.conn.Apps().Insert(a)
@@ -83,7 +83,7 @@ func (s *LogSuite) TestLogRemoveByApp(c *gocheck.C) {
 	defer s.conn.Apps().Remove(bson.M{"name": a2.Name})
 	err = a2.Log("last log msg2", "tsuru")
 	c.Assert(err, gocheck.IsNil)
-	url := fmt.Sprintf("/log/%s?:app=%s", a.Name, a.Name)
+	url := fmt.Sprintf("/logs/%s?:app=%s", a.Name, a.Name)
 	request, err := http.NewRequest("DELETE", url, nil)
 	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
