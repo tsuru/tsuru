@@ -101,6 +101,8 @@ func RunServer(dry bool) {
 
 	m.Post("/tokens", adminRequiredHandler(generateAppToken))
 
+	m.Del("/logs", adminRequiredHandler(logRemove))
+
 	m.Get("/teams", authorizationRequiredHandler(teamList))
 	m.Post("/teams", authorizationRequiredHandler(createTeam))
 	m.Get("/teams/:name", authorizationRequiredHandler(getTeam))
