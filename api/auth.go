@@ -23,7 +23,6 @@ import (
 	"io"
 	"labix.org/v2/mgo/bson"
 	"net/http"
-	"strings"
 )
 
 const (
@@ -195,26 +194,18 @@ func createTeam(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
 	if err != nil {
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
 	}
-	name, ok := params["name"]
-	if !ok {
-		msg := "You must provide the team name"
-		return &errors.HTTP{Code: http.StatusBadRequest, Message: msg}
-	}
+	name := params["name"]
 	u, err := t.User()
 	if err != nil {
 		return err
 	}
 	rec.Log(u.Email, "create-team", name)
-	conn, err := db.Conn()
-	if err != nil {
-		return err
-	}
-	defer conn.Close()
-	team := &auth.Team{Name: name, Users: []string{u.Email}}
-	if err := conn.Teams().Insert(team); err != nil &&
-		strings.Contains(err.Error(), "duplicate key error") {
-		msg := "This team already exists"
-		return &errors.HTTP{Code: http.StatusConflict, Message: msg}
+	err = auth.CreateTeam(name, u)
+	switch err {
+	case auth.ErrInvalidTeamName:
+		return &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
+	case auth.ErrTeamAlreadyExists:
+		return &errors.HTTP{Code: http.StatusConflict, Message: err.Error()}
 	}
 	return nil
 }

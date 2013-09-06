@@ -517,22 +517,10 @@ func (s *AuthSuite) TestCreateTeamHandlerReturnsBadRequestIfTheNameIsNotGiven(c 
 	recorder := httptest.NewRecorder()
 	err = createTeam(recorder, request, s.token)
 	c.Assert(err, gocheck.NotNil)
-	c.Assert(err, gocheck.ErrorMatches, "^You must provide the team name$")
+	c.Assert(err.Error(), gocheck.Equals, auth.ErrInvalidTeamName.Error())
 	e, ok := err.(*errors.HTTP)
 	c.Assert(ok, gocheck.Equals, true)
 	c.Assert(e.Code, gocheck.Equals, http.StatusBadRequest)
-}
-
-func (s *AuthSuite) TestCreateTeamHandlerReturnsInternalServerErrorIfReadAllFails(c *gocheck.C) {
-	b := s.getTestData("bodyToBeClosed.txt")
-	err := b.Close()
-	c.Assert(err, gocheck.IsNil)
-	request, err := http.NewRequest("POST", "/teams", b)
-	c.Assert(err, gocheck.IsNil)
-	request.Header.Set("Content-type", "application/json")
-	recorder := httptest.NewRecorder()
-	err = createTeam(recorder, request, s.token)
-	c.Assert(err, gocheck.NotNil)
 }
 
 func (s *AuthSuite) TestCreateTeamHandlerReturnConflictIfTheTeamToBeCreatedAlreadyExists(c *gocheck.C) {
@@ -551,7 +539,7 @@ func (s *AuthSuite) TestCreateTeamHandlerReturnConflictIfTheTeamToBeCreatedAlrea
 	e, ok := err.(*errors.HTTP)
 	c.Assert(ok, gocheck.Equals, true)
 	c.Assert(e.Code, gocheck.Equals, http.StatusConflict)
-	c.Assert(e, gocheck.ErrorMatches, "^This team already exists$")
+	c.Assert(e, gocheck.ErrorMatches, "^Team already exists$")
 }
 
 func (s *AuthSuite) TestKeyToMap(c *gocheck.C) {
