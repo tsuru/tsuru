@@ -5,11 +5,22 @@
 package auth
 
 import (
+	"errors"
 	"fmt"
 	"github.com/globocom/tsuru/db"
 	"github.com/globocom/tsuru/log"
+	"labix.org/v2/mgo"
 	"labix.org/v2/mgo/bson"
+	"regexp"
+	"strings"
 	"sync"
+)
+
+var (
+	ErrInvalidTeamName   = errors.New("Invalid team name")
+	ErrTeamAlreadyExists = errors.New("Team already exists")
+
+	teamNameRegexp = regexp.MustCompile(`^[a-zA-Z][-@_.+\w\s]+$`)
 )
 
 type Team struct {
@@ -48,6 +59,34 @@ func (t *Team) RemoveUser(u *User) error {
 	copy(t.Users[index:], t.Users[index+1:])
 	t.Users = t.Users[:len(t.Users)-1]
 	return nil
+}
+
+func CreateTeam(name string, user ...*User) error {
+	name = strings.TrimSpace(name)
+	if !isTeamNameValid(name) {
+		return ErrInvalidTeamName
+	}
+	team := Team{
+		Name:  name,
+		Users: make([]string, len(user)),
+	}
+	for i, u := range user {
+		team.Users[i] = u.Email
+	}
+	conn, err := db.Conn()
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+	err = conn.Teams().Insert(team)
+	if mgo.IsDup(err) {
+		return ErrTeamAlreadyExists
+	}
+	return err
+}
+
+func isTeamNameValid(name string) bool {
+	return teamNameRegexp.MatchString(name)
 }
 
 func GetTeam(name string) (*Team, error) {
