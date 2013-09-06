@@ -109,7 +109,7 @@ func GetURL(path string) (string, error) {
 	if m, _ := regexp.MatchString("^https?://", target); !m {
 		prefix = "http://"
 	}
-	return prefix + target + path, nil
+	return prefix + strings.TrimRight(target, "/") + path, nil
 }
 
 func writeTarget(t string) error {
@@ -119,10 +119,8 @@ func writeTarget(t string) error {
 		return err
 	}
 	defer targetFile.Close()
-	t = strings.TrimRight(t, "/")
-	content := []byte(t)
-	n, err := targetFile.Write(content)
-	if n != len(content) || err != nil {
+	n, err := targetFile.WriteString(t)
+	if n != len(t) || err != nil {
 		return errors.New("Failed to write the target file")
 	}
 	return nil

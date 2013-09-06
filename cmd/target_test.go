@@ -34,27 +34,15 @@ func (s *S) TestWriteTarget(c *gocheck.C) {
 	c.Assert(readRecordedTarget(rfs), gocheck.Equals, "http://tsuru.globo.com")
 }
 
-func (s *S) TestWriteTargetShouldStripLeadingSlashs(c *gocheck.C) {
+func (s *S) TestWriteTargetKeepsLeadingSlashs(c *gocheck.C) {
 	rfs := &testing.RecordingFs{}
 	fsystem = rfs
 	defer func() {
 		fsystem = nil
 	}()
-	err := writeTarget("http://tsuru.globo.com/")
+	err := writeTarget("http://tsuru.globo.com//")
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(readRecordedTarget(rfs), gocheck.Equals, "http://tsuru.globo.com")
-}
-
-func (s *S) TestWriteTargetShouldStripAllLeadingSlashs(c *gocheck.C) {
-	rfs := &testing.RecordingFs{}
-	fsystem = rfs
-	defer func() {
-		fsystem = nil
-	}()
-	err := writeTarget("http://tsuru.globo.com////")
-	c.Assert(err, gocheck.IsNil)
-	target := readRecordedTarget(rfs)
-	c.Assert(target, gocheck.Equals, "http://tsuru.globo.com")
+	c.Assert(readRecordedTarget(rfs), gocheck.Equals, "http://tsuru.globo.com//")
 }
 
 func (s *S) TestReadTarget(c *gocheck.C) {
@@ -146,6 +134,17 @@ func (s *S) TestGetURLUndefinedTarget(c *gocheck.C) {
 	c.Assert(err, gocheck.NotNil)
 	_, ok := err.(undefinedTargetError)
 	c.Assert(ok, gocheck.Equals, true)
+}
+
+func (s *S) TestGetURLLeadingSlashes(c *gocheck.C) {
+	rfs := &testing.RecordingFs{FileContent: "https://localhost/tsuru/"}
+	fsystem = rfs
+	defer func() {
+		fsystem = nil
+	}()
+	got, err := GetURL("/apps")
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(got, gocheck.Equals, "https://localhost/tsuru/apps")
 }
 
 func (s *S) TestTargetAddInfo(c *gocheck.C) {
