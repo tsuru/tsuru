@@ -55,7 +55,7 @@ After build, install and reboot the server with the new kernel(it will take some
 Tsuru's Dependencies
 --------------------
 
-Tsuru needs MongoDB stable, distributed by 10genr, `Beanstalkd <http://kr.github.com/beanstalkd/>` as work queue, git-daemon(necessary for Gandalf) and Redis for `hipache <https://github.com/dotcloud/hipache/>` 
+Tsuru needs MongoDB stable, distributed by 10genr, `Beanstalkd <http://kr.github.com/beanstalkd/>`_ as work queue, git-daemon(necessary for Gandalf) and Redis for `hipache <https://github.com/dotcloud/hipache/>`_ 
 Install the latest EPEL version, by doing this:
 
 .. highlight:: bash
@@ -74,7 +74,7 @@ Install the latest EPEL version, by doing this:
 Tsuru Setup
 -----------
 
-Tsuru uses `Gandalf <https://github.com/globocom/gandalf/>`_ to manage `git repositories <https://gandalf.readthedocs.org/en/latest/install.html/>`, and `hipache <https://github.com/dotcloud/hipache/>` as router
+Tsuru uses `Gandalf <https://github.com/globocom/gandalf/>`_ to manage `git repositories <https://gandalf.readthedocs.org/en/latest/install.html/>`_, and `hipache <https://github.com/dotcloud/hipache/>`_ as router
 To setup Tsuru, just follow this steps. Obs: It can be used to upgrade this services as needed
 
 .. highlight:: bash
@@ -95,7 +95,7 @@ the configuration file in the ``/etc/tsuru/tsuru.conf`` path. You can check a
 sample configuration file and documentation for each tsuru setting in the
 :doc:`"Configuring tsuru" </config>` page.
 
-You can download the sample configuration file from `Github <https://raw.github.com/globocom/tsuru/master/etc/tsuru-docker.conf/>`  
+You can download the sample configuration file from `Github <https://raw.github.com/globocom/tsuru/master/etc/tsuru-docker.conf/>`_ 
 
 By default, this configuration will use the tsuru image namespace, so if you try to create an application using python platform,
 tsuru will search for an image named tsuru/python. You can change this default behavior by changing the docker:repository-namespace config field.
