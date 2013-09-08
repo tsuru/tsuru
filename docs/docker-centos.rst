@@ -60,6 +60,7 @@ Install the latest EPEL version, by doing this:
 .. highlight:: bash
 
 ::
+
     $ yum install mongodb-server beanstalkd git-daemon redis -y 
     $ service mongod start
     $ service beanstalkd start
