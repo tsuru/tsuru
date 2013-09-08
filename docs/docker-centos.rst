@@ -17,7 +17,7 @@ Just follow this steps:
 Docker
 ------
 
-To make docker working on a RHEL/Centos distro, you will need to use the `EPEL repository <http://fedoraproject.org/wiki/EPEL/>`, build a kernel with `AUFS <http://aufs.sourceforge.net/>` support, and install all dependencies as following: 
+To make docker working on a RHEL/Centos distro, you will need to use the `EPEL repository <http://fedoraproject.org/wiki/EPEL/>`_, build a kernel with `AUFS <http://aufs.sourceforge.net/>`_ support, and install all dependencies as following: 
 
 .. highlight:: bash
 
@@ -31,12 +31,12 @@ To make docker working on a RHEL/Centos distro, you will need to use the `EPEL r
     # you will need to perform these steps bellow with a unprivileged user, ex: su - tsuru
     $ git clone https://github.com/sciurus/docker-rhel-rpm
     $ cd docker-rhel-rpm
-    # Fix the AUFSver with the `latest AUFS<http://sourceforge.net/p/aufs/aufs3-standalone/ci/aufs3.10/tree/>` for kernel 3.10 version 
+    # Fix the AUFSver with the `latest AUFS<http://sourceforge.net/p/aufs/aufs3-standalone/ci/aufs3.10/tree/>`_ for kernel 3.10 version 
     $ sed -i 's/\(^.*AUFSver aufs-aufs3-standalone\).*$/\1-38c1b30224c440e3618c90633bef73cdce54c6fd/' kernel-ml-aufs/kernel-ml-aufs-3.10.spec
     # Remove auto restart of docker, as it will be managed by circus
     $ sed -i 's|^%{_sysconfdir}/init/docker.conf||' docker/docker.spec
 
-Now, just follow the steps to build the kernel + lxc + docker from `here <https://github.com/sciurus/docker-rhel-rpm/blob/master/README.md/>`
+Now, just follow the steps to build the kernel + lxc + docker from `here <https://github.com/sciurus/docker-rhel-rpm/blob/master/README.md/>`_
 
 .. highlight:: bash
 
