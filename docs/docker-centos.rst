@@ -2,9 +2,9 @@
    Use of this source code is governed by a BSD-style
    license that can be found in the LICENSE file.
 
-+++++++++++++++++++++++++++++++++++++++++
++++++++++++++++++++++++++++++++++++++++++++++++++++
 Build your own PaaS with tsuru and Docker on Centos
-+++++++++++++++++++++++++++++++++++++++++
++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 This document describes how to create a private PaaS service using tsuru and docker on Centos.
 
@@ -52,7 +52,7 @@ After build, install and reboot the server with the new kernel(it will take some
 
 
 Tsuru's Dependencies
--------
+--------------------
 
 Tsuru needs MongoDB stable, distributed by 10genr, `Beanstalkd <http://kr.github.com/beanstalkd/>` as work queue, git-daemon(necessary for Gandalf) and Redis for `hipache <https://github.com/dotcloud/hipache/>` 
 Install the latest EPEL version, by doing this:
@@ -70,7 +70,7 @@ Install the latest EPEL version, by doing this:
 
 
 Tsuru Setup
--------
+-----------
 
 Tsuru uses `Gandalf <https://github.com/globocom/gandalf/>`_ to manage `git repositories <https://gandalf.readthedocs.org/en/latest/install.html/>`, and `hipache <https://github.com/dotcloud/hipache/>` as router
 To setup Tsuru, just follow this steps. Obs: It can be used to upgrade this services as needed
