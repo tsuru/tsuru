@@ -26,8 +26,9 @@ To make docker working on a RHEL/Centos distro, you will need to use the `EPEL r
     # Installing the EPEL respository
     $ rpm -iUvh http://dl.fedoraproject.org/pub/epel/6/x86_64/epel-release-6-8.noarch.rpm
     $ yum update -y
-    # Download the kernel + dependencies for docker (you will need to perform this steps with a unprivileged user)
+    # Download the kernel + dependencies for docker 
     $ yum install fedora-packager -y
+    # you will need to perform these steps bellow with a unprivileged user, ex: su - tsuru
     $ git clone https://github.com/sciurus/docker-rhel-rpm
     $ cd docker-rhel-rpm
     # Fix the AUFSver with the `latest AUFS<http://sourceforge.net/p/aufs/aufs3-standalone/ci/aufs3.10/tree/>` for kernel 3.10 version 
@@ -41,7 +42,7 @@ Now, just follow the steps to build the kernel + lxc + docker from `here <https:
 
 ::
 
-    # In order to user docker, you will need to allow the ip forward
+    # In order to use docker, you will need to allow the ip forward
     $ grep net.ipv4.ip_forward /etc/sysctl.conf > /dev/null 2>&1 && \
                         sed -i 's/^net.ipv4.ip_forward.*/net.ipv4.ip_forward = 1/' /etc/sysctl.conf  || \
                         echo 'net.ipv4.ip_forward = 1' >> /etc/sysctl.conf
