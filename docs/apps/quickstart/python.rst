@@ -98,7 +98,7 @@ command:
 
     $ tsuru app-info --app blog
     Application: blog
-    Repository: git@cloud.tsuru.io:blog.git
+    Repository: git@git.tsuru.io:blog.git
     Platform: python
     Teams: tsuruteam
     Address:
@@ -110,7 +110,7 @@ push to tsuru remote and your project will be deployed:
 
 ::
 
-    $ git push git@cloud.tsuru.io:blog.git master
+    $ git push git@git.tsuru.io:blog.git master
     Counting objects: 119, done.
     Delta compression using up to 4 threads.
     Compressing objects: 100% (53/53), done.
@@ -130,7 +130,7 @@ push to tsuru remote and your project will be deployed:
     remote:
     remote:  ---> Deploy done!
     remote:
-    To git@cloud.tsuru.io:blog.git
+    To git@git.tsuru.io:blog.git
        a211fba..bbf5b53  master -> master
 
 If you get a "Permission denied (publickey).", make sure you're member of a
@@ -151,7 +151,7 @@ you want to push:
 
 ::
 
-    $ git remote add tsuru git@cloud.tsuru.io:blog.git
+    $ git remote add tsuru git@git.tsuru.io:blog.git
 
 Then you can run:
 
@@ -170,7 +170,7 @@ And you will be also able to omit the ``--app`` flag from now on:
 
     $ tsuru app-info
     Application: blog
-    Repository: git@cloud.tsuru.io:blog.git
+    Repository: git@git.tsuru.io:blog.git
     Platform: python
     Teams: tsuruteam
     Address: blog.cloud.tsuru.io
@@ -305,7 +305,7 @@ You can see the complete output of installing these dependencies bellow:
     #####################################
     #                OMIT               #
     #####################################
-    To git@cloud.tsuru.io:blog.git
+    To git@git.tsuru.io:blog.git
        a211fba..bbf5b53  master -> master
 
 Running the application
@@ -360,7 +360,7 @@ another deploy:
     remote:
     remote:  ---> Deploy done!
     remote:
-    To git@cloud.tsuru.io:blog.git
+    To git@git.tsuru.io:blog.git
        81e884e..530c528  master -> master
 
 Now we get an error: ``gunicorn: command not found``. It means that we need to
@@ -396,7 +396,7 @@ Now we commit the changes and run another deploy:
     remote:
     remote:  ---> Deploy done!
     remote:
-    To git@cloud.tsuru.io:blog.git
+    To git@git.tsuru.io:blog.git
        530c528..542403a  master -> master
 
 Now that the app is deployed, you can access it from your browser, getting the
@@ -539,7 +539,7 @@ Now let's commit it and run another deploy:
     remote:
     remote:  ---> Deploy done!
     remote:
-    To git@cloud.tsuru.io:blog.git
+    To git@git.tsuru.io:blog.git
        ab4e706..a780de9  master -> master
 
 Now if we try to access the admin again, we will get another error: `"Table
@@ -646,7 +646,7 @@ It should be located in the root of the project. Let's commit and deploy it:
     remote:
     remote:  ---> Deploy done!
     remote:
-    To git@cloud.tsuru.io:blog.git
+    To git@git.tsuru.io:blog.git
        a780de9..1b675b8  master -> master
 
 It's done! Now we have a Django project deployed on tsuru, using a MySQL
