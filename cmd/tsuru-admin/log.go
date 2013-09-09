@@ -4,7 +4,11 @@
 
 package main
 
-import "github.com/globocom/tsuru/cmd"
+import (
+	"fmt"
+	"github.com/globocom/tsuru/cmd"
+	"net/http"
+)
 
 type LogRemove struct{}
 
@@ -15,4 +19,21 @@ func (c *LogRemove) Info() *cmd.Info {
 		Desc:    `remove all app logs.`,
 		MinArgs: 0,
 	}
+}
+
+func (c *LogRemove) Run(context *cmd.Context, client *cmd.Client) error {
+	url, err := cmd.GetURL("/logs")
+	if err != nil {
+		return err
+	}
+	request, err := http.NewRequest("DELETE", url, nil)
+	if err != nil {
+		return err
+	}
+	_, err = client.Do(request)
+	if err != nil {
+		return err
+	}
+	fmt.Fprintf(context.Stdout, "Logs successfully removed!\n")
+	return nil
 }

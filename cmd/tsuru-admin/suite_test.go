@@ -5,6 +5,8 @@
 package main
 
 import (
+	"bytes"
+	"github.com/globocom/tsuru/cmd"
 	"launchpad.net/gocheck"
 	"os"
 	"os/exec"
@@ -15,7 +17,11 @@ type S struct {
 	recover []string
 }
 
+var manager *cmd.Manager
+
 func (s *S) SetUpSuite(c *gocheck.C) {
+	var stdout, stderr bytes.Buffer
+	manager = cmd.NewManager("glb", version, header, &stdout, &stderr, os.Stdin)
 	targetFile := os.Getenv("HOME") + "/.tsuru_target"
 	_, err := os.Stat(targetFile)
 	if err == nil {
