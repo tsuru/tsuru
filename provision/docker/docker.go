@@ -393,6 +393,11 @@ func getImage(app provision.App) string {
 
 // removeImage removes an image from docker registry
 func removeImage(imageId string) error {
+	removeFromRegistry(imageId)
+	return dockerCluster().RemoveImage(imageId)
+}
+
+func removeFromRegistry(imageId string) {
 	parts := strings.SplitN(imageId, "/", 3)
 	if len(parts) > 2 {
 		registryServer := parts[0]
@@ -403,7 +408,6 @@ func removeImage(imageId string) error {
 			http.DefaultClient.Do(request)
 		}
 	}
-	return dockerCluster().RemoveImage(imageId)
 }
 
 type cmdError struct {
