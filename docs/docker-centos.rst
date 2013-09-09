@@ -17,7 +17,7 @@ Just follow this steps:
 Docker
 ------
 
-To make docker working on a RHEL/Centos distro, you will need to use the `EPEL repository <http://fedoraproject.org/wiki/EPEL/>`_, build a kernel with `AUFS <http://aufs.sourceforge.net/>`_ support, and install all dependencies as following: 
+To make docker working on a RHEL/Centos distro, you will need to use the `EPEL repository <http://fedoraproject.org/wiki/EPEL>`_, build a kernel with `AUFS <http://aufs.sourceforge.net/>`_ support, and install all dependencies as following: 
 
 .. highlight:: bash
 
@@ -31,23 +31,30 @@ To make docker working on a RHEL/Centos distro, you will need to use the `EPEL r
     # you will need to perform these steps bellow with a unprivileged user, ex: su - tsuru
     $ git clone https://github.com/sciurus/docker-rhel-rpm
     $ cd docker-rhel-rpm
-    # Fix the AUFSver with the `latest AUFS<http://sourceforge.net/p/aufs/aufs3-standalone/ci/aufs3.10/tree/>`_ for kernel 3.10 version 
+    # Fix the AUFSver with the latest AUFS for kernel 3.10 version
+    # To get the latest id just execute this command: 
+    # curl -s http://sourceforge.net/p/aufs/aufs3-standalone/ci/aufs3.10/tree/ | awk -F/ '/Tree/{print $6}'
     $ sed -i 's/\(^.*AUFSver aufs-aufs3-standalone\).*$/\1-38c1b30224c440e3618c90633bef73cdce54c6fd/' kernel-ml-aufs/kernel-ml-aufs-3.10.spec
     # Remove auto restart of docker, as it will be managed by circus
-    $ sed -i 's|^%{_sysconfdir}/init/docker.conf||' docker/docker.spec
+    $ sed -i 's|^%{_sysconfdir}/init/docker.conf||; s/.*source1.*//i' docker/docker.spec
 
-Now, just follow the steps to build the kernel + lxc + docker from `here <https://github.com/sciurus/docker-rhel-rpm/blob/master/README.md/>`_
+Now, just follow the steps to build the kernel + lxc + docker from `here: https://github.com/sciurus/docker-rhel-rpm/blob/master/README.md <https://github.com/sciurus/docker-rhel-rpm/blob/master/README.md>`_
 
 .. highlight:: bash
 
 ::
 
     # In order to use docker, you will need to allow the ip forward
-    $ grep net.ipv4.ip_forward /etc/sysctl.conf > /dev/null 2>&1 && \
+    $ grep ^net.ipv4.ip_forward /etc/sysctl.conf > /dev/null 2>&1 && \
                         sed -i 's/^net.ipv4.ip_forward.*/net.ipv4.ip_forward = 1/' /etc/sysctl.conf  || \
                         echo 'net.ipv4.ip_forward = 1' >> /etc/sysctl.conf
     $ sysctl -p
     # You also need to disable selinux, adding the parameter "selinux=0" in your new kernel 3.10 (/boot/grub/grub.conf)
+    $ grep selinux=0 /boot/grub/menu.lst
+    # Turn off your default firewall rules for now
+    $ service iptables stop
+    $ chkconfig iptables off
+
 
 After build, install and reboot the server with the new kernel(it will take some time), you will need to install the tsuru's dependencies 
 
@@ -55,14 +62,14 @@ After build, install and reboot the server with the new kernel(it will take some
 Tsuru's Dependencies
 --------------------
 
-Tsuru needs MongoDB stable, distributed by 10genr, `Beanstalkd <http://kr.github.com/beanstalkd/>`_ as work queue, git-daemon(necessary for Gandalf) and Redis for `hipache <https://github.com/dotcloud/hipache/>`_ 
+Tsuru needs MongoDB stable, distributed by 10genr, `Beanstalkd <http://kr.github.com/beanstalkd/>`_ as work queue, git-daemon(necessary for Gandalf) and Redis for `hipache <https://github.com/dotcloud/hipache/>`_ pt-ge
 Install the latest EPEL version, by doing this:
 
 .. highlight:: bash
 
 ::
 
-    $ yum install mongodb-server beanstalkd git-daemon redis -y 
+    $ yum install mongodb-server beanstalkd git-daemon redis python-pip python-devel gcc gcc-c++ -y 
     $ service mongod start
     $ service beanstalkd start
     $ service redis start
@@ -109,6 +116,8 @@ To automatically configure tsuru and all other services, just run the function p
     # It will configure tsuru, gandalf, hipache and circus. If you had already done that before, your previously configuration will be lost
     $ source functions-docker-centos.sh #you already did it above
     $ configure_services_for_first_time
+    # start circus
+    $ initctl start circusd
 
 At that time, circus should be running and started all the tsuru services
 
@@ -125,9 +134,33 @@ Verify api, collector and docker-ssh-agent
 
     $ ps -ef|grep ts[r]
 
+Creating Docker Images
+~~~~~~~~~~~~~~~~~~~~~~
+
+Now it's time to install the docker images for your neededs platform. You can build your own docker image, or you can use ours own images as following
+
+.. highlight:: bash
+
+::
+
+    # Add an alias for docker to make your life easier (add it to your .bash_profile) 
+    $ alias docker='docker -H 127.0.0.1:4243'
+    # Build the wanted platform, here we are adding the static platform(webserver)
+    $ docker build -t tsuru/static https://raw.github.com/flaviamissi/basebuilder/master/static/Dockerfile
+    # Now you can see if your image is ready - you should see the tsuru/static as an repository
+    $ docker images
+    # If you want all the other platforms, just run the command bellow
+    $ for image in nodejs php python ruby; do docker build -t tsuru/$image https://raw.github.com/flaviamissi/basebuilder/master/$image/Dockerfile;done 
+    # To see if everything went well - just take a look in the repository column
+    $ docker images
+    # Now try to create your apps!
+
 Using tsuru
 ===========
 
 Congratulations! At this point you should have a working tsuru server running
 on your machine, follow the :doc:`tsuru client usage guide
 </apps/client/usage>` to start build your apps.
+
+
+If you want to add services - and see all the power of tsuru(like the bind command) - just use `crane <http://docs.tsuru.io/en/latest/services/usage.html>`_ 

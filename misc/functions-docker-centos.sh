@@ -50,12 +50,14 @@ webserver:
 }
 
 function configure_git_hooks() {
+    echo "Configuring git_hooks"
     # the post-receive hook requires some environment variables to be set
-    token=$(/usr/bin/tsr token)
+    token=$($TSURU_BIN/tsr token)
     echo -e "export TSURU_TOKEN=$token\nexport TSURU_HOST=http://127.0.0.1:8080" |sudo -u git tee -a ~git/.bash_profile
 }
 
 function use_https_in_git() {
+    echo "Configuring git_with_npm"
     # this enables npm to work properly
     # npm installs packages using the git readonly url,
     # which won't work behind a proxy
@@ -72,13 +74,13 @@ function install_tsuru() {
 
 function configure_tsuru() {
     echo "Configuring tsuru"
-    mkdir /etc/tsuru
+    mkdir -p /etc/tsuru
     curl -sL https://raw.github.com/globocom/tsuru/master/etc/tsuru-docker.conf -o /etc/tsuru/tsuru.conf
     #trying to configure tsuru for you
     sed -i "s|user: ubuntu|user: $TSURU_USER|; \
 	 s|id_rsa.pub|id_dsa.pub|; \
 	 s|/home/ubuntu/|/home/tsuru/|; \
-	 s|domain: cloud.company.com|domain: $TSURU_USER|; \
+	 s|domain: cloud.company.com|domain: $TSURU_DOMAIN|; \
 	 s|rw-host: my.gandalf.domain|rw-host: $EXTIP|; \
 	 s|ro-host: 172.16.42.1|ro-host: $INTIP|" /etc/tsuru/tsuru.conf
 
@@ -105,14 +107,17 @@ function setup_platforms() {
 ##### Functions for Hipache Setup #####
 
 function install_npm() {
-    curl http://nodejs.org/dist/v0.8.23/node-v0.8.23-linux-x64.tar.gz | tar -C $TSURU_BIN/.. --strip-components=1 -zxv
+    echo "Downloading NPM binary and copying to TSURU_BIN"
+    curl http://nodejs.org/dist/v0.8.23/node-v0.8.23-linux-x64.tar.gz | tar -C $TSURU_BIN/.. --strip-components=1 -zx
 }
 
 function install_hipache() {
+    echo "Installing hipache"
     npm install hipache -g
 }
 
 function configure_hipache() {
+    echo "Configuring hipache"
     echo "{
     \"server\": {
         \"accessLog\": \"/var/log/hipache/hipache_access.log\",
@@ -124,23 +129,26 @@ function configure_hipache() {
     \"redisHost\": \"127.0.0.1\",
     \"redisPort\": 6379
 }" > /etc/hipache.conf.json
-    mkdir /var/log/hipache
+    mkdir -p /var/log/hipache
 }
 
 
 ##### Functions for Circus Setup #####
 
 function install_circus() {
-	pip install circus
-	mkdir /etc/circus
+    echo "Installing hipache"
+    pip install circus
+    mkdir -p /etc/circus
 }
 
 function configure_circus() {
-	curl https://raw.github.com/globocom/tsuru/master/misc/circus-docker.ini -o /etc/circus/circus.ini.download
-	sed "s|/usr/bin/tsr|$TSURU_BIN/tsr|; s|/var/log/tsuru|$TSURU_LOG|; s|uid = ubuntu|uid = $TSURU_USER|; s|/usr/local/bin/docker|/usr/bin/docker|; s|/usr/bin/gandalf-webserver|$TSURU_BIN/gandalf-webserver|; s|/usr/local/bin/hipache|$TSURU_BIN/hipache|; s|registry.cloud.company.com|registry.$TSURU_DOMAIN|; /.watcher:beanstalkd./,/^$/ d;" /etc/circus/circus.ini.download > etc/circus/circus.ini
-	mkdir $TSURU_LOG
-	chown -R $TSURU_USER:$TSURU_USER $TSURU_LOG
-	rm -f /etc/circus/circus.ini.download 
+    echo "Configuring circus"
+    curl https://raw.github.com/globocom/tsuru/master/misc/circus-docker.ini -o /etc/circus/circus.ini.download
+    sed "s|/usr/bin/tsr|$TSURU_BIN/tsr|; s|/var/log/tsuru|$TSURU_LOG|; s|uid = ubuntu|uid = $TSURU_USER|; s|/usr/local/bin/docker|/usr/bin/docker|; s|/usr/bin/gandalf-webserver|$TSURU_BIN/gandalf-webserver|; s|/usr/local/bin/hipache|$TSURU_BIN/hipache|; s|registry.cloud.company.com|registry.$TSURU_DOMAIN|; /.watcher:beanstalkd./,/^$/ d;" /etc/circus/circus.ini.download > /etc/circus/circus.ini
+    mkdir -p /var/log/docker
+    chown -R $TSURU_USER:$TSURU_USER $TSURU_LOG
+    rm -f /etc/circus/circus.ini.download 
+    echo -e 'description\t"Run circusd"\n\nstart on filesystem or runlevel [2345]\nstop on runlevel [!2345]\n\nrespawn\n\nscript\n/usr/bin/circusd --log-output /var/log/circus.log --pidfile /var/run/circusd.pid /etc/circus/circus.ini\nend script' > /etc/init/circusd.conf
 }
 
 
@@ -157,11 +165,11 @@ function install_services() {
 
 #It is supposed to be executed just once. Take care with it!
 function configure_services_for_first_time() {
+	configure_tsuru
 	configure_gandalf
 	configure_git_hooks
 	use_https_in_git
 	configure_hipache
 	configure_circus
-	setup tsuru
 	setup_platforms
 }
