@@ -10,9 +10,9 @@ import (
 	"net/http"
 )
 
-type LogRemove struct{}
+type logRemove struct{}
 
-func (c *LogRemove) Info() *cmd.Info {
+func (c *logRemove) Info() *cmd.Info {
 	return &cmd.Info{
 		Name:    "log-remove",
 		Usage:   "log-remove",
@@ -21,7 +21,7 @@ func (c *LogRemove) Info() *cmd.Info {
 	}
 }
 
-func (c *LogRemove) Run(context *cmd.Context, client *cmd.Client) error {
+func (c *logRemove) Run(context *cmd.Context, client *cmd.Client) error {
 	url, err := cmd.GetURL("/logs")
 	if err != nil {
 		return err

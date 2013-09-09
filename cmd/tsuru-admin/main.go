@@ -22,7 +22,7 @@ func buildManager(name string) *cmd.Manager {
 	m.Register(&tsuru.SetCName{})
 	m.Register(&tsuru.UnsetCName{})
 	m.Register(&tokenGen{})
-	m.Register(&LogRemove{})
+	m.Register(&logRemove{})
 	return m
 }
 

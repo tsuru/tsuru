@@ -12,17 +12,17 @@ import (
 	"net/http"
 )
 
-func (s *S) TestLogRemoveInfo(c *gocheck.C) {
+func (s *S) TestlogRemoveInfo(c *gocheck.C) {
 	expected := &cmd.Info{
 		Name:    "log-remove",
 		Usage:   "log-remove",
 		Desc:    `remove all app logs.`,
 		MinArgs: 0,
 	}
-	c.Assert((&LogRemove{}).Info(), gocheck.DeepEquals, expected)
+	c.Assert((&logRemove{}).Info(), gocheck.DeepEquals, expected)
 }
 
-func (s *S) TestLogRemoveRun(c *gocheck.C) {
+func (s *S) TestlogRemoveRun(c *gocheck.C) {
 	var stdout, stderr bytes.Buffer
 	context := cmd.Context{
 		Stdout: &stdout,
@@ -37,7 +37,7 @@ func (s *S) TestLogRemoveRun(c *gocheck.C) {
 		},
 	}
 	client := cmd.NewClient(&http.Client{Transport: trans}, nil, manager)
-	command := LogRemove{}
+	command := logRemove{}
 	err := command.Run(&context, client)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(stdout.String(), gocheck.Equals, expected)
