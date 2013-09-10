@@ -151,7 +151,7 @@ func (s *ConsumptionSuite) TestCreateInstanceHandlerIgnoresTeamAuthIfServiceIsNo
 func (s *ConsumptionSuite) TestCreateInstanceHandlerReturnsErrorWhenServiceDoesntExists(c *gocheck.C) {
 	recorder, request := makeRequestToCreateInstanceHandler(c)
 	err := createServiceInstance(recorder, request, s.token)
-	c.Assert(err, gocheck.ErrorMatches, "^Service mysql does not exist.$")
+	c.Assert(err.Error(), gocheck.Equals, "Service not found")
 }
 
 func (s *ConsumptionSuite) TestCreateInstanceHandlerReturnErrorIfTheServiceAPICallFailAndDoesNotSaveTheInstanceInTheDatabase(c *gocheck.C) {

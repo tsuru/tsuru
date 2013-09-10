@@ -22,64 +22,22 @@ func createServiceInstance(w http.ResponseWriter, r *http.Request, t *auth.Token
 	if err != nil {
 		return err
 	}
-	var sJson map[string]string
-	err = json.Unmarshal(b, &sJson)
+	var body map[string]string
+	err = json.Unmarshal(b, &body)
 	if err != nil {
 		return err
 	}
-	u, err := t.User()
+	serviceName := body["service_name"]
+	user, err := t.User()
 	if err != nil {
 		return err
 	}
-	rec.Log(u.Email, "create-service-instance", string(b))
-	var s service.Service
-	err = validateInstanceForCreation(&s, sJson, u)
+	rec.Log(user.Email, "create-service-instance", string(b))
+	srv, err := getServiceOrError(serviceName, user)
 	if err != nil {
-		return err
+		return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
 	}
-	var teamNames []string
-	teams, err := u.Teams()
-	if err != nil {
-		return err
-	}
-	for _, t := range teams {
-		if s.HasTeam(&t) || !s.IsRestricted {
-			teamNames = append(teamNames, t.Name)
-		}
-	}
-	si := service.ServiceInstance{
-		Name:        sJson["name"],
-		ServiceName: sJson["service_name"],
-		Teams:       teamNames,
-	}
-	err = service.CreateInstance(&si)
-	if err != nil {
-		return err
-	}
-	fmt.Fprint(w, "success")
-	return nil
-}
-
-func validateInstanceForCreation(s *service.Service, sJson map[string]string, u *auth.User) error {
-	conn, err := db.Conn()
-	if err != nil {
-		return err
-	}
-	defer conn.Close()
-	q := bson.M{"_id": sJson["service_name"], "status": bson.M{"$ne": "deleted"}}
-	err = conn.Services().Find(q).One(s)
-	if err != nil {
-		msg := err.Error()
-		if msg == "not found" {
-			msg = fmt.Sprintf("Service %s does not exist.", sJson["service_name"])
-		}
-		return &errors.HTTP{Code: http.StatusNotFound, Message: msg}
-	}
-	_, err = getServiceOrError(sJson["service_name"], u)
-	if err != nil {
-		return err
-	}
-	return nil
+	return service.CreateServiceInstance(body["name"], &srv, user)
 }
 
 func removeServiceInstance(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
