@@ -25,7 +25,12 @@ func (c *logRemove) Info() *cmd.Info {
 }
 
 func (c *logRemove) Run(context *cmd.Context, client *cmd.Client) error {
-	url, err := cmd.GetURL("/logs")
+	appName, err := c.Guess()
+	uri := "/logs"
+	if err == nil {
+		uri += "?app=" + appName
+	}
+	url, err := cmd.GetURL(uri)
 	if err != nil {
 		return err
 	}

@@ -43,6 +43,28 @@ func (s *S) TestLogRemoveRun(c *gocheck.C) {
 	c.Assert(stdout.String(), gocheck.Equals, expected)
 }
 
+func (s *S) TestLogRemoveByAppRun(c *gocheck.C) {
+	var stdout, stderr bytes.Buffer
+	context := cmd.Context{
+		Stdout: &stdout,
+		Stderr: &stderr,
+	}
+
+	expected := "Logs successfully removed!\n"
+	trans := &testing.ConditionalTransport{
+		Transport: testing.Transport{Message: "", Status: http.StatusOK},
+		CondFunc: func(req *http.Request) bool {
+			return req.URL.Path == "/logs" && req.Method == "DELETE" && req.URL.RawQuery == "app=app1"
+		},
+	}
+	client := cmd.NewClient(&http.Client{Transport: trans}, nil, manager)
+	command := logRemove{}
+	command.Flags().Parse(true, []string{"--app", "app1"})
+	err := command.Run(&context, client)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(stdout.String(), gocheck.Equals, expected)
+}
+
 func (s *S) TestLogRemoveFlagSet(c *gocheck.C) {
 	command := logRemove{}
 	flagset := command.Flags()
