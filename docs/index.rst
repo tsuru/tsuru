@@ -39,7 +39,7 @@ For tsuru ops
 
 * :doc:`build your own PaaS using juju </build>`
 * :doc:`build your own PaaS using docker </docker>`
-* :doc:`build your own PaaS using docker </docker-centos>`
+* :doc:`build your own PaaS using docker on centos </docker-centos>`
 * :doc:`tsuru configuration </config>`
 * :doc:`backing up tsuru </server/backup>`
 * :doc:`tsuru api reference </api>`
