@@ -21,13 +21,11 @@ func imagesToFlatten() []string {
 	conn, err := db.Conn()
 	if err != nil {
 		log.Fatalf("Caught error while connecting with database: %s", err.Error())
-		panic(err)
 		return nil
 	}
 	filter := bson.M{"deploys": bson.M{"$mod": []int{20, 0}}}
 	if err := conn.Apps().Find(filter).Select(bson.M{"name": 1, "framework": 1}).All(&apps); err != nil {
 		log.Fatalf("Caught error while getting apps from database: %s", err.Error())
-		panic(err)
 		return nil
 	}
 	images := make([]string, len(apps))
