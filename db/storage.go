@@ -39,7 +39,7 @@ type Storage struct {
 }
 
 func open(addr, dbname string) (*Storage, error) {
-	sess, err := mgo.DialWithTimeout(addr, 1e9)
+	sess, err := mgo.Dial(addr)
 	if err != nil {
 		return nil, err
 	}
