@@ -31,10 +31,6 @@ To make docker working on a RHEL/Centos distro, you will need to use the `EPEL r
     # you will need to perform these steps bellow with a unprivileged user, ex: su - tsuru
     $ git clone https://github.com/sciurus/docker-rhel-rpm
     $ cd docker-rhel-rpm
-    # Fix the AUFSver with the latest AUFS for kernel 3.10 version
-    # To get the latest id just execute this command: 
-    # curl -s http://sourceforge.net/p/aufs/aufs3-standalone/ci/aufs3.10/tree/ | awk -F/ '/Tree/{print $6}'
-    $ sed -i 's/\(^.*AUFSver aufs-aufs3-standalone\).*$/\1-38c1b30224c440e3618c90633bef73cdce54c6fd/' kernel-ml-aufs/kernel-ml-aufs-3.10.spec
     # Remove auto restart of docker, as it will be managed by circus
     $ sed -i 's|^%{_sysconfdir}/init/docker.conf||; s/.*source1.*//i' docker/docker.spec
 
@@ -164,3 +160,5 @@ on your machine, follow the :doc:`tsuru client usage guide
 
 
 If you want to add services - and see all the power of tsuru(like the bind command) - just use `crane <http://docs.tsuru.io/en/latest/services/usage.html>`_ 
+
+
