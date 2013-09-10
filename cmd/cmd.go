@@ -117,7 +117,8 @@ func (m *Manager) Run(args []string) {
 		}
 		args = flagset.Args()
 	}
-	if len(args) < info.MinArgs && name != "help" {
+	if length := len(args); (length < info.MinArgs || (info.MaxArgs > 0 && length > info.MaxArgs)) &&
+		name != "help" {
 		m.wrong = true
 		m.original = info.Name
 		command = m.Commands["help"]
@@ -169,6 +170,7 @@ type Context struct {
 type Info struct {
 	Name    string
 	MinArgs int
+	MaxArgs int
 	Usage   string
 	Desc    string
 }
@@ -187,7 +189,7 @@ func (c *help) Info() *Info {
 func (c *help) Run(context *Context, client *Client) error {
 	output := fmt.Sprintf("%s version %s.\n\n", c.manager.name, c.manager.version)
 	if c.manager.wrong {
-		output += fmt.Sprintf("ERROR: not enough arguments to call %s.\n\n", c.manager.original)
+		output += fmt.Sprint("ERROR: wrong number of arguments.\n\n")
 	}
 	if len(context.Args) > 0 {
 		if cmd, ok := c.manager.Commands[context.Args[0]]; ok {
@@ -195,8 +197,12 @@ func (c *help) Run(context *Context, client *Client) error {
 			output += fmt.Sprintf("Usage: %s %s\n", c.manager.name, info.Usage)
 			output += fmt.Sprintf("\n%s\n", info.Desc)
 			if info.MinArgs > 0 {
-				output += fmt.Sprintf("\nMinimum arguments: %d\n", info.MinArgs)
+				output += fmt.Sprintf("\nMinimum # of arguments: %d", info.MinArgs)
 			}
+			if info.MaxArgs > 0 {
+				output += fmt.Sprintf("\nMaximum # of arguments: %d", info.MaxArgs)
+			}
+			output += fmt.Sprint("\n")
 		} else if topic, ok := c.manager.topics[context.Args[0]]; ok {
 			output += topic
 		} else {

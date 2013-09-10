@@ -266,6 +266,7 @@ func (s *S) TestHelpShouldReturnHelpForACmd(c *gocheck.C) {
 Usage: glb foo
 
 Foo do anything or nothing.
+
 `
 	manager.Register(&TestCommand{})
 	manager.Run([]string{"help", "foo"})
@@ -298,6 +299,7 @@ func (c *ArgCmd) Info() *Info {
 	return &Info{
 		Name:    "arg",
 		MinArgs: 1,
+		MaxArgs: 2,
 		Usage:   "arg [args]",
 		Desc:    "some desc",
 	}
@@ -310,16 +312,35 @@ func (cmd *ArgCmd) Run(ctx *Context, client *Client) error {
 func (s *S) TestRunWrongArgsNumberShouldRunsHelpAndReturnStatus1(c *gocheck.C) {
 	expected := `glb version 1.0.
 
-ERROR: not enough arguments to call arg.
+ERROR: wrong number of arguments.
 
 Usage: glb arg [args]
 
 some desc
 
-Minimum arguments: 1
+Minimum # of arguments: 1
+Maximum # of arguments: 2
 `
 	manager.Register(&ArgCmd{})
 	manager.Run([]string{"arg"})
+	c.Assert(manager.stdout.(*bytes.Buffer).String(), gocheck.Equals, expected)
+	c.Assert(manager.e.(*recordingExiter).value(), gocheck.Equals, 1)
+}
+
+func (s *S) TestRunWithTooManyArguments(c *gocheck.C) {
+	expected := `glb version 1.0.
+
+ERROR: wrong number of arguments.
+
+Usage: glb arg [args]
+
+some desc
+
+Minimum # of arguments: 1
+Maximum # of arguments: 2
+`
+	manager.Register(&ArgCmd{})
+	manager.Run([]string{"arg", "param1", "param2", "param3"})
 	c.Assert(manager.stdout.(*bytes.Buffer).String(), gocheck.Equals, expected)
 	c.Assert(manager.e.(*recordingExiter).value(), gocheck.Equals, 1)
 }
@@ -330,6 +351,7 @@ func (s *S) TestHelpShouldReturnUsageWithTheCommandName(c *gocheck.C) {
 Usage: tsuru foo
 
 Foo do anything or nothing.
+
 `
 	var stdout, stderr bytes.Buffer
 	manager := NewManager("tsuru", "1.0", "", &stdout, &stderr, os.Stdin)
