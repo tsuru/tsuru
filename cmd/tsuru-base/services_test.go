@@ -276,6 +276,7 @@ Will add a new instance of the "mongodb" service, named "tsuru_mongodb".`
 		Usage:   usage,
 		Desc:    "Create a service instance to one or more apps make use of.",
 		MinArgs: 2,
+		MaxArgs: 2,
 	}
 	command := &ServiceAdd{}
 	c.Assert(command.Info(), gocheck.DeepEquals, expected)
