@@ -83,7 +83,7 @@ func (s *LogSuite) TestLogRemoveByApp(c *gocheck.C) {
 	defer s.conn.Apps().Remove(bson.M{"name": a2.Name})
 	err = a2.Log("last log msg2", "tsuru")
 	c.Assert(err, gocheck.IsNil)
-	url := fmt.Sprintf("/logs/%s?:app=%s", a.Name, a.Name)
+	url := fmt.Sprintf("/logs?app=%s", a.Name)
 	request, err := http.NewRequest("DELETE", url, nil)
 	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
