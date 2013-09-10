@@ -15,11 +15,15 @@ import (
 	"github.com/globocom/tsuru/rec"
 	"labix.org/v2/mgo/bson"
 	"net/http"
+	"regexp"
 )
 
 var (
 	ErrServiceInstanceNotFound = stderrors.New("Service instance not found")
+	ErrInvalidInstanceName     = stderrors.New("Invalid service instance name")
 	ErrAccessNotAllowed        = stderrors.New("User does not have access to this service instance")
+
+	instanceNameRegexp = regexp.MustCompile(`^[A-Za-z][-a-zA-Z0-9_]+$`)
 )
 
 type ServiceInstance struct {
@@ -45,24 +49,6 @@ func DeleteInstance(si *ServiceInstance) error {
 	}
 	defer conn.Close()
 	return conn.ServiceInstances().Remove(bson.M{"name": si.Name})
-}
-
-// CreateInstance store a service instance into the database.
-func CreateInstance(si *ServiceInstance) error {
-	endpoint, err := si.Service().getClient("production")
-	if err != nil {
-		return err
-	}
-	err = endpoint.Create(si)
-	if err != nil {
-		return err
-	}
-	conn, err := db.Conn()
-	if err != nil {
-		return err
-	}
-	defer conn.Close()
-	return conn.ServiceInstances().Insert(si)
 }
 
 // MarshalJSON marshals the ServiceName in json format.
@@ -262,6 +248,46 @@ func genericServiceInstancesFilter(services interface{}, teams []string) (q, f b
 		q["service_name"] = v.Name
 	}
 	return
+}
+
+func CreateServiceInstance(name string, service *Service, user *auth.User) error {
+	if !instanceNameRegexp.MatchString(name) {
+		return ErrInvalidInstanceName
+	}
+	instance := ServiceInstance{
+		Name:        name,
+		ServiceName: service.Name,
+	}
+	teams, err := user.Teams()
+	if err != nil {
+		return err
+	}
+	instance.Teams = make([]string, 0, len(teams))
+	for _, team := range teams {
+		if service.HasTeam(&team) || !service.IsRestricted {
+			instance.Teams = append(instance.Teams, team.Name)
+		}
+	}
+	endpoint, err := service.getClient("production")
+	if err != nil {
+		return err
+	}
+	err = endpoint.Create(&instance)
+	if err != nil {
+		return err
+	}
+	conn, err := db.Conn()
+	if err != nil {
+		endpoint.Destroy(&instance)
+		return err
+	}
+	defer conn.Close()
+	err = conn.ServiceInstances().Insert(instance)
+	if err != nil {
+		endpoint.Destroy(&instance)
+		return err
+	}
+	return nil
 }
 
 func GetServiceInstancesByServices(services []Service) ([]ServiceInstance, error) {

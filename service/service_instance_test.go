@@ -15,6 +15,7 @@ import (
 	"launchpad.net/gocheck"
 	"net/http"
 	"net/http/httptest"
+	"sync/atomic"
 )
 
 type InstanceSuite struct {
@@ -42,17 +43,6 @@ func (s *InstanceSuite) SetUpSuite(c *gocheck.C) {
 func (s *InstanceSuite) TearDownSuite(c *gocheck.C) {
 	s.conn.Apps().Database.DropDatabase()
 	s.conn.Close()
-}
-
-func (s *InstanceSuite) TestCreateServiceInstance(c *gocheck.C) {
-	si := &ServiceInstance{Name: "MySQL"}
-	s.conn.ServiceInstances().Insert(&si)
-	defer s.conn.ServiceInstances().Remove(bson.M{"name": si.Name})
-	var result ServiceInstance
-	query := bson.M{"name": si.Name}
-	err := s.conn.ServiceInstances().Find(query).One(&result)
-	c.Check(err, gocheck.IsNil)
-	c.Assert(result.Name, gocheck.Equals, si.Name)
 }
 
 func (s *InstanceSuite) TestDeleteServiceInstance(c *gocheck.C) {
@@ -407,7 +397,83 @@ func (s *InstanceSuite) TestDeleteInstanceWithApps(c *gocheck.C) {
 	c.Assert(err, gocheck.ErrorMatches, "^This service instance is bound to at least one app. Unbind them before removing it$")
 }
 
-func (s *InstanceSuite) TestCreateInstance(c *gocheck.C) {
+func (s *InstanceSuite) TestCreateServiceInstance(c *gocheck.C) {
+	var requests int32
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNoContent)
+		atomic.AddInt32(&requests, 1)
+	}))
+	defer ts.Close()
+	srv := Service{Name: "mongodb", Endpoint: map[string]string{"production": ts.URL}}
+	err := s.conn.Services().Insert(&srv)
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Services().RemoveId(srv.Name)
+	err = CreateServiceInstance("instance", &srv, s.user)
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.ServiceInstances().Remove(bson.M{"name": "instance"})
+	_, err = GetServiceInstance("instance", s.user)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(atomic.LoadInt32(&requests), gocheck.Equals, int32(1))
+}
+
+func (s *InstanceSuite) TestCreateServiceInstanceRestrictedService(c *gocheck.C) {
+	var requests int32
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNoContent)
+		atomic.AddInt32(&requests, 1)
+	}))
+	defer ts.Close()
+	err := auth.CreateTeam("painkiller", s.user)
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Teams().RemoveId("painkiller")
+	srv := Service{
+		Name:         "mongodb",
+		Endpoint:     map[string]string{"production": ts.URL},
+		IsRestricted: true,
+		Teams:        []string{"painkiller"},
+	}
+	err = s.conn.Services().Insert(&srv)
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Services().RemoveId(srv.Name)
+	err = CreateServiceInstance("instance", &srv, s.user)
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.ServiceInstances().Remove(bson.M{"name": "instance"})
+	instance, err := GetServiceInstance("instance", s.user)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(instance.Teams, gocheck.DeepEquals, []string{"painkiller"})
+}
+
+func (s *InstanceSuite) TestCreateServiceInstanceEndpointFailure(c *gocheck.C) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	defer ts.Close()
+	srv := Service{Name: "mongodb", Endpoint: map[string]string{"production": ts.URL}}
+	err := s.conn.Services().Insert(&srv)
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Services().RemoveId(srv.Name)
+	err = CreateServiceInstance("instance", &srv, s.user)
+	c.Assert(err, gocheck.NotNil)
+	count, err := s.conn.ServiceInstances().Find(bson.M{"name": "instance"}).Count()
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(count, gocheck.Equals, 0)
+}
+
+func (s *InstanceSuite) TestCreateServiceInstanceValidatesTheName(c *gocheck.C) {
+	var tests = []struct {
+		input string
+		err   error
+	}{
+		{"my-service", nil},
+		{"my_service", nil},
+		{"my_service_123", nil},
+		{"My_service_123", nil},
+		{"a1", nil},
+		{"--app", ErrInvalidInstanceName},
+		{"123servico", ErrInvalidInstanceName},
+		{"a", ErrInvalidInstanceName},
+		{"a@123", ErrInvalidInstanceName},
+	}
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNoContent)
 	}))
@@ -416,13 +482,13 @@ func (s *InstanceSuite) TestCreateInstance(c *gocheck.C) {
 	err := s.conn.Services().Insert(&srv)
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Services().RemoveId(srv.Name)
-	si := ServiceInstance{Name: "instance", Apps: []string{}, Teams: []string{s.team.Name}, ServiceName: srv.Name}
-	err = CreateInstance(&si)
-	c.Assert(err, gocheck.IsNil)
-	defer s.conn.ServiceInstances().Remove(bson.M{"name": si.Name})
-	expected, err := GetServiceInstance(si.Name, s.user)
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(si, gocheck.DeepEquals, *expected)
+	for _, t := range tests {
+		err := CreateServiceInstance(t.input, &srv, s.user)
+		if err != t.err {
+			c.Errorf("Is %q valid? Want %#v. Got %#v", t.input, t.err, err)
+		}
+		defer s.conn.ServiceInstances().Remove(bson.M{"name": t.input})
+	}
 }
 
 func (s *InstanceSuite) TestStatus(c *gocheck.C) {
