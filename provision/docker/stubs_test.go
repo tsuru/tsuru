@@ -61,10 +61,10 @@ func startDockerTestServer(containerPort string, calls *int) func() {
         "Image": "base:latest",
         "Command": "echo 1",
         "Created": 1367854155,
-        "Status":"Ghost",
-        "Ports":"",
+        "Status": "Ghost",
+        "Ports": null,
         "SizeRw":12288,
-        "SizeRootFs":0
+        "SizeRootFs": 0
     },
     {
         "Id": "dca19cd9bb9e",
@@ -72,7 +72,7 @@ func startDockerTestServer(containerPort string, calls *int) func() {
         "Command": "echo 1",
         "Created": 1376319760,
         "Status": "Exit 0",
-        "Ports": "",
+        "Ports": null,
         "SizeRw": 0,
         "SizeRootFs": 0
     },
@@ -82,7 +82,7 @@ func startDockerTestServer(containerPort string, calls *int) func() {
         "Command": "echo 1",
         "Created": 1376319760,
         "Status": "Up 7 seconds",
-        "Ports": "",
+        "Ports": null,
         "SizeRw": 0,
         "SizeRootFs": 0
     }
