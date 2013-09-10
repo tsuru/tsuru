@@ -47,7 +47,6 @@ func flatten(image string) error {
 	}
 	_, c, err := dockerCluster().CreateContainer(&config)
 	if err != nil {
-		panic(err.Error())
 		return err
 	}
 	var buf *bytes.Buffer
