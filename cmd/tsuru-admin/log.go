@@ -7,15 +7,18 @@ package main
 import (
 	"fmt"
 	"github.com/globocom/tsuru/cmd"
+	"github.com/globocom/tsuru/cmd/tsuru-base"
 	"net/http"
 )
 
-type logRemove struct{}
+type logRemove struct {
+	tsuru.GuessingCommand
+}
 
 func (c *logRemove) Info() *cmd.Info {
 	return &cmd.Info{
 		Name:    "log-remove",
-		Usage:   "log-remove",
+		Usage:   "log-remove [--app appname]",
 		Desc:    `remove all app logs.`,
 		MinArgs: 0,
 	}
