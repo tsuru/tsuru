@@ -123,12 +123,6 @@ func startDockerTestServer(containerPort string, calls *int) (func(), *httptest.
 		}
 	}
 }`
-	createOutput := `
-{
-    "Id":"e90e34656806"
-    "Warnings":[]
-}
-`
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		(*calls)++
 		println(r.URL.Path)
@@ -142,8 +136,8 @@ func startDockerTestServer(containerPort string, calls *int) (func(), *httptest.
 			if strings.Contains(r.URL.Path, "/containers/json") {
 				w.Write([]byte(listAllOutput))
 			}
-			if strings.Contains(r.URL.Path, "/containers/create") {
-				w.Write([]byte(createOutput))
+			if strings.Contains(r.URL.Path, "/export") {
+				w.Write([]byte("tar stream data"))
 			}
 		}
 		if strings.Contains(r.URL.Path, "/commit") {
