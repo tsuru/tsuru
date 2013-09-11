@@ -27,16 +27,10 @@ type FlattenSuite struct {
 
 var _ = gocheck.Suite(&FlattenSuite{})
 
-func (s *FlattenSuite) SetUpSuite(c *gocheck.C) {
-	var err error
-	config.Set("docker:collection", "docker")
-	config.Set("docker:repository-namespace", "tsuru")
-	config.Set("database:url", "127.0.0.1:27017")
-	config.Set("database:name", "docker_flatten")
-	s.conn, err = db.Conn()
+func (s *FlattenSuite) createApps(c *gocheck.C) {
 	units := []app.Unit{{Name: "4fa6e0f0c678"}, {Name: "e90e34656806"}}
 	app1 := app.App{Name: "app1", Platform: "python", Deploys: 40, Units: units}
-	err = s.conn.Apps().Insert(app1)
+	err := s.conn.Apps().Insert(app1)
 	c.Assert(err, gocheck.IsNil)
 	app2 := app.App{Name: "app2", Platform: "python", Deploys: 20, Units: units}
 	err = s.conn.Apps().Insert(app2)
@@ -48,14 +42,17 @@ func (s *FlattenSuite) SetUpSuite(c *gocheck.C) {
 	err = s.conn.Apps().Insert(app4)
 	c.Assert(err, gocheck.IsNil)
 	s.apps = append(s.apps, []app.App{app1, app2, app3, app4}...)
-	s.cleanup, s.server = startDockerTestServer("4567", &s.calls)
-	c.Assert(err, gocheck.IsNil)
-	config.Set("docker:registry", strings.Replace(s.server.URL, "http://", "", 1))
-	node := cluster.Node{ID: "server", Address: s.server.URL}
-	s.scheduler = &fakeScheduler{}
-	dCluster, _ = cluster.New(s.scheduler, node)
-	dCluster.SetStorage(&mapStorage{})
-	err = newImage(assembleImageName("app1"), s.server.URL)
+}
+
+func (s *FlattenSuite) setConfig() {
+	config.Set("docker:collection", "docker")
+	config.Set("docker:repository-namespace", "tsuru")
+	config.Set("database:url", "127.0.0.1:27017")
+	config.Set("database:name", "docker_flatten")
+}
+
+func (s *FlattenSuite) createContainers(c *gocheck.C) {
+	err := newImage(assembleImageName("app1"), s.server.URL)
 	c.Assert(err, gocheck.IsNil)
 	err = newImage(assembleImageName("app2"), s.server.URL)
 	c.Assert(err, gocheck.IsNil)
@@ -63,6 +60,25 @@ func (s *FlattenSuite) SetUpSuite(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	err = collection().Insert(&container{ID: "app2id", AppName: "app2", Image: assembleImageName("app2")})
 	c.Assert(err, gocheck.IsNil)
+}
+
+func (s *FlattenSuite) setupDockerCluster() {
+	node := cluster.Node{ID: "server", Address: s.server.URL}
+	s.scheduler = &fakeScheduler{}
+	dCluster, _ = cluster.New(s.scheduler, node)
+	dCluster.SetStorage(&mapStorage{})
+}
+
+func (s *FlattenSuite) SetUpSuite(c *gocheck.C) {
+	var err error
+	s.setConfig()
+	s.conn, err = db.Conn()
+	s.createApps(c)
+	s.cleanup, s.server = startDockerTestServer("4567", &s.calls)
+	c.Assert(err, gocheck.IsNil)
+	config.Set("docker:registry", strings.Replace(s.server.URL, "http://", "", 1))
+	s.setupDockerCluster()
+	s.createContainers(c)
 }
 
 func (s *FlattenSuite) TearDownSuite(c *gocheck.C) {
