@@ -47,18 +47,18 @@ func flatten(image string) error {
 	if err != nil {
 		return err
 	}
-	var buf *bytes.Buffer
+	buf := &bytes.Buffer{}
 	if err := dockerCluster().ExportContainer(c.ID, buf); err != nil {
-		log.Printf("Caugh error while exporting container %s: %s", c.ID, err.Error())
+		log.Printf("Flatten: Caugh error while exporting container %s: %s", c.ID, err.Error())
 		return err
 	}
 	opts := dcli.ImportImageOptions{Repository: image, Source: "-"}
 	if err := dockerCluster().ImportImage(opts, buf); err != nil {
-		log.Printf("Caugh error while importing image from container %s: %s", c.ID, err.Error())
+		log.Printf("Flatten: Caugh error while importing image from container %s: %s", c.ID, err.Error())
 		return err
 	}
 	if err := dockerCluster().RemoveContainer(c.ID); err != nil {
-		log.Printf("Caugh error while removing container %s: %s", c.ID, err.Error())
+		log.Printf("Flatten: Caugh error while removing container %s: %s", c.ID, err.Error())
 	}
 	//remove from registry
 	return nil
@@ -70,7 +70,7 @@ func Flatten() {
 	images := imagesToFlatten()
 	for _, image := range images {
 		if err := flatten(image); err != nil {
-			log.Printf("Caugh error while flattening image %s: %s", image, err.Error())
+			log.Printf("Flatten: Caugh error while flattening image %s: %s", image, err.Error())
 		}
 	}
 }
