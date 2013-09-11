@@ -17,7 +17,7 @@ import (
 )
 
 type FlattenSuite struct {
-	apps      []app.App
+	apps      []*app.App
 	conn      *db.Storage
 	server    *httptest.Server
 	cleanup   func()
@@ -29,19 +29,19 @@ var _ = gocheck.Suite(&FlattenSuite{})
 
 func (s *FlattenSuite) createApps(c *gocheck.C) {
 	units := []app.Unit{{Name: "4fa6e0f0c678"}, {Name: "e90e34656806"}}
-	app1 := app.App{Name: "app1", Platform: "python", Deploys: 40, Units: units}
+	app1 := &app.App{Name: "app1", Platform: "python", Deploys: 40, Units: units}
 	err := s.conn.Apps().Insert(app1)
 	c.Assert(err, gocheck.IsNil)
-	app2 := app.App{Name: "app2", Platform: "python", Deploys: 20, Units: units}
+	app2 := &app.App{Name: "app2", Platform: "python", Deploys: 20, Units: units}
 	err = s.conn.Apps().Insert(app2)
 	c.Assert(err, gocheck.IsNil)
-	app3 := app.App{Name: "app3", Platform: "python", Deploys: 3, Units: units}
+	app3 := &app.App{Name: "app3", Platform: "python", Deploys: 3, Units: units}
 	err = s.conn.Apps().Insert(app3)
 	c.Assert(err, gocheck.IsNil)
-	app4 := app.App{Name: "app4", Platform: "python", Deploys: 19, Units: units}
+	app4 := &app.App{Name: "app4", Platform: "python", Deploys: 19, Units: units}
 	err = s.conn.Apps().Insert(app4)
 	c.Assert(err, gocheck.IsNil)
-	s.apps = append(s.apps, []app.App{app1, app2, app3, app4}...)
+	s.apps = append(s.apps, []*app.App{app1, app2, app3, app4}...)
 }
 
 func (s *FlattenSuite) setConfig() {
@@ -94,15 +94,25 @@ func (s *FlattenSuite) TearDownSuite(c *gocheck.C) {
 	defer config.Set("docker:registry", "")
 }
 
-func (s *FlattenSuite) TestImagesToFlattenRetrievesOnlyUnitsWith20DeploysOrMore(c *gocheck.C) {
-	images := imagesToFlatten()
-	c.Assert(len(images), gocheck.Equals, 2)
-	expected := []string{assembleImageName("app1"), assembleImageName("app2")}
-	c.Assert(images, gocheck.DeepEquals, expected)
+func (s *FlattenSuite) SetUpTest(c *gocheck.C) {
+	s.calls = 0
 }
 
-func (s *FlattenSuite) TestFlatten(c *gocheck.C) {
+func (s *FlattenSuite) TestImagesToFlattenRetrievesOnlyUnitsWith20DeploysOrMore(c *gocheck.C) {
+	image := imageToFlatten(s.apps[0])
+	c.Assert(image, gocheck.Equals, assembleImageName("app1"))
+	image = imageToFlatten(s.apps[1])
+	c.Assert(image, gocheck.Equals, assembleImageName("app2"))
+}
+
+func (s *FlattenSuite) TestFlattenPerformsCallsToDockerServerIfShouldFlatten(c *gocheck.C) {
 	s.scheduler.container = &docker.Container{ID: "containerid"}
-	Flatten()
-	c.Assert(s.calls, gocheck.Equals, 10) //create, export, import, remove old img, remove container twice
+	Flatten(s.apps[0])
+	c.Assert(s.calls, gocheck.Equals, 4) //export, import, remove old img, remove container twice (create doesn't get in the endpoint)
+	Flatten(s.apps[1])
+	c.Assert(s.calls, gocheck.Equals, 8)
+	Flatten(s.apps[2])
+	c.Assert(s.calls, gocheck.Equals, 8)
+	Flatten(s.apps[3])
+	c.Assert(s.calls, gocheck.Equals, 8)
 }

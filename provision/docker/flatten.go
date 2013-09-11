@@ -11,28 +11,14 @@ import (
 	"github.com/dotcloud/docker"
 	dcli "github.com/fsouza/go-dockerclient"
 	"github.com/globocom/tsuru/app"
-	"github.com/globocom/tsuru/db"
 	"github.com/globocom/tsuru/log"
-	"labix.org/v2/mgo/bson"
 )
 
-func imagesToFlatten() []string {
-	var apps []app.App
-	conn, err := db.Conn()
-	if err != nil {
-		log.Fatalf("Caught error while connecting with database: %s", err.Error())
-		return nil
+func imageToFlatten(a *app.App) string {
+	if a.Deploys%20 == 0 {
+		return getImage(a)
 	}
-	filter := bson.M{"deploys": bson.M{"$mod": []int{20, 0}}}
-	if err := conn.Apps().Find(filter).Select(bson.M{"name": 1, "framework": 1}).All(&apps); err != nil {
-		log.Fatalf("Caught error while getting apps from database: %s", err.Error())
-		return nil
-	}
-	images := make([]string, len(apps))
-	for i, a := range apps {
-		images[i] = getImage(&a)
-	}
-	return images
+	return ""
 }
 
 func flatten(imageID string) error {
@@ -66,9 +52,9 @@ func flatten(imageID string) error {
 
 // Flatten finds the images that need to be flattened and export/import
 // them in order to flatten them and logs errors when they happen.
-func Flatten() {
-	images := imagesToFlatten()
-	for _, image := range images {
+func Flatten(a *app.App) {
+	image := imageToFlatten(a)
+	if image != "" {
 		if err := flatten(image); err != nil {
 			log.Printf("Flatten: Caugh error while flattening image %s: %s", image, err.Error())
 		}
