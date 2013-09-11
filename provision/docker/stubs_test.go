@@ -125,7 +125,6 @@ func startDockerTestServer(containerPort string, calls *int) (func(), *httptest.
 }`
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		(*calls)++
-		println(r.URL.Path)
 		if strings.Contains(r.URL.Path, "/containers/") {
 			if strings.Contains(r.URL.Path, "/containers/9930c24f1c4f") {
 				w.Write([]byte(c2Output))
