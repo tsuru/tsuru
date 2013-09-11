@@ -19,7 +19,7 @@ var _ = gocheck.Suite(&HealerSuite{})
 
 func (s *HealerSuite) SetUpSuite(c *gocheck.C) {
 	s.healer = &ContainerHealer{}
-	s.cleanup = startDockerTestServer("4567", &s.calls)
+	s.cleanup, _ = startDockerTestServer("4567", &s.calls)
 }
 
 func (s *HealerSuite) TearDownTest(c *gocheck.C) {

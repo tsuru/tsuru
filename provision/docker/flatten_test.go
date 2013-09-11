@@ -5,22 +5,23 @@
 package docker
 
 import (
-	dtesting "github.com/fsouza/go-dockerclient/testing"
+	"github.com/dotcloud/docker"
 	"github.com/globocom/config"
 	"github.com/globocom/docker-cluster/cluster"
 	"github.com/globocom/tsuru/app"
 	"github.com/globocom/tsuru/db"
 	"labix.org/v2/mgo/bson"
 	"launchpad.net/gocheck"
-	"net/http"
+	"net/http/httptest"
 )
 
 type FlattenSuite struct {
-	apps         []app.App
-	conn         *db.Storage
-	requests     []http.Request
-	server       *dtesting.DockerServer
-	clusterNodes map[string]string
+	apps      []app.App
+	conn      *db.Storage
+	server    *httptest.Server
+	cleanup   func()
+	calls     int
+	scheduler *fakeScheduler
 }
 
 var _ = gocheck.Suite(&FlattenSuite{})
@@ -48,23 +49,19 @@ func (s *FlattenSuite) SetUpSuite(c *gocheck.C) {
 	err = s.conn.Apps().Insert(app4)
 	c.Assert(err, gocheck.IsNil)
 	s.apps = append(s.apps, []app.App{app1, app2, app3, app4}...)
-	var handler = func(r *http.Request) {
-		s.requests = append(s.requests, *r)
-	}
-	s.server, err = dtesting.NewServer(handler)
+	s.cleanup, s.server = startDockerTestServer("4567", &s.calls)
 	c.Assert(err, gocheck.IsNil)
-	node := cluster.Node{ID: "server", Address: s.server.URL()}
-	var scheduler segregatedScheduler
-	dCluster, _ = cluster.New(&scheduler, node)
+	node := cluster.Node{ID: "server", Address: s.server.URL}
+	s.scheduler = &fakeScheduler{}
+	dCluster, _ = cluster.New(s.scheduler, node)
 	dCluster.SetStorage(&mapStorage{})
-	err = newImage("tsuru/python", s.server.URL())
+	err = newImage("tsuru/python", s.server.URL)
 	c.Assert(err, gocheck.IsNil)
-	err = newImage("tsuru/app1", s.server.URL())
+	err = newImage("tsuru/app1", s.server.URL)
 	c.Assert(err, gocheck.IsNil)
 }
 
 func (s *FlattenSuite) TearDownSuite(c *gocheck.C) {
-	s.server.Stop()
 	collection().RemoveAll(nil)
 	names := make([]string, len(s.apps))
 	for i, a := range s.apps {
@@ -72,20 +69,8 @@ func (s *FlattenSuite) TearDownSuite(c *gocheck.C) {
 	}
 	_, err := s.conn.Apps().RemoveAll(bson.M{"name": bson.M{"$in": names}})
 	c.Assert(err, gocheck.IsNil)
+	s.cleanup()
 }
-
-func (s *FlattenSuite) TearDownTest(c *gocheck.C) {
-	s.requests = []http.Request{}
-}
-
-type mapStorage struct{}
-
-func (m *mapStorage) StoreContainer(containerID, hostID string) error      { return nil }
-func (m *mapStorage) RetrieveContainer(containerID string) (string, error) { return "", nil }
-func (m *mapStorage) RemoveContainer(containerID string) error             { return nil }
-func (m *mapStorage) StoreImage(imageID, hostID string) error              { return nil }
-func (m *mapStorage) RetrieveImage(imageID string) (string, error)         { return "", nil }
-func (m *mapStorage) RemoveImage(imageID string) error                     { return nil }
 
 func (s *FlattenSuite) TestImagesToFlattenRetrievesOnlyUnitsWith20DeploysOrMore(c *gocheck.C) {
 	images := imagesToFlatten()
@@ -95,6 +80,7 @@ func (s *FlattenSuite) TestImagesToFlattenRetrievesOnlyUnitsWith20DeploysOrMore(
 }
 
 func (s *FlattenSuite) TestFlatten(c *gocheck.C) {
+	s.scheduler.container = &docker.Container{ID: "containerid"}
 	Flatten()
-	//c.Assert(len(s.requests), gocheck.Equals, 8) //create, export, import, remove old img, remove container TWICE
+	c.Assert(s.calls, gocheck.Equals, 8) //create, export, import, remove old img, remove container twice
 }

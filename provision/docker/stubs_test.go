@@ -6,6 +6,7 @@ package docker
 
 import (
 	"fmt"
+	"github.com/dotcloud/docker"
 	"github.com/globocom/config"
 	"github.com/globocom/docker-cluster/cluster"
 	etesting "github.com/globocom/tsuru/exec/testing"
@@ -54,7 +55,7 @@ func startTestListener(addr string) net.Listener {
 	return listener
 }
 
-func startDockerTestServer(containerPort string, calls *int) func() {
+func startDockerTestServer(containerPort string, calls *int) (func(), *httptest.Server) {
 	listAllOutput := `[
     {
         "Id": "8dfafdbc3a40",
@@ -122,8 +123,15 @@ func startDockerTestServer(containerPort string, calls *int) func() {
 		}
 	}
 }`
+	createOutput := `
+{
+    "Id":"e90e34656806"
+    "Warnings":[]
+}
+`
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		(*calls)++
+		println(r.URL.Path)
 		if strings.Contains(r.URL.Path, "/containers/") {
 			if strings.Contains(r.URL.Path, "/containers/9930c24f1c4f") {
 				w.Write([]byte(c2Output))
@@ -133,6 +141,9 @@ func startDockerTestServer(containerPort string, calls *int) func() {
 			}
 			if strings.Contains(r.URL.Path, "/containers/json") {
 				w.Write([]byte(listAllOutput))
+			}
+			if strings.Contains(r.URL.Path, "/containers/create") {
+				w.Write([]byte(createOutput))
 			}
 		}
 		if strings.Contains(r.URL.Path, "/commit") {
@@ -150,7 +161,7 @@ func startDockerTestServer(containerPort string, calls *int) func() {
 	return func() {
 		server.Close()
 		dCluster = oldCluster
-	}
+	}, server
 }
 
 func startSSHAgentServer(output string) (*FakeSSHServer, func()) {
@@ -198,4 +209,47 @@ func mockExecutor() (*etesting.FakeExecutor, func()) {
 	return fexec, func() {
 		setExecut(nil)
 	}
+}
+
+type mapStorage struct {
+	containers map[string]string
+}
+
+func (m *mapStorage) StoreContainer(containerID, hostID string) error {
+	if m.containers == nil {
+		m.containers = make(map[string]string)
+	}
+	m.containers[containerID] = hostID
+	return nil
+}
+
+func (m *mapStorage) RetrieveContainer(containerID string) (string, error) {
+	return m.containers[containerID], nil
+}
+
+func (m *mapStorage) RemoveContainer(containerID string) error {
+	delete(m.containers, containerID)
+	return nil
+}
+
+func (m *mapStorage) StoreImage(imageID, hostID string) error      { return nil }
+func (m *mapStorage) RetrieveImage(imageID string) (string, error) { return "", nil }
+func (m *mapStorage) RemoveImage(imageID string) error             { return nil }
+
+type fakeScheduler struct {
+	nodes     []cluster.Node
+	container *docker.Container
+}
+
+func (s *fakeScheduler) Nodes() ([]cluster.Node, error) {
+	return s.nodes, nil
+}
+
+func (s *fakeScheduler) Schedule(config *docker.Config) (string, *docker.Container, error) {
+	return "server", s.container, nil
+}
+
+func (s *fakeScheduler) Register(nodes ...cluster.Node) error {
+	s.nodes = append(s.nodes, nodes...)
+	return nil
 }

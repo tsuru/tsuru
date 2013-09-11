@@ -464,7 +464,8 @@ func (s *S) TestCollectStatus(c *gocheck.C) {
 	listenPort := strings.Split(listener.Addr().String(), ":")[1]
 	var calls int
 	var err error
-	defer startDockerTestServer(listenPort, &calls)()
+	cleanup, _ := startDockerTestServer(listenPort, &calls)
+	defer cleanup()
 	sshHandler, cleanup := startSSHAgentServer("")
 	defer cleanup()
 	defer insertContainers(listenPort)()
