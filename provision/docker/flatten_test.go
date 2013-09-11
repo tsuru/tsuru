@@ -73,9 +73,9 @@ func (s *FlattenSuite) SetUpSuite(c *gocheck.C) {
 	var err error
 	s.setConfig()
 	s.conn, err = db.Conn()
+	c.Assert(err, gocheck.IsNil)
 	s.createApps(c)
 	s.cleanup, s.server = startDockerTestServer("4567", &s.calls)
-	c.Assert(err, gocheck.IsNil)
 	config.Set("docker:registry", strings.Replace(s.server.URL, "http://", "", 1))
 	s.setupDockerCluster()
 	s.createContainers(c)
