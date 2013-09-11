@@ -35,9 +35,9 @@ func imagesToFlatten() []string {
 	return images
 }
 
-func flatten(image string) error {
+func flatten(imageID string) error {
 	config := docker.Config{
-		Image:        image,
+		Image:        imageID,
 		Cmd:          []string{"/bin/bash"},
 		AttachStdin:  false,
 		AttachStdout: false,
@@ -52,7 +52,7 @@ func flatten(image string) error {
 		log.Printf("Flatten: Caugh error while exporting container %s: %s", c.ID, err.Error())
 		return err
 	}
-	opts := dcli.ImportImageOptions{Repository: image, Source: "-"}
+	opts := dcli.ImportImageOptions{Repository: imageID, Source: "-"}
 	if err := dockerCluster().ImportImage(opts, buf); err != nil {
 		log.Printf("Flatten: Caugh error while importing image from container %s: %s", c.ID, err.Error())
 		return err
@@ -60,12 +60,12 @@ func flatten(image string) error {
 	if err := dockerCluster().RemoveContainer(c.ID); err != nil {
 		log.Printf("Flatten: Caugh error while removing container %s: %s", c.ID, err.Error())
 	}
-	//remove from registry
+	removeFromRegistry(imageID)
 	return nil
 }
 
 // Flatten finds the images that need to be flattened and export/import
-// them in order to flatten them. Logs eventual errors.
+// them in order to flatten them and logs errors when they happen.
 func Flatten() {
 	images := imagesToFlatten()
 	for _, image := range images {
