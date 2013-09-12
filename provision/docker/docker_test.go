@@ -475,6 +475,18 @@ func (s *S) TestContainerDeploy(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 }
 
+func (s *S) TestBuild(c *gocheck.C) {
+	go s.stopContainers(1)
+	err := newImage("tsuru/python", s.server.URL())
+	c.Assert(err, gocheck.IsNil)
+	app := testing.NewFakeApp("myapp", "python", 1)
+	rtesting.FakeRouter.AddBackend(app.GetName())
+	defer rtesting.FakeRouter.RemoveBackend(app.GetName())
+	buf := &bytes.Buffer{}
+	_, err = build(app, "versionff13e", buf)
+	c.Assert(err, gocheck.IsNil)
+}
+
 func (s *S) TestStart(c *gocheck.C) {
 	err := newImage("tsuru/python", s.server.URL())
 	c.Assert(err, gocheck.IsNil)
