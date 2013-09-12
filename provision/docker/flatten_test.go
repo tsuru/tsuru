@@ -10,6 +10,7 @@ import (
 	"github.com/globocom/docker-cluster/cluster"
 	"github.com/globocom/tsuru/app"
 	"github.com/globocom/tsuru/db"
+	"github.com/globocom/tsuru/provision"
 	"labix.org/v2/mgo/bson"
 	"launchpad.net/gocheck"
 	"net/http/httptest"
@@ -17,7 +18,7 @@ import (
 )
 
 type FlattenSuite struct {
-	apps      []*app.App
+	apps      []provision.App
 	conn      *db.Storage
 	server    *httptest.Server
 	cleanup   func()
@@ -41,7 +42,7 @@ func (s *FlattenSuite) createApps(c *gocheck.C) {
 	app4 := &app.App{Name: "app4", Platform: "python", Deploys: 19, Units: units}
 	err = s.conn.Apps().Insert(app4)
 	c.Assert(err, gocheck.IsNil)
-	s.apps = append(s.apps, []*app.App{app1, app2, app3, app4}...)
+	s.apps = append(s.apps, []provision.App{app1, app2, app3, app4}...)
 }
 
 func (s *FlattenSuite) setConfig() {

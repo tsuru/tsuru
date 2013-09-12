@@ -10,12 +10,12 @@ import (
 	"bytes"
 	"github.com/dotcloud/docker"
 	dcli "github.com/fsouza/go-dockerclient"
-	"github.com/globocom/tsuru/app"
 	"github.com/globocom/tsuru/log"
+	"github.com/globocom/tsuru/provision"
 )
 
-func imageToFlatten(a *app.App) string {
-	if a.Deploys%20 == 0 {
+func imageToFlatten(a provision.App) string {
+	if a.GetDeploys()%20 == 0 {
 		return getImage(a)
 	}
 	return ""
@@ -52,7 +52,7 @@ func flatten(imageID string) error {
 
 // Flatten finds the images that need to be flattened and export/import
 // them in order to flatten them and logs errors when they happen.
-func Flatten(a *app.App) {
+func Flatten(a provision.App) {
 	image := imageToFlatten(a)
 	if image != "" {
 		if err := flatten(image); err != nil {
