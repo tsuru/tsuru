@@ -1798,6 +1798,11 @@ func (s *S) TestGetPlatform(c *gocheck.C) {
 	c.Assert(a.GetPlatform(), gocheck.Equals, a.Platform)
 }
 
+func (s *S) TestGetDeploys(c *gocheck.C) {
+	a := App{Deploys: 3}
+	c.Assert(a.GetDeploys(), gocheck.Equals, a.Deploys)
+}
+
 func (s *S) TestGetProvisionedUnits(c *gocheck.C) {
 	a := App{Name: "anycolor", Units: []Unit{{Name: "i-0800"}, {Name: "i-0900"}, {Name: "i-a00"}}}
 	gotUnits := a.ProvisionedUnits()

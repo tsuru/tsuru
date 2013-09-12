@@ -580,6 +580,10 @@ func (app *App) GetPlatform() string {
 	return app.Platform
 }
 
+func (app *App) GetDeploys() uint {
+	return app.Deploys
+}
+
 // ProvisionedUnits returns the internal list of units converted to
 // provision.AppUnit.
 func (app *App) ProvisionedUnits() []provision.AppUnit {
