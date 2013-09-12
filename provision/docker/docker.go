@@ -188,7 +188,7 @@ func build(a provision.App, version string, w io.Writer) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	Flatten(a)
+	go Flatten(a)
 	return imageID, nil
 }
 
