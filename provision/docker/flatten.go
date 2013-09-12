@@ -14,11 +14,12 @@ import (
 	"github.com/globocom/tsuru/provision"
 )
 
-func imageToFlatten(a provision.App) string {
-	if a.GetDeploys()%20 == 0 {
-		return getImage(a)
+func needsFlatten(a provision.App) bool {
+	deploys := a.GetDeploys()
+	if deploys != 0 && deploys%20 == 0 {
+		return true
 	}
-	return ""
+	return false
 }
 
 func flatten(imageID string) error {
@@ -53,8 +54,8 @@ func flatten(imageID string) error {
 // Flatten finds the images that need to be flattened and export/import
 // them in order to flatten them and logs errors when they happen.
 func Flatten(a provision.App) {
-	image := imageToFlatten(a)
-	if image != "" {
+	if needsFlatten(a) {
+		image := getImage(a)
 		if err := flatten(image); err != nil {
 			log.Printf("Flatten: Caugh error while flattening image %s: %s", image, err.Error())
 		}

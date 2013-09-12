@@ -36,7 +36,7 @@ func (s *FlattenSuite) createApps(c *gocheck.C) {
 	app2 := &app.App{Name: "app2", Platform: "python", Deploys: 20, Units: units}
 	err = s.conn.Apps().Insert(app2)
 	c.Assert(err, gocheck.IsNil)
-	app3 := &app.App{Name: "app3", Platform: "python", Deploys: 3, Units: units}
+	app3 := &app.App{Name: "app3", Platform: "python", Deploys: 0, Units: units}
 	err = s.conn.Apps().Insert(app3)
 	c.Assert(err, gocheck.IsNil)
 	app4 := &app.App{Name: "app4", Platform: "python", Deploys: 19, Units: units}
@@ -100,10 +100,14 @@ func (s *FlattenSuite) SetUpTest(c *gocheck.C) {
 }
 
 func (s *FlattenSuite) TestImagesToFlattenRetrievesOnlyUnitsWith20DeploysOrMore(c *gocheck.C) {
-	image := imageToFlatten(s.apps[0])
-	c.Assert(image, gocheck.Equals, assembleImageName("app1"))
-	image = imageToFlatten(s.apps[1])
-	c.Assert(image, gocheck.Equals, assembleImageName("app2"))
+	need := needsFlatten(s.apps[0])
+	c.Assert(need, gocheck.Equals, true)
+	need = needsFlatten(s.apps[1])
+	c.Assert(need, gocheck.Equals, true)
+	need = needsFlatten(s.apps[2])
+	c.Assert(need, gocheck.Equals, false)
+	need = needsFlatten(s.apps[3])
+	c.Assert(need, gocheck.Equals, false)
 }
 
 func (s *FlattenSuite) TestFlattenPerformsCallsToDockerServerIfShouldFlatten(c *gocheck.C) {
