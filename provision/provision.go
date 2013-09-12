@@ -65,6 +65,9 @@ type App interface {
 	// to the Unit `Type` field.
 	GetPlatform() string
 
+	// GetDeploy returns the deploys that an app has.
+	GetDeploys() uint
+
 	ProvisionedUnits() []AppUnit
 	RemoveUnit(id string) error
 
