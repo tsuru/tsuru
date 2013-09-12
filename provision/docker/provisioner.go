@@ -129,7 +129,7 @@ func (dockerProvisioner) Swap(app1, app2 provision.App) error {
 }
 
 func (p *dockerProvisioner) Deploy(a provision.App, version string, w io.Writer) error {
-	imageId, err := deploy(a, version, w)
+	imageId, err := build(a, version, w)
 	if err != nil {
 		return err
 	}
