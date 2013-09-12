@@ -61,6 +61,7 @@ type FakeApp struct {
 	Commands []string
 	commMut  sync.Mutex
 	ready    bool
+	deploys  uint
 }
 
 func NewFakeApp(name, platform string, units int) *FakeApp {
@@ -130,6 +131,10 @@ func (a *FakeApp) GetName() string {
 
 func (a *FakeApp) GetPlatform() string {
 	return a.platform
+}
+
+func (a *FakeApp) GetDeploys() uint {
+	return a.deploys
 }
 
 func (a *FakeApp) ProvisionedUnits() []provision.AppUnit {
