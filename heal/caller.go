@@ -7,9 +7,9 @@ package heal
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/globocom/tsuru/log"
 	"io"
 	"io/ioutil"
-	"log/syslog"
 	"net/http"
 	"os"
 	"sync"
@@ -17,7 +17,6 @@ import (
 )
 
 var (
-	log        *syslog.Writer
 	mut        sync.Mutex
 	healerUrls = make(map[string]*healer)
 )
@@ -39,7 +38,7 @@ func getHealers() map[string]*healer {
 }
 
 func (h *healer) heal() error {
-	log.Info(fmt.Sprintf("healing tsuru healer with endpoint %s...", h.url))
+	log.Printf("healing tsuru healer with endpoint %s...", h.url)
 	r, err := request("GET", h.url, nil)
 	if err == nil {
 		r.Body.Close()
@@ -89,17 +88,17 @@ func request(method, url string, body io.Reader) (*http.Response, error) {
 
 // HealTicker execute the registered healers registered by RegisterHealerTicker.
 func HealTicker(ticker <-chan time.Time) {
-	log.Info("running heal ticker")
+	log.Print("running heal ticker")
 	var wg sync.WaitGroup
 	for _ = range ticker {
 		healers := getHealers()
 		wg.Add(len(healers))
 		for name, h := range healers {
-			log.Info(fmt.Sprintf("running verification/heal for %s", name))
+			log.Printf("running verification/heal for %s", name)
 			go func(healer *healer) {
 				err := healer.heal()
 				if err != nil {
-					log.Info(err.Error())
+					log.Print(err.Error())
 				}
 				wg.Done()
 			}(h)
@@ -111,7 +110,7 @@ func HealTicker(ticker <-chan time.Time) {
 // RegisterHealerTicker register healers from resource.
 func RegisterHealerTicker(ticker <-chan time.Time, endpoint string) {
 	var registerHealer = func() {
-		log.Info("running register ticker")
+		log.Print("running register ticker")
 		if healers, err := healersFromResource(endpoint); err == nil {
 			setHealers(healers)
 		}
