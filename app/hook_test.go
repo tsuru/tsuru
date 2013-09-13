@@ -7,6 +7,7 @@ package app
 import (
 	"bytes"
 	"github.com/globocom/config"
+	"io"
 	"launchpad.net/gocheck"
 )
 
@@ -98,6 +99,7 @@ func (s *S) TestYAMLLoadConfigInvalid(c *gocheck.C) {
 	app := App{Name: "beside"}
 	err := runner.loadConfig(&app)
 	c.Assert(err, gocheck.Equals, errCannotLoadAppYAML)
+	c.Assert(runner.config, gocheck.NotNil)
 }
 
 func (s *S) TestYAMLRunnerRestartBefore(c *gocheck.C) {
@@ -191,4 +193,24 @@ func (s *S) TestYAMLRunnerFailureInLoadConfig(c *gocheck.C) {
 	err := runner.Restart(&app, &buf, "before")
 	c.Assert(err, gocheck.NotNil)
 	c.Assert(buf.String(), gocheck.Equals, "")
+}
+
+type fakeHookRunner struct {
+	calls map[string]int
+	result func(string) error
+}
+
+func (r *fakeHookRunner) call(kind string) {
+	if r.calls == nil {
+		r.calls = make(map[string]int)
+	}
+	r.calls[kind] = r.calls[kind] + 1
+}
+
+func (r *fakeHookRunner) Restart(app *App, w io.Writer, kind string) error {
+	r.call(kind)
+	if r.result != nil {
+		return r.result(kind)
+	}
+	return nil
 }

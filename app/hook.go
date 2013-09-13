@@ -78,6 +78,7 @@ func (r *yamlHookRunner) loadConfigFromFile(app *App, filename string) error {
 	var m map[string]appConfig
 	goyaml.Unmarshal(buf.Bytes(), &m)
 	if _, ok := m["hooks"]; !ok {
+		r.config = &appConfig{}
 		return errCannotLoadAppYAML
 	}
 	config := m["hooks"]
