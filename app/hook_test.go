@@ -196,7 +196,7 @@ func (s *S) TestYAMLRunnerFailureInLoadConfig(c *gocheck.C) {
 }
 
 type fakeHookRunner struct {
-	calls map[string]int
+	calls  map[string]int
 	result func(string) error
 }
 
