@@ -20,6 +20,7 @@ func buildManager() *cmd.Manager {
 	m.Register(&tsrCommand{Command: &apiCmd{}})
 	m.Register(&tsrCommand{Command: &collectorCmd{}})
 	m.Register(&tsrCommand{Command: tokenCmd{}})
+	m.Register(&tsrCommand{Command: &healerCmd{}})
 	registerProvisionersCommands(m)
 	return m
 }

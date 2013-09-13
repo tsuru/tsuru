@@ -69,3 +69,12 @@ func (s *S) TestShouldRegisterAllCommandsFromProvisioners(c *gocheck.C) {
 	c.Assert(ok, gocheck.Equals, true)
 	c.Assert(tsrFake.Command, gocheck.FitsTypeOf, &testing.FakeCommand{})
 }
+
+func (s *S) TestHealerCmdIsRegistered(c *gocheck.C) {
+	manager := buildManager()
+	healer, ok := manager.Commands["healer"]
+	c.Assert(ok, gocheck.Equals, true)
+	tsrHealer, ok := healer.(*tsrCommand)
+	c.Assert(ok, gocheck.Equals, true)
+	c.Assert(tsrHealer.Command, gocheck.FitsTypeOf, &healerCmd{})
+}
