@@ -6,8 +6,8 @@ package heal
 
 import (
 	"fmt"
+	"github.com/globocom/tsuru/log"
 	"launchpad.net/gocheck"
-	"log/syslog"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -23,9 +23,7 @@ type CallerSuite struct {
 var _ = gocheck.Suite(&CallerSuite{})
 
 func (s *CallerSuite) SetUpSuite(c *gocheck.C) {
-	var err error
-	log, err = syslog.New(syslog.LOG_INFO, "tsuru-healer")
-	c.Assert(err, gocheck.IsNil)
+	log.Init()
 }
 
 func (s *CallerSuite) TestHealersFromResource(c *gocheck.C) {
