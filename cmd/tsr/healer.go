@@ -7,6 +7,7 @@ package main
 import (
 	"github.com/globocom/tsuru/cmd"
 	"github.com/globocom/tsuru/heal"
+	"github.com/globocom/tsuru/log"
 	"launchpad.net/gnuflag"
 	"time"
 )
@@ -17,6 +18,7 @@ type healerCmd struct {
 }
 
 func (c *healerCmd) Run(context *cmd.Context, client *cmd.Client) error {
+	log.Init()
 	heal.RegisterHealerTicker(time.Tick(time.Minute*15), c.host)
 	heal.HealTicker(time.Tick(time.Minute))
 	return nil
