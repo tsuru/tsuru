@@ -6,14 +6,18 @@
 HOWTO Install a MySQL service
 +++++++++++++++++++++++++++++
 
-First, you must have a MariaDB server, the best mysql server in the market. You also could still using mysql-server
+First, you must have a `MariaDB server <https://downloads.mariadb.org/mariadb/repositories/>`_, the best "mysql" server in the market. You can also use the standard mysql-server.
 
 .. highlight:: bash
 
 ::
 
     # Ubuntu 
-    $ apt-get install mysql-server -y
+    $ sudo apt-get install software-properties-common
+    $ sudo apt-key adv --recv-keys --keyserver keyserver.ubuntu.com 0xcbcb082a1bb943db
+    $ sudo add-apt-repository 'deb http://mirror.aarnet.edu.au/pub/MariaDB/repo/10.0/ubuntu raring main'
+    $ sudo apt-get update
+    $ sudo apt-get install mariadb-server
 
 .. highlight:: bash
 
