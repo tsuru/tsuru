@@ -110,8 +110,9 @@ To run the API in shared mode, follow this steps
     # Here you'll also need to set up a externally accessible endpoint to be used by the apps that are using the service
     $ tsuru env-set --app mysql-api MYSQLAPI_SHARED_SERVER_PUBLIC_HOST=192.168.123.131
 
-More information about the ways you can work with that api you can found `here <https://github.com/globocom/mysqlapi#choose-your-configuration-mode>`_
-You should have your application working. Now you need to submit the mysql-api service via crane.
+More information about the ways you can work with that api you can found `here <https://github.com/globocom/mysqlapi#choose-your-configuration-mode>`_.
+
+Now you should have your application working. You just need to submit the mysqlapi service via crane.
 The manifest.yaml is used by crane to define an id and an endpoint to your service.
 For more details, see the text "Services API Workflow": http://docs.tsuru.io/en/latest/services/api.html
 To submit your new service, you can run:
