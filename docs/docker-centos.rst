@@ -40,15 +40,6 @@ Now, just follow the steps to build the kernel + lxc + docker from `here: https:
 
 ::
 
-    # As git archive don't work with centos with the git://, when you achieve to that step, you can use this workaround
-    $ git clone git://git.code.sf.net/p/aufs/aufs3-standalone -b aufs3.10
-    $ cd aufs3-standalone
-    $ git archive aufs3.10 > ../kernel-ml-aufs/aufs3-standalone.tar
-
-.. highlight:: bash
-
-::
-
     # In order to use docker, you will need to allow the ip forward
     $ grep ^net.ipv4.ip_forward /etc/sysctl.conf > /dev/null 2>&1 && \
                         sed -i 's/^net.ipv4.ip_forward.*/net.ipv4.ip_forward = 1/' /etc/sysctl.conf  || \
@@ -167,7 +158,7 @@ Congratulations! At this point you should have a working tsuru server running
 on your machine, follow the :doc:`tsuru client usage guide
 </apps/client/usage>` to start build your apps.
 
-
-If you want to add services - and see all the power of tsuru(like the bind command) - just use `crane <http://docs.tsuru.io/en/latest/services/usage.html>`_ 
-
+Adding Services
+===============
+Here you will find a complete step-by-step example of how to install a mysql service with tsuru: `http://docs.tsuru.io/en/latest/services/mysql-example.html <http://docs.tsuru.io/en/latest/services/mysql-example.html>`_
 
