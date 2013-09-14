@@ -63,7 +63,7 @@ Now, you will install our mysql-api service example
     "USER": os.environ.get("MYSQLAPI_DB_USER", "tsuru"),
     "PASSWORD": os.environ.get("MYSQLAPI_DB_PASSWORD", "password"),
     "HOST": os.environ.get("MYSQLAPI_HOST", "192.168.123.131"),
-    # Create a database for this service (change the 192.168.123.131 by your mysql server host)
+    # Create a database for this service (change the 192.168.123.131 for your mysql server host)
     $ echo "CREATE DATABASE mysqlapi" | mysql -h 192.168.123.131 -u tsuru -ppassword
 
 
@@ -105,7 +105,7 @@ To run the API in shared mode, follow this steps
 ::
 
     # First export the needed variables:
-    # If the shared mysql database is installed in the sabe vm that the app is, you can use localhost for MYSQLAPI_SHARED_SERVER
+    # If the shared mysql database is installed in the same vm that the app is, you can use localhost for MYSQLAPI_SHARED_SERVER
     $ tsuru env-set --app mysql-api MYSQLAPI_SHARED_SERVER=192.168.123.131
     # Here you'll also need to set up a externally accessible endpoint to be used by the apps that are using the service
     $ tsuru env-set --app mysql-api MYSQLAPI_SHARED_SERVER_PUBLIC_HOST=192.168.123.131
