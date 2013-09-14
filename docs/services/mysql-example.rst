@@ -120,6 +120,7 @@ To submit your new service, you can run:
 .. highlight:: bash
 
 ::
+
     $ crane create manifest.yaml
 
 To list your services:
