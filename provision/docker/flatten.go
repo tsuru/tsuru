@@ -60,5 +60,6 @@ func Flatten(a provision.App) {
 		if err := flatten(image); err != nil {
 			log.Printf("Flatten: Caugh error while flattening image %s: %s", image, err.Error())
 		}
+        log.Printf("Flatten: successfully flattened image %s.", image)
 	}
 }
