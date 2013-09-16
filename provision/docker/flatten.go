@@ -56,10 +56,10 @@ func flatten(imageID string) error {
 func Flatten(a provision.App) {
 	if needsFlatten(a) {
 		image := getImage(a)
-        log.Printf("Flatten: attempting to flatten image %s.", image)
+		log.Printf("Flatten: attempting to flatten image %s.", image)
 		if err := flatten(image); err != nil {
 			log.Printf("Flatten: Caugh error while flattening image %s: %s", image, err.Error())
 		}
-        log.Printf("Flatten: successfully flattened image %s.", image)
+		log.Printf("Flatten: successfully flattened image %s.", image)
 	}
 }
