@@ -9,6 +9,7 @@ import (
 	"code.google.com/p/go.crypto/bcrypt"
 	"fmt"
 	"github.com/globocom/config"
+	"github.com/globocom/tsuru/db"
 	"github.com/globocom/tsuru/errors"
 	"labix.org/v2/mgo/bson"
 	"launchpad.net/gocheck"
@@ -128,13 +129,16 @@ func (s *S) TestUserCheckPasswordValidatesThePassword(c *gocheck.C) {
 }
 
 func (s *S) TestUserStartPasswordReset(c *gocheck.C) {
+	conn, err := db.Conn()
+	c.Assert(err, gocheck.IsNil)
+	defer conn.Close()
 	defer s.server.Reset()
 	u := User{Email: "thank@alanis.com", Password: "123456"}
-	err := u.StartPasswordReset()
+	err = u.StartPasswordReset()
 	c.Assert(err, gocheck.IsNil)
-	defer s.conn.PasswordTokens().Remove(bson.M{"useremail": u.Email})
+	defer conn.PasswordTokens().Remove(bson.M{"useremail": u.Email})
 	var token passwordToken
-	err = s.conn.PasswordTokens().Find(bson.M{"useremail": u.Email}).One(&token)
+	err = conn.PasswordTokens().Find(bson.M{"useremail": u.Email}).One(&token)
 	c.Assert(err, gocheck.IsNil)
 	time.Sleep(1e9) // Let the email flow.
 	s.server.Lock()
@@ -226,10 +230,11 @@ func (s *S) TestCreateTokenRemoveOldTokens(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Users().Remove(bson.M{"email": u.Email})
 	defer s.conn.Tokens().RemoveAll(bson.M{"useremail": u.Email})
-	_, err = u.CreateToken("123456")
+	t1, err := newUserToken(&u)
 	c.Assert(err, gocheck.IsNil)
-	_, err = u.CreateToken("123456")
-	c.Assert(err, gocheck.IsNil)
+	t2 := t1
+	t2.Token += "aa"
+	err = s.conn.Tokens().Insert(t1, t2)
 	_, err = u.CreateToken("123456")
 	c.Assert(err, gocheck.IsNil)
 	ok := make(chan bool, 1)
