@@ -1,4 +1,4 @@
-.. Copyright 2012 tsuru authors. All rights reserved.
+.. Copyright 2013 tsuru authors. All rights reserved.
    Use of this source code is governed by a BSD-style
    license that can be found in the LICENSE file.
 
@@ -12,7 +12,7 @@ First, you must have a `MariaDB server <https://downloads.mariadb.org/mariadb/re
 
 ::
 
-    # Ubuntu 
+    # Ubuntu
     $ sudo apt-get install software-properties-common
     $ sudo apt-key adv --recv-keys --keyserver keyserver.ubuntu.com 0xcbcb082a1bb943db
     $ sudo add-apt-repository 'deb http://mirror.aarnet.edu.au/pub/MariaDB/repo/10.0/ubuntu raring main'
@@ -23,7 +23,7 @@ First, you must have a `MariaDB server <https://downloads.mariadb.org/mariadb/re
 
 ::
 
-    # Centos - creating the mariadb repository 
+    # Centos - creating the mariadb repository
     $ cat > /etc/yum.repos.d/MariaDB.repo <<END
     # MariaDB 10.0 CentOS repository list - created 2013-09-13 13:25 UTC
     # http://mariadb.org/mariadb/repositories/
@@ -58,7 +58,7 @@ Now, you will install our mysql-api service example
     $ git clone https://github.com/globocom/mysqlapi
     $ cd mysqlapi
     # Edit the mysqlapi/settings.py, and add the right values for your database. It will look like that:
-    $ grep \".*os.*MYSQLAPI_ mysqlapi/settings.py 
+    $ grep \".*os.*MYSQLAPI_ mysqlapi/settings.py
     "NAME": os.environ.get("MYSQLAPI_DB_NAME", "mysqlapi"),
     "USER": os.environ.get("MYSQLAPI_DB_USER", "tsuru"),
     "PASSWORD": os.environ.get("MYSQLAPI_DB_PASSWORD", "password"),
@@ -75,8 +75,8 @@ Create an application that will be responsible for this service
 
     # Create the mysqlapi application using python as its platform.
     $ tsuru app-create mysql-api python
-    # Configure the service template and point it to the application service (considering that your domain is cloud.company.com) 
-    $  cat manifest.yaml 
+    # Configure the service template and point it to the application service (considering that your domain is cloud.company.com)
+    $  cat manifest.yaml
     id: mysqlapi
        endpoint:
        production: mysql-api.cloud.company.com
@@ -97,7 +97,7 @@ In order to have mysql API ready to receive requests, we need some bootstrap stu
     $ tsuru run --app mysql-api -- python manage.py syncdb --noinput
 
 
-To run the API in shared mode, follow this steps 
+To run the API in shared mode, follow this steps
 
 
 .. highlight:: bash
