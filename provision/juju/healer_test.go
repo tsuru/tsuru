@@ -288,10 +288,8 @@ func (s *S) TestInstanceUnitShouldBeRegistered(c *gocheck.C) {
 
 func (s *S) TestInstaceUnitHealWhenEverythingIsOk(c *gocheck.C) {
 	fexec := &etesting.FakeExecutor{}
-	execut = fexec
-	defer func() {
-		execut = nil
-	}()
+	setExecut(fexec)
+	defer setExecut(nil)
 	a := []app.App{
 		{Name: "as_i_rise", Units: []app.Unit{{Name: "as_i_rise/0", State: "started", Ip: "server-1081.novalocal"}}},
 		{Name: "the_infanta", Units: []app.Unit{{Name: "the_infanta/0", State: "started", Ip: "server-1086.novalocal"}}},
@@ -306,10 +304,8 @@ func (s *S) TestInstaceUnitHealWhenEverythingIsOk(c *gocheck.C) {
 
 func (s *S) TestInstaceUnitHeal(c *gocheck.C) {
 	fexec := &etesting.FakeExecutor{}
-	execut = fexec
-	defer func() {
-		execut = nil
-	}()
+	setExecut(fexec)
+	defer setExecut(nil)
 	a := app.App{
 		Name:  "as_i_rise",
 		Units: []app.Unit{{Name: "as_i_rise/0", State: "down", Ip: "server-1081.novalocal"}},
@@ -354,10 +350,8 @@ func (s *S) TestInstanceMachineShouldBeRegistered(c *gocheck.C) {
 
 func (s *S) TestInstanceMachineHealWhenEverythingIsOk(c *gocheck.C) {
 	fexec := &etesting.FakeExecutor{}
-	execut = fexec
-	defer func() {
-		execut = nil
-	}()
+	setExecut(fexec)
+	defer setExecut(nil)
 	jujuTmpdir, err := commandmocker.Add("juju", collectOutput)
 	c.Assert(err, gocheck.IsNil)
 	defer commandmocker.Remove(jujuTmpdir)
@@ -373,10 +367,8 @@ func (s *S) TestInstanceMachineHealWhenEverythingIsOk(c *gocheck.C) {
 
 func (s *S) TestInstanceMachineHeal(c *gocheck.C) {
 	fexec := &etesting.FakeExecutor{}
-	execut = fexec
-	defer func() {
-		execut = nil
-	}()
+	setExecut(fexec)
+	defer setExecut(nil)
 	jujuTmpdir, err := commandmocker.Add("juju", collectOutputInstanceDown)
 	c.Assert(err, gocheck.IsNil)
 	defer commandmocker.Remove(jujuTmpdir)
@@ -480,10 +472,8 @@ func (s *S) TestZookeeperNotNeedsHeal(c *gocheck.C) {
 
 func (s *S) TestZookeeperHealerHeal(c *gocheck.C) {
 	fexec := &etesting.FakeExecutor{}
-	execut = fexec
-	defer func() {
-		execut = nil
-	}()
+	setExecut(fexec)
+	defer setExecut(nil)
 	ln, err := net.Listen("tcp", ":2181")
 	c.Assert(err, gocheck.IsNil)
 	defer ln.Close()
@@ -540,10 +530,8 @@ func (s *S) TestBootstrapProvisionHealerShouldBeRegistered(c *gocheck.C) {
 
 func (s *S) TestBootstrapProvisionHealerHeal(c *gocheck.C) {
 	fexec := &etesting.FakeExecutor{}
-	execut = fexec
-	defer func() {
-		execut = nil
-	}()
+	setExecut(fexec)
+	defer setExecut(nil)
 	p := JujuProvisioner{}
 	m := machine{
 		AgentState:    "not-started",
@@ -604,10 +592,8 @@ func (s *S) TestBootstrapMachineHealerDontNeedsHeal(c *gocheck.C) {
 
 func (s *S) TestBootstrapMachineHealerHeal(c *gocheck.C) {
 	fexec := &etesting.FakeExecutor{}
-	execut = fexec
-	defer func() {
-		execut = nil
-	}()
+	setExecut(fexec)
+	defer setExecut(nil)
 	p := JujuProvisioner{}
 	m := machine{
 		AgentState:    "not-started",

@@ -9,6 +9,7 @@ import (
 	"errors"
 	"github.com/globocom/commandmocker"
 	"github.com/globocom/config"
+	"github.com/globocom/tsuru/exec"
 	etesting "github.com/globocom/tsuru/exec/testing"
 	"github.com/globocom/tsuru/provision"
 	"github.com/globocom/tsuru/repository"
@@ -21,6 +22,12 @@ import (
 	"sync"
 	"time"
 )
+
+func setExecut(e exec.Executor) {
+	execMut.Lock()
+	execut = e
+	execMut.Unlock()
+}
 
 func (s *S) TestShouldBeRegistered(c *gocheck.C) {
 	p, err := provision.Get("juju")
@@ -51,10 +58,8 @@ func (s *S) TestUnitsCollection(c *gocheck.C) {
 
 func (s *S) TestProvision(c *gocheck.C) {
 	fexec := &etesting.FakeExecutor{}
-	execut = fexec
-	defer func() {
-		execut = nil
-	}()
+	setExecut(fexec)
+	defer setExecut(nil)
 	config.Set("juju:charms-path", "/etc/juju/charms")
 	defer config.Unset("juju:charms-path")
 	config.Set("host", "somehost")
@@ -99,10 +104,8 @@ func (s *S) TestProvisionFailure(c *gocheck.C) {
 
 func (s *S) TestRestart(c *gocheck.C) {
 	fexec := &etesting.FakeExecutor{}
-	execut = fexec
-	defer func() {
-		execut = nil
-	}()
+	setExecut(fexec)
+	defer setExecut(nil)
 	app := testing.NewFakeApp("cribcaged", "python", 1)
 	p := JujuProvisioner{}
 	err := p.Restart(app)
@@ -146,10 +149,8 @@ func (s *S) TestDeploy(c *gocheck.C) {
 
 func (s *S) TestDestroy(c *gocheck.C) {
 	fexec := &etesting.FakeExecutor{}
-	execut = fexec
-	defer func() {
-		execut = nil
-	}()
+	setExecut(fexec)
+	defer setExecut(nil)
 	app := testing.NewFakeApp("cribcaged", "python", 3)
 	p := JujuProvisioner{}
 	conn, collection := p.unitsCollection()
@@ -242,10 +243,8 @@ func (s *S) TestAddUnitsFailure(c *gocheck.C) {
 
 func (s *S) TestRemoveUnit(c *gocheck.C) {
 	fexec := &etesting.FakeExecutor{}
-	execut = fexec
-	defer func() {
-		execut = nil
-	}()
+	setExecut(fexec)
+	defer setExecut(nil)
 	app := testing.NewFakeApp("two", "rush", 3)
 	p := JujuProvisioner{}
 	conn, collection := p.unitsCollection()
@@ -324,10 +323,8 @@ func (s *S) TestInstallDepsRunRelatedHook(c *gocheck.C) {
 func (s *S) TestExecutedCmd(c *gocheck.C) {
 	var buf bytes.Buffer
 	fexec := &etesting.FakeExecutor{}
-	execut = fexec
-	defer func() {
-		execut = nil
-	}()
+	setExecut(fexec)
+	defer setExecut(nil)
 	app := testing.NewFakeApp("almah", "static", 2)
 	p := JujuProvisioner{}
 	err := p.ExecuteCommand(&buf, &buf, app, "ls", "-lh")
@@ -379,10 +376,8 @@ func (s *S) TestExecutedCmdFailure(c *gocheck.C) {
 func (s *S) TestExecutedCmdOneUnit(c *gocheck.C) {
 	var buf bytes.Buffer
 	fexec := &etesting.FakeExecutor{}
-	execut = fexec
-	defer func() {
-		execut = nil
-	}()
+	setExecut(fexec)
+	defer setExecut(nil)
 	app := testing.NewFakeApp("almah", "static", 1)
 	p := JujuProvisioner{}
 	err := p.ExecuteCommand(&buf, &buf, app, "ls", "-lh")
@@ -402,10 +397,8 @@ func (s *S) TestExecutedCmdOneUnit(c *gocheck.C) {
 func (s *S) TestExecutedCmdUnitDown(c *gocheck.C) {
 	var buf bytes.Buffer
 	fexec := &etesting.FakeExecutor{}
-	execut = fexec
-	defer func() {
-		execut = nil
-	}()
+	setExecut(fexec)
+	defer setExecut(nil)
 	app := testing.NewFakeApp("almah", "static", 3)
 	app.SetUnitStatus(provision.StatusDown, 1)
 	p := JujuProvisioner{}
@@ -772,10 +765,8 @@ func (s *S) TestAddrWithoutUnits(c *gocheck.C) {
 
 func (s *ELBSuite) TestProvisionWithELB(c *gocheck.C) {
 	fexec := &etesting.FakeExecutor{}
-	execut = fexec
-	defer func() {
-		execut = nil
-	}()
+	setExecut(fexec)
+	defer setExecut(nil)
 	config.Set("juju:charms-path", "/home/charms")
 	defer config.Unset("juju:charms-path")
 	app := testing.NewFakeApp("jimmy", "who", 0)
@@ -799,10 +790,8 @@ func (s *ELBSuite) TestDestroyWithELB(c *gocheck.C) {
 	config.Set("juju:charms-path", "/home/charms")
 	defer config.Unset("juju:charms-path")
 	fexec := &etesting.FakeExecutor{}
-	execut = fexec
-	defer func() {
-		execut = nil
-	}()
+	setExecut(fexec)
+	defer setExecut(nil)
 	app := testing.NewFakeApp("jimmy", "who", 0)
 	p := JujuProvisioner{}
 	err := p.Provision(app)
@@ -858,14 +847,8 @@ func (s *ELBSuite) TestRemoveUnitWithELB(c *gocheck.C) {
 		}
 	}
 	fexec := &etesting.FakeExecutor{}
-	execMut.Lock()
-	execut = fexec
-	execMut.Unlock()
-	defer func() {
-		execMut.Lock()
-		defer execMut.Unlock()
-		execut = nil
-	}()
+	setExecut(fexec)
+	defer setExecut(nil)
 	app := testing.NewFakeApp("radio", "rush", 4)
 	router, err := Router()
 	c.Assert(err, gocheck.IsNil)
@@ -1008,10 +991,8 @@ func (s *ELBSuite) TestSwap(c *gocheck.C) {
 func (s *S) TestExecutedCommandOnce(c *gocheck.C) {
 	var buf bytes.Buffer
 	fexec := &etesting.FakeExecutor{}
-	execut = fexec
-	defer func() {
-		execut = nil
-	}()
+	setExecut(fexec)
+	defer setExecut(nil)
 	app := testing.NewFakeApp("almah", "static", 2)
 	p := JujuProvisioner{}
 	err := p.ExecuteCommandOnce(&buf, &buf, app, "ls", "-lh")
