@@ -3,13 +3,19 @@ TSURU_BIN=/usr/local/bin
 TSURU_LOG=/var/log/tsuru
 TSURU_DOMAIN=cloud.company.com
 
+#If you let the environment bellow unset, we will try to identify your correct IP. Docker must be running in order to detect its interface
+#IP Accessible via a client machine
+EXTIP=
+#Docker IP
+INTIP=
+
 ##### Functions for Start Setup #####
 
 function get_interface_ip() {
 	ifconfig $1 | grep -oP "\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}"|head -n1
 }
-EXTIP=$(get_interface_ip eth0)
-INTIP=$(get_interface_ip docker0)
+test -z "$EXTIP" && EXTIP=$(get_interface_ip eth0)
+test -z "$INTIP" && INTIP=$(get_interface_ip docker0)
 
 
 ##### Functions for Gandalf Setup #####
@@ -77,10 +83,11 @@ function configure_tsuru() {
     mkdir -p /etc/tsuru
     curl -sL https://raw.github.com/globocom/tsuru/master/etc/tsuru-docker.conf -o /etc/tsuru/tsuru.conf
     #trying to configure tsuru for you
-    sed -i "s|user: ubuntu|user: $TSURU_USER|; \
+    sed -i "s|^host:.*|host: $EXTIP:8080|; \
 	 s|id_rsa.pub|id_dsa.pub|; \
 	 s|/home/ubuntu/|/home/tsuru/|; \
 	 s|domain: cloud.company.com|domain: $TSURU_DOMAIN|; \
+	 s|http://localhost:4243|http://$INTIP:4243|; \
 	 s|rw-host: my.gandalf.domain|rw-host: $EXTIP|; \
 	 s|ro-host: 172.16.42.1|ro-host: $INTIP|" /etc/tsuru/tsuru.conf
 

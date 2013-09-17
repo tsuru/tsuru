@@ -26,6 +26,26 @@ To make docker working on a RHEL/Centos distro, you will need to use the `EPEL r
     # Installing the EPEL respository
     $ rpm -iUvh http://dl.fedoraproject.org/pub/epel/6/x86_64/epel-release-6-8.noarch.rpm
     $ yum update -y
+
+Here you can install our own kernel+lxc+docker or compile them
+To install our RPM package ready to go:
+
+.. highlight:: bash
+
+::
+
+    # Installing the EPEL respository
+    # rpm -iUvh http://tsuru.s3.amazonaws.com/centos/docker-0.6.0-1.el6.x86_64.rpm \
+    http://tsuru.s3.amazonaws.com/centos/lxc-0.8.0-3.el6.x86_64.rpm \
+    http://tsuru.s3.amazonaws.com/centos/lxc-libs-0.8.0-3.el6.x86_64.rpm \
+    http://tsuru.s3.amazonaws.com/centos/kernel-ml-aufs-3.10.11-1.el6.x86_64.rpm
+
+To Compile, just follow these steps
+
+.. highlight:: bash
+
+::
+
     # Download the kernel + dependencies for docker 
     $ yum install fedora-packager -y
     # you will need to perform these steps bellow with a unprivileged user, ex: su - tsuru
