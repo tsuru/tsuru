@@ -23,9 +23,8 @@
 .section p,
 .section em,
 .section li {
-    font-size: 13px;
+    font-size: 15px;
     font-weight: normal;
-    letter-spacing: .5px;
 }
 
 #build-your-own-paas-with-tsuru h2,
