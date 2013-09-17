@@ -196,7 +196,8 @@ Start api and collector
 ::
 
     $ tsr collector &
-    $ sudo tsr api &
+    $ tsr api &
+    $ tsr docker-ssh-agent &
 
 You can see the logs in:
 
@@ -206,9 +207,36 @@ You can see the logs in:
 
     $ tail -f /var/log/syslog
 
+
+Creating Docker Images
+~~~~~~~~~~~~~~~~~~~~~~
+
+Now it's time to install the docker images for your neededs platform. You can build your own docker image, or you can use ours own images as following
+
+.. highlight:: bash
+
+::
+
+    # Add an alias for docker to make your life easier (add it to your .bash_profile) 
+    $ alias docker='docker -H 127.0.0.1:4243'
+    # Build the wanted platform, here we are adding the static platform(webserver)
+    $ docker build -t tsuru/static https://raw.github.com/flaviamissi/basebuilder/master/static/Dockerfile
+    # Now you can see if your image is ready - you should see the tsuru/static as an repository
+    $ docker images
+    # If you want all the other platforms, just run the command bellow
+    $ for image in nodejs php python ruby; do docker build -t tsuru/$image https://raw.github.com/flaviamissi/basebuilder/master/$image/Dockerfile;done 
+    # To see if everything went well - just take a look in the repository column
+    $ docker images
+    # Now try to create your apps!
+
 Using tsuru
 ===========
 
 Congratulations! At this point you should have a working tsuru server running
 on your machine, follow the :doc:`tsuru client usage guide
 </apps/client/usage>` to start build your apps.
+
+
+Adding Services
+===============
+Here you will find a complete step-by-step example of how to install a mysql service with tsuru: `http://docs.tsuru.io/en/latest/services/mysql-example.html <http://docs.tsuru.io/en/latest/services/mysql-example.html>`_
