@@ -503,20 +503,22 @@ It would be boring to manually run ``rake db:migrate`` after every deployment.
 So we can configure an automatic hook to always run before or after
 the app restarts.
 
-Tsuru parses a file called ``app.yaml`` and runs ``pre-restart`` and
-``post-restart`` hooks. As the extension suggests, this is a YAML file, that
-contains a list of commands that should run in pre-restart and post-restart
-hooks. Here is our example of app.yaml:
+Tsuru parses a file called ``app.yaml`` and runs restart hooks. As the
+extension suggests, this is a YAML file, that contains a list of commands that
+should run before and after the restart. Here is our example of app.yaml:
 
 .. highlight:: yaml
 
 ::
 
     hooks:
-      post-restart:
-        - RAILS_ENV=production bundle exec rake db:migrate
+      restart:
+        before-each:
+          - RAILS_ENV=production bundle exec rake db:migrate
 
-It should be located in the root of the project. Let's commit and deploy it:
+For more details, check the :doc:`hooks documentation </apps/deploy-hooks>`.
+
+It should be stored in the root of the project. Let's commit and deploy it:
 
 .. highlight:: bash
 
@@ -531,17 +533,18 @@ It should be located in the root of the project. Let's commit and deploy it:
     To git@cloud.tsuru.io:blog.git
        a780de9..1b675b8  master -> master
 
-It's need to compile de assets before the app restart. To do it we can use
-the `rake assets:precompile` command. Then let's add the command to compile
-the assets in app.yaml:
+It is necessary to compile de assets before the app restart. To do it we can
+use the ``rake assets:precompile`` command. Then let's add the command to
+compile the assets in app.yaml:
 
 .. highlight:: yaml
 
 ::
 
     hooks:
-      pre-restart:
-        - RAILS_ENV=production bundle exec rake assets:precompile
+      restart:
+        before:
+          - RAILS_ENV=production bundle exec rake assets:precompile
 
 .. highlight:: bash
 
