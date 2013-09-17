@@ -45,45 +45,22 @@ After that, all you need is to create a database admin user for this service, wi
 ::
 
     # Creating a database user(log into the database with the root user)
-    > GRANT ALL PRIVILEGES ON *.* TO 'tsuru'@'%' IDENTIFIED BY 'password';
+    > GRANT ALL PRIVILEGES ON *.* TO 'tsuru'@'%' IDENTIFIED BY 'password' with GRANT OPTION;
     > FLUSH PRIVILEGES;
 
-Now, you will install our mysql-api service example
+Now, you will install our mysql-api service example. Just create an application that will be responsible for this service
 
 .. highlight:: bash
 
 ::
 
-    # In a machine with tsuru client and crane installed
-    $ git clone https://github.com/globocom/mysqlapi
-    $ cd mysqlapi
-    # Edit the mysqlapi/settings.py, and add the right values for your database. It will look like that:
-    $ grep \".*os.*MYSQLAPI_ mysqlapi/settings.py
-    "NAME": os.environ.get("MYSQLAPI_DB_NAME", "mysqlapi"),
-    "USER": os.environ.get("MYSQLAPI_DB_USER", "tsuru"),
-    "PASSWORD": os.environ.get("MYSQLAPI_DB_PASSWORD", "password"),
-    "HOST": os.environ.get("MYSQLAPI_HOST", "192.168.123.131"),
     # Create a database for this service (change the 192.168.123.131 for your mysql server host)
     $ echo "CREATE DATABASE mysqlapi" | mysql -h 192.168.123.131 -u tsuru -ppassword
-
-
-Create an application that will be responsible for this service
-
-.. highlight:: bash
-
-::
-
+    # In a machine with tsuru client and crane installed
+    $ git clone https://github.com/globocom/mysqlapi
     # Create the mysqlapi application using python as its platform.
     $ tsuru app-create mysql-api python
-    # Configure the service template and point it to the application service (considering that your domain is cloud.company.com)
-    $  cat manifest.yaml
-    id: mysqlapi
-       endpoint:
-       production: mysql-api.cloud.company.com
-    # To show the application's repository
-    $ tsuru app-info -a mysql-api|grep Repository
-    Repository: git@git.cloud.company.com:mysql-api.git
-    $ git push git@git.cloud.company.com:mysql-api.git master
+
 
 In order to have mysql API ready to receive requests, we need some bootstrap stuff.
 
@@ -93,6 +70,15 @@ In order to have mysql API ready to receive requests, we need some bootstrap stu
 
     #First export the django settings variable:
     $ tsuru env-set --app mysql-api DJANGO_SETTINGS_MODULE=mysqlapi.settings
+    # Inject the right environment for that service
+    $ tsuru env-set -a mysql-api MYSQLAPI_DB_NAME=mysqlapi
+    $ tsuru env-set -a mysql-api MYSQLAPI_DB_USER=tsuru
+    $ tsuru env-set -a mysql-api MYSQLAPI_DB_PASSWORD=password
+    $ tsuru env-set -a mysql-api MYSQLAPI_DB_HOST=192.168.123.131
+    # To show the application's repository
+    $ tsuru app-info -a mysql-api|grep Repository
+    Repository: git@192.168.123.131:mysql-api.git
+    $ git push git@192.168.123.131:mysql-api.git master
     #Now gunicorn is able to run with our wsgi.py configuration. After that, we need to run syncdb:
     $ tsuru run --app mysql-api -- python manage.py syncdb --noinput
 
@@ -109,6 +95,9 @@ To run the API in shared mode, follow this steps
     $ tsuru env-set --app mysql-api MYSQLAPI_SHARED_SERVER=192.168.123.131
     # Here you'll also need to set up a externally accessible endpoint to be used by the apps that are using the service
     $ tsuru env-set --app mysql-api MYSQLAPI_SHARED_SERVER_PUBLIC_HOST=192.168.123.131
+    # Here the mysql user to manage the shared databases
+    $ tsuru env-set -a mysql-api MYSQLAPI_SHARED_USER=tsuru
+    $ tsuru env-set -a mysql-api MYSQLAPI_SHARED_PASSWORD=password
 
 More information about the ways you can work with that api you can found `here <https://github.com/globocom/mysqlapi#choose-your-configuration-mode>`_.
 
@@ -121,7 +110,13 @@ To submit your new service, you can run:
 
 ::
 
+    # Configure the service template and point it to the application service (considering that your domain is cloud.company.com)
+    $  cat manifest.yaml
+    id: mysqlapi
+       endpoint:
+       production: mysql-api.cloud.company.com
     $ crane create manifest.yaml
+
 
 To list your services:
 
