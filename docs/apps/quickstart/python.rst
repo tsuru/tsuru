@@ -596,21 +596,24 @@ It would be boring to manually run ``syncdb`` and/or ``migrate`` after every
 deployment. So we can configure an automatic hook to always run before or after
 the app restarts.
 
-Tsuru parses a file called ``app.yaml`` and runs ``pre-restart`` and
-``post-restart`` hooks. As the extension suggests, this is a YAML file, that
-contains a list of commands that should run in pre-restart and post-restart
-hooks. Here is our example of app.yaml:
+Tsuru parses a file called ``app.yaml`` and runs restart hooks. As the
+extension suggests, this is a YAML file, that contains a list of commands that
+should run before and after the restart. Here is our example of app.yaml:
 
 .. highlight:: yaml
 
 ::
 
     hooks:
-      post-restart:
-        - python manage.py syncdb --noinput
-        - python manage.py migrate
+      restart:
+        after:
+          - python manage.py syncdb --noinput
+          - python manage.py migrate
 
-It should be located in the root of the project. Let's commit and deploy it:
+For more details, check the :doc:`hooks documentation </apps/deploy-hooks>`.
+
+Tsuru will look for the file in the root of the project. Let's commit and
+deploy it:
 
 .. highlight:: bash
 
@@ -642,7 +645,7 @@ It should be located in the root of the project. Let's commit and deploy it:
     remote:
     remote:  ---> Restarting your app
     remote:
-    remote:  ---> Running post-restart
+    remote:  ---> Running restart:after
     remote:
     remote:  ---> Deploy done!
     remote:
