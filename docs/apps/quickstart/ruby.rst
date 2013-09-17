@@ -518,7 +518,8 @@ should run before and after the restart. Here is our example of app.yaml:
 
 For more details, check the :doc:`hooks documentation </apps/deploy-hooks>`.
 
-It should be stored in the root of the project. Let's commit and deploy it:
+Tsuru will look for the file in the root of the project. Let's commit and
+deploy it:
 
 .. highlight:: bash
 
