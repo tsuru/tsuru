@@ -33,6 +33,7 @@ For tsuru users
     * :doc:`python/django </apps/quickstart/python>`
     * :doc:`ruby/rails </apps/quickstart/ruby>`
     * :doc:`php </apps/quickstart/php>`
+* :doc:`understanding deployment hooks </apps/deploy-hooks>`
 
 For tsuru ops
 +++++++++++++
