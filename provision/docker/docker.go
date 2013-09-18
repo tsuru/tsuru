@@ -206,24 +206,19 @@ func deploy(app provision.App, version string, w io.Writer) (string, error) {
 		return "", err
 	}
 	c := pipeline.Result().(container)
-	for {
-		result, err := c.stopped()
-		if err != nil {
-			log.Printf("error on stopped for container %s - %s", c.ID, err.Error())
-			return "", err
-		}
-		if result {
-			break
-		}
+	_, err = dockerCluster().WaitContainer(c.ID)
+	if err != nil {
+		log.Printf("Process failed for container %q: %s", c.ID, err)
+		return "", err
 	}
 	err = c.logs(w)
 	if err != nil {
-		log.Printf("error on get logs for container %s - %s", c.ID, err.Error())
+		log.Printf("error on get logs for container %s - %s", c.ID, err)
 		return "", err
 	}
 	imageId, err = c.commit()
 	if err != nil {
-		log.Printf("error on commit container %s - %s", c.ID, err.Error())
+		log.Printf("error on commit container %s - %s", c.ID, err)
 		return "", err
 	}
 	c.remove()
@@ -329,16 +324,6 @@ func (c *container) commit() (string, error) {
 	log.Printf("image %s generated from container %s", image.ID, c.ID)
 	replicateImage(repository)
 	return repository, nil
-}
-
-// stopped returns true if the container is stopped.
-func (c *container) stopped() (bool, error) {
-	dockerContainer, err := dockerCluster().InspectContainer(c.ID)
-	if err != nil {
-		log.Printf("error on get log for container %s: %s", c.ID, err)
-		return false, err
-	}
-	return !dockerContainer.State.Running, nil
 }
 
 // stop stops the container.

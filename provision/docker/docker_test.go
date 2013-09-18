@@ -522,18 +522,6 @@ func (s *S) TestContainerRunCmdError(c *gocheck.C) {
 	c.Assert(e.args, gocheck.DeepEquals, []string{"-a"})
 }
 
-func (s *S) TestContainerStopped(c *gocheck.C) {
-	err := newImage("tsuru/python", s.server.URL())
-	c.Assert(err, gocheck.IsNil)
-	cont, err := s.newContainer()
-	c.Assert(err, gocheck.IsNil)
-	defer cont.remove()
-	defer rtesting.FakeRouter.RemoveBackend(cont.AppName)
-	result, err := cont.stopped()
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(result, gocheck.Equals, true)
-}
-
 func (s *S) TestContainerStop(c *gocheck.C) {
 	err := newImage("tsuru/python", s.server.URL())
 	c.Assert(err, gocheck.IsNil)
@@ -547,8 +535,9 @@ func (s *S) TestContainerStop(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	err = cont.stop()
 	c.Assert(err, gocheck.IsNil)
-	result, _ := cont.stopped()
-	c.Assert(result, gocheck.Equals, true)
+	dockerContainer, err := dockerCluster().InspectContainer(cont.ID)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(dockerContainer.State.Running, gocheck.Equals, false)
 }
 
 func (s *S) TestContainerLogs(c *gocheck.C) {
