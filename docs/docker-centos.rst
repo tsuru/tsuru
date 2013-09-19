@@ -14,6 +14,10 @@ dependencies. Please make sure you satisfy minimal version requirements.
 
 Just follow this steps:
 
+DNS server
+----------
+You can integrate any DNS server with tsuru. Here: `<http://docs.tsuru.io/en/latest/misc/dns-forwarders.html>`_ you can find a example of how to install a DNS server integrated with tsuru
+
 Docker
 ------
 
