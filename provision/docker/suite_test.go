@@ -8,7 +8,6 @@ import (
 	dtesting "github.com/fsouza/go-dockerclient/testing"
 	"github.com/globocom/config"
 	"github.com/globocom/docker-cluster/cluster"
-	"github.com/globocom/tsuru/db"
 	ftesting "github.com/globocom/tsuru/fs/testing"
 	"github.com/globocom/tsuru/provision"
 	_ "github.com/globocom/tsuru/testing"
@@ -23,7 +22,6 @@ func Test(t *testing.T) { gocheck.TestingT(t) }
 type S struct {
 	collName      string
 	imageCollName string
-	conn          *db.Storage
 	gitHost       string
 	repoNamespace string
 	deployCmd     string
@@ -58,9 +56,6 @@ func (s *S) SetUpSuite(c *gocheck.C) {
 	s.runBin = "/usr/local/bin/circusd"
 	s.runArgs = "/etc/circus/circus.ini"
 	s.port = "8888"
-	var err error
-	s.conn, err = db.Conn()
-	c.Assert(err, gocheck.IsNil)
 	fsystem = &ftesting.RecordingFs{}
 	f, err := fsystem.Create(os.ExpandEnv("${HOME}/.ssh/id_rsa.pub"))
 	c.Assert(err, gocheck.IsNil)
@@ -74,10 +69,7 @@ func (s *S) SetUpSuite(c *gocheck.C) {
 }
 
 func (s *S) TearDownSuite(c *gocheck.C) {
-	conn, err := db.Conn()
-	c.Assert(err, gocheck.IsNil)
-	defer conn.Close()
-	err = conn.Collection(s.collName).Database.DropDatabase()
+	err := collection().Database.DropDatabase()
 	c.Assert(err, gocheck.IsNil)
 	fsystem = nil
 }

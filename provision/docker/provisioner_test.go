@@ -198,7 +198,7 @@ func (s *S) TestDeployRemoveContainersEvenWhenTheyreNotInTheAppsCollection(c *go
 	message, err = q.Get(1e6)
 	c.Assert(err, gocheck.IsNil)
 	defer message.Delete()
-	n, err := s.conn.Collection(s.collName).Find(bson.M{"appname": cont1.AppName}).Count()
+	n, err := collection().Find(bson.M{"appname": cont1.AppName}).Count()
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(n, gocheck.Equals, 2)
 }
@@ -214,7 +214,7 @@ func (s *S) TestProvisionerDestroy(c *gocheck.C) {
 	c.Assert(p.Destroy(app), gocheck.IsNil)
 	ok := make(chan bool, 1)
 	go func() {
-		coll := s.conn.Collection(s.collName)
+		coll := collection()
 		for {
 			ct, err := coll.Find(bson.M{"appname": cont.AppName}).Count()
 			if err != nil {
@@ -287,13 +287,14 @@ func (s *S) TestProvisionerAddUnits(c *gocheck.C) {
 	app := testing.NewFakeApp("myapp", "python", 0)
 	p.Provision(app)
 	defer p.Destroy(app)
-	s.conn.Collection(s.collName).Insert(container{ID: "c-89320", AppName: app.GetName(), Version: "a345fe"})
-	defer s.conn.Collection(s.collName).RemoveId("c-89320")
+	coll := collection()
+	coll.Insert(container{ID: "c-89320", AppName: app.GetName(), Version: "a345fe"})
+	defer coll.RemoveId("c-89320")
 	units, err := p.AddUnits(app, 3)
 	c.Assert(err, gocheck.IsNil)
-	defer s.conn.Collection(s.collName).RemoveAll(bson.M{"appname": app.GetName()})
+	defer coll.RemoveAll(bson.M{"appname": app.GetName()})
 	c.Assert(units, gocheck.HasLen, 3)
-	count, err := s.conn.Collection(s.collName).Find(bson.M{"appname": app.GetName()}).Count()
+	count, err := coll.Find(bson.M{"appname": app.GetName()}).Count()
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(count, gocheck.Equals, 4)
 }
@@ -521,7 +522,7 @@ func (s *S) TestCollectStatus(c *gocheck.C) {
 }
 
 func (s *S) TestProvisionCollectStatusEmpty(c *gocheck.C) {
-	s.conn.Collection(s.collName).RemoveAll(nil)
+	collection().RemoveAll(nil)
 	output := map[string][][]byte{"ps -q": {[]byte("")}}
 	fexec := &etesting.FakeExecutor{Output: output}
 	setExecut(fexec)
@@ -614,7 +615,7 @@ func (s *S) TestExecuteCommandOnce(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	defer s.removeTestContainer(container)
 	container.HostAddr = host
-	s.conn.Collection(s.collName).UpdateId(container.ID, container)
+	collection().UpdateId(container.ID, container)
 	var stdout, stderr bytes.Buffer
 	err = p.ExecuteCommandOnce(&stdout, &stderr, app, "ls", "-lh")
 	c.Assert(err, gocheck.IsNil)

@@ -132,8 +132,9 @@ func (s *S) TestGetPortUndefined(c *gocheck.C) {
 
 func (s *S) TestContainerSetStatus(c *gocheck.C) {
 	container := container{ID: "something-300"}
-	s.conn.Collection(s.collName).Insert(container)
-	defer s.conn.Collection(s.collName).RemoveId(container.ID)
+	coll := collection()
+	coll.Insert(container)
+	defer coll.RemoveId(container.ID)
 	container.setStatus("what?!")
 	c2, err := getContainer(container.ID)
 	c.Assert(err, gocheck.IsNil)
@@ -142,8 +143,9 @@ func (s *S) TestContainerSetStatus(c *gocheck.C) {
 
 func (s *S) TestContainerSetImage(c *gocheck.C) {
 	container := container{ID: "something-300"}
-	s.conn.Collection(s.collName).Insert(container)
-	defer s.conn.Collection(s.collName).RemoveId(container.ID)
+	coll := collection()
+	coll.Insert(container)
+	defer coll.RemoveId(container.ID)
 	container.setImage("newimage")
 	c2, err := getContainer(container.ID)
 	c.Assert(err, gocheck.IsNil)
@@ -226,7 +228,7 @@ func (s *S) TestContainerRemove(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(handler.requests[0].Method, gocheck.Equals, "DELETE")
 	c.Assert(handler.requests[0].URL.Path, gocheck.Equals, "/container/"+container.IP)
-	coll := s.conn.Collection(s.collName)
+	coll := collection()
 	err = coll.FindId(container.ID).One(&container)
 	c.Assert(err, gocheck.NotNil)
 	c.Assert(err.Error(), gocheck.Equals, "not found")
@@ -256,7 +258,7 @@ func (s *S) TestRemoveContainerIgnoreErrors(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(handler.requests[0].Method, gocheck.Equals, "DELETE")
 	c.Assert(handler.requests[0].URL.Path, gocheck.Equals, "/container/"+container.IP)
-	coll := s.conn.Collection(s.collName)
+	coll := collection()
 	err = coll.FindId(container.ID).One(&container)
 	c.Assert(err, gocheck.NotNil)
 	c.Assert(err.Error(), gocheck.Equals, "not found")
