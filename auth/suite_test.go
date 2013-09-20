@@ -86,7 +86,11 @@ func (s *S) SetUpSuite(c *gocheck.C) {
 }
 
 func (s *S) TearDownSuite(c *gocheck.C) {
-	s.conn.Apps().Database.DropDatabase()
+	conn, err := db.Conn()
+	c.Assert(err, gocheck.IsNil)
+	defer conn.Close()
+	err = conn.Apps().Database.DropDatabase()
+	c.Assert(err, gocheck.IsNil)
 	s.server.Stop()
 }
 
