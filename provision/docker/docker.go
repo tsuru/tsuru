@@ -285,11 +285,15 @@ func (c *container) removeHost() error {
 }
 
 func (c *container) ssh(stdout, stderr io.Writer, cmd string, args ...string) error {
+	ip, _, err := c.networkInfo()
+	if err != nil {
+		return err
+	}
 	stdout = &filter{w: stdout, content: []byte("unable to resolve host")}
-	url := fmt.Sprintf("http://%s:%d/container/%s/cmd", c.HostAddr, sshAgentPort(), c.IP)
+	url := fmt.Sprintf("http://%s:%d/container/%s/cmd", c.HostAddr, sshAgentPort(), ip)
 	input := cmdInput{Cmd: cmd, Args: args}
 	var buf bytes.Buffer
-	err := json.NewEncoder(&buf).Encode(input)
+	err = json.NewEncoder(&buf).Encode(input)
 	if err != nil {
 		return err
 	}

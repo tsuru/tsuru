@@ -12,6 +12,7 @@ import (
 	dtesting "github.com/fsouza/go-dockerclient/testing"
 	"github.com/globocom/config"
 	"github.com/globocom/docker-cluster/cluster"
+	"github.com/globocom/tsuru/db"
 	etesting "github.com/globocom/tsuru/exec/testing"
 	ftesting "github.com/globocom/tsuru/fs/testing"
 	rtesting "github.com/globocom/tsuru/router/testing"
@@ -46,7 +47,7 @@ func (s *S) TestNewContainer(c *gocheck.C) {
 	defer rtesting.FakeRouter.RemoveBackend(app.GetName())
 	cont, err := newContainer(app, getImage(app), []string{"docker", "run"})
 	c.Assert(err, gocheck.IsNil)
-	defer cont.remove()
+	defer s.removeTestContainer(&cont)
 	c.Assert(cont.ID, gocheck.Not(gocheck.Equals), "")
 	c.Assert(cont, gocheck.FitsTypeOf, container{})
 	c.Assert(cont.AppName, gocheck.Equals, app.GetName())
@@ -159,9 +160,17 @@ func newImage(repo, serverURL string) error {
 	return client.PullImage(opts, &buffer)
 }
 
-func (s *S) newContainer() (*container, error) {
+type newContainerOpts struct {
+	AppName string
+}
+
+func (s *S) newContainer(opts *newContainerOpts) (*container, error) {
+	appName := "container"
+	if opts != nil {
+		appName = opts.AppName
+	}
 	container := container{
-		AppName:  "container",
+		AppName:  appName,
 		ID:       "id",
 		IP:       "10.10.10.10",
 		HostPort: "3333",
@@ -185,11 +194,21 @@ func (s *S) newContainer() (*container, error) {
 	}
 	container.ID = c.ID
 	container.Image = "tsuru/python"
-	err = s.conn.Collection(s.collName).Insert(&container)
+	conn, err := db.Conn()
+	if err != nil {
+		return nil, err
+	}
+	defer conn.Close()
+	err = conn.Collection(s.collName).Insert(&container)
 	if err != nil {
 		return nil, err
 	}
 	return &container, err
+}
+
+func (s *S) removeTestContainer(c *container) error {
+	rtesting.FakeRouter.RemoveBackend(c.AppName)
+	return c.remove()
 }
 
 func (s *S) TestContainerRemove(c *gocheck.C) {
@@ -200,9 +219,9 @@ func (s *S) TestContainerRemove(c *gocheck.C) {
 	defer setExecut(nil)
 	err := newImage("tsuru/python", s.server.URL())
 	c.Assert(err, gocheck.IsNil)
-	container, err := s.newContainer()
+	container, err := s.newContainer(nil)
 	c.Assert(err, gocheck.IsNil)
-	defer rtesting.FakeRouter.RemoveBackend(container.AppName)
+	defer s.removeTestContainer(container)
 	err = container.remove()
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(handler.requests[0].Method, gocheck.Equals, "DELETE")
@@ -227,9 +246,9 @@ func (s *S) TestRemoveContainerIgnoreErrors(c *gocheck.C) {
 	defer setExecut(nil)
 	err := newImage("tsuru/python", s.server.URL())
 	c.Assert(err, gocheck.IsNil)
-	container, err := s.newContainer()
+	container, err := s.newContainer(nil)
 	c.Assert(err, gocheck.IsNil)
-	defer rtesting.FakeRouter.RemoveBackend(container.AppName)
+	defer s.removeTestContainer(container)
 	client, _ := dockerClient.NewClient(s.server.URL())
 	err = client.RemoveContainer(container.ID)
 	c.Assert(err, gocheck.IsNil)
@@ -266,9 +285,9 @@ func (s *S) TestContainerNetworkInfo(c *gocheck.C) {
 	defer cleanup()
 	err := newImage("tsuru/python", s.server.URL())
 	c.Assert(err, gocheck.IsNil)
-	cont, err := s.newContainer()
+	cont, err := s.newContainer(nil)
 	c.Assert(err, gocheck.IsNil)
-	defer cont.remove()
+	defer s.removeTestContainer(cont)
 	ip, port, err := cont.networkInfo()
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(ip, gocheck.Not(gocheck.Equals), "")
@@ -328,8 +347,11 @@ func (s *S) TestContainerSSH(c *gocheck.C) {
 	config.Set("docker:ssh-agent-port", portNumber)
 	defer config.Unset("docker:ssh-agent-port")
 	var stdout, stderr bytes.Buffer
-	container := container{ID: "c-01", IP: "10.10.10.10", HostAddr: host}
-	err := container.ssh(&stdout, &stderr, "ls", "-a")
+	container, err := s.newContainer(nil)
+	c.Assert(err, gocheck.IsNil)
+	defer s.removeTestContainer(container)
+	container.HostAddr = host
+	err = container.ssh(&stdout, &stderr, "ls", "-a")
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(stdout.String(), gocheck.Equals, handler.output)
 	body := handler.bodies[0]
@@ -347,8 +369,11 @@ func (s *S) TestContainerSSHFiltersStdout(c *gocheck.C) {
 	config.Set("docker:ssh-agent-port", portNumber)
 	defer config.Unset("docker:ssh-agent-port")
 	var stdout, stderr bytes.Buffer
-	container := container{ID: "c-01", IP: "10.10.10.10", HostPort: host}
-	err := container.ssh(&stdout, &stderr, "ls", "-a")
+	container, err := s.newContainer(nil)
+	c.Assert(err, gocheck.IsNil)
+	defer s.removeTestContainer(container)
+	container.HostAddr = host
+	err = container.ssh(&stdout, &stderr, "ls", "-a")
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(stdout.String(), gocheck.Equals, "failed\n")
 }
@@ -423,10 +448,9 @@ func (s *S) TestContainerCommit(c *gocheck.C) {
 	defer cleanup()
 	err := newImage("tsuru/python", s.server.URL())
 	c.Assert(err, gocheck.IsNil)
-	cont, err := s.newContainer()
+	cont, err := s.newContainer(nil)
 	c.Assert(err, gocheck.IsNil)
-	defer cont.remove()
-	defer rtesting.FakeRouter.RemoveBackend(cont.AppName)
+	defer s.removeTestContainer(cont)
 	imageId, err := cont.commit()
 	c.Assert(err, gocheck.IsNil)
 	repoNamespace, _ := config.GetString("docker:repository-namespace")
@@ -525,10 +549,9 @@ func (s *S) TestContainerRunCmdError(c *gocheck.C) {
 func (s *S) TestContainerStop(c *gocheck.C) {
 	err := newImage("tsuru/python", s.server.URL())
 	c.Assert(err, gocheck.IsNil)
-	cont, err := s.newContainer()
+	cont, err := s.newContainer(nil)
 	c.Assert(err, gocheck.IsNil)
-	defer cont.remove()
-	defer rtesting.FakeRouter.RemoveBackend(cont.AppName)
+	defer s.removeTestContainer(cont)
 	client, err := dockerClient.NewClient(s.server.URL())
 	c.Assert(err, gocheck.IsNil)
 	err = client.StartContainer(cont.ID)
@@ -545,10 +568,9 @@ func (s *S) TestContainerLogs(c *gocheck.C) {
 	defer cleanup()
 	err := newImage("tsuru/python", s.server.URL())
 	c.Assert(err, gocheck.IsNil)
-	cont, err := s.newContainer()
+	cont, err := s.newContainer(nil)
 	c.Assert(err, gocheck.IsNil)
-	defer cont.remove()
-	defer rtesting.FakeRouter.RemoveBackend(cont.AppName)
+	defer s.removeTestContainer(cont)
 	var buff bytes.Buffer
 	err = cont.logs(&buff)
 	c.Assert(err, gocheck.IsNil)

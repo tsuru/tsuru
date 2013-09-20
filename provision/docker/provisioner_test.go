@@ -6,6 +6,7 @@ package docker
 
 import (
 	"bytes"
+	"fmt"
 	dockerClient "github.com/fsouza/go-dockerclient"
 	"github.com/globocom/config"
 	"github.com/globocom/tsuru/app"
@@ -60,22 +61,20 @@ func (s *S) TestProvisionerRestartCallsTheRestartHook(c *gocheck.C) {
 	defer config.Unset("docker:ssh-agent-port")
 	var p dockerProvisioner
 	app := testing.NewFakeApp("almah", "static", 1)
-	cont := container{
-		ID:       handler.output,
-		AppName:  app.GetName(),
-		Type:     app.GetPlatform(),
-		IP:       "10.10.10.10",
-		HostAddr: host,
-	}
-	err := collection().Insert(cont)
+	newImage("tsuru/python", s.server.URL())
+	cont, err := s.newContainer(&newContainerOpts{AppName: app.GetName()})
 	c.Assert(err, gocheck.IsNil)
-	defer collection().RemoveId(cont.ID)
+	defer s.removeTestContainer(cont)
+	cont.HostAddr = host
+	err = collection().UpdateId(cont.ID, cont)
+	c.Assert(err, gocheck.IsNil)
 	err = p.Restart(app)
 	c.Assert(err, gocheck.IsNil)
 	input := cmdInput{Cmd: "/var/lib/tsuru/restart"}
 	body := handler.bodies[0]
 	c.Assert(body, gocheck.DeepEquals, input)
-	path := "/container/10.10.10.10/cmd"
+	ip, _, _ := cont.networkInfo()
+	path := fmt.Sprintf("/container/%s/cmd", ip)
 	c.Assert(handler.requests[0].URL.Path, gocheck.DeepEquals, path)
 }
 
@@ -98,7 +97,7 @@ func (s *S) stopContainers(n uint) {
 				}
 			}
 		}
-		time.Sleep(100 * time.Millisecond)
+		time.Sleep(500 * time.Millisecond)
 	}
 }
 
@@ -175,9 +174,9 @@ func (s *S) TestDeployRemoveContainersEvenWhenTheyreNotInTheAppsCollection(c *go
 	go s.stopContainers(3)
 	err := newImage("tsuru/python", s.server.URL())
 	c.Assert(err, gocheck.IsNil)
-	cont1, err := s.newContainer()
+	cont1, err := s.newContainer(nil)
 	c.Assert(err, gocheck.IsNil)
-	_, err = s.newContainer()
+	_, err = s.newContainer(nil)
 	c.Assert(err, gocheck.IsNil)
 	defer rtesting.FakeRouter.RemoveBackend(cont1.AppName)
 	var p dockerProvisioner
@@ -207,7 +206,7 @@ func (s *S) TestDeployRemoveContainersEvenWhenTheyreNotInTheAppsCollection(c *go
 func (s *S) TestProvisionerDestroy(c *gocheck.C) {
 	err := newImage("tsuru/python", s.server.URL())
 	c.Assert(err, gocheck.IsNil)
-	cont, err := s.newContainer()
+	cont, err := s.newContainer(nil)
 	c.Assert(err, gocheck.IsNil)
 	app := testing.NewFakeApp(cont.AppName, "python", 1)
 	var p dockerProvisioner
@@ -267,11 +266,10 @@ func (s *S) TestProvisionerDestroyRemovesRouterBackend(c *gocheck.C) {
 func (s *S) TestProvisionerAddr(c *gocheck.C) {
 	err := newImage("tsuru/python", s.server.URL())
 	c.Assert(err, gocheck.IsNil)
-	cont, err := s.newContainer()
+	cont, err := s.newContainer(nil)
 	c.Assert(err, gocheck.IsNil)
-	defer cont.remove()
+	defer s.removeTestContainer(cont)
 	app := testing.NewFakeApp(cont.AppName, "python", 1)
-	defer rtesting.FakeRouter.RemoveBackend(app.GetName())
 	var p dockerProvisioner
 	addr, err := p.Addr(app)
 	c.Assert(err, gocheck.IsNil)
@@ -322,7 +320,7 @@ func (s *S) TestProvisionerAddUnitsWithoutContainers(c *gocheck.C) {
 func (s *S) TestProvisionerRemoveUnit(c *gocheck.C) {
 	err := newImage("tsuru/python", s.server.URL())
 	c.Assert(err, gocheck.IsNil)
-	container, err := s.newContainer()
+	container, err := s.newContainer(nil)
 	c.Assert(err, gocheck.IsNil)
 	defer rtesting.FakeRouter.RemoveBackend(container.AppName)
 	client, err := dockerClient.NewClient(s.server.URL())
@@ -352,10 +350,9 @@ func (s *S) TestProvisionerRemoveUnitNotFound(c *gocheck.C) {
 func (s *S) TestProvisionerRemoveUnitNotInApp(c *gocheck.C) {
 	err := newImage("tsuru/python", s.server.URL())
 	c.Assert(err, gocheck.IsNil)
-	container, err := s.newContainer()
+	container, err := s.newContainer(nil)
 	c.Assert(err, gocheck.IsNil)
-	defer rtesting.FakeRouter.RemoveBackend(container.AppName)
-	defer container.remove()
+	defer s.removeTestContainer(container)
 	var p dockerProvisioner
 	err = p.RemoveUnit(testing.NewFakeApp("hisapp", "python", 1), container.ID)
 	c.Assert(err, gocheck.NotNil)
@@ -367,9 +364,9 @@ func (s *S) TestProvisionerRemoveUnitNotInApp(c *gocheck.C) {
 func (s *S) TestRemoveUnitInSameHostAsAnotherUnitShouldEnqueueAnotherBind(c *gocheck.C) {
 	err := newImage("tsuru/python", s.server.URL())
 	c.Assert(err, gocheck.IsNil)
-	c1, err := s.newContainer()
+	c1, err := s.newContainer(nil)
 	c.Assert(err, gocheck.IsNil)
-	c2, err := s.newContainer()
+	c2, err := s.newContainer(nil)
 	c.Assert(err, gocheck.IsNil)
 	defer rtesting.FakeRouter.RemoveBackend(c1.AppName)
 	client, err := dockerClient.NewClient(s.server.URL())
@@ -402,10 +399,11 @@ func (s *S) TestProvisionerExecuteCommand(c *gocheck.C) {
 	config.Set("docker:ssh-agent-port", portNumber)
 	defer config.Unset("docker:ssh-agent-port")
 	app := testing.NewFakeApp("starbreaker", "python", 1)
-	container := container{ID: "c-036", AppName: "starbreaker", Type: "python", IP: "10.10.10.1", HostAddr: host}
-	err := s.conn.Collection(s.collName).Insert(container)
+	container, err := s.newContainer(&newContainerOpts{AppName: app.GetName()})
 	c.Assert(err, gocheck.IsNil)
-	defer s.conn.Collection(s.collName).Remove(bson.M{"_id": container.ID})
+	defer s.removeTestContainer(container)
+	container.HostAddr = host
+	collection().UpdateId(container.ID, container)
 	var stdout, stderr bytes.Buffer
 	var p dockerProvisioner
 	err = p.ExecuteCommand(&stdout, &stderr, app, "ls", "-ar")
@@ -415,7 +413,8 @@ func (s *S) TestProvisionerExecuteCommand(c *gocheck.C) {
 	body := handler.bodies[0]
 	input := cmdInput{Cmd: "ls", Args: []string{"-ar"}}
 	c.Assert(body, gocheck.DeepEquals, input)
-	path := "/container/10.10.10.1/cmd"
+	ip, _, _ := container.networkInfo()
+	path := fmt.Sprintf("/container/%s/cmd", ip)
 	c.Assert(handler.requests[0].URL.Path, gocheck.DeepEquals, path)
 }
 
@@ -429,12 +428,16 @@ func (s *S) TestProvisionerExecuteCommandMultipleContainers(c *gocheck.C) {
 	config.Set("docker:ssh-agent-port", portNumber)
 	defer config.Unset("docker:ssh-agent-port")
 	app := testing.NewFakeApp("starbreaker", "python", 1)
-	err := s.conn.Collection(s.collName).Insert(
-		container{ID: "c-036", AppName: "starbreaker", Type: "python", IP: "10.10.10.1", HostAddr: host},
-		container{ID: "c-037", AppName: "starbreaker", Type: "python", IP: "10.10.10.2", HostAddr: host},
-	)
+	container1, err := s.newContainer(&newContainerOpts{AppName: app.GetName()})
 	c.Assert(err, gocheck.IsNil)
-	defer s.conn.Collection(s.collName).RemoveAll(bson.M{"_id": bson.M{"$in": []string{"c-036", "c-037"}}})
+	defer s.removeTestContainer(container1)
+	container1.HostAddr = host
+	collection().UpdateId(container1.ID, container1)
+	container2, err := s.newContainer(&newContainerOpts{AppName: app.GetName()})
+	c.Assert(err, gocheck.IsNil)
+	defer s.removeTestContainer(container2)
+	container2.HostAddr = host
+	collection().UpdateId(container2.ID, container2)
 	var stdout, stderr bytes.Buffer
 	var p dockerProvisioner
 	err = p.ExecuteCommand(&stdout, &stderr, app, "ls", "-ar")
@@ -442,8 +445,10 @@ func (s *S) TestProvisionerExecuteCommandMultipleContainers(c *gocheck.C) {
 	c.Assert(stderr.Bytes(), gocheck.IsNil)
 	input := cmdInput{Cmd: "ls", Args: []string{"-ar"}}
 	c.Assert(handler.bodies, gocheck.DeepEquals, []cmdInput{input, input})
-	path1 := "/container/10.10.10.1/cmd"
-	path2 := "/container/10.10.10.2/cmd"
+	ip1, _, _ := container1.networkInfo()
+	ip2, _, _ := container2.networkInfo()
+	path1 := fmt.Sprintf("/container/%s/cmd", ip1)
+	path2 := fmt.Sprintf("/container/%s/cmd", ip2)
 	c.Assert(handler.requests[0].URL.Path, gocheck.Equals, path1)
 	c.Assert(handler.requests[1].URL.Path, gocheck.Equals, path2)
 }
@@ -605,13 +610,13 @@ func (s *S) TestExecuteCommandOnce(c *gocheck.C) {
 	defer config.Unset("docker:ssh-agent-port")
 	app := testing.NewFakeApp("almah", "static", 1)
 	p := dockerProvisioner{}
-	container := container{ID: "c-036", AppName: app.GetName(), Type: "python", IP: "10.10.10.1", HostAddr: host}
-	err := s.conn.Collection(s.collName).Insert(container)
+	container, err := s.newContainer(&newContainerOpts{AppName: app.GetName()})
 	c.Assert(err, gocheck.IsNil)
-	defer s.conn.Collection(s.collName).Remove(bson.M{"_id": container.ID})
+	defer s.removeTestContainer(container)
+	container.HostAddr = host
+	s.conn.Collection(s.collName).UpdateId(container.ID, container)
 	var stdout, stderr bytes.Buffer
 	err = p.ExecuteCommandOnce(&stdout, &stderr, app, "ls", "-lh")
-	c.Assert(err, gocheck.IsNil)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(stderr.Bytes(), gocheck.IsNil)
 	c.Assert(stdout.String(), gocheck.Equals, ". ..")

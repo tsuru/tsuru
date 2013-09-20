@@ -100,9 +100,9 @@ func (s *S) TestSetNetworkInfoName(c *gocheck.C) {
 func (s *S) TestSetNetworkInfoForward(c *gocheck.C) {
 	err := newImage("tsuru/python", s.server.URL())
 	c.Assert(err, gocheck.IsNil)
-	conta, err := s.newContainer()
+	conta, err := s.newContainer(nil)
 	c.Assert(err, gocheck.IsNil)
-	defer rtesting.FakeRouter.RemoveBackend(conta.AppName)
+	defer s.removeTestContainer(conta)
 	cont := *conta
 	context := action.FWContext{Previous: cont}
 	r, err := setNetworkInfo.Forward(context)
@@ -116,9 +116,9 @@ func (s *S) TestSetNetworkInfoForward(c *gocheck.C) {
 func (s *S) TestSetImage(c *gocheck.C) {
 	err := newImage("tsuru/python", s.server.URL())
 	c.Assert(err, gocheck.IsNil)
-	conta, err := s.newContainer()
+	conta, err := s.newContainer(nil)
 	c.Assert(err, gocheck.IsNil)
-	defer rtesting.FakeRouter.RemoveBackend(conta.AppName)
+	defer s.removeTestContainer(conta)
 	cont := *conta
 	context := action.FWContext{Previous: cont}
 	r, err := setNetworkInfo.Forward(context)
@@ -131,10 +131,9 @@ func (s *S) TestSetImage(c *gocheck.C) {
 func (s *S) TestStartContainer(c *gocheck.C) {
 	err := newImage("tsuru/python", s.server.URL())
 	c.Assert(err, gocheck.IsNil)
-	conta, err := s.newContainer()
+	conta, err := s.newContainer(nil)
 	c.Assert(err, gocheck.IsNil)
-	defer conta.remove()
-	defer rtesting.FakeRouter.RemoveBackend(conta.AppName)
+	defer s.removeTestContainer(conta)
 	cont := *conta
 	context := action.FWContext{Previous: cont}
 	r, err := startContainer.Forward(context)
