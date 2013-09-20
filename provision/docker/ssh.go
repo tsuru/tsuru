@@ -7,6 +7,7 @@ package docker
 import (
 	"encoding/json"
 	"github.com/bmizerany/pat"
+	"github.com/globocom/config"
 	"github.com/globocom/tsuru/cmd"
 	"github.com/globocom/tsuru/io"
 	"launchpad.net/gnuflag"
@@ -78,4 +79,12 @@ func (cmd *sshAgentCmd) Flags() *gnuflag.FlagSet {
 	flags.StringVar(&cmd.listen, "listen", "0.0.0.0:4545", "Address to listen on")
 	flags.StringVar(&cmd.listen, "l", "0.0.0.0:4545", "Address to listen on")
 	return flags
+}
+
+func sshAgentPort() int {
+	port, _ := config.GetInt("docker:ssh-agent-port")
+	if port == 0 {
+		port = 4545
+	}
+	return port
 }
