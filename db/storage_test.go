@@ -6,7 +6,6 @@ package db
 
 import (
 	"github.com/globocom/config"
-	"labix.org/v2/mgo"
 	"launchpad.net/gocheck"
 	"reflect"
 	"sync"
@@ -21,9 +20,9 @@ func (c *hasIndexChecker) Info() *gocheck.CheckerInfo {
 }
 
 func (c *hasIndexChecker) Check(params []interface{}, names []string) (bool, string) {
-	collection, ok := params[0].(*mgo.Collection)
+	collection, ok := params[0].(*Collection)
 	if !ok {
-		return false, "first parameter should be a mgo collection"
+		return false, "first parameter should be a Collection"
 	}
 	key, ok := params[1].([]string)
 	if !ok {
@@ -50,9 +49,9 @@ func (c *hasUniqueIndexChecker) Info() *gocheck.CheckerInfo {
 }
 
 func (c *hasUniqueIndexChecker) Check(params []interface{}, names []string) (bool, string) {
-	collection, ok := params[0].(*mgo.Collection)
+	collection, ok := params[0].(*Collection)
 	if !ok {
-		return false, "first parameter should be a mgo collection"
+		return false, "first parameter should be a Collection"
 	}
 	key, ok := params[1].([]string)
 	if !ok {
@@ -326,7 +325,7 @@ func (s *S) TestCollectionClose(c *gocheck.C) {
 		}
 	}()
 	storage, _ := Open("127.0.0.1:27017", "tsuru_storage_test")
-	coll := Collection{storage.Collection("something")}
+	coll := Collection{storage.Collection("something").Collection}
 	coll.Close()
 	storage.session.Ping()
 }

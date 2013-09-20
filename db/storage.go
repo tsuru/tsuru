@@ -116,12 +116,12 @@ func (s *Storage) Close() {
 // Collection returns a collection by its name.
 //
 // If the collection does not exist, MongoDB will create it.
-func (s *Storage) Collection(name string) *mgo.Collection {
-	return s.session.DB(s.dbname).C(name)
+func (s *Storage) Collection(name string) *Collection {
+	return &Collection{s.session.DB(s.dbname).C(name)}
 }
 
 // Apps returns the apps collection from MongoDB.
-func (s *Storage) Apps() *mgo.Collection {
+func (s *Storage) Apps() *Collection {
 	nameIndex := mgo.Index{Key: []string{"name"}, Unique: true}
 	c := s.Collection("apps")
 	c.EnsureIndex(nameIndex)
@@ -129,12 +129,12 @@ func (s *Storage) Apps() *mgo.Collection {
 }
 
 // Platforms returns the platforms collection from MongoDB.
-func (s *Storage) Platforms() *mgo.Collection {
+func (s *Storage) Platforms() *Collection {
 	return s.Collection("platforms")
 }
 
 // Logs returns the logs collection from MongoDB.
-func (s *Storage) Logs() *mgo.Collection {
+func (s *Storage) Logs() *Collection {
 	appNameIndex := mgo.Index{Key: []string{"appname"}}
 	sourceIndex := mgo.Index{Key: []string{"source"}}
 	c := s.Collection("logs")
@@ -144,43 +144,43 @@ func (s *Storage) Logs() *mgo.Collection {
 }
 
 // Services returns the services collection from MongoDB.
-func (s *Storage) Services() *mgo.Collection {
+func (s *Storage) Services() *Collection {
 	c := s.Collection("services")
 	return c
 }
 
 // ServiceInstances returns the services_instances collection from MongoDB.
-func (s *Storage) ServiceInstances() *mgo.Collection {
+func (s *Storage) ServiceInstances() *Collection {
 	return s.Collection("service_instances")
 }
 
 // Users returns the users collection from MongoDB.
-func (s *Storage) Users() *mgo.Collection {
+func (s *Storage) Users() *Collection {
 	emailIndex := mgo.Index{Key: []string{"email"}, Unique: true}
 	c := s.Collection("users")
 	c.EnsureIndex(emailIndex)
 	return c
 }
 
-func (s *Storage) Tokens() *mgo.Collection {
+func (s *Storage) Tokens() *Collection {
 	return s.Collection("tokens")
 }
 
-func (s *Storage) PasswordTokens() *mgo.Collection {
+func (s *Storage) PasswordTokens() *Collection {
 	return s.Collection("password_tokens")
 }
 
-func (s *Storage) UserActions() *mgo.Collection {
+func (s *Storage) UserActions() *Collection {
 	return s.Collection("user_actions")
 }
 
 // Teams returns the teams collection from MongoDB.
-func (s *Storage) Teams() *mgo.Collection {
+func (s *Storage) Teams() *Collection {
 	return s.Collection("teams")
 }
 
 // Quota returns the quota collection from MongoDB.
-func (s *Storage) Quota() *mgo.Collection {
+func (s *Storage) Quota() *Collection {
 	userIndex := mgo.Index{Key: []string{"owner"}, Unique: true}
 	c := s.Collection("quota")
 	c.EnsureIndex(userIndex)
