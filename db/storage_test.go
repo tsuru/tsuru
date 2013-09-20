@@ -134,23 +134,6 @@ func (s *S) TestOpenConnectionRefused(c *gocheck.C) {
 	c.Assert(err, gocheck.NotNil)
 }
 
-func (s *S) TestOpenClosesTheCopy(c *gocheck.C) {
-	defer func() {
-		r := recover()
-		c.Assert(r, gocheck.NotNil)
-	}()
-	old := maxIdleTime
-	maxIdleTime = 1e6
-	defer func() {
-		maxIdleTime = old
-	}()
-	storage, err := Open("127.0.0.1:27017", "tsuru_storage_test")
-	c.Assert(err, gocheck.IsNil)
-	time.Sleep(1e9)
-	err = storage.session.Ping()
-	c.Assert(err, gocheck.NotNil)
-}
-
 func (s *S) TestClose(c *gocheck.C) {
 	defer func() {
 		r := recover()
