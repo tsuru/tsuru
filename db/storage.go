@@ -37,6 +37,18 @@ type Storage struct {
 	dbname  string
 }
 
+// Collection represents a database collection. It embeds mgo.Collection for
+// operations, and holds a session to MongoDB. The user may close the session
+// using the method close.
+type Collection struct {
+	*mgo.Collection
+}
+
+// Close closes the session with the database.
+func (c *Collection) Close() {
+	c.Collection.Database.Session.Close()
+}
+
 func open(addr, dbname string) (*Storage, error) {
 	sess, err := mgo.Dial(addr)
 	if err != nil {

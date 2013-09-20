@@ -318,3 +318,15 @@ func (s *S) TestRetire(c *gocheck.C) {
 	c.Check(ok, gocheck.Equals, false)
 	sess.s.Ping()
 }
+
+func (s *S) TestCollectionClose(c *gocheck.C) {
+	defer func() {
+		if r := recover(); !c.Failed() && r == nil {
+			c.Errorf("Should panic in ping, but did not!")
+		}
+	}()
+	storage, _ := Open("127.0.0.1:27017", "tsuru_storage_test")
+	coll := Collection{storage.Collection("something")}
+	coll.Close()
+	storage.session.Ping()
+}
