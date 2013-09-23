@@ -19,12 +19,13 @@ func (s Status) String() string {
 }
 
 const (
-	StatusStarted    = Status("started")
-	StatusPending    = Status("pending")
-	StatusDown       = Status("down")
-	StatusError      = Status("error")
-	StatusInstalling = Status("installing")
-	StatusCreating   = Status("creating")
+	StatusStarted     = Status("started")
+	StatusPending     = Status("pending")
+	StatusDown        = Status("down")
+	StatusError       = Status("error")
+	StatusInstalling  = Status("installing")
+	StatusCreating    = Status("creating")
+	StatusUnreachable = Status("unreachable")
 )
 
 // Unit represents a provision unit. Can be a machine, container or anything
