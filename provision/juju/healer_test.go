@@ -147,8 +147,8 @@ func (s *S) TestInstanceAgenstConfigHealerHeal(c *gocheck.C) {
 		InstanceState: "running",
 	}
 	p.saveBootstrapMachine(m)
-	conn, collection := p.bootstrapCollection()
-	defer conn.Close()
+	collection := p.bootstrapCollection()
+	defer collection.Close()
 	defer collection.Remove(m)
 	a := app.App{
 		Name:  "as_i_rise",
@@ -222,8 +222,8 @@ func (s *S) TestInstanceAgenstConfigHealerHealAWSFailure(c *gocheck.C) {
 		InstanceState: "running",
 	}
 	p.saveBootstrapMachine(m)
-	conn, collection := p.bootstrapCollection()
-	defer conn.Close()
+	collection := p.bootstrapCollection()
+	defer collection.Close()
 	defer collection.Remove(m)
 	a := app.App{
 		Name:  "as_i_rise",
@@ -256,8 +256,8 @@ func (s *S) TestBootstrapPrivateDns(c *gocheck.C) {
 		InstanceState: "running",
 	}
 	p.saveBootstrapMachine(m)
-	conn, collection := p.bootstrapCollection()
-	defer conn.Close()
+	collection := p.bootstrapCollection()
+	defer collection.Close()
 	defer collection.Remove(m)
 	dns, err := h.bootstrapPrivateDns()
 	c.Assert(err, gocheck.IsNil)
@@ -429,8 +429,8 @@ func (s *S) TestZookeeperNeedsHeal(c *gocheck.C) {
 		InstanceState: "running",
 	}
 	p.saveBootstrapMachine(m)
-	conn, collection := p.bootstrapCollection()
-	defer conn.Close()
+	collection := p.bootstrapCollection()
+	defer collection.Close()
 	defer collection.Remove(m)
 	h := zookeeperHealer{}
 	c.Assert(h.needsHeal(), gocheck.Equals, true)
@@ -490,8 +490,8 @@ func (s *S) TestZookeeperHealerHeal(c *gocheck.C) {
 		InstanceState: "running",
 	}
 	p.saveBootstrapMachine(m)
-	conn, collection := p.bootstrapCollection()
-	defer conn.Close()
+	collection := p.bootstrapCollection()
+	defer collection.Close()
 	defer collection.Remove(m)
 	h := zookeeperHealer{}
 	err = h.Heal()
@@ -540,8 +540,8 @@ func (s *S) TestBootstrapProvisionHealerHeal(c *gocheck.C) {
 		InstanceState: "running",
 	}
 	p.saveBootstrapMachine(m)
-	conn, collection := p.bootstrapCollection()
-	defer conn.Close()
+	collection := p.bootstrapCollection()
+	defer collection.Close()
 	defer collection.Remove(m)
 	args := []string{
 		"-o",
@@ -575,8 +575,8 @@ func (s *S) TestBootstrapMachineHealerNeedsHeal(c *gocheck.C) {
 		InstanceState: "running",
 	}
 	p.saveBootstrapMachine(m)
-	conn, collection := p.bootstrapCollection()
-	defer conn.Close()
+	collection := p.bootstrapCollection()
+	defer collection.Close()
 	defer collection.Remove(m)
 	h := bootstrapMachineHealer{}
 	c.Assert(h.needsHeal(), gocheck.Equals, true)
@@ -602,8 +602,8 @@ func (s *S) TestBootstrapMachineHealerHeal(c *gocheck.C) {
 		InstanceState: "running",
 	}
 	p.saveBootstrapMachine(m)
-	conn, collection := p.bootstrapCollection()
-	defer conn.Close()
+	collection := p.bootstrapCollection()
+	defer collection.Close()
 	defer collection.Remove(m)
 	h := bootstrapMachineHealer{}
 	err := h.Heal()
@@ -643,8 +643,8 @@ func (s *S) TestBootstrapMachineHealerOnlyHealsWhenItIsNeeded(c *gocheck.C) {
 		InstanceState: "running",
 	}
 	p.saveBootstrapMachine(m)
-	conn, collection := p.bootstrapCollection()
-	defer conn.Close()
+	collection := p.bootstrapCollection()
+	defer collection.Close()
 	defer collection.Remove(m)
 	h := bootstrapMachineHealer{}
 	err := h.Heal()

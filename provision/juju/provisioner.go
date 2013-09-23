@@ -22,7 +22,6 @@ import (
 	_ "github.com/globocom/tsuru/router/elb"
 	"github.com/globocom/tsuru/safe"
 	"io"
-	"labix.org/v2/mgo"
 	"labix.org/v2/mgo/bson"
 	"launchpad.net/goyaml"
 	osexec "os/exec"
@@ -78,7 +77,7 @@ func Router() (router.Router, error) {
 	return router.Get("elb")
 }
 
-func (p *JujuProvisioner) unitsCollection() (*db.Storage, *mgo.Collection) {
+func (p *JujuProvisioner) unitsCollection() *db.Collection {
 	name, err := config.GetString("juju:units-collection")
 	if err != nil {
 		log.Fatalf("FATAL: %s.", err)
@@ -87,7 +86,7 @@ func (p *JujuProvisioner) unitsCollection() (*db.Storage, *mgo.Collection) {
 	if err != nil {
 		log.Fatalf("Failed to connect to the database: %s", err)
 	}
-	return conn, conn.Collection(name)
+	return conn.Collection(name)
 }
 
 func (p *JujuProvisioner) enqueueUnits(app string, units ...string) {
@@ -213,8 +212,8 @@ func (p *JujuProvisioner) deleteUnits(app provision.App) {
 	for i, u := range units {
 		names[i] = u.GetName()
 	}
-	conn, collection := p.unitsCollection()
-	defer conn.Close()
+	collection := p.unitsCollection()
+	defer collection.Close()
 	collection.RemoveAll(bson.M{"_id": bson.M{"$in": names}})
 }
 
@@ -312,8 +311,8 @@ func (p *JujuProvisioner) removeUnit(app provision.App, unit provision.AppUnit) 
 		}
 		err = router.RemoveRoute(app.GetName(), unit.GetInstanceId())
 	}
-	conn, collection := p.unitsCollection()
-	defer conn.Close()
+	collection := p.unitsCollection()
+	defer collection.Close()
 	collection.RemoveId(unit.GetName())
 	go p.terminateMachines(app, unit)
 	return err
@@ -403,13 +402,13 @@ func (p *JujuProvisioner) getOutput() (jujuOutput, error) {
 }
 
 func (p *JujuProvisioner) saveBootstrapMachine(m machine) error {
-	conn, collection := p.bootstrapCollection()
-	defer conn.Close()
+	collection := p.bootstrapCollection()
+	defer collection.Close()
 	_, err := collection.Upsert(nil, &m)
 	return err
 }
 
-func (p *JujuProvisioner) bootstrapCollection() (*db.Storage, *mgo.Collection) {
+func (p *JujuProvisioner) bootstrapCollection() *db.Collection {
 	name, err := config.GetString("juju:bootstrap-collection")
 	if err != nil {
 		log.Fatalf("FATAL: %s.", err)
@@ -418,7 +417,7 @@ func (p *JujuProvisioner) bootstrapCollection() (*db.Storage, *mgo.Collection) {
 	if err != nil {
 		log.Fatalf("Failed to connect to the database: %s", err)
 	}
-	return conn, conn.Collection(name)
+	return conn.Collection(name)
 }
 
 func (p *JujuProvisioner) collectStatus() ([]provision.Unit, error) {
@@ -452,8 +451,8 @@ func (p *JujuProvisioner) collectStatus() ([]provision.Unit, error) {
 
 func (p *JujuProvisioner) heal(units []provision.Unit) {
 	var inst instance
-	conn, coll := p.unitsCollection()
-	defer conn.Close()
+	coll := p.unitsCollection()
+	defer coll.Close()
 	for _, unit := range units {
 		err := coll.FindId(unit.Name).One(&inst)
 		if err != nil {

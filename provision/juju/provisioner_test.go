@@ -51,8 +51,8 @@ func (s *S) TestELBSupport(c *gocheck.C) {
 
 func (s *S) TestUnitsCollection(c *gocheck.C) {
 	p := JujuProvisioner{}
-	conn, collection := p.unitsCollection()
-	defer conn.Close()
+	collection := p.unitsCollection()
+	defer collection.Close()
 	c.Assert(collection.Name, gocheck.Equals, s.collName)
 }
 
@@ -153,8 +153,8 @@ func (s *S) TestDestroy(c *gocheck.C) {
 	defer setExecut(nil)
 	app := testing.NewFakeApp("cribcaged", "python", 3)
 	p := JujuProvisioner{}
-	conn, collection := p.unitsCollection()
-	defer conn.Close()
+	collection := p.unitsCollection()
+	defer collection.Close()
 	err := collection.Insert(
 		instance{UnitName: "cribcaged/0"},
 		instance{UnitName: "cribcaged/1"},
@@ -247,8 +247,8 @@ func (s *S) TestRemoveUnit(c *gocheck.C) {
 	defer setExecut(nil)
 	app := testing.NewFakeApp("two", "rush", 3)
 	p := JujuProvisioner{}
-	conn, collection := p.unitsCollection()
-	defer conn.Close()
+	collection := p.unitsCollection()
+	defer collection.Close()
 	err := collection.Insert(instance{UnitName: "two/2", InstanceID: "i-00000439"})
 	c.Assert(err, gocheck.IsNil)
 	err = p.RemoveUnit(app, "two/2")
@@ -444,8 +444,8 @@ func (s *S) TestSaveBootstrapMachine(c *gocheck.C) {
 		InstanceState: "state",
 	}
 	p.saveBootstrapMachine(m)
-	conn, collection := p.bootstrapCollection()
-	defer conn.Close()
+	collection := p.bootstrapCollection()
+	defer collection.Close()
 	defer collection.Remove(m)
 	var mach machine
 	collection.Find(nil).One(&mach)
@@ -461,8 +461,8 @@ func (s *S) TestCollectStatusShouldNotAddBootstraTwice(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	_, err = p.CollectStatus()
 	c.Assert(err, gocheck.IsNil)
-	conn, collection := p.bootstrapCollection()
-	defer conn.Close()
+	collection := p.bootstrapCollection()
+	defer collection.Close()
 	l, err := collection.Find(nil).Count()
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(l, gocheck.Equals, 1)
@@ -473,8 +473,8 @@ func (s *S) TestCollectStatus(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	defer commandmocker.Remove(tmpdir)
 	p := JujuProvisioner{}
-	conn, collection := p.unitsCollection()
-	defer conn.Close()
+	collection := p.unitsCollection()
+	defer collection.Close()
 	err = collection.Insert(instance{UnitName: "as_i_rise/0", InstanceID: "i-00000439"})
 	c.Assert(err, gocheck.IsNil)
 	defer collection.Remove(bson.M{"_id": bson.M{"$in": []string{"as_i_rise/0", "the_infanta/0"}}})
@@ -572,8 +572,8 @@ func (s *S) TestCollectStatusDirtyOutput(c *gocheck.C) {
 	c.Assert(commandmocker.Ran(tmpdir), gocheck.Equals, true)
 	var wg sync.WaitGroup
 	wg.Add(1)
-	conn, collection := p.unitsCollection()
-	defer conn.Close()
+	collection := p.unitsCollection()
+	defer collection.Close()
 	go func() {
 		q := bson.M{"_id": bson.M{"$in": []string{"as_i_rise/0", "the_infanta/1"}}}
 		for {
@@ -593,8 +593,8 @@ func (s *S) TestCollectStatusIDChangeDisabledELB(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	defer commandmocker.Remove(tmpdir)
 	p := JujuProvisioner{}
-	conn, collection := p.unitsCollection()
-	defer conn.Close()
+	collection := p.unitsCollection()
+	defer collection.Close()
 	err = collection.Insert(instance{UnitName: "as_i_rise/0", InstanceID: "i-00000239"})
 	c.Assert(err, gocheck.IsNil)
 	defer collection.Remove(bson.M{"_id": bson.M{"$in": []string{"as_i_rise/0", "the_infanta/0"}}})
@@ -625,8 +625,8 @@ func (s *S) TestCollectStatusIDChangeFromPending(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	defer commandmocker.Remove(tmpdir)
 	p := JujuProvisioner{}
-	conn, collection := p.unitsCollection()
-	defer conn.Close()
+	collection := p.unitsCollection()
+	defer collection.Close()
 	err = collection.Insert(instance{UnitName: "as_i_rise/0", InstanceID: "pending"})
 	c.Assert(err, gocheck.IsNil)
 	defer collection.Remove(bson.M{"_id": bson.M{"$in": []string{"as_i_rise/0", "the_infanta/0"}}})
@@ -885,8 +885,8 @@ func (s *ELBSuite) TestCollectStatusWithELBAndIDChange(c *gocheck.C) {
 	defer s.server.RemoveInstance(id2)
 	id3 := s.server.NewInstance()
 	defer s.server.RemoveInstance(id3)
-	conn, collection := p.unitsCollection()
-	defer conn.Close()
+	collection := p.unitsCollection()
+	defer collection.Close()
 	err = collection.Insert(instance{UnitName: "symfonia/0", InstanceID: id3})
 	c.Assert(err, gocheck.IsNil)
 	err = router.AddRoute(a.GetName(), id3)
