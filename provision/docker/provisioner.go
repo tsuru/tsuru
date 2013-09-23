@@ -21,7 +21,6 @@ import (
 	_ "github.com/globocom/tsuru/router/testing"
 	"io"
 	"io/ioutil"
-	"labix.org/v2/mgo"
 	"net"
 	"strings"
 	"sync"
@@ -290,7 +289,7 @@ func (p *dockerProvisioner) CollectStatus() ([]provision.Unit, error) {
 	var containersGroup sync.WaitGroup
 	var containers []container
 	coll := collection()
-	defer coll.Database.Session.Close()
+	defer coll.Close()
 	err := coll.Find(nil).All(&containers)
 	if err != nil {
 		return nil, err
@@ -369,7 +368,7 @@ func fixContainer(container *container, ip, port string) error {
 	container.HostPort = port
 	router.AddRoute(container.AppName, container.getAddress())
 	coll := collection()
-	defer coll.Database.Session.Close()
+	defer coll.Close()
 	return coll.UpdateId(container.ID, container)
 }
 
@@ -398,7 +397,7 @@ func (p *dockerProvisioner) Commands() []cmd.Command {
 	}
 }
 
-func collection() *mgo.Collection {
+func collection() *db.Collection {
 	name, err := config.GetString("docker:collection")
 	if err != nil {
 		log.Fatalf("FATAL: %s.", err)

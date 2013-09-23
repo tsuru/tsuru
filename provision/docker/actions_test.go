@@ -54,6 +54,7 @@ func (s *S) TestInsertContainerForward(c *gocheck.C) {
 	r, err := insertContainer.Forward(context)
 	c.Assert(err, gocheck.IsNil)
 	coll := collection()
+	defer coll.Close()
 	defer coll.RemoveId(cont.ID)
 	cont = r.(container)
 	var retrieved container
@@ -66,6 +67,7 @@ func (s *S) TestInsertContainerForward(c *gocheck.C) {
 func (s *S) TestInsertContainerBackward(c *gocheck.C) {
 	cont := container{ID: "someid"}
 	coll := collection()
+	defer coll.Close()
 	err := coll.Insert(&cont)
 	c.Assert(err, gocheck.IsNil)
 	context := action.BWContext{FWResult: cont}

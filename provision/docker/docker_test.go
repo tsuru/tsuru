@@ -133,6 +133,7 @@ func (s *S) TestGetPortUndefined(c *gocheck.C) {
 func (s *S) TestContainerSetStatus(c *gocheck.C) {
 	container := container{ID: "something-300"}
 	coll := collection()
+	defer coll.Close()
 	coll.Insert(container)
 	defer coll.RemoveId(container.ID)
 	container.setStatus("what?!")
@@ -144,6 +145,7 @@ func (s *S) TestContainerSetStatus(c *gocheck.C) {
 func (s *S) TestContainerSetImage(c *gocheck.C) {
 	container := container{ID: "something-300"}
 	coll := collection()
+	defer coll.Close()
 	coll.Insert(container)
 	defer coll.RemoveId(container.ID)
 	container.setImage("newimage")
@@ -229,6 +231,7 @@ func (s *S) TestContainerRemove(c *gocheck.C) {
 	c.Assert(handler.requests[0].Method, gocheck.Equals, "DELETE")
 	c.Assert(handler.requests[0].URL.Path, gocheck.Equals, "/container/"+container.IP)
 	coll := collection()
+	defer coll.Close()
 	err = coll.FindId(container.ID).One(&container)
 	c.Assert(err, gocheck.NotNil)
 	c.Assert(err.Error(), gocheck.Equals, "not found")
@@ -259,6 +262,7 @@ func (s *S) TestRemoveContainerIgnoreErrors(c *gocheck.C) {
 	c.Assert(handler.requests[0].Method, gocheck.Equals, "DELETE")
 	c.Assert(handler.requests[0].URL.Path, gocheck.Equals, "/container/"+container.IP)
 	coll := collection()
+	defer coll.Close()
 	err = coll.FindId(container.ID).One(&container)
 	c.Assert(err, gocheck.NotNil)
 	c.Assert(err.Error(), gocheck.Equals, "not found")
@@ -381,12 +385,14 @@ func (s *S) TestContainerSSHFiltersStdout(c *gocheck.C) {
 }
 
 func (s *S) TestGetContainer(c *gocheck.C) {
-	collection().Insert(
+	coll := collection()
+	defer coll.Close()
+	coll.Insert(
 		container{ID: "abcdef", Type: "python"},
 		container{ID: "fedajs", Type: "ruby"},
 		container{ID: "wat", Type: "java"},
 	)
-	defer collection().RemoveAll(bson.M{"_id": bson.M{"$in": []string{"abcdef", "fedajs", "wat"}}})
+	defer coll.RemoveAll(bson.M{"_id": bson.M{"$in": []string{"abcdef", "fedajs", "wat"}}})
 	container, err := getContainer("abcdef")
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(container.ID, gocheck.Equals, "abcdef")
@@ -397,12 +403,14 @@ func (s *S) TestGetContainer(c *gocheck.C) {
 }
 
 func (s *S) TestGetContainers(c *gocheck.C) {
-	collection().Insert(
+	coll := collection()
+	defer coll.Close()
+	coll.Insert(
 		container{ID: "abcdef", Type: "python", AppName: "something"},
 		container{ID: "fedajs", Type: "python", AppName: "something"},
 		container{ID: "wat", Type: "java", AppName: "otherthing"},
 	)
-	defer collection().RemoveAll(bson.M{"_id": bson.M{"$in": []string{"abcdef", "fedajs", "wat"}}})
+	defer coll.RemoveAll(bson.M{"_id": bson.M{"$in": []string{"abcdef", "fedajs", "wat"}}})
 	containers, err := listAppContainers("something")
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(containers, gocheck.HasLen, 2)
@@ -427,9 +435,11 @@ func (s *S) TestGetImageFromAppPlatform(c *gocheck.C) {
 
 func (s *S) TestGetImageFromDatabase(c *gocheck.C) {
 	cont := container{ID: "bleble", Type: "python", AppName: "myapp", Image: "someimageid"}
-	err := collection().Insert(cont)
+	coll := collection()
+	err := coll.Insert(cont)
+	defer coll.Close()
 	c.Assert(err, gocheck.IsNil)
-	defer collection().RemoveAll(bson.M{"_id": "bleble"})
+	defer coll.RemoveAll(bson.M{"_id": "bleble"})
 	app := testing.NewFakeApp("myapp", "python", 1)
 	img := getImage(app)
 	c.Assert(img, gocheck.Equals, "someimageid")

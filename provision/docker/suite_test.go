@@ -69,7 +69,9 @@ func (s *S) SetUpSuite(c *gocheck.C) {
 }
 
 func (s *S) TearDownSuite(c *gocheck.C) {
-	err := collection().Database.DropDatabase()
+	coll := collection()
+	defer coll.Close()
+	err := coll.Database.DropDatabase()
 	c.Assert(err, gocheck.IsNil)
 	fsystem = nil
 }

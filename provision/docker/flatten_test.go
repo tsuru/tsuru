@@ -19,7 +19,6 @@ import (
 
 type FlattenSuite struct {
 	apps      []provision.App
-	conn      *db.Storage
 	server    *httptest.Server
 	cleanup   func()
 	calls     int
@@ -29,18 +28,21 @@ type FlattenSuite struct {
 var _ = gocheck.Suite(&FlattenSuite{})
 
 func (s *FlattenSuite) createApps(c *gocheck.C) {
+	conn, err := db.Conn()
+	c.Assert(err, gocheck.IsNil)
+	defer conn.Close()
 	units := []app.Unit{{Name: "4fa6e0f0c678"}, {Name: "e90e34656806"}}
 	app1 := &app.App{Name: "app1", Platform: "python", Deploys: 40, Units: units}
-	err := s.conn.Apps().Insert(app1)
+	err = conn.Apps().Insert(app1)
 	c.Assert(err, gocheck.IsNil)
 	app2 := &app.App{Name: "app2", Platform: "python", Deploys: 20, Units: units}
-	err = s.conn.Apps().Insert(app2)
+	err = conn.Apps().Insert(app2)
 	c.Assert(err, gocheck.IsNil)
 	app3 := &app.App{Name: "app3", Platform: "python", Deploys: 0, Units: units}
-	err = s.conn.Apps().Insert(app3)
+	err = conn.Apps().Insert(app3)
 	c.Assert(err, gocheck.IsNil)
 	app4 := &app.App{Name: "app4", Platform: "python", Deploys: 19, Units: units}
-	err = s.conn.Apps().Insert(app4)
+	err = conn.Apps().Insert(app4)
 	c.Assert(err, gocheck.IsNil)
 	s.apps = append(s.apps, []provision.App{app1, app2, app3, app4}...)
 }
@@ -57,9 +59,11 @@ func (s *FlattenSuite) createContainers(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	err = newImage(assembleImageName("app2"), s.server.URL)
 	c.Assert(err, gocheck.IsNil)
-	err = collection().Insert(&container{ID: "app1id", AppName: "app1", Image: assembleImageName("app1")})
+	coll := collection()
+	defer coll.Close()
+	err = coll.Insert(&container{ID: "app1id", AppName: "app1", Image: assembleImageName("app1")})
 	c.Assert(err, gocheck.IsNil)
-	err = collection().Insert(&container{ID: "app2id", AppName: "app2", Image: assembleImageName("app2")})
+	err = coll.Insert(&container{ID: "app2id", AppName: "app2", Image: assembleImageName("app2")})
 	c.Assert(err, gocheck.IsNil)
 }
 
@@ -71,10 +75,7 @@ func (s *FlattenSuite) setupDockerCluster() {
 }
 
 func (s *FlattenSuite) SetUpSuite(c *gocheck.C) {
-	var err error
 	s.setConfig()
-	s.conn, err = db.Conn()
-	c.Assert(err, gocheck.IsNil)
 	s.createApps(c)
 	s.cleanup, s.server = startDockerTestServer("4567", &s.calls)
 	config.Set("docker:registry", strings.Replace(s.server.URL, "http://", "", 1))
@@ -83,14 +84,19 @@ func (s *FlattenSuite) SetUpSuite(c *gocheck.C) {
 }
 
 func (s *FlattenSuite) TearDownSuite(c *gocheck.C) {
-	collection().RemoveAll(nil)
+	coll := collection()
+	defer coll.Close()
+	coll.RemoveAll(nil)
 	names := make([]string, len(s.apps))
 	for i, a := range s.apps {
 		names[i] = a.GetName()
 	}
-	_, err := s.conn.Apps().RemoveAll(bson.M{"name": bson.M{"$in": names}})
+	conn, err := db.Conn()
 	c.Assert(err, gocheck.IsNil)
-	collection().RemoveAll(nil)
+	defer conn.Close()
+	_, err = conn.Apps().RemoveAll(bson.M{"name": bson.M{"$in": names}})
+	c.Assert(err, gocheck.IsNil)
+	coll.RemoveAll(nil)
 	s.cleanup()
 	defer config.Set("docker:registry", "")
 }

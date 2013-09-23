@@ -171,7 +171,9 @@ func startSSHAgentServer(output string) (*FakeSSHServer, func()) {
 }
 
 func insertContainers(containerPort string) func() {
-	err := collection().Insert(
+	coll := collection()
+	defer coll.Close()
+	err := coll.Insert(
 		container{
 			ID: "9930c24f1c5f", AppName: "ashamed", Type: "python",
 			Port: "8888", Status: "running", IP: "127.0.0.3",
@@ -191,8 +193,10 @@ func insertContainers(containerPort string) func() {
 	rtesting.FakeRouter.AddRoute("ashamed", fmt.Sprintf("http://127.0.0.1:%s", containerPort))
 	rtesting.FakeRouter.AddRoute("make-up", "http://127.0.0.1:9025")
 	return func() {
-		collection().RemoveAll(bson.M{"appname": "make-up"})
-		collection().RemoveAll(bson.M{"appname": "ashamed"})
+		coll := collection()
+		defer coll.Close()
+		coll.RemoveAll(bson.M{"appname": "make-up"})
+		coll.RemoveAll(bson.M{"appname": "ashamed"})
 	}
 }
 

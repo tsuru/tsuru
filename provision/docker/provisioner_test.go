@@ -66,7 +66,9 @@ func (s *S) TestProvisionerRestartCallsTheRestartHook(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	defer s.removeTestContainer(cont)
 	cont.HostAddr = host
-	err = collection().UpdateId(cont.ID, cont)
+	coll := collection()
+	defer coll.Close()
+	err = coll.UpdateId(cont.ID, cont)
 	c.Assert(err, gocheck.IsNil)
 	err = p.Restart(app)
 	c.Assert(err, gocheck.IsNil)
@@ -198,7 +200,9 @@ func (s *S) TestDeployRemoveContainersEvenWhenTheyreNotInTheAppsCollection(c *go
 	message, err = q.Get(1e6)
 	c.Assert(err, gocheck.IsNil)
 	defer message.Delete()
-	n, err := collection().Find(bson.M{"appname": cont1.AppName}).Count()
+	coll := collection()
+	defer coll.Close()
+	n, err := coll.Find(bson.M{"appname": cont1.AppName}).Count()
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(n, gocheck.Equals, 2)
 }
@@ -215,6 +219,7 @@ func (s *S) TestProvisionerDestroy(c *gocheck.C) {
 	ok := make(chan bool, 1)
 	go func() {
 		coll := collection()
+		defer coll.Close()
 		for {
 			ct, err := coll.Find(bson.M{"appname": cont.AppName}).Count()
 			if err != nil {
@@ -288,6 +293,7 @@ func (s *S) TestProvisionerAddUnits(c *gocheck.C) {
 	p.Provision(app)
 	defer p.Destroy(app)
 	coll := collection()
+	defer coll.Close()
 	coll.Insert(container{ID: "c-89320", AppName: app.GetName(), Version: "a345fe"})
 	defer coll.RemoveId("c-89320")
 	units, err := p.AddUnits(app, 3)
@@ -404,7 +410,9 @@ func (s *S) TestProvisionerExecuteCommand(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	defer s.removeTestContainer(container)
 	container.HostAddr = host
-	collection().UpdateId(container.ID, container)
+	coll := collection()
+	defer coll.Close()
+	coll.UpdateId(container.ID, container)
 	var stdout, stderr bytes.Buffer
 	var p dockerProvisioner
 	err = p.ExecuteCommand(&stdout, &stderr, app, "ls", "-ar")
@@ -433,12 +441,14 @@ func (s *S) TestProvisionerExecuteCommandMultipleContainers(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	defer s.removeTestContainer(container1)
 	container1.HostAddr = host
-	collection().UpdateId(container1.ID, container1)
+	coll := collection()
+	defer coll.Close()
+	coll.UpdateId(container1.ID, container1)
 	container2, err := s.newContainer(&newContainerOpts{AppName: app.GetName()})
 	c.Assert(err, gocheck.IsNil)
 	defer s.removeTestContainer(container2)
 	container2.HostAddr = host
-	collection().UpdateId(container2.ID, container2)
+	coll.UpdateId(container2.ID, container2)
 	var stdout, stderr bytes.Buffer
 	var p dockerProvisioner
 	err = p.ExecuteCommand(&stdout, &stderr, app, "ls", "-ar")
@@ -522,7 +532,9 @@ func (s *S) TestCollectStatus(c *gocheck.C) {
 }
 
 func (s *S) TestProvisionCollectStatusEmpty(c *gocheck.C) {
-	collection().RemoveAll(nil)
+	coll := collection()
+	defer coll.Close()
+	coll.RemoveAll(nil)
 	output := map[string][][]byte{"ps -q": {[]byte("")}}
 	fexec := &etesting.FakeExecutor{Output: output}
 	setExecut(fexec)
@@ -535,6 +547,7 @@ func (s *S) TestProvisionCollectStatusEmpty(c *gocheck.C) {
 
 func (s *S) TestProvisionCollection(c *gocheck.C) {
 	collection := collection()
+	defer collection.Close()
 	c.Assert(collection.Name, gocheck.Equals, s.collName)
 }
 
@@ -615,7 +628,9 @@ func (s *S) TestExecuteCommandOnce(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	defer s.removeTestContainer(container)
 	container.HostAddr = host
-	collection().UpdateId(container.ID, container)
+	coll := collection()
+	defer coll.Close()
+	coll.UpdateId(container.ID, container)
 	var stdout, stderr bytes.Buffer
 	err = p.ExecuteCommandOnce(&stdout, &stderr, app, "ls", "-lh")
 	c.Assert(err, gocheck.IsNil)

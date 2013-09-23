@@ -172,14 +172,14 @@ func (c *container) networkInfo() (string, string, error) {
 func (c *container) setStatus(status string) error {
 	c.Status = status
 	coll := collection()
-	defer coll.Database.Session.Close()
+	defer coll.Close()
 	return coll.UpdateId(c.ID, c)
 }
 
 func (c *container) setImage(imageId string) error {
 	c.Image = imageId
 	coll := collection()
-	defer coll.Database.Session.Close()
+	defer coll.Close()
 	return coll.UpdateId(c.ID, c)
 }
 
@@ -259,7 +259,7 @@ func (c *container) remove() error {
 	c.removeHost()
 	log.Printf("Removing container %s from database", c.ID)
 	coll := collection()
-	defer coll.Database.Session.Close()
+	defer coll.Close()
 	if err := coll.RemoveId(c.ID); err != nil {
 		log.Printf("Failed to remove container from database: %s", err)
 	}
@@ -357,7 +357,7 @@ func (c *container) logs(w io.Writer) error {
 func getContainer(id string) (*container, error) {
 	var c container
 	coll := collection()
-	defer coll.Database.Session.Close()
+	defer coll.Close()
 	err := coll.Find(bson.M{"_id": id}).One(&c)
 	if err != nil {
 		return nil, err
@@ -367,14 +367,18 @@ func getContainer(id string) (*container, error) {
 
 func listAppContainers(appName string) ([]container, error) {
 	var containers []container
-	err := collection().Find(bson.M{"appname": appName}).All(&containers)
+	coll := collection()
+	defer coll.Close()
+	err := coll.Find(bson.M{"appname": appName}).All(&containers)
 	return containers, err
 }
 
 // getImage returns the image name or id from an app.
 func getImage(app provision.App) string {
 	var c container
-	collection().Find(bson.M{"appname": app.GetName()}).One(&c)
+	coll := collection()
+	defer coll.Close()
+	coll.Find(bson.M{"appname": app.GetName()}).One(&c)
 	if c.Image != "" {
 		return c.Image
 	}
