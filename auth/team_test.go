@@ -56,13 +56,14 @@ func (s *S) TestShouldReturnErrorWhenTryingToAddAUserThatIsAlreadyInTheList(c *g
 }
 
 func (s *S) TestRemoveUserFromTeam(c *gocheck.C) {
-	t := &Team{Name: "timeredbull", Users: []string{"somebody@globo.com", "nobody@globo.com", "anybody@globo.com", "everybody@globo.com"}}
+	users := []string{"somebody@globo.com", "nobody@globo.com", "anybody@globo.com", "everybody@globo.com"}
+	t := &Team{Name: "timeredbull", Users: users}
 	err := t.RemoveUser(&User{Email: "somebody@globo.com"})
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(t.Users, gocheck.DeepEquals, []string{"nobody@globo.com", "anybody@globo.com", "everybody@globo.com"})
+	c.Assert(t.Users, gocheck.DeepEquals, []string{"everybody@globo.com", "nobody@globo.com", "anybody@globo.com"})
 	err = t.RemoveUser(&User{Email: "anybody@globo.com"})
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(t.Users, gocheck.DeepEquals, []string{"nobody@globo.com", "everybody@globo.com"})
+	c.Assert(t.Users, gocheck.DeepEquals, []string{"everybody@globo.com", "nobody@globo.com"})
 	err = t.RemoveUser(&User{Email: "everybody@globo.com"})
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(t.Users, gocheck.DeepEquals, []string{"nobody@globo.com"})

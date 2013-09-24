@@ -56,8 +56,11 @@ func (t *Team) RemoveUser(u *User) error {
 	if index < 0 {
 		return fmt.Errorf("User %s is not in the team %s.", u.Email, t.Name)
 	}
-	copy(t.Users[index:], t.Users[index+1:])
-	t.Users = t.Users[:len(t.Users)-1]
+	last := len(t.Users) - 1
+	if index < last {
+		t.Users[index] = t.Users[last]
+	}
+	t.Users = t.Users[:last]
 	return nil
 }
 
