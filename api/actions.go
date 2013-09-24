@@ -55,8 +55,8 @@ var addUserToTeamInGandalfAction = action.Action{
 		if err != nil {
 			return
 		}
-		t := ctx.Params[2].(*auth.Team)
-		removeUserFromTeamInGandalf(u, t.Name)
+		team := ctx.Params[2].(*auth.Team)
+		removeUserFromTeamInGandalf(u, team)
 	},
 }
 

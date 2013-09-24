@@ -334,13 +334,31 @@ func removeUserFromTeamInDatabase(u *auth.User, team *auth.Team) error {
 	return conn.Teams().UpdateId(team.Name, team)
 }
 
-func removeUserFromTeamInGandalf(u *auth.User, team string) error {
+func removeUserFromTeamInGandalf(u *auth.User, team *auth.Team) error {
 	gURL := repository.ServerURL()
-	alwdApps, err := u.AllowedAppsByTeam(team)
+	teamApps, err := team.AllowedApps()
 	if err != nil {
 		return err
 	}
-	if err := (&gandalf.Client{Endpoint: gURL}).RevokeAccess(alwdApps, []string{u.Email}); err != nil {
+	userApps, err := u.AllowedApps()
+	if err != nil {
+		return err
+	}
+	appsToRemove := make([]string, 0, len(teamApps))
+	for _, teamApp := range teamApps {
+		found := false
+		for _, userApp := range userApps {
+			if userApp == teamApp {
+				found = true
+				break
+			}
+		}
+		if !found {
+			appsToRemove = append(appsToRemove, teamApp)
+		}
+	}
+	client := gandalf.Client{Endpoint: gURL}
+	if err := client.RevokeAccess(appsToRemove, []string{u.Email}); err != nil {
 		return fmt.Errorf("Failed to revoke access from git repositories: %s", err)
 	}
 	return nil
@@ -375,11 +393,11 @@ func removeUserFromTeam(w http.ResponseWriter, r *http.Request, t *auth.Token) e
 	if err != nil {
 		return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
 	}
-	err = removeUserFromTeamInGandalf(user, team.Name)
+	err = removeUserFromTeamInDatabase(user, team)
 	if err != nil {
-		return nil
+		return err
 	}
-	return removeUserFromTeamInDatabase(user, team)
+	return removeUserFromTeamInGandalf(user, team)
 }
 
 func getTeam(w http.ResponseWriter, r *http.Request, t *auth.Token) error {

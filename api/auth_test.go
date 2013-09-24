@@ -869,7 +869,7 @@ func (s *AuthSuite) TestRemoveUserFromTeamShouldRemoveOnlyAppsInThatTeamInGandal
 	err = conn.Apps().Insert(&app1)
 	c.Assert(err, gocheck.IsNil)
 	defer conn.Apps().Remove(bson.M{"name": app1.Name})
-	app2 := app.App{Name: "app2", Teams: []string{team2.Name}}
+	app2 := app.App{Name: "app2", Teams: []string{s.team.Name, team2.Name}}
 	err = conn.Apps().Insert(&app2)
 	c.Assert(err, gocheck.IsNil)
 	defer conn.Apps().Remove(bson.M{"name": app2.Name})
@@ -1028,7 +1028,7 @@ func (s *AuthSuite) TestRemoveUserFromTeamInGandalf(c *gocheck.C) {
 	ts := s.startGandalfTestServer(&h)
 	defer ts.Close()
 	u := &auth.User{Email: "nobody@gmail.com"}
-	err := removeUserFromTeamInGandalf(u, "someteam")
+	err := removeUserFromTeamInGandalf(u, &auth.Team{Name: "someteam"})
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(len(h.url), gocheck.Equals, 1)
 	c.Assert(h.url[0], gocheck.Equals, "/repository/revoke")
