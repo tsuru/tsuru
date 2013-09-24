@@ -208,29 +208,12 @@ func (u *User) AllowedApps() ([]string, error) {
 	var alwdApps []map[string]string
 	teams, err := u.Teams()
 	if err != nil {
-		return []string{}, err
+		return nil, err
 	}
 	teamNames := GetTeamsNames(teams)
 	q := bson.M{"teams": bson.M{"$in": teamNames}}
 	if err := conn.Apps().Find(q).Select(bson.M{"name": 1}).All(&alwdApps); err != nil {
-		return []string{}, err
-	}
-	appNames := make([]string, len(alwdApps))
-	for i, v := range alwdApps {
-		appNames[i] = v["name"]
-	}
-	return appNames, nil
-}
-
-func (u *User) AllowedAppsByTeam(team string) ([]string, error) {
-	conn, err := db.Conn()
-	if err != nil {
-		return []string{}, err
-	}
-	defer conn.Close()
-	alwdApps := []map[string]string{}
-	if err := conn.Apps().Find(bson.M{"teams": bson.M{"$in": []string{team}}}).Select(bson.M{"name": 1}).All(&alwdApps); err != nil {
-		return []string{}, err
+		return nil, err
 	}
 	appNames := make([]string, len(alwdApps))
 	for i, v := range alwdApps {

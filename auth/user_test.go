@@ -435,7 +435,7 @@ type testApp struct {
 	Teams []string
 }
 
-func (s *S) TestAllowedAppsShouldReturnAllAppsTheUserHasAccess(c *gocheck.C) {
+func (s *S) TestUserAllowedApps(c *gocheck.C) {
 	team := Team{Name: "teamname", Users: []string{s.user.Email}}
 	err := s.conn.Teams().Insert(&team)
 	c.Assert(err, gocheck.IsNil)
@@ -451,25 +451,6 @@ func (s *S) TestAllowedAppsShouldReturnAllAppsTheUserHasAccess(c *gocheck.C) {
 	}()
 	aApps, err := s.user.AllowedApps()
 	c.Assert(aApps, gocheck.DeepEquals, []string{a.Name, a2.Name})
-}
-
-func (s *S) TestAllowedAppsByTeam(c *gocheck.C) {
-	team := Team{Name: "teamname", Users: []string{s.user.Email}}
-	err := s.conn.Teams().Insert(&team)
-	c.Assert(err, gocheck.IsNil)
-	a := testApp{Name: "myapp", Teams: []string{s.team.Name}}
-	err = s.conn.Apps().Insert(&a)
-	c.Assert(err, gocheck.IsNil)
-	a2 := testApp{Name: "otherapp", Teams: []string{team.Name}}
-	err = s.conn.Apps().Insert(&a2)
-	c.Assert(err, gocheck.IsNil)
-	defer func() {
-		s.conn.Apps().Remove(bson.M{"name": a.Name})
-		s.conn.Apps().Remove(bson.M{"name": a2.Name})
-		s.conn.Teams().RemoveId(team.Name)
-	}()
-	alwdApps, err := s.user.AllowedAppsByTeam(team.Name)
-	c.Assert(alwdApps, gocheck.DeepEquals, []string{a2.Name})
 }
 
 func (s *S) TestSendEmail(c *gocheck.C) {
