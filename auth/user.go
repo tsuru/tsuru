@@ -20,6 +20,7 @@ import (
 	"math/rand"
 	"net"
 	"net/smtp"
+	"strings"
 	"time"
 )
 
@@ -314,19 +315,30 @@ func generatePassword(length int) string {
 }
 
 func sendEmail(email string, data []byte) error {
-	addr, err := config.GetString("smtp:server")
+	addr, err := smtpServer()
 	if err != nil {
-		return stderrors.New(`Setting "smtp:server" is not defined`)
+		return err
 	}
+	var auth smtp.Auth
 	user, err := config.GetString("smtp:user")
 	if err != nil {
 		return stderrors.New(`Setting "smtp:user" is not defined`)
 	}
-	password, err := config.GetString("smtp:password")
-	if err != nil {
-		return stderrors.New(`Setting "smtp:password" is not defined`)
+	password, _ := config.GetString("smtp:password")
+	if password != "" {
+		host, _, _ := net.SplitHostPort(addr)
+		auth = smtp.PlainAuth("", user, password, host)
 	}
-	host, _, _ := net.SplitHostPort(addr)
-	auth := smtp.PlainAuth("", user, password, host)
 	return smtp.SendMail(addr, auth, user, []string{email}, data)
+}
+
+func smtpServer() (string, error) {
+	server, _ := config.GetString("smtp:server")
+	if server == "" {
+		return "", stderrors.New(`Setting "smtp:server" is not defined`)
+	}
+	if !strings.Contains(server, ":") {
+		server += ":25"
+	}
+	return server, nil
 }
