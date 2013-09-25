@@ -8,6 +8,6 @@ import "github.com/globocom/tsuru/provision"
 
 // isReachable returns true if the web application deploy in the
 // unit is accessible via 0.0.0.0:PORT.
-func isReachable(unit provision.AppUnit) (bool, error) {
+func IsReachable(unit provision.AppUnit) (bool, error) {
 	return false, nil
 }

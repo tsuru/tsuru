@@ -16,7 +16,7 @@ var _ = gocheck.Suite(&HealthSuite{})
 func (s *HealthSuite) TestIsUnreachable(c *gocheck.C) {
 	app := testing.NewFakeApp("almah", "static", 1)
 	units := app.ProvisionedUnits()
-	reachable, err := isReachable(units[0])
+	reachable, err := IsReachable(units[0])
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(reachable, gocheck.Equals, false)
 }
