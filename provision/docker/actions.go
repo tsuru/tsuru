@@ -85,7 +85,7 @@ var startContainer = action.Action{
 	Forward: func(ctx action.FWContext) (action.Result, error) {
 		c := ctx.Previous.(container)
 		log.Printf("starting container %s", c.ID)
-		err := dockerCluster().StartContainer(c.ID)
+		err := dockerCluster().StartContainer(c.ID, nil)
 		if err != nil {
 			log.Printf("error on start container %s - %s", c.ID, err)
 			return nil, err

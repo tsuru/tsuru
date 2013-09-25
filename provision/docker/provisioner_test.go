@@ -332,7 +332,7 @@ func (s *S) TestProvisionerRemoveUnit(c *gocheck.C) {
 	defer rtesting.FakeRouter.RemoveBackend(container.AppName)
 	client, err := dockerClient.NewClient(s.server.URL())
 	c.Assert(err, gocheck.IsNil)
-	err = client.StartContainer(container.ID)
+	err = client.StartContainer(container.ID, nil)
 	c.Assert(err, gocheck.IsNil)
 	app := testing.NewFakeApp(container.AppName, "python", 0)
 	var p dockerProvisioner
@@ -378,7 +378,7 @@ func (s *S) TestRemoveUnitInSameHostAsAnotherUnitShouldEnqueueAnotherBind(c *goc
 	defer rtesting.FakeRouter.RemoveBackend(c1.AppName)
 	client, err := dockerClient.NewClient(s.server.URL())
 	c.Assert(err, gocheck.IsNil)
-	err = client.StartContainer(c1.ID)
+	err = client.StartContainer(c1.ID, nil)
 	c.Assert(err, gocheck.IsNil)
 	a := testing.NewFakeApp(c1.AppName, "python", 0)
 	var p dockerProvisioner

@@ -566,7 +566,7 @@ func (s *S) TestContainerStop(c *gocheck.C) {
 	defer s.removeTestContainer(cont)
 	client, err := dockerClient.NewClient(s.server.URL())
 	c.Assert(err, gocheck.IsNil)
-	err = client.StartContainer(cont.ID)
+	err = client.StartContainer(cont.ID, nil)
 	c.Assert(err, gocheck.IsNil)
 	err = cont.stop()
 	c.Assert(err, gocheck.IsNil)

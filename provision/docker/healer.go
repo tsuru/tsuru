@@ -29,7 +29,7 @@ func (h ContainerHealer) Heal() error {
 			log.Printf("Caught error while killing container %s for healing: %s", c.ID, err.Error())
 			continue
 		}
-		if err := dockerCluster().StartContainer(c.ID); err != nil {
+		if err := dockerCluster().StartContainer(c.ID, nil); err != nil {
 			log.Printf("Caught error while starting container %s for healing: %s", c.ID, err.Error())
 		}
 	}
