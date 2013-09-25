@@ -61,7 +61,8 @@ func (u UnitSlice) Less(i, j int) bool {
 		string(provision.StatusPending):    2,
 		string(provision.StatusCreating):   3,
 		string(provision.StatusInstalling): 4,
-		string(provision.StatusStarted):    5,
+		string(provision.StatusBuilding):   5,
+		string(provision.StatusStarted):    6,
 	}
 	return weight[u[i].State] < weight[u[j].State]
 }

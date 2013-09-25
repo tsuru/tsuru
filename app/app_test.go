@@ -648,43 +648,32 @@ func (c *hasUnitChecker) Check(params []interface{}, names []string) (bool, stri
 var HasUnit gocheck.Checker = &hasUnitChecker{}
 
 func (s *S) TestRemoveUnitsPriority(c *gocheck.C) {
-	units := []Unit{
+	unitList := []Unit{
 		{Name: "ble/0", State: string(provision.StatusStarted)},
 		{Name: "ble/1", State: string(provision.StatusDown)},
 		{Name: "ble/2", State: string(provision.StatusCreating)},
 		{Name: "ble/3", State: string(provision.StatusPending)},
 		{Name: "ble/4", State: string(provision.StatusError)},
 		{Name: "ble/5", State: string(provision.StatusInstalling)},
+		{Name: "ble/6", State: string(provision.StatusBuilding)},
 	}
-	a := App{Name: "ble", Units: units}
+	a := App{Name: "ble", Units: unitList}
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	s.provisioner.Provision(&a)
-	s.provisioner.AddUnits(&a, 6)
-	un := a.ProvisionedUnits()
-	c.Assert(&a, HasUnit, un[0])
-	c.Assert(&a, HasUnit, un[1])
-	c.Assert(&a, HasUnit, un[2])
-	c.Assert(&a, HasUnit, un[3])
-	c.Assert(&a, HasUnit, un[4])
-	c.Assert(&a, HasUnit, un[5])
-	err = a.RemoveUnits(1)
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(&a, gocheck.Not(HasUnit), un[4])
-	err = a.RemoveUnits(1)
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(&a, gocheck.Not(HasUnit), un[1])
-	err = a.RemoveUnits(1)
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(&a, gocheck.Not(HasUnit), un[3])
-	err = a.RemoveUnits(1)
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(&a, gocheck.Not(HasUnit), un[2])
-	err = a.RemoveUnits(1)
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(&a, gocheck.Not(HasUnit), un[5])
-	c.Assert(&a, HasUnit, un[0])
+	s.provisioner.AddUnits(&a, 7)
+	units := a.ProvisionedUnits()
+	for _, unit := range units {
+		c.Assert(&a, HasUnit, unit)
+	}
+	removeUnits := []int{4, 1, 3, 2, 5, 6}
+	for _, unit := range removeUnits {
+		err = a.RemoveUnits(1)
+		c.Assert(err, gocheck.IsNil)
+		c.Assert(&a, gocheck.Not(HasUnit), units[unit])
+	}
+	c.Assert(&a, HasUnit, units[0])
 	c.Assert(a.ProvisionedUnits(), gocheck.HasLen, 1)
 }
 
@@ -698,7 +687,7 @@ func (s *S) TestRemoveUnitsWithQuota(c *gocheck.C) {
 		{Name: "ble/0", State: string(provision.StatusStarted), QuotaItem: "ble-0"},
 		{Name: "ble/1", State: string(provision.StatusDown), QuotaItem: "ble-1"},
 		{Name: "ble/2", State: string(provision.StatusCreating), QuotaItem: "ble-2"},
-		{Name: "ble/3", State: string(provision.StatusPending), QuotaItem: "ble-3"},
+		{Name: "ble/3", State: string(provision.StatusBuilding), QuotaItem: "ble-3"},
 		{Name: "ble/4", State: string(provision.StatusStarted), QuotaItem: "ble-4"},
 		{Name: "ble/5", State: string(provision.StatusInstalling), QuotaItem: "ble-5"},
 	}
