@@ -652,22 +652,21 @@ func (s *S) TestRemoveUnitsPriority(c *gocheck.C) {
 		{Name: "ble/0", State: string(provision.StatusStarted)},
 		{Name: "ble/1", State: string(provision.StatusDown)},
 		{Name: "ble/2", State: string(provision.StatusCreating)},
-		{Name: "ble/3", State: string(provision.StatusPending)},
-		{Name: "ble/4", State: string(provision.StatusError)},
-		{Name: "ble/5", State: string(provision.StatusInstalling)},
-		{Name: "ble/6", State: string(provision.StatusBuilding)},
+		{Name: "ble/3", State: string(provision.StatusError)},
+		{Name: "ble/4", State: string(provision.StatusInstalling)},
+		{Name: "ble/5", State: string(provision.StatusBuilding)},
 	}
 	a := App{Name: "ble", Units: unitList}
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	s.provisioner.Provision(&a)
-	s.provisioner.AddUnits(&a, 7)
+	s.provisioner.AddUnits(&a, 6)
 	units := a.ProvisionedUnits()
 	for _, unit := range units {
 		c.Assert(&a, HasUnit, unit)
 	}
-	removeUnits := []int{4, 1, 3, 2, 5, 6}
+	removeUnits := []int{3, 1, 2, 4, 5}
 	for _, unit := range removeUnits {
 		err = a.RemoveUnits(1)
 		c.Assert(err, gocheck.IsNil)

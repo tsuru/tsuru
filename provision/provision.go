@@ -20,7 +20,6 @@ func (s Status) String() string {
 
 const (
 	StatusStarted     = Status("started")
-	StatusPending     = Status("pending")
 	StatusBuilding    = Status("building")
 	StatusDown        = Status("down")
 	StatusError       = Status("error")

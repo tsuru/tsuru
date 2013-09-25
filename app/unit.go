@@ -58,7 +58,6 @@ func (u UnitSlice) Less(i, j int) bool {
 	weight := map[string]int{
 		string(provision.StatusError):      0,
 		string(provision.StatusDown):       1,
-		string(provision.StatusPending):    2,
 		string(provision.StatusCreating):   3,
 		string(provision.StatusInstalling): 4,
 		string(provision.StatusBuilding):   5,
